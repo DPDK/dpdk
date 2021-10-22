@@ -52,13 +52,13 @@ int bnxt_mq_rx_configure(struct bnxt *bp)
 	bp->nr_vnics = 0;
 
 	/* Multi-queue mode */
-	if (dev_conf->rxmode.mq_mode & ETH_MQ_RX_VMDQ_DCB_RSS) {
+	if (dev_conf->rxmode.mq_mode & RTE_ETH_MQ_RX_VMDQ_DCB_RSS) {
 		/* VMDq ONLY, VMDq+RSS, VMDq+DCB, VMDq+DCB+RSS */
 
 		switch (dev_conf->rxmode.mq_mode) {
-		case ETH_MQ_RX_VMDQ_RSS:
-		case ETH_MQ_RX_VMDQ_ONLY:
-		case ETH_MQ_RX_VMDQ_DCB_RSS:
+		case RTE_ETH_MQ_RX_VMDQ_RSS:
+		case RTE_ETH_MQ_RX_VMDQ_ONLY:
+		case RTE_ETH_MQ_RX_VMDQ_DCB_RSS:
 			/* FALLTHROUGH */
 			/* ETH_8/64_POOLs */
 			pools = conf->nb_queue_pools;
@@ -66,14 +66,14 @@ int bnxt_mq_rx_configure(struct bnxt *bp)
 			max_pools = RTE_MIN(bp->max_vnics,
 					    RTE_MIN(bp->max_l2_ctx,
 					    RTE_MIN(bp->max_rsscos_ctx,
-						    ETH_64_POOLS)));
+						    RTE_ETH_64_POOLS)));
 			PMD_DRV_LOG(DEBUG,
 				    "pools = %u max_pools = %u\n",
 				    pools, max_pools);
 			if (pools > max_pools)
 				pools = max_pools;
 			break;
-		case ETH_MQ_RX_RSS:
+		case RTE_ETH_MQ_RX_RSS:
 			pools = bp->rx_cosq_cnt ? bp->rx_cosq_cnt : 1;
 			break;
 		default:
@@ -111,7 +111,7 @@ int bnxt_mq_rx_configure(struct bnxt *bp)
 				    ring_idx, rxq, i, vnic);
 		}
 		if (i == 0) {
-			if (dev_conf->rxmode.mq_mode & ETH_MQ_RX_VMDQ_DCB) {
+			if (dev_conf->rxmode.mq_mode & RTE_ETH_MQ_RX_VMDQ_DCB) {
 				bp->eth_dev->data->promiscuous = 1;
 				vnic->flags |= BNXT_VNIC_INFO_PROMISC;
 			}
@@ -121,8 +121,8 @@ int bnxt_mq_rx_configure(struct bnxt *bp)
 		vnic->end_grp_id = end_grp_id;
 
 		if (i) {
-			if (dev_conf->rxmode.mq_mode & ETH_MQ_RX_VMDQ_DCB ||
-			    !(dev_conf->rxmode.mq_mode & ETH_MQ_RX_RSS))
+			if (dev_conf->rxmode.mq_mode & RTE_ETH_MQ_RX_VMDQ_DCB ||
+			    !(dev_conf->rxmode.mq_mode & RTE_ETH_MQ_RX_RSS))
 				vnic->rss_dflt_cr = true;
 			goto skip_filter_allocation;
 		}
@@ -147,14 +147,14 @@ skip_filter_allocation:
 
 	bp->rx_num_qs_per_vnic = nb_q_per_grp;
 
-	if (dev_conf->rxmode.mq_mode & ETH_MQ_RX_RSS_FLAG) {
+	if (dev_conf->rxmode.mq_mode & RTE_ETH_MQ_RX_RSS_FLAG) {
 		struct rte_eth_rss_conf *rss = &dev_conf->rx_adv_conf.rss_conf;
 
 		if (bp->flags & BNXT_FLAG_UPDATE_HASH)
 			bp->flags &= ~BNXT_FLAG_UPDATE_HASH;
 
 		for (i = 0; i < bp->nr_vnics; i++) {
-			uint32_t lvl = ETH_RSS_LEVEL(rss->rss_hf);
+			uint32_t lvl = RTE_ETH_RSS_LEVEL(rss->rss_hf);
 
 			vnic = &bp->vnic_info[i];
 			vnic->hash_type =
@@ -363,7 +363,7 @@ int bnxt_rx_queue_setup_op(struct rte_eth_dev *eth_dev,
 	PMD_DRV_LOG(DEBUG, "RX Buf size is %d\n", rxq->rx_buf_size);
 	rxq->queue_id = queue_idx;
 	rxq->port_id = eth_dev->data->port_id;
-	if (rx_offloads & DEV_RX_OFFLOAD_KEEP_CRC)
+	if (rx_offloads & RTE_ETH_RX_OFFLOAD_KEEP_CRC)
 		rxq->crc_len = RTE_ETHER_CRC_LEN;
 	else
 		rxq->crc_len = 0;
@@ -478,7 +478,7 @@ int bnxt_rx_queue_start(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 	}
 	PMD_DRV_LOG(INFO, "Rx queue started %d\n", rx_queue_id);
 
-	if (dev_conf->rxmode.mq_mode & ETH_MQ_RX_RSS_FLAG) {
+	if (dev_conf->rxmode.mq_mode & RTE_ETH_MQ_RX_RSS_FLAG) {
 		vnic = rxq->vnic;
 
 		if (BNXT_HAS_RING_GRPS(bp)) {
@@ -549,7 +549,7 @@ int bnxt_rx_queue_stop(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 	rxq->rx_started = false;
 	PMD_DRV_LOG(DEBUG, "Rx queue stopped\n");
 
-	if (dev_conf->rxmode.mq_mode & ETH_MQ_RX_RSS_FLAG) {
+	if (dev_conf->rxmode.mq_mode & RTE_ETH_MQ_RX_RSS_FLAG) {
 		if (BNXT_HAS_RING_GRPS(bp))
 			vnic->fw_grp_ids[rx_queue_id] = INVALID_HW_RING_ID;
 

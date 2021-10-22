@@ -979,11 +979,11 @@ struct sfc_dp_rx sfc_ef100_rx = {
 				  SFC_DP_RX_FEAT_INTR |
 				  SFC_DP_RX_FEAT_STATS,
 	.dev_offload_capa	= 0,
-	.queue_offload_capa	= DEV_RX_OFFLOAD_CHECKSUM |
-				  DEV_RX_OFFLOAD_OUTER_IPV4_CKSUM |
-				  DEV_RX_OFFLOAD_OUTER_UDP_CKSUM |
-				  DEV_RX_OFFLOAD_SCATTER |
-				  DEV_RX_OFFLOAD_RSS_HASH,
+	.queue_offload_capa	= RTE_ETH_RX_OFFLOAD_CHECKSUM |
+				  RTE_ETH_RX_OFFLOAD_OUTER_IPV4_CKSUM |
+				  RTE_ETH_RX_OFFLOAD_OUTER_UDP_CKSUM |
+				  RTE_ETH_RX_OFFLOAD_SCATTER |
+				  RTE_ETH_RX_OFFLOAD_RSS_HASH,
 	.get_dev_info		= sfc_ef100_rx_get_dev_info,
 	.qsize_up_rings		= sfc_ef100_rx_qsize_up_rings,
 	.qcreate		= sfc_ef100_rx_qcreate,

@@ -93,7 +93,7 @@ init_port(uint16_t port_num)
 	/* for port configuration all features are off by default */
 	const struct rte_eth_conf port_conf = {
 		.rxmode = {
-			.mq_mode = ETH_MQ_RX_RSS
+			.mq_mode = RTE_ETH_MQ_RX_RSS
 		}
 	};
 	const uint16_t rx_rings = 1, tx_rings = num_clients;
@@ -212,7 +212,7 @@ check_all_ports_link_status(uint16_t port_num, uint32_t port_mask)
 				continue;
 			}
 			/* clear all_ports_up flag if any link down */
-			if (link.link_status == ETH_LINK_DOWN) {
+			if (link.link_status == RTE_ETH_LINK_DOWN) {
 				all_ports_up = 0;
 				break;
 			}

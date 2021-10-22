@@ -58,15 +58,15 @@
 #define MRVL_COOKIE_HIGH_ADDR_MASK 0xffffff0000000000
 
 /** Port Rx offload capabilities */
-#define MRVL_RX_OFFLOADS (DEV_RX_OFFLOAD_VLAN_FILTER | \
-			  DEV_RX_OFFLOAD_CHECKSUM)
+#define MRVL_RX_OFFLOADS (RTE_ETH_RX_OFFLOAD_VLAN_FILTER | \
+			  RTE_ETH_RX_OFFLOAD_CHECKSUM)
 
 /** Port Tx offloads capabilities */
-#define MRVL_TX_OFFLOAD_CHECKSUM (DEV_TX_OFFLOAD_IPV4_CKSUM | \
-				  DEV_TX_OFFLOAD_UDP_CKSUM  | \
-				  DEV_TX_OFFLOAD_TCP_CKSUM)
+#define MRVL_TX_OFFLOAD_CHECKSUM (RTE_ETH_TX_OFFLOAD_IPV4_CKSUM | \
+				  RTE_ETH_TX_OFFLOAD_UDP_CKSUM  | \
+				  RTE_ETH_TX_OFFLOAD_TCP_CKSUM)
 #define MRVL_TX_OFFLOADS (MRVL_TX_OFFLOAD_CHECKSUM | \
-			  DEV_TX_OFFLOAD_MULTI_SEGS)
+			  RTE_ETH_TX_OFFLOAD_MULTI_SEGS)
 
 #define MRVL_TX_PKT_OFFLOADS (PKT_TX_IP_CKSUM | \
 			      PKT_TX_TCP_CKSUM | \
@@ -442,14 +442,14 @@ mrvl_configure_rss(struct mrvl_priv *priv, struct rte_eth_rss_conf *rss_conf)
 
 	if (rss_conf->rss_hf == 0) {
 		priv->ppio_params.inqs_params.hash_type = PP2_PPIO_HASH_T_NONE;
-	} else if (rss_conf->rss_hf & ETH_RSS_IPV4) {
+	} else if (rss_conf->rss_hf & RTE_ETH_RSS_IPV4) {
 		priv->ppio_params.inqs_params.hash_type =
 			PP2_PPIO_HASH_T_2_TUPLE;
-	} else if (rss_conf->rss_hf & ETH_RSS_NONFRAG_IPV4_TCP) {
+	} else if (rss_conf->rss_hf & RTE_ETH_RSS_NONFRAG_IPV4_TCP) {
 		priv->ppio_params.inqs_params.hash_type =
 			PP2_PPIO_HASH_T_5_TUPLE;
 		priv->rss_hf_tcp = 1;
-	} else if (rss_conf->rss_hf & ETH_RSS_NONFRAG_IPV4_UDP) {
+	} else if (rss_conf->rss_hf & RTE_ETH_RSS_NONFRAG_IPV4_UDP) {
 		priv->ppio_params.inqs_params.hash_type =
 			PP2_PPIO_HASH_T_5_TUPLE;
 		priv->rss_hf_tcp = 0;
@@ -483,8 +483,8 @@ mrvl_dev_configure(struct rte_eth_dev *dev)
 		return -EINVAL;
 	}
 
-	if (dev->data->dev_conf.rxmode.mq_mode != ETH_MQ_RX_NONE &&
-	    dev->data->dev_conf.rxmode.mq_mode != ETH_MQ_RX_RSS) {
+	if (dev->data->dev_conf.rxmode.mq_mode != RTE_ETH_MQ_RX_NONE &&
+	    dev->data->dev_conf.rxmode.mq_mode != RTE_ETH_MQ_RX_RSS) {
 		MRVL_LOG(INFO, "Unsupported rx multi queue mode %d",
 			dev->data->dev_conf.rxmode.mq_mode);
 		return -EINVAL;
@@ -502,7 +502,7 @@ mrvl_dev_configure(struct rte_eth_dev *dev)
 		return -EINVAL;
 	}
 
-	if (dev->data->dev_conf.txmode.offloads & DEV_TX_OFFLOAD_MULTI_SEGS)
+	if (dev->data->dev_conf.txmode.offloads & RTE_ETH_TX_OFFLOAD_MULTI_SEGS)
 		priv->multiseg = 1;
 
 	ret = mrvl_configure_rxqs(priv, dev->data->port_id,
@@ -524,7 +524,7 @@ mrvl_dev_configure(struct rte_eth_dev *dev)
 		return ret;
 
 	if (dev->data->nb_rx_queues == 1 &&
-	    dev->data->dev_conf.rxmode.mq_mode == ETH_MQ_RX_RSS) {
+	    dev->data->dev_conf.rxmode.mq_mode == RTE_ETH_MQ_RX_RSS) {
 		MRVL_LOG(WARNING, "Disabling hash for 1 rx queue");
 		priv->ppio_params.inqs_params.hash_type = PP2_PPIO_HASH_T_NONE;
 		priv->configured = 1;
@@ -623,7 +623,7 @@ mrvl_dev_set_link_up(struct rte_eth_dev *dev)
 	int ret;
 
 	if (!priv->ppio) {
-		dev->data->dev_link.link_status = ETH_LINK_UP;
+		dev->data->dev_link.link_status = RTE_ETH_LINK_UP;
 		return 0;
 	}
 
@@ -644,7 +644,7 @@ mrvl_dev_set_link_up(struct rte_eth_dev *dev)
 		return ret;
 	}
 
-	dev->data->dev_link.link_status = ETH_LINK_UP;
+	dev->data->dev_link.link_status = RTE_ETH_LINK_UP;
 	return 0;
 }
 
@@ -664,14 +664,14 @@ mrvl_dev_set_link_down(struct rte_eth_dev *dev)
 	int ret;
 
 	if (!priv->ppio) {
-		dev->data->dev_link.link_status = ETH_LINK_DOWN;
+		dev->data->dev_link.link_status = RTE_ETH_LINK_DOWN;
 		return 0;
 	}
 	ret = pp2_ppio_disable(priv->ppio);
 	if (ret)
 		return ret;
 
-	dev->data->dev_link.link_status = ETH_LINK_DOWN;
+	dev->data->dev_link.link_status = RTE_ETH_LINK_DOWN;
 	return 0;
 }
 
@@ -893,7 +893,7 @@ mrvl_dev_start(struct rte_eth_dev *dev)
 	if (dev->data->all_multicast == 1)
 		mrvl_allmulticast_enable(dev);
 
-	if (dev->data->dev_conf.rxmode.offloads & DEV_RX_OFFLOAD_VLAN_FILTER) {
+	if (dev->data->dev_conf.rxmode.offloads & RTE_ETH_RX_OFFLOAD_VLAN_FILTER) {
 		ret = mrvl_populate_vlan_table(dev, 1);
 		if (ret) {
 			MRVL_LOG(ERR, "Failed to populate VLAN table");
@@ -929,11 +929,11 @@ mrvl_dev_start(struct rte_eth_dev *dev)
 		priv->flow_ctrl = 0;
 	}
 
-	if (dev->data->dev_link.link_status == ETH_LINK_UP) {
+	if (dev->data->dev_link.link_status == RTE_ETH_LINK_UP) {
 		ret = mrvl_dev_set_link_up(dev);
 		if (ret) {
 			MRVL_LOG(ERR, "Failed to set link up");
-			dev->data->dev_link.link_status = ETH_LINK_DOWN;
+			dev->data->dev_link.link_status = RTE_ETH_LINK_DOWN;
 			goto out;
 		}
 	}
@@ -1202,30 +1202,30 @@ mrvl_link_update(struct rte_eth_dev *dev, int wait_to_complete __rte_unused)
 
 	switch (ethtool_cmd_speed(&edata)) {
 	case SPEED_10:
-		dev->data->dev_link.link_speed = ETH_SPEED_NUM_10M;
+		dev->data->dev_link.link_speed = RTE_ETH_SPEED_NUM_10M;
 		break;
 	case SPEED_100:
-		dev->data->dev_link.link_speed = ETH_SPEED_NUM_100M;
+		dev->data->dev_link.link_speed = RTE_ETH_SPEED_NUM_100M;
 		break;
 	case SPEED_1000:
-		dev->data->dev_link.link_speed = ETH_SPEED_NUM_1G;
+		dev->data->dev_link.link_speed = RTE_ETH_SPEED_NUM_1G;
 		break;
 	case SPEED_2500:
-		dev->data->dev_link.link_speed = ETH_SPEED_NUM_2_5G;
+		dev->data->dev_link.link_speed = RTE_ETH_SPEED_NUM_2_5G;
 		break;
 	case SPEED_10000:
-		dev->data->dev_link.link_speed = ETH_SPEED_NUM_10G;
+		dev->data->dev_link.link_speed = RTE_ETH_SPEED_NUM_10G;
 		break;
 	default:
-		dev->data->dev_link.link_speed = ETH_SPEED_NUM_NONE;
+		dev->data->dev_link.link_speed = RTE_ETH_SPEED_NUM_NONE;
 	}
 
-	dev->data->dev_link.link_duplex = edata.duplex ? ETH_LINK_FULL_DUPLEX :
-							 ETH_LINK_HALF_DUPLEX;
-	dev->data->dev_link.link_autoneg = edata.autoneg ? ETH_LINK_AUTONEG :
-							   ETH_LINK_FIXED;
+	dev->data->dev_link.link_duplex = edata.duplex ? RTE_ETH_LINK_FULL_DUPLEX :
+							 RTE_ETH_LINK_HALF_DUPLEX;
+	dev->data->dev_link.link_autoneg = edata.autoneg ? RTE_ETH_LINK_AUTONEG :
+							   RTE_ETH_LINK_FIXED;
 	pp2_ppio_get_link_state(priv->ppio, &link_up);
-	dev->data->dev_link.link_status = link_up ? ETH_LINK_UP : ETH_LINK_DOWN;
+	dev->data->dev_link.link_status = link_up ? RTE_ETH_LINK_UP : RTE_ETH_LINK_DOWN;
 
 	return 0;
 }
@@ -1709,11 +1709,11 @@ mrvl_dev_infos_get(struct rte_eth_dev *dev,
 {
 	struct mrvl_priv *priv = dev->data->dev_private;
 
-	info->speed_capa = ETH_LINK_SPEED_10M |
-			   ETH_LINK_SPEED_100M |
-			   ETH_LINK_SPEED_1G |
-			   ETH_LINK_SPEED_2_5G |
-			   ETH_LINK_SPEED_10G;
+	info->speed_capa = RTE_ETH_LINK_SPEED_10M |
+			   RTE_ETH_LINK_SPEED_100M |
+			   RTE_ETH_LINK_SPEED_1G |
+			   RTE_ETH_LINK_SPEED_2_5G |
+			   RTE_ETH_LINK_SPEED_10G;
 
 	info->max_rx_queues = MRVL_PP2_RXQ_MAX;
 	info->max_tx_queues = MRVL_PP2_TXQ_MAX;
@@ -1733,9 +1733,9 @@ mrvl_dev_infos_get(struct rte_eth_dev *dev,
 	info->tx_offload_capa = MRVL_TX_OFFLOADS;
 	info->tx_queue_offload_capa = MRVL_TX_OFFLOADS;
 
-	info->flow_type_rss_offloads = ETH_RSS_IPV4 |
-				       ETH_RSS_NONFRAG_IPV4_TCP |
-				       ETH_RSS_NONFRAG_IPV4_UDP;
+	info->flow_type_rss_offloads = RTE_ETH_RSS_IPV4 |
+				       RTE_ETH_RSS_NONFRAG_IPV4_TCP |
+				       RTE_ETH_RSS_NONFRAG_IPV4_UDP;
 
 	/* By default packets are dropped if no descriptors are available */
 	info->default_rxconf.rx_drop_en = 1;
@@ -1864,13 +1864,13 @@ static int mrvl_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 	uint64_t rx_offloads = dev->data->dev_conf.rxmode.offloads;
 	int ret;
 
-	if (mask & ETH_VLAN_STRIP_MASK) {
+	if (mask & RTE_ETH_VLAN_STRIP_MASK) {
 		MRVL_LOG(ERR, "VLAN stripping is not supported\n");
 		return -ENOTSUP;
 	}
 
-	if (mask & ETH_VLAN_FILTER_MASK) {
-		if (rx_offloads & DEV_RX_OFFLOAD_VLAN_FILTER)
+	if (mask & RTE_ETH_VLAN_FILTER_MASK) {
+		if (rx_offloads & RTE_ETH_RX_OFFLOAD_VLAN_FILTER)
 			ret = mrvl_populate_vlan_table(dev, 1);
 		else
 			ret = mrvl_populate_vlan_table(dev, 0);
@@ -1879,7 +1879,7 @@ static int mrvl_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 			return ret;
 	}
 
-	if (mask & ETH_VLAN_EXTEND_MASK) {
+	if (mask & RTE_ETH_VLAN_EXTEND_MASK) {
 		MRVL_LOG(ERR, "Extend VLAN not supported\n");
 		return -ENOTSUP;
 	}
@@ -2022,7 +2022,7 @@ mrvl_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 
 	rxq->priv = priv;
 	rxq->mp = mp;
-	rxq->cksum_enabled = offloads & DEV_RX_OFFLOAD_IPV4_CKSUM;
+	rxq->cksum_enabled = offloads & RTE_ETH_RX_OFFLOAD_IPV4_CKSUM;
 	rxq->queue_id = idx;
 	rxq->port_id = dev->data->port_id;
 	mrvl_port_to_bpool_lookup[rxq->port_id] = priv->bpool;
@@ -2182,7 +2182,7 @@ mrvl_flow_ctrl_get(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 		return ret;
 	}
 
-	fc_conf->mode = en ? RTE_FC_RX_PAUSE : RTE_FC_NONE;
+	fc_conf->mode = en ? RTE_ETH_FC_RX_PAUSE : RTE_ETH_FC_NONE;
 
 	ret = pp2_ppio_get_tx_pause(priv->ppio, &en);
 	if (ret) {
@@ -2191,10 +2191,10 @@ mrvl_flow_ctrl_get(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 	}
 
 	if (en) {
-		if (fc_conf->mode == RTE_FC_NONE)
-			fc_conf->mode = RTE_FC_TX_PAUSE;
+		if (fc_conf->mode == RTE_ETH_FC_NONE)
+			fc_conf->mode = RTE_ETH_FC_TX_PAUSE;
 		else
-			fc_conf->mode = RTE_FC_FULL;
+			fc_conf->mode = RTE_ETH_FC_FULL;
 	}
 
 	return 0;
@@ -2240,19 +2240,19 @@ mrvl_flow_ctrl_set(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 	}
 
 	switch (fc_conf->mode) {
-	case RTE_FC_FULL:
+	case RTE_ETH_FC_FULL:
 		rx_en = 1;
 		tx_en = 1;
 		break;
-	case RTE_FC_TX_PAUSE:
+	case RTE_ETH_FC_TX_PAUSE:
 		rx_en = 0;
 		tx_en = 1;
 		break;
-	case RTE_FC_RX_PAUSE:
+	case RTE_ETH_FC_RX_PAUSE:
 		rx_en = 1;
 		tx_en = 0;
 		break;
-	case RTE_FC_NONE:
+	case RTE_ETH_FC_NONE:
 		rx_en = 0;
 		tx_en = 0;
 		break;
@@ -2329,11 +2329,11 @@ mrvl_rss_hash_conf_get(struct rte_eth_dev *dev,
 	if (hash_type == PP2_PPIO_HASH_T_NONE)
 		rss_conf->rss_hf = 0;
 	else if (hash_type == PP2_PPIO_HASH_T_2_TUPLE)
-		rss_conf->rss_hf = ETH_RSS_IPV4;
+		rss_conf->rss_hf = RTE_ETH_RSS_IPV4;
 	else if (hash_type == PP2_PPIO_HASH_T_5_TUPLE && priv->rss_hf_tcp)
-		rss_conf->rss_hf = ETH_RSS_NONFRAG_IPV4_TCP;
+		rss_conf->rss_hf = RTE_ETH_RSS_NONFRAG_IPV4_TCP;
 	else if (hash_type == PP2_PPIO_HASH_T_5_TUPLE && !priv->rss_hf_tcp)
-		rss_conf->rss_hf = ETH_RSS_NONFRAG_IPV4_UDP;
+		rss_conf->rss_hf = RTE_ETH_RSS_NONFRAG_IPV4_UDP;
 
 	return 0;
 }
@@ -3152,7 +3152,7 @@ mrvl_eth_dev_create(struct rte_vdev_device *vdev, const char *name)
 	eth_dev->dev_ops = &mrvl_ops;
 	eth_dev->data->dev_flags |= RTE_ETH_DEV_AUTOFILL_QUEUE_XSTATS;
 
-	eth_dev->data->dev_link.link_status = ETH_LINK_UP;
+	eth_dev->data->dev_link.link_status = RTE_ETH_LINK_UP;
 
 	rte_eth_dev_probing_finish(eth_dev);
 	return 0;

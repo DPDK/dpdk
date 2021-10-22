@@ -266,53 +266,53 @@ iavf_config_rss_hf(struct iavf_adapter *adapter, uint64_t rss_hf)
 	static const uint64_t map_hena_rss[] = {
 		/* IPv4 */
 		[IAVF_FILTER_PCTYPE_NONF_UNICAST_IPV4_UDP] =
-				ETH_RSS_NONFRAG_IPV4_UDP,
+				RTE_ETH_RSS_NONFRAG_IPV4_UDP,
 		[IAVF_FILTER_PCTYPE_NONF_MULTICAST_IPV4_UDP] =
-				ETH_RSS_NONFRAG_IPV4_UDP,
+				RTE_ETH_RSS_NONFRAG_IPV4_UDP,
 		[IAVF_FILTER_PCTYPE_NONF_IPV4_UDP] =
-				ETH_RSS_NONFRAG_IPV4_UDP,
+				RTE_ETH_RSS_NONFRAG_IPV4_UDP,
 		[IAVF_FILTER_PCTYPE_NONF_IPV4_TCP_SYN_NO_ACK] =
-				ETH_RSS_NONFRAG_IPV4_TCP,
+				RTE_ETH_RSS_NONFRAG_IPV4_TCP,
 		[IAVF_FILTER_PCTYPE_NONF_IPV4_TCP] =
-				ETH_RSS_NONFRAG_IPV4_TCP,
+				RTE_ETH_RSS_NONFRAG_IPV4_TCP,
 		[IAVF_FILTER_PCTYPE_NONF_IPV4_SCTP] =
-				ETH_RSS_NONFRAG_IPV4_SCTP,
+				RTE_ETH_RSS_NONFRAG_IPV4_SCTP,
 		[IAVF_FILTER_PCTYPE_NONF_IPV4_OTHER] =
-				ETH_RSS_NONFRAG_IPV4_OTHER,
-		[IAVF_FILTER_PCTYPE_FRAG_IPV4] = ETH_RSS_FRAG_IPV4,
+				RTE_ETH_RSS_NONFRAG_IPV4_OTHER,
+		[IAVF_FILTER_PCTYPE_FRAG_IPV4] = RTE_ETH_RSS_FRAG_IPV4,
 
 		/* IPv6 */
 		[IAVF_FILTER_PCTYPE_NONF_UNICAST_IPV6_UDP] =
-				ETH_RSS_NONFRAG_IPV6_UDP,
+				RTE_ETH_RSS_NONFRAG_IPV6_UDP,
 		[IAVF_FILTER_PCTYPE_NONF_MULTICAST_IPV6_UDP] =
-				ETH_RSS_NONFRAG_IPV6_UDP,
+				RTE_ETH_RSS_NONFRAG_IPV6_UDP,
 		[IAVF_FILTER_PCTYPE_NONF_IPV6_UDP] =
-				ETH_RSS_NONFRAG_IPV6_UDP,
+				RTE_ETH_RSS_NONFRAG_IPV6_UDP,
 		[IAVF_FILTER_PCTYPE_NONF_IPV6_TCP_SYN_NO_ACK] =
-				ETH_RSS_NONFRAG_IPV6_TCP,
+				RTE_ETH_RSS_NONFRAG_IPV6_TCP,
 		[IAVF_FILTER_PCTYPE_NONF_IPV6_TCP] =
-				ETH_RSS_NONFRAG_IPV6_TCP,
+				RTE_ETH_RSS_NONFRAG_IPV6_TCP,
 		[IAVF_FILTER_PCTYPE_NONF_IPV6_SCTP] =
-				ETH_RSS_NONFRAG_IPV6_SCTP,
+				RTE_ETH_RSS_NONFRAG_IPV6_SCTP,
 		[IAVF_FILTER_PCTYPE_NONF_IPV6_OTHER] =
-				ETH_RSS_NONFRAG_IPV6_OTHER,
-		[IAVF_FILTER_PCTYPE_FRAG_IPV6] = ETH_RSS_FRAG_IPV6,
+				RTE_ETH_RSS_NONFRAG_IPV6_OTHER,
+		[IAVF_FILTER_PCTYPE_FRAG_IPV6] = RTE_ETH_RSS_FRAG_IPV6,
 
 		/* L2 Payload */
-		[IAVF_FILTER_PCTYPE_L2_PAYLOAD] = ETH_RSS_L2_PAYLOAD
+		[IAVF_FILTER_PCTYPE_L2_PAYLOAD] = RTE_ETH_RSS_L2_PAYLOAD
 	};
 
-	const uint64_t ipv4_rss = ETH_RSS_NONFRAG_IPV4_UDP |
-				  ETH_RSS_NONFRAG_IPV4_TCP |
-				  ETH_RSS_NONFRAG_IPV4_SCTP |
-				  ETH_RSS_NONFRAG_IPV4_OTHER |
-				  ETH_RSS_FRAG_IPV4;
+	const uint64_t ipv4_rss = RTE_ETH_RSS_NONFRAG_IPV4_UDP |
+				  RTE_ETH_RSS_NONFRAG_IPV4_TCP |
+				  RTE_ETH_RSS_NONFRAG_IPV4_SCTP |
+				  RTE_ETH_RSS_NONFRAG_IPV4_OTHER |
+				  RTE_ETH_RSS_FRAG_IPV4;
 
-	const uint64_t ipv6_rss = ETH_RSS_NONFRAG_IPV6_UDP |
-				  ETH_RSS_NONFRAG_IPV6_TCP |
-				  ETH_RSS_NONFRAG_IPV6_SCTP |
-				  ETH_RSS_NONFRAG_IPV6_OTHER |
-				  ETH_RSS_FRAG_IPV6;
+	const uint64_t ipv6_rss = RTE_ETH_RSS_NONFRAG_IPV6_UDP |
+				  RTE_ETH_RSS_NONFRAG_IPV6_TCP |
+				  RTE_ETH_RSS_NONFRAG_IPV6_SCTP |
+				  RTE_ETH_RSS_NONFRAG_IPV6_OTHER |
+				  RTE_ETH_RSS_FRAG_IPV6;
 
 	struct iavf_info *vf =  IAVF_DEV_PRIVATE_TO_VF(adapter);
 	uint64_t caps = 0, hena = 0, valid_rss_hf = 0;
@@ -331,13 +331,13 @@ iavf_config_rss_hf(struct iavf_adapter *adapter, uint64_t rss_hf)
 	}
 
 	/**
-	 * ETH_RSS_IPV4 and ETH_RSS_IPV6 can be considered as 2
+	 * RTE_ETH_RSS_IPV4 and RTE_ETH_RSS_IPV6 can be considered as 2
 	 * generalizations of all other IPv4 and IPv6 RSS types.
 	 */
-	if (rss_hf & ETH_RSS_IPV4)
+	if (rss_hf & RTE_ETH_RSS_IPV4)
 		rss_hf |= ipv4_rss;
 
-	if (rss_hf & ETH_RSS_IPV6)
+	if (rss_hf & RTE_ETH_RSS_IPV6)
 		rss_hf |= ipv6_rss;
 
 	RTE_BUILD_BUG_ON(RTE_DIM(map_hena_rss) > sizeof(uint64_t) * CHAR_BIT);
@@ -363,10 +363,10 @@ iavf_config_rss_hf(struct iavf_adapter *adapter, uint64_t rss_hf)
 	}
 
 	if (valid_rss_hf & ipv4_rss)
-		valid_rss_hf |= rss_hf & ETH_RSS_IPV4;
+		valid_rss_hf |= rss_hf & RTE_ETH_RSS_IPV4;
 
 	if (valid_rss_hf & ipv6_rss)
-		valid_rss_hf |= rss_hf & ETH_RSS_IPV6;
+		valid_rss_hf |= rss_hf & RTE_ETH_RSS_IPV6;
 
 	if (rss_hf & ~valid_rss_hf)
 		PMD_DRV_LOG(WARNING, "Unsupported rss_hf 0x%" PRIx64,
@@ -467,7 +467,7 @@ iavf_dev_vlan_insert_set(struct rte_eth_dev *dev)
 		return 0;
 
 	enable = !!(dev->data->dev_conf.txmode.offloads &
-		    DEV_TX_OFFLOAD_VLAN_INSERT);
+		    RTE_ETH_TX_OFFLOAD_VLAN_INSERT);
 	iavf_config_vlan_insert_v2(adapter, enable);
 
 	return 0;
@@ -479,10 +479,10 @@ iavf_dev_init_vlan(struct rte_eth_dev *dev)
 	int err;
 
 	err = iavf_dev_vlan_offload_set(dev,
-					ETH_VLAN_STRIP_MASK |
-					ETH_QINQ_STRIP_MASK |
-					ETH_VLAN_FILTER_MASK |
-					ETH_VLAN_EXTEND_MASK);
+					RTE_ETH_VLAN_STRIP_MASK |
+					RTE_ETH_QINQ_STRIP_MASK |
+					RTE_ETH_VLAN_FILTER_MASK |
+					RTE_ETH_VLAN_EXTEND_MASK);
 	if (err) {
 		PMD_DRV_LOG(ERR, "Failed to update vlan offload");
 		return err;
@@ -512,8 +512,8 @@ iavf_dev_configure(struct rte_eth_dev *dev)
 	ad->rx_vec_allowed = true;
 	ad->tx_vec_allowed = true;
 
-	if (dev->data->dev_conf.rxmode.mq_mode & ETH_MQ_RX_RSS_FLAG)
-		dev->data->dev_conf.rxmode.offloads |= DEV_RX_OFFLOAD_RSS_HASH;
+	if (dev->data->dev_conf.rxmode.mq_mode & RTE_ETH_MQ_RX_RSS_FLAG)
+		dev->data->dev_conf.rxmode.offloads |= RTE_ETH_RX_OFFLOAD_RSS_HASH;
 
 	/* Large VF setting */
 	if (num_queue_pairs > IAVF_MAX_NUM_QUEUES_DFLT) {
@@ -596,7 +596,7 @@ iavf_init_rxq(struct rte_eth_dev *dev, struct iavf_rx_queue *rxq)
 	}
 
 	rxq->max_pkt_len = max_pkt_len;
-	if ((dev_data->dev_conf.rxmode.offloads & DEV_RX_OFFLOAD_SCATTER) ||
+	if ((dev_data->dev_conf.rxmode.offloads & RTE_ETH_RX_OFFLOAD_SCATTER) ||
 	    rxq->max_pkt_len > buf_size) {
 		dev_data->scattered_rx = 1;
 	}
@@ -946,34 +946,34 @@ iavf_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->flow_type_rss_offloads = IAVF_RSS_OFFLOAD_ALL;
 	dev_info->max_mac_addrs = IAVF_NUM_MACADDR_MAX;
 	dev_info->rx_offload_capa =
-		DEV_RX_OFFLOAD_VLAN_STRIP |
-		DEV_RX_OFFLOAD_QINQ_STRIP |
-		DEV_RX_OFFLOAD_IPV4_CKSUM |
-		DEV_RX_OFFLOAD_UDP_CKSUM |
-		DEV_RX_OFFLOAD_TCP_CKSUM |
-		DEV_RX_OFFLOAD_OUTER_IPV4_CKSUM |
-		DEV_RX_OFFLOAD_SCATTER |
-		DEV_RX_OFFLOAD_VLAN_FILTER |
-		DEV_RX_OFFLOAD_RSS_HASH;
+		RTE_ETH_RX_OFFLOAD_VLAN_STRIP |
+		RTE_ETH_RX_OFFLOAD_QINQ_STRIP |
+		RTE_ETH_RX_OFFLOAD_IPV4_CKSUM |
+		RTE_ETH_RX_OFFLOAD_UDP_CKSUM |
+		RTE_ETH_RX_OFFLOAD_TCP_CKSUM |
+		RTE_ETH_RX_OFFLOAD_OUTER_IPV4_CKSUM |
+		RTE_ETH_RX_OFFLOAD_SCATTER |
+		RTE_ETH_RX_OFFLOAD_VLAN_FILTER |
+		RTE_ETH_RX_OFFLOAD_RSS_HASH;
 
 	dev_info->tx_offload_capa =
-		DEV_TX_OFFLOAD_VLAN_INSERT |
-		DEV_TX_OFFLOAD_QINQ_INSERT |
-		DEV_TX_OFFLOAD_IPV4_CKSUM |
-		DEV_TX_OFFLOAD_UDP_CKSUM |
-		DEV_TX_OFFLOAD_TCP_CKSUM |
-		DEV_TX_OFFLOAD_SCTP_CKSUM |
-		DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM |
-		DEV_TX_OFFLOAD_TCP_TSO |
-		DEV_TX_OFFLOAD_VXLAN_TNL_TSO |
-		DEV_TX_OFFLOAD_GRE_TNL_TSO |
-		DEV_TX_OFFLOAD_IPIP_TNL_TSO |
-		DEV_TX_OFFLOAD_GENEVE_TNL_TSO |
-		DEV_TX_OFFLOAD_MULTI_SEGS |
-		DEV_TX_OFFLOAD_MBUF_FAST_FREE;
+		RTE_ETH_TX_OFFLOAD_VLAN_INSERT |
+		RTE_ETH_TX_OFFLOAD_QINQ_INSERT |
+		RTE_ETH_TX_OFFLOAD_IPV4_CKSUM |
+		RTE_ETH_TX_OFFLOAD_UDP_CKSUM |
+		RTE_ETH_TX_OFFLOAD_TCP_CKSUM |
+		RTE_ETH_TX_OFFLOAD_SCTP_CKSUM |
+		RTE_ETH_TX_OFFLOAD_OUTER_IPV4_CKSUM |
+		RTE_ETH_TX_OFFLOAD_TCP_TSO |
+		RTE_ETH_TX_OFFLOAD_VXLAN_TNL_TSO |
+		RTE_ETH_TX_OFFLOAD_GRE_TNL_TSO |
+		RTE_ETH_TX_OFFLOAD_IPIP_TNL_TSO |
+		RTE_ETH_TX_OFFLOAD_GENEVE_TNL_TSO |
+		RTE_ETH_TX_OFFLOAD_MULTI_SEGS |
+		RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE;
 
 	if (vf->vf_res->vf_cap_flags & VIRTCHNL_VF_OFFLOAD_CRC)
-		dev_info->rx_offload_capa |= DEV_RX_OFFLOAD_KEEP_CRC;
+		dev_info->rx_offload_capa |= RTE_ETH_RX_OFFLOAD_KEEP_CRC;
 
 	dev_info->default_rxconf = (struct rte_eth_rxconf) {
 		.rx_free_thresh = IAVF_DEFAULT_RX_FREE_THRESH,
@@ -1033,42 +1033,42 @@ iavf_dev_link_update(struct rte_eth_dev *dev,
 	 */
 	switch (vf->link_speed) {
 	case 10:
-		new_link.link_speed = ETH_SPEED_NUM_10M;
+		new_link.link_speed = RTE_ETH_SPEED_NUM_10M;
 		break;
 	case 100:
-		new_link.link_speed = ETH_SPEED_NUM_100M;
+		new_link.link_speed = RTE_ETH_SPEED_NUM_100M;
 		break;
 	case 1000:
-		new_link.link_speed = ETH_SPEED_NUM_1G;
+		new_link.link_speed = RTE_ETH_SPEED_NUM_1G;
 		break;
 	case 10000:
-		new_link.link_speed = ETH_SPEED_NUM_10G;
+		new_link.link_speed = RTE_ETH_SPEED_NUM_10G;
 		break;
 	case 20000:
-		new_link.link_speed = ETH_SPEED_NUM_20G;
+		new_link.link_speed = RTE_ETH_SPEED_NUM_20G;
 		break;
 	case 25000:
-		new_link.link_speed = ETH_SPEED_NUM_25G;
+		new_link.link_speed = RTE_ETH_SPEED_NUM_25G;
 		break;
 	case 40000:
-		new_link.link_speed = ETH_SPEED_NUM_40G;
+		new_link.link_speed = RTE_ETH_SPEED_NUM_40G;
 		break;
 	case 50000:
-		new_link.link_speed = ETH_SPEED_NUM_50G;
+		new_link.link_speed = RTE_ETH_SPEED_NUM_50G;
 		break;
 	case 100000:
-		new_link.link_speed = ETH_SPEED_NUM_100G;
+		new_link.link_speed = RTE_ETH_SPEED_NUM_100G;
 		break;
 	default:
-		new_link.link_speed = ETH_SPEED_NUM_NONE;
+		new_link.link_speed = RTE_ETH_SPEED_NUM_NONE;
 		break;
 	}
 
-	new_link.link_duplex = ETH_LINK_FULL_DUPLEX;
-	new_link.link_status = vf->link_up ? ETH_LINK_UP :
-					     ETH_LINK_DOWN;
+	new_link.link_duplex = RTE_ETH_LINK_FULL_DUPLEX;
+	new_link.link_status = vf->link_up ? RTE_ETH_LINK_UP :
+					     RTE_ETH_LINK_DOWN;
 	new_link.link_autoneg = !(dev->data->dev_conf.link_speeds &
-				ETH_LINK_SPEED_FIXED);
+				RTE_ETH_LINK_SPEED_FIXED);
 
 	return rte_eth_linkstatus_set(dev, &new_link);
 }
@@ -1216,14 +1216,14 @@ iavf_dev_vlan_offload_set_v2(struct rte_eth_dev *dev, int mask)
 	bool enable;
 	int err;
 
-	if (mask & ETH_VLAN_FILTER_MASK) {
-		enable = !!(rxmode->offloads & DEV_RX_OFFLOAD_VLAN_FILTER);
+	if (mask & RTE_ETH_VLAN_FILTER_MASK) {
+		enable = !!(rxmode->offloads & RTE_ETH_RX_OFFLOAD_VLAN_FILTER);
 
 		iavf_iterate_vlan_filters_v2(dev, enable);
 	}
 
-	if (mask & ETH_VLAN_STRIP_MASK) {
-		enable = !!(rxmode->offloads & DEV_RX_OFFLOAD_VLAN_STRIP);
+	if (mask & RTE_ETH_VLAN_STRIP_MASK) {
+		enable = !!(rxmode->offloads & RTE_ETH_RX_OFFLOAD_VLAN_STRIP);
 
 		err = iavf_config_vlan_strip_v2(adapter, enable);
 		/* If not support, the stripping is already disabled by PF */
@@ -1252,9 +1252,9 @@ iavf_dev_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 		return -ENOTSUP;
 
 	/* Vlan stripping setting */
-	if (mask & ETH_VLAN_STRIP_MASK) {
+	if (mask & RTE_ETH_VLAN_STRIP_MASK) {
 		/* Enable or disable VLAN stripping */
-		if (dev_conf->rxmode.offloads & DEV_RX_OFFLOAD_VLAN_STRIP)
+		if (dev_conf->rxmode.offloads & RTE_ETH_RX_OFFLOAD_VLAN_STRIP)
 			err = iavf_enable_vlan_strip(adapter);
 		else
 			err = iavf_disable_vlan_strip(adapter);
@@ -1296,8 +1296,8 @@ iavf_dev_rss_reta_update(struct rte_eth_dev *dev,
 	rte_memcpy(lut, vf->rss_lut, reta_size);
 
 	for (i = 0; i < reta_size; i++) {
-		idx = i / RTE_RETA_GROUP_SIZE;
-		shift = i % RTE_RETA_GROUP_SIZE;
+		idx = i / RTE_ETH_RETA_GROUP_SIZE;
+		shift = i % RTE_ETH_RETA_GROUP_SIZE;
 		if (reta_conf[idx].mask & (1ULL << shift))
 			lut[i] = reta_conf[idx].reta[shift];
 	}
@@ -1333,8 +1333,8 @@ iavf_dev_rss_reta_query(struct rte_eth_dev *dev,
 	}
 
 	for (i = 0; i < reta_size; i++) {
-		idx = i / RTE_RETA_GROUP_SIZE;
-		shift = i % RTE_RETA_GROUP_SIZE;
+		idx = i / RTE_ETH_RETA_GROUP_SIZE;
+		shift = i % RTE_ETH_RETA_GROUP_SIZE;
 		if (reta_conf[idx].mask & (1ULL << shift))
 			reta_conf[idx].reta[shift] = vf->rss_lut[i];
 	}
@@ -1541,7 +1541,7 @@ iavf_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 	ret = iavf_query_stats(adapter, &pstats);
 	if (ret == 0) {
 		uint8_t crc_stats_len = (dev->data->dev_conf.rxmode.offloads &
-					 DEV_RX_OFFLOAD_KEEP_CRC) ? 0 :
+					 RTE_ETH_RX_OFFLOAD_KEEP_CRC) ? 0 :
 					 RTE_ETHER_CRC_LEN;
 		iavf_update_stats(vsi, pstats);
 		stats->ipackets = pstats->rx_unicast + pstats->rx_multicast +

@@ -1478,51 +1478,51 @@ parse_and_check_speed_duplex(char *speedstr, char *duplexstr, uint32_t *speed)
 	int duplex;
 
 	if (!strcmp(duplexstr, "half")) {
-		duplex = ETH_LINK_HALF_DUPLEX;
+		duplex = RTE_ETH_LINK_HALF_DUPLEX;
 	} else if (!strcmp(duplexstr, "full")) {
-		duplex = ETH_LINK_FULL_DUPLEX;
+		duplex = RTE_ETH_LINK_FULL_DUPLEX;
 	} else if (!strcmp(duplexstr, "auto")) {
-		duplex = ETH_LINK_FULL_DUPLEX;
+		duplex = RTE_ETH_LINK_FULL_DUPLEX;
 	} else {
 		fprintf(stderr, "Unknown duplex parameter\n");
 		return -1;
 	}
 
 	if (!strcmp(speedstr, "10")) {
-		*speed = (duplex == ETH_LINK_HALF_DUPLEX) ?
-				ETH_LINK_SPEED_10M_HD : ETH_LINK_SPEED_10M;
+		*speed = (duplex == RTE_ETH_LINK_HALF_DUPLEX) ?
+				RTE_ETH_LINK_SPEED_10M_HD : RTE_ETH_LINK_SPEED_10M;
 	} else if (!strcmp(speedstr, "100")) {
-		*speed = (duplex == ETH_LINK_HALF_DUPLEX) ?
-				ETH_LINK_SPEED_100M_HD : ETH_LINK_SPEED_100M;
+		*speed = (duplex == RTE_ETH_LINK_HALF_DUPLEX) ?
+				RTE_ETH_LINK_SPEED_100M_HD : RTE_ETH_LINK_SPEED_100M;
 	} else {
-		if (duplex != ETH_LINK_FULL_DUPLEX) {
+		if (duplex != RTE_ETH_LINK_FULL_DUPLEX) {
 			fprintf(stderr, "Invalid speed/duplex parameters\n");
 			return -1;
 		}
 		if (!strcmp(speedstr, "1000")) {
-			*speed = ETH_LINK_SPEED_1G;
+			*speed = RTE_ETH_LINK_SPEED_1G;
 		} else if (!strcmp(speedstr, "10000")) {
-			*speed = ETH_LINK_SPEED_10G;
+			*speed = RTE_ETH_LINK_SPEED_10G;
 		} else if (!strcmp(speedstr, "25000")) {
-			*speed = ETH_LINK_SPEED_25G;
+			*speed = RTE_ETH_LINK_SPEED_25G;
 		} else if (!strcmp(speedstr, "40000")) {
-			*speed = ETH_LINK_SPEED_40G;
+			*speed = RTE_ETH_LINK_SPEED_40G;
 		} else if (!strcmp(speedstr, "50000")) {
-			*speed = ETH_LINK_SPEED_50G;
+			*speed = RTE_ETH_LINK_SPEED_50G;
 		} else if (!strcmp(speedstr, "100000")) {
-			*speed = ETH_LINK_SPEED_100G;
+			*speed = RTE_ETH_LINK_SPEED_100G;
 		} else if (!strcmp(speedstr, "200000")) {
-			*speed = ETH_LINK_SPEED_200G;
+			*speed = RTE_ETH_LINK_SPEED_200G;
 		} else if (!strcmp(speedstr, "auto")) {
-			*speed = ETH_LINK_SPEED_AUTONEG;
+			*speed = RTE_ETH_LINK_SPEED_AUTONEG;
 		} else {
 			fprintf(stderr, "Unknown speed parameter\n");
 			return -1;
 		}
 	}
 
-	if (*speed != ETH_LINK_SPEED_AUTONEG)
-		*speed |= ETH_LINK_SPEED_FIXED;
+	if (*speed != RTE_ETH_LINK_SPEED_AUTONEG)
+		*speed |= RTE_ETH_LINK_SPEED_FIXED;
 
 	return 0;
 }
@@ -2166,33 +2166,33 @@ cmd_config_rss_parsed(void *parsed_result,
 	int ret;
 
 	if (!strcmp(res->value, "all"))
-		rss_conf.rss_hf = ETH_RSS_ETH | ETH_RSS_VLAN | ETH_RSS_IP |
-			ETH_RSS_TCP | ETH_RSS_UDP | ETH_RSS_SCTP |
-			ETH_RSS_L2_PAYLOAD | ETH_RSS_L2TPV3 | ETH_RSS_ESP |
-			ETH_RSS_AH | ETH_RSS_PFCP | ETH_RSS_GTPU |
-			ETH_RSS_ECPRI;
+		rss_conf.rss_hf = RTE_ETH_RSS_ETH | RTE_ETH_RSS_VLAN | RTE_ETH_RSS_IP |
+			RTE_ETH_RSS_TCP | RTE_ETH_RSS_UDP | RTE_ETH_RSS_SCTP |
+			RTE_ETH_RSS_L2_PAYLOAD | RTE_ETH_RSS_L2TPV3 | RTE_ETH_RSS_ESP |
+			RTE_ETH_RSS_AH | RTE_ETH_RSS_PFCP | RTE_ETH_RSS_GTPU |
+			RTE_ETH_RSS_ECPRI;
 	else if (!strcmp(res->value, "eth"))
-		rss_conf.rss_hf = ETH_RSS_ETH;
+		rss_conf.rss_hf = RTE_ETH_RSS_ETH;
 	else if (!strcmp(res->value, "vlan"))
-		rss_conf.rss_hf = ETH_RSS_VLAN;
+		rss_conf.rss_hf = RTE_ETH_RSS_VLAN;
 	else if (!strcmp(res->value, "ip"))
-		rss_conf.rss_hf = ETH_RSS_IP;
+		rss_conf.rss_hf = RTE_ETH_RSS_IP;
 	else if (!strcmp(res->value, "udp"))
-		rss_conf.rss_hf = ETH_RSS_UDP;
+		rss_conf.rss_hf = RTE_ETH_RSS_UDP;
 	else if (!strcmp(res->value, "tcp"))
-		rss_conf.rss_hf = ETH_RSS_TCP;
+		rss_conf.rss_hf = RTE_ETH_RSS_TCP;
 	else if (!strcmp(res->value, "sctp"))
-		rss_conf.rss_hf = ETH_RSS_SCTP;
+		rss_conf.rss_hf = RTE_ETH_RSS_SCTP;
 	else if (!strcmp(res->value, "ether"))
-		rss_conf.rss_hf = ETH_RSS_L2_PAYLOAD;
+		rss_conf.rss_hf = RTE_ETH_RSS_L2_PAYLOAD;
 	else if (!strcmp(res->value, "port"))
-		rss_conf.rss_hf = ETH_RSS_PORT;
+		rss_conf.rss_hf = RTE_ETH_RSS_PORT;
 	else if (!strcmp(res->value, "vxlan"))
-		rss_conf.rss_hf = ETH_RSS_VXLAN;
+		rss_conf.rss_hf = RTE_ETH_RSS_VXLAN;
 	else if (!strcmp(res->value, "geneve"))
-		rss_conf.rss_hf = ETH_RSS_GENEVE;
+		rss_conf.rss_hf = RTE_ETH_RSS_GENEVE;
 	else if (!strcmp(res->value, "nvgre"))
-		rss_conf.rss_hf = ETH_RSS_NVGRE;
+		rss_conf.rss_hf = RTE_ETH_RSS_NVGRE;
 	else if (!strcmp(res->value, "l3-pre32"))
 		rss_conf.rss_hf = RTE_ETH_RSS_L3_PRE32;
 	else if (!strcmp(res->value, "l3-pre40"))
@@ -2206,46 +2206,46 @@ cmd_config_rss_parsed(void *parsed_result,
 	else if (!strcmp(res->value, "l3-pre96"))
 		rss_conf.rss_hf = RTE_ETH_RSS_L3_PRE96;
 	else if (!strcmp(res->value, "l3-src-only"))
-		rss_conf.rss_hf = ETH_RSS_L3_SRC_ONLY;
+		rss_conf.rss_hf = RTE_ETH_RSS_L3_SRC_ONLY;
 	else if (!strcmp(res->value, "l3-dst-only"))
-		rss_conf.rss_hf = ETH_RSS_L3_DST_ONLY;
+		rss_conf.rss_hf = RTE_ETH_RSS_L3_DST_ONLY;
 	else if (!strcmp(res->value, "l4-src-only"))
-		rss_conf.rss_hf = ETH_RSS_L4_SRC_ONLY;
+		rss_conf.rss_hf = RTE_ETH_RSS_L4_SRC_ONLY;
 	else if (!strcmp(res->value, "l4-dst-only"))
-		rss_conf.rss_hf = ETH_RSS_L4_DST_ONLY;
+		rss_conf.rss_hf = RTE_ETH_RSS_L4_DST_ONLY;
 	else if (!strcmp(res->value, "l2-src-only"))
-		rss_conf.rss_hf = ETH_RSS_L2_SRC_ONLY;
+		rss_conf.rss_hf = RTE_ETH_RSS_L2_SRC_ONLY;
 	else if (!strcmp(res->value, "l2-dst-only"))
-		rss_conf.rss_hf = ETH_RSS_L2_DST_ONLY;
+		rss_conf.rss_hf = RTE_ETH_RSS_L2_DST_ONLY;
 	else if (!strcmp(res->value, "l2tpv3"))
-		rss_conf.rss_hf = ETH_RSS_L2TPV3;
+		rss_conf.rss_hf = RTE_ETH_RSS_L2TPV3;
 	else if (!strcmp(res->value, "esp"))
-		rss_conf.rss_hf = ETH_RSS_ESP;
+		rss_conf.rss_hf = RTE_ETH_RSS_ESP;
 	else if (!strcmp(res->value, "ah"))
-		rss_conf.rss_hf = ETH_RSS_AH;
+		rss_conf.rss_hf = RTE_ETH_RSS_AH;
 	else if (!strcmp(res->value, "pfcp"))
-		rss_conf.rss_hf = ETH_RSS_PFCP;
+		rss_conf.rss_hf = RTE_ETH_RSS_PFCP;
 	else if (!strcmp(res->value, "pppoe"))
-		rss_conf.rss_hf = ETH_RSS_PPPOE;
+		rss_conf.rss_hf = RTE_ETH_RSS_PPPOE;
 	else if (!strcmp(res->value, "gtpu"))
-		rss_conf.rss_hf = ETH_RSS_GTPU;
+		rss_conf.rss_hf = RTE_ETH_RSS_GTPU;
 	else if (!strcmp(res->value, "ecpri"))
-		rss_conf.rss_hf = ETH_RSS_ECPRI;
+		rss_conf.rss_hf = RTE_ETH_RSS_ECPRI;
 	else if (!strcmp(res->value, "mpls"))
-		rss_conf.rss_hf = ETH_RSS_MPLS;
+		rss_conf.rss_hf = RTE_ETH_RSS_MPLS;
 	else if (!strcmp(res->value, "ipv4-chksum"))
-		rss_conf.rss_hf = ETH_RSS_IPV4_CHKSUM;
+		rss_conf.rss_hf = RTE_ETH_RSS_IPV4_CHKSUM;
 	else if (!strcmp(res->value, "none"))
 		rss_conf.rss_hf = 0;
 	else if (!strcmp(res->value, "level-default")) {
-		rss_hf &= (~ETH_RSS_LEVEL_MASK);
-		rss_conf.rss_hf = (rss_hf | ETH_RSS_LEVEL_PMD_DEFAULT);
+		rss_hf &= (~RTE_ETH_RSS_LEVEL_MASK);
+		rss_conf.rss_hf = (rss_hf | RTE_ETH_RSS_LEVEL_PMD_DEFAULT);
 	} else if (!strcmp(res->value, "level-outer")) {
-		rss_hf &= (~ETH_RSS_LEVEL_MASK);
-		rss_conf.rss_hf = (rss_hf | ETH_RSS_LEVEL_OUTERMOST);
+		rss_hf &= (~RTE_ETH_RSS_LEVEL_MASK);
+		rss_conf.rss_hf = (rss_hf | RTE_ETH_RSS_LEVEL_OUTERMOST);
 	} else if (!strcmp(res->value, "level-inner")) {
-		rss_hf &= (~ETH_RSS_LEVEL_MASK);
-		rss_conf.rss_hf = (rss_hf | ETH_RSS_LEVEL_INNERMOST);
+		rss_hf &= (~RTE_ETH_RSS_LEVEL_MASK);
+		rss_conf.rss_hf = (rss_hf | RTE_ETH_RSS_LEVEL_INNERMOST);
 	} else if (!strcmp(res->value, "default"))
 		use_default = 1;
 	else if (isdigit(res->value[0]) && atoi(res->value) > 0 &&
@@ -2982,8 +2982,8 @@ parse_reta_config(const char *str,
 			return -1;
 		}
 
-		idx = hash_index / RTE_RETA_GROUP_SIZE;
-		shift = hash_index % RTE_RETA_GROUP_SIZE;
+		idx = hash_index / RTE_ETH_RETA_GROUP_SIZE;
+		shift = hash_index % RTE_ETH_RETA_GROUP_SIZE;
 		reta_conf[idx].mask |= (1ULL << shift);
 		reta_conf[idx].reta[shift] = nb_queue;
 	}
@@ -3012,10 +3012,10 @@ cmd_set_rss_reta_parsed(void *parsed_result,
 	} else
 		printf("The reta size of port %d is %u\n",
 			res->port_id, dev_info.reta_size);
-	if (dev_info.reta_size > ETH_RSS_RETA_SIZE_512) {
+	if (dev_info.reta_size > RTE_ETH_RSS_RETA_SIZE_512) {
 		fprintf(stderr,
 			"Currently do not support more than %u entries of redirection table\n",
-			ETH_RSS_RETA_SIZE_512);
+			RTE_ETH_RSS_RETA_SIZE_512);
 		return;
 	}
 
@@ -3086,8 +3086,8 @@ showport_parse_reta_config(struct rte_eth_rss_reta_entry64 *conf,
 	char *end;
 	char *str_fld[8];
 	uint16_t i;
-	uint16_t num = (nb_entries + RTE_RETA_GROUP_SIZE - 1) /
-			RTE_RETA_GROUP_SIZE;
+	uint16_t num = (nb_entries + RTE_ETH_RETA_GROUP_SIZE - 1) /
+			RTE_ETH_RETA_GROUP_SIZE;
 	int ret;
 
 	p = strchr(p0, '(');
@@ -3132,7 +3132,7 @@ cmd_showport_reta_parsed(void *parsed_result,
 	if (ret != 0)
 		return;
 
-	max_reta_size = RTE_MIN(dev_info.reta_size, ETH_RSS_RETA_SIZE_512);
+	max_reta_size = RTE_MIN(dev_info.reta_size, RTE_ETH_RSS_RETA_SIZE_512);
 	if (res->size == 0 || res->size > max_reta_size) {
 		fprintf(stderr, "Invalid redirection table size: %u (1-%u)\n",
 			res->size, max_reta_size);
@@ -3272,7 +3272,7 @@ cmd_config_dcb_parsed(void *parsed_result,
 		return;
 	}
 
-	if ((res->num_tcs != ETH_4_TCS) && (res->num_tcs != ETH_8_TCS)) {
+	if ((res->num_tcs != RTE_ETH_4_TCS) && (res->num_tcs != RTE_ETH_8_TCS)) {
 		fprintf(stderr,
 			"The invalid number of traffic class, only 4 or 8 allowed.\n");
 		return;
@@ -4276,9 +4276,9 @@ cmd_vlan_tpid_parsed(void *parsed_result,
 	enum rte_vlan_type vlan_type;
 
 	if (!strcmp(res->vlan_type, "inner"))
-		vlan_type = ETH_VLAN_TYPE_INNER;
+		vlan_type = RTE_ETH_VLAN_TYPE_INNER;
 	else if (!strcmp(res->vlan_type, "outer"))
-		vlan_type = ETH_VLAN_TYPE_OUTER;
+		vlan_type = RTE_ETH_VLAN_TYPE_OUTER;
 	else {
 		fprintf(stderr, "Unknown vlan type\n");
 		return;
@@ -4615,55 +4615,55 @@ csum_show(int port_id)
 	printf("Parse tunnel is %s\n",
 		(ports[port_id].parse_tunnel) ? "on" : "off");
 	printf("IP checksum offload is %s\n",
-		(tx_offloads & DEV_TX_OFFLOAD_IPV4_CKSUM) ? "hw" : "sw");
+		(tx_offloads & RTE_ETH_TX_OFFLOAD_IPV4_CKSUM) ? "hw" : "sw");
 	printf("UDP checksum offload is %s\n",
-		(tx_offloads & DEV_TX_OFFLOAD_UDP_CKSUM) ? "hw" : "sw");
+		(tx_offloads & RTE_ETH_TX_OFFLOAD_UDP_CKSUM) ? "hw" : "sw");
 	printf("TCP checksum offload is %s\n",
-		(tx_offloads & DEV_TX_OFFLOAD_TCP_CKSUM) ? "hw" : "sw");
+		(tx_offloads & RTE_ETH_TX_OFFLOAD_TCP_CKSUM) ? "hw" : "sw");
 	printf("SCTP checksum offload is %s\n",
-		(tx_offloads & DEV_TX_OFFLOAD_SCTP_CKSUM) ? "hw" : "sw");
+		(tx_offloads & RTE_ETH_TX_OFFLOAD_SCTP_CKSUM) ? "hw" : "sw");
 	printf("Outer-Ip checksum offload is %s\n",
-		(tx_offloads & DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM) ? "hw" : "sw");
+		(tx_offloads & RTE_ETH_TX_OFFLOAD_OUTER_IPV4_CKSUM) ? "hw" : "sw");
 	printf("Outer-Udp checksum offload is %s\n",
-		(tx_offloads & DEV_TX_OFFLOAD_OUTER_UDP_CKSUM) ? "hw" : "sw");
+		(tx_offloads & RTE_ETH_TX_OFFLOAD_OUTER_UDP_CKSUM) ? "hw" : "sw");
 
 	/* display warnings if configuration is not supported by the NIC */
 	ret = eth_dev_info_get_print_err(port_id, &dev_info);
 	if (ret != 0)
 		return;
 
-	if ((tx_offloads & DEV_TX_OFFLOAD_IPV4_CKSUM) &&
-		(dev_info.tx_offload_capa & DEV_TX_OFFLOAD_IPV4_CKSUM) == 0) {
+	if ((tx_offloads & RTE_ETH_TX_OFFLOAD_IPV4_CKSUM) &&
+		(dev_info.tx_offload_capa & RTE_ETH_TX_OFFLOAD_IPV4_CKSUM) == 0) {
 		fprintf(stderr,
 			"Warning: hardware IP checksum enabled but not supported by port %d\n",
 			port_id);
 	}
-	if ((tx_offloads & DEV_TX_OFFLOAD_UDP_CKSUM) &&
-		(dev_info.tx_offload_capa & DEV_TX_OFFLOAD_UDP_CKSUM) == 0) {
+	if ((tx_offloads & RTE_ETH_TX_OFFLOAD_UDP_CKSUM) &&
+		(dev_info.tx_offload_capa & RTE_ETH_TX_OFFLOAD_UDP_CKSUM) == 0) {
 		fprintf(stderr,
 			"Warning: hardware UDP checksum enabled but not supported by port %d\n",
 			port_id);
 	}
-	if ((tx_offloads & DEV_TX_OFFLOAD_TCP_CKSUM) &&
-		(dev_info.tx_offload_capa & DEV_TX_OFFLOAD_TCP_CKSUM) == 0) {
+	if ((tx_offloads & RTE_ETH_TX_OFFLOAD_TCP_CKSUM) &&
+		(dev_info.tx_offload_capa & RTE_ETH_TX_OFFLOAD_TCP_CKSUM) == 0) {
 		fprintf(stderr,
 			"Warning: hardware TCP checksum enabled but not supported by port %d\n",
 			port_id);
 	}
-	if ((tx_offloads & DEV_TX_OFFLOAD_SCTP_CKSUM) &&
-		(dev_info.tx_offload_capa & DEV_TX_OFFLOAD_SCTP_CKSUM) == 0) {
+	if ((tx_offloads & RTE_ETH_TX_OFFLOAD_SCTP_CKSUM) &&
+		(dev_info.tx_offload_capa & RTE_ETH_TX_OFFLOAD_SCTP_CKSUM) == 0) {
 		fprintf(stderr,
 			"Warning: hardware SCTP checksum enabled but not supported by port %d\n",
 			port_id);
 	}
-	if ((tx_offloads & DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM) &&
-		(dev_info.tx_offload_capa & DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM) == 0) {
+	if ((tx_offloads & RTE_ETH_TX_OFFLOAD_OUTER_IPV4_CKSUM) &&
+		(dev_info.tx_offload_capa & RTE_ETH_TX_OFFLOAD_OUTER_IPV4_CKSUM) == 0) {
 		fprintf(stderr,
 			"Warning: hardware outer IP checksum enabled but not supported by port %d\n",
 			port_id);
 	}
-	if ((tx_offloads & DEV_TX_OFFLOAD_OUTER_UDP_CKSUM) &&
-		(dev_info.tx_offload_capa & DEV_TX_OFFLOAD_OUTER_UDP_CKSUM)
+	if ((tx_offloads & RTE_ETH_TX_OFFLOAD_OUTER_UDP_CKSUM) &&
+		(dev_info.tx_offload_capa & RTE_ETH_TX_OFFLOAD_OUTER_UDP_CKSUM)
 			== 0) {
 		fprintf(stderr,
 			"Warning: hardware outer UDP checksum enabled but not supported by port %d\n",
@@ -4713,8 +4713,8 @@ cmd_csum_parsed(void *parsed_result,
 
 		if (!strcmp(res->proto, "ip")) {
 			if (hw == 0 || (dev_info.tx_offload_capa &
-						DEV_TX_OFFLOAD_IPV4_CKSUM)) {
-				csum_offloads |= DEV_TX_OFFLOAD_IPV4_CKSUM;
+						RTE_ETH_TX_OFFLOAD_IPV4_CKSUM)) {
+				csum_offloads |= RTE_ETH_TX_OFFLOAD_IPV4_CKSUM;
 			} else {
 				fprintf(stderr,
 					"IP checksum offload is not supported by port %u\n",
@@ -4722,8 +4722,8 @@ cmd_csum_parsed(void *parsed_result,
 			}
 		} else if (!strcmp(res->proto, "udp")) {
 			if (hw == 0 || (dev_info.tx_offload_capa &
-						DEV_TX_OFFLOAD_UDP_CKSUM)) {
-				csum_offloads |= DEV_TX_OFFLOAD_UDP_CKSUM;
+						RTE_ETH_TX_OFFLOAD_UDP_CKSUM)) {
+				csum_offloads |= RTE_ETH_TX_OFFLOAD_UDP_CKSUM;
 			} else {
 				fprintf(stderr,
 					"UDP checksum offload is not supported by port %u\n",
@@ -4731,8 +4731,8 @@ cmd_csum_parsed(void *parsed_result,
 			}
 		} else if (!strcmp(res->proto, "tcp")) {
 			if (hw == 0 || (dev_info.tx_offload_capa &
-						DEV_TX_OFFLOAD_TCP_CKSUM)) {
-				csum_offloads |= DEV_TX_OFFLOAD_TCP_CKSUM;
+						RTE_ETH_TX_OFFLOAD_TCP_CKSUM)) {
+				csum_offloads |= RTE_ETH_TX_OFFLOAD_TCP_CKSUM;
 			} else {
 				fprintf(stderr,
 					"TCP checksum offload is not supported by port %u\n",
@@ -4740,8 +4740,8 @@ cmd_csum_parsed(void *parsed_result,
 			}
 		} else if (!strcmp(res->proto, "sctp")) {
 			if (hw == 0 || (dev_info.tx_offload_capa &
-						DEV_TX_OFFLOAD_SCTP_CKSUM)) {
-				csum_offloads |= DEV_TX_OFFLOAD_SCTP_CKSUM;
+						RTE_ETH_TX_OFFLOAD_SCTP_CKSUM)) {
+				csum_offloads |= RTE_ETH_TX_OFFLOAD_SCTP_CKSUM;
 			} else {
 				fprintf(stderr,
 					"SCTP checksum offload is not supported by port %u\n",
@@ -4749,9 +4749,9 @@ cmd_csum_parsed(void *parsed_result,
 			}
 		} else if (!strcmp(res->proto, "outer-ip")) {
 			if (hw == 0 || (dev_info.tx_offload_capa &
-					DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM)) {
+					RTE_ETH_TX_OFFLOAD_OUTER_IPV4_CKSUM)) {
 				csum_offloads |=
-						DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM;
+						RTE_ETH_TX_OFFLOAD_OUTER_IPV4_CKSUM;
 			} else {
 				fprintf(stderr,
 					"Outer IP checksum offload is not supported by port %u\n",
@@ -4759,9 +4759,9 @@ cmd_csum_parsed(void *parsed_result,
 			}
 		} else if (!strcmp(res->proto, "outer-udp")) {
 			if (hw == 0 || (dev_info.tx_offload_capa &
-					DEV_TX_OFFLOAD_OUTER_UDP_CKSUM)) {
+					RTE_ETH_TX_OFFLOAD_OUTER_UDP_CKSUM)) {
 				csum_offloads |=
-						DEV_TX_OFFLOAD_OUTER_UDP_CKSUM;
+						RTE_ETH_TX_OFFLOAD_OUTER_UDP_CKSUM;
 			} else {
 				fprintf(stderr,
 					"Outer UDP checksum offload is not supported by port %u\n",
@@ -4916,7 +4916,7 @@ cmd_tso_set_parsed(void *parsed_result,
 		return;
 
 	if ((ports[res->port_id].tso_segsz != 0) &&
-		(dev_info.tx_offload_capa & DEV_TX_OFFLOAD_TCP_TSO) == 0) {
+		(dev_info.tx_offload_capa & RTE_ETH_TX_OFFLOAD_TCP_TSO) == 0) {
 		fprintf(stderr, "Error: TSO is not supported by port %d\n",
 			res->port_id);
 		return;
@@ -4924,11 +4924,11 @@ cmd_tso_set_parsed(void *parsed_result,
 
 	if (ports[res->port_id].tso_segsz == 0) {
 		ports[res->port_id].dev_conf.txmode.offloads &=
-						~DEV_TX_OFFLOAD_TCP_TSO;
+						~RTE_ETH_TX_OFFLOAD_TCP_TSO;
 		printf("TSO for non-tunneled packets is disabled\n");
 	} else {
 		ports[res->port_id].dev_conf.txmode.offloads |=
-						DEV_TX_OFFLOAD_TCP_TSO;
+						RTE_ETH_TX_OFFLOAD_TCP_TSO;
 		printf("TSO segment size for non-tunneled packets is %d\n",
 			ports[res->port_id].tso_segsz);
 	}
@@ -4940,7 +4940,7 @@ cmd_tso_set_parsed(void *parsed_result,
 		return;
 
 	if ((ports[res->port_id].tso_segsz != 0) &&
-		(dev_info.tx_offload_capa & DEV_TX_OFFLOAD_TCP_TSO) == 0) {
+		(dev_info.tx_offload_capa & RTE_ETH_TX_OFFLOAD_TCP_TSO) == 0) {
 		fprintf(stderr,
 			"Warning: TSO enabled but not supported by port %d\n",
 			res->port_id);
@@ -5011,27 +5011,27 @@ check_tunnel_tso_nic_support(portid_t port_id)
 	if (eth_dev_info_get_print_err(port_id, &dev_info) != 0)
 		return dev_info;
 
-	if (!(dev_info.tx_offload_capa & DEV_TX_OFFLOAD_VXLAN_TNL_TSO))
+	if (!(dev_info.tx_offload_capa & RTE_ETH_TX_OFFLOAD_VXLAN_TNL_TSO))
 		fprintf(stderr,
 			"Warning: VXLAN TUNNEL TSO not supported therefore not enabled for port %d\n",
 			port_id);
-	if (!(dev_info.tx_offload_capa & DEV_TX_OFFLOAD_GRE_TNL_TSO))
+	if (!(dev_info.tx_offload_capa & RTE_ETH_TX_OFFLOAD_GRE_TNL_TSO))
 		fprintf(stderr,
 			"Warning: GRE TUNNEL TSO not supported therefore not enabled for port %d\n",
 			port_id);
-	if (!(dev_info.tx_offload_capa & DEV_TX_OFFLOAD_IPIP_TNL_TSO))
+	if (!(dev_info.tx_offload_capa & RTE_ETH_TX_OFFLOAD_IPIP_TNL_TSO))
 		fprintf(stderr,
 			"Warning: IPIP TUNNEL TSO not supported therefore not enabled for port %d\n",
 			port_id);
-	if (!(dev_info.tx_offload_capa & DEV_TX_OFFLOAD_GENEVE_TNL_TSO))
+	if (!(dev_info.tx_offload_capa & RTE_ETH_TX_OFFLOAD_GENEVE_TNL_TSO))
 		fprintf(stderr,
 			"Warning: GENEVE TUNNEL TSO not supported therefore not enabled for port %d\n",
 			port_id);
-	if (!(dev_info.tx_offload_capa & DEV_TX_OFFLOAD_IP_TNL_TSO))
+	if (!(dev_info.tx_offload_capa & RTE_ETH_TX_OFFLOAD_IP_TNL_TSO))
 		fprintf(stderr,
 			"Warning: IP TUNNEL TSO not supported therefore not enabled for port %d\n",
 			port_id);
-	if (!(dev_info.tx_offload_capa & DEV_TX_OFFLOAD_UDP_TNL_TSO))
+	if (!(dev_info.tx_offload_capa & RTE_ETH_TX_OFFLOAD_UDP_TNL_TSO))
 		fprintf(stderr,
 			"Warning: UDP TUNNEL TSO not supported therefore not enabled for port %d\n",
 			port_id);
@@ -5059,20 +5059,20 @@ cmd_tunnel_tso_set_parsed(void *parsed_result,
 	dev_info = check_tunnel_tso_nic_support(res->port_id);
 	if (ports[res->port_id].tunnel_tso_segsz == 0) {
 		ports[res->port_id].dev_conf.txmode.offloads &=
-			~(DEV_TX_OFFLOAD_VXLAN_TNL_TSO |
-			  DEV_TX_OFFLOAD_GRE_TNL_TSO |
-			  DEV_TX_OFFLOAD_IPIP_TNL_TSO |
-			  DEV_TX_OFFLOAD_GENEVE_TNL_TSO |
-			  DEV_TX_OFFLOAD_IP_TNL_TSO |
-			  DEV_TX_OFFLOAD_UDP_TNL_TSO);
+			~(RTE_ETH_TX_OFFLOAD_VXLAN_TNL_TSO |
+			  RTE_ETH_TX_OFFLOAD_GRE_TNL_TSO |
+			  RTE_ETH_TX_OFFLOAD_IPIP_TNL_TSO |
+			  RTE_ETH_TX_OFFLOAD_GENEVE_TNL_TSO |
+			  RTE_ETH_TX_OFFLOAD_IP_TNL_TSO |
+			  RTE_ETH_TX_OFFLOAD_UDP_TNL_TSO);
 		printf("TSO for tunneled packets is disabled\n");
 	} else {
-		uint64_t tso_offloads = (DEV_TX_OFFLOAD_VXLAN_TNL_TSO |
-					 DEV_TX_OFFLOAD_GRE_TNL_TSO |
-					 DEV_TX_OFFLOAD_IPIP_TNL_TSO |
-					 DEV_TX_OFFLOAD_GENEVE_TNL_TSO |
-					 DEV_TX_OFFLOAD_IP_TNL_TSO |
-					 DEV_TX_OFFLOAD_UDP_TNL_TSO);
+		uint64_t tso_offloads = (RTE_ETH_TX_OFFLOAD_VXLAN_TNL_TSO |
+					 RTE_ETH_TX_OFFLOAD_GRE_TNL_TSO |
+					 RTE_ETH_TX_OFFLOAD_IPIP_TNL_TSO |
+					 RTE_ETH_TX_OFFLOAD_GENEVE_TNL_TSO |
+					 RTE_ETH_TX_OFFLOAD_IP_TNL_TSO |
+					 RTE_ETH_TX_OFFLOAD_UDP_TNL_TSO);
 
 		ports[res->port_id].dev_conf.txmode.offloads |=
 			(tso_offloads & dev_info.tx_offload_capa);
@@ -5095,7 +5095,7 @@ cmd_tunnel_tso_set_parsed(void *parsed_result,
 			fprintf(stderr,
 				"Warning: csum parse_tunnel must be set so that tunneled packets are recognized\n");
 		if (!(ports[res->port_id].dev_conf.txmode.offloads &
-		      DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM))
+		      RTE_ETH_TX_OFFLOAD_OUTER_IPV4_CKSUM))
 			fprintf(stderr,
 				"Warning: csum set outer-ip must be set to hw if outer L3 is IPv4; not necessary for IPv6\n");
 	}
@@ -7227,9 +7227,9 @@ cmd_link_flow_ctrl_show_parsed(void *parsed_result,
 		return;
 	}
 
-	if (fc_conf.mode == RTE_FC_RX_PAUSE || fc_conf.mode == RTE_FC_FULL)
+	if (fc_conf.mode == RTE_ETH_FC_RX_PAUSE || fc_conf.mode == RTE_ETH_FC_FULL)
 		rx_fc_en = true;
-	if (fc_conf.mode == RTE_FC_TX_PAUSE || fc_conf.mode == RTE_FC_FULL)
+	if (fc_conf.mode == RTE_ETH_FC_TX_PAUSE || fc_conf.mode == RTE_ETH_FC_FULL)
 		tx_fc_en = true;
 
 	printf("\n%s Flow control infos for port %-2d %s\n",
@@ -7507,12 +7507,12 @@ cmd_link_flow_ctrl_set_parsed(void *parsed_result,
 
 	/*
 	 * Rx on/off, flow control is enabled/disabled on RX side. This can indicate
-	 * the RTE_FC_TX_PAUSE, Transmit pause frame at the Rx side.
+	 * the RTE_ETH_FC_TX_PAUSE, Transmit pause frame at the Rx side.
 	 * Tx on/off, flow control is enabled/disabled on TX side. This can indicate
-	 * the RTE_FC_RX_PAUSE, Respond to the pause frame at the Tx side.
+	 * the RTE_ETH_FC_RX_PAUSE, Respond to the pause frame at the Tx side.
 	 */
 	static enum rte_eth_fc_mode rx_tx_onoff_2_lfc_mode[2][2] = {
-			{RTE_FC_NONE, RTE_FC_TX_PAUSE}, {RTE_FC_RX_PAUSE, RTE_FC_FULL}
+			{RTE_ETH_FC_NONE, RTE_ETH_FC_TX_PAUSE}, {RTE_ETH_FC_RX_PAUSE, RTE_ETH_FC_FULL}
 	};
 
 	/* Partial command line, retrieve current configuration */
@@ -7525,11 +7525,11 @@ cmd_link_flow_ctrl_set_parsed(void *parsed_result,
 			return;
 		}
 
-		if ((fc_conf.mode == RTE_FC_RX_PAUSE) ||
-		    (fc_conf.mode == RTE_FC_FULL))
+		if ((fc_conf.mode == RTE_ETH_FC_RX_PAUSE) ||
+		    (fc_conf.mode == RTE_ETH_FC_FULL))
 			rx_fc_en = 1;
-		if ((fc_conf.mode == RTE_FC_TX_PAUSE) ||
-		    (fc_conf.mode == RTE_FC_FULL))
+		if ((fc_conf.mode == RTE_ETH_FC_TX_PAUSE) ||
+		    (fc_conf.mode == RTE_ETH_FC_FULL))
 			tx_fc_en = 1;
 	}
 
@@ -7597,12 +7597,12 @@ cmd_priority_flow_ctrl_set_parsed(void *parsed_result,
 
 	/*
 	 * Rx on/off, flow control is enabled/disabled on RX side. This can indicate
-	 * the RTE_FC_TX_PAUSE, Transmit pause frame at the Rx side.
+	 * the RTE_ETH_FC_TX_PAUSE, Transmit pause frame at the Rx side.
 	 * Tx on/off, flow control is enabled/disabled on TX side. This can indicate
-	 * the RTE_FC_RX_PAUSE, Respond to the pause frame at the Tx side.
+	 * the RTE_ETH_FC_RX_PAUSE, Respond to the pause frame at the Tx side.
 	 */
 	static enum rte_eth_fc_mode rx_tx_onoff_2_pfc_mode[2][2] = {
-		{RTE_FC_NONE, RTE_FC_TX_PAUSE}, {RTE_FC_RX_PAUSE, RTE_FC_FULL}
+		{RTE_ETH_FC_NONE, RTE_ETH_FC_TX_PAUSE}, {RTE_ETH_FC_RX_PAUSE, RTE_ETH_FC_FULL}
 	};
 
 	memset(&pfc_conf, 0, sizeof(struct rte_eth_pfc_conf));
@@ -9250,13 +9250,13 @@ cmd_set_vf_rxmode_parsed(void *parsed_result,
 	int is_on = (strcmp(res->on, "on") == 0) ? 1 : 0;
 	if (!strcmp(res->what,"rxmode")) {
 		if (!strcmp(res->mode, "AUPE"))
-			vf_rxmode |= ETH_VMDQ_ACCEPT_UNTAG;
+			vf_rxmode |= RTE_ETH_VMDQ_ACCEPT_UNTAG;
 		else if (!strcmp(res->mode, "ROPE"))
-			vf_rxmode |= ETH_VMDQ_ACCEPT_HASH_UC;
+			vf_rxmode |= RTE_ETH_VMDQ_ACCEPT_HASH_UC;
 		else if (!strcmp(res->mode, "BAM"))
-			vf_rxmode |= ETH_VMDQ_ACCEPT_BROADCAST;
+			vf_rxmode |= RTE_ETH_VMDQ_ACCEPT_BROADCAST;
 		else if (!strncmp(res->mode, "MPE",3))
-			vf_rxmode |= ETH_VMDQ_ACCEPT_MULTICAST;
+			vf_rxmode |= RTE_ETH_VMDQ_ACCEPT_MULTICAST;
 	}
 
 	RTE_SET_USED(is_on);
@@ -9656,7 +9656,7 @@ cmd_tunnel_udp_config_parsed(void *parsed_result,
 	int ret;
 
 	tunnel_udp.udp_port = res->udp_port;
-	tunnel_udp.prot_type = RTE_TUNNEL_TYPE_VXLAN;
+	tunnel_udp.prot_type = RTE_ETH_TUNNEL_TYPE_VXLAN;
 
 	if (!strcmp(res->what, "add"))
 		ret = rte_eth_dev_udp_tunnel_port_add(res->port_id,
@@ -9722,13 +9722,13 @@ cmd_cfg_tunnel_udp_port_parsed(void *parsed_result,
 	tunnel_udp.udp_port = res->udp_port;
 
 	if (!strcmp(res->tunnel_type, "vxlan")) {
-		tunnel_udp.prot_type = RTE_TUNNEL_TYPE_VXLAN;
+		tunnel_udp.prot_type = RTE_ETH_TUNNEL_TYPE_VXLAN;
 	} else if (!strcmp(res->tunnel_type, "geneve")) {
-		tunnel_udp.prot_type = RTE_TUNNEL_TYPE_GENEVE;
+		tunnel_udp.prot_type = RTE_ETH_TUNNEL_TYPE_GENEVE;
 	} else if (!strcmp(res->tunnel_type, "vxlan-gpe")) {
-		tunnel_udp.prot_type = RTE_TUNNEL_TYPE_VXLAN_GPE;
+		tunnel_udp.prot_type = RTE_ETH_TUNNEL_TYPE_VXLAN_GPE;
 	} else if (!strcmp(res->tunnel_type, "ecpri")) {
-		tunnel_udp.prot_type = RTE_TUNNEL_TYPE_ECPRI;
+		tunnel_udp.prot_type = RTE_ETH_TUNNEL_TYPE_ECPRI;
 	} else {
 		fprintf(stderr, "Invalid tunnel type\n");
 		return;
@@ -11859,7 +11859,7 @@ cmd_set_macsec_offload_on_parsed(
 	if (ret != 0)
 		return;
 
-	if (dev_info.tx_offload_capa & DEV_TX_OFFLOAD_MACSEC_INSERT) {
+	if (dev_info.tx_offload_capa & RTE_ETH_TX_OFFLOAD_MACSEC_INSERT) {
 #ifdef RTE_NET_IXGBE
 		ret = rte_pmd_ixgbe_macsec_enable(port_id, en, rp);
 #endif
@@ -11870,7 +11870,7 @@ cmd_set_macsec_offload_on_parsed(
 	switch (ret) {
 	case 0:
 		ports[port_id].dev_conf.txmode.offloads |=
-						DEV_TX_OFFLOAD_MACSEC_INSERT;
+						RTE_ETH_TX_OFFLOAD_MACSEC_INSERT;
 		cmd_reconfig_device_queue(port_id, 1, 1);
 		break;
 	case -ENODEV:
@@ -11956,7 +11956,7 @@ cmd_set_macsec_offload_off_parsed(
 	if (ret != 0)
 		return;
 
-	if (dev_info.tx_offload_capa & DEV_TX_OFFLOAD_MACSEC_INSERT) {
+	if (dev_info.tx_offload_capa & RTE_ETH_TX_OFFLOAD_MACSEC_INSERT) {
 #ifdef RTE_NET_IXGBE
 		ret = rte_pmd_ixgbe_macsec_disable(port_id);
 #endif
@@ -11964,7 +11964,7 @@ cmd_set_macsec_offload_off_parsed(
 	switch (ret) {
 	case 0:
 		ports[port_id].dev_conf.txmode.offloads &=
-						~DEV_TX_OFFLOAD_MACSEC_INSERT;
+						~RTE_ETH_TX_OFFLOAD_MACSEC_INSERT;
 		cmd_reconfig_device_queue(port_id, 1, 1);
 		break;
 	case -ENODEV:

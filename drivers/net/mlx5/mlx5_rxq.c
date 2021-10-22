@@ -334,22 +334,22 @@ mlx5_get_rx_queue_offloads(struct rte_eth_dev *dev)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_dev_config *config = &priv->config;
-	uint64_t offloads = (DEV_RX_OFFLOAD_SCATTER |
-			     DEV_RX_OFFLOAD_TIMESTAMP |
-			     DEV_RX_OFFLOAD_RSS_HASH);
+	uint64_t offloads = (RTE_ETH_RX_OFFLOAD_SCATTER |
+			     RTE_ETH_RX_OFFLOAD_TIMESTAMP |
+			     RTE_ETH_RX_OFFLOAD_RSS_HASH);
 
 	if (!config->mprq.enabled)
 		offloads |= RTE_ETH_RX_OFFLOAD_BUFFER_SPLIT;
 	if (config->hw_fcs_strip)
-		offloads |= DEV_RX_OFFLOAD_KEEP_CRC;
+		offloads |= RTE_ETH_RX_OFFLOAD_KEEP_CRC;
 	if (config->hw_csum)
-		offloads |= (DEV_RX_OFFLOAD_IPV4_CKSUM |
-			     DEV_RX_OFFLOAD_UDP_CKSUM |
-			     DEV_RX_OFFLOAD_TCP_CKSUM);
+		offloads |= (RTE_ETH_RX_OFFLOAD_IPV4_CKSUM |
+			     RTE_ETH_RX_OFFLOAD_UDP_CKSUM |
+			     RTE_ETH_RX_OFFLOAD_TCP_CKSUM);
 	if (config->hw_vlan_strip)
-		offloads |= DEV_RX_OFFLOAD_VLAN_STRIP;
+		offloads |= RTE_ETH_RX_OFFLOAD_VLAN_STRIP;
 	if (MLX5_LRO_SUPPORTED(dev))
-		offloads |= DEV_RX_OFFLOAD_TCP_LRO;
+		offloads |= RTE_ETH_RX_OFFLOAD_TCP_LRO;
 	return offloads;
 }
 
@@ -363,7 +363,7 @@ mlx5_get_rx_queue_offloads(struct rte_eth_dev *dev)
 uint64_t
 mlx5_get_rx_port_offloads(void)
 {
-	uint64_t offloads = DEV_RX_OFFLOAD_VLAN_FILTER;
+	uint64_t offloads = RTE_ETH_RX_OFFLOAD_VLAN_FILTER;
 
 	return offloads;
 }
@@ -695,7 +695,7 @@ mlx5_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 				    dev->data->dev_conf.rxmode.offloads;
 
 		/* The offloads should be checked on rte_eth_dev layer. */
-		MLX5_ASSERT(offloads & DEV_RX_OFFLOAD_SCATTER);
+		MLX5_ASSERT(offloads & RTE_ETH_RX_OFFLOAD_SCATTER);
 		if (!(offloads & RTE_ETH_RX_OFFLOAD_BUFFER_SPLIT)) {
 			DRV_LOG(ERR, "port %u queue index %u split "
 				     "offload not configured",
@@ -1337,7 +1337,7 @@ mlx5_rxq_new(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 	struct mlx5_dev_config *config = &priv->config;
 	uint64_t offloads = conf->offloads |
 			   dev->data->dev_conf.rxmode.offloads;
-	unsigned int lro_on_queue = !!(offloads & DEV_RX_OFFLOAD_TCP_LRO);
+	unsigned int lro_on_queue = !!(offloads & RTE_ETH_RX_OFFLOAD_TCP_LRO);
 	unsigned int max_rx_pktlen = lro_on_queue ?
 			dev->data->dev_conf.rxmode.max_lro_pkt_size :
 			dev->data->mtu + (unsigned int)RTE_ETHER_HDR_LEN +
@@ -1440,7 +1440,7 @@ mlx5_rxq_new(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 	} while (tail_len || !rte_is_power_of_2(tmpl->rxq.rxseg_n));
 	MLX5_ASSERT(tmpl->rxq.rxseg_n &&
 		    tmpl->rxq.rxseg_n <= MLX5_MAX_RXQ_NSEG);
-	if (tmpl->rxq.rxseg_n > 1 && !(offloads & DEV_RX_OFFLOAD_SCATTER)) {
+	if (tmpl->rxq.rxseg_n > 1 && !(offloads & RTE_ETH_RX_OFFLOAD_SCATTER)) {
 		DRV_LOG(ERR, "port %u Rx queue %u: Scatter offload is not"
 			" configured and no enough mbuf space(%u) to contain "
 			"the maximum RX packet length(%u) with head-room(%u)",
@@ -1484,7 +1484,7 @@ mlx5_rxq_new(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 			config->mprq.stride_size_n : mprq_stride_size;
 		tmpl->rxq.strd_shift_en = MLX5_MPRQ_TWO_BYTE_SHIFT;
 		tmpl->rxq.strd_scatter_en =
-				!!(offloads & DEV_RX_OFFLOAD_SCATTER);
+				!!(offloads & RTE_ETH_RX_OFFLOAD_SCATTER);
 		tmpl->rxq.mprq_max_memcpy_len = RTE_MIN(first_mb_free_size,
 				config->mprq.max_memcpy_len);
 		max_lro_size = RTE_MIN(max_rx_pktlen,
@@ -1499,7 +1499,7 @@ mlx5_rxq_new(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 		MLX5_ASSERT(max_rx_pktlen <= first_mb_free_size);
 		tmpl->rxq.sges_n = 0;
 		max_lro_size = max_rx_pktlen;
-	} else if (offloads & DEV_RX_OFFLOAD_SCATTER) {
+	} else if (offloads & RTE_ETH_RX_OFFLOAD_SCATTER) {
 		unsigned int sges_n;
 
 		if (lro_on_queue && first_mb_free_size <
@@ -1560,9 +1560,9 @@ mlx5_rxq_new(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 	}
 	mlx5_max_lro_msg_size_adjust(dev, idx, max_lro_size);
 	/* Toggle RX checksum offload if hardware supports it. */
-	tmpl->rxq.csum = !!(offloads & DEV_RX_OFFLOAD_CHECKSUM);
+	tmpl->rxq.csum = !!(offloads & RTE_ETH_RX_OFFLOAD_CHECKSUM);
 	/* Configure Rx timestamp. */
-	tmpl->rxq.hw_timestamp = !!(offloads & DEV_RX_OFFLOAD_TIMESTAMP);
+	tmpl->rxq.hw_timestamp = !!(offloads & RTE_ETH_RX_OFFLOAD_TIMESTAMP);
 	tmpl->rxq.timestamp_rx_flag = 0;
 	if (tmpl->rxq.hw_timestamp && rte_mbuf_dyn_rx_timestamp_register(
 			&tmpl->rxq.timestamp_offset,
@@ -1571,11 +1571,11 @@ mlx5_rxq_new(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 		goto error;
 	}
 	/* Configure VLAN stripping. */
-	tmpl->rxq.vlan_strip = !!(offloads & DEV_RX_OFFLOAD_VLAN_STRIP);
+	tmpl->rxq.vlan_strip = !!(offloads & RTE_ETH_RX_OFFLOAD_VLAN_STRIP);
 	/* By default, FCS (CRC) is stripped by hardware. */
 	tmpl->rxq.crc_present = 0;
 	tmpl->rxq.lro = lro_on_queue;
-	if (offloads & DEV_RX_OFFLOAD_KEEP_CRC) {
+	if (offloads & RTE_ETH_RX_OFFLOAD_KEEP_CRC) {
 		if (config->hw_fcs_strip) {
 			/*
 			 * RQs used for LRO-enabled TIRs should not be
@@ -1605,7 +1605,7 @@ mlx5_rxq_new(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 		tmpl->rxq.crc_present << 2);
 	/* Save port ID. */
 	tmpl->rxq.rss_hash = !!priv->rss_conf.rss_hf &&
-		(!!(dev->data->dev_conf.rxmode.mq_mode & ETH_MQ_RX_RSS));
+		(!!(dev->data->dev_conf.rxmode.mq_mode & RTE_ETH_MQ_RX_RSS));
 	tmpl->rxq.port_id = dev->data->port_id;
 	tmpl->priv = priv;
 	tmpl->rxq.mp = rx_seg[0].mp;

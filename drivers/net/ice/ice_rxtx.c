@@ -290,7 +290,7 @@ ice_program_hw_rx_queue(struct ice_rx_queue *rxq)
 		return -EINVAL;
 	}
 
-	if (rxq->offloads & DEV_RX_OFFLOAD_TIMESTAMP) {
+	if (rxq->offloads & RTE_ETH_RX_OFFLOAD_TIMESTAMP) {
 		/* Register mbuf field and flag for Rx timestamp */
 		err = rte_mbuf_dyn_rx_timestamp_register(
 				&ice_timestamp_dynfield_offset,
@@ -354,7 +354,7 @@ ice_program_hw_rx_queue(struct ice_rx_queue *rxq)
 	regval |= (0x03 << QRXFLXP_CNTXT_RXDID_PRIO_S) &
 		QRXFLXP_CNTXT_RXDID_PRIO_M;
 
-	if (ad->ptp_ena || rxq->offloads & DEV_RX_OFFLOAD_TIMESTAMP)
+	if (ad->ptp_ena || rxq->offloads & RTE_ETH_RX_OFFLOAD_TIMESTAMP)
 		regval |= QRXFLXP_CNTXT_TS_M;
 
 	ICE_WRITE_REG(hw, QRXFLXP_CNTXT(rxq->reg_idx), regval);
@@ -1104,7 +1104,7 @@ ice_rx_queue_setup(struct rte_eth_dev *dev,
 
 	rxq->reg_idx = vsi->base_queue + queue_idx;
 	rxq->port_id = dev->data->port_id;
-	if (dev->data->dev_conf.rxmode.offloads & DEV_RX_OFFLOAD_KEEP_CRC)
+	if (dev->data->dev_conf.rxmode.offloads & RTE_ETH_RX_OFFLOAD_KEEP_CRC)
 		rxq->crc_len = RTE_ETHER_CRC_LEN;
 	else
 		rxq->crc_len = 0;
@@ -1611,7 +1611,7 @@ ice_rx_scan_hw_ring(struct ice_rx_queue *rxq)
 			ice_rxd_to_vlan_tci(mb, &rxdp[j]);
 			rxq->rxd_to_pkt_fields(rxq, mb, &rxdp[j]);
 #ifndef RTE_LIBRTE_ICE_16BYTE_RX_DESC
-			if (rxq->offloads & DEV_RX_OFFLOAD_TIMESTAMP) {
+			if (rxq->offloads & RTE_ETH_RX_OFFLOAD_TIMESTAMP) {
 				ts_ns = ice_tstamp_convert_32b_64b(hw,
 					rte_le_to_cpu_32(rxdp[j].wb.flex_ts.ts_high));
 				if (ice_timestamp_dynflag > 0) {
@@ -1929,7 +1929,7 @@ ice_recv_scattered_pkts(void *rx_queue,
 		rxq->rxd_to_pkt_fields(rxq, first_seg, &rxd);
 		pkt_flags = ice_rxd_error_to_pkt_flags(rx_stat_err0);
 #ifndef RTE_LIBRTE_ICE_16BYTE_RX_DESC
-		if (rxq->offloads & DEV_RX_OFFLOAD_TIMESTAMP) {
+		if (rxq->offloads & RTE_ETH_RX_OFFLOAD_TIMESTAMP) {
 			ts_ns = ice_tstamp_convert_32b_64b(hw,
 				rte_le_to_cpu_32(rxd.wb.flex_ts.ts_high));
 			if (ice_timestamp_dynflag > 0) {
@@ -2360,7 +2360,7 @@ ice_recv_pkts(void *rx_queue,
 		rxq->rxd_to_pkt_fields(rxq, rxm, &rxd);
 		pkt_flags = ice_rxd_error_to_pkt_flags(rx_stat_err0);
 #ifndef RTE_LIBRTE_ICE_16BYTE_RX_DESC
-		if (rxq->offloads & DEV_RX_OFFLOAD_TIMESTAMP) {
+		if (rxq->offloads & RTE_ETH_RX_OFFLOAD_TIMESTAMP) {
 			ts_ns = ice_tstamp_convert_32b_64b(hw,
 				rte_le_to_cpu_32(rxd.wb.flex_ts.ts_high));
 			if (ice_timestamp_dynflag > 0) {
@@ -2876,7 +2876,7 @@ ice_tx_free_bufs(struct ice_tx_queue *txq)
 	for (i = 0; i < txq->tx_rs_thresh; i++)
 		rte_prefetch0((txep + i)->mbuf);
 
-	if (txq->offloads & DEV_TX_OFFLOAD_MBUF_FAST_FREE) {
+	if (txq->offloads & RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE) {
 		for (i = 0; i < txq->tx_rs_thresh; ++i, ++txep) {
 			rte_mempool_put(txep->mbuf->pool, txep->mbuf);
 			txep->mbuf = NULL;
@@ -3352,7 +3352,7 @@ ice_set_tx_function_flag(struct rte_eth_dev *dev, struct ice_tx_queue *txq)
 	/* Use a simple Tx queue if possible (only fast free is allowed) */
 	ad->tx_simple_allowed =
 		(txq->offloads ==
-		(txq->offloads & DEV_TX_OFFLOAD_MBUF_FAST_FREE) &&
+		(txq->offloads & RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE) &&
 		txq->tx_rs_thresh >= ICE_TX_MAX_BURST);
 
 	if (ad->tx_simple_allowed)

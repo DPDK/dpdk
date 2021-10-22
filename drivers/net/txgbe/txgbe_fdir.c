@@ -102,22 +102,22 @@ txgbe_fdir_enable(struct txgbe_hw *hw, uint32_t fdirctrl)
  * flexbytes matching field, and drop queue (only for perfect matching mode).
  */
 static inline int
-configure_fdir_flags(const struct rte_fdir_conf *conf,
+configure_fdir_flags(const struct rte_eth_fdir_conf *conf,
 		     uint32_t *fdirctrl, uint32_t *flex)
 {
 	*fdirctrl = 0;
 	*flex = 0;
 
 	switch (conf->pballoc) {
-	case RTE_FDIR_PBALLOC_64K:
+	case RTE_ETH_FDIR_PBALLOC_64K:
 		/* 8k - 1 signature filters */
 		*fdirctrl |= TXGBE_FDIRCTL_BUF_64K;
 		break;
-	case RTE_FDIR_PBALLOC_128K:
+	case RTE_ETH_FDIR_PBALLOC_128K:
 		/* 16k - 1 signature filters */
 		*fdirctrl |= TXGBE_FDIRCTL_BUF_128K;
 		break;
-	case RTE_FDIR_PBALLOC_256K:
+	case RTE_ETH_FDIR_PBALLOC_256K:
 		/* 32k - 1 signature filters */
 		*fdirctrl |= TXGBE_FDIRCTL_BUF_256K;
 		break;
@@ -521,15 +521,15 @@ txgbe_atr_compute_hash(struct txgbe_atr_input *atr_input,
 
 static uint32_t
 atr_compute_perfect_hash(struct txgbe_atr_input *input,
-		enum rte_fdir_pballoc_type pballoc)
+		enum rte_eth_fdir_pballoc_type pballoc)
 {
 	uint32_t bucket_hash;
 
 	bucket_hash = txgbe_atr_compute_hash(input,
 				TXGBE_ATR_BUCKET_HASH_KEY);
-	if (pballoc == RTE_FDIR_PBALLOC_256K)
+	if (pballoc == RTE_ETH_FDIR_PBALLOC_256K)
 		bucket_hash &= PERFECT_BUCKET_256KB_HASH_MASK;
-	else if (pballoc == RTE_FDIR_PBALLOC_128K)
+	else if (pballoc == RTE_ETH_FDIR_PBALLOC_128K)
 		bucket_hash &= PERFECT_BUCKET_128KB_HASH_MASK;
 	else
 		bucket_hash &= PERFECT_BUCKET_64KB_HASH_MASK;
@@ -564,15 +564,15 @@ txgbe_fdir_check_cmd_complete(struct txgbe_hw *hw, uint32_t *fdircmd)
  */
 static uint32_t
 atr_compute_signature_hash(struct txgbe_atr_input *input,
-		enum rte_fdir_pballoc_type pballoc)
+		enum rte_eth_fdir_pballoc_type pballoc)
 {
 	uint32_t bucket_hash, sig_hash;
 
 	bucket_hash = txgbe_atr_compute_hash(input,
 				TXGBE_ATR_BUCKET_HASH_KEY);
-	if (pballoc == RTE_FDIR_PBALLOC_256K)
+	if (pballoc == RTE_ETH_FDIR_PBALLOC_256K)
 		bucket_hash &= SIG_BUCKET_256KB_HASH_MASK;
-	else if (pballoc == RTE_FDIR_PBALLOC_128K)
+	else if (pballoc == RTE_ETH_FDIR_PBALLOC_128K)
 		bucket_hash &= SIG_BUCKET_128KB_HASH_MASK;
 	else
 		bucket_hash &= SIG_BUCKET_64KB_HASH_MASK;

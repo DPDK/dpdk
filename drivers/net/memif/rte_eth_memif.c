@@ -55,10 +55,10 @@ static const char * const valid_arguments[] = {
 };
 
 static const struct rte_eth_link pmd_link = {
-	.link_speed = ETH_SPEED_NUM_10G,
-	.link_duplex = ETH_LINK_FULL_DUPLEX,
-	.link_status = ETH_LINK_DOWN,
-	.link_autoneg = ETH_LINK_AUTONEG
+	.link_speed = RTE_ETH_SPEED_NUM_10G,
+	.link_duplex = RTE_ETH_LINK_FULL_DUPLEX,
+	.link_status = RTE_ETH_LINK_DOWN,
+	.link_autoneg = RTE_ETH_LINK_AUTONEG
 };
 
 #define MEMIF_MP_SEND_REGION		"memif_mp_send_region"
@@ -199,7 +199,7 @@ memif_dev_info(struct rte_eth_dev *dev __rte_unused, struct rte_eth_dev_info *de
 	dev_info->max_rx_queues = ETH_MEMIF_MAX_NUM_Q_PAIRS;
 	dev_info->max_tx_queues = ETH_MEMIF_MAX_NUM_Q_PAIRS;
 	dev_info->min_rx_bufsize = 0;
-	dev_info->tx_offload_capa = DEV_TX_OFFLOAD_MULTI_SEGS;
+	dev_info->tx_offload_capa = RTE_ETH_TX_OFFLOAD_MULTI_SEGS;
 
 	return 0;
 }
@@ -1219,7 +1219,7 @@ memif_connect(struct rte_eth_dev *dev)
 
 		pmd->flags &= ~ETH_MEMIF_FLAG_CONNECTING;
 		pmd->flags |= ETH_MEMIF_FLAG_CONNECTED;
-		dev->data->dev_link.link_status = ETH_LINK_UP;
+		dev->data->dev_link.link_status = RTE_ETH_LINK_UP;
 	}
 	MIF_LOG(INFO, "Connected.");
 	return 0;
@@ -1381,10 +1381,10 @@ memif_link_update(struct rte_eth_dev *dev,
 
 	if (rte_eal_process_type() == RTE_PROC_SECONDARY) {
 		proc_private = dev->process_private;
-		if (dev->data->dev_link.link_status == ETH_LINK_UP &&
+		if (dev->data->dev_link.link_status == RTE_ETH_LINK_UP &&
 				proc_private->regions_num == 0) {
 			memif_mp_request_regions(dev);
-		} else if (dev->data->dev_link.link_status == ETH_LINK_DOWN &&
+		} else if (dev->data->dev_link.link_status == RTE_ETH_LINK_DOWN &&
 				proc_private->regions_num > 0) {
 			memif_free_regions(dev);
 		}

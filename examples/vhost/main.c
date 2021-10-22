@@ -110,23 +110,23 @@ static int nb_sockets;
 /* empty vmdq configuration structure. Filled in programatically */
 static struct rte_eth_conf vmdq_conf_default = {
 	.rxmode = {
-		.mq_mode        = ETH_MQ_RX_VMDQ_ONLY,
+		.mq_mode        = RTE_ETH_MQ_RX_VMDQ_ONLY,
 		.split_hdr_size = 0,
 		/*
 		 * VLAN strip is necessary for 1G NIC such as I350,
 		 * this fixes bug of ipv4 forwarding in guest can't
 		 * forward pakets from one virtio dev to another virtio dev.
 		 */
-		.offloads = DEV_RX_OFFLOAD_VLAN_STRIP,
+		.offloads = RTE_ETH_RX_OFFLOAD_VLAN_STRIP,
 	},
 
 	.txmode = {
-		.mq_mode = ETH_MQ_TX_NONE,
-		.offloads = (DEV_TX_OFFLOAD_IPV4_CKSUM |
-			     DEV_TX_OFFLOAD_TCP_CKSUM |
-			     DEV_TX_OFFLOAD_VLAN_INSERT |
-			     DEV_TX_OFFLOAD_MULTI_SEGS |
-			     DEV_TX_OFFLOAD_TCP_TSO),
+		.mq_mode = RTE_ETH_MQ_TX_NONE,
+		.offloads = (RTE_ETH_TX_OFFLOAD_IPV4_CKSUM |
+			     RTE_ETH_TX_OFFLOAD_TCP_CKSUM |
+			     RTE_ETH_TX_OFFLOAD_VLAN_INSERT |
+			     RTE_ETH_TX_OFFLOAD_MULTI_SEGS |
+			     RTE_ETH_TX_OFFLOAD_TCP_TSO),
 	},
 	.rx_adv_conf = {
 		/*
@@ -134,7 +134,7 @@ static struct rte_eth_conf vmdq_conf_default = {
 		 * appropriate values
 		 */
 		.vmdq_rx_conf = {
-			.nb_queue_pools = ETH_8_POOLS,
+			.nb_queue_pools = RTE_ETH_8_POOLS,
 			.enable_default_pool = 0,
 			.default_pool = 0,
 			.nb_pool_maps = 0,
@@ -291,9 +291,9 @@ port_init(uint16_t port)
 		return -1;
 
 	rx_rings = (uint16_t)dev_info.max_rx_queues;
-	if (dev_info.tx_offload_capa & DEV_TX_OFFLOAD_MBUF_FAST_FREE)
+	if (dev_info.tx_offload_capa & RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE)
 		port_conf.txmode.offloads |=
-			DEV_TX_OFFLOAD_MBUF_FAST_FREE;
+			RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE;
 	/* Configure ethernet device. */
 	retval = rte_eth_dev_configure(port, rx_rings, tx_rings, &port_conf);
 	if (retval != 0) {
@@ -557,8 +557,8 @@ us_vhost_parse_args(int argc, char **argv)
 		case 'P':
 			promiscuous = 1;
 			vmdq_conf_default.rx_adv_conf.vmdq_rx_conf.rx_mode =
-				ETH_VMDQ_ACCEPT_BROADCAST |
-				ETH_VMDQ_ACCEPT_MULTICAST;
+				RTE_ETH_VMDQ_ACCEPT_BROADCAST |
+				RTE_ETH_VMDQ_ACCEPT_MULTICAST;
 			break;
 
 		case OPT_VM2VM_NUM:

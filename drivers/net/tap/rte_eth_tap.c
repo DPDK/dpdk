@@ -70,16 +70,16 @@
 
 #define TAP_IOV_DEFAULT_MAX 1024
 
-#define TAP_RX_OFFLOAD (DEV_RX_OFFLOAD_SCATTER |	\
-			DEV_RX_OFFLOAD_IPV4_CKSUM |	\
-			DEV_RX_OFFLOAD_UDP_CKSUM |	\
-			DEV_RX_OFFLOAD_TCP_CKSUM)
+#define TAP_RX_OFFLOAD (RTE_ETH_RX_OFFLOAD_SCATTER |	\
+			RTE_ETH_RX_OFFLOAD_IPV4_CKSUM |	\
+			RTE_ETH_RX_OFFLOAD_UDP_CKSUM |	\
+			RTE_ETH_RX_OFFLOAD_TCP_CKSUM)
 
-#define TAP_TX_OFFLOAD (DEV_TX_OFFLOAD_MULTI_SEGS |	\
-			DEV_TX_OFFLOAD_IPV4_CKSUM |	\
-			DEV_TX_OFFLOAD_UDP_CKSUM |	\
-			DEV_TX_OFFLOAD_TCP_CKSUM |	\
-			DEV_TX_OFFLOAD_TCP_TSO)
+#define TAP_TX_OFFLOAD (RTE_ETH_TX_OFFLOAD_MULTI_SEGS |	\
+			RTE_ETH_TX_OFFLOAD_IPV4_CKSUM |	\
+			RTE_ETH_TX_OFFLOAD_UDP_CKSUM |	\
+			RTE_ETH_TX_OFFLOAD_TCP_CKSUM |	\
+			RTE_ETH_TX_OFFLOAD_TCP_TSO)
 
 static int tap_devices_count;
 
@@ -97,10 +97,10 @@ static const char *valid_arguments[] = {
 static volatile uint32_t tap_trigger;	/* Rx trigger */
 
 static struct rte_eth_link pmd_link = {
-	.link_speed = ETH_SPEED_NUM_10G,
-	.link_duplex = ETH_LINK_FULL_DUPLEX,
-	.link_status = ETH_LINK_DOWN,
-	.link_autoneg = ETH_LINK_FIXED,
+	.link_speed = RTE_ETH_SPEED_NUM_10G,
+	.link_duplex = RTE_ETH_LINK_FULL_DUPLEX,
+	.link_status = RTE_ETH_LINK_DOWN,
+	.link_autoneg = RTE_ETH_LINK_FIXED,
 };
 
 static void
@@ -433,7 +433,7 @@ pmd_rx_burst(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 
 		len = readv(process_private->rxq_fds[rxq->queue_id],
 			*rxq->iovecs,
-			1 + (rxq->rxmode->offloads & DEV_RX_OFFLOAD_SCATTER ?
+			1 + (rxq->rxmode->offloads & RTE_ETH_RX_OFFLOAD_SCATTER ?
 			     rxq->nb_rx_desc : 1));
 		if (len < (int)sizeof(struct tun_pi))
 			break;
@@ -489,7 +489,7 @@ pmd_rx_burst(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 		seg->next = NULL;
 		mbuf->packet_type = rte_net_get_ptype(mbuf, NULL,
 						      RTE_PTYPE_ALL_MASK);
-		if (rxq->rxmode->offloads & DEV_RX_OFFLOAD_CHECKSUM)
+		if (rxq->rxmode->offloads & RTE_ETH_RX_OFFLOAD_CHECKSUM)
 			tap_verify_csum(mbuf);
 
 		/* account for the receive frame */
@@ -866,7 +866,7 @@ tap_link_set_down(struct rte_eth_dev *dev)
 	struct pmd_internals *pmd = dev->data->dev_private;
 	struct ifreq ifr = { .ifr_flags = IFF_UP };
 
-	dev->data->dev_link.link_status = ETH_LINK_DOWN;
+	dev->data->dev_link.link_status = RTE_ETH_LINK_DOWN;
 	return tap_ioctl(pmd, SIOCSIFFLAGS, &ifr, 0, LOCAL_ONLY);
 }
 
@@ -876,7 +876,7 @@ tap_link_set_up(struct rte_eth_dev *dev)
 	struct pmd_internals *pmd = dev->data->dev_private;
 	struct ifreq ifr = { .ifr_flags = IFF_UP };
 
-	dev->data->dev_link.link_status = ETH_LINK_UP;
+	dev->data->dev_link.link_status = RTE_ETH_LINK_UP;
 	return tap_ioctl(pmd, SIOCSIFFLAGS, &ifr, 1, LOCAL_AND_REMOTE);
 }
 
@@ -956,30 +956,30 @@ tap_dev_speed_capa(void)
 	uint32_t speed = pmd_link.link_speed;
 	uint32_t capa = 0;
 
-	if (speed >= ETH_SPEED_NUM_10M)
-		capa |= ETH_LINK_SPEED_10M;
-	if (speed >= ETH_SPEED_NUM_100M)
-		capa |= ETH_LINK_SPEED_100M;
-	if (speed >= ETH_SPEED_NUM_1G)
-		capa |= ETH_LINK_SPEED_1G;
-	if (speed >= ETH_SPEED_NUM_5G)
-		capa |= ETH_LINK_SPEED_2_5G;
-	if (speed >= ETH_SPEED_NUM_5G)
-		capa |= ETH_LINK_SPEED_5G;
-	if (speed >= ETH_SPEED_NUM_10G)
-		capa |= ETH_LINK_SPEED_10G;
-	if (speed >= ETH_SPEED_NUM_20G)
-		capa |= ETH_LINK_SPEED_20G;
-	if (speed >= ETH_SPEED_NUM_25G)
-		capa |= ETH_LINK_SPEED_25G;
-	if (speed >= ETH_SPEED_NUM_40G)
-		capa |= ETH_LINK_SPEED_40G;
-	if (speed >= ETH_SPEED_NUM_50G)
-		capa |= ETH_LINK_SPEED_50G;
-	if (speed >= ETH_SPEED_NUM_56G)
-		capa |= ETH_LINK_SPEED_56G;
-	if (speed >= ETH_SPEED_NUM_100G)
-		capa |= ETH_LINK_SPEED_100G;
+	if (speed >= RTE_ETH_SPEED_NUM_10M)
+		capa |= RTE_ETH_LINK_SPEED_10M;
+	if (speed >= RTE_ETH_SPEED_NUM_100M)
+		capa |= RTE_ETH_LINK_SPEED_100M;
+	if (speed >= RTE_ETH_SPEED_NUM_1G)
+		capa |= RTE_ETH_LINK_SPEED_1G;
+	if (speed >= RTE_ETH_SPEED_NUM_5G)
+		capa |= RTE_ETH_LINK_SPEED_2_5G;
+	if (speed >= RTE_ETH_SPEED_NUM_5G)
+		capa |= RTE_ETH_LINK_SPEED_5G;
+	if (speed >= RTE_ETH_SPEED_NUM_10G)
+		capa |= RTE_ETH_LINK_SPEED_10G;
+	if (speed >= RTE_ETH_SPEED_NUM_20G)
+		capa |= RTE_ETH_LINK_SPEED_20G;
+	if (speed >= RTE_ETH_SPEED_NUM_25G)
+		capa |= RTE_ETH_LINK_SPEED_25G;
+	if (speed >= RTE_ETH_SPEED_NUM_40G)
+		capa |= RTE_ETH_LINK_SPEED_40G;
+	if (speed >= RTE_ETH_SPEED_NUM_50G)
+		capa |= RTE_ETH_LINK_SPEED_50G;
+	if (speed >= RTE_ETH_SPEED_NUM_56G)
+		capa |= RTE_ETH_LINK_SPEED_56G;
+	if (speed >= RTE_ETH_SPEED_NUM_100G)
+		capa |= RTE_ETH_LINK_SPEED_100G;
 
 	return capa;
 }
@@ -1196,15 +1196,15 @@ tap_link_update(struct rte_eth_dev *dev, int wait_to_complete __rte_unused)
 		tap_ioctl(pmd, SIOCGIFFLAGS, &ifr, 0, REMOTE_ONLY);
 		if (!(ifr.ifr_flags & IFF_UP) ||
 		    !(ifr.ifr_flags & IFF_RUNNING)) {
-			dev_link->link_status = ETH_LINK_DOWN;
+			dev_link->link_status = RTE_ETH_LINK_DOWN;
 			return 0;
 		}
 	}
 	tap_ioctl(pmd, SIOCGIFFLAGS, &ifr, 0, LOCAL_ONLY);
 	dev_link->link_status =
 		((ifr.ifr_flags & IFF_UP) && (ifr.ifr_flags & IFF_RUNNING) ?
-		 ETH_LINK_UP :
-		 ETH_LINK_DOWN);
+		 RTE_ETH_LINK_UP :
+		 RTE_ETH_LINK_DOWN);
 	return 0;
 }
 
@@ -1391,7 +1391,7 @@ tap_gso_ctx_setup(struct rte_gso_ctx *gso_ctx, struct rte_eth_dev *dev)
 	int ret;
 
 	/* initialize GSO context */
-	gso_types = DEV_TX_OFFLOAD_TCP_TSO;
+	gso_types = RTE_ETH_TX_OFFLOAD_TCP_TSO;
 	if (!pmd->gso_ctx_mp) {
 		/*
 		 * Create private mbuf pool with TAP_GSO_MBUF_SEG_SIZE
@@ -1606,9 +1606,9 @@ tap_tx_queue_setup(struct rte_eth_dev *dev,
 
 	offloads = tx_conf->offloads | dev->data->dev_conf.txmode.offloads;
 	txq->csum = !!(offloads &
-			(DEV_TX_OFFLOAD_IPV4_CKSUM |
-			 DEV_TX_OFFLOAD_UDP_CKSUM |
-			 DEV_TX_OFFLOAD_TCP_CKSUM));
+			(RTE_ETH_TX_OFFLOAD_IPV4_CKSUM |
+			 RTE_ETH_TX_OFFLOAD_UDP_CKSUM |
+			 RTE_ETH_TX_OFFLOAD_TCP_CKSUM));
 
 	ret = tap_setup_queue(dev, internals, tx_queue_id, 0);
 	if (ret == -1)
@@ -1760,7 +1760,7 @@ static int
 tap_flow_ctrl_get(struct rte_eth_dev *dev __rte_unused,
 		  struct rte_eth_fc_conf *fc_conf)
 {
-	fc_conf->mode = RTE_FC_NONE;
+	fc_conf->mode = RTE_ETH_FC_NONE;
 	return 0;
 }
 
@@ -1768,7 +1768,7 @@ static int
 tap_flow_ctrl_set(struct rte_eth_dev *dev __rte_unused,
 		  struct rte_eth_fc_conf *fc_conf)
 {
-	if (fc_conf->mode != RTE_FC_NONE)
+	if (fc_conf->mode != RTE_ETH_FC_NONE)
 		return -ENOTSUP;
 	return 0;
 }
@@ -2262,7 +2262,7 @@ rte_pmd_tun_probe(struct rte_vdev_device *dev)
 			}
 		}
 	}
-	pmd_link.link_speed = ETH_SPEED_NUM_10G;
+	pmd_link.link_speed = RTE_ETH_SPEED_NUM_10G;
 
 	TAP_LOG(DEBUG, "Initializing pmd_tun for %s", name);
 
@@ -2436,7 +2436,7 @@ rte_pmd_tap_probe(struct rte_vdev_device *dev)
 		return 0;
 	}
 
-	speed = ETH_SPEED_NUM_10G;
+	speed = RTE_ETH_SPEED_NUM_10G;
 
 	/* use tap%d which causes kernel to choose next available */
 	strlcpy(tap_name, DEFAULT_TAP_NAME "%d", RTE_ETH_NAME_MAX_LEN);

@@ -51,18 +51,18 @@ static struct rte_mempool *pool = NULL;
  ***/
 static struct rte_eth_conf port_conf = {
 	.rxmode = {
-		.mq_mode	= ETH_MQ_RX_RSS,
+		.mq_mode	= RTE_ETH_MQ_RX_RSS,
 		.split_hdr_size = 0,
-		.offloads = DEV_RX_OFFLOAD_CHECKSUM,
+		.offloads = RTE_ETH_RX_OFFLOAD_CHECKSUM,
 	},
 	.rx_adv_conf = {
 		.rss_conf = {
 			.rss_key = NULL,
-			.rss_hf = ETH_RSS_IP,
+			.rss_hf = RTE_ETH_RSS_IP,
 		},
 	},
 	.txmode = {
-		.mq_mode = ETH_DCB_NONE,
+		.mq_mode = RTE_ETH_MQ_TX_NONE,
 	},
 };
 
@@ -332,8 +332,8 @@ main(int argc, char **argv)
 			"Error during getting device (port %u) info: %s\n",
 			port_rx, strerror(-ret));
 
-	if (dev_info.tx_offload_capa & DEV_TX_OFFLOAD_MBUF_FAST_FREE)
-		conf.txmode.offloads |= DEV_TX_OFFLOAD_MBUF_FAST_FREE;
+	if (dev_info.tx_offload_capa & RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE)
+		conf.txmode.offloads |= RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE;
 
 	conf.rx_adv_conf.rss_conf.rss_hf &= dev_info.flow_type_rss_offloads;
 	if (conf.rx_adv_conf.rss_conf.rss_hf !=
@@ -378,8 +378,8 @@ main(int argc, char **argv)
 			"Error during getting device (port %u) info: %s\n",
 			port_tx, strerror(-ret));
 
-	if (dev_info.tx_offload_capa & DEV_TX_OFFLOAD_MBUF_FAST_FREE)
-		conf.txmode.offloads |= DEV_TX_OFFLOAD_MBUF_FAST_FREE;
+	if (dev_info.tx_offload_capa & RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE)
+		conf.txmode.offloads |= RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE;
 
 	conf.rx_adv_conf.rss_conf.rss_hf &= dev_info.flow_type_rss_offloads;
 	if (conf.rx_adv_conf.rss_conf.rss_hf !=

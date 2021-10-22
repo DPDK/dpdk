@@ -10,11 +10,11 @@ ol_flags_init(uint64_t tx_offload)
 {
 	uint64_t ol_flags = 0;
 
-	ol_flags |= (tx_offload & DEV_TX_OFFLOAD_VLAN_INSERT) ?
+	ol_flags |= (tx_offload & RTE_ETH_TX_OFFLOAD_VLAN_INSERT) ?
 			PKT_TX_VLAN : 0;
-	ol_flags |= (tx_offload & DEV_TX_OFFLOAD_QINQ_INSERT) ?
+	ol_flags |= (tx_offload & RTE_ETH_TX_OFFLOAD_QINQ_INSERT) ?
 			PKT_TX_QINQ : 0;
-	ol_flags |= (tx_offload & DEV_TX_OFFLOAD_MACSEC_INSERT) ?
+	ol_flags |= (tx_offload & RTE_ETH_TX_OFFLOAD_MACSEC_INSERT) ?
 			PKT_TX_MACSEC : 0;
 
 	return ol_flags;

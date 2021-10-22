@@ -70,5 +70,5 @@ Features and Limitations
 ------------------------
 
 The PMD will re-insert the VLAN tag transparently to the packet if the kernel
-strips it, as long as the ``DEV_RX_OFFLOAD_VLAN_STRIP`` is not enabled by the
+strips it, as long as the ``RTE_ETH_RX_OFFLOAD_VLAN_STRIP`` is not enabled by the
 application.

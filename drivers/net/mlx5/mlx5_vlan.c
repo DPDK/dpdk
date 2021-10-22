@@ -142,9 +142,9 @@ mlx5_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 	struct mlx5_priv *priv = dev->data->dev_private;
 	unsigned int i;
 
-	if (mask & ETH_VLAN_STRIP_MASK) {
+	if (mask & RTE_ETH_VLAN_STRIP_MASK) {
 		int hw_vlan_strip = !!(dev->data->dev_conf.rxmode.offloads &
-				       DEV_RX_OFFLOAD_VLAN_STRIP);
+				       RTE_ETH_RX_OFFLOAD_VLAN_STRIP);
 
 		if (!priv->config.hw_vlan_strip) {
 			DRV_LOG(ERR, "port %u VLAN stripping is not supported",

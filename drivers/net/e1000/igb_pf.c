@@ -88,7 +88,7 @@ void igb_pf_host_init(struct rte_eth_dev *eth_dev)
 	if (*vfinfo == NULL)
 		rte_panic("Cannot allocate memory for private VF data\n");
 
-	RTE_ETH_DEV_SRIOV(eth_dev).active = ETH_8_POOLS;
+	RTE_ETH_DEV_SRIOV(eth_dev).active = RTE_ETH_8_POOLS;
 	RTE_ETH_DEV_SRIOV(eth_dev).nb_q_per_pool = nb_queue;
 	RTE_ETH_DEV_SRIOV(eth_dev).def_vmdq_idx = vf_num;
 	RTE_ETH_DEV_SRIOV(eth_dev).def_pool_q_idx = (uint16_t)(vf_num * nb_queue);

@@ -65,8 +65,8 @@ typedef u32 offsize_t;      /* In DWORDS !!! */
 struct eth_phy_cfg {
 /* 0 = autoneg, 1000/10000/20000/25000/40000/50000/100000 */
 	u32 speed;
-#define ETH_SPEED_AUTONEG   0
-#define ETH_SPEED_SMARTLINQ  0x8 /* deprecated - use link_modes field instead */
+#define RTE_ETH_SPEED_AUTONEG   0
+#define RTE_ETH_SPEED_SMARTLINQ  0x8 /* deprecated - use link_modes field instead */
 
 	u32 pause;      /* bitmask */
 #define ETH_PAUSE_NONE		0x0

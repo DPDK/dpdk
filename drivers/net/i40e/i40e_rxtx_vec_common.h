@@ -100,7 +100,7 @@ i40e_tx_free_bufs(struct i40e_tx_queue *txq)
 	  */
 	txep = &txq->sw_ring[txq->tx_next_dd - (n - 1)];
 
-	if (txq->offloads & DEV_TX_OFFLOAD_MBUF_FAST_FREE) {
+	if (txq->offloads & RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE) {
 		for (i = 0; i < n; i++) {
 			free[i] = txep[i].mbuf;
 			txep[i].mbuf = NULL;
@@ -211,7 +211,7 @@ i40e_rx_vec_dev_conf_condition_check_default(struct rte_eth_dev *dev)
 	struct i40e_adapter *ad =
 		I40E_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
 	struct rte_eth_rxmode *rxmode = &dev->data->dev_conf.rxmode;
-	struct rte_fdir_conf *fconf = &dev->data->dev_conf.fdir_conf;
+	struct rte_eth_fdir_conf *fconf = &dev->data->dev_conf.fdir_conf;
 	struct i40e_rx_queue *rxq;
 	uint16_t desc, i;
 	bool first_queue;
@@ -221,11 +221,11 @@ i40e_rx_vec_dev_conf_condition_check_default(struct rte_eth_dev *dev)
 		return -1;
 
 	 /* no header split support */
-	if (rxmode->offloads & DEV_RX_OFFLOAD_HEADER_SPLIT)
+	if (rxmode->offloads & RTE_ETH_RX_OFFLOAD_HEADER_SPLIT)
 		return -1;
 
 	/* no QinQ support */
-	if (rxmode->offloads & DEV_RX_OFFLOAD_VLAN_EXTEND)
+	if (rxmode->offloads & RTE_ETH_RX_OFFLOAD_VLAN_EXTEND)
 		return -1;
 
 	/**

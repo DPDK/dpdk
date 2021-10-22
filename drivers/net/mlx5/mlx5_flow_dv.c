@@ -10861,9 +10861,9 @@ flow_dv_hashfields_set(struct mlx5_flow *dev_flow,
 	if ((rss_inner && (items & MLX5_FLOW_LAYER_INNER_L3_IPV4)) ||
 	    (!rss_inner && (items & MLX5_FLOW_LAYER_OUTER_L3_IPV4))) {
 		if (rss_types & MLX5_IPV4_LAYER_TYPES) {
-			if (rss_types & ETH_RSS_L3_SRC_ONLY)
+			if (rss_types & RTE_ETH_RSS_L3_SRC_ONLY)
 				dev_flow->hash_fields |= IBV_RX_HASH_SRC_IPV4;
-			else if (rss_types & ETH_RSS_L3_DST_ONLY)
+			else if (rss_types & RTE_ETH_RSS_L3_DST_ONLY)
 				dev_flow->hash_fields |= IBV_RX_HASH_DST_IPV4;
 			else
 				dev_flow->hash_fields |= MLX5_IPV4_IBV_RX_HASH;
@@ -10871,9 +10871,9 @@ flow_dv_hashfields_set(struct mlx5_flow *dev_flow,
 	} else if ((rss_inner && (items & MLX5_FLOW_LAYER_INNER_L3_IPV6)) ||
 		   (!rss_inner && (items & MLX5_FLOW_LAYER_OUTER_L3_IPV6))) {
 		if (rss_types & MLX5_IPV6_LAYER_TYPES) {
-			if (rss_types & ETH_RSS_L3_SRC_ONLY)
+			if (rss_types & RTE_ETH_RSS_L3_SRC_ONLY)
 				dev_flow->hash_fields |= IBV_RX_HASH_SRC_IPV6;
-			else if (rss_types & ETH_RSS_L3_DST_ONLY)
+			else if (rss_types & RTE_ETH_RSS_L3_DST_ONLY)
 				dev_flow->hash_fields |= IBV_RX_HASH_DST_IPV6;
 			else
 				dev_flow->hash_fields |= MLX5_IPV6_IBV_RX_HASH;
@@ -10887,11 +10887,11 @@ flow_dv_hashfields_set(struct mlx5_flow *dev_flow,
 		return;
 	if ((rss_inner && (items & MLX5_FLOW_LAYER_INNER_L4_UDP)) ||
 	    (!rss_inner && (items & MLX5_FLOW_LAYER_OUTER_L4_UDP))) {
-		if (rss_types & ETH_RSS_UDP) {
-			if (rss_types & ETH_RSS_L4_SRC_ONLY)
+		if (rss_types & RTE_ETH_RSS_UDP) {
+			if (rss_types & RTE_ETH_RSS_L4_SRC_ONLY)
 				dev_flow->hash_fields |=
 						IBV_RX_HASH_SRC_PORT_UDP;
-			else if (rss_types & ETH_RSS_L4_DST_ONLY)
+			else if (rss_types & RTE_ETH_RSS_L4_DST_ONLY)
 				dev_flow->hash_fields |=
 						IBV_RX_HASH_DST_PORT_UDP;
 			else
@@ -10899,11 +10899,11 @@ flow_dv_hashfields_set(struct mlx5_flow *dev_flow,
 		}
 	} else if ((rss_inner && (items & MLX5_FLOW_LAYER_INNER_L4_TCP)) ||
 		   (!rss_inner && (items & MLX5_FLOW_LAYER_OUTER_L4_TCP))) {
-		if (rss_types & ETH_RSS_TCP) {
-			if (rss_types & ETH_RSS_L4_SRC_ONLY)
+		if (rss_types & RTE_ETH_RSS_TCP) {
+			if (rss_types & RTE_ETH_RSS_L4_SRC_ONLY)
 				dev_flow->hash_fields |=
 						IBV_RX_HASH_SRC_PORT_TCP;
-			else if (rss_types & ETH_RSS_L4_DST_ONLY)
+			else if (rss_types & RTE_ETH_RSS_L4_DST_ONLY)
 				dev_flow->hash_fields |=
 						IBV_RX_HASH_DST_PORT_TCP;
 			else
@@ -14444,9 +14444,9 @@ __flow_dv_action_rss_l34_hash_adjust(struct mlx5_shared_action_rss *rss,
 	case MLX5_RSS_HASH_IPV4:
 		if (rss_types & MLX5_IPV4_LAYER_TYPES) {
 			*hash_field &= ~MLX5_RSS_HASH_IPV4;
-			if (rss_types & ETH_RSS_L3_DST_ONLY)
+			if (rss_types & RTE_ETH_RSS_L3_DST_ONLY)
 				*hash_field |= IBV_RX_HASH_DST_IPV4;
-			else if (rss_types & ETH_RSS_L3_SRC_ONLY)
+			else if (rss_types & RTE_ETH_RSS_L3_SRC_ONLY)
 				*hash_field |= IBV_RX_HASH_SRC_IPV4;
 			else
 				*hash_field |= MLX5_RSS_HASH_IPV4;
@@ -14455,9 +14455,9 @@ __flow_dv_action_rss_l34_hash_adjust(struct mlx5_shared_action_rss *rss,
 	case MLX5_RSS_HASH_IPV6:
 		if (rss_types & MLX5_IPV6_LAYER_TYPES) {
 			*hash_field &= ~MLX5_RSS_HASH_IPV6;
-			if (rss_types & ETH_RSS_L3_DST_ONLY)
+			if (rss_types & RTE_ETH_RSS_L3_DST_ONLY)
 				*hash_field |= IBV_RX_HASH_DST_IPV6;
-			else if (rss_types & ETH_RSS_L3_SRC_ONLY)
+			else if (rss_types & RTE_ETH_RSS_L3_SRC_ONLY)
 				*hash_field |= IBV_RX_HASH_SRC_IPV6;
 			else
 				*hash_field |= MLX5_RSS_HASH_IPV6;
@@ -14466,11 +14466,11 @@ __flow_dv_action_rss_l34_hash_adjust(struct mlx5_shared_action_rss *rss,
 	case MLX5_RSS_HASH_IPV4_UDP:
 		/* fall-through. */
 	case MLX5_RSS_HASH_IPV6_UDP:
-		if (rss_types & ETH_RSS_UDP) {
+		if (rss_types & RTE_ETH_RSS_UDP) {
 			*hash_field &= ~MLX5_UDP_IBV_RX_HASH;
-			if (rss_types & ETH_RSS_L4_DST_ONLY)
+			if (rss_types & RTE_ETH_RSS_L4_DST_ONLY)
 				*hash_field |= IBV_RX_HASH_DST_PORT_UDP;
-			else if (rss_types & ETH_RSS_L4_SRC_ONLY)
+			else if (rss_types & RTE_ETH_RSS_L4_SRC_ONLY)
 				*hash_field |= IBV_RX_HASH_SRC_PORT_UDP;
 			else
 				*hash_field |= MLX5_UDP_IBV_RX_HASH;
@@ -14479,11 +14479,11 @@ __flow_dv_action_rss_l34_hash_adjust(struct mlx5_shared_action_rss *rss,
 	case MLX5_RSS_HASH_IPV4_TCP:
 		/* fall-through. */
 	case MLX5_RSS_HASH_IPV6_TCP:
-		if (rss_types & ETH_RSS_TCP) {
+		if (rss_types & RTE_ETH_RSS_TCP) {
 			*hash_field &= ~MLX5_TCP_IBV_RX_HASH;
-			if (rss_types & ETH_RSS_L4_DST_ONLY)
+			if (rss_types & RTE_ETH_RSS_L4_DST_ONLY)
 				*hash_field |= IBV_RX_HASH_DST_PORT_TCP;
-			else if (rss_types & ETH_RSS_L4_SRC_ONLY)
+			else if (rss_types & RTE_ETH_RSS_L4_SRC_ONLY)
 				*hash_field |= IBV_RX_HASH_SRC_PORT_TCP;
 			else
 				*hash_field |= MLX5_TCP_IBV_RX_HASH;
@@ -14631,8 +14631,8 @@ __flow_dv_action_rss_create(struct rte_eth_dev *dev,
 	origin = &shared_rss->origin;
 	origin->func = rss->func;
 	origin->level = rss->level;
-	/* RSS type 0 indicates default RSS type (ETH_RSS_IP). */
-	origin->types = !rss->types ? ETH_RSS_IP : rss->types;
+	/* RSS type 0 indicates default RSS type (RTE_ETH_RSS_IP). */
+	origin->types = !rss->types ? RTE_ETH_RSS_IP : rss->types;
 	/* NULL RSS key indicates default RSS key. */
 	rss_key = !rss->key ? rss_hash_default_key : rss->key;
 	memcpy(shared_rss->key, rss_key, MLX5_RSS_HASH_KEY_LEN);

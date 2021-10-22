@@ -394,7 +394,7 @@ static void set_dist_units(ioc_fm_pcd_net_env_params_t *dist_units,
 		if (req_dist_set % 2 != 0) {
 			dist_field = 1U << loop;
 			switch (dist_field) {
-			case ETH_RSS_L2_PAYLOAD:
+			case RTE_ETH_RSS_L2_PAYLOAD:
 
 				if (l2_configured)
 					break;
@@ -404,9 +404,9 @@ static void set_dist_units(ioc_fm_pcd_net_env_params_t *dist_units,
 					= HEADER_TYPE_ETH;
 				break;
 
-			case ETH_RSS_IPV4:
-			case ETH_RSS_FRAG_IPV4:
-			case ETH_RSS_NONFRAG_IPV4_OTHER:
+			case RTE_ETH_RSS_IPV4:
+			case RTE_ETH_RSS_FRAG_IPV4:
+			case RTE_ETH_RSS_NONFRAG_IPV4_OTHER:
 
 				if (ipv4_configured)
 					break;
@@ -415,10 +415,10 @@ static void set_dist_units(ioc_fm_pcd_net_env_params_t *dist_units,
 					= HEADER_TYPE_IPV4;
 				break;
 
-			case ETH_RSS_IPV6:
-			case ETH_RSS_FRAG_IPV6:
-			case ETH_RSS_NONFRAG_IPV6_OTHER:
-			case ETH_RSS_IPV6_EX:
+			case RTE_ETH_RSS_IPV6:
+			case RTE_ETH_RSS_FRAG_IPV6:
+			case RTE_ETH_RSS_NONFRAG_IPV6_OTHER:
+			case RTE_ETH_RSS_IPV6_EX:
 
 				if (ipv6_configured)
 					break;
@@ -427,9 +427,9 @@ static void set_dist_units(ioc_fm_pcd_net_env_params_t *dist_units,
 					= HEADER_TYPE_IPV6;
 				break;
 
-			case ETH_RSS_NONFRAG_IPV4_TCP:
-			case ETH_RSS_NONFRAG_IPV6_TCP:
-			case ETH_RSS_IPV6_TCP_EX:
+			case RTE_ETH_RSS_NONFRAG_IPV4_TCP:
+			case RTE_ETH_RSS_NONFRAG_IPV6_TCP:
+			case RTE_ETH_RSS_IPV6_TCP_EX:
 
 				if (tcp_configured)
 					break;
@@ -438,9 +438,9 @@ static void set_dist_units(ioc_fm_pcd_net_env_params_t *dist_units,
 					= HEADER_TYPE_TCP;
 				break;
 
-			case ETH_RSS_NONFRAG_IPV4_UDP:
-			case ETH_RSS_NONFRAG_IPV6_UDP:
-			case ETH_RSS_IPV6_UDP_EX:
+			case RTE_ETH_RSS_NONFRAG_IPV4_UDP:
+			case RTE_ETH_RSS_NONFRAG_IPV6_UDP:
+			case RTE_ETH_RSS_IPV6_UDP_EX:
 
 				if (udp_configured)
 					break;
@@ -449,8 +449,8 @@ static void set_dist_units(ioc_fm_pcd_net_env_params_t *dist_units,
 					= HEADER_TYPE_UDP;
 				break;
 
-			case ETH_RSS_NONFRAG_IPV4_SCTP:
-			case ETH_RSS_NONFRAG_IPV6_SCTP:
+			case RTE_ETH_RSS_NONFRAG_IPV4_SCTP:
+			case RTE_ETH_RSS_NONFRAG_IPV6_SCTP:
 
 				if (sctp_configured)
 					break;

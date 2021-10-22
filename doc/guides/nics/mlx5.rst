@@ -371,7 +371,7 @@ Limitations
 
 - CRC:
 
-  - ``DEV_RX_OFFLOAD_KEEP_CRC`` cannot be supported with decapsulation
+  - ``RTE_ETH_RX_OFFLOAD_KEEP_CRC`` cannot be supported with decapsulation
     for some NICs (such as ConnectX-6 Dx, ConnectX-6 Lx, and BlueField-2).
     The capability bit ``scatter_fcs_w_decap_disable`` shows NIC support.
 
@@ -611,7 +611,7 @@ Driver options
   small-packet traffic.
 
   When MPRQ is enabled, MTU can be larger than the size of
-  user-provided mbuf even if DEV_RX_OFFLOAD_SCATTER isn't enabled. PMD will
+  user-provided mbuf even if RTE_ETH_RX_OFFLOAD_SCATTER isn't enabled. PMD will
   configure large stride size enough to accommodate MTU as long as
   device allows. Note that this can waste system memory compared to enabling Rx
   scatter and multi-segment packet.

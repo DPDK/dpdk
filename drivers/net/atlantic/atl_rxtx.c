@@ -145,10 +145,10 @@ atl_rx_queue_setup(struct rte_eth_dev *dev, uint16_t rx_queue_id,
 	rxq->rx_free_thresh = rx_conf->rx_free_thresh;
 
 	rxq->l3_csum_enabled = dev->data->dev_conf.rxmode.offloads &
-		DEV_RX_OFFLOAD_IPV4_CKSUM;
+		RTE_ETH_RX_OFFLOAD_IPV4_CKSUM;
 	rxq->l4_csum_enabled = dev->data->dev_conf.rxmode.offloads &
-		(DEV_RX_OFFLOAD_UDP_CKSUM | DEV_RX_OFFLOAD_TCP_CKSUM);
-	if (dev->data->dev_conf.rxmode.offloads & DEV_RX_OFFLOAD_KEEP_CRC)
+		(RTE_ETH_RX_OFFLOAD_UDP_CKSUM | RTE_ETH_RX_OFFLOAD_TCP_CKSUM);
+	if (dev->data->dev_conf.rxmode.offloads & RTE_ETH_RX_OFFLOAD_KEEP_CRC)
 		PMD_DRV_LOG(ERR, "PMD does not support KEEP_CRC offload");
 
 	/* allocate memory for the software ring */

@@ -35,7 +35,7 @@ Features of the OCTEON TX2 SSO PMD are:
 - HW managed packets enqueued from ethdev to eventdev exposed through event eth
   RX adapter.
 - N:1 ethernet device Rx queue to Event queue mapping.
-- Lockfree Tx from event eth Tx adapter using ``DEV_TX_OFFLOAD_MT_LOCKFREE``
+- Lockfree Tx from event eth Tx adapter using ``RTE_ETH_TX_OFFLOAD_MT_LOCKFREE``
   capability while maintaining receive packet order.
 - Full Rx/Tx offload support defined through ethdev queue config.
 

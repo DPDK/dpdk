@@ -89,13 +89,13 @@ Other features are supported using optional MACRO configuration. They include:
 
 To guarantee the constraint, capabilities in dev_conf.rxmode.offloads will be checked:
 
-*   DEV_RX_OFFLOAD_VLAN_STRIP
+*   RTE_ETH_RX_OFFLOAD_VLAN_STRIP
 
-*   DEV_RX_OFFLOAD_VLAN_EXTEND
+*   RTE_ETH_RX_OFFLOAD_VLAN_EXTEND
 
-*   DEV_RX_OFFLOAD_CHECKSUM
+*   RTE_ETH_RX_OFFLOAD_CHECKSUM
 
-*   DEV_RX_OFFLOAD_HEADER_SPLIT
+*   RTE_ETH_RX_OFFLOAD_HEADER_SPLIT
 
 *   dev_conf
 
@@ -163,13 +163,13 @@ l3fwd
 ~~~~~
 
 When running l3fwd with vPMD, there is one thing to note.
-In the configuration, ensure that DEV_RX_OFFLOAD_CHECKSUM in port_conf.rxmode.offloads is NOT set.
+In the configuration, ensure that RTE_ETH_RX_OFFLOAD_CHECKSUM in port_conf.rxmode.offloads is NOT set.
 Otherwise, by default, RX vPMD is disabled.
 
 load_balancer
 ~~~~~~~~~~~~~
 
-As in the case of l3fwd, to enable vPMD, do NOT set DEV_RX_OFFLOAD_CHECKSUM in port_conf.rxmode.offloads.
+As in the case of l3fwd, to enable vPMD, do NOT set RTE_ETH_RX_OFFLOAD_CHECKSUM in port_conf.rxmode.offloads.
 In addition, for improved performance, use -bsz "(32,32),(64,64),(32,32)" in load_balancer to avoid using the default burst size of 144.
 
 

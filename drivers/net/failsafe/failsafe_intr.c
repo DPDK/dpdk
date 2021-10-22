@@ -326,7 +326,7 @@ int failsafe_rx_intr_install_subdevice(struct sub_device *sdev)
 	int qid;
 	struct rte_eth_dev *fsdev;
 	struct rxq **rxq;
-	const struct rte_intr_conf *const intr_conf =
+	const struct rte_eth_intr_conf *const intr_conf =
 				&ETH(sdev)->data->dev_conf.intr_conf;
 
 	fsdev = fs_dev(sdev);
@@ -519,7 +519,7 @@ int
 failsafe_rx_intr_install(struct rte_eth_dev *dev)
 {
 	struct fs_priv *priv = PRIV(dev);
-	const struct rte_intr_conf *const intr_conf =
+	const struct rte_eth_intr_conf *const intr_conf =
 			&priv->data->dev_conf.intr_conf;
 
 	if (intr_conf->rxq == 0 || dev->intr_handle != NULL)

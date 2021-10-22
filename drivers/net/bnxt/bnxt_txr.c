@@ -353,7 +353,7 @@ static uint16_t bnxt_start_xmit(struct rte_mbuf *tx_pkt,
 }
 
 /*
- * Transmit completion function for use when DEV_TX_OFFLOAD_MBUF_FAST_FREE
+ * Transmit completion function for use when RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE
  * is enabled.
  */
 static void bnxt_tx_cmp_fast(struct bnxt_tx_queue *txq, int nr_pkts)
@@ -479,7 +479,7 @@ static int bnxt_handle_tx_cp(struct bnxt_tx_queue *txq)
 	} while (nb_tx_pkts < ring_mask);
 
 	if (nb_tx_pkts) {
-		if (txq->offloads & DEV_TX_OFFLOAD_MBUF_FAST_FREE)
+		if (txq->offloads & RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE)
 			bnxt_tx_cmp_fast(txq, nb_tx_pkts);
 		else
 			bnxt_tx_cmp(txq, nb_tx_pkts);

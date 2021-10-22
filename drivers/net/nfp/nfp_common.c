@@ -160,8 +160,8 @@ nfp_net_configure(struct rte_eth_dev *dev)
 	rxmode = &dev_conf->rxmode;
 	txmode = &dev_conf->txmode;
 
-	if (rxmode->mq_mode & ETH_MQ_RX_RSS_FLAG)
-		rxmode->offloads |= DEV_RX_OFFLOAD_RSS_HASH;
+	if (rxmode->mq_mode & RTE_ETH_MQ_RX_RSS_FLAG)
+		rxmode->offloads |= RTE_ETH_RX_OFFLOAD_RSS_HASH;
 
 	/* Checking TX mode */
 	if (txmode->mq_mode) {
@@ -170,7 +170,7 @@ nfp_net_configure(struct rte_eth_dev *dev)
 	}
 
 	/* Checking RX mode */
-	if (rxmode->mq_mode & ETH_MQ_RX_RSS &&
+	if (rxmode->mq_mode & RTE_ETH_MQ_RX_RSS &&
 	    !(hw->cap & NFP_NET_CFG_CTRL_RSS)) {
 		PMD_INIT_LOG(INFO, "RSS not supported");
 		return -EINVAL;
@@ -359,19 +359,19 @@ nfp_check_offloads(struct rte_eth_dev *dev)
 	rxmode = &dev_conf->rxmode;
 	txmode = &dev_conf->txmode;
 
-	if (rxmode->offloads & DEV_RX_OFFLOAD_IPV4_CKSUM) {
+	if (rxmode->offloads & RTE_ETH_RX_OFFLOAD_IPV4_CKSUM) {
 		if (hw->cap & NFP_NET_CFG_CTRL_RXCSUM)
 			ctrl |= NFP_NET_CFG_CTRL_RXCSUM;
 	}
 
-	if (rxmode->offloads & DEV_RX_OFFLOAD_VLAN_STRIP) {
+	if (rxmode->offloads & RTE_ETH_RX_OFFLOAD_VLAN_STRIP) {
 		if (hw->cap & NFP_NET_CFG_CTRL_RXVLAN)
 			ctrl |= NFP_NET_CFG_CTRL_RXVLAN;
 	}
 
 	hw->mtu = dev->data->mtu;
 
-	if (txmode->offloads & DEV_TX_OFFLOAD_VLAN_INSERT)
+	if (txmode->offloads & RTE_ETH_TX_OFFLOAD_VLAN_INSERT)
 		ctrl |= NFP_NET_CFG_CTRL_TXVLAN;
 
 	/* L2 broadcast */
@@ -383,13 +383,13 @@ nfp_check_offloads(struct rte_eth_dev *dev)
 		ctrl |= NFP_NET_CFG_CTRL_L2MC;
 
 	/* TX checksum offload */
-	if (txmode->offloads & DEV_TX_OFFLOAD_IPV4_CKSUM ||
-	    txmode->offloads & DEV_TX_OFFLOAD_UDP_CKSUM ||
-	    txmode->offloads & DEV_TX_OFFLOAD_TCP_CKSUM)
+	if (txmode->offloads & RTE_ETH_TX_OFFLOAD_IPV4_CKSUM ||
+	    txmode->offloads & RTE_ETH_TX_OFFLOAD_UDP_CKSUM ||
+	    txmode->offloads & RTE_ETH_TX_OFFLOAD_TCP_CKSUM)
 		ctrl |= NFP_NET_CFG_CTRL_TXCSUM;
 
 	/* LSO offload */
-	if (txmode->offloads & DEV_TX_OFFLOAD_TCP_TSO) {
+	if (txmode->offloads & RTE_ETH_TX_OFFLOAD_TCP_TSO) {
 		if (hw->cap & NFP_NET_CFG_CTRL_LSO)
 			ctrl |= NFP_NET_CFG_CTRL_LSO;
 		else
@@ -397,7 +397,7 @@ nfp_check_offloads(struct rte_eth_dev *dev)
 	}
 
 	/* RX gather */
-	if (txmode->offloads & DEV_TX_OFFLOAD_MULTI_SEGS)
+	if (txmode->offloads & RTE_ETH_TX_OFFLOAD_MULTI_SEGS)
 		ctrl |= NFP_NET_CFG_CTRL_GATHER;
 
 	return ctrl;
@@ -485,14 +485,14 @@ nfp_net_link_update(struct rte_eth_dev *dev, __rte_unused int wait_to_complete)
 	int ret;
 
 	static const uint32_t ls_to_ethtool[] = {
-		[NFP_NET_CFG_STS_LINK_RATE_UNSUPPORTED] = ETH_SPEED_NUM_NONE,
-		[NFP_NET_CFG_STS_LINK_RATE_UNKNOWN]     = ETH_SPEED_NUM_NONE,
-		[NFP_NET_CFG_STS_LINK_RATE_1G]          = ETH_SPEED_NUM_1G,
-		[NFP_NET_CFG_STS_LINK_RATE_10G]         = ETH_SPEED_NUM_10G,
-		[NFP_NET_CFG_STS_LINK_RATE_25G]         = ETH_SPEED_NUM_25G,
-		[NFP_NET_CFG_STS_LINK_RATE_40G]         = ETH_SPEED_NUM_40G,
-		[NFP_NET_CFG_STS_LINK_RATE_50G]         = ETH_SPEED_NUM_50G,
-		[NFP_NET_CFG_STS_LINK_RATE_100G]        = ETH_SPEED_NUM_100G,
+		[NFP_NET_CFG_STS_LINK_RATE_UNSUPPORTED] = RTE_ETH_SPEED_NUM_NONE,
+		[NFP_NET_CFG_STS_LINK_RATE_UNKNOWN]     = RTE_ETH_SPEED_NUM_NONE,
+		[NFP_NET_CFG_STS_LINK_RATE_1G]          = RTE_ETH_SPEED_NUM_1G,
+		[NFP_NET_CFG_STS_LINK_RATE_10G]         = RTE_ETH_SPEED_NUM_10G,
+		[NFP_NET_CFG_STS_LINK_RATE_25G]         = RTE_ETH_SPEED_NUM_25G,
+		[NFP_NET_CFG_STS_LINK_RATE_40G]         = RTE_ETH_SPEED_NUM_40G,
+		[NFP_NET_CFG_STS_LINK_RATE_50G]         = RTE_ETH_SPEED_NUM_50G,
+		[NFP_NET_CFG_STS_LINK_RATE_100G]        = RTE_ETH_SPEED_NUM_100G,
 	};
 
 	PMD_DRV_LOG(DEBUG, "Link update");
@@ -504,15 +504,15 @@ nfp_net_link_update(struct rte_eth_dev *dev, __rte_unused int wait_to_complete)
 	memset(&link, 0, sizeof(struct rte_eth_link));
 
 	if (nn_link_status & NFP_NET_CFG_STS_LINK)
-		link.link_status = ETH_LINK_UP;
+		link.link_status = RTE_ETH_LINK_UP;
 
-	link.link_duplex = ETH_LINK_FULL_DUPLEX;
+	link.link_duplex = RTE_ETH_LINK_FULL_DUPLEX;
 
 	nn_link_status = (nn_link_status >> NFP_NET_CFG_STS_LINK_RATE_SHIFT) &
 			 NFP_NET_CFG_STS_LINK_RATE_MASK;
 
 	if (nn_link_status >= RTE_DIM(ls_to_ethtool))
-		link.link_speed = ETH_SPEED_NUM_NONE;
+		link.link_speed = RTE_ETH_SPEED_NUM_NONE;
 	else
 		link.link_speed = ls_to_ethtool[nn_link_status];
 
@@ -701,26 +701,26 @@ nfp_net_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->max_mac_addrs = 1;
 
 	if (hw->cap & NFP_NET_CFG_CTRL_RXVLAN)
-		dev_info->rx_offload_capa = DEV_RX_OFFLOAD_VLAN_STRIP;
+		dev_info->rx_offload_capa = RTE_ETH_RX_OFFLOAD_VLAN_STRIP;
 
 	if (hw->cap & NFP_NET_CFG_CTRL_RXCSUM)
-		dev_info->rx_offload_capa |= DEV_RX_OFFLOAD_IPV4_CKSUM |
-					     DEV_RX_OFFLOAD_UDP_CKSUM |
-					     DEV_RX_OFFLOAD_TCP_CKSUM;
+		dev_info->rx_offload_capa |= RTE_ETH_RX_OFFLOAD_IPV4_CKSUM |
+					     RTE_ETH_RX_OFFLOAD_UDP_CKSUM |
+					     RTE_ETH_RX_OFFLOAD_TCP_CKSUM;
 
 	if (hw->cap & NFP_NET_CFG_CTRL_TXVLAN)
-		dev_info->tx_offload_capa = DEV_TX_OFFLOAD_VLAN_INSERT;
+		dev_info->tx_offload_capa = RTE_ETH_TX_OFFLOAD_VLAN_INSERT;
 
 	if (hw->cap & NFP_NET_CFG_CTRL_TXCSUM)
-		dev_info->tx_offload_capa |= DEV_TX_OFFLOAD_IPV4_CKSUM |
-					     DEV_TX_OFFLOAD_UDP_CKSUM |
-					     DEV_TX_OFFLOAD_TCP_CKSUM;
+		dev_info->tx_offload_capa |= RTE_ETH_TX_OFFLOAD_IPV4_CKSUM |
+					     RTE_ETH_TX_OFFLOAD_UDP_CKSUM |
+					     RTE_ETH_TX_OFFLOAD_TCP_CKSUM;
 
 	if (hw->cap & NFP_NET_CFG_CTRL_LSO_ANY)
-		dev_info->tx_offload_capa |= DEV_TX_OFFLOAD_TCP_TSO;
+		dev_info->tx_offload_capa |= RTE_ETH_TX_OFFLOAD_TCP_TSO;
 
 	if (hw->cap & NFP_NET_CFG_CTRL_GATHER)
-		dev_info->tx_offload_capa |= DEV_TX_OFFLOAD_MULTI_SEGS;
+		dev_info->tx_offload_capa |= RTE_ETH_TX_OFFLOAD_MULTI_SEGS;
 
 	dev_info->default_rxconf = (struct rte_eth_rxconf) {
 		.rx_thresh = {
@@ -757,22 +757,22 @@ nfp_net_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	};
 
 	if (hw->cap & NFP_NET_CFG_CTRL_RSS) {
-		dev_info->rx_offload_capa |= DEV_RX_OFFLOAD_RSS_HASH;
+		dev_info->rx_offload_capa |= RTE_ETH_RX_OFFLOAD_RSS_HASH;
 
-		dev_info->flow_type_rss_offloads = ETH_RSS_IPV4 |
-						   ETH_RSS_NONFRAG_IPV4_TCP |
-						   ETH_RSS_NONFRAG_IPV4_UDP |
-						   ETH_RSS_IPV6 |
-						   ETH_RSS_NONFRAG_IPV6_TCP |
-						   ETH_RSS_NONFRAG_IPV6_UDP;
+		dev_info->flow_type_rss_offloads = RTE_ETH_RSS_IPV4 |
+						   RTE_ETH_RSS_NONFRAG_IPV4_TCP |
+						   RTE_ETH_RSS_NONFRAG_IPV4_UDP |
+						   RTE_ETH_RSS_IPV6 |
+						   RTE_ETH_RSS_NONFRAG_IPV6_TCP |
+						   RTE_ETH_RSS_NONFRAG_IPV6_UDP;
 
 		dev_info->reta_size = NFP_NET_CFG_RSS_ITBL_SZ;
 		dev_info->hash_key_size = NFP_NET_CFG_RSS_KEY_SZ;
 	}
 
-	dev_info->speed_capa = ETH_LINK_SPEED_1G | ETH_LINK_SPEED_10G |
-			       ETH_LINK_SPEED_25G | ETH_LINK_SPEED_40G |
-			       ETH_LINK_SPEED_50G | ETH_LINK_SPEED_100G;
+	dev_info->speed_capa = RTE_ETH_LINK_SPEED_1G | RTE_ETH_LINK_SPEED_10G |
+			       RTE_ETH_LINK_SPEED_25G | RTE_ETH_LINK_SPEED_40G |
+			       RTE_ETH_LINK_SPEED_50G | RTE_ETH_LINK_SPEED_100G;
 
 	return 0;
 }
@@ -843,7 +843,7 @@ nfp_net_dev_link_status_print(struct rte_eth_dev *dev)
 	if (link.link_status)
 		PMD_DRV_LOG(INFO, "Port %d: Link Up - speed %u Mbps - %s",
 			    dev->data->port_id, link.link_speed,
-			    link.link_duplex == ETH_LINK_FULL_DUPLEX
+			    link.link_duplex == RTE_ETH_LINK_FULL_DUPLEX
 			    ? "full-duplex" : "half-duplex");
 	else
 		PMD_DRV_LOG(INFO, " Port %d: Link Down",
@@ -973,12 +973,12 @@ nfp_net_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 	new_ctrl = 0;
 
 	/* Enable vlan strip if it is not configured yet */
-	if ((mask & ETH_VLAN_STRIP_OFFLOAD) &&
+	if ((mask & RTE_ETH_VLAN_STRIP_OFFLOAD) &&
 	    !(hw->ctrl & NFP_NET_CFG_CTRL_RXVLAN))
 		new_ctrl = hw->ctrl | NFP_NET_CFG_CTRL_RXVLAN;
 
 	/* Disable vlan strip just if it is configured */
-	if (!(mask & ETH_VLAN_STRIP_OFFLOAD) &&
+	if (!(mask & RTE_ETH_VLAN_STRIP_OFFLOAD) &&
 	    (hw->ctrl & NFP_NET_CFG_CTRL_RXVLAN))
 		new_ctrl = hw->ctrl & ~NFP_NET_CFG_CTRL_RXVLAN;
 
@@ -1018,8 +1018,8 @@ nfp_net_rss_reta_write(struct rte_eth_dev *dev,
 	 */
 	for (i = 0; i < reta_size; i += 4) {
 		/* Handling 4 RSS entries per loop */
-		idx = i / RTE_RETA_GROUP_SIZE;
-		shift = i % RTE_RETA_GROUP_SIZE;
+		idx = i / RTE_ETH_RETA_GROUP_SIZE;
+		shift = i % RTE_ETH_RETA_GROUP_SIZE;
 		mask = (uint8_t)((reta_conf[idx].mask >> shift) & 0xF);
 
 		if (!mask)
@@ -1099,8 +1099,8 @@ nfp_net_reta_query(struct rte_eth_dev *dev,
 	 */
 	for (i = 0; i < reta_size; i += 4) {
 		/* Handling 4 RSS entries per loop */
-		idx = i / RTE_RETA_GROUP_SIZE;
-		shift = i % RTE_RETA_GROUP_SIZE;
+		idx = i / RTE_ETH_RETA_GROUP_SIZE;
+		shift = i % RTE_ETH_RETA_GROUP_SIZE;
 		mask = (uint8_t)((reta_conf[idx].mask >> shift) & 0xF);
 
 		if (!mask)
@@ -1138,22 +1138,22 @@ nfp_net_rss_hash_write(struct rte_eth_dev *dev,
 
 	rss_hf = rss_conf->rss_hf;
 
-	if (rss_hf & ETH_RSS_IPV4)
+	if (rss_hf & RTE_ETH_RSS_IPV4)
 		cfg_rss_ctrl |= NFP_NET_CFG_RSS_IPV4;
 
-	if (rss_hf & ETH_RSS_NONFRAG_IPV4_TCP)
+	if (rss_hf & RTE_ETH_RSS_NONFRAG_IPV4_TCP)
 		cfg_rss_ctrl |= NFP_NET_CFG_RSS_IPV4_TCP;
 
-	if (rss_hf & ETH_RSS_NONFRAG_IPV4_UDP)
+	if (rss_hf & RTE_ETH_RSS_NONFRAG_IPV4_UDP)
 		cfg_rss_ctrl |= NFP_NET_CFG_RSS_IPV4_UDP;
 
-	if (rss_hf & ETH_RSS_IPV6)
+	if (rss_hf & RTE_ETH_RSS_IPV6)
 		cfg_rss_ctrl |= NFP_NET_CFG_RSS_IPV6;
 
-	if (rss_hf & ETH_RSS_NONFRAG_IPV6_TCP)
+	if (rss_hf & RTE_ETH_RSS_NONFRAG_IPV6_TCP)
 		cfg_rss_ctrl |= NFP_NET_CFG_RSS_IPV6_TCP;
 
-	if (rss_hf & ETH_RSS_NONFRAG_IPV6_UDP)
+	if (rss_hf & RTE_ETH_RSS_NONFRAG_IPV6_UDP)
 		cfg_rss_ctrl |= NFP_NET_CFG_RSS_IPV6_UDP;
 
 	cfg_rss_ctrl |= NFP_NET_CFG_RSS_MASK;
@@ -1223,22 +1223,22 @@ nfp_net_rss_hash_conf_get(struct rte_eth_dev *dev,
 	cfg_rss_ctrl = nn_cfg_readl(hw, NFP_NET_CFG_RSS_CTRL);
 
 	if (cfg_rss_ctrl & NFP_NET_CFG_RSS_IPV4)
-		rss_hf |= ETH_RSS_NONFRAG_IPV4_TCP | ETH_RSS_NONFRAG_IPV4_UDP;
+		rss_hf |= RTE_ETH_RSS_NONFRAG_IPV4_TCP | RTE_ETH_RSS_NONFRAG_IPV4_UDP;
 
 	if (cfg_rss_ctrl & NFP_NET_CFG_RSS_IPV4_TCP)
-		rss_hf |= ETH_RSS_NONFRAG_IPV4_TCP;
+		rss_hf |= RTE_ETH_RSS_NONFRAG_IPV4_TCP;
 
 	if (cfg_rss_ctrl & NFP_NET_CFG_RSS_IPV6_TCP)
-		rss_hf |= ETH_RSS_NONFRAG_IPV6_TCP;
+		rss_hf |= RTE_ETH_RSS_NONFRAG_IPV6_TCP;
 
 	if (cfg_rss_ctrl & NFP_NET_CFG_RSS_IPV4_UDP)
-		rss_hf |= ETH_RSS_NONFRAG_IPV4_UDP;
+		rss_hf |= RTE_ETH_RSS_NONFRAG_IPV4_UDP;
 
 	if (cfg_rss_ctrl & NFP_NET_CFG_RSS_IPV6_UDP)
-		rss_hf |= ETH_RSS_NONFRAG_IPV6_UDP;
+		rss_hf |= RTE_ETH_RSS_NONFRAG_IPV6_UDP;
 
 	if (cfg_rss_ctrl & NFP_NET_CFG_RSS_IPV6)
-		rss_hf |= ETH_RSS_NONFRAG_IPV4_UDP | ETH_RSS_NONFRAG_IPV6_UDP;
+		rss_hf |= RTE_ETH_RSS_NONFRAG_IPV4_UDP | RTE_ETH_RSS_NONFRAG_IPV6_UDP;
 
 	/* Propagate current RSS hash functions to caller */
 	rss_conf->rss_hf = rss_hf;

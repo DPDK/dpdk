@@ -15,13 +15,13 @@
 #include "gso_udp4.h"
 
 #define ILLEGAL_UDP_GSO_CTX(ctx) \
-	((((ctx)->gso_types & DEV_TX_OFFLOAD_UDP_TSO) == 0) || \
+	((((ctx)->gso_types & RTE_ETH_TX_OFFLOAD_UDP_TSO) == 0) || \
 	 (ctx)->gso_size < RTE_GSO_UDP_SEG_SIZE_MIN)
 
 #define ILLEGAL_TCP_GSO_CTX(ctx) \
-	((((ctx)->gso_types & (DEV_TX_OFFLOAD_TCP_TSO | \
-		DEV_TX_OFFLOAD_VXLAN_TNL_TSO | \
-		DEV_TX_OFFLOAD_GRE_TNL_TSO)) == 0) || \
+	((((ctx)->gso_types & (RTE_ETH_TX_OFFLOAD_TCP_TSO | \
+		RTE_ETH_TX_OFFLOAD_VXLAN_TNL_TSO | \
+		RTE_ETH_TX_OFFLOAD_GRE_TNL_TSO)) == 0) || \
 		(ctx)->gso_size < RTE_GSO_SEG_SIZE_MIN)
 
 int
@@ -54,28 +54,28 @@ rte_gso_segment(struct rte_mbuf *pkt,
 	ol_flags = pkt->ol_flags;
 
 	if ((IS_IPV4_VXLAN_TCP4(pkt->ol_flags) &&
-			(gso_ctx->gso_types & DEV_TX_OFFLOAD_VXLAN_TNL_TSO)) ||
+			(gso_ctx->gso_types & RTE_ETH_TX_OFFLOAD_VXLAN_TNL_TSO)) ||
 			((IS_IPV4_GRE_TCP4(pkt->ol_flags) &&
-			 (gso_ctx->gso_types & DEV_TX_OFFLOAD_GRE_TNL_TSO)))) {
+			 (gso_ctx->gso_types & RTE_ETH_TX_OFFLOAD_GRE_TNL_TSO)))) {
 		pkt->ol_flags &= (~PKT_TX_TCP_SEG);
 		ret = gso_tunnel_tcp4_segment(pkt, gso_size, ipid_delta,
 				direct_pool, indirect_pool,
 				pkts_out, nb_pkts_out);
 	} else if (IS_IPV4_VXLAN_UDP4(pkt->ol_flags) &&
-			(gso_ctx->gso_types & DEV_TX_OFFLOAD_VXLAN_TNL_TSO) &&
-			(gso_ctx->gso_types & DEV_TX_OFFLOAD_UDP_TSO)) {
+			(gso_ctx->gso_types & RTE_ETH_TX_OFFLOAD_VXLAN_TNL_TSO) &&
+			(gso_ctx->gso_types & RTE_ETH_TX_OFFLOAD_UDP_TSO)) {
 		pkt->ol_flags &= (~PKT_TX_UDP_SEG);
 		ret = gso_tunnel_udp4_segment(pkt, gso_size,
 				direct_pool, indirect_pool,
 				pkts_out, nb_pkts_out);
 	} else if (IS_IPV4_TCP(pkt->ol_flags) &&
-			(gso_ctx->gso_types & DEV_TX_OFFLOAD_TCP_TSO)) {
+			(gso_ctx->gso_types & RTE_ETH_TX_OFFLOAD_TCP_TSO)) {
 		pkt->ol_flags &= (~PKT_TX_TCP_SEG);
 		ret = gso_tcp4_segment(pkt, gso_size, ipid_delta,
 				direct_pool, indirect_pool,
 				pkts_out, nb_pkts_out);
 	} else if (IS_IPV4_UDP(pkt->ol_flags) &&
-			(gso_ctx->gso_types & DEV_TX_OFFLOAD_UDP_TSO)) {
+			(gso_ctx->gso_types & RTE_ETH_TX_OFFLOAD_UDP_TSO)) {
 		pkt->ol_flags &= (~PKT_TX_UDP_SEG);
 		ret = gso_udp4_segment(pkt, gso_size, direct_pool,
 				indirect_pool, pkts_out, nb_pkts_out);

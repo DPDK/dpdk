@@ -682,12 +682,12 @@ mlx4_rxq_detach(struct rxq *rxq)
 uint64_t
 mlx4_get_rx_queue_offloads(struct mlx4_priv *priv)
 {
-	uint64_t offloads = DEV_RX_OFFLOAD_SCATTER |
-			    DEV_RX_OFFLOAD_KEEP_CRC |
-			    DEV_RX_OFFLOAD_RSS_HASH;
+	uint64_t offloads = RTE_ETH_RX_OFFLOAD_SCATTER |
+			    RTE_ETH_RX_OFFLOAD_KEEP_CRC |
+			    RTE_ETH_RX_OFFLOAD_RSS_HASH;
 
 	if (priv->hw_csum)
-		offloads |= DEV_RX_OFFLOAD_CHECKSUM;
+		offloads |= RTE_ETH_RX_OFFLOAD_CHECKSUM;
 	return offloads;
 }
 
@@ -703,7 +703,7 @@ mlx4_get_rx_queue_offloads(struct mlx4_priv *priv)
 uint64_t
 mlx4_get_rx_port_offloads(struct mlx4_priv *priv)
 {
-	uint64_t offloads = DEV_RX_OFFLOAD_VLAN_FILTER;
+	uint64_t offloads = RTE_ETH_RX_OFFLOAD_VLAN_FILTER;
 
 	(void)priv;
 	return offloads;
@@ -785,7 +785,7 @@ mlx4_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 	}
 	/* By default, FCS (CRC) is stripped by hardware. */
 	crc_present = 0;
-	if (offloads & DEV_RX_OFFLOAD_KEEP_CRC) {
+	if (offloads & RTE_ETH_RX_OFFLOAD_KEEP_CRC) {
 		if (priv->hw_fcs_strip) {
 			crc_present = 1;
 		} else {
@@ -816,9 +816,9 @@ mlx4_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 		.elts = elts,
 		/* Toggle Rx checksum offload if hardware supports it. */
 		.csum = priv->hw_csum &&
-			(offloads & DEV_RX_OFFLOAD_CHECKSUM),
+			(offloads & RTE_ETH_RX_OFFLOAD_CHECKSUM),
 		.csum_l2tun = priv->hw_csum_l2tun &&
-			      (offloads & DEV_RX_OFFLOAD_CHECKSUM),
+			      (offloads & RTE_ETH_RX_OFFLOAD_CHECKSUM),
 		.crc_present = crc_present,
 		.l2tun_offload = priv->hw_csum_l2tun,
 		.stats = {
@@ -832,7 +832,7 @@ mlx4_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 	max_rx_pktlen = dev->data->mtu + RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN;
 	if (max_rx_pktlen <= (mb_len - RTE_PKTMBUF_HEADROOM)) {
 		;
-	} else if (offloads & DEV_RX_OFFLOAD_SCATTER) {
+	} else if (offloads & RTE_ETH_RX_OFFLOAD_SCATTER) {
 		uint32_t size = RTE_PKTMBUF_HEADROOM + max_rx_pktlen;
 		uint32_t sges_n;
 

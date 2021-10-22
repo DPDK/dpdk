@@ -233,13 +233,13 @@ rte_ethtool_get_pauseparam(uint16_t port_id,
 	pause_param->tx_pause = 0;
 	pause_param->rx_pause = 0;
 	switch (fc_conf.mode) {
-	case RTE_FC_RX_PAUSE:
+	case RTE_ETH_FC_RX_PAUSE:
 		pause_param->rx_pause = 1;
 		break;
-	case RTE_FC_TX_PAUSE:
+	case RTE_ETH_FC_TX_PAUSE:
 		pause_param->tx_pause = 1;
 		break;
-	case RTE_FC_FULL:
+	case RTE_ETH_FC_FULL:
 		pause_param->rx_pause = 1;
 		pause_param->tx_pause = 1;
 	default:
@@ -277,14 +277,14 @@ rte_ethtool_set_pauseparam(uint16_t port_id,
 
 	if (pause_param->tx_pause) {
 		if (pause_param->rx_pause)
-			fc_conf.mode = RTE_FC_FULL;
+			fc_conf.mode = RTE_ETH_FC_FULL;
 		else
-			fc_conf.mode = RTE_FC_TX_PAUSE;
+			fc_conf.mode = RTE_ETH_FC_TX_PAUSE;
 	} else {
 		if (pause_param->rx_pause)
-			fc_conf.mode = RTE_FC_RX_PAUSE;
+			fc_conf.mode = RTE_ETH_FC_RX_PAUSE;
 		else
-			fc_conf.mode = RTE_FC_NONE;
+			fc_conf.mode = RTE_ETH_FC_NONE;
 	}
 
 	status = rte_eth_dev_flow_ctrl_set(port_id, &fc_conf);
@@ -398,12 +398,12 @@ rte_ethtool_net_set_rx_mode(uint16_t port_id)
 	for (vf = 0; vf < num_vfs; vf++) {
 #ifdef RTE_NET_IXGBE
 		rte_pmd_ixgbe_set_vf_rxmode(port_id, vf,
-			ETH_VMDQ_ACCEPT_UNTAG, 0);
+			RTE_ETH_VMDQ_ACCEPT_UNTAG, 0);
 #endif
 	}
 
 	/* Enable Rx vlan filter, VF unspport status is discard */
-	ret = rte_eth_dev_set_vlan_offload(port_id, ETH_VLAN_FILTER_MASK);
+	ret = rte_eth_dev_set_vlan_offload(port_id, RTE_ETH_VLAN_FILTER_MASK);
 	if (ret != 0)
 		return ret;
 

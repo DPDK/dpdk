@@ -62,11 +62,11 @@ static struct rte_ether_addr ports_eth_addr[RTE_MAX_ETHPORTS];
 
 static struct rte_eth_conf port_conf = {
 	.rxmode = {
-		.mq_mode = ETH_MQ_RX_NONE,
+		.mq_mode = RTE_ETH_MQ_RX_NONE,
 		.split_hdr_size = 0,
 	},
 	.txmode = {
-		.mq_mode = ETH_MQ_TX_NONE,
+		.mq_mode = RTE_ETH_MQ_TX_NONE,
 	},
 	.lpbk_mode = 1,  /* enable loopback */
 };
@@ -155,7 +155,7 @@ check_all_ports_link_status(uint16_t port_num, uint32_t port_mask)
 				continue;
 			}
 			/* clear all_ports_up flag if any link down */
-			if (link.link_status == ETH_LINK_DOWN) {
+			if (link.link_status == RTE_ETH_LINK_DOWN) {
 				all_ports_up = 0;
 				break;
 			}
@@ -822,7 +822,7 @@ test_set_rxtx_conf(cmdline_fixed_string_t mode)
 		/* bulk alloc rx, full-featured tx */
 		tx_conf.tx_rs_thresh = 32;
 		tx_conf.tx_free_thresh = 32;
-		port_conf.rxmode.offloads |= DEV_RX_OFFLOAD_CHECKSUM;
+		port_conf.rxmode.offloads |= RTE_ETH_RX_OFFLOAD_CHECKSUM;
 		return 0;
 	} else if (!strcmp(mode, "hybrid")) {
 		/* bulk alloc rx, vector tx
@@ -831,13 +831,13 @@ test_set_rxtx_conf(cmdline_fixed_string_t mode)
 		 */
 		tx_conf.tx_rs_thresh = 32;
 		tx_conf.tx_free_thresh = 32;
-		port_conf.rxmode.offloads |= DEV_RX_OFFLOAD_CHECKSUM;
+		port_conf.rxmode.offloads |= RTE_ETH_RX_OFFLOAD_CHECKSUM;
 		return 0;
 	} else if (!strcmp(mode, "full")) {
 		/* full feature rx,tx pair */
 		tx_conf.tx_rs_thresh = 32;
 		tx_conf.tx_free_thresh = 32;
-		port_conf.rxmode.offloads |= DEV_RX_OFFLOAD_SCATTER;
+		port_conf.rxmode.offloads |= RTE_ETH_RX_OFFLOAD_SCATTER;
 		return 0;
 	}
 

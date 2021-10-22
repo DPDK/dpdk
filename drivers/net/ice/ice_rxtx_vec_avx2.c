@@ -474,7 +474,7 @@ _ice_recv_raw_pkts_vec_avx2(struct ice_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 			 * will cause performance drop to get into this context.
 			 */
 			if (rxq->vsi->adapter->pf.dev_data->dev_conf.rxmode.offloads &
-					DEV_RX_OFFLOAD_RSS_HASH) {
+					RTE_ETH_RX_OFFLOAD_RSS_HASH) {
 				/* load bottom half of every 32B desc */
 				const __m128i raw_desc_bh7 =
 					_mm_load_si128

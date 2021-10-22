@@ -625,7 +625,7 @@ otx2_flow_create(struct rte_eth_dev *dev,
 		goto err_exit;
 	}
 
-	if (hw->rx_offloads & DEV_RX_OFFLOAD_SECURITY) {
+	if (hw->rx_offloads & RTE_ETH_RX_OFFLOAD_SECURITY) {
 		rc = flow_update_sec_tt(dev, actions);
 		if (rc != 0) {
 			rte_flow_error_set(error, EIO,

@@ -54,23 +54,23 @@ sfc_tx_get_offload_mask(struct sfc_adapter *sa)
 	uint64_t no_caps = 0;
 
 	if (!encp->enc_hw_tx_insert_vlan_enabled)
-		no_caps |= DEV_TX_OFFLOAD_VLAN_INSERT;
+		no_caps |= RTE_ETH_TX_OFFLOAD_VLAN_INSERT;
 
 	if (!encp->enc_tunnel_encapsulations_supported)
-		no_caps |= DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM;
+		no_caps |= RTE_ETH_TX_OFFLOAD_OUTER_IPV4_CKSUM;
 
 	if (!sa->tso)
-		no_caps |= DEV_TX_OFFLOAD_TCP_TSO;
+		no_caps |= RTE_ETH_TX_OFFLOAD_TCP_TSO;
 
 	if (!sa->tso_encap ||
 	    (encp->enc_tunnel_encapsulations_supported &
 	     (1u << EFX_TUNNEL_PROTOCOL_VXLAN)) == 0)
-		no_caps |= DEV_TX_OFFLOAD_VXLAN_TNL_TSO;
+		no_caps |= RTE_ETH_TX_OFFLOAD_VXLAN_TNL_TSO;
 
 	if (!sa->tso_encap ||
 	    (encp->enc_tunnel_encapsulations_supported &
 	     (1u << EFX_TUNNEL_PROTOCOL_GENEVE)) == 0)
-		no_caps |= DEV_TX_OFFLOAD_GENEVE_TNL_TSO;
+		no_caps |= RTE_ETH_TX_OFFLOAD_GENEVE_TNL_TSO;
 
 	return ~no_caps;
 }
@@ -114,8 +114,8 @@ sfc_tx_qcheck_conf(struct sfc_adapter *sa, unsigned int txq_max_fill_level,
 	}
 
 	/* We either perform both TCP and UDP offload, or no offload at all */
-	if (((offloads & DEV_TX_OFFLOAD_TCP_CKSUM) == 0) !=
-	    ((offloads & DEV_TX_OFFLOAD_UDP_CKSUM) == 0)) {
+	if (((offloads & RTE_ETH_TX_OFFLOAD_TCP_CKSUM) == 0) !=
+	    ((offloads & RTE_ETH_TX_OFFLOAD_UDP_CKSUM) == 0)) {
 		sfc_err(sa, "TCP and UDP offloads can't be set independently");
 		rc = EINVAL;
 	}
@@ -309,7 +309,7 @@ sfc_tx_check_mode(struct sfc_adapter *sa, const struct rte_eth_txmode *txmode)
 	int rc = 0;
 
 	switch (txmode->mq_mode) {
-	case ETH_MQ_TX_NONE:
+	case RTE_ETH_MQ_TX_NONE:
 		break;
 	default:
 		sfc_err(sa, "Tx multi-queue mode %u not supported",
@@ -529,23 +529,23 @@ sfc_tx_qstart(struct sfc_adapter *sa, sfc_sw_index_t sw_index)
 	if (rc != 0)
 		goto fail_ev_qstart;
 
-	if (txq_info->offloads & DEV_TX_OFFLOAD_IPV4_CKSUM)
+	if (txq_info->offloads & RTE_ETH_TX_OFFLOAD_IPV4_CKSUM)
 		flags |= EFX_TXQ_CKSUM_IPV4;
 
-	if (txq_info->offloads & DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM)
+	if (txq_info->offloads & RTE_ETH_TX_OFFLOAD_OUTER_IPV4_CKSUM)
 		flags |= EFX_TXQ_CKSUM_INNER_IPV4;
 
-	if ((txq_info->offloads & DEV_TX_OFFLOAD_TCP_CKSUM) ||
-	    (txq_info->offloads & DEV_TX_OFFLOAD_UDP_CKSUM)) {
+	if ((txq_info->offloads & RTE_ETH_TX_OFFLOAD_TCP_CKSUM) ||
+	    (txq_info->offloads & RTE_ETH_TX_OFFLOAD_UDP_CKSUM)) {
 		flags |= EFX_TXQ_CKSUM_TCPUDP;
 
-		if (offloads_supported & DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM)
+		if (offloads_supported & RTE_ETH_TX_OFFLOAD_OUTER_IPV4_CKSUM)
 			flags |= EFX_TXQ_CKSUM_INNER_TCPUDP;
 	}
 
-	if (txq_info->offloads & (DEV_TX_OFFLOAD_TCP_TSO |
-				  DEV_TX_OFFLOAD_VXLAN_TNL_TSO |
-				  DEV_TX_OFFLOAD_GENEVE_TNL_TSO))
+	if (txq_info->offloads & (RTE_ETH_TX_OFFLOAD_TCP_TSO |
+				  RTE_ETH_TX_OFFLOAD_VXLAN_TNL_TSO |
+				  RTE_ETH_TX_OFFLOAD_GENEVE_TNL_TSO))
 		flags |= EFX_TXQ_FATSOV2;
 
 	rc = efx_tx_qcreate(sa->nic, txq->hw_index, 0, &txq->mem,
@@ -876,9 +876,9 @@ sfc_efx_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 
 		/*
 		 * Here VLAN TCI is expected to be zero in case if no
-		 * DEV_TX_OFFLOAD_VLAN_INSERT capability is advertised;
+		 * RTE_ETH_TX_OFFLOAD_VLAN_INSERT capability is advertised;
 		 * if the calling app ignores the absence of
-		 * DEV_TX_OFFLOAD_VLAN_INSERT and pushes VLAN TCI, then
+		 * RTE_ETH_TX_OFFLOAD_VLAN_INSERT and pushes VLAN TCI, then
 		 * TX_ERROR will occur
 		 */
 		pkt_descs += sfc_efx_tx_maybe_insert_tag(txq, m_seg, &pend);
@@ -1242,13 +1242,13 @@ struct sfc_dp_tx sfc_efx_tx = {
 		.hw_fw_caps	= SFC_DP_HW_FW_CAP_TX_EFX,
 	},
 	.features		= 0,
-	.dev_offload_capa	= DEV_TX_OFFLOAD_VLAN_INSERT |
-				  DEV_TX_OFFLOAD_MULTI_SEGS,
-	.queue_offload_capa	= DEV_TX_OFFLOAD_IPV4_CKSUM |
-				  DEV_TX_OFFLOAD_UDP_CKSUM |
-				  DEV_TX_OFFLOAD_TCP_CKSUM |
-				  DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM |
-				  DEV_TX_OFFLOAD_TCP_TSO,
+	.dev_offload_capa	= RTE_ETH_TX_OFFLOAD_VLAN_INSERT |
+				  RTE_ETH_TX_OFFLOAD_MULTI_SEGS,
+	.queue_offload_capa	= RTE_ETH_TX_OFFLOAD_IPV4_CKSUM |
+				  RTE_ETH_TX_OFFLOAD_UDP_CKSUM |
+				  RTE_ETH_TX_OFFLOAD_TCP_CKSUM |
+				  RTE_ETH_TX_OFFLOAD_OUTER_IPV4_CKSUM |
+				  RTE_ETH_TX_OFFLOAD_TCP_TSO,
 	.qsize_up_rings		= sfc_efx_tx_qsize_up_rings,
 	.qcreate		= sfc_efx_tx_qcreate,
 	.qdestroy		= sfc_efx_tx_qdestroy,

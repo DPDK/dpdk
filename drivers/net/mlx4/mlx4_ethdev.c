@@ -657,11 +657,11 @@ mlx4_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *info)
 	info->if_index = priv->if_index;
 	info->hash_key_size = MLX4_RSS_HASH_KEY_SIZE;
 	info->speed_capa =
-			ETH_LINK_SPEED_1G |
-			ETH_LINK_SPEED_10G |
-			ETH_LINK_SPEED_20G |
-			ETH_LINK_SPEED_40G |
-			ETH_LINK_SPEED_56G;
+			RTE_ETH_LINK_SPEED_1G |
+			RTE_ETH_LINK_SPEED_10G |
+			RTE_ETH_LINK_SPEED_20G |
+			RTE_ETH_LINK_SPEED_40G |
+			RTE_ETH_LINK_SPEED_56G;
 	info->flow_type_rss_offloads = mlx4_conv_rss_types(priv, 0, 1);
 
 	return 0;
@@ -821,13 +821,13 @@ mlx4_link_update(struct rte_eth_dev *dev, int wait_to_complete)
 	}
 	link_speed = ethtool_cmd_speed(&edata);
 	if (link_speed == -1)
-		dev_link.link_speed = ETH_SPEED_NUM_NONE;
+		dev_link.link_speed = RTE_ETH_SPEED_NUM_NONE;
 	else
 		dev_link.link_speed = link_speed;
 	dev_link.link_duplex = ((edata.duplex == DUPLEX_HALF) ?
-				ETH_LINK_HALF_DUPLEX : ETH_LINK_FULL_DUPLEX);
+				RTE_ETH_LINK_HALF_DUPLEX : RTE_ETH_LINK_FULL_DUPLEX);
 	dev_link.link_autoneg = !(dev->data->dev_conf.link_speeds &
-				  ETH_LINK_SPEED_FIXED);
+				  RTE_ETH_LINK_SPEED_FIXED);
 	dev->data->dev_link = dev_link;
 	return 0;
 }
@@ -863,13 +863,13 @@ mlx4_flow_ctrl_get(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 	}
 	fc_conf->autoneg = ethpause.autoneg;
 	if (ethpause.rx_pause && ethpause.tx_pause)
-		fc_conf->mode = RTE_FC_FULL;
+		fc_conf->mode = RTE_ETH_FC_FULL;
 	else if (ethpause.rx_pause)
-		fc_conf->mode = RTE_FC_RX_PAUSE;
+		fc_conf->mode = RTE_ETH_FC_RX_PAUSE;
 	else if (ethpause.tx_pause)
-		fc_conf->mode = RTE_FC_TX_PAUSE;
+		fc_conf->mode = RTE_ETH_FC_TX_PAUSE;
 	else
-		fc_conf->mode = RTE_FC_NONE;
+		fc_conf->mode = RTE_ETH_FC_NONE;
 	ret = 0;
 out:
 	MLX4_ASSERT(ret >= 0);
@@ -899,13 +899,13 @@ mlx4_flow_ctrl_set(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 
 	ifr.ifr_data = (void *)&ethpause;
 	ethpause.autoneg = fc_conf->autoneg;
-	if (((fc_conf->mode & RTE_FC_FULL) == RTE_FC_FULL) ||
-	    (fc_conf->mode & RTE_FC_RX_PAUSE))
+	if (((fc_conf->mode & RTE_ETH_FC_FULL) == RTE_ETH_FC_FULL) ||
+	    (fc_conf->mode & RTE_ETH_FC_RX_PAUSE))
 		ethpause.rx_pause = 1;
 	else
 		ethpause.rx_pause = 0;
-	if (((fc_conf->mode & RTE_FC_FULL) == RTE_FC_FULL) ||
-	    (fc_conf->mode & RTE_FC_TX_PAUSE))
+	if (((fc_conf->mode & RTE_ETH_FC_FULL) == RTE_ETH_FC_FULL) ||
+	    (fc_conf->mode & RTE_ETH_FC_TX_PAUSE))
 		ethpause.tx_pause = 1;
 	else
 		ethpause.tx_pause = 0;

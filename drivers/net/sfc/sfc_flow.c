@@ -392,7 +392,7 @@ sfc_flow_parse_vlan(const struct rte_flow_item *item,
 	const struct rte_flow_item_vlan *spec = NULL;
 	const struct rte_flow_item_vlan *mask = NULL;
 	const struct rte_flow_item_vlan supp_mask = {
-		.tci = rte_cpu_to_be_16(ETH_VLAN_ID_MAX),
+		.tci = rte_cpu_to_be_16(RTE_ETH_VLAN_ID_MAX),
 		.inner_type = RTE_BE16(0xffff),
 	};
 

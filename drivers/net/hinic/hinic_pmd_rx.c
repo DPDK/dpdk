@@ -504,14 +504,14 @@ static void hinic_fill_rss_type(struct nic_rss_type *rss_type,
 {
 	u64 rss_hf = rss_conf->rss_hf;
 
-	rss_type->ipv4 = (rss_hf & (ETH_RSS_IPV4 | ETH_RSS_FRAG_IPV4)) ? 1 : 0;
-	rss_type->tcp_ipv4 = (rss_hf & ETH_RSS_NONFRAG_IPV4_TCP) ? 1 : 0;
-	rss_type->ipv6 = (rss_hf & (ETH_RSS_IPV6 | ETH_RSS_FRAG_IPV6)) ? 1 : 0;
-	rss_type->ipv6_ext = (rss_hf & ETH_RSS_IPV6_EX) ? 1 : 0;
-	rss_type->tcp_ipv6 = (rss_hf & ETH_RSS_NONFRAG_IPV6_TCP) ? 1 : 0;
-	rss_type->tcp_ipv6_ext = (rss_hf & ETH_RSS_IPV6_TCP_EX) ? 1 : 0;
-	rss_type->udp_ipv4 = (rss_hf & ETH_RSS_NONFRAG_IPV4_UDP) ? 1 : 0;
-	rss_type->udp_ipv6 = (rss_hf & ETH_RSS_NONFRAG_IPV6_UDP) ? 1 : 0;
+	rss_type->ipv4 = (rss_hf & (RTE_ETH_RSS_IPV4 | RTE_ETH_RSS_FRAG_IPV4)) ? 1 : 0;
+	rss_type->tcp_ipv4 = (rss_hf & RTE_ETH_RSS_NONFRAG_IPV4_TCP) ? 1 : 0;
+	rss_type->ipv6 = (rss_hf & (RTE_ETH_RSS_IPV6 | RTE_ETH_RSS_FRAG_IPV6)) ? 1 : 0;
+	rss_type->ipv6_ext = (rss_hf & RTE_ETH_RSS_IPV6_EX) ? 1 : 0;
+	rss_type->tcp_ipv6 = (rss_hf & RTE_ETH_RSS_NONFRAG_IPV6_TCP) ? 1 : 0;
+	rss_type->tcp_ipv6_ext = (rss_hf & RTE_ETH_RSS_IPV6_TCP_EX) ? 1 : 0;
+	rss_type->udp_ipv4 = (rss_hf & RTE_ETH_RSS_NONFRAG_IPV4_UDP) ? 1 : 0;
+	rss_type->udp_ipv6 = (rss_hf & RTE_ETH_RSS_NONFRAG_IPV6_UDP) ? 1 : 0;
 }
 
 static void hinic_fillout_indir_tbl(struct hinic_nic_dev *nic_dev, u32 *indir)
@@ -588,8 +588,8 @@ static int hinic_setup_num_qps(struct hinic_nic_dev *nic_dev)
 {
 	int err, i;
 
-	if (!(nic_dev->flags & ETH_MQ_RX_RSS_FLAG)) {
-		nic_dev->flags &= ~ETH_MQ_RX_RSS_FLAG;
+	if (!(nic_dev->flags & RTE_ETH_MQ_RX_RSS_FLAG)) {
+		nic_dev->flags &= ~RTE_ETH_MQ_RX_RSS_FLAG;
 		nic_dev->num_rss = 0;
 		if (nic_dev->num_rq > 1) {
 			/* get rss template id */
@@ -599,7 +599,7 @@ static int hinic_setup_num_qps(struct hinic_nic_dev *nic_dev)
 				PMD_DRV_LOG(WARNING, "Alloc rss template failed");
 				return err;
 			}
-			nic_dev->flags |= ETH_MQ_RX_RSS_FLAG;
+			nic_dev->flags |= RTE_ETH_MQ_RX_RSS_FLAG;
 			for (i = 0; i < nic_dev->num_rq; i++)
 				hinic_add_rq_to_rx_queue_list(nic_dev, i);
 		}
@@ -610,12 +610,12 @@ static int hinic_setup_num_qps(struct hinic_nic_dev *nic_dev)
 
 static void hinic_destroy_num_qps(struct hinic_nic_dev *nic_dev)
 {
-	if (nic_dev->flags & ETH_MQ_RX_RSS_FLAG) {
+	if (nic_dev->flags & RTE_ETH_MQ_RX_RSS_FLAG) {
 		if (hinic_rss_template_free(nic_dev->hwdev,
 					    nic_dev->rss_tmpl_idx))
 			PMD_DRV_LOG(WARNING, "Free rss template failed");
 
-		nic_dev->flags &= ~ETH_MQ_RX_RSS_FLAG;
+		nic_dev->flags &= ~RTE_ETH_MQ_RX_RSS_FLAG;
 	}
 }
 
@@ -641,7 +641,7 @@ int hinic_config_mq_mode(struct rte_eth_dev *dev, bool on)
 	int ret = 0;
 
 	switch (dev_conf->rxmode.mq_mode) {
-	case ETH_MQ_RX_RSS:
+	case RTE_ETH_MQ_RX_RSS:
 		ret = hinic_config_mq_rx_rss(nic_dev, on);
 		break;
 	default:
@@ -662,7 +662,7 @@ int hinic_rx_configure(struct rte_eth_dev *dev)
 	int lro_wqe_num;
 	int buf_size;
 
-	if (nic_dev->flags & ETH_MQ_RX_RSS_FLAG) {
+	if (nic_dev->flags & RTE_ETH_MQ_RX_RSS_FLAG) {
 		if (rss_conf.rss_hf == 0) {
 			rss_conf.rss_hf = HINIC_RSS_OFFLOAD_ALL;
 		} else if ((rss_conf.rss_hf & HINIC_RSS_OFFLOAD_ALL) == 0) {
@@ -678,7 +678,7 @@ int hinic_rx_configure(struct rte_eth_dev *dev)
 	}
 
 	/* Enable both L3/L4 rx checksum offload */
-	if (dev->data->dev_conf.rxmode.offloads & DEV_RX_OFFLOAD_CHECKSUM)
+	if (dev->data->dev_conf.rxmode.offloads & RTE_ETH_RX_OFFLOAD_CHECKSUM)
 		nic_dev->rx_csum_en = HINIC_RX_CSUM_OFFLOAD_EN;
 
 	err = hinic_set_rx_csum_offload(nic_dev->hwdev,
@@ -687,7 +687,7 @@ int hinic_rx_configure(struct rte_eth_dev *dev)
 		goto rx_csum_ofl_err;
 
 	/* config lro */
-	lro_en = dev->data->dev_conf.rxmode.offloads & DEV_RX_OFFLOAD_TCP_LRO ?
+	lro_en = dev->data->dev_conf.rxmode.offloads & RTE_ETH_RX_OFFLOAD_TCP_LRO ?
 			true : false;
 	max_lro_size = dev->data->dev_conf.rxmode.max_lro_pkt_size;
 	buf_size = nic_dev->hwdev->nic_io->rq_buf_size;
@@ -726,7 +726,7 @@ void hinic_rx_remove_configure(struct rte_eth_dev *dev)
 {
 	struct hinic_nic_dev *nic_dev = HINIC_ETH_DEV_TO_PRIVATE_NIC_DEV(dev);
 
-	if (nic_dev->flags & ETH_MQ_RX_RSS_FLAG) {
+	if (nic_dev->flags & RTE_ETH_MQ_RX_RSS_FLAG) {
 		hinic_rss_deinit(nic_dev);
 		hinic_destroy_num_qps(nic_dev);
 	}

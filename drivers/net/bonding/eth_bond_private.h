@@ -167,8 +167,8 @@ struct bond_dev_private {
 	struct rte_eth_desc_lim tx_desc_lim;	/**< Tx descriptor limits */
 
 	uint16_t reta_size;
-	struct rte_eth_rss_reta_entry64 reta_conf[ETH_RSS_RETA_SIZE_512 /
-			RTE_RETA_GROUP_SIZE];
+	struct rte_eth_rss_reta_entry64 reta_conf[RTE_ETH_RSS_RETA_SIZE_512 /
+			RTE_ETH_RETA_GROUP_SIZE];
 
 	uint8_t rss_key[52];				/**< 52-byte hash key buffer. */
 	uint8_t rss_key_len;				/**< hash key length in bytes. */

@@ -125,8 +125,8 @@ static pthread_mutex_t internal_list_lock = PTHREAD_MUTEX_INITIALIZER;
 
 static struct rte_eth_link pmd_link = {
 		.link_speed = 10000,
-		.link_duplex = ETH_LINK_FULL_DUPLEX,
-		.link_status = ETH_LINK_DOWN
+		.link_duplex = RTE_ETH_LINK_FULL_DUPLEX,
+		.link_status = RTE_ETH_LINK_DOWN
 };
 
 struct rte_vhost_vring_state {
@@ -817,7 +817,7 @@ new_device(int vid)
 
 	rte_vhost_get_mtu(vid, &eth_dev->data->mtu);
 
-	eth_dev->data->dev_link.link_status = ETH_LINK_UP;
+	eth_dev->data->dev_link.link_status = RTE_ETH_LINK_UP;
 
 	rte_atomic32_set(&internal->dev_attached, 1);
 	update_queuing_status(eth_dev);
@@ -852,7 +852,7 @@ destroy_device(int vid)
 	rte_atomic32_set(&internal->dev_attached, 0);
 	update_queuing_status(eth_dev);
 
-	eth_dev->data->dev_link.link_status = ETH_LINK_DOWN;
+	eth_dev->data->dev_link.link_status = RTE_ETH_LINK_DOWN;
 
 	if (eth_dev->data->rx_queues && eth_dev->data->tx_queues) {
 		for (i = 0; i < eth_dev->data->nb_rx_queues; i++) {
@@ -1118,7 +1118,7 @@ eth_dev_configure(struct rte_eth_dev *dev)
 	if (vhost_driver_setup(dev) < 0)
 		return -1;
 
-	internal->vlan_strip = !!(rxmode->offloads & DEV_RX_OFFLOAD_VLAN_STRIP);
+	internal->vlan_strip = !!(rxmode->offloads & RTE_ETH_RX_OFFLOAD_VLAN_STRIP);
 
 	return 0;
 }
@@ -1267,9 +1267,9 @@ eth_dev_info(struct rte_eth_dev *dev,
 	dev_info->max_tx_queues = internal->max_queues;
 	dev_info->min_rx_bufsize = 0;
 
-	dev_info->tx_offload_capa = DEV_TX_OFFLOAD_MULTI_SEGS |
-				DEV_TX_OFFLOAD_VLAN_INSERT;
-	dev_info->rx_offload_capa = DEV_RX_OFFLOAD_VLAN_STRIP;
+	dev_info->tx_offload_capa = RTE_ETH_TX_OFFLOAD_MULTI_SEGS |
+				RTE_ETH_TX_OFFLOAD_VLAN_INSERT;
+	dev_info->rx_offload_capa = RTE_ETH_RX_OFFLOAD_VLAN_STRIP;
 
 	return 0;
 }

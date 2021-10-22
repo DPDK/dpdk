@@ -1536,7 +1536,7 @@ hns3_dcb_hw_configure(struct hns3_adapter *hns)
 		return ret;
 	}
 
-	if (hw->data->dev_conf.dcb_capability_en & ETH_DCB_PFC_SUPPORT) {
+	if (hw->data->dev_conf.dcb_capability_en & RTE_ETH_DCB_PFC_SUPPORT) {
 		dcb_rx_conf = &hw->data->dev_conf.rx_adv_conf.dcb_rx_conf;
 		if (dcb_rx_conf->nb_tcs == 0)
 			hw->dcb_info.pfc_en = 1; /* tc0 only */
@@ -1693,7 +1693,7 @@ hns3_update_queue_map_configure(struct hns3_adapter *hns)
 	uint16_t nb_tx_q = hw->data->nb_tx_queues;
 	int ret;
 
-	if ((uint32_t)mq_mode & ETH_MQ_RX_DCB_FLAG)
+	if ((uint32_t)mq_mode & RTE_ETH_MQ_RX_DCB_FLAG)
 		return 0;
 
 	ret = hns3_dcb_update_tc_queue_mapping(hw, nb_rx_q, nb_tx_q);
@@ -1713,22 +1713,22 @@ static void
 hns3_get_fc_mode(struct hns3_hw *hw, enum rte_eth_fc_mode mode)
 {
 	switch (mode) {
-	case RTE_FC_NONE:
+	case RTE_ETH_FC_NONE:
 		hw->requested_fc_mode = HNS3_FC_NONE;
 		break;
-	case RTE_FC_RX_PAUSE:
+	case RTE_ETH_FC_RX_PAUSE:
 		hw->requested_fc_mode = HNS3_FC_RX_PAUSE;
 		break;
-	case RTE_FC_TX_PAUSE:
+	case RTE_ETH_FC_TX_PAUSE:
 		hw->requested_fc_mode = HNS3_FC_TX_PAUSE;
 		break;
-	case RTE_FC_FULL:
+	case RTE_ETH_FC_FULL:
 		hw->requested_fc_mode = HNS3_FC_FULL;
 		break;
 	default:
 		hw->requested_fc_mode = HNS3_FC_NONE;
 		hns3_warn(hw, "fc_mode(%u) exceeds member scope and is "
-			  "configured to RTE_FC_NONE", mode);
+			  "configured to RTE_ETH_FC_NONE", mode);
 		break;
 	}
 }

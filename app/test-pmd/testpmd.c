@@ -349,7 +349,7 @@ uint64_t noisy_lkup_num_reads_writes;
 /*
  * Receive Side Scaling (RSS) configuration.
  */
-uint64_t rss_hf = ETH_RSS_IP; /* RSS IP by default. */
+uint64_t rss_hf = RTE_ETH_RSS_IP; /* RSS IP by default. */
 
 /*
  * Port topology configuration
@@ -460,12 +460,12 @@ lcoreid_t latencystats_lcore_id = -1;
 struct rte_eth_rxmode rx_mode;
 
 struct rte_eth_txmode tx_mode = {
-	.offloads = DEV_TX_OFFLOAD_MBUF_FAST_FREE,
+	.offloads = RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE,
 };
 
-struct rte_fdir_conf fdir_conf = {
+struct rte_eth_fdir_conf fdir_conf = {
 	.mode = RTE_FDIR_MODE_NONE,
-	.pballoc = RTE_FDIR_PBALLOC_64K,
+	.pballoc = RTE_ETH_FDIR_PBALLOC_64K,
 	.status = RTE_FDIR_REPORT_STATUS,
 	.mask = {
 		.vlan_tci_mask = 0xFFEF,
@@ -524,7 +524,7 @@ uint8_t gro_flush_cycles = GRO_DEFAULT_FLUSH_CYCLES;
 /*
  * hexadecimal bitmask of RX mq mode can be enabled.
  */
-enum rte_eth_rx_mq_mode rx_mq_mode = ETH_MQ_RX_VMDQ_DCB_RSS;
+enum rte_eth_rx_mq_mode rx_mq_mode = RTE_ETH_MQ_RX_VMDQ_DCB_RSS;
 
 /*
  * Used to set forced link speed
@@ -1578,9 +1578,9 @@ init_config_port_offloads(portid_t pid, uint32_t socket_id)
 	if (ret != 0)
 		rte_exit(EXIT_FAILURE, "rte_eth_dev_info_get() failed\n");
 
-	if (!(port->dev_info.tx_offload_capa & DEV_TX_OFFLOAD_MBUF_FAST_FREE))
+	if (!(port->dev_info.tx_offload_capa & RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE))
 		port->dev_conf.txmode.offloads &=
-			~DEV_TX_OFFLOAD_MBUF_FAST_FREE;
+			~RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE;
 
 	/* Apply Rx offloads configuration */
 	for (i = 0; i < port->dev_info.max_rx_queues; i++)
@@ -1717,8 +1717,8 @@ init_config(void)
 
 	init_port_config();
 
-	gso_types = DEV_TX_OFFLOAD_TCP_TSO | DEV_TX_OFFLOAD_VXLAN_TNL_TSO |
-		DEV_TX_OFFLOAD_GRE_TNL_TSO | DEV_TX_OFFLOAD_UDP_TSO;
+	gso_types = RTE_ETH_TX_OFFLOAD_TCP_TSO | RTE_ETH_TX_OFFLOAD_VXLAN_TNL_TSO |
+		RTE_ETH_TX_OFFLOAD_GRE_TNL_TSO | RTE_ETH_TX_OFFLOAD_UDP_TSO;
 	/*
 	 * Records which Mbuf pool to use by each logical core, if needed.
 	 */
@@ -3466,7 +3466,7 @@ check_all_ports_link_status(uint32_t port_mask)
 				continue;
 			}
 			/* clear all_ports_up flag if any link down */
-			if (link.link_status == ETH_LINK_DOWN) {
+			if (link.link_status == RTE_ETH_LINK_DOWN) {
 				all_ports_up = 0;
 				break;
 			}
@@ -3769,17 +3769,17 @@ init_port_config(void)
 			if (port->dev_conf.rx_adv_conf.rss_conf.rss_hf != 0) {
 				port->dev_conf.rxmode.mq_mode =
 					(enum rte_eth_rx_mq_mode)
-						(rx_mq_mode & ETH_MQ_RX_RSS);
+						(rx_mq_mode & RTE_ETH_MQ_RX_RSS);
 			} else {
-				port->dev_conf.rxmode.mq_mode = ETH_MQ_RX_NONE;
+				port->dev_conf.rxmode.mq_mode = RTE_ETH_MQ_RX_NONE;
 				port->dev_conf.rxmode.offloads &=
-						~DEV_RX_OFFLOAD_RSS_HASH;
+						~RTE_ETH_RX_OFFLOAD_RSS_HASH;
 
 				for (i = 0;
 				     i < port->dev_info.nb_rx_queues;
 				     i++)
 					port->rx_conf[i].offloads &=
-						~DEV_RX_OFFLOAD_RSS_HASH;
+						~RTE_ETH_RX_OFFLOAD_RSS_HASH;
 			}
 		}
 
@@ -3867,9 +3867,9 @@ get_eth_dcb_conf(portid_t pid, struct rte_eth_conf *eth_conf,
 		vmdq_rx_conf->enable_default_pool = 0;
 		vmdq_rx_conf->default_pool = 0;
 		vmdq_rx_conf->nb_queue_pools =
-			(num_tcs ==  ETH_4_TCS ? ETH_32_POOLS : ETH_16_POOLS);
+			(num_tcs ==  RTE_ETH_4_TCS ? RTE_ETH_32_POOLS : RTE_ETH_16_POOLS);
 		vmdq_tx_conf->nb_queue_pools =
-			(num_tcs ==  ETH_4_TCS ? ETH_32_POOLS : ETH_16_POOLS);
+			(num_tcs ==  RTE_ETH_4_TCS ? RTE_ETH_32_POOLS : RTE_ETH_16_POOLS);
 
 		vmdq_rx_conf->nb_pool_maps = vmdq_rx_conf->nb_queue_pools;
 		for (i = 0; i < vmdq_rx_conf->nb_pool_maps; i++) {
@@ -3877,7 +3877,7 @@ get_eth_dcb_conf(portid_t pid, struct rte_eth_conf *eth_conf,
 			vmdq_rx_conf->pool_map[i].pools =
 				1 << (i % vmdq_rx_conf->nb_queue_pools);
 		}
-		for (i = 0; i < ETH_DCB_NUM_USER_PRIORITIES; i++) {
+		for (i = 0; i < RTE_ETH_DCB_NUM_USER_PRIORITIES; i++) {
 			vmdq_rx_conf->dcb_tc[i] = i % num_tcs;
 			vmdq_tx_conf->dcb_tc[i] = i % num_tcs;
 		}
@@ -3885,8 +3885,8 @@ get_eth_dcb_conf(portid_t pid, struct rte_eth_conf *eth_conf,
 		/* set DCB mode of RX and TX of multiple queues */
 		eth_conf->rxmode.mq_mode =
 				(enum rte_eth_rx_mq_mode)
-					(rx_mq_mode & ETH_MQ_RX_VMDQ_DCB);
-		eth_conf->txmode.mq_mode = ETH_MQ_TX_VMDQ_DCB;
+					(rx_mq_mode & RTE_ETH_MQ_RX_VMDQ_DCB);
+		eth_conf->txmode.mq_mode = RTE_ETH_MQ_TX_VMDQ_DCB;
 	} else {
 		struct rte_eth_dcb_rx_conf *rx_conf =
 				&eth_conf->rx_adv_conf.dcb_rx_conf;
@@ -3902,23 +3902,23 @@ get_eth_dcb_conf(portid_t pid, struct rte_eth_conf *eth_conf,
 		rx_conf->nb_tcs = num_tcs;
 		tx_conf->nb_tcs = num_tcs;
 
-		for (i = 0; i < ETH_DCB_NUM_USER_PRIORITIES; i++) {
+		for (i = 0; i < RTE_ETH_DCB_NUM_USER_PRIORITIES; i++) {
 			rx_conf->dcb_tc[i] = i % num_tcs;
 			tx_conf->dcb_tc[i] = i % num_tcs;
 		}
 
 		eth_conf->rxmode.mq_mode =
 				(enum rte_eth_rx_mq_mode)
-					(rx_mq_mode & ETH_MQ_RX_DCB_RSS);
+					(rx_mq_mode & RTE_ETH_MQ_RX_DCB_RSS);
 		eth_conf->rx_adv_conf.rss_conf = rss_conf;
-		eth_conf->txmode.mq_mode = ETH_MQ_TX_DCB;
+		eth_conf->txmode.mq_mode = RTE_ETH_MQ_TX_DCB;
 	}
 
 	if (pfc_en)
 		eth_conf->dcb_capability_en =
-				ETH_DCB_PG_SUPPORT | ETH_DCB_PFC_SUPPORT;
+				RTE_ETH_DCB_PG_SUPPORT | RTE_ETH_DCB_PFC_SUPPORT;
 	else
-		eth_conf->dcb_capability_en = ETH_DCB_PG_SUPPORT;
+		eth_conf->dcb_capability_en = RTE_ETH_DCB_PG_SUPPORT;
 
 	return 0;
 }
@@ -3947,7 +3947,7 @@ init_port_dcb_config(portid_t pid,
 	retval = get_eth_dcb_conf(pid, &port_conf, dcb_mode, num_tcs, pfc_en);
 	if (retval < 0)
 		return retval;
-	port_conf.rxmode.offloads |= DEV_RX_OFFLOAD_VLAN_FILTER;
+	port_conf.rxmode.offloads |= RTE_ETH_RX_OFFLOAD_VLAN_FILTER;
 
 	/* re-configure the device . */
 	retval = rte_eth_dev_configure(pid, nb_rxq, nb_rxq, &port_conf);
@@ -3997,7 +3997,7 @@ init_port_dcb_config(portid_t pid,
 
 	rxtx_port_config(pid);
 	/* VLAN filter */
-	rte_port->dev_conf.rxmode.offloads |= DEV_RX_OFFLOAD_VLAN_FILTER;
+	rte_port->dev_conf.rxmode.offloads |= RTE_ETH_RX_OFFLOAD_VLAN_FILTER;
 	for (i = 0; i < RTE_DIM(vlan_tags); i++)
 		rx_vft_set(pid, vlan_tags[i], 1);
 

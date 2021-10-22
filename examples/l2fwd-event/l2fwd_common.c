@@ -14,7 +14,7 @@ l2fwd_event_init_ports(struct l2fwd_resources *rsrc)
 			.split_hdr_size = 0,
 		},
 		.txmode = {
-			.mq_mode = ETH_MQ_TX_NONE,
+			.mq_mode = RTE_ETH_MQ_TX_NONE,
 		},
 	};
 	uint16_t nb_ports_available = 0;
@@ -22,9 +22,9 @@ l2fwd_event_init_ports(struct l2fwd_resources *rsrc)
 	int ret;
 
 	if (rsrc->event_mode) {
-		port_conf.rxmode.mq_mode = ETH_MQ_RX_RSS;
+		port_conf.rxmode.mq_mode = RTE_ETH_MQ_RX_RSS;
 		port_conf.rx_adv_conf.rss_conf.rss_key = NULL;
-		port_conf.rx_adv_conf.rss_conf.rss_hf = ETH_RSS_IP;
+		port_conf.rx_adv_conf.rss_conf.rss_hf = RTE_ETH_RSS_IP;
 	}
 
 	/* Initialise each port */
@@ -60,9 +60,9 @@ l2fwd_event_init_ports(struct l2fwd_resources *rsrc)
 				local_port_conf.rx_adv_conf.rss_conf.rss_hf);
 		}
 
-		if (dev_info.tx_offload_capa & DEV_TX_OFFLOAD_MBUF_FAST_FREE)
+		if (dev_info.tx_offload_capa & RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE)
 			local_port_conf.txmode.offloads |=
-				DEV_TX_OFFLOAD_MBUF_FAST_FREE;
+				RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE;
 		/* Configure RX and TX queue. 8< */
 		ret = rte_eth_dev_configure(port_id, 1, 1, &local_port_conf);
 		if (ret < 0)

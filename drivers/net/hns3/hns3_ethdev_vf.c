@@ -807,15 +807,15 @@ hns3vf_dev_configure(struct rte_eth_dev *dev)
 	}
 
 	hw->adapter_state = HNS3_NIC_CONFIGURING;
-	if (conf->link_speeds & ETH_LINK_SPEED_FIXED) {
+	if (conf->link_speeds & RTE_ETH_LINK_SPEED_FIXED) {
 		hns3_err(hw, "setting link speed/duplex not supported");
 		ret = -EINVAL;
 		goto cfg_err;
 	}
 
 	/* When RSS is not configured, redirect the packet queue 0 */
-	if ((uint32_t)mq_mode & ETH_MQ_RX_RSS_FLAG) {
-		conf->rxmode.offloads |= DEV_RX_OFFLOAD_RSS_HASH;
+	if ((uint32_t)mq_mode & RTE_ETH_MQ_RX_RSS_FLAG) {
+		conf->rxmode.offloads |= RTE_ETH_RX_OFFLOAD_RSS_HASH;
 		hw->rss_dis_flag = false;
 		rss_conf = conf->rx_adv_conf.rss_conf;
 		ret = hns3_dev_rss_hash_update(dev, &rss_conf);
@@ -832,7 +832,7 @@ hns3vf_dev_configure(struct rte_eth_dev *dev)
 		goto cfg_err;
 
 	/* config hardware GRO */
-	gro_en = conf->rxmode.offloads & DEV_RX_OFFLOAD_TCP_LRO ? true : false;
+	gro_en = conf->rxmode.offloads & RTE_ETH_RX_OFFLOAD_TCP_LRO ? true : false;
 	ret = hns3_config_gro(hw, gro_en);
 	if (ret)
 		goto cfg_err;
@@ -935,32 +935,32 @@ hns3vf_dev_infos_get(struct rte_eth_dev *eth_dev, struct rte_eth_dev_info *info)
 	info->max_mtu = info->max_rx_pktlen - HNS3_ETH_OVERHEAD;
 	info->max_lro_pkt_size = HNS3_MAX_LRO_SIZE;
 
-	info->rx_offload_capa = (DEV_RX_OFFLOAD_IPV4_CKSUM |
-				 DEV_RX_OFFLOAD_UDP_CKSUM |
-				 DEV_RX_OFFLOAD_TCP_CKSUM |
-				 DEV_RX_OFFLOAD_SCTP_CKSUM |
-				 DEV_RX_OFFLOAD_OUTER_IPV4_CKSUM |
-				 DEV_RX_OFFLOAD_OUTER_UDP_CKSUM |
-				 DEV_RX_OFFLOAD_SCATTER |
-				 DEV_RX_OFFLOAD_VLAN_STRIP |
-				 DEV_RX_OFFLOAD_VLAN_FILTER |
-				 DEV_RX_OFFLOAD_RSS_HASH |
-				 DEV_RX_OFFLOAD_TCP_LRO);
-	info->tx_offload_capa = (DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM |
-				 DEV_TX_OFFLOAD_IPV4_CKSUM |
-				 DEV_TX_OFFLOAD_TCP_CKSUM |
-				 DEV_TX_OFFLOAD_UDP_CKSUM |
-				 DEV_TX_OFFLOAD_SCTP_CKSUM |
-				 DEV_TX_OFFLOAD_MULTI_SEGS |
-				 DEV_TX_OFFLOAD_TCP_TSO |
-				 DEV_TX_OFFLOAD_VXLAN_TNL_TSO |
-				 DEV_TX_OFFLOAD_GRE_TNL_TSO |
-				 DEV_TX_OFFLOAD_GENEVE_TNL_TSO |
-				 DEV_TX_OFFLOAD_MBUF_FAST_FREE |
+	info->rx_offload_capa = (RTE_ETH_RX_OFFLOAD_IPV4_CKSUM |
+				 RTE_ETH_RX_OFFLOAD_UDP_CKSUM |
+				 RTE_ETH_RX_OFFLOAD_TCP_CKSUM |
+				 RTE_ETH_RX_OFFLOAD_SCTP_CKSUM |
+				 RTE_ETH_RX_OFFLOAD_OUTER_IPV4_CKSUM |
+				 RTE_ETH_RX_OFFLOAD_OUTER_UDP_CKSUM |
+				 RTE_ETH_RX_OFFLOAD_SCATTER |
+				 RTE_ETH_RX_OFFLOAD_VLAN_STRIP |
+				 RTE_ETH_RX_OFFLOAD_VLAN_FILTER |
+				 RTE_ETH_RX_OFFLOAD_RSS_HASH |
+				 RTE_ETH_RX_OFFLOAD_TCP_LRO);
+	info->tx_offload_capa = (RTE_ETH_TX_OFFLOAD_OUTER_IPV4_CKSUM |
+				 RTE_ETH_TX_OFFLOAD_IPV4_CKSUM |
+				 RTE_ETH_TX_OFFLOAD_TCP_CKSUM |
+				 RTE_ETH_TX_OFFLOAD_UDP_CKSUM |
+				 RTE_ETH_TX_OFFLOAD_SCTP_CKSUM |
+				 RTE_ETH_TX_OFFLOAD_MULTI_SEGS |
+				 RTE_ETH_TX_OFFLOAD_TCP_TSO |
+				 RTE_ETH_TX_OFFLOAD_VXLAN_TNL_TSO |
+				 RTE_ETH_TX_OFFLOAD_GRE_TNL_TSO |
+				 RTE_ETH_TX_OFFLOAD_GENEVE_TNL_TSO |
+				 RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE |
 				 hns3_txvlan_cap_get(hw));
 
 	if (hns3_dev_get_support(hw, OUTER_UDP_CKSUM))
-		info->tx_offload_capa |= DEV_TX_OFFLOAD_OUTER_UDP_CKSUM;
+		info->tx_offload_capa |= RTE_ETH_TX_OFFLOAD_OUTER_UDP_CKSUM;
 
 	if (hns3_dev_get_support(hw, INDEP_TXRX))
 		info->dev_capa = RTE_ETH_DEV_CAPA_RUNTIME_RX_QUEUE_SETUP |
@@ -1640,10 +1640,10 @@ hns3vf_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 
 	tmp_mask = (unsigned int)mask;
 
-	if (tmp_mask & ETH_VLAN_FILTER_MASK) {
+	if (tmp_mask & RTE_ETH_VLAN_FILTER_MASK) {
 		rte_spinlock_lock(&hw->lock);
 		/* Enable or disable VLAN filter */
-		if (dev_conf->rxmode.offloads & DEV_RX_OFFLOAD_VLAN_FILTER)
+		if (dev_conf->rxmode.offloads & RTE_ETH_RX_OFFLOAD_VLAN_FILTER)
 			ret = hns3vf_en_vlan_filter(hw, true);
 		else
 			ret = hns3vf_en_vlan_filter(hw, false);
@@ -1653,10 +1653,10 @@ hns3vf_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 	}
 
 	/* Vlan stripping setting */
-	if (tmp_mask & ETH_VLAN_STRIP_MASK) {
+	if (tmp_mask & RTE_ETH_VLAN_STRIP_MASK) {
 		rte_spinlock_lock(&hw->lock);
 		/* Enable or disable VLAN stripping */
-		if (dev_conf->rxmode.offloads & DEV_RX_OFFLOAD_VLAN_STRIP)
+		if (dev_conf->rxmode.offloads & RTE_ETH_RX_OFFLOAD_VLAN_STRIP)
 			ret = hns3vf_en_hw_strip_rxvtag(hw, true);
 		else
 			ret = hns3vf_en_hw_strip_rxvtag(hw, false);
@@ -1724,7 +1724,7 @@ hns3vf_restore_vlan_conf(struct hns3_adapter *hns)
 	int ret;
 
 	dev_conf = &hw->data->dev_conf;
-	en = dev_conf->rxmode.offloads & DEV_RX_OFFLOAD_VLAN_STRIP ? true
+	en = dev_conf->rxmode.offloads & RTE_ETH_RX_OFFLOAD_VLAN_STRIP ? true
 								   : false;
 	ret = hns3vf_en_hw_strip_rxvtag(hw, en);
 	if (ret)
@@ -1749,8 +1749,8 @@ hns3vf_dev_configure_vlan(struct rte_eth_dev *dev)
 	}
 
 	/* Apply vlan offload setting */
-	ret = hns3vf_vlan_offload_set(dev, ETH_VLAN_STRIP_MASK |
-					ETH_VLAN_FILTER_MASK);
+	ret = hns3vf_vlan_offload_set(dev, RTE_ETH_VLAN_STRIP_MASK |
+					RTE_ETH_VLAN_FILTER_MASK);
 	if (ret)
 		hns3_err(hw, "dev config vlan offload failed, ret = %d.", ret);
 
@@ -2059,7 +2059,7 @@ hns3vf_do_stop(struct hns3_adapter *hns)
 	struct hns3_hw *hw = &hns->hw;
 	int ret;
 
-	hw->mac.link_status = ETH_LINK_DOWN;
+	hw->mac.link_status = RTE_ETH_LINK_DOWN;
 
 	/*
 	 * The "hns3vf_do_stop" function will also be called by .stop_service to
@@ -2218,31 +2218,31 @@ hns3vf_dev_link_update(struct rte_eth_dev *eth_dev,
 
 	memset(&new_link, 0, sizeof(new_link));
 	switch (mac->link_speed) {
-	case ETH_SPEED_NUM_10M:
-	case ETH_SPEED_NUM_100M:
-	case ETH_SPEED_NUM_1G:
-	case ETH_SPEED_NUM_10G:
-	case ETH_SPEED_NUM_25G:
-	case ETH_SPEED_NUM_40G:
-	case ETH_SPEED_NUM_50G:
-	case ETH_SPEED_NUM_100G:
-	case ETH_SPEED_NUM_200G:
+	case RTE_ETH_SPEED_NUM_10M:
+	case RTE_ETH_SPEED_NUM_100M:
+	case RTE_ETH_SPEED_NUM_1G:
+	case RTE_ETH_SPEED_NUM_10G:
+	case RTE_ETH_SPEED_NUM_25G:
+	case RTE_ETH_SPEED_NUM_40G:
+	case RTE_ETH_SPEED_NUM_50G:
+	case RTE_ETH_SPEED_NUM_100G:
+	case RTE_ETH_SPEED_NUM_200G:
 		if (mac->link_status)
 			new_link.link_speed = mac->link_speed;
 		break;
 	default:
 		if (mac->link_status)
-			new_link.link_speed = ETH_SPEED_NUM_UNKNOWN;
+			new_link.link_speed = RTE_ETH_SPEED_NUM_UNKNOWN;
 		break;
 	}
 
 	if (!mac->link_status)
-		new_link.link_speed = ETH_SPEED_NUM_NONE;
+		new_link.link_speed = RTE_ETH_SPEED_NUM_NONE;
 
 	new_link.link_duplex = mac->link_duplex;
-	new_link.link_status = mac->link_status ? ETH_LINK_UP : ETH_LINK_DOWN;
+	new_link.link_status = mac->link_status ? RTE_ETH_LINK_UP : RTE_ETH_LINK_DOWN;
 	new_link.link_autoneg =
-	    !(eth_dev->data->dev_conf.link_speeds & ETH_LINK_SPEED_FIXED);
+	    !(eth_dev->data->dev_conf.link_speeds & RTE_ETH_LINK_SPEED_FIXED);
 
 	return rte_eth_linkstatus_set(eth_dev, &new_link);
 }
@@ -2570,11 +2570,11 @@ hns3vf_stop_service(struct hns3_adapter *hns)
 		 * Make sure call update link status before hns3vf_stop_poll_job
 		 * because update link status depend on polling job exist.
 		 */
-		hns3vf_update_link_status(hw, ETH_LINK_DOWN, hw->mac.link_speed,
+		hns3vf_update_link_status(hw, RTE_ETH_LINK_DOWN, hw->mac.link_speed,
 					  hw->mac.link_duplex);
 		hns3vf_stop_poll_job(eth_dev);
 	}
-	hw->mac.link_status = ETH_LINK_DOWN;
+	hw->mac.link_status = RTE_ETH_LINK_DOWN;
 
 	hns3_set_rxtx_function(eth_dev);
 	rte_wmb();

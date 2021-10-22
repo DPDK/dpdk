@@ -712,7 +712,7 @@ int
 virtio_dev_close(struct rte_eth_dev *dev)
 {
 	struct virtio_hw *hw = dev->data->dev_private;
-	struct rte_intr_conf *intr_conf = &dev->data->dev_conf.intr_conf;
+	struct rte_eth_intr_conf *intr_conf = &dev->data->dev_conf.intr_conf;
 
 	PMD_INIT_LOG(DEBUG, "virtio_dev_close");
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
@@ -1774,7 +1774,7 @@ virtio_init_device(struct rte_eth_dev *eth_dev, uint64_t req_features)
 		     hw->mac_addr[0], hw->mac_addr[1], hw->mac_addr[2],
 		     hw->mac_addr[3], hw->mac_addr[4], hw->mac_addr[5]);
 
-	if (hw->speed == ETH_SPEED_NUM_UNKNOWN) {
+	if (hw->speed == RTE_ETH_SPEED_NUM_UNKNOWN) {
 		if (virtio_with_feature(hw, VIRTIO_NET_F_SPEED_DUPLEX)) {
 			config = &local_config;
 			virtio_read_dev_config(hw,
@@ -1788,7 +1788,7 @@ virtio_init_device(struct rte_eth_dev *eth_dev, uint64_t req_features)
 		}
 	}
 	if (hw->duplex == DUPLEX_UNKNOWN)
-		hw->duplex = ETH_LINK_FULL_DUPLEX;
+		hw->duplex = RTE_ETH_LINK_FULL_DUPLEX;
 	PMD_INIT_LOG(DEBUG, "link speed = %d, duplex = %d",
 		hw->speed, hw->duplex);
 	if (virtio_with_feature(hw, VIRTIO_NET_F_CTRL_VQ)) {
@@ -1887,7 +1887,7 @@ int
 eth_virtio_dev_init(struct rte_eth_dev *eth_dev)
 {
 	struct virtio_hw *hw = eth_dev->data->dev_private;
-	uint32_t speed = ETH_SPEED_NUM_UNKNOWN;
+	uint32_t speed = RTE_ETH_SPEED_NUM_UNKNOWN;
 	int vectorized = 0;
 	int ret;
 
@@ -1958,22 +1958,22 @@ static uint32_t
 virtio_dev_speed_capa_get(uint32_t speed)
 {
 	switch (speed) {
-	case ETH_SPEED_NUM_10G:
-		return ETH_LINK_SPEED_10G;
-	case ETH_SPEED_NUM_20G:
-		return ETH_LINK_SPEED_20G;
-	case ETH_SPEED_NUM_25G:
-		return ETH_LINK_SPEED_25G;
-	case ETH_SPEED_NUM_40G:
-		return ETH_LINK_SPEED_40G;
-	case ETH_SPEED_NUM_50G:
-		return ETH_LINK_SPEED_50G;
-	case ETH_SPEED_NUM_56G:
-		return ETH_LINK_SPEED_56G;
-	case ETH_SPEED_NUM_100G:
-		return ETH_LINK_SPEED_100G;
-	case ETH_SPEED_NUM_200G:
-		return ETH_LINK_SPEED_200G;
+	case RTE_ETH_SPEED_NUM_10G:
+		return RTE_ETH_LINK_SPEED_10G;
+	case RTE_ETH_SPEED_NUM_20G:
+		return RTE_ETH_LINK_SPEED_20G;
+	case RTE_ETH_SPEED_NUM_25G:
+		return RTE_ETH_LINK_SPEED_25G;
+	case RTE_ETH_SPEED_NUM_40G:
+		return RTE_ETH_LINK_SPEED_40G;
+	case RTE_ETH_SPEED_NUM_50G:
+		return RTE_ETH_LINK_SPEED_50G;
+	case RTE_ETH_SPEED_NUM_56G:
+		return RTE_ETH_LINK_SPEED_56G;
+	case RTE_ETH_SPEED_NUM_100G:
+		return RTE_ETH_LINK_SPEED_100G;
+	case RTE_ETH_SPEED_NUM_200G:
+		return RTE_ETH_LINK_SPEED_200G;
 	default:
 		return 0;
 	}
@@ -2089,14 +2089,14 @@ virtio_dev_configure(struct rte_eth_dev *dev)
 	PMD_INIT_LOG(DEBUG, "configure");
 	req_features = VIRTIO_PMD_DEFAULT_GUEST_FEATURES;
 
-	if (rxmode->mq_mode != ETH_MQ_RX_NONE) {
+	if (rxmode->mq_mode != RTE_ETH_MQ_RX_NONE) {
 		PMD_DRV_LOG(ERR,
 			"Unsupported Rx multi queue mode %d",
 			rxmode->mq_mode);
 		return -EINVAL;
 	}
 
-	if (txmode->mq_mode != ETH_MQ_TX_NONE) {
+	if (txmode->mq_mode != RTE_ETH_MQ_TX_NONE) {
 		PMD_DRV_LOG(ERR,
 			"Unsupported Tx multi queue mode %d",
 			txmode->mq_mode);
@@ -2114,20 +2114,20 @@ virtio_dev_configure(struct rte_eth_dev *dev)
 
 	hw->max_rx_pkt_len = ether_hdr_len + rxmode->mtu;
 
-	if (rx_offloads & (DEV_RX_OFFLOAD_UDP_CKSUM |
-			   DEV_RX_OFFLOAD_TCP_CKSUM))
+	if (rx_offloads & (RTE_ETH_RX_OFFLOAD_UDP_CKSUM |
+			   RTE_ETH_RX_OFFLOAD_TCP_CKSUM))
 		req_features |= (1ULL << VIRTIO_NET_F_GUEST_CSUM);
 
-	if (rx_offloads & DEV_RX_OFFLOAD_TCP_LRO)
+	if (rx_offloads & RTE_ETH_RX_OFFLOAD_TCP_LRO)
 		req_features |=
 			(1ULL << VIRTIO_NET_F_GUEST_TSO4) |
 			(1ULL << VIRTIO_NET_F_GUEST_TSO6);
 
-	if (tx_offloads & (DEV_TX_OFFLOAD_UDP_CKSUM |
-			   DEV_TX_OFFLOAD_TCP_CKSUM))
+	if (tx_offloads & (RTE_ETH_TX_OFFLOAD_UDP_CKSUM |
+			   RTE_ETH_TX_OFFLOAD_TCP_CKSUM))
 		req_features |= (1ULL << VIRTIO_NET_F_CSUM);
 
-	if (tx_offloads & DEV_TX_OFFLOAD_TCP_TSO)
+	if (tx_offloads & RTE_ETH_TX_OFFLOAD_TCP_TSO)
 		req_features |=
 			(1ULL << VIRTIO_NET_F_HOST_TSO4) |
 			(1ULL << VIRTIO_NET_F_HOST_TSO6);
@@ -2139,15 +2139,15 @@ virtio_dev_configure(struct rte_eth_dev *dev)
 			return ret;
 	}
 
-	if ((rx_offloads & (DEV_RX_OFFLOAD_UDP_CKSUM |
-			    DEV_RX_OFFLOAD_TCP_CKSUM)) &&
+	if ((rx_offloads & (RTE_ETH_RX_OFFLOAD_UDP_CKSUM |
+			    RTE_ETH_RX_OFFLOAD_TCP_CKSUM)) &&
 		!virtio_with_feature(hw, VIRTIO_NET_F_GUEST_CSUM)) {
 		PMD_DRV_LOG(ERR,
 			"rx checksum not available on this host");
 		return -ENOTSUP;
 	}
 
-	if ((rx_offloads & DEV_RX_OFFLOAD_TCP_LRO) &&
+	if ((rx_offloads & RTE_ETH_RX_OFFLOAD_TCP_LRO) &&
 		(!virtio_with_feature(hw, VIRTIO_NET_F_GUEST_TSO4) ||
 		 !virtio_with_feature(hw, VIRTIO_NET_F_GUEST_TSO6))) {
 		PMD_DRV_LOG(ERR,
@@ -2159,12 +2159,12 @@ virtio_dev_configure(struct rte_eth_dev *dev)
 	if (virtio_with_feature(hw, VIRTIO_NET_F_CTRL_VQ))
 		virtio_dev_cq_start(dev);
 
-	if (rx_offloads & DEV_RX_OFFLOAD_VLAN_STRIP)
+	if (rx_offloads & RTE_ETH_RX_OFFLOAD_VLAN_STRIP)
 		hw->vlan_strip = 1;
 
-	hw->rx_ol_scatter = (rx_offloads & DEV_RX_OFFLOAD_SCATTER);
+	hw->rx_ol_scatter = (rx_offloads & RTE_ETH_RX_OFFLOAD_SCATTER);
 
-	if ((rx_offloads & DEV_RX_OFFLOAD_VLAN_FILTER) &&
+	if ((rx_offloads & RTE_ETH_RX_OFFLOAD_VLAN_FILTER) &&
 			!virtio_with_feature(hw, VIRTIO_NET_F_CTRL_VLAN)) {
 		PMD_DRV_LOG(ERR,
 			    "vlan filtering not available on this host");
@@ -2217,7 +2217,7 @@ virtio_dev_configure(struct rte_eth_dev *dev)
 				hw->use_vec_rx = 0;
 			}
 
-			if (rx_offloads & DEV_RX_OFFLOAD_TCP_LRO) {
+			if (rx_offloads & RTE_ETH_RX_OFFLOAD_TCP_LRO) {
 				PMD_DRV_LOG(INFO,
 					"disabled packed ring vectorized rx for TCP_LRO enabled");
 				hw->use_vec_rx = 0;
@@ -2244,10 +2244,10 @@ virtio_dev_configure(struct rte_eth_dev *dev)
 				hw->use_vec_rx = 0;
 			}
 
-			if (rx_offloads & (DEV_RX_OFFLOAD_UDP_CKSUM |
-					   DEV_RX_OFFLOAD_TCP_CKSUM |
-					   DEV_RX_OFFLOAD_TCP_LRO |
-					   DEV_RX_OFFLOAD_VLAN_STRIP)) {
+			if (rx_offloads & (RTE_ETH_RX_OFFLOAD_UDP_CKSUM |
+					   RTE_ETH_RX_OFFLOAD_TCP_CKSUM |
+					   RTE_ETH_RX_OFFLOAD_TCP_LRO |
+					   RTE_ETH_RX_OFFLOAD_VLAN_STRIP)) {
 				PMD_DRV_LOG(INFO,
 					"disabled split ring vectorized rx for offloading enabled");
 				hw->use_vec_rx = 0;
@@ -2440,7 +2440,7 @@ virtio_dev_stop(struct rte_eth_dev *dev)
 {
 	struct virtio_hw *hw = dev->data->dev_private;
 	struct rte_eth_link link;
-	struct rte_intr_conf *intr_conf = &dev->data->dev_conf.intr_conf;
+	struct rte_eth_intr_conf *intr_conf = &dev->data->dev_conf.intr_conf;
 
 	PMD_INIT_LOG(DEBUG, "stop");
 	dev->data->dev_started = 0;
@@ -2481,28 +2481,28 @@ virtio_dev_link_update(struct rte_eth_dev *dev, __rte_unused int wait_to_complet
 	memset(&link, 0, sizeof(link));
 	link.link_duplex = hw->duplex;
 	link.link_speed  = hw->speed;
-	link.link_autoneg = ETH_LINK_AUTONEG;
+	link.link_autoneg = RTE_ETH_LINK_AUTONEG;
 
 	if (!hw->started) {
-		link.link_status = ETH_LINK_DOWN;
-		link.link_speed = ETH_SPEED_NUM_NONE;
+		link.link_status = RTE_ETH_LINK_DOWN;
+		link.link_speed = RTE_ETH_SPEED_NUM_NONE;
 	} else if (virtio_with_feature(hw, VIRTIO_NET_F_STATUS)) {
 		PMD_INIT_LOG(DEBUG, "Get link status from hw");
 		virtio_read_dev_config(hw,
 				offsetof(struct virtio_net_config, status),
 				&status, sizeof(status));
 		if ((status & VIRTIO_NET_S_LINK_UP) == 0) {
-			link.link_status = ETH_LINK_DOWN;
-			link.link_speed = ETH_SPEED_NUM_NONE;
+			link.link_status = RTE_ETH_LINK_DOWN;
+			link.link_speed = RTE_ETH_SPEED_NUM_NONE;
 			PMD_INIT_LOG(DEBUG, "Port %d is down",
 				     dev->data->port_id);
 		} else {
-			link.link_status = ETH_LINK_UP;
+			link.link_status = RTE_ETH_LINK_UP;
 			PMD_INIT_LOG(DEBUG, "Port %d is up",
 				     dev->data->port_id);
 		}
 	} else {
-		link.link_status = ETH_LINK_UP;
+		link.link_status = RTE_ETH_LINK_UP;
 	}
 
 	return rte_eth_linkstatus_set(dev, &link);
@@ -2515,8 +2515,8 @@ virtio_dev_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 	struct virtio_hw *hw = dev->data->dev_private;
 	uint64_t offloads = rxmode->offloads;
 
-	if (mask & ETH_VLAN_FILTER_MASK) {
-		if ((offloads & DEV_RX_OFFLOAD_VLAN_FILTER) &&
+	if (mask & RTE_ETH_VLAN_FILTER_MASK) {
+		if ((offloads & RTE_ETH_RX_OFFLOAD_VLAN_FILTER) &&
 				!virtio_with_feature(hw, VIRTIO_NET_F_CTRL_VLAN)) {
 
 			PMD_DRV_LOG(NOTICE,
@@ -2526,8 +2526,8 @@ virtio_dev_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 		}
 	}
 
-	if (mask & ETH_VLAN_STRIP_MASK)
-		hw->vlan_strip = !!(offloads & DEV_RX_OFFLOAD_VLAN_STRIP);
+	if (mask & RTE_ETH_VLAN_STRIP_MASK)
+		hw->vlan_strip = !!(offloads & RTE_ETH_RX_OFFLOAD_VLAN_STRIP);
 
 	return 0;
 }
@@ -2549,32 +2549,32 @@ virtio_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->max_mtu = hw->max_mtu;
 
 	host_features = VIRTIO_OPS(hw)->get_features(hw);
-	dev_info->rx_offload_capa = DEV_RX_OFFLOAD_VLAN_STRIP;
+	dev_info->rx_offload_capa = RTE_ETH_RX_OFFLOAD_VLAN_STRIP;
 	if (host_features & (1ULL << VIRTIO_NET_F_MRG_RXBUF))
-		dev_info->rx_offload_capa |= DEV_RX_OFFLOAD_SCATTER;
+		dev_info->rx_offload_capa |= RTE_ETH_RX_OFFLOAD_SCATTER;
 	if (host_features & (1ULL << VIRTIO_NET_F_GUEST_CSUM)) {
 		dev_info->rx_offload_capa |=
-			DEV_RX_OFFLOAD_TCP_CKSUM |
-			DEV_RX_OFFLOAD_UDP_CKSUM;
+			RTE_ETH_RX_OFFLOAD_TCP_CKSUM |
+			RTE_ETH_RX_OFFLOAD_UDP_CKSUM;
 	}
 	if (host_features & (1ULL << VIRTIO_NET_F_CTRL_VLAN))
-		dev_info->rx_offload_capa |= DEV_RX_OFFLOAD_VLAN_FILTER;
+		dev_info->rx_offload_capa |= RTE_ETH_RX_OFFLOAD_VLAN_FILTER;
 	tso_mask = (1ULL << VIRTIO_NET_F_GUEST_TSO4) |
 		(1ULL << VIRTIO_NET_F_GUEST_TSO6);
 	if ((host_features & tso_mask) == tso_mask)
-		dev_info->rx_offload_capa |= DEV_RX_OFFLOAD_TCP_LRO;
+		dev_info->rx_offload_capa |= RTE_ETH_RX_OFFLOAD_TCP_LRO;
 
-	dev_info->tx_offload_capa = DEV_TX_OFFLOAD_MULTI_SEGS |
-				    DEV_TX_OFFLOAD_VLAN_INSERT;
+	dev_info->tx_offload_capa = RTE_ETH_TX_OFFLOAD_MULTI_SEGS |
+				    RTE_ETH_TX_OFFLOAD_VLAN_INSERT;
 	if (host_features & (1ULL << VIRTIO_NET_F_CSUM)) {
 		dev_info->tx_offload_capa |=
-			DEV_TX_OFFLOAD_UDP_CKSUM |
-			DEV_TX_OFFLOAD_TCP_CKSUM;
+			RTE_ETH_TX_OFFLOAD_UDP_CKSUM |
+			RTE_ETH_TX_OFFLOAD_TCP_CKSUM;
 	}
 	tso_mask = (1ULL << VIRTIO_NET_F_HOST_TSO4) |
 		(1ULL << VIRTIO_NET_F_HOST_TSO6);
 	if ((host_features & tso_mask) == tso_mask)
-		dev_info->tx_offload_capa |= DEV_TX_OFFLOAD_TCP_TSO;
+		dev_info->tx_offload_capa |= RTE_ETH_TX_OFFLOAD_TCP_TSO;
 
 	if (host_features & (1ULL << VIRTIO_F_RING_PACKED)) {
 		/*

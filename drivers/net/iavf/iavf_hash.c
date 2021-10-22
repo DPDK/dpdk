@@ -395,90 +395,90 @@ struct virtchnl_proto_hdrs udp_l2tpv2_ppp_ipv6_tcp_tmplt = {
 /* rss type super set */
 
 /* IPv4 outer */
-#define IAVF_RSS_TYPE_OUTER_IPV4	(ETH_RSS_ETH | ETH_RSS_IPV4 | \
-					 ETH_RSS_FRAG_IPV4 | \
-					 ETH_RSS_IPV4_CHKSUM)
+#define IAVF_RSS_TYPE_OUTER_IPV4	(RTE_ETH_RSS_ETH | RTE_ETH_RSS_IPV4 | \
+					 RTE_ETH_RSS_FRAG_IPV4 | \
+					 RTE_ETH_RSS_IPV4_CHKSUM)
 #define IAVF_RSS_TYPE_OUTER_IPV4_UDP	(IAVF_RSS_TYPE_OUTER_IPV4 | \
-					 ETH_RSS_NONFRAG_IPV4_UDP | \
-					 ETH_RSS_L4_CHKSUM)
+					 RTE_ETH_RSS_NONFRAG_IPV4_UDP | \
+					 RTE_ETH_RSS_L4_CHKSUM)
 #define IAVF_RSS_TYPE_OUTER_IPV4_TCP	(IAVF_RSS_TYPE_OUTER_IPV4 | \
-					 ETH_RSS_NONFRAG_IPV4_TCP | \
-					 ETH_RSS_L4_CHKSUM)
+					 RTE_ETH_RSS_NONFRAG_IPV4_TCP | \
+					 RTE_ETH_RSS_L4_CHKSUM)
 #define IAVF_RSS_TYPE_OUTER_IPV4_SCTP	(IAVF_RSS_TYPE_OUTER_IPV4 | \
-					 ETH_RSS_NONFRAG_IPV4_SCTP | \
-					 ETH_RSS_L4_CHKSUM)
+					 RTE_ETH_RSS_NONFRAG_IPV4_SCTP | \
+					 RTE_ETH_RSS_L4_CHKSUM)
 /* IPv6 outer */
-#define IAVF_RSS_TYPE_OUTER_IPV6	(ETH_RSS_ETH | ETH_RSS_IPV6)
+#define IAVF_RSS_TYPE_OUTER_IPV6	(RTE_ETH_RSS_ETH | RTE_ETH_RSS_IPV6)
 #define IAVF_RSS_TYPE_OUTER_IPV6_FRAG	(IAVF_RSS_TYPE_OUTER_IPV6 | \
-					 ETH_RSS_FRAG_IPV6)
+					 RTE_ETH_RSS_FRAG_IPV6)
 #define IAVF_RSS_TYPE_OUTER_IPV6_UDP	(IAVF_RSS_TYPE_OUTER_IPV6 | \
-					 ETH_RSS_NONFRAG_IPV6_UDP | \
-					 ETH_RSS_L4_CHKSUM)
+					 RTE_ETH_RSS_NONFRAG_IPV6_UDP | \
+					 RTE_ETH_RSS_L4_CHKSUM)
 #define IAVF_RSS_TYPE_OUTER_IPV6_TCP	(IAVF_RSS_TYPE_OUTER_IPV6 | \
-					 ETH_RSS_NONFRAG_IPV6_TCP | \
-					 ETH_RSS_L4_CHKSUM)
+					 RTE_ETH_RSS_NONFRAG_IPV6_TCP | \
+					 RTE_ETH_RSS_L4_CHKSUM)
 #define IAVF_RSS_TYPE_OUTER_IPV6_SCTP	(IAVF_RSS_TYPE_OUTER_IPV6 | \
-					 ETH_RSS_NONFRAG_IPV6_SCTP | \
-					 ETH_RSS_L4_CHKSUM)
+					 RTE_ETH_RSS_NONFRAG_IPV6_SCTP | \
+					 RTE_ETH_RSS_L4_CHKSUM)
 /* VLAN IPV4 */
 #define IAVF_RSS_TYPE_VLAN_IPV4		(IAVF_RSS_TYPE_OUTER_IPV4 | \
-					 ETH_RSS_S_VLAN | ETH_RSS_C_VLAN)
+					 RTE_ETH_RSS_S_VLAN | RTE_ETH_RSS_C_VLAN)
 #define IAVF_RSS_TYPE_VLAN_IPV4_UDP	(IAVF_RSS_TYPE_OUTER_IPV4_UDP | \
-					 ETH_RSS_S_VLAN | ETH_RSS_C_VLAN)
+					 RTE_ETH_RSS_S_VLAN | RTE_ETH_RSS_C_VLAN)
 #define IAVF_RSS_TYPE_VLAN_IPV4_TCP	(IAVF_RSS_TYPE_OUTER_IPV4_TCP | \
-					 ETH_RSS_S_VLAN | ETH_RSS_C_VLAN)
+					 RTE_ETH_RSS_S_VLAN | RTE_ETH_RSS_C_VLAN)
 #define IAVF_RSS_TYPE_VLAN_IPV4_SCTP	(IAVF_RSS_TYPE_OUTER_IPV4_SCTP | \
-					 ETH_RSS_S_VLAN | ETH_RSS_C_VLAN)
+					 RTE_ETH_RSS_S_VLAN | RTE_ETH_RSS_C_VLAN)
 /* VLAN IPv6 */
 #define IAVF_RSS_TYPE_VLAN_IPV6		(IAVF_RSS_TYPE_OUTER_IPV6 | \
-					 ETH_RSS_S_VLAN | ETH_RSS_C_VLAN)
+					 RTE_ETH_RSS_S_VLAN | RTE_ETH_RSS_C_VLAN)
 #define IAVF_RSS_TYPE_VLAN_IPV6_FRAG	(IAVF_RSS_TYPE_OUTER_IPV6_FRAG | \
-					 ETH_RSS_S_VLAN | ETH_RSS_C_VLAN)
+					 RTE_ETH_RSS_S_VLAN | RTE_ETH_RSS_C_VLAN)
 #define IAVF_RSS_TYPE_VLAN_IPV6_UDP	(IAVF_RSS_TYPE_OUTER_IPV6_UDP | \
-					 ETH_RSS_S_VLAN | ETH_RSS_C_VLAN)
+					 RTE_ETH_RSS_S_VLAN | RTE_ETH_RSS_C_VLAN)
 #define IAVF_RSS_TYPE_VLAN_IPV6_TCP	(IAVF_RSS_TYPE_OUTER_IPV6_TCP | \
-					 ETH_RSS_S_VLAN | ETH_RSS_C_VLAN)
+					 RTE_ETH_RSS_S_VLAN | RTE_ETH_RSS_C_VLAN)
 #define IAVF_RSS_TYPE_VLAN_IPV6_SCTP	(IAVF_RSS_TYPE_OUTER_IPV6_SCTP | \
-					 ETH_RSS_S_VLAN | ETH_RSS_C_VLAN)
+					 RTE_ETH_RSS_S_VLAN | RTE_ETH_RSS_C_VLAN)
 /* IPv4 inner */
-#define IAVF_RSS_TYPE_INNER_IPV4	ETH_RSS_IPV4
-#define IAVF_RSS_TYPE_INNER_IPV4_UDP	(ETH_RSS_IPV4 | \
-					 ETH_RSS_NONFRAG_IPV4_UDP)
-#define IAVF_RSS_TYPE_INNER_IPV4_TCP	(ETH_RSS_IPV4 | \
-					 ETH_RSS_NONFRAG_IPV4_TCP)
-#define IAVF_RSS_TYPE_INNER_IPV4_SCTP	(ETH_RSS_IPV4 | \
-					 ETH_RSS_NONFRAG_IPV4_SCTP)
+#define IAVF_RSS_TYPE_INNER_IPV4	RTE_ETH_RSS_IPV4
+#define IAVF_RSS_TYPE_INNER_IPV4_UDP	(RTE_ETH_RSS_IPV4 | \
+					 RTE_ETH_RSS_NONFRAG_IPV4_UDP)
+#define IAVF_RSS_TYPE_INNER_IPV4_TCP	(RTE_ETH_RSS_IPV4 | \
+					 RTE_ETH_RSS_NONFRAG_IPV4_TCP)
+#define IAVF_RSS_TYPE_INNER_IPV4_SCTP	(RTE_ETH_RSS_IPV4 | \
+					 RTE_ETH_RSS_NONFRAG_IPV4_SCTP)
 /* IPv6 inner */
-#define IAVF_RSS_TYPE_INNER_IPV6	ETH_RSS_IPV6
-#define IAVF_RSS_TYPE_INNER_IPV6_UDP	(ETH_RSS_IPV6 | \
-					 ETH_RSS_NONFRAG_IPV6_UDP)
-#define IAVF_RSS_TYPE_INNER_IPV6_TCP	(ETH_RSS_IPV6 | \
-					 ETH_RSS_NONFRAG_IPV6_TCP)
-#define IAVF_RSS_TYPE_INNER_IPV6_SCTP	(ETH_RSS_IPV6 | \
-					 ETH_RSS_NONFRAG_IPV6_SCTP)
+#define IAVF_RSS_TYPE_INNER_IPV6	RTE_ETH_RSS_IPV6
+#define IAVF_RSS_TYPE_INNER_IPV6_UDP	(RTE_ETH_RSS_IPV6 | \
+					 RTE_ETH_RSS_NONFRAG_IPV6_UDP)
+#define IAVF_RSS_TYPE_INNER_IPV6_TCP	(RTE_ETH_RSS_IPV6 | \
+					 RTE_ETH_RSS_NONFRAG_IPV6_TCP)
+#define IAVF_RSS_TYPE_INNER_IPV6_SCTP	(RTE_ETH_RSS_IPV6 | \
+					 RTE_ETH_RSS_NONFRAG_IPV6_SCTP)
 /* GTPU IPv4 */
 #define IAVF_RSS_TYPE_GTPU_IPV4		(IAVF_RSS_TYPE_INNER_IPV4 | \
-					 ETH_RSS_GTPU)
+					 RTE_ETH_RSS_GTPU)
 #define IAVF_RSS_TYPE_GTPU_IPV4_UDP	(IAVF_RSS_TYPE_INNER_IPV4_UDP | \
-					 ETH_RSS_GTPU)
+					 RTE_ETH_RSS_GTPU)
 #define IAVF_RSS_TYPE_GTPU_IPV4_TCP	(IAVF_RSS_TYPE_INNER_IPV4_TCP | \
-					 ETH_RSS_GTPU)
+					 RTE_ETH_RSS_GTPU)
 /* GTPU IPv6 */
 #define IAVF_RSS_TYPE_GTPU_IPV6		(IAVF_RSS_TYPE_INNER_IPV6 | \
-					 ETH_RSS_GTPU)
+					 RTE_ETH_RSS_GTPU)
 #define IAVF_RSS_TYPE_GTPU_IPV6_UDP	(IAVF_RSS_TYPE_INNER_IPV6_UDP | \
-					 ETH_RSS_GTPU)
+					 RTE_ETH_RSS_GTPU)
 #define IAVF_RSS_TYPE_GTPU_IPV6_TCP	(IAVF_RSS_TYPE_INNER_IPV6_TCP | \
-					 ETH_RSS_GTPU)
+					 RTE_ETH_RSS_GTPU)
 /* ESP, AH, L2TPV3 and PFCP */
-#define IAVF_RSS_TYPE_IPV4_ESP		(ETH_RSS_ESP | ETH_RSS_IPV4)
-#define IAVF_RSS_TYPE_IPV4_AH		(ETH_RSS_AH | ETH_RSS_IPV4)
-#define IAVF_RSS_TYPE_IPV6_ESP		(ETH_RSS_ESP | ETH_RSS_IPV6)
-#define IAVF_RSS_TYPE_IPV6_AH		(ETH_RSS_AH | ETH_RSS_IPV6)
-#define IAVF_RSS_TYPE_IPV4_L2TPV3	(ETH_RSS_L2TPV3 | ETH_RSS_IPV4)
-#define IAVF_RSS_TYPE_IPV6_L2TPV3	(ETH_RSS_L2TPV3 | ETH_RSS_IPV6)
-#define IAVF_RSS_TYPE_IPV4_PFCP		(ETH_RSS_PFCP | ETH_RSS_IPV4)
-#define IAVF_RSS_TYPE_IPV6_PFCP		(ETH_RSS_PFCP | ETH_RSS_IPV6)
+#define IAVF_RSS_TYPE_IPV4_ESP		(RTE_ETH_RSS_ESP | RTE_ETH_RSS_IPV4)
+#define IAVF_RSS_TYPE_IPV4_AH		(RTE_ETH_RSS_AH | RTE_ETH_RSS_IPV4)
+#define IAVF_RSS_TYPE_IPV6_ESP		(RTE_ETH_RSS_ESP | RTE_ETH_RSS_IPV6)
+#define IAVF_RSS_TYPE_IPV6_AH		(RTE_ETH_RSS_AH | RTE_ETH_RSS_IPV6)
+#define IAVF_RSS_TYPE_IPV4_L2TPV3	(RTE_ETH_RSS_L2TPV3 | RTE_ETH_RSS_IPV4)
+#define IAVF_RSS_TYPE_IPV6_L2TPV3	(RTE_ETH_RSS_L2TPV3 | RTE_ETH_RSS_IPV6)
+#define IAVF_RSS_TYPE_IPV4_PFCP		(RTE_ETH_RSS_PFCP | RTE_ETH_RSS_IPV4)
+#define IAVF_RSS_TYPE_IPV6_PFCP		(RTE_ETH_RSS_PFCP | RTE_ETH_RSS_IPV6)
 
 /**
  * Supported pattern for hash.
@@ -496,7 +496,7 @@ static struct iavf_pattern_match_item iavf_hash_pattern_list[] = {
 	{iavf_pattern_eth_vlan_ipv4_udp,		IAVF_RSS_TYPE_VLAN_IPV4_UDP,	&outer_ipv4_udp_tmplt},
 	{iavf_pattern_eth_vlan_ipv4_tcp,		IAVF_RSS_TYPE_VLAN_IPV4_TCP,	&outer_ipv4_tcp_tmplt},
 	{iavf_pattern_eth_vlan_ipv4_sctp,		IAVF_RSS_TYPE_VLAN_IPV4_SCTP,	&outer_ipv4_sctp_tmplt},
-	{iavf_pattern_eth_ipv4_gtpu,			ETH_RSS_IPV4,			&outer_ipv4_udp_tmplt},
+	{iavf_pattern_eth_ipv4_gtpu,			RTE_ETH_RSS_IPV4,			&outer_ipv4_udp_tmplt},
 	{iavf_pattern_eth_ipv4_gtpu_ipv4,		IAVF_RSS_TYPE_GTPU_IPV4,	&inner_ipv4_tmplt},
 	{iavf_pattern_eth_ipv4_gtpu_ipv4_udp,		IAVF_RSS_TYPE_GTPU_IPV4_UDP,	&inner_ipv4_udp_tmplt},
 	{iavf_pattern_eth_ipv4_gtpu_ipv4_tcp,		IAVF_RSS_TYPE_GTPU_IPV4_TCP,	&inner_ipv4_tcp_tmplt},
@@ -538,9 +538,9 @@ static struct iavf_pattern_match_item iavf_hash_pattern_list[] = {
 	{iavf_pattern_eth_ipv4_ah,			IAVF_RSS_TYPE_IPV4_AH,		&ipv4_ah_tmplt},
 	{iavf_pattern_eth_ipv4_l2tpv3,			IAVF_RSS_TYPE_IPV4_L2TPV3,	&ipv4_l2tpv3_tmplt},
 	{iavf_pattern_eth_ipv4_pfcp,			IAVF_RSS_TYPE_IPV4_PFCP,	&ipv4_pfcp_tmplt},
-	{iavf_pattern_eth_ipv4_gtpc,			ETH_RSS_IPV4,			&ipv4_udp_gtpc_tmplt},
-	{iavf_pattern_eth_ecpri,			ETH_RSS_ECPRI,			&eth_ecpri_tmplt},
-	{iavf_pattern_eth_ipv4_ecpri,			ETH_RSS_ECPRI,			&ipv4_ecpri_tmplt},
+	{iavf_pattern_eth_ipv4_gtpc,			RTE_ETH_RSS_IPV4,			&ipv4_udp_gtpc_tmplt},
+	{iavf_pattern_eth_ecpri,			RTE_ETH_RSS_ECPRI,			&eth_ecpri_tmplt},
+	{iavf_pattern_eth_ipv4_ecpri,			RTE_ETH_RSS_ECPRI,			&ipv4_ecpri_tmplt},
 	{iavf_pattern_eth_ipv4_gre_ipv4,		IAVF_RSS_TYPE_INNER_IPV4,	&inner_ipv4_tmplt},
 	{iavf_pattern_eth_ipv6_gre_ipv4,		IAVF_RSS_TYPE_INNER_IPV4, &inner_ipv4_tmplt},
 	{iavf_pattern_eth_ipv4_gre_ipv4_tcp,	IAVF_RSS_TYPE_INNER_IPV4_TCP, &inner_ipv4_tcp_tmplt},
@@ -565,7 +565,7 @@ static struct iavf_pattern_match_item iavf_hash_pattern_list[] = {
 	{iavf_pattern_eth_vlan_ipv6_udp,		IAVF_RSS_TYPE_VLAN_IPV6_UDP,	&outer_ipv6_udp_tmplt},
 	{iavf_pattern_eth_vlan_ipv6_tcp,		IAVF_RSS_TYPE_VLAN_IPV6_TCP,	&outer_ipv6_tcp_tmplt},
 	{iavf_pattern_eth_vlan_ipv6_sctp,		IAVF_RSS_TYPE_VLAN_IPV6_SCTP,	&outer_ipv6_sctp_tmplt},
-	{iavf_pattern_eth_ipv6_gtpu,			ETH_RSS_IPV6,			&outer_ipv6_udp_tmplt},
+	{iavf_pattern_eth_ipv6_gtpu,			RTE_ETH_RSS_IPV6,			&outer_ipv6_udp_tmplt},
 	{iavf_pattern_eth_ipv4_gtpu_ipv6,		IAVF_RSS_TYPE_GTPU_IPV6,	&inner_ipv6_tmplt},
 	{iavf_pattern_eth_ipv4_gtpu_ipv6_udp,		IAVF_RSS_TYPE_GTPU_IPV6_UDP,	&inner_ipv6_udp_tmplt},
 	{iavf_pattern_eth_ipv4_gtpu_ipv6_tcp,		IAVF_RSS_TYPE_GTPU_IPV6_TCP,	&inner_ipv6_tcp_tmplt},
@@ -607,7 +607,7 @@ static struct iavf_pattern_match_item iavf_hash_pattern_list[] = {
 	{iavf_pattern_eth_ipv6_ah,			IAVF_RSS_TYPE_IPV6_AH,		&ipv6_ah_tmplt},
 	{iavf_pattern_eth_ipv6_l2tpv3,			IAVF_RSS_TYPE_IPV6_L2TPV3,	&ipv6_l2tpv3_tmplt},
 	{iavf_pattern_eth_ipv6_pfcp,			IAVF_RSS_TYPE_IPV6_PFCP,	&ipv6_pfcp_tmplt},
-	{iavf_pattern_eth_ipv6_gtpc,			ETH_RSS_IPV6,			&ipv6_udp_gtpc_tmplt},
+	{iavf_pattern_eth_ipv6_gtpc,			RTE_ETH_RSS_IPV6,			&ipv6_udp_gtpc_tmplt},
 	{iavf_pattern_eth_ipv4_gre_ipv6,		IAVF_RSS_TYPE_INNER_IPV6,	&inner_ipv6_tmplt},
 	{iavf_pattern_eth_ipv6_gre_ipv6,		IAVF_RSS_TYPE_INNER_IPV6, &inner_ipv6_tmplt},
 	{iavf_pattern_eth_ipv4_gre_ipv6_tcp,	IAVF_RSS_TYPE_INNER_IPV6_TCP, &inner_ipv6_tcp_tmplt},
@@ -648,52 +648,52 @@ iavf_rss_hash_set(struct iavf_adapter *ad, uint64_t rss_hf, bool add)
 	struct virtchnl_rss_cfg rss_cfg;
 
 #define IAVF_RSS_HF_ALL ( \
-	ETH_RSS_IPV4 | \
-	ETH_RSS_IPV6 | \
-	ETH_RSS_NONFRAG_IPV4_UDP | \
-	ETH_RSS_NONFRAG_IPV6_UDP | \
-	ETH_RSS_NONFRAG_IPV4_TCP | \
-	ETH_RSS_NONFRAG_IPV6_TCP | \
-	ETH_RSS_NONFRAG_IPV4_SCTP | \
-	ETH_RSS_NONFRAG_IPV6_SCTP)
+	RTE_ETH_RSS_IPV4 | \
+	RTE_ETH_RSS_IPV6 | \
+	RTE_ETH_RSS_NONFRAG_IPV4_UDP | \
+	RTE_ETH_RSS_NONFRAG_IPV6_UDP | \
+	RTE_ETH_RSS_NONFRAG_IPV4_TCP | \
+	RTE_ETH_RSS_NONFRAG_IPV6_TCP | \
+	RTE_ETH_RSS_NONFRAG_IPV4_SCTP | \
+	RTE_ETH_RSS_NONFRAG_IPV6_SCTP)
 
 	rss_cfg.rss_algorithm = VIRTCHNL_RSS_ALG_TOEPLITZ_ASYMMETRIC;
-	if (rss_hf & ETH_RSS_IPV4) {
+	if (rss_hf & RTE_ETH_RSS_IPV4) {
 		rss_cfg.proto_hdrs = inner_ipv4_tmplt;
 		iavf_add_del_rss_cfg(ad, &rss_cfg, add);
 	}
 
-	if (rss_hf & ETH_RSS_NONFRAG_IPV4_UDP) {
+	if (rss_hf & RTE_ETH_RSS_NONFRAG_IPV4_UDP) {
 		rss_cfg.proto_hdrs = inner_ipv4_udp_tmplt;
 		iavf_add_del_rss_cfg(ad, &rss_cfg, add);
 	}
 
-	if (rss_hf & ETH_RSS_NONFRAG_IPV4_TCP) {
+	if (rss_hf & RTE_ETH_RSS_NONFRAG_IPV4_TCP) {
 		rss_cfg.proto_hdrs = inner_ipv4_tcp_tmplt;
 		iavf_add_del_rss_cfg(ad, &rss_cfg, add);
 	}
 
-	if (rss_hf & ETH_RSS_NONFRAG_IPV4_SCTP) {
+	if (rss_hf & RTE_ETH_RSS_NONFRAG_IPV4_SCTP) {
 		rss_cfg.proto_hdrs = inner_ipv4_sctp_tmplt;
 		iavf_add_del_rss_cfg(ad, &rss_cfg, add);
 	}
 
-	if (rss_hf & ETH_RSS_IPV6) {
+	if (rss_hf & RTE_ETH_RSS_IPV6) {
 		rss_cfg.proto_hdrs = inner_ipv6_tmplt;
 		iavf_add_del_rss_cfg(ad, &rss_cfg, add);
 	}
 
-	if (rss_hf & ETH_RSS_NONFRAG_IPV6_UDP) {
+	if (rss_hf & RTE_ETH_RSS_NONFRAG_IPV6_UDP) {
 		rss_cfg.proto_hdrs = inner_ipv6_udp_tmplt;
 		iavf_add_del_rss_cfg(ad, &rss_cfg, add);
 	}
 
-	if (rss_hf & ETH_RSS_NONFRAG_IPV6_TCP) {
+	if (rss_hf & RTE_ETH_RSS_NONFRAG_IPV6_TCP) {
 		rss_cfg.proto_hdrs = inner_ipv6_tcp_tmplt;
 		iavf_add_del_rss_cfg(ad, &rss_cfg, add);
 	}
 
-	if (rss_hf & ETH_RSS_NONFRAG_IPV6_SCTP) {
+	if (rss_hf & RTE_ETH_RSS_NONFRAG_IPV6_SCTP) {
 		rss_cfg.proto_hdrs = inner_ipv6_sctp_tmplt;
 		iavf_add_del_rss_cfg(ad, &rss_cfg, add);
 	}
@@ -855,28 +855,28 @@ iavf_refine_proto_hdrs_l234(struct virtchnl_proto_hdrs *proto_hdrs,
 		hdr = &proto_hdrs->proto_hdr[i];
 		switch (hdr->type) {
 		case VIRTCHNL_PROTO_HDR_ETH:
-			if (!(rss_type & ETH_RSS_ETH))
+			if (!(rss_type & RTE_ETH_RSS_ETH))
 				hdr->field_selector = 0;
-			else if (rss_type & ETH_RSS_L2_SRC_ONLY)
+			else if (rss_type & RTE_ETH_RSS_L2_SRC_ONLY)
 				REFINE_PROTO_FLD(DEL, ETH_DST);
-			else if (rss_type & ETH_RSS_L2_DST_ONLY)
+			else if (rss_type & RTE_ETH_RSS_L2_DST_ONLY)
 				REFINE_PROTO_FLD(DEL, ETH_SRC);
 			break;
 		case VIRTCHNL_PROTO_HDR_IPV4:
 			if (rss_type &
-			    (ETH_RSS_IPV4 | ETH_RSS_FRAG_IPV4 |
-			     ETH_RSS_NONFRAG_IPV4_UDP |
-			     ETH_RSS_NONFRAG_IPV4_TCP |
-			     ETH_RSS_NONFRAG_IPV4_SCTP)) {
-				if (rss_type & ETH_RSS_FRAG_IPV4) {
+			    (RTE_ETH_RSS_IPV4 | RTE_ETH_RSS_FRAG_IPV4 |
+			     RTE_ETH_RSS_NONFRAG_IPV4_UDP |
+			     RTE_ETH_RSS_NONFRAG_IPV4_TCP |
+			     RTE_ETH_RSS_NONFRAG_IPV4_SCTP)) {
+				if (rss_type & RTE_ETH_RSS_FRAG_IPV4) {
 					iavf_hash_add_fragment_hdr(proto_hdrs, i + 1);
-				} else if (rss_type & ETH_RSS_L3_SRC_ONLY) {
+				} else if (rss_type & RTE_ETH_RSS_L3_SRC_ONLY) {
 					REFINE_PROTO_FLD(DEL, IPV4_DST);
-				} else if (rss_type & ETH_RSS_L3_DST_ONLY) {
+				} else if (rss_type & RTE_ETH_RSS_L3_DST_ONLY) {
 					REFINE_PROTO_FLD(DEL, IPV4_SRC);
 				} else if (rss_type &
-					   (ETH_RSS_L4_SRC_ONLY |
-					    ETH_RSS_L4_DST_ONLY)) {
+					   (RTE_ETH_RSS_L4_SRC_ONLY |
+					    RTE_ETH_RSS_L4_DST_ONLY)) {
 					REFINE_PROTO_FLD(DEL, IPV4_DST);
 					REFINE_PROTO_FLD(DEL, IPV4_SRC);
 				}
@@ -884,39 +884,39 @@ iavf_refine_proto_hdrs_l234(struct virtchnl_proto_hdrs *proto_hdrs,
 				hdr->field_selector = 0;
 			}
 
-			if (rss_type & ETH_RSS_IPV4_CHKSUM)
+			if (rss_type & RTE_ETH_RSS_IPV4_CHKSUM)
 				REFINE_PROTO_FLD(ADD, IPV4_CHKSUM);
 
 			break;
 		case VIRTCHNL_PROTO_HDR_IPV4_FRAG:
 			if (rss_type &
-			    (ETH_RSS_IPV4 | ETH_RSS_FRAG_IPV4 |
-			     ETH_RSS_NONFRAG_IPV4_UDP |
-			     ETH_RSS_NONFRAG_IPV4_TCP |
-			     ETH_RSS_NONFRAG_IPV4_SCTP)) {
-				if (rss_type & ETH_RSS_FRAG_IPV4)
+			    (RTE_ETH_RSS_IPV4 | RTE_ETH_RSS_FRAG_IPV4 |
+			     RTE_ETH_RSS_NONFRAG_IPV4_UDP |
+			     RTE_ETH_RSS_NONFRAG_IPV4_TCP |
+			     RTE_ETH_RSS_NONFRAG_IPV4_SCTP)) {
+				if (rss_type & RTE_ETH_RSS_FRAG_IPV4)
 					REFINE_PROTO_FLD(ADD, IPV4_FRAG_PKID);
 			} else {
 				hdr->field_selector = 0;
 			}
 
-			if (rss_type & ETH_RSS_IPV4_CHKSUM)
+			if (rss_type & RTE_ETH_RSS_IPV4_CHKSUM)
 				REFINE_PROTO_FLD(ADD, IPV4_CHKSUM);
 
 			break;
 		case VIRTCHNL_PROTO_HDR_IPV6:
 			if (rss_type &
-			    (ETH_RSS_IPV6 | ETH_RSS_FRAG_IPV6 |
-			     ETH_RSS_NONFRAG_IPV6_UDP |
-			     ETH_RSS_NONFRAG_IPV6_TCP |
-			     ETH_RSS_NONFRAG_IPV6_SCTP)) {
-				if (rss_type & ETH_RSS_L3_SRC_ONLY) {
+			    (RTE_ETH_RSS_IPV6 | RTE_ETH_RSS_FRAG_IPV6 |
+			     RTE_ETH_RSS_NONFRAG_IPV6_UDP |
+			     RTE_ETH_RSS_NONFRAG_IPV6_TCP |
+			     RTE_ETH_RSS_NONFRAG_IPV6_SCTP)) {
+				if (rss_type & RTE_ETH_RSS_L3_SRC_ONLY) {
 					REFINE_PROTO_FLD(DEL, IPV6_DST);
-				} else if (rss_type & ETH_RSS_L3_DST_ONLY) {
+				} else if (rss_type & RTE_ETH_RSS_L3_DST_ONLY) {
 					REFINE_PROTO_FLD(DEL, IPV6_SRC);
 				} else if (rss_type &
-					   (ETH_RSS_L4_SRC_ONLY |
-					    ETH_RSS_L4_DST_ONLY)) {
+					   (RTE_ETH_RSS_L4_SRC_ONLY |
+					    RTE_ETH_RSS_L4_DST_ONLY)) {
 					REFINE_PROTO_FLD(DEL, IPV6_DST);
 					REFINE_PROTO_FLD(DEL, IPV6_SRC);
 				}
@@ -933,7 +933,7 @@ iavf_refine_proto_hdrs_l234(struct virtchnl_proto_hdrs *proto_hdrs,
 			}
 			break;
 		case VIRTCHNL_PROTO_HDR_IPV6_EH_FRAG:
-			if (rss_type & ETH_RSS_FRAG_IPV6)
+			if (rss_type & RTE_ETH_RSS_FRAG_IPV6)
 				REFINE_PROTO_FLD(ADD, IPV6_EH_FRAG_PKID);
 			else
 				hdr->field_selector = 0;
@@ -941,87 +941,87 @@ iavf_refine_proto_hdrs_l234(struct virtchnl_proto_hdrs *proto_hdrs,
 			break;
 		case VIRTCHNL_PROTO_HDR_UDP:
 			if (rss_type &
-			    (ETH_RSS_NONFRAG_IPV4_UDP |
-			     ETH_RSS_NONFRAG_IPV6_UDP)) {
-				if (rss_type & ETH_RSS_L4_SRC_ONLY)
+			    (RTE_ETH_RSS_NONFRAG_IPV4_UDP |
+			     RTE_ETH_RSS_NONFRAG_IPV6_UDP)) {
+				if (rss_type & RTE_ETH_RSS_L4_SRC_ONLY)
 					REFINE_PROTO_FLD(DEL, UDP_DST_PORT);
-				else if (rss_type & ETH_RSS_L4_DST_ONLY)
+				else if (rss_type & RTE_ETH_RSS_L4_DST_ONLY)
 					REFINE_PROTO_FLD(DEL, UDP_SRC_PORT);
 				else if (rss_type &
-					 (ETH_RSS_L3_SRC_ONLY |
-					  ETH_RSS_L3_DST_ONLY))
+					 (RTE_ETH_RSS_L3_SRC_ONLY |
+					  RTE_ETH_RSS_L3_DST_ONLY))
 					hdr->field_selector = 0;
 			} else {
 				hdr->field_selector = 0;
 			}
 
-			if (rss_type & ETH_RSS_L4_CHKSUM)
+			if (rss_type & RTE_ETH_RSS_L4_CHKSUM)
 				REFINE_PROTO_FLD(ADD, UDP_CHKSUM);
 			break;
 		case VIRTCHNL_PROTO_HDR_TCP:
 			if (rss_type &
-			    (ETH_RSS_NONFRAG_IPV4_TCP |
-			     ETH_RSS_NONFRAG_IPV6_TCP)) {
-				if (rss_type & ETH_RSS_L4_SRC_ONLY)
+			    (RTE_ETH_RSS_NONFRAG_IPV4_TCP |
+			     RTE_ETH_RSS_NONFRAG_IPV6_TCP)) {
+				if (rss_type & RTE_ETH_RSS_L4_SRC_ONLY)
 					REFINE_PROTO_FLD(DEL, TCP_DST_PORT);
-				else if (rss_type & ETH_RSS_L4_DST_ONLY)
+				else if (rss_type & RTE_ETH_RSS_L4_DST_ONLY)
 					REFINE_PROTO_FLD(DEL, TCP_SRC_PORT);
 				else if (rss_type &
-					 (ETH_RSS_L3_SRC_ONLY |
-					  ETH_RSS_L3_DST_ONLY))
+					 (RTE_ETH_RSS_L3_SRC_ONLY |
+					  RTE_ETH_RSS_L3_DST_ONLY))
 					hdr->field_selector = 0;
 			} else {
 				hdr->field_selector = 0;
 			}
 
-			if (rss_type & ETH_RSS_L4_CHKSUM)
+			if (rss_type & RTE_ETH_RSS_L4_CHKSUM)
 				REFINE_PROTO_FLD(ADD, TCP_CHKSUM);
 			break;
 		case VIRTCHNL_PROTO_HDR_SCTP:
 			if (rss_type &
-			    (ETH_RSS_NONFRAG_IPV4_SCTP |
-			     ETH_RSS_NONFRAG_IPV6_SCTP)) {
-				if (rss_type & ETH_RSS_L4_SRC_ONLY)
+			    (RTE_ETH_RSS_NONFRAG_IPV4_SCTP |
+			     RTE_ETH_RSS_NONFRAG_IPV6_SCTP)) {
+				if (rss_type & RTE_ETH_RSS_L4_SRC_ONLY)
 					REFINE_PROTO_FLD(DEL, SCTP_DST_PORT);
-				else if (rss_type & ETH_RSS_L4_DST_ONLY)
+				else if (rss_type & RTE_ETH_RSS_L4_DST_ONLY)
 					REFINE_PROTO_FLD(DEL, SCTP_SRC_PORT);
 				else if (rss_type &
-					 (ETH_RSS_L3_SRC_ONLY |
-					  ETH_RSS_L3_DST_ONLY))
+					 (RTE_ETH_RSS_L3_SRC_ONLY |
+					  RTE_ETH_RSS_L3_DST_ONLY))
 					hdr->field_selector = 0;
 			} else {
 				hdr->field_selector = 0;
 			}
 
-			if (rss_type & ETH_RSS_L4_CHKSUM)
+			if (rss_type & RTE_ETH_RSS_L4_CHKSUM)
 				REFINE_PROTO_FLD(ADD, SCTP_CHKSUM);
 			break;
 		case VIRTCHNL_PROTO_HDR_S_VLAN:
-			if (!(rss_type & ETH_RSS_S_VLAN))
+			if (!(rss_type & RTE_ETH_RSS_S_VLAN))
 				hdr->field_selector = 0;
 			break;
 		case VIRTCHNL_PROTO_HDR_C_VLAN:
-			if (!(rss_type & ETH_RSS_C_VLAN))
+			if (!(rss_type & RTE_ETH_RSS_C_VLAN))
 				hdr->field_selector = 0;
 			break;
 		case VIRTCHNL_PROTO_HDR_L2TPV3:
-			if (!(rss_type & ETH_RSS_L2TPV3))
+			if (!(rss_type & RTE_ETH_RSS_L2TPV3))
 				hdr->field_selector = 0;
 			break;
 		case VIRTCHNL_PROTO_HDR_ESP:
-			if (!(rss_type & ETH_RSS_ESP))
+			if (!(rss_type & RTE_ETH_RSS_ESP))
 				hdr->field_selector = 0;
 			break;
 		case VIRTCHNL_PROTO_HDR_AH:
-			if (!(rss_type & ETH_RSS_AH))
+			if (!(rss_type & RTE_ETH_RSS_AH))
 				hdr->field_selector = 0;
 			break;
 		case VIRTCHNL_PROTO_HDR_PFCP:
-			if (!(rss_type & ETH_RSS_PFCP))
+			if (!(rss_type & RTE_ETH_RSS_PFCP))
 				hdr->field_selector = 0;
 			break;
 		case VIRTCHNL_PROTO_HDR_ECPRI:
-			if (!(rss_type & ETH_RSS_ECPRI))
+			if (!(rss_type & RTE_ETH_RSS_ECPRI))
 				hdr->field_selector = 0;
 			break;
 		default:
@@ -1038,7 +1038,7 @@ iavf_refine_proto_hdrs_gtpu(struct virtchnl_proto_hdrs *proto_hdrs,
 	struct virtchnl_proto_hdr *hdr;
 	int i;
 
-	if (!(rss_type & ETH_RSS_GTPU))
+	if (!(rss_type & RTE_ETH_RSS_GTPU))
 		return;
 
 	for (i = 0; i < proto_hdrs->count; i++) {
@@ -1163,10 +1163,10 @@ static void iavf_refine_proto_hdrs(struct virtchnl_proto_hdrs *proto_hdrs,
 }
 
 static uint64_t invalid_rss_comb[] = {
-	ETH_RSS_IPV4 | ETH_RSS_NONFRAG_IPV4_UDP,
-	ETH_RSS_IPV4 | ETH_RSS_NONFRAG_IPV4_TCP,
-	ETH_RSS_IPV6 | ETH_RSS_NONFRAG_IPV6_UDP,
-	ETH_RSS_IPV6 | ETH_RSS_NONFRAG_IPV6_TCP,
+	RTE_ETH_RSS_IPV4 | RTE_ETH_RSS_NONFRAG_IPV4_UDP,
+	RTE_ETH_RSS_IPV4 | RTE_ETH_RSS_NONFRAG_IPV4_TCP,
+	RTE_ETH_RSS_IPV6 | RTE_ETH_RSS_NONFRAG_IPV6_UDP,
+	RTE_ETH_RSS_IPV6 | RTE_ETH_RSS_NONFRAG_IPV6_TCP,
 	RTE_ETH_RSS_L3_PRE32 | RTE_ETH_RSS_L3_PRE40 |
 	RTE_ETH_RSS_L3_PRE48 | RTE_ETH_RSS_L3_PRE56 |
 	RTE_ETH_RSS_L3_PRE96
@@ -1177,27 +1177,27 @@ struct rss_attr_type {
 	uint64_t type;
 };
 
-#define VALID_RSS_IPV4_L4	(ETH_RSS_NONFRAG_IPV4_UDP	| \
-				 ETH_RSS_NONFRAG_IPV4_TCP	| \
-				 ETH_RSS_NONFRAG_IPV4_SCTP)
+#define VALID_RSS_IPV4_L4	(RTE_ETH_RSS_NONFRAG_IPV4_UDP	| \
+				 RTE_ETH_RSS_NONFRAG_IPV4_TCP	| \
+				 RTE_ETH_RSS_NONFRAG_IPV4_SCTP)
 
-#define VALID_RSS_IPV6_L4	(ETH_RSS_NONFRAG_IPV6_UDP	| \
-				 ETH_RSS_NONFRAG_IPV6_TCP	| \
-				 ETH_RSS_NONFRAG_IPV6_SCTP)
+#define VALID_RSS_IPV6_L4	(RTE_ETH_RSS_NONFRAG_IPV6_UDP	| \
+				 RTE_ETH_RSS_NONFRAG_IPV6_TCP	| \
+				 RTE_ETH_RSS_NONFRAG_IPV6_SCTP)
 
-#define VALID_RSS_IPV4		(ETH_RSS_IPV4 | ETH_RSS_FRAG_IPV4 | \
+#define VALID_RSS_IPV4		(RTE_ETH_RSS_IPV4 | RTE_ETH_RSS_FRAG_IPV4 | \
 				 VALID_RSS_IPV4_L4)
-#define VALID_RSS_IPV6		(ETH_RSS_IPV6 | ETH_RSS_FRAG_IPV6 | \
+#define VALID_RSS_IPV6		(RTE_ETH_RSS_IPV6 | RTE_ETH_RSS_FRAG_IPV6 | \
 				 VALID_RSS_IPV6_L4)
 #define VALID_RSS_L3		(VALID_RSS_IPV4 | VALID_RSS_IPV6)
 #define VALID_RSS_L4		(VALID_RSS_IPV4_L4 | VALID_RSS_IPV6_L4)
 
-#define VALID_RSS_ATTR		(ETH_RSS_L3_SRC_ONLY	| \
-				 ETH_RSS_L3_DST_ONLY	| \
-				 ETH_RSS_L4_SRC_ONLY	| \
-				 ETH_RSS_L4_DST_ONLY	| \
-				 ETH_RSS_L2_SRC_ONLY	| \
-				 ETH_RSS_L2_DST_ONLY	| \
+#define VALID_RSS_ATTR		(RTE_ETH_RSS_L3_SRC_ONLY	| \
+				 RTE_ETH_RSS_L3_DST_ONLY	| \
+				 RTE_ETH_RSS_L4_SRC_ONLY	| \
+				 RTE_ETH_RSS_L4_DST_ONLY	| \
+				 RTE_ETH_RSS_L2_SRC_ONLY	| \
+				 RTE_ETH_RSS_L2_DST_ONLY	| \
 				 RTE_ETH_RSS_L3_PRE64)
 
 #define INVALID_RSS_ATTR	(RTE_ETH_RSS_L3_PRE32	| \
@@ -1207,9 +1207,9 @@ struct rss_attr_type {
 				 RTE_ETH_RSS_L3_PRE96)
 
 static struct rss_attr_type rss_attr_to_valid_type[] = {
-	{ETH_RSS_L2_SRC_ONLY | ETH_RSS_L2_DST_ONLY,	ETH_RSS_ETH},
-	{ETH_RSS_L3_SRC_ONLY | ETH_RSS_L3_DST_ONLY,	VALID_RSS_L3},
-	{ETH_RSS_L4_SRC_ONLY | ETH_RSS_L4_DST_ONLY,	VALID_RSS_L4},
+	{RTE_ETH_RSS_L2_SRC_ONLY | RTE_ETH_RSS_L2_DST_ONLY,	RTE_ETH_RSS_ETH},
+	{RTE_ETH_RSS_L3_SRC_ONLY | RTE_ETH_RSS_L3_DST_ONLY,	VALID_RSS_L3},
+	{RTE_ETH_RSS_L4_SRC_ONLY | RTE_ETH_RSS_L4_DST_ONLY,	VALID_RSS_L4},
 	/* current ipv6 prefix only supports prefix 64 bits*/
 	{RTE_ETH_RSS_L3_PRE64,				VALID_RSS_IPV6},
 	{INVALID_RSS_ATTR,				0}
@@ -1226,15 +1226,15 @@ iavf_any_invalid_rss_type(enum rte_eth_hash_function rss_func,
 	 * hash function.
 	 */
 	if (rss_func == RTE_ETH_HASH_FUNCTION_SYMMETRIC_TOEPLITZ) {
-		if (rss_type & (ETH_RSS_L3_SRC_ONLY | ETH_RSS_L3_DST_ONLY |
-		    ETH_RSS_L4_SRC_ONLY | ETH_RSS_L4_DST_ONLY))
+		if (rss_type & (RTE_ETH_RSS_L3_SRC_ONLY | RTE_ETH_RSS_L3_DST_ONLY |
+		    RTE_ETH_RSS_L4_SRC_ONLY | RTE_ETH_RSS_L4_DST_ONLY))
 			return true;
 
 		if (!(rss_type &
-		   (ETH_RSS_IPV4 | ETH_RSS_IPV6 |
-		    ETH_RSS_NONFRAG_IPV4_UDP | ETH_RSS_NONFRAG_IPV6_UDP |
-		    ETH_RSS_NONFRAG_IPV4_TCP | ETH_RSS_NONFRAG_IPV6_TCP |
-		    ETH_RSS_NONFRAG_IPV4_SCTP | ETH_RSS_NONFRAG_IPV6_SCTP)))
+		   (RTE_ETH_RSS_IPV4 | RTE_ETH_RSS_IPV6 |
+		    RTE_ETH_RSS_NONFRAG_IPV4_UDP | RTE_ETH_RSS_NONFRAG_IPV6_UDP |
+		    RTE_ETH_RSS_NONFRAG_IPV4_TCP | RTE_ETH_RSS_NONFRAG_IPV6_TCP |
+		    RTE_ETH_RSS_NONFRAG_IPV4_SCTP | RTE_ETH_RSS_NONFRAG_IPV6_SCTP)))
 			return true;
 	}
 

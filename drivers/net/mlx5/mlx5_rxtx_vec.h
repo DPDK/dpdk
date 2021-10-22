@@ -15,10 +15,10 @@
 
 /* HW checksum offload capabilities of vectorized Tx. */
 #define MLX5_VEC_TX_CKSUM_OFFLOAD_CAP \
-	(DEV_TX_OFFLOAD_IPV4_CKSUM | \
-	 DEV_TX_OFFLOAD_UDP_CKSUM | \
-	 DEV_TX_OFFLOAD_TCP_CKSUM | \
-	 DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM)
+	(RTE_ETH_TX_OFFLOAD_IPV4_CKSUM | \
+	 RTE_ETH_TX_OFFLOAD_UDP_CKSUM | \
+	 RTE_ETH_TX_OFFLOAD_TCP_CKSUM | \
+	 RTE_ETH_TX_OFFLOAD_OUTER_IPV4_CKSUM)
 
 /*
  * Compile time sanity check for vectorized functions.

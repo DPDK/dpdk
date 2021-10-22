@@ -114,7 +114,7 @@ mvneta_dev_configure(struct rte_eth_dev *dev)
 	struct mvneta_priv *priv = dev->data->dev_private;
 	struct neta_ppio_params *ppio_params;
 
-	if (dev->data->dev_conf.rxmode.mq_mode != ETH_MQ_RX_NONE) {
+	if (dev->data->dev_conf.rxmode.mq_mode != RTE_ETH_MQ_RX_NONE) {
 		MVNETA_LOG(INFO, "Unsupported RSS and rx multi queue mode %d",
 			dev->data->dev_conf.rxmode.mq_mode);
 		if (dev->data->nb_rx_queues > 1)
@@ -126,7 +126,7 @@ mvneta_dev_configure(struct rte_eth_dev *dev)
 		return -EINVAL;
 	}
 
-	if (dev->data->dev_conf.txmode.offloads & DEV_TX_OFFLOAD_MULTI_SEGS)
+	if (dev->data->dev_conf.txmode.offloads & RTE_ETH_TX_OFFLOAD_MULTI_SEGS)
 		priv->multiseg = 1;
 
 	ppio_params = &priv->ppio_params;
@@ -151,10 +151,10 @@ static int
 mvneta_dev_infos_get(struct rte_eth_dev *dev __rte_unused,
 		   struct rte_eth_dev_info *info)
 {
-	info->speed_capa = ETH_LINK_SPEED_10M |
-			   ETH_LINK_SPEED_100M |
-			   ETH_LINK_SPEED_1G |
-			   ETH_LINK_SPEED_2_5G;
+	info->speed_capa = RTE_ETH_LINK_SPEED_10M |
+			   RTE_ETH_LINK_SPEED_100M |
+			   RTE_ETH_LINK_SPEED_1G |
+			   RTE_ETH_LINK_SPEED_2_5G;
 
 	info->max_rx_queues = MRVL_NETA_RXQ_MAX;
 	info->max_tx_queues = MRVL_NETA_TXQ_MAX;
@@ -503,28 +503,28 @@ mvneta_link_update(struct rte_eth_dev *dev, int wait_to_complete __rte_unused)
 
 	switch (ethtool_cmd_speed(&edata)) {
 	case SPEED_10:
-		dev->data->dev_link.link_speed = ETH_SPEED_NUM_10M;
+		dev->data->dev_link.link_speed = RTE_ETH_SPEED_NUM_10M;
 		break;
 	case SPEED_100:
-		dev->data->dev_link.link_speed = ETH_SPEED_NUM_100M;
+		dev->data->dev_link.link_speed = RTE_ETH_SPEED_NUM_100M;
 		break;
 	case SPEED_1000:
-		dev->data->dev_link.link_speed = ETH_SPEED_NUM_1G;
+		dev->data->dev_link.link_speed = RTE_ETH_SPEED_NUM_1G;
 		break;
 	case SPEED_2500:
-		dev->data->dev_link.link_speed = ETH_SPEED_NUM_2_5G;
+		dev->data->dev_link.link_speed = RTE_ETH_SPEED_NUM_2_5G;
 		break;
 	default:
-		dev->data->dev_link.link_speed = ETH_SPEED_NUM_NONE;
+		dev->data->dev_link.link_speed = RTE_ETH_SPEED_NUM_NONE;
 	}
 
-	dev->data->dev_link.link_duplex = edata.duplex ? ETH_LINK_FULL_DUPLEX :
-							 ETH_LINK_HALF_DUPLEX;
-	dev->data->dev_link.link_autoneg = edata.autoneg ? ETH_LINK_AUTONEG :
-							   ETH_LINK_FIXED;
+	dev->data->dev_link.link_duplex = edata.duplex ? RTE_ETH_LINK_FULL_DUPLEX :
+							 RTE_ETH_LINK_HALF_DUPLEX;
+	dev->data->dev_link.link_autoneg = edata.autoneg ? RTE_ETH_LINK_AUTONEG :
+							   RTE_ETH_LINK_FIXED;
 
 	neta_ppio_get_link_state(priv->ppio, &link_up);
-	dev->data->dev_link.link_status = link_up ? ETH_LINK_UP : ETH_LINK_DOWN;
+	dev->data->dev_link.link_status = link_up ? RTE_ETH_LINK_UP : RTE_ETH_LINK_DOWN;
 
 	return 0;
 }

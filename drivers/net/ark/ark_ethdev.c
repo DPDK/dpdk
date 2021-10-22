@@ -736,14 +736,14 @@ eth_ark_dev_info_get(struct rte_eth_dev *dev,
 		.nb_align = ARK_TX_MIN_QUEUE}; /* power of 2 */
 
 	/* ARK PMD supports all line rates, how do we indicate that here ?? */
-	dev_info->speed_capa = (ETH_LINK_SPEED_1G |
-				ETH_LINK_SPEED_10G |
-				ETH_LINK_SPEED_25G |
-				ETH_LINK_SPEED_40G |
-				ETH_LINK_SPEED_50G |
-				ETH_LINK_SPEED_100G);
+	dev_info->speed_capa = (RTE_ETH_LINK_SPEED_1G |
+				RTE_ETH_LINK_SPEED_10G |
+				RTE_ETH_LINK_SPEED_25G |
+				RTE_ETH_LINK_SPEED_40G |
+				RTE_ETH_LINK_SPEED_50G |
+				RTE_ETH_LINK_SPEED_100G);
 
-	dev_info->rx_offload_capa = DEV_RX_OFFLOAD_TIMESTAMP;
+	dev_info->rx_offload_capa = RTE_ETH_RX_OFFLOAD_TIMESTAMP;
 
 	return 0;
 }

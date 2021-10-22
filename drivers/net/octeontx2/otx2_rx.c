@@ -414,12 +414,12 @@ NIX_RX_FASTPATH_MODES
 	/* For PTP enabled, scalar rx function should be chosen as most of the
 	 * PTP apps are implemented to rx burst 1 pkt.
 	 */
-	if (dev->scalar_ena || dev->rx_offloads & DEV_RX_OFFLOAD_TIMESTAMP)
+	if (dev->scalar_ena || dev->rx_offloads & RTE_ETH_RX_OFFLOAD_TIMESTAMP)
 		pick_rx_func(eth_dev, nix_eth_rx_burst);
 	else
 		pick_rx_func(eth_dev, nix_eth_rx_vec_burst);
 
-	if (dev->rx_offloads & DEV_RX_OFFLOAD_SCATTER)
+	if (dev->rx_offloads & RTE_ETH_RX_OFFLOAD_SCATTER)
 		pick_rx_func(eth_dev, nix_eth_rx_burst_mseg);
 
 	/* Copy multi seg version with no offload for tear down sequence */

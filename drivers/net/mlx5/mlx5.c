@@ -1576,10 +1576,10 @@ mlx5_udp_tunnel_port_add(struct rte_eth_dev *dev __rte_unused,
 			 struct rte_eth_udp_tunnel *udp_tunnel)
 {
 	MLX5_ASSERT(udp_tunnel != NULL);
-	if (udp_tunnel->prot_type == RTE_TUNNEL_TYPE_VXLAN &&
+	if (udp_tunnel->prot_type == RTE_ETH_TUNNEL_TYPE_VXLAN &&
 	    udp_tunnel->udp_port == 4789)
 		return 0;
-	if (udp_tunnel->prot_type == RTE_TUNNEL_TYPE_VXLAN_GPE &&
+	if (udp_tunnel->prot_type == RTE_ETH_TUNNEL_TYPE_VXLAN_GPE &&
 	    udp_tunnel->udp_port == 4790)
 		return 0;
 	return -ENOTSUP;

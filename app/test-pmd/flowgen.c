@@ -99,11 +99,11 @@ pkt_burst_flow_gen(struct fwd_stream *fs)
 	vlan_tci_outer = ports[fs->tx_port].tx_vlan_id_outer;
 
 	tx_offloads = ports[fs->tx_port].dev_conf.txmode.offloads;
-	if (tx_offloads	& DEV_TX_OFFLOAD_VLAN_INSERT)
+	if (tx_offloads	& RTE_ETH_TX_OFFLOAD_VLAN_INSERT)
 		ol_flags |= PKT_TX_VLAN_PKT;
-	if (tx_offloads & DEV_TX_OFFLOAD_QINQ_INSERT)
+	if (tx_offloads & RTE_ETH_TX_OFFLOAD_QINQ_INSERT)
 		ol_flags |= PKT_TX_QINQ_PKT;
-	if (tx_offloads	& DEV_TX_OFFLOAD_MACSEC_INSERT)
+	if (tx_offloads	& RTE_ETH_TX_OFFLOAD_MACSEC_INSERT)
 		ol_flags |= PKT_TX_MACSEC;
 
 	for (nb_pkt = 0; nb_pkt < nb_pkt_per_burst; nb_pkt++) {

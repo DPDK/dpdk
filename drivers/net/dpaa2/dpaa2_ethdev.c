@@ -38,33 +38,33 @@
 
 /* Supported Rx offloads */
 static uint64_t dev_rx_offloads_sup =
-		DEV_RX_OFFLOAD_CHECKSUM |
-		DEV_RX_OFFLOAD_SCTP_CKSUM |
-		DEV_RX_OFFLOAD_OUTER_IPV4_CKSUM |
-		DEV_RX_OFFLOAD_OUTER_UDP_CKSUM |
-		DEV_RX_OFFLOAD_VLAN_STRIP |
-		DEV_RX_OFFLOAD_VLAN_FILTER |
-		DEV_RX_OFFLOAD_TIMESTAMP;
+		RTE_ETH_RX_OFFLOAD_CHECKSUM |
+		RTE_ETH_RX_OFFLOAD_SCTP_CKSUM |
+		RTE_ETH_RX_OFFLOAD_OUTER_IPV4_CKSUM |
+		RTE_ETH_RX_OFFLOAD_OUTER_UDP_CKSUM |
+		RTE_ETH_RX_OFFLOAD_VLAN_STRIP |
+		RTE_ETH_RX_OFFLOAD_VLAN_FILTER |
+		RTE_ETH_RX_OFFLOAD_TIMESTAMP;
 
 /* Rx offloads which cannot be disabled */
 static uint64_t dev_rx_offloads_nodis =
-		DEV_RX_OFFLOAD_RSS_HASH |
-		DEV_RX_OFFLOAD_SCATTER;
+		RTE_ETH_RX_OFFLOAD_RSS_HASH |
+		RTE_ETH_RX_OFFLOAD_SCATTER;
 
 /* Supported Tx offloads */
 static uint64_t dev_tx_offloads_sup =
-		DEV_TX_OFFLOAD_VLAN_INSERT |
-		DEV_TX_OFFLOAD_IPV4_CKSUM |
-		DEV_TX_OFFLOAD_UDP_CKSUM |
-		DEV_TX_OFFLOAD_TCP_CKSUM |
-		DEV_TX_OFFLOAD_SCTP_CKSUM |
-		DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM |
-		DEV_TX_OFFLOAD_MT_LOCKFREE |
-		DEV_TX_OFFLOAD_MBUF_FAST_FREE;
+		RTE_ETH_TX_OFFLOAD_VLAN_INSERT |
+		RTE_ETH_TX_OFFLOAD_IPV4_CKSUM |
+		RTE_ETH_TX_OFFLOAD_UDP_CKSUM |
+		RTE_ETH_TX_OFFLOAD_TCP_CKSUM |
+		RTE_ETH_TX_OFFLOAD_SCTP_CKSUM |
+		RTE_ETH_TX_OFFLOAD_OUTER_IPV4_CKSUM |
+		RTE_ETH_TX_OFFLOAD_MT_LOCKFREE |
+		RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE;
 
 /* Tx offloads which cannot be disabled */
 static uint64_t dev_tx_offloads_nodis =
-		DEV_TX_OFFLOAD_MULTI_SEGS;
+		RTE_ETH_TX_OFFLOAD_MULTI_SEGS;
 
 /* enable timestamp in mbuf */
 bool dpaa2_enable_ts[RTE_MAX_ETHPORTS];
@@ -142,7 +142,7 @@ dpaa2_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 
 	PMD_INIT_FUNC_TRACE();
 
-	if (mask & ETH_VLAN_FILTER_MASK) {
+	if (mask & RTE_ETH_VLAN_FILTER_MASK) {
 		/* VLAN Filter not avaialble */
 		if (!priv->max_vlan_filters) {
 			DPAA2_PMD_INFO("VLAN filter not available");
@@ -150,7 +150,7 @@ dpaa2_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 		}
 
 		if (dev->data->dev_conf.rxmode.offloads &
-			DEV_RX_OFFLOAD_VLAN_FILTER)
+			RTE_ETH_RX_OFFLOAD_VLAN_FILTER)
 			ret = dpni_enable_vlan_filter(dpni, CMD_PRI_LOW,
 						      priv->token, true);
 		else
@@ -251,13 +251,13 @@ dpaa2_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 					dev_rx_offloads_nodis;
 	dev_info->tx_offload_capa = dev_tx_offloads_sup |
 					dev_tx_offloads_nodis;
-	dev_info->speed_capa = ETH_LINK_SPEED_1G |
-			ETH_LINK_SPEED_2_5G |
-			ETH_LINK_SPEED_10G;
+	dev_info->speed_capa = RTE_ETH_LINK_SPEED_1G |
+			RTE_ETH_LINK_SPEED_2_5G |
+			RTE_ETH_LINK_SPEED_10G;
 
 	dev_info->max_hash_mac_addrs = 0;
 	dev_info->max_vfs = 0;
-	dev_info->max_vmdq_pools = ETH_16_POOLS;
+	dev_info->max_vmdq_pools = RTE_ETH_16_POOLS;
 	dev_info->flow_type_rss_offloads = DPAA2_RSS_OFFLOAD_ALL;
 
 	dev_info->default_rxportconf.burst_size = dpaa2_dqrr_size;
@@ -270,10 +270,10 @@ dpaa2_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->default_rxportconf.ring_size = DPAA2_RX_DEFAULT_NBDESC;
 
 	if (dpaa2_svr_family == SVR_LX2160A) {
-		dev_info->speed_capa |= ETH_LINK_SPEED_25G |
-				ETH_LINK_SPEED_40G |
-				ETH_LINK_SPEED_50G |
-				ETH_LINK_SPEED_100G;
+		dev_info->speed_capa |= RTE_ETH_LINK_SPEED_25G |
+				RTE_ETH_LINK_SPEED_40G |
+				RTE_ETH_LINK_SPEED_50G |
+				RTE_ETH_LINK_SPEED_100G;
 	}
 
 	return 0;
@@ -291,15 +291,15 @@ dpaa2_dev_rx_burst_mode_get(struct rte_eth_dev *dev,
 		uint64_t flags;
 		const char *output;
 	} rx_offload_map[] = {
-			{DEV_RX_OFFLOAD_CHECKSUM, " Checksum,"},
-			{DEV_RX_OFFLOAD_SCTP_CKSUM, " SCTP csum,"},
-			{DEV_RX_OFFLOAD_OUTER_IPV4_CKSUM, " Outer IPV4 csum,"},
-			{DEV_RX_OFFLOAD_OUTER_UDP_CKSUM, " Outer UDP csum,"},
-			{DEV_RX_OFFLOAD_VLAN_STRIP, " VLAN strip,"},
-			{DEV_RX_OFFLOAD_VLAN_FILTER, " VLAN filter,"},
-			{DEV_RX_OFFLOAD_TIMESTAMP, " Timestamp,"},
-			{DEV_RX_OFFLOAD_RSS_HASH, " RSS,"},
-			{DEV_RX_OFFLOAD_SCATTER, " Scattered,"}
+			{RTE_ETH_RX_OFFLOAD_CHECKSUM, " Checksum,"},
+			{RTE_ETH_RX_OFFLOAD_SCTP_CKSUM, " SCTP csum,"},
+			{RTE_ETH_RX_OFFLOAD_OUTER_IPV4_CKSUM, " Outer IPV4 csum,"},
+			{RTE_ETH_RX_OFFLOAD_OUTER_UDP_CKSUM, " Outer UDP csum,"},
+			{RTE_ETH_RX_OFFLOAD_VLAN_STRIP, " VLAN strip,"},
+			{RTE_ETH_RX_OFFLOAD_VLAN_FILTER, " VLAN filter,"},
+			{RTE_ETH_RX_OFFLOAD_TIMESTAMP, " Timestamp,"},
+			{RTE_ETH_RX_OFFLOAD_RSS_HASH, " RSS,"},
+			{RTE_ETH_RX_OFFLOAD_SCATTER, " Scattered,"}
 	};
 
 	/* Update Rx offload info */
@@ -326,15 +326,15 @@ dpaa2_dev_tx_burst_mode_get(struct rte_eth_dev *dev,
 		uint64_t flags;
 		const char *output;
 	} tx_offload_map[] = {
-			{DEV_TX_OFFLOAD_VLAN_INSERT, " VLAN Insert,"},
-			{DEV_TX_OFFLOAD_IPV4_CKSUM, " IPV4 csum,"},
-			{DEV_TX_OFFLOAD_UDP_CKSUM, " UDP csum,"},
-			{DEV_TX_OFFLOAD_TCP_CKSUM, " TCP csum,"},
-			{DEV_TX_OFFLOAD_SCTP_CKSUM, " SCTP csum,"},
-			{DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM, " Outer IPV4 csum,"},
-			{DEV_TX_OFFLOAD_MT_LOCKFREE, " MT lockfree,"},
-			{DEV_TX_OFFLOAD_MBUF_FAST_FREE, " MBUF free disable,"},
-			{DEV_TX_OFFLOAD_MULTI_SEGS, " Scattered,"}
+			{RTE_ETH_TX_OFFLOAD_VLAN_INSERT, " VLAN Insert,"},
+			{RTE_ETH_TX_OFFLOAD_IPV4_CKSUM, " IPV4 csum,"},
+			{RTE_ETH_TX_OFFLOAD_UDP_CKSUM, " UDP csum,"},
+			{RTE_ETH_TX_OFFLOAD_TCP_CKSUM, " TCP csum,"},
+			{RTE_ETH_TX_OFFLOAD_SCTP_CKSUM, " SCTP csum,"},
+			{RTE_ETH_TX_OFFLOAD_OUTER_IPV4_CKSUM, " Outer IPV4 csum,"},
+			{RTE_ETH_TX_OFFLOAD_MT_LOCKFREE, " MT lockfree,"},
+			{RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE, " MBUF free disable,"},
+			{RTE_ETH_TX_OFFLOAD_MULTI_SEGS, " Scattered,"}
 	};
 
 	/* Update Tx offload info */
@@ -573,7 +573,7 @@ dpaa2_eth_dev_configure(struct rte_eth_dev *dev)
 		return -1;
 	}
 
-	if (eth_conf->rxmode.mq_mode == ETH_MQ_RX_RSS) {
+	if (eth_conf->rxmode.mq_mode == RTE_ETH_MQ_RX_RSS) {
 		for (tc_index = 0; tc_index < priv->num_rx_tc; tc_index++) {
 			ret = dpaa2_setup_flow_dist(dev,
 					eth_conf->rx_adv_conf.rss_conf.rss_hf,
@@ -587,12 +587,12 @@ dpaa2_eth_dev_configure(struct rte_eth_dev *dev)
 		}
 	}
 
-	if (rx_offloads & DEV_RX_OFFLOAD_IPV4_CKSUM)
+	if (rx_offloads & RTE_ETH_RX_OFFLOAD_IPV4_CKSUM)
 		rx_l3_csum_offload = true;
 
-	if ((rx_offloads & DEV_RX_OFFLOAD_UDP_CKSUM) ||
-		(rx_offloads & DEV_RX_OFFLOAD_TCP_CKSUM) ||
-		(rx_offloads & DEV_RX_OFFLOAD_SCTP_CKSUM))
+	if ((rx_offloads & RTE_ETH_RX_OFFLOAD_UDP_CKSUM) ||
+		(rx_offloads & RTE_ETH_RX_OFFLOAD_TCP_CKSUM) ||
+		(rx_offloads & RTE_ETH_RX_OFFLOAD_SCTP_CKSUM))
 		rx_l4_csum_offload = true;
 
 	ret = dpni_set_offload(dpni, CMD_PRI_LOW, priv->token,
@@ -610,7 +610,7 @@ dpaa2_eth_dev_configure(struct rte_eth_dev *dev)
 	}
 
 #if !defined(RTE_LIBRTE_IEEE1588)
-	if (rx_offloads & DEV_RX_OFFLOAD_TIMESTAMP)
+	if (rx_offloads & RTE_ETH_RX_OFFLOAD_TIMESTAMP)
 #endif
 	{
 		ret = rte_mbuf_dyn_rx_timestamp_register(
@@ -623,12 +623,12 @@ dpaa2_eth_dev_configure(struct rte_eth_dev *dev)
 		dpaa2_enable_ts[dev->data->port_id] = true;
 	}
 
-	if (tx_offloads & DEV_TX_OFFLOAD_IPV4_CKSUM)
+	if (tx_offloads & RTE_ETH_TX_OFFLOAD_IPV4_CKSUM)
 		tx_l3_csum_offload = true;
 
-	if ((tx_offloads & DEV_TX_OFFLOAD_UDP_CKSUM) ||
-		(tx_offloads & DEV_TX_OFFLOAD_TCP_CKSUM) ||
-		(tx_offloads & DEV_TX_OFFLOAD_SCTP_CKSUM))
+	if ((tx_offloads & RTE_ETH_TX_OFFLOAD_UDP_CKSUM) ||
+		(tx_offloads & RTE_ETH_TX_OFFLOAD_TCP_CKSUM) ||
+		(tx_offloads & RTE_ETH_TX_OFFLOAD_SCTP_CKSUM))
 		tx_l4_csum_offload = true;
 
 	ret = dpni_set_offload(dpni, CMD_PRI_LOW, priv->token,
@@ -660,8 +660,8 @@ dpaa2_eth_dev_configure(struct rte_eth_dev *dev)
 		}
 	}
 
-	if (rx_offloads & DEV_RX_OFFLOAD_VLAN_FILTER)
-		dpaa2_vlan_offload_set(dev, ETH_VLAN_FILTER_MASK);
+	if (rx_offloads & RTE_ETH_RX_OFFLOAD_VLAN_FILTER)
+		dpaa2_vlan_offload_set(dev, RTE_ETH_VLAN_FILTER_MASK);
 
 	dpaa2_tm_init(dev);
 
@@ -1856,7 +1856,7 @@ dpaa2_dev_link_update(struct rte_eth_dev *dev,
 			DPAA2_PMD_DEBUG("error: dpni_get_link_state %d", ret);
 			return -1;
 		}
-		if (state.up == ETH_LINK_DOWN &&
+		if (state.up == RTE_ETH_LINK_DOWN &&
 		    wait_to_complete)
 			rte_delay_ms(CHECK_INTERVAL);
 		else
@@ -1868,9 +1868,9 @@ dpaa2_dev_link_update(struct rte_eth_dev *dev,
 	link.link_speed = state.rate;
 
 	if (state.options & DPNI_LINK_OPT_HALF_DUPLEX)
-		link.link_duplex = ETH_LINK_HALF_DUPLEX;
+		link.link_duplex = RTE_ETH_LINK_HALF_DUPLEX;
 	else
-		link.link_duplex = ETH_LINK_FULL_DUPLEX;
+		link.link_duplex = RTE_ETH_LINK_FULL_DUPLEX;
 
 	ret = rte_eth_linkstatus_set(dev, &link);
 	if (ret == -1)
@@ -2031,9 +2031,9 @@ dpaa2_flow_ctrl_get(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 		 *	No TX side flow control (send Pause frame disabled)
 		 */
 		if (!(state.options & DPNI_LINK_OPT_ASYM_PAUSE))
-			fc_conf->mode = RTE_FC_FULL;
+			fc_conf->mode = RTE_ETH_FC_FULL;
 		else
-			fc_conf->mode = RTE_FC_RX_PAUSE;
+			fc_conf->mode = RTE_ETH_FC_RX_PAUSE;
 	} else {
 		/* DPNI_LINK_OPT_PAUSE not set
 		 *  if ASYM_PAUSE set,
@@ -2043,9 +2043,9 @@ dpaa2_flow_ctrl_get(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 		 *	Flow control disabled
 		 */
 		if (state.options & DPNI_LINK_OPT_ASYM_PAUSE)
-			fc_conf->mode = RTE_FC_TX_PAUSE;
+			fc_conf->mode = RTE_ETH_FC_TX_PAUSE;
 		else
-			fc_conf->mode = RTE_FC_NONE;
+			fc_conf->mode = RTE_ETH_FC_NONE;
 	}
 
 	return ret;
@@ -2089,14 +2089,14 @@ dpaa2_flow_ctrl_set(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 
 	/* update cfg with fc_conf */
 	switch (fc_conf->mode) {
-	case RTE_FC_FULL:
+	case RTE_ETH_FC_FULL:
 		/* Full flow control;
 		 * OPT_PAUSE set, ASYM_PAUSE not set
 		 */
 		cfg.options |= DPNI_LINK_OPT_PAUSE;
 		cfg.options &= ~DPNI_LINK_OPT_ASYM_PAUSE;
 		break;
-	case RTE_FC_TX_PAUSE:
+	case RTE_ETH_FC_TX_PAUSE:
 		/* Enable RX flow control
 		 * OPT_PAUSE not set;
 		 * ASYM_PAUSE set;
@@ -2104,7 +2104,7 @@ dpaa2_flow_ctrl_set(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 		cfg.options |= DPNI_LINK_OPT_ASYM_PAUSE;
 		cfg.options &= ~DPNI_LINK_OPT_PAUSE;
 		break;
-	case RTE_FC_RX_PAUSE:
+	case RTE_ETH_FC_RX_PAUSE:
 		/* Enable TX Flow control
 		 * OPT_PAUSE set
 		 * ASYM_PAUSE set
@@ -2112,7 +2112,7 @@ dpaa2_flow_ctrl_set(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 		cfg.options |= DPNI_LINK_OPT_PAUSE;
 		cfg.options |= DPNI_LINK_OPT_ASYM_PAUSE;
 		break;
-	case RTE_FC_NONE:
+	case RTE_ETH_FC_NONE:
 		/* Disable Flow control
 		 * OPT_PAUSE not set
 		 * ASYM_PAUSE not set

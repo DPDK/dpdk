@@ -250,7 +250,7 @@ otx2_nix_timesync_enable(struct rte_eth_dev *eth_dev)
 	/* System time should be already on by default */
 	nix_start_timecounters(eth_dev);
 
-	dev->rx_offloads |= DEV_RX_OFFLOAD_TIMESTAMP;
+	dev->rx_offloads |= RTE_ETH_RX_OFFLOAD_TIMESTAMP;
 	dev->rx_offload_flags |= NIX_RX_OFFLOAD_TSTAMP_F;
 	dev->tx_offload_flags |= NIX_TX_OFFLOAD_TSTAMP_F;
 
@@ -287,7 +287,7 @@ otx2_nix_timesync_disable(struct rte_eth_dev *eth_dev)
 	if (otx2_dev_is_vf_or_sdp(dev) || otx2_dev_is_lbk(dev))
 		return -EINVAL;
 
-	dev->rx_offloads &= ~DEV_RX_OFFLOAD_TIMESTAMP;
+	dev->rx_offloads &= ~RTE_ETH_RX_OFFLOAD_TIMESTAMP;
 	dev->rx_offload_flags &= ~NIX_RX_OFFLOAD_TSTAMP_F;
 	dev->tx_offload_flags &= ~NIX_TX_OFFLOAD_TSTAMP_F;
 

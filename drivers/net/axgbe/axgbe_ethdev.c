@@ -326,7 +326,7 @@ axgbe_dev_configure(struct rte_eth_dev *dev)
 	struct axgbe_port *pdata =  dev->data->dev_private;
 	/* Checksum offload to hardware */
 	pdata->rx_csum_enable = dev->data->dev_conf.rxmode.offloads &
-				DEV_RX_OFFLOAD_CHECKSUM;
+				RTE_ETH_RX_OFFLOAD_CHECKSUM;
 	return 0;
 }
 
@@ -335,9 +335,9 @@ axgbe_dev_rx_mq_config(struct rte_eth_dev *dev)
 {
 	struct axgbe_port *pdata = dev->data->dev_private;
 
-	if (dev->data->dev_conf.rxmode.mq_mode == ETH_MQ_RX_RSS)
+	if (dev->data->dev_conf.rxmode.mq_mode == RTE_ETH_MQ_RX_RSS)
 		pdata->rss_enable = 1;
-	else if (dev->data->dev_conf.rxmode.mq_mode == ETH_MQ_RX_NONE)
+	else if (dev->data->dev_conf.rxmode.mq_mode == RTE_ETH_MQ_RX_NONE)
 		pdata->rss_enable = 0;
 	else
 		return  -1;
@@ -385,7 +385,7 @@ axgbe_dev_start(struct rte_eth_dev *dev)
 	rte_bit_relaxed_clear32(AXGBE_DOWN, &pdata->dev_state);
 
 	max_pkt_len = dev_data->mtu + RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN;
-	if ((dev_data->dev_conf.rxmode.offloads & DEV_RX_OFFLOAD_SCATTER) ||
+	if ((dev_data->dev_conf.rxmode.offloads & RTE_ETH_RX_OFFLOAD_SCATTER) ||
 				max_pkt_len > pdata->rx_buf_size)
 		dev_data->scattered_rx = 1;
 
@@ -521,8 +521,8 @@ axgbe_dev_rss_reta_update(struct rte_eth_dev *dev,
 	}
 
 	for (i = 0; i < reta_size; i++) {
-		idx = i / RTE_RETA_GROUP_SIZE;
-		shift = i % RTE_RETA_GROUP_SIZE;
+		idx = i / RTE_ETH_RETA_GROUP_SIZE;
+		shift = i % RTE_ETH_RETA_GROUP_SIZE;
 		if ((reta_conf[idx].mask & (1ULL << shift)) == 0)
 			continue;
 		pdata->rss_table[i] = reta_conf[idx].reta[shift];
@@ -552,8 +552,8 @@ axgbe_dev_rss_reta_query(struct rte_eth_dev *dev,
 	}
 
 	for (i = 0; i < reta_size; i++) {
-		idx = i / RTE_RETA_GROUP_SIZE;
-		shift = i % RTE_RETA_GROUP_SIZE;
+		idx = i / RTE_ETH_RETA_GROUP_SIZE;
+		shift = i % RTE_ETH_RETA_GROUP_SIZE;
 		if ((reta_conf[idx].mask & (1ULL << shift)) == 0)
 			continue;
 		reta_conf[idx].reta[shift] = pdata->rss_table[i];
@@ -590,13 +590,13 @@ axgbe_dev_rss_hash_update(struct rte_eth_dev *dev,
 
 	pdata->rss_hf = rss_conf->rss_hf & AXGBE_RSS_OFFLOAD;
 
-	if (pdata->rss_hf & (ETH_RSS_IPV4 | ETH_RSS_IPV6))
+	if (pdata->rss_hf & (RTE_ETH_RSS_IPV4 | RTE_ETH_RSS_IPV6))
 		AXGMAC_SET_BITS(pdata->rss_options, MAC_RSSCR, IP2TE, 1);
 	if (pdata->rss_hf &
-	    (ETH_RSS_NONFRAG_IPV4_TCP | ETH_RSS_NONFRAG_IPV6_TCP))
+	    (RTE_ETH_RSS_NONFRAG_IPV4_TCP | RTE_ETH_RSS_NONFRAG_IPV6_TCP))
 		AXGMAC_SET_BITS(pdata->rss_options, MAC_RSSCR, TCP4TE, 1);
 	if (pdata->rss_hf &
-	    (ETH_RSS_NONFRAG_IPV4_UDP | ETH_RSS_NONFRAG_IPV6_UDP))
+	    (RTE_ETH_RSS_NONFRAG_IPV4_UDP | RTE_ETH_RSS_NONFRAG_IPV6_UDP))
 		AXGMAC_SET_BITS(pdata->rss_options, MAC_RSSCR, UDP4TE, 1);
 
 	/* Set the RSS options */
@@ -765,7 +765,7 @@ axgbe_dev_link_update(struct rte_eth_dev *dev,
 	link.link_status = pdata->phy_link;
 	link.link_speed = pdata->phy_speed;
 	link.link_autoneg = !(dev->data->dev_conf.link_speeds &
-			      ETH_LINK_SPEED_FIXED);
+			      RTE_ETH_LINK_SPEED_FIXED);
 	ret = rte_eth_linkstatus_set(dev, &link);
 	if (ret == -1)
 		PMD_DRV_LOG(ERR, "No change in link status\n");
@@ -1208,24 +1208,24 @@ axgbe_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->max_rx_pktlen = AXGBE_RX_MAX_BUF_SIZE;
 	dev_info->max_mac_addrs = pdata->hw_feat.addn_mac + 1;
 	dev_info->max_hash_mac_addrs = pdata->hw_feat.hash_table_size;
-	dev_info->speed_capa =  ETH_LINK_SPEED_10G;
+	dev_info->speed_capa = RTE_ETH_LINK_SPEED_10G;
 
 	dev_info->rx_offload_capa =
-		DEV_RX_OFFLOAD_VLAN_STRIP |
-		DEV_RX_OFFLOAD_VLAN_FILTER |
-		DEV_RX_OFFLOAD_VLAN_EXTEND |
-		DEV_RX_OFFLOAD_IPV4_CKSUM |
-		DEV_RX_OFFLOAD_UDP_CKSUM  |
-		DEV_RX_OFFLOAD_TCP_CKSUM  |
-		DEV_RX_OFFLOAD_SCATTER	  |
-		DEV_RX_OFFLOAD_KEEP_CRC;
+		RTE_ETH_RX_OFFLOAD_VLAN_STRIP |
+		RTE_ETH_RX_OFFLOAD_VLAN_FILTER |
+		RTE_ETH_RX_OFFLOAD_VLAN_EXTEND |
+		RTE_ETH_RX_OFFLOAD_IPV4_CKSUM |
+		RTE_ETH_RX_OFFLOAD_UDP_CKSUM  |
+		RTE_ETH_RX_OFFLOAD_TCP_CKSUM  |
+		RTE_ETH_RX_OFFLOAD_SCATTER	  |
+		RTE_ETH_RX_OFFLOAD_KEEP_CRC;
 
 	dev_info->tx_offload_capa =
-		DEV_TX_OFFLOAD_VLAN_INSERT |
-		DEV_TX_OFFLOAD_QINQ_INSERT |
-		DEV_TX_OFFLOAD_IPV4_CKSUM  |
-		DEV_TX_OFFLOAD_UDP_CKSUM   |
-		DEV_TX_OFFLOAD_TCP_CKSUM;
+		RTE_ETH_TX_OFFLOAD_VLAN_INSERT |
+		RTE_ETH_TX_OFFLOAD_QINQ_INSERT |
+		RTE_ETH_TX_OFFLOAD_IPV4_CKSUM  |
+		RTE_ETH_TX_OFFLOAD_UDP_CKSUM   |
+		RTE_ETH_TX_OFFLOAD_TCP_CKSUM;
 
 	if (pdata->hw_feat.rss) {
 		dev_info->flow_type_rss_offloads = AXGBE_RSS_OFFLOAD;
@@ -1262,13 +1262,13 @@ axgbe_flow_ctrl_get(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 	fc.autoneg = pdata->pause_autoneg;
 
 	if (pdata->rx_pause && pdata->tx_pause)
-		fc.mode = RTE_FC_FULL;
+		fc.mode = RTE_ETH_FC_FULL;
 	else if (pdata->rx_pause)
-		fc.mode = RTE_FC_RX_PAUSE;
+		fc.mode = RTE_ETH_FC_RX_PAUSE;
 	else if (pdata->tx_pause)
-		fc.mode = RTE_FC_TX_PAUSE;
+		fc.mode = RTE_ETH_FC_TX_PAUSE;
 	else
-		fc.mode = RTE_FC_NONE;
+		fc.mode = RTE_ETH_FC_NONE;
 
 	fc_conf->high_water =  (1024 + (fc.low_water[0] << 9)) / 1024;
 	fc_conf->low_water =  (1024 + (fc.high_water[0] << 9)) / 1024;
@@ -1298,13 +1298,13 @@ axgbe_flow_ctrl_set(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 	AXGMAC_IOWRITE(pdata, reg, reg_val);
 	fc.mode = fc_conf->mode;
 
-	if (fc.mode == RTE_FC_FULL) {
+	if (fc.mode == RTE_ETH_FC_FULL) {
 		pdata->tx_pause = 1;
 		pdata->rx_pause = 1;
-	} else if (fc.mode == RTE_FC_RX_PAUSE) {
+	} else if (fc.mode == RTE_ETH_FC_RX_PAUSE) {
 		pdata->tx_pause = 0;
 		pdata->rx_pause = 1;
-	} else if (fc.mode == RTE_FC_TX_PAUSE) {
+	} else if (fc.mode == RTE_ETH_FC_TX_PAUSE) {
 		pdata->tx_pause = 1;
 		pdata->rx_pause = 0;
 	} else {
@@ -1386,15 +1386,15 @@ axgbe_priority_flow_ctrl_set(struct rte_eth_dev *dev,
 
 	fc.mode = pfc_conf->fc.mode;
 
-	if (fc.mode == RTE_FC_FULL) {
+	if (fc.mode == RTE_ETH_FC_FULL) {
 		pdata->tx_pause = 1;
 		pdata->rx_pause = 1;
 		AXGMAC_IOWRITE_BITS(pdata, MAC_RFCR, PFCE, 1);
-	} else if (fc.mode == RTE_FC_RX_PAUSE) {
+	} else if (fc.mode == RTE_ETH_FC_RX_PAUSE) {
 		pdata->tx_pause = 0;
 		pdata->rx_pause = 1;
 		AXGMAC_IOWRITE_BITS(pdata, MAC_RFCR, PFCE, 1);
-	} else if (fc.mode == RTE_FC_TX_PAUSE) {
+	} else if (fc.mode == RTE_ETH_FC_TX_PAUSE) {
 		pdata->tx_pause = 1;
 		pdata->rx_pause = 0;
 		AXGMAC_IOWRITE_BITS(pdata, MAC_RFCR, PFCE, 0);
@@ -1830,8 +1830,8 @@ axgbe_vlan_tpid_set(struct rte_eth_dev *dev,
 	PMD_DRV_LOG(DEBUG, "EDVLP: qinq = 0x%x\n", qinq);
 
 	switch (vlan_type) {
-	case ETH_VLAN_TYPE_INNER:
-		PMD_DRV_LOG(DEBUG, "ETH_VLAN_TYPE_INNER\n");
+	case RTE_ETH_VLAN_TYPE_INNER:
+		PMD_DRV_LOG(DEBUG, "RTE_ETH_VLAN_TYPE_INNER\n");
 		if (qinq) {
 			if (tpid != 0x8100 && tpid != 0x88a8)
 				PMD_DRV_LOG(ERR,
@@ -1848,8 +1848,8 @@ axgbe_vlan_tpid_set(struct rte_eth_dev *dev,
 				    "Inner type not supported in single tag\n");
 		}
 		break;
-	case ETH_VLAN_TYPE_OUTER:
-		PMD_DRV_LOG(DEBUG, "ETH_VLAN_TYPE_OUTER\n");
+	case RTE_ETH_VLAN_TYPE_OUTER:
+		PMD_DRV_LOG(DEBUG, "RTE_ETH_VLAN_TYPE_OUTER\n");
 		if (qinq) {
 			PMD_DRV_LOG(DEBUG, "double tagging is enabled\n");
 			/*Enable outer VLAN tag*/
@@ -1866,11 +1866,11 @@ axgbe_vlan_tpid_set(struct rte_eth_dev *dev,
 					    "tag supported 0x8100/0x88A8\n");
 		}
 		break;
-	case ETH_VLAN_TYPE_MAX:
-		PMD_DRV_LOG(ERR, "ETH_VLAN_TYPE_MAX\n");
+	case RTE_ETH_VLAN_TYPE_MAX:
+		PMD_DRV_LOG(ERR, "RTE_ETH_VLAN_TYPE_MAX\n");
 		break;
-	case ETH_VLAN_TYPE_UNKNOWN:
-		PMD_DRV_LOG(ERR, "ETH_VLAN_TYPE_UNKNOWN\n");
+	case RTE_ETH_VLAN_TYPE_UNKNOWN:
+		PMD_DRV_LOG(ERR, "RTE_ETH_VLAN_TYPE_UNKNOWN\n");
 		break;
 	}
 	return 0;
@@ -1904,8 +1904,8 @@ axgbe_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 	AXGMAC_IOWRITE_BITS(pdata, MAC_VLANIR, CSVL, 0);
 	AXGMAC_IOWRITE_BITS(pdata, MAC_VLANIR, VLTI, 1);
 
-	if (mask & ETH_VLAN_STRIP_MASK) {
-		if (rxmode->offloads & DEV_RX_OFFLOAD_VLAN_STRIP) {
+	if (mask & RTE_ETH_VLAN_STRIP_MASK) {
+		if (rxmode->offloads & RTE_ETH_RX_OFFLOAD_VLAN_STRIP) {
 			PMD_DRV_LOG(DEBUG, "Strip ON for device = %s\n",
 				    pdata->eth_dev->device->name);
 			pdata->hw_if.enable_rx_vlan_stripping(pdata);
@@ -1915,8 +1915,8 @@ axgbe_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 			pdata->hw_if.disable_rx_vlan_stripping(pdata);
 		}
 	}
-	if (mask & ETH_VLAN_FILTER_MASK) {
-		if (rxmode->offloads & DEV_RX_OFFLOAD_VLAN_FILTER) {
+	if (mask & RTE_ETH_VLAN_FILTER_MASK) {
+		if (rxmode->offloads & RTE_ETH_RX_OFFLOAD_VLAN_FILTER) {
 			PMD_DRV_LOG(DEBUG, "Filter ON for device = %s\n",
 				    pdata->eth_dev->device->name);
 			pdata->hw_if.enable_rx_vlan_filtering(pdata);
@@ -1926,14 +1926,14 @@ axgbe_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 			pdata->hw_if.disable_rx_vlan_filtering(pdata);
 		}
 	}
-	if (mask & ETH_VLAN_EXTEND_MASK) {
-		if (rxmode->offloads & DEV_RX_OFFLOAD_VLAN_EXTEND) {
+	if (mask & RTE_ETH_VLAN_EXTEND_MASK) {
+		if (rxmode->offloads & RTE_ETH_RX_OFFLOAD_VLAN_EXTEND) {
 			PMD_DRV_LOG(DEBUG, "enabling vlan extended mode\n");
 			axgbe_vlan_extend_enable(pdata);
 			/* Set global registers with default ethertype*/
-			axgbe_vlan_tpid_set(dev, ETH_VLAN_TYPE_OUTER,
+			axgbe_vlan_tpid_set(dev, RTE_ETH_VLAN_TYPE_OUTER,
 					    RTE_ETHER_TYPE_VLAN);
-			axgbe_vlan_tpid_set(dev, ETH_VLAN_TYPE_INNER,
+			axgbe_vlan_tpid_set(dev, RTE_ETH_VLAN_TYPE_INNER,
 					    RTE_ETHER_TYPE_VLAN);
 		} else {
 			PMD_DRV_LOG(DEBUG, "disabling vlan extended mode\n");

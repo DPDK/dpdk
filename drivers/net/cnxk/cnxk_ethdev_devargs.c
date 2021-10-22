@@ -104,11 +104,11 @@ parse_reta_size(const char *key, const char *value, void *extra_args)
 
 	val = atoi(value);
 
-	if (val <= ETH_RSS_RETA_SIZE_64)
+	if (val <= RTE_ETH_RSS_RETA_SIZE_64)
 		val = ROC_NIX_RSS_RETA_SZ_64;
-	else if (val > ETH_RSS_RETA_SIZE_64 && val <= ETH_RSS_RETA_SIZE_128)
+	else if (val > RTE_ETH_RSS_RETA_SIZE_64 && val <= RTE_ETH_RSS_RETA_SIZE_128)
 		val = ROC_NIX_RSS_RETA_SZ_128;
-	else if (val > ETH_RSS_RETA_SIZE_128 && val <= ETH_RSS_RETA_SIZE_256)
+	else if (val > RTE_ETH_RSS_RETA_SIZE_128 && val <= RTE_ETH_RSS_RETA_SIZE_256)
 		val = ROC_NIX_RSS_RETA_SZ_256;
 	else
 		val = ROC_NIX_RSS_RETA_SZ_64;

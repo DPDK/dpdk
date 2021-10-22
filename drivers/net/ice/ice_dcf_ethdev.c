@@ -80,7 +80,7 @@ ice_dcf_init_rxq(struct rte_eth_dev *dev, struct ice_rx_queue *rxq)
 	}
 
 	rxq->max_pkt_len = max_pkt_len;
-	if ((dev_data->dev_conf.rxmode.offloads & DEV_RX_OFFLOAD_SCATTER) ||
+	if ((dev_data->dev_conf.rxmode.offloads & RTE_ETH_RX_OFFLOAD_SCATTER) ||
 	    (rxq->max_pkt_len + 2 * ICE_VLAN_TAG_SIZE) > buf_size) {
 		dev_data->scattered_rx = 1;
 	}
@@ -567,7 +567,7 @@ ice_dcf_dev_start(struct rte_eth_dev *dev)
 		return ret;
 	}
 
-	dev->data->dev_link.link_status = ETH_LINK_UP;
+	dev->data->dev_link.link_status = RTE_ETH_LINK_UP;
 
 	return 0;
 }
@@ -629,7 +629,7 @@ ice_dcf_dev_stop(struct rte_eth_dev *dev)
 	}
 
 	ice_dcf_add_del_all_mac_addr(&dcf_ad->real_hw, false);
-	dev->data->dev_link.link_status = ETH_LINK_DOWN;
+	dev->data->dev_link.link_status = RTE_ETH_LINK_DOWN;
 	ad->pf.adapter_stopped = 1;
 	hw->tm_conf.committed = false;
 
@@ -645,8 +645,8 @@ ice_dcf_dev_configure(struct rte_eth_dev *dev)
 	ad->rx_bulk_alloc_allowed = true;
 	ad->tx_simple_allowed = true;
 
-	if (dev->data->dev_conf.rxmode.mq_mode & ETH_MQ_RX_RSS_FLAG)
-		dev->data->dev_conf.rxmode.offloads |= DEV_RX_OFFLOAD_RSS_HASH;
+	if (dev->data->dev_conf.rxmode.mq_mode & RTE_ETH_MQ_RX_RSS_FLAG)
+		dev->data->dev_conf.rxmode.offloads |= RTE_ETH_RX_OFFLOAD_RSS_HASH;
 
 	return 0;
 }
@@ -668,27 +668,27 @@ ice_dcf_dev_info_get(struct rte_eth_dev *dev,
 	dev_info->flow_type_rss_offloads = ICE_RSS_OFFLOAD_ALL;
 
 	dev_info->rx_offload_capa =
-		DEV_RX_OFFLOAD_VLAN_STRIP |
-		DEV_RX_OFFLOAD_IPV4_CKSUM |
-		DEV_RX_OFFLOAD_UDP_CKSUM |
-		DEV_RX_OFFLOAD_TCP_CKSUM |
-		DEV_RX_OFFLOAD_OUTER_IPV4_CKSUM |
-		DEV_RX_OFFLOAD_SCATTER |
-		DEV_RX_OFFLOAD_VLAN_FILTER |
-		DEV_RX_OFFLOAD_RSS_HASH;
+		RTE_ETH_RX_OFFLOAD_VLAN_STRIP |
+		RTE_ETH_RX_OFFLOAD_IPV4_CKSUM |
+		RTE_ETH_RX_OFFLOAD_UDP_CKSUM |
+		RTE_ETH_RX_OFFLOAD_TCP_CKSUM |
+		RTE_ETH_RX_OFFLOAD_OUTER_IPV4_CKSUM |
+		RTE_ETH_RX_OFFLOAD_SCATTER |
+		RTE_ETH_RX_OFFLOAD_VLAN_FILTER |
+		RTE_ETH_RX_OFFLOAD_RSS_HASH;
 	dev_info->tx_offload_capa =
-		DEV_TX_OFFLOAD_VLAN_INSERT |
-		DEV_TX_OFFLOAD_IPV4_CKSUM |
-		DEV_TX_OFFLOAD_UDP_CKSUM |
-		DEV_TX_OFFLOAD_TCP_CKSUM |
-		DEV_TX_OFFLOAD_SCTP_CKSUM |
-		DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM |
-		DEV_TX_OFFLOAD_TCP_TSO |
-		DEV_TX_OFFLOAD_VXLAN_TNL_TSO |
-		DEV_TX_OFFLOAD_GRE_TNL_TSO |
-		DEV_TX_OFFLOAD_IPIP_TNL_TSO |
-		DEV_TX_OFFLOAD_GENEVE_TNL_TSO |
-		DEV_TX_OFFLOAD_MULTI_SEGS;
+		RTE_ETH_TX_OFFLOAD_VLAN_INSERT |
+		RTE_ETH_TX_OFFLOAD_IPV4_CKSUM |
+		RTE_ETH_TX_OFFLOAD_UDP_CKSUM |
+		RTE_ETH_TX_OFFLOAD_TCP_CKSUM |
+		RTE_ETH_TX_OFFLOAD_SCTP_CKSUM |
+		RTE_ETH_TX_OFFLOAD_OUTER_IPV4_CKSUM |
+		RTE_ETH_TX_OFFLOAD_TCP_TSO |
+		RTE_ETH_TX_OFFLOAD_VXLAN_TNL_TSO |
+		RTE_ETH_TX_OFFLOAD_GRE_TNL_TSO |
+		RTE_ETH_TX_OFFLOAD_IPIP_TNL_TSO |
+		RTE_ETH_TX_OFFLOAD_GENEVE_TNL_TSO |
+		RTE_ETH_TX_OFFLOAD_MULTI_SEGS;
 
 	dev_info->default_rxconf = (struct rte_eth_rxconf) {
 		.rx_thresh = {
@@ -918,42 +918,42 @@ ice_dcf_link_update(struct rte_eth_dev *dev,
 	 */
 	switch (hw->link_speed) {
 	case 10:
-		new_link.link_speed = ETH_SPEED_NUM_10M;
+		new_link.link_speed = RTE_ETH_SPEED_NUM_10M;
 		break;
 	case 100:
-		new_link.link_speed = ETH_SPEED_NUM_100M;
+		new_link.link_speed = RTE_ETH_SPEED_NUM_100M;
 		break;
 	case 1000:
-		new_link.link_speed = ETH_SPEED_NUM_1G;
+		new_link.link_speed = RTE_ETH_SPEED_NUM_1G;
 		break;
 	case 10000:
-		new_link.link_speed = ETH_SPEED_NUM_10G;
+		new_link.link_speed = RTE_ETH_SPEED_NUM_10G;
 		break;
 	case 20000:
-		new_link.link_speed = ETH_SPEED_NUM_20G;
+		new_link.link_speed = RTE_ETH_SPEED_NUM_20G;
 		break;
 	case 25000:
-		new_link.link_speed = ETH_SPEED_NUM_25G;
+		new_link.link_speed = RTE_ETH_SPEED_NUM_25G;
 		break;
 	case 40000:
-		new_link.link_speed = ETH_SPEED_NUM_40G;
+		new_link.link_speed = RTE_ETH_SPEED_NUM_40G;
 		break;
 	case 50000:
-		new_link.link_speed = ETH_SPEED_NUM_50G;
+		new_link.link_speed = RTE_ETH_SPEED_NUM_50G;
 		break;
 	case 100000:
-		new_link.link_speed = ETH_SPEED_NUM_100G;
+		new_link.link_speed = RTE_ETH_SPEED_NUM_100G;
 		break;
 	default:
-		new_link.link_speed = ETH_SPEED_NUM_NONE;
+		new_link.link_speed = RTE_ETH_SPEED_NUM_NONE;
 		break;
 	}
 
-	new_link.link_duplex = ETH_LINK_FULL_DUPLEX;
-	new_link.link_status = hw->link_up ? ETH_LINK_UP :
-					     ETH_LINK_DOWN;
+	new_link.link_duplex = RTE_ETH_LINK_FULL_DUPLEX;
+	new_link.link_status = hw->link_up ? RTE_ETH_LINK_UP :
+					     RTE_ETH_LINK_DOWN;
 	new_link.link_autoneg = !(dev->data->dev_conf.link_speeds &
-				ETH_LINK_SPEED_FIXED);
+				RTE_ETH_LINK_SPEED_FIXED);
 
 	return rte_eth_linkstatus_set(dev, &new_link);
 }
@@ -972,11 +972,11 @@ ice_dcf_dev_udp_tunnel_port_add(struct rte_eth_dev *dev,
 		return -EINVAL;
 
 	switch (udp_tunnel->prot_type) {
-	case RTE_TUNNEL_TYPE_VXLAN:
+	case RTE_ETH_TUNNEL_TYPE_VXLAN:
 		ret = ice_create_tunnel(parent_hw, TNL_VXLAN,
 					udp_tunnel->udp_port);
 		break;
-	case RTE_TUNNEL_TYPE_ECPRI:
+	case RTE_ETH_TUNNEL_TYPE_ECPRI:
 		ret = ice_create_tunnel(parent_hw, TNL_ECPRI,
 					udp_tunnel->udp_port);
 		break;
@@ -1003,8 +1003,8 @@ ice_dcf_dev_udp_tunnel_port_del(struct rte_eth_dev *dev,
 		return -EINVAL;
 
 	switch (udp_tunnel->prot_type) {
-	case RTE_TUNNEL_TYPE_VXLAN:
-	case RTE_TUNNEL_TYPE_ECPRI:
+	case RTE_ETH_TUNNEL_TYPE_VXLAN:
+	case RTE_ETH_TUNNEL_TYPE_ECPRI:
 		ret = ice_destroy_tunnel(parent_hw, udp_tunnel->udp_port, 0);
 		break;
 	default:

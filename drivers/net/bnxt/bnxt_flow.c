@@ -978,7 +978,7 @@ static int bnxt_vnic_prep(struct bnxt *bp, struct bnxt_vnic_info *vnic,
 		}
 	}
 
-	if (rx_offloads & DEV_RX_OFFLOAD_VLAN_STRIP)
+	if (rx_offloads & RTE_ETH_RX_OFFLOAD_VLAN_STRIP)
 		vnic->vlan_strip = true;
 	else
 		vnic->vlan_strip = false;
@@ -1177,7 +1177,7 @@ bnxt_vnic_rss_cfg_update(struct bnxt *bp,
 	}
 
 	/* If RSS types is 0, use a best effort configuration */
-	types = rss->types ? rss->types : ETH_RSS_IPV4;
+	types = rss->types ? rss->types : RTE_ETH_RSS_IPV4;
 
 	hash_type = bnxt_rte_to_hwrm_hash_types(types);
 
@@ -1322,7 +1322,7 @@ start:
 
 		rxq = bp->rx_queues[act_q->index];
 
-		if (!(dev_conf->rxmode.mq_mode & ETH_MQ_RX_RSS) && rxq &&
+		if (!(dev_conf->rxmode.mq_mode & RTE_ETH_MQ_RX_RSS) && rxq &&
 		    vnic->fw_vnic_id != INVALID_HW_RING_ID)
 			goto use_vnic;
 

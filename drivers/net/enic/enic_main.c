@@ -430,7 +430,7 @@ int enic_link_update(struct rte_eth_dev *eth_dev)
 
 	memset(&link, 0, sizeof(link));
 	link.link_status = enic_get_link_status(enic);
-	link.link_duplex = ETH_LINK_FULL_DUPLEX;
+	link.link_duplex = RTE_ETH_LINK_FULL_DUPLEX;
 	link.link_speed = vnic_dev_port_speed(enic->vdev);
 
 	return rte_eth_linkstatus_set(eth_dev, &link);
@@ -597,7 +597,7 @@ int enic_enable(struct enic *enic)
 	}
 
 	eth_dev->data->dev_link.link_speed = vnic_dev_port_speed(enic->vdev);
-	eth_dev->data->dev_link.link_duplex = ETH_LINK_FULL_DUPLEX;
+	eth_dev->data->dev_link.link_duplex = RTE_ETH_LINK_FULL_DUPLEX;
 
 	/* vnic notification of link status has already been turned on in
 	 * enic_dev_init() which is called during probe time.  Here we are
@@ -638,11 +638,11 @@ int enic_enable(struct enic *enic)
 	 * and vlan insertion are supported.
 	 */
 	simple_tx_offloads = enic->tx_offload_capa &
-		(DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM |
-		 DEV_TX_OFFLOAD_VLAN_INSERT |
-		 DEV_TX_OFFLOAD_IPV4_CKSUM |
-		 DEV_TX_OFFLOAD_UDP_CKSUM |
-		 DEV_TX_OFFLOAD_TCP_CKSUM);
+		(RTE_ETH_TX_OFFLOAD_OUTER_IPV4_CKSUM |
+		 RTE_ETH_TX_OFFLOAD_VLAN_INSERT |
+		 RTE_ETH_TX_OFFLOAD_IPV4_CKSUM |
+		 RTE_ETH_TX_OFFLOAD_UDP_CKSUM |
+		 RTE_ETH_TX_OFFLOAD_TCP_CKSUM);
 	if ((eth_dev->data->dev_conf.txmode.offloads &
 	     ~simple_tx_offloads) == 0) {
 		ENICPMD_LOG(DEBUG, " use the simple tx handler");
@@ -858,7 +858,7 @@ int enic_alloc_rq(struct enic *enic, uint16_t queue_idx,
 	max_rx_pktlen = enic_mtu_to_max_rx_pktlen(enic->rte_dev->data->mtu);
 
 	if (enic->rte_dev->data->dev_conf.rxmode.offloads &
-	    DEV_RX_OFFLOAD_SCATTER) {
+	    RTE_ETH_RX_OFFLOAD_SCATTER) {
 		dev_info(enic, "Rq %u Scatter rx mode enabled\n", queue_idx);
 		/* ceil((max pkt len)/mbuf_size) */
 		mbufs_per_pkt = (max_rx_pktlen + mbuf_size - 1) / mbuf_size;
@@ -1385,15 +1385,15 @@ int enic_set_rss_conf(struct enic *enic, struct rte_eth_rss_conf *rss_conf)
 	rss_hash_type = 0;
 	rss_hf = rss_conf->rss_hf & enic->flow_type_rss_offloads;
 	if (enic->rq_count > 1 &&
-	    (eth_dev->data->dev_conf.rxmode.mq_mode & ETH_MQ_RX_RSS_FLAG) &&
+	    (eth_dev->data->dev_conf.rxmode.mq_mode & RTE_ETH_MQ_RX_RSS_FLAG) &&
 	    rss_hf != 0) {
 		rss_enable = 1;
-		if (rss_hf & (ETH_RSS_IPV4 | ETH_RSS_FRAG_IPV4 |
-			      ETH_RSS_NONFRAG_IPV4_OTHER))
+		if (rss_hf & (RTE_ETH_RSS_IPV4 | RTE_ETH_RSS_FRAG_IPV4 |
+			      RTE_ETH_RSS_NONFRAG_IPV4_OTHER))
 			rss_hash_type |= NIC_CFG_RSS_HASH_TYPE_IPV4;
-		if (rss_hf & ETH_RSS_NONFRAG_IPV4_TCP)
+		if (rss_hf & RTE_ETH_RSS_NONFRAG_IPV4_TCP)
 			rss_hash_type |= NIC_CFG_RSS_HASH_TYPE_TCP_IPV4;
-		if (rss_hf & ETH_RSS_NONFRAG_IPV4_UDP) {
+		if (rss_hf & RTE_ETH_RSS_NONFRAG_IPV4_UDP) {
 			rss_hash_type |= NIC_CFG_RSS_HASH_TYPE_UDP_IPV4;
 			if (enic->udp_rss_weak) {
 				/*
@@ -1404,12 +1404,12 @@ int enic_set_rss_conf(struct enic *enic, struct rte_eth_rss_conf *rss_conf)
 				rss_hash_type |= NIC_CFG_RSS_HASH_TYPE_TCP_IPV4;
 			}
 		}
-		if (rss_hf & (ETH_RSS_IPV6 | ETH_RSS_IPV6_EX |
-			      ETH_RSS_FRAG_IPV6 | ETH_RSS_NONFRAG_IPV6_OTHER))
+		if (rss_hf & (RTE_ETH_RSS_IPV6 | RTE_ETH_RSS_IPV6_EX |
+			      RTE_ETH_RSS_FRAG_IPV6 | RTE_ETH_RSS_NONFRAG_IPV6_OTHER))
 			rss_hash_type |= NIC_CFG_RSS_HASH_TYPE_IPV6;
-		if (rss_hf & (ETH_RSS_NONFRAG_IPV6_TCP | ETH_RSS_IPV6_TCP_EX))
+		if (rss_hf & (RTE_ETH_RSS_NONFRAG_IPV6_TCP | RTE_ETH_RSS_IPV6_TCP_EX))
 			rss_hash_type |= NIC_CFG_RSS_HASH_TYPE_TCP_IPV6;
-		if (rss_hf & (ETH_RSS_NONFRAG_IPV6_UDP | ETH_RSS_IPV6_UDP_EX)) {
+		if (rss_hf & (RTE_ETH_RSS_NONFRAG_IPV6_UDP | RTE_ETH_RSS_IPV6_UDP_EX)) {
 			rss_hash_type |= NIC_CFG_RSS_HASH_TYPE_UDP_IPV6;
 			if (enic->udp_rss_weak)
 				rss_hash_type |= NIC_CFG_RSS_HASH_TYPE_TCP_IPV6;
@@ -1745,9 +1745,9 @@ enic_enable_overlay_offload(struct enic *enic)
 		return -EINVAL;
 	}
 	enic->tx_offload_capa |=
-		DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM |
-		(enic->geneve ? DEV_TX_OFFLOAD_GENEVE_TNL_TSO : 0) |
-		(enic->vxlan ? DEV_TX_OFFLOAD_VXLAN_TNL_TSO : 0);
+		RTE_ETH_TX_OFFLOAD_OUTER_IPV4_CKSUM |
+		(enic->geneve ? RTE_ETH_TX_OFFLOAD_GENEVE_TNL_TSO : 0) |
+		(enic->vxlan ? RTE_ETH_TX_OFFLOAD_VXLAN_TNL_TSO : 0);
 	enic->tx_offload_mask |=
 		PKT_TX_OUTER_IPV6 |
 		PKT_TX_OUTER_IPV4 |

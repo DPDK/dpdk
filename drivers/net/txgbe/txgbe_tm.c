@@ -118,14 +118,14 @@ txgbe_tc_nb_get(struct rte_eth_dev *dev)
 	uint8_t nb_tcs = 0;
 
 	eth_conf = &dev->data->dev_conf;
-	if (eth_conf->txmode.mq_mode == ETH_MQ_TX_DCB) {
+	if (eth_conf->txmode.mq_mode == RTE_ETH_MQ_TX_DCB) {
 		nb_tcs = eth_conf->tx_adv_conf.dcb_tx_conf.nb_tcs;
-	} else if (eth_conf->txmode.mq_mode == ETH_MQ_TX_VMDQ_DCB) {
+	} else if (eth_conf->txmode.mq_mode == RTE_ETH_MQ_TX_VMDQ_DCB) {
 		if (eth_conf->tx_adv_conf.vmdq_dcb_tx_conf.nb_queue_pools ==
-		    ETH_32_POOLS)
-			nb_tcs = ETH_4_TCS;
+		    RTE_ETH_32_POOLS)
+			nb_tcs = RTE_ETH_4_TCS;
 		else
-			nb_tcs = ETH_8_TCS;
+			nb_tcs = RTE_ETH_8_TCS;
 	} else {
 		nb_tcs = 1;
 	}
@@ -364,10 +364,10 @@ txgbe_queue_base_nb_get(struct rte_eth_dev *dev, uint16_t tc_node_no,
 	if (vf_num) {
 		/* no DCB */
 		if (nb_tcs == 1) {
-			if (vf_num >= ETH_32_POOLS) {
+			if (vf_num >= RTE_ETH_32_POOLS) {
 				*nb = 2;
 				*base = vf_num * 2;
-			} else if (vf_num >= ETH_16_POOLS) {
+			} else if (vf_num >= RTE_ETH_16_POOLS) {
 				*nb = 4;
 				*base = vf_num * 4;
 			} else {
@@ -381,7 +381,7 @@ txgbe_queue_base_nb_get(struct rte_eth_dev *dev, uint16_t tc_node_no,
 		}
 	} else {
 		/* VT off */
-		if (nb_tcs == ETH_8_TCS) {
+		if (nb_tcs == RTE_ETH_8_TCS) {
 			switch (tc_node_no) {
 			case 0:
 				*base = 0;

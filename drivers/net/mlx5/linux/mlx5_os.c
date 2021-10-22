@@ -1249,8 +1249,8 @@ err_secondary:
 	 * Remove this check once DPDK supports larger/variable
 	 * indirection tables.
 	 */
-	if (config->ind_table_max_size > (unsigned int)ETH_RSS_RETA_SIZE_512)
-		config->ind_table_max_size = ETH_RSS_RETA_SIZE_512;
+	if (config->ind_table_max_size > (unsigned int)RTE_ETH_RSS_RETA_SIZE_512)
+		config->ind_table_max_size = RTE_ETH_RSS_RETA_SIZE_512;
 	DRV_LOG(DEBUG, "maximum Rx indirection table size is %u",
 		config->ind_table_max_size);
 	config->hw_vlan_strip = !!(sh->device_attr.raw_packet_caps &
@@ -1516,7 +1516,7 @@ err_secondary:
 	/*
 	 * If HW has bug working with tunnel packet decapsulation and
 	 * scatter FCS, and decapsulation is needed, clear the hw_fcs_strip
-	 * bit. Then DEV_RX_OFFLOAD_KEEP_CRC bit will not be set anymore.
+	 * bit. Then RTE_ETH_RX_OFFLOAD_KEEP_CRC bit will not be set anymore.
 	 */
 	if (config->hca_attr.scatter_fcs_w_decap_disable && config->decap_en)
 		config->hw_fcs_strip = 0;

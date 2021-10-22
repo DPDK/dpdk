@@ -42,30 +42,30 @@ i40e_vf_representor_dev_infos_get(struct rte_eth_dev *ethdev,
 	dev_info->max_rx_pktlen = I40E_FRAME_SIZE_MAX;
 	dev_info->hash_key_size = (I40E_VFQF_HKEY_MAX_INDEX + 1) *
 		sizeof(uint32_t);
-	dev_info->reta_size = ETH_RSS_RETA_SIZE_64;
+	dev_info->reta_size = RTE_ETH_RSS_RETA_SIZE_64;
 	dev_info->flow_type_rss_offloads = I40E_RSS_OFFLOAD_ALL;
 	dev_info->max_mac_addrs = I40E_NUM_MACADDR_MAX;
 	dev_info->rx_offload_capa =
-		DEV_RX_OFFLOAD_VLAN_STRIP |
-		DEV_RX_OFFLOAD_QINQ_STRIP |
-		DEV_RX_OFFLOAD_IPV4_CKSUM |
-		DEV_RX_OFFLOAD_UDP_CKSUM |
-		DEV_RX_OFFLOAD_TCP_CKSUM |
-		DEV_RX_OFFLOAD_VLAN_FILTER;
+		RTE_ETH_RX_OFFLOAD_VLAN_STRIP |
+		RTE_ETH_RX_OFFLOAD_QINQ_STRIP |
+		RTE_ETH_RX_OFFLOAD_IPV4_CKSUM |
+		RTE_ETH_RX_OFFLOAD_UDP_CKSUM |
+		RTE_ETH_RX_OFFLOAD_TCP_CKSUM |
+		RTE_ETH_RX_OFFLOAD_VLAN_FILTER;
 	dev_info->tx_offload_capa =
-		DEV_TX_OFFLOAD_MULTI_SEGS  |
-		DEV_TX_OFFLOAD_VLAN_INSERT |
-		DEV_TX_OFFLOAD_QINQ_INSERT |
-		DEV_TX_OFFLOAD_IPV4_CKSUM |
-		DEV_TX_OFFLOAD_UDP_CKSUM |
-		DEV_TX_OFFLOAD_TCP_CKSUM |
-		DEV_TX_OFFLOAD_SCTP_CKSUM |
-		DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM |
-		DEV_TX_OFFLOAD_TCP_TSO |
-		DEV_TX_OFFLOAD_VXLAN_TNL_TSO |
-		DEV_TX_OFFLOAD_GRE_TNL_TSO |
-		DEV_TX_OFFLOAD_IPIP_TNL_TSO |
-		DEV_TX_OFFLOAD_GENEVE_TNL_TSO;
+		RTE_ETH_TX_OFFLOAD_MULTI_SEGS  |
+		RTE_ETH_TX_OFFLOAD_VLAN_INSERT |
+		RTE_ETH_TX_OFFLOAD_QINQ_INSERT |
+		RTE_ETH_TX_OFFLOAD_IPV4_CKSUM |
+		RTE_ETH_TX_OFFLOAD_UDP_CKSUM |
+		RTE_ETH_TX_OFFLOAD_TCP_CKSUM |
+		RTE_ETH_TX_OFFLOAD_SCTP_CKSUM |
+		RTE_ETH_TX_OFFLOAD_OUTER_IPV4_CKSUM |
+		RTE_ETH_TX_OFFLOAD_TCP_TSO |
+		RTE_ETH_TX_OFFLOAD_VXLAN_TNL_TSO |
+		RTE_ETH_TX_OFFLOAD_GRE_TNL_TSO |
+		RTE_ETH_TX_OFFLOAD_IPIP_TNL_TSO |
+		RTE_ETH_TX_OFFLOAD_GENEVE_TNL_TSO;
 
 	dev_info->default_rxconf = (struct rte_eth_rxconf) {
 		.rx_thresh = {
@@ -385,19 +385,19 @@ i40e_vf_representor_vlan_offload_set(struct rte_eth_dev *ethdev, int mask)
 		return -EINVAL;
 	}
 
-	if (mask & ETH_VLAN_FILTER_MASK) {
+	if (mask & RTE_ETH_VLAN_FILTER_MASK) {
 		/* Enable or disable VLAN filtering offload */
 		if (ethdev->data->dev_conf.rxmode.offloads &
-		    DEV_RX_OFFLOAD_VLAN_FILTER)
+		    RTE_ETH_RX_OFFLOAD_VLAN_FILTER)
 			return i40e_vsi_config_vlan_filter(vsi, TRUE);
 		else
 			return i40e_vsi_config_vlan_filter(vsi, FALSE);
 	}
 
-	if (mask & ETH_VLAN_STRIP_MASK) {
+	if (mask & RTE_ETH_VLAN_STRIP_MASK) {
 		/* Enable or disable VLAN stripping offload */
 		if (ethdev->data->dev_conf.rxmode.offloads &
-		    DEV_RX_OFFLOAD_VLAN_STRIP)
+		    RTE_ETH_RX_OFFLOAD_VLAN_STRIP)
 			return i40e_vsi_config_vlan_stripping(vsi, TRUE);
 		else
 			return i40e_vsi_config_vlan_stripping(vsi, FALSE);

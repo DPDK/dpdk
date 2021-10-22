@@ -757,11 +757,11 @@ show_port(void)
 		}
 
 		ret = rte_eth_dev_flow_ctrl_get(i, &fc_conf);
-		if (ret == 0 && fc_conf.mode != RTE_FC_NONE)  {
+		if (ret == 0 && fc_conf.mode != RTE_ETH_FC_NONE)  {
 			printf("\t  -- flow control mode %s%s high %u low %u pause %u%s%s\n",
-			       fc_conf.mode == RTE_FC_RX_PAUSE ? "rx " :
-			       fc_conf.mode == RTE_FC_TX_PAUSE ? "tx " :
-			       fc_conf.mode == RTE_FC_FULL ? "full" : "???",
+			       fc_conf.mode == RTE_ETH_FC_RX_PAUSE ? "rx " :
+			       fc_conf.mode == RTE_ETH_FC_TX_PAUSE ? "tx " :
+			       fc_conf.mode == RTE_ETH_FC_FULL ? "full" : "???",
 			       fc_conf.autoneg ? " auto" : "",
 			       fc_conf.high_water,
 			       fc_conf.low_water,

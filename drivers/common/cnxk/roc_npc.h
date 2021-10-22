@@ -167,7 +167,7 @@ enum roc_npc_rss_hash_function {
 struct roc_npc_action_rss {
 	enum roc_npc_rss_hash_function func;
 	uint32_t level;
-	uint64_t types;	       /**< Specific RSS hash types (see ETH_RSS_*). */
+	uint64_t types;	       /**< Specific RSS hash types (see RTE_ETH_RSS_*). */
 	uint32_t key_len;      /**< Hash key length in bytes. */
 	uint32_t queue_num;    /**< Number of entries in @p queue. */
 	const uint8_t *key;    /**< Hash key. */

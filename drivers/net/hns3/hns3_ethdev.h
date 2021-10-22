@@ -190,10 +190,10 @@ struct hns3_mac {
 	uint8_t mac_addr[RTE_ETHER_ADDR_LEN];
 	uint8_t media_type;
 	uint8_t phy_addr;
-	uint8_t link_duplex  : 1; /* ETH_LINK_[HALF/FULL]_DUPLEX */
-	uint8_t link_autoneg : 1; /* ETH_LINK_[AUTONEG/FIXED] */
-	uint8_t link_status  : 1; /* ETH_LINK_[DOWN/UP] */
-	uint32_t link_speed;      /* ETH_SPEED_NUM_ */
+	uint8_t link_duplex  : 1; /* RTE_ETH_LINK_[HALF/FULL]_DUPLEX */
+	uint8_t link_autoneg : 1; /* RTE_ETH_LINK_[AUTONEG/FIXED] */
+	uint8_t link_status  : 1; /* RTE_ETH_LINK_[DOWN/UP] */
+	uint32_t link_speed;      /* RTE_ETH_SPEED_NUM_ */
 	/*
 	 * Some firmware versions support only the SFP speed query. In addition
 	 * to the SFP speed query, some firmware supports the query of the speed
@@ -1079,9 +1079,9 @@ static inline uint64_t
 hns3_txvlan_cap_get(struct hns3_hw *hw)
 {
 	if (hw->port_base_vlan_cfg.state)
-		return DEV_TX_OFFLOAD_VLAN_INSERT;
+		return RTE_ETH_TX_OFFLOAD_VLAN_INSERT;
 	else
-		return DEV_TX_OFFLOAD_VLAN_INSERT | DEV_TX_OFFLOAD_QINQ_INSERT;
+		return RTE_ETH_TX_OFFLOAD_VLAN_INSERT | RTE_ETH_TX_OFFLOAD_QINQ_INSERT;
 }
 
 #endif /* _HNS3_ETHDEV_H_ */

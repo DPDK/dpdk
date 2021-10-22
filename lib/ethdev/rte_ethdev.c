@@ -101,9 +101,6 @@ static const struct rte_eth_xstats_name_off eth_dev_txq_stats_strings[] = {
 #define RTE_NB_TXQ_STATS RTE_DIM(eth_dev_txq_stats_strings)
 
 #define RTE_RX_OFFLOAD_BIT2STR(_name)	\
-	{ DEV_RX_OFFLOAD_##_name, #_name }
-
-#define RTE_ETH_RX_OFFLOAD_BIT2STR(_name)	\
 	{ RTE_ETH_RX_OFFLOAD_##_name, #_name }
 
 static const struct {
@@ -128,14 +125,14 @@ static const struct {
 	RTE_RX_OFFLOAD_BIT2STR(SCTP_CKSUM),
 	RTE_RX_OFFLOAD_BIT2STR(OUTER_UDP_CKSUM),
 	RTE_RX_OFFLOAD_BIT2STR(RSS_HASH),
-	RTE_ETH_RX_OFFLOAD_BIT2STR(BUFFER_SPLIT),
+	RTE_RX_OFFLOAD_BIT2STR(BUFFER_SPLIT),
 };
 
 #undef RTE_RX_OFFLOAD_BIT2STR
 #undef RTE_ETH_RX_OFFLOAD_BIT2STR
 
 #define RTE_TX_OFFLOAD_BIT2STR(_name)	\
-	{ DEV_TX_OFFLOAD_##_name, #_name }
+	{ RTE_ETH_TX_OFFLOAD_##_name, #_name }
 
 static const struct {
 	uint64_t offload;
@@ -1182,32 +1179,32 @@ uint32_t
 rte_eth_speed_bitflag(uint32_t speed, int duplex)
 {
 	switch (speed) {
-	case ETH_SPEED_NUM_10M:
-		return duplex ? ETH_LINK_SPEED_10M : ETH_LINK_SPEED_10M_HD;
-	case ETH_SPEED_NUM_100M:
-		return duplex ? ETH_LINK_SPEED_100M : ETH_LINK_SPEED_100M_HD;
-	case ETH_SPEED_NUM_1G:
-		return ETH_LINK_SPEED_1G;
-	case ETH_SPEED_NUM_2_5G:
-		return ETH_LINK_SPEED_2_5G;
-	case ETH_SPEED_NUM_5G:
-		return ETH_LINK_SPEED_5G;
-	case ETH_SPEED_NUM_10G:
-		return ETH_LINK_SPEED_10G;
-	case ETH_SPEED_NUM_20G:
-		return ETH_LINK_SPEED_20G;
-	case ETH_SPEED_NUM_25G:
-		return ETH_LINK_SPEED_25G;
-	case ETH_SPEED_NUM_40G:
-		return ETH_LINK_SPEED_40G;
-	case ETH_SPEED_NUM_50G:
-		return ETH_LINK_SPEED_50G;
-	case ETH_SPEED_NUM_56G:
-		return ETH_LINK_SPEED_56G;
-	case ETH_SPEED_NUM_100G:
-		return ETH_LINK_SPEED_100G;
-	case ETH_SPEED_NUM_200G:
-		return ETH_LINK_SPEED_200G;
+	case RTE_ETH_SPEED_NUM_10M:
+		return duplex ? RTE_ETH_LINK_SPEED_10M : RTE_ETH_LINK_SPEED_10M_HD;
+	case RTE_ETH_SPEED_NUM_100M:
+		return duplex ? RTE_ETH_LINK_SPEED_100M : RTE_ETH_LINK_SPEED_100M_HD;
+	case RTE_ETH_SPEED_NUM_1G:
+		return RTE_ETH_LINK_SPEED_1G;
+	case RTE_ETH_SPEED_NUM_2_5G:
+		return RTE_ETH_LINK_SPEED_2_5G;
+	case RTE_ETH_SPEED_NUM_5G:
+		return RTE_ETH_LINK_SPEED_5G;
+	case RTE_ETH_SPEED_NUM_10G:
+		return RTE_ETH_LINK_SPEED_10G;
+	case RTE_ETH_SPEED_NUM_20G:
+		return RTE_ETH_LINK_SPEED_20G;
+	case RTE_ETH_SPEED_NUM_25G:
+		return RTE_ETH_LINK_SPEED_25G;
+	case RTE_ETH_SPEED_NUM_40G:
+		return RTE_ETH_LINK_SPEED_40G;
+	case RTE_ETH_SPEED_NUM_50G:
+		return RTE_ETH_LINK_SPEED_50G;
+	case RTE_ETH_SPEED_NUM_56G:
+		return RTE_ETH_LINK_SPEED_56G;
+	case RTE_ETH_SPEED_NUM_100G:
+		return RTE_ETH_LINK_SPEED_100G;
+	case RTE_ETH_SPEED_NUM_200G:
+		return RTE_ETH_LINK_SPEED_200G;
 	default:
 		return 0;
 	}
@@ -1528,7 +1525,7 @@ rte_eth_dev_configure(uint16_t port_id, uint16_t nb_rx_q, uint16_t nb_tx_q,
 	 * If LRO is enabled, check that the maximum aggregated packet
 	 * size is supported by the configured device.
 	 */
-	if (dev_conf->rxmode.offloads & DEV_RX_OFFLOAD_TCP_LRO) {
+	if (dev_conf->rxmode.offloads & RTE_ETH_RX_OFFLOAD_TCP_LRO) {
 		uint32_t max_rx_pktlen;
 		uint32_t overhead_len;
 
@@ -1585,12 +1582,12 @@ rte_eth_dev_configure(uint16_t port_id, uint16_t nb_rx_q, uint16_t nb_tx_q,
 	}
 
 	/* Check if Rx RSS distribution is disabled but RSS hash is enabled. */
-	if (((dev_conf->rxmode.mq_mode & ETH_MQ_RX_RSS_FLAG) == 0) &&
-	    (dev_conf->rxmode.offloads & DEV_RX_OFFLOAD_RSS_HASH)) {
+	if (((dev_conf->rxmode.mq_mode & RTE_ETH_MQ_RX_RSS_FLAG) == 0) &&
+	    (dev_conf->rxmode.offloads & RTE_ETH_RX_OFFLOAD_RSS_HASH)) {
 		RTE_ETHDEV_LOG(ERR,
 			"Ethdev port_id=%u config invalid Rx mq_mode without RSS but %s offload is requested\n",
 			port_id,
-			rte_eth_dev_rx_offload_name(DEV_RX_OFFLOAD_RSS_HASH));
+			rte_eth_dev_rx_offload_name(RTE_ETH_RX_OFFLOAD_RSS_HASH));
 		ret = -EINVAL;
 		goto rollback;
 	}
@@ -2213,7 +2210,7 @@ rte_eth_rx_queue_setup(uint16_t port_id, uint16_t rx_queue_id,
 	 * size is supported by the configured device.
 	 */
 	/* Get the real Ethernet overhead length */
-	if (local_conf.offloads & DEV_RX_OFFLOAD_TCP_LRO) {
+	if (local_conf.offloads & RTE_ETH_RX_OFFLOAD_TCP_LRO) {
 		uint32_t overhead_len;
 		uint32_t max_rx_pktlen;
 		int ret;
@@ -2793,21 +2790,21 @@ const char *
 rte_eth_link_speed_to_str(uint32_t link_speed)
 {
 	switch (link_speed) {
-	case ETH_SPEED_NUM_NONE: return "None";
-	case ETH_SPEED_NUM_10M:  return "10 Mbps";
-	case ETH_SPEED_NUM_100M: return "100 Mbps";
-	case ETH_SPEED_NUM_1G:   return "1 Gbps";
-	case ETH_SPEED_NUM_2_5G: return "2.5 Gbps";
-	case ETH_SPEED_NUM_5G:   return "5 Gbps";
-	case ETH_SPEED_NUM_10G:  return "10 Gbps";
-	case ETH_SPEED_NUM_20G:  return "20 Gbps";
-	case ETH_SPEED_NUM_25G:  return "25 Gbps";
-	case ETH_SPEED_NUM_40G:  return "40 Gbps";
-	case ETH_SPEED_NUM_50G:  return "50 Gbps";
-	case ETH_SPEED_NUM_56G:  return "56 Gbps";
-	case ETH_SPEED_NUM_100G: return "100 Gbps";
-	case ETH_SPEED_NUM_200G: return "200 Gbps";
-	case ETH_SPEED_NUM_UNKNOWN: return "Unknown";
+	case RTE_ETH_SPEED_NUM_NONE: return "None";
+	case RTE_ETH_SPEED_NUM_10M:  return "10 Mbps";
+	case RTE_ETH_SPEED_NUM_100M: return "100 Mbps";
+	case RTE_ETH_SPEED_NUM_1G:   return "1 Gbps";
+	case RTE_ETH_SPEED_NUM_2_5G: return "2.5 Gbps";
+	case RTE_ETH_SPEED_NUM_5G:   return "5 Gbps";
+	case RTE_ETH_SPEED_NUM_10G:  return "10 Gbps";
+	case RTE_ETH_SPEED_NUM_20G:  return "20 Gbps";
+	case RTE_ETH_SPEED_NUM_25G:  return "25 Gbps";
+	case RTE_ETH_SPEED_NUM_40G:  return "40 Gbps";
+	case RTE_ETH_SPEED_NUM_50G:  return "50 Gbps";
+	case RTE_ETH_SPEED_NUM_56G:  return "56 Gbps";
+	case RTE_ETH_SPEED_NUM_100G: return "100 Gbps";
+	case RTE_ETH_SPEED_NUM_200G: return "200 Gbps";
+	case RTE_ETH_SPEED_NUM_UNKNOWN: return "Unknown";
 	default: return "Invalid";
 	}
 }
@@ -2831,14 +2828,14 @@ rte_eth_link_to_str(char *str, size_t len, const struct rte_eth_link *eth_link)
 		return -EINVAL;
 	}
 
-	if (eth_link->link_status == ETH_LINK_DOWN)
+	if (eth_link->link_status == RTE_ETH_LINK_DOWN)
 		return snprintf(str, len, "Link down");
 	else
 		return snprintf(str, len, "Link up at %s %s %s",
 			rte_eth_link_speed_to_str(eth_link->link_speed),
-			(eth_link->link_duplex == ETH_LINK_FULL_DUPLEX) ?
+			(eth_link->link_duplex == RTE_ETH_LINK_FULL_DUPLEX) ?
 			"FDX" : "HDX",
-			(eth_link->link_autoneg == ETH_LINK_AUTONEG) ?
+			(eth_link->link_autoneg == RTE_ETH_LINK_AUTONEG) ?
 			"Autoneg" : "Fixed");
 }
 
@@ -3752,7 +3749,7 @@ rte_eth_dev_vlan_filter(uint16_t port_id, uint16_t vlan_id, int on)
 	dev = &rte_eth_devices[port_id];
 
 	if (!(dev->data->dev_conf.rxmode.offloads &
-	      DEV_RX_OFFLOAD_VLAN_FILTER)) {
+	      RTE_ETH_RX_OFFLOAD_VLAN_FILTER)) {
 		RTE_ETHDEV_LOG(ERR, "Port %u: VLAN-filtering disabled\n",
 			port_id);
 		return -ENOSYS;
@@ -3839,44 +3836,44 @@ rte_eth_dev_set_vlan_offload(uint16_t port_id, int offload_mask)
 	dev_offloads = orig_offloads;
 
 	/* check which option changed by application */
-	cur = !!(offload_mask & ETH_VLAN_STRIP_OFFLOAD);
-	org = !!(dev_offloads & DEV_RX_OFFLOAD_VLAN_STRIP);
+	cur = !!(offload_mask & RTE_ETH_VLAN_STRIP_OFFLOAD);
+	org = !!(dev_offloads & RTE_ETH_RX_OFFLOAD_VLAN_STRIP);
 	if (cur != org) {
 		if (cur)
-			dev_offloads |= DEV_RX_OFFLOAD_VLAN_STRIP;
+			dev_offloads |= RTE_ETH_RX_OFFLOAD_VLAN_STRIP;
 		else
-			dev_offloads &= ~DEV_RX_OFFLOAD_VLAN_STRIP;
-		mask |= ETH_VLAN_STRIP_MASK;
+			dev_offloads &= ~RTE_ETH_RX_OFFLOAD_VLAN_STRIP;
+		mask |= RTE_ETH_VLAN_STRIP_MASK;
 	}
 
-	cur = !!(offload_mask & ETH_VLAN_FILTER_OFFLOAD);
-	org = !!(dev_offloads & DEV_RX_OFFLOAD_VLAN_FILTER);
+	cur = !!(offload_mask & RTE_ETH_VLAN_FILTER_OFFLOAD);
+	org = !!(dev_offloads & RTE_ETH_RX_OFFLOAD_VLAN_FILTER);
 	if (cur != org) {
 		if (cur)
-			dev_offloads |= DEV_RX_OFFLOAD_VLAN_FILTER;
+			dev_offloads |= RTE_ETH_RX_OFFLOAD_VLAN_FILTER;
 		else
-			dev_offloads &= ~DEV_RX_OFFLOAD_VLAN_FILTER;
-		mask |= ETH_VLAN_FILTER_MASK;
+			dev_offloads &= ~RTE_ETH_RX_OFFLOAD_VLAN_FILTER;
+		mask |= RTE_ETH_VLAN_FILTER_MASK;
 	}
 
-	cur = !!(offload_mask & ETH_VLAN_EXTEND_OFFLOAD);
-	org = !!(dev_offloads & DEV_RX_OFFLOAD_VLAN_EXTEND);
+	cur = !!(offload_mask & RTE_ETH_VLAN_EXTEND_OFFLOAD);
+	org = !!(dev_offloads & RTE_ETH_RX_OFFLOAD_VLAN_EXTEND);
 	if (cur != org) {
 		if (cur)
-			dev_offloads |= DEV_RX_OFFLOAD_VLAN_EXTEND;
+			dev_offloads |= RTE_ETH_RX_OFFLOAD_VLAN_EXTEND;
 		else
-			dev_offloads &= ~DEV_RX_OFFLOAD_VLAN_EXTEND;
-		mask |= ETH_VLAN_EXTEND_MASK;
+			dev_offloads &= ~RTE_ETH_RX_OFFLOAD_VLAN_EXTEND;
+		mask |= RTE_ETH_VLAN_EXTEND_MASK;
 	}
 
-	cur = !!(offload_mask & ETH_QINQ_STRIP_OFFLOAD);
-	org = !!(dev_offloads & DEV_RX_OFFLOAD_QINQ_STRIP);
+	cur = !!(offload_mask & RTE_ETH_QINQ_STRIP_OFFLOAD);
+	org = !!(dev_offloads & RTE_ETH_RX_OFFLOAD_QINQ_STRIP);
 	if (cur != org) {
 		if (cur)
-			dev_offloads |= DEV_RX_OFFLOAD_QINQ_STRIP;
+			dev_offloads |= RTE_ETH_RX_OFFLOAD_QINQ_STRIP;
 		else
-			dev_offloads &= ~DEV_RX_OFFLOAD_QINQ_STRIP;
-		mask |= ETH_QINQ_STRIP_MASK;
+			dev_offloads &= ~RTE_ETH_RX_OFFLOAD_QINQ_STRIP;
+		mask |= RTE_ETH_QINQ_STRIP_MASK;
 	}
 
 	/*no change*/
@@ -3921,17 +3918,17 @@ rte_eth_dev_get_vlan_offload(uint16_t port_id)
 	dev = &rte_eth_devices[port_id];
 	dev_offloads = &dev->data->dev_conf.rxmode.offloads;
 
-	if (*dev_offloads & DEV_RX_OFFLOAD_VLAN_STRIP)
-		ret |= ETH_VLAN_STRIP_OFFLOAD;
+	if (*dev_offloads & RTE_ETH_RX_OFFLOAD_VLAN_STRIP)
+		ret |= RTE_ETH_VLAN_STRIP_OFFLOAD;
 
-	if (*dev_offloads & DEV_RX_OFFLOAD_VLAN_FILTER)
-		ret |= ETH_VLAN_FILTER_OFFLOAD;
+	if (*dev_offloads & RTE_ETH_RX_OFFLOAD_VLAN_FILTER)
+		ret |= RTE_ETH_VLAN_FILTER_OFFLOAD;
 
-	if (*dev_offloads & DEV_RX_OFFLOAD_VLAN_EXTEND)
-		ret |= ETH_VLAN_EXTEND_OFFLOAD;
+	if (*dev_offloads & RTE_ETH_RX_OFFLOAD_VLAN_EXTEND)
+		ret |= RTE_ETH_VLAN_EXTEND_OFFLOAD;
 
-	if (*dev_offloads & DEV_RX_OFFLOAD_QINQ_STRIP)
-		ret |= ETH_QINQ_STRIP_OFFLOAD;
+	if (*dev_offloads & RTE_ETH_RX_OFFLOAD_QINQ_STRIP)
+		ret |= RTE_ETH_QINQ_STRIP_OFFLOAD;
 
 	return ret;
 }
@@ -4008,7 +4005,7 @@ rte_eth_dev_priority_flow_ctrl_set(uint16_t port_id,
 		return -EINVAL;
 	}
 
-	if (pfc_conf->priority > (ETH_DCB_NUM_USER_PRIORITIES - 1)) {
+	if (pfc_conf->priority > (RTE_ETH_DCB_NUM_USER_PRIORITIES - 1)) {
 		RTE_ETHDEV_LOG(ERR, "Invalid priority, only 0-7 allowed\n");
 		return -EINVAL;
 	}
@@ -4026,7 +4023,7 @@ eth_check_reta_mask(struct rte_eth_rss_reta_entry64 *reta_conf,
 {
 	uint16_t i, num;
 
-	num = (reta_size + RTE_RETA_GROUP_SIZE - 1) / RTE_RETA_GROUP_SIZE;
+	num = (reta_size + RTE_ETH_RETA_GROUP_SIZE - 1) / RTE_ETH_RETA_GROUP_SIZE;
 	for (i = 0; i < num; i++) {
 		if (reta_conf[i].mask)
 			return 0;
@@ -4048,8 +4045,8 @@ eth_check_reta_entry(struct rte_eth_rss_reta_entry64 *reta_conf,
 	}
 
 	for (i = 0; i < reta_size; i++) {
-		idx = i / RTE_RETA_GROUP_SIZE;
-		shift = i % RTE_RETA_GROUP_SIZE;
+		idx = i / RTE_ETH_RETA_GROUP_SIZE;
+		shift = i % RTE_ETH_RETA_GROUP_SIZE;
 		if ((reta_conf[idx].mask & RTE_BIT64(shift)) &&
 			(reta_conf[idx].reta[shift] >= max_rxq)) {
 			RTE_ETHDEV_LOG(ERR,
@@ -4205,7 +4202,7 @@ rte_eth_dev_udp_tunnel_port_add(uint16_t port_id,
 		return -EINVAL;
 	}
 
-	if (udp_tunnel->prot_type >= RTE_TUNNEL_TYPE_MAX) {
+	if (udp_tunnel->prot_type >= RTE_ETH_TUNNEL_TYPE_MAX) {
 		RTE_ETHDEV_LOG(ERR, "Invalid tunnel type\n");
 		return -EINVAL;
 	}
@@ -4231,7 +4228,7 @@ rte_eth_dev_udp_tunnel_port_delete(uint16_t port_id,
 		return -EINVAL;
 	}
 
-	if (udp_tunnel->prot_type >= RTE_TUNNEL_TYPE_MAX) {
+	if (udp_tunnel->prot_type >= RTE_ETH_TUNNEL_TYPE_MAX) {
 		RTE_ETHDEV_LOG(ERR, "Invalid tunnel type\n");
 		return -EINVAL;
 	}
@@ -4372,8 +4369,8 @@ rte_eth_dev_mac_addr_add(uint16_t port_id, struct rte_ether_addr *addr,
 			port_id);
 		return -EINVAL;
 	}
-	if (pool >= ETH_64_POOLS) {
-		RTE_ETHDEV_LOG(ERR, "Pool ID must be 0-%d\n", ETH_64_POOLS - 1);
+	if (pool >= RTE_ETH_64_POOLS) {
+		RTE_ETHDEV_LOG(ERR, "Pool ID must be 0-%d\n", RTE_ETH_64_POOLS - 1);
 		return -EINVAL;
 	}
 
@@ -6282,7 +6279,7 @@ eth_dev_handle_port_link_status(const char *cmd __rte_unused,
 	rte_tel_data_add_dict_string(d, status_str, "UP");
 	rte_tel_data_add_dict_u64(d, "speed", link.link_speed);
 	rte_tel_data_add_dict_string(d, "duplex",
-			(link.link_duplex == ETH_LINK_FULL_DUPLEX) ?
+			(link.link_duplex == RTE_ETH_LINK_FULL_DUPLEX) ?
 				"full-duplex" : "half-duplex");
 	return 0;
 }

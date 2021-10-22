@@ -433,8 +433,8 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 	 * Remove this check once DPDK supports larger/variable
 	 * indirection tables.
 	 */
-	if (config->ind_table_max_size > (unsigned int)ETH_RSS_RETA_SIZE_512)
-		config->ind_table_max_size = ETH_RSS_RETA_SIZE_512;
+	if (config->ind_table_max_size > (unsigned int)RTE_ETH_RSS_RETA_SIZE_512)
+		config->ind_table_max_size = RTE_ETH_RSS_RETA_SIZE_512;
 	DRV_LOG(DEBUG, "maximum Rx indirection table size is %u",
 		config->ind_table_max_size);
 	if (config->hw_padding) {

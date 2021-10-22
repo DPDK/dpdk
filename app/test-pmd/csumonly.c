@@ -485,7 +485,7 @@ process_inner_cksums(void *l3_hdr, const struct testpmd_offload_info *info,
 		if (info->l4_proto == IPPROTO_TCP && tso_segsz) {
 			ol_flags |= PKT_TX_IP_CKSUM;
 		} else {
-			if (tx_offloads & DEV_TX_OFFLOAD_IPV4_CKSUM) {
+			if (tx_offloads & RTE_ETH_TX_OFFLOAD_IPV4_CKSUM) {
 				ol_flags |= PKT_TX_IP_CKSUM;
 			} else {
 				ipv4_hdr->hdr_checksum = 0;
@@ -502,7 +502,7 @@ process_inner_cksums(void *l3_hdr, const struct testpmd_offload_info *info,
 		udp_hdr = (struct rte_udp_hdr *)((char *)l3_hdr + info->l3_len);
 		/* do not recalculate udp cksum if it was 0 */
 		if (udp_hdr->dgram_cksum != 0) {
-			if (tx_offloads & DEV_TX_OFFLOAD_UDP_CKSUM) {
+			if (tx_offloads & RTE_ETH_TX_OFFLOAD_UDP_CKSUM) {
 				ol_flags |= PKT_TX_UDP_CKSUM;
 			} else {
 				udp_hdr->dgram_cksum = 0;
@@ -517,7 +517,7 @@ process_inner_cksums(void *l3_hdr, const struct testpmd_offload_info *info,
 		tcp_hdr = (struct rte_tcp_hdr *)((char *)l3_hdr + info->l3_len);
 		if (tso_segsz)
 			ol_flags |= PKT_TX_TCP_SEG;
-		else if (tx_offloads & DEV_TX_OFFLOAD_TCP_CKSUM) {
+		else if (tx_offloads & RTE_ETH_TX_OFFLOAD_TCP_CKSUM) {
 			ol_flags |= PKT_TX_TCP_CKSUM;
 		} else {
 			tcp_hdr->cksum = 0;
@@ -532,7 +532,7 @@ process_inner_cksums(void *l3_hdr, const struct testpmd_offload_info *info,
 			((char *)l3_hdr + info->l3_len);
 		/* sctp payload must be a multiple of 4 to be
 		 * offloaded */
-		if ((tx_offloads & DEV_TX_OFFLOAD_SCTP_CKSUM) &&
+		if ((tx_offloads & RTE_ETH_TX_OFFLOAD_SCTP_CKSUM) &&
 			((ipv4_hdr->total_length & 0x3) == 0)) {
 			ol_flags |= PKT_TX_SCTP_CKSUM;
 		} else {
@@ -559,7 +559,7 @@ process_outer_cksums(void *outer_l3_hdr, struct testpmd_offload_info *info,
 		ipv4_hdr->hdr_checksum = 0;
 		ol_flags |= PKT_TX_OUTER_IPV4;
 
-		if (tx_offloads	& DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM)
+		if (tx_offloads	& RTE_ETH_TX_OFFLOAD_OUTER_IPV4_CKSUM)
 			ol_flags |= PKT_TX_OUTER_IP_CKSUM;
 		else
 			ipv4_hdr->hdr_checksum = rte_ipv4_cksum(ipv4_hdr);
@@ -576,7 +576,7 @@ process_outer_cksums(void *outer_l3_hdr, struct testpmd_offload_info *info,
 		ol_flags |= PKT_TX_TCP_SEG;
 
 	/* Skip SW outer UDP checksum generation if HW supports it */
-	if (tx_offloads & DEV_TX_OFFLOAD_OUTER_UDP_CKSUM) {
+	if (tx_offloads & RTE_ETH_TX_OFFLOAD_OUTER_UDP_CKSUM) {
 		if (info->outer_ethertype == _htons(RTE_ETHER_TYPE_IPV4))
 			udp_hdr->dgram_cksum
 				= rte_ipv4_phdr_cksum(ipv4_hdr, ol_flags);
@@ -959,9 +959,9 @@ tunnel_update:
 		if (info.is_tunnel == 1) {
 			if (info.tunnel_tso_segsz ||
 			    (tx_offloads &
-			     DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM) ||
+			     RTE_ETH_TX_OFFLOAD_OUTER_IPV4_CKSUM) ||
 			    (tx_offloads &
-			     DEV_TX_OFFLOAD_OUTER_UDP_CKSUM)) {
+			     RTE_ETH_TX_OFFLOAD_OUTER_UDP_CKSUM)) {
 				m->outer_l2_len = info.outer_l2_len;
 				m->outer_l3_len = info.outer_l3_len;
 				m->l2_len = info.l2_len;
@@ -1022,19 +1022,19 @@ tunnel_update:
 					rte_be_to_cpu_16(info.outer_ethertype),
 					info.outer_l3_len);
 			/* dump tx packet info */
-			if ((tx_offloads & (DEV_TX_OFFLOAD_IPV4_CKSUM |
-					    DEV_TX_OFFLOAD_UDP_CKSUM |
-					    DEV_TX_OFFLOAD_TCP_CKSUM |
-					    DEV_TX_OFFLOAD_SCTP_CKSUM)) ||
+			if ((tx_offloads & (RTE_ETH_TX_OFFLOAD_IPV4_CKSUM |
+					    RTE_ETH_TX_OFFLOAD_UDP_CKSUM |
+					    RTE_ETH_TX_OFFLOAD_TCP_CKSUM |
+					    RTE_ETH_TX_OFFLOAD_SCTP_CKSUM)) ||
 				info.tso_segsz != 0)
 				printf("tx: m->l2_len=%d m->l3_len=%d "
 					"m->l4_len=%d\n",
 					m->l2_len, m->l3_len, m->l4_len);
 			if (info.is_tunnel == 1) {
 				if ((tx_offloads &
-				    DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM) ||
+				    RTE_ETH_TX_OFFLOAD_OUTER_IPV4_CKSUM) ||
 				    (tx_offloads &
-				    DEV_TX_OFFLOAD_OUTER_UDP_CKSUM) ||
+				    RTE_ETH_TX_OFFLOAD_OUTER_UDP_CKSUM) ||
 				    (tx_ol_flags & PKT_TX_OUTER_IPV6))
 					printf("tx: m->outer_l2_len=%d "
 						"m->outer_l3_len=%d\n",

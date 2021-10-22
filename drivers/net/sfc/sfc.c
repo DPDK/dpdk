@@ -106,13 +106,13 @@ sfc_phy_cap_from_link_speeds(uint32_t speeds)
 {
 	uint32_t phy_caps = 0;
 
-	if (~speeds & ETH_LINK_SPEED_FIXED) {
+	if (~speeds & RTE_ETH_LINK_SPEED_FIXED) {
 		phy_caps |= (1 << EFX_PHY_CAP_AN);
 		/*
 		 * If no speeds are specified in the mask, any supported
 		 * may be negotiated
 		 */
-		if (speeds == ETH_LINK_SPEED_AUTONEG)
+		if (speeds == RTE_ETH_LINK_SPEED_AUTONEG)
 			phy_caps |=
 				(1 << EFX_PHY_CAP_1000FDX) |
 				(1 << EFX_PHY_CAP_10000FDX) |
@@ -121,17 +121,17 @@ sfc_phy_cap_from_link_speeds(uint32_t speeds)
 				(1 << EFX_PHY_CAP_50000FDX) |
 				(1 << EFX_PHY_CAP_100000FDX);
 	}
-	if (speeds & ETH_LINK_SPEED_1G)
+	if (speeds & RTE_ETH_LINK_SPEED_1G)
 		phy_caps |= (1 << EFX_PHY_CAP_1000FDX);
-	if (speeds & ETH_LINK_SPEED_10G)
+	if (speeds & RTE_ETH_LINK_SPEED_10G)
 		phy_caps |= (1 << EFX_PHY_CAP_10000FDX);
-	if (speeds & ETH_LINK_SPEED_25G)
+	if (speeds & RTE_ETH_LINK_SPEED_25G)
 		phy_caps |= (1 << EFX_PHY_CAP_25000FDX);
-	if (speeds & ETH_LINK_SPEED_40G)
+	if (speeds & RTE_ETH_LINK_SPEED_40G)
 		phy_caps |= (1 << EFX_PHY_CAP_40000FDX);
-	if (speeds & ETH_LINK_SPEED_50G)
+	if (speeds & RTE_ETH_LINK_SPEED_50G)
 		phy_caps |= (1 << EFX_PHY_CAP_50000FDX);
-	if (speeds & ETH_LINK_SPEED_100G)
+	if (speeds & RTE_ETH_LINK_SPEED_100G)
 		phy_caps |= (1 << EFX_PHY_CAP_100000FDX);
 
 	return phy_caps;
@@ -401,10 +401,10 @@ sfc_set_fw_subvariant(struct sfc_adapter *sa)
 			tx_offloads |= txq_info->offloads;
 	}
 
-	if (tx_offloads & (DEV_TX_OFFLOAD_IPV4_CKSUM |
-			   DEV_TX_OFFLOAD_TCP_CKSUM |
-			   DEV_TX_OFFLOAD_UDP_CKSUM |
-			   DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM))
+	if (tx_offloads & (RTE_ETH_TX_OFFLOAD_IPV4_CKSUM |
+			   RTE_ETH_TX_OFFLOAD_TCP_CKSUM |
+			   RTE_ETH_TX_OFFLOAD_UDP_CKSUM |
+			   RTE_ETH_TX_OFFLOAD_OUTER_IPV4_CKSUM))
 		req_fw_subvariant = EFX_NIC_FW_SUBVARIANT_DEFAULT;
 	else
 		req_fw_subvariant = EFX_NIC_FW_SUBVARIANT_NO_TX_CSUM;
@@ -899,7 +899,7 @@ sfc_attach(struct sfc_adapter *sa)
 	sa->priv.shared->tunnel_encaps =
 		encp->enc_tunnel_encapsulations_supported;
 
-	if (sfc_dp_tx_offload_capa(sa->priv.dp_tx) & DEV_TX_OFFLOAD_TCP_TSO) {
+	if (sfc_dp_tx_offload_capa(sa->priv.dp_tx) & RTE_ETH_TX_OFFLOAD_TCP_TSO) {
 		sa->tso = encp->enc_fw_assisted_tso_v2_enabled ||
 			  encp->enc_tso_v3_enabled;
 		if (!sa->tso)
@@ -908,8 +908,8 @@ sfc_attach(struct sfc_adapter *sa)
 
 	if (sa->tso &&
 	    (sfc_dp_tx_offload_capa(sa->priv.dp_tx) &
-	     (DEV_TX_OFFLOAD_VXLAN_TNL_TSO |
-	      DEV_TX_OFFLOAD_GENEVE_TNL_TSO)) != 0) {
+	     (RTE_ETH_TX_OFFLOAD_VXLAN_TNL_TSO |
+	      RTE_ETH_TX_OFFLOAD_GENEVE_TNL_TSO)) != 0) {
 		sa->tso_encap = encp->enc_fw_assisted_tso_v2_encap_enabled ||
 				encp->enc_tso_v3_enabled;
 		if (!sa->tso_encap)

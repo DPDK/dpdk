@@ -275,7 +275,7 @@ An example utility for eBPF instruction generation in the format of C arrays wil
 be added in next releases
 
 TAP reports on supported RSS functions as part of dev_infos_get callback:
-``ETH_RSS_IP``, ``ETH_RSS_UDP`` and ``ETH_RSS_TCP``.
+``RTE_ETH_RSS_IP``, ``RTE_ETH_RSS_UDP`` and ``RTE_ETH_RSS_TCP``.
 **Known limitation:** TAP supports all of the above hash functions together
 and not in partial combinations.
 

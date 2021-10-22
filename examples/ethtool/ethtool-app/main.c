@@ -98,7 +98,7 @@ static void setup_ports(struct app_config *app_cfg, int cnt_ports)
 	int ret;
 
 	memset(&cfg_port, 0, sizeof(cfg_port));
-	cfg_port.txmode.mq_mode = ETH_MQ_TX_NONE;
+	cfg_port.txmode.mq_mode = RTE_ETH_MQ_TX_NONE;
 
 	for (idx_port = 0; idx_port < cnt_ports; idx_port++) {
 		struct app_port *ptr_port = &app_cfg->ports[idx_port];

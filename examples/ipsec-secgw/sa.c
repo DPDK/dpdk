@@ -986,7 +986,7 @@ check_eth_dev_caps(uint16_t portid, uint32_t inbound)
 
 	if (inbound) {
 		if ((dev_info.rx_offload_capa &
-				DEV_RX_OFFLOAD_SECURITY) == 0) {
+				RTE_ETH_RX_OFFLOAD_SECURITY) == 0) {
 			RTE_LOG(WARNING, PORT,
 				"hardware RX IPSec offload is not supported\n");
 			return -EINVAL;
@@ -994,7 +994,7 @@ check_eth_dev_caps(uint16_t portid, uint32_t inbound)
 
 	} else { /* outbound */
 		if ((dev_info.tx_offload_capa &
-				DEV_TX_OFFLOAD_SECURITY) == 0) {
+				RTE_ETH_TX_OFFLOAD_SECURITY) == 0) {
 			RTE_LOG(WARNING, PORT,
 				"hardware TX IPSec offload is not supported\n");
 			return -EINVAL;
@@ -1628,7 +1628,7 @@ sa_check_offloads(uint16_t port_id, uint64_t *rx_offloads,
 				rule_type ==
 				RTE_SECURITY_ACTION_TYPE_INLINE_PROTOCOL)
 				&& rule->portid == port_id)
-			*rx_offloads |= DEV_RX_OFFLOAD_SECURITY;
+			*rx_offloads |= RTE_ETH_RX_OFFLOAD_SECURITY;
 	}
 
 	/* Check for outbound rules that use offloads and use this port */
@@ -1639,7 +1639,7 @@ sa_check_offloads(uint16_t port_id, uint64_t *rx_offloads,
 				rule_type ==
 				RTE_SECURITY_ACTION_TYPE_INLINE_PROTOCOL)
 				&& rule->portid == port_id)
-			*tx_offloads |= DEV_TX_OFFLOAD_SECURITY;
+			*tx_offloads |= RTE_ETH_TX_OFFLOAD_SECURITY;
 	}
 	return 0;
 }

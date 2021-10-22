@@ -90,20 +90,20 @@ int dpaa_intr_disable(char *if_name);
 struct usdpaa_ioctl_link_status_args_old {
 	/* network device node name */
 	char    if_name[IF_NAME_MAX_LEN];
-	/* link status(ETH_LINK_UP/DOWN) */
+	/* link status(RTE_ETH_LINK_UP/DOWN) */
 	int     link_status;
 };
 
 struct usdpaa_ioctl_link_status_args {
 	/* network device node name */
 	char    if_name[IF_NAME_MAX_LEN];
-	/* link status(ETH_LINK_UP/DOWN) */
+	/* link status(RTE_ETH_LINK_UP/DOWN) */
 	int     link_status;
-	/* link speed (ETH_SPEED_NUM_)*/
+	/* link speed (RTE_ETH_SPEED_NUM_)*/
 	int     link_speed;
-	/* link duplex (ETH_LINK_[HALF/FULL]_DUPLEX)*/
+	/* link duplex (RTE_ETH_LINK_[HALF/FULL]_DUPLEX)*/
 	int     link_duplex;
-	/* link autoneg (ETH_LINK_AUTONEG/FIXED)*/
+	/* link autoneg (RTE_ETH_LINK_AUTONEG/FIXED)*/
 	int     link_autoneg;
 
 };
@@ -111,16 +111,16 @@ struct usdpaa_ioctl_link_status_args {
 struct usdpaa_ioctl_update_link_status_args {
 	/* network device node name */
 	char    if_name[IF_NAME_MAX_LEN];
-	/* link status(ETH_LINK_UP/DOWN) */
+	/* link status(RTE_ETH_LINK_UP/DOWN) */
 	int     link_status;
 };
 
 struct usdpaa_ioctl_update_link_speed {
 	/* network device node name*/
 	char    if_name[IF_NAME_MAX_LEN];
-	/* link speed (ETH_SPEED_NUM_)*/
+	/* link speed (RTE_ETH_SPEED_NUM_)*/
 	int     link_speed;
-	/* link duplex (ETH_LINK_[HALF/FULL]_DUPLEX)*/
+	/* link duplex (RTE_ETH_LINK_[HALF/FULL]_DUPLEX)*/
 	int     link_duplex;
 };
 

@@ -2015,7 +2015,7 @@ i40e_get_outer_vlan(struct rte_eth_dev *dev)
 {
 	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	int qinq = dev->data->dev_conf.rxmode.offloads &
-		DEV_RX_OFFLOAD_VLAN_EXTEND;
+		RTE_ETH_RX_OFFLOAD_VLAN_EXTEND;
 	uint64_t reg_r = 0;
 	uint16_t reg_id;
 	uint16_t tpid;
@@ -3601,13 +3601,13 @@ i40e_flow_parse_l4_cloud_filter(struct rte_eth_dev *dev,
 }
 
 static uint16_t i40e_supported_tunnel_filter_types[] = {
-	ETH_TUNNEL_FILTER_IMAC | ETH_TUNNEL_FILTER_TENID |
-	ETH_TUNNEL_FILTER_IVLAN,
-	ETH_TUNNEL_FILTER_IMAC | ETH_TUNNEL_FILTER_IVLAN,
-	ETH_TUNNEL_FILTER_IMAC | ETH_TUNNEL_FILTER_TENID,
-	ETH_TUNNEL_FILTER_OMAC | ETH_TUNNEL_FILTER_TENID |
-	ETH_TUNNEL_FILTER_IMAC,
-	ETH_TUNNEL_FILTER_IMAC,
+	RTE_ETH_TUNNEL_FILTER_IMAC | RTE_ETH_TUNNEL_FILTER_TENID |
+	RTE_ETH_TUNNEL_FILTER_IVLAN,
+	RTE_ETH_TUNNEL_FILTER_IMAC | RTE_ETH_TUNNEL_FILTER_IVLAN,
+	RTE_ETH_TUNNEL_FILTER_IMAC | RTE_ETH_TUNNEL_FILTER_TENID,
+	RTE_ETH_TUNNEL_FILTER_OMAC | RTE_ETH_TUNNEL_FILTER_TENID |
+	RTE_ETH_TUNNEL_FILTER_IMAC,
+	RTE_ETH_TUNNEL_FILTER_IMAC,
 };
 
 static int
@@ -3697,12 +3697,12 @@ i40e_flow_parse_vxlan_pattern(__rte_unused struct rte_eth_dev *dev,
 					rte_memcpy(&filter->outer_mac,
 						   &eth_spec->dst,
 						   RTE_ETHER_ADDR_LEN);
-					filter_type |= ETH_TUNNEL_FILTER_OMAC;
+					filter_type |= RTE_ETH_TUNNEL_FILTER_OMAC;
 				} else {
 					rte_memcpy(&filter->inner_mac,
 						   &eth_spec->dst,
 						   RTE_ETHER_ADDR_LEN);
-					filter_type |= ETH_TUNNEL_FILTER_IMAC;
+					filter_type |= RTE_ETH_TUNNEL_FILTER_IMAC;
 				}
 			}
 			break;
@@ -3724,7 +3724,7 @@ i40e_flow_parse_vxlan_pattern(__rte_unused struct rte_eth_dev *dev,
 					filter->inner_vlan =
 					      rte_be_to_cpu_16(vlan_spec->tci) &
 					      I40E_VLAN_TCI_MASK;
-				filter_type |= ETH_TUNNEL_FILTER_IVLAN;
+				filter_type |= RTE_ETH_TUNNEL_FILTER_IVLAN;
 			}
 			break;
 		case RTE_FLOW_ITEM_TYPE_IPV4:
@@ -3798,7 +3798,7 @@ i40e_flow_parse_vxlan_pattern(__rte_unused struct rte_eth_dev *dev,
 					   vxlan_spec->vni, 3);
 				filter->tenant_id =
 					rte_be_to_cpu_32(tenant_id_be);
-				filter_type |= ETH_TUNNEL_FILTER_TENID;
+				filter_type |= RTE_ETH_TUNNEL_FILTER_TENID;
 			}
 
 			vxlan_flag = 1;
@@ -3927,12 +3927,12 @@ i40e_flow_parse_nvgre_pattern(__rte_unused struct rte_eth_dev *dev,
 					rte_memcpy(&filter->outer_mac,
 						   &eth_spec->dst,
 						   RTE_ETHER_ADDR_LEN);
-					filter_type |= ETH_TUNNEL_FILTER_OMAC;
+					filter_type |= RTE_ETH_TUNNEL_FILTER_OMAC;
 				} else {
 					rte_memcpy(&filter->inner_mac,
 						   &eth_spec->dst,
 						   RTE_ETHER_ADDR_LEN);
-					filter_type |= ETH_TUNNEL_FILTER_IMAC;
+					filter_type |= RTE_ETH_TUNNEL_FILTER_IMAC;
 				}
 			}
 
@@ -3955,7 +3955,7 @@ i40e_flow_parse_nvgre_pattern(__rte_unused struct rte_eth_dev *dev,
 					filter->inner_vlan =
 					      rte_be_to_cpu_16(vlan_spec->tci) &
 					      I40E_VLAN_TCI_MASK;
-				filter_type |= ETH_TUNNEL_FILTER_IVLAN;
+				filter_type |= RTE_ETH_TUNNEL_FILTER_IVLAN;
 			}
 			break;
 		case RTE_FLOW_ITEM_TYPE_IPV4:
@@ -4050,7 +4050,7 @@ i40e_flow_parse_nvgre_pattern(__rte_unused struct rte_eth_dev *dev,
 					   nvgre_spec->tni, 3);
 				filter->tenant_id =
 					rte_be_to_cpu_32(tenant_id_be);
-				filter_type |= ETH_TUNNEL_FILTER_TENID;
+				filter_type |= RTE_ETH_TUNNEL_FILTER_TENID;
 			}
 
 			nvgre_flag = 1;

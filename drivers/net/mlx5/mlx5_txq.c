@@ -98,42 +98,42 @@ uint64_t
 mlx5_get_tx_port_offloads(struct rte_eth_dev *dev)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	uint64_t offloads = (DEV_TX_OFFLOAD_MULTI_SEGS |
-			     DEV_TX_OFFLOAD_VLAN_INSERT);
+	uint64_t offloads = (RTE_ETH_TX_OFFLOAD_MULTI_SEGS |
+			     RTE_ETH_TX_OFFLOAD_VLAN_INSERT);
 	struct mlx5_dev_config *config = &priv->config;
 
 	if (config->hw_csum)
-		offloads |= (DEV_TX_OFFLOAD_IPV4_CKSUM |
-			     DEV_TX_OFFLOAD_UDP_CKSUM |
-			     DEV_TX_OFFLOAD_TCP_CKSUM);
+		offloads |= (RTE_ETH_TX_OFFLOAD_IPV4_CKSUM |
+			     RTE_ETH_TX_OFFLOAD_UDP_CKSUM |
+			     RTE_ETH_TX_OFFLOAD_TCP_CKSUM);
 	if (config->tso)
-		offloads |= DEV_TX_OFFLOAD_TCP_TSO;
+		offloads |= RTE_ETH_TX_OFFLOAD_TCP_TSO;
 	if (config->tx_pp)
-		offloads |= DEV_TX_OFFLOAD_SEND_ON_TIMESTAMP;
+		offloads |= RTE_ETH_TX_OFFLOAD_SEND_ON_TIMESTAMP;
 	if (config->swp) {
 		if (config->swp & MLX5_SW_PARSING_CSUM_CAP)
-			offloads |= DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM;
+			offloads |= RTE_ETH_TX_OFFLOAD_OUTER_IPV4_CKSUM;
 		if (config->swp & MLX5_SW_PARSING_TSO_CAP)
-			offloads |= (DEV_TX_OFFLOAD_IP_TNL_TSO |
-				     DEV_TX_OFFLOAD_UDP_TNL_TSO);
+			offloads |= (RTE_ETH_TX_OFFLOAD_IP_TNL_TSO |
+				     RTE_ETH_TX_OFFLOAD_UDP_TNL_TSO);
 	}
 	if (config->tunnel_en) {
 		if (config->hw_csum)
-			offloads |= DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM;
+			offloads |= RTE_ETH_TX_OFFLOAD_OUTER_IPV4_CKSUM;
 		if (config->tso) {
 			if (config->tunnel_en &
 				MLX5_TUNNELED_OFFLOADS_VXLAN_CAP)
-				offloads |= DEV_TX_OFFLOAD_VXLAN_TNL_TSO;
+				offloads |= RTE_ETH_TX_OFFLOAD_VXLAN_TNL_TSO;
 			if (config->tunnel_en &
 				MLX5_TUNNELED_OFFLOADS_GRE_CAP)
-				offloads |= DEV_TX_OFFLOAD_GRE_TNL_TSO;
+				offloads |= RTE_ETH_TX_OFFLOAD_GRE_TNL_TSO;
 			if (config->tunnel_en &
 				MLX5_TUNNELED_OFFLOADS_GENEVE_CAP)
-				offloads |= DEV_TX_OFFLOAD_GENEVE_TNL_TSO;
+				offloads |= RTE_ETH_TX_OFFLOAD_GENEVE_TNL_TSO;
 		}
 	}
 	if (!config->mprq.enabled)
-		offloads |= DEV_TX_OFFLOAD_MBUF_FAST_FREE;
+		offloads |= RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE;
 	return offloads;
 }
 
@@ -801,17 +801,17 @@ txq_set_params(struct mlx5_txq_ctrl *txq_ctrl)
 	unsigned int inlen_mode; /* Minimal required Inline data. */
 	unsigned int txqs_inline; /* Min Tx queues to enable inline. */
 	uint64_t dev_txoff = priv->dev_data->dev_conf.txmode.offloads;
-	bool tso = txq_ctrl->txq.offloads & (DEV_TX_OFFLOAD_TCP_TSO |
-					    DEV_TX_OFFLOAD_VXLAN_TNL_TSO |
-					    DEV_TX_OFFLOAD_GRE_TNL_TSO |
-					    DEV_TX_OFFLOAD_IP_TNL_TSO |
-					    DEV_TX_OFFLOAD_UDP_TNL_TSO);
+	bool tso = txq_ctrl->txq.offloads & (RTE_ETH_TX_OFFLOAD_TCP_TSO |
+					    RTE_ETH_TX_OFFLOAD_VXLAN_TNL_TSO |
+					    RTE_ETH_TX_OFFLOAD_GRE_TNL_TSO |
+					    RTE_ETH_TX_OFFLOAD_IP_TNL_TSO |
+					    RTE_ETH_TX_OFFLOAD_UDP_TNL_TSO);
 	bool vlan_inline;
 	unsigned int temp;
 
 	txq_ctrl->txq.fast_free =
-		!!((txq_ctrl->txq.offloads & DEV_TX_OFFLOAD_MBUF_FAST_FREE) &&
-		   !(txq_ctrl->txq.offloads & DEV_TX_OFFLOAD_MULTI_SEGS) &&
+		!!((txq_ctrl->txq.offloads & RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE) &&
+		   !(txq_ctrl->txq.offloads & RTE_ETH_TX_OFFLOAD_MULTI_SEGS) &&
 		   !config->mprq.enabled);
 	if (config->txqs_inline == MLX5_ARG_UNSET)
 		txqs_inline =
@@ -870,7 +870,7 @@ txq_set_params(struct mlx5_txq_ctrl *txq_ctrl)
 	 * tx_burst routine.
 	 */
 	txq_ctrl->txq.vlan_en = config->hw_vlan_insert;
-	vlan_inline = (dev_txoff & DEV_TX_OFFLOAD_VLAN_INSERT) &&
+	vlan_inline = (dev_txoff & RTE_ETH_TX_OFFLOAD_VLAN_INSERT) &&
 		      !config->hw_vlan_insert;
 	/*
 	 * If there are few Tx queues it is prioritized
@@ -978,19 +978,19 @@ txq_set_params(struct mlx5_txq_ctrl *txq_ctrl)
 						    MLX5_MAX_TSO_HEADER);
 		txq_ctrl->txq.tso_en = 1;
 	}
-	if (((DEV_TX_OFFLOAD_VXLAN_TNL_TSO & txq_ctrl->txq.offloads) &&
+	if (((RTE_ETH_TX_OFFLOAD_VXLAN_TNL_TSO & txq_ctrl->txq.offloads) &&
 	    (config->tunnel_en & MLX5_TUNNELED_OFFLOADS_VXLAN_CAP)) |
-	   ((DEV_TX_OFFLOAD_GRE_TNL_TSO & txq_ctrl->txq.offloads) &&
+	   ((RTE_ETH_TX_OFFLOAD_GRE_TNL_TSO & txq_ctrl->txq.offloads) &&
 	    (config->tunnel_en & MLX5_TUNNELED_OFFLOADS_GRE_CAP)) |
-	   ((DEV_TX_OFFLOAD_GENEVE_TNL_TSO & txq_ctrl->txq.offloads) &&
+	   ((RTE_ETH_TX_OFFLOAD_GENEVE_TNL_TSO & txq_ctrl->txq.offloads) &&
 	    (config->tunnel_en & MLX5_TUNNELED_OFFLOADS_GENEVE_CAP)) |
 	   (config->swp  & MLX5_SW_PARSING_TSO_CAP))
 		txq_ctrl->txq.tunnel_en = 1;
-	txq_ctrl->txq.swp_en = (((DEV_TX_OFFLOAD_IP_TNL_TSO |
-				  DEV_TX_OFFLOAD_UDP_TNL_TSO) &
+	txq_ctrl->txq.swp_en = (((RTE_ETH_TX_OFFLOAD_IP_TNL_TSO |
+				  RTE_ETH_TX_OFFLOAD_UDP_TNL_TSO) &
 				  txq_ctrl->txq.offloads) && (config->swp &
 				  MLX5_SW_PARSING_TSO_CAP)) |
-				((DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM &
+				((RTE_ETH_TX_OFFLOAD_OUTER_IPV4_CKSUM &
 				 txq_ctrl->txq.offloads) && (config->swp &
 				 MLX5_SW_PARSING_CSUM_CAP));
 }

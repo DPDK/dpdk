@@ -906,7 +906,7 @@ _iavf_recv_raw_pkts_vec_avx2_flex_rxd(struct iavf_rx_queue *rxq,
 		 * needs to load 2nd 16B of each desc for RSS hash parsing,
 		 * will cause performance drop to get into this context.
 		 */
-		if (offloads & DEV_RX_OFFLOAD_RSS_HASH ||
+		if (offloads & RTE_ETH_RX_OFFLOAD_RSS_HASH ||
 		    rxq->rx_flags & IAVF_RX_FLAGS_VLAN_TAG_LOC_L2TAG2_2) {
 			/* load bottom half of every 32B desc */
 			const __m128i raw_desc_bh7 =
@@ -958,7 +958,7 @@ _iavf_recv_raw_pkts_vec_avx2_flex_rxd(struct iavf_rx_queue *rxq,
 					(_mm256_castsi128_si256(raw_desc_bh0),
 					raw_desc_bh1, 1);
 
-			if (offloads & DEV_RX_OFFLOAD_RSS_HASH) {
+			if (offloads & RTE_ETH_RX_OFFLOAD_RSS_HASH) {
 				/**
 				 * to shift the 32b RSS hash value to the
 				 * highest 32b of each 128b before mask

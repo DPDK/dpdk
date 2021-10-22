@@ -1824,7 +1824,7 @@ flow_verbs_translate(struct rte_eth_dev *dev,
 			if (dev_flow->hash_fields != 0)
 				dev_flow->hash_fields |=
 					mlx5_flow_hashfields_adjust
-					(rss_desc, tunnel, ETH_RSS_TCP,
+					(rss_desc, tunnel, RTE_ETH_RSS_TCP,
 					 (IBV_RX_HASH_SRC_PORT_TCP |
 					  IBV_RX_HASH_DST_PORT_TCP));
 			item_flags |= tunnel ? MLX5_FLOW_LAYER_INNER_L4_TCP :
@@ -1837,7 +1837,7 @@ flow_verbs_translate(struct rte_eth_dev *dev,
 			if (dev_flow->hash_fields != 0)
 				dev_flow->hash_fields |=
 					mlx5_flow_hashfields_adjust
-					(rss_desc, tunnel, ETH_RSS_UDP,
+					(rss_desc, tunnel, RTE_ETH_RSS_UDP,
 					 (IBV_RX_HASH_SRC_PORT_UDP |
 					  IBV_RX_HASH_DST_PORT_UDP));
 			item_flags |= tunnel ? MLX5_FLOW_LAYER_INNER_L4_UDP :

@@ -203,11 +203,11 @@ ionic_dev_tx_queue_setup(struct rte_eth_dev *eth_dev, uint16_t tx_queue_id,
 		txq->flags |= IONIC_QCQ_F_DEFERRED;
 
 	/* Convert the offload flags into queue flags */
-	if (offloads & DEV_TX_OFFLOAD_IPV4_CKSUM)
+	if (offloads & RTE_ETH_TX_OFFLOAD_IPV4_CKSUM)
 		txq->flags |= IONIC_QCQ_F_CSUM_L3;
-	if (offloads & DEV_TX_OFFLOAD_TCP_CKSUM)
+	if (offloads & RTE_ETH_TX_OFFLOAD_TCP_CKSUM)
 		txq->flags |= IONIC_QCQ_F_CSUM_TCP;
-	if (offloads & DEV_TX_OFFLOAD_UDP_CKSUM)
+	if (offloads & RTE_ETH_TX_OFFLOAD_UDP_CKSUM)
 		txq->flags |= IONIC_QCQ_F_CSUM_UDP;
 
 	eth_dev->data->tx_queues[tx_queue_id] = txq;
@@ -743,11 +743,11 @@ ionic_dev_rx_queue_setup(struct rte_eth_dev *eth_dev,
 
 	/*
 	 * Note: the interface does not currently support
-	 * DEV_RX_OFFLOAD_KEEP_CRC, please also consider ETHER_CRC_LEN
+	 * RTE_ETH_RX_OFFLOAD_KEEP_CRC, please also consider ETHER_CRC_LEN
 	 * when the adapter will be able to keep the CRC and subtract
 	 * it to the length for all received packets:
 	 * if (eth_dev->data->dev_conf.rxmode.offloads &
-	 *     DEV_RX_OFFLOAD_KEEP_CRC)
+	 *     RTE_ETH_RX_OFFLOAD_KEEP_CRC)
 	 *   rxq->crc_len = ETHER_CRC_LEN;
 	 */
 

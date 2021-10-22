@@ -409,7 +409,7 @@ ngbe_dev_start(struct rte_eth_dev *dev)
 	dev->data->dev_link.link_status = link_up;
 
 	link_speeds = &dev->data->dev_conf.link_speeds;
-	if (*link_speeds == ETH_LINK_SPEED_AUTONEG)
+	if (*link_speeds == RTE_ETH_LINK_SPEED_AUTONEG)
 		negotiate = true;
 
 	err = hw->mac.get_link_capabilities(hw, &speed, &negotiate);
@@ -418,11 +418,11 @@ ngbe_dev_start(struct rte_eth_dev *dev)
 
 	allowed_speeds = 0;
 	if (hw->mac.default_speeds & NGBE_LINK_SPEED_1GB_FULL)
-		allowed_speeds |= ETH_LINK_SPEED_1G;
+		allowed_speeds |= RTE_ETH_LINK_SPEED_1G;
 	if (hw->mac.default_speeds & NGBE_LINK_SPEED_100M_FULL)
-		allowed_speeds |= ETH_LINK_SPEED_100M;
+		allowed_speeds |= RTE_ETH_LINK_SPEED_100M;
 	if (hw->mac.default_speeds & NGBE_LINK_SPEED_10M_FULL)
-		allowed_speeds |= ETH_LINK_SPEED_10M;
+		allowed_speeds |= RTE_ETH_LINK_SPEED_10M;
 
 	if (*link_speeds & ~allowed_speeds) {
 		PMD_INIT_LOG(ERR, "Invalid link setting");
@@ -430,14 +430,14 @@ ngbe_dev_start(struct rte_eth_dev *dev)
 	}
 
 	speed = 0x0;
-	if (*link_speeds == ETH_LINK_SPEED_AUTONEG) {
+	if (*link_speeds == RTE_ETH_LINK_SPEED_AUTONEG) {
 		speed = hw->mac.default_speeds;
 	} else {
-		if (*link_speeds & ETH_LINK_SPEED_1G)
+		if (*link_speeds & RTE_ETH_LINK_SPEED_1G)
 			speed |= NGBE_LINK_SPEED_1GB_FULL;
-		if (*link_speeds & ETH_LINK_SPEED_100M)
+		if (*link_speeds & RTE_ETH_LINK_SPEED_100M)
 			speed |= NGBE_LINK_SPEED_100M_FULL;
-		if (*link_speeds & ETH_LINK_SPEED_10M)
+		if (*link_speeds & RTE_ETH_LINK_SPEED_10M)
 			speed |= NGBE_LINK_SPEED_10M_FULL;
 	}
 
@@ -653,8 +653,8 @@ ngbe_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->rx_desc_lim = rx_desc_lim;
 	dev_info->tx_desc_lim = tx_desc_lim;
 
-	dev_info->speed_capa = ETH_LINK_SPEED_1G | ETH_LINK_SPEED_100M |
-				ETH_LINK_SPEED_10M;
+	dev_info->speed_capa = RTE_ETH_LINK_SPEED_1G | RTE_ETH_LINK_SPEED_100M |
+				RTE_ETH_LINK_SPEED_10M;
 
 	/* Driver-preferred Rx/Tx parameters */
 	dev_info->default_rxportconf.burst_size = 32;
@@ -682,11 +682,11 @@ ngbe_dev_link_update_share(struct rte_eth_dev *dev,
 	int wait = 1;
 
 	memset(&link, 0, sizeof(link));
-	link.link_status = ETH_LINK_DOWN;
-	link.link_speed = ETH_SPEED_NUM_NONE;
-	link.link_duplex = ETH_LINK_HALF_DUPLEX;
+	link.link_status = RTE_ETH_LINK_DOWN;
+	link.link_speed = RTE_ETH_SPEED_NUM_NONE;
+	link.link_duplex = RTE_ETH_LINK_HALF_DUPLEX;
 	link.link_autoneg = !(dev->data->dev_conf.link_speeds &
-			~ETH_LINK_SPEED_AUTONEG);
+			~RTE_ETH_LINK_SPEED_AUTONEG);
 
 	hw->mac.get_link_status = true;
 
@@ -699,8 +699,8 @@ ngbe_dev_link_update_share(struct rte_eth_dev *dev,
 
 	err = hw->mac.check_link(hw, &link_speed, &link_up, wait);
 	if (err != 0) {
-		link.link_speed = ETH_SPEED_NUM_NONE;
-		link.link_duplex = ETH_LINK_FULL_DUPLEX;
+		link.link_speed = RTE_ETH_SPEED_NUM_NONE;
+		link.link_duplex = RTE_ETH_LINK_FULL_DUPLEX;
 		return rte_eth_linkstatus_set(dev, &link);
 	}
 
@@ -708,27 +708,27 @@ ngbe_dev_link_update_share(struct rte_eth_dev *dev,
 		return rte_eth_linkstatus_set(dev, &link);
 
 	intr->flags &= ~NGBE_FLAG_NEED_LINK_CONFIG;
-	link.link_status = ETH_LINK_UP;
-	link.link_duplex = ETH_LINK_FULL_DUPLEX;
+	link.link_status = RTE_ETH_LINK_UP;
+	link.link_duplex = RTE_ETH_LINK_FULL_DUPLEX;
 
 	switch (link_speed) {
 	default:
 	case NGBE_LINK_SPEED_UNKNOWN:
-		link.link_speed = ETH_SPEED_NUM_NONE;
+		link.link_speed = RTE_ETH_SPEED_NUM_NONE;
 		break;
 
 	case NGBE_LINK_SPEED_10M_FULL:
-		link.link_speed = ETH_SPEED_NUM_10M;
+		link.link_speed = RTE_ETH_SPEED_NUM_10M;
 		lan_speed = 0;
 		break;
 
 	case NGBE_LINK_SPEED_100M_FULL:
-		link.link_speed = ETH_SPEED_NUM_100M;
+		link.link_speed = RTE_ETH_SPEED_NUM_100M;
 		lan_speed = 1;
 		break;
 
 	case NGBE_LINK_SPEED_1GB_FULL:
-		link.link_speed = ETH_SPEED_NUM_1G;
+		link.link_speed = RTE_ETH_SPEED_NUM_1G;
 		lan_speed = 2;
 		break;
 	}
@@ -912,11 +912,11 @@ ngbe_dev_link_status_print(struct rte_eth_dev *dev)
 
 	rte_eth_linkstatus_get(dev, &link);
 
-	if (link.link_status == ETH_LINK_UP) {
+	if (link.link_status == RTE_ETH_LINK_UP) {
 		PMD_INIT_LOG(INFO, "Port %d: Link Up - speed %u Mbps - %s",
 					(int)(dev->data->port_id),
 					(unsigned int)link.link_speed,
-			link.link_duplex == ETH_LINK_FULL_DUPLEX ?
+			link.link_duplex == RTE_ETH_LINK_FULL_DUPLEX ?
 					"full-duplex" : "half-duplex");
 	} else {
 		PMD_INIT_LOG(INFO, " Port %d: Link Down",
@@ -956,7 +956,7 @@ ngbe_dev_interrupt_action(struct rte_eth_dev *dev)
 		ngbe_dev_link_update(dev, 0);
 
 		/* likely to up */
-		if (link.link_status != ETH_LINK_UP)
+		if (link.link_status != RTE_ETH_LINK_UP)
 			/* handle it 1 sec later, wait it being stable */
 			timeout = NGBE_LINK_UP_CHECK_TIMEOUT;
 		/* likely to down */

@@ -33,14 +33,14 @@ otx_ep_dev_info_get(struct rte_eth_dev *eth_dev,
 
 	otx_epvf = OTX_EP_DEV(eth_dev);
 
-	devinfo->speed_capa = ETH_LINK_SPEED_10G;
+	devinfo->speed_capa = RTE_ETH_LINK_SPEED_10G;
 	devinfo->max_rx_queues = otx_epvf->max_rx_queues;
 	devinfo->max_tx_queues = otx_epvf->max_tx_queues;
 
 	devinfo->min_rx_bufsize = OTX_EP_MIN_RX_BUF_SIZE;
 	devinfo->max_rx_pktlen = OTX_EP_MAX_PKT_SZ;
-	devinfo->rx_offload_capa = DEV_RX_OFFLOAD_SCATTER;
-	devinfo->tx_offload_capa = DEV_TX_OFFLOAD_MULTI_SEGS;
+	devinfo->rx_offload_capa = RTE_ETH_RX_OFFLOAD_SCATTER;
+	devinfo->tx_offload_capa = RTE_ETH_TX_OFFLOAD_MULTI_SEGS;
 
 	devinfo->max_mac_addrs = OTX_EP_MAX_MAC_ADDRS;
 

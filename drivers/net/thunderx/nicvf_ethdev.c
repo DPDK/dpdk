@@ -61,14 +61,14 @@ nicvf_link_status_update(struct nicvf *nic,
 {
 	memset(link, 0, sizeof(*link));
 
-	link->link_status = nic->link_up ? ETH_LINK_UP : ETH_LINK_DOWN;
+	link->link_status = nic->link_up ? RTE_ETH_LINK_UP : RTE_ETH_LINK_DOWN;
 
 	if (nic->duplex == NICVF_HALF_DUPLEX)
-		link->link_duplex = ETH_LINK_HALF_DUPLEX;
+		link->link_duplex = RTE_ETH_LINK_HALF_DUPLEX;
 	else if (nic->duplex == NICVF_FULL_DUPLEX)
-		link->link_duplex = ETH_LINK_FULL_DUPLEX;
+		link->link_duplex = RTE_ETH_LINK_FULL_DUPLEX;
 	link->link_speed = nic->speed;
-	link->link_autoneg = ETH_LINK_AUTONEG;
+	link->link_autoneg = RTE_ETH_LINK_AUTONEG;
 }
 
 static void
@@ -134,7 +134,7 @@ nicvf_dev_link_update(struct rte_eth_dev *dev, int wait_to_complete)
 		/* rte_eth_link_get() might need to wait up to 9 seconds */
 		for (i = 0; i < MAX_CHECK_TIME; i++) {
 			nicvf_link_status_update(nic, &link);
-			if (link.link_status == ETH_LINK_UP)
+			if (link.link_status == RTE_ETH_LINK_UP)
 				break;
 			rte_delay_ms(CHECK_INTERVAL);
 		}
@@ -390,35 +390,35 @@ nicvf_rss_ethdev_to_nic(struct nicvf *nic, uint64_t ethdev_rss)
 {
 	uint64_t nic_rss = 0;
 
-	if (ethdev_rss & ETH_RSS_IPV4)
+	if (ethdev_rss & RTE_ETH_RSS_IPV4)
 		nic_rss |= RSS_IP_ENA;
 
-	if (ethdev_rss & ETH_RSS_IPV6)
+	if (ethdev_rss & RTE_ETH_RSS_IPV6)
 		nic_rss |= RSS_IP_ENA;
 
-	if (ethdev_rss & ETH_RSS_NONFRAG_IPV4_UDP)
+	if (ethdev_rss & RTE_ETH_RSS_NONFRAG_IPV4_UDP)
 		nic_rss |= (RSS_IP_ENA | RSS_UDP_ENA);
 
-	if (ethdev_rss & ETH_RSS_NONFRAG_IPV4_TCP)
+	if (ethdev_rss & RTE_ETH_RSS_NONFRAG_IPV4_TCP)
 		nic_rss |= (RSS_IP_ENA | RSS_TCP_ENA);
 
-	if (ethdev_rss & ETH_RSS_NONFRAG_IPV6_UDP)
+	if (ethdev_rss & RTE_ETH_RSS_NONFRAG_IPV6_UDP)
 		nic_rss |= (RSS_IP_ENA | RSS_UDP_ENA);
 
-	if (ethdev_rss & ETH_RSS_NONFRAG_IPV6_TCP)
+	if (ethdev_rss & RTE_ETH_RSS_NONFRAG_IPV6_TCP)
 		nic_rss |= (RSS_IP_ENA | RSS_TCP_ENA);
 
-	if (ethdev_rss & ETH_RSS_PORT)
+	if (ethdev_rss & RTE_ETH_RSS_PORT)
 		nic_rss |= RSS_L2_EXTENDED_HASH_ENA;
 
 	if (nicvf_hw_cap(nic) & NICVF_CAP_TUNNEL_PARSING) {
-		if (ethdev_rss & ETH_RSS_VXLAN)
+		if (ethdev_rss & RTE_ETH_RSS_VXLAN)
 			nic_rss |= RSS_TUN_VXLAN_ENA;
 
-		if (ethdev_rss & ETH_RSS_GENEVE)
+		if (ethdev_rss & RTE_ETH_RSS_GENEVE)
 			nic_rss |= RSS_TUN_GENEVE_ENA;
 
-		if (ethdev_rss & ETH_RSS_NVGRE)
+		if (ethdev_rss & RTE_ETH_RSS_NVGRE)
 			nic_rss |= RSS_TUN_NVGRE_ENA;
 	}
 
@@ -431,28 +431,28 @@ nicvf_rss_nic_to_ethdev(struct nicvf *nic,  uint64_t nic_rss)
 	uint64_t ethdev_rss = 0;
 
 	if (nic_rss & RSS_IP_ENA)
-		ethdev_rss |= (ETH_RSS_IPV4 | ETH_RSS_IPV6);
+		ethdev_rss |= (RTE_ETH_RSS_IPV4 | RTE_ETH_RSS_IPV6);
 
 	if ((nic_rss & RSS_IP_ENA) && (nic_rss & RSS_TCP_ENA))
-		ethdev_rss |= (ETH_RSS_NONFRAG_IPV4_TCP |
-				ETH_RSS_NONFRAG_IPV6_TCP);
+		ethdev_rss |= (RTE_ETH_RSS_NONFRAG_IPV4_TCP |
+				RTE_ETH_RSS_NONFRAG_IPV6_TCP);
 
 	if ((nic_rss & RSS_IP_ENA) && (nic_rss & RSS_UDP_ENA))
-		ethdev_rss |= (ETH_RSS_NONFRAG_IPV4_UDP |
-				ETH_RSS_NONFRAG_IPV6_UDP);
+		ethdev_rss |= (RTE_ETH_RSS_NONFRAG_IPV4_UDP |
+				RTE_ETH_RSS_NONFRAG_IPV6_UDP);
 
 	if (nic_rss & RSS_L2_EXTENDED_HASH_ENA)
-		ethdev_rss |= ETH_RSS_PORT;
+		ethdev_rss |= RTE_ETH_RSS_PORT;
 
 	if (nicvf_hw_cap(nic) & NICVF_CAP_TUNNEL_PARSING) {
 		if (nic_rss & RSS_TUN_VXLAN_ENA)
-			ethdev_rss |= ETH_RSS_VXLAN;
+			ethdev_rss |= RTE_ETH_RSS_VXLAN;
 
 		if (nic_rss & RSS_TUN_GENEVE_ENA)
-			ethdev_rss |= ETH_RSS_GENEVE;
+			ethdev_rss |= RTE_ETH_RSS_GENEVE;
 
 		if (nic_rss & RSS_TUN_NVGRE_ENA)
-			ethdev_rss |= ETH_RSS_NVGRE;
+			ethdev_rss |= RTE_ETH_RSS_NVGRE;
 	}
 	return ethdev_rss;
 }
@@ -479,8 +479,8 @@ nicvf_dev_reta_query(struct rte_eth_dev *dev,
 		return ret;
 
 	/* Copy RETA table */
-	for (i = 0; i < (NIC_MAX_RSS_IDR_TBL_SIZE / RTE_RETA_GROUP_SIZE); i++) {
-		for (j = 0; j < RTE_RETA_GROUP_SIZE; j++)
+	for (i = 0; i < (NIC_MAX_RSS_IDR_TBL_SIZE / RTE_ETH_RETA_GROUP_SIZE); i++) {
+		for (j = 0; j < RTE_ETH_RETA_GROUP_SIZE; j++)
 			if ((reta_conf[i].mask >> j) & 0x01)
 				reta_conf[i].reta[j] = tbl[j];
 	}
@@ -509,8 +509,8 @@ nicvf_dev_reta_update(struct rte_eth_dev *dev,
 		return ret;
 
 	/* Copy RETA table */
-	for (i = 0; i < (NIC_MAX_RSS_IDR_TBL_SIZE / RTE_RETA_GROUP_SIZE); i++) {
-		for (j = 0; j < RTE_RETA_GROUP_SIZE; j++)
+	for (i = 0; i < (NIC_MAX_RSS_IDR_TBL_SIZE / RTE_ETH_RETA_GROUP_SIZE); i++) {
+		for (j = 0; j < RTE_ETH_RETA_GROUP_SIZE; j++)
 			if ((reta_conf[i].mask >> j) & 0x01)
 				tbl[j] = reta_conf[i].reta[j];
 	}
@@ -807,9 +807,9 @@ nicvf_configure_rss(struct rte_eth_dev *dev)
 		    dev->data->nb_rx_queues,
 		    dev->data->dev_conf.lpbk_mode, rsshf);
 
-	if (dev->data->dev_conf.rxmode.mq_mode == ETH_MQ_RX_NONE)
+	if (dev->data->dev_conf.rxmode.mq_mode == RTE_ETH_MQ_RX_NONE)
 		ret = nicvf_rss_term(nic);
-	else if (dev->data->dev_conf.rxmode.mq_mode == ETH_MQ_RX_RSS)
+	else if (dev->data->dev_conf.rxmode.mq_mode == RTE_ETH_MQ_RX_RSS)
 		ret = nicvf_rss_config(nic, dev->data->nb_rx_queues, rsshf);
 	if (ret)
 		PMD_INIT_LOG(ERR, "Failed to configure RSS %d", ret);
@@ -870,7 +870,7 @@ nicvf_set_tx_function(struct rte_eth_dev *dev)
 
 	for (i = 0; i < dev->data->nb_tx_queues; i++) {
 		txq = dev->data->tx_queues[i];
-		if (txq->offloads & DEV_TX_OFFLOAD_MULTI_SEGS) {
+		if (txq->offloads & RTE_ETH_TX_OFFLOAD_MULTI_SEGS) {
 			multiseg = true;
 			break;
 		}
@@ -992,7 +992,7 @@ nicvf_dev_tx_queue_setup(struct rte_eth_dev *dev, uint16_t qidx,
 	offloads = tx_conf->offloads | dev->data->dev_conf.txmode.offloads;
 	txq->offloads = offloads;
 
-	is_single_pool = !!(offloads & DEV_TX_OFFLOAD_MBUF_FAST_FREE);
+	is_single_pool = !!(offloads & RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE);
 
 	/* Choose optimum free threshold value for multipool case */
 	if (!is_single_pool) {
@@ -1382,11 +1382,11 @@ nicvf_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	PMD_INIT_FUNC_TRACE();
 
 	/* Autonegotiation may be disabled */
-	dev_info->speed_capa = ETH_LINK_SPEED_FIXED;
-	dev_info->speed_capa |= ETH_LINK_SPEED_10M | ETH_LINK_SPEED_100M |
-				 ETH_LINK_SPEED_1G | ETH_LINK_SPEED_10G;
+	dev_info->speed_capa = RTE_ETH_LINK_SPEED_FIXED;
+	dev_info->speed_capa |= RTE_ETH_LINK_SPEED_10M | RTE_ETH_LINK_SPEED_100M |
+				 RTE_ETH_LINK_SPEED_1G | RTE_ETH_LINK_SPEED_10G;
 	if (nicvf_hw_version(nic) != PCI_SUB_DEVICE_ID_CN81XX_NICVF)
-		dev_info->speed_capa |= ETH_LINK_SPEED_40G;
+		dev_info->speed_capa |= RTE_ETH_LINK_SPEED_40G;
 
 	dev_info->min_rx_bufsize = RTE_ETHER_MIN_MTU;
 	dev_info->max_rx_pktlen = NIC_HW_MAX_MTU + RTE_ETHER_HDR_LEN;
@@ -1415,10 +1415,10 @@ nicvf_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 
 	dev_info->default_txconf = (struct rte_eth_txconf) {
 		.tx_free_thresh = NICVF_DEFAULT_TX_FREE_THRESH,
-		.offloads = DEV_TX_OFFLOAD_MBUF_FAST_FREE |
-			DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM   |
-			DEV_TX_OFFLOAD_UDP_CKSUM          |
-			DEV_TX_OFFLOAD_TCP_CKSUM,
+		.offloads = RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE |
+			RTE_ETH_TX_OFFLOAD_OUTER_IPV4_CKSUM   |
+			RTE_ETH_TX_OFFLOAD_UDP_CKSUM          |
+			RTE_ETH_TX_OFFLOAD_TCP_CKSUM,
 	};
 
 	return 0;
@@ -1582,8 +1582,8 @@ nicvf_vf_start(struct rte_eth_dev *dev, struct nicvf *nic, uint32_t rbdrsz)
 		     nic->rbdr->tail, nb_rbdr_desc, nic->vf_id);
 
 	/* Configure VLAN Strip */
-	mask = ETH_VLAN_STRIP_MASK | ETH_VLAN_FILTER_MASK |
-		ETH_VLAN_EXTEND_MASK;
+	mask = RTE_ETH_VLAN_STRIP_MASK | RTE_ETH_VLAN_FILTER_MASK |
+		RTE_ETH_VLAN_EXTEND_MASK;
 	ret = nicvf_vlan_offload_config(dev, mask);
 
 	/* Based on the packet type(IPv4 or IPv6), the nicvf HW aligns L3 data
@@ -1711,7 +1711,7 @@ nicvf_dev_start(struct rte_eth_dev *dev)
 	/* Setup scatter mode if needed by jumbo */
 	if (dev->data->mtu + (uint32_t)NIC_HW_L2_OVERHEAD + 2 * VLAN_TAG_SIZE > buffsz)
 		dev->data->scattered_rx = 1;
-	if ((rx_conf->offloads & DEV_RX_OFFLOAD_SCATTER) != 0)
+	if ((rx_conf->offloads & RTE_ETH_RX_OFFLOAD_SCATTER) != 0)
 		dev->data->scattered_rx = 1;
 
 	/* Setup MTU */
@@ -1896,8 +1896,8 @@ nicvf_dev_configure(struct rte_eth_dev *dev)
 
 	PMD_INIT_FUNC_TRACE();
 
-	if (rxmode->mq_mode & ETH_MQ_RX_RSS_FLAG)
-		rxmode->offloads |= DEV_RX_OFFLOAD_RSS_HASH;
+	if (rxmode->mq_mode & RTE_ETH_MQ_RX_RSS_FLAG)
+		rxmode->offloads |= RTE_ETH_RX_OFFLOAD_RSS_HASH;
 
 	if (!rte_eal_has_hugepages()) {
 		PMD_INIT_LOG(INFO, "Huge page is not configured");
@@ -1909,8 +1909,8 @@ nicvf_dev_configure(struct rte_eth_dev *dev)
 		return -EINVAL;
 	}
 
-	if (rxmode->mq_mode != ETH_MQ_RX_NONE &&
-		rxmode->mq_mode != ETH_MQ_RX_RSS) {
+	if (rxmode->mq_mode != RTE_ETH_MQ_RX_NONE &&
+		rxmode->mq_mode != RTE_ETH_MQ_RX_RSS) {
 		PMD_INIT_LOG(INFO, "Unsupported rx qmode %d", rxmode->mq_mode);
 		return -EINVAL;
 	}
@@ -1920,7 +1920,7 @@ nicvf_dev_configure(struct rte_eth_dev *dev)
 		return -EINVAL;
 	}
 
-	if (conf->link_speeds & ETH_LINK_SPEED_FIXED) {
+	if (conf->link_speeds & RTE_ETH_LINK_SPEED_FIXED) {
 		PMD_INIT_LOG(INFO, "Setting link speed/duplex not supported");
 		return -EINVAL;
 	}
@@ -1955,7 +1955,7 @@ nicvf_dev_configure(struct rte_eth_dev *dev)
 		}
 	}
 
-	if (rxmode->offloads & DEV_RX_OFFLOAD_CHECKSUM)
+	if (rxmode->offloads & RTE_ETH_RX_OFFLOAD_CHECKSUM)
 		nic->offload_cksum = 1;
 
 	PMD_INIT_LOG(DEBUG, "Configured ethdev port%d hwcap=0x%" PRIx64,
@@ -2032,8 +2032,8 @@ nicvf_vlan_offload_config(struct rte_eth_dev *dev, int mask)
 	struct rte_eth_rxmode *rxmode;
 	struct nicvf *nic = nicvf_pmd_priv(dev);
 	rxmode = &dev->data->dev_conf.rxmode;
-	if (mask & ETH_VLAN_STRIP_MASK) {
-		if (rxmode->offloads & DEV_RX_OFFLOAD_VLAN_STRIP)
+	if (mask & RTE_ETH_VLAN_STRIP_MASK) {
+		if (rxmode->offloads & RTE_ETH_RX_OFFLOAD_VLAN_STRIP)
 			nicvf_vlan_hw_strip(nic, true);
 		else
 			nicvf_vlan_hw_strip(nic, false);

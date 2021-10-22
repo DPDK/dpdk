@@ -21,7 +21,7 @@ hns3_mbuf_dyn_rx_timestamp_register(struct rte_eth_dev *dev,
 	struct hns3_hw *hw = &hns->hw;
 	int ret;
 
-	if (!(conf->rxmode.offloads & DEV_RX_OFFLOAD_TIMESTAMP))
+	if (!(conf->rxmode.offloads & RTE_ETH_RX_OFFLOAD_TIMESTAMP))
 		return 0;
 
 	ret = rte_mbuf_dyn_rx_timestamp_register

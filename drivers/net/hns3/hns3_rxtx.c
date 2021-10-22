@@ -1924,7 +1924,7 @@ hns3_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t nb_desc,
 	memset(&rxq->dfx_stats, 0, sizeof(struct hns3_rx_dfx_stats));
 
 	/* CRC len set here is used for amending packet length */
-	if (dev->data->dev_conf.rxmode.offloads & DEV_RX_OFFLOAD_KEEP_CRC)
+	if (dev->data->dev_conf.rxmode.offloads & RTE_ETH_RX_OFFLOAD_KEEP_CRC)
 		rxq->crc_len = RTE_ETHER_CRC_LEN;
 	else
 		rxq->crc_len = 0;
@@ -1969,7 +1969,7 @@ hns3_rx_scattered_calc(struct rte_eth_dev *dev)
 						 rxq->rx_buf_len);
 	}
 
-	if (dev_conf->rxmode.offloads & DEV_RX_OFFLOAD_SCATTER ||
+	if (dev_conf->rxmode.offloads & RTE_ETH_RX_OFFLOAD_SCATTER ||
 	    dev->data->mtu + HNS3_ETH_OVERHEAD > hw->rx_buf_len)
 		dev->data->scattered_rx = true;
 }
@@ -2845,7 +2845,7 @@ hns3_get_rx_function(struct rte_eth_dev *dev)
 	vec_allowed = vec_support && hns3_get_default_vec_support();
 	sve_allowed = vec_support && hns3_get_sve_support();
 	simple_allowed = !dev->data->scattered_rx &&
-			 (offloads & DEV_RX_OFFLOAD_TCP_LRO) == 0;
+			 (offloads & RTE_ETH_RX_OFFLOAD_TCP_LRO) == 0;
 
 	if (hns->rx_func_hint == HNS3_IO_FUNC_HINT_VEC && vec_allowed)
 		return hns3_recv_pkts_vec;
@@ -3139,7 +3139,7 @@ hns3_restore_gro_conf(struct hns3_hw *hw)
 	int ret;
 
 	offloads = hw->data->dev_conf.rxmode.offloads;
-	gro_en = offloads & DEV_RX_OFFLOAD_TCP_LRO ? true : false;
+	gro_en = offloads & RTE_ETH_RX_OFFLOAD_TCP_LRO ? true : false;
 	ret = hns3_config_gro(hw, gro_en);
 	if (ret)
 		hns3_err(hw, "restore hardware GRO to %s failed, ret = %d",
@@ -4291,7 +4291,7 @@ hns3_tx_check_simple_support(struct rte_eth_dev *dev)
 	if (hns3_dev_get_support(hw, PTP))
 		return false;
 
-	return (offloads == (offloads & DEV_TX_OFFLOAD_MBUF_FAST_FREE));
+	return (offloads == (offloads & RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE));
 }
 
 static bool
@@ -4303,16 +4303,16 @@ hns3_get_tx_prep_needed(struct rte_eth_dev *dev)
 	return true;
 #else
 #define HNS3_DEV_TX_CSKUM_TSO_OFFLOAD_MASK (\
-		DEV_TX_OFFLOAD_IPV4_CKSUM | \
-		DEV_TX_OFFLOAD_TCP_CKSUM | \
-		DEV_TX_OFFLOAD_UDP_CKSUM | \
-		DEV_TX_OFFLOAD_SCTP_CKSUM | \
-		DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM | \
-		DEV_TX_OFFLOAD_OUTER_UDP_CKSUM | \
-		DEV_TX_OFFLOAD_TCP_TSO | \
-		DEV_TX_OFFLOAD_VXLAN_TNL_TSO | \
-		DEV_TX_OFFLOAD_GRE_TNL_TSO | \
-		DEV_TX_OFFLOAD_GENEVE_TNL_TSO)
+		RTE_ETH_TX_OFFLOAD_IPV4_CKSUM | \
+		RTE_ETH_TX_OFFLOAD_TCP_CKSUM | \
+		RTE_ETH_TX_OFFLOAD_UDP_CKSUM | \
+		RTE_ETH_TX_OFFLOAD_SCTP_CKSUM | \
+		RTE_ETH_TX_OFFLOAD_OUTER_IPV4_CKSUM | \
+		RTE_ETH_TX_OFFLOAD_OUTER_UDP_CKSUM | \
+		RTE_ETH_TX_OFFLOAD_TCP_TSO | \
+		RTE_ETH_TX_OFFLOAD_VXLAN_TNL_TSO | \
+		RTE_ETH_TX_OFFLOAD_GRE_TNL_TSO | \
+		RTE_ETH_TX_OFFLOAD_GENEVE_TNL_TSO)
 
 	uint64_t tx_offload = dev->data->dev_conf.txmode.offloads;
 	if (tx_offload & HNS3_DEV_TX_CSKUM_TSO_OFFLOAD_MASK)

@@ -101,15 +101,15 @@ int txgbe_pf_host_init(struct rte_eth_dev *eth_dev)
 	memset(uta_info, 0, sizeof(struct txgbe_uta_info));
 	hw->mac.mc_filter_type = 0;
 
-	if (vf_num >= ETH_32_POOLS) {
+	if (vf_num >= RTE_ETH_32_POOLS) {
 		nb_queue = 2;
-		RTE_ETH_DEV_SRIOV(eth_dev).active = ETH_64_POOLS;
-	} else if (vf_num >= ETH_16_POOLS) {
+		RTE_ETH_DEV_SRIOV(eth_dev).active = RTE_ETH_64_POOLS;
+	} else if (vf_num >= RTE_ETH_16_POOLS) {
 		nb_queue = 4;
-		RTE_ETH_DEV_SRIOV(eth_dev).active = ETH_32_POOLS;
+		RTE_ETH_DEV_SRIOV(eth_dev).active = RTE_ETH_32_POOLS;
 	} else {
 		nb_queue = 8;
-		RTE_ETH_DEV_SRIOV(eth_dev).active = ETH_16_POOLS;
+		RTE_ETH_DEV_SRIOV(eth_dev).active = RTE_ETH_16_POOLS;
 	}
 
 	RTE_ETH_DEV_SRIOV(eth_dev).nb_q_per_pool = nb_queue;
@@ -256,13 +256,13 @@ int txgbe_pf_host_configure(struct rte_eth_dev *eth_dev)
 	gcr_ext &= ~TXGBE_PORTCTL_NUMVT_MASK;
 
 	switch (RTE_ETH_DEV_SRIOV(eth_dev).active) {
-	case ETH_64_POOLS:
+	case RTE_ETH_64_POOLS:
 		gcr_ext |= TXGBE_PORTCTL_NUMVT_64;
 		break;
-	case ETH_32_POOLS:
+	case RTE_ETH_32_POOLS:
 		gcr_ext |= TXGBE_PORTCTL_NUMVT_32;
 		break;
-	case ETH_16_POOLS:
+	case RTE_ETH_16_POOLS:
 		gcr_ext |= TXGBE_PORTCTL_NUMVT_16;
 		break;
 	}
@@ -611,29 +611,29 @@ txgbe_get_vf_queues(struct rte_eth_dev *eth_dev, uint32_t vf, uint32_t *msgbuf)
 	/* Notify VF of number of DCB traffic classes */
 	eth_conf = &eth_dev->data->dev_conf;
 	switch (eth_conf->txmode.mq_mode) {
-	case ETH_MQ_TX_NONE:
-	case ETH_MQ_TX_DCB:
+	case RTE_ETH_MQ_TX_NONE:
+	case RTE_ETH_MQ_TX_DCB:
 		PMD_DRV_LOG(ERR, "PF must work with virtualization for VF %u"
 			", but its tx mode = %d\n", vf,
 			eth_conf->txmode.mq_mode);
 		return -1;
 
-	case ETH_MQ_TX_VMDQ_DCB:
+	case RTE_ETH_MQ_TX_VMDQ_DCB:
 		vmdq_dcb_tx_conf = &eth_conf->tx_adv_conf.vmdq_dcb_tx_conf;
 		switch (vmdq_dcb_tx_conf->nb_queue_pools) {
-		case ETH_16_POOLS:
-			num_tcs = ETH_8_TCS;
+		case RTE_ETH_16_POOLS:
+			num_tcs = RTE_ETH_8_TCS;
 			break;
-		case ETH_32_POOLS:
-			num_tcs = ETH_4_TCS;
+		case RTE_ETH_32_POOLS:
+			num_tcs = RTE_ETH_4_TCS;
 			break;
 		default:
 			return -1;
 		}
 		break;
 
-	/* ETH_MQ_TX_VMDQ_ONLY,  DCB not enabled */
-	case ETH_MQ_TX_VMDQ_ONLY:
+	/* RTE_ETH_MQ_TX_VMDQ_ONLY,  DCB not enabled */
+	case RTE_ETH_MQ_TX_VMDQ_ONLY:
 		hw = TXGBE_DEV_HW(eth_dev);
 		vmvir = rd32(hw, TXGBE_POOLTAG(vf));
 		vlana = vmvir & TXGBE_POOLTAG_ACT_MASK;

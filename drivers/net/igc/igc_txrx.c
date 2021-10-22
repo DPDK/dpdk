@@ -127,7 +127,7 @@ struct igc_rx_queue {
 	uint8_t             crc_len;    /**< 0 if CRC stripped, 4 otherwise. */
 	uint8_t             drop_en;	/**< If not 0, set SRRCTL.Drop_En. */
 	uint32_t            flags;      /**< RX flags. */
-	uint64_t	    offloads;   /**< offloads of DEV_RX_OFFLOAD_* */
+	uint64_t	    offloads;   /**< offloads of RTE_ETH_RX_OFFLOAD_* */
 };
 
 /** Offload features */
@@ -209,7 +209,7 @@ struct igc_tx_queue {
 	/**< Start context position for transmit queue. */
 	struct igc_advctx_info ctx_cache[IGC_CTX_NUM];
 	/**< Hardware context history.*/
-	uint64_t	       offloads; /**< offloads of DEV_TX_OFFLOAD_* */
+	uint64_t	       offloads; /**< offloads of RTE_ETH_TX_OFFLOAD_* */
 };
 
 static inline uint64_t
@@ -847,23 +847,23 @@ igc_hw_rss_hash_set(struct igc_hw *hw, struct rte_eth_rss_conf *rss_conf)
 	/* Set configured hashing protocols in MRQC register */
 	rss_hf = rss_conf->rss_hf;
 	mrqc = IGC_MRQC_ENABLE_RSS_4Q; /* RSS enabled. */
-	if (rss_hf & ETH_RSS_IPV4)
+	if (rss_hf & RTE_ETH_RSS_IPV4)
 		mrqc |= IGC_MRQC_RSS_FIELD_IPV4;
-	if (rss_hf & ETH_RSS_NONFRAG_IPV4_TCP)
+	if (rss_hf & RTE_ETH_RSS_NONFRAG_IPV4_TCP)
 		mrqc |= IGC_MRQC_RSS_FIELD_IPV4_TCP;
-	if (rss_hf & ETH_RSS_IPV6)
+	if (rss_hf & RTE_ETH_RSS_IPV6)
 		mrqc |= IGC_MRQC_RSS_FIELD_IPV6;
-	if (rss_hf & ETH_RSS_IPV6_EX)
+	if (rss_hf & RTE_ETH_RSS_IPV6_EX)
 		mrqc |= IGC_MRQC_RSS_FIELD_IPV6_EX;
-	if (rss_hf & ETH_RSS_NONFRAG_IPV6_TCP)
+	if (rss_hf & RTE_ETH_RSS_NONFRAG_IPV6_TCP)
 		mrqc |= IGC_MRQC_RSS_FIELD_IPV6_TCP;
-	if (rss_hf & ETH_RSS_IPV6_TCP_EX)
+	if (rss_hf & RTE_ETH_RSS_IPV6_TCP_EX)
 		mrqc |= IGC_MRQC_RSS_FIELD_IPV6_TCP_EX;
-	if (rss_hf & ETH_RSS_NONFRAG_IPV4_UDP)
+	if (rss_hf & RTE_ETH_RSS_NONFRAG_IPV4_UDP)
 		mrqc |= IGC_MRQC_RSS_FIELD_IPV4_UDP;
-	if (rss_hf & ETH_RSS_NONFRAG_IPV6_UDP)
+	if (rss_hf & RTE_ETH_RSS_NONFRAG_IPV6_UDP)
 		mrqc |= IGC_MRQC_RSS_FIELD_IPV6_UDP;
-	if (rss_hf & ETH_RSS_IPV6_UDP_EX)
+	if (rss_hf & RTE_ETH_RSS_IPV6_UDP_EX)
 		mrqc |= IGC_MRQC_RSS_FIELD_IPV6_UDP_EX;
 	IGC_WRITE_REG(hw, IGC_MRQC, mrqc);
 }
@@ -1037,10 +1037,10 @@ igc_dev_mq_rx_configure(struct rte_eth_dev *dev)
 	}
 
 	switch (dev->data->dev_conf.rxmode.mq_mode) {
-	case ETH_MQ_RX_RSS:
+	case RTE_ETH_MQ_RX_RSS:
 		igc_rss_configure(dev);
 		break;
-	case ETH_MQ_RX_NONE:
+	case RTE_ETH_MQ_RX_NONE:
 		/*
 		 * configure RSS register for following,
 		 * then disable the RSS logic
@@ -1111,7 +1111,7 @@ igc_rx_init(struct rte_eth_dev *dev)
 		 * Reset crc_len in case it was changed after queue setup by a
 		 * call to configure
 		 */
-		rxq->crc_len = (offloads & DEV_RX_OFFLOAD_KEEP_CRC) ?
+		rxq->crc_len = (offloads & RTE_ETH_RX_OFFLOAD_KEEP_CRC) ?
 				RTE_ETHER_CRC_LEN : 0;
 
 		bus_addr = rxq->rx_ring_phys_addr;
@@ -1177,7 +1177,7 @@ igc_rx_init(struct rte_eth_dev *dev)
 		IGC_WRITE_REG(hw, IGC_RXDCTL(rxq->reg_idx), rxdctl);
 	}
 
-	if (offloads & DEV_RX_OFFLOAD_SCATTER)
+	if (offloads & RTE_ETH_RX_OFFLOAD_SCATTER)
 		dev->data->scattered_rx = 1;
 
 	if (dev->data->scattered_rx) {
@@ -1221,20 +1221,20 @@ igc_rx_init(struct rte_eth_dev *dev)
 	rxcsum |= IGC_RXCSUM_PCSD;
 
 	/* Enable both L3/L4 rx checksum offload */
-	if (offloads & DEV_RX_OFFLOAD_IPV4_CKSUM)
+	if (offloads & RTE_ETH_RX_OFFLOAD_IPV4_CKSUM)
 		rxcsum |= IGC_RXCSUM_IPOFL;
 	else
 		rxcsum &= ~IGC_RXCSUM_IPOFL;
 
 	if (offloads &
-		(DEV_RX_OFFLOAD_TCP_CKSUM | DEV_RX_OFFLOAD_UDP_CKSUM)) {
+		(RTE_ETH_RX_OFFLOAD_TCP_CKSUM | RTE_ETH_RX_OFFLOAD_UDP_CKSUM)) {
 		rxcsum |= IGC_RXCSUM_TUOFL;
-		offloads |= DEV_RX_OFFLOAD_SCTP_CKSUM;
+		offloads |= RTE_ETH_RX_OFFLOAD_SCTP_CKSUM;
 	} else {
 		rxcsum &= ~IGC_RXCSUM_TUOFL;
 	}
 
-	if (offloads & DEV_RX_OFFLOAD_SCTP_CKSUM)
+	if (offloads & RTE_ETH_RX_OFFLOAD_SCTP_CKSUM)
 		rxcsum |= IGC_RXCSUM_CRCOFL;
 	else
 		rxcsum &= ~IGC_RXCSUM_CRCOFL;
@@ -1242,7 +1242,7 @@ igc_rx_init(struct rte_eth_dev *dev)
 	IGC_WRITE_REG(hw, IGC_RXCSUM, rxcsum);
 
 	/* Setup the Receive Control Register. */
-	if (offloads & DEV_RX_OFFLOAD_KEEP_CRC)
+	if (offloads & RTE_ETH_RX_OFFLOAD_KEEP_CRC)
 		rctl &= ~IGC_RCTL_SECRC; /* Do not Strip Ethernet CRC. */
 	else
 		rctl |= IGC_RCTL_SECRC; /* Strip Ethernet CRC. */
@@ -1279,12 +1279,12 @@ igc_rx_init(struct rte_eth_dev *dev)
 		IGC_WRITE_REG(hw, IGC_RDT(rxq->reg_idx), rxq->nb_rx_desc - 1);
 
 		dvmolr = IGC_READ_REG(hw, IGC_DVMOLR(rxq->reg_idx));
-		if (rxq->offloads & DEV_RX_OFFLOAD_VLAN_STRIP)
+		if (rxq->offloads & RTE_ETH_RX_OFFLOAD_VLAN_STRIP)
 			dvmolr |= IGC_DVMOLR_STRVLAN;
 		else
 			dvmolr &= ~IGC_DVMOLR_STRVLAN;
 
-		if (offloads & DEV_RX_OFFLOAD_KEEP_CRC)
+		if (offloads & RTE_ETH_RX_OFFLOAD_KEEP_CRC)
 			dvmolr &= ~IGC_DVMOLR_STRCRC;
 		else
 			dvmolr |= IGC_DVMOLR_STRCRC;
@@ -2253,10 +2253,10 @@ eth_igc_vlan_strip_queue_set(struct rte_eth_dev *dev,
 	reg_val = IGC_READ_REG(hw, IGC_DVMOLR(rx_queue_id));
 	if (on) {
 		reg_val |= IGC_DVMOLR_STRVLAN;
-		rxq->offloads |= DEV_RX_OFFLOAD_VLAN_STRIP;
+		rxq->offloads |= RTE_ETH_RX_OFFLOAD_VLAN_STRIP;
 	} else {
 		reg_val &= ~(IGC_DVMOLR_STRVLAN | IGC_DVMOLR_HIDVLAN);
-		rxq->offloads &= ~DEV_RX_OFFLOAD_VLAN_STRIP;
+		rxq->offloads &= ~RTE_ETH_RX_OFFLOAD_VLAN_STRIP;
 	}
 
 	IGC_WRITE_REG(hw, IGC_DVMOLR(rx_queue_id), reg_val);

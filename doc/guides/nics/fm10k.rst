@@ -78,11 +78,11 @@ To enable via ``RX_OLFLAGS`` use ``RTE_LIBRTE_FM10K_RX_OLFLAGS_ENABLE=y``.
 To guarantee the constraint, the following capabilities in ``dev_conf.rxmode.offloads``
 will be checked:
 
-*   ``DEV_RX_OFFLOAD_VLAN_EXTEND``
+*   ``RTE_ETH_RX_OFFLOAD_VLAN_EXTEND``
 
-*   ``DEV_RX_OFFLOAD_CHECKSUM``
+*   ``RTE_ETH_RX_OFFLOAD_CHECKSUM``
 
-*   ``DEV_RX_OFFLOAD_HEADER_SPLIT``
+*   ``RTE_ETH_RX_OFFLOAD_HEADER_SPLIT``
 
 *   ``fdir_conf->mode``
 

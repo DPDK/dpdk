@@ -54,7 +54,7 @@ otx2_nix_flow_ctrl_get(struct rte_eth_dev *eth_dev,
 	int rc;
 
 	if (otx2_dev_is_lbk(dev)) {
-		fc_conf->mode = RTE_FC_NONE;
+		fc_conf->mode = RTE_ETH_FC_NONE;
 		return 0;
 	}
 
@@ -66,13 +66,13 @@ otx2_nix_flow_ctrl_get(struct rte_eth_dev *eth_dev,
 		goto done;
 
 	if (rsp->rx_pause && rsp->tx_pause)
-		fc_conf->mode = RTE_FC_FULL;
+		fc_conf->mode = RTE_ETH_FC_FULL;
 	else if (rsp->rx_pause)
-		fc_conf->mode = RTE_FC_RX_PAUSE;
+		fc_conf->mode = RTE_ETH_FC_RX_PAUSE;
 	else if (rsp->tx_pause)
-		fc_conf->mode = RTE_FC_TX_PAUSE;
+		fc_conf->mode = RTE_ETH_FC_TX_PAUSE;
 	else
-		fc_conf->mode = RTE_FC_NONE;
+		fc_conf->mode = RTE_ETH_FC_NONE;
 
 done:
 	return rc;
@@ -159,10 +159,10 @@ otx2_nix_flow_ctrl_set(struct rte_eth_dev *eth_dev,
 	if (fc_conf->mode == fc->mode)
 		return 0;
 
-	rx_pause = (fc_conf->mode == RTE_FC_FULL) ||
-		    (fc_conf->mode == RTE_FC_RX_PAUSE);
-	tx_pause = (fc_conf->mode == RTE_FC_FULL) ||
-		    (fc_conf->mode == RTE_FC_TX_PAUSE);
+	rx_pause = (fc_conf->mode == RTE_ETH_FC_FULL) ||
+		    (fc_conf->mode == RTE_ETH_FC_RX_PAUSE);
+	tx_pause = (fc_conf->mode == RTE_ETH_FC_FULL) ||
+		    (fc_conf->mode == RTE_ETH_FC_TX_PAUSE);
 
 	/* Check if TX pause frame is already enabled or not */
 	if (fc->tx_pause ^ tx_pause) {
@@ -212,11 +212,11 @@ otx2_nix_update_flow_ctrl_mode(struct rte_eth_dev *eth_dev)
 	/* To avoid Link credit deadlock on Ax, disable Tx FC if it's enabled */
 	if (otx2_dev_is_Ax(dev) &&
 	    (dev->npc_flow.switch_header_type != OTX2_PRIV_FLAGS_HIGIG) &&
-	    (fc_conf.mode == RTE_FC_FULL || fc_conf.mode == RTE_FC_RX_PAUSE)) {
+	    (fc_conf.mode == RTE_ETH_FC_FULL || fc_conf.mode == RTE_ETH_FC_RX_PAUSE)) {
 		fc_conf.mode =
-				(fc_conf.mode == RTE_FC_FULL ||
-				fc_conf.mode == RTE_FC_TX_PAUSE) ?
-				RTE_FC_TX_PAUSE : RTE_FC_NONE;
+				(fc_conf.mode == RTE_ETH_FC_FULL ||
+				fc_conf.mode == RTE_ETH_FC_TX_PAUSE) ?
+				RTE_ETH_FC_TX_PAUSE : RTE_ETH_FC_NONE;
 	}
 
 	return otx2_nix_flow_ctrl_set(eth_dev, &fc_conf);
@@ -234,7 +234,7 @@ otx2_nix_flow_ctrl_init(struct rte_eth_dev *eth_dev)
 		return 0;
 
 	memset(&fc_conf, 0, sizeof(struct rte_eth_fc_conf));
-	/* Both Rx & Tx flow ctrl get enabled(RTE_FC_FULL) in HW
+	/* Both Rx & Tx flow ctrl get enabled(RTE_ETH_FC_FULL) in HW
 	 * by AF driver, update those info in PMD structure.
 	 */
 	rc = otx2_nix_flow_ctrl_get(eth_dev, &fc_conf);
@@ -242,10 +242,10 @@ otx2_nix_flow_ctrl_init(struct rte_eth_dev *eth_dev)
 		goto exit;
 
 	fc->mode = fc_conf.mode;
-	fc->rx_pause = (fc_conf.mode == RTE_FC_FULL) ||
-			(fc_conf.mode == RTE_FC_RX_PAUSE);
-	fc->tx_pause = (fc_conf.mode == RTE_FC_FULL) ||
-			(fc_conf.mode == RTE_FC_TX_PAUSE);
+	fc->rx_pause = (fc_conf.mode == RTE_ETH_FC_FULL) ||
+			(fc_conf.mode == RTE_ETH_FC_RX_PAUSE);
+	fc->tx_pause = (fc_conf.mode == RTE_ETH_FC_FULL) ||
+			(fc_conf.mode == RTE_ETH_FC_TX_PAUSE);
 
 exit:
 	return rc;

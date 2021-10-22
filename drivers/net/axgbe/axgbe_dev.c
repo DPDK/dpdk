@@ -840,11 +840,11 @@ static void axgbe_rss_options(struct axgbe_port *pdata)
 	pdata->rss_hf = rss_conf->rss_hf;
 	rss_hf = rss_conf->rss_hf;
 
-	if (rss_hf & (ETH_RSS_IPV4 | ETH_RSS_IPV6))
+	if (rss_hf & (RTE_ETH_RSS_IPV4 | RTE_ETH_RSS_IPV6))
 		AXGMAC_SET_BITS(pdata->rss_options, MAC_RSSCR, IP2TE, 1);
-	if (rss_hf & (ETH_RSS_NONFRAG_IPV4_TCP | ETH_RSS_NONFRAG_IPV6_TCP))
+	if (rss_hf & (RTE_ETH_RSS_NONFRAG_IPV4_TCP | RTE_ETH_RSS_NONFRAG_IPV6_TCP))
 		AXGMAC_SET_BITS(pdata->rss_options, MAC_RSSCR, TCP4TE, 1);
-	if (rss_hf & (ETH_RSS_NONFRAG_IPV4_UDP | ETH_RSS_NONFRAG_IPV6_UDP))
+	if (rss_hf & (RTE_ETH_RSS_NONFRAG_IPV4_UDP | RTE_ETH_RSS_NONFRAG_IPV6_UDP))
 		AXGMAC_SET_BITS(pdata->rss_options, MAC_RSSCR, UDP4TE, 1);
 }
 

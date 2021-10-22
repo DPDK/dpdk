@@ -103,7 +103,7 @@ nfp_netvf_start(struct rte_eth_dev *dev)
 	dev_conf = &dev->data->dev_conf;
 	rxmode = &dev_conf->rxmode;
 
-	if (rxmode->mq_mode & ETH_MQ_RX_RSS) {
+	if (rxmode->mq_mode & RTE_ETH_MQ_RX_RSS) {
 		nfp_net_rss_config_default(dev);
 		update |= NFP_NET_CFG_UPDATE_RSS;
 		new_ctrl |= NFP_NET_CFG_CTRL_RSS;

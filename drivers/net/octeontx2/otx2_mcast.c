@@ -100,7 +100,7 @@ nix_hw_update_mc_addr_list(struct rte_eth_dev *eth_dev)
 
 		action = NIX_RX_ACTIONOP_UCAST;
 
-		if (eth_dev->data->dev_conf.rxmode.mq_mode == ETH_MQ_RX_RSS) {
+		if (eth_dev->data->dev_conf.rxmode.mq_mode == RTE_ETH_MQ_RX_RSS) {
 			action = NIX_RX_ACTIONOP_RSS;
 			action |= (uint64_t)(dev->rss_info.alg_idx) << 56;
 		}

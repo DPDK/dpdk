@@ -42,7 +42,7 @@ nfb_check_timestamp(struct rte_devargs *devargs)
 	}
 	/* Timestamps are enabled when there is
 	 * key-value pair: enable_timestamp=1
-	 * TODO: timestamp should be enabled with DEV_RX_OFFLOAD_TIMESTAMP
+	 * TODO: timestamp should be enabled with RTE_ETH_RX_OFFLOAD_TIMESTAMP
 	 */
 	if (rte_kvargs_process(kvlist, TIMESTAMP_ARG,
 		timestamp_check_handler, NULL) < 0) {

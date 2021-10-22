@@ -1298,10 +1298,10 @@ hns3_rss_input_tuple_supported(struct hns3_hw *hw,
 	 * Kunpeng930 and future kunpeng series support to use src/dst port
 	 * fields to RSS hash for IPv6 SCTP packet type.
 	 */
-	if (rss->types & (ETH_RSS_L4_DST_ONLY | ETH_RSS_L4_SRC_ONLY) &&
-	    (rss->types & ETH_RSS_IP ||
+	if (rss->types & (RTE_ETH_RSS_L4_DST_ONLY | RTE_ETH_RSS_L4_SRC_ONLY) &&
+	    (rss->types & RTE_ETH_RSS_IP ||
 	    (!hw->rss_info.ipv6_sctp_offload_supported &&
-	    rss->types & ETH_RSS_NONFRAG_IPV6_SCTP)))
+	    rss->types & RTE_ETH_RSS_NONFRAG_IPV6_SCTP)))
 		return false;
 
 	return true;

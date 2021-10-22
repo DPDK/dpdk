@@ -70,16 +70,16 @@ struct app_params app = {
 static struct rte_eth_conf port_conf = {
 	.rxmode = {
 		.split_hdr_size = 0,
-		.offloads = DEV_RX_OFFLOAD_CHECKSUM,
+		.offloads = RTE_ETH_RX_OFFLOAD_CHECKSUM,
 	},
 	.rx_adv_conf = {
 		.rss_conf = {
 			.rss_key = NULL,
-			.rss_hf = ETH_RSS_IP,
+			.rss_hf = RTE_ETH_RSS_IP,
 		},
 	},
 	.txmode = {
-		.mq_mode = ETH_MQ_TX_NONE,
+		.mq_mode = RTE_ETH_MQ_TX_NONE,
 	},
 };
 
@@ -178,7 +178,7 @@ app_ports_check_link(void)
 		RTE_LOG(INFO, USER1, "Port %u %s\n",
 			port,
 			link_status_text);
-		if (link.link_status == ETH_LINK_DOWN)
+		if (link.link_status == RTE_ETH_LINK_DOWN)
 			all_ports_up = 0;
 	}
 

@@ -566,8 +566,8 @@ bnxt_init_ol_flags_tables(struct bnxt_rx_queue *rxq)
 	dev_conf = &rxq->bp->eth_dev->data->dev_conf;
 	offloads = dev_conf->rxmode.offloads;
 
-	outer_cksum_enabled = !!(offloads & (DEV_RX_OFFLOAD_OUTER_IPV4_CKSUM |
-					     DEV_RX_OFFLOAD_OUTER_UDP_CKSUM));
+	outer_cksum_enabled = !!(offloads & (RTE_ETH_RX_OFFLOAD_OUTER_IPV4_CKSUM |
+					     RTE_ETH_RX_OFFLOAD_OUTER_UDP_CKSUM));
 
 	/* Initialize ol_flags table. */
 	pt = rxr->ol_flags_table;

@@ -22,8 +22,8 @@ hns3_tx_check_vec_support(struct rte_eth_dev *dev)
 	if (hns3_dev_get_support(hw, PTP))
 		return -ENOTSUP;
 
-	/* Only support DEV_TX_OFFLOAD_MBUF_FAST_FREE */
-	if (txmode->offloads != DEV_TX_OFFLOAD_MBUF_FAST_FREE)
+	/* Only support RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE */
+	if (txmode->offloads != RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE)
 		return -ENOTSUP;
 
 	return 0;
@@ -228,10 +228,10 @@ hns3_rxq_vec_check(struct hns3_rx_queue *rxq, void *arg)
 int
 hns3_rx_check_vec_support(struct rte_eth_dev *dev)
 {
-	struct rte_fdir_conf *fconf = &dev->data->dev_conf.fdir_conf;
+	struct rte_eth_fdir_conf *fconf = &dev->data->dev_conf.fdir_conf;
 	struct rte_eth_rxmode *rxmode = &dev->data->dev_conf.rxmode;
-	uint64_t offloads_mask = DEV_RX_OFFLOAD_TCP_LRO |
-				 DEV_RX_OFFLOAD_VLAN;
+	uint64_t offloads_mask = RTE_ETH_RX_OFFLOAD_TCP_LRO |
+				 RTE_ETH_RX_OFFLOAD_VLAN;
 
 	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	if (hns3_dev_get_support(hw, PTP))

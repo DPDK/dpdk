@@ -14,10 +14,10 @@ test_link_status_up_default(void)
 {
 	int ret = 0;
 	struct rte_eth_link link_status = {
-		.link_speed = ETH_SPEED_NUM_2_5G,
-		.link_status = ETH_LINK_UP,
-		.link_autoneg = ETH_LINK_AUTONEG,
-		.link_duplex = ETH_LINK_FULL_DUPLEX
+		.link_speed = RTE_ETH_SPEED_NUM_2_5G,
+		.link_status = RTE_ETH_LINK_UP,
+		.link_autoneg = RTE_ETH_LINK_AUTONEG,
+		.link_duplex = RTE_ETH_LINK_FULL_DUPLEX
 	};
 	char text[RTE_ETH_LINK_MAX_STR_LEN];
 
@@ -27,9 +27,9 @@ test_link_status_up_default(void)
 	TEST_ASSERT_BUFFERS_ARE_EQUAL("Link up at 2.5 Gbps FDX Autoneg",
 		text, strlen(text), "Invalid default link status string");
 
-	link_status.link_duplex = ETH_LINK_HALF_DUPLEX;
-	link_status.link_autoneg = ETH_LINK_FIXED;
-	link_status.link_speed = ETH_SPEED_NUM_10M,
+	link_status.link_duplex = RTE_ETH_LINK_HALF_DUPLEX;
+	link_status.link_autoneg = RTE_ETH_LINK_FIXED;
+	link_status.link_speed = RTE_ETH_SPEED_NUM_10M;
 	ret = rte_eth_link_to_str(text, sizeof(text), &link_status);
 	printf("Default link up #2: %s\n", text);
 	RTE_TEST_ASSERT(ret > 0, "Failed to format default string\n");
@@ -37,7 +37,7 @@ test_link_status_up_default(void)
 		text, strlen(text), "Invalid default link status "
 		"string with HDX");
 
-	link_status.link_speed = ETH_SPEED_NUM_UNKNOWN;
+	link_status.link_speed = RTE_ETH_SPEED_NUM_UNKNOWN;
 	ret = rte_eth_link_to_str(text, sizeof(text), &link_status);
 	printf("Default link up #3: %s\n", text);
 	RTE_TEST_ASSERT(ret > 0, "Failed to format default string\n");
@@ -45,7 +45,7 @@ test_link_status_up_default(void)
 		text, strlen(text), "Invalid default link status "
 		"string with HDX");
 
-	link_status.link_speed = ETH_SPEED_NUM_NONE;
+	link_status.link_speed = RTE_ETH_SPEED_NUM_NONE;
 	ret = rte_eth_link_to_str(text, sizeof(text), &link_status);
 	printf("Default link up #3: %s\n", text);
 	RTE_TEST_ASSERT(ret > 0, "Failed to format default string\n");
@@ -54,9 +54,9 @@ test_link_status_up_default(void)
 		"string with HDX");
 
 	/* test max str len */
-	link_status.link_speed = ETH_SPEED_NUM_200G;
-	link_status.link_duplex = ETH_LINK_HALF_DUPLEX;
-	link_status.link_autoneg = ETH_LINK_AUTONEG;
+	link_status.link_speed = RTE_ETH_SPEED_NUM_200G;
+	link_status.link_duplex = RTE_ETH_LINK_HALF_DUPLEX;
+	link_status.link_autoneg = RTE_ETH_LINK_AUTONEG;
 	ret = rte_eth_link_to_str(text, sizeof(text), &link_status);
 	printf("Default link up #4:len = %d, %s\n", ret, text);
 	RTE_TEST_ASSERT(ret < RTE_ETH_LINK_MAX_STR_LEN,
@@ -69,10 +69,10 @@ test_link_status_down_default(void)
 {
 	int ret = 0;
 	struct rte_eth_link link_status = {
-		.link_speed = ETH_SPEED_NUM_2_5G,
-		.link_status = ETH_LINK_DOWN,
-		.link_autoneg = ETH_LINK_AUTONEG,
-		.link_duplex = ETH_LINK_FULL_DUPLEX
+		.link_speed = RTE_ETH_SPEED_NUM_2_5G,
+		.link_status = RTE_ETH_LINK_DOWN,
+		.link_autoneg = RTE_ETH_LINK_AUTONEG,
+		.link_duplex = RTE_ETH_LINK_FULL_DUPLEX
 	};
 	char text[RTE_ETH_LINK_MAX_STR_LEN];
 
@@ -90,9 +90,9 @@ test_link_status_invalid(void)
 	int ret = 0;
 	struct rte_eth_link link_status = {
 		.link_speed = 55555,
-		.link_status = ETH_LINK_UP,
-		.link_autoneg = ETH_LINK_AUTONEG,
-		.link_duplex = ETH_LINK_FULL_DUPLEX
+		.link_status = RTE_ETH_LINK_UP,
+		.link_autoneg = RTE_ETH_LINK_AUTONEG,
+		.link_duplex = RTE_ETH_LINK_FULL_DUPLEX
 	};
 	char text[RTE_ETH_LINK_MAX_STR_LEN];
 
@@ -116,21 +116,21 @@ test_link_speed_all_values(void)
 		const char *value;
 		uint32_t link_speed;
 	} speed_str_map[] = {
-		{ "None",   ETH_SPEED_NUM_NONE },
-		{ "10 Mbps",  ETH_SPEED_NUM_10M },
-		{ "100 Mbps", ETH_SPEED_NUM_100M },
-		{ "1 Gbps",   ETH_SPEED_NUM_1G },
-		{ "2.5 Gbps", ETH_SPEED_NUM_2_5G },
-		{ "5 Gbps",   ETH_SPEED_NUM_5G },
-		{ "10 Gbps",  ETH_SPEED_NUM_10G },
-		{ "20 Gbps",  ETH_SPEED_NUM_20G },
-		{ "25 Gbps",  ETH_SPEED_NUM_25G },
-		{ "40 Gbps",  ETH_SPEED_NUM_40G },
-		{ "50 Gbps",  ETH_SPEED_NUM_50G },
-		{ "56 Gbps",  ETH_SPEED_NUM_56G },
-		{ "100 Gbps", ETH_SPEED_NUM_100G },
-		{ "200 Gbps", ETH_SPEED_NUM_200G },
-		{ "Unknown",  ETH_SPEED_NUM_UNKNOWN },
+		{ "None",   RTE_ETH_SPEED_NUM_NONE },
+		{ "10 Mbps",  RTE_ETH_SPEED_NUM_10M },
+		{ "100 Mbps", RTE_ETH_SPEED_NUM_100M },
+		{ "1 Gbps",   RTE_ETH_SPEED_NUM_1G },
+		{ "2.5 Gbps", RTE_ETH_SPEED_NUM_2_5G },
+		{ "5 Gbps",   RTE_ETH_SPEED_NUM_5G },
+		{ "10 Gbps",  RTE_ETH_SPEED_NUM_10G },
+		{ "20 Gbps",  RTE_ETH_SPEED_NUM_20G },
+		{ "25 Gbps",  RTE_ETH_SPEED_NUM_25G },
+		{ "40 Gbps",  RTE_ETH_SPEED_NUM_40G },
+		{ "50 Gbps",  RTE_ETH_SPEED_NUM_50G },
+		{ "56 Gbps",  RTE_ETH_SPEED_NUM_56G },
+		{ "100 Gbps", RTE_ETH_SPEED_NUM_100G },
+		{ "200 Gbps", RTE_ETH_SPEED_NUM_200G },
+		{ "Unknown",  RTE_ETH_SPEED_NUM_UNKNOWN },
 		{ "Invalid",   50505 }
 	};
 

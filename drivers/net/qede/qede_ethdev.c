@@ -342,9 +342,9 @@ qede_assign_rxtx_handlers(struct rte_eth_dev *dev, bool is_dummy)
 	}
 
 	use_tx_offload = !!(tx_offloads &
-			    (DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM | /* tunnel */
-			     DEV_TX_OFFLOAD_TCP_TSO | /* tso */
-			     DEV_TX_OFFLOAD_VLAN_INSERT)); /* vlan insert */
+			    (RTE_ETH_TX_OFFLOAD_OUTER_IPV4_CKSUM | /* tunnel */
+			     RTE_ETH_TX_OFFLOAD_TCP_TSO | /* tso */
+			     RTE_ETH_TX_OFFLOAD_VLAN_INSERT)); /* vlan insert */
 
 	if (use_tx_offload) {
 		DP_INFO(edev, "Assigning qede_xmit_pkts\n");
@@ -1002,16 +1002,16 @@ static int qede_vlan_offload_set(struct rte_eth_dev *eth_dev, int mask)
 	struct ecore_dev *edev = QEDE_INIT_EDEV(qdev);
 	uint64_t rx_offloads = eth_dev->data->dev_conf.rxmode.offloads;
 
-	if (mask & ETH_VLAN_STRIP_MASK) {
-		if (rx_offloads & DEV_RX_OFFLOAD_VLAN_STRIP)
+	if (mask & RTE_ETH_VLAN_STRIP_MASK) {
+		if (rx_offloads & RTE_ETH_RX_OFFLOAD_VLAN_STRIP)
 			(void)qede_vlan_stripping(eth_dev, 1);
 		else
 			(void)qede_vlan_stripping(eth_dev, 0);
 	}
 
-	if (mask & ETH_VLAN_FILTER_MASK) {
+	if (mask & RTE_ETH_VLAN_FILTER_MASK) {
 		/* VLAN filtering kicks in when a VLAN is added */
-		if (rx_offloads & DEV_RX_OFFLOAD_VLAN_FILTER) {
+		if (rx_offloads & RTE_ETH_RX_OFFLOAD_VLAN_FILTER) {
 			qede_vlan_filter_set(eth_dev, 0, 1);
 		} else {
 			if (qdev->configured_vlans > 1) { /* Excluding VLAN0 */
@@ -1022,7 +1022,7 @@ static int qede_vlan_offload_set(struct rte_eth_dev *eth_dev, int mask)
 				 * enabled
 				 */
 				eth_dev->data->dev_conf.rxmode.offloads |=
-						DEV_RX_OFFLOAD_VLAN_FILTER;
+						RTE_ETH_RX_OFFLOAD_VLAN_FILTER;
 			} else {
 				qede_vlan_filter_set(eth_dev, 0, 0);
 			}
@@ -1069,11 +1069,11 @@ int qede_config_rss(struct rte_eth_dev *eth_dev)
 	/* Configure default RETA */
 	memset(reta_conf, 0, sizeof(reta_conf));
 	for (i = 0; i < ECORE_RSS_IND_TABLE_SIZE; i++)
-		reta_conf[i / RTE_RETA_GROUP_SIZE].mask = UINT64_MAX;
+		reta_conf[i / RTE_ETH_RETA_GROUP_SIZE].mask = UINT64_MAX;
 
 	for (i = 0; i < ECORE_RSS_IND_TABLE_SIZE; i++) {
-		id = i / RTE_RETA_GROUP_SIZE;
-		pos = i % RTE_RETA_GROUP_SIZE;
+		id = i / RTE_ETH_RETA_GROUP_SIZE;
+		pos = i % RTE_ETH_RETA_GROUP_SIZE;
 		q = i % QEDE_RSS_COUNT(eth_dev);
 		reta_conf[id].reta[pos] = q;
 	}
@@ -1112,12 +1112,12 @@ static int qede_dev_start(struct rte_eth_dev *eth_dev)
 	}
 
 	/* Configure TPA parameters */
-	if (rxmode->offloads & DEV_RX_OFFLOAD_TCP_LRO) {
+	if (rxmode->offloads & RTE_ETH_RX_OFFLOAD_TCP_LRO) {
 		if (qede_enable_tpa(eth_dev, true))
 			return -EINVAL;
 		/* Enable scatter mode for LRO */
 		if (!eth_dev->data->scattered_rx)
-			rxmode->offloads |= DEV_RX_OFFLOAD_SCATTER;
+			rxmode->offloads |= RTE_ETH_RX_OFFLOAD_SCATTER;
 	}
 
 	/* Start queues */
@@ -1132,7 +1132,7 @@ static int qede_dev_start(struct rte_eth_dev *eth_dev)
 	 * Also, we would like to retain similar behavior in PF case, so we
 	 * don't do PF/VF specific check here.
 	 */
-	if (eth_dev->data->dev_conf.rxmode.mq_mode == ETH_MQ_RX_RSS)
+	if (eth_dev->data->dev_conf.rxmode.mq_mode == RTE_ETH_MQ_RX_RSS)
 		if (qede_config_rss(eth_dev))
 			goto err;
 
@@ -1272,8 +1272,8 @@ static int qede_dev_configure(struct rte_eth_dev *eth_dev)
 
 	PMD_INIT_FUNC_TRACE(edev);
 
-	if (rxmode->mq_mode & ETH_MQ_RX_RSS_FLAG)
-		rxmode->offloads |= DEV_RX_OFFLOAD_RSS_HASH;
+	if (rxmode->mq_mode & RTE_ETH_MQ_RX_RSS_FLAG)
+		rxmode->offloads |= RTE_ETH_RX_OFFLOAD_RSS_HASH;
 
 	/* We need to have min 1 RX queue.There is no min check in
 	 * rte_eth_dev_configure(), so we are checking it here.
@@ -1291,8 +1291,8 @@ static int qede_dev_configure(struct rte_eth_dev *eth_dev)
 		DP_NOTICE(edev, false,
 			  "Invalid devargs supplied, requested change will not take effect\n");
 
-	if (!(rxmode->mq_mode == ETH_MQ_RX_NONE ||
-	      rxmode->mq_mode == ETH_MQ_RX_RSS)) {
+	if (!(rxmode->mq_mode == RTE_ETH_MQ_RX_NONE ||
+	      rxmode->mq_mode == RTE_ETH_MQ_RX_RSS)) {
 		DP_ERR(edev, "Unsupported multi-queue mode\n");
 		return -ENOTSUP;
 	}
@@ -1312,7 +1312,7 @@ static int qede_dev_configure(struct rte_eth_dev *eth_dev)
 			return -ENOMEM;
 	}
 
-	if (rxmode->offloads & DEV_RX_OFFLOAD_SCATTER)
+	if (rxmode->offloads & RTE_ETH_RX_OFFLOAD_SCATTER)
 		eth_dev->data->scattered_rx = 1;
 
 	if (qede_start_vport(qdev, eth_dev->data->mtu))
@@ -1321,8 +1321,8 @@ static int qede_dev_configure(struct rte_eth_dev *eth_dev)
 	qdev->mtu = eth_dev->data->mtu;
 
 	/* Enable VLAN offloads by default */
-	ret = qede_vlan_offload_set(eth_dev, ETH_VLAN_STRIP_MASK  |
-					     ETH_VLAN_FILTER_MASK);
+	ret = qede_vlan_offload_set(eth_dev, RTE_ETH_VLAN_STRIP_MASK  |
+					     RTE_ETH_VLAN_FILTER_MASK);
 	if (ret)
 		return ret;
 
@@ -1385,34 +1385,34 @@ qede_dev_info_get(struct rte_eth_dev *eth_dev,
 	dev_info->reta_size = ECORE_RSS_IND_TABLE_SIZE;
 	dev_info->hash_key_size = ECORE_RSS_KEY_SIZE * sizeof(uint32_t);
 	dev_info->flow_type_rss_offloads = (uint64_t)QEDE_RSS_OFFLOAD_ALL;
-	dev_info->rx_offload_capa = (DEV_RX_OFFLOAD_IPV4_CKSUM	|
-				     DEV_RX_OFFLOAD_UDP_CKSUM	|
-				     DEV_RX_OFFLOAD_TCP_CKSUM	|
-				     DEV_RX_OFFLOAD_OUTER_IPV4_CKSUM |
-				     DEV_RX_OFFLOAD_TCP_LRO	|
-				     DEV_RX_OFFLOAD_KEEP_CRC    |
-				     DEV_RX_OFFLOAD_SCATTER	|
-				     DEV_RX_OFFLOAD_VLAN_FILTER |
-				     DEV_RX_OFFLOAD_VLAN_STRIP  |
-				     DEV_RX_OFFLOAD_RSS_HASH);
+	dev_info->rx_offload_capa = (RTE_ETH_RX_OFFLOAD_IPV4_CKSUM	|
+				     RTE_ETH_RX_OFFLOAD_UDP_CKSUM	|
+				     RTE_ETH_RX_OFFLOAD_TCP_CKSUM	|
+				     RTE_ETH_RX_OFFLOAD_OUTER_IPV4_CKSUM |
+				     RTE_ETH_RX_OFFLOAD_TCP_LRO	|
+				     RTE_ETH_RX_OFFLOAD_KEEP_CRC    |
+				     RTE_ETH_RX_OFFLOAD_SCATTER	|
+				     RTE_ETH_RX_OFFLOAD_VLAN_FILTER |
+				     RTE_ETH_RX_OFFLOAD_VLAN_STRIP  |
+				     RTE_ETH_RX_OFFLOAD_RSS_HASH);
 	dev_info->rx_queue_offload_capa = 0;
 
 	/* TX offloads are on a per-packet basis, so it is applicable
 	 * to both at port and queue levels.
 	 */
-	dev_info->tx_offload_capa = (DEV_TX_OFFLOAD_VLAN_INSERT	|
-				     DEV_TX_OFFLOAD_IPV4_CKSUM	|
-				     DEV_TX_OFFLOAD_UDP_CKSUM	|
-				     DEV_TX_OFFLOAD_TCP_CKSUM	|
-				     DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM |
-				     DEV_TX_OFFLOAD_MULTI_SEGS  |
-				     DEV_TX_OFFLOAD_TCP_TSO	|
-				     DEV_TX_OFFLOAD_VXLAN_TNL_TSO |
-				     DEV_TX_OFFLOAD_GENEVE_TNL_TSO);
+	dev_info->tx_offload_capa = (RTE_ETH_TX_OFFLOAD_VLAN_INSERT	|
+				     RTE_ETH_TX_OFFLOAD_IPV4_CKSUM	|
+				     RTE_ETH_TX_OFFLOAD_UDP_CKSUM	|
+				     RTE_ETH_TX_OFFLOAD_TCP_CKSUM	|
+				     RTE_ETH_TX_OFFLOAD_OUTER_IPV4_CKSUM |
+				     RTE_ETH_TX_OFFLOAD_MULTI_SEGS  |
+				     RTE_ETH_TX_OFFLOAD_TCP_TSO	|
+				     RTE_ETH_TX_OFFLOAD_VXLAN_TNL_TSO |
+				     RTE_ETH_TX_OFFLOAD_GENEVE_TNL_TSO);
 	dev_info->tx_queue_offload_capa = dev_info->tx_offload_capa;
 
 	dev_info->default_txconf = (struct rte_eth_txconf) {
-		.offloads = DEV_TX_OFFLOAD_MULTI_SEGS,
+		.offloads = RTE_ETH_TX_OFFLOAD_MULTI_SEGS,
 	};
 
 	dev_info->default_rxconf = (struct rte_eth_rxconf) {
@@ -1424,17 +1424,17 @@ qede_dev_info_get(struct rte_eth_dev *eth_dev,
 	memset(&link, 0, sizeof(struct qed_link_output));
 	qdev->ops->common->get_link(edev, &link);
 	if (link.adv_speed & NVM_CFG1_PORT_DRV_SPEED_CAPABILITY_MASK_1G)
-		speed_cap |= ETH_LINK_SPEED_1G;
+		speed_cap |= RTE_ETH_LINK_SPEED_1G;
 	if (link.adv_speed & NVM_CFG1_PORT_DRV_SPEED_CAPABILITY_MASK_10G)
-		speed_cap |= ETH_LINK_SPEED_10G;
+		speed_cap |= RTE_ETH_LINK_SPEED_10G;
 	if (link.adv_speed & NVM_CFG1_PORT_DRV_SPEED_CAPABILITY_MASK_25G)
-		speed_cap |= ETH_LINK_SPEED_25G;
+		speed_cap |= RTE_ETH_LINK_SPEED_25G;
 	if (link.adv_speed & NVM_CFG1_PORT_DRV_SPEED_CAPABILITY_MASK_40G)
-		speed_cap |= ETH_LINK_SPEED_40G;
+		speed_cap |= RTE_ETH_LINK_SPEED_40G;
 	if (link.adv_speed & NVM_CFG1_PORT_DRV_SPEED_CAPABILITY_MASK_50G)
-		speed_cap |= ETH_LINK_SPEED_50G;
+		speed_cap |= RTE_ETH_LINK_SPEED_50G;
 	if (link.adv_speed & NVM_CFG1_PORT_DRV_SPEED_CAPABILITY_MASK_BB_100G)
-		speed_cap |= ETH_LINK_SPEED_100G;
+		speed_cap |= RTE_ETH_LINK_SPEED_100G;
 	dev_info->speed_capa = speed_cap;
 
 	return 0;
@@ -1461,10 +1461,10 @@ qede_link_update(struct rte_eth_dev *eth_dev, __rte_unused int wait_to_complete)
 	/* Link Mode */
 	switch (q_link.duplex) {
 	case QEDE_DUPLEX_HALF:
-		link_duplex = ETH_LINK_HALF_DUPLEX;
+		link_duplex = RTE_ETH_LINK_HALF_DUPLEX;
 		break;
 	case QEDE_DUPLEX_FULL:
-		link_duplex = ETH_LINK_FULL_DUPLEX;
+		link_duplex = RTE_ETH_LINK_FULL_DUPLEX;
 		break;
 	case QEDE_DUPLEX_UNKNOWN:
 	default:
@@ -1473,11 +1473,11 @@ qede_link_update(struct rte_eth_dev *eth_dev, __rte_unused int wait_to_complete)
 	link.link_duplex = link_duplex;
 
 	/* Link Status */
-	link.link_status = q_link.link_up ? ETH_LINK_UP : ETH_LINK_DOWN;
+	link.link_status = q_link.link_up ? RTE_ETH_LINK_UP : RTE_ETH_LINK_DOWN;
 
 	/* AN */
 	link.link_autoneg = (q_link.supported_caps & QEDE_SUPPORTED_AUTONEG) ?
-			     ETH_LINK_AUTONEG : ETH_LINK_FIXED;
+			     RTE_ETH_LINK_AUTONEG : RTE_ETH_LINK_FIXED;
 
 	DP_INFO(edev, "Link - Speed %u Mode %u AN %u Status %u\n",
 		link.link_speed, link.link_duplex,
@@ -2012,12 +2012,12 @@ static int qede_flow_ctrl_set(struct rte_eth_dev *eth_dev,
 	}
 
 	/* Pause is assumed to be supported (SUPPORTED_Pause) */
-	if (fc_conf->mode == RTE_FC_FULL)
+	if (fc_conf->mode == RTE_ETH_FC_FULL)
 		params.pause_config |= (QED_LINK_PAUSE_TX_ENABLE |
 					QED_LINK_PAUSE_RX_ENABLE);
-	if (fc_conf->mode == RTE_FC_TX_PAUSE)
+	if (fc_conf->mode == RTE_ETH_FC_TX_PAUSE)
 		params.pause_config |= QED_LINK_PAUSE_TX_ENABLE;
-	if (fc_conf->mode == RTE_FC_RX_PAUSE)
+	if (fc_conf->mode == RTE_ETH_FC_RX_PAUSE)
 		params.pause_config |= QED_LINK_PAUSE_RX_ENABLE;
 
 	params.link_up = true;
@@ -2041,13 +2041,13 @@ static int qede_flow_ctrl_get(struct rte_eth_dev *eth_dev,
 
 	if (current_link.pause_config & (QED_LINK_PAUSE_RX_ENABLE |
 					 QED_LINK_PAUSE_TX_ENABLE))
-		fc_conf->mode = RTE_FC_FULL;
+		fc_conf->mode = RTE_ETH_FC_FULL;
 	else if (current_link.pause_config & QED_LINK_PAUSE_RX_ENABLE)
-		fc_conf->mode = RTE_FC_RX_PAUSE;
+		fc_conf->mode = RTE_ETH_FC_RX_PAUSE;
 	else if (current_link.pause_config & QED_LINK_PAUSE_TX_ENABLE)
-		fc_conf->mode = RTE_FC_TX_PAUSE;
+		fc_conf->mode = RTE_ETH_FC_TX_PAUSE;
 	else
-		fc_conf->mode = RTE_FC_NONE;
+		fc_conf->mode = RTE_ETH_FC_NONE;
 
 	return 0;
 }
@@ -2088,14 +2088,14 @@ qede_dev_supported_ptypes_get(struct rte_eth_dev *eth_dev)
 static void qede_init_rss_caps(uint8_t *rss_caps, uint64_t hf)
 {
 	*rss_caps = 0;
-	*rss_caps |= (hf & ETH_RSS_IPV4)              ? ECORE_RSS_IPV4 : 0;
-	*rss_caps |= (hf & ETH_RSS_IPV6)              ? ECORE_RSS_IPV6 : 0;
-	*rss_caps |= (hf & ETH_RSS_IPV6_EX)           ? ECORE_RSS_IPV6 : 0;
-	*rss_caps |= (hf & ETH_RSS_NONFRAG_IPV4_TCP)  ? ECORE_RSS_IPV4_TCP : 0;
-	*rss_caps |= (hf & ETH_RSS_NONFRAG_IPV6_TCP)  ? ECORE_RSS_IPV6_TCP : 0;
-	*rss_caps |= (hf & ETH_RSS_IPV6_TCP_EX)       ? ECORE_RSS_IPV6_TCP : 0;
-	*rss_caps |= (hf & ETH_RSS_NONFRAG_IPV4_UDP)  ? ECORE_RSS_IPV4_UDP : 0;
-	*rss_caps |= (hf & ETH_RSS_NONFRAG_IPV6_UDP)  ? ECORE_RSS_IPV6_UDP : 0;
+	*rss_caps |= (hf & RTE_ETH_RSS_IPV4)              ? ECORE_RSS_IPV4 : 0;
+	*rss_caps |= (hf & RTE_ETH_RSS_IPV6)              ? ECORE_RSS_IPV6 : 0;
+	*rss_caps |= (hf & RTE_ETH_RSS_IPV6_EX)           ? ECORE_RSS_IPV6 : 0;
+	*rss_caps |= (hf & RTE_ETH_RSS_NONFRAG_IPV4_TCP)  ? ECORE_RSS_IPV4_TCP : 0;
+	*rss_caps |= (hf & RTE_ETH_RSS_NONFRAG_IPV6_TCP)  ? ECORE_RSS_IPV6_TCP : 0;
+	*rss_caps |= (hf & RTE_ETH_RSS_IPV6_TCP_EX)       ? ECORE_RSS_IPV6_TCP : 0;
+	*rss_caps |= (hf & RTE_ETH_RSS_NONFRAG_IPV4_UDP)  ? ECORE_RSS_IPV4_UDP : 0;
+	*rss_caps |= (hf & RTE_ETH_RSS_NONFRAG_IPV6_UDP)  ? ECORE_RSS_IPV6_UDP : 0;
 }
 
 int qede_rss_hash_update(struct rte_eth_dev *eth_dev,
@@ -2221,7 +2221,7 @@ int qede_rss_reta_update(struct rte_eth_dev *eth_dev,
 	uint8_t entry;
 	int rc = 0;
 
-	if (reta_size > ETH_RSS_RETA_SIZE_128) {
+	if (reta_size > RTE_ETH_RSS_RETA_SIZE_128) {
 		DP_ERR(edev, "reta_size %d is not supported by hardware\n",
 		       reta_size);
 		return -EINVAL;
@@ -2245,8 +2245,8 @@ int qede_rss_reta_update(struct rte_eth_dev *eth_dev,
 
 	for_each_hwfn(edev, i) {
 		for (j = 0; j < reta_size; j++) {
-			idx = j / RTE_RETA_GROUP_SIZE;
-			shift = j % RTE_RETA_GROUP_SIZE;
+			idx = j / RTE_ETH_RETA_GROUP_SIZE;
+			shift = j % RTE_ETH_RETA_GROUP_SIZE;
 			if (reta_conf[idx].mask & (1ULL << shift)) {
 				entry = reta_conf[idx].reta[shift];
 				fid = entry * edev->num_hwfns + i;
@@ -2282,15 +2282,15 @@ static int qede_rss_reta_query(struct rte_eth_dev *eth_dev,
 	uint16_t i, idx, shift;
 	uint8_t entry;
 
-	if (reta_size > ETH_RSS_RETA_SIZE_128) {
+	if (reta_size > RTE_ETH_RSS_RETA_SIZE_128) {
 		DP_ERR(edev, "reta_size %d is not supported\n",
 		       reta_size);
 		return -EINVAL;
 	}
 
 	for (i = 0; i < reta_size; i++) {
-		idx = i / RTE_RETA_GROUP_SIZE;
-		shift = i % RTE_RETA_GROUP_SIZE;
+		idx = i / RTE_ETH_RETA_GROUP_SIZE;
+		shift = i % RTE_ETH_RETA_GROUP_SIZE;
 		if (reta_conf[idx].mask & (1ULL << shift)) {
 			entry = qdev->rss_ind_table[i];
 			reta_conf[idx].reta[shift] = entry;
@@ -2718,16 +2718,16 @@ static int qede_common_dev_init(struct rte_eth_dev *eth_dev, bool is_vf)
 	adapter->ipgre.num_filters = 0;
 	if (is_vf) {
 		adapter->vxlan.enable = true;
-		adapter->vxlan.filter_type = ETH_TUNNEL_FILTER_IMAC |
-					     ETH_TUNNEL_FILTER_IVLAN;
+		adapter->vxlan.filter_type = RTE_ETH_TUNNEL_FILTER_IMAC |
+					     RTE_ETH_TUNNEL_FILTER_IVLAN;
 		adapter->vxlan.udp_port = QEDE_VXLAN_DEF_PORT;
 		adapter->geneve.enable = true;
-		adapter->geneve.filter_type = ETH_TUNNEL_FILTER_IMAC |
-					      ETH_TUNNEL_FILTER_IVLAN;
+		adapter->geneve.filter_type = RTE_ETH_TUNNEL_FILTER_IMAC |
+					      RTE_ETH_TUNNEL_FILTER_IVLAN;
 		adapter->geneve.udp_port = QEDE_GENEVE_DEF_PORT;
 		adapter->ipgre.enable = true;
-		adapter->ipgre.filter_type = ETH_TUNNEL_FILTER_IMAC |
-					     ETH_TUNNEL_FILTER_IVLAN;
+		adapter->ipgre.filter_type = RTE_ETH_TUNNEL_FILTER_IMAC |
+					     RTE_ETH_TUNNEL_FILTER_IVLAN;
 	} else {
 		adapter->vxlan.enable = false;
 		adapter->geneve.enable = false;

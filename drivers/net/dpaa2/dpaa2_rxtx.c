@@ -773,7 +773,7 @@ dpaa2_dev_prefetch_rx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 #endif
 
 		if (eth_data->dev_conf.rxmode.offloads &
-				DEV_RX_OFFLOAD_VLAN_STRIP)
+				RTE_ETH_RX_OFFLOAD_VLAN_STRIP)
 			rte_vlan_strip(bufs[num_rx]);
 
 		dq_storage++;
@@ -987,7 +987,7 @@ dpaa2_dev_rx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 							eth_data->port_id);
 
 		if (eth_data->dev_conf.rxmode.offloads &
-				DEV_RX_OFFLOAD_VLAN_STRIP) {
+				RTE_ETH_RX_OFFLOAD_VLAN_STRIP) {
 			rte_vlan_strip(bufs[num_rx]);
 		}
 
@@ -1230,7 +1230,7 @@ dpaa2_dev_tx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 					if (unlikely(((*bufs)->ol_flags
 						& PKT_TX_VLAN_PKT) ||
 						(eth_data->dev_conf.txmode.offloads
-						& DEV_TX_OFFLOAD_VLAN_INSERT))) {
+						& RTE_ETH_TX_OFFLOAD_VLAN_INSERT))) {
 						ret = rte_vlan_insert(bufs);
 						if (ret)
 							goto send_n_return;
@@ -1273,7 +1273,7 @@ dpaa2_dev_tx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 
 			if (unlikely(((*bufs)->ol_flags & PKT_TX_VLAN_PKT) ||
 				(eth_data->dev_conf.txmode.offloads
-				& DEV_TX_OFFLOAD_VLAN_INSERT))) {
+				& RTE_ETH_TX_OFFLOAD_VLAN_INSERT))) {
 				int ret = rte_vlan_insert(bufs);
 				if (ret)
 					goto send_n_return;

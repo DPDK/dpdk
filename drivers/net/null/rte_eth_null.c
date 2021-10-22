@@ -61,16 +61,16 @@ struct pmd_internals {
 	rte_spinlock_t rss_lock;
 
 	uint16_t reta_size;
-	struct rte_eth_rss_reta_entry64 reta_conf[ETH_RSS_RETA_SIZE_128 /
-			RTE_RETA_GROUP_SIZE];
+	struct rte_eth_rss_reta_entry64 reta_conf[RTE_ETH_RSS_RETA_SIZE_128 /
+			RTE_ETH_RETA_GROUP_SIZE];
 
 	uint8_t rss_key[40];                /**< 40-byte hash key. */
 };
 static struct rte_eth_link pmd_link = {
-	.link_speed = ETH_SPEED_NUM_10G,
-	.link_duplex = ETH_LINK_FULL_DUPLEX,
-	.link_status = ETH_LINK_DOWN,
-	.link_autoneg = ETH_LINK_FIXED,
+	.link_speed = RTE_ETH_SPEED_NUM_10G,
+	.link_duplex = RTE_ETH_LINK_FULL_DUPLEX,
+	.link_status = RTE_ETH_LINK_DOWN,
+	.link_autoneg = RTE_ETH_LINK_FIXED,
 };
 
 RTE_LOG_REGISTER_DEFAULT(eth_null_logtype, NOTICE);
@@ -189,7 +189,7 @@ eth_dev_start(struct rte_eth_dev *dev)
 	if (dev == NULL)
 		return -EINVAL;
 
-	dev->data->dev_link.link_status = ETH_LINK_UP;
+	dev->data->dev_link.link_status = RTE_ETH_LINK_UP;
 	return 0;
 }
 
@@ -199,7 +199,7 @@ eth_dev_stop(struct rte_eth_dev *dev)
 	if (dev == NULL)
 		return 0;
 
-	dev->data->dev_link.link_status = ETH_LINK_DOWN;
+	dev->data->dev_link.link_status = RTE_ETH_LINK_DOWN;
 
 	return 0;
 }
@@ -391,9 +391,9 @@ eth_rss_reta_update(struct rte_eth_dev *dev,
 	rte_spinlock_lock(&internal->rss_lock);
 
 	/* Copy RETA table */
-	for (i = 0; i < (internal->reta_size / RTE_RETA_GROUP_SIZE); i++) {
+	for (i = 0; i < (internal->reta_size / RTE_ETH_RETA_GROUP_SIZE); i++) {
 		internal->reta_conf[i].mask = reta_conf[i].mask;
-		for (j = 0; j < RTE_RETA_GROUP_SIZE; j++)
+		for (j = 0; j < RTE_ETH_RETA_GROUP_SIZE; j++)
 			if ((reta_conf[i].mask >> j) & 0x01)
 				internal->reta_conf[i].reta[j] = reta_conf[i].reta[j];
 	}
@@ -416,8 +416,8 @@ eth_rss_reta_query(struct rte_eth_dev *dev,
 	rte_spinlock_lock(&internal->rss_lock);
 
 	/* Copy RETA table */
-	for (i = 0; i < (internal->reta_size / RTE_RETA_GROUP_SIZE); i++) {
-		for (j = 0; j < RTE_RETA_GROUP_SIZE; j++)
+	for (i = 0; i < (internal->reta_size / RTE_ETH_RETA_GROUP_SIZE); i++) {
+		for (j = 0; j < RTE_ETH_RETA_GROUP_SIZE; j++)
 			if ((reta_conf[i].mask >> j) & 0x01)
 				reta_conf[i].reta[j] = internal->reta_conf[i].reta[j];
 	}
@@ -548,8 +548,8 @@ eth_dev_null_create(struct rte_vdev_device *dev, struct pmd_options *args)
 	internals->port_id = eth_dev->data->port_id;
 	rte_eth_random_addr(internals->eth_addr.addr_bytes);
 
-	internals->flow_type_rss_offloads =  ETH_RSS_PROTO_MASK;
-	internals->reta_size = RTE_DIM(internals->reta_conf) * RTE_RETA_GROUP_SIZE;
+	internals->flow_type_rss_offloads =  RTE_ETH_RSS_PROTO_MASK;
+	internals->reta_size = RTE_DIM(internals->reta_conf) * RTE_ETH_RETA_GROUP_SIZE;
 
 	rte_memcpy(internals->rss_key, default_rss_key, 40);
 

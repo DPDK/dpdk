@@ -958,9 +958,9 @@ sfc_ef10_tx_qcreate(uint16_t port_id, uint16_t queue_id,
 	if (txq->sw_ring == NULL)
 		goto fail_sw_ring_alloc;
 
-	if (info->offloads & (DEV_TX_OFFLOAD_TCP_TSO |
-			      DEV_TX_OFFLOAD_VXLAN_TNL_TSO |
-			      DEV_TX_OFFLOAD_GENEVE_TNL_TSO)) {
+	if (info->offloads & (RTE_ETH_TX_OFFLOAD_TCP_TSO |
+			      RTE_ETH_TX_OFFLOAD_VXLAN_TNL_TSO |
+			      RTE_ETH_TX_OFFLOAD_GENEVE_TNL_TSO)) {
 		txq->tsoh = rte_calloc_socket("sfc-ef10-txq-tsoh",
 					      info->txq_entries,
 					      SFC_TSOH_STD_LEN,
@@ -1125,14 +1125,14 @@ struct sfc_dp_tx sfc_ef10_tx = {
 		.hw_fw_caps	= SFC_DP_HW_FW_CAP_EF10,
 	},
 	.features		= SFC_DP_TX_FEAT_MULTI_PROCESS,
-	.dev_offload_capa	= DEV_TX_OFFLOAD_MULTI_SEGS,
-	.queue_offload_capa	= DEV_TX_OFFLOAD_IPV4_CKSUM |
-				  DEV_TX_OFFLOAD_UDP_CKSUM |
-				  DEV_TX_OFFLOAD_TCP_CKSUM |
-				  DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM |
-				  DEV_TX_OFFLOAD_TCP_TSO |
-				  DEV_TX_OFFLOAD_VXLAN_TNL_TSO |
-				  DEV_TX_OFFLOAD_GENEVE_TNL_TSO,
+	.dev_offload_capa	= RTE_ETH_TX_OFFLOAD_MULTI_SEGS,
+	.queue_offload_capa	= RTE_ETH_TX_OFFLOAD_IPV4_CKSUM |
+				  RTE_ETH_TX_OFFLOAD_UDP_CKSUM |
+				  RTE_ETH_TX_OFFLOAD_TCP_CKSUM |
+				  RTE_ETH_TX_OFFLOAD_OUTER_IPV4_CKSUM |
+				  RTE_ETH_TX_OFFLOAD_TCP_TSO |
+				  RTE_ETH_TX_OFFLOAD_VXLAN_TNL_TSO |
+				  RTE_ETH_TX_OFFLOAD_GENEVE_TNL_TSO,
 	.get_dev_info		= sfc_ef10_get_dev_info,
 	.qsize_up_rings		= sfc_ef10_tx_qsize_up_rings,
 	.qcreate		= sfc_ef10_tx_qcreate,
@@ -1152,11 +1152,11 @@ struct sfc_dp_tx sfc_ef10_simple_tx = {
 		.type		= SFC_DP_TX,
 	},
 	.features		= SFC_DP_TX_FEAT_MULTI_PROCESS,
-	.dev_offload_capa	= DEV_TX_OFFLOAD_MBUF_FAST_FREE,
-	.queue_offload_capa	= DEV_TX_OFFLOAD_IPV4_CKSUM |
-				  DEV_TX_OFFLOAD_UDP_CKSUM |
-				  DEV_TX_OFFLOAD_TCP_CKSUM |
-				  DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM,
+	.dev_offload_capa	= RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE,
+	.queue_offload_capa	= RTE_ETH_TX_OFFLOAD_IPV4_CKSUM |
+				  RTE_ETH_TX_OFFLOAD_UDP_CKSUM |
+				  RTE_ETH_TX_OFFLOAD_TCP_CKSUM |
+				  RTE_ETH_TX_OFFLOAD_OUTER_IPV4_CKSUM,
 	.get_dev_info		= sfc_ef10_get_dev_info,
 	.qsize_up_rings		= sfc_ef10_tx_qsize_up_rings,
 	.qcreate		= sfc_ef10_tx_qcreate,

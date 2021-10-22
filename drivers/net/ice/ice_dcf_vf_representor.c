@@ -37,7 +37,7 @@ ice_dcf_vf_repr_dev_configure(struct rte_eth_dev *dev)
 static int
 ice_dcf_vf_repr_dev_start(struct rte_eth_dev *dev)
 {
-	dev->data->dev_link.link_status = ETH_LINK_UP;
+	dev->data->dev_link.link_status = RTE_ETH_LINK_UP;
 
 	return 0;
 }
@@ -45,7 +45,7 @@ ice_dcf_vf_repr_dev_start(struct rte_eth_dev *dev)
 static int
 ice_dcf_vf_repr_dev_stop(struct rte_eth_dev *dev)
 {
-	dev->data->dev_link.link_status = ETH_LINK_DOWN;
+	dev->data->dev_link.link_status = RTE_ETH_LINK_DOWN;
 
 	return 0;
 }
@@ -143,28 +143,28 @@ ice_dcf_vf_repr_dev_info_get(struct rte_eth_dev *dev,
 	dev_info->flow_type_rss_offloads = ICE_RSS_OFFLOAD_ALL;
 
 	dev_info->rx_offload_capa =
-		DEV_RX_OFFLOAD_VLAN_STRIP |
-		DEV_RX_OFFLOAD_IPV4_CKSUM |
-		DEV_RX_OFFLOAD_UDP_CKSUM |
-		DEV_RX_OFFLOAD_TCP_CKSUM |
-		DEV_RX_OFFLOAD_OUTER_IPV4_CKSUM |
-		DEV_RX_OFFLOAD_SCATTER |
-		DEV_RX_OFFLOAD_VLAN_FILTER |
-		DEV_RX_OFFLOAD_VLAN_EXTEND |
-		DEV_RX_OFFLOAD_RSS_HASH;
+		RTE_ETH_RX_OFFLOAD_VLAN_STRIP |
+		RTE_ETH_RX_OFFLOAD_IPV4_CKSUM |
+		RTE_ETH_RX_OFFLOAD_UDP_CKSUM |
+		RTE_ETH_RX_OFFLOAD_TCP_CKSUM |
+		RTE_ETH_RX_OFFLOAD_OUTER_IPV4_CKSUM |
+		RTE_ETH_RX_OFFLOAD_SCATTER |
+		RTE_ETH_RX_OFFLOAD_VLAN_FILTER |
+		RTE_ETH_RX_OFFLOAD_VLAN_EXTEND |
+		RTE_ETH_RX_OFFLOAD_RSS_HASH;
 	dev_info->tx_offload_capa =
-		DEV_TX_OFFLOAD_VLAN_INSERT |
-		DEV_TX_OFFLOAD_IPV4_CKSUM |
-		DEV_TX_OFFLOAD_UDP_CKSUM |
-		DEV_TX_OFFLOAD_TCP_CKSUM |
-		DEV_TX_OFFLOAD_SCTP_CKSUM |
-		DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM |
-		DEV_TX_OFFLOAD_TCP_TSO |
-		DEV_TX_OFFLOAD_VXLAN_TNL_TSO |
-		DEV_TX_OFFLOAD_GRE_TNL_TSO |
-		DEV_TX_OFFLOAD_IPIP_TNL_TSO |
-		DEV_TX_OFFLOAD_GENEVE_TNL_TSO |
-		DEV_TX_OFFLOAD_MULTI_SEGS;
+		RTE_ETH_TX_OFFLOAD_VLAN_INSERT |
+		RTE_ETH_TX_OFFLOAD_IPV4_CKSUM |
+		RTE_ETH_TX_OFFLOAD_UDP_CKSUM |
+		RTE_ETH_TX_OFFLOAD_TCP_CKSUM |
+		RTE_ETH_TX_OFFLOAD_SCTP_CKSUM |
+		RTE_ETH_TX_OFFLOAD_OUTER_IPV4_CKSUM |
+		RTE_ETH_TX_OFFLOAD_TCP_TSO |
+		RTE_ETH_TX_OFFLOAD_VXLAN_TNL_TSO |
+		RTE_ETH_TX_OFFLOAD_GRE_TNL_TSO |
+		RTE_ETH_TX_OFFLOAD_IPIP_TNL_TSO |
+		RTE_ETH_TX_OFFLOAD_GENEVE_TNL_TSO |
+		RTE_ETH_TX_OFFLOAD_MULTI_SEGS;
 
 	dev_info->default_rxconf = (struct rte_eth_rxconf) {
 		.rx_thresh = {
@@ -246,9 +246,9 @@ ice_dcf_vf_repr_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 		return -ENOTSUP;
 
 	/* Vlan stripping setting */
-	if (mask & ETH_VLAN_STRIP_MASK) {
+	if (mask & RTE_ETH_VLAN_STRIP_MASK) {
 		bool enable = !!(dev_conf->rxmode.offloads &
-				 DEV_RX_OFFLOAD_VLAN_STRIP);
+				 RTE_ETH_RX_OFFLOAD_VLAN_STRIP);
 
 		if (enable && repr->outer_vlan_info.port_vlan_ena) {
 			PMD_DRV_LOG(ERR,
@@ -345,7 +345,7 @@ ice_dcf_vf_repr_vlan_tpid_set(struct rte_eth_dev *dev,
 	if (!ice_dcf_vlan_offload_ena(repr))
 		return -ENOTSUP;
 
-	if (vlan_type != ETH_VLAN_TYPE_OUTER) {
+	if (vlan_type != RTE_ETH_VLAN_TYPE_OUTER) {
 		PMD_DRV_LOG(ERR,
 			    "Can accelerate only outer VLAN in QinQ\n");
 		return -EINVAL;
@@ -375,7 +375,7 @@ ice_dcf_vf_repr_vlan_tpid_set(struct rte_eth_dev *dev,
 
 	if (repr->outer_vlan_info.stripping_ena) {
 		err = ice_dcf_vf_repr_vlan_offload_set(dev,
-						       ETH_VLAN_STRIP_MASK);
+						       RTE_ETH_VLAN_STRIP_MASK);
 		if (err) {
 			PMD_DRV_LOG(ERR,
 				    "Failed to reset VLAN stripping : %d\n",
@@ -449,7 +449,7 @@ ice_dcf_vf_repr_init_vlan(struct rte_eth_dev *vf_rep_eth_dev)
 	int err;
 
 	err = ice_dcf_vf_repr_vlan_offload_set(vf_rep_eth_dev,
-					       ETH_VLAN_STRIP_MASK);
+					       RTE_ETH_VLAN_STRIP_MASK);
 	if (err) {
 		PMD_DRV_LOG(ERR, "Failed to set VLAN offload");
 		return err;

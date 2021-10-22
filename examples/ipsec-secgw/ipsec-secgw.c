@@ -233,19 +233,19 @@ static struct lcore_conf lcore_conf[RTE_MAX_LCORE];
 
 static struct rte_eth_conf port_conf = {
 	.rxmode = {
-		.mq_mode	= ETH_MQ_RX_RSS,
+		.mq_mode	= RTE_ETH_MQ_RX_RSS,
 		.split_hdr_size = 0,
-		.offloads = DEV_RX_OFFLOAD_CHECKSUM,
+		.offloads = RTE_ETH_RX_OFFLOAD_CHECKSUM,
 	},
 	.rx_adv_conf = {
 		.rss_conf = {
 			.rss_key = NULL,
-			.rss_hf = ETH_RSS_IP | ETH_RSS_UDP |
-				ETH_RSS_TCP | ETH_RSS_SCTP,
+			.rss_hf = RTE_ETH_RSS_IP | RTE_ETH_RSS_UDP |
+				RTE_ETH_RSS_TCP | RTE_ETH_RSS_SCTP,
 		},
 	},
 	.txmode = {
-		.mq_mode = ETH_MQ_TX_NONE,
+		.mq_mode = RTE_ETH_MQ_TX_NONE,
 	},
 };
 
@@ -1444,10 +1444,10 @@ print_usage(const char *prgname)
 		"               \"parallel\" : Parallel\n"
 		"  --" CMD_LINE_OPT_RX_OFFLOAD
 		": bitmask of the RX HW offload capabilities to enable/use\n"
-		"                         (DEV_RX_OFFLOAD_*)\n"
+		"                         (RTE_ETH_RX_OFFLOAD_*)\n"
 		"  --" CMD_LINE_OPT_TX_OFFLOAD
 		": bitmask of the TX HW offload capabilities to enable/use\n"
-		"                         (DEV_TX_OFFLOAD_*)\n"
+		"                         (RTE_ETH_TX_OFFLOAD_*)\n"
 		"  --" CMD_LINE_OPT_REASSEMBLE " NUM"
 		": max number of entries in reassemble(fragment) table\n"
 		"    (zero (default value) disables reassembly)\n"
@@ -1898,7 +1898,7 @@ check_all_ports_link_status(uint32_t port_mask)
 				continue;
 			}
 			/* clear all_ports_up flag if any link down */
-			if (link.link_status == ETH_LINK_DOWN) {
+			if (link.link_status == RTE_ETH_LINK_DOWN) {
 				all_ports_up = 0;
 				break;
 			}
@@ -2201,8 +2201,8 @@ port_init(uint16_t portid, uint64_t req_rx_offloads, uint64_t req_tx_offloads)
 	local_port_conf.rxmode.mtu = mtu_size;
 
 	if (multi_seg_required()) {
-		local_port_conf.rxmode.offloads |= DEV_RX_OFFLOAD_SCATTER;
-		local_port_conf.txmode.offloads |= DEV_TX_OFFLOAD_MULTI_SEGS;
+		local_port_conf.rxmode.offloads |= RTE_ETH_RX_OFFLOAD_SCATTER;
+		local_port_conf.txmode.offloads |= RTE_ETH_TX_OFFLOAD_MULTI_SEGS;
 	}
 
 	local_port_conf.rxmode.offloads |= req_rx_offloads;
@@ -2225,12 +2225,12 @@ port_init(uint16_t portid, uint64_t req_rx_offloads, uint64_t req_tx_offloads)
 			portid, local_port_conf.txmode.offloads,
 			dev_info.tx_offload_capa);
 
-	if (dev_info.tx_offload_capa & DEV_TX_OFFLOAD_MBUF_FAST_FREE)
+	if (dev_info.tx_offload_capa & RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE)
 		local_port_conf.txmode.offloads |=
-			DEV_TX_OFFLOAD_MBUF_FAST_FREE;
+			RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE;
 
-	if (dev_info.tx_offload_capa & DEV_TX_OFFLOAD_IPV4_CKSUM)
-		local_port_conf.txmode.offloads |= DEV_TX_OFFLOAD_IPV4_CKSUM;
+	if (dev_info.tx_offload_capa & RTE_ETH_TX_OFFLOAD_IPV4_CKSUM)
+		local_port_conf.txmode.offloads |= RTE_ETH_TX_OFFLOAD_IPV4_CKSUM;
 
 	printf("port %u configurng rx_offloads=0x%" PRIx64
 		", tx_offloads=0x%" PRIx64 "\n",
@@ -2288,7 +2288,7 @@ port_init(uint16_t portid, uint64_t req_rx_offloads, uint64_t req_tx_offloads)
 		/* Pre-populate pkt offloads based on capabilities */
 		qconf->outbound.ipv4_offloads = PKT_TX_IPV4;
 		qconf->outbound.ipv6_offloads = PKT_TX_IPV6;
-		if (local_port_conf.txmode.offloads & DEV_TX_OFFLOAD_IPV4_CKSUM)
+		if (local_port_conf.txmode.offloads & RTE_ETH_TX_OFFLOAD_IPV4_CKSUM)
 			qconf->outbound.ipv4_offloads |= PKT_TX_IP_CKSUM;
 
 		tx_queueid++;
@@ -2649,7 +2649,7 @@ create_default_ipsec_flow(uint16_t port_id, uint64_t rx_offloads)
 	struct rte_flow *flow;
 	int ret;
 
-	if (!(rx_offloads & DEV_RX_OFFLOAD_SECURITY))
+	if (!(rx_offloads & RTE_ETH_RX_OFFLOAD_SECURITY))
 		return;
 
 	/* Add the default rte_flow to enable SECURITY for all ESP packets */

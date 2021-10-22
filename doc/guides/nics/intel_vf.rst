@@ -216,21 +216,21 @@ For example,
     *   If the max number of VFs (max_vfs) is set in the range of 1 to 32:
 
         If the number of Rx queues is specified as 4 (``--rxq=4`` in testpmd), then there are totally 32
-        pools (ETH_32_POOLS), and each VF could have 4 Rx queues;
+        pools (RTE_ETH_32_POOLS), and each VF could have 4 Rx queues;
 
         If the number of Rx queues is specified as 2 (``--rxq=2`` in testpmd), then there are totally 32
-        pools (ETH_32_POOLS), and each VF could have 2 Rx queues;
+        pools (RTE_ETH_32_POOLS), and each VF could have 2 Rx queues;
 
     *   If the max number of VFs (max_vfs) is in the range of 33 to 64:
 
         If the number of Rx queues in specified as 4 (``--rxq=4`` in testpmd), then error message is expected
         as ``rxq`` is not correct at this case;
 
-        If the number of rxq is 2 (``--rxq=2`` in testpmd), then there is totally 64 pools (ETH_64_POOLS),
+        If the number of rxq is 2 (``--rxq=2`` in testpmd), then there is totally 64 pools (RTE_ETH_64_POOLS),
         and each VF have 2 Rx queues;
 
-    On host, to enable VF RSS functionality, rx mq mode should be set as ETH_MQ_RX_VMDQ_RSS
-    or ETH_MQ_RX_RSS mode, and SRIOV mode should be activated (max_vfs >= 1).
+    On host, to enable VF RSS functionality, rx mq mode should be set as RTE_ETH_MQ_RX_VMDQ_RSS
+    or RTE_ETH_MQ_RX_RSS mode, and SRIOV mode should be activated (max_vfs >= 1).
     It also needs config VF RSS information like hash function, RSS key, RSS key length.
 
 .. note::

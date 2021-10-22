@@ -227,7 +227,7 @@ cnxk_nix_timesync_enable(struct rte_eth_dev *eth_dev)
 	dev->rx_tstamp_tc.cc_mask = CNXK_CYCLECOUNTER_MASK;
 	dev->tx_tstamp_tc.cc_mask = CNXK_CYCLECOUNTER_MASK;
 
-	dev->rx_offloads |= DEV_RX_OFFLOAD_TIMESTAMP;
+	dev->rx_offloads |= RTE_ETH_RX_OFFLOAD_TIMESTAMP;
 
 	rc = roc_nix_ptp_rx_ena_dis(nix, true);
 	if (!rc) {
@@ -257,7 +257,7 @@ int
 cnxk_nix_timesync_disable(struct rte_eth_dev *eth_dev)
 {
 	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
-	uint64_t rx_offloads = DEV_RX_OFFLOAD_TIMESTAMP;
+	uint64_t rx_offloads = RTE_ETH_RX_OFFLOAD_TIMESTAMP;
 	struct roc_nix *nix = &dev->nix;
 	int rc = 0;
 

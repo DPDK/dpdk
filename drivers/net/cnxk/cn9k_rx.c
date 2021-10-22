@@ -77,12 +77,12 @@ cn9k_eth_set_rx_function(struct rte_eth_dev *eth_dev)
 			nix_eth_rx_burst_mseg[0][0][0][0][0][0][0];
 
 	if (dev->scalar_ena) {
-		if (dev->rx_offloads & DEV_RX_OFFLOAD_SCATTER)
+		if (dev->rx_offloads & RTE_ETH_RX_OFFLOAD_SCATTER)
 			return pick_rx_func(eth_dev, nix_eth_rx_burst_mseg);
 		return pick_rx_func(eth_dev, nix_eth_rx_burst);
 	}
 
-	if (dev->rx_offloads & DEV_RX_OFFLOAD_SCATTER)
+	if (dev->rx_offloads & RTE_ETH_RX_OFFLOAD_SCATTER)
 		return pick_rx_func(eth_dev, nix_eth_rx_vec_burst_mseg);
 	return pick_rx_func(eth_dev, nix_eth_rx_vec_burst);
 }

@@ -239,17 +239,17 @@ uint16_t bnxt_rte_to_hwrm_hash_types(uint64_t rte_type)
 {
 	uint16_t hwrm_type = 0;
 
-	if (rte_type & ETH_RSS_IPV4)
+	if (rte_type & RTE_ETH_RSS_IPV4)
 		hwrm_type |= HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_IPV4;
-	if (rte_type & ETH_RSS_NONFRAG_IPV4_TCP)
+	if (rte_type & RTE_ETH_RSS_NONFRAG_IPV4_TCP)
 		hwrm_type |= HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_TCP_IPV4;
-	if (rte_type & ETH_RSS_NONFRAG_IPV4_UDP)
+	if (rte_type & RTE_ETH_RSS_NONFRAG_IPV4_UDP)
 		hwrm_type |= HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_UDP_IPV4;
-	if (rte_type & ETH_RSS_IPV6)
+	if (rte_type & RTE_ETH_RSS_IPV6)
 		hwrm_type |= HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_IPV6;
-	if (rte_type & ETH_RSS_NONFRAG_IPV6_TCP)
+	if (rte_type & RTE_ETH_RSS_NONFRAG_IPV6_TCP)
 		hwrm_type |= HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_TCP_IPV6;
-	if (rte_type & ETH_RSS_NONFRAG_IPV6_UDP)
+	if (rte_type & RTE_ETH_RSS_NONFRAG_IPV6_UDP)
 		hwrm_type |= HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_UDP_IPV6;
 
 	return hwrm_type;
@@ -258,11 +258,11 @@ uint16_t bnxt_rte_to_hwrm_hash_types(uint64_t rte_type)
 int bnxt_rte_to_hwrm_hash_level(struct bnxt *bp, uint64_t hash_f, uint32_t lvl)
 {
 	uint32_t mode = HWRM_VNIC_RSS_CFG_INPUT_HASH_MODE_FLAGS_DEFAULT;
-	bool l3 = (hash_f & (ETH_RSS_IPV4 | ETH_RSS_IPV6));
-	bool l4 = (hash_f & (ETH_RSS_NONFRAG_IPV4_UDP |
-			     ETH_RSS_NONFRAG_IPV6_UDP |
-			     ETH_RSS_NONFRAG_IPV4_TCP |
-			     ETH_RSS_NONFRAG_IPV6_TCP));
+	bool l3 = (hash_f & (RTE_ETH_RSS_IPV4 | RTE_ETH_RSS_IPV6));
+	bool l4 = (hash_f & (RTE_ETH_RSS_NONFRAG_IPV4_UDP |
+			     RTE_ETH_RSS_NONFRAG_IPV6_UDP |
+			     RTE_ETH_RSS_NONFRAG_IPV4_TCP |
+			     RTE_ETH_RSS_NONFRAG_IPV6_TCP));
 	bool l3_only = l3 && !l4;
 	bool l3_and_l4 = l3 && l4;
 
@@ -307,16 +307,16 @@ uint64_t bnxt_hwrm_to_rte_rss_level(struct bnxt *bp, uint32_t mode)
 	 * return default hash mode.
 	 */
 	if (!(bp->vnic_cap_flags & BNXT_VNIC_CAP_OUTER_RSS))
-		return ETH_RSS_LEVEL_PMD_DEFAULT;
+		return RTE_ETH_RSS_LEVEL_PMD_DEFAULT;
 
 	if (mode == HWRM_VNIC_RSS_CFG_INPUT_HASH_MODE_FLAGS_OUTERMOST_2 ||
 	    mode == HWRM_VNIC_RSS_CFG_INPUT_HASH_MODE_FLAGS_OUTERMOST_4)
-		rss_level |= ETH_RSS_LEVEL_OUTERMOST;
+		rss_level |= RTE_ETH_RSS_LEVEL_OUTERMOST;
 	else if (mode == HWRM_VNIC_RSS_CFG_INPUT_HASH_MODE_FLAGS_INNERMOST_2 ||
 		 mode == HWRM_VNIC_RSS_CFG_INPUT_HASH_MODE_FLAGS_INNERMOST_4)
-		rss_level |= ETH_RSS_LEVEL_INNERMOST;
+		rss_level |= RTE_ETH_RSS_LEVEL_INNERMOST;
 	else
-		rss_level |= ETH_RSS_LEVEL_PMD_DEFAULT;
+		rss_level |= RTE_ETH_RSS_LEVEL_PMD_DEFAULT;
 
 	return rss_level;
 }

@@ -114,7 +114,7 @@ struct rte_eth_dev_data {
 	/** Device Ethernet link address. @see rte_eth_dev_release_port() */
 	struct rte_ether_addr *mac_addrs;
 	/** Bitmap associating MAC addresses to pools */
-	uint64_t mac_pool_sel[ETH_NUM_RECEIVE_MAC_ADDR];
+	uint64_t mac_pool_sel[RTE_ETH_NUM_RECEIVE_MAC_ADDR];
 	/**
 	 * Device Ethernet MAC addresses of hash filtering.
 	 * @see rte_eth_dev_release_port()
@@ -1700,23 +1700,23 @@ struct rte_eth_syn_filter {
 /**
  * filter type of tunneling packet
  */
-#define ETH_TUNNEL_FILTER_OMAC  0x01 /**< filter by outer MAC addr */
-#define ETH_TUNNEL_FILTER_OIP   0x02 /**< filter by outer IP Addr */
-#define ETH_TUNNEL_FILTER_TENID 0x04 /**< filter by tenant ID */
-#define ETH_TUNNEL_FILTER_IMAC  0x08 /**< filter by inner MAC addr */
-#define ETH_TUNNEL_FILTER_IVLAN 0x10 /**< filter by inner VLAN ID */
-#define ETH_TUNNEL_FILTER_IIP   0x20 /**< filter by inner IP addr */
+#define RTE_ETH_TUNNEL_FILTER_OMAC  0x01 /**< filter by outer MAC addr */
+#define RTE_ETH_TUNNEL_FILTER_OIP   0x02 /**< filter by outer IP Addr */
+#define RTE_ETH_TUNNEL_FILTER_TENID 0x04 /**< filter by tenant ID */
+#define RTE_ETH_TUNNEL_FILTER_IMAC  0x08 /**< filter by inner MAC addr */
+#define RTE_ETH_TUNNEL_FILTER_IVLAN 0x10 /**< filter by inner VLAN ID */
+#define RTE_ETH_TUNNEL_FILTER_IIP   0x20 /**< filter by inner IP addr */
 
-#define RTE_TUNNEL_FILTER_IMAC_IVLAN (ETH_TUNNEL_FILTER_IMAC | \
-					ETH_TUNNEL_FILTER_IVLAN)
-#define RTE_TUNNEL_FILTER_IMAC_IVLAN_TENID (ETH_TUNNEL_FILTER_IMAC | \
-					ETH_TUNNEL_FILTER_IVLAN | \
-					ETH_TUNNEL_FILTER_TENID)
-#define RTE_TUNNEL_FILTER_IMAC_TENID (ETH_TUNNEL_FILTER_IMAC | \
-					ETH_TUNNEL_FILTER_TENID)
-#define RTE_TUNNEL_FILTER_OMAC_TENID_IMAC (ETH_TUNNEL_FILTER_OMAC | \
-					ETH_TUNNEL_FILTER_TENID | \
-					ETH_TUNNEL_FILTER_IMAC)
+#define RTE_ETH_TUNNEL_FILTER_IMAC_IVLAN (RTE_ETH_TUNNEL_FILTER_IMAC | \
+					  RTE_ETH_TUNNEL_FILTER_IVLAN)
+#define RTE_ETH_TUNNEL_FILTER_IMAC_IVLAN_TENID (RTE_ETH_TUNNEL_FILTER_IMAC | \
+						RTE_ETH_TUNNEL_FILTER_IVLAN | \
+						RTE_ETH_TUNNEL_FILTER_TENID)
+#define RTE_ETH_TUNNEL_FILTER_IMAC_TENID (RTE_ETH_TUNNEL_FILTER_IMAC | \
+					  RTE_ETH_TUNNEL_FILTER_TENID)
+#define RTE_ETH_TUNNEL_FILTER_OMAC_TENID_IMAC (RTE_ETH_TUNNEL_FILTER_OMAC | \
+					       RTE_ETH_TUNNEL_FILTER_TENID | \
+					       RTE_ETH_TUNNEL_FILTER_IMAC)
 
 /**
  *  Select IPv4 or IPv6 for tunnel filters.

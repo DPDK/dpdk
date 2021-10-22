@@ -546,7 +546,7 @@ The command line options are:
     Set the hexadecimal bitmask of RX multi queue mode which can be enabled.
     The default value is 0x7::
 
-       ETH_MQ_RX_RSS_FLAG | ETH_MQ_RX_DCB_FLAG | ETH_MQ_RX_VMDQ_FLAG
+       RTE_ETH_MQ_RX_RSS_FLAG | RTE_ETH_MQ_RX_DCB_FLAG | RTE_ETH_MQ_RX_VMDQ_FLAG
 
 *   ``--record-core-cycles``
 

@@ -57,7 +57,7 @@ Whenever needed and appropriate, asynchronous communication should be introduced
 
 Avoiding lock contention is a key issue in a multi-core environment.
 To address this issue, PMDs are designed to work with per-core private resources as much as possible.
-For example, a PMD maintains a separate transmit queue per-core, per-port, if the PMD is not ``DEV_TX_OFFLOAD_MT_LOCKFREE`` capable.
+For example, a PMD maintains a separate transmit queue per-core, per-port, if the PMD is not ``RTE_ETH_TX_OFFLOAD_MT_LOCKFREE`` capable.
 In the same way, every receive queue of a port is assigned to and polled by a single logical core (lcore).
 
 To comply with Non-Uniform Memory Access (NUMA), memory management is designed to assign to each logical core
@@ -119,7 +119,7 @@ This is also true for the pipe-line model provided all logical cores used are lo
 
 Multiple logical cores should never share receive or transmit queues for interfaces since this would require global locks and hinder performance.
 
-If the PMD is ``DEV_TX_OFFLOAD_MT_LOCKFREE`` capable, multiple threads can invoke ``rte_eth_tx_burst()``
+If the PMD is ``RTE_ETH_TX_OFFLOAD_MT_LOCKFREE`` capable, multiple threads can invoke ``rte_eth_tx_burst()``
 concurrently on the same tx queue without SW lock. This PMD feature found in some NICs and useful in the following use cases:
 
 *  Remove explicit spinlock in some applications where lcores are not mapped to Tx queues with 1:1 relation.
@@ -127,7 +127,7 @@ concurrently on the same tx queue without SW lock. This PMD feature found in som
 *  In the eventdev use case, avoid dedicating a separate TX core for transmitting and thus
    enables more scaling as all workers can send the packets.
 
-See `Hardware Offload`_ for ``DEV_TX_OFFLOAD_MT_LOCKFREE`` capability probing details.
+See `Hardware Offload`_ for ``RTE_ETH_TX_OFFLOAD_MT_LOCKFREE`` capability probing details.
 
 Device Identification, Ownership and Configuration
 --------------------------------------------------
@@ -311,7 +311,7 @@ The ``dev_info->[rt]x_queue_offload_capa`` returned from ``rte_eth_dev_info_get(
 The ``dev_info->[rt]x_offload_capa`` returned from ``rte_eth_dev_info_get()`` includes all pure per-port and per-queue offloading capabilities.
 Supported offloads can be either per-port or per-queue.
 
-Offloads are enabled using the existing ``DEV_TX_OFFLOAD_*`` or ``DEV_RX_OFFLOAD_*`` flags.
+Offloads are enabled using the existing ``RTE_ETH_TX_OFFLOAD_*`` or ``RTE_ETH_RX_OFFLOAD_*`` flags.
 Any requested offloading by an application must be within the device capabilities.
 Any offloading is disabled by default if it is not set in the parameter
 ``dev_conf->[rt]xmode.offloads`` to ``rte_eth_dev_configure()`` and

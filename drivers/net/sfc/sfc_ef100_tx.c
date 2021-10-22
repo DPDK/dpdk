@@ -971,16 +971,16 @@ struct sfc_dp_tx sfc_ef100_tx = {
 	.features		= SFC_DP_TX_FEAT_MULTI_PROCESS |
 				  SFC_DP_TX_FEAT_STATS,
 	.dev_offload_capa	= 0,
-	.queue_offload_capa	= DEV_TX_OFFLOAD_VLAN_INSERT |
-				  DEV_TX_OFFLOAD_IPV4_CKSUM |
-				  DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM |
-				  DEV_TX_OFFLOAD_OUTER_UDP_CKSUM |
-				  DEV_TX_OFFLOAD_UDP_CKSUM |
-				  DEV_TX_OFFLOAD_TCP_CKSUM |
-				  DEV_TX_OFFLOAD_MULTI_SEGS |
-				  DEV_TX_OFFLOAD_TCP_TSO |
-				  DEV_TX_OFFLOAD_VXLAN_TNL_TSO |
-				  DEV_TX_OFFLOAD_GENEVE_TNL_TSO,
+	.queue_offload_capa	= RTE_ETH_TX_OFFLOAD_VLAN_INSERT |
+				  RTE_ETH_TX_OFFLOAD_IPV4_CKSUM |
+				  RTE_ETH_TX_OFFLOAD_OUTER_IPV4_CKSUM |
+				  RTE_ETH_TX_OFFLOAD_OUTER_UDP_CKSUM |
+				  RTE_ETH_TX_OFFLOAD_UDP_CKSUM |
+				  RTE_ETH_TX_OFFLOAD_TCP_CKSUM |
+				  RTE_ETH_TX_OFFLOAD_MULTI_SEGS |
+				  RTE_ETH_TX_OFFLOAD_TCP_TSO |
+				  RTE_ETH_TX_OFFLOAD_VXLAN_TNL_TSO |
+				  RTE_ETH_TX_OFFLOAD_GENEVE_TNL_TSO,
 	.get_dev_info		= sfc_ef100_get_dev_info,
 	.qsize_up_rings		= sfc_ef100_tx_qsize_up_rings,
 	.qcreate		= sfc_ef100_tx_qcreate,

@@ -597,7 +597,7 @@ again:
 		pdata->an_int = 0;
 		axgbe_an73_clear_interrupts(pdata);
 		pdata->eth_dev->data->dev_link.link_status =
-			ETH_LINK_DOWN;
+			RTE_ETH_LINK_DOWN;
 	} else if (pdata->an_state == AXGBE_AN_ERROR) {
 		PMD_DRV_LOG(ERR, "error during auto-negotiation, state=%u\n",
 			    cur_state);

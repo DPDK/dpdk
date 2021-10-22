@@ -89,17 +89,17 @@ static uint16_t pkt_burst = NTB_DFLT_PKT_BURST;
 
 static struct rte_eth_conf eth_port_conf = {
 	.rxmode = {
-		.mq_mode = ETH_MQ_RX_RSS,
+		.mq_mode = RTE_ETH_MQ_RX_RSS,
 		.split_hdr_size = 0,
 	},
 	.rx_adv_conf = {
 		.rss_conf = {
 			.rss_key = NULL,
-			.rss_hf = ETH_RSS_IP,
+			.rss_hf = RTE_ETH_RSS_IP,
 		},
 	},
 	.txmode = {
-		.mq_mode = ETH_MQ_TX_NONE,
+		.mq_mode = RTE_ETH_MQ_TX_NONE,
 	},
 };
 

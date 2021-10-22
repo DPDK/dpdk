@@ -37,7 +37,7 @@
  *   of the dynamic field to be registered:
  *   const struct rte_mbuf_dynfield rte_dynfield_my_feature = { ... };
  * - The application initializes the PMD, and asks for this feature
- *   at port initialization by passing DEV_RX_OFFLOAD_MY_FEATURE in
+ *   at port initialization by passing RTE_ETH_RX_OFFLOAD_MY_FEATURE in
  *   rxconf. This will make the PMD to register the field by calling
  *   rte_mbuf_dynfield_register(&rte_dynfield_my_feature). The PMD
  *   stores the returned offset.

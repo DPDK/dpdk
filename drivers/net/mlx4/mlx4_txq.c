@@ -273,20 +273,20 @@ mlx4_txq_fill_dv_obj_info(struct txq *txq, struct mlx4dv_obj *mlxdv)
 uint64_t
 mlx4_get_tx_port_offloads(struct mlx4_priv *priv)
 {
-	uint64_t offloads = DEV_TX_OFFLOAD_MULTI_SEGS;
+	uint64_t offloads = RTE_ETH_TX_OFFLOAD_MULTI_SEGS;
 
 	if (priv->hw_csum) {
-		offloads |= (DEV_TX_OFFLOAD_IPV4_CKSUM |
-			     DEV_TX_OFFLOAD_UDP_CKSUM |
-			     DEV_TX_OFFLOAD_TCP_CKSUM);
+		offloads |= (RTE_ETH_TX_OFFLOAD_IPV4_CKSUM |
+			     RTE_ETH_TX_OFFLOAD_UDP_CKSUM |
+			     RTE_ETH_TX_OFFLOAD_TCP_CKSUM);
 	}
 	if (priv->tso)
-		offloads |= DEV_TX_OFFLOAD_TCP_TSO;
+		offloads |= RTE_ETH_TX_OFFLOAD_TCP_TSO;
 	if (priv->hw_csum_l2tun) {
-		offloads |= DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM;
+		offloads |= RTE_ETH_TX_OFFLOAD_OUTER_IPV4_CKSUM;
 		if (priv->tso)
-			offloads |= (DEV_TX_OFFLOAD_VXLAN_TNL_TSO |
-				     DEV_TX_OFFLOAD_GRE_TNL_TSO);
+			offloads |= (RTE_ETH_TX_OFFLOAD_VXLAN_TNL_TSO |
+				     RTE_ETH_TX_OFFLOAD_GRE_TNL_TSO);
 	}
 	return offloads;
 }
@@ -394,12 +394,12 @@ mlx4_tx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 		.elts_comp_cd_init =
 			RTE_MIN(MLX4_PMD_TX_PER_COMP_REQ, desc / 4),
 		.csum = priv->hw_csum &&
-			(offloads & (DEV_TX_OFFLOAD_IPV4_CKSUM |
-					   DEV_TX_OFFLOAD_UDP_CKSUM |
-					   DEV_TX_OFFLOAD_TCP_CKSUM)),
+			(offloads & (RTE_ETH_TX_OFFLOAD_IPV4_CKSUM |
+					   RTE_ETH_TX_OFFLOAD_UDP_CKSUM |
+					   RTE_ETH_TX_OFFLOAD_TCP_CKSUM)),
 		.csum_l2tun = priv->hw_csum_l2tun &&
 			      (offloads &
-			       DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM),
+			       RTE_ETH_TX_OFFLOAD_OUTER_IPV4_CKSUM),
 		/* Enable Tx loopback for VF devices. */
 		.lb = !!priv->vf,
 		.bounce_buf = bounce_buf,

@@ -77,11 +77,11 @@ cn9k_eth_set_tx_function(struct rte_eth_dev *eth_dev)
 
 	if (dev->scalar_ena) {
 		pick_tx_func(eth_dev, nix_eth_tx_burst);
-		if (dev->tx_offloads & DEV_TX_OFFLOAD_MULTI_SEGS)
+		if (dev->tx_offloads & RTE_ETH_TX_OFFLOAD_MULTI_SEGS)
 			pick_tx_func(eth_dev, nix_eth_tx_burst_mseg);
 	} else {
 		pick_tx_func(eth_dev, nix_eth_tx_vec_burst);
-		if (dev->tx_offloads & DEV_TX_OFFLOAD_MULTI_SEGS)
+		if (dev->tx_offloads & RTE_ETH_TX_OFFLOAD_MULTI_SEGS)
 			pick_tx_func(eth_dev, nix_eth_tx_vec_burst_mseg);
 	}
 

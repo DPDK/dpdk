@@ -85,8 +85,8 @@ otx2_nix_dev_reta_update(struct rte_eth_dev *eth_dev,
 	}
 
 	/* Copy RETA table */
-	for (i = 0; i < (dev->rss_info.rss_size / RTE_RETA_GROUP_SIZE); i++) {
-		for (j = 0; j < RTE_RETA_GROUP_SIZE; j++) {
+	for (i = 0; i < (dev->rss_info.rss_size / RTE_ETH_RETA_GROUP_SIZE); i++) {
+		for (j = 0; j < RTE_ETH_RETA_GROUP_SIZE; j++) {
 			if ((reta_conf[i].mask >> j) & 0x01)
 				rss->ind_tbl[idx] = reta_conf[i].reta[j];
 			idx++;
@@ -118,8 +118,8 @@ otx2_nix_dev_reta_query(struct rte_eth_dev *eth_dev,
 	}
 
 	/* Copy RETA table */
-	for (i = 0; i < (dev->rss_info.rss_size / RTE_RETA_GROUP_SIZE); i++) {
-		for (j = 0; j < RTE_RETA_GROUP_SIZE; j++)
+	for (i = 0; i < (dev->rss_info.rss_size / RTE_ETH_RETA_GROUP_SIZE); i++) {
+		for (j = 0; j < RTE_ETH_RETA_GROUP_SIZE; j++)
 			if ((reta_conf[i].mask >> j) & 0x01)
 				reta_conf[i].reta[j] = rss->ind_tbl[j];
 	}
@@ -178,23 +178,23 @@ rss_get_key(struct otx2_eth_dev *dev, uint8_t *key)
 }
 
 #define RSS_IPV4_ENABLE ( \
-			  ETH_RSS_IPV4 | \
-			  ETH_RSS_FRAG_IPV4 | \
-			  ETH_RSS_NONFRAG_IPV4_UDP | \
-			  ETH_RSS_NONFRAG_IPV4_TCP | \
-			  ETH_RSS_NONFRAG_IPV4_SCTP)
+			  RTE_ETH_RSS_IPV4 | \
+			  RTE_ETH_RSS_FRAG_IPV4 | \
+			  RTE_ETH_RSS_NONFRAG_IPV4_UDP | \
+			  RTE_ETH_RSS_NONFRAG_IPV4_TCP | \
+			  RTE_ETH_RSS_NONFRAG_IPV4_SCTP)
 
 #define RSS_IPV6_ENABLE ( \
-			  ETH_RSS_IPV6 | \
-			  ETH_RSS_FRAG_IPV6 | \
-			  ETH_RSS_NONFRAG_IPV6_UDP | \
-			  ETH_RSS_NONFRAG_IPV6_TCP | \
-			  ETH_RSS_NONFRAG_IPV6_SCTP)
+			  RTE_ETH_RSS_IPV6 | \
+			  RTE_ETH_RSS_FRAG_IPV6 | \
+			  RTE_ETH_RSS_NONFRAG_IPV6_UDP | \
+			  RTE_ETH_RSS_NONFRAG_IPV6_TCP | \
+			  RTE_ETH_RSS_NONFRAG_IPV6_SCTP)
 
 #define RSS_IPV6_EX_ENABLE ( \
-			     ETH_RSS_IPV6_EX | \
-			     ETH_RSS_IPV6_TCP_EX | \
-			     ETH_RSS_IPV6_UDP_EX)
+			     RTE_ETH_RSS_IPV6_EX | \
+			     RTE_ETH_RSS_IPV6_TCP_EX | \
+			     RTE_ETH_RSS_IPV6_UDP_EX)
 
 #define RSS_MAX_LEVELS   3
 
@@ -233,24 +233,24 @@ otx2_rss_ethdev_to_nix(struct otx2_eth_dev *dev, uint64_t ethdev_rss,
 
 	dev->rss_info.nix_rss = ethdev_rss;
 
-	if (ethdev_rss & ETH_RSS_L2_PAYLOAD &&
+	if (ethdev_rss & RTE_ETH_RSS_L2_PAYLOAD &&
 	    dev->npc_flow.switch_header_type == OTX2_PRIV_FLAGS_CH_LEN_90B) {
 		flowkey_cfg |= FLOW_KEY_TYPE_CH_LEN_90B;
 	}
 
-	if (ethdev_rss & ETH_RSS_C_VLAN)
+	if (ethdev_rss & RTE_ETH_RSS_C_VLAN)
 		flowkey_cfg |= FLOW_KEY_TYPE_VLAN;
 
-	if (ethdev_rss & ETH_RSS_L3_SRC_ONLY)
+	if (ethdev_rss & RTE_ETH_RSS_L3_SRC_ONLY)
 		flowkey_cfg |= FLOW_KEY_TYPE_L3_SRC;
 
-	if (ethdev_rss & ETH_RSS_L3_DST_ONLY)
+	if (ethdev_rss & RTE_ETH_RSS_L3_DST_ONLY)
 		flowkey_cfg |= FLOW_KEY_TYPE_L3_DST;
 
-	if (ethdev_rss & ETH_RSS_L4_SRC_ONLY)
+	if (ethdev_rss & RTE_ETH_RSS_L4_SRC_ONLY)
 		flowkey_cfg |= FLOW_KEY_TYPE_L4_SRC;
 
-	if (ethdev_rss & ETH_RSS_L4_DST_ONLY)
+	if (ethdev_rss & RTE_ETH_RSS_L4_DST_ONLY)
 		flowkey_cfg |= FLOW_KEY_TYPE_L4_DST;
 
 	if (ethdev_rss & RSS_IPV4_ENABLE)
@@ -259,34 +259,34 @@ otx2_rss_ethdev_to_nix(struct otx2_eth_dev *dev, uint64_t ethdev_rss,
 	if (ethdev_rss & RSS_IPV6_ENABLE)
 		flowkey_cfg |= flow_key_type[rss_level][RSS_IPV6_INDEX];
 
-	if (ethdev_rss & ETH_RSS_TCP)
+	if (ethdev_rss & RTE_ETH_RSS_TCP)
 		flowkey_cfg |= flow_key_type[rss_level][RSS_TCP_INDEX];
 
-	if (ethdev_rss & ETH_RSS_UDP)
+	if (ethdev_rss & RTE_ETH_RSS_UDP)
 		flowkey_cfg |= flow_key_type[rss_level][RSS_UDP_INDEX];
 
-	if (ethdev_rss & ETH_RSS_SCTP)
+	if (ethdev_rss & RTE_ETH_RSS_SCTP)
 		flowkey_cfg |= flow_key_type[rss_level][RSS_SCTP_INDEX];
 
-	if (ethdev_rss & ETH_RSS_L2_PAYLOAD)
+	if (ethdev_rss & RTE_ETH_RSS_L2_PAYLOAD)
 		flowkey_cfg |= flow_key_type[rss_level][RSS_DMAC_INDEX];
 
 	if (ethdev_rss & RSS_IPV6_EX_ENABLE)
 		flowkey_cfg |= FLOW_KEY_TYPE_IPV6_EXT;
 
-	if (ethdev_rss & ETH_RSS_PORT)
+	if (ethdev_rss & RTE_ETH_RSS_PORT)
 		flowkey_cfg |= FLOW_KEY_TYPE_PORT;
 
-	if (ethdev_rss & ETH_RSS_NVGRE)
+	if (ethdev_rss & RTE_ETH_RSS_NVGRE)
 		flowkey_cfg |= FLOW_KEY_TYPE_NVGRE;
 
-	if (ethdev_rss & ETH_RSS_VXLAN)
+	if (ethdev_rss & RTE_ETH_RSS_VXLAN)
 		flowkey_cfg |= FLOW_KEY_TYPE_VXLAN;
 
-	if (ethdev_rss & ETH_RSS_GENEVE)
+	if (ethdev_rss & RTE_ETH_RSS_GENEVE)
 		flowkey_cfg |= FLOW_KEY_TYPE_GENEVE;
 
-	if (ethdev_rss & ETH_RSS_GTPU)
+	if (ethdev_rss & RTE_ETH_RSS_GTPU)
 		flowkey_cfg |= FLOW_KEY_TYPE_GTPU;
 
 	return flowkey_cfg;
@@ -343,7 +343,7 @@ otx2_nix_rss_hash_update(struct rte_eth_dev *eth_dev,
 		otx2_nix_rss_set_key(dev, rss_conf->rss_key,
 				     (uint32_t)rss_conf->rss_key_len);
 
-	rss_hash_level = ETH_RSS_LEVEL(rss_conf->rss_hf);
+	rss_hash_level = RTE_ETH_RSS_LEVEL(rss_conf->rss_hf);
 	if (rss_hash_level)
 		rss_hash_level -= 1;
 	flowkey_cfg =
@@ -390,7 +390,7 @@ otx2_nix_rss_config(struct rte_eth_dev *eth_dev)
 	int rc;
 
 	/* Skip further configuration if selected mode is not RSS */
-	if (eth_dev->data->dev_conf.rxmode.mq_mode != ETH_MQ_RX_RSS || !qcnt)
+	if (eth_dev->data->dev_conf.rxmode.mq_mode != RTE_ETH_MQ_RX_RSS || !qcnt)
 		return 0;
 
 	/* Update default RSS key and cfg */
@@ -408,7 +408,7 @@ otx2_nix_rss_config(struct rte_eth_dev *eth_dev)
 	}
 
 	rss_hf = eth_dev->data->dev_conf.rx_adv_conf.rss_conf.rss_hf;
-	rss_hash_level = ETH_RSS_LEVEL(rss_hf);
+	rss_hash_level = RTE_ETH_RSS_LEVEL(rss_hf);
 	if (rss_hash_level)
 		rss_hash_level -= 1;
 	flowkey_cfg = otx2_rss_ethdev_to_nix(dev, rss_hf, rss_hash_level);

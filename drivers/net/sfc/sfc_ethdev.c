@@ -105,19 +105,19 @@ sfc_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->max_vfs = sa->sriov.num_vfs;
 
 	/* Autonegotiation may be disabled */
-	dev_info->speed_capa = ETH_LINK_SPEED_FIXED;
+	dev_info->speed_capa = RTE_ETH_LINK_SPEED_FIXED;
 	if (sa->port.phy_adv_cap_mask & (1u << EFX_PHY_CAP_1000FDX))
-		dev_info->speed_capa |= ETH_LINK_SPEED_1G;
+		dev_info->speed_capa |= RTE_ETH_LINK_SPEED_1G;
 	if (sa->port.phy_adv_cap_mask & (1u << EFX_PHY_CAP_10000FDX))
-		dev_info->speed_capa |= ETH_LINK_SPEED_10G;
+		dev_info->speed_capa |= RTE_ETH_LINK_SPEED_10G;
 	if (sa->port.phy_adv_cap_mask & (1u << EFX_PHY_CAP_25000FDX))
-		dev_info->speed_capa |= ETH_LINK_SPEED_25G;
+		dev_info->speed_capa |= RTE_ETH_LINK_SPEED_25G;
 	if (sa->port.phy_adv_cap_mask & (1u << EFX_PHY_CAP_40000FDX))
-		dev_info->speed_capa |= ETH_LINK_SPEED_40G;
+		dev_info->speed_capa |= RTE_ETH_LINK_SPEED_40G;
 	if (sa->port.phy_adv_cap_mask & (1u << EFX_PHY_CAP_50000FDX))
-		dev_info->speed_capa |= ETH_LINK_SPEED_50G;
+		dev_info->speed_capa |= RTE_ETH_LINK_SPEED_50G;
 	if (sa->port.phy_adv_cap_mask & (1u << EFX_PHY_CAP_100000FDX))
-		dev_info->speed_capa |= ETH_LINK_SPEED_100G;
+		dev_info->speed_capa |= RTE_ETH_LINK_SPEED_100G;
 
 	dev_info->max_rx_queues = sa->rxq_max;
 	dev_info->max_tx_queues = sa->txq_max;
@@ -145,8 +145,8 @@ sfc_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->tx_offload_capa = sfc_tx_get_dev_offload_caps(sa) |
 				    dev_info->tx_queue_offload_capa;
 
-	if (dev_info->tx_offload_capa & DEV_TX_OFFLOAD_MBUF_FAST_FREE)
-		txq_offloads_def |= DEV_TX_OFFLOAD_MBUF_FAST_FREE;
+	if (dev_info->tx_offload_capa & RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE)
+		txq_offloads_def |= RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE;
 
 	dev_info->default_txconf.offloads |= txq_offloads_def;
 
@@ -989,16 +989,16 @@ sfc_flow_ctrl_get(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 
 	switch (link_fc) {
 	case 0:
-		fc_conf->mode = RTE_FC_NONE;
+		fc_conf->mode = RTE_ETH_FC_NONE;
 		break;
 	case EFX_FCNTL_RESPOND:
-		fc_conf->mode = RTE_FC_RX_PAUSE;
+		fc_conf->mode = RTE_ETH_FC_RX_PAUSE;
 		break;
 	case EFX_FCNTL_GENERATE:
-		fc_conf->mode = RTE_FC_TX_PAUSE;
+		fc_conf->mode = RTE_ETH_FC_TX_PAUSE;
 		break;
 	case (EFX_FCNTL_RESPOND | EFX_FCNTL_GENERATE):
-		fc_conf->mode = RTE_FC_FULL;
+		fc_conf->mode = RTE_ETH_FC_FULL;
 		break;
 	default:
 		sfc_err(sa, "%s: unexpected flow control value %#x",
@@ -1029,16 +1029,16 @@ sfc_flow_ctrl_set(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 	}
 
 	switch (fc_conf->mode) {
-	case RTE_FC_NONE:
+	case RTE_ETH_FC_NONE:
 		fcntl = 0;
 		break;
-	case RTE_FC_RX_PAUSE:
+	case RTE_ETH_FC_RX_PAUSE:
 		fcntl = EFX_FCNTL_RESPOND;
 		break;
-	case RTE_FC_TX_PAUSE:
+	case RTE_ETH_FC_TX_PAUSE:
 		fcntl = EFX_FCNTL_GENERATE;
 		break;
-	case RTE_FC_FULL:
+	case RTE_ETH_FC_FULL:
 		fcntl = EFX_FCNTL_RESPOND | EFX_FCNTL_GENERATE;
 		break;
 	default:
@@ -1313,7 +1313,7 @@ sfc_rx_queue_info_get(struct rte_eth_dev *dev, uint16_t ethdev_qid,
 	qinfo->conf.rx_deferred_start = rxq_info->deferred_start;
 	qinfo->conf.offloads = dev->data->dev_conf.rxmode.offloads;
 	if (rxq_info->type_flags & EFX_RXQ_FLAG_SCATTER) {
-		qinfo->conf.offloads |= DEV_RX_OFFLOAD_SCATTER;
+		qinfo->conf.offloads |= RTE_ETH_RX_OFFLOAD_SCATTER;
 		qinfo->scattered_rx = 1;
 	}
 	qinfo->nb_desc = rxq_info->entries;
@@ -1523,9 +1523,9 @@ static efx_tunnel_protocol_t
 sfc_tunnel_rte_type_to_efx_udp_proto(enum rte_eth_tunnel_type rte_type)
 {
 	switch (rte_type) {
-	case RTE_TUNNEL_TYPE_VXLAN:
+	case RTE_ETH_TUNNEL_TYPE_VXLAN:
 		return EFX_TUNNEL_PROTOCOL_VXLAN;
-	case RTE_TUNNEL_TYPE_GENEVE:
+	case RTE_ETH_TUNNEL_TYPE_GENEVE:
 		return EFX_TUNNEL_PROTOCOL_GENEVE;
 	default:
 		return EFX_TUNNEL_NPROTOS;
@@ -1652,7 +1652,7 @@ sfc_dev_rss_hash_conf_get(struct rte_eth_dev *dev,
 
 	/*
 	 * Mapping of hash configuration between RTE and EFX is not one-to-one,
-	 * hence, conversion is done here to derive a correct set of ETH_RSS
+	 * hence, conversion is done here to derive a correct set of RTE_ETH_RSS
 	 * flags which corresponds to the active EFX configuration stored
 	 * locally in 'sfc_adapter' and kept up-to-date
 	 */
@@ -1778,8 +1778,8 @@ sfc_dev_rss_reta_query(struct rte_eth_dev *dev,
 		return -EINVAL;
 
 	for (entry = 0; entry < reta_size; entry++) {
-		int grp = entry / RTE_RETA_GROUP_SIZE;
-		int grp_idx = entry % RTE_RETA_GROUP_SIZE;
+		int grp = entry / RTE_ETH_RETA_GROUP_SIZE;
+		int grp_idx = entry % RTE_ETH_RETA_GROUP_SIZE;
 
 		if ((reta_conf[grp].mask >> grp_idx) & 1)
 			reta_conf[grp].reta[grp_idx] = rss->tbl[entry];
@@ -1828,10 +1828,10 @@ sfc_dev_rss_reta_update(struct rte_eth_dev *dev,
 	rte_memcpy(rss_tbl_new, rss->tbl, sizeof(rss->tbl));
 
 	for (entry = 0; entry < reta_size; entry++) {
-		int grp_idx = entry % RTE_RETA_GROUP_SIZE;
+		int grp_idx = entry % RTE_ETH_RETA_GROUP_SIZE;
 		struct rte_eth_rss_reta_entry64 *grp;
 
-		grp = &reta_conf[entry / RTE_RETA_GROUP_SIZE];
+		grp = &reta_conf[entry / RTE_ETH_RETA_GROUP_SIZE];
 
 		if (grp->mask & (1ull << grp_idx)) {
 			if (grp->reta[grp_idx] >= rss->channels) {

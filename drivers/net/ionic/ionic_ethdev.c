@@ -280,37 +280,37 @@ ionic_dev_link_update(struct rte_eth_dev *eth_dev,
 	memset(&link, 0, sizeof(link));
 
 	if (adapter->idev.port_info->config.an_enable) {
-		link.link_autoneg = ETH_LINK_AUTONEG;
+		link.link_autoneg = RTE_ETH_LINK_AUTONEG;
 	}
 
 	if (!adapter->link_up ||
 	    !(lif->state & IONIC_LIF_F_UP)) {
 		/* Interface is down */
-		link.link_status = ETH_LINK_DOWN;
-		link.link_duplex = ETH_LINK_HALF_DUPLEX;
-		link.link_speed = ETH_SPEED_NUM_NONE;
+		link.link_status = RTE_ETH_LINK_DOWN;
+		link.link_duplex = RTE_ETH_LINK_HALF_DUPLEX;
+		link.link_speed = RTE_ETH_SPEED_NUM_NONE;
 	} else {
 		/* Interface is up */
-		link.link_status = ETH_LINK_UP;
-		link.link_duplex = ETH_LINK_FULL_DUPLEX;
+		link.link_status = RTE_ETH_LINK_UP;
+		link.link_duplex = RTE_ETH_LINK_FULL_DUPLEX;
 		switch (adapter->link_speed) {
 		case  10000:
-			link.link_speed = ETH_SPEED_NUM_10G;
+			link.link_speed = RTE_ETH_SPEED_NUM_10G;
 			break;
 		case  25000:
-			link.link_speed = ETH_SPEED_NUM_25G;
+			link.link_speed = RTE_ETH_SPEED_NUM_25G;
 			break;
 		case  40000:
-			link.link_speed = ETH_SPEED_NUM_40G;
+			link.link_speed = RTE_ETH_SPEED_NUM_40G;
 			break;
 		case  50000:
-			link.link_speed = ETH_SPEED_NUM_50G;
+			link.link_speed = RTE_ETH_SPEED_NUM_50G;
 			break;
 		case 100000:
-			link.link_speed = ETH_SPEED_NUM_100G;
+			link.link_speed = RTE_ETH_SPEED_NUM_100G;
 			break;
 		default:
-			link.link_speed = ETH_SPEED_NUM_NONE;
+			link.link_speed = RTE_ETH_SPEED_NUM_NONE;
 			break;
 		}
 	}
@@ -387,17 +387,17 @@ ionic_dev_info_get(struct rte_eth_dev *eth_dev,
 	dev_info->flow_type_rss_offloads = IONIC_ETH_RSS_OFFLOAD_ALL;
 
 	dev_info->speed_capa =
-		ETH_LINK_SPEED_10G |
-		ETH_LINK_SPEED_25G |
-		ETH_LINK_SPEED_40G |
-		ETH_LINK_SPEED_50G |
-		ETH_LINK_SPEED_100G;
+		RTE_ETH_LINK_SPEED_10G |
+		RTE_ETH_LINK_SPEED_25G |
+		RTE_ETH_LINK_SPEED_40G |
+		RTE_ETH_LINK_SPEED_50G |
+		RTE_ETH_LINK_SPEED_100G;
 
 	/*
 	 * Per-queue capabilities
 	 * RTE does not support disabling a feature on a queue if it is
 	 * enabled globally on the device. Thus the driver does not advertise
-	 * capabilities like DEV_TX_OFFLOAD_IPV4_CKSUM as per-queue even
+	 * capabilities like RTE_ETH_TX_OFFLOAD_IPV4_CKSUM as per-queue even
 	 * though the driver would be otherwise capable of disabling it on
 	 * a per-queue basis.
 	 */
@@ -411,24 +411,24 @@ ionic_dev_info_get(struct rte_eth_dev *eth_dev,
 	 */
 
 	dev_info->rx_offload_capa = dev_info->rx_queue_offload_capa |
-		DEV_RX_OFFLOAD_IPV4_CKSUM |
-		DEV_RX_OFFLOAD_UDP_CKSUM |
-		DEV_RX_OFFLOAD_TCP_CKSUM |
-		DEV_RX_OFFLOAD_VLAN_FILTER |
-		DEV_RX_OFFLOAD_VLAN_STRIP |
-		DEV_RX_OFFLOAD_SCATTER |
-		DEV_RX_OFFLOAD_RSS_HASH |
+		RTE_ETH_RX_OFFLOAD_IPV4_CKSUM |
+		RTE_ETH_RX_OFFLOAD_UDP_CKSUM |
+		RTE_ETH_RX_OFFLOAD_TCP_CKSUM |
+		RTE_ETH_RX_OFFLOAD_VLAN_FILTER |
+		RTE_ETH_RX_OFFLOAD_VLAN_STRIP |
+		RTE_ETH_RX_OFFLOAD_SCATTER |
+		RTE_ETH_RX_OFFLOAD_RSS_HASH |
 		0;
 
 	dev_info->tx_offload_capa = dev_info->tx_queue_offload_capa |
-		DEV_TX_OFFLOAD_IPV4_CKSUM |
-		DEV_TX_OFFLOAD_UDP_CKSUM |
-		DEV_TX_OFFLOAD_TCP_CKSUM |
-		DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM |
-		DEV_TX_OFFLOAD_OUTER_UDP_CKSUM |
-		DEV_TX_OFFLOAD_MULTI_SEGS |
-		DEV_TX_OFFLOAD_TCP_TSO |
-		DEV_TX_OFFLOAD_VLAN_INSERT |
+		RTE_ETH_TX_OFFLOAD_IPV4_CKSUM |
+		RTE_ETH_TX_OFFLOAD_UDP_CKSUM |
+		RTE_ETH_TX_OFFLOAD_TCP_CKSUM |
+		RTE_ETH_TX_OFFLOAD_OUTER_IPV4_CKSUM |
+		RTE_ETH_TX_OFFLOAD_OUTER_UDP_CKSUM |
+		RTE_ETH_TX_OFFLOAD_MULTI_SEGS |
+		RTE_ETH_TX_OFFLOAD_TCP_TSO |
+		RTE_ETH_TX_OFFLOAD_VLAN_INSERT |
 		0;
 
 	dev_info->rx_desc_lim = rx_desc_lim;
@@ -463,9 +463,9 @@ ionic_flow_ctrl_get(struct rte_eth_dev *eth_dev,
 		fc_conf->autoneg = 0;
 
 		if (idev->port_info->config.pause_type)
-			fc_conf->mode = RTE_FC_FULL;
+			fc_conf->mode = RTE_ETH_FC_FULL;
 		else
-			fc_conf->mode = RTE_FC_NONE;
+			fc_conf->mode = RTE_ETH_FC_NONE;
 	}
 
 	return 0;
@@ -487,14 +487,14 @@ ionic_flow_ctrl_set(struct rte_eth_dev *eth_dev,
 	}
 
 	switch (fc_conf->mode) {
-	case RTE_FC_NONE:
+	case RTE_ETH_FC_NONE:
 		pause_type = IONIC_PORT_PAUSE_TYPE_NONE;
 		break;
-	case RTE_FC_FULL:
+	case RTE_ETH_FC_FULL:
 		pause_type = IONIC_PORT_PAUSE_TYPE_LINK;
 		break;
-	case RTE_FC_RX_PAUSE:
-	case RTE_FC_TX_PAUSE:
+	case RTE_ETH_FC_RX_PAUSE:
+	case RTE_ETH_FC_TX_PAUSE:
 		return -ENOTSUP;
 	}
 
@@ -545,12 +545,12 @@ ionic_dev_rss_reta_update(struct rte_eth_dev *eth_dev,
 		return -EINVAL;
 	}
 
-	num = tbl_sz / RTE_RETA_GROUP_SIZE;
+	num = tbl_sz / RTE_ETH_RETA_GROUP_SIZE;
 
 	for (i = 0; i < num; i++) {
-		for (j = 0; j < RTE_RETA_GROUP_SIZE; j++) {
+		for (j = 0; j < RTE_ETH_RETA_GROUP_SIZE; j++) {
 			if (reta_conf[i].mask & ((uint64_t)1 << j)) {
-				index = (i * RTE_RETA_GROUP_SIZE) + j;
+				index = (i * RTE_ETH_RETA_GROUP_SIZE) + j;
 				lif->rss_ind_tbl[index] = reta_conf[i].reta[j];
 			}
 		}
@@ -585,12 +585,12 @@ ionic_dev_rss_reta_query(struct rte_eth_dev *eth_dev,
 		return -EINVAL;
 	}
 
-	num = reta_size / RTE_RETA_GROUP_SIZE;
+	num = reta_size / RTE_ETH_RETA_GROUP_SIZE;
 
 	for (i = 0; i < num; i++) {
 		memcpy(reta_conf->reta,
-			&lif->rss_ind_tbl[i * RTE_RETA_GROUP_SIZE],
-			RTE_RETA_GROUP_SIZE);
+			&lif->rss_ind_tbl[i * RTE_ETH_RETA_GROUP_SIZE],
+			RTE_ETH_RETA_GROUP_SIZE);
 		reta_conf++;
 	}
 
@@ -618,17 +618,17 @@ ionic_dev_rss_hash_conf_get(struct rte_eth_dev *eth_dev,
 			IONIC_RSS_HASH_KEY_SIZE);
 
 	if (lif->rss_types & IONIC_RSS_TYPE_IPV4)
-		rss_hf |= ETH_RSS_IPV4;
+		rss_hf |= RTE_ETH_RSS_IPV4;
 	if (lif->rss_types & IONIC_RSS_TYPE_IPV4_TCP)
-		rss_hf |= ETH_RSS_NONFRAG_IPV4_TCP;
+		rss_hf |= RTE_ETH_RSS_NONFRAG_IPV4_TCP;
 	if (lif->rss_types & IONIC_RSS_TYPE_IPV4_UDP)
-		rss_hf |= ETH_RSS_NONFRAG_IPV4_UDP;
+		rss_hf |= RTE_ETH_RSS_NONFRAG_IPV4_UDP;
 	if (lif->rss_types & IONIC_RSS_TYPE_IPV6)
-		rss_hf |= ETH_RSS_IPV6;
+		rss_hf |= RTE_ETH_RSS_IPV6;
 	if (lif->rss_types & IONIC_RSS_TYPE_IPV6_TCP)
-		rss_hf |= ETH_RSS_NONFRAG_IPV6_TCP;
+		rss_hf |= RTE_ETH_RSS_NONFRAG_IPV6_TCP;
 	if (lif->rss_types & IONIC_RSS_TYPE_IPV6_UDP)
-		rss_hf |= ETH_RSS_NONFRAG_IPV6_UDP;
+		rss_hf |= RTE_ETH_RSS_NONFRAG_IPV6_UDP;
 
 	rss_conf->rss_hf = rss_hf;
 
@@ -660,17 +660,17 @@ ionic_dev_rss_hash_update(struct rte_eth_dev *eth_dev,
 		if (!lif->rss_ind_tbl)
 			return -EINVAL;
 
-		if (rss_conf->rss_hf & ETH_RSS_IPV4)
+		if (rss_conf->rss_hf & RTE_ETH_RSS_IPV4)
 			rss_types |= IONIC_RSS_TYPE_IPV4;
-		if (rss_conf->rss_hf & ETH_RSS_NONFRAG_IPV4_TCP)
+		if (rss_conf->rss_hf & RTE_ETH_RSS_NONFRAG_IPV4_TCP)
 			rss_types |= IONIC_RSS_TYPE_IPV4_TCP;
-		if (rss_conf->rss_hf & ETH_RSS_NONFRAG_IPV4_UDP)
+		if (rss_conf->rss_hf & RTE_ETH_RSS_NONFRAG_IPV4_UDP)
 			rss_types |= IONIC_RSS_TYPE_IPV4_UDP;
-		if (rss_conf->rss_hf & ETH_RSS_IPV6)
+		if (rss_conf->rss_hf & RTE_ETH_RSS_IPV6)
 			rss_types |= IONIC_RSS_TYPE_IPV6;
-		if (rss_conf->rss_hf & ETH_RSS_NONFRAG_IPV6_TCP)
+		if (rss_conf->rss_hf & RTE_ETH_RSS_NONFRAG_IPV6_TCP)
 			rss_types |= IONIC_RSS_TYPE_IPV6_TCP;
-		if (rss_conf->rss_hf & ETH_RSS_NONFRAG_IPV6_UDP)
+		if (rss_conf->rss_hf & RTE_ETH_RSS_NONFRAG_IPV6_UDP)
 			rss_types |= IONIC_RSS_TYPE_IPV6_UDP;
 
 		ionic_lif_rss_config(lif, rss_types, key, NULL);
@@ -842,15 +842,15 @@ ionic_dev_configure(struct rte_eth_dev *eth_dev)
 static inline uint32_t
 ionic_parse_link_speeds(uint16_t link_speeds)
 {
-	if (link_speeds & ETH_LINK_SPEED_100G)
+	if (link_speeds & RTE_ETH_LINK_SPEED_100G)
 		return 100000;
-	else if (link_speeds & ETH_LINK_SPEED_50G)
+	else if (link_speeds & RTE_ETH_LINK_SPEED_50G)
 		return 50000;
-	else if (link_speeds & ETH_LINK_SPEED_40G)
+	else if (link_speeds & RTE_ETH_LINK_SPEED_40G)
 		return 40000;
-	else if (link_speeds & ETH_LINK_SPEED_25G)
+	else if (link_speeds & RTE_ETH_LINK_SPEED_25G)
 		return 25000;
-	else if (link_speeds & ETH_LINK_SPEED_10G)
+	else if (link_speeds & RTE_ETH_LINK_SPEED_10G)
 		return 10000;
 	else
 		return 0;
@@ -874,12 +874,12 @@ ionic_dev_start(struct rte_eth_dev *eth_dev)
 	IONIC_PRINT_CALL();
 
 	allowed_speeds =
-		ETH_LINK_SPEED_FIXED |
-		ETH_LINK_SPEED_10G |
-		ETH_LINK_SPEED_25G |
-		ETH_LINK_SPEED_40G |
-		ETH_LINK_SPEED_50G |
-		ETH_LINK_SPEED_100G;
+		RTE_ETH_LINK_SPEED_FIXED |
+		RTE_ETH_LINK_SPEED_10G |
+		RTE_ETH_LINK_SPEED_25G |
+		RTE_ETH_LINK_SPEED_40G |
+		RTE_ETH_LINK_SPEED_50G |
+		RTE_ETH_LINK_SPEED_100G;
 
 	if (dev_conf->link_speeds & ~allowed_speeds) {
 		IONIC_PRINT(ERR, "Invalid link setting");
@@ -896,7 +896,7 @@ ionic_dev_start(struct rte_eth_dev *eth_dev)
 	}
 
 	/* Configure link */
-	an_enable = (dev_conf->link_speeds & ETH_LINK_SPEED_FIXED) == 0;
+	an_enable = (dev_conf->link_speeds & RTE_ETH_LINK_SPEED_FIXED) == 0;
 
 	ionic_dev_cmd_port_autoneg(idev, an_enable);
 	err = ionic_dev_cmd_wait_check(idev, IONIC_DEVCMD_TIMEOUT);

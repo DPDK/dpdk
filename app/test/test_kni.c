@@ -74,7 +74,7 @@ static const struct rte_eth_txconf tx_conf = {
 
 static const struct rte_eth_conf port_conf = {
 	.txmode = {
-		.mq_mode = ETH_DCB_NONE,
+		.mq_mode = RTE_ETH_MQ_TX_NONE,
 	},
 };
 

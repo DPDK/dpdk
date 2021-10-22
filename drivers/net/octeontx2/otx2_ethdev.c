@@ -21,7 +21,7 @@ nix_get_rx_offload_capa(struct otx2_eth_dev *dev)
 
 	if (otx2_dev_is_vf(dev) ||
 	    dev->npc_flow.switch_header_type == OTX2_PRIV_FLAGS_HIGIG)
-		capa &= ~DEV_RX_OFFLOAD_TIMESTAMP;
+		capa &= ~RTE_ETH_RX_OFFLOAD_TIMESTAMP;
 
 	return capa;
 }
@@ -33,10 +33,10 @@ nix_get_tx_offload_capa(struct otx2_eth_dev *dev)
 
 	/* TSO not supported for earlier chip revisions */
 	if (otx2_dev_is_96xx_A0(dev) || otx2_dev_is_95xx_Ax(dev))
-		capa &= ~(DEV_TX_OFFLOAD_TCP_TSO |
-			  DEV_TX_OFFLOAD_VXLAN_TNL_TSO |
-			  DEV_TX_OFFLOAD_GENEVE_TNL_TSO |
-			  DEV_TX_OFFLOAD_GRE_TNL_TSO);
+		capa &= ~(RTE_ETH_TX_OFFLOAD_TCP_TSO |
+			  RTE_ETH_TX_OFFLOAD_VXLAN_TNL_TSO |
+			  RTE_ETH_TX_OFFLOAD_GENEVE_TNL_TSO |
+			  RTE_ETH_TX_OFFLOAD_GRE_TNL_TSO);
 	return capa;
 }
 
@@ -66,8 +66,8 @@ nix_lf_alloc(struct otx2_eth_dev *dev, uint32_t nb_rxq, uint32_t nb_txq)
 	req->npa_func = otx2_npa_pf_func_get();
 	req->sso_func = otx2_sso_pf_func_get();
 	req->rx_cfg = BIT_ULL(35 /* DIS_APAD */);
-	if (dev->rx_offloads & (DEV_RX_OFFLOAD_TCP_CKSUM |
-			 DEV_RX_OFFLOAD_UDP_CKSUM)) {
+	if (dev->rx_offloads & (RTE_ETH_RX_OFFLOAD_TCP_CKSUM |
+			 RTE_ETH_RX_OFFLOAD_UDP_CKSUM)) {
 		req->rx_cfg |= BIT_ULL(37 /* CSUM_OL4 */);
 		req->rx_cfg |= BIT_ULL(36 /* CSUM_IL4 */);
 	}
@@ -373,7 +373,7 @@ nix_cq_rq_init(struct rte_eth_dev *eth_dev, struct otx2_eth_dev *dev,
 
 	aq->rq.sso_ena = 0;
 
-	if (rxq->offloads & DEV_RX_OFFLOAD_SECURITY)
+	if (rxq->offloads & RTE_ETH_RX_OFFLOAD_SECURITY)
 		aq->rq.ipsech_ena = 1;
 
 	aq->rq.cq = qid; /* RQ to CQ 1:1 mapped */
@@ -665,7 +665,7 @@ otx2_nix_rx_queue_setup(struct rte_eth_dev *eth_dev, uint16_t rq,
 	 * These are needed in deriving raw clock value from tsc counter.
 	 * read_clock eth op returns raw clock value.
 	 */
-	if ((dev->rx_offloads & DEV_RX_OFFLOAD_TIMESTAMP) ||
+	if ((dev->rx_offloads & RTE_ETH_RX_OFFLOAD_TIMESTAMP) ||
 	    otx2_ethdev_is_ptp_en(dev)) {
 		rc = otx2_nix_raw_clock_tsc_conv(dev);
 		if (rc) {
@@ -692,7 +692,7 @@ nix_sq_max_sqe_sz(struct otx2_eth_txq *txq)
 	 * Maximum three segments can be supported with W8, Choose
 	 * NIX_MAXSQESZ_W16 for multi segment offload.
 	 */
-	if (txq->offloads & DEV_TX_OFFLOAD_MULTI_SEGS)
+	if (txq->offloads & RTE_ETH_TX_OFFLOAD_MULTI_SEGS)
 		return NIX_MAXSQESZ_W16;
 	else
 		return NIX_MAXSQESZ_W8;
@@ -707,29 +707,29 @@ nix_rx_offload_flags(struct rte_eth_dev *eth_dev)
 	struct rte_eth_rxmode *rxmode = &conf->rxmode;
 	uint16_t flags = 0;
 
-	if (rxmode->mq_mode == ETH_MQ_RX_RSS &&
-			(dev->rx_offloads & DEV_RX_OFFLOAD_RSS_HASH))
+	if (rxmode->mq_mode == RTE_ETH_MQ_RX_RSS &&
+			(dev->rx_offloads & RTE_ETH_RX_OFFLOAD_RSS_HASH))
 		flags |= NIX_RX_OFFLOAD_RSS_F;
 
-	if (dev->rx_offloads & (DEV_RX_OFFLOAD_TCP_CKSUM |
-			 DEV_RX_OFFLOAD_UDP_CKSUM))
+	if (dev->rx_offloads & (RTE_ETH_RX_OFFLOAD_TCP_CKSUM |
+			 RTE_ETH_RX_OFFLOAD_UDP_CKSUM))
 		flags |= NIX_RX_OFFLOAD_CHECKSUM_F;
 
-	if (dev->rx_offloads & (DEV_RX_OFFLOAD_IPV4_CKSUM |
-				DEV_RX_OFFLOAD_OUTER_IPV4_CKSUM))
+	if (dev->rx_offloads & (RTE_ETH_RX_OFFLOAD_IPV4_CKSUM |
+				RTE_ETH_RX_OFFLOAD_OUTER_IPV4_CKSUM))
 		flags |= NIX_RX_OFFLOAD_CHECKSUM_F;
 
-	if (dev->rx_offloads & DEV_RX_OFFLOAD_SCATTER)
+	if (dev->rx_offloads & RTE_ETH_RX_OFFLOAD_SCATTER)
 		flags |= NIX_RX_MULTI_SEG_F;
 
-	if (dev->rx_offloads & (DEV_RX_OFFLOAD_VLAN_STRIP |
-				DEV_RX_OFFLOAD_QINQ_STRIP))
+	if (dev->rx_offloads & (RTE_ETH_RX_OFFLOAD_VLAN_STRIP |
+				RTE_ETH_RX_OFFLOAD_QINQ_STRIP))
 		flags |= NIX_RX_OFFLOAD_VLAN_STRIP_F;
 
-	if ((dev->rx_offloads & DEV_RX_OFFLOAD_TIMESTAMP))
+	if ((dev->rx_offloads & RTE_ETH_RX_OFFLOAD_TIMESTAMP))
 		flags |= NIX_RX_OFFLOAD_TSTAMP_F;
 
-	if (dev->rx_offloads & DEV_RX_OFFLOAD_SECURITY)
+	if (dev->rx_offloads & RTE_ETH_RX_OFFLOAD_SECURITY)
 		flags |= NIX_RX_OFFLOAD_SECURITY_F;
 
 	if (!dev->ptype_disable)
@@ -768,43 +768,43 @@ nix_tx_offload_flags(struct rte_eth_dev *eth_dev)
 	RTE_BUILD_BUG_ON(offsetof(struct rte_mbuf, tx_offload) !=
 			 offsetof(struct rte_mbuf, pool) + 2 * sizeof(void *));
 
-	if (conf & DEV_TX_OFFLOAD_VLAN_INSERT ||
-	    conf & DEV_TX_OFFLOAD_QINQ_INSERT)
+	if (conf & RTE_ETH_TX_OFFLOAD_VLAN_INSERT ||
+	    conf & RTE_ETH_TX_OFFLOAD_QINQ_INSERT)
 		flags |= NIX_TX_OFFLOAD_VLAN_QINQ_F;
 
-	if (conf & DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM ||
-	    conf & DEV_TX_OFFLOAD_OUTER_UDP_CKSUM)
+	if (conf & RTE_ETH_TX_OFFLOAD_OUTER_IPV4_CKSUM ||
+	    conf & RTE_ETH_TX_OFFLOAD_OUTER_UDP_CKSUM)
 		flags |= NIX_TX_OFFLOAD_OL3_OL4_CSUM_F;
 
-	if (conf & DEV_TX_OFFLOAD_IPV4_CKSUM ||
-	    conf & DEV_TX_OFFLOAD_TCP_CKSUM ||
-	    conf & DEV_TX_OFFLOAD_UDP_CKSUM ||
-	    conf & DEV_TX_OFFLOAD_SCTP_CKSUM)
+	if (conf & RTE_ETH_TX_OFFLOAD_IPV4_CKSUM ||
+	    conf & RTE_ETH_TX_OFFLOAD_TCP_CKSUM ||
+	    conf & RTE_ETH_TX_OFFLOAD_UDP_CKSUM ||
+	    conf & RTE_ETH_TX_OFFLOAD_SCTP_CKSUM)
 		flags |= NIX_TX_OFFLOAD_L3_L4_CSUM_F;
 
-	if (!(conf & DEV_TX_OFFLOAD_MBUF_FAST_FREE))
+	if (!(conf & RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE))
 		flags |= NIX_TX_OFFLOAD_MBUF_NOFF_F;
 
-	if (conf & DEV_TX_OFFLOAD_MULTI_SEGS)
+	if (conf & RTE_ETH_TX_OFFLOAD_MULTI_SEGS)
 		flags |= NIX_TX_MULTI_SEG_F;
 
 	/* Enable Inner checksum for TSO */
-	if (conf & DEV_TX_OFFLOAD_TCP_TSO)
+	if (conf & RTE_ETH_TX_OFFLOAD_TCP_TSO)
 		flags |= (NIX_TX_OFFLOAD_TSO_F |
 			  NIX_TX_OFFLOAD_L3_L4_CSUM_F);
 
 	/* Enable Inner and Outer checksum for Tunnel TSO */
-	if (conf & (DEV_TX_OFFLOAD_VXLAN_TNL_TSO |
-		    DEV_TX_OFFLOAD_GENEVE_TNL_TSO |
-		    DEV_TX_OFFLOAD_GRE_TNL_TSO))
+	if (conf & (RTE_ETH_TX_OFFLOAD_VXLAN_TNL_TSO |
+		    RTE_ETH_TX_OFFLOAD_GENEVE_TNL_TSO |
+		    RTE_ETH_TX_OFFLOAD_GRE_TNL_TSO))
 		flags |= (NIX_TX_OFFLOAD_TSO_F |
 			  NIX_TX_OFFLOAD_OL3_OL4_CSUM_F |
 			  NIX_TX_OFFLOAD_L3_L4_CSUM_F);
 
-	if (conf & DEV_TX_OFFLOAD_SECURITY)
+	if (conf & RTE_ETH_TX_OFFLOAD_SECURITY)
 		flags |= NIX_TX_OFFLOAD_SECURITY_F;
 
-	if ((dev->rx_offloads & DEV_RX_OFFLOAD_TIMESTAMP))
+	if ((dev->rx_offloads & RTE_ETH_RX_OFFLOAD_TIMESTAMP))
 		flags |= NIX_TX_OFFLOAD_TSTAMP_F;
 
 	return flags;
@@ -914,8 +914,8 @@ otx2_nix_enable_mseg_on_jumbo(struct otx2_eth_rxq *rxq)
 	buffsz = mbp_priv->mbuf_data_room_size - RTE_PKTMBUF_HEADROOM;
 
 	if (eth_dev->data->mtu + (uint32_t)NIX_L2_OVERHEAD > buffsz) {
-		dev->rx_offloads |= DEV_RX_OFFLOAD_SCATTER;
-		dev->tx_offloads |= DEV_TX_OFFLOAD_MULTI_SEGS;
+		dev->rx_offloads |= RTE_ETH_RX_OFFLOAD_SCATTER;
+		dev->tx_offloads |= RTE_ETH_TX_OFFLOAD_MULTI_SEGS;
 
 		/* Setting up the rx[tx]_offload_flags due to change
 		 * in rx[tx]_offloads.
@@ -1848,21 +1848,21 @@ otx2_nix_configure(struct rte_eth_dev *eth_dev)
 		goto fail_configure;
 	}
 
-	if (rxmode->mq_mode != ETH_MQ_RX_NONE &&
-	    rxmode->mq_mode != ETH_MQ_RX_RSS) {
+	if (rxmode->mq_mode != RTE_ETH_MQ_RX_NONE &&
+	    rxmode->mq_mode != RTE_ETH_MQ_RX_RSS) {
 		otx2_err("Unsupported mq rx mode %d", rxmode->mq_mode);
 		goto fail_configure;
 	}
 
-	if (txmode->mq_mode != ETH_MQ_TX_NONE) {
+	if (txmode->mq_mode != RTE_ETH_MQ_TX_NONE) {
 		otx2_err("Unsupported mq tx mode %d", txmode->mq_mode);
 		goto fail_configure;
 	}
 
 	if (otx2_dev_is_Ax(dev) &&
-	    (txmode->offloads & DEV_TX_OFFLOAD_SCTP_CKSUM) &&
-	    ((txmode->offloads & DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM) ||
-	    (txmode->offloads & DEV_TX_OFFLOAD_OUTER_UDP_CKSUM))) {
+	    (txmode->offloads & RTE_ETH_TX_OFFLOAD_SCTP_CKSUM) &&
+	    ((txmode->offloads & RTE_ETH_TX_OFFLOAD_OUTER_IPV4_CKSUM) ||
+	    (txmode->offloads & RTE_ETH_TX_OFFLOAD_OUTER_UDP_CKSUM))) {
 		otx2_err("Outer IP and SCTP checksum unsupported");
 		goto fail_configure;
 	}
@@ -2235,7 +2235,7 @@ otx2_nix_dev_start(struct rte_eth_dev *eth_dev)
 	 * enabled in PF owning this VF
 	 */
 	memset(&dev->tstamp, 0, sizeof(struct otx2_timesync_info));
-	if ((dev->rx_offloads & DEV_RX_OFFLOAD_TIMESTAMP) ||
+	if ((dev->rx_offloads & RTE_ETH_RX_OFFLOAD_TIMESTAMP) ||
 	    otx2_ethdev_is_ptp_en(dev))
 		otx2_nix_timesync_enable(eth_dev);
 	else
@@ -2563,8 +2563,8 @@ otx2_eth_dev_init(struct rte_eth_dev *eth_dev)
 	rc = otx2_eth_sec_ctx_create(eth_dev);
 	if (rc)
 		goto free_mac_addrs;
-	dev->tx_offload_capa |= DEV_TX_OFFLOAD_SECURITY;
-	dev->rx_offload_capa |= DEV_RX_OFFLOAD_SECURITY;
+	dev->tx_offload_capa |= RTE_ETH_TX_OFFLOAD_SECURITY;
+	dev->rx_offload_capa |= RTE_ETH_RX_OFFLOAD_SECURITY;
 
 	/* Initialize rte-flow */
 	rc = otx2_flow_init(dev);

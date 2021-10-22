@@ -65,12 +65,12 @@ static uint8_t rss_enable;
 /* empty vmdq configuration structure. Filled in programatically */
 static const struct rte_eth_conf vmdq_conf_default = {
 	.rxmode = {
-		.mq_mode        = ETH_MQ_RX_VMDQ_ONLY,
+		.mq_mode        = RTE_ETH_MQ_RX_VMDQ_ONLY,
 		.split_hdr_size = 0,
 	},
 
 	.txmode = {
-		.mq_mode = ETH_MQ_TX_NONE,
+		.mq_mode = RTE_ETH_MQ_TX_NONE,
 	},
 	.rx_adv_conf = {
 		/*
@@ -78,7 +78,7 @@ static const struct rte_eth_conf vmdq_conf_default = {
 		 * appropriate values
 		 */
 		.vmdq_rx_conf = {
-			.nb_queue_pools = ETH_8_POOLS,
+			.nb_queue_pools = RTE_ETH_8_POOLS,
 			.enable_default_pool = 0,
 			.default_pool = 0,
 			.nb_pool_maps = 0,
@@ -156,11 +156,11 @@ get_eth_conf(struct rte_eth_conf *eth_conf, uint32_t num_pools)
 	(void)(rte_memcpy(&eth_conf->rx_adv_conf.vmdq_rx_conf, &conf,
 		   sizeof(eth_conf->rx_adv_conf.vmdq_rx_conf)));
 	if (rss_enable) {
-		eth_conf->rxmode.mq_mode = ETH_MQ_RX_VMDQ_RSS;
-		eth_conf->rx_adv_conf.rss_conf.rss_hf = ETH_RSS_IP |
-							ETH_RSS_UDP |
-							ETH_RSS_TCP |
-							ETH_RSS_SCTP;
+		eth_conf->rxmode.mq_mode = RTE_ETH_MQ_RX_VMDQ_RSS;
+		eth_conf->rx_adv_conf.rss_conf.rss_hf = RTE_ETH_RSS_IP |
+							RTE_ETH_RSS_UDP |
+							RTE_ETH_RSS_TCP |
+							RTE_ETH_RSS_SCTP;
 	}
 	return 0;
 }
@@ -258,9 +258,9 @@ port_init(uint16_t port, struct rte_mempool *mbuf_pool)
 		return retval;
 	}
 
-	if (dev_info.tx_offload_capa & DEV_TX_OFFLOAD_MBUF_FAST_FREE)
+	if (dev_info.tx_offload_capa & RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE)
 		port_conf.txmode.offloads |=
-			DEV_TX_OFFLOAD_MBUF_FAST_FREE;
+			RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE;
 	retval = rte_eth_dev_configure(port, rxRings, txRings, &port_conf);
 	if (retval != 0)
 		return retval;

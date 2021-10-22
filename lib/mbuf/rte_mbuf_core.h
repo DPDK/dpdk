@@ -185,7 +185,7 @@ extern "C" {
  * The detection of PKT_RX_OUTER_L4_CKSUM_GOOD shall be based on the given
  * HW capability, At minimum, the PMD should support
  * PKT_RX_OUTER_L4_CKSUM_UNKNOWN and PKT_RX_OUTER_L4_CKSUM_BAD states
- * if the DEV_RX_OFFLOAD_OUTER_UDP_CKSUM offload is available.
+ * if the RTE_ETH_RX_OFFLOAD_OUTER_UDP_CKSUM offload is available.
  */
 #define PKT_RX_OUTER_L4_CKSUM_MASK	((1ULL << 21) | (1ULL << 22))
 
@@ -208,7 +208,7 @@ extern "C" {
  * a) Fill outer_l2_len and outer_l3_len in mbuf.
  * b) Set the PKT_TX_OUTER_UDP_CKSUM flag.
  * c) Set the PKT_TX_OUTER_IPV4 or PKT_TX_OUTER_IPV6 flag.
- * 2) Configure DEV_TX_OFFLOAD_OUTER_UDP_CKSUM offload flag.
+ * 2) Configure RTE_ETH_TX_OFFLOAD_OUTER_UDP_CKSUM offload flag.
  */
 #define PKT_TX_OUTER_UDP_CKSUM     (1ULL << 41)
 
@@ -254,7 +254,7 @@ extern "C" {
  * It can be used for tunnels which are not standards or listed above.
  * It is preferred to use specific tunnel flags like PKT_TX_TUNNEL_GRE
  * or PKT_TX_TUNNEL_IPIP if possible.
- * The ethdev must be configured with DEV_TX_OFFLOAD_IP_TNL_TSO.
+ * The ethdev must be configured with RTE_ETH_TX_OFFLOAD_IP_TNL_TSO.
  * Outer and inner checksums are done according to the existing flags like
  * PKT_TX_xxx_CKSUM.
  * Specific tunnel headers that contain payload length, sequence id
@@ -267,7 +267,7 @@ extern "C" {
  * It can be used for tunnels which are not standards or listed above.
  * It is preferred to use specific tunnel flags like PKT_TX_TUNNEL_VXLAN
  * if possible.
- * The ethdev must be configured with DEV_TX_OFFLOAD_UDP_TNL_TSO.
+ * The ethdev must be configured with RTE_ETH_TX_OFFLOAD_UDP_TNL_TSO.
  * Outer and inner checksums are done according to the existing flags like
  * PKT_TX_xxx_CKSUM.
  * Specific tunnel headers that contain payload length, sequence id

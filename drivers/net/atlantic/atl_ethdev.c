@@ -154,20 +154,20 @@ static struct rte_pci_driver rte_atl_pmd = {
 	.remove = eth_atl_pci_remove,
 };
 
-#define ATL_RX_OFFLOADS (DEV_RX_OFFLOAD_VLAN_STRIP \
-			| DEV_RX_OFFLOAD_IPV4_CKSUM \
-			| DEV_RX_OFFLOAD_UDP_CKSUM \
-			| DEV_RX_OFFLOAD_TCP_CKSUM \
-			| DEV_RX_OFFLOAD_MACSEC_STRIP \
-			| DEV_RX_OFFLOAD_VLAN_FILTER)
+#define ATL_RX_OFFLOADS (RTE_ETH_RX_OFFLOAD_VLAN_STRIP \
+			| RTE_ETH_RX_OFFLOAD_IPV4_CKSUM \
+			| RTE_ETH_RX_OFFLOAD_UDP_CKSUM \
+			| RTE_ETH_RX_OFFLOAD_TCP_CKSUM \
+			| RTE_ETH_RX_OFFLOAD_MACSEC_STRIP \
+			| RTE_ETH_RX_OFFLOAD_VLAN_FILTER)
 
-#define ATL_TX_OFFLOADS (DEV_TX_OFFLOAD_VLAN_INSERT \
-			| DEV_TX_OFFLOAD_IPV4_CKSUM \
-			| DEV_TX_OFFLOAD_UDP_CKSUM \
-			| DEV_TX_OFFLOAD_TCP_CKSUM \
-			| DEV_TX_OFFLOAD_TCP_TSO \
-			| DEV_TX_OFFLOAD_MACSEC_INSERT \
-			| DEV_TX_OFFLOAD_MULTI_SEGS)
+#define ATL_TX_OFFLOADS (RTE_ETH_TX_OFFLOAD_VLAN_INSERT \
+			| RTE_ETH_TX_OFFLOAD_IPV4_CKSUM \
+			| RTE_ETH_TX_OFFLOAD_UDP_CKSUM \
+			| RTE_ETH_TX_OFFLOAD_TCP_CKSUM \
+			| RTE_ETH_TX_OFFLOAD_TCP_TSO \
+			| RTE_ETH_TX_OFFLOAD_MACSEC_INSERT \
+			| RTE_ETH_TX_OFFLOAD_MULTI_SEGS)
 
 #define SFP_EEPROM_SIZE 0x100
 
@@ -488,7 +488,7 @@ atl_dev_start(struct rte_eth_dev *dev)
 	/* set adapter started */
 	hw->adapter_stopped = 0;
 
-	if (dev->data->dev_conf.link_speeds & ETH_LINK_SPEED_FIXED) {
+	if (dev->data->dev_conf.link_speeds & RTE_ETH_LINK_SPEED_FIXED) {
 		PMD_INIT_LOG(ERR,
 		"Invalid link_speeds for port %u, fix speed not supported",
 				dev->data->port_id);
@@ -655,18 +655,18 @@ atl_dev_set_link_up(struct rte_eth_dev *dev)
 	uint32_t link_speeds = dev->data->dev_conf.link_speeds;
 	uint32_t speed_mask = 0;
 
-	if (link_speeds == ETH_LINK_SPEED_AUTONEG) {
+	if (link_speeds == RTE_ETH_LINK_SPEED_AUTONEG) {
 		speed_mask = hw->aq_nic_cfg->link_speed_msk;
 	} else {
-		if (link_speeds & ETH_LINK_SPEED_10G)
+		if (link_speeds & RTE_ETH_LINK_SPEED_10G)
 			speed_mask |= AQ_NIC_RATE_10G;
-		if (link_speeds & ETH_LINK_SPEED_5G)
+		if (link_speeds & RTE_ETH_LINK_SPEED_5G)
 			speed_mask |= AQ_NIC_RATE_5G;
-		if (link_speeds & ETH_LINK_SPEED_1G)
+		if (link_speeds & RTE_ETH_LINK_SPEED_1G)
 			speed_mask |= AQ_NIC_RATE_1G;
-		if (link_speeds & ETH_LINK_SPEED_2_5G)
+		if (link_speeds & RTE_ETH_LINK_SPEED_2_5G)
 			speed_mask |=  AQ_NIC_RATE_2G5;
-		if (link_speeds & ETH_LINK_SPEED_100M)
+		if (link_speeds & RTE_ETH_LINK_SPEED_100M)
 			speed_mask |= AQ_NIC_RATE_100M;
 	}
 
@@ -1127,10 +1127,10 @@ atl_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->reta_size = HW_ATL_B0_RSS_REDIRECTION_MAX;
 	dev_info->flow_type_rss_offloads = ATL_RSS_OFFLOAD_ALL;
 
-	dev_info->speed_capa = ETH_LINK_SPEED_1G | ETH_LINK_SPEED_10G;
-	dev_info->speed_capa |= ETH_LINK_SPEED_100M;
-	dev_info->speed_capa |= ETH_LINK_SPEED_2_5G;
-	dev_info->speed_capa |= ETH_LINK_SPEED_5G;
+	dev_info->speed_capa = RTE_ETH_LINK_SPEED_1G | RTE_ETH_LINK_SPEED_10G;
+	dev_info->speed_capa |= RTE_ETH_LINK_SPEED_100M;
+	dev_info->speed_capa |= RTE_ETH_LINK_SPEED_2_5G;
+	dev_info->speed_capa |= RTE_ETH_LINK_SPEED_5G;
 
 	return 0;
 }
@@ -1175,10 +1175,10 @@ atl_dev_link_update(struct rte_eth_dev *dev, int wait __rte_unused)
 	u32 fc = AQ_NIC_FC_OFF;
 	int err = 0;
 
-	link.link_status = ETH_LINK_DOWN;
+	link.link_status = RTE_ETH_LINK_DOWN;
 	link.link_speed = 0;
-	link.link_duplex = ETH_LINK_FULL_DUPLEX;
-	link.link_autoneg = hw->is_autoneg ? ETH_LINK_AUTONEG : ETH_LINK_FIXED;
+	link.link_duplex = RTE_ETH_LINK_FULL_DUPLEX;
+	link.link_autoneg = hw->is_autoneg ? RTE_ETH_LINK_AUTONEG : RTE_ETH_LINK_FIXED;
 	memset(&old, 0, sizeof(old));
 
 	/* load old link status */
@@ -1198,8 +1198,8 @@ atl_dev_link_update(struct rte_eth_dev *dev, int wait __rte_unused)
 		return 0;
 	}
 
-	link.link_status = ETH_LINK_UP;
-	link.link_duplex = ETH_LINK_FULL_DUPLEX;
+	link.link_status = RTE_ETH_LINK_UP;
+	link.link_duplex = RTE_ETH_LINK_FULL_DUPLEX;
 	link.link_speed = hw->aq_link_status.mbps;
 
 	rte_eth_linkstatus_set(dev, &link);
@@ -1333,7 +1333,7 @@ atl_dev_link_status_print(struct rte_eth_dev *dev)
 		PMD_DRV_LOG(INFO, "Port %d: Link Up - speed %u Mbps - %s",
 					(int)(dev->data->port_id),
 					(unsigned int)link.link_speed,
-			link.link_duplex == ETH_LINK_FULL_DUPLEX ?
+			link.link_duplex == RTE_ETH_LINK_FULL_DUPLEX ?
 					"full-duplex" : "half-duplex");
 	} else {
 		PMD_DRV_LOG(INFO, " Port %d: Link Down",
@@ -1532,13 +1532,13 @@ atl_flow_ctrl_get(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 	hw->aq_fw_ops->get_flow_control(hw, &fc);
 
 	if (fc == AQ_NIC_FC_OFF)
-		fc_conf->mode = RTE_FC_NONE;
+		fc_conf->mode = RTE_ETH_FC_NONE;
 	else if ((fc & AQ_NIC_FC_RX) && (fc & AQ_NIC_FC_TX))
-		fc_conf->mode = RTE_FC_FULL;
+		fc_conf->mode = RTE_ETH_FC_FULL;
 	else if (fc & AQ_NIC_FC_RX)
-		fc_conf->mode = RTE_FC_RX_PAUSE;
+		fc_conf->mode = RTE_ETH_FC_RX_PAUSE;
 	else if (fc & AQ_NIC_FC_TX)
-		fc_conf->mode = RTE_FC_TX_PAUSE;
+		fc_conf->mode = RTE_ETH_FC_TX_PAUSE;
 
 	return 0;
 }
@@ -1553,13 +1553,13 @@ atl_flow_ctrl_set(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 	if (hw->aq_fw_ops->set_flow_control == NULL)
 		return -ENOTSUP;
 
-	if (fc_conf->mode == RTE_FC_NONE)
+	if (fc_conf->mode == RTE_ETH_FC_NONE)
 		hw->aq_nic_cfg->flow_control = AQ_NIC_FC_OFF;
-	else if (fc_conf->mode == RTE_FC_RX_PAUSE)
+	else if (fc_conf->mode == RTE_ETH_FC_RX_PAUSE)
 		hw->aq_nic_cfg->flow_control = AQ_NIC_FC_RX;
-	else if (fc_conf->mode == RTE_FC_TX_PAUSE)
+	else if (fc_conf->mode == RTE_ETH_FC_TX_PAUSE)
 		hw->aq_nic_cfg->flow_control = AQ_NIC_FC_TX;
-	else if (fc_conf->mode == RTE_FC_FULL)
+	else if (fc_conf->mode == RTE_ETH_FC_FULL)
 		hw->aq_nic_cfg->flow_control = (AQ_NIC_FC_RX | AQ_NIC_FC_TX);
 
 	if (old_flow_control != hw->aq_nic_cfg->flow_control)
@@ -1727,14 +1727,14 @@ atl_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 
 	PMD_INIT_FUNC_TRACE();
 
-	ret = atl_enable_vlan_filter(dev, mask & ETH_VLAN_FILTER_MASK);
+	ret = atl_enable_vlan_filter(dev, mask & RTE_ETH_VLAN_FILTER_MASK);
 
-	cfg->vlan_strip = !!(mask & ETH_VLAN_STRIP_MASK);
+	cfg->vlan_strip = !!(mask & RTE_ETH_VLAN_STRIP_MASK);
 
 	for (i = 0; i < dev->data->nb_rx_queues; i++)
 		hw_atl_rpo_rx_desc_vlan_stripping_set(hw, cfg->vlan_strip, i);
 
-	if (mask & ETH_VLAN_EXTEND_MASK)
+	if (mask & RTE_ETH_VLAN_EXTEND_MASK)
 		ret = -ENOTSUP;
 
 	return ret;
@@ -1750,10 +1750,10 @@ atl_vlan_tpid_set(struct rte_eth_dev *dev, enum rte_vlan_type vlan_type,
 	PMD_INIT_FUNC_TRACE();
 
 	switch (vlan_type) {
-	case ETH_VLAN_TYPE_INNER:
+	case RTE_ETH_VLAN_TYPE_INNER:
 		hw_atl_rpf_vlan_inner_etht_set(hw, tpid);
 		break;
-	case ETH_VLAN_TYPE_OUTER:
+	case RTE_ETH_VLAN_TYPE_OUTER:
 		hw_atl_rpf_vlan_outer_etht_set(hw, tpid);
 		break;
 	default:

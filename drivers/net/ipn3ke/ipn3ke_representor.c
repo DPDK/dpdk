@@ -50,11 +50,11 @@ ipn3ke_rpst_dev_infos_get(struct rte_eth_dev *ethdev,
 	dev_info->speed_capa =
 		(hw->retimer.mac_type ==
 			IFPGA_RAWDEV_RETIMER_MAC_TYPE_10GE_XFI) ?
-		ETH_LINK_SPEED_10G :
+		RTE_ETH_LINK_SPEED_10G :
 		((hw->retimer.mac_type ==
 			IFPGA_RAWDEV_RETIMER_MAC_TYPE_25GE_25GAUI) ?
-		ETH_LINK_SPEED_25G :
-		ETH_LINK_SPEED_AUTONEG);
+		RTE_ETH_LINK_SPEED_25G :
+		RTE_ETH_LINK_SPEED_AUTONEG);
 
 	dev_info->max_rx_queues  = 1;
 	dev_info->max_tx_queues  = 1;
@@ -67,30 +67,30 @@ ipn3ke_rpst_dev_infos_get(struct rte_eth_dev *ethdev,
 	};
 	dev_info->rx_queue_offload_capa = 0;
 	dev_info->rx_offload_capa =
-		DEV_RX_OFFLOAD_VLAN_STRIP |
-		DEV_RX_OFFLOAD_QINQ_STRIP |
-		DEV_RX_OFFLOAD_IPV4_CKSUM |
-		DEV_RX_OFFLOAD_UDP_CKSUM |
-		DEV_RX_OFFLOAD_TCP_CKSUM |
-		DEV_RX_OFFLOAD_OUTER_IPV4_CKSUM |
-		DEV_RX_OFFLOAD_VLAN_EXTEND |
-		DEV_RX_OFFLOAD_VLAN_FILTER;
+		RTE_ETH_RX_OFFLOAD_VLAN_STRIP |
+		RTE_ETH_RX_OFFLOAD_QINQ_STRIP |
+		RTE_ETH_RX_OFFLOAD_IPV4_CKSUM |
+		RTE_ETH_RX_OFFLOAD_UDP_CKSUM |
+		RTE_ETH_RX_OFFLOAD_TCP_CKSUM |
+		RTE_ETH_RX_OFFLOAD_OUTER_IPV4_CKSUM |
+		RTE_ETH_RX_OFFLOAD_VLAN_EXTEND |
+		RTE_ETH_RX_OFFLOAD_VLAN_FILTER;
 
-	dev_info->tx_queue_offload_capa = DEV_TX_OFFLOAD_MBUF_FAST_FREE;
+	dev_info->tx_queue_offload_capa = RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE;
 	dev_info->tx_offload_capa =
-		DEV_TX_OFFLOAD_VLAN_INSERT |
-		DEV_TX_OFFLOAD_QINQ_INSERT |
-		DEV_TX_OFFLOAD_IPV4_CKSUM |
-		DEV_TX_OFFLOAD_UDP_CKSUM |
-		DEV_TX_OFFLOAD_TCP_CKSUM |
-		DEV_TX_OFFLOAD_SCTP_CKSUM |
-		DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM |
-		DEV_TX_OFFLOAD_TCP_TSO |
-		DEV_TX_OFFLOAD_VXLAN_TNL_TSO |
-		DEV_TX_OFFLOAD_GRE_TNL_TSO |
-		DEV_TX_OFFLOAD_IPIP_TNL_TSO |
-		DEV_TX_OFFLOAD_GENEVE_TNL_TSO |
-		DEV_TX_OFFLOAD_MULTI_SEGS |
+		RTE_ETH_TX_OFFLOAD_VLAN_INSERT |
+		RTE_ETH_TX_OFFLOAD_QINQ_INSERT |
+		RTE_ETH_TX_OFFLOAD_IPV4_CKSUM |
+		RTE_ETH_TX_OFFLOAD_UDP_CKSUM |
+		RTE_ETH_TX_OFFLOAD_TCP_CKSUM |
+		RTE_ETH_TX_OFFLOAD_SCTP_CKSUM |
+		RTE_ETH_TX_OFFLOAD_OUTER_IPV4_CKSUM |
+		RTE_ETH_TX_OFFLOAD_TCP_TSO |
+		RTE_ETH_TX_OFFLOAD_VXLAN_TNL_TSO |
+		RTE_ETH_TX_OFFLOAD_GRE_TNL_TSO |
+		RTE_ETH_TX_OFFLOAD_IPIP_TNL_TSO |
+		RTE_ETH_TX_OFFLOAD_GENEVE_TNL_TSO |
+		RTE_ETH_TX_OFFLOAD_MULTI_SEGS |
 		dev_info->tx_queue_offload_capa;
 
 	dev_info->dev_capa =
@@ -2399,10 +2399,10 @@ ipn3ke_update_link(struct rte_rawdev *rawdev,
 				(uint64_t *)&link_speed);
 	switch (link_speed) {
 	case IFPGA_RAWDEV_LINK_SPEED_10GB:
-		link->link_speed = ETH_SPEED_NUM_10G;
+		link->link_speed = RTE_ETH_SPEED_NUM_10G;
 		break;
 	case IFPGA_RAWDEV_LINK_SPEED_25GB:
-		link->link_speed = ETH_SPEED_NUM_25G;
+		link->link_speed = RTE_ETH_SPEED_NUM_25G;
 		break;
 	default:
 		IPN3KE_AFU_PMD_ERR("Unknown link speed info %u", link_speed);
@@ -2460,9 +2460,9 @@ ipn3ke_rpst_link_update(struct rte_eth_dev *ethdev,
 
 	memset(&link, 0, sizeof(link));
 
-	link.link_duplex = ETH_LINK_FULL_DUPLEX;
+	link.link_duplex = RTE_ETH_LINK_FULL_DUPLEX;
 	link.link_autoneg = !(ethdev->data->dev_conf.link_speeds &
-				ETH_LINK_SPEED_FIXED);
+				RTE_ETH_LINK_SPEED_FIXED);
 
 	rawdev = hw->rawdev;
 	ipn3ke_update_link(rawdev, rpst->port_id, &link);
@@ -2518,9 +2518,9 @@ ipn3ke_rpst_link_check(struct ipn3ke_rpst *rpst)
 
 	memset(&link, 0, sizeof(link));
 
-	link.link_duplex = ETH_LINK_FULL_DUPLEX;
+	link.link_duplex = RTE_ETH_LINK_FULL_DUPLEX;
 	link.link_autoneg = !(rpst->ethdev->data->dev_conf.link_speeds &
-				ETH_LINK_SPEED_FIXED);
+				RTE_ETH_LINK_SPEED_FIXED);
 
 	rawdev = hw->rawdev;
 	ipn3ke_update_link(rawdev, rpst->port_id, &link);

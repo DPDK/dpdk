@@ -70,11 +70,11 @@ mbuf_input(struct rte_mbuf *mbuf)
 
 static const struct rte_eth_conf port_conf = {
 	.rxmode = {
-		.mq_mode = ETH_MQ_RX_NONE,
+		.mq_mode = RTE_ETH_MQ_RX_NONE,
 		.split_hdr_size = 0,
 	},
 	.txmode = {
-		.mq_mode = ETH_MQ_TX_NONE,
+		.mq_mode = RTE_ETH_MQ_TX_NONE,
 	},
 };
 
@@ -327,7 +327,7 @@ check_port_link_status(uint16_t port_id)
 
 		if (link_get_err >= 0 && link.link_status) {
 			const char *dp = (link.link_duplex ==
-				ETH_LINK_FULL_DUPLEX) ?
+				RTE_ETH_LINK_FULL_DUPLEX) ?
 				"full-duplex" : "half-duplex";
 			printf("\nPort %u Link Up - speed %s - %s\n",
 				port_id,

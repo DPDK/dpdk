@@ -405,7 +405,7 @@ sfc_repr_check_conf(struct sfc_repr *sr, uint16_t nb_rx_queues,
 	}
 
 	switch (conf->rxmode.mq_mode) {
-	case ETH_MQ_RX_RSS:
+	case RTE_ETH_MQ_RX_RSS:
 		if (nb_rx_queues != 1) {
 			sfcr_err(sr, "Rx RSS is not supported with %u queues",
 				 nb_rx_queues);
@@ -420,7 +420,7 @@ sfc_repr_check_conf(struct sfc_repr *sr, uint16_t nb_rx_queues,
 			ret = -EINVAL;
 		}
 		break;
-	case ETH_MQ_RX_NONE:
+	case RTE_ETH_MQ_RX_NONE:
 		break;
 	default:
 		sfcr_err(sr, "Rx mode MQ modes other than RSS not supported");
@@ -428,7 +428,7 @@ sfc_repr_check_conf(struct sfc_repr *sr, uint16_t nb_rx_queues,
 		break;
 	}
 
-	if (conf->txmode.mq_mode != ETH_MQ_TX_NONE) {
+	if (conf->txmode.mq_mode != RTE_ETH_MQ_TX_NONE) {
 		sfcr_err(sr, "Tx mode MQ modes not supported");
 		ret = -EINVAL;
 	}
@@ -553,8 +553,8 @@ sfc_repr_dev_link_update(struct rte_eth_dev *dev,
 		sfc_port_link_mode_to_info(EFX_LINK_UNKNOWN, &link);
 	} else {
 		memset(&link, 0, sizeof(link));
-		link.link_status = ETH_LINK_UP;
-		link.link_speed = ETH_SPEED_NUM_UNKNOWN;
+		link.link_status = RTE_ETH_LINK_UP;
+		link.link_speed = RTE_ETH_SPEED_NUM_UNKNOWN;
 	}
 
 	return rte_eth_linkstatus_set(dev, &link);

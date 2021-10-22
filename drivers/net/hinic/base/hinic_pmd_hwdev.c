@@ -1320,28 +1320,28 @@ hinic_cable_status_event(u8 cmd, void *buf_in, __rte_unused u16 in_size,
 static int hinic_link_event_process(struct hinic_hwdev *hwdev,
 				    struct rte_eth_dev *eth_dev, u8 status)
 {
-	uint32_t port_speed[LINK_SPEED_MAX] = {ETH_SPEED_NUM_10M,
-					ETH_SPEED_NUM_100M, ETH_SPEED_NUM_1G,
-					ETH_SPEED_NUM_10G, ETH_SPEED_NUM_25G,
-					ETH_SPEED_NUM_40G, ETH_SPEED_NUM_100G};
+	uint32_t port_speed[LINK_SPEED_MAX] = {RTE_ETH_SPEED_NUM_10M,
+					RTE_ETH_SPEED_NUM_100M, RTE_ETH_SPEED_NUM_1G,
+					RTE_ETH_SPEED_NUM_10G, RTE_ETH_SPEED_NUM_25G,
+					RTE_ETH_SPEED_NUM_40G, RTE_ETH_SPEED_NUM_100G};
 	struct nic_port_info port_info;
 	struct rte_eth_link link;
 	int rc = HINIC_OK;
 
 	if (!status) {
-		link.link_status = ETH_LINK_DOWN;
+		link.link_status = RTE_ETH_LINK_DOWN;
 		link.link_speed = 0;
-		link.link_duplex = ETH_LINK_HALF_DUPLEX;
-		link.link_autoneg = ETH_LINK_FIXED;
+		link.link_duplex = RTE_ETH_LINK_HALF_DUPLEX;
+		link.link_autoneg = RTE_ETH_LINK_FIXED;
 	} else {
-		link.link_status = ETH_LINK_UP;
+		link.link_status = RTE_ETH_LINK_UP;
 
 		memset(&port_info, 0, sizeof(port_info));
 		rc = hinic_get_port_info(hwdev, &port_info);
 		if (rc) {
-			link.link_speed = ETH_SPEED_NUM_NONE;
-			link.link_duplex = ETH_LINK_FULL_DUPLEX;
-			link.link_autoneg = ETH_LINK_FIXED;
+			link.link_speed = RTE_ETH_SPEED_NUM_NONE;
+			link.link_duplex = RTE_ETH_LINK_FULL_DUPLEX;
+			link.link_autoneg = RTE_ETH_LINK_FIXED;
 		} else {
 			link.link_speed = port_speed[port_info.speed %
 						LINK_SPEED_MAX];

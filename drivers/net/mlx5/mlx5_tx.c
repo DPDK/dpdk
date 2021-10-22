@@ -522,36 +522,36 @@ mlx5_select_tx_function(struct rte_eth_dev *dev)
 	unsigned int diff = 0, olx = 0, i, m;
 
 	MLX5_ASSERT(priv);
-	if (tx_offloads & DEV_TX_OFFLOAD_MULTI_SEGS) {
+	if (tx_offloads & RTE_ETH_TX_OFFLOAD_MULTI_SEGS) {
 		/* We should support Multi-Segment Packets. */
 		olx |= MLX5_TXOFF_CONFIG_MULTI;
 	}
-	if (tx_offloads & (DEV_TX_OFFLOAD_TCP_TSO |
-			   DEV_TX_OFFLOAD_VXLAN_TNL_TSO |
-			   DEV_TX_OFFLOAD_GRE_TNL_TSO |
-			   DEV_TX_OFFLOAD_IP_TNL_TSO |
-			   DEV_TX_OFFLOAD_UDP_TNL_TSO)) {
+	if (tx_offloads & (RTE_ETH_TX_OFFLOAD_TCP_TSO |
+			   RTE_ETH_TX_OFFLOAD_VXLAN_TNL_TSO |
+			   RTE_ETH_TX_OFFLOAD_GRE_TNL_TSO |
+			   RTE_ETH_TX_OFFLOAD_IP_TNL_TSO |
+			   RTE_ETH_TX_OFFLOAD_UDP_TNL_TSO)) {
 		/* We should support TCP Send Offload. */
 		olx |= MLX5_TXOFF_CONFIG_TSO;
 	}
-	if (tx_offloads & (DEV_TX_OFFLOAD_IP_TNL_TSO |
-			   DEV_TX_OFFLOAD_UDP_TNL_TSO |
-			   DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM)) {
+	if (tx_offloads & (RTE_ETH_TX_OFFLOAD_IP_TNL_TSO |
+			   RTE_ETH_TX_OFFLOAD_UDP_TNL_TSO |
+			   RTE_ETH_TX_OFFLOAD_OUTER_IPV4_CKSUM)) {
 		/* We should support Software Parser for Tunnels. */
 		olx |= MLX5_TXOFF_CONFIG_SWP;
 	}
-	if (tx_offloads & (DEV_TX_OFFLOAD_IPV4_CKSUM |
-			   DEV_TX_OFFLOAD_UDP_CKSUM |
-			   DEV_TX_OFFLOAD_TCP_CKSUM |
-			   DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM)) {
+	if (tx_offloads & (RTE_ETH_TX_OFFLOAD_IPV4_CKSUM |
+			   RTE_ETH_TX_OFFLOAD_UDP_CKSUM |
+			   RTE_ETH_TX_OFFLOAD_TCP_CKSUM |
+			   RTE_ETH_TX_OFFLOAD_OUTER_IPV4_CKSUM)) {
 		/* We should support IP/TCP/UDP Checksums. */
 		olx |= MLX5_TXOFF_CONFIG_CSUM;
 	}
-	if (tx_offloads & DEV_TX_OFFLOAD_VLAN_INSERT) {
+	if (tx_offloads & RTE_ETH_TX_OFFLOAD_VLAN_INSERT) {
 		/* We should support VLAN insertion. */
 		olx |= MLX5_TXOFF_CONFIG_VLAN;
 	}
-	if (tx_offloads & DEV_TX_OFFLOAD_SEND_ON_TIMESTAMP &&
+	if (tx_offloads & RTE_ETH_TX_OFFLOAD_SEND_ON_TIMESTAMP &&
 	    rte_mbuf_dynflag_lookup
 			(RTE_MBUF_DYNFLAG_TX_TIMESTAMP_NAME, NULL) >= 0 &&
 	    rte_mbuf_dynfield_lookup

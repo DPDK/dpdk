@@ -98,7 +98,7 @@ struct mlx5_flow_expand_node {
 	uint64_t rss_types;
 	/**<
 	 * RSS types bit-field associated with this node
-	 * (see ETH_RSS_* definitions).
+	 * (see RTE_ETH_RSS_* definitions).
 	 */
 	uint64_t node_flags;
 	/**<
@@ -298,7 +298,7 @@ mlx5_flow_expand_rss_skip_explicit(const struct mlx5_flow_expand_node graph[],
  * @param[in] pattern
  *   User flow pattern.
  * @param[in] types
- *   RSS types to expand (see ETH_RSS_* definitions).
+ *   RSS types to expand (see RTE_ETH_RSS_* definitions).
  * @param[in] graph
  *   Input graph to expand @p pattern according to @p types.
  * @param[in] graph_root_index
@@ -560,8 +560,8 @@ static const struct mlx5_flow_expand_node mlx5_support_expansion[] = {
 			 MLX5_EXPANSION_IPV4,
 			 MLX5_EXPANSION_IPV6),
 		.type = RTE_FLOW_ITEM_TYPE_IPV4,
-		.rss_types = ETH_RSS_IPV4 | ETH_RSS_FRAG_IPV4 |
-			ETH_RSS_NONFRAG_IPV4_OTHER,
+		.rss_types = RTE_ETH_RSS_IPV4 | RTE_ETH_RSS_FRAG_IPV4 |
+			RTE_ETH_RSS_NONFRAG_IPV4_OTHER,
 	},
 	[MLX5_EXPANSION_OUTER_IPV4_UDP] = {
 		.next = MLX5_FLOW_EXPAND_RSS_NEXT(MLX5_EXPANSION_VXLAN,
@@ -569,11 +569,11 @@ static const struct mlx5_flow_expand_node mlx5_support_expansion[] = {
 						  MLX5_EXPANSION_MPLS,
 						  MLX5_EXPANSION_GTP),
 		.type = RTE_FLOW_ITEM_TYPE_UDP,
-		.rss_types = ETH_RSS_NONFRAG_IPV4_UDP,
+		.rss_types = RTE_ETH_RSS_NONFRAG_IPV4_UDP,
 	},
 	[MLX5_EXPANSION_OUTER_IPV4_TCP] = {
 		.type = RTE_FLOW_ITEM_TYPE_TCP,
-		.rss_types = ETH_RSS_NONFRAG_IPV4_TCP,
+		.rss_types = RTE_ETH_RSS_NONFRAG_IPV4_TCP,
 	},
 	[MLX5_EXPANSION_OUTER_IPV6] = {
 		.next = MLX5_FLOW_EXPAND_RSS_NEXT
@@ -584,8 +584,8 @@ static const struct mlx5_flow_expand_node mlx5_support_expansion[] = {
 			 MLX5_EXPANSION_GRE,
 			 MLX5_EXPANSION_NVGRE),
 		.type = RTE_FLOW_ITEM_TYPE_IPV6,
-		.rss_types = ETH_RSS_IPV6 | ETH_RSS_FRAG_IPV6 |
-			ETH_RSS_NONFRAG_IPV6_OTHER,
+		.rss_types = RTE_ETH_RSS_IPV6 | RTE_ETH_RSS_FRAG_IPV6 |
+			RTE_ETH_RSS_NONFRAG_IPV6_OTHER,
 	},
 	[MLX5_EXPANSION_OUTER_IPV6_UDP] = {
 		.next = MLX5_FLOW_EXPAND_RSS_NEXT(MLX5_EXPANSION_VXLAN,
@@ -593,11 +593,11 @@ static const struct mlx5_flow_expand_node mlx5_support_expansion[] = {
 						  MLX5_EXPANSION_MPLS,
 						  MLX5_EXPANSION_GTP),
 		.type = RTE_FLOW_ITEM_TYPE_UDP,
-		.rss_types = ETH_RSS_NONFRAG_IPV6_UDP,
+		.rss_types = RTE_ETH_RSS_NONFRAG_IPV6_UDP,
 	},
 	[MLX5_EXPANSION_OUTER_IPV6_TCP] = {
 		.type = RTE_FLOW_ITEM_TYPE_TCP,
-		.rss_types = ETH_RSS_NONFRAG_IPV6_TCP,
+		.rss_types = RTE_ETH_RSS_NONFRAG_IPV6_TCP,
 	},
 	[MLX5_EXPANSION_VXLAN] = {
 		.next = MLX5_FLOW_EXPAND_RSS_NEXT(MLX5_EXPANSION_ETH,
@@ -659,32 +659,32 @@ static const struct mlx5_flow_expand_node mlx5_support_expansion[] = {
 		.next = MLX5_FLOW_EXPAND_RSS_NEXT(MLX5_EXPANSION_IPV4_UDP,
 						  MLX5_EXPANSION_IPV4_TCP),
 		.type = RTE_FLOW_ITEM_TYPE_IPV4,
-		.rss_types = ETH_RSS_IPV4 | ETH_RSS_FRAG_IPV4 |
-			ETH_RSS_NONFRAG_IPV4_OTHER,
+		.rss_types = RTE_ETH_RSS_IPV4 | RTE_ETH_RSS_FRAG_IPV4 |
+			RTE_ETH_RSS_NONFRAG_IPV4_OTHER,
 	},
 	[MLX5_EXPANSION_IPV4_UDP] = {
 		.type = RTE_FLOW_ITEM_TYPE_UDP,
-		.rss_types = ETH_RSS_NONFRAG_IPV4_UDP,
+		.rss_types = RTE_ETH_RSS_NONFRAG_IPV4_UDP,
 	},
 	[MLX5_EXPANSION_IPV4_TCP] = {
 		.type = RTE_FLOW_ITEM_TYPE_TCP,
-		.rss_types = ETH_RSS_NONFRAG_IPV4_TCP,
+		.rss_types = RTE_ETH_RSS_NONFRAG_IPV4_TCP,
 	},
 	[MLX5_EXPANSION_IPV6] = {
 		.next = MLX5_FLOW_EXPAND_RSS_NEXT(MLX5_EXPANSION_IPV6_UDP,
 						  MLX5_EXPANSION_IPV6_TCP,
 						  MLX5_EXPANSION_IPV6_FRAG_EXT),
 		.type = RTE_FLOW_ITEM_TYPE_IPV6,
-		.rss_types = ETH_RSS_IPV6 | ETH_RSS_FRAG_IPV6 |
-			ETH_RSS_NONFRAG_IPV6_OTHER,
+		.rss_types = RTE_ETH_RSS_IPV6 | RTE_ETH_RSS_FRAG_IPV6 |
+			RTE_ETH_RSS_NONFRAG_IPV6_OTHER,
 	},
 	[MLX5_EXPANSION_IPV6_UDP] = {
 		.type = RTE_FLOW_ITEM_TYPE_UDP,
-		.rss_types = ETH_RSS_NONFRAG_IPV6_UDP,
+		.rss_types = RTE_ETH_RSS_NONFRAG_IPV6_UDP,
 	},
 	[MLX5_EXPANSION_IPV6_TCP] = {
 		.type = RTE_FLOW_ITEM_TYPE_TCP,
-		.rss_types = ETH_RSS_NONFRAG_IPV6_TCP,
+		.rss_types = RTE_ETH_RSS_NONFRAG_IPV6_TCP,
 	},
 	[MLX5_EXPANSION_IPV6_FRAG_EXT] = {
 		.type = RTE_FLOW_ITEM_TYPE_IPV6_FRAG_EXT,
@@ -1100,7 +1100,7 @@ mlx5_flow_item_acceptable(const struct rte_flow_item *item,
  * @param[in] tunnel
  *   1 when the hash field is for a tunnel item.
  * @param[in] layer_types
- *   ETH_RSS_* types.
+ *   RTE_ETH_RSS_* types.
  * @param[in] hash_fields
  *   Item hash fields.
  *
@@ -1653,14 +1653,14 @@ mlx5_validate_action_rss(struct rte_eth_dev *dev,
 					  &rss->types,
 					  "some RSS protocols are not"
 					  " supported");
-	if ((rss->types & (ETH_RSS_L3_SRC_ONLY | ETH_RSS_L3_DST_ONLY)) &&
-	    !(rss->types & ETH_RSS_IP))
+	if ((rss->types & (RTE_ETH_RSS_L3_SRC_ONLY | RTE_ETH_RSS_L3_DST_ONLY)) &&
+	    !(rss->types & RTE_ETH_RSS_IP))
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ACTION_CONF, NULL,
 					  "L3 partial RSS requested but L3 RSS"
 					  " type not specified");
-	if ((rss->types & (ETH_RSS_L4_SRC_ONLY | ETH_RSS_L4_DST_ONLY)) &&
-	    !(rss->types & (ETH_RSS_UDP | ETH_RSS_TCP)))
+	if ((rss->types & (RTE_ETH_RSS_L4_SRC_ONLY | RTE_ETH_RSS_L4_DST_ONLY)) &&
+	    !(rss->types & (RTE_ETH_RSS_UDP | RTE_ETH_RSS_TCP)))
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ACTION_CONF, NULL,
 					  "L4 partial RSS requested but L4 RSS"
@@ -6427,8 +6427,8 @@ flow_list_create(struct rte_eth_dev *dev, enum mlx5_flow_type type,
 		 * mlx5_flow_hashfields_adjust() in advance.
 		 */
 		rss_desc->level = rss->level;
-		/* RSS type 0 indicates default RSS type (ETH_RSS_IP). */
-		rss_desc->types = !rss->types ? ETH_RSS_IP : rss->types;
+		/* RSS type 0 indicates default RSS type (RTE_ETH_RSS_IP). */
+		rss_desc->types = !rss->types ? RTE_ETH_RSS_IP : rss->types;
 	}
 	flow->dev_handles = 0;
 	if (rss && rss->types) {
@@ -7126,7 +7126,7 @@ mlx5_ctrl_flow_vlan(struct rte_eth_dev *dev,
 	if (!priv->reta_idx_n || !priv->rxqs_n) {
 		return 0;
 	}
-	if (!(dev->data->dev_conf.rxmode.mq_mode & ETH_MQ_RX_RSS_FLAG))
+	if (!(dev->data->dev_conf.rxmode.mq_mode & RTE_ETH_MQ_RX_RSS_FLAG))
 		action_rss.types = 0;
 	for (i = 0; i != priv->reta_idx_n; ++i)
 		queue[i] = (*priv->reta_idx)[i];
@@ -8794,7 +8794,7 @@ flow_tunnel_add_default_miss(struct rte_eth_dev *dev,
 				(error, EINVAL,
 				RTE_FLOW_ERROR_TYPE_ACTION_CONF,
 				NULL, "invalid port configuration");
-		if (!(dev->data->dev_conf.rxmode.mq_mode & ETH_MQ_RX_RSS_FLAG))
+		if (!(dev->data->dev_conf.rxmode.mq_mode & RTE_ETH_MQ_RX_RSS_FLAG))
 			ctx->action_rss.types = 0;
 		for (i = 0; i != priv->reta_idx_n; ++i)
 			ctx->queue[i] = (*priv->reta_idx)[i];

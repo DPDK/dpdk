@@ -75,7 +75,7 @@ int axgbe_dev_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 		(DMA_CH_INC * rxq->queue_id));
 	rxq->dma_tail_reg = (volatile uint32_t *)((uint8_t *)rxq->dma_regs +
 						  DMA_CH_RDTR_LO);
-	if (dev->data->dev_conf.rxmode.offloads & DEV_RX_OFFLOAD_KEEP_CRC)
+	if (dev->data->dev_conf.rxmode.offloads & RTE_ETH_RX_OFFLOAD_KEEP_CRC)
 		rxq->crc_len = RTE_ETHER_CRC_LEN;
 	else
 		rxq->crc_len = 0;
@@ -286,7 +286,7 @@ axgbe_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 				mbuf->vlan_tci =
 					AXGMAC_GET_BITS_LE(desc->write.desc0,
 							RX_NORMAL_DESC0, OVT);
-				if (offloads & DEV_RX_OFFLOAD_VLAN_STRIP)
+				if (offloads & RTE_ETH_RX_OFFLOAD_VLAN_STRIP)
 					mbuf->ol_flags |= PKT_RX_VLAN_STRIPPED;
 				else
 					mbuf->ol_flags &= ~PKT_RX_VLAN_STRIPPED;
@@ -430,7 +430,7 @@ next_desc:
 				mbuf->vlan_tci =
 					AXGMAC_GET_BITS_LE(desc->write.desc0,
 							RX_NORMAL_DESC0, OVT);
-				if (offloads & DEV_RX_OFFLOAD_VLAN_STRIP)
+				if (offloads & RTE_ETH_RX_OFFLOAD_VLAN_STRIP)
 					mbuf->ol_flags |= PKT_RX_VLAN_STRIPPED;
 				else
 					mbuf->ol_flags &= ~PKT_RX_VLAN_STRIPPED;

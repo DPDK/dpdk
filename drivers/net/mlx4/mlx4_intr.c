@@ -118,7 +118,7 @@ mlx4_rx_intr_vec_enable(struct mlx4_priv *priv)
 static void
 mlx4_link_status_alarm(struct mlx4_priv *priv)
 {
-	const struct rte_intr_conf *const intr_conf =
+	const struct rte_eth_intr_conf *const intr_conf =
 		&ETH_DEV(priv)->data->dev_conf.intr_conf;
 
 	MLX4_ASSERT(priv->intr_alarm == 1);
@@ -183,7 +183,7 @@ mlx4_interrupt_handler(struct mlx4_priv *priv)
 	};
 	uint32_t caught[RTE_DIM(type)] = { 0 };
 	struct ibv_async_event event;
-	const struct rte_intr_conf *const intr_conf =
+	const struct rte_eth_intr_conf *const intr_conf =
 		&ETH_DEV(priv)->data->dev_conf.intr_conf;
 	unsigned int i;
 
@@ -280,7 +280,7 @@ mlx4_intr_uninstall(struct mlx4_priv *priv)
 int
 mlx4_intr_install(struct mlx4_priv *priv)
 {
-	const struct rte_intr_conf *const intr_conf =
+	const struct rte_eth_intr_conf *const intr_conf =
 		&ETH_DEV(priv)->data->dev_conf.intr_conf;
 	int rc;
 
@@ -386,7 +386,7 @@ mlx4_rx_intr_enable(struct rte_eth_dev *dev, uint16_t idx)
 int
 mlx4_rxq_intr_enable(struct mlx4_priv *priv)
 {
-	const struct rte_intr_conf *const intr_conf =
+	const struct rte_eth_intr_conf *const intr_conf =
 		&ETH_DEV(priv)->data->dev_conf.intr_conf;
 
 	if (intr_conf->rxq && mlx4_rx_intr_vec_enable(priv) < 0)

@@ -1998,9 +1998,9 @@ avp_dev_configure(struct rte_eth_dev *eth_dev)
 	/* Setup required number of queues */
 	_avp_set_queue_counts(eth_dev);
 
-	mask = (ETH_VLAN_STRIP_MASK |
-		ETH_VLAN_FILTER_MASK |
-		ETH_VLAN_EXTEND_MASK);
+	mask = (RTE_ETH_VLAN_STRIP_MASK |
+		RTE_ETH_VLAN_FILTER_MASK |
+		RTE_ETH_VLAN_EXTEND_MASK);
 	ret = avp_vlan_offload_set(eth_dev, mask);
 	if (ret < 0) {
 		PMD_DRV_LOG(ERR, "VLAN offload set failed by host, ret=%d\n",
@@ -2140,8 +2140,8 @@ avp_dev_link_update(struct rte_eth_dev *eth_dev,
 	struct avp_dev *avp = AVP_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
 	struct rte_eth_link *link = &eth_dev->data->dev_link;
 
-	link->link_speed = ETH_SPEED_NUM_10G;
-	link->link_duplex = ETH_LINK_FULL_DUPLEX;
+	link->link_speed = RTE_ETH_SPEED_NUM_10G;
+	link->link_duplex = RTE_ETH_LINK_FULL_DUPLEX;
 	link->link_status = !!(avp->flags & AVP_F_LINKUP);
 
 	return -1;
@@ -2191,8 +2191,8 @@ avp_dev_info_get(struct rte_eth_dev *eth_dev,
 	dev_info->max_rx_pktlen = avp->max_rx_pkt_len;
 	dev_info->max_mac_addrs = AVP_MAX_MAC_ADDRS;
 	if (avp->host_features & RTE_AVP_FEATURE_VLAN_OFFLOAD) {
-		dev_info->rx_offload_capa = DEV_RX_OFFLOAD_VLAN_STRIP;
-		dev_info->tx_offload_capa = DEV_TX_OFFLOAD_VLAN_INSERT;
+		dev_info->rx_offload_capa = RTE_ETH_RX_OFFLOAD_VLAN_STRIP;
+		dev_info->tx_offload_capa = RTE_ETH_TX_OFFLOAD_VLAN_INSERT;
 	}
 
 	return 0;
@@ -2205,9 +2205,9 @@ avp_vlan_offload_set(struct rte_eth_dev *eth_dev, int mask)
 	struct rte_eth_conf *dev_conf = &eth_dev->data->dev_conf;
 	uint64_t offloads = dev_conf->rxmode.offloads;
 
-	if (mask & ETH_VLAN_STRIP_MASK) {
+	if (mask & RTE_ETH_VLAN_STRIP_MASK) {
 		if (avp->host_features & RTE_AVP_FEATURE_VLAN_OFFLOAD) {
-			if (offloads & DEV_RX_OFFLOAD_VLAN_STRIP)
+			if (offloads & RTE_ETH_RX_OFFLOAD_VLAN_STRIP)
 				avp->features |= RTE_AVP_FEATURE_VLAN_OFFLOAD;
 			else
 				avp->features &= ~RTE_AVP_FEATURE_VLAN_OFFLOAD;
@@ -2216,13 +2216,13 @@ avp_vlan_offload_set(struct rte_eth_dev *eth_dev, int mask)
 		}
 	}
 
-	if (mask & ETH_VLAN_FILTER_MASK) {
-		if (offloads & DEV_RX_OFFLOAD_VLAN_FILTER)
+	if (mask & RTE_ETH_VLAN_FILTER_MASK) {
+		if (offloads & RTE_ETH_RX_OFFLOAD_VLAN_FILTER)
 			PMD_DRV_LOG(ERR, "VLAN filter offload not supported\n");
 	}
 
-	if (mask & ETH_VLAN_EXTEND_MASK) {
-		if (offloads & DEV_RX_OFFLOAD_VLAN_EXTEND)
+	if (mask & RTE_ETH_VLAN_EXTEND_MASK) {
+		if (offloads & RTE_ETH_RX_OFFLOAD_VLAN_EXTEND)
 			PMD_DRV_LOG(ERR, "VLAN extend offload not supported\n");
 	}
 

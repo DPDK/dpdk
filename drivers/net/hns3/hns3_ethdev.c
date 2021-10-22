@@ -60,29 +60,29 @@ enum hns3_evt_cause {
 };
 
 static const struct rte_eth_fec_capa speed_fec_capa_tbl[] = {
-	{ ETH_SPEED_NUM_10G, RTE_ETH_FEC_MODE_CAPA_MASK(NOFEC) |
+	{ RTE_ETH_SPEED_NUM_10G, RTE_ETH_FEC_MODE_CAPA_MASK(NOFEC) |
 			     RTE_ETH_FEC_MODE_CAPA_MASK(AUTO) |
 			     RTE_ETH_FEC_MODE_CAPA_MASK(BASER) },
 
-	{ ETH_SPEED_NUM_25G, RTE_ETH_FEC_MODE_CAPA_MASK(NOFEC) |
+	{ RTE_ETH_SPEED_NUM_25G, RTE_ETH_FEC_MODE_CAPA_MASK(NOFEC) |
 			     RTE_ETH_FEC_MODE_CAPA_MASK(AUTO) |
 			     RTE_ETH_FEC_MODE_CAPA_MASK(BASER) |
 			     RTE_ETH_FEC_MODE_CAPA_MASK(RS) },
 
-	{ ETH_SPEED_NUM_40G, RTE_ETH_FEC_MODE_CAPA_MASK(NOFEC) |
+	{ RTE_ETH_SPEED_NUM_40G, RTE_ETH_FEC_MODE_CAPA_MASK(NOFEC) |
 			     RTE_ETH_FEC_MODE_CAPA_MASK(AUTO) |
 			     RTE_ETH_FEC_MODE_CAPA_MASK(BASER) },
 
-	{ ETH_SPEED_NUM_50G, RTE_ETH_FEC_MODE_CAPA_MASK(NOFEC) |
+	{ RTE_ETH_SPEED_NUM_50G, RTE_ETH_FEC_MODE_CAPA_MASK(NOFEC) |
 			     RTE_ETH_FEC_MODE_CAPA_MASK(AUTO) |
 			     RTE_ETH_FEC_MODE_CAPA_MASK(BASER) |
 			     RTE_ETH_FEC_MODE_CAPA_MASK(RS) },
 
-	{ ETH_SPEED_NUM_100G, RTE_ETH_FEC_MODE_CAPA_MASK(NOFEC) |
+	{ RTE_ETH_SPEED_NUM_100G, RTE_ETH_FEC_MODE_CAPA_MASK(NOFEC) |
 			      RTE_ETH_FEC_MODE_CAPA_MASK(AUTO) |
 			      RTE_ETH_FEC_MODE_CAPA_MASK(RS) },
 
-	{ ETH_SPEED_NUM_200G, RTE_ETH_FEC_MODE_CAPA_MASK(NOFEC) |
+	{ RTE_ETH_SPEED_NUM_200G, RTE_ETH_FEC_MODE_CAPA_MASK(NOFEC) |
 			      RTE_ETH_FEC_MODE_CAPA_MASK(AUTO) |
 			      RTE_ETH_FEC_MODE_CAPA_MASK(RS) }
 };
@@ -500,8 +500,8 @@ hns3_vlan_tpid_configure(struct hns3_adapter *hns, enum rte_vlan_type vlan_type,
 	struct hns3_cmd_desc desc;
 	int ret;
 
-	if ((vlan_type != ETH_VLAN_TYPE_INNER &&
-	     vlan_type != ETH_VLAN_TYPE_OUTER)) {
+	if ((vlan_type != RTE_ETH_VLAN_TYPE_INNER &&
+	     vlan_type != RTE_ETH_VLAN_TYPE_OUTER)) {
 		hns3_err(hw, "Unsupported vlan type, vlan_type =%d", vlan_type);
 		return -EINVAL;
 	}
@@ -514,10 +514,10 @@ hns3_vlan_tpid_configure(struct hns3_adapter *hns, enum rte_vlan_type vlan_type,
 	hns3_cmd_setup_basic_desc(&desc, HNS3_OPC_MAC_VLAN_TYPE_ID, false);
 	rx_req = (struct hns3_rx_vlan_type_cfg_cmd *)desc.data;
 
-	if (vlan_type == ETH_VLAN_TYPE_OUTER) {
+	if (vlan_type == RTE_ETH_VLAN_TYPE_OUTER) {
 		rx_req->ot_fst_vlan_type = rte_cpu_to_le_16(tpid);
 		rx_req->ot_sec_vlan_type = rte_cpu_to_le_16(tpid);
-	} else if (vlan_type == ETH_VLAN_TYPE_INNER) {
+	} else if (vlan_type == RTE_ETH_VLAN_TYPE_INNER) {
 		rx_req->ot_fst_vlan_type = rte_cpu_to_le_16(tpid);
 		rx_req->ot_sec_vlan_type = rte_cpu_to_le_16(tpid);
 		rx_req->in_fst_vlan_type = rte_cpu_to_le_16(tpid);
@@ -725,11 +725,11 @@ hns3_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 	rte_spinlock_lock(&hw->lock);
 	rxmode = &dev->data->dev_conf.rxmode;
 	tmp_mask = (unsigned int)mask;
-	if (tmp_mask & ETH_VLAN_FILTER_MASK) {
+	if (tmp_mask & RTE_ETH_VLAN_FILTER_MASK) {
 		/* ignore vlan filter configuration during promiscuous mode */
 		if (!dev->data->promiscuous) {
 			/* Enable or disable VLAN filter */
-			enable = rxmode->offloads & DEV_RX_OFFLOAD_VLAN_FILTER ?
+			enable = rxmode->offloads & RTE_ETH_RX_OFFLOAD_VLAN_FILTER ?
 				 true : false;
 
 			ret = hns3_enable_vlan_filter(hns, enable);
@@ -742,9 +742,9 @@ hns3_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 		}
 	}
 
-	if (tmp_mask & ETH_VLAN_STRIP_MASK) {
+	if (tmp_mask & RTE_ETH_VLAN_STRIP_MASK) {
 		/* Enable or disable VLAN stripping */
-		enable = rxmode->offloads & DEV_RX_OFFLOAD_VLAN_STRIP ?
+		enable = rxmode->offloads & RTE_ETH_RX_OFFLOAD_VLAN_STRIP ?
 		    true : false;
 
 		ret = hns3_en_hw_strip_rxvtag(hns, enable);
@@ -1118,7 +1118,7 @@ hns3_init_vlan_config(struct hns3_adapter *hns)
 		return ret;
 	}
 
-	ret = hns3_vlan_tpid_configure(hns, ETH_VLAN_TYPE_INNER,
+	ret = hns3_vlan_tpid_configure(hns, RTE_ETH_VLAN_TYPE_INNER,
 				       RTE_ETHER_TYPE_VLAN);
 	if (ret) {
 		hns3_err(hw, "tpid set fail in pf, ret =%d", ret);
@@ -1161,7 +1161,7 @@ hns3_restore_vlan_conf(struct hns3_adapter *hns)
 	if (!hw->data->promiscuous) {
 		/* restore vlan filter states */
 		offloads = hw->data->dev_conf.rxmode.offloads;
-		enable = offloads & DEV_RX_OFFLOAD_VLAN_FILTER ? true : false;
+		enable = offloads & RTE_ETH_RX_OFFLOAD_VLAN_FILTER ? true : false;
 		ret = hns3_enable_vlan_filter(hns, enable);
 		if (ret) {
 			hns3_err(hw, "failed to restore vlan rx filter conf, "
@@ -1204,7 +1204,7 @@ hns3_dev_configure_vlan(struct rte_eth_dev *dev)
 			  txmode->hw_vlan_reject_untagged);
 
 	/* Apply vlan offload setting */
-	mask = ETH_VLAN_STRIP_MASK | ETH_VLAN_FILTER_MASK;
+	mask = RTE_ETH_VLAN_STRIP_MASK | RTE_ETH_VLAN_FILTER_MASK;
 	ret = hns3_vlan_offload_set(dev, mask);
 	if (ret) {
 		hns3_err(hw, "dev config rx vlan offload failed, ret = %d",
@@ -2213,9 +2213,9 @@ hns3_check_mq_mode(struct rte_eth_dev *dev)
 	int max_tc = 0;
 	int i;
 
-	if ((rx_mq_mode & ETH_MQ_RX_VMDQ_FLAG) ||
-	    (tx_mq_mode == ETH_MQ_TX_VMDQ_DCB ||
-	     tx_mq_mode == ETH_MQ_TX_VMDQ_ONLY)) {
+	if ((rx_mq_mode & RTE_ETH_MQ_RX_VMDQ_FLAG) ||
+	    (tx_mq_mode == RTE_ETH_MQ_TX_VMDQ_DCB ||
+	     tx_mq_mode == RTE_ETH_MQ_TX_VMDQ_ONLY)) {
 		hns3_err(hw, "VMDQ is not supported, rx_mq_mode = %d, tx_mq_mode = %d.",
 			 rx_mq_mode, tx_mq_mode);
 		return -EOPNOTSUPP;
@@ -2223,7 +2223,7 @@ hns3_check_mq_mode(struct rte_eth_dev *dev)
 
 	dcb_rx_conf = &dev->data->dev_conf.rx_adv_conf.dcb_rx_conf;
 	dcb_tx_conf = &dev->data->dev_conf.tx_adv_conf.dcb_tx_conf;
-	if (rx_mq_mode & ETH_MQ_RX_DCB_FLAG) {
+	if (rx_mq_mode & RTE_ETH_MQ_RX_DCB_FLAG) {
 		if (dcb_rx_conf->nb_tcs > pf->tc_max) {
 			hns3_err(hw, "nb_tcs(%u) > max_tc(%u) driver supported.",
 				 dcb_rx_conf->nb_tcs, pf->tc_max);
@@ -2232,7 +2232,7 @@ hns3_check_mq_mode(struct rte_eth_dev *dev)
 
 		if (!(dcb_rx_conf->nb_tcs == HNS3_4_TCS ||
 		      dcb_rx_conf->nb_tcs == HNS3_8_TCS)) {
-			hns3_err(hw, "on ETH_MQ_RX_DCB_RSS mode, "
+			hns3_err(hw, "on RTE_ETH_MQ_RX_DCB_RSS mode, "
 				 "nb_tcs(%d) != %d or %d in rx direction.",
 				 dcb_rx_conf->nb_tcs, HNS3_4_TCS, HNS3_8_TCS);
 			return -EINVAL;
@@ -2400,11 +2400,11 @@ hns3_check_link_speed(struct hns3_hw *hw, uint32_t link_speeds)
 	 * configure link_speeds (default 0), which means auto-negotiation.
 	 * In this case, it should return success.
 	 */
-	if (link_speeds == ETH_LINK_SPEED_AUTONEG &&
+	if (link_speeds == RTE_ETH_LINK_SPEED_AUTONEG &&
 	    hw->mac.support_autoneg == 0)
 		return 0;
 
-	if (link_speeds != ETH_LINK_SPEED_AUTONEG) {
+	if (link_speeds != RTE_ETH_LINK_SPEED_AUTONEG) {
 		ret = hns3_check_port_speed(hw, link_speeds);
 		if (ret)
 			return ret;
@@ -2464,15 +2464,15 @@ hns3_dev_configure(struct rte_eth_dev *dev)
 	if (ret)
 		goto cfg_err;
 
-	if ((uint32_t)mq_mode & ETH_MQ_RX_DCB_FLAG) {
+	if ((uint32_t)mq_mode & RTE_ETH_MQ_RX_DCB_FLAG) {
 		ret = hns3_setup_dcb(dev);
 		if (ret)
 			goto cfg_err;
 	}
 
 	/* When RSS is not configured, redirect the packet queue 0 */
-	if ((uint32_t)mq_mode & ETH_MQ_RX_RSS_FLAG) {
-		conf->rxmode.offloads |= DEV_RX_OFFLOAD_RSS_HASH;
+	if ((uint32_t)mq_mode & RTE_ETH_MQ_RX_RSS_FLAG) {
+		conf->rxmode.offloads |= RTE_ETH_RX_OFFLOAD_RSS_HASH;
 		rss_conf = conf->rx_adv_conf.rss_conf;
 		hw->rss_dis_flag = false;
 		ret = hns3_dev_rss_hash_update(dev, &rss_conf);
@@ -2493,7 +2493,7 @@ hns3_dev_configure(struct rte_eth_dev *dev)
 		goto cfg_err;
 
 	/* config hardware GRO */
-	gro_en = conf->rxmode.offloads & DEV_RX_OFFLOAD_TCP_LRO ? true : false;
+	gro_en = conf->rxmode.offloads & RTE_ETH_RX_OFFLOAD_TCP_LRO ? true : false;
 	ret = hns3_config_gro(hw, gro_en);
 	if (ret)
 		goto cfg_err;
@@ -2600,15 +2600,15 @@ hns3_get_copper_port_speed_capa(uint32_t supported_speed)
 	uint32_t speed_capa = 0;
 
 	if (supported_speed & HNS3_PHY_LINK_SPEED_10M_HD_BIT)
-		speed_capa |= ETH_LINK_SPEED_10M_HD;
+		speed_capa |= RTE_ETH_LINK_SPEED_10M_HD;
 	if (supported_speed & HNS3_PHY_LINK_SPEED_10M_BIT)
-		speed_capa |= ETH_LINK_SPEED_10M;
+		speed_capa |= RTE_ETH_LINK_SPEED_10M;
 	if (supported_speed & HNS3_PHY_LINK_SPEED_100M_HD_BIT)
-		speed_capa |= ETH_LINK_SPEED_100M_HD;
+		speed_capa |= RTE_ETH_LINK_SPEED_100M_HD;
 	if (supported_speed & HNS3_PHY_LINK_SPEED_100M_BIT)
-		speed_capa |= ETH_LINK_SPEED_100M;
+		speed_capa |= RTE_ETH_LINK_SPEED_100M;
 	if (supported_speed & HNS3_PHY_LINK_SPEED_1000M_BIT)
-		speed_capa |= ETH_LINK_SPEED_1G;
+		speed_capa |= RTE_ETH_LINK_SPEED_1G;
 
 	return speed_capa;
 }
@@ -2619,19 +2619,19 @@ hns3_get_firber_port_speed_capa(uint32_t supported_speed)
 	uint32_t speed_capa = 0;
 
 	if (supported_speed & HNS3_FIBER_LINK_SPEED_1G_BIT)
-		speed_capa |= ETH_LINK_SPEED_1G;
+		speed_capa |= RTE_ETH_LINK_SPEED_1G;
 	if (supported_speed & HNS3_FIBER_LINK_SPEED_10G_BIT)
-		speed_capa |= ETH_LINK_SPEED_10G;
+		speed_capa |= RTE_ETH_LINK_SPEED_10G;
 	if (supported_speed & HNS3_FIBER_LINK_SPEED_25G_BIT)
-		speed_capa |= ETH_LINK_SPEED_25G;
+		speed_capa |= RTE_ETH_LINK_SPEED_25G;
 	if (supported_speed & HNS3_FIBER_LINK_SPEED_40G_BIT)
-		speed_capa |= ETH_LINK_SPEED_40G;
+		speed_capa |= RTE_ETH_LINK_SPEED_40G;
 	if (supported_speed & HNS3_FIBER_LINK_SPEED_50G_BIT)
-		speed_capa |= ETH_LINK_SPEED_50G;
+		speed_capa |= RTE_ETH_LINK_SPEED_50G;
 	if (supported_speed & HNS3_FIBER_LINK_SPEED_100G_BIT)
-		speed_capa |= ETH_LINK_SPEED_100G;
+		speed_capa |= RTE_ETH_LINK_SPEED_100G;
 	if (supported_speed & HNS3_FIBER_LINK_SPEED_200G_BIT)
-		speed_capa |= ETH_LINK_SPEED_200G;
+		speed_capa |= RTE_ETH_LINK_SPEED_200G;
 
 	return speed_capa;
 }
@@ -2650,7 +2650,7 @@ hns3_get_speed_capa(struct hns3_hw *hw)
 			hns3_get_firber_port_speed_capa(mac->supported_speed);
 
 	if (mac->support_autoneg == 0)
-		speed_capa |= ETH_LINK_SPEED_FIXED;
+		speed_capa |= RTE_ETH_LINK_SPEED_FIXED;
 
 	return speed_capa;
 }
@@ -2676,40 +2676,40 @@ hns3_dev_infos_get(struct rte_eth_dev *eth_dev, struct rte_eth_dev_info *info)
 	info->max_mac_addrs = HNS3_UC_MACADDR_NUM;
 	info->max_mtu = info->max_rx_pktlen - HNS3_ETH_OVERHEAD;
 	info->max_lro_pkt_size = HNS3_MAX_LRO_SIZE;
-	info->rx_offload_capa = (DEV_RX_OFFLOAD_IPV4_CKSUM |
-				 DEV_RX_OFFLOAD_TCP_CKSUM |
-				 DEV_RX_OFFLOAD_UDP_CKSUM |
-				 DEV_RX_OFFLOAD_SCTP_CKSUM |
-				 DEV_RX_OFFLOAD_OUTER_IPV4_CKSUM |
-				 DEV_RX_OFFLOAD_OUTER_UDP_CKSUM |
-				 DEV_RX_OFFLOAD_KEEP_CRC |
-				 DEV_RX_OFFLOAD_SCATTER |
-				 DEV_RX_OFFLOAD_VLAN_STRIP |
-				 DEV_RX_OFFLOAD_VLAN_FILTER |
-				 DEV_RX_OFFLOAD_RSS_HASH |
-				 DEV_RX_OFFLOAD_TCP_LRO);
-	info->tx_offload_capa = (DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM |
-				 DEV_TX_OFFLOAD_IPV4_CKSUM |
-				 DEV_TX_OFFLOAD_TCP_CKSUM |
-				 DEV_TX_OFFLOAD_UDP_CKSUM |
-				 DEV_TX_OFFLOAD_SCTP_CKSUM |
-				 DEV_TX_OFFLOAD_MULTI_SEGS |
-				 DEV_TX_OFFLOAD_TCP_TSO |
-				 DEV_TX_OFFLOAD_VXLAN_TNL_TSO |
-				 DEV_TX_OFFLOAD_GRE_TNL_TSO |
-				 DEV_TX_OFFLOAD_GENEVE_TNL_TSO |
-				 DEV_TX_OFFLOAD_MBUF_FAST_FREE |
+	info->rx_offload_capa = (RTE_ETH_RX_OFFLOAD_IPV4_CKSUM |
+				 RTE_ETH_RX_OFFLOAD_TCP_CKSUM |
+				 RTE_ETH_RX_OFFLOAD_UDP_CKSUM |
+				 RTE_ETH_RX_OFFLOAD_SCTP_CKSUM |
+				 RTE_ETH_RX_OFFLOAD_OUTER_IPV4_CKSUM |
+				 RTE_ETH_RX_OFFLOAD_OUTER_UDP_CKSUM |
+				 RTE_ETH_RX_OFFLOAD_KEEP_CRC |
+				 RTE_ETH_RX_OFFLOAD_SCATTER |
+				 RTE_ETH_RX_OFFLOAD_VLAN_STRIP |
+				 RTE_ETH_RX_OFFLOAD_VLAN_FILTER |
+				 RTE_ETH_RX_OFFLOAD_RSS_HASH |
+				 RTE_ETH_RX_OFFLOAD_TCP_LRO);
+	info->tx_offload_capa = (RTE_ETH_TX_OFFLOAD_OUTER_IPV4_CKSUM |
+				 RTE_ETH_TX_OFFLOAD_IPV4_CKSUM |
+				 RTE_ETH_TX_OFFLOAD_TCP_CKSUM |
+				 RTE_ETH_TX_OFFLOAD_UDP_CKSUM |
+				 RTE_ETH_TX_OFFLOAD_SCTP_CKSUM |
+				 RTE_ETH_TX_OFFLOAD_MULTI_SEGS |
+				 RTE_ETH_TX_OFFLOAD_TCP_TSO |
+				 RTE_ETH_TX_OFFLOAD_VXLAN_TNL_TSO |
+				 RTE_ETH_TX_OFFLOAD_GRE_TNL_TSO |
+				 RTE_ETH_TX_OFFLOAD_GENEVE_TNL_TSO |
+				 RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE |
 				 hns3_txvlan_cap_get(hw));
 
 	if (hns3_dev_get_support(hw, OUTER_UDP_CKSUM))
-		info->tx_offload_capa |= DEV_TX_OFFLOAD_OUTER_UDP_CKSUM;
+		info->tx_offload_capa |= RTE_ETH_TX_OFFLOAD_OUTER_UDP_CKSUM;
 
 	if (hns3_dev_get_support(hw, INDEP_TXRX))
 		info->dev_capa = RTE_ETH_DEV_CAPA_RUNTIME_RX_QUEUE_SETUP |
 				 RTE_ETH_DEV_CAPA_RUNTIME_TX_QUEUE_SETUP;
 
 	if (hns3_dev_get_support(hw, PTP))
-		info->rx_offload_capa |= DEV_RX_OFFLOAD_TIMESTAMP;
+		info->rx_offload_capa |= RTE_ETH_RX_OFFLOAD_TIMESTAMP;
 
 	info->rx_desc_lim = (struct rte_eth_desc_lim) {
 		.nb_max = HNS3_MAX_RING_DESC,
@@ -2793,7 +2793,7 @@ hns3_update_port_link_info(struct rte_eth_dev *eth_dev)
 
 	ret = hns3_update_link_info(eth_dev);
 	if (ret)
-		hw->mac.link_status = ETH_LINK_DOWN;
+		hw->mac.link_status = RTE_ETH_LINK_DOWN;
 
 	return ret;
 }
@@ -2806,29 +2806,29 @@ hns3_setup_linkstatus(struct rte_eth_dev *eth_dev,
 	struct hns3_mac *mac = &hw->mac;
 
 	switch (mac->link_speed) {
-	case ETH_SPEED_NUM_10M:
-	case ETH_SPEED_NUM_100M:
-	case ETH_SPEED_NUM_1G:
-	case ETH_SPEED_NUM_10G:
-	case ETH_SPEED_NUM_25G:
-	case ETH_SPEED_NUM_40G:
-	case ETH_SPEED_NUM_50G:
-	case ETH_SPEED_NUM_100G:
-	case ETH_SPEED_NUM_200G:
+	case RTE_ETH_SPEED_NUM_10M:
+	case RTE_ETH_SPEED_NUM_100M:
+	case RTE_ETH_SPEED_NUM_1G:
+	case RTE_ETH_SPEED_NUM_10G:
+	case RTE_ETH_SPEED_NUM_25G:
+	case RTE_ETH_SPEED_NUM_40G:
+	case RTE_ETH_SPEED_NUM_50G:
+	case RTE_ETH_SPEED_NUM_100G:
+	case RTE_ETH_SPEED_NUM_200G:
 		if (mac->link_status)
 			new_link->link_speed = mac->link_speed;
 		break;
 	default:
 		if (mac->link_status)
-			new_link->link_speed = ETH_SPEED_NUM_UNKNOWN;
+			new_link->link_speed = RTE_ETH_SPEED_NUM_UNKNOWN;
 		break;
 	}
 
 	if (!mac->link_status)
-		new_link->link_speed = ETH_SPEED_NUM_NONE;
+		new_link->link_speed = RTE_ETH_SPEED_NUM_NONE;
 
 	new_link->link_duplex = mac->link_duplex;
-	new_link->link_status = mac->link_status ? ETH_LINK_UP : ETH_LINK_DOWN;
+	new_link->link_status = mac->link_status ? RTE_ETH_LINK_UP : RTE_ETH_LINK_DOWN;
 	new_link->link_autoneg = mac->link_autoneg;
 }
 
@@ -2848,8 +2848,8 @@ hns3_dev_link_update(struct rte_eth_dev *eth_dev, int wait_to_complete)
 	if (eth_dev->data->dev_started == 0) {
 		new_link.link_autoneg = mac->link_autoneg;
 		new_link.link_duplex = mac->link_duplex;
-		new_link.link_speed = ETH_SPEED_NUM_NONE;
-		new_link.link_status = ETH_LINK_DOWN;
+		new_link.link_speed = RTE_ETH_SPEED_NUM_NONE;
+		new_link.link_status = RTE_ETH_LINK_DOWN;
 		goto out;
 	}
 
@@ -2861,7 +2861,7 @@ hns3_dev_link_update(struct rte_eth_dev *eth_dev, int wait_to_complete)
 			break;
 		}
 
-		if (!wait_to_complete || mac->link_status == ETH_LINK_UP)
+		if (!wait_to_complete || mac->link_status == RTE_ETH_LINK_UP)
 			break;
 
 		rte_delay_ms(HNS3_LINK_CHECK_INTERVAL);
@@ -3207,31 +3207,31 @@ hns3_parse_speed(int speed_cmd, uint32_t *speed)
 {
 	switch (speed_cmd) {
 	case HNS3_CFG_SPEED_10M:
-		*speed = ETH_SPEED_NUM_10M;
+		*speed = RTE_ETH_SPEED_NUM_10M;
 		break;
 	case HNS3_CFG_SPEED_100M:
-		*speed = ETH_SPEED_NUM_100M;
+		*speed = RTE_ETH_SPEED_NUM_100M;
 		break;
 	case HNS3_CFG_SPEED_1G:
-		*speed = ETH_SPEED_NUM_1G;
+		*speed = RTE_ETH_SPEED_NUM_1G;
 		break;
 	case HNS3_CFG_SPEED_10G:
-		*speed = ETH_SPEED_NUM_10G;
+		*speed = RTE_ETH_SPEED_NUM_10G;
 		break;
 	case HNS3_CFG_SPEED_25G:
-		*speed = ETH_SPEED_NUM_25G;
+		*speed = RTE_ETH_SPEED_NUM_25G;
 		break;
 	case HNS3_CFG_SPEED_40G:
-		*speed = ETH_SPEED_NUM_40G;
+		*speed = RTE_ETH_SPEED_NUM_40G;
 		break;
 	case HNS3_CFG_SPEED_50G:
-		*speed = ETH_SPEED_NUM_50G;
+		*speed = RTE_ETH_SPEED_NUM_50G;
 		break;
 	case HNS3_CFG_SPEED_100G:
-		*speed = ETH_SPEED_NUM_100G;
+		*speed = RTE_ETH_SPEED_NUM_100G;
 		break;
 	case HNS3_CFG_SPEED_200G:
-		*speed = ETH_SPEED_NUM_200G;
+		*speed = RTE_ETH_SPEED_NUM_200G;
 		break;
 	default:
 		return -EINVAL;
@@ -3559,39 +3559,39 @@ hns3_cfg_mac_speed_dup_hw(struct hns3_hw *hw, uint32_t speed, uint8_t duplex)
 	hns3_set_bit(req->speed_dup, HNS3_CFG_DUPLEX_B, !!duplex ? 1 : 0);
 
 	switch (speed) {
-	case ETH_SPEED_NUM_10M:
+	case RTE_ETH_SPEED_NUM_10M:
 		hns3_set_field(req->speed_dup, HNS3_CFG_SPEED_M,
 			       HNS3_CFG_SPEED_S, HNS3_CFG_SPEED_10M);
 		break;
-	case ETH_SPEED_NUM_100M:
+	case RTE_ETH_SPEED_NUM_100M:
 		hns3_set_field(req->speed_dup, HNS3_CFG_SPEED_M,
 			       HNS3_CFG_SPEED_S, HNS3_CFG_SPEED_100M);
 		break;
-	case ETH_SPEED_NUM_1G:
+	case RTE_ETH_SPEED_NUM_1G:
 		hns3_set_field(req->speed_dup, HNS3_CFG_SPEED_M,
 			       HNS3_CFG_SPEED_S, HNS3_CFG_SPEED_1G);
 		break;
-	case ETH_SPEED_NUM_10G:
+	case RTE_ETH_SPEED_NUM_10G:
 		hns3_set_field(req->speed_dup, HNS3_CFG_SPEED_M,
 			       HNS3_CFG_SPEED_S, HNS3_CFG_SPEED_10G);
 		break;
-	case ETH_SPEED_NUM_25G:
+	case RTE_ETH_SPEED_NUM_25G:
 		hns3_set_field(req->speed_dup, HNS3_CFG_SPEED_M,
 			       HNS3_CFG_SPEED_S, HNS3_CFG_SPEED_25G);
 		break;
-	case ETH_SPEED_NUM_40G:
+	case RTE_ETH_SPEED_NUM_40G:
 		hns3_set_field(req->speed_dup, HNS3_CFG_SPEED_M,
 			       HNS3_CFG_SPEED_S, HNS3_CFG_SPEED_40G);
 		break;
-	case ETH_SPEED_NUM_50G:
+	case RTE_ETH_SPEED_NUM_50G:
 		hns3_set_field(req->speed_dup, HNS3_CFG_SPEED_M,
 			       HNS3_CFG_SPEED_S, HNS3_CFG_SPEED_50G);
 		break;
-	case ETH_SPEED_NUM_100G:
+	case RTE_ETH_SPEED_NUM_100G:
 		hns3_set_field(req->speed_dup, HNS3_CFG_SPEED_M,
 			       HNS3_CFG_SPEED_S, HNS3_CFG_SPEED_100G);
 		break;
-	case ETH_SPEED_NUM_200G:
+	case RTE_ETH_SPEED_NUM_200G:
 		hns3_set_field(req->speed_dup, HNS3_CFG_SPEED_M,
 			       HNS3_CFG_SPEED_S, HNS3_CFG_SPEED_200G);
 		break;
@@ -4254,14 +4254,14 @@ hns3_mac_init(struct hns3_hw *hw)
 	int ret;
 
 	pf->support_sfp_query = true;
-	mac->link_duplex = ETH_LINK_FULL_DUPLEX;
+	mac->link_duplex = RTE_ETH_LINK_FULL_DUPLEX;
 	ret = hns3_cfg_mac_speed_dup_hw(hw, mac->link_speed, mac->link_duplex);
 	if (ret) {
 		PMD_INIT_LOG(ERR, "Config mac speed dup fail ret = %d", ret);
 		return ret;
 	}
 
-	mac->link_status = ETH_LINK_DOWN;
+	mac->link_status = RTE_ETH_LINK_DOWN;
 
 	return hns3_config_mtu(hw, pf->mps);
 }
@@ -4511,7 +4511,7 @@ hns3_dev_promiscuous_enable(struct rte_eth_dev *dev)
 	 * all packets coming in in the receiving direction.
 	 */
 	offloads = dev->data->dev_conf.rxmode.offloads;
-	if (offloads & DEV_RX_OFFLOAD_VLAN_FILTER) {
+	if (offloads & RTE_ETH_RX_OFFLOAD_VLAN_FILTER) {
 		ret = hns3_enable_vlan_filter(hns, false);
 		if (ret) {
 			hns3_err(hw, "failed to enable promiscuous mode due to "
@@ -4552,7 +4552,7 @@ hns3_dev_promiscuous_disable(struct rte_eth_dev *dev)
 	}
 	/* when promiscuous mode was disabled, restore the vlan filter status */
 	offloads = dev->data->dev_conf.rxmode.offloads;
-	if (offloads & DEV_RX_OFFLOAD_VLAN_FILTER) {
+	if (offloads & RTE_ETH_RX_OFFLOAD_VLAN_FILTER) {
 		ret = hns3_enable_vlan_filter(hns, true);
 		if (ret) {
 			hns3_err(hw, "failed to disable promiscuous mode due to"
@@ -4672,8 +4672,8 @@ hns3_get_sfp_info(struct hns3_hw *hw, struct hns3_mac *mac_info)
 		mac_info->supported_speed =
 					rte_le_to_cpu_32(resp->supported_speed);
 		mac_info->support_autoneg = resp->autoneg_ability;
-		mac_info->link_autoneg = (resp->autoneg == 0) ? ETH_LINK_FIXED
-					: ETH_LINK_AUTONEG;
+		mac_info->link_autoneg = (resp->autoneg == 0) ? RTE_ETH_LINK_FIXED
+					: RTE_ETH_LINK_AUTONEG;
 	} else {
 		mac_info->query_type = HNS3_DEFAULT_QUERY;
 	}
@@ -4684,8 +4684,8 @@ hns3_get_sfp_info(struct hns3_hw *hw, struct hns3_mac *mac_info)
 static uint8_t
 hns3_check_speed_dup(uint8_t duplex, uint32_t speed)
 {
-	if (!(speed == ETH_SPEED_NUM_10M || speed == ETH_SPEED_NUM_100M))
-		duplex = ETH_LINK_FULL_DUPLEX;
+	if (!(speed == RTE_ETH_SPEED_NUM_10M || speed == RTE_ETH_SPEED_NUM_100M))
+		duplex = RTE_ETH_LINK_FULL_DUPLEX;
 
 	return duplex;
 }
@@ -4735,7 +4735,7 @@ hns3_update_fiber_link_info(struct hns3_hw *hw)
 		return ret;
 
 	/* Do nothing if no SFP */
-	if (mac_info.link_speed == ETH_SPEED_NUM_NONE)
+	if (mac_info.link_speed == RTE_ETH_SPEED_NUM_NONE)
 		return 0;
 
 	/*
@@ -4762,7 +4762,7 @@ hns3_update_fiber_link_info(struct hns3_hw *hw)
 
 	/* Config full duplex for SFP */
 	return hns3_cfg_mac_speed_dup(hw, mac_info.link_speed,
-				      ETH_LINK_FULL_DUPLEX);
+				      RTE_ETH_LINK_FULL_DUPLEX);
 }
 
 static void
@@ -4881,10 +4881,10 @@ hns3_cfg_mac_mode(struct hns3_hw *hw, bool enable)
 	hns3_set_bit(loop_en, HNS3_MAC_RX_FCS_B, val);
 
 	/*
-	 * If DEV_RX_OFFLOAD_KEEP_CRC offload is set, MAC will not strip CRC
+	 * If RTE_ETH_RX_OFFLOAD_KEEP_CRC offload is set, MAC will not strip CRC
 	 * when receiving frames. Otherwise, CRC will be stripped.
 	 */
-	if (hw->data->dev_conf.rxmode.offloads & DEV_RX_OFFLOAD_KEEP_CRC)
+	if (hw->data->dev_conf.rxmode.offloads & RTE_ETH_RX_OFFLOAD_KEEP_CRC)
 		hns3_set_bit(loop_en, HNS3_MAC_RX_FCS_STRIP_B, 0);
 	else
 		hns3_set_bit(loop_en, HNS3_MAC_RX_FCS_STRIP_B, val);
@@ -4912,7 +4912,7 @@ hns3_get_mac_link_status(struct hns3_hw *hw)
 	ret = hns3_cmd_send(hw, &desc, 1);
 	if (ret) {
 		hns3_err(hw, "get link status cmd failed %d", ret);
-		return ETH_LINK_DOWN;
+		return RTE_ETH_LINK_DOWN;
 	}
 
 	req = (struct hns3_link_status_cmd *)desc.data;
@@ -5094,19 +5094,19 @@ hns3_set_firber_default_support_speed(struct hns3_hw *hw)
 	struct hns3_mac *mac = &hw->mac;
 
 	switch (mac->link_speed) {
-	case ETH_SPEED_NUM_1G:
+	case RTE_ETH_SPEED_NUM_1G:
 		return HNS3_FIBER_LINK_SPEED_1G_BIT;
-	case ETH_SPEED_NUM_10G:
+	case RTE_ETH_SPEED_NUM_10G:
 		return HNS3_FIBER_LINK_SPEED_10G_BIT;
-	case ETH_SPEED_NUM_25G:
+	case RTE_ETH_SPEED_NUM_25G:
 		return HNS3_FIBER_LINK_SPEED_25G_BIT;
-	case ETH_SPEED_NUM_40G:
+	case RTE_ETH_SPEED_NUM_40G:
 		return HNS3_FIBER_LINK_SPEED_40G_BIT;
-	case ETH_SPEED_NUM_50G:
+	case RTE_ETH_SPEED_NUM_50G:
 		return HNS3_FIBER_LINK_SPEED_50G_BIT;
-	case ETH_SPEED_NUM_100G:
+	case RTE_ETH_SPEED_NUM_100G:
 		return HNS3_FIBER_LINK_SPEED_100G_BIT;
-	case ETH_SPEED_NUM_200G:
+	case RTE_ETH_SPEED_NUM_200G:
 		return HNS3_FIBER_LINK_SPEED_200G_BIT;
 	default:
 		hns3_warn(hw, "invalid speed %u Mbps.", mac->link_speed);
@@ -5344,20 +5344,20 @@ hns3_convert_link_speeds2bitmap_copper(uint32_t link_speeds)
 {
 	uint32_t speed_bit;
 
-	switch (link_speeds & ~ETH_LINK_SPEED_FIXED) {
-	case ETH_LINK_SPEED_10M:
+	switch (link_speeds & ~RTE_ETH_LINK_SPEED_FIXED) {
+	case RTE_ETH_LINK_SPEED_10M:
 		speed_bit = HNS3_PHY_LINK_SPEED_10M_BIT;
 		break;
-	case ETH_LINK_SPEED_10M_HD:
+	case RTE_ETH_LINK_SPEED_10M_HD:
 		speed_bit = HNS3_PHY_LINK_SPEED_10M_HD_BIT;
 		break;
-	case ETH_LINK_SPEED_100M:
+	case RTE_ETH_LINK_SPEED_100M:
 		speed_bit = HNS3_PHY_LINK_SPEED_100M_BIT;
 		break;
-	case ETH_LINK_SPEED_100M_HD:
+	case RTE_ETH_LINK_SPEED_100M_HD:
 		speed_bit = HNS3_PHY_LINK_SPEED_100M_HD_BIT;
 		break;
-	case ETH_LINK_SPEED_1G:
+	case RTE_ETH_LINK_SPEED_1G:
 		speed_bit = HNS3_PHY_LINK_SPEED_1000M_BIT;
 		break;
 	default:
@@ -5373,26 +5373,26 @@ hns3_convert_link_speeds2bitmap_fiber(uint32_t link_speeds)
 {
 	uint32_t speed_bit;
 
-	switch (link_speeds & ~ETH_LINK_SPEED_FIXED) {
-	case ETH_LINK_SPEED_1G:
+	switch (link_speeds & ~RTE_ETH_LINK_SPEED_FIXED) {
+	case RTE_ETH_LINK_SPEED_1G:
 		speed_bit = HNS3_FIBER_LINK_SPEED_1G_BIT;
 		break;
-	case ETH_LINK_SPEED_10G:
+	case RTE_ETH_LINK_SPEED_10G:
 		speed_bit = HNS3_FIBER_LINK_SPEED_10G_BIT;
 		break;
-	case ETH_LINK_SPEED_25G:
+	case RTE_ETH_LINK_SPEED_25G:
 		speed_bit = HNS3_FIBER_LINK_SPEED_25G_BIT;
 		break;
-	case ETH_LINK_SPEED_40G:
+	case RTE_ETH_LINK_SPEED_40G:
 		speed_bit = HNS3_FIBER_LINK_SPEED_40G_BIT;
 		break;
-	case ETH_LINK_SPEED_50G:
+	case RTE_ETH_LINK_SPEED_50G:
 		speed_bit = HNS3_FIBER_LINK_SPEED_50G_BIT;
 		break;
-	case ETH_LINK_SPEED_100G:
+	case RTE_ETH_LINK_SPEED_100G:
 		speed_bit = HNS3_FIBER_LINK_SPEED_100G_BIT;
 		break;
-	case ETH_LINK_SPEED_200G:
+	case RTE_ETH_LINK_SPEED_200G:
 		speed_bit = HNS3_FIBER_LINK_SPEED_200G_BIT;
 		break;
 	default:
@@ -5427,28 +5427,28 @@ hns3_check_port_speed(struct hns3_hw *hw, uint32_t link_speeds)
 static inline uint32_t
 hns3_get_link_speed(uint32_t link_speeds)
 {
-	uint32_t speed = ETH_SPEED_NUM_NONE;
+	uint32_t speed = RTE_ETH_SPEED_NUM_NONE;
 
-	if (link_speeds & ETH_LINK_SPEED_10M ||
-	    link_speeds & ETH_LINK_SPEED_10M_HD)
-		speed = ETH_SPEED_NUM_10M;
-	if (link_speeds & ETH_LINK_SPEED_100M ||
-	    link_speeds & ETH_LINK_SPEED_100M_HD)
-		speed = ETH_SPEED_NUM_100M;
-	if (link_speeds & ETH_LINK_SPEED_1G)
-		speed = ETH_SPEED_NUM_1G;
-	if (link_speeds & ETH_LINK_SPEED_10G)
-		speed = ETH_SPEED_NUM_10G;
-	if (link_speeds & ETH_LINK_SPEED_25G)
-		speed = ETH_SPEED_NUM_25G;
-	if (link_speeds & ETH_LINK_SPEED_40G)
-		speed = ETH_SPEED_NUM_40G;
-	if (link_speeds & ETH_LINK_SPEED_50G)
-		speed = ETH_SPEED_NUM_50G;
-	if (link_speeds & ETH_LINK_SPEED_100G)
-		speed = ETH_SPEED_NUM_100G;
-	if (link_speeds & ETH_LINK_SPEED_200G)
-		speed = ETH_SPEED_NUM_200G;
+	if (link_speeds & RTE_ETH_LINK_SPEED_10M ||
+	    link_speeds & RTE_ETH_LINK_SPEED_10M_HD)
+		speed = RTE_ETH_SPEED_NUM_10M;
+	if (link_speeds & RTE_ETH_LINK_SPEED_100M ||
+	    link_speeds & RTE_ETH_LINK_SPEED_100M_HD)
+		speed = RTE_ETH_SPEED_NUM_100M;
+	if (link_speeds & RTE_ETH_LINK_SPEED_1G)
+		speed = RTE_ETH_SPEED_NUM_1G;
+	if (link_speeds & RTE_ETH_LINK_SPEED_10G)
+		speed = RTE_ETH_SPEED_NUM_10G;
+	if (link_speeds & RTE_ETH_LINK_SPEED_25G)
+		speed = RTE_ETH_SPEED_NUM_25G;
+	if (link_speeds & RTE_ETH_LINK_SPEED_40G)
+		speed = RTE_ETH_SPEED_NUM_40G;
+	if (link_speeds & RTE_ETH_LINK_SPEED_50G)
+		speed = RTE_ETH_SPEED_NUM_50G;
+	if (link_speeds & RTE_ETH_LINK_SPEED_100G)
+		speed = RTE_ETH_SPEED_NUM_100G;
+	if (link_speeds & RTE_ETH_LINK_SPEED_200G)
+		speed = RTE_ETH_SPEED_NUM_200G;
 
 	return speed;
 }
@@ -5456,11 +5456,11 @@ hns3_get_link_speed(uint32_t link_speeds)
 static uint8_t
 hns3_get_link_duplex(uint32_t link_speeds)
 {
-	if ((link_speeds & ETH_LINK_SPEED_10M_HD) ||
-	    (link_speeds & ETH_LINK_SPEED_100M_HD))
-		return ETH_LINK_HALF_DUPLEX;
+	if ((link_speeds & RTE_ETH_LINK_SPEED_10M_HD) ||
+	    (link_speeds & RTE_ETH_LINK_SPEED_100M_HD))
+		return RTE_ETH_LINK_HALF_DUPLEX;
 	else
-		return ETH_LINK_FULL_DUPLEX;
+		return RTE_ETH_LINK_FULL_DUPLEX;
 }
 
 static int
@@ -5594,9 +5594,9 @@ hns3_apply_link_speed(struct hns3_hw *hw)
 	struct hns3_set_link_speed_cfg cfg;
 
 	memset(&cfg, 0, sizeof(struct hns3_set_link_speed_cfg));
-	cfg.autoneg = (conf->link_speeds == ETH_LINK_SPEED_AUTONEG) ?
-			ETH_LINK_AUTONEG : ETH_LINK_FIXED;
-	if (cfg.autoneg != ETH_LINK_AUTONEG) {
+	cfg.autoneg = (conf->link_speeds == RTE_ETH_LINK_SPEED_AUTONEG) ?
+			RTE_ETH_LINK_AUTONEG : RTE_ETH_LINK_FIXED;
+	if (cfg.autoneg != RTE_ETH_LINK_AUTONEG) {
 		cfg.speed = hns3_get_link_speed(conf->link_speeds);
 		cfg.duplex = hns3_get_link_duplex(conf->link_speeds);
 	}
@@ -5869,7 +5869,7 @@ hns3_do_stop(struct hns3_adapter *hns)
 	ret = hns3_cfg_mac_mode(hw, false);
 	if (ret)
 		return ret;
-	hw->mac.link_status = ETH_LINK_DOWN;
+	hw->mac.link_status = RTE_ETH_LINK_DOWN;
 
 	if (__atomic_load_n(&hw->reset.disable_cmd, __ATOMIC_RELAXED) == 0) {
 		hns3_configure_all_mac_addr(hns, true);
@@ -6080,17 +6080,17 @@ hns3_flow_ctrl_get(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 	current_mode = hns3_get_current_fc_mode(dev);
 	switch (current_mode) {
 	case HNS3_FC_FULL:
-		fc_conf->mode = RTE_FC_FULL;
+		fc_conf->mode = RTE_ETH_FC_FULL;
 		break;
 	case HNS3_FC_TX_PAUSE:
-		fc_conf->mode = RTE_FC_TX_PAUSE;
+		fc_conf->mode = RTE_ETH_FC_TX_PAUSE;
 		break;
 	case HNS3_FC_RX_PAUSE:
-		fc_conf->mode = RTE_FC_RX_PAUSE;
+		fc_conf->mode = RTE_ETH_FC_RX_PAUSE;
 		break;
 	case HNS3_FC_NONE:
 	default:
-		fc_conf->mode = RTE_FC_NONE;
+		fc_conf->mode = RTE_ETH_FC_NONE;
 		break;
 	}
 
@@ -6236,7 +6236,7 @@ hns3_get_dcb_info(struct rte_eth_dev *dev, struct rte_eth_dcb_info *dcb_info)
 	int i;
 
 	rte_spinlock_lock(&hw->lock);
-	if ((uint32_t)mq_mode & ETH_MQ_RX_DCB_FLAG)
+	if ((uint32_t)mq_mode & RTE_ETH_MQ_RX_DCB_FLAG)
 		dcb_info->nb_tcs = pf->local_max_tc;
 	else
 		dcb_info->nb_tcs = 1;
@@ -6536,7 +6536,7 @@ hns3_stop_service(struct hns3_adapter *hns)
 	struct rte_eth_dev *eth_dev;
 
 	eth_dev = &rte_eth_devices[hw->data->port_id];
-	hw->mac.link_status = ETH_LINK_DOWN;
+	hw->mac.link_status = RTE_ETH_LINK_DOWN;
 	if (hw->adapter_state == HNS3_NIC_STARTED) {
 		rte_eal_alarm_cancel(hns3_service_handler, eth_dev);
 		hns3_update_linkstatus_and_event(hw, false);
@@ -6826,7 +6826,7 @@ get_current_fec_auto_state(struct hns3_hw *hw, uint8_t *state)
 	 * in device of link speed
 	 * below 10 Gbps.
 	 */
-	if (hw->mac.link_speed < ETH_SPEED_NUM_10G) {
+	if (hw->mac.link_speed < RTE_ETH_SPEED_NUM_10G) {
 		*state = 0;
 		return 0;
 	}
@@ -6858,7 +6858,7 @@ hns3_fec_get_internal(struct hns3_hw *hw, uint32_t *fec_capa)
 	 * configured FEC mode is returned.
 	 * If link is up, current FEC mode is returned.
 	 */
-	if (hw->mac.link_status == ETH_LINK_DOWN) {
+	if (hw->mac.link_status == RTE_ETH_LINK_DOWN) {
 		ret = get_current_fec_auto_state(hw, &auto_state);
 		if (ret)
 			return ret;
@@ -6957,12 +6957,12 @@ get_current_speed_fec_cap(struct hns3_hw *hw, struct rte_eth_fec_capa *fec_capa)
 	uint32_t cur_capa;
 
 	switch (mac->link_speed) {
-	case ETH_SPEED_NUM_10G:
+	case RTE_ETH_SPEED_NUM_10G:
 		cur_capa = fec_capa[1].capa;
 		break;
-	case ETH_SPEED_NUM_25G:
-	case ETH_SPEED_NUM_100G:
-	case ETH_SPEED_NUM_200G:
+	case RTE_ETH_SPEED_NUM_25G:
+	case RTE_ETH_SPEED_NUM_100G:
+	case RTE_ETH_SPEED_NUM_200G:
 		cur_capa = fec_capa[0].capa;
 		break;
 	default:

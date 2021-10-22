@@ -86,62 +86,62 @@ static const struct {
 };
 
 const struct rss_type_info rss_type_table[] = {
-	{ "all", ETH_RSS_ETH | ETH_RSS_VLAN | ETH_RSS_IP | ETH_RSS_TCP |
-		ETH_RSS_UDP | ETH_RSS_SCTP | ETH_RSS_L2_PAYLOAD |
-		ETH_RSS_L2TPV3 | ETH_RSS_ESP | ETH_RSS_AH | ETH_RSS_PFCP |
-		ETH_RSS_GTPU | ETH_RSS_ECPRI | ETH_RSS_MPLS},
+	{ "all", RTE_ETH_RSS_ETH | RTE_ETH_RSS_VLAN | RTE_ETH_RSS_IP | RTE_ETH_RSS_TCP |
+		RTE_ETH_RSS_UDP | RTE_ETH_RSS_SCTP | RTE_ETH_RSS_L2_PAYLOAD |
+		RTE_ETH_RSS_L2TPV3 | RTE_ETH_RSS_ESP | RTE_ETH_RSS_AH | RTE_ETH_RSS_PFCP |
+		RTE_ETH_RSS_GTPU | RTE_ETH_RSS_ECPRI | RTE_ETH_RSS_MPLS},
 	{ "none", 0 },
-	{ "eth", ETH_RSS_ETH },
-	{ "l2-src-only", ETH_RSS_L2_SRC_ONLY },
-	{ "l2-dst-only", ETH_RSS_L2_DST_ONLY },
-	{ "vlan", ETH_RSS_VLAN },
-	{ "s-vlan", ETH_RSS_S_VLAN },
-	{ "c-vlan", ETH_RSS_C_VLAN },
-	{ "ipv4", ETH_RSS_IPV4 },
-	{ "ipv4-frag", ETH_RSS_FRAG_IPV4 },
-	{ "ipv4-tcp", ETH_RSS_NONFRAG_IPV4_TCP },
-	{ "ipv4-udp", ETH_RSS_NONFRAG_IPV4_UDP },
-	{ "ipv4-sctp", ETH_RSS_NONFRAG_IPV4_SCTP },
-	{ "ipv4-other", ETH_RSS_NONFRAG_IPV4_OTHER },
-	{ "ipv6", ETH_RSS_IPV6 },
-	{ "ipv6-frag", ETH_RSS_FRAG_IPV6 },
-	{ "ipv6-tcp", ETH_RSS_NONFRAG_IPV6_TCP },
-	{ "ipv6-udp", ETH_RSS_NONFRAG_IPV6_UDP },
-	{ "ipv6-sctp", ETH_RSS_NONFRAG_IPV6_SCTP },
-	{ "ipv6-other", ETH_RSS_NONFRAG_IPV6_OTHER },
-	{ "l2-payload", ETH_RSS_L2_PAYLOAD },
-	{ "ipv6-ex", ETH_RSS_IPV6_EX },
-	{ "ipv6-tcp-ex", ETH_RSS_IPV6_TCP_EX },
-	{ "ipv6-udp-ex", ETH_RSS_IPV6_UDP_EX },
-	{ "port", ETH_RSS_PORT },
-	{ "vxlan", ETH_RSS_VXLAN },
-	{ "geneve", ETH_RSS_GENEVE },
-	{ "nvgre", ETH_RSS_NVGRE },
-	{ "ip", ETH_RSS_IP },
-	{ "udp", ETH_RSS_UDP },
-	{ "tcp", ETH_RSS_TCP },
-	{ "sctp", ETH_RSS_SCTP },
-	{ "tunnel", ETH_RSS_TUNNEL },
+	{ "eth", RTE_ETH_RSS_ETH },
+	{ "l2-src-only", RTE_ETH_RSS_L2_SRC_ONLY },
+	{ "l2-dst-only", RTE_ETH_RSS_L2_DST_ONLY },
+	{ "vlan", RTE_ETH_RSS_VLAN },
+	{ "s-vlan", RTE_ETH_RSS_S_VLAN },
+	{ "c-vlan", RTE_ETH_RSS_C_VLAN },
+	{ "ipv4", RTE_ETH_RSS_IPV4 },
+	{ "ipv4-frag", RTE_ETH_RSS_FRAG_IPV4 },
+	{ "ipv4-tcp", RTE_ETH_RSS_NONFRAG_IPV4_TCP },
+	{ "ipv4-udp", RTE_ETH_RSS_NONFRAG_IPV4_UDP },
+	{ "ipv4-sctp", RTE_ETH_RSS_NONFRAG_IPV4_SCTP },
+	{ "ipv4-other", RTE_ETH_RSS_NONFRAG_IPV4_OTHER },
+	{ "ipv6", RTE_ETH_RSS_IPV6 },
+	{ "ipv6-frag", RTE_ETH_RSS_FRAG_IPV6 },
+	{ "ipv6-tcp", RTE_ETH_RSS_NONFRAG_IPV6_TCP },
+	{ "ipv6-udp", RTE_ETH_RSS_NONFRAG_IPV6_UDP },
+	{ "ipv6-sctp", RTE_ETH_RSS_NONFRAG_IPV6_SCTP },
+	{ "ipv6-other", RTE_ETH_RSS_NONFRAG_IPV6_OTHER },
+	{ "l2-payload", RTE_ETH_RSS_L2_PAYLOAD },
+	{ "ipv6-ex", RTE_ETH_RSS_IPV6_EX },
+	{ "ipv6-tcp-ex", RTE_ETH_RSS_IPV6_TCP_EX },
+	{ "ipv6-udp-ex", RTE_ETH_RSS_IPV6_UDP_EX },
+	{ "port", RTE_ETH_RSS_PORT },
+	{ "vxlan", RTE_ETH_RSS_VXLAN },
+	{ "geneve", RTE_ETH_RSS_GENEVE },
+	{ "nvgre", RTE_ETH_RSS_NVGRE },
+	{ "ip", RTE_ETH_RSS_IP },
+	{ "udp", RTE_ETH_RSS_UDP },
+	{ "tcp", RTE_ETH_RSS_TCP },
+	{ "sctp", RTE_ETH_RSS_SCTP },
+	{ "tunnel", RTE_ETH_RSS_TUNNEL },
 	{ "l3-pre32", RTE_ETH_RSS_L3_PRE32 },
 	{ "l3-pre40", RTE_ETH_RSS_L3_PRE40 },
 	{ "l3-pre48", RTE_ETH_RSS_L3_PRE48 },
 	{ "l3-pre56", RTE_ETH_RSS_L3_PRE56 },
 	{ "l3-pre64", RTE_ETH_RSS_L3_PRE64 },
 	{ "l3-pre96", RTE_ETH_RSS_L3_PRE96 },
-	{ "l3-src-only", ETH_RSS_L3_SRC_ONLY },
-	{ "l3-dst-only", ETH_RSS_L3_DST_ONLY },
-	{ "l4-src-only", ETH_RSS_L4_SRC_ONLY },
-	{ "l4-dst-only", ETH_RSS_L4_DST_ONLY },
-	{ "esp", ETH_RSS_ESP },
-	{ "ah", ETH_RSS_AH },
-	{ "l2tpv3", ETH_RSS_L2TPV3 },
-	{ "pfcp", ETH_RSS_PFCP },
-	{ "pppoe", ETH_RSS_PPPOE },
-	{ "gtpu", ETH_RSS_GTPU },
-	{ "ecpri", ETH_RSS_ECPRI },
-	{ "mpls", ETH_RSS_MPLS },
-	{ "ipv4-chksum", ETH_RSS_IPV4_CHKSUM },
-	{ "l4-chksum", ETH_RSS_L4_CHKSUM },
+	{ "l3-src-only", RTE_ETH_RSS_L3_SRC_ONLY },
+	{ "l3-dst-only", RTE_ETH_RSS_L3_DST_ONLY },
+	{ "l4-src-only", RTE_ETH_RSS_L4_SRC_ONLY },
+	{ "l4-dst-only", RTE_ETH_RSS_L4_DST_ONLY },
+	{ "esp", RTE_ETH_RSS_ESP },
+	{ "ah", RTE_ETH_RSS_AH },
+	{ "l2tpv3", RTE_ETH_RSS_L2TPV3 },
+	{ "pfcp", RTE_ETH_RSS_PFCP },
+	{ "pppoe", RTE_ETH_RSS_PPPOE },
+	{ "gtpu", RTE_ETH_RSS_GTPU },
+	{ "ecpri", RTE_ETH_RSS_ECPRI },
+	{ "mpls", RTE_ETH_RSS_MPLS },
+	{ "ipv4-chksum", RTE_ETH_RSS_IPV4_CHKSUM },
+	{ "l4-chksum", RTE_ETH_RSS_L4_CHKSUM },
 	{ NULL, 0 },
 };
 
@@ -538,39 +538,39 @@ static void
 device_infos_display_speeds(uint32_t speed_capa)
 {
 	printf("\n\tDevice speed capability:");
-	if (speed_capa == ETH_LINK_SPEED_AUTONEG)
+	if (speed_capa == RTE_ETH_LINK_SPEED_AUTONEG)
 		printf(" Autonegotiate (all speeds)");
-	if (speed_capa & ETH_LINK_SPEED_FIXED)
+	if (speed_capa & RTE_ETH_LINK_SPEED_FIXED)
 		printf(" Disable autonegotiate (fixed speed)  ");
-	if (speed_capa & ETH_LINK_SPEED_10M_HD)
+	if (speed_capa & RTE_ETH_LINK_SPEED_10M_HD)
 		printf(" 10 Mbps half-duplex  ");
-	if (speed_capa & ETH_LINK_SPEED_10M)
+	if (speed_capa & RTE_ETH_LINK_SPEED_10M)
 		printf(" 10 Mbps full-duplex  ");
-	if (speed_capa & ETH_LINK_SPEED_100M_HD)
+	if (speed_capa & RTE_ETH_LINK_SPEED_100M_HD)
 		printf(" 100 Mbps half-duplex  ");
-	if (speed_capa & ETH_LINK_SPEED_100M)
+	if (speed_capa & RTE_ETH_LINK_SPEED_100M)
 		printf(" 100 Mbps full-duplex  ");
-	if (speed_capa & ETH_LINK_SPEED_1G)
+	if (speed_capa & RTE_ETH_LINK_SPEED_1G)
 		printf(" 1 Gbps  ");
-	if (speed_capa & ETH_LINK_SPEED_2_5G)
+	if (speed_capa & RTE_ETH_LINK_SPEED_2_5G)
 		printf(" 2.5 Gbps  ");
-	if (speed_capa & ETH_LINK_SPEED_5G)
+	if (speed_capa & RTE_ETH_LINK_SPEED_5G)
 		printf(" 5 Gbps  ");
-	if (speed_capa & ETH_LINK_SPEED_10G)
+	if (speed_capa & RTE_ETH_LINK_SPEED_10G)
 		printf(" 10 Gbps  ");
-	if (speed_capa & ETH_LINK_SPEED_20G)
+	if (speed_capa & RTE_ETH_LINK_SPEED_20G)
 		printf(" 20 Gbps  ");
-	if (speed_capa & ETH_LINK_SPEED_25G)
+	if (speed_capa & RTE_ETH_LINK_SPEED_25G)
 		printf(" 25 Gbps  ");
-	if (speed_capa & ETH_LINK_SPEED_40G)
+	if (speed_capa & RTE_ETH_LINK_SPEED_40G)
 		printf(" 40 Gbps  ");
-	if (speed_capa & ETH_LINK_SPEED_50G)
+	if (speed_capa & RTE_ETH_LINK_SPEED_50G)
 		printf(" 50 Gbps  ");
-	if (speed_capa & ETH_LINK_SPEED_56G)
+	if (speed_capa & RTE_ETH_LINK_SPEED_56G)
 		printf(" 56 Gbps  ");
-	if (speed_capa & ETH_LINK_SPEED_100G)
+	if (speed_capa & RTE_ETH_LINK_SPEED_100G)
 		printf(" 100 Gbps  ");
-	if (speed_capa & ETH_LINK_SPEED_200G)
+	if (speed_capa & RTE_ETH_LINK_SPEED_200G)
 		printf(" 200 Gbps  ");
 }
 
@@ -723,9 +723,9 @@ port_infos_display(portid_t port_id)
 
 	printf("\nLink status: %s\n", (link.link_status) ? ("up") : ("down"));
 	printf("Link speed: %s\n", rte_eth_link_speed_to_str(link.link_speed));
-	printf("Link duplex: %s\n", (link.link_duplex == ETH_LINK_FULL_DUPLEX) ?
+	printf("Link duplex: %s\n", (link.link_duplex == RTE_ETH_LINK_FULL_DUPLEX) ?
 	       ("full-duplex") : ("half-duplex"));
-	printf("Autoneg status: %s\n", (link.link_autoneg == ETH_LINK_AUTONEG) ?
+	printf("Autoneg status: %s\n", (link.link_autoneg == RTE_ETH_LINK_AUTONEG) ?
 	       ("On") : ("Off"));
 
 	if (!rte_eth_dev_get_mtu(port_id, &mtu))
@@ -743,22 +743,22 @@ port_infos_display(portid_t port_id)
 	vlan_offload = rte_eth_dev_get_vlan_offload(port_id);
 	if (vlan_offload >= 0){
 		printf("VLAN offload: \n");
-		if (vlan_offload & ETH_VLAN_STRIP_OFFLOAD)
+		if (vlan_offload & RTE_ETH_VLAN_STRIP_OFFLOAD)
 			printf("  strip on, ");
 		else
 			printf("  strip off, ");
 
-		if (vlan_offload & ETH_VLAN_FILTER_OFFLOAD)
+		if (vlan_offload & RTE_ETH_VLAN_FILTER_OFFLOAD)
 			printf("filter on, ");
 		else
 			printf("filter off, ");
 
-		if (vlan_offload & ETH_VLAN_EXTEND_OFFLOAD)
+		if (vlan_offload & RTE_ETH_VLAN_EXTEND_OFFLOAD)
 			printf("extend on, ");
 		else
 			printf("extend off, ");
 
-		if (vlan_offload & ETH_QINQ_STRIP_OFFLOAD)
+		if (vlan_offload & RTE_ETH_QINQ_STRIP_OFFLOAD)
 			printf("qinq strip on\n");
 		else
 			printf("qinq strip off\n");
@@ -2953,8 +2953,8 @@ port_rss_reta_info(portid_t port_id,
 	}
 
 	for (i = 0; i < nb_entries; i++) {
-		idx = i / RTE_RETA_GROUP_SIZE;
-		shift = i % RTE_RETA_GROUP_SIZE;
+		idx = i / RTE_ETH_RETA_GROUP_SIZE;
+		shift = i % RTE_ETH_RETA_GROUP_SIZE;
 		if (!(reta_conf[idx].mask & (1ULL << shift)))
 			continue;
 		printf("RSS RETA configuration: hash index=%u, queue=%u\n",
@@ -3427,7 +3427,7 @@ dcb_fwd_config_setup(void)
 	for (lc_id = 0; lc_id < cur_fwd_config.nb_fwd_lcores; lc_id++) {
 		fwd_lcores[lc_id]->stream_nb = 0;
 		fwd_lcores[lc_id]->stream_idx = sm_id;
-		for (i = 0; i < ETH_MAX_VMDQ_POOL; i++) {
+		for (i = 0; i < RTE_ETH_MAX_VMDQ_POOL; i++) {
 			/* if the nb_queue is zero, means this tc is
 			 * not enabled on the POOL
 			 */
@@ -4490,11 +4490,11 @@ vlan_extend_set(portid_t port_id, int on)
 	vlan_offload = rte_eth_dev_get_vlan_offload(port_id);
 
 	if (on) {
-		vlan_offload |= ETH_VLAN_EXTEND_OFFLOAD;
-		port_rx_offloads |= DEV_RX_OFFLOAD_VLAN_EXTEND;
+		vlan_offload |= RTE_ETH_VLAN_EXTEND_OFFLOAD;
+		port_rx_offloads |= RTE_ETH_RX_OFFLOAD_VLAN_EXTEND;
 	} else {
-		vlan_offload &= ~ETH_VLAN_EXTEND_OFFLOAD;
-		port_rx_offloads &= ~DEV_RX_OFFLOAD_VLAN_EXTEND;
+		vlan_offload &= ~RTE_ETH_VLAN_EXTEND_OFFLOAD;
+		port_rx_offloads &= ~RTE_ETH_RX_OFFLOAD_VLAN_EXTEND;
 	}
 
 	diag = rte_eth_dev_set_vlan_offload(port_id, vlan_offload);
@@ -4520,11 +4520,11 @@ rx_vlan_strip_set(portid_t port_id, int on)
 	vlan_offload = rte_eth_dev_get_vlan_offload(port_id);
 
 	if (on) {
-		vlan_offload |= ETH_VLAN_STRIP_OFFLOAD;
-		port_rx_offloads |= DEV_RX_OFFLOAD_VLAN_STRIP;
+		vlan_offload |= RTE_ETH_VLAN_STRIP_OFFLOAD;
+		port_rx_offloads |= RTE_ETH_RX_OFFLOAD_VLAN_STRIP;
 	} else {
-		vlan_offload &= ~ETH_VLAN_STRIP_OFFLOAD;
-		port_rx_offloads &= ~DEV_RX_OFFLOAD_VLAN_STRIP;
+		vlan_offload &= ~RTE_ETH_VLAN_STRIP_OFFLOAD;
+		port_rx_offloads &= ~RTE_ETH_RX_OFFLOAD_VLAN_STRIP;
 	}
 
 	diag = rte_eth_dev_set_vlan_offload(port_id, vlan_offload);
@@ -4565,11 +4565,11 @@ rx_vlan_filter_set(portid_t port_id, int on)
 	vlan_offload = rte_eth_dev_get_vlan_offload(port_id);
 
 	if (on) {
-		vlan_offload |= ETH_VLAN_FILTER_OFFLOAD;
-		port_rx_offloads |= DEV_RX_OFFLOAD_VLAN_FILTER;
+		vlan_offload |= RTE_ETH_VLAN_FILTER_OFFLOAD;
+		port_rx_offloads |= RTE_ETH_RX_OFFLOAD_VLAN_FILTER;
 	} else {
-		vlan_offload &= ~ETH_VLAN_FILTER_OFFLOAD;
-		port_rx_offloads &= ~DEV_RX_OFFLOAD_VLAN_FILTER;
+		vlan_offload &= ~RTE_ETH_VLAN_FILTER_OFFLOAD;
+		port_rx_offloads &= ~RTE_ETH_RX_OFFLOAD_VLAN_FILTER;
 	}
 
 	diag = rte_eth_dev_set_vlan_offload(port_id, vlan_offload);
@@ -4595,11 +4595,11 @@ rx_vlan_qinq_strip_set(portid_t port_id, int on)
 	vlan_offload = rte_eth_dev_get_vlan_offload(port_id);
 
 	if (on) {
-		vlan_offload |= ETH_QINQ_STRIP_OFFLOAD;
-		port_rx_offloads |= DEV_RX_OFFLOAD_QINQ_STRIP;
+		vlan_offload |= RTE_ETH_QINQ_STRIP_OFFLOAD;
+		port_rx_offloads |= RTE_ETH_RX_OFFLOAD_QINQ_STRIP;
 	} else {
-		vlan_offload &= ~ETH_QINQ_STRIP_OFFLOAD;
-		port_rx_offloads &= ~DEV_RX_OFFLOAD_QINQ_STRIP;
+		vlan_offload &= ~RTE_ETH_QINQ_STRIP_OFFLOAD;
+		port_rx_offloads &= ~RTE_ETH_RX_OFFLOAD_QINQ_STRIP;
 	}
 
 	diag = rte_eth_dev_set_vlan_offload(port_id, vlan_offload);
@@ -4669,7 +4669,7 @@ tx_vlan_set(portid_t port_id, uint16_t vlan_id)
 		return;
 
 	if (ports[port_id].dev_conf.txmode.offloads &
-	    DEV_TX_OFFLOAD_QINQ_INSERT) {
+	    RTE_ETH_TX_OFFLOAD_QINQ_INSERT) {
 		fprintf(stderr, "Error, as QinQ has been enabled.\n");
 		return;
 	}
@@ -4678,7 +4678,7 @@ tx_vlan_set(portid_t port_id, uint16_t vlan_id)
 	if (ret != 0)
 		return;
 
-	if ((dev_info.tx_offload_capa & DEV_TX_OFFLOAD_VLAN_INSERT) == 0) {
+	if ((dev_info.tx_offload_capa & RTE_ETH_TX_OFFLOAD_VLAN_INSERT) == 0) {
 		fprintf(stderr,
 			"Error: vlan insert is not supported by port %d\n",
 			port_id);
@@ -4686,7 +4686,7 @@ tx_vlan_set(portid_t port_id, uint16_t vlan_id)
 	}
 
 	tx_vlan_reset(port_id);
-	ports[port_id].dev_conf.txmode.offloads |= DEV_TX_OFFLOAD_VLAN_INSERT;
+	ports[port_id].dev_conf.txmode.offloads |= RTE_ETH_TX_OFFLOAD_VLAN_INSERT;
 	ports[port_id].tx_vlan_id = vlan_id;
 }
 
@@ -4705,7 +4705,7 @@ tx_qinq_set(portid_t port_id, uint16_t vlan_id, uint16_t vlan_id_outer)
 	if (ret != 0)
 		return;
 
-	if ((dev_info.tx_offload_capa & DEV_TX_OFFLOAD_QINQ_INSERT) == 0) {
+	if ((dev_info.tx_offload_capa & RTE_ETH_TX_OFFLOAD_QINQ_INSERT) == 0) {
 		fprintf(stderr,
 			"Error: qinq insert not supported by port %d\n",
 			port_id);
@@ -4713,8 +4713,8 @@ tx_qinq_set(portid_t port_id, uint16_t vlan_id, uint16_t vlan_id_outer)
 	}
 
 	tx_vlan_reset(port_id);
-	ports[port_id].dev_conf.txmode.offloads |= (DEV_TX_OFFLOAD_VLAN_INSERT |
-						    DEV_TX_OFFLOAD_QINQ_INSERT);
+	ports[port_id].dev_conf.txmode.offloads |= (RTE_ETH_TX_OFFLOAD_VLAN_INSERT |
+						    RTE_ETH_TX_OFFLOAD_QINQ_INSERT);
 	ports[port_id].tx_vlan_id = vlan_id;
 	ports[port_id].tx_vlan_id_outer = vlan_id_outer;
 }
@@ -4723,8 +4723,8 @@ void
 tx_vlan_reset(portid_t port_id)
 {
 	ports[port_id].dev_conf.txmode.offloads &=
-				~(DEV_TX_OFFLOAD_VLAN_INSERT |
-				  DEV_TX_OFFLOAD_QINQ_INSERT);
+				~(RTE_ETH_TX_OFFLOAD_VLAN_INSERT |
+				  RTE_ETH_TX_OFFLOAD_QINQ_INSERT);
 	ports[port_id].tx_vlan_id = 0;
 	ports[port_id].tx_vlan_id_outer = 0;
 }
@@ -5130,7 +5130,7 @@ set_queue_rate_limit(portid_t port_id, uint16_t queue_idx, uint16_t rate)
 	ret = eth_link_get_nowait_print_err(port_id, &link);
 	if (ret < 0)
 		return 1;
-	if (link.link_speed != ETH_SPEED_NUM_UNKNOWN &&
+	if (link.link_speed != RTE_ETH_SPEED_NUM_UNKNOWN &&
 	    rate > link.link_speed) {
 		fprintf(stderr,
 			"Invalid rate value:%u bigger than link speed: %u\n",

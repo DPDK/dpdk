@@ -877,21 +877,21 @@ processing. This improved performance is derived from a number of optimizations:
     * TX: only the following reduced set of transmit offloads is supported in
       vector mode::
 
-       DEV_TX_OFFLOAD_MBUF_FAST_FREE
+       RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE
 
     * RX: only the following reduced set of receive offloads is supported in
       vector mode (note that jumbo MTU is allowed only when the MTU setting
-      does not require `DEV_RX_OFFLOAD_SCATTER` to be enabled)::
+      does not require `RTE_ETH_RX_OFFLOAD_SCATTER` to be enabled)::
 
-       DEV_RX_OFFLOAD_VLAN_STRIP
-       DEV_RX_OFFLOAD_KEEP_CRC
-       DEV_RX_OFFLOAD_IPV4_CKSUM
-       DEV_RX_OFFLOAD_UDP_CKSUM
-       DEV_RX_OFFLOAD_TCP_CKSUM
-       DEV_RX_OFFLOAD_OUTER_IPV4_CKSUM
-       DEV_RX_OFFLOAD_OUTER_UDP_CKSUM
-       DEV_RX_OFFLOAD_RSS_HASH
-       DEV_RX_OFFLOAD_VLAN_FILTER
+       RTE_ETH_RX_OFFLOAD_VLAN_STRIP
+       RTE_ETH_RX_OFFLOAD_KEEP_CRC
+       RTE_ETH_RX_OFFLOAD_IPV4_CKSUM
+       RTE_ETH_RX_OFFLOAD_UDP_CKSUM
+       RTE_ETH_RX_OFFLOAD_TCP_CKSUM
+       RTE_ETH_RX_OFFLOAD_OUTER_IPV4_CKSUM
+       RTE_ETH_RX_OFFLOAD_OUTER_UDP_CKSUM
+       RTE_ETH_RX_OFFLOAD_RSS_HASH
+       RTE_ETH_RX_OFFLOAD_VLAN_FILTER
 
 The BNXT Vector PMD is enabled in DPDK builds by default. The decision to enable
 vector processing is made at run-time when the port is started; if no transmit

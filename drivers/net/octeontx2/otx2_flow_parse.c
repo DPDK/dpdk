@@ -852,7 +852,7 @@ parse_rss_action(struct rte_eth_dev *dev,
 					  attr, "No support of RSS in egress");
 	}
 
-	if (dev->data->dev_conf.rxmode.mq_mode != ETH_MQ_RX_RSS)
+	if (dev->data->dev_conf.rxmode.mq_mode != RTE_ETH_MQ_RX_RSS)
 		return rte_flow_error_set(error, ENOTSUP,
 					  RTE_FLOW_ERROR_TYPE_ACTION,
 					  act, "multi-queue mode is disabled");
@@ -1186,7 +1186,7 @@ otx2_flow_parse_actions(struct rte_eth_dev *dev,
 		 *FLOW_KEY_ALG index. So, till we update the action with
 		 *flow_key_alg index, set the action to drop.
 		 */
-		if (dev->data->dev_conf.rxmode.mq_mode == ETH_MQ_RX_RSS)
+		if (dev->data->dev_conf.rxmode.mq_mode == RTE_ETH_MQ_RX_RSS)
 			flow->npc_action = NIX_RX_ACTIONOP_DROP;
 		else
 			flow->npc_action = NIX_RX_ACTIONOP_UCAST;

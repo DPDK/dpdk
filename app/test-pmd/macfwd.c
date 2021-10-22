@@ -72,11 +72,11 @@ pkt_burst_mac_forward(struct fwd_stream *fs)
 	fs->rx_packets += nb_rx;
 	txp = &ports[fs->tx_port];
 	tx_offloads = txp->dev_conf.txmode.offloads;
-	if (tx_offloads	& DEV_TX_OFFLOAD_VLAN_INSERT)
+	if (tx_offloads	& RTE_ETH_TX_OFFLOAD_VLAN_INSERT)
 		ol_flags = PKT_TX_VLAN_PKT;
-	if (tx_offloads & DEV_TX_OFFLOAD_QINQ_INSERT)
+	if (tx_offloads & RTE_ETH_TX_OFFLOAD_QINQ_INSERT)
 		ol_flags |= PKT_TX_QINQ_PKT;
-	if (tx_offloads & DEV_TX_OFFLOAD_MACSEC_INSERT)
+	if (tx_offloads & RTE_ETH_TX_OFFLOAD_MACSEC_INSERT)
 		ol_flags |= PKT_TX_MACSEC;
 	for (i = 0; i < nb_rx; i++) {
 		if (likely(i < nb_rx - 1))

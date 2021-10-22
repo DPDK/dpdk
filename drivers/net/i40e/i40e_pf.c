@@ -1207,24 +1207,24 @@ i40e_notify_vf_link_status(struct rte_eth_dev *dev, struct i40e_pf_vf *vf)
 	event.event_data.link_event.link_status =
 		dev->data->dev_link.link_status;
 
-	/* need to convert the ETH_SPEED_xxx into VIRTCHNL_LINK_SPEED_xxx */
+	/* need to convert the RTE_ETH_SPEED_xxx into VIRTCHNL_LINK_SPEED_xxx */
 	switch (dev->data->dev_link.link_speed) {
-	case ETH_SPEED_NUM_100M:
+	case RTE_ETH_SPEED_NUM_100M:
 		event.event_data.link_event.link_speed = VIRTCHNL_LINK_SPEED_100MB;
 		break;
-	case ETH_SPEED_NUM_1G:
+	case RTE_ETH_SPEED_NUM_1G:
 		event.event_data.link_event.link_speed = VIRTCHNL_LINK_SPEED_1GB;
 		break;
-	case ETH_SPEED_NUM_10G:
+	case RTE_ETH_SPEED_NUM_10G:
 		event.event_data.link_event.link_speed = VIRTCHNL_LINK_SPEED_10GB;
 		break;
-	case ETH_SPEED_NUM_20G:
+	case RTE_ETH_SPEED_NUM_20G:
 		event.event_data.link_event.link_speed = VIRTCHNL_LINK_SPEED_20GB;
 		break;
-	case ETH_SPEED_NUM_25G:
+	case RTE_ETH_SPEED_NUM_25G:
 		event.event_data.link_event.link_speed = VIRTCHNL_LINK_SPEED_25GB;
 		break;
-	case ETH_SPEED_NUM_40G:
+	case RTE_ETH_SPEED_NUM_40G:
 		event.event_data.link_event.link_speed = VIRTCHNL_LINK_SPEED_40GB;
 		break;
 	default:

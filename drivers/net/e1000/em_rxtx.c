@@ -93,7 +93,7 @@ struct em_rx_queue {
 	struct em_rx_entry *sw_ring;   /**< address of RX software ring. */
 	struct rte_mbuf *pkt_first_seg; /**< First segment of current packet. */
 	struct rte_mbuf *pkt_last_seg;  /**< Last segment of current packet. */
-	uint64_t	    offloads;   /**< Offloads of DEV_RX_OFFLOAD_* */
+	uint64_t	    offloads;   /**< Offloads of RTE_ETH_RX_OFFLOAD_* */
 	uint16_t            nb_rx_desc; /**< number of RX descriptors. */
 	uint16_t            rx_tail;    /**< current value of RDT register. */
 	uint16_t            nb_rx_hold; /**< number of held free RX desc. */
@@ -173,7 +173,7 @@ struct em_tx_queue {
 	uint8_t                wthresh;  /**< Write-back threshold register. */
 	struct em_ctx_info ctx_cache;
 	/**< Hardware context history.*/
-	uint64_t	       offloads; /**< offloads of DEV_TX_OFFLOAD_* */
+	uint64_t	       offloads; /**< offloads of RTE_ETH_TX_OFFLOAD_* */
 	const struct rte_memzone *mz;
 };
 
@@ -1171,11 +1171,11 @@ em_get_tx_port_offloads_capa(struct rte_eth_dev *dev)
 
 	RTE_SET_USED(dev);
 	tx_offload_capa =
-		DEV_TX_OFFLOAD_MULTI_SEGS  |
-		DEV_TX_OFFLOAD_VLAN_INSERT |
-		DEV_TX_OFFLOAD_IPV4_CKSUM  |
-		DEV_TX_OFFLOAD_UDP_CKSUM   |
-		DEV_TX_OFFLOAD_TCP_CKSUM;
+		RTE_ETH_TX_OFFLOAD_MULTI_SEGS  |
+		RTE_ETH_TX_OFFLOAD_VLAN_INSERT |
+		RTE_ETH_TX_OFFLOAD_IPV4_CKSUM  |
+		RTE_ETH_TX_OFFLOAD_UDP_CKSUM   |
+		RTE_ETH_TX_OFFLOAD_TCP_CKSUM;
 
 	return tx_offload_capa;
 }
@@ -1369,13 +1369,13 @@ em_get_rx_port_offloads_capa(void)
 	uint64_t rx_offload_capa;
 
 	rx_offload_capa =
-		DEV_RX_OFFLOAD_VLAN_STRIP  |
-		DEV_RX_OFFLOAD_VLAN_FILTER |
-		DEV_RX_OFFLOAD_IPV4_CKSUM  |
-		DEV_RX_OFFLOAD_UDP_CKSUM   |
-		DEV_RX_OFFLOAD_TCP_CKSUM   |
-		DEV_RX_OFFLOAD_KEEP_CRC    |
-		DEV_RX_OFFLOAD_SCATTER;
+		RTE_ETH_RX_OFFLOAD_VLAN_STRIP  |
+		RTE_ETH_RX_OFFLOAD_VLAN_FILTER |
+		RTE_ETH_RX_OFFLOAD_IPV4_CKSUM  |
+		RTE_ETH_RX_OFFLOAD_UDP_CKSUM   |
+		RTE_ETH_RX_OFFLOAD_TCP_CKSUM   |
+		RTE_ETH_RX_OFFLOAD_KEEP_CRC    |
+		RTE_ETH_RX_OFFLOAD_SCATTER;
 
 	return rx_offload_capa;
 }
@@ -1469,7 +1469,7 @@ eth_em_rx_queue_setup(struct rte_eth_dev *dev,
 	rxq->rx_free_thresh = rx_conf->rx_free_thresh;
 	rxq->queue_id = queue_idx;
 	rxq->port_id = dev->data->port_id;
-	if (dev->data->dev_conf.rxmode.offloads & DEV_RX_OFFLOAD_KEEP_CRC)
+	if (dev->data->dev_conf.rxmode.offloads & RTE_ETH_RX_OFFLOAD_KEEP_CRC)
 		rxq->crc_len = RTE_ETHER_CRC_LEN;
 	else
 		rxq->crc_len = 0;
@@ -1788,7 +1788,7 @@ eth_em_rx_init(struct rte_eth_dev *dev)
 		 * Reset crc_len in case it was changed after queue setup by a
 		 *  call to configure
 		 */
-		if (dev->data->dev_conf.rxmode.offloads & DEV_RX_OFFLOAD_KEEP_CRC)
+		if (dev->data->dev_conf.rxmode.offloads & RTE_ETH_RX_OFFLOAD_KEEP_CRC)
 			rxq->crc_len = RTE_ETHER_CRC_LEN;
 		else
 			rxq->crc_len = 0;
@@ -1831,7 +1831,7 @@ eth_em_rx_init(struct rte_eth_dev *dev)
 		}
 	}
 
-	if (dev->data->dev_conf.rxmode.offloads & DEV_RX_OFFLOAD_SCATTER) {
+	if (dev->data->dev_conf.rxmode.offloads & RTE_ETH_RX_OFFLOAD_SCATTER) {
 		if (!dev->data->scattered_rx)
 			PMD_INIT_LOG(DEBUG, "forcing scatter mode");
 		dev->rx_pkt_burst = eth_em_recv_scattered_pkts;
@@ -1844,7 +1844,7 @@ eth_em_rx_init(struct rte_eth_dev *dev)
 	 */
 	rxcsum = E1000_READ_REG(hw, E1000_RXCSUM);
 
-	if (rxmode->offloads & DEV_RX_OFFLOAD_CHECKSUM)
+	if (rxmode->offloads & RTE_ETH_RX_OFFLOAD_CHECKSUM)
 		rxcsum |= E1000_RXCSUM_IPOFL;
 	else
 		rxcsum &= ~E1000_RXCSUM_IPOFL;
@@ -1870,7 +1870,7 @@ eth_em_rx_init(struct rte_eth_dev *dev)
 	}
 
 	/* Setup the Receive Control Register. */
-	if (dev->data->dev_conf.rxmode.offloads & DEV_RX_OFFLOAD_KEEP_CRC)
+	if (dev->data->dev_conf.rxmode.offloads & RTE_ETH_RX_OFFLOAD_KEEP_CRC)
 		rctl &= ~E1000_RCTL_SECRC; /* Do not Strip Ethernet CRC. */
 	else
 		rctl |= E1000_RCTL_SECRC; /* Strip Ethernet CRC. */

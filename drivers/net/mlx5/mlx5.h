@@ -1203,7 +1203,7 @@ TAILQ_HEAD(mlx5_legacy_flow_meters, mlx5_legacy_flow_meter);
 struct mlx5_flow_rss_desc {
 	uint32_t level;
 	uint32_t queue_num; /**< Number of entries in @p queue. */
-	uint64_t types; /**< Specific RSS hash types (see ETH_RSS_*). */
+	uint64_t types; /**< Specific RSS hash types (see RTE_ETH_RSS_*). */
 	uint64_t hash_fields; /* Verbs Hash fields. */
 	uint8_t key[MLX5_RSS_HASH_KEY_LEN]; /**< RSS hash key. */
 	uint32_t key_len; /**< RSS hash key len. */

@@ -38,7 +38,7 @@ nix_link_status_print(struct rte_eth_dev *eth_dev, struct rte_eth_link *link)
 		plt_info("Port %d: Link Up - speed %u Mbps - %s",
 			 (int)(eth_dev->data->port_id),
 			 (uint32_t)link->link_speed,
-			 link->link_duplex == ETH_LINK_FULL_DUPLEX
+			 link->link_duplex == RTE_ETH_LINK_FULL_DUPLEX
 				 ? "full-duplex"
 				 : "half-duplex");
 	else
@@ -89,7 +89,7 @@ cnxk_eth_dev_link_status_cb(struct roc_nix *nix, struct roc_nix_link_info *link)
 
 	eth_link.link_status = link->status;
 	eth_link.link_speed = link->speed;
-	eth_link.link_autoneg = ETH_LINK_AUTONEG;
+	eth_link.link_autoneg = RTE_ETH_LINK_AUTONEG;
 	eth_link.link_duplex = link->full_duplex;
 
 	/* Print link info */
@@ -117,17 +117,17 @@ cnxk_nix_link_update(struct rte_eth_dev *eth_dev, int wait_to_complete)
 		return 0;
 
 	if (roc_nix_is_lbk(&dev->nix)) {
-		link.link_status = ETH_LINK_UP;
-		link.link_speed = ETH_SPEED_NUM_100G;
-		link.link_autoneg = ETH_LINK_FIXED;
-		link.link_duplex = ETH_LINK_FULL_DUPLEX;
+		link.link_status = RTE_ETH_LINK_UP;
+		link.link_speed = RTE_ETH_SPEED_NUM_100G;
+		link.link_autoneg = RTE_ETH_LINK_FIXED;
+		link.link_duplex = RTE_ETH_LINK_FULL_DUPLEX;
 	} else {
 		rc = roc_nix_mac_link_info_get(&dev->nix, &info);
 		if (rc)
 			return rc;
 		link.link_status = info.status;
 		link.link_speed = info.speed;
-		link.link_autoneg = ETH_LINK_AUTONEG;
+		link.link_autoneg = RTE_ETH_LINK_AUTONEG;
 		if (info.full_duplex)
 			link.link_duplex = info.full_duplex;
 	}

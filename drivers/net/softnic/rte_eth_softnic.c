@@ -173,7 +173,7 @@ pmd_dev_start(struct rte_eth_dev *dev)
 		return status;
 
 	/* Link UP */
-	dev->data->dev_link.link_status = ETH_LINK_UP;
+	dev->data->dev_link.link_status = RTE_ETH_LINK_UP;
 
 	return 0;
 }
@@ -184,7 +184,7 @@ pmd_dev_stop(struct rte_eth_dev *dev)
 	struct pmd_internals *p = dev->data->dev_private;
 
 	/* Link DOWN */
-	dev->data->dev_link.link_status = ETH_LINK_DOWN;
+	dev->data->dev_link.link_status = RTE_ETH_LINK_DOWN;
 
 	/* Firmware */
 	softnic_pipeline_disable_all(p);
@@ -386,10 +386,10 @@ pmd_ethdev_register(struct rte_vdev_device *vdev,
 
 	/* dev->data */
 	dev->data->dev_private = dev_private;
-	dev->data->dev_link.link_speed = ETH_SPEED_NUM_100G;
-	dev->data->dev_link.link_duplex = ETH_LINK_FULL_DUPLEX;
-	dev->data->dev_link.link_autoneg = ETH_LINK_FIXED;
-	dev->data->dev_link.link_status = ETH_LINK_DOWN;
+	dev->data->dev_link.link_speed = RTE_ETH_SPEED_NUM_100G;
+	dev->data->dev_link.link_duplex = RTE_ETH_LINK_FULL_DUPLEX;
+	dev->data->dev_link.link_autoneg = RTE_ETH_LINK_FIXED;
+	dev->data->dev_link.link_status = RTE_ETH_LINK_DOWN;
 	dev->data->mac_addrs = &eth_addr;
 	dev->data->promiscuous = 1;
 	dev->data->numa_node = params->cpu_id;

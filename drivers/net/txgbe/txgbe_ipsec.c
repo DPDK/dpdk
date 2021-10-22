@@ -372,7 +372,7 @@ txgbe_crypto_create_session(void *device,
 	aead_xform = &conf->crypto_xform->aead;
 
 	if (conf->ipsec.direction == RTE_SECURITY_IPSEC_SA_DIR_INGRESS) {
-		if (dev_conf->rxmode.offloads & DEV_RX_OFFLOAD_SECURITY) {
+		if (dev_conf->rxmode.offloads & RTE_ETH_RX_OFFLOAD_SECURITY) {
 			ic_session->op = TXGBE_OP_AUTHENTICATED_DECRYPTION;
 		} else {
 			PMD_DRV_LOG(ERR, "IPsec decryption not enabled\n");
@@ -380,7 +380,7 @@ txgbe_crypto_create_session(void *device,
 			return -ENOTSUP;
 		}
 	} else {
-		if (dev_conf->txmode.offloads & DEV_TX_OFFLOAD_SECURITY) {
+		if (dev_conf->txmode.offloads & RTE_ETH_TX_OFFLOAD_SECURITY) {
 			ic_session->op = TXGBE_OP_AUTHENTICATED_ENCRYPTION;
 		} else {
 			PMD_DRV_LOG(ERR, "IPsec encryption not enabled\n");
@@ -611,11 +611,11 @@ txgbe_crypto_enable_ipsec(struct rte_eth_dev *dev)
 	tx_offloads = dev->data->dev_conf.txmode.offloads;
 
 	/* sanity checks */
-	if (rx_offloads & DEV_RX_OFFLOAD_TCP_LRO) {
+	if (rx_offloads & RTE_ETH_RX_OFFLOAD_TCP_LRO) {
 		PMD_DRV_LOG(ERR, "RSC and IPsec not supported");
 		return -1;
 	}
-	if (rx_offloads & DEV_RX_OFFLOAD_KEEP_CRC) {
+	if (rx_offloads & RTE_ETH_RX_OFFLOAD_KEEP_CRC) {
 		PMD_DRV_LOG(ERR, "HW CRC strip needs to be enabled for IPsec");
 		return -1;
 	}
@@ -634,7 +634,7 @@ txgbe_crypto_enable_ipsec(struct rte_eth_dev *dev)
 	reg |= TXGBE_SECRXCTL_CRCSTRIP;
 	wr32(hw, TXGBE_SECRXCTL, reg);
 
-	if (rx_offloads & DEV_RX_OFFLOAD_SECURITY) {
+	if (rx_offloads & RTE_ETH_RX_OFFLOAD_SECURITY) {
 		wr32m(hw, TXGBE_SECRXCTL, TXGBE_SECRXCTL_ODSA, 0);
 		reg = rd32m(hw, TXGBE_SECRXCTL, TXGBE_SECRXCTL_ODSA);
 		if (reg != 0) {
@@ -642,7 +642,7 @@ txgbe_crypto_enable_ipsec(struct rte_eth_dev *dev)
 			return -1;
 		}
 	}
-	if (tx_offloads & DEV_TX_OFFLOAD_SECURITY) {
+	if (tx_offloads & RTE_ETH_TX_OFFLOAD_SECURITY) {
 		wr32(hw, TXGBE_SECTXCTL, TXGBE_SECTXCTL_STFWD);
 		reg = rd32(hw, TXGBE_SECTXCTL);
 		if (reg != TXGBE_SECTXCTL_STFWD) {

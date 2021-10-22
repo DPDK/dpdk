@@ -220,9 +220,8 @@ dpaa2_distset_to_dpkg_profile_cfg(
 		if (req_dist_set % 2 != 0) {
 			dist_field = 1ULL << loop;
 			switch (dist_field) {
-			case ETH_RSS_L2_PAYLOAD:
-			case ETH_RSS_ETH:
-
+			case RTE_ETH_RSS_L2_PAYLOAD:
+			case RTE_ETH_RSS_ETH:
 				if (l2_configured)
 					break;
 				l2_configured = 1;
@@ -238,7 +237,7 @@ dpaa2_distset_to_dpkg_profile_cfg(
 				i++;
 				break;
 
-			case ETH_RSS_PPPOE:
+			case RTE_ETH_RSS_PPPOE:
 				if (pppoe_configured)
 					break;
 				kg_cfg->extracts[i].extract.from_hdr.prot =
@@ -252,7 +251,7 @@ dpaa2_distset_to_dpkg_profile_cfg(
 				i++;
 				break;
 
-			case ETH_RSS_ESP:
+			case RTE_ETH_RSS_ESP:
 				if (esp_configured)
 					break;
 				esp_configured = 1;
@@ -268,7 +267,7 @@ dpaa2_distset_to_dpkg_profile_cfg(
 				i++;
 				break;
 
-			case ETH_RSS_AH:
+			case RTE_ETH_RSS_AH:
 				if (ah_configured)
 					break;
 				ah_configured = 1;
@@ -284,8 +283,8 @@ dpaa2_distset_to_dpkg_profile_cfg(
 				i++;
 				break;
 
-			case ETH_RSS_C_VLAN:
-			case ETH_RSS_S_VLAN:
+			case RTE_ETH_RSS_C_VLAN:
+			case RTE_ETH_RSS_S_VLAN:
 				if (vlan_configured)
 					break;
 				vlan_configured = 1;
@@ -301,7 +300,7 @@ dpaa2_distset_to_dpkg_profile_cfg(
 				i++;
 				break;
 
-			case ETH_RSS_MPLS:
+			case RTE_ETH_RSS_MPLS:
 
 				if (mpls_configured)
 					break;
@@ -338,13 +337,13 @@ dpaa2_distset_to_dpkg_profile_cfg(
 				i++;
 				break;
 
-			case ETH_RSS_IPV4:
-			case ETH_RSS_FRAG_IPV4:
-			case ETH_RSS_NONFRAG_IPV4_OTHER:
-			case ETH_RSS_IPV6:
-			case ETH_RSS_FRAG_IPV6:
-			case ETH_RSS_NONFRAG_IPV6_OTHER:
-			case ETH_RSS_IPV6_EX:
+			case RTE_ETH_RSS_IPV4:
+			case RTE_ETH_RSS_FRAG_IPV4:
+			case RTE_ETH_RSS_NONFRAG_IPV4_OTHER:
+			case RTE_ETH_RSS_IPV6:
+			case RTE_ETH_RSS_FRAG_IPV6:
+			case RTE_ETH_RSS_NONFRAG_IPV6_OTHER:
+			case RTE_ETH_RSS_IPV6_EX:
 
 				if (l3_configured)
 					break;
@@ -382,12 +381,12 @@ dpaa2_distset_to_dpkg_profile_cfg(
 				i++;
 			break;
 
-			case ETH_RSS_NONFRAG_IPV4_TCP:
-			case ETH_RSS_NONFRAG_IPV6_TCP:
-			case ETH_RSS_NONFRAG_IPV4_UDP:
-			case ETH_RSS_NONFRAG_IPV6_UDP:
-			case ETH_RSS_IPV6_TCP_EX:
-			case ETH_RSS_IPV6_UDP_EX:
+			case RTE_ETH_RSS_NONFRAG_IPV4_TCP:
+			case RTE_ETH_RSS_NONFRAG_IPV6_TCP:
+			case RTE_ETH_RSS_NONFRAG_IPV4_UDP:
+			case RTE_ETH_RSS_NONFRAG_IPV6_UDP:
+			case RTE_ETH_RSS_IPV6_TCP_EX:
+			case RTE_ETH_RSS_IPV6_UDP_EX:
 
 				if (l4_configured)
 					break;
@@ -414,8 +413,8 @@ dpaa2_distset_to_dpkg_profile_cfg(
 				i++;
 				break;
 
-			case ETH_RSS_NONFRAG_IPV4_SCTP:
-			case ETH_RSS_NONFRAG_IPV6_SCTP:
+			case RTE_ETH_RSS_NONFRAG_IPV4_SCTP:
+			case RTE_ETH_RSS_NONFRAG_IPV6_SCTP:
 
 				if (sctp_configured)
 					break;

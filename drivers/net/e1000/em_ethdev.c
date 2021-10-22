@@ -597,8 +597,8 @@ eth_em_start(struct rte_eth_dev *dev)
 
 	e1000_clear_hw_cntrs_base_generic(hw);
 
-	mask = ETH_VLAN_STRIP_MASK | ETH_VLAN_FILTER_MASK | \
-			ETH_VLAN_EXTEND_MASK;
+	mask = RTE_ETH_VLAN_STRIP_MASK | RTE_ETH_VLAN_FILTER_MASK |
+			RTE_ETH_VLAN_EXTEND_MASK;
 	ret = eth_em_vlan_offload_set(dev, mask);
 	if (ret) {
 		PMD_INIT_LOG(ERR, "Unable to update vlan offload");
@@ -611,39 +611,39 @@ eth_em_start(struct rte_eth_dev *dev)
 
 	/* Setup link speed and duplex */
 	speeds = &dev->data->dev_conf.link_speeds;
-	if (*speeds == ETH_LINK_SPEED_AUTONEG) {
+	if (*speeds == RTE_ETH_LINK_SPEED_AUTONEG) {
 		hw->phy.autoneg_advertised = E1000_ALL_SPEED_DUPLEX;
 		hw->mac.autoneg = 1;
 	} else {
 		num_speeds = 0;
-		autoneg = (*speeds & ETH_LINK_SPEED_FIXED) == 0;
+		autoneg = (*speeds & RTE_ETH_LINK_SPEED_FIXED) == 0;
 
 		/* Reset */
 		hw->phy.autoneg_advertised = 0;
 
-		if (*speeds & ~(ETH_LINK_SPEED_10M_HD | ETH_LINK_SPEED_10M |
-				ETH_LINK_SPEED_100M_HD | ETH_LINK_SPEED_100M |
-				ETH_LINK_SPEED_1G | ETH_LINK_SPEED_FIXED)) {
+		if (*speeds & ~(RTE_ETH_LINK_SPEED_10M_HD | RTE_ETH_LINK_SPEED_10M |
+				RTE_ETH_LINK_SPEED_100M_HD | RTE_ETH_LINK_SPEED_100M |
+				RTE_ETH_LINK_SPEED_1G | RTE_ETH_LINK_SPEED_FIXED)) {
 			num_speeds = -1;
 			goto error_invalid_config;
 		}
-		if (*speeds & ETH_LINK_SPEED_10M_HD) {
+		if (*speeds & RTE_ETH_LINK_SPEED_10M_HD) {
 			hw->phy.autoneg_advertised |= ADVERTISE_10_HALF;
 			num_speeds++;
 		}
-		if (*speeds & ETH_LINK_SPEED_10M) {
+		if (*speeds & RTE_ETH_LINK_SPEED_10M) {
 			hw->phy.autoneg_advertised |= ADVERTISE_10_FULL;
 			num_speeds++;
 		}
-		if (*speeds & ETH_LINK_SPEED_100M_HD) {
+		if (*speeds & RTE_ETH_LINK_SPEED_100M_HD) {
 			hw->phy.autoneg_advertised |= ADVERTISE_100_HALF;
 			num_speeds++;
 		}
-		if (*speeds & ETH_LINK_SPEED_100M) {
+		if (*speeds & RTE_ETH_LINK_SPEED_100M) {
 			hw->phy.autoneg_advertised |= ADVERTISE_100_FULL;
 			num_speeds++;
 		}
-		if (*speeds & ETH_LINK_SPEED_1G) {
+		if (*speeds & RTE_ETH_LINK_SPEED_1G) {
 			hw->phy.autoneg_advertised |= ADVERTISE_1000_FULL;
 			num_speeds++;
 		}
@@ -1102,9 +1102,9 @@ eth_em_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 		.nb_mtu_seg_max = EM_TX_MAX_MTU_SEG,
 	};
 
-	dev_info->speed_capa = ETH_LINK_SPEED_10M_HD | ETH_LINK_SPEED_10M |
-			ETH_LINK_SPEED_100M_HD | ETH_LINK_SPEED_100M |
-			ETH_LINK_SPEED_1G;
+	dev_info->speed_capa = RTE_ETH_LINK_SPEED_10M_HD | RTE_ETH_LINK_SPEED_10M |
+			RTE_ETH_LINK_SPEED_100M_HD | RTE_ETH_LINK_SPEED_100M |
+			RTE_ETH_LINK_SPEED_1G;
 
 	/* Preferred queue parameters */
 	dev_info->default_rxportconf.nb_queues = 1;
@@ -1162,17 +1162,17 @@ eth_em_link_update(struct rte_eth_dev *dev, int wait_to_complete)
 		uint16_t duplex, speed;
 		hw->mac.ops.get_link_up_info(hw, &speed, &duplex);
 		link.link_duplex = (duplex == FULL_DUPLEX) ?
-				ETH_LINK_FULL_DUPLEX :
-				ETH_LINK_HALF_DUPLEX;
+				RTE_ETH_LINK_FULL_DUPLEX :
+				RTE_ETH_LINK_HALF_DUPLEX;
 		link.link_speed = speed;
-		link.link_status = ETH_LINK_UP;
+		link.link_status = RTE_ETH_LINK_UP;
 		link.link_autoneg = !(dev->data->dev_conf.link_speeds &
-				ETH_LINK_SPEED_FIXED);
+				RTE_ETH_LINK_SPEED_FIXED);
 	} else {
-		link.link_speed = ETH_SPEED_NUM_NONE;
-		link.link_duplex = ETH_LINK_HALF_DUPLEX;
-		link.link_status = ETH_LINK_DOWN;
-		link.link_autoneg = ETH_LINK_FIXED;
+		link.link_speed = RTE_ETH_SPEED_NUM_NONE;
+		link.link_duplex = RTE_ETH_LINK_HALF_DUPLEX;
+		link.link_status = RTE_ETH_LINK_DOWN;
+		link.link_autoneg = RTE_ETH_LINK_FIXED;
 	}
 
 	return rte_eth_linkstatus_set(dev, &link);
@@ -1424,15 +1424,15 @@ eth_em_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 	struct rte_eth_rxmode *rxmode;
 
 	rxmode = &dev->data->dev_conf.rxmode;
-	if(mask & ETH_VLAN_STRIP_MASK){
-		if (rxmode->offloads & DEV_RX_OFFLOAD_VLAN_STRIP)
+	if (mask & RTE_ETH_VLAN_STRIP_MASK) {
+		if (rxmode->offloads & RTE_ETH_RX_OFFLOAD_VLAN_STRIP)
 			em_vlan_hw_strip_enable(dev);
 		else
 			em_vlan_hw_strip_disable(dev);
 	}
 
-	if(mask & ETH_VLAN_FILTER_MASK){
-		if (rxmode->offloads & DEV_RX_OFFLOAD_VLAN_FILTER)
+	if (mask & RTE_ETH_VLAN_FILTER_MASK) {
+		if (rxmode->offloads & RTE_ETH_RX_OFFLOAD_VLAN_FILTER)
 			em_vlan_hw_filter_enable(dev);
 		else
 			em_vlan_hw_filter_disable(dev);
@@ -1601,7 +1601,7 @@ eth_em_interrupt_action(struct rte_eth_dev *dev,
 	if (link.link_status) {
 		PMD_INIT_LOG(INFO, " Port %d: Link Up - speed %u Mbps - %s",
 			     dev->data->port_id, link.link_speed,
-			     link.link_duplex == ETH_LINK_FULL_DUPLEX ?
+			     link.link_duplex == RTE_ETH_LINK_FULL_DUPLEX ?
 			     "full-duplex" : "half-duplex");
 	} else {
 		PMD_INIT_LOG(INFO, " Port %d: Link Down", dev->data->port_id);
@@ -1683,13 +1683,13 @@ eth_em_flow_ctrl_get(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 		rx_pause = 0;
 
 	if (rx_pause && tx_pause)
-		fc_conf->mode = RTE_FC_FULL;
+		fc_conf->mode = RTE_ETH_FC_FULL;
 	else if (rx_pause)
-		fc_conf->mode = RTE_FC_RX_PAUSE;
+		fc_conf->mode = RTE_ETH_FC_RX_PAUSE;
 	else if (tx_pause)
-		fc_conf->mode = RTE_FC_TX_PAUSE;
+		fc_conf->mode = RTE_ETH_FC_TX_PAUSE;
 	else
-		fc_conf->mode = RTE_FC_NONE;
+		fc_conf->mode = RTE_ETH_FC_NONE;
 
 	return 0;
 }

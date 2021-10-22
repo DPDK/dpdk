@@ -1042,7 +1042,7 @@ static int
 eth_dev_configure(struct rte_eth_dev *dev)
 {
 	struct rte_eth_dev_data *data = dev->data;
-	if (data->dev_conf.rxmode.offloads & DEV_RX_OFFLOAD_SCATTER) {
+	if (data->dev_conf.rxmode.offloads & RTE_ETH_RX_OFFLOAD_SCATTER) {
 		dev->rx_pkt_burst = eth_szedata2_rx_scattered;
 		data->scattered_rx = 1;
 	} else {
@@ -1064,11 +1064,11 @@ eth_dev_info(struct rte_eth_dev *dev,
 	dev_info->max_rx_queues = internals->max_rx_queues;
 	dev_info->max_tx_queues = internals->max_tx_queues;
 	dev_info->min_rx_bufsize = 0;
-	dev_info->rx_offload_capa = DEV_RX_OFFLOAD_SCATTER;
+	dev_info->rx_offload_capa = RTE_ETH_RX_OFFLOAD_SCATTER;
 	dev_info->tx_offload_capa = 0;
 	dev_info->rx_queue_offload_capa = 0;
 	dev_info->tx_queue_offload_capa = 0;
-	dev_info->speed_capa = ETH_LINK_SPEED_100G;
+	dev_info->speed_capa = RTE_ETH_LINK_SPEED_100G;
 
 	return 0;
 }
@@ -1202,10 +1202,10 @@ eth_link_update(struct rte_eth_dev *dev,
 
 	memset(&link, 0, sizeof(link));
 
-	link.link_speed = ETH_SPEED_NUM_100G;
-	link.link_duplex = ETH_LINK_FULL_DUPLEX;
-	link.link_status = ETH_LINK_UP;
-	link.link_autoneg = ETH_LINK_FIXED;
+	link.link_speed = RTE_ETH_SPEED_NUM_100G;
+	link.link_duplex = RTE_ETH_LINK_FULL_DUPLEX;
+	link.link_status = RTE_ETH_LINK_UP;
+	link.link_autoneg = RTE_ETH_LINK_FIXED;
 
 	rte_eth_linkstatus_set(dev, &link);
 	return 0;

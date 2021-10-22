@@ -59,8 +59,8 @@ static uint16_t ports[RTE_MAX_ETHPORTS];
 static unsigned num_ports;
 
 /* number of pools (if user does not specify any, 32 by default */
-static enum rte_eth_nb_pools num_pools = ETH_32_POOLS;
-static enum rte_eth_nb_tcs   num_tcs   = ETH_4_TCS;
+static enum rte_eth_nb_pools num_pools = RTE_ETH_32_POOLS;
+static enum rte_eth_nb_tcs   num_tcs   = RTE_ETH_4_TCS;
 static uint16_t num_queues, num_vmdq_queues;
 static uint16_t vmdq_pool_base, vmdq_queue_base;
 static uint8_t rss_enable;
@@ -68,11 +68,11 @@ static uint8_t rss_enable;
 /* Empty vmdq+dcb configuration structure. Filled in programmatically. 8< */
 static const struct rte_eth_conf vmdq_dcb_conf_default = {
 	.rxmode = {
-		.mq_mode        = ETH_MQ_RX_VMDQ_DCB,
+		.mq_mode        = RTE_ETH_MQ_RX_VMDQ_DCB,
 		.split_hdr_size = 0,
 	},
 	.txmode = {
-		.mq_mode = ETH_MQ_TX_VMDQ_DCB,
+		.mq_mode = RTE_ETH_MQ_TX_VMDQ_DCB,
 	},
 	/*
 	 * should be overridden separately in code with
@@ -80,7 +80,7 @@ static const struct rte_eth_conf vmdq_dcb_conf_default = {
 	 */
 	.rx_adv_conf = {
 		.vmdq_dcb_conf = {
-			.nb_queue_pools = ETH_32_POOLS,
+			.nb_queue_pools = RTE_ETH_32_POOLS,
 			.enable_default_pool = 0,
 			.default_pool = 0,
 			.nb_pool_maps = 0,
@@ -88,12 +88,12 @@ static const struct rte_eth_conf vmdq_dcb_conf_default = {
 			.dcb_tc = {0},
 		},
 		.dcb_rx_conf = {
-				.nb_tcs = ETH_4_TCS,
+				.nb_tcs = RTE_ETH_4_TCS,
 				/** Traffic class each UP mapped to. */
 				.dcb_tc = {0},
 		},
 		.vmdq_rx_conf = {
-			.nb_queue_pools = ETH_32_POOLS,
+			.nb_queue_pools = RTE_ETH_32_POOLS,
 			.enable_default_pool = 0,
 			.default_pool = 0,
 			.nb_pool_maps = 0,
@@ -102,7 +102,7 @@ static const struct rte_eth_conf vmdq_dcb_conf_default = {
 	},
 	.tx_adv_conf = {
 		.vmdq_dcb_tx_conf = {
-			.nb_queue_pools = ETH_32_POOLS,
+			.nb_queue_pools = RTE_ETH_32_POOLS,
 			.dcb_tc = {0},
 		},
 	},
@@ -156,7 +156,7 @@ get_eth_conf(struct rte_eth_conf *eth_conf)
 		conf.pool_map[i].pools = 1UL << i;
 		vmdq_conf.pool_map[i].pools = 1UL << i;
 	}
-	for (i = 0; i < ETH_DCB_NUM_USER_PRIORITIES; i++){
+	for (i = 0; i < RTE_ETH_DCB_NUM_USER_PRIORITIES; i++) {
 		conf.dcb_tc[i] = i % num_tcs;
 		dcb_conf.dcb_tc[i] = i % num_tcs;
 		tx_conf.dcb_tc[i] = i % num_tcs;
@@ -172,11 +172,11 @@ get_eth_conf(struct rte_eth_conf *eth_conf)
 	(void)(rte_memcpy(&eth_conf->tx_adv_conf.vmdq_dcb_tx_conf, &tx_conf,
 			  sizeof(tx_conf)));
 	if (rss_enable) {
-		eth_conf->rxmode.mq_mode = ETH_MQ_RX_VMDQ_DCB_RSS;
-		eth_conf->rx_adv_conf.rss_conf.rss_hf = ETH_RSS_IP |
-							ETH_RSS_UDP |
-							ETH_RSS_TCP |
-							ETH_RSS_SCTP;
+		eth_conf->rxmode.mq_mode = RTE_ETH_MQ_RX_VMDQ_DCB_RSS;
+		eth_conf->rx_adv_conf.rss_conf.rss_hf = RTE_ETH_RSS_IP |
+							RTE_ETH_RSS_UDP |
+							RTE_ETH_RSS_TCP |
+							RTE_ETH_RSS_SCTP;
 	}
 	return 0;
 }
@@ -270,9 +270,9 @@ port_init(uint16_t port, struct rte_mempool *mbuf_pool)
 		return retval;
 	}
 
-	if (dev_info.tx_offload_capa & DEV_TX_OFFLOAD_MBUF_FAST_FREE)
+	if (dev_info.tx_offload_capa & RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE)
 		port_conf.txmode.offloads |=
-			DEV_TX_OFFLOAD_MBUF_FAST_FREE;
+			RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE;
 
 	rss_hf_tmp = port_conf.rx_adv_conf.rss_conf.rss_hf;
 	port_conf.rx_adv_conf.rss_conf.rss_hf &=
@@ -381,9 +381,9 @@ vmdq_parse_num_pools(const char *q_arg)
 	if (n != 16 && n != 32)
 		return -1;
 	if (n == 16)
-		num_pools = ETH_16_POOLS;
+		num_pools = RTE_ETH_16_POOLS;
 	else
-		num_pools = ETH_32_POOLS;
+		num_pools = RTE_ETH_32_POOLS;
 
 	return 0;
 }
@@ -403,9 +403,9 @@ vmdq_parse_num_tcs(const char *q_arg)
 	if (n != 4 && n != 8)
 		return -1;
 	if (n == 4)
-		num_tcs = ETH_4_TCS;
+		num_tcs = RTE_ETH_4_TCS;
 	else
-		num_tcs = ETH_8_TCS;
+		num_tcs = RTE_ETH_8_TCS;
 
 	return 0;
 }

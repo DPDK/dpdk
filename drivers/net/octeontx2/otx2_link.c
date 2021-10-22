@@ -41,7 +41,7 @@ nix_link_status_print(struct rte_eth_dev *eth_dev, struct rte_eth_link *link)
 		otx2_info("Port %d: Link Up - speed %u Mbps - %s",
 			  (int)(eth_dev->data->port_id),
 			  (uint32_t)link->link_speed,
-			  link->link_duplex == ETH_LINK_FULL_DUPLEX ?
+			  link->link_duplex == RTE_ETH_LINK_FULL_DUPLEX ?
 			  "full-duplex" : "half-duplex");
 	else
 		otx2_info("Port %d: Link Down", (int)(eth_dev->data->port_id));
@@ -92,7 +92,7 @@ otx2_eth_dev_link_status_update(struct otx2_dev *dev,
 
 	eth_link.link_status = link->link_up;
 	eth_link.link_speed = link->speed;
-	eth_link.link_autoneg = ETH_LINK_AUTONEG;
+	eth_link.link_autoneg = RTE_ETH_LINK_AUTONEG;
 	eth_link.link_duplex = link->full_duplex;
 
 	otx2_dev->speed = link->speed;
@@ -111,10 +111,10 @@ otx2_eth_dev_link_status_update(struct otx2_dev *dev,
 static int
 lbk_link_update(struct rte_eth_link *link)
 {
-	link->link_status = ETH_LINK_UP;
-	link->link_speed = ETH_SPEED_NUM_100G;
-	link->link_autoneg = ETH_LINK_FIXED;
-	link->link_duplex = ETH_LINK_FULL_DUPLEX;
+	link->link_status = RTE_ETH_LINK_UP;
+	link->link_speed = RTE_ETH_SPEED_NUM_100G;
+	link->link_autoneg = RTE_ETH_LINK_FIXED;
+	link->link_duplex = RTE_ETH_LINK_FULL_DUPLEX;
 	return 0;
 }
 
@@ -131,7 +131,7 @@ cgx_link_update(struct otx2_eth_dev *dev, struct rte_eth_link *link)
 
 	link->link_status = rsp->link_info.link_up;
 	link->link_speed = rsp->link_info.speed;
-	link->link_autoneg = ETH_LINK_AUTONEG;
+	link->link_autoneg = RTE_ETH_LINK_AUTONEG;
 
 	if (rsp->link_info.full_duplex)
 		link->link_duplex = rsp->link_info.full_duplex;
@@ -233,22 +233,22 @@ nix_parse_link_speeds(struct otx2_eth_dev *dev, uint32_t link_speeds)
 
 	/* 50G and 100G to be supported for board version C0 and above */
 	if (!otx2_dev_is_Ax(dev)) {
-		if (link_speeds & ETH_LINK_SPEED_100G)
+		if (link_speeds & RTE_ETH_LINK_SPEED_100G)
 			link_speed = 100000;
-		if (link_speeds & ETH_LINK_SPEED_50G)
+		if (link_speeds & RTE_ETH_LINK_SPEED_50G)
 			link_speed = 50000;
 	}
-	if (link_speeds & ETH_LINK_SPEED_40G)
+	if (link_speeds & RTE_ETH_LINK_SPEED_40G)
 		link_speed = 40000;
-	if (link_speeds & ETH_LINK_SPEED_25G)
+	if (link_speeds & RTE_ETH_LINK_SPEED_25G)
 		link_speed = 25000;
-	if (link_speeds & ETH_LINK_SPEED_20G)
+	if (link_speeds & RTE_ETH_LINK_SPEED_20G)
 		link_speed = 20000;
-	if (link_speeds & ETH_LINK_SPEED_10G)
+	if (link_speeds & RTE_ETH_LINK_SPEED_10G)
 		link_speed = 10000;
-	if (link_speeds & ETH_LINK_SPEED_5G)
+	if (link_speeds & RTE_ETH_LINK_SPEED_5G)
 		link_speed = 5000;
-	if (link_speeds & ETH_LINK_SPEED_1G)
+	if (link_speeds & RTE_ETH_LINK_SPEED_1G)
 		link_speed = 1000;
 
 	return link_speed;
@@ -257,11 +257,11 @@ nix_parse_link_speeds(struct otx2_eth_dev *dev, uint32_t link_speeds)
 static inline uint8_t
 nix_parse_eth_link_duplex(uint32_t link_speeds)
 {
-	if ((link_speeds & ETH_LINK_SPEED_10M_HD) ||
-			(link_speeds & ETH_LINK_SPEED_100M_HD))
-		return ETH_LINK_HALF_DUPLEX;
+	if ((link_speeds & RTE_ETH_LINK_SPEED_10M_HD) ||
+			(link_speeds & RTE_ETH_LINK_SPEED_100M_HD))
+		return RTE_ETH_LINK_HALF_DUPLEX;
 	else
-		return ETH_LINK_FULL_DUPLEX;
+		return RTE_ETH_LINK_FULL_DUPLEX;
 }
 
 int
@@ -279,7 +279,7 @@ otx2_apply_link_speed(struct rte_eth_dev *eth_dev)
 	cfg.speed = nix_parse_link_speeds(dev, conf->link_speeds);
 	if (cfg.speed != SPEED_NONE && cfg.speed != dev->speed) {
 		cfg.duplex = nix_parse_eth_link_duplex(conf->link_speeds);
-		cfg.an = (conf->link_speeds & ETH_LINK_SPEED_FIXED) == 0;
+		cfg.an = (conf->link_speeds & RTE_ETH_LINK_SPEED_FIXED) == 0;
 
 		return cgx_change_mode(dev, &cfg);
 	}

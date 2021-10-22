@@ -1070,7 +1070,7 @@ NIX_TX_FASTPATH_MODES
 	else
 		pick_tx_func(eth_dev, nix_eth_tx_vec_burst);
 
-	if (dev->tx_offloads & DEV_TX_OFFLOAD_MULTI_SEGS)
+	if (dev->tx_offloads & RTE_ETH_TX_OFFLOAD_MULTI_SEGS)
 		pick_tx_func(eth_dev, nix_eth_tx_burst_mseg);
 
 	rte_mb();

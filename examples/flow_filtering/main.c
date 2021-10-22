@@ -113,7 +113,7 @@ assert_link_status(void)
 	memset(&link, 0, sizeof(link));
 	do {
 		link_get_err = rte_eth_link_get(port_id, &link);
-		if (link_get_err == 0 && link.link_status == ETH_LINK_UP)
+		if (link_get_err == 0 && link.link_status == RTE_ETH_LINK_UP)
 			break;
 		rte_delay_ms(CHECK_INTERVAL);
 	} while (--rep_cnt);
@@ -121,7 +121,7 @@ assert_link_status(void)
 	if (link_get_err < 0)
 		rte_exit(EXIT_FAILURE, ":: error: link get is failing: %s\n",
 			 rte_strerror(-link_get_err));
-	if (link.link_status == ETH_LINK_DOWN)
+	if (link.link_status == RTE_ETH_LINK_DOWN)
 		rte_exit(EXIT_FAILURE, ":: error: link is still down\n");
 }
 
@@ -138,12 +138,12 @@ init_port(void)
 		},
 		.txmode = {
 			.offloads =
-				DEV_TX_OFFLOAD_VLAN_INSERT |
-				DEV_TX_OFFLOAD_IPV4_CKSUM  |
-				DEV_TX_OFFLOAD_UDP_CKSUM   |
-				DEV_TX_OFFLOAD_TCP_CKSUM   |
-				DEV_TX_OFFLOAD_SCTP_CKSUM  |
-				DEV_TX_OFFLOAD_TCP_TSO,
+				RTE_ETH_TX_OFFLOAD_VLAN_INSERT |
+				RTE_ETH_TX_OFFLOAD_IPV4_CKSUM  |
+				RTE_ETH_TX_OFFLOAD_UDP_CKSUM   |
+				RTE_ETH_TX_OFFLOAD_TCP_CKSUM   |
+				RTE_ETH_TX_OFFLOAD_SCTP_CKSUM  |
+				RTE_ETH_TX_OFFLOAD_TCP_TSO,
 		},
 	};
 	struct rte_eth_txconf txq_conf;

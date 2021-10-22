@@ -413,12 +413,12 @@ fm10k_check_mq_mode(struct rte_eth_dev *dev)
 
 	vmdq_conf = &dev->data->dev_conf.rx_adv_conf.vmdq_rx_conf;
 
-	if (rx_mq_mode & ETH_MQ_RX_DCB_FLAG) {
+	if (rx_mq_mode & RTE_ETH_MQ_RX_DCB_FLAG) {
 		PMD_INIT_LOG(ERR, "DCB mode is not supported.");
 		return -EINVAL;
 	}
 
-	if (!(rx_mq_mode & ETH_MQ_RX_VMDQ_FLAG))
+	if (!(rx_mq_mode & RTE_ETH_MQ_RX_VMDQ_FLAG))
 		return 0;
 
 	if (hw->mac.type == fm10k_mac_vf) {
@@ -449,8 +449,8 @@ fm10k_dev_configure(struct rte_eth_dev *dev)
 
 	PMD_INIT_FUNC_TRACE();
 
-	if (dev->data->dev_conf.rxmode.mq_mode & ETH_MQ_RX_RSS_FLAG)
-		dev->data->dev_conf.rxmode.offloads |= DEV_RX_OFFLOAD_RSS_HASH;
+	if (dev->data->dev_conf.rxmode.mq_mode & RTE_ETH_MQ_RX_RSS_FLAG)
+		dev->data->dev_conf.rxmode.offloads |= RTE_ETH_RX_OFFLOAD_RSS_HASH;
 
 	/* multipe queue mode checking */
 	ret  = fm10k_check_mq_mode(dev);
@@ -510,7 +510,7 @@ fm10k_dev_rss_configure(struct rte_eth_dev *dev)
 		0x6A, 0x42, 0xB7, 0x3B, 0xBE, 0xAC, 0x01, 0xFA,
 	};
 
-	if (dev_conf->rxmode.mq_mode != ETH_MQ_RX_RSS ||
+	if (dev_conf->rxmode.mq_mode != RTE_ETH_MQ_RX_RSS ||
 		dev_conf->rx_adv_conf.rss_conf.rss_hf == 0) {
 		FM10K_WRITE_REG(hw, FM10K_MRQC(0), 0);
 		return;
@@ -547,15 +547,15 @@ fm10k_dev_rss_configure(struct rte_eth_dev *dev)
 	 */
 	hf = dev_conf->rx_adv_conf.rss_conf.rss_hf;
 	mrqc = 0;
-	mrqc |= (hf & ETH_RSS_IPV4)              ? FM10K_MRQC_IPV4     : 0;
-	mrqc |= (hf & ETH_RSS_IPV6)              ? FM10K_MRQC_IPV6     : 0;
-	mrqc |= (hf & ETH_RSS_IPV6_EX)           ? FM10K_MRQC_IPV6     : 0;
-	mrqc |= (hf & ETH_RSS_NONFRAG_IPV4_TCP)  ? FM10K_MRQC_TCP_IPV4 : 0;
-	mrqc |= (hf & ETH_RSS_NONFRAG_IPV6_TCP)  ? FM10K_MRQC_TCP_IPV6 : 0;
-	mrqc |= (hf & ETH_RSS_IPV6_TCP_EX)       ? FM10K_MRQC_TCP_IPV6 : 0;
-	mrqc |= (hf & ETH_RSS_NONFRAG_IPV4_UDP)  ? FM10K_MRQC_UDP_IPV4 : 0;
-	mrqc |= (hf & ETH_RSS_NONFRAG_IPV6_UDP)  ? FM10K_MRQC_UDP_IPV6 : 0;
-	mrqc |= (hf & ETH_RSS_IPV6_UDP_EX)       ? FM10K_MRQC_UDP_IPV6 : 0;
+	mrqc |= (hf & RTE_ETH_RSS_IPV4)              ? FM10K_MRQC_IPV4     : 0;
+	mrqc |= (hf & RTE_ETH_RSS_IPV6)              ? FM10K_MRQC_IPV6     : 0;
+	mrqc |= (hf & RTE_ETH_RSS_IPV6_EX)           ? FM10K_MRQC_IPV6     : 0;
+	mrqc |= (hf & RTE_ETH_RSS_NONFRAG_IPV4_TCP)  ? FM10K_MRQC_TCP_IPV4 : 0;
+	mrqc |= (hf & RTE_ETH_RSS_NONFRAG_IPV6_TCP)  ? FM10K_MRQC_TCP_IPV6 : 0;
+	mrqc |= (hf & RTE_ETH_RSS_IPV6_TCP_EX)       ? FM10K_MRQC_TCP_IPV6 : 0;
+	mrqc |= (hf & RTE_ETH_RSS_NONFRAG_IPV4_UDP)  ? FM10K_MRQC_UDP_IPV4 : 0;
+	mrqc |= (hf & RTE_ETH_RSS_NONFRAG_IPV6_UDP)  ? FM10K_MRQC_UDP_IPV6 : 0;
+	mrqc |= (hf & RTE_ETH_RSS_IPV6_UDP_EX)       ? FM10K_MRQC_UDP_IPV6 : 0;
 
 	if (mrqc == 0) {
 		PMD_INIT_LOG(ERR, "Specified RSS mode 0x%"PRIx64"is not"
@@ -602,7 +602,7 @@ fm10k_dev_mq_rx_configure(struct rte_eth_dev *dev)
 	if (hw->mac.type != fm10k_mac_pf)
 		return;
 
-	if (dev_conf->rxmode.mq_mode & ETH_MQ_RX_VMDQ_FLAG)
+	if (dev_conf->rxmode.mq_mode & RTE_ETH_MQ_RX_VMDQ_FLAG)
 		nb_queue_pools = vmdq_conf->nb_queue_pools;
 
 	/* no pool number change, no need to update logic port and VLAN/MAC */
@@ -759,7 +759,7 @@ fm10k_dev_rx_init(struct rte_eth_dev *dev)
 		/* It adds dual VLAN length for supporting dual VLAN */
 		if ((dev->data->mtu + RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN +
 				2 * FM10K_VLAN_TAG_SIZE) > buf_size ||
-			rxq->offloads & DEV_RX_OFFLOAD_SCATTER) {
+			rxq->offloads & RTE_ETH_RX_OFFLOAD_SCATTER) {
 			uint32_t reg;
 			dev->data->scattered_rx = 1;
 			reg = FM10K_READ_REG(hw, FM10K_SRRCTL(i));
@@ -1145,7 +1145,7 @@ fm10k_dev_start(struct rte_eth_dev *dev)
 	}
 
 	/* Update default vlan when not in VMDQ mode */
-	if (!(dev->data->dev_conf.rxmode.mq_mode & ETH_MQ_RX_VMDQ_FLAG))
+	if (!(dev->data->dev_conf.rxmode.mq_mode & RTE_ETH_MQ_RX_VMDQ_FLAG))
 		fm10k_vlan_filter_set(dev, hw->mac.default_vid, true);
 
 	fm10k_link_update(dev, 0);
@@ -1222,11 +1222,11 @@ fm10k_link_update(struct rte_eth_dev *dev,
 		FM10K_DEV_PRIVATE_TO_INFO(dev->data->dev_private);
 	PMD_INIT_FUNC_TRACE();
 
-	dev->data->dev_link.link_speed  = ETH_SPEED_NUM_50G;
-	dev->data->dev_link.link_duplex = ETH_LINK_FULL_DUPLEX;
+	dev->data->dev_link.link_speed  = RTE_ETH_SPEED_NUM_50G;
+	dev->data->dev_link.link_duplex = RTE_ETH_LINK_FULL_DUPLEX;
 	dev->data->dev_link.link_status =
-		dev_info->sm_down ? ETH_LINK_DOWN : ETH_LINK_UP;
-	dev->data->dev_link.link_autoneg = ETH_LINK_FIXED;
+		dev_info->sm_down ? RTE_ETH_LINK_DOWN : RTE_ETH_LINK_UP;
+	dev->data->dev_link.link_autoneg = RTE_ETH_LINK_FIXED;
 
 	return 0;
 }
@@ -1378,7 +1378,7 @@ fm10k_dev_infos_get(struct rte_eth_dev *dev,
 	dev_info->max_vfs            = pdev->max_vfs;
 	dev_info->vmdq_pool_base     = 0;
 	dev_info->vmdq_queue_base    = 0;
-	dev_info->max_vmdq_pools     = ETH_32_POOLS;
+	dev_info->max_vmdq_pools     = RTE_ETH_32_POOLS;
 	dev_info->vmdq_queue_num     = FM10K_MAX_QUEUES_PF;
 	dev_info->rx_queue_offload_capa = fm10k_get_rx_queue_offloads_capa(dev);
 	dev_info->rx_offload_capa = fm10k_get_rx_port_offloads_capa(dev) |
@@ -1389,15 +1389,15 @@ fm10k_dev_infos_get(struct rte_eth_dev *dev,
 
 	dev_info->hash_key_size = FM10K_RSSRK_SIZE * sizeof(uint32_t);
 	dev_info->reta_size = FM10K_MAX_RSS_INDICES;
-	dev_info->flow_type_rss_offloads = ETH_RSS_IPV4 |
-					ETH_RSS_IPV6 |
-					ETH_RSS_IPV6_EX |
-					ETH_RSS_NONFRAG_IPV4_TCP |
-					ETH_RSS_NONFRAG_IPV6_TCP |
-					ETH_RSS_IPV6_TCP_EX |
-					ETH_RSS_NONFRAG_IPV4_UDP |
-					ETH_RSS_NONFRAG_IPV6_UDP |
-					ETH_RSS_IPV6_UDP_EX;
+	dev_info->flow_type_rss_offloads = RTE_ETH_RSS_IPV4 |
+					RTE_ETH_RSS_IPV6 |
+					RTE_ETH_RSS_IPV6_EX |
+					RTE_ETH_RSS_NONFRAG_IPV4_TCP |
+					RTE_ETH_RSS_NONFRAG_IPV6_TCP |
+					RTE_ETH_RSS_IPV6_TCP_EX |
+					RTE_ETH_RSS_NONFRAG_IPV4_UDP |
+					RTE_ETH_RSS_NONFRAG_IPV6_UDP |
+					RTE_ETH_RSS_IPV6_UDP_EX;
 
 	dev_info->default_rxconf = (struct rte_eth_rxconf) {
 		.rx_thresh = {
@@ -1435,9 +1435,9 @@ fm10k_dev_infos_get(struct rte_eth_dev *dev,
 		.nb_mtu_seg_max = FM10K_TX_MAX_MTU_SEG,
 	};
 
-	dev_info->speed_capa = ETH_LINK_SPEED_1G | ETH_LINK_SPEED_2_5G |
-			ETH_LINK_SPEED_10G | ETH_LINK_SPEED_25G |
-			ETH_LINK_SPEED_40G | ETH_LINK_SPEED_100G;
+	dev_info->speed_capa = RTE_ETH_LINK_SPEED_1G | RTE_ETH_LINK_SPEED_2_5G |
+			RTE_ETH_LINK_SPEED_10G | RTE_ETH_LINK_SPEED_25G |
+			RTE_ETH_LINK_SPEED_40G | RTE_ETH_LINK_SPEED_100G;
 
 	return 0;
 }
@@ -1509,7 +1509,7 @@ fm10k_vlan_filter_set(struct rte_eth_dev *dev, uint16_t vlan_id, int on)
 		return -EINVAL;
 	}
 
-	if (vlan_id > ETH_VLAN_ID_MAX) {
+	if (vlan_id > RTE_ETH_VLAN_ID_MAX) {
 		PMD_INIT_LOG(ERR, "Invalid vlan_id: must be < 4096");
 		return -EINVAL;
 	}
@@ -1767,20 +1767,20 @@ static uint64_t fm10k_get_rx_queue_offloads_capa(struct rte_eth_dev *dev)
 {
 	RTE_SET_USED(dev);
 
-	return (uint64_t)(DEV_RX_OFFLOAD_SCATTER);
+	return (uint64_t)(RTE_ETH_RX_OFFLOAD_SCATTER);
 }
 
 static uint64_t fm10k_get_rx_port_offloads_capa(struct rte_eth_dev *dev)
 {
 	RTE_SET_USED(dev);
 
-	return  (uint64_t)(DEV_RX_OFFLOAD_VLAN_STRIP  |
-			   DEV_RX_OFFLOAD_VLAN_FILTER |
-			   DEV_RX_OFFLOAD_IPV4_CKSUM  |
-			   DEV_RX_OFFLOAD_UDP_CKSUM   |
-			   DEV_RX_OFFLOAD_TCP_CKSUM   |
-			   DEV_RX_OFFLOAD_HEADER_SPLIT |
-			   DEV_RX_OFFLOAD_RSS_HASH);
+	return  (uint64_t)(RTE_ETH_RX_OFFLOAD_VLAN_STRIP  |
+			   RTE_ETH_RX_OFFLOAD_VLAN_FILTER |
+			   RTE_ETH_RX_OFFLOAD_IPV4_CKSUM  |
+			   RTE_ETH_RX_OFFLOAD_UDP_CKSUM   |
+			   RTE_ETH_RX_OFFLOAD_TCP_CKSUM   |
+			   RTE_ETH_RX_OFFLOAD_HEADER_SPLIT |
+			   RTE_ETH_RX_OFFLOAD_RSS_HASH);
 }
 
 static int
@@ -1965,12 +1965,12 @@ static uint64_t fm10k_get_tx_port_offloads_capa(struct rte_eth_dev *dev)
 {
 	RTE_SET_USED(dev);
 
-	return (uint64_t)(DEV_TX_OFFLOAD_VLAN_INSERT |
-			  DEV_TX_OFFLOAD_MULTI_SEGS  |
-			  DEV_TX_OFFLOAD_IPV4_CKSUM  |
-			  DEV_TX_OFFLOAD_UDP_CKSUM   |
-			  DEV_TX_OFFLOAD_TCP_CKSUM   |
-			  DEV_TX_OFFLOAD_TCP_TSO);
+	return (uint64_t)(RTE_ETH_TX_OFFLOAD_VLAN_INSERT |
+			  RTE_ETH_TX_OFFLOAD_MULTI_SEGS  |
+			  RTE_ETH_TX_OFFLOAD_IPV4_CKSUM  |
+			  RTE_ETH_TX_OFFLOAD_UDP_CKSUM   |
+			  RTE_ETH_TX_OFFLOAD_TCP_CKSUM   |
+			  RTE_ETH_TX_OFFLOAD_TCP_TSO);
 }
 
 static int
@@ -2111,8 +2111,8 @@ fm10k_reta_update(struct rte_eth_dev *dev,
 	 * 128-entries in 32 registers
 	 */
 	for (i = 0; i < FM10K_MAX_RSS_INDICES; i += CHARS_PER_UINT32) {
-		idx = i / RTE_RETA_GROUP_SIZE;
-		shift = i % RTE_RETA_GROUP_SIZE;
+		idx = i / RTE_ETH_RETA_GROUP_SIZE;
+		shift = i % RTE_ETH_RETA_GROUP_SIZE;
 		mask = (uint8_t)((reta_conf[idx].mask >> shift) &
 				BIT_MASK_PER_UINT32);
 		if (mask == 0)
@@ -2160,8 +2160,8 @@ fm10k_reta_query(struct rte_eth_dev *dev,
 	 * 128-entries in 32 registers
 	 */
 	for (i = 0; i < FM10K_MAX_RSS_INDICES; i += CHARS_PER_UINT32) {
-		idx = i / RTE_RETA_GROUP_SIZE;
-		shift = i % RTE_RETA_GROUP_SIZE;
+		idx = i / RTE_ETH_RETA_GROUP_SIZE;
+		shift = i % RTE_ETH_RETA_GROUP_SIZE;
 		mask = (uint8_t)((reta_conf[idx].mask >> shift) &
 				BIT_MASK_PER_UINT32);
 		if (mask == 0)
@@ -2198,15 +2198,15 @@ fm10k_rss_hash_update(struct rte_eth_dev *dev,
 		return -EINVAL;
 
 	mrqc = 0;
-	mrqc |= (hf & ETH_RSS_IPV4)              ? FM10K_MRQC_IPV4     : 0;
-	mrqc |= (hf & ETH_RSS_IPV6)              ? FM10K_MRQC_IPV6     : 0;
-	mrqc |= (hf & ETH_RSS_IPV6_EX)           ? FM10K_MRQC_IPV6     : 0;
-	mrqc |= (hf & ETH_RSS_NONFRAG_IPV4_TCP)  ? FM10K_MRQC_TCP_IPV4 : 0;
-	mrqc |= (hf & ETH_RSS_NONFRAG_IPV6_TCP)  ? FM10K_MRQC_TCP_IPV6 : 0;
-	mrqc |= (hf & ETH_RSS_IPV6_TCP_EX)       ? FM10K_MRQC_TCP_IPV6 : 0;
-	mrqc |= (hf & ETH_RSS_NONFRAG_IPV4_UDP)  ? FM10K_MRQC_UDP_IPV4 : 0;
-	mrqc |= (hf & ETH_RSS_NONFRAG_IPV6_UDP)  ? FM10K_MRQC_UDP_IPV6 : 0;
-	mrqc |= (hf & ETH_RSS_IPV6_UDP_EX)       ? FM10K_MRQC_UDP_IPV6 : 0;
+	mrqc |= (hf & RTE_ETH_RSS_IPV4)              ? FM10K_MRQC_IPV4     : 0;
+	mrqc |= (hf & RTE_ETH_RSS_IPV6)              ? FM10K_MRQC_IPV6     : 0;
+	mrqc |= (hf & RTE_ETH_RSS_IPV6_EX)           ? FM10K_MRQC_IPV6     : 0;
+	mrqc |= (hf & RTE_ETH_RSS_NONFRAG_IPV4_TCP)  ? FM10K_MRQC_TCP_IPV4 : 0;
+	mrqc |= (hf & RTE_ETH_RSS_NONFRAG_IPV6_TCP)  ? FM10K_MRQC_TCP_IPV6 : 0;
+	mrqc |= (hf & RTE_ETH_RSS_IPV6_TCP_EX)       ? FM10K_MRQC_TCP_IPV6 : 0;
+	mrqc |= (hf & RTE_ETH_RSS_NONFRAG_IPV4_UDP)  ? FM10K_MRQC_UDP_IPV4 : 0;
+	mrqc |= (hf & RTE_ETH_RSS_NONFRAG_IPV6_UDP)  ? FM10K_MRQC_UDP_IPV6 : 0;
+	mrqc |= (hf & RTE_ETH_RSS_IPV6_UDP_EX)       ? FM10K_MRQC_UDP_IPV6 : 0;
 
 	/* If the mapping doesn't fit any supported, return */
 	if (mrqc == 0)
@@ -2243,15 +2243,15 @@ fm10k_rss_hash_conf_get(struct rte_eth_dev *dev,
 
 	mrqc = FM10K_READ_REG(hw, FM10K_MRQC(0));
 	hf = 0;
-	hf |= (mrqc & FM10K_MRQC_IPV4)     ? ETH_RSS_IPV4              : 0;
-	hf |= (mrqc & FM10K_MRQC_IPV6)     ? ETH_RSS_IPV6              : 0;
-	hf |= (mrqc & FM10K_MRQC_IPV6)     ? ETH_RSS_IPV6_EX           : 0;
-	hf |= (mrqc & FM10K_MRQC_TCP_IPV4) ? ETH_RSS_NONFRAG_IPV4_TCP  : 0;
-	hf |= (mrqc & FM10K_MRQC_TCP_IPV6) ? ETH_RSS_NONFRAG_IPV6_TCP  : 0;
-	hf |= (mrqc & FM10K_MRQC_TCP_IPV6) ? ETH_RSS_IPV6_TCP_EX       : 0;
-	hf |= (mrqc & FM10K_MRQC_UDP_IPV4) ? ETH_RSS_NONFRAG_IPV4_UDP  : 0;
-	hf |= (mrqc & FM10K_MRQC_UDP_IPV6) ? ETH_RSS_NONFRAG_IPV6_UDP  : 0;
-	hf |= (mrqc & FM10K_MRQC_UDP_IPV6) ? ETH_RSS_IPV6_UDP_EX       : 0;
+	hf |= (mrqc & FM10K_MRQC_IPV4)     ? RTE_ETH_RSS_IPV4              : 0;
+	hf |= (mrqc & FM10K_MRQC_IPV6)     ? RTE_ETH_RSS_IPV6              : 0;
+	hf |= (mrqc & FM10K_MRQC_IPV6)     ? RTE_ETH_RSS_IPV6_EX           : 0;
+	hf |= (mrqc & FM10K_MRQC_TCP_IPV4) ? RTE_ETH_RSS_NONFRAG_IPV4_TCP  : 0;
+	hf |= (mrqc & FM10K_MRQC_TCP_IPV6) ? RTE_ETH_RSS_NONFRAG_IPV6_TCP  : 0;
+	hf |= (mrqc & FM10K_MRQC_TCP_IPV6) ? RTE_ETH_RSS_IPV6_TCP_EX       : 0;
+	hf |= (mrqc & FM10K_MRQC_UDP_IPV4) ? RTE_ETH_RSS_NONFRAG_IPV4_UDP  : 0;
+	hf |= (mrqc & FM10K_MRQC_UDP_IPV6) ? RTE_ETH_RSS_NONFRAG_IPV6_UDP  : 0;
+	hf |= (mrqc & FM10K_MRQC_UDP_IPV6) ? RTE_ETH_RSS_IPV6_UDP_EX       : 0;
 
 	rss_conf->rss_hf = hf;
 
@@ -2606,7 +2606,7 @@ fm10k_dev_interrupt_handler_pf(void *param)
 
 			/* first clear the internal SW recording structure */
 			if (!(dev->data->dev_conf.rxmode.mq_mode &
-						ETH_MQ_RX_VMDQ_FLAG))
+						RTE_ETH_MQ_RX_VMDQ_FLAG))
 				fm10k_vlan_filter_set(dev, hw->mac.default_vid,
 					false);
 
@@ -2622,7 +2622,7 @@ fm10k_dev_interrupt_handler_pf(void *param)
 					MAIN_VSI_POOL_NUMBER);
 
 			if (!(dev->data->dev_conf.rxmode.mq_mode &
-						ETH_MQ_RX_VMDQ_FLAG))
+						RTE_ETH_MQ_RX_VMDQ_FLAG))
 				fm10k_vlan_filter_set(dev, hw->mac.default_vid,
 					true);
 

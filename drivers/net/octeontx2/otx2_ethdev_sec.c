@@ -869,8 +869,8 @@ otx2_eth_sec_init(struct rte_eth_dev *eth_dev)
 	RTE_BUILD_BUG_ON(sa_width < 32 || sa_width > 512 ||
 			 !RTE_IS_POWER_OF_2(sa_width));
 
-	if (!(dev->tx_offloads & DEV_TX_OFFLOAD_SECURITY) &&
-	    !(dev->rx_offloads & DEV_RX_OFFLOAD_SECURITY))
+	if (!(dev->tx_offloads & RTE_ETH_TX_OFFLOAD_SECURITY) &&
+	    !(dev->rx_offloads & RTE_ETH_RX_OFFLOAD_SECURITY))
 		return 0;
 
 	if (rte_security_dynfield_register() < 0)
@@ -912,8 +912,8 @@ otx2_eth_sec_fini(struct rte_eth_dev *eth_dev)
 	uint16_t port = eth_dev->data->port_id;
 	char name[RTE_MEMZONE_NAMESIZE];
 
-	if (!(dev->tx_offloads & DEV_TX_OFFLOAD_SECURITY) &&
-	    !(dev->rx_offloads & DEV_RX_OFFLOAD_SECURITY))
+	if (!(dev->tx_offloads & RTE_ETH_TX_OFFLOAD_SECURITY) &&
+	    !(dev->rx_offloads & RTE_ETH_RX_OFFLOAD_SECURITY))
 		return;
 
 	lookup_mem_sa_tbl_clear(eth_dev);

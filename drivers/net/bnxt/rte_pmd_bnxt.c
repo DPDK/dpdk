@@ -421,18 +421,18 @@ int rte_pmd_bnxt_set_vf_rxmode(uint16_t port, uint16_t vf,
 	if (vf >= bp->pdev->max_vfs)
 		return -EINVAL;
 
-	if (rx_mask & ETH_VMDQ_ACCEPT_UNTAG) {
+	if (rx_mask & RTE_ETH_VMDQ_ACCEPT_UNTAG) {
 		PMD_DRV_LOG(ERR, "Currently cannot toggle this setting\n");
 		return -ENOTSUP;
 	}
 
 	/* Is this really the correct mapping?  VFd seems to think it is. */
-	if (rx_mask & ETH_VMDQ_ACCEPT_HASH_UC)
+	if (rx_mask & RTE_ETH_VMDQ_ACCEPT_HASH_UC)
 		flag |= BNXT_VNIC_INFO_PROMISC;
 
-	if (rx_mask & ETH_VMDQ_ACCEPT_BROADCAST)
+	if (rx_mask & RTE_ETH_VMDQ_ACCEPT_BROADCAST)
 		flag |= BNXT_VNIC_INFO_BCAST;
-	if (rx_mask & ETH_VMDQ_ACCEPT_MULTICAST)
+	if (rx_mask & RTE_ETH_VMDQ_ACCEPT_MULTICAST)
 		flag |= BNXT_VNIC_INFO_ALLMULTI | BNXT_VNIC_INFO_MCAST;
 
 	if (on)

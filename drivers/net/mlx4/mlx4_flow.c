@@ -109,21 +109,21 @@ mlx4_conv_rss_types(struct mlx4_priv *priv, uint64_t types, int verbs_to_dpdk)
 	};
 	static const uint64_t dpdk[] = {
 		[INNER] = 0,
-		[IPV4] = ETH_RSS_IPV4,
-		[IPV4_1] = ETH_RSS_FRAG_IPV4,
-		[IPV4_2] = ETH_RSS_NONFRAG_IPV4_OTHER,
-		[IPV6] = ETH_RSS_IPV6,
-		[IPV6_1] = ETH_RSS_FRAG_IPV6,
-		[IPV6_2] = ETH_RSS_NONFRAG_IPV6_OTHER,
-		[IPV6_3] = ETH_RSS_IPV6_EX,
+		[IPV4] = RTE_ETH_RSS_IPV4,
+		[IPV4_1] = RTE_ETH_RSS_FRAG_IPV4,
+		[IPV4_2] = RTE_ETH_RSS_NONFRAG_IPV4_OTHER,
+		[IPV6] = RTE_ETH_RSS_IPV6,
+		[IPV6_1] = RTE_ETH_RSS_FRAG_IPV6,
+		[IPV6_2] = RTE_ETH_RSS_NONFRAG_IPV6_OTHER,
+		[IPV6_3] = RTE_ETH_RSS_IPV6_EX,
 		[TCP] = 0,
 		[UDP] = 0,
-		[IPV4_TCP] = ETH_RSS_NONFRAG_IPV4_TCP,
-		[IPV4_UDP] = ETH_RSS_NONFRAG_IPV4_UDP,
-		[IPV6_TCP] = ETH_RSS_NONFRAG_IPV6_TCP,
-		[IPV6_TCP_1] = ETH_RSS_IPV6_TCP_EX,
-		[IPV6_UDP] = ETH_RSS_NONFRAG_IPV6_UDP,
-		[IPV6_UDP_1] = ETH_RSS_IPV6_UDP_EX,
+		[IPV4_TCP] = RTE_ETH_RSS_NONFRAG_IPV4_TCP,
+		[IPV4_UDP] = RTE_ETH_RSS_NONFRAG_IPV4_UDP,
+		[IPV6_TCP] = RTE_ETH_RSS_NONFRAG_IPV6_TCP,
+		[IPV6_TCP_1] = RTE_ETH_RSS_IPV6_TCP_EX,
+		[IPV6_UDP] = RTE_ETH_RSS_NONFRAG_IPV6_UDP,
+		[IPV6_UDP_1] = RTE_ETH_RSS_IPV6_UDP_EX,
 	};
 	static const uint64_t verbs[RTE_DIM(dpdk)] = {
 		[INNER] = IBV_RX_HASH_INNER,
@@ -1283,7 +1283,7 @@ mlx4_flow_internal_next_vlan(struct mlx4_priv *priv, uint16_t vlan)
  * - MAC flow rules are generated from @p dev->data->mac_addrs
  *   (@p priv->mac array).
  * - An additional flow rule for Ethernet broadcasts is also generated.
- * - All these are per-VLAN if @p DEV_RX_OFFLOAD_VLAN_FILTER
+ * - All these are per-VLAN if @p RTE_ETH_RX_OFFLOAD_VLAN_FILTER
  *   is enabled and VLAN filters are configured.
  *
  * @param priv
@@ -1358,7 +1358,7 @@ mlx4_flow_internal(struct mlx4_priv *priv, struct rte_flow_error *error)
 	struct rte_ether_addr *rule_mac = &eth_spec.dst;
 	rte_be16_t *rule_vlan =
 		(ETH_DEV(priv)->data->dev_conf.rxmode.offloads &
-		 DEV_RX_OFFLOAD_VLAN_FILTER) &&
+		 RTE_ETH_RX_OFFLOAD_VLAN_FILTER) &&
 		!ETH_DEV(priv)->data->promiscuous ?
 		&vlan_spec.tci :
 		NULL;

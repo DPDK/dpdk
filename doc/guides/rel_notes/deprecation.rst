@@ -69,22 +69,16 @@ Deprecation Notices
   ``RTE_ETH_FLOW_MAX`` is one sample of the mentioned case, adding a new flow
   type will break the ABI because of ``flex_mask[RTE_ETH_FLOW_MAX]`` array
   usage in following public struct hierarchy:
-  ``rte_eth_fdir_flex_conf -> rte_fdir_conf -> rte_eth_conf (in the middle)``.
+  ``rte_eth_fdir_flex_conf -> rte_eth_fdir_conf -> rte_eth_conf (in the middle)``.
   Need to identify this kind of usages and fix in 20.11, otherwise this blocks
   us extending existing enum/define.
   One solution can be using a fixed size array instead of ``.*MAX.*`` value.
-
-* ethdev: Will add ``RTE_ETH_`` prefix to all ethdev macros/enums in v21.11.
-  Macros will be added for backward compatibility.
-  Backward compatibility macros will be removed on v22.11.
-  A few old backward compatibility macros from 2013 that does not have
-  proper prefix will be removed on v21.11.
 
 * ethdev: The flow director API, including ``rte_eth_conf.fdir_conf`` field,
   and the related structures (``rte_fdir_*`` and ``rte_eth_fdir_*``),
   will be removed in DPDK 20.11.
 
-* ethdev: New offload flags ``DEV_RX_OFFLOAD_FLOW_MARK`` will be added in 19.11.
+* ethdev: New offload flags ``RTE_ETH_RX_OFFLOAD_FLOW_MARK`` will be added in 19.11.
   This will allow application to enable or disable PMDs from updating
   ``rte_mbuf::hash::fdir``.
   This scheme will allow PMDs to avoid writes to ``rte_mbuf`` fields on Rx and

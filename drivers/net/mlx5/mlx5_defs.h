@@ -85,11 +85,11 @@
 #define MLX5_VPMD_DESCS_PER_LOOP      4
 
 /* Mask of RSS on source only or destination only. */
-#define MLX5_RSS_SRC_DST_ONLY (ETH_RSS_L3_SRC_ONLY | ETH_RSS_L3_DST_ONLY | \
-			       ETH_RSS_L4_SRC_ONLY | ETH_RSS_L4_DST_ONLY)
+#define MLX5_RSS_SRC_DST_ONLY (RTE_ETH_RSS_L3_SRC_ONLY | RTE_ETH_RSS_L3_DST_ONLY | \
+			       RTE_ETH_RSS_L4_SRC_ONLY | RTE_ETH_RSS_L4_DST_ONLY)
 
 /* Supported RSS */
-#define MLX5_RSS_HF_MASK (~(ETH_RSS_IP | ETH_RSS_UDP | ETH_RSS_TCP | \
+#define MLX5_RSS_HF_MASK (~(RTE_ETH_RSS_IP | RTE_ETH_RSS_UDP | RTE_ETH_RSS_TCP | \
 			    MLX5_RSS_SRC_DST_ONLY))
 
 /* Timeout in seconds to get a valid link status. */

@@ -428,6 +428,9 @@ ABI Changes
    Also, make sure to start the actual text at the margin.
    =======================================================
 
+* ethdev: All enums & macros updated to have ``RTE_ETH`` prefix and structures
+  updated to have ``rte_eth`` prefix. DPDK components updated to use new names.
+
 * ethdev: Input parameters for ``eth_rx_queue_count_t`` was changed.
   Instead of pointer to ``rte_eth_dev`` and queue index, now it accepts pointer
   to internal queue data as input parameter. While this change is transparent

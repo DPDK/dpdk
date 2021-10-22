@@ -40,16 +40,16 @@
 #include "hn_nvs.h"
 #include "ndis.h"
 
-#define HN_TX_OFFLOAD_CAPS (DEV_TX_OFFLOAD_IPV4_CKSUM | \
-			    DEV_TX_OFFLOAD_TCP_CKSUM  | \
-			    DEV_TX_OFFLOAD_UDP_CKSUM  | \
-			    DEV_TX_OFFLOAD_TCP_TSO    | \
-			    DEV_TX_OFFLOAD_MULTI_SEGS | \
-			    DEV_TX_OFFLOAD_VLAN_INSERT)
+#define HN_TX_OFFLOAD_CAPS (RTE_ETH_TX_OFFLOAD_IPV4_CKSUM | \
+			    RTE_ETH_TX_OFFLOAD_TCP_CKSUM  | \
+			    RTE_ETH_TX_OFFLOAD_UDP_CKSUM  | \
+			    RTE_ETH_TX_OFFLOAD_TCP_TSO    | \
+			    RTE_ETH_TX_OFFLOAD_MULTI_SEGS | \
+			    RTE_ETH_TX_OFFLOAD_VLAN_INSERT)
 
-#define HN_RX_OFFLOAD_CAPS (DEV_RX_OFFLOAD_CHECKSUM | \
-			    DEV_RX_OFFLOAD_VLAN_STRIP | \
-			    DEV_RX_OFFLOAD_RSS_HASH)
+#define HN_RX_OFFLOAD_CAPS (RTE_ETH_RX_OFFLOAD_CHECKSUM | \
+			    RTE_ETH_RX_OFFLOAD_VLAN_STRIP | \
+			    RTE_ETH_RX_OFFLOAD_RSS_HASH)
 
 #define NETVSC_ARG_LATENCY "latency"
 #define NETVSC_ARG_RXBREAK "rx_copybreak"
@@ -238,21 +238,21 @@ hn_dev_link_update(struct rte_eth_dev *dev,
 	hn_rndis_get_linkspeed(hv);
 
 	link = (struct rte_eth_link) {
-		.link_duplex = ETH_LINK_FULL_DUPLEX,
-		.link_autoneg = ETH_LINK_SPEED_FIXED,
+		.link_duplex = RTE_ETH_LINK_FULL_DUPLEX,
+		.link_autoneg = RTE_ETH_LINK_SPEED_FIXED,
 		.link_speed = hv->link_speed / 10000,
 	};
 
 	if (hv->link_status == NDIS_MEDIA_STATE_CONNECTED)
-		link.link_status = ETH_LINK_UP;
+		link.link_status = RTE_ETH_LINK_UP;
 	else
-		link.link_status = ETH_LINK_DOWN;
+		link.link_status = RTE_ETH_LINK_DOWN;
 
 	if (old.link_status == link.link_status)
 		return 0;
 
 	PMD_INIT_LOG(DEBUG, "Port %d is %s", dev->data->port_id,
-		     (link.link_status == ETH_LINK_UP) ? "up" : "down");
+		     (link.link_status == RTE_ETH_LINK_UP) ? "up" : "down");
 
 	return rte_eth_linkstatus_set(dev, &link);
 }
@@ -263,14 +263,14 @@ static int hn_dev_info_get(struct rte_eth_dev *dev,
 	struct hn_data *hv = dev->data->dev_private;
 	int rc;
 
-	dev_info->speed_capa = ETH_LINK_SPEED_10G;
+	dev_info->speed_capa = RTE_ETH_LINK_SPEED_10G;
 	dev_info->min_rx_bufsize = HN_MIN_RX_BUF_SIZE;
 	dev_info->max_rx_pktlen  = HN_MAX_XFER_LEN;
 	dev_info->max_mac_addrs  = 1;
 
 	dev_info->hash_key_size = NDIS_HASH_KEYSIZE_TOEPLITZ;
 	dev_info->flow_type_rss_offloads = hv->rss_offloads;
-	dev_info->reta_size = ETH_RSS_RETA_SIZE_128;
+	dev_info->reta_size = RTE_ETH_RSS_RETA_SIZE_128;
 
 	dev_info->max_rx_queues = hv->max_queues;
 	dev_info->max_tx_queues = hv->max_queues;
@@ -306,8 +306,8 @@ static int hn_rss_reta_update(struct rte_eth_dev *dev,
 	}
 
 	for (i = 0; i < NDIS_HASH_INDCNT; i++) {
-		uint16_t idx = i / RTE_RETA_GROUP_SIZE;
-		uint16_t shift = i % RTE_RETA_GROUP_SIZE;
+		uint16_t idx = i / RTE_ETH_RETA_GROUP_SIZE;
+		uint16_t shift = i % RTE_ETH_RETA_GROUP_SIZE;
 		uint64_t mask = (uint64_t)1 << shift;
 
 		if (reta_conf[idx].mask & mask)
@@ -346,8 +346,8 @@ static int hn_rss_reta_query(struct rte_eth_dev *dev,
 	}
 
 	for (i = 0; i < NDIS_HASH_INDCNT; i++) {
-		uint16_t idx = i / RTE_RETA_GROUP_SIZE;
-		uint16_t shift = i % RTE_RETA_GROUP_SIZE;
+		uint16_t idx = i / RTE_ETH_RETA_GROUP_SIZE;
+		uint16_t shift = i % RTE_ETH_RETA_GROUP_SIZE;
 		uint64_t mask = (uint64_t)1 << shift;
 
 		if (reta_conf[idx].mask & mask)
@@ -362,17 +362,17 @@ static void hn_rss_hash_init(struct hn_data *hv,
 	/* Convert from DPDK RSS hash flags to NDIS hash flags */
 	hv->rss_hash = NDIS_HASH_FUNCTION_TOEPLITZ;
 
-	if (rss_conf->rss_hf & ETH_RSS_IPV4)
+	if (rss_conf->rss_hf & RTE_ETH_RSS_IPV4)
 		hv->rss_hash |= NDIS_HASH_IPV4;
-	if (rss_conf->rss_hf & ETH_RSS_NONFRAG_IPV4_TCP)
+	if (rss_conf->rss_hf & RTE_ETH_RSS_NONFRAG_IPV4_TCP)
 		hv->rss_hash |= NDIS_HASH_TCP_IPV4;
-	if (rss_conf->rss_hf & ETH_RSS_IPV6)
+	if (rss_conf->rss_hf & RTE_ETH_RSS_IPV6)
 		hv->rss_hash |=  NDIS_HASH_IPV6;
-	if (rss_conf->rss_hf & ETH_RSS_IPV6_EX)
+	if (rss_conf->rss_hf & RTE_ETH_RSS_IPV6_EX)
 		hv->rss_hash |=  NDIS_HASH_IPV6_EX;
-	if (rss_conf->rss_hf & ETH_RSS_NONFRAG_IPV6_TCP)
+	if (rss_conf->rss_hf & RTE_ETH_RSS_NONFRAG_IPV6_TCP)
 		hv->rss_hash |= NDIS_HASH_TCP_IPV6;
-	if (rss_conf->rss_hf & ETH_RSS_IPV6_TCP_EX)
+	if (rss_conf->rss_hf & RTE_ETH_RSS_IPV6_TCP_EX)
 		hv->rss_hash |= NDIS_HASH_TCP_IPV6_EX;
 
 	memcpy(hv->rss_key, rss_conf->rss_key ? : rss_default_key,
@@ -427,22 +427,22 @@ static int hn_rss_hash_conf_get(struct rte_eth_dev *dev,
 
 	rss_conf->rss_hf = 0;
 	if (hv->rss_hash & NDIS_HASH_IPV4)
-		rss_conf->rss_hf |= ETH_RSS_IPV4;
+		rss_conf->rss_hf |= RTE_ETH_RSS_IPV4;
 
 	if (hv->rss_hash & NDIS_HASH_TCP_IPV4)
-		rss_conf->rss_hf |= ETH_RSS_NONFRAG_IPV4_TCP;
+		rss_conf->rss_hf |= RTE_ETH_RSS_NONFRAG_IPV4_TCP;
 
 	if (hv->rss_hash & NDIS_HASH_IPV6)
-		rss_conf->rss_hf |= ETH_RSS_IPV6;
+		rss_conf->rss_hf |= RTE_ETH_RSS_IPV6;
 
 	if (hv->rss_hash & NDIS_HASH_IPV6_EX)
-		rss_conf->rss_hf |= ETH_RSS_IPV6_EX;
+		rss_conf->rss_hf |= RTE_ETH_RSS_IPV6_EX;
 
 	if (hv->rss_hash & NDIS_HASH_TCP_IPV6)
-		rss_conf->rss_hf |= ETH_RSS_NONFRAG_IPV6_TCP;
+		rss_conf->rss_hf |= RTE_ETH_RSS_NONFRAG_IPV6_TCP;
 
 	if (hv->rss_hash & NDIS_HASH_TCP_IPV6_EX)
-		rss_conf->rss_hf |= ETH_RSS_IPV6_TCP_EX;
+		rss_conf->rss_hf |= RTE_ETH_RSS_IPV6_TCP_EX;
 
 	return 0;
 }
@@ -686,8 +686,8 @@ static int hn_dev_configure(struct rte_eth_dev *dev)
 
 	PMD_INIT_FUNC_TRACE();
 
-	if (dev_conf->rxmode.mq_mode & ETH_MQ_RX_RSS_FLAG)
-		dev_conf->rxmode.offloads |= DEV_RX_OFFLOAD_RSS_HASH;
+	if (dev_conf->rxmode.mq_mode & RTE_ETH_MQ_RX_RSS_FLAG)
+		dev_conf->rxmode.offloads |= RTE_ETH_RX_OFFLOAD_RSS_HASH;
 
 	unsupported = txmode->offloads & ~HN_TX_OFFLOAD_CAPS;
 	if (unsupported) {
@@ -705,7 +705,7 @@ static int hn_dev_configure(struct rte_eth_dev *dev)
 		return -EINVAL;
 	}
 
-	hv->vlan_strip = !!(rxmode->offloads & DEV_RX_OFFLOAD_VLAN_STRIP);
+	hv->vlan_strip = !!(rxmode->offloads & RTE_ETH_RX_OFFLOAD_VLAN_STRIP);
 
 	err = hn_rndis_conf_offload(hv, txmode->offloads,
 				    rxmode->offloads);

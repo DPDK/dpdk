@@ -133,7 +133,7 @@ mempool_find(struct obj *obj, const char *name)
 static struct rte_eth_conf port_conf_default = {
 	.link_speeds = 0,
 	.rxmode = {
-		.mq_mode = ETH_MQ_RX_NONE,
+		.mq_mode = RTE_ETH_MQ_RX_NONE,
 		.mtu = 9000 - (RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN), /* Jumbo frame MTU */
 		.split_hdr_size = 0, /* Header split buffer size */
 	},
@@ -145,12 +145,12 @@ static struct rte_eth_conf port_conf_default = {
 		},
 	},
 	.txmode = {
-		.mq_mode = ETH_MQ_TX_NONE,
+		.mq_mode = RTE_ETH_MQ_TX_NONE,
 	},
 	.lpbk_mode = 0,
 };
 
-#define RETA_CONF_SIZE     (ETH_RSS_RETA_SIZE_512 / RTE_RETA_GROUP_SIZE)
+#define RETA_CONF_SIZE     (RTE_ETH_RSS_RETA_SIZE_512 / RTE_ETH_RETA_GROUP_SIZE)
 
 static int
 rss_setup(uint16_t port_id,
@@ -165,11 +165,11 @@ rss_setup(uint16_t port_id,
 	memset(reta_conf, 0, sizeof(reta_conf));
 
 	for (i = 0; i < reta_size; i++)
-		reta_conf[i / RTE_RETA_GROUP_SIZE].mask = UINT64_MAX;
+		reta_conf[i / RTE_ETH_RETA_GROUP_SIZE].mask = UINT64_MAX;
 
 	for (i = 0; i < reta_size; i++) {
-		uint32_t reta_id = i / RTE_RETA_GROUP_SIZE;
-		uint32_t reta_pos = i % RTE_RETA_GROUP_SIZE;
+		uint32_t reta_id = i / RTE_ETH_RETA_GROUP_SIZE;
+		uint32_t reta_pos = i % RTE_ETH_RETA_GROUP_SIZE;
 		uint32_t rss_qs_pos = i % rss->n_queues;
 
 		reta_conf[reta_id].reta[reta_pos] =
@@ -227,7 +227,7 @@ link_create(struct obj *obj, const char *name, struct link_params *params)
 	rss = params->rx.rss;
 	if (rss) {
 		if ((port_info.reta_size == 0) ||
-			(port_info.reta_size > ETH_RSS_RETA_SIZE_512))
+			(port_info.reta_size > RTE_ETH_RSS_RETA_SIZE_512))
 			return NULL;
 
 		if ((rss->n_queues == 0) ||
@@ -245,9 +245,9 @@ link_create(struct obj *obj, const char *name, struct link_params *params)
 	/* Port */
 	memcpy(&port_conf, &port_conf_default, sizeof(port_conf));
 	if (rss) {
-		port_conf.rxmode.mq_mode = ETH_MQ_RX_RSS;
+		port_conf.rxmode.mq_mode = RTE_ETH_MQ_RX_RSS;
 		port_conf.rx_adv_conf.rss_conf.rss_hf =
-			(ETH_RSS_IP | ETH_RSS_TCP | ETH_RSS_UDP) &
+			(RTE_ETH_RSS_IP | RTE_ETH_RSS_TCP | RTE_ETH_RSS_UDP) &
 			port_info.flow_type_rss_offloads;
 	}
 
@@ -356,7 +356,7 @@ link_is_up(struct obj *obj, const char *name)
 	if (rte_eth_link_get(link->port_id, &link_params) < 0)
 		return 0;
 
-	return (link_params.link_status == ETH_LINK_DOWN) ? 0 : 1;
+	return (link_params.link_status == RTE_ETH_LINK_DOWN) ? 0 : 1;
 }
 
 struct link *

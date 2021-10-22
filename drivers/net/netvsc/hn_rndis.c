@@ -710,15 +710,15 @@ hn_rndis_query_rsscaps(struct hn_data *hv,
 
 	hv->rss_offloads = 0;
 	if (caps.ndis_caps & NDIS_RSS_CAP_IPV4)
-		hv->rss_offloads |= ETH_RSS_IPV4
-			| ETH_RSS_NONFRAG_IPV4_TCP
-			| ETH_RSS_NONFRAG_IPV4_UDP;
+		hv->rss_offloads |= RTE_ETH_RSS_IPV4
+			| RTE_ETH_RSS_NONFRAG_IPV4_TCP
+			| RTE_ETH_RSS_NONFRAG_IPV4_UDP;
 	if (caps.ndis_caps & NDIS_RSS_CAP_IPV6)
-		hv->rss_offloads |= ETH_RSS_IPV6
-			| ETH_RSS_NONFRAG_IPV6_TCP;
+		hv->rss_offloads |= RTE_ETH_RSS_IPV6
+			| RTE_ETH_RSS_NONFRAG_IPV6_TCP;
 	if (caps.ndis_caps & NDIS_RSS_CAP_IPV6_EX)
-		hv->rss_offloads |= ETH_RSS_IPV6_EX
-			| ETH_RSS_IPV6_TCP_EX;
+		hv->rss_offloads |= RTE_ETH_RSS_IPV6_EX
+			| RTE_ETH_RSS_IPV6_TCP_EX;
 
 	/* Commit! */
 	*rxr_cnt0 = rxr_cnt;
@@ -800,7 +800,7 @@ int hn_rndis_conf_offload(struct hn_data *hv,
 		params.ndis_hdr.ndis_size = NDIS_OFFLOAD_PARAMS_SIZE;
 	}
 
-	if (tx_offloads & DEV_TX_OFFLOAD_TCP_CKSUM) {
+	if (tx_offloads & RTE_ETH_TX_OFFLOAD_TCP_CKSUM) {
 		if (hwcaps.ndis_csum.ndis_ip4_txcsum & NDIS_TXCSUM_CAP_TCP4)
 			params.ndis_tcp4csum = NDIS_OFFLOAD_PARAM_TX;
 		else
@@ -812,7 +812,7 @@ int hn_rndis_conf_offload(struct hn_data *hv,
 			goto unsupported;
 	}
 
-	if (rx_offloads & DEV_RX_OFFLOAD_TCP_CKSUM) {
+	if (rx_offloads & RTE_ETH_RX_OFFLOAD_TCP_CKSUM) {
 		if ((hwcaps.ndis_csum.ndis_ip4_rxcsum & NDIS_RXCSUM_CAP_TCP4)
 		    == NDIS_RXCSUM_CAP_TCP4)
 			params.ndis_tcp4csum |= NDIS_OFFLOAD_PARAM_RX;
@@ -826,7 +826,7 @@ int hn_rndis_conf_offload(struct hn_data *hv,
 			goto unsupported;
 	}
 
-	if (tx_offloads & DEV_TX_OFFLOAD_UDP_CKSUM) {
+	if (tx_offloads & RTE_ETH_TX_OFFLOAD_UDP_CKSUM) {
 		if (hwcaps.ndis_csum.ndis_ip4_txcsum & NDIS_TXCSUM_CAP_UDP4)
 			params.ndis_udp4csum = NDIS_OFFLOAD_PARAM_TX;
 		else
@@ -839,7 +839,7 @@ int hn_rndis_conf_offload(struct hn_data *hv,
 			goto unsupported;
 	}
 
-	if (rx_offloads & DEV_TX_OFFLOAD_UDP_CKSUM) {
+	if (rx_offloads & RTE_ETH_TX_OFFLOAD_UDP_CKSUM) {
 		if (hwcaps.ndis_csum.ndis_ip4_rxcsum & NDIS_RXCSUM_CAP_UDP4)
 			params.ndis_udp4csum |= NDIS_OFFLOAD_PARAM_RX;
 		else
@@ -851,21 +851,21 @@ int hn_rndis_conf_offload(struct hn_data *hv,
 			goto unsupported;
 	}
 
-	if (tx_offloads & DEV_TX_OFFLOAD_IPV4_CKSUM) {
+	if (tx_offloads & RTE_ETH_TX_OFFLOAD_IPV4_CKSUM) {
 		if ((hwcaps.ndis_csum.ndis_ip4_txcsum & NDIS_TXCSUM_CAP_IP4)
 		    == NDIS_TXCSUM_CAP_IP4)
 			params.ndis_ip4csum = NDIS_OFFLOAD_PARAM_TX;
 		else
 			goto unsupported;
 	}
-	if (rx_offloads & DEV_RX_OFFLOAD_IPV4_CKSUM) {
+	if (rx_offloads & RTE_ETH_RX_OFFLOAD_IPV4_CKSUM) {
 		if (hwcaps.ndis_csum.ndis_ip4_rxcsum & NDIS_RXCSUM_CAP_IP4)
 			params.ndis_ip4csum |= NDIS_OFFLOAD_PARAM_RX;
 		else
 			goto unsupported;
 	}
 
-	if (tx_offloads & DEV_TX_OFFLOAD_TCP_TSO) {
+	if (tx_offloads & RTE_ETH_TX_OFFLOAD_TCP_TSO) {
 		if (hwcaps.ndis_lsov2.ndis_ip4_encap & NDIS_OFFLOAD_ENCAP_8023)
 			params.ndis_lsov2_ip4 = NDIS_OFFLOAD_LSOV2_ON;
 		else
@@ -907,41 +907,41 @@ int hn_rndis_get_offload(struct hn_data *hv,
 		return error;
 	}
 
-	dev_info->tx_offload_capa = DEV_TX_OFFLOAD_MULTI_SEGS |
-				    DEV_TX_OFFLOAD_VLAN_INSERT;
+	dev_info->tx_offload_capa = RTE_ETH_TX_OFFLOAD_MULTI_SEGS |
+				    RTE_ETH_TX_OFFLOAD_VLAN_INSERT;
 
 	if ((hwcaps.ndis_csum.ndis_ip4_txcsum & HN_NDIS_TXCSUM_CAP_IP4)
 	    == HN_NDIS_TXCSUM_CAP_IP4)
-		dev_info->tx_offload_capa |= DEV_TX_OFFLOAD_IPV4_CKSUM;
+		dev_info->tx_offload_capa |= RTE_ETH_TX_OFFLOAD_IPV4_CKSUM;
 
 	if ((hwcaps.ndis_csum.ndis_ip4_txcsum & HN_NDIS_TXCSUM_CAP_TCP4)
 	    == HN_NDIS_TXCSUM_CAP_TCP4 &&
 	    (hwcaps.ndis_csum.ndis_ip6_txcsum & HN_NDIS_TXCSUM_CAP_TCP6)
 	    == HN_NDIS_TXCSUM_CAP_TCP6)
-		dev_info->tx_offload_capa |= DEV_TX_OFFLOAD_TCP_CKSUM;
+		dev_info->tx_offload_capa |= RTE_ETH_TX_OFFLOAD_TCP_CKSUM;
 
 	if ((hwcaps.ndis_csum.ndis_ip4_txcsum & NDIS_TXCSUM_CAP_UDP4) &&
 	    (hwcaps.ndis_csum.ndis_ip6_txcsum & NDIS_TXCSUM_CAP_UDP6))
-		dev_info->tx_offload_capa |= DEV_TX_OFFLOAD_UDP_CKSUM;
+		dev_info->tx_offload_capa |= RTE_ETH_TX_OFFLOAD_UDP_CKSUM;
 
 	if ((hwcaps.ndis_lsov2.ndis_ip4_encap & NDIS_OFFLOAD_ENCAP_8023) &&
 	    (hwcaps.ndis_lsov2.ndis_ip6_opts & HN_NDIS_LSOV2_CAP_IP6)
 	    == HN_NDIS_LSOV2_CAP_IP6)
-		dev_info->tx_offload_capa |= DEV_TX_OFFLOAD_TCP_TSO;
+		dev_info->tx_offload_capa |= RTE_ETH_TX_OFFLOAD_TCP_TSO;
 
-	dev_info->rx_offload_capa = DEV_RX_OFFLOAD_VLAN_STRIP |
-				    DEV_RX_OFFLOAD_RSS_HASH;
+	dev_info->rx_offload_capa = RTE_ETH_RX_OFFLOAD_VLAN_STRIP |
+				    RTE_ETH_RX_OFFLOAD_RSS_HASH;
 
 	if (hwcaps.ndis_csum.ndis_ip4_rxcsum & NDIS_RXCSUM_CAP_IP4)
-		dev_info->rx_offload_capa |= DEV_RX_OFFLOAD_IPV4_CKSUM;
+		dev_info->rx_offload_capa |= RTE_ETH_RX_OFFLOAD_IPV4_CKSUM;
 
 	if ((hwcaps.ndis_csum.ndis_ip4_rxcsum & NDIS_RXCSUM_CAP_TCP4) &&
 	    (hwcaps.ndis_csum.ndis_ip6_rxcsum & NDIS_RXCSUM_CAP_TCP6))
-		dev_info->rx_offload_capa |= DEV_RX_OFFLOAD_TCP_CKSUM;
+		dev_info->rx_offload_capa |= RTE_ETH_RX_OFFLOAD_TCP_CKSUM;
 
 	if ((hwcaps.ndis_csum.ndis_ip4_rxcsum & NDIS_RXCSUM_CAP_UDP4) &&
 	    (hwcaps.ndis_csum.ndis_ip6_rxcsum & NDIS_RXCSUM_CAP_UDP6))
-		dev_info->rx_offload_capa |= DEV_RX_OFFLOAD_UDP_CKSUM;
+		dev_info->rx_offload_capa |= RTE_ETH_RX_OFFLOAD_UDP_CKSUM;
 
 	return 0;
 }

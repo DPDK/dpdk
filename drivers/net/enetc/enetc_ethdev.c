@@ -100,27 +100,27 @@ enetc_link_update(struct rte_eth_dev *dev, int wait_to_complete __rte_unused)
 	status = enetc_port_rd(enetc_hw, ENETC_PM0_STATUS);
 
 	if (status & ENETC_LINK_MODE)
-		link.link_duplex = ETH_LINK_FULL_DUPLEX;
+		link.link_duplex = RTE_ETH_LINK_FULL_DUPLEX;
 	else
-		link.link_duplex = ETH_LINK_HALF_DUPLEX;
+		link.link_duplex = RTE_ETH_LINK_HALF_DUPLEX;
 
 	if (status & ENETC_LINK_STATUS)
-		link.link_status = ETH_LINK_UP;
+		link.link_status = RTE_ETH_LINK_UP;
 	else
-		link.link_status = ETH_LINK_DOWN;
+		link.link_status = RTE_ETH_LINK_DOWN;
 
 	switch (status & ENETC_LINK_SPEED_MASK) {
 	case ENETC_LINK_SPEED_1G:
-		link.link_speed = ETH_SPEED_NUM_1G;
+		link.link_speed = RTE_ETH_SPEED_NUM_1G;
 		break;
 
 	case ENETC_LINK_SPEED_100M:
-		link.link_speed = ETH_SPEED_NUM_100M;
+		link.link_speed = RTE_ETH_SPEED_NUM_100M;
 		break;
 
 	default:
 	case ENETC_LINK_SPEED_10M:
-		link.link_speed = ETH_SPEED_NUM_10M;
+		link.link_speed = RTE_ETH_SPEED_NUM_10M;
 	}
 
 	return rte_eth_linkstatus_set(dev, &link);
@@ -207,10 +207,10 @@ enetc_dev_infos_get(struct rte_eth_dev *dev __rte_unused,
 	dev_info->max_tx_queues = MAX_TX_RINGS;
 	dev_info->max_rx_pktlen = ENETC_MAC_MAXFRM_SIZE;
 	dev_info->rx_offload_capa =
-		(DEV_RX_OFFLOAD_IPV4_CKSUM |
-		 DEV_RX_OFFLOAD_UDP_CKSUM |
-		 DEV_RX_OFFLOAD_TCP_CKSUM |
-		 DEV_RX_OFFLOAD_KEEP_CRC);
+		(RTE_ETH_RX_OFFLOAD_IPV4_CKSUM |
+		 RTE_ETH_RX_OFFLOAD_UDP_CKSUM |
+		 RTE_ETH_RX_OFFLOAD_TCP_CKSUM |
+		 RTE_ETH_RX_OFFLOAD_KEEP_CRC);
 
 	return 0;
 }
@@ -463,7 +463,7 @@ enetc_rx_queue_setup(struct rte_eth_dev *dev,
 			       RTE_ETH_QUEUE_STATE_STOPPED;
 	}
 
-	rx_ring->crc_len = (uint8_t)((rx_offloads & DEV_RX_OFFLOAD_KEEP_CRC) ?
+	rx_ring->crc_len = (uint8_t)((rx_offloads & RTE_ETH_RX_OFFLOAD_KEEP_CRC) ?
 				     RTE_ETHER_CRC_LEN : 0);
 
 	return 0;
@@ -705,7 +705,7 @@ enetc_dev_configure(struct rte_eth_dev *dev)
 	enetc_port_wr(enetc_hw, ENETC_PTCMSDUR(0), ENETC_MAC_MAXFRM_SIZE);
 	enetc_port_wr(enetc_hw, ENETC_PTXMBAR, 2 * ENETC_MAC_MAXFRM_SIZE);
 
-	if (rx_offloads & DEV_RX_OFFLOAD_KEEP_CRC) {
+	if (rx_offloads & RTE_ETH_RX_OFFLOAD_KEEP_CRC) {
 		int config;
 
 		config = enetc_port_rd(enetc_hw, ENETC_PM0_CMD_CFG);
@@ -713,10 +713,10 @@ enetc_dev_configure(struct rte_eth_dev *dev)
 		enetc_port_wr(enetc_hw, ENETC_PM0_CMD_CFG, config);
 	}
 
-	if (rx_offloads & DEV_RX_OFFLOAD_IPV4_CKSUM)
+	if (rx_offloads & RTE_ETH_RX_OFFLOAD_IPV4_CKSUM)
 		checksum &= ~L3_CKSUM;
 
-	if (rx_offloads & (DEV_RX_OFFLOAD_UDP_CKSUM | DEV_RX_OFFLOAD_TCP_CKSUM))
+	if (rx_offloads & (RTE_ETH_RX_OFFLOAD_UDP_CKSUM | RTE_ETH_RX_OFFLOAD_TCP_CKSUM))
 		checksum &= ~L4_CKSUM;
 
 	enetc_port_wr(enetc_hw, ENETC_PAR_PORT_CFG, checksum);

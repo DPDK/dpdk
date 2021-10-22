@@ -50,7 +50,7 @@ nix_set_rx_vlan_action(struct rte_eth_dev *eth_dev,
 
 	action = NIX_RX_ACTIONOP_UCAST;
 
-	if (eth_dev->data->dev_conf.rxmode.mq_mode == ETH_MQ_RX_RSS) {
+	if (eth_dev->data->dev_conf.rxmode.mq_mode == RTE_ETH_MQ_RX_RSS) {
 		action = NIX_RX_ACTIONOP_RSS;
 		action |= (uint64_t)(dev->rss_info.alg_idx) << 56;
 	}
@@ -99,7 +99,7 @@ nix_set_tx_vlan_action(struct mcam_entry *entry, enum rte_vlan_type type,
 	 * Take offset from LA since in case of untagged packet,
 	 * lbptr is zero.
 	 */
-	if (type == ETH_VLAN_TYPE_OUTER) {
+	if (type == RTE_ETH_VLAN_TYPE_OUTER) {
 		vtag_action.act.vtag0_def = vtag_index;
 		vtag_action.act.vtag0_lid = NPC_LID_LA;
 		vtag_action.act.vtag0_op = NIX_TX_VTAGOP_INSERT;
@@ -413,7 +413,7 @@ nix_vlan_handle_default_rx_entry(struct rte_eth_dev *eth_dev, bool strip,
 		if (vlan->strip_on ||
 		    (vlan->qinq_on && !vlan->qinq_before_def)) {
 			if (eth_dev->data->dev_conf.rxmode.mq_mode ==
-								ETH_MQ_RX_RSS)
+								RTE_ETH_MQ_RX_RSS)
 				vlan->def_rx_mcam_ent.action |=
 							NIX_RX_ACTIONOP_RSS;
 			else
@@ -717,48 +717,48 @@ otx2_nix_vlan_offload_set(struct rte_eth_dev *eth_dev, int mask)
 
 	rxmode = &eth_dev->data->dev_conf.rxmode;
 
-	if (mask & ETH_VLAN_STRIP_MASK) {
-		if (rxmode->offloads & DEV_RX_OFFLOAD_VLAN_STRIP) {
-			offloads |= DEV_RX_OFFLOAD_VLAN_STRIP;
+	if (mask & RTE_ETH_VLAN_STRIP_MASK) {
+		if (rxmode->offloads & RTE_ETH_RX_OFFLOAD_VLAN_STRIP) {
+			offloads |= RTE_ETH_RX_OFFLOAD_VLAN_STRIP;
 			rc = nix_vlan_hw_strip(eth_dev, true);
 		} else {
-			offloads &= ~DEV_RX_OFFLOAD_VLAN_STRIP;
+			offloads &= ~RTE_ETH_RX_OFFLOAD_VLAN_STRIP;
 			rc = nix_vlan_hw_strip(eth_dev, false);
 		}
 		if (rc)
 			goto done;
 	}
 
-	if (mask & ETH_VLAN_FILTER_MASK) {
-		if (rxmode->offloads & DEV_RX_OFFLOAD_VLAN_FILTER) {
-			offloads |= DEV_RX_OFFLOAD_VLAN_FILTER;
+	if (mask & RTE_ETH_VLAN_FILTER_MASK) {
+		if (rxmode->offloads & RTE_ETH_RX_OFFLOAD_VLAN_FILTER) {
+			offloads |= RTE_ETH_RX_OFFLOAD_VLAN_FILTER;
 			rc = nix_vlan_hw_filter(eth_dev, true, 0);
 		} else {
-			offloads &= ~DEV_RX_OFFLOAD_VLAN_FILTER;
+			offloads &= ~RTE_ETH_RX_OFFLOAD_VLAN_FILTER;
 			rc = nix_vlan_hw_filter(eth_dev, false, 0);
 		}
 		if (rc)
 			goto done;
 	}
 
-	if (rxmode->offloads & DEV_RX_OFFLOAD_QINQ_STRIP) {
+	if (rxmode->offloads & RTE_ETH_RX_OFFLOAD_QINQ_STRIP) {
 		if (!dev->vlan_info.qinq_on) {
-			offloads |= DEV_RX_OFFLOAD_QINQ_STRIP;
+			offloads |= RTE_ETH_RX_OFFLOAD_QINQ_STRIP;
 			rc = otx2_nix_config_double_vlan(eth_dev, true);
 			if (rc)
 				goto done;
 		}
 	} else {
 		if (dev->vlan_info.qinq_on) {
-			offloads &= ~DEV_RX_OFFLOAD_QINQ_STRIP;
+			offloads &= ~RTE_ETH_RX_OFFLOAD_QINQ_STRIP;
 			rc = otx2_nix_config_double_vlan(eth_dev, false);
 			if (rc)
 				goto done;
 		}
 	}
 
-	if (offloads & (DEV_RX_OFFLOAD_VLAN_STRIP |
-			DEV_RX_OFFLOAD_QINQ_STRIP)) {
+	if (offloads & (RTE_ETH_RX_OFFLOAD_VLAN_STRIP |
+			RTE_ETH_RX_OFFLOAD_QINQ_STRIP)) {
 		dev->rx_offloads |= offloads;
 		dev->rx_offload_flags |= NIX_RX_OFFLOAD_VLAN_STRIP_F;
 		otx2_eth_set_rx_function(eth_dev);
@@ -780,7 +780,7 @@ otx2_nix_vlan_tpid_set(struct rte_eth_dev *eth_dev,
 	tpid_cfg = otx2_mbox_alloc_msg_nix_set_vlan_tpid(mbox);
 
 	tpid_cfg->tpid = tpid;
-	if (type == ETH_VLAN_TYPE_OUTER)
+	if (type == RTE_ETH_VLAN_TYPE_OUTER)
 		tpid_cfg->vlan_type = NIX_VLAN_TYPE_OUTER;
 	else
 		tpid_cfg->vlan_type = NIX_VLAN_TYPE_INNER;
@@ -789,7 +789,7 @@ otx2_nix_vlan_tpid_set(struct rte_eth_dev *eth_dev,
 	if (rc)
 		return rc;
 
-	if (type == ETH_VLAN_TYPE_OUTER)
+	if (type == RTE_ETH_VLAN_TYPE_OUTER)
 		dev->vlan_info.outer_vlan_tpid = tpid;
 	else
 		dev->vlan_info.inner_vlan_tpid = tpid;
@@ -864,7 +864,7 @@ otx2_nix_vlan_pvid_set(struct rte_eth_dev *dev,       uint16_t vlan_id, int on)
 		vlan->outer_vlan_idx = 0;
 	}
 
-	rc = nix_vlan_handle_default_tx_entry(dev, ETH_VLAN_TYPE_OUTER,
+	rc = nix_vlan_handle_default_tx_entry(dev, RTE_ETH_VLAN_TYPE_OUTER,
 					      vtag_index, on);
 	if (rc < 0) {
 		printf("Default tx entry failed with rc %d\n", rc);
@@ -986,12 +986,12 @@ otx2_nix_vlan_offload_init(struct rte_eth_dev *eth_dev)
 	} else {
 		/* Reinstall all mcam entries now if filter offload is set */
 		if (eth_dev->data->dev_conf.rxmode.offloads &
-		    DEV_RX_OFFLOAD_VLAN_FILTER)
+		    RTE_ETH_RX_OFFLOAD_VLAN_FILTER)
 			nix_vlan_reinstall_vlan_filters(eth_dev);
 	}
 
 	mask =
-	    ETH_VLAN_STRIP_MASK | ETH_VLAN_FILTER_MASK;
+	    RTE_ETH_VLAN_STRIP_MASK | RTE_ETH_VLAN_FILTER_MASK;
 	rc = otx2_nix_vlan_offload_set(eth_dev, mask);
 	if (rc) {
 		otx2_err("Failed to set vlan offload rc=%d", rc);

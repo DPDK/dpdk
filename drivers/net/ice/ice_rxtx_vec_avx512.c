@@ -585,7 +585,7 @@ _ice_recv_raw_pkts_vec_avx512(struct ice_rx_queue *rxq,
 			 * will cause performance drop to get into this context.
 			 */
 			if (rxq->vsi->adapter->pf.dev_data->dev_conf.rxmode.offloads &
-					DEV_RX_OFFLOAD_RSS_HASH) {
+					RTE_ETH_RX_OFFLOAD_RSS_HASH) {
 				/* load bottom half of every 32B desc */
 				const __m128i raw_desc_bh7 =
 					_mm_load_si128
@@ -995,7 +995,7 @@ ice_tx_free_bufs_avx512(struct ice_tx_queue *txq)
 	txep = (void *)txq->sw_ring;
 	txep += txq->tx_next_dd - (n - 1);
 
-	if (txq->offloads & DEV_TX_OFFLOAD_MBUF_FAST_FREE && (n & 31) == 0) {
+	if (txq->offloads & RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE && (n & 31) == 0) {
 		struct rte_mempool *mp = txep[0].mbuf->pool;
 		void **cache_objs;
 		struct rte_mempool_cache *cache = rte_mempool_default_cache(mp,

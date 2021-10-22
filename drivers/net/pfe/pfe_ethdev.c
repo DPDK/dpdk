@@ -22,15 +22,15 @@ struct pfe_vdev_init_params {
 static struct pfe *g_pfe;
 /* Supported Rx offloads */
 static uint64_t dev_rx_offloads_sup =
-		DEV_RX_OFFLOAD_IPV4_CKSUM |
-		DEV_RX_OFFLOAD_UDP_CKSUM |
-		DEV_RX_OFFLOAD_TCP_CKSUM;
+		RTE_ETH_RX_OFFLOAD_IPV4_CKSUM |
+		RTE_ETH_RX_OFFLOAD_UDP_CKSUM |
+		RTE_ETH_RX_OFFLOAD_TCP_CKSUM;
 
 /* Supported Tx offloads */
 static uint64_t dev_tx_offloads_sup =
-		DEV_TX_OFFLOAD_IPV4_CKSUM |
-		DEV_TX_OFFLOAD_UDP_CKSUM |
-		DEV_TX_OFFLOAD_TCP_CKSUM;
+		RTE_ETH_TX_OFFLOAD_IPV4_CKSUM |
+		RTE_ETH_TX_OFFLOAD_UDP_CKSUM |
+		RTE_ETH_TX_OFFLOAD_TCP_CKSUM;
 
 /* TODO: make pfe_svr a runtime option.
  * Driver should be able to get the SVR
@@ -601,9 +601,9 @@ pfe_eth_link_update(struct rte_eth_dev *dev, int wait_to_complete __rte_unused)
 	}
 
 	link.link_status = lstatus;
-	link.link_speed = ETH_LINK_SPEED_1G;
-	link.link_duplex = ETH_LINK_FULL_DUPLEX;
-	link.link_autoneg = ETH_LINK_AUTONEG;
+	link.link_speed = RTE_ETH_LINK_SPEED_1G;
+	link.link_duplex = RTE_ETH_LINK_FULL_DUPLEX;
+	link.link_autoneg = RTE_ETH_LINK_AUTONEG;
 
 	pfe_eth_atomic_write_link_status(dev, &link);
 

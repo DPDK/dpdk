@@ -835,7 +835,7 @@ ice_dcf_init_rss(struct ice_dcf_hw *hw)
 		PMD_DRV_LOG(DEBUG, "RSS is not supported");
 		return -ENOTSUP;
 	}
-	if (dev->data->dev_conf.rxmode.mq_mode != ETH_MQ_RX_RSS) {
+	if (dev->data->dev_conf.rxmode.mq_mode != RTE_ETH_MQ_RX_RSS) {
 		PMD_DRV_LOG(WARNING, "RSS is enabled by PF by default");
 		/* set all lut items to default queue */
 		memset(hw->rss_lut, 0, hw->vf_res->rss_lut_size);

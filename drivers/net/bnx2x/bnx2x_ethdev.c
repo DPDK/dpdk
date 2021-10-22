@@ -94,14 +94,14 @@ bnx2x_link_update(struct rte_eth_dev *dev)
 	link.link_speed = sc->link_vars.line_speed;
 	switch (sc->link_vars.duplex) {
 		case DUPLEX_FULL:
-			link.link_duplex = ETH_LINK_FULL_DUPLEX;
+			link.link_duplex = RTE_ETH_LINK_FULL_DUPLEX;
 			break;
 		case DUPLEX_HALF:
-			link.link_duplex = ETH_LINK_HALF_DUPLEX;
+			link.link_duplex = RTE_ETH_LINK_HALF_DUPLEX;
 			break;
 	}
 	link.link_autoneg = !(dev->data->dev_conf.link_speeds &
-			ETH_LINK_SPEED_FIXED);
+		 RTE_ETH_LINK_SPEED_FIXED);
 	link.link_status = sc->link_vars.link_up;
 
 	return rte_eth_linkstatus_set(dev, &link);
@@ -408,7 +408,7 @@ bnx2xvf_dev_link_update(struct rte_eth_dev *dev, __rte_unused int wait_to_comple
 	if (sc->old_bulletin.valid_bitmap & (1 << CHANNEL_DOWN)) {
 		PMD_DRV_LOG(ERR, sc, "PF indicated channel is down."
 				"VF device is no longer operational");
-		dev->data->dev_link.link_status = ETH_LINK_DOWN;
+		dev->data->dev_link.link_status = RTE_ETH_LINK_DOWN;
 	}
 
 	return ret;
@@ -534,7 +534,7 @@ bnx2x_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->min_rx_bufsize = BNX2X_MIN_RX_BUF_SIZE;
 	dev_info->max_rx_pktlen  = BNX2X_MAX_RX_PKT_LEN;
 	dev_info->max_mac_addrs  = BNX2X_MAX_MAC_ADDRS;
-	dev_info->speed_capa = ETH_LINK_SPEED_10G | ETH_LINK_SPEED_20G;
+	dev_info->speed_capa = RTE_ETH_LINK_SPEED_10G | RTE_ETH_LINK_SPEED_20G;
 
 	dev_info->rx_desc_lim.nb_max = MAX_RX_AVAIL;
 	dev_info->rx_desc_lim.nb_min = MIN_RX_SIZE_NONTPA;
@@ -669,7 +669,7 @@ bnx2x_common_dev_init(struct rte_eth_dev *eth_dev, int is_vf)
 	bnx2x_load_firmware(sc);
 	assert(sc->firmware);
 
-	if (eth_dev->data->dev_conf.rx_adv_conf.rss_conf.rss_hf & ETH_RSS_NONFRAG_IPV4_UDP)
+	if (eth_dev->data->dev_conf.rx_adv_conf.rss_conf.rss_hf & RTE_ETH_RSS_NONFRAG_IPV4_UDP)
 		sc->udp_rss = 1;
 
 	sc->rx_budget = BNX2X_RX_BUDGET;

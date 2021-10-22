@@ -734,7 +734,7 @@ mvneta_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 	rxq->priv = priv;
 	rxq->mp = mp;
 	rxq->cksum_enabled = dev->data->dev_conf.rxmode.offloads &
-			     DEV_RX_OFFLOAD_IPV4_CKSUM;
+			     RTE_ETH_RX_OFFLOAD_IPV4_CKSUM;
 	rxq->queue_id = idx;
 	rxq->port_id = dev->data->port_id;
 	rxq->size = desc;

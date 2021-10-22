@@ -52,7 +52,7 @@ struct slave_conf {
 
 	struct rte_eth_rss_conf rss_conf;
 	uint8_t rss_key[40];
-	struct rte_eth_rss_reta_entry64 reta_conf[512 / RTE_RETA_GROUP_SIZE];
+	struct rte_eth_rss_reta_entry64 reta_conf[512 / RTE_ETH_RETA_GROUP_SIZE];
 
 	uint8_t is_slave;
 	struct rte_ring *rxtx_queue[RXTX_QUEUE_COUNT];
@@ -61,7 +61,7 @@ struct slave_conf {
 struct link_bonding_rssconf_unittest_params {
 	uint8_t bond_port_id;
 	struct rte_eth_dev_info bond_dev_info;
-	struct rte_eth_rss_reta_entry64 bond_reta_conf[512 / RTE_RETA_GROUP_SIZE];
+	struct rte_eth_rss_reta_entry64 bond_reta_conf[512 / RTE_ETH_RETA_GROUP_SIZE];
 	struct slave_conf slave_ports[SLAVE_COUNT];
 
 	struct rte_mempool *mbuf_pool;
@@ -80,27 +80,27 @@ static struct link_bonding_rssconf_unittest_params test_params  = {
  */
 static struct rte_eth_conf default_pmd_conf = {
 	.rxmode = {
-		.mq_mode = ETH_MQ_RX_NONE,
+		.mq_mode = RTE_ETH_MQ_RX_NONE,
 		.split_hdr_size = 0,
 	},
 	.txmode = {
-		.mq_mode = ETH_MQ_TX_NONE,
+		.mq_mode = RTE_ETH_MQ_TX_NONE,
 	},
 	.lpbk_mode = 0,
 };
 
 static struct rte_eth_conf rss_pmd_conf = {
 	.rxmode = {
-		.mq_mode = ETH_MQ_RX_RSS,
+		.mq_mode = RTE_ETH_MQ_RX_RSS,
 		.split_hdr_size = 0,
 	},
 	.txmode = {
-		.mq_mode = ETH_MQ_TX_NONE,
+		.mq_mode = RTE_ETH_MQ_TX_NONE,
 	},
 	.rx_adv_conf = {
 		.rss_conf = {
 			.rss_key = NULL,
-			.rss_hf = ETH_RSS_IPV6,
+			.rss_hf = RTE_ETH_RSS_IPV6,
 		},
 	},
 	.lpbk_mode = 0,
@@ -207,13 +207,13 @@ bond_slaves(void)
 static int
 reta_set(uint16_t port_id, uint8_t value, int reta_size)
 {
-	struct rte_eth_rss_reta_entry64 reta_conf[512/RTE_RETA_GROUP_SIZE];
+	struct rte_eth_rss_reta_entry64 reta_conf[512/RTE_ETH_RETA_GROUP_SIZE];
 	int i, j;
 
-	for (i = 0; i < reta_size / RTE_RETA_GROUP_SIZE; i++) {
+	for (i = 0; i < reta_size / RTE_ETH_RETA_GROUP_SIZE; i++) {
 		/* select all fields to set */
 		reta_conf[i].mask = ~0LL;
-		for (j = 0; j < RTE_RETA_GROUP_SIZE; j++)
+		for (j = 0; j < RTE_ETH_RETA_GROUP_SIZE; j++)
 			reta_conf[i].reta[j] = value;
 	}
 
@@ -232,8 +232,8 @@ reta_check_synced(struct slave_conf *port)
 	for (i = 0; i < test_params.bond_dev_info.reta_size;
 			i++) {
 
-		int index = i / RTE_RETA_GROUP_SIZE;
-		int shift = i % RTE_RETA_GROUP_SIZE;
+		int index = i / RTE_ETH_RETA_GROUP_SIZE;
+		int shift = i % RTE_ETH_RETA_GROUP_SIZE;
 
 		if (port->reta_conf[index].reta[shift] !=
 				test_params.bond_reta_conf[index].reta[shift])
@@ -251,7 +251,7 @@ static int
 bond_reta_fetch(void) {
 	unsigned j;
 
-	for (j = 0; j < test_params.bond_dev_info.reta_size / RTE_RETA_GROUP_SIZE;
+	for (j = 0; j < test_params.bond_dev_info.reta_size / RTE_ETH_RETA_GROUP_SIZE;
 			j++)
 		test_params.bond_reta_conf[j].mask = ~0LL;
 
@@ -268,7 +268,7 @@ static int
 slave_reta_fetch(struct slave_conf *port) {
 	unsigned j;
 
-	for (j = 0; j < port->dev_info.reta_size / RTE_RETA_GROUP_SIZE; j++)
+	for (j = 0; j < port->dev_info.reta_size / RTE_ETH_RETA_GROUP_SIZE; j++)
 		port->reta_conf[j].mask = ~0LL;
 
 	TEST_ASSERT_SUCCESS(rte_eth_dev_rss_reta_query(port->port_id,

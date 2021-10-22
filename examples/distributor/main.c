@@ -80,15 +80,15 @@ struct app_stats prev_app_stats;
 
 static const struct rte_eth_conf port_conf_default = {
 	.rxmode = {
-		.mq_mode = ETH_MQ_RX_RSS,
+		.mq_mode = RTE_ETH_MQ_RX_RSS,
 	},
 	.txmode = {
-		.mq_mode = ETH_MQ_TX_NONE,
+		.mq_mode = RTE_ETH_MQ_TX_NONE,
 	},
 	.rx_adv_conf = {
 		.rss_conf = {
-			.rss_hf = ETH_RSS_IP | ETH_RSS_UDP |
-				ETH_RSS_TCP | ETH_RSS_SCTP,
+			.rss_hf = RTE_ETH_RSS_IP | RTE_ETH_RSS_UDP |
+				RTE_ETH_RSS_TCP | RTE_ETH_RSS_SCTP,
 		}
 	},
 };
@@ -126,9 +126,9 @@ port_init(uint16_t port, struct rte_mempool *mbuf_pool)
 		return retval;
 	}
 
-	if (dev_info.tx_offload_capa & DEV_TX_OFFLOAD_MBUF_FAST_FREE)
+	if (dev_info.tx_offload_capa & RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE)
 		port_conf.txmode.offloads |=
-			DEV_TX_OFFLOAD_MBUF_FAST_FREE;
+			RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE;
 
 	port_conf.rx_adv_conf.rss_conf.rss_hf &=
 		dev_info.flow_type_rss_offloads;

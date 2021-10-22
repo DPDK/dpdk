@@ -1487,9 +1487,9 @@ ice_setup_vsi(struct ice_pf *pf, enum ice_vsi_type type)
 	TAILQ_INIT(&vsi->mac_list);
 	TAILQ_INIT(&vsi->vlan_list);
 
-	/* Be sync with ETH_RSS_RETA_SIZE_x maximum value definition */
+	/* Be sync with RTE_ETH_RSS_RETA_SIZE_x maximum value definition */
 	pf->hash_lut_size = hw->func_caps.common_cap.rss_table_size >
-			ETH_RSS_RETA_SIZE_512 ? ETH_RSS_RETA_SIZE_512 :
+			RTE_ETH_RSS_RETA_SIZE_512 ? RTE_ETH_RSS_RETA_SIZE_512 :
 			hw->func_caps.common_cap.rss_table_size;
 	pf->flags |= ICE_FLAG_RSS_AQ_CAPABLE;
 
@@ -2993,14 +2993,14 @@ ice_rss_hash_set(struct ice_pf *pf, uint64_t rss_hf)
 	int ret;
 
 #define ICE_RSS_HF_ALL ( \
-	ETH_RSS_IPV4 | \
-	ETH_RSS_IPV6 | \
-	ETH_RSS_NONFRAG_IPV4_UDP | \
-	ETH_RSS_NONFRAG_IPV6_UDP | \
-	ETH_RSS_NONFRAG_IPV4_TCP | \
-	ETH_RSS_NONFRAG_IPV6_TCP | \
-	ETH_RSS_NONFRAG_IPV4_SCTP | \
-	ETH_RSS_NONFRAG_IPV6_SCTP)
+	RTE_ETH_RSS_IPV4 | \
+	RTE_ETH_RSS_IPV6 | \
+	RTE_ETH_RSS_NONFRAG_IPV4_UDP | \
+	RTE_ETH_RSS_NONFRAG_IPV6_UDP | \
+	RTE_ETH_RSS_NONFRAG_IPV4_TCP | \
+	RTE_ETH_RSS_NONFRAG_IPV6_TCP | \
+	RTE_ETH_RSS_NONFRAG_IPV4_SCTP | \
+	RTE_ETH_RSS_NONFRAG_IPV6_SCTP)
 
 	ret = ice_rem_vsi_rss_cfg(hw, vsi->idx);
 	if (ret)
@@ -3010,7 +3010,7 @@ ice_rss_hash_set(struct ice_pf *pf, uint64_t rss_hf)
 	cfg.symm = 0;
 	cfg.hdr_type = ICE_RSS_OUTER_HEADERS;
 	/* Configure RSS for IPv4 with src/dst addr as input set */
-	if (rss_hf & ETH_RSS_IPV4) {
+	if (rss_hf & RTE_ETH_RSS_IPV4) {
 		cfg.addl_hdrs = ICE_FLOW_SEG_HDR_IPV4 | ICE_FLOW_SEG_HDR_IPV_OTHER;
 		cfg.hash_flds = ICE_FLOW_HASH_IPV4;
 		ret = ice_add_rss_cfg_wrap(pf, vsi->idx, &cfg);
@@ -3020,7 +3020,7 @@ ice_rss_hash_set(struct ice_pf *pf, uint64_t rss_hf)
 	}
 
 	/* Configure RSS for IPv6 with src/dst addr as input set */
-	if (rss_hf & ETH_RSS_IPV6) {
+	if (rss_hf & RTE_ETH_RSS_IPV6) {
 		cfg.addl_hdrs = ICE_FLOW_SEG_HDR_IPV6 | ICE_FLOW_SEG_HDR_IPV_OTHER;
 		cfg.hash_flds = ICE_FLOW_HASH_IPV6;
 		ret = ice_add_rss_cfg_wrap(pf, vsi->idx, &cfg);
@@ -3030,7 +3030,7 @@ ice_rss_hash_set(struct ice_pf *pf, uint64_t rss_hf)
 	}
 
 	/* Configure RSS for udp4 with src/dst addr and port as input set */
-	if (rss_hf & ETH_RSS_NONFRAG_IPV4_UDP) {
+	if (rss_hf & RTE_ETH_RSS_NONFRAG_IPV4_UDP) {
 		cfg.addl_hdrs = ICE_FLOW_SEG_HDR_UDP | ICE_FLOW_SEG_HDR_IPV4 |
 				ICE_FLOW_SEG_HDR_IPV_OTHER;
 		cfg.hash_flds = ICE_HASH_UDP_IPV4;
@@ -3041,7 +3041,7 @@ ice_rss_hash_set(struct ice_pf *pf, uint64_t rss_hf)
 	}
 
 	/* Configure RSS for udp6 with src/dst addr and port as input set */
-	if (rss_hf & ETH_RSS_NONFRAG_IPV6_UDP) {
+	if (rss_hf & RTE_ETH_RSS_NONFRAG_IPV6_UDP) {
 		cfg.addl_hdrs = ICE_FLOW_SEG_HDR_UDP | ICE_FLOW_SEG_HDR_IPV6 |
 				ICE_FLOW_SEG_HDR_IPV_OTHER;
 		cfg.hash_flds = ICE_HASH_UDP_IPV6;
@@ -3052,7 +3052,7 @@ ice_rss_hash_set(struct ice_pf *pf, uint64_t rss_hf)
 	}
 
 	/* Configure RSS for tcp4 with src/dst addr and port as input set */
-	if (rss_hf & ETH_RSS_NONFRAG_IPV4_TCP) {
+	if (rss_hf & RTE_ETH_RSS_NONFRAG_IPV4_TCP) {
 		cfg.addl_hdrs = ICE_FLOW_SEG_HDR_TCP | ICE_FLOW_SEG_HDR_IPV4 |
 				ICE_FLOW_SEG_HDR_IPV_OTHER;
 		cfg.hash_flds = ICE_HASH_TCP_IPV4;
@@ -3063,7 +3063,7 @@ ice_rss_hash_set(struct ice_pf *pf, uint64_t rss_hf)
 	}
 
 	/* Configure RSS for tcp6 with src/dst addr and port as input set */
-	if (rss_hf & ETH_RSS_NONFRAG_IPV6_TCP) {
+	if (rss_hf & RTE_ETH_RSS_NONFRAG_IPV6_TCP) {
 		cfg.addl_hdrs = ICE_FLOW_SEG_HDR_TCP | ICE_FLOW_SEG_HDR_IPV6 |
 				ICE_FLOW_SEG_HDR_IPV_OTHER;
 		cfg.hash_flds = ICE_HASH_TCP_IPV6;
@@ -3074,7 +3074,7 @@ ice_rss_hash_set(struct ice_pf *pf, uint64_t rss_hf)
 	}
 
 	/* Configure RSS for sctp4 with src/dst addr and port as input set */
-	if (rss_hf & ETH_RSS_NONFRAG_IPV4_SCTP) {
+	if (rss_hf & RTE_ETH_RSS_NONFRAG_IPV4_SCTP) {
 		cfg.addl_hdrs = ICE_FLOW_SEG_HDR_SCTP | ICE_FLOW_SEG_HDR_IPV4 |
 				ICE_FLOW_SEG_HDR_IPV_OTHER;
 		cfg.hash_flds = ICE_HASH_SCTP_IPV4;
@@ -3085,7 +3085,7 @@ ice_rss_hash_set(struct ice_pf *pf, uint64_t rss_hf)
 	}
 
 	/* Configure RSS for sctp6 with src/dst addr and port as input set */
-	if (rss_hf & ETH_RSS_NONFRAG_IPV6_SCTP) {
+	if (rss_hf & RTE_ETH_RSS_NONFRAG_IPV6_SCTP) {
 		cfg.addl_hdrs = ICE_FLOW_SEG_HDR_SCTP | ICE_FLOW_SEG_HDR_IPV6 |
 				ICE_FLOW_SEG_HDR_IPV_OTHER;
 		cfg.hash_flds = ICE_HASH_SCTP_IPV6;
@@ -3095,7 +3095,7 @@ ice_rss_hash_set(struct ice_pf *pf, uint64_t rss_hf)
 				    __func__, ret);
 	}
 
-	if (rss_hf & ETH_RSS_IPV4) {
+	if (rss_hf & RTE_ETH_RSS_IPV4) {
 		cfg.addl_hdrs = ICE_FLOW_SEG_HDR_PPPOE | ICE_FLOW_SEG_HDR_IPV4 |
 				ICE_FLOW_SEG_HDR_IPV_OTHER;
 		cfg.hash_flds = ICE_FLOW_HASH_IPV4;
@@ -3105,7 +3105,7 @@ ice_rss_hash_set(struct ice_pf *pf, uint64_t rss_hf)
 				    __func__, ret);
 	}
 
-	if (rss_hf & ETH_RSS_IPV6) {
+	if (rss_hf & RTE_ETH_RSS_IPV6) {
 		cfg.addl_hdrs = ICE_FLOW_SEG_HDR_PPPOE | ICE_FLOW_SEG_HDR_IPV6 |
 				ICE_FLOW_SEG_HDR_IPV_OTHER;
 		cfg.hash_flds = ICE_FLOW_HASH_IPV6;
@@ -3115,7 +3115,7 @@ ice_rss_hash_set(struct ice_pf *pf, uint64_t rss_hf)
 				    __func__, ret);
 	}
 
-	if (rss_hf & ETH_RSS_NONFRAG_IPV4_UDP) {
+	if (rss_hf & RTE_ETH_RSS_NONFRAG_IPV4_UDP) {
 		cfg.addl_hdrs = ICE_FLOW_SEG_HDR_PPPOE | ICE_FLOW_SEG_HDR_UDP |
 				ICE_FLOW_SEG_HDR_IPV4 | ICE_FLOW_SEG_HDR_IPV_OTHER;
 		cfg.hash_flds = ICE_HASH_UDP_IPV4;
@@ -3125,7 +3125,7 @@ ice_rss_hash_set(struct ice_pf *pf, uint64_t rss_hf)
 				    __func__, ret);
 	}
 
-	if (rss_hf & ETH_RSS_NONFRAG_IPV6_UDP) {
+	if (rss_hf & RTE_ETH_RSS_NONFRAG_IPV6_UDP) {
 		cfg.addl_hdrs = ICE_FLOW_SEG_HDR_PPPOE | ICE_FLOW_SEG_HDR_UDP |
 				ICE_FLOW_SEG_HDR_IPV6 | ICE_FLOW_SEG_HDR_IPV_OTHER;
 		cfg.hash_flds = ICE_HASH_UDP_IPV6;
@@ -3135,7 +3135,7 @@ ice_rss_hash_set(struct ice_pf *pf, uint64_t rss_hf)
 				    __func__, ret);
 	}
 
-	if (rss_hf & ETH_RSS_NONFRAG_IPV4_TCP) {
+	if (rss_hf & RTE_ETH_RSS_NONFRAG_IPV4_TCP) {
 		cfg.addl_hdrs = ICE_FLOW_SEG_HDR_PPPOE | ICE_FLOW_SEG_HDR_TCP |
 				ICE_FLOW_SEG_HDR_IPV4 | ICE_FLOW_SEG_HDR_IPV_OTHER;
 		cfg.hash_flds = ICE_HASH_TCP_IPV4;
@@ -3145,7 +3145,7 @@ ice_rss_hash_set(struct ice_pf *pf, uint64_t rss_hf)
 				    __func__, ret);
 	}
 
-	if (rss_hf & ETH_RSS_NONFRAG_IPV6_TCP) {
+	if (rss_hf & RTE_ETH_RSS_NONFRAG_IPV6_TCP) {
 		cfg.addl_hdrs = ICE_FLOW_SEG_HDR_PPPOE | ICE_FLOW_SEG_HDR_TCP |
 				ICE_FLOW_SEG_HDR_IPV6 | ICE_FLOW_SEG_HDR_IPV_OTHER;
 		cfg.hash_flds = ICE_HASH_TCP_IPV6;
@@ -3288,8 +3288,8 @@ ice_dev_configure(struct rte_eth_dev *dev)
 	ad->rx_bulk_alloc_allowed = true;
 	ad->tx_simple_allowed = true;
 
-	if (dev->data->dev_conf.rxmode.mq_mode & ETH_MQ_RX_RSS_FLAG)
-		dev->data->dev_conf.rxmode.offloads |= DEV_RX_OFFLOAD_RSS_HASH;
+	if (dev->data->dev_conf.rxmode.mq_mode & RTE_ETH_MQ_RX_RSS_FLAG)
+		dev->data->dev_conf.rxmode.offloads |= RTE_ETH_RX_OFFLOAD_RSS_HASH;
 
 	if (dev->data->nb_rx_queues) {
 		ret = ice_init_rss(pf);
@@ -3569,8 +3569,8 @@ ice_dev_start(struct rte_eth_dev *dev)
 	ice_set_rx_function(dev);
 	ice_set_tx_function(dev);
 
-	mask = ETH_VLAN_STRIP_MASK | ETH_VLAN_FILTER_MASK |
-			ETH_VLAN_EXTEND_MASK;
+	mask = RTE_ETH_VLAN_STRIP_MASK | RTE_ETH_VLAN_FILTER_MASK |
+			RTE_ETH_VLAN_EXTEND_MASK;
 	ret = ice_vlan_offload_set(dev, mask);
 	if (ret) {
 		PMD_INIT_LOG(ERR, "Unable to set VLAN offload");
@@ -3682,40 +3682,40 @@ ice_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->min_mtu = RTE_ETHER_MIN_MTU;
 
 	dev_info->rx_offload_capa =
-		DEV_RX_OFFLOAD_VLAN_STRIP |
-		DEV_RX_OFFLOAD_KEEP_CRC |
-		DEV_RX_OFFLOAD_SCATTER |
-		DEV_RX_OFFLOAD_VLAN_FILTER;
+		RTE_ETH_RX_OFFLOAD_VLAN_STRIP |
+		RTE_ETH_RX_OFFLOAD_KEEP_CRC |
+		RTE_ETH_RX_OFFLOAD_SCATTER |
+		RTE_ETH_RX_OFFLOAD_VLAN_FILTER;
 	dev_info->tx_offload_capa =
-		DEV_TX_OFFLOAD_VLAN_INSERT |
-		DEV_TX_OFFLOAD_TCP_TSO |
-		DEV_TX_OFFLOAD_MULTI_SEGS |
-		DEV_TX_OFFLOAD_MBUF_FAST_FREE;
+		RTE_ETH_TX_OFFLOAD_VLAN_INSERT |
+		RTE_ETH_TX_OFFLOAD_TCP_TSO |
+		RTE_ETH_TX_OFFLOAD_MULTI_SEGS |
+		RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE;
 	dev_info->flow_type_rss_offloads = 0;
 
 	if (!is_safe_mode) {
 		dev_info->rx_offload_capa |=
-			DEV_RX_OFFLOAD_IPV4_CKSUM |
-			DEV_RX_OFFLOAD_UDP_CKSUM |
-			DEV_RX_OFFLOAD_TCP_CKSUM |
-			DEV_RX_OFFLOAD_QINQ_STRIP |
-			DEV_RX_OFFLOAD_OUTER_IPV4_CKSUM |
-			DEV_RX_OFFLOAD_VLAN_EXTEND |
-			DEV_RX_OFFLOAD_RSS_HASH |
-			DEV_RX_OFFLOAD_TIMESTAMP;
+			RTE_ETH_RX_OFFLOAD_IPV4_CKSUM |
+			RTE_ETH_RX_OFFLOAD_UDP_CKSUM |
+			RTE_ETH_RX_OFFLOAD_TCP_CKSUM |
+			RTE_ETH_RX_OFFLOAD_QINQ_STRIP |
+			RTE_ETH_RX_OFFLOAD_OUTER_IPV4_CKSUM |
+			RTE_ETH_RX_OFFLOAD_VLAN_EXTEND |
+			RTE_ETH_RX_OFFLOAD_RSS_HASH |
+			RTE_ETH_RX_OFFLOAD_TIMESTAMP;
 		dev_info->tx_offload_capa |=
-			DEV_TX_OFFLOAD_QINQ_INSERT |
-			DEV_TX_OFFLOAD_IPV4_CKSUM |
-			DEV_TX_OFFLOAD_UDP_CKSUM |
-			DEV_TX_OFFLOAD_TCP_CKSUM |
-			DEV_TX_OFFLOAD_SCTP_CKSUM |
-			DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM |
-			DEV_TX_OFFLOAD_OUTER_UDP_CKSUM;
+			RTE_ETH_TX_OFFLOAD_QINQ_INSERT |
+			RTE_ETH_TX_OFFLOAD_IPV4_CKSUM |
+			RTE_ETH_TX_OFFLOAD_UDP_CKSUM |
+			RTE_ETH_TX_OFFLOAD_TCP_CKSUM |
+			RTE_ETH_TX_OFFLOAD_SCTP_CKSUM |
+			RTE_ETH_TX_OFFLOAD_OUTER_IPV4_CKSUM |
+			RTE_ETH_TX_OFFLOAD_OUTER_UDP_CKSUM;
 		dev_info->flow_type_rss_offloads |= ICE_RSS_OFFLOAD_ALL;
 	}
 
 	dev_info->rx_queue_offload_capa = 0;
-	dev_info->tx_queue_offload_capa = DEV_TX_OFFLOAD_MBUF_FAST_FREE;
+	dev_info->tx_queue_offload_capa = RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE;
 
 	dev_info->reta_size = pf->hash_lut_size;
 	dev_info->hash_key_size = (VSIQF_HKEY_MAX_INDEX + 1) * sizeof(uint32_t);
@@ -3754,24 +3754,24 @@ ice_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 		.nb_align = ICE_ALIGN_RING_DESC,
 	};
 
-	dev_info->speed_capa = ETH_LINK_SPEED_10M |
-			       ETH_LINK_SPEED_100M |
-			       ETH_LINK_SPEED_1G |
-			       ETH_LINK_SPEED_2_5G |
-			       ETH_LINK_SPEED_5G |
-			       ETH_LINK_SPEED_10G |
-			       ETH_LINK_SPEED_20G |
-			       ETH_LINK_SPEED_25G;
+	dev_info->speed_capa = RTE_ETH_LINK_SPEED_10M |
+			       RTE_ETH_LINK_SPEED_100M |
+			       RTE_ETH_LINK_SPEED_1G |
+			       RTE_ETH_LINK_SPEED_2_5G |
+			       RTE_ETH_LINK_SPEED_5G |
+			       RTE_ETH_LINK_SPEED_10G |
+			       RTE_ETH_LINK_SPEED_20G |
+			       RTE_ETH_LINK_SPEED_25G;
 
 	phy_type_low = hw->port_info->phy.phy_type_low;
 	phy_type_high = hw->port_info->phy.phy_type_high;
 
 	if (ICE_PHY_TYPE_SUPPORT_50G(phy_type_low))
-		dev_info->speed_capa |= ETH_LINK_SPEED_50G;
+		dev_info->speed_capa |= RTE_ETH_LINK_SPEED_50G;
 
 	if (ICE_PHY_TYPE_SUPPORT_100G_LOW(phy_type_low) ||
 			ICE_PHY_TYPE_SUPPORT_100G_HIGH(phy_type_high))
-		dev_info->speed_capa |= ETH_LINK_SPEED_100G;
+		dev_info->speed_capa |= RTE_ETH_LINK_SPEED_100G;
 
 	dev_info->nb_rx_queues = dev->data->nb_rx_queues;
 	dev_info->nb_tx_queues = dev->data->nb_tx_queues;
@@ -3836,8 +3836,8 @@ ice_link_update(struct rte_eth_dev *dev, int wait_to_complete)
 		status = ice_aq_get_link_info(hw->port_info, enable_lse,
 					      &link_status, NULL);
 		if (status != ICE_SUCCESS) {
-			link.link_speed = ETH_SPEED_NUM_100M;
-			link.link_duplex = ETH_LINK_FULL_DUPLEX;
+			link.link_speed = RTE_ETH_SPEED_NUM_100M;
+			link.link_duplex = RTE_ETH_LINK_FULL_DUPLEX;
 			PMD_DRV_LOG(ERR, "Failed to get link info");
 			goto out;
 		}
@@ -3853,55 +3853,55 @@ ice_link_update(struct rte_eth_dev *dev, int wait_to_complete)
 		goto out;
 
 	/* Full-duplex operation at all supported speeds */
-	link.link_duplex = ETH_LINK_FULL_DUPLEX;
+	link.link_duplex = RTE_ETH_LINK_FULL_DUPLEX;
 
 	/* Parse the link status */
 	switch (link_status.link_speed) {
 	case ICE_AQ_LINK_SPEED_10MB:
-		link.link_speed = ETH_SPEED_NUM_10M;
+		link.link_speed = RTE_ETH_SPEED_NUM_10M;
 		break;
 	case ICE_AQ_LINK_SPEED_100MB:
-		link.link_speed = ETH_SPEED_NUM_100M;
+		link.link_speed = RTE_ETH_SPEED_NUM_100M;
 		break;
 	case ICE_AQ_LINK_SPEED_1000MB:
-		link.link_speed = ETH_SPEED_NUM_1G;
+		link.link_speed = RTE_ETH_SPEED_NUM_1G;
 		break;
 	case ICE_AQ_LINK_SPEED_2500MB:
-		link.link_speed = ETH_SPEED_NUM_2_5G;
+		link.link_speed = RTE_ETH_SPEED_NUM_2_5G;
 		break;
 	case ICE_AQ_LINK_SPEED_5GB:
-		link.link_speed = ETH_SPEED_NUM_5G;
+		link.link_speed = RTE_ETH_SPEED_NUM_5G;
 		break;
 	case ICE_AQ_LINK_SPEED_10GB:
-		link.link_speed = ETH_SPEED_NUM_10G;
+		link.link_speed = RTE_ETH_SPEED_NUM_10G;
 		break;
 	case ICE_AQ_LINK_SPEED_20GB:
-		link.link_speed = ETH_SPEED_NUM_20G;
+		link.link_speed = RTE_ETH_SPEED_NUM_20G;
 		break;
 	case ICE_AQ_LINK_SPEED_25GB:
-		link.link_speed = ETH_SPEED_NUM_25G;
+		link.link_speed = RTE_ETH_SPEED_NUM_25G;
 		break;
 	case ICE_AQ_LINK_SPEED_40GB:
-		link.link_speed = ETH_SPEED_NUM_40G;
+		link.link_speed = RTE_ETH_SPEED_NUM_40G;
 		break;
 	case ICE_AQ_LINK_SPEED_50GB:
-		link.link_speed = ETH_SPEED_NUM_50G;
+		link.link_speed = RTE_ETH_SPEED_NUM_50G;
 		break;
 	case ICE_AQ_LINK_SPEED_100GB:
-		link.link_speed = ETH_SPEED_NUM_100G;
+		link.link_speed = RTE_ETH_SPEED_NUM_100G;
 		break;
 	case ICE_AQ_LINK_SPEED_UNKNOWN:
 		PMD_DRV_LOG(ERR, "Unknown link speed");
-		link.link_speed = ETH_SPEED_NUM_UNKNOWN;
+		link.link_speed = RTE_ETH_SPEED_NUM_UNKNOWN;
 		break;
 	default:
 		PMD_DRV_LOG(ERR, "None link speed");
-		link.link_speed = ETH_SPEED_NUM_NONE;
+		link.link_speed = RTE_ETH_SPEED_NUM_NONE;
 		break;
 	}
 
 	link.link_autoneg = !(dev->data->dev_conf.link_speeds &
-			      ETH_LINK_SPEED_FIXED);
+			      RTE_ETH_LINK_SPEED_FIXED);
 
 out:
 	ice_atomic_write_link_status(dev, &link);
@@ -4377,15 +4377,15 @@ ice_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 	struct rte_eth_rxmode *rxmode;
 
 	rxmode = &dev->data->dev_conf.rxmode;
-	if (mask & ETH_VLAN_FILTER_MASK) {
-		if (rxmode->offloads & DEV_RX_OFFLOAD_VLAN_FILTER)
+	if (mask & RTE_ETH_VLAN_FILTER_MASK) {
+		if (rxmode->offloads & RTE_ETH_RX_OFFLOAD_VLAN_FILTER)
 			ice_vsi_config_vlan_filter(vsi, true);
 		else
 			ice_vsi_config_vlan_filter(vsi, false);
 	}
 
-	if (mask & ETH_VLAN_STRIP_MASK) {
-		if (rxmode->offloads & DEV_RX_OFFLOAD_VLAN_STRIP)
+	if (mask & RTE_ETH_VLAN_STRIP_MASK) {
+		if (rxmode->offloads & RTE_ETH_RX_OFFLOAD_VLAN_STRIP)
 			ice_vsi_config_vlan_stripping(vsi, true);
 		else
 			ice_vsi_config_vlan_stripping(vsi, false);
@@ -4500,8 +4500,8 @@ ice_rss_reta_update(struct rte_eth_dev *dev,
 		goto out;
 
 	for (i = 0; i < reta_size; i++) {
-		idx = i / RTE_RETA_GROUP_SIZE;
-		shift = i % RTE_RETA_GROUP_SIZE;
+		idx = i / RTE_ETH_RETA_GROUP_SIZE;
+		shift = i % RTE_ETH_RETA_GROUP_SIZE;
 		if (reta_conf[idx].mask & (1ULL << shift))
 			lut[i] = reta_conf[idx].reta[shift];
 	}
@@ -4550,8 +4550,8 @@ ice_rss_reta_query(struct rte_eth_dev *dev,
 		goto out;
 
 	for (i = 0; i < reta_size; i++) {
-		idx = i / RTE_RETA_GROUP_SIZE;
-		shift = i % RTE_RETA_GROUP_SIZE;
+		idx = i / RTE_ETH_RETA_GROUP_SIZE;
+		shift = i % RTE_ETH_RETA_GROUP_SIZE;
 		if (reta_conf[idx].mask & (1ULL << shift))
 			reta_conf[idx].reta[shift] = lut[i];
 	}
@@ -5460,7 +5460,7 @@ ice_dev_udp_tunnel_port_add(struct rte_eth_dev *dev,
 		return -EINVAL;
 
 	switch (udp_tunnel->prot_type) {
-	case RTE_TUNNEL_TYPE_VXLAN:
+	case RTE_ETH_TUNNEL_TYPE_VXLAN:
 		ret = ice_create_tunnel(hw, TNL_VXLAN, udp_tunnel->udp_port);
 		break;
 	default:
@@ -5484,7 +5484,7 @@ ice_dev_udp_tunnel_port_del(struct rte_eth_dev *dev,
 		return -EINVAL;
 
 	switch (udp_tunnel->prot_type) {
-	case RTE_TUNNEL_TYPE_VXLAN:
+	case RTE_ETH_TUNNEL_TYPE_VXLAN:
 		ret = ice_destroy_tunnel(hw, udp_tunnel->udp_port, 0);
 		break;
 	default:
@@ -5505,7 +5505,7 @@ ice_timesync_enable(struct rte_eth_dev *dev)
 	int ret;
 
 	if (dev->data->dev_started && !(dev->data->dev_conf.rxmode.offloads &
-	    DEV_RX_OFFLOAD_TIMESTAMP)) {
+	    RTE_ETH_RX_OFFLOAD_TIMESTAMP)) {
 		PMD_DRV_LOG(ERR, "Rx timestamp offload not configured");
 		return -1;
 	}

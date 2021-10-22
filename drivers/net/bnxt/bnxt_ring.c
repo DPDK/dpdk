@@ -187,7 +187,7 @@ int bnxt_alloc_rings(struct bnxt *bp, unsigned int socket_id, uint16_t qidx,
 			rx_ring_info->rx_ring_struct->ring_size *
 			AGG_RING_SIZE_FACTOR)) : 0;
 
-		if (rx_ring_info && (rx_offloads & DEV_RX_OFFLOAD_TCP_LRO)) {
+		if (rx_ring_info && (rx_offloads & RTE_ETH_RX_OFFLOAD_TCP_LRO)) {
 			int tpa_max = BNXT_TPA_MAX_AGGS(bp);
 
 			tpa_info_len = tpa_max * sizeof(struct bnxt_tpa_info);
@@ -283,7 +283,7 @@ int bnxt_alloc_rings(struct bnxt *bp, unsigned int socket_id, uint16_t qidx,
 					    ag_bitmap_start, ag_bitmap_len);
 
 			/* TPA info */
-			if (rx_offloads & DEV_RX_OFFLOAD_TCP_LRO)
+			if (rx_offloads & RTE_ETH_RX_OFFLOAD_TCP_LRO)
 				rx_ring_info->tpa_info =
 					((struct bnxt_tpa_info *)
 					 ((char *)mz->addr + tpa_info_start));

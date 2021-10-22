@@ -1326,13 +1326,13 @@ vmxnet3_v4_rss_configure(struct rte_eth_dev *dev)
 	rss_hf = port_rss_conf->rss_hf &
 		(VMXNET3_V4_RSS_MASK | VMXNET3_RSS_OFFLOAD_ALL);
 
-	if (rss_hf & ETH_RSS_NONFRAG_IPV4_TCP)
+	if (rss_hf & RTE_ETH_RSS_NONFRAG_IPV4_TCP)
 		cmdInfo->setRSSFields |= VMXNET3_RSS_FIELDS_TCPIP4;
-	if (rss_hf & ETH_RSS_NONFRAG_IPV6_TCP)
+	if (rss_hf & RTE_ETH_RSS_NONFRAG_IPV6_TCP)
 		cmdInfo->setRSSFields |= VMXNET3_RSS_FIELDS_TCPIP6;
-	if (rss_hf & ETH_RSS_NONFRAG_IPV4_UDP)
+	if (rss_hf & RTE_ETH_RSS_NONFRAG_IPV4_UDP)
 		cmdInfo->setRSSFields |= VMXNET3_RSS_FIELDS_UDPIP4;
-	if (rss_hf & ETH_RSS_NONFRAG_IPV6_UDP)
+	if (rss_hf & RTE_ETH_RSS_NONFRAG_IPV6_UDP)
 		cmdInfo->setRSSFields |= VMXNET3_RSS_FIELDS_UDPIP6;
 
 	VMXNET3_WRITE_BAR1_REG(hw, VMXNET3_REG_CMD,
@@ -1389,13 +1389,13 @@ vmxnet3_rss_configure(struct rte_eth_dev *dev)
 	/* loading hashType */
 	dev_rss_conf->hashType = 0;
 	rss_hf = port_rss_conf->rss_hf & VMXNET3_RSS_OFFLOAD_ALL;
-	if (rss_hf & ETH_RSS_IPV4)
+	if (rss_hf & RTE_ETH_RSS_IPV4)
 		dev_rss_conf->hashType |= VMXNET3_RSS_HASH_TYPE_IPV4;
-	if (rss_hf & ETH_RSS_NONFRAG_IPV4_TCP)
+	if (rss_hf & RTE_ETH_RSS_NONFRAG_IPV4_TCP)
 		dev_rss_conf->hashType |= VMXNET3_RSS_HASH_TYPE_TCP_IPV4;
-	if (rss_hf & ETH_RSS_IPV6)
+	if (rss_hf & RTE_ETH_RSS_IPV6)
 		dev_rss_conf->hashType |= VMXNET3_RSS_HASH_TYPE_IPV6;
-	if (rss_hf & ETH_RSS_NONFRAG_IPV6_TCP)
+	if (rss_hf & RTE_ETH_RSS_NONFRAG_IPV6_TCP)
 		dev_rss_conf->hashType |= VMXNET3_RSS_HASH_TYPE_TCP_IPV6;
 
 	return VMXNET3_SUCCESS;

@@ -200,7 +200,7 @@ nfb_eth_dev_info(struct rte_eth_dev *dev,
 	dev_info->max_rx_pktlen = (uint32_t)-1;
 	dev_info->max_rx_queues = dev->data->nb_rx_queues;
 	dev_info->max_tx_queues = dev->data->nb_tx_queues;
-	dev_info->speed_capa = ETH_LINK_SPEED_100G;
+	dev_info->speed_capa = RTE_ETH_LINK_SPEED_100G;
 
 	return 0;
 }
@@ -268,26 +268,26 @@ nfb_eth_link_update(struct rte_eth_dev *dev,
 
 	status.speed = MAC_SPEED_UNKNOWN;
 
-	link.link_speed = ETH_SPEED_NUM_NONE;
-	link.link_status = ETH_LINK_DOWN;
-	link.link_duplex = ETH_LINK_FULL_DUPLEX;
-	link.link_autoneg = ETH_LINK_SPEED_FIXED;
+	link.link_speed = RTE_ETH_SPEED_NUM_NONE;
+	link.link_status = RTE_ETH_LINK_DOWN;
+	link.link_duplex = RTE_ETH_LINK_FULL_DUPLEX;
+	link.link_autoneg = RTE_ETH_LINK_SPEED_FIXED;
 
 	if (internals->rxmac[0] != NULL) {
 		nc_rxmac_read_status(internals->rxmac[0], &status);
 
 		switch (status.speed) {
 		case MAC_SPEED_10G:
-			link.link_speed = ETH_SPEED_NUM_10G;
+			link.link_speed = RTE_ETH_SPEED_NUM_10G;
 			break;
 		case MAC_SPEED_40G:
-			link.link_speed = ETH_SPEED_NUM_40G;
+			link.link_speed = RTE_ETH_SPEED_NUM_40G;
 			break;
 		case MAC_SPEED_100G:
-			link.link_speed = ETH_SPEED_NUM_100G;
+			link.link_speed = RTE_ETH_SPEED_NUM_100G;
 			break;
 		default:
-			link.link_speed = ETH_SPEED_NUM_NONE;
+			link.link_speed = RTE_ETH_SPEED_NUM_NONE;
 			break;
 		}
 	}
@@ -296,7 +296,7 @@ nfb_eth_link_update(struct rte_eth_dev *dev,
 		nc_rxmac_read_status(internals->rxmac[i], &status);
 
 		if (status.enabled && status.link_up) {
-			link.link_status = ETH_LINK_UP;
+			link.link_status = RTE_ETH_LINK_UP;
 			break;
 		}
 	}

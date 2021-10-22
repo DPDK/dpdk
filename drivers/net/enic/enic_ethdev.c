@@ -38,30 +38,30 @@ static const struct vic_speed_capa {
 	uint16_t sub_devid;
 	uint32_t capa;
 } vic_speed_capa_map[] = {
-	{ 0x0043, ETH_LINK_SPEED_10G }, /* VIC */
-	{ 0x0047, ETH_LINK_SPEED_10G }, /* P81E PCIe */
-	{ 0x0048, ETH_LINK_SPEED_10G }, /* M81KR Mezz */
-	{ 0x004f, ETH_LINK_SPEED_10G }, /* 1280 Mezz */
-	{ 0x0084, ETH_LINK_SPEED_10G }, /* 1240 MLOM */
-	{ 0x0085, ETH_LINK_SPEED_10G }, /* 1225 PCIe */
-	{ 0x00cd, ETH_LINK_SPEED_10G | ETH_LINK_SPEED_40G }, /* 1285 PCIe */
-	{ 0x00ce, ETH_LINK_SPEED_10G }, /* 1225T PCIe */
-	{ 0x012a, ETH_LINK_SPEED_40G }, /* M4308 */
-	{ 0x012c, ETH_LINK_SPEED_10G | ETH_LINK_SPEED_40G }, /* 1340 MLOM */
-	{ 0x012e, ETH_LINK_SPEED_10G }, /* 1227 PCIe */
-	{ 0x0137, ETH_LINK_SPEED_10G | ETH_LINK_SPEED_40G }, /* 1380 Mezz */
-	{ 0x014d, ETH_LINK_SPEED_10G | ETH_LINK_SPEED_40G }, /* 1385 PCIe */
-	{ 0x015d, ETH_LINK_SPEED_10G | ETH_LINK_SPEED_40G }, /* 1387 MLOM */
-	{ 0x0215, ETH_LINK_SPEED_10G | ETH_LINK_SPEED_25G |
-		  ETH_LINK_SPEED_40G }, /* 1440 Mezz */
-	{ 0x0216, ETH_LINK_SPEED_10G | ETH_LINK_SPEED_25G |
-		  ETH_LINK_SPEED_40G }, /* 1480 MLOM */
-	{ 0x0217, ETH_LINK_SPEED_10G | ETH_LINK_SPEED_25G }, /* 1455 PCIe */
-	{ 0x0218, ETH_LINK_SPEED_10G | ETH_LINK_SPEED_25G }, /* 1457 MLOM */
-	{ 0x0219, ETH_LINK_SPEED_40G }, /* 1485 PCIe */
-	{ 0x021a, ETH_LINK_SPEED_40G }, /* 1487 MLOM */
-	{ 0x024a, ETH_LINK_SPEED_40G | ETH_LINK_SPEED_100G }, /* 1495 PCIe */
-	{ 0x024b, ETH_LINK_SPEED_40G | ETH_LINK_SPEED_100G }, /* 1497 MLOM */
+	{ 0x0043, RTE_ETH_LINK_SPEED_10G }, /* VIC */
+	{ 0x0047, RTE_ETH_LINK_SPEED_10G }, /* P81E PCIe */
+	{ 0x0048, RTE_ETH_LINK_SPEED_10G }, /* M81KR Mezz */
+	{ 0x004f, RTE_ETH_LINK_SPEED_10G }, /* 1280 Mezz */
+	{ 0x0084, RTE_ETH_LINK_SPEED_10G }, /* 1240 MLOM */
+	{ 0x0085, RTE_ETH_LINK_SPEED_10G }, /* 1225 PCIe */
+	{ 0x00cd, RTE_ETH_LINK_SPEED_10G | RTE_ETH_LINK_SPEED_40G }, /* 1285 PCIe */
+	{ 0x00ce, RTE_ETH_LINK_SPEED_10G }, /* 1225T PCIe */
+	{ 0x012a, RTE_ETH_LINK_SPEED_40G }, /* M4308 */
+	{ 0x012c, RTE_ETH_LINK_SPEED_10G | RTE_ETH_LINK_SPEED_40G }, /* 1340 MLOM */
+	{ 0x012e, RTE_ETH_LINK_SPEED_10G }, /* 1227 PCIe */
+	{ 0x0137, RTE_ETH_LINK_SPEED_10G | RTE_ETH_LINK_SPEED_40G }, /* 1380 Mezz */
+	{ 0x014d, RTE_ETH_LINK_SPEED_10G | RTE_ETH_LINK_SPEED_40G }, /* 1385 PCIe */
+	{ 0x015d, RTE_ETH_LINK_SPEED_10G | RTE_ETH_LINK_SPEED_40G }, /* 1387 MLOM */
+	{ 0x0215, RTE_ETH_LINK_SPEED_10G | RTE_ETH_LINK_SPEED_25G |
+		  RTE_ETH_LINK_SPEED_40G }, /* 1440 Mezz */
+	{ 0x0216, RTE_ETH_LINK_SPEED_10G | RTE_ETH_LINK_SPEED_25G |
+		  RTE_ETH_LINK_SPEED_40G }, /* 1480 MLOM */
+	{ 0x0217, RTE_ETH_LINK_SPEED_10G | RTE_ETH_LINK_SPEED_25G }, /* 1455 PCIe */
+	{ 0x0218, RTE_ETH_LINK_SPEED_10G | RTE_ETH_LINK_SPEED_25G }, /* 1457 MLOM */
+	{ 0x0219, RTE_ETH_LINK_SPEED_40G }, /* 1485 PCIe */
+	{ 0x021a, RTE_ETH_LINK_SPEED_40G }, /* 1487 MLOM */
+	{ 0x024a, RTE_ETH_LINK_SPEED_40G | RTE_ETH_LINK_SPEED_100G }, /* 1495 PCIe */
+	{ 0x024b, RTE_ETH_LINK_SPEED_40G | RTE_ETH_LINK_SPEED_100G }, /* 1497 MLOM */
 	{ 0, 0 }, /* End marker */
 };
 
@@ -297,8 +297,8 @@ static int enicpmd_vlan_offload_set(struct rte_eth_dev *eth_dev, int mask)
 	ENICPMD_FUNC_TRACE();
 
 	offloads = eth_dev->data->dev_conf.rxmode.offloads;
-	if (mask & ETH_VLAN_STRIP_MASK) {
-		if (offloads & DEV_RX_OFFLOAD_VLAN_STRIP)
+	if (mask & RTE_ETH_VLAN_STRIP_MASK) {
+		if (offloads & RTE_ETH_RX_OFFLOAD_VLAN_STRIP)
 			enic->ig_vlan_strip_en = 1;
 		else
 			enic->ig_vlan_strip_en = 0;
@@ -323,17 +323,17 @@ static int enicpmd_dev_configure(struct rte_eth_dev *eth_dev)
 		return ret;
 	}
 
-	if (eth_dev->data->dev_conf.rxmode.mq_mode & ETH_MQ_RX_RSS_FLAG)
+	if (eth_dev->data->dev_conf.rxmode.mq_mode & RTE_ETH_MQ_RX_RSS_FLAG)
 		eth_dev->data->dev_conf.rxmode.offloads |=
-			DEV_RX_OFFLOAD_RSS_HASH;
+			RTE_ETH_RX_OFFLOAD_RSS_HASH;
 
 	enic->mc_count = 0;
 	enic->hw_ip_checksum = !!(eth_dev->data->dev_conf.rxmode.offloads &
-				  DEV_RX_OFFLOAD_CHECKSUM);
+				  RTE_ETH_RX_OFFLOAD_CHECKSUM);
 	/* All vlan offload masks to apply the current settings */
-	mask = ETH_VLAN_STRIP_MASK |
-		ETH_VLAN_FILTER_MASK |
-		ETH_VLAN_EXTEND_MASK;
+	mask = RTE_ETH_VLAN_STRIP_MASK |
+		RTE_ETH_VLAN_FILTER_MASK |
+		RTE_ETH_VLAN_EXTEND_MASK;
 	ret = enicpmd_vlan_offload_set(eth_dev, mask);
 	if (ret) {
 		dev_err(enic, "Failed to configure VLAN offloads\n");
@@ -435,14 +435,14 @@ static uint32_t speed_capa_from_pci_id(struct rte_eth_dev *eth_dev)
 	}
 	/* 1300 and later models are at least 40G */
 	if (id >= 0x0100)
-		return ETH_LINK_SPEED_40G;
+		return RTE_ETH_LINK_SPEED_40G;
 	/* VFs have subsystem id 0, check device id */
 	if (id == 0) {
 		/* Newer VF implies at least 40G model */
 		if (pdev->id.device_id == PCI_DEVICE_ID_CISCO_VIC_ENET_SN)
-			return ETH_LINK_SPEED_40G;
+			return RTE_ETH_LINK_SPEED_40G;
 	}
-	return ETH_LINK_SPEED_10G;
+	return RTE_ETH_LINK_SPEED_10G;
 }
 
 static int enicpmd_dev_info_get(struct rte_eth_dev *eth_dev,
@@ -774,8 +774,8 @@ static int enicpmd_dev_rss_reta_query(struct rte_eth_dev *dev,
 	}
 
 	for (i = 0; i < reta_size; i++) {
-		idx = i / RTE_RETA_GROUP_SIZE;
-		shift = i % RTE_RETA_GROUP_SIZE;
+		idx = i / RTE_ETH_RETA_GROUP_SIZE;
+		shift = i % RTE_ETH_RETA_GROUP_SIZE;
 		if (reta_conf[idx].mask & (1ULL << shift))
 			reta_conf[idx].reta[shift] = enic_sop_rq_idx_to_rte_idx(
 				enic->rss_cpu.cpu[i / 4].b[i % 4]);
@@ -806,8 +806,8 @@ static int enicpmd_dev_rss_reta_update(struct rte_eth_dev *dev,
 	 */
 	rss_cpu = enic->rss_cpu;
 	for (i = 0; i < reta_size; i++) {
-		idx = i / RTE_RETA_GROUP_SIZE;
-		shift = i % RTE_RETA_GROUP_SIZE;
+		idx = i / RTE_ETH_RETA_GROUP_SIZE;
+		shift = i % RTE_ETH_RETA_GROUP_SIZE;
 		if (reta_conf[idx].mask & (1ULL << shift))
 			rss_cpu.cpu[i / 4].b[i % 4] =
 				enic_rte_rq_idx_to_sop_idx(
@@ -883,7 +883,7 @@ static void enicpmd_dev_rxq_info_get(struct rte_eth_dev *dev,
 	 */
 	conf->offloads = enic->rx_offload_capa;
 	if (!enic->ig_vlan_strip_en)
-		conf->offloads &= ~DEV_RX_OFFLOAD_VLAN_STRIP;
+		conf->offloads &= ~RTE_ETH_RX_OFFLOAD_VLAN_STRIP;
 	/* rx_thresh and other fields are not applicable for enic */
 }
 
@@ -969,8 +969,8 @@ static int enicpmd_dev_rx_queue_intr_disable(struct rte_eth_dev *eth_dev,
 static int udp_tunnel_common_check(struct enic *enic,
 				   struct rte_eth_udp_tunnel *tnl)
 {
-	if (tnl->prot_type != RTE_TUNNEL_TYPE_VXLAN &&
-	    tnl->prot_type != RTE_TUNNEL_TYPE_GENEVE)
+	if (tnl->prot_type != RTE_ETH_TUNNEL_TYPE_VXLAN &&
+	    tnl->prot_type != RTE_ETH_TUNNEL_TYPE_GENEVE)
 		return -ENOTSUP;
 	if (!enic->overlay_offload) {
 		ENICPMD_LOG(DEBUG, " overlay offload is not supported\n");
@@ -1010,7 +1010,7 @@ static int enicpmd_dev_udp_tunnel_port_add(struct rte_eth_dev *eth_dev,
 	ret = udp_tunnel_common_check(enic, tnl);
 	if (ret)
 		return ret;
-	vxlan = (tnl->prot_type == RTE_TUNNEL_TYPE_VXLAN);
+	vxlan = (tnl->prot_type == RTE_ETH_TUNNEL_TYPE_VXLAN);
 	if (vxlan)
 		port = enic->vxlan_port;
 	else
@@ -1039,7 +1039,7 @@ static int enicpmd_dev_udp_tunnel_port_del(struct rte_eth_dev *eth_dev,
 	ret = udp_tunnel_common_check(enic, tnl);
 	if (ret)
 		return ret;
-	vxlan = (tnl->prot_type == RTE_TUNNEL_TYPE_VXLAN);
+	vxlan = (tnl->prot_type == RTE_ETH_TUNNEL_TYPE_VXLAN);
 	if (vxlan)
 		port = enic->vxlan_port;
 	else

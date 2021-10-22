@@ -1688,12 +1688,12 @@ ionic_lif_configure_vlan_offload(struct ionic_lif *lif, int mask)
 
 	/*
 	 * IONIC_ETH_HW_VLAN_RX_FILTER cannot be turned off, so
-	 * set DEV_RX_OFFLOAD_VLAN_FILTER and ignore ETH_VLAN_FILTER_MASK
+	 * set RTE_ETH_RX_OFFLOAD_VLAN_FILTER and ignore RTE_ETH_VLAN_FILTER_MASK
 	 */
-	rxmode->offloads |= DEV_RX_OFFLOAD_VLAN_FILTER;
+	rxmode->offloads |= RTE_ETH_RX_OFFLOAD_VLAN_FILTER;
 
-	if (mask & ETH_VLAN_STRIP_MASK) {
-		if (rxmode->offloads & DEV_RX_OFFLOAD_VLAN_STRIP)
+	if (mask & RTE_ETH_VLAN_STRIP_MASK) {
+		if (rxmode->offloads & RTE_ETH_RX_OFFLOAD_VLAN_STRIP)
 			lif->features |= IONIC_ETH_HW_VLAN_RX_STRIP;
 		else
 			lif->features &= ~IONIC_ETH_HW_VLAN_RX_STRIP;
@@ -1733,19 +1733,19 @@ ionic_lif_configure(struct ionic_lif *lif)
 	/*
 	 * NB: While it is true that RSS_HASH is always enabled on ionic,
 	 *     setting this flag unconditionally causes problems in DTS.
-	 * rxmode->offloads |= DEV_RX_OFFLOAD_RSS_HASH;
+	 * rxmode->offloads |= RTE_ETH_RX_OFFLOAD_RSS_HASH;
 	 */
 
 	/* RX per-port */
 
-	if (rxmode->offloads & DEV_RX_OFFLOAD_IPV4_CKSUM ||
-	    rxmode->offloads & DEV_RX_OFFLOAD_UDP_CKSUM ||
-	    rxmode->offloads & DEV_RX_OFFLOAD_TCP_CKSUM)
+	if (rxmode->offloads & RTE_ETH_RX_OFFLOAD_IPV4_CKSUM ||
+	    rxmode->offloads & RTE_ETH_RX_OFFLOAD_UDP_CKSUM ||
+	    rxmode->offloads & RTE_ETH_RX_OFFLOAD_TCP_CKSUM)
 		lif->features |= IONIC_ETH_HW_RX_CSUM;
 	else
 		lif->features &= ~IONIC_ETH_HW_RX_CSUM;
 
-	if (rxmode->offloads & DEV_RX_OFFLOAD_SCATTER) {
+	if (rxmode->offloads & RTE_ETH_RX_OFFLOAD_SCATTER) {
 		lif->features |= IONIC_ETH_HW_RX_SG;
 		lif->eth_dev->data->scattered_rx = 1;
 	} else {
@@ -1754,30 +1754,30 @@ ionic_lif_configure(struct ionic_lif *lif)
 	}
 
 	/* Covers VLAN_STRIP */
-	ionic_lif_configure_vlan_offload(lif, ETH_VLAN_STRIP_MASK);
+	ionic_lif_configure_vlan_offload(lif, RTE_ETH_VLAN_STRIP_MASK);
 
 	/* TX per-port */
 
-	if (txmode->offloads & DEV_TX_OFFLOAD_IPV4_CKSUM ||
-	    txmode->offloads & DEV_TX_OFFLOAD_UDP_CKSUM ||
-	    txmode->offloads & DEV_TX_OFFLOAD_TCP_CKSUM ||
-	    txmode->offloads & DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM ||
-	    txmode->offloads & DEV_TX_OFFLOAD_OUTER_UDP_CKSUM)
+	if (txmode->offloads & RTE_ETH_TX_OFFLOAD_IPV4_CKSUM ||
+	    txmode->offloads & RTE_ETH_TX_OFFLOAD_UDP_CKSUM ||
+	    txmode->offloads & RTE_ETH_TX_OFFLOAD_TCP_CKSUM ||
+	    txmode->offloads & RTE_ETH_TX_OFFLOAD_OUTER_IPV4_CKSUM ||
+	    txmode->offloads & RTE_ETH_TX_OFFLOAD_OUTER_UDP_CKSUM)
 		lif->features |= IONIC_ETH_HW_TX_CSUM;
 	else
 		lif->features &= ~IONIC_ETH_HW_TX_CSUM;
 
-	if (txmode->offloads & DEV_TX_OFFLOAD_VLAN_INSERT)
+	if (txmode->offloads & RTE_ETH_TX_OFFLOAD_VLAN_INSERT)
 		lif->features |= IONIC_ETH_HW_VLAN_TX_TAG;
 	else
 		lif->features &= ~IONIC_ETH_HW_VLAN_TX_TAG;
 
-	if (txmode->offloads & DEV_TX_OFFLOAD_MULTI_SEGS)
+	if (txmode->offloads & RTE_ETH_TX_OFFLOAD_MULTI_SEGS)
 		lif->features |= IONIC_ETH_HW_TX_SG;
 	else
 		lif->features &= ~IONIC_ETH_HW_TX_SG;
 
-	if (txmode->offloads & DEV_TX_OFFLOAD_TCP_TSO) {
+	if (txmode->offloads & RTE_ETH_TX_OFFLOAD_TCP_TSO) {
 		lif->features |= IONIC_ETH_HW_TSO;
 		lif->features |= IONIC_ETH_HW_TSO_IPV6;
 		lif->features |= IONIC_ETH_HW_TSO_ECN;

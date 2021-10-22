@@ -91,7 +91,7 @@ mlx5_dev_configure(struct rte_eth_dev *dev)
 	}
 
 	if ((dev->data->dev_conf.txmode.offloads &
-			DEV_TX_OFFLOAD_SEND_ON_TIMESTAMP) &&
+			RTE_ETH_TX_OFFLOAD_SEND_ON_TIMESTAMP) &&
 			rte_mbuf_dyn_tx_timestamp_register(NULL, NULL) != 0) {
 		DRV_LOG(ERR, "port %u cannot register Tx timestamp field/flag",
 			dev->data->port_id);
@@ -225,8 +225,8 @@ mlx5_set_default_params(struct rte_eth_dev *dev, struct rte_eth_dev_info *info)
 	info->default_txportconf.ring_size = 256;
 	info->default_rxportconf.burst_size = MLX5_RX_DEFAULT_BURST;
 	info->default_txportconf.burst_size = MLX5_TX_DEFAULT_BURST;
-	if ((priv->link_speed_capa & ETH_LINK_SPEED_200G) |
-		(priv->link_speed_capa & ETH_LINK_SPEED_100G)) {
+	if ((priv->link_speed_capa & RTE_ETH_LINK_SPEED_200G) |
+		(priv->link_speed_capa & RTE_ETH_LINK_SPEED_100G)) {
 		info->default_rxportconf.nb_queues = 16;
 		info->default_txportconf.nb_queues = 16;
 		if (dev->data->nb_rx_queues > 2 ||

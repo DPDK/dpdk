@@ -426,7 +426,7 @@ static int bnxt_setup_one_vnic(struct bnxt *bp, uint16_t vnic_id)
 		goto err_out;
 
 	/* Alloc RSS context only if RSS mode is enabled */
-	if (dev_conf->rxmode.mq_mode & ETH_MQ_RX_RSS) {
+	if (dev_conf->rxmode.mq_mode & RTE_ETH_MQ_RX_RSS) {
 		int j, nr_ctxs = bnxt_rss_ctxts(bp);
 
 		/* RSS table size in Thor is 512.
@@ -458,7 +458,7 @@ static int bnxt_setup_one_vnic(struct bnxt *bp, uint16_t vnic_id)
 	 * setting is not available at this time, it will not be
 	 * configured correctly in the CFA.
 	 */
-	if (rx_offloads & DEV_RX_OFFLOAD_VLAN_STRIP)
+	if (rx_offloads & RTE_ETH_RX_OFFLOAD_VLAN_STRIP)
 		vnic->vlan_strip = true;
 	else
 		vnic->vlan_strip = false;
@@ -493,7 +493,7 @@ static int bnxt_setup_one_vnic(struct bnxt *bp, uint16_t vnic_id)
 	bnxt_hwrm_vnic_plcmode_cfg(bp, vnic);
 
 	rc = bnxt_hwrm_vnic_tpa_cfg(bp, vnic,
-				    (rx_offloads & DEV_RX_OFFLOAD_TCP_LRO) ?
+				    (rx_offloads & RTE_ETH_RX_OFFLOAD_TCP_LRO) ?
 				    true : false);
 	if (rc)
 		goto err_out;
@@ -923,35 +923,35 @@ uint32_t bnxt_get_speed_capabilities(struct bnxt *bp)
 		link_speed = bp->link_info->support_pam4_speeds;
 
 	if (link_speed & HWRM_PORT_PHY_QCFG_OUTPUT_LINK_SPEED_100MB)
-		speed_capa |= ETH_LINK_SPEED_100M;
+		speed_capa |= RTE_ETH_LINK_SPEED_100M;
 	if (link_speed & HWRM_PORT_PHY_QCFG_OUTPUT_SUPPORT_SPEEDS_100MBHD)
-		speed_capa |= ETH_LINK_SPEED_100M_HD;
+		speed_capa |= RTE_ETH_LINK_SPEED_100M_HD;
 	if (link_speed & HWRM_PORT_PHY_QCFG_OUTPUT_SUPPORT_SPEEDS_1GB)
-		speed_capa |= ETH_LINK_SPEED_1G;
+		speed_capa |= RTE_ETH_LINK_SPEED_1G;
 	if (link_speed & HWRM_PORT_PHY_QCFG_OUTPUT_SUPPORT_SPEEDS_2_5GB)
-		speed_capa |= ETH_LINK_SPEED_2_5G;
+		speed_capa |= RTE_ETH_LINK_SPEED_2_5G;
 	if (link_speed & HWRM_PORT_PHY_QCFG_OUTPUT_SUPPORT_SPEEDS_10GB)
-		speed_capa |= ETH_LINK_SPEED_10G;
+		speed_capa |= RTE_ETH_LINK_SPEED_10G;
 	if (link_speed & HWRM_PORT_PHY_QCFG_OUTPUT_SUPPORT_SPEEDS_20GB)
-		speed_capa |= ETH_LINK_SPEED_20G;
+		speed_capa |= RTE_ETH_LINK_SPEED_20G;
 	if (link_speed & HWRM_PORT_PHY_QCFG_OUTPUT_SUPPORT_SPEEDS_25GB)
-		speed_capa |= ETH_LINK_SPEED_25G;
+		speed_capa |= RTE_ETH_LINK_SPEED_25G;
 	if (link_speed & HWRM_PORT_PHY_QCFG_OUTPUT_SUPPORT_SPEEDS_40GB)
-		speed_capa |= ETH_LINK_SPEED_40G;
+		speed_capa |= RTE_ETH_LINK_SPEED_40G;
 	if (link_speed & HWRM_PORT_PHY_QCFG_OUTPUT_SUPPORT_SPEEDS_50GB)
-		speed_capa |= ETH_LINK_SPEED_50G;
+		speed_capa |= RTE_ETH_LINK_SPEED_50G;
 	if (link_speed & HWRM_PORT_PHY_QCFG_OUTPUT_SUPPORT_SPEEDS_100GB)
-		speed_capa |= ETH_LINK_SPEED_100G;
+		speed_capa |= RTE_ETH_LINK_SPEED_100G;
 	if (link_speed & HWRM_PORT_PHY_QCFG_OUTPUT_SUPPORT_PAM4_SPEEDS_50G)
-		speed_capa |= ETH_LINK_SPEED_50G;
+		speed_capa |= RTE_ETH_LINK_SPEED_50G;
 	if (link_speed & HWRM_PORT_PHY_QCFG_OUTPUT_SUPPORT_PAM4_SPEEDS_100G)
-		speed_capa |= ETH_LINK_SPEED_100G;
+		speed_capa |= RTE_ETH_LINK_SPEED_100G;
 	if (link_speed & HWRM_PORT_PHY_QCFG_OUTPUT_SUPPORT_PAM4_SPEEDS_200G)
-		speed_capa |= ETH_LINK_SPEED_200G;
+		speed_capa |= RTE_ETH_LINK_SPEED_200G;
 
 	if (bp->link_info->auto_mode ==
 	    HWRM_PORT_PHY_QCFG_OUTPUT_AUTO_MODE_NONE)
-		speed_capa |= ETH_LINK_SPEED_FIXED;
+		speed_capa |= RTE_ETH_LINK_SPEED_FIXED;
 
 	return speed_capa;
 }
@@ -995,14 +995,14 @@ static int bnxt_dev_info_get_op(struct rte_eth_dev *eth_dev,
 
 	dev_info->rx_offload_capa = BNXT_DEV_RX_OFFLOAD_SUPPORT;
 	if (bp->flags & BNXT_FLAG_PTP_SUPPORTED)
-		dev_info->rx_offload_capa |= DEV_RX_OFFLOAD_TIMESTAMP;
+		dev_info->rx_offload_capa |= RTE_ETH_RX_OFFLOAD_TIMESTAMP;
 	if (bp->vnic_cap_flags & BNXT_VNIC_CAP_VLAN_RX_STRIP)
-		dev_info->rx_offload_capa |= DEV_RX_OFFLOAD_VLAN_STRIP;
-	dev_info->tx_queue_offload_capa = DEV_TX_OFFLOAD_MBUF_FAST_FREE;
+		dev_info->rx_offload_capa |= RTE_ETH_RX_OFFLOAD_VLAN_STRIP;
+	dev_info->tx_queue_offload_capa = RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE;
 	dev_info->tx_offload_capa = BNXT_DEV_TX_OFFLOAD_SUPPORT |
 				    dev_info->tx_queue_offload_capa;
 	if (bp->fw_cap & BNXT_FW_CAP_VLAN_TX_INSERT)
-		dev_info->tx_offload_capa |= DEV_TX_OFFLOAD_VLAN_INSERT;
+		dev_info->tx_offload_capa |= RTE_ETH_TX_OFFLOAD_VLAN_INSERT;
 	dev_info->flow_type_rss_offloads = BNXT_ETH_RSS_SUPPORT;
 
 	dev_info->speed_capa = bnxt_get_speed_capabilities(bp);
@@ -1049,8 +1049,8 @@ static int bnxt_dev_info_get_op(struct rte_eth_dev *eth_dev,
 	 */
 
 	/* VMDq resources */
-	vpool = 64; /* ETH_64_POOLS */
-	vrxq = 128; /* ETH_VMDQ_DCB_NUM_QUEUES */
+	vpool = 64; /* RTE_ETH_64_POOLS */
+	vrxq = 128; /* RTE_ETH_VMDQ_DCB_NUM_QUEUES */
 	for (i = 0; i < 4; vpool >>= 1, i++) {
 		if (max_vnics > vpool) {
 			for (j = 0; j < 5; vrxq >>= 1, j++) {
@@ -1145,15 +1145,15 @@ static int bnxt_dev_configure_op(struct rte_eth_dev *eth_dev)
 	    (uint32_t)(eth_dev->data->nb_rx_queues) > bp->max_ring_grps)
 		goto resource_error;
 
-	if (!(eth_dev->data->dev_conf.rxmode.mq_mode & ETH_MQ_RX_RSS) &&
+	if (!(eth_dev->data->dev_conf.rxmode.mq_mode & RTE_ETH_MQ_RX_RSS) &&
 	    bp->max_vnics < eth_dev->data->nb_rx_queues)
 		goto resource_error;
 
 	bp->rx_cp_nr_rings = bp->rx_nr_rings;
 	bp->tx_cp_nr_rings = bp->tx_nr_rings;
 
-	if (eth_dev->data->dev_conf.rxmode.mq_mode & ETH_MQ_RX_RSS_FLAG)
-		rx_offloads |= DEV_RX_OFFLOAD_RSS_HASH;
+	if (eth_dev->data->dev_conf.rxmode.mq_mode & RTE_ETH_MQ_RX_RSS_FLAG)
+		rx_offloads |= RTE_ETH_RX_OFFLOAD_RSS_HASH;
 	eth_dev->data->dev_conf.rxmode.offloads = rx_offloads;
 
 	bnxt_mtu_set_op(eth_dev, eth_dev->data->mtu);
@@ -1182,7 +1182,7 @@ void bnxt_print_link_info(struct rte_eth_dev *eth_dev)
 		PMD_DRV_LOG(INFO, "Port %d Link Up - speed %u Mbps - %s\n",
 			eth_dev->data->port_id,
 			(uint32_t)link->link_speed,
-			(link->link_duplex == ETH_LINK_FULL_DUPLEX) ?
+			(link->link_duplex == RTE_ETH_LINK_FULL_DUPLEX) ?
 			("full-duplex") : ("half-duplex\n"));
 	else
 		PMD_DRV_LOG(INFO, "Port %d Link Down\n",
@@ -1199,10 +1199,10 @@ static int bnxt_scattered_rx(struct rte_eth_dev *eth_dev)
 	uint16_t buf_size;
 	int i;
 
-	if (eth_dev->data->dev_conf.rxmode.offloads & DEV_RX_OFFLOAD_SCATTER)
+	if (eth_dev->data->dev_conf.rxmode.offloads & RTE_ETH_RX_OFFLOAD_SCATTER)
 		return 1;
 
-	if (eth_dev->data->dev_conf.rxmode.offloads & DEV_RX_OFFLOAD_TCP_LRO)
+	if (eth_dev->data->dev_conf.rxmode.offloads & RTE_ETH_RX_OFFLOAD_TCP_LRO)
 		return 1;
 
 	for (i = 0; i < eth_dev->data->nb_rx_queues; i++) {
@@ -1247,15 +1247,15 @@ bnxt_receive_function(struct rte_eth_dev *eth_dev)
 	 * a limited subset have been enabled.
 	 */
 	if (eth_dev->data->dev_conf.rxmode.offloads &
-		~(DEV_RX_OFFLOAD_VLAN_STRIP |
-		  DEV_RX_OFFLOAD_KEEP_CRC |
-		  DEV_RX_OFFLOAD_IPV4_CKSUM |
-		  DEV_RX_OFFLOAD_UDP_CKSUM |
-		  DEV_RX_OFFLOAD_TCP_CKSUM |
-		  DEV_RX_OFFLOAD_OUTER_IPV4_CKSUM |
-		  DEV_RX_OFFLOAD_OUTER_UDP_CKSUM |
-		  DEV_RX_OFFLOAD_RSS_HASH |
-		  DEV_RX_OFFLOAD_VLAN_FILTER))
+		~(RTE_ETH_RX_OFFLOAD_VLAN_STRIP |
+		  RTE_ETH_RX_OFFLOAD_KEEP_CRC |
+		  RTE_ETH_RX_OFFLOAD_IPV4_CKSUM |
+		  RTE_ETH_RX_OFFLOAD_UDP_CKSUM |
+		  RTE_ETH_RX_OFFLOAD_TCP_CKSUM |
+		  RTE_ETH_RX_OFFLOAD_OUTER_IPV4_CKSUM |
+		  RTE_ETH_RX_OFFLOAD_OUTER_UDP_CKSUM |
+		  RTE_ETH_RX_OFFLOAD_RSS_HASH |
+		  RTE_ETH_RX_OFFLOAD_VLAN_FILTER))
 		goto use_scalar_rx;
 
 #if defined(RTE_ARCH_X86) && defined(CC_AVX2_SUPPORT)
@@ -1307,7 +1307,7 @@ bnxt_transmit_function(struct rte_eth_dev *eth_dev)
 	 * or tx offloads.
 	 */
 	if (eth_dev->data->scattered_rx ||
-	    (offloads & ~DEV_TX_OFFLOAD_MBUF_FAST_FREE) ||
+	    (offloads & ~RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE) ||
 	    BNXT_TRUFLOW_EN(bp))
 		goto use_scalar_tx;
 
@@ -1608,10 +1608,10 @@ static int bnxt_dev_start_op(struct rte_eth_dev *eth_dev)
 
 	bnxt_link_update_op(eth_dev, 1);
 
-	if (rx_offloads & DEV_RX_OFFLOAD_VLAN_FILTER)
-		vlan_mask |= ETH_VLAN_FILTER_MASK;
-	if (rx_offloads & DEV_RX_OFFLOAD_VLAN_STRIP)
-		vlan_mask |= ETH_VLAN_STRIP_MASK;
+	if (rx_offloads & RTE_ETH_RX_OFFLOAD_VLAN_FILTER)
+		vlan_mask |= RTE_ETH_VLAN_FILTER_MASK;
+	if (rx_offloads & RTE_ETH_RX_OFFLOAD_VLAN_STRIP)
+		vlan_mask |= RTE_ETH_VLAN_STRIP_MASK;
 	rc = bnxt_vlan_offload_set_op(eth_dev, vlan_mask);
 	if (rc)
 		goto error;
@@ -1833,8 +1833,8 @@ int bnxt_link_update_op(struct rte_eth_dev *eth_dev, int wait_to_complete)
 		/* Retrieve link info from hardware */
 		rc = bnxt_get_hwrm_link_config(bp, &new);
 		if (rc) {
-			new.link_speed = ETH_LINK_SPEED_100M;
-			new.link_duplex = ETH_LINK_FULL_DUPLEX;
+			new.link_speed = RTE_ETH_LINK_SPEED_100M;
+			new.link_duplex = RTE_ETH_LINK_FULL_DUPLEX;
 			PMD_DRV_LOG(ERR,
 				"Failed to retrieve link rc = 0x%x!\n", rc);
 			goto out;
@@ -2028,7 +2028,7 @@ static int bnxt_reta_update_op(struct rte_eth_dev *eth_dev,
 	if (!vnic->rss_table)
 		return -EINVAL;
 
-	if (!(dev_conf->rxmode.mq_mode & ETH_MQ_RX_RSS_FLAG))
+	if (!(dev_conf->rxmode.mq_mode & RTE_ETH_MQ_RX_RSS_FLAG))
 		return -EINVAL;
 
 	if (reta_size != tbl_size) {
@@ -2041,8 +2041,8 @@ static int bnxt_reta_update_op(struct rte_eth_dev *eth_dev,
 	for (i = 0; i < reta_size; i++) {
 		struct bnxt_rx_queue *rxq;
 
-		idx = i / RTE_RETA_GROUP_SIZE;
-		sft = i % RTE_RETA_GROUP_SIZE;
+		idx = i / RTE_ETH_RETA_GROUP_SIZE;
+		sft = i % RTE_ETH_RETA_GROUP_SIZE;
 
 		if (!(reta_conf[idx].mask & (1ULL << sft)))
 			continue;
@@ -2095,8 +2095,8 @@ static int bnxt_reta_query_op(struct rte_eth_dev *eth_dev,
 	}
 
 	for (idx = 0, i = 0; i < reta_size; i++) {
-		idx = i / RTE_RETA_GROUP_SIZE;
-		sft = i % RTE_RETA_GROUP_SIZE;
+		idx = i / RTE_ETH_RETA_GROUP_SIZE;
+		sft = i % RTE_ETH_RETA_GROUP_SIZE;
 
 		if (reta_conf[idx].mask & (1ULL << sft)) {
 			uint16_t qid;
@@ -2134,7 +2134,7 @@ static int bnxt_rss_hash_update_op(struct rte_eth_dev *eth_dev,
 	 * If RSS enablement were different than dev_configure,
 	 * then return -EINVAL
 	 */
-	if (dev_conf->rxmode.mq_mode & ETH_MQ_RX_RSS_FLAG) {
+	if (dev_conf->rxmode.mq_mode & RTE_ETH_MQ_RX_RSS_FLAG) {
 		if (!rss_conf->rss_hf)
 			PMD_DRV_LOG(ERR, "Hash type NONE\n");
 	} else {
@@ -2152,7 +2152,7 @@ static int bnxt_rss_hash_update_op(struct rte_eth_dev *eth_dev,
 	vnic->hash_type = bnxt_rte_to_hwrm_hash_types(rss_conf->rss_hf);
 	vnic->hash_mode =
 		bnxt_rte_to_hwrm_hash_level(bp, rss_conf->rss_hf,
-					    ETH_RSS_LEVEL(rss_conf->rss_hf));
+					    RTE_ETH_RSS_LEVEL(rss_conf->rss_hf));
 
 	/*
 	 * If hashkey is not specified, use the previously configured
@@ -2197,30 +2197,30 @@ static int bnxt_rss_hash_conf_get_op(struct rte_eth_dev *eth_dev,
 		hash_types = vnic->hash_type;
 		rss_conf->rss_hf = 0;
 		if (hash_types & HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_IPV4) {
-			rss_conf->rss_hf |= ETH_RSS_IPV4;
+			rss_conf->rss_hf |= RTE_ETH_RSS_IPV4;
 			hash_types &= ~HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_IPV4;
 		}
 		if (hash_types & HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_TCP_IPV4) {
-			rss_conf->rss_hf |= ETH_RSS_NONFRAG_IPV4_TCP;
+			rss_conf->rss_hf |= RTE_ETH_RSS_NONFRAG_IPV4_TCP;
 			hash_types &=
 				~HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_TCP_IPV4;
 		}
 		if (hash_types & HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_UDP_IPV4) {
-			rss_conf->rss_hf |= ETH_RSS_NONFRAG_IPV4_UDP;
+			rss_conf->rss_hf |= RTE_ETH_RSS_NONFRAG_IPV4_UDP;
 			hash_types &=
 				~HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_UDP_IPV4;
 		}
 		if (hash_types & HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_IPV6) {
-			rss_conf->rss_hf |= ETH_RSS_IPV6;
+			rss_conf->rss_hf |= RTE_ETH_RSS_IPV6;
 			hash_types &= ~HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_IPV6;
 		}
 		if (hash_types & HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_TCP_IPV6) {
-			rss_conf->rss_hf |= ETH_RSS_NONFRAG_IPV6_TCP;
+			rss_conf->rss_hf |= RTE_ETH_RSS_NONFRAG_IPV6_TCP;
 			hash_types &=
 				~HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_TCP_IPV6;
 		}
 		if (hash_types & HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_UDP_IPV6) {
-			rss_conf->rss_hf |= ETH_RSS_NONFRAG_IPV6_UDP;
+			rss_conf->rss_hf |= RTE_ETH_RSS_NONFRAG_IPV6_UDP;
 			hash_types &=
 				~HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_UDP_IPV6;
 		}
@@ -2260,17 +2260,17 @@ static int bnxt_flow_ctrl_get_op(struct rte_eth_dev *dev,
 		fc_conf->autoneg = 1;
 	switch (bp->link_info->pause) {
 	case 0:
-		fc_conf->mode = RTE_FC_NONE;
+		fc_conf->mode = RTE_ETH_FC_NONE;
 		break;
 	case HWRM_PORT_PHY_QCFG_OUTPUT_PAUSE_TX:
-		fc_conf->mode = RTE_FC_TX_PAUSE;
+		fc_conf->mode = RTE_ETH_FC_TX_PAUSE;
 		break;
 	case HWRM_PORT_PHY_QCFG_OUTPUT_PAUSE_RX:
-		fc_conf->mode = RTE_FC_RX_PAUSE;
+		fc_conf->mode = RTE_ETH_FC_RX_PAUSE;
 		break;
 	case (HWRM_PORT_PHY_QCFG_OUTPUT_PAUSE_TX |
 			HWRM_PORT_PHY_QCFG_OUTPUT_PAUSE_RX):
-		fc_conf->mode = RTE_FC_FULL;
+		fc_conf->mode = RTE_ETH_FC_FULL;
 		break;
 	}
 	return 0;
@@ -2293,11 +2293,11 @@ static int bnxt_flow_ctrl_set_op(struct rte_eth_dev *dev,
 	}
 
 	switch (fc_conf->mode) {
-	case RTE_FC_NONE:
+	case RTE_ETH_FC_NONE:
 		bp->link_info->auto_pause = 0;
 		bp->link_info->force_pause = 0;
 		break;
-	case RTE_FC_RX_PAUSE:
+	case RTE_ETH_FC_RX_PAUSE:
 		if (fc_conf->autoneg) {
 			bp->link_info->auto_pause =
 					HWRM_PORT_PHY_CFG_INPUT_AUTO_PAUSE_RX;
@@ -2308,7 +2308,7 @@ static int bnxt_flow_ctrl_set_op(struct rte_eth_dev *dev,
 					HWRM_PORT_PHY_CFG_INPUT_FORCE_PAUSE_RX;
 		}
 		break;
-	case RTE_FC_TX_PAUSE:
+	case RTE_ETH_FC_TX_PAUSE:
 		if (fc_conf->autoneg) {
 			bp->link_info->auto_pause =
 					HWRM_PORT_PHY_CFG_INPUT_AUTO_PAUSE_TX;
@@ -2319,7 +2319,7 @@ static int bnxt_flow_ctrl_set_op(struct rte_eth_dev *dev,
 					HWRM_PORT_PHY_CFG_INPUT_FORCE_PAUSE_TX;
 		}
 		break;
-	case RTE_FC_FULL:
+	case RTE_ETH_FC_FULL:
 		if (fc_conf->autoneg) {
 			bp->link_info->auto_pause =
 					HWRM_PORT_PHY_CFG_INPUT_AUTO_PAUSE_TX |
@@ -2350,7 +2350,7 @@ bnxt_udp_tunnel_port_add_op(struct rte_eth_dev *eth_dev,
 		return rc;
 
 	switch (udp_tunnel->prot_type) {
-	case RTE_TUNNEL_TYPE_VXLAN:
+	case RTE_ETH_TUNNEL_TYPE_VXLAN:
 		if (bp->vxlan_port_cnt) {
 			PMD_DRV_LOG(ERR, "Tunnel Port %d already programmed\n",
 				udp_tunnel->udp_port);
@@ -2364,7 +2364,7 @@ bnxt_udp_tunnel_port_add_op(struct rte_eth_dev *eth_dev,
 		tunnel_type =
 			HWRM_TUNNEL_DST_PORT_ALLOC_INPUT_TUNNEL_TYPE_VXLAN;
 		break;
-	case RTE_TUNNEL_TYPE_GENEVE:
+	case RTE_ETH_TUNNEL_TYPE_GENEVE:
 		if (bp->geneve_port_cnt) {
 			PMD_DRV_LOG(ERR, "Tunnel Port %d already programmed\n",
 				udp_tunnel->udp_port);
@@ -2413,7 +2413,7 @@ bnxt_udp_tunnel_port_del_op(struct rte_eth_dev *eth_dev,
 		return rc;
 
 	switch (udp_tunnel->prot_type) {
-	case RTE_TUNNEL_TYPE_VXLAN:
+	case RTE_ETH_TUNNEL_TYPE_VXLAN:
 		if (!bp->vxlan_port_cnt) {
 			PMD_DRV_LOG(ERR, "No Tunnel port configured yet\n");
 			return -EINVAL;
@@ -2430,7 +2430,7 @@ bnxt_udp_tunnel_port_del_op(struct rte_eth_dev *eth_dev,
 			HWRM_TUNNEL_DST_PORT_FREE_INPUT_TUNNEL_TYPE_VXLAN;
 		port = bp->vxlan_fw_dst_port_id;
 		break;
-	case RTE_TUNNEL_TYPE_GENEVE:
+	case RTE_ETH_TUNNEL_TYPE_GENEVE:
 		if (!bp->geneve_port_cnt) {
 			PMD_DRV_LOG(ERR, "No Tunnel port configured yet\n");
 			return -EINVAL;
@@ -2608,7 +2608,7 @@ bnxt_config_vlan_hw_filter(struct bnxt *bp, uint64_t rx_offloads)
 	int rc;
 
 	vnic = BNXT_GET_DEFAULT_VNIC(bp);
-	if (!(rx_offloads & DEV_RX_OFFLOAD_VLAN_FILTER)) {
+	if (!(rx_offloads & RTE_ETH_RX_OFFLOAD_VLAN_FILTER)) {
 		/* Remove any VLAN filters programmed */
 		for (i = 0; i < RTE_ETHER_MAX_VLAN_ID; i++)
 			bnxt_del_vlan_filter(bp, i);
@@ -2628,7 +2628,7 @@ bnxt_config_vlan_hw_filter(struct bnxt *bp, uint64_t rx_offloads)
 		bnxt_add_vlan_filter(bp, 0);
 	}
 	PMD_DRV_LOG(DEBUG, "VLAN Filtering: %d\n",
-		    !!(rx_offloads & DEV_RX_OFFLOAD_VLAN_FILTER));
+		    !!(rx_offloads & RTE_ETH_RX_OFFLOAD_VLAN_FILTER));
 
 	return 0;
 }
@@ -2641,7 +2641,7 @@ static int bnxt_free_one_vnic(struct bnxt *bp, uint16_t vnic_id)
 
 	/* Destroy vnic filters and vnic */
 	if (bp->eth_dev->data->dev_conf.rxmode.offloads &
-	    DEV_RX_OFFLOAD_VLAN_FILTER) {
+	    RTE_ETH_RX_OFFLOAD_VLAN_FILTER) {
 		for (i = 0; i < RTE_ETHER_MAX_VLAN_ID; i++)
 			bnxt_del_vlan_filter(bp, i);
 	}
@@ -2680,7 +2680,7 @@ bnxt_config_vlan_hw_stripping(struct bnxt *bp, uint64_t rx_offloads)
 		return rc;
 
 	if (bp->eth_dev->data->dev_conf.rxmode.offloads &
-	    DEV_RX_OFFLOAD_VLAN_FILTER) {
+	    RTE_ETH_RX_OFFLOAD_VLAN_FILTER) {
 		rc = bnxt_add_vlan_filter(bp, 0);
 		if (rc)
 			return rc;
@@ -2698,7 +2698,7 @@ bnxt_config_vlan_hw_stripping(struct bnxt *bp, uint64_t rx_offloads)
 		return rc;
 
 	PMD_DRV_LOG(DEBUG, "VLAN Strip Offload: %d\n",
-		    !!(rx_offloads & DEV_RX_OFFLOAD_VLAN_STRIP));
+		    !!(rx_offloads & RTE_ETH_RX_OFFLOAD_VLAN_STRIP));
 
 	return rc;
 }
@@ -2718,22 +2718,22 @@ bnxt_vlan_offload_set_op(struct rte_eth_dev *dev, int mask)
 	if (!dev->data->dev_started)
 		return 0;
 
-	if (mask & ETH_VLAN_FILTER_MASK) {
+	if (mask & RTE_ETH_VLAN_FILTER_MASK) {
 		/* Enable or disable VLAN filtering */
 		rc = bnxt_config_vlan_hw_filter(bp, rx_offloads);
 		if (rc)
 			return rc;
 	}
 
-	if (mask & ETH_VLAN_STRIP_MASK) {
+	if (mask & RTE_ETH_VLAN_STRIP_MASK) {
 		/* Enable or disable VLAN stripping */
 		rc = bnxt_config_vlan_hw_stripping(bp, rx_offloads);
 		if (rc)
 			return rc;
 	}
 
-	if (mask & ETH_VLAN_EXTEND_MASK) {
-		if (rx_offloads & DEV_RX_OFFLOAD_VLAN_EXTEND)
+	if (mask & RTE_ETH_VLAN_EXTEND_MASK) {
+		if (rx_offloads & RTE_ETH_RX_OFFLOAD_VLAN_EXTEND)
 			PMD_DRV_LOG(DEBUG, "Extend VLAN supported\n");
 		else
 			PMD_DRV_LOG(INFO, "Extend VLAN unsupported\n");
@@ -2748,10 +2748,10 @@ bnxt_vlan_tpid_set_op(struct rte_eth_dev *dev, enum rte_vlan_type vlan_type,
 {
 	struct bnxt *bp = dev->data->dev_private;
 	int qinq = dev->data->dev_conf.rxmode.offloads &
-		   DEV_RX_OFFLOAD_VLAN_EXTEND;
+		   RTE_ETH_RX_OFFLOAD_VLAN_EXTEND;
 
-	if (vlan_type != ETH_VLAN_TYPE_INNER &&
-	    vlan_type != ETH_VLAN_TYPE_OUTER) {
+	if (vlan_type != RTE_ETH_VLAN_TYPE_INNER &&
+	    vlan_type != RTE_ETH_VLAN_TYPE_OUTER) {
 		PMD_DRV_LOG(ERR,
 			    "Unsupported vlan type.");
 		return -EINVAL;
@@ -2763,7 +2763,7 @@ bnxt_vlan_tpid_set_op(struct rte_eth_dev *dev, enum rte_vlan_type vlan_type,
 		return -EINVAL;
 	}
 
-	if (vlan_type == ETH_VLAN_TYPE_OUTER) {
+	if (vlan_type == RTE_ETH_VLAN_TYPE_OUTER) {
 		switch (tpid) {
 		case RTE_ETHER_TYPE_QINQ:
 			bp->outer_tpid_bd =
@@ -2791,7 +2791,7 @@ bnxt_vlan_tpid_set_op(struct rte_eth_dev *dev, enum rte_vlan_type vlan_type,
 		}
 		bp->outer_tpid_bd |= tpid;
 		PMD_DRV_LOG(INFO, "outer_tpid_bd = %x\n", bp->outer_tpid_bd);
-	} else if (vlan_type == ETH_VLAN_TYPE_INNER) {
+	} else if (vlan_type == RTE_ETH_VLAN_TYPE_INNER) {
 		PMD_DRV_LOG(ERR,
 			    "Can accelerate only outer vlan in QinQ\n");
 		return -EINVAL;
@@ -2831,7 +2831,7 @@ bnxt_set_default_mac_addr_op(struct rte_eth_dev *dev,
 	bnxt_del_dflt_mac_filter(bp, vnic);
 
 	memcpy(bp->mac_addr, addr, RTE_ETHER_ADDR_LEN);
-	if (dev->data->dev_conf.rxmode.offloads & DEV_RX_OFFLOAD_VLAN_FILTER) {
+	if (dev->data->dev_conf.rxmode.offloads & RTE_ETH_RX_OFFLOAD_VLAN_FILTER) {
 		/* This filter will allow only untagged packets */
 		rc = bnxt_add_vlan_filter(bp, 0);
 	} else {
@@ -6556,4 +6556,4 @@ bool is_bnxt_supported(struct rte_eth_dev *dev)
 RTE_LOG_REGISTER_SUFFIX(bnxt_logtype_driver, driver, NOTICE);
 RTE_PMD_REGISTER_PCI(net_bnxt, bnxt_rte_pmd);
 RTE_PMD_REGISTER_PCI_TABLE(net_bnxt, bnxt_pci_id_map);
-RTE_PMD_REGISTER_KMOD_DEP(net_bnxt, "* igb_uio | uio_pci_generic | vfio-pci");
+

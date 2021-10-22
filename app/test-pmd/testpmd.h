@@ -493,7 +493,7 @@ extern lcoreid_t bitrate_lcore_id;
 extern uint8_t bitrate_enabled;
 #endif
 
-extern struct rte_fdir_conf fdir_conf;
+extern struct rte_eth_fdir_conf fdir_conf;
 
 extern uint32_t max_rx_pkt_len;
 

@@ -69,7 +69,7 @@ npc_rss_action_validate(struct rte_eth_dev *eth_dev,
 		return -EINVAL;
 	}
 
-	if (eth_dev->data->dev_conf.rxmode.mq_mode != ETH_MQ_RX_RSS) {
+	if (eth_dev->data->dev_conf.rxmode.mq_mode != RTE_ETH_MQ_RX_RSS) {
 		plt_err("multi-queue mode is disabled");
 		return -ENOTSUP;
 	}

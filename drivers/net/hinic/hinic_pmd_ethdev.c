@@ -311,8 +311,8 @@ static int hinic_dev_configure(struct rte_eth_dev *dev)
 		return -EINVAL;
 	}
 
-	if (dev->data->dev_conf.rxmode.mq_mode & ETH_MQ_RX_RSS_FLAG)
-		dev->data->dev_conf.rxmode.offloads |= DEV_RX_OFFLOAD_RSS_HASH;
+	if (dev->data->dev_conf.rxmode.mq_mode & RTE_ETH_MQ_RX_RSS_FLAG)
+		dev->data->dev_conf.rxmode.offloads |= RTE_ETH_RX_OFFLOAD_RSS_HASH;
 
 	/* mtu size is 256~9600 */
 	if (HINIC_MTU_TO_PKTLEN(dev->data->dev_conf.rxmode.mtu) <
@@ -338,7 +338,7 @@ static int hinic_dev_configure(struct rte_eth_dev *dev)
 
 	/* init vlan offoad */
 	err = hinic_vlan_offload_set(dev,
-				ETH_VLAN_STRIP_MASK | ETH_VLAN_FILTER_MASK);
+				RTE_ETH_VLAN_STRIP_MASK | RTE_ETH_VLAN_FILTER_MASK);
 	if (err) {
 		PMD_DRV_LOG(ERR, "Initialize vlan filter and strip failed");
 		(void)hinic_config_mq_mode(dev, FALSE);
@@ -696,15 +696,15 @@ static void hinic_get_speed_capa(struct rte_eth_dev *dev, uint32_t *speed_capa)
 	} else {
 		*speed_capa = 0;
 		if (!!(supported_link & HINIC_LINK_MODE_SUPPORT_1G))
-			*speed_capa |= ETH_LINK_SPEED_1G;
+			*speed_capa |= RTE_ETH_LINK_SPEED_1G;
 		if (!!(supported_link & HINIC_LINK_MODE_SUPPORT_10G))
-			*speed_capa |= ETH_LINK_SPEED_10G;
+			*speed_capa |= RTE_ETH_LINK_SPEED_10G;
 		if (!!(supported_link & HINIC_LINK_MODE_SUPPORT_25G))
-			*speed_capa |= ETH_LINK_SPEED_25G;
+			*speed_capa |= RTE_ETH_LINK_SPEED_25G;
 		if (!!(supported_link & HINIC_LINK_MODE_SUPPORT_40G))
-			*speed_capa |= ETH_LINK_SPEED_40G;
+			*speed_capa |= RTE_ETH_LINK_SPEED_40G;
 		if (!!(supported_link & HINIC_LINK_MODE_SUPPORT_100G))
-			*speed_capa |= ETH_LINK_SPEED_100G;
+			*speed_capa |= RTE_ETH_LINK_SPEED_100G;
 	}
 }
 
@@ -732,24 +732,24 @@ hinic_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *info)
 
 	hinic_get_speed_capa(dev, &info->speed_capa);
 	info->rx_queue_offload_capa = 0;
-	info->rx_offload_capa = DEV_RX_OFFLOAD_VLAN_STRIP |
-				DEV_RX_OFFLOAD_IPV4_CKSUM |
-				DEV_RX_OFFLOAD_UDP_CKSUM |
-				DEV_RX_OFFLOAD_TCP_CKSUM |
-				DEV_RX_OFFLOAD_VLAN_FILTER |
-				DEV_RX_OFFLOAD_SCATTER |
-				DEV_RX_OFFLOAD_TCP_LRO |
-				DEV_RX_OFFLOAD_RSS_HASH;
+	info->rx_offload_capa = RTE_ETH_RX_OFFLOAD_VLAN_STRIP |
+				RTE_ETH_RX_OFFLOAD_IPV4_CKSUM |
+				RTE_ETH_RX_OFFLOAD_UDP_CKSUM |
+				RTE_ETH_RX_OFFLOAD_TCP_CKSUM |
+				RTE_ETH_RX_OFFLOAD_VLAN_FILTER |
+				RTE_ETH_RX_OFFLOAD_SCATTER |
+				RTE_ETH_RX_OFFLOAD_TCP_LRO |
+				RTE_ETH_RX_OFFLOAD_RSS_HASH;
 
 	info->tx_queue_offload_capa = 0;
-	info->tx_offload_capa = DEV_TX_OFFLOAD_VLAN_INSERT |
-				DEV_TX_OFFLOAD_IPV4_CKSUM |
-				DEV_TX_OFFLOAD_UDP_CKSUM |
-				DEV_TX_OFFLOAD_TCP_CKSUM |
-				DEV_TX_OFFLOAD_SCTP_CKSUM |
-				DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM |
-				DEV_TX_OFFLOAD_TCP_TSO |
-				DEV_TX_OFFLOAD_MULTI_SEGS;
+	info->tx_offload_capa = RTE_ETH_TX_OFFLOAD_VLAN_INSERT |
+				RTE_ETH_TX_OFFLOAD_IPV4_CKSUM |
+				RTE_ETH_TX_OFFLOAD_UDP_CKSUM |
+				RTE_ETH_TX_OFFLOAD_TCP_CKSUM |
+				RTE_ETH_TX_OFFLOAD_SCTP_CKSUM |
+				RTE_ETH_TX_OFFLOAD_OUTER_IPV4_CKSUM |
+				RTE_ETH_TX_OFFLOAD_TCP_TSO |
+				RTE_ETH_TX_OFFLOAD_MULTI_SEGS;
 
 	info->hash_key_size = HINIC_RSS_KEY_SIZE;
 	info->reta_size = HINIC_RSS_INDIR_SIZE;
@@ -846,20 +846,20 @@ static int hinic_priv_get_dev_link_status(struct hinic_nic_dev *nic_dev,
 	u8 port_link_status = 0;
 	struct nic_port_info port_link_info;
 	struct hinic_hwdev *nic_hwdev = nic_dev->hwdev;
-	uint32_t port_speed[LINK_SPEED_MAX] = {ETH_SPEED_NUM_10M,
-					ETH_SPEED_NUM_100M, ETH_SPEED_NUM_1G,
-					ETH_SPEED_NUM_10G, ETH_SPEED_NUM_25G,
-					ETH_SPEED_NUM_40G, ETH_SPEED_NUM_100G};
+	uint32_t port_speed[LINK_SPEED_MAX] = {RTE_ETH_SPEED_NUM_10M,
+					RTE_ETH_SPEED_NUM_100M, RTE_ETH_SPEED_NUM_1G,
+					RTE_ETH_SPEED_NUM_10G, RTE_ETH_SPEED_NUM_25G,
+					RTE_ETH_SPEED_NUM_40G, RTE_ETH_SPEED_NUM_100G};
 
 	rc = hinic_get_link_status(nic_hwdev, &port_link_status);
 	if (rc)
 		return rc;
 
 	if (!port_link_status) {
-		link->link_status = ETH_LINK_DOWN;
+		link->link_status = RTE_ETH_LINK_DOWN;
 		link->link_speed = 0;
-		link->link_duplex = ETH_LINK_HALF_DUPLEX;
-		link->link_autoneg = ETH_LINK_FIXED;
+		link->link_duplex = RTE_ETH_LINK_HALF_DUPLEX;
+		link->link_autoneg = RTE_ETH_LINK_FIXED;
 		return HINIC_OK;
 	}
 
@@ -901,8 +901,8 @@ static int hinic_link_update(struct rte_eth_dev *dev, int wait_to_complete)
 		/* Get link status information from hardware */
 		rc = hinic_priv_get_dev_link_status(nic_dev, &link);
 		if (rc != HINIC_OK) {
-			link.link_speed = ETH_SPEED_NUM_NONE;
-			link.link_duplex = ETH_LINK_FULL_DUPLEX;
+			link.link_speed = RTE_ETH_SPEED_NUM_NONE;
+			link.link_duplex = RTE_ETH_LINK_FULL_DUPLEX;
 			PMD_DRV_LOG(ERR, "Get link status failed");
 			goto out;
 		}
@@ -1650,8 +1650,8 @@ static int hinic_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 	int err;
 
 	/* Enable or disable VLAN filter */
-	if (mask & ETH_VLAN_FILTER_MASK) {
-		on = (rxmode->offloads & DEV_RX_OFFLOAD_VLAN_FILTER) ?
+	if (mask & RTE_ETH_VLAN_FILTER_MASK) {
+		on = (rxmode->offloads & RTE_ETH_RX_OFFLOAD_VLAN_FILTER) ?
 			TRUE : FALSE;
 		err = hinic_config_vlan_filter(nic_dev->hwdev, on);
 		if (err == HINIC_MGMT_CMD_UNSUPPORTED) {
@@ -1672,8 +1672,8 @@ static int hinic_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 	}
 
 	/* Enable or disable VLAN stripping */
-	if (mask & ETH_VLAN_STRIP_MASK) {
-		on = (rxmode->offloads & DEV_RX_OFFLOAD_VLAN_STRIP) ?
+	if (mask & RTE_ETH_VLAN_STRIP_MASK) {
+		on = (rxmode->offloads & RTE_ETH_RX_OFFLOAD_VLAN_STRIP) ?
 			TRUE : FALSE;
 		err = hinic_set_rx_vlan_offload(nic_dev->hwdev, on);
 		if (err) {
@@ -1859,13 +1859,13 @@ static int hinic_flow_ctrl_get(struct rte_eth_dev *dev,
 	fc_conf->autoneg = nic_pause.auto_neg;
 
 	if (nic_pause.tx_pause && nic_pause.rx_pause)
-		fc_conf->mode = RTE_FC_FULL;
+		fc_conf->mode = RTE_ETH_FC_FULL;
 	else if (nic_pause.tx_pause)
-		fc_conf->mode = RTE_FC_TX_PAUSE;
+		fc_conf->mode = RTE_ETH_FC_TX_PAUSE;
 	else if (nic_pause.rx_pause)
-		fc_conf->mode = RTE_FC_RX_PAUSE;
+		fc_conf->mode = RTE_ETH_FC_RX_PAUSE;
 	else
-		fc_conf->mode = RTE_FC_NONE;
+		fc_conf->mode = RTE_ETH_FC_NONE;
 
 	return 0;
 }
@@ -1879,14 +1879,14 @@ static int hinic_flow_ctrl_set(struct rte_eth_dev *dev,
 
 	nic_pause.auto_neg = fc_conf->autoneg;
 
-	if (((fc_conf->mode & RTE_FC_FULL) == RTE_FC_FULL) ||
-		(fc_conf->mode & RTE_FC_TX_PAUSE))
+	if (((fc_conf->mode & RTE_ETH_FC_FULL) == RTE_ETH_FC_FULL) ||
+		(fc_conf->mode & RTE_ETH_FC_TX_PAUSE))
 		nic_pause.tx_pause = true;
 	else
 		nic_pause.tx_pause = false;
 
-	if (((fc_conf->mode & RTE_FC_FULL) == RTE_FC_FULL) ||
-		(fc_conf->mode & RTE_FC_RX_PAUSE))
+	if (((fc_conf->mode & RTE_ETH_FC_FULL) == RTE_ETH_FC_FULL) ||
+		(fc_conf->mode & RTE_ETH_FC_RX_PAUSE))
 		nic_pause.rx_pause = true;
 	else
 		nic_pause.rx_pause = false;
@@ -1930,7 +1930,7 @@ static int hinic_rss_hash_update(struct rte_eth_dev *dev,
 	struct nic_rss_type rss_type = {0};
 	int err = 0;
 
-	if (!(nic_dev->flags & ETH_MQ_RX_RSS_FLAG)) {
+	if (!(nic_dev->flags & RTE_ETH_MQ_RX_RSS_FLAG)) {
 		PMD_DRV_LOG(WARNING, "RSS is not enabled");
 		return HINIC_OK;
 	}
@@ -1951,14 +1951,14 @@ static int hinic_rss_hash_update(struct rte_eth_dev *dev,
 		}
 	}
 
-	rss_type.ipv4 = (rss_hf & (ETH_RSS_IPV4 | ETH_RSS_FRAG_IPV4)) ? 1 : 0;
-	rss_type.tcp_ipv4 = (rss_hf & ETH_RSS_NONFRAG_IPV4_TCP) ? 1 : 0;
-	rss_type.ipv6 = (rss_hf & (ETH_RSS_IPV6 | ETH_RSS_FRAG_IPV6)) ? 1 : 0;
-	rss_type.ipv6_ext = (rss_hf & ETH_RSS_IPV6_EX) ? 1 : 0;
-	rss_type.tcp_ipv6 = (rss_hf & ETH_RSS_NONFRAG_IPV6_TCP) ? 1 : 0;
-	rss_type.tcp_ipv6_ext = (rss_hf & ETH_RSS_IPV6_TCP_EX) ? 1 : 0;
-	rss_type.udp_ipv4 = (rss_hf & ETH_RSS_NONFRAG_IPV4_UDP) ? 1 : 0;
-	rss_type.udp_ipv6 = (rss_hf & ETH_RSS_NONFRAG_IPV6_UDP) ? 1 : 0;
+	rss_type.ipv4 = (rss_hf & (RTE_ETH_RSS_IPV4 | RTE_ETH_RSS_FRAG_IPV4)) ? 1 : 0;
+	rss_type.tcp_ipv4 = (rss_hf & RTE_ETH_RSS_NONFRAG_IPV4_TCP) ? 1 : 0;
+	rss_type.ipv6 = (rss_hf & (RTE_ETH_RSS_IPV6 | RTE_ETH_RSS_FRAG_IPV6)) ? 1 : 0;
+	rss_type.ipv6_ext = (rss_hf & RTE_ETH_RSS_IPV6_EX) ? 1 : 0;
+	rss_type.tcp_ipv6 = (rss_hf & RTE_ETH_RSS_NONFRAG_IPV6_TCP) ? 1 : 0;
+	rss_type.tcp_ipv6_ext = (rss_hf & RTE_ETH_RSS_IPV6_TCP_EX) ? 1 : 0;
+	rss_type.udp_ipv4 = (rss_hf & RTE_ETH_RSS_NONFRAG_IPV4_UDP) ? 1 : 0;
+	rss_type.udp_ipv6 = (rss_hf & RTE_ETH_RSS_NONFRAG_IPV6_UDP) ? 1 : 0;
 
 	err = hinic_set_rss_type(nic_dev->hwdev, tmpl_idx, rss_type);
 	if (err) {
@@ -1994,7 +1994,7 @@ static int hinic_rss_conf_get(struct rte_eth_dev *dev,
 	struct nic_rss_type rss_type = {0};
 	int err;
 
-	if (!(nic_dev->flags & ETH_MQ_RX_RSS_FLAG)) {
+	if (!(nic_dev->flags & RTE_ETH_MQ_RX_RSS_FLAG)) {
 		PMD_DRV_LOG(WARNING, "RSS is not enabled");
 		return HINIC_ERROR;
 	}
@@ -2015,15 +2015,15 @@ static int hinic_rss_conf_get(struct rte_eth_dev *dev,
 
 	rss_conf->rss_hf = 0;
 	rss_conf->rss_hf |=  rss_type.ipv4 ?
-		(ETH_RSS_IPV4 | ETH_RSS_FRAG_IPV4) : 0;
-	rss_conf->rss_hf |=  rss_type.tcp_ipv4 ? ETH_RSS_NONFRAG_IPV4_TCP : 0;
+		(RTE_ETH_RSS_IPV4 | RTE_ETH_RSS_FRAG_IPV4) : 0;
+	rss_conf->rss_hf |=  rss_type.tcp_ipv4 ? RTE_ETH_RSS_NONFRAG_IPV4_TCP : 0;
 	rss_conf->rss_hf |=  rss_type.ipv6 ?
-		(ETH_RSS_IPV6 | ETH_RSS_FRAG_IPV6) : 0;
-	rss_conf->rss_hf |=  rss_type.ipv6_ext ? ETH_RSS_IPV6_EX : 0;
-	rss_conf->rss_hf |=  rss_type.tcp_ipv6 ? ETH_RSS_NONFRAG_IPV6_TCP : 0;
-	rss_conf->rss_hf |=  rss_type.tcp_ipv6_ext ? ETH_RSS_IPV6_TCP_EX : 0;
-	rss_conf->rss_hf |=  rss_type.udp_ipv4 ? ETH_RSS_NONFRAG_IPV4_UDP : 0;
-	rss_conf->rss_hf |=  rss_type.udp_ipv6 ? ETH_RSS_NONFRAG_IPV6_UDP : 0;
+		(RTE_ETH_RSS_IPV6 | RTE_ETH_RSS_FRAG_IPV6) : 0;
+	rss_conf->rss_hf |=  rss_type.ipv6_ext ? RTE_ETH_RSS_IPV6_EX : 0;
+	rss_conf->rss_hf |=  rss_type.tcp_ipv6 ? RTE_ETH_RSS_NONFRAG_IPV6_TCP : 0;
+	rss_conf->rss_hf |=  rss_type.tcp_ipv6_ext ? RTE_ETH_RSS_IPV6_TCP_EX : 0;
+	rss_conf->rss_hf |=  rss_type.udp_ipv4 ? RTE_ETH_RSS_NONFRAG_IPV4_UDP : 0;
+	rss_conf->rss_hf |=  rss_type.udp_ipv6 ? RTE_ETH_RSS_NONFRAG_IPV6_UDP : 0;
 
 	return HINIC_OK;
 }
@@ -2053,7 +2053,7 @@ static int hinic_rss_indirtbl_update(struct rte_eth_dev *dev,
 	u16 i = 0;
 	u16 idx, shift;
 
-	if (!(nic_dev->flags & ETH_MQ_RX_RSS_FLAG))
+	if (!(nic_dev->flags & RTE_ETH_MQ_RX_RSS_FLAG))
 		return HINIC_OK;
 
 	if (reta_size != NIC_RSS_INDIR_SIZE) {
@@ -2067,8 +2067,8 @@ static int hinic_rss_indirtbl_update(struct rte_eth_dev *dev,
 
 	/* update rss indir_tbl */
 	for (i = 0; i < reta_size; i++) {
-		idx = i / RTE_RETA_GROUP_SIZE;
-		shift = i % RTE_RETA_GROUP_SIZE;
+		idx = i / RTE_ETH_RETA_GROUP_SIZE;
+		shift = i % RTE_ETH_RETA_GROUP_SIZE;
 
 		if (reta_conf[idx].reta[shift] >= nic_dev->num_rq) {
 			PMD_DRV_LOG(ERR, "Invalid reta entry, indirtbl[%d]: %d "
@@ -2133,8 +2133,8 @@ static int hinic_rss_indirtbl_query(struct rte_eth_dev *dev,
 	}
 
 	for (i = 0; i < reta_size; i++) {
-		idx = i / RTE_RETA_GROUP_SIZE;
-		shift = i % RTE_RETA_GROUP_SIZE;
+		idx = i / RTE_ETH_RETA_GROUP_SIZE;
+		shift = i % RTE_ETH_RETA_GROUP_SIZE;
 		if (reta_conf[idx].mask & (1ULL << shift))
 			reta_conf[idx].reta[shift] = (uint16_t)indirtbl[i];
 	}

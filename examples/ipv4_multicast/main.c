@@ -114,8 +114,8 @@ static struct rte_eth_conf port_conf = {
 		.split_hdr_size = 0,
 	},
 	.txmode = {
-		.mq_mode = ETH_MQ_TX_NONE,
-		.offloads = DEV_TX_OFFLOAD_MULTI_SEGS,
+		.mq_mode = RTE_ETH_MQ_TX_NONE,
+		.offloads = RTE_ETH_TX_OFFLOAD_MULTI_SEGS,
 	},
 };
 
@@ -619,7 +619,7 @@ check_all_ports_link_status(uint32_t port_mask)
 				continue;
 			}
 			/* clear all_ports_up flag if any link down */
-			if (link.link_status == ETH_LINK_DOWN) {
+			if (link.link_status == RTE_ETH_LINK_DOWN) {
 				all_ports_up = 0;
 				break;
 			}

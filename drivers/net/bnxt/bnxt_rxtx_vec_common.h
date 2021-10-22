@@ -96,7 +96,7 @@ bnxt_rxq_rearm(struct bnxt_rx_queue *rxq, struct bnxt_rx_ring_info *rxr)
 }
 
 /*
- * Transmit completion function for use when DEV_TX_OFFLOAD_MBUF_FAST_FREE
+ * Transmit completion function for use when RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE
  * is enabled.
  */
 static inline void

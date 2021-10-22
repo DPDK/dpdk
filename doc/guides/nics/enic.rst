@@ -432,7 +432,7 @@ Limitations
 .. code-block:: console
 
      vlan_offload = rte_eth_dev_get_vlan_offload(port);
-     vlan_offload |= ETH_VLAN_STRIP_OFFLOAD;
+     vlan_offload |= RTE_ETH_VLAN_STRIP_OFFLOAD;
      rte_eth_dev_set_vlan_offload(port, vlan_offload);
 
 Another alternative is modify the adapter's ingress VLAN rewrite mode so that

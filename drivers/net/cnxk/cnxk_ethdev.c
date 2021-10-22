@@ -10,7 +10,7 @@ nix_get_rx_offload_capa(struct cnxk_eth_dev *dev)
 
 	if (roc_nix_is_vf_or_sdp(&dev->nix) ||
 	    dev->npc.switch_header_type == ROC_PRIV_FLAGS_HIGIG)
-		capa &= ~DEV_RX_OFFLOAD_TIMESTAMP;
+		capa &= ~RTE_ETH_RX_OFFLOAD_TIMESTAMP;
 
 	return capa;
 }
@@ -28,11 +28,11 @@ nix_get_speed_capa(struct cnxk_eth_dev *dev)
 	uint32_t speed_capa;
 
 	/* Auto negotiation disabled */
-	speed_capa = ETH_LINK_SPEED_FIXED;
+	speed_capa = RTE_ETH_LINK_SPEED_FIXED;
 	if (!roc_nix_is_vf_or_sdp(&dev->nix) && !roc_nix_is_lbk(&dev->nix)) {
-		speed_capa |= ETH_LINK_SPEED_1G | ETH_LINK_SPEED_10G |
-			      ETH_LINK_SPEED_25G | ETH_LINK_SPEED_40G |
-			      ETH_LINK_SPEED_50G | ETH_LINK_SPEED_100G;
+		speed_capa |= RTE_ETH_LINK_SPEED_1G | RTE_ETH_LINK_SPEED_10G |
+			      RTE_ETH_LINK_SPEED_25G | RTE_ETH_LINK_SPEED_40G |
+			      RTE_ETH_LINK_SPEED_50G | RTE_ETH_LINK_SPEED_100G;
 	}
 
 	return speed_capa;
@@ -65,7 +65,7 @@ nix_security_setup(struct cnxk_eth_dev *dev)
 	struct roc_nix *nix = &dev->nix;
 	int i, rc = 0;
 
-	if (dev->rx_offloads & DEV_RX_OFFLOAD_SECURITY) {
+	if (dev->rx_offloads & RTE_ETH_RX_OFFLOAD_SECURITY) {
 		/* Setup Inline Inbound */
 		rc = roc_nix_inl_inb_init(nix);
 		if (rc) {
@@ -80,8 +80,8 @@ nix_security_setup(struct cnxk_eth_dev *dev)
 		cnxk_nix_inb_mode_set(dev, true);
 	}
 
-	if (dev->tx_offloads & DEV_TX_OFFLOAD_SECURITY ||
-	    dev->rx_offloads & DEV_RX_OFFLOAD_SECURITY) {
+	if (dev->tx_offloads & RTE_ETH_TX_OFFLOAD_SECURITY ||
+	    dev->rx_offloads & RTE_ETH_RX_OFFLOAD_SECURITY) {
 		struct plt_bitmap *bmap;
 		size_t bmap_sz;
 		void *mem;
@@ -100,8 +100,8 @@ nix_security_setup(struct cnxk_eth_dev *dev)
 
 		dev->outb.lf_base = roc_nix_inl_outb_lf_base_get(nix);
 
-		/* Skip the rest if DEV_TX_OFFLOAD_SECURITY is not enabled */
-		if (!(dev->tx_offloads & DEV_TX_OFFLOAD_SECURITY))
+		/* Skip the rest if RTE_ETH_TX_OFFLOAD_SECURITY is not enabled */
+		if (!(dev->tx_offloads & RTE_ETH_TX_OFFLOAD_SECURITY))
 			goto done;
 
 		rc = -ENOMEM;
@@ -136,7 +136,7 @@ nix_security_setup(struct cnxk_eth_dev *dev)
 done:
 	return 0;
 cleanup:
-	if (dev->rx_offloads & DEV_RX_OFFLOAD_SECURITY)
+	if (dev->rx_offloads & RTE_ETH_RX_OFFLOAD_SECURITY)
 		rc |= roc_nix_inl_inb_fini(nix);
 	return rc;
 }
@@ -182,7 +182,7 @@ nix_security_release(struct cnxk_eth_dev *dev)
 	int rc, ret = 0;
 
 	/* Cleanup Inline inbound */
-	if (dev->rx_offloads & DEV_RX_OFFLOAD_SECURITY) {
+	if (dev->rx_offloads & RTE_ETH_RX_OFFLOAD_SECURITY) {
 		/* Destroy inbound sessions */
 		tvar = NULL;
 		RTE_TAILQ_FOREACH_SAFE(eth_sec, &dev->inb.list, entry, tvar)
@@ -199,8 +199,8 @@ nix_security_release(struct cnxk_eth_dev *dev)
 	}
 
 	/* Cleanup Inline outbound */
-	if (dev->tx_offloads & DEV_TX_OFFLOAD_SECURITY ||
-	    dev->rx_offloads & DEV_RX_OFFLOAD_SECURITY) {
+	if (dev->tx_offloads & RTE_ETH_TX_OFFLOAD_SECURITY ||
+	    dev->rx_offloads & RTE_ETH_RX_OFFLOAD_SECURITY) {
 		/* Destroy outbound sessions */
 		tvar = NULL;
 		RTE_TAILQ_FOREACH_SAFE(eth_sec, &dev->outb.list, entry, tvar)
@@ -242,8 +242,8 @@ nix_enable_mseg_on_jumbo(struct cnxk_eth_rxq_sp *rxq)
 	buffsz = mbp_priv->mbuf_data_room_size - RTE_PKTMBUF_HEADROOM;
 
 	if (eth_dev->data->mtu + (uint32_t)CNXK_NIX_L2_OVERHEAD > buffsz) {
-		dev->rx_offloads |= DEV_RX_OFFLOAD_SCATTER;
-		dev->tx_offloads |= DEV_TX_OFFLOAD_MULTI_SEGS;
+		dev->rx_offloads |= RTE_ETH_RX_OFFLOAD_SCATTER;
+		dev->tx_offloads |= RTE_ETH_TX_OFFLOAD_MULTI_SEGS;
 	}
 }
 
@@ -273,7 +273,7 @@ nix_init_flow_ctrl_config(struct rte_eth_dev *eth_dev)
 	struct rte_eth_fc_conf fc_conf = {0};
 	int rc;
 
-	/* Both Rx & Tx flow ctrl get enabled(RTE_FC_FULL) in HW
+	/* Both Rx & Tx flow ctrl get enabled(RTE_ETH_FC_FULL) in HW
 	 * by AF driver, update those info in PMD structure.
 	 */
 	rc = cnxk_nix_flow_ctrl_get(eth_dev, &fc_conf);
@@ -281,10 +281,10 @@ nix_init_flow_ctrl_config(struct rte_eth_dev *eth_dev)
 		goto exit;
 
 	fc->mode = fc_conf.mode;
-	fc->rx_pause = (fc_conf.mode == RTE_FC_FULL) ||
-			(fc_conf.mode == RTE_FC_RX_PAUSE);
-	fc->tx_pause = (fc_conf.mode == RTE_FC_FULL) ||
-			(fc_conf.mode == RTE_FC_TX_PAUSE);
+	fc->rx_pause = (fc_conf.mode == RTE_ETH_FC_FULL) ||
+			(fc_conf.mode == RTE_ETH_FC_RX_PAUSE);
+	fc->tx_pause = (fc_conf.mode == RTE_ETH_FC_FULL) ||
+			(fc_conf.mode == RTE_ETH_FC_TX_PAUSE);
 
 exit:
 	return rc;
@@ -305,11 +305,11 @@ nix_update_flow_ctrl_config(struct rte_eth_dev *eth_dev)
 	/* To avoid Link credit deadlock on Ax, disable Tx FC if it's enabled */
 	if (roc_model_is_cn96_ax() &&
 	    dev->npc.switch_header_type != ROC_PRIV_FLAGS_HIGIG &&
-	    (fc_cfg.mode == RTE_FC_FULL || fc_cfg.mode == RTE_FC_RX_PAUSE)) {
+	    (fc_cfg.mode == RTE_ETH_FC_FULL || fc_cfg.mode == RTE_ETH_FC_RX_PAUSE)) {
 		fc_cfg.mode =
-				(fc_cfg.mode == RTE_FC_FULL ||
-				fc_cfg.mode == RTE_FC_TX_PAUSE) ?
-				RTE_FC_TX_PAUSE : RTE_FC_NONE;
+				(fc_cfg.mode == RTE_ETH_FC_FULL ||
+				fc_cfg.mode == RTE_ETH_FC_TX_PAUSE) ?
+				RTE_ETH_FC_TX_PAUSE : RTE_ETH_FC_NONE;
 	}
 
 	return cnxk_nix_flow_ctrl_set(eth_dev, &fc_cfg);
@@ -352,7 +352,7 @@ nix_sq_max_sqe_sz(struct cnxk_eth_dev *dev)
 	 * Maximum three segments can be supported with W8, Choose
 	 * NIX_MAXSQESZ_W16 for multi segment offload.
 	 */
-	if (dev->tx_offloads & DEV_TX_OFFLOAD_MULTI_SEGS)
+	if (dev->tx_offloads & RTE_ETH_TX_OFFLOAD_MULTI_SEGS)
 		return NIX_MAXSQESZ_W16;
 	else
 		return NIX_MAXSQESZ_W8;
@@ -380,7 +380,7 @@ cnxk_nix_tx_queue_setup(struct rte_eth_dev *eth_dev, uint16_t qid,
 	/* When Tx Security offload is enabled, increase tx desc count by
 	 * max possible outbound desc count.
 	 */
-	if (dev->tx_offloads & DEV_TX_OFFLOAD_SECURITY)
+	if (dev->tx_offloads & RTE_ETH_TX_OFFLOAD_SECURITY)
 		nb_desc += dev->outb.nb_desc;
 
 	/* Setup ROC SQ */
@@ -499,7 +499,7 @@ cnxk_nix_rx_queue_setup(struct rte_eth_dev *eth_dev, uint16_t qid,
 	 * to avoid meta packet drop as LBK does not currently support
 	 * backpressure.
 	 */
-	if (dev->rx_offloads & DEV_RX_OFFLOAD_SECURITY && roc_nix_is_lbk(nix)) {
+	if (dev->rx_offloads & RTE_ETH_RX_OFFLOAD_SECURITY && roc_nix_is_lbk(nix)) {
 		uint64_t pkt_pool_limit = roc_nix_inl_dev_rq_limit_get();
 
 		/* Use current RQ's aura limit if inl rq is not available */
@@ -561,7 +561,7 @@ cnxk_nix_rx_queue_setup(struct rte_eth_dev *eth_dev, uint16_t qid,
 	rxq_sp->qconf.nb_desc = nb_desc;
 	rxq_sp->qconf.mp = mp;
 
-	if (dev->rx_offloads & DEV_RX_OFFLOAD_SECURITY) {
+	if (dev->rx_offloads & RTE_ETH_RX_OFFLOAD_SECURITY) {
 		/* Setup rq reference for inline dev if present */
 		rc = roc_nix_inl_dev_rq_get(rq);
 		if (rc)
@@ -579,7 +579,7 @@ cnxk_nix_rx_queue_setup(struct rte_eth_dev *eth_dev, uint16_t qid,
 	 * These are needed in deriving raw clock value from tsc counter.
 	 * read_clock eth op returns raw clock value.
 	 */
-	if ((dev->rx_offloads & DEV_RX_OFFLOAD_TIMESTAMP) || dev->ptp_en) {
+	if ((dev->rx_offloads & RTE_ETH_RX_OFFLOAD_TIMESTAMP) || dev->ptp_en) {
 		rc = cnxk_nix_tsc_convert(dev);
 		if (rc) {
 			plt_err("Failed to calculate delta and freq mult");
@@ -618,7 +618,7 @@ cnxk_nix_rx_queue_release(struct rte_eth_dev *eth_dev, uint16_t qid)
 	plt_nix_dbg("Releasing rxq %u", qid);
 
 	/* Release rq reference for inline dev if present */
-	if (dev->rx_offloads & DEV_RX_OFFLOAD_SECURITY)
+	if (dev->rx_offloads & RTE_ETH_RX_OFFLOAD_SECURITY)
 		roc_nix_inl_dev_rq_put(rq);
 
 	/* Cleanup ROC RQ */
@@ -657,24 +657,24 @@ cnxk_rss_ethdev_to_nix(struct cnxk_eth_dev *dev, uint64_t ethdev_rss,
 
 	dev->ethdev_rss_hf = ethdev_rss;
 
-	if (ethdev_rss & ETH_RSS_L2_PAYLOAD &&
+	if (ethdev_rss & RTE_ETH_RSS_L2_PAYLOAD &&
 	    dev->npc.switch_header_type == ROC_PRIV_FLAGS_LEN_90B) {
 		flowkey_cfg |= FLOW_KEY_TYPE_CH_LEN_90B;
 	}
 
-	if (ethdev_rss & ETH_RSS_C_VLAN)
+	if (ethdev_rss & RTE_ETH_RSS_C_VLAN)
 		flowkey_cfg |= FLOW_KEY_TYPE_VLAN;
 
-	if (ethdev_rss & ETH_RSS_L3_SRC_ONLY)
+	if (ethdev_rss & RTE_ETH_RSS_L3_SRC_ONLY)
 		flowkey_cfg |= FLOW_KEY_TYPE_L3_SRC;
 
-	if (ethdev_rss & ETH_RSS_L3_DST_ONLY)
+	if (ethdev_rss & RTE_ETH_RSS_L3_DST_ONLY)
 		flowkey_cfg |= FLOW_KEY_TYPE_L3_DST;
 
-	if (ethdev_rss & ETH_RSS_L4_SRC_ONLY)
+	if (ethdev_rss & RTE_ETH_RSS_L4_SRC_ONLY)
 		flowkey_cfg |= FLOW_KEY_TYPE_L4_SRC;
 
-	if (ethdev_rss & ETH_RSS_L4_DST_ONLY)
+	if (ethdev_rss & RTE_ETH_RSS_L4_DST_ONLY)
 		flowkey_cfg |= FLOW_KEY_TYPE_L4_DST;
 
 	if (ethdev_rss & RSS_IPV4_ENABLE)
@@ -683,34 +683,34 @@ cnxk_rss_ethdev_to_nix(struct cnxk_eth_dev *dev, uint64_t ethdev_rss,
 	if (ethdev_rss & RSS_IPV6_ENABLE)
 		flowkey_cfg |= flow_key_type[rss_level][RSS_IPV6_INDEX];
 
-	if (ethdev_rss & ETH_RSS_TCP)
+	if (ethdev_rss & RTE_ETH_RSS_TCP)
 		flowkey_cfg |= flow_key_type[rss_level][RSS_TCP_INDEX];
 
-	if (ethdev_rss & ETH_RSS_UDP)
+	if (ethdev_rss & RTE_ETH_RSS_UDP)
 		flowkey_cfg |= flow_key_type[rss_level][RSS_UDP_INDEX];
 
-	if (ethdev_rss & ETH_RSS_SCTP)
+	if (ethdev_rss & RTE_ETH_RSS_SCTP)
 		flowkey_cfg |= flow_key_type[rss_level][RSS_SCTP_INDEX];
 
-	if (ethdev_rss & ETH_RSS_L2_PAYLOAD)
+	if (ethdev_rss & RTE_ETH_RSS_L2_PAYLOAD)
 		flowkey_cfg |= flow_key_type[rss_level][RSS_DMAC_INDEX];
 
 	if (ethdev_rss & RSS_IPV6_EX_ENABLE)
 		flowkey_cfg |= FLOW_KEY_TYPE_IPV6_EXT;
 
-	if (ethdev_rss & ETH_RSS_PORT)
+	if (ethdev_rss & RTE_ETH_RSS_PORT)
 		flowkey_cfg |= FLOW_KEY_TYPE_PORT;
 
-	if (ethdev_rss & ETH_RSS_NVGRE)
+	if (ethdev_rss & RTE_ETH_RSS_NVGRE)
 		flowkey_cfg |= FLOW_KEY_TYPE_NVGRE;
 
-	if (ethdev_rss & ETH_RSS_VXLAN)
+	if (ethdev_rss & RTE_ETH_RSS_VXLAN)
 		flowkey_cfg |= FLOW_KEY_TYPE_VXLAN;
 
-	if (ethdev_rss & ETH_RSS_GENEVE)
+	if (ethdev_rss & RTE_ETH_RSS_GENEVE)
 		flowkey_cfg |= FLOW_KEY_TYPE_GENEVE;
 
-	if (ethdev_rss & ETH_RSS_GTPU)
+	if (ethdev_rss & RTE_ETH_RSS_GTPU)
 		flowkey_cfg |= FLOW_KEY_TYPE_GTPU;
 
 	return flowkey_cfg;
@@ -746,7 +746,7 @@ nix_rss_default_setup(struct cnxk_eth_dev *dev)
 	uint64_t rss_hf;
 
 	rss_hf = eth_dev->data->dev_conf.rx_adv_conf.rss_conf.rss_hf;
-	rss_hash_level = ETH_RSS_LEVEL(rss_hf);
+	rss_hash_level = RTE_ETH_RSS_LEVEL(rss_hf);
 	if (rss_hash_level)
 		rss_hash_level -= 1;
 
@@ -958,8 +958,8 @@ nix_lso_fmt_setup(struct cnxk_eth_dev *dev)
 
 	/* Nothing much to do if offload is not enabled */
 	if (!(dev->tx_offloads &
-	      (DEV_TX_OFFLOAD_TCP_TSO | DEV_TX_OFFLOAD_VXLAN_TNL_TSO |
-	       DEV_TX_OFFLOAD_GENEVE_TNL_TSO | DEV_TX_OFFLOAD_GRE_TNL_TSO)))
+	      (RTE_ETH_TX_OFFLOAD_TCP_TSO | RTE_ETH_TX_OFFLOAD_VXLAN_TNL_TSO |
+	       RTE_ETH_TX_OFFLOAD_GENEVE_TNL_TSO | RTE_ETH_TX_OFFLOAD_GRE_TNL_TSO)))
 		return 0;
 
 	/* Setup LSO formats in AF. Its a no-op if other ethdev has
@@ -1007,13 +1007,13 @@ cnxk_nix_configure(struct rte_eth_dev *eth_dev)
 		goto fail_configure;
 	}
 
-	if (rxmode->mq_mode != ETH_MQ_RX_NONE &&
-	    rxmode->mq_mode != ETH_MQ_RX_RSS) {
+	if (rxmode->mq_mode != RTE_ETH_MQ_RX_NONE &&
+	    rxmode->mq_mode != RTE_ETH_MQ_RX_RSS) {
 		plt_err("Unsupported mq rx mode %d", rxmode->mq_mode);
 		goto fail_configure;
 	}
 
-	if (txmode->mq_mode != ETH_MQ_TX_NONE) {
+	if (txmode->mq_mode != RTE_ETH_MQ_TX_NONE) {
 		plt_err("Unsupported mq tx mode %d", txmode->mq_mode);
 		goto fail_configure;
 	}
@@ -1054,7 +1054,7 @@ cnxk_nix_configure(struct rte_eth_dev *eth_dev)
 	/* Prepare rx cfg */
 	rx_cfg = ROC_NIX_LF_RX_CFG_DIS_APAD;
 	if (dev->rx_offloads &
-	    (DEV_RX_OFFLOAD_TCP_CKSUM | DEV_RX_OFFLOAD_UDP_CKSUM)) {
+	    (RTE_ETH_RX_OFFLOAD_TCP_CKSUM | RTE_ETH_RX_OFFLOAD_UDP_CKSUM)) {
 		rx_cfg |= ROC_NIX_LF_RX_CFG_CSUM_OL4;
 		rx_cfg |= ROC_NIX_LF_RX_CFG_CSUM_IL4;
 	}
@@ -1062,7 +1062,7 @@ cnxk_nix_configure(struct rte_eth_dev *eth_dev)
 		   ROC_NIX_LF_RX_CFG_LEN_IL4 | ROC_NIX_LF_RX_CFG_LEN_IL3 |
 		   ROC_NIX_LF_RX_CFG_LEN_OL4 | ROC_NIX_LF_RX_CFG_LEN_OL3);
 
-	if (dev->rx_offloads & DEV_RX_OFFLOAD_SECURITY) {
+	if (dev->rx_offloads & RTE_ETH_RX_OFFLOAD_SECURITY) {
 		rx_cfg |= ROC_NIX_LF_RX_CFG_IP6_UDP_OPT;
 		/* Disable drop re if rx offload security is enabled and
 		 * platform does not support it.
@@ -1454,12 +1454,12 @@ cnxk_nix_dev_start(struct rte_eth_dev *eth_dev)
 	 * enabled on PF owning this VF
 	 */
 	memset(&dev->tstamp, 0, sizeof(struct cnxk_timesync_info));
-	if ((dev->rx_offloads & DEV_RX_OFFLOAD_TIMESTAMP) || dev->ptp_en)
+	if ((dev->rx_offloads & RTE_ETH_RX_OFFLOAD_TIMESTAMP) || dev->ptp_en)
 		cnxk_eth_dev_ops.timesync_enable(eth_dev);
 	else
 		cnxk_eth_dev_ops.timesync_disable(eth_dev);
 
-	if (dev->rx_offloads & DEV_RX_OFFLOAD_TIMESTAMP) {
+	if (dev->rx_offloads & RTE_ETH_RX_OFFLOAD_TIMESTAMP) {
 		rc = rte_mbuf_dyn_rx_timestamp_register
 			(&dev->tstamp.tstamp_dynfield_offset,
 			 &dev->tstamp.rx_tstamp_dynflag);

@@ -628,7 +628,7 @@ int bnxt_hwrm_set_l2_filter(struct bnxt *bp,
 	uint16_t j = dst_id - 1;
 
 	//TODO: Is there a better way to add VLANs to each VNIC in case of VMDQ
-	if ((dev_conf->rxmode.mq_mode & ETH_MQ_RX_VMDQ_FLAG) &&
+	if ((dev_conf->rxmode.mq_mode & RTE_ETH_MQ_RX_VMDQ_FLAG) &&
 	    conf->pool_map[j].pools & (1UL << j)) {
 		PMD_DRV_LOG(DEBUG,
 			"Add vlan %u to vmdq pool %u\n",
@@ -2979,12 +2979,12 @@ static uint16_t bnxt_parse_eth_link_duplex(uint32_t conf_link_speed)
 {
 	uint8_t hw_link_duplex = HWRM_PORT_PHY_CFG_INPUT_AUTO_DUPLEX_BOTH;
 
-	if ((conf_link_speed & ETH_LINK_SPEED_FIXED) == ETH_LINK_SPEED_AUTONEG)
+	if ((conf_link_speed & RTE_ETH_LINK_SPEED_FIXED) == RTE_ETH_LINK_SPEED_AUTONEG)
 		return HWRM_PORT_PHY_CFG_INPUT_AUTO_DUPLEX_BOTH;
 
 	switch (conf_link_speed) {
-	case ETH_LINK_SPEED_10M_HD:
-	case ETH_LINK_SPEED_100M_HD:
+	case RTE_ETH_LINK_SPEED_10M_HD:
+	case RTE_ETH_LINK_SPEED_100M_HD:
 		/* FALLTHROUGH */
 		return HWRM_PORT_PHY_CFG_INPUT_AUTO_DUPLEX_HALF;
 	}
@@ -3001,51 +3001,51 @@ static uint16_t bnxt_parse_eth_link_speed(uint32_t conf_link_speed,
 {
 	uint16_t eth_link_speed = 0;
 
-	if (conf_link_speed == ETH_LINK_SPEED_AUTONEG)
-		return ETH_LINK_SPEED_AUTONEG;
+	if (conf_link_speed == RTE_ETH_LINK_SPEED_AUTONEG)
+		return RTE_ETH_LINK_SPEED_AUTONEG;
 
-	switch (conf_link_speed & ~ETH_LINK_SPEED_FIXED) {
-	case ETH_LINK_SPEED_100M:
-	case ETH_LINK_SPEED_100M_HD:
+	switch (conf_link_speed & ~RTE_ETH_LINK_SPEED_FIXED) {
+	case RTE_ETH_LINK_SPEED_100M:
+	case RTE_ETH_LINK_SPEED_100M_HD:
 		/* FALLTHROUGH */
 		eth_link_speed =
 			HWRM_PORT_PHY_CFG_INPUT_AUTO_LINK_SPEED_100MB;
 		break;
-	case ETH_LINK_SPEED_1G:
+	case RTE_ETH_LINK_SPEED_1G:
 		eth_link_speed =
 			HWRM_PORT_PHY_CFG_INPUT_AUTO_LINK_SPEED_1GB;
 		break;
-	case ETH_LINK_SPEED_2_5G:
+	case RTE_ETH_LINK_SPEED_2_5G:
 		eth_link_speed =
 			HWRM_PORT_PHY_CFG_INPUT_AUTO_LINK_SPEED_2_5GB;
 		break;
-	case ETH_LINK_SPEED_10G:
+	case RTE_ETH_LINK_SPEED_10G:
 		eth_link_speed =
 			HWRM_PORT_PHY_CFG_INPUT_FORCE_LINK_SPEED_10GB;
 		break;
-	case ETH_LINK_SPEED_20G:
+	case RTE_ETH_LINK_SPEED_20G:
 		eth_link_speed =
 			HWRM_PORT_PHY_CFG_INPUT_AUTO_LINK_SPEED_20GB;
 		break;
-	case ETH_LINK_SPEED_25G:
+	case RTE_ETH_LINK_SPEED_25G:
 		eth_link_speed =
 			HWRM_PORT_PHY_CFG_INPUT_AUTO_LINK_SPEED_25GB;
 		break;
-	case ETH_LINK_SPEED_40G:
+	case RTE_ETH_LINK_SPEED_40G:
 		eth_link_speed =
 			HWRM_PORT_PHY_CFG_INPUT_FORCE_LINK_SPEED_40GB;
 		break;
-	case ETH_LINK_SPEED_50G:
+	case RTE_ETH_LINK_SPEED_50G:
 		eth_link_speed = pam4_link ?
 			HWRM_PORT_PHY_CFG_INPUT_FORCE_PAM4_LINK_SPEED_50GB :
 			HWRM_PORT_PHY_CFG_INPUT_FORCE_LINK_SPEED_50GB;
 		break;
-	case ETH_LINK_SPEED_100G:
+	case RTE_ETH_LINK_SPEED_100G:
 		eth_link_speed = pam4_link ?
 			HWRM_PORT_PHY_CFG_INPUT_FORCE_PAM4_LINK_SPEED_100GB :
 			HWRM_PORT_PHY_CFG_INPUT_FORCE_LINK_SPEED_100GB;
 		break;
-	case ETH_LINK_SPEED_200G:
+	case RTE_ETH_LINK_SPEED_200G:
 		eth_link_speed =
 			HWRM_PORT_PHY_CFG_INPUT_FORCE_PAM4_LINK_SPEED_200GB;
 		break;
@@ -3058,11 +3058,11 @@ static uint16_t bnxt_parse_eth_link_speed(uint32_t conf_link_speed,
 	return eth_link_speed;
 }
 
-#define BNXT_SUPPORTED_SPEEDS (ETH_LINK_SPEED_100M | ETH_LINK_SPEED_100M_HD | \
-		ETH_LINK_SPEED_1G | ETH_LINK_SPEED_2_5G | \
-		ETH_LINK_SPEED_10G | ETH_LINK_SPEED_20G | ETH_LINK_SPEED_25G | \
-		ETH_LINK_SPEED_40G | ETH_LINK_SPEED_50G | \
-		ETH_LINK_SPEED_100G | ETH_LINK_SPEED_200G)
+#define BNXT_SUPPORTED_SPEEDS (RTE_ETH_LINK_SPEED_100M | RTE_ETH_LINK_SPEED_100M_HD | \
+		RTE_ETH_LINK_SPEED_1G | RTE_ETH_LINK_SPEED_2_5G | \
+		RTE_ETH_LINK_SPEED_10G | RTE_ETH_LINK_SPEED_20G | RTE_ETH_LINK_SPEED_25G | \
+		RTE_ETH_LINK_SPEED_40G | RTE_ETH_LINK_SPEED_50G | \
+		RTE_ETH_LINK_SPEED_100G | RTE_ETH_LINK_SPEED_200G)
 
 static int bnxt_validate_link_speed(struct bnxt *bp)
 {
@@ -3071,13 +3071,13 @@ static int bnxt_validate_link_speed(struct bnxt *bp)
 	uint32_t link_speed_capa;
 	uint32_t one_speed;
 
-	if (link_speed == ETH_LINK_SPEED_AUTONEG)
+	if (link_speed == RTE_ETH_LINK_SPEED_AUTONEG)
 		return 0;
 
 	link_speed_capa = bnxt_get_speed_capabilities(bp);
 
-	if (link_speed & ETH_LINK_SPEED_FIXED) {
-		one_speed = link_speed & ~ETH_LINK_SPEED_FIXED;
+	if (link_speed & RTE_ETH_LINK_SPEED_FIXED) {
+		one_speed = link_speed & ~RTE_ETH_LINK_SPEED_FIXED;
 
 		if (one_speed & (one_speed - 1)) {
 			PMD_DRV_LOG(ERR,
@@ -3107,71 +3107,71 @@ bnxt_parse_eth_link_speed_mask(struct bnxt *bp, uint32_t link_speed)
 {
 	uint16_t ret = 0;
 
-	if (link_speed == ETH_LINK_SPEED_AUTONEG) {
+	if (link_speed == RTE_ETH_LINK_SPEED_AUTONEG) {
 		if (bp->link_info->support_speeds)
 			return bp->link_info->support_speeds;
 		link_speed = BNXT_SUPPORTED_SPEEDS;
 	}
 
-	if (link_speed & ETH_LINK_SPEED_100M)
+	if (link_speed & RTE_ETH_LINK_SPEED_100M)
 		ret |= HWRM_PORT_PHY_CFG_INPUT_AUTO_LINK_SPEED_MASK_100MB;
-	if (link_speed & ETH_LINK_SPEED_100M_HD)
+	if (link_speed & RTE_ETH_LINK_SPEED_100M_HD)
 		ret |= HWRM_PORT_PHY_CFG_INPUT_AUTO_LINK_SPEED_MASK_100MB;
-	if (link_speed & ETH_LINK_SPEED_1G)
+	if (link_speed & RTE_ETH_LINK_SPEED_1G)
 		ret |= HWRM_PORT_PHY_CFG_INPUT_AUTO_LINK_SPEED_MASK_1GB;
-	if (link_speed & ETH_LINK_SPEED_2_5G)
+	if (link_speed & RTE_ETH_LINK_SPEED_2_5G)
 		ret |= HWRM_PORT_PHY_CFG_INPUT_AUTO_LINK_SPEED_MASK_2_5GB;
-	if (link_speed & ETH_LINK_SPEED_10G)
+	if (link_speed & RTE_ETH_LINK_SPEED_10G)
 		ret |= HWRM_PORT_PHY_CFG_INPUT_AUTO_LINK_SPEED_MASK_10GB;
-	if (link_speed & ETH_LINK_SPEED_20G)
+	if (link_speed & RTE_ETH_LINK_SPEED_20G)
 		ret |= HWRM_PORT_PHY_CFG_INPUT_AUTO_LINK_SPEED_MASK_20GB;
-	if (link_speed & ETH_LINK_SPEED_25G)
+	if (link_speed & RTE_ETH_LINK_SPEED_25G)
 		ret |= HWRM_PORT_PHY_CFG_INPUT_AUTO_LINK_SPEED_MASK_25GB;
-	if (link_speed & ETH_LINK_SPEED_40G)
+	if (link_speed & RTE_ETH_LINK_SPEED_40G)
 		ret |= HWRM_PORT_PHY_CFG_INPUT_AUTO_LINK_SPEED_MASK_40GB;
-	if (link_speed & ETH_LINK_SPEED_50G)
+	if (link_speed & RTE_ETH_LINK_SPEED_50G)
 		ret |= HWRM_PORT_PHY_CFG_INPUT_AUTO_LINK_SPEED_MASK_50GB;
-	if (link_speed & ETH_LINK_SPEED_100G)
+	if (link_speed & RTE_ETH_LINK_SPEED_100G)
 		ret |= HWRM_PORT_PHY_CFG_INPUT_AUTO_LINK_SPEED_MASK_100GB;
-	if (link_speed & ETH_LINK_SPEED_200G)
+	if (link_speed & RTE_ETH_LINK_SPEED_200G)
 		ret |= HWRM_PORT_PHY_CFG_INPUT_FORCE_PAM4_LINK_SPEED_200GB;
 	return ret;
 }
 
 static uint32_t bnxt_parse_hw_link_speed(uint16_t hw_link_speed)
 {
-	uint32_t eth_link_speed = ETH_SPEED_NUM_NONE;
+	uint32_t eth_link_speed = RTE_ETH_SPEED_NUM_NONE;
 
 	switch (hw_link_speed) {
 	case HWRM_PORT_PHY_QCFG_OUTPUT_LINK_SPEED_100MB:
-		eth_link_speed = ETH_SPEED_NUM_100M;
+		eth_link_speed = RTE_ETH_SPEED_NUM_100M;
 		break;
 	case HWRM_PORT_PHY_QCFG_OUTPUT_LINK_SPEED_1GB:
-		eth_link_speed = ETH_SPEED_NUM_1G;
+		eth_link_speed = RTE_ETH_SPEED_NUM_1G;
 		break;
 	case HWRM_PORT_PHY_QCFG_OUTPUT_LINK_SPEED_2_5GB:
-		eth_link_speed = ETH_SPEED_NUM_2_5G;
+		eth_link_speed = RTE_ETH_SPEED_NUM_2_5G;
 		break;
 	case HWRM_PORT_PHY_QCFG_OUTPUT_LINK_SPEED_10GB:
-		eth_link_speed = ETH_SPEED_NUM_10G;
+		eth_link_speed = RTE_ETH_SPEED_NUM_10G;
 		break;
 	case HWRM_PORT_PHY_QCFG_OUTPUT_LINK_SPEED_20GB:
-		eth_link_speed = ETH_SPEED_NUM_20G;
+		eth_link_speed = RTE_ETH_SPEED_NUM_20G;
 		break;
 	case HWRM_PORT_PHY_QCFG_OUTPUT_LINK_SPEED_25GB:
-		eth_link_speed = ETH_SPEED_NUM_25G;
+		eth_link_speed = RTE_ETH_SPEED_NUM_25G;
 		break;
 	case HWRM_PORT_PHY_QCFG_OUTPUT_LINK_SPEED_40GB:
-		eth_link_speed = ETH_SPEED_NUM_40G;
+		eth_link_speed = RTE_ETH_SPEED_NUM_40G;
 		break;
 	case HWRM_PORT_PHY_QCFG_OUTPUT_LINK_SPEED_50GB:
-		eth_link_speed = ETH_SPEED_NUM_50G;
+		eth_link_speed = RTE_ETH_SPEED_NUM_50G;
 		break;
 	case HWRM_PORT_PHY_QCFG_OUTPUT_LINK_SPEED_100GB:
-		eth_link_speed = ETH_SPEED_NUM_100G;
+		eth_link_speed = RTE_ETH_SPEED_NUM_100G;
 		break;
 	case HWRM_PORT_PHY_QCFG_OUTPUT_LINK_SPEED_200GB:
-		eth_link_speed = ETH_SPEED_NUM_200G;
+		eth_link_speed = RTE_ETH_SPEED_NUM_200G;
 		break;
 	case HWRM_PORT_PHY_QCFG_OUTPUT_LINK_SPEED_2GB:
 	default:
@@ -3184,16 +3184,16 @@ static uint32_t bnxt_parse_hw_link_speed(uint16_t hw_link_speed)
 
 static uint16_t bnxt_parse_hw_link_duplex(uint16_t hw_link_duplex)
 {
-	uint16_t eth_link_duplex = ETH_LINK_FULL_DUPLEX;
+	uint16_t eth_link_duplex = RTE_ETH_LINK_FULL_DUPLEX;
 
 	switch (hw_link_duplex) {
 	case HWRM_PORT_PHY_CFG_INPUT_AUTO_DUPLEX_BOTH:
 	case HWRM_PORT_PHY_CFG_INPUT_AUTO_DUPLEX_FULL:
 		/* FALLTHROUGH */
-		eth_link_duplex = ETH_LINK_FULL_DUPLEX;
+		eth_link_duplex = RTE_ETH_LINK_FULL_DUPLEX;
 		break;
 	case HWRM_PORT_PHY_CFG_INPUT_AUTO_DUPLEX_HALF:
-		eth_link_duplex = ETH_LINK_HALF_DUPLEX;
+		eth_link_duplex = RTE_ETH_LINK_HALF_DUPLEX;
 		break;
 	default:
 		PMD_DRV_LOG(ERR, "HWRM link duplex %d not defined\n",
@@ -3222,12 +3222,12 @@ int bnxt_get_hwrm_link_config(struct bnxt *bp, struct rte_eth_link *link)
 		link->link_speed =
 			bnxt_parse_hw_link_speed(link_info->link_speed);
 	else
-		link->link_speed = ETH_SPEED_NUM_NONE;
+		link->link_speed = RTE_ETH_SPEED_NUM_NONE;
 	link->link_duplex = bnxt_parse_hw_link_duplex(link_info->duplex);
 	link->link_status = link_info->link_up;
 	link->link_autoneg = link_info->auto_mode ==
 		HWRM_PORT_PHY_QCFG_OUTPUT_AUTO_MODE_NONE ?
-		ETH_LINK_FIXED : ETH_LINK_AUTONEG;
+		RTE_ETH_LINK_FIXED : RTE_ETH_LINK_AUTONEG;
 exit:
 	return rc;
 }
@@ -3253,7 +3253,7 @@ int bnxt_set_hwrm_link_config(struct bnxt *bp, bool link_up)
 
 	autoneg = bnxt_check_eth_link_autoneg(dev_conf->link_speeds);
 	if (BNXT_CHIP_P5(bp) &&
-	    dev_conf->link_speeds == ETH_LINK_SPEED_40G) {
+	    dev_conf->link_speeds == RTE_ETH_LINK_SPEED_40G) {
 		/* 40G is not supported as part of media auto detect.
 		 * The speed should be forced and autoneg disabled
 		 * to configure 40G speed.
@@ -3344,7 +3344,7 @@ int bnxt_hwrm_func_qcfg(struct bnxt *bp, uint16_t *mtu)
 
 	HWRM_CHECK_RESULT();
 
-	bp->vlan = rte_le_to_cpu_16(resp->vlan) & ETH_VLAN_ID_MAX;
+	bp->vlan = rte_le_to_cpu_16(resp->vlan) & RTE_ETH_VLAN_ID_MAX;
 
 	svif_info = rte_le_to_cpu_16(resp->svif_info);
 	if (svif_info & HWRM_FUNC_QCFG_OUTPUT_SVIF_INFO_SVIF_VALID)

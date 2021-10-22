@@ -178,7 +178,7 @@ struct enic {
 	 */
 	uint8_t rss_hash_type; /* NIC_CFG_RSS_HASH_TYPE flags */
 	uint8_t rss_enable;
-	uint64_t rss_hf; /* ETH_RSS flags */
+	uint64_t rss_hf; /* RTE_ETH_RSS flags */
 	union vnic_rss_key rss_key;
 	union vnic_rss_cpu rss_cpu;
 

@@ -547,29 +547,29 @@ out:
 static int
 parse_link_speed(int n)
 {
-	uint32_t speed = ETH_LINK_SPEED_FIXED;
+	uint32_t speed = RTE_ETH_LINK_SPEED_FIXED;
 
 	switch (n) {
 	case 1000:
-		speed |= ETH_LINK_SPEED_1G;
+		speed |= RTE_ETH_LINK_SPEED_1G;
 		break;
 	case 10000:
-		speed |= ETH_LINK_SPEED_10G;
+		speed |= RTE_ETH_LINK_SPEED_10G;
 		break;
 	case 25000:
-		speed |= ETH_LINK_SPEED_25G;
+		speed |= RTE_ETH_LINK_SPEED_25G;
 		break;
 	case 40000:
-		speed |= ETH_LINK_SPEED_40G;
+		speed |= RTE_ETH_LINK_SPEED_40G;
 		break;
 	case 50000:
-		speed |= ETH_LINK_SPEED_50G;
+		speed |= RTE_ETH_LINK_SPEED_50G;
 		break;
 	case 100000:
-		speed |= ETH_LINK_SPEED_100G;
+		speed |= RTE_ETH_LINK_SPEED_100G;
 		break;
 	case 200000:
-		speed |= ETH_LINK_SPEED_200G;
+		speed |= RTE_ETH_LINK_SPEED_200G;
 		break;
 	case 100:
 	case 10:
@@ -1002,13 +1002,13 @@ launch_args_parse(int argc, char** argv)
 			if (!strcmp(lgopts[opt_idx].name, "pkt-filter-size")) {
 				if (!strcmp(optarg, "64K"))
 					fdir_conf.pballoc =
-						RTE_FDIR_PBALLOC_64K;
+						RTE_ETH_FDIR_PBALLOC_64K;
 				else if (!strcmp(optarg, "128K"))
 					fdir_conf.pballoc =
-						RTE_FDIR_PBALLOC_128K;
+						RTE_ETH_FDIR_PBALLOC_128K;
 				else if (!strcmp(optarg, "256K"))
 					fdir_conf.pballoc =
-						RTE_FDIR_PBALLOC_256K;
+						RTE_ETH_FDIR_PBALLOC_256K;
 				else
 					rte_exit(EXIT_FAILURE, "pkt-filter-size %s invalid -"
 						 " must be: 64K or 128K or 256K\n",
@@ -1050,34 +1050,34 @@ launch_args_parse(int argc, char** argv)
 			}
 #endif
 			if (!strcmp(lgopts[opt_idx].name, "disable-crc-strip"))
-				rx_offloads |= DEV_RX_OFFLOAD_KEEP_CRC;
+				rx_offloads |= RTE_ETH_RX_OFFLOAD_KEEP_CRC;
 			if (!strcmp(lgopts[opt_idx].name, "enable-lro"))
-				rx_offloads |= DEV_RX_OFFLOAD_TCP_LRO;
+				rx_offloads |= RTE_ETH_RX_OFFLOAD_TCP_LRO;
 			if (!strcmp(lgopts[opt_idx].name, "enable-scatter"))
-				rx_offloads |= DEV_RX_OFFLOAD_SCATTER;
+				rx_offloads |= RTE_ETH_RX_OFFLOAD_SCATTER;
 			if (!strcmp(lgopts[opt_idx].name, "enable-rx-cksum"))
-				rx_offloads |= DEV_RX_OFFLOAD_CHECKSUM;
+				rx_offloads |= RTE_ETH_RX_OFFLOAD_CHECKSUM;
 			if (!strcmp(lgopts[opt_idx].name,
 					"enable-rx-timestamp"))
-				rx_offloads |= DEV_RX_OFFLOAD_TIMESTAMP;
+				rx_offloads |= RTE_ETH_RX_OFFLOAD_TIMESTAMP;
 			if (!strcmp(lgopts[opt_idx].name, "enable-hw-vlan"))
-				rx_offloads |= DEV_RX_OFFLOAD_VLAN;
+				rx_offloads |= RTE_ETH_RX_OFFLOAD_VLAN;
 
 			if (!strcmp(lgopts[opt_idx].name,
 					"enable-hw-vlan-filter"))
-				rx_offloads |= DEV_RX_OFFLOAD_VLAN_FILTER;
+				rx_offloads |= RTE_ETH_RX_OFFLOAD_VLAN_FILTER;
 
 			if (!strcmp(lgopts[opt_idx].name,
 					"enable-hw-vlan-strip"))
-				rx_offloads |= DEV_RX_OFFLOAD_VLAN_STRIP;
+				rx_offloads |= RTE_ETH_RX_OFFLOAD_VLAN_STRIP;
 
 			if (!strcmp(lgopts[opt_idx].name,
 					"enable-hw-vlan-extend"))
-				rx_offloads |= DEV_RX_OFFLOAD_VLAN_EXTEND;
+				rx_offloads |= RTE_ETH_RX_OFFLOAD_VLAN_EXTEND;
 
 			if (!strcmp(lgopts[opt_idx].name,
 					"enable-hw-qinq-strip"))
-				rx_offloads |= DEV_RX_OFFLOAD_QINQ_STRIP;
+				rx_offloads |= RTE_ETH_RX_OFFLOAD_QINQ_STRIP;
 
 			if (!strcmp(lgopts[opt_idx].name, "enable-drop-en"))
 				rx_drop_en = 1;
@@ -1099,13 +1099,13 @@ launch_args_parse(int argc, char** argv)
 			if (!strcmp(lgopts[opt_idx].name, "forward-mode"))
 				set_pkt_forwarding_mode(optarg);
 			if (!strcmp(lgopts[opt_idx].name, "rss-ip"))
-				rss_hf = ETH_RSS_IP;
+				rss_hf = RTE_ETH_RSS_IP;
 			if (!strcmp(lgopts[opt_idx].name, "rss-udp"))
-				rss_hf = ETH_RSS_UDP;
+				rss_hf = RTE_ETH_RSS_UDP;
 			if (!strcmp(lgopts[opt_idx].name, "rss-level-inner"))
-				rss_hf |= ETH_RSS_LEVEL_INNERMOST;
+				rss_hf |= RTE_ETH_RSS_LEVEL_INNERMOST;
 			if (!strcmp(lgopts[opt_idx].name, "rss-level-outer"))
-				rss_hf |= ETH_RSS_LEVEL_OUTERMOST;
+				rss_hf |= RTE_ETH_RSS_LEVEL_OUTERMOST;
 			if (!strcmp(lgopts[opt_idx].name, "rxq")) {
 				n = atoi(optarg);
 				if (n >= 0 && check_nb_rxq((queueid_t)n) == 0)
@@ -1495,12 +1495,12 @@ launch_args_parse(int argc, char** argv)
 			if (!strcmp(lgopts[opt_idx].name, "rx-mq-mode")) {
 				char *end = NULL;
 				n = strtoul(optarg, &end, 16);
-				if (n >= 0 && n <= ETH_MQ_RX_VMDQ_DCB_RSS)
+				if (n >= 0 && n <= RTE_ETH_MQ_RX_VMDQ_DCB_RSS)
 					rx_mq_mode = (enum rte_eth_rx_mq_mode)n;
 				else
 					rte_exit(EXIT_FAILURE,
 						 "rx-mq-mode must be >= 0 and <= %d\n",
-						 ETH_MQ_RX_VMDQ_DCB_RSS);
+						 RTE_ETH_MQ_RX_VMDQ_DCB_RSS);
 			}
 			if (!strcmp(lgopts[opt_idx].name, "record-core-cycles"))
 				record_core_cycles = 1;

@@ -231,9 +231,9 @@ int cxgbe_dev_link_update(struct rte_eth_dev *eth_dev,
 	}
 
 	new_link.link_status = cxgbe_force_linkup(adapter) ?
-			       ETH_LINK_UP : pi->link_cfg.link_ok;
+			       RTE_ETH_LINK_UP : pi->link_cfg.link_ok;
 	new_link.link_autoneg = (lc->link_caps & FW_PORT_CAP32_ANEG) ? 1 : 0;
-	new_link.link_duplex = ETH_LINK_FULL_DUPLEX;
+	new_link.link_duplex = RTE_ETH_LINK_FULL_DUPLEX;
 	new_link.link_speed = t4_fwcap_to_speed(lc->link_caps);
 
 	return rte_eth_linkstatus_set(eth_dev, &new_link);
@@ -374,7 +374,7 @@ int cxgbe_dev_start(struct rte_eth_dev *eth_dev)
 			goto out;
 	}
 
-	if (rx_conf->offloads & DEV_RX_OFFLOAD_SCATTER)
+	if (rx_conf->offloads & RTE_ETH_RX_OFFLOAD_SCATTER)
 		eth_dev->data->scattered_rx = 1;
 	else
 		eth_dev->data->scattered_rx = 0;
@@ -438,9 +438,9 @@ int cxgbe_dev_configure(struct rte_eth_dev *eth_dev)
 
 	CXGBE_FUNC_TRACE();
 
-	if (eth_dev->data->dev_conf.rxmode.mq_mode & ETH_MQ_RX_RSS_FLAG)
+	if (eth_dev->data->dev_conf.rxmode.mq_mode & RTE_ETH_MQ_RX_RSS_FLAG)
 		eth_dev->data->dev_conf.rxmode.offloads |=
-			DEV_RX_OFFLOAD_RSS_HASH;
+			RTE_ETH_RX_OFFLOAD_RSS_HASH;
 
 	if (!(adapter->flags & FW_QUEUE_BOUND)) {
 		err = cxgbe_setup_sge_fwevtq(adapter);
@@ -1080,13 +1080,13 @@ static int cxgbe_flow_ctrl_get(struct rte_eth_dev *eth_dev,
 		rx_pause = 1;
 
 	if (rx_pause && tx_pause)
-		fc_conf->mode = RTE_FC_FULL;
+		fc_conf->mode = RTE_ETH_FC_FULL;
 	else if (rx_pause)
-		fc_conf->mode = RTE_FC_RX_PAUSE;
+		fc_conf->mode = RTE_ETH_FC_RX_PAUSE;
 	else if (tx_pause)
-		fc_conf->mode = RTE_FC_TX_PAUSE;
+		fc_conf->mode = RTE_ETH_FC_TX_PAUSE;
 	else
-		fc_conf->mode = RTE_FC_NONE;
+		fc_conf->mode = RTE_ETH_FC_NONE;
 	return 0;
 }
 
@@ -1099,12 +1099,12 @@ static int cxgbe_flow_ctrl_set(struct rte_eth_dev *eth_dev,
 	u8 tx_pause = 0, rx_pause = 0;
 	int ret;
 
-	if (fc_conf->mode == RTE_FC_FULL) {
+	if (fc_conf->mode == RTE_ETH_FC_FULL) {
 		tx_pause = 1;
 		rx_pause = 1;
-	} else if (fc_conf->mode == RTE_FC_TX_PAUSE) {
+	} else if (fc_conf->mode == RTE_ETH_FC_TX_PAUSE) {
 		tx_pause = 1;
-	} else if (fc_conf->mode == RTE_FC_RX_PAUSE) {
+	} else if (fc_conf->mode == RTE_ETH_FC_RX_PAUSE) {
 		rx_pause = 1;
 	}
 
@@ -1200,9 +1200,9 @@ static int cxgbe_dev_rss_hash_conf_get(struct rte_eth_dev *dev,
 		rss_hf |= CXGBE_RSS_HF_IPV6_MASK;
 
 	if (flags & F_FW_RSS_VI_CONFIG_CMD_IP4FOURTUPEN) {
-		rss_hf |= ETH_RSS_NONFRAG_IPV4_TCP;
+		rss_hf |= RTE_ETH_RSS_NONFRAG_IPV4_TCP;
 		if (flags & F_FW_RSS_VI_CONFIG_CMD_UDPEN)
-			rss_hf |= ETH_RSS_NONFRAG_IPV4_UDP;
+			rss_hf |= RTE_ETH_RSS_NONFRAG_IPV4_UDP;
 	}
 
 	if (flags & F_FW_RSS_VI_CONFIG_CMD_IP4TWOTUPEN)
@@ -1246,8 +1246,8 @@ static int cxgbe_dev_rss_reta_update(struct rte_eth_dev *dev,
 
 	rte_memcpy(rss, pi->rss, pi->rss_size * sizeof(u16));
 	for (i = 0; i < reta_size; i++) {
-		idx = i / RTE_RETA_GROUP_SIZE;
-		shift = i % RTE_RETA_GROUP_SIZE;
+		idx = i / RTE_ETH_RETA_GROUP_SIZE;
+		shift = i % RTE_ETH_RETA_GROUP_SIZE;
 		if (!(reta_conf[idx].mask & (1ULL << shift)))
 			continue;
 
@@ -1277,8 +1277,8 @@ static int cxgbe_dev_rss_reta_query(struct rte_eth_dev *dev,
 		return -EINVAL;
 
 	for (i = 0; i < reta_size; i++) {
-		idx = i / RTE_RETA_GROUP_SIZE;
-		shift = i % RTE_RETA_GROUP_SIZE;
+		idx = i / RTE_ETH_RETA_GROUP_SIZE;
+		shift = i % RTE_ETH_RETA_GROUP_SIZE;
 		if (!(reta_conf[idx].mask & (1ULL << shift)))
 			continue;
 
@@ -1479,7 +1479,7 @@ static int cxgbe_fec_get_capa_speed_to_fec(struct link_config *lc,
 
 	if (lc->pcaps & FW_PORT_CAP32_SPEED_100G) {
 		if (capa_arr) {
-			capa_arr[num].speed = ETH_SPEED_NUM_100G;
+			capa_arr[num].speed = RTE_ETH_SPEED_NUM_100G;
 			capa_arr[num].capa = RTE_ETH_FEC_MODE_CAPA_MASK(NOFEC) |
 					     RTE_ETH_FEC_MODE_CAPA_MASK(RS);
 		}
@@ -1488,7 +1488,7 @@ static int cxgbe_fec_get_capa_speed_to_fec(struct link_config *lc,
 
 	if (lc->pcaps & FW_PORT_CAP32_SPEED_50G) {
 		if (capa_arr) {
-			capa_arr[num].speed = ETH_SPEED_NUM_50G;
+			capa_arr[num].speed = RTE_ETH_SPEED_NUM_50G;
 			capa_arr[num].capa = RTE_ETH_FEC_MODE_CAPA_MASK(NOFEC) |
 					     RTE_ETH_FEC_MODE_CAPA_MASK(BASER);
 		}
@@ -1497,7 +1497,7 @@ static int cxgbe_fec_get_capa_speed_to_fec(struct link_config *lc,
 
 	if (lc->pcaps & FW_PORT_CAP32_SPEED_25G) {
 		if (capa_arr) {
-			capa_arr[num].speed = ETH_SPEED_NUM_25G;
+			capa_arr[num].speed = RTE_ETH_SPEED_NUM_25G;
 			capa_arr[num].capa = RTE_ETH_FEC_MODE_CAPA_MASK(NOFEC) |
 					     RTE_ETH_FEC_MODE_CAPA_MASK(BASER) |
 					     RTE_ETH_FEC_MODE_CAPA_MASK(RS);

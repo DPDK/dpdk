@@ -61,10 +61,10 @@ struct pmd_internals {
 };
 
 static const struct rte_eth_link pmd_link = {
-		.link_speed = ETH_SPEED_NUM_10G,
-		.link_duplex = ETH_LINK_FULL_DUPLEX,
-		.link_status = ETH_LINK_DOWN,
-		.link_autoneg = ETH_LINK_FIXED,
+		.link_speed = RTE_ETH_SPEED_NUM_10G,
+		.link_duplex = RTE_ETH_LINK_FULL_DUPLEX,
+		.link_status = RTE_ETH_LINK_DOWN,
+		.link_autoneg = RTE_ETH_LINK_FIXED,
 };
 static int is_kni_initialized;
 

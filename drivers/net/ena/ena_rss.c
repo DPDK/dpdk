@@ -76,7 +76,7 @@ int ena_rss_reta_update(struct rte_eth_dev *dev,
 	if (reta_size == 0 || reta_conf == NULL)
 		return -EINVAL;
 
-	if (!(dev->data->dev_conf.rxmode.offloads & DEV_RX_OFFLOAD_RSS_HASH)) {
+	if (!(dev->data->dev_conf.rxmode.offloads & RTE_ETH_RX_OFFLOAD_RSS_HASH)) {
 		PMD_DRV_LOG(ERR,
 			"RSS was not configured for the PMD\n");
 		return -ENOTSUP;
@@ -93,8 +93,8 @@ int ena_rss_reta_update(struct rte_eth_dev *dev,
 		/* Each reta_conf is for 64 entries.
 		 * To support 128 we use 2 conf of 64.
 		 */
-		conf_idx = i / RTE_RETA_GROUP_SIZE;
-		idx = i % RTE_RETA_GROUP_SIZE;
+		conf_idx = i / RTE_ETH_RETA_GROUP_SIZE;
+		idx = i % RTE_ETH_RETA_GROUP_SIZE;
 		if (TEST_BIT(reta_conf[conf_idx].mask, idx)) {
 			entry_value =
 				ENA_IO_RXQ_IDX(reta_conf[conf_idx].reta[idx]);
@@ -139,7 +139,7 @@ int ena_rss_reta_query(struct rte_eth_dev *dev,
 	if (reta_size == 0 || reta_conf == NULL)
 		return -EINVAL;
 
-	if (!(dev->data->dev_conf.rxmode.offloads & DEV_RX_OFFLOAD_RSS_HASH)) {
+	if (!(dev->data->dev_conf.rxmode.offloads & RTE_ETH_RX_OFFLOAD_RSS_HASH)) {
 		PMD_DRV_LOG(ERR,
 			"RSS was not configured for the PMD\n");
 		return -ENOTSUP;
@@ -154,8 +154,8 @@ int ena_rss_reta_query(struct rte_eth_dev *dev,
 	}
 
 	for (i = 0 ; i < reta_size ; i++) {
-		reta_conf_idx = i / RTE_RETA_GROUP_SIZE;
-		reta_idx = i % RTE_RETA_GROUP_SIZE;
+		reta_conf_idx = i / RTE_ETH_RETA_GROUP_SIZE;
+		reta_idx = i % RTE_ETH_RETA_GROUP_SIZE;
 		if (TEST_BIT(reta_conf[reta_conf_idx].mask, reta_idx))
 			reta_conf[reta_conf_idx].reta[reta_idx] =
 				ENA_IO_RXQ_IDX_REV(indirect_table[i]);
@@ -199,34 +199,34 @@ static uint64_t ena_admin_hf_to_eth_hf(enum ena_admin_flow_hash_proto proto,
 	/* Convert proto to ETH flag */
 	switch (proto) {
 	case ENA_ADMIN_RSS_TCP4:
-		rss_hf |= ETH_RSS_NONFRAG_IPV4_TCP;
+		rss_hf |= RTE_ETH_RSS_NONFRAG_IPV4_TCP;
 		break;
 	case ENA_ADMIN_RSS_UDP4:
-		rss_hf |= ETH_RSS_NONFRAG_IPV4_UDP;
+		rss_hf |= RTE_ETH_RSS_NONFRAG_IPV4_UDP;
 		break;
 	case ENA_ADMIN_RSS_TCP6:
-		rss_hf |= ETH_RSS_NONFRAG_IPV6_TCP;
+		rss_hf |= RTE_ETH_RSS_NONFRAG_IPV6_TCP;
 		break;
 	case ENA_ADMIN_RSS_UDP6:
-		rss_hf |= ETH_RSS_NONFRAG_IPV6_UDP;
+		rss_hf |= RTE_ETH_RSS_NONFRAG_IPV6_UDP;
 		break;
 	case ENA_ADMIN_RSS_IP4:
-		rss_hf |= ETH_RSS_IPV4;
+		rss_hf |= RTE_ETH_RSS_IPV4;
 		break;
 	case ENA_ADMIN_RSS_IP6:
-		rss_hf |= ETH_RSS_IPV6;
+		rss_hf |= RTE_ETH_RSS_IPV6;
 		break;
 	case ENA_ADMIN_RSS_IP4_FRAG:
-		rss_hf |= ETH_RSS_FRAG_IPV4;
+		rss_hf |= RTE_ETH_RSS_FRAG_IPV4;
 		break;
 	case ENA_ADMIN_RSS_NOT_IP:
-		rss_hf |= ETH_RSS_L2_PAYLOAD;
+		rss_hf |= RTE_ETH_RSS_L2_PAYLOAD;
 		break;
 	case ENA_ADMIN_RSS_TCP6_EX:
-		rss_hf |= ETH_RSS_IPV6_TCP_EX;
+		rss_hf |= RTE_ETH_RSS_IPV6_TCP_EX;
 		break;
 	case ENA_ADMIN_RSS_IP6_EX:
-		rss_hf |= ETH_RSS_IPV6_EX;
+		rss_hf |= RTE_ETH_RSS_IPV6_EX;
 		break;
 	default:
 		break;
@@ -235,10 +235,10 @@ static uint64_t ena_admin_hf_to_eth_hf(enum ena_admin_flow_hash_proto proto,
 	/* Check if only DA or SA is being used for L3. */
 	switch (fields & ENA_HF_RSS_ALL_L3) {
 	case ENA_ADMIN_RSS_L3_SA:
-		rss_hf |= ETH_RSS_L3_SRC_ONLY;
+		rss_hf |= RTE_ETH_RSS_L3_SRC_ONLY;
 		break;
 	case ENA_ADMIN_RSS_L3_DA:
-		rss_hf |= ETH_RSS_L3_DST_ONLY;
+		rss_hf |= RTE_ETH_RSS_L3_DST_ONLY;
 		break;
 	default:
 		break;
@@ -247,10 +247,10 @@ static uint64_t ena_admin_hf_to_eth_hf(enum ena_admin_flow_hash_proto proto,
 	/* Check if only DA or SA is being used for L4. */
 	switch (fields & ENA_HF_RSS_ALL_L4) {
 	case ENA_ADMIN_RSS_L4_SP:
-		rss_hf |= ETH_RSS_L4_SRC_ONLY;
+		rss_hf |= RTE_ETH_RSS_L4_SRC_ONLY;
 		break;
 	case ENA_ADMIN_RSS_L4_DP:
-		rss_hf |= ETH_RSS_L4_DST_ONLY;
+		rss_hf |= RTE_ETH_RSS_L4_DST_ONLY;
 		break;
 	default:
 		break;
@@ -268,11 +268,11 @@ static uint16_t ena_eth_hf_to_admin_hf(enum ena_admin_flow_hash_proto proto,
 	fields_mask = ENA_ADMIN_RSS_L2_DA | ENA_ADMIN_RSS_L2_SA;
 
 	/* Determine which fields of L3 should be used. */
-	switch (rss_hf & (ETH_RSS_L3_SRC_ONLY | ETH_RSS_L3_DST_ONLY)) {
-	case ETH_RSS_L3_DST_ONLY:
+	switch (rss_hf & (RTE_ETH_RSS_L3_SRC_ONLY | RTE_ETH_RSS_L3_DST_ONLY)) {
+	case RTE_ETH_RSS_L3_DST_ONLY:
 		fields_mask |= ENA_ADMIN_RSS_L3_DA;
 		break;
-	case ETH_RSS_L3_SRC_ONLY:
+	case RTE_ETH_RSS_L3_SRC_ONLY:
 		fields_mask |= ENA_ADMIN_RSS_L3_SA;
 		break;
 	default:
@@ -284,11 +284,11 @@ static uint16_t ena_eth_hf_to_admin_hf(enum ena_admin_flow_hash_proto proto,
 	}
 
 	/* Determine which fields of L4 should be used. */
-	switch (rss_hf & (ETH_RSS_L4_SRC_ONLY | ETH_RSS_L4_DST_ONLY)) {
-	case ETH_RSS_L4_DST_ONLY:
+	switch (rss_hf & (RTE_ETH_RSS_L4_SRC_ONLY | RTE_ETH_RSS_L4_DST_ONLY)) {
+	case RTE_ETH_RSS_L4_DST_ONLY:
 		fields_mask |= ENA_ADMIN_RSS_L4_DP;
 		break;
-	case ETH_RSS_L4_SRC_ONLY:
+	case RTE_ETH_RSS_L4_SRC_ONLY:
 		fields_mask |= ENA_ADMIN_RSS_L4_SP;
 		break;
 	default:
@@ -334,43 +334,43 @@ static int ena_set_hash_fields(struct ena_com_dev *ena_dev, uint64_t rss_hf)
 	int rc, i;
 
 	/* Turn on appropriate fields for each requested packet type */
-	if ((rss_hf & ETH_RSS_NONFRAG_IPV4_TCP) != 0)
+	if ((rss_hf & RTE_ETH_RSS_NONFRAG_IPV4_TCP) != 0)
 		selected_fields[ENA_ADMIN_RSS_TCP4].fields =
 			ena_eth_hf_to_admin_hf(ENA_ADMIN_RSS_TCP4, rss_hf);
 
-	if ((rss_hf & ETH_RSS_NONFRAG_IPV4_UDP) != 0)
+	if ((rss_hf & RTE_ETH_RSS_NONFRAG_IPV4_UDP) != 0)
 		selected_fields[ENA_ADMIN_RSS_UDP4].fields =
 			ena_eth_hf_to_admin_hf(ENA_ADMIN_RSS_UDP4, rss_hf);
 
-	if ((rss_hf & ETH_RSS_NONFRAG_IPV6_TCP) != 0)
+	if ((rss_hf & RTE_ETH_RSS_NONFRAG_IPV6_TCP) != 0)
 		selected_fields[ENA_ADMIN_RSS_TCP6].fields =
 			ena_eth_hf_to_admin_hf(ENA_ADMIN_RSS_TCP6, rss_hf);
 
-	if ((rss_hf & ETH_RSS_NONFRAG_IPV6_UDP) != 0)
+	if ((rss_hf & RTE_ETH_RSS_NONFRAG_IPV6_UDP) != 0)
 		selected_fields[ENA_ADMIN_RSS_UDP6].fields =
 			ena_eth_hf_to_admin_hf(ENA_ADMIN_RSS_UDP6, rss_hf);
 
-	if ((rss_hf & ETH_RSS_IPV4) != 0)
+	if ((rss_hf & RTE_ETH_RSS_IPV4) != 0)
 		selected_fields[ENA_ADMIN_RSS_IP4].fields =
 			ena_eth_hf_to_admin_hf(ENA_ADMIN_RSS_IP4, rss_hf);
 
-	if ((rss_hf & ETH_RSS_IPV6) != 0)
+	if ((rss_hf & RTE_ETH_RSS_IPV6) != 0)
 		selected_fields[ENA_ADMIN_RSS_IP6].fields =
 			ena_eth_hf_to_admin_hf(ENA_ADMIN_RSS_IP6, rss_hf);
 
-	if ((rss_hf & ETH_RSS_FRAG_IPV4) != 0)
+	if ((rss_hf & RTE_ETH_RSS_FRAG_IPV4) != 0)
 		selected_fields[ENA_ADMIN_RSS_IP4_FRAG].fields =
 			ena_eth_hf_to_admin_hf(ENA_ADMIN_RSS_IP4_FRAG, rss_hf);
 
-	if ((rss_hf & ETH_RSS_L2_PAYLOAD) != 0)
+	if ((rss_hf & RTE_ETH_RSS_L2_PAYLOAD) != 0)
 		selected_fields[ENA_ADMIN_RSS_NOT_IP].fields =
 			ena_eth_hf_to_admin_hf(ENA_ADMIN_RSS_NOT_IP, rss_hf);
 
-	if ((rss_hf & ETH_RSS_IPV6_TCP_EX) != 0)
+	if ((rss_hf & RTE_ETH_RSS_IPV6_TCP_EX) != 0)
 		selected_fields[ENA_ADMIN_RSS_TCP6_EX].fields =
 			ena_eth_hf_to_admin_hf(ENA_ADMIN_RSS_TCP6_EX, rss_hf);
 
-	if ((rss_hf & ETH_RSS_IPV6_EX) != 0)
+	if ((rss_hf & RTE_ETH_RSS_IPV6_EX) != 0)
 		selected_fields[ENA_ADMIN_RSS_IP6_EX].fields =
 			ena_eth_hf_to_admin_hf(ENA_ADMIN_RSS_IP6_EX, rss_hf);
 
@@ -541,7 +541,7 @@ int ena_rss_hash_conf_get(struct rte_eth_dev *dev,
 	uint16_t admin_hf;
 	static bool warn_once;
 
-	if (!(dev->data->dev_conf.rxmode.offloads & DEV_RX_OFFLOAD_RSS_HASH)) {
+	if (!(dev->data->dev_conf.rxmode.offloads & RTE_ETH_RX_OFFLOAD_RSS_HASH)) {
 		PMD_DRV_LOG(ERR, "RSS was not configured for the PMD\n");
 		return -ENOTSUP;
 	}

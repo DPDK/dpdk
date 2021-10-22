@@ -147,31 +147,31 @@ int enic_get_vnic_config(struct enic *enic)
 		 * IPV4 hash type handles both non-frag and frag packet types.
 		 * TCP/UDP is controlled via a separate flag below.
 		 */
-		enic->flow_type_rss_offloads |= ETH_RSS_IPV4 |
-			ETH_RSS_FRAG_IPV4 | ETH_RSS_NONFRAG_IPV4_OTHER;
+		enic->flow_type_rss_offloads |= RTE_ETH_RSS_IPV4 |
+			RTE_ETH_RSS_FRAG_IPV4 | RTE_ETH_RSS_NONFRAG_IPV4_OTHER;
 	if (ENIC_SETTING(enic, RSSHASH_TCPIPV4))
-		enic->flow_type_rss_offloads |= ETH_RSS_NONFRAG_IPV4_TCP;
+		enic->flow_type_rss_offloads |= RTE_ETH_RSS_NONFRAG_IPV4_TCP;
 	if (ENIC_SETTING(enic, RSSHASH_IPV6))
 		/*
 		 * The VIC adapter can perform RSS on IPv6 packets with and
 		 * without extension headers. An IPv6 "fragment" is an IPv6
 		 * packet with the fragment extension header.
 		 */
-		enic->flow_type_rss_offloads |= ETH_RSS_IPV6 |
-			ETH_RSS_IPV6_EX | ETH_RSS_FRAG_IPV6 |
-			ETH_RSS_NONFRAG_IPV6_OTHER;
+		enic->flow_type_rss_offloads |= RTE_ETH_RSS_IPV6 |
+			RTE_ETH_RSS_IPV6_EX | RTE_ETH_RSS_FRAG_IPV6 |
+			RTE_ETH_RSS_NONFRAG_IPV6_OTHER;
 	if (ENIC_SETTING(enic, RSSHASH_TCPIPV6))
-		enic->flow_type_rss_offloads |= ETH_RSS_NONFRAG_IPV6_TCP |
-			ETH_RSS_IPV6_TCP_EX;
+		enic->flow_type_rss_offloads |= RTE_ETH_RSS_NONFRAG_IPV6_TCP |
+			RTE_ETH_RSS_IPV6_TCP_EX;
 	if (enic->udp_rss_weak)
 		enic->flow_type_rss_offloads |=
-			ETH_RSS_NONFRAG_IPV4_UDP | ETH_RSS_NONFRAG_IPV6_UDP |
-			ETH_RSS_IPV6_UDP_EX;
+			RTE_ETH_RSS_NONFRAG_IPV4_UDP | RTE_ETH_RSS_NONFRAG_IPV6_UDP |
+			RTE_ETH_RSS_IPV6_UDP_EX;
 	if (ENIC_SETTING(enic, RSSHASH_UDPIPV4))
-		enic->flow_type_rss_offloads |= ETH_RSS_NONFRAG_IPV4_UDP;
+		enic->flow_type_rss_offloads |= RTE_ETH_RSS_NONFRAG_IPV4_UDP;
 	if (ENIC_SETTING(enic, RSSHASH_UDPIPV6))
-		enic->flow_type_rss_offloads |= ETH_RSS_NONFRAG_IPV6_UDP |
-			ETH_RSS_IPV6_UDP_EX;
+		enic->flow_type_rss_offloads |= RTE_ETH_RSS_NONFRAG_IPV6_UDP |
+			RTE_ETH_RSS_IPV6_UDP_EX;
 
 	/* Zero offloads if RSS is not enabled */
 	if (!ENIC_SETTING(enic, RSS))
@@ -201,19 +201,19 @@ int enic_get_vnic_config(struct enic *enic)
 	enic->tx_queue_offload_capa = 0;
 	enic->tx_offload_capa =
 		enic->tx_queue_offload_capa |
-		DEV_TX_OFFLOAD_MULTI_SEGS |
-		DEV_TX_OFFLOAD_VLAN_INSERT |
-		DEV_TX_OFFLOAD_IPV4_CKSUM |
-		DEV_TX_OFFLOAD_UDP_CKSUM |
-		DEV_TX_OFFLOAD_TCP_CKSUM |
-		DEV_TX_OFFLOAD_TCP_TSO;
+		RTE_ETH_TX_OFFLOAD_MULTI_SEGS |
+		RTE_ETH_TX_OFFLOAD_VLAN_INSERT |
+		RTE_ETH_TX_OFFLOAD_IPV4_CKSUM |
+		RTE_ETH_TX_OFFLOAD_UDP_CKSUM |
+		RTE_ETH_TX_OFFLOAD_TCP_CKSUM |
+		RTE_ETH_TX_OFFLOAD_TCP_TSO;
 	enic->rx_offload_capa =
-		DEV_RX_OFFLOAD_SCATTER |
-		DEV_RX_OFFLOAD_VLAN_STRIP |
-		DEV_RX_OFFLOAD_IPV4_CKSUM |
-		DEV_RX_OFFLOAD_UDP_CKSUM |
-		DEV_RX_OFFLOAD_TCP_CKSUM |
-		DEV_RX_OFFLOAD_RSS_HASH;
+		RTE_ETH_RX_OFFLOAD_SCATTER |
+		RTE_ETH_RX_OFFLOAD_VLAN_STRIP |
+		RTE_ETH_RX_OFFLOAD_IPV4_CKSUM |
+		RTE_ETH_RX_OFFLOAD_UDP_CKSUM |
+		RTE_ETH_RX_OFFLOAD_TCP_CKSUM |
+		RTE_ETH_RX_OFFLOAD_RSS_HASH;
 	enic->tx_offload_mask =
 		PKT_TX_IPV6 |
 		PKT_TX_IPV4 |

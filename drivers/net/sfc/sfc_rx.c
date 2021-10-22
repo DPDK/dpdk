@@ -648,9 +648,9 @@ struct sfc_dp_rx sfc_efx_rx = {
 		.hw_fw_caps	= SFC_DP_HW_FW_CAP_RX_EFX,
 	},
 	.features		= SFC_DP_RX_FEAT_INTR,
-	.dev_offload_capa	= DEV_RX_OFFLOAD_CHECKSUM |
-				  DEV_RX_OFFLOAD_RSS_HASH,
-	.queue_offload_capa	= DEV_RX_OFFLOAD_SCATTER,
+	.dev_offload_capa	= RTE_ETH_RX_OFFLOAD_CHECKSUM |
+				  RTE_ETH_RX_OFFLOAD_RSS_HASH,
+	.queue_offload_capa	= RTE_ETH_RX_OFFLOAD_SCATTER,
 	.qsize_up_rings		= sfc_efx_rx_qsize_up_rings,
 	.qcreate		= sfc_efx_rx_qcreate,
 	.qdestroy		= sfc_efx_rx_qdestroy,
@@ -931,7 +931,7 @@ sfc_rx_get_offload_mask(struct sfc_adapter *sa)
 	uint64_t no_caps = 0;
 
 	if (encp->enc_tunnel_encapsulations_supported == 0)
-		no_caps |= DEV_RX_OFFLOAD_OUTER_IPV4_CKSUM;
+		no_caps |= RTE_ETH_RX_OFFLOAD_OUTER_IPV4_CKSUM;
 
 	return ~no_caps;
 }
@@ -1140,7 +1140,7 @@ sfc_rx_qinit(struct sfc_adapter *sa, sfc_sw_index_t sw_index,
 
 	if (!sfc_rx_check_scatter(sa->port.pdu, buf_size,
 				  encp->enc_rx_prefix_size,
-				  (offloads & DEV_RX_OFFLOAD_SCATTER),
+				  (offloads & RTE_ETH_RX_OFFLOAD_SCATTER),
 				  encp->enc_rx_scatter_max,
 				  &error)) {
 		sfc_err(sa, "RxQ %d (internal %u) MTU check failed: %s",
@@ -1166,15 +1166,15 @@ sfc_rx_qinit(struct sfc_adapter *sa, sfc_sw_index_t sw_index,
 		rxq_info->type = EFX_RXQ_TYPE_DEFAULT;
 
 	rxq_info->type_flags |=
-		(offloads & DEV_RX_OFFLOAD_SCATTER) ?
+		(offloads & RTE_ETH_RX_OFFLOAD_SCATTER) ?
 		EFX_RXQ_FLAG_SCATTER : EFX_RXQ_FLAG_NONE;
 
 	if ((encp->enc_tunnel_encapsulations_supported != 0) &&
 	    (sfc_dp_rx_offload_capa(sa->priv.dp_rx) &
-	     DEV_RX_OFFLOAD_OUTER_IPV4_CKSUM) != 0)
+	     RTE_ETH_RX_OFFLOAD_OUTER_IPV4_CKSUM) != 0)
 		rxq_info->type_flags |= EFX_RXQ_FLAG_INNER_CLASSES;
 
-	if (offloads & DEV_RX_OFFLOAD_RSS_HASH)
+	if (offloads & RTE_ETH_RX_OFFLOAD_RSS_HASH)
 		rxq_info->type_flags |= EFX_RXQ_FLAG_RSS_HASH;
 
 	if ((sa->negotiated_rx_metadata & RTE_ETH_RX_METADATA_USER_FLAG) != 0)
@@ -1211,7 +1211,7 @@ sfc_rx_qinit(struct sfc_adapter *sa, sfc_sw_index_t sw_index,
 	rxq_info->refill_mb_pool = mb_pool;
 
 	if (rss->hash_support == EFX_RX_HASH_AVAILABLE && rss->channels > 0 &&
-	    (offloads & DEV_RX_OFFLOAD_RSS_HASH))
+	    (offloads & RTE_ETH_RX_OFFLOAD_RSS_HASH))
 		rxq_info->rxq_flags = SFC_RXQ_FLAG_RSS_HASH;
 	else
 		rxq_info->rxq_flags = 0;
@@ -1313,19 +1313,19 @@ sfc_rx_qfini(struct sfc_adapter *sa, sfc_sw_index_t sw_index)
  * Mapping between RTE RSS hash functions and their EFX counterparts.
  */
 static const struct sfc_rss_hf_rte_to_efx sfc_rss_hf_map[] = {
-	{ ETH_RSS_NONFRAG_IPV4_TCP,
+	{ RTE_ETH_RSS_NONFRAG_IPV4_TCP,
 	  EFX_RX_HASH(IPV4_TCP, 4TUPLE) },
-	{ ETH_RSS_NONFRAG_IPV4_UDP,
+	{ RTE_ETH_RSS_NONFRAG_IPV4_UDP,
 	  EFX_RX_HASH(IPV4_UDP, 4TUPLE) },
-	{ ETH_RSS_NONFRAG_IPV6_TCP | ETH_RSS_IPV6_TCP_EX,
+	{ RTE_ETH_RSS_NONFRAG_IPV6_TCP | RTE_ETH_RSS_IPV6_TCP_EX,
 	  EFX_RX_HASH(IPV6_TCP, 4TUPLE) },
-	{ ETH_RSS_NONFRAG_IPV6_UDP | ETH_RSS_IPV6_UDP_EX,
+	{ RTE_ETH_RSS_NONFRAG_IPV6_UDP | RTE_ETH_RSS_IPV6_UDP_EX,
 	  EFX_RX_HASH(IPV6_UDP, 4TUPLE) },
-	{ ETH_RSS_IPV4 | ETH_RSS_FRAG_IPV4 | ETH_RSS_NONFRAG_IPV4_OTHER,
+	{ RTE_ETH_RSS_IPV4 | RTE_ETH_RSS_FRAG_IPV4 | RTE_ETH_RSS_NONFRAG_IPV4_OTHER,
 	  EFX_RX_HASH(IPV4_TCP, 2TUPLE) | EFX_RX_HASH(IPV4_UDP, 2TUPLE) |
 	  EFX_RX_HASH(IPV4, 2TUPLE) },
-	{ ETH_RSS_IPV6 | ETH_RSS_FRAG_IPV6 | ETH_RSS_NONFRAG_IPV6_OTHER |
-	  ETH_RSS_IPV6_EX,
+	{ RTE_ETH_RSS_IPV6 | RTE_ETH_RSS_FRAG_IPV6 | RTE_ETH_RSS_NONFRAG_IPV6_OTHER |
+	  RTE_ETH_RSS_IPV6_EX,
 	  EFX_RX_HASH(IPV6_TCP, 2TUPLE) | EFX_RX_HASH(IPV6_UDP, 2TUPLE) |
 	  EFX_RX_HASH(IPV6, 2TUPLE) }
 };
@@ -1645,10 +1645,10 @@ sfc_rx_check_mode(struct sfc_adapter *sa, struct rte_eth_rxmode *rxmode)
 	int rc = 0;
 
 	switch (rxmode->mq_mode) {
-	case ETH_MQ_RX_NONE:
+	case RTE_ETH_MQ_RX_NONE:
 		/* No special checks are required */
 		break;
-	case ETH_MQ_RX_RSS:
+	case RTE_ETH_MQ_RX_RSS:
 		if (rss->context_type == EFX_RX_SCALE_UNAVAILABLE) {
 			sfc_err(sa, "RSS is not available");
 			rc = EINVAL;
@@ -1665,16 +1665,16 @@ sfc_rx_check_mode(struct sfc_adapter *sa, struct rte_eth_rxmode *rxmode)
 	 * so unsupported offloads cannot be added as the result of
 	 * below check.
 	 */
-	if ((rxmode->offloads & DEV_RX_OFFLOAD_CHECKSUM) !=
-	    (offloads_supported & DEV_RX_OFFLOAD_CHECKSUM)) {
+	if ((rxmode->offloads & RTE_ETH_RX_OFFLOAD_CHECKSUM) !=
+	    (offloads_supported & RTE_ETH_RX_OFFLOAD_CHECKSUM)) {
 		sfc_warn(sa, "Rx checksum offloads cannot be disabled - always on (IPv4/TCP/UDP)");
-		rxmode->offloads |= DEV_RX_OFFLOAD_CHECKSUM;
+		rxmode->offloads |= RTE_ETH_RX_OFFLOAD_CHECKSUM;
 	}
 
-	if ((offloads_supported & DEV_RX_OFFLOAD_OUTER_IPV4_CKSUM) &&
-	    (~rxmode->offloads & DEV_RX_OFFLOAD_OUTER_IPV4_CKSUM)) {
+	if ((offloads_supported & RTE_ETH_RX_OFFLOAD_OUTER_IPV4_CKSUM) &&
+	    (~rxmode->offloads & RTE_ETH_RX_OFFLOAD_OUTER_IPV4_CKSUM)) {
 		sfc_warn(sa, "Rx outer IPv4 checksum offload cannot be disabled - always on");
-		rxmode->offloads |= DEV_RX_OFFLOAD_OUTER_IPV4_CKSUM;
+		rxmode->offloads |= RTE_ETH_RX_OFFLOAD_OUTER_IPV4_CKSUM;
 	}
 
 	return rc;
@@ -1820,7 +1820,7 @@ sfc_rx_configure(struct sfc_adapter *sa)
 	}
 
 configure_rss:
-	rss->channels = (dev_conf->rxmode.mq_mode == ETH_MQ_RX_RSS) ?
+	rss->channels = (dev_conf->rxmode.mq_mode == RTE_ETH_MQ_RX_RSS) ?
 			 MIN(sas->ethdev_rxq_count, EFX_MAXRSS) : 0;
 
 	if (rss->channels > 0) {

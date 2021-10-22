@@ -439,24 +439,24 @@ mlx5_link_update_unlocked_gset(struct rte_eth_dev *dev,
 	}
 	link_speed = ethtool_cmd_speed(&edata);
 	if (link_speed == -1)
-		dev_link.link_speed = ETH_SPEED_NUM_UNKNOWN;
+		dev_link.link_speed = RTE_ETH_SPEED_NUM_UNKNOWN;
 	else
 		dev_link.link_speed = link_speed;
 	priv->link_speed_capa = 0;
 	if (edata.supported & (SUPPORTED_1000baseT_Full |
 			       SUPPORTED_1000baseKX_Full))
-		priv->link_speed_capa |= ETH_LINK_SPEED_1G;
+		priv->link_speed_capa |= RTE_ETH_LINK_SPEED_1G;
 	if (edata.supported & SUPPORTED_10000baseKR_Full)
-		priv->link_speed_capa |= ETH_LINK_SPEED_10G;
+		priv->link_speed_capa |= RTE_ETH_LINK_SPEED_10G;
 	if (edata.supported & (SUPPORTED_40000baseKR4_Full |
 			       SUPPORTED_40000baseCR4_Full |
 			       SUPPORTED_40000baseSR4_Full |
 			       SUPPORTED_40000baseLR4_Full))
-		priv->link_speed_capa |= ETH_LINK_SPEED_40G;
+		priv->link_speed_capa |= RTE_ETH_LINK_SPEED_40G;
 	dev_link.link_duplex = ((edata.duplex == DUPLEX_HALF) ?
-				ETH_LINK_HALF_DUPLEX : ETH_LINK_FULL_DUPLEX);
+				RTE_ETH_LINK_HALF_DUPLEX : RTE_ETH_LINK_FULL_DUPLEX);
 	dev_link.link_autoneg = !(dev->data->dev_conf.link_speeds &
-			ETH_LINK_SPEED_FIXED);
+			RTE_ETH_LINK_SPEED_FIXED);
 	*link = dev_link;
 	return 0;
 }
@@ -545,45 +545,45 @@ mlx5_link_update_unlocked_gs(struct rte_eth_dev *dev,
 		return ret;
 	}
 	dev_link.link_speed = (ecmd->speed == UINT32_MAX) ?
-				ETH_SPEED_NUM_UNKNOWN : ecmd->speed;
+				RTE_ETH_SPEED_NUM_UNKNOWN : ecmd->speed;
 	sc = ecmd->link_mode_masks[0] |
 		((uint64_t)ecmd->link_mode_masks[1] << 32);
 	priv->link_speed_capa = 0;
 	if (sc & (MLX5_BITSHIFT(ETHTOOL_LINK_MODE_1000baseT_Full_BIT) |
 		  MLX5_BITSHIFT(ETHTOOL_LINK_MODE_1000baseKX_Full_BIT)))
-		priv->link_speed_capa |= ETH_LINK_SPEED_1G;
+		priv->link_speed_capa |= RTE_ETH_LINK_SPEED_1G;
 	if (sc & (MLX5_BITSHIFT(ETHTOOL_LINK_MODE_10000baseKX4_Full_BIT) |
 		  MLX5_BITSHIFT(ETHTOOL_LINK_MODE_10000baseKR_Full_BIT) |
 		  MLX5_BITSHIFT(ETHTOOL_LINK_MODE_10000baseR_FEC_BIT)))
-		priv->link_speed_capa |= ETH_LINK_SPEED_10G;
+		priv->link_speed_capa |= RTE_ETH_LINK_SPEED_10G;
 	if (sc & (MLX5_BITSHIFT(ETHTOOL_LINK_MODE_20000baseMLD2_Full_BIT) |
 		  MLX5_BITSHIFT(ETHTOOL_LINK_MODE_20000baseKR2_Full_BIT)))
-		priv->link_speed_capa |= ETH_LINK_SPEED_20G;
+		priv->link_speed_capa |= RTE_ETH_LINK_SPEED_20G;
 	if (sc & (MLX5_BITSHIFT(ETHTOOL_LINK_MODE_40000baseKR4_Full_BIT) |
 		  MLX5_BITSHIFT(ETHTOOL_LINK_MODE_40000baseCR4_Full_BIT) |
 		  MLX5_BITSHIFT(ETHTOOL_LINK_MODE_40000baseSR4_Full_BIT) |
 		  MLX5_BITSHIFT(ETHTOOL_LINK_MODE_40000baseLR4_Full_BIT)))
-		priv->link_speed_capa |= ETH_LINK_SPEED_40G;
+		priv->link_speed_capa |= RTE_ETH_LINK_SPEED_40G;
 	if (sc & (MLX5_BITSHIFT(ETHTOOL_LINK_MODE_56000baseKR4_Full_BIT) |
 		  MLX5_BITSHIFT(ETHTOOL_LINK_MODE_56000baseCR4_Full_BIT) |
 		  MLX5_BITSHIFT(ETHTOOL_LINK_MODE_56000baseSR4_Full_BIT) |
 		  MLX5_BITSHIFT(ETHTOOL_LINK_MODE_56000baseLR4_Full_BIT)))
-		priv->link_speed_capa |= ETH_LINK_SPEED_56G;
+		priv->link_speed_capa |= RTE_ETH_LINK_SPEED_56G;
 	if (sc & (MLX5_BITSHIFT(ETHTOOL_LINK_MODE_25000baseCR_Full_BIT) |
 		  MLX5_BITSHIFT(ETHTOOL_LINK_MODE_25000baseKR_Full_BIT) |
 		  MLX5_BITSHIFT(ETHTOOL_LINK_MODE_25000baseSR_Full_BIT)))
-		priv->link_speed_capa |= ETH_LINK_SPEED_25G;
+		priv->link_speed_capa |= RTE_ETH_LINK_SPEED_25G;
 	if (sc & (MLX5_BITSHIFT(ETHTOOL_LINK_MODE_50000baseCR2_Full_BIT) |
 		  MLX5_BITSHIFT(ETHTOOL_LINK_MODE_50000baseKR2_Full_BIT)))
-		priv->link_speed_capa |= ETH_LINK_SPEED_50G;
+		priv->link_speed_capa |= RTE_ETH_LINK_SPEED_50G;
 	if (sc & (MLX5_BITSHIFT(ETHTOOL_LINK_MODE_100000baseKR4_Full_BIT) |
 		  MLX5_BITSHIFT(ETHTOOL_LINK_MODE_100000baseSR4_Full_BIT) |
 		  MLX5_BITSHIFT(ETHTOOL_LINK_MODE_100000baseCR4_Full_BIT) |
 		  MLX5_BITSHIFT(ETHTOOL_LINK_MODE_100000baseLR4_ER4_Full_BIT)))
-		priv->link_speed_capa |= ETH_LINK_SPEED_100G;
+		priv->link_speed_capa |= RTE_ETH_LINK_SPEED_100G;
 	if (sc & (MLX5_BITSHIFT(ETHTOOL_LINK_MODE_200000baseKR4_Full_BIT) |
 		  MLX5_BITSHIFT(ETHTOOL_LINK_MODE_200000baseSR4_Full_BIT)))
-		priv->link_speed_capa |= ETH_LINK_SPEED_200G;
+		priv->link_speed_capa |= RTE_ETH_LINK_SPEED_200G;
 
 	sc = ecmd->link_mode_masks[2] |
 		((uint64_t)ecmd->link_mode_masks[3] << 32);
@@ -591,11 +591,11 @@ mlx5_link_update_unlocked_gs(struct rte_eth_dev *dev,
 		  MLX5_BITSHIFT
 		       (ETHTOOL_LINK_MODE_200000baseLR4_ER4_FR4_Full_BIT) |
 		  MLX5_BITSHIFT(ETHTOOL_LINK_MODE_200000baseDR4_Full_BIT)))
-		priv->link_speed_capa |= ETH_LINK_SPEED_200G;
+		priv->link_speed_capa |= RTE_ETH_LINK_SPEED_200G;
 	dev_link.link_duplex = ((ecmd->duplex == DUPLEX_HALF) ?
-				ETH_LINK_HALF_DUPLEX : ETH_LINK_FULL_DUPLEX);
+				RTE_ETH_LINK_HALF_DUPLEX : RTE_ETH_LINK_FULL_DUPLEX);
 	dev_link.link_autoneg = !(dev->data->dev_conf.link_speeds &
-				  ETH_LINK_SPEED_FIXED);
+				  RTE_ETH_LINK_SPEED_FIXED);
 	*link = dev_link;
 	return 0;
 }
@@ -677,13 +677,13 @@ mlx5_dev_get_flow_ctrl(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 	}
 	fc_conf->autoneg = ethpause.autoneg;
 	if (ethpause.rx_pause && ethpause.tx_pause)
-		fc_conf->mode = RTE_FC_FULL;
+		fc_conf->mode = RTE_ETH_FC_FULL;
 	else if (ethpause.rx_pause)
-		fc_conf->mode = RTE_FC_RX_PAUSE;
+		fc_conf->mode = RTE_ETH_FC_RX_PAUSE;
 	else if (ethpause.tx_pause)
-		fc_conf->mode = RTE_FC_TX_PAUSE;
+		fc_conf->mode = RTE_ETH_FC_TX_PAUSE;
 	else
-		fc_conf->mode = RTE_FC_NONE;
+		fc_conf->mode = RTE_ETH_FC_NONE;
 	return 0;
 }
 
@@ -709,14 +709,14 @@ mlx5_dev_set_flow_ctrl(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 
 	ifr.ifr_data = (void *)&ethpause;
 	ethpause.autoneg = fc_conf->autoneg;
-	if (((fc_conf->mode & RTE_FC_FULL) == RTE_FC_FULL) ||
-	    (fc_conf->mode & RTE_FC_RX_PAUSE))
+	if (((fc_conf->mode & RTE_ETH_FC_FULL) == RTE_ETH_FC_FULL) ||
+	    (fc_conf->mode & RTE_ETH_FC_RX_PAUSE))
 		ethpause.rx_pause = 1;
 	else
 		ethpause.rx_pause = 0;
 
-	if (((fc_conf->mode & RTE_FC_FULL) == RTE_FC_FULL) ||
-	    (fc_conf->mode & RTE_FC_TX_PAUSE))
+	if (((fc_conf->mode & RTE_ETH_FC_FULL) == RTE_ETH_FC_FULL) ||
+	    (fc_conf->mode & RTE_ETH_FC_TX_PAUSE))
 		ethpause.tx_pause = 1;
 	else
 		ethpause.tx_pause = 0;

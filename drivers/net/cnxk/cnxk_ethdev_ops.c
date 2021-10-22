@@ -81,24 +81,24 @@ cnxk_nix_rx_burst_mode_get(struct rte_eth_dev *eth_dev, uint16_t queue_id,
 		uint64_t flags;
 		const char *output;
 	} rx_offload_map[] = {
-		{DEV_RX_OFFLOAD_VLAN_STRIP, " VLAN Strip,"},
-		{DEV_RX_OFFLOAD_IPV4_CKSUM, " Inner IPv4 Checksum,"},
-		{DEV_RX_OFFLOAD_UDP_CKSUM, " UDP Checksum,"},
-		{DEV_RX_OFFLOAD_TCP_CKSUM, " TCP Checksum,"},
-		{DEV_RX_OFFLOAD_TCP_LRO, " TCP LRO,"},
-		{DEV_RX_OFFLOAD_QINQ_STRIP, " QinQ VLAN Strip,"},
-		{DEV_RX_OFFLOAD_OUTER_IPV4_CKSUM, " Outer IPv4 Checksum,"},
-		{DEV_RX_OFFLOAD_MACSEC_STRIP, " MACsec Strip,"},
-		{DEV_RX_OFFLOAD_HEADER_SPLIT, " Header Split,"},
-		{DEV_RX_OFFLOAD_VLAN_FILTER, " VLAN Filter,"},
-		{DEV_RX_OFFLOAD_VLAN_EXTEND, " VLAN Extend,"},
-		{DEV_RX_OFFLOAD_SCATTER, " Scattered,"},
-		{DEV_RX_OFFLOAD_TIMESTAMP, " Timestamp,"},
-		{DEV_RX_OFFLOAD_SECURITY, " Security,"},
-		{DEV_RX_OFFLOAD_KEEP_CRC, " Keep CRC,"},
-		{DEV_RX_OFFLOAD_SCTP_CKSUM, " SCTP,"},
-		{DEV_RX_OFFLOAD_OUTER_UDP_CKSUM, " Outer UDP Checksum,"},
-		{DEV_RX_OFFLOAD_RSS_HASH, " RSS,"}
+		{RTE_ETH_RX_OFFLOAD_VLAN_STRIP, " VLAN Strip,"},
+		{RTE_ETH_RX_OFFLOAD_IPV4_CKSUM, " Inner IPv4 Checksum,"},
+		{RTE_ETH_RX_OFFLOAD_UDP_CKSUM, " UDP Checksum,"},
+		{RTE_ETH_RX_OFFLOAD_TCP_CKSUM, " TCP Checksum,"},
+		{RTE_ETH_RX_OFFLOAD_TCP_LRO, " TCP LRO,"},
+		{RTE_ETH_RX_OFFLOAD_QINQ_STRIP, " QinQ VLAN Strip,"},
+		{RTE_ETH_RX_OFFLOAD_OUTER_IPV4_CKSUM, " Outer IPv4 Checksum,"},
+		{RTE_ETH_RX_OFFLOAD_MACSEC_STRIP, " MACsec Strip,"},
+		{RTE_ETH_RX_OFFLOAD_HEADER_SPLIT, " Header Split,"},
+		{RTE_ETH_RX_OFFLOAD_VLAN_FILTER, " VLAN Filter,"},
+		{RTE_ETH_RX_OFFLOAD_VLAN_EXTEND, " VLAN Extend,"},
+		{RTE_ETH_RX_OFFLOAD_SCATTER, " Scattered,"},
+		{RTE_ETH_RX_OFFLOAD_TIMESTAMP, " Timestamp,"},
+		{RTE_ETH_RX_OFFLOAD_SECURITY, " Security,"},
+		{RTE_ETH_RX_OFFLOAD_KEEP_CRC, " Keep CRC,"},
+		{RTE_ETH_RX_OFFLOAD_SCTP_CKSUM, " SCTP,"},
+		{RTE_ETH_RX_OFFLOAD_OUTER_UDP_CKSUM, " Outer UDP Checksum,"},
+		{RTE_ETH_RX_OFFLOAD_RSS_HASH, " RSS,"}
 	};
 	static const char *const burst_mode[] = {"Vector Neon, Rx Offloads:",
 						 "Scalar, Rx Offloads:"
@@ -142,28 +142,28 @@ cnxk_nix_tx_burst_mode_get(struct rte_eth_dev *eth_dev, uint16_t queue_id,
 		uint64_t flags;
 		const char *output;
 	} tx_offload_map[] = {
-		{DEV_TX_OFFLOAD_VLAN_INSERT, " VLAN Insert,"},
-		{DEV_TX_OFFLOAD_IPV4_CKSUM, " Inner IPv4 Checksum,"},
-		{DEV_TX_OFFLOAD_UDP_CKSUM, " UDP Checksum,"},
-		{DEV_TX_OFFLOAD_TCP_CKSUM, " TCP Checksum,"},
-		{DEV_TX_OFFLOAD_SCTP_CKSUM, " SCTP Checksum,"},
-		{DEV_TX_OFFLOAD_TCP_TSO, " TCP TSO,"},
-		{DEV_TX_OFFLOAD_UDP_TSO, " UDP TSO,"},
-		{DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM, " Outer IPv4 Checksum,"},
-		{DEV_TX_OFFLOAD_QINQ_INSERT, " QinQ VLAN Insert,"},
-		{DEV_TX_OFFLOAD_VXLAN_TNL_TSO, " VXLAN Tunnel TSO,"},
-		{DEV_TX_OFFLOAD_GRE_TNL_TSO, " GRE Tunnel TSO,"},
-		{DEV_TX_OFFLOAD_IPIP_TNL_TSO, " IP-in-IP Tunnel TSO,"},
-		{DEV_TX_OFFLOAD_GENEVE_TNL_TSO, " Geneve Tunnel TSO,"},
-		{DEV_TX_OFFLOAD_MACSEC_INSERT, " MACsec Insert,"},
-		{DEV_TX_OFFLOAD_MT_LOCKFREE, " Multi Thread Lockless Tx,"},
-		{DEV_TX_OFFLOAD_MULTI_SEGS, " Scattered,"},
-		{DEV_TX_OFFLOAD_MBUF_FAST_FREE, " H/W MBUF Free,"},
-		{DEV_TX_OFFLOAD_SECURITY, " Security,"},
-		{DEV_TX_OFFLOAD_UDP_TNL_TSO, " UDP Tunnel TSO,"},
-		{DEV_TX_OFFLOAD_IP_TNL_TSO, " IP Tunnel TSO,"},
-		{DEV_TX_OFFLOAD_OUTER_UDP_CKSUM, " Outer UDP Checksum,"},
-		{DEV_TX_OFFLOAD_SEND_ON_TIMESTAMP, " Timestamp,"}
+		{RTE_ETH_TX_OFFLOAD_VLAN_INSERT, " VLAN Insert,"},
+		{RTE_ETH_TX_OFFLOAD_IPV4_CKSUM, " Inner IPv4 Checksum,"},
+		{RTE_ETH_TX_OFFLOAD_UDP_CKSUM, " UDP Checksum,"},
+		{RTE_ETH_TX_OFFLOAD_TCP_CKSUM, " TCP Checksum,"},
+		{RTE_ETH_TX_OFFLOAD_SCTP_CKSUM, " SCTP Checksum,"},
+		{RTE_ETH_TX_OFFLOAD_TCP_TSO, " TCP TSO,"},
+		{RTE_ETH_TX_OFFLOAD_UDP_TSO, " UDP TSO,"},
+		{RTE_ETH_TX_OFFLOAD_OUTER_IPV4_CKSUM, " Outer IPv4 Checksum,"},
+		{RTE_ETH_TX_OFFLOAD_QINQ_INSERT, " QinQ VLAN Insert,"},
+		{RTE_ETH_TX_OFFLOAD_VXLAN_TNL_TSO, " VXLAN Tunnel TSO,"},
+		{RTE_ETH_TX_OFFLOAD_GRE_TNL_TSO, " GRE Tunnel TSO,"},
+		{RTE_ETH_TX_OFFLOAD_IPIP_TNL_TSO, " IP-in-IP Tunnel TSO,"},
+		{RTE_ETH_TX_OFFLOAD_GENEVE_TNL_TSO, " Geneve Tunnel TSO,"},
+		{RTE_ETH_TX_OFFLOAD_MACSEC_INSERT, " MACsec Insert,"},
+		{RTE_ETH_TX_OFFLOAD_MT_LOCKFREE, " Multi Thread Lockless Tx,"},
+		{RTE_ETH_TX_OFFLOAD_MULTI_SEGS, " Scattered,"},
+		{RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE, " H/W MBUF Free,"},
+		{RTE_ETH_TX_OFFLOAD_SECURITY, " Security,"},
+		{RTE_ETH_TX_OFFLOAD_UDP_TNL_TSO, " UDP Tunnel TSO,"},
+		{RTE_ETH_TX_OFFLOAD_IP_TNL_TSO, " IP Tunnel TSO,"},
+		{RTE_ETH_TX_OFFLOAD_OUTER_UDP_CKSUM, " Outer UDP Checksum,"},
+		{RTE_ETH_TX_OFFLOAD_SEND_ON_TIMESTAMP, " Timestamp,"}
 	};
 	static const char *const burst_mode[] = {"Vector Neon, Tx Offloads:",
 						 "Scalar, Tx Offloads:"
@@ -203,8 +203,8 @@ cnxk_nix_flow_ctrl_get(struct rte_eth_dev *eth_dev,
 {
 	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
 	enum rte_eth_fc_mode mode_map[] = {
-					   RTE_FC_NONE, RTE_FC_RX_PAUSE,
-					   RTE_FC_TX_PAUSE, RTE_FC_FULL
+					   RTE_ETH_FC_NONE, RTE_ETH_FC_RX_PAUSE,
+					   RTE_ETH_FC_TX_PAUSE, RTE_ETH_FC_FULL
 					  };
 	struct roc_nix *nix = &dev->nix;
 	int mode;
@@ -264,10 +264,10 @@ cnxk_nix_flow_ctrl_set(struct rte_eth_dev *eth_dev,
 	if (fc_conf->mode == fc->mode)
 		return 0;
 
-	rx_pause = (fc_conf->mode == RTE_FC_FULL) ||
-		    (fc_conf->mode == RTE_FC_RX_PAUSE);
-	tx_pause = (fc_conf->mode == RTE_FC_FULL) ||
-		    (fc_conf->mode == RTE_FC_TX_PAUSE);
+	rx_pause = (fc_conf->mode == RTE_ETH_FC_FULL) ||
+		    (fc_conf->mode == RTE_ETH_FC_RX_PAUSE);
+	tx_pause = (fc_conf->mode == RTE_ETH_FC_FULL) ||
+		    (fc_conf->mode == RTE_ETH_FC_TX_PAUSE);
 
 	/* Check if TX pause frame is already enabled or not */
 	if (fc->tx_pause ^ tx_pause) {
@@ -408,13 +408,13 @@ cnxk_nix_mtu_set(struct rte_eth_dev *eth_dev, uint16_t mtu)
 	 * when this feature has not been enabled before.
 	 */
 	if (data->dev_started && frame_size > buffsz &&
-	    !(dev->rx_offloads & DEV_RX_OFFLOAD_SCATTER)) {
+	    !(dev->rx_offloads & RTE_ETH_RX_OFFLOAD_SCATTER)) {
 		plt_err("Scatter offload is not enabled for mtu");
 		goto exit;
 	}
 
 	/* Check <seg size> * <max_seg>  >= max_frame */
-	if ((dev->rx_offloads & DEV_RX_OFFLOAD_SCATTER)	&&
+	if ((dev->rx_offloads & RTE_ETH_RX_OFFLOAD_SCATTER)	&&
 	    frame_size > (buffsz * CNXK_NIX_RX_NB_SEG_MAX)) {
 		plt_err("Greater than maximum supported packet length");
 		goto exit;
@@ -734,8 +734,8 @@ cnxk_nix_reta_update(struct rte_eth_dev *eth_dev,
 	}
 
 	/* Copy RETA table */
-	for (i = 0; i < (int)(dev->nix.reta_sz / RTE_RETA_GROUP_SIZE); i++) {
-		for (j = 0; j < RTE_RETA_GROUP_SIZE; j++) {
+	for (i = 0; i < (int)(dev->nix.reta_sz / RTE_ETH_RETA_GROUP_SIZE); i++) {
+		for (j = 0; j < RTE_ETH_RETA_GROUP_SIZE; j++) {
 			if ((reta_conf[i].mask >> j) & 0x01)
 				reta[idx] = reta_conf[i].reta[j];
 			idx++;
@@ -770,8 +770,8 @@ cnxk_nix_reta_query(struct rte_eth_dev *eth_dev,
 		goto fail;
 
 	/* Copy RETA table */
-	for (i = 0; i < (int)(dev->nix.reta_sz / RTE_RETA_GROUP_SIZE); i++) {
-		for (j = 0; j < RTE_RETA_GROUP_SIZE; j++) {
+	for (i = 0; i < (int)(dev->nix.reta_sz / RTE_ETH_RETA_GROUP_SIZE); i++) {
+		for (j = 0; j < RTE_ETH_RETA_GROUP_SIZE; j++) {
 			if ((reta_conf[i].mask >> j) & 0x01)
 				reta_conf[i].reta[j] = reta[idx];
 			idx++;
@@ -804,7 +804,7 @@ cnxk_nix_rss_hash_update(struct rte_eth_dev *eth_dev,
 	if (rss_conf->rss_key)
 		roc_nix_rss_key_set(nix, rss_conf->rss_key);
 
-	rss_hash_level = ETH_RSS_LEVEL(rss_conf->rss_hf);
+	rss_hash_level = RTE_ETH_RSS_LEVEL(rss_conf->rss_hf);
 	if (rss_hash_level)
 		rss_hash_level -= 1;
 	flowkey_cfg =

@@ -285,8 +285,8 @@ int rte_pmd_ixgbe_macsec_select_rxsa(uint16_t port, uint8_t idx, uint8_t an,
 * @param rx_mask
 *    The RX mode mask, which is one or more of accepting Untagged Packets,
 *    packets that match the PFUTA table, Broadcast and Multicast Promiscuous.
-*    ETH_VMDQ_ACCEPT_UNTAG,ETH_VMDQ_ACCEPT_HASH_UC,
-*    ETH_VMDQ_ACCEPT_BROADCAST and ETH_VMDQ_ACCEPT_MULTICAST will be used
+*    RTE_ETH_VMDQ_ACCEPT_UNTAG, RTE_ETH_VMDQ_ACCEPT_HASH_UC,
+*    RTE_ETH_VMDQ_ACCEPT_BROADCAST and RTE_ETH_VMDQ_ACCEPT_MULTICAST will be used
 *    in rx_mode.
 * @param on
 *    1 - Enable a VF RX mode.

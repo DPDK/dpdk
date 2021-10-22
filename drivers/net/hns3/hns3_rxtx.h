@@ -307,7 +307,7 @@ struct hns3_rx_queue {
 	uint16_t rx_rearm_start; /* index of BD that driver re-arming from */
 	uint16_t rx_rearm_nb;    /* number of remaining BDs to be re-armed */
 
-	/* 4 if DEV_RX_OFFLOAD_KEEP_CRC offload set, 0 otherwise */
+	/* 4 if RTE_ETH_RX_OFFLOAD_KEEP_CRC offload set, 0 otherwise */
 	uint8_t crc_len;
 
 	/*

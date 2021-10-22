@@ -1670,7 +1670,7 @@ int cxgbe_link_start(struct port_info *pi)
 	 * that step explicitly.
 	 */
 	ret = t4_set_rxmode(adapter, adapter->mbox, pi->viid, mtu, -1, -1, -1,
-			    !!(conf_offloads & DEV_RX_OFFLOAD_VLAN_STRIP),
+			    !!(conf_offloads & RTE_ETH_RX_OFFLOAD_VLAN_STRIP),
 			    true);
 	if (ret == 0) {
 		ret = cxgbe_mpstcam_modify(pi, (int)pi->xact_addr_filt,
@@ -1694,7 +1694,7 @@ int cxgbe_link_start(struct port_info *pi)
 	}
 
 	if (ret == 0 && cxgbe_force_linkup(adapter))
-		pi->eth_dev->data->dev_link.link_status = ETH_LINK_UP;
+		pi->eth_dev->data->dev_link.link_status = RTE_ETH_LINK_UP;
 	return ret;
 }
 
@@ -1725,10 +1725,10 @@ int cxgbe_write_rss_conf(const struct port_info *pi, uint64_t rss_hf)
 	if (rss_hf & CXGBE_RSS_HF_IPV4_MASK)
 		flags |= F_FW_RSS_VI_CONFIG_CMD_IP4TWOTUPEN;
 
-	if (rss_hf & ETH_RSS_NONFRAG_IPV4_TCP)
+	if (rss_hf & RTE_ETH_RSS_NONFRAG_IPV4_TCP)
 		flags |= F_FW_RSS_VI_CONFIG_CMD_IP4FOURTUPEN;
 
-	if (rss_hf & ETH_RSS_NONFRAG_IPV4_UDP)
+	if (rss_hf & RTE_ETH_RSS_NONFRAG_IPV4_UDP)
 		flags |= F_FW_RSS_VI_CONFIG_CMD_IP4FOURTUPEN |
 			 F_FW_RSS_VI_CONFIG_CMD_UDPEN;
 
@@ -1865,7 +1865,7 @@ static void fw_caps_to_speed_caps(enum fw_port_type port_type,
 {
 #define SET_SPEED(__speed_name) \
 	do { \
-		*speed_caps |= ETH_LINK_ ## __speed_name; \
+		*speed_caps |= RTE_ETH_LINK_ ## __speed_name; \
 	} while (0)
 
 #define FW_CAPS_TO_SPEED(__fw_name) \
@@ -1952,7 +1952,7 @@ void cxgbe_get_speed_caps(struct port_info *pi, u32 *speed_caps)
 			      speed_caps);
 
 	if (!(pi->link_cfg.pcaps & FW_PORT_CAP32_ANEG))
-		*speed_caps |= ETH_LINK_SPEED_FIXED;
+		*speed_caps |= RTE_ETH_LINK_SPEED_FIXED;
 }
 
 /**

@@ -1215,7 +1215,7 @@ cons_parse_l2_tn_filter(struct rte_eth_dev *dev,
 		return -rte_errno;
 	}
 
-	filter->l2_tunnel_type = RTE_L2_TUNNEL_TYPE_E_TAG;
+	filter->l2_tunnel_type = RTE_ETH_L2_TUNNEL_TYPE_E_TAG;
 	/**
 	 * grp and e_cid_base are bit fields and only use 14 bits.
 	 * e-tag id is taken as little endian by HW.

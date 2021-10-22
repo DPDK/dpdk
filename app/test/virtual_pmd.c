@@ -53,7 +53,7 @@ static int  virtual_ethdev_stop(struct rte_eth_dev *eth_dev __rte_unused)
 	void *pkt = NULL;
 	struct virtual_ethdev_private *prv = eth_dev->data->dev_private;
 
-	eth_dev->data->dev_link.link_status = ETH_LINK_DOWN;
+	eth_dev->data->dev_link.link_status = RTE_ETH_LINK_DOWN;
 	eth_dev->data->dev_started = 0;
 	while (rte_ring_dequeue(prv->rx_queue, &pkt) != -ENOENT)
 		rte_pktmbuf_free(pkt);
@@ -168,7 +168,7 @@ virtual_ethdev_link_update_success(struct rte_eth_dev *bonded_eth_dev,
 		int wait_to_complete __rte_unused)
 {
 	if (!bonded_eth_dev->data->dev_started)
-		bonded_eth_dev->data->dev_link.link_status = ETH_LINK_DOWN;
+		bonded_eth_dev->data->dev_link.link_status = RTE_ETH_LINK_DOWN;
 
 	return 0;
 }
@@ -567,9 +567,9 @@ virtual_ethdev_create(const char *name, struct rte_ether_addr *mac_addr,
 	eth_dev->data->nb_rx_queues = (uint16_t)1;
 	eth_dev->data->nb_tx_queues = (uint16_t)1;
 
-	eth_dev->data->dev_link.link_status = ETH_LINK_DOWN;
-	eth_dev->data->dev_link.link_speed = ETH_SPEED_NUM_10G;
-	eth_dev->data->dev_link.link_duplex = ETH_LINK_FULL_DUPLEX;
+	eth_dev->data->dev_link.link_status = RTE_ETH_LINK_DOWN;
+	eth_dev->data->dev_link.link_speed = RTE_ETH_SPEED_NUM_10G;
+	eth_dev->data->dev_link.link_duplex = RTE_ETH_LINK_FULL_DUPLEX;
 
 	eth_dev->data->mac_addrs = rte_zmalloc(name, RTE_ETHER_ADDR_LEN, 0);
 	if (eth_dev->data->mac_addrs == NULL)

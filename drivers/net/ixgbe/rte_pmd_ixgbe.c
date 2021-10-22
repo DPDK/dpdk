@@ -303,10 +303,10 @@ rte_pmd_ixgbe_set_vf_vlan_stripq(uint16_t port, uint16_t vf, uint8_t on)
 	 */
 	if (hw->mac.type == ixgbe_mac_82598EB)
 		queues_per_pool = (uint16_t)hw->mac.max_rx_queues /
-				  ETH_16_POOLS;
+				  RTE_ETH_16_POOLS;
 	else
 		queues_per_pool = (uint16_t)hw->mac.max_rx_queues /
-				  ETH_64_POOLS;
+				  RTE_ETH_64_POOLS;
 
 	for (q = 0; q < queues_per_pool; q++)
 		(*dev->dev_ops->vlan_strip_queue_set)(dev,
@@ -736,14 +736,14 @@ rte_pmd_ixgbe_set_tc_bw_alloc(uint16_t port,
 	bw_conf = IXGBE_DEV_PRIVATE_TO_BW_CONF(dev->data->dev_private);
 	eth_conf = &dev->data->dev_conf;
 
-	if (eth_conf->txmode.mq_mode == ETH_MQ_TX_DCB) {
+	if (eth_conf->txmode.mq_mode == RTE_ETH_MQ_TX_DCB) {
 		nb_tcs = eth_conf->tx_adv_conf.dcb_tx_conf.nb_tcs;
-	} else if (eth_conf->txmode.mq_mode == ETH_MQ_TX_VMDQ_DCB) {
+	} else if (eth_conf->txmode.mq_mode == RTE_ETH_MQ_TX_VMDQ_DCB) {
 		if (eth_conf->tx_adv_conf.vmdq_dcb_tx_conf.nb_queue_pools ==
-		    ETH_32_POOLS)
-			nb_tcs = ETH_4_TCS;
+		    RTE_ETH_32_POOLS)
+			nb_tcs = RTE_ETH_4_TCS;
 		else
-			nb_tcs = ETH_8_TCS;
+			nb_tcs = RTE_ETH_8_TCS;
 	} else {
 		nb_tcs = 1;
 	}

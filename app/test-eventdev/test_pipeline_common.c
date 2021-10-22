@@ -176,12 +176,12 @@ pipeline_ethdev_setup(struct evt_test *test, struct evt_options *opt)
 	struct rte_eth_rxconf rx_conf;
 	struct rte_eth_conf port_conf = {
 		.rxmode = {
-			.mq_mode = ETH_MQ_RX_RSS,
+			.mq_mode = RTE_ETH_MQ_RX_RSS,
 		},
 		.rx_adv_conf = {
 			.rss_conf = {
 				.rss_key = NULL,
-				.rss_hf = ETH_RSS_IP,
+				.rss_hf = RTE_ETH_RSS_IP,
 			},
 		},
 	};
@@ -223,7 +223,7 @@ pipeline_ethdev_setup(struct evt_test *test, struct evt_options *opt)
 
 		if (!(caps & RTE_EVENT_ETH_RX_ADAPTER_CAP_INTERNAL_PORT))
 			local_port_conf.rxmode.offloads |=
-				DEV_RX_OFFLOAD_RSS_HASH;
+				RTE_ETH_RX_OFFLOAD_RSS_HASH;
 
 		ret = rte_eth_dev_info_get(i, &dev_info);
 		if (ret != 0) {
@@ -233,9 +233,9 @@ pipeline_ethdev_setup(struct evt_test *test, struct evt_options *opt)
 		}
 
 		/* Enable mbuf fast free if PMD has the capability. */
-		if (dev_info.tx_offload_capa & DEV_TX_OFFLOAD_MBUF_FAST_FREE)
+		if (dev_info.tx_offload_capa & RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE)
 			local_port_conf.txmode.offloads |=
-				DEV_TX_OFFLOAD_MBUF_FAST_FREE;
+				RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE;
 
 		rx_conf = dev_info.default_rxconf;
 		rx_conf.offloads = port_conf.rxmode.offloads;

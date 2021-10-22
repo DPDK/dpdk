@@ -15,28 +15,28 @@ nix_rx_offload_flags(struct rte_eth_dev *eth_dev)
 	struct rte_eth_rxmode *rxmode = &conf->rxmode;
 	uint16_t flags = 0;
 
-	if (rxmode->mq_mode == ETH_MQ_RX_RSS &&
-	    (dev->rx_offloads & DEV_RX_OFFLOAD_RSS_HASH))
+	if (rxmode->mq_mode == RTE_ETH_MQ_RX_RSS &&
+	    (dev->rx_offloads & RTE_ETH_RX_OFFLOAD_RSS_HASH))
 		flags |= NIX_RX_OFFLOAD_RSS_F;
 
 	if (dev->rx_offloads &
-	    (DEV_RX_OFFLOAD_TCP_CKSUM | DEV_RX_OFFLOAD_UDP_CKSUM))
+	    (RTE_ETH_RX_OFFLOAD_TCP_CKSUM | RTE_ETH_RX_OFFLOAD_UDP_CKSUM))
 		flags |= NIX_RX_OFFLOAD_CHECKSUM_F;
 
 	if (dev->rx_offloads &
-	    (DEV_RX_OFFLOAD_IPV4_CKSUM | DEV_RX_OFFLOAD_OUTER_IPV4_CKSUM))
+	    (RTE_ETH_RX_OFFLOAD_IPV4_CKSUM | RTE_ETH_RX_OFFLOAD_OUTER_IPV4_CKSUM))
 		flags |= NIX_RX_OFFLOAD_CHECKSUM_F;
 
-	if (dev->rx_offloads & DEV_RX_OFFLOAD_SCATTER)
+	if (dev->rx_offloads & RTE_ETH_RX_OFFLOAD_SCATTER)
 		flags |= NIX_RX_MULTI_SEG_F;
 
-	if ((dev->rx_offloads & DEV_RX_OFFLOAD_TIMESTAMP))
+	if ((dev->rx_offloads & RTE_ETH_RX_OFFLOAD_TIMESTAMP))
 		flags |= NIX_RX_OFFLOAD_TSTAMP_F;
 
 	if (!dev->ptype_disable)
 		flags |= NIX_RX_OFFLOAD_PTYPE_F;
 
-	if (dev->rx_offloads & DEV_RX_OFFLOAD_SECURITY)
+	if (dev->rx_offloads & RTE_ETH_RX_OFFLOAD_SECURITY)
 		flags |= NIX_RX_OFFLOAD_SECURITY_F;
 
 	return flags;
@@ -72,39 +72,39 @@ nix_tx_offload_flags(struct rte_eth_dev *eth_dev)
 	RTE_BUILD_BUG_ON(offsetof(struct rte_mbuf, tx_offload) !=
 			 offsetof(struct rte_mbuf, pool) + 2 * sizeof(void *));
 
-	if (conf & DEV_TX_OFFLOAD_VLAN_INSERT ||
-	    conf & DEV_TX_OFFLOAD_QINQ_INSERT)
+	if (conf & RTE_ETH_TX_OFFLOAD_VLAN_INSERT ||
+	    conf & RTE_ETH_TX_OFFLOAD_QINQ_INSERT)
 		flags |= NIX_TX_OFFLOAD_VLAN_QINQ_F;
 
-	if (conf & DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM ||
-	    conf & DEV_TX_OFFLOAD_OUTER_UDP_CKSUM)
+	if (conf & RTE_ETH_TX_OFFLOAD_OUTER_IPV4_CKSUM ||
+	    conf & RTE_ETH_TX_OFFLOAD_OUTER_UDP_CKSUM)
 		flags |= NIX_TX_OFFLOAD_OL3_OL4_CSUM_F;
 
-	if (conf & DEV_TX_OFFLOAD_IPV4_CKSUM ||
-	    conf & DEV_TX_OFFLOAD_TCP_CKSUM ||
-	    conf & DEV_TX_OFFLOAD_UDP_CKSUM || conf & DEV_TX_OFFLOAD_SCTP_CKSUM)
+	if (conf & RTE_ETH_TX_OFFLOAD_IPV4_CKSUM ||
+	    conf & RTE_ETH_TX_OFFLOAD_TCP_CKSUM ||
+	    conf & RTE_ETH_TX_OFFLOAD_UDP_CKSUM || conf & RTE_ETH_TX_OFFLOAD_SCTP_CKSUM)
 		flags |= NIX_TX_OFFLOAD_L3_L4_CSUM_F;
 
-	if (!(conf & DEV_TX_OFFLOAD_MBUF_FAST_FREE))
+	if (!(conf & RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE))
 		flags |= NIX_TX_OFFLOAD_MBUF_NOFF_F;
 
-	if (conf & DEV_TX_OFFLOAD_MULTI_SEGS)
+	if (conf & RTE_ETH_TX_OFFLOAD_MULTI_SEGS)
 		flags |= NIX_TX_MULTI_SEG_F;
 
 	/* Enable Inner checksum for TSO */
-	if (conf & DEV_TX_OFFLOAD_TCP_TSO)
+	if (conf & RTE_ETH_TX_OFFLOAD_TCP_TSO)
 		flags |= (NIX_TX_OFFLOAD_TSO_F | NIX_TX_OFFLOAD_L3_L4_CSUM_F);
 
 	/* Enable Inner and Outer checksum for Tunnel TSO */
-	if (conf & (DEV_TX_OFFLOAD_VXLAN_TNL_TSO |
-		    DEV_TX_OFFLOAD_GENEVE_TNL_TSO | DEV_TX_OFFLOAD_GRE_TNL_TSO))
+	if (conf & (RTE_ETH_TX_OFFLOAD_VXLAN_TNL_TSO |
+		    RTE_ETH_TX_OFFLOAD_GENEVE_TNL_TSO | RTE_ETH_TX_OFFLOAD_GRE_TNL_TSO))
 		flags |= (NIX_TX_OFFLOAD_TSO_F | NIX_TX_OFFLOAD_OL3_OL4_CSUM_F |
 			  NIX_TX_OFFLOAD_L3_L4_CSUM_F);
 
-	if ((dev->rx_offloads & DEV_RX_OFFLOAD_TIMESTAMP))
+	if ((dev->rx_offloads & RTE_ETH_RX_OFFLOAD_TIMESTAMP))
 		flags |= NIX_TX_OFFLOAD_TSTAMP_F;
 
-	if (dev->tx_offloads & DEV_TX_OFFLOAD_SECURITY)
+	if (dev->tx_offloads & RTE_ETH_TX_OFFLOAD_SECURITY)
 		flags |= NIX_TX_OFFLOAD_SECURITY_F;
 
 	return flags;
@@ -298,9 +298,9 @@ cn9k_nix_configure(struct rte_eth_dev *eth_dev)
 
 	/* Platform specific checks */
 	if ((roc_model_is_cn96_a0() || roc_model_is_cn95_a0()) &&
-	    (txmode->offloads & DEV_TX_OFFLOAD_SCTP_CKSUM) &&
-	    ((txmode->offloads & DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM) ||
-	     (txmode->offloads & DEV_TX_OFFLOAD_OUTER_UDP_CKSUM))) {
+	    (txmode->offloads & RTE_ETH_TX_OFFLOAD_SCTP_CKSUM) &&
+	    ((txmode->offloads & RTE_ETH_TX_OFFLOAD_OUTER_IPV4_CKSUM) ||
+	     (txmode->offloads & RTE_ETH_TX_OFFLOAD_OUTER_UDP_CKSUM))) {
 		plt_err("Outer IP and SCTP checksum unsupported");
 		return -EINVAL;
 	}
@@ -553,17 +553,17 @@ cn9k_nix_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 	 * TSO not supported for earlier chip revisions
 	 */
 	if (roc_model_is_cn96_a0() || roc_model_is_cn95_a0())
-		dev->tx_offload_capa &= ~(DEV_TX_OFFLOAD_TCP_TSO |
-					  DEV_TX_OFFLOAD_VXLAN_TNL_TSO |
-					  DEV_TX_OFFLOAD_GENEVE_TNL_TSO |
-					  DEV_TX_OFFLOAD_GRE_TNL_TSO);
+		dev->tx_offload_capa &= ~(RTE_ETH_TX_OFFLOAD_TCP_TSO |
+					  RTE_ETH_TX_OFFLOAD_VXLAN_TNL_TSO |
+					  RTE_ETH_TX_OFFLOAD_GENEVE_TNL_TSO |
+					  RTE_ETH_TX_OFFLOAD_GRE_TNL_TSO);
 
 	/* 50G and 100G to be supported for board version C0
 	 * and above of CN9K.
 	 */
 	if (roc_model_is_cn96_a0() || roc_model_is_cn95_a0()) {
-		dev->speed_capa &= ~(uint64_t)ETH_LINK_SPEED_50G;
-		dev->speed_capa &= ~(uint64_t)ETH_LINK_SPEED_100G;
+		dev->speed_capa &= ~(uint64_t)RTE_ETH_LINK_SPEED_50G;
+		dev->speed_capa &= ~(uint64_t)RTE_ETH_LINK_SPEED_100G;
 	}
 
 	dev->hwcap = 0;

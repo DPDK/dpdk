@@ -209,12 +209,12 @@ Where:
     device will ensure the ordering. Ordering will be lost when tried in PARALLEL.
 
 *   ``--rxoffload MASK``: RX HW offload capabilities to enable/use on this port
-    (bitmask of DEV_RX_OFFLOAD_* values). It is an optional parameter and
+    (bitmask of RTE_ETH_RX_OFFLOAD_* values). It is an optional parameter and
     allows user to disable some of the RX HW offload capabilities.
     By default all HW RX offloads are enabled.
 
 *   ``--txoffload MASK``: TX HW offload capabilities to enable/use on this port
-    (bitmask of DEV_TX_OFFLOAD_* values). It is an optional parameter and
+    (bitmask of RTE_ETH_TX_OFFLOAD_* values). It is an optional parameter and
     allows user to disable some of the TX HW offload capabilities.
     By default all HW TX offloads are enabled.
 

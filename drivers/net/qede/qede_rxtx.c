@@ -249,7 +249,7 @@ qede_rx_queue_setup(struct rte_eth_dev *dev, uint16_t qid,
 	bufsz = (uint16_t)rte_pktmbuf_data_room_size(mp) - RTE_PKTMBUF_HEADROOM;
 	/* cache align the mbuf size to simplfy rx_buf_size calculation */
 	bufsz = QEDE_FLOOR_TO_CACHE_LINE_SIZE(bufsz);
-	if ((rxmode->offloads & DEV_RX_OFFLOAD_SCATTER)	||
+	if ((rxmode->offloads & RTE_ETH_RX_OFFLOAD_SCATTER)	||
 	    (max_rx_pktlen + QEDE_ETH_OVERHEAD) > bufsz) {
 		if (!dev->data->scattered_rx) {
 			DP_INFO(edev, "Forcing scatter-gather mode\n");
