@@ -1947,7 +1947,7 @@ hns3_remove_mc_mac_addr(struct hns3_hw *hw, struct rte_ether_addr *mac_addr)
 	return ret;
 }
 
-int
+static int
 hns3_set_mc_addr_chk_param(struct hns3_hw *hw,
 			   struct rte_ether_addr *mc_addr_set,
 			   uint32_t nb_mc_addr)
@@ -2015,7 +2015,7 @@ hns3_set_mc_addr_chk_param(struct hns3_hw *hw,
 	return 0;
 }
 
-static int
+int
 hns3_set_mc_mac_addr_list(struct rte_eth_dev *dev,
 			  struct rte_ether_addr *mc_addr_set,
 			  uint32_t nb_mc_addr)

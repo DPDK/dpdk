@@ -300,54 +300,6 @@ hns3vf_remove_mc_mac_addr(struct hns3_hw *hw,
 }
 
 static int
-hns3vf_set_mc_mac_addr_list(struct rte_eth_dev *dev,
-			    struct rte_ether_addr *mc_addr_set,
-			    uint32_t nb_mc_addr)
-{
-	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	struct rte_ether_addr *addr;
-	int cur_addr_num;
-	int set_addr_num;
-	int num;
-	int ret;
-	int i;
-
-	ret = hns3_set_mc_addr_chk_param(hw, mc_addr_set, nb_mc_addr);
-	if (ret)
-		return ret;
-
-	rte_spinlock_lock(&hw->lock);
-	cur_addr_num = hw->mc_addrs_num;
-	for (i = 0; i < cur_addr_num; i++) {
-		num = cur_addr_num - i - 1;
-		addr = &hw->mc_addrs[num];
-		ret = hw->ops.del_mc_mac_addr(hw, addr);
-		if (ret) {
-			rte_spinlock_unlock(&hw->lock);
-			return ret;
-		}
-
-		hw->mc_addrs_num--;
-	}
-
-	set_addr_num = (int)nb_mc_addr;
-	for (i = 0; i < set_addr_num; i++) {
-		addr = &mc_addr_set[i];
-		ret = hw->ops.add_mc_mac_addr(hw, addr);
-		if (ret) {
-			rte_spinlock_unlock(&hw->lock);
-			return ret;
-		}
-
-		rte_ether_addr_copy(addr, &hw->mc_addrs[hw->mc_addrs_num]);
-		hw->mc_addrs_num++;
-	}
-	rte_spinlock_unlock(&hw->lock);
-
-	return 0;
-}
-
-static int
 hns3vf_set_promisc_mode(struct hns3_hw *hw, bool en_bc_pmc,
 			bool en_uc_pmc, bool en_mc_pmc)
 {
@@ -2678,7 +2630,7 @@ static const struct eth_dev_ops hns3vf_eth_dev_ops = {
 	.mac_addr_add       = hns3_add_mac_addr,
 	.mac_addr_remove    = hns3_remove_mac_addr,
 	.mac_addr_set       = hns3vf_set_default_mac_addr,
-	.set_mc_addr_list   = hns3vf_set_mc_mac_addr_list,
+	.set_mc_addr_list   = hns3_set_mc_mac_addr_list,
 	.link_update        = hns3vf_dev_link_update,
 	.rss_hash_update    = hns3_dev_rss_hash_update,
 	.rss_hash_conf_get  = hns3_dev_rss_hash_conf_get,
