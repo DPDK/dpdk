@@ -46,6 +46,20 @@ mlx5_regex_start(struct rte_regexdev *dev)
 int
 mlx5_regex_stop(struct rte_regexdev *dev __rte_unused)
 {
+	struct mlx5_regex_priv *priv = dev->data->dev_private;
+	uint32_t i;
+
+	mlx5_regex_clean_ctrl(dev);
+	rte_free(priv->qps);
+	priv->qps = NULL;
+
+	for (i = 0; i < (priv->nb_engines + MLX5_RXP_EM_COUNT); i++) {
+		if (priv->db[i].umem.umem)
+			mlx5_glue->devx_umem_dereg(priv->db[i].umem.umem);
+		rte_free(priv->db[i].ptr);
+		priv->db[i].ptr = NULL;
+	}
+
 	return 0;
 }
 

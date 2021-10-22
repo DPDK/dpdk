@@ -266,3 +266,26 @@ err_cq:
 	rte_free(qp->qps);
 	return ret;
 }
+
+void
+mlx5_regex_clean_ctrl(struct rte_regexdev *dev)
+{
+	struct mlx5_regex_priv *priv = dev->data->dev_private;
+	struct mlx5_regex_qp *qp;
+	int qp_ind;
+	int i;
+
+	if (!priv->qps)
+		return;
+	for (qp_ind = 0; qp_ind < priv->nb_queues; qp_ind++) {
+		qp = &priv->qps[qp_ind];
+		/* Check if mlx5_regex_qp_setup() was called for this QP */
+		if (!qp->jobs)
+			continue;
+		mlx5_regexdev_teardown_fastpath(priv, qp_ind);
+		mlx5_mr_btree_free(&qp->mr_ctrl.cache_bh);
+		for (i = 0; i < qp->nb_obj; i++)
+			regex_ctrl_destroy_hw_qp(qp, i);
+		regex_ctrl_destroy_cq(&qp->cq);
+	}
+}

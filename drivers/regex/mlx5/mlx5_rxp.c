@@ -774,10 +774,10 @@ rxp_db_setup(struct mlx5_regex_priv *priv)
 	return 0;
 tidyup_error:
 	for (i = 0; i < (priv->nb_engines + MLX5_RXP_EM_COUNT); i++) {
-		if (priv->db[i].ptr)
-			rte_free(priv->db[i].ptr);
 		if (priv->db[i].umem.umem)
 			mlx5_glue->devx_umem_dereg(priv->db[i].umem.umem);
+		rte_free(priv->db[i].ptr);
+		priv->db[i].ptr = NULL;
 	}
 	return -ret;
 }

@@ -100,6 +100,7 @@ int mlx5_devx_regex_database_program(void *ctx, uint8_t engine,
 /* mlx5_regex_control.c */
 int mlx5_regex_qp_setup(struct rte_regexdev *dev, uint16_t qp_ind,
 			const struct rte_regexdev_qp_conf *cfg);
+void mlx5_regex_clean_ctrl(struct rte_regexdev *dev);
 
 /* mlx5_regex_fastpath.c */
 int mlx5_regexdev_setup_fastpath(struct mlx5_regex_priv *priv, uint32_t qp_id);

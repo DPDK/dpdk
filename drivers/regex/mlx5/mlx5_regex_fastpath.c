@@ -727,6 +727,7 @@ mlx5_regexdev_setup_fastpath(struct mlx5_regex_priv *priv, uint32_t qp_id)
 	err = setup_buffers(priv, qp);
 	if (err) {
 		rte_free(qp->jobs);
+		qp->jobs = NULL;
 		return err;
 	}
 
@@ -774,14 +775,14 @@ mlx5_regexdev_teardown_fastpath(struct mlx5_regex_priv *priv, uint32_t qp_id)
 	struct mlx5_regex_qp *qp = &priv->qps[qp_id];
 	uint32_t i;
 
-	if (qp) {
+	if (qp->jobs) {
 		for (i = 0; i < qp->nb_desc; i++) {
 			if (qp->jobs[i].imkey)
 				claim_zero(mlx5_devx_cmd_destroy
 							(qp->jobs[i].imkey));
 		}
 		free_buffers(qp);
-		if (qp->jobs)
-			rte_free(qp->jobs);
+		rte_free(qp->jobs);
+		qp->jobs = NULL;
 	}
 }
