@@ -40,7 +40,7 @@ struct rte_intr_callback {
 
 struct rte_intr_source {
 	TAILQ_ENTRY(rte_intr_source) next;
-	struct rte_intr_handle intr_handle; /**< interrupt handle */
+	struct rte_intr_handle *intr_handle; /**< interrupt handle */
 	struct rte_intr_cb_list callbacks;  /**< user callbacks */
 	uint32_t active;
 };
@@ -60,7 +60,7 @@ static int
 intr_source_to_kevent(const struct rte_intr_handle *ih, struct kevent *ke)
 {
 	/* alarm callbacks are special case */
-	if (ih->type == RTE_INTR_HANDLE_ALARM) {
+	if (rte_intr_type_get(ih) == RTE_INTR_HANDLE_ALARM) {
 		uint64_t timeout_ns;
 
 		/* get soonest alarm timeout */
@@ -75,7 +75,7 @@ intr_source_to_kevent(const struct rte_intr_handle *ih, struct kevent *ke)
 	} else {
 		ke->filter = EVFILT_READ;
 	}
-	ke->ident = ih->fd;
+	ke->ident = rte_intr_fd_get(ih);
 
 	return 0;
 }
@@ -89,7 +89,7 @@ rte_intr_callback_register(const struct rte_intr_handle *intr_handle,
 	int ret = 0, add_event = 0;
 
 	/* first do parameter checking */
-	if (intr_handle == NULL || intr_handle->fd < 0 || cb == NULL) {
+	if (rte_intr_fd_get(intr_handle) < 0 || cb == NULL) {
 		RTE_LOG(ERR, EAL,
 			"Registering with invalid input parameter\n");
 		return -EINVAL;
@@ -103,7 +103,7 @@ rte_intr_callback_register(const struct rte_intr_handle *intr_handle,
 
 	/* find the source for this intr_handle */
 	TAILQ_FOREACH(src, &intr_sources, next) {
-		if (src->intr_handle.fd == intr_handle->fd)
+		if (rte_intr_fd_get(src->intr_handle) == rte_intr_fd_get(intr_handle))
 			break;
 	}
 
@@ -112,8 +112,9 @@ rte_intr_callback_register(const struct rte_intr_handle *intr_handle,
 	 * thing on the list should be eal_alarm_callback() and we may
 	 * be called just to reset the timer.
 	 */
-	if (src != NULL && src->intr_handle.type == RTE_INTR_HANDLE_ALARM &&
-		 !TAILQ_EMPTY(&src->callbacks)) {
+	if (src != NULL &&
+			rte_intr_type_get(src->intr_handle) == RTE_INTR_HANDLE_ALARM &&
+			!TAILQ_EMPTY(&src->callbacks)) {
 		callback = NULL;
 	} else {
 		/* allocate a new interrupt callback entity */
@@ -135,7 +136,14 @@ rte_intr_callback_register(const struct rte_intr_handle *intr_handle,
 				ret = -ENOMEM;
 				goto fail;
 			} else {
-				src->intr_handle = *intr_handle;
+				src->intr_handle = rte_intr_instance_dup(intr_handle);
+				if (src->intr_handle == NULL) {
+					RTE_LOG(ERR, EAL, "Can not create intr instance\n");
+					ret = -ENOMEM;
+					free(src);
+					src = NULL;
+					goto fail;
+				}
 				TAILQ_INIT(&src->callbacks);
 				TAILQ_INSERT_TAIL(&intr_sources, src, next);
 			}
@@ -151,7 +159,8 @@ rte_intr_callback_register(const struct rte_intr_handle *intr_handle,
 	/* add events to the queue. timer events are special as we need to
 	 * re-set the timer.
 	 */
-	if (add_event || src->intr_handle.type == RTE_INTR_HANDLE_ALARM) {
+	if (add_event ||
+			rte_intr_type_get(src->intr_handle) == RTE_INTR_HANDLE_ALARM) {
 		struct kevent ke;
 
 		memset(&ke, 0, sizeof(ke));
@@ -173,12 +182,11 @@ rte_intr_callback_register(const struct rte_intr_handle *intr_handle,
 			 */
 			if (errno == ENODEV)
 				RTE_LOG(DEBUG, EAL, "Interrupt handle %d not supported\n",
-					src->intr_handle.fd);
+					rte_intr_fd_get(src->intr_handle));
 			else
-				RTE_LOG(ERR, EAL, "Error adding fd %d "
-						"kevent, %s\n",
-						src->intr_handle.fd,
-						strerror(errno));
+				RTE_LOG(ERR, EAL, "Error adding fd %d kevent, %s\n",
+					rte_intr_fd_get(src->intr_handle),
+					strerror(errno));
 			ret = -errno;
 			goto fail;
 		}
@@ -213,7 +221,7 @@ rte_intr_callback_unregister_pending(const struct rte_intr_handle *intr_handle,
 	struct rte_intr_callback *cb, *next;
 
 	/* do parameter checking first */
-	if (intr_handle == NULL || intr_handle->fd < 0) {
+	if (rte_intr_fd_get(intr_handle) < 0) {
 		RTE_LOG(ERR, EAL,
 		"Unregistering with invalid input parameter\n");
 		return -EINVAL;
@@ -228,7 +236,7 @@ rte_intr_callback_unregister_pending(const struct rte_intr_handle *intr_handle,
 
 	/* check if the insterrupt source for the fd is existent */
 	TAILQ_FOREACH(src, &intr_sources, next)
-		if (src->intr_handle.fd == intr_handle->fd)
+		if (rte_intr_fd_get(src->intr_handle) == rte_intr_fd_get(intr_handle))
 			break;
 
 	/* No interrupt source registered for the fd */
@@ -268,7 +276,7 @@ rte_intr_callback_unregister(const struct rte_intr_handle *intr_handle,
 	struct rte_intr_callback *cb, *next;
 
 	/* do parameter checking first */
-	if (intr_handle == NULL || intr_handle->fd < 0) {
+	if (rte_intr_fd_get(intr_handle) < 0) {
 		RTE_LOG(ERR, EAL,
 		"Unregistering with invalid input parameter\n");
 		return -EINVAL;
@@ -282,7 +290,7 @@ rte_intr_callback_unregister(const struct rte_intr_handle *intr_handle,
 
 	/* check if the insterrupt source for the fd is existent */
 	TAILQ_FOREACH(src, &intr_sources, next)
-		if (src->intr_handle.fd == intr_handle->fd)
+		if (rte_intr_fd_get(src->intr_handle) == rte_intr_fd_get(intr_handle))
 			break;
 
 	/* No interrupt source registered for the fd */
@@ -314,7 +322,8 @@ rte_intr_callback_unregister(const struct rte_intr_handle *intr_handle,
 		 */
 		if (kevent(kq, &ke, 1, NULL, 0, NULL) < 0) {
 			RTE_LOG(ERR, EAL, "Error removing fd %d kevent, %s\n",
-				src->intr_handle.fd, strerror(errno));
+				rte_intr_fd_get(src->intr_handle),
+				strerror(errno));
 			/* removing non-existent even is an expected condition
 			 * in some circumstances (e.g. oneshot events).
 			 */
@@ -365,17 +374,18 @@ rte_intr_enable(const struct rte_intr_handle *intr_handle)
 	if (intr_handle == NULL)
 		return -1;
 
-	if (intr_handle->type == RTE_INTR_HANDLE_VDEV) {
+	if (rte_intr_type_get(intr_handle) == RTE_INTR_HANDLE_VDEV) {
 		rc = 0;
 		goto out;
 	}
 
-	if (intr_handle->fd < 0 || intr_handle->uio_cfg_fd < 0) {
+	if (rte_intr_fd_get(intr_handle) < 0 ||
+			rte_intr_dev_fd_get(intr_handle) < 0) {
 		rc = -1;
 		goto out;
 	}
 
-	switch (intr_handle->type) {
+	switch (rte_intr_type_get(intr_handle)) {
 	/* not used at this moment */
 	case RTE_INTR_HANDLE_ALARM:
 		rc = -1;
@@ -386,9 +396,8 @@ rte_intr_enable(const struct rte_intr_handle *intr_handle)
 		break;
 	/* unknown handle type */
 	default:
-		RTE_LOG(ERR, EAL,
-			"Unknown handle type of fd %d\n",
-					intr_handle->fd);
+		RTE_LOG(ERR, EAL, "Unknown handle type of fd %d\n",
+			rte_intr_fd_get(intr_handle));
 		rc = -1;
 		break;
 	}
@@ -406,17 +415,18 @@ rte_intr_disable(const struct rte_intr_handle *intr_handle)
 	if (intr_handle == NULL)
 		return -1;
 
-	if (intr_handle->type == RTE_INTR_HANDLE_VDEV) {
+	if (rte_intr_type_get(intr_handle) == RTE_INTR_HANDLE_VDEV) {
 		rc = 0;
 		goto out;
 	}
 
-	if (intr_handle->fd < 0 || intr_handle->uio_cfg_fd < 0) {
+	if (rte_intr_fd_get(intr_handle) < 0 ||
+			rte_intr_dev_fd_get(intr_handle) < 0) {
 		rc = -1;
 		goto out;
 	}
 
-	switch (intr_handle->type) {
+	switch (rte_intr_type_get(intr_handle)) {
 	/* not used at this moment */
 	case RTE_INTR_HANDLE_ALARM:
 		rc = -1;
@@ -427,9 +437,8 @@ rte_intr_disable(const struct rte_intr_handle *intr_handle)
 		break;
 	/* unknown handle type */
 	default:
-		RTE_LOG(ERR, EAL,
-			"Unknown handle type of fd %d\n",
-					intr_handle->fd);
+		RTE_LOG(ERR, EAL, "Unknown handle type of fd %d\n",
+			rte_intr_fd_get(intr_handle));
 		rc = -1;
 		break;
 	}
@@ -441,7 +450,7 @@ out:
 int
 rte_intr_ack(const struct rte_intr_handle *intr_handle)
 {
-	if (intr_handle && intr_handle->type == RTE_INTR_HANDLE_VDEV)
+	if (rte_intr_type_get(intr_handle) == RTE_INTR_HANDLE_VDEV)
 		return 0;
 
 	return -1;
@@ -463,7 +472,7 @@ eal_intr_process_interrupts(struct kevent *events, int nfds)
 
 		rte_spinlock_lock(&intr_lock);
 		TAILQ_FOREACH(src, &intr_sources, next)
-			if (src->intr_handle.fd == event_fd)
+			if (rte_intr_fd_get(src->intr_handle) == event_fd)
 				break;
 		if (src == NULL) {
 			rte_spinlock_unlock(&intr_lock);
@@ -475,7 +484,7 @@ eal_intr_process_interrupts(struct kevent *events, int nfds)
 		rte_spinlock_unlock(&intr_lock);
 
 		/* set the length to be read dor different handle type */
-		switch (src->intr_handle.type) {
+		switch (rte_intr_type_get(src->intr_handle)) {
 		case RTE_INTR_HANDLE_ALARM:
 			bytes_read = 0;
 			call = true;
@@ -546,7 +555,7 @@ eal_intr_process_interrupts(struct kevent *events, int nfds)
 				/* mark for deletion from the queue */
 				ke.flags = EV_DELETE;
 
-				if (intr_source_to_kevent(&src->intr_handle, &ke) < 0) {
+				if (intr_source_to_kevent(src->intr_handle, &ke) < 0) {
 					RTE_LOG(ERR, EAL, "Cannot convert to kevent\n");
 					rte_spinlock_unlock(&intr_lock);
 					return;
@@ -556,8 +565,8 @@ eal_intr_process_interrupts(struct kevent *events, int nfds)
 				 * remove intr file descriptor from wait list.
 				 */
 				if (kevent(kq, &ke, 1, NULL, 0, NULL) < 0) {
-					RTE_LOG(ERR, EAL, "Error removing fd %d kevent, "
-						"%s\n", src->intr_handle.fd,
+					RTE_LOG(ERR, EAL, "Error removing fd %d kevent, %s\n",
+						rte_intr_fd_get(src->intr_handle),
 						strerror(errno));
 					/* removing non-existent even is an expected
 					 * condition in some circumstances
@@ -567,7 +576,7 @@ eal_intr_process_interrupts(struct kevent *events, int nfds)
 
 				TAILQ_REMOVE(&src->callbacks, cb, next);
 				if (cb->ucb_fn)
-					cb->ucb_fn(&src->intr_handle, cb->cb_arg);
+					cb->ucb_fn(src->intr_handle, cb->cb_arg);
 				free(cb);
 			}
 		}
