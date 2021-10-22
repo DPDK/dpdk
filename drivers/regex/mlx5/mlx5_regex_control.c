@@ -204,6 +204,12 @@ mlx5_regex_qp_setup(struct rte_regexdev *dev, uint16_t qp_ind,
 	uint16_t log_desc;
 
 	qp = &priv->qps[qp_ind];
+	if (qp->jobs) {
+		DRV_LOG(ERR, "Attempting to setup QP a second time.");
+		rte_errno = EINVAL;
+		return -rte_errno;
+	}
+
 	qp->flags = cfg->qp_conf_flags;
 	log_desc = rte_log2_u32(cfg->nb_desc);
 	/*
