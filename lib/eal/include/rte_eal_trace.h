@@ -19,6 +19,8 @@ extern "C" {
 #include <rte_interrupts.h>
 #include <rte_trace_point.h>
 
+#include "eal_interrupts.h"
+
 /* Alarm */
 RTE_TRACE_POINT(
 	rte_eal_trace_alarm_set,

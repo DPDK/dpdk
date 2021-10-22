@@ -49,7 +49,6 @@ headers += files(
         'rte_version.h',
         'rte_vfio.h',
 )
-indirect_headers += files('rte_eal_interrupts.h')
 
 # special case install the generic headers, since they go in a subdir
 generic_headers = files(

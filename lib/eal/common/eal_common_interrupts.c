@@ -10,6 +10,8 @@
 #include <rte_log.h>
 #include <rte_malloc.h>
 
+#include "eal_interrupts.h"
+
 /* Macros to check for valid interrupt handle */
 #define CHECK_VALID_INTR_HANDLE(intr_handle) do { \
 	if (intr_handle == NULL) { \
