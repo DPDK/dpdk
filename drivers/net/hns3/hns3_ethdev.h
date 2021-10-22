@@ -428,6 +428,17 @@ struct hns3_reset_data {
 	struct hns3_wait_data *wait_data;
 };
 
+struct hns3_hw_ops {
+	int (*add_mc_mac_addr)(struct hns3_hw *hw,
+				struct rte_ether_addr *mac_addr);
+	int (*del_mc_mac_addr)(struct hns3_hw *hw,
+				struct rte_ether_addr *mac_addr);
+	int (*add_uc_mac_addr)(struct hns3_hw *hw,
+				struct rte_ether_addr *mac_addr);
+	int (*del_uc_mac_addr)(struct hns3_hw *hw,
+				struct rte_ether_addr *mac_addr);
+};
+
 #define HNS3_INTR_MAPPING_VEC_RSV_ONE		0
 #define HNS3_INTR_MAPPING_VEC_ALL		1
 
@@ -637,6 +648,8 @@ struct hns3_hw {
 	struct hns3_fdir_rule_list flow_fdir_list; /* flow fdir rule list */
 	struct hns3_rss_filter_list flow_rss_list; /* flow RSS rule list */
 	struct hns3_flow_mem_list flow_list;
+
+	struct hns3_hw_ops ops;
 
 	/*
 	 * PMD setup and configuration is not thread safe. Since it is not

@@ -2894,6 +2894,15 @@ static const struct hns3_reset_ops hns3vf_reset_ops = {
 	.start_service       = hns3vf_start_service,
 };
 
+static void
+hns3vf_init_hw_ops(struct hns3_hw *hw)
+{
+	hw->ops.add_mc_mac_addr = hns3vf_add_mc_mac_addr;
+	hw->ops.del_mc_mac_addr = hns3vf_remove_mc_mac_addr;
+	hw->ops.add_uc_mac_addr = hns3vf_add_uc_mac_addr;
+	hw->ops.del_uc_mac_addr = hns3vf_remove_uc_mac_addr;
+}
+
 static int
 hns3vf_dev_init(struct rte_eth_dev *eth_dev)
 {
@@ -2938,6 +2947,7 @@ hns3vf_dev_init(struct rte_eth_dev *eth_dev)
 		goto err_init_reset;
 	hw->reset.ops = &hns3vf_reset_ops;
 
+	hns3vf_init_hw_ops(hw);
 	ret = hns3vf_init_vf(eth_dev);
 	if (ret) {
 		PMD_INIT_LOG(ERR, "Failed to init vf: %d", ret);
