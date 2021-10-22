@@ -158,18 +158,6 @@ Supports updating port MTU.
 * **[related]    API**: ``rte_eth_dev_set_mtu()``, ``rte_eth_dev_get_mtu()``.
 
 
-.. _nic_features_jumbo_frame:
-
-Jumbo frame
------------
-
-Supports Rx jumbo frames.
-
-* **[uses]    rte_eth_rxconf,rte_eth_rxmode**: ``dev_conf.rxmode.mtu``.
-* **[related] rte_eth_dev_info**: ``max_rx_pktlen``.
-* **[related] API**: ``rte_eth_dev_set_mtu()``.
-
-
 .. _nic_features_scattered_rx:
 
 Scattered Rx
