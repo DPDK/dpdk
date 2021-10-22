@@ -2,9 +2,9 @@
 # Copyright(c) 2018 Intel Corporation
 
 if is_windows
-	build = false
-	reason = 'not supported on Windows'
-	subdir_done()
+    build = false
+    reason = 'not supported on Windows'
+    subdir_done()
 endif
 
 sources = files(
@@ -24,5 +24,5 @@ if dpdk_conf.has('RTE_BASEBAND_ACC100')
     deps += ['baseband_acc100']
 endif
 if dpdk_conf.has('RTE_LIBRTE_PMD_BBDEV_LA12XX')
-	deps += ['baseband_la12xx']
+    deps += ['baseband_la12xx']
 endif

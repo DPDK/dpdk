@@ -324,47 +324,47 @@ endif
 
 max_lcores = get_option('max_lcores')
 if max_lcores == 'detect'
-	# discovery makes sense only for non-cross builds
-	if meson.is_cross_build()
-		error('Discovery of max_lcores is not supported for cross-compilation.')
-	endif
-	# overwrite the default value with discovered values
-	max_lcores = run_command(get_cpu_count_cmd).stdout().to_int()
-	min_lcores = 2
-	# DPDK must be built for at least 2 cores
-	if max_lcores < min_lcores
-		message('Found less than @0@ cores, building for @0@ cores'.format(min_lcores))
-		max_lcores = min_lcores
-	else
-		message('Found @0@ cores'.format(max_lcores))
-	endif
-	dpdk_conf.set('RTE_MAX_LCORE', max_lcores)
+    # discovery makes sense only for non-cross builds
+    if meson.is_cross_build()
+        error('Discovery of max_lcores is not supported for cross-compilation.')
+    endif
+    # overwrite the default value with discovered values
+    max_lcores = run_command(get_cpu_count_cmd).stdout().to_int()
+    min_lcores = 2
+    # DPDK must be built for at least 2 cores
+    if max_lcores < min_lcores
+        message('Found less than @0@ cores, building for @0@ cores'.format(min_lcores))
+        max_lcores = min_lcores
+    else
+        message('Found @0@ cores'.format(max_lcores))
+    endif
+    dpdk_conf.set('RTE_MAX_LCORE', max_lcores)
 elif max_lcores != 'default'
-	# overwrite the default value from arch_subdir with user input
-	dpdk_conf.set('RTE_MAX_LCORE', max_lcores.to_int())
+    # overwrite the default value from arch_subdir with user input
+    dpdk_conf.set('RTE_MAX_LCORE', max_lcores.to_int())
 endif
 
 max_numa_nodes = get_option('max_numa_nodes')
 if max_numa_nodes == 'detect'
-	# discovery makes sense only for non-cross builds
-	if meson.is_cross_build()
-		error('Discovery of max_numa_nodes not supported for cross-compilation.')
-	endif
-	# overwrite the default value with discovered values
-	max_numa_nodes = run_command(get_numa_count_cmd).stdout().to_int()
-	message('Found @0@ numa nodes'.format(max_numa_nodes))
-	dpdk_conf.set('RTE_MAX_NUMA_NODES', max_numa_nodes)
+    # discovery makes sense only for non-cross builds
+    if meson.is_cross_build()
+        error('Discovery of max_numa_nodes not supported for cross-compilation.')
+    endif
+    # overwrite the default value with discovered values
+    max_numa_nodes = run_command(get_numa_count_cmd).stdout().to_int()
+    message('Found @0@ numa nodes'.format(max_numa_nodes))
+    dpdk_conf.set('RTE_MAX_NUMA_NODES', max_numa_nodes)
 elif max_numa_nodes != 'default'
-	# overwrite the default value from arch_subdir with user input
-	dpdk_conf.set('RTE_MAX_NUMA_NODES', max_numa_nodes.to_int())
+    # overwrite the default value from arch_subdir with user input
+    dpdk_conf.set('RTE_MAX_NUMA_NODES', max_numa_nodes.to_int())
 endif
 
 # check that CPU and NUMA counts are set
 if not dpdk_conf.has('RTE_MAX_LCORE')
-	error('Number of CPU cores not specified.')
+    error('Number of CPU cores not specified.')
 endif
 if not dpdk_conf.has('RTE_MAX_NUMA_NODES')
-	error('Number of NUMA nodes not specified.')
+    error('Number of NUMA nodes not specified.')
 endif
 
 # set the install path for the drivers
@@ -429,7 +429,7 @@ if get_option('b_sanitize') == 'address' or get_option('b_sanitize') == 'address
     endif
 
     if is_linux and arch_subdir == 'x86' and dpdk_conf.get('RTE_ARCH_64')
-	dpdk_conf.set10('RTE_MALLOC_ASAN', true)
+        dpdk_conf.set10('RTE_MALLOC_ASAN', true)
     endif
 endif
 

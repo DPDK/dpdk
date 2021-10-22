@@ -2,9 +2,9 @@
 # Copyright(c) 2017 Cavium, Inc
 
 if is_windows
-	build = false
-	reason = 'not supported on Windows'
-	subdir_done()
+    build = false
+    reason = 'not supported on Windows'
+    subdir_done()
 endif
 
 sources = files(

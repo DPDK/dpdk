@@ -67,10 +67,12 @@ if arch_subdir == 'x86'
     endif
 endif
 
-sources += files('ice_dcf.c',
-         'ice_dcf_vf_representor.c',
-         'ice_dcf_ethdev.c',
-         'ice_dcf_parent.c',
-	 'ice_dcf_sched.c')
+sources += files(
+        'ice_dcf.c',
+        'ice_dcf_vf_representor.c',
+        'ice_dcf_ethdev.c',
+        'ice_dcf_parent.c',
+        'ice_dcf_sched.c',
+)
 
 headers = files('rte_pmd_ice.h')

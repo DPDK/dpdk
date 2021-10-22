@@ -8,6 +8,7 @@ A Python script to run some checks on meson.build files in DPDK
 
 import sys
 import os
+import re
 from os.path import relpath, join
 from argparse import ArgumentParser
 
@@ -50,6 +51,8 @@ def check_indentation(filename, contents):
         code, comments = split_code_comments(line)
         if not code.strip():
             continue
+        if re.match('^ *\t', code):
+            print(f'Error parsing {filename}:{lineno}, got some tabulation')
         if code.endswith('files('):
             if infiles:
                 raise(f'Error parsing {filename}:{lineno}, got "files(" when already parsing files list')

@@ -19,7 +19,7 @@ if dep.found()
             'qat_sym_hw_dp.c',
             'qat_sym_pmd.c',
             'qat_sym_session.c',
-	)
+    )
     qat_ext_deps += dep
     qat_cflags += '-DBUILD_QAT_SYM'
     qat_cflags += '-DBUILD_QAT_ASYM'

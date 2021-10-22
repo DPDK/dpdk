@@ -2,9 +2,9 @@
 # Copyright(c) 2018 Cavium, Inc
 
 if not is_linux or not dpdk_conf.get('RTE_ARCH_64')
-	build = false
-	reason = 'only supported on 64-bit Linux'
-	subdir_done()
+    build = false
+    reason = 'only supported on 64-bit Linux'
+    subdir_done()
 endif
 
 sources = files('otx_zip.c', 'otx_zip_pmd.c')
