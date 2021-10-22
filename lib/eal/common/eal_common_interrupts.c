@@ -72,7 +72,7 @@ struct rte_intr_handle *rte_intr_instance_dup(const struct rte_intr_handle *src)
 	intr_handle = rte_intr_instance_alloc(src->alloc_flags);
 	if (intr_handle != NULL) {
 		intr_handle->fd = src->fd;
-		intr_handle->vfio_dev_fd = src->vfio_dev_fd;
+		intr_handle->dev_fd = src->dev_fd;
 		intr_handle->type = src->type;
 		intr_handle->max_intr = src->max_intr;
 		intr_handle->nb_efd = src->nb_efd;
@@ -140,7 +140,7 @@ int rte_intr_dev_fd_set(struct rte_intr_handle *intr_handle, int fd)
 {
 	CHECK_VALID_INTR_HANDLE(intr_handle);
 
-	intr_handle->vfio_dev_fd = fd;
+	intr_handle->dev_fd = fd;
 
 	return 0;
 fail:
@@ -151,7 +151,7 @@ int rte_intr_dev_fd_get(const struct rte_intr_handle *intr_handle)
 {
 	CHECK_VALID_INTR_HANDLE(intr_handle);
 
-	return intr_handle->vfio_dev_fd;
+	return intr_handle->dev_fd;
 fail:
 	return -1;
 }

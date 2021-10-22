@@ -9,13 +9,7 @@ struct rte_intr_handle {
 	RTE_STD_C11
 	union {
 		struct {
-			RTE_STD_C11
-			union {
-				/** VFIO device file descriptor */
-				int vfio_dev_fd;
-				/** UIO cfg file desc for uio_pci_generic */
-				int uio_cfg_fd;
-			};
+			int dev_fd; /**< VFIO/UIO cfg device file descriptor */
 			int fd;	/**< interrupt event file descriptor */
 		};
 		void *windows_handle; /**< device driver handle */
