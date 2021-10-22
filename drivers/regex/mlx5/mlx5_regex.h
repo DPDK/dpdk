@@ -94,8 +94,8 @@ int mlx5_devx_regex_register_read(struct ibv_context *ctx, int engine_id,
 				  uint32_t addr, uint32_t *data);
 int mlx5_devx_regex_database_stop(void *ctx, uint8_t engine);
 int mlx5_devx_regex_database_resume(void *ctx, uint8_t engine);
-int mlx5_devx_regex_database_program(void *ctx, uint8_t engine,
-				     uint32_t umem_id, uint64_t umem_offset);
+int mlx5_devx_regex_rules_program(void *ctx, uint8_t engine, uint32_t rof_mkey,
+				uint32_t rof_size, uint64_t db_mkey_offset);
 
 /* mlx5_regex_control.c */
 int mlx5_regex_qp_setup(struct rte_regexdev *dev, uint16_t qp_ind,

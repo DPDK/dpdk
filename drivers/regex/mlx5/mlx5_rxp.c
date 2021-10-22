@@ -33,8 +33,6 @@ rxp_poll_csr_for_value(struct ibv_context *ctx, uint32_t *value,
 		       uint32_t address, uint32_t expected_value,
 		       uint32_t expected_mask, uint32_t timeout_ms, uint8_t id);
 static int
-mlnx_set_database(struct mlx5_regex_priv *priv, uint8_t id, uint8_t db_to_use);
-static int
 mlnx_resume_database(struct mlx5_regex_priv *priv, uint8_t id);
 static int
 mlnx_update_database(struct mlx5_regex_priv *priv, uint8_t id);
@@ -488,36 +486,11 @@ rxp_program_rof(struct mlx5_regex_priv *priv, const char *buf, uint32_t len,
 		}
 
 	}
-	ret = mlnx_set_database(priv, id, db_free);
-	if (ret < 0) {
-		DRV_LOG(ERR, "Failed to register db memory!");
-		goto parse_error;
-	}
 	rte_free(tmp);
 	return 0;
 parse_error:
 	rte_free(tmp);
 	return ret;
-}
-
-static int
-mlnx_set_database(struct mlx5_regex_priv *priv, uint8_t id, uint8_t db_to_use)
-{
-	int ret;
-	uint32_t umem_id;
-
-	ret = mlx5_devx_regex_database_stop(priv->cdev->ctx, id);
-	if (ret < 0) {
-		DRV_LOG(ERR, "stop engine failed!");
-		return ret;
-	}
-	umem_id = mlx5_os_get_umem_id(priv->db[db_to_use].umem.umem);
-	ret = mlx5_devx_regex_database_program(priv->cdev->ctx, id, umem_id, 0);
-	if (ret < 0) {
-		DRV_LOG(ERR, "program db failed!");
-		return ret;
-	}
-	return 0;
 }
 
 static int

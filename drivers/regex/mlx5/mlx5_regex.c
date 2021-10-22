@@ -53,12 +53,9 @@ mlx5_regex_stop(struct rte_regexdev *dev __rte_unused)
 	rte_free(priv->qps);
 	priv->qps = NULL;
 
-	for (i = 0; i < (priv->nb_engines + MLX5_RXP_EM_COUNT); i++) {
-		if (priv->db[i].umem.umem)
-			mlx5_glue->devx_umem_dereg(priv->db[i].umem.umem);
-		rte_free(priv->db[i].ptr);
-		priv->db[i].ptr = NULL;
-	}
+	for (i = 0; i < priv->nb_engines; i++)
+		/* Stop engine. */
+		mlx5_devx_regex_database_stop(priv->cdev->ctx, i);
 
 	return 0;
 }

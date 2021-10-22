@@ -3710,17 +3710,20 @@ struct mlx5_ifc_parse_graph_flex_out_bits {
 };
 
 struct regexp_params_field_select_bits {
-	u8 reserved_at_0[0x1e];
+	u8 reserved_at_0[0x1d];
+	u8 rof_mkey[0x1];
 	u8 stop_engine[0x1];
-	u8 db_umem_id[0x1];
+	u8 reserved_at_1f[0x1];
 };
 
 struct mlx5_ifc_regexp_params_bits {
 	u8 reserved_at_0[0x1f];
 	u8 stop_engine[0x1];
-	u8 db_umem_id[0x20];
-	u8 db_umem_offset[0x40];
-	u8 reserved_at_80[0x100];
+	u8 reserved_at_20[0x60];
+	u8 rof_mkey[0x20];
+	u8 rof_size[0x20];
+	u8 rof_mkey_va[0x40];
+	u8 reserved_at_100[0x80];
 };
 
 struct mlx5_ifc_set_regexp_params_in_bits {
