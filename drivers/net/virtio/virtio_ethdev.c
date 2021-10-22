@@ -1745,6 +1745,32 @@ virtio_configure_intr(struct rte_eth_dev *dev)
 
 	return 0;
 }
+
+static void
+virtio_get_speed_duplex(struct rte_eth_dev *eth_dev,
+			struct rte_eth_link *link)
+{
+	struct virtio_hw *hw = eth_dev->data->dev_private;
+	struct virtio_net_config *config;
+	struct virtio_net_config local_config;
+
+	config = &local_config;
+	vtpci_read_dev_config(hw,
+		offsetof(struct virtio_net_config, speed),
+		&config->speed, sizeof(config->speed));
+	vtpci_read_dev_config(hw,
+		offsetof(struct virtio_net_config, duplex),
+		&config->duplex, sizeof(config->duplex));
+	hw->speed = config->speed;
+	hw->duplex = config->duplex;
+	if (link != NULL) {
+		link->link_duplex = hw->duplex;
+		link->link_speed  = hw->speed;
+	}
+	PMD_INIT_LOG(DEBUG, "link speed = %d, duplex = %d",
+		     hw->speed, hw->duplex);
+}
+
 #define DUPLEX_UNKNOWN   0xff
 /* reset device and renegotiate features if needed */
 static int
@@ -1803,19 +1829,10 @@ virtio_init_device(struct rte_eth_dev *eth_dev, uint64_t req_features)
 		     hw->mac_addr[0], hw->mac_addr[1], hw->mac_addr[2],
 		     hw->mac_addr[3], hw->mac_addr[4], hw->mac_addr[5]);
 
-	if (hw->speed == ETH_SPEED_NUM_UNKNOWN) {
-		if (vtpci_with_feature(hw, VIRTIO_NET_F_SPEED_DUPLEX)) {
-			config = &local_config;
-			vtpci_read_dev_config(hw,
-				offsetof(struct virtio_net_config, speed),
-				&config->speed, sizeof(config->speed));
-			vtpci_read_dev_config(hw,
-				offsetof(struct virtio_net_config, duplex),
-				&config->duplex, sizeof(config->duplex));
-			hw->speed = config->speed;
-			hw->duplex = config->duplex;
-		}
-	}
+	hw->get_speed_via_feat = hw->speed == ETH_SPEED_NUM_UNKNOWN &&
+			     vtpci_with_feature(hw, VIRTIO_NET_F_SPEED_DUPLEX);
+	if (hw->get_speed_via_feat)
+		virtio_get_speed_duplex(eth_dev, NULL);
 	if (hw->duplex == DUPLEX_UNKNOWN)
 		hw->duplex = ETH_LINK_FULL_DUPLEX;
 	PMD_INIT_LOG(DEBUG, "link speed = %d, duplex = %d",
@@ -2688,11 +2705,15 @@ virtio_dev_link_update(struct rte_eth_dev *dev, __rte_unused int wait_to_complet
 				     dev->data->port_id);
 		} else {
 			link.link_status = ETH_LINK_UP;
+			if (hw->get_speed_via_feat)
+				virtio_get_speed_duplex(dev, &link);
 			PMD_INIT_LOG(DEBUG, "Port %d is up",
 				     dev->data->port_id);
 		}
 	} else {
 		link.link_status = ETH_LINK_UP;
+		if (hw->get_speed_via_feat)
+			virtio_get_speed_duplex(dev, &link);
 	}
 
 	return rte_eth_linkstatus_set(dev, &link);
