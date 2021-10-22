@@ -411,12 +411,17 @@ mlx5_vdpa_err_event_setup(struct mlx5_vdpa_priv *priv)
 		DRV_LOG(ERR, "Failed to change device event channel FD.");
 		goto error;
 	}
-	priv->err_intr_handle.fd = priv->err_chnl->fd;
-	priv->err_intr_handle.type = RTE_INTR_HANDLE_EXT;
-	if (rte_intr_callback_register(&priv->err_intr_handle,
+
+	if (rte_intr_fd_set(priv->err_intr_handle, priv->err_chnl->fd))
+		goto error;
+
+	if (rte_intr_type_set(priv->err_intr_handle, RTE_INTR_HANDLE_EXT))
+		goto error;
+
+	if (rte_intr_callback_register(priv->err_intr_handle,
 				       mlx5_vdpa_err_interrupt_handler,
 				       priv)) {
-		priv->err_intr_handle.fd = 0;
+		rte_intr_fd_set(priv->err_intr_handle, 0);
 		DRV_LOG(ERR, "Failed to register error interrupt for device %d.",
 			priv->vid);
 		goto error;
@@ -436,20 +441,20 @@ mlx5_vdpa_err_event_unset(struct mlx5_vdpa_priv *priv)
 	int retries = MLX5_VDPA_INTR_RETRIES;
 	int ret = -EAGAIN;
 
-	if (!priv->err_intr_handle.fd)
+	if (!rte_intr_fd_get(priv->err_intr_handle))
 		return;
 	while (retries-- && ret == -EAGAIN) {
-		ret = rte_intr_callback_unregister(&priv->err_intr_handle,
+		ret = rte_intr_callback_unregister(priv->err_intr_handle,
 					    mlx5_vdpa_err_interrupt_handler,
 					    priv);
 		if (ret == -EAGAIN) {
 			DRV_LOG(DEBUG, "Try again to unregister fd %d "
 				"of error interrupt, retries = %d.",
-				priv->err_intr_handle.fd, retries);
+				rte_intr_fd_get(priv->err_intr_handle),
+				retries);
 			rte_pause();
 		}
 	}
-	memset(&priv->err_intr_handle, 0, sizeof(priv->err_intr_handle));
 	if (priv->err_chnl) {
 #ifdef HAVE_IBV_DEVX_EVENT
 		union {

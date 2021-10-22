@@ -29,12 +29,13 @@ static void
 tap_rx_intr_vec_uninstall(struct rte_eth_dev *dev)
 {
 	struct pmd_internals *pmd = dev->data->dev_private;
-	struct rte_intr_handle *intr_handle = &pmd->intr_handle;
+	struct rte_intr_handle *intr_handle = pmd->intr_handle;
 
 	rte_intr_free_epoll_fd(intr_handle);
-	free(intr_handle->intr_vec);
-	intr_handle->intr_vec = NULL;
-	intr_handle->nb_efd = 0;
+	rte_intr_vec_list_free(intr_handle);
+	rte_intr_nb_efd_set(intr_handle, 0);
+
+	rte_intr_instance_free(intr_handle);
 }
 
 /**
@@ -52,15 +53,15 @@ tap_rx_intr_vec_install(struct rte_eth_dev *dev)
 	struct pmd_internals *pmd = dev->data->dev_private;
 	struct pmd_process_private *process_private = dev->process_private;
 	unsigned int rxqs_n = pmd->dev->data->nb_rx_queues;
-	struct rte_intr_handle *intr_handle = &pmd->intr_handle;
+	struct rte_intr_handle *intr_handle = pmd->intr_handle;
 	unsigned int n = RTE_MIN(rxqs_n, (uint32_t)RTE_MAX_RXTX_INTR_VEC_ID);
 	unsigned int i;
 	unsigned int count = 0;
 
 	if (!dev->data->dev_conf.intr_conf.rxq)
 		return 0;
-	intr_handle->intr_vec = malloc(sizeof(int) * rxqs_n);
-	if (intr_handle->intr_vec == NULL) {
+
+	if (rte_intr_vec_list_alloc(intr_handle, NULL, rxqs_n)) {
 		rte_errno = ENOMEM;
 		TAP_LOG(ERR,
 			"failed to allocate memory for interrupt vector,"
@@ -73,19 +74,23 @@ tap_rx_intr_vec_install(struct rte_eth_dev *dev)
 		/* Skip queues that cannot request interrupts. */
 		if (!rxq || process_private->rxq_fds[i] == -1) {
 			/* Use invalid intr_vec[] index to disable entry. */
-			intr_handle->intr_vec[i] =
-				RTE_INTR_VEC_RXTX_OFFSET +
-				RTE_MAX_RXTX_INTR_VEC_ID;
+			if (rte_intr_vec_list_index_set(intr_handle, i,
+			RTE_INTR_VEC_RXTX_OFFSET + RTE_MAX_RXTX_INTR_VEC_ID))
+				return -rte_errno;
 			continue;
 		}
-		intr_handle->intr_vec[i] = RTE_INTR_VEC_RXTX_OFFSET + count;
-		intr_handle->efds[count] = process_private->rxq_fds[i];
+		if (rte_intr_vec_list_index_set(intr_handle, i,
+					RTE_INTR_VEC_RXTX_OFFSET + count))
+			return -rte_errno;
+		if (rte_intr_efds_index_set(intr_handle, count,
+						   process_private->rxq_fds[i]))
+			return -rte_errno;
 		count++;
 	}
 	if (!count)
 		tap_rx_intr_vec_uninstall(dev);
-	else
-		intr_handle->nb_efd = count;
+	else if (rte_intr_nb_efd_set(intr_handle, count))
+		return -rte_errno;
 	return 0;
 }
 

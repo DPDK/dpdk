@@ -144,11 +144,9 @@ ice_dcf_config_rx_queues_irqs(struct rte_eth_dev *dev,
 			return -1;
 	}
 
-	if (rte_intr_dp_is_en(intr_handle) && !intr_handle->intr_vec) {
-		intr_handle->intr_vec =
-			rte_zmalloc("intr_vec",
-				    dev->data->nb_rx_queues * sizeof(int), 0);
-		if (!intr_handle->intr_vec) {
+	if (rte_intr_dp_is_en(intr_handle)) {
+		if (rte_intr_vec_list_alloc(intr_handle, "intr_vec",
+						   dev->data->nb_rx_queues)) {
 			PMD_DRV_LOG(ERR, "Failed to allocate %d rx intr_vec",
 				    dev->data->nb_rx_queues);
 			return -1;
@@ -198,7 +196,8 @@ ice_dcf_config_rx_queues_irqs(struct rte_eth_dev *dev,
 			hw->msix_base = IAVF_MISC_VEC_ID;
 			for (i = 0; i < dev->data->nb_rx_queues; i++) {
 				hw->rxq_map[hw->msix_base] |= 1 << i;
-				intr_handle->intr_vec[i] = IAVF_MISC_VEC_ID;
+				rte_intr_vec_list_index_set(intr_handle,
+							i, IAVF_MISC_VEC_ID);
 			}
 			PMD_DRV_LOG(DEBUG,
 				    "vector %u are mapping to all Rx queues",
@@ -208,12 +207,13 @@ ice_dcf_config_rx_queues_irqs(struct rte_eth_dev *dev,
 			 * multi interrupts, then the vec is from 1
 			 */
 			hw->nb_msix = RTE_MIN(hw->vf_res->max_vectors,
-					      intr_handle->nb_efd);
+				      rte_intr_nb_efd_get(intr_handle));
 			hw->msix_base = IAVF_MISC_VEC_ID;
 			vec = IAVF_MISC_VEC_ID;
 			for (i = 0; i < dev->data->nb_rx_queues; i++) {
 				hw->rxq_map[vec] |= 1 << i;
-				intr_handle->intr_vec[i] = vec++;
+				rte_intr_vec_list_index_set(intr_handle,
+								   i, vec++);
 				if (vec >= hw->nb_msix)
 					vec = IAVF_RX_VEC_START;
 			}
@@ -623,10 +623,7 @@ ice_dcf_dev_stop(struct rte_eth_dev *dev)
 	ice_dcf_stop_queues(dev);
 
 	rte_intr_efd_disable(intr_handle);
-	if (intr_handle->intr_vec) {
-		rte_free(intr_handle->intr_vec);
-		intr_handle->intr_vec = NULL;
-	}
+	rte_intr_vec_list_free(intr_handle);
 
 	ice_dcf_add_del_all_mac_addr(&dcf_ad->real_hw, false);
 	dev->data->dev_link.link_status = RTE_ETH_LINK_DOWN;

@@ -494,7 +494,7 @@ err:
 static int ena_close(struct rte_eth_dev *dev)
 {
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
-	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
+	struct rte_intr_handle *intr_handle = pci_dev->intr_handle;
 	struct ena_adapter *adapter = dev->data->dev_private;
 	int ret = 0;
 
@@ -954,7 +954,7 @@ static int ena_stop(struct rte_eth_dev *dev)
 	struct ena_adapter *adapter = dev->data->dev_private;
 	struct ena_com_dev *ena_dev = &adapter->ena_dev;
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
-	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
+	struct rte_intr_handle *intr_handle = pci_dev->intr_handle;
 	int rc;
 
 	/* Cannot free memory in secondary process */
@@ -976,10 +976,9 @@ static int ena_stop(struct rte_eth_dev *dev)
 	rte_intr_disable(intr_handle);
 
 	rte_intr_efd_disable(intr_handle);
-	if (intr_handle->intr_vec != NULL) {
-		rte_free(intr_handle->intr_vec);
-		intr_handle->intr_vec = NULL;
-	}
+
+	/* Cleanup vector list */
+	rte_intr_vec_list_free(intr_handle);
 
 	rte_intr_enable(intr_handle);
 
@@ -995,7 +994,7 @@ static int ena_create_io_queue(struct rte_eth_dev *dev, struct ena_ring *ring)
 	struct ena_adapter *adapter = ring->adapter;
 	struct ena_com_dev *ena_dev = &adapter->ena_dev;
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
-	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
+	struct rte_intr_handle *intr_handle = pci_dev->intr_handle;
 	struct ena_com_create_io_ctx ctx =
 		/* policy set to _HOST just to satisfy icc compiler */
 		{ ENA_ADMIN_PLACEMENT_POLICY_HOST,
@@ -1015,7 +1014,10 @@ static int ena_create_io_queue(struct rte_eth_dev *dev, struct ena_ring *ring)
 		ena_qid = ENA_IO_RXQ_IDX(ring->id);
 		ctx.direction = ENA_COM_IO_QUEUE_DIRECTION_RX;
 		if (rte_intr_dp_is_en(intr_handle))
-			ctx.msix_vector = intr_handle->intr_vec[ring->id];
+			ctx.msix_vector =
+				rte_intr_vec_list_index_get(intr_handle,
+								   ring->id);
+
 		for (i = 0; i < ring->ring_size; i++)
 			ring->empty_rx_reqs[i] = i;
 	}
@@ -1824,7 +1826,7 @@ static int eth_ena_dev_init(struct rte_eth_dev *eth_dev)
 		     pci_dev->addr.devid,
 		     pci_dev->addr.function);
 
-	intr_handle = &pci_dev->intr_handle;
+	intr_handle = pci_dev->intr_handle;
 
 	adapter->regs = pci_dev->mem_resource[ENA_REGS_BAR].addr;
 	adapter->dev_mem_base = pci_dev->mem_resource[ENA_MEM_BAR].addr;
@@ -3112,7 +3114,7 @@ static int ena_parse_devargs(struct ena_adapter *adapter,
 static int ena_setup_rx_intr(struct rte_eth_dev *dev)
 {
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
-	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
+	struct rte_intr_handle *intr_handle = pci_dev->intr_handle;
 	int rc;
 	uint16_t vectors_nb, i;
 	bool rx_intr_requested = dev->data->dev_conf.intr_conf.rxq;
@@ -3139,9 +3141,9 @@ static int ena_setup_rx_intr(struct rte_eth_dev *dev)
 		goto enable_intr;
 	}
 
-	intr_handle->intr_vec =	rte_zmalloc("intr_vec",
-		dev->data->nb_rx_queues * sizeof(*intr_handle->intr_vec), 0);
-	if (intr_handle->intr_vec == NULL) {
+	/* Allocate the vector list */
+	if (rte_intr_vec_list_alloc(intr_handle, "intr_vec",
+					   dev->data->nb_rx_queues)) {
 		PMD_DRV_LOG(ERR,
 			"Failed to allocate interrupt vector for %d queues\n",
 			dev->data->nb_rx_queues);
@@ -3160,7 +3162,9 @@ static int ena_setup_rx_intr(struct rte_eth_dev *dev)
 	}
 
 	for (i = 0; i < vectors_nb; ++i)
-		intr_handle->intr_vec[i] = RTE_INTR_VEC_RXTX_OFFSET + i;
+		if (rte_intr_vec_list_index_set(intr_handle, i,
+					   RTE_INTR_VEC_RXTX_OFFSET + i))
+			goto disable_intr_efd;
 
 	rte_intr_enable(intr_handle);
 	return 0;
@@ -3168,8 +3172,7 @@ static int ena_setup_rx_intr(struct rte_eth_dev *dev)
 disable_intr_efd:
 	rte_intr_efd_disable(intr_handle);
 free_intr_vec:
-	rte_free(intr_handle->intr_vec);
-	intr_handle->intr_vec = NULL;
+	rte_intr_vec_list_free(intr_handle);
 enable_intr:
 	rte_intr_enable(intr_handle);
 	return rc;

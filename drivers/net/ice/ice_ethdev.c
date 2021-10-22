@@ -2178,7 +2178,7 @@ ice_dev_init(struct rte_eth_dev *dev)
 
 	ice_set_default_ptype_table(dev);
 	pci_dev = RTE_DEV_TO_PCI(dev->device);
-	intr_handle = &pci_dev->intr_handle;
+	intr_handle = pci_dev->intr_handle;
 
 	pf->adapter = ICE_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
 	pf->dev_data = dev->data;
@@ -2375,7 +2375,7 @@ ice_vsi_disable_queues_intr(struct ice_vsi *vsi)
 {
 	struct rte_eth_dev *dev = &rte_eth_devices[vsi->adapter->pf.dev_data->port_id];
 	struct rte_pci_device *pci_dev = ICE_DEV_TO_PCI(dev);
-	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
+	struct rte_intr_handle *intr_handle = pci_dev->intr_handle;
 	struct ice_hw *hw = ICE_VSI_TO_HW(vsi);
 	uint16_t msix_intr, i;
 
@@ -2405,7 +2405,7 @@ ice_dev_stop(struct rte_eth_dev *dev)
 	struct ice_pf *pf = ICE_DEV_PRIVATE_TO_PF(dev->data->dev_private);
 	struct ice_vsi *main_vsi = pf->main_vsi;
 	struct rte_pci_device *pci_dev = ICE_DEV_TO_PCI(dev);
-	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
+	struct rte_intr_handle *intr_handle = pci_dev->intr_handle;
 	uint16_t i;
 
 	/* avoid stopping again */
@@ -2430,10 +2430,7 @@ ice_dev_stop(struct rte_eth_dev *dev)
 
 	/* Clean datapath event and queue/vec mapping */
 	rte_intr_efd_disable(intr_handle);
-	if (intr_handle->intr_vec) {
-		rte_free(intr_handle->intr_vec);
-		intr_handle->intr_vec = NULL;
-	}
+	rte_intr_vec_list_free(intr_handle);
 
 	pf->adapter_stopped = true;
 	dev->data->dev_started = 0;
@@ -2447,7 +2444,7 @@ ice_dev_close(struct rte_eth_dev *dev)
 	struct ice_pf *pf = ICE_DEV_PRIVATE_TO_PF(dev->data->dev_private);
 	struct ice_hw *hw = ICE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
-	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
+	struct rte_intr_handle *intr_handle = pci_dev->intr_handle;
 	struct ice_adapter *ad =
 		ICE_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
 	int ret;
@@ -3345,10 +3342,11 @@ ice_vsi_queues_bind_intr(struct ice_vsi *vsi)
 {
 	struct rte_eth_dev *dev = &rte_eth_devices[vsi->adapter->pf.dev_data->port_id];
 	struct rte_pci_device *pci_dev = ICE_DEV_TO_PCI(dev);
-	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
+	struct rte_intr_handle *intr_handle = pci_dev->intr_handle;
 	struct ice_hw *hw = ICE_VSI_TO_HW(vsi);
 	uint16_t msix_vect = vsi->msix_intr;
-	uint16_t nb_msix = RTE_MIN(vsi->nb_msix, intr_handle->nb_efd);
+	uint16_t nb_msix = RTE_MIN(vsi->nb_msix,
+				   rte_intr_nb_efd_get(intr_handle));
 	uint16_t queue_idx = 0;
 	int record = 0;
 	int i;
@@ -3376,8 +3374,9 @@ ice_vsi_queues_bind_intr(struct ice_vsi *vsi)
 					       vsi->nb_used_qps - i);
 
 			for (; !!record && i < vsi->nb_used_qps; i++)
-				intr_handle->intr_vec[queue_idx + i] =
-					msix_vect;
+				rte_intr_vec_list_index_set(intr_handle,
+						queue_idx + i, msix_vect);
+
 			break;
 		}
 
@@ -3386,7 +3385,9 @@ ice_vsi_queues_bind_intr(struct ice_vsi *vsi)
 				       vsi->base_queue + i, 1);
 
 		if (!!record)
-			intr_handle->intr_vec[queue_idx + i] = msix_vect;
+			rte_intr_vec_list_index_set(intr_handle,
+							   queue_idx + i,
+							   msix_vect);
 
 		msix_vect++;
 		nb_msix--;
@@ -3398,7 +3399,7 @@ ice_vsi_enable_queues_intr(struct ice_vsi *vsi)
 {
 	struct rte_eth_dev *dev = &rte_eth_devices[vsi->adapter->pf.dev_data->port_id];
 	struct rte_pci_device *pci_dev = ICE_DEV_TO_PCI(dev);
-	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
+	struct rte_intr_handle *intr_handle = pci_dev->intr_handle;
 	struct ice_hw *hw = ICE_VSI_TO_HW(vsi);
 	uint16_t msix_intr, i;
 
@@ -3424,7 +3425,7 @@ ice_rxq_intr_setup(struct rte_eth_dev *dev)
 {
 	struct ice_pf *pf = ICE_DEV_PRIVATE_TO_PF(dev->data->dev_private);
 	struct rte_pci_device *pci_dev = ICE_DEV_TO_PCI(dev);
-	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
+	struct rte_intr_handle *intr_handle = pci_dev->intr_handle;
 	struct ice_vsi *vsi = pf->main_vsi;
 	uint32_t intr_vector = 0;
 
@@ -3444,11 +3445,9 @@ ice_rxq_intr_setup(struct rte_eth_dev *dev)
 			return -1;
 	}
 
-	if (rte_intr_dp_is_en(intr_handle) && !intr_handle->intr_vec) {
-		intr_handle->intr_vec =
-		rte_zmalloc(NULL, dev->data->nb_rx_queues * sizeof(int),
-			    0);
-		if (!intr_handle->intr_vec) {
+	if (rte_intr_dp_is_en(intr_handle)) {
+		if (rte_intr_vec_list_alloc(intr_handle, NULL,
+						   dev->data->nb_rx_queues)) {
 			PMD_DRV_LOG(ERR,
 				    "Failed to allocate %d rx_queues intr_vec",
 				    dev->data->nb_rx_queues);
@@ -4755,19 +4754,19 @@ static int ice_rx_queue_intr_enable(struct rte_eth_dev *dev,
 				    uint16_t queue_id)
 {
 	struct rte_pci_device *pci_dev = ICE_DEV_TO_PCI(dev);
-	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
+	struct rte_intr_handle *intr_handle = pci_dev->intr_handle;
 	struct ice_hw *hw = ICE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	uint32_t val;
 	uint16_t msix_intr;
 
-	msix_intr = intr_handle->intr_vec[queue_id];
+	msix_intr = rte_intr_vec_list_index_get(intr_handle, queue_id);
 
 	val = GLINT_DYN_CTL_INTENA_M | GLINT_DYN_CTL_CLEARPBA_M |
 	      GLINT_DYN_CTL_ITR_INDX_M;
 	val &= ~GLINT_DYN_CTL_WB_ON_ITR_M;
 
 	ICE_WRITE_REG(hw, GLINT_DYN_CTL(msix_intr), val);
-	rte_intr_ack(&pci_dev->intr_handle);
+	rte_intr_ack(pci_dev->intr_handle);
 
 	return 0;
 }
@@ -4776,11 +4775,11 @@ static int ice_rx_queue_intr_disable(struct rte_eth_dev *dev,
 				     uint16_t queue_id)
 {
 	struct rte_pci_device *pci_dev = ICE_DEV_TO_PCI(dev);
-	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
+	struct rte_intr_handle *intr_handle = pci_dev->intr_handle;
 	struct ice_hw *hw = ICE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	uint16_t msix_intr;
 
-	msix_intr = intr_handle->intr_vec[queue_id];
+	msix_intr = rte_intr_vec_list_index_get(intr_handle, queue_id);
 
 	ICE_WRITE_REG(hw, GLINT_DYN_CTL(msix_intr), GLINT_DYN_CTL_WB_ON_ITR_M);
 

@@ -410,12 +410,10 @@ fs_rx_intr_vec_uninstall(struct fs_priv *priv)
 {
 	struct rte_intr_handle *intr_handle;
 
-	intr_handle = &priv->intr_handle;
-	if (intr_handle->intr_vec != NULL) {
-		free(intr_handle->intr_vec);
-		intr_handle->intr_vec = NULL;
-	}
-	intr_handle->nb_efd = 0;
+	intr_handle = priv->intr_handle;
+	rte_intr_vec_list_free(intr_handle);
+
+	rte_intr_nb_efd_set(intr_handle, 0);
 }
 
 /**
@@ -439,11 +437,9 @@ fs_rx_intr_vec_install(struct fs_priv *priv)
 	rxqs_n = priv->data->nb_rx_queues;
 	n = RTE_MIN(rxqs_n, (uint32_t)RTE_MAX_RXTX_INTR_VEC_ID);
 	count = 0;
-	intr_handle = &priv->intr_handle;
-	RTE_ASSERT(intr_handle->intr_vec == NULL);
+	intr_handle = priv->intr_handle;
 	/* Allocate the interrupt vector of the failsafe Rx proxy interrupts */
-	intr_handle->intr_vec = malloc(n * sizeof(intr_handle->intr_vec[0]));
-	if (intr_handle->intr_vec == NULL) {
+	if (rte_intr_vec_list_alloc(intr_handle, NULL, n)) {
 		fs_rx_intr_vec_uninstall(priv);
 		rte_errno = ENOMEM;
 		ERROR("Failed to allocate memory for interrupt vector,"
@@ -456,9 +452,9 @@ fs_rx_intr_vec_install(struct fs_priv *priv)
 		/* Skip queues that cannot request interrupts. */
 		if (rxq == NULL || rxq->event_fd < 0) {
 			/* Use invalid intr_vec[] index to disable entry. */
-			intr_handle->intr_vec[i] =
-				RTE_INTR_VEC_RXTX_OFFSET +
-				RTE_MAX_RXTX_INTR_VEC_ID;
+			if (rte_intr_vec_list_index_set(intr_handle, i,
+			RTE_INTR_VEC_RXTX_OFFSET + RTE_MAX_RXTX_INTR_VEC_ID))
+				return -rte_errno;
 			continue;
 		}
 		if (count >= RTE_MAX_RXTX_INTR_VEC_ID) {
@@ -469,15 +465,24 @@ fs_rx_intr_vec_install(struct fs_priv *priv)
 			fs_rx_intr_vec_uninstall(priv);
 			return -rte_errno;
 		}
-		intr_handle->intr_vec[i] = RTE_INTR_VEC_RXTX_OFFSET + count;
-		intr_handle->efds[count] = rxq->event_fd;
+		if (rte_intr_vec_list_index_set(intr_handle, i,
+					RTE_INTR_VEC_RXTX_OFFSET + count))
+			return -rte_errno;
+
+		if (rte_intr_efds_index_set(intr_handle, count,
+						   rxq->event_fd))
+			return -rte_errno;
 		count++;
 	}
 	if (count == 0) {
 		fs_rx_intr_vec_uninstall(priv);
 	} else {
-		intr_handle->nb_efd = count;
-		intr_handle->efd_counter_size = sizeof(uint64_t);
+		if (rte_intr_nb_efd_set(intr_handle, count))
+			return -rte_errno;
+
+		if (rte_intr_efd_counter_size_set(intr_handle,
+				sizeof(uint64_t)))
+			return -rte_errno;
 	}
 	return 0;
 }
@@ -499,7 +504,7 @@ failsafe_rx_intr_uninstall(struct rte_eth_dev *dev)
 	struct rte_intr_handle *intr_handle;
 
 	priv = PRIV(dev);
-	intr_handle = &priv->intr_handle;
+	intr_handle = priv->intr_handle;
 	rte_intr_free_epoll_fd(intr_handle);
 	fs_rx_event_proxy_uninstall(priv);
 	fs_rx_intr_vec_uninstall(priv);
@@ -530,6 +535,6 @@ failsafe_rx_intr_install(struct rte_eth_dev *dev)
 		fs_rx_intr_vec_uninstall(priv);
 		return -rte_errno;
 	}
-	dev->intr_handle = &priv->intr_handle;
+	dev->intr_handle = priv->intr_handle;
 	return 0;
 }

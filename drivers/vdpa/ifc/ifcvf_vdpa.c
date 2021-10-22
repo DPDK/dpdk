@@ -162,7 +162,7 @@ ifcvf_vfio_setup(struct ifcvf_internal *internal)
 	if (rte_pci_map_device(dev))
 		goto err;
 
-	internal->vfio_dev_fd = dev->intr_handle.vfio_dev_fd;
+	internal->vfio_dev_fd = rte_intr_dev_fd_get(dev->intr_handle);
 
 	for (i = 0; i < RTE_MIN(PCI_MAX_RESOURCE, IFCVF_PCI_MAX_RESOURCE);
 			i++) {
@@ -365,7 +365,8 @@ vdpa_enable_vfio_intr(struct ifcvf_internal *internal, bool m_rx)
 	irq_set->index = VFIO_PCI_MSIX_IRQ_INDEX;
 	irq_set->start = 0;
 	fd_ptr = (int *)&irq_set->data;
-	fd_ptr[RTE_INTR_VEC_ZERO_OFFSET] = internal->pdev->intr_handle.fd;
+	fd_ptr[RTE_INTR_VEC_ZERO_OFFSET] =
+		rte_intr_fd_get(internal->pdev->intr_handle);
 
 	for (i = 0; i < nr_vring; i++)
 		internal->intr_fd[i] = -1;

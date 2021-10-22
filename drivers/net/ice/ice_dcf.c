@@ -539,7 +539,7 @@ ice_dcf_handle_vsi_update_event(struct ice_dcf_hw *hw)
 
 	rte_spinlock_lock(&hw->vc_cmd_send_lock);
 
-	rte_intr_disable(&pci_dev->intr_handle);
+	rte_intr_disable(pci_dev->intr_handle);
 	ice_dcf_disable_irq0(hw);
 
 	for (;;) {
@@ -555,7 +555,7 @@ ice_dcf_handle_vsi_update_event(struct ice_dcf_hw *hw)
 		rte_delay_ms(ICE_DCF_ARQ_CHECK_TIME);
 	}
 
-	rte_intr_enable(&pci_dev->intr_handle);
+	rte_intr_enable(pci_dev->intr_handle);
 	ice_dcf_enable_irq0(hw);
 
 	rte_spinlock_unlock(&hw->vc_cmd_send_lock);
@@ -694,9 +694,9 @@ ice_dcf_init_hw(struct rte_eth_dev *eth_dev, struct ice_dcf_hw *hw)
 	}
 
 	hw->eth_dev = eth_dev;
-	rte_intr_callback_register(&pci_dev->intr_handle,
+	rte_intr_callback_register(pci_dev->intr_handle,
 				   ice_dcf_dev_interrupt_handler, hw);
-	rte_intr_enable(&pci_dev->intr_handle);
+	rte_intr_enable(pci_dev->intr_handle);
 	ice_dcf_enable_irq0(hw);
 
 	return 0;
@@ -718,7 +718,7 @@ void
 ice_dcf_uninit_hw(struct rte_eth_dev *eth_dev, struct ice_dcf_hw *hw)
 {
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
-	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
+	struct rte_intr_handle *intr_handle = pci_dev->intr_handle;
 
 	if (hw->vf_res->vf_cap_flags & VIRTCHNL_VF_OFFLOAD_QOS)
 		if (hw->tm_conf.committed) {

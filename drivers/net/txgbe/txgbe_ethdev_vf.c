@@ -166,7 +166,7 @@ eth_txgbevf_dev_init(struct rte_eth_dev *eth_dev)
 	int err;
 	uint32_t tc, tcs;
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
-	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
+	struct rte_intr_handle *intr_handle = pci_dev->intr_handle;
 	struct txgbe_hw *hw = TXGBE_DEV_HW(eth_dev);
 	struct txgbe_vfta *shadow_vfta = TXGBE_DEV_VFTA(eth_dev);
 	struct txgbe_hwstrip *hwstrip = TXGBE_DEV_HWSTRIP(eth_dev);
@@ -608,7 +608,7 @@ txgbevf_dev_start(struct rte_eth_dev *dev)
 	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
 	uint32_t intr_vector = 0;
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
-	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
+	struct rte_intr_handle *intr_handle = pci_dev->intr_handle;
 
 	int err, mask = 0;
 
@@ -669,11 +669,9 @@ txgbevf_dev_start(struct rte_eth_dev *dev)
 			return -1;
 	}
 
-	if (rte_intr_dp_is_en(intr_handle) && !intr_handle->intr_vec) {
-		intr_handle->intr_vec =
-			rte_zmalloc("intr_vec",
-				    dev->data->nb_rx_queues * sizeof(int), 0);
-		if (intr_handle->intr_vec == NULL) {
+	if (rte_intr_dp_is_en(intr_handle)) {
+		if (rte_intr_vec_list_alloc(intr_handle, "intr_vec",
+						   dev->data->nb_rx_queues)) {
 			PMD_INIT_LOG(ERR, "Failed to allocate %d rx_queues"
 				     " intr_vec", dev->data->nb_rx_queues);
 			return -ENOMEM;
@@ -712,7 +710,7 @@ txgbevf_dev_stop(struct rte_eth_dev *dev)
 	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
 	struct txgbe_adapter *adapter = TXGBE_DEV_ADAPTER(dev);
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
-	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
+	struct rte_intr_handle *intr_handle = pci_dev->intr_handle;
 
 	if (hw->adapter_stopped)
 		return 0;
@@ -739,10 +737,7 @@ txgbevf_dev_stop(struct rte_eth_dev *dev)
 
 	/* Clean datapath event and queue/vec mapping */
 	rte_intr_efd_disable(intr_handle);
-	if (intr_handle->intr_vec != NULL) {
-		rte_free(intr_handle->intr_vec);
-		intr_handle->intr_vec = NULL;
-	}
+	rte_intr_vec_list_free(intr_handle);
 
 	adapter->rss_reta_updated = 0;
 	hw->dev_start = false;
@@ -755,7 +750,7 @@ txgbevf_dev_close(struct rte_eth_dev *dev)
 {
 	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
-	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
+	struct rte_intr_handle *intr_handle = pci_dev->intr_handle;
 	int ret;
 
 	PMD_INIT_FUNC_TRACE();
@@ -916,7 +911,7 @@ static int
 txgbevf_dev_rx_queue_intr_enable(struct rte_eth_dev *dev, uint16_t queue_id)
 {
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
-	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
+	struct rte_intr_handle *intr_handle = pci_dev->intr_handle;
 	struct txgbe_interrupt *intr = TXGBE_DEV_INTR(dev);
 	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
 	uint32_t vec = TXGBE_MISC_VEC_ID;
@@ -938,7 +933,7 @@ txgbevf_dev_rx_queue_intr_disable(struct rte_eth_dev *dev, uint16_t queue_id)
 	struct txgbe_interrupt *intr = TXGBE_DEV_INTR(dev);
 	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
-	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
+	struct rte_intr_handle *intr_handle = pci_dev->intr_handle;
 	uint32_t vec = TXGBE_MISC_VEC_ID;
 
 	if (rte_intr_allow_others(intr_handle))
@@ -978,7 +973,7 @@ static void
 txgbevf_configure_msix(struct rte_eth_dev *dev)
 {
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
-	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
+	struct rte_intr_handle *intr_handle = pci_dev->intr_handle;
 	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
 	uint32_t q_idx;
 	uint32_t vector_idx = TXGBE_MISC_VEC_ID;
@@ -1004,8 +999,10 @@ txgbevf_configure_msix(struct rte_eth_dev *dev)
 		 * as TXGBE_VF_MAXMSIVECOTR = 1
 		 */
 		txgbevf_set_ivar_map(hw, 0, q_idx, vector_idx);
-		intr_handle->intr_vec[q_idx] = vector_idx;
-		if (vector_idx < base + intr_handle->nb_efd - 1)
+		rte_intr_vec_list_index_set(intr_handle, q_idx,
+						   vector_idx);
+		if (vector_idx < base + rte_intr_nb_efd_get(intr_handle)
+		    - 1)
 			vector_idx++;
 	}
 

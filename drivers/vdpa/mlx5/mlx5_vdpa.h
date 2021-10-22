@@ -89,7 +89,7 @@ struct mlx5_vdpa_virtq {
 		void *buf;
 		uint32_t size;
 	} umems[3];
-	struct rte_intr_handle intr_handle;
+	struct rte_intr_handle *intr_handle;
 	uint64_t err_time[3]; /* RDTSC time of recent errors. */
 	uint32_t n_retry;
 	struct mlx5_devx_virtio_q_couners_attr reset;
@@ -137,7 +137,7 @@ struct mlx5_vdpa_priv {
 	struct mlx5dv_devx_event_channel *eventc;
 	struct mlx5dv_devx_event_channel *err_chnl;
 	struct mlx5dv_devx_uar *uar;
-	struct rte_intr_handle err_intr_handle;
+	struct rte_intr_handle *err_intr_handle;
 	struct mlx5_devx_obj *td;
 	struct mlx5_devx_obj *tiss[16]; /* TIS list for each LAG port. */
 	uint16_t nr_virtqs;

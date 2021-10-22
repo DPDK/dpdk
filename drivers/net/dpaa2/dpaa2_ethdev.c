@@ -1145,7 +1145,7 @@ dpaa2_dev_start(struct rte_eth_dev *dev)
 	struct rte_intr_handle *intr_handle;
 
 	dpaa2_dev = container_of(rdev, struct rte_dpaa2_device, device);
-	intr_handle = &dpaa2_dev->intr_handle;
+	intr_handle = dpaa2_dev->intr_handle;
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -1216,8 +1216,8 @@ dpaa2_dev_start(struct rte_eth_dev *dev)
 	}
 
 	/* if the interrupts were configured on this devices*/
-	if (intr_handle && (intr_handle->fd) &&
-	    (dev->data->dev_conf.intr_conf.lsc != 0)) {
+	if (intr_handle && rte_intr_fd_get(intr_handle) &&
+	    dev->data->dev_conf.intr_conf.lsc != 0) {
 		/* Registering LSC interrupt handler */
 		rte_intr_callback_register(intr_handle,
 					   dpaa2_interrupt_handler,
@@ -1256,8 +1256,8 @@ dpaa2_dev_stop(struct rte_eth_dev *dev)
 	PMD_INIT_FUNC_TRACE();
 
 	/* reset interrupt callback  */
-	if (intr_handle && (intr_handle->fd) &&
-	    (dev->data->dev_conf.intr_conf.lsc != 0)) {
+	if (intr_handle && rte_intr_fd_get(intr_handle) &&
+	    dev->data->dev_conf.intr_conf.lsc != 0) {
 		/*disable dpni irqs */
 		dpaa2_eth_setup_irqs(dev, 0);
 

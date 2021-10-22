@@ -176,7 +176,7 @@ struct mlx4_priv {
 	uint32_t tso_max_payload_sz; /**< Max supported TSO payload size. */
 	uint32_t hw_rss_max_qps; /**< Max Rx Queues supported by RSS. */
 	uint64_t hw_rss_sup; /**< Supported RSS hash fields (Verbs format). */
-	struct rte_intr_handle intr_handle; /**< Port interrupt handle. */
+	struct rte_intr_handle *intr_handle; /**< Port interrupt handle. */
 	struct mlx4_drop *drop; /**< Shared resources for drop flow rules. */
 	struct {
 		uint32_t dev_gen; /* Generation number to flush local caches. */

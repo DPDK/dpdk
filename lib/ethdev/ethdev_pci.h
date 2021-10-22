@@ -32,7 +32,7 @@ rte_eth_copy_pci_info(struct rte_eth_dev *eth_dev,
 		return;
 	}
 
-	eth_dev->intr_handle = &pci_dev->intr_handle;
+	eth_dev->intr_handle = pci_dev->intr_handle;
 
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
 		eth_dev->data->dev_flags = 0;

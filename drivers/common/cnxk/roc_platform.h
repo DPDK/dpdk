@@ -106,6 +106,32 @@
 #define plt_thread_is_intr	     rte_thread_is_intr
 #define plt_intr_callback_fn	     rte_intr_callback_fn
 
+#define plt_intr_efd_counter_size_get	rte_intr_efd_counter_size_get
+#define plt_intr_efd_counter_size_set	rte_intr_efd_counter_size_set
+#define plt_intr_vec_list_index_get	rte_intr_vec_list_index_get
+#define plt_intr_vec_list_index_set	rte_intr_vec_list_index_set
+#define plt_intr_vec_list_alloc		rte_intr_vec_list_alloc
+#define plt_intr_vec_list_free		rte_intr_vec_list_free
+#define plt_intr_fd_set			rte_intr_fd_set
+#define plt_intr_fd_get			rte_intr_fd_get
+#define plt_intr_dev_fd_get		rte_intr_dev_fd_get
+#define plt_intr_dev_fd_set		rte_intr_dev_fd_set
+#define plt_intr_type_get		rte_intr_type_get
+#define plt_intr_type_set		rte_intr_type_set
+#define plt_intr_instance_alloc		rte_intr_instance_alloc
+#define plt_intr_instance_dup		rte_intr_instance_dup
+#define plt_intr_instance_free		rte_intr_instance_free
+#define plt_intr_max_intr_get		rte_intr_max_intr_get
+#define plt_intr_max_intr_set		rte_intr_max_intr_set
+#define plt_intr_nb_efd_get		rte_intr_nb_efd_get
+#define plt_intr_nb_efd_set		rte_intr_nb_efd_set
+#define plt_intr_nb_intr_get		rte_intr_nb_intr_get
+#define plt_intr_nb_intr_set		rte_intr_nb_intr_set
+#define plt_intr_efds_index_get		rte_intr_efds_index_get
+#define plt_intr_efds_index_set		rte_intr_efds_index_set
+#define plt_intr_elist_index_get	rte_intr_elist_index_get
+#define plt_intr_elist_index_set	rte_intr_elist_index_set
+
 #define plt_alarm_set	 rte_eal_alarm_set
 #define plt_alarm_cancel rte_eal_alarm_cancel
 
@@ -183,7 +209,7 @@ extern int cnxk_logtype_tm;
 #define plt_dbg(subsystem, fmt, args...)                                       \
 	rte_log(RTE_LOG_DEBUG, cnxk_logtype_##subsystem,                       \
 		"[%s] %s():%u " fmt "\n", #subsystem, __func__, __LINE__,      \
-		##args)
+##args)
 
 #define plt_base_dbg(fmt, ...)	plt_dbg(base, fmt, ##__VA_ARGS__)
 #define plt_cpt_dbg(fmt, ...)	plt_dbg(cpt, fmt, ##__VA_ARGS__)
@@ -203,18 +229,18 @@ extern int cnxk_logtype_tm;
 
 #ifdef __cplusplus
 #define CNXK_PCI_ID(subsystem_dev, dev)                                        \
-	{                                                                      \
-		RTE_CLASS_ANY_ID, PCI_VENDOR_ID_CAVIUM, (dev), RTE_PCI_ANY_ID, \
-			(subsystem_dev),                                       \
-	}
+{                                                                      \
+	RTE_CLASS_ANY_ID, PCI_VENDOR_ID_CAVIUM, (dev), RTE_PCI_ANY_ID, \
+	(subsystem_dev),                                       \
+}
 #else
 #define CNXK_PCI_ID(subsystem_dev, dev)                                        \
-	{                                                                      \
-		.class_id = RTE_CLASS_ANY_ID,                                  \
-		.vendor_id = PCI_VENDOR_ID_CAVIUM, .device_id = (dev),         \
-		.subsystem_vendor_id = RTE_PCI_ANY_ID,                         \
-		.subsystem_device_id = (subsystem_dev),                        \
-	}
+{                                                                      \
+	.class_id = RTE_CLASS_ANY_ID,                                  \
+	.vendor_id = PCI_VENDOR_ID_CAVIUM, .device_id = (dev),         \
+	.subsystem_vendor_id = RTE_PCI_ANY_ID,                         \
+	.subsystem_device_id = (subsystem_dev),                        \
+}
 #endif
 
 __rte_internal

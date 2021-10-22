@@ -116,7 +116,7 @@ struct dpaa2_dpio_dev {
 	uintptr_t qbman_portal_ci_paddr;
 		/**< Physical address of Cache Inhibit Area */
 	uintptr_t ci_size; /**< Size of the CI region */
-	struct rte_intr_handle intr_handle; /* Interrupt related info */
+	struct rte_intr_handle *intr_handle; /* Interrupt related info */
 	int32_t	epoll_fd; /**< File descriptor created for interrupt polling */
 	int32_t hw_id; /**< An unique ID of this DPIO device instance */
 	struct dpaa2_portal_dqrr dpaa2_held_bufs;

@@ -25,7 +25,8 @@ mlx5_vdpa_virtq_handler(void *cb_arg)
 	int nbytes;
 
 	do {
-		nbytes = read(virtq->intr_handle.fd, &buf, 8);
+		nbytes = read(rte_intr_fd_get(virtq->intr_handle), &buf,
+			      8);
 		if (nbytes < 0) {
 			if (errno == EINTR ||
 			    errno == EWOULDBLOCK ||
@@ -58,21 +59,23 @@ mlx5_vdpa_virtq_unset(struct mlx5_vdpa_virtq *virtq)
 	int retries = MLX5_VDPA_INTR_RETRIES;
 	int ret = -EAGAIN;
 
-	if (virtq->intr_handle.fd != -1) {
+	if (rte_intr_fd_get(virtq->intr_handle) != -1) {
 		while (retries-- && ret == -EAGAIN) {
-			ret = rte_intr_callback_unregister(&virtq->intr_handle,
+			ret = rte_intr_callback_unregister(virtq->intr_handle,
 							mlx5_vdpa_virtq_handler,
 							virtq);
 			if (ret == -EAGAIN) {
 				DRV_LOG(DEBUG, "Try again to unregister fd %d "
-					"of virtq %d interrupt, retries = %d.",
-					virtq->intr_handle.fd,
-					(int)virtq->index, retries);
+				"of virtq %d interrupt, retries = %d.",
+				rte_intr_fd_get(virtq->intr_handle),
+				(int)virtq->index, retries);
+
 				usleep(MLX5_VDPA_INTR_RETRIES_USEC);
 			}
 		}
-		virtq->intr_handle.fd = -1;
+		rte_intr_fd_set(virtq->intr_handle, -1);
 	}
+	rte_intr_instance_free(virtq->intr_handle);
 	if (virtq->virtq) {
 		ret = mlx5_vdpa_virtq_stop(virtq->priv, virtq->index);
 		if (ret)
@@ -337,21 +340,33 @@ mlx5_vdpa_virtq_setup(struct mlx5_vdpa_priv *priv, int index)
 	virtq->priv = priv;
 	rte_write32(virtq->index, priv->virtq_db_addr);
 	/* Setup doorbell mapping. */
-	virtq->intr_handle.fd = vq.kickfd;
-	if (virtq->intr_handle.fd == -1) {
+	virtq->intr_handle =
+		rte_intr_instance_alloc(RTE_INTR_INSTANCE_F_SHARED);
+	if (virtq->intr_handle == NULL) {
+		DRV_LOG(ERR, "Fail to allocate intr_handle");
+		goto error;
+	}
+
+	if (rte_intr_fd_set(virtq->intr_handle, vq.kickfd))
+		goto error;
+
+	if (rte_intr_fd_get(virtq->intr_handle) == -1) {
 		DRV_LOG(WARNING, "Virtq %d kickfd is invalid.", index);
 	} else {
-		virtq->intr_handle.type = RTE_INTR_HANDLE_EXT;
-		if (rte_intr_callback_register(&virtq->intr_handle,
+		if (rte_intr_type_set(virtq->intr_handle, RTE_INTR_HANDLE_EXT))
+			goto error;
+
+		if (rte_intr_callback_register(virtq->intr_handle,
 					       mlx5_vdpa_virtq_handler,
 					       virtq)) {
-			virtq->intr_handle.fd = -1;
+			rte_intr_fd_set(virtq->intr_handle, -1);
 			DRV_LOG(ERR, "Failed to register virtq %d interrupt.",
 				index);
 			goto error;
 		} else {
 			DRV_LOG(DEBUG, "Register fd %d interrupt for virtq %d.",
-				virtq->intr_handle.fd, index);
+				rte_intr_fd_get(virtq->intr_handle),
+				index);
 		}
 	}
 	/* Subscribe virtq error event. */
@@ -506,7 +521,8 @@ mlx5_vdpa_virtq_is_modified(struct mlx5_vdpa_priv *priv,
 
 	if (ret)
 		return -1;
-	if (vq.size != virtq->vq_size || vq.kickfd != virtq->intr_handle.fd)
+	if (vq.size != virtq->vq_size || vq.kickfd !=
+	    rte_intr_fd_get(virtq->intr_handle))
 		return 1;
 	if (virtq->eqp.cq.cq_obj.cq) {
 		if (vq.callfd != virtq->eqp.cq.callfd)

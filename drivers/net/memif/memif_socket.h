@@ -85,7 +85,7 @@ struct memif_socket_dev_list_elt {
 	(sizeof(struct sockaddr_un) - offsetof(struct sockaddr_un, sun_path))
 
 struct memif_socket {
-	struct rte_intr_handle intr_handle;	/**< interrupt handle */
+	struct rte_intr_handle *intr_handle;	/**< interrupt handle */
 	char filename[MEMIF_SOCKET_UN_SIZE];	/**< socket filename */
 
 	TAILQ_HEAD(, memif_socket_dev_list_elt) dev_queue;
@@ -101,7 +101,7 @@ struct memif_msg_queue_elt {
 };
 
 struct memif_control_channel {
-	struct rte_intr_handle intr_handle;	/**< interrupt handle */
+	struct rte_intr_handle *intr_handle;	/**< interrupt handle */
 	TAILQ_HEAD(, memif_msg_queue_elt) msg_queue; /**< control message queue */
 	struct memif_socket *socket;		/**< pointer to socket */
 	struct rte_eth_dev *dev;		/**< pointer to device */

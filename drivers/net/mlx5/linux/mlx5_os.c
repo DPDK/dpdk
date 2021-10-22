@@ -2458,11 +2458,9 @@ mlx5_os_pci_probe_pf(struct mlx5_common_device *cdev,
 		 * Representor interrupts handle is released in mlx5_dev_stop().
 		 */
 		if (list[i].info.representor) {
-			struct rte_intr_handle *intr_handle;
-			intr_handle = mlx5_malloc(MLX5_MEM_SYS | MLX5_MEM_ZERO,
-						  sizeof(*intr_handle), 0,
-						  SOCKET_ID_ANY);
-			if (!intr_handle) {
+			struct rte_intr_handle *intr_handle =
+				rte_intr_instance_alloc(RTE_INTR_INSTANCE_F_SHARED);
+			if (intr_handle == NULL) {
 				DRV_LOG(ERR,
 					"port %u failed to allocate memory for interrupt handler "
 					"Rx interrupts will not be supported",
@@ -2626,7 +2624,7 @@ mlx5_os_auxiliary_probe(struct mlx5_common_device *cdev)
 	if (eth_dev == NULL)
 		return -rte_errno;
 	/* Post create. */
-	eth_dev->intr_handle = &adev->intr_handle;
+	eth_dev->intr_handle = adev->intr_handle;
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
 		eth_dev->data->dev_flags |= RTE_ETH_DEV_INTR_LSC;
 		eth_dev->data->dev_flags |= RTE_ETH_DEV_INTR_RMV;
@@ -2690,24 +2688,38 @@ mlx5_os_dev_shared_handler_install(struct mlx5_dev_ctx_shared *sh)
 	int flags;
 	struct ibv_context *ctx = sh->cdev->ctx;
 
-	sh->intr_handle.fd = -1;
+	sh->intr_handle = rte_intr_instance_alloc(RTE_INTR_INSTANCE_F_SHARED);
+	if (sh->intr_handle == NULL) {
+		DRV_LOG(ERR, "Fail to allocate intr_handle");
+		rte_errno = ENOMEM;
+		return;
+	}
+	rte_intr_fd_set(sh->intr_handle, -1);
+
 	flags = fcntl(ctx->async_fd, F_GETFL);
 	ret = fcntl(ctx->async_fd, F_SETFL, flags | O_NONBLOCK);
 	if (ret) {
 		DRV_LOG(INFO, "failed to change file descriptor async event"
 			" queue");
 	} else {
-		sh->intr_handle.fd = ctx->async_fd;
-		sh->intr_handle.type = RTE_INTR_HANDLE_EXT;
-		if (rte_intr_callback_register(&sh->intr_handle,
+		rte_intr_fd_set(sh->intr_handle, ctx->async_fd);
+		rte_intr_type_set(sh->intr_handle, RTE_INTR_HANDLE_EXT);
+		if (rte_intr_callback_register(sh->intr_handle,
 					mlx5_dev_interrupt_handler, sh)) {
 			DRV_LOG(INFO, "Fail to install the shared interrupt.");
-			sh->intr_handle.fd = -1;
+			rte_intr_fd_set(sh->intr_handle, -1);
 		}
 	}
 	if (sh->devx) {
 #ifdef HAVE_IBV_DEVX_ASYNC
-		sh->intr_handle_devx.fd = -1;
+		sh->intr_handle_devx =
+			rte_intr_instance_alloc(RTE_INTR_INSTANCE_F_SHARED);
+		if (!sh->intr_handle_devx) {
+			DRV_LOG(ERR, "Fail to allocate intr_handle");
+			rte_errno = ENOMEM;
+			return;
+		}
+		rte_intr_fd_set(sh->intr_handle_devx, -1);
 		sh->devx_comp = (void *)mlx5_glue->devx_create_cmd_comp(ctx);
 		struct mlx5dv_devx_cmd_comp *devx_comp = sh->devx_comp;
 		if (!devx_comp) {
@@ -2721,13 +2733,14 @@ mlx5_os_dev_shared_handler_install(struct mlx5_dev_ctx_shared *sh)
 				" devx comp");
 			return;
 		}
-		sh->intr_handle_devx.fd = devx_comp->fd;
-		sh->intr_handle_devx.type = RTE_INTR_HANDLE_EXT;
-		if (rte_intr_callback_register(&sh->intr_handle_devx,
+		rte_intr_fd_set(sh->intr_handle_devx, devx_comp->fd);
+		rte_intr_type_set(sh->intr_handle_devx,
+					 RTE_INTR_HANDLE_EXT);
+		if (rte_intr_callback_register(sh->intr_handle_devx,
 					mlx5_dev_interrupt_handler_devx, sh)) {
 			DRV_LOG(INFO, "Fail to install the devx shared"
 				" interrupt.");
-			sh->intr_handle_devx.fd = -1;
+			rte_intr_fd_set(sh->intr_handle_devx, -1);
 		}
 #endif /* HAVE_IBV_DEVX_ASYNC */
 	}
@@ -2744,13 +2757,15 @@ mlx5_os_dev_shared_handler_install(struct mlx5_dev_ctx_shared *sh)
 void
 mlx5_os_dev_shared_handler_uninstall(struct mlx5_dev_ctx_shared *sh)
 {
-	if (sh->intr_handle.fd >= 0)
-		mlx5_intr_callback_unregister(&sh->intr_handle,
+	if (rte_intr_fd_get(sh->intr_handle) >= 0)
+		mlx5_intr_callback_unregister(sh->intr_handle,
 					      mlx5_dev_interrupt_handler, sh);
+	rte_intr_instance_free(sh->intr_handle);
 #ifdef HAVE_IBV_DEVX_ASYNC
-	if (sh->intr_handle_devx.fd >= 0)
-		rte_intr_callback_unregister(&sh->intr_handle_devx,
+	if (rte_intr_fd_get(sh->intr_handle_devx) >= 0)
+		rte_intr_callback_unregister(sh->intr_handle_devx,
 				  mlx5_dev_interrupt_handler_devx, sh);
+	rte_intr_instance_free(sh->intr_handle_devx);
 	if (sh->devx_comp)
 		mlx5_glue->devx_destroy_cmd_comp(sh->devx_comp);
 #endif

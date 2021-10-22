@@ -720,8 +720,8 @@ acc100_intr_enable(struct rte_bbdev *dev)
 	struct acc100_device *d = dev->data->dev_private;
 
 	/* Only MSI are currently supported */
-	if (dev->intr_handle->type == RTE_INTR_HANDLE_VFIO_MSI ||
-			dev->intr_handle->type == RTE_INTR_HANDLE_UIO) {
+	if (rte_intr_type_get(dev->intr_handle) == RTE_INTR_HANDLE_VFIO_MSI ||
+			rte_intr_type_get(dev->intr_handle) == RTE_INTR_HANDLE_UIO) {
 
 		ret = allocate_info_ring(dev);
 		if (ret < 0) {
@@ -1098,8 +1098,8 @@ acc100_queue_intr_enable(struct rte_bbdev *dev, uint16_t queue_id)
 {
 	struct acc100_queue *q = dev->data->queues[queue_id].queue_private;
 
-	if (dev->intr_handle->type != RTE_INTR_HANDLE_VFIO_MSI &&
-			dev->intr_handle->type != RTE_INTR_HANDLE_UIO)
+	if (rte_intr_type_get(dev->intr_handle) != RTE_INTR_HANDLE_VFIO_MSI &&
+			rte_intr_type_get(dev->intr_handle) != RTE_INTR_HANDLE_UIO)
 		return -ENOTSUP;
 
 	q->irq_enable = 1;
@@ -1111,8 +1111,8 @@ acc100_queue_intr_disable(struct rte_bbdev *dev, uint16_t queue_id)
 {
 	struct acc100_queue *q = dev->data->queues[queue_id].queue_private;
 
-	if (dev->intr_handle->type != RTE_INTR_HANDLE_VFIO_MSI &&
-			dev->intr_handle->type != RTE_INTR_HANDLE_UIO)
+	if (rte_intr_type_get(dev->intr_handle) != RTE_INTR_HANDLE_VFIO_MSI &&
+			rte_intr_type_get(dev->intr_handle) != RTE_INTR_HANDLE_UIO)
 		return -ENOTSUP;
 
 	q->irq_enable = 0;
@@ -4185,7 +4185,7 @@ static int acc100_pci_probe(struct rte_pci_driver *pci_drv,
 
 	/* Fill HW specific part of device structure */
 	bbdev->device = &pci_dev->device;
-	bbdev->intr_handle = &pci_dev->intr_handle;
+	bbdev->intr_handle = pci_dev->intr_handle;
 	bbdev->data->socket_id = pci_dev->device.numa_node;
 
 	/* Invoke ACC100 device initialization function */

@@ -133,9 +133,9 @@ eth_dev_vmbus_allocate(struct rte_vmbus_device *dev, size_t private_data_size)
 	eth_dev->device = &dev->device;
 
 	/* interrupt is simulated */
-	dev->intr_handle.type = RTE_INTR_HANDLE_EXT;
+	rte_intr_type_set(dev->intr_handle, RTE_INTR_HANDLE_EXT);
 	eth_dev->data->dev_flags |= RTE_ETH_DEV_INTR_LSC;
-	eth_dev->intr_handle = &dev->intr_handle;
+	eth_dev->intr_handle = dev->intr_handle;
 
 	return eth_dev;
 }

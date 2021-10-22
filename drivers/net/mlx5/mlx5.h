@@ -996,7 +996,7 @@ struct mlx5_dev_txpp {
 	uint32_t tick; /* Completion tick duration in nanoseconds. */
 	uint32_t test; /* Packet pacing test mode. */
 	int32_t skew; /* Scheduling skew. */
-	struct rte_intr_handle intr_handle; /* Periodic interrupt. */
+	struct rte_intr_handle *intr_handle; /* Periodic interrupt. */
 	void *echan; /* Event Channel. */
 	struct mlx5_txpp_wq clock_queue; /* Clock Queue. */
 	struct mlx5_txpp_wq rearm_queue; /* Clock Queue. */
@@ -1160,8 +1160,8 @@ struct mlx5_dev_ctx_shared {
 	struct mlx5_indexed_pool *ipool[MLX5_IPOOL_MAX];
 	struct mlx5_indexed_pool *mdh_ipools[MLX5_MAX_MODIFY_NUM];
 	/* Shared interrupt handler section. */
-	struct rte_intr_handle intr_handle; /* Interrupt handler for device. */
-	struct rte_intr_handle intr_handle_devx; /* DEVX interrupt handler. */
+	struct rte_intr_handle *intr_handle; /* Interrupt handler for device. */
+	struct rte_intr_handle *intr_handle_devx; /* DEVX interrupt handler. */
 	void *devx_comp; /* DEVX async comp obj. */
 	struct mlx5_devx_obj *tis[16]; /* TIS object. */
 	struct mlx5_devx_obj *td; /* Transport domain. */

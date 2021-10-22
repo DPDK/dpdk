@@ -393,14 +393,21 @@ fs_rx_queue_setup(struct rte_eth_dev *dev,
 	 * For the time being, fake as if we are using MSIX interrupts,
 	 * this will cause rte_intr_efd_enable to allocate an eventfd for us.
 	 */
-	struct rte_intr_handle intr_handle = {
-		.type = RTE_INTR_HANDLE_VFIO_MSIX,
-		.efds = { -1, },
-	};
+	struct rte_intr_handle *intr_handle;
 	struct sub_device *sdev;
 	struct rxq *rxq;
 	uint8_t i;
 	int ret;
+
+	intr_handle = rte_intr_instance_alloc(RTE_INTR_INSTANCE_F_PRIVATE);
+	if (intr_handle == NULL)
+		return -ENOMEM;
+
+	if (rte_intr_type_set(intr_handle, RTE_INTR_HANDLE_VFIO_MSIX))
+		return -rte_errno;
+
+	if (rte_intr_efds_index_set(intr_handle, 0, -1))
+		return -rte_errno;
 
 	fs_lock(dev, 0);
 	if (rx_conf->rx_deferred_start) {
@@ -435,12 +442,12 @@ fs_rx_queue_setup(struct rte_eth_dev *dev,
 	rxq->info.nb_desc = nb_rx_desc;
 	rxq->priv = PRIV(dev);
 	rxq->sdev = PRIV(dev)->subs;
-	ret = rte_intr_efd_enable(&intr_handle, 1);
+	ret = rte_intr_efd_enable(intr_handle, 1);
 	if (ret < 0) {
 		fs_unlock(dev, 0);
 		return ret;
 	}
-	rxq->event_fd = intr_handle.efds[0];
+	rxq->event_fd = rte_intr_efds_index_get(intr_handle, 0);
 	dev->data->rx_queues[rx_queue_id] = rxq;
 	FOREACH_SUBDEV_STATE(sdev, i, dev, DEV_ACTIVE) {
 		ret = rte_eth_rx_queue_setup(PORT_ID(sdev),

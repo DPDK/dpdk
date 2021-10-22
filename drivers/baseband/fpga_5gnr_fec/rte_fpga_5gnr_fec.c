@@ -743,17 +743,17 @@ fpga_intr_enable(struct rte_bbdev *dev)
 	 * It ensures that callback function assigned to that descriptor will
 	 * invoked when any FPGA queue issues interrupt.
 	 */
-	for (i = 0; i < FPGA_NUM_INTR_VEC; ++i)
-		dev->intr_handle->efds[i] = dev->intr_handle->fd;
+	for (i = 0; i < FPGA_NUM_INTR_VEC; ++i) {
+		if (rte_intr_efds_index_set(dev->intr_handle, i,
+				rte_intr_fd_get(dev->intr_handle)))
+			return -rte_errno;
+	}
 
-	if (!dev->intr_handle->intr_vec) {
-		dev->intr_handle->intr_vec = rte_zmalloc("intr_vec",
-				dev->data->num_queues * sizeof(int), 0);
-		if (!dev->intr_handle->intr_vec) {
-			rte_bbdev_log(ERR, "Failed to allocate %u vectors",
-					dev->data->num_queues);
-			return -ENOMEM;
-		}
+	if (rte_intr_vec_list_alloc(dev->intr_handle, "intr_vec",
+			dev->data->num_queues)) {
+		rte_bbdev_log(ERR, "Failed to allocate %u vectors",
+				dev->data->num_queues);
+		return -ENOMEM;
 	}
 
 	ret = rte_intr_enable(dev->intr_handle);
@@ -1880,7 +1880,7 @@ fpga_5gnr_fec_probe(struct rte_pci_driver *pci_drv,
 
 	/* Fill HW specific part of device structure */
 	bbdev->device = &pci_dev->device;
-	bbdev->intr_handle = &pci_dev->intr_handle;
+	bbdev->intr_handle = pci_dev->intr_handle;
 	bbdev->data->socket_id = pci_dev->device.numa_node;
 
 	/* Invoke FEC FPGA device initialization function */

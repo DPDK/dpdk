@@ -121,15 +121,27 @@ rte_auxiliary_probe_one_driver(struct rte_auxiliary_driver *drv,
 		return -EINVAL;
 	}
 
+	/* Allocate interrupt instance */
+	dev->intr_handle =
+		rte_intr_instance_alloc(RTE_INTR_INSTANCE_F_PRIVATE);
+	if (dev->intr_handle == NULL) {
+		AUXILIARY_LOG(ERR, "Could not allocate interrupt instance for device %s",
+			dev->name);
+		return -ENOMEM;
+	}
+
 	dev->driver = drv;
 
 	AUXILIARY_LOG(INFO, "Probe auxiliary driver: %s device: %s (NUMA node %i)",
 		      drv->driver.name, dev->name, dev->device.numa_node);
 	ret = drv->probe(drv, dev);
-	if (ret != 0)
+	if (ret != 0) {
 		dev->driver = NULL;
-	else
+		rte_intr_instance_free(dev->intr_handle);
+		dev->intr_handle = NULL;
+	} else {
 		dev->device.driver = &drv->driver;
+	}
 
 	return ret;
 }
@@ -320,6 +332,7 @@ auxiliary_unplug(struct rte_device *dev)
 	if (ret == 0) {
 		rte_auxiliary_remove_device(adev);
 		rte_devargs_remove(dev->devargs);
+		rte_intr_instance_free(adev->intr_handle);
 		free(adev);
 	}
 	return ret;

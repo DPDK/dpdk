@@ -406,23 +406,37 @@ virtio_user_fill_intr_handle(struct virtio_user_dev *dev)
 	uint32_t i;
 	struct rte_eth_dev *eth_dev = &rte_eth_devices[dev->hw.port_id];
 
-	if (!eth_dev->intr_handle) {
-		eth_dev->intr_handle = malloc(sizeof(*eth_dev->intr_handle));
-		if (!eth_dev->intr_handle) {
+	if (eth_dev->intr_handle == NULL) {
+		eth_dev->intr_handle =
+			rte_intr_instance_alloc(RTE_INTR_INSTANCE_F_PRIVATE);
+		if (eth_dev->intr_handle == NULL) {
 			PMD_DRV_LOG(ERR, "(%s) failed to allocate intr_handle", dev->path);
 			return -1;
 		}
-		memset(eth_dev->intr_handle, 0, sizeof(*eth_dev->intr_handle));
 	}
 
-	for (i = 0; i < dev->max_queue_pairs; ++i)
-		eth_dev->intr_handle->efds[i] = dev->callfds[2 * i];
-	eth_dev->intr_handle->nb_efd = dev->max_queue_pairs;
-	eth_dev->intr_handle->max_intr = dev->max_queue_pairs + 1;
-	eth_dev->intr_handle->type = RTE_INTR_HANDLE_VDEV;
+	for (i = 0; i < dev->max_queue_pairs; ++i) {
+		if (rte_intr_efds_index_set(eth_dev->intr_handle, i,
+				dev->callfds[i]))
+			return -rte_errno;
+	}
+
+	if (rte_intr_nb_efd_set(eth_dev->intr_handle, dev->max_queue_pairs))
+		return -rte_errno;
+
+	if (rte_intr_max_intr_set(eth_dev->intr_handle,
+			dev->max_queue_pairs + 1))
+		return -rte_errno;
+
+	if (rte_intr_type_set(eth_dev->intr_handle, RTE_INTR_HANDLE_VDEV))
+		return -rte_errno;
+
 	/* For virtio vdev, no need to read counter for clean */
-	eth_dev->intr_handle->efd_counter_size = 0;
-	eth_dev->intr_handle->fd = dev->ops->get_intr_fd(dev);
+	if (rte_intr_efd_counter_size_set(eth_dev->intr_handle, 0))
+		return -rte_errno;
+
+	if (rte_intr_fd_set(eth_dev->intr_handle, dev->ops->get_intr_fd(dev)))
+		return -rte_errno;
 
 	return 0;
 }
@@ -656,10 +670,8 @@ virtio_user_dev_uninit(struct virtio_user_dev *dev)
 {
 	struct rte_eth_dev *eth_dev = &rte_eth_devices[dev->hw.port_id];
 
-	if (eth_dev->intr_handle) {
-		free(eth_dev->intr_handle);
-		eth_dev->intr_handle = NULL;
-	}
+	rte_intr_instance_free(eth_dev->intr_handle);
+	eth_dev->intr_handle = NULL;
 
 	virtio_user_stop_device(dev);
 
@@ -962,7 +974,7 @@ virtio_user_dev_delayed_disconnect_handler(void *param)
 		return;
 	}
 	PMD_DRV_LOG(DEBUG, "Unregistering intr fd: %d",
-		    eth_dev->intr_handle->fd);
+		    rte_intr_fd_get(eth_dev->intr_handle));
 	if (rte_intr_callback_unregister(eth_dev->intr_handle,
 					 virtio_interrupt_handler,
 					 eth_dev) != 1)
@@ -972,10 +984,11 @@ virtio_user_dev_delayed_disconnect_handler(void *param)
 		if (dev->ops->server_disconnect)
 			dev->ops->server_disconnect(dev);
 
-		eth_dev->intr_handle->fd = dev->ops->get_intr_fd(dev);
+		rte_intr_fd_set(eth_dev->intr_handle,
+			dev->ops->get_intr_fd(dev));
 
 		PMD_DRV_LOG(DEBUG, "Registering intr fd: %d",
-			    eth_dev->intr_handle->fd);
+			    rte_intr_fd_get(eth_dev->intr_handle));
 
 		if (rte_intr_callback_register(eth_dev->intr_handle,
 					       virtio_interrupt_handler,
@@ -996,16 +1009,17 @@ virtio_user_dev_delayed_intr_reconfig_handler(void *param)
 	struct rte_eth_dev *eth_dev = &rte_eth_devices[dev->hw.port_id];
 
 	PMD_DRV_LOG(DEBUG, "Unregistering intr fd: %d",
-		    eth_dev->intr_handle->fd);
+		    rte_intr_fd_get(eth_dev->intr_handle));
 
 	if (rte_intr_callback_unregister(eth_dev->intr_handle,
 					 virtio_interrupt_handler,
 					 eth_dev) != 1)
 		PMD_DRV_LOG(ERR, "interrupt unregister failed");
 
-	eth_dev->intr_handle->fd = dev->ops->get_intr_fd(dev);
+	rte_intr_fd_set(eth_dev->intr_handle, dev->ops->get_intr_fd(dev));
 
-	PMD_DRV_LOG(DEBUG, "Registering intr fd: %d", eth_dev->intr_handle->fd);
+	PMD_DRV_LOG(DEBUG, "Registering intr fd: %d",
+		    rte_intr_fd_get(eth_dev->intr_handle));
 
 	if (rte_intr_callback_register(eth_dev->intr_handle,
 				       virtio_interrupt_handler, eth_dev))

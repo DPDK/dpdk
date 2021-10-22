@@ -166,7 +166,7 @@ struct fs_priv {
 	struct rte_ether_addr *mcast_addrs;
 	/* current capabilities */
 	struct rte_eth_dev_owner my_owner; /* Unique owner. */
-	struct rte_intr_handle intr_handle; /* Port interrupt handle. */
+	struct rte_intr_handle *intr_handle; /* Port interrupt handle. */
 	/*
 	 * Fail-safe state machine.
 	 * This level will be tracking state of the EAL and eth

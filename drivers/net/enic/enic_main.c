@@ -448,7 +448,7 @@ enic_intr_handler(void *arg)
 	rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_INTR_LSC, NULL);
 	enic_log_q_error(enic);
 	/* Re-enable irq in case of INTx */
-	rte_intr_ack(&enic->pdev->intr_handle);
+	rte_intr_ack(enic->pdev->intr_handle);
 }
 
 static int enic_rxq_intr_init(struct enic *enic)
@@ -477,14 +477,16 @@ static int enic_rxq_intr_init(struct enic *enic)
 			" interrupts\n");
 		return err;
 	}
-	intr_handle->intr_vec = rte_zmalloc("enic_intr_vec",
-					    rxq_intr_count * sizeof(int), 0);
-	if (intr_handle->intr_vec == NULL) {
+
+	if (rte_intr_vec_list_alloc(intr_handle, "enic_intr_vec",
+					   rxq_intr_count)) {
 		dev_err(enic, "Failed to allocate intr_vec\n");
 		return -ENOMEM;
 	}
 	for (i = 0; i < rxq_intr_count; i++)
-		intr_handle->intr_vec[i] = i + ENICPMD_RXQ_INTR_OFFSET;
+		if (rte_intr_vec_list_index_set(intr_handle, i,
+						   i + ENICPMD_RXQ_INTR_OFFSET))
+			return -rte_errno;
 	return 0;
 }
 
@@ -494,10 +496,8 @@ static void enic_rxq_intr_deinit(struct enic *enic)
 
 	intr_handle = enic->rte_dev->intr_handle;
 	rte_intr_efd_disable(intr_handle);
-	if (intr_handle->intr_vec != NULL) {
-		rte_free(intr_handle->intr_vec);
-		intr_handle->intr_vec = NULL;
-	}
+
+	rte_intr_vec_list_free(intr_handle);
 }
 
 static void enic_prep_wq_for_simple_tx(struct enic *enic, uint16_t queue_idx)
@@ -667,10 +667,10 @@ int enic_enable(struct enic *enic)
 	vnic_dev_enable_wait(enic->vdev);
 
 	/* Register and enable error interrupt */
-	rte_intr_callback_register(&(enic->pdev->intr_handle),
+	rte_intr_callback_register(enic->pdev->intr_handle,
 		enic_intr_handler, (void *)enic->rte_dev);
 
-	rte_intr_enable(&(enic->pdev->intr_handle));
+	rte_intr_enable(enic->pdev->intr_handle);
 	/* Unmask LSC interrupt */
 	vnic_intr_unmask(&enic->intr[ENICPMD_LSC_INTR_OFFSET]);
 
@@ -1111,8 +1111,8 @@ int enic_disable(struct enic *enic)
 		(void)vnic_intr_masked(&enic->intr[i]); /* flush write */
 	}
 	enic_rxq_intr_deinit(enic);
-	rte_intr_disable(&enic->pdev->intr_handle);
-	rte_intr_callback_unregister(&enic->pdev->intr_handle,
+	rte_intr_disable(enic->pdev->intr_handle);
+	rte_intr_callback_unregister(enic->pdev->intr_handle,
 				     enic_intr_handler,
 				     (void *)enic->rte_dev);
 

@@ -208,7 +208,7 @@ dpaa_eth_dev_configure(struct rte_eth_dev *dev)
 	PMD_INIT_FUNC_TRACE();
 
 	dpaa_dev = container_of(rdev, struct rte_dpaa_device, device);
-	intr_handle = &dpaa_dev->intr_handle;
+	intr_handle = dpaa_dev->intr_handle;
 	__fif = container_of(fif, struct __fman_if, __if);
 
 	/* Rx offloads which are enabled by default */
@@ -255,13 +255,14 @@ dpaa_eth_dev_configure(struct rte_eth_dev *dev)
 	}
 
 	/* if the interrupts were configured on this devices*/
-	if (intr_handle && intr_handle->fd) {
+	if (intr_handle && rte_intr_fd_get(intr_handle)) {
 		if (dev->data->dev_conf.intr_conf.lsc != 0)
 			rte_intr_callback_register(intr_handle,
 					   dpaa_interrupt_handler,
 					   (void *)dev);
 
-		ret = dpaa_intr_enable(__fif->node_name, intr_handle->fd);
+		ret = dpaa_intr_enable(__fif->node_name,
+				       rte_intr_fd_get(intr_handle));
 		if (ret) {
 			if (dev->data->dev_conf.intr_conf.lsc != 0) {
 				rte_intr_callback_unregister(intr_handle,
@@ -368,9 +369,10 @@ static void dpaa_interrupt_handler(void *param)
 	int bytes_read;
 
 	dpaa_dev = container_of(rdev, struct rte_dpaa_device, device);
-	intr_handle = &dpaa_dev->intr_handle;
+	intr_handle = dpaa_dev->intr_handle;
 
-	bytes_read = read(intr_handle->fd, &buf, sizeof(uint64_t));
+	bytes_read = read(rte_intr_fd_get(intr_handle), &buf,
+			  sizeof(uint64_t));
 	if (bytes_read < 0)
 		DPAA_PMD_ERR("Error reading eventfd\n");
 	dpaa_eth_link_update(dev, 0);
@@ -440,7 +442,7 @@ static int dpaa_eth_dev_close(struct rte_eth_dev *dev)
 	}
 
 	dpaa_dev = container_of(rdev, struct rte_dpaa_device, device);
-	intr_handle = &dpaa_dev->intr_handle;
+	intr_handle = dpaa_dev->intr_handle;
 	__fif = container_of(fif, struct __fman_if, __if);
 
 	ret = dpaa_eth_dev_stop(dev);
@@ -449,7 +451,7 @@ static int dpaa_eth_dev_close(struct rte_eth_dev *dev)
 	if (link->link_status && !link->link_autoneg)
 		dpaa_restart_link_autoneg(__fif->node_name);
 
-	if (intr_handle && intr_handle->fd &&
+	if (intr_handle && rte_intr_fd_get(intr_handle) &&
 	    dev->data->dev_conf.intr_conf.lsc != 0) {
 		dpaa_intr_disable(__fif->node_name);
 		rte_intr_callback_unregister(intr_handle,
@@ -1072,26 +1074,38 @@ int dpaa_eth_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 		rxq->qp = qp;
 
 		/* Set up the device interrupt handler */
-		if (!dev->intr_handle) {
+		if (dev->intr_handle == NULL) {
 			struct rte_dpaa_device *dpaa_dev;
 			struct rte_device *rdev = dev->device;
 
 			dpaa_dev = container_of(rdev, struct rte_dpaa_device,
 						device);
-			dev->intr_handle = &dpaa_dev->intr_handle;
-			dev->intr_handle->intr_vec = rte_zmalloc(NULL,
-					dpaa_push_mode_max_queue, 0);
-			if (!dev->intr_handle->intr_vec) {
+			dev->intr_handle = dpaa_dev->intr_handle;
+			if (rte_intr_vec_list_alloc(dev->intr_handle,
+					NULL, dpaa_push_mode_max_queue)) {
 				DPAA_PMD_ERR("intr_vec alloc failed");
 				return -ENOMEM;
 			}
-			dev->intr_handle->nb_efd = dpaa_push_mode_max_queue;
-			dev->intr_handle->max_intr = dpaa_push_mode_max_queue;
+			if (rte_intr_nb_efd_set(dev->intr_handle,
+					dpaa_push_mode_max_queue))
+				return -rte_errno;
+
+			if (rte_intr_max_intr_set(dev->intr_handle,
+					dpaa_push_mode_max_queue))
+				return -rte_errno;
 		}
 
-		dev->intr_handle->type = RTE_INTR_HANDLE_EXT;
-		dev->intr_handle->intr_vec[queue_idx] = queue_idx + 1;
-		dev->intr_handle->efds[queue_idx] = q_fd;
+		if (rte_intr_type_set(dev->intr_handle, RTE_INTR_HANDLE_EXT))
+			return -rte_errno;
+
+		if (rte_intr_vec_list_index_set(dev->intr_handle,
+						queue_idx, queue_idx + 1))
+			return -rte_errno;
+
+		if (rte_intr_efds_index_set(dev->intr_handle, queue_idx,
+						   q_fd))
+			return -rte_errno;
+
 		rxq->q_fd = q_fd;
 	}
 	rxq->bp_array = rte_dpaa_bpid_info;

@@ -619,11 +619,9 @@ vmxnet3_configure_msix(struct rte_eth_dev *dev)
 		return -1;
 	}
 
-	if (rte_intr_dp_is_en(intr_handle) && !intr_handle->intr_vec) {
-		intr_handle->intr_vec =
-			rte_zmalloc("intr_vec",
-				    dev->data->nb_rx_queues * sizeof(int), 0);
-		if (intr_handle->intr_vec == NULL) {
+	if (rte_intr_dp_is_en(intr_handle)) {
+		if (rte_intr_vec_list_alloc(intr_handle, "intr_vec",
+						   dev->data->nb_rx_queues)) {
 			PMD_INIT_LOG(ERR, "Failed to allocate %d Rx queues intr_vec",
 					dev->data->nb_rx_queues);
 			rte_intr_efd_disable(intr_handle);
@@ -634,8 +632,7 @@ vmxnet3_configure_msix(struct rte_eth_dev *dev)
 	if (!rte_intr_allow_others(intr_handle) &&
 	    dev->data->dev_conf.intr_conf.lsc != 0) {
 		PMD_INIT_LOG(ERR, "not enough intr vector to support both Rx interrupt and LSC");
-		rte_free(intr_handle->intr_vec);
-		intr_handle->intr_vec = NULL;
+		rte_intr_vec_list_free(intr_handle);
 		rte_intr_efd_disable(intr_handle);
 		return -1;
 	}
@@ -643,17 +640,19 @@ vmxnet3_configure_msix(struct rte_eth_dev *dev)
 	/* if we cannot allocate one MSI-X vector per queue, don't enable
 	 * interrupt mode.
 	 */
-	if (hw->intr.num_intrs != (intr_handle->nb_efd + 1)) {
+	if (hw->intr.num_intrs !=
+				(rte_intr_nb_efd_get(intr_handle) + 1)) {
 		PMD_INIT_LOG(ERR, "Device configured with %d Rx intr vectors, expecting %d",
-				hw->intr.num_intrs, intr_handle->nb_efd + 1);
-		rte_free(intr_handle->intr_vec);
-		intr_handle->intr_vec = NULL;
+				hw->intr.num_intrs,
+				rte_intr_nb_efd_get(intr_handle) + 1);
+		rte_intr_vec_list_free(intr_handle);
 		rte_intr_efd_disable(intr_handle);
 		return -1;
 	}
 
 	for (i = 0; i < dev->data->nb_rx_queues; i++)
-		intr_handle->intr_vec[i] = i + 1;
+		if (rte_intr_vec_list_index_set(intr_handle, i, i + 1))
+			return -rte_errno;
 
 	for (i = 0; i < hw->intr.num_intrs; i++)
 		hw->intr.mod_levels[i] = UPT1_IML_ADAPTIVE;
@@ -801,7 +800,9 @@ vmxnet3_setup_driver_shared(struct rte_eth_dev *dev)
 		if (hw->intr.lsc_only)
 			tqd->conf.intrIdx = 1;
 		else
-			tqd->conf.intrIdx = intr_handle->intr_vec[i];
+			tqd->conf.intrIdx =
+				rte_intr_vec_list_index_get(intr_handle,
+								   i);
 		tqd->status.stopped = TRUE;
 		tqd->status.error   = 0;
 		memset(&tqd->stats, 0, sizeof(tqd->stats));
@@ -824,7 +825,9 @@ vmxnet3_setup_driver_shared(struct rte_eth_dev *dev)
 		if (hw->intr.lsc_only)
 			rqd->conf.intrIdx = 1;
 		else
-			rqd->conf.intrIdx = intr_handle->intr_vec[i];
+			rqd->conf.intrIdx =
+				rte_intr_vec_list_index_get(intr_handle,
+								   i);
 		rqd->status.stopped = TRUE;
 		rqd->status.error   = 0;
 		memset(&rqd->stats, 0, sizeof(rqd->stats));
@@ -1021,10 +1024,7 @@ vmxnet3_dev_stop(struct rte_eth_dev *dev)
 
 	/* Clean datapath event and queue/vector mapping */
 	rte_intr_efd_disable(intr_handle);
-	if (intr_handle->intr_vec != NULL) {
-		rte_free(intr_handle->intr_vec);
-		intr_handle->intr_vec = NULL;
-	}
+	rte_intr_vec_list_free(intr_handle);
 
 	/* quiesce the device first */
 	VMXNET3_WRITE_BAR1_REG(hw, VMXNET3_REG_CMD, VMXNET3_CMD_QUIESCE_DEV);
@@ -1670,7 +1670,9 @@ vmxnet3_dev_rx_queue_intr_enable(struct rte_eth_dev *dev, uint16_t queue_id)
 {
 	struct vmxnet3_hw *hw = dev->data->dev_private;
 
-	vmxnet3_enable_intr(hw, dev->intr_handle->intr_vec[queue_id]);
+	vmxnet3_enable_intr(hw,
+			    rte_intr_vec_list_index_get(dev->intr_handle,
+							       queue_id));
 
 	return 0;
 }
@@ -1680,7 +1682,8 @@ vmxnet3_dev_rx_queue_intr_disable(struct rte_eth_dev *dev, uint16_t queue_id)
 {
 	struct vmxnet3_hw *hw = dev->data->dev_private;
 
-	vmxnet3_disable_intr(hw, dev->intr_handle->intr_vec[queue_id]);
+	vmxnet3_disable_intr(hw,
+		rte_intr_vec_list_index_get(dev->intr_handle, queue_id));
 
 	return 0;
 }

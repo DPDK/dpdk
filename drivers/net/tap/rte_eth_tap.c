@@ -1663,7 +1663,8 @@ tap_dev_intr_handler(void *cb_arg)
 	struct rte_eth_dev *dev = cb_arg;
 	struct pmd_internals *pmd = dev->data->dev_private;
 
-	tap_nl_recv(pmd->intr_handle.fd, tap_nl_msg_handler, dev);
+	tap_nl_recv(rte_intr_fd_get(pmd->intr_handle),
+		    tap_nl_msg_handler, dev);
 }
 
 static int
@@ -1674,22 +1675,22 @@ tap_lsc_intr_handle_set(struct rte_eth_dev *dev, int set)
 
 	/* In any case, disable interrupt if the conf is no longer there. */
 	if (!dev->data->dev_conf.intr_conf.lsc) {
-		if (pmd->intr_handle.fd != -1) {
+		if (rte_intr_fd_get(pmd->intr_handle) != -1)
 			goto clean;
-		}
+
 		return 0;
 	}
 	if (set) {
-		pmd->intr_handle.fd = tap_nl_init(RTMGRP_LINK);
-		if (unlikely(pmd->intr_handle.fd == -1))
+		rte_intr_fd_set(pmd->intr_handle, tap_nl_init(RTMGRP_LINK));
+		if (unlikely(rte_intr_fd_get(pmd->intr_handle) == -1))
 			return -EBADF;
 		return rte_intr_callback_register(
-			&pmd->intr_handle, tap_dev_intr_handler, dev);
+			pmd->intr_handle, tap_dev_intr_handler, dev);
 	}
 
 clean:
 	do {
-		ret = rte_intr_callback_unregister(&pmd->intr_handle,
+		ret = rte_intr_callback_unregister(pmd->intr_handle,
 			tap_dev_intr_handler, dev);
 		if (ret >= 0) {
 			break;
@@ -1702,8 +1703,8 @@ clean:
 		}
 	} while (true);
 
-	tap_nl_final(pmd->intr_handle.fd);
-	pmd->intr_handle.fd = -1;
+	tap_nl_final(rte_intr_fd_get(pmd->intr_handle));
+	rte_intr_fd_set(pmd->intr_handle, -1);
 
 	return 0;
 }
@@ -1918,6 +1919,13 @@ eth_dev_tap_create(struct rte_vdev_device *vdev, const char *tap_name,
 		goto error_exit;
 	}
 
+	/* Allocate interrupt instance */
+	pmd->intr_handle = rte_intr_instance_alloc(RTE_INTR_INSTANCE_F_SHARED);
+	if (pmd->intr_handle == NULL) {
+		TAP_LOG(ERR, "Failed to allocate intr handle");
+		goto error_exit;
+	}
+
 	/* Setup some default values */
 	data = dev->data;
 	data->dev_private = pmd;
@@ -1935,9 +1943,9 @@ eth_dev_tap_create(struct rte_vdev_device *vdev, const char *tap_name,
 	dev->rx_pkt_burst = pmd_rx_burst;
 	dev->tx_pkt_burst = pmd_tx_burst;
 
-	pmd->intr_handle.type = RTE_INTR_HANDLE_EXT;
-	pmd->intr_handle.fd = -1;
-	dev->intr_handle = &pmd->intr_handle;
+	rte_intr_type_set(pmd->intr_handle, RTE_INTR_HANDLE_EXT);
+	rte_intr_fd_set(pmd->intr_handle, -1);
+	dev->intr_handle = pmd->intr_handle;
 
 	/* Presetup the fds to -1 as being not valid */
 	for (i = 0; i < RTE_PMD_TAP_MAX_QUEUES; i++) {
@@ -2088,6 +2096,7 @@ error_exit:
 	/* mac_addrs must not be freed alone because part of dev_private */
 	dev->data->mac_addrs = NULL;
 	rte_eth_dev_release_port(dev);
+	rte_intr_instance_free(pmd->intr_handle);
 
 error_exit_nodev:
 	TAP_LOG(ERR, "%s Unable to initialize %s",

@@ -176,7 +176,7 @@ static int dpaa2_dpio_intr_init(struct dpaa2_dpio_dev *dpio_dev)
 	int threshold = 0x3, timeout = 0xFF;
 
 	dpio_epoll_fd = epoll_create(1);
-	ret = rte_dpaa2_intr_enable(&dpio_dev->intr_handle, 0);
+	ret = rte_dpaa2_intr_enable(dpio_dev->intr_handle, 0);
 	if (ret) {
 		DPAA2_BUS_ERR("Interrupt registeration failed");
 		return -1;
@@ -195,7 +195,7 @@ static int dpaa2_dpio_intr_init(struct dpaa2_dpio_dev *dpio_dev)
 	qbman_swp_dqrr_thrshld_write(dpio_dev->sw_portal, threshold);
 	qbman_swp_intr_timeout_write(dpio_dev->sw_portal, timeout);
 
-	eventfd = dpio_dev->intr_handle.fd;
+	eventfd = rte_intr_fd_get(dpio_dev->intr_handle);
 	epoll_ev.events = EPOLLIN | EPOLLPRI | EPOLLET;
 	epoll_ev.data.fd = eventfd;
 
@@ -213,7 +213,7 @@ static void dpaa2_dpio_intr_deinit(struct dpaa2_dpio_dev *dpio_dev)
 {
 	int ret;
 
-	ret = rte_dpaa2_intr_disable(&dpio_dev->intr_handle, 0);
+	ret = rte_dpaa2_intr_disable(dpio_dev->intr_handle, 0);
 	if (ret)
 		DPAA2_BUS_ERR("DPIO interrupt disable failed");
 
@@ -388,6 +388,14 @@ dpaa2_create_dpio_device(int vdev_fd,
 	/* Using single portal  for all devices */
 	dpio_dev->mc_portal = dpaa2_get_mcp_ptr(MC_PORTAL_INDEX);
 
+	/* Allocate interrupt instance */
+	dpio_dev->intr_handle =
+		rte_intr_instance_alloc(RTE_INTR_INSTANCE_F_SHARED);
+	if (!dpio_dev->intr_handle) {
+		DPAA2_BUS_ERR("Failed to allocate intr handle");
+		goto err;
+	}
+
 	dpio_dev->dpio = rte_zmalloc(NULL, sizeof(struct fsl_mc_io),
 				     RTE_CACHE_LINE_SIZE);
 	if (!dpio_dev->dpio) {
@@ -490,7 +498,7 @@ dpaa2_create_dpio_device(int vdev_fd,
 	io_space_count++;
 	dpio_dev->index = io_space_count;
 
-	if (rte_dpaa2_vfio_setup_intr(&dpio_dev->intr_handle, vdev_fd, 1)) {
+	if (rte_dpaa2_vfio_setup_intr(dpio_dev->intr_handle, vdev_fd, 1)) {
 		DPAA2_BUS_ERR("Fail to setup interrupt for %d",
 			      dpio_dev->hw_id);
 		goto err;
@@ -538,6 +546,7 @@ err:
 		rte_free(dpio_dev->dpio);
 	}
 
+	rte_intr_instance_free(dpio_dev->intr_handle);
 	rte_free(dpio_dev);
 
 	/* For each element in the list, cleanup */
@@ -549,6 +558,7 @@ err:
 				dpio_dev->token);
 			rte_free(dpio_dev->dpio);
 		}
+		rte_intr_instance_free(dpio_dev->intr_handle);
 		rte_free(dpio_dev);
 	}
 

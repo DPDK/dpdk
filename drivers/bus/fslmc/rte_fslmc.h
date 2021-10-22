@@ -122,7 +122,7 @@ struct rte_dpaa2_device {
 	};
 	enum rte_dpaa2_dev_type dev_type;   /**< Device Type */
 	uint16_t object_id;                 /**< DPAA2 Object ID */
-	struct rte_intr_handle intr_handle; /**< Interrupt handle */
+	struct rte_intr_handle *intr_handle; /**< Interrupt handle */
 	struct rte_dpaa2_driver *driver;    /**< Associated driver */
 	char name[FSLMC_OBJECT_MAX_LEN];    /**< DPAA2 Object name*/
 };

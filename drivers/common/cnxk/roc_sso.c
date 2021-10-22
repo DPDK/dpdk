@@ -505,7 +505,7 @@ roc_sso_rsrc_init(struct roc_sso *roc_sso, uint8_t nb_hws, uint16_t nb_hwgrp)
 		goto sso_msix_fail;
 	}
 
-	rc = sso_register_irqs_priv(roc_sso, &sso->pci_dev->intr_handle, nb_hws,
+	rc = sso_register_irqs_priv(roc_sso, sso->pci_dev->intr_handle, nb_hws,
 				    nb_hwgrp);
 	if (rc < 0) {
 		plt_err("Failed to register SSO LF IRQs");
@@ -535,7 +535,7 @@ roc_sso_rsrc_fini(struct roc_sso *roc_sso)
 	if (!roc_sso->nb_hws && !roc_sso->nb_hwgrp)
 		return;
 
-	sso_unregister_irqs_priv(roc_sso, &sso->pci_dev->intr_handle,
+	sso_unregister_irqs_priv(roc_sso, sso->pci_dev->intr_handle,
 				 roc_sso->nb_hws, roc_sso->nb_hwgrp);
 	sso_lf_free(&sso->dev, SSO_LF_TYPE_HWS, roc_sso->nb_hws);
 	sso_lf_free(&sso->dev, SSO_LF_TYPE_HWGRP, roc_sso->nb_hwgrp);

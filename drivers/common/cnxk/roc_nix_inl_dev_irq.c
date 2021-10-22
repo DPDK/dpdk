@@ -99,7 +99,7 @@ nix_inl_sso_hws_irq(void *param)
 int
 nix_inl_sso_register_irqs(struct nix_inl_dev *inl_dev)
 {
-	struct plt_intr_handle *handle = &inl_dev->pci_dev->intr_handle;
+	struct plt_intr_handle *handle = inl_dev->pci_dev->intr_handle;
 	uintptr_t ssow_base = inl_dev->ssow_base;
 	uintptr_t sso_base = inl_dev->sso_base;
 	uint16_t sso_msixoff, ssow_msixoff;
@@ -147,7 +147,7 @@ nix_inl_sso_register_irqs(struct nix_inl_dev *inl_dev)
 void
 nix_inl_sso_unregister_irqs(struct nix_inl_dev *inl_dev)
 {
-	struct plt_intr_handle *handle = &inl_dev->pci_dev->intr_handle;
+	struct plt_intr_handle *handle = inl_dev->pci_dev->intr_handle;
 	uintptr_t ssow_base = inl_dev->ssow_base;
 	uintptr_t sso_base = inl_dev->sso_base;
 	uint16_t sso_msixoff, ssow_msixoff;
@@ -282,7 +282,7 @@ nix_inl_nix_err_irq(void *param)
 int
 nix_inl_nix_register_irqs(struct nix_inl_dev *inl_dev)
 {
-	struct plt_intr_handle *handle = &inl_dev->pci_dev->intr_handle;
+	struct plt_intr_handle *handle = inl_dev->pci_dev->intr_handle;
 	uintptr_t nix_base = inl_dev->nix_base;
 	uint16_t msixoff;
 	int rc;
@@ -331,7 +331,7 @@ nix_inl_nix_register_irqs(struct nix_inl_dev *inl_dev)
 void
 nix_inl_nix_unregister_irqs(struct nix_inl_dev *inl_dev)
 {
-	struct plt_intr_handle *handle = &inl_dev->pci_dev->intr_handle;
+	struct plt_intr_handle *handle = inl_dev->pci_dev->intr_handle;
 	uintptr_t nix_base = inl_dev->nix_base;
 	uint16_t msixoff;
 

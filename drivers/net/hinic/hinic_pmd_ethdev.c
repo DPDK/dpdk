@@ -1228,13 +1228,13 @@ static void hinic_disable_interrupt(struct rte_eth_dev *dev)
 	hinic_set_msix_state(nic_dev->hwdev, 0, HINIC_MSIX_DISABLE);
 
 	/* disable rte interrupt */
-	ret = rte_intr_disable(&pci_dev->intr_handle);
+	ret = rte_intr_disable(pci_dev->intr_handle);
 	if (ret)
 		PMD_DRV_LOG(ERR, "Disable intr failed: %d", ret);
 
 	do {
 		ret =
-		rte_intr_callback_unregister(&pci_dev->intr_handle,
+		rte_intr_callback_unregister(pci_dev->intr_handle,
 					     hinic_dev_interrupt_handler, dev);
 		if (ret >= 0) {
 			break;
@@ -3118,7 +3118,7 @@ static int hinic_func_init(struct rte_eth_dev *eth_dev)
 	}
 
 	/* register callback func to eal lib */
-	rc = rte_intr_callback_register(&pci_dev->intr_handle,
+	rc = rte_intr_callback_register(pci_dev->intr_handle,
 					hinic_dev_interrupt_handler,
 					(void *)eth_dev);
 	if (rc) {
@@ -3128,7 +3128,7 @@ static int hinic_func_init(struct rte_eth_dev *eth_dev)
 	}
 
 	/* enable uio/vfio intr/eventfd mapping */
-	rc = rte_intr_enable(&pci_dev->intr_handle);
+	rc = rte_intr_enable(pci_dev->intr_handle);
 	if (rc) {
 		PMD_DRV_LOG(ERR, "Enable rte interrupt failed, dev_name: %s",
 			    eth_dev->data->name);
@@ -3158,7 +3158,7 @@ static int hinic_func_init(struct rte_eth_dev *eth_dev)
 	return 0;
 
 enable_intr_fail:
-	(void)rte_intr_callback_unregister(&pci_dev->intr_handle,
+	(void)rte_intr_callback_unregister(pci_dev->intr_handle,
 					   hinic_dev_interrupt_handler,
 					   (void *)eth_dev);
 

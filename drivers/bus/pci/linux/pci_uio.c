@@ -35,14 +35,18 @@ int
 pci_uio_read_config(const struct rte_intr_handle *intr_handle,
 		    void *buf, size_t len, off_t offset)
 {
-	return pread(intr_handle->uio_cfg_fd, buf, len, offset);
+	int uio_cfg_fd = rte_intr_dev_fd_get(intr_handle);
+
+	return pread(uio_cfg_fd, buf, len, offset);
 }
 
 int
 pci_uio_write_config(const struct rte_intr_handle *intr_handle,
 		     const void *buf, size_t len, off_t offset)
 {
-	return pwrite(intr_handle->uio_cfg_fd, buf, len, offset);
+	int uio_cfg_fd = rte_intr_dev_fd_get(intr_handle);
+
+	return pwrite(uio_cfg_fd, buf, len, offset);
 }
 
 static int
@@ -198,16 +202,19 @@ void
 pci_uio_free_resource(struct rte_pci_device *dev,
 		struct mapped_pci_resource *uio_res)
 {
+	int uio_cfg_fd = rte_intr_dev_fd_get(dev->intr_handle);
+
 	rte_free(uio_res);
 
-	if (dev->intr_handle.uio_cfg_fd >= 0) {
-		close(dev->intr_handle.uio_cfg_fd);
-		dev->intr_handle.uio_cfg_fd = -1;
+	if (uio_cfg_fd >= 0) {
+		close(uio_cfg_fd);
+		rte_intr_dev_fd_set(dev->intr_handle, -1);
 	}
-	if (dev->intr_handle.fd >= 0) {
-		close(dev->intr_handle.fd);
-		dev->intr_handle.fd = -1;
-		dev->intr_handle.type = RTE_INTR_HANDLE_UNKNOWN;
+
+	if (rte_intr_fd_get(dev->intr_handle) >= 0) {
+		close(rte_intr_fd_get(dev->intr_handle));
+		rte_intr_fd_set(dev->intr_handle, -1);
+		rte_intr_type_set(dev->intr_handle, RTE_INTR_HANDLE_UNKNOWN);
 	}
 }
 
@@ -218,7 +225,7 @@ pci_uio_alloc_resource(struct rte_pci_device *dev,
 	char dirname[PATH_MAX];
 	char cfgname[PATH_MAX];
 	char devname[PATH_MAX]; /* contains the /dev/uioX */
-	int uio_num;
+	int uio_num, fd, uio_cfg_fd;
 	struct rte_pci_addr *loc;
 
 	loc = &dev->addr;
@@ -233,29 +240,38 @@ pci_uio_alloc_resource(struct rte_pci_device *dev,
 	snprintf(devname, sizeof(devname), "/dev/uio%u", uio_num);
 
 	/* save fd if in primary process */
-	dev->intr_handle.fd = open(devname, O_RDWR);
-	if (dev->intr_handle.fd < 0) {
+	fd = open(devname, O_RDWR);
+	if (fd < 0) {
 		RTE_LOG(ERR, EAL, "Cannot open %s: %s\n",
 			devname, strerror(errno));
 		goto error;
 	}
 
+	if (rte_intr_fd_set(dev->intr_handle, fd))
+		goto error;
+
 	snprintf(cfgname, sizeof(cfgname),
 			"/sys/class/uio/uio%u/device/config", uio_num);
-	dev->intr_handle.uio_cfg_fd = open(cfgname, O_RDWR);
-	if (dev->intr_handle.uio_cfg_fd < 0) {
+
+	uio_cfg_fd = open(cfgname, O_RDWR);
+	if (uio_cfg_fd < 0) {
 		RTE_LOG(ERR, EAL, "Cannot open %s: %s\n",
 			cfgname, strerror(errno));
 		goto error;
 	}
 
-	if (dev->kdrv == RTE_PCI_KDRV_IGB_UIO)
-		dev->intr_handle.type = RTE_INTR_HANDLE_UIO;
-	else {
-		dev->intr_handle.type = RTE_INTR_HANDLE_UIO_INTX;
+	if (rte_intr_dev_fd_set(dev->intr_handle, uio_cfg_fd))
+		goto error;
+
+	if (dev->kdrv == RTE_PCI_KDRV_IGB_UIO) {
+		if (rte_intr_type_set(dev->intr_handle, RTE_INTR_HANDLE_UIO))
+			goto error;
+	} else {
+		if (rte_intr_type_set(dev->intr_handle, RTE_INTR_HANDLE_UIO_INTX))
+			goto error;
 
 		/* set bus master that is not done by uio_pci_generic */
-		if (pci_uio_set_bus_master(dev->intr_handle.uio_cfg_fd)) {
+		if (pci_uio_set_bus_master(uio_cfg_fd)) {
 			RTE_LOG(ERR, EAL, "Cannot set up bus mastering!\n");
 			goto error;
 		}
@@ -381,7 +397,7 @@ pci_uio_ioport_map(struct rte_pci_device *dev, int bar,
 	char buf[BUFSIZ];
 	uint64_t phys_addr, end_addr, flags;
 	unsigned long base;
-	int i;
+	int i, fd;
 
 	/* open and read addresses of the corresponding resource in sysfs */
 	snprintf(filename, sizeof(filename), "%s/" PCI_PRI_FMT "/resource",
@@ -427,7 +443,8 @@ pci_uio_ioport_map(struct rte_pci_device *dev, int bar,
 	}
 
 	/* FIXME only for primary process ? */
-	if (dev->intr_handle.type == RTE_INTR_HANDLE_UNKNOWN) {
+	if (rte_intr_type_get(dev->intr_handle) ==
+					RTE_INTR_HANDLE_UNKNOWN) {
 		int uio_num = pci_get_uio_dev(dev, dirname, sizeof(dirname), 0);
 		if (uio_num < 0) {
 			RTE_LOG(ERR, EAL, "cannot open %s: %s\n",
@@ -436,13 +453,17 @@ pci_uio_ioport_map(struct rte_pci_device *dev, int bar,
 		}
 
 		snprintf(filename, sizeof(filename), "/dev/uio%u", uio_num);
-		dev->intr_handle.fd = open(filename, O_RDWR);
-		if (dev->intr_handle.fd < 0) {
+		fd = open(filename, O_RDWR);
+		if (fd < 0) {
 			RTE_LOG(ERR, EAL, "Cannot open %s: %s\n",
 				filename, strerror(errno));
 			goto error;
 		}
-		dev->intr_handle.type = RTE_INTR_HANDLE_UIO;
+		if (rte_intr_fd_set(dev->intr_handle, fd))
+			goto error;
+
+		if (rte_intr_type_set(dev->intr_handle, RTE_INTR_HANDLE_UIO))
+			goto error;
 	}
 
 	RTE_LOG(DEBUG, EAL, "PCI Port IO found start=0x%lx\n", base);

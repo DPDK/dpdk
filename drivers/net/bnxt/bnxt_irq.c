@@ -67,7 +67,7 @@ void bnxt_int_handler(void *param)
 
 int bnxt_free_int(struct bnxt *bp)
 {
-	struct rte_intr_handle *intr_handle = &bp->pdev->intr_handle;
+	struct rte_intr_handle *intr_handle = bp->pdev->intr_handle;
 	struct bnxt_irq *irq = bp->irq_tbl;
 	int rc = 0;
 
@@ -170,7 +170,7 @@ int bnxt_setup_int(struct bnxt *bp)
 
 int bnxt_request_int(struct bnxt *bp)
 {
-	struct rte_intr_handle *intr_handle = &bp->pdev->intr_handle;
+	struct rte_intr_handle *intr_handle = bp->pdev->intr_handle;
 	struct bnxt_irq *irq = bp->irq_tbl;
 	int rc = 0;
 

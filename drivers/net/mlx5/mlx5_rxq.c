@@ -834,10 +834,7 @@ mlx5_rx_intr_vec_enable(struct rte_eth_dev *dev)
 	if (!dev->data->dev_conf.intr_conf.rxq)
 		return 0;
 	mlx5_rx_intr_vec_disable(dev);
-	intr_handle->intr_vec = mlx5_malloc(0,
-				n * sizeof(intr_handle->intr_vec[0]),
-				0, SOCKET_ID_ANY);
-	if (intr_handle->intr_vec == NULL) {
+	if (rte_intr_vec_list_alloc(intr_handle, NULL, n)) {
 		DRV_LOG(ERR,
 			"port %u failed to allocate memory for interrupt"
 			" vector, Rx interrupts will not be supported",
@@ -845,7 +842,10 @@ mlx5_rx_intr_vec_enable(struct rte_eth_dev *dev)
 		rte_errno = ENOMEM;
 		return -rte_errno;
 	}
-	intr_handle->type = RTE_INTR_HANDLE_EXT;
+
+	if (rte_intr_type_set(intr_handle, RTE_INTR_HANDLE_EXT))
+		return -rte_errno;
+
 	for (i = 0; i != n; ++i) {
 		/* This rxq obj must not be released in this function. */
 		struct mlx5_rxq_ctrl *rxq_ctrl = mlx5_rxq_get(dev, i);
@@ -856,9 +856,9 @@ mlx5_rx_intr_vec_enable(struct rte_eth_dev *dev)
 		if (!rxq_obj || (!rxq_obj->ibv_channel &&
 				 !rxq_obj->devx_channel)) {
 			/* Use invalid intr_vec[] index to disable entry. */
-			intr_handle->intr_vec[i] =
-				RTE_INTR_VEC_RXTX_OFFSET +
-				RTE_MAX_RXTX_INTR_VEC_ID;
+			if (rte_intr_vec_list_index_set(intr_handle, i,
+			   RTE_INTR_VEC_RXTX_OFFSET + RTE_MAX_RXTX_INTR_VEC_ID))
+				return -rte_errno;
 			/* Decrease the rxq_ctrl's refcnt */
 			if (rxq_ctrl)
 				mlx5_rxq_release(dev, i);
@@ -885,14 +885,19 @@ mlx5_rx_intr_vec_enable(struct rte_eth_dev *dev)
 			mlx5_rx_intr_vec_disable(dev);
 			return -rte_errno;
 		}
-		intr_handle->intr_vec[i] = RTE_INTR_VEC_RXTX_OFFSET + count;
-		intr_handle->efds[count] = rxq_obj->fd;
+
+		if (rte_intr_vec_list_index_set(intr_handle, i,
+					RTE_INTR_VEC_RXTX_OFFSET + count))
+			return -rte_errno;
+		if (rte_intr_efds_index_set(intr_handle, count,
+						   rxq_obj->fd))
+			return -rte_errno;
 		count++;
 	}
 	if (!count)
 		mlx5_rx_intr_vec_disable(dev);
-	else
-		intr_handle->nb_efd = count;
+	else if (rte_intr_nb_efd_set(intr_handle, count))
+		return -rte_errno;
 	return 0;
 }
 
@@ -913,11 +918,11 @@ mlx5_rx_intr_vec_disable(struct rte_eth_dev *dev)
 
 	if (!dev->data->dev_conf.intr_conf.rxq)
 		return;
-	if (!intr_handle->intr_vec)
+	if (rte_intr_vec_list_index_get(intr_handle, 0) < 0)
 		goto free;
 	for (i = 0; i != n; ++i) {
-		if (intr_handle->intr_vec[i] == RTE_INTR_VEC_RXTX_OFFSET +
-		    RTE_MAX_RXTX_INTR_VEC_ID)
+		if (rte_intr_vec_list_index_get(intr_handle, i) ==
+		    RTE_INTR_VEC_RXTX_OFFSET + RTE_MAX_RXTX_INTR_VEC_ID)
 			continue;
 		/**
 		 * Need to access directly the queue to release the reference
@@ -927,10 +932,10 @@ mlx5_rx_intr_vec_disable(struct rte_eth_dev *dev)
 	}
 free:
 	rte_intr_free_epoll_fd(intr_handle);
-	if (intr_handle->intr_vec)
-		mlx5_free(intr_handle->intr_vec);
-	intr_handle->nb_efd = 0;
-	intr_handle->intr_vec = NULL;
+
+	rte_intr_vec_list_free(intr_handle);
+
+	rte_intr_nb_efd_set(intr_handle, 0);
 }
 
 /**

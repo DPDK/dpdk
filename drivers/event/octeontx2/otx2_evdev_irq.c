@@ -29,7 +29,7 @@ sso_lf_register_irq(const struct rte_eventdev *event_dev, uint16_t ggrp_msixoff,
 		    uintptr_t base)
 {
 	struct rte_pci_device *pci_dev = RTE_DEV_TO_PCI(event_dev->dev);
-	struct rte_intr_handle *handle = &pci_dev->intr_handle;
+	struct rte_intr_handle *handle = pci_dev->intr_handle;
 	int rc, vec;
 
 	vec = ggrp_msixoff + SSO_LF_INT_VEC_GRP;
@@ -66,7 +66,7 @@ ssow_lf_register_irq(const struct rte_eventdev *event_dev, uint16_t gws_msixoff,
 		     uintptr_t base)
 {
 	struct rte_pci_device *pci_dev = RTE_DEV_TO_PCI(event_dev->dev);
-	struct rte_intr_handle *handle = &pci_dev->intr_handle;
+	struct rte_intr_handle *handle = pci_dev->intr_handle;
 	int rc, vec;
 
 	vec = gws_msixoff + SSOW_LF_INT_VEC_IOP;
@@ -86,7 +86,7 @@ sso_lf_unregister_irq(const struct rte_eventdev *event_dev,
 		      uint16_t ggrp_msixoff, uintptr_t base)
 {
 	struct rte_pci_device *pci_dev = RTE_DEV_TO_PCI(event_dev->dev);
-	struct rte_intr_handle *handle = &pci_dev->intr_handle;
+	struct rte_intr_handle *handle = pci_dev->intr_handle;
 	int vec;
 
 	vec = ggrp_msixoff + SSO_LF_INT_VEC_GRP;
@@ -101,7 +101,7 @@ ssow_lf_unregister_irq(const struct rte_eventdev *event_dev,
 		       uint16_t gws_msixoff, uintptr_t base)
 {
 	struct rte_pci_device *pci_dev = RTE_DEV_TO_PCI(event_dev->dev);
-	struct rte_intr_handle *handle = &pci_dev->intr_handle;
+	struct rte_intr_handle *handle = pci_dev->intr_handle;
 	int vec;
 
 	vec = gws_msixoff + SSOW_LF_INT_VEC_IOP;
@@ -198,7 +198,7 @@ static int
 tim_lf_register_irq(struct rte_pci_device *pci_dev, uint16_t tim_msixoff,
 		    uintptr_t base)
 {
-	struct rte_intr_handle *handle = &pci_dev->intr_handle;
+	struct rte_intr_handle *handle = pci_dev->intr_handle;
 	int rc, vec;
 
 	vec = tim_msixoff + TIM_LF_INT_VEC_NRSPERR_INT;
@@ -226,7 +226,7 @@ static void
 tim_lf_unregister_irq(struct rte_pci_device *pci_dev, uint16_t tim_msixoff,
 		      uintptr_t base)
 {
-	struct rte_intr_handle *handle = &pci_dev->intr_handle;
+	struct rte_intr_handle *handle = pci_dev->intr_handle;
 	int vec;
 
 	vec = tim_msixoff + TIM_LF_INT_VEC_NRSPERR_INT;

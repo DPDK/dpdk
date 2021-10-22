@@ -200,7 +200,7 @@ roc_tim_lf_alloc(struct roc_tim *roc_tim, uint8_t ring_id, uint64_t *clk)
 	if (clk)
 		*clk = rsp->tenns_clk;
 
-	rc = tim_register_irq_priv(roc_tim, &sso->pci_dev->intr_handle, ring_id,
+	rc = tim_register_irq_priv(roc_tim, sso->pci_dev->intr_handle, ring_id,
 				   tim->tim_msix_offsets[ring_id]);
 	if (rc < 0) {
 		plt_tim_dbg("Failed to register Ring[%d] IRQ", ring_id);
@@ -223,7 +223,7 @@ roc_tim_lf_free(struct roc_tim *roc_tim, uint8_t ring_id)
 	struct tim_ring_req *req;
 	int rc = -ENOSPC;
 
-	tim_unregister_irq_priv(roc_tim, &sso->pci_dev->intr_handle, ring_id,
+	tim_unregister_irq_priv(roc_tim, sso->pci_dev->intr_handle, ring_id,
 				tim->tim_msix_offsets[ring_id]);
 
 	req = mbox_alloc_msg_tim_lf_free(dev->mbox);

@@ -237,7 +237,7 @@ static int
 eth_em_dev_init(struct rte_eth_dev *eth_dev)
 {
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
-	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
+	struct rte_intr_handle *intr_handle = pci_dev->intr_handle;
 	struct e1000_adapter *adapter =
 		E1000_DEV_PRIVATE(eth_dev->data->dev_private);
 	struct e1000_hw *hw =
@@ -523,7 +523,7 @@ eth_em_start(struct rte_eth_dev *dev)
 	struct e1000_hw *hw =
 		E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
-	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
+	struct rte_intr_handle *intr_handle = pci_dev->intr_handle;
 	int ret, mask;
 	uint32_t intr_vector = 0;
 	uint32_t *speeds;
@@ -573,12 +573,10 @@ eth_em_start(struct rte_eth_dev *dev)
 	}
 
 	if (rte_intr_dp_is_en(intr_handle)) {
-		intr_handle->intr_vec =
-			rte_zmalloc("intr_vec",
-					dev->data->nb_rx_queues * sizeof(int), 0);
-		if (intr_handle->intr_vec == NULL) {
+		if (rte_intr_vec_list_alloc(intr_handle, "intr_vec",
+						   dev->data->nb_rx_queues)) {
 			PMD_INIT_LOG(ERR, "Failed to allocate %d rx_queues"
-						" intr_vec", dev->data->nb_rx_queues);
+				     " intr_vec", dev->data->nb_rx_queues);
 			return -ENOMEM;
 		}
 
@@ -716,7 +714,7 @@ eth_em_stop(struct rte_eth_dev *dev)
 	struct rte_eth_link link;
 	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
-	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
+	struct rte_intr_handle *intr_handle = pci_dev->intr_handle;
 
 	dev->data->dev_started = 0;
 
@@ -750,10 +748,7 @@ eth_em_stop(struct rte_eth_dev *dev)
 
 	/* Clean datapath event and queue/vec mapping */
 	rte_intr_efd_disable(intr_handle);
-	if (intr_handle->intr_vec != NULL) {
-		rte_free(intr_handle->intr_vec);
-		intr_handle->intr_vec = NULL;
-	}
+	rte_intr_vec_list_free(intr_handle);
 
 	return 0;
 }
@@ -765,7 +760,7 @@ eth_em_close(struct rte_eth_dev *dev)
 	struct e1000_adapter *adapter =
 		E1000_DEV_PRIVATE(dev->data->dev_private);
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
-	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
+	struct rte_intr_handle *intr_handle = pci_dev->intr_handle;
 	int ret;
 
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
@@ -1006,7 +1001,7 @@ eth_em_rx_queue_intr_enable(struct rte_eth_dev *dev, __rte_unused uint16_t queue
 {
 	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
-	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
+	struct rte_intr_handle *intr_handle = pci_dev->intr_handle;
 
 	em_rxq_intr_enable(hw);
 	rte_intr_ack(intr_handle);

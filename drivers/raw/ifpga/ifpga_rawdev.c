@@ -73,7 +73,7 @@ static pthread_t ifpga_monitor_start_thread;
 
 #define IFPGA_MAX_IRQ 12
 /* 0 for FME interrupt, others are reserved for AFU irq */
-static struct rte_intr_handle ifpga_irq_handle[IFPGA_MAX_IRQ];
+static struct rte_intr_handle *ifpga_irq_handle[IFPGA_MAX_IRQ];
 
 static struct ifpga_rawdev *
 ifpga_rawdev_allocate(struct rte_rawdev *rawdev);
@@ -1345,17 +1345,22 @@ ifpga_unregister_msix_irq(enum ifpga_irq_type type,
 		int vec_start, rte_intr_callback_fn handler, void *arg)
 {
 	struct rte_intr_handle *intr_handle;
+	int rc, i;
 
 	if (type == IFPGA_FME_IRQ)
-		intr_handle = &ifpga_irq_handle[0];
+		intr_handle = ifpga_irq_handle[0];
 	else if (type == IFPGA_AFU_IRQ)
-		intr_handle = &ifpga_irq_handle[vec_start + 1];
+		intr_handle = ifpga_irq_handle[vec_start + 1];
 	else
 		return 0;
 
 	rte_intr_efd_disable(intr_handle);
 
-	return rte_intr_callback_unregister(intr_handle, handler, arg);
+	rc = rte_intr_callback_unregister(intr_handle, handler, arg);
+
+	for (i = 0; i < IFPGA_MAX_IRQ; i++)
+		rte_intr_instance_free(ifpga_irq_handle[i]);
+	return rc;
 }
 
 int
@@ -1369,6 +1374,14 @@ ifpga_register_msix_irq(struct rte_rawdev *dev, int port_id,
 	struct opae_adapter *adapter;
 	struct opae_manager *mgr;
 	struct opae_accelerator *acc;
+	int *intr_efds = NULL, nb_intr, i;
+
+	for (i = 0; i < IFPGA_MAX_IRQ; i++) {
+		ifpga_irq_handle[i] =
+			rte_intr_instance_alloc(RTE_INTR_INSTANCE_F_PRIVATE);
+		if (ifpga_irq_handle[i] == NULL)
+			return -ENOMEM;
+	}
 
 	adapter = ifpga_rawdev_get_priv(dev);
 	if (!adapter)
@@ -1379,29 +1392,33 @@ ifpga_register_msix_irq(struct rte_rawdev *dev, int port_id,
 		return -ENODEV;
 
 	if (type == IFPGA_FME_IRQ) {
-		intr_handle = &ifpga_irq_handle[0];
+		intr_handle = ifpga_irq_handle[0];
 		count = 1;
 	} else if (type == IFPGA_AFU_IRQ) {
-		intr_handle = &ifpga_irq_handle[vec_start + 1];
+		intr_handle = ifpga_irq_handle[vec_start + 1];
 	} else {
 		return -EINVAL;
 	}
 
-	intr_handle->type = RTE_INTR_HANDLE_VFIO_MSIX;
+	if (rte_intr_type_set(intr_handle, RTE_INTR_HANDLE_VFIO_MSIX))
+		return -rte_errno;
 
 	ret = rte_intr_efd_enable(intr_handle, count);
 	if (ret)
 		return -ENODEV;
 
-	intr_handle->fd = intr_handle->efds[0];
+	if (rte_intr_fd_set(intr_handle,
+			rte_intr_efds_index_get(intr_handle, 0)))
+		return -rte_errno;
 
 	IFPGA_RAWDEV_PMD_DEBUG("register %s irq, vfio_fd=%d, fd=%d\n",
-			name, intr_handle->vfio_dev_fd,
-			intr_handle->fd);
+			name, rte_intr_dev_fd_get(intr_handle),
+			rte_intr_fd_get(intr_handle));
 
 	if (type == IFPGA_FME_IRQ) {
 		struct fpga_fme_err_irq_set err_irq_set;
-		err_irq_set.evtfd = intr_handle->efds[0];
+		err_irq_set.evtfd = rte_intr_efds_index_get(intr_handle,
+								   0);
 
 		ret = opae_manager_ifpga_set_err_irq(mgr, &err_irq_set);
 		if (ret)
@@ -1411,20 +1428,33 @@ ifpga_register_msix_irq(struct rte_rawdev *dev, int port_id,
 		if (!acc)
 			return -EINVAL;
 
-		ret = opae_acc_set_irq(acc, vec_start, count,
-				intr_handle->efds);
-		if (ret)
+		nb_intr = rte_intr_nb_intr_get(intr_handle);
+
+		intr_efds = calloc(nb_intr, sizeof(int));
+		if (!intr_efds)
+			return -ENOMEM;
+
+		for (i = 0; i < nb_intr; i++)
+			intr_efds[i] = rte_intr_efds_index_get(intr_handle, i);
+
+		ret = opae_acc_set_irq(acc, vec_start, count, intr_efds);
+		if (ret) {
+			free(intr_efds);
 			return -EINVAL;
+		}
 	}
 
 	/* register interrupt handler using DPDK API */
 	ret = rte_intr_callback_register(intr_handle,
 			handler, (void *)arg);
-	if (ret)
+	if (ret) {
+		free(intr_efds);
 		return -EINVAL;
+	}
 
 	IFPGA_RAWDEV_PMD_INFO("success register %s interrupt\n", name);
 
+	free(intr_efds);
 	return 0;
 }
 
@@ -1491,7 +1521,7 @@ ifpga_rawdev_create(struct rte_pci_device *pci_dev,
 	data->bus = pci_dev->addr.bus;
 	data->devid = pci_dev->addr.devid;
 	data->function = pci_dev->addr.function;
-	data->vfio_dev_fd = pci_dev->intr_handle.vfio_dev_fd;
+	data->vfio_dev_fd = rte_intr_dev_fd_get(pci_dev->intr_handle);
 
 	adapter = rawdev->dev_private;
 	/* create a opae_adapter based on above device data */

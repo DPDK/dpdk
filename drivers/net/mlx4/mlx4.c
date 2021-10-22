@@ -1042,9 +1042,19 @@ err_secondary:
 		rte_eth_copy_pci_info(eth_dev, pci_dev);
 		eth_dev->data->dev_flags |= RTE_ETH_DEV_AUTOFILL_QUEUE_XSTATS;
 		/* Initialize local interrupt handle for current port. */
-		memset(&priv->intr_handle, 0, sizeof(struct rte_intr_handle));
-		priv->intr_handle.fd = -1;
-		priv->intr_handle.type = RTE_INTR_HANDLE_EXT;
+		priv->intr_handle =
+			rte_intr_instance_alloc(RTE_INTR_INSTANCE_F_SHARED);
+		if (priv->intr_handle == NULL) {
+			RTE_LOG(ERR, EAL, "Fail to allocate intr_handle\n");
+			goto port_error;
+		}
+
+		if (rte_intr_fd_set(priv->intr_handle, -1))
+			goto port_error;
+
+		if (rte_intr_type_set(priv->intr_handle, RTE_INTR_HANDLE_EXT))
+			goto port_error;
+
 		/*
 		 * Override ethdev interrupt handle pointer with private
 		 * handle instead of that of the parent PCI device used by
@@ -1057,7 +1067,7 @@ err_secondary:
 		 * besides setting up eth_dev->intr_handle, the rest is
 		 * handled by rte_intr_rx_ctl().
 		 */
-		eth_dev->intr_handle = &priv->intr_handle;
+		eth_dev->intr_handle = priv->intr_handle;
 		priv->dev_data = eth_dev->data;
 		eth_dev->dev_ops = &mlx4_dev_ops;
 #ifdef HAVE_IBV_MLX4_BUF_ALLOCATORS
@@ -1102,6 +1112,7 @@ err_secondary:
 		prev_dev = eth_dev;
 		continue;
 port_error:
+		rte_intr_instance_free(priv->intr_handle);
 		rte_free(priv);
 		if (eth_dev != NULL)
 			eth_dev->data->dev_private = NULL;

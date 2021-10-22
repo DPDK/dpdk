@@ -69,12 +69,12 @@ struct rte_pci_device {
 	struct rte_pci_id id;               /**< PCI ID. */
 	struct rte_mem_resource mem_resource[PCI_MAX_RESOURCE];
 					    /**< PCI Memory Resource */
-	struct rte_intr_handle intr_handle; /**< Interrupt handle */
+	struct rte_intr_handle *intr_handle; /**< Interrupt handle */
 	struct rte_pci_driver *driver;      /**< PCI driver used in probing */
 	uint16_t max_vfs;                   /**< sriov enable if not zero */
 	enum rte_pci_kernel_driver kdrv;    /**< Kernel driver passthrough */
 	char name[PCI_PRI_STR_SIZE+1];      /**< PCI location (ASCII) */
-	struct rte_intr_handle vfio_req_intr_handle;
+	struct rte_intr_handle *vfio_req_intr_handle;
 				/**< Handler of VFIO request interrupt */
 };
 

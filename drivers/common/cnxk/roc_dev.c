@@ -641,7 +641,7 @@ roc_af_pf_mbox_irq(void *param)
 static int
 mbox_register_pf_irq(struct plt_pci_device *pci_dev, struct dev *dev)
 {
-	struct plt_intr_handle *intr_handle = &pci_dev->intr_handle;
+	struct plt_intr_handle *intr_handle = pci_dev->intr_handle;
 	int i, rc;
 
 	/* HW clear irq */
@@ -691,7 +691,7 @@ mbox_register_pf_irq(struct plt_pci_device *pci_dev, struct dev *dev)
 static int
 mbox_register_vf_irq(struct plt_pci_device *pci_dev, struct dev *dev)
 {
-	struct plt_intr_handle *intr_handle = &pci_dev->intr_handle;
+	struct plt_intr_handle *intr_handle = pci_dev->intr_handle;
 	int rc;
 
 	/* Clear irq */
@@ -724,7 +724,7 @@ mbox_register_irq(struct plt_pci_device *pci_dev, struct dev *dev)
 static void
 mbox_unregister_pf_irq(struct plt_pci_device *pci_dev, struct dev *dev)
 {
-	struct plt_intr_handle *intr_handle = &pci_dev->intr_handle;
+	struct plt_intr_handle *intr_handle = pci_dev->intr_handle;
 	int i;
 
 	/* HW clear irq */
@@ -755,7 +755,7 @@ mbox_unregister_pf_irq(struct plt_pci_device *pci_dev, struct dev *dev)
 static void
 mbox_unregister_vf_irq(struct plt_pci_device *pci_dev, struct dev *dev)
 {
-	struct plt_intr_handle *intr_handle = &pci_dev->intr_handle;
+	struct plt_intr_handle *intr_handle = pci_dev->intr_handle;
 
 	/* Clear irq */
 	plt_write64(~0ull, dev->bar2 + RVU_VF_INT_ENA_W1C);
@@ -839,7 +839,7 @@ roc_pf_vf_flr_irq(void *param)
 static int
 vf_flr_unregister_irqs(struct plt_pci_device *pci_dev, struct dev *dev)
 {
-	struct plt_intr_handle *intr_handle = &pci_dev->intr_handle;
+	struct plt_intr_handle *intr_handle = pci_dev->intr_handle;
 	int i;
 
 	plt_base_dbg("Unregister VF FLR interrupts for %s", pci_dev->name);
@@ -860,7 +860,7 @@ vf_flr_unregister_irqs(struct plt_pci_device *pci_dev, struct dev *dev)
 static int
 vf_flr_register_irqs(struct plt_pci_device *pci_dev, struct dev *dev)
 {
-	struct plt_intr_handle *handle = &pci_dev->intr_handle;
+	struct plt_intr_handle *handle = pci_dev->intr_handle;
 	int i, rc;
 
 	plt_base_dbg("Register VF FLR interrupts for %s", pci_dev->name);
@@ -1211,7 +1211,7 @@ error:
 int
 dev_fini(struct dev *dev, struct plt_pci_device *pci_dev)
 {
-	struct plt_intr_handle *intr_handle = &pci_dev->intr_handle;
+	struct plt_intr_handle *intr_handle = pci_dev->intr_handle;
 	struct mbox *mbox;
 
 	/* Check if this dev hosts npalf and has 1+ refs */

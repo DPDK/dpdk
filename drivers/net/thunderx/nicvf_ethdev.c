@@ -1858,6 +1858,8 @@ nicvf_dev_close(struct rte_eth_dev *dev)
 		nicvf_periodic_alarm_stop(nicvf_vf_interrupt, nic->snicvf[i]);
 	}
 
+	rte_intr_instance_free(nic->intr_handle);
+
 	return 0;
 }
 
@@ -2153,6 +2155,14 @@ nicvf_eth_dev_init(struct rte_eth_dev *eth_dev)
 	nic->reg_base = (uintptr_t)pci_dev->mem_resource[0].addr;
 	if (!nic->reg_base) {
 		PMD_INIT_LOG(ERR, "Failed to map BAR0");
+		ret = -ENODEV;
+		goto fail;
+	}
+
+	/* Allocate interrupt instance */
+	nic->intr_handle = rte_intr_instance_alloc(RTE_INTR_INSTANCE_F_SHARED);
+	if (nic->intr_handle == NULL) {
+		PMD_INIT_LOG(ERR, "Failed to allocate intr handle");
 		ret = -ENODEV;
 		goto fail;
 	}

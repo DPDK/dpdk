@@ -82,7 +82,7 @@ nix_lf_err_irq(void *param)
 static int
 nix_lf_register_err_irq(struct nix *nix)
 {
-	struct plt_intr_handle *handle = &nix->pci_dev->intr_handle;
+	struct plt_intr_handle *handle = nix->pci_dev->intr_handle;
 	int rc, vec;
 
 	vec = nix->msixoff + NIX_LF_INT_VEC_ERR_INT;
@@ -99,7 +99,7 @@ nix_lf_register_err_irq(struct nix *nix)
 static void
 nix_lf_unregister_err_irq(struct nix *nix)
 {
-	struct plt_intr_handle *handle = &nix->pci_dev->intr_handle;
+	struct plt_intr_handle *handle = nix->pci_dev->intr_handle;
 	int vec;
 
 	vec = nix->msixoff + NIX_LF_INT_VEC_ERR_INT;
@@ -131,7 +131,7 @@ nix_lf_ras_irq(void *param)
 static int
 nix_lf_register_ras_irq(struct nix *nix)
 {
-	struct plt_intr_handle *handle = &nix->pci_dev->intr_handle;
+	struct plt_intr_handle *handle = nix->pci_dev->intr_handle;
 	int rc, vec;
 
 	vec = nix->msixoff + NIX_LF_INT_VEC_POISON;
@@ -148,7 +148,7 @@ nix_lf_register_ras_irq(struct nix *nix)
 static void
 nix_lf_unregister_ras_irq(struct nix *nix)
 {
-	struct plt_intr_handle *handle = &nix->pci_dev->intr_handle;
+	struct plt_intr_handle *handle = nix->pci_dev->intr_handle;
 	int vec;
 
 	vec = nix->msixoff + NIX_LF_INT_VEC_POISON;
@@ -300,7 +300,7 @@ roc_nix_register_queue_irqs(struct roc_nix *roc_nix)
 	struct nix *nix;
 
 	nix = roc_nix_to_nix_priv(roc_nix);
-	handle = &nix->pci_dev->intr_handle;
+	handle = nix->pci_dev->intr_handle;
 
 	/* Figure out max qintx required */
 	rqs = PLT_MIN(nix->qints, nix->nb_rx_queues);
@@ -352,7 +352,7 @@ roc_nix_unregister_queue_irqs(struct roc_nix *roc_nix)
 	int vec, q;
 
 	nix = roc_nix_to_nix_priv(roc_nix);
-	handle = &nix->pci_dev->intr_handle;
+	handle = nix->pci_dev->intr_handle;
 
 	for (q = 0; q < nix->configured_qints; q++) {
 		vec = nix->msixoff + NIX_LF_INT_VEC_QINT_START + q;
@@ -382,7 +382,7 @@ roc_nix_register_cq_irqs(struct roc_nix *roc_nix)
 	struct nix *nix;
 
 	nix = roc_nix_to_nix_priv(roc_nix);
-	handle = &nix->pci_dev->intr_handle;
+	handle = nix->pci_dev->intr_handle;
 
 	nix->configured_cints = PLT_MIN(nix->cints, nix->nb_rx_queues);
 
@@ -414,19 +414,19 @@ roc_nix_register_cq_irqs(struct roc_nix *roc_nix)
 			return rc;
 		}
 
-		if (!handle->intr_vec) {
-			handle->intr_vec = plt_zmalloc(
-				nix->configured_cints * sizeof(int), 0);
-			if (!handle->intr_vec) {
-				plt_err("Failed to allocate %d rx intr_vec",
-					nix->configured_cints);
-				return -ENOMEM;
-			}
+		rc = plt_intr_vec_list_alloc(handle, "cnxk",
+					     nix->configured_cints);
+		if (rc) {
+			plt_err("Fail to allocate intr vec list, rc=%d",
+				rc);
+			return rc;
 		}
 		/* VFIO vector zero is resereved for misc interrupt so
 		 * doing required adjustment. (b13bfab4cd)
 		 */
-		handle->intr_vec[q] = PLT_INTR_VEC_RXTX_OFFSET + vec;
+		if (plt_intr_vec_list_index_set(handle, q,
+						PLT_INTR_VEC_RXTX_OFFSET + vec))
+			return -1;
 
 		/* Configure CQE interrupt coalescing parameters */
 		plt_write64(((CQ_CQE_THRESH_DEFAULT) |
@@ -450,7 +450,7 @@ roc_nix_unregister_cq_irqs(struct roc_nix *roc_nix)
 	int vec, q;
 
 	nix = roc_nix_to_nix_priv(roc_nix);
-	handle = &nix->pci_dev->intr_handle;
+	handle = nix->pci_dev->intr_handle;
 
 	for (q = 0; q < nix->configured_cints; q++) {
 		vec = nix->msixoff + NIX_LF_INT_VEC_CINT_START + q;
@@ -465,6 +465,8 @@ roc_nix_unregister_cq_irqs(struct roc_nix *roc_nix)
 		dev_irq_unregister(handle, nix_lf_cq_irq, &nix->cints_mem[q],
 				   vec);
 	}
+
+	plt_intr_vec_list_free(handle);
 	plt_free(nix->cints_mem);
 }
 

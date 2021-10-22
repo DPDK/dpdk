@@ -599,7 +599,7 @@ int rte_dpaa2_intr_enable(struct rte_intr_handle *intr_handle, int index)
 	int len, ret;
 	char irq_set_buf[IRQ_SET_BUF_LEN];
 	struct vfio_irq_set *irq_set;
-	int *fd_ptr;
+	int *fd_ptr, vfio_dev_fd;
 
 	len = sizeof(irq_set_buf);
 
@@ -611,12 +611,14 @@ int rte_dpaa2_intr_enable(struct rte_intr_handle *intr_handle, int index)
 	irq_set->index = index;
 	irq_set->start = 0;
 	fd_ptr = (int *)&irq_set->data;
-	*fd_ptr = intr_handle->fd;
+	*fd_ptr = rte_intr_fd_get(intr_handle);
 
-	ret = ioctl(intr_handle->vfio_dev_fd, VFIO_DEVICE_SET_IRQS, irq_set);
+	vfio_dev_fd = rte_intr_dev_fd_get(intr_handle);
+	ret = ioctl(vfio_dev_fd, VFIO_DEVICE_SET_IRQS, irq_set);
 	if (ret) {
 		DPAA2_BUS_ERR("Error:dpaa2 SET IRQs fd=%d, err = %d(%s)",
-			      intr_handle->fd, errno, strerror(errno));
+			      rte_intr_fd_get(intr_handle), errno,
+			      strerror(errno));
 		return ret;
 	}
 
@@ -627,7 +629,7 @@ int rte_dpaa2_intr_disable(struct rte_intr_handle *intr_handle, int index)
 {
 	struct vfio_irq_set *irq_set;
 	char irq_set_buf[IRQ_SET_BUF_LEN];
-	int len, ret;
+	int len, ret, vfio_dev_fd;
 
 	len = sizeof(struct vfio_irq_set);
 
@@ -638,11 +640,12 @@ int rte_dpaa2_intr_disable(struct rte_intr_handle *intr_handle, int index)
 	irq_set->start = 0;
 	irq_set->count = 0;
 
-	ret = ioctl(intr_handle->vfio_dev_fd, VFIO_DEVICE_SET_IRQS, irq_set);
+	vfio_dev_fd = rte_intr_dev_fd_get(intr_handle);
+	ret = ioctl(vfio_dev_fd, VFIO_DEVICE_SET_IRQS, irq_set);
 	if (ret)
 		DPAA2_BUS_ERR(
 			"Error disabling dpaa2 interrupts for fd %d",
-			intr_handle->fd);
+			rte_intr_fd_get(intr_handle));
 
 	return ret;
 }
@@ -684,9 +687,14 @@ rte_dpaa2_vfio_setup_intr(struct rte_intr_handle *intr_handle,
 			return -1;
 		}
 
-		intr_handle->fd = fd;
-		intr_handle->type = RTE_INTR_HANDLE_VFIO_MSI;
-		intr_handle->vfio_dev_fd = vfio_dev_fd;
+		if (rte_intr_fd_set(intr_handle, fd))
+			return -rte_errno;
+
+		if (rte_intr_type_set(intr_handle, RTE_INTR_HANDLE_VFIO_MSI))
+			return -rte_errno;
+
+		if (rte_intr_dev_fd_set(intr_handle, vfio_dev_fd))
+			return -rte_errno;
 
 		return 0;
 	}
@@ -711,7 +719,7 @@ fslmc_process_iodevices(struct rte_dpaa2_device *dev)
 
 	switch (dev->dev_type) {
 	case DPAA2_ETH:
-		rte_dpaa2_vfio_setup_intr(&dev->intr_handle, dev_fd,
+		rte_dpaa2_vfio_setup_intr(dev->intr_handle, dev_fd,
 					  device_info.num_irqs);
 		break;
 	case DPAA2_CON:

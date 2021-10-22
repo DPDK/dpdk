@@ -301,7 +301,7 @@ otx2_npa_lf_init(struct rte_pci_device *pci_dev, void *otx2_dev)
 
 		lf->pf_func = dev->pf_func;
 		lf->npa_msixoff = npa_msixoff;
-		lf->intr_handle = &pci_dev->intr_handle;
+		lf->intr_handle = pci_dev->intr_handle;
 		lf->pci_dev = pci_dev;
 
 		idev->npa_pf_func = dev->pf_func;

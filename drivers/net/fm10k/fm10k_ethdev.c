@@ -32,7 +32,8 @@
 #define BIT_MASK_PER_UINT32 ((1 << CHARS_PER_UINT32) - 1)
 
 /* default 1:1 map from queue ID to interrupt vector ID */
-#define Q2V(pci_dev, queue_id) ((pci_dev)->intr_handle.intr_vec[queue_id])
+#define Q2V(pci_dev, queue_id)						       \
+	(rte_intr_vec_list_index_get((pci_dev)->intr_handle, queue_id))
 
 /* First 64 Logical ports for PF/VMDQ, second 64 for Flow director */
 #define MAX_LPORT_NUM    128
@@ -690,7 +691,7 @@ fm10k_dev_rx_init(struct rte_eth_dev *dev)
 	struct fm10k_hw *hw = FM10K_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct fm10k_macvlan_filter_info *macvlan;
 	struct rte_pci_device *pdev = RTE_ETH_DEV_TO_PCI(dev);
-	struct rte_intr_handle *intr_handle = &pdev->intr_handle;
+	struct rte_intr_handle *intr_handle = pdev->intr_handle;
 	int i, ret;
 	struct fm10k_rx_queue *rxq;
 	uint64_t base_addr;
@@ -1158,7 +1159,7 @@ fm10k_dev_stop(struct rte_eth_dev *dev)
 {
 	struct fm10k_hw *hw = FM10K_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct rte_pci_device *pdev = RTE_ETH_DEV_TO_PCI(dev);
-	struct rte_intr_handle *intr_handle = &pdev->intr_handle;
+	struct rte_intr_handle *intr_handle = pdev->intr_handle;
 	int i;
 
 	PMD_INIT_FUNC_TRACE();
@@ -1187,8 +1188,7 @@ fm10k_dev_stop(struct rte_eth_dev *dev)
 	}
 	/* Clean datapath event and queue/vec mapping */
 	rte_intr_efd_disable(intr_handle);
-	rte_free(intr_handle->intr_vec);
-	intr_handle->intr_vec = NULL;
+	rte_intr_vec_list_free(intr_handle);
 
 	return 0;
 }
@@ -2367,7 +2367,7 @@ fm10k_dev_rx_queue_intr_enable(struct rte_eth_dev *dev, uint16_t queue_id)
 	else
 		FM10K_WRITE_REG(hw, FM10K_VFITR(Q2V(pdev, queue_id)),
 			FM10K_ITR_AUTOMASK | FM10K_ITR_MASK_CLEAR);
-	rte_intr_ack(&pdev->intr_handle);
+	rte_intr_ack(pdev->intr_handle);
 	return 0;
 }
 
@@ -2392,7 +2392,7 @@ fm10k_dev_rxq_interrupt_setup(struct rte_eth_dev *dev)
 {
 	struct fm10k_hw *hw = FM10K_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct rte_pci_device *pdev = RTE_ETH_DEV_TO_PCI(dev);
-	struct rte_intr_handle *intr_handle = &pdev->intr_handle;
+	struct rte_intr_handle *intr_handle = pdev->intr_handle;
 	uint32_t intr_vector, vec;
 	uint16_t queue_id;
 	int result = 0;
@@ -2420,15 +2420,17 @@ fm10k_dev_rxq_interrupt_setup(struct rte_eth_dev *dev)
 	}
 
 	if (rte_intr_dp_is_en(intr_handle) && !result) {
-		intr_handle->intr_vec =	rte_zmalloc("intr_vec",
-			dev->data->nb_rx_queues * sizeof(int), 0);
-		if (intr_handle->intr_vec) {
+		if (!rte_intr_vec_list_alloc(intr_handle, "intr_vec",
+						   dev->data->nb_rx_queues)) {
 			for (queue_id = 0, vec = FM10K_RX_VEC_START;
 					queue_id < dev->data->nb_rx_queues;
 					queue_id++) {
-				intr_handle->intr_vec[queue_id] = vec;
-				if (vec < intr_handle->nb_efd - 1
-						+ FM10K_RX_VEC_START)
+				rte_intr_vec_list_index_set(intr_handle,
+								queue_id, vec);
+				int nb_efd =
+					rte_intr_nb_efd_get(intr_handle);
+				if (vec < (uint32_t)nb_efd - 1 +
+							FM10K_RX_VEC_START)
 					vec++;
 			}
 		} else {
@@ -2787,7 +2789,7 @@ fm10k_dev_close(struct rte_eth_dev *dev)
 {
 	struct fm10k_hw *hw = FM10K_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct rte_pci_device *pdev = RTE_ETH_DEV_TO_PCI(dev);
-	struct rte_intr_handle *intr_handle = &pdev->intr_handle;
+	struct rte_intr_handle *intr_handle = pdev->intr_handle;
 	int ret;
 
 	PMD_INIT_FUNC_TRACE();
@@ -3053,7 +3055,7 @@ eth_fm10k_dev_init(struct rte_eth_dev *dev)
 {
 	struct fm10k_hw *hw = FM10K_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct rte_pci_device *pdev = RTE_ETH_DEV_TO_PCI(dev);
-	struct rte_intr_handle *intr_handle = &pdev->intr_handle;
+	struct rte_intr_handle *intr_handle = pdev->intr_handle;
 	int diag, i;
 	struct fm10k_macvlan_filter_info *macvlan;
 

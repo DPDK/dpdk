@@ -82,7 +82,7 @@ static int
 nfp_net_start(struct rte_eth_dev *dev)
 {
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
-	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
+	struct rte_intr_handle *intr_handle = pci_dev->intr_handle;
 	uint32_t new_ctrl, update = 0;
 	struct nfp_net_hw *hw;
 	struct nfp_pf_dev *pf_dev;
@@ -109,12 +109,13 @@ nfp_net_start(struct rte_eth_dev *dev)
 					  "with NFP multiport PF");
 				return -EINVAL;
 		}
-		if (intr_handle->type == RTE_INTR_HANDLE_UIO) {
+		if (rte_intr_type_get(intr_handle) ==
+						RTE_INTR_HANDLE_UIO) {
 			/*
 			 * Better not to share LSC with RX interrupts.
 			 * Unregistering LSC interrupt handler
 			 */
-			rte_intr_callback_unregister(&pci_dev->intr_handle,
+			rte_intr_callback_unregister(pci_dev->intr_handle,
 				nfp_net_dev_interrupt_handler, (void *)dev);
 
 			if (dev->data->nb_rx_queues > 1) {
@@ -333,10 +334,10 @@ nfp_net_close(struct rte_eth_dev *dev)
 	nfp_cpp_free(pf_dev->cpp);
 	rte_free(pf_dev);
 
-	rte_intr_disable(&pci_dev->intr_handle);
+	rte_intr_disable(pci_dev->intr_handle);
 
 	/* unregister callback func from eal lib */
-	rte_intr_callback_unregister(&pci_dev->intr_handle,
+	rte_intr_callback_unregister(pci_dev->intr_handle,
 				     nfp_net_dev_interrupt_handler,
 				     (void *)dev);
 
@@ -579,7 +580,7 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
 		/* Registering LSC interrupt handler */
-		rte_intr_callback_register(&pci_dev->intr_handle,
+		rte_intr_callback_register(pci_dev->intr_handle,
 					   nfp_net_dev_interrupt_handler,
 					   (void *)eth_dev);
 		/* Telling the firmware about the LSC interrupt entry */

@@ -34,7 +34,7 @@ static int
 nix_lf_register_err_irq(struct rte_eth_dev *eth_dev)
 {
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
-	struct rte_intr_handle *handle = &pci_dev->intr_handle;
+	struct rte_intr_handle *handle = pci_dev->intr_handle;
 	struct otx2_eth_dev *dev = otx2_eth_pmd_priv(eth_dev);
 	int rc, vec;
 
@@ -54,7 +54,7 @@ static void
 nix_lf_unregister_err_irq(struct rte_eth_dev *eth_dev)
 {
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
-	struct rte_intr_handle *handle = &pci_dev->intr_handle;
+	struct rte_intr_handle *handle = pci_dev->intr_handle;
 	struct otx2_eth_dev *dev = otx2_eth_pmd_priv(eth_dev);
 	int vec;
 
@@ -90,7 +90,7 @@ static int
 nix_lf_register_ras_irq(struct rte_eth_dev *eth_dev)
 {
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
-	struct rte_intr_handle *handle = &pci_dev->intr_handle;
+	struct rte_intr_handle *handle = pci_dev->intr_handle;
 	struct otx2_eth_dev *dev = otx2_eth_pmd_priv(eth_dev);
 	int rc, vec;
 
@@ -110,7 +110,7 @@ static void
 nix_lf_unregister_ras_irq(struct rte_eth_dev *eth_dev)
 {
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
-	struct rte_intr_handle *handle = &pci_dev->intr_handle;
+	struct rte_intr_handle *handle = pci_dev->intr_handle;
 	struct otx2_eth_dev *dev = otx2_eth_pmd_priv(eth_dev);
 	int vec;
 
@@ -263,7 +263,7 @@ int
 oxt2_nix_register_queue_irqs(struct rte_eth_dev *eth_dev)
 {
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
-	struct rte_intr_handle *handle = &pci_dev->intr_handle;
+	struct rte_intr_handle *handle = pci_dev->intr_handle;
 	struct otx2_eth_dev *dev = otx2_eth_pmd_priv(eth_dev);
 	int vec, q, sqs, rqs, qs, rc = 0;
 
@@ -308,7 +308,7 @@ void
 oxt2_nix_unregister_queue_irqs(struct rte_eth_dev *eth_dev)
 {
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
-	struct rte_intr_handle *handle = &pci_dev->intr_handle;
+	struct rte_intr_handle *handle = pci_dev->intr_handle;
 	struct otx2_eth_dev *dev = otx2_eth_pmd_priv(eth_dev);
 	int vec, q;
 
@@ -332,7 +332,7 @@ int
 oxt2_nix_register_cq_irqs(struct rte_eth_dev *eth_dev)
 {
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
-	struct rte_intr_handle *handle = &pci_dev->intr_handle;
+	struct rte_intr_handle *handle = pci_dev->intr_handle;
 	struct otx2_eth_dev *dev = otx2_eth_pmd_priv(eth_dev);
 	uint8_t rc = 0, vec, q;
 
@@ -362,20 +362,19 @@ oxt2_nix_register_cq_irqs(struct rte_eth_dev *eth_dev)
 			return rc;
 		}
 
-		if (!handle->intr_vec) {
-			handle->intr_vec = rte_zmalloc("intr_vec",
-					    dev->configured_cints *
-					    sizeof(int), 0);
-			if (!handle->intr_vec) {
-				otx2_err("Failed to allocate %d rx intr_vec",
-					 dev->configured_cints);
-				return -ENOMEM;
-			}
+		rc = rte_intr_vec_list_alloc(handle, "intr_vec",
+						dev->configured_cints);
+		if (rc) {
+			otx2_err("Fail to allocate intr vec list, "
+				 "rc=%d", rc);
+			return rc;
 		}
 		/* VFIO vector zero is resereved for misc interrupt so
 		 * doing required adjustment. (b13bfab4cd)
 		 */
-		handle->intr_vec[q] = RTE_INTR_VEC_RXTX_OFFSET + vec;
+		if (rte_intr_vec_list_index_set(handle, q,
+						RTE_INTR_VEC_RXTX_OFFSET + vec))
+			return -1;
 
 		/* Configure CQE interrupt coalescing parameters */
 		otx2_write64(((CQ_CQE_THRESH_DEFAULT) |
@@ -395,7 +394,7 @@ void
 oxt2_nix_unregister_cq_irqs(struct rte_eth_dev *eth_dev)
 {
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
-	struct rte_intr_handle *handle = &pci_dev->intr_handle;
+	struct rte_intr_handle *handle = pci_dev->intr_handle;
 	struct otx2_eth_dev *dev = otx2_eth_pmd_priv(eth_dev);
 	int vec, q;
 

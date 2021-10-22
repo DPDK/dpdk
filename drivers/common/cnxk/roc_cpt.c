@@ -65,7 +65,7 @@ cpt_lf_register_misc_irq(struct roc_cpt_lf *lf)
 	struct plt_intr_handle *handle;
 	int rc, vec;
 
-	handle = &pci_dev->intr_handle;
+	handle = pci_dev->intr_handle;
 
 	vec = lf->msixoff + CPT_LF_INT_VEC_MISC;
 	/* Clear err interrupt */
@@ -85,7 +85,7 @@ cpt_lf_unregister_misc_irq(struct roc_cpt_lf *lf)
 	struct plt_intr_handle *handle;
 	int vec;
 
-	handle = &pci_dev->intr_handle;
+	handle = pci_dev->intr_handle;
 
 	vec = lf->msixoff + CPT_LF_INT_VEC_MISC;
 	/* Clear err interrupt */
@@ -129,7 +129,7 @@ cpt_lf_register_done_irq(struct roc_cpt_lf *lf)
 	struct plt_intr_handle *handle;
 	int rc, vec;
 
-	handle = &pci_dev->intr_handle;
+	handle = pci_dev->intr_handle;
 
 	vec = lf->msixoff + CPT_LF_INT_VEC_DONE;
 
@@ -152,7 +152,7 @@ cpt_lf_unregister_done_irq(struct roc_cpt_lf *lf)
 	struct plt_intr_handle *handle;
 	int vec;
 
-	handle = &pci_dev->intr_handle;
+	handle = pci_dev->intr_handle;
 
 	vec = lf->msixoff + CPT_LF_INT_VEC_DONE;
 

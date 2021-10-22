@@ -646,16 +646,15 @@ static int iavf_config_rx_queues_irqs(struct rte_eth_dev *dev,
 			return -1;
 	}
 
-	if (rte_intr_dp_is_en(intr_handle) && !intr_handle->intr_vec) {
-		intr_handle->intr_vec =
-			rte_zmalloc("intr_vec",
-				    dev->data->nb_rx_queues * sizeof(int), 0);
-		if (!intr_handle->intr_vec) {
+	if (rte_intr_dp_is_en(intr_handle)) {
+		if (rte_intr_vec_list_alloc(intr_handle, "intr_vec",
+						    dev->data->nb_rx_queues)) {
 			PMD_DRV_LOG(ERR, "Failed to allocate %d rx intr_vec",
 				    dev->data->nb_rx_queues);
 			return -1;
 		}
 	}
+
 
 	qv_map = rte_zmalloc("qv_map",
 		dev->data->nb_rx_queues * sizeof(struct iavf_qv_map), 0);
@@ -716,7 +715,8 @@ static int iavf_config_rx_queues_irqs(struct rte_eth_dev *dev,
 			for (i = 0; i < dev->data->nb_rx_queues; i++) {
 				qv_map[i].queue_id = i;
 				qv_map[i].vector_id = vf->msix_base;
-				intr_handle->intr_vec[i] = IAVF_MISC_VEC_ID;
+				rte_intr_vec_list_index_set(intr_handle,
+							i, IAVF_MISC_VEC_ID);
 			}
 			vf->qv_map = qv_map;
 			PMD_DRV_LOG(DEBUG,
@@ -726,14 +726,16 @@ static int iavf_config_rx_queues_irqs(struct rte_eth_dev *dev,
 			/* If Rx interrupt is reuquired, and we can use
 			 * multi interrupts, then the vec is from 1
 			 */
-			vf->nb_msix = RTE_MIN(intr_handle->nb_efd,
-				 (uint16_t)(vf->vf_res->max_vectors - 1));
+			vf->nb_msix =
+				RTE_MIN(rte_intr_nb_efd_get(intr_handle),
+				(uint16_t)(vf->vf_res->max_vectors - 1));
 			vf->msix_base = IAVF_RX_VEC_START;
 			vec = IAVF_RX_VEC_START;
 			for (i = 0; i < dev->data->nb_rx_queues; i++) {
 				qv_map[i].queue_id = i;
 				qv_map[i].vector_id = vec;
-				intr_handle->intr_vec[i] = vec++;
+				rte_intr_vec_list_index_set(intr_handle,
+								   i, vec++);
 				if (vec >= vf->nb_msix + IAVF_RX_VEC_START)
 					vec = IAVF_RX_VEC_START;
 			}
@@ -775,8 +777,7 @@ config_irq_map_err:
 	vf->qv_map = NULL;
 
 qv_map_alloc_err:
-	rte_free(intr_handle->intr_vec);
-	intr_handle->intr_vec = NULL;
+	rte_intr_vec_list_free(intr_handle);
 
 	return -1;
 }
@@ -912,10 +913,7 @@ iavf_dev_stop(struct rte_eth_dev *dev)
 	/* Disable the interrupt for Rx */
 	rte_intr_efd_disable(intr_handle);
 	/* Rx interrupt vector mapping free */
-	if (intr_handle->intr_vec) {
-		rte_free(intr_handle->intr_vec);
-		intr_handle->intr_vec = NULL;
-	}
+	rte_intr_vec_list_free(intr_handle);
 
 	/* remove all mac addrs */
 	iavf_add_del_all_mac_addr(adapter, false);
@@ -1639,7 +1637,8 @@ iavf_dev_rx_queue_intr_enable(struct rte_eth_dev *dev, uint16_t queue_id)
 	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(adapter);
 	uint16_t msix_intr;
 
-	msix_intr = pci_dev->intr_handle.intr_vec[queue_id];
+	msix_intr = rte_intr_vec_list_index_get(pci_dev->intr_handle,
+						       queue_id);
 	if (msix_intr == IAVF_MISC_VEC_ID) {
 		PMD_DRV_LOG(INFO, "MISC is also enabled for control");
 		IAVF_WRITE_REG(hw, IAVF_VFINT_DYN_CTL01,
@@ -1658,7 +1657,7 @@ iavf_dev_rx_queue_intr_enable(struct rte_eth_dev *dev, uint16_t queue_id)
 	IAVF_WRITE_FLUSH(hw);
 
 	if (vf->vf_res->vf_cap_flags & VIRTCHNL_VF_OFFLOAD_WB_ON_ITR)
-		rte_intr_ack(&pci_dev->intr_handle);
+		rte_intr_ack(pci_dev->intr_handle);
 
 	return 0;
 }
@@ -1670,7 +1669,8 @@ iavf_dev_rx_queue_intr_disable(struct rte_eth_dev *dev, uint16_t queue_id)
 	struct iavf_hw *hw = IAVF_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	uint16_t msix_intr;
 
-	msix_intr = pci_dev->intr_handle.intr_vec[queue_id];
+	msix_intr = rte_intr_vec_list_index_get(pci_dev->intr_handle,
+						       queue_id);
 	if (msix_intr == IAVF_MISC_VEC_ID) {
 		PMD_DRV_LOG(ERR, "MISC is used for control, cannot disable it");
 		return -EIO;
@@ -2355,12 +2355,12 @@ iavf_dev_init(struct rte_eth_dev *eth_dev)
 
 	if (vf->vf_res->vf_cap_flags & VIRTCHNL_VF_OFFLOAD_WB_ON_ITR) {
 		/* register callback func to eal lib */
-		rte_intr_callback_register(&pci_dev->intr_handle,
+		rte_intr_callback_register(pci_dev->intr_handle,
 					   iavf_dev_interrupt_handler,
 					   (void *)eth_dev);
 
 		/* enable uio intr after callback register */
-		rte_intr_enable(&pci_dev->intr_handle);
+		rte_intr_enable(pci_dev->intr_handle);
 	} else {
 		rte_eal_alarm_set(IAVF_ALARM_INTERVAL,
 				  iavf_dev_alarm_handler, eth_dev);
@@ -2394,7 +2394,7 @@ iavf_dev_close(struct rte_eth_dev *dev)
 {
 	struct iavf_hw *hw = IAVF_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
-	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
+	struct rte_intr_handle *intr_handle = pci_dev->intr_handle;
 	struct iavf_adapter *adapter =
 		IAVF_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
 	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);

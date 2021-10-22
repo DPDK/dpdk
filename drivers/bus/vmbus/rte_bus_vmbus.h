@@ -73,7 +73,7 @@ struct rte_vmbus_device {
 	struct vmbus_channel *primary;	       /**< VMBUS primary channel */
 	struct vmbus_mon_page *monitor_page;   /**< VMBUS monitor page */
 
-	struct rte_intr_handle intr_handle;    /**< Interrupt handle */
+	struct rte_intr_handle *intr_handle;    /**< Interrupt handle */
 	struct rte_mem_resource resource[VMBUS_MAX_RESOURCE];
 };
 

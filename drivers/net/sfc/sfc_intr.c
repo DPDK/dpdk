@@ -79,7 +79,7 @@ sfc_intr_line_handler(void *cb_arg)
 	if (qmask & (1 << sa->mgmt_evq_index))
 		sfc_intr_handle_mgmt_evq(sa);
 
-	if (rte_intr_ack(&pci_dev->intr_handle) != 0)
+	if (rte_intr_ack(pci_dev->intr_handle) != 0)
 		sfc_err(sa, "cannot reenable interrupts");
 
 	sfc_log_init(sa, "done");
@@ -123,7 +123,7 @@ sfc_intr_message_handler(void *cb_arg)
 
 	sfc_intr_handle_mgmt_evq(sa);
 
-	if (rte_intr_ack(&pci_dev->intr_handle) != 0)
+	if (rte_intr_ack(pci_dev->intr_handle) != 0)
 		sfc_err(sa, "cannot reenable interrupts");
 
 	sfc_log_init(sa, "done");
@@ -159,7 +159,7 @@ sfc_intr_start(struct sfc_adapter *sa)
 		goto fail_intr_init;
 
 	pci_dev = RTE_ETH_DEV_TO_PCI(sa->eth_dev);
-	intr_handle = &pci_dev->intr_handle;
+	intr_handle = pci_dev->intr_handle;
 
 	if (intr->handler != NULL) {
 		if (intr->rxq_intr && rte_intr_cap_multiple(intr_handle)) {
@@ -171,16 +171,15 @@ sfc_intr_start(struct sfc_adapter *sa)
 				goto fail_rte_intr_efd_enable;
 		}
 		if (rte_intr_dp_is_en(intr_handle)) {
-			intr_handle->intr_vec =
-				rte_calloc("intr_vec",
-				sa->eth_dev->data->nb_rx_queues, sizeof(int),
-				0);
-			if (intr_handle->intr_vec == NULL) {
+			if (rte_intr_vec_list_alloc(intr_handle,
+					"intr_vec",
+					sa->eth_dev->data->nb_rx_queues)) {
 				sfc_err(sa,
 					"Failed to allocate %d rx_queues intr_vec",
 					sa->eth_dev->data->nb_rx_queues);
 				goto fail_intr_vector_alloc;
 			}
+
 		}
 
 		sfc_log_init(sa, "rte_intr_callback_register");
@@ -214,16 +213,17 @@ sfc_intr_start(struct sfc_adapter *sa)
 		efx_intr_enable(sa->nic);
 	}
 
-	sfc_log_init(sa, "done type=%u max_intr=%d nb_efd=%u vec=%p",
-		     intr_handle->type, intr_handle->max_intr,
-		     intr_handle->nb_efd, intr_handle->intr_vec);
+	sfc_log_init(sa, "done type=%u max_intr=%d nb_efd=%u",
+		     rte_intr_type_get(intr_handle),
+		     rte_intr_max_intr_get(intr_handle),
+		     rte_intr_nb_efd_get(intr_handle));
 	return 0;
 
 fail_rte_intr_enable:
 	rte_intr_callback_unregister(intr_handle, intr->handler, (void *)sa);
 
 fail_rte_intr_cb_reg:
-	rte_free(intr_handle->intr_vec);
+	rte_intr_vec_list_free(intr_handle);
 
 fail_intr_vector_alloc:
 	rte_intr_efd_disable(intr_handle);
@@ -250,9 +250,9 @@ sfc_intr_stop(struct sfc_adapter *sa)
 
 		efx_intr_disable(sa->nic);
 
-		intr_handle = &pci_dev->intr_handle;
+		intr_handle = pci_dev->intr_handle;
 
-		rte_free(intr_handle->intr_vec);
+		rte_intr_vec_list_free(intr_handle);
 		rte_intr_efd_disable(intr_handle);
 
 		if (rte_intr_disable(intr_handle) != 0)
@@ -322,7 +322,7 @@ sfc_intr_attach(struct sfc_adapter *sa)
 
 	sfc_log_init(sa, "entry");
 
-	switch (pci_dev->intr_handle.type) {
+	switch (rte_intr_type_get(pci_dev->intr_handle)) {
 #ifdef RTE_EXEC_ENV_LINUX
 	case RTE_INTR_HANDLE_UIO_INTX:
 	case RTE_INTR_HANDLE_VFIO_LEGACY:

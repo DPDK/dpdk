@@ -134,7 +134,7 @@ bnx2x_interrupt_handler(void *param)
 	PMD_DEBUG_PERIODIC_LOG(INFO, sc, "Interrupt handled");
 
 	bnx2x_interrupt_action(dev, 1);
-	rte_intr_ack(&sc->pci_dev->intr_handle);
+	rte_intr_ack(sc->pci_dev->intr_handle);
 }
 
 static void bnx2x_periodic_start(void *param)
@@ -230,10 +230,10 @@ bnx2x_dev_start(struct rte_eth_dev *dev)
 	}
 
 	if (IS_PF(sc)) {
-		rte_intr_callback_register(&sc->pci_dev->intr_handle,
+		rte_intr_callback_register(sc->pci_dev->intr_handle,
 				bnx2x_interrupt_handler, (void *)dev);
 
-		if (rte_intr_enable(&sc->pci_dev->intr_handle))
+		if (rte_intr_enable(sc->pci_dev->intr_handle))
 			PMD_DRV_LOG(ERR, sc, "rte_intr_enable failed");
 	}
 
@@ -258,8 +258,8 @@ bnx2x_dev_stop(struct rte_eth_dev *dev)
 	bnx2x_dev_rxtx_init_dummy(dev);
 
 	if (IS_PF(sc)) {
-		rte_intr_disable(&sc->pci_dev->intr_handle);
-		rte_intr_callback_unregister(&sc->pci_dev->intr_handle,
+		rte_intr_disable(sc->pci_dev->intr_handle);
+		rte_intr_callback_unregister(sc->pci_dev->intr_handle,
 				bnx2x_interrupt_handler, (void *)dev);
 
 		/* stop the periodic callout */

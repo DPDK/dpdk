@@ -643,7 +643,7 @@ otx2_af_pf_mbox_irq(void *param)
 static int
 mbox_register_pf_irq(struct rte_pci_device *pci_dev, struct otx2_dev *dev)
 {
-	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
+	struct rte_intr_handle *intr_handle = pci_dev->intr_handle;
 	int i, rc;
 
 	/* HW clear irq */
@@ -693,7 +693,7 @@ mbox_register_pf_irq(struct rte_pci_device *pci_dev, struct otx2_dev *dev)
 static int
 mbox_register_vf_irq(struct rte_pci_device *pci_dev, struct otx2_dev *dev)
 {
-	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
+	struct rte_intr_handle *intr_handle = pci_dev->intr_handle;
 	int rc;
 
 	/* Clear irq */
@@ -726,7 +726,7 @@ mbox_register_irq(struct rte_pci_device *pci_dev, struct otx2_dev *dev)
 static void
 mbox_unregister_pf_irq(struct rte_pci_device *pci_dev, struct otx2_dev *dev)
 {
-	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
+	struct rte_intr_handle *intr_handle = pci_dev->intr_handle;
 	int i;
 
 	/* HW clear irq */
@@ -758,7 +758,7 @@ mbox_unregister_pf_irq(struct rte_pci_device *pci_dev, struct otx2_dev *dev)
 static void
 mbox_unregister_vf_irq(struct rte_pci_device *pci_dev, struct otx2_dev *dev)
 {
-	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
+	struct rte_intr_handle *intr_handle = pci_dev->intr_handle;
 
 	/* Clear irq */
 	otx2_write64(~0ull, dev->bar2 + RVU_VF_INT_ENA_W1C);
@@ -841,7 +841,7 @@ otx2_pf_vf_flr_irq(void *param)
 static int
 vf_flr_unregister_irqs(struct rte_pci_device *pci_dev, struct otx2_dev *dev)
 {
-	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
+	struct rte_intr_handle *intr_handle = pci_dev->intr_handle;
 	int i;
 
 	otx2_base_dbg("Unregister VF FLR interrupts for %s", pci_dev->name);
@@ -862,7 +862,7 @@ vf_flr_unregister_irqs(struct rte_pci_device *pci_dev, struct otx2_dev *dev)
 static int
 vf_flr_register_irqs(struct rte_pci_device *pci_dev, struct otx2_dev *dev)
 {
-	struct rte_intr_handle *handle = &pci_dev->intr_handle;
+	struct rte_intr_handle *handle = pci_dev->intr_handle;
 	int i, rc;
 
 	otx2_base_dbg("Register VF FLR interrupts for %s", pci_dev->name);
@@ -1039,7 +1039,7 @@ error:
 void
 otx2_dev_fini(struct rte_pci_device *pci_dev, void *otx2_dev)
 {
-	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
+	struct rte_intr_handle *intr_handle = pci_dev->intr_handle;
 	struct otx2_dev *dev = otx2_dev;
 	struct otx2_idev_cfg *idev;
 	struct otx2_mbox *mbox;

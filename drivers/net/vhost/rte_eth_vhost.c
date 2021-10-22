@@ -523,40 +523,43 @@ static int
 eth_vhost_update_intr(struct rte_eth_dev *eth_dev, uint16_t rxq_idx)
 {
 	struct rte_intr_handle *handle = eth_dev->intr_handle;
-	struct rte_epoll_event rev;
+	struct rte_epoll_event rev, *elist;
 	int epfd, ret;
 
-	if (!handle)
+	if (handle == NULL)
 		return 0;
 
-	if (handle->efds[rxq_idx] == handle->elist[rxq_idx].fd)
+	elist = rte_intr_elist_index_get(handle, rxq_idx);
+	if (rte_intr_efds_index_get(handle, rxq_idx) == elist->fd)
 		return 0;
 
 	VHOST_LOG(INFO, "kickfd for rxq-%d was changed, updating handler.\n",
 			rxq_idx);
 
-	if (handle->elist[rxq_idx].fd != -1)
+	if (elist->fd != -1)
 		VHOST_LOG(ERR, "Unexpected previous kickfd value (Got %d, expected -1).\n",
-				handle->elist[rxq_idx].fd);
+			elist->fd);
 
 	/*
 	 * First remove invalid epoll event, and then install
 	 * the new one. May be solved with a proper API in the
 	 * future.
 	 */
-	epfd = handle->elist[rxq_idx].epfd;
-	rev = handle->elist[rxq_idx];
+	epfd = elist->epfd;
+	rev = *elist;
 	ret = rte_epoll_ctl(epfd, EPOLL_CTL_DEL, rev.fd,
-			&handle->elist[rxq_idx]);
+			elist);
 	if (ret) {
 		VHOST_LOG(ERR, "Delete epoll event failed.\n");
 		return ret;
 	}
 
-	rev.fd = handle->efds[rxq_idx];
-	handle->elist[rxq_idx] = rev;
-	ret = rte_epoll_ctl(epfd, EPOLL_CTL_ADD, rev.fd,
-			&handle->elist[rxq_idx]);
+	rev.fd = rte_intr_efds_index_get(handle, rxq_idx);
+	if (rte_intr_elist_index_set(handle, rxq_idx, rev))
+		return -rte_errno;
+
+	elist = rte_intr_elist_index_get(handle, rxq_idx);
+	ret = rte_epoll_ctl(epfd, EPOLL_CTL_ADD, rev.fd, elist);
 	if (ret) {
 		VHOST_LOG(ERR, "Add epoll event failed.\n");
 		return ret;
@@ -634,12 +637,10 @@ eth_vhost_uninstall_intr(struct rte_eth_dev *dev)
 {
 	struct rte_intr_handle *intr_handle = dev->intr_handle;
 
-	if (intr_handle) {
-		if (intr_handle->intr_vec)
-			free(intr_handle->intr_vec);
-		free(intr_handle);
+	if (intr_handle != NULL) {
+		rte_intr_vec_list_free(intr_handle);
+		rte_intr_instance_free(intr_handle);
 	}
-
 	dev->intr_handle = NULL;
 }
 
@@ -653,32 +654,31 @@ eth_vhost_install_intr(struct rte_eth_dev *dev)
 	int ret;
 
 	/* uninstall firstly if we are reconnecting */
-	if (dev->intr_handle)
+	if (dev->intr_handle != NULL)
 		eth_vhost_uninstall_intr(dev);
 
-	dev->intr_handle = malloc(sizeof(*dev->intr_handle));
-	if (!dev->intr_handle) {
+	dev->intr_handle = rte_intr_instance_alloc(RTE_INTR_INSTANCE_F_PRIVATE);
+	if (dev->intr_handle == NULL) {
 		VHOST_LOG(ERR, "Fail to allocate intr_handle\n");
 		return -ENOMEM;
 	}
-	memset(dev->intr_handle, 0, sizeof(*dev->intr_handle));
+	if (rte_intr_efd_counter_size_set(dev->intr_handle, sizeof(uint64_t)))
+		return -rte_errno;
 
-	dev->intr_handle->efd_counter_size = sizeof(uint64_t);
-
-	dev->intr_handle->intr_vec =
-		malloc(nb_rxq * sizeof(dev->intr_handle->intr_vec[0]));
-
-	if (!dev->intr_handle->intr_vec) {
+	if (rte_intr_vec_list_alloc(dev->intr_handle, NULL, nb_rxq)) {
 		VHOST_LOG(ERR,
 			"Failed to allocate memory for interrupt vector\n");
-		free(dev->intr_handle);
+		rte_intr_instance_free(dev->intr_handle);
 		return -ENOMEM;
 	}
 
+
 	VHOST_LOG(INFO, "Prepare intr vec\n");
 	for (i = 0; i < nb_rxq; i++) {
-		dev->intr_handle->intr_vec[i] = RTE_INTR_VEC_RXTX_OFFSET + i;
-		dev->intr_handle->efds[i] = -1;
+		if (rte_intr_vec_list_index_set(dev->intr_handle, i, RTE_INTR_VEC_RXTX_OFFSET + i))
+			return -rte_errno;
+		if (rte_intr_efds_index_set(dev->intr_handle, i, -1))
+			return -rte_errno;
 		vq = dev->data->rx_queues[i];
 		if (!vq) {
 			VHOST_LOG(INFO, "rxq-%d not setup yet, skip!\n", i);
@@ -697,13 +697,20 @@ eth_vhost_install_intr(struct rte_eth_dev *dev)
 				"rxq-%d's kickfd is invalid, skip!\n", i);
 			continue;
 		}
-		dev->intr_handle->efds[i] = vring.kickfd;
+
+		if (rte_intr_efds_index_set(dev->intr_handle, i, vring.kickfd))
+			continue;
 		VHOST_LOG(INFO, "Installed intr vec for rxq-%d\n", i);
 	}
 
-	dev->intr_handle->nb_efd = nb_rxq;
-	dev->intr_handle->max_intr = nb_rxq + 1;
-	dev->intr_handle->type = RTE_INTR_HANDLE_VDEV;
+	if (rte_intr_nb_efd_set(dev->intr_handle, nb_rxq))
+		return -rte_errno;
+
+	if (rte_intr_max_intr_set(dev->intr_handle, nb_rxq + 1))
+		return -rte_errno;
+
+	if (rte_intr_type_set(dev->intr_handle, RTE_INTR_HANDLE_VDEV))
+		return -rte_errno;
 
 	return 0;
 }
@@ -908,7 +915,10 @@ vring_conf_update(int vid, struct rte_eth_dev *eth_dev, uint16_t vring_id)
 					vring_id);
 			return ret;
 		}
-		eth_dev->intr_handle->efds[rx_idx] = vring.kickfd;
+
+		if (rte_intr_efds_index_set(eth_dev->intr_handle, rx_idx,
+						   vring.kickfd))
+			return -rte_errno;
 
 		vq = eth_dev->data->rx_queues[rx_idx];
 		if (!vq) {

@@ -51,7 +51,7 @@ static int
 nfp_netvf_start(struct rte_eth_dev *dev)
 {
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
-	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
+	struct rte_intr_handle *intr_handle = pci_dev->intr_handle;
 	uint32_t new_ctrl, update = 0;
 	struct nfp_net_hw *hw;
 	struct rte_eth_conf *dev_conf;
@@ -71,12 +71,13 @@ nfp_netvf_start(struct rte_eth_dev *dev)
 
 	/* check and configure queue intr-vector mapping */
 	if (dev->data->dev_conf.intr_conf.rxq != 0) {
-		if (intr_handle->type == RTE_INTR_HANDLE_UIO) {
+		if (rte_intr_type_get(intr_handle) ==
+						RTE_INTR_HANDLE_UIO) {
 			/*
 			 * Better not to share LSC with RX interrupts.
 			 * Unregistering LSC interrupt handler
 			 */
-			rte_intr_callback_unregister(&pci_dev->intr_handle,
+			rte_intr_callback_unregister(pci_dev->intr_handle,
 				nfp_net_dev_interrupt_handler, (void *)dev);
 
 			if (dev->data->nb_rx_queues > 1) {
@@ -225,10 +226,10 @@ nfp_netvf_close(struct rte_eth_dev *dev)
 		nfp_net_reset_rx_queue(this_rx_q);
 	}
 
-	rte_intr_disable(&pci_dev->intr_handle);
+	rte_intr_disable(pci_dev->intr_handle);
 
 	/* unregister callback func from eal lib */
-	rte_intr_callback_unregister(&pci_dev->intr_handle,
+	rte_intr_callback_unregister(pci_dev->intr_handle,
 				     nfp_net_dev_interrupt_handler,
 				     (void *)dev);
 
@@ -445,7 +446,7 @@ nfp_netvf_init(struct rte_eth_dev *eth_dev)
 
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
 		/* Registering LSC interrupt handler */
-		rte_intr_callback_register(&pci_dev->intr_handle,
+		rte_intr_callback_register(pci_dev->intr_handle,
 					   nfp_net_dev_interrupt_handler,
 					   (void *)eth_dev);
 		/* Telling the firmware about the LSC interrupt entry */

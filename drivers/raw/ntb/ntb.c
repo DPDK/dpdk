@@ -1044,13 +1044,10 @@ ntb_dev_close(struct rte_rawdev *dev)
 		ntb_queue_release(dev, i);
 	hw->queue_pairs = 0;
 
-	intr_handle = &hw->pci_dev->intr_handle;
+	intr_handle = hw->pci_dev->intr_handle;
 	/* Clean datapath event and vec mapping */
 	rte_intr_efd_disable(intr_handle);
-	if (intr_handle->intr_vec) {
-		rte_free(intr_handle->intr_vec);
-		intr_handle->intr_vec = NULL;
-	}
+	rte_intr_vec_list_free(intr_handle);
 	/* Disable uio intr before callback unregister */
 	rte_intr_disable(intr_handle);
 
@@ -1402,7 +1399,7 @@ ntb_init_hw(struct rte_rawdev *dev, struct rte_pci_device *pci_dev)
 	/* Init doorbell. */
 	hw->db_valid_mask = RTE_LEN2MASK(hw->db_cnt, uint64_t);
 
-	intr_handle = &pci_dev->intr_handle;
+	intr_handle = pci_dev->intr_handle;
 	/* Register callback func to eal lib */
 	rte_intr_callback_register(intr_handle,
 				   ntb_dev_intr_handler, dev);

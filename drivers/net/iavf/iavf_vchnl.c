@@ -1685,9 +1685,9 @@ iavf_request_queues(struct rte_eth_dev *dev, uint16_t num)
 		/* disable interrupt to avoid the admin queue message to be read
 		 * before iavf_read_msg_from_pf.
 		 */
-		rte_intr_disable(&pci_dev->intr_handle);
+		rte_intr_disable(pci_dev->intr_handle);
 		err = iavf_execute_vf_cmd(adapter, &args);
-		rte_intr_enable(&pci_dev->intr_handle);
+		rte_intr_enable(pci_dev->intr_handle);
 	} else {
 		rte_eal_alarm_cancel(iavf_dev_alarm_handler, dev);
 		err = iavf_execute_vf_cmd(adapter, &args);

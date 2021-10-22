@@ -729,7 +729,7 @@ error:
 static int bnxt_start_nic(struct bnxt *bp)
 {
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(bp->eth_dev);
-	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
+	struct rte_intr_handle *intr_handle = pci_dev->intr_handle;
 	uint32_t intr_vector = 0;
 	uint32_t queue_id, base = BNXT_MISC_VEC_ID;
 	uint32_t vec = BNXT_MISC_VEC_ID;
@@ -846,26 +846,24 @@ skip_cosq_cfg:
 			return rc;
 	}
 
-	if (rte_intr_dp_is_en(intr_handle) && !intr_handle->intr_vec) {
-		intr_handle->intr_vec =
-			rte_zmalloc("intr_vec",
-				    bp->eth_dev->data->nb_rx_queues *
-				    sizeof(int), 0);
-		if (intr_handle->intr_vec == NULL) {
+	if (rte_intr_dp_is_en(intr_handle)) {
+		if (rte_intr_vec_list_alloc(intr_handle, "intr_vec",
+					bp->eth_dev->data->nb_rx_queues)) {
 			PMD_DRV_LOG(ERR, "Failed to allocate %d rx_queues"
 				" intr_vec", bp->eth_dev->data->nb_rx_queues);
 			rc = -ENOMEM;
 			goto err_out;
 		}
-		PMD_DRV_LOG(DEBUG, "intr_handle->intr_vec = %p "
-			"intr_handle->nb_efd = %d intr_handle->max_intr = %d\n",
-			 intr_handle->intr_vec, intr_handle->nb_efd,
-			intr_handle->max_intr);
+		PMD_DRV_LOG(DEBUG, "intr_handle->nb_efd = %d "
+			    "intr_handle->max_intr = %d\n",
+			    rte_intr_nb_efd_get(intr_handle),
+			    rte_intr_max_intr_get(intr_handle));
 		for (queue_id = 0; queue_id < bp->eth_dev->data->nb_rx_queues;
 		     queue_id++) {
-			intr_handle->intr_vec[queue_id] =
-							vec + BNXT_RX_VEC_START;
-			if (vec < base + intr_handle->nb_efd - 1)
+			rte_intr_vec_list_index_set(intr_handle,
+					queue_id, vec + BNXT_RX_VEC_START);
+			if (vec < base + rte_intr_nb_efd_get(intr_handle)
+			    - 1)
 				vec++;
 		}
 	}
@@ -1473,7 +1471,7 @@ static int bnxt_dev_stop(struct rte_eth_dev *eth_dev)
 {
 	struct bnxt *bp = eth_dev->data->dev_private;
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
-	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
+	struct rte_intr_handle *intr_handle = pci_dev->intr_handle;
 	struct rte_eth_link link;
 	int ret;
 
@@ -1515,10 +1513,7 @@ static int bnxt_dev_stop(struct rte_eth_dev *eth_dev)
 
 	/* Clean queue intr-vector mapping */
 	rte_intr_efd_disable(intr_handle);
-	if (intr_handle->intr_vec != NULL) {
-		rte_free(intr_handle->intr_vec);
-		intr_handle->intr_vec = NULL;
-	}
+	rte_intr_vec_list_free(intr_handle);
 
 	bnxt_hwrm_port_clr_stats(bp);
 	bnxt_free_tx_mbufs(bp);

@@ -645,7 +645,7 @@ int rte_pci_read_config(const struct rte_pci_device *device,
 		void *buf, size_t len, off_t offset)
 {
 	char devname[RTE_DEV_NAME_MAX_LEN] = "";
-	const struct rte_intr_handle *intr_handle = &device->intr_handle;
+	const struct rte_intr_handle *intr_handle = device->intr_handle;
 
 	switch (device->kdrv) {
 	case RTE_PCI_KDRV_IGB_UIO:
@@ -669,7 +669,7 @@ int rte_pci_write_config(const struct rte_pci_device *device,
 		const void *buf, size_t len, off_t offset)
 {
 	char devname[RTE_DEV_NAME_MAX_LEN] = "";
-	const struct rte_intr_handle *intr_handle = &device->intr_handle;
+	const struct rte_intr_handle *intr_handle = device->intr_handle;
 
 	switch (device->kdrv) {
 	case RTE_PCI_KDRV_IGB_UIO:

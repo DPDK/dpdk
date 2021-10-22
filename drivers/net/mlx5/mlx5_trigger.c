@@ -1183,7 +1183,7 @@ mlx5_dev_start(struct rte_eth_dev *dev)
 	dev->rx_pkt_burst = mlx5_select_rx_function(dev);
 	/* Enable datapath on secondary process. */
 	mlx5_mp_os_req_start_rxtx(dev);
-	if (priv->sh->intr_handle.fd >= 0) {
+	if (rte_intr_fd_get(priv->sh->intr_handle) >= 0) {
 		priv->sh->port[priv->dev_port - 1].ih_port_id =
 					(uint32_t)dev->data->port_id;
 	} else {
@@ -1192,7 +1192,7 @@ mlx5_dev_start(struct rte_eth_dev *dev)
 		dev->data->dev_conf.intr_conf.lsc = 0;
 		dev->data->dev_conf.intr_conf.rmv = 0;
 	}
-	if (priv->sh->intr_handle_devx.fd >= 0)
+	if (rte_intr_fd_get(priv->sh->intr_handle_devx) >= 0)
 		priv->sh->port[priv->dev_port - 1].devx_ih_port_id =
 					(uint32_t)dev->data->port_id;
 	return 0;

@@ -26,11 +26,12 @@ static int
 irq_get_info(struct rte_intr_handle *intr_handle)
 {
 	struct vfio_irq_info irq = { .argsz = sizeof(irq) };
-	int rc;
+	int rc, vfio_dev_fd;
 
 	irq.index = VFIO_PCI_MSIX_IRQ_INDEX;
 
-	rc = ioctl(intr_handle->vfio_dev_fd, VFIO_DEVICE_GET_IRQ_INFO, &irq);
+	vfio_dev_fd = rte_intr_dev_fd_get(intr_handle);
+	rc = ioctl(vfio_dev_fd, VFIO_DEVICE_GET_IRQ_INFO, &irq);
 	if (rc < 0) {
 		otx2_err("Failed to get IRQ info rc=%d errno=%d", rc, errno);
 		return rc;
@@ -41,10 +42,13 @@ irq_get_info(struct rte_intr_handle *intr_handle)
 
 	if (irq.count > MAX_INTR_VEC_ID) {
 		otx2_err("HW max=%d > MAX_INTR_VEC_ID: %d",
-			 intr_handle->max_intr, MAX_INTR_VEC_ID);
-		intr_handle->max_intr = MAX_INTR_VEC_ID;
+			 rte_intr_max_intr_get(intr_handle),
+			 MAX_INTR_VEC_ID);
+		if (rte_intr_max_intr_set(intr_handle, MAX_INTR_VEC_ID))
+			return -1;
 	} else {
-		intr_handle->max_intr = irq.count;
+		if (rte_intr_max_intr_set(intr_handle, irq.count))
+			return -1;
 	}
 
 	return 0;
@@ -55,12 +59,12 @@ irq_config(struct rte_intr_handle *intr_handle, unsigned int vec)
 {
 	char irq_set_buf[MSIX_IRQ_SET_BUF_LEN];
 	struct vfio_irq_set *irq_set;
+	int len, rc, vfio_dev_fd;
 	int32_t *fd_ptr;
-	int len, rc;
 
-	if (vec > intr_handle->max_intr) {
+	if (vec > (uint32_t)rte_intr_max_intr_get(intr_handle)) {
 		otx2_err("vector=%d greater than max_intr=%d", vec,
-				intr_handle->max_intr);
+			 rte_intr_max_intr_get(intr_handle));
 		return -EINVAL;
 	}
 
@@ -77,9 +81,10 @@ irq_config(struct rte_intr_handle *intr_handle, unsigned int vec)
 
 	/* Use vec fd to set interrupt vectors */
 	fd_ptr = (int32_t *)&irq_set->data[0];
-	fd_ptr[0] = intr_handle->efds[vec];
+	fd_ptr[0] = rte_intr_efds_index_get(intr_handle, vec);
 
-	rc = ioctl(intr_handle->vfio_dev_fd, VFIO_DEVICE_SET_IRQS, irq_set);
+	vfio_dev_fd = rte_intr_dev_fd_get(intr_handle);
+	rc = ioctl(vfio_dev_fd, VFIO_DEVICE_SET_IRQS, irq_set);
 	if (rc)
 		otx2_err("Failed to set_irqs vector=0x%x rc=%d", vec, rc);
 
@@ -91,23 +96,24 @@ irq_init(struct rte_intr_handle *intr_handle)
 {
 	char irq_set_buf[MSIX_IRQ_SET_BUF_LEN];
 	struct vfio_irq_set *irq_set;
+	int len, rc, vfio_dev_fd;
 	int32_t *fd_ptr;
-	int len, rc;
 	uint32_t i;
 
-	if (intr_handle->max_intr > MAX_INTR_VEC_ID) {
+	if (rte_intr_max_intr_get(intr_handle) > MAX_INTR_VEC_ID) {
 		otx2_err("Max_intr=%d greater than MAX_INTR_VEC_ID=%d",
-				intr_handle->max_intr, MAX_INTR_VEC_ID);
+			 rte_intr_max_intr_get(intr_handle),
+			 MAX_INTR_VEC_ID);
 		return -ERANGE;
 	}
 
 	len = sizeof(struct vfio_irq_set) +
-		sizeof(int32_t) * intr_handle->max_intr;
+		sizeof(int32_t) * rte_intr_max_intr_get(intr_handle);
 
 	irq_set = (struct vfio_irq_set *)irq_set_buf;
 	irq_set->argsz = len;
 	irq_set->start = 0;
-	irq_set->count = intr_handle->max_intr;
+	irq_set->count = rte_intr_max_intr_get(intr_handle);
 	irq_set->flags = VFIO_IRQ_SET_DATA_EVENTFD |
 			VFIO_IRQ_SET_ACTION_TRIGGER;
 	irq_set->index = VFIO_PCI_MSIX_IRQ_INDEX;
@@ -116,7 +122,8 @@ irq_init(struct rte_intr_handle *intr_handle)
 	for (i = 0; i < irq_set->count; i++)
 		fd_ptr[i] = -1;
 
-	rc = ioctl(intr_handle->vfio_dev_fd, VFIO_DEVICE_SET_IRQS, irq_set);
+	vfio_dev_fd = rte_intr_dev_fd_get(intr_handle);
+	rc = ioctl(vfio_dev_fd, VFIO_DEVICE_SET_IRQS, irq_set);
 	if (rc)
 		otx2_err("Failed to set irqs vector rc=%d", rc);
 
@@ -131,7 +138,8 @@ int
 otx2_disable_irqs(struct rte_intr_handle *intr_handle)
 {
 	/* Clear max_intr to indicate re-init next time */
-	intr_handle->max_intr = 0;
+	if (rte_intr_max_intr_set(intr_handle, 0))
+		return -1;
 	return rte_intr_disable(intr_handle);
 }
 
@@ -143,42 +151,50 @@ int
 otx2_register_irq(struct rte_intr_handle *intr_handle,
 		  rte_intr_callback_fn cb, void *data, unsigned int vec)
 {
-	struct rte_intr_handle tmp_handle;
-	int rc;
+	struct rte_intr_handle *tmp_handle;
+	uint32_t nb_efd, tmp_nb_efd;
+	int rc, fd;
 
 	/* If no max_intr read from VFIO */
-	if (intr_handle->max_intr == 0) {
+	if (rte_intr_max_intr_get(intr_handle) == 0) {
 		irq_get_info(intr_handle);
 		irq_init(intr_handle);
 	}
 
-	if (vec > intr_handle->max_intr) {
+	if (vec > (uint32_t)rte_intr_max_intr_get(intr_handle)) {
 		otx2_err("Vector=%d greater than max_intr=%d", vec,
-				 intr_handle->max_intr);
+			rte_intr_max_intr_get(intr_handle));
 		return -EINVAL;
 	}
 
-	tmp_handle = *intr_handle;
+	tmp_handle = intr_handle;
 	/* Create new eventfd for interrupt vector */
-	tmp_handle.fd = eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
-	if (tmp_handle.fd == -1)
+	fd = eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
+	if (fd == -1)
 		return -ENODEV;
 
+	if (rte_intr_fd_set(tmp_handle, fd))
+		return errno;
+
 	/* Register vector interrupt callback */
-	rc = rte_intr_callback_register(&tmp_handle, cb, data);
+	rc = rte_intr_callback_register(tmp_handle, cb, data);
 	if (rc) {
 		otx2_err("Failed to register vector:0x%x irq callback.", vec);
 		return rc;
 	}
 
-	intr_handle->efds[vec] = tmp_handle.fd;
-	intr_handle->nb_efd = (vec > intr_handle->nb_efd) ?
-			vec : intr_handle->nb_efd;
-	if ((intr_handle->nb_efd + 1) > intr_handle->max_intr)
-		intr_handle->max_intr = intr_handle->nb_efd + 1;
+	rte_intr_efds_index_set(intr_handle, vec, fd);
+	nb_efd = (vec > (uint32_t)rte_intr_nb_efd_get(intr_handle)) ?
+		vec : (uint32_t)rte_intr_nb_efd_get(intr_handle);
+	rte_intr_nb_efd_set(intr_handle, nb_efd);
 
-	otx2_base_dbg("Enable vector:0x%x for vfio (efds: %d, max:%d)",
-		vec, intr_handle->nb_efd, intr_handle->max_intr);
+	tmp_nb_efd = rte_intr_nb_efd_get(intr_handle) + 1;
+	if (tmp_nb_efd > (uint32_t)rte_intr_max_intr_get(intr_handle))
+		rte_intr_max_intr_set(intr_handle, tmp_nb_efd);
+
+	otx2_base_dbg("Enable vector:0x%x for vfio (efds: %d, max:%d)", vec,
+		     rte_intr_nb_efd_get(intr_handle),
+		     rte_intr_max_intr_get(intr_handle));
 
 	/* Enable MSIX vectors to VFIO */
 	return irq_config(intr_handle, vec);
@@ -192,24 +208,27 @@ void
 otx2_unregister_irq(struct rte_intr_handle *intr_handle,
 		    rte_intr_callback_fn cb, void *data, unsigned int vec)
 {
-	struct rte_intr_handle tmp_handle;
+	struct rte_intr_handle *tmp_handle;
 	uint8_t retries = 5; /* 5 ms */
-	int rc;
+	int rc, fd;
 
-	if (vec > intr_handle->max_intr) {
+	if (vec > (uint32_t)rte_intr_max_intr_get(intr_handle)) {
 		otx2_err("Error unregistering MSI-X interrupts vec:%d > %d",
-			vec, intr_handle->max_intr);
+			 vec, rte_intr_max_intr_get(intr_handle));
 		return;
 	}
 
-	tmp_handle = *intr_handle;
-	tmp_handle.fd = intr_handle->efds[vec];
-	if (tmp_handle.fd == -1)
+	tmp_handle = intr_handle;
+	fd = rte_intr_efds_index_get(intr_handle, vec);
+	if (fd == -1)
+		return;
+
+	if (rte_intr_fd_set(tmp_handle, fd))
 		return;
 
 	do {
-		/* Un-register callback func from eal lib */
-		rc = rte_intr_callback_unregister(&tmp_handle, cb, data);
+		/* Un-register callback func from platform lib */
+		rc = rte_intr_callback_unregister(tmp_handle, cb, data);
 		/* Retry only if -EAGAIN */
 		if (rc != -EAGAIN)
 			break;
@@ -218,18 +237,18 @@ otx2_unregister_irq(struct rte_intr_handle *intr_handle,
 	} while (retries);
 
 	if (rc < 0) {
-		otx2_err("Error unregistering MSI-X intr vec %d cb, rc=%d",
-			 vec, rc);
+		otx2_err("Error unregistering MSI-X vec %d cb, rc=%d", vec, rc);
 		return;
 	}
 
-	otx2_base_dbg("Disable vector:0x%x for vfio (efds: %d, max:%d)",
-			vec, intr_handle->nb_efd, intr_handle->max_intr);
+	otx2_base_dbg("Disable vector:0x%x for vfio (efds: %d, max:%d)", vec,
+		     rte_intr_nb_efd_get(intr_handle),
+		     rte_intr_max_intr_get(intr_handle));
 
-	if (intr_handle->efds[vec] != -1)
-		close(intr_handle->efds[vec]);
+	if (rte_intr_efds_index_get(intr_handle, vec) != -1)
+		close(rte_intr_efds_index_get(intr_handle, vec));
 	/* Disable MSIX vectors from VFIO */
-	intr_handle->efds[vec] = -1;
+	rte_intr_efds_index_set(intr_handle, vec, -1);
 	irq_config(intr_handle, vec);
 }
 

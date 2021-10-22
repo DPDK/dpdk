@@ -313,7 +313,7 @@ axgbe_dev_interrupt_handler(void *param)
 		}
 	}
 	/* Unmask interrupts since disabled after generation */
-	rte_intr_ack(&pdata->pci_dev->intr_handle);
+	rte_intr_ack(pdata->pci_dev->intr_handle);
 }
 
 /*
@@ -374,7 +374,7 @@ axgbe_dev_start(struct rte_eth_dev *dev)
 	}
 
 	/* enable uio/vfio intr/eventfd mapping */
-	rte_intr_enable(&pdata->pci_dev->intr_handle);
+	rte_intr_enable(pdata->pci_dev->intr_handle);
 
 	/* phy start*/
 	pdata->phy_if.phy_start(pdata);
@@ -406,7 +406,7 @@ axgbe_dev_stop(struct rte_eth_dev *dev)
 
 	PMD_INIT_FUNC_TRACE();
 
-	rte_intr_disable(&pdata->pci_dev->intr_handle);
+	rte_intr_disable(pdata->pci_dev->intr_handle);
 
 	if (rte_bit_relaxed_get32(AXGBE_STOPPED, &pdata->dev_state))
 		return 0;
@@ -2311,7 +2311,7 @@ eth_axgbe_dev_init(struct rte_eth_dev *eth_dev)
 		return ret;
 	}
 
-	rte_intr_callback_register(&pci_dev->intr_handle,
+	rte_intr_callback_register(pci_dev->intr_handle,
 				   axgbe_dev_interrupt_handler,
 				   (void *)eth_dev);
 	PMD_INIT_LOG(DEBUG, "port %d vendorID=0x%x deviceID=0x%x",
@@ -2335,8 +2335,8 @@ axgbe_dev_close(struct rte_eth_dev *eth_dev)
 	axgbe_dev_clear_queues(eth_dev);
 
 	/* disable uio intr before callback unregister */
-	rte_intr_disable(&pci_dev->intr_handle);
-	rte_intr_callback_unregister(&pci_dev->intr_handle,
+	rte_intr_disable(pci_dev->intr_handle);
+	rte_intr_callback_unregister(pci_dev->intr_handle,
 				     axgbe_dev_interrupt_handler,
 				     (void *)eth_dev);
 

@@ -129,7 +129,7 @@ eth_ngbe_dev_init(struct rte_eth_dev *eth_dev, void *init_params __rte_unused)
 {
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
 	struct ngbe_hw *hw = ngbe_dev_hw(eth_dev);
-	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
+	struct rte_intr_handle *intr_handle = pci_dev->intr_handle;
 	const struct rte_memzone *mz;
 	uint32_t ctrl_ext;
 	int err;
@@ -334,7 +334,7 @@ ngbe_dev_start(struct rte_eth_dev *dev)
 {
 	struct ngbe_hw *hw = ngbe_dev_hw(dev);
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
-	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
+	struct rte_intr_handle *intr_handle = pci_dev->intr_handle;
 	uint32_t intr_vector = 0;
 	int err;
 	bool link_up = false, negotiate = false;
@@ -372,11 +372,9 @@ ngbe_dev_start(struct rte_eth_dev *dev)
 			return -1;
 	}
 
-	if (rte_intr_dp_is_en(intr_handle) && intr_handle->intr_vec == NULL) {
-		intr_handle->intr_vec =
-			rte_zmalloc("intr_vec",
-				    dev->data->nb_rx_queues * sizeof(int), 0);
-		if (intr_handle->intr_vec == NULL) {
+	if (rte_intr_dp_is_en(intr_handle)) {
+		if (rte_intr_vec_list_alloc(intr_handle, "intr_vec",
+						   dev->data->nb_rx_queues)) {
 			PMD_INIT_LOG(ERR,
 				     "Failed to allocate %d rx_queues intr_vec",
 				     dev->data->nb_rx_queues);
@@ -503,7 +501,7 @@ ngbe_dev_stop(struct rte_eth_dev *dev)
 	struct rte_eth_link link;
 	struct ngbe_hw *hw = ngbe_dev_hw(dev);
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
-	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
+	struct rte_intr_handle *intr_handle = pci_dev->intr_handle;
 
 	if (hw->adapter_stopped)
 		return 0;
@@ -540,10 +538,7 @@ ngbe_dev_stop(struct rte_eth_dev *dev)
 
 	/* Clean datapath event and queue/vec mapping */
 	rte_intr_efd_disable(intr_handle);
-	if (intr_handle->intr_vec != NULL) {
-		rte_free(intr_handle->intr_vec);
-		intr_handle->intr_vec = NULL;
-	}
+	rte_intr_vec_list_free(intr_handle);
 
 	hw->adapter_stopped = true;
 	dev->data->dev_started = 0;
@@ -559,7 +554,7 @@ ngbe_dev_close(struct rte_eth_dev *dev)
 {
 	struct ngbe_hw *hw = ngbe_dev_hw(dev);
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
-	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
+	struct rte_intr_handle *intr_handle = pci_dev->intr_handle;
 	int retries = 0;
 	int ret;
 
@@ -1093,7 +1088,7 @@ static void
 ngbe_configure_msix(struct rte_eth_dev *dev)
 {
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
-	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
+	struct rte_intr_handle *intr_handle = pci_dev->intr_handle;
 	struct ngbe_hw *hw = ngbe_dev_hw(dev);
 	uint32_t queue_id, base = NGBE_MISC_VEC_ID;
 	uint32_t vec = NGBE_MISC_VEC_ID;
@@ -1128,8 +1123,10 @@ ngbe_configure_msix(struct rte_eth_dev *dev)
 			queue_id++) {
 			/* by default, 1:1 mapping */
 			ngbe_set_ivar_map(hw, 0, queue_id, vec);
-			intr_handle->intr_vec[queue_id] = vec;
-			if (vec < base + intr_handle->nb_efd - 1)
+			rte_intr_vec_list_index_set(intr_handle,
+							   queue_id, vec);
+			if (vec < base + rte_intr_nb_efd_get(intr_handle)
+			    - 1)
 				vec++;
 		}
 

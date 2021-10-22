@@ -307,24 +307,21 @@ nfp_configure_rx_interrupt(struct rte_eth_dev *dev,
 	struct nfp_net_hw *hw;
 	int i;
 
-	if (!intr_handle->intr_vec) {
-		intr_handle->intr_vec =
-			rte_zmalloc("intr_vec",
-				    dev->data->nb_rx_queues * sizeof(int), 0);
-		if (!intr_handle->intr_vec) {
-			PMD_INIT_LOG(ERR, "Failed to allocate %d rx_queues"
-				     " intr_vec", dev->data->nb_rx_queues);
-			return -ENOMEM;
-		}
+	if (rte_intr_vec_list_alloc(intr_handle, "intr_vec",
+				    dev->data->nb_rx_queues)) {
+		PMD_INIT_LOG(ERR, "Failed to allocate %d rx_queues"
+			     " intr_vec", dev->data->nb_rx_queues);
+		return -ENOMEM;
 	}
 
 	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
-	if (intr_handle->type == RTE_INTR_HANDLE_UIO) {
+	if (rte_intr_type_get(intr_handle) == RTE_INTR_HANDLE_UIO) {
 		PMD_INIT_LOG(INFO, "VF: enabling RX interrupt with UIO");
 		/* UIO just supports one queue and no LSC*/
 		nn_cfg_writeb(hw, NFP_NET_CFG_RXR_VEC(0), 0);
-		intr_handle->intr_vec[0] = 0;
+		if (rte_intr_vec_list_index_set(intr_handle, 0, 0))
+			return -1;
 	} else {
 		PMD_INIT_LOG(INFO, "VF: enabling RX interrupt with VFIO");
 		for (i = 0; i < dev->data->nb_rx_queues; i++) {
@@ -333,9 +330,12 @@ nfp_configure_rx_interrupt(struct rte_eth_dev *dev,
 			 * efd interrupts
 			*/
 			nn_cfg_writeb(hw, NFP_NET_CFG_RXR_VEC(i), i + 1);
-			intr_handle->intr_vec[i] = i + 1;
+			if (rte_intr_vec_list_index_set(intr_handle, i,
+							       i + 1))
+				return -1;
 			PMD_INIT_LOG(DEBUG, "intr_vec[%d]= %d", i,
-					    intr_handle->intr_vec[i]);
+				rte_intr_vec_list_index_get(intr_handle,
+								   i));
 		}
 	}
 
@@ -804,7 +804,8 @@ nfp_rx_queue_intr_enable(struct rte_eth_dev *dev, uint16_t queue_id)
 	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 
-	if (pci_dev->intr_handle.type != RTE_INTR_HANDLE_UIO)
+	if (rte_intr_type_get(pci_dev->intr_handle) !=
+							RTE_INTR_HANDLE_UIO)
 		base = 1;
 
 	/* Make sure all updates are written before un-masking */
@@ -824,7 +825,8 @@ nfp_rx_queue_intr_disable(struct rte_eth_dev *dev, uint16_t queue_id)
 	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 
-	if (pci_dev->intr_handle.type != RTE_INTR_HANDLE_UIO)
+	if (rte_intr_type_get(pci_dev->intr_handle) !=
+							RTE_INTR_HANDLE_UIO)
 		base = 1;
 
 	/* Make sure all updates are written before un-masking */
@@ -874,7 +876,7 @@ nfp_net_irq_unmask(struct rte_eth_dev *dev)
 	if (hw->ctrl & NFP_NET_CFG_CTRL_MSIXAUTO) {
 		/* If MSI-X auto-masking is used, clear the entry */
 		rte_wmb();
-		rte_intr_ack(&pci_dev->intr_handle);
+		rte_intr_ack(pci_dev->intr_handle);
 	} else {
 		/* Make sure all updates are written before un-masking */
 		rte_wmb();

@@ -36,7 +36,7 @@ otx2_cpt_lf_err_intr_unregister(const struct rte_cryptodev *dev,
 				uint16_t msix_off, uintptr_t base)
 {
 	struct rte_pci_device *pci_dev = RTE_DEV_TO_PCI(dev->device);
-	struct rte_intr_handle *handle = &pci_dev->intr_handle;
+	struct rte_intr_handle *handle = pci_dev->intr_handle;
 
 	/* Disable error interrupts */
 	otx2_write64(~0ull, base + OTX2_CPT_LF_MISC_INT_ENA_W1C);
@@ -65,7 +65,7 @@ otx2_cpt_lf_err_intr_register(const struct rte_cryptodev *dev,
 			     uint16_t msix_off, uintptr_t base)
 {
 	struct rte_pci_device *pci_dev = RTE_DEV_TO_PCI(dev->device);
-	struct rte_intr_handle *handle = &pci_dev->intr_handle;
+	struct rte_intr_handle *handle = pci_dev->intr_handle;
 	int ret;
 
 	/* Disable error interrupts */

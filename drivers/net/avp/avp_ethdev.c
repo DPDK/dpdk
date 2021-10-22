@@ -711,7 +711,7 @@ avp_dev_interrupt_handler(void *data)
 			    status);
 
 	/* re-enable UIO interrupt handling */
-	ret = rte_intr_ack(&pci_dev->intr_handle);
+	ret = rte_intr_ack(pci_dev->intr_handle);
 	if (ret < 0) {
 		PMD_DRV_LOG(ERR, "Failed to re-enable UIO interrupts, ret=%d\n",
 			    ret);
@@ -730,7 +730,7 @@ avp_dev_enable_interrupts(struct rte_eth_dev *eth_dev)
 		return -EINVAL;
 
 	/* enable UIO interrupt handling */
-	ret = rte_intr_enable(&pci_dev->intr_handle);
+	ret = rte_intr_enable(pci_dev->intr_handle);
 	if (ret < 0) {
 		PMD_DRV_LOG(ERR, "Failed to enable UIO interrupts, ret=%d\n",
 			    ret);
@@ -759,7 +759,7 @@ avp_dev_disable_interrupts(struct rte_eth_dev *eth_dev)
 		    RTE_PTR_ADD(registers, RTE_AVP_INTERRUPT_MASK_OFFSET));
 
 	/* enable UIO interrupt handling */
-	ret = rte_intr_disable(&pci_dev->intr_handle);
+	ret = rte_intr_disable(pci_dev->intr_handle);
 	if (ret < 0) {
 		PMD_DRV_LOG(ERR, "Failed to disable UIO interrupts, ret=%d\n",
 			    ret);
@@ -776,7 +776,7 @@ avp_dev_setup_interrupts(struct rte_eth_dev *eth_dev)
 	int ret;
 
 	/* register a callback handler with UIO for interrupt notifications */
-	ret = rte_intr_callback_register(&pci_dev->intr_handle,
+	ret = rte_intr_callback_register(pci_dev->intr_handle,
 					 avp_dev_interrupt_handler,
 					 (void *)eth_dev);
 	if (ret < 0) {

@@ -1569,17 +1569,17 @@ static int qede_dev_close(struct rte_eth_dev *eth_dev)
 
 	qdev->ops->common->slowpath_stop(edev);
 	qdev->ops->common->remove(edev);
-	rte_intr_disable(&pci_dev->intr_handle);
+	rte_intr_disable(pci_dev->intr_handle);
 
-	switch (pci_dev->intr_handle.type) {
+	switch (rte_intr_type_get(pci_dev->intr_handle)) {
 	case RTE_INTR_HANDLE_UIO_INTX:
 	case RTE_INTR_HANDLE_VFIO_LEGACY:
-		rte_intr_callback_unregister(&pci_dev->intr_handle,
+		rte_intr_callback_unregister(pci_dev->intr_handle,
 					     qede_interrupt_handler_intx,
 					     (void *)eth_dev);
 		break;
 	default:
-		rte_intr_callback_unregister(&pci_dev->intr_handle,
+		rte_intr_callback_unregister(pci_dev->intr_handle,
 					   qede_interrupt_handler,
 					   (void *)eth_dev);
 	}
@@ -2554,22 +2554,22 @@ static int qede_common_dev_init(struct rte_eth_dev *eth_dev, bool is_vf)
 	}
 	qede_update_pf_params(edev);
 
-	switch (pci_dev->intr_handle.type) {
+	switch (rte_intr_type_get(pci_dev->intr_handle)) {
 	case RTE_INTR_HANDLE_UIO_INTX:
 	case RTE_INTR_HANDLE_VFIO_LEGACY:
 		int_mode = ECORE_INT_MODE_INTA;
-		rte_intr_callback_register(&pci_dev->intr_handle,
+		rte_intr_callback_register(pci_dev->intr_handle,
 					   qede_interrupt_handler_intx,
 					   (void *)eth_dev);
 		break;
 	default:
 		int_mode = ECORE_INT_MODE_MSIX;
-		rte_intr_callback_register(&pci_dev->intr_handle,
+		rte_intr_callback_register(pci_dev->intr_handle,
 					   qede_interrupt_handler,
 					   (void *)eth_dev);
 	}
 
-	if (rte_intr_enable(&pci_dev->intr_handle)) {
+	if (rte_intr_enable(pci_dev->intr_handle)) {
 		DP_ERR(edev, "rte_intr_enable() failed\n");
 		rc = -ENODEV;
 		goto err;
