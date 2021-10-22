@@ -394,11 +394,11 @@ struct rte_eth_thresh {
 /**@{@name Multi-queue mode
  * @see rte_eth_conf.rxmode.mq_mode.
  */
-#define RTE_ETH_MQ_RX_RSS_FLAG  0x1 /**< Enable RSS. @see rte_eth_rss_conf */
+#define RTE_ETH_MQ_RX_RSS_FLAG  RTE_BIT32(0) /**< Enable RSS. @see rte_eth_rss_conf */
 #define ETH_MQ_RX_RSS_FLAG      RTE_ETH_MQ_RX_RSS_FLAG
-#define RTE_ETH_MQ_RX_DCB_FLAG  0x2 /**< Enable DCB. */
+#define RTE_ETH_MQ_RX_DCB_FLAG  RTE_BIT32(1) /**< Enable DCB. */
 #define ETH_MQ_RX_DCB_FLAG      RTE_ETH_MQ_RX_DCB_FLAG
-#define RTE_ETH_MQ_RX_VMDQ_FLAG 0x4 /**< Enable VMDq. */
+#define RTE_ETH_MQ_RX_VMDQ_FLAG RTE_BIT32(2) /**< Enable VMDq. */
 #define ETH_MQ_RX_VMDQ_FLAG     RTE_ETH_MQ_RX_VMDQ_FLAG
 /**@}*/
 
@@ -942,9 +942,9 @@ rte_eth_rss_hf_refine(uint64_t rss_hf)
 /**@}*/
 
 /**@{@name DCB capabilities */
-#define RTE_ETH_DCB_PG_SUPPORT      0x00000001 /**< Priority Group(ETS) support. */
+#define RTE_ETH_DCB_PG_SUPPORT      RTE_BIT32(0) /**< Priority Group(ETS) support. */
 #define ETH_DCB_PG_SUPPORT          RTE_ETH_DCB_PG_SUPPORT
-#define RTE_ETH_DCB_PFC_SUPPORT     0x00000002 /**< Priority Flow Control support. */
+#define RTE_ETH_DCB_PFC_SUPPORT     RTE_BIT32(1) /**< Priority Flow Control support. */
 #define ETH_DCB_PFC_SUPPORT         RTE_ETH_DCB_PFC_SUPPORT
 /**@}*/
 
@@ -981,15 +981,20 @@ rte_eth_rss_hf_refine(uint64_t rss_hf)
 /**@{@name VMDq Rx mode
  * @see rte_eth_vmdq_rx_conf.rx_mode
  */
-#define RTE_ETH_VMDQ_ACCEPT_UNTAG      0x0001 /**< accept untagged packets. */
+/** Accept untagged packets. */
+#define RTE_ETH_VMDQ_ACCEPT_UNTAG      RTE_BIT32(0)
 #define ETH_VMDQ_ACCEPT_UNTAG          RTE_ETH_VMDQ_ACCEPT_UNTAG
-#define RTE_ETH_VMDQ_ACCEPT_HASH_MC    0x0002 /**< accept packets in multicast table . */
+/** Accept packets in multicast table. */
+#define RTE_ETH_VMDQ_ACCEPT_HASH_MC    RTE_BIT32(1)
 #define ETH_VMDQ_ACCEPT_HASH_MC        RTE_ETH_VMDQ_ACCEPT_HASH_MC
-#define RTE_ETH_VMDQ_ACCEPT_HASH_UC    0x0004 /**< accept packets in unicast table. */
+/** Accept packets in unicast table. */
+#define RTE_ETH_VMDQ_ACCEPT_HASH_UC    RTE_BIT32(2)
 #define ETH_VMDQ_ACCEPT_HASH_UC        RTE_ETH_VMDQ_ACCEPT_HASH_UC
-#define RTE_ETH_VMDQ_ACCEPT_BROADCAST  0x0008 /**< accept broadcast packets. */
+/** Accept broadcast packets. */
+#define RTE_ETH_VMDQ_ACCEPT_BROADCAST  RTE_BIT32(3)
 #define ETH_VMDQ_ACCEPT_BROADCAST      RTE_ETH_VMDQ_ACCEPT_BROADCAST
-#define RTE_ETH_VMDQ_ACCEPT_MULTICAST  0x0010 /**< multicast promiscuous. */
+/** Multicast promiscuous. */
+#define RTE_ETH_VMDQ_ACCEPT_MULTICAST  RTE_BIT32(4)
 #define ETH_VMDQ_ACCEPT_MULTICAST      RTE_ETH_VMDQ_ACCEPT_MULTICAST
 /**@}*/
 
@@ -1533,48 +1538,48 @@ struct rte_eth_conf {
 /**
  * Rx offload capabilities of a device.
  */
-#define RTE_ETH_RX_OFFLOAD_VLAN_STRIP       0x00000001
+#define RTE_ETH_RX_OFFLOAD_VLAN_STRIP       RTE_BIT64(0)
 #define DEV_RX_OFFLOAD_VLAN_STRIP           RTE_ETH_RX_OFFLOAD_VLAN_STRIP
-#define RTE_ETH_RX_OFFLOAD_IPV4_CKSUM       0x00000002
+#define RTE_ETH_RX_OFFLOAD_IPV4_CKSUM       RTE_BIT64(1)
 #define DEV_RX_OFFLOAD_IPV4_CKSUM           RTE_ETH_RX_OFFLOAD_IPV4_CKSUM
-#define RTE_ETH_RX_OFFLOAD_UDP_CKSUM        0x00000004
+#define RTE_ETH_RX_OFFLOAD_UDP_CKSUM        RTE_BIT64(2)
 #define DEV_RX_OFFLOAD_UDP_CKSUM            RTE_ETH_RX_OFFLOAD_UDP_CKSUM
-#define RTE_ETH_RX_OFFLOAD_TCP_CKSUM        0x00000008
+#define RTE_ETH_RX_OFFLOAD_TCP_CKSUM        RTE_BIT64(3)
 #define DEV_RX_OFFLOAD_TCP_CKSUM            RTE_ETH_RX_OFFLOAD_TCP_CKSUM
-#define RTE_ETH_RX_OFFLOAD_TCP_LRO          0x00000010
+#define RTE_ETH_RX_OFFLOAD_TCP_LRO          RTE_BIT64(4)
 #define DEV_RX_OFFLOAD_TCP_LRO              RTE_ETH_RX_OFFLOAD_TCP_LRO
-#define RTE_ETH_RX_OFFLOAD_QINQ_STRIP       0x00000020
+#define RTE_ETH_RX_OFFLOAD_QINQ_STRIP       RTE_BIT64(5)
 #define DEV_RX_OFFLOAD_QINQ_STRIP           RTE_ETH_RX_OFFLOAD_QINQ_STRIP
-#define RTE_ETH_RX_OFFLOAD_OUTER_IPV4_CKSUM 0x00000040
+#define RTE_ETH_RX_OFFLOAD_OUTER_IPV4_CKSUM RTE_BIT64(6)
 #define DEV_RX_OFFLOAD_OUTER_IPV4_CKSUM     RTE_ETH_RX_OFFLOAD_OUTER_IPV4_CKSUM
-#define RTE_ETH_RX_OFFLOAD_MACSEC_STRIP     0x00000080
+#define RTE_ETH_RX_OFFLOAD_MACSEC_STRIP     RTE_BIT64(7)
 #define DEV_RX_OFFLOAD_MACSEC_STRIP         RTE_ETH_RX_OFFLOAD_MACSEC_STRIP
-#define RTE_ETH_RX_OFFLOAD_HEADER_SPLIT     0x00000100
+#define RTE_ETH_RX_OFFLOAD_HEADER_SPLIT     RTE_BIT64(8)
 #define DEV_RX_OFFLOAD_HEADER_SPLIT         RTE_ETH_RX_OFFLOAD_HEADER_SPLIT
-#define RTE_ETH_RX_OFFLOAD_VLAN_FILTER      0x00000200
+#define RTE_ETH_RX_OFFLOAD_VLAN_FILTER      RTE_BIT64(9)
 #define DEV_RX_OFFLOAD_VLAN_FILTER          RTE_ETH_RX_OFFLOAD_VLAN_FILTER
-#define RTE_ETH_RX_OFFLOAD_VLAN_EXTEND      0x00000400
+#define RTE_ETH_RX_OFFLOAD_VLAN_EXTEND      RTE_BIT64(10)
 #define DEV_RX_OFFLOAD_VLAN_EXTEND          RTE_ETH_RX_OFFLOAD_VLAN_EXTEND
-#define RTE_ETH_RX_OFFLOAD_SCATTER          0x00002000
+#define RTE_ETH_RX_OFFLOAD_SCATTER          RTE_BIT64(13)
 #define DEV_RX_OFFLOAD_SCATTER              RTE_ETH_RX_OFFLOAD_SCATTER
 /**
  * Timestamp is set by the driver in RTE_MBUF_DYNFIELD_TIMESTAMP_NAME
  * and RTE_MBUF_DYNFLAG_RX_TIMESTAMP_NAME is set in ol_flags.
  * The mbuf field and flag are registered when the offload is configured.
  */
-#define RTE_ETH_RX_OFFLOAD_TIMESTAMP        0x00004000
+#define RTE_ETH_RX_OFFLOAD_TIMESTAMP        RTE_BIT64(14)
 #define DEV_RX_OFFLOAD_TIMESTAMP            RTE_ETH_RX_OFFLOAD_TIMESTAMP
-#define RTE_ETH_RX_OFFLOAD_SECURITY         0x00008000
+#define RTE_ETH_RX_OFFLOAD_SECURITY         RTE_BIT64(15)
 #define DEV_RX_OFFLOAD_SECURITY             RTE_ETH_RX_OFFLOAD_SECURITY
-#define RTE_ETH_RX_OFFLOAD_KEEP_CRC         0x00010000
+#define RTE_ETH_RX_OFFLOAD_KEEP_CRC         RTE_BIT64(16)
 #define DEV_RX_OFFLOAD_KEEP_CRC             RTE_ETH_RX_OFFLOAD_KEEP_CRC
-#define RTE_ETH_RX_OFFLOAD_SCTP_CKSUM       0x00020000
+#define RTE_ETH_RX_OFFLOAD_SCTP_CKSUM       RTE_BIT64(17)
 #define DEV_RX_OFFLOAD_SCTP_CKSUM           RTE_ETH_RX_OFFLOAD_SCTP_CKSUM
-#define RTE_ETH_RX_OFFLOAD_OUTER_UDP_CKSUM  0x00040000
+#define RTE_ETH_RX_OFFLOAD_OUTER_UDP_CKSUM  RTE_BIT64(18)
 #define DEV_RX_OFFLOAD_OUTER_UDP_CKSUM      RTE_ETH_RX_OFFLOAD_OUTER_UDP_CKSUM
-#define RTE_ETH_RX_OFFLOAD_RSS_HASH         0x00080000
+#define RTE_ETH_RX_OFFLOAD_RSS_HASH         RTE_BIT64(19)
 #define DEV_RX_OFFLOAD_RSS_HASH             RTE_ETH_RX_OFFLOAD_RSS_HASH
-#define RTE_ETH_RX_OFFLOAD_BUFFER_SPLIT     0x00100000
+#define RTE_ETH_RX_OFFLOAD_BUFFER_SPLIT     RTE_BIT64(20)
 
 #define RTE_ETH_RX_OFFLOAD_CHECKSUM (RTE_ETH_RX_OFFLOAD_IPV4_CKSUM | \
 				 RTE_ETH_RX_OFFLOAD_UDP_CKSUM | \
@@ -1594,75 +1599,75 @@ struct rte_eth_conf {
 /**
  * Tx offload capabilities of a device.
  */
-#define RTE_ETH_TX_OFFLOAD_VLAN_INSERT      0x00000001
+#define RTE_ETH_TX_OFFLOAD_VLAN_INSERT      RTE_BIT64(0)
 #define DEV_TX_OFFLOAD_VLAN_INSERT          RTE_ETH_TX_OFFLOAD_VLAN_INSERT
-#define RTE_ETH_TX_OFFLOAD_IPV4_CKSUM       0x00000002
+#define RTE_ETH_TX_OFFLOAD_IPV4_CKSUM       RTE_BIT64(1)
 #define DEV_TX_OFFLOAD_IPV4_CKSUM           RTE_ETH_TX_OFFLOAD_IPV4_CKSUM
-#define RTE_ETH_TX_OFFLOAD_UDP_CKSUM        0x00000004
+#define RTE_ETH_TX_OFFLOAD_UDP_CKSUM        RTE_BIT64(2)
 #define DEV_TX_OFFLOAD_UDP_CKSUM            RTE_ETH_TX_OFFLOAD_UDP_CKSUM
-#define RTE_ETH_TX_OFFLOAD_TCP_CKSUM        0x00000008
+#define RTE_ETH_TX_OFFLOAD_TCP_CKSUM        RTE_BIT64(3)
 #define DEV_TX_OFFLOAD_TCP_CKSUM            RTE_ETH_TX_OFFLOAD_TCP_CKSUM
-#define RTE_ETH_TX_OFFLOAD_SCTP_CKSUM       0x00000010
+#define RTE_ETH_TX_OFFLOAD_SCTP_CKSUM       RTE_BIT64(4)
 #define DEV_TX_OFFLOAD_SCTP_CKSUM           RTE_ETH_TX_OFFLOAD_SCTP_CKSUM
-#define RTE_ETH_TX_OFFLOAD_TCP_TSO          0x00000020
+#define RTE_ETH_TX_OFFLOAD_TCP_TSO          RTE_BIT64(5)
 #define DEV_TX_OFFLOAD_TCP_TSO              RTE_ETH_TX_OFFLOAD_TCP_TSO
-#define RTE_ETH_TX_OFFLOAD_UDP_TSO          0x00000040
+#define RTE_ETH_TX_OFFLOAD_UDP_TSO          RTE_BIT64(6)
 #define DEV_TX_OFFLOAD_UDP_TSO              RTE_ETH_TX_OFFLOAD_UDP_TSO
-#define RTE_ETH_TX_OFFLOAD_OUTER_IPV4_CKSUM 0x00000080 /**< Used for tunneling packet. */
+#define RTE_ETH_TX_OFFLOAD_OUTER_IPV4_CKSUM RTE_BIT64(7)  /**< Used for tunneling packet. */
 #define DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM     RTE_ETH_TX_OFFLOAD_OUTER_IPV4_CKSUM
-#define RTE_ETH_TX_OFFLOAD_QINQ_INSERT      0x00000100
+#define RTE_ETH_TX_OFFLOAD_QINQ_INSERT      RTE_BIT64(8)
 #define DEV_TX_OFFLOAD_QINQ_INSERT          RTE_ETH_TX_OFFLOAD_QINQ_INSERT
-#define RTE_ETH_TX_OFFLOAD_VXLAN_TNL_TSO    0x00000200    /**< Used for tunneling packet. */
+#define RTE_ETH_TX_OFFLOAD_VXLAN_TNL_TSO    RTE_BIT64(9)  /**< Used for tunneling packet. */
 #define DEV_TX_OFFLOAD_VXLAN_TNL_TSO        RTE_ETH_TX_OFFLOAD_VXLAN_TNL_TSO
-#define RTE_ETH_TX_OFFLOAD_GRE_TNL_TSO      0x00000400    /**< Used for tunneling packet. */
+#define RTE_ETH_TX_OFFLOAD_GRE_TNL_TSO      RTE_BIT64(10) /**< Used for tunneling packet. */
 #define DEV_TX_OFFLOAD_GRE_TNL_TSO          RTE_ETH_TX_OFFLOAD_GRE_TNL_TSO
-#define RTE_ETH_TX_OFFLOAD_IPIP_TNL_TSO     0x00000800    /**< Used for tunneling packet. */
+#define RTE_ETH_TX_OFFLOAD_IPIP_TNL_TSO     RTE_BIT64(11) /**< Used for tunneling packet. */
 #define DEV_TX_OFFLOAD_IPIP_TNL_TSO         RTE_ETH_TX_OFFLOAD_IPIP_TNL_TSO
-#define RTE_ETH_TX_OFFLOAD_GENEVE_TNL_TSO   0x00001000    /**< Used for tunneling packet. */
+#define RTE_ETH_TX_OFFLOAD_GENEVE_TNL_TSO   RTE_BIT64(12) /**< Used for tunneling packet. */
 #define DEV_TX_OFFLOAD_GENEVE_TNL_TSO       RTE_ETH_TX_OFFLOAD_GENEVE_TNL_TSO
-#define RTE_ETH_TX_OFFLOAD_MACSEC_INSERT    0x00002000
+#define RTE_ETH_TX_OFFLOAD_MACSEC_INSERT    RTE_BIT64(13)
 #define DEV_TX_OFFLOAD_MACSEC_INSERT        RTE_ETH_TX_OFFLOAD_MACSEC_INSERT
 /**
  * Multiple threads can invoke rte_eth_tx_burst() concurrently on the same
  * Tx queue without SW lock.
  */
-#define RTE_ETH_TX_OFFLOAD_MT_LOCKFREE      0x00004000
+#define RTE_ETH_TX_OFFLOAD_MT_LOCKFREE      RTE_BIT64(14)
 #define DEV_TX_OFFLOAD_MT_LOCKFREE          RTE_ETH_TX_OFFLOAD_MT_LOCKFREE
 /** Device supports multi segment send. */
-#define RTE_ETH_TX_OFFLOAD_MULTI_SEGS       0x00008000
+#define RTE_ETH_TX_OFFLOAD_MULTI_SEGS       RTE_BIT64(15)
 #define DEV_TX_OFFLOAD_MULTI_SEGS           RTE_ETH_TX_OFFLOAD_MULTI_SEGS
 /**
  * Device supports optimization for fast release of mbufs.
  * When set application must guarantee that per-queue all mbufs comes from
  * the same mempool and has refcnt = 1.
  */
-#define RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE   0x00010000
+#define RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE   RTE_BIT64(16)
 #define DEV_TX_OFFLOAD_MBUF_FAST_FREE       RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE
-#define RTE_ETH_TX_OFFLOAD_SECURITY         0x00020000
+#define RTE_ETH_TX_OFFLOAD_SECURITY         RTE_BIT64(17)
 #define DEV_TX_OFFLOAD_SECURITY             RTE_ETH_TX_OFFLOAD_SECURITY
 /**
  * Device supports generic UDP tunneled packet TSO.
  * Application must set PKT_TX_TUNNEL_UDP and other mbuf fields required
  * for tunnel TSO.
  */
-#define RTE_ETH_TX_OFFLOAD_UDP_TNL_TSO      0x00040000
+#define RTE_ETH_TX_OFFLOAD_UDP_TNL_TSO      RTE_BIT64(18)
 #define DEV_TX_OFFLOAD_UDP_TNL_TSO          RTE_ETH_TX_OFFLOAD_UDP_TNL_TSO
 /**
  * Device supports generic IP tunneled packet TSO.
  * Application must set PKT_TX_TUNNEL_IP and other mbuf fields required
  * for tunnel TSO.
  */
-#define RTE_ETH_TX_OFFLOAD_IP_TNL_TSO       0x00080000
+#define RTE_ETH_TX_OFFLOAD_IP_TNL_TSO       RTE_BIT64(19)
 #define DEV_TX_OFFLOAD_IP_TNL_TSO           RTE_ETH_TX_OFFLOAD_IP_TNL_TSO
 /** Device supports outer UDP checksum */
-#define RTE_ETH_TX_OFFLOAD_OUTER_UDP_CKSUM  0x00100000
+#define RTE_ETH_TX_OFFLOAD_OUTER_UDP_CKSUM  RTE_BIT64(20)
 #define DEV_TX_OFFLOAD_OUTER_UDP_CKSUM      RTE_ETH_TX_OFFLOAD_OUTER_UDP_CKSUM
 /**
  * Device sends on time read from RTE_MBUF_DYNFIELD_TIMESTAMP_NAME
  * if RTE_MBUF_DYNFLAG_TX_TIMESTAMP_NAME is set in ol_flags.
  * The mbuf field and flag are registered when the offload is configured.
  */
-#define RTE_ETH_TX_OFFLOAD_SEND_ON_TIMESTAMP 0x00200000
+#define RTE_ETH_TX_OFFLOAD_SEND_ON_TIMESTAMP RTE_BIT64(21)
 #define DEV_TX_OFFLOAD_SEND_ON_TIMESTAMP     RTE_ETH_TX_OFFLOAD_SEND_ON_TIMESTAMP
 /*
  * If new Tx offload capabilities are defined, they also must be
@@ -1673,9 +1678,9 @@ struct rte_eth_conf {
  * Non-offload capabilities reported in rte_eth_dev_info.dev_capa.
  */
 /** Device supports Rx queue setup after device started. */
-#define RTE_ETH_DEV_CAPA_RUNTIME_RX_QUEUE_SETUP 0x00000001
+#define RTE_ETH_DEV_CAPA_RUNTIME_RX_QUEUE_SETUP RTE_BIT64(0)
 /** Device supports Tx queue setup after device started. */
-#define RTE_ETH_DEV_CAPA_RUNTIME_TX_QUEUE_SETUP 0x00000002
+#define RTE_ETH_DEV_CAPA_RUNTIME_TX_QUEUE_SETUP RTE_BIT64(1)
 /**
  * Device supports shared Rx queue among ports within Rx domain and
  * switch domain. Mbufs are consumed by shared Rx queue instead of
@@ -2074,22 +2079,22 @@ struct rte_eth_dev_owner {
  * and reported in rte_eth_dev_info.dev_flags.
  */
 /** PMD supports thread-safe flow operations */
-#define RTE_ETH_DEV_FLOW_OPS_THREAD_SAFE  0x0001
+#define RTE_ETH_DEV_FLOW_OPS_THREAD_SAFE  RTE_BIT32(0)
 /** Device supports link state interrupt */
-#define RTE_ETH_DEV_INTR_LSC     0x0002
+#define RTE_ETH_DEV_INTR_LSC              RTE_BIT32(1)
 /** Device is a bonded slave */
-#define RTE_ETH_DEV_BONDED_SLAVE 0x0004
+#define RTE_ETH_DEV_BONDED_SLAVE          RTE_BIT32(2)
 /** Device supports device removal interrupt */
-#define RTE_ETH_DEV_INTR_RMV     0x0008
+#define RTE_ETH_DEV_INTR_RMV              RTE_BIT32(3)
 /** Device is port representor */
-#define RTE_ETH_DEV_REPRESENTOR  0x0010
+#define RTE_ETH_DEV_REPRESENTOR           RTE_BIT32(4)
 /** Device does not support MAC change after started */
-#define RTE_ETH_DEV_NOLIVE_MAC_ADDR  0x0020
+#define RTE_ETH_DEV_NOLIVE_MAC_ADDR       RTE_BIT32(5)
 /**
  * Queue xstats filled automatically by ethdev layer.
  * PMDs filling the queue xstats themselves should not set this flag
  */
-#define RTE_ETH_DEV_AUTOFILL_QUEUE_XSTATS 0x0040
+#define RTE_ETH_DEV_AUTOFILL_QUEUE_XSTATS RTE_BIT32(6)
 /**@}*/
 
 /**
