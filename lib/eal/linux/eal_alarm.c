@@ -54,22 +54,40 @@ struct alarm_entry {
 static LIST_HEAD(alarm_list, alarm_entry) alarm_list = LIST_HEAD_INITIALIZER();
 static rte_spinlock_t alarm_list_lk = RTE_SPINLOCK_INITIALIZER;
 
-static struct rte_intr_handle intr_handle = {.fd = -1 };
+static struct rte_intr_handle *intr_handle;
 static int handler_registered = 0;
 static void eal_alarm_callback(void *arg);
+
+void
+rte_eal_alarm_cleanup(void)
+{
+	rte_intr_instance_free(intr_handle);
+}
 
 int
 rte_eal_alarm_init(void)
 {
-	intr_handle.type = RTE_INTR_HANDLE_ALARM;
-	/* create a timerfd file descriptor */
-	intr_handle.fd = timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK);
-	if (intr_handle.fd == -1)
+
+	intr_handle = rte_intr_instance_alloc(RTE_INTR_INSTANCE_F_PRIVATE);
+	if (intr_handle == NULL) {
+		RTE_LOG(ERR, EAL, "Fail to allocate intr_handle\n");
+		goto error;
+	}
+
+	if (rte_intr_type_set(intr_handle, RTE_INTR_HANDLE_ALARM))
 		goto error;
 
+	/* create a timerfd file descriptor */
+	if (rte_intr_fd_set(intr_handle,
+			timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK)))
+		goto error;
+
+	if (rte_intr_fd_get(intr_handle) == -1)
+		goto error;
 	return 0;
 
 error:
+	rte_intr_instance_free(intr_handle);
 	rte_errno = errno;
 	return -1;
 }
@@ -109,7 +127,7 @@ eal_alarm_callback(void *arg __rte_unused)
 
 		atime.it_value.tv_sec -= now.tv_sec;
 		atime.it_value.tv_nsec -= now.tv_nsec;
-		timerfd_settime(intr_handle.fd, 0, &atime, NULL);
+		timerfd_settime(rte_intr_fd_get(intr_handle), 0, &atime, NULL);
 	}
 	rte_spinlock_unlock(&alarm_list_lk);
 }
@@ -140,7 +158,7 @@ rte_eal_alarm_set(uint64_t us, rte_eal_alarm_callback cb_fn, void *cb_arg)
 	rte_spinlock_lock(&alarm_list_lk);
 	if (!handler_registered) {
 		/* registration can fail, callback can be registered later */
-		if (rte_intr_callback_register(&intr_handle,
+		if (rte_intr_callback_register(intr_handle,
 				eal_alarm_callback, NULL) == 0)
 			handler_registered = 1;
 	}
@@ -170,7 +188,7 @@ rte_eal_alarm_set(uint64_t us, rte_eal_alarm_callback cb_fn, void *cb_arg)
 				.tv_nsec = (us % US_PER_S) * NS_PER_US,
 			},
 		};
-		ret |= timerfd_settime(intr_handle.fd, 0, &alarm_time, NULL);
+		ret |= timerfd_settime(rte_intr_fd_get(intr_handle), 0, &alarm_time, NULL);
 	}
 	rte_spinlock_unlock(&alarm_list_lk);
 

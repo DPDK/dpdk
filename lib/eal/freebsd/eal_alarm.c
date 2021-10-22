@@ -32,7 +32,6 @@
 
 struct alarm_entry {
 	LIST_ENTRY(alarm_entry) next;
-	struct rte_intr_handle handle;
 	struct timespec time;
 	rte_eal_alarm_callback cb_fn;
 	void *cb_arg;
@@ -43,22 +42,46 @@ struct alarm_entry {
 static LIST_HEAD(alarm_list, alarm_entry) alarm_list = LIST_HEAD_INITIALIZER();
 static rte_spinlock_t alarm_list_lk = RTE_SPINLOCK_INITIALIZER;
 
-static struct rte_intr_handle intr_handle = {.fd = -1 };
+static struct rte_intr_handle *intr_handle;
 static void eal_alarm_callback(void *arg);
+
+void
+rte_eal_alarm_cleanup(void)
+{
+	rte_intr_instance_free(intr_handle);
+}
 
 int
 rte_eal_alarm_init(void)
 {
-	intr_handle.type = RTE_INTR_HANDLE_ALARM;
+	int fd;
+
+	intr_handle = rte_intr_instance_alloc(RTE_INTR_INSTANCE_F_PRIVATE);
+	if (intr_handle == NULL) {
+		RTE_LOG(ERR, EAL, "Fail to allocate intr_handle\n");
+		goto error;
+	}
+
+	if (rte_intr_type_set(intr_handle, RTE_INTR_HANDLE_ALARM))
+		goto error;
+
+	if (rte_intr_fd_set(intr_handle, -1))
+		goto error;
 
 	/* on FreeBSD, timers don't use fd's, and their identifiers are stored
 	 * in separate namespace from fd's, so using any value is OK. however,
 	 * EAL interrupts handler expects fd's to be unique, so use an actual fd
 	 * to guarantee unique timer identifier.
 	 */
-	intr_handle.fd = open("/dev/zero", O_RDONLY);
+	fd = open("/dev/zero", O_RDONLY);
+
+	if (rte_intr_fd_set(intr_handle, fd))
+		goto error;
 
 	return 0;
+error:
+	rte_intr_instance_free(intr_handle);
+	return -1;
 }
 
 static inline int
@@ -118,7 +141,7 @@ unregister_current_callback(void)
 		ap = LIST_FIRST(&alarm_list);
 
 		do {
-			ret = rte_intr_callback_unregister(&intr_handle,
+			ret = rte_intr_callback_unregister(intr_handle,
 				eal_alarm_callback, &ap->time);
 		} while (ret == -EAGAIN);
 	}
@@ -136,7 +159,7 @@ register_first_callback(void)
 		ap = LIST_FIRST(&alarm_list);
 
 		/* register a new callback */
-		ret = rte_intr_callback_register(&intr_handle,
+		ret = rte_intr_callback_register(intr_handle,
 				eal_alarm_callback, &ap->time);
 	}
 	return ret;
