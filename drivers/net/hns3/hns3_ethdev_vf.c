@@ -205,25 +205,6 @@ hns3vf_remove_uc_mac_addr(struct hns3_hw *hw, struct rte_ether_addr *mac_addr)
 }
 
 static int
-hns3vf_add_mc_addr_common(struct hns3_hw *hw, struct rte_ether_addr *mac_addr)
-{
-	char mac_str[RTE_ETHER_ADDR_FMT_SIZE];
-	int ret;
-
-	if (hns3_find_duplicate_mc_addr(hw, mac_addr))
-		return -EINVAL;
-
-	ret = hns3vf_add_mc_mac_addr(hw, mac_addr);
-	if (ret) {
-		hns3_ether_format_addr(mac_str, RTE_ETHER_ADDR_FMT_SIZE,
-				      mac_addr);
-		hns3_err(hw, "failed to add mc mac addr(%s), ret = %d",
-			 mac_str, ret);
-	}
-	return ret;
-}
-
-static int
 hns3vf_add_mac_addr(struct rte_eth_dev *dev, struct rte_ether_addr *mac_addr,
 		    __rte_unused uint32_t idx,
 		    __rte_unused uint32_t pool)
@@ -243,10 +224,15 @@ hns3vf_add_mac_addr(struct rte_eth_dev *dev, struct rte_ether_addr *mac_addr,
 	 * using the rte_eth_dev_mac_addr_add API function to set MC mac address
 	 * may affect the specifications of UC mac addresses.
 	 */
-	if (rte_is_multicast_ether_addr(mac_addr))
-		ret = hns3vf_add_mc_addr_common(hw, mac_addr);
-	else
+	if (rte_is_multicast_ether_addr(mac_addr)) {
+		if (hns3_find_duplicate_mc_addr(hw, mac_addr)) {
+			rte_spinlock_unlock(&hw->lock);
+			return -EINVAL;
+		}
+		ret = hns3vf_add_mc_mac_addr(hw, mac_addr);
+	} else {
 		ret = hns3vf_add_uc_mac_addr(hw, mac_addr);
+	}
 
 	rte_spinlock_unlock(&hw->lock);
 	if (ret) {
