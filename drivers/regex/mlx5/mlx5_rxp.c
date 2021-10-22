@@ -17,7 +17,6 @@
 
 #include "mlx5_regex.h"
 #include "mlx5_regex_utils.h"
-#include "mlx5_rxp_csrs.h"
 #include "mlx5_rxp.h"
 
 #define MLX5_REGEX_MAX_MATCHES MLX5_RXP_MAX_MATCHES

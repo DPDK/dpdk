@@ -19,7 +19,6 @@
 
 #include "mlx5_regex.h"
 #include "mlx5_regex_utils.h"
-#include "mlx5_rxp_csrs.h"
 
 #define MLX5_REGEX_DRIVER_NAME regex_mlx5
 

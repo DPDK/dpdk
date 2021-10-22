@@ -22,7 +22,6 @@
 
 #include "mlx5_regex.h"
 #include "mlx5_regex_utils.h"
-#include "mlx5_rxp_csrs.h"
 #include "mlx5_rxp.h"
 
 #define MLX5_REGEX_NUM_WQE_PER_PAGE (4096/64)
