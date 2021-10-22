@@ -78,6 +78,7 @@ RTE_LOG_REGISTER_DEFAULT(af_xdp_logtype, NOTICE);
 #define ETH_AF_XDP_RX_BATCH_SIZE	XSK_RING_CONS__DEFAULT_NUM_DESCS
 #define ETH_AF_XDP_TX_BATCH_SIZE	XSK_RING_CONS__DEFAULT_NUM_DESCS
 
+#define ETH_AF_XDP_ETH_OVERHEAD		(RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN)
 
 struct xsk_umem_info {
 	struct xsk_umem *umem;
@@ -826,19 +827,19 @@ eth_dev_info(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 
 	dev_info->if_index = internals->if_index;
 	dev_info->max_mac_addrs = 1;
-	dev_info->max_rx_pktlen = ETH_FRAME_LEN;
 	dev_info->max_rx_queues = internals->queue_cnt;
 	dev_info->max_tx_queues = internals->queue_cnt;
 
 	dev_info->min_mtu = RTE_ETHER_MIN_MTU;
 #if defined(XDP_UMEM_UNALIGNED_CHUNK_FLAG)
-	dev_info->max_mtu = getpagesize() -
-				sizeof(struct rte_mempool_objhdr) -
-				sizeof(struct rte_mbuf) -
-				RTE_PKTMBUF_HEADROOM - XDP_PACKET_HEADROOM;
+	dev_info->max_rx_pktlen = getpagesize() -
+				  sizeof(struct rte_mempool_objhdr) -
+				  sizeof(struct rte_mbuf) -
+				  RTE_PKTMBUF_HEADROOM - XDP_PACKET_HEADROOM;
 #else
-	dev_info->max_mtu = ETH_AF_XDP_FRAME_SIZE - XDP_PACKET_HEADROOM;
+	dev_info->max_rx_pktlen = ETH_AF_XDP_FRAME_SIZE - XDP_PACKET_HEADROOM;
 #endif
+	dev_info->max_mtu = dev_info->max_rx_pktlen - ETH_AF_XDP_ETH_OVERHEAD;
 
 	dev_info->default_rxportconf.burst_size = ETH_AF_XDP_DFLT_BUSY_BUDGET;
 	dev_info->default_txportconf.burst_size = ETH_AF_XDP_DFLT_BUSY_BUDGET;
