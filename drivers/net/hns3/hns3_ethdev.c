@@ -95,8 +95,8 @@ static int hns3_vlan_pvid_configure(struct hns3_adapter *hns, uint16_t pvid,
 static int hns3_update_link_info(struct rte_eth_dev *eth_dev);
 static bool hns3_update_link_status(struct hns3_hw *hw);
 
-static int hns3_add_mc_addr(struct hns3_hw *hw,
-			    struct rte_ether_addr *mac_addr);
+static int hns3_add_mc_mac_addr(struct hns3_hw *hw,
+				struct rte_ether_addr *mac_addr);
 static int hns3_remove_mc_addr(struct hns3_hw *hw,
 			    struct rte_ether_addr *mac_addr);
 static int hns3_restore_fec(struct hns3_hw *hw);
@@ -1630,7 +1630,7 @@ hns3_add_mc_addr_common(struct hns3_hw *hw, struct rte_ether_addr *mac_addr)
 		}
 	}
 
-	ret = hns3_add_mc_addr(hw, mac_addr);
+	ret = hns3_add_mc_mac_addr(hw, mac_addr);
 	if (ret) {
 		hns3_ether_format_addr(mac_str, RTE_ETHER_ADDR_FMT_SIZE,
 				      mac_addr);
@@ -1826,7 +1826,7 @@ hns3_configure_all_mac_addr(struct hns3_adapter *hns, bool del)
 			continue;
 		if (rte_is_multicast_ether_addr(addr))
 			ret = del ? hns3_remove_mc_addr(hw, addr) :
-			      hns3_add_mc_addr(hw, addr);
+			      hns3_add_mc_mac_addr(hw, addr);
 		else
 			ret = del ? hns3_remove_uc_addr_common(hw, addr) :
 			      hns3_add_uc_addr_common(hw, addr);
@@ -1872,7 +1872,7 @@ hns3_update_desc_vfid(struct hns3_cmd_desc *desc, uint8_t vfid, bool clr)
 }
 
 static int
-hns3_add_mc_addr(struct hns3_hw *hw, struct rte_ether_addr *mac_addr)
+hns3_add_mc_mac_addr(struct hns3_hw *hw, struct rte_ether_addr *mac_addr)
 {
 	struct hns3_cmd_desc desc[HNS3_MC_MAC_VLAN_OPS_DESC_NUM];
 	struct hns3_mac_vlan_tbl_entry_cmd req;
@@ -2156,7 +2156,7 @@ hns3_set_mc_mac_addr_list(struct rte_eth_dev *dev,
 	/* Add mc mac addresses */
 	for (i = 0; i < add_addr_num; i++) {
 		addr = &add_addr_list[i];
-		ret = hns3_add_mc_addr(hw, addr);
+		ret = hns3_add_mc_mac_addr(hw, addr);
 		if (ret) {
 			rte_spinlock_unlock(&hw->lock);
 			return ret;
@@ -2188,7 +2188,7 @@ hns3_configure_all_mc_mac_addr(struct hns3_adapter *hns, bool del)
 		if (del)
 			ret = hns3_remove_mc_addr(hw, addr);
 		else
-			ret = hns3_add_mc_addr(hw, addr);
+			ret = hns3_add_mc_mac_addr(hw, addr);
 		if (ret) {
 			err = ret;
 			hns3_ether_format_addr(mac_str, RTE_ETHER_ADDR_FMT_SIZE,
