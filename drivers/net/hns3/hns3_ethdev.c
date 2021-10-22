@@ -1540,7 +1540,7 @@ hns3_remove_mac_vlan_tbl(struct hns3_hw *hw,
 }
 
 static int
-hns3_add_uc_addr_common(struct hns3_hw *hw, struct rte_ether_addr *mac_addr)
+hns3_add_uc_mac_addr(struct hns3_hw *hw, struct rte_ether_addr *mac_addr)
 {
 	struct hns3_adapter *hns = HNS3_DEV_HW_TO_ADAPTER(hw);
 	struct hns3_mac_vlan_tbl_entry_cmd req;
@@ -1678,7 +1678,7 @@ hns3_add_mac_addr(struct rte_eth_dev *dev, struct rte_ether_addr *mac_addr,
 	if (rte_is_multicast_ether_addr(mac_addr))
 		ret = hns3_add_mc_addr_common(hw, mac_addr);
 	else
-		ret = hns3_add_uc_addr_common(hw, mac_addr);
+		ret = hns3_add_uc_mac_addr(hw, mac_addr);
 
 	if (ret) {
 		rte_spinlock_unlock(&hw->lock);
@@ -1768,7 +1768,7 @@ hns3_set_default_mac_addr(struct rte_eth_dev *dev,
 		return ret;
 	}
 
-	ret = hns3_add_uc_addr_common(hw, mac_addr);
+	ret = hns3_add_uc_mac_addr(hw, mac_addr);
 	if (ret) {
 		hns3_ether_format_addr(mac_str, RTE_ETHER_ADDR_FMT_SIZE,
 				      mac_addr);
@@ -1799,7 +1799,7 @@ err_pause_addr_cfg:
 	}
 
 err_add_uc_addr:
-	ret_val = hns3_add_uc_addr_common(hw, oaddr);
+	ret_val = hns3_add_uc_mac_addr(hw, oaddr);
 	if (ret_val) {
 		hns3_ether_format_addr(mac_str, RTE_ETHER_ADDR_FMT_SIZE, oaddr);
 		hns3_warn(hw, "Failed to restore old uc mac addr(%s): %d",
@@ -1829,7 +1829,7 @@ hns3_configure_all_mac_addr(struct hns3_adapter *hns, bool del)
 			      hns3_add_mc_mac_addr(hw, addr);
 		else
 			ret = del ? hns3_remove_uc_addr_common(hw, addr) :
-			      hns3_add_uc_addr_common(hw, addr);
+			      hns3_add_uc_mac_addr(hw, addr);
 
 		if (ret) {
 			err = ret;
