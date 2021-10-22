@@ -97,8 +97,8 @@ static bool hns3_update_link_status(struct hns3_hw *hw);
 
 static int hns3_add_mc_mac_addr(struct hns3_hw *hw,
 				struct rte_ether_addr *mac_addr);
-static int hns3_remove_mc_addr(struct hns3_hw *hw,
-			    struct rte_ether_addr *mac_addr);
+static int hns3_remove_mc_mac_addr(struct hns3_hw *hw,
+				   struct rte_ether_addr *mac_addr);
 static int hns3_restore_fec(struct hns3_hw *hw);
 static int hns3_query_dev_fec_info(struct hns3_hw *hw);
 static int hns3_do_stop(struct hns3_adapter *hns);
@@ -1646,7 +1646,7 @@ hns3_remove_mc_addr_common(struct hns3_hw *hw, struct rte_ether_addr *mac_addr)
 	char mac_str[RTE_ETHER_ADDR_FMT_SIZE];
 	int ret;
 
-	ret = hns3_remove_mc_addr(hw, mac_addr);
+	ret = hns3_remove_mc_mac_addr(hw, mac_addr);
 	if (ret) {
 		hns3_ether_format_addr(mac_str, RTE_ETHER_ADDR_FMT_SIZE,
 				      mac_addr);
@@ -1825,7 +1825,7 @@ hns3_configure_all_mac_addr(struct hns3_adapter *hns, bool del)
 		if (rte_is_zero_ether_addr(addr))
 			continue;
 		if (rte_is_multicast_ether_addr(addr))
-			ret = del ? hns3_remove_mc_addr(hw, addr) :
+			ret = del ? hns3_remove_mc_mac_addr(hw, addr) :
 			      hns3_add_mc_mac_addr(hw, addr);
 		else
 			ret = del ? hns3_remove_uc_addr_common(hw, addr) :
@@ -1921,7 +1921,7 @@ hns3_add_mc_mac_addr(struct hns3_hw *hw, struct rte_ether_addr *mac_addr)
 }
 
 static int
-hns3_remove_mc_addr(struct hns3_hw *hw, struct rte_ether_addr *mac_addr)
+hns3_remove_mc_mac_addr(struct hns3_hw *hw, struct rte_ether_addr *mac_addr)
 {
 	struct hns3_mac_vlan_tbl_entry_cmd req;
 	struct hns3_cmd_desc desc[3];
@@ -2145,7 +2145,7 @@ hns3_set_mc_mac_addr_list(struct rte_eth_dev *dev,
 	for (i = 0; i < rm_addr_num; i++) {
 		num = rm_addr_num - i - 1;
 		addr = &rm_addr_list[num];
-		ret = hns3_remove_mc_addr(hw, addr);
+		ret = hns3_remove_mc_mac_addr(hw, addr);
 		if (ret) {
 			rte_spinlock_unlock(&hw->lock);
 			return ret;
@@ -2186,7 +2186,7 @@ hns3_configure_all_mc_mac_addr(struct hns3_adapter *hns, bool del)
 		if (!rte_is_multicast_ether_addr(addr))
 			continue;
 		if (del)
-			ret = hns3_remove_mc_addr(hw, addr);
+			ret = hns3_remove_mc_mac_addr(hw, addr);
 		else
 			ret = hns3_add_mc_mac_addr(hw, addr);
 		if (ret) {
