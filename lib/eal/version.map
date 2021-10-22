@@ -109,18 +109,10 @@ DPDK_22 {
 	rte_hexdump;
 	rte_hypervisor_get;
 	rte_hypervisor_get_name; # WINDOWS_NO_EXPORT
-	rte_intr_allow_others;
 	rte_intr_callback_register;
 	rte_intr_callback_unregister;
-	rte_intr_cap_multiple;
 	rte_intr_disable;
-	rte_intr_dp_is_en;
-	rte_intr_efd_disable;
-	rte_intr_efd_enable;
 	rte_intr_enable;
-	rte_intr_free_epoll_fd;
-	rte_intr_rx_ctl;
-	rte_intr_tls_epfd;
 	rte_keepalive_create; # WINDOWS_NO_EXPORT
 	rte_keepalive_dispatch_pings; # WINDOWS_NO_EXPORT
 	rte_keepalive_mark_alive; # WINDOWS_NO_EXPORT
@@ -420,12 +412,48 @@ EXPERIMENTAL {
 
 	# added in 21.08
 	rte_power_monitor_multi; # WINDOWS_NO_EXPORT
+
+	# added in 21.11
+	rte_intr_fd_get;
+	rte_intr_fd_set;
+	rte_intr_instance_alloc;
+	rte_intr_instance_free;
+	rte_intr_type_get;
+	rte_intr_type_set;
 };
 
 INTERNAL {
 	global:
 
 	rte_firmware_read;
+	rte_intr_allow_others;
+	rte_intr_cap_multiple;
+	rte_intr_dev_fd_get;
+	rte_intr_dev_fd_set;
+	rte_intr_dp_is_en;
+	rte_intr_efd_counter_size_set;
+	rte_intr_efd_counter_size_get;
+	rte_intr_efd_disable;
+	rte_intr_efd_enable;
+	rte_intr_efds_index_get;
+	rte_intr_efds_index_set;
+	rte_intr_elist_index_get;
+	rte_intr_elist_index_set;
+	rte_intr_free_epoll_fd;
+	rte_intr_instance_dup;
+	rte_intr_instance_windows_handle_get;
+	rte_intr_instance_windows_handle_set;
+	rte_intr_max_intr_get;
+	rte_intr_max_intr_set;
+	rte_intr_nb_efd_get;
+	rte_intr_nb_efd_set;
+	rte_intr_nb_intr_get;
+	rte_intr_rx_ctl;
+	rte_intr_tls_epfd;
+	rte_intr_vec_list_alloc;
+	rte_intr_vec_list_free;
+	rte_intr_vec_list_index_get;
+	rte_intr_vec_list_index_set;
 	rte_mem_lock;
 	rte_mem_map;
 	rte_mem_page_size;

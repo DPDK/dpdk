@@ -211,6 +211,7 @@ F: app/test/test_memzone.c
 
 Interrupt Subsystem
 M: Harman Kalra <hkalra@marvell.com>
+F: lib/eal/include/rte_epoll.h
 F: lib/eal/*/*interrupts.*
 F: app/test/test_interrupts.c
 

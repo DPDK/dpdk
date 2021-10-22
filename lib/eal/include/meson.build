@@ -19,6 +19,7 @@ headers += files(
         'rte_eal_memconfig.h',
         'rte_eal_trace.h',
         'rte_errno.h',
+        'rte_epoll.h',
         'rte_fbarray.h',
         'rte_hexdump.h',
         'rte_hypervisor.h',
