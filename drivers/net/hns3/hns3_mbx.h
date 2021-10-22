@@ -87,6 +87,7 @@ enum hns3_mbx_link_fail_subcode {
 
 #define HNS3_MBX_MAX_MSG_SIZE	16
 #define HNS3_MBX_MAX_RESP_DATA_SIZE	8
+#define HNS3_MBX_DEF_TIME_LIMIT_MS	500
 
 enum {
 	HNS3_MBX_RESP_MATCHING_SCHEME_OF_ORIGINAL = 0,

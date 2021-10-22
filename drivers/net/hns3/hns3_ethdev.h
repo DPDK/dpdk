@@ -851,6 +851,7 @@ struct hns3_adapter {
 	uint32_t tx_func_hint;
 
 	uint64_t dev_caps_mask;
+	uint16_t mbx_time_limit_ms; /* wait time for mbx message */
 
 	struct hns3_ptype_table ptype_tbl __rte_cache_aligned;
 };
@@ -867,6 +868,8 @@ enum {
 #define HNS3_DEVARG_TX_FUNC_HINT	"tx_func_hint"
 
 #define HNS3_DEVARG_DEV_CAPS_MASK	"dev_caps_mask"
+
+#define HNS3_DEVARG_MBX_TIME_LIMIT_MS	"mbx_time_limit_ms"
 
 enum {
 	HNS3_DEV_SUPPORT_DCB_B,

@@ -61,8 +61,9 @@ static int
 hns3_get_mbx_resp(struct hns3_hw *hw, uint16_t code, uint16_t subcode,
 		  uint8_t *resp_data, uint16_t resp_len)
 {
-#define HNS3_MAX_RETRY_US	500000
 #define HNS3_WAIT_RESP_US	100
+#define US_PER_MS		1000
+	uint32_t mbx_time_limit;
 	struct hns3_adapter *hns = HNS3_DEV_HW_TO_ADAPTER(hw);
 	struct hns3_mbx_resp_status *mbx_resp;
 	uint32_t wait_time = 0;
@@ -74,7 +75,8 @@ hns3_get_mbx_resp(struct hns3_hw *hw, uint16_t code, uint16_t subcode,
 		return -EINVAL;
 	}
 
-	while (wait_time < HNS3_MAX_RETRY_US) {
+	mbx_time_limit = (uint32_t)hns->mbx_time_limit_ms * US_PER_MS;
+	while (wait_time < mbx_time_limit) {
 		if (__atomic_load_n(&hw->reset.disable_cmd, __ATOMIC_RELAXED)) {
 			hns3_err(hw, "Don't wait for mbx respone because of "
 				 "disable_cmd");
@@ -103,7 +105,7 @@ hns3_get_mbx_resp(struct hns3_hw *hw, uint16_t code, uint16_t subcode,
 		wait_time += HNS3_WAIT_RESP_US;
 	}
 	hw->mbx_resp.req_msg_data = 0;
-	if (wait_time >= HNS3_MAX_RETRY_US) {
+	if (wait_time >= mbx_time_limit) {
 		hns3_mbx_proc_timeout(hw, code, subcode);
 		return -ETIME;
 	}

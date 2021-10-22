@@ -3086,4 +3086,5 @@ RTE_PMD_REGISTER_KMOD_DEP(net_hns3_vf, "* igb_uio | vfio-pci");
 RTE_PMD_REGISTER_PARAM_STRING(net_hns3_vf,
 		HNS3_DEVARG_RX_FUNC_HINT "=vec|sve|simple|common "
 		HNS3_DEVARG_TX_FUNC_HINT "=vec|sve|simple|common "
-		HNS3_DEVARG_DEV_CAPS_MASK "=<1-65535> ");
+		HNS3_DEVARG_DEV_CAPS_MASK "=<1-65535> "
+		HNS3_DEVARG_MBX_TIME_LIMIT_MS "=<uint16_t> ");

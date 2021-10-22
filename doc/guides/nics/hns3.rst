@@ -115,6 +115,20 @@ Runtime Config Options
   For example::
   -a 0000:7d:00.0,dev_caps_mask=0xF
 
+- ``mbx_time_limit_ms`` (default ``500``)
+   Used to define the mailbox time limit by user.
+   Current, the max waiting time for MBX response is 500ms, but in
+   some scenarios, it is not enough. Since it depends on the response
+   of the kernel mode driver, and its response time is related to the
+   scheduling of the system. In this special scenario, most of the
+   cores are isolated, and only a few cores are used for system
+   scheduling. When a large number of services are started, the
+   scheduling of the system will be very busy, and the reply of the
+   mbx message will time out, which will cause our PMD initialization
+   to fail. So provide access to set mailbox time limit for user.
+
+   For example::
+   -a 0000:7d:00.0,mbx_time_limit_ms=600
 
 Link status event Pre-conditions
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

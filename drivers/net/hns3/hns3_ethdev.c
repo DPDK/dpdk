@@ -7306,9 +7306,30 @@ hns3_parse_dev_caps_mask(const char *key, const char *value, void *extra_args)
 	return 0;
 }
 
+static int
+hns3_parse_mbx_time_limit(const char *key, const char *value, void *extra_args)
+{
+	uint32_t val;
+
+	RTE_SET_USED(key);
+
+	val = strtoul(value, NULL, 10);
+
+	/*
+	 * 500ms is empirical value in process of mailbox communication. If
+	 * the delay value is set to one lower thanthe empirical value, mailbox
+	 * communication may fail.
+	 */
+	if (val > HNS3_MBX_DEF_TIME_LIMIT_MS && val <= UINT16_MAX)
+		*(uint16_t *)extra_args = val;
+
+	return 0;
+}
+
 void
 hns3_parse_devargs(struct rte_eth_dev *dev)
 {
+	uint16_t mbx_time_limit_ms = HNS3_MBX_DEF_TIME_LIMIT_MS;
 	struct hns3_adapter *hns = dev->data->dev_private;
 	uint32_t rx_func_hint = HNS3_IO_FUNC_HINT_NONE;
 	uint32_t tx_func_hint = HNS3_IO_FUNC_HINT_NONE;
@@ -7329,6 +7350,9 @@ hns3_parse_devargs(struct rte_eth_dev *dev)
 			   &hns3_parse_io_hint_func, &tx_func_hint);
 	(void)rte_kvargs_process(kvlist, HNS3_DEVARG_DEV_CAPS_MASK,
 			   &hns3_parse_dev_caps_mask, &dev_caps_mask);
+	(void)rte_kvargs_process(kvlist, HNS3_DEVARG_MBX_TIME_LIMIT_MS,
+			   &hns3_parse_mbx_time_limit, &mbx_time_limit_ms);
+
 	rte_kvargs_free(kvlist);
 
 	if (rx_func_hint != HNS3_IO_FUNC_HINT_NONE)
@@ -7344,6 +7368,11 @@ hns3_parse_devargs(struct rte_eth_dev *dev)
 		hns3_warn(hw, "parsed %s = 0x%" PRIx64 ".",
 			  HNS3_DEVARG_DEV_CAPS_MASK, dev_caps_mask);
 	hns->dev_caps_mask = dev_caps_mask;
+
+	if (mbx_time_limit_ms != HNS3_MBX_DEF_TIME_LIMIT_MS)
+		hns3_warn(hw, "parsed %s = %u.", HNS3_DEVARG_MBX_TIME_LIMIT_MS,
+				mbx_time_limit_ms);
+	hns->mbx_time_limit_ms = mbx_time_limit_ms;
 }
 
 static const struct eth_dev_ops hns3_eth_dev_ops = {
@@ -7600,6 +7629,7 @@ RTE_PMD_REGISTER_KMOD_DEP(net_hns3, "* igb_uio | vfio-pci");
 RTE_PMD_REGISTER_PARAM_STRING(net_hns3,
 		HNS3_DEVARG_RX_FUNC_HINT "=vec|sve|simple|common "
 		HNS3_DEVARG_TX_FUNC_HINT "=vec|sve|simple|common "
-		HNS3_DEVARG_DEV_CAPS_MASK "=<1-65535> ");
+		HNS3_DEVARG_DEV_CAPS_MASK "=<1-65535> "
+		HNS3_DEVARG_MBX_TIME_LIMIT_MS "=<uint16> ");
 RTE_LOG_REGISTER_SUFFIX(hns3_logtype_init, init, NOTICE);
 RTE_LOG_REGISTER_SUFFIX(hns3_logtype_driver, driver, NOTICE);
