@@ -74,7 +74,8 @@ includes += include_directories('../../../lib/ethdev')
 includes += include_directories('../../../lib/meter')
 
 # Telemetry common code
-sources += files('cnxk_telemetry_npa.c',
+sources += files('cnxk_telemetry_bphy.c',
+                 'cnxk_telemetry_npa.c',
                  'cnxk_telemetry_nix.c')
 
 deps += ['bus_pci', 'net', 'telemetry']

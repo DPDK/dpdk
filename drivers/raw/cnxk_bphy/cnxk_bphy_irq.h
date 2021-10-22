@@ -24,6 +24,7 @@ struct bphy_irq_queue {
 
 struct bphy_device {
 #define BPHY_QUEUE_CNT 1
+	struct roc_bphy bphy;
 	struct roc_bphy_irq_chip *irq_chip;
 	struct bphy_mem mem;
 	/* bphy irq interface supports single queue only */

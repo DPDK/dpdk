@@ -40,12 +40,17 @@ struct roc_model {
 	 ROC_MODEL_CNF95xx_B0 | ROC_MODEL_CNF95xxMM_A0 |                       \
 	 ROC_MODEL_CNF95xxO_A0 | ROC_MODEL_CNF95xxN_A0 | ROC_MODEL_CN98xx_A0 | \
 	 ROC_MODEL_CNF95xxN_A1)
+#define ROC_MODEL_CNF9K                                                        \
+	(ROC_MODEL_CNF95xx_A0 | ROC_MODEL_CNF95xx_B0 |                         \
+	 ROC_MODEL_CNF95xxMM_A0 | ROC_MODEL_CNF95xxO_A0 |                      \
+	 ROC_MODEL_CNF95xxN_A0 | ROC_MODEL_CNF95xxN_A1)
 
 #define ROC_MODEL_CN106xx   (ROC_MODEL_CN106xx_A0)
 #define ROC_MODEL_CNF105xx  (ROC_MODEL_CNF105xx_A0)
 #define ROC_MODEL_CNF105xxN (ROC_MODEL_CNF105xxN_A0)
 #define ROC_MODEL_CN10K                                                        \
 	(ROC_MODEL_CN106xx | ROC_MODEL_CNF105xx | ROC_MODEL_CNF105xxN)
+#define ROC_MODEL_CNF10K (ROC_MODEL_CNF105xx | ROC_MODEL_CNF105xxN)
 
 /* Runtime variants */
 static inline uint64_t
