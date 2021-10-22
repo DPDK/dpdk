@@ -31,6 +31,7 @@
 #include <rte_spinlock.h>
 #include <rte_tailq.h>
 #include <rte_eal_paging.h>
+#include <rte_telemetry.h>
 
 #include "rte_mempool.h"
 #include "rte_mempool_trace.h"
@@ -1482,4 +1483,87 @@ rte_mempool_event_callback_unregister(rte_mempool_event_callback *func,
 	}
 	rte_errno = -ret;
 	return ret;
+}
+
+static void
+mempool_list_cb(struct rte_mempool *mp, void *arg)
+{
+	struct rte_tel_data *d = (struct rte_tel_data *)arg;
+
+	rte_tel_data_add_array_string(d, mp->name);
+}
+
+static int
+mempool_handle_list(const char *cmd __rte_unused,
+		    const char *params __rte_unused, struct rte_tel_data *d)
+{
+	rte_tel_data_start_array(d, RTE_TEL_STRING_VAL);
+	rte_mempool_walk(mempool_list_cb, d);
+	return 0;
+}
+
+struct mempool_info_cb_arg {
+	char *pool_name;
+	struct rte_tel_data *d;
+};
+
+static void
+mempool_info_cb(struct rte_mempool *mp, void *arg)
+{
+	struct mempool_info_cb_arg *info = (struct mempool_info_cb_arg *)arg;
+	const struct rte_memzone *mz;
+
+	if (strncmp(mp->name, info->pool_name, RTE_MEMZONE_NAMESIZE))
+		return;
+
+	rte_tel_data_add_dict_string(info->d, "name", mp->name);
+	rte_tel_data_add_dict_int(info->d, "pool_id", mp->pool_id);
+	rte_tel_data_add_dict_int(info->d, "flags", mp->flags);
+	rte_tel_data_add_dict_int(info->d, "socket_id", mp->socket_id);
+	rte_tel_data_add_dict_int(info->d, "size", mp->size);
+	rte_tel_data_add_dict_int(info->d, "cache_size", mp->cache_size);
+	rte_tel_data_add_dict_int(info->d, "elt_size", mp->elt_size);
+	rte_tel_data_add_dict_int(info->d, "header_size", mp->header_size);
+	rte_tel_data_add_dict_int(info->d, "trailer_size", mp->trailer_size);
+	rte_tel_data_add_dict_int(info->d, "private_data_size",
+				  mp->private_data_size);
+	rte_tel_data_add_dict_int(info->d, "ops_index", mp->ops_index);
+	rte_tel_data_add_dict_int(info->d, "populated_size",
+				  mp->populated_size);
+
+	mz = mp->mz;
+	rte_tel_data_add_dict_string(info->d, "mz_name", mz->name);
+	rte_tel_data_add_dict_int(info->d, "mz_len", mz->len);
+	rte_tel_data_add_dict_int(info->d, "mz_hugepage_sz",
+				  mz->hugepage_sz);
+	rte_tel_data_add_dict_int(info->d, "mz_socket_id", mz->socket_id);
+	rte_tel_data_add_dict_int(info->d, "mz_flags", mz->flags);
+}
+
+static int
+mempool_handle_info(const char *cmd __rte_unused, const char *params,
+		    struct rte_tel_data *d)
+{
+	struct mempool_info_cb_arg mp_arg;
+	char name[RTE_MEMZONE_NAMESIZE];
+
+	if (!params || strlen(params) == 0)
+		return -EINVAL;
+
+	rte_strlcpy(name, params, RTE_MEMZONE_NAMESIZE);
+
+	rte_tel_data_start_dict(d);
+	mp_arg.pool_name = name;
+	mp_arg.d = d;
+	rte_mempool_walk(mempool_info_cb, &mp_arg);
+
+	return 0;
+}
+
+RTE_INIT(mempool_init_telemetry)
+{
+	rte_telemetry_register_cmd("/mempool/list", mempool_handle_list,
+		"Returns list of available mempool. Takes no parameters");
+	rte_telemetry_register_cmd("/mempool/info", mempool_handle_info,
+		"Returns mempool info. Parameters: pool_name");
 }
