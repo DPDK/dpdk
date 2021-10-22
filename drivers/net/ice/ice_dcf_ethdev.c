@@ -69,29 +69,14 @@ ice_dcf_init_rxq(struct rte_eth_dev *dev, struct ice_rx_queue *rxq)
 	max_pkt_len = RTE_MIN(ICE_SUPPORT_CHAIN_NUM * rxq->rx_buf_len,
 			      dev->data->mtu + ICE_ETH_OVERHEAD);
 
-	/* Check if the jumbo frame and maximum packet length are set
-	 * correctly.
-	 */
-	if (dev_data->mtu > RTE_ETHER_MTU) {
-		if (max_pkt_len <= ICE_ETH_MAX_LEN ||
-		    max_pkt_len > ICE_FRAME_SIZE_MAX) {
-			PMD_DRV_LOG(ERR, "maximum packet length must be "
-				    "larger than %u and smaller than %u, "
-				    "as jumbo frame is enabled",
-				    (uint32_t)ICE_ETH_MAX_LEN,
-				    (uint32_t)ICE_FRAME_SIZE_MAX);
-			return -EINVAL;
-		}
-	} else {
-		if (max_pkt_len < RTE_ETHER_MIN_LEN ||
-		    max_pkt_len > ICE_ETH_MAX_LEN) {
-			PMD_DRV_LOG(ERR, "maximum packet length must be "
-				    "larger than %u and smaller than %u, "
-				    "as jumbo frame is disabled",
-				    (uint32_t)RTE_ETHER_MIN_LEN,
-				    (uint32_t)ICE_ETH_MAX_LEN);
-			return -EINVAL;
-		}
+	/* Check maximum packet length is set correctly.  */
+	if (max_pkt_len <= RTE_ETHER_MIN_LEN ||
+	    max_pkt_len > ICE_FRAME_SIZE_MAX) {
+		PMD_DRV_LOG(ERR, "maximum packet length must be "
+			    "larger than %u and smaller than %u",
+			    (uint32_t)RTE_ETHER_MIN_LEN,
+			    (uint32_t)ICE_FRAME_SIZE_MAX);
+		return -EINVAL;
 	}
 
 	rxq->max_pkt_len = max_pkt_len;

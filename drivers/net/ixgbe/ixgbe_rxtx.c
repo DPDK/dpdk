@@ -5078,7 +5078,7 @@ ixgbe_dev_rx_init(struct rte_eth_dev *dev)
 	/*
 	 * Configure jumbo frame support, if any.
 	 */
-	if ((dev->data->mtu & RTE_ETHER_MTU) != 0) {
+	if (dev->data->mtu > RTE_ETHER_MTU) {
 		hlreg0 |= IXGBE_HLREG0_JUMBOEN;
 		maxfrs = IXGBE_READ_REG(hw, IXGBE_MAXFRS);
 		maxfrs &= 0x0000FFFF;

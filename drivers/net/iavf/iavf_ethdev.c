@@ -585,29 +585,14 @@ iavf_init_rxq(struct rte_eth_dev *dev, struct iavf_rx_queue *rxq)
 			rxq->rx_buf_len * IAVF_MAX_CHAINED_RX_BUFFERS,
 			frame_size);
 
-	/* Check if the jumbo frame and maximum packet length are set
-	 * correctly.
-	 */
-	if (dev->data->mtu & RTE_ETHER_MTU) {
-		if (max_pkt_len <= IAVF_ETH_MAX_LEN ||
-		    max_pkt_len > IAVF_FRAME_SIZE_MAX) {
-			PMD_DRV_LOG(ERR, "maximum packet length must be "
-				    "larger than %u and smaller than %u, "
-				    "as jumbo frame is enabled",
-				    (uint32_t)IAVF_ETH_MAX_LEN,
-				    (uint32_t)IAVF_FRAME_SIZE_MAX);
-			return -EINVAL;
-		}
-	} else {
-		if (max_pkt_len < RTE_ETHER_MIN_LEN ||
-		    max_pkt_len > IAVF_ETH_MAX_LEN) {
-			PMD_DRV_LOG(ERR, "maximum packet length must be "
-				    "larger than %u and smaller than %u, "
-				    "as jumbo frame is disabled",
-				    (uint32_t)RTE_ETHER_MIN_LEN,
-				    (uint32_t)IAVF_ETH_MAX_LEN);
-			return -EINVAL;
-		}
+	/* Check if maximum packet length is set correctly.  */
+	if (max_pkt_len <= RTE_ETHER_MIN_LEN ||
+	    max_pkt_len > IAVF_FRAME_SIZE_MAX) {
+		PMD_DRV_LOG(ERR, "maximum packet length must be "
+			    "larger than %u and smaller than %u",
+			    (uint32_t)IAVF_ETH_MAX_LEN,
+			    (uint32_t)IAVF_FRAME_SIZE_MAX);
+		return -EINVAL;
 	}
 
 	rxq->max_pkt_len = max_pkt_len;

@@ -281,26 +281,13 @@ ice_program_hw_rx_queue(struct ice_rx_queue *rxq)
 		RTE_MIN((uint32_t)ICE_SUPPORT_CHAIN_NUM * rxq->rx_buf_len,
 			frame_size);
 
-	if (dev_data->mtu > RTE_ETHER_MTU) {
-		if (rxq->max_pkt_len <= ICE_ETH_MAX_LEN ||
-		    rxq->max_pkt_len > ICE_FRAME_SIZE_MAX) {
-			PMD_DRV_LOG(ERR, "maximum packet length must "
-				    "be larger than %u and smaller than %u,"
-				    "as jumbo frame is enabled",
-				    (uint32_t)ICE_ETH_MAX_LEN,
-				    (uint32_t)ICE_FRAME_SIZE_MAX);
-			return -EINVAL;
-		}
-	} else {
-		if (rxq->max_pkt_len < RTE_ETHER_MIN_LEN ||
-		    rxq->max_pkt_len > ICE_ETH_MAX_LEN) {
-			PMD_DRV_LOG(ERR, "maximum packet length must be "
-				    "larger than %u and smaller than %u, "
-				    "as jumbo frame is disabled",
-				    (uint32_t)RTE_ETHER_MIN_LEN,
-				    (uint32_t)ICE_ETH_MAX_LEN);
-			return -EINVAL;
-		}
+	if (rxq->max_pkt_len <= RTE_ETHER_MIN_LEN ||
+	    rxq->max_pkt_len > ICE_FRAME_SIZE_MAX) {
+		PMD_DRV_LOG(ERR, "maximum packet length must "
+			    "be larger than %u and smaller than %u",
+			    (uint32_t)RTE_ETHER_MIN_LEN,
+			    (uint32_t)ICE_FRAME_SIZE_MAX);
+		return -EINVAL;
 	}
 
 	if (rxq->offloads & DEV_RX_OFFLOAD_TIMESTAMP) {

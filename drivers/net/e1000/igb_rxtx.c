@@ -2331,7 +2331,7 @@ eth_igb_rx_init(struct rte_eth_dev *dev)
 	 * Configure support of jumbo frames, if any.
 	 */
 	max_len = dev->data->mtu + E1000_ETH_OVERHEAD;
-	if ((dev->data->mtu & RTE_ETHER_MTU) != 0) {
+	if (dev->data->mtu > RTE_ETHER_MTU) {
 		rctl |= E1000_RCTL_LPE;
 
 		/*
