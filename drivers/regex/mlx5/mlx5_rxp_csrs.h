@@ -6,7 +6,7 @@
 #define _MLX5_RXP_CSRS_H_
 
 /* BF types */
-#define MLX5_RXP_BF2_IDENTIFIER 0x07055254ul
+#define MLX5_RXP_BF2_IDENTIFIER 0x0
 
 /*
  * Common to all RXP implementations

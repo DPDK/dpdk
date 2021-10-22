@@ -90,10 +90,8 @@ mlx5_regex_dev_probe(struct mlx5_common_device *cdev)
 	struct mlx5_regex_priv *priv = NULL;
 	struct mlx5_hca_attr *attr = &cdev->config.hca_attr;
 	char name[RTE_REGEXDEV_NAME_MAX_LEN];
-	int ret;
-	uint32_t val;
 
-	if ((!attr->regex && !attr->mmo_regex_sq_en && !attr->mmo_regex_qp_en)
+	if ((!attr->regexp_params && !attr->mmo_regex_sq_en && !attr->mmo_regex_qp_en)
 	    || attr->regexp_num_of_engines == 0) {
 		DRV_LOG(ERR, "Not enough capabilities to support RegEx, maybe "
 			"old FW/OFED version?");
@@ -116,13 +114,7 @@ mlx5_regex_dev_probe(struct mlx5_common_device *cdev)
 	priv->mmo_regex_sq_cap = attr->mmo_regex_sq_en;
 	priv->cdev = cdev;
 	priv->nb_engines = 2; /* attr.regexp_num_of_engines */
-	ret = mlx5_devx_regex_register_read(priv->cdev->ctx, 0,
-					    MLX5_RXP_CSR_IDENTIFIER, &val);
-	if (ret) {
-		DRV_LOG(ERR, "CSR read failed!");
-		goto dev_error;
-	}
-	if (val == MLX5_RXP_BF2_IDENTIFIER)
+	if (attr->regexp_version == MLX5_RXP_BF2_IDENTIFIER)
 		priv->is_bf2 = 1;
 	/* Default RXP programming mode to Shared. */
 	priv->prog_mode = MLX5_RXP_SHARED_PROG_MODE;

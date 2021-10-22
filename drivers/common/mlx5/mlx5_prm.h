@@ -1341,16 +1341,13 @@ struct mlx5_ifc_cmd_hca_cap_bits {
 	u8 wqe_index_ignore_cap[0x1];
 	u8 dynamic_qp_allocation[0x1];
 	u8 log_max_qp[0x5];
-	u8 regexp[0x1];
-	u8 reserved_at_a1[0x3];
+	u8 reserved_at_a0[0x4];
 	u8 regexp_num_of_engines[0x4];
 	u8 reserved_at_a8[0x1];
 	u8 reg_c_preserve[0x1];
 	u8 reserved_at_aa[0x1];
 	u8 log_max_srq[0x5];
-	u8 reserved_at_b0[0x3];
-	u8 regexp_log_crspace_size[0x5];
-	u8 reserved_at_b8[0x3];
+	u8 reserved_at_b0[0xb];
 	u8 scatter_fcs_w_decap_disable[0x1];
 	u8 reserved_at_bc[0x4];
 	u8 reserved_at_c0[0x8];
@@ -1506,7 +1503,8 @@ struct mlx5_ifc_cmd_hca_cap_bits {
 	u8 uc[0x1];
 	u8 rc[0x1];
 	u8 uar_4k[0x1];
-	u8 reserved_at_241[0x9];
+	u8 reserved_at_241[0x8];
+	u8 regexp_params[0x1];
 	u8 uar_sz[0x6];
 	u8 port_selection_cap[0x1];
 	u8 reserved_at_251[0x7];
@@ -1523,7 +1521,7 @@ struct mlx5_ifc_cmd_hca_cap_bits {
 	u8 max_wqe_sz_sq[0x10];
 	u8 reserved_at_2a0[0xc];
 	u8 regexp_mmo_sq[0x1];
-	u8 reserved_at_2b0[0x3];
+	u8 regexp_version[0x3];
 	u8 max_wqe_sz_rq[0x10];
 	u8 max_flow_counter_31_16[0x10];
 	u8 max_wqe_sz_sq_dc[0x10];

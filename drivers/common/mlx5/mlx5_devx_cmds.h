@@ -143,7 +143,8 @@ struct mlx5_hca_attr {
 	uint32_t sq_ts_format:2;
 	uint32_t steering_format_version:4;
 	uint32_t qp_ts_format:2;
-	uint32_t regex:1;
+	uint32_t regexp_params:1;
+	uint32_t regexp_version:3;
 	uint32_t reg_c_preserve:1;
 	uint32_t ct_offload:1; /* General obj type ASO CT offload supported. */
 	uint32_t crypto:1; /* Crypto engine is supported. */
