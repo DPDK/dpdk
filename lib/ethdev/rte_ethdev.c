@@ -4819,13 +4819,13 @@ rte_eth_dev_rx_intr_ctl(uint16_t port_id, int epfd, int op, void *data)
 	}
 
 	intr_handle = dev->intr_handle;
-	if (!intr_handle->intr_vec) {
+	if (rte_intr_vec_list_index_get(intr_handle, 0) < 0) {
 		RTE_ETHDEV_LOG(ERR, "Rx Intr vector unset\n");
 		return -EPERM;
 	}
 
 	for (qid = 0; qid < dev->data->nb_rx_queues; qid++) {
-		vec = intr_handle->intr_vec[qid];
+		vec = rte_intr_vec_list_index_get(intr_handle, qid);
 		rc = rte_intr_rx_ctl(intr_handle, epfd, op, vec, data);
 		if (rc && rc != -EEXIST) {
 			RTE_ETHDEV_LOG(ERR,
@@ -4860,15 +4860,15 @@ rte_eth_dev_rx_intr_ctl_q_get_fd(uint16_t port_id, uint16_t queue_id)
 	}
 
 	intr_handle = dev->intr_handle;
-	if (!intr_handle->intr_vec) {
+	if (rte_intr_vec_list_index_get(intr_handle, 0) < 0) {
 		RTE_ETHDEV_LOG(ERR, "Rx Intr vector unset\n");
 		return -1;
 	}
 
-	vec = intr_handle->intr_vec[queue_id];
+	vec = rte_intr_vec_list_index_get(intr_handle, queue_id);
 	efd_idx = (vec >= RTE_INTR_VEC_RXTX_OFFSET) ?
 		(vec - RTE_INTR_VEC_RXTX_OFFSET) : vec;
-	fd = intr_handle->efds[efd_idx];
+	fd = rte_intr_efds_index_get(intr_handle, efd_idx);
 
 	return fd;
 }
@@ -5046,12 +5046,12 @@ rte_eth_dev_rx_intr_ctl_q(uint16_t port_id, uint16_t queue_id,
 	}
 
 	intr_handle = dev->intr_handle;
-	if (!intr_handle->intr_vec) {
+	if (rte_intr_vec_list_index_get(intr_handle, 0) < 0) {
 		RTE_ETHDEV_LOG(ERR, "Rx Intr vector unset\n");
 		return -EPERM;
 	}
 
-	vec = intr_handle->intr_vec[queue_id];
+	vec = rte_intr_vec_list_index_get(intr_handle, queue_id);
 	rc = rte_intr_rx_ctl(intr_handle, epfd, op, vec, data);
 	if (rc && rc != -EEXIST) {
 		RTE_ETHDEV_LOG(ERR,

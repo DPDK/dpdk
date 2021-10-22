@@ -1094,7 +1094,7 @@ rte_bbdev_queue_intr_ctl(uint16_t dev_id, uint16_t queue_id, int epfd, int op,
 	VALID_QUEUE_OR_RET_ERR(queue_id, dev);
 
 	intr_handle = dev->intr_handle;
-	if (!intr_handle || !intr_handle->intr_vec) {
+	if (intr_handle == NULL) {
 		rte_bbdev_log(ERR, "Device %u intr handle unset\n", dev_id);
 		return -ENOTSUP;
 	}
@@ -1105,7 +1105,7 @@ rte_bbdev_queue_intr_ctl(uint16_t dev_id, uint16_t queue_id, int epfd, int op,
 		return -ENOTSUP;
 	}
 
-	vec = intr_handle->intr_vec[queue_id];
+	vec = rte_intr_vec_list_index_get(intr_handle, queue_id);
 	ret = rte_intr_rx_ctl(intr_handle, epfd, op, vec, data);
 	if (ret && (ret != -EEXIST)) {
 		rte_bbdev_log(ERR,

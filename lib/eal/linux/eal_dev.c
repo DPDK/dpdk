@@ -23,10 +23,7 @@
 
 #include "eal_private.h"
 
-static struct rte_intr_handle intr_handle = {
-	.type = RTE_INTR_HANDLE_DEV_EVENT,
-	.fd = -1,
-};
+static struct rte_intr_handle *intr_handle;
 static rte_rwlock_t monitor_lock = RTE_RWLOCK_INITIALIZER;
 static uint32_t monitor_refcount;
 static bool hotplug_handle;
@@ -109,12 +106,11 @@ static int
 dev_uev_socket_fd_create(void)
 {
 	struct sockaddr_nl addr;
-	int ret;
+	int ret, fd;
 
-	intr_handle.fd = socket(PF_NETLINK, SOCK_RAW | SOCK_CLOEXEC |
-			SOCK_NONBLOCK,
-			NETLINK_KOBJECT_UEVENT);
-	if (intr_handle.fd < 0) {
+	fd = socket(PF_NETLINK, SOCK_RAW | SOCK_CLOEXEC | SOCK_NONBLOCK,
+		    NETLINK_KOBJECT_UEVENT);
+	if (fd < 0) {
 		RTE_LOG(ERR, EAL, "create uevent fd failed.\n");
 		return -1;
 	}
@@ -124,16 +120,19 @@ dev_uev_socket_fd_create(void)
 	addr.nl_pid = 0;
 	addr.nl_groups = 0xffffffff;
 
-	ret = bind(intr_handle.fd, (struct sockaddr *) &addr, sizeof(addr));
+	ret = bind(fd, (struct sockaddr *) &addr, sizeof(addr));
 	if (ret < 0) {
 		RTE_LOG(ERR, EAL, "Failed to bind uevent socket.\n");
 		goto err;
 	}
 
+	if (rte_intr_fd_set(intr_handle, fd))
+		goto err;
+
 	return 0;
 err:
-	close(intr_handle.fd);
-	intr_handle.fd = -1;
+	close(fd);
+	fd = -1;
 	return ret;
 }
 
@@ -217,9 +216,9 @@ err:
 static void
 dev_delayed_unregister(void *param)
 {
-	rte_intr_callback_unregister(&intr_handle, dev_uev_handler, param);
-	close(intr_handle.fd);
-	intr_handle.fd = -1;
+	rte_intr_callback_unregister(intr_handle, dev_uev_handler, param);
+	close(rte_intr_fd_get(intr_handle));
+	rte_intr_fd_set(intr_handle, -1);
 }
 
 static void
@@ -235,7 +234,8 @@ dev_uev_handler(__rte_unused void *param)
 	memset(&uevent, 0, sizeof(struct rte_dev_event));
 	memset(buf, 0, EAL_UEV_MSG_LEN);
 
-	ret = recv(intr_handle.fd, buf, EAL_UEV_MSG_LEN, MSG_DONTWAIT);
+	ret = recv(rte_intr_fd_get(intr_handle), buf, EAL_UEV_MSG_LEN,
+		   MSG_DONTWAIT);
 	if (ret < 0 && errno == EAGAIN)
 		return;
 	else if (ret <= 0) {
@@ -311,24 +311,35 @@ rte_dev_event_monitor_start(void)
 		goto exit;
 	}
 
+	intr_handle = rte_intr_instance_alloc(RTE_INTR_INSTANCE_F_PRIVATE);
+	if (intr_handle == NULL) {
+		RTE_LOG(ERR, EAL, "Fail to allocate intr_handle\n");
+		goto exit;
+	}
+
+	if (rte_intr_type_set(intr_handle, RTE_INTR_HANDLE_DEV_EVENT))
+		goto exit;
+
+	if (rte_intr_fd_set(intr_handle, -1))
+		goto exit;
+
 	ret = dev_uev_socket_fd_create();
 	if (ret) {
 		RTE_LOG(ERR, EAL, "error create device event fd.\n");
 		goto exit;
 	}
 
-	ret = rte_intr_callback_register(&intr_handle, dev_uev_handler, NULL);
+	ret = rte_intr_callback_register(intr_handle, dev_uev_handler, NULL);
 
 	if (ret) {
-		RTE_LOG(ERR, EAL, "fail to register uevent callback.\n");
-		close(intr_handle.fd);
-		intr_handle.fd = -1;
+		close(rte_intr_fd_get(intr_handle));
 		goto exit;
 	}
 
 	monitor_refcount++;
 
 exit:
+	rte_intr_instance_free(intr_handle);
 	rte_rwlock_write_unlock(&monitor_lock);
 	return ret;
 }
@@ -350,15 +361,15 @@ rte_dev_event_monitor_stop(void)
 		goto exit;
 	}
 
-	ret = rte_intr_callback_unregister(&intr_handle, dev_uev_handler,
+	ret = rte_intr_callback_unregister(intr_handle, dev_uev_handler,
 					   (void *)-1);
 	if (ret < 0) {
 		RTE_LOG(ERR, EAL, "fail to unregister uevent callback.\n");
 		goto exit;
 	}
 
-	close(intr_handle.fd);
-	intr_handle.fd = -1;
+	close(rte_intr_fd_get(intr_handle));
+	rte_intr_instance_free(intr_handle);
 
 	monitor_refcount--;
 
