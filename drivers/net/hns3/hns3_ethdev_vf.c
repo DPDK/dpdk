@@ -229,9 +229,9 @@ hns3vf_add_mac_addr(struct rte_eth_dev *dev, struct rte_ether_addr *mac_addr,
 			rte_spinlock_unlock(&hw->lock);
 			return -EINVAL;
 		}
-		ret = hns3vf_add_mc_mac_addr(hw, mac_addr);
+		ret = hw->ops.add_mc_mac_addr(hw, mac_addr);
 	} else {
-		ret = hns3vf_add_uc_mac_addr(hw, mac_addr);
+		ret = hw->ops.add_uc_mac_addr(hw, mac_addr);
 	}
 
 	rte_spinlock_unlock(&hw->lock);
@@ -257,9 +257,9 @@ hns3vf_remove_mac_addr(struct rte_eth_dev *dev, uint32_t idx)
 	rte_spinlock_lock(&hw->lock);
 
 	if (rte_is_multicast_ether_addr(mac_addr))
-		ret = hns3vf_remove_mc_mac_addr(hw, mac_addr);
+		ret = hw->ops.del_mc_mac_addr(hw, mac_addr);
 	else
-		ret = hns3vf_remove_uc_mac_addr(hw, mac_addr);
+		ret = hw->ops.del_uc_mac_addr(hw, mac_addr);
 
 	rte_spinlock_unlock(&hw->lock);
 	if (ret) {
@@ -326,9 +326,10 @@ hns3vf_set_default_mac_addr(struct rte_eth_dev *dev,
 static int
 hns3vf_configure_mac_addr(struct hns3_adapter *hns, bool del)
 {
-	struct hns3_hw *hw = &hns->hw;
-	struct rte_ether_addr *addr;
 	char mac_str[RTE_ETHER_ADDR_FMT_SIZE];
+	struct hns3_hw *hw = &hns->hw;
+	struct hns3_hw_ops *ops = &hw->ops;
+	struct rte_ether_addr *addr;
 	int err = 0;
 	int ret;
 	int i;
@@ -338,11 +339,11 @@ hns3vf_configure_mac_addr(struct hns3_adapter *hns, bool del)
 		if (rte_is_zero_ether_addr(addr))
 			continue;
 		if (rte_is_multicast_ether_addr(addr))
-			ret = del ? hns3vf_remove_mc_mac_addr(hw, addr) :
-			      hns3vf_add_mc_mac_addr(hw, addr);
+			ret = del ? ops->del_mc_mac_addr(hw, addr) :
+			      ops->add_mc_mac_addr(hw, addr);
 		else
-			ret = del ? hns3vf_remove_uc_mac_addr(hw, addr) :
-			      hns3vf_add_uc_mac_addr(hw, addr);
+			ret = del ? ops->del_uc_mac_addr(hw, addr) :
+			      ops->add_uc_mac_addr(hw, addr);
 
 		if (ret) {
 			err = ret;
@@ -484,7 +485,7 @@ hns3vf_set_mc_mac_addr_list(struct rte_eth_dev *dev,
 	for (i = 0; i < cur_addr_num; i++) {
 		num = cur_addr_num - i - 1;
 		addr = &hw->mc_addrs[num];
-		ret = hns3vf_remove_mc_mac_addr(hw, addr);
+		ret = hw->ops.del_mc_mac_addr(hw, addr);
 		if (ret) {
 			rte_spinlock_unlock(&hw->lock);
 			return ret;
@@ -496,7 +497,7 @@ hns3vf_set_mc_mac_addr_list(struct rte_eth_dev *dev,
 	set_addr_num = (int)nb_mc_addr;
 	for (i = 0; i < set_addr_num; i++) {
 		addr = &mc_addr_set[i];
-		ret = hns3vf_add_mc_mac_addr(hw, addr);
+		ret = hw->ops.add_mc_mac_addr(hw, addr);
 		if (ret) {
 			rte_spinlock_unlock(&hw->lock);
 			return ret;
@@ -525,9 +526,9 @@ hns3vf_configure_all_mc_mac_addr(struct hns3_adapter *hns, bool del)
 		if (!rte_is_multicast_ether_addr(addr))
 			continue;
 		if (del)
-			ret = hns3vf_remove_mc_mac_addr(hw, addr);
+			ret = hw->ops.del_mc_mac_addr(hw, addr);
 		else
-			ret = hns3vf_add_mc_mac_addr(hw, addr);
+			ret = hw->ops.add_mc_mac_addr(hw, addr);
 		if (ret) {
 			err = ret;
 			hns3_ether_format_addr(mac_str, RTE_ETHER_ADDR_FMT_SIZE,
