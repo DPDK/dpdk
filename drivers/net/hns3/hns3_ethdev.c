@@ -2015,94 +2015,15 @@ hns3_set_mc_addr_chk_param(struct hns3_hw *hw,
 	return 0;
 }
 
-static void
-hns3_set_mc_addr_calc_addr(struct hns3_hw *hw,
-			   struct rte_ether_addr *mc_addr_set,
-			   int mc_addr_num,
-			   struct rte_ether_addr *reserved_addr_list,
-			   int *reserved_addr_num,
-			   struct rte_ether_addr *add_addr_list,
-			   int *add_addr_num,
-			   struct rte_ether_addr *rm_addr_list,
-			   int *rm_addr_num)
-{
-	struct rte_ether_addr *addr;
-	int current_addr_num;
-	int reserved_num = 0;
-	int add_num = 0;
-	int rm_num = 0;
-	int num;
-	int i;
-	int j;
-	bool same_addr;
-
-	/* Calculate the mc mac address list that should be removed */
-	current_addr_num = hw->mc_addrs_num;
-	for (i = 0; i < current_addr_num; i++) {
-		addr = &hw->mc_addrs[i];
-		same_addr = false;
-		for (j = 0; j < mc_addr_num; j++) {
-			if (rte_is_same_ether_addr(addr, &mc_addr_set[j])) {
-				same_addr = true;
-				break;
-			}
-		}
-
-		if (!same_addr) {
-			rte_ether_addr_copy(addr, &rm_addr_list[rm_num]);
-			rm_num++;
-		} else {
-			rte_ether_addr_copy(addr,
-					    &reserved_addr_list[reserved_num]);
-			reserved_num++;
-		}
-	}
-
-	/* Calculate the mc mac address list that should be added */
-	for (i = 0; i < mc_addr_num; i++) {
-		addr = &mc_addr_set[i];
-		same_addr = false;
-		for (j = 0; j < current_addr_num; j++) {
-			if (rte_is_same_ether_addr(addr, &hw->mc_addrs[j])) {
-				same_addr = true;
-				break;
-			}
-		}
-
-		if (!same_addr) {
-			rte_ether_addr_copy(addr, &add_addr_list[add_num]);
-			add_num++;
-		}
-	}
-
-	/* Reorder the mc mac address list maintained by driver */
-	for (i = 0; i < reserved_num; i++)
-		rte_ether_addr_copy(&reserved_addr_list[i], &hw->mc_addrs[i]);
-
-	for (i = 0; i < rm_num; i++) {
-		num = reserved_num + i;
-		rte_ether_addr_copy(&rm_addr_list[i], &hw->mc_addrs[num]);
-	}
-
-	*reserved_addr_num = reserved_num;
-	*add_addr_num = add_num;
-	*rm_addr_num = rm_num;
-}
-
 static int
 hns3_set_mc_mac_addr_list(struct rte_eth_dev *dev,
 			  struct rte_ether_addr *mc_addr_set,
 			  uint32_t nb_mc_addr)
 {
 	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	struct rte_ether_addr reserved_addr_list[HNS3_MC_MACADDR_NUM];
-	struct rte_ether_addr add_addr_list[HNS3_MC_MACADDR_NUM];
-	struct rte_ether_addr rm_addr_list[HNS3_MC_MACADDR_NUM];
 	struct rte_ether_addr *addr;
-	int reserved_addr_num;
-	int add_addr_num;
-	int rm_addr_num;
-	int mc_addr_num;
+	int cur_addr_num;
+	int set_addr_num;
 	int num;
 	int ret;
 	int i;
@@ -2113,40 +2034,29 @@ hns3_set_mc_mac_addr_list(struct rte_eth_dev *dev,
 		return ret;
 
 	rte_spinlock_lock(&hw->lock);
-
-	/*
-	 * Calculate the mc mac address lists those should be removed and be
-	 * added, Reorder the mc mac address list maintained by driver.
-	 */
-	mc_addr_num = (int)nb_mc_addr;
-	hns3_set_mc_addr_calc_addr(hw, mc_addr_set, mc_addr_num,
-				   reserved_addr_list, &reserved_addr_num,
-				   add_addr_list, &add_addr_num,
-				   rm_addr_list, &rm_addr_num);
-
-	/* Remove mc mac addresses */
-	for (i = 0; i < rm_addr_num; i++) {
-		num = rm_addr_num - i - 1;
-		addr = &rm_addr_list[num];
+	cur_addr_num = hw->mc_addrs_num;
+	for (i = 0; i < cur_addr_num; i++) {
+		num = cur_addr_num - i - 1;
+		addr = &hw->mc_addrs[num];
 		ret = hw->ops.del_mc_mac_addr(hw, addr);
 		if (ret) {
 			rte_spinlock_unlock(&hw->lock);
 			return ret;
 		}
+
 		hw->mc_addrs_num--;
 	}
 
-	/* Add mc mac addresses */
-	for (i = 0; i < add_addr_num; i++) {
-		addr = &add_addr_list[i];
+	set_addr_num = (int)nb_mc_addr;
+	for (i = 0; i < set_addr_num; i++) {
+		addr = &mc_addr_set[i];
 		ret = hw->ops.add_mc_mac_addr(hw, addr);
 		if (ret) {
 			rte_spinlock_unlock(&hw->lock);
 			return ret;
 		}
 
-		num = reserved_addr_num + i;
-		rte_ether_addr_copy(addr, &hw->mc_addrs[num]);
+		rte_ether_addr_copy(addr, &hw->mc_addrs[hw->mc_addrs_num]);
 		hw->mc_addrs_num++;
 	}
 	rte_spinlock_unlock(&hw->lock);
