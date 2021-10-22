@@ -88,10 +88,6 @@ int mlx5_regex_rules_db_import(struct rte_regexdev *dev,
 			       const char *rule_db, uint32_t rule_db_len);
 
 /* mlx5_regex_devx.c */
-int mlx5_devx_regex_register_write(struct ibv_context *ctx, int engine_id,
-				   uint32_t addr, uint32_t data);
-int mlx5_devx_regex_register_read(struct ibv_context *ctx, int engine_id,
-				  uint32_t addr, uint32_t *data);
 int mlx5_devx_regex_database_stop(void *ctx, uint8_t engine);
 int mlx5_devx_regex_database_resume(void *ctx, uint8_t engine);
 int mlx5_devx_regex_rules_program(void *ctx, uint8_t engine, uint32_t rof_mkey,

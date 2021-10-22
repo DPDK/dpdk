@@ -66,29 +66,6 @@ mlx5_regex_close(struct rte_regexdev *dev __rte_unused)
 	return 0;
 }
 
-static int
-mlx5_regex_engines_status(struct ibv_context *ctx, int num_engines)
-{
-	uint32_t fpga_ident = 0;
-	int err;
-	int i;
-
-	for (i = 0; i < num_engines; i++) {
-		err = mlx5_devx_regex_register_read(ctx, i,
-						    MLX5_RXP_CSR_IDENTIFIER,
-						    &fpga_ident);
-		fpga_ident = (fpga_ident & (0x0000FFFF));
-		if (err || fpga_ident != MLX5_RXP_IDENTIFIER) {
-			DRV_LOG(ERR, "Failed setup RXP %d err %d database "
-				"memory 0x%x", i, err, fpga_ident);
-			if (!err)
-				err = EINVAL;
-			return err;
-		}
-	}
-	return 0;
-}
-
 static void
 mlx5_regex_get_name(char *name, struct rte_device *dev)
 {
@@ -107,11 +84,6 @@ mlx5_regex_dev_probe(struct mlx5_common_device *cdev)
 		DRV_LOG(ERR, "Not enough capabilities to support RegEx, maybe "
 			"old FW/OFED version?");
 		rte_errno = ENOTSUP;
-		return -rte_errno;
-	}
-	if (mlx5_regex_engines_status(cdev->ctx, 2)) {
-		DRV_LOG(ERR, "RegEx engine error.");
-		rte_errno = ENOMEM;
 		return -rte_errno;
 	}
 	priv = rte_zmalloc("mlx5 regex device private", sizeof(*priv),
