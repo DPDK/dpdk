@@ -1062,10 +1062,11 @@ void hns3vf_update_link_status(struct hns3_hw *hw, uint8_t link_status,
 void hns3_parse_devargs(struct rte_eth_dev *dev);
 void hns3vf_update_push_lsc_cap(struct hns3_hw *hw, bool supported);
 
-bool hns3_find_duplicate_mc_addr(struct hns3_hw *hw,
-				struct rte_ether_addr *mc_addr);
 int hns3_configure_all_mc_mac_addr(struct hns3_adapter *hns, bool del);
 int hns3_configure_all_mac_addr(struct hns3_adapter *hns, bool del);
+int hns3_add_mac_addr(struct rte_eth_dev *dev, struct rte_ether_addr *mac_addr,
+		__rte_unused uint32_t idx, __rte_unused uint32_t pool);
+void hns3_remove_mac_addr(struct rte_eth_dev *dev, uint32_t idx);
 
 int hns3_restore_ptp(struct hns3_adapter *hns);
 int hns3_mbuf_dyn_rx_timestamp_register(struct rte_eth_dev *dev,

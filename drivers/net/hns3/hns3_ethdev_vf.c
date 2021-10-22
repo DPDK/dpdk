@@ -205,72 +205,6 @@ hns3vf_remove_uc_mac_addr(struct hns3_hw *hw, struct rte_ether_addr *mac_addr)
 }
 
 static int
-hns3vf_add_mac_addr(struct rte_eth_dev *dev, struct rte_ether_addr *mac_addr,
-		    __rte_unused uint32_t idx,
-		    __rte_unused uint32_t pool)
-{
-	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	char mac_str[RTE_ETHER_ADDR_FMT_SIZE];
-	int ret;
-
-	rte_spinlock_lock(&hw->lock);
-
-	/*
-	 * In hns3 network engine adding UC and MC mac address with different
-	 * commands with firmware. We need to determine whether the input
-	 * address is a UC or a MC address to call different commands.
-	 * By the way, it is recommended calling the API function named
-	 * rte_eth_dev_set_mc_addr_list to set the MC mac address, because
-	 * using the rte_eth_dev_mac_addr_add API function to set MC mac address
-	 * may affect the specifications of UC mac addresses.
-	 */
-	if (rte_is_multicast_ether_addr(mac_addr)) {
-		if (hns3_find_duplicate_mc_addr(hw, mac_addr)) {
-			rte_spinlock_unlock(&hw->lock);
-			return -EINVAL;
-		}
-		ret = hw->ops.add_mc_mac_addr(hw, mac_addr);
-	} else {
-		ret = hw->ops.add_uc_mac_addr(hw, mac_addr);
-	}
-
-	rte_spinlock_unlock(&hw->lock);
-	if (ret) {
-		hns3_ether_format_addr(mac_str, RTE_ETHER_ADDR_FMT_SIZE,
-				      mac_addr);
-		hns3_err(hw, "failed to add mac addr(%s), ret = %d", mac_str,
-			 ret);
-	}
-
-	return ret;
-}
-
-static void
-hns3vf_remove_mac_addr(struct rte_eth_dev *dev, uint32_t idx)
-{
-	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	/* index will be checked by upper level rte interface */
-	struct rte_ether_addr *mac_addr = &dev->data->mac_addrs[idx];
-	char mac_str[RTE_ETHER_ADDR_FMT_SIZE];
-	int ret;
-
-	rte_spinlock_lock(&hw->lock);
-
-	if (rte_is_multicast_ether_addr(mac_addr))
-		ret = hw->ops.del_mc_mac_addr(hw, mac_addr);
-	else
-		ret = hw->ops.del_uc_mac_addr(hw, mac_addr);
-
-	rte_spinlock_unlock(&hw->lock);
-	if (ret) {
-		hns3_ether_format_addr(mac_str, RTE_ETHER_ADDR_FMT_SIZE,
-				      mac_addr);
-		hns3_err(hw, "failed to remove mac addr(%s), ret = %d",
-			 mac_str, ret);
-	}
-}
-
-static int
 hns3vf_set_default_mac_addr(struct rte_eth_dev *dev,
 			    struct rte_ether_addr *mac_addr)
 {
@@ -2805,8 +2739,8 @@ static const struct eth_dev_ops hns3vf_eth_dev_ops = {
 	.txq_info_get       = hns3_txq_info_get,
 	.rx_burst_mode_get  = hns3_rx_burst_mode_get,
 	.tx_burst_mode_get  = hns3_tx_burst_mode_get,
-	.mac_addr_add       = hns3vf_add_mac_addr,
-	.mac_addr_remove    = hns3vf_remove_mac_addr,
+	.mac_addr_add       = hns3_add_mac_addr,
+	.mac_addr_remove    = hns3_remove_mac_addr,
 	.mac_addr_set       = hns3vf_set_default_mac_addr,
 	.set_mc_addr_list   = hns3vf_set_mc_mac_addr_list,
 	.link_update        = hns3vf_dev_link_update,
