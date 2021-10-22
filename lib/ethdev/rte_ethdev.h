@@ -687,23 +687,23 @@ struct rte_eth_rss_conf {
  * It basically stands for the innermost encapsulation level RSS
  * can be performed on according to PMD and device capabilities.
  */
-#define RTE_ETH_RSS_LEVEL_PMD_DEFAULT  (0ULL << 50)
+#define RTE_ETH_RSS_LEVEL_PMD_DEFAULT  (UINT64_C(0) << 50)
 #define ETH_RSS_LEVEL_PMD_DEFAULT      RTE_ETH_RSS_LEVEL_PMD_DEFAULT
 
 /**
  * level 1, requests RSS to be performed on the outermost packet
  * encapsulation level.
  */
-#define RTE_ETH_RSS_LEVEL_OUTERMOST    (1ULL << 50)
+#define RTE_ETH_RSS_LEVEL_OUTERMOST    (UINT64_C(1) << 50)
 #define ETH_RSS_LEVEL_OUTERMOST        RTE_ETH_RSS_LEVEL_OUTERMOST
 
 /**
  * level 2, requests RSS to be performed on the specified inner packet
  * encapsulation level, from outermost to innermost (lower to higher values).
  */
-#define RTE_ETH_RSS_LEVEL_INNERMOST    (2ULL << 50)
+#define RTE_ETH_RSS_LEVEL_INNERMOST    (UINT64_C(2) << 50)
 #define ETH_RSS_LEVEL_INNERMOST        RTE_ETH_RSS_LEVEL_INNERMOST
-#define RTE_ETH_RSS_LEVEL_MASK         (3ULL << 50)
+#define RTE_ETH_RSS_LEVEL_MASK         (UINT64_C(3) << 50)
 #define ETH_RSS_LEVEL_MASK             RTE_ETH_RSS_LEVEL_MASK
 
 #define RTE_ETH_RSS_LEVEL(rss_hf) ((rss_hf & RTE_ETH_RSS_LEVEL_MASK) >> 50)
