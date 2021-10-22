@@ -129,9 +129,9 @@ enum mlx5_rxp_program_mode {
 #define MLX5_RXP_EM_COUNT 1u /* Extra External Memories to use. */
 #define MLX5_RXP_DB_NOT_ASSIGNED 0xFF
 
-struct mlx5_regex_umem {
+struct mlx5_regex_mkey {
 	struct mlx5dv_devx_umem *umem;
-	uint32_t id;
+	struct mlx5_devx_obj *mkey;
 	uint64_t offset;
 };
 

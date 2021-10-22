@@ -28,6 +28,12 @@
 #define MLX5_REGEX_RXP_ROF2_LINE_LEN 34
 
 /* Private Declarations */
+static int
+rxp_create_mkey(struct mlx5_regex_priv *priv, void *ptr, size_t size,
+	uint32_t access, struct mlx5_regex_mkey *mkey);
+static inline void
+rxp_destroy_mkey(struct mlx5_regex_mkey *mkey);
+
 int
 mlx5_regex_info_get(struct rte_regexdev *dev __rte_unused,
 		    struct rte_regexdev_info *info)
@@ -44,45 +50,43 @@ mlx5_regex_info_get(struct rte_regexdev *dev __rte_unused,
 }
 
 static int
-rxp_db_setup(struct mlx5_regex_priv *priv)
+rxp_create_mkey(struct mlx5_regex_priv *priv, void *ptr, size_t size,
+	uint32_t access, struct mlx5_regex_mkey *mkey)
 {
-	int ret;
-	uint8_t i;
+	struct mlx5_devx_mkey_attr mkey_attr;
 
-	/* Setup database memories for both RXP engines + reprogram memory. */
-	for (i = 0; i < (priv->nb_engines + MLX5_RXP_EM_COUNT); i++) {
-		priv->db[i].ptr = rte_malloc("", MLX5_MAX_DB_SIZE, 1 << 21);
-		if (!priv->db[i].ptr) {
-			DRV_LOG(ERR, "Failed to alloc db memory!");
-			ret = ENODEV;
-			goto tidyup_error;
-		}
-		/* Register the memory. */
-		priv->db[i].umem.umem = mlx5_glue->devx_umem_reg
-							(priv->cdev->ctx,
-							 priv->db[i].ptr,
-							 MLX5_MAX_DB_SIZE, 7);
-		if (!priv->db[i].umem.umem) {
-			DRV_LOG(ERR, "Failed to register memory!");
-			ret = ENODEV;
-			goto tidyup_error;
-		}
-		/* Ensure set all DB memory to 0's before setting up DB. */
-		memset(priv->db[i].ptr, 0x00, MLX5_MAX_DB_SIZE);
-		/* No data currently in database. */
-		priv->db[i].len = 0;
-		priv->db[i].active = false;
-		priv->db[i].db_assigned_to_eng_num = MLX5_RXP_DB_NOT_ASSIGNED;
+	/* Register the memory. */
+	mkey->umem = mlx5_glue->devx_umem_reg(priv->cdev->ctx, ptr, size, access);
+	if (!mkey->umem) {
+		DRV_LOG(ERR, "Failed to register memory!");
+		return -ENODEV;
+	}
+	/* Create mkey */
+	mkey_attr = (struct mlx5_devx_mkey_attr) {
+		.addr = (uintptr_t)ptr,
+		.size = (uint32_t)size,
+		.umem_id = mlx5_os_get_umem_id(mkey->umem),
+		.pg_access = 1,
+		.umr_en = 0,
+	};
+#ifdef HAVE_IBV_FLOW_DV_SUPPORT
+	mkey_attr.pd = priv->cdev->pdn;
+#endif
+	mkey->mkey = mlx5_devx_cmd_mkey_create(priv->cdev->ctx, &mkey_attr);
+	if (!mkey->mkey) {
+		DRV_LOG(ERR, "Failed to create direct mkey!");
+		return -ENODEV;
 	}
 	return 0;
-tidyup_error:
-	for (i = 0; i < (priv->nb_engines + MLX5_RXP_EM_COUNT); i++) {
-		if (priv->db[i].umem.umem)
-			mlx5_glue->devx_umem_dereg(priv->db[i].umem.umem);
-		rte_free(priv->db[i].ptr);
-		priv->db[i].ptr = NULL;
-	}
-	return -ret;
+}
+
+static inline void
+rxp_destroy_mkey(struct mlx5_regex_mkey *mkey)
+{
+	if (mkey->mkey)
+		claim_zero(mlx5_devx_cmd_destroy(mkey->mkey));
+	if (mkey->umem)
+		claim_zero(mlx5_glue->devx_umem_dereg(mkey->umem));
 }
 
 int
@@ -90,6 +94,10 @@ mlx5_regex_rules_db_import(struct rte_regexdev *dev,
 		     const char *rule_db, uint32_t rule_db_len)
 {
 	struct mlx5_regex_priv *priv = dev->data->dev_private;
+	struct mlx5_regex_mkey mkey;
+	uint32_t id;
+	int ret;
+	void *ptr;
 
 	if (priv->prog_mode == MLX5_RXP_MODE_NOT_DEFINED) {
 		DRV_LOG(ERR, "RXP programming mode not set!");
@@ -101,8 +109,31 @@ mlx5_regex_rules_db_import(struct rte_regexdev *dev,
 	}
 	if (rule_db_len == 0)
 		return -EINVAL;
+	/* copy rules - rules have to be 4KB aligned. */
+	ptr = rte_malloc("", rule_db_len, 1 << 12);
+	if (!ptr) {
+		DRV_LOG(ERR, "Failed to allocate rules file memory.");
+		return -ENOMEM;
+	}
+	rte_memcpy(ptr, rule_db, rule_db_len);
+	/* Register umem and create rof mkey. */
+	ret = rxp_create_mkey(priv, ptr, rule_db_len, /*access=*/7, &mkey);
+	if (ret < 0)
+		return ret;
 
-	return 0;
+	for (id = 0; id < priv->nb_engines; id++) {
+		ret = mlx5_devx_regex_rules_program(priv->cdev->ctx, id,
+			mkey.mkey->id, rule_db_len, (uintptr_t)ptr);
+		if (ret < 0) {
+			DRV_LOG(ERR, "Failed to program rxp rules.");
+			ret = -ENODEV;
+			break;
+		}
+		ret = 0;
+	}
+	rxp_destroy_mkey(&mkey);
+	rte_free(ptr);
+	return ret;
 }
 
 int
@@ -124,12 +155,6 @@ mlx5_regex_configure(struct rte_regexdev *dev,
 		return -rte_errno;
 	}
 	priv->nb_max_matches = cfg->nb_max_matches;
-	/* Setup rxp db memories. */
-	if (rxp_db_setup(priv)) {
-		DRV_LOG(ERR, "Failed to setup RXP db memory");
-		rte_errno = ENOMEM;
-		return -rte_errno;
-	}
 	if (cfg->rule_db != NULL) {
 		ret = mlx5_regex_rules_db_import(dev, cfg->rule_db,
 						 cfg->rule_db_len);

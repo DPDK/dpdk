@@ -261,6 +261,10 @@ New Features
   * Added a new baseband PMD driver for NXP LA12xx Software defined radio.
   * See the :doc:`../bbdevs/la12xx` for more details.
 
+* **Updated Mellanox regex driver.**
+
+  * Added support for new ROF file format.
+
 * **Updated IPsec library.**
 
   * Added support for more AEAD algorithms AES_CCM, CHACHA20_POLY1305

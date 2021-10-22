@@ -55,7 +55,7 @@ Prerequisites
 Limitations
 -----------
 
-- The firmware version must be equal to or lower than XX.30.1004
+- The firmware version must be greater than XX.31.0364
 
 Run-time configuration
 ~~~~~~~~~~~~~~~~~~~~~~
