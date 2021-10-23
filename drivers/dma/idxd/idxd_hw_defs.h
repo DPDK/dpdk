@@ -43,7 +43,7 @@ struct idxd_hw_desc {
 	uint16_t intr_handle; /* completion interrupt handle */
 
 	/* remaining 26 bytes are reserved */
-	uint16_t __reserved[13];
+	uint16_t reserved[13];
 } __rte_aligned(64);
 
 #define IDXD_COMP_STATUS_INCOMPLETE        0
