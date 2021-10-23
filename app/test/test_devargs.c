@@ -43,8 +43,10 @@ test_args(const char *devargs, const char *layer, const char *args, const int n)
 	if ((int)kvlist->count != n) {
 		printf("rte_devargs_parse(%s) %s_str: %s kv number %u, not %d\n",
 		       devargs, layer, args, kvlist->count, n);
+		rte_kvargs_free(kvlist);
 		return -1;
 	}
+	rte_kvargs_free(kvlist);
 	return 0;
 }
 
