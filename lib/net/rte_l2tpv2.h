@@ -86,6 +86,7 @@ struct rte_l2tpv2_common_hdr {
 	union {
 		/** header flags and protocol version */
 		rte_be16_t flags_version;
+		__extension__
 		struct {
 #if RTE_BYTE_ORDER == RTE_LITTLE_ENDIAN
 			rte_be16_t t:1;		/**< message Type */
