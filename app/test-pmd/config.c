@@ -1241,10 +1241,12 @@ port_mtu_set(portid_t port_id, uint16_t mtu)
 	if (port_id_is_invalid(port_id, ENABLED_WARN))
 		return;
 
-	diag = rte_eth_dev_set_mtu(port_id, mtu);
-	if (diag != 0) {
-		fprintf(stderr, "Set MTU failed. diag=%d\n", diag);
-		return;
+	if (port->need_reconfig == 0) {
+		diag = rte_eth_dev_set_mtu(port_id, mtu);
+		if (diag != 0) {
+			fprintf(stderr, "Set MTU failed. diag=%d\n", diag);
+			return;
+		}
 	}
 
 	port->dev_conf.rxmode.mtu = mtu;
