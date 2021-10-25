@@ -512,7 +512,7 @@ sfc_mae_clear_switch_port(uint16_t switch_domain_id,
 static int
 sfc_mae_find_switch_port_by_ethdev(uint16_t switch_domain_id,
 				   uint16_t ethdev_port_id,
-				   efx_mport_sel_t *mport_sel)
+				   struct sfc_mae_switch_port **switch_port)
 {
 	struct sfc_mae_switch_domain *domain;
 	struct sfc_mae_switch_port *port;
@@ -528,7 +528,7 @@ sfc_mae_find_switch_port_by_ethdev(uint16_t switch_domain_id,
 
 	TAILQ_FOREACH(port, &domain->ports, switch_domain_ports) {
 		if (port->ethdev_port_id == ethdev_port_id) {
-			*mport_sel = port->ethdev_mport;
+			*switch_port = port;
 			return 0;
 		}
 	}
@@ -541,11 +541,27 @@ sfc_mae_switch_port_by_ethdev(uint16_t switch_domain_id,
 			      uint16_t ethdev_port_id,
 			      efx_mport_sel_t *mport_sel)
 {
+	struct sfc_mae_switch_port *port;
 	int rc;
 
 	rte_spinlock_lock(&sfc_mae_switch.lock);
 	rc = sfc_mae_find_switch_port_by_ethdev(switch_domain_id,
-						ethdev_port_id, mport_sel);
+						ethdev_port_id, &port);
+	if (rc != 0)
+		goto unlock;
+
+	if (port->type != SFC_MAE_SWITCH_PORT_INDEPENDENT) {
+		/*
+		 * The ethdev is a "VF representor". It does not own
+		 * a dedicated m-port suitable for use in flow rules.
+		 */
+		rc = ENOTSUP;
+		goto unlock;
+	}
+
+	*mport_sel = port->ethdev_mport;
+
+unlock:
 	rte_spinlock_unlock(&sfc_mae_switch.lock);
 
 	return rc;
