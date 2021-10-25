@@ -468,7 +468,7 @@ wait_workers_to_join(int lcore, const rte_atomic32_t *count)
 	RTE_SET_USED(count);
 
 	print_cycles = cycles = rte_get_timer_cycles();
-	while (rte_eal_get_lcore_state(lcore) != FINISHED) {
+	while (rte_eal_get_lcore_state(lcore) != WAIT) {
 		uint64_t new_cycles = rte_get_timer_cycles();
 
 		if (new_cycles - print_cycles > rte_get_timer_hz()) {

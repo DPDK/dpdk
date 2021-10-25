@@ -19,7 +19,7 @@
 /*
  * Send a message to a worker lcore identified by worker_id to call a
  * function f with argument arg. Once the execution is done, the
- * remote lcore switch in FINISHED state.
+ * remote lcore switches to WAIT state.
  */
 int
 rte_eal_remote_launch(lcore_function_t *f, void *arg, unsigned int worker_id)
@@ -114,13 +114,7 @@ eal_thread_loop(void *arg __rte_unused)
 		lcore_config[lcore_id].arg = NULL;
 		rte_wmb();
 
-		/* when a service core returns, it should go directly to WAIT
-		 * state, because the application will not lcore_wait() for it.
-		 */
-		if (lcore_config[lcore_id].core_role == ROLE_SERVICE)
-			lcore_config[lcore_id].state = WAIT;
-		else
-			lcore_config[lcore_id].state = FINISHED;
+		lcore_config[lcore_id].state = WAIT;
 	}
 }
 

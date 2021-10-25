@@ -363,6 +363,10 @@ API Changes
    Also, make sure to start the actual text at the margin.
    =======================================================
 
+* eal: The lcore state ``FINISHED`` is removed from
+  the ``enum rte_lcore_state_t``.
+  The lcore state ``WAIT`` is enough to represent the same state.
+
 * kvargs: The experimental function ``rte_kvargs_strcmp()`` has been
   removed. Its usages have been replaced by a new function
   ``rte_kvargs_get_with_value()``.

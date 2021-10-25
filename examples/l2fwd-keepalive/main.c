@@ -506,8 +506,7 @@ dead_core(__rte_unused void *ptr_data, const int id_core)
 	if (terminate_signal_received)
 		return;
 	printf("Dead core %i - restarting..\n", id_core);
-	if (rte_eal_get_lcore_state(id_core) == FINISHED) {
-		rte_eal_wait_lcore(id_core);
+	if (rte_eal_get_lcore_state(id_core) == WAIT) {
 		rte_eal_remote_launch(l2fwd_launch_one_lcore, NULL, id_core);
 	} else {
 		printf("..false positive!\n");

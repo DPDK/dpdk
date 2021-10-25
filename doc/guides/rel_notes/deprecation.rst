@@ -17,10 +17,6 @@ Deprecation Notices
 * eal: The function ``rte_eal_remote_launch`` will return new error codes
   after read or write error on the pipe, instead of calling ``rte_panic``.
 
-* eal: The lcore state ``FINISHED`` will be removed from
-  the ``enum rte_lcore_state_t``.
-  The lcore state ``WAIT`` is enough to represent the same state.
-
 * eal: Making ``struct rte_intr_handle`` internal to avoid any ABI breakages
   in future.
 

@@ -320,9 +320,7 @@ int32_t rte_service_lcore_count(void);
  * from duty, just unmaps all services / cores, and stops() the service cores.
  * The runstate of services is not modified.
  *
- * The cores that are stopped with this call, are in FINISHED state and
- * the application must take care of bringing them back to a launchable state:
- * e.g. call *rte_eal_lcore_wait* on the lcore_id.
+ * The cores that are stopped with this call, are in WAIT state.
  *
  * @retval 0 Success
  */

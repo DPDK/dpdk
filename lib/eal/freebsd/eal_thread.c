@@ -28,7 +28,7 @@
 /*
  * Send a message to a worker lcore identified by worker_id to call a
  * function f with argument arg. Once the execution is done, the
- * remote lcore switch in FINISHED state.
+ * remote lcore switches to WAIT state.
  */
 int
 rte_eal_remote_launch(int (*f)(void *), void *arg, unsigned worker_id)
@@ -129,7 +129,7 @@ eal_thread_loop(__rte_unused void *arg)
 		lcore_config[lcore_id].f = NULL;
 		lcore_config[lcore_id].arg = NULL;
 		rte_wmb();
-		lcore_config[lcore_id].state = FINISHED;
+		lcore_config[lcore_id].state = WAIT;
 	}
 
 	/* never reached */

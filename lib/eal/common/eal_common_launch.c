@@ -26,14 +26,11 @@ rte_eal_wait_lcore(unsigned worker_id)
 	if (lcore_config[worker_id].state == WAIT)
 		return 0;
 
-	while (lcore_config[worker_id].state != WAIT &&
-	       lcore_config[worker_id].state != FINISHED)
+	while (lcore_config[worker_id].state != WAIT)
 		rte_pause();
 
 	rte_rmb();
 
-	/* we are in finished state, go to wait state */
-	lcore_config[worker_id].state = WAIT;
 	return lcore_config[worker_id].ret;
 }
 
@@ -62,7 +59,7 @@ rte_eal_mp_remote_launch(int (*f)(void *), void *arg,
 
 	if (call_main == CALL_MAIN) {
 		lcore_config[main_lcore].ret = f(arg);
-		lcore_config[main_lcore].state = FINISHED;
+		lcore_config[main_lcore].state = WAIT;
 	}
 
 	return 0;

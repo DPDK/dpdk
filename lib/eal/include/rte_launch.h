@@ -19,9 +19,10 @@ extern "C" {
  * State of an lcore.
  */
 enum rte_lcore_state_t {
-	WAIT,       /**< waiting a new command */
-	RUNNING,    /**< executing command */
-	FINISHED,   /**< command executed */
+	WAIT,
+	/**< waiting for new command */
+	RUNNING,
+	/**< executing command */
 };
 
 /**
@@ -41,7 +42,7 @@ typedef int (lcore_function_t)(void *);
  *
  * When the remote lcore receives the message, it switches to
  * the RUNNING state, then calls the function f with argument arg. Once the
- * execution is done, the remote lcore switches to a FINISHED state and
+ * execution is done, the remote lcore switches to WAIT state and
  * the return value of f is stored in a local variable to be read using
  * rte_eal_wait_lcore().
  *
@@ -114,18 +115,16 @@ enum rte_lcore_state_t rte_eal_get_lcore_state(unsigned int worker_id);
  *
  * To be executed on the MAIN lcore only.
  *
- * If the worker lcore identified by the worker_id is in a FINISHED state,
- * switch to the WAIT state. If the lcore is in RUNNING state, wait until
- * the lcore finishes its job and moves to the FINISHED state.
+ * If the lcore identified by the worker_id is in RUNNING state, wait until
+ * the lcore finishes its job and moves to the WAIT state.
  *
  * @param worker_id
  *   The identifier of the lcore.
  * @return
- *   - 0: If the lcore identified by the worker_id is in a WAIT state.
+ *   - 0: If the remote launch function was never called on the lcore
+ *     identified by the worker_id.
  *   - The value that was returned by the previous remote launch
- *     function call if the lcore identified by the worker_id was in a
- *     FINISHED or RUNNING state. In this case, it changes the state
- *     of the lcore to WAIT.
+ *     function call.
  */
 int rte_eal_wait_lcore(unsigned worker_id);
 
