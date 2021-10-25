@@ -82,15 +82,15 @@ cnxk_ae_fill_rsa_params(struct cnxk_ae_sess *sess,
 	struct rte_crypto_rsa_xform *rsa = &sess->rsa_ctx;
 	size_t mod_len = xfrm_rsa->n.length;
 	size_t exp_len = xfrm_rsa->e.length;
-	size_t len = (mod_len / 2);
 	uint64_t total_size;
+	size_t len = 0;
 
 	if (qt.p.length != 0 && qt.p.data == NULL)
 		return -EINVAL;
 
 	/* Make sure key length used is not more than mod_len/2 */
 	if (qt.p.data != NULL)
-		len = RTE_MIN(len, qt.p.length);
+		len = (((mod_len / 2) < qt.p.length) ? 0 : qt.p.length);
 
 	/* Total size required for RSA key params(n,e,(q,dQ,p,dP,qInv)) */
 	total_size = mod_len + exp_len + 5 * len;
