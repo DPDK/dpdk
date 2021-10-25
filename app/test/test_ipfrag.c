@@ -89,12 +89,14 @@ static void ut_teardown(void)
 }
 
 static void
-v4_allocate_packet_of(struct rte_mbuf *b, int fill, size_t s, int df,
+v4_allocate_packet_of(struct rte_mbuf *b, int fill,
+		      size_t s, int df, uint8_t mf, uint16_t off,
 		      uint8_t ttl, uint8_t proto, uint16_t pktid)
 {
 	/* Create a packet, 2k bytes long */
 	b->data_off = 0;
 	char *data = rte_pktmbuf_mtod(b, char *);
+	rte_be16_t fragment_offset = 0;	/**< fragmentation offset */
 
 	memset(data, fill, sizeof(struct rte_ipv4_hdr) + s);
 
@@ -106,9 +108,17 @@ v4_allocate_packet_of(struct rte_mbuf *b, int fill, size_t s, int df,
 	b->data_len = b->pkt_len;
 	hdr->total_length = rte_cpu_to_be_16(b->pkt_len);
 	hdr->packet_id = rte_cpu_to_be_16(pktid);
-	hdr->fragment_offset = 0;
+
 	if (df)
-		hdr->fragment_offset = rte_cpu_to_be_16(0x4000);
+		fragment_offset |= 0x4000;
+
+	if (mf)
+		fragment_offset |= 0x2000;
+
+	if (off)
+		fragment_offset |= off;
+
+	hdr->fragment_offset = rte_cpu_to_be_16(fragment_offset);
 
 	if (!ttl)
 		ttl = 64; /* default to 64 */
@@ -155,38 +165,73 @@ test_free_fragments(struct rte_mbuf *mb[], uint32_t num)
 		rte_pktmbuf_free(mb[i]);
 }
 
+static inline void
+test_get_offset(struct rte_mbuf **mb, int32_t len,
+	uint16_t *offset, int ipv)
+{
+	int32_t i;
+
+	for (i = 0; i < len; i++) {
+		if (ipv == 4) {
+			struct rte_ipv4_hdr *iph =
+			    rte_pktmbuf_mtod(mb[i], struct rte_ipv4_hdr *);
+			offset[i] = iph->fragment_offset;
+		} else if (ipv == 6) {
+			struct ipv6_extension_fragment *fh =
+			    rte_pktmbuf_mtod_offset(
+					mb[i],
+					struct ipv6_extension_fragment *,
+					sizeof(struct rte_ipv6_hdr));
+			offset[i] = fh->frag_data;
+		}
+	}
+}
+
 static int
 test_ip_frag(void)
 {
 	static const uint16_t RND_ID = UINT16_MAX;
 	int result = TEST_SUCCESS;
-	size_t i;
+	size_t i, j;
 
 	struct test_ip_frags {
 		int      ipv;
 		size_t   mtu_size;
 		size_t   pkt_size;
 		int      set_df;
+		uint8_t  set_mf;
+		uint16_t set_of;
 		uint8_t  ttl;
 		uint8_t  proto;
 		uint16_t pkt_id;
 		int      expected_frags;
+		uint16_t expected_fragment_offset[BURST];
 	} tests[] = {
-		     {4, 1280, 1400, 0, 64, IPPROTO_ICMP, RND_ID, 2},
-		     {4, 1280, 1400, 0, 64, IPPROTO_ICMP, 0,      2},
-		     {4,  600, 1400, 0, 64, IPPROTO_ICMP, RND_ID, 3},
-		     {4,    4, 1400, 0, 64, IPPROTO_ICMP, RND_ID, -EINVAL},
-		     {4,  600, 1400, 1, 64, IPPROTO_ICMP, RND_ID, -ENOTSUP},
-		     {4,  600, 1400, 0,  0, IPPROTO_ICMP, RND_ID, 3},
+		 {4, 1280, 1400, 0, 0, 0, 64, IPPROTO_ICMP, RND_ID,       2,
+		  {0x2000, 0x009D}},
+		 {4, 1280, 1400, 0, 0, 0, 64, IPPROTO_ICMP, 0,            2,
+		  {0x2000, 0x009D}},
+		 {4,  600, 1400, 0, 0, 0, 64, IPPROTO_ICMP, RND_ID,       3,
+		  {0x2000, 0x2048, 0x0090}},
+		 {4, 4, 1400, 0, 0, 0, 64, IPPROTO_ICMP, RND_ID,    -EINVAL},
+		 {4, 600, 1400, 1, 0, 0, 64, IPPROTO_ICMP, RND_ID, -ENOTSUP},
+		 {4, 600, 1400, 0, 0, 0, 0, IPPROTO_ICMP, RND_ID,         3,
+		  {0x2000, 0x2048, 0x0090}},
+		 {4, 68, 104, 0, 1, 13, 0, IPPROTO_ICMP, RND_ID,          3,
+		  {0x200D, 0x2013, 0x2019}},
 
-		     {6, 1280, 1400, 0, 64, IPPROTO_ICMP, RND_ID, 2},
-		     {6, 1300, 1400, 0, 64, IPPROTO_ICMP, RND_ID, 2},
-		     {6,    4, 1400, 0, 64, IPPROTO_ICMP, RND_ID, -EINVAL},
-		     {6, 1300, 1400, 0,  0, IPPROTO_ICMP, RND_ID, 2},
+		 {6, 1280, 1400, 0, 0, 0, 64, IPPROTO_ICMP, RND_ID,       2,
+		  {0x0001, 0x04D0}},
+		 {6, 1300, 1400, 0, 0, 0, 64, IPPROTO_ICMP, RND_ID,       2,
+		  {0x0001, 0x04E0}},
+		 {6, 4, 1400, 0, 0, 0, 64, IPPROTO_ICMP, RND_ID,    -EINVAL},
+		 {6, 1300, 1400, 0, 0, 0, 0, IPPROTO_ICMP, RND_ID,        2,
+		  {0x0001, 0x04E0}},
 	};
 
 	for (i = 0; i < RTE_DIM(tests); i++) {
 		int32_t len = 0;
+		uint16_t fragment_offset[BURST];
 		uint16_t pktid = tests[i].pkt_id;
 		struct rte_mbuf *pkts_out[BURST];
 		struct rte_mbuf *b = rte_pktmbuf_alloc(pkt_pool);
@@ -201,6 +246,8 @@ test_ip_frag(void)
 			v4_allocate_packet_of(b, 0x41414141,
 					      tests[i].pkt_size,
 					      tests[i].set_df,
+					      tests[i].set_mf,
+					      tests[i].set_of,
 					      tests[i].ttl,
 					      tests[i].proto,
 					      pktid);
@@ -225,13 +272,29 @@ test_ip_frag(void)
 
 		rte_pktmbuf_free(b);
 
-		if (len > 0)
+		if (len > 0) {
+			test_get_offset(pkts_out, len,
+			    fragment_offset, tests[i].ipv);
 			test_free_fragments(pkts_out, len);
+		}
 
 		printf("%zd: checking %d with %d\n", i, len,
 		       tests[i].expected_frags);
 		RTE_TEST_ASSERT_EQUAL(len, tests[i].expected_frags,
 				      "Failed case %zd.\n", i);
+
+		if (len > 0) {
+			for (j = 0; j < (size_t)len; j++) {
+				printf("%zd-%zd: checking %d with %d\n",
+				    i, j, fragment_offset[j],
+				    rte_cpu_to_be_16(
+					tests[i].expected_fragment_offset[j]));
+				RTE_TEST_ASSERT_EQUAL(fragment_offset[j],
+				    rte_cpu_to_be_16(
+					tests[i].expected_fragment_offset[j]),
+				    "Failed case %zd.\n", i);
+			}
+		}
 
 	}
 
