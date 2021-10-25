@@ -4,6 +4,7 @@
 
 #include <rte_malloc.h>
 #include <rte_mempool.h>
+#include <rte_eal_paging.h>
 #include <rte_errno.h>
 #include <rte_log.h>
 #include <rte_bus_pci.h>
@@ -33,7 +34,7 @@
 
 TAILQ_HEAD(mlx5_crypto_privs, mlx5_crypto_priv) mlx5_crypto_priv_list =
 				TAILQ_HEAD_INITIALIZER(mlx5_crypto_priv_list);
-static pthread_mutex_t priv_list_lock = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t priv_list_lock;
 
 int mlx5_crypto_logtype;
 
@@ -967,6 +968,7 @@ static struct mlx5_class_driver mlx5_crypto_driver = {
 
 RTE_INIT(rte_mlx5_crypto_init)
 {
+	pthread_mutex_init(&priv_list_lock, NULL);
 	mlx5_common_init();
 	if (mlx5_glue != NULL)
 		mlx5_class_driver_register(&mlx5_crypto_driver);
