@@ -203,6 +203,10 @@ New Features
 
   Added an API to support power monitor in vhost library.
 
+* **Updated vhost PMD.**
+
+  Add power monitor support in vhost PMD.
+
 * **Updated virtio PMD.**
 
   * Initial support for RSS receive mode has been added to the Virtio PMD,
