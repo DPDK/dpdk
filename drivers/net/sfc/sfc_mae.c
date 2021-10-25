@@ -23,13 +23,42 @@
 #include "sfc_service.h"
 
 static int
-sfc_mae_assign_entity_mport(struct sfc_adapter *sa,
+sfc_mae_assign_ethdev_mport(struct sfc_adapter *sa,
 			    efx_mport_sel_t *mportp)
 {
 	const efx_nic_cfg_t *encp = efx_nic_cfg_get(sa->nic);
 
 	return efx_mae_mport_by_pcie_function(encp->enc_pf, encp->enc_vf,
 					      mportp);
+}
+
+static int
+sfc_mae_assign_entity_mport(struct sfc_adapter *sa,
+			    efx_mport_sel_t *mportp)
+{
+	const efx_nic_cfg_t *encp = efx_nic_cfg_get(sa->nic);
+	int rc = 0;
+
+	if (encp->enc_mae_admin) {
+		/*
+		 * This ethdev sits on MAE admin PF. The represented
+		 * entity is the network port assigned to that PF.
+		 */
+		rc = efx_mae_mport_by_phy_port(encp->enc_assigned_port, mportp);
+	} else {
+		/*
+		 * This ethdev sits on unprivileged PF / VF. The entity
+		 * represented by the ethdev can change dynamically
+		 * as MAE admin changes default traffic rules.
+		 *
+		 * For the sake of simplicity, do not fill in the m-port
+		 * and assume that flow rules should not be allowed to
+		 * reference the entity represented by this ethdev.
+		 */
+		efx_mae_mport_invalid(mportp);
+	}
+
+	return rc;
 }
 
 static int
@@ -184,6 +213,7 @@ sfc_mae_attach(struct sfc_adapter *sa)
 	struct sfc_adapter_shared * const sas = sfc_sa2shared(sa);
 	struct sfc_mae_switch_port_request switch_port_request = {0};
 	const efx_nic_cfg_t *encp = efx_nic_cfg_get(sa->nic);
+	efx_mport_sel_t ethdev_mport;
 	efx_mport_sel_t entity_mport;
 	struct sfc_mae *mae = &sa->mae;
 	struct sfc_mae_bounce_eh *bounce_eh = &mae->bounce_eh;
@@ -218,6 +248,11 @@ sfc_mae_attach(struct sfc_adapter *sa)
 		}
 	}
 
+	sfc_log_init(sa, "assign ethdev MPORT");
+	rc = sfc_mae_assign_ethdev_mport(sa, &ethdev_mport);
+	if (rc != 0)
+		goto fail_mae_assign_ethdev_mport;
+
 	sfc_log_init(sa, "assign entity MPORT");
 	rc = sfc_mae_assign_entity_mport(sa, &entity_mport);
 	if (rc != 0)
@@ -230,9 +265,8 @@ sfc_mae_attach(struct sfc_adapter *sa)
 
 	sfc_log_init(sa, "assign RTE switch port");
 	switch_port_request.type = SFC_MAE_SWITCH_PORT_INDEPENDENT;
+	switch_port_request.ethdev_mportp = &ethdev_mport;
 	switch_port_request.entity_mportp = &entity_mport;
-	/* RTE ethdev MPORT matches that of the entity for independent ports. */
-	switch_port_request.ethdev_mportp = &entity_mport;
 	switch_port_request.ethdev_port_id = sas->port_id;
 	switch_port_request.port_data.indep.mae_admin =
 		encp->enc_mae_admin == B_TRUE;
@@ -272,6 +306,7 @@ fail_mae_alloc_bounce_eh:
 fail_mae_assign_switch_port:
 fail_mae_assign_switch_domain:
 fail_mae_assign_entity_mport:
+fail_mae_assign_ethdev_mport:
 	if (encp->enc_mae_admin)
 		sfc_mae_counter_registry_fini(&mae->counter_registry);
 
