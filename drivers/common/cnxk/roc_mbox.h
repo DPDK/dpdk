@@ -28,7 +28,7 @@ struct mbox_msghdr {
 #define MBOX_RSP_SIG (0xbeef)
 	/* Signature, for validating corrupted msgs */
 	uint16_t __io sig;
-#define MBOX_VERSION (0x000a)
+#define MBOX_VERSION (0x000b)
 	/* Version of msg's structure for this ID */
 	uint16_t __io ver;
 	/* Offset of next msg within mailbox region */
@@ -283,6 +283,7 @@ struct ready_msg_rsp {
 };
 
 enum npc_pkind_type {
+	NPC_RX_CUSTOM_PRE_L2_PKIND = 55ULL,
 	NPC_RX_VLAN_EXDSA_PKIND = 56ULL,
 	NPC_RX_CHLEN24B_PKIND,
 	NPC_RX_CPT_HDR_PKIND,
@@ -309,6 +310,15 @@ struct npc_set_pkind {
 #define PKIND_RX BIT_ULL(1)
 	uint8_t __io dir;
 	uint8_t __io pkind; /* valid only in case custom flag */
+	uint8_t __io var_len_off;
+	/* Offset of custom header length field.
+	 * Valid only for pkind NPC_RX_CUSTOM_PRE_L2_PKIND
+	 */
+	uint8_t __io var_len_off_mask; /* Mask for length with in offset */
+	uint8_t __io shift_dir;
+	/* Shift direction to get length of the
+	 * header at var_len_off
+	 */
 };
 
 /* Structure for requesting resource provisioning.
