@@ -253,6 +253,10 @@ New Features
 
   * Added event crypto adapter OP_FORWARD mode support.
 
+* **Updated Mellanox mlx5 crypto driver.**
+
+  * Added Windows support.
+
 * **Updated NXP dpaa_sec crypto PMD.**
 
   * Added DES-CBC, AES-XCBC-MAC, AES-CMAC and non-HMAC algo support.

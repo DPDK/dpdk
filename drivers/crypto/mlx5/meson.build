@@ -1,9 +1,9 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright (c) 2021 NVIDIA Corporation & Affiliates
 
-if not is_linux
+if not (is_linux or is_windows)
     build = false
-    reason = 'only supported on Linux'
+    reason = 'only supported on Linux and Windows'
     subdir_done()
 endif
 

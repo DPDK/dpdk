@@ -39,12 +39,12 @@ or to access the hardware components directly.
 There are different levels of objects and bypassing abilities.
 To get the best performances:
 
-- Verbs is a complete high-level generic API.
-- Direct Verbs is a device-specific API.
+- Verbs is a complete high-level generic API (Linux only).
+- Direct Verbs is a device-specific API (Linux only).
 - DevX allows to access firmware objects.
 
 Enabling ``librte_crypto_mlx5`` causes DPDK applications
-to be linked against libibverbs.
+to be linked against libibverbs on Linux OS.
 
 In order to move the device to crypto operational mode, credential and KEK
 (Key Encrypting Key) should be set as the first step.
@@ -155,8 +155,17 @@ Limitations
 Prerequisites
 -------------
 
+Linux Prerequisites
+~~~~~~~~~~~~~~~~~~~
+
 - Mellanox OFED version: **5.3**
   see :doc:`../../nics/mlx5` guide for more Mellanox OFED details.
 
 - Compilation can be done also with rdma-core v15+.
   see :doc:`../../nics/mlx5` guide for more rdma-core details.
+
+Windows Prerequisites
+~~~~~~~~~~~~~~~~~~~~~
+
+- Mellanox WINOF-2 version: **2.60** or higher.
+  see :doc:`../../nics/mlx5` guide for more Mellanox WINOF-2 details.

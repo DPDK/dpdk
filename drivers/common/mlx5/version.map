@@ -16,7 +16,7 @@ INTERNAL {
 	mlx5_dev_mempool_unregister;
 	mlx5_dev_mempool_subscribe;
 
-	mlx5_devx_alloc_uar; # WINDOWS_NO_EXPORT
+	mlx5_devx_alloc_uar;
 
 	mlx5_devx_cmd_alloc_pd;
 	mlx5_devx_cmd_create_conn_track_offload_obj;

@@ -202,7 +202,7 @@ mlx5_os_open_device(struct mlx5_common_device *cdev, uint32_t classes)
 	struct mlx5_context *mlx5_ctx = NULL;
 	int n;
 
-	if (classes != MLX5_CLASS_ETH) {
+	if (classes != MLX5_CLASS_ETH && classes != MLX5_CLASS_CRYPTO) {
 		DRV_LOG(ERR,
 			"The chosen classes are not supported on Windows.");
 		rte_errno = ENOTSUP;
