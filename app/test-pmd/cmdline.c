@@ -6297,7 +6297,8 @@ static void cmd_show_bonding_config_parsed(void *parsed_result,
 	} else
 		printf("\tBonding mode: %d\n", bonding_mode);
 
-	if (bonding_mode == BONDING_MODE_BALANCE) {
+	if (bonding_mode == BONDING_MODE_BALANCE ||
+		bonding_mode == BONDING_MODE_8023AD) {
 		int balance_xmit_policy;
 
 		balance_xmit_policy = rte_eth_bond_xmit_policy_get(port_id);
