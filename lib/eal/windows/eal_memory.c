@@ -225,19 +225,17 @@ rte_mem_virt2phy(const void *virt)
 	return phys.QuadPart;
 }
 
-/* Windows currently only supports IOVA as PA. */
 rte_iova_t
 rte_mem_virt2iova(const void *virt)
 {
 	phys_addr_t phys;
 
-	if (virt2phys_device == INVALID_HANDLE_VALUE)
-		return RTE_BAD_IOVA;
+	if (rte_eal_iova_mode() == RTE_IOVA_VA)
+		return (rte_iova_t)virt;
 
 	phys = rte_mem_virt2phy(virt);
 	if (phys == RTE_BAD_PHYS_ADDR)
 		return RTE_BAD_IOVA;
-
 	return (rte_iova_t)phys;
 }
 

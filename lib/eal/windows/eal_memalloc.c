@@ -99,16 +99,11 @@ alloc_seg(struct rte_memseg *ms, void *requested_addr, int socket_id,
 	 */
 	*(volatile int *)addr = *(volatile int *)addr;
 
-	/* Only try to obtain IOVA if it's available, so that applications
-	 * that do not need IOVA can use this allocator.
-	 */
-	if (rte_eal_using_phys_addrs()) {
-		iova = rte_mem_virt2iova(addr);
-		if (iova == RTE_BAD_IOVA) {
-			RTE_LOG(DEBUG, EAL,
-				"Cannot get IOVA of allocated segment\n");
-			goto error;
-		}
+	iova = rte_mem_virt2iova(addr);
+	if (iova == RTE_BAD_IOVA) {
+		RTE_LOG(DEBUG, EAL,
+			"Cannot get IOVA of allocated segment\n");
+		goto error;
 	}
 
 	/* Only "Ex" function can handle hugepages. */
