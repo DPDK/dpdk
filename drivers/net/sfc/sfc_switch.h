@@ -102,9 +102,9 @@ int sfc_mae_assign_switch_port(uint16_t switch_domain_id,
 int sfc_mae_clear_switch_port(uint16_t switch_domain_id,
 			      uint16_t switch_port_id);
 
-int sfc_mae_switch_port_by_ethdev(uint16_t switch_domain_id,
-				  uint16_t ethdev_port_id,
-				  efx_mport_sel_t *mport_sel);
+int sfc_mae_switch_get_ethdev_mport(uint16_t switch_domain_id,
+				    uint16_t ethdev_port_id,
+				    efx_mport_sel_t *mport_sel);
 
 int sfc_mae_switch_port_id_by_entity(uint16_t switch_domain_id,
 				     const efx_mport_sel_t *entity_mportp,

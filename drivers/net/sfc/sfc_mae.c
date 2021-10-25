@@ -1276,8 +1276,8 @@ sfc_mae_rule_parse_item_port_id(const struct rte_flow_item *item,
 					  "The port ID is too large");
 	}
 
-	rc = sfc_mae_switch_port_by_ethdev(ctx_mae->sa->mae.switch_domain_id,
-					   spec->id, &mport_sel);
+	rc = sfc_mae_switch_get_ethdev_mport(ctx_mae->sa->mae.switch_domain_id,
+					     spec->id, &mport_sel);
 	if (rc != 0) {
 		return rte_flow_error_set(error, rc,
 				RTE_FLOW_ERROR_TYPE_ITEM, item,
@@ -1335,7 +1335,7 @@ sfc_mae_rule_parse_item_port_representor(const struct rte_flow_item *item,
 	if (spec == NULL)
 		return 0;
 
-	rc = sfc_mae_switch_port_by_ethdev(
+	rc = sfc_mae_switch_get_ethdev_mport(
 			ctx_mae->sa->mae.switch_domain_id,
 			spec->port_id, &mport_sel);
 	if (rc != 0) {
@@ -3406,8 +3406,8 @@ sfc_mae_rule_parse_action_port_id(struct sfc_adapter *sa,
 
 	port_id = (conf->original != 0) ? sas->port_id : conf->id;
 
-	rc = sfc_mae_switch_port_by_ethdev(mae->switch_domain_id,
-					   port_id, &mport);
+	rc = sfc_mae_switch_get_ethdev_mport(mae->switch_domain_id,
+					     port_id, &mport);
 	if (rc != 0) {
 		sfc_err(sa, "failed to find MAE switch port SW entry for RTE ethdev port %u: %s",
 			port_id, strerror(rc));

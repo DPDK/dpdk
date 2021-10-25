@@ -537,9 +537,9 @@ sfc_mae_find_switch_port_by_ethdev(uint16_t switch_domain_id,
 }
 
 int
-sfc_mae_switch_port_by_ethdev(uint16_t switch_domain_id,
-			      uint16_t ethdev_port_id,
-			      efx_mport_sel_t *mport_sel)
+sfc_mae_switch_get_ethdev_mport(uint16_t switch_domain_id,
+				uint16_t ethdev_port_id,
+				efx_mport_sel_t *mport_sel)
 {
 	struct sfc_mae_switch_port *port;
 	int rc;
