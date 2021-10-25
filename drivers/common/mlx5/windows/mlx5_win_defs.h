@@ -93,6 +93,18 @@ enum {
 	MLX5_ETH_WQE_L4_CSUM = (1 << 7),
 };
 
+enum {
+	MLX5_WQE_CTRL_CQ_UPDATE	= 2 << 2,
+	MLX5_WQE_CTRL_SOLICITED	= 1 << 1,
+	MLX5_WQE_CTRL_FENCE	= 4 << 5,
+	MLX5_WQE_CTRL_INITIATOR_SMALL_FENCE = 1 << 5,
+};
+
+enum {
+	MLX5_SEND_WQE_BB	= 64,
+	MLX5_SEND_WQE_SHIFT	= 6,
+};
+
 /*
  * RX Hash fields enable to set which incoming packet's field should
  * participates in RX Hash. Each flag represent certain packet's field,
