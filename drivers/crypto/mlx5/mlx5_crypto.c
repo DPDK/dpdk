@@ -909,7 +909,9 @@ mlx5_crypto_dev_probe(struct mlx5_common_device *cdev)
 	priv->keytag = rte_cpu_to_be_64(devarg_prms.keytag);
 	priv->max_segs_num = devarg_prms.max_segs_num;
 	priv->umr_wqe_size = sizeof(struct mlx5_wqe_umr_bsf_seg) +
-			     sizeof(struct mlx5_umr_wqe) +
+			     sizeof(struct mlx5_wqe_cseg) +
+			     sizeof(struct mlx5_wqe_umr_cseg) +
+			     sizeof(struct mlx5_wqe_mkey_cseg) +
 			     RTE_ALIGN(priv->max_segs_num, 4) *
 			     sizeof(struct mlx5_wqe_dseg);
 	rdmw_wqe_size = sizeof(struct mlx5_rdma_write_wqe) +
