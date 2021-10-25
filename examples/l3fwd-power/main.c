@@ -505,7 +505,15 @@ is_valid_ipv4_pkt(struct rte_ipv4_hdr *pkt, uint32_t link_len)
 		return -1;
 
 	/* 2. The IP checksum must be correct. */
-	/* this is checked in H/W */
+	/* if this is not checked in H/W, check it. */
+	if ((port_conf.rxmode.offloads & RTE_ETH_RX_OFFLOAD_IPV4_CKSUM) == 0) {
+		uint16_t actual_cksum, expected_cksum;
+		actual_cksum = pkt->hdr_checksum;
+		pkt->hdr_checksum = 0;
+		expected_cksum = rte_ipv4_cksum(pkt);
+		if (actual_cksum != expected_cksum)
+			return -2;
+	}
 
 	/*
 	 * 3. The IP version number must be 4. If the version number is not 4
@@ -2651,6 +2659,11 @@ main(int argc, char **argv)
 				port_conf.rx_adv_conf.rss_conf.rss_hf,
 				local_port_conf.rx_adv_conf.rss_conf.rss_hf);
 		}
+
+		if (local_port_conf.rx_adv_conf.rss_conf.rss_hf == 0)
+			local_port_conf.rxmode.mq_mode = RTE_ETH_MQ_RX_NONE;
+		local_port_conf.rxmode.offloads &= dev_info.rx_offload_capa;
+		port_conf.rxmode.offloads = local_port_conf.rxmode.offloads;
 
 		ret = rte_eth_dev_configure(portid, nb_rx_queue,
 					(uint16_t)n_tx_queue, &local_port_conf);
