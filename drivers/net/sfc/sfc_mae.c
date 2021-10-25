@@ -1281,7 +1281,7 @@ sfc_mae_rule_parse_item_port_id(const struct rte_flow_item *item,
 	if (rc != 0) {
 		return rte_flow_error_set(error, rc,
 				RTE_FLOW_ERROR_TYPE_ITEM, item,
-				"Can't find RTE ethdev by the port ID");
+				"Can't get m-port for the given ethdev");
 	}
 
 	rc = efx_mae_match_spec_mport_set(ctx_mae->match_spec,
@@ -1341,7 +1341,7 @@ sfc_mae_rule_parse_item_port_representor(const struct rte_flow_item *item,
 	if (rc != 0) {
 		return rte_flow_error_set(error, rc,
 				RTE_FLOW_ERROR_TYPE_ITEM, item,
-				"Can't find RTE ethdev by the port ID");
+				"Can't get m-port for the given ethdev");
 	}
 
 	rc = efx_mae_match_spec_mport_set(ctx_mae->match_spec,
@@ -3409,7 +3409,7 @@ sfc_mae_rule_parse_action_port_id(struct sfc_adapter *sa,
 	rc = sfc_mae_switch_get_ethdev_mport(mae->switch_domain_id,
 					     port_id, &mport);
 	if (rc != 0) {
-		sfc_err(sa, "failed to find MAE switch port SW entry for RTE ethdev port %u: %s",
+		sfc_err(sa, "failed to get m-port for the given ethdev (port_id=%u): %s",
 			port_id, strerror(rc));
 		return rc;
 	}
