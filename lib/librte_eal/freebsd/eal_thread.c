@@ -126,6 +126,8 @@ eal_thread_loop(__rte_unused void *arg)
 		fct_arg = lcore_config[lcore_id].arg;
 		ret = lcore_config[lcore_id].f(fct_arg);
 		lcore_config[lcore_id].ret = ret;
+		lcore_config[lcore_id].f = NULL;
+		lcore_config[lcore_id].arg = NULL;
 		rte_wmb();
 		lcore_config[lcore_id].state = FINISHED;
 	}
