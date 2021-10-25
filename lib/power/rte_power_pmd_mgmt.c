@@ -382,8 +382,13 @@ queue_stopped(const uint16_t port_id, const uint16_t queue_id)
 {
 	struct rte_eth_rxq_info qinfo;
 
-	if (rte_eth_rx_queue_info_get(port_id, queue_id, &qinfo) < 0)
-		return -1;
+	int ret = rte_eth_rx_queue_info_get(port_id, queue_id, &qinfo);
+	if (ret < 0) {
+		if (ret == -ENOTSUP)
+			return 1;
+		else
+			return -1;
+	}
 
 	return qinfo.queue_state == RTE_ETH_QUEUE_STATE_STOPPED;
 }
