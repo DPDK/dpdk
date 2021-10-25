@@ -23,13 +23,9 @@
 int
 rte_eal_wait_lcore(unsigned worker_id)
 {
-	if (lcore_config[worker_id].state == WAIT)
-		return 0;
-
-	while (lcore_config[worker_id].state != WAIT)
+	while (__atomic_load_n(&lcore_config[worker_id].state,
+					__ATOMIC_ACQUIRE) != WAIT)
 		rte_pause();
-
-	rte_rmb();
 
 	return lcore_config[worker_id].ret;
 }
