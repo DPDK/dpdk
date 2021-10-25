@@ -248,6 +248,10 @@ Supported actions (***transfer*** rules):
 
 - VF
 
+- PORT_REPRESENTOR
+
+- REPRESENTED_PORT
+
 - PORT_ID
 
 - COUNT
