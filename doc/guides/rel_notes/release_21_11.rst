@@ -205,6 +205,7 @@ New Features
     with the capability for the application to configure the hash key,
     the RETA and the hash types.
     Virtio hash reporting is yet to be added.
+  * Added power monitor support in virtio PMD.
 
 * **Updated Marvell cnxk crypto PMD.**
 

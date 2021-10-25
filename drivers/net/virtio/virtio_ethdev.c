@@ -84,6 +84,8 @@ static int virtio_mac_addr_set(struct rte_eth_dev *dev,
 				struct rte_ether_addr *mac_addr);
 
 static int virtio_intr_disable(struct rte_eth_dev *dev);
+static int virtio_get_monitor_addr(void *rx_queue,
+				struct rte_power_monitor_cond *pmc);
 
 static int virtio_dev_queue_stats_mapping_set(
 	struct rte_eth_dev *eth_dev,
@@ -1051,6 +1053,7 @@ static const struct eth_dev_ops virtio_eth_dev_ops = {
 	.mac_addr_add            = virtio_mac_addr_add,
 	.mac_addr_remove         = virtio_mac_addr_remove,
 	.mac_addr_set            = virtio_mac_addr_set,
+	.get_monitor_addr        = virtio_get_monitor_addr,
 };
 
 /*
@@ -1379,6 +1382,59 @@ virtio_mac_addr_set(struct rte_eth_dev *dev, struct rte_ether_addr *mac_addr)
 		return -ENOTSUP;
 
 	virtio_set_hwaddr(hw);
+	return 0;
+}
+
+#define CLB_VAL_IDX 0
+#define CLB_MSK_IDX 1
+#define CLB_MATCH_IDX 2
+static int
+virtio_monitor_callback(const uint64_t value,
+		const uint64_t opaque[RTE_POWER_MONITOR_OPAQUE_SZ])
+{
+	const uint64_t m = opaque[CLB_MSK_IDX];
+	const uint64_t v = opaque[CLB_VAL_IDX];
+	const uint64_t c = opaque[CLB_MATCH_IDX];
+
+	if (c)
+		return (value & m) == v ? -1 : 0;
+	else
+		return (value & m) == v ? 0 : -1;
+}
+
+static int
+virtio_get_monitor_addr(void *rx_queue, struct rte_power_monitor_cond *pmc)
+{
+	struct virtnet_rx *rxvq = rx_queue;
+	struct virtqueue *vq = virtnet_rxq_to_vq(rxvq);
+	struct virtio_hw *hw;
+
+	if (vq == NULL)
+		return -EINVAL;
+
+	hw = vq->hw;
+	if (virtio_with_packed_queue(hw)) {
+		struct vring_packed_desc *desc;
+		desc = vq->vq_packed.ring.desc;
+		pmc->addr = &desc[vq->vq_used_cons_idx].flags;
+		if (vq->vq_packed.used_wrap_counter)
+			pmc->opaque[CLB_VAL_IDX] =
+						VRING_PACKED_DESC_F_AVAIL_USED;
+		else
+			pmc->opaque[CLB_VAL_IDX] = 0;
+		pmc->opaque[CLB_MSK_IDX] = VRING_PACKED_DESC_F_AVAIL_USED;
+		pmc->opaque[CLB_MATCH_IDX] = 1;
+		pmc->size = sizeof(desc[vq->vq_used_cons_idx].flags);
+	} else {
+		pmc->addr = &vq->vq_split.ring.used->idx;
+		pmc->opaque[CLB_VAL_IDX] = vq->vq_used_cons_idx
+					& (vq->vq_nentries - 1);
+		pmc->opaque[CLB_MSK_IDX] = vq->vq_nentries - 1;
+		pmc->opaque[CLB_MATCH_IDX] = 0;
+		pmc->size = sizeof(vq->vq_split.ring.used->idx);
+	}
+	pmc->fn = virtio_monitor_callback;
+
 	return 0;
 }
 
