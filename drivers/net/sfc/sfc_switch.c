@@ -568,6 +568,35 @@ unlock:
 }
 
 int
+sfc_mae_switch_get_entity_mport(uint16_t switch_domain_id,
+				uint16_t ethdev_port_id,
+				efx_mport_sel_t *mport_sel)
+{
+	static struct sfc_mae_switch_port *port;
+	int rc;
+
+	rte_spinlock_lock(&sfc_mae_switch.lock);
+	rc = sfc_mae_find_switch_port_by_ethdev(switch_domain_id,
+						ethdev_port_id, &port);
+	if (rc != 0)
+		goto unlock;
+
+	if (port->type == SFC_MAE_SWITCH_PORT_INDEPENDENT &&
+	    !port->data.indep.mae_admin) {
+		/* See sfc_mae_assign_entity_mport() */
+		rc = ENOTSUP;
+		goto unlock;
+	}
+
+	*mport_sel = port->entity_mport;
+
+unlock:
+	rte_spinlock_unlock(&sfc_mae_switch.lock);
+
+	return rc;
+}
+
+int
 sfc_mae_switch_port_id_by_entity(uint16_t switch_domain_id,
 				 const efx_mport_sel_t *entity_mportp,
 				 enum sfc_mae_switch_port_type type,

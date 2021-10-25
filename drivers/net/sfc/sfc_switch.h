@@ -106,6 +106,10 @@ int sfc_mae_switch_get_ethdev_mport(uint16_t switch_domain_id,
 				    uint16_t ethdev_port_id,
 				    efx_mport_sel_t *mport_sel);
 
+int sfc_mae_switch_get_entity_mport(uint16_t switch_domain_id,
+				    uint16_t ethdev_port_id,
+				    efx_mport_sel_t *mport_sel);
+
 int sfc_mae_switch_port_id_by_entity(uint16_t switch_domain_id,
 				     const efx_mport_sel_t *entity_mportp,
 				     enum sfc_mae_switch_port_type type,

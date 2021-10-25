@@ -1333,9 +1333,9 @@ sfc_mae_rule_parse_item_port_id(const struct rte_flow_item *item,
 }
 
 static int
-sfc_mae_rule_parse_item_port_representor(const struct rte_flow_item *item,
-					 struct sfc_flow_parse_ctx *ctx,
-					 struct rte_flow_error *error)
+sfc_mae_rule_parse_item_ethdev_based(const struct rte_flow_item *item,
+				     struct sfc_flow_parse_ctx *ctx,
+				     struct rte_flow_error *error)
 {
 	struct sfc_mae_parse_ctx *ctx_mae = ctx->mae;
 	const struct rte_flow_item_ethdev supp_mask = {
@@ -1363,20 +1363,38 @@ sfc_mae_rule_parse_item_port_representor(const struct rte_flow_item *item,
 	if (mask->port_id != supp_mask.port_id) {
 		return rte_flow_error_set(error, EINVAL,
 				RTE_FLOW_ERROR_TYPE_ITEM, item,
-				"Bad mask in the PORT_REPRESENTOR pattern item");
+				"Bad mask in the ethdev-based pattern item");
 	}
 
 	/* If "spec" is not set, could be any port ID */
 	if (spec == NULL)
 		return 0;
 
-	rc = sfc_mae_switch_get_ethdev_mport(
-			ctx_mae->sa->mae.switch_domain_id,
-			spec->port_id, &mport_sel);
-	if (rc != 0) {
-		return rte_flow_error_set(error, rc,
+	switch (item->type) {
+	case RTE_FLOW_ITEM_TYPE_PORT_REPRESENTOR:
+		rc = sfc_mae_switch_get_ethdev_mport(
+				ctx_mae->sa->mae.switch_domain_id,
+				spec->port_id, &mport_sel);
+		if (rc != 0) {
+			return rte_flow_error_set(error, rc,
+					RTE_FLOW_ERROR_TYPE_ITEM, item,
+					"Can't get m-port for the given ethdev");
+		}
+		break;
+	case RTE_FLOW_ITEM_TYPE_REPRESENTED_PORT:
+		rc = sfc_mae_switch_get_entity_mport(
+				ctx_mae->sa->mae.switch_domain_id,
+				spec->port_id, &mport_sel);
+		if (rc != 0) {
+			return rte_flow_error_set(error, rc,
+					RTE_FLOW_ERROR_TYPE_ITEM, item,
+					"Can't get m-port for the given ethdev");
+		}
+		break;
+	default:
+		return rte_flow_error_set(error, EINVAL,
 				RTE_FLOW_ERROR_TYPE_ITEM, item,
-				"Can't get m-port for the given ethdev");
+				"Unsupported ethdev-based flow item");
 	}
 
 	rc = efx_mae_match_spec_mport_set(ctx_mae->match_spec,
@@ -2329,7 +2347,19 @@ static const struct sfc_flow_item sfc_flow_items[] = {
 		.prev_layer = SFC_FLOW_ITEM_ANY_LAYER,
 		.layer = SFC_FLOW_ITEM_ANY_LAYER,
 		.ctx_type = SFC_FLOW_PARSE_CTX_MAE,
-		.parse = sfc_mae_rule_parse_item_port_representor,
+		.parse = sfc_mae_rule_parse_item_ethdev_based,
+	},
+	{
+		.type = RTE_FLOW_ITEM_TYPE_REPRESENTED_PORT,
+		.name = "REPRESENTED_PORT",
+		/*
+		 * In terms of RTE flow, this item is a META one,
+		 * and its position in the pattern is don't care.
+		 */
+		.prev_layer = SFC_FLOW_ITEM_ANY_LAYER,
+		.layer = SFC_FLOW_ITEM_ANY_LAYER,
+		.ctx_type = SFC_FLOW_PARSE_CTX_MAE,
+		.parse = sfc_mae_rule_parse_item_ethdev_based,
 	},
 	{
 		.type = RTE_FLOW_ITEM_TYPE_PHY_PORT,
