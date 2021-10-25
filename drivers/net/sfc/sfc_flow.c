@@ -1252,13 +1252,13 @@ sfc_flow_parse_attr(struct sfc_adapter *sa,
 				   "Groups are not supported");
 		return -rte_errno;
 	}
-	if (attr->egress != 0) {
+	if (attr->egress != 0 && attr->transfer == 0) {
 		rte_flow_error_set(error, ENOTSUP,
 				   RTE_FLOW_ERROR_TYPE_ATTR_EGRESS, attr,
 				   "Egress is not supported");
 		return -rte_errno;
 	}
-	if (attr->ingress == 0) {
+	if (attr->ingress == 0 && attr->transfer == 0) {
 		rte_flow_error_set(error, ENOTSUP,
 				   RTE_FLOW_ERROR_TYPE_ATTR_INGRESS, attr,
 				   "Ingress is compulsory");
