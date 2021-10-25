@@ -85,4 +85,7 @@ EXPERIMENTAL {
 	rte_vhost_async_channel_register_thread_unsafe;
 	rte_vhost_async_channel_unregister_thread_unsafe;
 	rte_vhost_clear_queue_thread_unsafe;
+
+	# added in 21.11
+	rte_vhost_get_monitor_addr;
 };

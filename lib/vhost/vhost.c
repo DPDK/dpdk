@@ -1892,5 +1892,43 @@ rte_vhost_async_get_inflight(int vid, uint16_t queue_id)
 	return ret;
 }
 
+int
+rte_vhost_get_monitor_addr(int vid, uint16_t queue_id,
+		struct rte_vhost_power_monitor_cond *pmc)
+{
+	struct virtio_net *dev = get_device(vid);
+	struct vhost_virtqueue *vq;
+
+	if (dev == NULL)
+		return -1;
+	if (queue_id >= VHOST_MAX_VRING)
+		return -1;
+
+	vq = dev->virtqueue[queue_id];
+	if (vq == NULL)
+		return -1;
+
+	if (vq_is_packed(dev)) {
+		struct vring_packed_desc *desc;
+		desc = vq->desc_packed;
+		pmc->addr = &desc[vq->last_avail_idx].flags;
+		if (vq->avail_wrap_counter)
+			pmc->val = VRING_DESC_F_AVAIL;
+		else
+			pmc->val = VRING_DESC_F_USED;
+		pmc->mask = VRING_DESC_F_AVAIL | VRING_DESC_F_USED;
+		pmc->size = sizeof(desc[vq->last_avail_idx].flags);
+		pmc->match = 1;
+	} else {
+		pmc->addr = &vq->avail->idx;
+		pmc->val = vq->last_avail_idx & (vq->size - 1);
+		pmc->mask = vq->size - 1;
+		pmc->size = sizeof(vq->avail->idx);
+		pmc->match = 0;
+	}
+
+	return 0;
+}
+
 RTE_LOG_REGISTER_SUFFIX(vhost_config_log_level, config, INFO);
 RTE_LOG_REGISTER_SUFFIX(vhost_data_log_level, data, WARNING);
