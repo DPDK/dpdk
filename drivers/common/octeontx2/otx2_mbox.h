@@ -90,7 +90,7 @@ struct mbox_msghdr {
 #define OTX2_MBOX_RSP_SIG (0xbeef)
 	/* Signature, for validating corrupted msgs */
 	uint16_t __otx2_io sig;
-#define OTX2_MBOX_VERSION (0x000a)
+#define OTX2_MBOX_VERSION (0x000b)
 	/* Version of msg's structure for this ID */
 	uint16_t __otx2_io ver;
 	/* Offset of next msg within mailbox region */
@@ -356,6 +356,7 @@ struct ready_msg_rsp {
 };
 
 enum npc_pkind_type {
+	NPC_RX_CUSTOM_PRE_L2_PKIND = 55ULL,
 	NPC_RX_VLAN_EXDSA_PKIND = 56ULL,
 	NPC_RX_CHLEN24B_PKIND,
 	NPC_RX_CPT_HDR_PKIND,
@@ -373,18 +374,27 @@ enum npc_pkind_type {
 /* Struct to set pkind */
 struct npc_set_pkind {
 	struct mbox_msghdr hdr;
-#define OTX2_PRIV_FLAGS_DEFAULT  BIT_ULL(0)
-#define OTX2_PRIV_FLAGS_EDSA     BIT_ULL(1)
-#define OTX2_PRIV_FLAGS_HIGIG    BIT_ULL(2)
-#define OTX2_PRIV_FLAGS_FDSA     BIT_ULL(3)
-#define OTX2_PRIV_FLAGS_EXDSA    BIT_ULL(4)
-#define OTX2_PRIV_FLAGS_VLAN_EXDSA    BIT_ULL(5)
-#define OTX2_PRIV_FLAGS_CUSTOM   BIT_ULL(63)
+#define OTX2_PRIV_FLAGS_DEFAULT	   BIT_ULL(0)
+#define OTX2_PRIV_FLAGS_EDSA	   BIT_ULL(1)
+#define OTX2_PRIV_FLAGS_HIGIG	   BIT_ULL(2)
+#define OTX2_PRIV_FLAGS_FDSA	   BIT_ULL(3)
+#define OTX2_PRIV_FLAGS_EXDSA	   BIT_ULL(4)
+#define OTX2_PRIV_FLAGS_VLAN_EXDSA BIT_ULL(5)
+#define OTX2_PRIV_FLAGS_CUSTOM	   BIT_ULL(63)
 	uint64_t __otx2_io mode;
-#define PKIND_TX		BIT_ULL(0)
-#define PKIND_RX		BIT_ULL(1)
+#define PKIND_TX BIT_ULL(0)
+#define PKIND_RX BIT_ULL(1)
 	uint8_t __otx2_io dir;
 	uint8_t __otx2_io pkind; /* valid only in case custom flag */
+	uint8_t __otx2_io var_len_off;
+	/* Offset of custom header length field.
+	 * Valid only for pkind NPC_RX_CUSTOM_PRE_L2_PKIND
+	 */
+	uint8_t __otx2_io var_len_off_mask; /* Mask for length with in offset */
+	uint8_t __otx2_io shift_dir;
+	/* Shift direction to get length of the
+	 * header at var_len_off
+	 */
 };
 
 /* Structure for requesting resource provisioning.
