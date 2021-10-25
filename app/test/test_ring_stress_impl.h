@@ -22,7 +22,7 @@ enum {
 	WRK_CMD_RUN,
 };
 
-static volatile uint32_t wrk_cmd __rte_cache_aligned;
+static uint32_t wrk_cmd __rte_cache_aligned = WRK_CMD_STOP;
 
 /* test run-time in seconds */
 static const uint32_t run_time = 60;
@@ -197,10 +197,12 @@ test_worker(void *arg, const char *fname, int32_t prcs)
 	fill_ring_elm(&def_elm, UINT32_MAX);
 	fill_ring_elm(&loc_elm, lc);
 
-	while (wrk_cmd != WRK_CMD_RUN) {
-		rte_smp_rmb();
+	/* Acquire ordering is not required as the main is not
+	 * really releasing any data through 'wrk_cmd' to
+	 * the worker.
+	 */
+	while (__atomic_load_n(&wrk_cmd, __ATOMIC_RELAXED) != WRK_CMD_RUN)
 		rte_pause();
-	}
 
 	cl = rte_rdtsc_precise();
 
@@ -242,7 +244,7 @@ test_worker(void *arg, const char *fname, int32_t prcs)
 
 		lcore_stat_update(&la->stats, 1, num, tm0 + tm1, prcs);
 
-	} while (wrk_cmd == WRK_CMD_RUN);
+	} while (__atomic_load_n(&wrk_cmd, __ATOMIC_RELAXED) == WRK_CMD_RUN);
 
 	cl = rte_rdtsc_precise() - cl;
 	if (prcs == 0)
@@ -356,14 +358,12 @@ test_mt1(int (*test)(void *))
 	}
 
 	/* signal worker to start test */
-	wrk_cmd = WRK_CMD_RUN;
-	rte_smp_wmb();
+	__atomic_store_n(&wrk_cmd, WRK_CMD_RUN, __ATOMIC_RELEASE);
 
 	usleep(run_time * US_PER_S);
 
 	/* signal worker to start test */
-	wrk_cmd = WRK_CMD_STOP;
-	rte_smp_wmb();
+	__atomic_store_n(&wrk_cmd, WRK_CMD_STOP, __ATOMIC_RELEASE);
 
 	/* wait for workers and collect stats. */
 	mc = rte_lcore_id();
