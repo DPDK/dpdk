@@ -8,6 +8,12 @@ if not is_linux or not dpdk_conf.get('RTE_ARCH_64')
     subdir_done()
 endif
 
+if is_windows
+    build = false
+    reason = 'not supported on Windows'
+    subdir_done()
+endif
+
 deps += ['bus_pci']
 deps += ['bus_vdev']
 deps += ['common_cpt']

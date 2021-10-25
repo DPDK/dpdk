@@ -1,6 +1,12 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright(c) 2021 Intel Corporation
 
+if is_windows
+    build = false
+    reason = 'not supported on Windows'
+    subdir_done()
+endif
+
 IMB_required_ver = '1.0.0'
 lib = cc.find_library('IPSec_MB', required: false)
 if not lib.found()

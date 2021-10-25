@@ -3,6 +3,12 @@
 # Copyright(c) 2018 Semihalf.
 # All rights reserved.
 
+if is_windows
+    build = false
+    reason = 'not supported on Windows'
+    subdir_done()
+endif
+
 dep = dependency('libmusdk', required: false, method: 'pkg-config')
 if not dep.found()
     build = false

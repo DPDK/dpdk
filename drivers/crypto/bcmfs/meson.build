@@ -3,6 +3,12 @@
 # All rights reserved.
 #
 
+if is_windows
+    build = false
+    reason = 'not supported on Windows'
+    subdir_done()
+endif
+
 deps += ['eal', 'bus_vdev']
 sources = files(
         'bcmfs_logs.c',
