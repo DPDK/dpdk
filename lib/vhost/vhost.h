@@ -119,6 +119,32 @@ struct vring_used_elem_packed {
 	uint32_t count;
 };
 
+struct vhost_async {
+	/* operation callbacks for DMA */
+	struct rte_vhost_async_channel_ops ops;
+
+	struct rte_vhost_iov_iter it_pool[VHOST_MAX_ASYNC_IT];
+	struct iovec vec_pool[VHOST_MAX_ASYNC_VEC];
+
+	/* data transfer status */
+	struct async_inflight_info *pkts_info;
+	uint16_t pkts_idx;
+	uint16_t pkts_inflight_n;
+	uint16_t last_pkts_n;
+	union {
+		struct vring_used_elem  *descs_split;
+		struct vring_used_elem_packed *buffers_packed;
+	};
+	union {
+		uint16_t desc_idx_split;
+		uint16_t buffer_idx_packed;
+	};
+	union {
+		uint16_t last_desc_idx_split;
+		uint16_t last_buffer_idx_packed;
+	};
+};
+
 /**
  * Structure contains variables relevant to RX/TX virtqueues.
  */
@@ -193,32 +219,7 @@ struct vhost_virtqueue {
 	struct rte_vhost_resubmit_info *resubmit_inflight;
 	uint64_t		global_counter;
 
-	/* operation callbacks for async dma */
-	struct rte_vhost_async_channel_ops	async_ops;
-
-	struct rte_vhost_iov_iter *it_pool;
-	struct iovec *vec_pool;
-
-	/* async data transfer status */
-	struct async_inflight_info *async_pkts_info;
-	uint16_t	async_pkts_idx;
-	uint16_t	async_pkts_inflight_n;
-	uint16_t	async_last_pkts_n;
-	union {
-		struct vring_used_elem  *async_descs_split;
-		struct vring_used_elem_packed *async_buffers_packed;
-	};
-	union {
-		uint16_t async_desc_idx_split;
-		uint16_t async_buffer_idx_packed;
-	};
-	union {
-		uint16_t last_async_desc_idx_split;
-		uint16_t last_async_buffer_idx_packed;
-	};
-
-	/* vq async features */
-	bool		async_registered;
+	struct vhost_async	*async;
 
 	int			notif_enable;
 #define VIRTIO_UNINITIALIZED_NOTIF	(-1)

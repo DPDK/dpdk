@@ -340,19 +340,18 @@ cleanup_device(struct virtio_net *dev, int destroy)
 static void
 vhost_free_async_mem(struct vhost_virtqueue *vq)
 {
-	rte_free(vq->async_pkts_info);
+	if (!vq->async)
+		return;
 
-	rte_free(vq->async_buffers_packed);
-	vq->async_buffers_packed = NULL;
-	rte_free(vq->async_descs_split);
-	vq->async_descs_split = NULL;
+	rte_free(vq->async->pkts_info);
 
-	rte_free(vq->it_pool);
-	rte_free(vq->vec_pool);
+	rte_free(vq->async->buffers_packed);
+	vq->async->buffers_packed = NULL;
+	rte_free(vq->async->descs_split);
+	vq->async->descs_split = NULL;
 
-	vq->async_pkts_info = NULL;
-	vq->it_pool = NULL;
-	vq->vec_pool = NULL;
+	rte_free(vq->async);
+	vq->async = NULL;
 }
 
 void
@@ -1632,77 +1631,63 @@ async_channel_register(int vid, uint16_t queue_id,
 {
 	struct virtio_net *dev = get_device(vid);
 	struct vhost_virtqueue *vq = dev->virtqueue[queue_id];
+	struct vhost_async *async;
+	int node = vq->numa_node;
 
-	if (unlikely(vq->async_registered)) {
+	if (unlikely(vq->async)) {
 		VHOST_LOG_CONFIG(ERR,
-			"async register failed: channel already registered "
-			"(vid %d, qid: %d)\n", vid, queue_id);
+				"async register failed: already registered (vid %d, qid: %d)\n",
+				vid, queue_id);
 		return -1;
 	}
 
-	vq->async_pkts_info = rte_malloc_socket(NULL,
-			vq->size * sizeof(struct async_inflight_info),
-			RTE_CACHE_LINE_SIZE, vq->numa_node);
-	if (!vq->async_pkts_info) {
-		vhost_free_async_mem(vq);
-		VHOST_LOG_CONFIG(ERR,
-			"async register failed: cannot allocate memory for async_pkts_info "
-			"(vid %d, qid: %d)\n", vid, queue_id);
+	async = rte_zmalloc_socket(NULL, sizeof(struct vhost_async), 0, node);
+	if (!async) {
+		VHOST_LOG_CONFIG(ERR, "failed to allocate async metadata (vid %d, qid: %d)\n",
+				vid, queue_id);
 		return -1;
 	}
 
-	vq->it_pool = rte_malloc_socket(NULL,
-			VHOST_MAX_ASYNC_IT * sizeof(struct rte_vhost_iov_iter),
-			RTE_CACHE_LINE_SIZE, vq->numa_node);
-	if (!vq->it_pool) {
-		vhost_free_async_mem(vq);
-		VHOST_LOG_CONFIG(ERR,
-			"async register failed: cannot allocate memory for it_pool "
-			"(vid %d, qid: %d)\n", vid, queue_id);
-		return -1;
-	}
-
-	vq->vec_pool = rte_malloc_socket(NULL,
-			VHOST_MAX_ASYNC_VEC * sizeof(struct iovec),
-			RTE_CACHE_LINE_SIZE, vq->numa_node);
-	if (!vq->vec_pool) {
-		vhost_free_async_mem(vq);
-		VHOST_LOG_CONFIG(ERR,
-			"async register failed: cannot allocate memory for vec_pool "
-			"(vid %d, qid: %d)\n", vid, queue_id);
-		return -1;
+	async->pkts_info = rte_malloc_socket(NULL, vq->size * sizeof(struct async_inflight_info),
+			RTE_CACHE_LINE_SIZE, node);
+	if (!async->pkts_info) {
+		VHOST_LOG_CONFIG(ERR, "failed to allocate async_pkts_info (vid %d, qid: %d)\n",
+				vid, queue_id);
+		goto out_free_async;
 	}
 
 	if (vq_is_packed(dev)) {
-		vq->async_buffers_packed = rte_malloc_socket(NULL,
-			vq->size * sizeof(struct vring_used_elem_packed),
-			RTE_CACHE_LINE_SIZE, vq->numa_node);
-		if (!vq->async_buffers_packed) {
-			vhost_free_async_mem(vq);
-			VHOST_LOG_CONFIG(ERR,
-				"async register failed: cannot allocate memory for async buffers "
-				"(vid %d, qid: %d)\n", vid, queue_id);
-			return -1;
+		async->buffers_packed = rte_malloc_socket(NULL,
+				vq->size * sizeof(struct vring_used_elem_packed),
+				RTE_CACHE_LINE_SIZE, node);
+		if (!async->buffers_packed) {
+			VHOST_LOG_CONFIG(ERR, "failed to allocate async buffers (vid %d, qid: %d)\n",
+					vid, queue_id);
+			goto out_free_inflight;
 		}
 	} else {
-		vq->async_descs_split = rte_malloc_socket(NULL,
-			vq->size * sizeof(struct vring_used_elem),
-			RTE_CACHE_LINE_SIZE, vq->numa_node);
-		if (!vq->async_descs_split) {
-			vhost_free_async_mem(vq);
-			VHOST_LOG_CONFIG(ERR,
-				"async register failed: cannot allocate memory for async descs "
-				"(vid %d, qid: %d)\n", vid, queue_id);
-			return -1;
+		async->descs_split = rte_malloc_socket(NULL,
+				vq->size * sizeof(struct vring_used_elem),
+				RTE_CACHE_LINE_SIZE, node);
+		if (!async->descs_split) {
+			VHOST_LOG_CONFIG(ERR, "failed to allocate async descs (vid %d, qid: %d)\n",
+					vid, queue_id);
+			goto out_free_inflight;
 		}
 	}
 
-	vq->async_ops.check_completed_copies = ops->check_completed_copies;
-	vq->async_ops.transfer_data = ops->transfer_data;
+	async->ops.check_completed_copies = ops->check_completed_copies;
+	async->ops.transfer_data = ops->transfer_data;
 
-	vq->async_registered = true;
+	vq->async = async;
 
 	return 0;
+out_free_inflight:
+	rte_free(async->pkts_info);
+out_free_async:
+	rte_free(async);
+
+	return -1;
 }
 
 int
@@ -1796,7 +1781,7 @@ rte_vhost_async_channel_unregister(int vid, uint16_t queue_id)
 
 	ret = 0;
 
-	if (!vq->async_registered)
+	if (!vq->async)
 		return ret;
 
 	if (!rte_spinlock_trylock(&vq->access_lock)) {
@@ -1805,7 +1790,7 @@ rte_vhost_async_channel_unregister(int vid, uint16_t queue_id)
 		return -1;
 	}
 
-	if (vq->async_pkts_inflight_n) {
+	if (vq->async->pkts_inflight_n) {
 		VHOST_LOG_CONFIG(ERR, "Failed to unregister async channel. "
 			"async inflight packets must be completed before unregistration.\n");
 		ret = -1;
@@ -1813,11 +1798,6 @@ rte_vhost_async_channel_unregister(int vid, uint16_t queue_id)
 	}
 
 	vhost_free_async_mem(vq);
-
-	vq->async_ops.transfer_data = NULL;
-	vq->async_ops.check_completed_copies = NULL;
-	vq->async_registered = false;
-
 out:
 	rte_spinlock_unlock(&vq->access_lock);
 
@@ -1841,20 +1821,16 @@ rte_vhost_async_channel_unregister_thread_unsafe(int vid, uint16_t queue_id)
 	if (vq == NULL)
 		return -1;
 
-	if (!vq->async_registered)
+	if (!vq->async)
 		return 0;
 
-	if (vq->async_pkts_inflight_n) {
+	if (vq->async->pkts_inflight_n) {
 		VHOST_LOG_CONFIG(ERR, "Failed to unregister async channel. "
 			"async inflight packets must be completed before unregistration.\n");
 		return -1;
 	}
 
 	vhost_free_async_mem(vq);
-
-	vq->async_ops.transfer_data = NULL;
-	vq->async_ops.check_completed_copies = NULL;
-	vq->async_registered = false;
 
 	return 0;
 }
@@ -1877,7 +1853,7 @@ rte_vhost_async_get_inflight(int vid, uint16_t queue_id)
 	if (vq == NULL)
 		return ret;
 
-	if (!vq->async_registered)
+	if (!vq->async)
 		return ret;
 
 	if (!rte_spinlock_trylock(&vq->access_lock)) {
@@ -1886,7 +1862,7 @@ rte_vhost_async_get_inflight(int vid, uint16_t queue_id)
 		return ret;
 	}
 
-	ret = vq->async_pkts_inflight_n;
+	ret = vq->async->pkts_inflight_n;
 	rte_spinlock_unlock(&vq->access_lock);
 
 	return ret;
