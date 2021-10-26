@@ -919,9 +919,9 @@ sync_mbuf_to_desc_seg(struct virtio_net *dev, struct vhost_virtqueue *vq,
 }
 
 static __rte_always_inline int
-copy_mbuf_to_desc(struct virtio_net *dev, struct vhost_virtqueue *vq,
-			    struct rte_mbuf *m, struct buf_vector *buf_vec,
-			    uint16_t nr_vec, uint16_t num_buffers)
+mbuf_to_desc(struct virtio_net *dev, struct vhost_virtqueue *vq,
+		struct rte_mbuf *m, struct buf_vector *buf_vec,
+		uint16_t nr_vec, uint16_t num_buffers, bool is_async)
 {
 	uint32_t vec_idx = 0;
 	uint32_t mbuf_offset, mbuf_avail;
@@ -931,6 +931,7 @@ copy_mbuf_to_desc(struct virtio_net *dev, struct vhost_virtqueue *vq,
 	uint64_t hdr_addr;
 	struct rte_mbuf *hdr_mbuf;
 	struct virtio_net_hdr_mrg_rxbuf tmp_hdr, *hdr = NULL;
+	struct vhost_async *async = vq->async;
 
 	if (unlikely(m == NULL))
 		return -1;
@@ -967,6 +968,12 @@ copy_mbuf_to_desc(struct virtio_net *dev, struct vhost_virtqueue *vq,
 
 	mbuf_avail  = rte_pktmbuf_data_len(m);
 	mbuf_offset = 0;
+
+	if (is_async) {
+		if (async_iter_initialize(async))
+			return -1;
+	}
+
 	while (mbuf_avail != 0 || m->next != NULL) {
 		/* done with current buf, get the next one */
 		if (buf_avail == 0) {
@@ -1011,122 +1018,14 @@ copy_mbuf_to_desc(struct virtio_net *dev, struct vhost_virtqueue *vq,
 
 		cpy_len = RTE_MIN(buf_avail, mbuf_avail);
 
-		sync_mbuf_to_desc_seg(dev, vq, m, mbuf_offset,
-				buf_addr + buf_offset,
-				buf_iova + buf_offset, cpy_len);
-
-		mbuf_avail  -= cpy_len;
-		mbuf_offset += cpy_len;
-		buf_avail  -= cpy_len;
-		buf_offset += cpy_len;
-	}
-
-	return 0;
-error:
-	return -1;
-}
-
-static __rte_always_inline int
-async_mbuf_to_desc(struct virtio_net *dev, struct vhost_virtqueue *vq,
-			struct rte_mbuf *m, struct buf_vector *buf_vec,
-			uint16_t nr_vec, uint16_t num_buffers)
-{
-	struct vhost_async *async = vq->async;
-	struct rte_mbuf *hdr_mbuf;
-	struct virtio_net_hdr_mrg_rxbuf tmp_hdr, *hdr = NULL;
-	uint64_t buf_addr, buf_iova;
-	uint64_t hdr_addr;
-	uint32_t vec_idx = 0;
-	uint32_t mbuf_offset, mbuf_avail;
-	uint32_t buf_offset, buf_avail;
-	uint32_t cpy_len, buf_len;
-
-	if (unlikely(m == NULL))
-		return -1;
-
-	buf_addr = buf_vec[vec_idx].buf_addr;
-	buf_iova = buf_vec[vec_idx].buf_iova;
-	buf_len = buf_vec[vec_idx].buf_len;
-
-	if (unlikely(buf_len < dev->vhost_hlen && nr_vec <= 1))
-		return -1;
-
-	hdr_mbuf = m;
-	hdr_addr = buf_addr;
-	if (unlikely(buf_len < dev->vhost_hlen)) {
-		memset(&tmp_hdr, 0, sizeof(struct virtio_net_hdr_mrg_rxbuf));
-		hdr = &tmp_hdr;
-	} else
-		hdr = (struct virtio_net_hdr_mrg_rxbuf *)(uintptr_t)hdr_addr;
-
-	VHOST_LOG_DATA(DEBUG, "(%d) RX: num merge buffers %d\n",
-		dev->vid, num_buffers);
-
-	if (unlikely(buf_len < dev->vhost_hlen)) {
-		buf_offset = dev->vhost_hlen - buf_len;
-		vec_idx++;
-		buf_addr = buf_vec[vec_idx].buf_addr;
-		buf_iova = buf_vec[vec_idx].buf_iova;
-		buf_len = buf_vec[vec_idx].buf_len;
-		buf_avail = buf_len - buf_offset;
-	} else {
-		buf_offset = dev->vhost_hlen;
-		buf_avail = buf_len - dev->vhost_hlen;
-	}
-
-	mbuf_avail  = rte_pktmbuf_data_len(m);
-	mbuf_offset = 0;
-
-	if (async_iter_initialize(async))
-		return -1;
-
-	while (mbuf_avail != 0 || m->next != NULL) {
-		/* done with current buf, get the next one */
-		if (buf_avail == 0) {
-			vec_idx++;
-			if (unlikely(vec_idx >= nr_vec))
+		if (is_async) {
+			if (async_mbuf_to_desc_seg(dev, vq, m, mbuf_offset,
+						buf_iova + buf_offset, cpy_len) < 0)
 				goto error;
-
-			buf_addr = buf_vec[vec_idx].buf_addr;
-			buf_iova = buf_vec[vec_idx].buf_iova;
-			buf_len = buf_vec[vec_idx].buf_len;
-
-			buf_offset = 0;
-			buf_avail = buf_len;
-		}
-
-		/* done with current mbuf, get the next one */
-		if (mbuf_avail == 0) {
-			m = m->next;
-
-			mbuf_offset = 0;
-			mbuf_avail = rte_pktmbuf_data_len(m);
-		}
-
-		if (hdr_addr) {
-			virtio_enqueue_offload(hdr_mbuf, &hdr->hdr);
-			if (rxvq_is_mergeable(dev))
-				ASSIGN_UNLESS_EQUAL(hdr->num_buffers,
-						num_buffers);
-
-			if (unlikely(hdr == &tmp_hdr)) {
-				copy_vnet_hdr_to_desc(dev, vq, buf_vec, hdr);
-			} else {
-				PRINT_PACKET(dev, (uintptr_t)hdr_addr,
-						dev->vhost_hlen, 0);
-				vhost_log_cache_write_iova(dev, vq,
-						buf_vec[0].buf_iova,
-						dev->vhost_hlen);
-			}
-
-			hdr_addr = 0;
-		}
-
-		cpy_len = RTE_MIN(buf_avail, mbuf_avail);
-
-		if (async_mbuf_to_desc_seg(dev, vq, m, mbuf_offset,
-					buf_iova + buf_offset, cpy_len) < 0) {
-			goto error;
+		} else {
+			sync_mbuf_to_desc_seg(dev, vq, m, mbuf_offset,
+					buf_addr + buf_offset,
+					buf_iova + buf_offset, cpy_len);
 		}
 
 		mbuf_avail  -= cpy_len;
@@ -1135,11 +1034,13 @@ async_mbuf_to_desc(struct virtio_net *dev, struct vhost_virtqueue *vq,
 		buf_offset += cpy_len;
 	}
 
-	async_iter_finalize(async);
+	if (is_async)
+		async_iter_finalize(async);
 
 	return 0;
 error:
-	async_iter_cancel(async);
+	if (is_async)
+		async_iter_cancel(async);
 
 	return -1;
 }
@@ -1198,7 +1099,7 @@ vhost_enqueue_single_packed(struct virtio_net *dev,
 			avail_idx -= vq->size;
 	}
 
-	if (copy_mbuf_to_desc(dev, vq, pkt, buf_vec, nr_vec, num_buffers) < 0)
+	if (mbuf_to_desc(dev, vq, pkt, buf_vec, nr_vec, num_buffers, false) < 0)
 		return -1;
 
 	vhost_shadow_enqueue_single_packed(dev, vq, buffer_len, buffer_buf_id,
@@ -1242,9 +1143,8 @@ virtio_dev_rx_split(struct virtio_net *dev, struct vhost_virtqueue *vq,
 			dev->vid, vq->last_avail_idx,
 			vq->last_avail_idx + num_buffers);
 
-		if (copy_mbuf_to_desc(dev, vq, pkts[pkt_idx],
-						buf_vec, nr_vec,
-						num_buffers) < 0) {
+		if (mbuf_to_desc(dev, vq, pkts[pkt_idx], buf_vec, nr_vec,
+					num_buffers, false) < 0) {
 			vq->shadow_used_idx -= num_buffers;
 			break;
 		}
@@ -1588,7 +1488,7 @@ virtio_dev_rx_async_submit_split(struct virtio_net *dev,
 		VHOST_LOG_DATA(DEBUG, "(%d) current index %d | end index %d\n",
 			dev->vid, vq->last_avail_idx, vq->last_avail_idx + num_buffers);
 
-		if (async_mbuf_to_desc(dev, vq, pkts[pkt_idx], buf_vec, nr_vec, num_buffers) < 0) {
+		if (mbuf_to_desc(dev, vq, pkts[pkt_idx], buf_vec, nr_vec, num_buffers, true) < 0) {
 			vq->shadow_used_idx -= num_buffers;
 			break;
 		}
@@ -1757,8 +1657,7 @@ vhost_enqueue_async_packed(struct virtio_net *dev,
 			avail_idx -= vq->size;
 	}
 
-	if (unlikely(async_mbuf_to_desc(dev, vq, pkt, buf_vec, nr_vec,
-					*nr_buffers) < 0))
+	if (unlikely(mbuf_to_desc(dev, vq, pkt, buf_vec, nr_vec, *nr_buffers, true) < 0))
 		return -1;
 
 	vhost_shadow_enqueue_packed(vq, buffer_len, buffer_buf_id, buffer_desc_count, *nr_buffers);
