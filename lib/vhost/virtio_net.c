@@ -894,6 +894,30 @@ async_mbuf_to_desc_seg(struct virtio_net *dev, struct vhost_virtqueue *vq,
 	return 0;
 }
 
+static __rte_always_inline void
+sync_mbuf_to_desc_seg(struct virtio_net *dev, struct vhost_virtqueue *vq,
+		struct rte_mbuf *m, uint32_t mbuf_offset,
+		uint64_t buf_addr, uint64_t buf_iova, uint32_t cpy_len)
+{
+	struct batch_copy_elem *batch_copy = vq->batch_copy_elems;
+
+	if (likely(cpy_len > MAX_BATCH_LEN || vq->batch_copy_nb_elems >= vq->size)) {
+		rte_memcpy((void *)((uintptr_t)(buf_addr)),
+				rte_pktmbuf_mtod_offset(m, void *, mbuf_offset),
+				cpy_len);
+		vhost_log_cache_write_iova(dev, vq, buf_iova, cpy_len);
+		PRINT_PACKET(dev, (uintptr_t)(buf_addr), cpy_len, 0);
+	} else {
+		batch_copy[vq->batch_copy_nb_elems].dst =
+			(void *)((uintptr_t)(buf_addr));
+		batch_copy[vq->batch_copy_nb_elems].src =
+			rte_pktmbuf_mtod_offset(m, void *, mbuf_offset);
+		batch_copy[vq->batch_copy_nb_elems].log_addr = buf_iova;
+		batch_copy[vq->batch_copy_nb_elems].len = cpy_len;
+		vq->batch_copy_nb_elems++;
+	}
+}
+
 static __rte_always_inline int
 copy_mbuf_to_desc(struct virtio_net *dev, struct vhost_virtqueue *vq,
 			    struct rte_mbuf *m, struct buf_vector *buf_vec,
@@ -906,23 +930,17 @@ copy_mbuf_to_desc(struct virtio_net *dev, struct vhost_virtqueue *vq,
 	uint32_t cpy_len;
 	uint64_t hdr_addr;
 	struct rte_mbuf *hdr_mbuf;
-	struct batch_copy_elem *batch_copy = vq->batch_copy_elems;
 	struct virtio_net_hdr_mrg_rxbuf tmp_hdr, *hdr = NULL;
-	int error = 0;
 
-	if (unlikely(m == NULL)) {
-		error = -1;
-		goto out;
-	}
+	if (unlikely(m == NULL))
+		return -1;
 
 	buf_addr = buf_vec[vec_idx].buf_addr;
 	buf_iova = buf_vec[vec_idx].buf_iova;
 	buf_len = buf_vec[vec_idx].buf_len;
 
-	if (unlikely(buf_len < dev->vhost_hlen && nr_vec <= 1)) {
-		error = -1;
-		goto out;
-	}
+	if (unlikely(buf_len < dev->vhost_hlen && nr_vec <= 1))
+		return -1;
 
 	hdr_mbuf = m;
 	hdr_addr = buf_addr;
@@ -953,10 +971,8 @@ copy_mbuf_to_desc(struct virtio_net *dev, struct vhost_virtqueue *vq,
 		/* done with current buf, get the next one */
 		if (buf_avail == 0) {
 			vec_idx++;
-			if (unlikely(vec_idx >= nr_vec)) {
-				error = -1;
-				goto out;
-			}
+			if (unlikely(vec_idx >= nr_vec))
+				goto error;
 
 			buf_addr = buf_vec[vec_idx].buf_addr;
 			buf_iova = buf_vec[vec_idx].buf_iova;
@@ -995,26 +1011,9 @@ copy_mbuf_to_desc(struct virtio_net *dev, struct vhost_virtqueue *vq,
 
 		cpy_len = RTE_MIN(buf_avail, mbuf_avail);
 
-		if (likely(cpy_len > MAX_BATCH_LEN ||
-					vq->batch_copy_nb_elems >= vq->size)) {
-			rte_memcpy((void *)((uintptr_t)(buf_addr + buf_offset)),
-				rte_pktmbuf_mtod_offset(m, void *, mbuf_offset),
-				cpy_len);
-			vhost_log_cache_write_iova(dev, vq,
-						   buf_iova + buf_offset,
-						   cpy_len);
-			PRINT_PACKET(dev, (uintptr_t)(buf_addr + buf_offset),
-				cpy_len, 0);
-		} else {
-			batch_copy[vq->batch_copy_nb_elems].dst =
-				(void *)((uintptr_t)(buf_addr + buf_offset));
-			batch_copy[vq->batch_copy_nb_elems].src =
-				rte_pktmbuf_mtod_offset(m, void *, mbuf_offset);
-			batch_copy[vq->batch_copy_nb_elems].log_addr =
-				buf_iova + buf_offset;
-			batch_copy[vq->batch_copy_nb_elems].len = cpy_len;
-			vq->batch_copy_nb_elems++;
-		}
+		sync_mbuf_to_desc_seg(dev, vq, m, mbuf_offset,
+				buf_addr + buf_offset,
+				buf_iova + buf_offset, cpy_len);
 
 		mbuf_avail  -= cpy_len;
 		mbuf_offset += cpy_len;
@@ -1022,9 +1021,9 @@ copy_mbuf_to_desc(struct virtio_net *dev, struct vhost_virtqueue *vq,
 		buf_offset += cpy_len;
 	}
 
-out:
-
-	return error;
+	return 0;
+error:
+	return -1;
 }
 
 static __rte_always_inline int
