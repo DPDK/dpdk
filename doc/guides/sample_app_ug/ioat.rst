@@ -183,10 +183,8 @@ After that each port application assigns resources needed.
     :end-before: >8 End of assigning each port resources.
     :dedent: 1
 
-Depending on mode set (whether copy should be done by software or by hardware)
-special structures are assigned to each port. If software copy was chosen,
-application have to assign ring structures for packet exchanging between lcores
-assigned to ports.
+Ring structures are assigned for exchanging packets between lcores for both SW
+and HW copy modes.
 
 .. literalinclude:: ../../../examples/ioat/ioatfwd.c
     :language: c
@@ -275,12 +273,8 @@ copying device's buffer using ``ioat_enqueue_packets()`` which calls
 buffer the copy operations are started by calling ``rte_ioat_perform_ops()``.
 Function ``rte_ioat_enqueue_copy()`` operates on physical address of
 the packet. Structure ``rte_mbuf`` contains only physical address to
-start of the data buffer (``buf_iova``). Thus the address is adjusted
-by ``addr_offset`` value in order to get the address of ``rearm_data``
-member of ``rte_mbuf``. That way both the packet data and metadata can
-be copied in a single operation. This method can be used because the mbufs
-are direct mbufs allocated by the apps. If another app uses external buffers,
-or indirect mbufs, then multiple copy operations must be used.
+start of the data buffer (``buf_iova``). Thus the ``rte_pktmbuf_iova()`` API is
+used to get the address of the start of the data within the mbuf.
 
 .. literalinclude:: ../../../examples/ioat/ioatfwd.c
     :language: c
@@ -289,12 +283,13 @@ or indirect mbufs, then multiple copy operations must be used.
     :dedent: 0
 
 
-All completed copies are processed by ``ioat_tx_port()`` function. When using
-hardware copy mode the function invokes ``rte_ioat_completed_ops()``
-on each assigned IOAT channel to gather copied packets. If software copy
-mode is used the function dequeues copied packets from the rte_ring. Then each
-packet MAC address is changed if it was enabled. After that copies are sent
-in burst mode using `` rte_eth_tx_burst()``.
+Once the copies have been completed (this includes gathering the completions in
+HW copy mode), the copied packets are enqueued to the ``rx_to_tx_ring``, which
+is used to pass the packets to the TX function.
+
+All completed copies are processed by ``ioat_tx_port()`` function. This function
+dequeues copied packets from the ``rx_to_tx_ring``. Then each packet MAC address is changed
+if it was enabled. After that copies are sent in burst mode using ``rte_eth_tx_burst()``.
 
 
 .. literalinclude:: ../../../examples/ioat/ioatfwd.c
@@ -306,11 +301,9 @@ in burst mode using `` rte_eth_tx_burst()``.
 The Packet Copying Functions
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-In order to perform packet copy there is a user-defined function
-``pktmbuf_sw_copy()`` used. It copies a whole packet by copying
-metadata from source packet to new mbuf, and then copying a data
-chunk of source packet. Both memory copies are done using
-``rte_memcpy()``:
+In order to perform SW packet copy, there are user-defined functions to first copy
+the packet metadata (``pktmbuf_metadata_copy()``) and then the packet data
+(``pktmbuf_sw_copy()``):
 
 .. literalinclude:: ../../../examples/ioat/ioatfwd.c
     :language: c
@@ -318,8 +311,8 @@ chunk of source packet. Both memory copies are done using
     :end-before: >8 End of perform packet copy there is a user-defined function.
     :dedent: 0
 
-The metadata in this example is copied from ``rearm_data`` member of
-``rte_mbuf`` struct up to ``cacheline1``.
+The metadata in this example is copied from ``rx_descriptor_fields1`` marker of
+``rte_mbuf`` struct up to ``buf_len`` member.
 
 In order to understand why software packet copying is done as shown
 above please refer to the "Mbuf Library" section of the

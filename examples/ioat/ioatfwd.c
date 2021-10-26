@@ -331,43 +331,36 @@ update_mac_addrs(struct rte_mbuf *m, uint32_t dest_portid)
 
 /* Perform packet copy there is a user-defined function. 8< */
 static inline void
+pktmbuf_metadata_copy(const struct rte_mbuf *src, struct rte_mbuf *dst)
+{
+	dst->data_off = src->data_off;
+	memcpy(&dst->rx_descriptor_fields1, &src->rx_descriptor_fields1,
+		offsetof(struct rte_mbuf, buf_len) -
+		offsetof(struct rte_mbuf, rx_descriptor_fields1));
+}
+
+/* Copy packet data */
+static inline void
 pktmbuf_sw_copy(struct rte_mbuf *src, struct rte_mbuf *dst)
 {
-	/* Copy packet metadata */
-	rte_memcpy(&dst->rearm_data,
-		&src->rearm_data,
-		offsetof(struct rte_mbuf, cacheline1)
-		- offsetof(struct rte_mbuf, rearm_data));
-
-	/* Copy packet data */
 	rte_memcpy(rte_pktmbuf_mtod(dst, char *),
 		rte_pktmbuf_mtod(src, char *), src->data_len);
 }
 /* >8 End of perform packet copy there is a user-defined function. */
 
 static uint32_t
-ioat_enqueue_packets(struct rte_mbuf **pkts,
+ioat_enqueue_packets(struct rte_mbuf *pkts[], struct rte_mbuf *pkts_copy[],
 	uint32_t nb_rx, uint16_t dev_id)
 {
 	int ret;
 	uint32_t i;
-	struct rte_mbuf *pkts_copy[MAX_PKT_BURST];
-
-	const uint64_t addr_offset = RTE_PTR_DIFF(pkts[0]->buf_addr,
-		&pkts[0]->rearm_data);
-
-	ret = rte_mempool_get_bulk(ioat_pktmbuf_pool,
-		(void *)pkts_copy, nb_rx);
-
-	if (unlikely(ret < 0))
-		rte_exit(EXIT_FAILURE, "Unable to allocate memory.\n");
 
 	for (i = 0; i < nb_rx; i++) {
 		/* Perform data copy */
 		ret = rte_ioat_enqueue_copy(dev_id,
-			pkts[i]->buf_iova - addr_offset,
-			pkts_copy[i]->buf_iova - addr_offset,
-			rte_pktmbuf_data_len(pkts[i]) + addr_offset,
+			rte_pktmbuf_iova(pkts[i]),
+			rte_pktmbuf_iova(pkts_copy[i]),
+			rte_pktmbuf_data_len(pkts[i]),
 			(uintptr_t)pkts[i],
 			(uintptr_t)pkts_copy[i]);
 
@@ -376,20 +369,50 @@ ioat_enqueue_packets(struct rte_mbuf **pkts,
 	}
 
 	ret = i;
-	/* Free any not enqueued packets. */
-	rte_mempool_put_bulk(ioat_pktmbuf_pool, (void *)&pkts[i], nb_rx - i);
-	rte_mempool_put_bulk(ioat_pktmbuf_pool, (void *)&pkts_copy[i],
-		nb_rx - i);
-
 	return ret;
+}
+
+static inline uint32_t
+ioat_enqueue(struct rte_mbuf *pkts[], struct rte_mbuf *pkts_copy[],
+	uint32_t num, uint16_t dev_id)
+{
+	uint32_t n;
+
+	n = ioat_enqueue_packets(pkts, pkts_copy, num, dev_id);
+	if (n > 0)
+		rte_ioat_perform_ops(dev_id);
+
+	return n;
+}
+
+static inline uint32_t
+ioat_dequeue(struct rte_mbuf *src[], struct rte_mbuf *dst[], uint32_t num,
+	uint16_t dev_id)
+{
+	int32_t rc;
+	/* Dequeue the mbufs from IOAT device. Since all memory
+	 * is DPDK pinned memory and therefore all addresses should
+	 * be valid, we don't check for copy errors
+	 */
+	rc = rte_ioat_completed_ops(dev_id, num, NULL, NULL,
+		(void *)src, (void *)dst);
+	if (rc < 0) {
+		RTE_LOG(CRIT, IOAT,
+			"rte_ioat_completed_ops(%hu) failedi, error: %d\n",
+			dev_id, rte_errno);
+		rc = 0;
+	}
+	return rc;
 }
 
 /* Receive packets on one port and enqueue to IOAT rawdev or rte_ring. 8< */
 static void
 ioat_rx_port(struct rxtx_port_config *rx_config)
 {
+	int32_t ret;
 	uint32_t nb_rx, nb_enq, i, j;
 	struct rte_mbuf *pkts_burst[MAX_PKT_BURST];
+	struct rte_mbuf *pkts_burst_copy[MAX_PKT_BURST];
 
 	for (i = 0; i < rx_config->nb_queues; i++) {
 
@@ -401,40 +424,54 @@ ioat_rx_port(struct rxtx_port_config *rx_config)
 
 		port_statistics.rx[rx_config->rxtx_port] += nb_rx;
 
+		ret = rte_mempool_get_bulk(ioat_pktmbuf_pool,
+			(void *)pkts_burst_copy, nb_rx);
+
+		if (unlikely(ret < 0))
+			rte_exit(EXIT_FAILURE,
+				"Unable to allocate memory.\n");
+
+		for (j = 0; j < nb_rx; j++)
+			pktmbuf_metadata_copy(pkts_burst[j],
+				pkts_burst_copy[j]);
+
 		if (copy_mode == COPY_MODE_IOAT_NUM) {
-			/* Perform packet hardware copy */
-			nb_enq = ioat_enqueue_packets(pkts_burst,
+
+			/* enqueue packets for  hardware copy */
+			nb_enq = ioat_enqueue(pkts_burst, pkts_burst_copy,
 				nb_rx, rx_config->ioat_ids[i]);
-			if (nb_enq > 0)
-				rte_ioat_perform_ops(rx_config->ioat_ids[i]);
-		} else {
-			/* Perform packet software copy, free source packets */
-			int ret;
-			struct rte_mbuf *pkts_burst_copy[MAX_PKT_BURST];
 
-			ret = rte_mempool_get_bulk(ioat_pktmbuf_pool,
-				(void *)pkts_burst_copy, nb_rx);
-
-			if (unlikely(ret < 0))
-				rte_exit(EXIT_FAILURE,
-					"Unable to allocate memory.\n");
-
-			for (j = 0; j < nb_rx; j++)
-				pktmbuf_sw_copy(pkts_burst[j],
-					pkts_burst_copy[j]);
-
+			/* free any not enqueued packets. */
 			rte_mempool_put_bulk(ioat_pktmbuf_pool,
-				(void *)pkts_burst, nb_rx);
-
-			nb_enq = rte_ring_enqueue_burst(
-				rx_config->rx_to_tx_ring,
-				(void *)pkts_burst_copy, nb_rx, NULL);
-
-			/* Free any not enqueued packets. */
+				(void *)&pkts_burst[nb_enq],
+				nb_rx - nb_enq);
 			rte_mempool_put_bulk(ioat_pktmbuf_pool,
 				(void *)&pkts_burst_copy[nb_enq],
 				nb_rx - nb_enq);
+
+			port_statistics.copy_dropped[rx_config->rxtx_port] +=
+				(nb_rx - nb_enq);
+
+			/* get completed copies */
+			nb_rx = ioat_dequeue(pkts_burst, pkts_burst_copy,
+				MAX_PKT_BURST, rx_config->ioat_ids[i]);
+		} else {
+			/* Perform packet software copy, free source packets */
+			for (j = 0; j < nb_rx; j++)
+				pktmbuf_sw_copy(pkts_burst[j],
+					pkts_burst_copy[j]);
 		}
+
+		rte_mempool_put_bulk(ioat_pktmbuf_pool,
+			(void *)pkts_burst, nb_rx);
+
+		nb_enq = rte_ring_enqueue_burst(rx_config->rx_to_tx_ring,
+			(void *)pkts_burst_copy, nb_rx, NULL);
+
+		/* Free any not enqueued packets. */
+		rte_mempool_put_bulk(ioat_pktmbuf_pool,
+			(void *)&pkts_burst_copy[nb_enq],
+			nb_rx - nb_enq);
 
 		port_statistics.copy_dropped[rx_config->rxtx_port] +=
 			(nb_rx - nb_enq);
@@ -446,51 +483,33 @@ ioat_rx_port(struct rxtx_port_config *rx_config)
 static void
 ioat_tx_port(struct rxtx_port_config *tx_config)
 {
-	uint32_t i, j, nb_dq = 0;
-	struct rte_mbuf *mbufs_src[MAX_PKT_BURST];
-	struct rte_mbuf *mbufs_dst[MAX_PKT_BURST];
+	uint32_t i, j, nb_dq, nb_tx;
+	struct rte_mbuf *mbufs[MAX_PKT_BURST];
 
 	for (i = 0; i < tx_config->nb_queues; i++) {
-		if (copy_mode == COPY_MODE_IOAT_NUM) {
-			/* Dequeue the mbufs from IOAT device. Since all memory
-			 * is DPDK pinned memory and therefore all addresses should
-			 * be valid, we don't check for copy errors
-			 */
-			nb_dq = rte_ioat_completed_ops(
-				tx_config->ioat_ids[i], MAX_PKT_BURST, NULL, NULL,
-				(void *)mbufs_src, (void *)mbufs_dst);
-		} else {
-			/* Dequeue the mbufs from rx_to_tx_ring. */
-			nb_dq = rte_ring_dequeue_burst(
-				tx_config->rx_to_tx_ring, (void *)mbufs_dst,
-				MAX_PKT_BURST, NULL);
-		}
 
-		if ((int32_t) nb_dq <= 0)
-			return;
-
-		if (copy_mode == COPY_MODE_IOAT_NUM)
-			rte_mempool_put_bulk(ioat_pktmbuf_pool,
-				(void *)mbufs_src, nb_dq);
+		/* Dequeue the mbufs from rx_to_tx_ring. */
+		nb_dq = rte_ring_dequeue_burst(tx_config->rx_to_tx_ring,
+				(void *)mbufs, MAX_PKT_BURST, NULL);
+		if (nb_dq == 0)
+			continue;
 
 		/* Update macs if enabled */
 		if (mac_updating) {
 			for (j = 0; j < nb_dq; j++)
-				update_mac_addrs(mbufs_dst[j],
+				update_mac_addrs(mbufs[j],
 					tx_config->rxtx_port);
 		}
 
-		const uint16_t nb_tx = rte_eth_tx_burst(
-			tx_config->rxtx_port, 0,
-			(void *)mbufs_dst, nb_dq);
+		nb_tx = rte_eth_tx_burst(tx_config->rxtx_port, 0,
+				(void *)mbufs, nb_dq);
 
 		port_statistics.tx[tx_config->rxtx_port] += nb_tx;
 
 		/* Free any unsent packets. */
 		if (unlikely(nb_tx < nb_dq))
 			rte_mempool_put_bulk(ioat_pktmbuf_pool,
-			(void *)&mbufs_dst[nb_tx],
-				nb_dq - nb_tx);
+			(void *)&mbufs[nb_tx], nb_dq - nb_tx);
 	}
 }
 /* >8 End of transmitting packets from IOAT. */
@@ -852,9 +871,6 @@ port_init(uint16_t portid, struct rte_mempool *mbuf_pool, uint16_t nb_queues)
 
 	local_port_conf.rx_adv_conf.rss_conf.rss_hf &=
 		dev_info.flow_type_rss_offloads;
-	if (dev_info.tx_offload_capa & RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE)
-		local_port_conf.txmode.offloads |=
-			RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE;
 	ret = rte_eth_dev_configure(portid, nb_queues, 1, &local_port_conf);
 	if (ret < 0)
 		rte_exit(EXIT_FAILURE, "Cannot configure device:"
@@ -973,7 +989,8 @@ main(int argc, char **argv)
 
 	/* Allocates mempool to hold the mbufs. 8< */
 	nb_mbufs = RTE_MAX(nb_ports * (nb_queues * (nb_rxd + nb_txd +
-		4 * MAX_PKT_BURST) + rte_lcore_count() * MEMPOOL_CACHE_SIZE),
+		4 * MAX_PKT_BURST + ring_size) + ring_size +
+		rte_lcore_count() * MEMPOOL_CACHE_SIZE),
 		MIN_POOL_SIZE);
 
 	/* Create the mbuf pool */
@@ -1005,8 +1022,8 @@ main(int argc, char **argv)
 
 	if (copy_mode == COPY_MODE_IOAT_NUM)
 		assign_rawdevs();
-	else /* copy_mode == COPY_MODE_SW_NUM */
-		assign_rings();
+
+	assign_rings();
 	/* >8 End of assigning each port resources. */
 
 	start_forwarding_cores();
