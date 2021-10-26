@@ -26,6 +26,7 @@
 #define CMD_LINE_OPT_RING_SIZE "ring-size"
 #define CMD_LINE_OPT_BATCH_SIZE "dma-batch-size"
 #define CMD_LINE_OPT_FRAME_SIZE "max-frame-size"
+#define CMD_LINE_OPT_STATS_INTERVAL "stats-interval"
 
 /* configurable number of RX/TX ring descriptors */
 #define RX_DEFAULT_RINGSIZE 1024
@@ -95,6 +96,9 @@ static copy_mode_t copy_mode = COPY_MODE_IOAT_NUM;
  */
 static unsigned short ring_size = 2048;
 
+/* interval, in seconds, between stats prints */
+static unsigned short stats_interval = 1;
+
 /* global transmission config */
 struct rxtx_transmission_config cfg;
 
@@ -152,15 +156,15 @@ print_total_stats(struct total_statistics *ts)
 		"\nTotal packets Tx: %24"PRIu64" [pps]"
 		"\nTotal packets Rx: %24"PRIu64" [pps]"
 		"\nTotal packets dropped: %19"PRIu64" [pps]",
-		ts->total_packets_tx,
-		ts->total_packets_rx,
-		ts->total_packets_dropped);
+		ts->total_packets_tx / stats_interval,
+		ts->total_packets_rx / stats_interval,
+		ts->total_packets_dropped / stats_interval);
 
 	if (copy_mode == COPY_MODE_IOAT_NUM) {
 		printf("\nTotal IOAT successful enqueues: %8"PRIu64" [enq/s]"
 			"\nTotal IOAT failed enqueues: %12"PRIu64" [enq/s]",
-			ts->total_successful_enqueues,
-			ts->total_failed_enqueues);
+			ts->total_successful_enqueues / stats_interval,
+			ts->total_failed_enqueues / stats_interval);
 	}
 
 	printf("\n====================================================\n");
@@ -248,10 +252,10 @@ print_stats(char *prgname)
 	memset(&ts, 0, sizeof(struct total_statistics));
 
 	while (!force_quit) {
-		/* Sleep for 1 second each round - init sleep allows reading
+		/* Sleep for "stats_interval" seconds each round - init sleep allows reading
 		 * messages from app startup.
 		 */
-		sleep(1);
+		sleep(stats_interval);
 
 		/* Clear screen and move to top left */
 		printf("%s%s", clr, topLeft);
@@ -614,7 +618,8 @@ ioat_usage(const char *prgname)
 		"       - The source MAC address is replaced by the TX port MAC address\n"
 		"       - The destination MAC address is replaced by 02:00:00:00:00:TX_PORT_ID\n"
 		"  -c --copy-type CT: type of copy: sw|hw\n"
-		"  -s --ring-size RS: size of IOAT rawdev ring for hardware copy mode or rte_ring for software copy mode\n",
+		"  -s --ring-size RS: size of IOAT rawdev ring for hardware copy mode or rte_ring for software copy mode\n"
+		"  -i --stats-interval SI: interval, in seconds, between stats prints (default is 1)\n",
 			prgname);
 }
 
@@ -654,6 +659,7 @@ ioat_parse_args(int argc, char **argv, unsigned int nb_ports)
 		"p:"  /* portmask */
 		"q:"  /* number of RX queues per port */
 		"s:"  /* ring size */
+		"i:"  /* interval, in seconds, between stats prints */
 		;
 
 	static const struct option lgopts[] = {
@@ -665,6 +671,7 @@ ioat_parse_args(int argc, char **argv, unsigned int nb_ports)
 		{CMD_LINE_OPT_RING_SIZE, required_argument, NULL, 's'},
 		{CMD_LINE_OPT_BATCH_SIZE, required_argument, NULL, 'b'},
 		{CMD_LINE_OPT_FRAME_SIZE, required_argument, NULL, 'f'},
+		{CMD_LINE_OPT_STATS_INTERVAL, required_argument, NULL, 'i'},
 		{NULL, 0, 0, 0}
 	};
 
@@ -735,6 +742,14 @@ ioat_parse_args(int argc, char **argv, unsigned int nb_ports)
 				printf("Invalid ring size, %s.\n", optarg);
 				ioat_usage(prgname);
 				return -1;
+			}
+			break;
+
+		case 'i':
+			stats_interval = atoi(optarg);
+			if (stats_interval == 0) {
+				printf("Invalid stats interval, setting to 1\n");
+				stats_interval = 1;	/* set to default */
 			}
 			break;
 
