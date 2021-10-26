@@ -49,7 +49,7 @@
 #define MAX_PKT_BURST 32
 
 #define VHOST_MAX_ASYNC_IT (MAX_PKT_BURST * 2)
-#define VHOST_MAX_ASYNC_VEC (BUF_VECTOR_MAX * 4)
+#define VHOST_MAX_ASYNC_VEC (BUF_VECTOR_MAX * 2)
 
 #define PACKED_DESC_ENQUEUE_USED_FLAG(w)	\
 	((w) ? (VRING_DESC_F_AVAIL | VRING_DESC_F_USED | VRING_DESC_F_WRITE) : \
@@ -133,7 +133,8 @@ struct vhost_async {
 	struct rte_vhost_async_channel_ops ops;
 
 	struct rte_vhost_iov_iter it_pool[VHOST_MAX_ASYNC_IT];
-	struct iovec vec_pool[VHOST_MAX_ASYNC_VEC];
+	struct iovec src_iovec[VHOST_MAX_ASYNC_VEC];
+	struct iovec dst_iovec[VHOST_MAX_ASYNC_VEC];
 
 	/* data transfer status */
 	struct async_inflight_info *pkts_info;

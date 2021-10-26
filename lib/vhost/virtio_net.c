@@ -1512,14 +1512,12 @@ virtio_dev_rx_async_submit_split(struct virtio_net *dev,
 
 	struct vhost_async *async = vq->async;
 	struct rte_vhost_iov_iter *it_pool = async->it_pool;
-	struct iovec *vec_pool = async->vec_pool;
 	struct rte_vhost_async_desc tdes[MAX_PKT_BURST];
-	struct iovec *src_iovec = vec_pool;
-	struct iovec *dst_iovec = vec_pool + (VHOST_MAX_ASYNC_VEC >> 1);
+	struct iovec *src_iovec = async->src_iovec;
+	struct iovec *dst_iovec = async->dst_iovec;
 	struct async_inflight_info *pkts_info = async->pkts_info;
 	uint32_t n_pkts = 0, pkt_err = 0;
 	int32_t n_xfer;
-	uint16_t segs_await = 0;
 	uint16_t iovec_idx = 0, it_idx = 0, slot_idx = 0;
 
 	/*
@@ -1562,7 +1560,6 @@ virtio_dev_rx_async_submit_split(struct virtio_net *dev,
 		pkts_info[slot_idx].mbuf = pkts[pkt_idx];
 
 		iovec_idx += it_pool[it_idx].nr_segs;
-		segs_await += it_pool[it_idx].nr_segs;
 		it_idx += 2;
 
 		vq->last_avail_idx += num_buffers;
@@ -1573,8 +1570,7 @@ virtio_dev_rx_async_submit_split(struct virtio_net *dev,
 		 * - unused async iov number is less than max vhost vector
 		 */
 		if (unlikely(pkt_burst_idx >= VHOST_ASYNC_BATCH_THRESHOLD ||
-			((VHOST_MAX_ASYNC_VEC >> 1) - segs_await <
-			BUF_VECTOR_MAX))) {
+			(VHOST_MAX_ASYNC_VEC - iovec_idx < BUF_VECTOR_MAX))) {
 			n_xfer = async->ops.transfer_data(dev->vid,
 					queue_id, tdes, 0, pkt_burst_idx);
 			if (likely(n_xfer >= 0)) {
@@ -1588,7 +1584,6 @@ virtio_dev_rx_async_submit_split(struct virtio_net *dev,
 
 			iovec_idx = 0;
 			it_idx = 0;
-			segs_await = 0;
 
 			if (unlikely(n_pkts < pkt_burst_idx)) {
 				/*
@@ -1745,8 +1740,11 @@ vhost_enqueue_async_packed(struct virtio_net *dev,
 		if (unlikely(++tries > max_tries))
 			return -1;
 
-		if (unlikely(fill_vec_buf_packed(dev, vq, avail_idx, &desc_count, buf_vec, &nr_vec,
-						&buf_id, &len, VHOST_ACCESS_RW) < 0))
+		if (unlikely(fill_vec_buf_packed(dev, vq,
+						avail_idx, &desc_count,
+						buf_vec, &nr_vec,
+						&buf_id, &len,
+						VHOST_ACCESS_RW) < 0))
 			return -1;
 
 		len = RTE_MIN(len, size);
@@ -1832,14 +1830,12 @@ virtio_dev_rx_async_submit_packed(struct virtio_net *dev,
 
 	struct vhost_async *async = vq->async;
 	struct rte_vhost_iov_iter *it_pool = async->it_pool;
-	struct iovec *vec_pool = async->vec_pool;
 	struct rte_vhost_async_desc tdes[MAX_PKT_BURST];
-	struct iovec *src_iovec = vec_pool;
-	struct iovec *dst_iovec = vec_pool + (VHOST_MAX_ASYNC_VEC >> 1);
+	struct iovec *src_iovec = async->src_iovec;
+	struct iovec *dst_iovec = async->dst_iovec;
 	struct async_inflight_info *pkts_info = async->pkts_info;
 	uint32_t n_pkts = 0, pkt_err = 0;
 	uint16_t slot_idx = 0;
-	uint16_t segs_await = 0;
 	uint16_t iovec_idx = 0, it_idx = 0;
 
 	do {
@@ -1861,7 +1857,6 @@ virtio_dev_rx_async_submit_packed(struct virtio_net *dev,
 		pkts_info[slot_idx].nr_buffers = num_buffers;
 		pkts_info[slot_idx].mbuf = pkts[pkt_idx];
 		iovec_idx += it_pool[it_idx].nr_segs;
-		segs_await += it_pool[it_idx].nr_segs;
 		it_idx += 2;
 
 		pkt_idx++;
@@ -1874,7 +1869,7 @@ virtio_dev_rx_async_submit_packed(struct virtio_net *dev,
 		 * - unused async iov number is less than max vhost vector
 		 */
 		if (unlikely(pkt_burst_idx >= VHOST_ASYNC_BATCH_THRESHOLD ||
-			((VHOST_MAX_ASYNC_VEC >> 1) - segs_await < BUF_VECTOR_MAX))) {
+			(VHOST_MAX_ASYNC_VEC - iovec_idx < BUF_VECTOR_MAX))) {
 			n_xfer = async->ops.transfer_data(dev->vid,
 					queue_id, tdes, 0, pkt_burst_idx);
 			if (likely(n_xfer >= 0)) {
@@ -1888,7 +1883,6 @@ virtio_dev_rx_async_submit_packed(struct virtio_net *dev,
 
 			iovec_idx = 0;
 			it_idx = 0;
-			segs_await = 0;
 
 			if (unlikely(n_pkts < pkt_burst_idx)) {
 				/*
