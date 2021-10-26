@@ -2,6 +2,7 @@
  * Copyright 2020 Mellanox Technologies, Ltd
  */
 
+#include <sys/types.h>
 #include <unistd.h>
 #include <string.h>
 #include <stdio.h>
@@ -703,4 +704,43 @@ error:
 	mlx5_restore_doorbell_mapping_env(dbmap_env);
 	DRV_LOG(ERR, "Failed to open IB device \"%s\".", ibv->name);
 	return -rte_errno;
+}
+int
+mlx5_get_device_guid(const struct rte_pci_addr *dev, uint8_t *guid, size_t len)
+{
+	char tmp[512];
+	char cur_ifname[IF_NAMESIZE + 1];
+	FILE *id_file;
+	DIR *dir;
+	struct dirent *ptr;
+	int ret;
+
+	if (guid == NULL || len < sizeof(u_int64_t) + 1)
+		return -1;
+	memset(guid, 0, len);
+	snprintf(tmp, sizeof(tmp), "/sys/bus/pci/devices/%04x:%02x:%02x.%x/net",
+			dev->domain, dev->bus, dev->devid, dev->function);
+	dir = opendir(tmp);
+	if (dir == NULL)
+		return -1;
+	/* Traverse to identify PF interface */
+	do {
+		ptr = readdir(dir);
+		if (ptr == NULL || ptr->d_type != DT_DIR) {
+			closedir(dir);
+			return -1;
+		}
+	} while (strchr(ptr->d_name, '.') || strchr(ptr->d_name, '_') ||
+		 strchr(ptr->d_name, 'v'));
+	snprintf(cur_ifname, sizeof(cur_ifname), "%s", ptr->d_name);
+	closedir(dir);
+	snprintf(tmp + strlen(tmp), sizeof(tmp) - strlen(tmp),
+			"/%s/phys_switch_id", cur_ifname);
+	/* Older OFED like 5.3 doesn't support read */
+	id_file = fopen(tmp, "r");
+	if (!id_file)
+		return 0;
+	ret = fscanf(id_file, "%16s", guid);
+	fclose(id_file);
+	return ret;
 }
