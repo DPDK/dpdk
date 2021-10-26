@@ -1084,10 +1084,6 @@ bnxt_validate_rss_action(const struct rte_flow_action actions[])
 			break;
 		case RTE_FLOW_ACTION_TYPE_RSS:
 			break;
-		case RTE_FLOW_ACTION_TYPE_MARK:
-			break;
-		case RTE_FLOW_ACTION_TYPE_COUNT:
-			break;
 		default:
 			return -ENOTSUP;
 		}
@@ -1151,11 +1147,10 @@ bnxt_vnic_rss_cfg_update(struct bnxt *bp,
 	}
 
 	/* Currently RSS hash on inner and outer headers are supported.
-	 * 0 => Default setting
-	 * 1 => Inner
-	 * 2 => Outer
+	 * 0 => Default (innermost RSS) setting
+	 * 1 => Outermost
 	 */
-	if (rss->level > 2) {
+	if (rss->level > 1) {
 		rte_flow_error_set(error,
 				   ENOTSUP,
 				   RTE_FLOW_ERROR_TYPE_ACTION,
@@ -1177,7 +1172,7 @@ bnxt_vnic_rss_cfg_update(struct bnxt *bp,
 	}
 
 	/* If RSS types is 0, use a best effort configuration */
-	types = rss->types ? rss->types : RTE_ETH_RSS_IPV4;
+	types = rss->types ? rss->types : RTE_ETH_RSS_IPV4 | RTE_ETH_RSS_IPV6;
 
 	hash_type = bnxt_rte_to_hwrm_hash_types(types);
 
