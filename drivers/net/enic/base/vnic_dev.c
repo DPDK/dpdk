@@ -594,6 +594,9 @@ static int vnic_dev_flowman_enable(struct vnic_dev *vdev, uint32_t *mode,
 	uint64_t ops;
 	static uint32_t instance;
 
+	/* Advanced filtering is a prerequisite */
+	if (!vnic_dev_capable_adv_filters(vdev))
+		return 0;
 	/* flowman devcmd available? */
 	if (!vnic_dev_capable(vdev, CMD_FLOW_MANAGER_OP))
 		return 0;
