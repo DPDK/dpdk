@@ -58,8 +58,8 @@ examples are highlighted below.
   forwarding Graph, or ``l3fwd_graph`` application does forwarding based on IPv4
   like a simple router with DPDK Graph framework.
 
-* :doc:`Hardware packet copying<ioat>`: The Hardware packet copying,
-  or ``ioatfwd`` application demonstrates how to use IOAT rawdev driver for
+* :doc:`Hardware packet copying<dma>`: The Hardware packet copying,
+  or ``dmafwd`` application demonstrates how to use DMAdev library for
   copying packets between two threads.
 
 * :doc:`Packet Distributor<dist_app>`: The Packet Distributor

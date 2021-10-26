@@ -2,10 +2,10 @@
 # Copyright(c) 2019 Intel Corporation
 
 # binary name
-APP = ioatfwd
+APP = dmafwd
 
 # all source are stored in SRCS-y
-SRCS-y := ioatfwd.c
+SRCS-y := dmafwd.c
 
 PKGCONF ?= pkg-config
 

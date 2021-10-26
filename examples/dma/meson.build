@@ -11,5 +11,5 @@ allow_experimental_apis = true
 deps += ['dmadev']
 
 sources = files(
-        'ioatfwd.c',
+        'dmafwd.c',
 )

@@ -462,6 +462,10 @@ F: lib/dmadev/
 F: drivers/dma/skeleton/
 F: app/test/test_dmadev*
 F: doc/guides/prog_guide/dmadev.rst
+M: Kevin Laatz <kevin.laatz@intel.com>
+M: Bruce Richardson <bruce.richardson@intel.com>
+F: examples/dma/
+F: doc/guides/sample_app_ug/dma.rst
 
 Eventdev API
 M: Jerin Jacob <jerinj@marvell.com>
@@ -1323,8 +1327,6 @@ IOAT Rawdev - DEPRECATED
 M: Bruce Richardson <bruce.richardson@intel.com>
 F: drivers/raw/ioat/
 F: doc/guides/rawdevs/ioat.rst
-F: examples/ioat/
-F: doc/guides/sample_app_ug/ioat.rst
 
 Marvell CNXK BPHY
 M: Jakub Palider <jpalider@marvell.com>
