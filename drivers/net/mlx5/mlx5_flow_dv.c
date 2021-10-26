@@ -1383,9 +1383,13 @@ flow_dv_convert_action_modify_ipv6_dscp
 }
 
 static int
-mlx5_flow_item_field_width(struct mlx5_priv *priv,
-			   enum rte_flow_field_id field, int inherit)
+mlx5_flow_item_field_width(struct rte_eth_dev *dev,
+			   enum rte_flow_field_id field, int inherit,
+			   const struct rte_flow_attr *attr,
+			   struct rte_flow_error *error)
 {
+	struct mlx5_priv *priv = dev->data->dev_private;
+
 	switch (field) {
 	case RTE_FLOW_FIELD_START:
 		return 32;
@@ -1432,7 +1436,8 @@ mlx5_flow_item_field_width(struct mlx5_priv *priv,
 	case RTE_FLOW_FIELD_MARK:
 		return __builtin_popcount(priv->sh->dv_mark_mask);
 	case RTE_FLOW_FIELD_META:
-		return __builtin_popcount(priv->sh->dv_meta_mask);
+		return (flow_dv_get_metadata_reg(dev, attr, error) == REG_C_0) ?
+			__builtin_popcount(priv->sh->dv_meta_mask) : 32;
 	case RTE_FLOW_FIELD_POINTER:
 	case RTE_FLOW_FIELD_VALUE:
 		return inherit < 0 ? 0 : inherit;
@@ -4808,10 +4813,12 @@ flow_dv_validate_action_modify_field(struct rte_eth_dev *dev,
 	struct mlx5_dev_config *config = &priv->config;
 	const struct rte_flow_action_modify_field *action_modify_field =
 		action->conf;
-	uint32_t dst_width = mlx5_flow_item_field_width(priv,
-				action_modify_field->dst.field, -1);
-	uint32_t src_width = mlx5_flow_item_field_width(priv,
-				action_modify_field->src.field, dst_width);
+	uint32_t dst_width = mlx5_flow_item_field_width(dev,
+				action_modify_field->dst.field,
+				-1, attr, error);
+	uint32_t src_width = mlx5_flow_item_field_width(dev,
+				action_modify_field->src.field,
+				dst_width, attr, error);
 
 	ret = flow_dv_validate_action_modify_hdr(action_flags, action, error);
 	if (ret)
