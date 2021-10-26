@@ -25,8 +25,6 @@
 
 #define MAX_BATCH_LEN 256
 
-#define VHOST_ASYNC_BATCH_THRESHOLD 32
-
 static  __rte_always_inline bool
 rxvq_is_mergeable(struct virtio_net *dev)
 {
@@ -1565,12 +1563,10 @@ virtio_dev_rx_async_submit_split(struct virtio_net *dev,
 		vq->last_avail_idx += num_buffers;
 
 		/*
-		 * conditions to trigger async device transfer:
-		 * - buffered packet number reaches transfer threshold
+		 * condition to trigger async device transfer:
 		 * - unused async iov number is less than max vhost vector
 		 */
-		if (unlikely(pkt_burst_idx >= VHOST_ASYNC_BATCH_THRESHOLD ||
-			(VHOST_MAX_ASYNC_VEC - iovec_idx < BUF_VECTOR_MAX))) {
+		if (unlikely(VHOST_MAX_ASYNC_VEC - iovec_idx < BUF_VECTOR_MAX)) {
 			n_xfer = async->ops.transfer_data(dev->vid,
 					queue_id, tdes, 0, pkt_burst_idx);
 			if (likely(n_xfer >= 0)) {
@@ -1864,12 +1860,10 @@ virtio_dev_rx_async_submit_packed(struct virtio_net *dev,
 		vq_inc_last_avail_packed(vq, num_descs);
 
 		/*
-		 * conditions to trigger async device transfer:
-		 * - buffered packet number reaches transfer threshold
+		 * condition to trigger async device transfer:
 		 * - unused async iov number is less than max vhost vector
 		 */
-		if (unlikely(pkt_burst_idx >= VHOST_ASYNC_BATCH_THRESHOLD ||
-			(VHOST_MAX_ASYNC_VEC - iovec_idx < BUF_VECTOR_MAX))) {
+		if (unlikely(VHOST_MAX_ASYNC_VEC - iovec_idx < BUF_VECTOR_MAX)) {
 			n_xfer = async->ops.transfer_data(dev->vid,
 					queue_id, tdes, 0, pkt_burst_idx);
 			if (likely(n_xfer >= 0)) {
