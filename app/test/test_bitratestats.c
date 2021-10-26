@@ -11,6 +11,7 @@
 #include <rte_memzone.h>
 #include <rte_metrics.h>
 #include <rte_bitrate.h>
+#include <rte_ethdev.h>
 
 #include "sample_packet_forward.h"
 #include "test.h"
@@ -159,12 +160,21 @@ test_bit_packet_forward(void)
 		printf("allocate mbuf pool Failed\n");
 		return TEST_FAILED;
 	}
+	ret = test_dev_start(portid, mp);
+	if (ret < 0) {
+		printf("test_dev_start(%hu, %p) failed, error code: %d\n",
+			portid, mp, ret);
+		return TEST_FAILED;
+	}
+
 	ret = test_packet_forward(pbuf, portid, QUEUE_ID);
 	if (ret < 0)
 		printf("send pkts Failed\n");
+
+	rte_eth_dev_stop(portid);
 	test_put_mbuf_to_pool(mp, pbuf);
 
-	return TEST_SUCCESS;
+	return (ret >= 0) ? TEST_SUCCESS : TEST_FAILED;
 }
 
 static int

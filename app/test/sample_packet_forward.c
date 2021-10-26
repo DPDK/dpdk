@@ -15,6 +15,35 @@
 
 #include "sample_packet_forward.h"
 
+/*
+ * heper function: configure and start test device
+ */
+int
+test_dev_start(uint16_t port, struct rte_mempool *mp)
+{
+	int32_t rc;
+	struct rte_eth_conf pconf;
+
+	memset(&pconf, 0, sizeof(pconf));
+
+	rc =  rte_eth_dev_configure(port, NUM_QUEUES, NUM_QUEUES, &pconf);
+	if (rc != 0)
+		return rc;
+
+	rc = rte_eth_rx_queue_setup(port, 0, RING_SIZE, SOCKET_ID_ANY,
+		NULL, mp);
+	if (rc != 0)
+		return rc;
+
+	rc = rte_eth_tx_queue_setup(port, 0, RING_SIZE, SOCKET_ID_ANY,
+		NULL);
+	if (rc != 0)
+		return rc;
+
+	rc = rte_eth_dev_start(port);
+	return rc;
+}
+
 /* Sample test to create virtual rings and tx,rx portid from rings */
 int
 test_ring_setup(struct rte_ring **ring, uint16_t *portid)

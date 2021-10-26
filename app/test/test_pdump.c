@@ -147,11 +147,19 @@ send_pkts(void *empty)
 	ret = test_get_mbuf_from_pool(&mp, pbuf, poolname);
 	if (ret < 0)
 		printf("get_mbuf_from_pool failed\n");
-	do {
+
+	ret = test_dev_start(portid, mp);
+	if (ret < 0)
+		printf("test_dev_start(%hu, %p) failed, error code: %d\n",
+			portid, mp, ret);
+
+	while (ret >= 0 && flag_for_send_pkts) {
 		ret = test_packet_forward(pbuf, portid, QUEUE_ID);
 		if (ret < 0)
 			printf("send pkts Failed\n");
-	} while (flag_for_send_pkts);
+	};
+
+	rte_eth_dev_stop(portid);
 	test_put_mbuf_to_pool(mp, pbuf);
 	return empty;
 }
