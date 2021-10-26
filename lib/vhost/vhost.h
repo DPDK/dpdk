@@ -141,7 +141,6 @@ struct vhost_async {
 	struct async_inflight_info *pkts_info;
 	uint16_t pkts_idx;
 	uint16_t pkts_inflight_n;
-	uint16_t last_pkts_n;
 	union {
 		struct vring_used_elem  *descs_split;
 		struct vring_used_elem_packed *buffers_packed;

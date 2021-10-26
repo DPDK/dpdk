@@ -1619,7 +1619,11 @@ virtio_dev_rx_async_submit_split(struct virtio_net *dev,
 				vq->shadow_used_idx);
 
 		async->desc_idx_split += vq->shadow_used_idx;
+
 		async->pkts_idx += pkt_idx;
+		if (async->pkts_idx >= vq->size)
+			async->pkts_idx -= vq->size;
+
 		async->pkts_inflight_n += pkt_idx;
 		vq->shadow_used_idx = 0;
 	}
@@ -1921,68 +1925,44 @@ static __rte_always_inline uint16_t
 vhost_poll_enqueue_completed(struct virtio_net *dev, uint16_t queue_id,
 		struct rte_mbuf **pkts, uint16_t count)
 {
-	struct vhost_virtqueue *vq;
-	struct vhost_async *async;
-	struct async_inflight_info *pkts_info;
+	struct vhost_virtqueue *vq = dev->virtqueue[queue_id];
+	struct vhost_async *async = vq->async;
+	struct async_inflight_info *pkts_info = async->pkts_info;
 	int32_t n_cpl;
-	uint16_t n_pkts_cpl = 0, n_pkts_put = 0, n_descs = 0, n_buffers = 0;
-	uint16_t start_idx, pkts_idx, vq_size;
-	uint16_t from, i;
+	uint16_t n_descs = 0, n_buffers = 0;
+	uint16_t start_idx, from, i;
 
-	vq = dev->virtqueue[queue_id];
-	async = vq->async;
-	pkts_idx = async->pkts_idx % vq->size;
-	pkts_info = async->pkts_info;
-	vq_size = vq->size;
-	start_idx = virtio_dev_rx_async_get_info_idx(pkts_idx,
-		vq_size, async->pkts_inflight_n);
+	start_idx = virtio_dev_rx_async_get_info_idx(async->pkts_idx,
+		vq->size, async->pkts_inflight_n);
 
-	if (count > async->last_pkts_n) {
-		n_cpl = async->ops.check_completed_copies(dev->vid,
-			queue_id, 0, count - async->last_pkts_n);
-		if (likely(n_cpl >= 0)) {
-			n_pkts_cpl = n_cpl;
-		} else {
-			VHOST_LOG_DATA(ERR,
-				"(%d) %s: failed to check completed copies for queue id %d.\n",
+	n_cpl = async->ops.check_completed_copies(dev->vid, queue_id, 0, count);
+	if (unlikely(n_cpl < 0)) {
+		VHOST_LOG_DATA(ERR, "(%d) %s: failed to check completed copies for queue id %d.\n",
 				dev->vid, __func__, queue_id);
-			n_pkts_cpl = 0;
-		}
-	}
-
-	n_pkts_cpl += async->last_pkts_n;
-	n_pkts_put = RTE_MIN(n_pkts_cpl, count);
-	if (unlikely(n_pkts_put == 0)) {
-		async->last_pkts_n = n_pkts_cpl;
 		return 0;
 	}
 
-	if (vq_is_packed(dev)) {
-		for (i = 0; i < n_pkts_put; i++) {
-			from = (start_idx + i) % vq_size;
-			n_buffers += pkts_info[from].nr_buffers;
-			pkts[i] = pkts_info[from].mbuf;
-		}
-	} else {
-		for (i = 0; i < n_pkts_put; i++) {
-			from = (start_idx + i) & (vq_size - 1);
-			n_descs += pkts_info[from].descs;
-			pkts[i] = pkts_info[from].mbuf;
-		}
+	if (n_cpl == 0)
+		return 0;
+
+	for (i = 0; i < n_cpl; i++) {
+		from = (start_idx + i) % vq->size;
+		/* Only used with packed ring */
+		n_buffers += pkts_info[from].nr_buffers;
+		/* Only used with split ring */
+		n_descs += pkts_info[from].descs;
+		pkts[i] = pkts_info[from].mbuf;
 	}
-	async->last_pkts_n = n_pkts_cpl - n_pkts_put;
-	async->pkts_inflight_n -= n_pkts_put;
+
+	async->pkts_inflight_n -= n_cpl;
 
 	if (likely(vq->enabled && vq->access_ok)) {
 		if (vq_is_packed(dev)) {
 			write_back_completed_descs_packed(vq, n_buffers);
-
 			vhost_vring_call_packed(dev, vq);
 		} else {
 			write_back_completed_descs_split(vq, n_descs);
-
-			__atomic_add_fetch(&vq->used->idx, n_descs,
-					__ATOMIC_RELEASE);
+			__atomic_add_fetch(&vq->used->idx, n_descs, __ATOMIC_RELEASE);
 			vhost_vring_call_split(dev, vq);
 		}
 	} else {
@@ -1995,7 +1975,7 @@ vhost_poll_enqueue_completed(struct virtio_net *dev, uint16_t queue_id,
 		}
 	}
 
-	return n_pkts_put;
+	return n_cpl;
 }
 
 uint16_t
