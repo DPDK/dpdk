@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2019 Intel Corporation
+ * Copyright(c) 2019-2021 Intel Corporation
  */
 
 #include <stdint.h>
@@ -10,11 +10,10 @@
 
 #include <rte_malloc.h>
 #include <rte_ethdev.h>
-#include <rte_rawdev.h>
-#include <rte_ioat_rawdev.h>
+#include <rte_dmadev.h>
 
 /* size of ring used for software copying between rx and tx. */
-#define RTE_LOGTYPE_IOAT RTE_LOGTYPE_USER1
+#define RTE_LOGTYPE_DMA RTE_LOGTYPE_USER1
 #define MAX_PKT_BURST 32
 #define MEMPOOL_CACHE_SIZE 512
 #define MIN_POOL_SIZE 65536U
@@ -41,8 +40,8 @@ struct rxtx_port_config {
 	uint16_t nb_queues;
 	/* for software copy mode */
 	struct rte_ring *rx_to_tx_ring;
-	/* for IOAT rawdev copy mode */
-	uint16_t ioat_ids[MAX_RX_QUEUES_COUNT];
+	/* for dmadev HW copy mode */
+	uint16_t dmadev_ids[MAX_RX_QUEUES_COUNT];
 };
 
 /* Configuring ports and number of assigned lcores in struct. 8< */
@@ -61,13 +60,13 @@ struct ioat_port_statistics {
 	uint64_t copy_dropped[RTE_MAX_ETHPORTS];
 };
 struct ioat_port_statistics port_statistics;
-
 struct total_statistics {
 	uint64_t total_packets_dropped;
 	uint64_t total_packets_tx;
 	uint64_t total_packets_rx;
-	uint64_t total_successful_enqueues;
-	uint64_t total_failed_enqueues;
+	uint64_t total_submitted;
+	uint64_t total_completed;
+	uint64_t total_failed;
 };
 
 typedef enum copy_mode_t {
@@ -98,6 +97,15 @@ static unsigned short ring_size = 2048;
 
 /* interval, in seconds, between stats prints */
 static unsigned short stats_interval = 1;
+/* global mbuf arrays for tracking DMA bufs */
+#define MBUF_RING_SIZE	2048
+#define MBUF_RING_MASK	(MBUF_RING_SIZE - 1)
+struct dma_bufs {
+	struct rte_mbuf *bufs[MBUF_RING_SIZE];
+	struct rte_mbuf *copies[MBUF_RING_SIZE];
+	uint16_t sent;
+};
+static struct dma_bufs dma_bufs[RTE_DMADEV_DEFAULT_MAX];
 
 /* global transmission config */
 struct rxtx_transmission_config cfg;
@@ -135,36 +143,32 @@ print_port_stats(uint16_t port_id)
 
 /* Print out statistics for one IOAT rawdev device. */
 static void
-print_rawdev_stats(uint32_t dev_id, uint64_t *xstats,
-	unsigned int *ids_xstats, uint16_t nb_xstats,
-	struct rte_rawdev_xstats_name *names_xstats)
+print_dmadev_stats(uint32_t dev_id, struct rte_dma_stats stats)
 {
-	uint16_t i;
-
-	printf("\nIOAT channel %u", dev_id);
-	for (i = 0; i < nb_xstats; i++)
-		printf("\n\t %s: %*"PRIu64,
-			names_xstats[ids_xstats[i]].name,
-			(int)(37 - strlen(names_xstats[ids_xstats[i]].name)),
-			xstats[i]);
+	printf("\nDMA channel %u", dev_id);
+	printf("\n\t Total submitted ops: %"PRIu64"", stats.submitted);
+	printf("\n\t Total completed ops: %"PRIu64"", stats.completed);
+	printf("\n\t Total failed ops: %"PRIu64"", stats.errors);
 }
 
 static void
 print_total_stats(struct total_statistics *ts)
 {
 	printf("\nAggregate statistics ==============================="
-		"\nTotal packets Tx: %24"PRIu64" [pps]"
-		"\nTotal packets Rx: %24"PRIu64" [pps]"
-		"\nTotal packets dropped: %19"PRIu64" [pps]",
+		"\nTotal packets Tx: %22"PRIu64" [pkt/s]"
+		"\nTotal packets Rx: %22"PRIu64" [pkt/s]"
+		"\nTotal packets dropped: %17"PRIu64" [pkt/s]",
 		ts->total_packets_tx / stats_interval,
 		ts->total_packets_rx / stats_interval,
 		ts->total_packets_dropped / stats_interval);
 
 	if (copy_mode == COPY_MODE_IOAT_NUM) {
-		printf("\nTotal IOAT successful enqueues: %8"PRIu64" [enq/s]"
-			"\nTotal IOAT failed enqueues: %12"PRIu64" [enq/s]",
-			ts->total_successful_enqueues / stats_interval,
-			ts->total_failed_enqueues / stats_interval);
+		printf("\nTotal submitted ops: %19"PRIu64" [ops/s]"
+			"\nTotal completed ops: %19"PRIu64" [ops/s]"
+			"\nTotal failed ops: %22"PRIu64" [ops/s]",
+			ts->total_submitted / stats_interval,
+			ts->total_completed / stats_interval,
+			ts->total_failed / stats_interval);
 	}
 
 	printf("\n====================================================\n");
@@ -175,13 +179,10 @@ static void
 print_stats(char *prgname)
 {
 	struct total_statistics ts, delta_ts;
+	struct rte_dma_stats stats = {0};
 	uint32_t i, port_id, dev_id;
-	struct rte_rawdev_xstats_name *names_xstats;
-	uint64_t *xstats;
-	unsigned int *ids_xstats, nb_xstats;
 	char status_string[255]; /* to print at the top of the output */
 	int status_strlen;
-	int ret;
 
 	const char clr[] = { 27, '[', '2', 'J', '\0' };
 	const char topLeft[] = { 27, '[', '1', ';', '1', 'H', '\0' };
@@ -206,48 +207,6 @@ print_stats(char *prgname)
 	status_strlen += snprintf(status_string + status_strlen,
 		sizeof(status_string) - status_strlen,
 		"Ring Size = %d", ring_size);
-
-	/* Allocate memory for xstats names and values */
-	ret = rte_rawdev_xstats_names_get(
-		cfg.ports[0].ioat_ids[0], NULL, 0);
-	if (ret < 0)
-		return;
-	nb_xstats = (unsigned int)ret;
-
-	names_xstats = malloc(sizeof(*names_xstats) * nb_xstats);
-	if (names_xstats == NULL) {
-		rte_exit(EXIT_FAILURE,
-			"Error allocating xstat names memory\n");
-	}
-	rte_rawdev_xstats_names_get(cfg.ports[0].ioat_ids[0],
-		names_xstats, nb_xstats);
-
-	ids_xstats = malloc(sizeof(*ids_xstats) * 2);
-	if (ids_xstats == NULL) {
-		rte_exit(EXIT_FAILURE,
-			"Error allocating xstat ids_xstats memory\n");
-	}
-
-	xstats = malloc(sizeof(*xstats) * 2);
-	if (xstats == NULL) {
-		rte_exit(EXIT_FAILURE,
-			"Error allocating xstat memory\n");
-	}
-
-	/* Get failed/successful enqueues stats index */
-	ids_xstats[0] = ids_xstats[1] = nb_xstats;
-	for (i = 0; i < nb_xstats; i++) {
-		if (!strcmp(names_xstats[i].name, "failed_enqueues"))
-			ids_xstats[0] = i;
-		else if (!strcmp(names_xstats[i].name, "successful_enqueues"))
-			ids_xstats[1] = i;
-		if (ids_xstats[0] < nb_xstats && ids_xstats[1] < nb_xstats)
-			break;
-	}
-	if (ids_xstats[0] == nb_xstats || ids_xstats[1] == nb_xstats) {
-		rte_exit(EXIT_FAILURE,
-			"Error getting failed/successful enqueues stats index\n");
-	}
 
 	memset(&ts, 0, sizeof(struct total_statistics));
 
@@ -280,17 +239,13 @@ print_stats(char *prgname)
 				uint32_t j;
 
 				for (j = 0; j < cfg.ports[i].nb_queues; j++) {
-					dev_id = cfg.ports[i].ioat_ids[j];
-					rte_rawdev_xstats_get(dev_id,
-						ids_xstats, xstats, 2);
+					dev_id = cfg.ports[i].dmadev_ids[j];
+					rte_dma_stats_get(dev_id, 0, &stats);
+					print_dmadev_stats(dev_id, stats);
 
-					print_rawdev_stats(dev_id, xstats,
-						ids_xstats, 2, names_xstats);
-
-					delta_ts.total_failed_enqueues +=
-						xstats[ids_xstats[0]];
-					delta_ts.total_successful_enqueues +=
-						xstats[ids_xstats[1]];
+					delta_ts.total_submitted += stats.submitted;
+					delta_ts.total_completed += stats.completed;
+					delta_ts.total_failed += stats.errors;
 				}
 			}
 		}
@@ -298,9 +253,9 @@ print_stats(char *prgname)
 		delta_ts.total_packets_tx -= ts.total_packets_tx;
 		delta_ts.total_packets_rx -= ts.total_packets_rx;
 		delta_ts.total_packets_dropped -= ts.total_packets_dropped;
-		delta_ts.total_failed_enqueues -= ts.total_failed_enqueues;
-		delta_ts.total_successful_enqueues -=
-			ts.total_successful_enqueues;
+		delta_ts.total_submitted -= ts.total_submitted;
+		delta_ts.total_completed -= ts.total_completed;
+		delta_ts.total_failed -= ts.total_failed;
 
 		printf("\n");
 		print_total_stats(&delta_ts);
@@ -310,14 +265,10 @@ print_stats(char *prgname)
 		ts.total_packets_tx += delta_ts.total_packets_tx;
 		ts.total_packets_rx += delta_ts.total_packets_rx;
 		ts.total_packets_dropped += delta_ts.total_packets_dropped;
-		ts.total_failed_enqueues += delta_ts.total_failed_enqueues;
-		ts.total_successful_enqueues +=
-			delta_ts.total_successful_enqueues;
+		ts.total_submitted += delta_ts.total_submitted;
+		ts.total_completed += delta_ts.total_completed;
+		ts.total_failed += delta_ts.total_failed;
 	}
-
-	free(names_xstats);
-	free(xstats);
-	free(ids_xstats);
 }
 
 static void
@@ -361,20 +312,22 @@ static uint32_t
 ioat_enqueue_packets(struct rte_mbuf *pkts[], struct rte_mbuf *pkts_copy[],
 	uint32_t nb_rx, uint16_t dev_id)
 {
+	struct dma_bufs *dma = &dma_bufs[dev_id];
 	int ret;
 	uint32_t i;
 
 	for (i = 0; i < nb_rx; i++) {
 		/* Perform data copy */
-		ret = rte_ioat_enqueue_copy(dev_id,
+		ret = rte_dma_copy(dev_id, 0,
 			rte_pktmbuf_iova(pkts[i]),
 			rte_pktmbuf_iova(pkts_copy[i]),
-			rte_pktmbuf_data_len(pkts[i]),
-			(uintptr_t)pkts[i],
-			(uintptr_t)pkts_copy[i]);
+			rte_pktmbuf_data_len(pkts[i]), 0);
 
-		if (ret != 1)
+		if (ret < 0)
 			break;
+
+		dma->bufs[ret & MBUF_RING_MASK] = pkts[i];
+		dma->copies[ret & MBUF_RING_MASK] = pkts_copy[i];
 	}
 
 	ret = i;
@@ -394,7 +347,7 @@ ioat_enqueue(struct rte_mbuf *pkts[], struct rte_mbuf *pkts_copy[],
 		n = ioat_enqueue_packets(pkts + i, pkts_copy + i, m, dev_id);
 		k += n;
 		if (n > 0)
-			rte_ioat_perform_ops(dev_id);
+			rte_dma_submit(dev_id, 0);
 
 		/* don't try to enqueue more if HW queue is full */
 		if (n != m)
@@ -408,20 +361,27 @@ static inline uint32_t
 ioat_dequeue(struct rte_mbuf *src[], struct rte_mbuf *dst[], uint32_t num,
 	uint16_t dev_id)
 {
-	int32_t rc;
+	struct dma_bufs *dma = &dma_bufs[dev_id];
+	uint16_t nb_dq, filled;
 	/* Dequeue the mbufs from IOAT device. Since all memory
 	 * is DPDK pinned memory and therefore all addresses should
 	 * be valid, we don't check for copy errors
 	 */
-	rc = rte_ioat_completed_ops(dev_id, num, NULL, NULL,
-		(void *)src, (void *)dst);
-	if (rc < 0) {
-		RTE_LOG(CRIT, IOAT,
-			"rte_ioat_completed_ops(%hu) failedi, error: %d\n",
-			dev_id, rte_errno);
-		rc = 0;
+	nb_dq = rte_dma_completed(dev_id, 0, num, NULL, NULL);
+
+	/* Return early if no work to do */
+	if (unlikely(nb_dq == 0))
+		return nb_dq;
+
+	/* Populate pkts_copy with the copies bufs from dma->copies */
+	for (filled = 0; filled < nb_dq; filled++) {
+		src[filled] = dma->bufs[(dma->sent + filled) & MBUF_RING_MASK];
+		dst[filled] = dma->copies[(dma->sent + filled) & MBUF_RING_MASK];
 	}
-	return rc;
+	dma->sent += nb_dq;
+
+	return filled;
+
 }
 
 /* Receive packets on one port and enqueue to IOAT rawdev or rte_ring. 8< */
@@ -458,7 +418,7 @@ ioat_rx_port(struct rxtx_port_config *rx_config)
 
 			/* enqueue packets for  hardware copy */
 			nb_enq = ioat_enqueue(pkts_burst, pkts_burst_copy,
-				nb_rx, ioat_batch_sz, rx_config->ioat_ids[i]);
+				nb_rx, ioat_batch_sz, rx_config->dmadev_ids[i]);
 
 			/* free any not enqueued packets. */
 			rte_mempool_put_bulk(ioat_pktmbuf_pool,
@@ -473,7 +433,7 @@ ioat_rx_port(struct rxtx_port_config *rx_config)
 
 			/* get completed copies */
 			nb_rx = ioat_dequeue(pkts_burst, pkts_burst_copy,
-				MAX_PKT_BURST, rx_config->ioat_ids[i]);
+				MAX_PKT_BURST, rx_config->dmadev_ids[i]);
 		} else {
 			/* Perform packet software copy, free source packets */
 			for (j = 0; j < nb_rx; j++)
@@ -540,7 +500,7 @@ rx_main_loop(void)
 	uint16_t i;
 	uint16_t nb_ports = cfg.nb_ports;
 
-	RTE_LOG(INFO, IOAT, "Entering main rx loop for copy on lcore %u\n",
+	RTE_LOG(INFO, DMA, "Entering main rx loop for copy on lcore %u\n",
 		rte_lcore_id());
 
 	while (!force_quit)
@@ -555,7 +515,7 @@ tx_main_loop(void)
 	uint16_t i;
 	uint16_t nb_ports = cfg.nb_ports;
 
-	RTE_LOG(INFO, IOAT, "Entering main tx loop for copy on lcore %u\n",
+	RTE_LOG(INFO, DMA, "Entering main tx loop for copy on lcore %u\n",
 		rte_lcore_id());
 
 	while (!force_quit)
@@ -570,7 +530,7 @@ rxtx_main_loop(void)
 	uint16_t i;
 	uint16_t nb_ports = cfg.nb_ports;
 
-	RTE_LOG(INFO, IOAT, "Entering main rx and tx loop for copy on"
+	RTE_LOG(INFO, DMA, "Entering main rx and tx loop for copy on"
 		" lcore %u\n", rte_lcore_id());
 
 	while (!force_quit)
@@ -585,7 +545,7 @@ static void start_forwarding_cores(void)
 {
 	uint32_t lcore_id = rte_lcore_id();
 
-	RTE_LOG(INFO, IOAT, "Entering %s on lcore %u\n",
+	RTE_LOG(INFO, DMA, "Entering %s on lcore %u\n",
 		__func__, rte_lcore_id());
 
 	if (cfg.nb_lcores == 1) {
@@ -743,6 +703,14 @@ ioat_parse_args(int argc, char **argv, unsigned int nb_ports)
 				ioat_usage(prgname);
 				return -1;
 			}
+			/* ring_size must be less-than or equal to MBUF_RING_SIZE
+			 * to avoid overwriting bufs
+			 */
+			if (ring_size > MBUF_RING_SIZE) {
+				printf("Max ring_size is %d, setting ring_size to max",
+						MBUF_RING_SIZE);
+				ring_size = MBUF_RING_SIZE;
+			}
 			break;
 
 		case 'i':
@@ -809,20 +777,28 @@ check_link_status(uint32_t port_mask)
 static void
 configure_rawdev_queue(uint32_t dev_id)
 {
-	struct rte_ioat_rawdev_config dev_config = {
-			.ring_size = ring_size,
-			.no_prefetch_completions = (cfg.nb_lcores > 1),
+	struct rte_dma_info info;
+	struct rte_dma_conf dev_config = { .nb_vchans = 1 };
+	struct rte_dma_vchan_conf qconf = {
+		.direction = RTE_DMA_DIR_MEM_TO_MEM,
+		.nb_desc = ring_size
 	};
-	struct rte_rawdev_info info = { .dev_private = &dev_config };
+	uint16_t vchan = 0;
 
-	if (rte_rawdev_configure(dev_id, &info, sizeof(dev_config)) != 0) {
-		rte_exit(EXIT_FAILURE,
-			"Error with rte_rawdev_configure()\n");
+	if (rte_dma_configure(dev_id, &dev_config) != 0)
+		rte_exit(EXIT_FAILURE, "Error with rte_dma_configure()\n");
+
+	if (rte_dma_vchan_setup(dev_id, vchan, &qconf) != 0) {
+		printf("Error with queue configuration\n");
+		rte_panic();
 	}
-	if (rte_rawdev_start(dev_id) != 0) {
-		rte_exit(EXIT_FAILURE,
-			"Error with rte_rawdev_start()\n");
+	rte_dma_info_get(dev_id, &info);
+	if (info.nb_vchans != 1) {
+		printf("Error, no configured queues reported on device id %u\n", dev_id);
+		rte_panic();
 	}
+	if (rte_dma_start(dev_id) != 0)
+		rte_exit(EXIT_FAILURE, "Error with rte_dma_start()\n");
 }
 /* >8 End of configuration of device. */
 
@@ -830,23 +806,18 @@ configure_rawdev_queue(uint32_t dev_id)
 static void
 assign_rawdevs(void)
 {
-	uint16_t nb_rawdev = 0, rdev_id = 0;
+	uint16_t nb_rawdev = 0;
+	int16_t rdev_id = rte_dma_next_dev(0);
 	uint32_t i, j;
 
 	for (i = 0; i < cfg.nb_ports; i++) {
 		for (j = 0; j < cfg.ports[i].nb_queues; j++) {
-			struct rte_rawdev_info rdev_info = { 0 };
+			if (rdev_id == -1)
+				goto end;
 
-			do {
-				if (rdev_id == rte_rawdev_count())
-					goto end;
-				rte_rawdev_info_get(rdev_id++, &rdev_info, 0);
-			} while (rdev_info.driver_name == NULL ||
-					strcmp(rdev_info.driver_name,
-						IOAT_PMD_RAWDEV_NAME_STR) != 0);
-
-			cfg.ports[i].ioat_ids[j] = rdev_id - 1;
-			configure_rawdev_queue(cfg.ports[i].ioat_ids[j]);
+			cfg.ports[i].dmadev_ids[j] = rdev_id;
+			configure_rawdev_queue(cfg.ports[i].dmadev_ids[j]);
+			rdev_id = rte_dma_next_dev(rdev_id + 1);
 			++nb_rawdev;
 		}
 	}
@@ -855,7 +826,7 @@ end:
 		rte_exit(EXIT_FAILURE,
 			"Not enough IOAT rawdevs (%u) for all queues (%u).\n",
 			nb_rawdev, cfg.nb_ports * cfg.ports[0].nb_queues);
-	RTE_LOG(INFO, IOAT, "Number of used rawdevs: %u.\n", nb_rawdev);
+	RTE_LOG(INFO, DMA, "Number of used rawdevs: %u.\n", nb_rawdev);
 }
 /* >8 End of using IOAT rawdev API functions. */
 
@@ -1015,7 +986,7 @@ rawdev_dump(void)
 
 	for (i = 0; i < cfg.nb_ports; i++)
 		for (j = 0; j < cfg.ports[i].nb_queues; j++)
-			rte_rawdev_dump(cfg.ports[i].ioat_ids[j], stdout);
+			rte_dma_dump(cfg.ports[i].dmadev_ids[j], stdout);
 }
 
 static void
@@ -1113,15 +1084,15 @@ main(int argc, char **argv)
 		printf("Closing port %d\n", cfg.ports[i].rxtx_port);
 		ret = rte_eth_dev_stop(cfg.ports[i].rxtx_port);
 		if (ret != 0)
-			RTE_LOG(ERR, IOAT, "rte_eth_dev_stop: err=%s, port=%u\n",
+			RTE_LOG(ERR, DMA, "rte_eth_dev_stop: err=%s, port=%u\n",
 				rte_strerror(-ret), cfg.ports[i].rxtx_port);
 
 		rte_eth_dev_close(cfg.ports[i].rxtx_port);
 		if (copy_mode == COPY_MODE_IOAT_NUM) {
 			for (j = 0; j < cfg.ports[i].nb_queues; j++) {
 				printf("Stopping rawdev %d\n",
-					cfg.ports[i].ioat_ids[j]);
-				rte_rawdev_stop(cfg.ports[i].ioat_ids[j]);
+					cfg.ports[i].dmadev_ids[j]);
+				rte_dma_stop(cfg.ports[i].dmadev_ids[j]);
 			}
 		} else /* copy_mode == COPY_MODE_SW_NUM */
 			rte_ring_free(cfg.ports[i].rx_to_tx_ring);
