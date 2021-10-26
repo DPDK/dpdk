@@ -287,31 +287,6 @@ struct field_modify_info modify_tcp[] = {
 	{0, 0, 0},
 };
 
-static const struct rte_flow_item *
-mlx5_flow_find_tunnel_item(const struct rte_flow_item *item)
-{
-	for (; item->type != RTE_FLOW_ITEM_TYPE_END; item++) {
-		switch (item->type) {
-		default:
-			break;
-		case RTE_FLOW_ITEM_TYPE_VXLAN:
-		case RTE_FLOW_ITEM_TYPE_VXLAN_GPE:
-		case RTE_FLOW_ITEM_TYPE_GRE:
-		case RTE_FLOW_ITEM_TYPE_MPLS:
-		case RTE_FLOW_ITEM_TYPE_NVGRE:
-		case RTE_FLOW_ITEM_TYPE_GENEVE:
-			return item;
-		case RTE_FLOW_ITEM_TYPE_IPV4:
-		case RTE_FLOW_ITEM_TYPE_IPV6:
-			if (item[1].type == RTE_FLOW_ITEM_TYPE_IPV4 ||
-			    item[1].type == RTE_FLOW_ITEM_TYPE_IPV6)
-				return item;
-			break;
-		}
-	}
-	return NULL;
-}
-
 static void
 mlx5_flow_tunnel_ip_check(const struct rte_flow_item *item __rte_unused,
 			  uint8_t next_protocol, uint64_t *item_flags,
@@ -6581,114 +6556,74 @@ flow_dv_validate_attributes(struct rte_eth_dev *dev,
 	return ret;
 }
 
-static uint16_t
-mlx5_flow_locate_proto_l3(const struct rte_flow_item **head,
-			  const struct rte_flow_item *end)
+static int
+validate_integrity_bits(const struct rte_flow_item_integrity *mask,
+			int64_t pattern_flags, uint64_t l3_flags,
+			uint64_t l4_flags, uint64_t ip4_flag,
+			struct rte_flow_error *error)
 {
-	const struct rte_flow_item *item = *head;
-	uint16_t l3_protocol;
+	if (mask->l3_ok && !(pattern_flags & l3_flags))
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ITEM,
+					  NULL, "missing L3 protocol");
 
-	for (; item != end; item++) {
-		switch (item->type) {
-		default:
-			break;
-		case RTE_FLOW_ITEM_TYPE_IPV4:
-			l3_protocol = RTE_ETHER_TYPE_IPV4;
-			goto l3_ok;
-		case RTE_FLOW_ITEM_TYPE_IPV6:
-			l3_protocol = RTE_ETHER_TYPE_IPV6;
-			goto l3_ok;
-		case RTE_FLOW_ITEM_TYPE_ETH:
-			if (item->mask && item->spec) {
-				MLX5_ETHER_TYPE_FROM_HEADER(rte_flow_item_eth,
-							    type, item,
-							    l3_protocol);
-				if (l3_protocol == RTE_ETHER_TYPE_IPV4 ||
-				    l3_protocol == RTE_ETHER_TYPE_IPV6)
-					goto l3_ok;
-			}
-			break;
-		case RTE_FLOW_ITEM_TYPE_VLAN:
-			if (item->mask && item->spec) {
-				MLX5_ETHER_TYPE_FROM_HEADER(rte_flow_item_vlan,
-							    inner_type, item,
-							    l3_protocol);
-				if (l3_protocol == RTE_ETHER_TYPE_IPV4 ||
-				    l3_protocol == RTE_ETHER_TYPE_IPV6)
-					goto l3_ok;
-			}
-			break;
-		}
-	}
+	if (mask->ipv4_csum_ok && !(pattern_flags & ip4_flag))
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ITEM,
+					  NULL, "missing IPv4 protocol");
+
+	if ((mask->l4_ok || mask->l4_csum_ok) && !(pattern_flags & l4_flags))
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ITEM,
+					  NULL, "missing L4 protocol");
+
 	return 0;
-l3_ok:
-	*head = item;
-	return l3_protocol;
 }
 
-static uint8_t
-mlx5_flow_locate_proto_l4(const struct rte_flow_item **head,
-			  const struct rte_flow_item *end)
+static int
+flow_dv_validate_item_integrity_post(const struct
+				     rte_flow_item *integrity_items[2],
+				     int64_t pattern_flags,
+				     struct rte_flow_error *error)
 {
-	const struct rte_flow_item *item = *head;
-	uint8_t l4_protocol;
+	const struct rte_flow_item_integrity *mask;
+	int ret;
 
-	for (; item != end; item++) {
-		switch (item->type) {
-		default:
-			break;
-		case RTE_FLOW_ITEM_TYPE_TCP:
-			l4_protocol = IPPROTO_TCP;
-			goto l4_ok;
-		case RTE_FLOW_ITEM_TYPE_UDP:
-			l4_protocol = IPPROTO_UDP;
-			goto l4_ok;
-		case RTE_FLOW_ITEM_TYPE_IPV4:
-			if (item->mask && item->spec) {
-				const struct rte_flow_item_ipv4 *mask, *spec;
-
-				mask = (typeof(mask))item->mask;
-				spec = (typeof(spec))item->spec;
-				l4_protocol = mask->hdr.next_proto_id &
-					      spec->hdr.next_proto_id;
-				if (l4_protocol == IPPROTO_TCP ||
-				    l4_protocol == IPPROTO_UDP)
-					goto l4_ok;
-			}
-			break;
-		case RTE_FLOW_ITEM_TYPE_IPV6:
-			if (item->mask && item->spec) {
-				const struct rte_flow_item_ipv6 *mask, *spec;
-				mask = (typeof(mask))item->mask;
-				spec = (typeof(spec))item->spec;
-				l4_protocol = mask->hdr.proto & spec->hdr.proto;
-				if (l4_protocol == IPPROTO_TCP ||
-				    l4_protocol == IPPROTO_UDP)
-					goto l4_ok;
-			}
-			break;
-		}
+	if (pattern_flags & MLX5_FLOW_ITEM_OUTER_INTEGRITY) {
+		mask = (typeof(mask))integrity_items[0]->mask;
+		ret = validate_integrity_bits(mask, pattern_flags,
+					      MLX5_FLOW_LAYER_OUTER_L3,
+					      MLX5_FLOW_LAYER_OUTER_L4,
+					      MLX5_FLOW_LAYER_OUTER_L3_IPV4,
+					      error);
+		if (ret)
+			return ret;
+	}
+	if (pattern_flags & MLX5_FLOW_ITEM_INNER_INTEGRITY) {
+		mask = (typeof(mask))integrity_items[1]->mask;
+		ret = validate_integrity_bits(mask, pattern_flags,
+					      MLX5_FLOW_LAYER_INNER_L3,
+					      MLX5_FLOW_LAYER_INNER_L4,
+					      MLX5_FLOW_LAYER_INNER_L3_IPV4,
+					      error);
+		if (ret)
+			return ret;
 	}
 	return 0;
-l4_ok:
-	*head = item;
-	return l4_protocol;
 }
 
 static int
 flow_dv_validate_item_integrity(struct rte_eth_dev *dev,
-				const struct rte_flow_item *rule_items,
 				const struct rte_flow_item *integrity_item,
-				uint64_t item_flags, uint64_t *last_item,
+				uint64_t pattern_flags, uint64_t *last_item,
+				const struct rte_flow_item *integrity_items[2],
 				struct rte_flow_error *error)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	const struct rte_flow_item *tunnel_item, *end_item, *item = rule_items;
 	const struct rte_flow_item_integrity *mask = (typeof(mask))
 						     integrity_item->mask;
 	const struct rte_flow_item_integrity *spec = (typeof(spec))
 						     integrity_item->spec;
-	uint32_t protocol;
 
 	if (!priv->config.hca_attr.pkt_integrity_match)
 		return rte_flow_error_set(error, ENOTSUP,
@@ -6707,47 +6642,23 @@ flow_dv_validate_item_integrity(struct rte_eth_dev *dev,
 					  RTE_FLOW_ERROR_TYPE_ITEM,
 					  integrity_item,
 					  "unsupported integrity filter");
-	tunnel_item = mlx5_flow_find_tunnel_item(rule_items);
 	if (spec->level > 1) {
-		if (item_flags & MLX5_FLOW_ITEM_INNER_INTEGRITY)
+		if (pattern_flags & MLX5_FLOW_ITEM_INNER_INTEGRITY)
 			return rte_flow_error_set
 				(error, ENOTSUP,
 				 RTE_FLOW_ERROR_TYPE_ITEM,
 				 NULL, "multiple inner integrity items not supported");
-		if (!tunnel_item)
-			return rte_flow_error_set(error, ENOTSUP,
-						  RTE_FLOW_ERROR_TYPE_ITEM,
-						  integrity_item,
-						  "missing tunnel item");
-		item = tunnel_item;
-		end_item = mlx5_find_end_item(tunnel_item);
+		integrity_items[1] = integrity_item;
+		*last_item |= MLX5_FLOW_ITEM_INNER_INTEGRITY;
 	} else {
-		if (item_flags & MLX5_FLOW_ITEM_OUTER_INTEGRITY)
+		if (pattern_flags & MLX5_FLOW_ITEM_OUTER_INTEGRITY)
 			return rte_flow_error_set
 				(error, ENOTSUP,
 				 RTE_FLOW_ERROR_TYPE_ITEM,
 				 NULL, "multiple outer integrity items not supported");
-		end_item = tunnel_item ? tunnel_item :
-			   mlx5_find_end_item(integrity_item);
+		integrity_items[0] = integrity_item;
+		*last_item |= MLX5_FLOW_ITEM_OUTER_INTEGRITY;
 	}
-	if (mask->l3_ok || mask->ipv4_csum_ok) {
-		protocol = mlx5_flow_locate_proto_l3(&item, end_item);
-		if (!protocol)
-			return rte_flow_error_set(error, EINVAL,
-						  RTE_FLOW_ERROR_TYPE_ITEM,
-						  integrity_item,
-						  "missing L3 protocol");
-	}
-	if (mask->l4_ok || mask->l4_csum_ok) {
-		protocol = mlx5_flow_locate_proto_l4(&item, end_item);
-		if (!protocol)
-			return rte_flow_error_set(error, EINVAL,
-						  RTE_FLOW_ERROR_TYPE_ITEM,
-						  integrity_item,
-						  "missing L4 protocol");
-	}
-	*last_item |= spec->level > 1 ? MLX5_FLOW_ITEM_INNER_INTEGRITY :
-					MLX5_FLOW_ITEM_OUTER_INTEGRITY;
 	return 0;
 }
 
@@ -6843,7 +6754,7 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 		.std_tbl_fix = true,
 	};
 	const struct rte_eth_hairpin_conf *conf;
-	const struct rte_flow_item *rule_items = items;
+	const struct rte_flow_item *integrity_items[2] = {NULL, NULL};
 	const struct rte_flow_item *port_id_item = NULL;
 	bool def_policy = false;
 	uint16_t udp_dport = 0;
@@ -7170,10 +7081,10 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 			last_item = MLX5_FLOW_LAYER_ECPRI;
 			break;
 		case RTE_FLOW_ITEM_TYPE_INTEGRITY:
-			ret = flow_dv_validate_item_integrity(dev, rule_items,
-							      items,
+			ret = flow_dv_validate_item_integrity(dev, items,
 							      item_flags,
 							      &last_item,
+							      integrity_items,
 							      error);
 			if (ret < 0)
 				return ret;
@@ -7195,6 +7106,12 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 						  NULL, "item not supported");
 		}
 		item_flags |= last_item;
+	}
+	if (item_flags & MLX5_FLOW_ITEM_INTEGRITY) {
+		ret = flow_dv_validate_item_integrity_post(integrity_items,
+							   item_flags, error);
+		if (ret)
+			return ret;
 	}
 	for (; actions->type != RTE_FLOW_ACTION_TYPE_END; actions++) {
 		int type = actions->type;
@@ -12083,8 +12000,7 @@ flow_dv_translate_integrity_l4(const struct rte_flow_item_integrity *mask,
 static void
 flow_dv_translate_integrity_l3(const struct rte_flow_item_integrity *mask,
 			       const struct rte_flow_item_integrity *value,
-			       void *headers_m, void *headers_v,
-			       bool is_ipv4)
+			       void *headers_m, void *headers_v, bool is_ipv4)
 {
 	if (mask->l3_ok) {
 		/* application l3_ok filter aggregates all hardware l3 filters
@@ -12115,45 +12031,66 @@ flow_dv_translate_integrity_l3(const struct rte_flow_item_integrity *mask,
 }
 
 static void
-flow_dv_translate_item_integrity(void *matcher, void *key,
-				 const struct rte_flow_item *head_item,
-				 const struct rte_flow_item *integrity_item)
+set_integrity_bits(void *headers_m, void *headers_v,
+		   const struct rte_flow_item *integrity_item, bool is_l3_ip4)
 {
+	const struct rte_flow_item_integrity *spec = integrity_item->spec;
 	const struct rte_flow_item_integrity *mask = integrity_item->mask;
-	const struct rte_flow_item_integrity *value = integrity_item->spec;
-	const struct rte_flow_item *tunnel_item, *end_item, *item;
-	void *headers_m;
-	void *headers_v;
-	uint32_t l3_protocol;
 
-	if (!value)
-		return;
+	/* Integrity bits validation cleared spec pointer */
+	MLX5_ASSERT(spec != NULL);
 	if (!mask)
 		mask = &rte_flow_item_integrity_mask;
-	if (value->level > 1) {
+	flow_dv_translate_integrity_l3(mask, spec, headers_m, headers_v,
+				       is_l3_ip4);
+	flow_dv_translate_integrity_l4(mask, spec, headers_m, headers_v);
+}
+
+static void
+flow_dv_translate_item_integrity_post(void *matcher, void *key,
+				      const
+				      struct rte_flow_item *integrity_items[2],
+				      uint64_t pattern_flags)
+{
+	void *headers_m, *headers_v;
+	bool is_l3_ip4;
+
+	if (pattern_flags & MLX5_FLOW_ITEM_INNER_INTEGRITY) {
 		headers_m = MLX5_ADDR_OF(fte_match_param, matcher,
 					 inner_headers);
 		headers_v = MLX5_ADDR_OF(fte_match_param, key, inner_headers);
-	} else {
+		is_l3_ip4 = (pattern_flags & MLX5_FLOW_LAYER_INNER_L3_IPV4) !=
+			    0;
+		set_integrity_bits(headers_m, headers_v,
+				   integrity_items[1], is_l3_ip4);
+	}
+	if (pattern_flags & MLX5_FLOW_ITEM_OUTER_INTEGRITY) {
 		headers_m = MLX5_ADDR_OF(fte_match_param, matcher,
 					 outer_headers);
 		headers_v = MLX5_ADDR_OF(fte_match_param, key, outer_headers);
+		is_l3_ip4 = (pattern_flags & MLX5_FLOW_LAYER_OUTER_L3_IPV4) !=
+			    0;
+		set_integrity_bits(headers_m, headers_v,
+				   integrity_items[0], is_l3_ip4);
 	}
-	tunnel_item = mlx5_flow_find_tunnel_item(head_item);
-	if (value->level > 1) {
-		/* tunnel item was verified during the item validation */
-		item = tunnel_item;
-		end_item = mlx5_find_end_item(tunnel_item);
+}
+
+static void
+flow_dv_translate_item_integrity(const struct rte_flow_item *item,
+				 const struct rte_flow_item *integrity_items[2],
+				 uint64_t *last_item)
+{
+	const struct rte_flow_item_integrity *spec = (typeof(spec))item->spec;
+
+	/* integrity bits validation cleared spec pointer */
+	MLX5_ASSERT(spec != NULL);
+	if (spec->level > 1) {
+		integrity_items[1] = item;
+		*last_item |= MLX5_FLOW_ITEM_INNER_INTEGRITY;
 	} else {
-		item = head_item;
-		end_item = tunnel_item ? tunnel_item :
-			   mlx5_find_end_item(integrity_item);
+		integrity_items[0] = item;
+		*last_item |= MLX5_FLOW_ITEM_OUTER_INTEGRITY;
 	}
-	l3_protocol = mask->l3_ok ?
-		      mlx5_flow_locate_proto_l3(&item, end_item) : 0;
-	flow_dv_translate_integrity_l3(mask, value, headers_m, headers_v,
-				       l3_protocol == RTE_ETHER_TYPE_IPV4);
-	flow_dv_translate_integrity_l4(mask, value, headers_m, headers_v);
 }
 
 /**
@@ -12569,7 +12506,7 @@ flow_dv_translate(struct rte_eth_dev *dev,
 			(1 << MLX5_SCALE_FLOW_GROUP_BIT),
 		.std_tbl_fix = true,
 	};
-	const struct rte_flow_item *head_item = items;
+	const struct rte_flow_item *integrity_items[2] = {NULL, NULL};
 
 	if (!wks)
 		return rte_flow_error_set(error, ENOMEM,
@@ -13462,9 +13399,8 @@ flow_dv_translate(struct rte_eth_dev *dev,
 			last_item = MLX5_FLOW_LAYER_ECPRI;
 			break;
 		case RTE_FLOW_ITEM_TYPE_INTEGRITY:
-			flow_dv_translate_item_integrity(match_mask,
-							 match_value,
-							 head_item, items);
+			flow_dv_translate_item_integrity(items, integrity_items,
+							 &last_item);
 			break;
 		case RTE_FLOW_ITEM_TYPE_CONNTRACK:
 			flow_dv_translate_item_aso_ct(dev, match_mask,
@@ -13487,6 +13423,11 @@ flow_dv_translate(struct rte_eth_dev *dev,
 		if (flow_dv_translate_item_port_id(dev, match_mask,
 						   match_value, NULL, attr))
 			return -rte_errno;
+	}
+	if (item_flags & MLX5_FLOW_ITEM_INTEGRITY) {
+		flow_dv_translate_item_integrity_post(match_mask, match_value,
+						      integrity_items,
+						      item_flags);
 	}
 #ifdef RTE_LIBRTE_MLX5_DEBUG
 	MLX5_ASSERT(!flow_dv_check_valid_spec(matcher.mask.buf,
