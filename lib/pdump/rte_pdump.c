@@ -74,6 +74,7 @@ static const char MZ_RTE_PDUMP_STATS[] = "rte_pdump_stats";
 static struct {
 	struct rte_pdump_stats rx[RTE_MAX_ETHPORTS][RTE_MAX_QUEUES_PER_PORT];
 	struct rte_pdump_stats tx[RTE_MAX_ETHPORTS][RTE_MAX_QUEUES_PER_PORT];
+	const struct rte_memzone *mz;
 } *pdump_stats;
 
 /* Create a clone of mbuf to be placed into ring. */
@@ -429,6 +430,7 @@ rte_pdump_init(void)
 		return -1;
 	}
 	pdump_stats = mz->addr;
+	pdump_stats->mz = mz;
 
 	ret = rte_mp_action_register(PDUMP_MP, pdump_server);
 	if (ret && rte_errno != ENOTSUP)
@@ -440,6 +442,11 @@ int
 rte_pdump_uninit(void)
 {
 	rte_mp_action_unregister(PDUMP_MP);
+
+	if (pdump_stats != NULL) {
+		rte_memzone_free(pdump_stats->mz);
+		pdump_stats = NULL;
+	}
 
 	return 0;
 }
