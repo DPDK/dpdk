@@ -1490,11 +1490,14 @@ rte_vhost_enqueue_burst(int vid, uint16_t queue_id,
 }
 
 static __rte_always_inline uint16_t
-virtio_dev_rx_async_get_info_idx(uint16_t pkts_idx,
-	uint16_t vq_size, uint16_t n_inflight)
+async_get_first_inflight_pkt_idx(struct vhost_virtqueue *vq)
 {
-	return pkts_idx > n_inflight ? (pkts_idx - n_inflight) :
-		(vq_size - n_inflight + pkts_idx) % vq_size;
+	struct vhost_async *async = vq->async;
+
+	if (async->pkts_idx >= async->pkts_inflight_n)
+		return async->pkts_idx - async->pkts_inflight_n;
+	else
+		return vq->size - async->pkts_inflight_n + async->pkts_idx;
 }
 
 static __rte_always_inline void
@@ -1932,9 +1935,6 @@ vhost_poll_enqueue_completed(struct virtio_net *dev, uint16_t queue_id,
 	uint16_t n_descs = 0, n_buffers = 0;
 	uint16_t start_idx, from, i;
 
-	start_idx = virtio_dev_rx_async_get_info_idx(async->pkts_idx,
-		vq->size, async->pkts_inflight_n);
-
 	n_cpl = async->ops.check_completed_copies(dev->vid, queue_id, 0, count);
 	if (unlikely(n_cpl < 0)) {
 		VHOST_LOG_DATA(ERR, "(%d) %s: failed to check completed copies for queue id %d.\n",
@@ -1944,6 +1944,8 @@ vhost_poll_enqueue_completed(struct virtio_net *dev, uint16_t queue_id,
 
 	if (n_cpl == 0)
 		return 0;
+
+	start_idx = async_get_first_inflight_pkt_idx(vq);
 
 	for (i = 0; i < n_cpl; i++) {
 		from = (start_idx + i) % vq->size;
