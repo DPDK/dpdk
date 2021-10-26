@@ -170,11 +170,12 @@ enum mlx5_feature_name {
 #define MLX5_FLOW_LAYER_GENEVE_OPT (UINT64_C(1) << 32)
 #define MLX5_FLOW_LAYER_GTP_PSC (UINT64_C(1) << 33)
 
-/* INTEGRITY item bit */
-#define MLX5_FLOW_ITEM_INTEGRITY (UINT64_C(1) << 34)
+/* INTEGRITY item bits */
+#define MLX5_FLOW_ITEM_OUTER_INTEGRITY (UINT64_C(1) << 34)
+#define MLX5_FLOW_ITEM_INNER_INTEGRITY (UINT64_C(1) << 35)
 
 /* Conntrack item. */
-#define MLX5_FLOW_LAYER_ASO_CT (UINT64_C(1) << 35)
+#define MLX5_FLOW_LAYER_ASO_CT (UINT64_C(1) << 36)
 
 /* Outer Masks. */
 #define MLX5_FLOW_LAYER_OUTER_L3 \

@@ -6679,6 +6679,7 @@ static int
 flow_dv_validate_item_integrity(struct rte_eth_dev *dev,
 				const struct rte_flow_item *rule_items,
 				const struct rte_flow_item *integrity_item,
+				uint64_t item_flags, uint64_t *last_item,
 				struct rte_flow_error *error)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
@@ -6694,6 +6695,11 @@ flow_dv_validate_item_integrity(struct rte_eth_dev *dev,
 					  RTE_FLOW_ERROR_TYPE_ITEM,
 					  integrity_item,
 					  "packet integrity integrity_item not supported");
+	if (!spec)
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ITEM,
+					  integrity_item,
+					  "no spec for integrity item");
 	if (!mask)
 		mask = &rte_flow_item_integrity_mask;
 	if (!mlx5_validate_integrity_item(mask))
@@ -6703,6 +6709,11 @@ flow_dv_validate_item_integrity(struct rte_eth_dev *dev,
 					  "unsupported integrity filter");
 	tunnel_item = mlx5_flow_find_tunnel_item(rule_items);
 	if (spec->level > 1) {
+		if (item_flags & MLX5_FLOW_ITEM_INNER_INTEGRITY)
+			return rte_flow_error_set
+				(error, ENOTSUP,
+				 RTE_FLOW_ERROR_TYPE_ITEM,
+				 NULL, "multiple inner integrity items not supported");
 		if (!tunnel_item)
 			return rte_flow_error_set(error, ENOTSUP,
 						  RTE_FLOW_ERROR_TYPE_ITEM,
@@ -6711,6 +6722,11 @@ flow_dv_validate_item_integrity(struct rte_eth_dev *dev,
 		item = tunnel_item;
 		end_item = mlx5_find_end_item(tunnel_item);
 	} else {
+		if (item_flags & MLX5_FLOW_ITEM_OUTER_INTEGRITY)
+			return rte_flow_error_set
+				(error, ENOTSUP,
+				 RTE_FLOW_ERROR_TYPE_ITEM,
+				 NULL, "multiple outer integrity items not supported");
 		end_item = tunnel_item ? tunnel_item :
 			   mlx5_find_end_item(integrity_item);
 	}
@@ -6730,6 +6746,8 @@ flow_dv_validate_item_integrity(struct rte_eth_dev *dev,
 						  integrity_item,
 						  "missing L4 protocol");
 	}
+	*last_item |= spec->level > 1 ? MLX5_FLOW_ITEM_INNER_INTEGRITY :
+					MLX5_FLOW_ITEM_OUTER_INTEGRITY;
 	return 0;
 }
 
@@ -7152,16 +7170,13 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 			last_item = MLX5_FLOW_LAYER_ECPRI;
 			break;
 		case RTE_FLOW_ITEM_TYPE_INTEGRITY:
-			if (item_flags & MLX5_FLOW_ITEM_INTEGRITY)
-				return rte_flow_error_set
-					(error, ENOTSUP,
-					 RTE_FLOW_ERROR_TYPE_ITEM,
-					 NULL, "multiple integrity items not supported");
 			ret = flow_dv_validate_item_integrity(dev, rule_items,
-							      items, error);
+							      items,
+							      item_flags,
+							      &last_item,
+							      error);
 			if (ret < 0)
 				return ret;
-			last_item = MLX5_FLOW_ITEM_INTEGRITY;
 			break;
 		case RTE_FLOW_ITEM_TYPE_CONNTRACK:
 			ret = flow_dv_validate_item_aso_ct(dev, items,
