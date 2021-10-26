@@ -468,6 +468,10 @@ Limitations
 
   - TXQ affinity subjects to HW hash once enabled.
 
+- Bonding under socket direct mode
+
+  - Needs OFED 5.4+.
+
 Statistics
 ----------
 

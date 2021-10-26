@@ -1898,6 +1898,8 @@ mlx5_device_bond_pci_match(const char *ibdev_name,
 	FILE *bond_file = NULL, *file;
 	int pf = -1;
 	int ret;
+	uint8_t cur_guid[32] = {0};
+	uint8_t guid[32] = {0};
 
 	/*
 	 * Try to get master device name. If something goes wrong suppose
@@ -1910,6 +1912,8 @@ mlx5_device_bond_pci_match(const char *ibdev_name,
 		return -1;
 	np = mlx5_nl_portnum(nl_rdma, ibdev_name);
 	if (!np)
+		return -1;
+	if (mlx5_get_device_guid(pci_dev, cur_guid, sizeof(cur_guid)) < 0)
 		return -1;
 	/*
 	 * The master device might not be on the predefined port(not on port
@@ -1938,6 +1942,7 @@ mlx5_device_bond_pci_match(const char *ibdev_name,
 		char tmp_str[IF_NAMESIZE + 32];
 		struct rte_pci_addr pci_addr;
 		struct mlx5_switch_info	info;
+		int ret;
 
 		/* Process slave interface names in the loop. */
 		snprintf(tmp_str, sizeof(tmp_str),
@@ -1969,15 +1974,6 @@ mlx5_device_bond_pci_match(const char *ibdev_name,
 				tmp_str);
 			break;
 		}
-		/* Match PCI address, allows BDF0+pfx or BDFx+pfx. */
-		if (pci_dev->domain == pci_addr.domain &&
-		    pci_dev->bus == pci_addr.bus &&
-		    pci_dev->devid == pci_addr.devid &&
-		    ((pci_dev->function == 0 &&
-		      pci_dev->function + owner == pci_addr.function) ||
-		     (pci_dev->function == owner &&
-		      pci_addr.function == owner)))
-			pf = info.port_name;
 		/* Get ifindex. */
 		snprintf(tmp_str, sizeof(tmp_str),
 			 "/sys/class/net/%s/ifindex", ifname);
@@ -1994,6 +1990,30 @@ mlx5_device_bond_pci_match(const char *ibdev_name,
 		bond_info->ports[info.port_name].pci_addr = pci_addr;
 		bond_info->ports[info.port_name].ifindex = ifindex;
 		bond_info->n_port++;
+		/*
+		 * Under socket direct mode, bonding will use
+		 * system_image_guid as identification.
+		 * After OFED 5.4, guid is readable (ret >= 0) under sysfs.
+		 * All bonding members should have the same guid even if driver
+		 * is using PCIe BDF.
+		 */
+		ret = mlx5_get_device_guid(&pci_addr, guid, sizeof(guid));
+		if (ret < 0)
+			break;
+		else if (ret > 0) {
+			if (!memcmp(guid, cur_guid, sizeof(guid)) &&
+			    owner == info.port_name &&
+			    (owner != 0 || (owner == 0 &&
+			    !rte_pci_addr_cmp(pci_dev, &pci_addr))))
+				pf = info.port_name;
+		} else if (pci_dev->domain == pci_addr.domain &&
+		    pci_dev->bus == pci_addr.bus &&
+		    pci_dev->devid == pci_addr.devid &&
+		    ((pci_dev->function == 0 &&
+		      pci_dev->function + owner == pci_addr.function) ||
+		     (pci_dev->function == owner &&
+		      pci_addr.function == owner)))
+			pf = info.port_name;
 	}
 	if (pf >= 0) {
 		/* Get bond interface info */
@@ -2005,6 +2025,11 @@ mlx5_device_bond_pci_match(const char *ibdev_name,
 		else
 			DRV_LOG(INFO, "PF device %u, bond device %u(%s)",
 				ifindex, bond_info->ifindex, bond_info->ifname);
+	}
+	if (owner == 0 && pf != 0) {
+		DRV_LOG(INFO, "PCIe instance %04x:%02x:%02x.%x isn't bonding owner",
+				pci_dev->domain, pci_dev->bus, pci_dev->devid,
+				pci_dev->function);
 	}
 	return pf;
 }
