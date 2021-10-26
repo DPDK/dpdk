@@ -170,51 +170,55 @@ ice_rxd_to_pkt_fields_by_comms_aux_v2(struct ice_rx_queue *rxq,
 #endif
 }
 
+static const ice_rxd_to_pkt_fields_t rxd_to_pkt_fields_ops[] = {
+	[ICE_RXDID_COMMS_AUX_VLAN] = ice_rxd_to_pkt_fields_by_comms_aux_v1,
+	[ICE_RXDID_COMMS_AUX_IPV4] = ice_rxd_to_pkt_fields_by_comms_aux_v1,
+	[ICE_RXDID_COMMS_AUX_IPV6] = ice_rxd_to_pkt_fields_by_comms_aux_v1,
+	[ICE_RXDID_COMMS_AUX_IPV6_FLOW] = ice_rxd_to_pkt_fields_by_comms_aux_v1,
+	[ICE_RXDID_COMMS_AUX_TCP] = ice_rxd_to_pkt_fields_by_comms_aux_v1,
+	[ICE_RXDID_COMMS_AUX_IP_OFFSET] = ice_rxd_to_pkt_fields_by_comms_aux_v2,
+	[ICE_RXDID_COMMS_GENERIC] = ice_rxd_to_pkt_fields_by_comms_generic,
+	[ICE_RXDID_COMMS_OVS] = ice_rxd_to_pkt_fields_by_comms_ovs,
+};
+
 void
 ice_select_rxd_to_pkt_fields_handler(struct ice_rx_queue *rxq, uint32_t rxdid)
 {
+	rxq->rxdid = rxdid;
+
 	switch (rxdid) {
 	case ICE_RXDID_COMMS_AUX_VLAN:
 		rxq->xtr_ol_flag = rte_net_ice_dynflag_proto_xtr_vlan_mask;
-		rxq->rxd_to_pkt_fields = ice_rxd_to_pkt_fields_by_comms_aux_v1;
 		break;
 
 	case ICE_RXDID_COMMS_AUX_IPV4:
 		rxq->xtr_ol_flag = rte_net_ice_dynflag_proto_xtr_ipv4_mask;
-		rxq->rxd_to_pkt_fields = ice_rxd_to_pkt_fields_by_comms_aux_v1;
 		break;
 
 	case ICE_RXDID_COMMS_AUX_IPV6:
 		rxq->xtr_ol_flag = rte_net_ice_dynflag_proto_xtr_ipv6_mask;
-		rxq->rxd_to_pkt_fields = ice_rxd_to_pkt_fields_by_comms_aux_v1;
 		break;
 
 	case ICE_RXDID_COMMS_AUX_IPV6_FLOW:
 		rxq->xtr_ol_flag = rte_net_ice_dynflag_proto_xtr_ipv6_flow_mask;
-		rxq->rxd_to_pkt_fields = ice_rxd_to_pkt_fields_by_comms_aux_v1;
 		break;
 
 	case ICE_RXDID_COMMS_AUX_TCP:
 		rxq->xtr_ol_flag = rte_net_ice_dynflag_proto_xtr_tcp_mask;
-		rxq->rxd_to_pkt_fields = ice_rxd_to_pkt_fields_by_comms_aux_v1;
 		break;
 
 	case ICE_RXDID_COMMS_AUX_IP_OFFSET:
 		rxq->xtr_ol_flag = rte_net_ice_dynflag_proto_xtr_ip_offset_mask;
-		rxq->rxd_to_pkt_fields = ice_rxd_to_pkt_fields_by_comms_aux_v2;
 		break;
 
 	case ICE_RXDID_COMMS_GENERIC:
-		rxq->rxd_to_pkt_fields = ice_rxd_to_pkt_fields_by_comms_generic;
-		break;
-
+		/* fallthrough */
 	case ICE_RXDID_COMMS_OVS:
-		rxq->rxd_to_pkt_fields = ice_rxd_to_pkt_fields_by_comms_ovs;
 		break;
 
 	default:
 		/* update this according to the RXDID for PROTO_XTR_NONE */
-		rxq->rxd_to_pkt_fields = ice_rxd_to_pkt_fields_by_comms_ovs;
+		rxq->rxdid = ICE_RXDID_COMMS_OVS;
 		break;
 	}
 
@@ -1552,7 +1556,7 @@ ice_rx_scan_hw_ring(struct ice_rx_queue *rxq)
 			mb->packet_type = ptype_tbl[ICE_RX_FLEX_DESC_PTYPE_M &
 				rte_le_to_cpu_16(rxdp[j].wb.ptype_flex_flags0)];
 			ice_rxd_to_vlan_tci(mb, &rxdp[j]);
-			rxq->rxd_to_pkt_fields(rxq, mb, &rxdp[j]);
+			rxd_to_pkt_fields_ops[rxq->rxdid](rxq, mb, &rxdp[j]);
 
 			mb->ol_flags |= pkt_flags;
 		}
@@ -1845,7 +1849,7 @@ ice_recv_scattered_pkts(void *rx_queue,
 		first_seg->packet_type = ptype_tbl[ICE_RX_FLEX_DESC_PTYPE_M &
 			rte_le_to_cpu_16(rxd.wb.ptype_flex_flags0)];
 		ice_rxd_to_vlan_tci(first_seg, &rxd);
-		rxq->rxd_to_pkt_fields(rxq, first_seg, &rxd);
+		rxd_to_pkt_fields_ops[rxq->rxdid](rxq, first_seg, &rxd);
 		pkt_flags = ice_rxd_error_to_pkt_flags(rx_stat_err0);
 		first_seg->ol_flags |= pkt_flags;
 		/* Prefetch data of first segment, if configured to do so. */
@@ -2247,7 +2251,7 @@ ice_recv_pkts(void *rx_queue,
 		rxm->packet_type = ptype_tbl[ICE_RX_FLEX_DESC_PTYPE_M &
 			rte_le_to_cpu_16(rxd.wb.ptype_flex_flags0)];
 		ice_rxd_to_vlan_tci(rxm, &rxd);
-		rxq->rxd_to_pkt_fields(rxq, rxm, &rxd);
+		rxd_to_pkt_fields_ops[rxq->rxdid](rxq, rxm, &rxd);
 		pkt_flags = ice_rxd_error_to_pkt_flags(rx_stat_err0);
 		rxm->ol_flags |= pkt_flags;
 		/* copy old mbuf to rx_pkts */

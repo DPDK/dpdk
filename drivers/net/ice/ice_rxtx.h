@@ -86,7 +86,7 @@ struct ice_rx_queue {
 	bool rx_deferred_start; /* don't start this queue in dev start */
 	uint8_t proto_xtr; /* Protocol extraction from flexible descriptor */
 	uint64_t xtr_ol_flag; /* Protocol extraction offload flag */
-	ice_rxd_to_pkt_fields_t rxd_to_pkt_fields; /* handle FlexiMD by RXDID */
+	uint32_t rxdid; /* Receive Flex Descriptor profile ID */
 	ice_rx_release_mbufs_t rx_rel_mbufs;
 	const struct rte_memzone *mz;
 };
