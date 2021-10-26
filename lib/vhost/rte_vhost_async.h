@@ -27,14 +27,6 @@ struct rte_vhost_iov_iter {
 };
 
 /**
- * dma transfer descriptor
- */
-struct rte_vhost_async_desc {
-	/* memory iov_iter */
-	struct rte_vhost_iov_iter *iter;
-};
-
-/**
  * dma transfer status
  */
 struct rte_vhost_async_status {
@@ -55,17 +47,17 @@ struct rte_vhost_async_channel_ops {
 	 *  id of vhost device to perform data copies
 	 * @param queue_id
 	 *  queue id to perform data copies
-	 * @param descs
-	 *  an array of DMA transfer memory descriptors
+	 * @param iov_iter
+	 *  an array of IOV iterators
 	 * @param opaque_data
 	 *  opaque data pair sending to DMA engine
 	 * @param count
 	 *  number of elements in the "descs" array
 	 * @return
-	 *  number of descs processed, negative value means error
+	 *  number of IOV iterators processed, negative value means error
 	 */
 	int32_t (*transfer_data)(int vid, uint16_t queue_id,
-		struct rte_vhost_async_desc *descs,
+		struct rte_vhost_iov_iter *iov_iter,
 		struct rte_vhost_async_status *opaque_data,
 		uint16_t count);
 	/**

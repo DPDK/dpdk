@@ -124,10 +124,10 @@ out:
 
 int32_t
 ioat_transfer_data_cb(int vid, uint16_t queue_id,
-		struct rte_vhost_async_desc *descs,
+		struct rte_vhost_iov_iter *iov_iter,
 		struct rte_vhost_async_status *opaque_data, uint16_t count)
 {
-	uint32_t i_desc;
+	uint32_t i_iter;
 	uint16_t dev_id = dma_bind[vid].dmas[queue_id * 2 + VIRTIO_RXQ].dev_id;
 	struct rte_vhost_iov_iter *iter = NULL;
 	unsigned long i_seg;
@@ -135,8 +135,8 @@ ioat_transfer_data_cb(int vid, uint16_t queue_id,
 	unsigned short write = cb_tracker[dev_id].next_write;
 
 	if (!opaque_data) {
-		for (i_desc = 0; i_desc < count; i_desc++) {
-			iter = descs[i_desc].iter;
+		for (i_iter = 0; i_iter < count; i_iter++) {
+			iter = iov_iter + i_iter;
 			i_seg = 0;
 			if (cb_tracker[dev_id].ioat_space < iter->nr_segs)
 				break;
@@ -161,7 +161,7 @@ ioat_transfer_data_cb(int vid, uint16_t queue_id,
 	/* ring the doorbell */
 	rte_ioat_perform_ops(dev_id);
 	cb_tracker[dev_id].next_write = write;
-	return i_desc;
+	return i_iter;
 }
 
 int32_t

@@ -995,15 +995,6 @@ async_iter_reset(struct vhost_async *async)
 	async->iovec_idx = 0;
 }
 
-static __rte_always_inline void
-async_fill_descs(struct vhost_async *async, struct rte_vhost_async_desc *descs)
-{
-	int i;
-
-	for (i = 0; i < async->iter_idx; i++)
-		descs[i].iter = async->iov_iter + i;
-}
-
 static __rte_always_inline int
 async_mbuf_to_desc(struct virtio_net *dev, struct vhost_virtqueue *vq,
 			struct rte_mbuf *m, struct buf_vector *buf_vec,
@@ -1550,7 +1541,6 @@ virtio_dev_rx_async_submit_split(struct virtio_net *dev,
 	uint16_t avail_head;
 
 	struct vhost_async *async = vq->async;
-	struct rte_vhost_async_desc async_descs[MAX_PKT_BURST];
 	struct async_inflight_info *pkts_info = async->pkts_info;
 	uint32_t pkt_err = 0;
 	int32_t n_xfer;
@@ -1595,9 +1585,7 @@ virtio_dev_rx_async_submit_split(struct virtio_net *dev,
 	if (unlikely(pkt_idx == 0))
 		return 0;
 
-	async_fill_descs(async, async_descs);
-
-	n_xfer = async->ops.transfer_data(dev->vid, queue_id, async_descs, 0, pkt_idx);
+	n_xfer = async->ops.transfer_data(dev->vid, queue_id, async->iov_iter, 0, pkt_idx);
 	if (unlikely(n_xfer < 0)) {
 		VHOST_LOG_DATA(ERR, "(%d) %s: failed to transfer data for queue id %d.\n",
 				dev->vid, __func__, queue_id);
@@ -1812,7 +1800,6 @@ virtio_dev_rx_async_submit_packed(struct virtio_net *dev,
 	uint16_t num_descs;
 
 	struct vhost_async *async = vq->async;
-	struct rte_vhost_async_desc async_descs[MAX_PKT_BURST];
 	struct async_inflight_info *pkts_info = async->pkts_info;
 	uint32_t pkt_err = 0;
 	uint16_t slot_idx = 0;
@@ -1840,9 +1827,7 @@ virtio_dev_rx_async_submit_packed(struct virtio_net *dev,
 	if (unlikely(pkt_idx == 0))
 		return 0;
 
-	async_fill_descs(async, async_descs);
-
-	n_xfer = async->ops.transfer_data(dev->vid, queue_id, async_descs, 0, pkt_idx);
+	n_xfer = async->ops.transfer_data(dev->vid, queue_id, async->iov_iter, 0, pkt_idx);
 	if (unlikely(n_xfer < 0)) {
 		VHOST_LOG_DATA(ERR, "(%d) %s: failed to transfer data for queue id %d.\n",
 				dev->vid, __func__, queue_id);
