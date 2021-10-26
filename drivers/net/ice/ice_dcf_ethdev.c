@@ -1025,10 +1025,43 @@ ice_dcf_tm_ops_get(struct rte_eth_dev *dev __rte_unused,
 	return 0;
 }
 
+static inline void
+ice_dcf_reset_hw(struct rte_eth_dev *eth_dev, struct ice_dcf_hw *hw)
+{
+	ice_dcf_uninit_hw(eth_dev, hw);
+	ice_dcf_init_hw(eth_dev, hw);
+}
+
+/* Check if reset has been triggered by PF */
+static inline bool
+ice_dcf_is_reset(struct rte_eth_dev *dev)
+{
+	struct ice_dcf_adapter *ad = dev->data->dev_private;
+	struct iavf_hw *hw = &ad->real_hw.avf;
+
+	return !(IAVF_READ_REG(hw, IAVF_VF_ARQLEN1) &
+		 IAVF_VF_ARQLEN1_ARQENABLE_MASK);
+}
+
 static int
 ice_dcf_dev_reset(struct rte_eth_dev *dev)
 {
+	struct ice_dcf_adapter *ad = dev->data->dev_private;
+	struct ice_dcf_hw *hw = &ad->real_hw;
 	int ret;
+
+	if (ice_dcf_is_reset(dev)) {
+		if (!ad->real_hw.resetting)
+			ad->real_hw.resetting = true;
+		PMD_DRV_LOG(ERR, "The DCF has been reset by PF");
+
+		/*
+		 * Simply reset hw to trigger an additional DCF enable/disable
+		 * cycle which help to workaround the issue that kernel driver
+		 * may not clean up resource during previous reset.
+		 */
+		ice_dcf_reset_hw(dev, hw);
+	}
 
 	ret = ice_dcf_dev_uninit(dev);
 	if (ret)
@@ -1072,7 +1105,6 @@ ice_dcf_dev_init(struct rte_eth_dev *eth_dev)
 {
 	struct ice_dcf_adapter *adapter = eth_dev->data->dev_private;
 
-	adapter->real_hw.resetting = false;
 	eth_dev->dev_ops = &ice_dcf_eth_dev_ops;
 	eth_dev->rx_pkt_burst = ice_dcf_recv_pkts;
 	eth_dev->tx_pkt_burst = ice_dcf_xmit_pkts;

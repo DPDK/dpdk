@@ -593,6 +593,8 @@ ice_dcf_init_hw(struct rte_eth_dev *eth_dev, struct ice_dcf_hw *hw)
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
 	int ret, size;
 
+	hw->resetting = false;
+
 	hw->avf.hw_addr = pci_dev->mem_resource[0].addr;
 	hw->avf.back = hw;
 
