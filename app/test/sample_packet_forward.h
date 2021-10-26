@@ -21,6 +21,9 @@ struct rte_ring;
 /* Sample test to create virtual rings and tx,rx portid from rings */
 int test_ring_setup(struct rte_ring **ring, uint16_t *portid);
 
+/* configure and start device created by test_ring_setup */
+int test_dev_start(uint16_t port, struct rte_mempool *mp);
+
 /* Sample test to free the virtual rings */
 void test_ring_free(struct rte_ring *rxtx);
 
