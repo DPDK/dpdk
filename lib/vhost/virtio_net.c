@@ -924,33 +924,92 @@ out:
 	return error;
 }
 
-static __rte_always_inline void
-async_fill_vec(struct rte_vhost_iovec *v, void *src, void *dst, size_t len)
+static __rte_always_inline int
+async_iter_initialize(struct vhost_async *async)
 {
-	v->src_addr = src;
-	v->dst_addr = dst;
-	v->len = len;
+	struct rte_vhost_iov_iter *iter;
+
+	if (unlikely(async->iovec_idx >= VHOST_MAX_ASYNC_VEC)) {
+		VHOST_LOG_DATA(ERR, "no more async iovec available\n");
+		return -1;
+	}
+
+	iter = async->iov_iter + async->iter_idx;
+	iter->iov = async->iovec + async->iovec_idx;
+	iter->nr_segs = 0;
+
+	return 0;
+}
+
+static __rte_always_inline int
+async_iter_add_iovec(struct vhost_async *async, void *src, void *dst, size_t len)
+{
+	struct rte_vhost_iov_iter *iter;
+	struct rte_vhost_iovec *iovec;
+
+	if (unlikely(async->iovec_idx >= VHOST_MAX_ASYNC_VEC)) {
+		static bool vhost_max_async_vec_log;
+
+		if (!vhost_max_async_vec_log) {
+			VHOST_LOG_DATA(ERR, "no more async iovec available\n");
+			vhost_max_async_vec_log = true;
+		}
+
+		return -1;
+	}
+
+	iter = async->iov_iter + async->iter_idx;
+	iovec = async->iovec + async->iovec_idx;
+
+	iovec->src_addr = src;
+	iovec->dst_addr = dst;
+	iovec->len = len;
+
+	iter->nr_segs++;
+	async->iovec_idx++;
+
+	return 0;
 }
 
 static __rte_always_inline void
-async_fill_iter(struct rte_vhost_iov_iter *it, struct rte_vhost_iovec *vec, unsigned long nr_seg)
+async_iter_finalize(struct vhost_async *async)
 {
-	it->iov = vec;
-	it->nr_segs = nr_seg;
+	async->iter_idx++;
 }
 
 static __rte_always_inline void
-async_fill_desc(struct rte_vhost_async_desc *desc, struct rte_vhost_iov_iter *iter)
+async_iter_cancel(struct vhost_async *async)
 {
-	desc->iter = iter;
+	struct rte_vhost_iov_iter *iter;
+
+	iter = async->iov_iter + async->iter_idx;
+	async->iovec_idx -= iter->nr_segs;
+	iter->nr_segs = 0;
+	iter->iov = NULL;
+}
+
+static __rte_always_inline void
+async_iter_reset(struct vhost_async *async)
+{
+	async->iter_idx = 0;
+	async->iovec_idx = 0;
+}
+
+static __rte_always_inline void
+async_fill_descs(struct vhost_async *async, struct rte_vhost_async_desc *descs)
+{
+	int i;
+
+	for (i = 0; i < async->iter_idx; i++)
+		descs[i].iter = async->iov_iter + i;
 }
 
 static __rte_always_inline int
 async_mbuf_to_desc(struct virtio_net *dev, struct vhost_virtqueue *vq,
 			struct rte_mbuf *m, struct buf_vector *buf_vec,
-			uint16_t nr_vec, uint16_t num_buffers,
-			struct rte_vhost_iovec *iovec, struct rte_vhost_iov_iter *iter)
+			uint16_t nr_vec, uint16_t num_buffers)
 {
+	struct vhost_async *async = vq->async;
 	struct rte_mbuf *hdr_mbuf;
 	struct virtio_net_hdr_mrg_rxbuf tmp_hdr, *hdr = NULL;
 	uint64_t buf_addr, buf_iova;
@@ -960,24 +1019,18 @@ async_mbuf_to_desc(struct virtio_net *dev, struct vhost_virtqueue *vq,
 	uint32_t mbuf_offset, mbuf_avail;
 	uint32_t buf_offset, buf_avail;
 	uint32_t cpy_len, buf_len;
-	int error = 0;
 
-	int tvec_idx = 0;
 	void *hpa;
 
-	if (unlikely(m == NULL)) {
-		error = -1;
-		goto out;
-	}
+	if (unlikely(m == NULL))
+		return -1;
 
 	buf_addr = buf_vec[vec_idx].buf_addr;
 	buf_iova = buf_vec[vec_idx].buf_iova;
 	buf_len = buf_vec[vec_idx].buf_len;
 
-	if (unlikely(buf_len < dev->vhost_hlen && nr_vec <= 1)) {
-		error = -1;
-		goto out;
-	}
+	if (unlikely(buf_len < dev->vhost_hlen && nr_vec <= 1))
+		return -1;
 
 	hdr_mbuf = m;
 	hdr_addr = buf_addr;
@@ -1005,14 +1058,15 @@ async_mbuf_to_desc(struct virtio_net *dev, struct vhost_virtqueue *vq,
 	mbuf_avail  = rte_pktmbuf_data_len(m);
 	mbuf_offset = 0;
 
+	if (async_iter_initialize(async))
+		return -1;
+
 	while (mbuf_avail != 0 || m->next != NULL) {
 		/* done with current buf, get the next one */
 		if (buf_avail == 0) {
 			vec_idx++;
-			if (unlikely(vec_idx >= nr_vec)) {
-				error = -1;
-				goto out;
-			}
+			if (unlikely(vec_idx >= nr_vec))
+				goto error;
 
 			buf_addr = buf_vec[vec_idx].buf_addr;
 			buf_iova = buf_vec[vec_idx].buf_iova;
@@ -1058,26 +1112,30 @@ async_mbuf_to_desc(struct virtio_net *dev, struct vhost_virtqueue *vq,
 			if (unlikely(!hpa)) {
 				VHOST_LOG_DATA(ERR, "(%d) %s: failed to get hpa.\n",
 				dev->vid, __func__);
-				error = -1;
-				goto out;
+				goto error;
 			}
 
-			async_fill_vec(iovec + tvec_idx,
-				(void *)(uintptr_t)rte_pktmbuf_iova_offset(m,
-				mbuf_offset), hpa, (size_t)mapped_len);
+			if (unlikely(async_iter_add_iovec(async,
+					(void *)(uintptr_t)rte_pktmbuf_iova_offset(m,
+						mbuf_offset),
+					hpa, (size_t)mapped_len)))
+				goto error;
 
 			cpy_len -= (uint32_t)mapped_len;
 			mbuf_avail  -= (uint32_t)mapped_len;
 			mbuf_offset += (uint32_t)mapped_len;
 			buf_avail  -= (uint32_t)mapped_len;
 			buf_offset += (uint32_t)mapped_len;
-			tvec_idx++;
 		}
 	}
 
-	async_fill_iter(iter, iovec, tvec_idx);
-out:
-	return error;
+	async_iter_finalize(async);
+
+	return 0;
+error:
+	async_iter_cancel(async);
+
+	return -1;
 }
 
 static __rte_always_inline int
@@ -1487,18 +1545,16 @@ virtio_dev_rx_async_submit_split(struct virtio_net *dev,
 	struct rte_mbuf **pkts, uint32_t count)
 {
 	struct buf_vector buf_vec[BUF_VECTOR_MAX];
-	uint32_t pkt_idx = 0, pkt_burst_idx = 0;
+	uint32_t pkt_idx = 0;
 	uint16_t num_buffers;
 	uint16_t avail_head;
 
 	struct vhost_async *async = vq->async;
-	struct rte_vhost_iov_iter *iter = async->iov_iter;
-	struct rte_vhost_async_desc tdes[MAX_PKT_BURST];
-	struct rte_vhost_iovec *iovec = async->iovec;
+	struct rte_vhost_async_desc async_descs[MAX_PKT_BURST];
 	struct async_inflight_info *pkts_info = async->pkts_info;
-	uint32_t n_pkts = 0, pkt_err = 0;
+	uint32_t pkt_err = 0;
 	int32_t n_xfer;
-	uint16_t iovec_idx = 0, it_idx = 0, slot_idx = 0;
+	uint16_t slot_idx = 0;
 
 	/*
 	 * The ordering between avail index and desc reads need to be enforced.
@@ -1507,95 +1563,53 @@ virtio_dev_rx_async_submit_split(struct virtio_net *dev,
 
 	rte_prefetch0(&vq->avail->ring[vq->last_avail_idx & (vq->size - 1)]);
 
+	async_iter_reset(async);
+
 	for (pkt_idx = 0; pkt_idx < count; pkt_idx++) {
 		uint32_t pkt_len = pkts[pkt_idx]->pkt_len + dev->vhost_hlen;
 		uint16_t nr_vec = 0;
 
-		if (unlikely(reserve_avail_buf_split(dev, vq,
-						pkt_len, buf_vec, &num_buffers,
-						avail_head, &nr_vec) < 0)) {
-			VHOST_LOG_DATA(DEBUG,
-				"(%d) failed to get enough desc from vring\n",
-				dev->vid);
+		if (unlikely(reserve_avail_buf_split(dev, vq, pkt_len, buf_vec,
+						&num_buffers, avail_head, &nr_vec) < 0)) {
+			VHOST_LOG_DATA(DEBUG, "(%d) failed to get enough desc from vring\n",
+					dev->vid);
 			vq->shadow_used_idx -= num_buffers;
 			break;
 		}
 
 		VHOST_LOG_DATA(DEBUG, "(%d) current index %d | end index %d\n",
-			dev->vid, vq->last_avail_idx,
-			vq->last_avail_idx + num_buffers);
+			dev->vid, vq->last_avail_idx, vq->last_avail_idx + num_buffers);
 
-		if (async_mbuf_to_desc(dev, vq, pkts[pkt_idx], buf_vec, nr_vec, num_buffers,
-				&iovec[iovec_idx], &iter[it_idx]) < 0) {
+		if (async_mbuf_to_desc(dev, vq, pkts[pkt_idx], buf_vec, nr_vec, num_buffers) < 0) {
 			vq->shadow_used_idx -= num_buffers;
 			break;
 		}
-
-		async_fill_desc(&tdes[pkt_burst_idx++], &iter[it_idx]);
 
 		slot_idx = (async->pkts_idx + pkt_idx) & (vq->size - 1);
 		pkts_info[slot_idx].descs = num_buffers;
 		pkts_info[slot_idx].mbuf = pkts[pkt_idx];
 
-		iovec_idx += iter[it_idx].nr_segs;
-		it_idx++;
-
 		vq->last_avail_idx += num_buffers;
-
-		/*
-		 * condition to trigger async device transfer:
-		 * - unused async iov number is less than max vhost vector
-		 */
-		if (unlikely(VHOST_MAX_ASYNC_VEC - iovec_idx < BUF_VECTOR_MAX)) {
-			n_xfer = async->ops.transfer_data(dev->vid,
-					queue_id, tdes, 0, pkt_burst_idx);
-			if (likely(n_xfer >= 0)) {
-				n_pkts = n_xfer;
-			} else {
-				VHOST_LOG_DATA(ERR,
-					"(%d) %s: failed to transfer data for queue id %d.\n",
-					dev->vid, __func__, queue_id);
-				n_pkts = 0;
-			}
-
-			iovec_idx = 0;
-			it_idx = 0;
-
-			if (unlikely(n_pkts < pkt_burst_idx)) {
-				/*
-				 * log error packets number here and do actual
-				 * error processing when applications poll
-				 * completion
-				 */
-				pkt_err = pkt_burst_idx - n_pkts;
-				pkt_idx++;
-				pkt_burst_idx = 0;
-				break;
-			}
-
-			pkt_burst_idx = 0;
-		}
 	}
 
-	if (pkt_burst_idx) {
-		n_xfer = async->ops.transfer_data(dev->vid, queue_id, tdes, 0, pkt_burst_idx);
-		if (likely(n_xfer >= 0)) {
-			n_pkts = n_xfer;
-		} else {
-			VHOST_LOG_DATA(ERR, "(%d) %s: failed to transfer data for queue id %d.\n",
+	if (unlikely(pkt_idx == 0))
+		return 0;
+
+	async_fill_descs(async, async_descs);
+
+	n_xfer = async->ops.transfer_data(dev->vid, queue_id, async_descs, 0, pkt_idx);
+	if (unlikely(n_xfer < 0)) {
+		VHOST_LOG_DATA(ERR, "(%d) %s: failed to transfer data for queue id %d.\n",
 				dev->vid, __func__, queue_id);
-			n_pkts = 0;
-		}
-
-		if (unlikely(n_pkts < pkt_burst_idx))
-			pkt_err = pkt_burst_idx - n_pkts;
+		n_xfer = 0;
 	}
 
+	pkt_err = pkt_idx - n_xfer;
 	if (unlikely(pkt_err)) {
 		uint16_t num_descs = 0;
 
 		/* update number of completed packets */
-		pkt_idx -= pkt_err;
+		pkt_idx = n_xfer;
 
 		/* calculate the sum of descriptors to revert */
 		while (pkt_err-- > 0) {
@@ -1686,9 +1700,7 @@ vhost_enqueue_async_packed(struct virtio_net *dev,
 			    struct rte_mbuf *pkt,
 			    struct buf_vector *buf_vec,
 			    uint16_t *nr_descs,
-			    uint16_t *nr_buffers,
-			    struct rte_vhost_iovec *iovec,
-			    struct rte_vhost_iov_iter *iter)
+			    uint16_t *nr_buffers)
 {
 	uint16_t nr_vec = 0;
 	uint16_t avail_idx = vq->last_avail_idx;
@@ -1736,7 +1748,7 @@ vhost_enqueue_async_packed(struct virtio_net *dev,
 	}
 
 	if (unlikely(async_mbuf_to_desc(dev, vq, pkt, buf_vec, nr_vec,
-					*nr_buffers, iovec, iter) < 0))
+					*nr_buffers) < 0))
 		return -1;
 
 	vhost_shadow_enqueue_packed(vq, buffer_len, buffer_buf_id, buffer_desc_count, *nr_buffers);
@@ -1746,13 +1758,12 @@ vhost_enqueue_async_packed(struct virtio_net *dev,
 
 static __rte_always_inline int16_t
 virtio_dev_rx_async_packed(struct virtio_net *dev, struct vhost_virtqueue *vq,
-			    struct rte_mbuf *pkt, uint16_t *nr_descs, uint16_t *nr_buffers,
-			    struct rte_vhost_iovec *iovec, struct rte_vhost_iov_iter *iter)
+			    struct rte_mbuf *pkt, uint16_t *nr_descs, uint16_t *nr_buffers)
 {
 	struct buf_vector buf_vec[BUF_VECTOR_MAX];
 
-	if (unlikely(vhost_enqueue_async_packed(dev, vq, pkt, buf_vec, nr_descs, nr_buffers,
-						 iovec, iter) < 0)) {
+	if (unlikely(vhost_enqueue_async_packed(dev, vq, pkt, buf_vec,
+					nr_descs, nr_buffers) < 0)) {
 		VHOST_LOG_DATA(DEBUG, "(%d) failed to get enough desc from vring\n", dev->vid);
 		return -1;
 	}
@@ -1794,20 +1805,17 @@ virtio_dev_rx_async_submit_packed(struct virtio_net *dev,
 	struct vhost_virtqueue *vq, uint16_t queue_id,
 	struct rte_mbuf **pkts, uint32_t count)
 {
-	uint32_t pkt_idx = 0, pkt_burst_idx = 0;
+	uint32_t pkt_idx = 0;
 	uint32_t remained = count;
 	int32_t n_xfer;
 	uint16_t num_buffers;
 	uint16_t num_descs;
 
 	struct vhost_async *async = vq->async;
-	struct rte_vhost_iov_iter *iter = async->iov_iter;
-	struct rte_vhost_async_desc tdes[MAX_PKT_BURST];
-	struct rte_vhost_iovec *iovec = async->iovec;
+	struct rte_vhost_async_desc async_descs[MAX_PKT_BURST];
 	struct async_inflight_info *pkts_info = async->pkts_info;
-	uint32_t n_pkts = 0, pkt_err = 0;
+	uint32_t pkt_err = 0;
 	uint16_t slot_idx = 0;
-	uint16_t iovec_idx = 0, it_idx = 0;
 
 	do {
 		rte_prefetch0(&vq->desc_packed[vq->last_avail_idx]);
@@ -1815,70 +1823,35 @@ virtio_dev_rx_async_submit_packed(struct virtio_net *dev,
 		num_buffers = 0;
 		num_descs = 0;
 		if (unlikely(virtio_dev_rx_async_packed(dev, vq, pkts[pkt_idx],
-						&num_descs, &num_buffers,
-						&iovec[iovec_idx], &iter[it_idx]) < 0))
+						&num_descs, &num_buffers) < 0))
 			break;
 
 		slot_idx = (async->pkts_idx + pkt_idx) % vq->size;
 
-		async_fill_desc(&tdes[pkt_burst_idx++], &iter[it_idx]);
 		pkts_info[slot_idx].descs = num_descs;
 		pkts_info[slot_idx].nr_buffers = num_buffers;
 		pkts_info[slot_idx].mbuf = pkts[pkt_idx];
-		iovec_idx += iter[it_idx].nr_segs;
-		it_idx++;
 
 		pkt_idx++;
 		remained--;
 		vq_inc_last_avail_packed(vq, num_descs);
-
-		/*
-		 * condition to trigger async device transfer:
-		 * - unused async iov number is less than max vhost vector
-		 */
-		if (unlikely(VHOST_MAX_ASYNC_VEC - iovec_idx < BUF_VECTOR_MAX)) {
-			n_xfer = async->ops.transfer_data(dev->vid,
-					queue_id, tdes, 0, pkt_burst_idx);
-			if (likely(n_xfer >= 0)) {
-				n_pkts = n_xfer;
-			} else {
-				VHOST_LOG_DATA(ERR,
-					"(%d) %s: failed to transfer data for queue id %d.\n",
-					dev->vid, __func__, queue_id);
-				n_pkts = 0;
-			}
-
-			iovec_idx = 0;
-			it_idx = 0;
-
-			if (unlikely(n_pkts < pkt_burst_idx)) {
-				/*
-				 * log error packets number here and do actual
-				 * error processing when applications poll
-				 * completion
-				 */
-				pkt_err = pkt_burst_idx - n_pkts;
-				pkt_burst_idx = 0;
-				break;
-			}
-
-			pkt_burst_idx = 0;
-		}
 	} while (pkt_idx < count);
 
-	if (pkt_burst_idx) {
-		n_xfer = async->ops.transfer_data(dev->vid, queue_id, tdes, 0, pkt_burst_idx);
-		if (likely(n_xfer >= 0)) {
-			n_pkts = n_xfer;
-		} else {
-			VHOST_LOG_DATA(ERR, "(%d) %s: failed to transfer data for queue id %d.\n",
-				dev->vid, __func__, queue_id);
-			n_pkts = 0;
-		}
+	if (unlikely(pkt_idx == 0))
+		return 0;
 
-		if (unlikely(n_pkts < pkt_burst_idx))
-			pkt_err = pkt_burst_idx - n_pkts;
+	async_fill_descs(async, async_descs);
+
+	n_xfer = async->ops.transfer_data(dev->vid, queue_id, async_descs, 0, pkt_idx);
+	if (unlikely(n_xfer < 0)) {
+		VHOST_LOG_DATA(ERR, "(%d) %s: failed to transfer data for queue id %d.\n",
+				dev->vid, __func__, queue_id);
+		n_xfer = 0;
 	}
+
+	pkt_err = pkt_idx - n_xfer;
+
+	async_iter_reset(async);
 
 	if (unlikely(pkt_err))
 		dma_error_handler_packed(vq, slot_idx, pkt_err, &pkt_idx);

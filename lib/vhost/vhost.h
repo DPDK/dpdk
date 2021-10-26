@@ -134,6 +134,8 @@ struct vhost_async {
 
 	struct rte_vhost_iov_iter iov_iter[VHOST_MAX_ASYNC_IT];
 	struct rte_vhost_iovec iovec[VHOST_MAX_ASYNC_VEC];
+	uint16_t iter_idx;
+	uint16_t iovec_idx;
 
 	/* data transfer status */
 	struct async_inflight_info *pkts_info;
