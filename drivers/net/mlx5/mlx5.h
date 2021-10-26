@@ -1689,7 +1689,7 @@ int mlx5_counter_query(struct rte_eth_dev *dev, uint32_t cnt,
 int mlx5_flow_dev_dump(struct rte_eth_dev *dev, struct rte_flow *flow,
 			FILE *file, struct rte_flow_error *error);
 int save_dump_file(const unsigned char *data, uint32_t size,
-		uint32_t type, uint32_t id, void *arg, FILE *file);
+		uint32_t type, uint64_t id, void *arg, FILE *file);
 int mlx5_flow_query_counter(struct rte_eth_dev *dev, struct rte_flow *flow,
 	struct rte_flow_query_count *count, struct rte_flow_error *error);
 #ifdef HAVE_IBV_FLOW_DV_SUPPORT

@@ -8172,7 +8172,7 @@ mlx5_flow_discover_mreg_c(struct rte_eth_dev *dev)
 
 int
 save_dump_file(const uint8_t *data, uint32_t size,
-	uint32_t type, uint32_t id, void *arg, FILE *file)
+	uint32_t type, uint64_t id, void *arg, FILE *file)
 {
 	char line[BUF_SIZE];
 	uint32_t out = 0;
@@ -8184,17 +8184,18 @@ save_dump_file(const uint8_t *data, uint32_t size,
 	switch (type) {
 	case DR_DUMP_REC_TYPE_PMD_MODIFY_HDR:
 		actions_num = *(uint32_t *)(arg);
-		out += snprintf(line + out, BUF_SIZE - out, "%d,0x%x,%d,",
+		out += snprintf(line + out, BUF_SIZE - out, "%d,0x%" PRIx64 ",%d,",
 				type, id, actions_num);
 		break;
 	case DR_DUMP_REC_TYPE_PMD_PKT_REFORMAT:
-		out += snprintf(line + out, BUF_SIZE - out, "%d,0x%x,",
+		out += snprintf(line + out, BUF_SIZE - out, "%d,0x%" PRIx64 ",",
 				type, id);
 		break;
 	case DR_DUMP_REC_TYPE_PMD_COUNTER:
 		count = (struct rte_flow_query_count *)arg;
-		fprintf(file, "%d,0x%x,%" PRIu64 ",%" PRIu64 "\n", type,
-				id, count->hits, count->bytes);
+		fprintf(file,
+			"%d,0x%" PRIx64 ",%" PRIu64 ",%" PRIu64 "\n",
+			type, id, count->hits, count->bytes);
 		return 0;
 	default:
 		return -1;
@@ -8268,30 +8269,34 @@ mlx5_flow_dev_dump_ipool(struct rte_eth_dev *dev,
 	uint32_t actions_num;
 	const uint8_t *data;
 	size_t size;
-	uint32_t id;
+	uint64_t id;
 	uint32_t type;
+	void *action = NULL;
 
 	if (!flow) {
 		return rte_flow_error_set(error, ENOENT,
-			RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
-			NULL,
-			"invalid flow handle");
+				RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				NULL,
+				"invalid flow handle");
 	}
 	handle_idx = flow->dev_handles;
 	while (handle_idx) {
 		dh = mlx5_ipool_get(priv->sh->ipool
-			[MLX5_IPOOL_MLX5_FLOW], handle_idx);
+				[MLX5_IPOOL_MLX5_FLOW], handle_idx);
 		if (!dh)
 			continue;
 		handle_idx = dh->next.next;
-		id = (uint32_t)(uintptr_t)dh->drv_flow;
 
 		/* query counter */
 		type = DR_DUMP_REC_TYPE_PMD_COUNTER;
-		if (!mlx5_flow_query_counter(dev, flow, &count, error))
-			save_dump_file(NULL, 0, type,
-					id, (void *)&count, file);
-
+		flow_dv_query_count_ptr(dev, flow->counter,
+						&action, error);
+		if (action) {
+			id = (uint64_t)(uintptr_t)action;
+			if (!mlx5_flow_query_counter(dev, flow, &count, error))
+				save_dump_file(NULL, 0, type,
+						id, (void *)&count, file);
+		}
 		/* Get modify_hdr and encap_decap buf from ipools. */
 		encap_decap = NULL;
 		modify_hdr = dh->dvh.modify_hdr;
@@ -8304,17 +8309,132 @@ mlx5_flow_dev_dump_ipool(struct rte_eth_dev *dev,
 		if (modify_hdr) {
 			data = (const uint8_t *)modify_hdr->actions;
 			size = (size_t)(modify_hdr->actions_num) * 8;
+			id = (uint64_t)(uintptr_t)modify_hdr->action;
 			actions_num = modify_hdr->actions_num;
 			type = DR_DUMP_REC_TYPE_PMD_MODIFY_HDR;
 			save_dump_file(data, size, type, id,
-					(void *)(&actions_num), file);
+						(void *)(&actions_num), file);
 		}
 		if (encap_decap) {
 			data = encap_decap->buf;
 			size = encap_decap->size;
+			id = (uint64_t)(uintptr_t)encap_decap->action;
 			type = DR_DUMP_REC_TYPE_PMD_PKT_REFORMAT;
 			save_dump_file(data, size, type,
 						id, NULL, file);
+		}
+	}
+	return 0;
+}
+
+/**
+ * Dump all flow's encap_decap/modify_hdr/counter data to file
+ *
+ * @param[in] dev
+ *   The pointer to Ethernet device.
+ * @param[in] file
+ *   A pointer to a file for output.
+ * @param[out] error
+ *   Perform verbose error reporting if not NULL. PMDs initialize this
+ *   structure in case of error only.
+ * @return
+ *   0 on success, a negative value otherwise.
+ */
+static int
+mlx5_flow_dev_dump_sh_all(struct rte_eth_dev *dev,
+	FILE *file, struct rte_flow_error *error)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_dev_ctx_shared *sh = priv->sh;
+	struct mlx5_hlist *h;
+	struct mlx5_flow_dv_modify_hdr_resource  *modify_hdr;
+	struct mlx5_flow_dv_encap_decap_resource *encap_decap;
+	struct rte_flow_query_count count;
+	uint32_t actions_num;
+	const uint8_t *data;
+	size_t size;
+	uint64_t id;
+	uint32_t type;
+	uint32_t i;
+	uint32_t j;
+	struct mlx5_list_inconst *l_inconst;
+	struct mlx5_list_entry *e;
+	int lcore_index;
+	struct mlx5_flow_counter_mng *cmng = &priv->sh->cmng;
+	uint32_t max;
+	void *action;
+
+	/* encap_decap hlist is lcore_share, get global core cache. */
+	i = MLX5_LIST_GLOBAL;
+	h = sh->encaps_decaps;
+	if (h) {
+		for (j = 0; j <= h->mask; j++) {
+			l_inconst = &h->buckets[j].l;
+			if (!l_inconst || !l_inconst->cache[i])
+				continue;
+
+			e = LIST_FIRST(&l_inconst->cache[i]->h);
+			while (e) {
+				encap_decap =
+				(struct mlx5_flow_dv_encap_decap_resource *)e;
+				data = encap_decap->buf;
+				size = encap_decap->size;
+				id = (uint64_t)(uintptr_t)encap_decap->action;
+				type = DR_DUMP_REC_TYPE_PMD_PKT_REFORMAT;
+				save_dump_file(data, size, type,
+					id, NULL, file);
+				e = LIST_NEXT(e, next);
+			}
+		}
+	}
+
+	/* get modify_hdr */
+	h = sh->modify_cmds;
+	if (h) {
+		lcore_index = rte_lcore_index(rte_lcore_id());
+		if (unlikely(lcore_index == -1)) {
+			lcore_index = MLX5_LIST_NLCORE;
+			rte_spinlock_lock(&h->l_const.lcore_lock);
+		}
+		i = lcore_index;
+
+		for (j = 0; j <= h->mask; j++) {
+			l_inconst = &h->buckets[j].l;
+			if (!l_inconst || !l_inconst->cache[i])
+				continue;
+
+			e = LIST_FIRST(&l_inconst->cache[i]->h);
+			while (e) {
+				modify_hdr =
+				(struct mlx5_flow_dv_modify_hdr_resource *)e;
+				data = (const uint8_t *)modify_hdr->actions;
+				size = (size_t)(modify_hdr->actions_num) * 8;
+				actions_num = modify_hdr->actions_num;
+				id = (uint64_t)(uintptr_t)modify_hdr->action;
+				type = DR_DUMP_REC_TYPE_PMD_MODIFY_HDR;
+				save_dump_file(data, size, type, id,
+						(void *)(&actions_num), file);
+				e = LIST_NEXT(e, next);
+			}
+		}
+
+		if (unlikely(lcore_index == MLX5_LIST_NLCORE))
+			rte_spinlock_unlock(&h->l_const.lcore_lock);
+	}
+
+	/* get counter */
+	MLX5_ASSERT(cmng->n_valid <= cmng->n);
+	max = MLX5_COUNTERS_PER_POOL * cmng->n_valid;
+	for (j = 1; j <= max; j++) {
+		action = NULL;
+		flow_dv_query_count_ptr(dev, j, &action, error);
+		if (action) {
+			if (!flow_dv_query_count(dev, j, &count, error)) {
+				type = DR_DUMP_REC_TYPE_PMD_COUNTER;
+				id = (uint64_t)(uintptr_t)action;
+				save_dump_file(NULL, 0, type,
+						id, (void *)&count, file);
+			}
 		}
 	}
 	return 0;
@@ -8345,9 +8465,6 @@ mlx5_flow_dev_dump(struct rte_eth_dev *dev, struct rte_flow *flow_idx,
 	int ret;
 	struct mlx5_flow_handle *dh;
 	struct rte_flow *flow;
-#ifdef HAVE_IBV_FLOW_DV_SUPPORT
-	uint32_t idx;
-#endif
 
 	if (!priv->config.dv_flow_en) {
 		if (fputs("device dv flow disabled\n", file) <= 0)
@@ -8358,8 +8475,8 @@ mlx5_flow_dev_dump(struct rte_eth_dev *dev, struct rte_flow *flow_idx,
 	/* dump all */
 	if (!flow_idx) {
 #ifdef HAVE_IBV_FLOW_DV_SUPPORT
-		MLX5_IPOOL_FOREACH(priv->flows[MLX5_FLOW_TYPE_GEN], idx, flow)
-			mlx5_flow_dev_dump_ipool(dev, flow, file, error);
+		if (mlx5_flow_dev_dump_sh_all(dev, file, error))
+			return -EINVAL;
 #endif
 		return mlx5_devx_cmd_flow_dump(sh->fdb_domain,
 					sh->rx_domain,
@@ -8369,7 +8486,7 @@ mlx5_flow_dev_dump(struct rte_eth_dev *dev, struct rte_flow *flow_idx,
 	flow = mlx5_ipool_get(priv->flows[MLX5_FLOW_TYPE_GEN],
 			(uintptr_t)(void *)flow_idx);
 	if (!flow)
-		return -ENOENT;
+		return -EINVAL;
 
 #ifdef HAVE_IBV_FLOW_DV_SUPPORT
 	mlx5_flow_dev_dump_ipool(dev, flow, file, error);
