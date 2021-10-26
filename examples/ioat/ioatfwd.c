@@ -53,13 +53,13 @@ struct rxtx_transmission_config {
 /* >8 End of configuration of ports and number of assigned lcores. */
 
 /* per-port statistics struct */
-struct ioat_port_statistics {
+struct dma_port_statistics {
 	uint64_t rx[RTE_MAX_ETHPORTS];
 	uint64_t tx[RTE_MAX_ETHPORTS];
 	uint64_t tx_dropped[RTE_MAX_ETHPORTS];
 	uint64_t copy_dropped[RTE_MAX_ETHPORTS];
 };
-struct ioat_port_statistics port_statistics;
+struct dma_port_statistics port_statistics;
 struct total_statistics {
 	uint64_t total_packets_dropped;
 	uint64_t total_packets_tx;
@@ -72,14 +72,14 @@ struct total_statistics {
 typedef enum copy_mode_t {
 #define COPY_MODE_SW "sw"
 	COPY_MODE_SW_NUM,
-#define COPY_MODE_IOAT "hw"
-	COPY_MODE_IOAT_NUM,
+#define COPY_MODE_DMA "hw"
+	COPY_MODE_DMA_NUM,
 	COPY_MODE_INVALID_NUM,
 	COPY_MODE_SIZE_NUM = COPY_MODE_INVALID_NUM
 } copy_mode_t;
 
 /* mask of enabled ports */
-static uint32_t ioat_enabled_port_mask;
+static uint32_t dma_enabled_port_mask;
 
 /* number of RX queues per port */
 static uint16_t nb_queues = 1;
@@ -88,9 +88,9 @@ static uint16_t nb_queues = 1;
 static int mac_updating = 1;
 
 /* hardare copy mode enabled by default. */
-static copy_mode_t copy_mode = COPY_MODE_IOAT_NUM;
+static copy_mode_t copy_mode = COPY_MODE_DMA_NUM;
 
-/* size of IOAT rawdev ring for hardware copy mode or
+/* size of descriptor ring for hardware copy mode or
  * rte_ring for software copy mode
  */
 static unsigned short ring_size = 2048;
@@ -116,14 +116,14 @@ static uint16_t nb_txd = TX_DEFAULT_RINGSIZE;
 
 static volatile bool force_quit;
 
-static uint32_t ioat_batch_sz = MAX_PKT_BURST;
+static uint32_t dma_batch_sz = MAX_PKT_BURST;
 static uint32_t max_frame_size = RTE_ETHER_MAX_LEN;
 
 /* ethernet addresses of ports */
-static struct rte_ether_addr ioat_ports_eth_addr[RTE_MAX_ETHPORTS];
+static struct rte_ether_addr dma_ports_eth_addr[RTE_MAX_ETHPORTS];
 
 static struct rte_eth_dev_tx_buffer *tx_buffer[RTE_MAX_ETHPORTS];
-struct rte_mempool *ioat_pktmbuf_pool;
+struct rte_mempool *dma_pktmbuf_pool;
 
 /* Print out statistics for one port. */
 static void
@@ -141,7 +141,7 @@ print_port_stats(uint16_t port_id)
 		port_statistics.copy_dropped[port_id]);
 }
 
-/* Print out statistics for one IOAT rawdev device. */
+/* Print out statistics for one dmadev device. */
 static void
 print_dmadev_stats(uint32_t dev_id, struct rte_dma_stats stats)
 {
@@ -162,7 +162,7 @@ print_total_stats(struct total_statistics *ts)
 		ts->total_packets_rx / stats_interval,
 		ts->total_packets_dropped / stats_interval);
 
-	if (copy_mode == COPY_MODE_IOAT_NUM) {
+	if (copy_mode == COPY_MODE_DMA_NUM) {
 		printf("\nTotal submitted ops: %19"PRIu64" [ops/s]"
 			"\nTotal completed ops: %19"PRIu64" [ops/s]"
 			"\nTotal failed ops: %22"PRIu64" [ops/s]",
@@ -196,7 +196,7 @@ print_stats(char *prgname)
 	status_strlen += snprintf(status_string + status_strlen,
 		sizeof(status_string) - status_strlen,
 		"Copy Mode = %s,\n", copy_mode == COPY_MODE_SW_NUM ?
-		COPY_MODE_SW : COPY_MODE_IOAT);
+		COPY_MODE_SW : COPY_MODE_DMA);
 	status_strlen += snprintf(status_string + status_strlen,
 		sizeof(status_string) - status_strlen,
 		"Updating MAC = %s, ", mac_updating ?
@@ -235,7 +235,7 @@ print_stats(char *prgname)
 			delta_ts.total_packets_rx +=
 				port_statistics.rx[port_id];
 
-			if (copy_mode == COPY_MODE_IOAT_NUM) {
+			if (copy_mode == COPY_MODE_DMA_NUM) {
 				uint32_t j;
 
 				for (j = 0; j < cfg.ports[i].nb_queues; j++) {
@@ -286,7 +286,7 @@ update_mac_addrs(struct rte_mbuf *m, uint32_t dest_portid)
 	*((uint64_t *)tmp) = 0x000000000002 + ((uint64_t)dest_portid << 40);
 
 	/* src addr */
-	rte_ether_addr_copy(&ioat_ports_eth_addr[dest_portid], &eth->src_addr);
+	rte_ether_addr_copy(&dma_ports_eth_addr[dest_portid], &eth->src_addr);
 }
 
 /* Perform packet copy there is a user-defined function. 8< */
@@ -309,7 +309,7 @@ pktmbuf_sw_copy(struct rte_mbuf *src, struct rte_mbuf *dst)
 /* >8 End of perform packet copy there is a user-defined function. */
 
 static uint32_t
-ioat_enqueue_packets(struct rte_mbuf *pkts[], struct rte_mbuf *pkts_copy[],
+dma_enqueue_packets(struct rte_mbuf *pkts[], struct rte_mbuf *pkts_copy[],
 	uint32_t nb_rx, uint16_t dev_id)
 {
 	struct dma_bufs *dma = &dma_bufs[dev_id];
@@ -335,7 +335,7 @@ ioat_enqueue_packets(struct rte_mbuf *pkts[], struct rte_mbuf *pkts_copy[],
 }
 
 static inline uint32_t
-ioat_enqueue(struct rte_mbuf *pkts[], struct rte_mbuf *pkts_copy[],
+dma_enqueue(struct rte_mbuf *pkts[], struct rte_mbuf *pkts_copy[],
 		uint32_t num, uint32_t step, uint16_t dev_id)
 {
 	uint32_t i, k, m, n;
@@ -344,7 +344,7 @@ ioat_enqueue(struct rte_mbuf *pkts[], struct rte_mbuf *pkts_copy[],
 	for (i = 0; i < num; i += m) {
 
 		m = RTE_MIN(step, num - i);
-		n = ioat_enqueue_packets(pkts + i, pkts_copy + i, m, dev_id);
+		n = dma_enqueue_packets(pkts + i, pkts_copy + i, m, dev_id);
 		k += n;
 		if (n > 0)
 			rte_dma_submit(dev_id, 0);
@@ -358,12 +358,12 @@ ioat_enqueue(struct rte_mbuf *pkts[], struct rte_mbuf *pkts_copy[],
 }
 
 static inline uint32_t
-ioat_dequeue(struct rte_mbuf *src[], struct rte_mbuf *dst[], uint32_t num,
+dma_dequeue(struct rte_mbuf *src[], struct rte_mbuf *dst[], uint32_t num,
 	uint16_t dev_id)
 {
 	struct dma_bufs *dma = &dma_bufs[dev_id];
 	uint16_t nb_dq, filled;
-	/* Dequeue the mbufs from IOAT device. Since all memory
+	/* Dequeue the mbufs from DMA device. Since all memory
 	 * is DPDK pinned memory and therefore all addresses should
 	 * be valid, we don't check for copy errors
 	 */
@@ -373,7 +373,7 @@ ioat_dequeue(struct rte_mbuf *src[], struct rte_mbuf *dst[], uint32_t num,
 	if (unlikely(nb_dq == 0))
 		return nb_dq;
 
-	/* Populate pkts_copy with the copies bufs from dma->copies */
+	/* Populate pkts_copy with the copies bufs from dma->copies for tx */
 	for (filled = 0; filled < nb_dq; filled++) {
 		src[filled] = dma->bufs[(dma->sent + filled) & MBUF_RING_MASK];
 		dst[filled] = dma->copies[(dma->sent + filled) & MBUF_RING_MASK];
@@ -384,9 +384,9 @@ ioat_dequeue(struct rte_mbuf *src[], struct rte_mbuf *dst[], uint32_t num,
 
 }
 
-/* Receive packets on one port and enqueue to IOAT rawdev or rte_ring. 8< */
+/* Receive packets on one port and enqueue to dmadev or rte_ring. 8< */
 static void
-ioat_rx_port(struct rxtx_port_config *rx_config)
+dma_rx_port(struct rxtx_port_config *rx_config)
 {
 	int32_t ret;
 	uint32_t nb_rx, nb_enq, i, j;
@@ -403,7 +403,7 @@ ioat_rx_port(struct rxtx_port_config *rx_config)
 
 		port_statistics.rx[rx_config->rxtx_port] += nb_rx;
 
-		ret = rte_mempool_get_bulk(ioat_pktmbuf_pool,
+		ret = rte_mempool_get_bulk(dma_pktmbuf_pool,
 			(void *)pkts_burst_copy, nb_rx);
 
 		if (unlikely(ret < 0))
@@ -414,17 +414,16 @@ ioat_rx_port(struct rxtx_port_config *rx_config)
 			pktmbuf_metadata_copy(pkts_burst[j],
 				pkts_burst_copy[j]);
 
-		if (copy_mode == COPY_MODE_IOAT_NUM) {
-
+		if (copy_mode == COPY_MODE_DMA_NUM) {
 			/* enqueue packets for  hardware copy */
-			nb_enq = ioat_enqueue(pkts_burst, pkts_burst_copy,
-				nb_rx, ioat_batch_sz, rx_config->dmadev_ids[i]);
+			nb_enq = dma_enqueue(pkts_burst, pkts_burst_copy,
+				nb_rx, dma_batch_sz, rx_config->dmadev_ids[i]);
 
 			/* free any not enqueued packets. */
-			rte_mempool_put_bulk(ioat_pktmbuf_pool,
+			rte_mempool_put_bulk(dma_pktmbuf_pool,
 				(void *)&pkts_burst[nb_enq],
 				nb_rx - nb_enq);
-			rte_mempool_put_bulk(ioat_pktmbuf_pool,
+			rte_mempool_put_bulk(dma_pktmbuf_pool,
 				(void *)&pkts_burst_copy[nb_enq],
 				nb_rx - nb_enq);
 
@@ -432,7 +431,7 @@ ioat_rx_port(struct rxtx_port_config *rx_config)
 				(nb_rx - nb_enq);
 
 			/* get completed copies */
-			nb_rx = ioat_dequeue(pkts_burst, pkts_burst_copy,
+			nb_rx = dma_dequeue(pkts_burst, pkts_burst_copy,
 				MAX_PKT_BURST, rx_config->dmadev_ids[i]);
 		} else {
 			/* Perform packet software copy, free source packets */
@@ -441,14 +440,14 @@ ioat_rx_port(struct rxtx_port_config *rx_config)
 					pkts_burst_copy[j]);
 		}
 
-		rte_mempool_put_bulk(ioat_pktmbuf_pool,
+		rte_mempool_put_bulk(dma_pktmbuf_pool,
 			(void *)pkts_burst, nb_rx);
 
 		nb_enq = rte_ring_enqueue_burst(rx_config->rx_to_tx_ring,
 			(void *)pkts_burst_copy, nb_rx, NULL);
 
 		/* Free any not enqueued packets. */
-		rte_mempool_put_bulk(ioat_pktmbuf_pool,
+		rte_mempool_put_bulk(dma_pktmbuf_pool,
 			(void *)&pkts_burst_copy[nb_enq],
 			nb_rx - nb_enq);
 
@@ -456,11 +455,11 @@ ioat_rx_port(struct rxtx_port_config *rx_config)
 			(nb_rx - nb_enq);
 	}
 }
-/* >8 End of receive packets on one port and enqueue to IOAT rawdev or rte_ring. */
+/* >8 End of receive packets on one port and enqueue to dmadev or rte_ring. */
 
-/* Transmit packets from IOAT rawdev/rte_ring for one port. 8< */
+/* Transmit packets from dmadev/rte_ring for one port. 8< */
 static void
-ioat_tx_port(struct rxtx_port_config *tx_config)
+dma_tx_port(struct rxtx_port_config *tx_config)
 {
 	uint32_t i, j, nb_dq, nb_tx;
 	struct rte_mbuf *mbufs[MAX_PKT_BURST];
@@ -487,13 +486,13 @@ ioat_tx_port(struct rxtx_port_config *tx_config)
 
 		/* Free any unsent packets. */
 		if (unlikely(nb_tx < nb_dq))
-			rte_mempool_put_bulk(ioat_pktmbuf_pool,
+			rte_mempool_put_bulk(dma_pktmbuf_pool,
 			(void *)&mbufs[nb_tx], nb_dq - nb_tx);
 	}
 }
-/* >8 End of transmitting packets from IOAT. */
+/* >8 End of transmitting packets from dmadev. */
 
-/* Main rx processing loop for IOAT rawdev. */
+/* Main rx processing loop for dmadev. */
 static void
 rx_main_loop(void)
 {
@@ -505,7 +504,7 @@ rx_main_loop(void)
 
 	while (!force_quit)
 		for (i = 0; i < nb_ports; i++)
-			ioat_rx_port(&cfg.ports[i]);
+			dma_rx_port(&cfg.ports[i]);
 }
 
 /* Main tx processing loop for hardware copy. */
@@ -520,7 +519,7 @@ tx_main_loop(void)
 
 	while (!force_quit)
 		for (i = 0; i < nb_ports; i++)
-			ioat_tx_port(&cfg.ports[i]);
+			dma_tx_port(&cfg.ports[i]);
 }
 
 /* Main rx and tx loop if only one worker lcore available */
@@ -535,8 +534,8 @@ rxtx_main_loop(void)
 
 	while (!force_quit)
 		for (i = 0; i < nb_ports; i++) {
-			ioat_rx_port(&cfg.ports[i]);
-			ioat_tx_port(&cfg.ports[i]);
+			dma_rx_port(&cfg.ports[i]);
+			dma_tx_port(&cfg.ports[i]);
 		}
 }
 
@@ -566,7 +565,7 @@ static void start_forwarding_cores(void)
 
 /* Display usage */
 static void
-ioat_usage(const char *prgname)
+dma_usage(const char *prgname)
 {
 	printf("%s [EAL options] -- -p PORTMASK [-q NQ]\n"
 		"  -b --dma-batch-size: number of requests per DMA batch\n"
@@ -578,13 +577,13 @@ ioat_usage(const char *prgname)
 		"       - The source MAC address is replaced by the TX port MAC address\n"
 		"       - The destination MAC address is replaced by 02:00:00:00:00:TX_PORT_ID\n"
 		"  -c --copy-type CT: type of copy: sw|hw\n"
-		"  -s --ring-size RS: size of IOAT rawdev ring for hardware copy mode or rte_ring for software copy mode\n"
+		"  -s --ring-size RS: size of dmadev descriptor ring for hardware copy mode or rte_ring for software copy mode\n"
 		"  -i --stats-interval SI: interval, in seconds, between stats prints (default is 1)\n",
 			prgname);
 }
 
 static int
-ioat_parse_portmask(const char *portmask)
+dma_parse_portmask(const char *portmask)
 {
 	char *end = NULL;
 	unsigned long pm;
@@ -598,19 +597,19 @@ ioat_parse_portmask(const char *portmask)
 }
 
 static copy_mode_t
-ioat_parse_copy_mode(const char *copy_mode)
+dma_parse_copy_mode(const char *copy_mode)
 {
 	if (strcmp(copy_mode, COPY_MODE_SW) == 0)
 		return COPY_MODE_SW_NUM;
-	else if (strcmp(copy_mode, COPY_MODE_IOAT) == 0)
-		return COPY_MODE_IOAT_NUM;
+	else if (strcmp(copy_mode, COPY_MODE_DMA) == 0)
+		return COPY_MODE_DMA_NUM;
 
 	return COPY_MODE_INVALID_NUM;
 }
 
 /* Parse the argument given in the command line of the application */
 static int
-ioat_parse_args(int argc, char **argv, unsigned int nb_ports)
+dma_parse_args(int argc, char **argv, unsigned int nb_ports)
 {
 	static const char short_options[] =
 		"b:"  /* dma batch size */
@@ -641,7 +640,7 @@ ioat_parse_args(int argc, char **argv, unsigned int nb_ports)
 	int option_index;
 	char *prgname = argv[0];
 
-	ioat_enabled_port_mask = default_port_mask;
+	dma_enabled_port_mask = default_port_mask;
 	argvopt = argv;
 
 	while ((opt = getopt_long(argc, argvopt, short_options,
@@ -649,10 +648,10 @@ ioat_parse_args(int argc, char **argv, unsigned int nb_ports)
 
 		switch (opt) {
 		case 'b':
-			ioat_batch_sz = atoi(optarg);
-			if (ioat_batch_sz > MAX_PKT_BURST) {
+			dma_batch_sz = atoi(optarg);
+			if (dma_batch_sz > MAX_PKT_BURST) {
 				printf("Invalid dma batch size, %s.\n", optarg);
-				ioat_usage(prgname);
+				dma_usage(prgname);
 				return -1;
 			}
 			break;
@@ -660,19 +659,19 @@ ioat_parse_args(int argc, char **argv, unsigned int nb_ports)
 			max_frame_size = atoi(optarg);
 			if (max_frame_size > RTE_ETHER_MAX_JUMBO_FRAME_LEN) {
 				printf("Invalid max frame size, %s.\n", optarg);
-				ioat_usage(prgname);
+				dma_usage(prgname);
 				return -1;
 			}
 			break;
 
 		/* portmask */
 		case 'p':
-			ioat_enabled_port_mask = ioat_parse_portmask(optarg);
-			if (ioat_enabled_port_mask & ~default_port_mask ||
-					ioat_enabled_port_mask <= 0) {
+			dma_enabled_port_mask = dma_parse_portmask(optarg);
+			if (dma_enabled_port_mask & ~default_port_mask ||
+					dma_enabled_port_mask <= 0) {
 				printf("Invalid portmask, %s, suggest 0x%x\n",
 						optarg, default_port_mask);
-				ioat_usage(prgname);
+				dma_usage(prgname);
 				return -1;
 			}
 			break;
@@ -682,16 +681,16 @@ ioat_parse_args(int argc, char **argv, unsigned int nb_ports)
 			if (nb_queues == 0 || nb_queues > MAX_RX_QUEUES_COUNT) {
 				printf("Invalid RX queues number %s. Max %u\n",
 					optarg, MAX_RX_QUEUES_COUNT);
-				ioat_usage(prgname);
+				dma_usage(prgname);
 				return -1;
 			}
 			break;
 
 		case 'c':
-			copy_mode = ioat_parse_copy_mode(optarg);
+			copy_mode = dma_parse_copy_mode(optarg);
 			if (copy_mode == COPY_MODE_INVALID_NUM) {
 				printf("Invalid copy type. Use: sw, hw\n");
-				ioat_usage(prgname);
+				dma_usage(prgname);
 				return -1;
 			}
 			break;
@@ -700,7 +699,7 @@ ioat_parse_args(int argc, char **argv, unsigned int nb_ports)
 			ring_size = atoi(optarg);
 			if (ring_size == 0) {
 				printf("Invalid ring size, %s.\n", optarg);
-				ioat_usage(prgname);
+				dma_usage(prgname);
 				return -1;
 			}
 			/* ring_size must be less-than or equal to MBUF_RING_SIZE
@@ -726,7 +725,7 @@ ioat_parse_args(int argc, char **argv, unsigned int nb_ports)
 			break;
 
 		default:
-			ioat_usage(prgname);
+			dma_usage(prgname);
 			return -1;
 		}
 	}
@@ -775,7 +774,7 @@ check_link_status(uint32_t port_mask)
 
 /* Configuration of device. 8< */
 static void
-configure_rawdev_queue(uint32_t dev_id)
+configure_dmadev_queue(uint32_t dev_id)
 {
 	struct rte_dma_info info;
 	struct rte_dma_conf dev_config = { .nb_vchans = 1 };
@@ -802,33 +801,33 @@ configure_rawdev_queue(uint32_t dev_id)
 }
 /* >8 End of configuration of device. */
 
-/* Using IOAT rawdev API functions. 8< */
+/* Using dmadev API functions. 8< */
 static void
-assign_rawdevs(void)
+assign_dmadevs(void)
 {
-	uint16_t nb_rawdev = 0;
-	int16_t rdev_id = rte_dma_next_dev(0);
+	uint16_t nb_dmadev = 0;
+	int16_t dev_id = rte_dma_next_dev(0);
 	uint32_t i, j;
 
 	for (i = 0; i < cfg.nb_ports; i++) {
 		for (j = 0; j < cfg.ports[i].nb_queues; j++) {
-			if (rdev_id == -1)
+			if (dev_id == -1)
 				goto end;
 
-			cfg.ports[i].dmadev_ids[j] = rdev_id;
-			configure_rawdev_queue(cfg.ports[i].dmadev_ids[j]);
-			rdev_id = rte_dma_next_dev(rdev_id + 1);
-			++nb_rawdev;
+			cfg.ports[i].dmadev_ids[j] = dev_id;
+			configure_dmadev_queue(cfg.ports[i].dmadev_ids[j]);
+			dev_id = rte_dma_next_dev(dev_id + 1);
+			++nb_dmadev;
 		}
 	}
 end:
-	if (nb_rawdev < cfg.nb_ports * cfg.ports[0].nb_queues)
+	if (nb_dmadev < cfg.nb_ports * cfg.ports[0].nb_queues)
 		rte_exit(EXIT_FAILURE,
-			"Not enough IOAT rawdevs (%u) for all queues (%u).\n",
-			nb_rawdev, cfg.nb_ports * cfg.ports[0].nb_queues);
-	RTE_LOG(INFO, DMA, "Number of used rawdevs: %u.\n", nb_rawdev);
+			"Not enough dmadevs (%u) for all queues (%u).\n",
+			nb_dmadev, cfg.nb_ports * cfg.ports[0].nb_queues);
+	RTE_LOG(INFO, DMA, "Number of used dmadevs: %u.\n", nb_dmadev);
 }
-/* >8 End of using IOAT rawdev API functions. */
+/* >8 End of using dmadev API functions. */
 
 /* Assign ring structures for packet exchanging. 8< */
 static void
@@ -883,7 +882,7 @@ port_init(uint16_t portid, struct rte_mempool *mbuf_pool, uint16_t nb_queues)
 		local_port_conf.rxmode.mtu = max_frame_size;
 
 	/* Skip ports that are not enabled */
-	if ((ioat_enabled_port_mask & (1 << portid)) == 0) {
+	if ((dma_enabled_port_mask & (1 << portid)) == 0) {
 		printf("Skipping disabled port %u\n", portid);
 		return;
 	}
@@ -910,7 +909,7 @@ port_init(uint16_t portid, struct rte_mempool *mbuf_pool, uint16_t nb_queues)
 			"Cannot adjust number of descriptors: err=%d, port=%u\n",
 			ret, portid);
 
-	rte_eth_macaddr_get(portid, &ioat_ports_eth_addr[portid]);
+	rte_eth_macaddr_get(portid, &dma_ports_eth_addr[portid]);
 
 	/* Init RX queues */
 	rxq_conf = dev_info.default_rxconf;
@@ -969,7 +968,7 @@ port_init(uint16_t portid, struct rte_mempool *mbuf_pool, uint16_t nb_queues)
 
 	printf("Port %u, MAC address: " RTE_ETHER_ADDR_PRT_FMT "\n\n",
 			portid,
-			RTE_ETHER_ADDR_BYTES(&ioat_ports_eth_addr[portid]));
+			RTE_ETHER_ADDR_BYTES(&dma_ports_eth_addr[portid]));
 
 	cfg.ports[cfg.nb_ports].rxtx_port = portid;
 	cfg.ports[cfg.nb_ports++].nb_queues = nb_queues;
@@ -977,11 +976,11 @@ port_init(uint16_t portid, struct rte_mempool *mbuf_pool, uint16_t nb_queues)
 
 /* Get a device dump for each device being used by the application */
 static void
-rawdev_dump(void)
+dmadev_dump(void)
 {
 	uint32_t i, j;
 
-	if (copy_mode != COPY_MODE_IOAT_NUM)
+	if (copy_mode != COPY_MODE_DMA_NUM)
 		return;
 
 	for (i = 0; i < cfg.nb_ports; i++)
@@ -997,7 +996,7 @@ signal_handler(int signum)
 			signum);
 		force_quit = true;
 	} else if (signum == SIGUSR1) {
-		rawdev_dump();
+		dmadev_dump();
 	}
 }
 
@@ -1028,9 +1027,9 @@ main(int argc, char **argv)
 		rte_exit(EXIT_FAILURE, "No Ethernet ports - bye\n");
 
 	/* Parse application arguments (after the EAL ones) */
-	ret = ioat_parse_args(argc, argv, nb_ports);
+	ret = dma_parse_args(argc, argv, nb_ports);
 	if (ret < 0)
-		rte_exit(EXIT_FAILURE, "Invalid IOAT arguments\n");
+		rte_exit(EXIT_FAILURE, "Invalid DMA arguments\n");
 
 	/* Allocates mempool to hold the mbufs. 8< */
 	nb_mbufs = RTE_MAX(nb_ports * (nb_queues * (nb_rxd + nb_txd +
@@ -1041,23 +1040,23 @@ main(int argc, char **argv)
 	/* Create the mbuf pool */
 	sz = max_frame_size + RTE_PKTMBUF_HEADROOM;
 	sz = RTE_MAX(sz, (size_t)RTE_MBUF_DEFAULT_BUF_SIZE);
-	ioat_pktmbuf_pool = rte_pktmbuf_pool_create("mbuf_pool", nb_mbufs,
+	dma_pktmbuf_pool = rte_pktmbuf_pool_create("mbuf_pool", nb_mbufs,
 		MEMPOOL_CACHE_SIZE, 0, sz, rte_socket_id());
-	if (ioat_pktmbuf_pool == NULL)
+	if (dma_pktmbuf_pool == NULL)
 		rte_exit(EXIT_FAILURE, "Cannot init mbuf pool\n");
 	/* >8 End of allocates mempool to hold the mbufs. */
 
 	/* Initialize each port. 8< */
 	cfg.nb_ports = 0;
 	RTE_ETH_FOREACH_DEV(portid)
-		port_init(portid, ioat_pktmbuf_pool, nb_queues);
+		port_init(portid, dma_pktmbuf_pool, nb_queues);
 	/* >8 End of initializing each port. */
 
 	/* Initialize port xstats */
 	memset(&port_statistics, 0, sizeof(port_statistics));
 
 	/* Assigning each port resources. 8< */
-	while (!check_link_status(ioat_enabled_port_mask) && !force_quit)
+	while (!check_link_status(dma_enabled_port_mask) && !force_quit)
 		sleep(1);
 
 	/* Check if there is enough lcores for all ports. */
@@ -1066,8 +1065,8 @@ main(int argc, char **argv)
 		rte_exit(EXIT_FAILURE,
 			"There should be at least one worker lcore.\n");
 
-	if (copy_mode == COPY_MODE_IOAT_NUM)
-		assign_rawdevs();
+	if (copy_mode == COPY_MODE_DMA_NUM)
+		assign_dmadevs();
 
 	assign_rings();
 	/* >8 End of assigning each port resources. */
@@ -1088,9 +1087,9 @@ main(int argc, char **argv)
 				rte_strerror(-ret), cfg.ports[i].rxtx_port);
 
 		rte_eth_dev_close(cfg.ports[i].rxtx_port);
-		if (copy_mode == COPY_MODE_IOAT_NUM) {
+		if (copy_mode == COPY_MODE_DMA_NUM) {
 			for (j = 0; j < cfg.ports[i].nb_queues; j++) {
-				printf("Stopping rawdev %d\n",
+				printf("Stopping dmadev %d\n",
 					cfg.ports[i].dmadev_ids[j]);
 				rte_dma_stop(cfg.ports[i].dmadev_ids[j]);
 			}
