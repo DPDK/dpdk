@@ -343,21 +343,9 @@ mlx5_compress_xform_create(struct rte_compressdev *dev,
 			xfrm->gga_ctrl1 += RTE_MIN(rte_log2_u32(size),
 					 MLX5_COMP_MAX_WIN_SIZE_CONF) <<
 						WQE_GGA_COMP_WIN_SIZE_OFFSET;
-			switch (xform->compress.level) {
-			case RTE_COMP_LEVEL_PMD_DEFAULT:
-				size = MLX5_GGA_COMP_LOG_BLOCK_SIZE_MAX;
-				break;
-			case RTE_COMP_LEVEL_MAX:
-				size = priv->min_block_size;
-				break;
-			default:
-				size = RTE_MAX(MLX5_GGA_COMP_LOG_BLOCK_SIZE_MAX
-					+ 1 - xform->compress.level,
-					priv->min_block_size);
-			}
-			xfrm->gga_ctrl1 += RTE_MIN(size,
-					    MLX5_GGA_COMP_LOG_BLOCK_SIZE_MAX) <<
-						 WQE_GGA_COMP_BLOCK_SIZE_OFFSET;
+			size = MLX5_GGA_COMP_LOG_BLOCK_SIZE_MAX;
+			xfrm->gga_ctrl1 += size <<
+						WQE_GGA_COMP_BLOCK_SIZE_OFFSET;
 			xfrm->opcode += MLX5_OPC_MOD_MMO_COMP <<
 							WQE_CSEG_OPC_MOD_OFFSET;
 			size = xform->compress.deflate.huffman ==
