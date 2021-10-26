@@ -35,6 +35,7 @@
 #include <rte_errno.h>
 #include <rte_spinlock.h>
 #include <rte_string_fns.h>
+#include <rte_telemetry.h>
 
 #include "rte_crypto.h"
 #include "rte_cryptodev.h"
@@ -2429,4 +2430,95 @@ RTE_INIT(cryptodev_init_fp_ops)
 
 	for (i = 0; i != RTE_DIM(rte_crypto_fp_ops); i++)
 		cryptodev_fp_ops_reset(rte_crypto_fp_ops + i);
+}
+
+static int
+cryptodev_handle_dev_list(const char *cmd __rte_unused,
+		const char *params __rte_unused,
+		struct rte_tel_data *d)
+{
+	int dev_id;
+
+	if (rte_cryptodev_count() < 1)
+		return -EINVAL;
+
+	rte_tel_data_start_array(d, RTE_TEL_INT_VAL);
+	for (dev_id = 0; dev_id < RTE_CRYPTO_MAX_DEVS; dev_id++)
+		if (rte_cryptodev_is_valid_dev(dev_id))
+			rte_tel_data_add_array_int(d, dev_id);
+
+	return 0;
+}
+
+static int
+cryptodev_handle_dev_info(const char *cmd __rte_unused,
+		const char *params, struct rte_tel_data *d)
+{
+	struct rte_cryptodev_info cryptodev_info;
+	int dev_id;
+	char *end_param;
+
+	if (params == NULL || strlen(params) == 0 || !isdigit(*params))
+		return -EINVAL;
+
+	dev_id = strtoul(params, &end_param, 0);
+	if (*end_param != '\0')
+		CDEV_LOG_ERR("Extra parameters passed to command, ignoring");
+	if (!rte_cryptodev_is_valid_dev(dev_id))
+		return -EINVAL;
+
+	rte_cryptodev_info_get(dev_id, &cryptodev_info);
+
+	rte_tel_data_start_dict(d);
+	rte_tel_data_add_dict_string(d, "device_name",
+		cryptodev_info.device->name);
+	rte_tel_data_add_dict_int(d, "max_nb_queue_pairs",
+		cryptodev_info.max_nb_queue_pairs);
+
+	return 0;
+}
+
+#define ADD_DICT_STAT(s) rte_tel_data_add_dict_u64(d, #s, cryptodev_stats.s)
+
+static int
+cryptodev_handle_dev_stats(const char *cmd __rte_unused,
+		const char *params,
+		struct rte_tel_data *d)
+{
+	struct rte_cryptodev_stats cryptodev_stats;
+	int dev_id, ret;
+	char *end_param;
+
+	if (params == NULL || strlen(params) == 0 || !isdigit(*params))
+		return -EINVAL;
+
+	dev_id = strtoul(params, &end_param, 0);
+	if (*end_param != '\0')
+		CDEV_LOG_ERR("Extra parameters passed to command, ignoring");
+	if (!rte_cryptodev_is_valid_dev(dev_id))
+		return -EINVAL;
+
+	ret = rte_cryptodev_stats_get(dev_id, &cryptodev_stats);
+	if (ret < 0)
+		return ret;
+
+	rte_tel_data_start_dict(d);
+	ADD_DICT_STAT(enqueued_count);
+	ADD_DICT_STAT(dequeued_count);
+	ADD_DICT_STAT(enqueue_err_count);
+	ADD_DICT_STAT(dequeue_err_count);
+
+	return 0;
+}
+
+RTE_INIT(cryptodev_init_telemetry)
+{
+	rte_telemetry_register_cmd("/cryptodev/info", cryptodev_handle_dev_info,
+			"Returns information for a cryptodev. Parameters: int dev_id");
+	rte_telemetry_register_cmd("/cryptodev/list",
+			cryptodev_handle_dev_list,
+			"Returns list of available crypto devices by IDs. No parameters.");
+	rte_telemetry_register_cmd("/cryptodev/stats",
+			cryptodev_handle_dev_stats,
+			"Returns the stats for a cryptodev. Parameters: int dev_id");
 }

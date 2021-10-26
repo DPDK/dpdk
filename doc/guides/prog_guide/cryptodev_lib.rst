@@ -1282,3 +1282,31 @@ Asymmetric Crypto Device API
 
 The cryptodev Library API is described in the
 `DPDK API Reference <https://doc.dpdk.org/api/>`_
+
+
+Device Statistics
+-----------------
+
+The Cryptodev library has support for displaying Crypto device information
+through the Telemetry interface. Telemetry commands that can be used
+are shown below.
+
+#. Get the list of available Crypto devices by ID::
+
+     --> /cryptodev/list
+     {"/cryptodev/list": [0, 1, 2, 3]}
+
+#. Get general information from a Crypto device::
+
+     --> /cryptodev/info,0
+     {"/cryptodev/info": {"device_name": "0000:1c:01.0_qat_sym",
+     "max_nb_queue_pairs": 2}}
+
+#. Get the statistics for a particular Crypto device::
+
+     --> /cryptodev/stats,0
+     {"/cryptodev/stats": {"enqueued_count": 0, "dequeued_count": 0,
+     "enqueue_err_count": 0, "dequeue_err_count": 0}}
+
+For more information on how to use the Telemetry interface, see
+the :doc:`../howto/telemetry`.
