@@ -1004,6 +1004,20 @@ port_init(uint16_t portid, struct rte_mempool *mbuf_pool, uint16_t nb_queues)
 	cfg.ports[cfg.nb_ports++].nb_queues = nb_queues;
 }
 
+/* Get a device dump for each device being used by the application */
+static void
+rawdev_dump(void)
+{
+	uint32_t i, j;
+
+	if (copy_mode != COPY_MODE_IOAT_NUM)
+		return;
+
+	for (i = 0; i < cfg.nb_ports; i++)
+		for (j = 0; j < cfg.ports[i].nb_queues; j++)
+			rte_rawdev_dump(cfg.ports[i].ioat_ids[j], stdout);
+}
+
 static void
 signal_handler(int signum)
 {
@@ -1011,6 +1025,8 @@ signal_handler(int signum)
 		printf("\n\nSignal %d received, preparing to exit...\n",
 			signum);
 		force_quit = true;
+	} else if (signum == SIGUSR1) {
+		rawdev_dump();
 	}
 }
 
@@ -1034,6 +1050,7 @@ main(int argc, char **argv)
 	force_quit = false;
 	signal(SIGINT, signal_handler);
 	signal(SIGTERM, signal_handler);
+	signal(SIGUSR1, signal_handler);
 
 	nb_ports = rte_eth_dev_count_avail();
 	if (nb_ports == 0)
