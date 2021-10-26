@@ -82,6 +82,16 @@ Limitations
 * Scatter-Gather, SHA and Stateful are not supported.
 * Non-compressed block is not supported in compress (supported in decompress).
 
+Driver options
+--------------
+
+- ``log-block-size`` parameter [int]
+
+  Log of the Huffman block size in the Deflate algorithm.
+  Values from [4-15]; value x means block size is 2^x.
+  The default value is 15.
+
+
 Supported NICs
 --------------
 

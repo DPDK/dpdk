@@ -25,6 +25,10 @@
 #define MLX5_COMPRESS_MAX_QPS 1024
 #define MLX5_COMP_MAX_WIN_SIZE_CONF 6u
 
+struct mlx5_compress_devarg_params {
+	uint32_t log_block_sz;
+};
+
 struct mlx5_compress_xform {
 	LIST_ENTRY(mlx5_compress_xform) next;
 	enum rte_comp_xform_type type;
@@ -51,6 +55,7 @@ struct mlx5_compress_priv {
 	uint32_t mmo_comp_qp:1;
 	uint32_t mmo_dma_sq:1;
 	uint32_t mmo_dma_qp:1;
+	uint32_t log_block_sz;
 #ifndef RTE_ARCH_64
 	rte_spinlock_t uar32_sl;
 #endif /* RTE_ARCH_64 */
@@ -343,7 +348,7 @@ mlx5_compress_xform_create(struct rte_compressdev *dev,
 			xfrm->gga_ctrl1 += RTE_MIN(rte_log2_u32(size),
 					 MLX5_COMP_MAX_WIN_SIZE_CONF) <<
 						WQE_GGA_COMP_WIN_SIZE_OFFSET;
-			size = MLX5_GGA_COMP_LOG_BLOCK_SIZE_MAX;
+			size = priv->log_block_sz;
 			xfrm->gga_ctrl1 += size <<
 						WQE_GGA_COMP_BLOCK_SIZE_OFFSET;
 			xfrm->opcode += MLX5_OPC_MOD_MMO_COMP <<
@@ -694,11 +699,65 @@ mlx5_compress_uar_prepare(struct mlx5_compress_priv *priv)
 }
 
 static int
+mlx5_compress_args_check_handler(const char *key, const char *val, void *opaque)
+{
+	struct mlx5_compress_devarg_params *devarg_prms = opaque;
+
+	if (strcmp(key, "log-block-size") == 0) {
+		errno = 0;
+		devarg_prms->log_block_sz = (uint32_t)strtoul(val, NULL, 10);
+		if (errno) {
+			DRV_LOG(WARNING, "%s: \"%s\" is an invalid integer."
+				, key, val);
+			return -errno;
+		}
+		return 0;
+	}
+	return 0;
+}
+
+static int
+mlx5_compress_handle_devargs(struct rte_devargs *devargs,
+			  struct mlx5_compress_devarg_params *devarg_prms,
+			  struct mlx5_hca_attr *att)
+{
+	struct rte_kvargs *kvlist;
+
+	devarg_prms->log_block_sz = MLX5_GGA_COMP_LOG_BLOCK_SIZE_MAX;
+	if (devargs == NULL)
+		return 0;
+	kvlist = rte_kvargs_parse(devargs->args, NULL);
+	if (kvlist == NULL) {
+		DRV_LOG(ERR, "Failed to parse devargs.");
+		rte_errno = EINVAL;
+		return -1;
+	}
+	if (rte_kvargs_process(kvlist, NULL, mlx5_compress_args_check_handler,
+			   devarg_prms) != 0) {
+		DRV_LOG(ERR, "Devargs handler function Failed.");
+		rte_kvargs_free(kvlist);
+		rte_errno = EINVAL;
+		return -1;
+	}
+	rte_kvargs_free(kvlist);
+	if (devarg_prms->log_block_sz > MLX5_GGA_COMP_LOG_BLOCK_SIZE_MAX ||
+		devarg_prms->log_block_sz < att->compress_min_block_size) {
+		DRV_LOG(WARNING, "Log block size provided is out of range("
+			"%u); default it to %u.",
+			devarg_prms->log_block_sz,
+			MLX5_GGA_COMP_LOG_BLOCK_SIZE_MAX);
+		devarg_prms->log_block_sz = MLX5_GGA_COMP_LOG_BLOCK_SIZE_MAX;
+	}
+	return 0;
+}
+
+static int
 mlx5_compress_dev_probe(struct mlx5_common_device *cdev)
 {
 	struct rte_compressdev *compressdev;
 	struct mlx5_compress_priv *priv;
 	struct mlx5_hca_attr *attr = &cdev->config.hca_attr;
+	struct mlx5_compress_devarg_params devarg_prms = {0};
 	struct rte_compressdev_pmd_init_params init_params = {
 		.name = "",
 		.socket_id = cdev->dev->numa_node,
@@ -718,6 +777,7 @@ mlx5_compress_dev_probe(struct mlx5_common_device *cdev)
 		rte_errno = ENOTSUP;
 		return -ENOTSUP;
 	}
+	mlx5_compress_handle_devargs(cdev->dev->devargs, &devarg_prms, attr);
 	compressdev = rte_compressdev_pmd_create(ibdev_name, cdev->dev,
 						 sizeof(*priv), &init_params);
 	if (compressdev == NULL) {
@@ -731,6 +791,7 @@ mlx5_compress_dev_probe(struct mlx5_common_device *cdev)
 	compressdev->enqueue_burst = mlx5_compress_enqueue_burst;
 	compressdev->feature_flags = RTE_COMPDEV_FF_HW_ACCELERATED;
 	priv = compressdev->data->dev_private;
+	priv->log_block_sz = devarg_prms.log_block_sz;
 	priv->mmo_decomp_sq = attr->mmo_decompress_sq_en;
 	priv->mmo_decomp_qp = attr->mmo_decompress_qp_en;
 	priv->mmo_comp_sq = attr->mmo_compress_sq_en;
