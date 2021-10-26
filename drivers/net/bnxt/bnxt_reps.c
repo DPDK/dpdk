@@ -386,6 +386,26 @@ static int bnxt_vfr_alloc(struct rte_eth_dev *vfr_ethdev)
 	return rc;
 }
 
+static void bnxt_vfr_rx_queue_release_mbufs(struct bnxt_rx_queue *rxq)
+{
+	struct rte_mbuf **sw_ring;
+	unsigned int i;
+
+	if (!rxq || !rxq->rx_ring)
+		return;
+
+	sw_ring = rxq->rx_ring->rx_buf_ring;
+	if (sw_ring) {
+		for (i = 0; i < rxq->rx_ring->rx_ring_struct->ring_size; i++) {
+			if (sw_ring[i]) {
+				if (sw_ring[i] != &rxq->fake_mbuf)
+					rte_pktmbuf_free_seg(sw_ring[i]);
+				sw_ring[i] = NULL;
+			}
+		}
+	}
+}
+
 static void bnxt_rep_free_rx_mbufs(struct bnxt_representor *rep_bp)
 {
 	struct bnxt_rx_queue *rxq;
@@ -393,7 +413,7 @@ static void bnxt_rep_free_rx_mbufs(struct bnxt_representor *rep_bp)
 
 	for (i = 0; i < rep_bp->rx_nr_rings; i++) {
 		rxq = rep_bp->rx_queues[i];
-		bnxt_rx_queue_release_mbufs(rxq);
+		bnxt_vfr_rx_queue_release_mbufs(rxq);
 	}
 }
 
