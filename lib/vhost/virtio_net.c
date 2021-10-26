@@ -933,19 +933,10 @@ async_fill_vec(struct rte_vhost_iovec *v, void *src, void *dst, size_t len)
 }
 
 static __rte_always_inline void
-async_fill_iter(struct rte_vhost_iov_iter *it, size_t count,
-	struct rte_vhost_iovec *vec, unsigned long nr_seg)
+async_fill_iter(struct rte_vhost_iov_iter *it, struct rte_vhost_iovec *vec, unsigned long nr_seg)
 {
-	it->offset = 0;
-	it->count = count;
-
-	if (count) {
-		it->iov = vec;
-		it->nr_segs = nr_seg;
-	} else {
-		it->iov = 0;
-		it->nr_segs = 0;
-	}
+	it->iov = vec;
+	it->nr_segs = nr_seg;
 }
 
 static __rte_always_inline void
@@ -971,7 +962,6 @@ async_mbuf_to_desc(struct virtio_net *dev, struct vhost_virtqueue *vq,
 	uint32_t cpy_len, buf_len;
 	int error = 0;
 
-	uint32_t tlen = 0;
 	int tvec_idx = 0;
 	void *hpa;
 
@@ -1076,7 +1066,6 @@ async_mbuf_to_desc(struct virtio_net *dev, struct vhost_virtqueue *vq,
 				(void *)(uintptr_t)rte_pktmbuf_iova_offset(m,
 				mbuf_offset), hpa, (size_t)mapped_len);
 
-			tlen += (uint32_t)mapped_len;
 			cpy_len -= (uint32_t)mapped_len;
 			mbuf_avail  -= (uint32_t)mapped_len;
 			mbuf_offset += (uint32_t)mapped_len;
@@ -1086,7 +1075,7 @@ async_mbuf_to_desc(struct virtio_net *dev, struct vhost_virtqueue *vq,
 		}
 	}
 
-	async_fill_iter(iter, tlen, iovec, tvec_idx);
+	async_fill_iter(iter, iovec, tvec_idx);
 out:
 	return error;
 }

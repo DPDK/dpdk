@@ -20,10 +20,6 @@ struct rte_vhost_iovec {
  * iovec iterator
  */
 struct rte_vhost_iov_iter {
-	/** offset to the first byte of interesting data */
-	size_t offset;
-	/** total bytes of data in this iterator */
-	size_t count;
 	/** pointer to the iovec array */
 	struct rte_vhost_iovec *iov;
 	/** number of iovec in this iterator */

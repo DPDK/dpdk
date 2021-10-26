@@ -142,10 +142,8 @@ ioat_transfer_data_cb(int vid, uint16_t queue_id,
 				break;
 			while (i_seg < iter->nr_segs) {
 				rte_ioat_enqueue_copy(dev_id,
-					(uintptr_t)(iter->iov[i_seg].src_addr)
-						+ iter->offset,
-					(uintptr_t)(iter->iov[i_seg].dst_addr)
-						+ iter->offset,
+					(uintptr_t)(iter->iov[i_seg].src_addr),
+					(uintptr_t)(iter->iov[i_seg].dst_addr),
 					iter->iov[i_seg].len,
 					0,
 					0);
