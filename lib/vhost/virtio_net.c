@@ -925,15 +925,16 @@ out:
 }
 
 static __rte_always_inline void
-async_fill_vec(struct iovec *v, void *base, size_t len)
+async_fill_vec(struct rte_vhost_iovec *v, void *src, void *dst, size_t len)
 {
-	v->iov_base = base;
-	v->iov_len = len;
+	v->src_addr = src;
+	v->dst_addr = dst;
+	v->len = len;
 }
 
 static __rte_always_inline void
 async_fill_iter(struct rte_vhost_iov_iter *it, size_t count,
-	struct iovec *vec, unsigned long nr_seg)
+	struct rte_vhost_iovec *vec, unsigned long nr_seg)
 {
 	it->offset = 0;
 	it->count = count;
@@ -948,20 +949,16 @@ async_fill_iter(struct rte_vhost_iov_iter *it, size_t count,
 }
 
 static __rte_always_inline void
-async_fill_desc(struct rte_vhost_async_desc *desc,
-	struct rte_vhost_iov_iter *src, struct rte_vhost_iov_iter *dst)
+async_fill_desc(struct rte_vhost_async_desc *desc, struct rte_vhost_iov_iter *iter)
 {
-	desc->src = src;
-	desc->dst = dst;
+	desc->iter = iter;
 }
 
 static __rte_always_inline int
 async_mbuf_to_desc(struct virtio_net *dev, struct vhost_virtqueue *vq,
 			struct rte_mbuf *m, struct buf_vector *buf_vec,
 			uint16_t nr_vec, uint16_t num_buffers,
-			struct iovec *src_iovec, struct iovec *dst_iovec,
-			struct rte_vhost_iov_iter *src_it,
-			struct rte_vhost_iov_iter *dst_it)
+			struct rte_vhost_iovec *iovec, struct rte_vhost_iov_iter *iter)
 {
 	struct rte_mbuf *hdr_mbuf;
 	struct virtio_net_hdr_mrg_rxbuf tmp_hdr, *hdr = NULL;
@@ -1075,11 +1072,9 @@ async_mbuf_to_desc(struct virtio_net *dev, struct vhost_virtqueue *vq,
 				goto out;
 			}
 
-			async_fill_vec(src_iovec + tvec_idx,
+			async_fill_vec(iovec + tvec_idx,
 				(void *)(uintptr_t)rte_pktmbuf_iova_offset(m,
-				mbuf_offset), (size_t)mapped_len);
-			async_fill_vec(dst_iovec + tvec_idx,
-					hpa, (size_t)mapped_len);
+				mbuf_offset), hpa, (size_t)mapped_len);
 
 			tlen += (uint32_t)mapped_len;
 			cpy_len -= (uint32_t)mapped_len;
@@ -1091,8 +1086,7 @@ async_mbuf_to_desc(struct virtio_net *dev, struct vhost_virtqueue *vq,
 		}
 	}
 
-	async_fill_iter(src_it, tlen, src_iovec, tvec_idx);
-	async_fill_iter(dst_it, tlen, dst_iovec, tvec_idx);
+	async_fill_iter(iter, tlen, iovec, tvec_idx);
 out:
 	return error;
 }
@@ -1509,11 +1503,9 @@ virtio_dev_rx_async_submit_split(struct virtio_net *dev,
 	uint16_t avail_head;
 
 	struct vhost_async *async = vq->async;
-	struct rte_vhost_iov_iter *src_iter = async->src_iov_iter;
-	struct rte_vhost_iov_iter *dst_iter = async->dst_iov_iter;
+	struct rte_vhost_iov_iter *iter = async->iov_iter;
 	struct rte_vhost_async_desc tdes[MAX_PKT_BURST];
-	struct iovec *src_iovec = async->src_iovec;
-	struct iovec *dst_iovec = async->dst_iovec;
+	struct rte_vhost_iovec *iovec = async->iovec;
 	struct async_inflight_info *pkts_info = async->pkts_info;
 	uint32_t n_pkts = 0, pkt_err = 0;
 	int32_t n_xfer;
@@ -1545,19 +1537,18 @@ virtio_dev_rx_async_submit_split(struct virtio_net *dev,
 			vq->last_avail_idx + num_buffers);
 
 		if (async_mbuf_to_desc(dev, vq, pkts[pkt_idx], buf_vec, nr_vec, num_buffers,
-				&src_iovec[iovec_idx], &dst_iovec[iovec_idx],
-				&src_iter[it_idx], &dst_iter[it_idx]) < 0) {
+				&iovec[iovec_idx], &iter[it_idx]) < 0) {
 			vq->shadow_used_idx -= num_buffers;
 			break;
 		}
 
-		async_fill_desc(&tdes[pkt_burst_idx++], &src_iter[it_idx], &dst_iter[it_idx]);
+		async_fill_desc(&tdes[pkt_burst_idx++], &iter[it_idx]);
 
 		slot_idx = (async->pkts_idx + pkt_idx) & (vq->size - 1);
 		pkts_info[slot_idx].descs = num_buffers;
 		pkts_info[slot_idx].mbuf = pkts[pkt_idx];
 
-		iovec_idx += src_iter[it_idx].nr_segs;
+		iovec_idx += iter[it_idx].nr_segs;
 		it_idx++;
 
 		vq->last_avail_idx += num_buffers;
@@ -1707,9 +1698,8 @@ vhost_enqueue_async_packed(struct virtio_net *dev,
 			    struct buf_vector *buf_vec,
 			    uint16_t *nr_descs,
 			    uint16_t *nr_buffers,
-			    struct iovec *src_iovec, struct iovec *dst_iovec,
-			    struct rte_vhost_iov_iter *src_it,
-			    struct rte_vhost_iov_iter *dst_it)
+			    struct rte_vhost_iovec *iovec,
+			    struct rte_vhost_iov_iter *iter)
 {
 	uint16_t nr_vec = 0;
 	uint16_t avail_idx = vq->last_avail_idx;
@@ -1757,8 +1747,7 @@ vhost_enqueue_async_packed(struct virtio_net *dev,
 	}
 
 	if (unlikely(async_mbuf_to_desc(dev, vq, pkt, buf_vec, nr_vec,
-					*nr_buffers, src_iovec, dst_iovec,
-					src_it, dst_it) < 0))
+					*nr_buffers, iovec, iter) < 0))
 		return -1;
 
 	vhost_shadow_enqueue_packed(vq, buffer_len, buffer_buf_id, buffer_desc_count, *nr_buffers);
@@ -1769,14 +1758,12 @@ vhost_enqueue_async_packed(struct virtio_net *dev,
 static __rte_always_inline int16_t
 virtio_dev_rx_async_packed(struct virtio_net *dev, struct vhost_virtqueue *vq,
 			    struct rte_mbuf *pkt, uint16_t *nr_descs, uint16_t *nr_buffers,
-			    struct iovec *src_iovec, struct iovec *dst_iovec,
-			    struct rte_vhost_iov_iter *src_it, struct rte_vhost_iov_iter *dst_it)
+			    struct rte_vhost_iovec *iovec, struct rte_vhost_iov_iter *iter)
 {
 	struct buf_vector buf_vec[BUF_VECTOR_MAX];
 
 	if (unlikely(vhost_enqueue_async_packed(dev, vq, pkt, buf_vec, nr_descs, nr_buffers,
-						 src_iovec, dst_iovec,
-						 src_it, dst_it) < 0)) {
+						 iovec, iter) < 0)) {
 		VHOST_LOG_DATA(DEBUG, "(%d) failed to get enough desc from vring\n", dev->vid);
 		return -1;
 	}
@@ -1825,11 +1812,9 @@ virtio_dev_rx_async_submit_packed(struct virtio_net *dev,
 	uint16_t num_descs;
 
 	struct vhost_async *async = vq->async;
-	struct rte_vhost_iov_iter *src_iter = async->src_iov_iter;
-	struct rte_vhost_iov_iter *dst_iter = async->dst_iov_iter;
+	struct rte_vhost_iov_iter *iter = async->iov_iter;
 	struct rte_vhost_async_desc tdes[MAX_PKT_BURST];
-	struct iovec *src_iovec = async->src_iovec;
-	struct iovec *dst_iovec = async->dst_iovec;
+	struct rte_vhost_iovec *iovec = async->iovec;
 	struct async_inflight_info *pkts_info = async->pkts_info;
 	uint32_t n_pkts = 0, pkt_err = 0;
 	uint16_t slot_idx = 0;
@@ -1842,17 +1827,16 @@ virtio_dev_rx_async_submit_packed(struct virtio_net *dev,
 		num_descs = 0;
 		if (unlikely(virtio_dev_rx_async_packed(dev, vq, pkts[pkt_idx],
 						&num_descs, &num_buffers,
-						&src_iovec[iovec_idx], &dst_iovec[iovec_idx],
-						&src_iter[it_idx], &dst_iter[it_idx]) < 0))
+						&iovec[iovec_idx], &iter[it_idx]) < 0))
 			break;
 
 		slot_idx = (async->pkts_idx + pkt_idx) % vq->size;
 
-		async_fill_desc(&tdes[pkt_burst_idx++], &src_iter[it_idx], &dst_iter[it_idx]);
+		async_fill_desc(&tdes[pkt_burst_idx++], &iter[it_idx]);
 		pkts_info[slot_idx].descs = num_descs;
 		pkts_info[slot_idx].nr_buffers = num_buffers;
 		pkts_info[slot_idx].mbuf = pkts[pkt_idx];
-		iovec_idx += src_iter[it_idx].nr_segs;
+		iovec_idx += iter[it_idx].nr_segs;
 		it_idx++;
 
 		pkt_idx++;

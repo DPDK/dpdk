@@ -8,6 +8,15 @@
 #include "rte_vhost.h"
 
 /**
+ * iovec
+ */
+struct rte_vhost_iovec {
+	void *src_addr;
+	void *dst_addr;
+	size_t len;
+};
+
+/**
  * iovec iterator
  */
 struct rte_vhost_iov_iter {
@@ -16,19 +25,17 @@ struct rte_vhost_iov_iter {
 	/** total bytes of data in this iterator */
 	size_t count;
 	/** pointer to the iovec array */
-	struct iovec *iov;
+	struct rte_vhost_iovec *iov;
 	/** number of iovec in this iterator */
 	unsigned long nr_segs;
 };
 
 /**
- * dma transfer descriptor pair
+ * dma transfer descriptor
  */
 struct rte_vhost_async_desc {
-	/** source memory iov_iter */
-	struct rte_vhost_iov_iter *src;
-	/** destination memory iov_iter */
-	struct rte_vhost_iov_iter *dst;
+	/* memory iov_iter */
+	struct rte_vhost_iov_iter *iter;
 };
 
 /**

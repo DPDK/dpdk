@@ -129,33 +129,31 @@ ioat_transfer_data_cb(int vid, uint16_t queue_id,
 {
 	uint32_t i_desc;
 	uint16_t dev_id = dma_bind[vid].dmas[queue_id * 2 + VIRTIO_RXQ].dev_id;
-	struct rte_vhost_iov_iter *src = NULL;
-	struct rte_vhost_iov_iter *dst = NULL;
+	struct rte_vhost_iov_iter *iter = NULL;
 	unsigned long i_seg;
 	unsigned short mask = MAX_ENQUEUED_SIZE - 1;
 	unsigned short write = cb_tracker[dev_id].next_write;
 
 	if (!opaque_data) {
 		for (i_desc = 0; i_desc < count; i_desc++) {
-			src = descs[i_desc].src;
-			dst = descs[i_desc].dst;
+			iter = descs[i_desc].iter;
 			i_seg = 0;
-			if (cb_tracker[dev_id].ioat_space < src->nr_segs)
+			if (cb_tracker[dev_id].ioat_space < iter->nr_segs)
 				break;
-			while (i_seg < src->nr_segs) {
+			while (i_seg < iter->nr_segs) {
 				rte_ioat_enqueue_copy(dev_id,
-					(uintptr_t)(src->iov[i_seg].iov_base)
-						+ src->offset,
-					(uintptr_t)(dst->iov[i_seg].iov_base)
-						+ dst->offset,
-					src->iov[i_seg].iov_len,
+					(uintptr_t)(iter->iov[i_seg].src_addr)
+						+ iter->offset,
+					(uintptr_t)(iter->iov[i_seg].dst_addr)
+						+ iter->offset,
+					iter->iov[i_seg].len,
 					0,
 					0);
 				i_seg++;
 			}
 			write &= mask;
-			cb_tracker[dev_id].size_track[write] = src->nr_segs;
-			cb_tracker[dev_id].ioat_space -= src->nr_segs;
+			cb_tracker[dev_id].size_track[write] = iter->nr_segs;
+			cb_tracker[dev_id].ioat_space -= iter->nr_segs;
 			write++;
 		}
 	} else {
