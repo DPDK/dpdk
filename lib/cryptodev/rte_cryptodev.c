@@ -2511,6 +2511,64 @@ cryptodev_handle_dev_stats(const char *cmd __rte_unused,
 	return 0;
 }
 
+#define CRYPTO_CAPS_SZ                                             \
+	(RTE_ALIGN_CEIL(sizeof(struct rte_cryptodev_capabilities), \
+					sizeof(uint64_t)) /        \
+	 sizeof(uint64_t))
+
+static int
+crypto_caps_array(struct rte_tel_data *d,
+		  const struct rte_cryptodev_capabilities *capabilities)
+{
+	const struct rte_cryptodev_capabilities *dev_caps;
+	uint64_t caps_val[CRYPTO_CAPS_SZ];
+	unsigned int i = 0, j;
+
+	rte_tel_data_start_array(d, RTE_TEL_U64_VAL);
+
+	while ((dev_caps = &capabilities[i++])->op !=
+			RTE_CRYPTO_OP_TYPE_UNDEFINED) {
+		memset(&caps_val, 0, CRYPTO_CAPS_SZ * sizeof(caps_val[0]));
+		rte_memcpy(caps_val, dev_caps, sizeof(capabilities[0]));
+		for (j = 0; j < CRYPTO_CAPS_SZ; j++)
+			rte_tel_data_add_array_u64(d, caps_val[j]);
+	}
+
+	return i;
+}
+
+static int
+cryptodev_handle_dev_caps(const char *cmd __rte_unused, const char *params,
+			  struct rte_tel_data *d)
+{
+	struct rte_cryptodev_info dev_info;
+	struct rte_tel_data *crypto_caps;
+	int crypto_caps_n;
+	char *end_param;
+	int dev_id;
+
+	if (!params || strlen(params) == 0 || !isdigit(*params))
+		return -EINVAL;
+
+	dev_id = strtoul(params, &end_param, 0);
+	if (*end_param != '\0')
+		CDEV_LOG_ERR("Extra parameters passed to command, ignoring");
+	if (!rte_cryptodev_is_valid_dev(dev_id))
+		return -EINVAL;
+
+	rte_tel_data_start_dict(d);
+	crypto_caps = rte_tel_data_alloc();
+	if (!crypto_caps)
+		return -ENOMEM;
+
+	rte_cryptodev_info_get(dev_id, &dev_info);
+	crypto_caps_n = crypto_caps_array(crypto_caps, dev_info.capabilities);
+	rte_tel_data_add_dict_container(d, "crypto_caps", crypto_caps, 0);
+	rte_tel_data_add_dict_int(d, "crypto_caps_n", crypto_caps_n);
+
+	return 0;
+}
+
 RTE_INIT(cryptodev_init_telemetry)
 {
 	rte_telemetry_register_cmd("/cryptodev/info", cryptodev_handle_dev_info,
@@ -2521,4 +2579,7 @@ RTE_INIT(cryptodev_init_telemetry)
 	rte_telemetry_register_cmd("/cryptodev/stats",
 			cryptodev_handle_dev_stats,
 			"Returns the stats for a cryptodev. Parameters: int dev_id");
+	rte_telemetry_register_cmd("/cryptodev/caps",
+			cryptodev_handle_dev_caps,
+			"Returns the capabilities for a cryptodev. Parameters: int dev_id");
 }

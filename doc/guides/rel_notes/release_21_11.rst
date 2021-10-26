@@ -237,6 +237,7 @@ New Features
 
   Added telemetry callback functions which allow a list of crypto devices,
   stats for a crypto device, and other device information to be queried.
+  Also added callback to get cryptodev capabilities.
 
 * **Updated Marvell cnxk crypto PMD.**
 
