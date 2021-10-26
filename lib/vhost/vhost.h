@@ -48,7 +48,7 @@
 
 #define MAX_PKT_BURST 32
 
-#define VHOST_MAX_ASYNC_IT (MAX_PKT_BURST * 2)
+#define VHOST_MAX_ASYNC_IT (MAX_PKT_BURST)
 #define VHOST_MAX_ASYNC_VEC (BUF_VECTOR_MAX * 2)
 
 #define PACKED_DESC_ENQUEUE_USED_FLAG(w)	\
@@ -132,7 +132,8 @@ struct vhost_async {
 	/* operation callbacks for DMA */
 	struct rte_vhost_async_channel_ops ops;
 
-	struct rte_vhost_iov_iter it_pool[VHOST_MAX_ASYNC_IT];
+	struct rte_vhost_iov_iter src_iov_iter[VHOST_MAX_ASYNC_IT];
+	struct rte_vhost_iov_iter dst_iov_iter[VHOST_MAX_ASYNC_IT];
 	struct iovec src_iovec[VHOST_MAX_ASYNC_VEC];
 	struct iovec dst_iovec[VHOST_MAX_ASYNC_VEC];
 
