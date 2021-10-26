@@ -790,6 +790,16 @@ skip_cosq_cfg:
 		goto err_out;
 	}
 
+	for (j = 0; j < bp->rx_nr_rings; j++) {
+		struct bnxt_rx_queue *rxq = bp->rx_queues[j];
+
+		if (!rxq->rx_deferred_start) {
+			bp->eth_dev->data->rx_queue_state[j] =
+				RTE_ETH_QUEUE_STATE_STARTED;
+			rxq->rx_started = true;
+		}
+	}
+
 	/* default vnic 0 */
 	rc = bnxt_setup_one_vnic(bp, 0);
 	if (rc)
@@ -810,16 +820,6 @@ skip_cosq_cfg:
 			bp->eth_dev->data->tx_queue_state[j] =
 				RTE_ETH_QUEUE_STATE_STARTED;
 			txq->tx_started = true;
-		}
-	}
-
-	for (j = 0; j < bp->rx_nr_rings; j++) {
-		struct bnxt_rx_queue *rxq = bp->rx_queues[j];
-
-		if (!rxq->rx_deferred_start) {
-			bp->eth_dev->data->rx_queue_state[j] =
-				RTE_ETH_QUEUE_STATE_STARTED;
-			rxq->rx_started = true;
 		}
 	}
 
