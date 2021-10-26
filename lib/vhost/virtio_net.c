@@ -792,6 +792,109 @@ copy_vnet_hdr_to_desc(struct virtio_net *dev, struct vhost_virtqueue *vq,
 }
 
 static __rte_always_inline int
+async_iter_initialize(struct vhost_async *async)
+{
+	struct rte_vhost_iov_iter *iter;
+
+	if (unlikely(async->iovec_idx >= VHOST_MAX_ASYNC_VEC)) {
+		VHOST_LOG_DATA(ERR, "no more async iovec available\n");
+		return -1;
+	}
+
+	iter = async->iov_iter + async->iter_idx;
+	iter->iov = async->iovec + async->iovec_idx;
+	iter->nr_segs = 0;
+
+	return 0;
+}
+
+static __rte_always_inline int
+async_iter_add_iovec(struct vhost_async *async, void *src, void *dst, size_t len)
+{
+	struct rte_vhost_iov_iter *iter;
+	struct rte_vhost_iovec *iovec;
+
+	if (unlikely(async->iovec_idx >= VHOST_MAX_ASYNC_VEC)) {
+		static bool vhost_max_async_vec_log;
+
+		if (!vhost_max_async_vec_log) {
+			VHOST_LOG_DATA(ERR, "no more async iovec available\n");
+			vhost_max_async_vec_log = true;
+		}
+
+		return -1;
+	}
+
+	iter = async->iov_iter + async->iter_idx;
+	iovec = async->iovec + async->iovec_idx;
+
+	iovec->src_addr = src;
+	iovec->dst_addr = dst;
+	iovec->len = len;
+
+	iter->nr_segs++;
+	async->iovec_idx++;
+
+	return 0;
+}
+
+static __rte_always_inline void
+async_iter_finalize(struct vhost_async *async)
+{
+	async->iter_idx++;
+}
+
+static __rte_always_inline void
+async_iter_cancel(struct vhost_async *async)
+{
+	struct rte_vhost_iov_iter *iter;
+
+	iter = async->iov_iter + async->iter_idx;
+	async->iovec_idx -= iter->nr_segs;
+	iter->nr_segs = 0;
+	iter->iov = NULL;
+}
+
+static __rte_always_inline void
+async_iter_reset(struct vhost_async *async)
+{
+	async->iter_idx = 0;
+	async->iovec_idx = 0;
+}
+
+static __rte_always_inline int
+async_mbuf_to_desc_seg(struct virtio_net *dev, struct vhost_virtqueue *vq,
+		struct rte_mbuf *m, uint32_t mbuf_offset,
+		uint64_t buf_iova, uint32_t cpy_len)
+{
+	struct vhost_async *async = vq->async;
+	uint64_t mapped_len;
+	uint32_t buf_offset = 0;
+	void *hpa;
+
+	while (cpy_len) {
+		hpa = (void *)(uintptr_t)gpa_to_first_hpa(dev,
+				buf_iova + buf_offset, cpy_len, &mapped_len);
+		if (unlikely(!hpa)) {
+			VHOST_LOG_DATA(ERR, "(%d) %s: failed to get hpa.\n", dev->vid, __func__);
+			return -1;
+		}
+
+		if (unlikely(async_iter_add_iovec(async,
+						(void *)(uintptr_t)rte_pktmbuf_iova_offset(m,
+							mbuf_offset),
+						hpa, (size_t)mapped_len)))
+			return -1;
+
+		cpy_len -= (uint32_t)mapped_len;
+		mbuf_offset += (uint32_t)mapped_len;
+		buf_offset += (uint32_t)mapped_len;
+	}
+
+	return 0;
+}
+
+static __rte_always_inline int
 copy_mbuf_to_desc(struct virtio_net *dev, struct vhost_virtqueue *vq,
 			    struct rte_mbuf *m, struct buf_vector *buf_vec,
 			    uint16_t nr_vec, uint16_t num_buffers)
@@ -925,77 +1028,6 @@ out:
 }
 
 static __rte_always_inline int
-async_iter_initialize(struct vhost_async *async)
-{
-	struct rte_vhost_iov_iter *iter;
-
-	if (unlikely(async->iovec_idx >= VHOST_MAX_ASYNC_VEC)) {
-		VHOST_LOG_DATA(ERR, "no more async iovec available\n");
-		return -1;
-	}
-
-	iter = async->iov_iter + async->iter_idx;
-	iter->iov = async->iovec + async->iovec_idx;
-	iter->nr_segs = 0;
-
-	return 0;
-}
-
-static __rte_always_inline int
-async_iter_add_iovec(struct vhost_async *async, void *src, void *dst, size_t len)
-{
-	struct rte_vhost_iov_iter *iter;
-	struct rte_vhost_iovec *iovec;
-
-	if (unlikely(async->iovec_idx >= VHOST_MAX_ASYNC_VEC)) {
-		static bool vhost_max_async_vec_log;
-
-		if (!vhost_max_async_vec_log) {
-			VHOST_LOG_DATA(ERR, "no more async iovec available\n");
-			vhost_max_async_vec_log = true;
-		}
-
-		return -1;
-	}
-
-	iter = async->iov_iter + async->iter_idx;
-	iovec = async->iovec + async->iovec_idx;
-
-	iovec->src_addr = src;
-	iovec->dst_addr = dst;
-	iovec->len = len;
-
-	iter->nr_segs++;
-	async->iovec_idx++;
-
-	return 0;
-}
-
-static __rte_always_inline void
-async_iter_finalize(struct vhost_async *async)
-{
-	async->iter_idx++;
-}
-
-static __rte_always_inline void
-async_iter_cancel(struct vhost_async *async)
-{
-	struct rte_vhost_iov_iter *iter;
-
-	iter = async->iov_iter + async->iter_idx;
-	async->iovec_idx -= iter->nr_segs;
-	iter->nr_segs = 0;
-	iter->iov = NULL;
-}
-
-static __rte_always_inline void
-async_iter_reset(struct vhost_async *async)
-{
-	async->iter_idx = 0;
-	async->iovec_idx = 0;
-}
-
-static __rte_always_inline int
 async_mbuf_to_desc(struct virtio_net *dev, struct vhost_virtqueue *vq,
 			struct rte_mbuf *m, struct buf_vector *buf_vec,
 			uint16_t nr_vec, uint16_t num_buffers)
@@ -1005,13 +1037,10 @@ async_mbuf_to_desc(struct virtio_net *dev, struct vhost_virtqueue *vq,
 	struct virtio_net_hdr_mrg_rxbuf tmp_hdr, *hdr = NULL;
 	uint64_t buf_addr, buf_iova;
 	uint64_t hdr_addr;
-	uint64_t mapped_len;
 	uint32_t vec_idx = 0;
 	uint32_t mbuf_offset, mbuf_avail;
 	uint32_t buf_offset, buf_avail;
 	uint32_t cpy_len, buf_len;
-
-	void *hpa;
 
 	if (unlikely(m == NULL))
 		return -1;
@@ -1096,28 +1125,15 @@ async_mbuf_to_desc(struct virtio_net *dev, struct vhost_virtqueue *vq,
 
 		cpy_len = RTE_MIN(buf_avail, mbuf_avail);
 
-		while (unlikely(cpy_len)) {
-			hpa = (void *)(uintptr_t)gpa_to_first_hpa(dev,
-					buf_iova + buf_offset,
-					cpy_len, &mapped_len);
-			if (unlikely(!hpa)) {
-				VHOST_LOG_DATA(ERR, "(%d) %s: failed to get hpa.\n",
-				dev->vid, __func__);
-				goto error;
-			}
-
-			if (unlikely(async_iter_add_iovec(async,
-					(void *)(uintptr_t)rte_pktmbuf_iova_offset(m,
-						mbuf_offset),
-					hpa, (size_t)mapped_len)))
-				goto error;
-
-			cpy_len -= (uint32_t)mapped_len;
-			mbuf_avail  -= (uint32_t)mapped_len;
-			mbuf_offset += (uint32_t)mapped_len;
-			buf_avail  -= (uint32_t)mapped_len;
-			buf_offset += (uint32_t)mapped_len;
+		if (async_mbuf_to_desc_seg(dev, vq, m, mbuf_offset,
+					buf_iova + buf_offset, cpy_len) < 0) {
+			goto error;
 		}
+
+		mbuf_avail  -= cpy_len;
+		mbuf_offset += cpy_len;
+		buf_avail  -= cpy_len;
+		buf_offset += cpy_len;
 	}
 
 	async_iter_finalize(async);
