@@ -1943,9 +1943,6 @@ container_dma_unmap(struct vfio_config *vfio_cfg, uint64_t vaddr, uint64_t iova,
 	 * mappings, let's just rebuild them using information we have.
 	 */
 
-	/* do we have partial unmap capability? */
-	has_partial_unmap = vfio_cfg->vfio_iommu_type->partial_unmap;
-
 	/*
 	 * first thing to do is check if there exists a mapping that includes
 	 * the start and the end of our requested unmap. We need to collect all
@@ -1960,6 +1957,9 @@ container_dma_unmap(struct vfio_config *vfio_cfg, uint64_t vaddr, uint64_t iova,
 		ret = -1;
 		goto out;
 	}
+
+	/* do we have partial unmap capability? */
+	has_partial_unmap = vfio_cfg->vfio_iommu_type->partial_unmap;
 
 	/*
 	 * if we don't support partial unmap, we must check if start and end of
