@@ -22,7 +22,7 @@ const struct rte_pci_id pci_id_idxd_map[] = {
 static inline int
 idxd_pci_dev_command(struct idxd_dmadev *idxd, enum rte_idxd_cmds command)
 {
-	uint8_t err_code;
+	uint32_t err_code;
 	uint16_t qid = idxd->qid;
 	int i = 0;
 
@@ -37,7 +37,8 @@ idxd_pci_dev_command(struct idxd_dmadev *idxd, enum rte_idxd_cmds command)
 		if (++i >= 1000) {
 			IDXD_PMD_ERR("Timeout waiting for command response from HW");
 			rte_spinlock_unlock(&idxd->u.pci->lk);
-			return err_code;
+			err_code &= CMDSTATUS_ERR_MASK;
+			return -err_code;
 		}
 	} while (err_code & CMDSTATUS_ACTIVE_MASK);
 	rte_spinlock_unlock(&idxd->u.pci->lk);
