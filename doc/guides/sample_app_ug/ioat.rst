@@ -46,7 +46,7 @@ The application requires a number of command line options:
 .. code-block:: console
 
     ./<build_dir>/examples/dpdk-ioat [EAL options] -- [-p MASK] [-q NQ] [-s RS] [-c <sw|hw>]
-        [--[no-]mac-updating] [-b BS]
+        [--[no-]mac-updating] [-b BS] [-f FS]
 
 where,
 
@@ -65,6 +65,8 @@ where,
     or not (default is mac-updating)
 
 *   b BS: set the DMA batch size
+
+*   f FS: set the max frame size
 
 The application can be launched in various configurations depending on
 provided parameters. The app can use up to 2 lcores: one of them receives

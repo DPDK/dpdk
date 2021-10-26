@@ -25,6 +25,7 @@
 #define CMD_LINE_OPT_COPY_TYPE "copy-type"
 #define CMD_LINE_OPT_RING_SIZE "ring-size"
 #define CMD_LINE_OPT_BATCH_SIZE "dma-batch-size"
+#define CMD_LINE_OPT_FRAME_SIZE "max-frame-size"
 
 /* configurable number of RX/TX ring descriptors */
 #define RX_DEFAULT_RINGSIZE 1024
@@ -104,6 +105,7 @@ static uint16_t nb_txd = TX_DEFAULT_RINGSIZE;
 static volatile bool force_quit;
 
 static uint32_t ioat_batch_sz = MAX_PKT_BURST;
+static uint32_t max_frame_size = RTE_ETHER_MAX_LEN;
 
 /* ethernet addresses of ports */
 static struct rte_ether_addr ioat_ports_eth_addr[RTE_MAX_ETHPORTS];
@@ -604,6 +606,7 @@ ioat_usage(const char *prgname)
 {
 	printf("%s [EAL options] -- -p PORTMASK [-q NQ]\n"
 		"  -b --dma-batch-size: number of requests per DMA batch\n"
+		"  -f --max-frame-size: max frame size\n"
 		"  -p --portmask: hexadecimal bitmask of ports to configure\n"
 		"  -q NQ: number of RX queues per port (default is 1)\n"
 		"  --[no-]mac-updating: Enable or disable MAC addresses updating (enabled by default)\n"
@@ -647,6 +650,7 @@ ioat_parse_args(int argc, char **argv, unsigned int nb_ports)
 	static const char short_options[] =
 		"b:"  /* dma batch size */
 		"c:"  /* copy type (sw|hw) */
+		"f:"  /* max frame size */
 		"p:"  /* portmask */
 		"q:"  /* number of RX queues per port */
 		"s:"  /* ring size */
@@ -660,6 +664,7 @@ ioat_parse_args(int argc, char **argv, unsigned int nb_ports)
 		{CMD_LINE_OPT_COPY_TYPE, required_argument, NULL, 'c'},
 		{CMD_LINE_OPT_RING_SIZE, required_argument, NULL, 's'},
 		{CMD_LINE_OPT_BATCH_SIZE, required_argument, NULL, 'b'},
+		{CMD_LINE_OPT_FRAME_SIZE, required_argument, NULL, 'f'},
 		{NULL, 0, 0, 0}
 	};
 
@@ -684,6 +689,15 @@ ioat_parse_args(int argc, char **argv, unsigned int nb_ports)
 				return -1;
 			}
 			break;
+		case 'f':
+			max_frame_size = atoi(optarg);
+			if (max_frame_size > RTE_ETHER_MAX_JUMBO_FRAME_LEN) {
+				printf("Invalid max frame size, %s.\n", optarg);
+				ioat_usage(prgname);
+				return -1;
+			}
+			break;
+
 		/* portmask */
 		case 'p':
 			ioat_enabled_port_mask = ioat_parse_portmask(optarg);
@@ -879,6 +893,9 @@ port_init(uint16_t portid, struct rte_mempool *mbuf_pool, uint16_t nb_queues)
 	struct rte_eth_dev_info dev_info;
 	int ret, i;
 
+	if (max_frame_size > local_port_conf.rxmode.mtu)
+		local_port_conf.rxmode.mtu = max_frame_size;
+
 	/* Skip ports that are not enabled */
 	if ((ioat_enabled_port_mask & (1 << portid)) == 0) {
 		printf("Skipping disabled port %u\n", portid);
@@ -989,6 +1006,7 @@ main(int argc, char **argv)
 	uint16_t nb_ports, portid;
 	uint32_t i;
 	unsigned int nb_mbufs;
+	size_t sz;
 
 	/* Init EAL. 8< */
 	ret = rte_eal_init(argc, argv);
@@ -1018,9 +1036,10 @@ main(int argc, char **argv)
 		MIN_POOL_SIZE);
 
 	/* Create the mbuf pool */
+	sz = max_frame_size + RTE_PKTMBUF_HEADROOM;
+	sz = RTE_MAX(sz, (size_t)RTE_MBUF_DEFAULT_BUF_SIZE);
 	ioat_pktmbuf_pool = rte_pktmbuf_pool_create("mbuf_pool", nb_mbufs,
-		MEMPOOL_CACHE_SIZE, 0, RTE_MBUF_DEFAULT_BUF_SIZE,
-		rte_socket_id());
+		MEMPOOL_CACHE_SIZE, 0, sz, rte_socket_id());
 	if (ioat_pktmbuf_pool == NULL)
 		rte_exit(EXIT_FAILURE, "Cannot init mbuf pool\n");
 	/* >8 End of allocates mempool to hold the mbufs. */
