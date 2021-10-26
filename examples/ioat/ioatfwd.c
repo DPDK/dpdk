@@ -24,6 +24,7 @@
 #define CMD_LINE_OPT_NB_QUEUE "nb-queue"
 #define CMD_LINE_OPT_COPY_TYPE "copy-type"
 #define CMD_LINE_OPT_RING_SIZE "ring-size"
+#define CMD_LINE_OPT_BATCH_SIZE "dma-batch-size"
 
 /* configurable number of RX/TX ring descriptors */
 #define RX_DEFAULT_RINGSIZE 1024
@@ -101,6 +102,8 @@ static uint16_t nb_rxd = RX_DEFAULT_RINGSIZE;
 static uint16_t nb_txd = TX_DEFAULT_RINGSIZE;
 
 static volatile bool force_quit;
+
+static uint32_t ioat_batch_sz = MAX_PKT_BURST;
 
 /* ethernet addresses of ports */
 static struct rte_ether_addr ioat_ports_eth_addr[RTE_MAX_ETHPORTS];
@@ -374,15 +377,25 @@ ioat_enqueue_packets(struct rte_mbuf *pkts[], struct rte_mbuf *pkts_copy[],
 
 static inline uint32_t
 ioat_enqueue(struct rte_mbuf *pkts[], struct rte_mbuf *pkts_copy[],
-	uint32_t num, uint16_t dev_id)
+		uint32_t num, uint32_t step, uint16_t dev_id)
 {
-	uint32_t n;
+	uint32_t i, k, m, n;
 
-	n = ioat_enqueue_packets(pkts, pkts_copy, num, dev_id);
-	if (n > 0)
-		rte_ioat_perform_ops(dev_id);
+	k = 0;
+	for (i = 0; i < num; i += m) {
 
-	return n;
+		m = RTE_MIN(step, num - i);
+		n = ioat_enqueue_packets(pkts + i, pkts_copy + i, m, dev_id);
+		k += n;
+		if (n > 0)
+			rte_ioat_perform_ops(dev_id);
+
+		/* don't try to enqueue more if HW queue is full */
+		if (n != m)
+			break;
+	}
+
+	return k;
 }
 
 static inline uint32_t
@@ -439,7 +452,7 @@ ioat_rx_port(struct rxtx_port_config *rx_config)
 
 			/* enqueue packets for  hardware copy */
 			nb_enq = ioat_enqueue(pkts_burst, pkts_burst_copy,
-				nb_rx, rx_config->ioat_ids[i]);
+				nb_rx, ioat_batch_sz, rx_config->ioat_ids[i]);
 
 			/* free any not enqueued packets. */
 			rte_mempool_put_bulk(ioat_pktmbuf_pool,
@@ -590,6 +603,7 @@ static void
 ioat_usage(const char *prgname)
 {
 	printf("%s [EAL options] -- -p PORTMASK [-q NQ]\n"
+		"  -b --dma-batch-size: number of requests per DMA batch\n"
 		"  -p --portmask: hexadecimal bitmask of ports to configure\n"
 		"  -q NQ: number of RX queues per port (default is 1)\n"
 		"  --[no-]mac-updating: Enable or disable MAC addresses updating (enabled by default)\n"
@@ -631,9 +645,10 @@ static int
 ioat_parse_args(int argc, char **argv, unsigned int nb_ports)
 {
 	static const char short_options[] =
+		"b:"  /* dma batch size */
+		"c:"  /* copy type (sw|hw) */
 		"p:"  /* portmask */
 		"q:"  /* number of RX queues per port */
-		"c:"  /* copy type (sw|hw) */
 		"s:"  /* ring size */
 		;
 
@@ -644,6 +659,7 @@ ioat_parse_args(int argc, char **argv, unsigned int nb_ports)
 		{CMD_LINE_OPT_NB_QUEUE, required_argument, NULL, 'q'},
 		{CMD_LINE_OPT_COPY_TYPE, required_argument, NULL, 'c'},
 		{CMD_LINE_OPT_RING_SIZE, required_argument, NULL, 's'},
+		{CMD_LINE_OPT_BATCH_SIZE, required_argument, NULL, 'b'},
 		{NULL, 0, 0, 0}
 	};
 
@@ -660,6 +676,14 @@ ioat_parse_args(int argc, char **argv, unsigned int nb_ports)
 			lgopts, &option_index)) != EOF) {
 
 		switch (opt) {
+		case 'b':
+			ioat_batch_sz = atoi(optarg);
+			if (ioat_batch_sz > MAX_PKT_BURST) {
+				printf("Invalid dma batch size, %s.\n", optarg);
+				ioat_usage(prgname);
+				return -1;
+			}
+			break;
 		/* portmask */
 		case 'p':
 			ioat_enabled_port_mask = ioat_parse_portmask(optarg);

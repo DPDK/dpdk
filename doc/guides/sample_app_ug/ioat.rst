@@ -46,7 +46,7 @@ The application requires a number of command line options:
 .. code-block:: console
 
     ./<build_dir>/examples/dpdk-ioat [EAL options] -- [-p MASK] [-q NQ] [-s RS] [-c <sw|hw>]
-        [--[no-]mac-updating]
+        [--[no-]mac-updating] [-b BS]
 
 where,
 
@@ -63,6 +63,8 @@ where,
 
 *   --[no-]mac-updating: Whether MAC address of packets should be changed
     or not (default is mac-updating)
+
+*   b BS: set the DMA batch size
 
 The application can be launched in various configurations depending on
 provided parameters. The app can use up to 2 lcores: one of them receives
