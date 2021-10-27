@@ -5880,7 +5880,7 @@ parse_vc_item_l2tpv2_type(struct context *ctx, const struct token *token,
 	struct rte_flow_item_l2tpv2 *l2tpv2_mask;
 	struct rte_flow_item *item;
 	uint32_t data_size;
-	uint8_t msg_type = 0;
+	uint16_t msg_type = 0;
 	struct buffer *out = buf;
 	const struct arg *arg;
 
