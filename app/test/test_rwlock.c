@@ -506,48 +506,6 @@ try_rwlock_test_rde_wro(void)
 	return process_try_lcore_stats();
 }
 
-static int
-test_rwlock(void)
-{
-	uint32_t i;
-	int32_t rc, ret;
-
-	static const struct {
-		const char *name;
-		int (*ftst)(void);
-	} test[] = {
-		{
-			.name = "rwlock_test1",
-			.ftst = rwlock_test1,
-		},
-		{
-			.name = "try_rwlock_test_rda",
-			.ftst = try_rwlock_test_rda,
-		},
-		{
-			.name = "try_rwlock_test_rds_wrm",
-			.ftst = try_rwlock_test_rds_wrm,
-		},
-		{
-			.name = "try_rwlock_test_rde_wro",
-			.ftst = try_rwlock_test_rde_wro,
-		},
-	};
-
-	ret = 0;
-	for (i = 0; i != RTE_DIM(test); i++) {
-		printf("starting test %s;\n", test[i].name);
-		rc = test[i].ftst();
-		printf("test %s completed with status %d\n", test[i].name, rc);
-		ret |= rc;
-	}
-
-	return ret;
-}
-
-REGISTER_TEST_COMMAND(rwlock_autotest, test_rwlock);
-
-/* subtests used in meson for CI */
 REGISTER_TEST_COMMAND(rwlock_test1_autotest, rwlock_test1);
 REGISTER_TEST_COMMAND(rwlock_rda_autotest, try_rwlock_test_rda);
 REGISTER_TEST_COMMAND(rwlock_rds_wrm_autotest, try_rwlock_test_rds_wrm);
