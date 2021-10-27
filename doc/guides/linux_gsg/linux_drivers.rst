@@ -65,6 +65,12 @@ The token will be used for all PF and VF ports within the application.
 
       sudo modprobe vfio-pci enable_sriov=1
 
+   Alternatively, pass the ``enable_sriov`` parameter through the ``sysfs`` if the module is already loaded or is built-in:
+
+   .. code-block:: console
+
+      echo 1 | sudo tee /sys/module/vfio_pci/parameters/enable_sriov
+
 #. Bind the PCI devices to ``vfio-pci`` driver
 
    .. code-block:: console
