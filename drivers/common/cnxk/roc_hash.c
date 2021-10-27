@@ -23,7 +23,7 @@ roc_hash_sha1_gen(uint8_t *msg, uint32_t *hash)
 			       0x67452301, 0xEFCDAB89, 0x98BADCFE, 0x10325476,
 			       0xC3D2E1F0};
 	int i;
-	uint32_t temp;		/* Temporary word value */
+	uint32_t temp = 0;	/* Temporary word value */
 	uint32_t W[80];		/* Word sequence */
 	uint32_t A, B, C, D, E; /* Word buffers */
 
