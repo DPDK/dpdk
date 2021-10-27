@@ -323,6 +323,7 @@ test_fib_perf(void)
 	struct rte_fib_conf config;
 
 	config.max_routes = 2000000;
+	config.rib_ext_sz = 0;
 	config.type = RTE_FIB_DIR24_8;
 	config.default_nh = 0;
 	config.dir24_8.nh_sz = RTE_FIB_DIR24_8_4B;

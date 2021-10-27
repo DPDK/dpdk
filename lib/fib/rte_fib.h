@@ -80,6 +80,8 @@ struct rte_fib_conf {
 	/** Default value returned on lookup if there is no route */
 	uint64_t default_nh;
 	int	max_routes;
+	/** Size of the node extension in the internal RIB struct */
+	unsigned int rib_ext_sz;
 	union {
 		struct {
 			enum rte_fib_dir24_8_nh_sz nh_sz;

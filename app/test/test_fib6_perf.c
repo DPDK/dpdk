@@ -78,6 +78,7 @@ test_fib6_perf(void)
 	conf.type = RTE_FIB6_TRIE;
 	conf.default_nh = 0;
 	conf.max_routes = 1000000;
+	conf.rib_ext_sz = 0;
 	conf.trie.nh_sz = RTE_FIB6_TRIE_4B;
 	conf.trie.num_tbl8 = RTE_MIN(get_max_nh(conf.trie.nh_sz), 1000000U);
 

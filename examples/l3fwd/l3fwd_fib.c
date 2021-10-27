@@ -590,6 +590,7 @@ setup_fib(const int socketid)
 	/* Create the fib IPv4 table. */
 	config_ipv4.type = RTE_FIB_DIR24_8;
 	config_ipv4.max_routes = (1 << 16);
+	config_ipv4.rib_ext_sz = 0;
 	config_ipv4.default_nh = FIB_DEFAULT_HOP;
 	config_ipv4.dir24_8.nh_sz = RTE_FIB_DIR24_8_4B;
 	config_ipv4.dir24_8.num_tbl8 = (1 << 15);
@@ -639,6 +640,7 @@ setup_fib(const int socketid)
 
 	config.type = RTE_FIB6_TRIE;
 	config.max_routes = (1 << 16) - 1;
+	config.rib_ext_sz = 0;
 	config.default_nh = FIB_DEFAULT_HOP;
 	config.trie.nh_sz = RTE_FIB6_TRIE_4B;
 	config.trie.num_tbl8 = (1 << 15);

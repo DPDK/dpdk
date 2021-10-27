@@ -462,6 +462,9 @@ API Changes
 * eventdev: Moved memory used by timer adapters to hugepage. This will prevent
   TLB misses if any and aligns to memory structure of other subsystems.
 
+* fib: Added the ``rib_ext_sz`` field to ``rte_fib_conf`` and ``rte_fib6_conf``
+  so that user can specify the size of the RIB extension inside the FIB.
+
 
 ABI Changes
 -----------

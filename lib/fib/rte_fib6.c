@@ -165,7 +165,7 @@ rte_fib6_create(const char *name, int socket_id, struct rte_fib6_conf *conf)
 		return NULL;
 	}
 
-	rib_conf.ext_sz = 0;
+	rib_conf.ext_sz = conf->rib_ext_sz;
 	rib_conf.max_nodes = conf->max_routes * 2;
 
 	rib = rte_rib6_create(name, socket_id, &rib_conf);

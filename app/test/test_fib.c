@@ -36,6 +36,7 @@ test_create_invalid(void)
 	struct rte_fib_conf config;
 
 	config.max_routes = MAX_ROUTES;
+	config.rib_ext_sz = 0;
 	config.default_nh = 0;
 	config.type = RTE_FIB_DUMMY;
 
@@ -94,6 +95,7 @@ test_multiple_create(void)
 	struct rte_fib_conf config;
 	int32_t i;
 
+	config.rib_ext_sz = 0;
 	config.default_nh = 0;
 	config.type = RTE_FIB_DUMMY;
 
@@ -120,6 +122,7 @@ test_free_null(void)
 	struct rte_fib_conf config;
 
 	config.max_routes = MAX_ROUTES;
+	config.rib_ext_sz = 0;
 	config.default_nh = 0;
 	config.type = RTE_FIB_DUMMY;
 
@@ -146,6 +149,7 @@ test_add_del_invalid(void)
 	uint8_t depth = 24;
 
 	config.max_routes = MAX_ROUTES;
+	config.rib_ext_sz = 0;
 	config.default_nh = 0;
 	config.type = RTE_FIB_DUMMY;
 
@@ -320,6 +324,7 @@ test_lookup(void)
 	int ret;
 
 	config.max_routes = MAX_ROUTES;
+	config.rib_ext_sz = 0;
 	config.default_nh = def_nh;
 	config.type = RTE_FIB_DUMMY;
 
