@@ -10,7 +10,6 @@ endif
 
 headers = files('rte_pmd_bnxt.h')
 cflags_options = [
-        '-DRTE_LIBRTE_BNXT_TF',
         '-DSUPPORT_CFA_HW_ALL=1',
 ]
 
