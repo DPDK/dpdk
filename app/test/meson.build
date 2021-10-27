@@ -291,6 +291,13 @@ fast_tests = [
         ['trace_autotest', true],
 ]
 
+# Tests known to have issues or which don't belong in other tests lists.
+extra_test_names = [
+        'alarm_autotest', # ee00af60170b ("test: remove strict timing requirements some tests")
+        'cycles_autotest', # ee00af60170b ("test: remove strict timing requirements some tests")
+        'delay_us_sleep_autotest', # ee00af60170b ("test: remove strict timing requirements some tests")
+]
+
 perf_test_names = [
         'ring_perf_autotest',
         'mempool_perf_autotest',
@@ -535,4 +542,12 @@ foreach arg : dump_test_names
             timeout : timeout_seconds,
             is_parallel : false,
             suite : 'debug-tests')
+endforeach
+
+foreach arg : extra_test_names
+    test(arg, dpdk_test,
+            env : ['DPDK_TEST=' + arg],
+            timeout : timeout_seconds,
+            is_parallel : false,
+            suite : 'extra-tests')
 endforeach
