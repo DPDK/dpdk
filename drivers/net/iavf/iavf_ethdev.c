@@ -2332,7 +2332,7 @@ iavf_dev_init(struct rte_eth_dev *eth_dev)
 	}
 
 	/* set default ptype table */
-	adapter->ptype_tbl = iavf_get_default_ptype_table();
+	iavf_set_default_ptype_table(eth_dev);
 
 	/* copy mac addr */
 	eth_dev->data->mac_addrs = rte_zmalloc(
