@@ -10438,6 +10438,10 @@ str2flowtype(char *string)
 		{"ipv6-sctp", RTE_ETH_FLOW_NONFRAG_IPV6_SCTP},
 		{"ipv6-other", RTE_ETH_FLOW_NONFRAG_IPV6_OTHER},
 		{"l2_payload", RTE_ETH_FLOW_L2_PAYLOAD},
+		{"ipv6-ex", RTE_ETH_FLOW_IPV6_EX},
+		{"ipv6-tcp-ex", RTE_ETH_FLOW_IPV6_TCP_EX},
+		{"ipv6-udp-ex", RTE_ETH_FLOW_IPV6_UDP_EX},
+		{"gtpu", RTE_ETH_FLOW_GTPU},
 	};
 
 	for (i = 0; i < RTE_DIM(flowtype_str); i++) {
