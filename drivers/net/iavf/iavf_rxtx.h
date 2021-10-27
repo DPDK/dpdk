@@ -484,7 +484,7 @@ int iavf_txq_vec_setup_avx512(struct iavf_tx_queue *txq);
 
 uint8_t iavf_proto_xtr_type_to_rxdid(uint8_t xtr_type);
 
-const uint32_t *iavf_get_default_ptype_table(void);
+void iavf_set_default_ptype_table(struct rte_eth_dev *dev);
 
 static inline
 void iavf_dump_rx_descriptor(struct iavf_rx_queue *rxq,

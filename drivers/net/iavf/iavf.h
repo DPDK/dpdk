@@ -201,7 +201,7 @@ struct iavf_adapter {
 	/* For vector PMD */
 	bool rx_vec_allowed;
 	bool tx_vec_allowed;
-	const uint32_t *ptype_tbl;
+	uint32_t ptype_tbl[IAVF_MAX_PKT_TYPE] __rte_cache_min_aligned;
 	bool stopped;
 	uint16_t fdir_ref_cnt;
 	struct iavf_devargs devargs;

@@ -2680,8 +2680,8 @@ iavf_dev_tx_desc_status(void *tx_queue, uint16_t offset)
 	return RTE_ETH_TX_DESC_FULL;
 }
 
-const uint32_t *
-iavf_get_default_ptype_table(void)
+static inline uint32_t
+iavf_get_default_ptype(uint16_t ptype)
 {
 	static const uint32_t ptype_tbl[IAVF_MAX_PKT_TYPE]
 		__rte_cache_aligned = {
@@ -3216,5 +3216,16 @@ iavf_get_default_ptype_table(void)
 		/* All others reserved */
 	};
 
-	return ptype_tbl;
+	return ptype_tbl[ptype];
+}
+
+void __rte_cold
+iavf_set_default_ptype_table(struct rte_eth_dev *dev)
+{
+	struct iavf_adapter *ad =
+		IAVF_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
+	int i;
+
+	for (i = 0; i < IAVF_MAX_PKT_TYPE; i++)
+		ad->ptype_tbl[i] = iavf_get_default_ptype(i);
 }
