@@ -370,9 +370,6 @@ struct virtio_net {
 	uint32_t		nr_vring;
 	int			async_copy;
 
-	/* Record the dma map status for each region. */
-	bool			*async_map_status;
-
 	int			extbuf;
 	int			linearbuf;
 	struct vhost_virtqueue	*virtqueue[VHOST_MAX_QUEUE_PAIRS * 2];

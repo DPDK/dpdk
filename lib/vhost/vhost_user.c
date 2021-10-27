@@ -144,7 +144,7 @@ get_blk_size(int fd)
 }
 
 static int
-async_dma_map(struct rte_vhost_mem_region *region, bool *dma_map_success, bool do_map)
+async_dma_map(struct rte_vhost_mem_region *region, bool do_map)
 {
 	uint64_t host_iova;
 	int ret = 0;
@@ -156,8 +156,6 @@ async_dma_map(struct rte_vhost_mem_region *region, bool *dma_map_success, bool d
 						 region->host_user_addr,
 						 host_iova,
 						 region->size);
-		*dma_map_success = ret == 0;
-
 		if (ret) {
 			/*
 			 * DMA device may bind with kernel driver, in this case,
@@ -175,26 +173,24 @@ async_dma_map(struct rte_vhost_mem_region *region, bool *dma_map_success, bool d
 				return 0;
 
 			VHOST_LOG_CONFIG(ERR, "DMA engine map failed\n");
-			return ret;
-
+			/* DMA mapping errors won't stop VHST_USER_SET_MEM_TABLE. */
+			return 0;
 		}
 
 	} else {
-		/* No need to do vfio unmap if the map failed. */
-		if (!*dma_map_success)
-			return 0;
-
 		/* Remove mapped region from the default container of DPDK. */
 		ret = rte_vfio_container_dma_unmap(RTE_VFIO_DEFAULT_CONTAINER_FD,
 						   region->host_user_addr,
 						   host_iova,
 						   region->size);
 		if (ret) {
+			/* like DMA map, ignore the kernel driver case when unmap. */
+			if (rte_errno == EINVAL)
+				return 0;
+
 			VHOST_LOG_CONFIG(ERR, "DMA engine unmap failed\n");
 			return ret;
 		}
-		/* Clear the flag once the unmap succeeds. */
-		*dma_map_success = 0;
 	}
 
 	return ret;
@@ -213,7 +209,7 @@ free_mem_region(struct virtio_net *dev)
 		reg = &dev->mem->regions[i];
 		if (reg->host_user_addr) {
 			if (dev->async_copy && rte_vfio_is_enabled("vfio"))
-				async_dma_map(reg, &dev->async_map_status[i], false);
+				async_dma_map(reg, false);
 
 			munmap(reg->mmap_addr, reg->mmap_size);
 			close(reg->fd);
@@ -228,11 +224,6 @@ vhost_backend_cleanup(struct virtio_net *dev)
 		free_mem_region(dev);
 		rte_free(dev->mem);
 		dev->mem = NULL;
-
-		if (dev->async_map_status) {
-			rte_free(dev->async_map_status);
-			dev->async_map_status = NULL;
-		}
 	}
 
 	rte_free(dev->guest_pages);
@@ -687,19 +678,6 @@ out_dev_realloc:
 		return dev;
 	}
 	dev->mem = mem;
-
-	if (dev->async_copy && rte_vfio_is_enabled("vfio")) {
-		if (dev->async_map_status == NULL) {
-			dev->async_map_status = rte_zmalloc_socket("async-dma-map-status",
-					sizeof(bool) * dev->mem->nregions, 0, node);
-			if (!dev->async_map_status) {
-				VHOST_LOG_CONFIG(ERR,
-					"(%d) failed to realloc dma mapping status on node\n",
-					dev->vid);
-				return dev;
-			}
-		}
-	}
 
 	gp = rte_realloc_socket(dev->guest_pages, dev->max_guest_pages * sizeof(*gp),
 			RTE_CACHE_LINE_SIZE, node);
@@ -1231,7 +1209,6 @@ vhost_user_postcopy_register(struct virtio_net *dev, int main_fd,
 static int
 vhost_user_mmap_region(struct virtio_net *dev,
 		struct rte_vhost_mem_region *region,
-		uint32_t region_index,
 		uint64_t mmap_offset)
 {
 	void *mmap_addr;
@@ -1294,16 +1271,14 @@ vhost_user_mmap_region(struct virtio_net *dev,
 
 	if (dev->async_copy) {
 		if (add_guest_pages(dev, region, alignment) < 0) {
-			VHOST_LOG_CONFIG(ERR,
-					"adding guest pages to region failed.\n");
+			VHOST_LOG_CONFIG(ERR, "adding guest pages to region failed.\n");
 			return -1;
 		}
 
 		if (rte_vfio_is_enabled("vfio")) {
-			ret = async_dma_map(region, &dev->async_map_status[region_index], true);
+			ret = async_dma_map(region, true);
 			if (ret) {
-				VHOST_LOG_CONFIG(ERR, "Configure IOMMU for DMA "
-							"engine failed\n");
+				VHOST_LOG_CONFIG(ERR, "Configure IOMMU for DMA engine failed\n");
 				return -1;
 			}
 		}
@@ -1381,11 +1356,6 @@ vhost_user_set_mem_table(struct virtio_net **pdev, struct VhostUserMsg *msg,
 		free_mem_region(dev);
 		rte_free(dev->mem);
 		dev->mem = NULL;
-
-		if (dev->async_map_status) {
-			rte_free(dev->async_map_status);
-			dev->async_map_status = NULL;
-		}
 	}
 
 	/* Flush IOTLB cache as previous HVAs are now invalid */
@@ -1426,17 +1396,6 @@ vhost_user_set_mem_table(struct virtio_net **pdev, struct VhostUserMsg *msg,
 		goto free_guest_pages;
 	}
 
-	if (dev->async_copy) {
-		dev->async_map_status = rte_zmalloc_socket("async-dma-map-status",
-					sizeof(bool) * memory->nregions, 0, numa_node);
-		if (!dev->async_map_status) {
-			VHOST_LOG_CONFIG(ERR,
-				"(%d) failed to allocate memory for dma mapping status\n",
-				dev->vid);
-			goto free_mem_table;
-		}
-	}
-
 	for (i = 0; i < memory->nregions; i++) {
 		reg = &dev->mem->regions[i];
 
@@ -1453,7 +1412,7 @@ vhost_user_set_mem_table(struct virtio_net **pdev, struct VhostUserMsg *msg,
 
 		mmap_offset = memory->regions[i].mmap_offset;
 
-		if (vhost_user_mmap_region(dev, reg, i, mmap_offset) < 0) {
+		if (vhost_user_mmap_region(dev, reg, mmap_offset) < 0) {
 			VHOST_LOG_CONFIG(ERR, "Failed to mmap region %u\n", i);
 			goto free_mem_table;
 		}
@@ -1501,10 +1460,7 @@ free_mem_table:
 	free_mem_region(dev);
 	rte_free(dev->mem);
 	dev->mem = NULL;
-	if (dev->async_map_status) {
-		rte_free(dev->async_map_status);
-		dev->async_map_status = NULL;
-	}
+
 free_guest_pages:
 	rte_free(dev->guest_pages);
 	dev->guest_pages = NULL;
