@@ -3175,11 +3175,14 @@ flow_dv_validate_action_set_meta(struct rte_eth_dev *dev,
 				 const struct rte_flow_attr *attr,
 				 struct rte_flow_error *error)
 {
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_dev_config *config = &priv->config;
 	const struct rte_flow_action_set_meta *conf;
 	uint32_t nic_mask = UINT32_MAX;
 	int reg;
 
-	if (!mlx5_flow_ext_mreg_supported(dev))
+	if (config->dv_xmeta_en != MLX5_XMETA_MODE_LEGACY &&
+	    !mlx5_flow_ext_mreg_supported(dev))
 		return rte_flow_error_set(error, ENOTSUP,
 					  RTE_FLOW_ERROR_TYPE_ACTION, action,
 					  "extended metadata register"
@@ -4911,15 +4914,27 @@ flow_dv_validate_action_modify_field(struct rte_eth_dev *dev,
 				"modifications of the GENEVE Network"
 				" Identifier is not supported");
 	if (action_modify_field->dst.field == RTE_FLOW_FIELD_MARK ||
-	    action_modify_field->src.field == RTE_FLOW_FIELD_MARK ||
-	    action_modify_field->dst.field == RTE_FLOW_FIELD_META ||
-	    action_modify_field->src.field == RTE_FLOW_FIELD_META) {
+	    action_modify_field->src.field == RTE_FLOW_FIELD_MARK)
 		if (config->dv_xmeta_en == MLX5_XMETA_MODE_LEGACY ||
 		    !mlx5_flow_ext_mreg_supported(dev))
 			return rte_flow_error_set(error, ENOTSUP,
 					RTE_FLOW_ERROR_TYPE_ACTION, action,
-					"cannot modify mark or metadata without"
-					" extended metadata register support");
+					"cannot modify mark in legacy mode"
+					" or without extensive registers");
+	if (action_modify_field->dst.field == RTE_FLOW_FIELD_META ||
+	    action_modify_field->src.field == RTE_FLOW_FIELD_META) {
+		if (config->dv_xmeta_en != MLX5_XMETA_MODE_LEGACY &&
+		    !mlx5_flow_ext_mreg_supported(dev))
+			return rte_flow_error_set(error, ENOTSUP,
+					RTE_FLOW_ERROR_TYPE_ACTION, action,
+					"cannot modify meta without"
+					" extensive registers support");
+		ret = flow_dv_get_metadata_reg(dev, attr, error);
+		if (ret < 0 || ret == REG_NON)
+			return rte_flow_error_set(error, ENOTSUP,
+					RTE_FLOW_ERROR_TYPE_ACTION, action,
+					"cannot modify meta without"
+					" extensive registers available");
 	}
 	if (action_modify_field->operation != RTE_FLOW_MODIFY_SET)
 		return rte_flow_error_set(error, ENOTSUP,
