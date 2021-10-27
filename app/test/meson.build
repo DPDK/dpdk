@@ -251,7 +251,6 @@ fast_tests = [
         ['pflock_autotest', true],
         ['prefetch_autotest', true],
         ['rcu_qsbr_autotest', true],
-        ['red_autotest', true],
         ['pie_autotest', true],
         ['rib_autotest', true],
         ['rib6_autotest', true],
@@ -296,6 +295,7 @@ extra_test_names = [
         'alarm_autotest', # ee00af60170b ("test: remove strict timing requirements some tests")
         'cycles_autotest', # ee00af60170b ("test: remove strict timing requirements some tests")
         'delay_us_sleep_autotest', # ee00af60170b ("test: remove strict timing requirements some tests")
+        'red_autotest', # https://bugs.dpdk.org/show_bug.cgi?id=826
 ]
 
 perf_test_names = [
