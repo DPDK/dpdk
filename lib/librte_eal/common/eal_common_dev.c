@@ -575,7 +575,7 @@ int
 rte_dev_iterator_init(struct rte_dev_iterator *it,
 		      const char *dev_str)
 {
-	struct rte_devargs devargs;
+	struct rte_devargs devargs = { .bus = NULL };
 	struct rte_class *cls = NULL;
 	struct rte_bus *bus = NULL;
 
