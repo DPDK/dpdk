@@ -2,6 +2,7 @@
  * Copyright(c) 2018 Gaëtan Rivet
  */
 
+#include <rte_debug.h>
 #include "rte_ethdev.h"
 #include "ethdev_driver.h"
 #include "ethdev_private.h"
@@ -175,22 +176,58 @@ done:
 	return str == NULL ? -1 : 0;
 }
 
+struct dummy_queue {
+	bool rx_warn_once;
+	bool tx_warn_once;
+};
+static struct dummy_queue *dummy_queues_array[RTE_MAX_ETHPORTS][RTE_MAX_QUEUES_PER_PORT];
+static struct dummy_queue per_port_queues[RTE_MAX_ETHPORTS];
+RTE_INIT(dummy_queue_init)
+{
+	uint16_t port_id;
+
+	for (port_id = 0; port_id < RTE_DIM(per_port_queues); port_id++) {
+		unsigned int q;
+
+		for (q = 0; q < RTE_DIM(dummy_queues_array[port_id]); q++)
+			dummy_queues_array[port_id][q] = &per_port_queues[port_id];
+	}
+}
+
 static uint16_t
-dummy_eth_rx_burst(__rte_unused void *rxq,
+dummy_eth_rx_burst(void *rxq,
 		__rte_unused struct rte_mbuf **rx_pkts,
 		__rte_unused uint16_t nb_pkts)
 {
-	RTE_ETHDEV_LOG(ERR, "rx_pkt_burst for not ready port\n");
+	struct dummy_queue *queue = rxq;
+	uintptr_t port_id;
+
+	port_id = queue - per_port_queues;
+	if (port_id < RTE_DIM(per_port_queues) && !queue->rx_warn_once) {
+		RTE_ETHDEV_LOG(ERR, "lcore %u called rx_pkt_burst for not ready port %"PRIuPTR"\n",
+			rte_lcore_id(), port_id);
+		rte_dump_stack();
+		queue->rx_warn_once = true;
+	}
 	rte_errno = ENOTSUP;
 	return 0;
 }
 
 static uint16_t
-dummy_eth_tx_burst(__rte_unused void *txq,
+dummy_eth_tx_burst(void *txq,
 		__rte_unused struct rte_mbuf **tx_pkts,
 		__rte_unused uint16_t nb_pkts)
 {
-	RTE_ETHDEV_LOG(ERR, "tx_pkt_burst for not ready port\n");
+	struct dummy_queue *queue = txq;
+	uintptr_t port_id;
+
+	port_id = queue - per_port_queues;
+	if (port_id < RTE_DIM(per_port_queues) && !queue->tx_warn_once) {
+		RTE_ETHDEV_LOG(ERR, "lcore %u called tx_pkt_burst for not ready port %"PRIuPTR"\n",
+			rte_lcore_id(), port_id);
+		rte_dump_stack();
+		queue->tx_warn_once = true;
+	}
 	rte_errno = ENOTSUP;
 	return 0;
 }
@@ -199,14 +236,22 @@ void
 eth_dev_fp_ops_reset(struct rte_eth_fp_ops *fpo)
 {
 	static void *dummy_data[RTE_MAX_QUEUES_PER_PORT];
-	static const struct rte_eth_fp_ops dummy_ops = {
+	uintptr_t port_id = fpo - rte_eth_fp_ops;
+
+	per_port_queues[port_id].rx_warn_once = false;
+	per_port_queues[port_id].tx_warn_once = false;
+	*fpo = (struct rte_eth_fp_ops) {
 		.rx_pkt_burst = dummy_eth_rx_burst,
 		.tx_pkt_burst = dummy_eth_tx_burst,
-		.rxq = {.data = dummy_data, .clbk = dummy_data,},
-		.txq = {.data = dummy_data, .clbk = dummy_data,},
+		.rxq = {
+			.data = (void **)&dummy_queues_array[port_id],
+			.clbk = dummy_data,
+		},
+		.txq = {
+			.data = (void **)&dummy_queues_array[port_id],
+			.clbk = dummy_data,
+		},
 	};
-
-	*fpo = dummy_ops;
 }
 
 void
