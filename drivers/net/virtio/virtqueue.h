@@ -201,6 +201,28 @@ struct virtio_net_ctrl_mac {
 #define VIRTIO_NET_CTRL_VLAN_ADD 0
 #define VIRTIO_NET_CTRL_VLAN_DEL 1
 
+/**
+ * RSS control
+ *
+ * The RSS feature configuration message is sent by the driver when
+ * VIRTIO_NET_F_RSS has been negotiated. It provides the device with
+ * hash types to use, hash key and indirection table. In this
+ * implementation, the driver only supports fixed key length (40B)
+ * and indirection table size (128 entries).
+ */
+#define VIRTIO_NET_RSS_RETA_SIZE 128
+#define VIRTIO_NET_RSS_KEY_SIZE 40
+
+struct virtio_net_ctrl_rss {
+	uint32_t hash_types;
+	uint16_t indirection_table_mask;
+	uint16_t unclassified_queue;
+	uint16_t indirection_table[VIRTIO_NET_RSS_RETA_SIZE];
+	uint16_t max_tx_vq;
+	uint8_t hash_key_length;
+	uint8_t hash_key_data[VIRTIO_NET_RSS_KEY_SIZE];
+};
+
 /*
  * Control link announce acknowledgement
  *
@@ -292,7 +314,10 @@ struct virtqueue {
 
 /* If multiqueue is provided by host, then we suppport it. */
 #define VIRTIO_NET_CTRL_MQ   4
+
 #define VIRTIO_NET_CTRL_MQ_VQ_PAIRS_SET        0
+#define VIRTIO_NET_CTRL_MQ_RSS_CONFIG          1
+
 #define VIRTIO_NET_CTRL_MQ_VQ_PAIRS_MIN        1
 #define VIRTIO_NET_CTRL_MQ_VQ_PAIRS_MAX        0x8000
 

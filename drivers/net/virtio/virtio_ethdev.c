@@ -51,6 +51,16 @@ static int virtio_dev_info_get(struct rte_eth_dev *dev,
 static int virtio_dev_link_update(struct rte_eth_dev *dev,
 	int wait_to_complete);
 static int virtio_dev_vlan_offload_set(struct rte_eth_dev *dev, int mask);
+static int virtio_dev_rss_hash_update(struct rte_eth_dev *dev,
+		struct rte_eth_rss_conf *rss_conf);
+static int virtio_dev_rss_hash_conf_get(struct rte_eth_dev *dev,
+		struct rte_eth_rss_conf *rss_conf);
+static int virtio_dev_rss_reta_update(struct rte_eth_dev *dev,
+			 struct rte_eth_rss_reta_entry64 *reta_conf,
+			 uint16_t reta_size);
+static int virtio_dev_rss_reta_query(struct rte_eth_dev *dev,
+			 struct rte_eth_rss_reta_entry64 *reta_conf,
+			 uint16_t reta_size);
 
 static void virtio_set_hwaddr(struct virtio_hw *hw);
 static void virtio_get_hwaddr(struct virtio_hw *hw);
@@ -347,20 +357,52 @@ virtio_send_command(struct virtnet_ctl *cvq, struct virtio_pmd_ctrl *ctrl,
 }
 
 static int
-virtio_set_multiple_queues(struct rte_eth_dev *dev, uint16_t nb_queues)
+virtio_set_multiple_queues_rss(struct rte_eth_dev *dev, uint16_t nb_queues)
 {
 	struct virtio_hw *hw = dev->data->dev_private;
 	struct virtio_pmd_ctrl ctrl;
-	int dlen[1];
+	struct virtio_net_ctrl_rss rss;
+	int dlen, ret;
+
+	rss.hash_types = hw->rss_hash_types & VIRTIO_NET_HASH_TYPE_MASK;
+	RTE_BUILD_BUG_ON(!RTE_IS_POWER_OF_2(VIRTIO_NET_RSS_RETA_SIZE));
+	rss.indirection_table_mask = VIRTIO_NET_RSS_RETA_SIZE - 1;
+	rss.unclassified_queue = 0;
+	memcpy(rss.indirection_table, hw->rss_reta, VIRTIO_NET_RSS_RETA_SIZE * sizeof(uint16_t));
+	rss.max_tx_vq = nb_queues;
+	rss.hash_key_length = VIRTIO_NET_RSS_KEY_SIZE;
+	memcpy(rss.hash_key_data, hw->rss_key, VIRTIO_NET_RSS_KEY_SIZE);
+
+	ctrl.hdr.class = VIRTIO_NET_CTRL_MQ;
+	ctrl.hdr.cmd = VIRTIO_NET_CTRL_MQ_RSS_CONFIG;
+	memcpy(ctrl.data, &rss, sizeof(rss));
+
+	dlen = sizeof(rss);
+
+	ret = virtio_send_command(hw->cvq, &ctrl, &dlen, 1);
+	if (ret) {
+		PMD_INIT_LOG(ERR, "RSS multiqueue configured but send command failed");
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+static int
+virtio_set_multiple_queues_auto(struct rte_eth_dev *dev, uint16_t nb_queues)
+{
+	struct virtio_hw *hw = dev->data->dev_private;
+	struct virtio_pmd_ctrl ctrl;
+	int dlen;
 	int ret;
 
 	ctrl.hdr.class = VIRTIO_NET_CTRL_MQ;
 	ctrl.hdr.cmd = VIRTIO_NET_CTRL_MQ_VQ_PAIRS_SET;
 	memcpy(ctrl.data, &nb_queues, sizeof(uint16_t));
 
-	dlen[0] = sizeof(uint16_t);
+	dlen = sizeof(uint16_t);
 
-	ret = virtio_send_command(hw->cvq, &ctrl, dlen, 1);
+	ret = virtio_send_command(hw->cvq, &ctrl, &dlen, 1);
 	if (ret) {
 		PMD_INIT_LOG(ERR, "Multiqueue configured but send command "
 			  "failed, this is too late now...");
@@ -368,6 +410,17 @@ virtio_set_multiple_queues(struct rte_eth_dev *dev, uint16_t nb_queues)
 	}
 
 	return 0;
+}
+
+static int
+virtio_set_multiple_queues(struct rte_eth_dev *dev, uint16_t nb_queues)
+{
+	struct virtio_hw *hw = dev->data->dev_private;
+
+	if (virtio_with_feature(hw, VIRTIO_NET_F_RSS))
+		return virtio_set_multiple_queues_rss(dev, nb_queues);
+	else
+		return virtio_set_multiple_queues_auto(dev, nb_queues);
 }
 
 static uint16_t
@@ -708,6 +761,16 @@ virtio_alloc_queues(struct rte_eth_dev *dev)
 
 static void virtio_queues_unbind_intr(struct rte_eth_dev *dev);
 
+static void
+virtio_free_rss(struct virtio_hw *hw)
+{
+	rte_free(hw->rss_key);
+	hw->rss_key = NULL;
+
+	rte_free(hw->rss_reta);
+	hw->rss_reta = NULL;
+}
+
 int
 virtio_dev_close(struct rte_eth_dev *dev)
 {
@@ -737,6 +800,7 @@ virtio_dev_close(struct rte_eth_dev *dev)
 	virtio_reset(hw);
 	virtio_dev_free_mbufs(dev);
 	virtio_free_queues(hw);
+	virtio_free_rss(hw);
 
 	return VIRTIO_OPS(hw)->dev_close(hw);
 }
@@ -977,6 +1041,10 @@ static const struct eth_dev_ops virtio_eth_dev_ops = {
 	.rx_queue_intr_enable    = virtio_dev_rx_queue_intr_enable,
 	.rx_queue_intr_disable   = virtio_dev_rx_queue_intr_disable,
 	.tx_queue_setup          = virtio_dev_tx_queue_setup,
+	.rss_hash_update         = virtio_dev_rss_hash_update,
+	.rss_hash_conf_get       = virtio_dev_rss_hash_conf_get,
+	.reta_update             = virtio_dev_rss_reta_update,
+	.reta_query              = virtio_dev_rss_reta_query,
 	/* collect stats per queue */
 	.queue_stats_mapping_set = virtio_dev_queue_stats_mapping_set,
 	.vlan_filter_set         = virtio_vlan_filter_set,
@@ -1718,6 +1786,336 @@ virtio_configure_intr(struct rte_eth_dev *dev)
 
 	return 0;
 }
+
+static uint64_t
+ethdev_to_virtio_rss_offloads(uint64_t ethdev_hash_types)
+{
+	uint64_t virtio_hash_types = 0;
+
+	if (ethdev_hash_types & (RTE_ETH_RSS_IPV4 | RTE_ETH_RSS_FRAG_IPV4 |
+				RTE_ETH_RSS_NONFRAG_IPV4_OTHER))
+		virtio_hash_types |= VIRTIO_NET_HASH_TYPE_IPV4;
+
+	if (ethdev_hash_types & RTE_ETH_RSS_NONFRAG_IPV4_TCP)
+		virtio_hash_types |= VIRTIO_NET_HASH_TYPE_TCPV4;
+
+	if (ethdev_hash_types & RTE_ETH_RSS_NONFRAG_IPV4_UDP)
+		virtio_hash_types |= VIRTIO_NET_HASH_TYPE_UDPV4;
+
+	if (ethdev_hash_types & (RTE_ETH_RSS_IPV6 | RTE_ETH_RSS_FRAG_IPV6 |
+				RTE_ETH_RSS_NONFRAG_IPV6_OTHER))
+		virtio_hash_types |= VIRTIO_NET_HASH_TYPE_IPV6;
+
+	if (ethdev_hash_types & RTE_ETH_RSS_NONFRAG_IPV6_TCP)
+		virtio_hash_types |= VIRTIO_NET_HASH_TYPE_TCPV6;
+
+	if (ethdev_hash_types & RTE_ETH_RSS_NONFRAG_IPV6_UDP)
+		virtio_hash_types |= VIRTIO_NET_HASH_TYPE_UDPV6;
+
+	if (ethdev_hash_types & RTE_ETH_RSS_IPV6_EX)
+		virtio_hash_types |= VIRTIO_NET_HASH_TYPE_IP_EX;
+
+	if (ethdev_hash_types & RTE_ETH_RSS_IPV6_TCP_EX)
+		virtio_hash_types |= VIRTIO_NET_HASH_TYPE_TCP_EX;
+
+	if (ethdev_hash_types & RTE_ETH_RSS_IPV6_UDP_EX)
+		virtio_hash_types |= VIRTIO_NET_HASH_TYPE_UDP_EX;
+
+	return virtio_hash_types;
+}
+
+static uint64_t
+virtio_to_ethdev_rss_offloads(uint64_t virtio_hash_types)
+{
+	uint64_t rss_offloads = 0;
+
+	if (virtio_hash_types & VIRTIO_NET_HASH_TYPE_IPV4)
+		rss_offloads |= RTE_ETH_RSS_IPV4 | RTE_ETH_RSS_FRAG_IPV4 |
+			RTE_ETH_RSS_NONFRAG_IPV4_OTHER;
+
+	if (virtio_hash_types & VIRTIO_NET_HASH_TYPE_TCPV4)
+		rss_offloads |= RTE_ETH_RSS_NONFRAG_IPV4_TCP;
+
+	if (virtio_hash_types & VIRTIO_NET_HASH_TYPE_UDPV4)
+		rss_offloads |= RTE_ETH_RSS_NONFRAG_IPV4_UDP;
+
+	if (virtio_hash_types & VIRTIO_NET_HASH_TYPE_IPV6)
+		rss_offloads |= RTE_ETH_RSS_IPV6 | RTE_ETH_RSS_FRAG_IPV6 |
+			RTE_ETH_RSS_NONFRAG_IPV6_OTHER;
+
+	if (virtio_hash_types & VIRTIO_NET_HASH_TYPE_TCPV6)
+		rss_offloads |= RTE_ETH_RSS_NONFRAG_IPV6_TCP;
+
+	if (virtio_hash_types & VIRTIO_NET_HASH_TYPE_UDPV6)
+		rss_offloads |= RTE_ETH_RSS_NONFRAG_IPV6_UDP;
+
+	if (virtio_hash_types & VIRTIO_NET_HASH_TYPE_IP_EX)
+		rss_offloads |= RTE_ETH_RSS_IPV6_EX;
+
+	if (virtio_hash_types & VIRTIO_NET_HASH_TYPE_TCP_EX)
+		rss_offloads |= RTE_ETH_RSS_IPV6_TCP_EX;
+
+	if (virtio_hash_types & VIRTIO_NET_HASH_TYPE_UDP_EX)
+		rss_offloads |= RTE_ETH_RSS_IPV6_UDP_EX;
+
+	return rss_offloads;
+}
+
+static int
+virtio_dev_get_rss_config(struct virtio_hw *hw, uint32_t *rss_hash_types)
+{
+	struct virtio_net_config local_config;
+	struct virtio_net_config *config = &local_config;
+
+	virtio_read_dev_config(hw,
+			offsetof(struct virtio_net_config, rss_max_key_size),
+			&config->rss_max_key_size,
+			sizeof(config->rss_max_key_size));
+	if (config->rss_max_key_size < VIRTIO_NET_RSS_KEY_SIZE) {
+		PMD_INIT_LOG(ERR, "Invalid device RSS max key size (%u)",
+				config->rss_max_key_size);
+		return -EINVAL;
+	}
+
+	virtio_read_dev_config(hw,
+			offsetof(struct virtio_net_config,
+				rss_max_indirection_table_length),
+			&config->rss_max_indirection_table_length,
+			sizeof(config->rss_max_indirection_table_length));
+	if (config->rss_max_indirection_table_length < VIRTIO_NET_RSS_RETA_SIZE) {
+		PMD_INIT_LOG(ERR, "Invalid device RSS max reta size (%u)",
+				config->rss_max_indirection_table_length);
+		return -EINVAL;
+	}
+
+	virtio_read_dev_config(hw,
+			offsetof(struct virtio_net_config, supported_hash_types),
+			&config->supported_hash_types,
+			sizeof(config->supported_hash_types));
+	if ((config->supported_hash_types & VIRTIO_NET_HASH_TYPE_MASK) == 0) {
+		PMD_INIT_LOG(ERR, "Invalid device RSS hash types (0x%x)",
+				config->supported_hash_types);
+		return -EINVAL;
+	}
+
+	*rss_hash_types = config->supported_hash_types & VIRTIO_NET_HASH_TYPE_MASK;
+
+	PMD_INIT_LOG(DEBUG, "Device RSS config:");
+	PMD_INIT_LOG(DEBUG, "\t-Max key size: %u", config->rss_max_key_size);
+	PMD_INIT_LOG(DEBUG, "\t-Max reta size: %u", config->rss_max_indirection_table_length);
+	PMD_INIT_LOG(DEBUG, "\t-Supported hash types: 0x%x", *rss_hash_types);
+
+	return 0;
+}
+
+static int
+virtio_dev_rss_hash_update(struct rte_eth_dev *dev,
+		struct rte_eth_rss_conf *rss_conf)
+{
+	struct virtio_hw *hw = dev->data->dev_private;
+	char old_rss_key[VIRTIO_NET_RSS_KEY_SIZE];
+	uint32_t old_hash_types;
+	uint16_t nb_queues;
+	int ret;
+
+	if (!virtio_with_feature(hw, VIRTIO_NET_F_RSS))
+		return -ENOTSUP;
+
+	if (rss_conf->rss_hf & ~virtio_to_ethdev_rss_offloads(VIRTIO_NET_HASH_TYPE_MASK))
+		return -EINVAL;
+
+	old_hash_types = hw->rss_hash_types;
+	hw->rss_hash_types = ethdev_to_virtio_rss_offloads(rss_conf->rss_hf);
+
+	if (rss_conf->rss_key && rss_conf->rss_key_len) {
+		if (rss_conf->rss_key_len != VIRTIO_NET_RSS_KEY_SIZE) {
+			PMD_INIT_LOG(ERR, "Driver only supports %u RSS key length",
+					VIRTIO_NET_RSS_KEY_SIZE);
+			ret = -EINVAL;
+			goto restore_types;
+		}
+		memcpy(old_rss_key, hw->rss_key, VIRTIO_NET_RSS_KEY_SIZE);
+		memcpy(hw->rss_key, rss_conf->rss_key, VIRTIO_NET_RSS_KEY_SIZE);
+	}
+
+	nb_queues = RTE_MAX(dev->data->nb_rx_queues, dev->data->nb_tx_queues);
+	ret = virtio_set_multiple_queues_rss(dev, nb_queues);
+	if (ret < 0) {
+		PMD_INIT_LOG(ERR, "Failed to apply new RSS config to the device");
+		goto restore_key;
+	}
+
+	return 0;
+restore_key:
+	memcpy(hw->rss_key, old_rss_key, VIRTIO_NET_RSS_KEY_SIZE);
+restore_types:
+	hw->rss_hash_types = old_hash_types;
+
+	return ret;
+}
+
+static int
+virtio_dev_rss_hash_conf_get(struct rte_eth_dev *dev,
+		struct rte_eth_rss_conf *rss_conf)
+{
+	struct virtio_hw *hw = dev->data->dev_private;
+
+	if (!virtio_with_feature(hw, VIRTIO_NET_F_RSS))
+		return -ENOTSUP;
+
+	if (rss_conf->rss_key && rss_conf->rss_key_len >= VIRTIO_NET_RSS_KEY_SIZE)
+		memcpy(rss_conf->rss_key, hw->rss_key, VIRTIO_NET_RSS_KEY_SIZE);
+	rss_conf->rss_key_len = VIRTIO_NET_RSS_KEY_SIZE;
+	rss_conf->rss_hf = virtio_to_ethdev_rss_offloads(hw->rss_hash_types);
+
+	return 0;
+}
+
+static int virtio_dev_rss_reta_update(struct rte_eth_dev *dev,
+			 struct rte_eth_rss_reta_entry64 *reta_conf,
+			 uint16_t reta_size)
+{
+	struct virtio_hw *hw = dev->data->dev_private;
+	uint16_t nb_queues;
+	uint16_t old_reta[VIRTIO_NET_RSS_RETA_SIZE];
+	int idx, pos, i, ret;
+
+	if (!virtio_with_feature(hw, VIRTIO_NET_F_RSS))
+		return -ENOTSUP;
+
+	if (reta_size != VIRTIO_NET_RSS_RETA_SIZE)
+		return -EINVAL;
+
+	memcpy(old_reta, hw->rss_reta, sizeof(old_reta));
+
+	for (i = 0; i < reta_size; i++) {
+		idx = i / RTE_ETH_RETA_GROUP_SIZE;
+		pos = i % RTE_ETH_RETA_GROUP_SIZE;
+
+		if (((reta_conf[idx].mask >> pos) & 0x1) == 0)
+			continue;
+
+		hw->rss_reta[i] = reta_conf[idx].reta[pos];
+	}
+
+	nb_queues = RTE_MAX(dev->data->nb_rx_queues, dev->data->nb_tx_queues);
+	ret = virtio_set_multiple_queues_rss(dev, nb_queues);
+	if (ret < 0) {
+		PMD_INIT_LOG(ERR, "Failed to apply new RETA to the device");
+		memcpy(hw->rss_reta, old_reta, sizeof(old_reta));
+	}
+
+	hw->rss_rx_queues = dev->data->nb_rx_queues;
+
+	return ret;
+}
+
+static int virtio_dev_rss_reta_query(struct rte_eth_dev *dev,
+			 struct rte_eth_rss_reta_entry64 *reta_conf,
+			 uint16_t reta_size)
+{
+	struct virtio_hw *hw = dev->data->dev_private;
+	int idx, i;
+
+	if (!virtio_with_feature(hw, VIRTIO_NET_F_RSS))
+		return -ENOTSUP;
+
+	if (reta_size != VIRTIO_NET_RSS_RETA_SIZE)
+		return -EINVAL;
+
+	for (i = 0; i < reta_size; i++) {
+		idx = i / RTE_ETH_RETA_GROUP_SIZE;
+		reta_conf[idx].reta[i % RTE_ETH_RETA_GROUP_SIZE] = hw->rss_reta[i];
+	}
+
+	return 0;
+}
+
+/*
+ * As default RSS hash key, it uses the default key of the
+ * Intel IXGBE devices. It can be updated by the application
+ * with any 40B key value.
+ */
+static uint8_t rss_intel_key[VIRTIO_NET_RSS_KEY_SIZE] = {
+	0x6D, 0x5A, 0x56, 0xDA, 0x25, 0x5B, 0x0E, 0xC2,
+	0x41, 0x67, 0x25, 0x3D, 0x43, 0xA3, 0x8F, 0xB0,
+	0xD0, 0xCA, 0x2B, 0xCB, 0xAE, 0x7B, 0x30, 0xB4,
+	0x77, 0xCB, 0x2D, 0xA3, 0x80, 0x30, 0xF2, 0x0C,
+	0x6A, 0x42, 0xB7, 0x3B, 0xBE, 0xAC, 0x01, 0xFA,
+};
+
+static int
+virtio_dev_rss_init(struct rte_eth_dev *eth_dev)
+{
+	struct virtio_hw *hw = eth_dev->data->dev_private;
+	uint16_t nb_rx_queues = eth_dev->data->nb_rx_queues;
+	struct rte_eth_rss_conf *rss_conf;
+	int ret, i;
+
+	if (!nb_rx_queues) {
+		PMD_INIT_LOG(ERR, "Cannot init RSS if no Rx queues");
+		return -EINVAL;
+	}
+
+	rss_conf = &eth_dev->data->dev_conf.rx_adv_conf.rss_conf;
+
+	ret = virtio_dev_get_rss_config(hw, &hw->rss_hash_types);
+	if (ret)
+		return ret;
+
+	if (rss_conf->rss_hf) {
+		/*  Ensure requested hash types are supported by the device */
+		if (rss_conf->rss_hf & ~virtio_to_ethdev_rss_offloads(hw->rss_hash_types))
+			return -EINVAL;
+
+		hw->rss_hash_types = ethdev_to_virtio_rss_offloads(rss_conf->rss_hf);
+	}
+
+	if (!hw->rss_key) {
+		/* Setup default RSS key if not already setup by the user */
+		hw->rss_key = rte_malloc_socket("rss_key",
+				VIRTIO_NET_RSS_KEY_SIZE, 0,
+				eth_dev->device->numa_node);
+		if (!hw->rss_key) {
+			PMD_INIT_LOG(ERR, "Failed to allocate RSS key");
+			return -1;
+		}
+	}
+
+	if (rss_conf->rss_key && rss_conf->rss_key_len) {
+		if (rss_conf->rss_key_len != VIRTIO_NET_RSS_KEY_SIZE) {
+			PMD_INIT_LOG(ERR, "Driver only supports %u RSS key length",
+					VIRTIO_NET_RSS_KEY_SIZE);
+			return -EINVAL;
+		}
+		memcpy(hw->rss_key, rss_conf->rss_key, VIRTIO_NET_RSS_KEY_SIZE);
+	} else {
+		memcpy(hw->rss_key, rss_intel_key, VIRTIO_NET_RSS_KEY_SIZE);
+	}
+
+	if (!hw->rss_reta) {
+		/* Setup default RSS reta if not already setup by the user */
+		hw->rss_reta = rte_zmalloc_socket("rss_reta",
+				VIRTIO_NET_RSS_RETA_SIZE * sizeof(uint16_t), 0,
+				eth_dev->device->numa_node);
+		if (!hw->rss_reta) {
+			PMD_INIT_LOG(ERR, "Failed to allocate RSS reta");
+			return -1;
+		}
+
+		hw->rss_rx_queues = 0;
+	}
+
+	/* Re-initialize the RSS reta if the number of RX queues has changed */
+	if (hw->rss_rx_queues != nb_rx_queues) {
+		for (i = 0; i < VIRTIO_NET_RSS_RETA_SIZE; i++)
+			hw->rss_reta[i] = i % nb_rx_queues;
+		hw->rss_rx_queues = nb_rx_queues;
+	}
+
+	return 0;
+}
+
 #define DUPLEX_UNKNOWN   0xff
 /* reset device and renegotiate features if needed */
 static int
@@ -1805,14 +2203,15 @@ virtio_init_device(struct rte_eth_dev *eth_dev, uint64_t req_features)
 			config->status = 0;
 		}
 
-		if (virtio_with_feature(hw, VIRTIO_NET_F_MQ)) {
+		if (virtio_with_feature(hw, VIRTIO_NET_F_MQ) ||
+				virtio_with_feature(hw, VIRTIO_NET_F_RSS)) {
 			virtio_read_dev_config(hw,
 				offsetof(struct virtio_net_config, max_virtqueue_pairs),
 				&config->max_virtqueue_pairs,
 				sizeof(config->max_virtqueue_pairs));
 		} else {
 			PMD_INIT_LOG(DEBUG,
-				     "VIRTIO_NET_F_MQ is not supported");
+				     "Neither VIRTIO_NET_F_MQ nor VIRTIO_NET_F_RSS are supported");
 			config->max_virtqueue_pairs = 1;
 		}
 
@@ -1843,6 +2242,11 @@ virtio_init_device(struct rte_eth_dev *eth_dev, uint64_t req_features)
 			hw->max_mtu = VIRTIO_MAX_RX_PKTLEN - RTE_ETHER_HDR_LEN -
 				VLAN_TAG_LEN - hw->vtnet_hdr_size;
 		}
+
+		hw->rss_hash_types = 0;
+		if (virtio_with_feature(hw, VIRTIO_NET_F_RSS))
+			if (virtio_dev_rss_init(eth_dev))
+				return -1;
 
 		PMD_INIT_LOG(DEBUG, "config->max_virtqueue_pairs=%d",
 				config->max_virtqueue_pairs);
@@ -2086,7 +2490,7 @@ virtio_dev_configure(struct rte_eth_dev *dev)
 	PMD_INIT_LOG(DEBUG, "configure");
 	req_features = VIRTIO_PMD_DEFAULT_GUEST_FEATURES;
 
-	if (rxmode->mq_mode != RTE_ETH_MQ_RX_NONE) {
+	if (rxmode->mq_mode != RTE_ETH_MQ_RX_NONE && rxmode->mq_mode != RTE_ETH_MQ_RX_RSS) {
 		PMD_DRV_LOG(ERR,
 			"Unsupported Rx multi queue mode %d",
 			rxmode->mq_mode);
@@ -2105,6 +2509,9 @@ virtio_dev_configure(struct rte_eth_dev *dev)
 		if (ret < 0)
 			return ret;
 	}
+
+	if (rxmode->mq_mode == RTE_ETH_MQ_RX_RSS)
+		req_features |= (1ULL << VIRTIO_NET_F_RSS);
 
 	if (rxmode->mtu > hw->max_mtu)
 		req_features &= ~(1ULL << VIRTIO_NET_F_MTU);
@@ -2134,6 +2541,12 @@ virtio_dev_configure(struct rte_eth_dev *dev)
 		ret = virtio_init_device(dev, req_features);
 		if (ret < 0)
 			return ret;
+	}
+
+	if ((rxmode->mq_mode & RTE_ETH_MQ_RX_RSS_FLAG) &&
+			!virtio_with_feature(hw, VIRTIO_NET_F_RSS)) {
+		PMD_DRV_LOG(ERR, "RSS support requested but not supported by the device");
+		return -ENOTSUP;
 	}
 
 	if ((rx_offloads & (RTE_ETH_RX_OFFLOAD_UDP_CKSUM |
@@ -2533,6 +2946,7 @@ static int
 virtio_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 {
 	uint64_t tso_mask, host_features;
+	uint32_t rss_hash_types = 0;
 	struct virtio_hw *hw = dev->data->dev_private;
 	dev_info->speed_capa = virtio_dev_speed_capa_get(hw->speed);
 
@@ -2572,6 +2986,18 @@ virtio_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 		(1ULL << VIRTIO_NET_F_HOST_TSO6);
 	if ((host_features & tso_mask) == tso_mask)
 		dev_info->tx_offload_capa |= RTE_ETH_TX_OFFLOAD_TCP_TSO;
+
+	if (host_features & (1ULL << VIRTIO_NET_F_RSS)) {
+		virtio_dev_get_rss_config(hw, &rss_hash_types);
+		dev_info->hash_key_size = VIRTIO_NET_RSS_KEY_SIZE;
+		dev_info->reta_size = VIRTIO_NET_RSS_RETA_SIZE;
+		dev_info->flow_type_rss_offloads =
+			virtio_to_ethdev_rss_offloads(rss_hash_types);
+	} else {
+		dev_info->hash_key_size = 0;
+		dev_info->reta_size = 0;
+		dev_info->flow_type_rss_offloads = 0;
+	}
 
 	if (host_features & (1ULL << VIRTIO_F_RING_PACKED)) {
 		/*

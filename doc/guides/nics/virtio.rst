@@ -73,6 +73,9 @@ In this release, the virtio PMD driver provides the basic functionality of packe
 
 *   Virtio supports using port IO to get PCI resource when UIO module is not available.
 
+*   Virtio supports RSS Rx mode with 40B configurable hash key length, 128
+    configurable RETA entries and configurable hash types.
+
 Prerequisites
 -------------
 
