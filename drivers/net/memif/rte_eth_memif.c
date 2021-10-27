@@ -195,7 +195,7 @@ static int
 memif_dev_info(struct rte_eth_dev *dev __rte_unused, struct rte_eth_dev_info *dev_info)
 {
 	dev_info->max_mac_addrs = 1;
-	dev_info->max_rx_pktlen = (uint32_t)ETH_FRAME_LEN;
+	dev_info->max_rx_pktlen = RTE_ETHER_MAX_LEN;
 	dev_info->max_rx_queues = ETH_MEMIF_MAX_NUM_Q_PAIRS;
 	dev_info->max_tx_queues = ETH_MEMIF_MAX_NUM_Q_PAIRS;
 	dev_info->min_rx_bufsize = 0;
