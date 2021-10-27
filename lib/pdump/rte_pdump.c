@@ -631,6 +631,9 @@ pdump_enable_by_deviceid(const char *device_id, uint16_t queue,
 	if (ret < 0)
 		return ret;
 
+	if (snaplen == 0)
+		snaplen = UINT32_MAX;
+
 	return pdump_prepare_client_request(device_id, queue, flags, snaplen,
 					    ENABLE, ring, mp, prm);
 }
