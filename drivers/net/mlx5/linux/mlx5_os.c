@@ -704,10 +704,15 @@ mlx5_flow_drop_action_config(struct rte_eth_dev *dev __rte_unused)
 	 * DR supports drop action placeholder when it is supported;
 	 * otherwise, use the queue drop action.
 	 */
-	if (mlx5_flow_discover_dr_action_support(dev))
-		priv->root_drop_action = priv->drop_queue.hrxq->action;
-	else
+	if (!priv->sh->drop_action_check_flag) {
+		if (!mlx5_flow_discover_dr_action_support(dev))
+			priv->sh->dr_drop_action_en = 1;
+		priv->sh->drop_action_check_flag = 1;
+	}
+	if (priv->sh->dr_drop_action_en)
 		priv->root_drop_action = priv->sh->dr_drop_action;
+	else
+		priv->root_drop_action = priv->drop_queue.hrxq->action;
 #endif
 }
 
@@ -1720,13 +1725,19 @@ err_secondary:
 	priv->drop_queue.hrxq = mlx5_drop_action_create(eth_dev);
 	if (!priv->drop_queue.hrxq)
 		goto error;
-	/* Supported Verbs flow priority number detection. */
-	err = mlx5_flow_discover_priorities(eth_dev);
+	/* Port representor shares the same max prioirity with pf port. */
+	if (!priv->sh->flow_priority_check_flag) {
+		/* Supported Verbs flow priority number detection. */
+		err = mlx5_flow_discover_priorities(eth_dev);
+		priv->sh->flow_max_priority = err;
+		priv->sh->flow_priority_check_flag = 1;
+	} else {
+		err = priv->sh->flow_max_priority;
+	}
 	if (err < 0) {
 		err = -err;
 		goto error;
 	}
-	priv->config.flow_prio = err;
 	if (!priv->config.dv_esw_en &&
 	    priv->config.dv_xmeta_en != MLX5_XMETA_MODE_LEGACY) {
 		DRV_LOG(WARNING, "metadata mode %u is not supported "
@@ -1752,10 +1763,12 @@ err_secondary:
 		goto error;
 	rte_rwlock_init(&priv->ind_tbls_lock);
 	/* Query availability of metadata reg_c's. */
-	err = mlx5_flow_discover_mreg_c(eth_dev);
-	if (err < 0) {
-		err = -err;
-		goto error;
+	if (!priv->sh->metadata_regc_check_flag) {
+		err = mlx5_flow_discover_mreg_c(eth_dev);
+		if (err < 0) {
+			err = -err;
+			goto error;
+		}
 	}
 	if (!mlx5_flow_ext_mreg_supported(eth_dev)) {
 		DRV_LOG(DEBUG,

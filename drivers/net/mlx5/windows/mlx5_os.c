@@ -605,7 +605,7 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 			goto error;
 	}
 	/* No supported flow priority number detection. */
-	priv->config.flow_prio = -1;
+	priv->sh->flow_max_priority = -1;
 	if (!priv->config.dv_esw_en &&
 	    priv->config.dv_xmeta_en != MLX5_XMETA_MODE_LEGACY) {
 		DRV_LOG(WARNING, "metadata mode %u is not supported "
@@ -626,10 +626,12 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 		mlx5_hrxq_remove_cb, mlx5_hrxq_clone_cb,
 		mlx5_hrxq_clone_free_cb);
 	/* Query availability of metadata reg_c's. */
-	err = mlx5_flow_discover_mreg_c(eth_dev);
-	if (err < 0) {
-		err = -err;
-		goto error;
+	if (!priv->sh->metadata_regc_check_flag) {
+		err = mlx5_flow_discover_mreg_c(eth_dev);
+		if (err < 0) {
+			err = -err;
+			goto error;
+		}
 	}
 	if (!mlx5_flow_ext_mreg_supported(eth_dev)) {
 		DRV_LOG(DEBUG,
