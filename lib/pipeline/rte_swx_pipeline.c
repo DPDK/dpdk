@@ -7387,7 +7387,8 @@ rte_swx_pipeline_table_config(struct rte_swx_pipeline *p,
 
 	/* Memory allocation. */
 	t = calloc(1, sizeof(struct table));
-	CHECK(t, ENOMEM);
+	if (!t)
+		goto nomem;
 
 	t->fields = calloc(params->n_fields, sizeof(struct match_field));
 	if (!t->fields)
