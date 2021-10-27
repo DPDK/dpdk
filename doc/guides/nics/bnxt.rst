@@ -658,9 +658,7 @@ which currently supports basic packet classification in the receive path.
 The feature uses a newly implemented control-plane firmware interface which
 optimizes flow insertions and deletions.
 
-This is a tech preview feature.
-
-This feature is currently supported on Whitney+ and Stingray devices.
+This feature is currently supported on Whitney+, Stingray and Thor devices.
 
 Notes
 -----
@@ -747,12 +745,12 @@ same host domain, additional dev args have been added to the PMD.
 
 The sample command line with the new ``devargs`` looks like this::
 
-  -a 0000:06:02.0,host-based-truflow=1,representor=[1],rep-based-pf=8,\
+  -a 0000:06:02.0,representor=[1],rep-based-pf=8,\
 	rep-is-pf=1,rep-q-r2f=1,rep-fc-r2f=0,rep-q-f2r=1,rep-fc-f2r=1
 
 .. code-block:: console
 
-	dpdk-testpmd -l1-4 -n2 -a 0008:01:00.0,host-based-truflow=1,\
+	dpdk-testpmd -l1-4 -n2 -a 0008:01:00.0,\
 	representor=[0], rep-based-pf=8,rep-is-pf=0,rep-q-r2f=1,rep-fc-r2f=1,\
 	rep-q-f2r=0,rep-fc-f2r=1 --log-level="pmd.*",8 -- -i --rxq=3 --txq=3
 
