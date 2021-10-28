@@ -5,6 +5,18 @@
 #include "roc_api.h"
 #include "roc_priv.h"
 
+static roc_npa_lf_init_cb_t lf_init_cb;
+
+int
+roc_npa_lf_init_cb_register(roc_npa_lf_init_cb_t cb)
+{
+	if (lf_init_cb != NULL)
+		return -EEXIST;
+
+	lf_init_cb = cb;
+	return 0;
+}
+
 void
 roc_npa_aura_op_range_set(uint64_t aura_handle, uint64_t start_iova,
 			  uint64_t end_iova)
@@ -693,6 +705,12 @@ npa_lf_init(struct dev *dev, struct plt_pci_device *pci_dev)
 	/* Not the first PCI device */
 	if (__atomic_fetch_add(&idev->npa_refcnt, 1, __ATOMIC_SEQ_CST) != 0)
 		return 0;
+
+	if (lf_init_cb) {
+		rc = (*lf_init_cb)(pci_dev);
+		if (rc)
+			goto fail;
+	}
 
 	rc = npa_attach(dev->mbox);
 	if (rc)

@@ -275,6 +275,7 @@ INTERNAL {
 	roc_npa_dev_fini;
 	roc_npa_dev_init;
 	roc_npa_dump;
+	roc_npa_lf_init_cb_register;
 	roc_npa_pool_create;
 	roc_npa_pool_destroy;
 	roc_npa_pool_op_pc_reset;

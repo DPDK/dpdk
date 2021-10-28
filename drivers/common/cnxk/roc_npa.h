@@ -648,6 +648,10 @@ void __roc_api roc_npa_aura_op_range_set(uint64_t aura_handle,
 					 uint64_t start_iova,
 					 uint64_t end_iova);
 
+/* Init callbacks */
+typedef int (*roc_npa_lf_init_cb_t)(struct plt_pci_device *pci_dev);
+int __roc_api roc_npa_lf_init_cb_register(roc_npa_lf_init_cb_t cb);
+
 /* Debug */
 int __roc_api roc_npa_ctx_dump(void);
 int __roc_api roc_npa_dump(void);
