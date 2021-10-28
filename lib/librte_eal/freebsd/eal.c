@@ -1041,7 +1041,7 @@ int rte_vfio_noiommu_is_enabled(void)
 
 int rte_vfio_clear_group(__rte_unused int vfio_group_fd)
 {
-	return 0;
+	return -1;
 }
 
 int
