@@ -441,6 +441,9 @@ hns3_handle_mbx_msg_out_intr(struct hns3_hw *hw)
 scan_next:
 		next_to_use = (next_to_use + 1) % hw->cmq.crq.desc_num;
 	}
+
+	crq->next_to_use = next_to_use;
+	hns3_write_dev(hw, HNS3_CMDQ_RX_HEAD_REG, crq->next_to_use);
 }
 
 void
