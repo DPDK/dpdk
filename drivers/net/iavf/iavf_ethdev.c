@@ -240,6 +240,91 @@ iavf_tm_ops_get(struct rte_eth_dev *dev __rte_unused,
 	return 0;
 }
 
+__rte_unused
+static int
+iavf_vfr_inprogress(struct iavf_hw *hw)
+{
+	int inprogress = 0;
+
+	if ((IAVF_READ_REG(hw, IAVF_VFGEN_RSTAT) &
+		IAVF_VFGEN_RSTAT_VFR_STATE_MASK) ==
+		VIRTCHNL_VFR_INPROGRESS)
+		inprogress = 1;
+
+	if (inprogress)
+		PMD_DRV_LOG(INFO, "Watchdog detected VFR in progress");
+
+	return inprogress;
+}
+
+__rte_unused
+static void
+iavf_dev_watchdog(void *cb_arg)
+{
+	struct iavf_adapter *adapter = cb_arg;
+	struct iavf_hw *hw = IAVF_DEV_PRIVATE_TO_HW(adapter);
+	int vfr_inprogress = 0, rc = 0;
+
+	/* check if watchdog has been disabled since last call */
+	if (!adapter->vf.watchdog_enabled)
+		return;
+
+	/* If in reset then poll vfr_inprogress register for completion */
+	if (adapter->vf.vf_reset) {
+		vfr_inprogress = iavf_vfr_inprogress(hw);
+
+		if (!vfr_inprogress) {
+			PMD_DRV_LOG(INFO, "VF \"%s\" reset has completed",
+				adapter->vf.eth_dev->data->name);
+			adapter->vf.vf_reset = false;
+		}
+	/* If not in reset then poll vfr_inprogress register for VFLR event */
+	} else {
+		vfr_inprogress = iavf_vfr_inprogress(hw);
+
+		if (vfr_inprogress) {
+			PMD_DRV_LOG(INFO,
+				"VF \"%s\" reset event detected by watchdog",
+				adapter->vf.eth_dev->data->name);
+
+			/* enter reset state with VFLR event */
+			adapter->vf.vf_reset = true;
+
+			rte_eth_dev_callback_process(adapter->vf.eth_dev,
+				RTE_ETH_EVENT_INTR_RESET, NULL);
+		}
+	}
+
+	/* re-alarm watchdog */
+	rc = rte_eal_alarm_set(IAVF_DEV_WATCHDOG_PERIOD,
+			&iavf_dev_watchdog, cb_arg);
+
+	if (rc)
+		PMD_DRV_LOG(ERR, "Failed \"%s\" to reset device watchdog alarm",
+			adapter->vf.eth_dev->data->name);
+}
+
+static void
+iavf_dev_watchdog_enable(struct iavf_adapter *adapter __rte_unused)
+{
+#if (IAVF_DEV_WATCHDOG_PERIOD > 0)
+	PMD_DRV_LOG(INFO, "Enabling device watchdog");
+	adapter->vf.watchdog_enabled = true;
+	if (rte_eal_alarm_set(IAVF_DEV_WATCHDOG_PERIOD,
+			&iavf_dev_watchdog, (void *)adapter))
+		PMD_DRV_LOG(ERR, "Failed to enabled device watchdog");
+#endif
+}
+
+static void
+iavf_dev_watchdog_disable(struct iavf_adapter *adapter __rte_unused)
+{
+#if (IAVF_DEV_WATCHDOG_PERIOD > 0)
+	PMD_DRV_LOG(INFO, "Disabling device watchdog");
+	adapter->vf.watchdog_enabled = false;
+#endif
+}
+
 static int
 iavf_set_mc_addr_list(struct rte_eth_dev *dev,
 			struct rte_ether_addr *mc_addrs,
@@ -2466,6 +2551,11 @@ iavf_dev_init(struct rte_eth_dev *eth_dev)
 
 	iavf_default_rss_disable(adapter);
 
+
+	/* Start device watchdog */
+	iavf_dev_watchdog_enable(adapter);
+
+
 	return 0;
 
 flow_init_err:
@@ -2548,6 +2638,9 @@ iavf_dev_close(struct rte_eth_dev *dev)
 	 */
 	if (vf->vf_reset && !rte_pci_set_bus_master(pci_dev, true))
 		vf->vf_reset = false;
+
+	/* disable watchdog */
+	iavf_dev_watchdog_disable(adapter);
 
 	return ret;
 }
