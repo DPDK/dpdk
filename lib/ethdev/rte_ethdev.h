@@ -2272,9 +2272,6 @@ rte_eth_find_next_sibling(uint16_t port_id_start, uint16_t ref_port_id);
 		port_id = rte_eth_find_next_sibling(port_id + 1, ref_port_id))
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Get a new unique owner identifier.
  * An owner identifier is used to owns Ethernet devices by only one DPDK entity
  * to avoid multiple management of device by different entities.
@@ -2284,13 +2281,9 @@ rte_eth_find_next_sibling(uint16_t port_id_start, uint16_t ref_port_id);
  * @return
  *   Negative errno value on error, 0 on success.
  */
-__rte_experimental
 int rte_eth_dev_owner_new(uint64_t *owner_id);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Set an Ethernet device owner.
  *
  * @param	port_id
@@ -2300,14 +2293,10 @@ int rte_eth_dev_owner_new(uint64_t *owner_id);
  * @return
  *  Negative errno value on error, 0 on success.
  */
-__rte_experimental
 int rte_eth_dev_owner_set(const uint16_t port_id,
 		const struct rte_eth_dev_owner *owner);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Unset Ethernet device owner to make the device ownerless.
  *
  * @param	port_id
@@ -2317,14 +2306,10 @@ int rte_eth_dev_owner_set(const uint16_t port_id,
  * @return
  *  0 on success, negative errno value on error.
  */
-__rte_experimental
 int rte_eth_dev_owner_unset(const uint16_t port_id,
 		const uint64_t owner_id);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Remove owner from all Ethernet devices owned by a specific owner.
  *
  * @param	owner_id
@@ -2332,13 +2317,9 @@ int rte_eth_dev_owner_unset(const uint16_t port_id,
  * @return
  *  0 on success, negative errno value on error.
  */
-__rte_experimental
 int rte_eth_dev_owner_delete(const uint64_t owner_id);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Get the owner of an Ethernet device.
  *
  * @param	port_id
@@ -2348,7 +2329,6 @@ int rte_eth_dev_owner_delete(const uint64_t owner_id);
  * @return
  *  0 on success, negative errno value on error..
  */
-__rte_experimental
 int rte_eth_dev_owner_get(const uint16_t port_id,
 		struct rte_eth_dev_owner *owner);
 

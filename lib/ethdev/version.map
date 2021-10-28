@@ -36,6 +36,11 @@ DPDK_22 {
 	rte_eth_dev_logtype;
 	rte_eth_dev_mac_addr_add;
 	rte_eth_dev_mac_addr_remove;
+	rte_eth_dev_owner_delete;
+	rte_eth_dev_owner_get;
+	rte_eth_dev_owner_new;
+	rte_eth_dev_owner_set;
+	rte_eth_dev_owner_unset;
 	rte_eth_dev_pool_ops_supported;
 	rte_eth_dev_priority_flow_ctrl_set;
 	rte_eth_dev_reset;
@@ -147,13 +152,6 @@ EXPERIMENTAL {
 	rte_mtr_meter_profile_update;
 	rte_mtr_stats_read;
 	rte_mtr_stats_update;
-
-	# added in 18.02
-	rte_eth_dev_owner_delete;
-	rte_eth_dev_owner_get;
-	rte_eth_dev_owner_new;
-	rte_eth_dev_owner_set;
-	rte_eth_dev_owner_unset;
 
 	# added in 18.05
 	rte_eth_dev_get_module_eeprom;

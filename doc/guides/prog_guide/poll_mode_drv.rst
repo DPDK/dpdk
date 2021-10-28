@@ -146,13 +146,17 @@ Based on their PCI identifier, NIC ports are assigned two other identifiers:
 
 Port Ownership
 ~~~~~~~~~~~~~~
+
 The Ethernet devices ports can be owned by a single DPDK entity (application, library, PMD, process, etc).
 The ownership mechanism is controlled by ethdev APIs and allows to set/remove/get a port owner by DPDK entities.
-Allowing this should prevent any multiple management of Ethernet port by different entities.
+It prevents Ethernet ports to be managed by different entities.
 
 .. note::
 
     It is the DPDK entity responsibility to set the port owner before using it and to manage the port usage synchronization between different threads or processes.
+
+It is recommended to set port ownership early,
+like during the probing notification ``RTE_ETH_EVENT_NEW``.
 
 Device Configuration
 ~~~~~~~~~~~~~~~~~~~~
