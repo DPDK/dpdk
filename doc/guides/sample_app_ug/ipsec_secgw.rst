@@ -720,6 +720,17 @@ where each options means:
 
    * *udp-encap*
 
+ ``<mss>``
+
+ * Maximum segment size for TSO offload, available for egress SAs only.
+
+ * Optional: Yes, TSO offload not set by default
+
+ * Syntax:
+
+   * *mss N* N is the segment size in bytes
+
+
 Example SA rules:
 
 .. code-block:: console

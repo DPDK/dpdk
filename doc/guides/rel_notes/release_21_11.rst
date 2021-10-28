@@ -352,6 +352,10 @@ New Features
   * Added tests to verify inner checksum.
   * Added tests for CHACHA20_POLY1305 PMD, including a new testcase for SGL OOP.
 
+* **Updated IPsec Security Gateway sample application with new features.**
+
+  * Added support for TSO (only for inline crypto TCP packets).
+
 * **Revised packet capture framework.**
 
   * New dpdk-dumpcap program that has most of the features

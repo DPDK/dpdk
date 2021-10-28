@@ -137,6 +137,7 @@ struct ipsec_sa {
 	enum rte_security_ipsec_sa_direction direction;
 	uint8_t udp_encap;
 	uint16_t portid;
+	uint16_t mss;
 	uint8_t fdir_qid;
 	uint8_t fdir_flag;
 

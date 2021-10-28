@@ -677,6 +677,16 @@ parse_sa_tokens(char **tokens, uint32_t n_tokens,
 			continue;
 		}
 
+		if (strcmp(tokens[ti], "mss") == 0) {
+			INCREMENT_TOKEN_INDEX(ti, n_tokens, status);
+			if (status->status < 0)
+				return;
+			rule->mss = atoi(tokens[ti]);
+			if (status->status < 0)
+				return;
+			continue;
+		}
+
 		if (strcmp(tokens[ti], "fallback") == 0) {
 			struct rte_ipsec_session *fb;
 
@@ -970,7 +980,7 @@ sa_create(const char *name, int32_t socket_id, uint32_t nb_sa)
 }
 
 static int
-check_eth_dev_caps(uint16_t portid, uint32_t inbound)
+check_eth_dev_caps(uint16_t portid, uint32_t inbound, uint32_t tso)
 {
 	struct rte_eth_dev_info dev_info;
 	int retval;
@@ -997,6 +1007,12 @@ check_eth_dev_caps(uint16_t portid, uint32_t inbound)
 				RTE_ETH_TX_OFFLOAD_SECURITY) == 0) {
 			RTE_LOG(WARNING, PORT,
 				"hardware TX IPSec offload is not supported\n");
+			return -EINVAL;
+		}
+		if (tso && (dev_info.tx_offload_capa &
+				RTE_ETH_TX_OFFLOAD_TCP_TSO) == 0) {
+			RTE_LOG(WARNING, PORT,
+				"hardware TCP TSO offload is not supported\n");
 			return -EINVAL;
 		}
 	}
@@ -1127,7 +1143,7 @@ sa_add_rules(struct sa_ctx *sa_ctx, const struct ipsec_sa entries[],
 
 		if (ips->type == RTE_SECURITY_ACTION_TYPE_INLINE_PROTOCOL ||
 			ips->type == RTE_SECURITY_ACTION_TYPE_INLINE_CRYPTO) {
-			if (check_eth_dev_caps(sa->portid, inbound))
+			if (check_eth_dev_caps(sa->portid, inbound, sa->mss))
 				return -EINVAL;
 		}
 
@@ -1638,8 +1654,11 @@ sa_check_offloads(uint16_t port_id, uint64_t *rx_offloads,
 		if ((rule_type == RTE_SECURITY_ACTION_TYPE_INLINE_CRYPTO ||
 				rule_type ==
 				RTE_SECURITY_ACTION_TYPE_INLINE_PROTOCOL)
-				&& rule->portid == port_id)
+				&& rule->portid == port_id) {
 			*tx_offloads |= RTE_ETH_TX_OFFLOAD_SECURITY;
+			if (rule->mss)
+				*tx_offloads |= RTE_ETH_TX_OFFLOAD_TCP_TSO;
+		}
 	}
 	return 0;
 }

@@ -398,6 +398,10 @@ prepare_one_packet(struct rte_mbuf *pkt, struct ipsec_traffic *t)
 		pkt->l2_len = 0;
 		pkt->l3_len = sizeof(*iph4);
 		pkt->packet_type |= RTE_PTYPE_L3_IPV4;
+		if  (pkt->packet_type & RTE_PTYPE_L4_TCP)
+			pkt->l4_len = sizeof(struct rte_tcp_hdr);
+		else if (pkt->packet_type & RTE_PTYPE_L4_UDP)
+			pkt->l4_len = sizeof(struct rte_udp_hdr);
 	} else if (eth->ether_type == rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV6)) {
 		int next_proto;
 		size_t l3len, ext_len;
