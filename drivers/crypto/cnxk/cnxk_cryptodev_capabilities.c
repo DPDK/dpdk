@@ -952,6 +952,26 @@ cn10k_sec_crypto_caps_update(struct rte_cryptodev_capabilities cnxk_caps[],
 }
 
 static void
+cn9k_sec_crypto_caps_update(struct rte_cryptodev_capabilities cnxk_caps[])
+{
+
+	struct rte_cryptodev_capabilities *caps;
+	int i = 0;
+
+	while ((caps = &cnxk_caps[i++])->op != RTE_CRYPTO_OP_TYPE_UNDEFINED) {
+		if ((caps->op == RTE_CRYPTO_OP_TYPE_SYMMETRIC) &&
+		    (caps->sym.xform_type == RTE_CRYPTO_SYM_XFORM_AUTH) &&
+		    (caps->sym.auth.algo == RTE_CRYPTO_AUTH_SHA256_HMAC)) {
+			caps->sym.auth.key_size.min = 32;
+			caps->sym.auth.key_size.max = 64;
+			caps->sym.auth.key_size.increment = 1;
+
+			break;
+		}
+	}
+}
+
+static void
 sec_crypto_caps_populate(struct rte_cryptodev_capabilities cnxk_caps[],
 			 union cpt_eng_caps *hw_caps)
 {
@@ -962,6 +982,8 @@ sec_crypto_caps_populate(struct rte_cryptodev_capabilities cnxk_caps[],
 
 	if (roc_model_is_cn10k())
 		cn10k_sec_crypto_caps_update(cnxk_caps, &cur_pos);
+	else
+		cn9k_sec_crypto_caps_update(cnxk_caps);
 
 	sec_caps_add(cnxk_caps, &cur_pos, caps_end, RTE_DIM(caps_end));
 }
