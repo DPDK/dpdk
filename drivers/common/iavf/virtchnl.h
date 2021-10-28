@@ -38,6 +38,8 @@
  * value in current and future projects
  */
 
+#include "virtchnl_inline_ipsec.h"
+
 /* Error Codes */
 enum virtchnl_status_code {
 	VIRTCHNL_STATUS_SUCCESS				= 0,
@@ -133,7 +135,8 @@ enum virtchnl_ops {
 	VIRTCHNL_OP_DISABLE_CHANNELS = 31,
 	VIRTCHNL_OP_ADD_CLOUD_FILTER = 32,
 	VIRTCHNL_OP_DEL_CLOUD_FILTER = 33,
-	/* opcodes 34, 35, 36, and 37 are reserved */
+	VIRTCHNL_OP_INLINE_IPSEC_CRYPTO = 34,
+	/* opcodes 35 and 36 are reserved */
 	VIRTCHNL_OP_DCF_CONFIG_BW = 37,
 	VIRTCHNL_OP_DCF_VLAN_OFFLOAD = 38,
 	VIRTCHNL_OP_DCF_CMD_DESC = 39,
@@ -225,6 +228,8 @@ static inline const char *virtchnl_op_str(enum virtchnl_ops v_opcode)
 		return "VIRTCHNL_OP_ADD_CLOUD_FILTER";
 	case VIRTCHNL_OP_DEL_CLOUD_FILTER:
 		return "VIRTCHNL_OP_DEL_CLOUD_FILTER";
+	case VIRTCHNL_OP_INLINE_IPSEC_CRYPTO:
+		return "VIRTCHNL_OP_INLINE_IPSEC_CRYPTO";
 	case VIRTCHNL_OP_DCF_CMD_DESC:
 		return "VIRTCHNL_OP_DCF_CMD_DESC";
 	case VIRTCHNL_OP_DCF_CMD_BUFF:
@@ -385,7 +390,7 @@ VIRTCHNL_CHECK_STRUCT_LEN(16, virtchnl_vsi_resource);
 #define VIRTCHNL_VF_OFFLOAD_REQ_QUEUES		BIT(6)
 /* used to negotiate communicating link speeds in Mbps */
 #define VIRTCHNL_VF_CAP_ADV_LINK_SPEED		BIT(7)
-	/* BIT(8) is reserved */
+#define VIRTCHNL_VF_OFFLOAD_INLINE_IPSEC_CRYPTO	BIT(8)
 #define VIRTCHNL_VF_LARGE_NUM_QPAIRS		BIT(9)
 #define VIRTCHNL_VF_OFFLOAD_CRC			BIT(10)
 #define VIRTCHNL_VF_OFFLOAD_VLAN_V2		BIT(15)
@@ -2291,6 +2296,14 @@ virtchnl_vc_validate_vf_msg(struct virtchnl_version_info *ver, u32 v_opcode,
 				      sizeof(struct virtchnl_queue_vector);
 		}
 		break;
+
+	case VIRTCHNL_OP_INLINE_IPSEC_CRYPTO:
+	{
+		struct inline_ipsec_msg *iim = (struct inline_ipsec_msg *)msg;
+		valid_len =
+			virtchnl_inline_ipsec_val_msg_len(iim->ipsec_opcode);
+		break;
+	}
 	/* These are always errors coming from the VF. */
 	case VIRTCHNL_OP_EVENT:
 	case VIRTCHNL_OP_UNKNOWN:
