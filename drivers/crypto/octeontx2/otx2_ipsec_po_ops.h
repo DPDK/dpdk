@@ -25,8 +25,7 @@ otx2_ipsec_po_out_rlen_get(struct otx2_sec_session_ipsec_lp *sess,
 }
 
 static __rte_always_inline struct cpt_request_info *
-alloc_request_struct(char *maddr, void *cop, int mdata_len,
-		     enum otx2_ipsec_po_mode_type mode_type)
+alloc_request_struct(char *maddr, void *cop, int mdata_len)
 {
 	struct cpt_request_info *req;
 	struct cpt_meta_info *meta;
@@ -48,7 +47,6 @@ alloc_request_struct(char *maddr, void *cop, int mdata_len,
 	op[1] = (uintptr_t)cop;
 	op[2] = (uintptr_t)req;
 	op[3] = mdata_len;
-	op[4] = mode_type;
 
 	return req;
 }
@@ -86,8 +84,7 @@ process_outb_sa(struct rte_crypto_op *cop,
 	}
 
 	mdata += extend_tail; /* mdata follows encrypted data */
-	req = alloc_request_struct(mdata, (void *)cop, mdata_len,
-		sess->mode_type);
+	req = alloc_request_struct(mdata, (void *)cop, mdata_len);
 
 	data = rte_pktmbuf_prepend(m_src, extend_head);
 	if (unlikely(data == NULL)) {
@@ -153,8 +150,7 @@ process_inb_sa(struct rte_crypto_op *cop,
 		goto exit;
 	}
 
-	req = alloc_request_struct(mdata, (void *)cop, mdata_len,
-		sess->mode_type);
+	req = alloc_request_struct(mdata, (void *)cop, mdata_len);
 
 	/* Prepare CPT instruction */
 	word0.u64 = sess->ucmd_w0;

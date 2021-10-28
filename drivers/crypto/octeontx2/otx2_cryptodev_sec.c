@@ -194,9 +194,6 @@ set_session_misc_attributes(struct otx2_sec_session_ipsec_lp *sess,
 		sess->auth_iv_length = auth_xform->auth.iv.length;
 		sess->mac_len = auth_xform->auth.digest_length;
 	}
-
-	sess->ucmd_param1 = OTX2_IPSEC_PO_PER_PKT_IV;
-	sess->ucmd_param2 = 0;
 }
 
 static int
@@ -232,7 +229,6 @@ crypto_sec_ipsec_outb_session_create(struct rte_cryptodev *crypto_dev,
 	memset(sa, 0, sizeof(struct otx2_ipsec_po_out_sa));
 
 	/* Initialize lookaside ipsec private data */
-	lp->mode_type = OTX2_IPSEC_PO_TRANSPORT;
 	lp->ip_id = 0;
 	lp->seq_lo = 1;
 	lp->seq_hi = 0;
@@ -285,7 +281,6 @@ crypto_sec_ipsec_outb_session_create(struct rte_cryptodev *crypto_dev,
 
 	if (ipsec->mode == RTE_SECURITY_IPSEC_SA_MODE_TUNNEL) {
 		if (ipsec->tunnel.type == RTE_SECURITY_IPSEC_TUNNEL_IPV4) {
-			lp->mode_type = OTX2_IPSEC_PO_TUNNEL_IPV4;
 			ip->version_ihl = RTE_IPV4_VHL_DEF;
 			ip->time_to_live = ipsec->tunnel.ipv4.ttl;
 			ip->type_of_service |= (ipsec->tunnel.ipv4.dscp << 2);
@@ -298,7 +293,6 @@ crypto_sec_ipsec_outb_session_create(struct rte_cryptodev *crypto_dev,
 		} else if (ipsec->tunnel.type ==
 				RTE_SECURITY_IPSEC_TUNNEL_IPV6) {
 
-			lp->mode_type = OTX2_IPSEC_PO_TUNNEL_IPV6;
 			if (ctl->enc_type == OTX2_IPSEC_PO_SA_ENC_AES_GCM) {
 				template = &sa->aes_gcm.template;
 				ctx_len = offsetof(struct otx2_ipsec_po_out_sa,
@@ -387,6 +381,10 @@ crypto_sec_ipsec_outb_session_create(struct rte_cryptodev *crypto_dev,
 	lp->ucmd_opcode = (lp->ctx_len << 8) |
 				(OTX2_IPSEC_PO_PROCESS_IPSEC_OUTB);
 
+	/* Set per packet IV and IKEv2 bits */
+	lp->ucmd_param1 = BIT(11) | BIT(9);
+	lp->ucmd_param2 = 0;
+
 	set_session_misc_attributes(lp, crypto_xform,
 				    auth_xform, cipher_xform);
 
@@ -429,19 +427,11 @@ crypto_sec_ipsec_inb_session_create(struct rte_cryptodev *crypto_dev,
 	if (ret)
 		return ret;
 
-	lp->mode_type = OTX2_IPSEC_PO_TRANSPORT;
-
 	auth_xform = crypto_xform;
 	cipher_xform = crypto_xform->next;
 
 	cipher_key_len = 0;
 	auth_key_len = 0;
-
-	if (ipsec->mode == RTE_SECURITY_IPSEC_SA_MODE_TUNNEL)
-		lp->mode_type = (ipsec->tunnel.type ==
-				RTE_SECURITY_IPSEC_TUNNEL_IPV4) ?
-				OTX2_IPSEC_PO_TUNNEL_IPV4 :
-				OTX2_IPSEC_PO_TUNNEL_IPV6;
 
 	if (crypto_xform->type == RTE_CRYPTO_SYM_XFORM_AEAD) {
 		if (crypto_xform->aead.algo == RTE_CRYPTO_AEAD_AES_GCM)
@@ -482,6 +472,10 @@ crypto_sec_ipsec_inb_session_create(struct rte_cryptodev *crypto_dev,
 	lp->cpt_inst_w7 = inst.u64[7];
 	lp->ucmd_opcode = (lp->ctx_len << 8) |
 				(OTX2_IPSEC_PO_PROCESS_IPSEC_INB);
+	lp->ucmd_param1 = 0;
+
+	/* Set IKEv2 bit */
+	lp->ucmd_param2 = BIT(12);
 
 	set_session_misc_attributes(lp, crypto_xform,
 				    auth_xform, cipher_xform);
