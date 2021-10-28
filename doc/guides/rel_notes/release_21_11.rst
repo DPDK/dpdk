@@ -154,6 +154,10 @@ New Features
   * Implement support for tunnel offload.
   * Updated HWRM API to version 1.10.2.44
 
+* **Updated Cisco enic driver.**
+
+  * Added rte_flow support for matching GTP, GTP-C and GTP-U headers.
+
 * **Updated Intel e1000 emulated driver.**
 
   * Added Intel e1000 support on Windows.

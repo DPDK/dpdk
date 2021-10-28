@@ -473,6 +473,8 @@ RTE_MBUF_F_RX_VLAN_STRIPPED mbuf flags would not be set. This mode is enabled wi
     packets and then receive them normally. These require 1400 series VIC adapters
     and latest firmware.
   - RAW items are limited to matching UDP tunnel headers like VXLAN.
+  - GTP, GTP-C and GTP-U header matching is enabled, however matching items within
+    the tunnel is not supported.
   - For 1400 VICs, all flows using the RSS action on a port use same hash
     configuration. The RETA is ignored. The queues used in the RSS group must be
     sequential. There is a performance hit if the number of queues is not a power of 2.

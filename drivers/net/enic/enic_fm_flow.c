@@ -22,9 +22,6 @@
 #define IP_DEFTTL  64   /* from RFC 1340. */
 #define IP6_VTC_FLOW 0x60000000
 
-/* Highest Item type supported by Flowman */
-#define FM_MAX_ITEM_TYPE RTE_FLOW_ITEM_TYPE_VXLAN
-
 /* Up to 1024 TCAM entries */
 #define FM_MAX_TCAM_TABLE_SIZE 1024
 
@@ -235,6 +232,7 @@ static enic_copy_item_fn enic_fm_copy_item_tcp;
 static enic_copy_item_fn enic_fm_copy_item_udp;
 static enic_copy_item_fn enic_fm_copy_item_vlan;
 static enic_copy_item_fn enic_fm_copy_item_vxlan;
+static enic_copy_item_fn enic_fm_copy_item_gtp;
 
 /* Ingress actions */
 static const enum rte_flow_action_type enic_fm_supported_ig_actions[] = {
@@ -340,6 +338,30 @@ static const struct enic_fm_items enic_fm_items[] = {
 	},
 	[RTE_FLOW_ITEM_TYPE_VXLAN] = {
 		.copy_item = enic_fm_copy_item_vxlan,
+		.valid_start_item = 1,
+		.prev_items = (const enum rte_flow_item_type[]) {
+			       RTE_FLOW_ITEM_TYPE_UDP,
+			       RTE_FLOW_ITEM_TYPE_END,
+		},
+	},
+	[RTE_FLOW_ITEM_TYPE_GTP] = {
+		.copy_item = enic_fm_copy_item_gtp,
+		.valid_start_item = 0,
+		.prev_items = (const enum rte_flow_item_type[]) {
+			       RTE_FLOW_ITEM_TYPE_UDP,
+			       RTE_FLOW_ITEM_TYPE_END,
+		},
+	},
+	[RTE_FLOW_ITEM_TYPE_GTPC] = {
+		.copy_item = enic_fm_copy_item_gtp,
+		.valid_start_item = 1,
+		.prev_items = (const enum rte_flow_item_type[]) {
+			       RTE_FLOW_ITEM_TYPE_UDP,
+			       RTE_FLOW_ITEM_TYPE_END,
+		},
+	},
+	[RTE_FLOW_ITEM_TYPE_GTPU] = {
+		.copy_item = enic_fm_copy_item_gtp,
 		.valid_start_item = 1,
 		.prev_items = (const enum rte_flow_item_type[]) {
 			       RTE_FLOW_ITEM_TYPE_UDP,
@@ -629,6 +651,99 @@ enic_fm_copy_item_vxlan(struct copy_item_args *arg)
 	return 0;
 }
 
+static int
+enic_fm_copy_item_gtp(struct copy_item_args *arg)
+{
+	const struct rte_flow_item *item = arg->item;
+	const struct rte_flow_item_gtp *spec = item->spec;
+	const struct rte_flow_item_gtp *mask = item->mask;
+	struct fm_tcam_match_entry *entry = arg->fm_tcam_entry;
+	struct fm_header_set *fm_data, *fm_mask;
+	int off;
+	uint16_t udp_gtp_uc_port_be = 0;
+
+	ENICPMD_FUNC_TRACE();
+	/* Only 2 header levels (outer and inner) allowed */
+	if (arg->header_level > 0)
+		return -EINVAL;
+
+	fm_data = &entry->ftm_data.fk_hdrset[0];
+	fm_mask = &entry->ftm_mask.fk_hdrset[0];
+
+	switch (item->type) {
+	case RTE_FLOW_ITEM_TYPE_GTP:
+	{
+		/* For vanilla GTP, the UDP destination port must be specified
+		 * but value of the port is not enforced here.
+		 */
+		if (!(fm_data->fk_metadata & FKM_UDP) ||
+		    !(fm_data->fk_header_select & FKH_UDP) ||
+		    fm_data->l4.udp.fk_dest == 0)
+			return -EINVAL;
+		if (!(fm_mask->fk_metadata & FKM_UDP) ||
+		    !(fm_mask->fk_header_select & FKH_UDP) ||
+		    fm_mask->l4.udp.fk_dest != 0xFFFF)
+			return -EINVAL;
+		break;
+	}
+	case RTE_FLOW_ITEM_TYPE_GTPC:
+	{
+		udp_gtp_uc_port_be = rte_cpu_to_be_16(RTE_GTPC_UDP_PORT);
+		break;
+	}
+	case RTE_FLOW_ITEM_TYPE_GTPU:
+	{
+		udp_gtp_uc_port_be = rte_cpu_to_be_16(RTE_GTPU_UDP_PORT);
+		break;
+	}
+	default:
+		RTE_ASSERT(0);
+	}
+
+	/* The GTP-C or GTP-U UDP destination port must be matched. */
+	if (udp_gtp_uc_port_be) {
+		if (fm_data->fk_metadata & FKM_UDP &&
+		    fm_data->fk_header_select & FKH_UDP &&
+		    fm_data->l4.udp.fk_dest != udp_gtp_uc_port_be)
+			return -EINVAL;
+		if (fm_mask->fk_metadata & FKM_UDP &&
+		    fm_mask->fk_header_select & FKH_UDP &&
+		    fm_mask->l4.udp.fk_dest != 0xFFFF)
+			return -EINVAL;
+
+		/* In any case, add match for GTP-C GTP-U UDP dst port */
+		fm_data->fk_metadata |= FKM_UDP;
+		fm_data->fk_header_select |= FKH_UDP;
+		fm_data->l4.udp.fk_dest = udp_gtp_uc_port_be;
+		fm_mask->fk_metadata |= FKM_UDP;
+		fm_mask->fk_header_select |= FKH_UDP;
+		fm_mask->l4.udp.fk_dest = 0xFFFF;
+	}
+
+	/* NIC does not support GTP tunnels. No Items are allowed after this.
+	 * This prevents the specificaiton of further items.
+	 */
+	arg->header_level = 0;
+
+	/* Match all if no spec */
+	if (!spec)
+		return 0;
+	if (!mask)
+		mask = &rte_flow_item_gtp_mask;
+
+	/*
+	 * Use the raw L4 buffer to match GTP as fm_header_set does not have
+	 * GTP header. UDP dst port must be specifiec. Using the raw buffer
+	 * does not affect such UDP item, since we skip UDP in the raw buffer.
+	 */
+	fm_data->fk_header_select |= FKH_L4RAW;
+	fm_mask->fk_header_select |= FKH_L4RAW;
+	off = sizeof(fm_data->l4.udp);
+	memcpy(&fm_data->l4.rawdata[off], spec, sizeof(*spec));
+	memcpy(&fm_mask->l4.rawdata[off], mask, sizeof(*mask));
+	return 0;
+}
+
 /*
  * Currently, raw pattern match is very limited. It is intended for matching
  * UDP tunnel header (e.g. vxlan or geneve).
@@ -863,7 +978,7 @@ enic_fm_copy_entry(struct enic_flowman *fm,
 
 		item_info = &enic_fm_items[item->type];
 
-		if (item->type > FM_MAX_ITEM_TYPE ||
+		if (item->type >= RTE_DIM(enic_fm_items) ||
 		    item_info->copy_item == NULL) {
 			return rte_flow_error_set(error, ENOTSUP,
 				RTE_FLOW_ERROR_TYPE_ITEM,
