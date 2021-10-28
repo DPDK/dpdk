@@ -116,8 +116,18 @@ ot_ipsec_sa_common_param_fill(union roc_ot_ipsec_sa_word2 *w2,
 		}
 
 		switch (auth_xfrm->auth.algo) {
+		case RTE_CRYPTO_AUTH_NULL:
+			w2->s.auth_type = ROC_IE_OT_SA_AUTH_NULL;
+			break;
 		case RTE_CRYPTO_AUTH_SHA1_HMAC:
 			w2->s.auth_type = ROC_IE_OT_SA_AUTH_SHA1;
+			ipsec_hmac_opad_ipad_gen(auth_xfrm, hmac_opad_ipad);
+
+			tmp_key = (uint64_t *)hmac_opad_ipad;
+			for (i = 0; i < (int)(ROC_CTX_MAX_OPAD_IPAD_LEN /
+					      sizeof(uint64_t));
+			     i++)
+				tmp_key[i] = rte_be_to_cpu_64(tmp_key[i]);
 			break;
 		default:
 			return -ENOTSUP;
@@ -125,14 +135,6 @@ ot_ipsec_sa_common_param_fill(union roc_ot_ipsec_sa_word2 *w2,
 
 		key = cipher_xfrm->cipher.key.data;
 		length = cipher_xfrm->cipher.key.length;
-
-		ipsec_hmac_opad_ipad_gen(auth_xfrm, hmac_opad_ipad);
-
-		tmp_key = (uint64_t *)hmac_opad_ipad;
-		for (i = 0;
-		     i < (int)(ROC_CTX_MAX_OPAD_IPAD_LEN / sizeof(uint64_t));
-		     i++)
-			tmp_key[i] = rte_be_to_cpu_64(tmp_key[i]);
 	}
 
 	/* Set encapsulation type */
