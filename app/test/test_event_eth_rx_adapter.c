@@ -471,6 +471,64 @@ adapter_queue_event_buf_test(void)
 	return TEST_SUCCESS;
 }
 
+static int
+adapter_queue_stats_test(void)
+{
+	int err;
+	struct rte_event ev;
+	uint32_t cap;
+	struct rte_event_eth_rx_adapter_queue_conf queue_config = {0};
+	struct rte_event_eth_rx_adapter_queue_stats q_stats;
+
+	err = rte_event_eth_rx_adapter_queue_stats_get(TEST_INST_ID,
+						TEST_ETHDEV_ID, 0,
+						&q_stats);
+	TEST_ASSERT(err == -EINVAL, "Expected -EINVAL got %d", err);
+
+	err = rte_event_eth_rx_adapter_queue_stats_reset(TEST_INST_ID,
+						TEST_ETHDEV_ID, 0);
+	TEST_ASSERT(err == -EINVAL, "Expected -EINVAL got %d", err);
+
+	err = rte_event_eth_rx_adapter_caps_get(TEST_DEV_ID, TEST_ETHDEV_ID,
+					 &cap);
+	TEST_ASSERT(err == 0, "Expected 0 got %d", err);
+
+	ev.queue_id = 0;
+	ev.sched_type = RTE_SCHED_TYPE_ATOMIC;
+	ev.priority = 0;
+
+	queue_config.rx_queue_flags = 0;
+	if (cap & RTE_EVENT_ETH_RX_ADAPTER_CAP_OVERRIDE_FLOW_ID) {
+		ev.flow_id = 1;
+		queue_config.rx_queue_flags =
+			RTE_EVENT_ETH_RX_ADAPTER_QUEUE_FLOW_ID_VALID;
+	}
+	queue_config.ev = ev;
+	queue_config.servicing_weight = 1;
+	queue_config.event_buf_size = 1024;
+
+	err = rte_event_eth_rx_adapter_queue_add(TEST_INST_ID,
+					TEST_ETHDEV_ID, 0,
+					&queue_config);
+	TEST_ASSERT(err == 0, "Expected 0 got %d", err);
+
+	err = rte_event_eth_rx_adapter_queue_stats_get(TEST_INST_ID,
+						TEST_ETHDEV_ID, 0,
+						&q_stats);
+	TEST_ASSERT(err == 0, "Expected 0 got %d", err);
+
+	err = rte_event_eth_rx_adapter_queue_stats_reset(TEST_INST_ID,
+						TEST_ETHDEV_ID, 0);
+	TEST_ASSERT(err == 0, "Expected 0 got %d", err);
+
+	err = rte_event_eth_rx_adapter_queue_del(TEST_INST_ID,
+						TEST_ETHDEV_ID,
+						0);
+	TEST_ASSERT(err == 0, "Expected 0 got %d", err);
+
+	return TEST_SUCCESS;
+}
+
 static void
 adapter_free(void)
 {
@@ -940,6 +998,8 @@ static struct unit_test_suite event_eth_rx_tests = {
 		TEST_CASE_ST(adapter_create, adapter_free, adapter_queue_conf),
 		TEST_CASE_ST(adapter_create_with_params, adapter_free,
 			     adapter_queue_event_buf_test),
+		TEST_CASE_ST(adapter_create_with_params, adapter_free,
+			     adapter_queue_stats_test),
 		TEST_CASES_END() /**< NULL terminate unit test array */
 	}
 };
