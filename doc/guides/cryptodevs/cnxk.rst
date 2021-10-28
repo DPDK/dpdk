@@ -244,10 +244,14 @@ CN9XX Features supported
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
 * IPv4
+* IPv6
 * ESP
 * Tunnel mode
+* Transport mode(IPv4)
 * UDP Encapsulation
 * AES-128/192/256-GCM
+* AES-128/192/256-CBC-SHA1-HMAC
+* AES-128/192/256-CBC-SHA256-128-HMAC
 * ESN
 * Anti-replay
 
