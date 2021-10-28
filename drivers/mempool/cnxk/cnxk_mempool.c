@@ -31,25 +31,25 @@ npa_aura_size_to_u32(uint8_t val)
 }
 
 static int
-parse_max_pools(const char *key, const char *value, void *extra_args)
+parse_max_pools_handler(const char *key, const char *value, void *extra_args)
 {
 	RTE_SET_USED(key);
 	uint32_t val;
 
-	val = atoi(value);
+	val = rte_align32pow2(atoi(value));
 	if (val < npa_aura_size_to_u32(NPA_AURA_SZ_128))
 		val = 128;
 	if (val > npa_aura_size_to_u32(NPA_AURA_SZ_1M))
 		val = BIT_ULL(20);
 
-	*(uint8_t *)extra_args = rte_log2_u32(val) - 6;
+	*(uint32_t *)extra_args = val;
 	return 0;
 }
 
-static inline uint8_t
-parse_aura_size(struct rte_devargs *devargs)
+static inline uint32_t
+parse_max_pools(struct rte_devargs *devargs)
 {
-	uint8_t aura_sz = NPA_AURA_SZ_128;
+	uint32_t max_pools = npa_aura_size_to_u32(NPA_AURA_SZ_128);
 	struct rte_kvargs *kvlist;
 
 	if (devargs == NULL)
@@ -58,11 +58,11 @@ parse_aura_size(struct rte_devargs *devargs)
 	if (kvlist == NULL)
 		goto exit;
 
-	rte_kvargs_process(kvlist, CNXK_NPA_MAX_POOLS_PARAM, &parse_max_pools,
-			   &aura_sz);
+	rte_kvargs_process(kvlist, CNXK_NPA_MAX_POOLS_PARAM,
+			   &parse_max_pools_handler, &max_pools);
 	rte_kvargs_free(kvlist);
 exit:
-	return aura_sz;
+	return max_pools;
 }
 
 static inline char *
@@ -92,7 +92,7 @@ npa_init(struct rte_pci_device *pci_dev)
 	dev = mz->addr;
 	dev->pci_dev = pci_dev;
 
-	roc_idev_npa_maxpools_set(parse_aura_size(pci_dev->device.devargs));
+	roc_idev_npa_maxpools_set(parse_max_pools(pci_dev->device.devargs));
 	rc = roc_npa_dev_init(dev);
 	if (rc)
 		goto mz_free;
