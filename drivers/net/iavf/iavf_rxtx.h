@@ -25,7 +25,8 @@
 
 #define IAVF_TX_NO_VECTOR_FLAGS (				 \
 		RTE_ETH_TX_OFFLOAD_MULTI_SEGS |		 \
-		RTE_ETH_TX_OFFLOAD_TCP_TSO)
+		RTE_ETH_TX_OFFLOAD_TCP_TSO |		 \
+		RTE_ETH_TX_OFFLOAD_SECURITY)
 
 #define IAVF_TX_VECTOR_OFFLOAD (				 \
 		RTE_ETH_TX_OFFLOAD_VLAN_INSERT |		 \
@@ -47,23 +48,26 @@
 #define DEFAULT_TX_RS_THRESH     32
 #define DEFAULT_TX_FREE_THRESH   32
 
-#define IAVF_MIN_TSO_MSS          88
+#define IAVF_MIN_TSO_MSS          256
 #define IAVF_MAX_TSO_MSS          9668
 #define IAVF_TSO_MAX_SEG          UINT8_MAX
 #define IAVF_TX_MAX_MTU_SEG       8
 
-#define IAVF_TX_CKSUM_OFFLOAD_MASK (RTE_MBUF_F_TX_IP_CKSUM |		 \
+#define IAVF_TX_CKSUM_OFFLOAD_MASK (		 \
+		RTE_MBUF_F_TX_IP_CKSUM |		 \
 		RTE_MBUF_F_TX_L4_MASK |		 \
 		RTE_MBUF_F_TX_TCP_SEG)
 
-#define IAVF_TX_OFFLOAD_MASK (RTE_MBUF_F_TX_OUTER_IPV6 |		 \
+#define IAVF_TX_OFFLOAD_MASK (  \
+		RTE_MBUF_F_TX_OUTER_IPV6 |		 \
 		RTE_MBUF_F_TX_OUTER_IPV4 |		 \
 		RTE_MBUF_F_TX_IPV6 |			 \
 		RTE_MBUF_F_TX_IPV4 |			 \
 		RTE_MBUF_F_TX_VLAN |		 \
 		RTE_MBUF_F_TX_IP_CKSUM |		 \
 		RTE_MBUF_F_TX_L4_MASK |		 \
-		RTE_MBUF_F_TX_TCP_SEG)
+		RTE_MBUF_F_TX_TCP_SEG |		 \
+		RTE_ETH_TX_OFFLOAD_SECURITY)
 
 #define IAVF_TX_OFFLOAD_NOTSUP_MASK \
 		(RTE_MBUF_F_TX_OFFLOAD_MASK ^ IAVF_TX_OFFLOAD_MASK)
@@ -161,6 +165,24 @@ struct iavf_txq_ops {
 	void (*release_mbufs)(struct iavf_tx_queue *txq);
 };
 
+struct iavf_ipsec_crypto_stats {
+	uint64_t icount;
+	uint64_t ibytes;
+	struct {
+		uint64_t count;
+		uint64_t sad_miss;
+		uint64_t not_processed;
+		uint64_t icv_check;
+		uint64_t ipsec_length;
+		uint64_t misc;
+	} ierrors;
+};
+
+struct iavf_rx_queue_stats {
+	uint64_t reserved;
+	struct iavf_ipsec_crypto_stats ipsec_crypto;
+};
+
 /* Structure associated with each Rx queue. */
 struct iavf_rx_queue {
 	struct rte_mempool *mp;       /* mbuf pool to populate Rx ring */
@@ -209,6 +231,7 @@ struct iavf_rx_queue {
 		/* flexible descriptor metadata extraction offload flag */
 	iavf_rxd_to_pkt_fields_t rxd_to_pkt_fields;
 				/* handle flexible descriptor by RXDID */
+	struct iavf_rx_queue_stats stats;
 	uint64_t offloads;
 };
 
@@ -243,6 +266,7 @@ struct iavf_tx_queue {
 	uint64_t offloads;
 	uint16_t next_dd;              /* next to set RS, for VPMD */
 	uint16_t next_rs;              /* next to check DD,  for VPMD */
+	uint16_t ipsec_crypto_pkt_md_offset;
 
 	bool q_set;                    /* if rx queue has been configured */
 	bool tx_deferred_start;        /* don't start this queue in dev start */
@@ -345,6 +369,40 @@ struct iavf_32b_rx_flex_desc_comms_ovs {
 	} flex_ts;
 };
 
+/* Rx Flex Descriptor
+ * RxDID Profile ID 24 Inline IPsec
+ * Flex-field 0: RSS hash lower 16-bits
+ * Flex-field 1: RSS hash upper 16-bits
+ * Flex-field 2: Flow ID lower 16-bits
+ * Flex-field 3: Flow ID upper 16-bits
+ * Flex-field 4: Inline IPsec SAID lower 16-bits
+ * Flex-field 5: Inline IPsec SAID upper 16-bits
+ */
+struct iavf_32b_rx_flex_desc_comms_ipsec {
+	/* Qword 0 */
+	u8 rxdid;
+	u8 mir_id_umb_cast;
+	__le16 ptype_flexi_flags0;
+	__le16 pkt_len;
+	__le16 hdr_len_sph_flex_flags1;
+
+	/* Qword 1 */
+	__le16 status_error0;
+	__le16 l2tag1;
+	__le32 rss_hash;
+
+	/* Qword 2 */
+	__le16 status_error1;
+	u8 flexi_flags2;
+	u8 ts_low;
+	__le16 l2tag2_1st;
+	__le16 l2tag2_2nd;
+
+	/* Qword 3 */
+	__le32 flow_id;
+	__le32 ipsec_said;
+};
+
 /* Receive Flex Descriptor profile IDs: There are a total
  * of 64 profiles where profile IDs 0/1 are for legacy; and
  * profiles 2-63 are flex profiles that can be programmed
@@ -364,6 +422,7 @@ enum iavf_rxdid {
 	IAVF_RXDID_COMMS_AUX_TCP	= 21,
 	IAVF_RXDID_COMMS_OVS_1		= 22,
 	IAVF_RXDID_COMMS_OVS_2		= 23,
+	IAVF_RXDID_COMMS_IPSEC_CRYPTO	= 24,
 	IAVF_RXDID_COMMS_AUX_IP_OFFSET	= 25,
 	IAVF_RXDID_LAST			= 63,
 };
@@ -391,9 +450,13 @@ enum iavf_rx_flex_desc_status_error_0_bits {
 
 enum iavf_rx_flex_desc_status_error_1_bits {
 	/* Note: These are predefined bit offsets */
-	IAVF_RX_FLEX_DESC_STATUS1_CPM_S = 0, /* 4 bits */
-	IAVF_RX_FLEX_DESC_STATUS1_NAT_S = 4,
-	IAVF_RX_FLEX_DESC_STATUS1_CRYPTO_S = 5,
+	/* Bits 3:0 are reserved for inline ipsec status */
+	IAVF_RX_FLEX_DESC_STATUS1_IPSEC_CRYPTO_STATUS_0 = 0,
+	IAVF_RX_FLEX_DESC_STATUS1_IPSEC_CRYPTO_STATUS_1,
+	IAVF_RX_FLEX_DESC_STATUS1_IPSEC_CRYPTO_STATUS_2,
+	IAVF_RX_FLEX_DESC_STATUS1_IPSEC_CRYPTO_STATUS_3,
+	IAVF_RX_FLEX_DESC_STATUS1_NAT_S,
+	IAVF_RX_FLEX_DESC_STATUS1_IPSEC_CRYPTO_PROCESSED,
 	/* [10:6] reserved */
 	IAVF_RX_FLEX_DESC_STATUS1_L2TAG2P_S = 11,
 	IAVF_RX_FLEX_DESC_STATUS1_XTRMD2_VALID_S = 12,
@@ -402,6 +465,23 @@ enum iavf_rx_flex_desc_status_error_1_bits {
 	IAVF_RX_FLEX_DESC_STATUS1_XTRMD5_VALID_S = 15,
 	IAVF_RX_FLEX_DESC_STATUS1_LAST /* this entry must be last!!! */
 };
+
+#define IAVF_RX_FLEX_DESC_IPSEC_CRYPTO_STATUS_MASK  (		\
+	BIT(IAVF_RX_FLEX_DESC_STATUS1_IPSEC_CRYPTO_STATUS_0) |	\
+	BIT(IAVF_RX_FLEX_DESC_STATUS1_IPSEC_CRYPTO_STATUS_1) |	\
+	BIT(IAVF_RX_FLEX_DESC_STATUS1_IPSEC_CRYPTO_STATUS_2) |	\
+	BIT(IAVF_RX_FLEX_DESC_STATUS1_IPSEC_CRYPTO_STATUS_3))
+
+enum iavf_rx_flex_desc_ipsec_crypto_status {
+	IAVF_IPSEC_CRYPTO_STATUS_SUCCESS = 0,
+	IAVF_IPSEC_CRYPTO_STATUS_SAD_MISS,
+	IAVF_IPSEC_CRYPTO_STATUS_NOT_PROCESSED,
+	IAVF_IPSEC_CRYPTO_STATUS_ICV_CHECK_FAIL,
+	IAVF_IPSEC_CRYPTO_STATUS_LENGTH_ERR,
+	/* Reserved */
+	IAVF_IPSEC_CRYPTO_STATUS_MISC_ERR = 0xF
+};
+
 
 
 #define IAVF_TXD_DATA_QW1_DTYPE_SHIFT	(0)
@@ -669,6 +749,9 @@ void iavf_dump_tx_descriptor(const struct iavf_tx_queue *txq,
 		break;
 	case IAVF_TX_DESC_DTYPE_CONTEXT:
 		name = "Tx_context_desc";
+		break;
+	case IAVF_TX_DESC_DTYPE_IPSEC:
+		name = "Tx_IPsec_desc";
 		break;
 	default:
 		name = "unknown_desc";

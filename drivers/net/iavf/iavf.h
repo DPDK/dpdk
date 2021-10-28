@@ -221,6 +221,7 @@ struct iavf_info {
 	rte_spinlock_t flow_ops_lock;
 	struct iavf_parser_list rss_parser_list;
 	struct iavf_parser_list dist_parser_list;
+	struct iavf_parser_list ipsec_crypto_parser_list;
 
 	struct iavf_fdir_info fdir; /* flow director info */
 	/* indicate large VF support enabled or not */
@@ -245,6 +246,7 @@ enum iavf_proto_xtr_type {
 	IAVF_PROTO_XTR_IPV6_FLOW,
 	IAVF_PROTO_XTR_TCP,
 	IAVF_PROTO_XTR_IP_OFFSET,
+	IAVF_PROTO_XTR_IPSEC_CRYPTO_SAID,
 	IAVF_PROTO_XTR_MAX,
 };
 
@@ -256,11 +258,14 @@ struct iavf_devargs {
 	uint8_t proto_xtr[IAVF_MAX_QUEUE_NUM];
 };
 
+struct iavf_security_ctx;
+
 /* Structure to store private data for each VF instance. */
 struct iavf_adapter {
 	struct iavf_hw hw;
 	struct rte_eth_dev_data *dev_data;
 	struct iavf_info vf;
+	struct iavf_security_ctx *security_ctx;
 
 	bool rx_bulk_alloc_allowed;
 	/* For vector PMD */
@@ -279,6 +284,8 @@ struct iavf_adapter {
 	(&((struct iavf_adapter *)adapter)->vf)
 #define IAVF_DEV_PRIVATE_TO_HW(adapter) \
 	(&((struct iavf_adapter *)adapter)->hw)
+#define IAVF_DEV_PRIVATE_TO_IAVF_SECURITY_CTX(adapter) \
+	(((struct iavf_adapter *)adapter)->security_ctx)
 
 /* IAVF_VSI_TO */
 #define IAVF_VSI_TO_HW(vsi) \
@@ -424,5 +431,8 @@ int iavf_set_q_tc_map(struct rte_eth_dev *dev,
 			uint16_t size);
 void iavf_tm_conf_init(struct rte_eth_dev *dev);
 void iavf_tm_conf_uninit(struct rte_eth_dev *dev);
+int iavf_ipsec_crypto_request(struct iavf_adapter *adapter,
+		uint8_t *msg, size_t msg_len,
+		uint8_t *resp_msg, size_t resp_msg_len);
 extern const struct rte_tm_ops iavf_tm_ops;
 #endif /* _IAVF_ETHDEV_H_ */

@@ -1766,6 +1766,7 @@ iavf_flow_init(struct iavf_adapter *ad)
 	TAILQ_INIT(&vf->flow_list);
 	TAILQ_INIT(&vf->rss_parser_list);
 	TAILQ_INIT(&vf->dist_parser_list);
+	TAILQ_INIT(&vf->ipsec_crypto_parser_list);
 	rte_spinlock_init(&vf->flow_ops_lock);
 
 	RTE_TAILQ_FOREACH_SAFE(engine, &engine_list, node, temp) {
@@ -1839,6 +1840,9 @@ iavf_register_parser(struct iavf_flow_parser *parser,
 		TAILQ_INSERT_TAIL(list, parser_node, node);
 	} else if (parser->engine->type == IAVF_FLOW_ENGINE_FDIR) {
 		list = &vf->dist_parser_list;
+		TAILQ_INSERT_HEAD(list, parser_node, node);
+	} else if (parser->engine->type == IAVF_FLOW_ENGINE_IPSEC_CRYPTO) {
+		list = &vf->ipsec_crypto_parser_list;
 		TAILQ_INSERT_HEAD(list, parser_node, node);
 	} else {
 		return -EINVAL;
@@ -2149,6 +2153,13 @@ iavf_flow_process_filter(struct rte_eth_dev *dev,
 
 	*engine = iavf_parse_engine(ad, flow, &vf->dist_parser_list, pattern,
 				    actions, error);
+	if (*engine)
+		return 0;
+
+	*engine = iavf_parse_engine(ad, flow, &vf->ipsec_crypto_parser_list,
+			pattern, actions, error);
+	if (*engine)
+		return 0;
 
 	if (!*engine) {
 		rte_flow_error_set(error, EINVAL,
@@ -2194,6 +2205,10 @@ iavf_flow_create(struct rte_eth_dev *dev,
 				   "Failed to allocate memory");
 		return flow;
 	}
+
+	/* Special case for inline crypto egress flows */
+	if (attr->egress && actions[0].type == RTE_FLOW_ACTION_TYPE_SECURITY)
+		goto free_flow;
 
 	ret = iavf_flow_process_filter(dev, flow, attr, pattern, actions,
 			&engine, iavf_parse_engine_create, error);

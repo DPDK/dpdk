@@ -30,6 +30,7 @@
 #include "iavf_rxtx.h"
 #include "iavf_generic_flow.h"
 #include "rte_pmd_iavf.h"
+#include "iavf_ipsec_crypto.h"
 
 /* devargs */
 #define IAVF_PROTO_XTR_ARG         "proto_xtr"
@@ -71,6 +72,11 @@ static struct iavf_proto_xtr_ol iavf_proto_xtr_params[] = {
 	[IAVF_PROTO_XTR_IP_OFFSET] = {
 		.param = { .name = "intel_pmd_dynflag_proto_xtr_ip_offset" },
 		.ol_flag = &rte_pmd_ifd_dynflag_proto_xtr_ip_offset_mask },
+	[IAVF_PROTO_XTR_IPSEC_CRYPTO_SAID] = {
+		.param = {
+		.name = "intel_pmd_dynflag_proto_xtr_ipsec_crypto_said" },
+		.ol_flag =
+			&rte_pmd_ifd_dynflag_proto_xtr_ipsec_crypto_said_mask },
 };
 
 static int iavf_dev_configure(struct rte_eth_dev *dev);
@@ -922,6 +928,9 @@ iavf_dev_stop(struct rte_eth_dev *dev)
 	iavf_add_del_mc_addr_list(adapter, vf->mc_addrs, vf->mc_addrs_num,
 				  false);
 
+	/* free iAVF security device context all related resources */
+	iavf_security_ctx_destroy(adapter);
+
 	adapter->stopped = 1;
 	dev->data->dev_started = 0;
 
@@ -931,7 +940,9 @@ iavf_dev_stop(struct rte_eth_dev *dev)
 static int
 iavf_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 {
-	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
+	struct iavf_adapter *adapter =
+		IAVF_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
+	struct iavf_info *vf = &adapter->vf;
 
 	dev_info->max_rx_queues = IAVF_MAX_NUM_QUEUES_LV;
 	dev_info->max_tx_queues = IAVF_MAX_NUM_QUEUES_LV;
@@ -972,6 +983,11 @@ iavf_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 
 	if (vf->vf_res->vf_cap_flags & VIRTCHNL_VF_OFFLOAD_CRC)
 		dev_info->rx_offload_capa |= RTE_ETH_RX_OFFLOAD_KEEP_CRC;
+
+	if (iavf_ipsec_crypto_supported(adapter)) {
+		dev_info->rx_offload_capa |= RTE_ETH_RX_OFFLOAD_SECURITY;
+		dev_info->tx_offload_capa |= RTE_ETH_TX_OFFLOAD_SECURITY;
+	}
 
 	dev_info->default_rxconf = (struct rte_eth_rxconf) {
 		.rx_free_thresh = IAVF_DEFAULT_RX_FREE_THRESH,
@@ -1718,6 +1734,7 @@ iavf_lookup_proto_xtr_type(const char *flex_name)
 		{ "ipv6_flow", IAVF_PROTO_XTR_IPV6_FLOW },
 		{ "tcp",       IAVF_PROTO_XTR_TCP       },
 		{ "ip_offset", IAVF_PROTO_XTR_IP_OFFSET },
+		{ "ipsec_crypto_said", IAVF_PROTO_XTR_IPSEC_CRYPTO_SAID },
 	};
 	uint32_t i;
 
@@ -1726,8 +1743,8 @@ iavf_lookup_proto_xtr_type(const char *flex_name)
 			return xtr_type_map[i].type;
 	}
 
-	PMD_DRV_LOG(ERR, "wrong proto_xtr type, "
-		    "it should be: vlan|ipv4|ipv6|ipv6_flow|tcp|ip_offset");
+	PMD_DRV_LOG(ERR, "wrong proto_xtr type, it should be: "
+			"vlan|ipv4|ipv6|ipv6_flow|tcp|ip_offset|ipsec_crypto_said");
 
 	return -1;
 }
@@ -2373,6 +2390,24 @@ iavf_dev_init(struct rte_eth_dev *eth_dev)
 	if (ret) {
 		PMD_INIT_LOG(ERR, "Failed to initialize flow");
 		goto flow_init_err;
+	}
+
+	/** Check if the IPsec Crypto offload is supported and create
+	 *  security_ctx if it is.
+	 */
+	if (iavf_ipsec_crypto_supported(adapter)) {
+		/* Initialize security_ctx only for primary process*/
+		ret = iavf_security_ctx_create(adapter);
+		if (ret) {
+			PMD_INIT_LOG(ERR, "failed to create ipsec crypto security instance");
+			return ret;
+		}
+
+		ret = iavf_security_init(adapter);
+		if (ret) {
+			PMD_INIT_LOG(ERR, "failed to initialized ipsec crypto resources");
+			return ret;
+		}
 	}
 
 	iavf_default_rss_disable(adapter);

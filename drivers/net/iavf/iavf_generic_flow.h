@@ -464,6 +464,7 @@ typedef int (*parse_pattern_action_t)(struct iavf_adapter *ad,
 /* engine types. */
 enum iavf_flow_engine_type {
 	IAVF_FLOW_ENGINE_NONE = 0,
+	IAVF_FLOW_ENGINE_IPSEC_CRYPTO,
 	IAVF_FLOW_ENGINE_FDIR,
 	IAVF_FLOW_ENGINE_HASH,
 	IAVF_FLOW_ENGINE_MAX,
@@ -477,6 +478,7 @@ enum iavf_flow_engine_type {
  */
 enum iavf_flow_classification_stage {
 	IAVF_FLOW_STAGE_NONE = 0,
+	IAVF_FLOW_STAGE_IPSEC_CRYPTO,
 	IAVF_FLOW_STAGE_RSS,
 	IAVF_FLOW_STAGE_DISTRIBUTOR,
 	IAVF_FLOW_STAGE_MAX,

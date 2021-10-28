@@ -13,4 +13,7 @@ EXPERIMENTAL {
 	rte_pmd_ifd_dynflag_proto_xtr_ipv6_flow_mask;
 	rte_pmd_ifd_dynflag_proto_xtr_tcp_mask;
 	rte_pmd_ifd_dynflag_proto_xtr_ip_offset_mask;
+
+	# added in 21.11
+	rte_pmd_ifd_dynflag_proto_xtr_ipsec_crypto_said_mask;
 };

@@ -27,6 +27,7 @@
 
 #include "iavf.h"
 #include "iavf_rxtx.h"
+#include "iavf_ipsec_crypto.h"
 #include "rte_pmd_iavf.h"
 
 /* Offset of mbuf dynamic field for protocol extraction's metadata */
@@ -39,6 +40,7 @@ uint64_t rte_pmd_ifd_dynflag_proto_xtr_ipv6_mask;
 uint64_t rte_pmd_ifd_dynflag_proto_xtr_ipv6_flow_mask;
 uint64_t rte_pmd_ifd_dynflag_proto_xtr_tcp_mask;
 uint64_t rte_pmd_ifd_dynflag_proto_xtr_ip_offset_mask;
+uint64_t rte_pmd_ifd_dynflag_proto_xtr_ipsec_crypto_said_mask;
 
 uint8_t
 iavf_proto_xtr_type_to_rxdid(uint8_t flex_type)
@@ -51,6 +53,8 @@ iavf_proto_xtr_type_to_rxdid(uint8_t flex_type)
 		[IAVF_PROTO_XTR_IPV6_FLOW] = IAVF_RXDID_COMMS_AUX_IPV6_FLOW,
 		[IAVF_PROTO_XTR_TCP]       = IAVF_RXDID_COMMS_AUX_TCP,
 		[IAVF_PROTO_XTR_IP_OFFSET] = IAVF_RXDID_COMMS_AUX_IP_OFFSET,
+		[IAVF_PROTO_XTR_IPSEC_CRYPTO_SAID] =
+				IAVF_RXDID_COMMS_IPSEC_CRYPTO,
 	};
 
 	return flex_type < RTE_DIM(rxdid_map) ?
@@ -508,6 +512,12 @@ iavf_select_rxd_to_pkt_fields_handler(struct iavf_rx_queue *rxq, uint32_t rxdid)
 		rxq->rxd_to_pkt_fields =
 			iavf_rxd_to_pkt_fields_by_comms_aux_v2;
 		break;
+	case IAVF_RXDID_COMMS_IPSEC_CRYPTO:
+		rxq->xtr_ol_flag =
+			rte_pmd_ifd_dynflag_proto_xtr_ipsec_crypto_said_mask;
+		rxq->rxd_to_pkt_fields =
+			iavf_rxd_to_pkt_fields_by_comms_aux_v2;
+		break;
 	case IAVF_RXDID_COMMS_OVS_1:
 		rxq->rxd_to_pkt_fields = iavf_rxd_to_pkt_fields_by_comms_ovs;
 		break;
@@ -692,6 +702,8 @@ iavf_dev_tx_queue_setup(struct rte_eth_dev *dev,
 		       const struct rte_eth_txconf *tx_conf)
 {
 	struct iavf_hw *hw = IAVF_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct iavf_adapter *adapter =
+		IAVF_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
 	struct iavf_info *vf =
 		IAVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
 	struct iavf_tx_queue *txq;
@@ -736,9 +748,9 @@ iavf_dev_tx_queue_setup(struct rte_eth_dev *dev,
 		return -ENOMEM;
 	}
 
-	if (vf->vf_res->vf_cap_flags & VIRTCHNL_VF_OFFLOAD_VLAN_V2) {
+	if (adapter->vf.vf_res->vf_cap_flags & VIRTCHNL_VF_OFFLOAD_VLAN_V2) {
 		struct virtchnl_vlan_supported_caps *insertion_support =
-			&vf->vlan_v2_caps.offloads.insertion_support;
+			&adapter->vf.vlan_v2_caps.offloads.insertion_support;
 		uint32_t insertion_cap;
 
 		if (insertion_support->outer)
@@ -761,6 +773,10 @@ iavf_dev_tx_queue_setup(struct rte_eth_dev *dev,
 	txq->port_id = dev->data->port_id;
 	txq->offloads = offloads;
 	txq->tx_deferred_start = tx_conf->tx_deferred_start;
+
+	if (iavf_ipsec_crypto_supported(adapter))
+		txq->ipsec_crypto_pkt_md_offset =
+			iavf_security_get_pkt_md_offset(adapter);
 
 	/* Allocate software ring */
 	txq->sw_ring =
@@ -1084,6 +1100,70 @@ iavf_flex_rxd_to_vlan_tci(struct rte_mbuf *mb,
 #endif
 }
 
+static inline void
+iavf_flex_rxd_to_ipsec_crypto_said_get(struct rte_mbuf *mb,
+			  volatile union iavf_rx_flex_desc *rxdp)
+{
+	volatile struct iavf_32b_rx_flex_desc_comms_ipsec *desc =
+		(volatile struct iavf_32b_rx_flex_desc_comms_ipsec *)rxdp;
+
+	mb->dynfield1[0] = desc->ipsec_said &
+			 IAVF_RX_FLEX_DESC_IPSEC_CRYPTO_SAID_MASK;
+	}
+
+static inline void
+iavf_flex_rxd_to_ipsec_crypto_status(struct rte_mbuf *mb,
+			  volatile union iavf_rx_flex_desc *rxdp,
+			  struct iavf_ipsec_crypto_stats *stats)
+{
+	uint16_t status1 = rte_le_to_cpu_64(rxdp->wb.status_error1);
+
+	if (status1 & BIT(IAVF_RX_FLEX_DESC_STATUS1_IPSEC_CRYPTO_PROCESSED)) {
+		uint16_t ipsec_status;
+
+		mb->ol_flags |= RTE_MBUF_F_RX_SEC_OFFLOAD;
+
+		ipsec_status = status1 &
+			IAVF_RX_FLEX_DESC_IPSEC_CRYPTO_STATUS_MASK;
+
+
+		if (unlikely(ipsec_status !=
+			IAVF_IPSEC_CRYPTO_STATUS_SUCCESS)) {
+			mb->ol_flags |= RTE_MBUF_F_RX_SEC_OFFLOAD_FAILED;
+
+			switch (ipsec_status) {
+			case IAVF_IPSEC_CRYPTO_STATUS_SAD_MISS:
+				stats->ierrors.sad_miss++;
+				break;
+			case IAVF_IPSEC_CRYPTO_STATUS_NOT_PROCESSED:
+				stats->ierrors.not_processed++;
+				break;
+			case IAVF_IPSEC_CRYPTO_STATUS_ICV_CHECK_FAIL:
+				stats->ierrors.icv_check++;
+				break;
+			case IAVF_IPSEC_CRYPTO_STATUS_LENGTH_ERR:
+				stats->ierrors.ipsec_length++;
+				break;
+			case IAVF_IPSEC_CRYPTO_STATUS_MISC_ERR:
+				stats->ierrors.misc++;
+				break;
+}
+
+			stats->ierrors.count++;
+			return;
+		}
+
+		stats->icount++;
+		stats->ibytes += rxdp->wb.pkt_len & 0x3FFF;
+
+		if (rxdp->wb.rxdid == IAVF_RXDID_COMMS_IPSEC_CRYPTO &&
+			ipsec_status !=
+				IAVF_IPSEC_CRYPTO_STATUS_SAD_MISS)
+			iavf_flex_rxd_to_ipsec_crypto_said_get(mb, rxdp);
+	}
+}
+
+
 /* Translate the rx descriptor status and error fields to pkt flags */
 static inline uint64_t
 iavf_rxd_to_pkt_flags(uint64_t qword)
@@ -1402,6 +1482,8 @@ iavf_recv_pkts_flex_rxd(void *rx_queue,
 		rxm->packet_type = ptype_tbl[IAVF_RX_FLEX_DESC_PTYPE_M &
 			rte_le_to_cpu_16(rxd.wb.ptype_flex_flags0)];
 		iavf_flex_rxd_to_vlan_tci(rxm, &rxd);
+		iavf_flex_rxd_to_ipsec_crypto_status(rxm, &rxd,
+				&rxq->stats.ipsec_crypto);
 		rxq->rxd_to_pkt_fields(rxq, rxm, &rxd);
 		pkt_flags = iavf_flex_rxd_error_to_pkt_flags(rx_stat_err0);
 		rxm->ol_flags |= pkt_flags;
@@ -1544,6 +1626,8 @@ iavf_recv_scattered_pkts_flex_rxd(void *rx_queue, struct rte_mbuf **rx_pkts,
 		first_seg->packet_type = ptype_tbl[IAVF_RX_FLEX_DESC_PTYPE_M &
 			rte_le_to_cpu_16(rxd.wb.ptype_flex_flags0)];
 		iavf_flex_rxd_to_vlan_tci(first_seg, &rxd);
+		iavf_flex_rxd_to_ipsec_crypto_status(first_seg, &rxd,
+				&rxq->stats.ipsec_crypto);
 		rxq->rxd_to_pkt_fields(rxq, first_seg, &rxd);
 		pkt_flags = iavf_flex_rxd_error_to_pkt_flags(rx_stat_err0);
 
@@ -1782,6 +1866,8 @@ iavf_rx_scan_hw_ring_flex_rxd(struct iavf_rx_queue *rxq)
 			mb->packet_type = ptype_tbl[IAVF_RX_FLEX_DESC_PTYPE_M &
 				rte_le_to_cpu_16(rxdp[j].wb.ptype_flex_flags0)];
 			iavf_flex_rxd_to_vlan_tci(mb, &rxdp[j]);
+			iavf_flex_rxd_to_ipsec_crypto_status(mb, &rxdp[j],
+				&rxq->stats.ipsec_crypto);
 			rxq->rxd_to_pkt_fields(rxq, mb, &rxdp[j]);
 			stat_err0 = rte_le_to_cpu_16(rxdp[j].wb.status_error0);
 			pkt_flags = iavf_flex_rxd_error_to_pkt_flags(stat_err0);
@@ -2095,6 +2181,18 @@ iavf_fill_ctx_desc_cmd_field(volatile uint64_t *field, struct rte_mbuf *m)
 }
 
 static inline void
+iavf_fill_ctx_desc_ipsec_field(volatile uint64_t *field,
+	struct iavf_ipsec_crypto_pkt_metadata *ipsec_md)
+{
+	uint64_t ipsec_field =
+		(uint64_t)ipsec_md->ctx_desc_ipsec_params <<
+			IAVF_TXD_CTX_QW1_IPSEC_PARAMS_CIPHERBLK_SHIFT;
+
+	*field |= ipsec_field;
+}
+
+
+static inline void
 iavf_fill_ctx_desc_tunnelling_field(volatile uint64_t *qw0,
 		const struct rte_mbuf *m)
 {
@@ -2127,15 +2225,19 @@ iavf_fill_ctx_desc_tunnelling_field(volatile uint64_t *qw0,
 
 static inline uint16_t
 iavf_fill_ctx_desc_segmentation_field(volatile uint64_t *field,
-	struct rte_mbuf *m)
+	struct rte_mbuf *m, struct iavf_ipsec_crypto_pkt_metadata *ipsec_md)
 {
 	uint64_t segmentation_field = 0;
 	uint64_t total_length = 0;
 
-	total_length = m->pkt_len - (m->l2_len + m->l3_len + m->l4_len);
+	if (m->ol_flags & RTE_MBUF_F_TX_SEC_OFFLOAD) {
+		total_length = ipsec_md->l4_payload_len;
+	} else {
+		total_length = m->pkt_len - (m->l2_len + m->l3_len + m->l4_len);
 
-	if (m->ol_flags & RTE_MBUF_F_TX_TUNNEL_MASK)
-		total_length -= m->outer_l3_len;
+		if (m->ol_flags & RTE_MBUF_F_TX_TUNNEL_MASK)
+			total_length -= m->outer_l3_len;
+	}
 
 #ifdef RTE_LIBRTE_IAVF_DEBUG_TX
 	if (!m->l4_len || !m->tso_segsz)
@@ -2164,7 +2266,8 @@ struct iavf_tx_context_desc_qws {
 
 static inline void
 iavf_fill_context_desc(volatile struct iavf_tx_context_desc *desc,
-	struct rte_mbuf *m, uint16_t *tlen)
+	struct rte_mbuf *m, struct iavf_ipsec_crypto_pkt_metadata *ipsec_md,
+	uint16_t *tlen)
 {
 	volatile struct iavf_tx_context_desc_qws *desc_qws =
 			(volatile struct iavf_tx_context_desc_qws *)desc;
@@ -2176,8 +2279,13 @@ iavf_fill_context_desc(volatile struct iavf_tx_context_desc *desc,
 
 	/* fill segmentation field */
 	if (m->ol_flags & (RTE_MBUF_F_TX_TCP_SEG | RTE_MBUF_F_TX_UDP_SEG)) {
+		/* fill IPsec field */
+		if (m->ol_flags & RTE_MBUF_F_TX_SEC_OFFLOAD)
+			iavf_fill_ctx_desc_ipsec_field(&desc_qws->qw1,
+				ipsec_md);
+
 		*tlen = iavf_fill_ctx_desc_segmentation_field(&desc_qws->qw1,
-				m);
+				m, ipsec_md);
 	}
 
 	/* fill tunnelling field */
@@ -2190,6 +2298,38 @@ iavf_fill_context_desc(volatile struct iavf_tx_context_desc *desc,
 	desc_qws->qw1 = rte_cpu_to_le_64(desc_qws->qw1);
 }
 
+
+static inline void
+iavf_fill_ipsec_desc(volatile struct iavf_tx_ipsec_desc *desc,
+	const struct iavf_ipsec_crypto_pkt_metadata *md, uint16_t *ipsec_len)
+{
+	desc->qw0 = rte_cpu_to_le_64(((uint64_t)md->l4_payload_len <<
+		IAVF_IPSEC_TX_DESC_QW0_L4PAYLEN_SHIFT) |
+		((uint64_t)md->esn << IAVF_IPSEC_TX_DESC_QW0_IPSECESN_SHIFT) |
+		((uint64_t)md->esp_trailer_len <<
+				IAVF_IPSEC_TX_DESC_QW0_TRAILERLEN_SHIFT));
+
+	desc->qw1 = rte_cpu_to_le_64(((uint64_t)md->sa_idx <<
+		IAVF_IPSEC_TX_DESC_QW1_IPSECSA_SHIFT) |
+		((uint64_t)md->next_proto <<
+				IAVF_IPSEC_TX_DESC_QW1_IPSECNH_SHIFT) |
+		((uint64_t)(md->len_iv & 0x3) <<
+				IAVF_IPSEC_TX_DESC_QW1_IVLEN_SHIFT) |
+		((uint64_t)(md->ol_flags & IAVF_IPSEC_CRYPTO_OL_FLAGS_NATT ?
+				1ULL : 0ULL) <<
+				IAVF_IPSEC_TX_DESC_QW1_UDP_SHIFT) |
+		(uint64_t)IAVF_TX_DESC_DTYPE_IPSEC);
+
+	/**
+	 * TODO: Pre-calculate this in the Session initialization
+	 *
+	 * Calculate IPsec length required in data descriptor func when TSO
+	 * offload is enabled
+	 */
+	*ipsec_len = sizeof(struct rte_esp_hdr) + (md->len_iv >> 2) +
+			(md->ol_flags & IAVF_IPSEC_CRYPTO_OL_FLAGS_NATT ?
+			sizeof(struct rte_udp_hdr) : 0);
+}
 
 static inline void
 iavf_build_data_desc_cmd_offset_fields(volatile uint64_t *qw1,
@@ -2296,6 +2436,17 @@ iavf_fill_data_desc(volatile struct iavf_tx_desc *desc,
 }
 
 
+static struct iavf_ipsec_crypto_pkt_metadata *
+iavf_ipsec_crypto_get_pkt_metadata(const struct iavf_tx_queue *txq,
+		struct rte_mbuf *m)
+{
+	if (m->ol_flags & RTE_MBUF_F_TX_SEC_OFFLOAD)
+		return RTE_MBUF_DYNFIELD(m, txq->ipsec_crypto_pkt_md_offset,
+				struct iavf_ipsec_crypto_pkt_metadata *);
+
+	return NULL;
+}
+
 /* TX function */
 uint16_t
 iavf_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
@@ -2324,7 +2475,9 @@ iavf_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 
 	for (idx = 0; idx < nb_pkts; idx++) {
 		volatile struct iavf_tx_desc *ddesc;
-		uint16_t nb_desc_ctx;
+		struct iavf_ipsec_crypto_pkt_metadata *ipsec_md;
+
+		uint16_t nb_desc_ctx, nb_desc_ipsec;
 		uint16_t nb_desc_data, nb_desc_required;
 		uint16_t tlen = 0, ipseclen = 0;
 		uint64_t ddesc_template = 0;
@@ -2334,17 +2487,24 @@ iavf_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 
 		RTE_MBUF_PREFETCH_TO_FREE(txe->mbuf);
 
+		/**
+		 * Get metadata for ipsec crypto from mbuf dynamic fields if
+		 * security offload is specified.
+		 */
+		ipsec_md = iavf_ipsec_crypto_get_pkt_metadata(txq, mb);
+
 		nb_desc_data = mb->nb_segs;
 		nb_desc_ctx = !!(mb->ol_flags &
 			(RTE_MBUF_F_TX_TCP_SEG | RTE_MBUF_F_TX_UDP_SEG |
 					RTE_MBUF_F_TX_TUNNEL_MASK));
+		nb_desc_ipsec = !!(mb->ol_flags & RTE_MBUF_F_TX_SEC_OFFLOAD);
 
 		/**
 		 * The number of descriptors that must be allocated for
 		 * a packet equals to the number of the segments of that
 		 * packet plus the context and ipsec descriptors if needed.
 		 */
-		nb_desc_required = nb_desc_data + nb_desc_ctx;
+		nb_desc_required = nb_desc_data + nb_desc_ctx + nb_desc_ipsec;
 
 		desc_idx_last = (uint16_t)(desc_idx + nb_desc_required - 1);
 
@@ -2395,7 +2555,7 @@ iavf_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 				txe->mbuf = NULL;
 			}
 
-			iavf_fill_context_desc(ctx_desc, mb, &tlen);
+			iavf_fill_context_desc(ctx_desc, mb, ipsec_md, &tlen);
 			IAVF_DUMP_TX_DESC(txq, ctx_desc, desc_idx);
 
 			txe->last_id = desc_idx_last;
@@ -2403,7 +2563,27 @@ iavf_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 			txe = txn;
 			}
 
+		if (nb_desc_ipsec) {
+			volatile struct iavf_tx_ipsec_desc *ipsec_desc =
+				(volatile struct iavf_tx_ipsec_desc *)
+					&txr[desc_idx];
 
+			txn = &txe_ring[txe->next_id];
+			RTE_MBUF_PREFETCH_TO_FREE(txn->mbuf);
+
+			if (txe->mbuf) {
+				rte_pktmbuf_free_seg(txe->mbuf);
+				txe->mbuf = NULL;
+		}
+
+			iavf_fill_ipsec_desc(ipsec_desc, ipsec_md, &ipseclen);
+
+			IAVF_DUMP_TX_DESC(txq, ipsec_desc, desc_idx);
+
+			txe->last_id = desc_idx_last;
+			desc_idx = txe->next_id;
+			txe = txn;
+		}
 
 		mb_seg = mb;
 

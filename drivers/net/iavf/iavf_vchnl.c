@@ -1776,3 +1776,32 @@ iavf_get_max_rss_queue_region(struct iavf_adapter *adapter)
 
 	return 0;
 }
+
+
+
+int
+iavf_ipsec_crypto_request(struct iavf_adapter *adapter,
+		uint8_t *msg, size_t msg_len,
+		uint8_t *resp_msg, size_t resp_msg_len)
+{
+	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(adapter);
+	struct iavf_cmd_info args;
+	int err;
+
+	args.ops = VIRTCHNL_OP_INLINE_IPSEC_CRYPTO;
+	args.in_args = msg;
+	args.in_args_size = msg_len;
+	args.out_buffer = vf->aq_resp;
+	args.out_size = IAVF_AQ_BUF_SZ;
+
+	err = iavf_execute_vf_cmd(adapter, &args, 1);
+	if (err) {
+		PMD_DRV_LOG(ERR, "fail to execute command %s",
+				"OP_INLINE_IPSEC_CRYPTO");
+		return err;
+	}
+
+	memcpy(resp_msg, args.out_buffer, resp_msg_len);
+
+	return 0;
+}

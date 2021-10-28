@@ -633,3 +633,13 @@ Windows Support
 
 *   To load NetUIO driver, follow the steps mentioned in `dpdk-kmods repository
     <https://git.dpdk.org/dpdk-kmods/tree/windows/netuio/README.rst>`_.
+
+
+Inline IPsec Support
+--------------------
+
+*   IAVF PMD supports inline crypto processing depending on the underlying
+    hardware crypto capabilities. IPsec Security Gateway Sample Application
+    supports inline IPsec processing for IAVF PMD. For more details see the
+    IPsec Security Gateway Sample Application and Security library
+    documentation.
