@@ -1226,6 +1226,15 @@ bnxt_vnic_rss_cfg_update(struct bnxt *bp,
 
 skip_rss_table:
 	rc = bnxt_hwrm_vnic_rss_cfg(bp, vnic);
+	if (rc != 0) {
+		rte_flow_error_set(error,
+				   -rc,
+				   RTE_FLOW_ERROR_TYPE_ACTION,
+				   act,
+				   "VNIC RSS configure failed");
+		rc = -rte_errno;
+		goto ret;
+	}
 ret:
 	return rc;
 }
@@ -1515,7 +1524,7 @@ skip_vnic_alloc:
 			/* RSS config update requested */
 			rc = bnxt_vnic_rss_cfg_update(bp, vnic, act, error);
 			if (rc != 0)
-				return -rte_errno;
+				goto ret;
 
 			filter->dst_id = vnic->fw_vnic_id;
 			break;
