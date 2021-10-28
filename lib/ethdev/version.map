@@ -31,6 +31,7 @@ DPDK_22 {
 	rte_eth_dev_get_supported_ptypes;
 	rte_eth_dev_get_vlan_offload;
 	rte_eth_dev_info_get;
+	rte_eth_dev_is_removed;
 	rte_eth_dev_is_valid_port;
 	rte_eth_dev_logtype;
 	rte_eth_dev_mac_addr_add;
@@ -148,7 +149,6 @@ EXPERIMENTAL {
 	rte_mtr_stats_update;
 
 	# added in 18.02
-	rte_eth_dev_is_removed;
 	rte_eth_dev_owner_delete;
 	rte_eth_dev_owner_get;
 	rte_eth_dev_owner_new;

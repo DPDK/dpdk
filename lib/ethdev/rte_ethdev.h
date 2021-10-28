@@ -2395,9 +2395,6 @@ int rte_eth_dev_configure(uint16_t port_id, uint16_t nb_rx_queue,
 		uint16_t nb_tx_queue, const struct rte_eth_conf *eth_conf);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Check if an Ethernet device was physically removed.
  *
  * @param port_id
@@ -2405,7 +2402,6 @@ int rte_eth_dev_configure(uint16_t port_id, uint16_t nb_rx_queue,
  * @return
  *   1 when the Ethernet device is removed, otherwise 0.
  */
-__rte_experimental
 int
 rte_eth_dev_is_removed(uint16_t port_id);
 
