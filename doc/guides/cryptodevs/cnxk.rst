@@ -248,6 +248,8 @@ CN9XX Features supported
 * Tunnel mode
 * UDP Encapsulation
 * AES-128/192/256-GCM
+* ESN
+* Anti-replay
 
 CN10XX Features supported
 ~~~~~~~~~~~~~~~~~~~~~~~~~

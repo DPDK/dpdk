@@ -445,6 +445,7 @@ cn9k_ipsec_inb_sa_create(struct cnxk_cpt_qp *qp,
 	memset(sa, 0, sizeof(struct cn9k_ipsec_sa));
 
 	sa->dir = RTE_SECURITY_IPSEC_SA_DIR_INGRESS;
+	sa->replay_win_sz = ipsec->replay_win_sz;
 
 	ret = fill_ipsec_common_sa(ipsec, crypto_xform, &in_sa->common_sa);
 	if (ret)
@@ -482,6 +483,22 @@ cn9k_ipsec_inb_sa_create(struct cnxk_cpt_qp *qp,
 	w7.s.egrp = roc_cpt->eng_grp[CPT_ENG_TYPE_IE];
 	w7.s.cptr = rte_mempool_virt2iova(in_sa);
 	inst_tmpl->w7 = w7.u64;
+
+	if (sa->replay_win_sz) {
+		if (sa->replay_win_sz > CNXK_ON_AR_WIN_SIZE_MAX) {
+			plt_err("Replay window size:%u is not supported",
+				sa->replay_win_sz);
+			return -ENOTSUP;
+		}
+
+		/* Set window bottom to 1, base and top to size of window */
+		sa->ar.winb = 1;
+		sa->ar.wint = sa->replay_win_sz;
+		sa->ar.base = sa->replay_win_sz;
+
+		in_sa->common_sa.esn_low = 0;
+		in_sa->common_sa.esn_hi = 0;
+	}
 
 	return cn9k_cpt_enq_sa_write(
 		sa, qp, ROC_IE_ON_MAJOR_OP_WRITE_IPSEC_INBOUND, ctx_len);

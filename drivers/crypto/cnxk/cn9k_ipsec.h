@@ -7,6 +7,7 @@
 
 #include "cnxk_ipsec.h"
 #include "cnxk_security.h"
+#include "cnxk_security_ar.h"
 
 struct cn9k_ipsec_sa {
 	union {
@@ -35,6 +36,10 @@ struct cn9k_ipsec_sa {
 			uint32_t seq_hi;
 		};
 	};
+	/** Anti replay */
+	struct cnxk_on_ipsec_ar ar;
+	/** Anti replay window size */
+	uint32_t replay_win_sz;
 };
 
 struct cn9k_sec_session {
