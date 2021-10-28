@@ -65,6 +65,13 @@ exit:
 	return max_pools;
 }
 
+static int
+cnxk_mempool_plt_parse_devargs(struct rte_pci_device *pci_dev)
+{
+	roc_idev_npa_maxpools_set(parse_max_pools(pci_dev->device.devargs));
+	return 0;
+}
+
 static inline char *
 npa_dev_to_name(struct rte_pci_device *pci_dev, char *name)
 {
@@ -92,7 +99,6 @@ npa_init(struct rte_pci_device *pci_dev)
 	dev = mz->addr;
 	dev->pci_dev = pci_dev;
 
-	roc_idev_npa_maxpools_set(parse_max_pools(pci_dev->device.devargs));
 	rc = roc_npa_dev_init(dev);
 	if (rc)
 		goto mz_free;
@@ -214,3 +220,8 @@ RTE_PMD_REGISTER_PCI_TABLE(mempool_cnxk, npa_pci_map);
 RTE_PMD_REGISTER_KMOD_DEP(mempool_cnxk, "vfio-pci");
 RTE_PMD_REGISTER_PARAM_STRING(mempool_cnxk,
 			      CNXK_NPA_MAX_POOLS_PARAM "=<128-1048576>");
+
+RTE_INIT(cnxk_mempool_parse_devargs)
+{
+	roc_npa_lf_init_cb_register(cnxk_mempool_plt_parse_devargs);
+}
