@@ -2144,6 +2144,8 @@ mlx5_devx_cmd_create_qp(void *ctx,
 				in, qpc_extension_and_pas_list);
 			void *qpc_ext = MLX5_ADDR_OF(qpc_extension_and_pas_list,
 				qpc_ext_and_pas_list, qpc_data_extension);
+
+			MLX5_SET(create_qp_in, in, qpc_ext, 1);
 			MLX5_SET(qpc_extension, qpc_ext, mmo, 1);
 		}
 		MLX5_SET(qpc, qpc, pm_state, MLX5_QP_PM_MIGRATED);
