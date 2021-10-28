@@ -96,6 +96,25 @@ struct iavf_adapter;
 struct iavf_rx_queue;
 struct iavf_tx_queue;
 
+
+struct iavf_ipsec_crypto_stats {
+	uint64_t icount;
+	uint64_t ibytes;
+	struct {
+		uint64_t count;
+		uint64_t sad_miss;
+		uint64_t not_processed;
+		uint64_t icv_check;
+		uint64_t ipsec_length;
+		uint64_t misc;
+	} ierrors;
+};
+
+struct iavf_eth_xstats {
+	struct virtchnl_eth_stats eth_stats;
+	struct iavf_ipsec_crypto_stats ips_stats;
+};
+
 /* Structure that defines a VSI, associated with a adapter. */
 struct iavf_vsi {
 	struct iavf_adapter *adapter; /* Backreference to associated adapter */
@@ -105,7 +124,7 @@ struct iavf_vsi {
 	uint16_t max_macaddrs;   /* Maximum number of MAC addresses */
 	uint16_t base_vector;
 	uint16_t msix_intr;      /* The MSIX interrupt binds to VSI */
-	struct virtchnl_eth_stats eth_stats_offset;
+	struct iavf_eth_xstats eth_stats_offset;
 };
 
 struct rte_flow;

@@ -90,6 +90,7 @@ static const uint32_t *iavf_dev_supported_ptypes_get(struct rte_eth_dev *dev);
 static int iavf_dev_stats_get(struct rte_eth_dev *dev,
 			     struct rte_eth_stats *stats);
 static int iavf_dev_stats_reset(struct rte_eth_dev *dev);
+static int iavf_dev_xstats_reset(struct rte_eth_dev *dev);
 static int iavf_dev_xstats_get(struct rte_eth_dev *dev,
 				 struct rte_eth_xstat *xstats, unsigned int n);
 static int iavf_dev_xstats_get_names(struct rte_eth_dev *dev,
@@ -145,21 +146,37 @@ struct rte_iavf_xstats_name_off {
 	unsigned int offset;
 };
 
+#define _OFF_OF(a) offsetof(struct iavf_eth_xstats, a)
 static const struct rte_iavf_xstats_name_off rte_iavf_stats_strings[] = {
-	{"rx_bytes", offsetof(struct iavf_eth_stats, rx_bytes)},
-	{"rx_unicast_packets", offsetof(struct iavf_eth_stats, rx_unicast)},
-	{"rx_multicast_packets", offsetof(struct iavf_eth_stats, rx_multicast)},
-	{"rx_broadcast_packets", offsetof(struct iavf_eth_stats, rx_broadcast)},
-	{"rx_dropped_packets", offsetof(struct iavf_eth_stats, rx_discards)},
+	{"rx_bytes", _OFF_OF(eth_stats.rx_bytes)},
+	{"rx_unicast_packets", _OFF_OF(eth_stats.rx_unicast)},
+	{"rx_multicast_packets", _OFF_OF(eth_stats.rx_multicast)},
+	{"rx_broadcast_packets", _OFF_OF(eth_stats.rx_broadcast)},
+	{"rx_dropped_packets", _OFF_OF(eth_stats.rx_discards)},
 	{"rx_unknown_protocol_packets", offsetof(struct iavf_eth_stats,
 		rx_unknown_protocol)},
-	{"tx_bytes", offsetof(struct iavf_eth_stats, tx_bytes)},
-	{"tx_unicast_packets", offsetof(struct iavf_eth_stats, tx_unicast)},
-	{"tx_multicast_packets", offsetof(struct iavf_eth_stats, tx_multicast)},
-	{"tx_broadcast_packets", offsetof(struct iavf_eth_stats, tx_broadcast)},
-	{"tx_dropped_packets", offsetof(struct iavf_eth_stats, tx_discards)},
-	{"tx_error_packets", offsetof(struct iavf_eth_stats, tx_errors)},
+	{"tx_bytes", _OFF_OF(eth_stats.tx_bytes)},
+	{"tx_unicast_packets", _OFF_OF(eth_stats.tx_unicast)},
+	{"tx_multicast_packets", _OFF_OF(eth_stats.tx_multicast)},
+	{"tx_broadcast_packets", _OFF_OF(eth_stats.tx_broadcast)},
+	{"tx_dropped_packets", _OFF_OF(eth_stats.tx_discards)},
+	{"tx_error_packets", _OFF_OF(eth_stats.tx_errors)},
+
+	{"inline_ipsec_crypto_ipackets", _OFF_OF(ips_stats.icount)},
+	{"inline_ipsec_crypto_ibytes", _OFF_OF(ips_stats.ibytes)},
+	{"inline_ipsec_crypto_ierrors", _OFF_OF(ips_stats.ierrors.count)},
+	{"inline_ipsec_crypto_ierrors_sad_lookup",
+			_OFF_OF(ips_stats.ierrors.sad_miss)},
+	{"inline_ipsec_crypto_ierrors_not_processed",
+			_OFF_OF(ips_stats.ierrors.not_processed)},
+	{"inline_ipsec_crypto_ierrors_icv_fail",
+			_OFF_OF(ips_stats.ierrors.icv_check)},
+	{"inline_ipsec_crypto_ierrors_length",
+			_OFF_OF(ips_stats.ierrors.ipsec_length)},
+	{"inline_ipsec_crypto_ierrors_misc",
+			_OFF_OF(ips_stats.ierrors.misc)},
 };
+#undef _OFF_OF
 
 #define IAVF_NB_XSTATS (sizeof(rte_iavf_stats_strings) / \
 		sizeof(rte_iavf_stats_strings[0]))
@@ -177,7 +194,7 @@ static const struct eth_dev_ops iavf_eth_dev_ops = {
 	.stats_reset                = iavf_dev_stats_reset,
 	.xstats_get                 = iavf_dev_xstats_get,
 	.xstats_get_names           = iavf_dev_xstats_get_names,
-	.xstats_reset               = iavf_dev_stats_reset,
+	.xstats_reset               = iavf_dev_xstats_reset,
 	.promiscuous_enable         = iavf_dev_promiscuous_enable,
 	.promiscuous_disable        = iavf_dev_promiscuous_disable,
 	.allmulticast_enable        = iavf_dev_allmulticast_enable,
@@ -1527,7 +1544,7 @@ iavf_stat_update_32(uint64_t *offset, uint64_t *stat)
 static void
 iavf_update_stats(struct iavf_vsi *vsi, struct virtchnl_eth_stats *nes)
 {
-	struct virtchnl_eth_stats *oes = &vsi->eth_stats_offset;
+	struct virtchnl_eth_stats *oes = &vsi->eth_stats_offset.eth_stats;
 
 	iavf_stat_update_48(&oes->rx_bytes, &nes->rx_bytes);
 	iavf_stat_update_48(&oes->rx_unicast, &nes->rx_unicast);
@@ -1589,7 +1606,18 @@ iavf_dev_stats_reset(struct rte_eth_dev *dev)
 		return ret;
 
 	/* set stats offset base on current values */
-	vsi->eth_stats_offset = *pstats;
+	vsi->eth_stats_offset.eth_stats = *pstats;
+
+	return 0;
+}
+
+static int
+iavf_dev_xstats_reset(struct rte_eth_dev *dev)
+{
+	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
+
+	iavf_dev_stats_reset(dev);
+	memset(&vf->vsi.eth_stats_offset, 0, sizeof(struct iavf_eth_xstats));
 
 	return 0;
 }
@@ -1609,6 +1637,27 @@ static int iavf_dev_xstats_get_names(__rte_unused struct rte_eth_dev *dev,
 	return IAVF_NB_XSTATS;
 }
 
+static void
+iavf_dev_update_ipsec_xstats(struct rte_eth_dev *ethdev,
+		struct iavf_ipsec_crypto_stats *ips)
+{
+	uint16_t idx;
+	for (idx = 0; idx < ethdev->data->nb_rx_queues; idx++) {
+		struct iavf_rx_queue *rxq;
+		struct iavf_ipsec_crypto_stats *stats;
+		rxq = (struct iavf_rx_queue *)ethdev->data->rx_queues[idx];
+		stats = &rxq->stats.ipsec_crypto;
+		ips->icount += stats->icount;
+		ips->ibytes += stats->ibytes;
+		ips->ierrors.count += stats->ierrors.count;
+		ips->ierrors.sad_miss += stats->ierrors.sad_miss;
+		ips->ierrors.not_processed += stats->ierrors.not_processed;
+		ips->ierrors.icv_check += stats->ierrors.icv_check;
+		ips->ierrors.ipsec_length += stats->ierrors.ipsec_length;
+		ips->ierrors.misc += stats->ierrors.misc;
+	}
+}
+
 static int iavf_dev_xstats_get(struct rte_eth_dev *dev,
 				 struct rte_eth_xstat *xstats, unsigned int n)
 {
@@ -1619,6 +1668,7 @@ static int iavf_dev_xstats_get(struct rte_eth_dev *dev,
 	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
 	struct iavf_vsi *vsi = &vf->vsi;
 	struct virtchnl_eth_stats *pstats = NULL;
+	struct iavf_eth_xstats iavf_xtats = {{0}};
 
 	if (n < IAVF_NB_XSTATS)
 		return IAVF_NB_XSTATS;
@@ -1631,11 +1681,15 @@ static int iavf_dev_xstats_get(struct rte_eth_dev *dev,
 		return 0;
 
 	iavf_update_stats(vsi, pstats);
+	iavf_xtats.eth_stats = *pstats;
+
+	if (iavf_ipsec_crypto_supported(adapter))
+		iavf_dev_update_ipsec_xstats(dev, &iavf_xtats.ips_stats);
 
 	/* loop over xstats array and values from pstats */
 	for (i = 0; i < IAVF_NB_XSTATS; i++) {
 		xstats[i].id = i;
-		xstats[i].value = *(uint64_t *)(((char *)pstats) +
+		xstats[i].value = *(uint64_t *)(((char *)&iavf_xtats) +
 			rte_iavf_stats_strings[i].offset);
 	}
 

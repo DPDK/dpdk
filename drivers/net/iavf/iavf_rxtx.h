@@ -165,18 +165,6 @@ struct iavf_txq_ops {
 	void (*release_mbufs)(struct iavf_tx_queue *txq);
 };
 
-struct iavf_ipsec_crypto_stats {
-	uint64_t icount;
-	uint64_t ibytes;
-	struct {
-		uint64_t count;
-		uint64_t sad_miss;
-		uint64_t not_processed;
-		uint64_t icv_check;
-		uint64_t ipsec_length;
-		uint64_t misc;
-	} ierrors;
-};
 
 struct iavf_rx_queue_stats {
 	uint64_t reserved;
