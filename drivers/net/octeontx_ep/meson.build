@@ -2,7 +2,6 @@
 # Copyright(C) 2021 Marvell.
 #
 
-deps += ['common_octeontx2']
 sources = files(
         'otx_ep_ethdev.c',
         'otx_ep_rxtx.c',
@@ -10,4 +9,3 @@ sources = files(
         'otx2_ep_vf.c',
 )
 
-includes += include_directories('../../common/octeontx2')

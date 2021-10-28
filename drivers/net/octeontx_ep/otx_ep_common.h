@@ -504,5 +504,8 @@ struct otx_ep_buf_free_info {
 #define OTX_EP_CLEAR_SLIST_DBELL 0xFFFFFFFF
 #define OTX_EP_CLEAR_SDP_OUT_PKT_CNT 0xFFFFFFFFF
 
+/* PCI IDs */
+#define PCI_VENDOR_ID_CAVIUM			0x177D
+
 extern int otx_net_ep_logtype;
 #endif  /* _OTX_EP_COMMON_H_ */

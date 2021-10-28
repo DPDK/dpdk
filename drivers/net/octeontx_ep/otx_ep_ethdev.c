@@ -4,7 +4,6 @@
 
 #include <ethdev_pci.h>
 
-#include "otx2_common.h"
 #include "otx_ep_common.h"
 #include "otx_ep_vf.h"
 #include "otx2_ep_vf.h"

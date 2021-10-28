@@ -2,7 +2,8 @@
  * Copyright(C) 2021 Marvell.
  */
 
-#include "otx2_common.h"
+#include <rte_common.h>
+#include <rte_cycles.h>
 #include "otx_ep_common.h"
 #include "otx2_ep_vf.h"
 
@@ -215,7 +216,7 @@ otx2_vf_enable_iq(struct otx_ep_device *otx_ep, uint32_t q_no)
 
 	otx2_write64(reg_val, otx_ep->hw_addr + SDP_VF_R_IN_ENABLE(q_no));
 
-	otx2_info("IQ[%d] enable done", q_no);
+	otx_ep_info("IQ[%d] enable done", q_no);
 
 	return 0;
 }
@@ -229,7 +230,7 @@ otx2_vf_enable_oq(struct otx_ep_device *otx_ep, uint32_t q_no)
 	reg_val |= 0x1ull;
 	otx2_write64(reg_val, otx_ep->hw_addr + SDP_VF_R_OUT_ENABLE(q_no));
 
-	otx2_info("OQ[%d] enable done", q_no);
+	otx_ep_info("OQ[%d] enable done", q_no);
 
 	return 0;
 }
@@ -326,10 +327,10 @@ otx2_ep_vf_setup_device(struct otx_ep_device *otx_ep)
 	if (otx_ep->conf == NULL) {
 		otx_ep->conf = otx2_ep_get_defconf(otx_ep);
 		if (otx_ep->conf == NULL) {
-			otx2_err("SDP VF default config not found");
+			otx_ep_err("SDP VF default config not found");
 			return -ENOENT;
 		}
-		otx2_info("Default config is used");
+		otx_ep_info("Default config is used");
 	}
 
 	/* Get IOQs (RPVF] count */
@@ -338,7 +339,7 @@ otx2_ep_vf_setup_device(struct otx_ep_device *otx_ep)
 	otx_ep->sriov_info.rings_per_vf = ((reg_val >> SDP_VF_R_IN_CTL_RPVF_POS)
 					  & SDP_VF_R_IN_CTL_RPVF_MASK);
 
-	otx2_info("SDP RPVF: %d", otx_ep->sriov_info.rings_per_vf);
+	otx_ep_info("SDP RPVF: %d", otx_ep->sriov_info.rings_per_vf);
 
 	otx_ep->fn_list.setup_iq_regs       = otx2_vf_setup_iq_regs;
 	otx_ep->fn_list.setup_oq_regs       = otx2_vf_setup_oq_regs;
