@@ -481,6 +481,7 @@ rte_vfio_container_dma_map(__rte_unused int container_fd,
 			__rte_unused uint64_t iova,
 			__rte_unused uint64_t len)
 {
+	rte_errno = ENOTSUP;
 	return -1;
 }
 
@@ -490,6 +491,7 @@ rte_vfio_container_dma_unmap(__rte_unused int container_fd,
 			__rte_unused uint64_t iova,
 			__rte_unused uint64_t len)
 {
+	rte_errno = ENOTSUP;
 	return -1;
 }
 
