@@ -35,6 +35,8 @@
  *  - rte_event_eth_rx_adapter_stats_get()
  *  - rte_event_eth_rx_adapter_stats_reset()
  *  - rte_event_eth_rx_adapter_queue_conf_get()
+ *  - rte_event_eth_rx_adapter_queue_stats_get()
+ *  - rte_event_eth_rx_adapter_queue_stats_reset()
  *
  * The application creates an ethernet to event adapter using
  * rte_event_eth_rx_adapter_create_ext() or rte_event_eth_rx_adapter_create()
@@ -202,6 +204,23 @@ struct rte_event_eth_rx_adapter_queue_conf {
 	 */
 	uint16_t event_buf_size;
 	/**< event buffer size for this queue */
+};
+
+/**
+ * A structure used to retrieve statistics for an
+ * eth rx adapter queue.
+ */
+struct rte_event_eth_rx_adapter_queue_stats {
+	uint64_t rx_event_buf_count;
+	/**< Rx event buffered count */
+	uint64_t rx_event_buf_size;
+	/**< Rx event buffer size */
+	uint64_t rx_poll_count;
+	/**< Receive queue poll count */
+	uint64_t rx_packets;
+	/**< Received packet count */
+	uint64_t rx_dropped;
+	/**< Received packet dropped count */
 };
 
 /**
@@ -617,6 +636,53 @@ int rte_event_eth_rx_adapter_queue_conf_get(uint8_t id,
 			uint16_t rx_queue_id,
 			struct rte_event_eth_rx_adapter_queue_conf *queue_conf);
 
+/**
+ * Retrieve Rx queue statistics.
+ *
+ * @param id
+ *  Adapter identifier.
+ *
+ * @param eth_dev_id
+ *  Port identifier of Ethernet device.
+ *
+ * @param rx_queue_id
+ *  Ethernet device receive queue index.
+ *
+ * @param[out] stats
+ *  Pointer to struct rte_event_eth_rx_adapter_queue_stats
+ *
+ * @return
+ *  - 0: Success, queue buffer stats retrieved.
+ *  - <0: Error code on failure.
+ */
+__rte_experimental
+int
+rte_event_eth_rx_adapter_queue_stats_get(uint8_t id,
+		uint16_t eth_dev_id,
+		uint16_t rx_queue_id,
+		struct rte_event_eth_rx_adapter_queue_stats *stats);
+
+/**
+ * Reset Rx queue statistics.
+ *
+ * @param id
+ *  Adapter identifier.
+ *
+ * @param eth_dev_id
+ *  Port identifier of Ethernet device.
+ *
+ * @param rx_queue_id
+ *  Ethernet device receive queue index.
+ *
+ * @return
+ *  - 0: Success, queue buffer stats retrieved.
+ *  - <0: Error code on failure.
+ */
+__rte_experimental
+int
+rte_event_eth_rx_adapter_queue_stats_reset(uint8_t id,
+		uint16_t eth_dev_id,
+		uint16_t rx_queue_id);
 
 #ifdef __cplusplus
 }

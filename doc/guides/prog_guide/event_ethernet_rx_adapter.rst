@@ -166,6 +166,17 @@ flags for handling received packets, event queue identifier, scheduler type,
 event priority, polling frequency of the receive queue and flow identifier
 in struct ``rte_event_eth_rx_adapter_queue_conf``.
 
+Getting and resetting Adapter queue stats
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The ``rte_event_eth_rx_adapter_queue_stats_get()`` function reports
+adapter queue counters defined in struct ``rte_event_eth_rx_adapter_queue_stats``.
+This function reports queue level stats only when queue level event buffer is
+used otherwise it returns -EINVAL.
+
+The ``rte_event_eth_rx_adapter_queue_stats_reset`` function can be used to
+reset queue level stats when queue level event buffer is in use.
+
 Interrupt Based Rx Queues
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 

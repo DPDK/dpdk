@@ -103,6 +103,8 @@ EXPERIMENTAL {
 	# added in 21.11
 	rte_event_eth_rx_adapter_create_with_params;
 	rte_event_eth_rx_adapter_queue_conf_get;
+	rte_event_eth_rx_adapter_queue_stats_get;
+	rte_event_eth_rx_adapter_queue_stats_reset;
 };
 
 INTERNAL {

@@ -749,6 +749,53 @@ typedef int (*eventdev_eth_rx_adapter_stats_get)
 typedef int (*eventdev_eth_rx_adapter_stats_reset)
 			(const struct rte_eventdev *dev,
 			const struct rte_eth_dev *eth_dev);
+
+struct rte_event_eth_rx_adapter_queue_stats;
+
+/**
+ * Retrieve ethernet Rx adapter queue statistics.
+ *
+ * @param dev
+ *   Event device pointer
+ *
+ * @param eth_dev
+ *   Ethernet device pointer
+ *
+ * @param rx_queue_id
+ *  Ethernet device receive queue index.
+ *
+ * @param[out] q_stats
+ *   Pointer to queue stats structure
+ *
+ * @return
+ *   Return 0 on success.
+ */
+typedef int (*eventdev_eth_rx_adapter_q_stats_get)
+			(const struct rte_eventdev *dev,
+			 const struct rte_eth_dev *eth_dev,
+			 uint16_t rx_queue_id,
+			 struct rte_event_eth_rx_adapter_queue_stats *q_stats);
+
+/**
+ * Reset ethernet Rx adapter queue statistics.
+ *
+ * @param dev
+ *   Event device pointer
+ *
+ * @param eth_dev
+ *   Ethernet device pointer
+ *
+ * @param rx_queue_id
+ *  Ethernet device receive queue index.
+ *
+ * @return
+ *   Return 0 on success.
+ */
+typedef int (*eventdev_eth_rx_adapter_q_stats_reset)
+			(const struct rte_eventdev *dev,
+			 const struct rte_eth_dev *eth_dev,
+			 uint16_t rx_queue_id);
+
 /**
  * Start eventdev selftest.
  *
@@ -1223,6 +1270,11 @@ struct eventdev_ops {
 	/**< Get crypto stats */
 	eventdev_crypto_adapter_stats_reset crypto_adapter_stats_reset;
 	/**< Reset crypto stats */
+
+	eventdev_eth_rx_adapter_q_stats_get eth_rx_adapter_queue_stats_get;
+	/**< Get ethernet Rx queue stats */
+	eventdev_eth_rx_adapter_q_stats_reset eth_rx_adapter_queue_stats_reset;
+	/**< Reset ethernet Rx queue stats */
 
 	eventdev_eth_tx_adapter_caps_get_t eth_tx_adapter_caps_get;
 	/**< Get ethernet Tx adapter capabilities */
