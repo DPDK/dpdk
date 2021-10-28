@@ -736,6 +736,14 @@ otx2_cpt_enqueue_sec(struct otx2_cpt_qp *qp, struct rte_crypto_op *op,
 				otx2_err("Anti replay check failed");
 				return IPSEC_ANTI_REPLAY_FAILED;
 			}
+
+			if (esn) {
+				seq_in_sa = ((uint64_t)esn_hi << 32) | esn_low;
+				if (seq > seq_in_sa) {
+					sa->esn_low = rte_cpu_to_be_32(seql);
+					sa->esn_hi = rte_cpu_to_be_32(seqh);
+				}
+			}
 		}
 
 		ret = process_inb_sa(op, sess, &qp->meta_info, (void **)&req);
@@ -748,14 +756,6 @@ otx2_cpt_enqueue_sec(struct otx2_cpt_qp *qp, struct rte_crypto_op *op,
 
 	ret = otx2_cpt_enqueue_req(qp, pend_q, req, op, sess->cpt_inst_w7,
 				    burst_index);
-
-	if (winsz && esn) {
-		seq_in_sa = ((uint64_t)esn_hi << 32) | esn_low;
-		if (seq > seq_in_sa) {
-			sa->esn_low = rte_cpu_to_be_32(seql);
-			sa->esn_hi = rte_cpu_to_be_32(seqh);
-		}
-	}
 
 	return ret;
 }
