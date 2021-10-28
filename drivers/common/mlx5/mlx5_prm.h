@@ -1653,7 +1653,7 @@ struct mlx5_ifc_cmd_hca_cap_bits {
 	u8 num_vhca_ports[0x8];
 	u8 reserved_at_618[0x6];
 	u8 sw_owner_id[0x1];
-	u8 reserved_at_61f[0x109];
+	u8 reserved_at_61f[0x129];
 	u8 dma_mmo_qp[0x1];
 	u8 regexp_mmo_qp[0x1];
 	u8 compress_mmo_qp[0x1];
