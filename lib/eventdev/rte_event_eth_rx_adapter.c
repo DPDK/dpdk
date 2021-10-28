@@ -3345,6 +3345,122 @@ handle_rxa_get_queue_conf(const char *cmd __rte_unused,
 	return 0;
 }
 
+static int
+handle_rxa_get_queue_stats(const char *cmd __rte_unused,
+			   const char *params,
+			   struct rte_tel_data *d)
+{
+	uint8_t rx_adapter_id;
+	uint16_t rx_queue_id;
+	int eth_dev_id;
+	char *token, *l_params;
+	struct rte_event_eth_rx_adapter_queue_stats q_stats;
+
+	if (params == NULL || strlen(params) == 0 || !isdigit(*params))
+		return -1;
+
+	/* Get Rx adapter ID from parameter string */
+	l_params = strdup(params);
+	token = strtok(l_params, ",");
+	rx_adapter_id = strtoul(token, NULL, 10);
+	RTE_EVENT_ETH_RX_ADAPTER_ID_VALID_OR_ERR_RET(rx_adapter_id, -EINVAL);
+
+	token = strtok(NULL, ",");
+	if (token == NULL || strlen(token) == 0 || !isdigit(*token))
+		return -1;
+
+	/* Get device ID from parameter string */
+	eth_dev_id = strtoul(token, NULL, 10);
+	RTE_EVENTDEV_VALID_DEVID_OR_ERR_RET(eth_dev_id, -EINVAL);
+
+	token = strtok(NULL, ",");
+	if (token == NULL || strlen(token) == 0 || !isdigit(*token))
+		return -1;
+
+	/* Get Rx queue ID from parameter string */
+	rx_queue_id = strtoul(token, NULL, 10);
+	if (rx_queue_id >= rte_eth_devices[eth_dev_id].data->nb_rx_queues) {
+		RTE_EDEV_LOG_ERR("Invalid rx queue_id %u", rx_queue_id);
+		return -EINVAL;
+	}
+
+	token = strtok(NULL, "\0");
+	if (token != NULL)
+		RTE_EDEV_LOG_ERR("Extra parameters passed to eventdev"
+				 " telemetry command, igrnoring");
+
+	if (rte_event_eth_rx_adapter_queue_stats_get(rx_adapter_id, eth_dev_id,
+						    rx_queue_id, &q_stats)) {
+		RTE_EDEV_LOG_ERR("Failed to get Rx adapter queue stats");
+		return -1;
+	}
+
+	rte_tel_data_start_dict(d);
+	rte_tel_data_add_dict_u64(d, "rx_adapter_id", rx_adapter_id);
+	rte_tel_data_add_dict_u64(d, "eth_dev_id", eth_dev_id);
+	rte_tel_data_add_dict_u64(d, "rx_queue_id", rx_queue_id);
+	RXA_ADD_DICT(q_stats, rx_event_buf_count);
+	RXA_ADD_DICT(q_stats, rx_event_buf_size);
+	RXA_ADD_DICT(q_stats, rx_poll_count);
+	RXA_ADD_DICT(q_stats, rx_packets);
+	RXA_ADD_DICT(q_stats, rx_dropped);
+
+	return 0;
+}
+
+static int
+handle_rxa_queue_stats_reset(const char *cmd __rte_unused,
+			     const char *params,
+			     struct rte_tel_data *d __rte_unused)
+{
+	uint8_t rx_adapter_id;
+	uint16_t rx_queue_id;
+	int eth_dev_id;
+	char *token, *l_params;
+
+	if (params == NULL || strlen(params) == 0 || !isdigit(*params))
+		return -1;
+
+	/* Get Rx adapter ID from parameter string */
+	l_params = strdup(params);
+	token = strtok(l_params, ",");
+	rx_adapter_id = strtoul(token, NULL, 10);
+	RTE_EVENT_ETH_RX_ADAPTER_ID_VALID_OR_ERR_RET(rx_adapter_id, -EINVAL);
+
+	token = strtok(NULL, ",");
+	if (token == NULL || strlen(token) == 0 || !isdigit(*token))
+		return -1;
+
+	/* Get device ID from parameter string */
+	eth_dev_id = strtoul(token, NULL, 10);
+	RTE_EVENTDEV_VALID_DEVID_OR_ERR_RET(eth_dev_id, -EINVAL);
+
+	token = strtok(NULL, ",");
+	if (token == NULL || strlen(token) == 0 || !isdigit(*token))
+		return -1;
+
+	/* Get Rx queue ID from parameter string */
+	rx_queue_id = strtoul(token, NULL, 10);
+	if (rx_queue_id >= rte_eth_devices[eth_dev_id].data->nb_rx_queues) {
+		RTE_EDEV_LOG_ERR("Invalid rx queue_id %u", rx_queue_id);
+		return -EINVAL;
+	}
+
+	token = strtok(NULL, "\0");
+	if (token != NULL)
+		RTE_EDEV_LOG_ERR("Extra parameters passed to eventdev"
+				 " telemetry command, igrnoring");
+
+	if (rte_event_eth_rx_adapter_queue_stats_reset(rx_adapter_id,
+						       eth_dev_id,
+						       rx_queue_id)) {
+		RTE_EDEV_LOG_ERR("Failed to reset Rx adapter queue stats");
+		return -1;
+	}
+
+	return 0;
+}
+
 RTE_INIT(rxa_init_telemetry)
 {
 	rte_telemetry_register_cmd("/eventdev/rxa_stats",
@@ -3358,4 +3474,12 @@ RTE_INIT(rxa_init_telemetry)
 	rte_telemetry_register_cmd("/eventdev/rxa_queue_conf",
 		handle_rxa_get_queue_conf,
 		"Returns Rx queue config. Parameter: rxa_id, dev_id, queue_id");
+
+	rte_telemetry_register_cmd("/eventdev/rxa_queue_stats",
+		handle_rxa_get_queue_stats,
+		"Returns Rx queue stats. Parameter: rxa_id, dev_id, queue_id");
+
+	rte_telemetry_register_cmd("/eventdev/rxa_queue_stats_reset",
+		handle_rxa_queue_stats_reset,
+		"Reset Rx queue stats. Parameter: rxa_id, dev_id, queue_id");
 }
