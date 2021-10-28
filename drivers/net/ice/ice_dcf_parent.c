@@ -233,7 +233,6 @@ ice_dcf_handle_pf_event_msg(struct ice_dcf_hw *dcf_hw,
 	switch (pf_msg->event) {
 	case VIRTCHNL_EVENT_RESET_IMPENDING:
 		PMD_DRV_LOG(DEBUG, "VIRTCHNL_EVENT_RESET_IMPENDING event");
-		start_vsi_reset_thread(dcf_hw, false, 0);
 		dcf_hw->resetting = true;
 		break;
 	case VIRTCHNL_EVENT_LINK_CHANGE:
