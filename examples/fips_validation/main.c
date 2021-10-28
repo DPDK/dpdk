@@ -128,6 +128,10 @@ cryptodev_fips_validate_app_int(void)
 	if (ret < 0)
 		goto error_exit;
 
+	ret = rte_cryptodev_start(env.dev_id);
+	if (ret < 0)
+		goto error_exit;
+
 	return 0;
 
 error_exit:
