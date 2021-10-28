@@ -322,6 +322,7 @@ New Features
   * Added support for NAT-T / UDP encapsulated ESP.
   * Added support for SA telemetry.
   * Added support for setting a non default starting ESN value.
+  * Added support for TSO in inline crypto mode.
 
 * **Added optimized Toeplitz hash implementation.**
 

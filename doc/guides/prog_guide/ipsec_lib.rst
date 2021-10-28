@@ -315,6 +315,8 @@ Supported features
 
 *  NAT-T / UDP encapsulated ESP.
 
+*  TSO (only for inline crypto mode)
+
 *  algorithms: 3DES-CBC, AES-CBC, AES-CTR, AES-GCM, AES_CCM, CHACHA20_POLY1305,
    AES_GMAC, HMAC-SHA1, NULL.
 

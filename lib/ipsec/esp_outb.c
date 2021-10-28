@@ -18,7 +18,7 @@
 
 typedef int32_t (*esp_outb_prepare_t)(struct rte_ipsec_sa *sa, rte_be64_t sqc,
 	const uint64_t ivp[IPSEC_MAX_IV_QWORD], struct rte_mbuf *mb,
-	union sym_op_data *icv, uint8_t sqh_len);
+	union sym_op_data *icv, uint8_t sqh_len, uint8_t tso);
 
 /*
  * helper function to fill crypto_sym op for cipher+auth algorithms.
@@ -139,7 +139,7 @@ outb_cop_prepare(struct rte_crypto_op *cop,
 static inline int32_t
 outb_tun_pkt_prepare(struct rte_ipsec_sa *sa, rte_be64_t sqc,
 	const uint64_t ivp[IPSEC_MAX_IV_QWORD], struct rte_mbuf *mb,
-	union sym_op_data *icv, uint8_t sqh_len)
+	union sym_op_data *icv, uint8_t sqh_len, uint8_t tso)
 {
 	uint32_t clen, hlen, l2len, pdlen, pdofs, plen, tlen;
 	struct rte_mbuf *ml;
@@ -157,11 +157,19 @@ outb_tun_pkt_prepare(struct rte_ipsec_sa *sa, rte_be64_t sqc,
 
 	/* number of bytes to encrypt */
 	clen = plen + sizeof(*espt);
-	clen = RTE_ALIGN_CEIL(clen, sa->pad_align);
 
-	/* pad length + esp tail */
-	pdlen = clen - plen;
-	tlen = pdlen + sa->icv_len + sqh_len;
+	if (!tso) {
+		clen = RTE_ALIGN_CEIL(clen, sa->pad_align);
+		/* pad length + esp tail */
+		pdlen = clen - plen;
+		tlen = pdlen + sa->icv_len + sqh_len;
+	} else {
+		/* We don't need to pad/align packet or append ICV length
+		 * when using TSO offload
+		 */
+		pdlen = clen - plen;
+		tlen = pdlen + sqh_len;
+	}
 
 	/* do append and prepend */
 	ml = rte_pktmbuf_lastseg(mb);
@@ -309,7 +317,7 @@ esp_outb_tun_prepare(const struct rte_ipsec_session *ss, struct rte_mbuf *mb[],
 
 		/* try to update the packet itself */
 		rc = outb_tun_pkt_prepare(sa, sqc, iv, mb[i], &icv,
-					  sa->sqh_len);
+					  sa->sqh_len, 0);
 		/* success, setup crypto op */
 		if (rc >= 0) {
 			outb_pkt_xprepare(sa, sqc, &icv);
@@ -336,7 +344,7 @@ esp_outb_tun_prepare(const struct rte_ipsec_session *ss, struct rte_mbuf *mb[],
 static inline int32_t
 outb_trs_pkt_prepare(struct rte_ipsec_sa *sa, rte_be64_t sqc,
 	const uint64_t ivp[IPSEC_MAX_IV_QWORD], struct rte_mbuf *mb,
-	union sym_op_data *icv, uint8_t sqh_len)
+	union sym_op_data *icv, uint8_t sqh_len, uint8_t tso)
 {
 	uint8_t np;
 	uint32_t clen, hlen, pdlen, pdofs, plen, tlen, uhlen;
@@ -358,11 +366,19 @@ outb_trs_pkt_prepare(struct rte_ipsec_sa *sa, rte_be64_t sqc,
 
 	/* number of bytes to encrypt */
 	clen = plen + sizeof(*espt);
-	clen = RTE_ALIGN_CEIL(clen, sa->pad_align);
 
-	/* pad length + esp tail */
-	pdlen = clen - plen;
-	tlen = pdlen + sa->icv_len + sqh_len;
+	if (!tso) {
+		clen = RTE_ALIGN_CEIL(clen, sa->pad_align);
+		/* pad length + esp tail */
+		pdlen = clen - plen;
+		tlen = pdlen + sa->icv_len + sqh_len;
+	} else {
+		/* We don't need to pad/align packet or append ICV length
+		 * when using TSO offload
+		 */
+		pdlen = clen - plen;
+		tlen = pdlen + sqh_len;
+	}
 
 	/* do append and insert */
 	ml = rte_pktmbuf_lastseg(mb);
@@ -452,7 +468,7 @@ esp_outb_trs_prepare(const struct rte_ipsec_session *ss, struct rte_mbuf *mb[],
 
 		/* try to update the packet itself */
 		rc = outb_trs_pkt_prepare(sa, sqc, iv, mb[i], &icv,
-				  sa->sqh_len);
+				  sa->sqh_len, 0);
 		/* success, setup crypto op */
 		if (rc >= 0) {
 			outb_pkt_xprepare(sa, sqc, &icv);
@@ -549,7 +565,7 @@ cpu_outb_pkt_prepare(const struct rte_ipsec_session *ss,
 		gen_iv(ivbuf[k], sqc);
 
 		/* try to update the packet itself */
-		rc = prepare(sa, sqc, ivbuf[k], mb[i], &icv, sa->sqh_len);
+		rc = prepare(sa, sqc, ivbuf[k], mb[i], &icv, sa->sqh_len, 0);
 
 		/* success, proceed with preparations */
 		if (rc >= 0) {
@@ -668,6 +684,31 @@ inline_outb_mbuf_prepare(const struct rte_ipsec_session *ss,
 	ss->sa->statistics.bytes += bytes;
 }
 
+
+static inline int
+esn_outb_nb_segments(struct rte_mbuf *m)
+{
+	if  (m->ol_flags & (RTE_MBUF_F_TX_TCP_SEG | RTE_MBUF_F_TX_UDP_SEG)) {
+		uint16_t pkt_l3len = m->pkt_len - m->l2_len;
+		uint16_t segments =
+			(m->tso_segsz > 0 && pkt_l3len > m->tso_segsz) ?
+			(pkt_l3len + m->tso_segsz - 1) / m->tso_segsz : 1;
+		return segments;
+	}
+	return 1; /* no TSO */
+}
+
+/* Compute how many packets can be sent before overflow occurs */
+static inline uint16_t
+esn_outb_nb_valid_packets(uint16_t num, uint32_t n_sqn, uint16_t nb_segs[])
+{
+	uint16_t i;
+	uint32_t seg_cnt = 0;
+	for (i = 0; i < num && seg_cnt < n_sqn; i++)
+		seg_cnt += nb_segs[i];
+	return i - 1;
+}
+
 /*
  * process group of ESP outbound tunnel packets destined for
  * INLINE_CRYPTO type of device.
@@ -677,29 +718,47 @@ inline_outb_tun_pkt_process(const struct rte_ipsec_session *ss,
 	struct rte_mbuf *mb[], uint16_t num)
 {
 	int32_t rc;
-	uint32_t i, k, n;
+	uint32_t i, k, nb_segs_total, n_sqn;
 	uint64_t sqn;
 	rte_be64_t sqc;
 	struct rte_ipsec_sa *sa;
 	union sym_op_data icv;
 	uint64_t iv[IPSEC_MAX_IV_QWORD];
 	uint32_t dr[num];
+	uint16_t nb_segs[num];
 
 	sa = ss->sa;
+	nb_segs_total = 0;
+	/* Calculate number of segments */
+	for (i = 0; i != num; i++) {
+		nb_segs[i] = esn_outb_nb_segments(mb[i]);
+		nb_segs_total += nb_segs[i];
+	}
 
-	n = num;
-	sqn = esn_outb_update_sqn(sa, &n);
-	if (n != num)
+	n_sqn = nb_segs_total;
+	sqn = esn_outb_update_sqn(sa, &n_sqn);
+	if (n_sqn != nb_segs_total) {
 		rte_errno = EOVERFLOW;
+		/* if there are segmented packets find out how many can be
+		 * sent until overflow occurs
+		 */
+		if (nb_segs_total > num) /* there is at least 1 */
+			num = esn_outb_nb_valid_packets(num, n_sqn, nb_segs);
+		else
+			num = n_sqn; /* no segmented packets */
+	}
 
 	k = 0;
-	for (i = 0; i != n; i++) {
+	for (i = 0; i != num; i++) {
 
-		sqc = rte_cpu_to_be_64(sqn + i);
+		sqc = rte_cpu_to_be_64(sqn);
 		gen_iv(iv, sqc);
+		sqn += nb_segs[i];
 
 		/* try to update the packet itself */
-		rc = outb_tun_pkt_prepare(sa, sqc, iv, mb[i], &icv, 0);
+		rc = outb_tun_pkt_prepare(sa, sqc, iv, mb[i], &icv, 0,
+			(mb[i]->ol_flags &
+			(RTE_MBUF_F_TX_TCP_SEG | RTE_MBUF_F_TX_UDP_SEG)) != 0);
 
 		k += (rc >= 0);
 
@@ -711,8 +770,8 @@ inline_outb_tun_pkt_process(const struct rte_ipsec_session *ss,
 	}
 
 	/* copy not processed mbufs beyond good ones */
-	if (k != n && k != 0)
-		move_bad_mbufs(mb, dr, n, n - k);
+	if (k != num && k != 0)
+		move_bad_mbufs(mb, dr, num, num - k);
 
 	inline_outb_mbuf_prepare(ss, mb, k);
 	return k;
@@ -727,29 +786,47 @@ inline_outb_trs_pkt_process(const struct rte_ipsec_session *ss,
 	struct rte_mbuf *mb[], uint16_t num)
 {
 	int32_t rc;
-	uint32_t i, k, n;
+	uint32_t i, k, nb_segs_total, n_sqn;
 	uint64_t sqn;
 	rte_be64_t sqc;
 	struct rte_ipsec_sa *sa;
 	union sym_op_data icv;
 	uint64_t iv[IPSEC_MAX_IV_QWORD];
 	uint32_t dr[num];
+	uint16_t nb_segs[num];
 
 	sa = ss->sa;
+	nb_segs_total = 0;
+	/* Calculate number of segments */
+	for (i = 0; i != num; i++) {
+		nb_segs[i] = esn_outb_nb_segments(mb[i]);
+		nb_segs_total += nb_segs[i];
+	}
 
-	n = num;
-	sqn = esn_outb_update_sqn(sa, &n);
-	if (n != num)
+	n_sqn = nb_segs_total;
+	sqn = esn_outb_update_sqn(sa, &n_sqn);
+	if (n_sqn != nb_segs_total) {
 		rte_errno = EOVERFLOW;
+		/* if there are segmented packets find out how many can be
+		 * sent until overflow occurs
+		 */
+		if (nb_segs_total > num) /* there is at least 1 */
+			num = esn_outb_nb_valid_packets(num, n_sqn, nb_segs);
+		else
+			num = n_sqn; /* no segmented packets */
+	}
 
 	k = 0;
-	for (i = 0; i != n; i++) {
+	for (i = 0; i != num; i++) {
 
-		sqc = rte_cpu_to_be_64(sqn + i);
+		sqc = rte_cpu_to_be_64(sqn);
 		gen_iv(iv, sqc);
+		sqn += nb_segs[i];
 
 		/* try to update the packet itself */
-		rc = outb_trs_pkt_prepare(sa, sqc, iv, mb[i], &icv, 0);
+		rc = outb_trs_pkt_prepare(sa, sqc, iv, mb[i], &icv, 0,
+			(mb[i]->ol_flags &
+			(RTE_MBUF_F_TX_TCP_SEG | RTE_MBUF_F_TX_UDP_SEG)) != 0);
 
 		k += (rc >= 0);
 
@@ -761,8 +838,8 @@ inline_outb_trs_pkt_process(const struct rte_ipsec_session *ss,
 	}
 
 	/* copy not processed mbufs beyond good ones */
-	if (k != n && k != 0)
-		move_bad_mbufs(mb, dr, n, n - k);
+	if (k != num && k != 0)
+		move_bad_mbufs(mb, dr, num, num - k);
 
 	inline_outb_mbuf_prepare(ss, mb, k);
 	return k;
