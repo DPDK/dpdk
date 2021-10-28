@@ -150,8 +150,7 @@ int rte_vfio_enable(const char *modname);
 /**
  * Check whether a VFIO-related kmod is enabled.
  *
- * This function is only relevant to linux and will return
- * an error on BSD.
+ * This function is only relevant to Linux.
  *
  * @param modname
  *   kernel module name.
@@ -165,8 +164,7 @@ int rte_vfio_is_enabled(const char *modname);
 /**
  * Whether VFIO NOIOMMU mode is enabled.
  *
- * This function is only relevant to linux and will return
- * an error on BSD.
+ * This function is only relevant to Linux.
  *
  * @return
  *   1 if true.
