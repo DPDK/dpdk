@@ -931,6 +931,27 @@ sec_caps_add(struct rte_cryptodev_capabilities cnxk_caps[], int *cur_pos,
 }
 
 static void
+cn10k_sec_crypto_caps_update(struct rte_cryptodev_capabilities cnxk_caps[],
+			     int *cur_pos)
+{
+	const struct rte_cryptodev_capabilities *cap;
+	unsigned int i;
+
+	if ((CNXK_CPT_MAX_CAPS - *cur_pos) < 1)
+		return;
+
+	/* NULL auth */
+	for (i = 0; i < RTE_DIM(caps_null); i++) {
+		cap = &caps_null[i];
+		if (cap->sym.xform_type == RTE_CRYPTO_SYM_XFORM_AUTH &&
+		    cap->sym.auth.algo == RTE_CRYPTO_AUTH_NULL) {
+			cnxk_caps[*cur_pos] = caps_null[i];
+			*cur_pos += 1;
+		}
+	}
+}
+
+static void
 sec_crypto_caps_populate(struct rte_cryptodev_capabilities cnxk_caps[],
 			 union cpt_eng_caps *hw_caps)
 {
@@ -938,6 +959,9 @@ sec_crypto_caps_populate(struct rte_cryptodev_capabilities cnxk_caps[],
 
 	SEC_CAPS_ADD(cnxk_caps, &cur_pos, hw_caps, aes);
 	SEC_CAPS_ADD(cnxk_caps, &cur_pos, hw_caps, sha1_sha2);
+
+	if (roc_model_is_cn10k())
+		cn10k_sec_crypto_caps_update(cnxk_caps, &cur_pos);
 
 	sec_caps_add(cnxk_caps, &cur_pos, caps_end, RTE_DIM(caps_end));
 }

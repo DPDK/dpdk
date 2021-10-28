@@ -258,4 +258,5 @@ CN10XX Features supported
 * Transport mode
 * UDP Encapsulation
 * AES-128/192/256-GCM
+* AES-128/192/256-CBC-NULL
 * AES-128/192/256-CBC-SHA1-HMAC

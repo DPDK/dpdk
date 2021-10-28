@@ -40,6 +40,9 @@ ipsec_xform_auth_verify(struct rte_crypto_sym_xform *crypto_xform)
 {
 	uint16_t keylen = crypto_xform->auth.key.length;
 
+	if (crypto_xform->auth.algo == RTE_CRYPTO_AUTH_NULL)
+		return 0;
+
 	if (crypto_xform->auth.algo == RTE_CRYPTO_AUTH_SHA1_HMAC) {
 		if (keylen >= 20 && keylen <= 64)
 			return 0;

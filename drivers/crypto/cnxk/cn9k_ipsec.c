@@ -316,7 +316,8 @@ cn9k_ipsec_outb_sa_create(struct cnxk_cpt_qp *qp,
 	if (ret)
 		return ret;
 
-	if (ctl->enc_type == ROC_IE_ON_SA_ENC_AES_GCM) {
+	if (ctl->enc_type == ROC_IE_ON_SA_ENC_AES_GCM ||
+	    ctl->auth_type == ROC_IE_ON_SA_AUTH_NULL) {
 		template = &out_sa->aes_gcm.template;
 		ctx_len = offsetof(struct roc_ie_on_outb_sa, aes_gcm.template);
 	} else if (ctl->auth_type == ROC_IE_ON_SA_AUTH_SHA1) {
@@ -449,7 +450,8 @@ cn9k_ipsec_inb_sa_create(struct cnxk_cpt_qp *qp,
 	if (ret)
 		return ret;
 
-	if (crypto_xform->type == RTE_CRYPTO_SYM_XFORM_AEAD) {
+	if (crypto_xform->type == RTE_CRYPTO_SYM_XFORM_AEAD ||
+	    auth_xform->auth.algo == RTE_CRYPTO_AUTH_NULL) {
 		ctx_len = offsetof(struct roc_ie_on_inb_sa,
 				   sha1_or_gcm.hmac_key[0]);
 	} else {
