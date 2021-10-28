@@ -193,6 +193,7 @@ struct iavf_info {
 	uint64_t supported_rxdid;
 	uint8_t *proto_xtr; /* proto xtr type for all queues */
 	volatile enum virtchnl_ops pend_cmd; /* pending command not finished */
+	uint32_t pend_cmd_count;
 	int cmd_retval; /* return value of the cmd response from PF */
 	uint8_t *aq_resp; /* buffer to store the adminq response from PF */
 
@@ -339,15 +340,33 @@ _clear_cmd(struct iavf_info *vf)
 static inline int
 _atomic_set_cmd(struct iavf_info *vf, enum virtchnl_ops ops)
 {
-	int ret = rte_atomic32_cmpset((volatile uint32_t *)&vf->pend_cmd,
-		VIRTCHNL_OP_UNKNOWN, ops);
+	enum virtchnl_ops op_unk = VIRTCHNL_OP_UNKNOWN;
+	int ret = __atomic_compare_exchange(&vf->pend_cmd, &op_unk, &ops,
+			0, __ATOMIC_ACQUIRE, __ATOMIC_ACQUIRE);
 
 	if (!ret)
 		PMD_DRV_LOG(ERR, "There is incomplete cmd %d", vf->pend_cmd);
 
+	__atomic_store_n(&vf->pend_cmd_count, 1, __ATOMIC_RELAXED);
+
 	return !ret;
 }
 
+/* Check there is pending cmd in execution. If none, set new command. */
+static inline int
+_atomic_set_async_response_cmd(struct iavf_info *vf, enum virtchnl_ops ops)
+{
+	enum virtchnl_ops op_unk = VIRTCHNL_OP_UNKNOWN;
+	int ret = __atomic_compare_exchange(&vf->pend_cmd, &op_unk, &ops,
+			0, __ATOMIC_ACQUIRE, __ATOMIC_ACQUIRE);
+
+	if (!ret)
+		PMD_DRV_LOG(ERR, "There is incomplete cmd %d", vf->pend_cmd);
+
+	__atomic_store_n(&vf->pend_cmd_count, 2, __ATOMIC_RELAXED);
+
+	return !ret;
+}
 int iavf_check_api_version(struct iavf_adapter *adapter);
 int iavf_get_vf_resource(struct iavf_adapter *adapter);
 void iavf_handle_virtchnl_msg(struct rte_eth_dev *dev);
