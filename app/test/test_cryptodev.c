@@ -899,13 +899,13 @@ docsis_proto_testsuite_setup(void)
 	if (!(dev_info.feature_flags & RTE_CRYPTODEV_FF_SYMMETRIC_CRYPTO) ||
 			!(dev_info.feature_flags &
 			RTE_CRYPTODEV_FF_SECURITY)) {
-		RTE_LOG(INFO, USER1, "Feature flag requirements for Docsis "
+		RTE_LOG(INFO, USER1, "Feature flag requirements for DOCSIS "
 				"Proto testsuite not met\n");
 		return TEST_SKIPPED;
 	}
 
 	if (check_cipher_capabilities_supported(ciphers, RTE_DIM(ciphers)) != 0) {
-		RTE_LOG(INFO, USER1, "Capability requirements for Docsis Proto "
+		RTE_LOG(INFO, USER1, "Capability requirements for DOCSIS Proto "
 				"testsuite not met\n");
 		return TEST_SKIPPED;
 	}
@@ -9543,11 +9543,13 @@ test_PDCP_PROTO_all(void)
 }
 
 static int
-test_docsis_proto_uplink(int i, struct docsis_test_data *d_td)
+test_docsis_proto_uplink(const void *data)
 {
+	const struct docsis_test_data *d_td = data;
 	struct crypto_testsuite_params *ts_params = &testsuite_params;
 	struct crypto_unittest_params *ut_params = &unittest_params;
-	uint8_t *plaintext, *ciphertext;
+	uint8_t *plaintext = NULL;
+	uint8_t *ciphertext = NULL;
 	uint8_t *iv_ptr;
 	int32_t cipher_len, crc_len;
 	uint32_t crc_data_len;
@@ -9563,6 +9565,15 @@ test_docsis_proto_uplink(int i, struct docsis_test_data *d_td)
 	const struct rte_cryptodev_capabilities *crypto_cap;
 	const struct rte_cryptodev_symmetric_capability *sym_cap;
 	int j = 0;
+
+	/* Set action type */
+	ut_params->type = gbl_action_type == RTE_SECURITY_ACTION_TYPE_NONE ?
+		RTE_SECURITY_ACTION_TYPE_LOOKASIDE_PROTOCOL :
+		gbl_action_type;
+
+	if (security_proto_supported(ut_params->type,
+			RTE_SECURITY_PROTOCOL_DOCSIS) < 0)
+		return TEST_SKIPPED;
 
 	sec_cap_idx.action = ut_params->type;
 	sec_cap_idx.protocol = RTE_SECURITY_PROTOCOL_DOCSIS;
@@ -9626,8 +9637,8 @@ test_docsis_proto_uplink(int i, struct docsis_test_data *d_td)
 					ts_params->session_priv_mpool);
 
 	if (!ut_params->sec_session) {
-		printf("TestCase %s(%d) line %d: %s\n",
-			__func__, i, __LINE__, "failed to allocate session");
+		printf("Test function %s line %u: failed to allocate session\n",
+			__func__, __LINE__);
 		ret = TEST_FAILED;
 		goto on_err;
 	}
@@ -9636,9 +9647,8 @@ test_docsis_proto_uplink(int i, struct docsis_test_data *d_td)
 	ut_params->op = rte_crypto_op_alloc(ts_params->op_mpool,
 				RTE_CRYPTO_OP_TYPE_SYMMETRIC);
 	if (!ut_params->op) {
-		printf("TestCase %s(%d) line %d: %s\n",
-			__func__, i, __LINE__,
-			"failed to allocate symmetric crypto operation");
+		printf("Test function %s line %u: failed to allocate symmetric "
+			"crypto operation\n", __func__, __LINE__);
 		ret = TEST_FAILED;
 		goto on_err;
 	}
@@ -9677,16 +9687,15 @@ test_docsis_proto_uplink(int i, struct docsis_test_data *d_td)
 	/* Process crypto operation */
 	if (process_crypto_request(ts_params->valid_devs[0], ut_params->op) ==
 			NULL) {
-		printf("TestCase %s(%d) line %d: %s\n",
-			__func__, i, __LINE__,
-			"failed to process security crypto op");
+		printf("Test function %s line %u: failed to process security "
+			"crypto op\n", __func__, __LINE__);
 		ret = TEST_FAILED;
 		goto on_err;
 	}
 
 	if (ut_params->op->status != RTE_CRYPTO_OP_STATUS_SUCCESS) {
-		printf("TestCase %s(%d) line %d: %s\n",
-			__func__, i, __LINE__, "crypto op processing failed");
+		printf("Test function %s line %u: failed to process crypto op\n",
+			__func__, __LINE__);
 		ret = TEST_FAILED;
 		goto on_err;
 	}
@@ -9696,8 +9705,8 @@ test_docsis_proto_uplink(int i, struct docsis_test_data *d_td)
 
 	if (memcmp(plaintext, d_td->plaintext.data,
 			d_td->plaintext.len - crc_data_len)) {
-		printf("TestCase %s(%d) line %d: %s\n",
-			__func__, i, __LINE__, "plaintext not as expected\n");
+		printf("Test function %s line %u: plaintext not as expected\n",
+			__func__, __LINE__);
 		rte_hexdump(stdout, "expected", d_td->plaintext.data,
 				d_td->plaintext.len);
 		rte_hexdump(stdout, "actual", plaintext, d_td->plaintext.len);
@@ -9720,11 +9729,13 @@ on_err:
 }
 
 static int
-test_docsis_proto_downlink(int i, struct docsis_test_data *d_td)
+test_docsis_proto_downlink(const void *data)
 {
+	const struct docsis_test_data *d_td = data;
 	struct crypto_testsuite_params *ts_params = &testsuite_params;
 	struct crypto_unittest_params *ut_params = &unittest_params;
-	uint8_t *plaintext, *ciphertext;
+	uint8_t *plaintext = NULL;
+	uint8_t *ciphertext = NULL;
 	uint8_t *iv_ptr;
 	int32_t cipher_len, crc_len;
 	int ret = TEST_SUCCESS;
@@ -9739,6 +9750,15 @@ test_docsis_proto_downlink(int i, struct docsis_test_data *d_td)
 	const struct rte_cryptodev_capabilities *crypto_cap;
 	const struct rte_cryptodev_symmetric_capability *sym_cap;
 	int j = 0;
+
+	/* Set action type */
+	ut_params->type = gbl_action_type == RTE_SECURITY_ACTION_TYPE_NONE ?
+		RTE_SECURITY_ACTION_TYPE_LOOKASIDE_PROTOCOL :
+		gbl_action_type;
+
+	if (security_proto_supported(ut_params->type,
+			RTE_SECURITY_PROTOCOL_DOCSIS) < 0)
+		return TEST_SKIPPED;
 
 	sec_cap_idx.action = ut_params->type;
 	sec_cap_idx.protocol = RTE_SECURITY_PROTOCOL_DOCSIS;
@@ -9802,8 +9822,8 @@ test_docsis_proto_downlink(int i, struct docsis_test_data *d_td)
 					ts_params->session_priv_mpool);
 
 	if (!ut_params->sec_session) {
-		printf("TestCase %s(%d) line %d: %s\n",
-			__func__, i, __LINE__, "failed to allocate session");
+		printf("Test function %s line %u: failed to allocate session\n",
+			__func__, __LINE__);
 		ret = TEST_FAILED;
 		goto on_err;
 	}
@@ -9812,9 +9832,8 @@ test_docsis_proto_downlink(int i, struct docsis_test_data *d_td)
 	ut_params->op = rte_crypto_op_alloc(ts_params->op_mpool,
 				RTE_CRYPTO_OP_TYPE_SYMMETRIC);
 	if (!ut_params->op) {
-		printf("TestCase %s(%d) line %d: %s\n",
-			__func__, i, __LINE__,
-			"failed to allocate security crypto operation");
+		printf("Test function %s line %u: failed to allocate symmetric "
+			"crypto operation\n", __func__, __LINE__);
 		ret = TEST_FAILED;
 		goto on_err;
 	}
@@ -9852,16 +9871,15 @@ test_docsis_proto_downlink(int i, struct docsis_test_data *d_td)
 	/* Process crypto operation */
 	if (process_crypto_request(ts_params->valid_devs[0], ut_params->op) ==
 			NULL) {
-		printf("TestCase %s(%d) line %d: %s\n",
-			__func__, i, __LINE__,
-			"failed to process security crypto op");
+		printf("Test function %s line %u: failed to process crypto op\n",
+			__func__, __LINE__);
 		ret = TEST_FAILED;
 		goto on_err;
 	}
 
 	if (ut_params->op->status != RTE_CRYPTO_OP_STATUS_SUCCESS) {
-		printf("TestCase %s(%d) line %d: %s\n",
-			__func__, i, __LINE__, "crypto op processing failed");
+		printf("Test function %s line %u: crypto op processing failed\n",
+			__func__, __LINE__);
 		ret = TEST_FAILED;
 		goto on_err;
 	}
@@ -9870,8 +9888,8 @@ test_docsis_proto_downlink(int i, struct docsis_test_data *d_td)
 	ciphertext = plaintext;
 
 	if (memcmp(ciphertext, d_td->ciphertext.data, d_td->ciphertext.len)) {
-		printf("TestCase %s(%d) line %d: %s\n",
-			__func__, i, __LINE__, "ciphertext not as expected\n");
+		printf("Test function %s line %u: plaintext not as expected\n",
+			__func__, __LINE__);
 		rte_hexdump(stdout, "expected", d_td->ciphertext.data,
 				d_td->ciphertext.len);
 		rte_hexdump(stdout, "actual", ciphertext, d_td->ciphertext.len);
@@ -9891,133 +9909,6 @@ on_err:
 	ut_params->ibuf = NULL;
 
 	return ret;
-}
-
-#define TEST_DOCSIS_COUNT(func) do {			\
-	int ret = func;					\
-	if (ret == TEST_SUCCESS)  {			\
-		printf("\t%2d)", n++);			\
-		printf("+++++ PASSED:" #func"\n");	\
-		p++;					\
-	} else if (ret == TEST_SKIPPED) {		\
-		printf("\t%2d)", n++);			\
-		printf("~~~~~ SKIPPED:" #func"\n");	\
-		s++;					\
-	} else {					\
-		printf("\t%2d)", n++);			\
-		printf("----- FAILED:" #func"\n");	\
-		f++;					\
-	}						\
-} while (0)
-
-static int
-test_DOCSIS_PROTO_uplink_all(void)
-{
-	int p = 0, s = 0, f = 0, n = 0;
-
-	TEST_DOCSIS_COUNT(test_docsis_proto_uplink(1, &docsis_test_case_1));
-	TEST_DOCSIS_COUNT(test_docsis_proto_uplink(2, &docsis_test_case_2));
-	TEST_DOCSIS_COUNT(test_docsis_proto_uplink(3, &docsis_test_case_3));
-	TEST_DOCSIS_COUNT(test_docsis_proto_uplink(4, &docsis_test_case_4));
-	TEST_DOCSIS_COUNT(test_docsis_proto_uplink(5, &docsis_test_case_5));
-	TEST_DOCSIS_COUNT(test_docsis_proto_uplink(6, &docsis_test_case_6));
-	TEST_DOCSIS_COUNT(test_docsis_proto_uplink(7, &docsis_test_case_7));
-	TEST_DOCSIS_COUNT(test_docsis_proto_uplink(8, &docsis_test_case_8));
-	TEST_DOCSIS_COUNT(test_docsis_proto_uplink(9, &docsis_test_case_9));
-	TEST_DOCSIS_COUNT(test_docsis_proto_uplink(10, &docsis_test_case_10));
-	TEST_DOCSIS_COUNT(test_docsis_proto_uplink(11, &docsis_test_case_11));
-	TEST_DOCSIS_COUNT(test_docsis_proto_uplink(12, &docsis_test_case_12));
-	TEST_DOCSIS_COUNT(test_docsis_proto_uplink(13, &docsis_test_case_13));
-	TEST_DOCSIS_COUNT(test_docsis_proto_uplink(14, &docsis_test_case_14));
-	TEST_DOCSIS_COUNT(test_docsis_proto_uplink(15, &docsis_test_case_15));
-	TEST_DOCSIS_COUNT(test_docsis_proto_uplink(16, &docsis_test_case_16));
-	TEST_DOCSIS_COUNT(test_docsis_proto_uplink(17, &docsis_test_case_17));
-	TEST_DOCSIS_COUNT(test_docsis_proto_uplink(18, &docsis_test_case_18));
-	TEST_DOCSIS_COUNT(test_docsis_proto_uplink(19, &docsis_test_case_19));
-	TEST_DOCSIS_COUNT(test_docsis_proto_uplink(20, &docsis_test_case_20));
-	TEST_DOCSIS_COUNT(test_docsis_proto_uplink(21, &docsis_test_case_21));
-	TEST_DOCSIS_COUNT(test_docsis_proto_uplink(22, &docsis_test_case_22));
-	TEST_DOCSIS_COUNT(test_docsis_proto_uplink(23, &docsis_test_case_23));
-	TEST_DOCSIS_COUNT(test_docsis_proto_uplink(24, &docsis_test_case_24));
-	TEST_DOCSIS_COUNT(test_docsis_proto_uplink(25, &docsis_test_case_25));
-	TEST_DOCSIS_COUNT(test_docsis_proto_uplink(26, &docsis_test_case_26));
-
-	if (f)
-		printf("## %s: %d passed out of %d (%d skipped)\n",
-			__func__, p, n, s);
-
-	return f;
-};
-
-static int
-test_DOCSIS_PROTO_downlink_all(void)
-{
-	int p = 0, s = 0, f = 0, n = 0;
-
-	TEST_DOCSIS_COUNT(test_docsis_proto_downlink(1, &docsis_test_case_1));
-	TEST_DOCSIS_COUNT(test_docsis_proto_downlink(2, &docsis_test_case_2));
-	TEST_DOCSIS_COUNT(test_docsis_proto_downlink(3, &docsis_test_case_3));
-	TEST_DOCSIS_COUNT(test_docsis_proto_downlink(4, &docsis_test_case_4));
-	TEST_DOCSIS_COUNT(test_docsis_proto_downlink(5, &docsis_test_case_5));
-	TEST_DOCSIS_COUNT(test_docsis_proto_downlink(6, &docsis_test_case_6));
-	TEST_DOCSIS_COUNT(test_docsis_proto_downlink(7, &docsis_test_case_7));
-	TEST_DOCSIS_COUNT(test_docsis_proto_downlink(8, &docsis_test_case_8));
-	TEST_DOCSIS_COUNT(test_docsis_proto_downlink(9, &docsis_test_case_9));
-	TEST_DOCSIS_COUNT(test_docsis_proto_downlink(10, &docsis_test_case_10));
-	TEST_DOCSIS_COUNT(test_docsis_proto_downlink(11, &docsis_test_case_11));
-	TEST_DOCSIS_COUNT(test_docsis_proto_downlink(12, &docsis_test_case_12));
-	TEST_DOCSIS_COUNT(test_docsis_proto_downlink(13, &docsis_test_case_13));
-	TEST_DOCSIS_COUNT(test_docsis_proto_downlink(14, &docsis_test_case_14));
-	TEST_DOCSIS_COUNT(test_docsis_proto_downlink(15, &docsis_test_case_15));
-	TEST_DOCSIS_COUNT(test_docsis_proto_downlink(16, &docsis_test_case_16));
-	TEST_DOCSIS_COUNT(test_docsis_proto_downlink(17, &docsis_test_case_17));
-	TEST_DOCSIS_COUNT(test_docsis_proto_downlink(18, &docsis_test_case_18));
-	TEST_DOCSIS_COUNT(test_docsis_proto_downlink(19, &docsis_test_case_19));
-	TEST_DOCSIS_COUNT(test_docsis_proto_downlink(20, &docsis_test_case_20));
-	TEST_DOCSIS_COUNT(test_docsis_proto_downlink(21, &docsis_test_case_21));
-	TEST_DOCSIS_COUNT(test_docsis_proto_downlink(22, &docsis_test_case_22));
-	TEST_DOCSIS_COUNT(test_docsis_proto_downlink(23, &docsis_test_case_23));
-	TEST_DOCSIS_COUNT(test_docsis_proto_downlink(24, &docsis_test_case_24));
-	TEST_DOCSIS_COUNT(test_docsis_proto_downlink(25, &docsis_test_case_25));
-	TEST_DOCSIS_COUNT(test_docsis_proto_downlink(26, &docsis_test_case_26));
-
-	if (f)
-		printf("## %s: %d passed out of %d (%d skipped)\n",
-			__func__, p, n, s);
-
-	return f;
-};
-
-static int
-test_DOCSIS_PROTO_all(void)
-{
-	struct crypto_testsuite_params *ts_params = &testsuite_params;
-	struct crypto_unittest_params *ut_params = &unittest_params;
-	struct rte_cryptodev_info dev_info;
-	int status;
-
-	rte_cryptodev_info_get(ts_params->valid_devs[0], &dev_info);
-	uint64_t feat_flags = dev_info.feature_flags;
-
-	if (!(feat_flags & RTE_CRYPTODEV_FF_SECURITY))
-		return TEST_SKIPPED;
-
-	/* Set action type */
-	ut_params->type = gbl_action_type == RTE_SECURITY_ACTION_TYPE_NONE ?
-		RTE_SECURITY_ACTION_TYPE_LOOKASIDE_PROTOCOL :
-		gbl_action_type;
-
-	if (security_proto_supported(ut_params->type,
-			RTE_SECURITY_PROTOCOL_DOCSIS) < 0)
-		return TEST_SKIPPED;
-
-	status = test_DOCSIS_PROTO_uplink_all();
-	status += test_DOCSIS_PROTO_downlink_all();
-
-	if (status)
-		return TEST_FAILED;
-	else
-		return TEST_SUCCESS;
 }
 #endif
 
@@ -14513,12 +14404,72 @@ static struct unit_test_suite pdcp_proto_testsuite  = {
 	}
 };
 
+#define ADD_UPLINK_TESTCASE(data)						\
+	TEST_CASE_NAMED_WITH_DATA(data.test_descr_uplink, ut_setup_security,	\
+	ut_teardown, test_docsis_proto_uplink, (const void *) &data),		\
+
+#define ADD_DOWNLINK_TESTCASE(data)						\
+	TEST_CASE_NAMED_WITH_DATA(data.test_descr_downlink, ut_setup_security,	\
+	ut_teardown, test_docsis_proto_downlink, (const void *) &data),		\
+
 static struct unit_test_suite docsis_proto_testsuite  = {
-	.suite_name = "Docsis Proto Unit Test Suite",
+	.suite_name = "DOCSIS Proto Unit Test Suite",
 	.setup = docsis_proto_testsuite_setup,
 	.unit_test_cases = {
-		TEST_CASE_ST(ut_setup_security, ut_teardown,
-			test_DOCSIS_PROTO_all),
+		/* Uplink */
+		ADD_UPLINK_TESTCASE(docsis_test_case_1)
+		ADD_UPLINK_TESTCASE(docsis_test_case_2)
+		ADD_UPLINK_TESTCASE(docsis_test_case_3)
+		ADD_UPLINK_TESTCASE(docsis_test_case_4)
+		ADD_UPLINK_TESTCASE(docsis_test_case_5)
+		ADD_UPLINK_TESTCASE(docsis_test_case_6)
+		ADD_UPLINK_TESTCASE(docsis_test_case_7)
+		ADD_UPLINK_TESTCASE(docsis_test_case_8)
+		ADD_UPLINK_TESTCASE(docsis_test_case_9)
+		ADD_UPLINK_TESTCASE(docsis_test_case_10)
+		ADD_UPLINK_TESTCASE(docsis_test_case_11)
+		ADD_UPLINK_TESTCASE(docsis_test_case_12)
+		ADD_UPLINK_TESTCASE(docsis_test_case_13)
+		ADD_UPLINK_TESTCASE(docsis_test_case_14)
+		ADD_UPLINK_TESTCASE(docsis_test_case_15)
+		ADD_UPLINK_TESTCASE(docsis_test_case_16)
+		ADD_UPLINK_TESTCASE(docsis_test_case_17)
+		ADD_UPLINK_TESTCASE(docsis_test_case_18)
+		ADD_UPLINK_TESTCASE(docsis_test_case_19)
+		ADD_UPLINK_TESTCASE(docsis_test_case_20)
+		ADD_UPLINK_TESTCASE(docsis_test_case_21)
+		ADD_UPLINK_TESTCASE(docsis_test_case_22)
+		ADD_UPLINK_TESTCASE(docsis_test_case_23)
+		ADD_UPLINK_TESTCASE(docsis_test_case_24)
+		ADD_UPLINK_TESTCASE(docsis_test_case_25)
+		ADD_UPLINK_TESTCASE(docsis_test_case_26)
+		/* Downlink */
+		ADD_DOWNLINK_TESTCASE(docsis_test_case_1)
+		ADD_DOWNLINK_TESTCASE(docsis_test_case_2)
+		ADD_DOWNLINK_TESTCASE(docsis_test_case_3)
+		ADD_DOWNLINK_TESTCASE(docsis_test_case_4)
+		ADD_DOWNLINK_TESTCASE(docsis_test_case_5)
+		ADD_DOWNLINK_TESTCASE(docsis_test_case_6)
+		ADD_DOWNLINK_TESTCASE(docsis_test_case_7)
+		ADD_DOWNLINK_TESTCASE(docsis_test_case_8)
+		ADD_DOWNLINK_TESTCASE(docsis_test_case_9)
+		ADD_DOWNLINK_TESTCASE(docsis_test_case_10)
+		ADD_DOWNLINK_TESTCASE(docsis_test_case_11)
+		ADD_DOWNLINK_TESTCASE(docsis_test_case_12)
+		ADD_DOWNLINK_TESTCASE(docsis_test_case_13)
+		ADD_DOWNLINK_TESTCASE(docsis_test_case_14)
+		ADD_DOWNLINK_TESTCASE(docsis_test_case_15)
+		ADD_DOWNLINK_TESTCASE(docsis_test_case_16)
+		ADD_DOWNLINK_TESTCASE(docsis_test_case_17)
+		ADD_DOWNLINK_TESTCASE(docsis_test_case_18)
+		ADD_DOWNLINK_TESTCASE(docsis_test_case_19)
+		ADD_DOWNLINK_TESTCASE(docsis_test_case_20)
+		ADD_DOWNLINK_TESTCASE(docsis_test_case_21)
+		ADD_DOWNLINK_TESTCASE(docsis_test_case_22)
+		ADD_DOWNLINK_TESTCASE(docsis_test_case_23)
+		ADD_DOWNLINK_TESTCASE(docsis_test_case_24)
+		ADD_DOWNLINK_TESTCASE(docsis_test_case_25)
+		ADD_DOWNLINK_TESTCASE(docsis_test_case_26)
 		TEST_CASES_END() /**< NULL terminate unit test array */
 	}
 };

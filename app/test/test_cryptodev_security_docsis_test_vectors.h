@@ -12,6 +12,9 @@
  */
 
 struct docsis_test_data {
+	const char test_descr_uplink[128];
+	const char test_descr_downlink[128];
+
 	struct {
 		uint8_t data[32];
 		unsigned int len;
@@ -41,7 +44,11 @@ struct docsis_test_data {
 	} ciphertext;
 };
 
-struct docsis_test_data docsis_test_case_1 = {
+const struct docsis_test_data docsis_test_case_1 = {
+	.test_descr_uplink = {"Uplink AES-DOCSIS-BPI-128 and CRC Verify (24-byte "
+			"frame, Small offset and runt block decryption)"},
+	.test_descr_downlink = {"Downlink CRC Generate and AES-DOCSIS-BPI-128 "
+			"(24-byte frame, Small offset and runt block encryption)"},
 	.key = {
 		.data = {
 			0x00, 0x00, 0x00, 0x00, 0xAA, 0xBB, 0xCC, 0xDD,
@@ -90,7 +97,11 @@ struct docsis_test_data docsis_test_case_1 = {
 	}
 };
 
-struct docsis_test_data docsis_test_case_2 = {
+const struct docsis_test_data docsis_test_case_2 = {
+	.test_descr_uplink = {"Uplink AES-DOCSIS-BPI-128 and CRC Verify (25-byte "
+			"frame, Small offset and runt block decryption)"},
+	.test_descr_downlink = {"Downlink CRC Generate and AES-DOCSIS-BPI-128 "
+			"(25-byte frame, Small offset and runt block encryption)"},
 	.key = {
 		.data = {
 			0x00, 0x00, 0x00, 0x00, 0xAA, 0xBB, 0xCC, 0xDD,
@@ -139,7 +150,11 @@ struct docsis_test_data docsis_test_case_2 = {
 	}
 };
 
-struct docsis_test_data docsis_test_case_3 = {
+const struct docsis_test_data docsis_test_case_3 = {
+	.test_descr_uplink = {"Uplink AES-DOCSIS-BPI-128 and CRC Verify (34-byte "
+			"frame, Small offset and full block decryption)"},
+	.test_descr_downlink = {"Downlink CRC Generate and AES-DOCSIS-BPI-128 "
+			"(34-byte frame, Small offset and full block encryption)"},
 	.key = {
 		.data = {
 			0x00, 0x00, 0x00, 0x00, 0xAA, 0xBB, 0xCC, 0xDD,
@@ -190,7 +205,11 @@ struct docsis_test_data docsis_test_case_3 = {
 	}
 };
 
-struct docsis_test_data docsis_test_case_4 = {
+const struct docsis_test_data docsis_test_case_4 = {
+	.test_descr_uplink = {"Uplink AES-DOCSIS-BPI-128 and CRC Verify (35-byte "
+			"frame, Small offset and uneven decryption)"},
+	.test_descr_downlink = {"Downlink CRC Generate and AES-DOCSIS-BPI-128 "
+			"(35-byte frame, Small offset and uneven encryption)"},
 	.key = {
 		.data = {
 			0x00, 0x00, 0x00, 0x00, 0xAA, 0xBB, 0xCC, 0xDD,
@@ -243,7 +262,11 @@ struct docsis_test_data docsis_test_case_4 = {
 	}
 };
 
-struct docsis_test_data docsis_test_case_5 = {
+const struct docsis_test_data docsis_test_case_5 = {
+	.test_descr_uplink = {"Uplink AES-DOCSIS-BPI-128 and CRC Verify (82-byte "
+			"frame, Small offset and full block decryption)"},
+	.test_descr_downlink = {"Downlink CRC Generate and AES-DOCSIS-BPI-128 "
+			"(82-byte frame, Small offset and full block encryption)"},
 	.key = {
 		.data = {
 			0x00, 0x00, 0x00, 0x00, 0xAA, 0xBB, 0xCC, 0xDD,
@@ -306,7 +329,11 @@ struct docsis_test_data docsis_test_case_5 = {
 	}
 };
 
-struct docsis_test_data docsis_test_case_6 = {
+const struct docsis_test_data docsis_test_case_6 = {
+	.test_descr_uplink = {"Uplink AES-DOCSIS-BPI-128 and CRC Verify (83-byte "
+			"frame, Small offset and uneven decryption)"},
+	.test_descr_downlink = {"Downlink CRC Generate and AES-DOCSIS-BPI-128 "
+			"(83-byte frame, Small offset and uneven encryption)"},
 	.key = {
 		.data = {
 			0x00, 0x00, 0x00, 0x00, 0xAA, 0xBB, 0xCC, 0xDD,
@@ -371,7 +398,11 @@ struct docsis_test_data docsis_test_case_6 = {
 	}
 };
 
-struct docsis_test_data docsis_test_case_7 = {
+const struct docsis_test_data docsis_test_case_7 = {
+	.test_descr_uplink = {"Uplink AES-DOCSIS-BPI-128 and CRC Verify (83-byte "
+			"frame, Big offset and uneven decryption)"},
+	.test_descr_downlink = {"Downlink CRC Generate and AES-DOCSIS-BPI-128 "
+			"(83-byte frame, Big offset and uneven encryption)"},
 	.key = {
 		.data = {
 			0x00, 0x00, 0x00, 0x00, 0xAA, 0xBB, 0xCC, 0xDD,
@@ -436,7 +467,11 @@ struct docsis_test_data docsis_test_case_7 = {
 	}
 };
 
-struct docsis_test_data docsis_test_case_8 = {
+const struct docsis_test_data docsis_test_case_8 = {
+	.test_descr_uplink = {"Uplink AES-DOCSIS-BPI-128 and CRC Verify (24-byte "
+			"frame, No CRC, Small offset and runt block decryption)"},
+	.test_descr_downlink = {"Downlink CRC Generate and AES-DOCSIS-BPI-128 "
+			"(24-byte frame, No CRC, Small offset and runt block encryption)"},
 	.key = {
 		.data = {
 			0x00, 0x00, 0x00, 0x00, 0xAA, 0xBB, 0xCC, 0xDD,
@@ -485,7 +520,11 @@ struct docsis_test_data docsis_test_case_8 = {
 	}
 };
 
-struct docsis_test_data docsis_test_case_9 = {
+const struct docsis_test_data docsis_test_case_9 = {
+	.test_descr_uplink = {"Uplink AES-DOCSIS-BPI-128 and CRC Verify (83-byte "
+			"frame, No CRC, Big offset and uneven decryption)"},
+	.test_descr_downlink = {"Downlink CRC Generate and AES-DOCSIS-BPI-128 "
+			"(83-byte frame, No CRC, Big offset and uneven encryption)"},
 	.key = {
 		.data = {
 			0x00, 0x00, 0x00, 0x00, 0xAA, 0xBB, 0xCC, 0xDD,
@@ -550,7 +589,11 @@ struct docsis_test_data docsis_test_case_9 = {
 	}
 };
 
-struct docsis_test_data docsis_test_case_10 = {
+const struct docsis_test_data docsis_test_case_10 = {
+	.test_descr_uplink = {"Uplink AES-DOCSIS-BPI-128 and CRC Verify (24-byte "
+			"frame, No decryption)"},
+	.test_descr_downlink = {"Downlink CRC Generate and AES-DOCSIS-BPI-128 "
+			"(24-byte frame, No encryption)"},
 	.key = {
 		.data = {
 			0x00, 0x00, 0x00, 0x00, 0xAA, 0xBB, 0xCC, 0xDD,
@@ -599,7 +642,11 @@ struct docsis_test_data docsis_test_case_10 = {
 	}
 };
 
-struct docsis_test_data docsis_test_case_11 = {
+const struct docsis_test_data docsis_test_case_11 = {
+	.test_descr_uplink = {"Uplink AES-DOCSIS-BPI-128 and CRC Verify (83-byte "
+			"frame, No decryption)"},
+	.test_descr_downlink = {"Downlink CRC Generate and AES-DOCSIS-BPI-128 "
+			"(83-byte frame, No encryption)"},
 	.key = {
 		.data = {
 			0x00, 0x00, 0x00, 0x00, 0xAA, 0xBB, 0xCC, 0xDD,
@@ -664,7 +711,11 @@ struct docsis_test_data docsis_test_case_11 = {
 	}
 };
 
-struct docsis_test_data docsis_test_case_12 = {
+const struct docsis_test_data docsis_test_case_12 = {
+	.test_descr_uplink = {"Uplink AES-DOCSIS-BPI-128 and CRC Verify (24-byte "
+			"frame, No CRC, No decryption)"},
+	.test_descr_downlink = {"Downlink CRC Generate and AES-DOCSIS-BPI-128 "
+		"(24-byte frame, No CRC, No encryption)"},
 	.key = {
 		.data = {
 			0x00, 0x00, 0x00, 0x00, 0xAA, 0xBB, 0xCC, 0xDD,
@@ -713,7 +764,11 @@ struct docsis_test_data docsis_test_case_12 = {
 	}
 };
 
-struct docsis_test_data docsis_test_case_13 = {
+const struct docsis_test_data docsis_test_case_13 = {
+	.test_descr_uplink = {"Uplink AES-DOCSIS-BPI-128 and CRC Verify (83-byte "
+			"frame, No CRC, No decryption)"},
+	.test_descr_downlink = {"Downlink CRC Generate and AES-DOCSIS-BPI-128 "
+			"(83-byte frame, No CRC, No encryption)"},
 	.key = {
 		.data = {
 			0x00, 0x00, 0x00, 0x00, 0xAA, 0xBB, 0xCC, 0xDD,
@@ -778,7 +833,11 @@ struct docsis_test_data docsis_test_case_13 = {
 	}
 };
 
-struct docsis_test_data docsis_test_case_14 = {
+const struct docsis_test_data docsis_test_case_14 = {
+	.test_descr_uplink = {"Uplink AES-DOCSIS-BPI-256 and CRC Verify (24-byte "
+			"frame, Small offset and runt block decryption)"},
+	.test_descr_downlink = {"Downlink CRC Generate and AES-DOCSIS-BPI-256 "
+			"(24-byte frame, Small offset and runt block encryption)"},
 	.key = {
 		.data = {
 			0x00, 0x00, 0x00, 0x00, 0xAA, 0xBB, 0xCC, 0xDD,
@@ -829,7 +888,11 @@ struct docsis_test_data docsis_test_case_14 = {
 	}
 };
 
-struct docsis_test_data docsis_test_case_15 = {
+const struct docsis_test_data docsis_test_case_15 = {
+	.test_descr_uplink = {"Uplink AES-DOCSIS-BPI-256 and CRC Verify (25-byte "
+			"frame, Small offset and runt block decryption)"},
+	.test_descr_downlink = {"Downlink CRC Generate and AES-DOCSIS-BPI-256 "
+			"(25-byte frame, Small offset and runt block encryption)"},
 	.key = {
 		.data = {
 			0x00, 0x00, 0x00, 0x00, 0xAA, 0xBB, 0xCC, 0xDD,
@@ -880,7 +943,11 @@ struct docsis_test_data docsis_test_case_15 = {
 	}
 };
 
-struct docsis_test_data docsis_test_case_16 = {
+const struct docsis_test_data docsis_test_case_16 = {
+	.test_descr_uplink = {"Uplink AES-DOCSIS-BPI-256 and CRC Verify (34-byte "
+			"frame, Small offset and full block decryption)"},
+	.test_descr_downlink = {"Downlink CRC Generate and AES-DOCSIS-BPI-256 "
+			"(34-byte frame, Small offset and full block encryption)"},
 	.key = {
 		.data = {
 			0x00, 0x00, 0x00, 0x00, 0xAA, 0xBB, 0xCC, 0xDD,
@@ -933,7 +1000,11 @@ struct docsis_test_data docsis_test_case_16 = {
 	}
 };
 
-struct docsis_test_data docsis_test_case_17 = {
+const struct docsis_test_data docsis_test_case_17 = {
+	.test_descr_uplink = {"Uplink AES-DOCSIS-BPI-256 and CRC Verify (35-byte "
+			"frame, Small offset and uneven decryption)"},
+	.test_descr_downlink = {"Downlink CRC Generate and AES-DOCSIS-BPI-256 "
+			"(35-byte frame, Small offset and uneven encryption)"},
 	.key = {
 		.data = {
 			0x00, 0x00, 0x00, 0x00, 0xAA, 0xBB, 0xCC, 0xDD,
@@ -988,7 +1059,11 @@ struct docsis_test_data docsis_test_case_17 = {
 	}
 };
 
-struct docsis_test_data docsis_test_case_18 = {
+const struct docsis_test_data docsis_test_case_18 = {
+	.test_descr_uplink = {"Uplink AES-DOCSIS-BPI-256 and CRC Verify (82-byte "
+			"frame, Small offset and full block decryption)"},
+	.test_descr_downlink = {"Downlink CRC Generate and AES-DOCSIS-BPI-256 "
+			"(82-byte frame, Small offset and full block encryption)"},
 	.key = {
 		.data = {
 			0x00, 0x00, 0x00, 0x00, 0xAA, 0xBB, 0xCC, 0xDD,
@@ -1053,7 +1128,11 @@ struct docsis_test_data docsis_test_case_18 = {
 	}
 };
 
-struct docsis_test_data docsis_test_case_19 = {
+const struct docsis_test_data docsis_test_case_19 = {
+	.test_descr_uplink = {"Uplink AES-DOCSIS-BPI-256 and CRC Verify (83-byte "
+			"frame, Small offset and uneven decryption)"},
+	.test_descr_downlink = {"Downlink CRC Generate and AES-DOCSIS-BPI-256 "
+			"(83-byte frame, Small offset and uneven encryption)"},
 	.key = {
 		.data = {
 			0x00, 0x00, 0x00, 0x00, 0xAA, 0xBB, 0xCC, 0xDD,
@@ -1120,7 +1199,11 @@ struct docsis_test_data docsis_test_case_19 = {
 	}
 };
 
-struct docsis_test_data docsis_test_case_20 = {
+const struct docsis_test_data docsis_test_case_20 = {
+	.test_descr_uplink = {"Uplink AES-DOCSIS-BPI-256 and CRC Verify (83-byte "
+			"frame, Big offset and uneven decryption)"},
+	.test_descr_downlink = {"Downlink CRC Generate and AES-DOCSIS-BPI-256 "
+			"(83-byte frame, Big offset and uneven encryption)"},
 	.key = {
 		.data = {
 			0x00, 0x00, 0x00, 0x00, 0xAA, 0xBB, 0xCC, 0xDD,
@@ -1187,7 +1270,11 @@ struct docsis_test_data docsis_test_case_20 = {
 	}
 };
 
-struct docsis_test_data docsis_test_case_21 = {
+const struct docsis_test_data docsis_test_case_21 = {
+	.test_descr_uplink = {"Uplink AES-DOCSIS-BPI-256 and CRC Verify (24-byte "
+			"frame, No CRC, Small offset and runt block decryption)"},
+	.test_descr_downlink = {"Downlink CRC Generate and AES-DOCSIS-BPI-256 "
+			"(24-byte frame, No CRC, Small offset and runt block encryption)"},
 	.key = {
 		.data = {
 			0x00, 0x00, 0x00, 0x00, 0xAA, 0xBB, 0xCC, 0xDD,
@@ -1238,7 +1325,11 @@ struct docsis_test_data docsis_test_case_21 = {
 	}
 };
 
-struct docsis_test_data docsis_test_case_22 = {
+const struct docsis_test_data docsis_test_case_22 = {
+	.test_descr_uplink = {"Uplink AES-DOCSIS-BPI-256 and CRC Verify (83-byte "
+			"frame, No CRC, Big offset and uneven decryption)"},
+	.test_descr_downlink = {"Downlink CRC Generate and AES-DOCSIS-BPI-256 "
+			"(83-byte frame, No CRC, Big offset and uneven encryption)"},
 	.key = {
 		.data = {
 			0x00, 0x00, 0x00, 0x00, 0xAA, 0xBB, 0xCC, 0xDD,
@@ -1305,7 +1396,11 @@ struct docsis_test_data docsis_test_case_22 = {
 	}
 };
 
-struct docsis_test_data docsis_test_case_23 = {
+const struct docsis_test_data docsis_test_case_23 = {
+	.test_descr_uplink = {"Uplink AES-DOCSIS-BPI-256 and CRC Verify (24-byte "
+			"frame, No decryption)"},
+	.test_descr_downlink = {"Downlink CRC Generate and AES-DOCSIS-BPI-256 "
+			"(24-byte frame, No encryption)"},
 	.key = {
 		.data = {
 			0x00, 0x00, 0x00, 0x00, 0xAA, 0xBB, 0xCC, 0xDD,
@@ -1356,7 +1451,11 @@ struct docsis_test_data docsis_test_case_23 = {
 	}
 };
 
-struct docsis_test_data docsis_test_case_24 = {
+const struct docsis_test_data docsis_test_case_24 = {
+	.test_descr_uplink = {"Uplink AES-DOCSIS-BPI-256 and CRC Verify (83-byte "
+			"frame, No decryption)"},
+	.test_descr_downlink = {"Downlink CRC Generate and AES-DOCSIS-BPI-256 "
+			"(83-byte frame, No encryption)"},
 	.key = {
 		.data = {
 			0x00, 0x00, 0x00, 0x00, 0xAA, 0xBB, 0xCC, 0xDD,
@@ -1423,7 +1522,11 @@ struct docsis_test_data docsis_test_case_24 = {
 	}
 };
 
-struct docsis_test_data docsis_test_case_25 = {
+const struct docsis_test_data docsis_test_case_25 = {
+	.test_descr_uplink = {"Uplink AES-DOCSIS-BPI-256 and CRC Verify (24-byte "
+			"frame, No CRC, No decryption)"},
+	.test_descr_downlink = {"Downlink CRC Generate and AES-DOCSIS-BPI-256 "
+			"(24-byte frame, No CRC, No encryption)"},
 	.key = {
 		.data = {
 			0x00, 0x00, 0x00, 0x00, 0xAA, 0xBB, 0xCC, 0xDD,
@@ -1474,7 +1577,11 @@ struct docsis_test_data docsis_test_case_25 = {
 	}
 };
 
-struct docsis_test_data docsis_test_case_26 = {
+const struct docsis_test_data docsis_test_case_26 = {
+	.test_descr_uplink = {"Uplink AES-DOCSIS-BPI-256 and CRC Verify (83-byte "
+			"frame, No CRC, No decryption)"},
+	.test_descr_downlink = {"Downlink CRC Generate and AES-DOCSIS-BPI-256 "
+			"(83-byte frame, No CRC, No encryption)"},
 	.key = {
 		.data = {
 			0x00, 0x00, 0x00, 0x00, 0xAA, 0xBB, 0xCC, 0xDD,
