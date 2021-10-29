@@ -76,7 +76,6 @@ cperf_cyclecount_op_setup(struct rte_comp_op **ops,
 
 	for (iter = 0; iter < num_iter; iter++) {
 		uint32_t remaining_ops = mem->total_bufs;
-		uint32_t total_deq_ops = 0;
 		uint32_t total_enq_ops = 0;
 		uint16_t num_enq = 0;
 		uint16_t num_deq = 0;
@@ -136,7 +135,6 @@ cperf_cyclecount_op_setup(struct rte_comp_op **ops,
 			/* instead of the real dequeue operation */
 			num_deq = num_ops;
 
-			total_deq_ops += num_deq;
 			rte_mempool_put_bulk(mem->op_pool,
 					     (void **)ops, num_deq);
 		}
