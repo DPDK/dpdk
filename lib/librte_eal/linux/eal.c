@@ -561,7 +561,6 @@ eal_parse_socket_arg(char *strval, volatile uint64_t *socket_arg)
 	char * arg[RTE_MAX_NUMA_NODES];
 	char *end;
 	int arg_num, i, len;
-	uint64_t total_mem = 0;
 
 	len = strnlen(strval, SOCKET_MEM_STRLEN);
 	if (len == SOCKET_MEM_STRLEN) {
@@ -593,7 +592,6 @@ eal_parse_socket_arg(char *strval, volatile uint64_t *socket_arg)
 				(arg[i][0] == '\0') || (end == NULL) || (*end != '\0'))
 			return -1;
 		val <<= 20;
-		total_mem += val;
 		socket_arg[i] = val;
 	}
 
