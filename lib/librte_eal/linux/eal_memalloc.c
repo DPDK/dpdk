@@ -107,7 +107,7 @@ static struct rte_memseg_list local_memsegs[RTE_MAX_MEMSEG_LISTS];
 
 static sigjmp_buf huge_jmpenv;
 
-static void __rte_unused huge_sigbus_handler(int signo __rte_unused)
+static void huge_sigbus_handler(int signo __rte_unused)
 {
 	siglongjmp(huge_jmpenv, 1);
 }
@@ -116,7 +116,7 @@ static void __rte_unused huge_sigbus_handler(int signo __rte_unused)
  * non-static local variable in the stack frame calling sigsetjmp might be
  * clobbered by a call to longjmp.
  */
-static int __rte_unused huge_wrap_sigsetjmp(void)
+static int huge_wrap_sigsetjmp(void)
 {
 	return sigsetjmp(huge_jmpenv, 1);
 }
@@ -124,7 +124,7 @@ static int __rte_unused huge_wrap_sigsetjmp(void)
 static struct sigaction huge_action_old;
 static int huge_need_recover;
 
-static void __rte_unused
+static void
 huge_register_sigbus(void)
 {
 	sigset_t mask;
@@ -139,7 +139,7 @@ huge_register_sigbus(void)
 	huge_need_recover = !sigaction(SIGBUS, &action, &huge_action_old);
 }
 
-static void __rte_unused
+static void
 huge_recover_sigbus(void)
 {
 	if (huge_need_recover) {
@@ -576,6 +576,8 @@ alloc_seg(struct rte_memseg *ms, void *addr, int socket_id,
 		mmap_flags = MAP_SHARED | MAP_POPULATE | MAP_FIXED;
 	}
 
+	huge_register_sigbus();
+
 	/*
 	 * map the segment, and populate page tables, the kernel fills
 	 * this segment with zeros if it's a new page.
@@ -651,6 +653,8 @@ alloc_seg(struct rte_memseg *ms, void *addr, int socket_id,
 				__func__);
 #endif
 
+	huge_recover_sigbus();
+
 	ms->addr = addr;
 	ms->hugepage_sz = alloc_sz;
 	ms->len = alloc_sz;
@@ -664,6 +668,7 @@ alloc_seg(struct rte_memseg *ms, void *addr, int socket_id,
 mapped:
 	munmap(addr, alloc_sz);
 unmapped:
+	huge_recover_sigbus();
 	flags = EAL_RESERVE_FORCE_ADDRESS;
 	new_addr = eal_get_virtual_area(addr, &alloc_sz, alloc_sz, 0, flags);
 	if (new_addr != addr) {
