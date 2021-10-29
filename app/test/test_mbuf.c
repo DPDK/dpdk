@@ -2307,16 +2307,16 @@ fail:
 
 /* Define a free call back function to be used for external buffer */
 static void
-ext_buf_free_callback_fn(void *addr __rte_unused, void *opaque)
+ext_buf_free_callback_fn(void *addr, void *opaque)
 {
-	void *ext_buf_addr = opaque;
+	bool *freed = opaque;
 
-	if (ext_buf_addr == NULL) {
+	if (addr == NULL) {
 		printf("External buffer address is invalid\n");
 		return;
 	}
-	rte_free(ext_buf_addr);
-	ext_buf_addr = NULL;
+	rte_free(addr);
+	*freed = true;
 	printf("External buffer freed via callback\n");
 }
 
@@ -2340,6 +2340,7 @@ test_pktmbuf_ext_shinfo_init_helper(struct rte_mempool *pktmbuf_pool)
 	void *ext_buf_addr = NULL;
 	uint16_t buf_len = EXT_BUF_TEST_DATA_LEN +
 				sizeof(struct rte_mbuf_ext_shared_info);
+	bool freed = false;
 
 	/* alloc a mbuf */
 	m = rte_pktmbuf_alloc(pktmbuf_pool);
@@ -2355,7 +2356,7 @@ test_pktmbuf_ext_shinfo_init_helper(struct rte_mempool *pktmbuf_pool)
 		GOTO_FAIL("%s: External buffer allocation failed\n", __func__);
 
 	ret_shinfo = rte_pktmbuf_ext_shinfo_init_helper(ext_buf_addr, &buf_len,
-		ext_buf_free_callback_fn, ext_buf_addr);
+		ext_buf_free_callback_fn, &freed);
 	if (ret_shinfo == NULL)
 		GOTO_FAIL("%s: Shared info initialization failed!\n", __func__);
 
@@ -2388,26 +2389,35 @@ test_pktmbuf_ext_shinfo_init_helper(struct rte_mempool *pktmbuf_pool)
 
 	if (rte_mbuf_ext_refcnt_read(ret_shinfo) != 2)
 		GOTO_FAIL("%s: Invalid ext_buf ref_cnt\n", __func__);
+	if (freed)
+		GOTO_FAIL("%s: extbuf should not be freed\n", __func__);
 
 	/* test to manually update ext_buf_ref_cnt from 2 to 3*/
 	rte_mbuf_ext_refcnt_update(ret_shinfo, 1);
 	if (rte_mbuf_ext_refcnt_read(ret_shinfo) != 3)
 		GOTO_FAIL("%s: Update ext_buf ref_cnt failed\n", __func__);
+	if (freed)
+		GOTO_FAIL("%s: extbuf should not be freed\n", __func__);
 
 	/* reset the ext_refcnt before freeing the external buffer */
 	rte_mbuf_ext_refcnt_set(ret_shinfo, 2);
 	if (rte_mbuf_ext_refcnt_read(ret_shinfo) != 2)
 		GOTO_FAIL("%s: set ext_buf ref_cnt failed\n", __func__);
+	if (freed)
+		GOTO_FAIL("%s: extbuf should not be freed\n", __func__);
 
 	/* detach the external buffer from mbufs */
 	rte_pktmbuf_detach_extbuf(m);
 	/* check if ref cnt is decremented */
 	if (rte_mbuf_ext_refcnt_read(ret_shinfo) != 1)
 		GOTO_FAIL("%s: Invalid ext_buf ref_cnt\n", __func__);
+	if (freed)
+		GOTO_FAIL("%s: extbuf should not be freed\n", __func__);
 
 	rte_pktmbuf_detach_extbuf(clone);
-	if (rte_mbuf_ext_refcnt_read(ret_shinfo) != 0)
-		GOTO_FAIL("%s: Invalid ext_buf ref_cnt\n", __func__);
+	if (!freed)
+		GOTO_FAIL("%s: extbuf should be freed\n", __func__);
+	freed = false;
 
 	rte_pktmbuf_free(m);
 	m = NULL;
