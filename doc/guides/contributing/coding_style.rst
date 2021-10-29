@@ -619,7 +619,7 @@ Return Value
 ~~~~~~~~~~~~
 
 * Functions which create objects, or allocate memory, should return pointer types, and NULL on error.
-  The error type should be indicated may setting the variable ``rte_errno`` appropriately.
+  The error type should be indicated by setting the variable ``rte_errno`` appropriately.
 * Functions which work on bursts of packets, such as RX-like or TX-like functions, should return the number of packets handled.
 * Other functions returning int should generally behave like system calls:
   returning 0 on success and -1 on error, setting ``rte_errno`` to indicate the specific type of error.
