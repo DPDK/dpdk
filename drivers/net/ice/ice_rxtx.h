@@ -93,6 +93,7 @@ struct ice_rx_queue {
 	ice_rx_release_mbufs_t rx_rel_mbufs;
 	uint64_t offloads;
 	uint32_t time_high;
+	uint32_t hw_register_set;
 	const struct rte_memzone *mz;
 };
 
@@ -319,31 +320,44 @@ void ice_fdir_rx_parsing_enable(struct ice_adapter *ad, bool on)
 	}
 }
 
+#define ICE_TIMESYNC_REG_WRAP_GUARD_BAND  10000
+
 /* Helper function to convert a 32b nanoseconds timestamp to 64b. */
 static inline
-uint64_t ice_tstamp_convert_32b_64b(struct ice_hw *hw, uint32_t in_timestamp)
+uint64_t ice_tstamp_convert_32b_64b(struct ice_hw *hw, struct ice_adapter *ad,
+				    uint32_t flag, uint32_t in_timestamp)
 {
 	const uint64_t mask = 0xFFFFFFFF;
 	uint32_t hi, lo, lo2, delta;
-	uint64_t time, ns;
+	uint64_t ns;
 
-	lo = ICE_READ_REG(hw, GLTSYN_TIME_L(0));
-	hi = ICE_READ_REG(hw, GLTSYN_TIME_H(0));
-	lo2 = ICE_READ_REG(hw, GLTSYN_TIME_L(0));
-
-	if (lo2 < lo) {
+	if (flag) {
 		lo = ICE_READ_REG(hw, GLTSYN_TIME_L(0));
 		hi = ICE_READ_REG(hw, GLTSYN_TIME_H(0));
+
+		/*
+		 * On typical system, the delta between lo and lo2 is ~1000ns,
+		 * so 10000 seems a large-enough but not overly-big guard band.
+		 */
+		if (lo > (UINT32_MAX - ICE_TIMESYNC_REG_WRAP_GUARD_BAND))
+			lo2 = ICE_READ_REG(hw, GLTSYN_TIME_L(0));
+		else
+			lo2 = lo;
+
+		if (lo2 < lo) {
+			lo = ICE_READ_REG(hw, GLTSYN_TIME_L(0));
+			hi = ICE_READ_REG(hw, GLTSYN_TIME_H(0));
+		}
+
+		ad->time_hw = ((uint64_t)hi << 32) | lo;
 	}
 
-	time = ((uint64_t)hi << 32) | lo;
-
-	delta = (in_timestamp - (uint32_t)(time & mask));
+	delta = (in_timestamp - (uint32_t)(ad->time_hw & mask));
 	if (delta > (mask / 2)) {
-		delta = ((uint32_t)(time & mask) - in_timestamp);
-		ns = time - delta;
+		delta = ((uint32_t)(ad->time_hw & mask) - in_timestamp);
+		ns = ad->time_hw - delta;
 	} else {
-		ns = time + delta;
+		ns = ad->time_hw + delta;
 	}
 
 	return ns;

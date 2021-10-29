@@ -509,6 +509,7 @@ struct ice_adapter {
 	struct rte_timecounter rx_tstamp_tc;
 	struct rte_timecounter tx_tstamp_tc;
 	bool ptp_ena;
+	uint64_t time_hw;
 #ifdef RTE_ARCH_X86
 	bool rx_use_avx2;
 	bool rx_use_avx512;

@@ -5560,7 +5560,7 @@ ice_timesync_read_rx_timestamp(struct rte_eth_dev *dev,
 	rxq = dev->data->rx_queues[flags];
 
 	ts_high = rxq->time_high;
-	ts_ns = ice_tstamp_convert_32b_64b(hw, ts_high);
+	ts_ns = ice_tstamp_convert_32b_64b(hw, ad, 1, ts_high);
 	ns = rte_timecounter_update(&ad->rx_tstamp_tc, ts_ns);
 	*timestamp = rte_ns_to_timespec(ns);
 
@@ -5587,7 +5587,7 @@ ice_timesync_read_tx_timestamp(struct rte_eth_dev *dev,
 		return -1;
 	}
 
-	ts_ns = ice_tstamp_convert_32b_64b(hw, (tstamp >> 8) & mask);
+	ts_ns = ice_tstamp_convert_32b_64b(hw, ad, 1, (tstamp >> 8) & mask);
 	ns = rte_timecounter_update(&ad->tx_tstamp_tc, ts_ns);
 	*timestamp = rte_ns_to_timespec(ns);
 
