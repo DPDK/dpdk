@@ -176,6 +176,8 @@ test_cmdline_socket_fns(void)
 		printf("Error: failed to open /dev/null for reading!");
 		return -1;
 	}
+	cmdline_free(cl);
+	cl = NULL;
 
 	/* void functions */
 	cmdline_stdin_exit(NULL);
