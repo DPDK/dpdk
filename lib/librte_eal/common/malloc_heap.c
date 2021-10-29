@@ -693,6 +693,26 @@ alloc_unlock:
 	return ret;
 }
 
+static unsigned int
+malloc_get_numa_socket(void)
+{
+	const struct internal_config *conf = eal_get_internal_configuration();
+	unsigned int socket_id = rte_socket_id();
+	unsigned int idx;
+
+	if (socket_id != (unsigned int)SOCKET_ID_ANY)
+		return socket_id;
+
+	/* for control threads, return first socket where memory is available */
+	for (idx = 0; idx < rte_socket_count(); idx++) {
+		socket_id = rte_socket_id_by_idx(idx);
+		if (conf->socket_mem[socket_id] != 0)
+			return socket_id;
+	}
+
+	return rte_socket_id_by_idx(0);
+}
+
 void *
 malloc_heap_alloc(const char *type, size_t size, int socket_arg,
 		unsigned int flags, size_t align, size_t bound, bool contig)
