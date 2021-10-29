@@ -266,12 +266,6 @@ pci_vfio_setup_interrupts(struct rte_pci_device *dev, int vfio_dev_fd)
 			return -1;
 		}
 
-		/* Reallocate the efds and elist fields of intr_handle based
-		 * on PCI device MSIX size.
-		 */
-		if (rte_intr_event_list_update(dev->intr_handle, irq.count))
-			return -1;
-
 		/* if this vector cannot be used with eventfd, fail if we explicitly
 		 * specified interrupt type, otherwise continue */
 		if ((irq.flags & VFIO_IRQ_INFO_EVENTFD) == 0) {
@@ -282,6 +276,14 @@ pci_vfio_setup_interrupts(struct rte_pci_device *dev, int vfio_dev_fd)
 			} else
 				continue;
 		}
+
+		/* Reallocate the efds and elist fields of intr_handle based
+		 * on PCI device MSIX size.
+		 */
+		if (i == VFIO_PCI_MSIX_IRQ_INDEX &&
+				(uint32_t)rte_intr_nb_intr_get(dev->intr_handle) < irq.count &&
+				rte_intr_event_list_update(dev->intr_handle, irq.count))
+			return -1;
 
 		/* set up an eventfd for interrupts */
 		fd = eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
