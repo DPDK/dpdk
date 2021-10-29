@@ -45,6 +45,7 @@ generate_flow(uint16_t port_id,
 	uint16_t hairpinq,
 	uint64_t encap_data,
 	uint64_t decap_data,
+	uint16_t dst_port,
 	uint8_t core_idx,
 	uint8_t rx_queues_count,
 	bool unique_data,
@@ -64,7 +65,7 @@ generate_flow(uint16_t port_id,
 	fill_actions(actions, flow_actions,
 		outer_ip_src, next_table, hairpinq,
 		encap_data, decap_data, core_idx,
-		unique_data, rx_queues_count);
+		unique_data, rx_queues_count, dst_port);
 
 	fill_items(items, flow_items, outer_ip_src, core_idx);
 

@@ -29,6 +29,7 @@ struct additional_para {
 	uint32_t counter;
 	uint64_t encap_data;
 	uint64_t decap_data;
+	uint16_t dst_port;
 	uint8_t core_idx;
 	bool unique_data;
 };
@@ -171,12 +172,13 @@ add_set_tag(struct rte_flow_action *actions,
 static void
 add_port_id(struct rte_flow_action *actions,
 	uint8_t actions_counter,
-	__rte_unused struct additional_para para)
+	struct additional_para para)
 {
 	static struct rte_flow_action_port_id port_id = {
 		.id = PORT_ID_DST,
 	};
 
+	port_id.id = para.dst_port;
 	actions[actions_counter].type = RTE_FLOW_ACTION_TYPE_PORT_ID;
 	actions[actions_counter].conf = &port_id;
 }
@@ -909,7 +911,7 @@ void
 fill_actions(struct rte_flow_action *actions, uint64_t *flow_actions,
 	uint32_t counter, uint16_t next_table, uint16_t hairpinq,
 	uint64_t encap_data, uint64_t decap_data, uint8_t core_idx,
-	bool unique_data, uint8_t rx_queues_count)
+	bool unique_data, uint8_t rx_queues_count, uint16_t dst_port)
 {
 	struct additional_para additional_para_data;
 	uint8_t actions_counter = 0;
@@ -933,6 +935,7 @@ fill_actions(struct rte_flow_action *actions, uint64_t *flow_actions,
 		.decap_data = decap_data,
 		.core_idx = core_idx,
 		.unique_data = unique_data,
+		.dst_port = dst_port,
 	};
 
 	if (hairpinq != 0) {

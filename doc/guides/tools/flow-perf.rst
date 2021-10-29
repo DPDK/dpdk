@@ -231,6 +231,10 @@ Actions:
 	Port redirection destination is defined in user_parameters.h
 	under PORT_ID_DST, default value = 1.
 
+       It can also has optional parameter like --port-id=N[,M] to
+       specify the destination port, the number of values should be
+       the same with number of set bits in portmask.
+
 *	``--rss``
 	Add RSS action to all flows actions,
 	The queues in RSS action will be all queues configured
