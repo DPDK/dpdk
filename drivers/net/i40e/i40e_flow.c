@@ -3049,6 +3049,9 @@ i40e_flow_parse_fdir_pattern(struct rte_eth_dev *dev,
 
 			for (i = 0; i < raw_spec->length; i++) {
 				j = i + next_dst_off;
+				if (j >= RTE_ETH_FDIR_MAX_FLEXLEN ||
+						j >= I40E_FDIR_MAX_FLEX_LEN)
+					break;
 				filter->input.flow_ext.flexbytes[j] =
 					raw_spec->pattern[i];
 				filter->input.flow_ext.flex_mask[j] =
