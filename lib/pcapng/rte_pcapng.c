@@ -178,7 +178,7 @@ pcapng_add_interface(rte_pcapng_t *self, uint16_t port)
 
 	/* DPDK reports in units of Mbps */
 	rte_eth_link_get(port, &link);
-	if (link.link_status == ETH_LINK_UP)
+	if (link.link_status == RTE_ETH_LINK_UP)
 		speed = link.link_speed * PCAPNG_MBPS_SPEED;
 
 	if (rte_eth_macaddr_get(port, &macaddr) < 0)
