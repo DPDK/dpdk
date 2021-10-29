@@ -34,6 +34,8 @@ uint8_t perf_mod_p[129] = {
 	0x55
 };
 
+uint8_t perf_mod_result[sizeof(perf_mod_p)];
+
 uint8_t perf_mod_e[3] = {0x01, 0x00, 0x01};
 
 uint8_t plaintext[2048] = {

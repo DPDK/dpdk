@@ -93,5 +93,6 @@ extern uint8_t digest[2048];
 extern uint8_t perf_base[20];
 extern uint8_t perf_mod_p[129];
 extern uint8_t perf_mod_e[3];
+extern uint8_t perf_mod_result[sizeof(perf_mod_p)];
 
 #endif

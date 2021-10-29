@@ -21,7 +21,6 @@ cperf_set_ops_asym(struct rte_crypto_op **ops,
 		   uint64_t *tsc_start __rte_unused)
 {
 	uint16_t i;
-	uint8_t result[sizeof(perf_mod_p)] = { 0 };
 	struct rte_cryptodev_asym_session *asym_sess = (void *)sess;
 
 	for (i = 0; i < nb_ops; i++) {
@@ -30,8 +29,8 @@ cperf_set_ops_asym(struct rte_crypto_op **ops,
 		ops[i]->status = RTE_CRYPTO_OP_STATUS_NOT_PROCESSED;
 		asym_op->modex.base.data = perf_base;
 		asym_op->modex.base.length = sizeof(perf_base);
-		asym_op->modex.result.data = result;
-		asym_op->modex.result.length = sizeof(result);
+		asym_op->modex.result.data = perf_mod_result;
+		asym_op->modex.result.length = sizeof(perf_mod_result);
 		rte_crypto_op_attach_asym_session(ops[i], asym_sess);
 	}
 	return 0;
