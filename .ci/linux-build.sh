@@ -54,11 +54,13 @@ catch_coredump() {
 }
 
 if [ "$AARCH64" = "true" ]; then
-    # convert the arch specifier
-    if [ "$CC_FOR_BUILD" = "gcc" ]; then
-    	OPTS="$OPTS --cross-file config/arm/arm64_armv8_linux_gcc"
-    elif [ "$CC_FOR_BUILD" = "clang" ]; then
-    	OPTS="$OPTS --cross-file config/arm/arm64_armv8_linux_clang_ubuntu1804"
+    # Note: common/cnxk is disabled for Ubuntu 18.04
+    # https://bugs.dpdk.org/show_bug.cgi?id=697
+    OPTS="$OPTS -Ddisable_drivers=common/cnxk"
+    if [ "${CC%%clang}" != "$CC" ]; then
+        OPTS="$OPTS --cross-file config/arm/arm64_armv8_linux_clang_ubuntu1804"
+    else
+        OPTS="$OPTS --cross-file config/arm/arm64_armv8_linux_gcc"
     fi
 fi
 

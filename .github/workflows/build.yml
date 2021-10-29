@@ -46,6 +46,8 @@ jobs:
             compiler: gcc
             library: static
             cross: i386
+          # Note: common/cnxk is disabled for Ubuntu 18.04
+          # https://bugs.dpdk.org/show_bug.cgi?id=697
           - os: ubuntu-18.04
             compiler: gcc
             library: static
