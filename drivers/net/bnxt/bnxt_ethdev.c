@@ -1476,7 +1476,6 @@ static int bnxt_dev_stop(struct rte_eth_dev *eth_dev)
 	int ret;
 
 	eth_dev->data->dev_started = 0;
-	eth_dev->data->scattered_rx = 0;
 
 	/* Prevent crashes when queues are still in use */
 	eth_dev->rx_pkt_burst = &bnxt_dummy_recv_pkts;
@@ -1532,6 +1531,8 @@ static int bnxt_dev_stop(struct rte_eth_dev *eth_dev)
 	/* All filters are deleted on a port stop. */
 	if (BNXT_FLOW_XSTATS_EN(bp))
 		bp->flow_stat->flow_count = 0;
+
+	eth_dev->data->scattered_rx = 0;
 
 	return 0;
 }
