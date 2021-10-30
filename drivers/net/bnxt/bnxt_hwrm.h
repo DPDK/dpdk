@@ -188,7 +188,6 @@ int bnxt_hwrm_vnic_plcmode_cfg(struct bnxt *bp,
 int bnxt_hwrm_vnic_tpa_cfg(struct bnxt *bp,
 			   struct bnxt_vnic_info *vnic, bool enable);
 
-int bnxt_alloc_all_hwrm_stat_ctxs(struct bnxt *bp);
 int bnxt_clear_all_hwrm_stat_ctxs(struct bnxt *bp);
 int bnxt_alloc_all_hwrm_ring_grps(struct bnxt *bp);
 void bnxt_free_cp_ring(struct bnxt *bp, struct bnxt_cp_ring_info *cpr);

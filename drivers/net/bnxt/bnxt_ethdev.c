@@ -747,12 +747,6 @@ static int bnxt_start_nic(struct bnxt *bp)
 	if (BNXT_CHIP_P5(bp))
 		bp->max_ring_grps = BNXT_MAX_RSS_CTXTS_P5;
 
-	rc = bnxt_alloc_all_hwrm_stat_ctxs(bp);
-	if (rc) {
-		PMD_DRV_LOG(ERR, "HWRM stat ctx alloc failure rc: %x\n", rc);
-		goto err_out;
-	}
-
 	rc = bnxt_alloc_hwrm_rings(bp);
 	if (rc) {
 		PMD_DRV_LOG(ERR, "HWRM ring alloc failure rc: %x\n", rc);

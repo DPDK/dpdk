@@ -2648,37 +2648,6 @@ bnxt_free_all_hwrm_stat_ctxs(struct bnxt *bp)
 	return 0;
 }
 
-int bnxt_alloc_all_hwrm_stat_ctxs(struct bnxt *bp)
-{
-	struct bnxt_cp_ring_info *cpr;
-	unsigned int i;
-	int rc = 0;
-
-	for (i = 0; i < bp->rx_cp_nr_rings; i++) {
-		struct bnxt_rx_queue *rxq = bp->rx_queues[i];
-
-		cpr = rxq->cp_ring;
-		if (cpr->hw_stats_ctx_id == HWRM_NA_SIGNATURE) {
-			rc = bnxt_hwrm_stat_ctx_alloc(bp, cpr);
-			if (rc)
-				return rc;
-		}
-	}
-
-	for (i = 0; i < bp->tx_cp_nr_rings; i++) {
-		struct bnxt_tx_queue *txq = bp->tx_queues[i];
-
-		cpr = txq->cp_ring;
-		if (cpr->hw_stats_ctx_id == HWRM_NA_SIGNATURE) {
-			rc = bnxt_hwrm_stat_ctx_alloc(bp, cpr);
-			if (rc)
-				return rc;
-		}
-	}
-
-	return rc;
-}
-
 static int
 bnxt_free_all_hwrm_ring_grps(struct bnxt *bp)
 {
