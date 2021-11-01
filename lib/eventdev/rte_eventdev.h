@@ -299,6 +299,15 @@ struct rte_event;
  * the content of this field is implementation dependent.
  */
 
+#define RTE_EVENT_DEV_CAP_REQUIRES_MAINT (1ULL << 10)
+/**< Event device requires calls to rte_event_maintain() during
+ * periods when neither rte_event_dequeue_burst() nor
+ * rte_event_enqueue_burst() are called on a port. This will allow the
+ * event device to perform internal processing, such as flushing
+ * buffered events, return credits to a global pool, or process
+ * signaling related to load balancing.
+ */
+
 /* Event device priority levels */
 #define RTE_EVENT_DEV_PRIORITY_HIGHEST   0
 /**< Highest priority expressed across eventdev subsystem
@@ -2061,6 +2070,76 @@ rte_event_dequeue_burst(uint8_t dev_id, uint8_t port_id, struct rte_event ev[],
 	else
 		return (fp_ops->dequeue_burst)(port, ev, nb_events,
 					       timeout_ticks);
+}
+
+#define RTE_EVENT_DEV_MAINT_OP_FLUSH          (1 << 0)
+/**< Force an immediately flush of any buffered events in the port,
+ * potentially at the cost of additional overhead.
+ *
+ * @see rte_event_maintain()
+ */
+
+/**
+ * Maintain an event device.
+ *
+ * This function is only relevant for event devices which have the
+ * @ref RTE_EVENT_DEV_CAP_REQUIRES_MAINT flag set. Such devices
+ * require an application thread using a particular port to
+ * periodically call rte_event_maintain() on that port during periods
+ * which it is neither attempting to enqueue events to nor dequeue
+ * events from the port. rte_event_maintain() is a low-overhead
+ * function and should be called at a high rate (e.g., in the
+ * application's poll loop).
+ *
+ * No port may be left unmaintained.
+ *
+ * At the application thread's convenience, rte_event_maintain() may
+ * (but is not required to) be called even during periods when enqueue
+ * or dequeue functions are being called, at the cost of a slight
+ * increase in overhead.
+ *
+ * rte_event_maintain() may be called on event devices which haven't
+ * set @ref RTE_EVENT_DEV_CAP_REQUIRES_MAINT flag, in which case it is
+ * a no-operation.
+ *
+ * @param dev_id
+ *   The identifier of the device.
+ * @param port_id
+ *   The identifier of the event port.
+ * @param op
+ *   0, or @ref RTE_EVENT_DEV_MAINT_OP_FLUSH.
+ * @return
+ *  - 0 on success.
+ *  - -EINVAL if *dev_id*,  *port_id*, or *op* is invalid.
+ *
+ * @see RTE_EVENT_DEV_CAP_REQUIRES_MAINT
+ */
+__rte_experimental
+static inline int
+rte_event_maintain(uint8_t dev_id, uint8_t port_id, int op)
+{
+	const struct rte_event_fp_ops *fp_ops;
+	void *port;
+
+	fp_ops = &rte_event_fp_ops[dev_id];
+	port = fp_ops->data[port_id];
+#ifdef RTE_LIBRTE_EVENTDEV_DEBUG
+	if (dev_id >= RTE_EVENT_MAX_DEVS ||
+	    port_id >= RTE_EVENT_MAX_PORTS_PER_DEV)
+		return -EINVAL;
+
+	if (port == NULL)
+		return -EINVAL;
+
+	if (op & (~RTE_EVENT_DEV_MAINT_OP_FLUSH))
+		return -EINVAL;
+#endif
+	rte_eventdev_trace_maintain(dev_id, port_id, op);
+
+	if (fp_ops->maintain != NULL)
+		fp_ops->maintain(port, op);
+
+	return 0;
 }
 
 #ifdef __cplusplus

@@ -39,6 +39,14 @@ RTE_TRACE_POINT_FP(
 )
 
 RTE_TRACE_POINT_FP(
+	rte_eventdev_trace_maintain,
+	RTE_TRACE_POINT_ARGS(uint8_t dev_id, uint8_t port_id, int op),
+	rte_trace_point_emit_u8(dev_id);
+	rte_trace_point_emit_u8(port_id);
+	rte_trace_point_emit_int(op);
+)
+
+RTE_TRACE_POINT_FP(
 	rte_eventdev_trace_eth_tx_adapter_enqueue,
 	RTE_TRACE_POINT_ARGS(uint8_t dev_id, uint8_t port_id, void *ev_table,
 		uint16_t nb_events, const uint8_t flags),

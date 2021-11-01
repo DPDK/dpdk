@@ -29,6 +29,9 @@ typedef uint16_t (*event_dequeue_burst_t)(void *port, struct rte_event ev[],
 					  uint64_t timeout_ticks);
 /**< @internal Dequeue burst of events from port of a device */
 
+typedef void (*event_maintain_t)(void *port, int op);
+/**< @internal Maintains a port */
+
 typedef uint16_t (*event_tx_adapter_enqueue_t)(void *port,
 					       struct rte_event ev[],
 					       uint16_t nb_events);
@@ -54,6 +57,8 @@ struct rte_event_fp_ops {
 	/**< PMD dequeue function. */
 	event_dequeue_burst_t dequeue_burst;
 	/**< PMD dequeue burst function. */
+	event_maintain_t maintain;
+	/**< PMD port maintenance function. */
 	event_tx_adapter_enqueue_t txa_enqueue;
 	/**< PMD Tx adapter enqueue function. */
 	event_tx_adapter_enqueue_t txa_enqueue_same_dest;

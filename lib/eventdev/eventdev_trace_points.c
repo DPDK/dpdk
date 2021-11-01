@@ -37,6 +37,9 @@ RTE_TRACE_POINT_REGISTER(rte_eventdev_trace_enq_burst,
 RTE_TRACE_POINT_REGISTER(rte_eventdev_trace_deq_burst,
 	lib.eventdev.deq.burst)
 
+RTE_TRACE_POINT_REGISTER(rte_eventdev_trace_maintain,
+	lib.eventdev.maintain)
+
 /* Eventdev Rx adapter trace points */
 RTE_TRACE_POINT_REGISTER(rte_eventdev_trace_eth_rx_adapter_create,
 	lib.eventdev.rx.adapter.create)

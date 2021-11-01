@@ -164,6 +164,8 @@ struct rte_eventdev {
 	/**< Pointer to PMD dequeue function. */
 	event_dequeue_burst_t dequeue_burst;
 	/**< Pointer to PMD dequeue burst function. */
+	event_maintain_t maintain;
+	/**< Pointer to PMD port maintenance function. */
 	event_tx_adapter_enqueue_t txa_enqueue_same_dest;
 	/**< Pointer to PMD eth Tx adapter burst enqueue function with
 	 * events destined to same Eth port & Tx queue.
