@@ -111,6 +111,34 @@ rte_wait_until_equal_64(volatile uint64_t *addr, uint64_t expected,
 	while (__atomic_load_n(addr, memorder) != expected)
 		rte_pause();
 }
-#endif
+
+/*
+ * Wait until *addr & mask makes the condition true. With a relaxed memory
+ * ordering model, the loads around this helper can be reordered.
+ *
+ * @param addr
+ *  A pointer to the memory location.
+ * @param mask
+ *  A mask of value bits in interest.
+ * @param cond
+ *  A symbol representing the condition.
+ * @param expected
+ *  An expected value to be in the memory location.
+ * @param memorder
+ *  Two different memory orders that can be specified:
+ *  __ATOMIC_ACQUIRE and __ATOMIC_RELAXED. These map to
+ *  C++11 memory orders with the same names, see the C++11 standard or
+ *  the GCC wiki on atomic synchronization for detailed definition.
+ */
+#define RTE_WAIT_UNTIL_MASKED(addr, mask, cond, expected, memorder) do { \
+	RTE_BUILD_BUG_ON(!__builtin_constant_p(memorder));               \
+	RTE_BUILD_BUG_ON(memorder != __ATOMIC_ACQUIRE &&                 \
+		memorder != __ATOMIC_RELAXED);                           \
+	typeof(*(addr)) expected_value = (expected);                     \
+	while (!((__atomic_load_n((addr), (memorder)) & (mask)) cond     \
+			expected_value))                                 \
+		rte_pause();                                             \
+} while (0)
+#endif /* ! RTE_WAIT_UNTIL_EQUAL_ARCH_DEFINED */
 
 #endif /* _RTE_PAUSE_H_ */

@@ -26,10 +26,102 @@ static inline void rte_pause(void)
 #ifdef RTE_WAIT_UNTIL_EQUAL_ARCH_DEFINED
 
 /* Send an event to quit WFE. */
-#define __SEVL() { asm volatile("sevl" : : : "memory"); }
+#define __RTE_ARM_SEVL() { asm volatile("sevl" : : : "memory"); }
 
 /* Put processor into low power WFE(Wait For Event) state. */
-#define __WFE() { asm volatile("wfe" : : : "memory"); }
+#define __RTE_ARM_WFE() { asm volatile("wfe" : : : "memory"); }
+
+/*
+ * Atomic exclusive load from addr, it returns the 16-bit content of
+ * *addr while making it 'monitored', when it is written by someone
+ * else, the 'monitored' state is cleared and an event is generated
+ * implicitly to exit WFE.
+ */
+#define __RTE_ARM_LOAD_EXC_16(src, dst, memorder) {       \
+	if (memorder == __ATOMIC_RELAXED) {               \
+		asm volatile("ldxrh %w[tmp], [%x[addr]]"  \
+			: [tmp] "=&r" (dst)               \
+			: [addr] "r" (src)                \
+			: "memory");                      \
+	} else {                                          \
+		asm volatile("ldaxrh %w[tmp], [%x[addr]]" \
+			: [tmp] "=&r" (dst)               \
+			: [addr] "r" (src)                \
+			: "memory");                      \
+	} }
+
+/*
+ * Atomic exclusive load from addr, it returns the 32-bit content of
+ * *addr while making it 'monitored', when it is written by someone
+ * else, the 'monitored' state is cleared and an event is generated
+ * implicitly to exit WFE.
+ */
+#define __RTE_ARM_LOAD_EXC_32(src, dst, memorder) {      \
+	if (memorder == __ATOMIC_RELAXED) {              \
+		asm volatile("ldxr %w[tmp], [%x[addr]]"  \
+			: [tmp] "=&r" (dst)              \
+			: [addr] "r" (src)               \
+			: "memory");                     \
+	} else {                                         \
+		asm volatile("ldaxr %w[tmp], [%x[addr]]" \
+			: [tmp] "=&r" (dst)              \
+			: [addr] "r" (src)               \
+			: "memory");                     \
+	} }
+
+/*
+ * Atomic exclusive load from addr, it returns the 64-bit content of
+ * *addr while making it 'monitored', when it is written by someone
+ * else, the 'monitored' state is cleared and an event is generated
+ * implicitly to exit WFE.
+ */
+#define __RTE_ARM_LOAD_EXC_64(src, dst, memorder) {      \
+	if (memorder == __ATOMIC_RELAXED) {              \
+		asm volatile("ldxr %x[tmp], [%x[addr]]"  \
+			: [tmp] "=&r" (dst)              \
+			: [addr] "r" (src)               \
+			: "memory");                     \
+	} else {                                         \
+		asm volatile("ldaxr %x[tmp], [%x[addr]]" \
+			: [tmp] "=&r" (dst)              \
+			: [addr] "r" (src)               \
+			: "memory");                     \
+	} }
+
+/*
+ * Atomic exclusive load from addr, it returns the 128-bit content of
+ * *addr while making it 'monitored', when it is written by someone
+ * else, the 'monitored' state is cleared and an event is generated
+ * implicitly to exit WFE.
+ */
+#define __RTE_ARM_LOAD_EXC_128(src, dst, memorder) {                    \
+	volatile rte_int128_t *dst_128 = (volatile rte_int128_t *)&dst; \
+	if (memorder == __ATOMIC_RELAXED) {                             \
+		asm volatile("ldxp %x[tmp0], %x[tmp1], [%x[addr]]"      \
+			: [tmp0] "=&r" (dst_128->val[0]),               \
+			  [tmp1] "=&r" (dst_128->val[1])                \
+			: [addr] "r" (src)                              \
+			: "memory");                                    \
+	} else {                                                        \
+		asm volatile("ldaxp %x[tmp0], %x[tmp1], [%x[addr]]"     \
+			: [tmp0] "=&r" (dst_128->val[0]),               \
+			  [tmp1] "=&r" (dst_128->val[1])                \
+			: [addr] "r" (src)                              \
+			: "memory");                                    \
+	} }                                                             \
+
+#define __RTE_ARM_LOAD_EXC(src, dst, memorder, size) {     \
+	RTE_BUILD_BUG_ON(size != 16 && size != 32 &&       \
+		size != 64 && size != 128);                \
+	if (size == 16)                                    \
+		__RTE_ARM_LOAD_EXC_16(src, dst, memorder)  \
+	else if (size == 32)                               \
+		__RTE_ARM_LOAD_EXC_32(src, dst, memorder)  \
+	else if (size == 64)                               \
+		__RTE_ARM_LOAD_EXC_64(src, dst, memorder)  \
+	else if (size == 128)                              \
+		__RTE_ARM_LOAD_EXC_128(src, dst, memorder) \
+}
 
 static __rte_always_inline void
 rte_wait_until_equal_16(volatile uint16_t *addr, uint16_t expected,
@@ -37,36 +129,17 @@ rte_wait_until_equal_16(volatile uint16_t *addr, uint16_t expected,
 {
 	uint16_t value;
 
-	assert(memorder == __ATOMIC_ACQUIRE || memorder == __ATOMIC_RELAXED);
+	RTE_BUILD_BUG_ON(memorder != __ATOMIC_ACQUIRE &&
+		memorder != __ATOMIC_RELAXED);
 
-	/*
-	 * Atomic exclusive load from addr, it returns the 16-bit content of
-	 * *addr while making it 'monitored',when it is written by someone
-	 * else, the 'monitored' state is cleared and a event is generated
-	 * implicitly to exit WFE.
-	 */
-#define __LOAD_EXC_16(src, dst, memorder) {               \
-	if (memorder == __ATOMIC_RELAXED) {               \
-		asm volatile("ldxrh %w[tmp], [%x[addr]]"  \
-			: [tmp] "=&r" (dst)               \
-			: [addr] "r"(src)                 \
-			: "memory");                      \
-	} else {                                          \
-		asm volatile("ldaxrh %w[tmp], [%x[addr]]" \
-			: [tmp] "=&r" (dst)               \
-			: [addr] "r"(src)                 \
-			: "memory");                      \
-	} }
-
-	__LOAD_EXC_16(addr, value, memorder)
+	__RTE_ARM_LOAD_EXC_16(addr, value, memorder)
 	if (value != expected) {
-		__SEVL()
+		__RTE_ARM_SEVL()
 		do {
-			__WFE()
-			__LOAD_EXC_16(addr, value, memorder)
+			__RTE_ARM_WFE()
+			__RTE_ARM_LOAD_EXC_16(addr, value, memorder)
 		} while (value != expected);
 	}
-#undef __LOAD_EXC_16
 }
 
 static __rte_always_inline void
@@ -75,36 +148,17 @@ rte_wait_until_equal_32(volatile uint32_t *addr, uint32_t expected,
 {
 	uint32_t value;
 
-	assert(memorder == __ATOMIC_ACQUIRE || memorder == __ATOMIC_RELAXED);
+	RTE_BUILD_BUG_ON(memorder != __ATOMIC_ACQUIRE &&
+		memorder != __ATOMIC_RELAXED);
 
-	/*
-	 * Atomic exclusive load from addr, it returns the 32-bit content of
-	 * *addr while making it 'monitored',when it is written by someone
-	 * else, the 'monitored' state is cleared and a event is generated
-	 * implicitly to exit WFE.
-	 */
-#define __LOAD_EXC_32(src, dst, memorder) {              \
-	if (memorder == __ATOMIC_RELAXED) {              \
-		asm volatile("ldxr %w[tmp], [%x[addr]]"  \
-			: [tmp] "=&r" (dst)              \
-			: [addr] "r"(src)                \
-			: "memory");                     \
-	} else {                                         \
-		asm volatile("ldaxr %w[tmp], [%x[addr]]" \
-			: [tmp] "=&r" (dst)              \
-			: [addr] "r"(src)                \
-			: "memory");                     \
-	} }
-
-	__LOAD_EXC_32(addr, value, memorder)
+	__RTE_ARM_LOAD_EXC_32(addr, value, memorder)
 	if (value != expected) {
-		__SEVL()
+		__RTE_ARM_SEVL()
 		do {
-			__WFE()
-			__LOAD_EXC_32(addr, value, memorder)
+			__RTE_ARM_WFE()
+			__RTE_ARM_LOAD_EXC_32(addr, value, memorder)
 		} while (value != expected);
 	}
-#undef __LOAD_EXC_32
 }
 
 static __rte_always_inline void
@@ -113,42 +167,37 @@ rte_wait_until_equal_64(volatile uint64_t *addr, uint64_t expected,
 {
 	uint64_t value;
 
-	assert(memorder == __ATOMIC_ACQUIRE || memorder == __ATOMIC_RELAXED);
+	RTE_BUILD_BUG_ON(memorder != __ATOMIC_ACQUIRE &&
+		memorder != __ATOMIC_RELAXED);
 
-	/*
-	 * Atomic exclusive load from addr, it returns the 64-bit content of
-	 * *addr while making it 'monitored',when it is written by someone
-	 * else, the 'monitored' state is cleared and a event is generated
-	 * implicitly to exit WFE.
-	 */
-#define __LOAD_EXC_64(src, dst, memorder) {              \
-	if (memorder == __ATOMIC_RELAXED) {              \
-		asm volatile("ldxr %x[tmp], [%x[addr]]"  \
-			: [tmp] "=&r" (dst)              \
-			: [addr] "r"(src)                \
-			: "memory");                     \
-	} else {                                         \
-		asm volatile("ldaxr %x[tmp], [%x[addr]]" \
-			: [tmp] "=&r" (dst)              \
-			: [addr] "r"(src)                \
-			: "memory");                     \
-	} }
-
-	__LOAD_EXC_64(addr, value, memorder)
+	__RTE_ARM_LOAD_EXC_64(addr, value, memorder)
 	if (value != expected) {
-		__SEVL()
+		__RTE_ARM_SEVL()
 		do {
-			__WFE()
-			__LOAD_EXC_64(addr, value, memorder)
+			__RTE_ARM_WFE()
+			__RTE_ARM_LOAD_EXC_64(addr, value, memorder)
 		} while (value != expected);
 	}
 }
-#undef __LOAD_EXC_64
 
-#undef __SEVL
-#undef __WFE
+#define RTE_WAIT_UNTIL_MASKED(addr, mask, cond, expected, memorder) do {  \
+	RTE_BUILD_BUG_ON(!__builtin_constant_p(memorder));                \
+	RTE_BUILD_BUG_ON(memorder != __ATOMIC_ACQUIRE &&                  \
+		memorder != __ATOMIC_RELAXED);                            \
+	const uint32_t size = sizeof(*(addr)) << 3;                       \
+	typeof(*(addr)) expected_value = (expected);                      \
+	typeof(*(addr)) value;                                            \
+	__RTE_ARM_LOAD_EXC((addr), value, memorder, size)                 \
+	if (!((value & (mask)) cond expected_value)) {                    \
+		__RTE_ARM_SEVL()                                          \
+		do {                                                      \
+			__RTE_ARM_WFE()                                   \
+			__RTE_ARM_LOAD_EXC((addr), value, memorder, size) \
+		} while (!((value & (mask)) cond expected_value));        \
+	}                                                                 \
+} while (0)
 
-#endif
+#endif /* RTE_WAIT_UNTIL_EQUAL_ARCH_DEFINED */
 
 #ifdef __cplusplus
 }
