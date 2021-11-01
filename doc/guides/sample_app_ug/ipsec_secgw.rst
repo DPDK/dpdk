@@ -127,6 +127,7 @@ The application has a number of command line options::
                         -p PORTMASK -P -u PORTMASK -j FRAMESIZE
                         -l -w REPLAY_WINDOW_SIZE -e -a
                         -c SAD_CACHE_SIZE
+                        -t STATISTICS_INTERVAL
                         -s NUMBER_OF_MBUFS_IN_PACKET_POOL
                         -f CONFIG_FILE_PATH
                         --config (port,queue,lcore)[,(port,queue,lcore)]
@@ -175,6 +176,10 @@ Where:
     lcore cache. Cache represents flat array containing SA's indexed by SPI.
     Zero value disables cache.
     Default value: 128.
+
+*   ``-t``: specifies the statistics screen update interval in seconds. If set
+    to zero or omitted statistics screen is disabled.
+    Default value: 0.
 
 *   ``-s``: sets number of mbufs in packet pool, if not provided number of mbufs
     will be calculated based on number of cores, eth ports and crypto queues.

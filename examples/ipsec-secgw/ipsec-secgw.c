@@ -179,6 +179,7 @@ static uint32_t frag_tbl_sz;
 static uint32_t frame_buf_size = RTE_MBUF_DEFAULT_BUF_SIZE;
 static uint32_t mtu_size = RTE_ETHER_MTU;
 static uint64_t frag_ttl_ns = MAX_FRAG_TTL_NS;
+static uint32_t stats_interval;
 
 /* application wide librte_ipsec/SA parameters */
 struct app_sa_prm app_sa_prm = {
@@ -289,7 +290,6 @@ adjust_ipv6_pktlen(struct rte_mbuf *m, const struct rte_ipv6_hdr *iph,
 	}
 }
 
-#if (STATS_INTERVAL > 0)
 
 struct ipsec_core_statistics core_statistics[RTE_MAX_LCORE];
 
@@ -351,9 +351,8 @@ print_stats_cb(__rte_unused void *param)
 		   total_packets_dropped);
 	printf("\n====================================================\n");
 
-	rte_eal_alarm_set(STATS_INTERVAL * US_PER_S, print_stats_cb, NULL);
+	rte_eal_alarm_set(stats_interval * US_PER_S, print_stats_cb, NULL);
 }
-#endif /* STATS_INTERVAL */
 
 static inline void
 prepare_one_packet(struct rte_mbuf *pkt, struct ipsec_traffic *t)
@@ -1400,6 +1399,7 @@ print_usage(const char *prgname)
 		" [-e]"
 		" [-a]"
 		" [-c]"
+		" [-t STATS_INTERVAL]"
 		" [-s NUMBER_OF_MBUFS_IN_PKT_POOL]"
 		" -f CONFIG_FILE"
 		" --config (port,queue,lcore)[,(port,queue,lcore)]"
@@ -1424,6 +1424,8 @@ print_usage(const char *prgname)
 		"  -a enables SA SQN atomic behaviour\n"
 		"  -c specifies inbound SAD cache size,\n"
 		"     zero value disables the cache (default value: 128)\n"
+		"  -t specifies statistics screen update interval,\n"
+		"     zero disables statistics screen (default value: 0)\n"
 		"  -s number of mbufs in packet pool, if not specified number\n"
 		"     of mbufs will be calculated based on number of cores,\n"
 		"     ports and crypto queues\n"
@@ -1633,7 +1635,7 @@ parse_args(int32_t argc, char **argv, struct eh_conf *eh_conf)
 
 	argvopt = argv;
 
-	while ((opt = getopt_long(argc, argvopt, "aelp:Pu:f:j:w:c:s:",
+	while ((opt = getopt_long(argc, argvopt, "aelp:Pu:f:j:w:c:t:s:",
 				lgopts, &option_index)) != EOF) {
 
 		switch (opt) {
@@ -1713,6 +1715,15 @@ parse_args(int32_t argc, char **argv, struct eh_conf *eh_conf)
 				return -1;
 			}
 			app_sa_prm.cache_sz = ret;
+			break;
+		case 't':
+			ret = parse_decimal(optarg);
+			if (ret < 0) {
+				printf("Invalid interval value: %s\n", optarg);
+				print_usage(prgname);
+				return -1;
+			}
+			stats_interval = ret;
 			break;
 		case CMD_LINE_OPT_CONFIG_NUM:
 			ret = parse_config(optarg);
@@ -3009,11 +3020,11 @@ main(int32_t argc, char **argv)
 
 	check_all_ports_link_status(enabled_port_mask);
 
-#if (STATS_INTERVAL > 0)
-	rte_eal_alarm_set(STATS_INTERVAL * US_PER_S, print_stats_cb, NULL);
-#else
-	RTE_LOG(INFO, IPSEC, "Stats display disabled\n");
-#endif /* STATS_INTERVAL */
+	if (stats_interval > 0)
+		rte_eal_alarm_set(stats_interval * US_PER_S,
+				print_stats_cb, NULL);
+	else
+		RTE_LOG(INFO, IPSEC, "Stats display disabled\n");
 
 	/* launch per-lcore init on every lcore */
 	rte_eal_mp_remote_launch(ipsec_launch_one_lcore, eh_conf, CALL_MAIN);
