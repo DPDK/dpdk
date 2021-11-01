@@ -171,15 +171,55 @@ create_inline_session(struct socket_ctx *skt_ctx, struct ipsec_sa *sa,
 			.options = { 0 },
 			.replay_win_sz = 0,
 			.direction = sa->direction,
-			.proto = RTE_SECURITY_IPSEC_SA_PROTO_ESP,
-			.mode = (sa->flags == IP4_TUNNEL ||
-					sa->flags == IP6_TUNNEL) ?
-					RTE_SECURITY_IPSEC_SA_MODE_TUNNEL :
-					RTE_SECURITY_IPSEC_SA_MODE_TRANSPORT,
+			.proto = RTE_SECURITY_IPSEC_SA_PROTO_ESP
 		} },
 		.crypto_xform = sa->xforms,
 		.userdata = NULL,
 	};
+
+	if (IS_TRANSPORT(sa->flags)) {
+		sess_conf.ipsec.mode = RTE_SECURITY_IPSEC_SA_MODE_TRANSPORT;
+		if (IS_IP4(sa->flags)) {
+			sess_conf.ipsec.tunnel.type =
+				RTE_SECURITY_IPSEC_TUNNEL_IPV4;
+
+			sess_conf.ipsec.tunnel.ipv4.src_ip.s_addr =
+				sa->src.ip.ip4;
+			sess_conf.ipsec.tunnel.ipv4.dst_ip.s_addr =
+				sa->dst.ip.ip4;
+		} else if (IS_IP6(sa->flags)) {
+			sess_conf.ipsec.tunnel.type =
+				RTE_SECURITY_IPSEC_TUNNEL_IPV6;
+
+			memcpy(sess_conf.ipsec.tunnel.ipv6.src_addr.s6_addr,
+				sa->src.ip.ip6.ip6_b, 16);
+			memcpy(sess_conf.ipsec.tunnel.ipv6.dst_addr.s6_addr,
+				sa->dst.ip.ip6.ip6_b, 16);
+		}
+	} else if (IS_TUNNEL(sa->flags)) {
+		sess_conf.ipsec.mode = RTE_SECURITY_IPSEC_SA_MODE_TUNNEL;
+
+		if (IS_IP4(sa->flags)) {
+			sess_conf.ipsec.tunnel.type =
+				RTE_SECURITY_IPSEC_TUNNEL_IPV4;
+
+			sess_conf.ipsec.tunnel.ipv4.src_ip.s_addr =
+				sa->src.ip.ip4;
+			sess_conf.ipsec.tunnel.ipv4.dst_ip.s_addr =
+				sa->dst.ip.ip4;
+		} else if (IS_IP6(sa->flags)) {
+			sess_conf.ipsec.tunnel.type =
+				RTE_SECURITY_IPSEC_TUNNEL_IPV6;
+
+			memcpy(sess_conf.ipsec.tunnel.ipv6.src_addr.s6_addr,
+				sa->src.ip.ip6.ip6_b, 16);
+			memcpy(sess_conf.ipsec.tunnel.ipv6.dst_addr.s6_addr,
+				sa->dst.ip.ip6.ip6_b, 16);
+		} else {
+			RTE_LOG(ERR, IPSEC, "invalid tunnel type\n");
+			return -1;
+		}
+	}
 
 	RTE_LOG_DP(DEBUG, IPSEC, "Create session for SA spi %u on port %u\n",
 		sa->spi, sa->portid);
@@ -266,10 +306,10 @@ create_inline_session(struct socket_ctx *skt_ctx, struct ipsec_sa *sa,
 		sa->attr.ingress = (sa->direction ==
 				RTE_SECURITY_IPSEC_SA_DIR_INGRESS);
 		if (sa->attr.ingress) {
-			uint8_t rss_key[40];
+			uint8_t rss_key[64];
 			struct rte_eth_rss_conf rss_conf = {
 				.rss_key = rss_key,
-				.rss_key_len = 40,
+				.rss_key_len = sizeof(rss_key),
 			};
 			struct rte_eth_dev_info dev_info;
 			uint16_t queue[RTE_MAX_QUEUES_PER_PORT];
