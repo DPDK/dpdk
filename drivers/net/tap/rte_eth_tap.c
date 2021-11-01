@@ -1664,8 +1664,9 @@ tap_dev_intr_handler(void *cb_arg)
 	struct rte_eth_dev *dev = cb_arg;
 	struct pmd_internals *pmd = dev->data->dev_private;
 
-	tap_nl_recv(rte_intr_fd_get(pmd->intr_handle),
-		    tap_nl_msg_handler, dev);
+	if (rte_intr_fd_get(pmd->intr_handle) >= 0)
+		tap_nl_recv(rte_intr_fd_get(pmd->intr_handle),
+			    tap_nl_msg_handler, dev);
 }
 
 static int
@@ -1704,8 +1705,10 @@ clean:
 		}
 	} while (true);
 
-	tap_nl_final(rte_intr_fd_get(pmd->intr_handle));
-	rte_intr_fd_set(pmd->intr_handle, -1);
+	if (rte_intr_fd_get(pmd->intr_handle) >= 0) {
+		tap_nl_final(rte_intr_fd_get(pmd->intr_handle));
+		rte_intr_fd_set(pmd->intr_handle, -1);
+	}
 
 	return 0;
 }

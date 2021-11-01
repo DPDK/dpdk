@@ -371,6 +371,9 @@ static void dpaa_interrupt_handler(void *param)
 	dpaa_dev = container_of(rdev, struct rte_dpaa_device, device);
 	intr_handle = dpaa_dev->intr_handle;
 
+	if (rte_intr_fd_get(intr_handle) < 0)
+		return;
+
 	bytes_read = read(rte_intr_fd_get(intr_handle), &buf,
 			  sizeof(uint64_t));
 	if (bytes_read < 0)

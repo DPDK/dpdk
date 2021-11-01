@@ -30,7 +30,8 @@ static void *vmbus_map_addr;
 /* Control interrupts */
 void vmbus_uio_irq_control(struct rte_vmbus_device *dev, int32_t onoff)
 {
-	if (write(rte_intr_fd_get(dev->intr_handle), &onoff,
+	if ((rte_intr_fd_get(dev->intr_handle) < 0) ||
+	    write(rte_intr_fd_get(dev->intr_handle), &onoff,
 		  sizeof(onoff)) < 0) {
 		VMBUS_LOG(ERR, "cannot write to %d:%s",
 			  rte_intr_fd_get(dev->intr_handle),
@@ -42,6 +43,9 @@ int vmbus_uio_irq_read(struct rte_vmbus_device *dev)
 {
 	int32_t count;
 	int cc;
+
+	if (rte_intr_fd_get(dev->intr_handle) < 0)
+		return -1;
 
 	cc = read(rte_intr_fd_get(dev->intr_handle), &count,
 		  sizeof(count));

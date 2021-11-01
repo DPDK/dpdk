@@ -5195,7 +5195,7 @@ eth_igb_assign_msix_vector(struct e1000_hw *hw, int8_t direction,
 static void
 eth_igb_configure_msix_intr(struct rte_eth_dev *dev)
 {
-	int queue_id;
+	int queue_id, nb_efd;
 	uint32_t tmpval, regval, intr_mask;
 	struct e1000_hw *hw =
 		E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
@@ -5244,9 +5244,11 @@ eth_igb_configure_msix_intr(struct rte_eth_dev *dev)
 		E1000_WRITE_REG(hw, E1000_GPIE, E1000_GPIE_MSIX_MODE |
 					E1000_GPIE_PBA | E1000_GPIE_EIAME |
 					E1000_GPIE_NSICR);
-		intr_mask =
-			RTE_LEN2MASK(rte_intr_nb_efd_get(intr_handle),
-				     uint32_t) << misc_shift;
+		nb_efd = rte_intr_nb_efd_get(intr_handle);
+		if (nb_efd < 0)
+			return;
+
+		intr_mask = RTE_LEN2MASK(nb_efd, uint32_t) << misc_shift;
 
 		if (dev->data->dev_conf.intr_conf.lsc != 0)
 			intr_mask |= (1 << IGB_MSIX_OTHER_INTR_VEC);
@@ -5264,8 +5266,11 @@ eth_igb_configure_msix_intr(struct rte_eth_dev *dev)
 	/* use EIAM to auto-mask when MSI-X interrupt
 	 * is asserted, this saves a register write for every interrupt
 	 */
-	intr_mask = RTE_LEN2MASK(rte_intr_nb_efd_get(intr_handle),
-				 uint32_t) << misc_shift;
+	nb_efd = rte_intr_nb_efd_get(intr_handle);
+	if (nb_efd < 0)
+		return;
+
+	intr_mask = RTE_LEN2MASK(nb_efd, uint32_t) << misc_shift;
 
 	if (dev->data->dev_conf.intr_conf.lsc != 0)
 		intr_mask |= (1 << IGB_MSIX_OTHER_INTR_VEC);

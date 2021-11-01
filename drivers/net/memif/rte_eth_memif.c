@@ -325,7 +325,8 @@ eth_memif_rx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 	}
 
 	/* consume interrupt */
-	if ((ring->flags & MEMIF_RING_FLAG_MASK_INT) == 0)
+	if (((ring->flags & MEMIF_RING_FLAG_MASK_INT) == 0) &&
+	    (rte_intr_fd_get(mq->intr_handle) >= 0))
 		size = read(rte_intr_fd_get(mq->intr_handle), &b,
 			    sizeof(b));
 
@@ -460,7 +461,8 @@ eth_memif_rx_zc(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 	}
 
 	/* consume interrupt */
-	if ((ring->flags & MEMIF_RING_FLAG_MASK_INT) == 0) {
+	if ((rte_intr_fd_get(mq->intr_handle) >= 0) &&
+	    ((ring->flags & MEMIF_RING_FLAG_MASK_INT) == 0)) {
 		uint64_t b;
 		ssize_t size __rte_unused;
 		size = read(rte_intr_fd_get(mq->intr_handle), &b,
@@ -680,7 +682,8 @@ no_free_slots:
 	else
 		__atomic_store_n(&ring->tail, slot, __ATOMIC_RELEASE);
 
-	if ((ring->flags & MEMIF_RING_FLAG_MASK_INT) == 0) {
+	if (((ring->flags & MEMIF_RING_FLAG_MASK_INT) == 0) &&
+	    (rte_intr_fd_get(mq->intr_handle) >= 0)) {
 		a = 1;
 		size = write(rte_intr_fd_get(mq->intr_handle), &a,
 			     sizeof(a));
@@ -835,6 +838,9 @@ no_free_slots:
 	/* Send interrupt, if enabled. */
 	if ((ring->flags & MEMIF_RING_FLAG_MASK_INT) == 0) {
 		uint64_t a = 1;
+		if (rte_intr_fd_get(mq->intr_handle) < 0)
+			return -1;
+
 		ssize_t size = write(rte_intr_fd_get(mq->intr_handle),
 				     &a, sizeof(a));
 		if (unlikely(size < 0)) {

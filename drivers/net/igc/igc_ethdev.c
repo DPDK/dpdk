@@ -727,7 +727,7 @@ igc_configure_msix_intr(struct rte_eth_dev *dev)
 	uint32_t vec = IGC_MISC_VEC_ID;
 	uint32_t base = IGC_MISC_VEC_ID;
 	uint32_t misc_shift = 0;
-	int i;
+	int i, nb_efd;
 
 	/* won't configure msix register if no mapping is done
 	 * between intr vector and event fd
@@ -745,8 +745,12 @@ igc_configure_msix_intr(struct rte_eth_dev *dev)
 	IGC_WRITE_REG(hw, IGC_GPIE, IGC_GPIE_MSIX_MODE |
 				IGC_GPIE_PBA | IGC_GPIE_EIAME |
 				IGC_GPIE_NSICR);
-	intr_mask = RTE_LEN2MASK(rte_intr_nb_efd_get(intr_handle),
-				 uint32_t) << misc_shift;
+
+	nb_efd = rte_intr_nb_efd_get(intr_handle);
+	if (nb_efd < 0)
+		return;
+
+	intr_mask = RTE_LEN2MASK(nb_efd, uint32_t) << misc_shift;
 
 	if (dev->data->dev_conf.intr_conf.lsc)
 		intr_mask |= (1u << IGC_MSIX_OTHER_INTR_VEC);
@@ -802,6 +806,7 @@ igc_rxq_interrupt_setup(struct rte_eth_dev *dev)
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 	struct rte_intr_handle *intr_handle = pci_dev->intr_handle;
 	int misc_shift = rte_intr_allow_others(intr_handle) ? 1 : 0;
+	int nb_efd;
 
 	/* won't configure msix register if no mapping is done
 	 * between intr vector and event fd
@@ -809,8 +814,11 @@ igc_rxq_interrupt_setup(struct rte_eth_dev *dev)
 	if (!rte_intr_dp_is_en(intr_handle))
 		return;
 
-	mask = RTE_LEN2MASK(rte_intr_nb_efd_get(intr_handle), uint32_t)
-		<< misc_shift;
+	nb_efd = rte_intr_nb_efd_get(intr_handle);
+	if (nb_efd < 0)
+		return;
+
+	mask = RTE_LEN2MASK(nb_efd, uint32_t) << misc_shift;
 	IGC_WRITE_REG(hw, IGC_EIMS, mask);
 }
 

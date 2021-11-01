@@ -37,6 +37,9 @@ pci_uio_read_config(const struct rte_intr_handle *intr_handle,
 {
 	int uio_cfg_fd = rte_intr_dev_fd_get(intr_handle);
 
+	if (uio_cfg_fd < 0)
+		return -1;
+
 	return pread(uio_cfg_fd, buf, len, offset);
 }
 
@@ -45,6 +48,9 @@ pci_uio_write_config(const struct rte_intr_handle *intr_handle,
 		     const void *buf, size_t len, off_t offset)
 {
 	int uio_cfg_fd = rte_intr_dev_fd_get(intr_handle);
+
+	if (uio_cfg_fd < 0)
+		return -1;
 
 	return pwrite(uio_cfg_fd, buf, len, offset);
 }

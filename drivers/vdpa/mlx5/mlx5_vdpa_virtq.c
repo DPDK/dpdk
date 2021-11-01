@@ -24,6 +24,9 @@ mlx5_vdpa_virtq_handler(void *cb_arg)
 	uint64_t buf;
 	int nbytes;
 
+	if (rte_intr_fd_get(virtq->intr_handle) < 0)
+		return;
+
 	do {
 		nbytes = read(rte_intr_fd_get(virtq->intr_handle), &buf,
 			      8);

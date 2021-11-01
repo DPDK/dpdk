@@ -233,7 +233,8 @@ pci_uio_unmap_resource(struct rte_pci_device *dev)
 	rte_free(uio_res);
 
 	/* close fd if in primary process */
-	close(rte_intr_fd_get(dev->intr_handle));
+	if (rte_intr_fd_get(dev->intr_handle) >= 0)
+		close(rte_intr_fd_get(dev->intr_handle));
 	uio_cfg_fd = rte_intr_dev_fd_get(dev->intr_handle);
 	if (uio_cfg_fd >= 0) {
 		close(uio_cfg_fd);
