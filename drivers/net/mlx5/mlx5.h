@@ -549,7 +549,7 @@ struct mlx5_aso_age_mng {
 	struct mlx5_aso_age_pool **pools;
 	uint16_t n; /* Total number of pools. */
 	uint16_t next; /* Number of pools in use, index of next free pool. */
-	rte_spinlock_t resize_sl; /* Lock for resize objects. */
+	rte_rwlock_t resize_rwl; /* Lock for resize objects. */
 	rte_spinlock_t free_sl; /* Lock for free list access. */
 	struct aso_age_list free; /* Free age actions list - ready to use. */
 	struct mlx5_aso_sq aso_sq; /* ASO queue objects. */

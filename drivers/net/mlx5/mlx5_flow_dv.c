@@ -11857,18 +11857,18 @@ flow_dv_age_pool_create(struct rte_eth_dev *dev,
 	}
 	pool->flow_hit_aso_obj = obj;
 	pool->time_of_last_age_check = MLX5_CURR_TIME_SEC;
-	rte_spinlock_lock(&mng->resize_sl);
+	rte_rwlock_write_lock(&mng->resize_rwl);
 	pool->index = mng->next;
 	/* Resize pools array if there is no room for the new pool in it. */
 	if (pool->index == mng->n && flow_dv_aso_age_pools_resize(dev)) {
 		claim_zero(mlx5_devx_cmd_destroy(obj));
 		mlx5_free(pool);
-		rte_spinlock_unlock(&mng->resize_sl);
+		rte_rwlock_write_unlock(&mng->resize_rwl);
 		return NULL;
 	}
 	mng->pools[pool->index] = pool;
 	mng->next++;
-	rte_spinlock_unlock(&mng->resize_sl);
+	rte_rwlock_write_unlock(&mng->resize_rwl);
 	/* Assign the first action in the new pool, the rest go to free list. */
 	*age_free = &pool->actions[0];
 	for (i = 1; i < MLX5_ASO_AGE_ACTIONS_PER_POOL; i++) {

@@ -417,9 +417,9 @@ mlx5_aso_sq_enqueue_burst(struct mlx5_aso_age_mng *mng, uint16_t n)
 		wqe = &sq->sq_obj.aso_wqes[sq->head & mask];
 		rte_prefetch0(&sq->sq_obj.aso_wqes[(sq->head + 1) & mask]);
 		/* Fill next WQE. */
-		rte_spinlock_lock(&mng->resize_sl);
+		rte_rwlock_read_lock(&mng->resize_rwl);
 		pool = mng->pools[sq->next];
-		rte_spinlock_unlock(&mng->resize_sl);
+		rte_rwlock_read_unlock(&mng->resize_rwl);
 		sq->elts[sq->head & mask].pool = pool;
 		wqe->general_cseg.misc =
 				rte_cpu_to_be_32(((struct mlx5_devx_obj *)
@@ -635,9 +635,9 @@ mlx5_flow_aso_alarm(void *arg)
 	uint32_t us = 100u;
 	uint16_t n;
 
-	rte_spinlock_lock(&sh->aso_age_mng->resize_sl);
+	rte_rwlock_read_lock(&sh->aso_age_mng->resize_rwl);
 	n = sh->aso_age_mng->next;
-	rte_spinlock_unlock(&sh->aso_age_mng->resize_sl);
+	rte_rwlock_read_unlock(&sh->aso_age_mng->resize_rwl);
 	mlx5_aso_completion_handle(sh);
 	if (sq->next == n) {
 		/* End of loop: wait 1 second. */

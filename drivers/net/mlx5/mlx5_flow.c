@@ -3675,8 +3675,11 @@ flow_aso_age_get_by_idx(struct rte_eth_dev *dev, uint32_t age_idx)
 	uint16_t offset = (age_idx >> 16) & UINT16_MAX;
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_aso_age_mng *mng = priv->sh->aso_age_mng;
-	struct mlx5_aso_age_pool *pool = mng->pools[pool_idx];
+	struct mlx5_aso_age_pool *pool;
 
+	rte_rwlock_read_lock(&mng->resize_rwl);
+	pool = mng->pools[pool_idx];
+	rte_rwlock_read_unlock(&mng->resize_rwl);
 	return &pool->actions[offset - 1];
 }
 

@@ -450,7 +450,7 @@ mlx5_flow_aso_age_mng_init(struct mlx5_dev_ctx_shared *sh)
 		mlx5_free(sh->aso_age_mng);
 		return -1;
 	}
-	rte_spinlock_init(&sh->aso_age_mng->resize_sl);
+	rte_rwlock_init(&sh->aso_age_mng->resize_rwl);
 	rte_spinlock_init(&sh->aso_age_mng->free_sl);
 	LIST_INIT(&sh->aso_age_mng->free);
 	return 0;
