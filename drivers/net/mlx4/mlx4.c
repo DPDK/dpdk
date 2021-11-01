@@ -1112,7 +1112,8 @@ err_secondary:
 		prev_dev = eth_dev;
 		continue;
 port_error:
-		rte_intr_instance_free(priv->intr_handle);
+		if (priv != NULL)
+			rte_intr_instance_free(priv->intr_handle);
 		rte_free(priv);
 		if (eth_dev != NULL)
 			eth_dev->data->dev_private = NULL;
