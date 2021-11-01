@@ -33,9 +33,8 @@ rte_distributor_request_pkt_single(struct rte_distributor_single *d,
 	union rte_distributor_buffer_single *buf = &d->bufs[worker_id];
 	int64_t req = (((int64_t)(uintptr_t)oldpkt) << RTE_DISTRIB_FLAG_BITS)
 			| RTE_DISTRIB_GET_BUF;
-	while (unlikely(__atomic_load_n(&buf->bufptr64, __ATOMIC_RELAXED)
-			& RTE_DISTRIB_FLAGS_MASK))
-		rte_pause();
+	RTE_WAIT_UNTIL_MASKED(&buf->bufptr64, RTE_DISTRIB_FLAGS_MASK,
+		==, 0, __ATOMIC_RELAXED);
 
 	/* Sync with distributor on GET_BUF flag. */
 	__atomic_store_n(&(buf->bufptr64), req, __ATOMIC_RELEASE);
@@ -74,9 +73,8 @@ rte_distributor_return_pkt_single(struct rte_distributor_single *d,
 	union rte_distributor_buffer_single *buf = &d->bufs[worker_id];
 	uint64_t req = (((int64_t)(uintptr_t)oldpkt) << RTE_DISTRIB_FLAG_BITS)
 			| RTE_DISTRIB_RETURN_BUF;
-	while (unlikely(__atomic_load_n(&buf->bufptr64, __ATOMIC_RELAXED)
-			& RTE_DISTRIB_FLAGS_MASK))
-		rte_pause();
+	RTE_WAIT_UNTIL_MASKED(&buf->bufptr64, RTE_DISTRIB_FLAGS_MASK,
+		==, 0, __ATOMIC_RELAXED);
 
 	/* Sync with distributor on RETURN_BUF flag. */
 	__atomic_store_n(&(buf->bufptr64), req, __ATOMIC_RELEASE);
