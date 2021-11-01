@@ -227,6 +227,12 @@ create_inline_session(struct socket_ctx *skt_ctx, struct ipsec_sa *sa,
 		sess_conf.ipsec.udp.dport = htons(sa->udp.dport);
 	}
 
+	if (sa->esn > 0) {
+		sess_conf.ipsec.options.esn = 1;
+		sess_conf.ipsec.esn.value = sa->esn;
+	}
+
+
 	RTE_LOG_DP(DEBUG, IPSEC, "Create session for SA spi %u on port %u\n",
 		sa->spi, sa->portid);
 
