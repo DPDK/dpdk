@@ -17,6 +17,7 @@
 #include <rte_byteorder.h>
 #include <rte_errno.h>
 #include <rte_ip.h>
+#include <rte_udp.h>
 #include <rte_random.h>
 #include <rte_ethdev.h>
 #include <rte_malloc.h>
@@ -781,6 +782,11 @@ parse_sa_tokens(char **tokens, uint32_t n_tokens,
 				app_sa_prm.udp_encap = 1;
 				udp_encap_p = 1;
 				break;
+			case RTE_SECURITY_ACTION_TYPE_INLINE_CRYPTO:
+				rule->udp_encap = 1;
+				rule->udp.sport = 0;
+				rule->udp.dport = 4500;
+				break;
 			default:
 				APP_CHECK(0, status,
 					"UDP encapsulation not supported for "
@@ -868,6 +874,8 @@ print_one_sa_rule(const struct ipsec_sa *sa, int inbound)
 	}
 
 	printf("mode:");
+	if (sa->udp_encap)
+		printf("UDP encapsulated ");
 
 	switch (WITHOUT_TRANSPORT_VERSION(sa->flags)) {
 	case IP4_TUNNEL:
@@ -1327,6 +1335,7 @@ fill_ipsec_sa_prm(struct rte_ipsec_sa_prm *prm, const struct ipsec_sa *ss,
 	prm->ipsec_xform.mode = (IS_TRANSPORT(ss->flags)) ?
 		RTE_SECURITY_IPSEC_SA_MODE_TRANSPORT :
 		RTE_SECURITY_IPSEC_SA_MODE_TUNNEL;
+	prm->ipsec_xform.options.udp_encap = ss->udp_encap;
 	prm->ipsec_xform.options.ecn = 1;
 	prm->ipsec_xform.options.copy_dscp = 1;
 

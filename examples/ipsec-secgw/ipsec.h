@@ -125,6 +125,10 @@ struct ipsec_sa {
 #define IP6_TRANSPORT (1 << 4)
 	struct ip_addr src;
 	struct ip_addr dst;
+	struct {
+		uint16_t sport;
+		uint16_t dport;
+	} udp;
 	uint8_t cipher_key[MAX_KEY_SIZE];
 	uint16_t cipher_key_len;
 	uint8_t auth_key[MAX_KEY_SIZE];
@@ -141,7 +145,7 @@ struct ipsec_sa {
 	uint8_t fdir_qid;
 	uint8_t fdir_flag;
 
-#define MAX_RTE_FLOW_PATTERN (4)
+#define MAX_RTE_FLOW_PATTERN (5)
 #define MAX_RTE_FLOW_ACTIONS (3)
 	struct rte_flow_item pattern[MAX_RTE_FLOW_PATTERN];
 	struct rte_flow_action action[MAX_RTE_FLOW_ACTIONS];
@@ -150,6 +154,7 @@ struct ipsec_sa {
 		struct rte_flow_item_ipv4 ipv4_spec;
 		struct rte_flow_item_ipv6 ipv6_spec;
 	};
+	struct rte_flow_item_udp udp_spec;
 	struct rte_flow_item_esp esp_spec;
 	struct rte_flow *flow;
 	struct rte_security_session_conf sess_conf;

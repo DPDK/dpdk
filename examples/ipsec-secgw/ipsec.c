@@ -221,6 +221,12 @@ create_inline_session(struct socket_ctx *skt_ctx, struct ipsec_sa *sa,
 		}
 	}
 
+	if (sa->udp_encap) {
+		sess_conf.ipsec.options.udp_encap = 1;
+		sess_conf.ipsec.udp.sport = htons(sa->udp.sport);
+		sess_conf.ipsec.udp.dport = htons(sa->udp.dport);
+	}
+
 	RTE_LOG_DP(DEBUG, IPSEC, "Create session for SA spi %u on port %u\n",
 		sa->spi, sa->portid);
 
@@ -289,12 +295,31 @@ create_inline_session(struct socket_ctx *skt_ctx, struct ipsec_sa *sa,
 			sa->ipv4_spec.hdr.src_addr = sa->src.ip.ip4;
 		}
 
-		sa->pattern[2].type = RTE_FLOW_ITEM_TYPE_ESP;
-		sa->pattern[2].spec = &sa->esp_spec;
-		sa->pattern[2].mask = &rte_flow_item_esp_mask;
 		sa->esp_spec.hdr.spi = rte_cpu_to_be_32(sa->spi);
 
-		sa->pattern[3].type = RTE_FLOW_ITEM_TYPE_END;
+		if (sa->udp_encap) {
+
+			sa->udp_spec.hdr.dst_port =
+					rte_cpu_to_be_16(sa->udp.dport);
+			sa->udp_spec.hdr.src_port =
+					rte_cpu_to_be_16(sa->udp.sport);
+
+			sa->pattern[2].mask = &rte_flow_item_udp_mask;
+			sa->pattern[2].type = RTE_FLOW_ITEM_TYPE_UDP;
+			sa->pattern[2].spec = &sa->udp_spec;
+
+			sa->pattern[3].type = RTE_FLOW_ITEM_TYPE_ESP;
+			sa->pattern[3].spec = &sa->esp_spec;
+			sa->pattern[3].mask = &rte_flow_item_esp_mask;
+
+			sa->pattern[4].type = RTE_FLOW_ITEM_TYPE_END;
+		} else {
+			sa->pattern[2].type = RTE_FLOW_ITEM_TYPE_ESP;
+			sa->pattern[2].spec = &sa->esp_spec;
+			sa->pattern[2].mask = &rte_flow_item_esp_mask;
+
+			sa->pattern[3].type = RTE_FLOW_ITEM_TYPE_END;
+		}
 
 		sa->action[0].type = RTE_FLOW_ACTION_TYPE_SECURITY;
 		sa->action[0].conf = ips->security.ses;

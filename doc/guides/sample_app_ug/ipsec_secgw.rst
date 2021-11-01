@@ -717,7 +717,8 @@ where each options means:
  ``<udp-encap>``
 
  * Option to enable IPsec UDP encapsulation for NAT Traversal.
-   Only *lookaside-protocol-offload* mode is supported at the moment.
+   Only *lookaside-protocol-offload* and *inline-crypto-offload* modes are
+   supported at the moment.
 
  * Optional: Yes, it is disabled by default
 
