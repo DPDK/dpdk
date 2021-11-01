@@ -2551,6 +2551,17 @@ inline_ipsec_event_callback(uint16_t port_id, enum rte_eth_event_type type,
 	return -1;
 }
 
+static int
+ethdev_reset_event_callback(uint16_t port_id,
+		enum rte_eth_event_type type,
+		 void *param __rte_unused, void *ret_param __rte_unused)
+{
+	printf("Reset Event on port id %d type %d\n", port_id, type);
+	printf("Force quit application");
+	force_quit = true;
+	return 0;
+}
+
 static uint16_t
 rx_callback(__rte_unused uint16_t port, __rte_unused uint16_t queue,
 	struct rte_mbuf *pkt[], uint16_t nb_pkts,
@@ -3316,6 +3327,9 @@ main(int32_t argc, char **argv)
 					"rte_eth_promiscuous_enable: err=%s, port=%d\n",
 					rte_strerror(-ret), portid);
 		}
+
+		rte_eth_dev_callback_register(portid, RTE_ETH_EVENT_INTR_RESET,
+			ethdev_reset_event_callback, NULL);
 
 		rte_eth_dev_callback_register(portid,
 			RTE_ETH_EVENT_IPSEC, inline_ipsec_event_callback, NULL);
