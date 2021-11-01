@@ -271,6 +271,7 @@ uint16_t dsw_event_enqueue_forward_burst(void *port,
 uint16_t dsw_event_dequeue(void *port, struct rte_event *ev, uint64_t wait);
 uint16_t dsw_event_dequeue_burst(void *port, struct rte_event *events,
 				 uint16_t num, uint64_t wait);
+void dsw_event_maintain(void *port, int op);
 
 int dsw_xstats_get_names(const struct rte_eventdev *dev,
 			 enum rte_event_dev_xstats_mode mode,

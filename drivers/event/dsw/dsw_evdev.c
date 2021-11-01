@@ -222,7 +222,8 @@ dsw_info_get(struct rte_eventdev *dev __rte_unused,
 		RTE_EVENT_DEV_CAP_DISTRIBUTED_SCHED|
 		RTE_EVENT_DEV_CAP_NONSEQ_MODE|
 		RTE_EVENT_DEV_CAP_MULTIPLE_QUEUE_PORT|
-		RTE_EVENT_DEV_CAP_CARRY_FLOW_ID
+		RTE_EVENT_DEV_CAP_CARRY_FLOW_ID|
+		RTE_EVENT_DEV_CAP_REQUIRES_MAINT
 	};
 }
 
@@ -441,6 +442,7 @@ dsw_probe(struct rte_vdev_device *vdev)
 	dev->enqueue_forward_burst = dsw_event_enqueue_forward_burst;
 	dev->dequeue = dsw_event_dequeue;
 	dev->dequeue_burst = dsw_event_dequeue_burst;
+	dev->maintain = dsw_event_maintain;
 
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return 0;

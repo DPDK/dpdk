@@ -40,20 +40,20 @@ Example:
 Limitations
 -----------
 
-Unattended Ports
+Port Maintenance
 ~~~~~~~~~~~~~~~~
 
-The distributed software eventdev uses an internal signaling schema
-between the ports to achieve load balancing. In order for this to
-work, the application must perform enqueue and/or dequeue operations
-on all ports.
+The distributed software eventdev uses an internal signaling scheme
+between the ports to achieve load balancing. Therefore, it sets the
+``RTE_EVENT_DEV_CAP_REQUIRES_MAINT`` flag.
 
-Producer-only ports which currently have no events to enqueue should
-periodically call rte_event_enqueue_burst() with a zero-sized burst.
+During periods when the application thread using a particular port is
+neither attempting to enqueue nor to dequeue events, it must
+repeatedly call rte_event_maintain() on that port.
 
-Ports left unattended for longer periods of time will prevent load
-balancing, and also cause traffic interruptions on the flows which
-are in the process of being migrated.
+Ports left unmaintained for long periods of time will prevent load
+balancing and cause traffic interruptions on flows which are in the
+process of being migrated.
 
 Output Buffering
 ~~~~~~~~~~~~~~~~
@@ -66,8 +66,11 @@ In case no more events are enqueued on a port with buffered events,
 these events will be sent after the application has performed a number
 of enqueue and/or dequeue operations.
 
-For explicit flushing, an application may call
-rte_event_enqueue_burst() with a zero-sized burst.
+To immediately flush a port's output buffer, an application may call
+rte_event_maintain() with op set to ``RTE_EVENT_DEV_MAINT_OP_FLUSH``.
+
+Repeated calls to rte_event_maintain() will also flush the output
+buffers.
 
 
 Priorities
