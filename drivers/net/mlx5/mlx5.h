@@ -895,6 +895,7 @@ struct mlx5_aso_mtr_pools_mng {
 	volatile uint16_t n_valid; /* Number of valid pools. */
 	uint16_t n; /* Number of pools. */
 	rte_spinlock_t mtrsl; /* The ASO flow meter free list lock. */
+	rte_rwlock_t resize_mtrwl; /* Lock for resize objects. */
 	struct aso_meter_list meters; /* Free ASO flow meter list. */
 	struct mlx5_aso_sq sq; /*SQ using by ASO flow meter. */
 	struct mlx5_aso_mtr_pool **pools; /* ASO flow meter pool array. */

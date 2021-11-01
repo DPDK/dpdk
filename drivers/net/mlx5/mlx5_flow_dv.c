@@ -6398,14 +6398,17 @@ flow_dv_mtr_pool_create(struct rte_eth_dev *dev, struct mlx5_aso_mtr **mtr_free)
 		return NULL;
 	}
 	pool->devx_obj = dcs;
+	rte_rwlock_write_lock(&pools_mng->resize_mtrwl);
 	pool->index = pools_mng->n_valid;
 	if (pool->index == pools_mng->n && flow_dv_mtr_container_resize(dev)) {
 		mlx5_free(pool);
 		claim_zero(mlx5_devx_cmd_destroy(dcs));
+		rte_rwlock_write_unlock(&pools_mng->resize_mtrwl);
 		return NULL;
 	}
 	pools_mng->pools[pool->index] = pool;
 	pools_mng->n_valid++;
+	rte_rwlock_write_unlock(&pools_mng->resize_mtrwl);
 	for (i = 1; i < MLX5_ASO_MTRS_PER_POOL; ++i) {
 		pool->mtrs[i].offset = i;
 		LIST_INSERT_HEAD(&pools_mng->meters, &pool->mtrs[i], next);

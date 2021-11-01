@@ -1789,24 +1789,21 @@ mlx5_flow_meter_find(struct mlx5_priv *priv, uint32_t meter_id,
 	struct mlx5_aso_mtr_pools_mng *pools_mng =
 				&priv->sh->mtrmng->pools_mng;
 	union mlx5_l3t_data data;
+	uint16_t n_valid;
 
 	if (priv->sh->meter_aso_en) {
-		rte_spinlock_lock(&pools_mng->mtrsl);
-		if (!pools_mng->n_valid || !priv->mtr_idx_tbl) {
-			rte_spinlock_unlock(&pools_mng->mtrsl);
+		rte_rwlock_read_lock(&pools_mng->resize_mtrwl);
+		n_valid = pools_mng->n_valid;
+		rte_rwlock_read_unlock(&pools_mng->resize_mtrwl);
+		if (!n_valid || !priv->mtr_idx_tbl ||
+		    (mlx5_l3t_get_entry(priv->mtr_idx_tbl, meter_id, &data) ||
+		    !data.dword))
 			return NULL;
-		}
-		if (mlx5_l3t_get_entry(priv->mtr_idx_tbl, meter_id, &data) ||
-			!data.dword) {
-			rte_spinlock_unlock(&pools_mng->mtrsl);
-			return NULL;
-		}
 		if (mtr_idx)
 			*mtr_idx = data.dword;
 		aso_mtr = mlx5_aso_meter_by_idx(priv, data.dword);
 		/* Remove reference taken by the mlx5_l3t_get_entry. */
 		mlx5_l3t_clear_entry(priv->mtr_idx_tbl, meter_id);
-		rte_spinlock_unlock(&pools_mng->mtrsl);
 		if (!aso_mtr || aso_mtr->state == ASO_METER_FREE)
 			return NULL;
 		return &aso_mtr->fm;

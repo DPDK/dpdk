@@ -632,6 +632,7 @@ mlx5_aso_flow_mtrs_mng_init(struct mlx5_dev_ctx_shared *sh)
 		}
 		if (sh->meter_aso_en) {
 			rte_spinlock_init(&sh->mtrmng->pools_mng.mtrsl);
+			rte_rwlock_init(&sh->mtrmng->pools_mng.resize_mtrwl);
 			LIST_INIT(&sh->mtrmng->pools_mng.meters);
 		}
 		sh->mtrmng->def_policy_id = MLX5_INVALID_POLICY_ID;
