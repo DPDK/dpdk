@@ -7,7 +7,7 @@
 # - DPDK_GETMAINTAINER_PATH
 . $(dirname $(readlink -f $0))/load-devel-config
 
-options="--no-git-fallback"
+options="--no-tree --no-git-fallback"
 options="$options --no-rolestats"
 
 print_usage () {
@@ -31,28 +31,4 @@ if [ ! -f "$DPDK_GETMAINTAINER_PATH" ] ||
 	exit 1
 fi
 
-FILES="COPYING CREDITS Kbuild"
-FOLDERS="Documentation arch include fs init ipc scripts"
-
-# Kernel script checks for some files and folders to run
-workaround () {
-	for f in $FILES; do
-		if [ ! -f $f ]; then touch $f; fi
-	done
-
-	for d in $FOLDERS; do
-		if [ ! -d $d ]; then mkdir $d; fi
-	done
-}
-
-fix_workaround () {
-	for f in $FILES; do if [ -f $f ]; then rm -f $f; fi; done
-	for d in $FOLDERS; do if [ -d $d ]; then rmdir $d; fi; done
-}
-
-# clean workaround on exit
-trap fix_workaround EXIT
-
-workaround
 $DPDK_GETMAINTAINER_PATH $options $@
-# fix_workaround called on exit by trap
