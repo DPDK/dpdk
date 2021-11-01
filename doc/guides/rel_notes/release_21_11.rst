@@ -358,6 +358,8 @@ New Features
 
   * Added support for TSO (only for inline crypto TCP packets).
   * Added support for telemetry.
+  * Added support for more AEAD algorithms: AES-GMAC, AES_CTR, AES_XCBC_MAC,
+    AES_CCM, CHACHA20_POLY1305
 
 * **Revised packet capture framework.**
 

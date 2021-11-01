@@ -106,7 +106,8 @@ Constraints
 
 *  No IPv6 options headers.
 *  No AH mode.
-*  Supported algorithms: AES-CBC, AES-CTR, AES-GCM, 3DES-CBC, HMAC-SHA1 and NULL.
+*  Supported algorithms: AES-CBC, AES-CTR, AES-GCM, 3DES-CBC, HMAC-SHA1,
+   AES-GMAC, AES_CTR, AES_XCBC_MAC, AES_CCM, CHACHA20_POLY1305 and NULL.
 *  Each SA must be handle by a unique lcore (*1 RX queue per port*).
 
 Compiling the Application
