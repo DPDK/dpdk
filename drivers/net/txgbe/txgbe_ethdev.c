@@ -2693,7 +2693,7 @@ txgbe_dev_link_update_share(struct rte_eth_dev *dev,
 	link.link_speed = RTE_ETH_SPEED_NUM_NONE;
 	link.link_duplex = RTE_ETH_LINK_HALF_DUPLEX;
 	link.link_autoneg = !(dev->data->dev_conf.link_speeds &
-			RTE_ETH_LINK_AUTONEG);
+			RTE_ETH_LINK_SPEED_FIXED);
 
 	hw->mac.get_link_status = true;
 
