@@ -220,8 +220,10 @@ static void
 dev_delayed_unregister(void *param)
 {
 	rte_intr_callback_unregister(intr_handle, dev_uev_handler, param);
-	close(rte_intr_fd_get(intr_handle));
-	rte_intr_fd_set(intr_handle, -1);
+	if (rte_intr_fd_get(intr_handle) >= 0) {
+		close(rte_intr_fd_get(intr_handle));
+		rte_intr_fd_set(intr_handle, -1);
+	}
 }
 
 static void
@@ -236,6 +238,9 @@ dev_uev_handler(__rte_unused void *param)
 
 	memset(&uevent, 0, sizeof(struct rte_dev_event));
 	memset(buf, 0, EAL_UEV_MSG_LEN);
+
+	if (rte_intr_fd_get(intr_handle) < 0)
+		return;
 
 	ret = recv(rte_intr_fd_get(intr_handle), buf, EAL_UEV_MSG_LEN,
 		   MSG_DONTWAIT);
