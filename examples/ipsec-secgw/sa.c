@@ -323,6 +323,7 @@ parse_sa_tokens(char **tokens, uint32_t n_tokens,
 		return;
 	if (atoi(tokens[1]) == INVALID_SPI)
 		return;
+	rule->flags = 0;
 	rule->spi = atoi(tokens[1]);
 	rule->portid = UINT16_MAX;
 	ips = ipsec_get_primary_session(rule);
@@ -339,14 +340,14 @@ parse_sa_tokens(char **tokens, uint32_t n_tokens,
 
 			if (strcmp(tokens[ti], "ipv4-tunnel") == 0) {
 				sa_cnt->nb_v4++;
-				rule->flags = IP4_TUNNEL;
+				rule->flags |= IP4_TUNNEL;
 			} else if (strcmp(tokens[ti], "ipv6-tunnel") == 0) {
 				sa_cnt->nb_v6++;
-				rule->flags = IP6_TUNNEL;
+				rule->flags |= IP6_TUNNEL;
 			} else if (strcmp(tokens[ti], "transport") == 0) {
 				sa_cnt->nb_v4++;
 				sa_cnt->nb_v6++;
-				rule->flags = TRANSPORT;
+				rule->flags |= TRANSPORT;
 			} else {
 				APP_CHECK(0, status, "unrecognized "
 					"input \"%s\"", tokens[ti]);
@@ -354,6 +355,11 @@ parse_sa_tokens(char **tokens, uint32_t n_tokens,
 			}
 
 			mode_p = 1;
+			continue;
+		}
+
+		if (strcmp(tokens[ti], "telemetry") == 0) {
+			rule->flags |= SA_TELEMETRY_ENABLE;
 			continue;
 		}
 
@@ -1410,6 +1416,9 @@ ipsec_sa_init(struct ipsec_sa *lsa, struct rte_ipsec_sa *sa, uint32_t sa_size)
 		rc = rte_ipsec_sa_init(sa, &prm, sa_size);
 	if (rc < 0)
 		return rc;
+
+	if (lsa->flags & SA_TELEMETRY_ENABLE)
+		rte_ipsec_telemetry_sa_add(sa);
 
 	/* init primary processing session */
 	ips = ipsec_get_primary_session(lsa);

@@ -123,6 +123,8 @@ struct ipsec_sa {
 #define TRANSPORT  (1 << 2)
 #define IP4_TRANSPORT (1 << 3)
 #define IP6_TRANSPORT (1 << 4)
+#define SA_TELEMETRY_ENABLE (1 << 5)
+
 	struct ip_addr src;
 	struct ip_addr dst;
 	struct {

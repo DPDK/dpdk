@@ -47,6 +47,7 @@
 #include <rte_ip.h>
 #include <rte_ip_frag.h>
 #include <rte_alarm.h>
+#include <rte_telemetry.h>
 
 #include "event_helper.h"
 #include "flow.h"
@@ -674,7 +675,7 @@ send_single_packet(struct rte_mbuf *m, uint16_t port, uint8_t proto)
 
 static inline void
 inbound_sp_sa(struct sp_ctx *sp, struct sa_ctx *sa, struct traffic_type *ip,
-		uint16_t lim)
+		uint16_t lim, struct ipsec_spd_stats *stats)
 {
 	struct rte_mbuf *m;
 	uint32_t i, j, res, sa_idx;
@@ -691,25 +692,30 @@ inbound_sp_sa(struct sp_ctx *sp, struct sa_ctx *sa, struct traffic_type *ip,
 		res = ip->res[i];
 		if (res == BYPASS) {
 			ip->pkts[j++] = m;
+			stats->bypass++;
 			continue;
 		}
 		if (res == DISCARD) {
 			free_pkts(&m, 1);
+			stats->discard++;
 			continue;
 		}
 
 		/* Only check SPI match for processed IPSec packets */
 		if (i < lim && ((m->ol_flags & RTE_MBUF_F_RX_SEC_OFFLOAD) == 0)) {
+			stats->discard++;
 			free_pkts(&m, 1);
 			continue;
 		}
 
 		sa_idx = res - 1;
 		if (!inbound_sa_check(sa, m, sa_idx)) {
+			stats->discard++;
 			free_pkts(&m, 1);
 			continue;
 		}
 		ip->pkts[j++] = m;
+		stats->protect++;
 	}
 	ip->num = j;
 }
@@ -753,6 +759,7 @@ static inline void
 process_pkts_inbound(struct ipsec_ctx *ipsec_ctx,
 		struct ipsec_traffic *traffic)
 {
+	unsigned int lcoreid = rte_lcore_id();
 	uint16_t nb_pkts_in, n_ip4, n_ip6;
 
 	n_ip4 = traffic->ip4.num;
@@ -768,16 +775,20 @@ process_pkts_inbound(struct ipsec_ctx *ipsec_ctx,
 		ipsec_process(ipsec_ctx, traffic);
 	}
 
-	inbound_sp_sa(ipsec_ctx->sp4_ctx, ipsec_ctx->sa_ctx, &traffic->ip4,
-			n_ip4);
+	inbound_sp_sa(ipsec_ctx->sp4_ctx,
+		ipsec_ctx->sa_ctx, &traffic->ip4, n_ip4,
+		&core_statistics[lcoreid].inbound.spd4);
 
-	inbound_sp_sa(ipsec_ctx->sp6_ctx, ipsec_ctx->sa_ctx, &traffic->ip6,
-			n_ip6);
+	inbound_sp_sa(ipsec_ctx->sp6_ctx,
+		ipsec_ctx->sa_ctx, &traffic->ip6, n_ip6,
+		&core_statistics[lcoreid].inbound.spd6);
 }
 
 static inline void
-outbound_sp(struct sp_ctx *sp, struct traffic_type *ip,
-		struct traffic_type *ipsec)
+outbound_spd_lookup(struct sp_ctx *sp,
+		struct traffic_type *ip,
+		struct traffic_type *ipsec,
+		struct ipsec_spd_stats *stats)
 {
 	struct rte_mbuf *m;
 	uint32_t i, j, sa_idx;
@@ -788,17 +799,23 @@ outbound_sp(struct sp_ctx *sp, struct traffic_type *ip,
 	rte_acl_classify((struct rte_acl_ctx *)sp, ip->data, ip->res,
 			ip->num, DEFAULT_MAX_CATEGORIES);
 
-	j = 0;
-	for (i = 0; i < ip->num; i++) {
+	for (i = 0, j = 0; i < ip->num; i++) {
 		m = ip->pkts[i];
 		sa_idx = ip->res[i] - 1;
-		if (ip->res[i] == DISCARD)
+
+		if (unlikely(ip->res[i] == DISCARD)) {
 			free_pkts(&m, 1);
-		else if (ip->res[i] == BYPASS)
+
+			stats->discard++;
+		} else if (unlikely(ip->res[i] == BYPASS)) {
 			ip->pkts[j++] = m;
-		else {
+
+			stats->bypass++;
+		} else {
 			ipsec->res[ipsec->num] = sa_idx;
 			ipsec->pkts[ipsec->num++] = m;
+
+			stats->protect++;
 		}
 	}
 	ip->num = j;
@@ -810,15 +827,20 @@ process_pkts_outbound(struct ipsec_ctx *ipsec_ctx,
 {
 	struct rte_mbuf *m;
 	uint16_t idx, nb_pkts_out, i;
+	unsigned int lcoreid = rte_lcore_id();
 
 	/* Drop any IPsec traffic from protected ports */
 	free_pkts(traffic->ipsec.pkts, traffic->ipsec.num);
 
 	traffic->ipsec.num = 0;
 
-	outbound_sp(ipsec_ctx->sp4_ctx, &traffic->ip4, &traffic->ipsec);
+	outbound_spd_lookup(ipsec_ctx->sp4_ctx,
+		&traffic->ip4, &traffic->ipsec,
+		&core_statistics[lcoreid].outbound.spd4);
 
-	outbound_sp(ipsec_ctx->sp6_ctx, &traffic->ip6, &traffic->ipsec);
+	outbound_spd_lookup(ipsec_ctx->sp6_ctx,
+		&traffic->ip6, &traffic->ipsec,
+		&core_statistics[lcoreid].outbound.spd6);
 
 	if (app_sa_prm.enable == 0) {
 
@@ -962,6 +984,7 @@ route4_pkts(struct rt_ctx *rt_ctx, struct rte_mbuf *pkts[], uint8_t nb_pkts)
 	int32_t pkt_hop = 0;
 	uint16_t i, offset;
 	uint16_t lpm_pkts = 0;
+	unsigned int lcoreid = rte_lcore_id();
 
 	if (nb_pkts == 0)
 		return;
@@ -997,6 +1020,7 @@ route4_pkts(struct rt_ctx *rt_ctx, struct rte_mbuf *pkts[], uint8_t nb_pkts)
 		}
 
 		if ((pkt_hop & RTE_LPM_LOOKUP_SUCCESS) == 0) {
+			core_statistics[lcoreid].lpm4.miss++;
 			free_pkts(&pkts[i], 1);
 			continue;
 		}
@@ -1013,6 +1037,7 @@ route6_pkts(struct rt_ctx *rt_ctx, struct rte_mbuf *pkts[], uint8_t nb_pkts)
 	int32_t pkt_hop = 0;
 	uint16_t i, offset;
 	uint16_t lpm_pkts = 0;
+	unsigned int lcoreid = rte_lcore_id();
 
 	if (nb_pkts == 0)
 		return;
@@ -1049,6 +1074,7 @@ route6_pkts(struct rt_ctx *rt_ctx, struct rte_mbuf *pkts[], uint8_t nb_pkts)
 		}
 
 		if (pkt_hop == -1) {
+			core_statistics[lcoreid].lpm6.miss++;
 			free_pkts(&pkts[i], 1);
 			continue;
 		}
@@ -1122,6 +1148,7 @@ drain_inbound_crypto_queues(const struct lcore_conf *qconf,
 {
 	uint32_t n;
 	struct ipsec_traffic trf;
+	unsigned int lcoreid = rte_lcore_id();
 
 	if (app_sa_prm.enable == 0) {
 
@@ -1139,13 +1166,15 @@ drain_inbound_crypto_queues(const struct lcore_conf *qconf,
 
 	/* process ipv4 packets */
 	if (trf.ip4.num != 0) {
-		inbound_sp_sa(ctx->sp4_ctx, ctx->sa_ctx, &trf.ip4, 0);
+		inbound_sp_sa(ctx->sp4_ctx, ctx->sa_ctx, &trf.ip4, 0,
+			&core_statistics[lcoreid].inbound.spd4);
 		route4_pkts(qconf->rt4_ctx, trf.ip4.pkts, trf.ip4.num);
 	}
 
 	/* process ipv6 packets */
 	if (trf.ip6.num != 0) {
-		inbound_sp_sa(ctx->sp6_ctx, ctx->sa_ctx, &trf.ip6, 0);
+		inbound_sp_sa(ctx->sp6_ctx, ctx->sa_ctx, &trf.ip6, 0,
+			&core_statistics[lcoreid].inbound.spd6);
 		route6_pkts(qconf->rt6_ctx, trf.ip6.pkts, trf.ip6.num);
 	}
 }
@@ -2835,6 +2864,300 @@ calculate_nb_mbufs(uint16_t nb_ports, uint16_t nb_crypto_qp, uint32_t nb_rxq,
 		       8192U);
 }
 
+
+static int
+handle_telemetry_cmd_ipsec_secgw_stats(const char *cmd __rte_unused,
+		const char *params, struct rte_tel_data *data)
+{
+	uint64_t total_pkts_dropped = 0, total_pkts_tx = 0, total_pkts_rx = 0;
+	unsigned int coreid;
+
+	rte_tel_data_start_dict(data);
+
+	if (params) {
+		coreid = (uint32_t)atoi(params);
+		if (rte_lcore_is_enabled(coreid) == 0)
+			return -EINVAL;
+
+		total_pkts_dropped = core_statistics[coreid].dropped;
+		total_pkts_tx = core_statistics[coreid].tx;
+		total_pkts_rx = core_statistics[coreid].rx;
+
+	} else {
+		for (coreid = 0; coreid < RTE_MAX_LCORE; coreid++) {
+
+			/* skip disabled cores */
+			if (rte_lcore_is_enabled(coreid) == 0)
+				continue;
+
+			total_pkts_dropped += core_statistics[coreid].dropped;
+			total_pkts_tx += core_statistics[coreid].tx;
+			total_pkts_rx += core_statistics[coreid].rx;
+		}
+	}
+
+	/* add telemetry key/values pairs */
+	rte_tel_data_add_dict_u64(data, "packets received",
+				total_pkts_rx);
+
+	rte_tel_data_add_dict_u64(data, "packets transmitted",
+				total_pkts_tx);
+
+	rte_tel_data_add_dict_u64(data, "packets dropped",
+				total_pkts_dropped);
+
+
+	return 0;
+}
+
+static void
+update_lcore_statistics(struct ipsec_core_statistics *total, uint32_t coreid)
+{
+	struct ipsec_core_statistics *lcore_stats;
+
+	/* skip disabled cores */
+	if (rte_lcore_is_enabled(coreid) == 0)
+		return;
+
+	lcore_stats = &core_statistics[coreid];
+
+	total->rx = lcore_stats->rx;
+	total->dropped = lcore_stats->dropped;
+	total->tx = lcore_stats->tx;
+
+	/* outbound stats */
+	total->outbound.spd6.protect += lcore_stats->outbound.spd6.protect;
+	total->outbound.spd6.bypass += lcore_stats->outbound.spd6.bypass;
+	total->outbound.spd6.discard += lcore_stats->outbound.spd6.discard;
+
+	total->outbound.spd4.protect += lcore_stats->outbound.spd4.protect;
+	total->outbound.spd4.bypass += lcore_stats->outbound.spd4.bypass;
+	total->outbound.spd4.discard += lcore_stats->outbound.spd4.discard;
+
+	total->outbound.sad.miss += lcore_stats->outbound.sad.miss;
+
+	/* inbound stats */
+	total->inbound.spd6.protect += lcore_stats->inbound.spd6.protect;
+	total->inbound.spd6.bypass += lcore_stats->inbound.spd6.bypass;
+	total->inbound.spd6.discard += lcore_stats->inbound.spd6.discard;
+
+	total->inbound.spd4.protect += lcore_stats->inbound.spd4.protect;
+	total->inbound.spd4.bypass += lcore_stats->inbound.spd4.bypass;
+	total->inbound.spd4.discard += lcore_stats->inbound.spd4.discard;
+
+	total->inbound.sad.miss += lcore_stats->inbound.sad.miss;
+
+
+	/* routing stats */
+	total->lpm4.miss += lcore_stats->lpm4.miss;
+	total->lpm6.miss += lcore_stats->lpm6.miss;
+}
+
+static void
+update_statistics(struct ipsec_core_statistics *total, uint32_t coreid)
+{
+	memset(total, 0, sizeof(*total));
+
+	if (coreid != UINT32_MAX) {
+		update_lcore_statistics(total, coreid);
+	} else {
+		for (coreid = 0; coreid < RTE_MAX_LCORE; coreid++)
+			update_lcore_statistics(total, coreid);
+	}
+}
+
+static int
+handle_telemetry_cmd_ipsec_secgw_stats_outbound(const char *cmd __rte_unused,
+		const char *params, struct rte_tel_data *data)
+{
+	struct ipsec_core_statistics total_stats;
+
+	struct rte_tel_data *spd4_data = rte_tel_data_alloc();
+	struct rte_tel_data *spd6_data = rte_tel_data_alloc();
+	struct rte_tel_data *sad_data = rte_tel_data_alloc();
+
+	unsigned int coreid = UINT32_MAX;
+
+	/* verify allocated telemetry data structures */
+	if (!spd4_data || !spd6_data || !sad_data)
+		return -ENOMEM;
+
+	/* initialize telemetry data structs as dicts */
+	rte_tel_data_start_dict(data);
+
+	rte_tel_data_start_dict(spd4_data);
+	rte_tel_data_start_dict(spd6_data);
+	rte_tel_data_start_dict(sad_data);
+
+	if (params) {
+		coreid = (uint32_t)atoi(params);
+		if (rte_lcore_is_enabled(coreid) == 0)
+			return -EINVAL;
+	}
+
+	update_statistics(&total_stats, coreid);
+
+	/* add spd 4 telemetry key/values pairs */
+
+	rte_tel_data_add_dict_u64(spd4_data, "protect",
+		total_stats.outbound.spd4.protect);
+	rte_tel_data_add_dict_u64(spd4_data, "bypass",
+		total_stats.outbound.spd4.bypass);
+	rte_tel_data_add_dict_u64(spd4_data, "discard",
+		total_stats.outbound.spd4.discard);
+
+	rte_tel_data_add_dict_container(data, "spd4", spd4_data, 0);
+
+	/* add spd 6 telemetry key/values pairs */
+
+	rte_tel_data_add_dict_u64(spd6_data, "protect",
+		total_stats.outbound.spd6.protect);
+	rte_tel_data_add_dict_u64(spd6_data, "bypass",
+		total_stats.outbound.spd6.bypass);
+	rte_tel_data_add_dict_u64(spd6_data, "discard",
+		total_stats.outbound.spd6.discard);
+
+	rte_tel_data_add_dict_container(data, "spd6", spd6_data, 0);
+
+	/* add sad telemetry key/values pairs */
+
+	rte_tel_data_add_dict_u64(sad_data, "miss",
+		total_stats.outbound.sad.miss);
+
+	rte_tel_data_add_dict_container(data, "sad", sad_data, 0);
+
+	return 0;
+}
+
+static int
+handle_telemetry_cmd_ipsec_secgw_stats_inbound(const char *cmd __rte_unused,
+		const char *params, struct rte_tel_data *data)
+{
+	struct ipsec_core_statistics total_stats;
+
+	struct rte_tel_data *spd4_data = rte_tel_data_alloc();
+	struct rte_tel_data *spd6_data = rte_tel_data_alloc();
+	struct rte_tel_data *sad_data = rte_tel_data_alloc();
+
+	unsigned int coreid = UINT32_MAX;
+
+	/* verify allocated telemetry data structures */
+	if (!spd4_data || !spd6_data || !sad_data)
+		return -ENOMEM;
+
+	/* initialize telemetry data structs as dicts */
+	rte_tel_data_start_dict(data);
+	rte_tel_data_start_dict(spd4_data);
+	rte_tel_data_start_dict(spd6_data);
+	rte_tel_data_start_dict(sad_data);
+
+	/* add children dicts to parent dict */
+
+	if (params) {
+		coreid = (uint32_t)atoi(params);
+		if (rte_lcore_is_enabled(coreid) == 0)
+			return -EINVAL;
+	}
+
+	update_statistics(&total_stats, coreid);
+
+	/* add sad telemetry key/values pairs */
+
+	rte_tel_data_add_dict_u64(sad_data, "miss",
+		total_stats.inbound.sad.miss);
+
+	rte_tel_data_add_dict_container(data, "sad", sad_data, 0);
+
+	/* add spd 4 telemetry key/values pairs */
+
+	rte_tel_data_add_dict_u64(spd4_data, "protect",
+		total_stats.inbound.spd4.protect);
+	rte_tel_data_add_dict_u64(spd4_data, "bypass",
+		total_stats.inbound.spd4.bypass);
+	rte_tel_data_add_dict_u64(spd4_data, "discard",
+		total_stats.inbound.spd4.discard);
+
+	rte_tel_data_add_dict_container(data, "spd4", spd4_data, 0);
+
+	/* add spd 6 telemetry key/values pairs */
+
+	rte_tel_data_add_dict_u64(spd6_data, "protect",
+		total_stats.inbound.spd6.protect);
+	rte_tel_data_add_dict_u64(spd6_data, "bypass",
+		total_stats.inbound.spd6.bypass);
+	rte_tel_data_add_dict_u64(spd6_data, "discard",
+		total_stats.inbound.spd6.discard);
+
+	rte_tel_data_add_dict_container(data, "spd6", spd6_data, 0);
+
+	return 0;
+}
+
+static int
+handle_telemetry_cmd_ipsec_secgw_stats_routing(const char *cmd __rte_unused,
+		const char *params, struct rte_tel_data *data)
+{
+	struct ipsec_core_statistics total_stats;
+
+	struct rte_tel_data *lpm4_data = rte_tel_data_alloc();
+	struct rte_tel_data *lpm6_data = rte_tel_data_alloc();
+
+	unsigned int coreid = UINT32_MAX;
+
+	/* initialize telemetry data structs as dicts */
+	rte_tel_data_start_dict(data);
+	rte_tel_data_start_dict(lpm4_data);
+	rte_tel_data_start_dict(lpm6_data);
+
+
+	if (params) {
+		coreid = (uint32_t)atoi(params);
+		if (rte_lcore_is_enabled(coreid) == 0)
+			return -EINVAL;
+	}
+
+	update_statistics(&total_stats, coreid);
+
+	/* add lpm 4 telemetry key/values pairs */
+	rte_tel_data_add_dict_u64(lpm4_data, "miss",
+		total_stats.lpm4.miss);
+
+	rte_tel_data_add_dict_container(data, "IPv4 LPM", lpm4_data, 0);
+
+	/* add lpm 6 telemetry key/values pairs */
+	rte_tel_data_add_dict_u64(lpm6_data, "miss",
+		total_stats.lpm6.miss);
+
+	rte_tel_data_add_dict_container(data, "IPv6 LPM", lpm6_data, 0);
+
+	return 0;
+}
+
+static void
+ipsec_secgw_telemetry_init(void)
+{
+	rte_telemetry_register_cmd("/examples/ipsec-secgw/stats",
+		handle_telemetry_cmd_ipsec_secgw_stats,
+		"Returns global stats. "
+		"Optional Parameters: int <logical core id>");
+
+	rte_telemetry_register_cmd("/examples/ipsec-secgw/stats/outbound",
+		handle_telemetry_cmd_ipsec_secgw_stats_outbound,
+		"Returns outbound global stats. "
+		"Optional Parameters: int <logical core id>");
+
+	rte_telemetry_register_cmd("/examples/ipsec-secgw/stats/inbound",
+		handle_telemetry_cmd_ipsec_secgw_stats_inbound,
+		"Returns inbound global stats. "
+		"Optional Parameters: int <logical core id>");
+
+	rte_telemetry_register_cmd("/examples/ipsec-secgw/stats/routing",
+		handle_telemetry_cmd_ipsec_secgw_stats_routing,
+		"Returns routing stats. "
+		"Optional Parameters: int <logical core id>");
+}
+
+
 int32_t
 main(int32_t argc, char **argv)
 {
@@ -2871,6 +3194,8 @@ main(int32_t argc, char **argv)
 	ret = parse_args(argc, argv, eh_conf);
 	if (ret < 0)
 		rte_exit(EXIT_FAILURE, "Invalid parameters\n");
+
+	ipsec_secgw_telemetry_init();
 
 	/* parse configuration file */
 	if (parse_cfg_file(cfgfile) < 0) {

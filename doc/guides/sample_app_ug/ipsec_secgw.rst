@@ -737,6 +737,17 @@ where each options means:
    * *mss N* N is the segment size in bytes
 
 
+``<telemetry>``
+
+ * Option to enable per SA telemetry.
+   Currently only supported with IPsec library path.
+
+ * Optional: Yes, it is disabled by default
+
+ * Syntax:
+
+   * *telemetry*
+
 Example SA rules:
 
 .. code-block:: console

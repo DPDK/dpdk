@@ -357,6 +357,7 @@ New Features
 * **Updated IPsec Security Gateway sample application with new features.**
 
   * Added support for TSO (only for inline crypto TCP packets).
+  * Added support for telemetry.
 
 * **Revised packet capture framework.**
 
