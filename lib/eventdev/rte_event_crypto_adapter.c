@@ -630,19 +630,25 @@ static void
 eca_crypto_adapter_run(struct event_crypto_adapter *adapter,
 		       unsigned int max_ops)
 {
-	while (max_ops) {
+	unsigned int ops_left = max_ops;
+
+	while (ops_left > 0) {
 		unsigned int e_cnt, d_cnt;
 
-		e_cnt = eca_crypto_adapter_deq_run(adapter, max_ops);
-		max_ops -= RTE_MIN(max_ops, e_cnt);
+		e_cnt = eca_crypto_adapter_deq_run(adapter, ops_left);
+		ops_left -= RTE_MIN(ops_left, e_cnt);
 
-		d_cnt = eca_crypto_adapter_enq_run(adapter, max_ops);
-		max_ops -= RTE_MIN(max_ops, d_cnt);
+		d_cnt = eca_crypto_adapter_enq_run(adapter, ops_left);
+		ops_left -= RTE_MIN(ops_left, d_cnt);
 
 		if (e_cnt == 0 && d_cnt == 0)
 			break;
 
 	}
+
+	if (ops_left == max_ops)
+		rte_event_maintain(adapter->eventdev_id,
+				   adapter->event_port_id, 0);
 }
 
 static int

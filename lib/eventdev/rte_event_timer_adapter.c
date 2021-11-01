@@ -786,6 +786,9 @@ swtim_service_func(void *arg)
 		sw->stats.adapter_tick_count++;
 	}
 
+	rte_event_maintain(adapter->data->event_dev_id,
+			   adapter->data->event_port_id, 0);
+
 	return 0;
 }
 

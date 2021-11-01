@@ -1000,6 +1000,7 @@ rxa_eth_rx(struct event_eth_rx_adapter *rx_adapter, uint16_t port_id,
 	struct rte_mbuf *mbufs[BATCH_SIZE];
 	uint16_t n;
 	uint32_t nb_rx = 0;
+	uint32_t nb_flushed = 0;
 
 	if (rxq_empty)
 		*rxq_empty = 0;
@@ -1008,7 +1009,8 @@ rxa_eth_rx(struct event_eth_rx_adapter *rx_adapter, uint16_t port_id,
 	 */
 	while (rxa_pkt_buf_available(buf)) {
 		if (buf->count >= BATCH_SIZE)
-			rxa_flush_event_buffer(rx_adapter, buf, stats);
+			nb_flushed +=
+				rxa_flush_event_buffer(rx_adapter, buf, stats);
 
 		stats->rx_poll_count++;
 		n = rte_eth_rx_burst(port_id, queue_id, mbufs, BATCH_SIZE);
@@ -1025,9 +1027,12 @@ rxa_eth_rx(struct event_eth_rx_adapter *rx_adapter, uint16_t port_id,
 	}
 
 	if (buf->count > 0)
-		rxa_flush_event_buffer(rx_adapter, buf, stats);
+		nb_flushed += rxa_flush_event_buffer(rx_adapter, buf, stats);
 
 	stats->rx_packets += nb_rx;
+	if (nb_flushed == 0)
+		rte_event_maintain(rx_adapter->eventdev_id,
+				   rx_adapter->event_port_id, 0);
 
 	return nb_rx;
 }
