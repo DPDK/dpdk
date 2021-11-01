@@ -124,6 +124,11 @@ nix_tm_adjust_shaper_pps_rate(struct nix_tm_shaper_profile *profile)
 		profile->pkt_mode_adj += adjust;
 		profile->commit.rate += (adjust * profile->commit.rate);
 		profile->peak.rate += (adjust * profile->peak.rate);
+		/* Number of tokens freed after scheduling was proportional
+		 * to adjust value
+		 */
+		profile->commit.size *= adjust;
+		profile->peak.size *= adjust;
 	}
 
 	return 0;
@@ -180,6 +185,10 @@ nix_tm_shaper_profile_add(struct roc_nix *roc_nix,
 		else if (!nix_tm_shaper_rate_conv(peak_rate, NULL, NULL, NULL))
 			return NIX_ERR_TM_INVALID_PEAK_RATE;
 	}
+
+	/* If PIR and CIR are requested, PIR should always be larger than CIR */
+	if (peak_rate && commit_rate && (commit_rate > peak_rate))
+		return NIX_ERR_TM_INVALID_PEAK_RATE;
 
 	if (!skip_ins)
 		TAILQ_INSERT_TAIL(&nix->shaper_profile_list, profile, shaper);
