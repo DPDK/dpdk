@@ -416,7 +416,7 @@ uio_intx_intr_disable(const struct rte_intr_handle *intr_handle)
 
 	/* use UIO config file descriptor for uio_pci_generic */
 	uio_cfg_fd = rte_intr_dev_fd_get(intr_handle);
-	if (pread(uio_cfg_fd, &command_high, 1, 5) != 1) {
+	if (uio_cfg_fd < 0 || pread(uio_cfg_fd, &command_high, 1, 5) != 1) {
 		RTE_LOG(ERR, EAL,
 			"Error reading interrupts status for fd %d\n",
 			uio_cfg_fd);
@@ -442,7 +442,7 @@ uio_intx_intr_enable(const struct rte_intr_handle *intr_handle)
 
 	/* use UIO config file descriptor for uio_pci_generic */
 	uio_cfg_fd = rte_intr_dev_fd_get(intr_handle);
-	if (pread(uio_cfg_fd, &command_high, 1, 5) != 1) {
+	if (uio_cfg_fd < 0 || pread(uio_cfg_fd, &command_high, 1, 5) != 1) {
 		RTE_LOG(ERR, EAL,
 			"Error reading interrupts status for fd %d\n",
 			uio_cfg_fd);
@@ -465,7 +465,8 @@ uio_intr_disable(const struct rte_intr_handle *intr_handle)
 {
 	const int value = 0;
 
-	if (write(rte_intr_fd_get(intr_handle), &value, sizeof(value)) < 0) {
+	if (rte_intr_fd_get(intr_handle) < 0 ||
+	    write(rte_intr_fd_get(intr_handle), &value, sizeof(value)) < 0) {
 		RTE_LOG(ERR, EAL, "Error disabling interrupts for fd %d (%s)\n",
 			rte_intr_fd_get(intr_handle), strerror(errno));
 		return -1;
@@ -478,7 +479,8 @@ uio_intr_enable(const struct rte_intr_handle *intr_handle)
 {
 	const int value = 1;
 
-	if (write(rte_intr_fd_get(intr_handle), &value, sizeof(value)) < 0) {
+	if (rte_intr_fd_get(intr_handle) < 0 ||
+	    write(rte_intr_fd_get(intr_handle), &value, sizeof(value)) < 0) {
 		RTE_LOG(ERR, EAL, "Error enabling interrupts for fd %d (%s)\n",
 			rte_intr_fd_get(intr_handle), strerror(errno));
 		return -1;
