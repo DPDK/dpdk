@@ -1206,6 +1206,11 @@ M: Conor Walsh <conor.walsh@intel.com>
 F: drivers/dma/ioat/
 F: doc/guides/dmadevs/ioat.rst
 
+HiSilicon DMA
+M: Chengwen Feng <fengchengwen@huawei.com>
+F: drivers/dma/hisilicon/
+F: doc/guides/dmadevs/hisilicon.rst
+
 
 RegEx Drivers
 -------------

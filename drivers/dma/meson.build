@@ -2,6 +2,7 @@
 # Copyright 2021 HiSilicon Limited
 
 drivers = [
+        'hisilicon',
         'idxd',
         'ioat',
         'skeleton',

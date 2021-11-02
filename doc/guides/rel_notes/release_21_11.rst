@@ -75,6 +75,11 @@ New Features
     operations.
   * Added multi-process support.
 
+* **Added HiSilicon DMA driver.**
+
+  The HiSilicon DMA driver provides device drivers for the Kunpeng's DMA devices.
+  This device driver can be used through the generic dmadev API.
+
 * **Added IDXD dmadev driver implementation.**
 
   The IDXD dmadev driver provide device drivers for the Intel DSA devices.
