@@ -66,14 +66,6 @@ Deprecation Notices
   and the related structures (``rte_fdir_*`` and ``rte_eth_fdir_*``),
   will be removed in DPDK 20.11.
 
-* ethdev: New offload flags ``RTE_ETH_RX_OFFLOAD_FLOW_MARK`` will be added in 19.11.
-  This will allow application to enable or disable PMDs from updating
-  ``rte_mbuf::hash::fdir``.
-  This scheme will allow PMDs to avoid writes to ``rte_mbuf`` fields on Rx and
-  thereby improve Rx performance if application wishes do so.
-  In 19.11 PMDs will still update the field even when the offload is not
-  enabled.
-
 * ethdev: Announce moving from dedicated modify function for each field,
   to using the general ``rte_flow_modify_field`` action.
 
