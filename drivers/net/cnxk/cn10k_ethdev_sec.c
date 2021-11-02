@@ -277,8 +277,8 @@ cn10k_eth_sec_session_create(void *device,
 		roc_nix_inl_dev_lock();
 
 	if (inbound) {
+		struct roc_ot_ipsec_inb_sa *inb_sa, *inb_sa_dptr;
 		struct cn10k_inb_priv_data *inb_priv;
-		struct roc_ot_ipsec_inb_sa *inb_sa;
 		uintptr_t sa;
 
 		PLT_STATIC_ASSERT(sizeof(struct cn10k_inb_priv_data) <
@@ -307,10 +307,11 @@ cn10k_eth_sec_session_create(void *device,
 			goto mempool_put;
 		}
 
-		memset(inb_sa, 0, sizeof(struct roc_ot_ipsec_inb_sa));
+		inb_sa_dptr = (struct roc_ot_ipsec_inb_sa *)dev->inb.sa_dptr;
+		memset(inb_sa_dptr, 0, sizeof(struct roc_ot_ipsec_inb_sa));
 
 		/* Fill inbound sa params */
-		rc = cnxk_ot_ipsec_inb_sa_fill(inb_sa, ipsec, crypto);
+		rc = cnxk_ot_ipsec_inb_sa_fill(inb_sa_dptr, ipsec, crypto);
 		if (rc) {
 			plt_err("Failed to init inbound sa, rc=%d", rc);
 			goto mempool_put;
@@ -323,7 +324,7 @@ cn10k_eth_sec_session_create(void *device,
 		inb_priv->userdata = conf->userdata;
 
 		/* Save SA index/SPI in cookie for now */
-		inb_sa->w1.s.cookie = rte_cpu_to_be_32(ipsec->spi);
+		inb_sa_dptr->w1.s.cookie = rte_cpu_to_be_32(ipsec->spi);
 
 		/* Prepare session priv */
 		sess_priv.inb_sa = 1;
@@ -339,9 +340,15 @@ cn10k_eth_sec_session_create(void *device,
 
 		TAILQ_INSERT_TAIL(&dev->inb.list, eth_sec, entry);
 		dev->inb.nb_sess++;
+		/* Sync session in context cache */
+		rc = roc_nix_inl_ctx_write(&dev->nix, inb_sa_dptr, eth_sec->sa,
+					   eth_sec->inb,
+					   sizeof(struct roc_ot_ipsec_inb_sa));
+		if (rc)
+			goto mempool_put;
 	} else {
+		struct roc_ot_ipsec_outb_sa *outb_sa, *outb_sa_dptr;
 		struct cn10k_outb_priv_data *outb_priv;
-		struct roc_ot_ipsec_outb_sa *outb_sa;
 		struct cnxk_ipsec_outb_rlens *rlens;
 		uint64_t sa_base = dev->outb.sa_base;
 		uint32_t sa_idx;
@@ -358,10 +365,11 @@ cn10k_eth_sec_session_create(void *device,
 		outb_priv = roc_nix_inl_ot_ipsec_outb_sa_sw_rsvd(outb_sa);
 		rlens = &outb_priv->rlens;
 
-		memset(outb_sa, 0, sizeof(struct roc_ot_ipsec_outb_sa));
+		outb_sa_dptr = (struct roc_ot_ipsec_outb_sa *)dev->outb.sa_dptr;
+		memset(outb_sa_dptr, 0, sizeof(struct roc_ot_ipsec_outb_sa));
 
 		/* Fill outbound sa params */
-		rc = cnxk_ot_ipsec_outb_sa_fill(outb_sa, ipsec, crypto);
+		rc = cnxk_ot_ipsec_outb_sa_fill(outb_sa_dptr, ipsec, crypto);
 		if (rc) {
 			plt_err("Failed to init outbound sa, rc=%d", rc);
 			rc |= cnxk_eth_outb_sa_idx_put(dev, sa_idx);
@@ -381,8 +389,8 @@ cn10k_eth_sec_session_create(void *device,
 		sess_priv.roundup_byte = rlens->roundup_byte;
 		sess_priv.roundup_len = rlens->roundup_len;
 		sess_priv.partial_len = rlens->partial_len;
-		sess_priv.mode = outb_sa->w2.s.ipsec_mode;
-		sess_priv.outer_ip_ver = outb_sa->w2.s.outer_ip_ver;
+		sess_priv.mode = outb_sa_dptr->w2.s.ipsec_mode;
+		sess_priv.outer_ip_ver = outb_sa_dptr->w2.s.outer_ip_ver;
 
 		/* Pointer from eth_sec -> outb_sa */
 		eth_sec->sa = outb_sa;
@@ -392,12 +400,13 @@ cn10k_eth_sec_session_create(void *device,
 
 		TAILQ_INSERT_TAIL(&dev->outb.list, eth_sec, entry);
 		dev->outb.nb_sess++;
+		/* Sync session in context cache */
+		rc = roc_nix_inl_ctx_write(&dev->nix, outb_sa_dptr, eth_sec->sa,
+					   eth_sec->inb,
+					   sizeof(struct roc_ot_ipsec_outb_sa));
+		if (rc)
+			goto mempool_put;
 	}
-
-	/* Sync session in context cache */
-	roc_nix_inl_sa_sync(&dev->nix, eth_sec->sa, eth_sec->inb,
-			    ROC_NIX_INL_SA_OP_RELOAD);
-
 	if (inbound && inl_dev)
 		roc_nix_inl_dev_unlock();
 
@@ -422,10 +431,9 @@ cn10k_eth_sec_session_destroy(void *device, struct rte_security_session *sess)
 {
 	struct rte_eth_dev *eth_dev = (struct rte_eth_dev *)device;
 	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
-	struct roc_ot_ipsec_inb_sa *inb_sa;
-	struct roc_ot_ipsec_outb_sa *outb_sa;
 	struct cnxk_eth_sec_sess *eth_sec;
 	struct rte_mempool *mp;
+	void *sa_dptr;
 
 	eth_sec = cnxk_eth_sec_sess_get_by_sess(dev, sess);
 	if (!eth_sec)
@@ -435,27 +443,28 @@ cn10k_eth_sec_session_destroy(void *device, struct rte_security_session *sess)
 		roc_nix_inl_dev_lock();
 
 	if (eth_sec->inb) {
-		inb_sa = eth_sec->sa;
 		/* Disable SA */
-		inb_sa->w2.s.valid = 0;
+		sa_dptr = dev->inb.sa_dptr;
+		roc_nix_inl_inb_sa_init(sa_dptr);
 
+		roc_nix_inl_ctx_write(&dev->nix, sa_dptr, eth_sec->sa,
+				      eth_sec->inb,
+				      sizeof(struct roc_ot_ipsec_inb_sa));
 		TAILQ_REMOVE(&dev->inb.list, eth_sec, entry);
 		dev->inb.nb_sess--;
 	} else {
-		outb_sa = eth_sec->sa;
 		/* Disable SA */
-		outb_sa->w2.s.valid = 0;
+		sa_dptr = dev->outb.sa_dptr;
+		roc_nix_inl_outb_sa_init(sa_dptr);
 
+		roc_nix_inl_ctx_write(&dev->nix, sa_dptr, eth_sec->sa,
+				      eth_sec->inb,
+				      sizeof(struct roc_ot_ipsec_outb_sa));
 		/* Release Outbound SA index */
 		cnxk_eth_outb_sa_idx_put(dev, eth_sec->sa_idx);
 		TAILQ_REMOVE(&dev->outb.list, eth_sec, entry);
 		dev->outb.nb_sess--;
 	}
-
-	/* Sync session in context cache */
-	roc_nix_inl_sa_sync(&dev->nix, eth_sec->sa, eth_sec->inb,
-			    ROC_NIX_INL_SA_OP_RELOAD);
-
 	if (eth_sec->inl_dev)
 		roc_nix_inl_dev_unlock();
 

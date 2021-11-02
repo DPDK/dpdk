@@ -268,6 +268,9 @@ struct cnxk_eth_dev_sec_inb {
 
 	/* List of sessions */
 	struct cnxk_eth_sec_sess_list list;
+
+	/* DPTR for WRITE_SA microcode op */
+	void *sa_dptr;
 };
 
 /* Outbound security data */
@@ -298,6 +301,9 @@ struct cnxk_eth_dev_sec_outb {
 
 	/* List of sessions */
 	struct cnxk_eth_sec_sess_list list;
+
+	/* DPTR for WRITE_SA microcode op */
+	void *sa_dptr;
 };
 
 struct cnxk_eth_dev {

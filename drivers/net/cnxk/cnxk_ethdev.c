@@ -78,6 +78,17 @@ nix_security_setup(struct cnxk_eth_dev *dev)
 		 * Will be overridden when event mode rq's are setup.
 		 */
 		cnxk_nix_inb_mode_set(dev, true);
+
+		/* Allocate memory to be used as dptr for CPT ucode
+		 * WRITE_SA op.
+		 */
+		dev->inb.sa_dptr =
+			plt_zmalloc(ROC_NIX_INL_OT_IPSEC_INB_HW_SZ, 0);
+		if (!dev->inb.sa_dptr) {
+			plt_err("Couldn't allocate memory for SA dptr");
+			rc = -ENOMEM;
+			goto cleanup;
+		}
 	}
 
 	if (dev->tx_offloads & RTE_ETH_TX_OFFLOAD_SECURITY ||
@@ -95,14 +106,25 @@ nix_security_setup(struct cnxk_eth_dev *dev)
 		if (rc) {
 			plt_err("Failed to initialize nix inline outb, rc=%d",
 				rc);
-			goto cleanup;
+			goto sa_dptr_free;
 		}
 
 		dev->outb.lf_base = roc_nix_inl_outb_lf_base_get(nix);
 
-		/* Skip the rest if RTE_ETH_TX_OFFLOAD_SECURITY is not enabled */
+		/* Skip the rest if DEV_TX_OFFLOAD_SECURITY is not enabled */
 		if (!(dev->tx_offloads & RTE_ETH_TX_OFFLOAD_SECURITY))
-			goto done;
+			return 0;
+
+		/* Allocate memory to be used as dptr for CPT ucode
+		 * WRITE_SA op.
+		 */
+		dev->outb.sa_dptr =
+			plt_zmalloc(ROC_NIX_INL_OT_IPSEC_OUTB_HW_SZ, 0);
+		if (!dev->outb.sa_dptr) {
+			plt_err("Couldn't allocate memory for SA dptr");
+			rc = -ENOMEM;
+			goto sa_dptr_free;
+		}
 
 		rc = -ENOMEM;
 		/* Allocate a bitmap to alloc and free sa indexes */
@@ -112,7 +134,7 @@ nix_security_setup(struct cnxk_eth_dev *dev)
 			plt_err("Outbound SA bmap alloc failed");
 
 			rc |= roc_nix_inl_outb_fini(nix);
-			goto cleanup;
+			goto sa_dptr_free;
 		}
 
 		rc = -EIO;
@@ -122,7 +144,7 @@ nix_security_setup(struct cnxk_eth_dev *dev)
 
 			rc |= roc_nix_inl_outb_fini(nix);
 			plt_free(mem);
-			goto cleanup;
+			goto sa_dptr_free;
 		}
 
 		for (i = 0; i < dev->outb.max_sa; i++)
@@ -132,9 +154,13 @@ nix_security_setup(struct cnxk_eth_dev *dev)
 		dev->outb.sa_bmap_mem = mem;
 		dev->outb.sa_bmap = bmap;
 	}
-
-done:
 	return 0;
+
+sa_dptr_free:
+	if (dev->inb.sa_dptr)
+		plt_free(dev->inb.sa_dptr);
+	if (dev->outb.sa_dptr)
+		plt_free(dev->outb.sa_dptr);
 cleanup:
 	if (dev->rx_offloads & RTE_ETH_RX_OFFLOAD_SECURITY)
 		rc |= roc_nix_inl_inb_fini(nix);
@@ -196,6 +222,11 @@ nix_security_release(struct cnxk_eth_dev *dev)
 		if (rc)
 			plt_err("Failed to cleanup nix inline inb, rc=%d", rc);
 		ret |= rc;
+
+		if (dev->inb.sa_dptr) {
+			plt_free(dev->inb.sa_dptr);
+			dev->inb.sa_dptr = NULL;
+		}
 	}
 
 	/* Cleanup Inline outbound */
@@ -216,6 +247,10 @@ nix_security_release(struct cnxk_eth_dev *dev)
 		plt_free(dev->outb.sa_bmap_mem);
 		dev->outb.sa_bmap = NULL;
 		dev->outb.sa_bmap_mem = NULL;
+		if (dev->outb.sa_dptr) {
+			plt_free(dev->outb.sa_dptr);
+			dev->outb.sa_dptr = NULL;
+		}
 	}
 
 	dev->inb.inl_dev = false;
