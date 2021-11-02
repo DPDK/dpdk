@@ -102,6 +102,7 @@ struct rte_crypto_param_range {
  */
 #define RTE_CRYPTO_CIPHER_DATA_UNIT_LEN_512_BYTES             RTE_BIT32(0)
 #define RTE_CRYPTO_CIPHER_DATA_UNIT_LEN_4096_BYTES            RTE_BIT32(1)
+#define RTE_CRYPTO_CIPHER_DATA_UNIT_LEN_1_MEGABYTES           RTE_BIT32(2)
 
 /**
  * Symmetric Crypto Capability

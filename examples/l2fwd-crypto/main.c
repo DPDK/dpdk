@@ -2218,6 +2218,11 @@ check_capabilities(struct l2fwd_crypto_options *options, uint8_t cdev_id)
 						RTE_CRYPTO_CIPHER_DATA_UNIT_LEN_4096_BYTES))
 						ret = -1;
 					break;
+				case 1048576:
+					if (!(cap->sym.cipher.dataunit_set &
+						RTE_CRYPTO_CIPHER_DATA_UNIT_LEN_1_MEGABYTES))
+						ret = -1;
+					break;
 				default:
 					ret = -1;
 				}

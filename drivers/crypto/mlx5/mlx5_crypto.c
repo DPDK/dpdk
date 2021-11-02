@@ -60,7 +60,8 @@ const struct rte_cryptodev_capabilities mlx5_crypto_caps[] = {
 				},
 				.dataunit_set =
 				RTE_CRYPTO_CIPHER_DATA_UNIT_LEN_512_BYTES |
-				RTE_CRYPTO_CIPHER_DATA_UNIT_LEN_4096_BYTES,
+				RTE_CRYPTO_CIPHER_DATA_UNIT_LEN_4096_BYTES |
+				RTE_CRYPTO_CIPHER_DATA_UNIT_LEN_1_MEGABYTES,
 			}, }
 		}, }
 	},
@@ -220,6 +221,11 @@ mlx5_crypto_sym_session_configure(struct rte_cryptodev *dev,
 	case 4096:
 		sess_private_data->bsp_res = rte_cpu_to_be_32
 					     ((uint32_t)MLX5_BLOCK_SIZE_4096B <<
+					     MLX5_BLOCK_SIZE_OFFSET);
+		break;
+	case 1048576:
+		sess_private_data->bsp_res = rte_cpu_to_be_32
+					     ((uint32_t)MLX5_BLOCK_SIZE_1MB <<
 					     MLX5_BLOCK_SIZE_OFFSET);
 		break;
 	default:

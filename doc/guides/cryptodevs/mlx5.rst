@@ -147,9 +147,9 @@ Limitations
 -----------
 
 - AES-XTS keys provided in xform must include keytag and should be wrapped.
-- The supported data-unit lengths are 512B and 1KB. In case the `dataunit_len`
+- The supported data-unit lengths are 512B and 4KB and 1MB. In case the `dataunit_len`
   is not provided in the cipher xform, the OP length is limited to the above
-  values and 1MB.
+  values.
 
 
 Prerequisites
