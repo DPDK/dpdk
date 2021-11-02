@@ -740,16 +740,17 @@ exit:
 static int
 test_mempool_flag_non_io_set_when_no_iova_contig_set(void)
 {
-	void *virt = NULL;
+	const struct rte_memzone *mz = NULL;
+	void *virt;
 	rte_iova_t iova;
 	size_t size = MEMPOOL_ELT_SIZE * 16;
 	struct rte_mempool *mp = NULL;
 	int ret;
 
-	virt = rte_malloc("test_mempool", size, rte_mem_page_size());
-	RTE_TEST_ASSERT_NOT_NULL(virt, "Cannot allocate memory");
-	iova = rte_mem_virt2iova(virt);
-	RTE_TEST_ASSERT_NOT_EQUAL(iova,  RTE_BAD_IOVA, "Cannot get IOVA");
+	mz = rte_memzone_reserve("test_mempool", size, SOCKET_ID_ANY, 0);
+	RTE_TEST_ASSERT_NOT_NULL(mz, "Cannot allocate memory");
+	virt = mz->addr;
+	iova = mz->iova;
 	mp = rte_mempool_create_empty("empty", MEMPOOL_SIZE,
 				      MEMPOOL_ELT_SIZE, 0, 0,
 				      SOCKET_ID_ANY, RTE_MEMPOOL_F_NO_IOVA_CONTIG);
@@ -772,14 +773,15 @@ test_mempool_flag_non_io_set_when_no_iova_contig_set(void)
 	ret = TEST_SUCCESS;
 exit:
 	rte_mempool_free(mp);
-	rte_free(virt);
+	rte_memzone_free(mz);
 	return ret;
 }
 
 static int
 test_mempool_flag_non_io_unset_when_populated_with_valid_iova(void)
 {
-	void *virt = NULL;
+	const struct rte_memzone *mz = NULL;
+	void *virt;
 	rte_iova_t iova;
 	size_t total_size = MEMPOOL_ELT_SIZE * MEMPOOL_SIZE;
 	size_t block_size = total_size / 3;
@@ -789,12 +791,12 @@ test_mempool_flag_non_io_unset_when_populated_with_valid_iova(void)
 	/*
 	 * Since objects from the pool are never used in the test,
 	 * we don't care for contiguous IOVA, on the other hand,
-	 * reiuring it could cause spurious test failures.
+	 * requiring it could cause spurious test failures.
 	 */
-	virt = rte_malloc("test_mempool", total_size, rte_mem_page_size());
-	RTE_TEST_ASSERT_NOT_NULL(virt, "Cannot allocate memory");
-	iova = rte_mem_virt2iova(virt);
-	RTE_TEST_ASSERT_NOT_EQUAL(iova,  RTE_BAD_IOVA, "Cannot get IOVA");
+	mz = rte_memzone_reserve("test_mempool", total_size, SOCKET_ID_ANY, 0);
+	RTE_TEST_ASSERT_NOT_NULL(mz, "Cannot allocate memory");
+	virt = mz->addr;
+	iova = mz->iova;
 	mp = rte_mempool_create_empty("empty", MEMPOOL_SIZE,
 				      MEMPOOL_ELT_SIZE, 0, 0,
 				      SOCKET_ID_ANY, 0);
@@ -827,7 +829,7 @@ test_mempool_flag_non_io_unset_when_populated_with_valid_iova(void)
 
 exit:
 	rte_mempool_free(mp);
-	rte_free(virt);
+	rte_memzone_free(mz);
 	return ret;
 }
 
