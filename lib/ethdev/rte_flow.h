@@ -3748,6 +3748,7 @@ enum rte_flow_error_type {
 	RTE_FLOW_ERROR_TYPE_ACTION_NUM, /**< Number of actions. */
 	RTE_FLOW_ERROR_TYPE_ACTION_CONF, /**< Action configuration. */
 	RTE_FLOW_ERROR_TYPE_ACTION, /**< Specific action. */
+	RTE_FLOW_ERROR_TYPE_STATE, /**< Current device state. */
 };
 
 /**

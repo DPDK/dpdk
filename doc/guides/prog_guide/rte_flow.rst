@@ -87,6 +87,42 @@ To avoid resource leaks on the PMD side, handles must be explicitly
 destroyed by the application before releasing associated resources such as
 queues and ports.
 
+.. warning::
+
+   The following description of rule persistence is an experimental behavior
+   that may change without a prior notice.
+
+When the device is stopped, its rules do not process the traffic.
+In particular, transfer rules created using some device
+stop affecting the traffic even if they refer to different ports.
+
+If ``RTE_ETH_DEV_CAPA_FLOW_RULE_KEEP`` is not advertised,
+rules cannot be created until the device is started for the first time
+and cannot be kept when the device is stopped.
+However, PMD also does not flush them automatically on stop,
+so the application must call ``rte_flow_flush()`` or ``rte_flow_destroy()``
+before stopping the device to ensure no rules remain.
+
+If ``RTE_ETH_DEV_CAPA_FLOW_RULE_KEEP`` is advertised, this means
+the PMD can keep at least some rules across the device stop and start.
+However, ``rte_eth_dev_configure()`` may fail if any rules remain,
+so the application must flush them before attempting a reconfiguration.
+Keeping may be unsupported for some types of rule items and actions,
+as well as depending on the value of flow attributes transfer bit.
+A combination of a single an item or action type
+and a value of the transfer bit is called a rule feature.
+For example: a COUNT action with the transfer bit set.
+To test if rules with a particular feature are kept, the application must try
+to create a valid rule using this feature when the device is not started
+(either before the first start or after a stop).
+If it fails with an error of type ``RTE_FLOW_ERROR_TYPE_STATE``,
+all rules using this feature must be flushed by the application
+before stopping the device.
+If it succeeds, such rules will be kept when the device is stopped,
+provided they do not use other features that are not supported.
+Rules that are created when the device is stopped, including the rules
+created for the test, will be kept after the device is started.
+
 The following sections cover:
 
 - **Attributes** (represented by ``struct rte_flow_attr``): properties of a
