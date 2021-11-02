@@ -1690,10 +1690,6 @@ err_secondary:
 	}
 	if (sh->devx && config->dv_flow_en && config->dest_tir) {
 		priv->obj_ops = devx_obj_ops;
-		priv->obj_ops.drop_action_create =
-						ibv_obj_ops.drop_action_create;
-		priv->obj_ops.drop_action_destroy =
-						ibv_obj_ops.drop_action_destroy;
 		mlx5_queue_counter_id_prepare(eth_dev);
 		priv->obj_ops.lb_dummy_queue_create =
 					mlx5_rxq_ibv_obj_dummy_lb_create;

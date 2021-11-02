@@ -226,18 +226,18 @@ mlx5_rx_devx_get_event(struct mlx5_rxq_obj *rxq_obj)
  *
  * @param dev
  *   Pointer to Ethernet device.
- * @param idx
- *   Queue index in DPDK Rx queue array.
+ * @param rxq_data
+ *   RX queue data.
  *
  * @return
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 static int
-mlx5_rxq_create_devx_rq_resources(struct rte_eth_dev *dev, uint16_t idx)
+mlx5_rxq_create_devx_rq_resources(struct rte_eth_dev *dev,
+				  struct mlx5_rxq_data *rxq_data)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_common_device *cdev = priv->sh->cdev;
-	struct mlx5_rxq_data *rxq_data = (*priv->rxqs)[idx];
 	struct mlx5_rxq_ctrl *rxq_ctrl =
 		container_of(rxq_data, struct mlx5_rxq_ctrl, rxq);
 	struct mlx5_devx_create_rq_attr rq_attr = { 0 };
@@ -290,20 +290,20 @@ mlx5_rxq_create_devx_rq_resources(struct rte_eth_dev *dev, uint16_t idx)
  *
  * @param dev
  *   Pointer to Ethernet device.
- * @param idx
- *   Queue index in DPDK Rx queue array.
+ * @param rxq_data
+ *   RX queue data.
  *
  * @return
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 static int
-mlx5_rxq_create_devx_cq_resources(struct rte_eth_dev *dev, uint16_t idx)
+mlx5_rxq_create_devx_cq_resources(struct rte_eth_dev *dev,
+				  struct mlx5_rxq_data *rxq_data)
 {
 	struct mlx5_devx_cq *cq_obj = 0;
 	struct mlx5_devx_cq_attr cq_attr = { 0 };
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_dev_ctx_shared *sh = priv->sh;
-	struct mlx5_rxq_data *rxq_data = (*priv->rxqs)[idx];
 	struct mlx5_rxq_ctrl *rxq_ctrl =
 		container_of(rxq_data, struct mlx5_rxq_ctrl, rxq);
 	unsigned int cqe_n = mlx5_rxq_cqe_num(rxq_data);
@@ -498,13 +498,13 @@ mlx5_rxq_devx_obj_new(struct rte_eth_dev *dev, uint16_t idx)
 		tmpl->fd = mlx5_os_get_devx_channel_fd(tmpl->devx_channel);
 	}
 	/* Create CQ using DevX API. */
-	ret = mlx5_rxq_create_devx_cq_resources(dev, idx);
+	ret = mlx5_rxq_create_devx_cq_resources(dev, rxq_data);
 	if (ret) {
 		DRV_LOG(ERR, "Failed to create CQ.");
 		goto error;
 	}
 	/* Create RQ using DevX API. */
-	ret = mlx5_rxq_create_devx_rq_resources(dev, idx);
+	ret = mlx5_rxq_create_devx_rq_resources(dev, rxq_data);
 	if (ret) {
 		DRV_LOG(ERR, "Port %u Rx queue %u RQ creation failure.",
 			dev->data->port_id, idx);
@@ -537,6 +537,11 @@ error:
  *   Pointer to Ethernet device.
  * @param log_n
  *   Log of number of queues in the array.
+ * @param queues
+ *   List of RX queue indices or NULL, in which case
+ *   the attribute will be filled by drop queue ID.
+ * @param queues_n
+ *   Size of @p queues array or 0 if it is NULL.
  * @param ind_tbl
  *   DevX indirection table object.
  *
@@ -564,6 +569,11 @@ mlx5_devx_ind_table_create_rqt_attr(struct rte_eth_dev *dev,
 	}
 	rqt_attr->rqt_max_size = priv->config.ind_table_max_size;
 	rqt_attr->rqt_actual_size = rqt_n;
+	if (queues == NULL) {
+		for (i = 0; i < rqt_n; i++)
+			rqt_attr->rq_list[i] = priv->drop_queue.rxq->rq->id;
+		return rqt_attr;
+	}
 	for (i = 0; i != queues_n; ++i) {
 		struct mlx5_rxq_data *rxq = (*priv->rxqs)[queues[i]];
 		struct mlx5_rxq_ctrl *rxq_ctrl =
@@ -596,11 +606,12 @@ mlx5_devx_ind_table_new(struct rte_eth_dev *dev, const unsigned int log_n,
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_devx_rqt_attr *rqt_attr = NULL;
+	const uint16_t *queues = dev->data->dev_started ? ind_tbl->queues :
+							  NULL;
 
 	MLX5_ASSERT(ind_tbl);
-	rqt_attr = mlx5_devx_ind_table_create_rqt_attr(dev, log_n,
-							ind_tbl->queues,
-							ind_tbl->queues_n);
+	rqt_attr = mlx5_devx_ind_table_create_rqt_attr(dev, log_n, queues,
+						       ind_tbl->queues_n);
 	if (!rqt_attr)
 		return -rte_errno;
 	ind_tbl->rqt = mlx5_devx_cmd_create_rqt(priv->sh->cdev->ctx, rqt_attr);
@@ -671,7 +682,8 @@ mlx5_devx_ind_table_destroy(struct mlx5_ind_table_obj *ind_tbl)
  * @param[in] hash_fields
  *   Verbs protocol hash field to make the RSS on.
  * @param[in] ind_tbl
- *   Indirection table for TIR.
+ *   Indirection table for TIR. If table queues array is NULL,
+ *   a TIR for drop queue is assumed.
  * @param[in] tunnel
  *   Tunnel type.
  * @param[out] tir_attr
@@ -687,19 +699,27 @@ mlx5_devx_tir_attr_set(struct rte_eth_dev *dev, const uint8_t *rss_key,
 		       int tunnel, struct mlx5_devx_tir_attr *tir_attr)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5_rxq_data *rxq_data = (*priv->rxqs)[ind_tbl->queues[0]];
-	struct mlx5_rxq_ctrl *rxq_ctrl =
-		container_of(rxq_data, struct mlx5_rxq_ctrl, rxq);
-	enum mlx5_rxq_type rxq_obj_type = rxq_ctrl->type;
+	enum mlx5_rxq_type rxq_obj_type;
 	bool lro = true;
 	uint32_t i;
 
-	/* Enable TIR LRO only if all the queues were configured for. */
-	for (i = 0; i < ind_tbl->queues_n; ++i) {
-		if (!(*priv->rxqs)[ind_tbl->queues[i]]->lro) {
-			lro = false;
-			break;
+	/* NULL queues designate drop queue. */
+	if (ind_tbl->queues != NULL) {
+		struct mlx5_rxq_data *rxq_data =
+					(*priv->rxqs)[ind_tbl->queues[0]];
+		struct mlx5_rxq_ctrl *rxq_ctrl =
+			container_of(rxq_data, struct mlx5_rxq_ctrl, rxq);
+		rxq_obj_type = rxq_ctrl->type;
+
+		/* Enable TIR LRO only if all the queues were configured for. */
+		for (i = 0; i < ind_tbl->queues_n; ++i) {
+			if (!(*priv->rxqs)[ind_tbl->queues[i]]->lro) {
+				lro = false;
+				break;
+			}
 		}
+	} else {
+		rxq_obj_type = priv->drop_queue.rxq->rxq_ctrl->type;
 	}
 	memset(tir_attr, 0, sizeof(*tir_attr));
 	tir_attr->disp_type = MLX5_TIRC_DISP_TYPE_INDIRECT;
@@ -858,7 +878,7 @@ mlx5_devx_hrxq_modify(struct rte_eth_dev *dev, struct mlx5_hrxq *hrxq,
 }
 
 /**
- * Create a DevX drop action for Rx Hash queue.
+ * Create a DevX drop Rx queue.
  *
  * @param dev
  *   Pointer to Ethernet device.
@@ -867,12 +887,97 @@ mlx5_devx_hrxq_modify(struct rte_eth_dev *dev, struct mlx5_hrxq *hrxq,
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 static int
-mlx5_devx_drop_action_create(struct rte_eth_dev *dev)
+mlx5_rxq_devx_obj_drop_create(struct rte_eth_dev *dev)
 {
-	(void)dev;
-	DRV_LOG(ERR, "DevX drop action is not supported yet.");
-	rte_errno = ENOTSUP;
+	struct mlx5_priv *priv = dev->data->dev_private;
+	int socket_id = dev->device->numa_node;
+	struct mlx5_rxq_ctrl *rxq_ctrl;
+	struct mlx5_rxq_data *rxq_data;
+	struct mlx5_rxq_obj *rxq = NULL;
+	int ret;
+
+	/*
+	 * Initialize dummy control structures.
+	 * They are required to hold pointers for cleanup
+	 * and are only accessible via drop queue DevX objects.
+	 */
+	rxq_ctrl = mlx5_malloc(MLX5_MEM_ZERO, sizeof(*rxq_ctrl),
+			       0, socket_id);
+	if (rxq_ctrl == NULL) {
+		DRV_LOG(ERR, "Port %u could not allocate drop queue control",
+			dev->data->port_id);
+		rte_errno = ENOMEM;
+		goto error;
+	}
+	rxq = mlx5_malloc(MLX5_MEM_ZERO, sizeof(*rxq), 0, socket_id);
+	if (rxq == NULL) {
+		DRV_LOG(ERR, "Port %u could not allocate drop queue object",
+			dev->data->port_id);
+		rte_errno = ENOMEM;
+		goto error;
+	}
+	rxq->rxq_ctrl = rxq_ctrl;
+	rxq_ctrl->type = MLX5_RXQ_TYPE_STANDARD;
+	rxq_ctrl->priv = priv;
+	rxq_ctrl->obj = rxq;
+	rxq_data = &rxq_ctrl->rxq;
+	/* Create CQ using DevX API. */
+	ret = mlx5_rxq_create_devx_cq_resources(dev, rxq_data);
+	if (ret != 0) {
+		DRV_LOG(ERR, "Port %u drop queue CQ creation failed.",
+			dev->data->port_id);
+		goto error;
+	}
+	/* Create RQ using DevX API. */
+	ret = mlx5_rxq_create_devx_rq_resources(dev, rxq_data);
+	if (ret != 0) {
+		DRV_LOG(ERR, "Port %u drop queue RQ creation failed.",
+			dev->data->port_id);
+		rte_errno = ENOMEM;
+		goto error;
+	}
+	/* Change queue state to ready. */
+	ret = mlx5_devx_modify_rq(rxq, MLX5_RXQ_MOD_RST2RDY);
+	if (ret != 0)
+		goto error;
+	/* Initialize drop queue. */
+	priv->drop_queue.rxq = rxq;
+	return 0;
+error:
+	ret = rte_errno; /* Save rte_errno before cleanup. */
+	if (rxq != NULL) {
+		if (rxq->rq_obj.rq != NULL)
+			mlx5_devx_rq_destroy(&rxq->rq_obj);
+		if (rxq->cq_obj.cq != NULL)
+			mlx5_devx_cq_destroy(&rxq->cq_obj);
+		if (rxq->devx_channel)
+			mlx5_os_devx_destroy_event_channel
+							(rxq->devx_channel);
+		mlx5_free(rxq);
+	}
+	if (rxq_ctrl != NULL)
+		mlx5_free(rxq_ctrl);
+	rte_errno = ret; /* Restore rte_errno. */
 	return -rte_errno;
+}
+
+/**
+ * Release drop Rx queue resources.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ */
+static void
+mlx5_rxq_devx_obj_drop_release(struct rte_eth_dev *dev)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_rxq_obj *rxq = priv->drop_queue.rxq;
+	struct mlx5_rxq_ctrl *rxq_ctrl = rxq->rxq_ctrl;
+
+	mlx5_rxq_devx_obj_release(rxq);
+	mlx5_free(rxq);
+	mlx5_free(rxq_ctrl);
+	priv->drop_queue.rxq = NULL;
 }
 
 /**
@@ -884,9 +989,53 @@ mlx5_devx_drop_action_create(struct rte_eth_dev *dev)
 static void
 mlx5_devx_drop_action_destroy(struct rte_eth_dev *dev)
 {
-	(void)dev;
-	DRV_LOG(ERR, "DevX drop action is not supported yet.");
-	rte_errno = ENOTSUP;
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_hrxq *hrxq = priv->drop_queue.hrxq;
+
+	if (hrxq->tir != NULL)
+		mlx5_devx_tir_destroy(hrxq);
+	if (hrxq->ind_table->ind_table != NULL)
+		mlx5_devx_ind_table_destroy(hrxq->ind_table);
+	if (priv->drop_queue.rxq->rq != NULL)
+		mlx5_rxq_devx_obj_drop_release(dev);
+}
+
+/**
+ * Create a DevX drop action for Rx Hash queue.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+static int
+mlx5_devx_drop_action_create(struct rte_eth_dev *dev)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_hrxq *hrxq = priv->drop_queue.hrxq;
+	int ret;
+
+	ret = mlx5_rxq_devx_obj_drop_create(dev);
+	if (ret != 0) {
+		DRV_LOG(ERR, "Cannot create drop RX queue");
+		return ret;
+	}
+	/* hrxq->ind_table queues are NULL, drop RX queue ID will be used */
+	ret = mlx5_devx_ind_table_new(dev, 0, hrxq->ind_table);
+	if (ret != 0) {
+		DRV_LOG(ERR, "Cannot create drop hash RX queue indirection table");
+		goto error;
+	}
+	ret = mlx5_devx_hrxq_new(dev, hrxq, /* tunnel */ false);
+	if (ret != 0) {
+		DRV_LOG(ERR, "Cannot create drop hash RX queue");
+		goto error;
+	}
+	return 0;
+error:
+	mlx5_devx_drop_action_destroy(dev);
+	return ret;
 }
 
 /**
