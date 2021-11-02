@@ -1582,6 +1582,8 @@ void mlx5_flow_destroy_sub_policy_with_rxq(struct rte_eth_dev *dev,
 		struct mlx5_flow_meter_policy *mtr_policy);
 int mlx5_flow_dv_discover_counter_offset_support(struct rte_eth_dev *dev);
 int mlx5_flow_discover_dr_action_support(struct rte_eth_dev *dev);
+int mlx5_action_handle_attach(struct rte_eth_dev *dev);
+int mlx5_action_handle_detach(struct rte_eth_dev *dev);
 int mlx5_action_handle_flush(struct rte_eth_dev *dev);
 void mlx5_release_tunnel_hub(struct mlx5_dev_ctx_shared *sh, uint16_t port_id);
 int mlx5_alloc_tunnel_hub(struct mlx5_dev_ctx_shared *sh);

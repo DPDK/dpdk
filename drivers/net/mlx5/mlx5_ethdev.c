@@ -321,6 +321,7 @@ mlx5_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *info)
 	info->rx_offload_capa = (mlx5_get_rx_port_offloads() |
 				 info->rx_queue_offload_capa);
 	info->tx_offload_capa = mlx5_get_tx_port_offloads(dev);
+	info->dev_capa = RTE_ETH_DEV_CAPA_FLOW_SHARED_OBJECT_KEEP;
 	info->if_index = mlx5_ifindex(dev);
 	info->reta_size = priv->reta_idx_n ?
 		priv->reta_idx_n : config->ind_table_max_size;

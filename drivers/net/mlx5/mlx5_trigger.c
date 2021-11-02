@@ -14,6 +14,7 @@
 #include <mlx5_malloc.h>
 
 #include "mlx5.h"
+#include "mlx5_flow.h"
 #include "mlx5_rx.h"
 #include "mlx5_tx.h"
 #include "mlx5_utils.h"
@@ -1162,6 +1163,14 @@ mlx5_dev_start(struct rte_eth_dev *dev)
 	mlx5_rxq_timestamp_set(dev);
 	/* Set a mask and offset of scheduling on timestamp into Tx queues. */
 	mlx5_txq_dynf_timestamp_set(dev);
+	/* Attach indirection table objects detached on port stop. */
+	ret = mlx5_action_handle_attach(dev);
+	if (ret) {
+		DRV_LOG(ERR,
+			"port %u failed to attach indirect actions: %s",
+			dev->data->port_id, rte_strerror(rte_errno));
+		goto error;
+	}
 	/*
 	 * In non-cached mode, it only needs to start the default mreg copy
 	 * action and no flow created by application exists anymore.
@@ -1239,6 +1248,7 @@ mlx5_dev_stop(struct rte_eth_dev *dev)
 	/* All RX queue flags will be cleared in the flush interface. */
 	mlx5_flow_list_flush(dev, MLX5_FLOW_TYPE_GEN, true);
 	mlx5_flow_meter_rxq_flush(dev);
+	mlx5_action_handle_detach(dev);
 	mlx5_rx_intr_vec_disable(dev);
 	priv->sh->port[priv->dev_port - 1].ih_port_id = RTE_MAX_ETHPORTS;
 	priv->sh->port[priv->dev_port - 1].devx_ih_port_id = RTE_MAX_ETHPORTS;

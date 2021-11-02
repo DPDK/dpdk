@@ -1594,6 +1594,58 @@ mlx5_flow_validate_action_queue(const struct rte_flow_action *action,
 	return 0;
 }
 
+/**
+ * Validate queue numbers for device RSS.
+ *
+ * @param[in] dev
+ *   Configured device.
+ * @param[in] queues
+ *   Array of queue numbers.
+ * @param[in] queues_n
+ *   Size of the @p queues array.
+ * @param[out] error
+ *   On error, filled with a textual error description.
+ * @param[out] queue
+ *   On error, filled with an offending queue index in @p queues array.
+ *
+ * @return
+ *   0 on success, a negative errno code on error.
+ */
+static int
+mlx5_validate_rss_queues(const struct rte_eth_dev *dev,
+			 const uint16_t *queues, uint32_t queues_n,
+			 const char **error, uint32_t *queue_idx)
+{
+	const struct mlx5_priv *priv = dev->data->dev_private;
+	enum mlx5_rxq_type rxq_type = MLX5_RXQ_TYPE_UNDEFINED;
+	uint32_t i;
+
+	for (i = 0; i != queues_n; ++i) {
+		struct mlx5_rxq_ctrl *rxq_ctrl;
+
+		if (queues[i] >= priv->rxqs_n) {
+			*error = "queue index out of range";
+			*queue_idx = i;
+			return -EINVAL;
+		}
+		if (!(*priv->rxqs)[queues[i]]) {
+			*error =  "queue is not configured";
+			*queue_idx = i;
+			return -EINVAL;
+		}
+		rxq_ctrl = container_of((*priv->rxqs)[queues[i]],
+					struct mlx5_rxq_ctrl, rxq);
+		if (i == 0)
+			rxq_type = rxq_ctrl->type;
+		if (rxq_type != rxq_ctrl->type) {
+			*error = "combining hairpin and regular RSS queues is not supported";
+			*queue_idx = i;
+			return -ENOTSUP;
+		}
+	}
+	return 0;
+}
+
 /*
  * Validate the rss action.
  *
@@ -1614,8 +1666,9 @@ mlx5_validate_action_rss(struct rte_eth_dev *dev,
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	const struct rte_flow_action_rss *rss = action->conf;
-	enum mlx5_rxq_type rxq_type = MLX5_RXQ_TYPE_UNDEFINED;
-	unsigned int i;
+	int ret;
+	const char *message;
+	uint32_t queue_idx;
 
 	if (rss->func != RTE_ETH_HASH_FUNCTION_DEFAULT &&
 	    rss->func != RTE_ETH_HASH_FUNCTION_TOEPLITZ)
@@ -1679,27 +1732,12 @@ mlx5_validate_action_rss(struct rte_eth_dev *dev,
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ACTION_CONF,
 					  NULL, "No queues configured");
-	for (i = 0; i != rss->queue_num; ++i) {
-		struct mlx5_rxq_ctrl *rxq_ctrl;
-
-		if (rss->queue[i] >= priv->rxqs_n)
-			return rte_flow_error_set
-				(error, EINVAL,
-				 RTE_FLOW_ERROR_TYPE_ACTION_CONF,
-				 &rss->queue[i], "queue index out of range");
-		if (!(*priv->rxqs)[rss->queue[i]])
-			return rte_flow_error_set
-				(error, EINVAL, RTE_FLOW_ERROR_TYPE_ACTION_CONF,
-				 &rss->queue[i], "queue is not configured");
-		rxq_ctrl = container_of((*priv->rxqs)[rss->queue[i]],
-					struct mlx5_rxq_ctrl, rxq);
-		if (i == 0)
-			rxq_type = rxq_ctrl->type;
-		if (rxq_type != rxq_ctrl->type)
-			return rte_flow_error_set
-				(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_ACTION_CONF,
-				 &rss->queue[i],
-				 "combining hairpin and regular RSS queues is not supported");
+	ret = mlx5_validate_rss_queues(dev, rss->queue, rss->queue_num,
+				       &message, &queue_idx);
+	if (ret != 0) {
+		return rte_flow_error_set(error, -ret,
+					  RTE_FLOW_ERROR_TYPE_ACTION_CONF,
+					  &rss->queue[queue_idx], message);
 	}
 	return 0;
 }
@@ -8782,6 +8820,116 @@ mlx5_action_handle_flush(struct rte_eth_dev *dev)
 		      priv->rss_shared_actions, idx, shared_rss, next) {
 		ret |= mlx5_action_handle_destroy(dev,
 		       (struct rte_flow_action_handle *)(uintptr_t)idx, &error);
+	}
+	return ret;
+}
+
+/**
+ * Validate existing indirect actions against current device configuration
+ * and attach them to device resources.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+int
+mlx5_action_handle_attach(struct rte_eth_dev *dev)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_indexed_pool *ipool =
+			priv->sh->ipool[MLX5_IPOOL_RSS_SHARED_ACTIONS];
+	struct mlx5_shared_action_rss *shared_rss, *shared_rss_last;
+	int ret = 0;
+	uint32_t idx;
+
+	ILIST_FOREACH(ipool, priv->rss_shared_actions, idx, shared_rss, next) {
+		struct mlx5_ind_table_obj *ind_tbl = shared_rss->ind_tbl;
+		const char *message;
+		uint32_t queue_idx;
+
+		ret = mlx5_validate_rss_queues(dev, ind_tbl->queues,
+					       ind_tbl->queues_n,
+					       &message, &queue_idx);
+		if (ret != 0) {
+			DRV_LOG(ERR, "Port %u cannot use queue %u in RSS: %s",
+				dev->data->port_id, ind_tbl->queues[queue_idx],
+				message);
+			break;
+		}
+	}
+	if (ret != 0)
+		return ret;
+	ILIST_FOREACH(ipool, priv->rss_shared_actions, idx, shared_rss, next) {
+		struct mlx5_ind_table_obj *ind_tbl = shared_rss->ind_tbl;
+
+		ret = mlx5_ind_table_obj_attach(dev, ind_tbl);
+		if (ret != 0) {
+			DRV_LOG(ERR, "Port %u could not attach "
+				"indirection table obj %p",
+				dev->data->port_id, (void *)ind_tbl);
+			goto error;
+		}
+	}
+	return 0;
+error:
+	shared_rss_last = shared_rss;
+	ILIST_FOREACH(ipool, priv->rss_shared_actions, idx, shared_rss, next) {
+		struct mlx5_ind_table_obj *ind_tbl = shared_rss->ind_tbl;
+
+		if (shared_rss == shared_rss_last)
+			break;
+		if (mlx5_ind_table_obj_detach(dev, ind_tbl) != 0)
+			DRV_LOG(CRIT, "Port %u could not detach "
+				"indirection table obj %p on rollback",
+				dev->data->port_id, (void *)ind_tbl);
+	}
+	return ret;
+}
+
+/**
+ * Detach indirect actions of the device from its resources.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+int
+mlx5_action_handle_detach(struct rte_eth_dev *dev)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_indexed_pool *ipool =
+			priv->sh->ipool[MLX5_IPOOL_RSS_SHARED_ACTIONS];
+	struct mlx5_shared_action_rss *shared_rss, *shared_rss_last;
+	int ret = 0;
+	uint32_t idx;
+
+	ILIST_FOREACH(ipool, priv->rss_shared_actions, idx, shared_rss, next) {
+		struct mlx5_ind_table_obj *ind_tbl = shared_rss->ind_tbl;
+
+		ret = mlx5_ind_table_obj_detach(dev, ind_tbl);
+		if (ret != 0) {
+			DRV_LOG(ERR, "Port %u could not detach "
+				"indirection table obj %p",
+				dev->data->port_id, (void *)ind_tbl);
+			goto error;
+		}
+	}
+	return 0;
+error:
+	shared_rss_last = shared_rss;
+	ILIST_FOREACH(ipool, priv->rss_shared_actions, idx, shared_rss, next) {
+		struct mlx5_ind_table_obj *ind_tbl = shared_rss->ind_tbl;
+
+		if (shared_rss == shared_rss_last)
+			break;
+		if (mlx5_ind_table_obj_attach(dev, ind_tbl) != 0)
+			DRV_LOG(CRIT, "Port %u could not attach "
+				"indirection table obj %p on rollback",
+				dev->data->port_id, (void *)ind_tbl);
 	}
 	return ret;
 }

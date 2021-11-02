@@ -2032,6 +2032,26 @@ mlx5_ind_table_obj_new(struct rte_eth_dev *dev, const uint16_t *queues,
 	return ind_tbl;
 }
 
+static int
+mlx5_ind_table_obj_check_standalone(struct rte_eth_dev *dev __rte_unused,
+				    struct mlx5_ind_table_obj *ind_tbl)
+{
+	uint32_t refcnt;
+
+	refcnt = __atomic_load_n(&ind_tbl->refcnt, __ATOMIC_RELAXED);
+	if (refcnt <= 1)
+		return 0;
+	/*
+	 * Modification of indirection tables having more than 1
+	 * reference is unsupported.
+	 */
+	DRV_LOG(DEBUG,
+		"Port %u cannot modify indirection table %p (refcnt %u > 1).",
+		dev->data->port_id, (void *)ind_tbl, refcnt);
+	rte_errno = EINVAL;
+	return -rte_errno;
+}
+
 /**
  * Modify an indirection table.
  *
@@ -2064,18 +2084,8 @@ mlx5_ind_table_obj_modify(struct rte_eth_dev *dev,
 
 	MLX5_ASSERT(standalone);
 	RTE_SET_USED(standalone);
-	if (__atomic_load_n(&ind_tbl->refcnt, __ATOMIC_RELAXED) > 1) {
-		/*
-		 * Modification of indirection ntables having more than 1
-		 * reference unsupported. Intended for standalone indirection
-		 * tables only.
-		 */
-		DRV_LOG(DEBUG,
-			"Port %u cannot modify indirection table (refcnt> 1).",
-			dev->data->port_id);
-		rte_errno = EINVAL;
+	if (mlx5_ind_table_obj_check_standalone(dev, ind_tbl) < 0)
 		return -rte_errno;
-	}
 	for (i = 0; i != queues_n; ++i) {
 		if (!mlx5_rxq_get(dev, queues[i])) {
 			ret = -rte_errno;
@@ -2098,6 +2108,73 @@ error:
 	rte_errno = err;
 	DRV_LOG(DEBUG, "Port %u cannot setup indirection table.",
 		dev->data->port_id);
+	return ret;
+}
+
+/**
+ * Attach an indirection table to its queues.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ * @param ind_table
+ *   Indirection table to attach.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+int
+mlx5_ind_table_obj_attach(struct rte_eth_dev *dev,
+			  struct mlx5_ind_table_obj *ind_tbl)
+{
+	unsigned int i;
+	int ret;
+
+	ret = mlx5_ind_table_obj_modify(dev, ind_tbl, ind_tbl->queues,
+					ind_tbl->queues_n, true);
+	if (ret != 0) {
+		DRV_LOG(ERR, "Port %u could not modify indirect table obj %p",
+			dev->data->port_id, (void *)ind_tbl);
+		return ret;
+	}
+	for (i = 0; i < ind_tbl->queues_n; i++)
+		mlx5_rxq_get(dev, ind_tbl->queues[i]);
+	return 0;
+}
+
+/**
+ * Detach an indirection table from its queues.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ * @param ind_table
+ *   Indirection table to detach.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+int
+mlx5_ind_table_obj_detach(struct rte_eth_dev *dev,
+			  struct mlx5_ind_table_obj *ind_tbl)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	const unsigned int n = rte_is_power_of_2(ind_tbl->queues_n) ?
+			       log2above(ind_tbl->queues_n) :
+			       log2above(priv->config.ind_table_max_size);
+	unsigned int i;
+	int ret;
+
+	ret = mlx5_ind_table_obj_check_standalone(dev, ind_tbl);
+	if (ret != 0)
+		return ret;
+	MLX5_ASSERT(priv->obj_ops.ind_table_modify);
+	ret = priv->obj_ops.ind_table_modify(dev, n, NULL, 0, ind_tbl);
+	if (ret != 0) {
+		DRV_LOG(ERR, "Port %u could not modify indirect table obj %p",
+			dev->data->port_id, (void *)ind_tbl);
+		return ret;
+	}
+	for (i = 0; i < ind_tbl->queues_n; i++)
+		mlx5_rxq_release(dev, ind_tbl->queues[i]);
 	return ret;
 }
 
