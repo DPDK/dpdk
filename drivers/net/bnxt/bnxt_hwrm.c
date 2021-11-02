@@ -1260,9 +1260,9 @@ int bnxt_hwrm_ver_get(struct bnxt *bp, uint32_t timeout)
 		resp->hwrm_intf_upd_8b, resp->hwrm_fw_maj_8b,
 		resp->hwrm_fw_min_8b, resp->hwrm_fw_bld_8b,
 		resp->hwrm_fw_rsvd_8b);
-	bp->fw_ver = (resp->hwrm_fw_maj_8b << 24) |
-		     (resp->hwrm_fw_min_8b << 16) |
-		     (resp->hwrm_fw_bld_8b << 8) |
+	bp->fw_ver = ((uint32_t)resp->hwrm_fw_maj_8b << 24) |
+		     ((uint32_t)resp->hwrm_fw_min_8b << 16) |
+		     ((uint32_t)resp->hwrm_fw_bld_8b << 8) |
 		     resp->hwrm_fw_rsvd_8b;
 	PMD_DRV_LOG(INFO, "Driver HWRM version: %d.%d.%d\n",
 		HWRM_VERSION_MAJOR, HWRM_VERSION_MINOR, HWRM_VERSION_UPDATE);
