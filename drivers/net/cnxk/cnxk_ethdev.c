@@ -765,11 +765,17 @@ nix_free_queue_mem(struct cnxk_eth_dev *dev)
 static int
 nix_ingress_policer_setup(struct cnxk_eth_dev *dev)
 {
+	struct rte_eth_dev *eth_dev = dev->eth_dev;
+	int rc = 0;
+
 	TAILQ_INIT(&dev->mtr_profiles);
 	TAILQ_INIT(&dev->mtr_policy);
 	TAILQ_INIT(&dev->mtr);
 
-	return 0;
+	if (eth_dev->dev_ops->mtr_ops_get == NULL)
+		return rc;
+
+	return nix_mtr_capabilities_init(eth_dev);
 }
 
 static int

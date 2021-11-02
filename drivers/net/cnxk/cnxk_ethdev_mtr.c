@@ -28,7 +28,6 @@ static const enum roc_nix_bpf_level_flag lvl_map[] = {ROC_NIX_BPF_LEVEL_F_LEAF,
 						      ROC_NIX_BPF_LEVEL_F_TOP};
 
 static struct rte_mtr_capabilities mtr_capa = {
-	.n_max = NIX_MTR_COUNT_MAX,
 	.n_shared_max = NIX_MTR_COUNT_PER_FLOW,
 	/* .identical = , */
 	.shared_identical = true,
@@ -36,11 +35,7 @@ static struct rte_mtr_capabilities mtr_capa = {
 	.chaining_n_mtrs_per_flow_max = NIX_MTR_COUNT_PER_FLOW,
 	.chaining_use_prev_mtr_color_supported = true,
 	.chaining_use_prev_mtr_color_enforced = true,
-	.meter_srtcm_rfc2697_n_max = NIX_MTR_COUNT_MAX,
-	.meter_trtcm_rfc2698_n_max = NIX_MTR_COUNT_MAX,
-	.meter_trtcm_rfc4115_n_max = NIX_MTR_COUNT_MAX,
 	.meter_rate_max = NIX_BPF_RATE_MAX / 8, /* Bytes per second */
-	.meter_policy_n_max = NIX_MTR_COUNT_MAX,
 	.color_aware_srtcm_rfc2697_supported = true,
 	.color_aware_trtcm_rfc2698_supported = true,
 	.color_aware_trtcm_rfc4115_supported = true,
@@ -185,12 +180,33 @@ cnxk_nix_mtr_capabilities_get(struct rte_eth_dev *dev,
 			      struct rte_mtr_capabilities *capa,
 			      struct rte_mtr_error *error)
 {
+	struct cnxk_eth_dev *eth_dev = cnxk_eth_pmd_priv(dev);
+	uint16_t count[ROC_NIX_BPF_LEVEL_MAX] = {0};
+	uint8_t lvl_mask = ROC_NIX_BPF_LEVEL_F_LEAF | ROC_NIX_BPF_LEVEL_F_MID |
+			   ROC_NIX_BPF_LEVEL_F_TOP;
+	struct roc_nix *nix = &eth_dev->nix;
+	int rc;
+	int i;
+
 	RTE_SET_USED(dev);
 
 	if (!capa)
 		return -rte_mtr_error_set(error, EINVAL,
-					  RTE_MTR_ERROR_TYPE_MTR_PARAMS, NULL,
-					  "NULL input parameter");
+				RTE_MTR_ERROR_TYPE_MTR_PARAMS, NULL,
+				"NULL input parameter");
+
+	rc = roc_nix_bpf_count_get(nix, lvl_mask, count);
+	if (rc)
+		return rc;
+
+	for (i = 0; i < ROC_NIX_BPF_LEVEL_MAX; i++)
+		mtr_capa.n_max += count[i];
+
+	mtr_capa.meter_srtcm_rfc2697_n_max = mtr_capa.n_max;
+	mtr_capa.meter_trtcm_rfc2698_n_max = mtr_capa.n_max;
+	mtr_capa.meter_trtcm_rfc4115_n_max = mtr_capa.n_max;
+	mtr_capa.meter_policy_n_max = mtr_capa.n_max;
+
 	*capa = mtr_capa;
 	return 0;
 }
@@ -1338,4 +1354,13 @@ nix_mtr_color_action_validate(struct rte_eth_dev *eth_dev, uint32_t id,
 	}
 
 	return 0;
+}
+
+int
+nix_mtr_capabilities_init(struct rte_eth_dev *eth_dev)
+{
+	struct rte_mtr_capabilities capa;
+	struct rte_mtr_error error;
+
+	return cnxk_nix_mtr_capabilities_get(eth_dev, &capa, &error);
 }

@@ -597,6 +597,7 @@ struct cnxk_meter_node *nix_get_mtr(struct rte_eth_dev *eth_dev,
 				    uint32_t cur_id);
 int nix_mtr_level_update(struct rte_eth_dev *eth_dev, uint32_t id,
 			 uint32_t level);
+int nix_mtr_capabilities_init(struct rte_eth_dev *eth_dev);
 int nix_mtr_configure(struct rte_eth_dev *eth_dev, uint32_t id);
 int nix_mtr_connect(struct rte_eth_dev *eth_dev, uint32_t id);
 int nix_mtr_destroy(struct rte_eth_dev *eth_dev, uint32_t id,

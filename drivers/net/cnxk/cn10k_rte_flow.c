@@ -249,7 +249,7 @@ cn10k_flow_destroy(struct rte_eth_dev *eth_dev, struct rte_flow *rte_flow,
 
 	mtr_id = flow->mtr_id;
 	rc = cnxk_flow_destroy(eth_dev, flow, error);
-	if (!rc) {
+	if (!rc && mtr_id != ROC_NIX_MTR_ID_INVALID) {
 		rc = cn10k_mtr_destroy(eth_dev, mtr_id);
 		if (rc) {
 			rte_flow_error_set(error, ENXIO,
