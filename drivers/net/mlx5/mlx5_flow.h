@@ -179,6 +179,11 @@ enum mlx5_feature_name {
 /* Conntrack item. */
 #define MLX5_FLOW_LAYER_ASO_CT (UINT64_C(1) << 36)
 
+/* Flex item */
+#define MLX5_FLOW_ITEM_OUTER_FLEX (UINT64_C(1) << 36)
+#define MLX5_FLOW_ITEM_INNER_FLEX (UINT64_C(1) << 37)
+#define MLX5_FLOW_ITEM_FLEX_TUNNEL (UINT64_C(1) << 38)
+
 /* Outer Masks. */
 #define MLX5_FLOW_LAYER_OUTER_L3 \
 	(MLX5_FLOW_LAYER_OUTER_L3_IPV4 | MLX5_FLOW_LAYER_OUTER_L3_IPV6)
@@ -193,7 +198,8 @@ enum mlx5_feature_name {
 	(MLX5_FLOW_LAYER_VXLAN | MLX5_FLOW_LAYER_VXLAN_GPE | \
 	 MLX5_FLOW_LAYER_GRE | MLX5_FLOW_LAYER_NVGRE | MLX5_FLOW_LAYER_MPLS | \
 	 MLX5_FLOW_LAYER_IPIP | MLX5_FLOW_LAYER_IPV6_ENCAP | \
-	 MLX5_FLOW_LAYER_GENEVE | MLX5_FLOW_LAYER_GTP)
+	 MLX5_FLOW_LAYER_GENEVE | MLX5_FLOW_LAYER_GTP | \
+	 MLX5_FLOW_ITEM_FLEX_TUNNEL)
 
 /* Inner Masks. */
 #define MLX5_FLOW_LAYER_INNER_L3 \
@@ -692,6 +698,7 @@ struct mlx5_flow_handle {
 	uint32_t is_meter_flow_id:1; /**< Indate if flow_id is for meter. */
 	uint32_t mark:1; /**< Metadate rxq mark flag. */
 	uint32_t fate_action:3; /**< Fate action type. */
+	uint32_t flex_item; /**< referenced Flex Item bitmask. */
 	union {
 		uint32_t rix_hrxq; /**< Hash Rx queue object index. */
 		uint32_t rix_jump; /**< Index to the jump action resource. */

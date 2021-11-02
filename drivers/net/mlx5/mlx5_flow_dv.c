@@ -6687,6 +6687,88 @@ flow_dv_validate_item_integrity(struct rte_eth_dev *dev,
 	return 0;
 }
 
+static int
+flow_dv_validate_item_flex(struct rte_eth_dev *dev,
+			   const struct rte_flow_item *item,
+			   uint64_t item_flags,
+			   uint64_t *last_item,
+			   bool is_inner,
+			   struct rte_flow_error *error)
+{
+	const struct rte_flow_item_flex *flow_spec = item->spec;
+	const struct rte_flow_item_flex *flow_mask = item->mask;
+	struct mlx5_flex_item *flex;
+
+	if (!flow_spec)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ITEM, NULL,
+					  "flex flow item spec cannot be NULL");
+	if (!flow_mask)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ITEM, NULL,
+					  "flex flow item mask cannot be NULL");
+	if (item->last)
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ITEM, NULL,
+					  "flex flow item last not supported");
+	if (mlx5_flex_acquire_index(dev, flow_spec->handle, false) < 0)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ITEM, NULL,
+					  "invalid flex flow item handle");
+	flex = (struct mlx5_flex_item *)flow_spec->handle;
+	switch (flex->tunnel_mode) {
+	case FLEX_TUNNEL_MODE_SINGLE:
+		if (item_flags &
+		    (MLX5_FLOW_ITEM_OUTER_FLEX | MLX5_FLOW_ITEM_INNER_FLEX))
+			rte_flow_error_set(error, EINVAL,
+					   RTE_FLOW_ERROR_TYPE_ITEM,
+					   NULL, "multiple flex items not supported");
+		break;
+	case FLEX_TUNNEL_MODE_OUTER:
+		if (is_inner)
+			rte_flow_error_set(error, EINVAL,
+					   RTE_FLOW_ERROR_TYPE_ITEM,
+					   NULL, "inner flex item was not configured");
+		if (item_flags & MLX5_FLOW_ITEM_OUTER_FLEX)
+			rte_flow_error_set(error, ENOTSUP,
+					   RTE_FLOW_ERROR_TYPE_ITEM,
+					   NULL, "multiple flex items not supported");
+		break;
+	case FLEX_TUNNEL_MODE_INNER:
+		if (!is_inner)
+			rte_flow_error_set(error, EINVAL,
+					   RTE_FLOW_ERROR_TYPE_ITEM,
+					   NULL, "outer flex item was not configured");
+		if (item_flags & MLX5_FLOW_ITEM_INNER_FLEX)
+			rte_flow_error_set(error, EINVAL,
+					   RTE_FLOW_ERROR_TYPE_ITEM,
+					   NULL, "multiple flex items not supported");
+		break;
+	case FLEX_TUNNEL_MODE_MULTI:
+		if ((is_inner && (item_flags & MLX5_FLOW_ITEM_INNER_FLEX)) ||
+		    (!is_inner && (item_flags & MLX5_FLOW_ITEM_OUTER_FLEX))) {
+			rte_flow_error_set(error, EINVAL,
+					   RTE_FLOW_ERROR_TYPE_ITEM,
+					   NULL, "multiple flex items not supported");
+		}
+		break;
+	case FLEX_TUNNEL_MODE_TUNNEL:
+		if (is_inner || (item_flags & MLX5_FLOW_ITEM_FLEX_TUNNEL))
+			rte_flow_error_set(error, EINVAL,
+					   RTE_FLOW_ERROR_TYPE_ITEM,
+					   NULL, "multiple flex tunnel items not supported");
+		break;
+	default:
+		rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_ITEM,
+				   NULL, "invalid flex item configuration");
+	}
+	*last_item = flex->tunnel_mode == FLEX_TUNNEL_MODE_TUNNEL ?
+		     MLX5_FLOW_ITEM_FLEX_TUNNEL : is_inner ?
+		     MLX5_FLOW_ITEM_INNER_FLEX : MLX5_FLOW_ITEM_OUTER_FLEX;
+	return 0;
+}
+
 /**
  * Internal validation function. For validating both actions and items.
  *
@@ -7124,6 +7206,13 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 			/* tunnel offload item was processed before
 			 * list it here as a supported type
 			 */
+			break;
+		case RTE_FLOW_ITEM_TYPE_FLEX:
+			ret = flow_dv_validate_item_flex(dev, items, item_flags,
+							 &last_item,
+							 tunnel != 0, error);
+			if (ret < 0)
+				return ret;
 			break;
 		default:
 			return rte_flow_error_set(error, ENOTSUP,
@@ -9993,6 +10082,27 @@ flow_dv_translate_item_aso_ct(struct rte_eth_dev *dev,
 		return;
 	flow_dv_match_meta_reg(matcher, key, (enum modify_reg)reg_id,
 			       reg_value, reg_mask);
+}
+
+static void
+flow_dv_translate_item_flex(struct rte_eth_dev *dev, void *matcher, void *key,
+			    const struct rte_flow_item *item,
+			    struct mlx5_flow *dev_flow, bool is_inner)
+{
+	const struct rte_flow_item_flex *spec =
+		(const struct rte_flow_item_flex *)item->spec;
+	int index = mlx5_flex_acquire_index(dev, spec->handle, false);
+
+	MLX5_ASSERT(index >= 0 && index <= (int)(sizeof(uint32_t) * CHAR_BIT));
+	if (index < 0)
+		return;
+	if (!(dev_flow->handle->flex_item & RTE_BIT32(index))) {
+		/* Don't count both inner and outer flex items in one rule. */
+		if (mlx5_flex_acquire_index(dev, spec->handle, true) != index)
+			MLX5_ASSERT(false);
+		dev_flow->handle->flex_item |= RTE_BIT32(index);
+	}
+	mlx5_flex_flow_translate_item(dev, matcher, key, item, is_inner);
 }
 
 static uint32_t matcher_zero[MLX5_ST_SZ_DW(fte_match_param)] = { 0 };
@@ -13431,6 +13541,13 @@ flow_dv_translate(struct rte_eth_dev *dev,
 			flow_dv_translate_item_aso_ct(dev, match_mask,
 						      match_value, items);
 			break;
+		case RTE_FLOW_ITEM_TYPE_FLEX:
+			flow_dv_translate_item_flex(dev, match_mask,
+						    match_value, items,
+						    dev_flow, tunnel != 0);
+			last_item = tunnel ? MLX5_FLOW_ITEM_INNER_FLEX :
+				    MLX5_FLOW_ITEM_OUTER_FLEX;
+			break;
 		default:
 			break;
 		}
@@ -14310,6 +14427,12 @@ flow_dv_destroy(struct rte_eth_dev *dev, struct rte_flow *flow)
 		if (!dev_handle)
 			return;
 		flow->dev_handles = dev_handle->next.next;
+		while (dev_handle->flex_item) {
+			int index = rte_bsf32(dev_handle->flex_item);
+
+			mlx5_flex_release_index(dev, index);
+			dev_handle->flex_item &= ~RTE_BIT32(index);
+		}
 		if (dev_handle->dvh.matcher)
 			flow_dv_matcher_release(dev, dev_handle);
 		if (dev_handle->dvh.rix_sample)
@@ -18071,5 +18194,6 @@ const struct mlx5_flow_driver_ops mlx5_flow_dv_drv_ops = {
 	.item_create = flow_dv_item_create,
 	.item_release = flow_dv_item_release,
 };
+
 #endif /* HAVE_IBV_FLOW_DV_SUPPORT */
 
