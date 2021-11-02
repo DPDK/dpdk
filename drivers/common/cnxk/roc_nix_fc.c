@@ -157,7 +157,7 @@ nix_fc_cq_config_set(struct roc_nix *roc_nix, struct roc_nix_fc_cfg *fc_cfg)
 int
 roc_nix_fc_config_get(struct roc_nix *roc_nix, struct roc_nix_fc_cfg *fc_cfg)
 {
-	if (roc_nix_is_vf_or_sdp(roc_nix))
+	if (roc_nix_is_vf_or_sdp(roc_nix) && !roc_nix_is_lbk(roc_nix))
 		return 0;
 
 	if (fc_cfg->cq_cfg_valid)
@@ -169,7 +169,7 @@ roc_nix_fc_config_get(struct roc_nix *roc_nix, struct roc_nix_fc_cfg *fc_cfg)
 int
 roc_nix_fc_config_set(struct roc_nix *roc_nix, struct roc_nix_fc_cfg *fc_cfg)
 {
-	if (roc_nix_is_vf_or_sdp(roc_nix))
+	if (roc_nix_is_vf_or_sdp(roc_nix) && !roc_nix_is_lbk(roc_nix))
 		return 0;
 
 	if (fc_cfg->cq_cfg_valid)
@@ -188,8 +188,17 @@ roc_nix_fc_mode_get(struct roc_nix *roc_nix)
 	enum roc_nix_fc_mode mode;
 	int rc = -ENOSPC;
 
-	if (roc_nix_is_lbk(roc_nix))
-		return ROC_NIX_FC_NONE;
+	/* Flow control on LBK link is always available */
+	if (roc_nix_is_lbk(roc_nix)) {
+		if (nix->tx_pause && nix->rx_pause)
+			return ROC_NIX_FC_FULL;
+		else if (nix->rx_pause)
+			return ROC_NIX_FC_RX;
+		else if (nix->tx_pause)
+			return ROC_NIX_FC_TX;
+		else
+			return ROC_NIX_FC_NONE;
+	}
 
 	req = mbox_alloc_msg_cgx_cfg_pause_frm(mbox);
 	if (req == NULL)
@@ -226,11 +235,15 @@ roc_nix_fc_mode_set(struct roc_nix *roc_nix, enum roc_nix_fc_mode mode)
 	uint8_t tx_pause, rx_pause;
 	int rc = -ENOSPC;
 
-	if (roc_nix_is_lbk(roc_nix))
-		return NIX_ERR_OP_NOTSUP;
-
 	rx_pause = (mode == ROC_NIX_FC_FULL) || (mode == ROC_NIX_FC_RX);
 	tx_pause = (mode == ROC_NIX_FC_FULL) || (mode == ROC_NIX_FC_TX);
+
+	/* Nothing much to do for LBK links */
+	if (roc_nix_is_lbk(roc_nix)) {
+		nix->rx_pause = rx_pause;
+		nix->tx_pause = tx_pause;
+		return 0;
+	}
 
 	req = mbox_alloc_msg_cgx_cfg_pause_frm(mbox);
 	if (req == NULL)

@@ -414,6 +414,12 @@ skip_dev_init:
 	nix->reta_sz = reta_sz;
 	nix->mtu = ROC_NIX_DEFAULT_HW_FRS;
 
+	/* Always start with full FC for LBK */
+	if (nix->lbk_link) {
+		nix->rx_pause = 1;
+		nix->tx_pause = 1;
+	}
+
 	/* Register error and ras interrupts */
 	rc = nix_register_irqs(nix);
 	if (rc)
