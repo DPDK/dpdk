@@ -5,9 +5,13 @@
 #ifndef _CNXK_BPHY_H_
 #define _CNXK_BPHY_H_
 
+#include <rte_dev.h>
 #include <rte_memcpy.h>
+#include <rte_rawdev.h>
 
-#include "cnxk_bphy_irq.h"
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 enum cnxk_bphy_cgx_msg_type {
 	CNXK_BPHY_CGX_MSG_TYPE_GET_LINKINFO,
@@ -107,8 +111,14 @@ struct cnxk_bphy_cgx_msg {
 	void *data;
 };
 
-#define cnxk_bphy_mem	    bphy_mem
 #define CNXK_BPHY_DEF_QUEUE 0
+
+typedef void (*cnxk_bphy_intr_handler_t)(int irq_num, void *isr_data);
+
+struct cnxk_bphy_mem {
+	struct rte_mem_resource res0;
+	struct rte_mem_resource res2;
+};
 
 enum cnxk_bphy_irq_msg_type {
 	CNXK_BPHY_IRQ_MSG_TYPE_INIT,
@@ -382,5 +392,9 @@ rte_pmd_bphy_cgx_set_fec(uint16_t dev_id, uint16_t lmac,
 
 	return __rte_pmd_bphy_enq_deq(dev_id, lmac, &msg, NULL, 0);
 }
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* _CNXK_BPHY_H_ */
