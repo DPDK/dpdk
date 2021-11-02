@@ -13,7 +13,7 @@
 #include "hns3_mp.h"
 
 /* local data for primary or secondary process. */
-struct hns3_process_local_data process_data;
+static struct hns3_process_local_data process_data;
 
 /*
  * Initialize IPC message.
@@ -227,7 +227,8 @@ hns3_mp_req_start_tx(struct rte_eth_dev *dev)
 /*
  * Initialize by primary process.
  */
-int hns3_mp_init_primary(void)
+static int
+hns3_mp_init_primary(void)
 {
 	int ret;
 
@@ -244,20 +245,11 @@ int hns3_mp_init_primary(void)
 	return 0;
 }
 
-void hns3_mp_uninit(void)
-{
-	process_data.eth_dev_cnt--;
-
-	if (process_data.eth_dev_cnt == 0) {
-		rte_mp_action_unregister(HNS3_MP_NAME);
-		process_data.init_done = false;
-	}
-}
-
 /*
  * Initialize by secondary process.
  */
-int hns3_mp_init_secondary(void)
+static int
+hns3_mp_init_secondary(void)
 {
 	int ret;
 
@@ -265,10 +257,52 @@ int hns3_mp_init_secondary(void)
 		return 0;
 
 	ret = rte_mp_action_register(HNS3_MP_NAME, mp_secondary_handle);
-	if (ret)
+	if (ret && rte_errno != ENOTSUP)
 		return ret;
 
 	process_data.init_done = true;
 
 	return 0;
+}
+
+int
+hns3_mp_init(struct rte_eth_dev *dev)
+{
+	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	int ret;
+
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY) {
+		ret = hns3_mp_init_secondary();
+		if (ret) {
+			PMD_INIT_LOG(ERR, "Failed to init for secondary process, ret = %d",
+				     ret);
+			return ret;
+		}
+		__atomic_fetch_add(&hw->secondary_cnt, 1, __ATOMIC_RELAXED);
+	} else {
+		ret = hns3_mp_init_primary();
+		if (ret) {
+			PMD_INIT_LOG(ERR, "Failed to init for primary process, ret = %d",
+				     ret);
+			return ret;
+		}
+	}
+
+	process_data.eth_dev_cnt++;
+
+	return 0;
+}
+
+void hns3_mp_uninit(struct rte_eth_dev *dev)
+{
+	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		__atomic_fetch_sub(&hw->secondary_cnt, 1, __ATOMIC_RELAXED);
+
+	process_data.eth_dev_cnt--;
+	if (process_data.eth_dev_cnt == 0) {
+		rte_mp_action_unregister(HNS3_MP_NAME);
+		process_data.init_done = false;
+	}
 }

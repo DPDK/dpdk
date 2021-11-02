@@ -5851,8 +5851,7 @@ hns3_dev_close(struct rte_eth_dev *eth_dev)
 	int ret = 0;
 
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY) {
-		__atomic_fetch_sub(&hw->secondary_cnt, 1, __ATOMIC_RELAXED);
-		hns3_mp_uninit();
+		hns3_mp_uninit(eth_dev);
 		return 0;
 	}
 
@@ -5869,7 +5868,7 @@ hns3_dev_close(struct rte_eth_dev *eth_dev)
 	hns3_uninit_pf(eth_dev);
 	hns3_free_all_queues(eth_dev);
 	rte_free(hw->reset.wait_data);
-	hns3_mp_uninit();
+	hns3_mp_uninit(eth_dev);
 	hns3_warn(hw, "Close port %u finished", hw->data->port_id);
 
 	return ret;
@@ -7373,27 +7372,14 @@ hns3_dev_init(struct rte_eth_dev *eth_dev)
 	hns3_set_rxtx_function(eth_dev);
 	eth_dev->dev_ops = &hns3_eth_dev_ops;
 	eth_dev->rx_queue_count = hns3_rx_queue_count;
+	ret = hns3_mp_init(eth_dev);
+	if (ret)
+		goto err_mp_init;
+
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY) {
-		ret = hns3_mp_init_secondary();
-		if (ret) {
-			PMD_INIT_LOG(ERR, "Failed to init for secondary "
-				     "process, ret = %d", ret);
-			goto err_mp_init_secondary;
-		}
-		__atomic_fetch_add(&hw->secondary_cnt, 1, __ATOMIC_RELAXED);
-		process_data.eth_dev_cnt++;
 		hns3_tx_push_init(eth_dev);
 		return 0;
 	}
-
-	ret = hns3_mp_init_primary();
-	if (ret) {
-		PMD_INIT_LOG(ERR,
-			     "Failed to init for primary process, ret = %d",
-			     ret);
-		goto err_mp_init_primary;
-	}
-	process_data.eth_dev_cnt++;
 
 	hw->adapter_state = HNS3_NIC_UNINITIALIZED;
 	hns->is_vf = false;
@@ -7464,10 +7450,9 @@ err_init_pf:
 	rte_free(hw->reset.wait_data);
 
 err_init_reset:
-	hns3_mp_uninit();
+	hns3_mp_uninit(eth_dev);
 
-err_mp_init_primary:
-err_mp_init_secondary:
+err_mp_init:
 	eth_dev->dev_ops = NULL;
 	eth_dev->rx_pkt_burst = NULL;
 	eth_dev->rx_descriptor_status = NULL;
@@ -7486,8 +7471,7 @@ hns3_dev_uninit(struct rte_eth_dev *eth_dev)
 	PMD_INIT_FUNC_TRACE();
 
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY) {
-		__atomic_fetch_sub(&hw->secondary_cnt, 1, __ATOMIC_RELAXED);
-		hns3_mp_uninit();
+		hns3_mp_uninit(eth_dev);
 		return 0;
 	}
 
