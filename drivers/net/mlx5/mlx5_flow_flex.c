@@ -113,6 +113,847 @@ mlx5_flex_free(struct mlx5_priv *priv, struct mlx5_flex_item *item)
 	}
 }
 
+/*
+ * Calculate largest mask value for a given shift.
+ *
+ *   shift      mask
+ * ------- ---------------
+ *    0     b111100  0x3C
+ *    1     b111110  0x3E
+ *    2     b111111  0x3F
+ *    3     b011111  0x1F
+ *    4     b001111  0x0F
+ *    5     b000111  0x07
+ */
+static uint8_t
+mlx5_flex_hdr_len_mask(uint8_t shift,
+		       const struct mlx5_hca_flex_attr *attr)
+{
+	uint32_t base_mask;
+	int diff = shift - MLX5_PARSE_GRAPH_NODE_HDR_LEN_SHIFT_DWORD;
+
+	base_mask = mlx5_hca_parse_graph_node_base_hdr_len_mask(attr);
+	return diff == 0 ? base_mask :
+	       diff < 0 ? (base_mask << -diff) & base_mask : base_mask >> diff;
+}
+
+static int
+mlx5_flex_translate_length(struct mlx5_hca_flex_attr *attr,
+			   const struct rte_flow_item_flex_conf *conf,
+			   struct mlx5_flex_parser_devx *devx,
+			   struct rte_flow_error *error)
+{
+	const struct rte_flow_item_flex_field *field = &conf->next_header;
+	struct mlx5_devx_graph_node_attr *node = &devx->devx_conf;
+	uint32_t len_width, mask;
+
+	if (field->field_base % CHAR_BIT)
+		return rte_flow_error_set
+			(error, EINVAL, RTE_FLOW_ERROR_TYPE_ITEM, NULL,
+			 "not byte aligned header length field");
+	switch (field->field_mode) {
+	case FIELD_MODE_DUMMY:
+		return rte_flow_error_set
+			(error, EINVAL, RTE_FLOW_ERROR_TYPE_ITEM, NULL,
+			 "invalid header length field mode (DUMMY)");
+	case FIELD_MODE_FIXED:
+		if (!(attr->header_length_mode &
+		    RTE_BIT32(MLX5_GRAPH_NODE_LEN_FIXED)))
+			return rte_flow_error_set
+				(error, EINVAL, RTE_FLOW_ERROR_TYPE_ITEM, NULL,
+				 "unsupported header length field mode (FIXED)");
+		if (attr->header_length_mask_width < field->field_size)
+			return rte_flow_error_set
+				(error, EINVAL, RTE_FLOW_ERROR_TYPE_ITEM, NULL,
+				 "header length field width exceeds limit");
+		if (field->offset_shift < 0 ||
+		    field->offset_shift > attr->header_length_mask_width)
+			return rte_flow_error_set
+				(error, EINVAL, RTE_FLOW_ERROR_TYPE_ITEM, NULL,
+				 "invalid header length field shift (FIXED");
+		if (field->field_base < 0)
+			return rte_flow_error_set
+				(error, EINVAL, RTE_FLOW_ERROR_TYPE_ITEM, NULL,
+				 "negative header length field base (FIXED)");
+		node->header_length_mode = MLX5_GRAPH_NODE_LEN_FIXED;
+		break;
+	case FIELD_MODE_OFFSET:
+		if (!(attr->header_length_mode &
+		    RTE_BIT32(MLX5_GRAPH_NODE_LEN_FIELD)))
+			return rte_flow_error_set
+				(error, EINVAL, RTE_FLOW_ERROR_TYPE_ITEM, NULL,
+				 "unsupported header length field mode (OFFSET)");
+		node->header_length_mode = MLX5_GRAPH_NODE_LEN_FIELD;
+		if (field->offset_mask == 0 ||
+		    !rte_is_power_of_2(field->offset_mask + 1))
+			return rte_flow_error_set
+				(error, EINVAL, RTE_FLOW_ERROR_TYPE_ITEM, NULL,
+				 "invalid length field offset mask (OFFSET)");
+		len_width = rte_fls_u32(field->offset_mask);
+		if (len_width > attr->header_length_mask_width)
+			return rte_flow_error_set
+				(error, EINVAL, RTE_FLOW_ERROR_TYPE_ITEM, NULL,
+				 "length field offset mask too wide (OFFSET)");
+		mask = mlx5_flex_hdr_len_mask(field->offset_shift, attr);
+		if (mask < field->offset_mask)
+			return rte_flow_error_set
+				(error, EINVAL, RTE_FLOW_ERROR_TYPE_ITEM, NULL,
+				 "length field shift too big (OFFSET)");
+		node->header_length_field_mask = RTE_MIN(mask,
+							 field->offset_mask);
+		break;
+	case FIELD_MODE_BITMASK:
+		if (!(attr->header_length_mode &
+		    RTE_BIT32(MLX5_GRAPH_NODE_LEN_BITMASK)))
+			return rte_flow_error_set
+				(error, EINVAL, RTE_FLOW_ERROR_TYPE_ITEM, NULL,
+				 "unsupported header length field mode (BITMASK)");
+		if (attr->header_length_mask_width < field->field_size)
+			return rte_flow_error_set
+				(error, EINVAL, RTE_FLOW_ERROR_TYPE_ITEM, NULL,
+				 "header length field width exceeds limit");
+		node->header_length_mode = MLX5_GRAPH_NODE_LEN_BITMASK;
+		mask = mlx5_flex_hdr_len_mask(field->offset_shift, attr);
+		if (mask < field->offset_mask)
+			return rte_flow_error_set
+				(error, EINVAL, RTE_FLOW_ERROR_TYPE_ITEM, NULL,
+				 "length field shift too big (BITMASK)");
+		node->header_length_field_mask = RTE_MIN(mask,
+							 field->offset_mask);
+		break;
+	default:
+		return rte_flow_error_set
+			(error, EINVAL, RTE_FLOW_ERROR_TYPE_ITEM, NULL,
+			 "unknown header length field mode");
+	}
+	if (field->field_base / CHAR_BIT >= 0 &&
+	    field->field_base / CHAR_BIT > attr->max_base_header_length)
+		return rte_flow_error_set
+			(error, EINVAL, RTE_FLOW_ERROR_TYPE_ITEM, NULL,
+			 "header length field base exceeds limit");
+	node->header_length_base_value = field->field_base / CHAR_BIT;
+	if (field->field_mode == FIELD_MODE_OFFSET ||
+	    field->field_mode == FIELD_MODE_BITMASK) {
+		if (field->offset_shift > 15 || field->offset_shift < 0)
+			return rte_flow_error_set
+				(error, EINVAL, RTE_FLOW_ERROR_TYPE_ITEM, NULL,
+				 "header length field shift exceeeds limit");
+		node->header_length_field_shift	= field->offset_shift;
+		node->header_length_field_offset = field->offset_base;
+	}
+	return 0;
+}
+
+static int
+mlx5_flex_translate_next(struct mlx5_hca_flex_attr *attr,
+			 const struct rte_flow_item_flex_conf *conf,
+			 struct mlx5_flex_parser_devx *devx,
+			 struct rte_flow_error *error)
+{
+	const struct rte_flow_item_flex_field *field = &conf->next_protocol;
+	struct mlx5_devx_graph_node_attr *node = &devx->devx_conf;
+
+	switch (field->field_mode) {
+	case FIELD_MODE_DUMMY:
+		if (conf->nb_outputs)
+			return rte_flow_error_set
+				(error, EINVAL, RTE_FLOW_ERROR_TYPE_ITEM, NULL,
+				 "next protocol field is required (DUMMY)");
+		return 0;
+	case FIELD_MODE_FIXED:
+		break;
+	case FIELD_MODE_OFFSET:
+		return rte_flow_error_set
+			(error, EINVAL, RTE_FLOW_ERROR_TYPE_ITEM, NULL,
+			 "unsupported next protocol field mode (OFFSET)");
+		break;
+	case FIELD_MODE_BITMASK:
+		return rte_flow_error_set
+			(error, EINVAL, RTE_FLOW_ERROR_TYPE_ITEM, NULL,
+			 "unsupported next protocol field mode (BITMASK)");
+	default:
+		return rte_flow_error_set
+			(error, EINVAL,
+			 RTE_FLOW_ERROR_TYPE_ITEM, NULL,
+			 "unknown next protocol field mode");
+	}
+	MLX5_ASSERT(field->field_mode == FIELD_MODE_FIXED);
+	if (!conf->nb_outputs)
+		return rte_flow_error_set
+			(error, EINVAL, RTE_FLOW_ERROR_TYPE_ITEM, NULL,
+			 "out link(s) is required if next field present");
+	if (attr->max_next_header_offset < field->field_base)
+		return rte_flow_error_set
+			(error, EINVAL, RTE_FLOW_ERROR_TYPE_ITEM, NULL,
+			 "next protocol field base exceeds limit");
+	if (field->offset_shift)
+		return rte_flow_error_set
+			(error, EINVAL, RTE_FLOW_ERROR_TYPE_ITEM, NULL,
+			 "unsupported next protocol field shift");
+	node->next_header_field_offset = field->field_base;
+	node->next_header_field_size = field->field_size;
+	return 0;
+}
+
+/* Helper structure to handle field bit intervals. */
+struct mlx5_flex_field_cover {
+	uint16_t num;
+	int32_t start[MLX5_FLEX_ITEM_MAPPING_NUM];
+	int32_t end[MLX5_FLEX_ITEM_MAPPING_NUM];
+	uint8_t mapped[MLX5_FLEX_ITEM_MAPPING_NUM / CHAR_BIT + 1];
+};
+
+static void
+mlx5_flex_insert_field(struct mlx5_flex_field_cover *cover,
+		       uint16_t num, int32_t start, int32_t end)
+{
+	MLX5_ASSERT(num < MLX5_FLEX_ITEM_MAPPING_NUM);
+	MLX5_ASSERT(num <= cover->num);
+	if (num < cover->num) {
+		memmove(&cover->start[num + 1],	&cover->start[num],
+			(cover->num - num) * sizeof(int32_t));
+		memmove(&cover->end[num + 1],	&cover->end[num],
+			(cover->num - num) * sizeof(int32_t));
+	}
+	cover->start[num] = start;
+	cover->end[num] = end;
+	cover->num++;
+}
+
+static void
+mlx5_flex_merge_field(struct mlx5_flex_field_cover *cover, uint16_t num)
+{
+	uint32_t i, del = 0;
+	int32_t end;
+
+	MLX5_ASSERT(num < MLX5_FLEX_ITEM_MAPPING_NUM);
+	MLX5_ASSERT(num < (cover->num - 1));
+	end = cover->end[num];
+	for (i = num + 1; i < cover->num; i++) {
+		if (end < cover->start[i])
+			break;
+		del++;
+		if (end <= cover->end[i]) {
+			cover->end[num] = cover->end[i];
+			break;
+		}
+	}
+	if (del) {
+		MLX5_ASSERT(del < (cover->num - 1u - num));
+		cover->num -= del;
+		MLX5_ASSERT(cover->num > num);
+		if ((cover->num - num) > 1) {
+			memmove(&cover->start[num + 1],
+				&cover->start[num + 1 + del],
+				(cover->num - num - 1) * sizeof(int32_t));
+			memmove(&cover->end[num + 1],
+				&cover->end[num + 1 + del],
+				(cover->num - num - 1) * sizeof(int32_t));
+		}
+	}
+}
+
+/*
+ * Validate the sample field and update interval array
+ * if parameters match with the 'match" field.
+ * Returns:
+ *    < 0  - error
+ *    == 0 - no match, interval array not updated
+ *    > 0  - match, interval array updated
+ */
+static int
+mlx5_flex_cover_sample(struct mlx5_flex_field_cover *cover,
+		       struct rte_flow_item_flex_field *field,
+		       struct rte_flow_item_flex_field *match,
+		       struct mlx5_hca_flex_attr *attr,
+		       struct rte_flow_error *error)
+{
+	int32_t start, end;
+	uint32_t i;
+
+	switch (field->field_mode) {
+	case FIELD_MODE_DUMMY:
+		return 0;
+	case FIELD_MODE_FIXED:
+		if (!(attr->sample_offset_mode &
+		    RTE_BIT32(MLX5_GRAPH_SAMPLE_OFFSET_FIXED)))
+			return rte_flow_error_set
+				(error, EINVAL,
+				 RTE_FLOW_ERROR_TYPE_ITEM, NULL,
+				 "unsupported sample field mode (FIXED)");
+		if (field->offset_shift)
+			return rte_flow_error_set
+				(error, EINVAL,
+				 RTE_FLOW_ERROR_TYPE_ITEM, NULL,
+				 "invalid sample field shift (FIXED");
+		if (field->field_base < 0)
+			return rte_flow_error_set
+				(error, EINVAL, RTE_FLOW_ERROR_TYPE_ITEM, NULL,
+				 "invalid sample field base (FIXED)");
+		if (field->field_base / CHAR_BIT > attr->max_sample_base_offset)
+			return rte_flow_error_set
+				(error, EINVAL, RTE_FLOW_ERROR_TYPE_ITEM, NULL,
+				 "sample field base exceeds limit (FIXED)");
+		break;
+	case FIELD_MODE_OFFSET:
+		if (!(attr->sample_offset_mode &
+		    RTE_BIT32(MLX5_GRAPH_SAMPLE_OFFSET_FIELD)))
+			return rte_flow_error_set
+				(error, EINVAL,
+				 RTE_FLOW_ERROR_TYPE_ITEM, NULL,
+				 "unsupported sample field mode (OFFSET)");
+		if (field->field_base / CHAR_BIT >= 0 &&
+		    field->field_base / CHAR_BIT > attr->max_sample_base_offset)
+			return rte_flow_error_set
+				(error, EINVAL, RTE_FLOW_ERROR_TYPE_ITEM, NULL,
+				"sample field base exceeds limit");
+		break;
+	case FIELD_MODE_BITMASK:
+		if (!(attr->sample_offset_mode &
+		    RTE_BIT32(MLX5_GRAPH_SAMPLE_OFFSET_BITMASK)))
+			return rte_flow_error_set
+				(error, EINVAL,
+				 RTE_FLOW_ERROR_TYPE_ITEM, NULL,
+				 "unsupported sample field mode (BITMASK)");
+		if (field->field_base / CHAR_BIT >= 0 &&
+		    field->field_base / CHAR_BIT > attr->max_sample_base_offset)
+			return rte_flow_error_set
+				(error, EINVAL, RTE_FLOW_ERROR_TYPE_ITEM, NULL,
+				"sample field base exceeds limit");
+		break;
+	default:
+		return rte_flow_error_set
+			(error, EINVAL,
+			 RTE_FLOW_ERROR_TYPE_ITEM, NULL,
+			 "unknown data sample field mode");
+	}
+	if (!match) {
+		if (!field->field_size)
+			return rte_flow_error_set
+				(error, EINVAL,
+				RTE_FLOW_ERROR_TYPE_ITEM, NULL,
+				"zero sample field width");
+		if (field->field_id)
+			DRV_LOG(DEBUG, "sample field id hint ignored");
+	} else {
+		if (field->field_mode != match->field_mode ||
+		    field->offset_base | match->offset_base ||
+		    field->offset_mask | match->offset_mask ||
+		    field->offset_shift | match->offset_shift)
+			return 0;
+	}
+	start = field->field_base;
+	end = start + field->field_size;
+	/* Add the new or similar field to interval array. */
+	if (!cover->num) {
+		cover->start[cover->num] = start;
+		cover->end[cover->num] = end;
+		cover->num = 1;
+		return 1;
+	}
+	for (i = 0; i < cover->num; i++) {
+		if (start > cover->end[i]) {
+			if (i >= (cover->num - 1u)) {
+				mlx5_flex_insert_field(cover, cover->num,
+						       start, end);
+				break;
+			}
+			continue;
+		}
+		if (end < cover->start[i]) {
+			mlx5_flex_insert_field(cover, i, start, end);
+			break;
+		}
+		if (start < cover->start[i])
+			cover->start[i] = start;
+		if (end > cover->end[i]) {
+			cover->end[i] = end;
+			if (i < (cover->num - 1u))
+				mlx5_flex_merge_field(cover, i);
+		}
+		break;
+	}
+	return 1;
+}
+
+static void
+mlx5_flex_config_sample(struct mlx5_devx_match_sample_attr *na,
+			struct rte_flow_item_flex_field *field,
+			enum rte_flow_item_flex_tunnel_mode tunnel_mode)
+{
+	memset(na, 0, sizeof(struct mlx5_devx_match_sample_attr));
+	na->flow_match_sample_en = 1;
+	switch (field->field_mode) {
+	case FIELD_MODE_FIXED:
+		na->flow_match_sample_offset_mode =
+			MLX5_GRAPH_SAMPLE_OFFSET_FIXED;
+		break;
+	case FIELD_MODE_OFFSET:
+		na->flow_match_sample_offset_mode =
+			MLX5_GRAPH_SAMPLE_OFFSET_FIELD;
+		na->flow_match_sample_field_offset = field->offset_base;
+		na->flow_match_sample_field_offset_mask = field->offset_mask;
+		na->flow_match_sample_field_offset_shift = field->offset_shift;
+		break;
+	case FIELD_MODE_BITMASK:
+		na->flow_match_sample_offset_mode =
+			MLX5_GRAPH_SAMPLE_OFFSET_BITMASK;
+		na->flow_match_sample_field_offset = field->offset_base;
+		na->flow_match_sample_field_offset_mask = field->offset_mask;
+		na->flow_match_sample_field_offset_shift = field->offset_shift;
+		break;
+	default:
+		MLX5_ASSERT(false);
+		break;
+	}
+	switch (tunnel_mode) {
+	case FLEX_TUNNEL_MODE_SINGLE:
+		/* Fallthrough */
+	case FLEX_TUNNEL_MODE_TUNNEL:
+		na->flow_match_sample_tunnel_mode =
+			MLX5_GRAPH_SAMPLE_TUNNEL_FIRST;
+		break;
+	case FLEX_TUNNEL_MODE_MULTI:
+		/* Fallthrough */
+	case FLEX_TUNNEL_MODE_OUTER:
+		na->flow_match_sample_tunnel_mode =
+			MLX5_GRAPH_SAMPLE_TUNNEL_OUTER;
+		break;
+	case FLEX_TUNNEL_MODE_INNER:
+		na->flow_match_sample_tunnel_mode =
+			MLX5_GRAPH_SAMPLE_TUNNEL_INNER;
+		break;
+	default:
+		MLX5_ASSERT(false);
+		break;
+	}
+}
+
+/* Map specified field to set/subset of allocated sample registers. */
+static int
+mlx5_flex_map_sample(struct rte_flow_item_flex_field *field,
+		     struct mlx5_flex_parser_devx *parser,
+		     struct mlx5_flex_item *item,
+		     struct rte_flow_error *error)
+{
+	struct mlx5_devx_match_sample_attr node;
+	int32_t start = field->field_base;
+	int32_t end = start + field->field_size;
+	struct mlx5_flex_pattern_field *trans;
+	uint32_t i, done_bits = 0;
+
+	if (field->field_mode == FIELD_MODE_DUMMY) {
+		done_bits = field->field_size;
+		while (done_bits) {
+			uint32_t part = RTE_MIN(done_bits,
+						sizeof(uint32_t) * CHAR_BIT);
+			if (item->mapnum >= MLX5_FLEX_ITEM_MAPPING_NUM)
+				return rte_flow_error_set
+					(error,
+					 EINVAL, RTE_FLOW_ERROR_TYPE_ITEM, NULL,
+					 "too many flex item pattern translations");
+			trans = &item->map[item->mapnum];
+			trans->reg_id = MLX5_INVALID_SAMPLE_REG_ID;
+			trans->shift = 0;
+			trans->width = part;
+			item->mapnum++;
+			done_bits -= part;
+		}
+		return 0;
+	}
+	mlx5_flex_config_sample(&node, field, item->tunnel_mode);
+	for (i = 0; i < parser->num_samples; i++) {
+		struct mlx5_devx_match_sample_attr *sample =
+			&parser->devx_conf.sample[i];
+		int32_t reg_start, reg_end;
+		int32_t cov_start, cov_end;
+
+		MLX5_ASSERT(sample->flow_match_sample_en);
+		if (!sample->flow_match_sample_en)
+			break;
+		node.flow_match_sample_field_base_offset =
+			sample->flow_match_sample_field_base_offset;
+		if (memcmp(&node, sample, sizeof(node)))
+			continue;
+		reg_start = (int8_t)sample->flow_match_sample_field_base_offset;
+		reg_start *= CHAR_BIT;
+		reg_end = reg_start + 32;
+		if (end <= reg_start || start >= reg_end)
+			continue;
+		cov_start = RTE_MAX(reg_start, start);
+		cov_end = RTE_MIN(reg_end, end);
+		MLX5_ASSERT(cov_end > cov_start);
+		done_bits += cov_end - cov_start;
+		if (item->mapnum >= MLX5_FLEX_ITEM_MAPPING_NUM)
+			return rte_flow_error_set
+				(error, EINVAL, RTE_FLOW_ERROR_TYPE_ITEM, NULL,
+				 "too many flex item pattern translations");
+		trans = &item->map[item->mapnum];
+		item->mapnum++;
+		trans->reg_id = i;
+		trans->shift = cov_start - reg_start;
+		trans->width = cov_end - cov_start;
+	}
+	if (done_bits != field->field_size) {
+		MLX5_ASSERT(false);
+		return rte_flow_error_set
+			(error, EINVAL, RTE_FLOW_ERROR_TYPE_ITEM, NULL,
+			 "failed to map field to sample register");
+	}
+	return 0;
+}
+
+/* Allocate sample registers for the specified field type and interval array. */
+static int
+mlx5_flex_alloc_sample(struct mlx5_flex_field_cover *cover,
+		       struct mlx5_flex_parser_devx *parser,
+		       struct mlx5_flex_item *item,
+		       struct rte_flow_item_flex_field *field,
+		       struct mlx5_hca_flex_attr *attr,
+		       struct rte_flow_error *error)
+{
+	struct mlx5_devx_match_sample_attr node;
+	uint32_t idx = 0;
+
+	mlx5_flex_config_sample(&node, field, item->tunnel_mode);
+	while (idx < cover->num) {
+		int32_t start, end;
+
+		/*
+		 * Sample base offsets are in bytes, should be aligned
+		 * to 32-bit as required by firmware for samples.
+		 */
+		start = RTE_ALIGN_FLOOR(cover->start[idx],
+					sizeof(uint32_t) * CHAR_BIT);
+		node.flow_match_sample_field_base_offset =
+						(start / CHAR_BIT) & 0xFF;
+		/* Allocate sample register. */
+		if (parser->num_samples >= MLX5_GRAPH_NODE_SAMPLE_NUM ||
+		    parser->num_samples >= attr->max_num_sample ||
+		    parser->num_samples >= attr->max_num_prog_sample)
+			return rte_flow_error_set
+				(error, EINVAL,
+				 RTE_FLOW_ERROR_TYPE_ITEM, NULL,
+				 "no sample registers to handle all flex item fields");
+		parser->devx_conf.sample[parser->num_samples] = node;
+		parser->num_samples++;
+		/* Remove or update covered intervals. */
+		end = start + 32;
+		while (idx < cover->num) {
+			if (end >= cover->end[idx]) {
+				idx++;
+				continue;
+			}
+			if (end > cover->start[idx])
+				cover->start[idx] = end;
+			break;
+		}
+	}
+	return 0;
+}
+
+static int
+mlx5_flex_translate_sample(struct mlx5_hca_flex_attr *attr,
+			   const struct rte_flow_item_flex_conf *conf,
+			   struct mlx5_flex_parser_devx *parser,
+			   struct mlx5_flex_item *item,
+			   struct rte_flow_error *error)
+{
+	struct mlx5_flex_field_cover cover;
+	uint32_t i, j;
+	int ret;
+
+	switch (conf->tunnel) {
+	case FLEX_TUNNEL_MODE_SINGLE:
+		/* Fallthrough */
+	case FLEX_TUNNEL_MODE_OUTER:
+		/* Fallthrough */
+	case FLEX_TUNNEL_MODE_INNER:
+		/* Fallthrough */
+	case FLEX_TUNNEL_MODE_MULTI:
+		/* Fallthrough */
+	case FLEX_TUNNEL_MODE_TUNNEL:
+		break;
+	default:
+		return rte_flow_error_set
+			(error, EINVAL, RTE_FLOW_ERROR_TYPE_ITEM, NULL,
+			 "unrecognized tunnel mode");
+	}
+	item->tunnel_mode = conf->tunnel;
+	if (conf->nb_samples > MLX5_FLEX_ITEM_MAPPING_NUM)
+		return rte_flow_error_set
+			(error, EINVAL, RTE_FLOW_ERROR_TYPE_ITEM, NULL,
+			 "sample field number exceeds limit");
+	/*
+	 * The application can specify fields smaller or bigger than 32 bits
+	 * covered with single sample register and it can specify field
+	 * offsets in any order.
+	 *
+	 * Gather all similar fields together, build array of bit intervals
+	 * in asсending order and try to cover with the smallest set of sample
+	 * registers.
+	 */
+	memset(&cover, 0, sizeof(cover));
+	for (i = 0; i < conf->nb_samples; i++) {
+		struct rte_flow_item_flex_field *fl = conf->sample_data + i;
+
+		/* Check whether field was covered in the previous iteration. */
+		if (cover.mapped[i / CHAR_BIT] & (1u << (i % CHAR_BIT)))
+			continue;
+		if (fl->field_mode == FIELD_MODE_DUMMY)
+			continue;
+		/* Build an interval array for the field and similar ones */
+		cover.num = 0;
+		/* Add the first field to array unconditionally. */
+		ret = mlx5_flex_cover_sample(&cover, fl, NULL, attr, error);
+		if (ret < 0)
+			return ret;
+		MLX5_ASSERT(ret > 0);
+		cover.mapped[i / CHAR_BIT] |= 1u << (i % CHAR_BIT);
+		for (j = i + 1; j < conf->nb_samples; j++) {
+			struct rte_flow_item_flex_field *ft;
+
+			/* Add field to array if its type matches. */
+			ft = conf->sample_data + j;
+			ret = mlx5_flex_cover_sample(&cover, ft, fl,
+						     attr, error);
+			if (ret < 0)
+				return ret;
+			if (!ret)
+				continue;
+			cover.mapped[j / CHAR_BIT] |= 1u << (j % CHAR_BIT);
+		}
+		/* Allocate sample registers to cover array of intervals. */
+		ret = mlx5_flex_alloc_sample(&cover, parser, item,
+					     fl, attr, error);
+		if (ret)
+			return ret;
+	}
+	/* Build the item pattern translating data on flow creation. */
+	item->mapnum = 0;
+	memset(&item->map, 0, sizeof(item->map));
+	for (i = 0; i < conf->nb_samples; i++) {
+		struct rte_flow_item_flex_field *fl = conf->sample_data + i;
+
+		ret = mlx5_flex_map_sample(fl, parser, item, error);
+		if (ret) {
+			MLX5_ASSERT(false);
+			return ret;
+		}
+	}
+	if (conf->tunnel == FLEX_TUNNEL_MODE_MULTI) {
+		/*
+		 * In FLEX_TUNNEL_MODE_MULTI tunnel mode PMD creates 2 sets
+		 * of samples. The first set is for outer and the second set
+		 * for inner flex flow item. Outer and inner samples differ
+		 * only in tunnel_mode.
+		 */
+		if (parser->num_samples > MLX5_GRAPH_NODE_SAMPLE_NUM / 2)
+			return rte_flow_error_set
+				(error, EINVAL, RTE_FLOW_ERROR_TYPE_ITEM, NULL,
+				 "no sample registers for inner");
+		rte_memcpy(parser->devx_conf.sample + parser->num_samples,
+			   parser->devx_conf.sample,
+			   parser->num_samples *
+					sizeof(parser->devx_conf.sample[0]));
+		for (i = 0; i < parser->num_samples; i++) {
+			struct mlx5_devx_match_sample_attr *sm = i +
+				parser->devx_conf.sample + parser->num_samples;
+
+			sm->flow_match_sample_tunnel_mode =
+						MLX5_GRAPH_SAMPLE_TUNNEL_INNER;
+		}
+		parser->num_samples *= 2;
+	}
+	return 0;
+}
+
+static int
+mlx5_flex_arc_type(enum rte_flow_item_type type, int in)
+{
+	switch (type) {
+	case RTE_FLOW_ITEM_TYPE_ETH:
+		return  MLX5_GRAPH_ARC_NODE_MAC;
+	case RTE_FLOW_ITEM_TYPE_IPV4:
+		return in ? MLX5_GRAPH_ARC_NODE_IP : MLX5_GRAPH_ARC_NODE_IPV4;
+	case RTE_FLOW_ITEM_TYPE_IPV6:
+		return in ? MLX5_GRAPH_ARC_NODE_IP : MLX5_GRAPH_ARC_NODE_IPV6;
+	case RTE_FLOW_ITEM_TYPE_UDP:
+		return MLX5_GRAPH_ARC_NODE_UDP;
+	case RTE_FLOW_ITEM_TYPE_TCP:
+		return MLX5_GRAPH_ARC_NODE_TCP;
+	case RTE_FLOW_ITEM_TYPE_MPLS:
+		return MLX5_GRAPH_ARC_NODE_MPLS;
+	case RTE_FLOW_ITEM_TYPE_GRE:
+		return MLX5_GRAPH_ARC_NODE_GRE;
+	case RTE_FLOW_ITEM_TYPE_GENEVE:
+		return MLX5_GRAPH_ARC_NODE_GENEVE;
+	case RTE_FLOW_ITEM_TYPE_VXLAN_GPE:
+		return MLX5_GRAPH_ARC_NODE_VXLAN_GPE;
+	default:
+		return -EINVAL;
+	}
+}
+
+static int
+mlx5_flex_arc_in_eth(const struct rte_flow_item *item,
+		     struct rte_flow_error *error)
+{
+	const struct rte_flow_item_eth *spec = item->spec;
+	const struct rte_flow_item_eth *mask = item->mask;
+	struct rte_flow_item_eth eth = { .hdr.ether_type = RTE_BE16(0xFFFF) };
+
+	if (memcmp(mask, &eth, sizeof(struct rte_flow_item_eth))) {
+		return rte_flow_error_set
+			(error, EINVAL, RTE_FLOW_ERROR_TYPE_ITEM, item,
+			 "invalid eth item mask");
+	}
+	return rte_be_to_cpu_16(spec->hdr.ether_type);
+}
+
+static int
+mlx5_flex_arc_in_udp(const struct rte_flow_item *item,
+		     struct rte_flow_error *error)
+{
+	const struct rte_flow_item_udp *spec = item->spec;
+	const struct rte_flow_item_udp *mask = item->mask;
+	struct rte_flow_item_udp udp = { .hdr.dst_port = RTE_BE16(0xFFFF) };
+
+	if (memcmp(mask, &udp, sizeof(struct rte_flow_item_udp))) {
+		return rte_flow_error_set
+			(error, EINVAL, RTE_FLOW_ERROR_TYPE_ITEM, item,
+			 "invalid eth item mask");
+	}
+	return rte_be_to_cpu_16(spec->hdr.dst_port);
+}
+
+static int
+mlx5_flex_translate_arc_in(struct mlx5_hca_flex_attr *attr,
+			   const struct rte_flow_item_flex_conf *conf,
+			   struct mlx5_flex_parser_devx *devx,
+			   struct mlx5_flex_item *item,
+			   struct rte_flow_error *error)
+{
+	struct mlx5_devx_graph_node_attr *node = &devx->devx_conf;
+	uint32_t i;
+
+	RTE_SET_USED(item);
+	if (conf->nb_inputs > attr->max_num_arc_in)
+		return rte_flow_error_set
+			(error, EINVAL, RTE_FLOW_ERROR_TYPE_ITEM, NULL,
+			 "too many input links");
+	for (i = 0; i < conf->nb_inputs; i++) {
+		struct mlx5_devx_graph_arc_attr *arc = node->in + i;
+		struct rte_flow_item_flex_link *link = conf->input_link + i;
+		const struct rte_flow_item *rte_item = &link->item;
+		int arc_type;
+		int ret;
+
+		if (!rte_item->spec || !rte_item->mask || rte_item->last)
+			return rte_flow_error_set
+				(error, EINVAL, RTE_FLOW_ERROR_TYPE_ITEM, NULL,
+				 "invalid flex item IN arc format");
+		arc_type = mlx5_flex_arc_type(rte_item->type, true);
+		if (arc_type < 0 || !(attr->node_in & RTE_BIT32(arc_type)))
+			return rte_flow_error_set
+				(error, EINVAL, RTE_FLOW_ERROR_TYPE_ITEM, NULL,
+				 "unsupported flex item IN arc type");
+		arc->arc_parse_graph_node = arc_type;
+		arc->start_inner_tunnel = 0;
+		/*
+		 * Configure arc IN condition value. The value location depends
+		 * on protocol. Current FW version supports IP & UDP for IN
+		 * arcs only, and locations for these protocols are defined.
+		 * Add more protocols when available.
+		 */
+		switch (rte_item->type) {
+		case RTE_FLOW_ITEM_TYPE_ETH:
+			ret = mlx5_flex_arc_in_eth(rte_item, error);
+			break;
+		case RTE_FLOW_ITEM_TYPE_UDP:
+			ret = mlx5_flex_arc_in_udp(rte_item, error);
+			break;
+		default:
+			MLX5_ASSERT(false);
+			return rte_flow_error_set
+				(error, EINVAL, RTE_FLOW_ERROR_TYPE_ITEM, NULL,
+				 "unsupported flex item IN arc type");
+		}
+		if (ret < 0)
+			return ret;
+		arc->compare_condition_value = (uint16_t)ret;
+	}
+	return 0;
+}
+
+static int
+mlx5_flex_translate_arc_out(struct mlx5_hca_flex_attr *attr,
+			    const struct rte_flow_item_flex_conf *conf,
+			    struct mlx5_flex_parser_devx *devx,
+			    struct mlx5_flex_item *item,
+			    struct rte_flow_error *error)
+{
+	struct mlx5_devx_graph_node_attr *node = &devx->devx_conf;
+	bool is_tunnel = conf->tunnel == FLEX_TUNNEL_MODE_TUNNEL;
+	uint32_t i;
+
+	RTE_SET_USED(item);
+	if (conf->nb_outputs > attr->max_num_arc_out)
+		return rte_flow_error_set
+			(error, EINVAL, RTE_FLOW_ERROR_TYPE_ITEM, NULL,
+			 "too many output links");
+	for (i = 0; i < conf->nb_outputs; i++) {
+		struct mlx5_devx_graph_arc_attr *arc = node->out + i;
+		struct rte_flow_item_flex_link *link = conf->output_link + i;
+		const struct rte_flow_item *rte_item = &link->item;
+		int arc_type;
+
+		if (rte_item->spec || rte_item->mask || rte_item->last)
+			return rte_flow_error_set
+				(error, EINVAL, RTE_FLOW_ERROR_TYPE_ITEM, NULL,
+				 "flex node: invalid OUT arc format");
+		arc_type = mlx5_flex_arc_type(rte_item->type, false);
+		if (arc_type < 0 || !(attr->node_out & RTE_BIT32(arc_type)))
+			return rte_flow_error_set
+				(error, EINVAL, RTE_FLOW_ERROR_TYPE_ITEM, NULL,
+				 "unsupported flex item OUT arc type");
+		arc->arc_parse_graph_node = arc_type;
+		arc->start_inner_tunnel = !!is_tunnel;
+		arc->compare_condition_value = link->next;
+	}
+	return 0;
+}
+
+/* Translate RTE flex item API configuration into flaex parser settings. */
+static int
+mlx5_flex_translate_conf(struct rte_eth_dev *dev,
+			 const struct rte_flow_item_flex_conf *conf,
+			 struct mlx5_flex_parser_devx *devx,
+			 struct mlx5_flex_item *item,
+			 struct rte_flow_error *error)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_hca_flex_attr *attr = &priv->config.hca_attr.flex;
+	int ret;
+
+	ret = mlx5_flex_translate_length(attr, conf, devx, error);
+	if (ret)
+		return ret;
+	ret = mlx5_flex_translate_next(attr, conf, devx, error);
+	if (ret)
+		return ret;
+	ret = mlx5_flex_translate_sample(attr, conf, devx, item, error);
+	if (ret)
+		return ret;
+	ret = mlx5_flex_translate_arc_in(attr, conf, devx, item, error);
+	if (ret)
+		return ret;
+	ret = mlx5_flex_translate_arc_out(attr, conf, devx, item, error);
+	if (ret)
+		return ret;
+	return 0;
+}
+
 /**
  * Create the flex item with specified configuration over the Ethernet device.
  *
@@ -145,6 +986,8 @@ flow_dv_item_create(struct rte_eth_dev *dev,
 				   "too many flex items created on the port");
 		return NULL;
 	}
+	if (mlx5_flex_translate_conf(dev, conf, &devx_config, flex, error))
+		goto error;
 	ent = mlx5_list_register(priv->sh->flex_parsers_dv, &devx_config);
 	if (!ent) {
 		rte_flow_error_set(error, ENOMEM,
@@ -153,7 +996,6 @@ flow_dv_item_create(struct rte_eth_dev *dev,
 		goto error;
 	}
 	flex->devx_fp = container_of(ent, struct mlx5_flex_parser_devx, entry);
-	RTE_SET_USED(conf);
 	/* Mark initialized flex item valid. */
 	__atomic_add_fetch(&flex->refcnt, 1, __ATOMIC_RELEASE);
 	return (struct rte_flow_item_flex_handle *)flex;

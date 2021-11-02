@@ -53,6 +53,9 @@
 /* Maximal number of flex items created on the port.*/
 #define MLX5_PORT_FLEX_ITEM_NUM			4
 
+/* Maximal number of field/field parts to map into sample registers .*/
+#define MLX5_FLEX_ITEM_MAPPING_NUM		32
+
 enum mlx5_ipool_index {
 #if defined(HAVE_IBV_FLOW_DV_SUPPORT) || !defined(HAVE_INFINIBAND_VERBS_H)
 	MLX5_IPOOL_DECAP_ENCAP = 0, /* Pool for encap/decap resource. */
@@ -1108,10 +1111,22 @@ struct mlx5_flex_parser_devx {
 	uint32_t sample_ids[MLX5_GRAPH_NODE_SAMPLE_NUM];
 };
 
+/* Pattern field dscriptor - how to translate flex pattern into samples. */
+__extension__
+struct mlx5_flex_pattern_field {
+	uint16_t width:6;
+	uint16_t shift:5;
+	uint16_t reg_id:5;
+};
+#define MLX5_INVALID_SAMPLE_REG_ID 0x1F
+
 /* Port flex item context. */
 struct mlx5_flex_item {
 	struct mlx5_flex_parser_devx *devx_fp; /* DevX flex parser object. */
 	uint32_t refcnt; /* Atomically accessed refcnt by flows. */
+	enum rte_flow_item_flex_tunnel_mode tunnel_mode; /* Tunnel mode. */
+	uint32_t mapnum; /* Number of pattern translation entries. */
+	struct mlx5_flex_pattern_field map[MLX5_FLEX_ITEM_MAPPING_NUM];
 };
 
 /*
