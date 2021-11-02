@@ -17932,6 +17932,108 @@ flow_dv_sync_domain(struct rte_eth_dev *dev, uint32_t domains, uint32_t flags)
 	return 0;
 }
 
+/**
+ * Discover the number of available flow priorities
+ * by trying to create a flow with the highest priority value
+ * for each possible number.
+ *
+ * @param[in] dev
+ *   Ethernet device.
+ * @param[in] vprio
+ *   List of possible number of available priorities.
+ * @param[in] vprio_n
+ *   Size of @p vprio array.
+ * @return
+ *   On success, number of available flow priorities.
+ *   On failure, a negative errno-style code and rte_errno is set.
+ */
+static int
+flow_dv_discover_priorities(struct rte_eth_dev *dev,
+			    const uint16_t *vprio, int vprio_n)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_indexed_pool *pool = priv->sh->ipool[MLX5_IPOOL_MLX5_FLOW];
+	struct rte_flow_item_eth eth;
+	struct rte_flow_item item = {
+		.type = RTE_FLOW_ITEM_TYPE_ETH,
+		.spec = &eth,
+		.mask = &eth,
+	};
+	struct mlx5_flow_dv_matcher matcher = {
+		.mask = {
+			.size = sizeof(matcher.mask.buf),
+		},
+	};
+	union mlx5_flow_tbl_key tbl_key;
+	struct mlx5_flow flow;
+	void *action;
+	struct rte_flow_error error;
+	uint8_t misc_mask;
+	int i, err, ret = -ENOTSUP;
+
+	/*
+	 * Prepare a flow with a catch-all pattern and a drop action.
+	 * Use drop queue, because shared drop action may be unavailable.
+	 */
+	action = priv->drop_queue.hrxq->action;
+	if (action == NULL) {
+		DRV_LOG(ERR, "Priority discovery requires a drop action");
+		rte_errno = ENOTSUP;
+		return -rte_errno;
+	}
+	memset(&flow, 0, sizeof(flow));
+	flow.handle = mlx5_ipool_zmalloc(pool, &flow.handle_idx);
+	if (flow.handle == NULL) {
+		DRV_LOG(ERR, "Cannot create flow handle");
+		rte_errno = ENOMEM;
+		return -rte_errno;
+	}
+	flow.ingress = true;
+	flow.dv.value.size = MLX5_ST_SZ_BYTES(fte_match_param);
+	flow.dv.actions[0] = action;
+	flow.dv.actions_n = 1;
+	memset(&eth, 0, sizeof(eth));
+	flow_dv_translate_item_eth(matcher.mask.buf, flow.dv.value.buf,
+				   &item, /* inner */ false, /* group */ 0);
+	matcher.crc = rte_raw_cksum(matcher.mask.buf, matcher.mask.size);
+	for (i = 0; i < vprio_n; i++) {
+		/* Configure the next proposed maximum priority. */
+		matcher.priority = vprio[i] - 1;
+		memset(&tbl_key, 0, sizeof(tbl_key));
+		err = flow_dv_matcher_register(dev, &matcher, &tbl_key, &flow,
+					       /* tunnel */ NULL,
+					       /* group */ 0,
+					       &error);
+		if (err != 0) {
+			/* This action is pure SW and must always succeed. */
+			DRV_LOG(ERR, "Cannot register matcher");
+			ret = -rte_errno;
+			break;
+		}
+		/* Try to apply the flow to HW. */
+		misc_mask = flow_dv_matcher_enable(flow.dv.value.buf);
+		__flow_dv_adjust_buf_size(&flow.dv.value.size, misc_mask);
+		err = mlx5_flow_os_create_flow
+				(flow.handle->dvh.matcher->matcher_object,
+				 (void *)&flow.dv.value, flow.dv.actions_n,
+				 flow.dv.actions, &flow.handle->drv_flow);
+		if (err == 0) {
+			claim_zero(mlx5_flow_os_destroy_flow
+						(flow.handle->drv_flow));
+			flow.handle->drv_flow = NULL;
+		}
+		claim_zero(flow_dv_matcher_release(dev, flow.handle));
+		if (err != 0)
+			break;
+		ret = vprio[i];
+	}
+	mlx5_ipool_free(pool, flow.handle_idx);
+	/* Set rte_errno if no expected priority value matched. */
+	if (ret < 0)
+		rte_errno = -ret;
+	return ret;
+}
+
 const struct mlx5_flow_driver_ops mlx5_flow_dv_drv_ops = {
 	.validate = flow_dv_validate,
 	.prepare = flow_dv_prepare,
@@ -17965,6 +18067,7 @@ const struct mlx5_flow_driver_ops mlx5_flow_dv_drv_ops = {
 	.action_update = flow_dv_action_update,
 	.action_query = flow_dv_action_query,
 	.sync_domain = flow_dv_sync_domain,
+	.discover_priorities = flow_dv_discover_priorities,
 };
 
 #endif /* HAVE_IBV_FLOW_DV_SUPPORT */

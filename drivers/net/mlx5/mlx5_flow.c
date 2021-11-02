@@ -9700,3 +9700,101 @@ mlx5_flow_expand_rss_adjust_node(const struct rte_flow_item *pattern,
 	}
 	return node;
 }
+
+/* Map of Verbs to Flow priority with 8 Verbs priorities. */
+static const uint32_t priority_map_3[][MLX5_PRIORITY_MAP_MAX] = {
+	{ 0, 1, 2 }, { 2, 3, 4 }, { 5, 6, 7 },
+};
+
+/* Map of Verbs to Flow priority with 16 Verbs priorities. */
+static const uint32_t priority_map_5[][MLX5_PRIORITY_MAP_MAX] = {
+	{ 0, 1, 2 }, { 3, 4, 5 }, { 6, 7, 8 },
+	{ 9, 10, 11 }, { 12, 13, 14 },
+};
+
+/**
+ * Discover the number of available flow priorities.
+ *
+ * @param dev
+ *   Ethernet device.
+ *
+ * @return
+ *   On success, number of available flow priorities.
+ *   On failure, a negative errno-style code and rte_errno is set.
+ */
+int
+mlx5_flow_discover_priorities(struct rte_eth_dev *dev)
+{
+	static const uint16_t vprio[] = {8, 16};
+	const struct mlx5_priv *priv = dev->data->dev_private;
+	const struct mlx5_flow_driver_ops *fops;
+	enum mlx5_flow_drv_type type;
+	int ret;
+
+	type = mlx5_flow_os_get_type();
+	if (type == MLX5_FLOW_TYPE_MAX) {
+		type = MLX5_FLOW_TYPE_VERBS;
+		if (priv->sh->devx && priv->config.dv_flow_en)
+			type = MLX5_FLOW_TYPE_DV;
+	}
+	fops = flow_get_drv_ops(type);
+	if (fops->discover_priorities == NULL) {
+		DRV_LOG(ERR, "Priority discovery not supported");
+		rte_errno = ENOTSUP;
+		return -rte_errno;
+	}
+	ret = fops->discover_priorities(dev, vprio, RTE_DIM(vprio));
+	if (ret < 0)
+		return ret;
+	switch (ret) {
+	case 8:
+		ret = RTE_DIM(priority_map_3);
+		break;
+	case 16:
+		ret = RTE_DIM(priority_map_5);
+		break;
+	default:
+		rte_errno = ENOTSUP;
+		DRV_LOG(ERR,
+			"port %u maximum priority: %d expected 8/16",
+			dev->data->port_id, ret);
+		return -rte_errno;
+	}
+	DRV_LOG(INFO, "port %u supported flow priorities:"
+		" 0-%d for ingress or egress root table,"
+		" 0-%d for non-root table or transfer root table.",
+		dev->data->port_id, ret - 2,
+		MLX5_NON_ROOT_FLOW_MAX_PRIO - 1);
+	return ret;
+}
+
+/**
+ * Adjust flow priority based on the highest layer and the request priority.
+ *
+ * @param[in] dev
+ *   Pointer to the Ethernet device structure.
+ * @param[in] priority
+ *   The rule base priority.
+ * @param[in] subpriority
+ *   The priority based on the items.
+ *
+ * @return
+ *   The new priority.
+ */
+uint32_t
+mlx5_flow_adjust_priority(struct rte_eth_dev *dev, int32_t priority,
+			  uint32_t subpriority)
+{
+	uint32_t res = 0;
+	struct mlx5_priv *priv = dev->data->dev_private;
+
+	switch (priv->sh->flow_max_priority) {
+	case RTE_DIM(priority_map_3):
+		res = priority_map_3[priority][subpriority];
+		break;
+	case RTE_DIM(priority_map_5):
+		res = priority_map_5[priority][subpriority];
+		break;
+	}
+	return  res;
+}

@@ -1232,6 +1232,9 @@ typedef int (*mlx5_flow_create_def_policy_t)
 			(struct rte_eth_dev *dev);
 typedef void (*mlx5_flow_destroy_def_policy_t)
 			(struct rte_eth_dev *dev);
+typedef int (*mlx5_flow_discover_priorities_t)
+			(struct rte_eth_dev *dev,
+			 const uint16_t *vprio, int vprio_n);
 
 struct mlx5_flow_driver_ops {
 	mlx5_flow_validate_t validate;
@@ -1266,6 +1269,7 @@ struct mlx5_flow_driver_ops {
 	mlx5_flow_action_update_t action_update;
 	mlx5_flow_action_query_t action_query;
 	mlx5_flow_sync_domain_t sync_domain;
+	mlx5_flow_discover_priorities_t discover_priorities;
 };
 
 /* mlx5_flow.c */
