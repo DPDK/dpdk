@@ -248,7 +248,7 @@ sfc_ef10_tx_qpush(struct sfc_ef10_txq *txq, unsigned int added,
 	rte_io_wmb();
 
 	*(volatile efsys_uint128_t *)txq->doorbell = oword.eo_u128[0];
-	txq->dp.dpq.tx_dbells++;
+	txq->dp.dpq.dbells++;
 }
 
 static unsigned int

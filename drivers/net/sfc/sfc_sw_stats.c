@@ -95,7 +95,7 @@ sfc_get_sw_stat_val_rx_dbells(struct sfc_adapter *sa, uint16_t qid,
 	SFC_ASSERT(values_count == 1);
 	rxq_info = sfc_rxq_info_by_ethdev_qid(sas, qid);
 	values[0] = rxq_info->state & SFC_RXQ_INITIALIZED ?
-		    rxq_info->dp->dpq.rx_dbells : 0;
+		    rxq_info->dp->dpq.dbells : 0;
 }
 
 static sfc_get_sw_stat_val_t sfc_get_sw_stat_val_tx_dbells;
@@ -110,7 +110,7 @@ sfc_get_sw_stat_val_tx_dbells(struct sfc_adapter *sa, uint16_t qid,
 	SFC_ASSERT(values_count == 1);
 	txq_info = sfc_txq_info_by_ethdev_qid(sas, qid);
 	values[0] = txq_info->state & SFC_TXQ_INITIALIZED ?
-		    txq_info->dp->dpq.tx_dbells : 0;
+		    txq_info->dp->dpq.dbells : 0;
 }
 
 /*

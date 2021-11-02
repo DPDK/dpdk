@@ -996,7 +996,7 @@ sfc_efx_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 
 		if (likely(pushed != txq->added)) {
 			efx_tx_qpush(txq->common, txq->added, pushed);
-			txq->dp.dpq.tx_dbells++;
+			txq->dp.dpq.dbells++;
 		}
 	}
 

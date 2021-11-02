@@ -221,7 +221,7 @@ sfc_ef10_essb_rx_qrefill(struct sfc_ef10_essb_rxq *rxq)
 	SFC_ASSERT(rxq->added != added);
 	rxq->added = added;
 	sfc_ef10_rx_qpush(rxq->doorbell, added, rxq_ptr_mask,
-			  &rxq->dp.dpq.rx_dbells);
+			  &rxq->dp.dpq.dbells);
 }
 
 static bool

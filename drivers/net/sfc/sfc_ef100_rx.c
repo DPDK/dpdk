@@ -124,7 +124,7 @@ sfc_ef100_rx_qpush(struct sfc_ef100_rxq *rxq, unsigned int added)
 	 * operations that follow it (i.e. doorbell write).
 	 */
 	rte_write32(dword.ed_u32[0], rxq->doorbell);
-	rxq->dp.dpq.rx_dbells++;
+	rxq->dp.dpq.dbells++;
 
 	sfc_ef100_rx_debug(rxq, "RxQ pushed doorbell at pidx %u (added=%u)",
 			   EFX_DWORD_FIELD(dword, ERF_GZ_RX_RING_PIDX),

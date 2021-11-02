@@ -139,7 +139,7 @@ sfc_efx_rx_qrefill(struct sfc_efx_rxq *rxq)
 	SFC_ASSERT(added != rxq->added);
 	rxq->added = added;
 	efx_rx_qpush(rxq->common, added, &rxq->pushed);
-	rxq->dp.dpq.rx_dbells++;
+	rxq->dp.dpq.dbells++;
 }
 
 static uint64_t
