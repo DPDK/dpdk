@@ -2995,6 +2995,37 @@ updated depend on the type of the ``action`` and different for every type.
 The indirect action specified data (e.g. counter) can be queried by
 ``rte_flow_action_handle_query()``.
 
+.. warning::
+
+   The following description of indirect action persistence
+   is an experimental behavior that may change without a prior notice.
+
+If ``RTE_ETH_DEV_CAPA_FLOW_SHARED_OBJECT_KEEP`` is not advertised,
+indirect actions cannot be created until the device is started for the first time
+and cannot be kept when the device is stopped.
+However, PMD also does not flush them automatically on stop,
+so the application must call ``rte_flow_action_handle_destroy()``
+before stopping the device to ensure no indirect actions remain.
+
+If ``RTE_ETH_DEV_CAPA_FLOW_SHARED_OBJECT_KEEP`` is advertised,
+this means that the PMD can keep at least some indirect actions
+across device stop and start.
+However, ``rte_eth_dev_configure()`` may fail if any indirect actions remain,
+so the application must destroy them before attempting a reconfiguration.
+Keeping may be only supported for certain kinds of indirect actions.
+A kind is a combination of an action type and a value of its transfer bit.
+For example: an indirect counter with the transfer bit reset.
+To test if a particular kind of indirect actions is kept,
+the application must try to create a valid indirect action of that kind
+when the device is not started (either before the first start of after a stop).
+If it fails with an error of type ``RTE_FLOW_ERROR_TYPE_STATE``,
+application must destroy all indirect actions of this kind
+before stopping the device.
+If it succeeds, all indirect actions of the same kind are kept
+when the device is stopped.
+Indirect actions of a kept kind that are created when the device is stopped,
+including the ones created for the test, will be kept after the device start.
+
 .. _table_rte_flow_action_handle:
 
 .. table:: INDIRECT
