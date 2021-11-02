@@ -242,6 +242,10 @@ cnxk_sso_rx_adapter_queue_add(
 				queue_conf->vector_sz,
 				queue_conf->vector_timeout_ns,
 				queue_conf->vector_mp);
+
+			if (cnxk_eth_dev->vec_drop_re_dis)
+				rc |= roc_nix_rx_drop_re_set(&cnxk_eth_dev->nix,
+							     false);
 		}
 		rox_nix_fc_npa_bp_cfg(&cnxk_eth_dev->nix,
 				      rxq_sp->qconf.mp->pool_id, true,
@@ -290,6 +294,10 @@ cnxk_sso_rx_adapter_queue_del(const struct rte_eventdev *event_dev,
 				      rxq_sp->qconf.mp->pool_id, false,
 				      dev->force_ena_bp);
 		cnxk_eth_dev->nb_rxq_sso--;
+
+		/* Enable drop_re if it was disabled earlier */
+		if (cnxk_eth_dev->vec_drop_re_dis && !cnxk_eth_dev->nb_rxq_sso)
+			rc |= roc_nix_rx_drop_re_set(&cnxk_eth_dev->nix, true);
 	}
 
 	if (rc < 0)

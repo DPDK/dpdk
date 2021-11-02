@@ -553,10 +553,15 @@ cn10k_nix_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 
 	dev = cnxk_eth_pmd_priv(eth_dev);
 
-	/* DROP_RE is not supported with inline IPSec for CN10K A0 */
-	if (roc_model_is_cn10ka_a0() || roc_model_is_cnf10ka_a0() ||
-	    roc_model_is_cnf10kb_a0())
+	/* DROP_RE is not supported with inline IPSec for CN10K A0 and
+	 * when vector mode is enabled.
+	 */
+	if ((roc_model_is_cn10ka_a0() || roc_model_is_cnf10ka_a0() ||
+	     roc_model_is_cnf10kb_a0()) &&
+	    !roc_env_is_asim()) {
 		dev->ipsecd_drop_re_dis = 1;
+		dev->vec_drop_re_dis = 1;
+	}
 
 	/* Register up msg callbacks for PTP information */
 	roc_nix_ptp_info_cb_register(&dev->nix, cn10k_nix_ptp_info_update_cb);
