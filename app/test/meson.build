@@ -144,6 +144,7 @@ test_sources = files(
         'test_table_tables.c',
         'test_tailq.c',
         'test_thash.c',
+        'test_thash_perf.c',
         'test_timer.c',
         'test_timer_perf.c',
         'test_timer_racecond.c',
@@ -322,6 +323,7 @@ perf_test_names = [
         'hash_readwrite_lf_perf_autotest',
         'trace_perf_autotest',
         'ipsec_perf_autotest',
+        'thash_perf_autotest',
 ]
 
 driver_test_names = [
