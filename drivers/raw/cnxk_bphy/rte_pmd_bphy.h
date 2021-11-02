@@ -5,7 +5,11 @@
 #ifndef _CNXK_BPHY_H_
 #define _CNXK_BPHY_H_
 
+#include <stdint.h>
+
+#include <rte_common.h>
 #include <rte_dev.h>
+#include <rte_malloc.h>
 #include <rte_memcpy.h>
 #include <rte_rawdev.h>
 
