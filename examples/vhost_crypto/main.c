@@ -363,7 +363,7 @@ destroy_device(int vid)
 	RTE_LOG(INFO, USER1, "Vhost Crypto Device %i Removed\n", vid);
 }
 
-static const struct vhost_device_ops virtio_crypto_device_ops = {
+static const struct rte_vhost_device_ops virtio_crypto_device_ops = {
 	.new_device =  new_device,
 	.destroy_device = destroy_device,
 };

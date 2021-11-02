@@ -529,6 +529,8 @@ ABI Changes
   to be transparent for both users (no changes in user app is required) and
   PMD developers (no changes in PMD is required).
 
+* vhost: rename ``struct vhost_device_ops`` to ``struct rte_vhost_device_ops``.
+
 * cryptodev: Made ``rte_cryptodev``, ``rte_cryptodev_data`` private
   structures internal to DPDK. ``rte_cryptodevs`` can't be accessed directly
   by user any more. While it is an ABI breakage, this change is intended

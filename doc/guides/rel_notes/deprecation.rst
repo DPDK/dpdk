@@ -104,9 +104,6 @@ Deprecation Notices
   is deprecated as ambiguous with respect to the embedded switch. The use of
   these attributes will become invalid starting from DPDK 22.11.
 
-* vhost: rename ``struct vhost_device_ops`` to ``struct rte_vhost_device_ops``
-  in DPDK v21.11.
-
 * cryptodev: Hide structures ``rte_cryptodev_sym_session`` and
   ``rte_cryptodev_asym_session`` to remove unnecessary indirection between
   session and the private data of session. An opaque pointer can be exposed

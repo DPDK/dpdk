@@ -153,7 +153,7 @@ destroy_device(int vid)
 	}
 }
 
-static const struct vhost_device_ops vdpa_sample_devops = {
+static const struct rte_vhost_device_ops vdpa_sample_devops = {
 	.new_device = new_device,
 	.destroy_device = destroy_device,
 };

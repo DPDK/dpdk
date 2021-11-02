@@ -753,7 +753,7 @@ new_connection(int vid)
 	return 0;
 }
 
-struct vhost_device_ops vhost_blk_device_ops = {
+struct rte_vhost_device_ops vhost_blk_device_ops = {
 	.new_device =  new_device,
 	.destroy_device = destroy_device,
 	.new_connection = new_connection,

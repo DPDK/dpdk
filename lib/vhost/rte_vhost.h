@@ -264,7 +264,7 @@ struct rte_vhost_user_extern_ops {
 /**
  * Device and vring operations.
  */
-struct vhost_device_ops {
+struct rte_vhost_device_ops {
 	int (*new_device)(int vid);		/**< Add device. */
 	void (*destroy_device)(int vid);	/**< Remove device. */
 
@@ -606,7 +606,7 @@ rte_vhost_get_negotiated_protocol_features(int vid,
 
 /* Register callbacks. */
 int rte_vhost_driver_callback_register(const char *path,
-	struct vhost_device_ops const * const ops);
+	struct rte_vhost_device_ops const * const ops);
 
 /**
  *

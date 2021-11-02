@@ -58,7 +58,7 @@ struct vhost_user_socket {
 
 	struct rte_vdpa_device *vdpa_dev;
 
-	struct vhost_device_ops const *notify_ops;
+	struct rte_vhost_device_ops const *notify_ops;
 };
 
 struct vhost_user_connection {
@@ -1093,7 +1093,7 @@ again:
  */
 int
 rte_vhost_driver_callback_register(const char *path,
-	struct vhost_device_ops const * const ops)
+	struct rte_vhost_device_ops const * const ops)
 {
 	struct vhost_user_socket *vsocket;
 
@@ -1106,7 +1106,7 @@ rte_vhost_driver_callback_register(const char *path,
 	return vsocket ? 0 : -1;
 }
 
-struct vhost_device_ops const *
+struct rte_vhost_device_ops const *
 vhost_driver_callback_get(const char *path)
 {
 	struct vhost_user_socket *vsocket;

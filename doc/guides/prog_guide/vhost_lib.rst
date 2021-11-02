@@ -255,7 +255,7 @@ The following is an overview of some key Vhost API functions:
   performing any locking.
 
   This function is only safe to call in vhost callback functions
-  (i.e., struct vhost_device_ops).
+  (i.e., struct rte_vhost_device_ops).
 
 * ``rte_vhost_async_channel_unregister(vid, queue_id)``
 
@@ -275,7 +275,7 @@ The following is an overview of some key Vhost API functions:
   performing any locking.
 
   This function is only safe to call in vhost callback functions
-  (i.e., struct vhost_device_ops).
+  (i.e., struct rte_vhost_device_ops).
 
 * ``rte_vhost_submit_enqueue_burst(vid, queue_id, pkts, count, comp_pkts, comp_count)``
 

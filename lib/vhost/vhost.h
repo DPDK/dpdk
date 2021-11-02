@@ -394,7 +394,7 @@ struct virtio_net {
 	uint16_t		mtu;
 	uint8_t			status;
 
-	struct vhost_device_ops const *notify_ops;
+	struct rte_vhost_device_ops const *notify_ops;
 
 	uint32_t		nr_guest_pages;
 	uint32_t		max_guest_pages;
@@ -702,7 +702,7 @@ void vhost_enable_linearbuf(int vid);
 int vhost_enable_guest_notification(struct virtio_net *dev,
 		struct vhost_virtqueue *vq, int enable);
 
-struct vhost_device_ops const *vhost_driver_callback_get(const char *path);
+struct rte_vhost_device_ops const *vhost_driver_callback_get(const char *path);
 
 /*
  * Backend-specific cleanup.

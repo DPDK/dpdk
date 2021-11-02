@@ -1519,7 +1519,7 @@ vring_state_changed(int vid, uint16_t queue_id, int enable)
  * These callback allow devices to be added to the data core when configuration
  * has been fully complete.
  */
-static const struct vhost_device_ops virtio_net_device_ops =
+static const struct rte_vhost_device_ops virtio_net_device_ops =
 {
 	.new_device =  new_device,
 	.destroy_device = destroy_device,
