@@ -173,6 +173,7 @@ roc_nix_lf_alloc(struct roc_nix *roc_nix, uint32_t nb_rxq, uint32_t nb_txq,
 	if (rc)
 		goto fail;
 
+	nix->rx_cfg = rx_cfg;
 	nix->sqb_size = rsp->sqb_size;
 	nix->tx_chan_base = rsp->tx_chan_base;
 	nix->rx_chan_base = rsp->rx_chan_base;

@@ -211,6 +211,7 @@ INTERNAL {
 	roc_nix_rss_key_set;
 	roc_nix_rss_reta_get;
 	roc_nix_rss_reta_set;
+	roc_nix_rx_drop_re_set;
 	roc_nix_rx_queue_intr_disable;
 	roc_nix_rx_queue_intr_enable;
 	roc_nix_sq_dump;

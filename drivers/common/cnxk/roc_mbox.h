@@ -1075,6 +1075,7 @@ struct nix_rx_cfg {
 	struct mbox_msghdr hdr;
 #define NIX_RX_OL3_VERIFY BIT(0)
 #define NIX_RX_OL4_VERIFY BIT(1)
+#define NIX_RX_DROP_RE	  BIT(2)
 	uint8_t __io len_verify; /* Outer L3/L4 len check */
 #define NIX_RX_CSUM_OL4_VERIFY BIT(0)
 	uint8_t __io csum_verify; /* Outer L4 checksum verification */

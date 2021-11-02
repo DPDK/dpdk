@@ -139,6 +139,7 @@ struct nix {
 	uint16_t msixoff;
 	uint8_t rx_pause;
 	uint8_t tx_pause;
+	uint64_t rx_cfg;
 	struct dev dev;
 	uint16_t cints;
 	uint16_t qints;

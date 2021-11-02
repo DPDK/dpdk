@@ -450,3 +450,42 @@ roc_nix_eeprom_info_get(struct roc_nix *roc_nix,
 	mbox_memcpy(info->buf, rsp->fwdata.sfp_eeprom.buf, SFP_EEPROM_SIZE);
 	return 0;
 }
+
+int
+roc_nix_rx_drop_re_set(struct roc_nix *roc_nix, bool ena)
+{
+	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
+	struct mbox *mbox = get_mbox(roc_nix);
+	struct nix_rx_cfg *req;
+	int rc = -EIO;
+
+	/* No-op if no change */
+	if (ena == !!(nix->rx_cfg & ROC_NIX_LF_RX_CFG_DROP_RE))
+		return 0;
+
+	req = mbox_alloc_msg_nix_set_rx_cfg(mbox);
+	if (req == NULL)
+		return rc;
+
+	if (ena)
+		req->len_verify |= NIX_RX_DROP_RE;
+	/* Keep other flags intact */
+	if (nix->rx_cfg & ROC_NIX_LF_RX_CFG_LEN_OL3)
+		req->len_verify |= NIX_RX_OL3_VERIFY;
+
+	if (nix->rx_cfg & ROC_NIX_LF_RX_CFG_LEN_OL4)
+		req->len_verify |= NIX_RX_OL4_VERIFY;
+
+	if (nix->rx_cfg & ROC_NIX_LF_RX_CFG_CSUM_OL4)
+		req->csum_verify |= NIX_RX_CSUM_OL4_VERIFY;
+
+	rc = mbox_process(mbox);
+	if (rc)
+		return rc;
+
+	if (ena)
+		nix->rx_cfg |= ROC_NIX_LF_RX_CFG_DROP_RE;
+	else
+		nix->rx_cfg &= ~ROC_NIX_LF_RX_CFG_DROP_RE;
+	return 0;
+}
