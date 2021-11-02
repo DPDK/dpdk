@@ -5852,6 +5852,7 @@ hns3_dev_close(struct rte_eth_dev *eth_dev)
 
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY) {
 		__atomic_fetch_sub(&hw->secondary_cnt, 1, __ATOMIC_RELAXED);
+		hns3_mp_uninit();
 		return 0;
 	}
 
@@ -5868,7 +5869,7 @@ hns3_dev_close(struct rte_eth_dev *eth_dev)
 	hns3_uninit_pf(eth_dev);
 	hns3_free_all_queues(eth_dev);
 	rte_free(hw->reset.wait_data);
-	hns3_mp_uninit_primary();
+	hns3_mp_uninit();
 	hns3_warn(hw, "Close port %u finished", hw->data->port_id);
 
 	return ret;
@@ -7463,7 +7464,7 @@ err_init_pf:
 	rte_free(hw->reset.wait_data);
 
 err_init_reset:
-	hns3_mp_uninit_primary();
+	hns3_mp_uninit();
 
 err_mp_init_primary:
 err_mp_init_secondary:
@@ -7486,6 +7487,7 @@ hns3_dev_uninit(struct rte_eth_dev *eth_dev)
 
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY) {
 		__atomic_fetch_sub(&hw->secondary_cnt, 1, __ATOMIC_RELAXED);
+		hns3_mp_uninit();
 		return 0;
 	}
 

@@ -244,10 +244,7 @@ int hns3_mp_init_primary(void)
 	return 0;
 }
 
-/*
- * Un-initialize by primary process.
- */
-void hns3_mp_uninit_primary(void)
+void hns3_mp_uninit(void)
 {
 	process_data.eth_dev_cnt--;
 
