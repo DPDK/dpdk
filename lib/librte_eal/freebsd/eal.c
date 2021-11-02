@@ -675,6 +675,8 @@ rte_eal_init(int argc, char **argv)
 	const struct rte_config *config = rte_eal_get_configuration();
 	struct internal_config *internal_conf =
 		eal_get_internal_configuration();
+	bool has_phys_addr;
+	enum rte_iova_mode iova_mode;
 
 	/* checks if the machine is adequate */
 	if (!rte_cpu_is_supported()) {
@@ -775,19 +777,30 @@ rte_eal_init(int argc, char **argv)
 		return -1;
 	}
 
-	/* if no EAL option "--iova-mode=<pa|va>", use bus IOVA scheme */
-	if (internal_conf->iova_mode == RTE_IOVA_DC) {
-		/* autodetect the IOVA mapping mode (default is RTE_IOVA_PA) */
-		enum rte_iova_mode iova_mode = rte_bus_get_iommu_class();
-
-		if (iova_mode == RTE_IOVA_DC)
-			iova_mode = RTE_IOVA_PA;
-		rte_eal_get_configuration()->iova_mode = iova_mode;
-	} else {
-		rte_eal_get_configuration()->iova_mode =
-			internal_conf->iova_mode;
+	/*
+	 * PA are only available for hugepages via contigmem.
+	 * If contigmem is inaccessible, rte_eal_hugepage_init() will fail
+	 * with a message describing the cause.
+	 */
+	has_phys_addr = internal_conf->no_hugetlbfs == 0;
+	iova_mode = internal_conf->iova_mode;
+	if (iova_mode == RTE_IOVA_PA && !has_phys_addr) {
+		rte_eal_init_alert("Cannot use IOVA as 'PA' since physical addresses are not available");
+		rte_errno = EINVAL;
+		return -1;
 	}
-
+	if (iova_mode == RTE_IOVA_DC) {
+		RTE_LOG(DEBUG, EAL, "Specific IOVA mode is not requested, autodetecting\n");
+		if (has_phys_addr) {
+			RTE_LOG(DEBUG, EAL, "Selecting IOVA mode according to bus requests\n");
+			iova_mode = rte_bus_get_iommu_class();
+			if (iova_mode == RTE_IOVA_DC)
+				iova_mode = RTE_IOVA_PA;
+		} else {
+			iova_mode = RTE_IOVA_VA;
+		}
+	}
+	rte_eal_get_configuration()->iova_mode = iova_mode;
 	RTE_LOG(INFO, EAL, "Selected IOVA mode '%s'\n",
 		rte_eal_iova_mode() == RTE_IOVA_PA ? "PA" : "VA");
 
