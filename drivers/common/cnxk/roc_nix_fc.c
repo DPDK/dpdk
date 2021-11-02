@@ -24,7 +24,7 @@ nix_fc_rxchan_bpid_get(struct roc_nix *roc_nix, struct roc_nix_fc_cfg *fc_cfg)
 	else
 		fc_cfg->rxchan_cfg.enable = false;
 
-	fc_cfg->cq_cfg_valid = false;
+	fc_cfg->type = ROC_NIX_FC_RXCHAN_CFG;
 
 	return 0;
 }
@@ -103,7 +103,7 @@ nix_fc_cq_config_get(struct roc_nix *roc_nix, struct roc_nix_fc_cfg *fc_cfg)
 
 	fc_cfg->cq_cfg.cq_drop = rsp->cq.bp;
 	fc_cfg->cq_cfg.enable = rsp->cq.bp_ena;
-	fc_cfg->cq_cfg_valid = true;
+	fc_cfg->type = ROC_NIX_FC_CQ_CFG;
 
 exit:
 	return rc;
@@ -160,10 +160,14 @@ roc_nix_fc_config_get(struct roc_nix *roc_nix, struct roc_nix_fc_cfg *fc_cfg)
 	if (roc_nix_is_vf_or_sdp(roc_nix) && !roc_nix_is_lbk(roc_nix))
 		return 0;
 
-	if (fc_cfg->cq_cfg_valid)
+	if (fc_cfg->type == ROC_NIX_FC_CQ_CFG)
 		return nix_fc_cq_config_get(roc_nix, fc_cfg);
-	else
+	else if (fc_cfg->type == ROC_NIX_FC_RXCHAN_CFG)
 		return nix_fc_rxchan_bpid_get(roc_nix, fc_cfg);
+	else if (fc_cfg->type == ROC_NIX_FC_TM_CFG)
+		return nix_tm_bp_config_get(roc_nix, &fc_cfg->tm_cfg.enable);
+
+	return -EINVAL;
 }
 
 int
@@ -172,11 +176,15 @@ roc_nix_fc_config_set(struct roc_nix *roc_nix, struct roc_nix_fc_cfg *fc_cfg)
 	if (roc_nix_is_vf_or_sdp(roc_nix) && !roc_nix_is_lbk(roc_nix))
 		return 0;
 
-	if (fc_cfg->cq_cfg_valid)
+	if (fc_cfg->type == ROC_NIX_FC_CQ_CFG)
 		return nix_fc_cq_config_set(roc_nix, fc_cfg);
-	else
+	else if (fc_cfg->type == ROC_NIX_FC_RXCHAN_CFG)
 		return nix_fc_rxchan_bpid_set(roc_nix,
 					      fc_cfg->rxchan_cfg.enable);
+	else if (fc_cfg->type == ROC_NIX_FC_TM_CFG)
+		return nix_tm_bp_config_set(roc_nix, fc_cfg->tm_cfg.enable);
+
+	return -EINVAL;
 }
 
 enum roc_nix_fc_mode

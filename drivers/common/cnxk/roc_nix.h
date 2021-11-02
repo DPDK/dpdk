@@ -153,7 +153,10 @@ struct roc_nix_vlan_config {
 };
 
 struct roc_nix_fc_cfg {
-	bool cq_cfg_valid;
+#define ROC_NIX_FC_RXCHAN_CFG 0
+#define ROC_NIX_FC_CQ_CFG     1
+#define ROC_NIX_FC_TM_CFG     2
+	uint8_t type;
 	union {
 		struct {
 			bool enable;
@@ -164,6 +167,10 @@ struct roc_nix_fc_cfg {
 			uint16_t cq_drop;
 			bool enable;
 		} cq_cfg;
+
+		struct {
+			bool enable;
+		} tm_cfg;
 	};
 };
 

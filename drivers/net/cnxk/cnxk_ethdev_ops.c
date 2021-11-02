@@ -228,7 +228,7 @@ nix_fc_cq_config_set(struct cnxk_eth_dev *dev, uint16_t qid, bool enable)
 
 	memset(&fc_cfg, 0, sizeof(struct roc_nix_fc_cfg));
 	cq = &dev->cqs[qid];
-	fc_cfg.cq_cfg_valid = true;
+	fc_cfg.type = ROC_NIX_FC_CQ_CFG;
 	fc_cfg.cq_cfg.enable = enable;
 	fc_cfg.cq_cfg.rq = qid;
 	fc_cfg.cq_cfg.cq_drop = cq->drop_thresh;

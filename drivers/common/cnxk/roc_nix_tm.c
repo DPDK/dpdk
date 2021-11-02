@@ -98,16 +98,32 @@ int
 nix_tm_txsch_reg_config(struct nix *nix, enum roc_nix_tm_tree tree)
 {
 	struct nix_tm_node_list *list;
+	bool is_pf_or_lbk = false;
 	struct nix_tm_node *node;
+	bool skip_bp = false;
 	uint32_t hw_lvl;
 	int rc = 0;
 
 	list = nix_tm_node_list(nix, tree);
 
+	if ((!dev_is_vf(&nix->dev) || nix->lbk_link) && !nix->sdp_link)
+		is_pf_or_lbk = true;
+
 	for (hw_lvl = 0; hw_lvl <= nix->tm_root_lvl; hw_lvl++) {
 		TAILQ_FOREACH(node, list, node) {
 			if (node->hw_lvl != hw_lvl)
 				continue;
+
+			/* Only one TL3/TL2 Link config should have BP enable
+			 * set per channel only for PF or lbk vf.
+			 */
+			node->bp_capa = 0;
+			if (is_pf_or_lbk && !skip_bp &&
+			    node->hw_lvl == nix->tm_link_cfg_lvl) {
+				node->bp_capa = 1;
+				skip_bp = true;
+			}
+
 			rc = nix_tm_node_reg_conf(nix, node);
 			if (rc)
 				goto exit;
@@ -301,6 +317,130 @@ nix_tm_clear_path_xoff(struct nix *nix, struct nix_tm_node *node)
 }
 
 int
+nix_tm_bp_config_set(struct roc_nix *roc_nix, bool enable)
+{
+	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
+	enum roc_nix_tm_tree tree = nix->tm_tree;
+	struct mbox *mbox = (&nix->dev)->mbox;
+	struct nix_txschq_config *req = NULL;
+	struct nix_tm_node_list *list;
+	struct nix_tm_node *node;
+	uint8_t k = 0;
+	uint16_t link;
+	int rc = 0;
+
+	list = nix_tm_node_list(nix, tree);
+	link = nix->tx_link;
+
+	TAILQ_FOREACH(node, list, node) {
+		if (node->hw_lvl != nix->tm_link_cfg_lvl)
+			continue;
+
+		if (!(node->flags & NIX_TM_NODE_HWRES) || !node->bp_capa)
+			continue;
+
+		if (!req) {
+			req = mbox_alloc_msg_nix_txschq_cfg(mbox);
+			req->lvl = nix->tm_link_cfg_lvl;
+			k = 0;
+		}
+
+		req->reg[k] = NIX_AF_TL3_TL2X_LINKX_CFG(node->hw_id, link);
+		req->regval[k] = enable ? BIT_ULL(13) : 0;
+		req->regval_mask[k] = ~BIT_ULL(13);
+		k++;
+
+		if (k >= MAX_REGS_PER_MBOX_MSG) {
+			req->num_regs = k;
+			rc = mbox_process(mbox);
+			if (rc)
+				goto err;
+			req = NULL;
+		}
+	}
+
+	if (req) {
+		req->num_regs = k;
+		rc = mbox_process(mbox);
+		if (rc)
+			goto err;
+	}
+
+	return 0;
+err:
+	plt_err("Failed to %s bp on link %u, rc=%d(%s)",
+		enable ? "enable" : "disable", link, rc, roc_error_msg_get(rc));
+	return rc;
+}
+
+int
+nix_tm_bp_config_get(struct roc_nix *roc_nix, bool *is_enabled)
+{
+	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
+	struct nix_txschq_config *req = NULL, *rsp;
+	enum roc_nix_tm_tree tree = nix->tm_tree;
+	struct mbox *mbox = (&nix->dev)->mbox;
+	struct nix_tm_node_list *list;
+	struct nix_tm_node *node;
+	bool found = false;
+	uint8_t enable = 1;
+	uint8_t k = 0, i;
+	uint16_t link;
+	int rc = 0;
+
+	list = nix_tm_node_list(nix, tree);
+	link = nix->tx_link;
+
+	TAILQ_FOREACH(node, list, node) {
+		if (node->hw_lvl != nix->tm_link_cfg_lvl)
+			continue;
+
+		if (!(node->flags & NIX_TM_NODE_HWRES) || !node->bp_capa)
+			continue;
+
+		found = true;
+		if (!req) {
+			req = mbox_alloc_msg_nix_txschq_cfg(mbox);
+			req->read = 1;
+			req->lvl = nix->tm_link_cfg_lvl;
+			k = 0;
+		}
+
+		req->reg[k] = NIX_AF_TL3_TL2X_LINKX_CFG(node->hw_id, link);
+		k++;
+
+		if (k >= MAX_REGS_PER_MBOX_MSG) {
+			req->num_regs = k;
+			rc = mbox_process_msg(mbox, (void **)&rsp);
+			if (rc || rsp->num_regs != k)
+				goto err;
+			req = NULL;
+
+			/* Report it as enabled only if enabled or all */
+			for (i = 0; i < k; i++)
+				enable &= !!(rsp->regval[i] & BIT_ULL(13));
+		}
+	}
+
+	if (req) {
+		req->num_regs = k;
+		rc = mbox_process(mbox);
+		if (rc)
+			goto err;
+		/* Report it as enabled only if enabled or all */
+		for (i = 0; i < k; i++)
+			enable &= !!(rsp->regval[i] & BIT_ULL(13));
+	}
+
+	*is_enabled = found ? !!enable : false;
+	return 0;
+err:
+	plt_err("Failed to get bp status on link %u, rc=%d(%s)", link, rc,
+		roc_error_msg_get(rc));
+	return rc;
+}
+
+int
 nix_tm_smq_xoff(struct nix *nix, struct nix_tm_node *node, bool enable)
 {
 	struct mbox *mbox = (&nix->dev)->mbox;
@@ -461,6 +601,13 @@ nix_tm_sq_flush_pre(struct roc_nix_sq *sq)
 		}
 	}
 
+	/* Disable backpressure */
+	rc = nix_tm_bp_config_set(roc_nix, false);
+	if (rc) {
+		plt_err("Failed to disable backpressure for flush, rc=%d", rc);
+		return rc;
+	}
+
 	/* Disable smq xoff for case it was enabled earlier */
 	rc = nix_tm_smq_xoff(nix, node->parent, false);
 	if (rc) {
@@ -578,6 +725,16 @@ nix_tm_sq_flush_post(struct roc_nix_sq *sq)
 			plt_err("Failed to enable sqb aura fc, rc=%d", rc);
 			return rc;
 		}
+	}
+
+	if (!nix->rx_pause)
+		return 0;
+
+	/* Restore backpressure */
+	rc = nix_tm_bp_config_set(roc_nix, true);
+	if (rc) {
+		plt_err("Failed to restore backpressure, rc=%d", rc);
+		return rc;
 	}
 
 	return 0;

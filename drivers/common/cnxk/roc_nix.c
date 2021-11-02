@@ -418,6 +418,9 @@ skip_dev_init:
 	if (nix->lbk_link) {
 		nix->rx_pause = 1;
 		nix->tx_pause = 1;
+	} else if (!roc_nix_is_vf_or_sdp(roc_nix)) {
+		/* Get the current state of flow control */
+		roc_nix_fc_mode_get(roc_nix);
 	}
 
 	/* Register error and ras interrupts */

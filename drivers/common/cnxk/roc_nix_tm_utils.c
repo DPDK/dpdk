@@ -522,6 +522,10 @@ nix_tm_topology_reg_prep(struct nix *nix, struct nix_tm_node *node,
 		    nix->tm_link_cfg_lvl == NIX_TXSCH_LVL_TL3) {
 			reg[k] = NIX_AF_TL3_TL2X_LINKX_CFG(schq, link);
 			regval[k] = BIT_ULL(12) | relchan;
+			/* Enable BP if node is BP capable and rx_pause is set
+			 */
+			if (nix->rx_pause && node->bp_capa)
+				regval[k] |= BIT_ULL(13);
 			k++;
 		}
 
@@ -541,6 +545,10 @@ nix_tm_topology_reg_prep(struct nix *nix, struct nix_tm_node *node,
 		    nix->tm_link_cfg_lvl == NIX_TXSCH_LVL_TL2) {
 			reg[k] = NIX_AF_TL3_TL2X_LINKX_CFG(schq, link);
 			regval[k] = BIT_ULL(12) | relchan;
+			/* Enable BP if node is BP capable and rx_pause is set
+			 */
+			if (nix->rx_pause && node->bp_capa)
+				regval[k] |= BIT_ULL(13);
 			k++;
 		}
 

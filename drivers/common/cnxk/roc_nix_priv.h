@@ -74,6 +74,7 @@ struct nix_tm_node {
 	uint32_t red_algo : 2;
 	uint32_t pkt_mode : 1;
 	uint32_t pkt_mode_set : 1;
+	uint32_t bp_capa : 1;
 
 	bool child_realloc;
 	struct nix_tm_node *parent;
@@ -373,6 +374,8 @@ int nix_rq_cn9k_cfg(struct dev *dev, struct roc_nix_rq *rq, uint16_t qints,
 int nix_rq_cfg(struct dev *dev, struct roc_nix_rq *rq, uint16_t qints, bool cfg,
 	       bool ena);
 int nix_rq_ena_dis(struct dev *dev, struct roc_nix_rq *rq, bool enable);
+int nix_tm_bp_config_get(struct roc_nix *roc_nix, bool *is_enabled);
+int nix_tm_bp_config_set(struct roc_nix *roc_nix, bool enable);
 
 /*
  * TM priv utils.

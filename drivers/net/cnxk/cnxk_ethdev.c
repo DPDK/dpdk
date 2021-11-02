@@ -1199,7 +1199,7 @@ cnxk_nix_configure(struct rte_eth_dev *eth_dev)
 	}
 
 	/* Init flow control configuration */
-	fc_cfg.cq_cfg_valid = false;
+	fc_cfg.type = ROC_NIX_FC_RXCHAN_CFG;
 	fc_cfg.rxchan_cfg.enable = true;
 	rc = roc_nix_fc_config_set(nix, &fc_cfg);
 	if (rc) {
