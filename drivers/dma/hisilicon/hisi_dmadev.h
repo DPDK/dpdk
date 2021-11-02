@@ -16,12 +16,17 @@
 #define FIELD_GET(mask, reg) \
 		((typeof(mask))(((reg) & (mask)) >> BF_SHF(mask)))
 
+#define lower_32_bits(x) ((uint32_t)(x))
+#define upper_32_bits(x) ((uint32_t)(((x) >> 16) >> 16))
+
 #define PCI_VENDOR_ID_HUAWEI			0x19e5
 #define HISI_DMA_DEVICE_ID			0xA122
 #define HISI_DMA_PCI_REVISION_ID_REG		0x08
 #define HISI_DMA_REVISION_HIP08B		0x21
 
 #define HISI_DMA_MAX_HW_QUEUES			4
+#define HISI_DMA_MAX_DESC_NUM			8192
+#define HISI_DMA_MIN_DESC_NUM			32
 
 /**
  * The HIP08B(HiSilicon IP08) and later Chip(e.g. HiSilicon IP09) are DMA iEPs,
@@ -110,12 +115,106 @@ enum {
 	HISI_DMA_STATE_RUN,
 };
 
+/**
+ * After scanning the CQ array, the CQ head register needs to be updated.
+ * Updating the register involves write memory barrier operations.
+ * Here use the following method to reduce WMB operations:
+ *   a) malloc more CQEs, which correspond to the macro HISI_DMA_CQ_RESERVED.
+ *   b) update the CQ head register after accumulated number of completed CQs
+ *      is greater than or equal to HISI_DMA_CQ_RESERVED.
+ */
+#define HISI_DMA_CQ_RESERVED		64
+
+struct hisi_dma_sqe {
+	uint32_t dw0;
+#define SQE_FENCE_FLAG	BIT(10)
+#define SQE_OPCODE_M2M	0x4
+	uint32_t dw1;
+	uint32_t dw2;
+	uint32_t length;
+	uint64_t src_addr;
+	uint64_t dst_addr;
+};
+
+struct hisi_dma_cqe {
+	uint64_t rsv;
+	uint64_t misc;
+#define CQE_SQ_HEAD_MASK	GENMASK(15, 0)
+#define CQE_VALID_B		BIT(48)
+#define CQE_STATUS_MASK		GENMASK(63, 49)
+};
+
 struct hisi_dma_dev {
+	struct hisi_dma_sqe *sqe;
+	volatile struct hisi_dma_cqe *cqe;
+	uint16_t *status; /* the completion status array of SQEs. */
+
+	volatile void *sq_tail_reg; /**< register address for doorbell. */
+	volatile void *cq_head_reg; /**< register address for answer CQ. */
+
+	uint16_t sq_depth_mask; /**< SQ depth - 1, the SQ depth is power of 2 */
+	uint16_t cq_depth; /* CQ depth */
+
+	uint16_t ridx; /**< ring index which will assign to the next request. */
+	/** ring index which returned by hisi_dmadev_completed APIs. */
+	uint16_t cridx;
+
+	/**
+	 * SQE array management fields:
+	 *
+	 *  -----------------------------------------------------
+	 *  | SQE0 | SQE1 | SQE2 |   ...  | SQEx | ... | SQEn-1 |
+	 *  -----------------------------------------------------
+	 *     ^             ^               ^
+	 *     |             |               |
+	 *   sq_head     cq_sq_head       sq_tail
+	 *
+	 *  sq_head: index to the oldest completed request, this filed was
+	 *           updated by hisi_dmadev_completed* APIs.
+	 *  sq_tail: index of the next new request, this field was updated by
+	 *           hisi_dmadev_copy API.
+	 *  cq_sq_head: next index of index that has been completed by hardware,
+	 *              this filed was updated by hisi_dmadev_completed* APIs.
+	 *
+	 *  [sq_head, cq_sq_head): the SQEs that hardware already completed.
+	 *  [cq_sq_head, sq_tail): the SQEs that hardware processing.
+	 */
+	uint16_t sq_head;
+	uint16_t sq_tail;
+	uint16_t cq_sq_head;
+	/**
+	 * The driver scans the CQE array, if the valid bit changes, the CQE is
+	 * considered valid.
+	 * Note: One CQE is corresponding to one or several SQEs, e.g. app
+	 *       submits two copy requests, the hardware processes the two SQEs,
+	 *       but it may write back only one CQE and the CQE's sq_head field
+	 *       indicates the index of the second copy request in the SQE
+	 *       array.
+	 */
+	uint16_t cq_head; /**< CQ index for next scans. */
+	/** accumulated number of completed CQs
+	 * @see HISI_DMA_CQ_RESERVED
+	 */
+	uint16_t cqs_completed;
+	uint8_t cqe_vld; /**< valid bit for CQE, will change for every round. */
+
+	uint64_t submitted;
+	uint64_t completed;
+	uint64_t errors;
+
+	/**
+	 * The following fields are not accessed in the I/O path, so they are
+	 * placed at the end.
+	 */
 	struct rte_dma_dev_data *data;
 	uint8_t revision; /**< PCI revision. */
 	uint8_t reg_layout; /**< hardware register layout. */
 	void *io_base;
 	uint8_t queue_id; /**< hardware DMA queue index. */
+	const struct rte_memzone *iomz;
+	uint32_t iomz_sz;
+	rte_iova_t sqe_iova;
+	rte_iova_t cqe_iova;
 };
 
 #endif /* HISI_DMADEV_H */
