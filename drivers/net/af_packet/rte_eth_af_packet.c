@@ -237,8 +237,30 @@ eth_af_packet_tx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 		}
 
 		/* point at the next incoming frame */
-		if (!tx_ring_status_available(ppd->tp_status) &&
-		    poll(&pfd, 1, -1) < 0)
+		if (!tx_ring_status_available(ppd->tp_status)) {
+			if (poll(&pfd, 1, -1) < 0)
+				break;
+
+			/* poll() can return POLLERR if the interface is down */
+			if (pfd.revents & POLLERR)
+				break;
+		}
+
+		/*
+		 * poll() will almost always return POLLOUT, even if there
+		 * are no extra buffers available
+		 *
+		 * This happens, because packet_poll() calls datagram_poll()
+		 * which checks the space left in the socket buffer and,
+		 * in the case of packet_mmap, the default socket buffer length
+		 * doesn't match the requested size for the tx_ring.
+		 * As such, there is almost always space left in socket buffer,
+		 * which doesn't seem to be correlated to the requested size
+		 * for the tx_ring in packet_mmap.
+		 *
+		 * This results in poll() returning POLLOUT.
+		 */
+		if (!tx_ring_status_available(ppd->tp_status))
 			break;
 
 		/* copy the tx frame data */
