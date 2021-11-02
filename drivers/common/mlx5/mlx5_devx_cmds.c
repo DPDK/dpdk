@@ -518,10 +518,9 @@ mlx5_devx_cmd_query_parse_samples(struct mlx5_devx_obj *flex_obj,
 	return ret;
 }
 
-
 struct mlx5_devx_obj *
 mlx5_devx_cmd_create_flex_parser(void *ctx,
-			      struct mlx5_devx_graph_node_attr *data)
+				 struct mlx5_devx_graph_node_attr *data)
 {
 	uint32_t in[MLX5_ST_SZ_DW(create_flex_parser_in)] = {0};
 	uint32_t out[MLX5_ST_SZ_DW(general_obj_out_cmd_hdr)] = {0};
@@ -545,12 +544,18 @@ mlx5_devx_cmd_create_flex_parser(void *ctx,
 		 MLX5_GENERAL_OBJ_TYPE_FLEX_PARSE_GRAPH);
 	MLX5_SET(parse_graph_flex, flex, header_length_mode,
 		 data->header_length_mode);
+	MLX5_SET64(parse_graph_flex, flex, modify_field_select,
+		   data->modify_field_select);
 	MLX5_SET(parse_graph_flex, flex, header_length_base_value,
 		 data->header_length_base_value);
 	MLX5_SET(parse_graph_flex, flex, header_length_field_offset,
 		 data->header_length_field_offset);
 	MLX5_SET(parse_graph_flex, flex, header_length_field_shift,
 		 data->header_length_field_shift);
+	MLX5_SET(parse_graph_flex, flex, next_header_field_offset,
+		 data->next_header_field_offset);
+	MLX5_SET(parse_graph_flex, flex, next_header_field_size,
+		 data->next_header_field_size);
 	MLX5_SET(parse_graph_flex, flex, header_length_field_mask,
 		 data->header_length_field_mask);
 	for (i = 0; i < MLX5_GRAPH_NODE_SAMPLE_NUM; i++) {
