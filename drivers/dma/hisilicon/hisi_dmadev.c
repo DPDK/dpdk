@@ -392,8 +392,10 @@ hisi_dma_stop(struct rte_dma_dev *dev)
 static int
 hisi_dma_close(struct rte_dma_dev *dev)
 {
-	/* The dmadev already stopped */
-	hisi_dma_free_iomem(dev->data->dev_private);
+	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
+		/* The dmadev already stopped */
+		hisi_dma_free_iomem(dev->data->dev_private);
+	}
 	return 0;
 }
 
@@ -815,11 +817,13 @@ hisi_dma_create(struct rte_pci_device *pci_dev, uint8_t queue_id,
 	hw->cq_head_reg = hisi_dma_queue_regaddr(hw,
 						 HISI_DMA_QUEUE_CQ_HEAD_REG);
 
-	ret = hisi_dma_reset_hw(hw);
-	if (ret) {
-		HISI_DMA_LOG(ERR, "%s init device fail!", name);
-		(void)rte_dma_pmd_release(name);
-		return -EIO;
+	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
+		ret = hisi_dma_reset_hw(hw);
+		if (ret) {
+			HISI_DMA_LOG(ERR, "%s init device fail!", name);
+			(void)rte_dma_pmd_release(name);
+			return -EIO;
+		}
 	}
 
 	dev->state = RTE_DMA_DEV_READY;
@@ -872,7 +876,8 @@ hisi_dma_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		return ret;
 	HISI_DMA_LOG(DEBUG, "%s read PCI revision: 0x%x", name, revision);
 
-	hisi_dma_init_gbl(pci_dev->mem_resource[2].addr, revision);
+	if (rte_eal_process_type() == RTE_PROC_PRIMARY)
+		hisi_dma_init_gbl(pci_dev->mem_resource[2].addr, revision);
 
 	for (i = 0; i < HISI_DMA_MAX_HW_QUEUES; i++) {
 		ret = hisi_dma_create(pci_dev, i, revision);
