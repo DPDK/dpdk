@@ -9892,7 +9892,7 @@ flow_dv_translate_item_ecpri(struct rte_eth_dev *dev, void *matcher,
 	 */
 	if (!ecpri_m->hdr.common.u32)
 		return;
-	samples = priv->sh->fp[MLX5_FLEX_PARSER_ECPRI_0].ids;
+	samples = priv->sh->ecpri_parser.ids;
 	/* Need to take the whole DW as the mask to fill the entry. */
 	dw_m = MLX5_ADDR_OF(fte_match_set_misc4, misc4_m,
 			    prog_sample_field_value_0);

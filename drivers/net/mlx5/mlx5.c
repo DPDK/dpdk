@@ -866,8 +866,7 @@ bool
 mlx5_flex_parser_ecpri_exist(struct rte_eth_dev *dev)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5_flex_parser_profiles *prf =
-				&priv->sh->fp[MLX5_FLEX_PARSER_ECPRI_0];
+	struct mlx5_ecpri_parser_profile *prf = &priv->sh->ecpri_parser;
 
 	return !!prf->obj;
 }
@@ -886,8 +885,7 @@ int
 mlx5_flex_parser_ecpri_alloc(struct rte_eth_dev *dev)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5_flex_parser_profiles *prf =
-				&priv->sh->fp[MLX5_FLEX_PARSER_ECPRI_0];
+	struct mlx5_ecpri_parser_profile *prf =	&priv->sh->ecpri_parser;
 	struct mlx5_devx_graph_node_attr node = {
 		.modify_field_select = 0,
 	};
@@ -950,8 +948,7 @@ static void
 mlx5_flex_parser_ecpri_release(struct rte_eth_dev *dev)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5_flex_parser_profiles *prf =
-				&priv->sh->fp[MLX5_FLEX_PARSER_ECPRI_0];
+	struct mlx5_ecpri_parser_profile *prf =	&priv->sh->ecpri_parser;
 
 	if (prf->obj)
 		mlx5_devx_cmd_destroy(prf->obj);

@@ -1013,14 +1013,8 @@ struct mlx5_dev_txpp {
 	uint64_t err_ts_future; /* Timestamp in the distant future. */
 };
 
-/* Supported flex parser profile ID. */
-enum mlx5_flex_parser_profile_id {
-	MLX5_FLEX_PARSER_ECPRI_0 = 0,
-	MLX5_FLEX_PARSER_MAX = 8,
-};
-
-/* Sample ID information of flex parser structure. */
-struct mlx5_flex_parser_profiles {
+/* Sample ID information of eCPRI flex parser structure. */
+struct mlx5_ecpri_parser_profile {
 	uint32_t num;		/* Actual number of samples. */
 	uint32_t ids[8];	/* Sample IDs for this profile. */
 	uint8_t offset[8];	/* Bytes offset of each parser. */
@@ -1169,7 +1163,7 @@ struct mlx5_dev_ctx_shared {
 	struct mlx5_devx_obj *td; /* Transport domain. */
 	struct mlx5_lag lag; /* LAG attributes */
 	void *tx_uar; /* Tx/packet pacing shared UAR. */
-	struct mlx5_flex_parser_profiles fp[MLX5_FLEX_PARSER_MAX];
+	struct mlx5_ecpri_parser_profile ecpri_parser;
 	/* Flex parser profiles information. */
 	void *devx_rx_uar; /* DevX UAR for Rx. */
 	struct mlx5_aso_age_mng *aso_age_mng;
