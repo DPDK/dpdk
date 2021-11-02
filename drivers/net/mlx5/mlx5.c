@@ -1429,6 +1429,10 @@ mlx5_free_shared_dev_ctx(struct mlx5_dev_ctx_shared *sh)
 		mlx5_flow_os_release_workspace();
 	}
 	pthread_mutex_unlock(&mlx5_dev_ctx_list_mutex);
+	if (sh->flex_parsers_dv) {
+		mlx5_list_destroy(sh->flex_parsers_dv);
+		sh->flex_parsers_dv = NULL;
+	}
 	/*
 	 *  Ensure there is no async event handler installed.
 	 *  Only primary process handles async device events.

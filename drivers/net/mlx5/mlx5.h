@@ -1099,6 +1099,15 @@ struct mlx5_lag {
 	uint8_t affinity_mode; /* TIS or hash based affinity */
 };
 
+/* DevX flex parser context. */
+struct mlx5_flex_parser_devx {
+	struct mlx5_list_entry entry;  /* List element at the beginning. */
+	uint32_t num_samples;
+	void *devx_obj;
+	struct mlx5_devx_graph_node_attr devx_conf;
+	uint32_t sample_ids[MLX5_GRAPH_NODE_SAMPLE_NUM];
+};
+
 /* Port flex item context. */
 struct mlx5_flex_item {
 	struct mlx5_flex_parser_devx *devx_fp; /* DevX flex parser object. */
@@ -1159,6 +1168,7 @@ struct mlx5_dev_ctx_shared {
 	struct mlx5_list *push_vlan_action_list; /* Push VLAN actions. */
 	struct mlx5_list *sample_action_list; /* List of sample actions. */
 	struct mlx5_list *dest_array_list;
+	struct mlx5_list *flex_parsers_dv; /* Flex Item parsers. */
 	/* List of destination array actions. */
 	struct mlx5_flow_counter_mng cmng; /* Counters management structure. */
 	void *default_miss_action; /* Default miss action. */
@@ -1828,4 +1838,14 @@ int flow_dv_item_release(struct rte_eth_dev *dev,
 		    struct rte_flow_error *error);
 int mlx5_flex_item_port_init(struct rte_eth_dev *dev);
 void mlx5_flex_item_port_cleanup(struct rte_eth_dev *dev);
+/* Flex parser list callbacks. */
+struct mlx5_list_entry *mlx5_flex_parser_create_cb(void *list_ctx, void *ctx);
+int mlx5_flex_parser_match_cb(void *list_ctx,
+			      struct mlx5_list_entry *iter, void *ctx);
+void mlx5_flex_parser_remove_cb(void *list_ctx,	struct mlx5_list_entry *entry);
+struct mlx5_list_entry *mlx5_flex_parser_clone_cb(void *list_ctx,
+						  struct mlx5_list_entry *entry,
+						  void *ctx);
+void mlx5_flex_parser_clone_free_cb(void *tool_ctx,
+				    struct mlx5_list_entry *entry);
 #endif /* RTE_PMD_MLX5_H_ */

@@ -337,6 +337,16 @@ mlx5_alloc_shared_dr(struct mlx5_priv *priv)
 					      flow_dv_dest_array_clone_free_cb);
 	if (!sh->dest_array_list)
 		goto error;
+	/* Init shared flex parsers list, no need lcore_share */
+	snprintf(s, sizeof(s), "%s_flex_parsers_list", sh->ibdev_name);
+	sh->flex_parsers_dv = mlx5_list_create(s, sh, false,
+					       mlx5_flex_parser_create_cb,
+					       mlx5_flex_parser_match_cb,
+					       mlx5_flex_parser_remove_cb,
+					       mlx5_flex_parser_clone_cb,
+					       mlx5_flex_parser_clone_free_cb);
+	if (!sh->flex_parsers_dv)
+		goto error;
 #endif
 #ifdef HAVE_MLX5DV_DR
 	void *domain;
