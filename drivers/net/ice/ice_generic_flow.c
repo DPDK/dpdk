@@ -1912,6 +1912,8 @@ ice_register_parser(struct ice_flow_parser *parser,
 {
 	struct ice_parser_list *list;
 	struct ice_flow_parser_node *parser_node;
+	struct ice_flow_parser_node *existing_node;
+	void *temp;
 
 	parser_node = rte_zmalloc("ice_parser", sizeof(*parser_node), 0);
 	if (parser_node == NULL) {
@@ -1927,16 +1929,37 @@ ice_register_parser(struct ice_flow_parser *parser,
 	if (ad->devargs.pipe_mode_support) {
 		TAILQ_INSERT_TAIL(list, parser_node, node);
 	} else {
-		if (parser->engine->type == ICE_FLOW_ENGINE_SWITCH ||
-				parser->engine->type == ICE_FLOW_ENGINE_HASH)
+		if (parser->engine->type == ICE_FLOW_ENGINE_SWITCH) {
+			RTE_TAILQ_FOREACH_SAFE(existing_node, list,
+					       node, temp) {
+				if (existing_node->parser->engine->type ==
+				    ICE_FLOW_ENGINE_ACL) {
+					TAILQ_INSERT_AFTER(list, existing_node,
+							   parser_node, node);
+					goto DONE;
+				}
+			}
 			TAILQ_INSERT_HEAD(list, parser_node, node);
-		else if (parser->engine->type == ICE_FLOW_ENGINE_FDIR)
+		} else if (parser->engine->type == ICE_FLOW_ENGINE_FDIR) {
+			RTE_TAILQ_FOREACH_SAFE(existing_node, list,
+					       node, temp) {
+				if (existing_node->parser->engine->type ==
+				    ICE_FLOW_ENGINE_SWITCH) {
+					TAILQ_INSERT_AFTER(list, existing_node,
+							   parser_node, node);
+					goto DONE;
+				}
+			}
+			TAILQ_INSERT_HEAD(list, parser_node, node);
+		} else if (parser->engine->type == ICE_FLOW_ENGINE_HASH) {
 			TAILQ_INSERT_TAIL(list, parser_node, node);
-		else if (parser->engine->type == ICE_FLOW_ENGINE_ACL)
+		} else if (parser->engine->type == ICE_FLOW_ENGINE_ACL) {
 			TAILQ_INSERT_HEAD(list, parser_node, node);
-		else
+		} else {
 			return -EINVAL;
+		}
 	}
+DONE:
 	return 0;
 }
 
