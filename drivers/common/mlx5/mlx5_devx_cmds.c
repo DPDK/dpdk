@@ -13,6 +13,42 @@
 #include "mlx5_common_log.h"
 #include "mlx5_malloc.h"
 
+static void *
+mlx5_devx_get_hca_cap(void *ctx, uint32_t *in, uint32_t *out,
+		      int *err, uint32_t flags)
+{
+	const size_t size_in = MLX5_ST_SZ_DW(query_hca_cap_in) * sizeof(int);
+	const size_t size_out = MLX5_ST_SZ_DW(query_hca_cap_out) * sizeof(int);
+	int status, syndrome, rc;
+
+	if (err)
+		*err = 0;
+	memset(in, 0, size_in);
+	memset(out, 0, size_out);
+	MLX5_SET(query_hca_cap_in, in, opcode, MLX5_CMD_OP_QUERY_HCA_CAP);
+	MLX5_SET(query_hca_cap_in, in, op_mod, flags);
+	rc = mlx5_glue->devx_general_cmd(ctx, in, size_in, out, size_out);
+	if (rc) {
+		DRV_LOG(ERR,
+			"Failed to query devx HCA capabilities func %#02x",
+			flags >> 1);
+		if (err)
+			*err = rc > 0 ? -rc : rc;
+		return NULL;
+	}
+	status = MLX5_GET(query_hca_cap_out, out, status);
+	syndrome = MLX5_GET(query_hca_cap_out, out, syndrome);
+	if (status) {
+		DRV_LOG(ERR,
+			"Failed to query devx HCA capabilities func %#02x status %x, syndrome = %x",
+			flags >> 1, status, syndrome);
+		if (err)
+			*err = -1;
+		return NULL;
+	}
+	return MLX5_ADDR_OF(query_hca_cap_out, out, capability);
+}
+
 /**
  * Perform read access to the registers. Reads data from register
  * and writes ones to the specified buffer.
@@ -472,21 +508,15 @@ static void
 mlx5_devx_cmd_query_hca_vdpa_attr(void *ctx,
 				  struct mlx5_hca_vdpa_attr *vdpa_attr)
 {
-	uint32_t in[MLX5_ST_SZ_DW(query_hca_cap_in)] = {0};
-	uint32_t out[MLX5_ST_SZ_DW(query_hca_cap_out)] = {0};
-	void *hcattr = MLX5_ADDR_OF(query_hca_cap_out, out, capability);
-	int status, syndrome, rc;
+	uint32_t in[MLX5_ST_SZ_DW(query_hca_cap_in)];
+	uint32_t out[MLX5_ST_SZ_DW(query_hca_cap_out)];
+	void *hcattr;
 
-	MLX5_SET(query_hca_cap_in, in, opcode, MLX5_CMD_OP_QUERY_HCA_CAP);
-	MLX5_SET(query_hca_cap_in, in, op_mod,
-		 MLX5_GET_HCA_CAP_OP_MOD_VDPA_EMULATION |
-		 MLX5_HCA_CAP_OPMOD_GET_CUR);
-	rc = mlx5_glue->devx_general_cmd(ctx, in, sizeof(in), out, sizeof(out));
-	status = MLX5_GET(query_hca_cap_out, out, status);
-	syndrome = MLX5_GET(query_hca_cap_out, out, syndrome);
-	if (rc || status) {
-		RTE_LOG(DEBUG, PMD, "Failed to query devx VDPA capabilities,"
-			" status %x, syndrome = %x", status, syndrome);
+	hcattr = mlx5_devx_get_hca_cap(ctx, in, out, NULL,
+			MLX5_GET_HCA_CAP_OP_MOD_VDPA_EMULATION |
+			MLX5_HCA_CAP_OPMOD_GET_CUR);
+	if (!hcattr) {
+		RTE_LOG(DEBUG, PMD, "Failed to query devx VDPA capabilities");
 		vdpa_attr->valid = 0;
 	} else {
 		vdpa_attr->valid = 1;
@@ -741,27 +771,15 @@ mlx5_devx_cmd_query_hca_attr(void *ctx,
 {
 	uint32_t in[MLX5_ST_SZ_DW(query_hca_cap_in)] = {0};
 	uint32_t out[MLX5_ST_SZ_DW(query_hca_cap_out)] = {0};
-	void *hcattr;
-	int status, syndrome, rc, i;
 	uint64_t general_obj_types_supported = 0;
+	void *hcattr;
+	int rc, i;
 
-	MLX5_SET(query_hca_cap_in, in, opcode, MLX5_CMD_OP_QUERY_HCA_CAP);
-	MLX5_SET(query_hca_cap_in, in, op_mod,
-		 MLX5_GET_HCA_CAP_OP_MOD_GENERAL_DEVICE |
-		 MLX5_HCA_CAP_OPMOD_GET_CUR);
-
-	rc = mlx5_glue->devx_general_cmd(ctx,
-					 in, sizeof(in), out, sizeof(out));
-	if (rc)
-		goto error;
-	status = MLX5_GET(query_hca_cap_out, out, status);
-	syndrome = MLX5_GET(query_hca_cap_out, out, syndrome);
-	if (status) {
-		DRV_LOG(DEBUG, "Failed to query devx HCA capabilities, "
-			"status %x, syndrome = %x", status, syndrome);
-		return -1;
-	}
-	hcattr = MLX5_ADDR_OF(query_hca_cap_out, out, capability);
+	hcattr = mlx5_devx_get_hca_cap(ctx, in, out, &rc,
+			MLX5_GET_HCA_CAP_OP_MOD_GENERAL_DEVICE |
+			MLX5_HCA_CAP_OPMOD_GET_CUR);
+	if (!hcattr)
+		return rc;
 	attr->flow_counter_bulk_alloc_bitmap =
 			MLX5_GET(cmd_hca_cap, hcattr, flow_counter_bulk_alloc);
 	attr->flow_counters_dump = MLX5_GET(cmd_hca_cap, hcattr,
@@ -894,19 +912,13 @@ mlx5_devx_cmd_query_hca_attr(void *ctx,
 					 general_obj_types) &
 			      MLX5_GENERAL_OBJ_TYPES_CAP_CONN_TRACK_OFFLOAD);
 	if (attr->qos.sup) {
-		MLX5_SET(query_hca_cap_in, in, op_mod,
-			 MLX5_GET_HCA_CAP_OP_MOD_QOS_CAP |
-			 MLX5_HCA_CAP_OPMOD_GET_CUR);
-		rc = mlx5_glue->devx_general_cmd(ctx, in, sizeof(in),
-						 out, sizeof(out));
-		if (rc)
-			goto error;
-		if (status) {
-			DRV_LOG(DEBUG, "Failed to query devx QOS capabilities,"
-				" status %x, syndrome = %x", status, syndrome);
-			return -1;
+		hcattr = mlx5_devx_get_hca_cap(ctx, in, out, &rc,
+				MLX5_GET_HCA_CAP_OP_MOD_QOS_CAP |
+				MLX5_HCA_CAP_OPMOD_GET_CUR);
+		if (!hcattr) {
+			DRV_LOG(DEBUG, "Failed to query devx QOS capabilities");
+			return rc;
 		}
-		hcattr = MLX5_ADDR_OF(query_hca_cap_out, out, capability);
 		attr->qos.flow_meter_old =
 				MLX5_GET(qos_cap, hcattr, flow_meter_old);
 		attr->qos.log_max_flow_meter =
@@ -935,27 +947,14 @@ mlx5_devx_cmd_query_hca_attr(void *ctx,
 		mlx5_devx_cmd_query_hca_vdpa_attr(ctx, &attr->vdpa);
 	if (!attr->eth_net_offloads)
 		return 0;
-
 	/* Query Flow Sampler Capability From FLow Table Properties Layout. */
-	memset(in, 0, sizeof(in));
-	memset(out, 0, sizeof(out));
-	MLX5_SET(query_hca_cap_in, in, opcode, MLX5_CMD_OP_QUERY_HCA_CAP);
-	MLX5_SET(query_hca_cap_in, in, op_mod,
-		 MLX5_GET_HCA_CAP_OP_MOD_NIC_FLOW_TABLE |
-		 MLX5_HCA_CAP_OPMOD_GET_CUR);
-
-	rc = mlx5_glue->devx_general_cmd(ctx, in, sizeof(in), out, sizeof(out));
-	if (rc)
-		goto error;
-	status = MLX5_GET(query_hca_cap_out, out, status);
-	syndrome = MLX5_GET(query_hca_cap_out, out, syndrome);
-	if (status) {
-		DRV_LOG(DEBUG, "Failed to query devx HCA capabilities, "
-			"status %x, syndrome = %x", status, syndrome);
+	hcattr = mlx5_devx_get_hca_cap(ctx, in, out, &rc,
+			MLX5_GET_HCA_CAP_OP_MOD_NIC_FLOW_TABLE |
+			MLX5_HCA_CAP_OPMOD_GET_CUR);
+	if (!hcattr) {
 		attr->log_max_ft_sampler_num = 0;
-		return -1;
+		return rc;
 	}
-	hcattr = MLX5_ADDR_OF(query_hca_cap_out, out, capability);
 	attr->log_max_ft_sampler_num = MLX5_GET
 		(flow_table_nic_cap, hcattr,
 		 flow_table_properties_nic_receive.log_max_ft_sampler_num);
@@ -970,27 +969,13 @@ mlx5_devx_cmd_query_hca_attr(void *ctx,
 		(flow_table_nic_cap, hcattr,
 		 ft_field_support_2_nic_receive.outer_ipv4_ihl);
 	/* Query HCA offloads for Ethernet protocol. */
-	memset(in, 0, sizeof(in));
-	memset(out, 0, sizeof(out));
-	MLX5_SET(query_hca_cap_in, in, opcode, MLX5_CMD_OP_QUERY_HCA_CAP);
-	MLX5_SET(query_hca_cap_in, in, op_mod,
-		 MLX5_GET_HCA_CAP_OP_MOD_ETHERNET_OFFLOAD_CAPS |
-		 MLX5_HCA_CAP_OPMOD_GET_CUR);
-
-	rc = mlx5_glue->devx_general_cmd(ctx, in, sizeof(in), out, sizeof(out));
-	if (rc) {
+	hcattr = mlx5_devx_get_hca_cap(ctx, in, out, &rc,
+			MLX5_GET_HCA_CAP_OP_MOD_ETHERNET_OFFLOAD_CAPS |
+			MLX5_HCA_CAP_OPMOD_GET_CUR);
+	if (!hcattr) {
 		attr->eth_net_offloads = 0;
-		goto error;
+		return rc;
 	}
-	status = MLX5_GET(query_hca_cap_out, out, status);
-	syndrome = MLX5_GET(query_hca_cap_out, out, syndrome);
-	if (status) {
-		DRV_LOG(DEBUG, "Failed to query devx HCA capabilities, "
-			"status %x, syndrome = %x", status, syndrome);
-		attr->eth_net_offloads = 0;
-		return -1;
-	}
-	hcattr = MLX5_ADDR_OF(query_hca_cap_out, out, capability);
 	attr->wqe_vlan_insert = MLX5_GET(per_protocol_networking_offload_caps,
 					 hcattr, wqe_vlan_insert);
 	attr->csum_cap = MLX5_GET(per_protocol_networking_offload_caps,
@@ -1045,26 +1030,14 @@ mlx5_devx_cmd_query_hca_attr(void *ctx,
 					 hcattr, rss_ind_tbl_cap);
 	/* Query HCA attribute for ROCE. */
 	if (attr->roce) {
-		memset(in, 0, sizeof(in));
-		memset(out, 0, sizeof(out));
-		MLX5_SET(query_hca_cap_in, in, opcode,
-			 MLX5_CMD_OP_QUERY_HCA_CAP);
-		MLX5_SET(query_hca_cap_in, in, op_mod,
-			 MLX5_GET_HCA_CAP_OP_MOD_ROCE |
-			 MLX5_HCA_CAP_OPMOD_GET_CUR);
-		rc = mlx5_glue->devx_general_cmd(ctx, in, sizeof(in),
-						 out, sizeof(out));
-		if (rc)
-			goto error;
-		status = MLX5_GET(query_hca_cap_out, out, status);
-		syndrome = MLX5_GET(query_hca_cap_out, out, syndrome);
-		if (status) {
+		hcattr = mlx5_devx_get_hca_cap(ctx, in, out, &rc,
+				MLX5_GET_HCA_CAP_OP_MOD_ROCE |
+				MLX5_HCA_CAP_OPMOD_GET_CUR);
+		if (!hcattr) {
 			DRV_LOG(DEBUG,
-				"Failed to query devx HCA ROCE capabilities, "
-				"status %x, syndrome = %x", status, syndrome);
-			return -1;
+				"Failed to query devx HCA ROCE capabilities");
+			return rc;
 		}
-		hcattr = MLX5_ADDR_OF(query_hca_cap_out, out, capability);
 		attr->qp_ts_format = MLX5_GET(roce_caps, hcattr, qp_ts_format);
 	}
 	if (attr->eth_virt &&
