@@ -87,6 +87,8 @@ struct rte_thash_ctx {
 	uint32_t	reta_sz_log;	/** < size of the RSS ReTa in bits */
 	uint32_t	subtuples_nb;	/** < number of subtuples */
 	uint32_t	flags;
+	uint64_t	*matrices;
+	/**< matrices used with rte_thash_gfni implementation */
 	uint8_t		hash_key[0];
 };
 
@@ -267,12 +269,28 @@ rte_thash_init_ctx(const char *name, uint32_t key_len, uint32_t reta_sz,
 			ctx->hash_key[i] = rte_rand();
 	}
 
+	if (rte_thash_gfni_supported()) {
+		ctx->matrices = rte_zmalloc(NULL, key_len * sizeof(uint64_t),
+			RTE_CACHE_LINE_SIZE);
+		if (ctx->matrices == NULL) {
+			RTE_LOG(ERR, HASH, "Cannot allocate matrices\n");
+			rte_errno = ENOMEM;
+			goto free_ctx;
+		}
+
+		rte_thash_complete_matrix(ctx->matrices, ctx->hash_key,
+			key_len);
+	}
+
 	te->data = (void *)ctx;
 	TAILQ_INSERT_TAIL(thash_list, te, next);
 
 	rte_mcfg_tailq_write_unlock();
 
 	return ctx;
+
+free_ctx:
+	rte_free(ctx);
 free_te:
 	rte_free(te);
 exit:
@@ -385,6 +403,10 @@ generate_subkey(struct rte_thash_ctx *ctx, struct thash_lfsr *lfsr,
 		for (i = end; i >= start; i--)
 			set_bit(ctx->hash_key, get_rev_bit_lfsr(lfsr), i);
 	}
+
+	if (ctx->matrices != NULL)
+		rte_thash_complete_matrix(ctx->matrices, ctx->hash_key,
+			ctx->key_len);
 
 	return 0;
 }
@@ -642,6 +664,12 @@ rte_thash_get_key(struct rte_thash_ctx *ctx)
 	return ctx->hash_key;
 }
 
+const uint64_t *
+rte_thash_get_gfni_matrices(struct rte_thash_ctx *ctx)
+{
+	return ctx->matrices;
+}
+
 static inline uint8_t
 read_unaligned_byte(uint8_t *ptr, unsigned int len, unsigned int offset)
 {
@@ -753,11 +781,17 @@ rte_thash_adjust_tuple(struct rte_thash_ctx *ctx,
 	attempts = RTE_MIN(attempts, 1U << (h->tuple_len - ctx->reta_sz_log));
 
 	for (i = 0; i < attempts; i++) {
-		for (j = 0; j < (tuple_len / 4); j++)
-			tmp_tuple[j] =
-				rte_be_to_cpu_32(*(uint32_t *)&tuple[j * 4]);
+		if (ctx->matrices != NULL)
+			hash = rte_thash_gfni(ctx->matrices, tuple, tuple_len);
+		else {
+			for (j = 0; j < (tuple_len / 4); j++)
+				tmp_tuple[j] =
+					rte_be_to_cpu_32(
+						*(uint32_t *)&tuple[j * 4]);
 
-		hash = rte_softrss(tmp_tuple, tuple_len / 4, hash_key);
+			hash = rte_softrss(tmp_tuple, tuple_len / 4, hash_key);
+		}
+
 		adj_bits = rte_thash_get_complement(h, hash, desired_value);
 
 		/*

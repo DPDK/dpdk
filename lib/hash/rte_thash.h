@@ -419,6 +419,25 @@ const uint8_t *
 rte_thash_get_key(struct rte_thash_ctx *ctx);
 
 /**
+ * Get a pointer to the toeplitz hash matrices contained in the context.
+ * These matrices could be used with fast toeplitz hash implementation if
+ * CPU supports GFNI.
+ * Matrices changes after each addition of a helper.
+ *
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * @param ctx
+ *  Thash context
+ * @return
+ *  A pointer to the toeplitz hash key matrices on success
+ *  NULL if GFNI is not supported.
+ */
+__rte_experimental
+const uint64_t *
+rte_thash_get_gfni_matrices(struct rte_thash_ctx *ctx);
+
+/**
  * Function prototype for the rte_thash_adjust_tuple
  * to check if adjusted tuple could be used.
  * Generally it is some kind of lookup function to check

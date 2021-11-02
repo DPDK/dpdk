@@ -49,5 +49,6 @@ EXPERIMENTAL {
 
 	# added in 21.11
 	rte_thash_complete_matrix;
+	rte_thash_get_gfni_matrices;
 	rte_thash_gfni_supported;
 };
