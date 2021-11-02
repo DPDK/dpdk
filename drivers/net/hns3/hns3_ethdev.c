@@ -5199,8 +5199,10 @@ hns3_dev_close(struct rte_eth_dev *eth_dev)
 	struct hns3_hw *hw = &hns->hw;
 	int ret = 0;
 
-	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY) {
+		__atomic_fetch_sub(&hw->secondary_cnt, 1, __ATOMIC_RELAXED);
 		return 0;
+	}
 
 	if (hw->adapter_state == HNS3_NIC_STARTED)
 		ret = hns3_dev_stop(eth_dev);
@@ -6287,8 +6289,7 @@ hns3_dev_init(struct rte_eth_dev *eth_dev)
 				     "process, ret = %d", ret);
 			goto err_mp_init_secondary;
 		}
-
-		hw->secondary_cnt++;
+		__atomic_fetch_add(&hw->secondary_cnt, 1, __ATOMIC_RELAXED);
 		return 0;
 	}
 
@@ -6387,8 +6388,10 @@ hns3_dev_uninit(struct rte_eth_dev *eth_dev)
 
 	PMD_INIT_FUNC_TRACE();
 
-	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY) {
+		__atomic_fetch_sub(&hw->secondary_cnt, 1, __ATOMIC_RELAXED);
 		return 0;
+	}
 
 	if (hw->adapter_state < HNS3_NIC_CLOSING)
 		hns3_dev_close(eth_dev);
