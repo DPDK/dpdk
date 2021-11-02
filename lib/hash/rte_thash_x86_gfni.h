@@ -174,6 +174,46 @@ rte_thash_gfni(const uint64_t *m, const uint8_t *tuple, int len)
 	return val;
 }
 
+/**
+ * Bulk implementation for Toeplitz hash.
+ *
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * @param m
+ *  Pointer to the matrices generated from the corresponding
+ *  RSS hash key using rte_thash_complete_matrix().
+ *  Note that @p len should not exceed the length of the rss_key minus 4.
+ * @param len
+ *  Length of the largest data buffer to be hashed.
+ * @param tuple
+ *  Array of the pointers on data to be hashed.
+ *  Data must be in network byte order.
+ * @param val
+ *  Array of uint32_t where to put calculated Toeplitz hash values
+ * @param num
+ *  Number of tuples to hash.
+ */
+__rte_experimental
+static inline void
+rte_thash_gfni_bulk(const uint64_t *mtrx, int len, uint8_t *tuple[],
+	uint32_t val[], uint32_t num)
+{
+	uint32_t i;
+	uint32_t val_zero;
+	__m512i xor_acc;
+
+	for (i = 0; i != (num & ~1); i += 2) {
+		xor_acc = __rte_thash_gfni(mtrx, tuple[i], tuple[i + 1], len);
+		__rte_thash_xor_reduce(xor_acc, val + i, val + i + 1);
+	}
+
+	if (num & 1) {
+		xor_acc = __rte_thash_gfni(mtrx, tuple[i], NULL, len);
+		__rte_thash_xor_reduce(xor_acc, val + i, &val_zero);
+	}
+}
+
 #endif /* _GFNI_ */
 
 #ifdef __cplusplus

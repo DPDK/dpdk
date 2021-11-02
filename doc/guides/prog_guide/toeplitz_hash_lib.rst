@@ -19,11 +19,12 @@ to calculate the RSS hash sum to spread the traffic among the queues.
 Toeplitz hash function API
 --------------------------
 
-There are three functions that provide calculation of the Toeplitz hash sum:
+There are four functions that provide calculation of the Toeplitz hash sum:
 
 * ``rte_softrss()``
 * ``rte_softrss_be()``
 * ``rte_thash_gfni()``
+* ``rte_thash_gfni_bulk()``
 
 First two functions are scalar implementation and take the parameters:
 
@@ -38,17 +39,26 @@ to be exactly the same as the one installed on the NIC.
 The ``rte_softrss_be`` function is a faster implementation,
 but it expects ``rss_key`` to be converted to the host byte order.
 
-The last function is vectorized implementation using
-Galois Fields New Instructions. Could be used if ``rte_thash_gfni_supported`` returns true.
-It expects the tuple to be in network byte order.
+The last two functions are vectorized implementations using
+Galois Fields New Instructions. Could be used if ``rte_thash_gfni_supported`` is true.
+They expect the tuple to be in network byte order.
 
-``rte_thash_gfni()`` calculates the hash value for a single tuple
+``rte_thash_gfni()`` calculates the hash value for a single tuple, and
+``rte_thash_gfni_bulk()`` bulk implementation of the rte_thash_gfni().
 
 ``rte_thash_gfni()`` takes the parameters:
 
 * A pointer to the matrices derived from the RSS hash key using ``rte_thash_complete_matrix()``.
 * A pointer to the tuple.
 * A length of the tuple in bytes.
+
+``rte_thash_gfni_bulk()`` takes the parameters:
+
+* A pointer to the matrices derived from the RSS hash key using ``rte_thash_complete_matrix()``.
+* A length of the longest tuple in bytes.
+* Array of the pointers on data to be hashed.
+* Array of ``uint32_t`` where to put calculated Toeplitz hash values
+* Number of tuples in a bulk.
 
 ``rte_thash_complete_matrix()`` is a function that calculates matrices required by
 GFNI implementations from the RSS hash key. It takes the parameters:

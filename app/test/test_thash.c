@@ -230,6 +230,8 @@ enum {
 	SCALAR_DATA_BUF_2_HASH_IDX,
 	GFNI_DATA_BUF_1_HASH_IDX,
 	GFNI_DATA_BUF_2_HASH_IDX,
+	GFNI_BULK_DATA_BUF_1_HASH_IDX,
+	GFNI_BULK_DATA_BUF_2_HASH_IDX,
 	HASH_IDXES
 };
 
@@ -241,12 +243,16 @@ test_toeplitz_hash_rand_data(void)
 	uint32_t hash[HASH_IDXES] = { 0 };
 	uint64_t rss_key_matrixes[RTE_DIM(default_rss_key)];
 	int i, j;
+	uint8_t *bulk_data[2];
 
 	if (!rte_thash_gfni_supported())
 		return TEST_SKIPPED;
 
 	rte_thash_complete_matrix(rss_key_matrixes, default_rss_key,
 		RTE_DIM(default_rss_key));
+
+	for (i = 0; i < 2; i++)
+		bulk_data[i] = (uint8_t *)data[i];
 
 	for (i = 0; i < ITER; i++) {
 		for (j = 0; j < DATA_SZ; j++) {
@@ -266,11 +272,18 @@ test_toeplitz_hash_rand_data(void)
 		hash[GFNI_DATA_BUF_2_HASH_IDX] = rte_thash_gfni(
 			rss_key_matrixes, (uint8_t *)data[1],
 			DATA_SZ * sizeof(uint32_t));
+		rte_thash_gfni_bulk(rss_key_matrixes,
+			DATA_SZ * sizeof(uint32_t), bulk_data,
+			&hash[GFNI_BULK_DATA_BUF_1_HASH_IDX], 2);
 
 		if ((hash[SCALAR_DATA_BUF_1_HASH_IDX] !=
 				hash[GFNI_DATA_BUF_1_HASH_IDX]) ||
+				(hash[SCALAR_DATA_BUF_1_HASH_IDX] !=
+				hash[GFNI_BULK_DATA_BUF_1_HASH_IDX]) ||
 				(hash[SCALAR_DATA_BUF_2_HASH_IDX] !=
-				hash[GFNI_DATA_BUF_2_HASH_IDX]))
+				hash[GFNI_DATA_BUF_2_HASH_IDX]) ||
+				(hash[SCALAR_DATA_BUF_2_HASH_IDX] !=
+				hash[GFNI_BULK_DATA_BUF_2_HASH_IDX]))
 
 			return -TEST_FAILED;
 	}
@@ -282,6 +295,57 @@ enum {
 	RSS_V4_IDX,
 	RSS_V6_IDX
 };
+
+static int
+test_toeplitz_hash_gfni_bulk(void)
+{
+	uint32_t i, j;
+	union rte_thash_tuple tuple[2];
+	uint8_t *tuples[2];
+	uint32_t rss[2] = { 0 };
+	uint64_t rss_key_matrixes[RTE_DIM(default_rss_key)];
+
+	if (!rte_thash_gfni_supported())
+		return TEST_SKIPPED;
+
+	/* Convert RSS key into matrixes */
+	rte_thash_complete_matrix(rss_key_matrixes, default_rss_key,
+		RTE_DIM(default_rss_key));
+
+	for (i = 0; i < RTE_DIM(tuples); i++) {
+		/* allocate memory enough for a biggest tuple */
+		tuples[i] = rte_zmalloc(NULL, RTE_THASH_V6_L4_LEN * 4, 0);
+		if (tuples[i] == NULL)
+			return -TEST_FAILED;
+	}
+
+	for (i = 0; i < RTE_MIN(RTE_DIM(v4_tbl), RTE_DIM(v6_tbl)); i++) {
+		/*Load IPv4 headers and copy it into the corresponding tuple*/
+		tuple[0].v4.src_addr = rte_cpu_to_be_32(v4_tbl[i].src_ip);
+		tuple[0].v4.dst_addr = rte_cpu_to_be_32(v4_tbl[i].dst_ip);
+		tuple[0].v4.sport = rte_cpu_to_be_16(v4_tbl[i].dst_port);
+		tuple[0].v4.dport = rte_cpu_to_be_16(v4_tbl[i].src_port);
+		rte_memcpy(tuples[0], &tuple[0], RTE_THASH_V4_L4_LEN * 4);
+
+		/*Load IPv6 headers and copy it into the corresponding tuple*/
+		for (j = 0; j < RTE_DIM(tuple[1].v6.src_addr); j++)
+			tuple[1].v6.src_addr[j] = v6_tbl[i].src_ip[j];
+		for (j = 0; j < RTE_DIM(tuple[1].v6.dst_addr); j++)
+			tuple[1].v6.dst_addr[j] = v6_tbl[i].dst_ip[j];
+		tuple[1].v6.sport = rte_cpu_to_be_16(v6_tbl[i].dst_port);
+		tuple[1].v6.dport = rte_cpu_to_be_16(v6_tbl[i].src_port);
+		rte_memcpy(tuples[1], &tuple[1], RTE_THASH_V6_L4_LEN * 4);
+
+		rte_thash_gfni_bulk(rss_key_matrixes, RTE_THASH_V6_L4_LEN * 4,
+			tuples, rss, 2);
+
+		if ((rss[RSS_V4_IDX] != v4_tbl[i].hash_l3l4) ||
+				(rss[RSS_V6_IDX] != v6_tbl[i].hash_l3l4))
+			return -TEST_FAILED;
+	}
+
+	return TEST_SUCCESS;
+}
 
 static int
 test_big_tuple_gfni(void)
@@ -748,6 +812,7 @@ static struct unit_test_suite thash_tests = {
 	TEST_CASE(test_toeplitz_hash_calc),
 	TEST_CASE(test_toeplitz_hash_gfni),
 	TEST_CASE(test_toeplitz_hash_rand_data),
+	TEST_CASE(test_toeplitz_hash_gfni_bulk),
 	TEST_CASE(test_big_tuple_gfni),
 	TEST_CASE(test_create_invalid),
 	TEST_CASE(test_multiple_create),
