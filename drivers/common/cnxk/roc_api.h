@@ -12,7 +12,7 @@
 /* Bits manipulation */
 #include "roc_bits.h"
 
-/* Bitfields manipulation */
+/* Bit fields manipulation */
 #include "roc_bitfield.h"
 
 /* ROC Constants */

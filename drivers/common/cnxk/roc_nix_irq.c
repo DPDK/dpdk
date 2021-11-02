@@ -421,7 +421,7 @@ roc_nix_register_cq_irqs(struct roc_nix *roc_nix)
 				rc);
 			return rc;
 		}
-		/* VFIO vector zero is resereved for misc interrupt so
+		/* VFIO vector zero is reserved for misc interrupt so
 		 * doing required adjustment. (b13bfab4cd)
 		 */
 		if (plt_intr_vec_list_index_set(handle, q,

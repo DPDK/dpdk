@@ -357,7 +357,7 @@ roc_se_ciph_key_set(struct roc_se_ctx *se_ctx, roc_se_cipher_type type,
 	if (se_ctx->fc_type == ROC_SE_FC_GEN) {
 		/*
 		 * We need to always say IV is from DPTR as user can
-		 * sometimes iverride IV per operation.
+		 * sometimes override IV per operation.
 		 */
 		fctx->enc.iv_source = ROC_SE_FROM_DPTR;
 
