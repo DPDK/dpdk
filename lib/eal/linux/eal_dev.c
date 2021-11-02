@@ -320,10 +320,12 @@ rte_dev_event_monitor_start(void)
 		goto exit;
 	}
 
-	if (rte_intr_type_set(intr_handle, RTE_INTR_HANDLE_DEV_EVENT))
+	ret = rte_intr_type_set(intr_handle, RTE_INTR_HANDLE_DEV_EVENT);
+	if (ret)
 		goto exit;
 
-	if (rte_intr_fd_set(intr_handle, -1))
+	ret = rte_intr_fd_set(intr_handle, -1);
+	if (ret)
 		goto exit;
 
 	ret = dev_uev_socket_fd_create();
@@ -342,7 +344,10 @@ rte_dev_event_monitor_start(void)
 	monitor_refcount++;
 
 exit:
-	rte_intr_instance_free(intr_handle);
+	if (ret) {
+		rte_intr_instance_free(intr_handle);
+		intr_handle = NULL;
+	}
 	rte_rwlock_write_unlock(&monitor_lock);
 	return ret;
 }
@@ -373,6 +378,7 @@ rte_dev_event_monitor_stop(void)
 
 	close(rte_intr_fd_get(intr_handle));
 	rte_intr_instance_free(intr_handle);
+	intr_handle = NULL;
 
 	monitor_refcount--;
 
