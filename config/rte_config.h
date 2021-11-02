@@ -82,7 +82,7 @@
 #define RTE_RAWDEV_MAX_DEVS 64
 
 /* ip_fragmentation defines */
-#define RTE_LIBRTE_IP_FRAG_MAX_FRAG 4
+#define RTE_LIBRTE_IP_FRAG_MAX_FRAG 8
 #undef RTE_LIBRTE_IP_FRAG_TBL_STAT
 
 /* rte_power defines */

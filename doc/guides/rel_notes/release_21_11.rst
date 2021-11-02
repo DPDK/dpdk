@@ -656,6 +656,13 @@ ABI Changes
 
 * eventdev: Re-arranged fields in ``rte_event_timer`` to remove holes.
 
+* ip_frag: Increased default value for config parameter
+  ``RTE_LIBRTE_IP_FRAG_MAX_FRAG`` from ``4`` to ``8``.
+  This parameter controls maximum number of fragments per packet
+  in IP reassembly table. Increasing this value from ``4`` to ``8``
+  will allow to cover common case with jumbo packet size of ``9KB``
+  and fragments with default frame size ``(1500B)``.
+
 
 Known Issues
 ------------
