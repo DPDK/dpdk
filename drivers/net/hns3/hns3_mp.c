@@ -150,8 +150,10 @@ mp_req_on_rxtx(struct rte_eth_dev *dev, enum hns3_mp_req_type type)
 	int ret;
 	int i;
 
-	if (rte_eal_process_type() == RTE_PROC_SECONDARY || !hw->secondary_cnt)
+	if (rte_eal_process_type() == RTE_PROC_SECONDARY ||
+		__atomic_load_n(&hw->secondary_cnt, __ATOMIC_RELAXED) == 0)
 		return;
+
 	if (!mp_req_type_is_valid(type)) {
 		hns3_err(hw, "port %u unknown request (req_type %d)",
 			 dev->data->port_id, type);
