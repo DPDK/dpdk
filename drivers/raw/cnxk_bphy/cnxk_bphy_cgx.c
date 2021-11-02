@@ -28,7 +28,7 @@ static void
 cnxk_bphy_cgx_format_name(char *name, unsigned int len,
 			  struct rte_pci_device *pci_dev)
 {
-	snprintf(name, len, "BPHY_CGX:%x:%02x.%x", pci_dev->addr.bus,
+	snprintf(name, len, "BPHY_CGX:%02x:%02x.%x", pci_dev->addr.bus,
 		 pci_dev->addr.devid, pci_dev->addr.function);
 }
 

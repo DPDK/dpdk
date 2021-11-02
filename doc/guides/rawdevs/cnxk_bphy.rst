@@ -146,8 +146,10 @@ the raw devices. The rawdev ID of the device can be obtained using invocation
 of ``rte_rawdev_get_dev_id("NAME:x")`` from the test application, where:
 
 - NAME is the desired subsystem: use "BPHY" for regular, and "BPHY_CGX" for
-  RFOE module,
-- x is the device's bus id specified in "bus:device.func" (BDF) format.
+  RFOE module.
+- x is the device's bus id specified in "bus:device.func" (BDF) format. BDF follows convention
+  used by lspci i.e bus, device and func are specified using respectively two, two and one hex
+  digit(s).
 
 Use this identifier for further rawdev function calls.
 

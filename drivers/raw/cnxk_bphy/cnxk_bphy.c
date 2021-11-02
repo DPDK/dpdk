@@ -158,7 +158,7 @@ err_desc:
 static void
 bphy_rawdev_get_name(char *name, struct rte_pci_device *pci_dev)
 {
-	snprintf(name, RTE_RAWDEV_NAME_MAX_LEN, "BPHY:%x:%02x.%x",
+	snprintf(name, RTE_RAWDEV_NAME_MAX_LEN, "BPHY:%02x:%02x.%x",
 		 pci_dev->addr.bus, pci_dev->addr.devid,
 		 pci_dev->addr.function);
 }
