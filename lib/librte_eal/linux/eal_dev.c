@@ -157,6 +157,9 @@ dev_uev_parse(const char *buf, struct rte_dev_event *event, int length)
 				break;
 			buf++;
 		}
+		if (i >= length)
+			break;
+
 		/**
 		 * check device uevent from kernel side, no need to check
 		 * uevent from udev.
