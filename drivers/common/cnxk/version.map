@@ -99,6 +99,7 @@ INTERNAL {
 	roc_nix_bpf_stats_read;
 	roc_nix_bpf_stats_reset;
 	roc_nix_bpf_stats_to_idx;
+	roc_nix_bpf_timeunit_get;
 	roc_nix_cq_dump;
 	roc_nix_cq_fini;
 	roc_nix_cq_init;

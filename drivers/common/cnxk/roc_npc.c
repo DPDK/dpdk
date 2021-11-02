@@ -307,6 +307,7 @@ npc_parse_actions(struct roc_npc *roc_npc, const struct roc_npc_attr *attr,
 
 	/* Initialize actions */
 	flow->ctr_id = NPC_COUNTER_NONE;
+	flow->mtr_id = ROC_NIX_MTR_ID_INVALID;
 	pf_func = npc->pf_func;
 
 	for (; actions->type != ROC_NPC_ACTION_TYPE_END; actions++) {

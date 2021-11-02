@@ -35,15 +35,16 @@ get_mbox(struct roc_nix *roc_nix)
 
 static inline uint64_t
 meter_rate_to_nix(uint64_t value, uint64_t *exponent_p, uint64_t *mantissa_p,
-		  uint64_t *div_exp_p)
+		  uint64_t *div_exp_p, uint32_t timeunit_p)
 {
 	uint64_t div_exp, exponent, mantissa;
+	uint32_t time_us = timeunit_p;
 
 	/* Boundary checks */
 	if (value < NIX_BPF_RATE_MIN || value > NIX_BPF_RATE_MAX)
 		return 0;
 
-	if (value <= NIX_BPF_RATE(0, 0, 0)) {
+	if (value <= NIX_BPF_RATE(time_us, 0, 0, 0)) {
 		/* Calculate rate div_exp and mantissa using
 		 * the following formula:
 		 *
@@ -93,7 +94,7 @@ meter_rate_to_nix(uint64_t value, uint64_t *exponent_p, uint64_t *mantissa_p,
 		*mantissa_p = mantissa;
 
 	/* Calculate real rate value */
-	return NIX_BPF_RATE(exponent, mantissa, div_exp);
+	return NIX_BPF_RATE(time_us, exponent, mantissa, div_exp);
 }
 
 static inline uint64_t
@@ -338,13 +339,40 @@ roc_nix_bpf_stats_to_idx(enum roc_nix_bpf_stats level_f)
 }
 
 int
+roc_nix_bpf_timeunit_get(struct roc_nix *roc_nix, uint32_t *time_unit)
+{
+	struct nix_bandprof_get_hwinfo_rsp *rsp;
+	struct mbox *mbox = get_mbox(roc_nix);
+	struct msg_req *req;
+	int rc = -ENOSPC;
+
+	if (roc_model_is_cn9k())
+		return NIX_ERR_HW_NOTSUP;
+
+	req = mbox_alloc_msg_nix_bandprof_get_hwinfo(mbox);
+	if (req == NULL)
+		goto exit;
+
+	rc = mbox_process_msg(mbox, (void *)&rsp);
+	if (rc)
+		goto exit;
+
+	*time_unit = rsp->policer_timeunit;
+
+exit:
+	return rc;
+}
+
+int
 roc_nix_bpf_count_get(struct roc_nix *roc_nix, uint8_t lvl_mask,
 		      uint16_t count[ROC_NIX_BPF_LEVEL_MAX])
 {
 	uint8_t mask = lvl_mask & NIX_BPF_LEVEL_F_MASK;
+	struct nix_bandprof_get_hwinfo_rsp *rsp;
+	struct mbox *mbox = get_mbox(roc_nix);
 	uint8_t leaf_idx, mid_idx, top_idx;
-
-	PLT_SET_USED(roc_nix);
+	struct msg_req *req;
+	int rc = -ENOSPC;
 
 	if (roc_model_is_cn9k())
 		return NIX_ERR_HW_NOTSUP;
@@ -352,27 +380,29 @@ roc_nix_bpf_count_get(struct roc_nix *roc_nix, uint8_t lvl_mask,
 	if (!mask)
 		return NIX_ERR_PARAM;
 
-	/* Currently No MBOX interface is available to get number
-	 * of bandwidth profiles. So numbers per level are hard coded,
-	 * considering 3 RPM blocks and each block has 4 LMAC's.
-	 * So total 12 physical interfaces are in system. Each interface
-	 * supports following bandwidth profiles.
-	 */
+	req = mbox_alloc_msg_nix_bandprof_get_hwinfo(mbox);
+	if (req == NULL)
+		goto exit;
+
+	rc = mbox_process_msg(mbox, (void *)&rsp);
+	if (rc)
+		goto exit;
 
 	leaf_idx = roc_nix_bpf_level_to_idx(mask & ROC_NIX_BPF_LEVEL_F_LEAF);
 	mid_idx = roc_nix_bpf_level_to_idx(mask & ROC_NIX_BPF_LEVEL_F_MID);
 	top_idx = roc_nix_bpf_level_to_idx(mask & ROC_NIX_BPF_LEVEL_F_TOP);
 
 	if (leaf_idx != ROC_NIX_BPF_LEVEL_IDX_INVALID)
-		count[leaf_idx] = NIX_MAX_BPF_COUNT_LEAF_LAYER;
+		count[leaf_idx] = rsp->prof_count[sw_to_hw_lvl_map[leaf_idx]];
 
 	if (mid_idx != ROC_NIX_BPF_LEVEL_IDX_INVALID)
-		count[mid_idx] = NIX_MAX_BPF_COUNT_MID_LAYER;
+		count[mid_idx] = rsp->prof_count[sw_to_hw_lvl_map[mid_idx]];
 
 	if (top_idx != ROC_NIX_BPF_LEVEL_IDX_INVALID)
-		count[top_idx] = NIX_MAX_BPF_COUNT_TOP_LAYER;
+		count[top_idx] = rsp->prof_count[sw_to_hw_lvl_map[top_idx]];
 
-	return 0;
+exit:
+	return rc;
 }
 
 int
@@ -514,13 +544,19 @@ roc_nix_bpf_config(struct roc_nix *roc_nix, uint16_t id,
 	uint64_t exponent_p = 0, mantissa_p = 0, div_exp_p = 0;
 	struct mbox *mbox = get_mbox(roc_nix);
 	struct nix_cn10k_aq_enq_req *aq;
+	uint32_t policer_timeunit;
 	uint8_t level_idx;
+	int rc;
 
 	if (roc_model_is_cn9k())
 		return NIX_ERR_HW_NOTSUP;
 
 	if (!cfg)
 		return NIX_ERR_PARAM;
+
+	rc = roc_nix_bpf_timeunit_get(roc_nix, &policer_timeunit);
+	if (rc)
+		return rc;
 
 	level_idx = roc_nix_bpf_level_to_idx(lvl_flag);
 	if (level_idx == ROC_NIX_BPF_LEVEL_IDX_INVALID)
@@ -544,7 +580,7 @@ roc_nix_bpf_config(struct roc_nix *roc_nix, uint16_t id,
 	switch (cfg->alg) {
 	case ROC_NIX_BPF_ALGO_2697:
 		meter_rate_to_nix(cfg->algo2697.cir, &exponent_p, &mantissa_p,
-				  &div_exp_p);
+				  &div_exp_p, policer_timeunit);
 		aq->prof.cir_mantissa = mantissa_p;
 		aq->prof.cir_exponent = exponent_p;
 
@@ -566,12 +602,12 @@ roc_nix_bpf_config(struct roc_nix *roc_nix, uint16_t id,
 
 	case ROC_NIX_BPF_ALGO_2698:
 		meter_rate_to_nix(cfg->algo2698.cir, &exponent_p, &mantissa_p,
-				  &div_exp_p);
+				  &div_exp_p, policer_timeunit);
 		aq->prof.cir_mantissa = mantissa_p;
 		aq->prof.cir_exponent = exponent_p;
 
 		meter_rate_to_nix(cfg->algo2698.pir, &exponent_p, &mantissa_p,
-				  &div_exp_p);
+				  &div_exp_p, policer_timeunit);
 		aq->prof.peir_mantissa = mantissa_p;
 		aq->prof.peir_exponent = exponent_p;
 
@@ -595,12 +631,12 @@ roc_nix_bpf_config(struct roc_nix *roc_nix, uint16_t id,
 
 	case ROC_NIX_BPF_ALGO_4115:
 		meter_rate_to_nix(cfg->algo4115.cir, &exponent_p, &mantissa_p,
-				  &div_exp_p);
+				  &div_exp_p, policer_timeunit);
 		aq->prof.cir_mantissa = mantissa_p;
 		aq->prof.cir_exponent = exponent_p;
 
 		meter_rate_to_nix(cfg->algo4115.eir, &exponent_p, &mantissa_p,
-				  &div_exp_p);
+				  &div_exp_p, policer_timeunit);
 		aq->prof.peir_mantissa = mantissa_p;
 		aq->prof.peir_exponent = exponent_p;
 

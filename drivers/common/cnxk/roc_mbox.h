@@ -131,6 +131,8 @@ struct mbox_msghdr {
 	M(TIM_ENABLE_RING, 0x803, tim_enable_ring, tim_ring_req,               \
 	  tim_enable_rsp)                                                      \
 	M(TIM_DISABLE_RING, 0x804, tim_disable_ring, tim_ring_req, msg_rsp)    \
+	M(TIM_GET_MIN_INTVL, 0x805, tim_get_min_intvl, tim_intvl_req,          \
+	  tim_intvl_rsp)                                                       \
 	/* CPT mbox IDs (range 0xA00 - 0xBFF) */                               \
 	M(CPT_LF_ALLOC, 0xA00, cpt_lf_alloc, cpt_lf_alloc_req_msg, msg_rsp)    \
 	M(CPT_LF_FREE, 0xA01, cpt_lf_free, msg_req, msg_rsp)                   \
@@ -240,6 +242,8 @@ struct mbox_msghdr {
 	  nix_bandprof_alloc_req, nix_bandprof_alloc_rsp)                      \
 	M(NIX_BANDPROF_FREE, 0x801e, nix_bandprof_free, nix_bandprof_free_req, \
 	  msg_rsp)                                                             \
+	M(NIX_BANDPROF_GET_HWINFO, 0x801f, nix_bandprof_get_hwinfo, msg_req,   \
+	  nix_bandprof_get_hwinfo_rsp)                                         \
 	M(NIX_CPT_BP_ENABLE, 0x8020, nix_cpt_bp_enable, nix_bp_cfg_req,        \
 	  nix_bp_cfg_rsp)                                                      \
 	M(NIX_CPT_BP_DISABLE, 0x8021, nix_cpt_bp_disable, nix_bp_cfg_req,      \
@@ -1178,6 +1182,12 @@ struct nix_bandprof_free_req {
 	uint16_t __io prof_idx[NIX_RX_BAND_PROF_LAYER_MAX][BANDPROF_PER_PFFUNC];
 };
 
+struct nix_bandprof_get_hwinfo_rsp {
+	struct mbox_msghdr hdr;
+	uint16_t __io prof_count[NIX_RX_BAND_PROF_LAYER_MAX];
+	uint32_t __io policer_timeunit;
+};
+
 /* SSO mailbox error codes
  * Range 501 - 600.
  */
@@ -1804,6 +1814,9 @@ struct tim_config_req {
 	uint32_t __io chunksize;
 	uint32_t __io interval;
 	uint8_t __io gpioedge;
+	uint8_t __io rsvd[7];
+	uint64_t __io intervalns;
+	uint64_t __io clockfreq;
 };
 
 struct tim_lf_alloc_rsp {
@@ -1815,6 +1828,18 @@ struct tim_enable_rsp {
 	struct mbox_msghdr hdr;
 	uint64_t __io timestarted;
 	uint32_t __io currentbucket;
+};
+
+struct tim_intvl_req {
+	struct mbox_msghdr hdr;
+	uint8_t __io clocksource;
+	uint64_t __io clockfreq;
+};
+
+struct tim_intvl_rsp {
+	struct mbox_msghdr hdr;
+	uint64_t __io intvl_cyc;
+	uint64_t __io intvl_ns;
 };
 
 struct sdp_node_info {

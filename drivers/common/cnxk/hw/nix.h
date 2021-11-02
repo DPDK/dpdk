@@ -2115,10 +2115,10 @@ struct nix_lso_format {
 
 /** NIX policer rate limits */
 #define NIX_BPF_MAX_RATE_DIV_EXP  12
-#define NIX_BPF_MAX_RATE_EXPONENT 0xf
+#define NIX_BPF_MAX_RATE_EXPONENT 0x16
 #define NIX_BPF_MAX_RATE_MANTISSA 0xff
 
-#define NIX_BPF_RATE_CONST 2000000ULL
+#define NIX_BPF_RATE_CONST 8000000000ULL
 
 /* NIX rate calculation in Bits/Sec
  *	PIR_ADD = ((256 + NIX_*_PIR[RATE_MANTISSA])
@@ -2129,14 +2129,14 @@ struct nix_lso_format {
  *		<< NIX_*_CIR[RATE_EXPONENT]) / 256
  *	CIR = (2E6 * CIR_ADD / (CCLK_TICKS << NIX_*_CIR[RATE_DIVIDER_EXPONENT]))
  */
-#define NIX_BPF_RATE(exponent, mantissa, div_exp)                              \
+#define NIX_BPF_RATE(policer_timeunit, exponent, mantissa, div_exp)            \
 	((NIX_BPF_RATE_CONST * ((256 + (mantissa)) << (exponent))) /           \
-	 (((1ull << (div_exp)) * 256)))
+	 (((1ull << (div_exp)) * 256 * policer_timeunit)))
 
 /* Meter rate limits in Bits/Sec */
-#define NIX_BPF_RATE_MIN NIX_BPF_RATE(0, 0, NIX_BPF_MAX_RATE_DIV_EXP)
+#define NIX_BPF_RATE_MIN NIX_BPF_RATE(1000000000, 0, 0, 0)
 #define NIX_BPF_RATE_MAX                                                       \
-	NIX_BPF_RATE(NIX_BPF_MAX_RATE_EXPONENT, NIX_BPF_MAX_RATE_MANTISSA, 0)
+	NIX_BPF_RATE(1, NIX_BPF_MAX_RATE_EXPONENT, NIX_BPF_MAX_RATE_MANTISSA, 0)
 
 #define NIX_BPF_DEFAULT_ADJUST_MANTISSA 511
 #define NIX_BPF_DEFAULT_ADJUST_EXPONENT 0
