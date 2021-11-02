@@ -78,6 +78,8 @@ static uint32_t rules_count;
 static uint32_t rules_batch;
 static uint32_t hairpin_queues_num; /* total hairpin q number - default: 0 */
 static uint32_t nb_lcores;
+static uint8_t max_priority;
+static uint32_t rand_seed;
 
 #define MAX_PKT_BURST    32
 #define LCORE_MODE_PKT    1
@@ -141,6 +143,9 @@ usage(char *progname)
 	printf("  --enable-fwd: To enable packets forwarding"
 		" after insertion\n");
 	printf("  --portmask=N: hexadecimal bitmask of ports used\n");
+	printf("  --random-priority=N,S: use random priority levels "
+		"from 0 to (N - 1) for flows "
+		"and S as seed for pseudo-random number generator\n");
 	printf("  --unique-data: flag to set using unique data for all"
 		" actions that support data, such as header modify and encap actions\n");
 
@@ -239,8 +244,9 @@ usage(char *progname)
 static void
 args_parse(int argc, char **argv)
 {
-	uint64_t pm;
+	uint64_t pm, seed;
 	char **argvopt;
+	uint32_t prio;
 	char *token;
 	char *end;
 	int n, opt;
@@ -590,6 +596,7 @@ args_parse(int argc, char **argv)
 		{ "unique-data",                0, 0, 0 },
 		{ "portmask",                   1, 0, 0 },
 		{ "cores",                      1, 0, 0 },
+		{ "random-priority",            1, 0, 0 },
 		{ "meter-profile-alg",          1, 0, 0 },
 		{ "rxq",                        1, 0, 0 },
 		{ "txq",                        1, 0, 0 },
@@ -771,25 +778,26 @@ args_parse(int argc, char **argv)
 			/* Control */
 			if (strcmp(lgopts[opt_idx].name,
 					"rules-batch") == 0) {
-				n = atoi(optarg);
-				if (n >= DEFAULT_RULES_BATCH)
-					rules_batch = n;
-				else {
-					rte_exit(EXIT_FAILURE,
-						"rules_batch should be >= %d\n",
-						DEFAULT_RULES_BATCH);
-				}
+				rules_batch = atoi(optarg);
 			}
 			if (strcmp(lgopts[opt_idx].name,
 					"rules-count") == 0) {
-				n = atoi(optarg);
-				if (n >= (int) rules_batch)
-					rules_count = n;
-				else {
+				rules_count = atoi(optarg);
+			}
+			if (strcmp(lgopts[opt_idx].name, "random-priority") ==
+			    0) {
+				end = NULL;
+				prio = strtol(optarg, &end, 10);
+				if ((optarg[0] == '\0') || (end == NULL))
 					rte_exit(EXIT_FAILURE,
-						"rules_count should be >= %d\n",
-						rules_batch);
-				}
+						 "Invalid value for random-priority\n");
+				max_priority = prio;
+				token = end + 1;
+				seed = strtoll(token, &end, 10);
+				if ((token[0] == '\0') || (*end != '\0'))
+					rte_exit(EXIT_FAILURE,
+						 "Invalid value for random-priority\n");
+				rand_seed = seed;
 			}
 			if (strcmp(lgopts[opt_idx].name,
 					"dump-iterations") == 0)
@@ -877,6 +885,16 @@ args_parse(int argc, char **argv)
 			break;
 		}
 	}
+	if (rules_count % rules_batch != 0) {
+		rte_exit(EXIT_FAILURE,
+			 "rules_count %% rules_batch should be 0\n");
+	}
+	if (rules_count / rules_batch > MAX_BATCHES_COUNT) {
+		rte_exit(EXIT_FAILURE,
+			 "rules_count / rules_batch should be <= %d\n",
+			 MAX_BATCHES_COUNT);
+	}
+
 	printf("end_flow\n");
 }
 
@@ -1242,7 +1260,7 @@ insert_flows(int port_id, uint8_t core_id, uint16_t dst_port_id)
 		flow = generate_flow(port_id, 0, flow_attrs,
 			global_items, global_actions,
 			flow_group, 0, 0, 0, 0, dst_port_id, core_id,
-			rx_queues_count, unique_data, &error);
+			rx_queues_count, unique_data, max_priority, &error);
 
 		if (flow == NULL) {
 			print_flow_error(error);
@@ -1259,7 +1277,7 @@ insert_flows(int port_id, uint8_t core_id, uint16_t dst_port_id)
 			hairpin_queues_num, encap_data,
 			decap_data, dst_port_id,
 			core_id, rx_queues_count,
-			unique_data, &error);
+			unique_data, max_priority, &error);
 
 		if (!counter) {
 			first_flow_latency = (double) (rte_get_timer_cycles() - start_batch);
@@ -1991,6 +2009,8 @@ main(int argc, char **argv)
 		rte_exit(EXIT_FAILURE, "This app needs at least two cores\n");
 
 	printf(":: Flows Count per port: %d\n\n", rules_count);
+
+	rte_srand(rand_seed);
 
 	if (has_meter())
 		create_meter_profile();

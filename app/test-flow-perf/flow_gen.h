@@ -38,6 +38,7 @@ generate_flow(uint16_t port_id,
 	uint8_t core_idx,
 	uint8_t rx_queues_count,
 	bool unique_data,
+	uint8_t max_priority,
 	struct rte_flow_error *error);
 
 #endif /* FLOW_PERF_FLOW_GEN */

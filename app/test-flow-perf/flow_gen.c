@@ -18,7 +18,7 @@
 
 static void
 fill_attributes(struct rte_flow_attr *attr,
-	uint64_t *flow_attrs, uint16_t group)
+	uint64_t *flow_attrs, uint16_t group, uint8_t max_priority)
 {
 	uint8_t i;
 	for (i = 0; i < MAX_ATTRS_NUM; i++) {
@@ -32,6 +32,7 @@ fill_attributes(struct rte_flow_attr *attr,
 			attr->transfer = 1;
 	}
 	attr->group = group;
+	attr->priority = rte_rand_max(max_priority);
 }
 
 struct rte_flow *
@@ -49,6 +50,7 @@ generate_flow(uint16_t port_id,
 	uint8_t core_idx,
 	uint8_t rx_queues_count,
 	bool unique_data,
+	uint8_t max_priority,
 	struct rte_flow_error *error)
 {
 	struct rte_flow_attr attr;
@@ -60,7 +62,7 @@ generate_flow(uint16_t port_id,
 	memset(actions, 0, sizeof(actions));
 	memset(&attr, 0, sizeof(struct rte_flow_attr));
 
-	fill_attributes(&attr, flow_attrs, group);
+	fill_attributes(&attr, flow_attrs, group, max_priority);
 
 	fill_actions(actions, flow_actions,
 		outer_ip_src, next_table, hairpinq,

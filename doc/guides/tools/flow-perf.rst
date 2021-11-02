@@ -100,6 +100,10 @@ The command line options are:
 	Set the number of needed cores to insert/delete rte_flow rules.
 	Default cores count is 1.
 
+*       ``--random-priority=N,S``
+        Create flows with the priority attribute set randomly between 0 to N - 1
+        and use S as seed for the pseudo-random number generator.
+
 *	``--meter-profile-alg``
 	Set the traffic metering algorithm.
 	Example: meter-profile-alg=srtcmp, default algorithm is srtcm_rfc2697
