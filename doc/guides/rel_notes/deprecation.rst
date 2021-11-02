@@ -104,10 +104,6 @@ Deprecation Notices
   is deprecated as ambiguous with respect to the embedded switch. The use of
   these attributes will become invalid starting from DPDK 22.11.
 
-* vhost: ``rte_vdpa_register_device``, ``rte_vdpa_unregister_device``,
-  ``rte_vhost_host_notifier_ctrl`` and ``rte_vdpa_relay_vring_used`` vDPA
-  driver interface will be marked as internal in DPDK v21.11.
-
 * vhost: rename ``struct vhost_device_ops`` to ``struct rte_vhost_device_ops``
   in DPDK v21.11.
 

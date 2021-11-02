@@ -12,7 +12,7 @@
 #pragma GCC diagnostic ignored "-Wpedantic"
 #endif
 #include <rte_vdpa.h>
-#include <rte_vdpa_dev.h>
+#include <vdpa_driver.h>
 #include <rte_vhost.h>
 #ifdef PEDANTIC
 #pragma GCC diagnostic error "-Wpedantic"

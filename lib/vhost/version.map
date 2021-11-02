@@ -8,10 +8,7 @@ DPDK_22 {
 	rte_vdpa_get_rte_device;
 	rte_vdpa_get_stats;
 	rte_vdpa_get_stats_names;
-	rte_vdpa_register_device;
-	rte_vdpa_relay_vring_used;
 	rte_vdpa_reset_stats;
-	rte_vdpa_unregister_device;
 	rte_vhost_avail_entries;
 	rte_vhost_clr_inflight_desc_packed;
 	rte_vhost_clr_inflight_desc_split;
@@ -52,7 +49,6 @@ DPDK_22 {
 	rte_vhost_get_vring_base_from_inflight;
 	rte_vhost_get_vring_num;
 	rte_vhost_gpa_to_vva;
-	rte_vhost_host_notifier_ctrl;
 	rte_vhost_log_used_vring;
 	rte_vhost_log_write;
 	rte_vhost_rx_queue_count;
@@ -88,4 +84,13 @@ EXPERIMENTAL {
 
 	# added in 21.11
 	rte_vhost_get_monitor_addr;
+};
+
+INTERNAL {
+	global;
+
+	rte_vdpa_register_device;
+	rte_vdpa_relay_vring_used;
+	rte_vdpa_unregister_device;
+	rte_vhost_host_notifier_ctrl;
 };

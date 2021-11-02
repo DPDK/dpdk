@@ -17,7 +17,7 @@
 #include <rte_tailq.h>
 
 #include "rte_vdpa.h"
-#include "rte_vdpa_dev.h"
+#include "vdpa_driver.h"
 #include "vhost.h"
 
 /** Double linked list of vDPA devices. */

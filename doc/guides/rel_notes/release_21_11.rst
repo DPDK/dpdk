@@ -464,6 +464,10 @@ API Changes
   should be provided, and offset for immediate source bitfield is assigned
   from destination one.
 
+* vhost: ``rte_vdpa_register_device``, ``rte_vdpa_unregister_device``,
+  ``rte_vhost_host_notifier_ctrl`` and ``rte_vdpa_relay_vring_used`` vDPA
+  driver interface are marked as internal.
+
 * cryptodev: The API rte_cryptodev_pmd_is_valid_dev is modified to
   rte_cryptodev_is_valid_dev as it can be used by the application as
   well as PMD to check whether the device is valid or not.
