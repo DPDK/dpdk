@@ -70,6 +70,34 @@ nix_fc_rxchan_bpid_set(struct roc_nix *roc_nix, bool enable)
 		nix->chan_cnt = 0;
 	}
 
+	if (roc_model_is_cn9k())
+		goto exit;
+
+	/* Enable backpressure on CPT if inline inb is enabled */
+	if (enable && roc_nix_inl_inb_is_enabled(roc_nix)) {
+		req = mbox_alloc_msg_nix_cpt_bp_enable(mbox);
+		if (req == NULL)
+			return rc;
+		req->chan_base = 0;
+		req->chan_cnt = 1;
+		req->bpid_per_chan = 0;
+
+		rc = mbox_process_msg(mbox, (void *)&rsp);
+		if (rc)
+			goto exit;
+	} else {
+		req = mbox_alloc_msg_nix_cpt_bp_disable(mbox);
+		if (req == NULL)
+			return rc;
+		req->chan_base = 0;
+		req->chan_cnt = 1;
+		req->bpid_per_chan = 0;
+
+		rc = mbox_process_msg(mbox, (void *)&rsp);
+		if (rc)
+			goto exit;
+	}
+
 exit:
 	return rc;
 }

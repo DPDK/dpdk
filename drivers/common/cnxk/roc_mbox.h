@@ -239,6 +239,10 @@ struct mbox_msghdr {
 	M(NIX_BANDPROF_ALLOC, 0x801d, nix_bandprof_alloc,                      \
 	  nix_bandprof_alloc_req, nix_bandprof_alloc_rsp)                      \
 	M(NIX_BANDPROF_FREE, 0x801e, nix_bandprof_free, nix_bandprof_free_req, \
+	  msg_rsp)                                                             \
+	M(NIX_CPT_BP_ENABLE, 0x8020, nix_cpt_bp_enable, nix_bp_cfg_req,        \
+	  nix_bp_cfg_rsp)                                                      \
+	M(NIX_CPT_BP_DISABLE, 0x8021, nix_cpt_bp_disable, nix_bp_cfg_req,      \
 	  msg_rsp)
 
 /* Messages initiated by AF (range 0xC00 - 0xDFF) */
