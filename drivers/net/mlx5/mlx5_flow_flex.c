@@ -113,6 +113,226 @@ mlx5_flex_free(struct mlx5_priv *priv, struct mlx5_flex_item *item)
 	}
 }
 
+static uint32_t
+mlx5_flex_get_bitfield(const struct rte_flow_item_flex *item,
+		       uint32_t pos, uint32_t width, uint32_t shift)
+{
+	const uint8_t *ptr = item->pattern + pos / CHAR_BIT;
+	uint32_t val, vbits;
+
+	/* Proceed the bitfield start byte. */
+	MLX5_ASSERT(width <= sizeof(uint32_t) * CHAR_BIT && width);
+	MLX5_ASSERT(width + shift <= sizeof(uint32_t) * CHAR_BIT);
+	if (item->length <= pos / CHAR_BIT)
+		return 0;
+	val = *ptr++ >> (pos % CHAR_BIT);
+	vbits = CHAR_BIT - pos % CHAR_BIT;
+	pos = (pos + vbits) / CHAR_BIT;
+	vbits = RTE_MIN(vbits, width);
+	val &= RTE_BIT32(vbits) - 1;
+	while (vbits < width && pos < item->length) {
+		uint32_t part = RTE_MIN(width - vbits, (uint32_t)CHAR_BIT);
+		uint32_t tmp = *ptr++;
+
+		pos++;
+		tmp &= RTE_BIT32(part) - 1;
+		val |= tmp << vbits;
+		vbits += part;
+	}
+	return rte_bswap32(val <<= shift);
+}
+
+#define SET_FP_MATCH_SAMPLE_ID(x, def, msk, val, sid) \
+	do { \
+		uint32_t tmp, out = (def); \
+		tmp = MLX5_GET(fte_match_set_misc4, misc4_v, \
+			       prog_sample_field_value_##x); \
+		tmp = (tmp & ~out) | (val); \
+		MLX5_SET(fte_match_set_misc4, misc4_v, \
+			 prog_sample_field_value_##x, tmp); \
+		tmp = MLX5_GET(fte_match_set_misc4, misc4_m, \
+			       prog_sample_field_value_##x); \
+		tmp = (tmp & ~out) | (msk); \
+		MLX5_SET(fte_match_set_misc4, misc4_m, \
+			 prog_sample_field_value_##x, tmp); \
+		tmp = tmp ? (sid) : 0; \
+		MLX5_SET(fte_match_set_misc4, misc4_v, \
+			 prog_sample_field_id_##x, tmp);\
+		MLX5_SET(fte_match_set_misc4, misc4_m, \
+			 prog_sample_field_id_##x, tmp); \
+	} while (0)
+
+__rte_always_inline static void
+mlx5_flex_set_match_sample(void *misc4_m, void *misc4_v,
+			   uint32_t def, uint32_t mask, uint32_t value,
+			   uint32_t sample_id, uint32_t id)
+{
+	switch (id) {
+	case 0:
+		SET_FP_MATCH_SAMPLE_ID(0, def, mask, value, sample_id);
+		break;
+	case 1:
+		SET_FP_MATCH_SAMPLE_ID(1, def, mask, value, sample_id);
+		break;
+	case 2:
+		SET_FP_MATCH_SAMPLE_ID(2, def, mask, value, sample_id);
+		break;
+	case 3:
+		SET_FP_MATCH_SAMPLE_ID(3, def, mask, value, sample_id);
+		break;
+	case 4:
+		SET_FP_MATCH_SAMPLE_ID(4, def, mask, value, sample_id);
+		break;
+	case 5:
+		SET_FP_MATCH_SAMPLE_ID(5, def, mask, value, sample_id);
+		break;
+	case 6:
+		SET_FP_MATCH_SAMPLE_ID(6, def, mask, value, sample_id);
+		break;
+	case 7:
+		SET_FP_MATCH_SAMPLE_ID(7, def, mask, value, sample_id);
+		break;
+	default:
+		MLX5_ASSERT(false);
+		break;
+	}
+#undef SET_FP_MATCH_SAMPLE_ID
+}
+/**
+ * Translate item pattern into matcher fields according to translation
+ * array.
+ *
+ * @param dev
+ *   Ethernet device to translate flex item on.
+ * @param[in, out] matcher
+ *   Flow matcher to confgiure
+ * @param[in, out] key
+ *   Flow matcher value.
+ * @param[in] item
+ *   Flow pattern to translate.
+ * @param[in] is_inner
+ *   Inner Flex Item (follows after tunnel header).
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+void
+mlx5_flex_flow_translate_item(struct rte_eth_dev *dev,
+			      void *matcher, void *key,
+			      const struct rte_flow_item *item,
+			      bool is_inner)
+{
+	const struct rte_flow_item_flex *spec, *mask;
+	void *misc4_m = MLX5_ADDR_OF(fte_match_param, matcher,
+				     misc_parameters_4);
+	void *misc4_v = MLX5_ADDR_OF(fte_match_param, key, misc_parameters_4);
+	struct mlx5_flex_item *tp;
+	uint32_t i, pos = 0;
+
+	RTE_SET_USED(dev);
+	MLX5_ASSERT(item->spec && item->mask);
+	spec = item->spec;
+	mask = item->mask;
+	tp = (struct mlx5_flex_item *)spec->handle;
+	MLX5_ASSERT(mlx5_flex_index(dev->data->dev_private, tp) >= 0);
+	for (i = 0; i < tp->mapnum; i++) {
+		struct mlx5_flex_pattern_field *map = tp->map + i;
+		uint32_t id = map->reg_id;
+		uint32_t def = (RTE_BIT64(map->width) - 1) << map->shift;
+		uint32_t val, msk;
+
+		/* Skip placeholders for DUMMY fields. */
+		if (id == MLX5_INVALID_SAMPLE_REG_ID) {
+			pos += map->width;
+			continue;
+		}
+		val = mlx5_flex_get_bitfield(spec, pos, map->width, map->shift);
+		msk = mlx5_flex_get_bitfield(mask, pos, map->width, map->shift);
+		MLX5_ASSERT(map->width);
+		MLX5_ASSERT(id < tp->devx_fp->num_samples);
+		if (tp->tunnel_mode == FLEX_TUNNEL_MODE_MULTI && is_inner) {
+			uint32_t num_samples = tp->devx_fp->num_samples / 2;
+
+			MLX5_ASSERT(tp->devx_fp->num_samples % 2 == 0);
+			MLX5_ASSERT(id < num_samples);
+			id += num_samples;
+		}
+		mlx5_flex_set_match_sample(misc4_m, misc4_v,
+					   def, msk & def, val & msk & def,
+					   tp->devx_fp->sample_ids[id], id);
+		pos += map->width;
+	}
+}
+
+/**
+ * Convert flex item handle (from the RTE flow) to flex item index on port.
+ * Optionally can increment flex item object reference count.
+ *
+ * @param dev
+ *   Ethernet device to acquire flex item on.
+ * @param[in] handle
+ *   Flow item handle from item spec.
+ * @param[in] acquire
+ *   If set - increment reference counter.
+ *
+ * @return
+ *   >=0 - index on success, a negative errno value otherwise
+ *         and rte_errno is set.
+ */
+int
+mlx5_flex_acquire_index(struct rte_eth_dev *dev,
+			struct rte_flow_item_flex_handle *handle,
+			bool acquire)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_flex_item *flex = (struct mlx5_flex_item *)handle;
+	int ret = mlx5_flex_index(priv, flex);
+
+	if (ret < 0) {
+		errno = -EINVAL;
+		rte_errno = EINVAL;
+		return ret;
+	}
+	if (acquire)
+		__atomic_add_fetch(&flex->refcnt, 1, __ATOMIC_RELEASE);
+	return ret;
+}
+
+/**
+ * Release flex item index on port - decrements reference counter by index.
+ *
+ * @param dev
+ *   Ethernet device to acquire flex item on.
+ * @param[in] index
+ *   Flow item index.
+ *
+ * @return
+ *   0 - on success, a negative errno value otherwise and rte_errno is set.
+ */
+int
+mlx5_flex_release_index(struct rte_eth_dev *dev,
+			int index)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_flex_item *flex;
+
+	if (index >= MLX5_PORT_FLEX_ITEM_NUM ||
+	    !(priv->flex_item_map & (1u << index))) {
+		errno = EINVAL;
+		rte_errno = -EINVAL;
+		return -EINVAL;
+	}
+	flex = priv->flex_item + index;
+	if (flex->refcnt <= 1) {
+		MLX5_ASSERT(false);
+		errno = EINVAL;
+		rte_errno = -EINVAL;
+		return -EINVAL;
+	}
+	__atomic_sub_fetch(&flex->refcnt, 1, __ATOMIC_RELEASE);
+	return 0;
+}
+
 /*
  * Calculate largest mask value for a given shift.
  *
