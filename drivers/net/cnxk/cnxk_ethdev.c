@@ -332,7 +332,7 @@ nix_update_flow_ctrl_config(struct rte_eth_dev *eth_dev)
 	struct cnxk_fc_cfg *fc = &dev->fc_cfg;
 	struct rte_eth_fc_conf fc_cfg = {0};
 
-	if (roc_nix_is_vf_or_sdp(&dev->nix))
+	if (roc_nix_is_vf_or_sdp(&dev->nix) && !roc_nix_is_lbk(&dev->nix))
 		return 0;
 
 	fc_cfg.mode = fc->mode;
@@ -1233,6 +1233,11 @@ cnxk_nix_configure(struct rte_eth_dev *eth_dev)
 		goto cq_fini;
 	}
 
+	/* Setup Inline security support */
+	rc = nix_security_setup(dev);
+	if (rc)
+		goto cq_fini;
+
 	/* Init flow control configuration */
 	fc_cfg.type = ROC_NIX_FC_RXCHAN_CFG;
 	fc_cfg.rxchan_cfg.enable = true;
@@ -1248,11 +1253,6 @@ cnxk_nix_configure(struct rte_eth_dev *eth_dev)
 		plt_err("Failed to initialize flow control rc=%d", rc);
 		goto cq_fini;
 	}
-
-	/* Setup Inline security support */
-	rc = nix_security_setup(dev);
-	if (rc)
-		goto cq_fini;
 
 	/*
 	 * Restore queue config when reconfigure followed by

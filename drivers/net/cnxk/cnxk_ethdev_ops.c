@@ -251,7 +251,7 @@ cnxk_nix_flow_ctrl_set(struct rte_eth_dev *eth_dev,
 	uint8_t rx_pause, tx_pause;
 	int rc, i;
 
-	if (roc_nix_is_vf_or_sdp(nix)) {
+	if (roc_nix_is_vf_or_sdp(nix) && !roc_nix_is_lbk(nix)) {
 		plt_err("Flow control configuration is not allowed on VFs");
 		return -ENOTSUP;
 	}
@@ -286,6 +286,18 @@ cnxk_nix_flow_ctrl_set(struct rte_eth_dev *eth_dev,
 			if (rc)
 				return rc;
 		}
+	}
+
+	/* Check if RX pause frame is enabled or not */
+	if (fc->rx_pause ^ rx_pause) {
+		struct roc_nix_fc_cfg fc_cfg;
+
+		memset(&fc_cfg, 0, sizeof(struct roc_nix_fc_cfg));
+		fc_cfg.type = ROC_NIX_FC_TM_CFG;
+		fc_cfg.tm_cfg.enable = !!rx_pause;
+		rc = roc_nix_fc_config_set(nix, &fc_cfg);
+		if (rc)
+			return rc;
 	}
 
 	rc = roc_nix_fc_mode_set(nix, mode_map[fc_conf->mode]);
