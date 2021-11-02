@@ -19,23 +19,43 @@ to calculate the RSS hash sum to spread the traffic among the queues.
 Toeplitz hash function API
 --------------------------
 
-There are two functions that provide calculation of the Toeplitz hash sum:
+There are three functions that provide calculation of the Toeplitz hash sum:
 
 * ``rte_softrss()``
 * ``rte_softrss_be()``
+* ``rte_thash_gfni()``
 
-Both of these functions take the parameters:
+First two functions are scalar implementation and take the parameters:
 
 * A pointer to the tuple, containing fields extracted from the packet.
 * A length of this tuple counted in double words.
 * A pointer to the RSS hash key corresponding to the one installed on the NIC.
 
-Both functions expect the tuple to be in "host" byte order
-and a multiple of 4 bytes in length.
+Both of above mentioned _softrss_ functions expect the tuple to be in
+"host" byte order and a multiple of 4 bytes in length.
 The ``rte_softrss()`` function expects the ``rss_key``
 to be exactly the same as the one installed on the NIC.
 The ``rte_softrss_be`` function is a faster implementation,
 but it expects ``rss_key`` to be converted to the host byte order.
+
+The last function is vectorized implementation using
+Galois Fields New Instructions. Could be used if ``rte_thash_gfni_supported`` returns true.
+It expects the tuple to be in network byte order.
+
+``rte_thash_gfni()`` calculates the hash value for a single tuple
+
+``rte_thash_gfni()`` takes the parameters:
+
+* A pointer to the matrices derived from the RSS hash key using ``rte_thash_complete_matrix()``.
+* A pointer to the tuple.
+* A length of the tuple in bytes.
+
+``rte_thash_complete_matrix()`` is a function that calculates matrices required by
+GFNI implementations from the RSS hash key. It takes the parameters:
+
+* A pointer to the memory where the matrices will be written.
+* A pointer to the RSS hash key.
+* Length of the RSS hash key in bytes.
 
 
 Predictable RSS

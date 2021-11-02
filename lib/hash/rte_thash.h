@@ -24,6 +24,7 @@ extern "C" {
 #include <rte_config.h>
 #include <rte_ip.h>
 #include <rte_common.h>
+#include <rte_thash_gfni.h>
 
 #if defined(RTE_ARCH_X86) || defined(__ARM_NEON)
 #include <rte_vect.h>
@@ -218,6 +219,40 @@ rte_softrss_be(uint32_t *input_tuple, uint32_t input_len,
 	}
 	return ret;
 }
+
+/**
+ * Indicates if GFNI implementations of the Toeplitz hash are supported.
+ *
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * @return
+ *  1 if GFNI is supported
+ *  0 otherwise
+ */
+__rte_experimental
+int
+rte_thash_gfni_supported(void);
+
+/**
+ * Converts Toeplitz hash key (RSS key) into matrixes required
+ * for GFNI implementation
+ *
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * @param matrixes
+ *  pointer to the memory where matrices will be written.
+ *  Note: the size of this memory must be equal to size * 8
+ * @param rss_key
+ *  pointer to the Toeplitz hash key
+ * @param size
+ *  Size of the rss_key in bytes.
+ */
+__rte_experimental
+void
+rte_thash_complete_matrix(uint64_t *matrixes, const uint8_t *rss_key,
+	int size);
 
 /** @internal Logarithm of minimum size of the RSS ReTa */
 #define	RTE_THASH_RETA_SZ_MIN	2U

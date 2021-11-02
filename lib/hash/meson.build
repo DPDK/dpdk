@@ -7,8 +7,12 @@ headers = files(
         'rte_hash.h',
         'rte_jhash.h',
         'rte_thash.h',
+        'rte_thash_gfni.h',
 )
-indirect_headers += files('rte_crc_arm64.h')
+indirect_headers += files(
+        'rte_crc_arm64.h',
+        'rte_thash_x86_gfni.h',
+)
 
 sources = files('rte_cuckoo_hash.c', 'rte_fbk_hash.c', 'rte_thash.c')
 deps += ['net']

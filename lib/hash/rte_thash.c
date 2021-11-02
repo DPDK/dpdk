@@ -90,6 +90,36 @@ struct rte_thash_ctx {
 	uint8_t		hash_key[0];
 };
 
+int
+rte_thash_gfni_supported(void)
+{
+#ifdef RTE_THASH_GFNI_DEFINED
+	if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_GFNI) &&
+			(rte_vect_get_max_simd_bitwidth() >=
+			RTE_VECT_SIMD_512))
+		return 1;
+#endif
+
+	return 0;
+};
+
+void
+rte_thash_complete_matrix(uint64_t *matrixes, const uint8_t *rss_key, int size)
+{
+	int i, j;
+	uint8_t *m = (uint8_t *)matrixes;
+	uint8_t left_part, right_part;
+
+	for (i = 0; i < size; i++) {
+		for (j = 0; j < 8; j++) {
+			left_part = rss_key[i] << j;
+			right_part = (uint16_t)(rss_key[(i + 1) % size]) >>
+				(8 - j);
+			m[i * 8 + j] = left_part|right_part;
+		}
+	}
+}
+
 static inline uint32_t
 get_bit_lfsr(struct thash_lfsr *lfsr)
 {

@@ -273,6 +273,10 @@ New Features
   * Added support for SA telemetry.
   * Added support for setting a non default starting ESN value.
 
+* **Added optimized Toeplitz hash implementation.**
+
+  Added optimized Toeplitz hash implementation using Galois Fields New Instructions.
+
 * **Added multi-process support for testpmd.**
 
   Added command-line options to specify total number of processes and

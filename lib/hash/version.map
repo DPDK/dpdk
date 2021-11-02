@@ -37,6 +37,7 @@ DPDK_22 {
 EXPERIMENTAL {
 	global:
 
+	# added in 21.05
 	rte_thash_add_helper;
 	rte_thash_adjust_tuple;
 	rte_thash_find_existing;
@@ -45,4 +46,8 @@ EXPERIMENTAL {
 	rte_thash_get_helper;
 	rte_thash_get_key;
 	rte_thash_init_ctx;
+
+	# added in 21.11
+	rte_thash_complete_matrix;
+	rte_thash_gfni_supported;
 };

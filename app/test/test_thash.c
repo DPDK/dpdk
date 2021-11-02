@@ -6,6 +6,7 @@
 #include <rte_eal.h>
 #include <rte_ip.h>
 #include <rte_random.h>
+#include <rte_malloc.h>
 
 #include "test.h"
 
@@ -78,6 +79,34 @@ uint8_t default_rss_key[] = {
 0x6a, 0x42, 0xb7, 0x3b, 0xbe, 0xac, 0x01, 0xfa,
 };
 
+static const uint8_t big_rss_key[] = {
+	0x6d, 0x5a, 0x56, 0xda, 0x25, 0x5b, 0x0e, 0xc2,
+	0x41, 0x67, 0x25, 0x3d, 0x43, 0xa3, 0x8f, 0xb0,
+	0xd0, 0xca, 0x2b, 0xcb, 0xae, 0x7b, 0x30, 0xb4,
+	0x77, 0xcb, 0x2d, 0xa3, 0x80, 0x30, 0xf2, 0x0c,
+	0x6a, 0x42, 0xb7, 0x3b, 0xbe, 0xac, 0x01, 0xfa,
+	0x6d, 0x5a, 0x56, 0xda, 0x25, 0x5b, 0x0e, 0xc2,
+	0x41, 0x67, 0x25, 0x3d, 0x43, 0xa3, 0x8f, 0xb0,
+	0xd0, 0xca, 0x2b, 0xcb, 0xae, 0x7b, 0x30, 0xb4,
+	0x77, 0xcb, 0x2d, 0xa3, 0x80, 0x30, 0xf2, 0x0c,
+	0x6a, 0x42, 0xb7, 0x3b, 0xbe, 0xac, 0x01, 0xfa,
+	0x6d, 0x5a, 0x56, 0xda, 0x25, 0x5b, 0x0e, 0xc2,
+	0x41, 0x67, 0x25, 0x3d, 0x43, 0xa3, 0x8f, 0xb0,
+	0xd0, 0xca, 0x2b, 0xcb, 0xae, 0x7b, 0x30, 0xb4,
+	0x77, 0xcb, 0x2d, 0xa3, 0x80, 0x30, 0xf2, 0x0c,
+	0x6a, 0x42, 0xb7, 0x3b, 0xbe, 0xac, 0x01, 0xfa,
+	0x6d, 0x5a, 0x56, 0xda, 0x25, 0x5b, 0x0e, 0xc2,
+	0x41, 0x67, 0x25, 0x3d, 0x43, 0xa3, 0x8f, 0xb0,
+	0xd0, 0xca, 0x2b, 0xcb, 0xae, 0x7b, 0x30, 0xb4,
+	0x77, 0xcb, 0x2d, 0xa3, 0x80, 0x30, 0xf2, 0x0c,
+	0x6a, 0x42, 0xb7, 0x3b, 0xbe, 0xac, 0x01, 0xfa,
+	0x6d, 0x5a, 0x56, 0xda, 0x25, 0x5b, 0x0e, 0xc2,
+	0x41, 0x67, 0x25, 0x3d, 0x43, 0xa3, 0x8f, 0xb0,
+	0xd0, 0xca, 0x2b, 0xcb, 0xae, 0x7b, 0x30, 0xb4,
+	0x77, 0xcb, 0x2d, 0xa3, 0x80, 0x30, 0xf2, 0x0c,
+	0x6a, 0x42, 0xb7, 0x3b, 0xbe, 0xac, 0x01, 0xfa,
+};
+
 static int
 test_toeplitz_hash_calc(void)
 {
@@ -141,6 +170,146 @@ test_toeplitz_hash_calc(void)
 				(rss_l3l4 != v6_tbl[i].hash_l3l4))
 			return -TEST_FAILED;
 	}
+	return TEST_SUCCESS;
+}
+
+static int
+test_toeplitz_hash_gfni(void)
+{
+	uint32_t i, j;
+	union rte_thash_tuple tuple;
+	uint32_t rss_l3, rss_l3l4;
+	uint64_t rss_key_matrixes[RTE_DIM(default_rss_key)];
+
+	if (!rte_thash_gfni_supported())
+		return TEST_SKIPPED;
+
+	/* Convert RSS key into matrixes */
+	rte_thash_complete_matrix(rss_key_matrixes, default_rss_key,
+		RTE_DIM(default_rss_key));
+
+	for (i = 0; i < RTE_DIM(v4_tbl); i++) {
+		tuple.v4.src_addr = rte_cpu_to_be_32(v4_tbl[i].src_ip);
+		tuple.v4.dst_addr = rte_cpu_to_be_32(v4_tbl[i].dst_ip);
+		tuple.v4.sport = rte_cpu_to_be_16(v4_tbl[i].dst_port);
+		tuple.v4.dport = rte_cpu_to_be_16(v4_tbl[i].src_port);
+
+		rss_l3 = rte_thash_gfni(rss_key_matrixes, (uint8_t *)&tuple,
+				RTE_THASH_V4_L3_LEN * 4);
+		rss_l3l4 = rte_thash_gfni(rss_key_matrixes, (uint8_t *)&tuple,
+				RTE_THASH_V4_L4_LEN * 4);
+		if ((rss_l3 != v4_tbl[i].hash_l3) ||
+				(rss_l3l4 != v4_tbl[i].hash_l3l4))
+			return -TEST_FAILED;
+	}
+
+	for (i = 0; i < RTE_DIM(v6_tbl); i++) {
+		for (j = 0; j < RTE_DIM(tuple.v6.src_addr); j++)
+			tuple.v6.src_addr[j] = v6_tbl[i].src_ip[j];
+		for (j = 0; j < RTE_DIM(tuple.v6.dst_addr); j++)
+			tuple.v6.dst_addr[j] = v6_tbl[i].dst_ip[j];
+		tuple.v6.sport = rte_cpu_to_be_16(v6_tbl[i].dst_port);
+		tuple.v6.dport = rte_cpu_to_be_16(v6_tbl[i].src_port);
+		rss_l3 = rte_thash_gfni(rss_key_matrixes, (uint8_t *)&tuple,
+				RTE_THASH_V6_L3_LEN * 4);
+		rss_l3l4 = rte_thash_gfni(rss_key_matrixes, (uint8_t *)&tuple,
+				RTE_THASH_V6_L4_LEN * 4);
+		if ((rss_l3 != v6_tbl[i].hash_l3) ||
+				(rss_l3l4 != v6_tbl[i].hash_l3l4))
+			return -TEST_FAILED;
+	}
+
+	return TEST_SUCCESS;
+}
+
+#define DATA_SZ		4
+#define ITER		1000
+
+enum {
+	SCALAR_DATA_BUF_1_HASH_IDX = 0,
+	SCALAR_DATA_BUF_2_HASH_IDX,
+	GFNI_DATA_BUF_1_HASH_IDX,
+	GFNI_DATA_BUF_2_HASH_IDX,
+	HASH_IDXES
+};
+
+static int
+test_toeplitz_hash_rand_data(void)
+{
+	uint32_t data[2][DATA_SZ];
+	uint32_t scalar_data[2][DATA_SZ];
+	uint32_t hash[HASH_IDXES] = { 0 };
+	uint64_t rss_key_matrixes[RTE_DIM(default_rss_key)];
+	int i, j;
+
+	if (!rte_thash_gfni_supported())
+		return TEST_SKIPPED;
+
+	rte_thash_complete_matrix(rss_key_matrixes, default_rss_key,
+		RTE_DIM(default_rss_key));
+
+	for (i = 0; i < ITER; i++) {
+		for (j = 0; j < DATA_SZ; j++) {
+			data[0][j] = rte_rand();
+			data[1][j] = rte_rand();
+			scalar_data[0][j] = rte_cpu_to_be_32(data[0][j]);
+			scalar_data[1][j] = rte_cpu_to_be_32(data[1][j]);
+		}
+
+		hash[SCALAR_DATA_BUF_1_HASH_IDX] = rte_softrss(scalar_data[0],
+			DATA_SZ, default_rss_key);
+		hash[SCALAR_DATA_BUF_2_HASH_IDX] = rte_softrss(scalar_data[1],
+			DATA_SZ, default_rss_key);
+		hash[GFNI_DATA_BUF_1_HASH_IDX] = rte_thash_gfni(
+			rss_key_matrixes, (uint8_t *)data[0],
+			DATA_SZ * sizeof(uint32_t));
+		hash[GFNI_DATA_BUF_2_HASH_IDX] = rte_thash_gfni(
+			rss_key_matrixes, (uint8_t *)data[1],
+			DATA_SZ * sizeof(uint32_t));
+
+		if ((hash[SCALAR_DATA_BUF_1_HASH_IDX] !=
+				hash[GFNI_DATA_BUF_1_HASH_IDX]) ||
+				(hash[SCALAR_DATA_BUF_2_HASH_IDX] !=
+				hash[GFNI_DATA_BUF_2_HASH_IDX]))
+
+			return -TEST_FAILED;
+	}
+
+	return TEST_SUCCESS;
+}
+
+enum {
+	RSS_V4_IDX,
+	RSS_V6_IDX
+};
+
+static int
+test_big_tuple_gfni(void)
+{
+	uint32_t arr[16];
+	uint32_t arr_softrss[16];
+	uint32_t hash_1, hash_2;
+	uint64_t rss_key_matrixes[RTE_DIM(big_rss_key)];
+	unsigned int i, size = RTE_DIM(arr) * sizeof(uint32_t);
+
+	if (!rte_thash_gfni_supported())
+		return TEST_SKIPPED;
+
+	/* Convert RSS key into matrixes */
+	rte_thash_complete_matrix(rss_key_matrixes, big_rss_key,
+		RTE_DIM(big_rss_key));
+
+	for (i = 0; i < RTE_DIM(arr); i++) {
+		arr[i] = rte_rand();
+		arr_softrss[i] = rte_be_to_cpu_32(arr[i]);
+	}
+
+	hash_1 = rte_softrss(arr_softrss, RTE_DIM(arr), big_rss_key);
+	hash_2 = rte_thash_gfni(rss_key_matrixes, (uint8_t *)arr, size);
+
+	if (hash_1 != hash_2)
+		return -TEST_FAILED;
+
 	return TEST_SUCCESS;
 }
 
@@ -577,6 +746,9 @@ static struct unit_test_suite thash_tests = {
 	.teardown = NULL,
 	.unit_test_cases = {
 	TEST_CASE(test_toeplitz_hash_calc),
+	TEST_CASE(test_toeplitz_hash_gfni),
+	TEST_CASE(test_toeplitz_hash_rand_data),
+	TEST_CASE(test_big_tuple_gfni),
 	TEST_CASE(test_create_invalid),
 	TEST_CASE(test_multiple_create),
 	TEST_CASE(test_free_null),
