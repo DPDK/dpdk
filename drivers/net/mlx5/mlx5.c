@@ -378,7 +378,6 @@ static const struct mlx5_indexed_pool_config mlx5_ipool_cfg[] = {
 	},
 };
 
-
 #define MLX5_FLOW_MIN_ID_POOL_SIZE 512
 #define MLX5_ID_GENERATION_ARRAY_FACTOR 16
 
@@ -1683,6 +1682,7 @@ mlx5_dev_close(struct rte_eth_dev *dev)
 	mlx5_mp_os_req_stop_rxtx(dev);
 	/* Free the eCPRI flex parser resource. */
 	mlx5_flex_parser_ecpri_release(dev);
+	mlx5_flex_item_port_cleanup(dev);
 	if (priv->rxqs != NULL) {
 		/* XXX race condition if mlx5_rx_burst() is still running. */
 		rte_delay_us_sleep(1000);

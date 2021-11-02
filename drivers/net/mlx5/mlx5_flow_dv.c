@@ -18068,7 +18068,8 @@ const struct mlx5_flow_driver_ops mlx5_flow_dv_drv_ops = {
 	.action_query = flow_dv_action_query,
 	.sync_domain = flow_dv_sync_domain,
 	.discover_priorities = flow_dv_discover_priorities,
+	.item_create = flow_dv_item_create,
+	.item_release = flow_dv_item_release,
 };
-
 #endif /* HAVE_IBV_FLOW_DV_SUPPORT */
 

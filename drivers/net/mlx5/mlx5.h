@@ -50,6 +50,9 @@
 #define MLX5_MAX_MODIFY_NUM			32
 #define MLX5_ROOT_TBL_MODIFY_NUM		16
 
+/* Maximal number of flex items created on the port.*/
+#define MLX5_PORT_FLEX_ITEM_NUM			4
+
 enum mlx5_ipool_index {
 #if defined(HAVE_IBV_FLOW_DV_SUPPORT) || !defined(HAVE_INFINIBAND_VERBS_H)
 	MLX5_IPOOL_DECAP_ENCAP = 0, /* Pool for encap/decap resource. */
@@ -1096,6 +1099,12 @@ struct mlx5_lag {
 	uint8_t affinity_mode; /* TIS or hash based affinity */
 };
 
+/* Port flex item context. */
+struct mlx5_flex_item {
+	struct mlx5_flex_parser_devx *devx_fp; /* DevX flex parser object. */
+	uint32_t refcnt; /* Atomically accessed refcnt by flows. */
+};
+
 /*
  * Shared Infiniband device context for Master/Representors
  * which belong to same IB device with multiple IB ports.
@@ -1425,6 +1434,10 @@ struct mlx5_priv {
 	struct mlx5_devx_obj *q_counters; /* DevX queue counter object. */
 	uint32_t counter_set_id; /* Queue counter ID to set in DevX objects. */
 	uint32_t lag_affinity_idx; /* LAG mode queue 0 affinity starting. */
+	rte_spinlock_t flex_item_sl; /* Flex item list spinlock. */
+	struct mlx5_flex_item flex_item[MLX5_PORT_FLEX_ITEM_NUM];
+	/* Flex items have been created on the port. */
+	uint32_t flex_item_map; /* Map of allocated flex item elements. */
 };
 
 #define PORT_ID(priv) ((priv)->dev_data->port_id)
@@ -1804,4 +1817,15 @@ mlx5_get_supported_sw_parsing_offloads(const struct mlx5_hca_attr *attr);
 uint32_t
 mlx5_get_supported_tunneling_offloads(const struct mlx5_hca_attr *attr);
 
+/* mlx5_flow_flex.c */
+
+struct rte_flow_item_flex_handle *
+flow_dv_item_create(struct rte_eth_dev *dev,
+		    const struct rte_flow_item_flex_conf *conf,
+		    struct rte_flow_error *error);
+int flow_dv_item_release(struct rte_eth_dev *dev,
+		    const struct rte_flow_item_flex_handle *flex_handle,
+		    struct rte_flow_error *error);
+int mlx5_flex_item_port_init(struct rte_eth_dev *dev);
+void mlx5_flex_item_port_cleanup(struct rte_eth_dev *dev);
 #endif /* RTE_PMD_MLX5_H_ */

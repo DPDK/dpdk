@@ -748,6 +748,14 @@ mlx5_flow_tunnel_get_restore_info(struct rte_eth_dev *dev,
 				  struct rte_mbuf *m,
 				  struct rte_flow_restore_info *info,
 				  struct rte_flow_error *err);
+static struct rte_flow_item_flex_handle *
+mlx5_flow_flex_item_create(struct rte_eth_dev *dev,
+			   const struct rte_flow_item_flex_conf *conf,
+			   struct rte_flow_error *error);
+static int
+mlx5_flow_flex_item_release(struct rte_eth_dev *dev,
+			    const struct rte_flow_item_flex_handle *handle,
+			    struct rte_flow_error *error);
 
 static const struct rte_flow_ops mlx5_flow_ops = {
 	.validate = mlx5_flow_validate,
@@ -767,6 +775,8 @@ static const struct rte_flow_ops mlx5_flow_ops = {
 	.tunnel_action_decap_release = mlx5_flow_tunnel_action_release,
 	.tunnel_item_release = mlx5_flow_tunnel_item_release,
 	.get_restore_info = mlx5_flow_tunnel_get_restore_info,
+	.flex_item_create = mlx5_flow_flex_item_create,
+	.flex_item_release = mlx5_flow_flex_item_release,
 };
 
 /* Tunnel information. */
@@ -9787,6 +9797,45 @@ mlx5_release_tunnel_hub(__rte_unused struct mlx5_dev_ctx_shared *sh,
 {
 }
 #endif /* HAVE_IBV_FLOW_DV_SUPPORT */
+
+/* Flex flow item API */
+static struct rte_flow_item_flex_handle *
+mlx5_flow_flex_item_create(struct rte_eth_dev *dev,
+			   const struct rte_flow_item_flex_conf *conf,
+			   struct rte_flow_error *error)
+{
+	static const char err_msg[] = "flex item creation unsupported";
+	struct rte_flow_attr attr = { .transfer = 0 };
+	const struct mlx5_flow_driver_ops *fops =
+			flow_get_drv_ops(flow_get_drv_type(dev, &attr));
+
+	if (!fops->item_create) {
+		DRV_LOG(ERR, "port %u %s.", dev->data->port_id, err_msg);
+		rte_flow_error_set(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_ACTION,
+				   NULL, err_msg);
+		return NULL;
+	}
+	return fops->item_create(dev, conf, error);
+}
+
+static int
+mlx5_flow_flex_item_release(struct rte_eth_dev *dev,
+			    const struct rte_flow_item_flex_handle *handle,
+			    struct rte_flow_error *error)
+{
+	static const char err_msg[] = "flex item release unsupported";
+	struct rte_flow_attr attr = { .transfer = 0 };
+	const struct mlx5_flow_driver_ops *fops =
+			flow_get_drv_ops(flow_get_drv_type(dev, &attr));
+
+	if (!fops->item_release) {
+		DRV_LOG(ERR, "port %u %s.", dev->data->port_id, err_msg);
+		rte_flow_error_set(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_ACTION,
+				   NULL, err_msg);
+		return -rte_errno;
+	}
+	return fops->item_release(dev, handle, error);
+}
 
 static void
 mlx5_dbg__print_pattern(const struct rte_flow_item *item)

@@ -1235,6 +1235,19 @@ typedef void (*mlx5_flow_destroy_def_policy_t)
 typedef int (*mlx5_flow_discover_priorities_t)
 			(struct rte_eth_dev *dev,
 			 const uint16_t *vprio, int vprio_n);
+typedef struct rte_flow_item_flex_handle *(*mlx5_flow_item_create_t)
+			(struct rte_eth_dev *dev,
+			 const struct rte_flow_item_flex_conf *conf,
+			 struct rte_flow_error *error);
+typedef int (*mlx5_flow_item_release_t)
+			(struct rte_eth_dev *dev,
+			 const struct rte_flow_item_flex_handle *handle,
+			 struct rte_flow_error *error);
+typedef int (*mlx5_flow_item_update_t)
+			(struct rte_eth_dev *dev,
+			 const struct rte_flow_item_flex_handle *handle,
+			 const struct rte_flow_item_flex_conf *conf,
+			 struct rte_flow_error *error);
 
 struct mlx5_flow_driver_ops {
 	mlx5_flow_validate_t validate;
@@ -1270,6 +1283,9 @@ struct mlx5_flow_driver_ops {
 	mlx5_flow_action_query_t action_query;
 	mlx5_flow_sync_domain_t sync_domain;
 	mlx5_flow_discover_priorities_t discover_priorities;
+	mlx5_flow_item_create_t item_create;
+	mlx5_flow_item_release_t item_release;
+	mlx5_flow_item_update_t item_update;
 };
 
 /* mlx5_flow.c */
@@ -1728,6 +1744,4 @@ const struct mlx5_flow_tunnel *
 mlx5_get_tof(const struct rte_flow_item *items,
 	     const struct rte_flow_action *actions,
 	     enum mlx5_tof_rule_type *rule_type);
-
-
 #endif /* RTE_PMD_MLX5_FLOW_H_ */
