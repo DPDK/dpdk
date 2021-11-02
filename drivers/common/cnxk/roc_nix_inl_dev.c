@@ -334,7 +334,8 @@ nix_inl_nix_setup(struct nix_inl_dev *inl_dev)
 	struct nix_lf_alloc_rsp *rsp;
 	struct nix_lf_alloc_req *req;
 	size_t inb_sa_sz;
-	int rc = -ENOSPC;
+	int i, rc = -ENOSPC;
+	void *sa;
 
 	/* Alloc NIX LF needed for single RQ */
 	req = mbox_alloc_msg_nix_lf_alloc(mbox);
@@ -391,6 +392,13 @@ nix_inl_nix_setup(struct nix_inl_dev *inl_dev)
 		goto unregister_irqs;
 	}
 
+	if (roc_model_is_cn10k()) {
+		for (i = 0; i < ipsec_in_max_spi; i++) {
+			sa = ((uint8_t *)inl_dev->inb_sa_base) +
+			     (i * inb_sa_sz);
+			roc_nix_inl_inb_sa_init(sa);
+		}
+	}
 	/* Setup device specific inb SA table */
 	rc = nix_inl_nix_ipsec_cfg(inl_dev, true);
 	if (rc) {

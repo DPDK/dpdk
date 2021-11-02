@@ -85,6 +85,8 @@
 	 (((ROC_CPT_CCM_ICV_LEN - 2) / 2) << 3) | (ROC_CPT_CCM_MSG_LEN - 1))
 #define ROC_CPT_CCM_SALT_LEN 3
 
+#define ROC_CPT_RES_ALIGN 16
+
 enum {
 	ROC_CPT_REVISION_ID_83XX = 0,
 	ROC_CPT_REVISION_ID_96XX_B0 = 1,
@@ -161,7 +163,9 @@ int __roc_api roc_cpt_dev_configure(struct roc_cpt *roc_cpt, int nb_lf);
 void __roc_api roc_cpt_dev_clear(struct roc_cpt *roc_cpt);
 int __roc_api roc_cpt_lf_init(struct roc_cpt *roc_cpt, struct roc_cpt_lf *lf);
 void __roc_api roc_cpt_lf_fini(struct roc_cpt_lf *lf);
-int __roc_api roc_cpt_lf_ctx_flush(struct roc_cpt_lf *lf, uint64_t cptr);
+int __roc_api roc_cpt_lf_ctx_flush(struct roc_cpt_lf *lf, void *cptr,
+				   bool inval);
+int __roc_api roc_cpt_lf_ctx_reload(struct roc_cpt_lf *lf, void *cptr);
 int __roc_api roc_cpt_inline_ipsec_cfg(struct dev *dev, uint8_t slot,
 				       struct roc_nix *nix);
 int __roc_api roc_cpt_inline_ipsec_inb_cfg(struct roc_cpt *roc_cpt,
@@ -174,5 +178,7 @@ int __roc_api roc_cpt_lmtline_init(struct roc_cpt *roc_cpt,
 				   struct roc_cpt_lmtline *lmtline, int lf_id);
 
 void __roc_api roc_cpt_parse_hdr_dump(const struct cpt_parse_hdr_s *cpth);
+int __roc_api roc_cpt_ctx_write(struct roc_cpt_lf *lf, void *sa_dptr,
+				void *sa_cptr, uint16_t sa_len);
 
 #endif /* _ROC_CPT_H_ */

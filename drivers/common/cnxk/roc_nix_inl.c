@@ -23,7 +23,8 @@ nix_inl_inb_sa_tbl_setup(struct roc_nix *roc_nix)
 	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
 	struct roc_nix_ipsec_cfg cfg;
 	size_t inb_sa_sz;
-	int rc;
+	int rc, i;
+	void *sa;
 
 	/* CN9K SA size is different */
 	if (roc_model_is_cn9k())
@@ -38,6 +39,12 @@ nix_inl_inb_sa_tbl_setup(struct roc_nix *roc_nix)
 	if (!nix->inb_sa_base) {
 		plt_err("Failed to allocate memory for Inbound SA");
 		return -ENOMEM;
+	}
+	if (roc_model_is_cn10k()) {
+		for (i = 0; i < ipsec_in_max_spi; i++) {
+			sa = ((uint8_t *)nix->inb_sa_base) + (i * inb_sa_sz);
+			roc_nix_inl_inb_sa_init(sa);
+		}
 	}
 
 	memset(&cfg, 0, sizeof(cfg));
@@ -271,6 +278,7 @@ roc_nix_inl_outb_init(struct roc_nix *roc_nix)
 	void *sa_base;
 	size_t sa_sz;
 	int i, j, rc;
+	void *sa;
 
 	if (idev == NULL)
 		return -ENOTSUP;
@@ -367,6 +375,12 @@ roc_nix_inl_outb_init(struct roc_nix *roc_nix)
 	if (!sa_base) {
 		plt_err("Outbound SA base alloc failed");
 		goto lf_fini;
+	}
+	if (roc_model_is_cn10k()) {
+		for (i = 0; i < roc_nix->ipsec_out_max_sa; i++) {
+			sa = ((uint8_t *)sa_base) + (i * sa_sz);
+			roc_nix_inl_outb_sa_init(sa);
+		}
 	}
 	nix->outb_sa_base = sa_base;
 	nix->outb_sa_sz = sa_sz;
@@ -717,6 +731,8 @@ roc_nix_inl_sa_sync(struct roc_nix *roc_nix, void *sa, bool inb,
 {
 	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
 	struct roc_cpt_lf *outb_lf = nix->cpt_lf_base;
+	struct idev_cfg *idev = idev_get_cfg();
+	struct nix_inl_dev *inl_dev = NULL;
 	union cpt_lf_ctx_reload reload;
 	union cpt_lf_ctx_flush flush;
 	uintptr_t rbase;
@@ -727,13 +743,15 @@ roc_nix_inl_sa_sync(struct roc_nix *roc_nix, void *sa, bool inb,
 		return 0;
 	}
 
-	if (!inb && !outb_lf)
-		return -EINVAL;
+	if (inb && nix->inb_inl_dev) {
+		outb_lf = NULL;
+		if (idev)
+			inl_dev = idev->nix_inl_dev;
+		if (inl_dev)
+			outb_lf = &inl_dev->cpt_lf;
+	}
 
-	/* Performing op via outbound lf is enough
-	 * when inline dev is not in use.
-	 */
-	if (outb_lf && !nix->inb_inl_dev) {
+	if (outb_lf) {
 		rbase = outb_lf->rbase;
 
 		flush.u = 0;
@@ -755,8 +773,78 @@ roc_nix_inl_sa_sync(struct roc_nix *roc_nix, void *sa, bool inb,
 		}
 		return 0;
 	}
-
+	plt_err("Could not get CPT LF for SA sync");
 	return -ENOTSUP;
+}
+
+int
+roc_nix_inl_ctx_write(struct roc_nix *roc_nix, void *sa_dptr, void *sa_cptr,
+		      bool inb, uint16_t sa_len)
+{
+	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
+	struct roc_cpt_lf *outb_lf = nix->cpt_lf_base;
+	struct idev_cfg *idev = idev_get_cfg();
+	struct nix_inl_dev *inl_dev = NULL;
+	union cpt_lf_ctx_flush flush;
+	uintptr_t rbase;
+	int rc;
+
+	/* Nothing much to do on cn9k */
+	if (roc_model_is_cn9k()) {
+		plt_atomic_thread_fence(__ATOMIC_ACQ_REL);
+		return 0;
+	}
+
+	if (inb && nix->inb_inl_dev) {
+		outb_lf = NULL;
+		if (idev)
+			inl_dev = idev->nix_inl_dev;
+		if (inl_dev && inl_dev->attach_cptlf)
+			outb_lf = &inl_dev->cpt_lf;
+	}
+
+	if (outb_lf) {
+		rbase = outb_lf->rbase;
+		flush.u = 0;
+
+		rc = roc_cpt_ctx_write(outb_lf, sa_dptr, sa_cptr, sa_len);
+		if (rc)
+			return rc;
+		/* Trigger CTX flush to write dirty data back to DRAM */
+		flush.s.cptr = ((uintptr_t)sa_cptr) >> 7;
+		plt_write64(flush.u, rbase + CPT_LF_CTX_FLUSH);
+
+		return 0;
+	}
+	plt_nix_dbg("Could not get CPT LF for CTX write");
+	return -ENOTSUP;
+}
+
+void
+roc_nix_inl_inb_sa_init(struct roc_ot_ipsec_inb_sa *sa)
+{
+	size_t offset;
+
+	memset(sa, 0, sizeof(struct roc_ot_ipsec_inb_sa));
+
+	offset = offsetof(struct roc_ot_ipsec_inb_sa, ctx);
+	sa->w0.s.hw_ctx_off = offset / ROC_CTX_UNIT_8B;
+	sa->w0.s.ctx_push_size = sa->w0.s.hw_ctx_off + 1;
+	sa->w0.s.ctx_size = ROC_IE_OT_CTX_ILEN;
+	sa->w0.s.aop_valid = 1;
+}
+
+void
+roc_nix_inl_outb_sa_init(struct roc_ot_ipsec_outb_sa *sa)
+{
+	size_t offset;
+
+	memset(sa, 0, sizeof(struct roc_ot_ipsec_outb_sa));
+
+	offset = offsetof(struct roc_ot_ipsec_outb_sa, ctx);
+	sa->w0.s.ctx_push_size = (offset / ROC_CTX_UNIT_8B);
+	sa->w0.s.ctx_size = ROC_IE_OT_CTX_ILEN;
+	sa->w0.s.aop_valid = 1;
 }
 
 void

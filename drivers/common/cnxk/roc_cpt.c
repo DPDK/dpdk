@@ -677,7 +677,7 @@ fail:
 }
 
 int
-roc_cpt_lf_ctx_flush(struct roc_cpt_lf *lf, uint64_t cptr)
+roc_cpt_lf_ctx_flush(struct roc_cpt_lf *lf, void *cptr, bool inval)
 {
 	union cpt_lf_ctx_flush reg;
 
@@ -685,11 +685,28 @@ roc_cpt_lf_ctx_flush(struct roc_cpt_lf *lf, uint64_t cptr)
 		return -ENOTSUP;
 
 	reg.u = 0;
-	reg.s.pf_func = lf->pf_func;
-	reg.s.inval = 1;
-	reg.s.cptr = cptr;
+	reg.s.inval = inval;
+	reg.s.cptr = (uintptr_t)cptr >> 7;
 
 	plt_write64(reg.u, lf->rbase + CPT_LF_CTX_FLUSH);
+
+	return 0;
+}
+
+int
+roc_cpt_lf_ctx_reload(struct roc_cpt_lf *lf, void *cptr)
+{
+	union cpt_lf_ctx_reload reg;
+
+	if (lf == NULL) {
+		plt_err("Could not trigger CTX reload");
+		return -ENOTSUP;
+	}
+
+	reg.u = 0;
+	reg.s.cptr = (uintptr_t)cptr >> 7;
+
+	plt_write64(reg.u, lf->rbase + CPT_LF_CTX_RELOAD);
 
 	return 0;
 }
@@ -887,6 +904,64 @@ roc_cpt_lmtline_init(struct roc_cpt *roc_cpt, struct roc_cpt_lmtline *lmtline,
 
 	lmtline->fc_addr = lf->fc_addr;
 	lmtline->lmt_base = lf->lmt_base;
+
+	return 0;
+}
+
+int
+roc_cpt_ctx_write(struct roc_cpt_lf *lf, void *sa_dptr, void *sa_cptr,
+		  uint16_t sa_len)
+{
+	uintptr_t lmt_base = lf->lmt_base;
+	uint64_t lmt_arg, io_addr;
+	struct cpt_inst_s *inst;
+	union cpt_res_s *res;
+	uint16_t lmt_id;
+	uint64_t *dptr;
+	int i;
+
+	ROC_LMT_CPT_BASE_ID_GET(lmt_base, lmt_id);
+	inst = (struct cpt_inst_s *)lmt_base;
+
+	memset(inst, 0, sizeof(struct cpt_inst_s));
+
+	res = plt_zmalloc(sizeof(*res), ROC_CPT_RES_ALIGN);
+	if (res == NULL) {
+		plt_err("Couldn't allocate memory for result address");
+		return -ENOMEM;
+	}
+	dptr = plt_zmalloc(sa_len, 0);
+	if (!dptr) {
+		plt_err("Couldn't allocate memory for SA dptr");
+		plt_free(res);
+		return -ENOMEM;
+	}
+	for (i = 0; i < (sa_len / 8); i++)
+		dptr[i] = plt_cpu_to_be_64(((uint64_t *)sa_dptr)[i]);
+
+	/* Fill CPT_INST_S for WRITE_SA microcode op */
+	res->cn10k.compcode = CPT_COMP_NOT_DONE;
+	inst->res_addr = (uint64_t)res;
+	inst->dptr = (uint64_t)dptr;
+	inst->w4.s.param2 = sa_len >> 3;
+	inst->w4.s.dlen = sa_len;
+	inst->w4.s.opcode_major = ROC_IE_OT_MAJOR_OP_WRITE_SA;
+	inst->w4.s.opcode_minor = ROC_IE_OT_MINOR_OP_WRITE_SA;
+	inst->w7.s.cptr = (uint64_t)sa_cptr;
+	inst->w7.s.ctx_val = 1;
+	inst->w7.s.egrp = ROC_CPT_DFLT_ENG_GRP_SE_IE;
+
+	lmt_arg = ROC_CN10K_CPT_LMT_ARG | (uint64_t)lmt_id;
+	io_addr = lf->io_addr | ROC_CN10K_CPT_INST_DW_M1 << 4;
+
+	roc_lmt_submit_steorl(lmt_arg, io_addr);
+	plt_wmb();
+
+	/* Wait until CPT instruction completes */
+	while (res->cn10k.compcode == CPT_COMP_NOT_DONE)
+		plt_delay_ms(1);
+
+	plt_free(res);
 
 	return 0;
 }

@@ -64,8 +64,6 @@ union cpt_lf_ctx_flush {
 	struct {
 		uint64_t cptr : 46;
 		uint64_t inval : 1;
-		uint64_t res : 1;
-		uint64_t pf_func : 16;
 	} s;
 };
 
