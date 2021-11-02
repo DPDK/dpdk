@@ -529,6 +529,206 @@ hisi_dma_dump(const struct rte_dma_dev *dev, FILE *f)
 	return 0;
 }
 
+static int
+hisi_dma_copy(void *dev_private, uint16_t vchan,
+		 rte_iova_t src, rte_iova_t dst,
+		 uint32_t length, uint64_t flags)
+{
+	struct hisi_dma_dev *hw = dev_private;
+	struct hisi_dma_sqe *sqe = &hw->sqe[hw->sq_tail];
+
+	RTE_SET_USED(vchan);
+
+	if (((hw->sq_tail + 1) & hw->sq_depth_mask) == hw->sq_head)
+		return -ENOSPC;
+
+	sqe->dw0 = rte_cpu_to_le_32(SQE_OPCODE_M2M);
+	sqe->dw1 = 0;
+	sqe->dw2 = 0;
+	sqe->length = rte_cpu_to_le_32(length);
+	sqe->src_addr = rte_cpu_to_le_64(src);
+	sqe->dst_addr = rte_cpu_to_le_64(dst);
+	hw->sq_tail = (hw->sq_tail + 1) & hw->sq_depth_mask;
+	hw->submitted++;
+
+	if (flags & RTE_DMA_OP_FLAG_FENCE)
+		sqe->dw0 |= rte_cpu_to_le_32(SQE_FENCE_FLAG);
+	if (flags & RTE_DMA_OP_FLAG_SUBMIT)
+		rte_write32(rte_cpu_to_le_32(hw->sq_tail), hw->sq_tail_reg);
+
+	return hw->ridx++;
+}
+
+static int
+hisi_dma_submit(void *dev_private, uint16_t vchan)
+{
+	struct hisi_dma_dev *hw = dev_private;
+
+	RTE_SET_USED(vchan);
+	rte_write32(rte_cpu_to_le_32(hw->sq_tail), hw->sq_tail_reg);
+
+	return 0;
+}
+
+static inline void
+hisi_dma_scan_cq(struct hisi_dma_dev *hw)
+{
+	volatile struct hisi_dma_cqe *cqe;
+	uint16_t csq_head = hw->cq_sq_head;
+	uint16_t cq_head = hw->cq_head;
+	uint16_t count = 0;
+	uint64_t misc;
+
+	while (true) {
+		cqe = &hw->cqe[cq_head];
+		misc = cqe->misc;
+		misc = rte_le_to_cpu_64(misc);
+		if (FIELD_GET(CQE_VALID_B, misc) != hw->cqe_vld)
+			break;
+
+		csq_head = FIELD_GET(CQE_SQ_HEAD_MASK, misc);
+		if (unlikely(misc & CQE_STATUS_MASK))
+			hw->status[csq_head] = FIELD_GET(CQE_STATUS_MASK,
+							 misc);
+
+		count++;
+		cq_head++;
+		if (cq_head == hw->cq_depth) {
+			hw->cqe_vld = !hw->cqe_vld;
+			cq_head = 0;
+		}
+	}
+
+	if (count == 0)
+		return;
+
+	hw->cq_head = cq_head;
+	hw->cq_sq_head = (csq_head + 1) & hw->sq_depth_mask;
+	hw->cqs_completed += count;
+	if (hw->cqs_completed >= HISI_DMA_CQ_RESERVED) {
+		rte_write32(rte_cpu_to_le_32(cq_head), hw->cq_head_reg);
+		hw->cqs_completed = 0;
+	}
+}
+
+static inline uint16_t
+hisi_dma_calc_cpls(struct hisi_dma_dev *hw, const uint16_t nb_cpls)
+{
+	uint16_t cpl_num;
+
+	if (hw->cq_sq_head >= hw->sq_head)
+		cpl_num = hw->cq_sq_head - hw->sq_head;
+	else
+		cpl_num = hw->sq_depth_mask + 1 - hw->sq_head + hw->cq_sq_head;
+
+	if (cpl_num > nb_cpls)
+		cpl_num = nb_cpls;
+
+	return cpl_num;
+}
+
+static uint16_t
+hisi_dma_completed(void *dev_private,
+		   uint16_t vchan, const uint16_t nb_cpls,
+		   uint16_t *last_idx, bool *has_error)
+{
+	struct hisi_dma_dev *hw = dev_private;
+	uint16_t sq_head = hw->sq_head;
+	uint16_t cpl_num, i;
+
+	RTE_SET_USED(vchan);
+	hisi_dma_scan_cq(hw);
+
+	cpl_num = hisi_dma_calc_cpls(hw, nb_cpls);
+	for (i = 0; i < cpl_num; i++) {
+		if (hw->status[sq_head]) {
+			*has_error = true;
+			break;
+		}
+		sq_head = (sq_head + 1) & hw->sq_depth_mask;
+	}
+	if (i > 0) {
+		hw->cridx += i;
+		*last_idx = hw->cridx - 1;
+		hw->sq_head = sq_head;
+	}
+	hw->completed += i;
+
+	return i;
+}
+
+static enum rte_dma_status_code
+hisi_dma_convert_status(uint16_t status)
+{
+	switch (status) {
+	case HISI_DMA_STATUS_SUCCESS:
+		return RTE_DMA_STATUS_SUCCESSFUL;
+	case HISI_DMA_STATUS_INVALID_OPCODE:
+		return RTE_DMA_STATUS_INVALID_OPCODE;
+	case HISI_DMA_STATUS_INVALID_LENGTH:
+		return RTE_DMA_STATUS_INVALID_LENGTH;
+	case HISI_DMA_STATUS_USER_ABORT:
+		return RTE_DMA_STATUS_USER_ABORT;
+	case HISI_DMA_STATUS_REMOTE_READ_ERROR:
+	case HISI_DMA_STATUS_AXI_READ_ERROR:
+		return RTE_DMA_STATUS_BUS_READ_ERROR;
+	case HISI_DMA_STATUS_AXI_WRITE_ERROR:
+		return RTE_DMA_STATUS_BUS_WRITE_ERROR;
+	case HISI_DMA_STATUS_DATA_POISON:
+	case HISI_DMA_STATUS_REMOTE_DATA_POISION:
+		return RTE_DMA_STATUS_DATA_POISION;
+	case HISI_DMA_STATUS_SQE_READ_ERROR:
+	case HISI_DMA_STATUS_SQE_READ_POISION:
+		return RTE_DMA_STATUS_DESCRIPTOR_READ_ERROR;
+	case HISI_DMA_STATUS_LINK_DOWN_ERROR:
+		return RTE_DMA_STATUS_DEV_LINK_ERROR;
+	default:
+		return RTE_DMA_STATUS_ERROR_UNKNOWN;
+	}
+}
+
+static uint16_t
+hisi_dma_completed_status(void *dev_private,
+			  uint16_t vchan, const uint16_t nb_cpls,
+			  uint16_t *last_idx, enum rte_dma_status_code *status)
+{
+	struct hisi_dma_dev *hw = dev_private;
+	uint16_t sq_head = hw->sq_head;
+	uint16_t cpl_num, i;
+
+	RTE_SET_USED(vchan);
+	hisi_dma_scan_cq(hw);
+
+	cpl_num = hisi_dma_calc_cpls(hw, nb_cpls);
+	for (i = 0; i < cpl_num; i++) {
+		status[i] = hisi_dma_convert_status(hw->status[sq_head]);
+		hw->errors += !!status[i];
+		hw->status[sq_head] = HISI_DMA_STATUS_SUCCESS;
+		sq_head = (sq_head + 1) & hw->sq_depth_mask;
+	}
+	if (likely(cpl_num > 0)) {
+		hw->cridx += cpl_num;
+		*last_idx = hw->cridx - 1;
+		hw->sq_head = sq_head;
+	}
+	hw->completed += cpl_num;
+
+	return cpl_num;
+}
+
+static uint16_t
+hisi_dma_burst_capacity(const void *dev_private, uint16_t vchan)
+{
+	const struct hisi_dma_dev *hw = dev_private;
+	uint16_t sq_head = hw->sq_head;
+	uint16_t sq_tail = hw->sq_tail;
+
+	RTE_SET_USED(vchan);
+
+	return (sq_tail >= sq_head) ? hw->sq_depth_mask - sq_tail + sq_head :
+				      sq_head - 1 - sq_tail;
+}
+
 static void
 hisi_dma_gen_pci_device_name(const struct rte_pci_device *pci_dev,
 			     char *name, size_t size)
@@ -597,6 +797,12 @@ hisi_dma_create(struct rte_pci_device *pci_dev, uint8_t queue_id,
 
 	dev->device = &pci_dev->device;
 	dev->dev_ops = &hisi_dmadev_ops;
+	dev->fp_obj->dev_private = dev->data->dev_private;
+	dev->fp_obj->copy = hisi_dma_copy;
+	dev->fp_obj->submit = hisi_dma_submit;
+	dev->fp_obj->completed = hisi_dma_completed;
+	dev->fp_obj->completed_status = hisi_dma_completed_status;
+	dev->fp_obj->burst_capacity = hisi_dma_burst_capacity;
 
 	hw = dev->data->dev_private;
 	hw->data = dev->data;

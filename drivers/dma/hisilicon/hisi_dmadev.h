@@ -116,6 +116,22 @@ enum {
 };
 
 /**
+ * Hardware complete status define:
+ */
+#define HISI_DMA_STATUS_SUCCESS			0x0
+#define HISI_DMA_STATUS_INVALID_OPCODE		0x1
+#define HISI_DMA_STATUS_INVALID_LENGTH		0x2
+#define HISI_DMA_STATUS_USER_ABORT		0x4
+#define HISI_DMA_STATUS_REMOTE_READ_ERROR	0x10
+#define HISI_DMA_STATUS_AXI_READ_ERROR		0x20
+#define HISI_DMA_STATUS_AXI_WRITE_ERROR		0x40
+#define HISI_DMA_STATUS_DATA_POISON		0x80
+#define HISI_DMA_STATUS_SQE_READ_ERROR		0x100
+#define HISI_DMA_STATUS_SQE_READ_POISION	0x200
+#define HISI_DMA_STATUS_REMOTE_DATA_POISION	0x400
+#define HISI_DMA_STATUS_LINK_DOWN_ERROR		0x800
+
+/**
  * After scanning the CQ array, the CQ head register needs to be updated.
  * Updating the register involves write memory barrier operations.
  * Here use the following method to reduce WMB operations:
