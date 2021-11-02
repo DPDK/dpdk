@@ -1477,6 +1477,7 @@ eth_igc_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->min_rx_bufsize = 256; /* See BSIZE field of RCTL register. */
 	dev_info->max_rx_pktlen = MAX_RX_JUMBO_FRAME_SIZE;
 	dev_info->max_mac_addrs = hw->mac.rar_entry_count;
+	dev_info->dev_capa &= ~RTE_ETH_DEV_CAPA_FLOW_RULE_KEEP;
 	dev_info->rx_offload_capa = IGC_RX_OFFLOAD_ALL;
 	dev_info->tx_offload_capa = IGC_TX_OFFLOAD_ALL;
 	dev_info->rx_queue_offload_capa = RTE_ETH_RX_OFFLOAD_VLAN_STRIP;

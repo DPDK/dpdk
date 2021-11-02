@@ -93,6 +93,7 @@ pmd_dev_infos_get(struct rte_eth_dev *dev __rte_unused,
 	dev_info->max_rx_pktlen = UINT32_MAX;
 	dev_info->max_rx_queues = UINT16_MAX;
 	dev_info->max_tx_queues = UINT16_MAX;
+	dev_info->dev_capa &= ~RTE_ETH_DEV_CAPA_FLOW_RULE_KEEP;
 
 	return 0;
 }

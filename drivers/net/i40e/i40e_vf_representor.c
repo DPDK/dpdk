@@ -35,6 +35,8 @@ i40e_vf_representor_dev_infos_get(struct rte_eth_dev *ethdev,
 	/* get dev info for the vdev */
 	dev_info->device = ethdev->device;
 
+	dev_info->dev_capa &= ~RTE_ETH_DEV_CAPA_FLOW_RULE_KEEP;
+
 	dev_info->max_rx_queues = ethdev->data->nb_rx_queues;
 	dev_info->max_tx_queues = ethdev->data->nb_tx_queues;
 

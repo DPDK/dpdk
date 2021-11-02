@@ -546,6 +546,7 @@ int bnxt_rep_dev_info_get_op(struct rte_eth_dev *eth_dev,
 	dev_info->max_tx_queues = max_rx_rings;
 	dev_info->reta_size = bnxt_rss_hash_tbl_size(parent_bp);
 	dev_info->hash_key_size = 40;
+	dev_info->dev_capa &= ~RTE_ETH_DEV_CAPA_FLOW_RULE_KEEP;
 
 	/* MTU specifics */
 	dev_info->min_mtu = RTE_ETHER_MIN_MTU;

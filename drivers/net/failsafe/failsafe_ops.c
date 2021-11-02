@@ -1227,6 +1227,7 @@ fs_dev_infos_get(struct rte_eth_dev *dev,
 	infos->dev_capa =
 		RTE_ETH_DEV_CAPA_RUNTIME_RX_QUEUE_SETUP |
 		RTE_ETH_DEV_CAPA_RUNTIME_TX_QUEUE_SETUP;
+	infos->dev_capa &= ~RTE_ETH_DEV_CAPA_FLOW_RULE_KEEP;
 
 	FOREACH_SUBDEV_STATE(sdev, i, dev, DEV_PROBED) {
 		struct rte_eth_dev_info sub_info;

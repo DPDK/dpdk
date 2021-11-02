@@ -663,6 +663,7 @@ ice_dcf_dev_info_get(struct rte_eth_dev *dev,
 	dev_info->hash_key_size = hw->vf_res->rss_key_size;
 	dev_info->reta_size = hw->vf_res->rss_lut_size;
 	dev_info->flow_type_rss_offloads = ICE_RSS_OFFLOAD_ALL;
+	dev_info->dev_capa &= ~RTE_ETH_DEV_CAPA_FLOW_RULE_KEEP;
 
 	dev_info->rx_offload_capa =
 		RTE_ETH_RX_OFFLOAD_VLAN_STRIP |

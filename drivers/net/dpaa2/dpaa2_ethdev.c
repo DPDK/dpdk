@@ -254,6 +254,7 @@ dpaa2_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->speed_capa = RTE_ETH_LINK_SPEED_1G |
 			RTE_ETH_LINK_SPEED_2_5G |
 			RTE_ETH_LINK_SPEED_10G;
+	dev_info->dev_capa &= ~RTE_ETH_DEV_CAPA_FLOW_RULE_KEEP;
 
 	dev_info->max_hash_mac_addrs = 0;
 	dev_info->max_vfs = 0;

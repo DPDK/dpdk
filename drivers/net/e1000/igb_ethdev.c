@@ -2168,6 +2168,7 @@ eth_igb_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->tx_queue_offload_capa = igb_get_tx_queue_offloads_capa(dev);
 	dev_info->tx_offload_capa = igb_get_tx_port_offloads_capa(dev) |
 				    dev_info->tx_queue_offload_capa;
+	dev_info->dev_capa &= ~RTE_ETH_DEV_CAPA_FLOW_RULE_KEEP;
 
 	switch (hw->mac.type) {
 	case e1000_82575:

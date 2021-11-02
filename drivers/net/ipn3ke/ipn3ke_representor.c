@@ -96,6 +96,7 @@ ipn3ke_rpst_dev_infos_get(struct rte_eth_dev *ethdev,
 	dev_info->dev_capa =
 		RTE_ETH_DEV_CAPA_RUNTIME_RX_QUEUE_SETUP |
 		RTE_ETH_DEV_CAPA_RUNTIME_TX_QUEUE_SETUP;
+	dev_info->dev_capa &= ~RTE_ETH_DEV_CAPA_FLOW_RULE_KEEP;
 
 	dev_info->switch_info.name = ethdev->device->name;
 	dev_info->switch_info.domain_id = rpst->switch_domain_id;
