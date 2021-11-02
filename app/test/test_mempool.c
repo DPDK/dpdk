@@ -515,17 +515,19 @@ test_mempool_events(int (*populate)(struct rte_mempool *mp))
 #undef RTE_TEST_TRACE_FAILURE
 #define RTE_TEST_TRACE_FAILURE(...) do { goto fail; } while (0)
 
-	static const size_t CB_NUM = 3;
-	static const size_t MP_NUM = 2;
+	static const size_t callback_num = 3;
+	static const size_t mempool_num = 2;
+	static const unsigned int mempool_elt_size = 64;
+	static const unsigned int mempool_size = 64;
 
-	struct test_mempool_events_data data[CB_NUM];
-	struct rte_mempool *mp[MP_NUM], *freed;
+	struct test_mempool_events_data data[callback_num];
+	struct rte_mempool *mp[mempool_num], *freed;
 	char name[RTE_MEMPOOL_NAMESIZE];
 	size_t i, j;
 	int ret;
 
 	memset(mp, 0, sizeof(mp));
-	for (i = 0; i < CB_NUM; i++) {
+	for (i = 0; i < callback_num; i++) {
 		ret = rte_mempool_event_callback_register
 				(test_mempool_events_cb, &data[i]);
 		RTE_TEST_ASSERT_EQUAL(ret, 0, "Failed to register the callback %zu: %s",
@@ -541,12 +543,12 @@ test_mempool_events(int (*populate)(struct rte_mempool *mp))
 	/* Create mempool 0 that will be observed by all callbacks. */
 	memset(&data, 0, sizeof(data));
 	strcpy(name, "empty0");
-	mp[0] = rte_mempool_create_empty(name, MEMPOOL_SIZE,
-					 MEMPOOL_ELT_SIZE, 0, 0,
+	mp[0] = rte_mempool_create_empty(name, mempool_size,
+					 mempool_elt_size, 0, 0,
 					 SOCKET_ID_ANY, 0);
 	RTE_TEST_ASSERT_NOT_NULL(mp[0], "Cannot create mempool %s: %s",
 				 name, rte_strerror(rte_errno));
-	for (j = 0; j < CB_NUM; j++)
+	for (j = 0; j < callback_num; j++)
 		RTE_TEST_ASSERT_EQUAL(data[j].invoked, false,
 				      "Callback %zu invoked on %s mempool creation",
 				      j, name);
@@ -555,7 +557,7 @@ test_mempool_events(int (*populate)(struct rte_mempool *mp))
 	ret = populate(mp[0]);
 	RTE_TEST_ASSERT_EQUAL(ret, (int)mp[0]->size, "Failed to populate mempool %s: %s",
 			      name, rte_strerror(-ret));
-	for (j = 0; j < CB_NUM; j++) {
+	for (j = 0; j < callback_num; j++) {
 		RTE_TEST_ASSERT_EQUAL(data[j].invoked, true,
 					"Callback %zu not invoked on mempool %s population",
 					j, name);
@@ -574,8 +576,8 @@ test_mempool_events(int (*populate)(struct rte_mempool *mp))
 			      rte_strerror(rte_errno));
 	memset(&data, 0, sizeof(data));
 	strcpy(name, "empty1");
-	mp[1] = rte_mempool_create_empty(name, MEMPOOL_SIZE,
-					 MEMPOOL_ELT_SIZE, 0, 0,
+	mp[1] = rte_mempool_create_empty(name, mempool_size,
+					 mempool_elt_size, 0, 0,
 					 SOCKET_ID_ANY, 0);
 	RTE_TEST_ASSERT_NOT_NULL(mp[1], "Cannot create mempool %s: %s",
 				 name, rte_strerror(rte_errno));
@@ -587,7 +589,7 @@ test_mempool_events(int (*populate)(struct rte_mempool *mp))
 			      "Unregistered callback 0 invoked on %s mempool populaton",
 			      name);
 
-	for (i = 0; i < MP_NUM; i++) {
+	for (i = 0; i < mempool_num; i++) {
 		memset(&data, 0, sizeof(data));
 		sprintf(name, "empty%zu", i);
 		rte_mempool_free(mp[i]);
@@ -597,7 +599,7 @@ test_mempool_events(int (*populate)(struct rte_mempool *mp))
 		 */
 		freed = mp[i];
 		mp[i] = NULL;
-		for (j = 1; j < CB_NUM; j++) {
+		for (j = 1; j < callback_num; j++) {
 			RTE_TEST_ASSERT_EQUAL(data[j].invoked, true,
 					      "Callback %zu not invoked on mempool %s destruction",
 					      j, name);
@@ -613,7 +615,7 @@ test_mempool_events(int (*populate)(struct rte_mempool *mp))
 				      name);
 	}
 
-	for (j = 1; j < CB_NUM; j++) {
+	for (j = 1; j < callback_num; j++) {
 		ret = rte_mempool_event_callback_unregister
 					(test_mempool_events_cb, &data[j]);
 		RTE_TEST_ASSERT_EQUAL(ret, 0, "Failed to unregister the callback %zu: %s",
@@ -622,10 +624,10 @@ test_mempool_events(int (*populate)(struct rte_mempool *mp))
 	return TEST_SUCCESS;
 
 fail:
-	for (j = 0; j < CB_NUM; j++)
+	for (j = 0; j < callback_num; j++)
 		rte_mempool_event_callback_unregister
 					(test_mempool_events_cb, &data[j]);
-	for (i = 0; i < MP_NUM; i++)
+	for (i = 0; i < mempool_num; i++)
 		rte_mempool_free(mp[i]);
 	return TEST_FAILED;
 
