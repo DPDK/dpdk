@@ -633,6 +633,8 @@ struct mlx5_dev_shared_port {
 #define MLX5_MTR_TABLE_ID_DROP 2
 /* Priority of the meter policy matcher. */
 #define MLX5_MTR_POLICY_MATCHER_PRIO 0
+/* Green & yellow color valid for now. */
+#define MLX5_MTR_POLICY_MODE_ALL 0
 /* Default policy. */
 #define MLX5_MTR_POLICY_MODE_DEF 1
 /* Only green color valid. */

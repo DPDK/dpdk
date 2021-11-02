@@ -17750,6 +17750,8 @@ flow_dv_validate_mtr_policy_acts(struct rte_eth_dev *dev,
 		*policy_mode = MLX5_MTR_POLICY_MODE_OG;
 	} else if (def_green && !def_yellow) {
 		*policy_mode = MLX5_MTR_POLICY_MODE_OY;
+	} else {
+		*policy_mode = MLX5_MTR_POLICY_MODE_ALL;
 	}
 	/* Set to empty string in case of NULL pointer access by user. */
 	flow_err.message = "";
