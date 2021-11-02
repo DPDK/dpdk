@@ -730,6 +730,53 @@ mlx5_devx_cmd_create_flex_parser(void *ctx,
 }
 
 static int
+mlx5_devx_cmd_query_hca_parse_graph_node_cap
+	(void *ctx, struct mlx5_hca_flex_attr *attr)
+{
+	uint32_t in[MLX5_ST_SZ_DW(query_hca_cap_in)];
+	uint32_t out[MLX5_ST_SZ_DW(query_hca_cap_out)];
+	void *hcattr;
+	int rc;
+
+	hcattr = mlx5_devx_get_hca_cap(ctx, in, out, &rc,
+			MLX5_GET_HCA_CAP_OP_MOD_PARSE_GRAPH_NODE_CAP |
+			MLX5_HCA_CAP_OPMOD_GET_CUR);
+	if (!hcattr)
+		return rc;
+	attr->node_in = MLX5_GET(parse_graph_node_cap, hcattr, node_in);
+	attr->node_out = MLX5_GET(parse_graph_node_cap, hcattr, node_out);
+	attr->header_length_mode = MLX5_GET(parse_graph_node_cap, hcattr,
+					    header_length_mode);
+	attr->sample_offset_mode = MLX5_GET(parse_graph_node_cap, hcattr,
+					    sample_offset_mode);
+	attr->max_num_arc_in = MLX5_GET(parse_graph_node_cap, hcattr,
+					max_num_arc_in);
+	attr->max_num_arc_out = MLX5_GET(parse_graph_node_cap, hcattr,
+					 max_num_arc_out);
+	attr->max_num_sample = MLX5_GET(parse_graph_node_cap, hcattr,
+					max_num_sample);
+	attr->sample_id_in_out = MLX5_GET(parse_graph_node_cap, hcattr,
+					  sample_id_in_out);
+	attr->max_base_header_length = MLX5_GET(parse_graph_node_cap, hcattr,
+						max_base_header_length);
+	attr->max_sample_base_offset = MLX5_GET(parse_graph_node_cap, hcattr,
+						max_sample_base_offset);
+	attr->max_next_header_offset = MLX5_GET(parse_graph_node_cap, hcattr,
+						max_next_header_offset);
+	attr->header_length_mask_width = MLX5_GET(parse_graph_node_cap, hcattr,
+						  header_length_mask_width);
+	/* Get the max supported samples from HCA CAP 2 */
+	hcattr = mlx5_devx_get_hca_cap(ctx, in, out, &rc,
+			MLX5_GET_HCA_CAP_OP_MOD_GENERAL_DEVICE_2 |
+			MLX5_HCA_CAP_OPMOD_GET_CUR);
+	if (!hcattr)
+		return rc;
+	attr->max_num_prog_sample =
+		MLX5_GET(cmd_hca_cap_2, hcattr,	max_num_prog_sample_field);
+	return 0;
+}
+
+static int
 mlx5_devx_query_pkt_integrity_match(void *hcattr)
 {
 	return MLX5_GET(flow_table_nic_cap, hcattr,
@@ -942,6 +989,16 @@ mlx5_devx_cmd_query_hca_attr(void *ctx,
 				MLX5_GET(qos_cap, hcattr,
 					log_max_num_meter_aso);
 		}
+	}
+	/*
+	 * Flex item support needs max_num_prog_sample_field
+	 * from the Capabilities 2 table for PARSE_GRAPH_NODE
+	 */
+	if (attr->parse_graph_flex_node) {
+		rc = mlx5_devx_cmd_query_hca_parse_graph_node_cap
+			(ctx, &attr->flex);
+		if (rc)
+			return -1;
 	}
 	if (attr->vdpa.valid)
 		mlx5_devx_cmd_query_hca_vdpa_attr(ctx, &attr->vdpa);

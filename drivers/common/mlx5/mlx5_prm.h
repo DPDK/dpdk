@@ -975,7 +975,14 @@ struct mlx5_ifc_fte_match_set_misc4_bits {
 	u8 prog_sample_field_id_2[0x20];
 	u8 prog_sample_field_value_3[0x20];
 	u8 prog_sample_field_id_3[0x20];
-	u8 reserved_at_100[0x100];
+	u8 prog_sample_field_value_4[0x20];
+	u8 prog_sample_field_id_4[0x20];
+	u8 prog_sample_field_value_5[0x20];
+	u8 prog_sample_field_id_5[0x20];
+	u8 prog_sample_field_value_6[0x20];
+	u8 prog_sample_field_id_6[0x20];
+	u8 prog_sample_field_value_7[0x20];
+	u8 prog_sample_field_id_7[0x20];
 };
 
 struct mlx5_ifc_fte_match_set_misc5_bits {
@@ -1245,6 +1252,7 @@ enum {
 	MLX5_GET_HCA_CAP_OP_MOD_ROCE = 0x4 << 1,
 	MLX5_GET_HCA_CAP_OP_MOD_NIC_FLOW_TABLE = 0x7 << 1,
 	MLX5_GET_HCA_CAP_OP_MOD_VDPA_EMULATION = 0x13 << 1,
+	MLX5_GET_HCA_CAP_OP_MOD_PARSE_GRAPH_NODE_CAP = 0x1C << 1,
 	MLX5_GET_HCA_CAP_OP_MOD_GENERAL_DEVICE_2 = 0x20 << 1,
 };
 
@@ -1757,6 +1765,27 @@ struct mlx5_ifc_virtio_emulation_cap_bits {
 	u8 reserved_at_1c0[0x620];
 };
 
+/**
+ * PARSE_GRAPH_NODE Capabilities Field Descriptions
+ */
+struct mlx5_ifc_parse_graph_node_cap_bits {
+	u8 node_in[0x20];
+	u8 node_out[0x20];
+	u8 header_length_mode[0x10];
+	u8 sample_offset_mode[0x10];
+	u8 max_num_arc_in[0x08];
+	u8 max_num_arc_out[0x08];
+	u8 max_num_sample[0x08];
+	u8 reserved_at_78[0x07];
+	u8 sample_id_in_out[0x1];
+	u8 max_base_header_length[0x10];
+	u8 reserved_at_90[0x08];
+	u8 max_sample_base_offset[0x08];
+	u8 max_next_header_offset[0x10];
+	u8 reserved_at_b0[0x08];
+	u8 header_length_mask_width[0x08];
+};
+
 struct mlx5_ifc_flow_table_prop_layout_bits {
 	u8 ft_support[0x1];
 	u8 flow_tag[0x1];
@@ -1851,9 +1880,14 @@ struct mlx5_ifc_flow_table_nic_cap_bits {
 		ft_field_support_2_nic_receive;
 };
 
+/*
+ *  HCA Capabilities 2
+ */
 struct mlx5_ifc_cmd_hca_cap_2_bits {
 	u8 reserved_at_0[0x80]; /* End of DW4. */
-	u8 reserved_at_80[0xb];
+	u8 reserved_at_80[0x3];
+	u8 max_num_prog_sample_field[0x5];
+	u8 reserved_at_88[0x3];
 	u8 log_max_num_reserved_qpn[0x5];
 	u8 reserved_at_90[0x3];
 	u8 log_reserved_qpn_granularity[0x5];
@@ -3955,6 +3989,12 @@ enum mlx5_parse_graph_flow_match_sample_offset_mode {
 	MLX5_GRAPH_SAMPLE_OFFSET_BITMASK = 0x2,
 };
 
+enum mlx5_parse_graph_flow_match_sample_tunnel_mode {
+	MLX5_GRAPH_SAMPLE_TUNNEL_OUTER = 0x0,
+	MLX5_GRAPH_SAMPLE_TUNNEL_INNER = 0x1,
+	MLX5_GRAPH_SAMPLE_TUNNEL_FIRST = 0x2
+};
+
 /* Node index for an input / output arc of the flex parser graph. */
 enum mlx5_parse_graph_arc_node_index {
 	MLX5_GRAPH_ARC_NODE_NULL = 0x0,
@@ -3968,8 +4008,14 @@ enum mlx5_parse_graph_arc_node_index {
 	MLX5_GRAPH_ARC_NODE_VXLAN_GPE = 0x8,
 	MLX5_GRAPH_ARC_NODE_GENEVE = 0x9,
 	MLX5_GRAPH_ARC_NODE_IPSEC_ESP = 0xa,
+	MLX5_GRAPH_ARC_NODE_IPV4 = 0xb,
+	MLX5_GRAPH_ARC_NODE_IPV6 = 0xc,
 	MLX5_GRAPH_ARC_NODE_PROGRAMMABLE = 0x1f,
 };
+
+#define MLX5_PARSE_GRAPH_FLOW_SAMPLE_MAX 8
+#define MLX5_PARSE_GRAPH_IN_ARC_MAX 8
+#define MLX5_PARSE_GRAPH_OUT_ARC_MAX 8
 
 /**
  * Convert a user mark to flow mark.

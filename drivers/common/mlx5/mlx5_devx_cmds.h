@@ -6,6 +6,7 @@
 #define RTE_PMD_MLX5_DEVX_CMDS_H_
 
 #include <rte_compat.h>
+#include <rte_bitops.h>
 
 #include "mlx5_glue.h"
 #include "mlx5_prm.h"
@@ -86,6 +87,64 @@ struct mlx5_hca_flow_attr {
 	uint32_t tunnel_header_2_3;
 };
 
+/**
+ * Accumulate port PARSE_GRAPH_NODE capabilities from
+ * PARSE_GRAPH_NODE Capabilities and HCA Capabilities 2 tables
+ */
+__extension__
+struct mlx5_hca_flex_attr {
+	uint32_t node_in;
+	uint32_t node_out;
+	uint16_t header_length_mode;
+	uint16_t sample_offset_mode;
+	uint8_t  max_num_arc_in;
+	uint8_t  max_num_arc_out;
+	uint8_t  max_num_sample;
+	uint8_t  max_num_prog_sample:5;	/* From HCA CAP 2 */
+	uint8_t  sample_id_in_out:1;
+	uint16_t max_base_header_length;
+	uint8_t  max_sample_base_offset;
+	uint16_t max_next_header_offset;
+	uint8_t  header_length_mask_width;
+};
+
+/* ISO C restricts enumerator values to range of 'int' */
+__extension__
+enum {
+	PARSE_GRAPH_NODE_CAP_SUPPORTED_PROTOCOL_HEAD          = RTE_BIT32(1),
+	PARSE_GRAPH_NODE_CAP_SUPPORTED_PROTOCOL_MAC           = RTE_BIT32(2),
+	PARSE_GRAPH_NODE_CAP_SUPPORTED_PROTOCOL_IP            = RTE_BIT32(3),
+	PARSE_GRAPH_NODE_CAP_SUPPORTED_PROTOCOL_GRE           = RTE_BIT32(4),
+	PARSE_GRAPH_NODE_CAP_SUPPORTED_PROTOCOL_UDP           = RTE_BIT32(5),
+	PARSE_GRAPH_NODE_CAP_SUPPORTED_PROTOCOL_MPLS          = RTE_BIT32(6),
+	PARSE_GRAPH_NODE_CAP_SUPPORTED_PROTOCOL_TCP           = RTE_BIT32(7),
+	PARSE_GRAPH_NODE_CAP_SUPPORTED_PROTOCOL_VXLAN_GRE     = RTE_BIT32(8),
+	PARSE_GRAPH_NODE_CAP_SUPPORTED_PROTOCOL_GENEVE        = RTE_BIT32(9),
+	PARSE_GRAPH_NODE_CAP_SUPPORTED_PROTOCOL_IPSEC_ESP     = RTE_BIT32(10),
+	PARSE_GRAPH_NODE_CAP_SUPPORTED_PROTOCOL_IPV4          = RTE_BIT32(11),
+	PARSE_GRAPH_NODE_CAP_SUPPORTED_PROTOCOL_IPV6          = RTE_BIT32(12),
+	PARSE_GRAPH_NODE_CAP_SUPPORTED_PROTOCOL_PROGRAMMABLE  = RTE_BIT32(31)
+};
+
+enum {
+	PARSE_GRAPH_NODE_CAP_LENGTH_MODE_FIXED          = RTE_BIT32(0),
+	PARSE_GRAPH_NODE_CAP_LENGTH_MODE_EXPLISIT_FIELD = RTE_BIT32(1),
+	PARSE_GRAPH_NODE_CAP_LENGTH_MODE_BITMASK_FIELD  = RTE_BIT32(2)
+};
+
+/*
+ * DWORD shift is the base for calculating header_length_field_mask
+ * value in the MLX5_GRAPH_NODE_LEN_FIELD mode.
+ */
+#define MLX5_PARSE_GRAPH_NODE_HDR_LEN_SHIFT_DWORD 0x02
+
+static inline uint32_t
+mlx5_hca_parse_graph_node_base_hdr_len_mask
+	(const struct mlx5_hca_flex_attr *attr)
+{
+	return (1 << attr->header_length_mask_width) - 1;
+}
+
 /* HCA supports this number of time periods for LRO. */
 #define MLX5_LRO_NUM_SUPP_PERIODS 4
 
@@ -165,6 +224,7 @@ struct mlx5_hca_attr {
 	struct mlx5_hca_qos_attr qos;
 	struct mlx5_hca_vdpa_attr vdpa;
 	struct mlx5_hca_flow_attr flow;
+	struct mlx5_hca_flex_attr flex;
 	int log_max_qp_sz;
 	int log_max_cq_sz;
 	int log_max_qp;
@@ -587,8 +647,9 @@ int mlx5_devx_cmd_query_parse_samples(struct mlx5_devx_obj *flex_obj,
 				      uint32_t ids[], uint32_t num);
 
 __rte_internal
-struct mlx5_devx_obj *mlx5_devx_cmd_create_flex_parser(void *ctx,
-					struct mlx5_devx_graph_node_attr *data);
+struct mlx5_devx_obj *
+mlx5_devx_cmd_create_flex_parser(void *ctx,
+				 struct mlx5_devx_graph_node_attr *data);
 
 __rte_internal
 int mlx5_devx_cmd_register_read(void *ctx, uint16_t reg_id,
