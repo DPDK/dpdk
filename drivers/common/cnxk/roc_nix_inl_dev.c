@@ -97,6 +97,19 @@ exit:
 }
 
 static int
+nix_inl_cpt_ctx_cache_sync(struct nix_inl_dev *inl_dev)
+{
+	struct mbox *mbox = (&inl_dev->dev)->mbox;
+	struct msg_req *req;
+
+	req = mbox_alloc_msg_cpt_ctx_cache_sync(mbox);
+	if (req == NULL)
+		return -ENOSPC;
+
+	return mbox_process(mbox);
+}
+
+static int
 nix_inl_nix_ipsec_cfg(struct nix_inl_dev *inl_dev, bool ena)
 {
 	struct nix_inline_ipsec_lf_cfg *lf_cfg;
@@ -627,6 +640,9 @@ roc_nix_inl_dev_fini(struct roc_nix_inl_dev *roc_inl_dev)
 
 	inl_dev = idev->nix_inl_dev;
 	pci_dev = inl_dev->pci_dev;
+
+	/* Flush Inbound CTX cache entries */
+	nix_inl_cpt_ctx_cache_sync(inl_dev);
 
 	/* Release SSO */
 	rc = nix_inl_sso_release(inl_dev);

@@ -109,6 +109,20 @@ roc_nix_lf_inl_ipsec_cfg(struct roc_nix *roc_nix, struct roc_nix_ipsec_cfg *cfg,
 }
 
 int
+roc_nix_cpt_ctx_cache_sync(struct roc_nix *roc_nix)
+{
+	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
+	struct mbox *mbox = (&nix->dev)->mbox;
+	struct msg_req *req;
+
+	req = mbox_alloc_msg_cpt_ctx_cache_sync(mbox);
+	if (req == NULL)
+		return -ENOSPC;
+
+	return mbox_process(mbox);
+}
+
+int
 roc_nix_max_pkt_len(struct roc_nix *roc_nix)
 {
 	struct nix *nix = roc_nix_to_nix_priv(roc_nix);

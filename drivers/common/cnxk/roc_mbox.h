@@ -143,6 +143,7 @@ struct mbox_msghdr {
 	M(CPT_STATS, 0xA05, cpt_sts_get, cpt_sts_req, cpt_sts_rsp)             \
 	M(CPT_RXC_TIME_CFG, 0xA06, cpt_rxc_time_cfg, cpt_rxc_time_cfg_req,     \
 	  msg_rsp)                                                             \
+	M(CPT_CTX_CACHE_SYNC, 0xA07, cpt_ctx_cache_sync, msg_req, msg_rsp)     \
 	M(CPT_RX_INLINE_LF_CFG, 0xBFE, cpt_rx_inline_lf_cfg,                   \
 	  cpt_rx_inline_lf_cfg_msg, msg_rsp)                                   \
 	M(CPT_GET_CAPS, 0xBFD, cpt_caps_get, msg_req, cpt_caps_rsp_msg)        \

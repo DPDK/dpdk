@@ -437,6 +437,7 @@ int __roc_api roc_nix_lf_alloc(struct roc_nix *roc_nix, uint32_t nb_rxq,
 int __roc_api roc_nix_lf_free(struct roc_nix *roc_nix);
 int __roc_api roc_nix_lf_inl_ipsec_cfg(struct roc_nix *roc_nix,
 				       struct roc_nix_ipsec_cfg *cfg, bool enb);
+int __roc_api roc_nix_cpt_ctx_cache_sync(struct roc_nix *roc_nix);
 
 /* Debug */
 int __roc_api roc_nix_lf_get_reg_count(struct roc_nix *roc_nix);

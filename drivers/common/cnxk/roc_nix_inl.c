@@ -258,6 +258,9 @@ roc_nix_inl_inb_fini(struct roc_nix *roc_nix)
 
 	nix->inl_inb_ena = false;
 
+	/* Flush Inbound CTX cache entries */
+	roc_nix_cpt_ctx_cache_sync(roc_nix);
+
 	/* Disable Inbound SA */
 	return nix_inl_sa_tbl_release(roc_nix);
 }
