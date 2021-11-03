@@ -7142,12 +7142,6 @@ test_zuc_encryption_test_case_6_sgl(void)
 }
 
 static int
-test_zuc_encryption_test_case_7(void)
-{
-	return test_zuc_encryption(&zuc_test_case_cipher_800b_key_256b);
-}
-
-static int
 test_zuc_hash_generate_test_case_1(void)
 {
 	return test_zuc_authentication(&zuc_test_case_auth_1b);
@@ -7198,13 +7192,19 @@ test_zuc_hash_generate_test_case_8(void)
 static int
 test_zuc_hash_generate_test_case_9(void)
 {
-	return test_zuc_authentication(&zuc_test_case_auth_584b_mac_64b);
+	return test_zuc_authentication(&zuc_test_case_auth_4000b_mac_32b);
 }
 
 static int
 test_zuc_hash_generate_test_case_10(void)
 {
-	return test_zuc_authentication(&zuc_test_case_auth_2080b_mac_128b);
+	return test_zuc_authentication(&zuc_test_case_auth_4000b_mac_64b);
+}
+
+static int
+test_zuc_hash_generate_test_case_11(void)
+{
+	return test_zuc_authentication(&zuc_test_case_auth_4000b_mac_128b);
 }
 
 static int
@@ -14910,8 +14910,6 @@ static struct unit_test_suite cryptodev_zuc_testsuite  = {
 			test_zuc_encryption_test_case_5),
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			test_zuc_encryption_test_case_6_sgl),
-		TEST_CASE_ST(ut_setup, ut_teardown,
-			test_zuc_encryption_test_case_7),
 
 		/** ZUC authenticate (EIA3) */
 		TEST_CASE_ST(ut_setup, ut_teardown,
@@ -14934,6 +14932,8 @@ static struct unit_test_suite cryptodev_zuc_testsuite  = {
 			test_zuc_hash_generate_test_case_9),
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			test_zuc_hash_generate_test_case_10),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_zuc_hash_generate_test_case_11),
 
 
 		/** ZUC alg-chain (EEA3/EIA3) */
