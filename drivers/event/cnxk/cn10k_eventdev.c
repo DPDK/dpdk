@@ -99,7 +99,7 @@ cn10k_sso_hws_setup(void *arg, void *hws, uintptr_t *grps_base)
 
 	rte_memcpy(ws->grps_base, grps_base,
 		   sizeof(uintptr_t) * CNXK_SSO_MAX_HWGRP);
-	ws->fc_mem = dev->fc_mem;
+	ws->fc_mem = (uint64_t *)dev->fc_iova;
 	ws->xaq_lmt = dev->xaq_lmt;
 
 	/* Set get_work timeout for HWS */
@@ -469,8 +469,6 @@ cn10k_sso_dev_configure(const struct rte_eventdev *event_dev)
 		plt_err("Invalid event device configuration");
 		return -EINVAL;
 	}
-
-	roc_sso_rsrc_fini(&dev->sso);
 
 	rc = cn10k_sso_rsrc_init(dev, dev->nb_event_ports,
 				 dev->nb_event_queues);
