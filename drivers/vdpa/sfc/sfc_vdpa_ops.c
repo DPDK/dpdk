@@ -31,10 +31,20 @@
 static int
 sfc_vdpa_get_queue_num(struct rte_vdpa_device *vdpa_dev, uint32_t *queue_num)
 {
-	RTE_SET_USED(vdpa_dev);
-	RTE_SET_USED(queue_num);
+	struct sfc_vdpa_ops_data *ops_data;
+	void *dev;
 
-	return -1;
+	ops_data = sfc_vdpa_get_data_by_dev(vdpa_dev);
+	if (ops_data == NULL)
+		return -1;
+
+	dev = ops_data->dev_handle;
+	*queue_num = sfc_vdpa_adapter_by_dev_handle(dev)->max_queue_count;
+
+	sfc_vdpa_info(dev, "vDPA ops get_queue_num :: supported queue num : %u",
+		      *queue_num);
+
+	return 0;
 }
 
 static int
