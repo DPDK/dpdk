@@ -20,7 +20,7 @@
 #define SFC_VDPA_DEFAULT_MCDI_IOVA		0x200000000000
 
 /* Broadcast & Unicast MAC filters are supported */
-#define SFC_MAX_SUPPORTED_FILTERS		2
+#define SFC_MAX_SUPPORTED_FILTERS		3
 
 /*
  * Get function-local index of the associated VI from the
@@ -31,6 +31,7 @@
 enum sfc_vdpa_filter_type {
 	SFC_VDPA_BCAST_MAC_FILTER = 0,
 	SFC_VDPA_UCAST_MAC_FILTER = 1,
+	SFC_VDPA_MCAST_DST_FILTER = 2,
 	SFC_VDPA_FILTER_NTYPE
 };
 

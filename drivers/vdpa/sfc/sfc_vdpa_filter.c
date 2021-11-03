@@ -38,8 +38,12 @@ sfc_vdpa_set_mac_filter(efx_nic_t *nic, efx_filter_spec_t *spec,
 	spec->efs_flags = EFX_FILTER_FLAG_RX;
 	spec->efs_dmaq_id = qid;
 
-	rc = efx_filter_spec_set_eth_local(spec, EFX_FILTER_SPEC_VID_UNSPEC,
-					   eth_addr);
+	if (eth_addr == NULL)
+		rc = efx_filter_spec_set_mc_def(spec);
+	else
+		rc = efx_filter_spec_set_eth_local(spec,
+						   EFX_FILTER_SPEC_VID_UNSPEC,
+						   eth_addr);
 	if (rc != 0)
 		return rc;
 
@@ -102,8 +106,18 @@ int sfc_vdpa_filter_config(struct sfc_vdpa_ops_data *ops_data)
 	rc = sfc_vdpa_set_mac_filter(nic, spec, qid,
 				     ucast_eth_addr.addr_bytes);
 	if (rc != 0)
+		sfc_vdpa_err(sva, "unicast MAC filter insertion failed: %s",
+			     rte_strerror(rc));
+	else
+		sva->filters.filter_cnt++;
+
+	sfc_vdpa_log_init(sva, "insert unknown mcast filter");
+	spec = &sva->filters.spec[SFC_VDPA_MCAST_DST_FILTER];
+
+	rc = sfc_vdpa_set_mac_filter(nic, spec, qid, NULL);
+	if (rc != 0)
 		sfc_vdpa_err(sva,
-			     "unicast MAC filter insertion failed: %s",
+			     "mcast filter insertion failed: %s",
 			     rte_strerror(rc));
 	else
 		sva->filters.filter_cnt++;
