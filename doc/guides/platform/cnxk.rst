@@ -62,7 +62,7 @@ DPDK subsystem.
    +---+-----+--------------------------------------------------------------+
    | 7 | LBK | rte_ethdev                                                   |
    +---+-----+--------------------------------------------------------------+
-   | 8 | DPI | rte_rawdev                                                   |
+   | 8 | DPI | rte_dmadev                                                   |
    +---+-----+--------------------------------------------------------------+
    | 9 | SDP | rte_ethdev                                                   |
    +---+-----+--------------------------------------------------------------+
@@ -152,6 +152,9 @@ This section lists dataplane H/W block(s) available in cnxk SoC.
 
 #. **Baseband PHY Driver**
    See :doc:`../rawdevs/cnxk_bphy` for Baseband PHY driver information.
+
+#. **Dmadev Driver**
+   See :doc:`../dmadevs/cnxk` for DPI Dmadev driver information.
 
 Procedure to Setup Platform
 ---------------------------

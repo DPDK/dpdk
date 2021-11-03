@@ -91,6 +91,11 @@ New Features
   driver for Intel IOAT devices such as Crystal Beach DMA (CBDMA) on Ice Lake,
   Skylake and Broadwell. This device driver can be used through the generic dmadev API.
 
+* **Added Marvell CNXK DMA driver.**
+
+  Added dmadev driver for the DPI DMA hardware accelerator
+  of Marvell OCTEONTX2 and OCTEONTX3 family of SoCs.
+
 * **Added support to get all MAC addresses of a device.**
 
   Added ``rte_eth_macaddrs_get`` to allow user to retrieve all Ethernet

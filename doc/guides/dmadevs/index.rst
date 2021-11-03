@@ -11,6 +11,7 @@ an application through DMA API.
    :maxdepth: 2
    :numbered:
 
+   cnxk
    hisilicon
    idxd
    ioat

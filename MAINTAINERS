@@ -1211,6 +1211,12 @@ M: Chengwen Feng <fengchengwen@huawei.com>
 F: drivers/dma/hisilicon/
 F: doc/guides/dmadevs/hisilicon.rst
 
+Marvell CNXK DPI DMA
+M: Radha Mohan Chintakuntla <radhac@marvell.com>
+M: Veerasenareddy Burru <vburru@marvell.com>
+F: drivers/dma/cnxk/
+F: doc/guides/dmadevs/cnxk.rst
+
 
 RegEx Drivers
 -------------
