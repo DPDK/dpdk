@@ -95,3 +95,9 @@ SFC vDPA PMD provides the following log types available for control:
   Matches a subset of per-port log types registered during runtime.
   A full name for a particular type may be obtained by appending a
   dot and a PCI device identifier (``XXXX:XX:XX.X``) to the prefix.
+
+- ``pmd.vdpa.sfc.mcdi`` (default level is **notice**)
+
+  Extra logging of the communication with the NIC's management CPU.
+  The format of the log is consumed by the netlogdecode cross-platform
+  tool. May be managed per-port, as explained above.

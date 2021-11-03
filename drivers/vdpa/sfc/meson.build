@@ -20,4 +20,7 @@ endforeach
 deps += ['common_sfc_efx', 'bus_pci']
 sources = files(
         'sfc_vdpa.c',
+        'sfc_vdpa_hw.c',
+        'sfc_vdpa_mcdi.c',
+        'sfc_vdpa_ops.c',
 )

@@ -20,6 +20,9 @@ extern int sfc_vdpa_logtype_driver;
 /** Name prefix for the per-device log type used to report basic information */
 #define SFC_VDPA_LOGTYPE_MAIN_STR	SFC_VDPA_LOGTYPE_PREFIX "main"
 
+/** Device MCDI log type name prefix */
+#define SFC_VDPA_LOGTYPE_MCDI_STR	SFC_VDPA_LOGTYPE_PREFIX "mcdi"
+
 #define SFC_VDPA_LOG_PREFIX_MAX	32
 
 /* Log PMD message, automatically add prefix and \n */

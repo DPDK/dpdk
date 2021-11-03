@@ -227,6 +227,19 @@ sfc_vdpa_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		goto fail_vfio_setup;
 	}
 
+	sfc_vdpa_log_init(sva, "hw init");
+	if (sfc_vdpa_hw_init(sva) != 0) {
+		sfc_vdpa_err(sva, "failed to init HW %s", pci_dev->name);
+		goto fail_hw_init;
+	}
+
+	sfc_vdpa_log_init(sva, "dev init");
+	sva->ops_data = sfc_vdpa_device_init(sva, SFC_VDPA_AS_VF);
+	if (sva->ops_data == NULL) {
+		sfc_vdpa_err(sva, "failed vDPA dev init %s", pci_dev->name);
+		goto fail_dev_init;
+	}
+
 	pthread_mutex_lock(&sfc_vdpa_adapter_list_lock);
 	TAILQ_INSERT_TAIL(&sfc_vdpa_adapter_list, sva, next);
 	pthread_mutex_unlock(&sfc_vdpa_adapter_list_lock);
@@ -234,6 +247,12 @@ sfc_vdpa_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	sfc_vdpa_log_init(sva, "done");
 
 	return 0;
+
+fail_dev_init:
+	sfc_vdpa_hw_fini(sva);
+
+fail_hw_init:
+	sfc_vdpa_vfio_teardown(sva);
 
 fail_vfio_setup:
 fail_set_log_prefix:
@@ -260,6 +279,10 @@ sfc_vdpa_pci_remove(struct rte_pci_device *pci_dev)
 	pthread_mutex_lock(&sfc_vdpa_adapter_list_lock);
 	TAILQ_REMOVE(&sfc_vdpa_adapter_list, sva, next);
 	pthread_mutex_unlock(&sfc_vdpa_adapter_list_lock);
+
+	sfc_vdpa_device_fini(sva->ops_data);
+
+	sfc_vdpa_hw_fini(sva);
 
 	sfc_vdpa_vfio_teardown(sva);
 
