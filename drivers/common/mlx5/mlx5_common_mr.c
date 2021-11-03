@@ -1859,23 +1859,7 @@ mlx5_mr_mempool2mr_bh(struct mlx5_mr_share_cache *share_cache,
 	return lkey;
 }
 
-/**
- * Bottom-half of LKey search on. If supported, lookup for the address from
- * the mempool. Otherwise, search in old mechanism caches.
- *
- * @param cdev
- *   Pointer to mlx5 device.
- * @param mp_id
- *   Multi-process identifier, may be NULL for the primary process.
- * @param mr_ctrl
- *   Pointer to per-queue MR control structure.
- * @param mb
- *   Pointer to mbuf.
- *
- * @return
- *   Searched LKey on success, UINT32_MAX on no match.
- */
-static uint32_t
+uint32_t
 mlx5_mr_mb2mr_bh(struct mlx5_common_device *cdev, struct mlx5_mp_id *mp_id,
 		 struct mlx5_mr_ctrl *mr_ctrl, struct rte_mbuf *mb)
 {
@@ -1907,37 +1891,4 @@ mlx5_mr_mb2mr_bh(struct mlx5_common_device *cdev, struct mlx5_mp_id *mp_id,
 	}
 	return mlx5_mr_addr2mr_bh(cdev->pd, mp_id, &cdev->mr_scache, mr_ctrl,
 				  addr, cdev->config.mr_ext_memseg_en);
-}
-
-/**
- * Query LKey from a packet buffer.
- *
- * @param cdev
- *   Pointer to the mlx5 device structure.
- * @param mp_id
- *   Multi-process identifier, may be NULL for the primary process.
- * @param mr_ctrl
- *   Pointer to per-queue MR control structure.
- * @param mbuf
- *   Pointer to mbuf.
- *
- * @return
- *   Searched LKey on success, UINT32_MAX on no match.
- */
-uint32_t
-mlx5_mr_mb2mr(struct mlx5_common_device *cdev, struct mlx5_mp_id *mp_id,
-	      struct mlx5_mr_ctrl *mr_ctrl, struct rte_mbuf *mbuf)
-{
-	uint32_t lkey;
-
-	/* Check generation bit to see if there's any change on existing MRs. */
-	if (unlikely(*mr_ctrl->dev_gen_ptr != mr_ctrl->cur_gen))
-		mlx5_mr_flush_local_cache(mr_ctrl);
-	/* Linear search on MR cache array. */
-	lkey = mlx5_mr_lookup_lkey(mr_ctrl->cache, &mr_ctrl->mru,
-				   MLX5_MR_CACHE_N, (uintptr_t)mbuf->buf_addr);
-	if (likely(lkey != UINT32_MAX))
-		return lkey;
-	/* Take slower bottom-half on miss. */
-	return mlx5_mr_mb2mr_bh(cdev, mp_id, mr_ctrl, mbuf);
 }

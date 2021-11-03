@@ -417,13 +417,6 @@ void
 mlx5_dev_mempool_unregister(struct mlx5_common_device *cdev,
 			    struct rte_mempool *mp);
 
-/* mlx5_common_mr.c */
-
-__rte_internal
-uint32_t
-mlx5_mr_mb2mr(struct mlx5_common_device *cdev, struct mlx5_mp_id *mp_id,
-	      struct mlx5_mr_ctrl *mr_ctrl, struct rte_mbuf *mbuf);
-
 /* mlx5_common_os.c */
 
 int mlx5_os_open_device(struct mlx5_common_device *cdev, uint32_t classes);

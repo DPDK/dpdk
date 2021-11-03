@@ -113,7 +113,7 @@ INTERNAL {
 	mlx5_mr_create_primary;
 	mlx5_mr_ctrl_init;
 	mlx5_mr_flush_local_cache;
-	mlx5_mr_mb2mr;
+	mlx5_mr_mb2mr_bh;
 
 	mlx5_nl_allmulti; # WINDOWS_NO_EXPORT
 	mlx5_nl_ifindex; # WINDOWS_NO_EXPORT

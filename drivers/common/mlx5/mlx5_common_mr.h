@@ -62,6 +62,8 @@ struct mlx5_mr_btree {
 	struct mr_cache_entry (*table)[];
 } __rte_packed;
 
+struct mlx5_common_device;
+
 /* Per-queue MR control descriptor. */
 struct mlx5_mr_ctrl {
 	uint32_t *dev_gen_ptr; /* Generation number of device to poll. */
@@ -160,6 +162,63 @@ mlx5_mr_lookup_lkey(struct mr_cache_entry *lkp_tbl, uint16_t *cached_idx,
 	return UINT32_MAX;
 }
 
+__rte_internal
+void mlx5_mr_flush_local_cache(struct mlx5_mr_ctrl *mr_ctrl);
+
+/**
+ * Bottom-half of LKey search on. If supported, lookup for the address from
+ * the mempool. Otherwise, search in old mechanism caches.
+ *
+ * @param cdev
+ *   Pointer to mlx5 device.
+ * @param mp_id
+ *   Multi-process identifier, may be NULL for the primary process.
+ * @param mr_ctrl
+ *   Pointer to per-queue MR control structure.
+ * @param mb
+ *   Pointer to mbuf.
+ *
+ * @return
+ *   Searched LKey on success, UINT32_MAX on no match.
+ */
+__rte_internal
+uint32_t mlx5_mr_mb2mr_bh(struct mlx5_common_device *cdev,
+			  struct mlx5_mp_id *mp_id,
+			  struct mlx5_mr_ctrl *mr_ctrl, struct rte_mbuf *mb);
+
+/**
+ * Query LKey from a packet buffer.
+ *
+ * @param cdev
+ *   Pointer to the mlx5 device structure.
+ * @param mp_id
+ *   Multi-process identifier, may be NULL for the primary process.
+ * @param mr_ctrl
+ *   Pointer to per-queue MR control structure.
+ * @param mbuf
+ *   Pointer to mbuf.
+ *
+ * @return
+ *   Searched LKey on success, UINT32_MAX on no match.
+ */
+static __rte_always_inline uint32_t
+mlx5_mr_mb2mr(struct mlx5_common_device *cdev, struct mlx5_mp_id *mp_id,
+	      struct mlx5_mr_ctrl *mr_ctrl, struct rte_mbuf *mbuf)
+{
+	uint32_t lkey;
+
+	/* Check generation bit to see if there's any change on existing MRs. */
+	if (unlikely(*mr_ctrl->dev_gen_ptr != mr_ctrl->cur_gen))
+		mlx5_mr_flush_local_cache(mr_ctrl);
+	/* Linear search on MR cache array. */
+	lkey = mlx5_mr_lookup_lkey(mr_ctrl->cache, &mr_ctrl->mru,
+				   MLX5_MR_CACHE_N, (uintptr_t)mbuf->buf_addr);
+	if (likely(lkey != UINT32_MAX))
+		return lkey;
+	/* Take slower bottom-half on miss. */
+	return mlx5_mr_mb2mr_bh(cdev, mp_id, mr_ctrl, mbuf);
+}
+
 /* mlx5_common_mr.c */
 
 __rte_internal
@@ -176,8 +235,6 @@ void mlx5_mr_release_cache(struct mlx5_mr_share_cache *mr_cache);
 int mlx5_mr_create_cache(struct mlx5_mr_share_cache *share_cache, int socket);
 void mlx5_mr_dump_cache(struct mlx5_mr_share_cache *share_cache __rte_unused);
 void mlx5_mr_rebuild_cache(struct mlx5_mr_share_cache *share_cache);
-__rte_internal
-void mlx5_mr_flush_local_cache(struct mlx5_mr_ctrl *mr_ctrl);
 void mlx5_free_mr_by_addr(struct mlx5_mr_share_cache *share_cache,
 			  const char *ibdev_name, const void *addr, size_t len);
 int mlx5_mr_insert_cache(struct mlx5_mr_share_cache *share_cache,
