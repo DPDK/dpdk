@@ -145,6 +145,29 @@ sfc_vdpa_set_features(int vid)
 	return -1;
 }
 
+static int
+sfc_vdpa_get_vfio_device_fd(int vid)
+{
+	struct rte_vdpa_device *vdpa_dev;
+	struct sfc_vdpa_ops_data *ops_data;
+	int vfio_dev_fd;
+	void *dev;
+
+	vdpa_dev = rte_vhost_get_vdpa_device(vid);
+
+	ops_data = sfc_vdpa_get_data_by_dev(vdpa_dev);
+	if (ops_data == NULL)
+		return -1;
+
+	dev = ops_data->dev_handle;
+	vfio_dev_fd = sfc_vdpa_adapter_by_dev_handle(dev)->vfio_dev_fd;
+
+	sfc_vdpa_info(dev, "vDPA ops get_vfio_device_fd :: vfio fd : %d",
+		      vfio_dev_fd);
+
+	return vfio_dev_fd;
+}
+
 static struct rte_vdpa_dev_ops sfc_vdpa_ops = {
 	.get_queue_num = sfc_vdpa_get_queue_num,
 	.get_features = sfc_vdpa_get_features,
@@ -153,6 +176,7 @@ static struct rte_vdpa_dev_ops sfc_vdpa_ops = {
 	.dev_close = sfc_vdpa_dev_close,
 	.set_vring_state = sfc_vdpa_set_vring_state,
 	.set_features = sfc_vdpa_set_features,
+	.get_vfio_device_fd = sfc_vdpa_get_vfio_device_fd,
 };
 
 struct sfc_vdpa_ops_data *
