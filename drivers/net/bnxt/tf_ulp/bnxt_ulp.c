@@ -337,9 +337,12 @@ bnxt_ulp_cntxt_app_caps_init(struct bnxt *bp,
 				BNXT_ULP_APP_UNICAST_ONLY;
 		if (info[i].flags & BNXT_ULP_APP_CAP_SOCKET_DIRECT) {
 			/* Enable socket direction only if MR is enabled in fw*/
-			if (BNXT_MULTIROOT_EN(bp))
+			if (BNXT_MULTIROOT_EN(bp)) {
 				ulp_ctx->cfg_data->ulp_flags |=
 					BNXT_ULP_APP_SOCKET_DIRECT;
+				BNXT_TF_DBG(DEBUG,
+					    "Socket Direct feature is enabled");
+			}
 		}
 	}
 	if (!found) {

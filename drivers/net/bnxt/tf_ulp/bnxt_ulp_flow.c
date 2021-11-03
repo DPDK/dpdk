@@ -133,8 +133,27 @@ bnxt_ulp_init_mapper_params(struct bnxt_ulp_mapper_create_parms *mapper_cparms,
 	}
 
 	/* Update the socket direct flag */
-	if (ULP_SOCKET_DIRECT_IS_ENABLED(ulp_flags))
-		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_SOCKET_DIRECT, 1);
+	if (ULP_BITMAP_ISSET(params->hdr_bitmap.bits,
+			     BNXT_ULP_HDR_BIT_SVIF_IGNORE)) {
+		uint32_t ifindex;
+		uint16_t vport;
+
+		/* Get the port db ifindex */
+		if (ulp_port_db_dev_port_to_ulp_index(params->ulp_ctx,
+						      params->port_id,
+						      &ifindex)) {
+			BNXT_TF_DBG(ERR, "Invalid port id %u\n",
+				    params->port_id);
+			return;
+		}
+		/* Update the phy port of the other interface */
+		if (ulp_port_db_vport_get(params->ulp_ctx, ifindex, &vport)) {
+			BNXT_TF_DBG(ERR, "Invalid port if index %u\n", ifindex);
+			return;
+		}
+		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_SOCKET_DIRECT_VPORT,
+				    (vport == 1) ? 2 : 1);
+	}
 }
 
 /* Function to create the rte flow. */

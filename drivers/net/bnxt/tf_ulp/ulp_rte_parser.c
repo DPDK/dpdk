@@ -685,6 +685,11 @@ ulp_rte_phy_port_hdr_handler(const struct rte_flow_item *item,
 	hdr_field->size = sizeof(svif);
 	ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_SVIF_FLAG,
 			    rte_be_to_cpu_16(svif));
+	if (!mask) {
+		ULP_BITMAP_SET(params->hdr_bitmap.bits,
+			       BNXT_ULP_HDR_BIT_SVIF_IGNORE);
+		memset(hdr_field->mask, 0xFF, sizeof(mask));
+	}
 	return BNXT_TF_RC_SUCCESS;
 }
 
