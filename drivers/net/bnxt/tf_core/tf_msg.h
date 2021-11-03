@@ -738,4 +738,23 @@ int tf_msg_set_if_tbl_entry(struct tf *tfp,
 int tf_msg_get_if_tbl_entry(struct tf *tfp,
 			    struct tf_if_tbl_get_parms *params);
 
+/**
+ * Send get version request to the firmware.
+ *
+ * [in] bp
+ *   Pointer to bnxt handle
+ *
+ * [in] dev
+ *   Pointer to the associated device
+ *
+ * [in/out] parms
+ *   Pointer to the version info parameter
+ *
+ * Returns:
+ *  0 on Success else internal Truflow error
+ */
+int
+tf_msg_get_version(struct bnxt *bp,
+		   struct tf_dev_info *dev,
+		   struct tf_get_version_parms *parms);
 #endif  /* _TF_MSG_H_ */

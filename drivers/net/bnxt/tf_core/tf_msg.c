@@ -2306,3 +2306,38 @@ tf_msg_set_if_tbl_entry(struct tf *tfp,
 
 	return 0;
 }
+
+int
+tf_msg_get_version(struct bnxt *bp,
+		   struct tf_dev_info *dev,
+		   struct tf_get_version_parms *params)
+
+{
+	int rc;
+	struct hwrm_tf_version_get_input req = { 0 };
+	struct hwrm_tf_version_get_output resp = { 0 };
+	struct tfp_send_msg_parms parms = { 0 };
+
+	/* Populate the request */
+	parms.tf_type = HWRM_TF_VERSION_GET,
+	parms.req_data = (uint32_t *)&req;
+	parms.req_size = sizeof(req);
+	parms.resp_data = (uint32_t *)&resp;
+	parms.resp_size = sizeof(resp);
+	parms.mailbox = dev->ops->tf_dev_get_mailbox();
+
+	rc = tfp_send_msg_direct(bp,
+				 &parms);
+
+	params->major = resp.major;
+	params->minor = resp.minor;
+	params->update = resp.update;
+
+	dev->ops->tf_dev_map_hcapi_caps(resp.dev_caps_cfg,
+					&params->dev_ident_caps,
+					&params->dev_tcam_caps,
+					&params->dev_tbl_caps,
+					&params->dev_em_caps);
+
+	return rc;
+}

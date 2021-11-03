@@ -6,6 +6,7 @@
 #ifndef _TF_DEVICE_H_
 #define _TF_DEVICE_H_
 
+#include "cfa_resource_types.h"
 #include "tf_core.h"
 #include "tf_identifier.h"
 #include "tf_tbl.h"
@@ -34,6 +35,21 @@ struct tf_session;
 struct tf_dev_info {
 	enum tf_device_type type;
 	const struct tf_dev_ops *ops;
+};
+
+/**
+ * This structure can be used to translate the CFA resource type to TF type.
+ */
+struct tf_hcapi_resource_map {
+	/**
+	 * Truflow module type associated with this resource type.
+	 */
+	enum tf_module_type module_type;
+
+	/**
+	 * Bitmap of TF sub-type for the element.
+	 */
+	uint32_t type_caps;
 };
 
 /**
@@ -1037,6 +1053,34 @@ struct tf_dev_ops {
 	 */
 	uint64_t (*tf_dev_cfa_key_hash)(uint64_t *key_data,
 					  uint16_t bitlen);
+
+	/**
+	 * Translate the CFA resource type to Truflow type
+	 *
+	 * [in] hcapi_types
+	 *   CFA resource type bitmap
+	 *
+	 * [out] ident_types
+	 *   Pointer to identifier type bitmap
+	 *
+	 * [out] tcam_types
+	 *   Pointer to tcam type bitmap
+	 *
+	 * [out] tbl_types
+	 *   Pointer to table type bitmap
+	 *
+	 * [out] em_types
+	 *   Pointer to em type bitmap
+	 *
+	 * Returns
+	 *   - (0) if successful.
+	 *   - (-EINVAL) on failure.
+	 */
+	int (*tf_dev_map_hcapi_caps)(uint64_t hcapi_caps,
+				     uint32_t *ident_caps,
+				     uint32_t *tcam_caps,
+				     uint32_t *tbl_caps,
+				     uint32_t *em_caps);
 };
 
 /**
@@ -1046,5 +1090,11 @@ extern const struct tf_dev_ops tf_dev_ops_p4_init;
 extern const struct tf_dev_ops tf_dev_ops_p4;
 extern const struct tf_dev_ops tf_dev_ops_p58_init;
 extern const struct tf_dev_ops tf_dev_ops_p58;
+
+/**
+ * Supported device resource type mapping structures
+ */
+extern const struct tf_hcapi_resource_map tf_hcapi_res_map_p4[CFA_RESOURCE_TYPE_P4_LAST + 1];
+extern const struct tf_hcapi_resource_map tf_hcapi_res_map_p58[CFA_RESOURCE_TYPE_P58_LAST + 1];
 
 #endif /* _TF_DEVICE_H_ */

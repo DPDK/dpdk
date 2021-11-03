@@ -271,6 +271,67 @@ static bool tf_dev_p4_is_sram_managed(struct tf *tfp __rte_unused,
 {
 	return false;
 }
+
+/**
+ * Device specific function that maps the hcapi resource types
+ * to Truflow type.
+ *
+ * [in] hcapi_caps
+ *   CFA resource type bitmap
+ *
+ * [out] ident_caps
+ *   Pointer to identifier type bitmap
+ *
+ * [out] tcam_caps
+ *   Pointer to tcam type bitmap
+ *
+ * [out] tbl_caps
+ *   Pointer to table type bitmap
+ *
+ * [out] em_caps
+ *   Pointer to em type bitmap
+ *
+ * Returns
+ *   - (0) if successful.
+ *   - (-EINVAL) on failure.
+ */
+static int tf_dev_p4_map_hcapi_caps(uint64_t hcapi_caps,
+				    uint32_t *ident_caps,
+				    uint32_t *tcam_caps,
+				    uint32_t *tbl_caps,
+				    uint32_t *em_caps)
+{
+	uint32_t i;
+
+	*ident_caps = 0;
+	*tcam_caps = 0;
+	*tbl_caps = 0;
+	*em_caps = 0;
+
+	for (i = 0; i <= CFA_RESOURCE_TYPE_P4_LAST; i++) {
+		if (hcapi_caps & 1ULL << i) {
+			switch (tf_hcapi_res_map_p4[i].module_type) {
+			case TF_MODULE_TYPE_IDENTIFIER:
+				*ident_caps |= tf_hcapi_res_map_p4[i].type_caps;
+				break;
+			case TF_MODULE_TYPE_TABLE:
+				*tbl_caps |= tf_hcapi_res_map_p4[i].type_caps;
+				break;
+			case TF_MODULE_TYPE_TCAM:
+				*tcam_caps |= tf_hcapi_res_map_p4[i].type_caps;
+				break;
+			case TF_MODULE_TYPE_EM:
+				*em_caps |= tf_hcapi_res_map_p4[i].type_caps;
+				break;
+			default:
+				return -EINVAL;
+			}
+		}
+	}
+
+	return 0;
+}
+
 /**
  * Truflow P4 device specific functions
  */
@@ -321,6 +382,7 @@ const struct tf_dev_ops tf_dev_ops_p4_init = {
 	.tf_dev_get_global_cfg = NULL,
 	.tf_dev_get_mailbox = tf_dev_p4_get_mailbox,
 	.tf_dev_word_align = NULL,
+	.tf_dev_map_hcapi_caps = tf_dev_p4_map_hcapi_caps
 };
 
 /**
@@ -382,5 +444,6 @@ const struct tf_dev_ops tf_dev_ops_p4 = {
 	.tf_dev_get_global_cfg = tf_global_cfg_get,
 	.tf_dev_get_mailbox = tf_dev_p4_get_mailbox,
 	.tf_dev_word_align = tf_dev_p4_word_align,
-	.tf_dev_cfa_key_hash = hcapi_cfa_p4_key_hash
+	.tf_dev_cfa_key_hash = hcapi_cfa_p4_key_hash,
+	.tf_dev_map_hcapi_caps = tf_dev_p4_map_hcapi_caps
 };

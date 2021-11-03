@@ -1802,3 +1802,32 @@ int tf_get_session_info(struct tf *tfp,
 
 	return 0;
 }
+
+int tf_get_version(struct tf *tfp,
+		   struct tf_get_version_parms *parms)
+{
+	int rc;
+	struct tf_dev_info dev;
+
+	TF_CHECK_PARMS2(tfp, parms);
+
+	/* This function can be called before open session, filter
+	 * out any non-supported device types on the Core side.
+	 */
+	if (parms->device_type != TF_DEVICE_TYPE_WH &&
+	    parms->device_type != TF_DEVICE_TYPE_THOR &&
+	    parms->device_type != TF_DEVICE_TYPE_SR) {
+		TFP_DRV_LOG(ERR,
+			    "Unsupported device type %d\n",
+			    parms->device_type);
+		return -ENOTSUP;
+	}
+
+	tf_dev_bind_ops(parms->device_type, &dev);
+
+	rc = tf_msg_get_version(parms->bp, &dev, parms);
+	if (rc)
+		return rc;
+
+	return 0;
+}

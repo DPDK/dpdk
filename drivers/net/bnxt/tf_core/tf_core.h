@@ -2363,4 +2363,79 @@ struct tf_get_if_tbl_entry_parms {
 int tf_get_if_tbl_entry(struct tf *tfp,
 			struct tf_get_if_tbl_entry_parms *parms);
 
+/**
+ * tf_get_version parameters definition.
+ */
+struct tf_get_version_parms {
+	/**
+	 * [in] device type
+	 *
+	 * Device type for the session.
+	 */
+	enum tf_device_type device_type;
+
+	/**
+	 * [in] bp
+	 * The pointer to the parent bp struct. This is only used for HWRM
+	 * message passing within the portability layer. The type is struct
+	 * bnxt.
+	 */
+	void *bp;
+
+	/* [out] major
+	 *
+	 * Version Major number.
+	 */
+	uint8_t	major;
+
+	/* [out] minor
+	 *
+	 * Version Minor number.
+	 */
+	uint8_t	minor;
+
+	/* [out] update
+	 *
+	 * Version Update number.
+	 */
+	uint8_t	update;
+
+	/**
+	 * [out] dev_ident_caps
+	 *
+	 * fw available identifier resource list
+	 */
+	uint32_t dev_ident_caps;
+
+	/**
+	 * [out] dev_tbl_caps
+	 *
+	 * fw available table resource list
+	 */
+	uint32_t dev_tbl_caps;
+
+	/**
+	 * [out] dev_tcam_caps
+	 *
+	 * fw available tcam resource list
+	 */
+	uint32_t dev_tcam_caps;
+
+	/**
+	 * [out] dev_em_caps
+	 *
+	 * fw available em resource list
+	 */
+	uint32_t dev_em_caps;
+};
+
+/**
+ * Get tf fw version
+ *
+ * Used to retrieve Truflow fw version information.
+ *
+ * Returns success or failure code.
+ */
+int tf_get_version(struct tf *tfp,
+		   struct tf_get_version_parms *parms);
 #endif /* _TF_CORE_H_ */
