@@ -58,10 +58,10 @@ tf_tbl_bind(struct tf *tfp,
 	db_cfg.num_elements = parms->num_elements;
 	db_cfg.module = TF_MODULE_TYPE_TABLE;
 	db_cfg.num_elements = parms->num_elements;
-	db_cfg.cfg = parms->cfg;
 
 	for (d = 0; d < TF_DIR_MAX; d++) {
 		db_cfg.dir = d;
+		db_cfg.cfg = &parms->cfg[d ? TF_TBL_TYPE_MAX : 0];
 		db_cfg.alloc_cnt = parms->resources->tbl_cnt[d].cnt;
 		db_cfg.rm_db = (void *)&tbl_db->tbl_db[d];
 		if (tf_session_is_shared_session(tfs) &&

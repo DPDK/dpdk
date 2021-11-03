@@ -2455,7 +2455,7 @@ int tf_get_version(struct tf *tfp,
  */
 struct tf_query_sram_resources_parms {
 	/**
-	 * [in] device type
+	 * [in] Device type
 	 *
 	 * Device type for the session.
 	 */
@@ -2500,5 +2500,69 @@ struct tf_query_sram_resources_parms {
  */
 int tf_query_sram_resources(struct tf *tfp,
 			    struct tf_query_sram_resources_parms *parms);
+
+/**
+ * tf_set_sram_policy parameter definition
+ */
+struct tf_set_sram_policy_parms {
+	/**
+	 * [in] Device type
+	 *
+	 * Device type for the session.
+	 */
+	enum tf_device_type device_type;
+
+	/**
+	 * [in] Receive or transmit direction
+	 */
+	enum tf_dir dir;
+
+	/**
+	 * [in] Array of Bank id for each truflow tbl type
+	 */
+	uint8_t *bank_id;
+};
+
+/**
+ * Set SRAM policy
+ *
+ * Used to assign SRAM bank index to all truflow table type.
+ *
+ * Returns success or failure code.
+ */
+int tf_set_sram_policy(struct tf *tfp,
+		       struct tf_set_sram_policy_parms *parms);
+
+/**
+ * tf_get_sram_policy parameter definition
+ */
+struct tf_get_sram_policy_parms {
+	/**
+	 * [in] Device type
+	 *
+	 * Device type for the session.
+	 */
+	enum tf_device_type device_type;
+
+	/**
+	 * [in] Receive or transmit direction
+	 */
+	enum tf_dir dir;
+
+	/**
+	 * [out] Array of Bank id for each truflow tbl type
+	 */
+	uint8_t bank_id[TF_TBL_TYPE_ACT_MODIFY_64B + 1];
+};
+
+/**
+ * Get SRAM policy
+ *
+ * Used to get the assigned bank of table types.
+ *
+ * Returns success or failure code.
+ */
+int tf_get_sram_policy(struct tf *tfp,
+		       struct tf_get_sram_policy_parms *parms);
 
 #endif /* _TF_CORE_H_ */

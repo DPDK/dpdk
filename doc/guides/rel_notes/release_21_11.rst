@@ -151,6 +151,7 @@ New Features
 * **Updated Broadcom bnxt PMD.**
 
   * Added flow offload support for Thor.
+  * Added TruFlow and AFM SRAM partitioning support.
   * Implement support for tunnel offload.
   * Updated HWRM API to version 1.10.2.68.
   * Added NAT support for dest IP and port combination.

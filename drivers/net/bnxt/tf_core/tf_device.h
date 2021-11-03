@@ -1083,7 +1083,7 @@ struct tf_dev_ops {
 				     uint32_t *em_caps);
 
 	/**
-	 * Device specific function that retrieve the sram resource
+	 * Device specific function that retrieves the sram resource
 	 *
 	 * [in] query
 	 *   Point to resources query result
@@ -1101,6 +1101,38 @@ struct tf_dev_ops {
 	int (*tf_dev_get_sram_resources)(void *query,
 					 uint32_t *sram_bank_caps,
 					 bool *dynamic_sram_capable);
+
+	/**
+	 * Device specific function that sets the sram policy
+	 *
+	 * [in] dir
+	 *   Receive or transmit direction
+	 *
+	 * [in] band_id
+	 *   SRAM bank id
+	 *
+	 * Returns
+	 *   - (0) if successful.
+	 *   - (-EINVAL) on failure.
+	 */
+	int (*tf_dev_set_sram_policy)(enum tf_dir dir,
+				      uint8_t *bank_id);
+
+	/**
+	 * Device specific function that gets the sram policy
+	 *
+	 * [in] dir
+	 *   Receive or transmit direction
+	 *
+	 * [in] band_id
+	 *   pointer to SRAM bank id
+	 *
+	 * Returns
+	 *   - (0) if successful.
+	 *   - (-EINVAL) on failure.
+	 */
+	int (*tf_dev_get_sram_policy)(enum tf_dir dir,
+				      uint8_t *bank_id);
 };
 
 /**

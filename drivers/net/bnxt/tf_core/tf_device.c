@@ -415,11 +415,14 @@ tf_dev_bind_p58(struct tf *tfp,
 	}
 
 	rsv_cnt = tf_dev_reservation_check(TF_TBL_TYPE_MAX,
-					   tf_tbl_p58,
+					   tf_tbl_p58[TF_DIR_RX],
+					   (uint16_t *)resources->tbl_cnt);
+	rsv_cnt += tf_dev_reservation_check(TF_TBL_TYPE_MAX,
+					   tf_tbl_p58[TF_DIR_TX],
 					   (uint16_t *)resources->tbl_cnt);
 	if (rsv_cnt) {
 		tbl_cfg.num_elements = TF_TBL_TYPE_MAX;
-		tbl_cfg.cfg = tf_tbl_p58;
+		tbl_cfg.cfg = tf_tbl_p58[TF_DIR_RX];
 		tbl_cfg.resources = resources;
 		rc = tf_tbl_bind(tfp, &tbl_cfg);
 		if (rc) {

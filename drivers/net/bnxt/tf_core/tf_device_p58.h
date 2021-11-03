@@ -12,6 +12,8 @@
 #include "tf_if_tbl.h"
 #include "tf_global_cfg.h"
 
+extern struct tf_rm_element_cfg tf_tbl_p58[TF_DIR_MAX][TF_TBL_TYPE_MAX];
+
 struct tf_rm_element_cfg tf_ident_p58[TF_IDENT_TYPE_MAX] = {
 	[TF_IDENT_TYPE_L2_CTXT_HIGH] = {
 		TF_RM_ELEM_CFG_HCAPI_BA, CFA_RESOURCE_TYPE_P58_L2_CTXT_REMAP_HIGH,
@@ -55,122 +57,6 @@ struct tf_rm_element_cfg tf_tcam_p58[TF_TCAM_TBL_TYPE_MAX] = {
 	[TF_TCAM_TBL_TYPE_VEB_TCAM] = {
 		TF_RM_ELEM_CFG_HCAPI_BA, CFA_RESOURCE_TYPE_P58_VEB_TCAM,
 		0, 0
-	},
-};
-
-struct tf_rm_element_cfg tf_tbl_p58[TF_TBL_TYPE_MAX] = {
-	[TF_TBL_TYPE_EM_FKB] = {
-		TF_RM_ELEM_CFG_HCAPI_BA, CFA_RESOURCE_TYPE_P58_EM_FKB,
-		0, 0
-	},
-	[TF_TBL_TYPE_WC_FKB] = {
-		TF_RM_ELEM_CFG_HCAPI_BA, CFA_RESOURCE_TYPE_P58_WC_FKB,
-		0, 0
-	},
-	[TF_TBL_TYPE_METER_PROF] = {
-		TF_RM_ELEM_CFG_HCAPI_BA, CFA_RESOURCE_TYPE_P58_METER_PROF,
-		0, 0
-	},
-	[TF_TBL_TYPE_METER_INST] = {
-		TF_RM_ELEM_CFG_HCAPI_BA, CFA_RESOURCE_TYPE_P58_METER,
-		0, 0
-	},
-	[TF_TBL_TYPE_METER_DROP_CNT] = {
-		TF_RM_ELEM_CFG_HCAPI_BA, CFA_RESOURCE_TYPE_P58_METER_DROP_CNT,
-		0, 0
-	},
-	[TF_TBL_TYPE_MIRROR_CONFIG] = {
-		TF_RM_ELEM_CFG_HCAPI_BA, CFA_RESOURCE_TYPE_P58_MIRROR,
-		0, 0
-	},
-	[TF_TBL_TYPE_METADATA] = {
-		TF_RM_ELEM_CFG_HCAPI_BA, CFA_RESOURCE_TYPE_P58_METADATA,
-		0, 0
-	},
-	/* Policy - ARs in bank 1 */
-	[TF_TBL_TYPE_FULL_ACT_RECORD] = {
-		.cfg_type        = TF_RM_ELEM_CFG_HCAPI_BA_PARENT,
-		.hcapi_type      = CFA_RESOURCE_TYPE_P58_SRAM_BANK_1,
-		.slices          = 4,
-	},
-	[TF_TBL_TYPE_COMPACT_ACT_RECORD] = {
-		.cfg_type        = TF_RM_ELEM_CFG_HCAPI_BA_CHILD,
-		.parent_subtype  = TF_TBL_TYPE_FULL_ACT_RECORD,
-		.hcapi_type      = CFA_RESOURCE_TYPE_P58_SRAM_BANK_1,
-		.slices          = 8,
-	},
-	/* Policy - Encaps in bank 2 */
-	[TF_TBL_TYPE_ACT_ENCAP_8B] = {
-		.cfg_type        = TF_RM_ELEM_CFG_HCAPI_BA_PARENT,
-		.hcapi_type      = CFA_RESOURCE_TYPE_P58_SRAM_BANK_2,
-		.slices          = 8,
-	},
-	[TF_TBL_TYPE_ACT_ENCAP_16B] = {
-		.cfg_type        = TF_RM_ELEM_CFG_HCAPI_BA_CHILD,
-		.parent_subtype  = TF_TBL_TYPE_ACT_ENCAP_8B,
-		.hcapi_type      = CFA_RESOURCE_TYPE_P58_SRAM_BANK_2,
-		.slices          = 4,
-	},
-	[TF_TBL_TYPE_ACT_ENCAP_32B] = {
-		.cfg_type        = TF_RM_ELEM_CFG_HCAPI_BA_CHILD,
-		.parent_subtype  = TF_TBL_TYPE_ACT_ENCAP_8B,
-		.hcapi_type      = CFA_RESOURCE_TYPE_P58_SRAM_BANK_2,
-		.slices          = 2,
-	},
-	[TF_TBL_TYPE_ACT_ENCAP_64B] = {
-		.cfg_type        = TF_RM_ELEM_CFG_HCAPI_BA_CHILD,
-		.parent_subtype  = TF_TBL_TYPE_ACT_ENCAP_8B,
-		.hcapi_type      = CFA_RESOURCE_TYPE_P58_SRAM_BANK_2,
-		.slices          = 1,
-	},
-	/* Policy - Modify in bank 2 with Encaps */
-	[TF_TBL_TYPE_ACT_MODIFY_8B] = {
-		.cfg_type        = TF_RM_ELEM_CFG_HCAPI_BA_CHILD,
-		.parent_subtype  = TF_TBL_TYPE_ACT_ENCAP_8B,
-		.hcapi_type      = CFA_RESOURCE_TYPE_P58_SRAM_BANK_2,
-		.slices          = 8,
-	},
-	[TF_TBL_TYPE_ACT_MODIFY_16B] = {
-		.cfg_type        = TF_RM_ELEM_CFG_HCAPI_BA_CHILD,
-		.parent_subtype  = TF_TBL_TYPE_ACT_ENCAP_8B,
-		.hcapi_type      = CFA_RESOURCE_TYPE_P58_SRAM_BANK_2,
-		.slices          = 4,
-	},
-	[TF_TBL_TYPE_ACT_MODIFY_32B] = {
-		.cfg_type        = TF_RM_ELEM_CFG_HCAPI_BA_CHILD,
-		.parent_subtype  = TF_TBL_TYPE_ACT_ENCAP_8B,
-		.hcapi_type      = CFA_RESOURCE_TYPE_P58_SRAM_BANK_2,
-		.slices          = 2,
-	},
-	[TF_TBL_TYPE_ACT_MODIFY_64B] = {
-		.cfg_type        = TF_RM_ELEM_CFG_HCAPI_BA_CHILD,
-		.parent_subtype  = TF_TBL_TYPE_ACT_ENCAP_8B,
-		.hcapi_type      = CFA_RESOURCE_TYPE_P58_SRAM_BANK_2,
-		.slices          = 1,
-	},
-	/* Policy - SP in bank 0 */
-	[TF_TBL_TYPE_ACT_SP_SMAC] = {
-		.cfg_type        = TF_RM_ELEM_CFG_HCAPI_BA_PARENT,
-		.hcapi_type      = CFA_RESOURCE_TYPE_P58_SRAM_BANK_0,
-		.slices          = 8,
-	},
-	[TF_TBL_TYPE_ACT_SP_SMAC_IPV4] = {
-		.cfg_type        = TF_RM_ELEM_CFG_HCAPI_BA_CHILD,
-		.parent_subtype  = TF_TBL_TYPE_ACT_SP_SMAC,
-		.hcapi_type      = CFA_RESOURCE_TYPE_P58_SRAM_BANK_0,
-		.slices          = 4,
-	},
-	[TF_TBL_TYPE_ACT_SP_SMAC_IPV6] = {
-		.cfg_type        = TF_RM_ELEM_CFG_HCAPI_BA_CHILD,
-		.parent_subtype  = TF_TBL_TYPE_ACT_SP_SMAC,
-		.hcapi_type      = CFA_RESOURCE_TYPE_P58_SRAM_BANK_0,
-		.slices          = 2,
-	},
-	/* Policy - Stats in bank 3 */
-	[TF_TBL_TYPE_ACT_STATS_64] = {
-		.cfg_type        = TF_RM_ELEM_CFG_HCAPI_BA_PARENT,
-		.hcapi_type      = CFA_RESOURCE_TYPE_P58_SRAM_BANK_3,
-		.slices          = 8,
 	},
 };
 

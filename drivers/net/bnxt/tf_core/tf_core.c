@@ -1917,3 +1917,85 @@ int tf_query_sram_resources(struct tf *tfp,
 
 	return 0;
 }
+
+int tf_set_sram_policy(struct tf *tfp,
+		       struct tf_set_sram_policy_parms *parms)
+{
+	int rc = 0;
+	struct tf_dev_info dev;
+
+	TF_CHECK_PARMS2(tfp, parms);
+
+	/* This function can be called before open session, filter
+	 * out any non-supported device types on the Core side.
+	 */
+	if (parms->device_type != TF_DEVICE_TYPE_THOR) {
+		TFP_DRV_LOG(ERR,
+			    "Unsupported device type %d\n",
+			    parms->device_type);
+		return -ENOTSUP;
+	}
+
+	tf_dev_bind_ops(parms->device_type, &dev);
+
+	if (dev.ops->tf_dev_set_sram_policy == NULL) {
+		rc = -EOPNOTSUPP;
+		TFP_DRV_LOG(ERR,
+			    "%s: Operation not supported, rc:%s\n",
+			    tf_dir_2_str(parms->dir),
+			    strerror(-rc));
+		return rc;
+	}
+
+	rc = dev.ops->tf_dev_set_sram_policy(parms->dir, parms->bank_id);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "%s: SRAM policy set failed, rc:%s\n",
+			    tf_dir_2_str(parms->dir),
+			    strerror(-rc));
+		return rc;
+	}
+
+	return rc;
+}
+
+int tf_get_sram_policy(struct tf *tfp,
+		       struct tf_get_sram_policy_parms *parms)
+{
+	int rc = 0;
+	struct tf_dev_info dev;
+
+	TF_CHECK_PARMS2(tfp, parms);
+
+	/* This function can be called before open session, filter
+	 * out any non-supported device types on the Core side.
+	 */
+	if (parms->device_type != TF_DEVICE_TYPE_THOR) {
+		TFP_DRV_LOG(ERR,
+			    "Unsupported device type %d\n",
+			    parms->device_type);
+		return -ENOTSUP;
+	}
+
+	tf_dev_bind_ops(parms->device_type, &dev);
+
+	if (dev.ops->tf_dev_get_sram_policy == NULL) {
+		rc = -EOPNOTSUPP;
+		TFP_DRV_LOG(ERR,
+			    "%s: Operation not supported, rc:%s\n",
+			    tf_dir_2_str(parms->dir),
+			    strerror(-rc));
+		return rc;
+	}
+
+	rc = dev.ops->tf_dev_get_sram_policy(parms->dir, parms->bank_id);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "%s: SRAM policy get failed, rc:%s\n",
+			    tf_dir_2_str(parms->dir),
+			    strerror(-rc));
+		return rc;
+	}
+
+	return rc;
+}

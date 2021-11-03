@@ -383,7 +383,9 @@ const struct tf_dev_ops tf_dev_ops_p4_init = {
 	.tf_dev_get_mailbox = tf_dev_p4_get_mailbox,
 	.tf_dev_word_align = NULL,
 	.tf_dev_map_hcapi_caps = tf_dev_p4_map_hcapi_caps,
-	.tf_dev_get_sram_resources = NULL
+	.tf_dev_get_sram_resources = NULL,
+	.tf_dev_set_sram_policy = NULL,
+	.tf_dev_get_sram_policy = NULL,
 };
 
 /**
@@ -447,5 +449,7 @@ const struct tf_dev_ops tf_dev_ops_p4 = {
 	.tf_dev_word_align = tf_dev_p4_word_align,
 	.tf_dev_cfa_key_hash = hcapi_cfa_p4_key_hash,
 	.tf_dev_map_hcapi_caps = tf_dev_p4_map_hcapi_caps,
-	.tf_dev_get_sram_resources = NULL
+	.tf_dev_get_sram_resources = NULL,
+	.tf_dev_set_sram_policy = NULL,
+	.tf_dev_get_sram_policy = NULL,
 };
