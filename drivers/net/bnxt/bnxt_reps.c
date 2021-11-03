@@ -315,6 +315,12 @@ static int bnxt_tf_vfr_alloc(struct rte_eth_dev *vfr_ethdev)
 		BNXT_TF_DBG(ERR, "Invalid arguments\n");
 		return 0;
 	}
+	/* update the port id so you can backtrack to ethdev */
+	vfr->dpdk_port_id = vfr_ethdev->data->port_id;
+
+	/* If pair is present, then delete the pair */
+	if (bnxt_hwrm_cfa_pair_exists(parent_bp, vfr))
+		(void)bnxt_hwrm_cfa_pair_free(parent_bp, vfr);
 
 	/* Update the ULP portdata base with the new VFR interface */
 	rc = ulp_port_db_dev_port_intf_update(parent_bp->ulp_ctx, vfr_ethdev);

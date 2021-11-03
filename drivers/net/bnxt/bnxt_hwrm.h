@@ -293,6 +293,7 @@ int bnxt_clear_one_vnic_filter(struct bnxt *bp,
 void bnxt_free_vf_info(struct bnxt *bp);
 int bnxt_hwrm_first_vf_id_query(struct bnxt *bp, uint16_t fid,
 				uint16_t *first_vf_id);
+int bnxt_hwrm_cfa_pair_exists(struct bnxt *bp, struct bnxt_representor *rep_bp);
 int bnxt_hwrm_cfa_pair_alloc(struct bnxt *bp, struct bnxt_representor *rep);
 int bnxt_hwrm_cfa_pair_free(struct bnxt *bp, struct bnxt_representor *rep);
 int bnxt_hwrm_cfa_adv_flow_mgmt_qcaps(struct bnxt *bp);

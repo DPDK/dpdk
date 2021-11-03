@@ -5994,6 +5994,34 @@ int bnxt_hwrm_first_vf_id_query(struct bnxt *bp, uint16_t fid,
 	return rc;
 }
 
+int bnxt_hwrm_cfa_pair_exists(struct bnxt *bp, struct bnxt_representor *rep_bp)
+{
+	struct hwrm_cfa_pair_info_output *resp = bp->hwrm_cmd_resp_addr;
+	struct hwrm_cfa_pair_info_input req = {0};
+	int rc = 0;
+
+	if (!(BNXT_PF(bp) || BNXT_VF_IS_TRUSTED(bp))) {
+		PMD_DRV_LOG(DEBUG,
+			    "Not a PF or trusted VF. Command not supported\n");
+		return 0;
+	}
+
+	HWRM_PREP(&req, HWRM_CFA_PAIR_INFO, BNXT_USE_CHIMP_MB);
+	snprintf(req.pair_name, sizeof(req.pair_name), "%svfr%d",
+		 bp->eth_dev->data->name, rep_bp->vf_id);
+	req.flags =
+		rte_cpu_to_le_32(HWRM_CFA_PAIR_INFO_INPUT_FLAGS_LOOKUP_TYPE);
+
+	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req), BNXT_USE_CHIMP_MB);
+	HWRM_CHECK_RESULT();
+	if (rc == HWRM_ERR_CODE_SUCCESS && strlen(resp->pair_name)) {
+		HWRM_UNLOCK();
+		return !rc;
+	}
+	HWRM_UNLOCK();
+	return rc;
+}
+
 int bnxt_hwrm_cfa_pair_alloc(struct bnxt *bp, struct bnxt_representor *rep_bp)
 {
 	struct hwrm_cfa_pair_alloc_output *resp = bp->hwrm_cmd_resp_addr;
