@@ -874,8 +874,8 @@ cn10k_crypto_caps_update(struct rte_cryptodev_capabilities cnxk_caps[])
 
 			caps->sym.cipher.key_size.max = 32;
 			caps->sym.cipher.key_size.increment = 16;
-			caps->sym.cipher.iv_size.max = 24;
-			caps->sym.cipher.iv_size.increment = 8;
+			caps->sym.cipher.iv_size.max = 25;
+			caps->sym.cipher.iv_size.increment = 1;
 		}
 
 		if ((caps->op == RTE_CRYPTO_OP_TYPE_SYMMETRIC) &&
@@ -886,8 +886,8 @@ cn10k_crypto_caps_update(struct rte_cryptodev_capabilities cnxk_caps[])
 			caps->sym.auth.key_size.increment = 16;
 			caps->sym.auth.digest_size.max = 16;
 			caps->sym.auth.digest_size.increment = 4;
-			caps->sym.auth.iv_size.max = 24;
-			caps->sym.auth.iv_size.increment = 8;
+			caps->sym.auth.iv_size.max = 25;
+			caps->sym.auth.iv_size.increment = 1;
 		}
 	}
 }
