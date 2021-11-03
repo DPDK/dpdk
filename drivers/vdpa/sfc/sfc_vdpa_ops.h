@@ -23,6 +23,9 @@ struct sfc_vdpa_ops_data {
 	struct rte_vdpa_device		*vdpa_dev;
 	enum sfc_vdpa_context		vdpa_context;
 	enum sfc_vdpa_state		state;
+
+	uint64_t			dev_features;
+	uint64_t			drv_features;
 };
 
 struct sfc_vdpa_ops_data *

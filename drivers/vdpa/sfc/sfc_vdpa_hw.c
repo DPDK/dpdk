@@ -276,9 +276,19 @@ sfc_vdpa_hw_init(struct sfc_vdpa_adapter *sva)
 	if (rc != 0)
 		goto fail_estimate_rsrc_limits;
 
+	sfc_vdpa_log_init(sva, "init virtio");
+	rc = efx_virtio_init(enp);
+	if (rc != 0) {
+		sfc_vdpa_err(sva, "virtio init failed: %s", rte_strerror(rc));
+		goto fail_virtio_init;
+	}
+
 	sfc_vdpa_log_init(sva, "done");
 
 	return 0;
+
+fail_virtio_init:
+	efx_nic_fini(enp);
 
 fail_estimate_rsrc_limits:
 fail_nic_reset:
@@ -307,6 +317,9 @@ sfc_vdpa_hw_fini(struct sfc_vdpa_adapter *sva)
 	efx_nic_t *enp = sva->nic;
 
 	sfc_vdpa_log_init(sva, "entry");
+
+	sfc_vdpa_log_init(sva, "virtio fini");
+	efx_virtio_fini(enp);
 
 	sfc_vdpa_log_init(sva, "unprobe nic");
 	efx_nic_unprobe(enp);

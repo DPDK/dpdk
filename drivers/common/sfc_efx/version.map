@@ -247,6 +247,16 @@ INTERNAL {
 	efx_txq_nbufs;
 	efx_txq_size;
 
+	efx_virtio_fini;
+	efx_virtio_get_doorbell_offset;
+	efx_virtio_get_features;
+	efx_virtio_init;
+	efx_virtio_qcreate;
+	efx_virtio_qdestroy;
+	efx_virtio_qstart;
+	efx_virtio_qstop;
+	efx_virtio_verify_features;
+
 	sfc_efx_dev_class_get;
 	sfc_efx_family;
 

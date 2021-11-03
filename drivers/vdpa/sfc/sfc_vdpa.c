@@ -42,6 +42,26 @@ sfc_vdpa_get_adapter_by_dev(struct rte_pci_device *pdev)
 	return found ? sva : NULL;
 }
 
+struct sfc_vdpa_ops_data *
+sfc_vdpa_get_data_by_dev(struct rte_vdpa_device *vdpa_dev)
+{
+	bool found = false;
+	struct sfc_vdpa_adapter *sva;
+
+	pthread_mutex_lock(&sfc_vdpa_adapter_list_lock);
+
+	TAILQ_FOREACH(sva, &sfc_vdpa_adapter_list, next) {
+		if (vdpa_dev == sva->ops_data->vdpa_dev) {
+			found = true;
+			break;
+		}
+	}
+
+	pthread_mutex_unlock(&sfc_vdpa_adapter_list_lock);
+
+	return found ? sva->ops_data : NULL;
+}
+
 static int
 sfc_vdpa_vfio_setup(struct sfc_vdpa_adapter *sva)
 {

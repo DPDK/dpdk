@@ -58,6 +58,8 @@ sfc_vdpa_register_logtype(const struct rte_pci_addr *pci_addr,
 
 struct sfc_vdpa_adapter *
 sfc_vdpa_get_adapter_by_dev(struct rte_pci_device *pdev);
+struct sfc_vdpa_ops_data *
+sfc_vdpa_get_data_by_dev(struct rte_vdpa_device *vdpa_dev);
 
 int
 sfc_vdpa_hw_init(struct sfc_vdpa_adapter *sva);
