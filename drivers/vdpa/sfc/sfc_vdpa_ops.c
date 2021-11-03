@@ -702,11 +702,57 @@ sfc_vdpa_dev_close(int vid)
 static int
 sfc_vdpa_set_vring_state(int vid, int vring, int state)
 {
-	RTE_SET_USED(vid);
-	RTE_SET_USED(vring);
-	RTE_SET_USED(state);
+	struct sfc_vdpa_ops_data *ops_data;
+	struct rte_vdpa_device *vdpa_dev;
+	efx_rc_t rc;
+	int vring_max;
+	void *dev;
 
-	return -1;
+	vdpa_dev = rte_vhost_get_vdpa_device(vid);
+
+	ops_data = sfc_vdpa_get_data_by_dev(vdpa_dev);
+	if (ops_data == NULL)
+		return -1;
+
+	dev = ops_data->dev_handle;
+
+	sfc_vdpa_info(dev,
+		      "vDPA ops set_vring_state: vid: %d, vring: %d, state:%d",
+		      vid, vring, state);
+
+	vring_max = (sfc_vdpa_adapter_by_dev_handle(dev)->max_queue_count * 2);
+
+	if (vring < 0 || vring > vring_max) {
+		sfc_vdpa_err(dev, "received invalid vring id : %d to set state",
+			     vring);
+		return -1;
+	}
+
+	/*
+	 * Skip if device is not yet started. virtqueues state can be
+	 * changed once it is created and other configurations are done.
+	 */
+	if (ops_data->state != SFC_VDPA_STATE_STARTED)
+		return 0;
+
+	if (ops_data->vq_cxt[vring].enable == state)
+		return 0;
+
+	if (state == 0) {
+		rc = sfc_vdpa_virtq_stop(ops_data, vring);
+		if (rc != 0) {
+			sfc_vdpa_err(dev, "virtqueue stop failed: %s",
+				     rte_strerror(rc));
+		}
+	} else {
+		rc = sfc_vdpa_virtq_start(ops_data, vring);
+		if (rc != 0) {
+			sfc_vdpa_err(dev, "virtqueue start failed: %s",
+				     rte_strerror(rc));
+		}
+	}
+
+	return rc;
 }
 
 static int
