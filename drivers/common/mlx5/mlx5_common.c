@@ -248,11 +248,11 @@ mlx5_release_dbr(struct mlx5_dbr_page_list *head, uint32_t umem_id,
  *				attributes (if supported by the host), the
  *				writes to the UAR registers must be followed
  *				by write memory barrier.
- *   MLX5DV_UAR_ALLOC_TYPE_NC - allocate as non-cached nenory, all writes are
+ *   MLX5DV_UAR_ALLOC_TYPE_NC - allocate as non-cached memory, all writes are
  *				promoted to the registers immediately, no
  *				memory barriers needed.
- *   mapping < 0 - the first attempt is performed with MLX5DV_UAR_ALLOC_TYPE_BF,
- *		   if this fails the next attempt with MLX5DV_UAR_ALLOC_TYPE_NC
+ *   mapping < 0 - the first attempt is performed with MLX5DV_UAR_ALLOC_TYPE_NC,
+ *		   if this fails the next attempt with MLX5DV_UAR_ALLOC_TYPE_BF
  *		   is performed. The drivers specifying negative values should
  *		   always provide the write memory barrier operation after UAR
  *		   register writings.
@@ -284,21 +284,7 @@ mlx5_devx_alloc_uar(void *ctx, int mapping)
 #endif
 		uar = mlx5_glue->devx_alloc_uar(ctx, uar_mapping);
 #ifdef MLX5DV_UAR_ALLOC_TYPE_NC
-		if (!uar &&
-		    mapping < 0 &&
-		    uar_mapping == MLX5DV_UAR_ALLOC_TYPE_BF) {
-			/*
-			 * In some environments like virtual machine the
-			 * Write Combining mapped might be not supported and
-			 * UAR allocation fails. We tried "Non-Cached" mapping
-			 * for the case.
-			 */
-			DRV_LOG(WARNING, "Failed to allocate DevX UAR (BF)");
-			uar_mapping = MLX5DV_UAR_ALLOC_TYPE_NC;
-			uar = mlx5_glue->devx_alloc_uar(ctx, uar_mapping);
-		} else if (!uar &&
-			   mapping < 0 &&
-			   uar_mapping == MLX5DV_UAR_ALLOC_TYPE_NC) {
+		if (!uar && mapping < 0) {
 			/*
 			 * If Verbs/kernel does not support "Non-Cached"
 			 * try the "Write-Combining".
