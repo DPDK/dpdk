@@ -292,6 +292,8 @@ adjust_ipv6_pktlen(struct rte_mbuf *m, const struct rte_ipv6_hdr *iph,
 
 #if (STATS_INTERVAL > 0)
 
+struct ipsec_core_statistics core_statistics[RTE_MAX_LCORE];
+
 /* Print out statistics on packet distribution */
 static void
 print_stats_cb(__rte_unused void *param)
