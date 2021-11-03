@@ -42,3 +42,17 @@ Device Probing and Initialization
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 To use the devices from an application, the dmadev API can be used.
+CNXK DMA device configuration requirements:
+
+* Only one ``vchan`` is supported per device.
+* CNXK DMA devices do not support silent mode.
+
+Once configured, the device can then be made ready for use
+by calling the ``rte_dma_start()`` API.
+
+Performing Data Copies
+~~~~~~~~~~~~~~~~~~~~~~
+
+Refer to the :ref:`Enqueue / Dequeue APIs <dmadev_enqueue_dequeue>` section
+of the dmadev library documentation
+for details on operation enqueue and submission API usage.
