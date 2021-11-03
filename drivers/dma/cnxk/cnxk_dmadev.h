@@ -35,6 +35,7 @@ struct cnxk_dpi_conf {
 struct cnxk_dpi_vf_s {
 	struct roc_dpi rdpi;
 	struct cnxk_dpi_conf conf;
+	struct rte_dma_stats stats;
 	uint64_t cmd[DPI_MAX_CMD_SIZE];
 	uint32_t num_words;
 	uint16_t desc_idx;

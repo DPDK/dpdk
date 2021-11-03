@@ -271,6 +271,7 @@ cnxk_dmadev_copy(void *dev_private, uint16_t vchan, rte_iova_t src,
 			rte_wmb();
 			plt_write64(num_words,
 				    dpivf->rdpi.rbase + DPI_VDMA_DBELL);
+			dpivf->stats.submitted++;
 		}
 		dpivf->num_words += num_words;
 	}
@@ -336,6 +337,7 @@ cnxk_dmadev_copy_sg(void *dev_private, uint16_t vchan,
 			rte_wmb();
 			plt_write64(num_words,
 				    dpivf->rdpi.rbase + DPI_VDMA_DBELL);
+			dpivf->stats.submitted += nb_src;
 		}
 		dpivf->num_words += num_words;
 	}
@@ -357,12 +359,14 @@ cnxk_dmadev_completed(void *dev_private, uint16_t vchan, const uint16_t nb_cpls,
 
 		if (comp_ptr->cdata) {
 			*has_error = 1;
+			dpivf->stats.errors++;
 			break;
 		}
 	}
 
 	*last_idx = cnt - 1;
 	dpivf->conf.c_desc.tail = cnt;
+	dpivf->stats.completed += cnt;
 
 	return cnt;
 }
@@ -381,10 +385,13 @@ cnxk_dmadev_completed_status(void *dev_private, uint16_t vchan,
 		struct cnxk_dpi_compl_s *comp_ptr =
 			dpivf->conf.c_desc.compl_ptr[cnt];
 		status[cnt] = comp_ptr->cdata;
+		if (comp_ptr->cdata)
+			dpivf->stats.errors++;
 	}
 
 	*last_idx = cnt - 1;
 	dpivf->conf.c_desc.tail = 0;
+	dpivf->stats.completed += cnt;
 
 	return cnt;
 }
@@ -396,7 +403,35 @@ cnxk_dmadev_submit(void *dev_private, uint16_t vchan __rte_unused)
 
 	rte_wmb();
 	plt_write64(dpivf->num_words, dpivf->rdpi.rbase + DPI_VDMA_DBELL);
+	dpivf->stats.submitted++;
 
+	return 0;
+}
+
+static int
+cnxk_stats_get(const struct rte_dma_dev *dev, uint16_t vchan,
+	       struct rte_dma_stats *rte_stats, uint32_t size)
+{
+	struct cnxk_dpi_vf_s *dpivf = dev->fp_obj->dev_private;
+	struct rte_dma_stats *stats = &dpivf->stats;
+
+	RTE_SET_USED(vchan);
+
+	if (size < sizeof(rte_stats))
+		return -EINVAL;
+	if (rte_stats == NULL)
+		return -EINVAL;
+
+	*rte_stats = *stats;
+	return 0;
+}
+
+static int
+cnxk_stats_reset(struct rte_dma_dev *dev, uint16_t vchan __rte_unused)
+{
+	struct cnxk_dpi_vf_s *dpivf = dev->fp_obj->dev_private;
+
+	dpivf->stats = (struct rte_dma_stats){0};
 	return 0;
 }
 
@@ -406,6 +441,8 @@ static const struct rte_dma_dev_ops cnxk_dmadev_ops = {
 	.dev_info_get = cnxk_dmadev_info_get,
 	.dev_start = cnxk_dmadev_start,
 	.dev_stop = cnxk_dmadev_stop,
+	.stats_get = cnxk_stats_get,
+	.stats_reset = cnxk_stats_reset,
 	.vchan_setup = cnxk_dmadev_vchan_setup,
 };
 
