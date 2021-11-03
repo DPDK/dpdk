@@ -301,13 +301,14 @@ bnxt_ulp_tf_shared_session_resources_get(struct bnxt_ulp_context *ulp_ctx,
 }
 
 int32_t
-bnxt_ulp_cntxt_app_caps_init(struct bnxt_ulp_context *ulp_ctx,
+bnxt_ulp_cntxt_app_caps_init(struct bnxt *bp,
 			     uint8_t app_id, uint32_t dev_id)
 {
 	struct bnxt_ulp_app_capabilities_info *info;
 	uint32_t num = 0;
 	uint16_t i;
 	bool found = false;
+	struct bnxt_ulp_context *ulp_ctx = bp->ulp_ctx;
 
 	if (ULP_APP_DEV_UNSUPPORTED_ENABLED(ulp_ctx->cfg_data->ulp_flags)) {
 		BNXT_TF_DBG(ERR, "APP ID %d, Device ID: 0x%x not supported.\n",
@@ -334,6 +335,12 @@ bnxt_ulp_cntxt_app_caps_init(struct bnxt_ulp_context *ulp_ctx,
 		if (info[i].flags & BNXT_ULP_APP_CAP_UNICAST_ONLY)
 			ulp_ctx->cfg_data->ulp_flags |=
 				BNXT_ULP_APP_UNICAST_ONLY;
+		if (info[i].flags & BNXT_ULP_APP_CAP_SOCKET_DIRECT) {
+			/* Enable socket direction only if MR is enabled in fw*/
+			if (BNXT_MULTIROOT_EN(bp))
+				ulp_ctx->cfg_data->ulp_flags |=
+					BNXT_ULP_APP_SOCKET_DIRECT;
+		}
 	}
 	if (!found) {
 		BNXT_TF_DBG(ERR, "APP ID %d, Device ID: 0x%x not supported.\n",
@@ -832,7 +839,7 @@ ulp_ctx_init(struct bnxt *bp,
 	}
 	BNXT_TF_DBG(DEBUG, "Ulp initialized with app id %d\n", bp->app_id);
 
-	rc = bnxt_ulp_cntxt_app_caps_init(bp->ulp_ctx, bp->app_id, devid);
+	rc = bnxt_ulp_cntxt_app_caps_init(bp, bp->app_id, devid);
 	if (rc) {
 		BNXT_TF_DBG(ERR, "Unable to set caps for app(%x)/dev(%x)\n",
 			    bp->app_id, devid);

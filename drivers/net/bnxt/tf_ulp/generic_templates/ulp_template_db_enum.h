@@ -3,7 +3,7 @@
  * All rights reserved.
  */
 
-/* date: Thu Aug 26 17:43:36 2021 */
+/* date: Thu Sep  9 11:11:05 2021 */
 
 #ifndef ULP_TEMPLATE_DB_H_
 #define ULP_TEMPLATE_DB_H_
@@ -211,7 +211,8 @@ enum bnxt_ulp_cf_idx {
 	BNXT_ULP_CF_IDX_OI_VLAN_FB_VID = 71,
 	BNXT_ULP_CF_IDX_IO_VLAN_FB_VID = 72,
 	BNXT_ULP_CF_IDX_II_VLAN_FB_VID = 73,
-	BNXT_ULP_CF_IDX_LAST = 74
+	BNXT_ULP_CF_IDX_SOCKET_DIRECT = 74,
+	BNXT_ULP_CF_IDX_LAST = 75
 };
 
 enum bnxt_ulp_cond_list_opc {
@@ -582,7 +583,8 @@ enum bnxt_ulp_template_type {
 enum bnxt_ulp_app_cap {
 	BNXT_ULP_APP_CAP_SHARED_EN = 0x00000001,
 	BNXT_ULP_APP_CAP_HOT_UPGRADE_EN = 0x00000002,
-	BNXT_ULP_APP_CAP_UNICAST_ONLY = 0x00000004
+	BNXT_ULP_APP_CAP_UNICAST_ONLY = 0x00000004,
+	BNXT_ULP_APP_CAP_SOCKET_DIRECT = 0x00000008
 };
 
 enum bnxt_ulp_fdb_resource_flags {

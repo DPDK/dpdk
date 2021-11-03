@@ -115,9 +115,11 @@ bnxt_ulp_init_mapper_params(struct bnxt_ulp_mapper_create_parms *mapper_cparms,
 	ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_FLOW_SIG_ID,
 			    params->flow_sig_id);
 
+	if (bnxt_ulp_cntxt_ptr2_ulp_flags_get(params->ulp_ctx, &ulp_flags))
+		return;
+
 	/* update the WC Priority flag */
-	if (!bnxt_ulp_cntxt_ptr2_ulp_flags_get(params->ulp_ctx, &ulp_flags) &&
-	    ULP_HIGH_AVAIL_IS_ENABLED(ulp_flags)) {
+	if (ULP_HIGH_AVAIL_IS_ENABLED(ulp_flags)) {
 		enum ulp_ha_mgr_region region = ULP_HA_REGION_LOW;
 		int32_t rc;
 
@@ -129,6 +131,10 @@ bnxt_ulp_init_mapper_params(struct bnxt_ulp_mapper_create_parms *mapper_cparms,
 					    BNXT_ULP_CF_IDX_WC_IS_HA_HIGH_REG,
 					    1);
 	}
+
+	/* Update the socket direct flag */
+	if (ULP_SOCKET_DIRECT_IS_ENABLED(ulp_flags))
+		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_SOCKET_DIRECT, 1);
 }
 
 /* Function to create the rte flow. */

@@ -3,7 +3,7 @@
  * All rights reserved.
  */
 
-/* date: Thu Aug 26 17:43:36 2021 */
+/* date: Thu Sep  9 11:11:05 2021 */
 
 #include "ulp_template_db_enum.h"
 #include "ulp_template_db_field.h"
@@ -347,7 +347,8 @@ struct bnxt_ulp_app_capabilities_info ulp_app_cap_info_list[] = {
 	.device_id               = BNXT_ULP_DEVICE_ID_THOR,
 	.flags                   = BNXT_ULP_APP_CAP_SHARED_EN |
 				   BNXT_ULP_APP_CAP_HOT_UPGRADE_EN |
-				   BNXT_ULP_APP_CAP_UNICAST_ONLY
+				   BNXT_ULP_APP_CAP_UNICAST_ONLY |
+				   BNXT_ULP_APP_CAP_SOCKET_DIRECT
 	},
 	{
 	.app_id                  = 2,
