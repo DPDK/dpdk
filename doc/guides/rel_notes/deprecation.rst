@@ -107,14 +107,6 @@ Deprecation Notices
 * vhost: rename ``struct vhost_device_ops`` to ``struct rte_vhost_device_ops``
   in DPDK v21.11.
 
-* vhost: The experimental tags of ``rte_vhost_driver_get_protocol_features``,
-  ``rte_vhost_driver_get_queue_num``, ``rte_vhost_crypto_create``,
-  ``rte_vhost_crypto_free``, ``rte_vhost_crypto_fetch_requests``,
-  ``rte_vhost_crypto_finalize_requests``, ``rte_vhost_crypto_set_zero_copy``,
-  ``rte_vhost_va_from_guest_pa``, ``rte_vhost_extern_callback_register``,
-  and ``rte_vhost_driver_set_protocol_features`` functions will be removed
-  and the API functions will be made stable in DPDK 21.11.
-
 * cryptodev: Hide structures ``rte_cryptodev_sym_session`` and
   ``rte_cryptodev_asym_session`` to remove unnecessary indirection between
   session and the private data of session. An opaque pointer can be exposed
