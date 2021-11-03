@@ -1134,8 +1134,7 @@ mlx5_txq_new(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 		rte_errno = ENOMEM;
 		return NULL;
 	}
-	if (mlx5_mr_ctrl_init(&tmpl->txq.mr_ctrl,
-			      &priv->sh->cdev->mr_scache.dev_gen, socket)) {
+	if (mlx5_mr_ctrl_init(&tmpl->txq.mr_ctrl, priv->sh->cdev, socket)) {
 		/* rte_errno is already set. */
 		goto error;
 	}

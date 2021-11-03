@@ -368,10 +368,9 @@ mlx5_tx_mb2mr(struct mlx5_txq_data *txq, struct rte_mbuf *mb)
 	struct mlx5_mr_ctrl *mr_ctrl = &txq->mr_ctrl;
 	struct mlx5_txq_ctrl *txq_ctrl =
 			container_of(txq, struct mlx5_txq_ctrl, txq);
-	struct mlx5_priv *priv = txq_ctrl->priv;
 
 	/* Take slower bottom-half on miss. */
-	return mlx5_mr_mb2mr(priv->sh->cdev, &priv->mp_id, mr_ctrl, mb);
+	return mlx5_mr_mb2mr(mr_ctrl, mb, &txq_ctrl->priv->mp_id);
 }
 
 /**

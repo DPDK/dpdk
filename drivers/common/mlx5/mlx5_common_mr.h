@@ -66,6 +66,7 @@ struct mlx5_common_device;
 
 /* Per-queue MR control descriptor. */
 struct mlx5_mr_ctrl {
+	struct mlx5_common_device *cdev; /* Pointer to the mlx5 common device.*/
 	uint32_t *dev_gen_ptr; /* Generation number of device to poll. */
 	uint32_t cur_gen; /* Generation number saved to flush caches. */
 	uint16_t mru; /* Index of last hit entry in top-half cache. */
@@ -169,41 +170,36 @@ void mlx5_mr_flush_local_cache(struct mlx5_mr_ctrl *mr_ctrl);
  * Bottom-half of LKey search on. If supported, lookup for the address from
  * the mempool. Otherwise, search in old mechanism caches.
  *
- * @param cdev
- *   Pointer to mlx5 device.
- * @param mp_id
- *   Multi-process identifier, may be NULL for the primary process.
  * @param mr_ctrl
  *   Pointer to per-queue MR control structure.
  * @param mb
  *   Pointer to mbuf.
+ * @param mp_id
+ *   Multi-process identifier, may be NULL for the primary process.
  *
  * @return
  *   Searched LKey on success, UINT32_MAX on no match.
  */
 __rte_internal
-uint32_t mlx5_mr_mb2mr_bh(struct mlx5_common_device *cdev,
-			  struct mlx5_mp_id *mp_id,
-			  struct mlx5_mr_ctrl *mr_ctrl, struct rte_mbuf *mb);
+uint32_t mlx5_mr_mb2mr_bh(struct mlx5_mr_ctrl *mr_ctrl, struct rte_mbuf *mbuf,
+			  struct mlx5_mp_id *mp_id);
 
 /**
  * Query LKey from a packet buffer.
  *
- * @param cdev
- *   Pointer to the mlx5 device structure.
- * @param mp_id
- *   Multi-process identifier, may be NULL for the primary process.
  * @param mr_ctrl
  *   Pointer to per-queue MR control structure.
  * @param mbuf
  *   Pointer to mbuf.
+ * @param mp_id
+ *   Multi-process identifier, may be NULL for the primary process.
  *
  * @return
  *   Searched LKey on success, UINT32_MAX on no match.
  */
 static __rte_always_inline uint32_t
-mlx5_mr_mb2mr(struct mlx5_common_device *cdev, struct mlx5_mp_id *mp_id,
-	      struct mlx5_mr_ctrl *mr_ctrl, struct rte_mbuf *mbuf)
+mlx5_mr_mb2mr(struct mlx5_mr_ctrl *mr_ctrl, struct rte_mbuf *mbuf,
+	      struct mlx5_mp_id *mp_id)
 {
 	uint32_t lkey;
 
@@ -216,14 +212,14 @@ mlx5_mr_mb2mr(struct mlx5_common_device *cdev, struct mlx5_mp_id *mp_id,
 	if (likely(lkey != UINT32_MAX))
 		return lkey;
 	/* Take slower bottom-half on miss. */
-	return mlx5_mr_mb2mr_bh(cdev, mp_id, mr_ctrl, mbuf);
+	return mlx5_mr_mb2mr_bh(mr_ctrl, mbuf, mp_id);
 }
 
 /* mlx5_common_mr.c */
 
 __rte_internal
-int mlx5_mr_ctrl_init(struct mlx5_mr_ctrl *mr_ctrl, uint32_t *dev_gen_ptr,
-		      int socket);
+int mlx5_mr_ctrl_init(struct mlx5_mr_ctrl *mr_ctrl,
+		      struct mlx5_common_device *cdev, int socket);
 __rte_internal
 void mlx5_mr_btree_free(struct mlx5_mr_btree *bt);
 void mlx5_mr_btree_dump(struct mlx5_mr_btree *bt __rte_unused);

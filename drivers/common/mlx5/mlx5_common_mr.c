@@ -292,8 +292,8 @@ mlx5_mr_btree_dump(struct mlx5_mr_btree *bt __rte_unused)
  *
  * @param mr_ctrl
  *   Pointer to MR control structure.
- * @param dev_gen_ptr
- *   Pointer to generation number of global cache.
+ * @param cdev
+ *   Pointer to the mlx5 device structure.
  * @param socket
  *   NUMA socket on which memory must be allocated.
  *
@@ -301,15 +301,16 @@ mlx5_mr_btree_dump(struct mlx5_mr_btree *bt __rte_unused)
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 int
-mlx5_mr_ctrl_init(struct mlx5_mr_ctrl *mr_ctrl, uint32_t *dev_gen_ptr,
+mlx5_mr_ctrl_init(struct mlx5_mr_ctrl *mr_ctrl, struct mlx5_common_device *cdev,
 		  int socket)
 {
 	if (mr_ctrl == NULL) {
 		rte_errno = EINVAL;
 		return -rte_errno;
 	}
+	mr_ctrl->cdev = cdev;
 	/* Save pointer of global generation number to check memory event. */
-	mr_ctrl->dev_gen_ptr = dev_gen_ptr;
+	mr_ctrl->dev_gen_ptr = &cdev->mr_scache.dev_gen;
 	/* Initialize B-tree and allocate memory for bottom-half cache table. */
 	return mlx5_mr_btree_init(&mr_ctrl->cache_bh, MLX5_MR_BTREE_CACHE_N,
 				  socket);
@@ -1860,11 +1861,12 @@ mlx5_mr_mempool2mr_bh(struct mlx5_mr_share_cache *share_cache,
 }
 
 uint32_t
-mlx5_mr_mb2mr_bh(struct mlx5_common_device *cdev, struct mlx5_mp_id *mp_id,
-		 struct mlx5_mr_ctrl *mr_ctrl, struct rte_mbuf *mb)
+mlx5_mr_mb2mr_bh(struct mlx5_mr_ctrl *mr_ctrl, struct rte_mbuf *mb,
+		 struct mlx5_mp_id *mp_id)
 {
 	uint32_t lkey;
 	uintptr_t addr = (uintptr_t)mb->buf_addr;
+	struct mlx5_common_device *cdev = mr_ctrl->cdev;
 
 	if (cdev->config.mr_mempool_reg_en) {
 		struct rte_mempool *mp = NULL;

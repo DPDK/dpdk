@@ -311,7 +311,6 @@ static __rte_always_inline uint32_t
 mlx5_rx_addr2mr(struct mlx5_rxq_data *rxq, uintptr_t addr)
 {
 	struct mlx5_mr_ctrl *mr_ctrl = &rxq->mr_ctrl;
-	struct mlx5_rxq_ctrl *rxq_ctrl;
 	struct rte_mempool *mp;
 	uint32_t lkey;
 
@@ -320,14 +319,9 @@ mlx5_rx_addr2mr(struct mlx5_rxq_data *rxq, uintptr_t addr)
 				   MLX5_MR_CACHE_N, addr);
 	if (likely(lkey != UINT32_MAX))
 		return lkey;
-	/*
-	 * Slower search in the mempool database on miss.
-	 * During queue creation rxq->sh is not yet set, so we use rxq_ctrl.
-	 */
-	rxq_ctrl = container_of(rxq, struct mlx5_rxq_ctrl, rxq);
 	mp = mlx5_rxq_mprq_enabled(rxq) ? rxq->mprq_mp : rxq->mp;
-	return mlx5_mr_mempool2mr_bh(&rxq_ctrl->sh->cdev->mr_scache,
-				     mr_ctrl, mp, addr);
+	return mlx5_mr_mempool2mr_bh(&mr_ctrl->cdev->mr_scache, mr_ctrl,
+				     mp, addr);
 }
 
 #define mlx5_rx_mb2mr(rxq, mb) mlx5_rx_addr2mr(rxq, (uintptr_t)((mb)->buf_addr))

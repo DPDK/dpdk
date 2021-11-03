@@ -210,7 +210,7 @@ mlx5_compress_qp_setup(struct rte_compressdev *dev, uint16_t qp_id,
 		return -rte_errno;
 	}
 	dev->data->queue_pairs[qp_id] = qp;
-	if (mlx5_mr_ctrl_init(&qp->mr_ctrl, &priv->cdev->mr_scache.dev_gen,
+	if (mlx5_mr_ctrl_init(&qp->mr_ctrl, priv->cdev,
 			      priv->dev_config.socket_id)) {
 		DRV_LOG(ERR, "Cannot allocate MR Btree for qp %u.",
 			(uint32_t)qp_id);
@@ -464,7 +464,7 @@ mlx5_compress_dseg_set(struct mlx5_compress_qp *qp,
 	uintptr_t addr = rte_pktmbuf_mtod_offset(mbuf, uintptr_t, offset);
 
 	dseg->bcount = rte_cpu_to_be_32(len);
-	dseg->lkey = mlx5_mr_mb2mr(qp->priv->cdev, 0, &qp->mr_ctrl, mbuf);
+	dseg->lkey = mlx5_mr_mb2mr(&qp->mr_ctrl, mbuf, 0);
 	dseg->pbuf = rte_cpu_to_be_64(addr);
 	return dseg->lkey;
 }

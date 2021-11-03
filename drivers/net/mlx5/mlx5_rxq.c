@@ -1678,8 +1678,7 @@ mlx5_rxq_new(struct rte_eth_dev *dev, struct mlx5_rxq_priv *rxq,
 		goto error;
 	}
 	tmpl->type = MLX5_RXQ_TYPE_STANDARD;
-	if (mlx5_mr_ctrl_init(&tmpl->rxq.mr_ctrl,
-			      &priv->sh->cdev->mr_scache.dev_gen, socket)) {
+	if (mlx5_mr_ctrl_init(&tmpl->rxq.mr_ctrl, priv->sh->cdev, socket)) {
 		/* rte_errno is already set. */
 		goto error;
 	}

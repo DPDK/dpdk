@@ -109,26 +109,6 @@ set_wqe_ctrl_seg(struct mlx5_wqe_ctrl_seg *seg, uint16_t pi, uint8_t opcode,
 	seg->imm = imm;
 }
 
-/**
- * Query LKey from a packet buffer for QP. If not found, add the mempool.
- *
- * @param priv
- *   Pointer to the priv object.
- * @param mr_ctrl
- *   Pointer to per-queue MR control structure.
- * @param mbuf
- *   Pointer to source mbuf, to search in.
- *
- * @return
- *   Searched LKey on success, UINT32_MAX on no match.
- */
-static inline uint32_t
-mlx5_regex_mb2mr(struct mlx5_regex_priv *priv, struct mlx5_mr_ctrl *mr_ctrl,
-		 struct rte_mbuf *mbuf)
-{
-	return mlx5_mr_mb2mr(priv->cdev, 0, mr_ctrl, mbuf);
-}
-
 static inline void
 __prep_one(struct mlx5_regex_priv *priv, struct mlx5_regex_hw_qp *qp_obj,
 	   struct rte_regex_ops *op, struct mlx5_regex_job *job,
@@ -180,7 +160,7 @@ prep_one(struct mlx5_regex_priv *priv, struct mlx5_regex_qp *qp,
 	struct mlx5_klm klm;
 
 	klm.byte_count = rte_pktmbuf_data_len(op->mbuf);
-	klm.mkey = mlx5_regex_mb2mr(priv, &qp->mr_ctrl, op->mbuf);
+	klm.mkey = mlx5_mr_mb2mr(&qp->mr_ctrl, op->mbuf, 0);
 	klm.address = rte_pktmbuf_mtod(op->mbuf, uintptr_t);
 	__prep_one(priv, qp_obj, op, job, qp_obj->pi, &klm);
 	qp_obj->db_pi = qp_obj->pi;
@@ -349,9 +329,8 @@ prep_regex_umr_wqe_set(struct mlx5_regex_priv *priv, struct mlx5_regex_qp *qp,
 			while (mbuf) {
 				addr = rte_pktmbuf_mtod(mbuf, uintptr_t);
 				/* Build indirect mkey seg's KLM. */
-				mkey_klm->mkey = mlx5_regex_mb2mr(priv,
-								  &qp->mr_ctrl,
-								  mbuf);
+				mkey_klm->mkey = mlx5_mr_mb2mr(&qp->mr_ctrl,
+							       mbuf, 0);
 				mkey_klm->address = rte_cpu_to_be_64(addr);
 				mkey_klm->byte_count = rte_cpu_to_be_32
 						(rte_pktmbuf_data_len(mbuf));
@@ -368,7 +347,7 @@ prep_regex_umr_wqe_set(struct mlx5_regex_priv *priv, struct mlx5_regex_qp *qp,
 			klm.byte_count = scatter_size;
 		} else {
 			/* The single mubf case. Build the KLM directly. */
-			klm.mkey = mlx5_regex_mb2mr(priv, &qp->mr_ctrl, mbuf);
+			klm.mkey = mlx5_mr_mb2mr(&qp->mr_ctrl, mbuf, 0);
 			klm.address = rte_pktmbuf_mtod(mbuf, uintptr_t);
 			klm.byte_count = rte_pktmbuf_data_len(mbuf);
 		}
