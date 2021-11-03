@@ -6871,6 +6871,11 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 	tunnel = is_tunnel_offload_active(dev) ?
 		 mlx5_get_tof(items, actions, &tof_rule_type) : NULL;
 	if (tunnel) {
+		if (!priv->config.dv_flow_en)
+			return rte_flow_error_set
+				(error, ENOTSUP,
+				 RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				 NULL, "tunnel offload requires DV flow interface");
 		if (priv->representor)
 			return rte_flow_error_set
 				(error, ENOTSUP,
