@@ -399,11 +399,8 @@ kni_ioctl_create(struct net *net, uint32_t ioctl_num,
 	if (is_valid_ether_addr(dev_info.mac_addr))
 		memcpy(net_dev->dev_addr, dev_info.mac_addr, ETH_ALEN);
 	else
-		/*
-		 * Generate random mac address. eth_random_addr() is the
-		 * newer version of generating mac address in kernel.
-		 */
-		random_ether_addr(net_dev->dev_addr);
+		/* Generate random MAC address. */
+		eth_random_addr(net_dev->dev_addr);
 
 	if (dev_info.mtu)
 		net_dev->mtu = dev_info.mtu;
