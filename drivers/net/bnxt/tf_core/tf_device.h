@@ -1116,7 +1116,7 @@ struct tf_dev_ops {
 	 *   - (-EINVAL) on failure.
 	 */
 	int (*tf_dev_set_sram_policy)(enum tf_dir dir,
-				      uint8_t *bank_id);
+				      enum tf_sram_bank_id *bank_id);
 
 	/**
 	 * Device specific function that gets the sram policy
@@ -1132,7 +1132,7 @@ struct tf_dev_ops {
 	 *   - (-EINVAL) on failure.
 	 */
 	int (*tf_dev_get_sram_policy)(enum tf_dir dir,
-				      uint8_t *bank_id);
+				      enum tf_sram_bank_id *bank_id);
 };
 
 /**

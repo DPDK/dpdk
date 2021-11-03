@@ -2520,7 +2520,7 @@ struct tf_set_sram_policy_parms {
 	/**
 	 * [in] Array of Bank id for each truflow tbl type
 	 */
-	uint8_t *bank_id;
+	enum tf_sram_bank_id bank_id[TF_TBL_TYPE_ACT_MODIFY_64B + 1];
 };
 
 /**
@@ -2552,7 +2552,7 @@ struct tf_get_sram_policy_parms {
 	/**
 	 * [out] Array of Bank id for each truflow tbl type
 	 */
-	uint8_t bank_id[TF_TBL_TYPE_ACT_MODIFY_64B + 1];
+	enum tf_sram_bank_id bank_id[TF_TBL_TYPE_ACT_MODIFY_64B + 1];
 };
 
 /**

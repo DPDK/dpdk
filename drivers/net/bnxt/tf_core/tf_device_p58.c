@@ -673,7 +673,7 @@ static int tf_dev_p58_get_sram_resources(void *q,
 	return 0;
 }
 
-int sram_bank_hcapi_type[] = {
+static int sram_bank_hcapi_type[] = {
 	CFA_RESOURCE_TYPE_P58_SRAM_BANK_0,
 	CFA_RESOURCE_TYPE_P58_SRAM_BANK_1,
 	CFA_RESOURCE_TYPE_P58_SRAM_BANK_2,
@@ -694,15 +694,15 @@ int sram_bank_hcapi_type[] = {
  *   - (-EINVAL) on failure.
  */
 static int tf_dev_p58_set_sram_policy(enum tf_dir dir,
-				      uint8_t *bank_id)
+				      enum tf_sram_bank_id *bank_id)
 {
 	struct tf_rm_element_cfg *rm_cfg = tf_tbl_p58[dir];
 	uint8_t type;
 	uint8_t parent[TF_SRAM_BANK_ID_MAX] = { 0xFF, 0xFF, 0xFF, 0xFF };
 
 	for (type = TF_TBL_TYPE_FULL_ACT_RECORD;
-			type < TF_TBL_TYPE_ACT_MODIFY_64B + 1; type++) {
-		if (bank_id[type] > 3)
+			type <= TF_TBL_TYPE_ACT_MODIFY_64B; type++) {
+		if (bank_id[type] >= TF_SRAM_BANK_ID_MAX)
 			return -EINVAL;
 
 		rm_cfg[type].hcapi_type = sram_bank_hcapi_type[bank_id[type]];
@@ -735,7 +735,7 @@ static int tf_dev_p58_set_sram_policy(enum tf_dir dir,
  *   - (-EINVAL) on failure.
  */
 static int tf_dev_p58_get_sram_policy(enum tf_dir dir,
-				      uint8_t *bank_id)
+				      enum tf_sram_bank_id *bank_id)
 {
 	struct tf_rm_element_cfg *rm_cfg = tf_tbl_p58[dir];
 	uint8_t type;
