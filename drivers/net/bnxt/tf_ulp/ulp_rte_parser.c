@@ -137,10 +137,10 @@ bnxt_ulp_rte_parser_hdr_parse(const struct rte_flow_item pattern[],
 
 	/* Parse all the items in the pattern */
 	while (item && item->type != RTE_FLOW_ITEM_TYPE_END) {
-		if (item->type >= (uint32_t)
+		if (item->type >= (typeof(item->type))
 		    BNXT_RTE_FLOW_ITEM_TYPE_END) {
 			if (item->type >=
-			    (uint32_t)BNXT_RTE_FLOW_ITEM_TYPE_LAST)
+			    (typeof(item->type))BNXT_RTE_FLOW_ITEM_TYPE_LAST)
 				goto hdr_parser_error;
 			/* get the header information */
 			hdr_info = &ulp_vendor_hdr_info[item->type -
@@ -186,9 +186,9 @@ bnxt_ulp_rte_parser_act_parse(const struct rte_flow_action actions[],
 	/* Parse all the items in the pattern */
 	while (action_item && action_item->type != RTE_FLOW_ACTION_TYPE_END) {
 		if (action_item->type >=
-		    (uint32_t)BNXT_RTE_FLOW_ACTION_TYPE_END) {
+		    (typeof(action_item->type))BNXT_RTE_FLOW_ACTION_TYPE_END) {
 			if (action_item->type >=
-			    (uint32_t)BNXT_RTE_FLOW_ACTION_TYPE_LAST)
+			    (typeof(action_item->type))BNXT_RTE_FLOW_ACTION_TYPE_LAST)
 				goto act_parser_error;
 			/* get the header information from bnxt actinfo table */
 			hdr_info = &ulp_vendor_act_info[action_item->type -
