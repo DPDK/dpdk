@@ -55,7 +55,7 @@
 #define ADF_ARB_RINGSRVARBEN_OFFSET 0x19C
 
 /* Maximum number of qps on a device for any service type */
-#define ADF_MAX_QPS_ON_ANY_SERVICE	2
+#define ADF_MAX_QPS_ON_ANY_SERVICE	4
 #define ADF_RING_DIR_TX			0
 #define ADF_RING_DIR_RX			1
 
