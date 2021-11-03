@@ -314,4 +314,17 @@ int32_t
 ulp_port_db_parent_vnic_get(struct bnxt_ulp_context *ulp_ctxt,
 			    uint32_t port_id, uint8_t **vnic);
 
+/*
+ * Api to get the phy port for a given port id.
+ *
+ * ulp_ctxt [in] Ptr to ulp context
+ * port_id [in] device port id
+ * phy_port [out] phy_port of the dpdk port_id
+ *
+ * Returns 0 on success or negative number on failure.
+ */
+int32_t
+ulp_port_db_phy_port_get(struct bnxt_ulp_context *ulp_ctxt,
+			 uint32_t port_id, uint16_t *phy_port);
+
 #endif /* _ULP_PORT_DB_H_ */

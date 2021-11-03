@@ -679,3 +679,26 @@ ulp_port_db_parent_vnic_get(struct bnxt_ulp_context *ulp_ctxt,
 	}
 	return -EINVAL;
 }
+
+/*
+ * Api to get the phy port for a given port id.
+ *
+ * ulp_ctxt [in] Ptr to ulp context
+ * port_id [in] device port id
+ * phy_port [out] phy_port of the dpdk port_id
+ *
+ * Returns 0 on success or negative number on failure.
+ */
+int32_t
+ulp_port_db_phy_port_get(struct bnxt_ulp_context *ulp_ctxt,
+			 uint32_t port_id, uint16_t *phy_port)
+{
+	struct ulp_func_if_info *info;
+
+	info = ulp_port_db_func_if_info_get(ulp_ctxt, port_id);
+	if (info) {
+		*phy_port = info->phy_port_id;
+		return 0;
+	}
+	return -EINVAL;
+}

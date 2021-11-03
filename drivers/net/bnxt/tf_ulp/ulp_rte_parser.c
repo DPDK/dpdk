@@ -686,6 +686,18 @@ ulp_rte_phy_port_hdr_handler(const struct rte_flow_item *item,
 	ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_SVIF_FLAG,
 			    rte_be_to_cpu_16(svif));
 	if (!mask) {
+		uint32_t port_id = 0;
+		uint16_t phy_port = 0;
+
+		/* Validate the control port */
+		port_id = ULP_COMP_FLD_IDX_RD(params,
+					      BNXT_ULP_CF_IDX_DEV_PORT_ID);
+		if (ulp_port_db_phy_port_get(params->ulp_ctx,
+					     port_id, &phy_port) ||
+		    (uint16_t)port_spec->index != phy_port) {
+			BNXT_TF_DBG(ERR, "Mismatch of control and phy_port\n");
+			return BNXT_TF_RC_PARSE_ERR;
+		}
 		ULP_BITMAP_SET(params->hdr_bitmap.bits,
 			       BNXT_ULP_HDR_BIT_SVIF_IGNORE);
 		memset(hdr_field->mask, 0xFF, sizeof(mask));
