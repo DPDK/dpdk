@@ -977,7 +977,7 @@ mlx5_devx_alloc_uar(void *ctx, int mapping)
 			 * If Verbs/kernel does not support "Non-Cached"
 			 * try the "Write-Combining".
 			 */
-			DRV_LOG(WARNING, "Failed to allocate DevX UAR (NC)");
+			DRV_LOG(DEBUG, "Failed to allocate DevX UAR (NC)");
 			uar_mapping = MLX5DV_UAR_ALLOC_TYPE_BF;
 			uar = mlx5_glue->devx_alloc_uar(ctx, uar_mapping);
 		}
@@ -995,7 +995,7 @@ mlx5_devx_alloc_uar(void *ctx, int mapping)
 		 * IB device context, on context closure all UARs
 		 * will be freed, should be no memory/object leakage.
 		 */
-		DRV_LOG(WARNING, "Retrying to allocate DevX UAR");
+		DRV_LOG(DEBUG, "Retrying to allocate DevX UAR");
 		uar = NULL;
 	}
 	/* Check whether we finally succeeded with valid UAR allocation. */
