@@ -127,6 +127,13 @@ struct sfc_mae_counters {
 	unsigned int			n_mae_counters;
 };
 
+/** Options for MAE counter polling mode */
+enum sfc_mae_counter_polling_mode {
+	SFC_MAE_COUNTER_POLLING_OFF = 0,
+	SFC_MAE_COUNTER_POLLING_SERVICE,
+	SFC_MAE_COUNTER_POLLING_THREAD,
+};
+
 struct sfc_mae_counter_registry {
 	/* Common counter information */
 	/** Counters collection */
@@ -143,10 +150,21 @@ struct sfc_mae_counter_registry {
 	bool				use_credits;
 
 	/* Information used by configuration routines */
-	/** Counter service core ID */
-	uint32_t			service_core_id;
-	/** Counter service ID */
-	uint32_t			service_id;
+	enum sfc_mae_counter_polling_mode polling_mode;
+	union {
+		struct {
+			/** Counter service core ID */
+			uint32_t			core_id;
+			/** Counter service ID */
+			uint32_t			id;
+		} service;
+		struct {
+			/** Counter thread ID */
+			pthread_t			id;
+			/** The thread should keep running */
+			bool				run;
+		} thread;
+	} polling;
 };
 
 /**

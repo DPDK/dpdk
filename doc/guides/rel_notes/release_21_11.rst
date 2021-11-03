@@ -205,6 +205,7 @@ New Features
   * Added port representors support on SN1000 SmartNICs
   * Added flow API transfer proxy support
   * Added SN1000 virtual functions (VF) support
+  * Added support for flow counters without service cores
 
 * **Added power monitor API in vhost library.**
 
