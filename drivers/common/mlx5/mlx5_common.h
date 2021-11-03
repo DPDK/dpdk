@@ -153,6 +153,7 @@ enum mlx5_nl_phys_port_name_type {
 	MLX5_PHYS_PORT_NAME_TYPE_UPLINK, /* p0, kernel ver >= 5.0 */
 	MLX5_PHYS_PORT_NAME_TYPE_PFVF, /* pf0vf0, kernel ver >= 5.0 */
 	MLX5_PHYS_PORT_NAME_TYPE_PFHPF, /* pf0, kernel ver >= 5.7, HPF rep */
+	MLX5_PHYS_PORT_NAME_TYPE_PFSF, /* pf0sf0, kernel ver >= 5.0 */
 	MLX5_PHYS_PORT_NAME_TYPE_UNKNOWN, /* Unrecognized. */
 };
 
@@ -161,6 +162,7 @@ struct mlx5_switch_info {
 	uint32_t master:1; /**< Master device. */
 	uint32_t representor:1; /**< Representor device. */
 	enum mlx5_nl_phys_port_name_type name_type; /** < Port name type. */
+	int32_t ctrl_num; /**< Controller number (valid for c#pf#vf# format). */
 	int32_t pf_num; /**< PF number (valid for pfxvfx format only). */
 	int32_t port_name; /**< Representor port name. */
 	uint64_t switch_id; /**< Switch identifier. */
