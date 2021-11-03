@@ -116,7 +116,7 @@ ulp_mark_db_init(struct bnxt_ulp_context *ctxt)
 	mark_tbl->gfid_mask	= (mark_tbl->gfid_num_entries / 2) - 1;
 	mark_tbl->gfid_type_bit = (mark_tbl->gfid_num_entries / 2);
 
-	BNXT_TF_DBG(DEBUG, "GFID Max = 0x%08x\nGFID MASK = 0x%08x\n",
+	BNXT_TF_DBG(DEBUG, "GFID Max = 0x%08x GFID MASK = 0x%08x\n",
 		    mark_tbl->gfid_num_entries - 1,
 		    mark_tbl->gfid_mask);
 

@@ -470,7 +470,7 @@ ulp_flow_db_init(struct bnxt_ulp_context *ulp_ctxt)
 	}
 
 	/* All good so return. */
-	BNXT_TF_DBG(INFO, "FlowDB initialized with %d flows.\n",
+	BNXT_TF_DBG(DEBUG, "FlowDB initialized with %d flows.\n",
 		    flow_tbl->num_flows);
 	return 0;
 error_free:

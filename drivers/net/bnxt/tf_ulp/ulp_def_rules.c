@@ -323,7 +323,7 @@ ulp_default_flow_create(struct rte_eth_dev *eth_dev,
 	ulp_ctx = bnxt_ulp_eth_dev_ptr2_cntxt_get(eth_dev);
 	if (!ulp_ctx) {
 		BNXT_TF_DBG(ERR,
-			    "ULP context is not initialized. Failed to create dflt flow.\n");
+			    "ULP is not init'ed. Fail to create dflt flow.\n");
 		return -EINVAL;
 	}
 

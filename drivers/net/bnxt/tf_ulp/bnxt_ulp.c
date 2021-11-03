@@ -1396,16 +1396,16 @@ bnxt_ulp_port_init(struct bnxt *bp)
 	uint32_t ulp_flags;
 	int32_t rc = 0;
 
-	if (!BNXT_PF(bp) && !BNXT_VF_IS_TRUSTED(bp)) {
-		BNXT_TF_DBG(ERR,
-			    "Skip ulp init for port: %d, not a TVF or PF\n",
+	if (!BNXT_TRUFLOW_EN(bp)) {
+		BNXT_TF_DBG(DEBUG,
+			    "Skip ulp init for port: %d, TF is not enabled\n",
 			    bp->eth_dev->data->port_id);
 		return rc;
 	}
 
-	if (!BNXT_TRUFLOW_EN(bp)) {
-		BNXT_TF_DBG(ERR,
-			    "Skip ulp init for port: %d, truflow is not enabled\n",
+	if (!BNXT_PF(bp) && !BNXT_VF_IS_TRUSTED(bp)) {
+		BNXT_TF_DBG(DEBUG,
+			    "Skip ulp init for port: %d, not a TVF or PF\n",
 			    bp->eth_dev->data->port_id);
 		return rc;
 	}
@@ -1520,16 +1520,16 @@ bnxt_ulp_port_deinit(struct bnxt *bp)
 	struct rte_pci_device *pci_dev;
 	struct rte_pci_addr *pci_addr;
 
-	if (!BNXT_PF(bp) && !BNXT_VF_IS_TRUSTED(bp)) {
-		BNXT_TF_DBG(ERR,
-			    "Skip ULP deinit port:%d, not a TVF or PF\n",
+	if (!BNXT_TRUFLOW_EN(bp)) {
+		BNXT_TF_DBG(DEBUG,
+			    "Skip ULP deinit for port:%d, TF is not enabled\n",
 			    bp->eth_dev->data->port_id);
 		return;
 	}
 
-	if (!BNXT_TRUFLOW_EN(bp)) {
-		BNXT_TF_DBG(ERR,
-			    "Skip ULP deinit for port:%d, truflow is not enabled\n",
+	if (!BNXT_PF(bp) && !BNXT_VF_IS_TRUSTED(bp)) {
+		BNXT_TF_DBG(DEBUG,
+			    "Skip ULP deinit port:%d, not a TVF or PF\n",
 			    bp->eth_dev->data->port_id);
 		return;
 	}
