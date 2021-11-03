@@ -23,4 +23,5 @@ sources = files(
         'sfc_vdpa_hw.c',
         'sfc_vdpa_mcdi.c',
         'sfc_vdpa_ops.c',
+        'sfc_vdpa_filter.c',
 )

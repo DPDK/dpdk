@@ -16,7 +16,28 @@
 #include "sfc_vdpa_log.h"
 #include "sfc_vdpa_ops.h"
 
+#define SFC_VDPA_MAC_ADDR			"mac"
 #define SFC_VDPA_DEFAULT_MCDI_IOVA		0x200000000000
+
+/* Broadcast & Unicast MAC filters are supported */
+#define SFC_MAX_SUPPORTED_FILTERS		2
+
+/*
+ * Get function-local index of the associated VI from the
+ * virtqueue number. Queue 0 is reserved for MCDI
+ */
+#define SFC_VDPA_GET_VI_INDEX(vq_num) (((vq_num) / 2) + 1)
+
+enum sfc_vdpa_filter_type {
+	SFC_VDPA_BCAST_MAC_FILTER = 0,
+	SFC_VDPA_UCAST_MAC_FILTER = 1,
+	SFC_VDPA_FILTER_NTYPE
+};
+
+typedef struct sfc_vdpa_filter_s {
+	int				filter_cnt;
+	efx_filter_spec_t		spec[SFC_MAX_SUPPORTED_FILTERS];
+} sfc_vdpa_filter_t;
 
 /* Adapter private data */
 struct sfc_vdpa_adapter {
@@ -29,6 +50,8 @@ struct sfc_vdpa_adapter {
 	 */
 	rte_spinlock_t			lock;
 	struct rte_pci_device		*pdev;
+
+	struct rte_kvargs		*kvargs;
 
 	efx_family_t			family;
 	efx_nic_t			*nic;
@@ -43,6 +66,8 @@ struct sfc_vdpa_adapter {
 
 	char				log_prefix[SFC_VDPA_LOG_PREFIX_MAX];
 	uint32_t			logtype_main;
+
+	sfc_vdpa_filter_t		filters;
 
 	int				vfio_group_fd;
 	int				vfio_dev_fd;
@@ -80,6 +105,11 @@ sfc_vdpa_dma_free(struct sfc_vdpa_adapter *sva, efsys_mem_t *esmp);
 
 int
 sfc_vdpa_dma_map(struct sfc_vdpa_ops_data *vdpa_data, bool do_map);
+
+int
+sfc_vdpa_filter_remove(struct sfc_vdpa_ops_data *ops_data);
+int
+sfc_vdpa_filter_config(struct sfc_vdpa_ops_data *ops_data);
 
 static inline struct sfc_vdpa_adapter *
 sfc_vdpa_adapter_by_dev_handle(void *dev_handle)

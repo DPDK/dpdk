@@ -421,6 +421,8 @@ sfc_vdpa_stop(struct sfc_vdpa_ops_data *ops_data)
 
 	sfc_vdpa_disable_vfio_intr(ops_data);
 
+	sfc_vdpa_filter_remove(ops_data);
+
 	ops_data->state = SFC_VDPA_STATE_CONFIGURED;
 }
 
@@ -460,12 +462,27 @@ sfc_vdpa_start(struct sfc_vdpa_ops_data *ops_data)
 			goto fail_vq_start;
 	}
 
+	ops_data->vq_count = i;
+
+	sfc_vdpa_log_init(ops_data->dev_handle,
+			  "configure MAC filters");
+	rc = sfc_vdpa_filter_config(ops_data);
+	if (rc != 0) {
+		sfc_vdpa_err(ops_data->dev_handle,
+			     "MAC filter config failed: %s",
+			     rte_strerror(rc));
+		goto fail_filter_cfg;
+	}
+
 	ops_data->state = SFC_VDPA_STATE_STARTED;
 
 	sfc_vdpa_log_init(ops_data->dev_handle, "done");
 
 	return 0;
 
+fail_filter_cfg:
+	/* remove already created filters */
+	sfc_vdpa_filter_remove(ops_data);
 fail_vq_start:
 	/* stop already started virtqueues */
 	for (j = 0; j < i; j++)

@@ -7,7 +7,9 @@
 #include <sys/queue.h>
 
 #include <rte_common.h>
+#include <rte_devargs.h>
 #include <rte_errno.h>
+#include <rte_kvargs.h>
 #include <rte_string_fns.h>
 #include <rte_vfio.h>
 #include <rte_vhost.h>
@@ -197,6 +199,31 @@ sfc_vdpa_register_logtype(const struct rte_pci_addr *pci_addr,
 	return ret < 0 ? RTE_LOGTYPE_PMD : ret;
 }
 
+static int
+sfc_vdpa_kvargs_parse(struct sfc_vdpa_adapter *sva)
+{
+	struct rte_pci_device *pci_dev = sva->pdev;
+	struct rte_devargs *devargs = pci_dev->device.devargs;
+	/*
+	 * To get the device class a mandatory param 'class' is being
+	 * used so included SFC_EFX_KVARG_DEV_CLASS in the param list.
+	 */
+	const char **params = (const char *[]){
+		RTE_DEVARGS_KEY_CLASS,
+		SFC_VDPA_MAC_ADDR,
+		NULL,
+	};
+
+	if (devargs == NULL)
+		return 0;
+
+	sva->kvargs = rte_kvargs_parse(devargs->args, params);
+	if (sva->kvargs == NULL)
+		return -EINVAL;
+
+	return 0;
+}
+
 static struct rte_pci_id pci_id_sfc_vdpa_efx_map[] = {
 	{ RTE_PCI_DEVICE(EFX_PCI_VENID_XILINX, EFX_PCI_DEVID_RIVERHEAD_VF) },
 	{ .vendor_id = 0, /* sentinel */ },
@@ -239,6 +266,10 @@ sfc_vdpa_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	if (ret != 0)
 		goto fail_set_log_prefix;
 
+	ret = sfc_vdpa_kvargs_parse(sva);
+	if (ret != 0)
+		goto fail_kvargs_parse;
+
 	sfc_vdpa_log_init(sva, "entry");
 
 	sfc_vdpa_adapter_lock_init(sva);
@@ -279,6 +310,7 @@ fail_hw_init:
 fail_vfio_setup:
 	sfc_vdpa_adapter_lock_fini(sva);
 
+fail_kvargs_parse:
 fail_set_log_prefix:
 	rte_free(sva);
 

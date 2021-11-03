@@ -71,6 +71,10 @@ boolean parameters value.
   **vdpa** device will work as vdpa device and will be probed by vdpa/sfc driver.
   If this parameter is not specified then ef100 device will operate as network device.
 
+- ``mac`` [mac address]
+
+  Configures MAC address which would be used to setup MAC filters.
+
 
 Dynamic Logging Parameters
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
