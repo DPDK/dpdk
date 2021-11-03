@@ -1831,3 +1831,89 @@ int tf_get_version(struct tf *tfp,
 
 	return 0;
 }
+
+int tf_query_sram_resources(struct tf *tfp,
+			    struct tf_query_sram_resources_parms *parms)
+{
+	int rc;
+	struct tf_dev_info dev;
+	uint16_t max_types;
+	struct tfp_calloc_parms cparms;
+	struct tf_rm_resc_req_entry *query;
+	enum tf_rm_resc_resv_strategy resv_strategy;
+
+	TF_CHECK_PARMS2(tfp, parms);
+
+	/* This function can be called before open session, filter
+	 * out any non-supported device types on the Core side.
+	 */
+	if (parms->device_type != TF_DEVICE_TYPE_THOR) {
+		TFP_DRV_LOG(ERR,
+			    "Unsupported device type %d\n",
+			    parms->device_type);
+		return -ENOTSUP;
+	}
+
+	tf_dev_bind_ops(parms->device_type, &dev);
+
+	if (dev.ops->tf_dev_get_max_types == NULL) {
+		rc = -EOPNOTSUPP;
+		TFP_DRV_LOG(ERR,
+			    "%s: Operation not supported, rc:%s\n",
+			    tf_dir_2_str(parms->dir),
+			    strerror(-rc));
+		return -EOPNOTSUPP;
+	}
+
+	/* Need device max number of elements for the RM QCAPS */
+	rc = dev.ops->tf_dev_get_max_types(tfp, &max_types);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "Get SRAM resc info failed, rc:%s\n",
+			    strerror(-rc));
+		return rc;
+	}
+
+	/* Allocate memory for RM QCAPS request */
+	cparms.nitems = max_types;
+	cparms.size = sizeof(struct tf_rm_resc_req_entry);
+	cparms.alignment = 0;
+	rc = tfp_calloc(&cparms);
+	if (rc)
+		return rc;
+
+	query = (struct tf_rm_resc_req_entry *)cparms.mem_va;
+	tfp->bp = parms->bp;
+
+	/* Get Firmware Capabilities */
+	rc = tf_msg_session_resc_qcaps(tfp,
+				       &dev,
+				       parms->dir,
+				       max_types,
+				       query,
+				       &resv_strategy,
+				       &parms->sram_profile);
+	if (rc)
+		return rc;
+
+	if (dev.ops->tf_dev_get_sram_resources == NULL) {
+		rc = -EOPNOTSUPP;
+		TFP_DRV_LOG(ERR,
+			    "%s: Operation not supported, rc:%s\n",
+			    tf_dir_2_str(parms->dir),
+			    strerror(-rc));
+		return -EOPNOTSUPP;
+	}
+
+	rc = dev.ops->tf_dev_get_sram_resources((void *)query,
+			parms->bank_resc_count,
+			&parms->dynamic_sram_capable);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "Get SRAM resc info failed, rc:%s\n",
+			    strerror(-rc));
+		return rc;
+	}
+
+	return 0;
+}

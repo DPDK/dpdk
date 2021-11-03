@@ -551,7 +551,8 @@ tf_rm_create_db(struct tf *tfp,
 				       parms->dir,
 				       max_types,
 				       query,
-				       &resv_strategy);
+				       &resv_strategy,
+				       NULL);
 	if (rc)
 		return rc;
 

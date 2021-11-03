@@ -380,38 +380,19 @@ tf_msg_session_resc_qcaps(struct tf *tfp,
 			  enum tf_dir dir,
 			  uint16_t size,
 			  struct tf_rm_resc_req_entry *query,
-			  enum tf_rm_resc_resv_strategy *resv_strategy)
+			  enum tf_rm_resc_resv_strategy *resv_strategy,
+			  uint8_t *sram_profile)
 {
 	int rc;
 	int i;
 	struct tfp_send_msg_parms parms = { 0 };
 	struct hwrm_tf_session_resc_qcaps_input req = { 0 };
 	struct hwrm_tf_session_resc_qcaps_output resp = { 0 };
-	uint8_t fw_session_id;
 	struct tf_msg_dma_buf qcaps_buf = { 0 };
 	struct tf_rm_resc_req_entry *data;
 	int dma_size;
-	struct tf_session *tfs;
-
-	/* Retrieve the session information */
-	rc = tf_session_get_session_internal(tfp, &tfs);
-	if (rc) {
-		TFP_DRV_LOG(ERR,
-			    "Failed to lookup session, rc:%s\n",
-			    strerror(-rc));
-		return rc;
-	}
 
 	TF_CHECK_PARMS3(tfp, query, resv_strategy);
-
-	rc = tf_session_get_fw_session_id(tfp, &fw_session_id);
-	if (rc) {
-		TFP_DRV_LOG(ERR,
-			    "%s: Unable to lookup FW id, rc:%s\n",
-			    tf_dir_2_str(dir),
-			    strerror(-rc));
-		return rc;
-	}
 
 	/* Prepare DMA buffer */
 	dma_size = size * sizeof(struct tf_rm_resc_req_entry);
@@ -420,7 +401,7 @@ tf_msg_session_resc_qcaps(struct tf *tfp,
 		return rc;
 
 	/* Populate the request */
-	req.fw_session_id = tfp_cpu_to_le_32(fw_session_id);
+	req.fw_session_id = 0;
 	req.flags = tfp_cpu_to_le_16(dir);
 	req.qcaps_size = size;
 	req.qcaps_addr = tfp_cpu_to_le_64(qcaps_buf.pa_addr);
@@ -459,6 +440,9 @@ tf_msg_session_resc_qcaps(struct tf *tfp,
 
 	*resv_strategy = resp.flags &
 	      HWRM_TF_SESSION_RESC_QCAPS_OUTPUT_FLAGS_SESS_RESV_STRATEGY_MASK;
+
+	if (sram_profile != NULL)
+		*sram_profile = resp.sram_profile;
 
 cleanup:
 	tf_msg_free_dma_buf(&qcaps_buf);

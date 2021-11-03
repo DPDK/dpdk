@@ -398,6 +398,53 @@ static int tf_dev_p58_map_hcapi_caps(uint64_t hcapi_caps,
 }
 
 /**
+ * Device specific function that retrieve the sram resource
+ *
+ * [in] query
+ *   Point to resources query result
+ *
+ * [out] sram_bank_caps
+ *   Pointer to SRAM bank capabilities
+ *
+ * [out] dynamic_sram_capable
+ *   Pointer to dynamic sram capable
+ *
+ * Returns
+ *   - (0) if successful.
+ *   - (-EINVAL) on failure.
+ */
+static int tf_dev_p58_get_sram_resources(void *q,
+					 uint32_t *sram_bank_caps,
+					 bool *dynamic_sram_capable)
+{
+	uint32_t i;
+	struct tf_rm_resc_req_entry *query = q;
+
+	for (i = 0; i < CFA_RESOURCE_TYPE_P58_LAST + 1; i++) {
+		switch (query[i].type) {
+		case CFA_RESOURCE_TYPE_P58_SRAM_BANK_0:
+			sram_bank_caps[0] = query[i].max;
+			break;
+		case CFA_RESOURCE_TYPE_P58_SRAM_BANK_1:
+			sram_bank_caps[1] = query[i].max;
+			break;
+		case CFA_RESOURCE_TYPE_P58_SRAM_BANK_2:
+			sram_bank_caps[2] = query[i].max;
+			break;
+		case CFA_RESOURCE_TYPE_P58_SRAM_BANK_3:
+			sram_bank_caps[3] = query[i].max;
+			break;
+		default:
+			break;
+		}
+	}
+
+	*dynamic_sram_capable = false;
+
+	return 0;
+}
+
+/**
  * Truflow P58 device specific functions
  */
 const struct tf_dev_ops tf_dev_ops_p58_init = {
@@ -447,7 +494,8 @@ const struct tf_dev_ops tf_dev_ops_p58_init = {
 	.tf_dev_get_global_cfg = NULL,
 	.tf_dev_get_mailbox = tf_dev_p58_get_mailbox,
 	.tf_dev_word_align = NULL,
-	.tf_dev_map_hcapi_caps = tf_dev_p58_map_hcapi_caps
+	.tf_dev_map_hcapi_caps = tf_dev_p58_map_hcapi_caps,
+	.tf_dev_get_sram_resources = tf_dev_p58_get_sram_resources
 };
 
 /**
@@ -511,5 +559,6 @@ const struct tf_dev_ops tf_dev_ops_p58 = {
 	.tf_dev_get_mailbox = tf_dev_p58_get_mailbox,
 	.tf_dev_word_align = tf_dev_p58_word_align,
 	.tf_dev_cfa_key_hash = hcapi_cfa_p58_key_hash,
-	.tf_dev_map_hcapi_caps = tf_dev_p58_map_hcapi_caps
+	.tf_dev_map_hcapi_caps = tf_dev_p58_map_hcapi_caps,
+	.tf_dev_get_sram_resources = tf_dev_p58_get_sram_resources
 };

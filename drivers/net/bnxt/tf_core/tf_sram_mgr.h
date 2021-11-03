@@ -28,16 +28,6 @@
 
 #define TF_SRAM_MGR_BLOCK_SZ_BYTES 64
 #define TF_SRAM_MGR_MIN_SLICE_BYTES 8
-/**
- * Bank identifier
- */
-enum tf_sram_bank_id {
-	TF_SRAM_BANK_ID_0,		/**< SRAM Bank 0 id */
-	TF_SRAM_BANK_ID_1,		/**< SRAM Bank 1 id */
-	TF_SRAM_BANK_ID_2,		/**< SRAM Bank 2 id */
-	TF_SRAM_BANK_ID_3,		/**< SRAM Bank 3 id */
-	TF_SRAM_BANK_ID_MAX		/**< SRAM Bank index limit */
-};
 
 /**
  * TF slice size.

@@ -1081,6 +1081,26 @@ struct tf_dev_ops {
 				     uint32_t *tcam_caps,
 				     uint32_t *tbl_caps,
 				     uint32_t *em_caps);
+
+	/**
+	 * Device specific function that retrieve the sram resource
+	 *
+	 * [in] query
+	 *   Point to resources query result
+	 *
+	 * [out] sram_bank_caps
+	 *   Pointer to SRAM bank capabilities
+	 *
+	 * [out] dynamic_sram_capable
+	 *   Pointer to dynamic sram capable
+	 *
+	 * Returns
+	 *   - (0) if successful.
+	 *   - (-EINVAL) on failure.
+	 */
+	int (*tf_dev_get_sram_resources)(void *query,
+					 uint32_t *sram_bank_caps,
+					 bool *dynamic_sram_capable);
 };
 
 /**

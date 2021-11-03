@@ -158,6 +158,9 @@ int tf_msg_session_qcfg(struct tf *tfp);
  * [out] resv_strategy
  *   Pointer to the reservation strategy
  *
+ * [out] sram_profile
+ *   Pointer to the sram profile
+ *
  * Returns:
  *   0 on Success else internal Truflow error
  */
@@ -166,7 +169,8 @@ int tf_msg_session_resc_qcaps(struct tf *tfp,
 			      enum tf_dir dir,
 			      uint16_t size,
 			      struct tf_rm_resc_req_entry *query,
-			      enum tf_rm_resc_resv_strategy *resv_strategy);
+			      enum tf_rm_resc_resv_strategy *resv_strategy,
+			      uint8_t *sram_profile);
 
 /**
  * Sends session HW resource allocation request to TF Firmware
