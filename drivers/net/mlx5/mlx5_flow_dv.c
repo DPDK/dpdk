@@ -5574,6 +5574,10 @@ flow_dv_validate_action_sample(uint64_t *action_flags,
 					  RTE_FLOW_ERROR_TYPE_ACTION, action,
 					  "wrong action order, jump should "
 					  "be after sample action");
+	if (*action_flags & MLX5_FLOW_ACTION_CT)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ACTION, action,
+					  "Sample after CT not supported");
 	act = sample->actions;
 	for (; act->type != RTE_FLOW_ACTION_TYPE_END; act++) {
 		if (actions_n == MLX5_DV_MAX_NUMBER_OF_ACTIONS)

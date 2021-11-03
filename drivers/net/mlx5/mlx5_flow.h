@@ -109,6 +109,7 @@ enum mlx5_feature_name {
 	MLX5_MTR_ID,
 	MLX5_ASO_FLOW_HIT,
 	MLX5_ASO_CONNTRACK,
+	MLX5_SAMPLE_ID,
 };
 
 /* Default queue number. */
