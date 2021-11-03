@@ -86,6 +86,15 @@ The application supports two modes of operation: poll mode and event mode.
   threads and supports inline protocol only.** It also provides infrastructure for
   non-internal port however does not define any worker threads.
 
+  Event mode also supports event vectorization. The event devices, ethernet device
+  pairs which support the capability ``RTE_EVENT_ETH_RX_ADAPTER_CAP_EVENT_VECTOR`` can
+  aggregate packets based on flow characteristics and generate a ``rte_event``
+  containing ``rte_event_vector``.
+  The aggregation size and timeout can be given using command line options vector-size
+  (default vector-size is 16) and vector-tmo (default vector-tmo is 102400ns).
+  By default event vectorization is disabled and it can be enabled using event-vector
+  option.
+
 Additionally the event mode introduces two submodes of processing packets:
 
 * Driver submode: This submode has bare minimum changes in the application to support
@@ -299,7 +308,8 @@ event app mode::
 
     ./<build_dir>/examples/dpdk-ipsec-secgw -c 0x3 -- -P -p 0x3 -u 0x1       \
            -f /path/to/config_file --transfer-mode event \
-           --event-schedule-type parallel                \
+           --event-schedule-type parallel --event-vector --vector-size 32    \
+           --vector-tmo 102400                           \
 
 where each option means:
 
@@ -317,6 +327,12 @@ where each option means:
 *   The ``--transfer-mode`` option selects event mode for processing packets.
 
 *   The ``--event-schedule-type`` option selects parallel ordering of event queues.
+
+*   The ``--event-vector`` option enables event vectorization.
+
+*   The ``--vector-size`` option specifies max vector size.
+
+*   The ``--vector-tmo`` option specifies max timeout in nanoseconds for vectorization.
 
 
 Refer to the *DPDK Getting Started Guide* for general information on running

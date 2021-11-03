@@ -171,10 +171,18 @@ struct eventmode_conf {
 		 * When enabled, all event queues need to be mapped to
 		 * each event port
 		 */
+			uint64_t event_vector                   : 1;
+		/**<
+		 * Enable event vector, when enabled application can
+		 * receive vector of events.
+		 */
+			uint64_t vector_size                    : 16;
 		};
 		uint64_t u64;
 	} ext_params;
 		/**< 64 bit field to specify extended params */
+	uint64_t vector_tmo_ns;
+		/**< Max vector timeout in nanoseconds */
 };
 
 /**

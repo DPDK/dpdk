@@ -132,6 +132,8 @@ extern uint32_t single_sa_idx;
 
 extern volatile bool force_quit;
 
+extern uint32_t nb_bufs_in_pool;
+
 static inline uint8_t
 is_unprotected_port(uint16_t port_id)
 {

@@ -115,6 +115,9 @@ struct flow_info flow_info_tbl[RTE_MAX_ETHPORTS];
 #define CMD_LINE_OPT_REASSEMBLE		"reassemble"
 #define CMD_LINE_OPT_MTU		"mtu"
 #define CMD_LINE_OPT_FRAG_TTL		"frag-ttl"
+#define CMD_LINE_OPT_EVENT_VECTOR	"event-vector"
+#define CMD_LINE_OPT_VECTOR_SIZE	"vector-size"
+#define CMD_LINE_OPT_VECTOR_TIMEOUT	"vector-tmo"
 
 #define CMD_LINE_ARG_EVENT	"event"
 #define CMD_LINE_ARG_POLL	"poll"
@@ -139,6 +142,9 @@ enum {
 	CMD_LINE_OPT_REASSEMBLE_NUM,
 	CMD_LINE_OPT_MTU_NUM,
 	CMD_LINE_OPT_FRAG_TTL_NUM,
+	CMD_LINE_OPT_EVENT_VECTOR_NUM,
+	CMD_LINE_OPT_VECTOR_SIZE_NUM,
+	CMD_LINE_OPT_VECTOR_TIMEOUT_NUM,
 };
 
 static const struct option lgopts[] = {
@@ -152,6 +158,9 @@ static const struct option lgopts[] = {
 	{CMD_LINE_OPT_REASSEMBLE, 1, 0, CMD_LINE_OPT_REASSEMBLE_NUM},
 	{CMD_LINE_OPT_MTU, 1, 0, CMD_LINE_OPT_MTU_NUM},
 	{CMD_LINE_OPT_FRAG_TTL, 1, 0, CMD_LINE_OPT_FRAG_TTL_NUM},
+	{CMD_LINE_OPT_EVENT_VECTOR, 0, 0, CMD_LINE_OPT_EVENT_VECTOR_NUM},
+	{CMD_LINE_OPT_VECTOR_SIZE, 1, 0, CMD_LINE_OPT_VECTOR_SIZE_NUM},
+	{CMD_LINE_OPT_VECTOR_TIMEOUT, 1, 0, CMD_LINE_OPT_VECTOR_TIMEOUT_NUM},
 	{NULL, 0, 0, 0}
 };
 
@@ -164,7 +173,7 @@ static int32_t promiscuous_on = 1;
 static int32_t numa_on = 1; /**< NUMA is enabled by default. */
 static uint32_t nb_lcores;
 static uint32_t single_sa;
-static uint32_t nb_bufs_in_pool;
+uint32_t nb_bufs_in_pool;
 
 /*
  * RX/TX HW offload capabilities to enable/use on ethernet ports.
@@ -1440,6 +1449,9 @@ print_usage(const char *prgname)
 		" [--" CMD_LINE_OPT_TX_OFFLOAD " TX_OFFLOAD_MASK]"
 		" [--" CMD_LINE_OPT_REASSEMBLE " REASSEMBLE_TABLE_SIZE]"
 		" [--" CMD_LINE_OPT_MTU " MTU]"
+		" [--event-vector]"
+		" [--vector-size SIZE]"
+		" [--vector-tmo TIMEOUT in ns]"
 		"\n\n"
 		"  -p PORTMASK: Hexadecimal bitmask of ports to configure\n"
 		"  -P : Enable promiscuous mode\n"
@@ -1495,6 +1507,10 @@ print_usage(const char *prgname)
 		"  --" CMD_LINE_OPT_FRAG_TTL " FRAG_TTL_NS"
 		": fragments lifetime in nanoseconds, default\n"
 		"    and maximum value is 10.000.000.000 ns (10 s)\n"
+		"  --event-vector enables event vectorization\n"
+		"  --vector-size Max vector size (default value: 16)\n"
+		"  --vector-tmo Max vector timeout in nanoseconds"
+		"    (default value: 102400)\n"
 		"\n",
 		prgname);
 }
@@ -1661,6 +1677,7 @@ parse_args(int32_t argc, char **argv, struct eh_conf *eh_conf)
 	int32_t option_index;
 	char *prgname = argv[0];
 	int32_t f_present = 0;
+	struct eventmode_conf *em_conf = NULL;
 
 	argvopt = argv;
 
@@ -1854,6 +1871,28 @@ parse_args(int32_t argc, char **argv, struct eh_conf *eh_conf)
 				return -1;
 			}
 			frag_ttl_ns = ret;
+			break;
+		case CMD_LINE_OPT_EVENT_VECTOR_NUM:
+			em_conf = eh_conf->mode_params;
+			em_conf->ext_params.event_vector = 1;
+			break;
+		case CMD_LINE_OPT_VECTOR_SIZE_NUM:
+			ret = parse_decimal(optarg);
+
+			if (ret > MAX_PKT_BURST) {
+				printf("Invalid argument for \'%s\': %s\n",
+					CMD_LINE_OPT_VECTOR_SIZE, optarg);
+				print_usage(prgname);
+				return -1;
+			}
+			em_conf = eh_conf->mode_params;
+			em_conf->ext_params.vector_size = ret;
+			break;
+		case CMD_LINE_OPT_VECTOR_TIMEOUT_NUM:
+			ret = parse_decimal(optarg);
+
+			em_conf = eh_conf->mode_params;
+			em_conf->vector_tmo_ns = ret;
 			break;
 		default:
 			print_usage(prgname);
