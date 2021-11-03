@@ -16,20 +16,21 @@ int32_t ulp_bit_alloc_list_alloc(struct bit_alloc_list *blist,
 {
 	uint64_t bentry;
 	uint32_t idx = 0, jdx = 0;
+	uint32_t bsize_64 = blist->bsize / ULP_64B_IN_BYTES;
 
 	/* Iterate all numbers that have all 1's */
 	do {
 		bentry = blist->bdata[idx++];
-	} while (bentry == -1UL && idx < blist->bsize);
+	} while (bentry == -1UL && idx <= bsize_64);
 
-	if (idx < blist->bsize) {
+	if (idx <= bsize_64) {
 		if (bentry)
 			jdx = __builtin_clzl(~bentry);
 		*index = ((idx - 1) * ULP_INDEX_BITMAP_SIZE) + jdx;
 		ULP_INDEX_BITMAP_SET(blist->bdata[(idx - 1)], jdx);
 		return 0;
 	}
-	jdx = (uint32_t)(blist->bsize * ULP_INDEX_BITMAP_SIZE);
+	jdx = (uint32_t)(bsize_64 * ULP_INDEX_BITMAP_SIZE);
 	BNXT_TF_DBG(ERR, "bit allocator is full reached max:%x\n", jdx);
 	return -1;
 }
@@ -39,9 +40,10 @@ int32_t ulp_bit_alloc_list_dealloc(struct bit_alloc_list *blist,
 				   uint32_t index)
 {
 	uint32_t idx = 0, jdx;
+	uint32_t bsize_64 = blist->bsize / ULP_64B_IN_BYTES;
 
 	idx = index / ULP_INDEX_BITMAP_SIZE;
-	if (idx >= blist->bsize) {
+	if (idx >= bsize_64) {
 		BNXT_TF_DBG(ERR, "invalid bit index %x:%x\n", idx,
 			    blist->bsize);
 		return -EINVAL;
@@ -127,7 +129,8 @@ ulp_gen_hash_tbl_list_init(struct ulp_hash_create_params *cparams,
 	hash_tbl->hash_mask = size - 1;
 
 	/* allocate the memory for the bit allocator */
-	size = (cparams->num_key_entries / sizeof(uint64_t)) + 1;
+	size = (cparams->num_key_entries / sizeof(uint64_t));
+	size = ULP_BYTE_ROUND_OFF_8(size);
 	hash_tbl->bit_list.bsize = size;
 	hash_tbl->bit_list.bdata = rte_zmalloc("Generic hash bit alloc", size,
 					       ULP_BUFFER_ALIGN_64_BYTE);
@@ -311,7 +314,12 @@ ulp_gen_hash_tbl_list_add(struct ulp_gen_hash_tbl *hash_tbl,
 		BNXT_TF_DBG(ERR, "Error in bit list alloc\n");
 		return -ENOMEM;
 	}
-
+	if (key_index > hash_tbl->num_key_entries) {
+		BNXT_TF_DBG(ERR, "reached max size %u:%u\n", key_index,
+			    hash_tbl->num_key_entries);
+		ulp_bit_alloc_list_dealloc(&hash_tbl->bit_list, key_index);
+		return -ENOMEM;
+	}
 	/* Update the hash entry */
 	ULP_HASH_BUCKET_MARK_INUSE(bucket, (uint16_t)key_index);
 
