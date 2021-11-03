@@ -164,21 +164,14 @@ mlx5_txpp_doorbell_rearm_queue(struct mlx5_dev_ctx_shared *sh, uint16_t ci)
 		uint32_t w32[2];
 		uint64_t w64;
 	} cs;
-	void *reg_addr;
 
 	wq->sq_ci = ci + 1;
 	cs.w32[0] = rte_cpu_to_be_32(rte_be_to_cpu_32
 			(wqe[ci & (wq->sq_size - 1)].ctrl[0]) | (ci - 1) << 8);
 	cs.w32[1] = wqe[ci & (wq->sq_size - 1)].ctrl[1];
 	/* Update SQ doorbell record with new SQ ci. */
-	rte_compiler_barrier();
-	*wq->sq_obj.db_rec = rte_cpu_to_be_32(wq->sq_ci);
-	/* Make sure the doorbell record is updated. */
-	rte_wmb();
-	/* Write to doorbel register to start processing. */
-	reg_addr = mlx5_os_get_devx_uar_reg_addr(sh->tx_uar);
-	__mlx5_uar_write64_relaxed(cs.w64, reg_addr, NULL);
-	rte_wmb();
+	mlx5_doorbell_ring(&sh->tx_uar.bf_db, cs.w64, wq->sq_ci,
+			   wq->sq_obj.db_rec, !sh->tx_uar.dbnc);
 }
 
 static void
@@ -233,14 +226,15 @@ mlx5_txpp_create_rearm_queue(struct mlx5_dev_ctx_shared *sh)
 		.tis_num = sh->tis[0]->id,
 		.wq_attr = (struct mlx5_devx_wq_attr){
 			.pd = sh->cdev->pdn,
-			.uar_page = mlx5_os_get_devx_uar_page_id(sh->tx_uar),
+			.uar_page =
+				mlx5_os_get_devx_uar_page_id(sh->tx_uar.obj),
 		},
 		.ts_format = mlx5_ts_format_conv
 				       (sh->cdev->config.hca_attr.sq_ts_format),
 	};
 	struct mlx5_devx_modify_sq_attr msq_attr = { 0 };
 	struct mlx5_devx_cq_attr cq_attr = {
-		.uar_page_id = mlx5_os_get_devx_uar_page_id(sh->tx_uar),
+		.uar_page_id = mlx5_os_get_devx_uar_page_id(sh->tx_uar.obj),
 	};
 	struct mlx5_txpp_wq *wq = &sh->txpp.rearm_queue;
 	int ret;
@@ -394,7 +388,7 @@ mlx5_txpp_create_clock_queue(struct mlx5_dev_ctx_shared *sh)
 	struct mlx5_devx_cq_attr cq_attr = {
 		.use_first_only = 1,
 		.overrun_ignore = 1,
-		.uar_page_id = mlx5_os_get_devx_uar_page_id(sh->tx_uar),
+		.uar_page_id = mlx5_os_get_devx_uar_page_id(sh->tx_uar.obj),
 	};
 	struct mlx5_txpp_wq *wq = &sh->txpp.clock_queue;
 	int ret;
@@ -444,7 +438,7 @@ mlx5_txpp_create_clock_queue(struct mlx5_dev_ctx_shared *sh)
 	sq_attr.cqn = wq->cq_obj.cq->id;
 	sq_attr.packet_pacing_rate_limit_index = sh->txpp.pp_id;
 	sq_attr.wq_attr.cd_slave = 1;
-	sq_attr.wq_attr.uar_page = mlx5_os_get_devx_uar_page_id(sh->tx_uar);
+	sq_attr.wq_attr.uar_page = mlx5_os_get_devx_uar_page_id(sh->tx_uar.obj);
 	sq_attr.wq_attr.pd = sh->cdev->pdn;
 	sq_attr.ts_format =
 		mlx5_ts_format_conv(sh->cdev->config.hca_attr.sq_ts_format);
@@ -479,26 +473,14 @@ error:
 static inline void
 mlx5_txpp_cq_arm(struct mlx5_dev_ctx_shared *sh)
 {
-	void *base_addr;
-
 	struct mlx5_txpp_wq *aq = &sh->txpp.rearm_queue;
 	uint32_t arm_sn = aq->arm_sn << MLX5_CQ_SQN_OFFSET;
 	uint32_t db_hi = arm_sn | MLX5_CQ_DBR_CMD_ALL | aq->cq_ci;
 	uint64_t db_be =
 		rte_cpu_to_be_64(((uint64_t)db_hi << 32) | aq->cq_obj.cq->id);
-	base_addr = mlx5_os_get_devx_uar_base_addr(sh->tx_uar);
-	uint32_t *addr = RTE_PTR_ADD(base_addr, MLX5_CQ_DOORBELL);
 
-	rte_compiler_barrier();
-	aq->cq_obj.db_rec[MLX5_CQ_ARM_DB] = rte_cpu_to_be_32(db_hi);
-	rte_wmb();
-#ifdef RTE_ARCH_64
-	*(uint64_t *)addr = db_be;
-#else
-	*(uint32_t *)addr = db_be;
-	rte_io_wmb();
-	*((uint32_t *)addr + 1) = db_be >> 32;
-#endif
+	mlx5_doorbell_ring(&sh->tx_uar.cq_db, db_be, db_hi,
+			   &aq->cq_obj.db_rec[MLX5_CQ_ARM_DB], 0);
 	aq->arm_sn++;
 }
 

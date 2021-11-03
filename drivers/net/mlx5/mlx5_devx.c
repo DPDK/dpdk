@@ -363,7 +363,7 @@ mlx5_rxq_create_devx_cq_resources(struct mlx5_rxq_priv *rxq)
 			"Port %u Rx CQE compression is disabled for LRO.",
 			port_id);
 	}
-	cq_attr.uar_page_id = mlx5_os_get_devx_uar_page_id(sh->devx_rx_uar);
+	cq_attr.uar_page_id = mlx5_os_get_devx_uar_page_id(sh->rx_uar.obj);
 	log_cqe_n = log2above(cqe_n);
 	/* Create CQ using DevX API. */
 	ret = mlx5_devx_cq_create(sh->cdev->ctx, &rxq_ctrl->obj->cq_obj,
@@ -374,7 +374,7 @@ mlx5_rxq_create_devx_cq_resources(struct mlx5_rxq_priv *rxq)
 	rxq_data->cqes = (volatile struct mlx5_cqe (*)[])
 							(uintptr_t)cq_obj->cqes;
 	rxq_data->cq_db = cq_obj->db_rec;
-	rxq_data->cq_uar = mlx5_os_get_devx_uar_base_addr(sh->devx_rx_uar);
+	rxq_data->uar_data = sh->rx_uar.cq_db;
 	rxq_data->cqe_n = log_cqe_n;
 	rxq_data->cqn = cq_obj->cq->id;
 	rxq_data->cq_ci = 0;
@@ -1185,6 +1185,7 @@ mlx5_txq_create_devx_sq_resources(struct rte_eth_dev *dev, uint16_t idx,
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_common_device *cdev = priv->sh->cdev;
+	struct mlx5_uar *uar = &priv->sh->tx_uar;
 	struct mlx5_txq_data *txq_data = (*priv->txqs)[idx];
 	struct mlx5_txq_ctrl *txq_ctrl =
 			container_of(txq_data, struct mlx5_txq_ctrl, txq);
@@ -1198,8 +1199,7 @@ mlx5_txq_create_devx_sq_resources(struct rte_eth_dev *dev, uint16_t idx,
 		.tis_lst_sz = 1,
 		.wq_attr = (struct mlx5_devx_wq_attr){
 			.pd = cdev->pdn,
-			.uar_page =
-				 mlx5_os_get_devx_uar_page_id(priv->sh->tx_uar),
+			.uar_page = mlx5_os_get_devx_uar_page_id(uar->obj),
 		},
 		.ts_format =
 			mlx5_ts_format_conv(cdev->config.hca_attr.sq_ts_format),
@@ -1239,10 +1239,11 @@ mlx5_txq_devx_obj_new(struct rte_eth_dev *dev, uint16_t idx)
 	rte_errno = ENOMEM;
 	return -rte_errno;
 #else
+	struct mlx5_proc_priv *ppriv = MLX5_PROC_PRIV(PORT_ID(priv));
 	struct mlx5_dev_ctx_shared *sh = priv->sh;
 	struct mlx5_txq_obj *txq_obj = txq_ctrl->obj;
 	struct mlx5_devx_cq_attr cq_attr = {
-		.uar_page_id = mlx5_os_get_devx_uar_page_id(sh->tx_uar),
+		.uar_page_id = mlx5_os_get_devx_uar_page_id(sh->tx_uar.obj),
 	};
 	uint32_t cqe_n, log_desc_n;
 	uint32_t wqe_n, wqe_size;
@@ -1250,6 +1251,8 @@ mlx5_txq_devx_obj_new(struct rte_eth_dev *dev, uint16_t idx)
 
 	MLX5_ASSERT(txq_data);
 	MLX5_ASSERT(txq_obj);
+	MLX5_ASSERT(rte_eal_process_type() == RTE_PROC_PRIMARY);
+	MLX5_ASSERT(ppriv);
 	txq_obj->txq_ctrl = txq_ctrl;
 	txq_obj->dev = dev;
 	cqe_n = (1UL << txq_data->elts_n) / MLX5_TX_COMP_THRESH +
@@ -1322,6 +1325,8 @@ mlx5_txq_devx_obj_new(struct rte_eth_dev *dev, uint16_t idx)
 	txq_data->qp_db = &txq_obj->sq_obj.db_rec[MLX5_SND_DBR];
 	*txq_data->qp_db = 0;
 	txq_data->qp_num_8s = txq_obj->sq_obj.sq->id << 8;
+	txq_data->db_heu = sh->cdev->config.dbnc == MLX5_TXDB_HEURISTIC;
+	txq_data->db_nc = sh->tx_uar.dbnc;
 	/* Change Send Queue state to Ready-to-Send. */
 	ret = mlx5_txq_devx_modify(txq_obj, MLX5_TXQ_MOD_RST2RDY, 0);
 	if (ret) {
@@ -1340,10 +1345,9 @@ mlx5_txq_devx_obj_new(struct rte_eth_dev *dev, uint16_t idx)
 	if (!priv->sh->tdn)
 		priv->sh->tdn = priv->sh->td->id;
 #endif
-	MLX5_ASSERT(sh->tx_uar && mlx5_os_get_devx_uar_reg_addr(sh->tx_uar));
 	txq_ctrl->uar_mmap_offset =
-				mlx5_os_get_devx_uar_mmap_offset(sh->tx_uar);
-	txq_uar_init(txq_ctrl, mlx5_os_get_devx_uar_reg_addr(sh->tx_uar));
+			mlx5_os_get_devx_uar_mmap_offset(sh->tx_uar.obj);
+	ppriv->uar_table[txq_data->idx] = sh->tx_uar.bf_db;
 	dev->data->tx_queue_state[idx] = RTE_ETH_QUEUE_STATE_STARTED;
 	return 0;
 error:

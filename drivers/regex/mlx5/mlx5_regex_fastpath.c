@@ -168,24 +168,20 @@ prep_one(struct mlx5_regex_priv *priv, struct mlx5_regex_qp *qp,
 }
 
 static inline void
-send_doorbell(struct mlx5_regex_priv *priv, struct mlx5_regex_hw_qp *qp_obj)
+send_doorbell(struct mlx5_regex_priv *priv, struct mlx5_regex_hw_qp *qp)
 {
-	struct mlx5dv_devx_uar *uar = priv->uar;
-	size_t wqe_offset = (qp_obj->db_pi & (qp_size_get(qp_obj) - 1)) *
-		(MLX5_SEND_WQE_BB << (priv->has_umr ? 2 : 0)) +
-		(priv->has_umr ? MLX5_REGEX_UMR_WQE_SIZE : 0);
-	uint8_t *wqe = (uint8_t *)(uintptr_t)qp_obj->qp_obj.wqes + wqe_offset;
+	size_t wqe_offset = (qp->db_pi & (qp_size_get(qp) - 1)) *
+			    (MLX5_SEND_WQE_BB << (priv->has_umr ? 2 : 0)) +
+			    (priv->has_umr ? MLX5_REGEX_UMR_WQE_SIZE : 0);
+	uint8_t *wqe = (uint8_t *)(uintptr_t)qp->qp_obj.wqes + wqe_offset;
+	uint32_t actual_pi = (priv->has_umr ? (qp->db_pi * 4 + 3) : qp->db_pi) &
+			     MLX5_REGEX_MAX_WQE_INDEX;
+
 	/* Or the fm_ce_se instead of set, avoid the fence be cleared. */
 	((struct mlx5_wqe_ctrl_seg *)wqe)->fm_ce_se |= MLX5_WQE_CTRL_CQ_UPDATE;
-	uint64_t *doorbell_addr =
-		(uint64_t *)((uint8_t *)uar->base_addr + 0x800);
-	rte_io_wmb();
-	qp_obj->qp_obj.db_rec[MLX5_SND_DBR] = rte_cpu_to_be_32((priv->has_umr ?
-					(qp_obj->db_pi * 4 + 3) : qp_obj->db_pi)
-					& MLX5_REGEX_MAX_WQE_INDEX);
-	rte_wmb();
-	*doorbell_addr = *(volatile uint64_t *)wqe;
-	rte_wmb();
+	mlx5_doorbell_ring(&priv->uar.bf_db, *(volatile uint64_t *)wqe,
+			   actual_pi, &qp->qp_obj.db_rec[MLX5_SND_DBR],
+			   !priv->uar.dbnc);
 }
 
 static inline int

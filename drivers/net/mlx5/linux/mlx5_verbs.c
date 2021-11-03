@@ -16,6 +16,7 @@
 #include <rte_malloc.h>
 #include <ethdev_driver.h>
 #include <rte_common.h>
+#include <rte_eal_paging.h>
 
 #include <mlx5_glue.h>
 #include <mlx5_common.h>
@@ -367,7 +368,10 @@ mlx5_rxq_ibv_obj_new(struct mlx5_rxq_priv *rxq)
 	rxq_data->cqe_n = log2above(cq_info.cqe_cnt);
 	rxq_data->cq_db = cq_info.dbrec;
 	rxq_data->cqes = (volatile struct mlx5_cqe (*)[])(uintptr_t)cq_info.buf;
-	rxq_data->cq_uar = cq_info.cq_uar;
+	rxq_data->uar_data.db = RTE_PTR_ADD(cq_info.cq_uar, MLX5_CQ_DOORBELL);
+#ifndef RTE_ARCH_64
+	rxq_data->uar_data.sl_p = &priv->sh->uar_lock_cq;
+#endif
 	rxq_data->cqn = cq_info.cqn;
 	/* Create WQ (RQ) using Verbs API. */
 	tmpl->wq = mlx5_rxq_ibv_wq_create(rxq);
@@ -898,6 +902,42 @@ mlx5_txq_ibv_qp_create(struct rte_eth_dev *dev, uint16_t idx)
 }
 
 /**
+ * Initialize Tx UAR registers for primary process.
+ *
+ * @param txq_ctrl
+ *   Pointer to Tx queue control structure.
+ * @param bf_reg
+ *   BlueFlame register from Verbs UAR.
+ */
+static void
+mlx5_txq_ibv_uar_init(struct mlx5_txq_ctrl *txq_ctrl, void *bf_reg)
+{
+	struct mlx5_priv *priv = txq_ctrl->priv;
+	struct mlx5_proc_priv *ppriv = MLX5_PROC_PRIV(PORT_ID(priv));
+	const size_t page_size = rte_mem_page_size();
+	struct mlx5_txq_data *txq = &txq_ctrl->txq;
+	off_t uar_mmap_offset = txq_ctrl->uar_mmap_offset;
+#ifndef RTE_ARCH_64
+	unsigned int lock_idx;
+#endif
+
+	MLX5_ASSERT(rte_eal_process_type() == RTE_PROC_PRIMARY);
+	MLX5_ASSERT(ppriv);
+	if (page_size == (size_t)-1) {
+		DRV_LOG(ERR, "Failed to get mem page size");
+		rte_errno = ENOMEM;
+	}
+	txq->db_heu = priv->sh->cdev->config.dbnc == MLX5_TXDB_HEURISTIC;
+	txq->db_nc = mlx5_db_map_type_get(uar_mmap_offset, page_size);
+	ppriv->uar_table[txq->idx].db = bf_reg;
+#ifndef RTE_ARCH_64
+	/* Assign an UAR lock according to UAR page number. */
+	lock_idx = (uar_mmap_offset / page_size) & MLX5_UAR_PAGE_NUM_MASK;
+	ppriv->uar_table[txq->idx].sl_p = &priv->sh->uar_lock[lock_idx];
+#endif
+}
+
+/**
  * Create the Tx queue Verbs object.
  *
  * @param dev
@@ -1028,7 +1068,7 @@ mlx5_txq_ibv_obj_new(struct rte_eth_dev *dev, uint16_t idx)
 		rte_errno = EINVAL;
 		goto error;
 	}
-	txq_uar_init(txq_ctrl, qp.bf.reg);
+	mlx5_txq_ibv_uar_init(txq_ctrl, qp.bf.reg);
 	dev->data->tx_queue_state[idx] = RTE_ETH_QUEUE_STATE_STARTED;
 	return 0;
 error:

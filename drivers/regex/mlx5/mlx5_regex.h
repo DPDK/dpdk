@@ -55,7 +55,7 @@ struct mlx5_regex_priv {
 	uint16_t nb_max_matches; /* Max number of matches. */
 	enum mlx5_rxp_program_mode prog_mode;
 	uint32_t nb_engines; /* Number of RegEx engines. */
-	struct mlx5dv_devx_uar *uar; /* UAR object. */
+	struct mlx5_uar uar; /* UAR object. */
 	uint8_t is_bf2; /* The device is BF2 device. */
 	uint8_t has_umr; /* The device supports UMR. */
 	uint32_t mmo_regex_qp_cap:1;

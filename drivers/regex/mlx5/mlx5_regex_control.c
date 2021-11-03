@@ -77,7 +77,7 @@ static int
 regex_ctrl_create_cq(struct mlx5_regex_priv *priv, struct mlx5_regex_cq *cq)
 {
 	struct mlx5_devx_cq_attr attr = {
-		.uar_page_id = priv->uar->page_id,
+		.uar_page_id = mlx5_os_get_devx_uar_page_id(priv->uar.obj),
 	};
 	int ret;
 
@@ -136,7 +136,7 @@ regex_ctrl_create_hw_qp(struct mlx5_regex_priv *priv, struct mlx5_regex_qp *qp,
 #ifdef HAVE_IBV_FLOW_DV_SUPPORT
 	struct mlx5_devx_qp_attr attr = {
 		.cqn = qp->cq.cq_obj.cq->id,
-		.uar_index = priv->uar->page_id,
+		.uar_index = mlx5_os_get_devx_uar_page_id(priv->uar.obj),
 		.pd = priv->cdev->pdn,
 		.ts_format = mlx5_ts_format_conv
 				     (priv->cdev->config.hca_attr.qp_ts_format),

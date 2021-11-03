@@ -41,14 +41,13 @@ struct mlx5_compress_priv {
 	TAILQ_ENTRY(mlx5_compress_priv) next;
 	struct rte_compressdev *compressdev;
 	struct mlx5_common_device *cdev; /* Backend mlx5 device. */
-	void *uar;
+	struct mlx5_uar uar;
 	uint8_t min_block_size;
 	/* Minimum huffman block size supported by the device. */
 	struct rte_compressdev_config dev_config;
 	LIST_HEAD(xform_list, mlx5_compress_xform) xform_list;
 	rte_spinlock_t xform_sl;
-	volatile uint64_t *uar_addr;
-	/* HCA caps*/
+	/* HCA caps */
 	uint32_t mmo_decomp_sq:1;
 	uint32_t mmo_decomp_qp:1;
 	uint32_t mmo_comp_sq:1;
@@ -56,9 +55,6 @@ struct mlx5_compress_priv {
 	uint32_t mmo_dma_sq:1;
 	uint32_t mmo_dma_qp:1;
 	uint32_t log_block_sz;
-#ifndef RTE_ARCH_64
-	rte_spinlock_t uar32_sl;
-#endif /* RTE_ARCH_64 */
 };
 
 struct mlx5_compress_qp {
@@ -188,11 +184,11 @@ mlx5_compress_qp_setup(struct rte_compressdev *dev, uint16_t qp_id,
 	struct mlx5_compress_priv *priv = dev->data->dev_private;
 	struct mlx5_compress_qp *qp;
 	struct mlx5_devx_cq_attr cq_attr = {
-		.uar_page_id = mlx5_os_get_devx_uar_page_id(priv->uar),
+		.uar_page_id = mlx5_os_get_devx_uar_page_id(priv->uar.obj),
 	};
 	struct mlx5_devx_qp_attr qp_attr = {
 		.pd = priv->cdev->pdn,
-		.uar_index = mlx5_os_get_devx_uar_page_id(priv->uar),
+		.uar_index = mlx5_os_get_devx_uar_page_id(priv->uar.obj),
 		.user_index = qp_id,
 	};
 	uint32_t log_ops_n = rte_log2_u32(max_inflight_ops);
@@ -469,24 +465,6 @@ mlx5_compress_dseg_set(struct mlx5_compress_qp *qp,
 	return dseg->lkey;
 }
 
-/*
- * Provide safe 64bit store operation to mlx5 UAR region for both 32bit and
- * 64bit architectures.
- */
-static __rte_always_inline void
-mlx5_compress_uar_write(uint64_t val, struct mlx5_compress_priv *priv)
-{
-#ifdef RTE_ARCH_64
-	*priv->uar_addr = val;
-#else /* !RTE_ARCH_64 */
-	rte_spinlock_lock(&priv->uar32_sl);
-	*(volatile uint32_t *)priv->uar_addr = val;
-	rte_io_wmb();
-	*((volatile uint32_t *)priv->uar_addr + 1) = val >> 32;
-	rte_spinlock_unlock(&priv->uar32_sl);
-#endif
-}
-
 static uint16_t
 mlx5_compress_enqueue_burst(void *queue_pair, struct rte_comp_op **ops,
 			    uint16_t nb_ops)
@@ -547,11 +525,9 @@ mlx5_compress_enqueue_burst(void *queue_pair, struct rte_comp_op **ops,
 		qp->pi++;
 	} while (--remain);
 	qp->stats.enqueued_count += nb_ops;
-	rte_io_wmb();
-	qp->qp.db_rec[MLX5_SND_DBR] = rte_cpu_to_be_32(qp->pi);
-	rte_wmb();
-	mlx5_compress_uar_write(*(volatile uint64_t *)wqe, qp->priv);
-	rte_wmb();
+	mlx5_doorbell_ring(&qp->priv->uar.bf_db, *(volatile uint64_t *)wqe,
+			   qp->pi, &qp->qp.db_rec[MLX5_SND_DBR],
+			   !qp->priv->uar.dbnc);
 	return nb_ops;
 }
 
@@ -671,33 +647,6 @@ mlx5_compress_dequeue_burst(void *queue_pair, struct rte_comp_op **ops,
 	return i;
 }
 
-static void
-mlx5_compress_uar_release(struct mlx5_compress_priv *priv)
-{
-	if (priv->uar != NULL) {
-		mlx5_glue->devx_free_uar(priv->uar);
-		priv->uar = NULL;
-	}
-}
-
-static int
-mlx5_compress_uar_prepare(struct mlx5_compress_priv *priv)
-{
-	priv->uar = mlx5_devx_alloc_uar(priv->cdev);
-	if (priv->uar == NULL || mlx5_os_get_devx_uar_reg_addr(priv->uar) ==
-	    NULL) {
-		rte_errno = errno;
-		DRV_LOG(ERR, "Failed to allocate UAR.");
-		return -1;
-	}
-	priv->uar_addr = mlx5_os_get_devx_uar_reg_addr(priv->uar);
-	MLX5_ASSERT(priv->uar_addr);
-#ifndef RTE_ARCH_64
-	rte_spinlock_init(&priv->uar32_sl);
-#endif /* RTE_ARCH_64 */
-	return 0;
-}
-
 static int
 mlx5_compress_args_check_handler(const char *key, const char *val, void *opaque)
 {
@@ -801,7 +750,7 @@ mlx5_compress_dev_probe(struct mlx5_common_device *cdev)
 	priv->cdev = cdev;
 	priv->compressdev = compressdev;
 	priv->min_block_size = attr->compress_min_block_size;
-	if (mlx5_compress_uar_prepare(priv) != 0) {
+	if (mlx5_devx_uar_prepare(cdev, &priv->uar) != 0) {
 		rte_compressdev_pmd_destroy(priv->compressdev);
 		return -1;
 	}
@@ -824,7 +773,7 @@ mlx5_compress_dev_remove(struct mlx5_common_device *cdev)
 		TAILQ_REMOVE(&mlx5_compress_priv_list, priv, next);
 	pthread_mutex_unlock(&priv_list_lock);
 	if (priv) {
-		mlx5_compress_uar_release(priv);
+		mlx5_devx_uar_release(&priv->uar);
 		rte_compressdev_pmd_destroy(priv->compressdev);
 	}
 	return 0;

@@ -127,13 +127,9 @@ struct mlx5_rxq_data {
 	struct mlx5_rxq_stats stats;
 	rte_xmm_t mbuf_initializer; /* Default rearm/flags for vectorized Rx. */
 	struct rte_mbuf fake_mbuf; /* elts padding for vectorized Rx. */
-	void *cq_uar; /* Verbs CQ user access region. */
+	struct mlx5_uar_data uar_data; /* CQ doorbell. */
 	uint32_t cqn; /* CQ number. */
 	uint8_t cq_arm_sn; /* CQ arm seq number. */
-#ifndef RTE_ARCH_64
-	rte_spinlock_t *uar_lock_cq;
-	/* CQ (UAR) access lock required for 32bit implementations */
-#endif
 	uint32_t tunnel; /* Tunnel information. */
 	int timestamp_offset; /* Dynamic mbuf field for timestamp. */
 	uint64_t timestamp_rx_flag; /* Dynamic mbuf flag for timestamp. */

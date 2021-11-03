@@ -136,7 +136,7 @@ struct mlx5_vdpa_priv {
 	struct rte_vhost_memory *vmem;
 	struct mlx5dv_devx_event_channel *eventc;
 	struct mlx5dv_devx_event_channel *err_chnl;
-	struct mlx5dv_devx_uar *uar;
+	struct mlx5_uar uar;
 	struct rte_intr_handle *err_intr_handle;
 	struct mlx5_devx_obj *td;
 	struct mlx5_devx_obj *tiss[16]; /* TIS list for each LAG port. */

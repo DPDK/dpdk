@@ -280,6 +280,87 @@ struct mlx5_klm {
 	uint64_t address;
 };
 
+/* All UAR arguments using doorbell register in datapath. */
+struct mlx5_uar_data {
+	uint64_t *db;
+	/* The doorbell's virtual address mapped to the relevant HW UAR space.*/
+#ifndef RTE_ARCH_64
+	rte_spinlock_t *sl_p;
+	/* Pointer to UAR access lock required for 32bit implementations. */
+#endif /* RTE_ARCH_64 */
+};
+
+/* DevX UAR control structure. */
+struct mlx5_uar {
+	struct mlx5_uar_data bf_db; /* UAR data for Blueflame register. */
+	struct mlx5_uar_data cq_db; /* UAR data for CQ arm db register. */
+	void *obj; /* DevX UAR object. */
+	bool dbnc; /* Doorbell mapped to non-cached region. */
+#ifndef RTE_ARCH_64
+	rte_spinlock_t bf_sl;
+	rte_spinlock_t cq_sl;
+	/* UAR access locks required for 32bit implementations. */
+#endif /* RTE_ARCH_64 */
+};
+
+/**
+ * Ring a doorbell and flush the update if requested.
+ *
+ * @param uar
+ *   Pointer to UAR data structure.
+ * @param val
+ *   value to write in big endian format.
+ * @param index
+ *   Index of doorbell record.
+ * @param db_rec
+ *   Address of doorbell record.
+ * @param flash
+ *   Decide whether to flush the DB writing using a memory barrier.
+ */
+static __rte_always_inline void
+mlx5_doorbell_ring(struct mlx5_uar_data *uar, uint64_t val, uint32_t index,
+		   volatile uint32_t *db_rec, bool flash)
+{
+	rte_io_wmb();
+	*db_rec = rte_cpu_to_be_32(index);
+	/* Ensure ordering between DB record actual update and UAR access. */
+	rte_wmb();
+#ifdef RTE_ARCH_64
+	*uar->db = val;
+#else /* !RTE_ARCH_64 */
+	rte_spinlock_lock(uar->sl_p);
+	*(volatile uint32_t *)uar->db = val;
+	rte_io_wmb();
+	*((volatile uint32_t *)uar->db + 1) = val >> 32;
+	rte_spinlock_unlock(uar->sl_p);
+#endif
+	if (flash)
+		rte_wmb();
+}
+
+/**
+ * Get the doorbell register mapping type.
+ *
+ * @param uar_mmap_offset
+ *   Mmap offset of Verbs/DevX UAR.
+ * @param page_size
+ *   System page size
+ *
+ * @return
+ *   1 for non-cached, 0 otherwise.
+ */
+static inline uint16_t
+mlx5_db_map_type_get(off_t uar_mmap_offset, size_t page_size)
+{
+	off_t cmd = uar_mmap_offset / page_size;
+
+	cmd >>= MLX5_UAR_MMAP_CMD_SHIFT;
+	cmd &= MLX5_UAR_MMAP_CMD_MASK;
+	if (cmd == MLX5_MMAP_GET_NC_PAGES_CMD)
+		return 1;
+	return 0;
+}
+
 __rte_internal
 void mlx5_translate_port_name(const char *port_name_in,
 			      struct mlx5_switch_info *port_info_out);
@@ -416,7 +497,12 @@ mlx5_dev_mempool_unregister(struct mlx5_common_device *cdev,
 			    struct rte_mempool *mp);
 
 __rte_internal
-void *mlx5_devx_alloc_uar(struct mlx5_common_device *cdev);
+int
+mlx5_devx_uar_prepare(struct mlx5_common_device *cdev, struct mlx5_uar *uar);
+
+__rte_internal
+void
+mlx5_devx_uar_release(struct mlx5_uar *uar);
 
 /* mlx5_common_os.c */
 

@@ -14,6 +14,7 @@
 #include <rte_common.h>
 #include <rte_spinlock.h>
 
+#include <mlx5_common.h>
 #include <mlx5_common_mr.h>
 
 #include "mlx5.h"
@@ -160,10 +161,7 @@ struct mlx5_txq_data {
 	int32_t ts_offset; /* Timestamp field dynamic offset. */
 	struct mlx5_dev_ctx_shared *sh; /* Shared context. */
 	struct mlx5_txq_stats stats; /* TX queue counters. */
-#ifndef RTE_ARCH_64
-	rte_spinlock_t *uar_lock;
-	/* UAR access lock required for 32bit implementations */
-#endif
+	struct mlx5_uar_data uar_data;
 	struct rte_mbuf *elts[0];
 	/* Storage for queued packets, must be the last field. */
 } __rte_cache_aligned;
@@ -203,7 +201,6 @@ int mlx5_tx_hairpin_queue_setup
 	(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 	 const struct rte_eth_hairpin_conf *hairpin_conf);
 void mlx5_tx_queue_release(struct rte_eth_dev *dev, uint16_t qid);
-void txq_uar_init(struct mlx5_txq_ctrl *txq_ctrl, void *bf_reg);
 int mlx5_tx_uar_init_secondary(struct rte_eth_dev *dev, int fd);
 void mlx5_tx_uar_uninit_secondary(struct rte_eth_dev *dev);
 int mlx5_txq_obj_verify(struct rte_eth_dev *dev);
@@ -288,92 +285,10 @@ MLX5_TXOFF_PRE_DECL(mci_mpw);
 MLX5_TXOFF_PRE_DECL(mc_mpw);
 MLX5_TXOFF_PRE_DECL(i_mpw);
 
-static __rte_always_inline uint64_t *
+static __rte_always_inline struct mlx5_uar_data *
 mlx5_tx_bfreg(struct mlx5_txq_data *txq)
 {
-	return MLX5_PROC_PRIV(txq->port_id)->uar_table[txq->idx];
-}
-
-/**
- * Provide safe 64bit store operation to mlx5 UAR region for both 32bit and
- * 64bit architectures.
- *
- * @param val
- *   value to write in CPU endian format.
- * @param addr
- *   Address to write to.
- * @param lock
- *   Address of the lock to use for that UAR access.
- */
-static __rte_always_inline void
-__mlx5_uar_write64_relaxed(uint64_t val, void *addr,
-			   rte_spinlock_t *lock __rte_unused)
-{
-#ifdef RTE_ARCH_64
-	*(uint64_t *)addr = val;
-#else /* !RTE_ARCH_64 */
-	rte_spinlock_lock(lock);
-	*(uint32_t *)addr = val;
-	rte_io_wmb();
-	*((uint32_t *)addr + 1) = val >> 32;
-	rte_spinlock_unlock(lock);
-#endif
-}
-
-/**
- * Provide safe 64bit store operation to mlx5 UAR region for both 32bit and
- * 64bit architectures while guaranteeing the order of execution with the
- * code being executed.
- *
- * @param val
- *   value to write in CPU endian format.
- * @param addr
- *   Address to write to.
- * @param lock
- *   Address of the lock to use for that UAR access.
- */
-static __rte_always_inline void
-__mlx5_uar_write64(uint64_t val, void *addr, rte_spinlock_t *lock)
-{
-	rte_io_wmb();
-	__mlx5_uar_write64_relaxed(val, addr, lock);
-}
-
-/* Assist macros, used instead of directly calling the functions they wrap. */
-#ifdef RTE_ARCH_64
-#define mlx5_uar_write64_relaxed(val, dst, lock) \
-		__mlx5_uar_write64_relaxed(val, dst, NULL)
-#define mlx5_uar_write64(val, dst, lock) __mlx5_uar_write64(val, dst, NULL)
-#else
-#define mlx5_uar_write64_relaxed(val, dst, lock) \
-		__mlx5_uar_write64_relaxed(val, dst, lock)
-#define mlx5_uar_write64(val, dst, lock) __mlx5_uar_write64(val, dst, lock)
-#endif
-
-/**
- * Ring TX queue doorbell and flush the update if requested.
- *
- * @param txq
- *   Pointer to TX queue structure.
- * @param wqe
- *   Pointer to the last WQE posted in the NIC.
- * @param cond
- *   Request for write memory barrier after BlueFlame update.
- */
-static __rte_always_inline void
-mlx5_tx_dbrec_cond_wmb(struct mlx5_txq_data *txq, volatile struct mlx5_wqe *wqe,
-		       int cond)
-{
-	uint64_t *dst = mlx5_tx_bfreg(txq);
-	volatile uint64_t *src = ((volatile uint64_t *)wqe);
-
-	rte_io_wmb();
-	*txq->qp_db = rte_cpu_to_be_32(txq->wqe_ci);
-	/* Ensure ordering between DB record and BF copy. */
-	rte_wmb();
-	mlx5_uar_write64_relaxed(*src, dst, txq->uar_lock);
-	if (cond)
-		rte_wmb();
+	return &MLX5_PROC_PRIV(txq->port_id)->uar_table[txq->idx];
 }
 
 /**
@@ -387,7 +302,8 @@ mlx5_tx_dbrec_cond_wmb(struct mlx5_txq_data *txq, volatile struct mlx5_wqe *wqe,
 static __rte_always_inline void
 mlx5_tx_dbrec(struct mlx5_txq_data *txq, volatile struct mlx5_wqe *wqe)
 {
-	mlx5_tx_dbrec_cond_wmb(txq, wqe, 1);
+	mlx5_doorbell_ring(mlx5_tx_bfreg(txq), *(volatile uint64_t *)wqe,
+			   txq->wqe_ci, txq->qp_db, 1);
 }
 
 /**
@@ -3660,8 +3576,10 @@ enter_send_single:
 	 *   packets are coming and the write barrier will be issued on
 	 *   the next burst (after descriptor writing, at least).
 	 */
-	mlx5_tx_dbrec_cond_wmb(txq, loc.wqe_last, !txq->db_nc &&
-			(!txq->db_heu || pkts_n % MLX5_TX_DEFAULT_BURST));
+	mlx5_doorbell_ring(mlx5_tx_bfreg(txq),
+			   *(volatile uint64_t *)loc.wqe_last, txq->wqe_ci,
+			   txq->qp_db, !txq->db_nc &&
+			   (!txq->db_heu || pkts_n % MLX5_TX_DEFAULT_BURST));
 	/* Not all of the mbufs may be stored into elts yet. */
 	part = MLX5_TXOFF_CONFIG(INLINE) ? 0 : loc.pkts_sent - loc.pkts_copy;
 	if (!MLX5_TXOFF_CONFIG(INLINE) && part) {

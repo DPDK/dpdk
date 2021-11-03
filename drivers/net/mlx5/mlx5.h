@@ -530,7 +530,6 @@ struct mlx5_aso_sq {
 	rte_spinlock_t sqsl;
 	struct mlx5_aso_cq cq;
 	struct mlx5_devx_sq sq_obj;
-	volatile uint64_t *uar_addr;
 	struct mlx5_pmd_mr mr;
 	uint16_t pi;
 	uint32_t head;
@@ -1176,7 +1175,7 @@ struct mlx5_dev_ctx_shared {
 	void *rx_domain; /* RX Direct Rules name space handle. */
 	void *tx_domain; /* TX Direct Rules name space handle. */
 #ifndef RTE_ARCH_64
-	rte_spinlock_t uar_lock_cq; /* CQs share a common distinct UAR */
+	rte_spinlock_t uar_lock_cq; /* CQs share a common distinct UAR. */
 	rte_spinlock_t uar_lock[MLX5_UAR_PAGE_NUM_MAX];
 	/* UAR same-page access control required in 32bit implementations. */
 #endif
@@ -1205,11 +1204,11 @@ struct mlx5_dev_ctx_shared {
 	struct mlx5_devx_obj *tis[16]; /* TIS object. */
 	struct mlx5_devx_obj *td; /* Transport domain. */
 	struct mlx5_lag lag; /* LAG attributes */
-	void *tx_uar; /* Tx/packet pacing shared UAR. */
+	struct mlx5_uar tx_uar; /* DevX UAR for Tx and Txpp and ASO SQs. */
+	struct mlx5_uar rx_uar; /* DevX UAR for Rx. */
 	struct mlx5_proc_priv *pppriv; /* Pointer to primary private process. */
 	struct mlx5_ecpri_parser_profile ecpri_parser;
 	/* Flex parser profiles information. */
-	void *devx_rx_uar; /* DevX UAR for Rx. */
 	LIST_HEAD(shared_rxqs, mlx5_rxq_ctrl) shared_rxqs; /* Shared RXQs. */
 	struct mlx5_aso_age_mng *aso_age_mng;
 	/* Management data for aging mechanism using ASO Flow Hit. */
@@ -1234,7 +1233,7 @@ struct mlx5_dev_ctx_shared {
 struct mlx5_proc_priv {
 	size_t uar_table_sz;
 	/* Size of UAR register table. */
-	void *uar_table[];
+	struct mlx5_uar_data uar_table[];
 	/* Table of UAR registers for each process. */
 };
 
@@ -1791,6 +1790,7 @@ int mlx5_flow_meter_flush(struct rte_eth_dev *dev,
 void mlx5_flow_meter_rxq_flush(struct rte_eth_dev *dev);
 
 /* mlx5_os.c */
+
 struct rte_pci_driver;
 int mlx5_os_get_dev_attr(struct mlx5_common_device *dev,
 			 struct mlx5_dev_attr *dev_attr);

@@ -21,8 +21,7 @@ struct mlx5_crypto_priv {
 	TAILQ_ENTRY(mlx5_crypto_priv) next;
 	struct mlx5_common_device *cdev; /* Backend mlx5 device. */
 	struct rte_cryptodev *crypto_dev;
-	void *uar; /* User Access Region. */
-	volatile uint64_t *uar_addr;
+	struct mlx5_uar uar; /* User Access Region. */
 	uint32_t max_segs_num; /* Maximum supported data segs. */
 	struct mlx5_hlist *dek_hlist; /* Dek hash list. */
 	struct rte_cryptodev_config dev_config;
@@ -32,9 +31,6 @@ struct mlx5_crypto_priv {
 	uint16_t umr_wqe_size;
 	uint16_t umr_wqe_stride;
 	uint16_t max_rdmar_ds;
-#ifndef RTE_ARCH_64
-	rte_spinlock_t uar32_sl;
-#endif /* RTE_ARCH_64 */
 };
 
 struct mlx5_crypto_qp {

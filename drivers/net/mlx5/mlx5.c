@@ -19,6 +19,7 @@
 #include <rte_rwlock.h>
 #include <rte_spinlock.h>
 #include <rte_string_fns.h>
+#include <rte_eal_paging.h>
 #include <rte_alarm.h>
 #include <rte_cycles.h>
 
@@ -987,143 +988,35 @@ mlx5_get_supported_tunneling_offloads(const struct mlx5_hca_attr *attr)
 	return tn_offloads;
 }
 
-/*
- * Allocate Rx and Tx UARs in robust fashion.
- * This routine handles the following UAR allocation issues:
- *
- *  - tries to allocate the UAR with the most appropriate memory
- *    mapping type from the ones supported by the host
- *
- *  - tries to allocate the UAR with non-NULL base address
- *    OFED 5.0.x and Upstream rdma_core before v29 returned the NULL as
- *    UAR base address if UAR was not the first object in the UAR page.
- *    It caused the PMD failure and we should try to get another UAR
- *    till we get the first one with non-NULL base address returned.
- */
+/* Fill all fields of UAR structure. */
 static int
-mlx5_alloc_rxtx_uars(struct mlx5_dev_ctx_shared *sh,
-		     const struct mlx5_common_dev_config *config)
+mlx5_rxtx_uars_prepare(struct mlx5_dev_ctx_shared *sh)
 {
-	uint32_t uar_mapping, retry;
-	int err = 0;
-	void *base_addr;
+	int ret;
 
-	for (retry = 0; retry < MLX5_ALLOC_UAR_RETRY; ++retry) {
-#ifdef MLX5DV_UAR_ALLOC_TYPE_NC
-		/* Control the mapping type according to the settings. */
-		uar_mapping = (config->dbnc == MLX5_TXDB_NCACHED) ?
-			      MLX5DV_UAR_ALLOC_TYPE_NC :
-			      MLX5DV_UAR_ALLOC_TYPE_BF;
-#else
-		RTE_SET_USED(config);
-		/*
-		 * It seems we have no way to control the memory mapping type
-		 * for the UAR, the default "Write-Combining" type is supposed.
-		 * The UAR initialization on queue creation queries the
-		 * actual mapping type done by Verbs/kernel and setups the
-		 * PMD datapath accordingly.
-		 */
-		uar_mapping = 0;
-#endif
-		sh->tx_uar = mlx5_glue->devx_alloc_uar(sh->cdev->ctx,
-						       uar_mapping);
-#ifdef MLX5DV_UAR_ALLOC_TYPE_NC
-		if (!sh->tx_uar &&
-		    uar_mapping == MLX5DV_UAR_ALLOC_TYPE_BF) {
-			if (config->dbnc == MLX5_TXDB_CACHED ||
-			    config->dbnc == MLX5_TXDB_HEURISTIC)
-				DRV_LOG(WARNING, "Devarg tx_db_nc setting "
-						 "is not supported by DevX");
-			/*
-			 * In some environments like virtual machine
-			 * the Write Combining mapped might be not supported
-			 * and UAR allocation fails. We try "Non-Cached"
-			 * mapping for the case. The tx_burst routines take
-			 * the UAR mapping type into account on UAR setup
-			 * on queue creation.
-			 */
-			DRV_LOG(DEBUG, "Failed to allocate Tx DevX UAR (BF)");
-			uar_mapping = MLX5DV_UAR_ALLOC_TYPE_NC;
-			sh->tx_uar = mlx5_glue->devx_alloc_uar(sh->cdev->ctx,
-							       uar_mapping);
-		} else if (!sh->tx_uar &&
-			   uar_mapping == MLX5DV_UAR_ALLOC_TYPE_NC) {
-			if (config->dbnc == MLX5_TXDB_NCACHED)
-				DRV_LOG(WARNING, "Devarg tx_db_nc settings "
-						 "is not supported by DevX");
-			/*
-			 * If Verbs/kernel does not support "Non-Cached"
-			 * try the "Write-Combining".
-			 */
-			DRV_LOG(DEBUG, "Failed to allocate Tx DevX UAR (NC)");
-			uar_mapping = MLX5DV_UAR_ALLOC_TYPE_BF;
-			sh->tx_uar = mlx5_glue->devx_alloc_uar(sh->cdev->ctx,
-							       uar_mapping);
-		}
-#endif
-		if (!sh->tx_uar) {
-			DRV_LOG(ERR, "Failed to allocate Tx DevX UAR (BF/NC)");
-			err = ENOMEM;
-			goto exit;
-		}
-		base_addr = mlx5_os_get_devx_uar_base_addr(sh->tx_uar);
-		if (base_addr)
-			break;
-		/*
-		 * The UARs are allocated by rdma_core within the
-		 * IB device context, on context closure all UARs
-		 * will be freed, should be no memory/object leakage.
-		 */
-		DRV_LOG(DEBUG, "Retrying to allocate Tx DevX UAR");
-		sh->tx_uar = NULL;
+	ret = mlx5_devx_uar_prepare(sh->cdev, &sh->tx_uar);
+	if (ret) {
+		DRV_LOG(ERR, "Failed to prepare Tx DevX UAR.");
+		return -rte_errno;
 	}
-	/* Check whether we finally succeeded with valid UAR allocation. */
-	if (!sh->tx_uar) {
-		DRV_LOG(ERR, "Failed to allocate Tx DevX UAR (NULL base)");
-		err = ENOMEM;
-		goto exit;
+	MLX5_ASSERT(sh->tx_uar.obj);
+	MLX5_ASSERT(mlx5_os_get_devx_uar_base_addr(sh->tx_uar.obj));
+	ret = mlx5_devx_uar_prepare(sh->cdev, &sh->rx_uar);
+	if (ret) {
+		DRV_LOG(ERR, "Failed to prepare Rx DevX UAR.");
+		mlx5_devx_uar_release(&sh->tx_uar);
+		return -rte_errno;
 	}
-	for (retry = 0; retry < MLX5_ALLOC_UAR_RETRY; ++retry) {
-		uar_mapping = 0;
-		sh->devx_rx_uar = mlx5_glue->devx_alloc_uar(sh->cdev->ctx,
-							    uar_mapping);
-#ifdef MLX5DV_UAR_ALLOC_TYPE_NC
-		if (!sh->devx_rx_uar &&
-		    uar_mapping == MLX5DV_UAR_ALLOC_TYPE_BF) {
-			/*
-			 * Rx UAR is used to control interrupts only,
-			 * should be no datapath noticeable impact,
-			 * can try "Non-Cached" mapping safely.
-			 */
-			DRV_LOG(DEBUG, "Failed to allocate Rx DevX UAR (BF)");
-			uar_mapping = MLX5DV_UAR_ALLOC_TYPE_NC;
-			sh->devx_rx_uar = mlx5_glue->devx_alloc_uar
-						   (sh->cdev->ctx, uar_mapping);
-		}
-#endif
-		if (!sh->devx_rx_uar) {
-			DRV_LOG(ERR, "Failed to allocate Rx DevX UAR (BF/NC)");
-			err = ENOMEM;
-			goto exit;
-		}
-		base_addr = mlx5_os_get_devx_uar_base_addr(sh->devx_rx_uar);
-		if (base_addr)
-			break;
-		/*
-		 * The UARs are allocated by rdma_core within the
-		 * IB device context, on context closure all UARs
-		 * will be freed, should be no memory/object leakage.
-		 */
-		DRV_LOG(DEBUG, "Retrying to allocate Rx DevX UAR");
-		sh->devx_rx_uar = NULL;
-	}
-	/* Check whether we finally succeeded with valid UAR allocation. */
-	if (!sh->devx_rx_uar) {
-		DRV_LOG(ERR, "Failed to allocate Rx DevX UAR (NULL base)");
-		err = ENOMEM;
-	}
-exit:
-	return err;
+	MLX5_ASSERT(sh->rx_uar.obj);
+	MLX5_ASSERT(mlx5_os_get_devx_uar_base_addr(sh->rx_uar.obj));
+	return 0;
+}
+
+static void
+mlx5_rxtx_uars_release(struct mlx5_dev_ctx_shared *sh)
+{
+	mlx5_devx_uar_release(&sh->rx_uar);
+	mlx5_devx_uar_release(&sh->tx_uar);
 }
 
 /**
@@ -1332,21 +1225,17 @@ mlx5_alloc_shared_dev_ctx(const struct mlx5_dev_spawn_data *spawn,
 			err = ENOMEM;
 			goto error;
 		}
-		err = mlx5_alloc_rxtx_uars(sh, &sh->cdev->config);
+		err = mlx5_rxtx_uars_prepare(sh);
 		if (err)
 			goto error;
-		MLX5_ASSERT(sh->tx_uar);
-		MLX5_ASSERT(mlx5_os_get_devx_uar_base_addr(sh->tx_uar));
-
-		MLX5_ASSERT(sh->devx_rx_uar);
-		MLX5_ASSERT(mlx5_os_get_devx_uar_base_addr(sh->devx_rx_uar));
-	}
 #ifndef RTE_ARCH_64
-	/* Initialize UAR access locks for 32bit implementations. */
-	rte_spinlock_init(&sh->uar_lock_cq);
-	for (i = 0; i < MLX5_UAR_PAGE_NUM_MAX; i++)
-		rte_spinlock_init(&sh->uar_lock[i]);
+	} else {
+		/* Initialize UAR access locks for 32bit implementations. */
+		rte_spinlock_init(&sh->uar_lock_cq);
+		for (i = 0; i < MLX5_UAR_PAGE_NUM_MAX; i++)
+			rte_spinlock_init(&sh->uar_lock[i]);
 #endif
+	}
 	mlx5_os_dev_shared_handler_install(sh);
 	if (LIST_EMPTY(&mlx5_dev_ctx_list)) {
 		err = mlx5_flow_os_init_workspace_once();
@@ -1373,10 +1262,7 @@ error:
 		if (sh->tis[i])
 			claim_zero(mlx5_devx_cmd_destroy(sh->tis[i]));
 	} while (++i < (uint32_t)sh->bond.n_port);
-	if (sh->devx_rx_uar)
-		mlx5_glue->devx_free_uar(sh->devx_rx_uar);
-	if (sh->tx_uar)
-		mlx5_glue->devx_free_uar(sh->tx_uar);
+	mlx5_rxtx_uars_release(sh);
 	mlx5_free(sh);
 	MLX5_ASSERT(err > 0);
 	rte_errno = err;
@@ -1449,18 +1335,13 @@ mlx5_free_shared_dev_ctx(struct mlx5_dev_ctx_shared *sh)
 		mlx5_aso_flow_mtrs_mng_close(sh);
 	mlx5_flow_ipool_destroy(sh);
 	mlx5_os_dev_shared_handler_uninstall(sh);
-	if (sh->tx_uar) {
-		mlx5_glue->devx_free_uar(sh->tx_uar);
-		sh->tx_uar = NULL;
-	}
+	mlx5_rxtx_uars_release(sh);
 	do {
 		if (sh->tis[i])
 			claim_zero(mlx5_devx_cmd_destroy(sh->tis[i]));
 	} while (++i < sh->bond.n_port);
 	if (sh->td)
 		claim_zero(mlx5_devx_cmd_destroy(sh->td));
-	if (sh->devx_rx_uar)
-		mlx5_glue->devx_free_uar(sh->devx_rx_uar);
 	MLX5_ASSERT(sh->geneve_tlv_option_resource == NULL);
 	pthread_mutex_destroy(&sh->txpp.mutex);
 	mlx5_free(sh);
@@ -1610,8 +1491,8 @@ mlx5_proc_priv_init(struct rte_eth_dev *dev)
 	 * UAR register table follows the process private structure. BlueFlame
 	 * registers for Tx queues are stored in the table.
 	 */
-	ppriv_size =
-		sizeof(struct mlx5_proc_priv) + priv->txqs_n * sizeof(void *);
+	ppriv_size = sizeof(struct mlx5_proc_priv) +
+		     priv->txqs_n * sizeof(struct mlx5_uar_data);
 	ppriv = mlx5_malloc(MLX5_MEM_RTE | MLX5_MEM_ZERO, ppriv_size,
 			    RTE_CACHE_LINE_SIZE, dev->device->numa_node);
 	if (!ppriv) {

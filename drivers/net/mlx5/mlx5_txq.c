@@ -495,66 +495,6 @@ mlx5_tx_queue_release(struct rte_eth_dev *dev, uint16_t qid)
 }
 
 /**
- * Configure the doorbell register non-cached attribute.
- *
- * @param txq_ctrl
- *   Pointer to Tx queue control structure.
- * @param page_size
- *   Systme page size
- */
-static void
-txq_uar_ncattr_init(struct mlx5_txq_ctrl *txq_ctrl, size_t page_size)
-{
-	struct mlx5_common_device *cdev = txq_ctrl->priv->sh->cdev;
-	off_t cmd;
-
-	txq_ctrl->txq.db_heu = cdev->config.dbnc == MLX5_TXDB_HEURISTIC;
-	txq_ctrl->txq.db_nc = 0;
-	/* Check the doorbell register mapping type. */
-	cmd = txq_ctrl->uar_mmap_offset / page_size;
-	cmd >>= MLX5_UAR_MMAP_CMD_SHIFT;
-	cmd &= MLX5_UAR_MMAP_CMD_MASK;
-	if (cmd == MLX5_MMAP_GET_NC_PAGES_CMD)
-		txq_ctrl->txq.db_nc = 1;
-}
-
-/**
- * Initialize Tx UAR registers for primary process.
- *
- * @param txq_ctrl
- *   Pointer to Tx queue control structure.
- * @param bf_reg
- *   BlueFlame register from Verbs UAR.
- */
-void
-txq_uar_init(struct mlx5_txq_ctrl *txq_ctrl, void *bf_reg)
-{
-	struct mlx5_priv *priv = txq_ctrl->priv;
-	struct mlx5_proc_priv *ppriv = MLX5_PROC_PRIV(PORT_ID(priv));
-#ifndef RTE_ARCH_64
-	unsigned int lock_idx;
-#endif
-	const size_t page_size = rte_mem_page_size();
-	if (page_size == (size_t)-1) {
-		DRV_LOG(ERR, "Failed to get mem page size");
-		rte_errno = ENOMEM;
-	}
-
-	if (txq_ctrl->type != MLX5_TXQ_TYPE_STANDARD)
-		return;
-	MLX5_ASSERT(rte_eal_process_type() == RTE_PROC_PRIMARY);
-	MLX5_ASSERT(ppriv);
-	ppriv->uar_table[txq_ctrl->txq.idx] = bf_reg;
-	txq_uar_ncattr_init(txq_ctrl, page_size);
-#ifndef RTE_ARCH_64
-	/* Assign an UAR lock according to UAR page number */
-	lock_idx = (txq_ctrl->uar_mmap_offset / page_size) &
-		   MLX5_UAR_PAGE_NUM_MASK;
-	txq_ctrl->txq.uar_lock = &priv->sh->uar_lock[lock_idx];
-#endif
-}
-
-/**
  * Remap UAR register of a Tx queue for secondary process.
  *
  * Remapped address is stored at the table in the process private structure of
@@ -592,7 +532,7 @@ txq_uar_init_secondary(struct mlx5_txq_ctrl *txq_ctrl, int fd)
 	 * As rdma-core, UARs are mapped in size of OS page
 	 * size. Ref to libmlx5 function: mlx5_init_context()
 	 */
-	uar_va = (uintptr_t)primary_ppriv->uar_table[txq->idx];
+	uar_va = (uintptr_t)primary_ppriv->uar_table[txq->idx].db;
 	offset = uar_va & (page_size - 1); /* Offset in page. */
 	addr = rte_mem_map(NULL, page_size, RTE_PROT_WRITE, RTE_MAP_SHARED,
 			   fd, txq_ctrl->uar_mmap_offset);
@@ -603,7 +543,11 @@ txq_uar_init_secondary(struct mlx5_txq_ctrl *txq_ctrl, int fd)
 		return -rte_errno;
 	}
 	addr = RTE_PTR_ADD(addr, offset);
-	ppriv->uar_table[txq->idx] = addr;
+	ppriv->uar_table[txq->idx].db = addr;
+#ifndef RTE_ARCH_64
+	ppriv->uar_table[txq->idx].sl_p =
+			primary_ppriv->uar_table[txq->idx].sl_p;
+#endif
 	return 0;
 }
 
@@ -626,7 +570,7 @@ txq_uar_uninit_secondary(struct mlx5_txq_ctrl *txq_ctrl)
 
 	if (txq_ctrl->type != MLX5_TXQ_TYPE_STANDARD)
 		return;
-	addr = ppriv->uar_table[txq_ctrl->txq.idx];
+	addr = ppriv->uar_table[txq_ctrl->txq.idx].db;
 	rte_mem_unmap(RTE_PTR_ALIGN_FLOOR(addr, page_size), page_size);
 }
 
@@ -651,9 +595,9 @@ mlx5_tx_uar_uninit_secondary(struct rte_eth_dev *dev)
 	}
 	MLX5_ASSERT(rte_eal_process_type() == RTE_PROC_SECONDARY);
 	for (i = 0; i != ppriv->uar_table_sz; ++i) {
-		if (!ppriv->uar_table[i])
+		if (!ppriv->uar_table[i].db)
 			continue;
-		addr = ppriv->uar_table[i];
+		addr = ppriv->uar_table[i].db;
 		rte_mem_unmap(RTE_PTR_ALIGN_FLOOR(addr, page_size), page_size);
 
 	}

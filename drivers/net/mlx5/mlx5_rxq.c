@@ -21,11 +21,11 @@
 
 #include <mlx5_glue.h>
 #include <mlx5_malloc.h>
+#include <mlx5_common.h>
 #include <mlx5_common_mr.h>
 
 #include "mlx5_defs.h"
 #include "mlx5.h"
-#include "mlx5_tx.h"
 #include "mlx5_rx.h"
 #include "mlx5_utils.h"
 #include "mlx5_autoconf.h"
@@ -1171,15 +1171,13 @@ mlx5_arm_cq(struct mlx5_rxq_data *rxq, int sq_n_rxq)
 	int sq_n = 0;
 	uint32_t doorbell_hi;
 	uint64_t doorbell;
-	void *cq_db_reg = (char *)rxq->cq_uar + MLX5_CQ_DOORBELL;
 
 	sq_n = sq_n_rxq & MLX5_CQ_SQN_MASK;
 	doorbell_hi = sq_n << MLX5_CQ_SQN_OFFSET | (rxq->cq_ci & MLX5_CI_MASK);
 	doorbell = (uint64_t)doorbell_hi << 32;
 	doorbell |= rxq->cqn;
-	rxq->cq_db[MLX5_CQ_ARM_DB] = rte_cpu_to_be_32(doorbell_hi);
-	mlx5_uar_write64(rte_cpu_to_be_64(doorbell),
-			 cq_db_reg, rxq->uar_lock_cq);
+	mlx5_doorbell_ring(&rxq->uar_data, rte_cpu_to_be_64(doorbell),
+			   doorbell_hi, &rxq->cq_db[MLX5_CQ_ARM_DB], 0);
 }
 
 /**
@@ -1842,9 +1840,6 @@ mlx5_rxq_new(struct rte_eth_dev *dev, struct mlx5_rxq_priv *rxq,
 		(struct rte_mbuf *(*)[desc_n])(tmpl + 1);
 	tmpl->rxq.mprq_bufs =
 		(struct mlx5_mprq_buf *(*)[desc])(*tmpl->rxq.elts + desc_n);
-#ifndef RTE_ARCH_64
-	tmpl->rxq.uar_lock_cq = &priv->sh->uar_lock_cq;
-#endif
 	tmpl->rxq.idx = idx;
 	LIST_INSERT_HEAD(&priv->rxqsctrl, tmpl, next);
 	return tmpl;

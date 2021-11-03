@@ -427,20 +427,6 @@ mlx5_crypto_wqe_set(struct mlx5_crypto_priv *priv,
 	return 1;
 }
 
-static __rte_always_inline void
-mlx5_crypto_uar_write(uint64_t val, struct mlx5_crypto_priv *priv)
-{
-#ifdef RTE_ARCH_64
-	*priv->uar_addr = val;
-#else /* !RTE_ARCH_64 */
-	rte_spinlock_lock(&priv->uar32_sl);
-	*(volatile uint32_t *)priv->uar_addr = val;
-	rte_io_wmb();
-	*((volatile uint32_t *)priv->uar_addr + 1) = val >> 32;
-	rte_spinlock_unlock(&priv->uar32_sl);
-#endif
-}
-
 static uint16_t
 mlx5_crypto_enqueue_burst(void *queue_pair, struct rte_crypto_op **ops,
 			  uint16_t nb_ops)
@@ -476,11 +462,9 @@ mlx5_crypto_enqueue_burst(void *queue_pair, struct rte_crypto_op **ops,
 		qp->pi++;
 	} while (--remain);
 	qp->stats.enqueued_count += nb_ops;
-	rte_io_wmb();
-	qp->qp_obj.db_rec[MLX5_SND_DBR] = rte_cpu_to_be_32(qp->db_pi);
-	rte_wmb();
-	mlx5_crypto_uar_write(*(volatile uint64_t *)qp->wqe, qp->priv);
-	rte_wmb();
+	mlx5_doorbell_ring(&priv->uar.bf_db, *(volatile uint64_t *)qp->wqe,
+			   qp->db_pi, &qp->qp_obj.db_rec[MLX5_SND_DBR],
+			   !priv->uar.dbnc);
 	return nb_ops;
 }
 
@@ -614,7 +598,7 @@ mlx5_crypto_queue_pair_setup(struct rte_cryptodev *dev, uint16_t qp_id,
 	uint32_t ret;
 	uint32_t alloc_size = sizeof(*qp);
 	struct mlx5_devx_cq_attr cq_attr = {
-		.uar_page_id = mlx5_os_get_devx_uar_page_id(priv->uar),
+		.uar_page_id = mlx5_os_get_devx_uar_page_id(priv->uar.obj),
 	};
 
 	if (dev->data->queue_pairs[qp_id] != NULL)
@@ -636,7 +620,7 @@ mlx5_crypto_queue_pair_setup(struct rte_cryptodev *dev, uint16_t qp_id,
 		goto error;
 	}
 	attr.pd = priv->cdev->pdn;
-	attr.uar_index = mlx5_os_get_devx_uar_page_id(priv->uar);
+	attr.uar_index = mlx5_os_get_devx_uar_page_id(priv->uar.obj);
 	attr.cqn = qp->cq_obj.cq->id;
 	attr.rq_size = 0;
 	attr.sq_size = RTE_BIT32(log_nb_desc);
@@ -723,30 +707,6 @@ static struct rte_cryptodev_ops mlx5_crypto_ops = {
 	.sym_get_raw_dp_ctx_size	= NULL,
 	.sym_configure_raw_dp_ctx	= NULL,
 };
-
-static void
-mlx5_crypto_uar_release(struct mlx5_crypto_priv *priv)
-{
-	if (priv->uar != NULL) {
-		mlx5_glue->devx_free_uar(priv->uar);
-		priv->uar = NULL;
-	}
-}
-
-static int
-mlx5_crypto_uar_prepare(struct mlx5_crypto_priv *priv)
-{
-	priv->uar = mlx5_devx_alloc_uar(priv->cdev);
-	if (priv->uar)
-		priv->uar_addr = mlx5_os_get_devx_uar_reg_addr(priv->uar);
-	if (priv->uar == NULL || priv->uar_addr == NULL) {
-		rte_errno = errno;
-		DRV_LOG(ERR, "Failed to allocate UAR.");
-		return -1;
-	}
-	return 0;
-}
-
 
 static int
 mlx5_crypto_args_check_handler(const char *key, const char *val, void *opaque)
@@ -899,7 +859,7 @@ mlx5_crypto_dev_probe(struct mlx5_common_device *cdev)
 	priv = crypto_dev->data->dev_private;
 	priv->cdev = cdev;
 	priv->crypto_dev = crypto_dev;
-	if (mlx5_crypto_uar_prepare(priv) != 0) {
+	if (mlx5_devx_uar_prepare(cdev, &priv->uar) != 0) {
 		rte_cryptodev_pmd_destroy(priv->crypto_dev);
 		return -1;
 	}
@@ -907,7 +867,7 @@ mlx5_crypto_dev_probe(struct mlx5_common_device *cdev)
 						      &devarg_prms.login_attr);
 	if (login == NULL) {
 		DRV_LOG(ERR, "Failed to configure login.");
-		mlx5_crypto_uar_release(priv);
+		mlx5_devx_uar_release(&priv->uar);
 		rte_cryptodev_pmd_destroy(priv->crypto_dev);
 		return -rte_errno;
 	}
@@ -950,7 +910,7 @@ mlx5_crypto_dev_remove(struct mlx5_common_device *cdev)
 	pthread_mutex_unlock(&priv_list_lock);
 	if (priv) {
 		claim_zero(mlx5_devx_cmd_destroy(priv->login_obj));
-		mlx5_crypto_uar_release(priv);
+		mlx5_devx_uar_release(&priv->uar);
 		rte_cryptodev_pmd_destroy(priv->crypto_dev);
 	}
 	return 0;

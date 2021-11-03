@@ -16,8 +16,6 @@ INTERNAL {
 	mlx5_dev_mempool_unregister;
 	mlx5_dev_mempool_subscribe;
 
-	mlx5_devx_alloc_uar;
-
 	mlx5_devx_cmd_alloc_pd;
 	mlx5_devx_cmd_create_conn_track_offload_obj;
 	mlx5_devx_cmd_create_cq;
@@ -75,6 +73,9 @@ INTERNAL {
 	mlx5_devx_rq_destroy;
 	mlx5_devx_sq_create;
 	mlx5_devx_sq_destroy;
+
+	mlx5_devx_uar_prepare;
+	mlx5_devx_uar_release;
 
 	mlx5_free;
 

@@ -39,6 +39,14 @@
 #define MLX5_TXDB_NCACHED 1
 #define MLX5_TXDB_HEURISTIC 2
 
+/* Fields of memory mapping type in offset parameter of mmap() */
+#define MLX5_UAR_MMAP_CMD_SHIFT 8
+#define MLX5_UAR_MMAP_CMD_MASK 0xff
+
+#ifndef HAVE_MLX5DV_MMAP_GET_NC_PAGES_CMD
+#define MLX5_MMAP_GET_NC_PAGES_CMD 3
+#endif
+
 #define MLX5_VDPA_MAX_RETRIES 20
 #define MLX5_VDPA_USEC 1000
 

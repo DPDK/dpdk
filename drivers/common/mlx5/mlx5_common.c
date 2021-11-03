@@ -10,6 +10,7 @@
 #include <rte_mempool.h>
 #include <rte_class.h>
 #include <rte_malloc.h>
+#include <rte_eal_paging.h>
 
 #include "mlx5_common.h"
 #include "mlx5_common_os.h"
@@ -930,10 +931,10 @@ RTE_INIT_PRIO(mlx5_is_haswell_broadwell_cpu, LOG)
  * Allocate the User Access Region with DevX on specified device.
  * This routine handles the following UAR allocation issues:
  *
- *  - tries to allocate the UAR with the most appropriate memory mapping
+ *  - Try to allocate the UAR with the most appropriate memory mapping
  *    type from the ones supported by the host.
  *
- *  - tries to allocate the UAR with non-NULL base address OFED 5.0.x and
+ *  - Try to allocate the UAR with non-NULL base address OFED 5.0.x and
  *    Upstream rdma_core before v29 returned the NULL as UAR base address
  *    if UAR was not the first object in the UAR page.
  *    It caused the PMD failure and we should try to get another UAR till
@@ -945,7 +946,7 @@ RTE_INIT_PRIO(mlx5_is_haswell_broadwell_cpu, LOG)
  * @return
  *   UAR object pointer on success, NULL otherwise and rte_errno is set.
  */
-void *
+static void *
 mlx5_devx_alloc_uar(struct mlx5_common_device *cdev)
 {
 	void *uar;
@@ -1013,6 +1014,48 @@ mlx5_devx_alloc_uar(struct mlx5_common_device *cdev)
 	 */
 exit:
 	return uar;
+}
+
+void
+mlx5_devx_uar_release(struct mlx5_uar *uar)
+{
+	if (uar->obj != NULL)
+		mlx5_glue->devx_free_uar(uar->obj);
+	memset(uar, 0, sizeof(*uar));
+}
+
+int
+mlx5_devx_uar_prepare(struct mlx5_common_device *cdev, struct mlx5_uar *uar)
+{
+	off_t uar_mmap_offset;
+	const size_t page_size = rte_mem_page_size();
+	void *base_addr;
+	void *uar_obj;
+
+	if (page_size == (size_t)-1) {
+		DRV_LOG(ERR, "Failed to get mem page size");
+		rte_errno = ENOMEM;
+		return -1;
+	}
+	uar_obj = mlx5_devx_alloc_uar(cdev);
+	if (uar_obj == NULL || mlx5_os_get_devx_uar_reg_addr(uar_obj) == NULL) {
+		rte_errno = errno;
+		DRV_LOG(ERR, "Failed to allocate UAR.");
+		return -1;
+	}
+	uar->obj = uar_obj;
+	uar_mmap_offset = mlx5_os_get_devx_uar_mmap_offset(uar_obj);
+	base_addr = mlx5_os_get_devx_uar_base_addr(uar_obj);
+	uar->dbnc = mlx5_db_map_type_get(uar_mmap_offset, page_size);
+	uar->bf_db.db = mlx5_os_get_devx_uar_reg_addr(uar_obj);
+	uar->cq_db.db = RTE_PTR_ADD(base_addr, MLX5_CQ_DOORBELL);
+#ifndef RTE_ARCH_64
+	rte_spinlock_init(&uar->bf_sl);
+	rte_spinlock_init(&uar->cq_sl);
+	uar->bf_db.sl_p = &uar->bf_sl;
+	uar->cq_db.sl_p = &uar->cq_sl;
+#endif /* RTE_ARCH_64 */
+	return 0;
 }
 
 RTE_PMD_EXPORT_NAME(mlx5_common_driver, __COUNTER__);

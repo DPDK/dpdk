@@ -30,10 +30,7 @@
 void
 mlx5_vdpa_event_qp_global_release(struct mlx5_vdpa_priv *priv)
 {
-	if (priv->uar) {
-		mlx5_glue->devx_free_uar(priv->uar);
-		priv->uar = NULL;
-	}
+	mlx5_devx_uar_release(&priv->uar);
 #ifdef HAVE_IBV_DEVX_EVENT
 	if (priv->eventc) {
 		mlx5_os_devx_destroy_event_channel(priv->eventc);
@@ -56,14 +53,7 @@ mlx5_vdpa_event_qp_global_prepare(struct mlx5_vdpa_priv *priv)
 			rte_errno);
 		goto error;
 	}
-	/*
-	 * This PMD always claims the write memory barrier on UAR
-	 * registers writings, it is safe to allocate UAR with any
-	 * memory mapping type.
-	 */
-	priv->uar = mlx5_devx_alloc_uar(priv->cdev);
-	if (!priv->uar) {
-		rte_errno = errno;
+	if (mlx5_devx_uar_prepare(priv->cdev, &priv->uar) != 0) {
 		DRV_LOG(ERR, "Failed to allocate UAR.");
 		goto error;
 	}
@@ -88,18 +78,9 @@ mlx5_vdpa_cq_arm(struct mlx5_vdpa_priv *priv, struct mlx5_vdpa_cq *cq)
 	uint32_t doorbell_hi = arm_sn | MLX5_CQ_DBR_CMD_ALL | cq_ci;
 	uint64_t doorbell = ((uint64_t)doorbell_hi << 32) | cq->cq_obj.cq->id;
 	uint64_t db_be = rte_cpu_to_be_64(doorbell);
-	uint32_t *addr = RTE_PTR_ADD(priv->uar->base_addr, MLX5_CQ_DOORBELL);
 
-	rte_io_wmb();
-	cq->cq_obj.db_rec[MLX5_CQ_ARM_DB] = rte_cpu_to_be_32(doorbell_hi);
-	rte_wmb();
-#ifdef RTE_ARCH_64
-	*(uint64_t *)addr = db_be;
-#else
-	*(uint32_t *)addr = db_be;
-	rte_io_wmb();
-	*((uint32_t *)addr + 1) = db_be >> 32;
-#endif
+	mlx5_doorbell_ring(&priv->uar.cq_db, db_be, doorbell_hi,
+			   &cq->cq_obj.db_rec[MLX5_CQ_ARM_DB], 0);
 	cq->arm_sn++;
 	cq->armed = 1;
 }
@@ -110,7 +91,7 @@ mlx5_vdpa_cq_create(struct mlx5_vdpa_priv *priv, uint16_t log_desc_n,
 {
 	struct mlx5_devx_cq_attr attr = {
 		.use_first_only = 1,
-		.uar_page_id = priv->uar->page_id,
+		.uar_page_id = mlx5_os_get_devx_uar_page_id(priv->uar.obj),
 	};
 	uint16_t event_nums[1] = {0};
 	int ret;
@@ -606,7 +587,7 @@ mlx5_vdpa_event_qp_create(struct mlx5_vdpa_priv *priv, uint16_t desc_n,
 		DRV_LOG(ERR, "Failed to create FW QP(%u).", rte_errno);
 		goto error;
 	}
-	attr.uar_index = priv->uar->page_id;
+	attr.uar_index = mlx5_os_get_devx_uar_page_id(priv->uar.obj);
 	attr.cqn = eqp->cq.cq_obj.cq->id;
 	attr.rq_size = RTE_BIT32(log_desc_n);
 	attr.log_rq_stride = rte_log2_u32(MLX5_WSEG_SIZE);
