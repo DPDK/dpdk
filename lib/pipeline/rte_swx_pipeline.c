@@ -4539,8 +4539,6 @@ instr_meter_translate(struct rte_swx_pipeline *p,
 		instr->meter.color_out.struct_id = (uint8_t)color_out_struct_id;
 		instr->meter.color_out.n_bits = fcout->n_bits;
 		instr->meter.color_out.offset = fcout->offset / 8;
-
-		return 0;
 	}
 
 	/* index = HMEFT, length = HMEFT, color_in = I, color_out = MEF. */
@@ -4575,8 +4573,6 @@ instr_meter_translate(struct rte_swx_pipeline *p,
 		instr->meter.color_out.struct_id = (uint8_t)color_out_struct_id;
 		instr->meter.color_out.n_bits = fcout->n_bits;
 		instr->meter.color_out.offset = fcout->offset / 8;
-
-		return 0;
 	}
 
 	/* index = I, length = HMEFT, color_in = MEFT, color_out = MEF. */
@@ -4607,8 +4603,6 @@ instr_meter_translate(struct rte_swx_pipeline *p,
 		instr->meter.color_out.struct_id = (uint8_t)color_out_struct_id;
 		instr->meter.color_out.n_bits = fcout->n_bits;
 		instr->meter.color_out.offset = fcout->offset / 8;
-
-		return 0;
 	}
 
 	/* index = I, length = HMEFT, color_in = I, color_out = MEF. */
@@ -4638,11 +4632,9 @@ instr_meter_translate(struct rte_swx_pipeline *p,
 		instr->meter.color_out.struct_id = (uint8_t)color_out_struct_id;
 		instr->meter.color_out.n_bits = fcout->n_bits;
 		instr->meter.color_out.offset = fcout->offset / 8;
-
-		return 0;
 	}
 
-	return -EINVAL;
+	return 0;
 }
 
 static inline void
