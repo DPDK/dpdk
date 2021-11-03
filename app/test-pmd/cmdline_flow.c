@@ -495,7 +495,7 @@ enum index {
 };
 
 /** Maximum size for pattern in struct rte_flow_item_raw. */
-#define ITEM_RAW_PATTERN_SIZE 40
+#define ITEM_RAW_PATTERN_SIZE 512
 
 /** Maximum size for GENEVE option data pattern in bytes. */
 #define ITEM_GENEVE_OPT_DATA_SIZE 124
