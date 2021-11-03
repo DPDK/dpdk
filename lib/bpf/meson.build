@@ -12,6 +12,7 @@ sources = files('bpf.c',
         'bpf_exec.c',
         'bpf_load.c',
         'bpf_pkt.c',
+        'bpf_stub.c',
         'bpf_validate.c')
 
 if arch_subdir == 'x86' and dpdk_conf.get('RTE_ARCH_64')
@@ -31,9 +32,13 @@ if dep.found()
     dpdk_conf.set('RTE_LIBRTE_BPF_ELF', 1)
     sources += files('bpf_load_elf.c')
     ext_deps += dep
+else
+     warning('libelf is missing, rte_bpf_elf_load API will be disabled')
 endif
 
 if dpdk_conf.has('RTE_PORT_PCAP')
     sources += files('bpf_convert.c')
     ext_deps += pcap_dep
+else
+     warning('RTE_PORT_PCAP is missing, rte_bpf_convert API will be disabled')
 endif

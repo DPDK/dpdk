@@ -285,7 +285,8 @@ static void compile_filter(void)
 	bpf_prm = rte_bpf_convert(&bf);
 	if (bpf_prm == NULL)
 		rte_exit(EXIT_FAILURE,
-			 "bpf convert failed\n");
+			 "bpf convert failed: %s(%d)\n",
+			 rte_strerror(rte_errno), rte_errno);
 
 	if (dump_bpf) {
 		printf("cBPF program (%u insns)\n", bf.bf_len);
