@@ -1265,6 +1265,8 @@ mlx5_proc_priv_init(struct rte_eth_dev *dev)
 	}
 	ppriv->uar_table_sz = priv->txqs_n;
 	dev->process_private = ppriv;
+	if (rte_eal_process_type() == RTE_PROC_PRIMARY)
+		priv->sh->pppriv = ppriv;
 	return 0;
 }
 

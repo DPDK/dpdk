@@ -1027,20 +1027,18 @@ mlx5_txq_ibv_obj_new(struct rte_eth_dev *dev, uint16_t idx)
 		}
 	}
 #endif
-	txq_ctrl->bf_reg = qp.bf.reg;
 	if (qp.comp_mask & MLX5DV_QP_MASK_UAR_MMAP_OFFSET) {
 		txq_ctrl->uar_mmap_offset = qp.uar_mmap_offset;
 		DRV_LOG(DEBUG, "Port %u: uar_mmap_offset 0x%" PRIx64 ".",
 			dev->data->port_id, txq_ctrl->uar_mmap_offset);
 	} else {
 		DRV_LOG(ERR,
-			"Port %u failed to retrieve UAR info, invalid"
-			" libmlx5.so",
+			"Port %u failed to retrieve UAR info, invalid libmlx5.so",
 			dev->data->port_id);
 		rte_errno = EINVAL;
 		goto error;
 	}
-	txq_uar_init(txq_ctrl);
+	txq_uar_init(txq_ctrl, qp.bf.reg);
 	dev->data->tx_queue_state[idx] = RTE_ETH_QUEUE_STATE_STARTED;
 	return 0;
 error:

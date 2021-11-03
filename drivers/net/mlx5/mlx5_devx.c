@@ -1432,7 +1432,6 @@ mlx5_txq_devx_obj_new(struct rte_eth_dev *dev, uint16_t idx)
 #else
 	struct mlx5_dev_ctx_shared *sh = priv->sh;
 	struct mlx5_txq_obj *txq_obj = txq_ctrl->obj;
-	void *reg_addr;
 	uint32_t cqe_n, log_desc_n;
 	uint32_t wqe_n, wqe_size;
 	int ret = 0;
@@ -1516,13 +1515,10 @@ mlx5_txq_devx_obj_new(struct rte_eth_dev *dev, uint16_t idx)
 	if (!priv->sh->tdn)
 		priv->sh->tdn = priv->sh->td->id;
 #endif
-	MLX5_ASSERT(sh->tx_uar);
-	reg_addr = mlx5_os_get_devx_uar_reg_addr(sh->tx_uar);
-	MLX5_ASSERT(reg_addr);
-	txq_ctrl->bf_reg = reg_addr;
+	MLX5_ASSERT(sh->tx_uar && mlx5_os_get_devx_uar_reg_addr(sh->tx_uar));
 	txq_ctrl->uar_mmap_offset =
 				mlx5_os_get_devx_uar_mmap_offset(sh->tx_uar);
-	txq_uar_init(txq_ctrl);
+	txq_uar_init(txq_ctrl, mlx5_os_get_devx_uar_reg_addr(sh->tx_uar));
 	dev->data->tx_queue_state[idx] = RTE_ETH_QUEUE_STATE_STARTED;
 	return 0;
 error:
