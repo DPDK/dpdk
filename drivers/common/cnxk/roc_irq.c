@@ -14,7 +14,8 @@
 #include <unistd.h>
 
 #define MSIX_IRQ_SET_BUF_LEN                                                   \
-	(sizeof(struct vfio_irq_set) + sizeof(int) * (PLT_MAX_RXTX_INTR_VEC_ID))
+	(sizeof(struct vfio_irq_set) + sizeof(int) *			       \
+			(plt_intr_max_intr_get(intr_handle)))
 
 static int
 irq_get_info(struct plt_intr_handle *intr_handle)
@@ -34,7 +35,7 @@ irq_get_info(struct plt_intr_handle *intr_handle)
 	plt_base_dbg("Flags=0x%x index=0x%x count=0x%x max_intr_vec_id=0x%x",
 		     irq.flags, irq.index, irq.count, PLT_MAX_RXTX_INTR_VEC_ID);
 
-	if (irq.count > PLT_MAX_RXTX_INTR_VEC_ID) {
+	if (irq.count == 0) {
 		plt_err("HW max=%d > PLT_MAX_RXTX_INTR_VEC_ID: %d", irq.count,
 			PLT_MAX_RXTX_INTR_VEC_ID);
 		plt_intr_max_intr_set(intr_handle, PLT_MAX_RXTX_INTR_VEC_ID);
@@ -91,14 +92,6 @@ irq_init(struct plt_intr_handle *intr_handle)
 	int len, rc, vfio_dev_fd;
 	int32_t *fd_ptr;
 	uint32_t i;
-
-	if (plt_intr_max_intr_get(intr_handle) >
-						PLT_MAX_RXTX_INTR_VEC_ID) {
-		plt_err("Max_intr=%d greater than PLT_MAX_RXTX_INTR_VEC_ID=%d",
-			plt_intr_max_intr_get(intr_handle),
-			PLT_MAX_RXTX_INTR_VEC_ID);
-		return -ERANGE;
-	}
 
 	len = sizeof(struct vfio_irq_set) +
 	      sizeof(int32_t) * plt_intr_max_intr_get(intr_handle);
