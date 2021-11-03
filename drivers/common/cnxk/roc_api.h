@@ -33,6 +33,7 @@
 
 /* HW structure definition */
 #include "hw/cpt.h"
+#include "hw/dpi.h"
 #include "hw/nix.h"
 #include "hw/npa.h"
 #include "hw/npc.h"
@@ -85,6 +86,9 @@
 #include "roc_ie_on.h"
 #include "roc_ie_ot.h"
 #include "roc_se.h"
+
+/* DPI */
+#include "roc_dpi.h"
 
 /* HASH computation */
 #include "roc_hash.h"

@@ -69,6 +69,7 @@
 #define __roc_api	    __rte_internal
 #define plt_iova_t	    rte_iova_t
 
+#define plt_pci_addr		    rte_pci_addr
 #define plt_pci_device		    rte_pci_device
 #define plt_pci_read_config	    rte_pci_read_config
 #define plt_pci_find_ext_capability rte_pci_find_ext_capability
