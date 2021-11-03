@@ -93,7 +93,7 @@ struct ipsec_core_statistics {
 	uint64_t burst_rx;
 } __rte_cache_aligned;
 
-struct ipsec_core_statistics core_statistics[RTE_MAX_LCORE];
+extern struct ipsec_core_statistics core_statistics[RTE_MAX_LCORE];
 #endif /* STATS_INTERVAL */
 
 extern struct ethaddr_info ethaddr_tbl[RTE_MAX_ETHPORTS];
