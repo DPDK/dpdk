@@ -92,7 +92,6 @@ struct bnxt_ulp_data {
 #define	BNXT_ULP_TUN_ENTRY_INVALID	-1
 #define	BNXT_ULP_MAX_TUN_CACHE_ENTRIES	16
 	struct bnxt_tun_cache_entry	tun_tbl[BNXT_ULP_MAX_TUN_CACHE_ENTRIES];
-	bool				accum_stats;
 	uint8_t				app_id;
 	uint8_t				num_shared_clients;
 	struct bnxt_flow_app_tun_ent	app_tun[BNXT_ULP_MAX_TUN_CACHE_ENTRIES];

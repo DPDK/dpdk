@@ -396,21 +396,17 @@ static int ulp_get_single_flow_stat(struct bnxt_ulp_context *ctxt,
 		return rc;
 	}
 
-	/* TBD - Get PKT/BYTE COUNT SHIFT/MASK from Template */
+	/* PKT/BYTE COUNT SHIFT/MASK are device specific */
 	sw_cntr_indx = hw_cntr_id - fc_info->shadow_hw_tbl[dir].start_idx;
 	sw_acc_tbl_entry = &fc_info->sw_acc_tbl[dir][sw_cntr_indx];
+
 	/* Some dpdk applications may accumulate the flow counters while some
 	 * may not. In cases where the application is accumulating the counters
 	 * the PMD need not do the accumulation itself and viceversa to report
 	 * the correct flow counters.
 	 */
-	if (ctxt->cfg_data->accum_stats) {
-		sw_acc_tbl_entry->pkt_count += FLOW_CNTR_PKTS(stats, dparms);
-		sw_acc_tbl_entry->byte_count += FLOW_CNTR_BYTES(stats, dparms);
-	} else {
-		sw_acc_tbl_entry->pkt_count = FLOW_CNTR_PKTS(stats, dparms);
-		sw_acc_tbl_entry->byte_count = FLOW_CNTR_BYTES(stats, dparms);
-	}
+	sw_acc_tbl_entry->pkt_count += FLOW_CNTR_PKTS(stats, dparms);
+	sw_acc_tbl_entry->byte_count += FLOW_CNTR_BYTES(stats, dparms);
 
 	/* Update the parent counters if it is child flow */
 	if (sw_acc_tbl_entry->pc_flow_idx & FLOW_CNTR_PC_FLOW_VALID) {

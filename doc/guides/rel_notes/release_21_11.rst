@@ -157,6 +157,7 @@ New Features
   * Added support for socket redirection.
   * Added wildcard match support for ingress flows.
   * Added support for inner IP header for GRE tunnel flows.
+  * Removed devargs option for stats accumulation.
 
 * **Updated Cisco enic driver.**
 

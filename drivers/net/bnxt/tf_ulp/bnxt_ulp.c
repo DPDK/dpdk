@@ -1490,14 +1490,6 @@ bnxt_ulp_port_init(struct bnxt *bp)
 		goto jump_to_error;
 	}
 
-	/* set the accumulation of the stats */
-	if (BNXT_ACCUM_STATS_EN(bp))
-		bp->ulp_ctx->cfg_data->accum_stats = true;
-
-	BNXT_TF_DBG(DEBUG, "BNXT Port:%d ULP port init, accum_stats:%d\n",
-		    bp->eth_dev->data->port_id,
-		    bp->ulp_ctx->cfg_data->accum_stats);
-
 	/* set the unicast mode */
 	if (bnxt_ulp_cntxt_ptr2_ulp_flags_get(bp->ulp_ctx, &ulp_flags)) {
 		BNXT_TF_DBG(ERR, "Error in getting ULP context flags\n");

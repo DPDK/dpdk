@@ -718,11 +718,8 @@ struct bnxt {
 	uint32_t			flags2;
 #define BNXT_FLAGS2_PTP_TIMESYNC_ENABLED	BIT(0)
 #define BNXT_FLAGS2_PTP_ALARM_SCHEDULED		BIT(1)
-#define	BNXT_FLAGS2_ACCUM_STATS_EN		BIT(2)
 #define BNXT_P5_PTP_TIMESYNC_ENABLED(bp)	\
 	((bp)->flags2 & BNXT_FLAGS2_PTP_TIMESYNC_ENABLED)
-#define	BNXT_ACCUM_STATS_EN(bp)			\
-	((bp)->flags2 & BNXT_FLAGS2_ACCUM_STATS_EN)
 
 	uint16_t		chip_num;
 #define CHIP_NUM_58818		0xd818
