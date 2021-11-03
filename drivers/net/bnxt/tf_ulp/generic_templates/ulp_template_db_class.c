@@ -3,7 +3,7 @@
  * All rights reserved.
  */
 
-/* date: Fri Aug  6 11:15:47 2021 */
+/* date: Thu Sep 16 13:12:05 2021 */
 
 #include "ulp_template_db_enum.h"
 #include "ulp_template_db_field.h"
@@ -1016,7 +1016,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_55dd,
 	.class_tid = 1,
 	.hdr_sig_id = 0,
-	.flow_sig_id = 4096,
+	.flow_sig_id = 4096UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -1031,7 +1031,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_1df1,
 	.class_tid = 1,
 	.hdr_sig_id = 0,
-	.flow_sig_id = 4104,
+	.flow_sig_id = 4104UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -1047,7 +1047,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3e55,
 	.class_tid = 1,
 	.hdr_sig_id = 0,
-	.flow_sig_id = 6144,
+	.flow_sig_id = 6144UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -1063,7 +1063,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_0649,
 	.class_tid = 1,
 	.hdr_sig_id = 0,
-	.flow_sig_id = 6152,
+	.flow_sig_id = 6152UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -1080,7 +1080,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_1011,
 	.class_tid = 1,
 	.hdr_sig_id = 1,
-	.flow_sig_id = 16384,
+	.flow_sig_id = 16384UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -1095,7 +1095,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_40e9,
 	.class_tid = 1,
 	.hdr_sig_id = 1,
-	.flow_sig_id = 16392,
+	.flow_sig_id = 16392UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -1111,7 +1111,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3e99,
 	.class_tid = 1,
 	.hdr_sig_id = 1,
-	.flow_sig_id = 24576,
+	.flow_sig_id = 24576UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -1127,7 +1127,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_06ad,
 	.class_tid = 1,
 	.hdr_sig_id = 1,
-	.flow_sig_id = 24584,
+	.flow_sig_id = 24584UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -1144,7 +1144,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_38c7,
 	.class_tid = 1,
 	.hdr_sig_id = 2,
-	.flow_sig_id = 32768,
+	.flow_sig_id = 32768UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -1160,7 +1160,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_00fb,
 	.class_tid = 1,
 	.hdr_sig_id = 2,
-	.flow_sig_id = 32776,
+	.flow_sig_id = 32776UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -1177,7 +1177,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_24d3,
 	.class_tid = 1,
 	.hdr_sig_id = 2,
-	.flow_sig_id = 32832,
+	.flow_sig_id = 32832UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -1194,7 +1194,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_559b,
 	.class_tid = 1,
 	.hdr_sig_id = 2,
-	.flow_sig_id = 32840,
+	.flow_sig_id = 32840UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -1212,7 +1212,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_5003,
 	.class_tid = 1,
 	.hdr_sig_id = 2,
-	.flow_sig_id = 49152,
+	.flow_sig_id = 49152UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -1229,7 +1229,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_1837,
 	.class_tid = 1,
 	.hdr_sig_id = 2,
-	.flow_sig_id = 49160,
+	.flow_sig_id = 49160UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -1247,7 +1247,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3bef,
 	.class_tid = 1,
 	.hdr_sig_id = 2,
-	.flow_sig_id = 49216,
+	.flow_sig_id = 49216UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -1265,7 +1265,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_0403,
 	.class_tid = 1,
 	.hdr_sig_id = 2,
-	.flow_sig_id = 49224,
+	.flow_sig_id = 49224UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -1284,7 +1284,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3d3f,
 	.class_tid = 1,
 	.hdr_sig_id = 3,
-	.flow_sig_id = 131072,
+	.flow_sig_id = 131072UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -1300,7 +1300,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_0543,
 	.class_tid = 1,
 	.hdr_sig_id = 3,
-	.flow_sig_id = 131080,
+	.flow_sig_id = 131080UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -1317,7 +1317,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_292b,
 	.class_tid = 1,
 	.hdr_sig_id = 3,
-	.flow_sig_id = 131136,
+	.flow_sig_id = 131136UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -1334,7 +1334,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_59e3,
 	.class_tid = 1,
 	.hdr_sig_id = 3,
-	.flow_sig_id = 131144,
+	.flow_sig_id = 131144UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -1352,7 +1352,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_5d3b,
 	.class_tid = 1,
 	.hdr_sig_id = 3,
-	.flow_sig_id = 196608,
+	.flow_sig_id = 196608UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -1369,7 +1369,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_254f,
 	.class_tid = 1,
 	.hdr_sig_id = 3,
-	.flow_sig_id = 196616,
+	.flow_sig_id = 196616UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -1387,7 +1387,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_4917,
 	.class_tid = 1,
 	.hdr_sig_id = 3,
-	.flow_sig_id = 196672,
+	.flow_sig_id = 196672UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -1405,7 +1405,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_113b,
 	.class_tid = 1,
 	.hdr_sig_id = 3,
-	.flow_sig_id = 196680,
+	.flow_sig_id = 196680UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -1424,7 +1424,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_55fd,
 	.class_tid = 1,
 	.hdr_sig_id = 4,
-	.flow_sig_id = 4096,
+	.flow_sig_id = 4096UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -1440,7 +1440,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_1dd1,
 	.class_tid = 1,
 	.hdr_sig_id = 4,
-	.flow_sig_id = 4104,
+	.flow_sig_id = 4104UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -1457,7 +1457,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3e75,
 	.class_tid = 1,
 	.hdr_sig_id = 4,
-	.flow_sig_id = 6144,
+	.flow_sig_id = 6144UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -1474,7 +1474,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_0669,
 	.class_tid = 1,
 	.hdr_sig_id = 4,
-	.flow_sig_id = 6152,
+	.flow_sig_id = 6152UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -1492,7 +1492,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_1ba1,
 	.class_tid = 1,
 	.hdr_sig_id = 4,
-	.flow_sig_id = 12288,
+	.flow_sig_id = 12288UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -1509,7 +1509,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_4c69,
 	.class_tid = 1,
 	.hdr_sig_id = 4,
-	.flow_sig_id = 12296,
+	.flow_sig_id = 12296UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -1527,7 +1527,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_0439,
 	.class_tid = 1,
 	.hdr_sig_id = 4,
-	.flow_sig_id = 14336,
+	.flow_sig_id = 14336UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -1545,7 +1545,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_34e1,
 	.class_tid = 1,
 	.hdr_sig_id = 4,
-	.flow_sig_id = 14344,
+	.flow_sig_id = 14344UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -1564,7 +1564,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_0465,
 	.class_tid = 1,
 	.hdr_sig_id = 4,
-	.flow_sig_id = 20480,
+	.flow_sig_id = 20480UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -1581,7 +1581,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_352d,
 	.class_tid = 1,
 	.hdr_sig_id = 4,
-	.flow_sig_id = 20488,
+	.flow_sig_id = 20488UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -1599,7 +1599,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_55b1,
 	.class_tid = 1,
 	.hdr_sig_id = 4,
-	.flow_sig_id = 22528,
+	.flow_sig_id = 22528UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -1617,7 +1617,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_1da5,
 	.class_tid = 1,
 	.hdr_sig_id = 4,
-	.flow_sig_id = 22536,
+	.flow_sig_id = 22536UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -1636,7 +1636,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_32fd,
 	.class_tid = 1,
 	.hdr_sig_id = 4,
-	.flow_sig_id = 28672,
+	.flow_sig_id = 28672UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -1654,7 +1654,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_63a5,
 	.class_tid = 1,
 	.hdr_sig_id = 4,
-	.flow_sig_id = 28680,
+	.flow_sig_id = 28680UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -1673,7 +1673,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_1b75,
 	.class_tid = 1,
 	.hdr_sig_id = 4,
-	.flow_sig_id = 30720,
+	.flow_sig_id = 30720UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -1692,7 +1692,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_4c3d,
 	.class_tid = 1,
 	.hdr_sig_id = 4,
-	.flow_sig_id = 30728,
+	.flow_sig_id = 30728UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -1712,7 +1712,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_1031,
 	.class_tid = 1,
 	.hdr_sig_id = 5,
-	.flow_sig_id = 16384,
+	.flow_sig_id = 16384UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -1728,7 +1728,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_40c9,
 	.class_tid = 1,
 	.hdr_sig_id = 5,
-	.flow_sig_id = 16392,
+	.flow_sig_id = 16392UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -1745,7 +1745,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3eb9,
 	.class_tid = 1,
 	.hdr_sig_id = 5,
-	.flow_sig_id = 24576,
+	.flow_sig_id = 24576UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -1762,7 +1762,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_068d,
 	.class_tid = 1,
 	.hdr_sig_id = 5,
-	.flow_sig_id = 24584,
+	.flow_sig_id = 24584UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -1780,7 +1780,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_5039,
 	.class_tid = 1,
 	.hdr_sig_id = 5,
-	.flow_sig_id = 49152,
+	.flow_sig_id = 49152UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -1797,7 +1797,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_180d,
 	.class_tid = 1,
 	.hdr_sig_id = 5,
-	.flow_sig_id = 49160,
+	.flow_sig_id = 49160UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -1815,7 +1815,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_15fd,
 	.class_tid = 1,
 	.hdr_sig_id = 5,
-	.flow_sig_id = 57344,
+	.flow_sig_id = 57344UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -1833,7 +1833,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_46b5,
 	.class_tid = 1,
 	.hdr_sig_id = 5,
-	.flow_sig_id = 57352,
+	.flow_sig_id = 57352UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -1852,7 +1852,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_303d,
 	.class_tid = 1,
 	.hdr_sig_id = 5,
-	.flow_sig_id = 81920,
+	.flow_sig_id = 81920UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -1869,7 +1869,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_60f5,
 	.class_tid = 1,
 	.hdr_sig_id = 5,
-	.flow_sig_id = 81928,
+	.flow_sig_id = 81928UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -1887,7 +1887,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_5ea5,
 	.class_tid = 1,
 	.hdr_sig_id = 5,
-	.flow_sig_id = 90112,
+	.flow_sig_id = 90112UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -1905,7 +1905,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_2689,
 	.class_tid = 1,
 	.hdr_sig_id = 5,
-	.flow_sig_id = 90120,
+	.flow_sig_id = 90120UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -1924,7 +1924,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_0771,
 	.class_tid = 1,
 	.hdr_sig_id = 5,
-	.flow_sig_id = 114688,
+	.flow_sig_id = 114688UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -1942,7 +1942,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3809,
 	.class_tid = 1,
 	.hdr_sig_id = 5,
-	.flow_sig_id = 114696,
+	.flow_sig_id = 114696UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -1961,7 +1961,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_35f9,
 	.class_tid = 1,
 	.hdr_sig_id = 5,
-	.flow_sig_id = 122880,
+	.flow_sig_id = 122880UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -1980,7 +1980,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_66b1,
 	.class_tid = 1,
 	.hdr_sig_id = 5,
-	.flow_sig_id = 122888,
+	.flow_sig_id = 122888UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -2000,7 +2000,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_559d,
 	.class_tid = 1,
 	.hdr_sig_id = 6,
-	.flow_sig_id = 4096,
+	.flow_sig_id = 4096UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -2016,7 +2016,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_1db1,
 	.class_tid = 1,
 	.hdr_sig_id = 6,
-	.flow_sig_id = 4104,
+	.flow_sig_id = 4104UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -2033,7 +2033,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3e15,
 	.class_tid = 1,
 	.hdr_sig_id = 6,
-	.flow_sig_id = 6144,
+	.flow_sig_id = 6144UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -2050,7 +2050,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_0609,
 	.class_tid = 1,
 	.hdr_sig_id = 6,
-	.flow_sig_id = 6152,
+	.flow_sig_id = 6152UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -2068,7 +2068,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_1bc1,
 	.class_tid = 1,
 	.hdr_sig_id = 6,
-	.flow_sig_id = 12288,
+	.flow_sig_id = 12288UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -2085,7 +2085,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_4c09,
 	.class_tid = 1,
 	.hdr_sig_id = 6,
-	.flow_sig_id = 12296,
+	.flow_sig_id = 12296UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -2103,7 +2103,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_0459,
 	.class_tid = 1,
 	.hdr_sig_id = 6,
-	.flow_sig_id = 14336,
+	.flow_sig_id = 14336UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -2121,7 +2121,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3481,
 	.class_tid = 1,
 	.hdr_sig_id = 6,
-	.flow_sig_id = 14344,
+	.flow_sig_id = 14344UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -2140,7 +2140,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_0405,
 	.class_tid = 1,
 	.hdr_sig_id = 6,
-	.flow_sig_id = 20480,
+	.flow_sig_id = 20480UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -2157,7 +2157,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_354d,
 	.class_tid = 1,
 	.hdr_sig_id = 6,
-	.flow_sig_id = 20488,
+	.flow_sig_id = 20488UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -2175,7 +2175,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_55d1,
 	.class_tid = 1,
 	.hdr_sig_id = 6,
-	.flow_sig_id = 22528,
+	.flow_sig_id = 22528UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -2193,7 +2193,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_1dc5,
 	.class_tid = 1,
 	.hdr_sig_id = 6,
-	.flow_sig_id = 22536,
+	.flow_sig_id = 22536UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -2212,7 +2212,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_329d,
 	.class_tid = 1,
 	.hdr_sig_id = 6,
-	.flow_sig_id = 28672,
+	.flow_sig_id = 28672UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -2230,7 +2230,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_63c5,
 	.class_tid = 1,
 	.hdr_sig_id = 6,
-	.flow_sig_id = 28680,
+	.flow_sig_id = 28680UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -2249,7 +2249,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_1b15,
 	.class_tid = 1,
 	.hdr_sig_id = 6,
-	.flow_sig_id = 30720,
+	.flow_sig_id = 30720UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -2268,7 +2268,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_4c5d,
 	.class_tid = 1,
 	.hdr_sig_id = 6,
-	.flow_sig_id = 30728,
+	.flow_sig_id = 30728UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -2288,7 +2288,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_1051,
 	.class_tid = 1,
 	.hdr_sig_id = 7,
-	.flow_sig_id = 16384,
+	.flow_sig_id = 16384UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -2304,7 +2304,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_40a9,
 	.class_tid = 1,
 	.hdr_sig_id = 7,
-	.flow_sig_id = 16392,
+	.flow_sig_id = 16392UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -2321,7 +2321,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3ed9,
 	.class_tid = 1,
 	.hdr_sig_id = 7,
-	.flow_sig_id = 24576,
+	.flow_sig_id = 24576UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -2338,7 +2338,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_06ed,
 	.class_tid = 1,
 	.hdr_sig_id = 7,
-	.flow_sig_id = 24584,
+	.flow_sig_id = 24584UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -2356,7 +2356,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_5059,
 	.class_tid = 1,
 	.hdr_sig_id = 7,
-	.flow_sig_id = 49152,
+	.flow_sig_id = 49152UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -2373,7 +2373,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_186d,
 	.class_tid = 1,
 	.hdr_sig_id = 7,
-	.flow_sig_id = 49160,
+	.flow_sig_id = 49160UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -2391,7 +2391,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_159d,
 	.class_tid = 1,
 	.hdr_sig_id = 7,
-	.flow_sig_id = 57344,
+	.flow_sig_id = 57344UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -2409,7 +2409,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_46d5,
 	.class_tid = 1,
 	.hdr_sig_id = 7,
-	.flow_sig_id = 57352,
+	.flow_sig_id = 57352UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -2428,7 +2428,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_305d,
 	.class_tid = 1,
 	.hdr_sig_id = 7,
-	.flow_sig_id = 81920,
+	.flow_sig_id = 81920UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -2445,7 +2445,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_6095,
 	.class_tid = 1,
 	.hdr_sig_id = 7,
-	.flow_sig_id = 81928,
+	.flow_sig_id = 81928UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -2463,7 +2463,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_5ec5,
 	.class_tid = 1,
 	.hdr_sig_id = 7,
-	.flow_sig_id = 90112,
+	.flow_sig_id = 90112UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -2481,7 +2481,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_26e9,
 	.class_tid = 1,
 	.hdr_sig_id = 7,
-	.flow_sig_id = 90120,
+	.flow_sig_id = 90120UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -2500,7 +2500,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_0711,
 	.class_tid = 1,
 	.hdr_sig_id = 7,
-	.flow_sig_id = 114688,
+	.flow_sig_id = 114688UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -2518,7 +2518,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3869,
 	.class_tid = 1,
 	.hdr_sig_id = 7,
-	.flow_sig_id = 114696,
+	.flow_sig_id = 114696UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -2537,7 +2537,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3599,
 	.class_tid = 1,
 	.hdr_sig_id = 7,
-	.flow_sig_id = 122880,
+	.flow_sig_id = 122880UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -2556,7 +2556,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_66d1,
 	.class_tid = 1,
 	.hdr_sig_id = 7,
-	.flow_sig_id = 122888,
+	.flow_sig_id = 122888UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -2576,7 +2576,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_38e7,
 	.class_tid = 1,
 	.hdr_sig_id = 8,
-	.flow_sig_id = 32768,
+	.flow_sig_id = 32768UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -2593,7 +2593,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_00db,
 	.class_tid = 1,
 	.hdr_sig_id = 8,
-	.flow_sig_id = 32776,
+	.flow_sig_id = 32776UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -2611,7 +2611,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_24f3,
 	.class_tid = 1,
 	.hdr_sig_id = 8,
-	.flow_sig_id = 32832,
+	.flow_sig_id = 32832UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -2629,7 +2629,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_55bb,
 	.class_tid = 1,
 	.hdr_sig_id = 8,
-	.flow_sig_id = 32840,
+	.flow_sig_id = 32840UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -2648,7 +2648,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_5023,
 	.class_tid = 1,
 	.hdr_sig_id = 8,
-	.flow_sig_id = 49152,
+	.flow_sig_id = 49152UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -2666,7 +2666,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_1817,
 	.class_tid = 1,
 	.hdr_sig_id = 8,
-	.flow_sig_id = 49160,
+	.flow_sig_id = 49160UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -2685,7 +2685,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3bcf,
 	.class_tid = 1,
 	.hdr_sig_id = 8,
-	.flow_sig_id = 49216,
+	.flow_sig_id = 49216UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -2704,7 +2704,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_0423,
 	.class_tid = 1,
 	.hdr_sig_id = 8,
-	.flow_sig_id = 49224,
+	.flow_sig_id = 49224UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -2724,7 +2724,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_58e3,
 	.class_tid = 1,
 	.hdr_sig_id = 8,
-	.flow_sig_id = 98304,
+	.flow_sig_id = 98304UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -2742,7 +2742,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_20d7,
 	.class_tid = 1,
 	.hdr_sig_id = 8,
-	.flow_sig_id = 98312,
+	.flow_sig_id = 98312UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -2761,7 +2761,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_448f,
 	.class_tid = 1,
 	.hdr_sig_id = 8,
-	.flow_sig_id = 98368,
+	.flow_sig_id = 98368UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -2780,7 +2780,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_0ce3,
 	.class_tid = 1,
 	.hdr_sig_id = 8,
-	.flow_sig_id = 98376,
+	.flow_sig_id = 98376UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -2800,7 +2800,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_076b,
 	.class_tid = 1,
 	.hdr_sig_id = 8,
-	.flow_sig_id = 114688,
+	.flow_sig_id = 114688UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -2819,7 +2819,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3813,
 	.class_tid = 1,
 	.hdr_sig_id = 8,
-	.flow_sig_id = 114696,
+	.flow_sig_id = 114696UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -2839,7 +2839,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_5bcb,
 	.class_tid = 1,
 	.hdr_sig_id = 8,
-	.flow_sig_id = 114752,
+	.flow_sig_id = 114752UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -2859,7 +2859,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_243f,
 	.class_tid = 1,
 	.hdr_sig_id = 8,
-	.flow_sig_id = 114760,
+	.flow_sig_id = 114760UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -2880,7 +2880,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_144b,
 	.class_tid = 1,
 	.hdr_sig_id = 8,
-	.flow_sig_id = 163840,
+	.flow_sig_id = 163840UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -2898,7 +2898,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_4573,
 	.class_tid = 1,
 	.hdr_sig_id = 8,
-	.flow_sig_id = 163848,
+	.flow_sig_id = 163848UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -2917,7 +2917,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_0057,
 	.class_tid = 1,
 	.hdr_sig_id = 8,
-	.flow_sig_id = 163904,
+	.flow_sig_id = 163904UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -2936,7 +2936,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_311f,
 	.class_tid = 1,
 	.hdr_sig_id = 8,
-	.flow_sig_id = 163912,
+	.flow_sig_id = 163912UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -2956,7 +2956,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_2b87,
 	.class_tid = 1,
 	.hdr_sig_id = 8,
-	.flow_sig_id = 180224,
+	.flow_sig_id = 180224UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -2975,7 +2975,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_5c4f,
 	.class_tid = 1,
 	.hdr_sig_id = 8,
-	.flow_sig_id = 180232,
+	.flow_sig_id = 180232UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -2995,7 +2995,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_1793,
 	.class_tid = 1,
 	.hdr_sig_id = 8,
-	.flow_sig_id = 180288,
+	.flow_sig_id = 180288UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -3015,7 +3015,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_485b,
 	.class_tid = 1,
 	.hdr_sig_id = 8,
-	.flow_sig_id = 180296,
+	.flow_sig_id = 180296UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -3036,7 +3036,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3447,
 	.class_tid = 1,
 	.hdr_sig_id = 8,
-	.flow_sig_id = 229376,
+	.flow_sig_id = 229376UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -3055,7 +3055,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_650f,
 	.class_tid = 1,
 	.hdr_sig_id = 8,
-	.flow_sig_id = 229384,
+	.flow_sig_id = 229384UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -3075,7 +3075,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_2053,
 	.class_tid = 1,
 	.hdr_sig_id = 8,
-	.flow_sig_id = 229440,
+	.flow_sig_id = 229440UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -3095,7 +3095,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_511b,
 	.class_tid = 1,
 	.hdr_sig_id = 8,
-	.flow_sig_id = 229448,
+	.flow_sig_id = 229448UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -3116,7 +3116,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_4b83,
 	.class_tid = 1,
 	.hdr_sig_id = 8,
-	.flow_sig_id = 245760,
+	.flow_sig_id = 245760UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -3136,7 +3136,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_13f7,
 	.class_tid = 1,
 	.hdr_sig_id = 8,
-	.flow_sig_id = 245768,
+	.flow_sig_id = 245768UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -3157,7 +3157,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_37af,
 	.class_tid = 1,
 	.hdr_sig_id = 8,
-	.flow_sig_id = 245824,
+	.flow_sig_id = 245824UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -3178,7 +3178,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_6857,
 	.class_tid = 1,
 	.hdr_sig_id = 8,
-	.flow_sig_id = 245832,
+	.flow_sig_id = 245832UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -3200,7 +3200,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3d1f,
 	.class_tid = 1,
 	.hdr_sig_id = 9,
-	.flow_sig_id = 131072,
+	.flow_sig_id = 131072UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -3217,7 +3217,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_0563,
 	.class_tid = 1,
 	.hdr_sig_id = 9,
-	.flow_sig_id = 131080,
+	.flow_sig_id = 131080UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -3235,7 +3235,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_290b,
 	.class_tid = 1,
 	.hdr_sig_id = 9,
-	.flow_sig_id = 131136,
+	.flow_sig_id = 131136UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -3253,7 +3253,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_59c3,
 	.class_tid = 1,
 	.hdr_sig_id = 9,
-	.flow_sig_id = 131144,
+	.flow_sig_id = 131144UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -3272,7 +3272,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_5d1b,
 	.class_tid = 1,
 	.hdr_sig_id = 9,
-	.flow_sig_id = 196608,
+	.flow_sig_id = 196608UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -3290,7 +3290,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_256f,
 	.class_tid = 1,
 	.hdr_sig_id = 9,
-	.flow_sig_id = 196616,
+	.flow_sig_id = 196616UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -3309,7 +3309,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_4937,
 	.class_tid = 1,
 	.hdr_sig_id = 9,
-	.flow_sig_id = 196672,
+	.flow_sig_id = 196672UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -3328,7 +3328,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_111b,
 	.class_tid = 1,
 	.hdr_sig_id = 9,
-	.flow_sig_id = 196680,
+	.flow_sig_id = 196680UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -3348,7 +3348,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_5f4b,
 	.class_tid = 1,
 	.hdr_sig_id = 9,
-	.flow_sig_id = 393216,
+	.flow_sig_id = 393216UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -3366,7 +3366,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_275f,
 	.class_tid = 1,
 	.hdr_sig_id = 9,
-	.flow_sig_id = 393224,
+	.flow_sig_id = 393224UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -3385,7 +3385,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_4b67,
 	.class_tid = 1,
 	.hdr_sig_id = 9,
-	.flow_sig_id = 393280,
+	.flow_sig_id = 393280UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -3404,7 +3404,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_134b,
 	.class_tid = 1,
 	.hdr_sig_id = 9,
-	.flow_sig_id = 393288,
+	.flow_sig_id = 393288UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -3424,7 +3424,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_1683,
 	.class_tid = 1,
 	.hdr_sig_id = 9,
-	.flow_sig_id = 458752,
+	.flow_sig_id = 458752UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -3443,7 +3443,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_475b,
 	.class_tid = 1,
 	.hdr_sig_id = 9,
-	.flow_sig_id = 458760,
+	.flow_sig_id = 458760UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -3463,7 +3463,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_02bf,
 	.class_tid = 1,
 	.hdr_sig_id = 9,
-	.flow_sig_id = 458816,
+	.flow_sig_id = 458816UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -3483,7 +3483,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3377,
 	.class_tid = 1,
 	.hdr_sig_id = 9,
-	.flow_sig_id = 458824,
+	.flow_sig_id = 458824UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -3504,7 +3504,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_19db,
 	.class_tid = 1,
 	.hdr_sig_id = 9,
-	.flow_sig_id = 655360,
+	.flow_sig_id = 655360UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -3522,7 +3522,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_4a93,
 	.class_tid = 1,
 	.hdr_sig_id = 9,
-	.flow_sig_id = 655368,
+	.flow_sig_id = 655368UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -3541,7 +3541,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_05f7,
 	.class_tid = 1,
 	.hdr_sig_id = 9,
-	.flow_sig_id = 655424,
+	.flow_sig_id = 655424UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -3560,7 +3560,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_368f,
 	.class_tid = 1,
 	.hdr_sig_id = 9,
-	.flow_sig_id = 655432,
+	.flow_sig_id = 655432UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -3580,7 +3580,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_39c7,
 	.class_tid = 1,
 	.hdr_sig_id = 9,
-	.flow_sig_id = 720896,
+	.flow_sig_id = 720896UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -3599,7 +3599,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_022b,
 	.class_tid = 1,
 	.hdr_sig_id = 9,
-	.flow_sig_id = 720904,
+	.flow_sig_id = 720904UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -3619,7 +3619,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_25f3,
 	.class_tid = 1,
 	.hdr_sig_id = 9,
-	.flow_sig_id = 720960,
+	.flow_sig_id = 720960UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -3639,7 +3639,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_568b,
 	.class_tid = 1,
 	.hdr_sig_id = 9,
-	.flow_sig_id = 720968,
+	.flow_sig_id = 720968UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -3660,7 +3660,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3c37,
 	.class_tid = 1,
 	.hdr_sig_id = 9,
-	.flow_sig_id = 917504,
+	.flow_sig_id = 917504UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -3679,7 +3679,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_041b,
 	.class_tid = 1,
 	.hdr_sig_id = 9,
-	.flow_sig_id = 917512,
+	.flow_sig_id = 917512UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -3699,7 +3699,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_2823,
 	.class_tid = 1,
 	.hdr_sig_id = 9,
-	.flow_sig_id = 917568,
+	.flow_sig_id = 917568UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -3719,7 +3719,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_58fb,
 	.class_tid = 1,
 	.hdr_sig_id = 9,
-	.flow_sig_id = 917576,
+	.flow_sig_id = 917576UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -3740,7 +3740,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_5c33,
 	.class_tid = 1,
 	.hdr_sig_id = 9,
-	.flow_sig_id = 983040,
+	.flow_sig_id = 983040UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -3760,7 +3760,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_2407,
 	.class_tid = 1,
 	.hdr_sig_id = 9,
-	.flow_sig_id = 983048,
+	.flow_sig_id = 983048UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -3781,7 +3781,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_482f,
 	.class_tid = 1,
 	.hdr_sig_id = 9,
-	.flow_sig_id = 983104,
+	.flow_sig_id = 983104UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -3802,7 +3802,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_1033,
 	.class_tid = 1,
 	.hdr_sig_id = 9,
-	.flow_sig_id = 983112,
+	.flow_sig_id = 983112UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -3824,7 +3824,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3887,
 	.class_tid = 1,
 	.hdr_sig_id = 10,
-	.flow_sig_id = 32768,
+	.flow_sig_id = 32768UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -3841,7 +3841,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_00bb,
 	.class_tid = 1,
 	.hdr_sig_id = 10,
-	.flow_sig_id = 32776,
+	.flow_sig_id = 32776UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -3859,7 +3859,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_2493,
 	.class_tid = 1,
 	.hdr_sig_id = 10,
-	.flow_sig_id = 32832,
+	.flow_sig_id = 32832UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -3877,7 +3877,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_55db,
 	.class_tid = 1,
 	.hdr_sig_id = 10,
-	.flow_sig_id = 32840,
+	.flow_sig_id = 32840UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -3896,7 +3896,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_5043,
 	.class_tid = 1,
 	.hdr_sig_id = 10,
-	.flow_sig_id = 49152,
+	.flow_sig_id = 49152UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -3914,7 +3914,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_1877,
 	.class_tid = 1,
 	.hdr_sig_id = 10,
-	.flow_sig_id = 49160,
+	.flow_sig_id = 49160UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -3933,7 +3933,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3baf,
 	.class_tid = 1,
 	.hdr_sig_id = 10,
-	.flow_sig_id = 49216,
+	.flow_sig_id = 49216UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -3952,7 +3952,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_0443,
 	.class_tid = 1,
 	.hdr_sig_id = 10,
-	.flow_sig_id = 49224,
+	.flow_sig_id = 49224UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -3972,7 +3972,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_5883,
 	.class_tid = 1,
 	.hdr_sig_id = 10,
-	.flow_sig_id = 98304,
+	.flow_sig_id = 98304UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -3990,7 +3990,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_20b7,
 	.class_tid = 1,
 	.hdr_sig_id = 10,
-	.flow_sig_id = 98312,
+	.flow_sig_id = 98312UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -4009,7 +4009,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_44ef,
 	.class_tid = 1,
 	.hdr_sig_id = 10,
-	.flow_sig_id = 98368,
+	.flow_sig_id = 98368UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -4028,7 +4028,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_0c83,
 	.class_tid = 1,
 	.hdr_sig_id = 10,
-	.flow_sig_id = 98376,
+	.flow_sig_id = 98376UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -4048,7 +4048,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_070b,
 	.class_tid = 1,
 	.hdr_sig_id = 10,
-	.flow_sig_id = 114688,
+	.flow_sig_id = 114688UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -4067,7 +4067,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3873,
 	.class_tid = 1,
 	.hdr_sig_id = 10,
-	.flow_sig_id = 114696,
+	.flow_sig_id = 114696UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -4087,7 +4087,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_5bab,
 	.class_tid = 1,
 	.hdr_sig_id = 10,
-	.flow_sig_id = 114752,
+	.flow_sig_id = 114752UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -4107,7 +4107,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_245f,
 	.class_tid = 1,
 	.hdr_sig_id = 10,
-	.flow_sig_id = 114760,
+	.flow_sig_id = 114760UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -4128,7 +4128,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_142b,
 	.class_tid = 1,
 	.hdr_sig_id = 10,
-	.flow_sig_id = 163840,
+	.flow_sig_id = 163840UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -4146,7 +4146,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_4513,
 	.class_tid = 1,
 	.hdr_sig_id = 10,
-	.flow_sig_id = 163848,
+	.flow_sig_id = 163848UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -4165,7 +4165,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_0037,
 	.class_tid = 1,
 	.hdr_sig_id = 10,
-	.flow_sig_id = 163904,
+	.flow_sig_id = 163904UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -4184,7 +4184,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_317f,
 	.class_tid = 1,
 	.hdr_sig_id = 10,
-	.flow_sig_id = 163912,
+	.flow_sig_id = 163912UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -4204,7 +4204,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_2be7,
 	.class_tid = 1,
 	.hdr_sig_id = 10,
-	.flow_sig_id = 180224,
+	.flow_sig_id = 180224UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -4223,7 +4223,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_5c2f,
 	.class_tid = 1,
 	.hdr_sig_id = 10,
-	.flow_sig_id = 180232,
+	.flow_sig_id = 180232UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -4243,7 +4243,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_17f3,
 	.class_tid = 1,
 	.hdr_sig_id = 10,
-	.flow_sig_id = 180288,
+	.flow_sig_id = 180288UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -4263,7 +4263,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_483b,
 	.class_tid = 1,
 	.hdr_sig_id = 10,
-	.flow_sig_id = 180296,
+	.flow_sig_id = 180296UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -4284,7 +4284,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3427,
 	.class_tid = 1,
 	.hdr_sig_id = 10,
-	.flow_sig_id = 229376,
+	.flow_sig_id = 229376UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -4303,7 +4303,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_656f,
 	.class_tid = 1,
 	.hdr_sig_id = 10,
-	.flow_sig_id = 229384,
+	.flow_sig_id = 229384UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -4323,7 +4323,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_2033,
 	.class_tid = 1,
 	.hdr_sig_id = 10,
-	.flow_sig_id = 229440,
+	.flow_sig_id = 229440UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -4343,7 +4343,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_517b,
 	.class_tid = 1,
 	.hdr_sig_id = 10,
-	.flow_sig_id = 229448,
+	.flow_sig_id = 229448UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -4364,7 +4364,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_4be3,
 	.class_tid = 1,
 	.hdr_sig_id = 10,
-	.flow_sig_id = 245760,
+	.flow_sig_id = 245760UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -4384,7 +4384,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_1397,
 	.class_tid = 1,
 	.hdr_sig_id = 10,
-	.flow_sig_id = 245768,
+	.flow_sig_id = 245768UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -4405,7 +4405,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_37cf,
 	.class_tid = 1,
 	.hdr_sig_id = 10,
-	.flow_sig_id = 245824,
+	.flow_sig_id = 245824UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -4426,7 +4426,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_6837,
 	.class_tid = 1,
 	.hdr_sig_id = 10,
-	.flow_sig_id = 245832,
+	.flow_sig_id = 245832UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -4448,7 +4448,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3d7f,
 	.class_tid = 1,
 	.hdr_sig_id = 11,
-	.flow_sig_id = 131072,
+	.flow_sig_id = 131072UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -4465,7 +4465,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_0503,
 	.class_tid = 1,
 	.hdr_sig_id = 11,
-	.flow_sig_id = 131080,
+	.flow_sig_id = 131080UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -4483,7 +4483,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_296b,
 	.class_tid = 1,
 	.hdr_sig_id = 11,
-	.flow_sig_id = 131136,
+	.flow_sig_id = 131136UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -4501,7 +4501,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_59a3,
 	.class_tid = 1,
 	.hdr_sig_id = 11,
-	.flow_sig_id = 131144,
+	.flow_sig_id = 131144UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -4520,7 +4520,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_5d7b,
 	.class_tid = 1,
 	.hdr_sig_id = 11,
-	.flow_sig_id = 196608,
+	.flow_sig_id = 196608UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -4538,7 +4538,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_250f,
 	.class_tid = 1,
 	.hdr_sig_id = 11,
-	.flow_sig_id = 196616,
+	.flow_sig_id = 196616UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -4557,7 +4557,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_4957,
 	.class_tid = 1,
 	.hdr_sig_id = 11,
-	.flow_sig_id = 196672,
+	.flow_sig_id = 196672UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -4576,7 +4576,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_117b,
 	.class_tid = 1,
 	.hdr_sig_id = 11,
-	.flow_sig_id = 196680,
+	.flow_sig_id = 196680UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -4596,7 +4596,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_5f2b,
 	.class_tid = 1,
 	.hdr_sig_id = 11,
-	.flow_sig_id = 393216,
+	.flow_sig_id = 393216UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -4614,7 +4614,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_273f,
 	.class_tid = 1,
 	.hdr_sig_id = 11,
-	.flow_sig_id = 393224,
+	.flow_sig_id = 393224UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -4633,7 +4633,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_4b07,
 	.class_tid = 1,
 	.hdr_sig_id = 11,
-	.flow_sig_id = 393280,
+	.flow_sig_id = 393280UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -4652,7 +4652,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_132b,
 	.class_tid = 1,
 	.hdr_sig_id = 11,
-	.flow_sig_id = 393288,
+	.flow_sig_id = 393288UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -4672,7 +4672,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_16e3,
 	.class_tid = 1,
 	.hdr_sig_id = 11,
-	.flow_sig_id = 458752,
+	.flow_sig_id = 458752UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -4691,7 +4691,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_473b,
 	.class_tid = 1,
 	.hdr_sig_id = 11,
-	.flow_sig_id = 458760,
+	.flow_sig_id = 458760UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -4711,7 +4711,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_02df,
 	.class_tid = 1,
 	.hdr_sig_id = 11,
-	.flow_sig_id = 458816,
+	.flow_sig_id = 458816UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -4731,7 +4731,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3317,
 	.class_tid = 1,
 	.hdr_sig_id = 11,
-	.flow_sig_id = 458824,
+	.flow_sig_id = 458824UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -4752,7 +4752,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_19bb,
 	.class_tid = 1,
 	.hdr_sig_id = 11,
-	.flow_sig_id = 655360,
+	.flow_sig_id = 655360UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -4770,7 +4770,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_4af3,
 	.class_tid = 1,
 	.hdr_sig_id = 11,
-	.flow_sig_id = 655368,
+	.flow_sig_id = 655368UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -4789,7 +4789,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_0597,
 	.class_tid = 1,
 	.hdr_sig_id = 11,
-	.flow_sig_id = 655424,
+	.flow_sig_id = 655424UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -4808,7 +4808,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_36ef,
 	.class_tid = 1,
 	.hdr_sig_id = 11,
-	.flow_sig_id = 655432,
+	.flow_sig_id = 655432UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -4828,7 +4828,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_39a7,
 	.class_tid = 1,
 	.hdr_sig_id = 11,
-	.flow_sig_id = 720896,
+	.flow_sig_id = 720896UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -4847,7 +4847,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_024b,
 	.class_tid = 1,
 	.hdr_sig_id = 11,
-	.flow_sig_id = 720904,
+	.flow_sig_id = 720904UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -4867,7 +4867,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_2593,
 	.class_tid = 1,
 	.hdr_sig_id = 11,
-	.flow_sig_id = 720960,
+	.flow_sig_id = 720960UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -4887,7 +4887,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_56eb,
 	.class_tid = 1,
 	.hdr_sig_id = 11,
-	.flow_sig_id = 720968,
+	.flow_sig_id = 720968UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -4908,7 +4908,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3c57,
 	.class_tid = 1,
 	.hdr_sig_id = 11,
-	.flow_sig_id = 917504,
+	.flow_sig_id = 917504UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -4927,7 +4927,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_047b,
 	.class_tid = 1,
 	.hdr_sig_id = 11,
-	.flow_sig_id = 917512,
+	.flow_sig_id = 917512UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -4947,7 +4947,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_2843,
 	.class_tid = 1,
 	.hdr_sig_id = 11,
-	.flow_sig_id = 917568,
+	.flow_sig_id = 917568UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -4967,7 +4967,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_589b,
 	.class_tid = 1,
 	.hdr_sig_id = 11,
-	.flow_sig_id = 917576,
+	.flow_sig_id = 917576UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -4988,7 +4988,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_5c53,
 	.class_tid = 1,
 	.hdr_sig_id = 11,
-	.flow_sig_id = 983040,
+	.flow_sig_id = 983040UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -5008,7 +5008,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_2467,
 	.class_tid = 1,
 	.hdr_sig_id = 11,
-	.flow_sig_id = 983048,
+	.flow_sig_id = 983048UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -5029,7 +5029,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_484f,
 	.class_tid = 1,
 	.hdr_sig_id = 11,
-	.flow_sig_id = 983104,
+	.flow_sig_id = 983104UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -5050,7 +5050,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_1053,
 	.class_tid = 1,
 	.hdr_sig_id = 11,
-	.flow_sig_id = 983112,
+	.flow_sig_id = 983112UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -5072,7 +5072,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_5ce1,
 	.class_tid = 1,
 	.hdr_sig_id = 0,
-	.flow_sig_id = 4096,
+	.flow_sig_id = 4096UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -5086,7 +5086,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_4579,
 	.class_tid = 1,
 	.hdr_sig_id = 0,
-	.flow_sig_id = 6144,
+	.flow_sig_id = 6144UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -5101,7 +5101,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_1735,
 	.class_tid = 1,
 	.hdr_sig_id = 1,
-	.flow_sig_id = 16384,
+	.flow_sig_id = 16384UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -5115,7 +5115,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_45bd,
 	.class_tid = 1,
 	.hdr_sig_id = 1,
-	.flow_sig_id = 24576,
+	.flow_sig_id = 24576UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -5130,7 +5130,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3feb,
 	.class_tid = 1,
 	.hdr_sig_id = 2,
-	.flow_sig_id = 32768,
+	.flow_sig_id = 32768UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -5145,7 +5145,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_2bf7,
 	.class_tid = 1,
 	.hdr_sig_id = 2,
-	.flow_sig_id = 32832,
+	.flow_sig_id = 32832UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -5161,7 +5161,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_5727,
 	.class_tid = 1,
 	.hdr_sig_id = 2,
-	.flow_sig_id = 49152,
+	.flow_sig_id = 49152UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -5177,7 +5177,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_4333,
 	.class_tid = 1,
 	.hdr_sig_id = 2,
-	.flow_sig_id = 49216,
+	.flow_sig_id = 49216UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -5194,7 +5194,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_4453,
 	.class_tid = 1,
 	.hdr_sig_id = 3,
-	.flow_sig_id = 131072,
+	.flow_sig_id = 131072UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -5209,7 +5209,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_304f,
 	.class_tid = 1,
 	.hdr_sig_id = 3,
-	.flow_sig_id = 131136,
+	.flow_sig_id = 131136UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -5225,7 +5225,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_645f,
 	.class_tid = 1,
 	.hdr_sig_id = 3,
-	.flow_sig_id = 196608,
+	.flow_sig_id = 196608UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -5241,7 +5241,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_504b,
 	.class_tid = 1,
 	.hdr_sig_id = 3,
-	.flow_sig_id = 196672,
+	.flow_sig_id = 196672UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -5258,7 +5258,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_5cc1,
 	.class_tid = 1,
 	.hdr_sig_id = 4,
-	.flow_sig_id = 4096,
+	.flow_sig_id = 4096UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -5273,7 +5273,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_4559,
 	.class_tid = 1,
 	.hdr_sig_id = 4,
-	.flow_sig_id = 6144,
+	.flow_sig_id = 6144UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -5289,7 +5289,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_2285,
 	.class_tid = 1,
 	.hdr_sig_id = 4,
-	.flow_sig_id = 12288,
+	.flow_sig_id = 12288UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -5305,7 +5305,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_0b1d,
 	.class_tid = 1,
 	.hdr_sig_id = 4,
-	.flow_sig_id = 14336,
+	.flow_sig_id = 14336UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -5322,7 +5322,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_0b49,
 	.class_tid = 1,
 	.hdr_sig_id = 4,
-	.flow_sig_id = 20480,
+	.flow_sig_id = 20480UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -5338,7 +5338,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_5c95,
 	.class_tid = 1,
 	.hdr_sig_id = 4,
-	.flow_sig_id = 22528,
+	.flow_sig_id = 22528UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -5355,7 +5355,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_39c1,
 	.class_tid = 1,
 	.hdr_sig_id = 4,
-	.flow_sig_id = 28672,
+	.flow_sig_id = 28672UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -5372,7 +5372,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_2259,
 	.class_tid = 1,
 	.hdr_sig_id = 4,
-	.flow_sig_id = 30720,
+	.flow_sig_id = 30720UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -5390,7 +5390,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_1715,
 	.class_tid = 1,
 	.hdr_sig_id = 5,
-	.flow_sig_id = 16384,
+	.flow_sig_id = 16384UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -5405,7 +5405,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_459d,
 	.class_tid = 1,
 	.hdr_sig_id = 5,
-	.flow_sig_id = 24576,
+	.flow_sig_id = 24576UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -5421,7 +5421,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_571d,
 	.class_tid = 1,
 	.hdr_sig_id = 5,
-	.flow_sig_id = 49152,
+	.flow_sig_id = 49152UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -5437,7 +5437,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_1cd1,
 	.class_tid = 1,
 	.hdr_sig_id = 5,
-	.flow_sig_id = 57344,
+	.flow_sig_id = 57344UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -5454,7 +5454,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3711,
 	.class_tid = 1,
 	.hdr_sig_id = 5,
-	.flow_sig_id = 81920,
+	.flow_sig_id = 81920UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -5470,7 +5470,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_6599,
 	.class_tid = 1,
 	.hdr_sig_id = 5,
-	.flow_sig_id = 90112,
+	.flow_sig_id = 90112UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -5487,7 +5487,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_0e55,
 	.class_tid = 1,
 	.hdr_sig_id = 5,
-	.flow_sig_id = 114688,
+	.flow_sig_id = 114688UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -5504,7 +5504,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3cdd,
 	.class_tid = 1,
 	.hdr_sig_id = 5,
-	.flow_sig_id = 122880,
+	.flow_sig_id = 122880UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -5522,7 +5522,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_5ca1,
 	.class_tid = 1,
 	.hdr_sig_id = 6,
-	.flow_sig_id = 4096,
+	.flow_sig_id = 4096UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -5537,7 +5537,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_4539,
 	.class_tid = 1,
 	.hdr_sig_id = 6,
-	.flow_sig_id = 6144,
+	.flow_sig_id = 6144UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -5553,7 +5553,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_22e5,
 	.class_tid = 1,
 	.hdr_sig_id = 6,
-	.flow_sig_id = 12288,
+	.flow_sig_id = 12288UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -5569,7 +5569,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_0b7d,
 	.class_tid = 1,
 	.hdr_sig_id = 6,
-	.flow_sig_id = 14336,
+	.flow_sig_id = 14336UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -5586,7 +5586,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_0b29,
 	.class_tid = 1,
 	.hdr_sig_id = 6,
-	.flow_sig_id = 20480,
+	.flow_sig_id = 20480UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -5602,7 +5602,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_5cf5,
 	.class_tid = 1,
 	.hdr_sig_id = 6,
-	.flow_sig_id = 22528,
+	.flow_sig_id = 22528UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -5619,7 +5619,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_39a1,
 	.class_tid = 1,
 	.hdr_sig_id = 6,
-	.flow_sig_id = 28672,
+	.flow_sig_id = 28672UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -5636,7 +5636,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_2239,
 	.class_tid = 1,
 	.hdr_sig_id = 6,
-	.flow_sig_id = 30720,
+	.flow_sig_id = 30720UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -5654,7 +5654,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_1775,
 	.class_tid = 1,
 	.hdr_sig_id = 7,
-	.flow_sig_id = 16384,
+	.flow_sig_id = 16384UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -5669,7 +5669,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_45fd,
 	.class_tid = 1,
 	.hdr_sig_id = 7,
-	.flow_sig_id = 24576,
+	.flow_sig_id = 24576UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -5685,7 +5685,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_577d,
 	.class_tid = 1,
 	.hdr_sig_id = 7,
-	.flow_sig_id = 49152,
+	.flow_sig_id = 49152UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -5701,7 +5701,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_1cb1,
 	.class_tid = 1,
 	.hdr_sig_id = 7,
-	.flow_sig_id = 57344,
+	.flow_sig_id = 57344UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -5718,7 +5718,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3771,
 	.class_tid = 1,
 	.hdr_sig_id = 7,
-	.flow_sig_id = 81920,
+	.flow_sig_id = 81920UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -5734,7 +5734,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_65f9,
 	.class_tid = 1,
 	.hdr_sig_id = 7,
-	.flow_sig_id = 90112,
+	.flow_sig_id = 90112UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -5751,7 +5751,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_0e35,
 	.class_tid = 1,
 	.hdr_sig_id = 7,
-	.flow_sig_id = 114688,
+	.flow_sig_id = 114688UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -5768,7 +5768,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3cbd,
 	.class_tid = 1,
 	.hdr_sig_id = 7,
-	.flow_sig_id = 122880,
+	.flow_sig_id = 122880UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -5786,7 +5786,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3fcb,
 	.class_tid = 1,
 	.hdr_sig_id = 8,
-	.flow_sig_id = 32768,
+	.flow_sig_id = 32768UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -5802,7 +5802,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_2bd7,
 	.class_tid = 1,
 	.hdr_sig_id = 8,
-	.flow_sig_id = 32832,
+	.flow_sig_id = 32832UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -5819,7 +5819,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_5707,
 	.class_tid = 1,
 	.hdr_sig_id = 8,
-	.flow_sig_id = 49152,
+	.flow_sig_id = 49152UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -5836,7 +5836,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_4313,
 	.class_tid = 1,
 	.hdr_sig_id = 8,
-	.flow_sig_id = 49216,
+	.flow_sig_id = 49216UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -5854,7 +5854,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_5fc7,
 	.class_tid = 1,
 	.hdr_sig_id = 8,
-	.flow_sig_id = 98304,
+	.flow_sig_id = 98304UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -5871,7 +5871,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_4bd3,
 	.class_tid = 1,
 	.hdr_sig_id = 8,
-	.flow_sig_id = 98368,
+	.flow_sig_id = 98368UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -5889,7 +5889,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_0e4f,
 	.class_tid = 1,
 	.hdr_sig_id = 8,
-	.flow_sig_id = 114688,
+	.flow_sig_id = 114688UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -5907,7 +5907,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_632f,
 	.class_tid = 1,
 	.hdr_sig_id = 8,
-	.flow_sig_id = 114752,
+	.flow_sig_id = 114752UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -5926,7 +5926,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_1baf,
 	.class_tid = 1,
 	.hdr_sig_id = 8,
-	.flow_sig_id = 163840,
+	.flow_sig_id = 163840UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -5943,7 +5943,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_07bb,
 	.class_tid = 1,
 	.hdr_sig_id = 8,
-	.flow_sig_id = 163904,
+	.flow_sig_id = 163904UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -5961,7 +5961,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_32eb,
 	.class_tid = 1,
 	.hdr_sig_id = 8,
-	.flow_sig_id = 180224,
+	.flow_sig_id = 180224UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -5979,7 +5979,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_1ef7,
 	.class_tid = 1,
 	.hdr_sig_id = 8,
-	.flow_sig_id = 180288,
+	.flow_sig_id = 180288UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -5998,7 +5998,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3bab,
 	.class_tid = 1,
 	.hdr_sig_id = 8,
-	.flow_sig_id = 229376,
+	.flow_sig_id = 229376UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -6016,7 +6016,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_27b7,
 	.class_tid = 1,
 	.hdr_sig_id = 8,
-	.flow_sig_id = 229440,
+	.flow_sig_id = 229440UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -6035,7 +6035,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_52e7,
 	.class_tid = 1,
 	.hdr_sig_id = 8,
-	.flow_sig_id = 245760,
+	.flow_sig_id = 245760UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -6054,7 +6054,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3ef3,
 	.class_tid = 1,
 	.hdr_sig_id = 8,
-	.flow_sig_id = 245824,
+	.flow_sig_id = 245824UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -6074,7 +6074,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_4473,
 	.class_tid = 1,
 	.hdr_sig_id = 9,
-	.flow_sig_id = 131072,
+	.flow_sig_id = 131072UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -6090,7 +6090,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_306f,
 	.class_tid = 1,
 	.hdr_sig_id = 9,
-	.flow_sig_id = 131136,
+	.flow_sig_id = 131136UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -6107,7 +6107,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_647f,
 	.class_tid = 1,
 	.hdr_sig_id = 9,
-	.flow_sig_id = 196608,
+	.flow_sig_id = 196608UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -6124,7 +6124,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_506b,
 	.class_tid = 1,
 	.hdr_sig_id = 9,
-	.flow_sig_id = 196672,
+	.flow_sig_id = 196672UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -6142,7 +6142,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_66af,
 	.class_tid = 1,
 	.hdr_sig_id = 9,
-	.flow_sig_id = 393216,
+	.flow_sig_id = 393216UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -6159,7 +6159,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_525b,
 	.class_tid = 1,
 	.hdr_sig_id = 9,
-	.flow_sig_id = 393280,
+	.flow_sig_id = 393280UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -6177,7 +6177,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_1de7,
 	.class_tid = 1,
 	.hdr_sig_id = 9,
-	.flow_sig_id = 458752,
+	.flow_sig_id = 458752UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -6195,7 +6195,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_0993,
 	.class_tid = 1,
 	.hdr_sig_id = 9,
-	.flow_sig_id = 458816,
+	.flow_sig_id = 458816UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -6214,7 +6214,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_213f,
 	.class_tid = 1,
 	.hdr_sig_id = 9,
-	.flow_sig_id = 655360,
+	.flow_sig_id = 655360UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -6231,7 +6231,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_0d2b,
 	.class_tid = 1,
 	.hdr_sig_id = 9,
-	.flow_sig_id = 655424,
+	.flow_sig_id = 655424UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -6249,7 +6249,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_413b,
 	.class_tid = 1,
 	.hdr_sig_id = 9,
-	.flow_sig_id = 720896,
+	.flow_sig_id = 720896UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -6267,7 +6267,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_2cd7,
 	.class_tid = 1,
 	.hdr_sig_id = 9,
-	.flow_sig_id = 720960,
+	.flow_sig_id = 720960UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -6286,7 +6286,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_436b,
 	.class_tid = 1,
 	.hdr_sig_id = 9,
-	.flow_sig_id = 917504,
+	.flow_sig_id = 917504UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -6304,7 +6304,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_2f07,
 	.class_tid = 1,
 	.hdr_sig_id = 9,
-	.flow_sig_id = 917568,
+	.flow_sig_id = 917568UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -6323,7 +6323,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_6317,
 	.class_tid = 1,
 	.hdr_sig_id = 9,
-	.flow_sig_id = 983040,
+	.flow_sig_id = 983040UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -6342,7 +6342,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_4f03,
 	.class_tid = 1,
 	.hdr_sig_id = 9,
-	.flow_sig_id = 983104,
+	.flow_sig_id = 983104UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -6362,7 +6362,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3fab,
 	.class_tid = 1,
 	.hdr_sig_id = 10,
-	.flow_sig_id = 32768,
+	.flow_sig_id = 32768UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -6378,7 +6378,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_2bb7,
 	.class_tid = 1,
 	.hdr_sig_id = 10,
-	.flow_sig_id = 32832,
+	.flow_sig_id = 32832UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -6395,7 +6395,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_5767,
 	.class_tid = 1,
 	.hdr_sig_id = 10,
-	.flow_sig_id = 49152,
+	.flow_sig_id = 49152UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -6412,7 +6412,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_4373,
 	.class_tid = 1,
 	.hdr_sig_id = 10,
-	.flow_sig_id = 49216,
+	.flow_sig_id = 49216UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -6430,7 +6430,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_5fa7,
 	.class_tid = 1,
 	.hdr_sig_id = 10,
-	.flow_sig_id = 98304,
+	.flow_sig_id = 98304UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -6447,7 +6447,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_4bb3,
 	.class_tid = 1,
 	.hdr_sig_id = 10,
-	.flow_sig_id = 98368,
+	.flow_sig_id = 98368UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -6465,7 +6465,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_0e2f,
 	.class_tid = 1,
 	.hdr_sig_id = 10,
-	.flow_sig_id = 114688,
+	.flow_sig_id = 114688UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -6483,7 +6483,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_634f,
 	.class_tid = 1,
 	.hdr_sig_id = 10,
-	.flow_sig_id = 114752,
+	.flow_sig_id = 114752UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -6502,7 +6502,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_1bcf,
 	.class_tid = 1,
 	.hdr_sig_id = 10,
-	.flow_sig_id = 163840,
+	.flow_sig_id = 163840UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -6519,7 +6519,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_07db,
 	.class_tid = 1,
 	.hdr_sig_id = 10,
-	.flow_sig_id = 163904,
+	.flow_sig_id = 163904UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -6537,7 +6537,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_328b,
 	.class_tid = 1,
 	.hdr_sig_id = 10,
-	.flow_sig_id = 180224,
+	.flow_sig_id = 180224UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -6555,7 +6555,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_1e97,
 	.class_tid = 1,
 	.hdr_sig_id = 10,
-	.flow_sig_id = 180288,
+	.flow_sig_id = 180288UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -6574,7 +6574,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3bcb,
 	.class_tid = 1,
 	.hdr_sig_id = 10,
-	.flow_sig_id = 229376,
+	.flow_sig_id = 229376UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -6592,7 +6592,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_27d7,
 	.class_tid = 1,
 	.hdr_sig_id = 10,
-	.flow_sig_id = 229440,
+	.flow_sig_id = 229440UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -6611,7 +6611,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_5287,
 	.class_tid = 1,
 	.hdr_sig_id = 10,
-	.flow_sig_id = 245760,
+	.flow_sig_id = 245760UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -6630,7 +6630,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3e93,
 	.class_tid = 1,
 	.hdr_sig_id = 10,
-	.flow_sig_id = 245824,
+	.flow_sig_id = 245824UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -6650,7 +6650,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_4413,
 	.class_tid = 1,
 	.hdr_sig_id = 11,
-	.flow_sig_id = 131072,
+	.flow_sig_id = 131072UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -6666,7 +6666,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_300f,
 	.class_tid = 1,
 	.hdr_sig_id = 11,
-	.flow_sig_id = 131136,
+	.flow_sig_id = 131136UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -6683,7 +6683,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_641f,
 	.class_tid = 1,
 	.hdr_sig_id = 11,
-	.flow_sig_id = 196608,
+	.flow_sig_id = 196608UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -6700,7 +6700,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_500b,
 	.class_tid = 1,
 	.hdr_sig_id = 11,
-	.flow_sig_id = 196672,
+	.flow_sig_id = 196672UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -6718,7 +6718,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_66cf,
 	.class_tid = 1,
 	.hdr_sig_id = 11,
-	.flow_sig_id = 393216,
+	.flow_sig_id = 393216UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -6735,7 +6735,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_523b,
 	.class_tid = 1,
 	.hdr_sig_id = 11,
-	.flow_sig_id = 393280,
+	.flow_sig_id = 393280UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -6753,7 +6753,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_1d87,
 	.class_tid = 1,
 	.hdr_sig_id = 11,
-	.flow_sig_id = 458752,
+	.flow_sig_id = 458752UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -6771,7 +6771,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_09f3,
 	.class_tid = 1,
 	.hdr_sig_id = 11,
-	.flow_sig_id = 458816,
+	.flow_sig_id = 458816UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -6790,7 +6790,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_215f,
 	.class_tid = 1,
 	.hdr_sig_id = 11,
-	.flow_sig_id = 655360,
+	.flow_sig_id = 655360UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -6807,7 +6807,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_0d4b,
 	.class_tid = 1,
 	.hdr_sig_id = 11,
-	.flow_sig_id = 655424,
+	.flow_sig_id = 655424UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -6825,7 +6825,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_415b,
 	.class_tid = 1,
 	.hdr_sig_id = 11,
-	.flow_sig_id = 720896,
+	.flow_sig_id = 720896UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -6843,7 +6843,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_2cb7,
 	.class_tid = 1,
 	.hdr_sig_id = 11,
-	.flow_sig_id = 720960,
+	.flow_sig_id = 720960UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -6862,7 +6862,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_430b,
 	.class_tid = 1,
 	.hdr_sig_id = 11,
-	.flow_sig_id = 917504,
+	.flow_sig_id = 917504UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -6880,7 +6880,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_2f67,
 	.class_tid = 1,
 	.hdr_sig_id = 11,
-	.flow_sig_id = 917568,
+	.flow_sig_id = 917568UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -6899,7 +6899,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_6377,
 	.class_tid = 1,
 	.hdr_sig_id = 11,
-	.flow_sig_id = 983040,
+	.flow_sig_id = 983040UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -6918,7 +6918,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_4f63,
 	.class_tid = 1,
 	.hdr_sig_id = 11,
-	.flow_sig_id = 983104,
+	.flow_sig_id = 983104UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -6938,7 +6938,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_29b5,
 	.class_tid = 1,
 	.hdr_sig_id = 0,
-	.flow_sig_id = 8,
+	.flow_sig_id = 8UL,
 	.flow_pattern_id = 2,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -6953,7 +6953,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_29ad,
 	.class_tid = 1,
 	.hdr_sig_id = 1,
-	.flow_sig_id = 8,
+	.flow_sig_id = 8UL,
 	.flow_pattern_id = 2,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -6968,7 +6968,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_29b7,
 	.class_tid = 1,
 	.hdr_sig_id = 2,
-	.flow_sig_id = 8,
+	.flow_sig_id = 8UL,
 	.flow_pattern_id = 2,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -6984,7 +6984,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_1583,
 	.class_tid = 1,
 	.hdr_sig_id = 2,
-	.flow_sig_id = 72,
+	.flow_sig_id = 72UL,
 	.flow_pattern_id = 2,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -7001,7 +7001,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_29af,
 	.class_tid = 1,
 	.hdr_sig_id = 3,
-	.flow_sig_id = 8,
+	.flow_sig_id = 8UL,
 	.flow_pattern_id = 2,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -7017,7 +7017,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_159b,
 	.class_tid = 1,
 	.hdr_sig_id = 3,
-	.flow_sig_id = 72,
+	.flow_sig_id = 72UL,
 	.flow_pattern_id = 2,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -7034,7 +7034,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_2995,
 	.class_tid = 1,
 	.hdr_sig_id = 4,
-	.flow_sig_id = 8,
+	.flow_sig_id = 8UL,
 	.flow_pattern_id = 2,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -7050,7 +7050,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_298d,
 	.class_tid = 1,
 	.hdr_sig_id = 5,
-	.flow_sig_id = 8,
+	.flow_sig_id = 8UL,
 	.flow_pattern_id = 2,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -7066,7 +7066,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_29f5,
 	.class_tid = 1,
 	.hdr_sig_id = 6,
-	.flow_sig_id = 8,
+	.flow_sig_id = 8UL,
 	.flow_pattern_id = 2,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -7082,7 +7082,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_29ed,
 	.class_tid = 1,
 	.hdr_sig_id = 7,
-	.flow_sig_id = 8,
+	.flow_sig_id = 8UL,
 	.flow_pattern_id = 2,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -7098,7 +7098,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_2997,
 	.class_tid = 1,
 	.hdr_sig_id = 8,
-	.flow_sig_id = 8,
+	.flow_sig_id = 8UL,
 	.flow_pattern_id = 2,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -7115,7 +7115,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_15a3,
 	.class_tid = 1,
 	.hdr_sig_id = 8,
-	.flow_sig_id = 72,
+	.flow_sig_id = 72UL,
 	.flow_pattern_id = 2,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -7133,7 +7133,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_298f,
 	.class_tid = 1,
 	.hdr_sig_id = 9,
-	.flow_sig_id = 8,
+	.flow_sig_id = 8UL,
 	.flow_pattern_id = 2,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -7150,7 +7150,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_15bb,
 	.class_tid = 1,
 	.hdr_sig_id = 9,
-	.flow_sig_id = 72,
+	.flow_sig_id = 72UL,
 	.flow_pattern_id = 2,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -7168,7 +7168,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_29f7,
 	.class_tid = 1,
 	.hdr_sig_id = 10,
-	.flow_sig_id = 8,
+	.flow_sig_id = 8UL,
 	.flow_pattern_id = 2,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -7185,7 +7185,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_15c3,
 	.class_tid = 1,
 	.hdr_sig_id = 10,
-	.flow_sig_id = 72,
+	.flow_sig_id = 72UL,
 	.flow_pattern_id = 2,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -7203,7 +7203,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_29ef,
 	.class_tid = 1,
 	.hdr_sig_id = 11,
-	.flow_sig_id = 8,
+	.flow_sig_id = 8UL,
 	.flow_pattern_id = 2,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -7220,7 +7220,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_15db,
 	.class_tid = 1,
 	.hdr_sig_id = 11,
-	.flow_sig_id = 72,
+	.flow_sig_id = 72UL,
 	.flow_pattern_id = 2,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -7238,7 +7238,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_1151,
 	.class_tid = 1,
 	.hdr_sig_id = 12,
-	.flow_sig_id = 16384,
+	.flow_sig_id = 16384UL,
 	.flow_pattern_id = 3,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -7255,7 +7255,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_315d,
 	.class_tid = 1,
 	.hdr_sig_id = 12,
-	.flow_sig_id = 81920,
+	.flow_sig_id = 81920UL,
 	.flow_pattern_id = 3,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -7273,7 +7273,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3612,
 	.class_tid = 2,
 	.hdr_sig_id = 0,
-	.flow_sig_id = 81920,
+	.flow_sig_id = 81920UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -7292,7 +7292,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_66da,
 	.class_tid = 2,
 	.hdr_sig_id = 0,
-	.flow_sig_id = 81928,
+	.flow_sig_id = 81928UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -7312,7 +7312,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_e082,
 	.class_tid = 2,
 	.hdr_sig_id = 1,
-	.flow_sig_id = 1313792,
+	.flow_sig_id = 1313792UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -7332,7 +7332,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_ab46,
 	.class_tid = 2,
 	.hdr_sig_id = 1,
-	.flow_sig_id = 1321984,
+	.flow_sig_id = 1321984UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -7353,7 +7353,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_c82a,
 	.class_tid = 2,
 	.hdr_sig_id = 1,
-	.flow_sig_id = 3410944,
+	.flow_sig_id = 3410944UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -7374,7 +7374,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_f9a2,
 	.class_tid = 2,
 	.hdr_sig_id = 1,
-	.flow_sig_id = 3419136,
+	.flow_sig_id = 3419136UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -7396,7 +7396,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_d8ce,
 	.class_tid = 2,
 	.hdr_sig_id = 1,
-	.flow_sig_id = 538184704,
+	.flow_sig_id = 538184704UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -7417,7 +7417,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_a2d2,
 	.class_tid = 2,
 	.hdr_sig_id = 1,
-	.flow_sig_id = 538192896,
+	.flow_sig_id = 538192896UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -7439,7 +7439,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_c076,
 	.class_tid = 2,
 	.hdr_sig_id = 1,
-	.flow_sig_id = 540281856,
+	.flow_sig_id = 540281856UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -7461,7 +7461,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_f1ee,
 	.class_tid = 2,
 	.hdr_sig_id = 1,
-	.flow_sig_id = 540290048,
+	.flow_sig_id = 540290048UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -7484,7 +7484,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_a96e,
 	.class_tid = 2,
 	.hdr_sig_id = 1,
-	.flow_sig_id = 1075055616,
+	.flow_sig_id = 1075055616UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -7505,7 +7505,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_dae6,
 	.class_tid = 2,
 	.hdr_sig_id = 1,
-	.flow_sig_id = 1075063808,
+	.flow_sig_id = 1075063808UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -7527,7 +7527,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_c7aa,
 	.class_tid = 2,
 	.hdr_sig_id = 1,
-	.flow_sig_id = 1077152768,
+	.flow_sig_id = 1077152768UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -7549,7 +7549,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_c26e,
 	.class_tid = 2,
 	.hdr_sig_id = 1,
-	.flow_sig_id = 1077160960,
+	.flow_sig_id = 1077160960UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -7572,7 +7572,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_a0fa,
 	.class_tid = 2,
 	.hdr_sig_id = 1,
-	.flow_sig_id = 1611926528,
+	.flow_sig_id = 1611926528UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -7594,7 +7594,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_d272,
 	.class_tid = 2,
 	.hdr_sig_id = 1,
-	.flow_sig_id = 1611934720,
+	.flow_sig_id = 1611934720UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -7617,7 +7617,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_fff6,
 	.class_tid = 2,
 	.hdr_sig_id = 1,
-	.flow_sig_id = 1614023680,
+	.flow_sig_id = 1614023680UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -7640,7 +7640,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_e16e,
 	.class_tid = 2,
 	.hdr_sig_id = 1,
-	.flow_sig_id = 1614031872,
+	.flow_sig_id = 1614031872UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -7664,7 +7664,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_e165,
 	.class_tid = 2,
 	.hdr_sig_id = 2,
-	.flow_sig_id = 1313792,
+	.flow_sig_id = 1313792UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -7684,7 +7684,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_aaa1,
 	.class_tid = 2,
 	.hdr_sig_id = 2,
-	.flow_sig_id = 1321984,
+	.flow_sig_id = 1321984UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -7705,7 +7705,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_c9cd,
 	.class_tid = 2,
 	.hdr_sig_id = 2,
-	.flow_sig_id = 3410944,
+	.flow_sig_id = 3410944UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -7726,7 +7726,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_f845,
 	.class_tid = 2,
 	.hdr_sig_id = 2,
-	.flow_sig_id = 3419136,
+	.flow_sig_id = 3419136UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -7748,7 +7748,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_90f9,
 	.class_tid = 2,
 	.hdr_sig_id = 2,
-	.flow_sig_id = 2148797440,
+	.flow_sig_id = 2148797440UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -7769,7 +7769,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_c371,
 	.class_tid = 2,
 	.hdr_sig_id = 2,
-	.flow_sig_id = 2148805632,
+	.flow_sig_id = 2148805632UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -7791,7 +7791,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_e19d,
 	.class_tid = 2,
 	.hdr_sig_id = 2,
-	.flow_sig_id = 2150894592,
+	.flow_sig_id = 2150894592UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -7813,7 +7813,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_d015,
 	.class_tid = 2,
 	.hdr_sig_id = 2,
-	.flow_sig_id = 2150902784,
+	.flow_sig_id = 2150902784UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -7836,7 +7836,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_8c09,
 	.class_tid = 2,
 	.hdr_sig_id = 2,
-	.flow_sig_id = 4296281088,
+	.flow_sig_id = 4296281088UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -7857,7 +7857,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_be89,
 	.class_tid = 2,
 	.hdr_sig_id = 2,
-	.flow_sig_id = 4296289280,
+	.flow_sig_id = 4296289280UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -7879,7 +7879,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_ddad,
 	.class_tid = 2,
 	.hdr_sig_id = 2,
-	.flow_sig_id = 4298378240,
+	.flow_sig_id = 4298378240UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -7901,7 +7901,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_cc2d,
 	.class_tid = 2,
 	.hdr_sig_id = 2,
-	.flow_sig_id = 4298386432,
+	.flow_sig_id = 4298386432UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -7924,7 +7924,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_a4d9,
 	.class_tid = 2,
 	.hdr_sig_id = 2,
-	.flow_sig_id = 6443764736,
+	.flow_sig_id = 6443764736UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -7946,7 +7946,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_d759,
 	.class_tid = 2,
 	.hdr_sig_id = 2,
-	.flow_sig_id = 6443772928,
+	.flow_sig_id = 6443772928UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -7969,7 +7969,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_f27d,
 	.class_tid = 2,
 	.hdr_sig_id = 2,
-	.flow_sig_id = 6445861888,
+	.flow_sig_id = 6445861888UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -7992,7 +7992,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_e4fd,
 	.class_tid = 2,
 	.hdr_sig_id = 2,
-	.flow_sig_id = 6445870080,
+	.flow_sig_id = 6445870080UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -8016,7 +8016,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_ecf6,
 	.class_tid = 2,
 	.hdr_sig_id = 3,
-	.flow_sig_id = 1313792,
+	.flow_sig_id = 1313792UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -8037,7 +8037,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_a732,
 	.class_tid = 2,
 	.hdr_sig_id = 3,
-	.flow_sig_id = 1321984,
+	.flow_sig_id = 1321984UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -8059,7 +8059,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_c45e,
 	.class_tid = 2,
 	.hdr_sig_id = 3,
-	.flow_sig_id = 3410944,
+	.flow_sig_id = 3410944UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -8081,7 +8081,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_f5d6,
 	.class_tid = 2,
 	.hdr_sig_id = 3,
-	.flow_sig_id = 3419136,
+	.flow_sig_id = 3419136UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -8104,7 +8104,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_d4ba,
 	.class_tid = 2,
 	.hdr_sig_id = 3,
-	.flow_sig_id = 538184704,
+	.flow_sig_id = 538184704UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -8126,7 +8126,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_aea6,
 	.class_tid = 2,
 	.hdr_sig_id = 3,
-	.flow_sig_id = 538192896,
+	.flow_sig_id = 538192896UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -8149,7 +8149,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_cc02,
 	.class_tid = 2,
 	.hdr_sig_id = 3,
-	.flow_sig_id = 540281856,
+	.flow_sig_id = 540281856UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -8172,7 +8172,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_fd9a,
 	.class_tid = 2,
 	.hdr_sig_id = 3,
-	.flow_sig_id = 540290048,
+	.flow_sig_id = 540290048UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -8196,7 +8196,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_a51a,
 	.class_tid = 2,
 	.hdr_sig_id = 3,
-	.flow_sig_id = 1075055616,
+	.flow_sig_id = 1075055616UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -8218,7 +8218,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_d692,
 	.class_tid = 2,
 	.hdr_sig_id = 3,
-	.flow_sig_id = 1075063808,
+	.flow_sig_id = 1075063808UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -8241,7 +8241,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_cbde,
 	.class_tid = 2,
 	.hdr_sig_id = 3,
-	.flow_sig_id = 1077152768,
+	.flow_sig_id = 1077152768UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -8264,7 +8264,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_ce1a,
 	.class_tid = 2,
 	.hdr_sig_id = 3,
-	.flow_sig_id = 1077160960,
+	.flow_sig_id = 1077160960UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -8288,7 +8288,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_ac8e,
 	.class_tid = 2,
 	.hdr_sig_id = 3,
-	.flow_sig_id = 1611926528,
+	.flow_sig_id = 1611926528UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -8311,7 +8311,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_de06,
 	.class_tid = 2,
 	.hdr_sig_id = 3,
-	.flow_sig_id = 1611934720,
+	.flow_sig_id = 1611934720UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -8335,7 +8335,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_f382,
 	.class_tid = 2,
 	.hdr_sig_id = 3,
-	.flow_sig_id = 1614023680,
+	.flow_sig_id = 1614023680UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -8359,7 +8359,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_ed1a,
 	.class_tid = 2,
 	.hdr_sig_id = 3,
-	.flow_sig_id = 1614031872,
+	.flow_sig_id = 1614031872UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -8384,7 +8384,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_9d6a,
 	.class_tid = 2,
 	.hdr_sig_id = 3,
-	.flow_sig_id = 2148797440,
+	.flow_sig_id = 2148797440UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -8406,7 +8406,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_cee2,
 	.class_tid = 2,
 	.hdr_sig_id = 3,
-	.flow_sig_id = 2148805632,
+	.flow_sig_id = 2148805632UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -8429,7 +8429,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_ec0e,
 	.class_tid = 2,
 	.hdr_sig_id = 3,
-	.flow_sig_id = 2150894592,
+	.flow_sig_id = 2150894592UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -8452,7 +8452,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_dd86,
 	.class_tid = 2,
 	.hdr_sig_id = 3,
-	.flow_sig_id = 2150902784,
+	.flow_sig_id = 2150902784UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -8476,7 +8476,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_852e,
 	.class_tid = 2,
 	.hdr_sig_id = 3,
-	.flow_sig_id = 2685668352,
+	.flow_sig_id = 2685668352UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -8499,7 +8499,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_b6a6,
 	.class_tid = 2,
 	.hdr_sig_id = 3,
-	.flow_sig_id = 2685676544,
+	.flow_sig_id = 2685676544UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -8523,7 +8523,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_eb82,
 	.class_tid = 2,
 	.hdr_sig_id = 3,
-	.flow_sig_id = 2687765504,
+	.flow_sig_id = 2687765504UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -8547,7 +8547,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_c50a,
 	.class_tid = 2,
 	.hdr_sig_id = 3,
-	.flow_sig_id = 2687773696,
+	.flow_sig_id = 2687773696UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -8572,7 +8572,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_ccca,
 	.class_tid = 2,
 	.hdr_sig_id = 3,
-	.flow_sig_id = 3222539264,
+	.flow_sig_id = 3222539264UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -8595,7 +8595,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_8706,
 	.class_tid = 2,
 	.hdr_sig_id = 3,
-	.flow_sig_id = 3222547456,
+	.flow_sig_id = 3222547456UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -8619,7 +8619,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_d38e,
 	.class_tid = 2,
 	.hdr_sig_id = 3,
-	.flow_sig_id = 3224636416,
+	.flow_sig_id = 3224636416UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -8643,7 +8643,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_d5ca,
 	.class_tid = 2,
 	.hdr_sig_id = 3,
-	.flow_sig_id = 3224644608,
+	.flow_sig_id = 3224644608UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -8668,7 +8668,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_b48e,
 	.class_tid = 2,
 	.hdr_sig_id = 3,
-	.flow_sig_id = 3759410176,
+	.flow_sig_id = 3759410176UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -8692,7 +8692,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_8e8a,
 	.class_tid = 2,
 	.hdr_sig_id = 3,
-	.flow_sig_id = 3759418368,
+	.flow_sig_id = 3759418368UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -8717,7 +8717,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_db02,
 	.class_tid = 2,
 	.hdr_sig_id = 3,
-	.flow_sig_id = 3761507328,
+	.flow_sig_id = 3761507328UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -8742,7 +8742,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_dd8e,
 	.class_tid = 2,
 	.hdr_sig_id = 3,
-	.flow_sig_id = 3761515520,
+	.flow_sig_id = 3761515520UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -8768,7 +8768,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_819a,
 	.class_tid = 2,
 	.hdr_sig_id = 3,
-	.flow_sig_id = 4296281088,
+	.flow_sig_id = 4296281088UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -8790,7 +8790,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_b31a,
 	.class_tid = 2,
 	.hdr_sig_id = 3,
-	.flow_sig_id = 4296289280,
+	.flow_sig_id = 4296289280UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -8813,7 +8813,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_d03e,
 	.class_tid = 2,
 	.hdr_sig_id = 3,
-	.flow_sig_id = 4298378240,
+	.flow_sig_id = 4298378240UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -8836,7 +8836,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_c1be,
 	.class_tid = 2,
 	.hdr_sig_id = 3,
-	.flow_sig_id = 4298386432,
+	.flow_sig_id = 4298386432UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -8860,7 +8860,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_890e,
 	.class_tid = 2,
 	.hdr_sig_id = 3,
-	.flow_sig_id = 4833152000,
+	.flow_sig_id = 4833152000UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -8883,7 +8883,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_ba8e,
 	.class_tid = 2,
 	.hdr_sig_id = 3,
-	.flow_sig_id = 4833160192,
+	.flow_sig_id = 4833160192UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -8907,7 +8907,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_dfaa,
 	.class_tid = 2,
 	.hdr_sig_id = 3,
-	.flow_sig_id = 4835249152,
+	.flow_sig_id = 4835249152UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -8931,7 +8931,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_c93a,
 	.class_tid = 2,
 	.hdr_sig_id = 3,
-	.flow_sig_id = 4835257344,
+	.flow_sig_id = 4835257344UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -8956,7 +8956,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_b11a,
 	.class_tid = 2,
 	.hdr_sig_id = 3,
-	.flow_sig_id = 5370022912,
+	.flow_sig_id = 5370022912UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -8979,7 +8979,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_8b4e,
 	.class_tid = 2,
 	.hdr_sig_id = 3,
-	.flow_sig_id = 5370031104,
+	.flow_sig_id = 5370031104UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -9003,7 +9003,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_c79e,
 	.class_tid = 2,
 	.hdr_sig_id = 3,
-	.flow_sig_id = 5372120064,
+	.flow_sig_id = 5372120064UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -9027,7 +9027,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_d9da,
 	.class_tid = 2,
 	.hdr_sig_id = 3,
-	.flow_sig_id = 5372128256,
+	.flow_sig_id = 5372128256UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -9052,7 +9052,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_b88e,
 	.class_tid = 2,
 	.hdr_sig_id = 3,
-	.flow_sig_id = 5906893824,
+	.flow_sig_id = 5906893824UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -9076,7 +9076,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_ea0e,
 	.class_tid = 2,
 	.hdr_sig_id = 3,
-	.flow_sig_id = 5906902016,
+	.flow_sig_id = 5906902016UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -9101,7 +9101,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_cf0a,
 	.class_tid = 2,
 	.hdr_sig_id = 3,
-	.flow_sig_id = 5908990976,
+	.flow_sig_id = 5908990976UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -9126,7 +9126,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_c18e,
 	.class_tid = 2,
 	.hdr_sig_id = 3,
-	.flow_sig_id = 5908999168,
+	.flow_sig_id = 5908999168UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -9152,7 +9152,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_a94a,
 	.class_tid = 2,
 	.hdr_sig_id = 3,
-	.flow_sig_id = 6443764736,
+	.flow_sig_id = 6443764736UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -9175,7 +9175,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_daca,
 	.class_tid = 2,
 	.hdr_sig_id = 3,
-	.flow_sig_id = 6443772928,
+	.flow_sig_id = 6443772928UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -9199,7 +9199,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_ffee,
 	.class_tid = 2,
 	.hdr_sig_id = 3,
-	.flow_sig_id = 6445861888,
+	.flow_sig_id = 6445861888UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -9223,7 +9223,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_e96e,
 	.class_tid = 2,
 	.hdr_sig_id = 3,
-	.flow_sig_id = 6445870080,
+	.flow_sig_id = 6445870080UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -9248,7 +9248,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_910e,
 	.class_tid = 2,
 	.hdr_sig_id = 3,
-	.flow_sig_id = 6980635648,
+	.flow_sig_id = 6980635648UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -9272,7 +9272,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_c28e,
 	.class_tid = 2,
 	.hdr_sig_id = 3,
-	.flow_sig_id = 6980643840,
+	.flow_sig_id = 6980643840UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -9297,7 +9297,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_e7aa,
 	.class_tid = 2,
 	.hdr_sig_id = 3,
-	.flow_sig_id = 6982732800,
+	.flow_sig_id = 6982732800UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -9322,7 +9322,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_d12a,
 	.class_tid = 2,
 	.hdr_sig_id = 3,
-	.flow_sig_id = 6982740992,
+	.flow_sig_id = 6982740992UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -9348,7 +9348,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_d8ca,
 	.class_tid = 2,
 	.hdr_sig_id = 3,
-	.flow_sig_id = 7517506560,
+	.flow_sig_id = 7517506560UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -9372,7 +9372,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_930e,
 	.class_tid = 2,
 	.hdr_sig_id = 3,
-	.flow_sig_id = 7517514752,
+	.flow_sig_id = 7517514752UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -9397,7 +9397,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_ef4e,
 	.class_tid = 2,
 	.hdr_sig_id = 3,
-	.flow_sig_id = 7519603712,
+	.flow_sig_id = 7519603712UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -9422,7 +9422,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_e18a,
 	.class_tid = 2,
 	.hdr_sig_id = 3,
-	.flow_sig_id = 7519611904,
+	.flow_sig_id = 7519611904UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -9448,7 +9448,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_c08e,
 	.class_tid = 2,
 	.hdr_sig_id = 3,
-	.flow_sig_id = 8054377472,
+	.flow_sig_id = 8054377472UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -9473,7 +9473,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_9a8a,
 	.class_tid = 2,
 	.hdr_sig_id = 3,
-	.flow_sig_id = 8054385664,
+	.flow_sig_id = 8054385664UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -9499,7 +9499,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_d70a,
 	.class_tid = 2,
 	.hdr_sig_id = 3,
-	.flow_sig_id = 8056474624,
+	.flow_sig_id = 8056474624UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -9525,7 +9525,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_e90e,
 	.class_tid = 2,
 	.hdr_sig_id = 3,
-	.flow_sig_id = 8056482816,
+	.flow_sig_id = 8056482816UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -9552,7 +9552,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_edd9,
 	.class_tid = 2,
 	.hdr_sig_id = 4,
-	.flow_sig_id = 1313792,
+	.flow_sig_id = 1313792UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -9573,7 +9573,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_a61d,
 	.class_tid = 2,
 	.hdr_sig_id = 4,
-	.flow_sig_id = 1321984,
+	.flow_sig_id = 1321984UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -9595,7 +9595,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_c571,
 	.class_tid = 2,
 	.hdr_sig_id = 4,
-	.flow_sig_id = 3410944,
+	.flow_sig_id = 3410944UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -9617,7 +9617,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_f4f9,
 	.class_tid = 2,
 	.hdr_sig_id = 4,
-	.flow_sig_id = 3419136,
+	.flow_sig_id = 3419136UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -9640,7 +9640,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_9c45,
 	.class_tid = 2,
 	.hdr_sig_id = 4,
-	.flow_sig_id = 2148797440,
+	.flow_sig_id = 2148797440UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -9662,7 +9662,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_cfcd,
 	.class_tid = 2,
 	.hdr_sig_id = 4,
-	.flow_sig_id = 2148805632,
+	.flow_sig_id = 2148805632UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -9685,7 +9685,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_ed21,
 	.class_tid = 2,
 	.hdr_sig_id = 4,
-	.flow_sig_id = 2150894592,
+	.flow_sig_id = 2150894592UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -9708,7 +9708,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_dca9,
 	.class_tid = 2,
 	.hdr_sig_id = 4,
-	.flow_sig_id = 2150902784,
+	.flow_sig_id = 2150902784UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -9732,7 +9732,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_80b5,
 	.class_tid = 2,
 	.hdr_sig_id = 4,
-	.flow_sig_id = 4296281088,
+	.flow_sig_id = 4296281088UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -9754,7 +9754,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_b235,
 	.class_tid = 2,
 	.hdr_sig_id = 4,
-	.flow_sig_id = 4296289280,
+	.flow_sig_id = 4296289280UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -9777,7 +9777,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_d111,
 	.class_tid = 2,
 	.hdr_sig_id = 4,
-	.flow_sig_id = 4298378240,
+	.flow_sig_id = 4298378240UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -9800,7 +9800,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_c091,
 	.class_tid = 2,
 	.hdr_sig_id = 4,
-	.flow_sig_id = 4298386432,
+	.flow_sig_id = 4298386432UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -9824,7 +9824,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_a865,
 	.class_tid = 2,
 	.hdr_sig_id = 4,
-	.flow_sig_id = 6443764736,
+	.flow_sig_id = 6443764736UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -9847,7 +9847,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_dbe5,
 	.class_tid = 2,
 	.hdr_sig_id = 4,
-	.flow_sig_id = 6443772928,
+	.flow_sig_id = 6443772928UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -9871,7 +9871,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_fec1,
 	.class_tid = 2,
 	.hdr_sig_id = 4,
-	.flow_sig_id = 6445861888,
+	.flow_sig_id = 6445861888UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -9895,7 +9895,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_e841,
 	.class_tid = 2,
 	.hdr_sig_id = 4,
-	.flow_sig_id = 6445870080,
+	.flow_sig_id = 6445870080UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -9920,7 +9920,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_8e85,
 	.class_tid = 2,
 	.hdr_sig_id = 4,
-	.flow_sig_id = 8591248384,
+	.flow_sig_id = 8591248384UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -9942,7 +9942,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_b80d,
 	.class_tid = 2,
 	.hdr_sig_id = 4,
-	.flow_sig_id = 8591256576,
+	.flow_sig_id = 8591256576UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -9965,7 +9965,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_df65,
 	.class_tid = 2,
 	.hdr_sig_id = 4,
-	.flow_sig_id = 8593345536,
+	.flow_sig_id = 8593345536UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -9988,7 +9988,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_ceed,
 	.class_tid = 2,
 	.hdr_sig_id = 4,
-	.flow_sig_id = 8593353728,
+	.flow_sig_id = 8593353728UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -10012,7 +10012,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_9645,
 	.class_tid = 2,
 	.hdr_sig_id = 4,
-	.flow_sig_id = 10738732032,
+	.flow_sig_id = 10738732032UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -10035,7 +10035,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_c1cd,
 	.class_tid = 2,
 	.hdr_sig_id = 4,
-	.flow_sig_id = 10738740224,
+	.flow_sig_id = 10738740224UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -10059,7 +10059,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_e725,
 	.class_tid = 2,
 	.hdr_sig_id = 4,
-	.flow_sig_id = 10740829184,
+	.flow_sig_id = 10740829184UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -10083,7 +10083,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_d6ad,
 	.class_tid = 2,
 	.hdr_sig_id = 4,
-	.flow_sig_id = 10740837376,
+	.flow_sig_id = 10740837376UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -10108,7 +10108,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_9aa5,
 	.class_tid = 2,
 	.hdr_sig_id = 4,
-	.flow_sig_id = 12886215680,
+	.flow_sig_id = 12886215680UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -10131,7 +10131,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_b425,
 	.class_tid = 2,
 	.hdr_sig_id = 4,
-	.flow_sig_id = 12886223872,
+	.flow_sig_id = 12886223872UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -10155,7 +10155,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_eb05,
 	.class_tid = 2,
 	.hdr_sig_id = 4,
-	.flow_sig_id = 12888312832,
+	.flow_sig_id = 12888312832UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -10179,7 +10179,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_da85,
 	.class_tid = 2,
 	.hdr_sig_id = 4,
-	.flow_sig_id = 12888321024,
+	.flow_sig_id = 12888321024UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -10204,7 +10204,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_a265,
 	.class_tid = 2,
 	.hdr_sig_id = 4,
-	.flow_sig_id = 15033699328,
+	.flow_sig_id = 15033699328UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -10228,7 +10228,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_dde5,
 	.class_tid = 2,
 	.hdr_sig_id = 4,
-	.flow_sig_id = 15033707520,
+	.flow_sig_id = 15033707520UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -10253,7 +10253,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_f0c5,
 	.class_tid = 2,
 	.hdr_sig_id = 4,
-	.flow_sig_id = 15035796480,
+	.flow_sig_id = 15035796480UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -10278,7 +10278,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_e245,
 	.class_tid = 2,
 	.hdr_sig_id = 4,
-	.flow_sig_id = 15035804672,
+	.flow_sig_id = 15035804672UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -10304,7 +10304,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_8b8f,
 	.class_tid = 2,
 	.hdr_sig_id = 4,
-	.flow_sig_id = 17181182976,
+	.flow_sig_id = 17181182976UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -10326,7 +10326,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_a517,
 	.class_tid = 2,
 	.hdr_sig_id = 4,
-	.flow_sig_id = 17181191168,
+	.flow_sig_id = 17181191168UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -10349,7 +10349,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_d86b,
 	.class_tid = 2,
 	.hdr_sig_id = 4,
-	.flow_sig_id = 17183280128,
+	.flow_sig_id = 17183280128UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -10372,7 +10372,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_cbf3,
 	.class_tid = 2,
 	.hdr_sig_id = 4,
-	.flow_sig_id = 17183288320,
+	.flow_sig_id = 17183288320UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -10396,7 +10396,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_934f,
 	.class_tid = 2,
 	.hdr_sig_id = 4,
-	.flow_sig_id = 19328666624,
+	.flow_sig_id = 19328666624UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -10419,7 +10419,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_c2c7,
 	.class_tid = 2,
 	.hdr_sig_id = 4,
-	.flow_sig_id = 19328674816,
+	.flow_sig_id = 19328674816UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -10443,7 +10443,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_e02b,
 	.class_tid = 2,
 	.hdr_sig_id = 4,
-	.flow_sig_id = 19330763776,
+	.flow_sig_id = 19330763776UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -10467,7 +10467,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_d3a3,
 	.class_tid = 2,
 	.hdr_sig_id = 4,
-	.flow_sig_id = 19330771968,
+	.flow_sig_id = 19330771968UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -10492,7 +10492,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_87a7,
 	.class_tid = 2,
 	.hdr_sig_id = 4,
-	.flow_sig_id = 21476150272,
+	.flow_sig_id = 21476150272UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -10515,7 +10515,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_b137,
 	.class_tid = 2,
 	.hdr_sig_id = 4,
-	.flow_sig_id = 21476158464,
+	.flow_sig_id = 21476158464UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -10539,7 +10539,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_d403,
 	.class_tid = 2,
 	.hdr_sig_id = 4,
-	.flow_sig_id = 21478247424,
+	.flow_sig_id = 21478247424UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -10563,7 +10563,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_c793,
 	.class_tid = 2,
 	.hdr_sig_id = 4,
-	.flow_sig_id = 21478255616,
+	.flow_sig_id = 21478255616UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -10588,7 +10588,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_af67,
 	.class_tid = 2,
 	.hdr_sig_id = 4,
-	.flow_sig_id = 23623633920,
+	.flow_sig_id = 23623633920UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -10612,7 +10612,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_dee7,
 	.class_tid = 2,
 	.hdr_sig_id = 4,
-	.flow_sig_id = 23623642112,
+	.flow_sig_id = 23623642112UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -10637,7 +10637,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_fdc3,
 	.class_tid = 2,
 	.hdr_sig_id = 4,
-	.flow_sig_id = 23625731072,
+	.flow_sig_id = 23625731072UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -10662,7 +10662,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_ef43,
 	.class_tid = 2,
 	.hdr_sig_id = 4,
-	.flow_sig_id = 23625739264,
+	.flow_sig_id = 23625739264UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -10688,7 +10688,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_8dbf,
 	.class_tid = 2,
 	.hdr_sig_id = 4,
-	.flow_sig_id = 25771117568,
+	.flow_sig_id = 25771117568UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -10711,7 +10711,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_bf07,
 	.class_tid = 2,
 	.hdr_sig_id = 4,
-	.flow_sig_id = 25771125760,
+	.flow_sig_id = 25771125760UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -10735,7 +10735,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_d21f,
 	.class_tid = 2,
 	.hdr_sig_id = 4,
-	.flow_sig_id = 25773214720,
+	.flow_sig_id = 25773214720UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -10759,7 +10759,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_cde7,
 	.class_tid = 2,
 	.hdr_sig_id = 4,
-	.flow_sig_id = 25773222912,
+	.flow_sig_id = 25773222912UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -10784,7 +10784,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_956f,
 	.class_tid = 2,
 	.hdr_sig_id = 4,
-	.flow_sig_id = 27918601216,
+	.flow_sig_id = 27918601216UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -10808,7 +10808,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_c4c7,
 	.class_tid = 2,
 	.hdr_sig_id = 4,
-	.flow_sig_id = 27918609408,
+	.flow_sig_id = 27918609408UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -10833,7 +10833,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_fbcf,
 	.class_tid = 2,
 	.hdr_sig_id = 4,
-	.flow_sig_id = 27920698368,
+	.flow_sig_id = 27920698368UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -10858,7 +10858,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_d5a7,
 	.class_tid = 2,
 	.hdr_sig_id = 4,
-	.flow_sig_id = 27920706560,
+	.flow_sig_id = 27920706560UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -10884,7 +10884,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_9957,
 	.class_tid = 2,
 	.hdr_sig_id = 4,
-	.flow_sig_id = 30066084864,
+	.flow_sig_id = 30066084864UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -10908,7 +10908,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_cb27,
 	.class_tid = 2,
 	.hdr_sig_id = 4,
-	.flow_sig_id = 30066093056,
+	.flow_sig_id = 30066093056UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -10933,7 +10933,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_ee37,
 	.class_tid = 2,
 	.hdr_sig_id = 4,
-	.flow_sig_id = 30068182016,
+	.flow_sig_id = 30068182016UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -10958,7 +10958,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_d987,
 	.class_tid = 2,
 	.hdr_sig_id = 4,
-	.flow_sig_id = 30068190208,
+	.flow_sig_id = 30068190208UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -10984,7 +10984,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_a107,
 	.class_tid = 2,
 	.hdr_sig_id = 4,
-	.flow_sig_id = 32213568512,
+	.flow_sig_id = 32213568512UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -11009,7 +11009,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_d0e7,
 	.class_tid = 2,
 	.hdr_sig_id = 4,
-	.flow_sig_id = 32213576704,
+	.flow_sig_id = 32213576704UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -11035,7 +11035,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_f7e7,
 	.class_tid = 2,
 	.hdr_sig_id = 4,
-	.flow_sig_id = 32215665664,
+	.flow_sig_id = 32215665664UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -11061,7 +11061,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_c827,
 	.class_tid = 2,
 	.hdr_sig_id = 4,
-	.flow_sig_id = 32215673856,
+	.flow_sig_id = 32215673856UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -11088,7 +11088,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_f76a,
 	.class_tid = 2,
 	.hdr_sig_id = 5,
-	.flow_sig_id = 1313792,
+	.flow_sig_id = 1313792UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -11109,7 +11109,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_bcae,
 	.class_tid = 2,
 	.hdr_sig_id = 5,
-	.flow_sig_id = 1321984,
+	.flow_sig_id = 1321984UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -11131,7 +11131,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_dfc2,
 	.class_tid = 2,
 	.hdr_sig_id = 5,
-	.flow_sig_id = 3410944,
+	.flow_sig_id = 3410944UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -11153,7 +11153,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_ee4a,
 	.class_tid = 2,
 	.hdr_sig_id = 5,
-	.flow_sig_id = 3419136,
+	.flow_sig_id = 3419136UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -11176,7 +11176,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_cf26,
 	.class_tid = 2,
 	.hdr_sig_id = 5,
-	.flow_sig_id = 538184704,
+	.flow_sig_id = 538184704UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -11198,7 +11198,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_b53a,
 	.class_tid = 2,
 	.hdr_sig_id = 5,
-	.flow_sig_id = 538192896,
+	.flow_sig_id = 538192896UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -11221,7 +11221,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_d79e,
 	.class_tid = 2,
 	.hdr_sig_id = 5,
-	.flow_sig_id = 540281856,
+	.flow_sig_id = 540281856UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -11244,7 +11244,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_e606,
 	.class_tid = 2,
 	.hdr_sig_id = 5,
-	.flow_sig_id = 540290048,
+	.flow_sig_id = 540290048UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -11268,7 +11268,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_be86,
 	.class_tid = 2,
 	.hdr_sig_id = 5,
-	.flow_sig_id = 1075055616,
+	.flow_sig_id = 1075055616UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -11290,7 +11290,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_cd0e,
 	.class_tid = 2,
 	.hdr_sig_id = 5,
-	.flow_sig_id = 1075063808,
+	.flow_sig_id = 1075063808UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -11313,7 +11313,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_d042,
 	.class_tid = 2,
 	.hdr_sig_id = 5,
-	.flow_sig_id = 1077152768,
+	.flow_sig_id = 1077152768UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -11336,7 +11336,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_d586,
 	.class_tid = 2,
 	.hdr_sig_id = 5,
-	.flow_sig_id = 1077160960,
+	.flow_sig_id = 1077160960UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -11360,7 +11360,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_b712,
 	.class_tid = 2,
 	.hdr_sig_id = 5,
-	.flow_sig_id = 1611926528,
+	.flow_sig_id = 1611926528UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -11383,7 +11383,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_c59a,
 	.class_tid = 2,
 	.hdr_sig_id = 5,
-	.flow_sig_id = 1611934720,
+	.flow_sig_id = 1611934720UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -11407,7 +11407,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_e81e,
 	.class_tid = 2,
 	.hdr_sig_id = 5,
-	.flow_sig_id = 1614023680,
+	.flow_sig_id = 1614023680UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -11431,7 +11431,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_f686,
 	.class_tid = 2,
 	.hdr_sig_id = 5,
-	.flow_sig_id = 1614031872,
+	.flow_sig_id = 1614031872UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -11456,7 +11456,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_86f6,
 	.class_tid = 2,
 	.hdr_sig_id = 5,
-	.flow_sig_id = 2148797440,
+	.flow_sig_id = 2148797440UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -11478,7 +11478,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_d57e,
 	.class_tid = 2,
 	.hdr_sig_id = 5,
-	.flow_sig_id = 2148805632,
+	.flow_sig_id = 2148805632UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -11501,7 +11501,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_f792,
 	.class_tid = 2,
 	.hdr_sig_id = 5,
-	.flow_sig_id = 2150894592,
+	.flow_sig_id = 2150894592UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -11524,7 +11524,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_c61a,
 	.class_tid = 2,
 	.hdr_sig_id = 5,
-	.flow_sig_id = 2150902784,
+	.flow_sig_id = 2150902784UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -11548,7 +11548,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_9eb2,
 	.class_tid = 2,
 	.hdr_sig_id = 5,
-	.flow_sig_id = 2685668352,
+	.flow_sig_id = 2685668352UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -11571,7 +11571,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_ad3a,
 	.class_tid = 2,
 	.hdr_sig_id = 5,
-	.flow_sig_id = 2685676544,
+	.flow_sig_id = 2685676544UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -11595,7 +11595,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_f01e,
 	.class_tid = 2,
 	.hdr_sig_id = 5,
-	.flow_sig_id = 2687765504,
+	.flow_sig_id = 2687765504UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -11619,7 +11619,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_de96,
 	.class_tid = 2,
 	.hdr_sig_id = 5,
-	.flow_sig_id = 2687773696,
+	.flow_sig_id = 2687773696UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -11644,7 +11644,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_d756,
 	.class_tid = 2,
 	.hdr_sig_id = 5,
-	.flow_sig_id = 3222539264,
+	.flow_sig_id = 3222539264UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -11667,7 +11667,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_9c9a,
 	.class_tid = 2,
 	.hdr_sig_id = 5,
-	.flow_sig_id = 3222547456,
+	.flow_sig_id = 3222547456UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -11691,7 +11691,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_c812,
 	.class_tid = 2,
 	.hdr_sig_id = 5,
-	.flow_sig_id = 3224636416,
+	.flow_sig_id = 3224636416UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -11715,7 +11715,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_ce56,
 	.class_tid = 2,
 	.hdr_sig_id = 5,
-	.flow_sig_id = 3224644608,
+	.flow_sig_id = 3224644608UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -11740,7 +11740,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_af12,
 	.class_tid = 2,
 	.hdr_sig_id = 5,
-	.flow_sig_id = 3759410176,
+	.flow_sig_id = 3759410176UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -11764,7 +11764,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_9516,
 	.class_tid = 2,
 	.hdr_sig_id = 5,
-	.flow_sig_id = 3759418368,
+	.flow_sig_id = 3759418368UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -11789,7 +11789,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_c09e,
 	.class_tid = 2,
 	.hdr_sig_id = 5,
-	.flow_sig_id = 3761507328,
+	.flow_sig_id = 3761507328UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -11814,7 +11814,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_c612,
 	.class_tid = 2,
 	.hdr_sig_id = 5,
-	.flow_sig_id = 3761515520,
+	.flow_sig_id = 3761515520UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -11840,7 +11840,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_9a06,
 	.class_tid = 2,
 	.hdr_sig_id = 5,
-	.flow_sig_id = 4296281088,
+	.flow_sig_id = 4296281088UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -11862,7 +11862,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_a886,
 	.class_tid = 2,
 	.hdr_sig_id = 5,
-	.flow_sig_id = 4296289280,
+	.flow_sig_id = 4296289280UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -11885,7 +11885,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_cba2,
 	.class_tid = 2,
 	.hdr_sig_id = 5,
-	.flow_sig_id = 4298378240,
+	.flow_sig_id = 4298378240UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -11908,7 +11908,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_da22,
 	.class_tid = 2,
 	.hdr_sig_id = 5,
-	.flow_sig_id = 4298386432,
+	.flow_sig_id = 4298386432UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -11932,7 +11932,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_9292,
 	.class_tid = 2,
 	.hdr_sig_id = 5,
-	.flow_sig_id = 4833152000,
+	.flow_sig_id = 4833152000UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -11955,7 +11955,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_a112,
 	.class_tid = 2,
 	.hdr_sig_id = 5,
-	.flow_sig_id = 4833160192,
+	.flow_sig_id = 4833160192UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -11979,7 +11979,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_c436,
 	.class_tid = 2,
 	.hdr_sig_id = 5,
-	.flow_sig_id = 4835249152,
+	.flow_sig_id = 4835249152UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -12003,7 +12003,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_d2a6,
 	.class_tid = 2,
 	.hdr_sig_id = 5,
-	.flow_sig_id = 4835257344,
+	.flow_sig_id = 4835257344UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -12028,7 +12028,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_aa86,
 	.class_tid = 2,
 	.hdr_sig_id = 5,
-	.flow_sig_id = 5370022912,
+	.flow_sig_id = 5370022912UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -12051,7 +12051,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_90d2,
 	.class_tid = 2,
 	.hdr_sig_id = 5,
-	.flow_sig_id = 5370031104,
+	.flow_sig_id = 5370031104UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -12075,7 +12075,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_dc02,
 	.class_tid = 2,
 	.hdr_sig_id = 5,
-	.flow_sig_id = 5372120064,
+	.flow_sig_id = 5372120064UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -12099,7 +12099,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_c246,
 	.class_tid = 2,
 	.hdr_sig_id = 5,
-	.flow_sig_id = 5372128256,
+	.flow_sig_id = 5372128256UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -12124,7 +12124,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_a312,
 	.class_tid = 2,
 	.hdr_sig_id = 5,
-	.flow_sig_id = 5906893824,
+	.flow_sig_id = 5906893824UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -12148,7 +12148,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_f192,
 	.class_tid = 2,
 	.hdr_sig_id = 5,
-	.flow_sig_id = 5906902016,
+	.flow_sig_id = 5906902016UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -12173,7 +12173,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_d496,
 	.class_tid = 2,
 	.hdr_sig_id = 5,
-	.flow_sig_id = 5908990976,
+	.flow_sig_id = 5908990976UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -12198,7 +12198,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_da12,
 	.class_tid = 2,
 	.hdr_sig_id = 5,
-	.flow_sig_id = 5908999168,
+	.flow_sig_id = 5908999168UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -12224,7 +12224,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_b2d6,
 	.class_tid = 2,
 	.hdr_sig_id = 5,
-	.flow_sig_id = 6443764736,
+	.flow_sig_id = 6443764736UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -12247,7 +12247,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_c156,
 	.class_tid = 2,
 	.hdr_sig_id = 5,
-	.flow_sig_id = 6443772928,
+	.flow_sig_id = 6443772928UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -12271,7 +12271,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_e472,
 	.class_tid = 2,
 	.hdr_sig_id = 5,
-	.flow_sig_id = 6445861888,
+	.flow_sig_id = 6445861888UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -12295,7 +12295,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_f2f2,
 	.class_tid = 2,
 	.hdr_sig_id = 5,
-	.flow_sig_id = 6445870080,
+	.flow_sig_id = 6445870080UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -12320,7 +12320,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_8a92,
 	.class_tid = 2,
 	.hdr_sig_id = 5,
-	.flow_sig_id = 6980635648,
+	.flow_sig_id = 6980635648UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -12344,7 +12344,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_d912,
 	.class_tid = 2,
 	.hdr_sig_id = 5,
-	.flow_sig_id = 6980643840,
+	.flow_sig_id = 6980643840UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -12369,7 +12369,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_fc36,
 	.class_tid = 2,
 	.hdr_sig_id = 5,
-	.flow_sig_id = 6982732800,
+	.flow_sig_id = 6982732800UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -12394,7 +12394,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_cab6,
 	.class_tid = 2,
 	.hdr_sig_id = 5,
-	.flow_sig_id = 6982740992,
+	.flow_sig_id = 6982740992UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -12420,7 +12420,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_c356,
 	.class_tid = 2,
 	.hdr_sig_id = 5,
-	.flow_sig_id = 7517506560,
+	.flow_sig_id = 7517506560UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -12444,7 +12444,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_8892,
 	.class_tid = 2,
 	.hdr_sig_id = 5,
-	.flow_sig_id = 7517514752,
+	.flow_sig_id = 7517514752UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -12469,7 +12469,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_f4d2,
 	.class_tid = 2,
 	.hdr_sig_id = 5,
-	.flow_sig_id = 7519603712,
+	.flow_sig_id = 7519603712UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -12494,7 +12494,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_fa16,
 	.class_tid = 2,
 	.hdr_sig_id = 5,
-	.flow_sig_id = 7519611904,
+	.flow_sig_id = 7519611904UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -12520,7 +12520,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_db12,
 	.class_tid = 2,
 	.hdr_sig_id = 5,
-	.flow_sig_id = 8054377472,
+	.flow_sig_id = 8054377472UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -12545,7 +12545,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_8116,
 	.class_tid = 2,
 	.hdr_sig_id = 5,
-	.flow_sig_id = 8054385664,
+	.flow_sig_id = 8054385664UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -12571,7 +12571,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_cc96,
 	.class_tid = 2,
 	.hdr_sig_id = 5,
-	.flow_sig_id = 8056474624,
+	.flow_sig_id = 8056474624UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -12597,7 +12597,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_f292,
 	.class_tid = 2,
 	.hdr_sig_id = 5,
-	.flow_sig_id = 8056482816,
+	.flow_sig_id = 8056482816UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -12624,7 +12624,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_e84d,
 	.class_tid = 2,
 	.hdr_sig_id = 6,
-	.flow_sig_id = 1313792,
+	.flow_sig_id = 1313792UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -12645,7 +12645,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_a389,
 	.class_tid = 2,
 	.hdr_sig_id = 6,
-	.flow_sig_id = 1321984,
+	.flow_sig_id = 1321984UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -12667,7 +12667,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_c0e5,
 	.class_tid = 2,
 	.hdr_sig_id = 6,
-	.flow_sig_id = 3410944,
+	.flow_sig_id = 3410944UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -12689,7 +12689,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_f16d,
 	.class_tid = 2,
 	.hdr_sig_id = 6,
-	.flow_sig_id = 3419136,
+	.flow_sig_id = 3419136UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -12712,7 +12712,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_99d1,
 	.class_tid = 2,
 	.hdr_sig_id = 6,
-	.flow_sig_id = 2148797440,
+	.flow_sig_id = 2148797440UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -12734,7 +12734,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_ca59,
 	.class_tid = 2,
 	.hdr_sig_id = 6,
-	.flow_sig_id = 2148805632,
+	.flow_sig_id = 2148805632UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -12757,7 +12757,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_e8b5,
 	.class_tid = 2,
 	.hdr_sig_id = 6,
-	.flow_sig_id = 2150894592,
+	.flow_sig_id = 2150894592UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -12780,7 +12780,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_d93d,
 	.class_tid = 2,
 	.hdr_sig_id = 6,
-	.flow_sig_id = 2150902784,
+	.flow_sig_id = 2150902784UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -12804,7 +12804,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_8521,
 	.class_tid = 2,
 	.hdr_sig_id = 6,
-	.flow_sig_id = 4296281088,
+	.flow_sig_id = 4296281088UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -12826,7 +12826,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_b7a1,
 	.class_tid = 2,
 	.hdr_sig_id = 6,
-	.flow_sig_id = 4296289280,
+	.flow_sig_id = 4296289280UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -12849,7 +12849,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_d485,
 	.class_tid = 2,
 	.hdr_sig_id = 6,
-	.flow_sig_id = 4298378240,
+	.flow_sig_id = 4298378240UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -12872,7 +12872,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_c505,
 	.class_tid = 2,
 	.hdr_sig_id = 6,
-	.flow_sig_id = 4298386432,
+	.flow_sig_id = 4298386432UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -12896,7 +12896,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_adf1,
 	.class_tid = 2,
 	.hdr_sig_id = 6,
-	.flow_sig_id = 6443764736,
+	.flow_sig_id = 6443764736UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -12919,7 +12919,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_de71,
 	.class_tid = 2,
 	.hdr_sig_id = 6,
-	.flow_sig_id = 6443772928,
+	.flow_sig_id = 6443772928UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -12943,7 +12943,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_fb55,
 	.class_tid = 2,
 	.hdr_sig_id = 6,
-	.flow_sig_id = 6445861888,
+	.flow_sig_id = 6445861888UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -12967,7 +12967,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_edd5,
 	.class_tid = 2,
 	.hdr_sig_id = 6,
-	.flow_sig_id = 6445870080,
+	.flow_sig_id = 6445870080UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -12992,7 +12992,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_8b11,
 	.class_tid = 2,
 	.hdr_sig_id = 6,
-	.flow_sig_id = 8591248384,
+	.flow_sig_id = 8591248384UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -13014,7 +13014,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_bd99,
 	.class_tid = 2,
 	.hdr_sig_id = 6,
-	.flow_sig_id = 8591256576,
+	.flow_sig_id = 8591256576UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -13037,7 +13037,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_daf1,
 	.class_tid = 2,
 	.hdr_sig_id = 6,
-	.flow_sig_id = 8593345536,
+	.flow_sig_id = 8593345536UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -13060,7 +13060,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_cb79,
 	.class_tid = 2,
 	.hdr_sig_id = 6,
-	.flow_sig_id = 8593353728,
+	.flow_sig_id = 8593353728UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -13084,7 +13084,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_93d1,
 	.class_tid = 2,
 	.hdr_sig_id = 6,
-	.flow_sig_id = 10738732032,
+	.flow_sig_id = 10738732032UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -13107,7 +13107,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_c459,
 	.class_tid = 2,
 	.hdr_sig_id = 6,
-	.flow_sig_id = 10738740224,
+	.flow_sig_id = 10738740224UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -13131,7 +13131,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_e2b1,
 	.class_tid = 2,
 	.hdr_sig_id = 6,
-	.flow_sig_id = 10740829184,
+	.flow_sig_id = 10740829184UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -13155,7 +13155,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_d339,
 	.class_tid = 2,
 	.hdr_sig_id = 6,
-	.flow_sig_id = 10740837376,
+	.flow_sig_id = 10740837376UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -13180,7 +13180,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_9f31,
 	.class_tid = 2,
 	.hdr_sig_id = 6,
-	.flow_sig_id = 12886215680,
+	.flow_sig_id = 12886215680UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -13203,7 +13203,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_b1b1,
 	.class_tid = 2,
 	.hdr_sig_id = 6,
-	.flow_sig_id = 12886223872,
+	.flow_sig_id = 12886223872UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -13227,7 +13227,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_ee91,
 	.class_tid = 2,
 	.hdr_sig_id = 6,
-	.flow_sig_id = 12888312832,
+	.flow_sig_id = 12888312832UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -13251,7 +13251,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_df11,
 	.class_tid = 2,
 	.hdr_sig_id = 6,
-	.flow_sig_id = 12888321024,
+	.flow_sig_id = 12888321024UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -13276,7 +13276,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_a7f1,
 	.class_tid = 2,
 	.hdr_sig_id = 6,
-	.flow_sig_id = 15033699328,
+	.flow_sig_id = 15033699328UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -13300,7 +13300,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_d871,
 	.class_tid = 2,
 	.hdr_sig_id = 6,
-	.flow_sig_id = 15033707520,
+	.flow_sig_id = 15033707520UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -13325,7 +13325,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_f551,
 	.class_tid = 2,
 	.hdr_sig_id = 6,
-	.flow_sig_id = 15035796480,
+	.flow_sig_id = 15035796480UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -13350,7 +13350,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_e7d1,
 	.class_tid = 2,
 	.hdr_sig_id = 6,
-	.flow_sig_id = 15035804672,
+	.flow_sig_id = 15035804672UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -13376,7 +13376,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_8e1b,
 	.class_tid = 2,
 	.hdr_sig_id = 6,
-	.flow_sig_id = 17181182976,
+	.flow_sig_id = 17181182976UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -13398,7 +13398,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_a083,
 	.class_tid = 2,
 	.hdr_sig_id = 6,
-	.flow_sig_id = 17181191168,
+	.flow_sig_id = 17181191168UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -13421,7 +13421,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_ddff,
 	.class_tid = 2,
 	.hdr_sig_id = 6,
-	.flow_sig_id = 17183280128,
+	.flow_sig_id = 17183280128UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -13444,7 +13444,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_ce67,
 	.class_tid = 2,
 	.hdr_sig_id = 6,
-	.flow_sig_id = 17183288320,
+	.flow_sig_id = 17183288320UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -13468,7 +13468,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_96db,
 	.class_tid = 2,
 	.hdr_sig_id = 6,
-	.flow_sig_id = 19328666624,
+	.flow_sig_id = 19328666624UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -13491,7 +13491,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_c753,
 	.class_tid = 2,
 	.hdr_sig_id = 6,
-	.flow_sig_id = 19328674816,
+	.flow_sig_id = 19328674816UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -13515,7 +13515,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_e5bf,
 	.class_tid = 2,
 	.hdr_sig_id = 6,
-	.flow_sig_id = 19330763776,
+	.flow_sig_id = 19330763776UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -13539,7 +13539,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_d637,
 	.class_tid = 2,
 	.hdr_sig_id = 6,
-	.flow_sig_id = 19330771968,
+	.flow_sig_id = 19330771968UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -13564,7 +13564,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_8233,
 	.class_tid = 2,
 	.hdr_sig_id = 6,
-	.flow_sig_id = 21476150272,
+	.flow_sig_id = 21476150272UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -13587,7 +13587,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_b4a3,
 	.class_tid = 2,
 	.hdr_sig_id = 6,
-	.flow_sig_id = 21476158464,
+	.flow_sig_id = 21476158464UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -13611,7 +13611,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_d197,
 	.class_tid = 2,
 	.hdr_sig_id = 6,
-	.flow_sig_id = 21478247424,
+	.flow_sig_id = 21478247424UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -13635,7 +13635,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_c207,
 	.class_tid = 2,
 	.hdr_sig_id = 6,
-	.flow_sig_id = 21478255616,
+	.flow_sig_id = 21478255616UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -13660,7 +13660,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_aaf3,
 	.class_tid = 2,
 	.hdr_sig_id = 6,
-	.flow_sig_id = 23623633920,
+	.flow_sig_id = 23623633920UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -13684,7 +13684,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_db73,
 	.class_tid = 2,
 	.hdr_sig_id = 6,
-	.flow_sig_id = 23623642112,
+	.flow_sig_id = 23623642112UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -13709,7 +13709,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_f857,
 	.class_tid = 2,
 	.hdr_sig_id = 6,
-	.flow_sig_id = 23625731072,
+	.flow_sig_id = 23625731072UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -13734,7 +13734,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_ead7,
 	.class_tid = 2,
 	.hdr_sig_id = 6,
-	.flow_sig_id = 23625739264,
+	.flow_sig_id = 23625739264UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -13760,7 +13760,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_882b,
 	.class_tid = 2,
 	.hdr_sig_id = 6,
-	.flow_sig_id = 25771117568,
+	.flow_sig_id = 25771117568UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -13783,7 +13783,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_ba93,
 	.class_tid = 2,
 	.hdr_sig_id = 6,
-	.flow_sig_id = 25771125760,
+	.flow_sig_id = 25771125760UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -13807,7 +13807,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_d78b,
 	.class_tid = 2,
 	.hdr_sig_id = 6,
-	.flow_sig_id = 25773214720,
+	.flow_sig_id = 25773214720UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -13831,7 +13831,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_c873,
 	.class_tid = 2,
 	.hdr_sig_id = 6,
-	.flow_sig_id = 25773222912,
+	.flow_sig_id = 25773222912UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -13856,7 +13856,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_90fb,
 	.class_tid = 2,
 	.hdr_sig_id = 6,
-	.flow_sig_id = 27918601216,
+	.flow_sig_id = 27918601216UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -13880,7 +13880,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_c153,
 	.class_tid = 2,
 	.hdr_sig_id = 6,
-	.flow_sig_id = 27918609408,
+	.flow_sig_id = 27918609408UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -13905,7 +13905,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_fe5b,
 	.class_tid = 2,
 	.hdr_sig_id = 6,
-	.flow_sig_id = 27920698368,
+	.flow_sig_id = 27920698368UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -13930,7 +13930,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_d033,
 	.class_tid = 2,
 	.hdr_sig_id = 6,
-	.flow_sig_id = 27920706560,
+	.flow_sig_id = 27920706560UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -13956,7 +13956,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_9cc3,
 	.class_tid = 2,
 	.hdr_sig_id = 6,
-	.flow_sig_id = 30066084864,
+	.flow_sig_id = 30066084864UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -13980,7 +13980,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_ceb3,
 	.class_tid = 2,
 	.hdr_sig_id = 6,
-	.flow_sig_id = 30066093056,
+	.flow_sig_id = 30066093056UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -14005,7 +14005,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_eba3,
 	.class_tid = 2,
 	.hdr_sig_id = 6,
-	.flow_sig_id = 30068182016,
+	.flow_sig_id = 30068182016UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -14030,7 +14030,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_dc13,
 	.class_tid = 2,
 	.hdr_sig_id = 6,
-	.flow_sig_id = 30068190208,
+	.flow_sig_id = 30068190208UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -14056,7 +14056,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_a493,
 	.class_tid = 2,
 	.hdr_sig_id = 6,
-	.flow_sig_id = 32213568512,
+	.flow_sig_id = 32213568512UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -14081,7 +14081,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_d573,
 	.class_tid = 2,
 	.hdr_sig_id = 6,
-	.flow_sig_id = 32213576704,
+	.flow_sig_id = 32213576704UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -14107,7 +14107,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_f273,
 	.class_tid = 2,
 	.hdr_sig_id = 6,
-	.flow_sig_id = 32215665664,
+	.flow_sig_id = 32215665664UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -14133,7 +14133,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_cdb3,
 	.class_tid = 2,
 	.hdr_sig_id = 6,
-	.flow_sig_id = 32215673856,
+	.flow_sig_id = 32215673856UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -14160,7 +14160,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_ff35,
 	.class_tid = 2,
 	.hdr_sig_id = 7,
-	.flow_sig_id = 1313792,
+	.flow_sig_id = 1313792UL,
 	.flow_pattern_id = 2,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -14181,7 +14181,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_b4f1,
 	.class_tid = 2,
 	.hdr_sig_id = 7,
-	.flow_sig_id = 1321984,
+	.flow_sig_id = 1321984UL,
 	.flow_pattern_id = 2,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -14203,7 +14203,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_d79d,
 	.class_tid = 2,
 	.hdr_sig_id = 7,
-	.flow_sig_id = 3410944,
+	.flow_sig_id = 3410944UL,
 	.flow_pattern_id = 2,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -14225,7 +14225,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_e615,
 	.class_tid = 2,
 	.hdr_sig_id = 7,
-	.flow_sig_id = 3419136,
+	.flow_sig_id = 3419136UL,
 	.flow_pattern_id = 2,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -14248,7 +14248,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_8ea9,
 	.class_tid = 2,
 	.hdr_sig_id = 7,
-	.flow_sig_id = 2148797440,
+	.flow_sig_id = 2148797440UL,
 	.flow_pattern_id = 2,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -14270,7 +14270,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_dd21,
 	.class_tid = 2,
 	.hdr_sig_id = 7,
-	.flow_sig_id = 2148805632,
+	.flow_sig_id = 2148805632UL,
 	.flow_pattern_id = 2,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -14293,7 +14293,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_ffcd,
 	.class_tid = 2,
 	.hdr_sig_id = 7,
-	.flow_sig_id = 2150894592,
+	.flow_sig_id = 2150894592UL,
 	.flow_pattern_id = 2,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -14316,7 +14316,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_ce45,
 	.class_tid = 2,
 	.hdr_sig_id = 7,
-	.flow_sig_id = 2150902784,
+	.flow_sig_id = 2150902784UL,
 	.flow_pattern_id = 2,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -14340,7 +14340,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_9259,
 	.class_tid = 2,
 	.hdr_sig_id = 7,
-	.flow_sig_id = 4296281088,
+	.flow_sig_id = 4296281088UL,
 	.flow_pattern_id = 2,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -14362,7 +14362,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_a0d9,
 	.class_tid = 2,
 	.hdr_sig_id = 7,
-	.flow_sig_id = 4296289280,
+	.flow_sig_id = 4296289280UL,
 	.flow_pattern_id = 2,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -14385,7 +14385,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_c3fd,
 	.class_tid = 2,
 	.hdr_sig_id = 7,
-	.flow_sig_id = 4298378240,
+	.flow_sig_id = 4298378240UL,
 	.flow_pattern_id = 2,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -14408,7 +14408,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_d27d,
 	.class_tid = 2,
 	.hdr_sig_id = 7,
-	.flow_sig_id = 4298386432,
+	.flow_sig_id = 4298386432UL,
 	.flow_pattern_id = 2,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -14432,7 +14432,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_ba89,
 	.class_tid = 2,
 	.hdr_sig_id = 7,
-	.flow_sig_id = 6443764736,
+	.flow_sig_id = 6443764736UL,
 	.flow_pattern_id = 2,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -14455,7 +14455,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_c909,
 	.class_tid = 2,
 	.hdr_sig_id = 7,
-	.flow_sig_id = 6443772928,
+	.flow_sig_id = 6443772928UL,
 	.flow_pattern_id = 2,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -14479,7 +14479,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_ec2d,
 	.class_tid = 2,
 	.hdr_sig_id = 7,
-	.flow_sig_id = 6445861888,
+	.flow_sig_id = 6445861888UL,
 	.flow_pattern_id = 2,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -14503,7 +14503,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_faad,
 	.class_tid = 2,
 	.hdr_sig_id = 7,
-	.flow_sig_id = 6445870080,
+	.flow_sig_id = 6445870080UL,
 	.flow_pattern_id = 2,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -14528,7 +14528,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_34c6,
 	.class_tid = 3,
 	.hdr_sig_id = 0,
-	.flow_sig_id = 4096,
+	.flow_sig_id = 4096UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -14543,7 +14543,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_0c22,
 	.class_tid = 3,
 	.hdr_sig_id = 0,
-	.flow_sig_id = 4100,
+	.flow_sig_id = 4100UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -14559,7 +14559,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_1cbe,
 	.class_tid = 3,
 	.hdr_sig_id = 0,
-	.flow_sig_id = 6144,
+	.flow_sig_id = 6144UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -14575,7 +14575,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_179a,
 	.class_tid = 3,
 	.hdr_sig_id = 0,
-	.flow_sig_id = 6148,
+	.flow_sig_id = 6148UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -14592,7 +14592,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_59be,
 	.class_tid = 3,
 	.hdr_sig_id = 1,
-	.flow_sig_id = 16384,
+	.flow_sig_id = 16384UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -14607,7 +14607,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_515a,
 	.class_tid = 3,
 	.hdr_sig_id = 1,
-	.flow_sig_id = 16388,
+	.flow_sig_id = 16388UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -14623,7 +14623,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_1c72,
 	.class_tid = 3,
 	.hdr_sig_id = 1,
-	.flow_sig_id = 24576,
+	.flow_sig_id = 24576UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -14639,7 +14639,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_171e,
 	.class_tid = 3,
 	.hdr_sig_id = 1,
-	.flow_sig_id = 24580,
+	.flow_sig_id = 24580UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -14656,7 +14656,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_19c8,
 	.class_tid = 3,
 	.hdr_sig_id = 2,
-	.flow_sig_id = 32768,
+	.flow_sig_id = 32768UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -14672,7 +14672,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_112c,
 	.class_tid = 3,
 	.hdr_sig_id = 2,
-	.flow_sig_id = 32772,
+	.flow_sig_id = 32772UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -14689,7 +14689,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_4d68,
 	.class_tid = 3,
 	.hdr_sig_id = 2,
-	.flow_sig_id = 32832,
+	.flow_sig_id = 32832UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -14706,7 +14706,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_444c,
 	.class_tid = 3,
 	.hdr_sig_id = 2,
-	.flow_sig_id = 32836,
+	.flow_sig_id = 32836UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -14724,7 +14724,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_0e8c,
 	.class_tid = 3,
 	.hdr_sig_id = 2,
-	.flow_sig_id = 49152,
+	.flow_sig_id = 49152UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -14741,7 +14741,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_09e0,
 	.class_tid = 3,
 	.hdr_sig_id = 2,
-	.flow_sig_id = 49156,
+	.flow_sig_id = 49156UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -14759,7 +14759,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_1af0,
 	.class_tid = 3,
 	.hdr_sig_id = 2,
-	.flow_sig_id = 49216,
+	.flow_sig_id = 49216UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -14777,7 +14777,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_15d4,
 	.class_tid = 3,
 	.hdr_sig_id = 2,
-	.flow_sig_id = 49220,
+	.flow_sig_id = 49220UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -14796,7 +14796,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_1dd0,
 	.class_tid = 3,
 	.hdr_sig_id = 3,
-	.flow_sig_id = 131072,
+	.flow_sig_id = 131072UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -14812,7 +14812,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_14f4,
 	.class_tid = 3,
 	.hdr_sig_id = 3,
-	.flow_sig_id = 131076,
+	.flow_sig_id = 131076UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -14829,7 +14829,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_70b0,
 	.class_tid = 3,
 	.hdr_sig_id = 3,
-	.flow_sig_id = 131136,
+	.flow_sig_id = 131136UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -14846,7 +14846,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_4854,
 	.class_tid = 3,
 	.hdr_sig_id = 3,
-	.flow_sig_id = 131140,
+	.flow_sig_id = 131140UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -14864,7 +14864,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3dd4,
 	.class_tid = 3,
 	.hdr_sig_id = 3,
-	.flow_sig_id = 196608,
+	.flow_sig_id = 196608UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -14881,7 +14881,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_34f8,
 	.class_tid = 3,
 	.hdr_sig_id = 3,
-	.flow_sig_id = 196612,
+	.flow_sig_id = 196612UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -14899,7 +14899,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_09e8,
 	.class_tid = 3,
 	.hdr_sig_id = 3,
-	.flow_sig_id = 196672,
+	.flow_sig_id = 196672UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -14917,7 +14917,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_008c,
 	.class_tid = 3,
 	.hdr_sig_id = 3,
-	.flow_sig_id = 196676,
+	.flow_sig_id = 196676UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -14936,7 +14936,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_34e6,
 	.class_tid = 3,
 	.hdr_sig_id = 4,
-	.flow_sig_id = 4096,
+	.flow_sig_id = 4096UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -14952,7 +14952,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_0c02,
 	.class_tid = 3,
 	.hdr_sig_id = 4,
-	.flow_sig_id = 4100,
+	.flow_sig_id = 4100UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -14969,7 +14969,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_1c9e,
 	.class_tid = 3,
 	.hdr_sig_id = 4,
-	.flow_sig_id = 6144,
+	.flow_sig_id = 6144UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -14986,7 +14986,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_17ba,
 	.class_tid = 3,
 	.hdr_sig_id = 4,
-	.flow_sig_id = 6148,
+	.flow_sig_id = 6148UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -15004,7 +15004,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_429e,
 	.class_tid = 3,
 	.hdr_sig_id = 4,
-	.flow_sig_id = 12288,
+	.flow_sig_id = 12288UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -15021,7 +15021,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_5dba,
 	.class_tid = 3,
 	.hdr_sig_id = 4,
-	.flow_sig_id = 12292,
+	.flow_sig_id = 12292UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -15039,7 +15039,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_2a16,
 	.class_tid = 3,
 	.hdr_sig_id = 4,
-	.flow_sig_id = 14336,
+	.flow_sig_id = 14336UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -15057,7 +15057,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_2532,
 	.class_tid = 3,
 	.hdr_sig_id = 4,
-	.flow_sig_id = 14340,
+	.flow_sig_id = 14340UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -15076,7 +15076,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_2da2,
 	.class_tid = 3,
 	.hdr_sig_id = 4,
-	.flow_sig_id = 20480,
+	.flow_sig_id = 20480UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -15093,7 +15093,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_24fe,
 	.class_tid = 3,
 	.hdr_sig_id = 4,
-	.flow_sig_id = 20484,
+	.flow_sig_id = 20484UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -15111,7 +15111,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_355a,
 	.class_tid = 3,
 	.hdr_sig_id = 4,
-	.flow_sig_id = 22528,
+	.flow_sig_id = 22528UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -15129,7 +15129,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_0c76,
 	.class_tid = 3,
 	.hdr_sig_id = 4,
-	.flow_sig_id = 22532,
+	.flow_sig_id = 22532UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -15148,7 +15148,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_13e6,
 	.class_tid = 3,
 	.hdr_sig_id = 4,
-	.flow_sig_id = 28672,
+	.flow_sig_id = 28672UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -15166,7 +15166,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_7276,
 	.class_tid = 3,
 	.hdr_sig_id = 4,
-	.flow_sig_id = 28676,
+	.flow_sig_id = 28676UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -15185,7 +15185,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_42d2,
 	.class_tid = 3,
 	.hdr_sig_id = 4,
-	.flow_sig_id = 30720,
+	.flow_sig_id = 30720UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -15204,7 +15204,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_5dee,
 	.class_tid = 3,
 	.hdr_sig_id = 4,
-	.flow_sig_id = 30724,
+	.flow_sig_id = 30724UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -15224,7 +15224,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_59de,
 	.class_tid = 3,
 	.hdr_sig_id = 5,
-	.flow_sig_id = 16384,
+	.flow_sig_id = 16384UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -15240,7 +15240,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_513a,
 	.class_tid = 3,
 	.hdr_sig_id = 5,
-	.flow_sig_id = 16388,
+	.flow_sig_id = 16388UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -15257,7 +15257,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_1c12,
 	.class_tid = 3,
 	.hdr_sig_id = 5,
-	.flow_sig_id = 24576,
+	.flow_sig_id = 24576UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -15274,7 +15274,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_177e,
 	.class_tid = 3,
 	.hdr_sig_id = 5,
-	.flow_sig_id = 24580,
+	.flow_sig_id = 24580UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -15292,7 +15292,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_0e92,
 	.class_tid = 3,
 	.hdr_sig_id = 5,
-	.flow_sig_id = 49152,
+	.flow_sig_id = 49152UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -15309,7 +15309,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_09fe,
 	.class_tid = 3,
 	.hdr_sig_id = 5,
-	.flow_sig_id = 49156,
+	.flow_sig_id = 49156UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -15327,7 +15327,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_5c1a,
 	.class_tid = 3,
 	.hdr_sig_id = 5,
-	.flow_sig_id = 57344,
+	.flow_sig_id = 57344UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -15345,7 +15345,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_5746,
 	.class_tid = 3,
 	.hdr_sig_id = 5,
-	.flow_sig_id = 57348,
+	.flow_sig_id = 57348UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -15364,7 +15364,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_79da,
 	.class_tid = 3,
 	.hdr_sig_id = 5,
-	.flow_sig_id = 81920,
+	.flow_sig_id = 81920UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -15381,7 +15381,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_7106,
 	.class_tid = 3,
 	.hdr_sig_id = 5,
-	.flow_sig_id = 81924,
+	.flow_sig_id = 81924UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -15399,7 +15399,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3c1e,
 	.class_tid = 3,
 	.hdr_sig_id = 5,
-	.flow_sig_id = 90112,
+	.flow_sig_id = 90112UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -15417,7 +15417,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_377a,
 	.class_tid = 3,
 	.hdr_sig_id = 5,
-	.flow_sig_id = 90116,
+	.flow_sig_id = 90116UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -15436,7 +15436,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_2e9e,
 	.class_tid = 3,
 	.hdr_sig_id = 5,
-	.flow_sig_id = 114688,
+	.flow_sig_id = 114688UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -15454,7 +15454,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_29fa,
 	.class_tid = 3,
 	.hdr_sig_id = 5,
-	.flow_sig_id = 114692,
+	.flow_sig_id = 114692UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -15473,7 +15473,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_14d2,
 	.class_tid = 3,
 	.hdr_sig_id = 5,
-	.flow_sig_id = 122880,
+	.flow_sig_id = 122880UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -15492,7 +15492,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_7742,
 	.class_tid = 3,
 	.hdr_sig_id = 5,
-	.flow_sig_id = 122884,
+	.flow_sig_id = 122884UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -15512,7 +15512,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3706,
 	.class_tid = 3,
 	.hdr_sig_id = 6,
-	.flow_sig_id = 4096,
+	.flow_sig_id = 4096UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -15528,7 +15528,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_0fe2,
 	.class_tid = 3,
 	.hdr_sig_id = 6,
-	.flow_sig_id = 4100,
+	.flow_sig_id = 4100UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -15545,7 +15545,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_1f7e,
 	.class_tid = 3,
 	.hdr_sig_id = 6,
-	.flow_sig_id = 6144,
+	.flow_sig_id = 6144UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -15562,7 +15562,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_145a,
 	.class_tid = 3,
 	.hdr_sig_id = 6,
-	.flow_sig_id = 6148,
+	.flow_sig_id = 6148UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -15580,7 +15580,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_417e,
 	.class_tid = 3,
 	.hdr_sig_id = 6,
-	.flow_sig_id = 12288,
+	.flow_sig_id = 12288UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -15597,7 +15597,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_5e5a,
 	.class_tid = 3,
 	.hdr_sig_id = 6,
-	.flow_sig_id = 12292,
+	.flow_sig_id = 12292UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -15615,7 +15615,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_29f6,
 	.class_tid = 3,
 	.hdr_sig_id = 6,
-	.flow_sig_id = 14336,
+	.flow_sig_id = 14336UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -15633,7 +15633,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_26d2,
 	.class_tid = 3,
 	.hdr_sig_id = 6,
-	.flow_sig_id = 14340,
+	.flow_sig_id = 14340UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -15652,7 +15652,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_2e42,
 	.class_tid = 3,
 	.hdr_sig_id = 6,
-	.flow_sig_id = 20480,
+	.flow_sig_id = 20480UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -15669,7 +15669,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_271e,
 	.class_tid = 3,
 	.hdr_sig_id = 6,
-	.flow_sig_id = 20484,
+	.flow_sig_id = 20484UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -15687,7 +15687,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_36ba,
 	.class_tid = 3,
 	.hdr_sig_id = 6,
-	.flow_sig_id = 22528,
+	.flow_sig_id = 22528UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -15705,7 +15705,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_0f96,
 	.class_tid = 3,
 	.hdr_sig_id = 6,
-	.flow_sig_id = 22532,
+	.flow_sig_id = 22532UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -15724,7 +15724,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_1006,
 	.class_tid = 3,
 	.hdr_sig_id = 6,
-	.flow_sig_id = 28672,
+	.flow_sig_id = 28672UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -15742,7 +15742,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_7196,
 	.class_tid = 3,
 	.hdr_sig_id = 6,
-	.flow_sig_id = 28676,
+	.flow_sig_id = 28676UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -15761,7 +15761,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_4132,
 	.class_tid = 3,
 	.hdr_sig_id = 6,
-	.flow_sig_id = 30720,
+	.flow_sig_id = 30720UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -15780,7 +15780,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_5e0e,
 	.class_tid = 3,
 	.hdr_sig_id = 6,
-	.flow_sig_id = 30724,
+	.flow_sig_id = 30724UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -15800,7 +15800,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_59fe,
 	.class_tid = 3,
 	.hdr_sig_id = 7,
-	.flow_sig_id = 16384,
+	.flow_sig_id = 16384UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -15816,7 +15816,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_511a,
 	.class_tid = 3,
 	.hdr_sig_id = 7,
-	.flow_sig_id = 16388,
+	.flow_sig_id = 16388UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -15833,7 +15833,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_1c32,
 	.class_tid = 3,
 	.hdr_sig_id = 7,
-	.flow_sig_id = 24576,
+	.flow_sig_id = 24576UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -15850,7 +15850,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_175e,
 	.class_tid = 3,
 	.hdr_sig_id = 7,
-	.flow_sig_id = 24580,
+	.flow_sig_id = 24580UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -15868,7 +15868,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_0eb2,
 	.class_tid = 3,
 	.hdr_sig_id = 7,
-	.flow_sig_id = 49152,
+	.flow_sig_id = 49152UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -15885,7 +15885,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_09de,
 	.class_tid = 3,
 	.hdr_sig_id = 7,
-	.flow_sig_id = 49156,
+	.flow_sig_id = 49156UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -15903,7 +15903,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_5c3a,
 	.class_tid = 3,
 	.hdr_sig_id = 7,
-	.flow_sig_id = 57344,
+	.flow_sig_id = 57344UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -15921,7 +15921,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_5766,
 	.class_tid = 3,
 	.hdr_sig_id = 7,
-	.flow_sig_id = 57348,
+	.flow_sig_id = 57348UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -15940,7 +15940,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_79fa,
 	.class_tid = 3,
 	.hdr_sig_id = 7,
-	.flow_sig_id = 81920,
+	.flow_sig_id = 81920UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -15957,7 +15957,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_7126,
 	.class_tid = 3,
 	.hdr_sig_id = 7,
-	.flow_sig_id = 81924,
+	.flow_sig_id = 81924UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -15975,7 +15975,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3c3e,
 	.class_tid = 3,
 	.hdr_sig_id = 7,
-	.flow_sig_id = 90112,
+	.flow_sig_id = 90112UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -15993,7 +15993,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_375a,
 	.class_tid = 3,
 	.hdr_sig_id = 7,
-	.flow_sig_id = 90116,
+	.flow_sig_id = 90116UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -16012,7 +16012,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_2ebe,
 	.class_tid = 3,
 	.hdr_sig_id = 7,
-	.flow_sig_id = 114688,
+	.flow_sig_id = 114688UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -16030,7 +16030,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_29da,
 	.class_tid = 3,
 	.hdr_sig_id = 7,
-	.flow_sig_id = 114692,
+	.flow_sig_id = 114692UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -16049,7 +16049,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_14f2,
 	.class_tid = 3,
 	.hdr_sig_id = 7,
-	.flow_sig_id = 122880,
+	.flow_sig_id = 122880UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -16068,7 +16068,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_7762,
 	.class_tid = 3,
 	.hdr_sig_id = 7,
-	.flow_sig_id = 122884,
+	.flow_sig_id = 122884UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -16088,7 +16088,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_19e8,
 	.class_tid = 3,
 	.hdr_sig_id = 8,
-	.flow_sig_id = 32768,
+	.flow_sig_id = 32768UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -16105,7 +16105,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_110c,
 	.class_tid = 3,
 	.hdr_sig_id = 8,
-	.flow_sig_id = 32772,
+	.flow_sig_id = 32772UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -16123,7 +16123,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_4d48,
 	.class_tid = 3,
 	.hdr_sig_id = 8,
-	.flow_sig_id = 32832,
+	.flow_sig_id = 32832UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -16141,7 +16141,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_446c,
 	.class_tid = 3,
 	.hdr_sig_id = 8,
-	.flow_sig_id = 32836,
+	.flow_sig_id = 32836UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -16160,7 +16160,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_0eac,
 	.class_tid = 3,
 	.hdr_sig_id = 8,
-	.flow_sig_id = 49152,
+	.flow_sig_id = 49152UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -16178,7 +16178,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_09c0,
 	.class_tid = 3,
 	.hdr_sig_id = 8,
-	.flow_sig_id = 49156,
+	.flow_sig_id = 49156UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -16197,7 +16197,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_1ad0,
 	.class_tid = 3,
 	.hdr_sig_id = 8,
-	.flow_sig_id = 49216,
+	.flow_sig_id = 49216UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -16216,7 +16216,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_15f4,
 	.class_tid = 3,
 	.hdr_sig_id = 8,
-	.flow_sig_id = 49220,
+	.flow_sig_id = 49220UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -16236,7 +16236,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_39ec,
 	.class_tid = 3,
 	.hdr_sig_id = 8,
-	.flow_sig_id = 98304,
+	.flow_sig_id = 98304UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -16254,7 +16254,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3100,
 	.class_tid = 3,
 	.hdr_sig_id = 8,
-	.flow_sig_id = 98308,
+	.flow_sig_id = 98308UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -16273,7 +16273,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_0210,
 	.class_tid = 3,
 	.hdr_sig_id = 8,
-	.flow_sig_id = 98368,
+	.flow_sig_id = 98368UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -16292,7 +16292,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_1d34,
 	.class_tid = 3,
 	.hdr_sig_id = 8,
-	.flow_sig_id = 98372,
+	.flow_sig_id = 98372UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -16312,7 +16312,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_2ea0,
 	.class_tid = 3,
 	.hdr_sig_id = 8,
-	.flow_sig_id = 114688,
+	.flow_sig_id = 114688UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -16331,7 +16331,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_29c4,
 	.class_tid = 3,
 	.hdr_sig_id = 8,
-	.flow_sig_id = 114692,
+	.flow_sig_id = 114692UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -16351,7 +16351,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3ad4,
 	.class_tid = 3,
 	.hdr_sig_id = 8,
-	.flow_sig_id = 114752,
+	.flow_sig_id = 114752UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -16371,7 +16371,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_35e8,
 	.class_tid = 3,
 	.hdr_sig_id = 8,
-	.flow_sig_id = 114756,
+	.flow_sig_id = 114756UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -16392,7 +16392,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_5d80,
 	.class_tid = 3,
 	.hdr_sig_id = 8,
-	.flow_sig_id = 163840,
+	.flow_sig_id = 163840UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -16410,7 +16410,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_54a4,
 	.class_tid = 3,
 	.hdr_sig_id = 8,
-	.flow_sig_id = 163844,
+	.flow_sig_id = 163844UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -16429,7 +16429,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_29b4,
 	.class_tid = 3,
 	.hdr_sig_id = 8,
-	.flow_sig_id = 163904,
+	.flow_sig_id = 163904UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -16448,7 +16448,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_20c8,
 	.class_tid = 3,
 	.hdr_sig_id = 8,
-	.flow_sig_id = 163908,
+	.flow_sig_id = 163908UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -16468,7 +16468,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_7244,
 	.class_tid = 3,
 	.hdr_sig_id = 8,
-	.flow_sig_id = 180224,
+	.flow_sig_id = 180224UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -16487,7 +16487,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_4d98,
 	.class_tid = 3,
 	.hdr_sig_id = 8,
-	.flow_sig_id = 180228,
+	.flow_sig_id = 180228UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -16507,7 +16507,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_5e68,
 	.class_tid = 3,
 	.hdr_sig_id = 8,
-	.flow_sig_id = 180288,
+	.flow_sig_id = 180288UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -16527,7 +16527,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_598c,
 	.class_tid = 3,
 	.hdr_sig_id = 8,
-	.flow_sig_id = 180292,
+	.flow_sig_id = 180292UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -16548,7 +16548,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_1248,
 	.class_tid = 3,
 	.hdr_sig_id = 8,
-	.flow_sig_id = 229376,
+	.flow_sig_id = 229376UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -16567,7 +16567,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_74d8,
 	.class_tid = 3,
 	.hdr_sig_id = 8,
-	.flow_sig_id = 229380,
+	.flow_sig_id = 229380UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -16587,7 +16587,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_49a8,
 	.class_tid = 3,
 	.hdr_sig_id = 8,
-	.flow_sig_id = 229440,
+	.flow_sig_id = 229440UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -16607,7 +16607,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_40cc,
 	.class_tid = 3,
 	.hdr_sig_id = 8,
-	.flow_sig_id = 229444,
+	.flow_sig_id = 229444UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -16628,7 +16628,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_0b0c,
 	.class_tid = 3,
 	.hdr_sig_id = 8,
-	.flow_sig_id = 245760,
+	.flow_sig_id = 245760UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -16648,7 +16648,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_0220,
 	.class_tid = 3,
 	.hdr_sig_id = 8,
-	.flow_sig_id = 245764,
+	.flow_sig_id = 245764UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -16669,7 +16669,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_1730,
 	.class_tid = 3,
 	.hdr_sig_id = 8,
-	.flow_sig_id = 245824,
+	.flow_sig_id = 245824UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -16690,7 +16690,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_7980,
 	.class_tid = 3,
 	.hdr_sig_id = 8,
-	.flow_sig_id = 245828,
+	.flow_sig_id = 245828UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -16712,7 +16712,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_1db0,
 	.class_tid = 3,
 	.hdr_sig_id = 9,
-	.flow_sig_id = 131072,
+	.flow_sig_id = 131072UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -16729,7 +16729,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_1494,
 	.class_tid = 3,
 	.hdr_sig_id = 9,
-	.flow_sig_id = 131076,
+	.flow_sig_id = 131076UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -16747,7 +16747,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_70d0,
 	.class_tid = 3,
 	.hdr_sig_id = 9,
-	.flow_sig_id = 131136,
+	.flow_sig_id = 131136UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -16765,7 +16765,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_4834,
 	.class_tid = 3,
 	.hdr_sig_id = 9,
-	.flow_sig_id = 131140,
+	.flow_sig_id = 131140UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -16784,7 +16784,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3db4,
 	.class_tid = 3,
 	.hdr_sig_id = 9,
-	.flow_sig_id = 196608,
+	.flow_sig_id = 196608UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -16802,7 +16802,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3498,
 	.class_tid = 3,
 	.hdr_sig_id = 9,
-	.flow_sig_id = 196612,
+	.flow_sig_id = 196612UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -16821,7 +16821,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_0988,
 	.class_tid = 3,
 	.hdr_sig_id = 9,
-	.flow_sig_id = 196672,
+	.flow_sig_id = 196672UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -16840,7 +16840,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_00ec,
 	.class_tid = 3,
 	.hdr_sig_id = 9,
-	.flow_sig_id = 196676,
+	.flow_sig_id = 196676UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -16860,7 +16860,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3f44,
 	.class_tid = 3,
 	.hdr_sig_id = 9,
-	.flow_sig_id = 393216,
+	.flow_sig_id = 393216UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -16878,7 +16878,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_36a8,
 	.class_tid = 3,
 	.hdr_sig_id = 9,
-	.flow_sig_id = 393220,
+	.flow_sig_id = 393220UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -16897,7 +16897,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_0b58,
 	.class_tid = 3,
 	.hdr_sig_id = 9,
-	.flow_sig_id = 393280,
+	.flow_sig_id = 393280UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -16916,7 +16916,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_02bc,
 	.class_tid = 3,
 	.hdr_sig_id = 9,
-	.flow_sig_id = 393284,
+	.flow_sig_id = 393284UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -16936,7 +16936,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_5f48,
 	.class_tid = 3,
 	.hdr_sig_id = 9,
-	.flow_sig_id = 458752,
+	.flow_sig_id = 458752UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -16955,7 +16955,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_56ac,
 	.class_tid = 3,
 	.hdr_sig_id = 9,
-	.flow_sig_id = 458756,
+	.flow_sig_id = 458756UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -16975,7 +16975,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_2b5c,
 	.class_tid = 3,
 	.hdr_sig_id = 9,
-	.flow_sig_id = 458816,
+	.flow_sig_id = 458816UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -16995,7 +16995,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_2280,
 	.class_tid = 3,
 	.hdr_sig_id = 9,
-	.flow_sig_id = 458820,
+	.flow_sig_id = 458820UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -17016,7 +17016,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_4000,
 	.class_tid = 3,
 	.hdr_sig_id = 9,
-	.flow_sig_id = 655360,
+	.flow_sig_id = 655360UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -17034,7 +17034,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_5b64,
 	.class_tid = 3,
 	.hdr_sig_id = 9,
-	.flow_sig_id = 655364,
+	.flow_sig_id = 655364UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -17053,7 +17053,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_2c14,
 	.class_tid = 3,
 	.hdr_sig_id = 9,
-	.flow_sig_id = 655424,
+	.flow_sig_id = 655424UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -17072,7 +17072,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_2778,
 	.class_tid = 3,
 	.hdr_sig_id = 9,
-	.flow_sig_id = 655428,
+	.flow_sig_id = 655428UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -17092,7 +17092,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_18f8,
 	.class_tid = 3,
 	.hdr_sig_id = 9,
-	.flow_sig_id = 720896,
+	.flow_sig_id = 720896UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -17111,7 +17111,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_13dc,
 	.class_tid = 3,
 	.hdr_sig_id = 9,
-	.flow_sig_id = 720900,
+	.flow_sig_id = 720900UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -17131,7 +17131,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_4c18,
 	.class_tid = 3,
 	.hdr_sig_id = 9,
-	.flow_sig_id = 720960,
+	.flow_sig_id = 720960UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -17151,7 +17151,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_477c,
 	.class_tid = 3,
 	.hdr_sig_id = 9,
-	.flow_sig_id = 720964,
+	.flow_sig_id = 720964UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -17172,7 +17172,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_1a88,
 	.class_tid = 3,
 	.hdr_sig_id = 9,
-	.flow_sig_id = 917504,
+	.flow_sig_id = 917504UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -17191,7 +17191,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_15ec,
 	.class_tid = 3,
 	.hdr_sig_id = 9,
-	.flow_sig_id = 917508,
+	.flow_sig_id = 917508UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -17211,7 +17211,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_4e28,
 	.class_tid = 3,
 	.hdr_sig_id = 9,
-	.flow_sig_id = 917568,
+	.flow_sig_id = 917568UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -17231,7 +17231,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_490c,
 	.class_tid = 3,
 	.hdr_sig_id = 9,
-	.flow_sig_id = 917572,
+	.flow_sig_id = 917572UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -17252,7 +17252,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3a8c,
 	.class_tid = 3,
 	.hdr_sig_id = 9,
-	.flow_sig_id = 983040,
+	.flow_sig_id = 983040UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -17272,7 +17272,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_35f0,
 	.class_tid = 3,
 	.hdr_sig_id = 9,
-	.flow_sig_id = 983044,
+	.flow_sig_id = 983044UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -17293,7 +17293,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_06e0,
 	.class_tid = 3,
 	.hdr_sig_id = 9,
-	.flow_sig_id = 983104,
+	.flow_sig_id = 983104UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -17314,7 +17314,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_01c4,
 	.class_tid = 3,
 	.hdr_sig_id = 9,
-	.flow_sig_id = 983108,
+	.flow_sig_id = 983108UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -17336,7 +17336,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_1a08,
 	.class_tid = 3,
 	.hdr_sig_id = 10,
-	.flow_sig_id = 32768,
+	.flow_sig_id = 32768UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -17353,7 +17353,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_12ec,
 	.class_tid = 3,
 	.hdr_sig_id = 10,
-	.flow_sig_id = 32772,
+	.flow_sig_id = 32772UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -17371,7 +17371,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_4ea8,
 	.class_tid = 3,
 	.hdr_sig_id = 10,
-	.flow_sig_id = 32832,
+	.flow_sig_id = 32832UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -17389,7 +17389,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_478c,
 	.class_tid = 3,
 	.hdr_sig_id = 10,
-	.flow_sig_id = 32836,
+	.flow_sig_id = 32836UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -17408,7 +17408,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_0d4c,
 	.class_tid = 3,
 	.hdr_sig_id = 10,
-	.flow_sig_id = 49152,
+	.flow_sig_id = 49152UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -17426,7 +17426,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_0a20,
 	.class_tid = 3,
 	.hdr_sig_id = 10,
-	.flow_sig_id = 49156,
+	.flow_sig_id = 49156UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -17445,7 +17445,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_1930,
 	.class_tid = 3,
 	.hdr_sig_id = 10,
-	.flow_sig_id = 49216,
+	.flow_sig_id = 49216UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -17464,7 +17464,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_1614,
 	.class_tid = 3,
 	.hdr_sig_id = 10,
-	.flow_sig_id = 49220,
+	.flow_sig_id = 49220UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -17484,7 +17484,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3a0c,
 	.class_tid = 3,
 	.hdr_sig_id = 10,
-	.flow_sig_id = 98304,
+	.flow_sig_id = 98304UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -17502,7 +17502,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_32e0,
 	.class_tid = 3,
 	.hdr_sig_id = 10,
-	.flow_sig_id = 98308,
+	.flow_sig_id = 98308UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -17521,7 +17521,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_01f0,
 	.class_tid = 3,
 	.hdr_sig_id = 10,
-	.flow_sig_id = 98368,
+	.flow_sig_id = 98368UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -17540,7 +17540,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_1ed4,
 	.class_tid = 3,
 	.hdr_sig_id = 10,
-	.flow_sig_id = 98372,
+	.flow_sig_id = 98372UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -17560,7 +17560,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_2d40,
 	.class_tid = 3,
 	.hdr_sig_id = 10,
-	.flow_sig_id = 114688,
+	.flow_sig_id = 114688UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -17579,7 +17579,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_2a24,
 	.class_tid = 3,
 	.hdr_sig_id = 10,
-	.flow_sig_id = 114692,
+	.flow_sig_id = 114692UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -17599,7 +17599,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3934,
 	.class_tid = 3,
 	.hdr_sig_id = 10,
-	.flow_sig_id = 114752,
+	.flow_sig_id = 114752UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -17619,7 +17619,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3608,
 	.class_tid = 3,
 	.hdr_sig_id = 10,
-	.flow_sig_id = 114756,
+	.flow_sig_id = 114756UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -17640,7 +17640,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_5e60,
 	.class_tid = 3,
 	.hdr_sig_id = 10,
-	.flow_sig_id = 163840,
+	.flow_sig_id = 163840UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -17658,7 +17658,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_5744,
 	.class_tid = 3,
 	.hdr_sig_id = 10,
-	.flow_sig_id = 163844,
+	.flow_sig_id = 163844UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -17677,7 +17677,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_2a54,
 	.class_tid = 3,
 	.hdr_sig_id = 10,
-	.flow_sig_id = 163904,
+	.flow_sig_id = 163904UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -17696,7 +17696,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_2328,
 	.class_tid = 3,
 	.hdr_sig_id = 10,
-	.flow_sig_id = 163908,
+	.flow_sig_id = 163908UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -17716,7 +17716,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_71a4,
 	.class_tid = 3,
 	.hdr_sig_id = 10,
-	.flow_sig_id = 180224,
+	.flow_sig_id = 180224UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -17735,7 +17735,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_4e78,
 	.class_tid = 3,
 	.hdr_sig_id = 10,
-	.flow_sig_id = 180228,
+	.flow_sig_id = 180228UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -17755,7 +17755,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_5d88,
 	.class_tid = 3,
 	.hdr_sig_id = 10,
-	.flow_sig_id = 180288,
+	.flow_sig_id = 180288UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -17775,7 +17775,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_5a6c,
 	.class_tid = 3,
 	.hdr_sig_id = 10,
-	.flow_sig_id = 180292,
+	.flow_sig_id = 180292UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -17796,7 +17796,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_11a8,
 	.class_tid = 3,
 	.hdr_sig_id = 10,
-	.flow_sig_id = 229376,
+	.flow_sig_id = 229376UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -17815,7 +17815,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_7738,
 	.class_tid = 3,
 	.hdr_sig_id = 10,
-	.flow_sig_id = 229380,
+	.flow_sig_id = 229380UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -17835,7 +17835,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_4a48,
 	.class_tid = 3,
 	.hdr_sig_id = 10,
-	.flow_sig_id = 229440,
+	.flow_sig_id = 229440UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -17855,7 +17855,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_432c,
 	.class_tid = 3,
 	.hdr_sig_id = 10,
-	.flow_sig_id = 229444,
+	.flow_sig_id = 229444UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -17876,7 +17876,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_08ec,
 	.class_tid = 3,
 	.hdr_sig_id = 10,
-	.flow_sig_id = 245760,
+	.flow_sig_id = 245760UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -17896,7 +17896,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_01c0,
 	.class_tid = 3,
 	.hdr_sig_id = 10,
-	.flow_sig_id = 245764,
+	.flow_sig_id = 245764UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -17917,7 +17917,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_14d0,
 	.class_tid = 3,
 	.hdr_sig_id = 10,
-	.flow_sig_id = 245824,
+	.flow_sig_id = 245824UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -17938,7 +17938,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_7a60,
 	.class_tid = 3,
 	.hdr_sig_id = 10,
-	.flow_sig_id = 245828,
+	.flow_sig_id = 245828UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -17960,7 +17960,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_1d90,
 	.class_tid = 3,
 	.hdr_sig_id = 11,
-	.flow_sig_id = 131072,
+	.flow_sig_id = 131072UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -17977,7 +17977,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_14b4,
 	.class_tid = 3,
 	.hdr_sig_id = 11,
-	.flow_sig_id = 131076,
+	.flow_sig_id = 131076UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -17995,7 +17995,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_70f0,
 	.class_tid = 3,
 	.hdr_sig_id = 11,
-	.flow_sig_id = 131136,
+	.flow_sig_id = 131136UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -18013,7 +18013,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_4814,
 	.class_tid = 3,
 	.hdr_sig_id = 11,
-	.flow_sig_id = 131140,
+	.flow_sig_id = 131140UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -18032,7 +18032,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3d94,
 	.class_tid = 3,
 	.hdr_sig_id = 11,
-	.flow_sig_id = 196608,
+	.flow_sig_id = 196608UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -18050,7 +18050,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_34b8,
 	.class_tid = 3,
 	.hdr_sig_id = 11,
-	.flow_sig_id = 196612,
+	.flow_sig_id = 196612UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -18069,7 +18069,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_09a8,
 	.class_tid = 3,
 	.hdr_sig_id = 11,
-	.flow_sig_id = 196672,
+	.flow_sig_id = 196672UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -18088,7 +18088,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_00cc,
 	.class_tid = 3,
 	.hdr_sig_id = 11,
-	.flow_sig_id = 196676,
+	.flow_sig_id = 196676UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -18108,7 +18108,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3f64,
 	.class_tid = 3,
 	.hdr_sig_id = 11,
-	.flow_sig_id = 393216,
+	.flow_sig_id = 393216UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -18126,7 +18126,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3688,
 	.class_tid = 3,
 	.hdr_sig_id = 11,
-	.flow_sig_id = 393220,
+	.flow_sig_id = 393220UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -18145,7 +18145,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_0b78,
 	.class_tid = 3,
 	.hdr_sig_id = 11,
-	.flow_sig_id = 393280,
+	.flow_sig_id = 393280UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -18164,7 +18164,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_029c,
 	.class_tid = 3,
 	.hdr_sig_id = 11,
-	.flow_sig_id = 393284,
+	.flow_sig_id = 393284UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -18184,7 +18184,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_5f68,
 	.class_tid = 3,
 	.hdr_sig_id = 11,
-	.flow_sig_id = 458752,
+	.flow_sig_id = 458752UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -18203,7 +18203,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_568c,
 	.class_tid = 3,
 	.hdr_sig_id = 11,
-	.flow_sig_id = 458756,
+	.flow_sig_id = 458756UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -18223,7 +18223,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_2b7c,
 	.class_tid = 3,
 	.hdr_sig_id = 11,
-	.flow_sig_id = 458816,
+	.flow_sig_id = 458816UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -18243,7 +18243,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_22a0,
 	.class_tid = 3,
 	.hdr_sig_id = 11,
-	.flow_sig_id = 458820,
+	.flow_sig_id = 458820UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -18264,7 +18264,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_4020,
 	.class_tid = 3,
 	.hdr_sig_id = 11,
-	.flow_sig_id = 655360,
+	.flow_sig_id = 655360UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -18282,7 +18282,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_5b44,
 	.class_tid = 3,
 	.hdr_sig_id = 11,
-	.flow_sig_id = 655364,
+	.flow_sig_id = 655364UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -18301,7 +18301,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_2c34,
 	.class_tid = 3,
 	.hdr_sig_id = 11,
-	.flow_sig_id = 655424,
+	.flow_sig_id = 655424UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -18320,7 +18320,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_2758,
 	.class_tid = 3,
 	.hdr_sig_id = 11,
-	.flow_sig_id = 655428,
+	.flow_sig_id = 655428UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -18340,7 +18340,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_18d8,
 	.class_tid = 3,
 	.hdr_sig_id = 11,
-	.flow_sig_id = 720896,
+	.flow_sig_id = 720896UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -18359,7 +18359,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_13fc,
 	.class_tid = 3,
 	.hdr_sig_id = 11,
-	.flow_sig_id = 720900,
+	.flow_sig_id = 720900UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -18379,7 +18379,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_4c38,
 	.class_tid = 3,
 	.hdr_sig_id = 11,
-	.flow_sig_id = 720960,
+	.flow_sig_id = 720960UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -18399,7 +18399,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_475c,
 	.class_tid = 3,
 	.hdr_sig_id = 11,
-	.flow_sig_id = 720964,
+	.flow_sig_id = 720964UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -18420,7 +18420,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_1aa8,
 	.class_tid = 3,
 	.hdr_sig_id = 11,
-	.flow_sig_id = 917504,
+	.flow_sig_id = 917504UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -18439,7 +18439,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_15cc,
 	.class_tid = 3,
 	.hdr_sig_id = 11,
-	.flow_sig_id = 917508,
+	.flow_sig_id = 917508UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -18459,7 +18459,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_4e08,
 	.class_tid = 3,
 	.hdr_sig_id = 11,
-	.flow_sig_id = 917568,
+	.flow_sig_id = 917568UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -18479,7 +18479,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_492c,
 	.class_tid = 3,
 	.hdr_sig_id = 11,
-	.flow_sig_id = 917572,
+	.flow_sig_id = 917572UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -18500,7 +18500,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3aac,
 	.class_tid = 3,
 	.hdr_sig_id = 11,
-	.flow_sig_id = 983040,
+	.flow_sig_id = 983040UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -18520,7 +18520,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_35d0,
 	.class_tid = 3,
 	.hdr_sig_id = 11,
-	.flow_sig_id = 983044,
+	.flow_sig_id = 983044UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -18541,7 +18541,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_06c0,
 	.class_tid = 3,
 	.hdr_sig_id = 11,
-	.flow_sig_id = 983104,
+	.flow_sig_id = 983104UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -18562,7 +18562,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_01e4,
 	.class_tid = 3,
 	.hdr_sig_id = 11,
-	.flow_sig_id = 983108,
+	.flow_sig_id = 983108UL,
 	.flow_pattern_id = 0,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -18584,7 +18584,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_4d32,
 	.class_tid = 3,
 	.hdr_sig_id = 0,
-	.flow_sig_id = 4096,
+	.flow_sig_id = 4096UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -18598,7 +18598,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_54aa,
 	.class_tid = 3,
 	.hdr_sig_id = 0,
-	.flow_sig_id = 6144,
+	.flow_sig_id = 6144UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -18613,7 +18613,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_0686,
 	.class_tid = 3,
 	.hdr_sig_id = 1,
-	.flow_sig_id = 16384,
+	.flow_sig_id = 16384UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -18627,7 +18627,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_540e,
 	.class_tid = 3,
 	.hdr_sig_id = 1,
-	.flow_sig_id = 24576,
+	.flow_sig_id = 24576UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -18642,7 +18642,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_2e3c,
 	.class_tid = 3,
 	.hdr_sig_id = 2,
-	.flow_sig_id = 32768,
+	.flow_sig_id = 32768UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -18657,7 +18657,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3a20,
 	.class_tid = 3,
 	.hdr_sig_id = 2,
-	.flow_sig_id = 32832,
+	.flow_sig_id = 32832UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -18673,7 +18673,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_46f0,
 	.class_tid = 3,
 	.hdr_sig_id = 2,
-	.flow_sig_id = 49152,
+	.flow_sig_id = 49152UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -18689,7 +18689,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_52e4,
 	.class_tid = 3,
 	.hdr_sig_id = 2,
-	.flow_sig_id = 49216,
+	.flow_sig_id = 49216UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -18706,7 +18706,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_55e4,
 	.class_tid = 3,
 	.hdr_sig_id = 3,
-	.flow_sig_id = 131072,
+	.flow_sig_id = 131072UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -18721,7 +18721,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_21f8,
 	.class_tid = 3,
 	.hdr_sig_id = 3,
-	.flow_sig_id = 131136,
+	.flow_sig_id = 131136UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -18737,7 +18737,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_75e8,
 	.class_tid = 3,
 	.hdr_sig_id = 3,
-	.flow_sig_id = 196608,
+	.flow_sig_id = 196608UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -18753,7 +18753,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_41fc,
 	.class_tid = 3,
 	.hdr_sig_id = 3,
-	.flow_sig_id = 196672,
+	.flow_sig_id = 196672UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -18770,7 +18770,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_4d12,
 	.class_tid = 3,
 	.hdr_sig_id = 4,
-	.flow_sig_id = 4096,
+	.flow_sig_id = 4096UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -18785,7 +18785,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_548a,
 	.class_tid = 3,
 	.hdr_sig_id = 4,
-	.flow_sig_id = 6144,
+	.flow_sig_id = 6144UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -18801,7 +18801,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3356,
 	.class_tid = 3,
 	.hdr_sig_id = 4,
-	.flow_sig_id = 12288,
+	.flow_sig_id = 12288UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -18817,7 +18817,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_1ace,
 	.class_tid = 3,
 	.hdr_sig_id = 4,
-	.flow_sig_id = 14336,
+	.flow_sig_id = 14336UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -18834,7 +18834,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_1a9a,
 	.class_tid = 3,
 	.hdr_sig_id = 4,
-	.flow_sig_id = 20480,
+	.flow_sig_id = 20480UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -18850,7 +18850,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_4d46,
 	.class_tid = 3,
 	.hdr_sig_id = 4,
-	.flow_sig_id = 22528,
+	.flow_sig_id = 22528UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -18867,7 +18867,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_2812,
 	.class_tid = 3,
 	.hdr_sig_id = 4,
-	.flow_sig_id = 28672,
+	.flow_sig_id = 28672UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -18884,7 +18884,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_338a,
 	.class_tid = 3,
 	.hdr_sig_id = 4,
-	.flow_sig_id = 30720,
+	.flow_sig_id = 30720UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -18902,7 +18902,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_06e6,
 	.class_tid = 3,
 	.hdr_sig_id = 5,
-	.flow_sig_id = 16384,
+	.flow_sig_id = 16384UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -18917,7 +18917,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_546e,
 	.class_tid = 3,
 	.hdr_sig_id = 5,
-	.flow_sig_id = 24576,
+	.flow_sig_id = 24576UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -18933,7 +18933,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_46ee,
 	.class_tid = 3,
 	.hdr_sig_id = 5,
-	.flow_sig_id = 49152,
+	.flow_sig_id = 49152UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -18949,7 +18949,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_0d22,
 	.class_tid = 3,
 	.hdr_sig_id = 5,
-	.flow_sig_id = 57344,
+	.flow_sig_id = 57344UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -18966,7 +18966,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_26e2,
 	.class_tid = 3,
 	.hdr_sig_id = 5,
-	.flow_sig_id = 81920,
+	.flow_sig_id = 81920UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -18982,7 +18982,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_746a,
 	.class_tid = 3,
 	.hdr_sig_id = 5,
-	.flow_sig_id = 90112,
+	.flow_sig_id = 90112UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -18999,7 +18999,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_1fa6,
 	.class_tid = 3,
 	.hdr_sig_id = 5,
-	.flow_sig_id = 114688,
+	.flow_sig_id = 114688UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -19016,7 +19016,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_2d2e,
 	.class_tid = 3,
 	.hdr_sig_id = 5,
-	.flow_sig_id = 122880,
+	.flow_sig_id = 122880UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -19034,7 +19034,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_4ef2,
 	.class_tid = 3,
 	.hdr_sig_id = 6,
-	.flow_sig_id = 4096,
+	.flow_sig_id = 4096UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -19049,7 +19049,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_576a,
 	.class_tid = 3,
 	.hdr_sig_id = 6,
-	.flow_sig_id = 6144,
+	.flow_sig_id = 6144UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -19065,7 +19065,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_30b6,
 	.class_tid = 3,
 	.hdr_sig_id = 6,
-	.flow_sig_id = 12288,
+	.flow_sig_id = 12288UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -19081,7 +19081,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_192e,
 	.class_tid = 3,
 	.hdr_sig_id = 6,
-	.flow_sig_id = 14336,
+	.flow_sig_id = 14336UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -19098,7 +19098,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_197a,
 	.class_tid = 3,
 	.hdr_sig_id = 6,
-	.flow_sig_id = 20480,
+	.flow_sig_id = 20480UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -19114,7 +19114,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_4ea6,
 	.class_tid = 3,
 	.hdr_sig_id = 6,
-	.flow_sig_id = 22528,
+	.flow_sig_id = 22528UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -19131,7 +19131,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_2bf2,
 	.class_tid = 3,
 	.hdr_sig_id = 6,
-	.flow_sig_id = 28672,
+	.flow_sig_id = 28672UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -19148,7 +19148,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_306a,
 	.class_tid = 3,
 	.hdr_sig_id = 6,
-	.flow_sig_id = 30720,
+	.flow_sig_id = 30720UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -19166,7 +19166,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_06c6,
 	.class_tid = 3,
 	.hdr_sig_id = 7,
-	.flow_sig_id = 16384,
+	.flow_sig_id = 16384UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -19181,7 +19181,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_544e,
 	.class_tid = 3,
 	.hdr_sig_id = 7,
-	.flow_sig_id = 24576,
+	.flow_sig_id = 24576UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -19197,7 +19197,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_46ce,
 	.class_tid = 3,
 	.hdr_sig_id = 7,
-	.flow_sig_id = 49152,
+	.flow_sig_id = 49152UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -19213,7 +19213,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_0d02,
 	.class_tid = 3,
 	.hdr_sig_id = 7,
-	.flow_sig_id = 57344,
+	.flow_sig_id = 57344UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -19230,7 +19230,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_26c2,
 	.class_tid = 3,
 	.hdr_sig_id = 7,
-	.flow_sig_id = 81920,
+	.flow_sig_id = 81920UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -19246,7 +19246,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_744a,
 	.class_tid = 3,
 	.hdr_sig_id = 7,
-	.flow_sig_id = 90112,
+	.flow_sig_id = 90112UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -19263,7 +19263,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_1f86,
 	.class_tid = 3,
 	.hdr_sig_id = 7,
-	.flow_sig_id = 114688,
+	.flow_sig_id = 114688UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -19280,7 +19280,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_2d0e,
 	.class_tid = 3,
 	.hdr_sig_id = 7,
-	.flow_sig_id = 122880,
+	.flow_sig_id = 122880UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -19298,7 +19298,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_2e1c,
 	.class_tid = 3,
 	.hdr_sig_id = 8,
-	.flow_sig_id = 32768,
+	.flow_sig_id = 32768UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -19314,7 +19314,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3a00,
 	.class_tid = 3,
 	.hdr_sig_id = 8,
-	.flow_sig_id = 32832,
+	.flow_sig_id = 32832UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -19331,7 +19331,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_46d0,
 	.class_tid = 3,
 	.hdr_sig_id = 8,
-	.flow_sig_id = 49152,
+	.flow_sig_id = 49152UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -19348,7 +19348,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_52c4,
 	.class_tid = 3,
 	.hdr_sig_id = 8,
-	.flow_sig_id = 49216,
+	.flow_sig_id = 49216UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -19366,7 +19366,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_4e10,
 	.class_tid = 3,
 	.hdr_sig_id = 8,
-	.flow_sig_id = 98304,
+	.flow_sig_id = 98304UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -19383,7 +19383,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_5a04,
 	.class_tid = 3,
 	.hdr_sig_id = 8,
-	.flow_sig_id = 98368,
+	.flow_sig_id = 98368UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -19401,7 +19401,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_1f98,
 	.class_tid = 3,
 	.hdr_sig_id = 8,
-	.flow_sig_id = 114688,
+	.flow_sig_id = 114688UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -19419,7 +19419,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_72f8,
 	.class_tid = 3,
 	.hdr_sig_id = 8,
-	.flow_sig_id = 114752,
+	.flow_sig_id = 114752UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -19438,7 +19438,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_0a78,
 	.class_tid = 3,
 	.hdr_sig_id = 8,
-	.flow_sig_id = 163840,
+	.flow_sig_id = 163840UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -19455,7 +19455,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_166c,
 	.class_tid = 3,
 	.hdr_sig_id = 8,
-	.flow_sig_id = 163904,
+	.flow_sig_id = 163904UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -19473,7 +19473,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_233c,
 	.class_tid = 3,
 	.hdr_sig_id = 8,
-	.flow_sig_id = 180224,
+	.flow_sig_id = 180224UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -19491,7 +19491,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_0f20,
 	.class_tid = 3,
 	.hdr_sig_id = 8,
-	.flow_sig_id = 180288,
+	.flow_sig_id = 180288UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -19510,7 +19510,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_2a7c,
 	.class_tid = 3,
 	.hdr_sig_id = 8,
-	.flow_sig_id = 229376,
+	.flow_sig_id = 229376UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -19528,7 +19528,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3660,
 	.class_tid = 3,
 	.hdr_sig_id = 8,
-	.flow_sig_id = 229440,
+	.flow_sig_id = 229440UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -19547,7 +19547,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_4330,
 	.class_tid = 3,
 	.hdr_sig_id = 8,
-	.flow_sig_id = 245760,
+	.flow_sig_id = 245760UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -19566,7 +19566,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_2f24,
 	.class_tid = 3,
 	.hdr_sig_id = 8,
-	.flow_sig_id = 245824,
+	.flow_sig_id = 245824UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -19586,7 +19586,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_5584,
 	.class_tid = 3,
 	.hdr_sig_id = 9,
-	.flow_sig_id = 131072,
+	.flow_sig_id = 131072UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -19602,7 +19602,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_2198,
 	.class_tid = 3,
 	.hdr_sig_id = 9,
-	.flow_sig_id = 131136,
+	.flow_sig_id = 131136UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -19619,7 +19619,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_7588,
 	.class_tid = 3,
 	.hdr_sig_id = 9,
-	.flow_sig_id = 196608,
+	.flow_sig_id = 196608UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -19636,7 +19636,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_419c,
 	.class_tid = 3,
 	.hdr_sig_id = 9,
-	.flow_sig_id = 196672,
+	.flow_sig_id = 196672UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -19654,7 +19654,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_7758,
 	.class_tid = 3,
 	.hdr_sig_id = 9,
-	.flow_sig_id = 393216,
+	.flow_sig_id = 393216UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -19671,7 +19671,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_43ac,
 	.class_tid = 3,
 	.hdr_sig_id = 9,
-	.flow_sig_id = 393280,
+	.flow_sig_id = 393280UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -19689,7 +19689,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_0c10,
 	.class_tid = 3,
 	.hdr_sig_id = 9,
-	.flow_sig_id = 458752,
+	.flow_sig_id = 458752UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -19707,7 +19707,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_1864,
 	.class_tid = 3,
 	.hdr_sig_id = 9,
-	.flow_sig_id = 458816,
+	.flow_sig_id = 458816UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -19726,7 +19726,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_30c8,
 	.class_tid = 3,
 	.hdr_sig_id = 9,
-	.flow_sig_id = 655360,
+	.flow_sig_id = 655360UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -19743,7 +19743,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_1cdc,
 	.class_tid = 3,
 	.hdr_sig_id = 9,
-	.flow_sig_id = 655424,
+	.flow_sig_id = 655424UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -19761,7 +19761,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_50cc,
 	.class_tid = 3,
 	.hdr_sig_id = 9,
-	.flow_sig_id = 720896,
+	.flow_sig_id = 720896UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -19779,7 +19779,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3d20,
 	.class_tid = 3,
 	.hdr_sig_id = 9,
-	.flow_sig_id = 720960,
+	.flow_sig_id = 720960UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -19798,7 +19798,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_529c,
 	.class_tid = 3,
 	.hdr_sig_id = 9,
-	.flow_sig_id = 917504,
+	.flow_sig_id = 917504UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -19816,7 +19816,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3ef0,
 	.class_tid = 3,
 	.hdr_sig_id = 9,
-	.flow_sig_id = 917568,
+	.flow_sig_id = 917568UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -19835,7 +19835,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_72e0,
 	.class_tid = 3,
 	.hdr_sig_id = 9,
-	.flow_sig_id = 983040,
+	.flow_sig_id = 983040UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -19854,7 +19854,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_5ef4,
 	.class_tid = 3,
 	.hdr_sig_id = 9,
-	.flow_sig_id = 983104,
+	.flow_sig_id = 983104UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -19874,7 +19874,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_2dfc,
 	.class_tid = 3,
 	.hdr_sig_id = 10,
-	.flow_sig_id = 32768,
+	.flow_sig_id = 32768UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -19890,7 +19890,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_39e0,
 	.class_tid = 3,
 	.hdr_sig_id = 10,
-	.flow_sig_id = 32832,
+	.flow_sig_id = 32832UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -19907,7 +19907,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_4530,
 	.class_tid = 3,
 	.hdr_sig_id = 10,
-	.flow_sig_id = 49152,
+	.flow_sig_id = 49152UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -19924,7 +19924,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_5124,
 	.class_tid = 3,
 	.hdr_sig_id = 10,
-	.flow_sig_id = 49216,
+	.flow_sig_id = 49216UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -19942,7 +19942,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_4df0,
 	.class_tid = 3,
 	.hdr_sig_id = 10,
-	.flow_sig_id = 98304,
+	.flow_sig_id = 98304UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -19959,7 +19959,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_59e4,
 	.class_tid = 3,
 	.hdr_sig_id = 10,
-	.flow_sig_id = 98368,
+	.flow_sig_id = 98368UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -19977,7 +19977,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_1c78,
 	.class_tid = 3,
 	.hdr_sig_id = 10,
-	.flow_sig_id = 114688,
+	.flow_sig_id = 114688UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -19995,7 +19995,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_7118,
 	.class_tid = 3,
 	.hdr_sig_id = 10,
-	.flow_sig_id = 114752,
+	.flow_sig_id = 114752UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -20014,7 +20014,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_0998,
 	.class_tid = 3,
 	.hdr_sig_id = 10,
-	.flow_sig_id = 163840,
+	.flow_sig_id = 163840UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -20031,7 +20031,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_158c,
 	.class_tid = 3,
 	.hdr_sig_id = 10,
-	.flow_sig_id = 163904,
+	.flow_sig_id = 163904UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -20049,7 +20049,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_20dc,
 	.class_tid = 3,
 	.hdr_sig_id = 10,
-	.flow_sig_id = 180224,
+	.flow_sig_id = 180224UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -20067,7 +20067,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_0cc0,
 	.class_tid = 3,
 	.hdr_sig_id = 10,
-	.flow_sig_id = 180288,
+	.flow_sig_id = 180288UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -20086,7 +20086,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_299c,
 	.class_tid = 3,
 	.hdr_sig_id = 10,
-	.flow_sig_id = 229376,
+	.flow_sig_id = 229376UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -20104,7 +20104,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3580,
 	.class_tid = 3,
 	.hdr_sig_id = 10,
-	.flow_sig_id = 229440,
+	.flow_sig_id = 229440UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -20123,7 +20123,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_40d0,
 	.class_tid = 3,
 	.hdr_sig_id = 10,
-	.flow_sig_id = 245760,
+	.flow_sig_id = 245760UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -20142,7 +20142,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_2cc4,
 	.class_tid = 3,
 	.hdr_sig_id = 10,
-	.flow_sig_id = 245824,
+	.flow_sig_id = 245824UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -20162,7 +20162,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_55a4,
 	.class_tid = 3,
 	.hdr_sig_id = 11,
-	.flow_sig_id = 131072,
+	.flow_sig_id = 131072UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -20178,7 +20178,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_21b8,
 	.class_tid = 3,
 	.hdr_sig_id = 11,
-	.flow_sig_id = 131136,
+	.flow_sig_id = 131136UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -20195,7 +20195,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_75a8,
 	.class_tid = 3,
 	.hdr_sig_id = 11,
-	.flow_sig_id = 196608,
+	.flow_sig_id = 196608UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -20212,7 +20212,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_41bc,
 	.class_tid = 3,
 	.hdr_sig_id = 11,
-	.flow_sig_id = 196672,
+	.flow_sig_id = 196672UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -20230,7 +20230,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_7778,
 	.class_tid = 3,
 	.hdr_sig_id = 11,
-	.flow_sig_id = 393216,
+	.flow_sig_id = 393216UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -20247,7 +20247,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_438c,
 	.class_tid = 3,
 	.hdr_sig_id = 11,
-	.flow_sig_id = 393280,
+	.flow_sig_id = 393280UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -20265,7 +20265,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_0c30,
 	.class_tid = 3,
 	.hdr_sig_id = 11,
-	.flow_sig_id = 458752,
+	.flow_sig_id = 458752UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -20283,7 +20283,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_1844,
 	.class_tid = 3,
 	.hdr_sig_id = 11,
-	.flow_sig_id = 458816,
+	.flow_sig_id = 458816UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -20302,7 +20302,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_30e8,
 	.class_tid = 3,
 	.hdr_sig_id = 11,
-	.flow_sig_id = 655360,
+	.flow_sig_id = 655360UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -20319,7 +20319,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_1cfc,
 	.class_tid = 3,
 	.hdr_sig_id = 11,
-	.flow_sig_id = 655424,
+	.flow_sig_id = 655424UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -20337,7 +20337,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_50ec,
 	.class_tid = 3,
 	.hdr_sig_id = 11,
-	.flow_sig_id = 720896,
+	.flow_sig_id = 720896UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -20355,7 +20355,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3d00,
 	.class_tid = 3,
 	.hdr_sig_id = 11,
-	.flow_sig_id = 720960,
+	.flow_sig_id = 720960UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -20374,7 +20374,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_52bc,
 	.class_tid = 3,
 	.hdr_sig_id = 11,
-	.flow_sig_id = 917504,
+	.flow_sig_id = 917504UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -20392,7 +20392,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3ed0,
 	.class_tid = 3,
 	.hdr_sig_id = 11,
-	.flow_sig_id = 917568,
+	.flow_sig_id = 917568UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -20411,7 +20411,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_72c0,
 	.class_tid = 3,
 	.hdr_sig_id = 11,
-	.flow_sig_id = 983040,
+	.flow_sig_id = 983040UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -20430,7 +20430,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_5ed4,
 	.class_tid = 3,
 	.hdr_sig_id = 11,
-	.flow_sig_id = 983104,
+	.flow_sig_id = 983104UL,
 	.flow_pattern_id = 1,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -20450,7 +20450,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3866,
 	.class_tid = 3,
 	.hdr_sig_id = 0,
-	.flow_sig_id = 4,
+	.flow_sig_id = 4UL,
 	.flow_pattern_id = 2,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -20465,7 +20465,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_381e,
 	.class_tid = 3,
 	.hdr_sig_id = 1,
-	.flow_sig_id = 4,
+	.flow_sig_id = 4UL,
 	.flow_pattern_id = 2,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -20480,7 +20480,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3860,
 	.class_tid = 3,
 	.hdr_sig_id = 2,
-	.flow_sig_id = 4,
+	.flow_sig_id = 4UL,
 	.flow_pattern_id = 2,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -20496,7 +20496,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_0454,
 	.class_tid = 3,
 	.hdr_sig_id = 2,
-	.flow_sig_id = 68,
+	.flow_sig_id = 68UL,
 	.flow_pattern_id = 2,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -20513,7 +20513,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3818,
 	.class_tid = 3,
 	.hdr_sig_id = 3,
-	.flow_sig_id = 4,
+	.flow_sig_id = 4UL,
 	.flow_pattern_id = 2,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -20529,7 +20529,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_042c,
 	.class_tid = 3,
 	.hdr_sig_id = 3,
-	.flow_sig_id = 68,
+	.flow_sig_id = 68UL,
 	.flow_pattern_id = 2,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -20546,7 +20546,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3846,
 	.class_tid = 3,
 	.hdr_sig_id = 4,
-	.flow_sig_id = 4,
+	.flow_sig_id = 4UL,
 	.flow_pattern_id = 2,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -20562,7 +20562,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_387e,
 	.class_tid = 3,
 	.hdr_sig_id = 5,
-	.flow_sig_id = 4,
+	.flow_sig_id = 4UL,
 	.flow_pattern_id = 2,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -20578,7 +20578,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3ba6,
 	.class_tid = 3,
 	.hdr_sig_id = 6,
-	.flow_sig_id = 4,
+	.flow_sig_id = 4UL,
 	.flow_pattern_id = 2,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -20594,7 +20594,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_385e,
 	.class_tid = 3,
 	.hdr_sig_id = 7,
-	.flow_sig_id = 4,
+	.flow_sig_id = 4UL,
 	.flow_pattern_id = 2,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -20610,7 +20610,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3840,
 	.class_tid = 3,
 	.hdr_sig_id = 8,
-	.flow_sig_id = 4,
+	.flow_sig_id = 4UL,
 	.flow_pattern_id = 2,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -20627,7 +20627,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_0474,
 	.class_tid = 3,
 	.hdr_sig_id = 8,
-	.flow_sig_id = 68,
+	.flow_sig_id = 68UL,
 	.flow_pattern_id = 2,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -20645,7 +20645,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3878,
 	.class_tid = 3,
 	.hdr_sig_id = 9,
-	.flow_sig_id = 4,
+	.flow_sig_id = 4UL,
 	.flow_pattern_id = 2,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -20662,7 +20662,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_044c,
 	.class_tid = 3,
 	.hdr_sig_id = 9,
-	.flow_sig_id = 68,
+	.flow_sig_id = 68UL,
 	.flow_pattern_id = 2,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -20680,7 +20680,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3ba0,
 	.class_tid = 3,
 	.hdr_sig_id = 10,
-	.flow_sig_id = 4,
+	.flow_sig_id = 4UL,
 	.flow_pattern_id = 2,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -20697,7 +20697,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_0794,
 	.class_tid = 3,
 	.hdr_sig_id = 10,
-	.flow_sig_id = 68,
+	.flow_sig_id = 68UL,
 	.flow_pattern_id = 2,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -20715,7 +20715,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_3858,
 	.class_tid = 3,
 	.hdr_sig_id = 11,
-	.flow_sig_id = 4,
+	.flow_sig_id = 4UL,
 	.flow_pattern_id = 2,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
@@ -20732,7 +20732,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	.class_hid = BNXT_ULP_CLASS_HID_046c,
 	.class_tid = 3,
 	.hdr_sig_id = 11,
-	.flow_sig_id = 68,
+	.flow_sig_id = 68UL,
 	.flow_pattern_id = 2,
 	.app_sig = 0,
 	.hdr_sig = { .bits =
