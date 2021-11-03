@@ -539,6 +539,7 @@ tf_tbl_sram_get(struct tf *tfp,
 	struct tf_tbl_sram_get_info_parms iparms = { 0 };
 	struct tf_sram_mgr_is_allocated_parms aparms = { 0 };
 	void *sram_handle = NULL;
+	bool clear_on_read = false;
 
 	TF_CHECK_PARMS3(tfp, parms, parms->data);
 
@@ -608,6 +609,8 @@ tf_tbl_sram_get(struct tf *tfp,
 			    strerror(-rc));
 		return rc;
 	}
+	if (parms->type == TF_TBL_TYPE_ACT_STATS_64)
+		clear_on_read = true;
 
 	/* Get the entry */
 	rc = tf_msg_get_tbl_entry(tfp,
@@ -615,7 +618,8 @@ tf_tbl_sram_get(struct tf *tfp,
 				  hcapi_type,
 				  parms->data_sz_in_bytes,
 				  parms->data,
-				  parms->idx);
+				  parms->idx,
+				  clear_on_read);
 	if (rc) {
 		TFP_DRV_LOG(ERR,
 			    "%s, Get failed, type:%s, rc:%s\n",
@@ -643,6 +647,7 @@ tf_tbl_sram_bulk_get(struct tf *tfp,
 	struct tf_sram_mgr_is_allocated_parms aparms = { 0 };
 	bool allocated = false;
 	void *sram_handle = NULL;
+	bool clear_on_read = false;
 
 	TF_CHECK_PARMS2(tfp, parms);
 
@@ -728,6 +733,9 @@ tf_tbl_sram_bulk_get(struct tf *tfp,
 		return rc;
 	}
 
+	if (parms->type == TF_TBL_TYPE_ACT_STATS_64)
+		clear_on_read = true;
+
 	/* Get the entries */
 	rc = tf_msg_bulk_get_tbl_entry(tfp,
 				       parms->dir,
@@ -735,7 +743,8 @@ tf_tbl_sram_bulk_get(struct tf *tfp,
 				       parms->starting_idx,
 				       parms->num_entries,
 				       parms->entry_sz_in_bytes,
-				       parms->physical_mem_addr);
+				       parms->physical_mem_addr,
+				       clear_on_read);
 	if (rc) {
 		TFP_DRV_LOG(ERR,
 			    "%s, Bulk get failed, type:%s, rc:%s\n",

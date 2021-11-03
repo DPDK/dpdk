@@ -1851,7 +1851,8 @@ tf_msg_get_tbl_entry(struct tf *tfp,
 		     uint16_t hcapi_type,
 		     uint16_t size,
 		     uint8_t *data,
-		     uint32_t index)
+		     uint32_t index,
+		     bool clear_on_read)
 {
 	int rc;
 	struct hwrm_tf_tbl_type_get_input req = { 0 };
@@ -1860,6 +1861,7 @@ tf_msg_get_tbl_entry(struct tf *tfp,
 	uint8_t fw_session_id;
 	struct tf_dev_info *dev;
 	struct tf_session *tfs;
+	uint32_t flags = 0;
 
 	/* Retrieve the session information */
 	rc = tf_session_get_session_internal(tfp, &tfs);
@@ -1889,10 +1891,16 @@ tf_msg_get_tbl_entry(struct tf *tfp,
 			    strerror(-rc));
 		return rc;
 	}
+	flags = (dir == TF_DIR_TX ?
+		 HWRM_TF_TBL_TYPE_GET_INPUT_FLAGS_DIR_TX :
+		 HWRM_TF_TBL_TYPE_GET_INPUT_FLAGS_DIR_RX);
+
+	if (clear_on_read)
+		flags |= HWRM_TF_TBL_TYPE_GET_INPUT_FLAGS_CLEAR_ON_READ;
 
 	/* Populate the request */
 	req.fw_session_id = tfp_cpu_to_le_32(fw_session_id);
-	req.flags = tfp_cpu_to_le_16(dir);
+	req.flags = tfp_cpu_to_le_16(flags);
 	req.type = tfp_cpu_to_le_32(hcapi_type);
 	req.index = tfp_cpu_to_le_32(index);
 
@@ -2105,7 +2113,8 @@ tf_msg_bulk_get_tbl_entry(struct tf *tfp,
 			  uint32_t starting_idx,
 			  uint16_t num_entries,
 			  uint16_t entry_sz_in_bytes,
-			  uint64_t physical_mem_addr)
+			  uint64_t physical_mem_addr,
+			  bool clear_on_read)
 {
 	int rc;
 	struct tfp_send_msg_parms parms = { 0 };
@@ -2115,6 +2124,7 @@ tf_msg_bulk_get_tbl_entry(struct tf *tfp,
 	uint8_t fw_session_id;
 	struct tf_dev_info *dev;
 	struct tf_session *tfs;
+	uint32_t flags = 0;
 
 	/* Retrieve the session information */
 	rc = tf_session_get_session(tfp, &tfs);
@@ -2144,10 +2154,16 @@ tf_msg_bulk_get_tbl_entry(struct tf *tfp,
 			    strerror(-rc));
 		return rc;
 	}
+	flags = (dir == TF_DIR_TX ?
+		 HWRM_TF_TBL_TYPE_BULK_GET_INPUT_FLAGS_DIR_TX :
+		 HWRM_TF_TBL_TYPE_BULK_GET_INPUT_FLAGS_DIR_RX);
+
+	if (clear_on_read)
+		flags |= HWRM_TF_TBL_TYPE_BULK_GET_INPUT_FLAGS_CLEAR_ON_READ;
 
 	/* Populate the request */
 	req.fw_session_id = tfp_cpu_to_le_32(fw_session_id);
-	req.flags = tfp_cpu_to_le_16(dir);
+	req.flags = tfp_cpu_to_le_16(flags);
 	req.type = tfp_cpu_to_le_32(hcapi_type);
 	req.start_index = tfp_cpu_to_le_32(starting_idx);
 	req.num_entries = tfp_cpu_to_le_32(num_entries);

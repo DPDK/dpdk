@@ -441,7 +441,8 @@ tf_tbl_get(struct tf *tfp,
 				  hcapi_type,
 				  parms->data_sz_in_bytes,
 				  parms->data,
-				  parms->idx);
+				  parms->idx,
+				  false);
 	if (rc) {
 		TFP_DRV_LOG(ERR,
 			    "%s, Get failed, type:%s, rc:%s\n",
@@ -526,7 +527,8 @@ tf_tbl_bulk_get(struct tf *tfp,
 				       parms->starting_idx,
 				       parms->num_entries,
 				       parms->entry_sz_in_bytes,
-				       parms->physical_mem_addr);
+				       parms->physical_mem_addr,
+				       false);
 	if (rc) {
 		TFP_DRV_LOG(ERR,
 			    "%s, Bulk get failed, type:%s, rc:%s\n",

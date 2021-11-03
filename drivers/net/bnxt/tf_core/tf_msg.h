@@ -652,7 +652,8 @@ int tf_msg_get_tbl_entry(struct tf *tfp,
 			 uint16_t hcapi_type,
 			 uint16_t size,
 			 uint8_t *data,
-			 uint32_t index);
+			 uint32_t index,
+			 bool clear_on_read);
 
 /* HWRM Tunneled messages */
 
@@ -704,7 +705,8 @@ int tf_msg_bulk_get_tbl_entry(struct tf *tfp,
 			      uint32_t starting_idx,
 			      uint16_t num_entries,
 			      uint16_t entry_sz_in_bytes,
-			      uint64_t physical_mem_addr);
+			      uint64_t physical_mem_addr,
+			      bool clear_on_read);
 
 /**
  * Sends Set message of a IF Table Type element to the firmware.

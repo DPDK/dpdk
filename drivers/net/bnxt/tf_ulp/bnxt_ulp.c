@@ -1483,7 +1483,8 @@ bnxt_ulp_port_init(struct bnxt *bp)
 		goto jump_to_error;
 	}
 
-	if (devid != BNXT_ULP_DEVICE_ID_THOR && BNXT_ACCUM_STATS_EN(bp))
+	/* set the accumulation of the stats */
+	if (BNXT_ACCUM_STATS_EN(bp))
 		bp->ulp_ctx->cfg_data->accum_stats = true;
 
 	BNXT_TF_DBG(DEBUG, "BNXT Port:%d ULP port init, accum_stats:%d\n",
