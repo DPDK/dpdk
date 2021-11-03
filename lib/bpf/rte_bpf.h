@@ -221,8 +221,6 @@ struct bpf_program;
  *
  * @param prog
  *  Classic BPF program from pcap_compile().
- * @param prm
- *  Result Extended BPF program.
  * @return
  *   Pointer to BPF program (allocated with *rte_malloc*)
  *   that is used in future BPF operations,
