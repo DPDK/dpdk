@@ -7,10 +7,10 @@
 
 #include <rte_vect.h>
 
+#include "cn10k_cryptodev_ops.h"
 #include "cnxk_ethdev.h"
 #include "cnxk_eventdev.h"
 #include "cnxk_worker.h"
-#include "cn10k_cryptodev_ops.h"
 
 #include "cn10k_ethdev.h"
 #include "cn10k_rx.h"
@@ -237,18 +237,16 @@ cn10k_sso_hws_get_work(struct cn10k_sso_hws *ws, struct rte_event *ev,
 
 				cq_w1 = *(uint64_t *)(gw.u64[1] + 8);
 
-				sa_base = cnxk_nix_sa_base_get(port,
-							       lookup_mem);
+				sa_base =
+					cnxk_nix_sa_base_get(port, lookup_mem);
 				sa_base &= ~(ROC_NIX_INL_SA_BASE_ALIGN - 1);
 
-				mbuf = (uint64_t)nix_sec_meta_to_mbuf_sc(cq_w1,
-						sa_base, (uintptr_t)&iova,
-						&loff, (struct rte_mbuf *)mbuf,
-						d_off);
+				mbuf = (uint64_t)nix_sec_meta_to_mbuf_sc(
+					cq_w1, sa_base, (uintptr_t)&iova, &loff,
+					(struct rte_mbuf *)mbuf, d_off);
 				if (loff)
 					roc_npa_aura_op_free(m->pool->pool_id,
 							     0, iova);
-
 			}
 
 			gw.u64[0] = CNXK_CLR_SUB_EVENT(gw.u64[0]);
@@ -397,6 +395,56 @@ cn10k_sso_hws_xtract_meta(struct rte_mbuf *m,
 }
 
 static __rte_always_inline void
+cn10k_sso_tx_one(struct rte_mbuf *m, uint64_t *cmd, uint16_t lmt_id,
+		 uintptr_t lmt_addr, uint8_t sched_type, uintptr_t base,
+		 const uint64_t txq_data[][RTE_MAX_QUEUES_PER_PORT],
+		 const uint32_t flags)
+{
+	uint8_t lnum = 0, loff = 0, shft = 0;
+	struct cn10k_eth_txq *txq;
+	uintptr_t laddr;
+	uint16_t segdw;
+	uintptr_t pa;
+	bool sec;
+
+	txq = cn10k_sso_hws_xtract_meta(m, txq_data);
+	cn10k_nix_tx_skeleton(txq, cmd, flags);
+	/* Perform header writes before barrier
+	 * for TSO
+	 */
+	if (flags & NIX_TX_OFFLOAD_TSO_F)
+		cn10k_nix_xmit_prepare_tso(m, flags);
+
+	cn10k_nix_xmit_prepare(m, cmd, flags, txq->lso_tun_fmt, &sec);
+
+	laddr = lmt_addr;
+	/* Prepare CPT instruction and get nixtx addr if
+	 * it is for CPT on same lmtline.
+	 */
+	if (flags & NIX_TX_OFFLOAD_SECURITY_F && sec)
+		cn10k_nix_prep_sec(m, cmd, &laddr, lmt_addr, &lnum, &loff,
+				   &shft, txq->sa_base, flags);
+
+	/* Move NIX desc to LMT/NIXTX area */
+	cn10k_nix_xmit_mv_lmt_base(laddr, cmd, flags);
+
+	if (flags & NIX_TX_MULTI_SEG_F)
+		segdw = cn10k_nix_prepare_mseg(m, (uint64_t *)laddr, flags);
+	else
+		segdw = cn10k_nix_tx_ext_subs(flags) + 2;
+
+	if (flags & NIX_TX_OFFLOAD_SECURITY_F && sec)
+		pa = txq->cpt_io_addr | 3 << 4;
+	else
+		pa = txq->io_addr | ((segdw - 1) << 4);
+
+	if (!sched_type)
+		roc_sso_hws_head_wait(base + SSOW_LF_GWS_TAG);
+
+	roc_lmt_submit_steorl(lmt_id, pa);
+}
+
+static __rte_always_inline void
 cn10k_sso_vwqe_split_tx(struct rte_mbuf **mbufs, uint16_t nb_mbufs,
 			uint64_t *cmd, uint16_t lmt_id, uintptr_t lmt_addr,
 			uint8_t sched_type, uintptr_t base,
@@ -404,11 +452,13 @@ cn10k_sso_vwqe_split_tx(struct rte_mbuf **mbufs, uint16_t nb_mbufs,
 			const uint32_t flags)
 {
 	uint16_t port[4], queue[4];
+	uint16_t i, j, pkts, scalar;
 	struct cn10k_eth_txq *txq;
-	uint16_t i, j;
-	uintptr_t pa;
 
-	for (i = 0; i < nb_mbufs; i += 4) {
+	scalar = nb_mbufs & (NIX_DESCS_PER_LOOP - 1);
+	pkts = RTE_ALIGN_FLOOR(nb_mbufs, NIX_DESCS_PER_LOOP);
+
+	for (i = 0; i < pkts; i += NIX_DESCS_PER_LOOP) {
 		port[0] = mbufs[i]->port;
 		port[1] = mbufs[i + 1]->port;
 		port[2] = mbufs[i + 2]->port;
@@ -421,65 +471,24 @@ cn10k_sso_vwqe_split_tx(struct rte_mbuf **mbufs, uint16_t nb_mbufs,
 
 		if (((port[0] ^ port[1]) & (port[2] ^ port[3])) ||
 		    ((queue[0] ^ queue[1]) & (queue[2] ^ queue[3]))) {
-
-			for (j = 0; j < 4; j++) {
-				uint8_t lnum = 0, loff = 0, shft = 0;
-				struct rte_mbuf *m = mbufs[i + j];
-				uintptr_t laddr;
-				uint16_t segdw;
-				bool sec;
-
-				txq = (struct cn10k_eth_txq *)
-					txq_data[port[j]][queue[j]];
-				cn10k_nix_tx_skeleton(txq, cmd, flags);
-				/* Perform header writes before barrier
-				 * for TSO
-				 */
-				if (flags & NIX_TX_OFFLOAD_TSO_F)
-					cn10k_nix_xmit_prepare_tso(m, flags);
-
-				cn10k_nix_xmit_prepare(m, cmd, flags,
-						       txq->lso_tun_fmt, &sec);
-
-				laddr = lmt_addr;
-				/* Prepare CPT instruction and get nixtx addr if
-				 * it is for CPT on same lmtline.
-				 */
-				if (flags & NIX_TX_OFFLOAD_SECURITY_F && sec)
-					cn10k_nix_prep_sec(m, cmd, &laddr,
-							   lmt_addr, &lnum,
-							   &loff, &shft,
-							   txq->sa_base, flags);
-
-				/* Move NIX desc to LMT/NIXTX area */
-				cn10k_nix_xmit_mv_lmt_base(laddr, cmd, flags);
-
-				if (flags & NIX_TX_MULTI_SEG_F) {
-					segdw = cn10k_nix_prepare_mseg(m,
-						(uint64_t *)laddr, flags);
-				} else {
-					segdw = cn10k_nix_tx_ext_subs(flags) +
-						2;
-				}
-
-				if (flags & NIX_TX_OFFLOAD_SECURITY_F && sec)
-					pa = txq->cpt_io_addr | 3 << 4;
-				else
-					pa = txq->io_addr | ((segdw - 1) << 4);
-
-				if (!sched_type)
-					roc_sso_hws_head_wait(base +
-							      SSOW_LF_GWS_TAG);
-
-				roc_lmt_submit_steorl(lmt_id, pa);
-			}
+			for (j = 0; j < 4; j++)
+				cn10k_sso_tx_one(mbufs[i + j], cmd, lmt_id,
+						 lmt_addr, sched_type, base,
+						 txq_data, flags);
 		} else {
 			txq = (struct cn10k_eth_txq *)
 				txq_data[port[0]][queue[0]];
-			cn10k_nix_xmit_pkts_vector(txq, &mbufs[i], 4, cmd, base
-					+ SSOW_LF_GWS_TAG,
+			cn10k_nix_xmit_pkts_vector(txq, &mbufs[i], 4, cmd,
+						   base + SSOW_LF_GWS_TAG,
 						   flags | NIX_TX_VWQE_F);
 		}
+	}
+
+	mbufs += i;
+
+	for (i = 0; i < scalar; i++) {
+		cn10k_sso_tx_one(mbufs[i], cmd, lmt_id, lmt_addr, sched_type,
+				 base, txq_data, flags);
 	}
 }
 
@@ -489,19 +498,14 @@ cn10k_sso_hws_event_tx(struct cn10k_sso_hws *ws, struct rte_event *ev,
 		       const uint64_t txq_data[][RTE_MAX_QUEUES_PER_PORT],
 		       const uint32_t flags)
 {
-	uint8_t lnum = 0, loff = 0, shft = 0;
 	struct cn10k_eth_txq *txq;
-	uint16_t ref_cnt, segdw;
 	struct rte_mbuf *m;
 	uintptr_t lmt_addr;
-	uintptr_t c_laddr;
+	uint16_t ref_cnt;
 	uint16_t lmt_id;
-	uintptr_t pa;
-	bool sec;
 
 	lmt_addr = ws->lmt_base;
 	ROC_LMT_BASE_ID_GET(lmt_addr, lmt_id);
-	c_laddr = lmt_addr;
 
 	if (ev->event_type & RTE_EVENT_TYPE_VECTOR) {
 		struct rte_mbuf **mbufs = ev->vec->mbufs;
@@ -526,38 +530,8 @@ cn10k_sso_hws_event_tx(struct cn10k_sso_hws *ws, struct rte_event *ev,
 
 	m = ev->mbuf;
 	ref_cnt = m->refcnt;
-	txq = cn10k_sso_hws_xtract_meta(m, txq_data);
-	cn10k_nix_tx_skeleton(txq, cmd, flags);
-	/* Perform header writes before barrier for TSO */
-	if (flags & NIX_TX_OFFLOAD_TSO_F)
-		cn10k_nix_xmit_prepare_tso(m, flags);
-
-	cn10k_nix_xmit_prepare(m, cmd, flags, txq->lso_tun_fmt, &sec);
-
-	/* Prepare CPT instruction and get nixtx addr if
-	 * it is for CPT on same lmtline.
-	 */
-	if (flags & NIX_TX_OFFLOAD_SECURITY_F && sec)
-		cn10k_nix_prep_sec(m, cmd, &lmt_addr, c_laddr, &lnum, &loff,
-				   &shft, txq->sa_base, flags);
-
-	/* Move NIX desc to LMT/NIXTX area */
-	cn10k_nix_xmit_mv_lmt_base(lmt_addr, cmd, flags);
-	if (flags & NIX_TX_MULTI_SEG_F) {
-		segdw = cn10k_nix_prepare_mseg(m, (uint64_t *)lmt_addr, flags);
-	} else {
-		segdw = cn10k_nix_tx_ext_subs(flags) + 2;
-	}
-
-	if (flags & NIX_TX_OFFLOAD_SECURITY_F && sec)
-		pa = txq->cpt_io_addr | 3 << 4;
-	else
-		pa = txq->io_addr | ((segdw - 1) << 4);
-
-	if (!ev->sched_type)
-		roc_sso_hws_head_wait(ws->tx_base + SSOW_LF_GWS_TAG);
-
-	roc_lmt_submit_steorl(lmt_id, pa);
+	cn10k_sso_tx_one(m, cmd, lmt_id, lmt_addr, ev->sched_type, ws->tx_base,
+			 txq_data, flags);
 
 	if (flags & NIX_TX_OFFLOAD_MBUF_NOFF_F) {
 		if (ref_cnt > 1)
