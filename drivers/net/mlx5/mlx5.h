@@ -1206,6 +1206,7 @@ struct mlx5_dev_ctx_shared {
 	struct mlx5_devx_obj *td; /* Transport domain. */
 	struct mlx5_lag lag; /* LAG attributes */
 	void *tx_uar; /* Tx/packet pacing shared UAR. */
+	struct mlx5_proc_priv *pppriv; /* Pointer to primary private process. */
 	struct mlx5_ecpri_parser_profile ecpri_parser;
 	/* Flex parser profiles information. */
 	void *devx_rx_uar; /* DevX UAR for Rx. */
@@ -1528,7 +1529,6 @@ void mlx5_set_metadata_mask(struct rte_eth_dev *dev);
 int mlx5_dev_check_sibling_config(struct mlx5_priv *priv,
 				  struct mlx5_dev_config *config,
 				  struct rte_device *dpdk_dev);
-int mlx5_dev_configure(struct rte_eth_dev *dev);
 int mlx5_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *info);
 int mlx5_fw_version_get(struct rte_eth_dev *dev, char *fw_ver, size_t fw_size);
 int mlx5_dev_set_mtu(struct rte_eth_dev *dev, uint16_t mtu);

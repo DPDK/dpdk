@@ -523,9 +523,11 @@ txq_uar_ncattr_init(struct mlx5_txq_ctrl *txq_ctrl, size_t page_size)
  *
  * @param txq_ctrl
  *   Pointer to Tx queue control structure.
+ * @param bf_reg
+ *   BlueFlame register from Verbs UAR.
  */
 void
-txq_uar_init(struct mlx5_txq_ctrl *txq_ctrl)
+txq_uar_init(struct mlx5_txq_ctrl *txq_ctrl, void *bf_reg)
 {
 	struct mlx5_priv *priv = txq_ctrl->priv;
 	struct mlx5_proc_priv *ppriv = MLX5_PROC_PRIV(PORT_ID(priv));
@@ -542,7 +544,7 @@ txq_uar_init(struct mlx5_txq_ctrl *txq_ctrl)
 		return;
 	MLX5_ASSERT(rte_eal_process_type() == RTE_PROC_PRIMARY);
 	MLX5_ASSERT(ppriv);
-	ppriv->uar_table[txq_ctrl->txq.idx] = txq_ctrl->bf_reg;
+	ppriv->uar_table[txq_ctrl->txq.idx] = bf_reg;
 	txq_uar_ncattr_init(txq_ctrl, page_size);
 #ifndef RTE_ARCH_64
 	/* Assign an UAR lock according to UAR page number */
@@ -571,6 +573,7 @@ txq_uar_init_secondary(struct mlx5_txq_ctrl *txq_ctrl, int fd)
 {
 	struct mlx5_priv *priv = txq_ctrl->priv;
 	struct mlx5_proc_priv *ppriv = MLX5_PROC_PRIV(PORT_ID(priv));
+	struct mlx5_proc_priv *primary_ppriv = priv->sh->pppriv;
 	struct mlx5_txq_data *txq = &txq_ctrl->txq;
 	void *addr;
 	uintptr_t uar_va;
@@ -589,20 +592,18 @@ txq_uar_init_secondary(struct mlx5_txq_ctrl *txq_ctrl, int fd)
 	 * As rdma-core, UARs are mapped in size of OS page
 	 * size. Ref to libmlx5 function: mlx5_init_context()
 	 */
-	uar_va = (uintptr_t)txq_ctrl->bf_reg;
+	uar_va = (uintptr_t)primary_ppriv->uar_table[txq->idx];
 	offset = uar_va & (page_size - 1); /* Offset in page. */
 	addr = rte_mem_map(NULL, page_size, RTE_PROT_WRITE, RTE_MAP_SHARED,
-			    fd, txq_ctrl->uar_mmap_offset);
+			   fd, txq_ctrl->uar_mmap_offset);
 	if (!addr) {
-		DRV_LOG(ERR,
-			"port %u mmap failed for BF reg of txq %u",
+		DRV_LOG(ERR, "Port %u mmap failed for BF reg of txq %u.",
 			txq->port_id, txq->idx);
 		rte_errno = ENXIO;
 		return -rte_errno;
 	}
 	addr = RTE_PTR_ADD(addr, offset);
 	ppriv->uar_table[txq->idx] = addr;
-	txq_uar_ncattr_init(txq_ctrl, page_size);
 	return 0;
 }
 

@@ -184,7 +184,6 @@ struct mlx5_txq_ctrl {
 	struct mlx5_txq_obj *obj; /* Verbs/DevX queue object. */
 	struct mlx5_priv *priv; /* Back pointer to private data. */
 	off_t uar_mmap_offset; /* UAR mmap offset for non-primary process. */
-	void *bf_reg; /* BlueFlame register from Verbs. */
 	uint16_t dump_file_n; /* Number of dump files. */
 	struct rte_eth_hairpin_conf hairpin_conf; /* Hairpin configuration. */
 	uint32_t hairpin_status; /* Hairpin binding status. */
@@ -204,7 +203,7 @@ int mlx5_tx_hairpin_queue_setup
 	(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 	 const struct rte_eth_hairpin_conf *hairpin_conf);
 void mlx5_tx_queue_release(struct rte_eth_dev *dev, uint16_t qid);
-void txq_uar_init(struct mlx5_txq_ctrl *txq_ctrl);
+void txq_uar_init(struct mlx5_txq_ctrl *txq_ctrl, void *bf_reg);
 int mlx5_tx_uar_init_secondary(struct rte_eth_dev *dev, int fd);
 void mlx5_tx_uar_uninit_secondary(struct rte_eth_dev *dev);
 int mlx5_txq_obj_verify(struct rte_eth_dev *dev);
