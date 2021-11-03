@@ -3,7 +3,7 @@
  * All rights reserved.
  */
 
-/* date: Mon May 17 15:30:41 2021 */
+/* date: Wed Aug 25 14:37:06 2021 */
 
 #include "ulp_template_db_enum.h"
 #include "ulp_template_db_field.h"
@@ -47,59 +47,67 @@ uint16_t ulp_act_sig_tbl[BNXT_ULP_ACT_SIG_TBL_MAX_SZ] = {
 	[BNXT_ULP_ACT_HID_04bc] = 30,
 	[BNXT_ULP_ACT_HID_00a9] = 31,
 	[BNXT_ULP_ACT_HID_020f] = 32,
-	[BNXT_ULP_ACT_HID_04a9] = 33,
-	[BNXT_ULP_ACT_HID_01fc] = 34,
-	[BNXT_ULP_ACT_HID_04be] = 35,
-	[BNXT_ULP_ACT_HID_00ab] = 36,
-	[BNXT_ULP_ACT_HID_0211] = 37,
-	[BNXT_ULP_ACT_HID_04ab] = 38,
-	[BNXT_ULP_ACT_HID_01fe] = 39,
-	[BNXT_ULP_ACT_HID_0667] = 40,
-	[BNXT_ULP_ACT_HID_0254] = 41,
-	[BNXT_ULP_ACT_HID_03ba] = 42,
-	[BNXT_ULP_ACT_HID_0654] = 43,
-	[BNXT_ULP_ACT_HID_03a7] = 44,
-	[BNXT_ULP_ACT_HID_0669] = 45,
-	[BNXT_ULP_ACT_HID_0256] = 46,
-	[BNXT_ULP_ACT_HID_03bc] = 47,
-	[BNXT_ULP_ACT_HID_0656] = 48,
-	[BNXT_ULP_ACT_HID_03a9] = 49,
-	[BNXT_ULP_ACT_HID_021b] = 50,
-	[BNXT_ULP_ACT_HID_021c] = 51,
-	[BNXT_ULP_ACT_HID_021e] = 52,
-	[BNXT_ULP_ACT_HID_063f] = 53,
-	[BNXT_ULP_ACT_HID_0510] = 54,
-	[BNXT_ULP_ACT_HID_03c6] = 55,
-	[BNXT_ULP_ACT_HID_0082] = 56,
-	[BNXT_ULP_ACT_HID_06bb] = 57,
-	[BNXT_ULP_ACT_HID_021d] = 58,
-	[BNXT_ULP_ACT_HID_0641] = 59,
-	[BNXT_ULP_ACT_HID_0512] = 60,
-	[BNXT_ULP_ACT_HID_03c8] = 61,
-	[BNXT_ULP_ACT_HID_0084] = 62,
-	[BNXT_ULP_ACT_HID_06bd] = 63,
-	[BNXT_ULP_ACT_HID_06d7] = 64,
-	[BNXT_ULP_ACT_HID_02c4] = 65,
-	[BNXT_ULP_ACT_HID_042a] = 66,
-	[BNXT_ULP_ACT_HID_06c4] = 67,
-	[BNXT_ULP_ACT_HID_0417] = 68,
-	[BNXT_ULP_ACT_HID_06d9] = 69,
-	[BNXT_ULP_ACT_HID_02c6] = 70,
-	[BNXT_ULP_ACT_HID_042c] = 71,
-	[BNXT_ULP_ACT_HID_06c6] = 72,
-	[BNXT_ULP_ACT_HID_0419] = 73,
-	[BNXT_ULP_ACT_HID_0119] = 74,
-	[BNXT_ULP_ACT_HID_046f] = 75,
-	[BNXT_ULP_ACT_HID_05d5] = 76,
-	[BNXT_ULP_ACT_HID_0106] = 77,
-	[BNXT_ULP_ACT_HID_05c2] = 78,
-	[BNXT_ULP_ACT_HID_011b] = 79,
-	[BNXT_ULP_ACT_HID_0471] = 80,
-	[BNXT_ULP_ACT_HID_05d7] = 81,
-	[BNXT_ULP_ACT_HID_0108] = 82,
-	[BNXT_ULP_ACT_HID_05c4] = 83,
-	[BNXT_ULP_ACT_HID_00a2] = 84,
-	[BNXT_ULP_ACT_HID_00a4] = 85
+	[BNXT_ULP_ACT_HID_0153] = 33,
+	[BNXT_ULP_ACT_HID_04a9] = 34,
+	[BNXT_ULP_ACT_HID_01fc] = 35,
+	[BNXT_ULP_ACT_HID_04be] = 36,
+	[BNXT_ULP_ACT_HID_00ab] = 37,
+	[BNXT_ULP_ACT_HID_0211] = 38,
+	[BNXT_ULP_ACT_HID_0155] = 39,
+	[BNXT_ULP_ACT_HID_04ab] = 40,
+	[BNXT_ULP_ACT_HID_01fe] = 41,
+	[BNXT_ULP_ACT_HID_0667] = 42,
+	[BNXT_ULP_ACT_HID_0254] = 43,
+	[BNXT_ULP_ACT_HID_03ba] = 44,
+	[BNXT_ULP_ACT_HID_02fe] = 45,
+	[BNXT_ULP_ACT_HID_0654] = 46,
+	[BNXT_ULP_ACT_HID_03a7] = 47,
+	[BNXT_ULP_ACT_HID_0669] = 48,
+	[BNXT_ULP_ACT_HID_0256] = 49,
+	[BNXT_ULP_ACT_HID_03bc] = 50,
+	[BNXT_ULP_ACT_HID_0300] = 51,
+	[BNXT_ULP_ACT_HID_0656] = 52,
+	[BNXT_ULP_ACT_HID_03a9] = 53,
+	[BNXT_ULP_ACT_HID_021b] = 54,
+	[BNXT_ULP_ACT_HID_021c] = 55,
+	[BNXT_ULP_ACT_HID_021e] = 56,
+	[BNXT_ULP_ACT_HID_063f] = 57,
+	[BNXT_ULP_ACT_HID_0510] = 58,
+	[BNXT_ULP_ACT_HID_03c6] = 59,
+	[BNXT_ULP_ACT_HID_0082] = 60,
+	[BNXT_ULP_ACT_HID_06bb] = 61,
+	[BNXT_ULP_ACT_HID_021d] = 62,
+	[BNXT_ULP_ACT_HID_0641] = 63,
+	[BNXT_ULP_ACT_HID_0512] = 64,
+	[BNXT_ULP_ACT_HID_03c8] = 65,
+	[BNXT_ULP_ACT_HID_0084] = 66,
+	[BNXT_ULP_ACT_HID_06bd] = 67,
+	[BNXT_ULP_ACT_HID_06d7] = 68,
+	[BNXT_ULP_ACT_HID_02c4] = 69,
+	[BNXT_ULP_ACT_HID_042a] = 70,
+	[BNXT_ULP_ACT_HID_036e] = 71,
+	[BNXT_ULP_ACT_HID_06c4] = 72,
+	[BNXT_ULP_ACT_HID_0417] = 73,
+	[BNXT_ULP_ACT_HID_06d9] = 74,
+	[BNXT_ULP_ACT_HID_02c6] = 75,
+	[BNXT_ULP_ACT_HID_042c] = 76,
+	[BNXT_ULP_ACT_HID_0370] = 77,
+	[BNXT_ULP_ACT_HID_06c6] = 78,
+	[BNXT_ULP_ACT_HID_0419] = 79,
+	[BNXT_ULP_ACT_HID_0119] = 80,
+	[BNXT_ULP_ACT_HID_046f] = 81,
+	[BNXT_ULP_ACT_HID_05d5] = 82,
+	[BNXT_ULP_ACT_HID_0519] = 83,
+	[BNXT_ULP_ACT_HID_0106] = 84,
+	[BNXT_ULP_ACT_HID_05c2] = 85,
+	[BNXT_ULP_ACT_HID_011b] = 86,
+	[BNXT_ULP_ACT_HID_0471] = 87,
+	[BNXT_ULP_ACT_HID_05d7] = 88,
+	[BNXT_ULP_ACT_HID_051b] = 89,
+	[BNXT_ULP_ACT_HID_0108] = 90,
+	[BNXT_ULP_ACT_HID_05c4] = 91,
+	[BNXT_ULP_ACT_HID_00a2] = 92,
+	[BNXT_ULP_ACT_HID_00a4] = 93
 };
 
 /* Array for the act matcher list */
@@ -429,22 +437,20 @@ struct bnxt_ulp_act_match_info ulp_act_match_list[] = {
 	.act_tid = 3
 	},
 	[33] = {
-	.act_hid = BNXT_ULP_ACT_HID_04a9,
+	.act_hid = BNXT_ULP_ACT_HID_0153,
 	.act_pattern_id = 3,
 	.app_sig = 0,
 	.act_sig = { .bits =
 		BNXT_ULP_ACT_BIT_SET_IPV4_DST |
-		BNXT_ULP_ACT_BIT_SET_TP_SRC |
 		BNXT_ULP_ACT_BIT_SET_TP_DST |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.act_tid = 3
 	},
 	[34] = {
-	.act_hid = BNXT_ULP_ACT_HID_01fc,
+	.act_hid = BNXT_ULP_ACT_HID_04a9,
 	.act_pattern_id = 4,
 	.app_sig = 0,
 	.act_sig = { .bits =
-		BNXT_ULP_ACT_BIT_SET_IPV4_SRC |
 		BNXT_ULP_ACT_BIT_SET_IPV4_DST |
 		BNXT_ULP_ACT_BIT_SET_TP_SRC |
 		BNXT_ULP_ACT_BIT_SET_TP_DST |
@@ -452,107 +458,141 @@ struct bnxt_ulp_act_match_info ulp_act_match_list[] = {
 	.act_tid = 3
 	},
 	[35] = {
-	.act_hid = BNXT_ULP_ACT_HID_04be,
+	.act_hid = BNXT_ULP_ACT_HID_01fc,
 	.act_pattern_id = 5,
 	.app_sig = 0,
 	.act_sig = { .bits =
-		BNXT_ULP_ACT_BIT_COUNT |
 		BNXT_ULP_ACT_BIT_SET_IPV4_SRC |
+		BNXT_ULP_ACT_BIT_SET_IPV4_DST |
+		BNXT_ULP_ACT_BIT_SET_TP_SRC |
+		BNXT_ULP_ACT_BIT_SET_TP_DST |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.act_tid = 3
 	},
 	[36] = {
-	.act_hid = BNXT_ULP_ACT_HID_00ab,
+	.act_hid = BNXT_ULP_ACT_HID_04be,
 	.act_pattern_id = 6,
 	.app_sig = 0,
 	.act_sig = { .bits =
 		BNXT_ULP_ACT_BIT_COUNT |
 		BNXT_ULP_ACT_BIT_SET_IPV4_SRC |
-		BNXT_ULP_ACT_BIT_SET_TP_SRC |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.act_tid = 3
 	},
 	[37] = {
-	.act_hid = BNXT_ULP_ACT_HID_0211,
+	.act_hid = BNXT_ULP_ACT_HID_00ab,
 	.act_pattern_id = 7,
 	.app_sig = 0,
 	.act_sig = { .bits =
 		BNXT_ULP_ACT_BIT_COUNT |
-		BNXT_ULP_ACT_BIT_SET_IPV4_DST |
+		BNXT_ULP_ACT_BIT_SET_IPV4_SRC |
+		BNXT_ULP_ACT_BIT_SET_TP_SRC |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.act_tid = 3
 	},
 	[38] = {
-	.act_hid = BNXT_ULP_ACT_HID_04ab,
+	.act_hid = BNXT_ULP_ACT_HID_0211,
 	.act_pattern_id = 8,
 	.app_sig = 0,
 	.act_sig = { .bits =
 		BNXT_ULP_ACT_BIT_COUNT |
 		BNXT_ULP_ACT_BIT_SET_IPV4_DST |
-		BNXT_ULP_ACT_BIT_SET_TP_SRC |
-		BNXT_ULP_ACT_BIT_SET_TP_DST |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.act_tid = 3
 	},
 	[39] = {
-	.act_hid = BNXT_ULP_ACT_HID_01fe,
+	.act_hid = BNXT_ULP_ACT_HID_0155,
 	.act_pattern_id = 9,
 	.app_sig = 0,
 	.act_sig = { .bits =
 		BNXT_ULP_ACT_BIT_COUNT |
-		BNXT_ULP_ACT_BIT_SET_IPV4_SRC |
 		BNXT_ULP_ACT_BIT_SET_IPV4_DST |
-		BNXT_ULP_ACT_BIT_SET_TP_SRC |
 		BNXT_ULP_ACT_BIT_SET_TP_DST |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.act_tid = 3
 	},
 	[40] = {
-	.act_hid = BNXT_ULP_ACT_HID_0667,
+	.act_hid = BNXT_ULP_ACT_HID_04ab,
 	.act_pattern_id = 10,
 	.app_sig = 0,
 	.act_sig = { .bits =
-		BNXT_ULP_ACT_BIT_DEC_TTL |
-		BNXT_ULP_ACT_BIT_SET_IPV4_SRC |
+		BNXT_ULP_ACT_BIT_COUNT |
+		BNXT_ULP_ACT_BIT_SET_IPV4_DST |
+		BNXT_ULP_ACT_BIT_SET_TP_SRC |
+		BNXT_ULP_ACT_BIT_SET_TP_DST |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.act_tid = 3
 	},
 	[41] = {
-	.act_hid = BNXT_ULP_ACT_HID_0254,
+	.act_hid = BNXT_ULP_ACT_HID_01fe,
 	.act_pattern_id = 11,
 	.app_sig = 0,
 	.act_sig = { .bits =
-		BNXT_ULP_ACT_BIT_DEC_TTL |
+		BNXT_ULP_ACT_BIT_COUNT |
 		BNXT_ULP_ACT_BIT_SET_IPV4_SRC |
+		BNXT_ULP_ACT_BIT_SET_IPV4_DST |
 		BNXT_ULP_ACT_BIT_SET_TP_SRC |
+		BNXT_ULP_ACT_BIT_SET_TP_DST |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.act_tid = 3
 	},
 	[42] = {
-	.act_hid = BNXT_ULP_ACT_HID_03ba,
+	.act_hid = BNXT_ULP_ACT_HID_0667,
 	.act_pattern_id = 12,
 	.app_sig = 0,
 	.act_sig = { .bits =
 		BNXT_ULP_ACT_BIT_DEC_TTL |
-		BNXT_ULP_ACT_BIT_SET_IPV4_DST |
+		BNXT_ULP_ACT_BIT_SET_IPV4_SRC |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.act_tid = 3
 	},
 	[43] = {
-	.act_hid = BNXT_ULP_ACT_HID_0654,
+	.act_hid = BNXT_ULP_ACT_HID_0254,
 	.act_pattern_id = 13,
 	.app_sig = 0,
 	.act_sig = { .bits =
 		BNXT_ULP_ACT_BIT_DEC_TTL |
-		BNXT_ULP_ACT_BIT_SET_IPV4_DST |
+		BNXT_ULP_ACT_BIT_SET_IPV4_SRC |
 		BNXT_ULP_ACT_BIT_SET_TP_SRC |
-		BNXT_ULP_ACT_BIT_SET_TP_DST |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.act_tid = 3
 	},
 	[44] = {
-	.act_hid = BNXT_ULP_ACT_HID_03a7,
+	.act_hid = BNXT_ULP_ACT_HID_03ba,
 	.act_pattern_id = 14,
+	.app_sig = 0,
+	.act_sig = { .bits =
+		BNXT_ULP_ACT_BIT_DEC_TTL |
+		BNXT_ULP_ACT_BIT_SET_IPV4_DST |
+		BNXT_ULP_FLOW_DIR_BITMASK_ING },
+	.act_tid = 3
+	},
+	[45] = {
+	.act_hid = BNXT_ULP_ACT_HID_02fe,
+	.act_pattern_id = 15,
+	.app_sig = 0,
+	.act_sig = { .bits =
+		BNXT_ULP_ACT_BIT_DEC_TTL |
+		BNXT_ULP_ACT_BIT_SET_IPV4_DST |
+		BNXT_ULP_ACT_BIT_SET_TP_DST |
+		BNXT_ULP_FLOW_DIR_BITMASK_ING },
+	.act_tid = 3
+	},
+	[46] = {
+	.act_hid = BNXT_ULP_ACT_HID_0654,
+	.act_pattern_id = 16,
+	.app_sig = 0,
+	.act_sig = { .bits =
+		BNXT_ULP_ACT_BIT_DEC_TTL |
+		BNXT_ULP_ACT_BIT_SET_IPV4_DST |
+		BNXT_ULP_ACT_BIT_SET_TP_SRC |
+		BNXT_ULP_ACT_BIT_SET_TP_DST |
+		BNXT_ULP_FLOW_DIR_BITMASK_ING },
+	.act_tid = 3
+	},
+	[47] = {
+	.act_hid = BNXT_ULP_ACT_HID_03a7,
+	.act_pattern_id = 17,
 	.app_sig = 0,
 	.act_sig = { .bits =
 		BNXT_ULP_ACT_BIT_DEC_TTL |
@@ -563,68 +603,80 @@ struct bnxt_ulp_act_match_info ulp_act_match_list[] = {
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.act_tid = 3
 	},
-	[45] = {
-	.act_hid = BNXT_ULP_ACT_HID_0669,
-	.act_pattern_id = 15,
-	.app_sig = 0,
-	.act_sig = { .bits =
-		BNXT_ULP_ACT_BIT_DEC_TTL |
-		BNXT_ULP_ACT_BIT_COUNT |
-		BNXT_ULP_ACT_BIT_SET_IPV4_SRC |
-		BNXT_ULP_FLOW_DIR_BITMASK_ING },
-	.act_tid = 3
-	},
-	[46] = {
-	.act_hid = BNXT_ULP_ACT_HID_0256,
-	.act_pattern_id = 16,
-	.app_sig = 0,
-	.act_sig = { .bits =
-		BNXT_ULP_ACT_BIT_DEC_TTL |
-		BNXT_ULP_ACT_BIT_COUNT |
-		BNXT_ULP_ACT_BIT_SET_IPV4_SRC |
-		BNXT_ULP_ACT_BIT_SET_TP_SRC |
-		BNXT_ULP_FLOW_DIR_BITMASK_ING },
-	.act_tid = 3
-	},
-	[47] = {
-	.act_hid = BNXT_ULP_ACT_HID_03bc,
-	.act_pattern_id = 17,
-	.app_sig = 0,
-	.act_sig = { .bits =
-		BNXT_ULP_ACT_BIT_DEC_TTL |
-		BNXT_ULP_ACT_BIT_COUNT |
-		BNXT_ULP_ACT_BIT_SET_IPV4_DST |
-		BNXT_ULP_FLOW_DIR_BITMASK_ING },
-	.act_tid = 3
-	},
 	[48] = {
-	.act_hid = BNXT_ULP_ACT_HID_0656,
+	.act_hid = BNXT_ULP_ACT_HID_0669,
 	.act_pattern_id = 18,
 	.app_sig = 0,
 	.act_sig = { .bits =
 		BNXT_ULP_ACT_BIT_DEC_TTL |
 		BNXT_ULP_ACT_BIT_COUNT |
-		BNXT_ULP_ACT_BIT_SET_IPV4_DST |
-		BNXT_ULP_ACT_BIT_SET_TP_SRC |
-		BNXT_ULP_ACT_BIT_SET_TP_DST |
+		BNXT_ULP_ACT_BIT_SET_IPV4_SRC |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.act_tid = 3
 	},
 	[49] = {
-	.act_hid = BNXT_ULP_ACT_HID_03a9,
+	.act_hid = BNXT_ULP_ACT_HID_0256,
 	.act_pattern_id = 19,
 	.app_sig = 0,
 	.act_sig = { .bits =
 		BNXT_ULP_ACT_BIT_DEC_TTL |
 		BNXT_ULP_ACT_BIT_COUNT |
 		BNXT_ULP_ACT_BIT_SET_IPV4_SRC |
+		BNXT_ULP_ACT_BIT_SET_TP_SRC |
+		BNXT_ULP_FLOW_DIR_BITMASK_ING },
+	.act_tid = 3
+	},
+	[50] = {
+	.act_hid = BNXT_ULP_ACT_HID_03bc,
+	.act_pattern_id = 20,
+	.app_sig = 0,
+	.act_sig = { .bits =
+		BNXT_ULP_ACT_BIT_DEC_TTL |
+		BNXT_ULP_ACT_BIT_COUNT |
+		BNXT_ULP_ACT_BIT_SET_IPV4_DST |
+		BNXT_ULP_FLOW_DIR_BITMASK_ING },
+	.act_tid = 3
+	},
+	[51] = {
+	.act_hid = BNXT_ULP_ACT_HID_0300,
+	.act_pattern_id = 21,
+	.app_sig = 0,
+	.act_sig = { .bits =
+		BNXT_ULP_ACT_BIT_DEC_TTL |
+		BNXT_ULP_ACT_BIT_COUNT |
+		BNXT_ULP_ACT_BIT_SET_IPV4_DST |
+		BNXT_ULP_ACT_BIT_SET_TP_DST |
+		BNXT_ULP_FLOW_DIR_BITMASK_ING },
+	.act_tid = 3
+	},
+	[52] = {
+	.act_hid = BNXT_ULP_ACT_HID_0656,
+	.act_pattern_id = 22,
+	.app_sig = 0,
+	.act_sig = { .bits =
+		BNXT_ULP_ACT_BIT_DEC_TTL |
+		BNXT_ULP_ACT_BIT_COUNT |
 		BNXT_ULP_ACT_BIT_SET_IPV4_DST |
 		BNXT_ULP_ACT_BIT_SET_TP_SRC |
 		BNXT_ULP_ACT_BIT_SET_TP_DST |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.act_tid = 3
 	},
-	[50] = {
+	[53] = {
+	.act_hid = BNXT_ULP_ACT_HID_03a9,
+	.act_pattern_id = 23,
+	.app_sig = 0,
+	.act_sig = { .bits =
+		BNXT_ULP_ACT_BIT_DEC_TTL |
+		BNXT_ULP_ACT_BIT_COUNT |
+		BNXT_ULP_ACT_BIT_SET_IPV4_SRC |
+		BNXT_ULP_ACT_BIT_SET_IPV4_DST |
+		BNXT_ULP_ACT_BIT_SET_TP_SRC |
+		BNXT_ULP_ACT_BIT_SET_TP_DST |
+		BNXT_ULP_FLOW_DIR_BITMASK_ING },
+	.act_tid = 3
+	},
+	[54] = {
 	.act_hid = BNXT_ULP_ACT_HID_021b,
 	.act_pattern_id = 0,
 	.app_sig = 0,
@@ -632,7 +684,7 @@ struct bnxt_ulp_act_match_info ulp_act_match_list[] = {
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.act_tid = 4
 	},
-	[51] = {
+	[55] = {
 	.act_hid = BNXT_ULP_ACT_HID_021c,
 	.act_pattern_id = 1,
 	.app_sig = 0,
@@ -641,7 +693,7 @@ struct bnxt_ulp_act_match_info ulp_act_match_list[] = {
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.act_tid = 4
 	},
-	[52] = {
+	[56] = {
 	.act_hid = BNXT_ULP_ACT_HID_021e,
 	.act_pattern_id = 2,
 	.app_sig = 0,
@@ -651,7 +703,7 @@ struct bnxt_ulp_act_match_info ulp_act_match_list[] = {
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.act_tid = 4
 	},
-	[53] = {
+	[57] = {
 	.act_hid = BNXT_ULP_ACT_HID_063f,
 	.act_pattern_id = 3,
 	.app_sig = 0,
@@ -662,7 +714,7 @@ struct bnxt_ulp_act_match_info ulp_act_match_list[] = {
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.act_tid = 4
 	},
-	[54] = {
+	[58] = {
 	.act_hid = BNXT_ULP_ACT_HID_0510,
 	.act_pattern_id = 4,
 	.app_sig = 0,
@@ -672,7 +724,7 @@ struct bnxt_ulp_act_match_info ulp_act_match_list[] = {
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.act_tid = 4
 	},
-	[55] = {
+	[59] = {
 	.act_hid = BNXT_ULP_ACT_HID_03c6,
 	.act_pattern_id = 5,
 	.app_sig = 0,
@@ -681,7 +733,7 @@ struct bnxt_ulp_act_match_info ulp_act_match_list[] = {
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.act_tid = 4
 	},
-	[56] = {
+	[60] = {
 	.act_hid = BNXT_ULP_ACT_HID_0082,
 	.act_pattern_id = 6,
 	.app_sig = 0,
@@ -693,7 +745,7 @@ struct bnxt_ulp_act_match_info ulp_act_match_list[] = {
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.act_tid = 4
 	},
-	[57] = {
+	[61] = {
 	.act_hid = BNXT_ULP_ACT_HID_06bb,
 	.act_pattern_id = 7,
 	.app_sig = 0,
@@ -704,7 +756,7 @@ struct bnxt_ulp_act_match_info ulp_act_match_list[] = {
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.act_tid = 4
 	},
-	[58] = {
+	[62] = {
 	.act_hid = BNXT_ULP_ACT_HID_021d,
 	.act_pattern_id = 8,
 	.app_sig = 0,
@@ -713,7 +765,7 @@ struct bnxt_ulp_act_match_info ulp_act_match_list[] = {
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.act_tid = 4
 	},
-	[59] = {
+	[63] = {
 	.act_hid = BNXT_ULP_ACT_HID_0641,
 	.act_pattern_id = 9,
 	.app_sig = 0,
@@ -725,7 +777,7 @@ struct bnxt_ulp_act_match_info ulp_act_match_list[] = {
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.act_tid = 4
 	},
-	[60] = {
+	[64] = {
 	.act_hid = BNXT_ULP_ACT_HID_0512,
 	.act_pattern_id = 10,
 	.app_sig = 0,
@@ -736,7 +788,7 @@ struct bnxt_ulp_act_match_info ulp_act_match_list[] = {
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.act_tid = 4
 	},
-	[61] = {
+	[65] = {
 	.act_hid = BNXT_ULP_ACT_HID_03c8,
 	.act_pattern_id = 11,
 	.app_sig = 0,
@@ -746,7 +798,7 @@ struct bnxt_ulp_act_match_info ulp_act_match_list[] = {
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.act_tid = 4
 	},
-	[62] = {
+	[66] = {
 	.act_hid = BNXT_ULP_ACT_HID_0084,
 	.act_pattern_id = 12,
 	.app_sig = 0,
@@ -759,7 +811,7 @@ struct bnxt_ulp_act_match_info ulp_act_match_list[] = {
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.act_tid = 4
 	},
-	[63] = {
+	[67] = {
 	.act_hid = BNXT_ULP_ACT_HID_06bd,
 	.act_pattern_id = 13,
 	.app_sig = 0,
@@ -771,7 +823,7 @@ struct bnxt_ulp_act_match_info ulp_act_match_list[] = {
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.act_tid = 4
 	},
-	[64] = {
+	[68] = {
 	.act_hid = BNXT_ULP_ACT_HID_06d7,
 	.act_pattern_id = 0,
 	.app_sig = 0,
@@ -780,7 +832,7 @@ struct bnxt_ulp_act_match_info ulp_act_match_list[] = {
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.act_tid = 5
 	},
-	[65] = {
+	[69] = {
 	.act_hid = BNXT_ULP_ACT_HID_02c4,
 	.act_pattern_id = 1,
 	.app_sig = 0,
@@ -790,7 +842,7 @@ struct bnxt_ulp_act_match_info ulp_act_match_list[] = {
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.act_tid = 5
 	},
-	[66] = {
+	[70] = {
 	.act_hid = BNXT_ULP_ACT_HID_042a,
 	.act_pattern_id = 2,
 	.app_sig = 0,
@@ -799,66 +851,21 @@ struct bnxt_ulp_act_match_info ulp_act_match_list[] = {
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.act_tid = 5
 	},
-	[67] = {
-	.act_hid = BNXT_ULP_ACT_HID_06c4,
+	[71] = {
+	.act_hid = BNXT_ULP_ACT_HID_036e,
 	.act_pattern_id = 3,
 	.app_sig = 0,
 	.act_sig = { .bits =
 		BNXT_ULP_ACT_BIT_SET_IPV4_DST |
-		BNXT_ULP_ACT_BIT_SET_TP_SRC |
 		BNXT_ULP_ACT_BIT_SET_TP_DST |
-		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
-	.act_tid = 5
-	},
-	[68] = {
-	.act_hid = BNXT_ULP_ACT_HID_0417,
-	.act_pattern_id = 4,
-	.app_sig = 0,
-	.act_sig = { .bits =
-		BNXT_ULP_ACT_BIT_SET_IPV4_SRC |
-		BNXT_ULP_ACT_BIT_SET_IPV4_DST |
-		BNXT_ULP_ACT_BIT_SET_TP_SRC |
-		BNXT_ULP_ACT_BIT_SET_TP_DST |
-		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
-	.act_tid = 5
-	},
-	[69] = {
-	.act_hid = BNXT_ULP_ACT_HID_06d9,
-	.act_pattern_id = 5,
-	.app_sig = 0,
-	.act_sig = { .bits =
-		BNXT_ULP_ACT_BIT_COUNT |
-		BNXT_ULP_ACT_BIT_SET_IPV4_SRC |
-		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
-	.act_tid = 5
-	},
-	[70] = {
-	.act_hid = BNXT_ULP_ACT_HID_02c6,
-	.act_pattern_id = 6,
-	.app_sig = 0,
-	.act_sig = { .bits =
-		BNXT_ULP_ACT_BIT_COUNT |
-		BNXT_ULP_ACT_BIT_SET_IPV4_SRC |
-		BNXT_ULP_ACT_BIT_SET_TP_SRC |
-		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
-	.act_tid = 5
-	},
-	[71] = {
-	.act_hid = BNXT_ULP_ACT_HID_042c,
-	.act_pattern_id = 7,
-	.app_sig = 0,
-	.act_sig = { .bits =
-		BNXT_ULP_ACT_BIT_COUNT |
-		BNXT_ULP_ACT_BIT_SET_IPV4_DST |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.act_tid = 5
 	},
 	[72] = {
-	.act_hid = BNXT_ULP_ACT_HID_06c6,
-	.act_pattern_id = 8,
+	.act_hid = BNXT_ULP_ACT_HID_06c4,
+	.act_pattern_id = 4,
 	.app_sig = 0,
 	.act_sig = { .bits =
-		BNXT_ULP_ACT_BIT_COUNT |
 		BNXT_ULP_ACT_BIT_SET_IPV4_DST |
 		BNXT_ULP_ACT_BIT_SET_TP_SRC |
 		BNXT_ULP_ACT_BIT_SET_TP_DST |
@@ -866,11 +873,10 @@ struct bnxt_ulp_act_match_info ulp_act_match_list[] = {
 	.act_tid = 5
 	},
 	[73] = {
-	.act_hid = BNXT_ULP_ACT_HID_0419,
-	.act_pattern_id = 9,
+	.act_hid = BNXT_ULP_ACT_HID_0417,
+	.act_pattern_id = 5,
 	.app_sig = 0,
 	.act_sig = { .bits =
-		BNXT_ULP_ACT_BIT_COUNT |
 		BNXT_ULP_ACT_BIT_SET_IPV4_SRC |
 		BNXT_ULP_ACT_BIT_SET_IPV4_DST |
 		BNXT_ULP_ACT_BIT_SET_TP_SRC |
@@ -879,55 +885,53 @@ struct bnxt_ulp_act_match_info ulp_act_match_list[] = {
 	.act_tid = 5
 	},
 	[74] = {
-	.act_hid = BNXT_ULP_ACT_HID_0119,
-	.act_pattern_id = 10,
+	.act_hid = BNXT_ULP_ACT_HID_06d9,
+	.act_pattern_id = 6,
 	.app_sig = 0,
 	.act_sig = { .bits =
-		BNXT_ULP_ACT_BIT_DEC_TTL |
+		BNXT_ULP_ACT_BIT_COUNT |
 		BNXT_ULP_ACT_BIT_SET_IPV4_SRC |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.act_tid = 5
 	},
 	[75] = {
-	.act_hid = BNXT_ULP_ACT_HID_046f,
-	.act_pattern_id = 11,
+	.act_hid = BNXT_ULP_ACT_HID_02c6,
+	.act_pattern_id = 7,
 	.app_sig = 0,
 	.act_sig = { .bits =
-		BNXT_ULP_ACT_BIT_DEC_TTL |
+		BNXT_ULP_ACT_BIT_COUNT |
 		BNXT_ULP_ACT_BIT_SET_IPV4_SRC |
 		BNXT_ULP_ACT_BIT_SET_TP_SRC |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.act_tid = 5
 	},
 	[76] = {
-	.act_hid = BNXT_ULP_ACT_HID_05d5,
-	.act_pattern_id = 12,
+	.act_hid = BNXT_ULP_ACT_HID_042c,
+	.act_pattern_id = 8,
 	.app_sig = 0,
 	.act_sig = { .bits =
-		BNXT_ULP_ACT_BIT_DEC_TTL |
+		BNXT_ULP_ACT_BIT_COUNT |
 		BNXT_ULP_ACT_BIT_SET_IPV4_DST |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.act_tid = 5
 	},
 	[77] = {
-	.act_hid = BNXT_ULP_ACT_HID_0106,
-	.act_pattern_id = 13,
+	.act_hid = BNXT_ULP_ACT_HID_0370,
+	.act_pattern_id = 9,
 	.app_sig = 0,
 	.act_sig = { .bits =
-		BNXT_ULP_ACT_BIT_DEC_TTL |
+		BNXT_ULP_ACT_BIT_COUNT |
 		BNXT_ULP_ACT_BIT_SET_IPV4_DST |
-		BNXT_ULP_ACT_BIT_SET_TP_SRC |
 		BNXT_ULP_ACT_BIT_SET_TP_DST |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.act_tid = 5
 	},
 	[78] = {
-	.act_hid = BNXT_ULP_ACT_HID_05c2,
-	.act_pattern_id = 14,
+	.act_hid = BNXT_ULP_ACT_HID_06c6,
+	.act_pattern_id = 10,
 	.app_sig = 0,
 	.act_sig = { .bits =
-		BNXT_ULP_ACT_BIT_DEC_TTL |
-		BNXT_ULP_ACT_BIT_SET_IPV4_SRC |
+		BNXT_ULP_ACT_BIT_COUNT |
 		BNXT_ULP_ACT_BIT_SET_IPV4_DST |
 		BNXT_ULP_ACT_BIT_SET_TP_SRC |
 		BNXT_ULP_ACT_BIT_SET_TP_DST |
@@ -935,67 +939,159 @@ struct bnxt_ulp_act_match_info ulp_act_match_list[] = {
 	.act_tid = 5
 	},
 	[79] = {
-	.act_hid = BNXT_ULP_ACT_HID_011b,
-	.act_pattern_id = 15,
+	.act_hid = BNXT_ULP_ACT_HID_0419,
+	.act_pattern_id = 11,
 	.app_sig = 0,
 	.act_sig = { .bits =
-		BNXT_ULP_ACT_BIT_DEC_TTL |
 		BNXT_ULP_ACT_BIT_COUNT |
 		BNXT_ULP_ACT_BIT_SET_IPV4_SRC |
-		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
-	.act_tid = 5
-	},
-	[80] = {
-	.act_hid = BNXT_ULP_ACT_HID_0471,
-	.act_pattern_id = 16,
-	.app_sig = 0,
-	.act_sig = { .bits =
-		BNXT_ULP_ACT_BIT_DEC_TTL |
-		BNXT_ULP_ACT_BIT_COUNT |
-		BNXT_ULP_ACT_BIT_SET_IPV4_SRC |
-		BNXT_ULP_ACT_BIT_SET_TP_SRC |
-		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
-	.act_tid = 5
-	},
-	[81] = {
-	.act_hid = BNXT_ULP_ACT_HID_05d7,
-	.act_pattern_id = 17,
-	.app_sig = 0,
-	.act_sig = { .bits =
-		BNXT_ULP_ACT_BIT_DEC_TTL |
-		BNXT_ULP_ACT_BIT_COUNT |
-		BNXT_ULP_ACT_BIT_SET_IPV4_DST |
-		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
-	.act_tid = 5
-	},
-	[82] = {
-	.act_hid = BNXT_ULP_ACT_HID_0108,
-	.act_pattern_id = 18,
-	.app_sig = 0,
-	.act_sig = { .bits =
-		BNXT_ULP_ACT_BIT_DEC_TTL |
-		BNXT_ULP_ACT_BIT_COUNT |
 		BNXT_ULP_ACT_BIT_SET_IPV4_DST |
 		BNXT_ULP_ACT_BIT_SET_TP_SRC |
 		BNXT_ULP_ACT_BIT_SET_TP_DST |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.act_tid = 5
 	},
+	[80] = {
+	.act_hid = BNXT_ULP_ACT_HID_0119,
+	.act_pattern_id = 12,
+	.app_sig = 0,
+	.act_sig = { .bits =
+		BNXT_ULP_ACT_BIT_DEC_TTL |
+		BNXT_ULP_ACT_BIT_SET_IPV4_SRC |
+		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
+	.act_tid = 5
+	},
+	[81] = {
+	.act_hid = BNXT_ULP_ACT_HID_046f,
+	.act_pattern_id = 13,
+	.app_sig = 0,
+	.act_sig = { .bits =
+		BNXT_ULP_ACT_BIT_DEC_TTL |
+		BNXT_ULP_ACT_BIT_SET_IPV4_SRC |
+		BNXT_ULP_ACT_BIT_SET_TP_SRC |
+		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
+	.act_tid = 5
+	},
+	[82] = {
+	.act_hid = BNXT_ULP_ACT_HID_05d5,
+	.act_pattern_id = 14,
+	.app_sig = 0,
+	.act_sig = { .bits =
+		BNXT_ULP_ACT_BIT_DEC_TTL |
+		BNXT_ULP_ACT_BIT_SET_IPV4_DST |
+		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
+	.act_tid = 5
+	},
 	[83] = {
-	.act_hid = BNXT_ULP_ACT_HID_05c4,
+	.act_hid = BNXT_ULP_ACT_HID_0519,
+	.act_pattern_id = 15,
+	.app_sig = 0,
+	.act_sig = { .bits =
+		BNXT_ULP_ACT_BIT_DEC_TTL |
+		BNXT_ULP_ACT_BIT_SET_IPV4_DST |
+		BNXT_ULP_ACT_BIT_SET_TP_DST |
+		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
+	.act_tid = 5
+	},
+	[84] = {
+	.act_hid = BNXT_ULP_ACT_HID_0106,
+	.act_pattern_id = 16,
+	.app_sig = 0,
+	.act_sig = { .bits =
+		BNXT_ULP_ACT_BIT_DEC_TTL |
+		BNXT_ULP_ACT_BIT_SET_IPV4_DST |
+		BNXT_ULP_ACT_BIT_SET_TP_SRC |
+		BNXT_ULP_ACT_BIT_SET_TP_DST |
+		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
+	.act_tid = 5
+	},
+	[85] = {
+	.act_hid = BNXT_ULP_ACT_HID_05c2,
+	.act_pattern_id = 17,
+	.app_sig = 0,
+	.act_sig = { .bits =
+		BNXT_ULP_ACT_BIT_DEC_TTL |
+		BNXT_ULP_ACT_BIT_SET_IPV4_SRC |
+		BNXT_ULP_ACT_BIT_SET_IPV4_DST |
+		BNXT_ULP_ACT_BIT_SET_TP_SRC |
+		BNXT_ULP_ACT_BIT_SET_TP_DST |
+		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
+	.act_tid = 5
+	},
+	[86] = {
+	.act_hid = BNXT_ULP_ACT_HID_011b,
+	.act_pattern_id = 18,
+	.app_sig = 0,
+	.act_sig = { .bits =
+		BNXT_ULP_ACT_BIT_DEC_TTL |
+		BNXT_ULP_ACT_BIT_COUNT |
+		BNXT_ULP_ACT_BIT_SET_IPV4_SRC |
+		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
+	.act_tid = 5
+	},
+	[87] = {
+	.act_hid = BNXT_ULP_ACT_HID_0471,
 	.act_pattern_id = 19,
 	.app_sig = 0,
 	.act_sig = { .bits =
 		BNXT_ULP_ACT_BIT_DEC_TTL |
 		BNXT_ULP_ACT_BIT_COUNT |
 		BNXT_ULP_ACT_BIT_SET_IPV4_SRC |
+		BNXT_ULP_ACT_BIT_SET_TP_SRC |
+		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
+	.act_tid = 5
+	},
+	[88] = {
+	.act_hid = BNXT_ULP_ACT_HID_05d7,
+	.act_pattern_id = 20,
+	.app_sig = 0,
+	.act_sig = { .bits =
+		BNXT_ULP_ACT_BIT_DEC_TTL |
+		BNXT_ULP_ACT_BIT_COUNT |
+		BNXT_ULP_ACT_BIT_SET_IPV4_DST |
+		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
+	.act_tid = 5
+	},
+	[89] = {
+	.act_hid = BNXT_ULP_ACT_HID_051b,
+	.act_pattern_id = 21,
+	.app_sig = 0,
+	.act_sig = { .bits =
+		BNXT_ULP_ACT_BIT_DEC_TTL |
+		BNXT_ULP_ACT_BIT_COUNT |
+		BNXT_ULP_ACT_BIT_SET_IPV4_DST |
+		BNXT_ULP_ACT_BIT_SET_TP_DST |
+		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
+	.act_tid = 5
+	},
+	[90] = {
+	.act_hid = BNXT_ULP_ACT_HID_0108,
+	.act_pattern_id = 22,
+	.app_sig = 0,
+	.act_sig = { .bits =
+		BNXT_ULP_ACT_BIT_DEC_TTL |
+		BNXT_ULP_ACT_BIT_COUNT |
 		BNXT_ULP_ACT_BIT_SET_IPV4_DST |
 		BNXT_ULP_ACT_BIT_SET_TP_SRC |
 		BNXT_ULP_ACT_BIT_SET_TP_DST |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.act_tid = 5
 	},
-	[84] = {
+	[91] = {
+	.act_hid = BNXT_ULP_ACT_HID_05c4,
+	.act_pattern_id = 23,
+	.app_sig = 0,
+	.act_sig = { .bits =
+		BNXT_ULP_ACT_BIT_DEC_TTL |
+		BNXT_ULP_ACT_BIT_COUNT |
+		BNXT_ULP_ACT_BIT_SET_IPV4_SRC |
+		BNXT_ULP_ACT_BIT_SET_IPV4_DST |
+		BNXT_ULP_ACT_BIT_SET_TP_SRC |
+		BNXT_ULP_ACT_BIT_SET_TP_DST |
+		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
+	.act_tid = 5
+	},
+	[92] = {
 	.act_hid = BNXT_ULP_ACT_HID_00a2,
 	.act_pattern_id = 0,
 	.app_sig = 0,
@@ -1004,7 +1100,7 @@ struct bnxt_ulp_act_match_info ulp_act_match_list[] = {
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.act_tid = 6
 	},
-	[85] = {
+	[93] = {
 	.act_hid = BNXT_ULP_ACT_HID_00a4,
 	.act_pattern_id = 1,
 	.app_sig = 0,

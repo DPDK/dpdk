@@ -3,7 +3,7 @@
  * All rights reserved.
  */
 
-/* date: Tue Aug 17 12:16:42 2021 */
+/* date: Thu Aug 26 17:43:36 2021 */
 
 #include "ulp_template_db_enum.h"
 #include "ulp_template_db_field.h"
@@ -2121,7 +2121,7 @@ struct bnxt_ulp_resource_resv_info ulp_resource_resv_list[] = {
 	.direction               = TF_DIR_RX,
 	.resource_func           = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
 	.resource_type           = TF_TBL_TYPE_ACT_ENCAP_64B,
-	.count                   = 64
+	.count                   = 2048
 	},
 	{
 	.app_id                  = 0,
@@ -2249,7 +2249,7 @@ struct bnxt_ulp_resource_resv_info ulp_resource_resv_list[] = {
 	.direction               = TF_DIR_TX,
 	.resource_func           = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
 	.resource_type           = TF_TBL_TYPE_ACT_ENCAP_64B,
-	.count                   = 64
+	.count                   = 2048
 	},
 	{
 	.app_id                  = 0,
@@ -2258,14 +2258,6 @@ struct bnxt_ulp_resource_resv_info ulp_resource_resv_list[] = {
 	.resource_func           = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
 	.resource_type           = TF_TBL_TYPE_ACT_SP_SMAC_IPV4,
 	.count                   = 100
-	},
-	{
-	.app_id                  = 0,
-	.device_id               = BNXT_ULP_DEVICE_ID_THOR,
-	.direction               = TF_DIR_TX,
-	.resource_func           = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
-	.resource_type           = TF_TBL_TYPE_ACT_MODIFY_64B,
-	.count                   = 32
 	},
 	{
 	.app_id                  = 0,
