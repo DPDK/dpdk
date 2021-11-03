@@ -1010,13 +1010,15 @@ ulp_context_initialized(struct bnxt_ulp_session_state *session, bool *init)
  * pointer, otherwise allocate a new session.
  */
 static struct bnxt_ulp_session_state *
-ulp_get_session(struct rte_pci_addr *pci_addr)
+ulp_get_session(struct bnxt *bp, struct rte_pci_addr *pci_addr)
 {
 	struct bnxt_ulp_session_state *session;
 
+	/* if multi root capability is enabled, then ignore the pci bus id */
 	STAILQ_FOREACH(session, &bnxt_ulp_session_list, next) {
 		if (session->pci_info.domain == pci_addr->domain &&
-		    session->pci_info.bus == pci_addr->bus) {
+		    (BNXT_MULTIROOT_EN(bp) ||
+		    session->pci_info.bus == pci_addr->bus)) {
 			return session;
 		}
 	}
@@ -1044,7 +1046,7 @@ ulp_session_init(struct bnxt *bp,
 
 	pthread_mutex_lock(&bnxt_ulp_global_mutex);
 
-	session = ulp_get_session(pci_addr);
+	session = ulp_get_session(bp, pci_addr);
 	if (!session) {
 		/* Not Found the session  Allocate a new one */
 		session = rte_zmalloc("bnxt_ulp_session",
@@ -1547,7 +1549,7 @@ bnxt_ulp_port_deinit(struct bnxt *bp)
 	pci_dev = RTE_DEV_TO_PCI(bp->eth_dev->device);
 	pci_addr = &pci_dev->addr;
 	pthread_mutex_lock(&bnxt_ulp_global_mutex);
-	session = ulp_get_session(pci_addr);
+	session = ulp_get_session(bp, pci_addr);
 	pthread_mutex_unlock(&bnxt_ulp_global_mutex);
 
 	/* session not found then just exit */

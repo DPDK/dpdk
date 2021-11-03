@@ -723,6 +723,9 @@ struct bnxt {
 	uint16_t		chip_num;
 #define CHIP_NUM_58818		0xd818
 #define BNXT_CHIP_SR2(bp)	((bp)->chip_num == CHIP_NUM_58818)
+#define	BNXT_FLAGS2_MULTIROOT_EN		BIT(4)
+#define	BNXT_MULTIROOT_EN(bp)			\
+	((bp)->flags2 & BNXT_FLAGS2_MULTIROOT_EN)
 
 	uint32_t		fw_cap;
 #define BNXT_FW_CAP_HOT_RESET		BIT(0)

@@ -3363,6 +3363,7 @@ int bnxt_hwrm_parent_pf_qcfg(struct bnxt *bp)
 {
 	struct hwrm_func_qcfg_input req = {0};
 	struct hwrm_func_qcfg_output *resp = bp->hwrm_cmd_resp_addr;
+	uint16_t flags;
 	int rc;
 
 	if (!BNXT_VF_IS_TRUSTED(bp))
@@ -3385,6 +3386,13 @@ int bnxt_hwrm_parent_pf_qcfg(struct bnxt *bp)
 	bp->parent->vnic = rte_le_to_cpu_16(resp->dflt_vnic_id);
 	bp->parent->fid = rte_le_to_cpu_16(resp->fid);
 	bp->parent->port_id = rte_le_to_cpu_16(resp->port_id);
+
+	flags = rte_le_to_cpu_16(resp->flags);
+	/* check for the multi-root support */
+	if (flags & HWRM_FUNC_QCFG_OUTPUT_FLAGS_MULTI_ROOT) {
+		bp->flags2 |= BNXT_FLAGS2_MULTIROOT_EN;
+		PMD_DRV_LOG(DEBUG, "PF enabled with multi root capability\n");
+	}
 
 	HWRM_UNLOCK();
 

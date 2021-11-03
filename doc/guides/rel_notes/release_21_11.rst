@@ -152,7 +152,7 @@ New Features
 
   * Added flow offload support for Thor.
   * Implement support for tunnel offload.
-  * Updated HWRM API to version 1.10.2.44
+  * Updated HWRM API to version 1.10.2.68.
   * Added NAT support for dest IP and port combination.
 
 * **Updated Cisco enic driver.**
