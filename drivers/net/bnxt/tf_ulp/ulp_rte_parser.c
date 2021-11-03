@@ -1119,7 +1119,8 @@ ulp_rte_ipv4_hdr_handler(const struct rte_flow_item *item,
 
 	/* Set the ipv4 header bitmap and computed l3 header bitmaps */
 	if (ULP_BITMAP_ISSET(hdr_bitmap->bits, BNXT_ULP_HDR_BIT_O_IPV4) ||
-	    ULP_BITMAP_ISSET(hdr_bitmap->bits, BNXT_ULP_HDR_BIT_O_IPV6)) {
+	    ULP_BITMAP_ISSET(hdr_bitmap->bits, BNXT_ULP_HDR_BIT_O_IPV6) ||
+	    ULP_COMP_FLD_IDX_RD(params, BNXT_ULP_CF_IDX_L3_TUN)) {
 		ULP_BITMAP_SET(hdr_bitmap->bits, BNXT_ULP_HDR_BIT_I_IPV4);
 		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_I_L3, 1);
 		inner_flag = 1;
@@ -1245,7 +1246,8 @@ ulp_rte_ipv6_hdr_handler(const struct rte_flow_item *item,
 
 	/* Set the ipv6 header bitmap and computed l3 header bitmaps */
 	if (ULP_BITMAP_ISSET(hdr_bitmap->bits, BNXT_ULP_HDR_BIT_O_IPV4) ||
-	    ULP_BITMAP_ISSET(hdr_bitmap->bits, BNXT_ULP_HDR_BIT_O_IPV6)) {
+	    ULP_BITMAP_ISSET(hdr_bitmap->bits, BNXT_ULP_HDR_BIT_O_IPV6) ||
+	    ULP_COMP_FLD_IDX_RD(params, BNXT_ULP_CF_IDX_L3_TUN)) {
 		ULP_BITMAP_SET(hdr_bitmap->bits, BNXT_ULP_HDR_BIT_I_IPV6);
 		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_I_L3, 1);
 		inner_flag = 1;
@@ -2127,7 +2129,6 @@ ulp_rte_vxlan_decap_act_handler(const struct rte_flow_action *action_item
 		       BNXT_ULP_ACT_BIT_VXLAN_DECAP);
 	/* Update computational field with tunnel decap info */
 	ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_L3_TUN_DECAP, 1);
-	ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_L3_TUN, 1);
 	return BNXT_TF_RC_SUCCESS;
 }
 
