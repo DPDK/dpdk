@@ -47,6 +47,8 @@ struct sfc_vdpa_ops_data {
 	struct rte_vdpa_device		*vdpa_dev;
 	enum sfc_vdpa_context		vdpa_context;
 	enum sfc_vdpa_state		state;
+	pthread_t			notify_tid;
+	bool				is_notify_thread_started;
 
 	uint64_t			dev_features;
 	uint64_t			drv_features;
