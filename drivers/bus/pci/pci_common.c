@@ -271,10 +271,6 @@ rte_pci_probe_one_driver(struct rte_pci_driver *dr,
 		return ret; /* no rollback if already succeeded earlier */
 	if (ret) {
 		dev->driver = NULL;
-		rte_intr_instance_free(dev->vfio_req_intr_handle);
-		dev->vfio_req_intr_handle = NULL;
-		rte_intr_instance_free(dev->intr_handle);
-		dev->intr_handle = NULL;
 		if ((dr->drv_flags & RTE_PCI_DRV_NEED_MAPPING) &&
 			/* Don't unmap if device is unsupported and
 			 * driver needs mapped resources.
@@ -282,6 +278,10 @@ rte_pci_probe_one_driver(struct rte_pci_driver *dr,
 			!(ret > 0 &&
 				(dr->drv_flags & RTE_PCI_DRV_KEEP_MAPPED_RES)))
 			rte_pci_unmap_device(dev);
+		rte_intr_instance_free(dev->vfio_req_intr_handle);
+		dev->vfio_req_intr_handle = NULL;
+		rte_intr_instance_free(dev->intr_handle);
+		dev->intr_handle = NULL;
 	} else {
 		dev->device.driver = &dr->driver;
 	}
@@ -322,14 +322,15 @@ rte_pci_detach_dev(struct rte_pci_device *dev)
 	/* clear driver structure */
 	dev->driver = NULL;
 	dev->device.driver = NULL;
-	rte_intr_instance_free(dev->intr_handle);
-	dev->intr_handle = NULL;
-	rte_intr_instance_free(dev->vfio_req_intr_handle);
-	dev->vfio_req_intr_handle = NULL;
 
 	if (dr->drv_flags & RTE_PCI_DRV_NEED_MAPPING)
 		/* unmap resources for devices that use igb_uio */
 		rte_pci_unmap_device(dev);
+
+	rte_intr_instance_free(dev->intr_handle);
+	dev->intr_handle = NULL;
+	rte_intr_instance_free(dev->vfio_req_intr_handle);
+	dev->vfio_req_intr_handle = NULL;
 
 	return 0;
 }
