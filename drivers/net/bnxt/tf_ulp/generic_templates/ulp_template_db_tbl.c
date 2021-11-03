@@ -3,7 +3,7 @@
  * All rights reserved.
  */
 
-/* date: Thu Sep  9 11:11:05 2021 */
+/* date: Thu Sep 16 11:49:55 2021 */
 
 #include "ulp_template_db_enum.h"
 #include "ulp_template_db_field.h"
@@ -164,12 +164,12 @@ struct bnxt_ulp_generic_tbl_params ulp_generic_tbl_params[] = {
 	},
 	[BNXT_ULP_RESOURCE_SUB_TYPE_GENERIC_TABLE_VXLAN_ENCAP_REC_CACHE << 1 |
 		BNXT_ULP_DIRECTION_EGRESS] = {
-	.name                    = "INGRESS GEN_TABLE_VXLAN_ENCAP_REC_CACHE",
-	.result_num_entries      = 256,
+	.name                    = "EGRESS GEN_TABLE_VXLAN_ENCAP_REC_CACHE",
+	.result_num_entries      = 4096,
 	.result_num_bytes        = 6,
 	.key_num_bytes           = 17,
 	.num_buckets             = 8,
-	.hash_tbl_entries        = 1024,
+	.hash_tbl_entries        = 16384,
 	.result_byte_order       = BNXT_ULP_BYTE_ORDER_LE
 	}
 };

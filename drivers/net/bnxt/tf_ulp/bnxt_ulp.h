@@ -262,7 +262,7 @@ bnxt_ulp_cntxt_ptr2_ulp_flags_get(struct bnxt_ulp_context *ulp_ctx,
 				  uint32_t *flags);
 
 int32_t
-bnxt_ulp_get_df_rule_info(uint8_t port_id, struct bnxt_ulp_context *ulp_ctx,
+bnxt_ulp_get_df_rule_info(uint16_t port_id, struct bnxt_ulp_context *ulp_ctx,
 			  struct bnxt_ulp_df_rule_info *info);
 
 struct bnxt_ulp_vfr_rule_info*

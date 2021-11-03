@@ -74,7 +74,7 @@ bnxt_process_default_vnic_change(struct bnxt *bp,
 			BNXT_DEFAULT_VNIC_CHANGE_VF_ID_SFT;
 	PMD_DRV_LOG(INFO, "async event received vf_id 0x%x\n", vf_fid);
 
-	for (vf_id = 0; vf_id < BNXT_MAX_VF_REPS; vf_id++) {
+	for (vf_id = 0; vf_id < BNXT_MAX_VF_REPS(bp); vf_id++) {
 		eth_dev = bp->rep_info[vf_id].vfr_eth_dev;
 		if (!eth_dev)
 			continue;

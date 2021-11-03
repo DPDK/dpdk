@@ -210,7 +210,6 @@ int bnxt_representor_init(struct rte_eth_dev *eth_dev, void *params)
 	eth_dev->data->dev_link.link_status = link->link_status;
 	eth_dev->data->dev_link.link_autoneg = link->link_autoneg;
 
-	PMD_DRV_LOG(INFO, "calling bnxt_print_link_info\n");
 	bnxt_print_link_info(eth_dev);
 
 	PMD_DRV_LOG(INFO,
@@ -842,7 +841,7 @@ int bnxt_rep_stop_all(struct bnxt *bp)
 	if (!bp->rep_info)
 		return 0;
 
-	for (vf_id = 0; vf_id < BNXT_MAX_VF_REPS; vf_id++) {
+	for (vf_id = 0; vf_id < BNXT_MAX_VF_REPS(bp); vf_id++) {
 		rep_eth_dev = bp->rep_info[vf_id].vfr_eth_dev;
 		if (!rep_eth_dev)
 			continue;

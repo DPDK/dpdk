@@ -240,7 +240,11 @@ struct bnxt_parent_info {
 struct bnxt_pf_info {
 #define BNXT_FIRST_PF_FID	1
 #define BNXT_MAX_VFS(bp)	((bp)->pf->max_vfs)
-#define BNXT_MAX_VF_REPS	64
+#define BNXT_MAX_VF_REPS_WH     64
+#define BNXT_MAX_VF_REPS_TH     256
+#define BNXT_MAX_VF_REPS(bp) \
+				(BNXT_CHIP_P5(bp) ? BNXT_MAX_VF_REPS_TH : \
+				BNXT_MAX_VF_REPS_WH)
 #define BNXT_TOTAL_VFS(bp)	((bp)->pf->total_vfs)
 #define BNXT_FIRST_VF_FID	128
 #define BNXT_PF_RINGS_USED(bp)	bnxt_get_num_queues(bp)

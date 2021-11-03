@@ -441,7 +441,7 @@ void
 bnxt_ulp_destroy_df_rules(struct bnxt *bp, bool global)
 {
 	struct bnxt_ulp_df_rule_info *info;
-	uint8_t port_id;
+	uint16_t port_id;
 
 	if (!BNXT_TRUFLOW_EN(bp) ||
 	    BNXT_ETH_DEV_IS_REPRESENTOR(bp->eth_dev))
@@ -505,7 +505,7 @@ int32_t
 bnxt_ulp_create_df_rules(struct bnxt *bp)
 {
 	struct bnxt_ulp_df_rule_info *info;
-	uint8_t port_id;
+	uint16_t port_id;
 	int rc = 0;
 
 	if (!BNXT_TRUFLOW_EN(bp) ||
@@ -562,7 +562,7 @@ bnxt_ulp_create_vfr_default_rules(struct rte_eth_dev *vfr_ethdev)
 	struct rte_eth_dev *parent_dev = vfr->parent_dev;
 	struct bnxt *bp = parent_dev->data->dev_private;
 	uint16_t vfr_port_id = vfr_ethdev->data->port_id;
-	uint8_t port_id;
+	uint16_t port_id;
 	int rc;
 
 	if (!bp || !BNXT_TRUFLOW_EN(bp))
