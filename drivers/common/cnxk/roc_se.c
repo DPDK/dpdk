@@ -4,10 +4,26 @@
 
 #include "roc_api.h"
 
-static uint8_t zuc_d[32] = {0x44, 0xD7, 0x26, 0xBC, 0x62, 0x6B, 0x13, 0x5E,
-			    0x57, 0x89, 0x35, 0xE2, 0x71, 0x35, 0x09, 0xAF,
-			    0x4D, 0x78, 0x2F, 0x13, 0x6B, 0xC4, 0x1A, 0xF1,
-			    0x5E, 0x26, 0x3C, 0x4D, 0x78, 0x9A, 0x47, 0xAC};
+static uint8_t zuc_key128[32] = {
+	0x44, 0xD7, 0x26, 0xBC, 0x62, 0x6B, 0x13, 0x5E, 0x57, 0x89, 0x35,
+	0xE2, 0x71, 0x35, 0x09, 0xAF, 0x4D, 0x78, 0x2F, 0x13, 0x6B, 0xC4,
+	0x1A, 0xF1, 0x5E, 0x26, 0x3C, 0x4D, 0x78, 0x9A, 0x47, 0xAC};
+
+static uint8_t zuc_key256[16] = {0x22, 0x2f, 0x24, 0x2a, 0x6d, 0x40,
+				 0x40, 0x40, 0x40, 0x40, 0x40, 0x40,
+				 0x40, 0x52, 0x10, 0x30};
+
+static uint8_t zuc_key256_mac4[16] = {0x22, 0x2f, 0x25, 0x2a, 0x6d, 0x40,
+				      0x40, 0x40, 0x40, 0x40, 0x40, 0x40,
+				      0x40, 0x52, 0x10, 0x30};
+
+static uint8_t zuc_key256_mac8[16] = {0x23, 0x2f, 0x24, 0x2a, 0x6d, 0x40,
+				      0x40, 0x40, 0x40, 0x40, 0x40, 0x40,
+				      0x40, 0x52, 0x10, 0x30};
+
+static uint8_t zuc_key256_mac16[16] = {0x23, 0x2f, 0x25, 0x2a, 0x6d, 0x40,
+				       0x40, 0x40, 0x40, 0x40, 0x40, 0x40,
+				       0x40, 0x52, 0x10, 0x30};
 
 static inline void
 cpt_snow3g_key_gen(const uint8_t *ck, uint32_t *keyx)
@@ -185,6 +201,28 @@ cpt_pdcp_mac_len_set(struct roc_se_zuc_snow3g_ctx *zs_ctx, uint16_t mac_len)
 	return 0;
 }
 
+static void
+cpt_pdcp_update_zuc_const(uint8_t *zuc_const, int key_len, int mac_len)
+{
+	if (key_len == 16) {
+		memcpy(zuc_const, zuc_key128, 32);
+	} else if (key_len == 32) {
+		switch (mac_len) {
+		case 4:
+			memcpy(zuc_const, zuc_key256_mac4, 16);
+			break;
+		case 8:
+			memcpy(zuc_const, zuc_key256_mac8, 16);
+			break;
+		case 16:
+			memcpy(zuc_const, zuc_key256_mac16, 16);
+			break;
+		default:
+			plt_err("Unsupported mac len");
+		}
+	}
+}
+
 int
 roc_se_auth_key_set(struct roc_se_ctx *se_ctx, roc_se_auth_type type,
 		    const uint8_t *key, uint16_t key_len, uint16_t mac_len)
@@ -245,7 +283,7 @@ roc_se_auth_key_set(struct roc_se_ctx *se_ctx, roc_se_auth_type type,
 				return ret;
 			se_ctx->pdcp_alg_type = ROC_SE_PDCP_ALG_TYPE_ZUC;
 			memcpy(ci_key, key, key_len);
-			memcpy(zuc_const, zuc_d, 32);
+			cpt_pdcp_update_zuc_const(zuc_const, key_len, mac_len);
 			se_ctx->fc_type = ROC_SE_PDCP;
 			se_ctx->zsk_flags = 0x1;
 			break;
@@ -421,7 +459,11 @@ roc_se_ciph_key_set(struct roc_se_ctx *se_ctx, roc_se_cipher_type type,
 		zs_ctx->zuc.otk_ctx.w0.s.alg_type = ROC_SE_PDCP_ALG_TYPE_ZUC;
 		se_ctx->pdcp_alg_type = ROC_SE_PDCP_ALG_TYPE_ZUC;
 		memcpy(ci_key, key, key_len);
-		memcpy(zuc_const, zuc_d, 32);
+		if (key_len == 32)
+			memcpy(zuc_const, zuc_key256, 16);
+		else
+			memcpy(zuc_const, zuc_key128, 32);
+
 		se_ctx->zsk_flags = 0;
 		goto success;
 	case ROC_SE_AES_CTR_EEA2:

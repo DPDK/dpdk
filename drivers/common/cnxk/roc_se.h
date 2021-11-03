@@ -259,7 +259,8 @@ struct roc_se_fc_params {
 	struct roc_se_buf_ptr meta_buf;
 	struct roc_se_buf_ptr ctx_buf;
 	uint32_t rsvd2;
-	uint16_t rsvd3;
+	uint8_t rsvd3;
+	uint8_t iv_ovr;
 	uint8_t cipher_iv_len;
 	uint8_t auth_iv_len;
 
