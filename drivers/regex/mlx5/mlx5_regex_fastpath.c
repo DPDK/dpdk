@@ -160,7 +160,7 @@ prep_one(struct mlx5_regex_priv *priv, struct mlx5_regex_qp *qp,
 	struct mlx5_klm klm;
 
 	klm.byte_count = rte_pktmbuf_data_len(op->mbuf);
-	klm.mkey = mlx5_mr_mb2mr(&qp->mr_ctrl, op->mbuf, 0);
+	klm.mkey = mlx5_mr_mb2mr(&qp->mr_ctrl, op->mbuf);
 	klm.address = rte_pktmbuf_mtod(op->mbuf, uintptr_t);
 	__prep_one(priv, qp_obj, op, job, qp_obj->pi, &klm);
 	qp_obj->db_pi = qp_obj->pi;
@@ -330,7 +330,7 @@ prep_regex_umr_wqe_set(struct mlx5_regex_priv *priv, struct mlx5_regex_qp *qp,
 				addr = rte_pktmbuf_mtod(mbuf, uintptr_t);
 				/* Build indirect mkey seg's KLM. */
 				mkey_klm->mkey = mlx5_mr_mb2mr(&qp->mr_ctrl,
-							       mbuf, 0);
+							       mbuf);
 				mkey_klm->address = rte_cpu_to_be_64(addr);
 				mkey_klm->byte_count = rte_cpu_to_be_32
 						(rte_pktmbuf_data_len(mbuf));
@@ -347,7 +347,7 @@ prep_regex_umr_wqe_set(struct mlx5_regex_priv *priv, struct mlx5_regex_qp *qp,
 			klm.byte_count = scatter_size;
 		} else {
 			/* The single mubf case. Build the KLM directly. */
-			klm.mkey = mlx5_mr_mb2mr(&qp->mr_ctrl, mbuf, 0);
+			klm.mkey = mlx5_mr_mb2mr(&qp->mr_ctrl, mbuf);
 			klm.address = rte_pktmbuf_mtod(mbuf, uintptr_t);
 			klm.byte_count = rte_pktmbuf_data_len(mbuf);
 		}

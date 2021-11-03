@@ -352,28 +352,6 @@ __mlx5_uar_write64(uint64_t val, void *addr, rte_spinlock_t *lock)
 #endif
 
 /**
- * Query LKey from a packet buffer for Tx.
- *
- * @param txq
- *   Pointer to Tx queue structure.
- * @param mb
- *   Pointer to mbuf.
- *
- * @return
- *   Searched LKey on success, UINT32_MAX on no match.
- */
-static __rte_always_inline uint32_t
-mlx5_tx_mb2mr(struct mlx5_txq_data *txq, struct rte_mbuf *mb)
-{
-	struct mlx5_mr_ctrl *mr_ctrl = &txq->mr_ctrl;
-	struct mlx5_txq_ctrl *txq_ctrl =
-			container_of(txq, struct mlx5_txq_ctrl, txq);
-
-	/* Take slower bottom-half on miss. */
-	return mlx5_mr_mb2mr(mr_ctrl, mb, &txq_ctrl->priv->mp_id);
-}
-
-/**
  * Ring TX queue doorbell and flush the update if requested.
  *
  * @param txq
@@ -1370,7 +1348,7 @@ mlx5_tx_dseg_ptr(struct mlx5_txq_data *__rte_restrict txq,
 {
 	MLX5_ASSERT(len);
 	dseg->bcount = rte_cpu_to_be_32(len);
-	dseg->lkey = mlx5_tx_mb2mr(txq, loc->mbuf);
+	dseg->lkey = mlx5_mr_mb2mr(&txq->mr_ctrl, loc->mbuf);
 	dseg->pbuf = rte_cpu_to_be_64((uintptr_t)buf);
 }
 
@@ -1406,7 +1384,7 @@ mlx5_tx_dseg_iptr(struct mlx5_txq_data *__rte_restrict txq,
 	MLX5_ASSERT(len);
 	if (len > MLX5_DSEG_MIN_INLINE_SIZE) {
 		dseg->bcount = rte_cpu_to_be_32(len);
-		dseg->lkey = mlx5_tx_mb2mr(txq, loc->mbuf);
+		dseg->lkey = mlx5_mr_mb2mr(&txq->mr_ctrl, loc->mbuf);
 		dseg->pbuf = rte_cpu_to_be_64((uintptr_t)buf);
 
 		return;

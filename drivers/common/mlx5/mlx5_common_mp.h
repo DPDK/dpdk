@@ -35,22 +35,24 @@ struct mlx5_mp_arg_queue_id {
 	uint16_t queue_id; /* DPDK queue ID. */
 };
 
-struct mlx5_mp_arg_mempool_reg {
-	struct mlx5_mr_share_cache *share_cache;
-	void *pd; /* NULL for MLX5_MP_REQ_MEMPOOL_UNREGISTER */
-	struct rte_mempool *mempool;
+struct mlx5_mp_arg_mr_manage {
+	struct mlx5_common_device *cdev;
+	union {
+		struct rte_mempool *mempool;
+		/* MLX5_MP_REQ_MEMPOOL_(UN)REGISTER */
+		uintptr_t addr; /* MLX5_MP_REQ_CREATE_MR */
+	};
 };
 
-/* Pameters for IPC. */
+/* Parameters for IPC. */
 struct mlx5_mp_param {
 	enum mlx5_mp_req_type type;
 	int port_id;
 	int result;
 	RTE_STD_C11
 	union {
-		uintptr_t addr; /* MLX5_MP_REQ_CREATE_MR */
-		struct mlx5_mp_arg_mempool_reg mempool_reg;
-		/* MLX5_MP_REQ_MEMPOOL_(UN)REGISTER */
+		struct mlx5_mp_arg_mr_manage mr_manage;
+		/* MLX5_MP_REQ_MEMPOOL_(UN)REGISTER, MLX5_MP_REQ_CREATE_MR */
 		struct mlx5_mp_arg_queue_state_modify state_modify;
 		/* MLX5_MP_REQ_QUEUE_STATE_MODIFY */
 		struct mlx5_mp_arg_queue_id queue_id;
@@ -101,6 +103,25 @@ mp_init_msg(struct mlx5_mp_id *mp_id, struct rte_mp_msg *msg,
 	param->port_id = mp_id->port_id;
 }
 
+/**
+ * Initialize IPC port-agnostic message.
+ *
+ * @param[out] msg
+ *   Pointer to message to fill in.
+ * @param[in] type
+ *   Message type.
+ */
+static inline void
+mp_init_port_agnostic_msg(struct rte_mp_msg *msg, enum mlx5_mp_req_type type)
+{
+	struct mlx5_mp_param *param = (struct mlx5_mp_param *)msg->param;
+
+	memset(msg, 0, sizeof(*msg));
+	strlcpy(msg->name, MLX5_MP_NAME, sizeof(msg->name));
+	msg->len_param = sizeof(*param);
+	param->type = type;
+}
+
 __rte_internal
 int mlx5_mp_init_primary(const char *name, const rte_mp_t primary_action);
 __rte_internal
@@ -110,11 +131,10 @@ int mlx5_mp_init_secondary(const char *name, const rte_mp_t secondary_action);
 __rte_internal
 void mlx5_mp_uninit_secondary(const char *name);
 __rte_internal
-int mlx5_mp_req_mr_create(struct mlx5_mp_id *mp_id, uintptr_t addr);
+int mlx5_mp_req_mr_create(struct mlx5_common_device *cdev, uintptr_t addr);
 __rte_internal
-int mlx5_mp_req_mempool_reg(struct mlx5_mp_id *mp_id,
-			struct mlx5_mr_share_cache *share_cache, void *pd,
-			struct rte_mempool *mempool, bool reg);
+int mlx5_mp_req_mempool_reg(struct mlx5_common_device *cdev,
+			    struct rte_mempool *mempool, bool reg);
 __rte_internal
 int mlx5_mp_req_queue_state_modify(struct mlx5_mp_id *mp_id,
 				   struct mlx5_mp_arg_queue_state_modify *sm);

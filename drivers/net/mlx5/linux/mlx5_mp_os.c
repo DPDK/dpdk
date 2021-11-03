@@ -34,24 +34,26 @@ mlx5_mp_os_handle_port_agnostic(const struct rte_mp_msg *mp_msg,
 	struct mlx5_mp_param *res = (struct mlx5_mp_param *)mp_res.param;
 	const struct mlx5_mp_param *param =
 		(const struct mlx5_mp_param *)mp_msg->param;
-	const struct mlx5_mp_arg_mempool_reg *mpr;
-	struct mlx5_mp_id mp_id;
+	const struct mlx5_mp_arg_mr_manage *mng = &param->args.mr_manage;
+	struct mr_cache_entry entry;
+	uint32_t lkey;
 
 	switch (param->type) {
+	case MLX5_MP_REQ_CREATE_MR:
+		mp_init_port_agnostic_msg(&mp_res, param->type);
+		lkey = mlx5_mr_create(mng->cdev, &mng->cdev->mr_scache, &entry,
+				      mng->addr);
+		if (lkey == UINT32_MAX)
+			res->result = -rte_errno;
+		return rte_mp_reply(&mp_res, peer);
 	case MLX5_MP_REQ_MEMPOOL_REGISTER:
-		mlx5_mp_id_init(&mp_id, param->port_id);
-		mp_init_msg(&mp_id, &mp_res, param->type);
-		mpr = &param->args.mempool_reg;
-		res->result = mlx5_mr_mempool_register(mpr->share_cache,
-						       mpr->pd, mpr->mempool,
-						       NULL);
+		mp_init_port_agnostic_msg(&mp_res, param->type);
+		res->result = mlx5_mr_mempool_register(mng->cdev, mng->mempool);
 		return rte_mp_reply(&mp_res, peer);
 	case MLX5_MP_REQ_MEMPOOL_UNREGISTER:
-		mlx5_mp_id_init(&mp_id, param->port_id);
-		mp_init_msg(&mp_id, &mp_res, param->type);
-		mpr = &param->args.mempool_reg;
-		res->result = mlx5_mr_mempool_unregister(mpr->share_cache,
-							 mpr->mempool, NULL);
+		mp_init_port_agnostic_msg(&mp_res, param->type);
+		res->result = mlx5_mr_mempool_unregister(mng->cdev,
+							 mng->mempool);
 		return rte_mp_reply(&mp_res, peer);
 	default:
 		return 1;
@@ -69,8 +71,6 @@ mlx5_mp_os_primary_handle(const struct rte_mp_msg *mp_msg, const void *peer)
 	struct rte_eth_dev *dev;
 	struct mlx5_priv *priv;
 	struct mlx5_common_device *cdev;
-	struct mr_cache_entry entry;
-	uint32_t lkey;
 	int ret;
 
 	MLX5_ASSERT(rte_eal_process_type() == RTE_PROC_PRIMARY);
@@ -88,15 +88,6 @@ mlx5_mp_os_primary_handle(const struct rte_mp_msg *mp_msg, const void *peer)
 	priv = dev->data->dev_private;
 	cdev = priv->sh->cdev;
 	switch (param->type) {
-	case MLX5_MP_REQ_CREATE_MR:
-		mp_init_msg(&priv->mp_id, &mp_res, param->type);
-		lkey = mlx5_mr_create_primary(cdev->pd, &cdev->mr_scache,
-					      &entry, param->args.addr,
-					      cdev->config.mr_ext_memseg_en);
-		if (lkey == UINT32_MAX)
-			res->result = -rte_errno;
-		ret = rte_mp_reply(&mp_res, peer);
-		break;
 	case MLX5_MP_REQ_VERBS_CMD_FD:
 		mp_init_msg(&priv->mp_id, &mp_res, param->type);
 		mp_res.num_fds = 1;

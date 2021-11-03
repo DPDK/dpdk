@@ -110,7 +110,7 @@ INTERNAL {
 
 	mlx5_mprq_buf_free_cb;
 	mlx5_mr_btree_free;
-	mlx5_mr_create_primary;
+	mlx5_mr_create;
 	mlx5_mr_ctrl_init;
 	mlx5_mr_flush_local_cache;
 	mlx5_mr_mb2mr_bh;

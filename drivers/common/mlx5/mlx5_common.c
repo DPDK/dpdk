@@ -318,10 +318,7 @@ static int
 mlx5_dev_mempool_register(struct mlx5_common_device *cdev,
 			  struct rte_mempool *mp)
 {
-	struct mlx5_mp_id mp_id;
-
-	mlx5_mp_id_init(&mp_id, 0);
-	return mlx5_mr_mempool_register(&cdev->mr_scache, cdev->pd, mp, &mp_id);
+	return mlx5_mr_mempool_register(cdev, mp);
 }
 
 /**
@@ -336,10 +333,7 @@ void
 mlx5_dev_mempool_unregister(struct mlx5_common_device *cdev,
 			    struct rte_mempool *mp)
 {
-	struct mlx5_mp_id mp_id;
-
-	mlx5_mp_id_init(&mp_id, 0);
-	if (mlx5_mr_mempool_unregister(&cdev->mr_scache, mp, &mp_id) < 0)
+	if (mlx5_mr_mempool_unregister(cdev, mp) < 0)
 		DRV_LOG(WARNING, "Failed to unregister mempool %s for PD %p: %s",
 			mp->name, cdev->pd, rte_strerror(rte_errno));
 }

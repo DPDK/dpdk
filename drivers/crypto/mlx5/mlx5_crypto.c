@@ -324,7 +324,7 @@ mlx5_crypto_klm_set(struct mlx5_crypto_qp *qp, struct rte_mbuf *mbuf,
 	*remain -= data_len;
 	klm->bcount = rte_cpu_to_be_32(data_len);
 	klm->pbuf = rte_cpu_to_be_64(addr);
-	klm->lkey = mlx5_mr_mb2mr(&qp->mr_ctrl, mbuf, 0);
+	klm->lkey = mlx5_mr_mb2mr(&qp->mr_ctrl, mbuf);
 	return klm->lkey;
 
 }

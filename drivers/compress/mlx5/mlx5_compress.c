@@ -464,7 +464,7 @@ mlx5_compress_dseg_set(struct mlx5_compress_qp *qp,
 	uintptr_t addr = rte_pktmbuf_mtod_offset(mbuf, uintptr_t, offset);
 
 	dseg->bcount = rte_cpu_to_be_32(len);
-	dseg->lkey = mlx5_mr_mb2mr(&qp->mr_ctrl, mbuf, 0);
+	dseg->lkey = mlx5_mr_mb2mr(&qp->mr_ctrl, mbuf);
 	dseg->pbuf = rte_cpu_to_be_64(addr);
 	return dseg->lkey;
 }

@@ -131,11 +131,8 @@ mlx5_rxq_mempool_register_cb(struct rte_mempool *mp, void *opaque,
  *   0 on success, (-1) on failure and rte_errno is set.
  */
 static int
-mlx5_rxq_mempool_register(struct rte_eth_dev *dev,
-			  struct mlx5_rxq_ctrl *rxq_ctrl)
+mlx5_rxq_mempool_register(struct mlx5_rxq_ctrl *rxq_ctrl)
 {
-	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5_dev_ctx_shared *sh = rxq_ctrl->sh;
 	struct rte_mempool *mp;
 	uint32_t s;
 	int ret = 0;
@@ -150,8 +147,7 @@ mlx5_rxq_mempool_register(struct rte_eth_dev *dev,
 	}
 	for (s = 0; s < rxq_ctrl->rxq.rxseg_n; s++) {
 		mp = rxq_ctrl->rxq.rxseg[s].mp;
-		ret = mlx5_mr_mempool_register(&sh->cdev->mr_scache,
-					       sh->cdev->pd, mp, &priv->mp_id);
+		ret = mlx5_mr_mempool_register(rxq_ctrl->sh->cdev, mp);
 		if (ret < 0 && rte_errno != EEXIST)
 			return ret;
 		rte_mempool_mem_iter(mp, mlx5_rxq_mempool_register_cb,
@@ -188,7 +184,7 @@ mlx5_rxq_ctrl_prepare(struct rte_eth_dev *dev, struct mlx5_rxq_ctrl *rxq_ctrl,
 		 * the implicit registration is enabled or not,
 		 * Rx mempool destruction is tracked to free MRs.
 		 */
-		if (mlx5_rxq_mempool_register(dev, rxq_ctrl) < 0)
+		if (mlx5_rxq_mempool_register(rxq_ctrl) < 0)
 			return -rte_errno;
 		ret = rxq_alloc_elts(rxq_ctrl);
 		if (ret)
