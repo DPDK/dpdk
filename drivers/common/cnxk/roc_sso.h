@@ -27,6 +27,15 @@ struct roc_sso_hwgrp_stats {
 	uint64_t page_cnt;
 };
 
+struct roc_sso_xaq_data {
+	uint32_t nb_xaq;
+	uint32_t nb_xae;
+	uint32_t xaq_lmt;
+	uint64_t aura_handle;
+	void *fc;
+	void *mem;
+};
+
 struct roc_sso {
 	struct plt_pci_device *pci_dev;
 	/* Public data. */
@@ -35,6 +44,7 @@ struct roc_sso {
 	uint16_t nb_hwgrp;
 	uint8_t nb_hws;
 	uintptr_t lmt_base;
+	struct roc_sso_xaq_data xaq;
 	/* HW Const. */
 	uint32_t xae_waes;
 	uint32_t xaq_buf_size;
@@ -95,6 +105,10 @@ int __roc_api roc_sso_hwgrp_hws_link_status(struct roc_sso *roc_sso,
 uintptr_t __roc_api roc_sso_hws_base_get(struct roc_sso *roc_sso, uint8_t hws);
 uintptr_t __roc_api roc_sso_hwgrp_base_get(struct roc_sso *roc_sso,
 					   uint16_t hwgrp);
+int __roc_api roc_sso_hwgrp_init_xaq_aura(struct roc_sso *roc_sso,
+					  uint32_t nb_xae);
+int __roc_api roc_sso_hwgrp_free_xaq_aura(struct roc_sso *roc_sso,
+					  uint16_t nb_hwgrp);
 
 /* Debug */
 void __roc_api roc_sso_dump(struct roc_sso *roc_sso, uint8_t nb_hws,

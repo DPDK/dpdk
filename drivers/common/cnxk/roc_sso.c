@@ -5,6 +5,8 @@
 #include "roc_api.h"
 #include "roc_priv.h"
 
+#define SSO_XAQ_CACHE_CNT (0x7)
+
 /* Private functions. */
 int
 sso_lf_alloc(struct dev *dev, enum sso_lf_type lf_type, uint16_t nb_lf,
@@ -385,6 +387,128 @@ roc_sso_hwgrp_qos_config(struct roc_sso *roc_sso, struct roc_sso_hwgrp_qos *qos,
 	}
 
 	return mbox_process(dev->mbox);
+}
+
+int
+sso_hwgrp_init_xaq_aura(struct dev *dev, struct roc_sso_xaq_data *xaq,
+			uint32_t nb_xae, uint32_t xae_waes,
+			uint32_t xaq_buf_size, uint16_t nb_hwgrp)
+{
+	struct npa_pool_s pool;
+	struct npa_aura_s aura;
+	plt_iova_t iova;
+	uint32_t i;
+	int rc;
+
+	if (xaq->mem != NULL) {
+		rc = sso_hwgrp_release_xaq(dev, nb_hwgrp);
+		if (rc < 0) {
+			plt_err("Failed to release XAQ %d", rc);
+			return rc;
+		}
+		roc_npa_pool_destroy(xaq->aura_handle);
+		plt_free(xaq->fc);
+		plt_free(xaq->mem);
+		memset(xaq, 0, sizeof(struct roc_sso_xaq_data));
+	}
+
+	xaq->fc = plt_zmalloc(ROC_ALIGN, ROC_ALIGN);
+	if (xaq->fc == NULL) {
+		plt_err("Failed to allocate XAQ FC");
+		rc = -ENOMEM;
+		goto fail;
+	}
+
+	xaq->nb_xae = nb_xae;
+
+	/* Taken from HRM 14.3.3(4) */
+	xaq->nb_xaq = (SSO_XAQ_CACHE_CNT * nb_hwgrp);
+	xaq->nb_xaq += PLT_MAX(1 + ((xaq->nb_xae - 1) / xae_waes), xaq->nb_xaq);
+
+	xaq->mem = plt_zmalloc(xaq_buf_size * xaq->nb_xaq, xaq_buf_size);
+	if (xaq->mem == NULL) {
+		plt_err("Failed to allocate XAQ mem");
+		rc = -ENOMEM;
+		goto free_fc;
+	}
+
+	memset(&pool, 0, sizeof(struct npa_pool_s));
+	pool.nat_align = 1;
+
+	memset(&aura, 0, sizeof(aura));
+	aura.fc_ena = 1;
+	aura.fc_addr = (uint64_t)xaq->fc;
+	aura.fc_hyst_bits = 0; /* Store count on all updates */
+	rc = roc_npa_pool_create(&xaq->aura_handle, xaq_buf_size, xaq->nb_xaq,
+				 &aura, &pool);
+	if (rc) {
+		plt_err("Failed to create XAQ pool");
+		goto npa_fail;
+	}
+
+	iova = (uint64_t)xaq->mem;
+	for (i = 0; i < xaq->nb_xaq; i++) {
+		roc_npa_aura_op_free(xaq->aura_handle, 0, iova);
+		iova += xaq_buf_size;
+	}
+	roc_npa_aura_op_range_set(xaq->aura_handle, (uint64_t)xaq->mem, iova);
+
+	/* When SW does addwork (enqueue) check if there is space in XAQ by
+	 * comparing fc_addr above against the xaq_lmt calculated below.
+	 * There should be a minimum headroom of 7 XAQs per HWGRP for SSO
+	 * to request XAQ to cache them even before enqueue is called.
+	 */
+	xaq->xaq_lmt = xaq->nb_xaq - (nb_hwgrp * SSO_XAQ_CACHE_CNT);
+
+	return 0;
+npa_fail:
+	plt_free(xaq->mem);
+free_fc:
+	plt_free(xaq->fc);
+fail:
+	memset(xaq, 0, sizeof(struct roc_sso_xaq_data));
+	return rc;
+}
+
+int
+roc_sso_hwgrp_init_xaq_aura(struct roc_sso *roc_sso, uint32_t nb_xae)
+{
+	struct dev *dev = &roc_sso_to_sso_priv(roc_sso)->dev;
+
+	return sso_hwgrp_init_xaq_aura(dev, &roc_sso->xaq, nb_xae,
+				       roc_sso->xae_waes, roc_sso->xaq_buf_size,
+				       roc_sso->nb_hwgrp);
+}
+
+int
+sso_hwgrp_free_xaq_aura(struct dev *dev, struct roc_sso_xaq_data *xaq,
+			uint16_t nb_hwgrp)
+{
+	int rc;
+
+	if (xaq->mem != NULL) {
+		if (nb_hwgrp) {
+			rc = sso_hwgrp_release_xaq(dev, nb_hwgrp);
+			if (rc < 0) {
+				plt_err("Failed to release XAQ %d", rc);
+				return rc;
+			}
+		}
+		roc_npa_pool_destroy(xaq->aura_handle);
+		plt_free(xaq->fc);
+		plt_free(xaq->mem);
+	}
+	memset(xaq, 0, sizeof(struct roc_sso_xaq_data));
+
+	return 0;
+}
+
+int
+roc_sso_hwgrp_free_xaq_aura(struct roc_sso *roc_sso, uint16_t nb_hwgrp)
+{
+	struct dev *dev = &roc_sso_to_sso_priv(roc_sso)->dev;
+
+	return sso_hwgrp_free_xaq_aura(dev, &roc_sso->xaq, nb_hwgrp);
 }
 
 int

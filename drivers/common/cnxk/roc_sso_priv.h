@@ -47,6 +47,11 @@ void sso_hws_link_modify(uint8_t hws, uintptr_t base, struct plt_bitmap *bmp,
 			 uint16_t hwgrp[], uint16_t n, uint16_t enable);
 int sso_hwgrp_alloc_xaq(struct dev *dev, uint32_t npa_aura_id, uint16_t hwgrps);
 int sso_hwgrp_release_xaq(struct dev *dev, uint16_t hwgrps);
+int sso_hwgrp_init_xaq_aura(struct dev *dev, struct roc_sso_xaq_data *xaq,
+			    uint32_t nb_xae, uint32_t xae_waes,
+			    uint32_t xaq_buf_size, uint16_t nb_hwgrp);
+int sso_hwgrp_free_xaq_aura(struct dev *dev, struct roc_sso_xaq_data *xaq,
+			    uint16_t nb_hwgrp);
 
 /* SSO IRQ */
 int sso_register_irqs_priv(struct roc_sso *roc_sso,

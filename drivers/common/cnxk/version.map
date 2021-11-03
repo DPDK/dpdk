@@ -319,7 +319,9 @@ INTERNAL {
 	roc_sso_dump;
 	roc_sso_hwgrp_alloc_xaq;
 	roc_sso_hwgrp_base_get;
+	roc_sso_hwgrp_free_xaq_aura;
 	roc_sso_hwgrp_hws_link_status;
+	roc_sso_hwgrp_init_xaq_aura;
 	roc_sso_hwgrp_qos_config;
 	roc_sso_hwgrp_release_xaq;
 	roc_sso_hwgrp_set_priority;

@@ -132,6 +132,7 @@ cn10k_sso_hws_flush_events(void *hws, uint8_t queue_id, uintptr_t base,
 
 	plt_write64(0, base + SSO_LF_GGRP_QCTL);
 
+	plt_write64(0, ws->base + SSOW_LF_GWS_OP_GWC_INVAL);
 	req = queue_id;	    /* GGRP ID */
 	req |= BIT_ULL(18); /* Grouped */
 	req |= BIT_ULL(16); /* WAIT */
@@ -177,6 +178,7 @@ cn10k_sso_hws_reset(void *arg, void *hws)
 	} gw;
 	uint8_t pend_tt;
 
+	plt_write64(0, ws->base + SSOW_LF_GWS_OP_GWC_INVAL);
 	/* Wait till getwork/swtp/waitw/desched completes. */
 	do {
 		pend_state = plt_read64(base + SSOW_LF_GWS_PENDSTATE);
