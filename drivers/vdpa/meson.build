@@ -8,6 +8,7 @@ endif
 drivers = [
         'ifc',
         'mlx5',
+        'sfc',
 ]
 std_deps = ['bus_pci', 'kvargs']
 std_deps += ['vhost']

@@ -233,6 +233,11 @@ New Features
   * Added flow control.
   * Added IEEE 1588.
 
+* **Added new vDPA PMD based on Xilinx devices.**
+
+  Added a new Xilinx vDPA  (``sfc_vdpa``) PMD.
+  See the :doc:`../vdpadevs/sfc` guide for more details on this driver.
+
 * **Added telemetry callbacks to cryptodev library.**
 
   Added telemetry callback functions which allow a list of crypto devices,

@@ -1240,6 +1240,12 @@ F: drivers/vdpa/mlx5/
 F: doc/guides/vdpadevs/mlx5.rst
 F: doc/guides/vdpadevs/features/mlx5.ini
 
+Xilinx sfc vDPA
+M: Vijay Kumar Srivastava <vsrivast@xilinx.com>
+F: drivers/vdpa/sfc/
+F: doc/guides/vdpadevs/sfc.rst
+F: doc/guides/vdpadevs/features/sfc.ini
+
 
 Eventdev Drivers
 ----------------
