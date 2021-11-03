@@ -89,7 +89,7 @@ int main() {
             else
                 error('Compiler does not support POWER@0@ platform'.format(cpu))
             endif
-            if cpu > 8
+            if cpu >= 8
                 cpu_instruction_set = 'power'+cpu.to_string()
             else
                 error('Compiler does not support POWER@0@ platform'.format(cpu))
