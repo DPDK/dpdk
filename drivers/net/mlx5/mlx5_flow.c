@@ -835,6 +835,7 @@ mlx5_flow_get_reg_id(struct rte_eth_dev *dev,
 			       REG_C_3;
 	case MLX5_MTR_COLOR:
 	case MLX5_ASO_FLOW_HIT: /* Both features use the same REG_C. */
+	case MLX5_SAMPLE_ID:
 		MLX5_ASSERT(priv->mtr_color_reg != REG_NON);
 		return priv->mtr_color_reg;
 	case MLX5_COPY_MARK:
@@ -4656,7 +4657,7 @@ flow_sample_split_prep(struct rte_eth_dev *dev,
 	if (!fdb_tx) {
 		/* Prepare the prefix tag action. */
 		set_tag = (void *)(actions_pre + actions_n + 1);
-		ret = mlx5_flow_get_reg_id(dev, MLX5_APP_TAG, 0, error);
+		ret = mlx5_flow_get_reg_id(dev, MLX5_SAMPLE_ID, 0, error);
 		if (ret < 0)
 			return ret;
 		set_tag->id = ret;
