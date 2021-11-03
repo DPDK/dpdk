@@ -883,12 +883,6 @@ mlx5_crypto_dev_probe(struct mlx5_common_device *cdev)
 		DRV_LOG(ERR, "Failed to parse devargs.");
 		return -rte_errno;
 	}
-	login = mlx5_devx_cmd_create_crypto_login_obj(cdev->ctx,
-						      &devarg_prms.login_attr);
-	if (login == NULL) {
-		DRV_LOG(ERR, "Failed to configure login.");
-		return -rte_errno;
-	}
 	crypto_dev = rte_cryptodev_pmd_create(ibdev_name, cdev->dev,
 					      &init_params);
 	if (crypto_dev == NULL) {
@@ -904,12 +898,20 @@ mlx5_crypto_dev_probe(struct mlx5_common_device *cdev)
 	crypto_dev->driver_id = mlx5_crypto_driver_id;
 	priv = crypto_dev->data->dev_private;
 	priv->cdev = cdev;
-	priv->login_obj = login;
 	priv->crypto_dev = crypto_dev;
 	if (mlx5_crypto_uar_prepare(priv) != 0) {
 		rte_cryptodev_pmd_destroy(priv->crypto_dev);
 		return -1;
 	}
+	login = mlx5_devx_cmd_create_crypto_login_obj(cdev->ctx,
+						      &devarg_prms.login_attr);
+	if (login == NULL) {
+		DRV_LOG(ERR, "Failed to configure login.");
+		mlx5_crypto_uar_release(priv);
+		rte_cryptodev_pmd_destroy(priv->crypto_dev);
+		return -rte_errno;
+	}
+	priv->login_obj = login;
 	priv->keytag = rte_cpu_to_be_64(devarg_prms.keytag);
 	priv->max_segs_num = devarg_prms.max_segs_num;
 	priv->umr_wqe_size = sizeof(struct mlx5_wqe_umr_bsf_seg) +
@@ -947,9 +949,9 @@ mlx5_crypto_dev_remove(struct mlx5_common_device *cdev)
 		TAILQ_REMOVE(&mlx5_crypto_priv_list, priv, next);
 	pthread_mutex_unlock(&priv_list_lock);
 	if (priv) {
+		claim_zero(mlx5_devx_cmd_destroy(priv->login_obj));
 		mlx5_crypto_uar_release(priv);
 		rte_cryptodev_pmd_destroy(priv->crypto_dev);
-		claim_zero(mlx5_devx_cmd_destroy(priv->login_obj));
 	}
 	return 0;
 }
