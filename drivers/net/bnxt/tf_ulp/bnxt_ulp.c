@@ -462,7 +462,7 @@ ulp_ctx_shared_session_open(struct bnxt *bp,
 
 	parms.shadow_copy = true;
 	parms.bp = bp;
-	if (app_id == 0 || app_id == 3)
+	if (app_id == 0)
 		parms.wc_num_slices = TF_WC_TCAM_2_SLICE_PER_ROW;
 	else
 		parms.wc_num_slices = TF_WC_TCAM_1_SLICE_PER_ROW;
@@ -584,7 +584,7 @@ ulp_ctx_session_open(struct bnxt *bp,
 		return rc;
 
 	params.bp = bp;
-	if (app_id == 0 || app_id == 3)
+	if (app_id == 0)
 		params.wc_num_slices = TF_WC_TCAM_2_SLICE_PER_ROW;
 	else
 		params.wc_num_slices = TF_WC_TCAM_1_SLICE_PER_ROW;
