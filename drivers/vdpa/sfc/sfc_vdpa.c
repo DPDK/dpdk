@@ -241,6 +241,8 @@ sfc_vdpa_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 
 	sfc_vdpa_log_init(sva, "entry");
 
+	sfc_vdpa_adapter_lock_init(sva);
+
 	sfc_vdpa_log_init(sva, "vfio init");
 	if (sfc_vdpa_vfio_setup(sva) < 0) {
 		sfc_vdpa_err(sva, "failed to setup device %s", pci_dev->name);
@@ -275,6 +277,8 @@ fail_hw_init:
 	sfc_vdpa_vfio_teardown(sva);
 
 fail_vfio_setup:
+	sfc_vdpa_adapter_lock_fini(sva);
+
 fail_set_log_prefix:
 	rte_free(sva);
 
@@ -305,6 +309,8 @@ sfc_vdpa_pci_remove(struct rte_pci_device *pci_dev)
 	sfc_vdpa_hw_fini(sva);
 
 	sfc_vdpa_vfio_teardown(sva);
+
+	sfc_vdpa_adapter_lock_fini(sva);
 
 	rte_free(sva);
 

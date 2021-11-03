@@ -78,10 +78,53 @@ sfc_vdpa_dma_alloc(struct sfc_vdpa_adapter *sva, const char *name,
 void
 sfc_vdpa_dma_free(struct sfc_vdpa_adapter *sva, efsys_mem_t *esmp);
 
+int
+sfc_vdpa_dma_map(struct sfc_vdpa_ops_data *vdpa_data, bool do_map);
+
 static inline struct sfc_vdpa_adapter *
 sfc_vdpa_adapter_by_dev_handle(void *dev_handle)
 {
 	return (struct sfc_vdpa_adapter *)dev_handle;
+}
+
+/*
+ * Add wrapper functions to acquire/release lock to be able to remove or
+ * change the lock in one place.
+ */
+static inline void
+sfc_vdpa_adapter_lock_init(struct sfc_vdpa_adapter *sva)
+{
+	rte_spinlock_init(&sva->lock);
+}
+
+static inline int
+sfc_vdpa_adapter_is_locked(struct sfc_vdpa_adapter *sva)
+{
+	return rte_spinlock_is_locked(&sva->lock);
+}
+
+static inline void
+sfc_vdpa_adapter_lock(struct sfc_vdpa_adapter *sva)
+{
+	rte_spinlock_lock(&sva->lock);
+}
+
+static inline int
+sfc_vdpa_adapter_trylock(struct sfc_vdpa_adapter *sva)
+{
+	return rte_spinlock_trylock(&sva->lock);
+}
+
+static inline void
+sfc_vdpa_adapter_unlock(struct sfc_vdpa_adapter *sva)
+{
+	rte_spinlock_unlock(&sva->lock);
+}
+
+static inline void
+sfc_vdpa_adapter_lock_fini(__rte_unused struct sfc_vdpa_adapter *sva)
+{
+	/* Just for symmetry of the API */
 }
 
 #endif  /* _SFC_VDPA_H */

@@ -7,6 +7,7 @@
 #include <rte_common.h>
 #include <rte_errno.h>
 #include <rte_vfio.h>
+#include <rte_vhost.h>
 
 #include "efx.h"
 #include "sfc_vdpa.h"
@@ -105,6 +106,74 @@ sfc_vdpa_dma_free(struct sfc_vdpa_adapter *sva, efsys_mem_t *esmp)
 
 	sva->mcdi_buff_size = 0;
 	memset(esmp, 0, sizeof(*esmp));
+}
+
+int
+sfc_vdpa_dma_map(struct sfc_vdpa_ops_data *ops_data, bool do_map)
+{
+	uint32_t i, j;
+	int rc;
+	struct rte_vhost_memory *vhost_mem = NULL;
+	struct rte_vhost_mem_region *mem_reg = NULL;
+	int vfio_container_fd;
+	void *dev;
+
+	dev = ops_data->dev_handle;
+	vfio_container_fd =
+		sfc_vdpa_adapter_by_dev_handle(dev)->vfio_container_fd;
+
+	rc = rte_vhost_get_mem_table(ops_data->vid, &vhost_mem);
+	if (rc < 0) {
+		sfc_vdpa_err(dev,
+			     "failed to get VM memory layout");
+		goto error;
+	}
+
+	for (i = 0; i < vhost_mem->nregions; i++) {
+		mem_reg = &vhost_mem->regions[i];
+
+		if (do_map) {
+			rc = rte_vfio_container_dma_map(vfio_container_fd,
+						mem_reg->host_user_addr,
+						mem_reg->guest_phys_addr,
+						mem_reg->size);
+			if (rc < 0) {
+				sfc_vdpa_err(dev,
+					     "DMA map failed : %s",
+					     rte_strerror(rte_errno));
+				goto failed_vfio_dma_map;
+			}
+		} else {
+			rc = rte_vfio_container_dma_unmap(vfio_container_fd,
+						mem_reg->host_user_addr,
+						mem_reg->guest_phys_addr,
+						mem_reg->size);
+			if (rc < 0) {
+				sfc_vdpa_err(dev,
+					     "DMA unmap failed : %s",
+					     rte_strerror(rte_errno));
+				goto error;
+			}
+		}
+	}
+
+	free(vhost_mem);
+
+	return 0;
+
+failed_vfio_dma_map:
+	for (j = 0; j < i; j++) {
+		mem_reg = &vhost_mem->regions[j];
+		rte_vfio_container_dma_unmap(vfio_container_fd,
+					     mem_reg->host_user_addr,
+					     mem_reg->guest_phys_addr,
+					     mem_reg->size);
+	}
+
+error:
+	free(vhost_mem);
+
+	return rc;
 }
 
 static int
