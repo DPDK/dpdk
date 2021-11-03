@@ -16,7 +16,7 @@
 									       \
 		if (ws->swtag_req) {                                           \
 			ws->swtag_req = 0;                                     \
-			cnxk_sso_hws_swtag_wait(ws->tag_op);                   \
+			cnxk_sso_hws_swtag_wait(ws->base + SSOW_LF_GWS_TAG);   \
 			return 1;                                              \
 		}                                                              \
 									       \
@@ -32,7 +32,7 @@
 									       \
 		if (ws->swtag_req) {                                           \
 			ws->swtag_req = 0;                                     \
-			cnxk_sso_hws_swtag_wait(ws->tag_op);                   \
+			cnxk_sso_hws_swtag_wait(ws->base + SSOW_LF_GWS_TAG);   \
 			return 1;                                              \
 		}                                                              \
 									       \

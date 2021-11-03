@@ -16,20 +16,19 @@
 									       \
 		if (dws->swtag_req) {                                          \
 			dws->swtag_req = 0;                                    \
-			cnxk_sso_hws_swtag_wait(                               \
-				dws->ws_state[!dws->vws].tag_op);              \
+			cnxk_sso_hws_swtag_wait(dws->base[!dws->vws] +         \
+						SSOW_LF_GWS_TAG);              \
 			return ret;                                            \
 		}                                                              \
 									       \
 		ret = cn9k_sso_hws_dual_get_work(                              \
-			&dws->ws_state[dws->vws], &dws->ws_state[!dws->vws],   \
-			ev, flags, dws->lookup_mem, dws->tstamp);              \
+			dws->base[dws->vws], dws->base[!dws->vws], ev, flags,  \
+			dws->lookup_mem, dws->tstamp);                         \
 		dws->vws = !dws->vws;                                          \
 		for (iter = 1; iter < timeout_ticks && (ret == 0); iter++) {   \
 			ret = cn9k_sso_hws_dual_get_work(                      \
-				&dws->ws_state[dws->vws],                      \
-				&dws->ws_state[!dws->vws], ev, flags,          \
-				dws->lookup_mem, dws->tstamp);                 \
+				dws->base[dws->vws], dws->base[!dws->vws], ev, \
+				flags, dws->lookup_mem, dws->tstamp);          \
 			dws->vws = !dws->vws;                                  \
 		}                                                              \
 									       \
@@ -55,20 +54,19 @@
 									       \
 		if (dws->swtag_req) {                                          \
 			dws->swtag_req = 0;                                    \
-			cnxk_sso_hws_swtag_wait(                               \
-				dws->ws_state[!dws->vws].tag_op);              \
+			cnxk_sso_hws_swtag_wait(dws->base[!dws->vws] +         \
+						SSOW_LF_GWS_TAG);              \
 			return ret;                                            \
 		}                                                              \
 									       \
 		ret = cn9k_sso_hws_dual_get_work(                              \
-			&dws->ws_state[dws->vws], &dws->ws_state[!dws->vws],   \
-			ev, flags, dws->lookup_mem, dws->tstamp);              \
+			dws->base[dws->vws], dws->base[!dws->vws], ev, flags,  \
+			dws->lookup_mem, dws->tstamp);                         \
 		dws->vws = !dws->vws;                                          \
 		for (iter = 1; iter < timeout_ticks && (ret == 0); iter++) {   \
 			ret = cn9k_sso_hws_dual_get_work(                      \
-				&dws->ws_state[dws->vws],                      \
-				&dws->ws_state[!dws->vws], ev, flags,          \
-				dws->lookup_mem, dws->tstamp);                 \
+				dws->base[dws->vws], dws->base[!dws->vws], ev, \
+				flags, dws->lookup_mem, dws->tstamp);          \
 			dws->vws = !dws->vws;                                  \
 		}                                                              \
 									       \

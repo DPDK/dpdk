@@ -37,12 +37,12 @@ cn9k_sso_hws_new_event(struct cn9k_sso_hws *ws, const struct rte_event *ev)
 }
 
 static __rte_always_inline void
-cn9k_sso_hws_fwd_swtag(struct cn9k_sso_hws_state *vws,
-		       const struct rte_event *ev)
+cn9k_sso_hws_fwd_swtag(uint64_t base, const struct rte_event *ev)
 {
 	const uint32_t tag = (uint32_t)ev->event;
 	const uint8_t new_tt = ev->sched_type;
-	const uint8_t cur_tt = CNXK_TT_FROM_TAG(plt_read64(vws->tag_op));
+	const uint8_t cur_tt =
+		CNXK_TT_FROM_TAG(plt_read64(base + SSOW_LF_GWS_TAG));
 
 	/* CNXK model
 	 * cur_tt/new_tt     SSO_TT_ORDERED SSO_TT_ATOMIC SSO_TT_UNTAGGED
@@ -54,24 +54,24 @@ cn9k_sso_hws_fwd_swtag(struct cn9k_sso_hws_state *vws,
 
 	if (new_tt == SSO_TT_UNTAGGED) {
 		if (cur_tt != SSO_TT_UNTAGGED)
-			cnxk_sso_hws_swtag_untag(
-				CN9K_SSOW_GET_BASE_ADDR(vws->getwrk_op) +
-				SSOW_LF_GWS_OP_SWTAG_UNTAG);
+			cnxk_sso_hws_swtag_untag(base +
+						 SSOW_LF_GWS_OP_SWTAG_UNTAG);
 	} else {
-		cnxk_sso_hws_swtag_norm(tag, new_tt, vws->swtag_norm_op);
+		cnxk_sso_hws_swtag_norm(tag, new_tt,
+					base + SSOW_LF_GWS_OP_SWTAG_NORM);
 	}
 }
 
 static __rte_always_inline void
-cn9k_sso_hws_fwd_group(struct cn9k_sso_hws_state *ws,
-		       const struct rte_event *ev, const uint16_t grp)
+cn9k_sso_hws_fwd_group(uint64_t base, const struct rte_event *ev,
+		       const uint16_t grp)
 {
 	const uint32_t tag = (uint32_t)ev->event;
 	const uint8_t new_tt = ev->sched_type;
 
-	plt_write64(ev->u64, CN9K_SSOW_GET_BASE_ADDR(ws->getwrk_op) +
-				     SSOW_LF_GWS_OP_UPD_WQP_GRP1);
-	cnxk_sso_hws_swtag_desched(tag, new_tt, grp, ws->swtag_desched_op);
+	plt_write64(ev->u64, base + SSOW_LF_GWS_OP_UPD_WQP_GRP1);
+	cnxk_sso_hws_swtag_desched(tag, new_tt, grp,
+				   base + SSOW_LF_GWS_OP_SWTAG_DESCHED);
 }
 
 static __rte_always_inline void
@@ -80,8 +80,8 @@ cn9k_sso_hws_forward_event(struct cn9k_sso_hws *ws, const struct rte_event *ev)
 	const uint8_t grp = ev->queue_id;
 
 	/* Group hasn't changed, Use SWTAG to forward the event */
-	if (CNXK_GRP_FROM_TAG(plt_read64(ws->tag_op)) == grp) {
-		cn9k_sso_hws_fwd_swtag((struct cn9k_sso_hws_state *)ws, ev);
+	if (CNXK_GRP_FROM_TAG(plt_read64(ws->base + SSOW_LF_GWS_TAG)) == grp) {
+		cn9k_sso_hws_fwd_swtag(ws->base, ev);
 		ws->swtag_req = 1;
 	} else {
 		/*
@@ -89,8 +89,7 @@ cn9k_sso_hws_forward_event(struct cn9k_sso_hws *ws, const struct rte_event *ev)
 		 * Use deschedule/add_work operation to transfer the event to
 		 * new group/core
 		 */
-		cn9k_sso_hws_fwd_group((struct cn9k_sso_hws_state *)ws, ev,
-				       grp);
+		cn9k_sso_hws_fwd_group(ws->base, ev, grp);
 	}
 }
 
@@ -115,15 +114,14 @@ cn9k_sso_hws_dual_new_event(struct cn9k_sso_hws_dual *dws,
 }
 
 static __rte_always_inline void
-cn9k_sso_hws_dual_forward_event(struct cn9k_sso_hws_dual *dws,
-				struct cn9k_sso_hws_state *vws,
+cn9k_sso_hws_dual_forward_event(struct cn9k_sso_hws_dual *dws, uint64_t base,
 				const struct rte_event *ev)
 {
 	const uint8_t grp = ev->queue_id;
 
 	/* Group hasn't changed, Use SWTAG to forward the event */
-	if (CNXK_GRP_FROM_TAG(plt_read64(vws->tag_op)) == grp) {
-		cn9k_sso_hws_fwd_swtag(vws, ev);
+	if (CNXK_GRP_FROM_TAG(plt_read64(base + SSOW_LF_GWS_TAG)) == grp) {
+		cn9k_sso_hws_fwd_swtag(base, ev);
 		dws->swtag_req = 1;
 	} else {
 		/*
@@ -131,7 +129,7 @@ cn9k_sso_hws_dual_forward_event(struct cn9k_sso_hws_dual *dws,
 		 * Use deschedule/add_work operation to transfer the event to
 		 * new group/core
 		 */
-		cn9k_sso_hws_fwd_group(vws, ev, grp);
+		cn9k_sso_hws_fwd_group(base, ev, grp);
 	}
 }
 
@@ -149,8 +147,7 @@ cn9k_wqe_to_mbuf(uint64_t wqe, const uint64_t mbuf, uint8_t port_id,
 }
 
 static __rte_always_inline uint16_t
-cn9k_sso_hws_dual_get_work(struct cn9k_sso_hws_state *ws,
-			   struct cn9k_sso_hws_state *ws_pair,
+cn9k_sso_hws_dual_get_work(uint64_t base, uint64_t pair_base,
 			   struct rte_event *ev, const uint32_t flags,
 			   const void *const lookup_mem,
 			   struct cnxk_timesync_info *const tstamp)
@@ -177,14 +174,15 @@ cn9k_sso_hws_dual_get_work(struct cn9k_sso_hws_state *ws,
 		     "		prfm pldl1keep, [%[mbuf]]	\n"
 		     : [tag] "=&r"(gw.u64[0]), [wqp] "=&r"(gw.u64[1]),
 		       [mbuf] "=&r"(mbuf)
-		     : [tag_loc] "r"(ws->tag_op), [wqp_loc] "r"(ws->wqp_op),
-		       [gw] "r"(set_gw), [pong] "r"(ws_pair->getwrk_op));
+		     : [tag_loc] "r"(base + SSOW_LF_GWS_TAG),
+		       [wqp_loc] "r"(base + SSOW_LF_GWS_WQP), [gw] "r"(set_gw),
+		       [pong] "r"(pair_base + SSOW_LF_GWS_OP_GET_WORK0));
 #else
-	gw.u64[0] = plt_read64(ws->tag_op);
+	gw.u64[0] = plt_read64(base + SSOW_LF_GWS_TAG);
 	while ((BIT_ULL(63)) & gw.u64[0])
-		gw.u64[0] = plt_read64(ws->tag_op);
-	gw.u64[1] = plt_read64(ws->wqp_op);
-	plt_write64(set_gw, ws_pair->getwrk_op);
+		gw.u64[0] = plt_read64(base + SSOW_LF_GWS_TAG);
+	gw.u64[1] = plt_read64(base + SSOW_LF_GWS_WQP);
+	plt_write64(set_gw, pair_base + SSOW_LF_GWS_OP_GET_WORK0);
 	mbuf = (uint64_t)((char *)gw.u64[1] - sizeof(struct rte_mbuf));
 #endif
 
@@ -236,7 +234,7 @@ cn9k_sso_hws_get_work(struct cn9k_sso_hws *ws, struct rte_event *ev,
 
 	plt_write64(BIT_ULL(16) | /* wait for work. */
 			    1,	  /* Use Mask set 0. */
-		    ws->getwrk_op);
+		    ws->base + SSOW_LF_GWS_OP_GET_WORK0);
 
 	if (flags & NIX_RX_OFFLOAD_PTYPE_F)
 		rte_prefetch_non_temporal(lookup_mem);
@@ -255,13 +253,14 @@ cn9k_sso_hws_get_work(struct cn9k_sso_hws *ws, struct rte_event *ev,
 		     "		prfm pldl1keep, [%[mbuf]]	\n"
 		     : [tag] "=&r"(gw.u64[0]), [wqp] "=&r"(gw.u64[1]),
 		       [mbuf] "=&r"(mbuf)
-		     : [tag_loc] "r"(ws->tag_op), [wqp_loc] "r"(ws->wqp_op));
+		     : [tag_loc] "r"(ws->base + SSOW_LF_GWS_TAG),
+		       [wqp_loc] "r"(ws->base + SSOW_LF_GWS_WQP));
 #else
-	gw.u64[0] = plt_read64(ws->tag_op);
+	gw.u64[0] = plt_read64(ws->base + SSOW_LF_GWS_TAG);
 	while ((BIT_ULL(63)) & gw.u64[0])
-		gw.u64[0] = plt_read64(ws->tag_op);
+		gw.u64[0] = plt_read64(ws->base + SSOW_LF_GWS_TAG);
 
-	gw.u64[1] = plt_read64(ws->wqp_op);
+	gw.u64[1] = plt_read64(ws->base + SSOW_LF_GWS_WQP);
 	mbuf = (uint64_t)((char *)gw.u64[1] - sizeof(struct rte_mbuf));
 #endif
 
@@ -303,7 +302,7 @@ cn9k_sso_hws_get_work(struct cn9k_sso_hws *ws, struct rte_event *ev,
 
 /* Used in cleaning up workslot. */
 static __rte_always_inline uint16_t
-cn9k_sso_hws_get_work_empty(struct cn9k_sso_hws_state *ws, struct rte_event *ev)
+cn9k_sso_hws_get_work_empty(uint64_t base, struct rte_event *ev)
 {
 	union {
 		__uint128_t get_work;
@@ -325,13 +324,14 @@ cn9k_sso_hws_get_work_empty(struct cn9k_sso_hws_state *ws, struct rte_event *ev)
 		     "		sub %[mbuf], %[wqp], #0x80	\n"
 		     : [tag] "=&r"(gw.u64[0]), [wqp] "=&r"(gw.u64[1]),
 		       [mbuf] "=&r"(mbuf)
-		     : [tag_loc] "r"(ws->tag_op), [wqp_loc] "r"(ws->wqp_op));
+		     : [tag_loc] "r"(base + SSOW_LF_GWS_TAG),
+		       [wqp_loc] "r"(base + SSOW_LF_GWS_WQP));
 #else
-	gw.u64[0] = plt_read64(ws->tag_op);
+	gw.u64[0] = plt_read64(base + SSOW_LF_GWS_TAG);
 	while ((BIT_ULL(63)) & gw.u64[0])
-		gw.u64[0] = plt_read64(ws->tag_op);
+		gw.u64[0] = plt_read64(base + SSOW_LF_GWS_TAG);
 
-	gw.u64[1] = plt_read64(ws->wqp_op);
+	gw.u64[1] = plt_read64(base + SSOW_LF_GWS_WQP);
 	mbuf = (uint64_t)((char *)gw.u64[1] - sizeof(struct rte_mbuf));
 #endif
 

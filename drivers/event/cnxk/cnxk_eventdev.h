@@ -136,19 +136,9 @@ struct cn10k_sso_hws {
 	uint8_t tx_adptr_data[];
 } __rte_cache_aligned;
 
-/* CN9K HWS ops */
-#define CN9K_SSO_HWS_OPS                                                       \
-	uintptr_t swtag_desched_op;                                            \
-	uintptr_t swtag_flush_op;                                              \
-	uintptr_t swtag_norm_op;                                               \
-	uintptr_t getwrk_op;                                                   \
-	uintptr_t tag_op;                                                      \
-	uintptr_t wqp_op
-
 /* Event port a.k.a GWS */
 struct cn9k_sso_hws {
-	/* Get Work Fastpath data */
-	CN9K_SSO_HWS_OPS;
+	uint64_t base;
 	/* PTP timestamp */
 	struct cnxk_timesync_info *tstamp;
 	void *lookup_mem;
@@ -159,17 +149,11 @@ struct cn9k_sso_hws {
 	uint64_t *fc_mem;
 	uintptr_t grp_base;
 	/* Tx Fastpath data */
-	uint64_t base __rte_cache_aligned;
-	uint8_t tx_adptr_data[];
+	uint8_t tx_adptr_data[] __rte_cache_aligned;
 } __rte_cache_aligned;
 
-struct cn9k_sso_hws_state {
-	CN9K_SSO_HWS_OPS;
-};
-
 struct cn9k_sso_hws_dual {
-	/* Get Work Fastpath data */
-	struct cn9k_sso_hws_state ws_state[2]; /* Ping and Pong */
+	uint64_t base[2]; /* Ping and Pong */
 	/* PTP timestamp */
 	struct cnxk_timesync_info *tstamp;
 	void *lookup_mem;
@@ -181,8 +165,7 @@ struct cn9k_sso_hws_dual {
 	uint64_t *fc_mem;
 	uintptr_t grp_base;
 	/* Tx Fastpath data */
-	uint64_t base[2] __rte_cache_aligned;
-	uint8_t tx_adptr_data[];
+	uint8_t tx_adptr_data[] __rte_cache_aligned;
 } __rte_cache_aligned;
 
 struct cnxk_sso_hws_cookie {

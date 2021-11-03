@@ -27,17 +27,6 @@
 			[!!(dev->tx_offloads & NIX_TX_OFFLOAD_OL3_OL4_CSUM_F)] \
 			[!!(dev->tx_offloads & NIX_TX_OFFLOAD_L3_L4_CSUM_F)])
 
-static void
-cn9k_init_hws_ops(struct cn9k_sso_hws_state *ws, uintptr_t base)
-{
-	ws->tag_op = base + SSOW_LF_GWS_TAG;
-	ws->wqp_op = base + SSOW_LF_GWS_WQP;
-	ws->getwrk_op = base + SSOW_LF_GWS_OP_GET_WORK0;
-	ws->swtag_flush_op = base + SSOW_LF_GWS_OP_SWTAG_FLUSH;
-	ws->swtag_norm_op = base + SSOW_LF_GWS_OP_SWTAG_NORM;
-	ws->swtag_desched_op = base + SSOW_LF_GWS_OP_SWTAG_DESCHED;
-}
-
 static int
 cn9k_sso_hws_link(void *arg, void *port, uint16_t *map, uint16_t nb_link)
 {
@@ -95,7 +84,7 @@ cn9k_sso_hws_setup(void *arg, void *hws, uintptr_t grp_base)
 	uint64_t val;
 
 	/* Set get_work tmo for HWS */
-	val = NSEC2USEC(dev->deq_tmo_ns) - 1;
+	val = dev->deq_tmo_ns ? NSEC2USEC(dev->deq_tmo_ns) - 1 : 0;
 	if (dev->dual_ws) {
 		dws = hws;
 		dws->grp_base = grp_base;
@@ -148,7 +137,6 @@ cn9k_sso_hws_flush_events(void *hws, uint8_t queue_id, uintptr_t base,
 {
 	struct cnxk_sso_evdev *dev = cnxk_sso_pmd_priv(arg);
 	struct cn9k_sso_hws_dual *dws;
-	struct cn9k_sso_hws_state *st;
 	struct cn9k_sso_hws *ws;
 	uint64_t cq_ds_cnt = 1;
 	uint64_t aq_cnt = 1;
@@ -170,22 +158,21 @@ cn9k_sso_hws_flush_events(void *hws, uint8_t queue_id, uintptr_t base,
 
 	if (dev->dual_ws) {
 		dws = hws;
-		st = &dws->ws_state[0];
 		ws_base = dws->base[0];
 	} else {
 		ws = hws;
-		st = (struct cn9k_sso_hws_state *)ws;
 		ws_base = ws->base;
 	}
 
 	while (aq_cnt || cq_ds_cnt || ds_cnt) {
-		plt_write64(req, st->getwrk_op);
-		cn9k_sso_hws_get_work_empty(st, &ev);
+		plt_write64(req, ws_base + SSOW_LF_GWS_OP_GET_WORK0);
+		cn9k_sso_hws_get_work_empty(ws_base, &ev);
 		if (fn != NULL && ev.u64 != 0)
 			fn(arg, ev);
 		if (ev.sched_type != SSO_TT_EMPTY)
-			cnxk_sso_hws_swtag_flush(st->tag_op,
-						 st->swtag_flush_op);
+			cnxk_sso_hws_swtag_flush(
+				ws_base + SSOW_LF_GWS_TAG,
+				ws_base + SSOW_LF_GWS_OP_SWTAG_FLUSH);
 		do {
 			val = plt_read64(ws_base + SSOW_LF_GWS_PENDSTATE);
 		} while (val & BIT_ULL(56));
@@ -674,8 +661,6 @@ cn9k_sso_init_hws_mem(void *arg, uint8_t port_id)
 			&dev->sso, CN9K_DUAL_WS_PAIR_ID(port_id, 0));
 		dws->base[1] = roc_sso_hws_base_get(
 			&dev->sso, CN9K_DUAL_WS_PAIR_ID(port_id, 1));
-		cn9k_init_hws_ops(&dws->ws_state[0], dws->base[0]);
-		cn9k_init_hws_ops(&dws->ws_state[1], dws->base[1]);
 		dws->hws_id = port_id;
 		dws->swtag_req = 0;
 		dws->vws = 0;
@@ -695,7 +680,6 @@ cn9k_sso_init_hws_mem(void *arg, uint8_t port_id)
 		/* First cache line is reserved for cookie */
 		ws = RTE_PTR_ADD(ws, sizeof(struct cnxk_sso_hws_cookie));
 		ws->base = roc_sso_hws_base_get(&dev->sso, port_id);
-		cn9k_init_hws_ops((struct cn9k_sso_hws_state *)ws, ws->base);
 		ws->hws_id = port_id;
 		ws->swtag_req = 0;
 
