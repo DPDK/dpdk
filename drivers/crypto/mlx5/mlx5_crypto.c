@@ -736,7 +736,7 @@ mlx5_crypto_uar_release(struct mlx5_crypto_priv *priv)
 static int
 mlx5_crypto_uar_prepare(struct mlx5_crypto_priv *priv)
 {
-	priv->uar = mlx5_devx_alloc_uar(priv->cdev->ctx, -1);
+	priv->uar = mlx5_devx_alloc_uar(priv->cdev);
 	if (priv->uar)
 		priv->uar_addr = mlx5_os_get_devx_uar_reg_addr(priv->uar);
 	if (priv->uar == NULL || priv->uar_addr == NULL) {

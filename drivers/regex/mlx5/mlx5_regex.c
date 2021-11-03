@@ -107,7 +107,7 @@ mlx5_regex_dev_probe(struct mlx5_common_device *cdev)
 	 * registers writings, it is safe to allocate UAR with any
 	 * memory mapping type.
 	 */
-	priv->uar = mlx5_devx_alloc_uar(priv->cdev->ctx, -1);
+	priv->uar = mlx5_devx_alloc_uar(priv->cdev);
 	if (!priv->uar) {
 		DRV_LOG(ERR, "can't allocate uar.");
 		rte_errno = ENOMEM;

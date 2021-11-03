@@ -683,7 +683,7 @@ mlx5_compress_uar_release(struct mlx5_compress_priv *priv)
 static int
 mlx5_compress_uar_prepare(struct mlx5_compress_priv *priv)
 {
-	priv->uar = mlx5_devx_alloc_uar(priv->cdev->ctx, -1);
+	priv->uar = mlx5_devx_alloc_uar(priv->cdev);
 	if (priv->uar == NULL || mlx5_os_get_devx_uar_reg_addr(priv->uar) ==
 	    NULL) {
 		rte_errno = errno;

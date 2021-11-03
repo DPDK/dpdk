@@ -61,7 +61,7 @@ mlx5_vdpa_event_qp_global_prepare(struct mlx5_vdpa_priv *priv)
 	 * registers writings, it is safe to allocate UAR with any
 	 * memory mapping type.
 	 */
-	priv->uar = mlx5_devx_alloc_uar(priv->cdev->ctx, -1);
+	priv->uar = mlx5_devx_alloc_uar(priv->cdev);
 	if (!priv->uar) {
 		rte_errno = errno;
 		DRV_LOG(ERR, "Failed to allocate UAR.");

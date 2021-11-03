@@ -284,8 +284,6 @@ __rte_internal
 void mlx5_translate_port_name(const char *port_name_in,
 			      struct mlx5_switch_info *port_info_out);
 void mlx5_glue_constructor(void);
-__rte_internal
-void *mlx5_devx_alloc_uar(void *ctx, int mapping);
 extern uint8_t haswell_broadwell_cpu;
 
 __rte_internal
@@ -416,6 +414,9 @@ __rte_internal
 void
 mlx5_dev_mempool_unregister(struct mlx5_common_device *cdev,
 			    struct rte_mempool *mp);
+
+__rte_internal
+void *mlx5_devx_alloc_uar(struct mlx5_common_device *cdev);
 
 /* mlx5_common_os.c */
 
