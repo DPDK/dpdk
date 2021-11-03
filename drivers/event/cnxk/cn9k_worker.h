@@ -31,7 +31,8 @@ cn9k_sso_hws_new_event(struct cn9k_sso_hws *ws, const struct rte_event *ev)
 	if (ws->xaq_lmt <= *ws->fc_mem)
 		return 0;
 
-	cnxk_sso_hws_add_work(event_ptr, tag, new_tt, ws->grps_base[grp]);
+	cnxk_sso_hws_add_work(event_ptr, tag, new_tt,
+			      ws->grp_base + (grp << 12));
 	return 1;
 }
 
@@ -108,7 +109,8 @@ cn9k_sso_hws_dual_new_event(struct cn9k_sso_hws_dual *dws,
 	if (dws->xaq_lmt <= *dws->fc_mem)
 		return 0;
 
-	cnxk_sso_hws_add_work(event_ptr, tag, new_tt, dws->grps_base[grp]);
+	cnxk_sso_hws_add_work(event_ptr, tag, new_tt,
+			      dws->grp_base + (grp << 12));
 	return 1;
 }
 

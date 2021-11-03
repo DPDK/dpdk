@@ -330,8 +330,7 @@ cnxk_sso_port_setup(struct rte_eventdev *event_dev, uint8_t port_id,
 		    cnxk_sso_hws_setup_t hws_setup_fn)
 {
 	struct cnxk_sso_evdev *dev = cnxk_sso_pmd_priv(event_dev);
-	uintptr_t grps_base[CNXK_SSO_MAX_HWGRP] = {0};
-	uint16_t q;
+	uintptr_t grp_base = 0;
 
 	plt_sso_dbg("Port=%d", port_id);
 	if (event_dev->data->ports[port_id] == NULL) {
@@ -339,15 +338,13 @@ cnxk_sso_port_setup(struct rte_eventdev *event_dev, uint8_t port_id,
 		return -EINVAL;
 	}
 
-	for (q = 0; q < dev->nb_event_queues; q++) {
-		grps_base[q] = roc_sso_hwgrp_base_get(&dev->sso, q);
-		if (grps_base[q] == 0) {
-			plt_err("Failed to get grp[%d] base addr", q);
-			return -EINVAL;
-		}
+	grp_base = roc_sso_hwgrp_base_get(&dev->sso, 0);
+	if (grp_base == 0) {
+		plt_err("Failed to get grp base addr");
+		return -EINVAL;
 	}
 
-	hws_setup_fn(dev, event_dev->data->ports[port_id], grps_base);
+	hws_setup_fn(dev, event_dev->data->ports[port_id], grp_base);
 	plt_sso_dbg("Port=%d ws=%p", port_id, event_dev->data->ports[port_id]);
 	rte_mb();
 

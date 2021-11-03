@@ -91,14 +91,13 @@ cn10k_sso_hws_unlink(void *arg, void *port, uint16_t *map, uint16_t nb_link)
 }
 
 static void
-cn10k_sso_hws_setup(void *arg, void *hws, uintptr_t *grps_base)
+cn10k_sso_hws_setup(void *arg, void *hws, uintptr_t grp_base)
 {
 	struct cnxk_sso_evdev *dev = arg;
 	struct cn10k_sso_hws *ws = hws;
 	uint64_t val;
 
-	rte_memcpy(ws->grps_base, grps_base,
-		   sizeof(uintptr_t) * CNXK_SSO_MAX_HWGRP);
+	ws->grp_base = grp_base;
 	ws->fc_mem = (uint64_t *)dev->fc_iova;
 	ws->xaq_lmt = dev->xaq_lmt;
 

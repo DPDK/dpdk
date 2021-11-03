@@ -61,7 +61,7 @@
 	} while (0)
 
 typedef void *(*cnxk_sso_init_hws_mem_t)(void *dev, uint8_t port_id);
-typedef void (*cnxk_sso_hws_setup_t)(void *dev, void *ws, uintptr_t *grp_base);
+typedef void (*cnxk_sso_hws_setup_t)(void *dev, void *ws, uintptr_t grp_base);
 typedef void (*cnxk_sso_hws_release_t)(void *dev, void *ws);
 typedef int (*cnxk_sso_link_t)(void *dev, void *ws, uint16_t *map,
 			       uint16_t nb_link);
@@ -129,7 +129,7 @@ struct cn10k_sso_hws {
 	/* Add Work Fastpath data */
 	uint64_t xaq_lmt __rte_cache_aligned;
 	uint64_t *fc_mem;
-	uintptr_t grps_base[CNXK_SSO_MAX_HWGRP];
+	uintptr_t grp_base;
 	/* Tx Fastpath data */
 	uint64_t tx_base __rte_cache_aligned;
 	uintptr_t lmt_base;
@@ -157,7 +157,7 @@ struct cn9k_sso_hws {
 	/* Add Work Fastpath data */
 	uint64_t xaq_lmt __rte_cache_aligned;
 	uint64_t *fc_mem;
-	uintptr_t grps_base[CNXK_SSO_MAX_HWGRP];
+	uintptr_t grp_base;
 	/* Tx Fastpath data */
 	uint64_t base __rte_cache_aligned;
 	uint8_t tx_adptr_data[];
@@ -179,7 +179,7 @@ struct cn9k_sso_hws_dual {
 	/* Add Work Fastpath data */
 	uint64_t xaq_lmt __rte_cache_aligned;
 	uint64_t *fc_mem;
-	uintptr_t grps_base[CNXK_SSO_MAX_HWGRP];
+	uintptr_t grp_base;
 	/* Tx Fastpath data */
 	uint64_t base[2] __rte_cache_aligned;
 	uint8_t tx_adptr_data[];

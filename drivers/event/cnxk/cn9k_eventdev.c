@@ -87,7 +87,7 @@ cn9k_sso_hws_unlink(void *arg, void *port, uint16_t *map, uint16_t nb_link)
 }
 
 static void
-cn9k_sso_hws_setup(void *arg, void *hws, uintptr_t *grps_base)
+cn9k_sso_hws_setup(void *arg, void *hws, uintptr_t grp_base)
 {
 	struct cnxk_sso_evdev *dev = arg;
 	struct cn9k_sso_hws_dual *dws;
@@ -98,8 +98,7 @@ cn9k_sso_hws_setup(void *arg, void *hws, uintptr_t *grps_base)
 	val = NSEC2USEC(dev->deq_tmo_ns) - 1;
 	if (dev->dual_ws) {
 		dws = hws;
-		rte_memcpy(dws->grps_base, grps_base,
-			   sizeof(uintptr_t) * CNXK_SSO_MAX_HWGRP);
+		dws->grp_base = grp_base;
 		dws->fc_mem = (uint64_t *)dev->fc_iova;
 		dws->xaq_lmt = dev->xaq_lmt;
 
@@ -107,8 +106,7 @@ cn9k_sso_hws_setup(void *arg, void *hws, uintptr_t *grps_base)
 		plt_write64(val, dws->base[1] + SSOW_LF_GWS_NW_TIM);
 	} else {
 		ws = hws;
-		rte_memcpy(ws->grps_base, grps_base,
-			   sizeof(uintptr_t) * CNXK_SSO_MAX_HWGRP);
+		ws->grp_base = grp_base;
 		ws->fc_mem = (uint64_t *)dev->fc_iova;
 		ws->xaq_lmt = dev->xaq_lmt;
 

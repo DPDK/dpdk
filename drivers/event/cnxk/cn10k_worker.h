@@ -30,7 +30,8 @@ cn10k_sso_hws_new_event(struct cn10k_sso_hws *ws, const struct rte_event *ev)
 	if (ws->xaq_lmt <= *ws->fc_mem)
 		return 0;
 
-	cnxk_sso_hws_add_work(event_ptr, tag, new_tt, ws->grps_base[grp]);
+	cnxk_sso_hws_add_work(event_ptr, tag, new_tt,
+			      ws->grp_base + (grp << 12));
 	return 1;
 }
 
