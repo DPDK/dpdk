@@ -62,7 +62,12 @@ includes += include_directories(
 )
 
 if qat_compress
-    foreach f: ['qat_comp_pmd.c', 'qat_comp.c']
+    foreach f: ['qat_comp_pmd.c', 'qat_comp.c',
+            'dev/qat_comp_pmd_gen1.c',
+            'dev/qat_comp_pmd_gen2.c',
+            'dev/qat_comp_pmd_gen3.c',
+            'dev/qat_comp_pmd_gen4.c',
+        ]
         sources += files(join_paths(qat_compress_relpath, f))
     endforeach
 endif
