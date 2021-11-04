@@ -142,6 +142,28 @@ static struct ice_flow_parser ice_switch_dist_parser_comms;
 static struct ice_flow_parser ice_switch_perm_parser_os;
 static struct ice_flow_parser ice_switch_perm_parser_comms;
 
+enum ice_sw_fltr_status {
+	ICE_SW_FLTR_ADDED,
+	ICE_SW_FLTR_RMV_FAILED_ON_RIDRECT,
+	ICE_SW_FLTR_ADD_FAILED_ON_RIDRECT,
+};
+
+struct ice_switch_filter_conf {
+	enum ice_sw_fltr_status fltr_status;
+
+	struct ice_rule_query_data sw_query_data;
+
+	/*
+	 * The lookup elements and rule info are saved here when filter creation
+	 * succeeds.
+	 */
+	uint16_t vsi_num;
+	uint16_t lkups_num;
+	struct ice_adv_lkup_elem *lkups;
+	struct ice_adv_rule_info rule_info;
+};
+
+
 static struct
 ice_pattern_match_item ice_switch_pattern_dist_os[] = {
 	{pattern_ethertype,
@@ -396,7 +418,7 @@ ice_switch_create(struct ice_adapter *ad,
 	struct ice_pf *pf = &ad->pf;
 	struct ice_hw *hw = ICE_PF_TO_HW(pf);
 	struct ice_rule_query_data rule_added = {0};
-	struct ice_rule_query_data *filter_ptr;
+	struct ice_switch_filter_conf *filter_conf_ptr;
 	struct ice_adv_lkup_elem *list =
 		((struct sw_meta *)meta)->list;
 	uint16_t lkups_cnt =
@@ -418,18 +440,26 @@ ice_switch_create(struct ice_adapter *ad,
 	}
 	ret = ice_add_adv_rule(hw, list, lkups_cnt, rule_info, &rule_added);
 	if (!ret) {
-		filter_ptr = rte_zmalloc("ice_switch_filter",
-			sizeof(struct ice_rule_query_data), 0);
-		if (!filter_ptr) {
+		filter_conf_ptr = rte_zmalloc("ice_switch_filter",
+			sizeof(struct ice_switch_filter_conf), 0);
+		if (!filter_conf_ptr) {
 			rte_flow_error_set(error, EINVAL,
 				   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
 				   "No memory for ice_switch_filter");
 			goto error;
 		}
-		flow->rule = filter_ptr;
-		rte_memcpy(filter_ptr,
-			&rule_added,
-			sizeof(struct ice_rule_query_data));
+
+		filter_conf_ptr->sw_query_data = rule_added;
+
+		filter_conf_ptr->vsi_num =
+			ice_get_hw_vsi_num(hw, rule_info->sw_act.vsi_handle);
+		filter_conf_ptr->lkups = list;
+		filter_conf_ptr->lkups_num = lkups_cnt;
+		filter_conf_ptr->rule_info = *rule_info;
+
+		filter_conf_ptr->fltr_status = ICE_SW_FLTR_ADDED;
+
+		flow->rule = filter_conf_ptr;
 	} else {
 		rte_flow_error_set(error, EINVAL,
 			RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
@@ -437,7 +467,6 @@ ice_switch_create(struct ice_adapter *ad,
 		goto error;
 	}
 
-	rte_free(list);
 	rte_free(meta);
 	return 0;
 
@@ -448,6 +477,18 @@ error:
 	return -rte_errno;
 }
 
+static inline void
+ice_switch_filter_rule_free(struct rte_flow *flow)
+{
+	struct ice_switch_filter_conf *filter_conf_ptr =
+		(struct ice_switch_filter_conf *)flow->rule;
+
+	if (filter_conf_ptr)
+		rte_free(filter_conf_ptr->lkups);
+
+	rte_free(filter_conf_ptr);
+}
+
 static int
 ice_switch_destroy(struct ice_adapter *ad,
 		struct rte_flow *flow,
@@ -455,20 +496,24 @@ ice_switch_destroy(struct ice_adapter *ad,
 {
 	struct ice_hw *hw = &ad->hw;
 	int ret;
-	struct ice_rule_query_data *filter_ptr;
+	struct ice_switch_filter_conf *filter_conf_ptr;
 
-	filter_ptr = (struct ice_rule_query_data *)
+	filter_conf_ptr = (struct ice_switch_filter_conf *)
 		flow->rule;
 
-	if (!filter_ptr) {
+	if (!filter_conf_ptr ||
+	    filter_conf_ptr->fltr_status == ICE_SW_FLTR_ADD_FAILED_ON_RIDRECT) {
 		rte_flow_error_set(error, EINVAL,
 			RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
 			"no such flow"
 			" create by switch filter");
+
+		ice_switch_filter_rule_free(flow);
+
 		return -rte_errno;
 	}
 
-	ret = ice_rem_adv_rule_by_id(hw, filter_ptr);
+	ret = ice_rem_adv_rule_by_id(hw, &filter_conf_ptr->sw_query_data);
 	if (ret) {
 		rte_flow_error_set(error, EINVAL,
 			RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
@@ -476,14 +521,8 @@ ice_switch_destroy(struct ice_adapter *ad,
 		return -rte_errno;
 	}
 
-	rte_free(filter_ptr);
+	ice_switch_filter_rule_free(flow);
 	return ret;
-}
-
-static void
-ice_switch_filter_rule_free(struct rte_flow *flow)
-{
-	rte_free(flow->rule);
 }
 
 static uint64_t
