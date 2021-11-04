@@ -75,6 +75,11 @@ endif
 if qat_crypto
     foreach f: ['qat_sym_pmd.c', 'qat_sym.c', 'qat_sym_session.c',
             'qat_sym_hw_dp.c', 'qat_asym_pmd.c', 'qat_asym.c', 'qat_crypto.c',
+            'dev/qat_sym_pmd_gen1.c',
+            'dev/qat_asym_pmd_gen1.c',
+            'dev/qat_crypto_pmd_gen2.c',
+            'dev/qat_crypto_pmd_gen3.c',
+            'dev/qat_crypto_pmd_gen4.c',
         ]
         sources += files(join_paths(qat_crypto_relpath, f))
     endforeach

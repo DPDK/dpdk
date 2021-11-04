@@ -6,9 +6,6 @@
  #define _QAT_CRYPTO_H_
 
 #include <rte_cryptodev.h>
-#ifdef RTE_LIB_SECURITY
-#include <rte_security.h>
-#endif
 
 #include "qat_device.h"
 
