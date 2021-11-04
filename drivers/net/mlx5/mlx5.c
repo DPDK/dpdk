@@ -1687,20 +1687,12 @@ mlx5_dev_close(struct rte_eth_dev *dev)
 	/* Free the eCPRI flex parser resource. */
 	mlx5_flex_parser_ecpri_release(dev);
 	mlx5_flex_item_port_cleanup(dev);
-	if (priv->rxqs != NULL) {
+	if (priv->rxq_privs != NULL) {
 		/* XXX race condition if mlx5_rx_burst() is still running. */
 		rte_delay_us_sleep(1000);
 		for (i = 0; (i != priv->rxqs_n); ++i)
 			mlx5_rxq_release(dev, i);
 		priv->rxqs_n = 0;
-		priv->rxqs = NULL;
-	}
-	if (priv->representor) {
-		/* Each representor has a dedicated interrupts handler */
-		mlx5_free(dev->intr_handle);
-		dev->intr_handle = NULL;
-	}
-	if (priv->rxq_privs != NULL) {
 		mlx5_free(priv->rxq_privs);
 		priv->rxq_privs = NULL;
 	}

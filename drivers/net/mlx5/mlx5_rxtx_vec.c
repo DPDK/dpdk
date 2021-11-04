@@ -578,11 +578,11 @@ mlx5_check_vec_rx_support(struct rte_eth_dev *dev)
 		return -ENOTSUP;
 	/* All the configured queues should support. */
 	for (i = 0; i < priv->rxqs_n; ++i) {
-		struct mlx5_rxq_data *rxq = (*priv->rxqs)[i];
+		struct mlx5_rxq_data *rxq_data = mlx5_rxq_data_get(dev, i);
 
-		if (!rxq)
+		if (!rxq_data)
 			continue;
-		if (mlx5_rxq_check_vec_support(rxq) < 0)
+		if (mlx5_rxq_check_vec_support(rxq_data) < 0)
 			break;
 	}
 	if (i != priv->rxqs_n)

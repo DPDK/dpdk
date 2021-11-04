@@ -114,7 +114,6 @@ mlx5_dev_configure(struct rte_eth_dev *dev)
 		rte_errno = ENOMEM;
 		return -rte_errno;
 	}
-	priv->rxqs = (void *)dev->data->rx_queues;
 	priv->txqs = (void *)dev->data->tx_queues;
 	if (txqs_n != priv->txqs_n) {
 		DRV_LOG(INFO, "port %u Tx queues number update: %u -> %u",
@@ -171,11 +170,8 @@ mlx5_dev_configure_rss_reta(struct rte_eth_dev *dev)
 		return -rte_errno;
 	}
 	for (i = 0, j = 0; i < rxqs_n; i++) {
-		struct mlx5_rxq_data *rxq_data;
-		struct mlx5_rxq_ctrl *rxq_ctrl;
+		struct mlx5_rxq_ctrl *rxq_ctrl = mlx5_rxq_ctrl_get(dev, i);
 
-		rxq_data = (*priv->rxqs)[i];
-		rxq_ctrl = container_of(rxq_data, struct mlx5_rxq_ctrl, rxq);
 		if (rxq_ctrl && rxq_ctrl->type == MLX5_RXQ_TYPE_STANDARD)
 			rss_queue_arr[j++] = i;
 	}

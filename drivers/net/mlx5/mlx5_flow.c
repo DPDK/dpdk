@@ -1210,10 +1210,11 @@ flow_drv_rxq_flags_set(struct rte_eth_dev *dev,
 		return;
 	for (i = 0; i != ind_tbl->queues_n; ++i) {
 		int idx = ind_tbl->queues[i];
-		struct mlx5_rxq_ctrl *rxq_ctrl =
-			container_of((*priv->rxqs)[idx],
-				     struct mlx5_rxq_ctrl, rxq);
+		struct mlx5_rxq_ctrl *rxq_ctrl = mlx5_rxq_ctrl_get(dev, idx);
 
+		MLX5_ASSERT(rxq_ctrl != NULL);
+		if (rxq_ctrl == NULL)
+			continue;
 		/*
 		 * To support metadata register copy on Tx loopback,
 		 * this must be always enabled (metadata may arive
@@ -1305,10 +1306,11 @@ flow_drv_rxq_flags_trim(struct rte_eth_dev *dev,
 	MLX5_ASSERT(dev->data->dev_started);
 	for (i = 0; i != ind_tbl->queues_n; ++i) {
 		int idx = ind_tbl->queues[i];
-		struct mlx5_rxq_ctrl *rxq_ctrl =
-			container_of((*priv->rxqs)[idx],
-				     struct mlx5_rxq_ctrl, rxq);
+		struct mlx5_rxq_ctrl *rxq_ctrl = mlx5_rxq_ctrl_get(dev, idx);
 
+		MLX5_ASSERT(rxq_ctrl != NULL);
+		if (rxq_ctrl == NULL)
+			continue;
 		if (priv->config.dv_flow_en &&
 		    priv->config.dv_xmeta_en != MLX5_XMETA_MODE_LEGACY &&
 		    mlx5_flow_ext_mreg_supported(dev)) {
@@ -1369,18 +1371,16 @@ flow_rxq_flags_clear(struct rte_eth_dev *dev)
 	unsigned int i;
 
 	for (i = 0; i != priv->rxqs_n; ++i) {
-		struct mlx5_rxq_ctrl *rxq_ctrl;
+		struct mlx5_rxq_priv *rxq = mlx5_rxq_get(dev, i);
 		unsigned int j;
 
-		if (!(*priv->rxqs)[i])
+		if (rxq == NULL || rxq->ctrl == NULL)
 			continue;
-		rxq_ctrl = container_of((*priv->rxqs)[i],
-					struct mlx5_rxq_ctrl, rxq);
-		rxq_ctrl->flow_mark_n = 0;
-		rxq_ctrl->rxq.mark = 0;
+		rxq->ctrl->flow_mark_n = 0;
+		rxq->ctrl->rxq.mark = 0;
 		for (j = 0; j != MLX5_FLOW_TUNNEL; ++j)
-			rxq_ctrl->flow_tunnels_n[j] = 0;
-		rxq_ctrl->rxq.tunnel = 0;
+			rxq->ctrl->flow_tunnels_n[j] = 0;
+		rxq->ctrl->rxq.tunnel = 0;
 	}
 }
 
@@ -1394,13 +1394,15 @@ void
 mlx5_flow_rxq_dynf_metadata_set(struct rte_eth_dev *dev)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5_rxq_data *data;
 	unsigned int i;
 
 	for (i = 0; i != priv->rxqs_n; ++i) {
-		if (!(*priv->rxqs)[i])
+		struct mlx5_rxq_priv *rxq = mlx5_rxq_get(dev, i);
+		struct mlx5_rxq_data *data;
+
+		if (rxq == NULL || rxq->ctrl == NULL)
 			continue;
-		data = (*priv->rxqs)[i];
+		data = &rxq->ctrl->rxq;
 		if (!rte_flow_dynf_metadata_avail()) {
 			data->dynf_meta = 0;
 			data->flow_meta_mask = 0;
@@ -1591,7 +1593,7 @@ mlx5_flow_validate_action_queue(const struct rte_flow_action *action,
 					  RTE_FLOW_ERROR_TYPE_ACTION_CONF,
 					  &queue->index,
 					  "queue index out of range");
-	if (!(*priv->rxqs)[queue->index])
+	if (mlx5_rxq_get(dev, queue->index) == NULL)
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ACTION_CONF,
 					  &queue->index,
@@ -1622,7 +1624,7 @@ mlx5_flow_validate_action_queue(const struct rte_flow_action *action,
  *   0 on success, a negative errno code on error.
  */
 static int
-mlx5_validate_rss_queues(const struct rte_eth_dev *dev,
+mlx5_validate_rss_queues(struct rte_eth_dev *dev,
 			 const uint16_t *queues, uint32_t queues_n,
 			 const char **error, uint32_t *queue_idx)
 {
@@ -1631,20 +1633,19 @@ mlx5_validate_rss_queues(const struct rte_eth_dev *dev,
 	uint32_t i;
 
 	for (i = 0; i != queues_n; ++i) {
-		struct mlx5_rxq_ctrl *rxq_ctrl;
+		struct mlx5_rxq_ctrl *rxq_ctrl = mlx5_rxq_ctrl_get(dev,
+								   queues[i]);
 
 		if (queues[i] >= priv->rxqs_n) {
 			*error = "queue index out of range";
 			*queue_idx = i;
 			return -EINVAL;
 		}
-		if (!(*priv->rxqs)[queues[i]]) {
+		if (rxq_ctrl == NULL) {
 			*error =  "queue is not configured";
 			*queue_idx = i;
 			return -EINVAL;
 		}
-		rxq_ctrl = container_of((*priv->rxqs)[queues[i]],
-					struct mlx5_rxq_ctrl, rxq);
 		if (i == 0)
 			rxq_type = rxq_ctrl->type;
 		if (rxq_type != rxq_ctrl->type) {

@@ -107,7 +107,7 @@ mlx5_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 	memset(&tmp, 0, sizeof(tmp));
 	/* Add software counters. */
 	for (i = 0; (i != priv->rxqs_n); ++i) {
-		struct mlx5_rxq_data *rxq = (*priv->rxqs)[i];
+		struct mlx5_rxq_data *rxq = mlx5_rxq_data_get(dev, i);
 
 		if (rxq == NULL)
 			continue;
@@ -181,10 +181,11 @@ mlx5_stats_reset(struct rte_eth_dev *dev)
 	unsigned int i;
 
 	for (i = 0; (i != priv->rxqs_n); ++i) {
-		if ((*priv->rxqs)[i] == NULL)
+		struct mlx5_rxq_data *rxq_data = mlx5_rxq_data_get(dev, i);
+
+		if (rxq_data == NULL)
 			continue;
-		memset(&(*priv->rxqs)[i]->stats, 0,
-		       sizeof(struct mlx5_rxq_stats));
+		memset(&rxq_data->stats, 0, sizeof(struct mlx5_rxq_stats));
 	}
 	for (i = 0; (i != priv->txqs_n); ++i) {
 		if ((*priv->txqs)[i] == NULL)

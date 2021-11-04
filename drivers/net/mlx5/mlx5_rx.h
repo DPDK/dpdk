@@ -603,14 +603,13 @@ mlx5_mprq_enabled(struct rte_eth_dev *dev)
 		return 0;
 	/* All the configured queues should be enabled. */
 	for (i = 0; i < priv->rxqs_n; ++i) {
-		struct mlx5_rxq_data *rxq = (*priv->rxqs)[i];
-		struct mlx5_rxq_ctrl *rxq_ctrl = container_of
-			(rxq, struct mlx5_rxq_ctrl, rxq);
+		struct mlx5_rxq_ctrl *rxq_ctrl = mlx5_rxq_ctrl_get(dev, i);
 
-		if (rxq == NULL || rxq_ctrl->type != MLX5_RXQ_TYPE_STANDARD)
+		if (rxq_ctrl == NULL ||
+		    rxq_ctrl->type != MLX5_RXQ_TYPE_STANDARD)
 			continue;
 		n_ibv++;
-		if (mlx5_rxq_mprq_enabled(rxq))
+		if (mlx5_rxq_mprq_enabled(&rxq_ctrl->rxq))
 			++n;
 	}
 	/* Multi-Packet RQ can't be partially configured. */

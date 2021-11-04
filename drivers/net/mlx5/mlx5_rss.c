@@ -65,9 +65,11 @@ mlx5_rss_hash_update(struct rte_eth_dev *dev,
 	priv->rss_conf.rss_hf = rss_conf->rss_hf;
 	/* Enable the RSS hash in all Rx queues. */
 	for (i = 0, idx = 0; idx != priv->rxqs_n; ++i) {
-		if (!(*priv->rxqs)[i])
+		struct mlx5_rxq_priv *rxq = mlx5_rxq_get(dev, i);
+
+		if (rxq == NULL || rxq->ctrl == NULL)
 			continue;
-		(*priv->rxqs)[i]->rss_hash = !!rss_conf->rss_hf &&
+		rxq->ctrl->rxq.rss_hash = !!rss_conf->rss_hf &&
 			!!(dev->data->dev_conf.rxmode.mq_mode & RTE_ETH_MQ_RX_RSS);
 		++idx;
 	}

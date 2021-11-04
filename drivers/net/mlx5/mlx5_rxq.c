@@ -748,7 +748,7 @@ mlx5_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 	}
 	DRV_LOG(DEBUG, "port %u adding Rx queue %u to list",
 		dev->data->port_id, idx);
-	(*priv->rxqs)[idx] = &rxq_ctrl->rxq;
+	dev->data->rx_queues[idx] = &rxq_ctrl->rxq;
 	return 0;
 }
 
@@ -830,7 +830,7 @@ mlx5_rx_hairpin_queue_setup(struct rte_eth_dev *dev, uint16_t idx,
 	}
 	DRV_LOG(DEBUG, "port %u adding hairpin Rx queue %u to list",
 		dev->data->port_id, idx);
-	(*priv->rxqs)[idx] = &rxq_ctrl->rxq;
+	dev->data->rx_queues[idx] = &rxq_ctrl->rxq;
 	return 0;
 }
 
@@ -1163,7 +1163,7 @@ mlx5_mprq_free_mp(struct rte_eth_dev *dev)
 	rte_mempool_free(mp);
 	/* Unset mempool for each Rx queue. */
 	for (i = 0; i != priv->rxqs_n; ++i) {
-		struct mlx5_rxq_data *rxq = (*priv->rxqs)[i];
+		struct mlx5_rxq_data *rxq = mlx5_rxq_data_get(dev, i);
 
 		if (rxq == NULL)
 			continue;
@@ -1204,12 +1204,13 @@ mlx5_mprq_alloc_mp(struct rte_eth_dev *dev)
 		return 0;
 	/* Count the total number of descriptors configured. */
 	for (i = 0; i != priv->rxqs_n; ++i) {
-		struct mlx5_rxq_data *rxq = (*priv->rxqs)[i];
-		struct mlx5_rxq_ctrl *rxq_ctrl = container_of
-			(rxq, struct mlx5_rxq_ctrl, rxq);
+		struct mlx5_rxq_ctrl *rxq_ctrl = mlx5_rxq_ctrl_get(dev, i);
+		struct mlx5_rxq_data *rxq;
 
-		if (rxq == NULL || rxq_ctrl->type != MLX5_RXQ_TYPE_STANDARD)
+		if (rxq_ctrl == NULL ||
+		    rxq_ctrl->type != MLX5_RXQ_TYPE_STANDARD)
 			continue;
+		rxq = &rxq_ctrl->rxq;
 		n_ibv++;
 		desc += 1 << rxq->elts_n;
 		/* Get the max number of strides. */
@@ -1292,13 +1293,12 @@ mlx5_mprq_alloc_mp(struct rte_eth_dev *dev)
 exit:
 	/* Set mempool for each Rx queue. */
 	for (i = 0; i != priv->rxqs_n; ++i) {
-		struct mlx5_rxq_data *rxq = (*priv->rxqs)[i];
-		struct mlx5_rxq_ctrl *rxq_ctrl = container_of
-			(rxq, struct mlx5_rxq_ctrl, rxq);
+		struct mlx5_rxq_ctrl *rxq_ctrl = mlx5_rxq_ctrl_get(dev, i);
 
-		if (rxq == NULL || rxq_ctrl->type != MLX5_RXQ_TYPE_STANDARD)
+		if (rxq_ctrl == NULL ||
+		    rxq_ctrl->type != MLX5_RXQ_TYPE_STANDARD)
 			continue;
-		rxq->mprq_mp = mp;
+		rxq_ctrl->rxq.mprq_mp = mp;
 	}
 	DRV_LOG(INFO, "port %u Multi-Packet RQ is configured",
 		dev->data->port_id);
@@ -1777,8 +1777,7 @@ mlx5_rxq_get(struct rte_eth_dev *dev, uint16_t idx)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 
-	if (priv->rxq_privs == NULL)
-		return NULL;
+	MLX5_ASSERT(priv->rxq_privs != NULL);
 	return (*priv->rxq_privs)[idx];
 }
 
@@ -1862,7 +1861,7 @@ mlx5_rxq_release(struct rte_eth_dev *dev, uint16_t idx)
 		LIST_REMOVE(rxq, owner_entry);
 		LIST_REMOVE(rxq_ctrl, next);
 		mlx5_free(rxq_ctrl);
-		(*priv->rxqs)[idx] = NULL;
+		dev->data->rx_queues[idx] = NULL;
 		mlx5_free(rxq);
 		(*priv->rxq_privs)[idx] = NULL;
 	}
@@ -1908,14 +1907,10 @@ enum mlx5_rxq_type
 mlx5_rxq_get_type(struct rte_eth_dev *dev, uint16_t idx)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5_rxq_ctrl *rxq_ctrl = NULL;
+	struct mlx5_rxq_ctrl *rxq_ctrl = mlx5_rxq_ctrl_get(dev, idx);
 
-	if (idx < priv->rxqs_n && (*priv->rxqs)[idx]) {
-		rxq_ctrl = container_of((*priv->rxqs)[idx],
-					struct mlx5_rxq_ctrl,
-					rxq);
+	if (idx < priv->rxqs_n && rxq_ctrl != NULL)
 		return rxq_ctrl->type;
-	}
 	return MLX5_RXQ_TYPE_UNDEFINED;
 }
 
@@ -2682,13 +2677,13 @@ mlx5_rxq_timestamp_set(struct rte_eth_dev *dev)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_dev_ctx_shared *sh = priv->sh;
-	struct mlx5_rxq_data *data;
 	unsigned int i;
 
 	for (i = 0; i != priv->rxqs_n; ++i) {
-		if (!(*priv->rxqs)[i])
+		struct mlx5_rxq_data *data = mlx5_rxq_data_get(dev, i);
+
+		if (data == NULL)
 			continue;
-		data = (*priv->rxqs)[i];
 		data->sh = sh;
 		data->rt_timestamp = priv->config.rt_timestamp;
 	}

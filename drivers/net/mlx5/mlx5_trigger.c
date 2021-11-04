@@ -227,7 +227,7 @@ mlx5_rxq_start(struct rte_eth_dev *dev)
 		if (!rxq_ctrl->obj) {
 			DRV_LOG(ERR,
 				"Port %u Rx queue %u can't allocate resources.",
-				dev->data->port_id, (*priv->rxqs)[i]->idx);
+				dev->data->port_id, i);
 			rte_errno = ENOMEM;
 			goto error;
 		}

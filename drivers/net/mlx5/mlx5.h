@@ -1410,7 +1410,6 @@ struct mlx5_priv {
 	unsigned int rxqs_n; /* RX queues array size. */
 	unsigned int txqs_n; /* TX queues array size. */
 	struct mlx5_rxq_priv *(*rxq_privs)[]; /* RX queue non-shared data. */
-	struct mlx5_rxq_data *(*rxqs)[]; /* (Shared) RX queues. */
 	struct mlx5_txq_data *(*txqs)[]; /* TX queues. */
 	struct rte_mempool *mprq_mp; /* Mempool for Multi-Packet RQ. */
 	struct rte_eth_rss_conf rss_conf; /* RSS configuration. */

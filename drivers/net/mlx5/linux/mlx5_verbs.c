@@ -486,11 +486,10 @@ mlx5_ibv_ind_table_new(struct rte_eth_dev *dev, const unsigned int log_n,
 
 	MLX5_ASSERT(ind_tbl);
 	for (i = 0; i != ind_tbl->queues_n; ++i) {
-		struct mlx5_rxq_data *rxq = (*priv->rxqs)[ind_tbl->queues[i]];
-		struct mlx5_rxq_ctrl *rxq_ctrl =
-				container_of(rxq, struct mlx5_rxq_ctrl, rxq);
+		struct mlx5_rxq_priv *rxq = mlx5_rxq_get(dev,
+							 ind_tbl->queues[i]);
 
-		wq[i] = rxq_ctrl->obj->wq;
+		wq[i] = rxq->ctrl->obj->wq;
 	}
 	MLX5_ASSERT(i > 0);
 	/* Finalise indirection table. */

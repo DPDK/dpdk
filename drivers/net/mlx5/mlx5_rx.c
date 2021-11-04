@@ -148,10 +148,8 @@ void
 mlx5_rxq_info_get(struct rte_eth_dev *dev, uint16_t rx_queue_id,
 		  struct rte_eth_rxq_info *qinfo)
 {
-	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5_rxq_data *rxq = (*priv->rxqs)[rx_queue_id];
-	struct mlx5_rxq_ctrl *rxq_ctrl =
-		container_of(rxq, struct mlx5_rxq_ctrl, rxq);
+	struct mlx5_rxq_ctrl *rxq_ctrl = mlx5_rxq_ctrl_get(dev, rx_queue_id);
+	struct mlx5_rxq_data *rxq = mlx5_rxq_data_get(dev, rx_queue_id);
 
 	if (!rxq)
 		return;
@@ -162,7 +160,10 @@ mlx5_rxq_info_get(struct rte_eth_dev *dev, uint16_t rx_queue_id,
 	qinfo->conf.rx_thresh.wthresh = 0;
 	qinfo->conf.rx_free_thresh = rxq->rq_repl_thresh;
 	qinfo->conf.rx_drop_en = 1;
-	qinfo->conf.rx_deferred_start = rxq_ctrl ? 0 : 1;
+	if (rxq_ctrl == NULL || rxq_ctrl->obj == NULL)
+		qinfo->conf.rx_deferred_start = 0;
+	else
+		qinfo->conf.rx_deferred_start = 1;
 	qinfo->conf.offloads = dev->data->dev_conf.rxmode.offloads;
 	qinfo->scattered_rx = dev->data->scattered_rx;
 	qinfo->nb_desc = mlx5_rxq_mprq_enabled(rxq) ?
@@ -191,10 +192,8 @@ mlx5_rx_burst_mode_get(struct rte_eth_dev *dev,
 		       struct rte_eth_burst_mode *mode)
 {
 	eth_rx_burst_t pkt_burst = dev->rx_pkt_burst;
-	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5_rxq_data *rxq;
+	struct mlx5_rxq_priv *rxq = mlx5_rxq_get(dev, rx_queue_id);
 
-	rxq = (*priv->rxqs)[rx_queue_id];
 	if (!rxq) {
 		rte_errno = EINVAL;
 		return -rte_errno;
