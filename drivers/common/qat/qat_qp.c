@@ -20,6 +20,7 @@
 #include "qat_comp.h"
 #include "adf_transport_access_macros.h"
 #include "adf_transport_access_macros_gen4vf.h"
+#include "dev/qat_dev_gens.h"
 
 #define QAT_CQ_MAX_DEQ_RETRIES 10
 
@@ -512,7 +513,7 @@ qat_read_qp_config(struct qat_pci_device *qat_dev)
 	if (qat_dev_gen == QAT_GEN4) {
 		uint16_t svc = 0;
 
-		if (qat_query_svc(qat_dev, (uint8_t *)&svc))
+		if (qat_query_svc_gen4(qat_dev, (uint8_t *)&svc))
 			return -(EFAULT);
 		for (; i < QAT_GEN4_BUNDLE_NUM; i++) {
 			struct qat_qp_hw_data *hw_data =

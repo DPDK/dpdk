@@ -133,6 +133,8 @@ struct qat_pci_device {
 	/**< Data of ring configuration on gen4 */
 	void *misc_bar_io_addr;
 	/**< Address of misc bar */
+	void *dev_private;
+	/**< Per generation specific information */
 };
 
 struct qat_gen_hw_data {
@@ -181,8 +183,5 @@ qat_comp_dev_create(struct qat_pci_device *qat_pci_dev __rte_unused,
 
 int
 qat_comp_dev_destroy(struct qat_pci_device *qat_pci_dev __rte_unused);
-
-int
-qat_query_svc(struct qat_pci_device *qat_pci_dev, uint8_t *ret);
 
 #endif /* _QAT_DEVICE_H_ */

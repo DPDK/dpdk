@@ -50,6 +50,10 @@ sources += files(
         'qat_device.c',
         'qat_logs.c',
         'qat_pf2vf.c',
+        'dev/qat_dev_gen1.c',
+        'dev/qat_dev_gen2.c',
+        'dev/qat_dev_gen3.c',
+        'dev/qat_dev_gen4.c',
 )
 includes += include_directories(
         'qat_adf',
