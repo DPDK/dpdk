@@ -273,6 +273,13 @@ port_init(uint16_t port)
 
 	tx_rings = (uint16_t)rte_lcore_count();
 
+	if (mergeable) {
+		if (dev_info.max_mtu != UINT16_MAX && dev_info.max_rx_pktlen > dev_info.max_mtu)
+			vmdq_conf_default.rxmode.mtu = dev_info.max_mtu;
+		else
+			vmdq_conf_default.rxmode.mtu = MAX_MTU;
+	}
+
 	/* Get port configuration. */
 	retval = get_eth_conf(&port_conf, num_devices);
 	if (retval < 0)
@@ -631,8 +638,6 @@ us_vhost_parse_args(int argc, char **argv)
 				return -1;
 			}
 			mergeable = !!ret;
-			if (ret)
-				vmdq_conf_default.rxmode.mtu = MAX_MTU;
 			break;
 
 		case OPT_STATS_NUM:
