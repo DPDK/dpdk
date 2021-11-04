@@ -501,6 +501,14 @@ struct ice_fdir_prof_info {
 };
 
 /**
+ * Structure to store rss fv entry.
+ */
+struct ice_rss_prof_info {
+	struct ice_parser_profile prof;
+	bool symm;
+};
+
+/**
  * Structure to store private data for each PF/VF instance.
  */
 struct ice_adapter {
@@ -524,6 +532,7 @@ struct ice_adapter {
 	bool ptp_ena;
 	uint64_t time_hw;
 	struct ice_fdir_prof_info fdir_prof_info[ICE_MAX_PTGS];
+	struct ice_rss_prof_info rss_prof_info[ICE_MAX_PTGS];
 #ifdef RTE_ARCH_X86
 	bool rx_use_avx2;
 	bool rx_use_avx512;

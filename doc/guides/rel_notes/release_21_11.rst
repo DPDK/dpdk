@@ -168,6 +168,7 @@ New Features
 * **Updated Intel ice driver.**
 
   * Added protocol agnostic flow offloading support in Flow Director.
+  * Added protocol agnostic flow offloading support in RSS hash.
   * Added 1PPS out support by a devargs.
   * Added IPv4 and L4 (TCP/UDP/SCTP) checksum hash support in RSS flow.
   * Added DEV_RX_OFFLOAD_TIMESTAMP support.
