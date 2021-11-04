@@ -674,9 +674,7 @@ mlx5_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 		    struct rte_mempool *mp)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5_rxq_data *rxq = (*priv->rxqs)[idx];
-	struct mlx5_rxq_ctrl *rxq_ctrl =
-		container_of(rxq, struct mlx5_rxq_ctrl, rxq);
+	struct mlx5_rxq_ctrl *rxq_ctrl;
 	struct rte_eth_rxseg_split *rx_seg =
 				(struct rte_eth_rxseg_split *)conf->rx_seg;
 	struct rte_eth_rxseg_split rx_single = {.mp = mp};
@@ -743,9 +741,7 @@ mlx5_rx_hairpin_queue_setup(struct rte_eth_dev *dev, uint16_t idx,
 			    const struct rte_eth_hairpin_conf *hairpin_conf)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5_rxq_data *rxq = (*priv->rxqs)[idx];
-	struct mlx5_rxq_ctrl *rxq_ctrl =
-		container_of(rxq, struct mlx5_rxq_ctrl, rxq);
+	struct mlx5_rxq_ctrl *rxq_ctrl;
 	int res;
 
 	res = mlx5_rx_queue_pre_setup(dev, idx, &desc);
