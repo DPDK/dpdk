@@ -198,7 +198,7 @@ error:
  *   Pointer to RX queue structure.
  *
  * @return
- *   0 on success, errno value on failure.
+ *   0 on success, negative errno value on failure.
  */
 static int
 rxq_alloc_elts_sprq(struct mlx5_rxq_ctrl *rxq_ctrl)
@@ -289,7 +289,7 @@ error:
  *   Pointer to RX queue structure.
  *
  * @return
- *   0 on success, errno value on failure.
+ *   0 on success, negative errno value on failure.
  */
 int
 rxq_alloc_elts(struct mlx5_rxq_ctrl *rxq_ctrl)
@@ -302,7 +302,9 @@ rxq_alloc_elts(struct mlx5_rxq_ctrl *rxq_ctrl)
 	 */
 	if (mlx5_rxq_mprq_enabled(&rxq_ctrl->rxq))
 		ret = rxq_alloc_elts_mprq(rxq_ctrl);
-	return (ret || rxq_alloc_elts_sprq(rxq_ctrl));
+	if (ret == 0)
+		ret = rxq_alloc_elts_sprq(rxq_ctrl);
+	return ret;
 }
 
 /**
