@@ -229,6 +229,40 @@ cfg_load_subport_profile(struct rte_cfgfile *cfg,
 	return 0;
 }
 
+#ifdef RTE_SCHED_CMAN
+void set_subport_cman_params(struct rte_sched_subport_params *subport_p,
+					struct rte_sched_cman_params cman_p)
+{
+	int j, k;
+	subport_p->cman_params->cman_mode = cman_p.cman_mode;
+
+	for (j = 0; j < RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE; j++) {
+		if (subport_p->cman_params->cman_mode ==
+					RTE_SCHED_CMAN_RED) {
+			for (k = 0; k < RTE_COLORS; k++) {
+				subport_p->cman_params->red_params[j][k].min_th =
+					cman_p.red_params[j][k].min_th;
+				subport_p->cman_params->red_params[j][k].max_th =
+					cman_p.red_params[j][k].max_th;
+				subport_p->cman_params->red_params[j][k].maxp_inv =
+					cman_p.red_params[j][k].maxp_inv;
+				subport_p->cman_params->red_params[j][k].wq_log2 =
+					cman_p.red_params[j][k].wq_log2;
+			}
+		} else {
+			subport_p->cman_params->pie_params[j].qdelay_ref =
+				cman_p.pie_params[j].qdelay_ref;
+			subport_p->cman_params->pie_params[j].dp_update_interval =
+				cman_p.pie_params[j].dp_update_interval;
+			subport_p->cman_params->pie_params[j].max_burst =
+				cman_p.pie_params[j].max_burst;
+			subport_p->cman_params->pie_params[j].tailq_th =
+				cman_p.pie_params[j].tailq_th;
+		}
+	}
+}
+#endif
+
 int
 cfg_load_subport(struct rte_cfgfile *cfg, struct rte_sched_subport_params *subport_params)
 {
@@ -243,24 +277,25 @@ cfg_load_subport(struct rte_cfgfile *cfg, struct rte_sched_subport_params *subpo
 	n_active_queues = 0;
 
 #ifdef RTE_SCHED_CMAN
-	char sec_name[CFG_NAME_LEN];
-	struct rte_red_params red_params[RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE][RTE_COLORS];
+	struct rte_sched_cman_params cman_params = {
+		.cman_mode = RTE_SCHED_CMAN_RED,
+		.red_params = { },
+	};
 
-	snprintf(sec_name, sizeof(sec_name), "red");
-
-	if (rte_cfgfile_has_section(cfg, sec_name)) {
+	if (rte_cfgfile_has_section(cfg, "red")) {
+		cman_params.cman_mode = RTE_SCHED_CMAN_RED;
 
 		for (i = 0; i < RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE; i++) {
 			char str[32];
 
-			/* Parse WRED min thresholds */
-			snprintf(str, sizeof(str), "tc %d wred min", i);
-			entry = rte_cfgfile_get_entry(cfg, sec_name, str);
+			/* Parse RED min thresholds */
+			snprintf(str, sizeof(str), "tc %d red min", i);
+			entry = rte_cfgfile_get_entry(cfg, "red", str);
 			if (entry) {
 				char *next;
 				/* for each packet colour (green, yellow, red) */
 				for (j = 0; j < RTE_COLORS; j++) {
-					red_params[i][j].min_th
+					cman_params.red_params[i][j].min_th
 						= (uint16_t)strtol(entry, &next, 10);
 					if (next == NULL)
 						break;
@@ -268,14 +303,14 @@ cfg_load_subport(struct rte_cfgfile *cfg, struct rte_sched_subport_params *subpo
 				}
 			}
 
-			/* Parse WRED max thresholds */
-			snprintf(str, sizeof(str), "tc %d wred max", i);
+			/* Parse RED max thresholds */
+			snprintf(str, sizeof(str), "tc %d red max", i);
 			entry = rte_cfgfile_get_entry(cfg, "red", str);
 			if (entry) {
 				char *next;
 				/* for each packet colour (green, yellow, red) */
 				for (j = 0; j < RTE_COLORS; j++) {
-					red_params[i][j].max_th
+					cman_params.red_params[i][j].max_th
 						= (uint16_t)strtol(entry, &next, 10);
 					if (next == NULL)
 						break;
@@ -283,14 +318,14 @@ cfg_load_subport(struct rte_cfgfile *cfg, struct rte_sched_subport_params *subpo
 				}
 			}
 
-			/* Parse WRED inverse mark probabilities */
-			snprintf(str, sizeof(str), "tc %d wred inv prob", i);
+			/* Parse RED inverse mark probabilities */
+			snprintf(str, sizeof(str), "tc %d red inv prob", i);
 			entry = rte_cfgfile_get_entry(cfg, "red", str);
 			if (entry) {
 				char *next;
 				/* for each packet colour (green, yellow, red) */
 				for (j = 0; j < RTE_COLORS; j++) {
-					red_params[i][j].maxp_inv
+					cman_params.red_params[i][j].maxp_inv
 						= (uint8_t)strtol(entry, &next, 10);
 
 					if (next == NULL)
@@ -299,20 +334,57 @@ cfg_load_subport(struct rte_cfgfile *cfg, struct rte_sched_subport_params *subpo
 				}
 			}
 
-			/* Parse WRED EWMA filter weights */
-			snprintf(str, sizeof(str), "tc %d wred weight", i);
+			/* Parse RED EWMA filter weights */
+			snprintf(str, sizeof(str), "tc %d red weight", i);
 			entry = rte_cfgfile_get_entry(cfg, "red", str);
 			if (entry) {
 				char *next;
 				/* for each packet colour (green, yellow, red) */
 				for (j = 0; j < RTE_COLORS; j++) {
-					red_params[i][j].wq_log2
+					cman_params.red_params[i][j].wq_log2
 						= (uint8_t)strtol(entry, &next, 10);
 					if (next == NULL)
 						break;
 					entry = next;
 				}
 			}
+		}
+	}
+
+	if (rte_cfgfile_has_section(cfg, "pie")) {
+		cman_params.cman_mode = RTE_SCHED_CMAN_PIE;
+
+		for (i = 0; i < RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE; i++) {
+			char str[32];
+
+			/* Parse Queue Delay Ref value */
+			snprintf(str, sizeof(str), "tc %d qdelay ref", i);
+			entry = rte_cfgfile_get_entry(cfg, "pie", str);
+			if (entry)
+				cman_params.pie_params[i].qdelay_ref =
+					(uint16_t) atoi(entry);
+
+			/* Parse Max Burst value */
+			snprintf(str, sizeof(str), "tc %d max burst", i);
+			entry = rte_cfgfile_get_entry(cfg, "pie", str);
+			if (entry)
+				cman_params.pie_params[i].max_burst =
+					(uint16_t) atoi(entry);
+
+			/* Parse Update Interval Value */
+			snprintf(str, sizeof(str), "tc %d update interval", i);
+			entry = rte_cfgfile_get_entry(cfg, "pie", str);
+			if (entry)
+				cman_params.pie_params[i].dp_update_interval =
+					(uint16_t) atoi(entry);
+
+			/* Parse Tailq Threshold Value */
+			snprintf(str, sizeof(str), "tc %d tailq th", i);
+			entry = rte_cfgfile_get_entry(cfg, "pie", str);
+			if (entry)
+				cman_params.pie_params[i].tailq_th =
+					(uint16_t) atoi(entry);
+
 		}
 	}
 #endif /* RTE_SCHED_CMAN */
@@ -394,18 +466,7 @@ cfg_load_subport(struct rte_cfgfile *cfg, struct rte_sched_subport_params *subpo
 				}
 			}
 #ifdef RTE_SCHED_CMAN
-			for (j = 0; j < RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE; j++) {
-				for (k = 0; k < RTE_COLORS; k++) {
-					subport_params[i].red_params[j][k].min_th =
-						red_params[j][k].min_th;
-					subport_params[i].red_params[j][k].max_th =
-						red_params[j][k].max_th;
-					subport_params[i].red_params[j][k].maxp_inv =
-						red_params[j][k].maxp_inv;
-					subport_params[i].red_params[j][k].wq_log2 =
-						red_params[j][k].wq_log2;
-				}
-			}
+			set_subport_cman_params(subport_params+i, cman_params);
 #endif
 		}
 	}
