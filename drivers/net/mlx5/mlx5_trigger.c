@@ -201,10 +201,12 @@ mlx5_rxq_start(struct rte_eth_dev *dev)
 	DRV_LOG(DEBUG, "Port %u device_attr.max_sge is %d.",
 		dev->data->port_id, priv->sh->device_attr.max_sge);
 	for (i = 0; i != priv->rxqs_n; ++i) {
-		struct mlx5_rxq_ctrl *rxq_ctrl = mlx5_rxq_get(dev, i);
+		struct mlx5_rxq_priv *rxq = mlx5_rxq_ref(dev, i);
+		struct mlx5_rxq_ctrl *rxq_ctrl;
 
-		if (!rxq_ctrl)
+		if (rxq == NULL)
 			continue;
+		rxq_ctrl = rxq->ctrl;
 		if (rxq_ctrl->type == MLX5_RXQ_TYPE_STANDARD) {
 			/*
 			 * Pre-register the mempools. Regardless of whether
@@ -266,6 +268,7 @@ mlx5_hairpin_auto_bind(struct rte_eth_dev *dev)
 	struct mlx5_devx_modify_sq_attr sq_attr = { 0 };
 	struct mlx5_devx_modify_rq_attr rq_attr = { 0 };
 	struct mlx5_txq_ctrl *txq_ctrl;
+	struct mlx5_rxq_priv *rxq;
 	struct mlx5_rxq_ctrl *rxq_ctrl;
 	struct mlx5_devx_obj *sq;
 	struct mlx5_devx_obj *rq;
@@ -310,9 +313,8 @@ mlx5_hairpin_auto_bind(struct rte_eth_dev *dev)
 			return -rte_errno;
 		}
 		sq = txq_ctrl->obj->sq;
-		rxq_ctrl = mlx5_rxq_get(dev,
-					txq_ctrl->hairpin_conf.peers[0].queue);
-		if (!rxq_ctrl) {
+		rxq = mlx5_rxq_get(dev, txq_ctrl->hairpin_conf.peers[0].queue);
+		if (rxq == NULL) {
 			mlx5_txq_release(dev, i);
 			rte_errno = EINVAL;
 			DRV_LOG(ERR, "port %u no rxq object found: %d",
@@ -320,6 +322,7 @@ mlx5_hairpin_auto_bind(struct rte_eth_dev *dev)
 				txq_ctrl->hairpin_conf.peers[0].queue);
 			return -rte_errno;
 		}
+		rxq_ctrl = rxq->ctrl;
 		if (rxq_ctrl->type != MLX5_RXQ_TYPE_HAIRPIN ||
 		    rxq_ctrl->hairpin_conf.peers[0].queue != i) {
 			rte_errno = ENOMEM;
@@ -354,12 +357,10 @@ mlx5_hairpin_auto_bind(struct rte_eth_dev *dev)
 		rxq_ctrl->hairpin_status = 1;
 		txq_ctrl->hairpin_status = 1;
 		mlx5_txq_release(dev, i);
-		mlx5_rxq_release(dev, txq_ctrl->hairpin_conf.peers[0].queue);
 	}
 	return 0;
 error:
 	mlx5_txq_release(dev, i);
-	mlx5_rxq_release(dev, txq_ctrl->hairpin_conf.peers[0].queue);
 	return -rte_errno;
 }
 
@@ -432,27 +433,26 @@ mlx5_hairpin_queue_peer_update(struct rte_eth_dev *dev, uint16_t peer_queue,
 		peer_info->manual_bind = txq_ctrl->hairpin_conf.manual_bind;
 		mlx5_txq_release(dev, peer_queue);
 	} else { /* Peer port used as ingress. */
+		struct mlx5_rxq_priv *rxq = mlx5_rxq_get(dev, peer_queue);
 		struct mlx5_rxq_ctrl *rxq_ctrl;
 
-		rxq_ctrl = mlx5_rxq_get(dev, peer_queue);
-		if (rxq_ctrl == NULL) {
+		if (rxq == NULL) {
 			rte_errno = EINVAL;
 			DRV_LOG(ERR, "Failed to get port %u Rx queue %d",
 				dev->data->port_id, peer_queue);
 			return -rte_errno;
 		}
+		rxq_ctrl = rxq->ctrl;
 		if (rxq_ctrl->type != MLX5_RXQ_TYPE_HAIRPIN) {
 			rte_errno = EINVAL;
 			DRV_LOG(ERR, "port %u queue %d is not a hairpin Rxq",
 				dev->data->port_id, peer_queue);
-			mlx5_rxq_release(dev, peer_queue);
 			return -rte_errno;
 		}
 		if (rxq_ctrl->obj == NULL || rxq_ctrl->obj->rq == NULL) {
 			rte_errno = ENOMEM;
 			DRV_LOG(ERR, "port %u no Rxq object found: %d",
 				dev->data->port_id, peer_queue);
-			mlx5_rxq_release(dev, peer_queue);
 			return -rte_errno;
 		}
 		peer_info->qp_id = rxq_ctrl->obj->rq->id;
@@ -460,7 +460,6 @@ mlx5_hairpin_queue_peer_update(struct rte_eth_dev *dev, uint16_t peer_queue,
 		peer_info->peer_q = rxq_ctrl->hairpin_conf.peers[0].queue;
 		peer_info->tx_explicit = rxq_ctrl->hairpin_conf.tx_explicit;
 		peer_info->manual_bind = rxq_ctrl->hairpin_conf.manual_bind;
-		mlx5_rxq_release(dev, peer_queue);
 	}
 	return 0;
 }
@@ -559,34 +558,32 @@ mlx5_hairpin_queue_peer_bind(struct rte_eth_dev *dev, uint16_t cur_queue,
 			txq_ctrl->hairpin_status = 1;
 		mlx5_txq_release(dev, cur_queue);
 	} else {
+		struct mlx5_rxq_priv *rxq = mlx5_rxq_get(dev, cur_queue);
 		struct mlx5_rxq_ctrl *rxq_ctrl;
 		struct mlx5_devx_modify_rq_attr rq_attr = { 0 };
 
-		rxq_ctrl = mlx5_rxq_get(dev, cur_queue);
-		if (rxq_ctrl == NULL) {
+		if (rxq == NULL) {
 			rte_errno = EINVAL;
 			DRV_LOG(ERR, "Failed to get port %u Rx queue %d",
 				dev->data->port_id, cur_queue);
 			return -rte_errno;
 		}
+		rxq_ctrl = rxq->ctrl;
 		if (rxq_ctrl->type != MLX5_RXQ_TYPE_HAIRPIN) {
 			rte_errno = EINVAL;
 			DRV_LOG(ERR, "port %u queue %d not a hairpin Rxq",
 				dev->data->port_id, cur_queue);
-			mlx5_rxq_release(dev, cur_queue);
 			return -rte_errno;
 		}
 		if (rxq_ctrl->obj == NULL || rxq_ctrl->obj->rq == NULL) {
 			rte_errno = ENOMEM;
 			DRV_LOG(ERR, "port %u no Rxq object found: %d",
 				dev->data->port_id, cur_queue);
-			mlx5_rxq_release(dev, cur_queue);
 			return -rte_errno;
 		}
 		if (rxq_ctrl->hairpin_status != 0) {
 			DRV_LOG(DEBUG, "port %u Rx queue %d is already bound",
 				dev->data->port_id, cur_queue);
-			mlx5_rxq_release(dev, cur_queue);
 			return 0;
 		}
 		if (peer_info->tx_explicit !=
@@ -594,7 +591,6 @@ mlx5_hairpin_queue_peer_bind(struct rte_eth_dev *dev, uint16_t cur_queue,
 			rte_errno = EINVAL;
 			DRV_LOG(ERR, "port %u Rx queue %d and peer Tx rule mode"
 				" mismatch", dev->data->port_id, cur_queue);
-			mlx5_rxq_release(dev, cur_queue);
 			return -rte_errno;
 		}
 		if (peer_info->manual_bind !=
@@ -602,7 +598,6 @@ mlx5_hairpin_queue_peer_bind(struct rte_eth_dev *dev, uint16_t cur_queue,
 			rte_errno = EINVAL;
 			DRV_LOG(ERR, "port %u Rx queue %d and peer binding mode"
 				" mismatch", dev->data->port_id, cur_queue);
-			mlx5_rxq_release(dev, cur_queue);
 			return -rte_errno;
 		}
 		rq_attr.state = MLX5_SQC_STATE_RDY;
@@ -612,7 +607,6 @@ mlx5_hairpin_queue_peer_bind(struct rte_eth_dev *dev, uint16_t cur_queue,
 		ret = mlx5_devx_cmd_modify_rq(rxq_ctrl->obj->rq, &rq_attr);
 		if (ret == 0)
 			rxq_ctrl->hairpin_status = 1;
-		mlx5_rxq_release(dev, cur_queue);
 	}
 	return ret;
 }
@@ -677,34 +671,32 @@ mlx5_hairpin_queue_peer_unbind(struct rte_eth_dev *dev, uint16_t cur_queue,
 			txq_ctrl->hairpin_status = 0;
 		mlx5_txq_release(dev, cur_queue);
 	} else {
+		struct mlx5_rxq_priv *rxq = mlx5_rxq_get(dev, cur_queue);
 		struct mlx5_rxq_ctrl *rxq_ctrl;
 		struct mlx5_devx_modify_rq_attr rq_attr = { 0 };
 
-		rxq_ctrl = mlx5_rxq_get(dev, cur_queue);
-		if (rxq_ctrl == NULL) {
+		if (rxq == NULL) {
 			rte_errno = EINVAL;
 			DRV_LOG(ERR, "Failed to get port %u Rx queue %d",
 				dev->data->port_id, cur_queue);
 			return -rte_errno;
 		}
+		rxq_ctrl = rxq->ctrl;
 		if (rxq_ctrl->type != MLX5_RXQ_TYPE_HAIRPIN) {
 			rte_errno = EINVAL;
 			DRV_LOG(ERR, "port %u queue %d not a hairpin Rxq",
 				dev->data->port_id, cur_queue);
-			mlx5_rxq_release(dev, cur_queue);
 			return -rte_errno;
 		}
 		if (rxq_ctrl->hairpin_status == 0) {
 			DRV_LOG(DEBUG, "port %u Rx queue %d is already unbound",
 				dev->data->port_id, cur_queue);
-			mlx5_rxq_release(dev, cur_queue);
 			return 0;
 		}
 		if (rxq_ctrl->obj == NULL || rxq_ctrl->obj->rq == NULL) {
 			rte_errno = ENOMEM;
 			DRV_LOG(ERR, "port %u no Rxq object found: %d",
 				dev->data->port_id, cur_queue);
-			mlx5_rxq_release(dev, cur_queue);
 			return -rte_errno;
 		}
 		rq_attr.state = MLX5_SQC_STATE_RST;
@@ -712,7 +704,6 @@ mlx5_hairpin_queue_peer_unbind(struct rte_eth_dev *dev, uint16_t cur_queue,
 		ret = mlx5_devx_cmd_modify_rq(rxq_ctrl->obj->rq, &rq_attr);
 		if (ret == 0)
 			rxq_ctrl->hairpin_status = 0;
-		mlx5_rxq_release(dev, cur_queue);
 	}
 	return ret;
 }
@@ -1014,7 +1005,6 @@ mlx5_hairpin_get_peer_ports(struct rte_eth_dev *dev, uint16_t *peer_ports,
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_txq_ctrl *txq_ctrl;
-	struct mlx5_rxq_ctrl *rxq_ctrl;
 	uint32_t i;
 	uint16_t pp;
 	uint32_t bits[(RTE_MAX_ETHPORTS + 31) / 32] = {0};
@@ -1043,24 +1033,23 @@ mlx5_hairpin_get_peer_ports(struct rte_eth_dev *dev, uint16_t *peer_ports,
 		}
 	} else {
 		for (i = 0; i < priv->rxqs_n; i++) {
-			rxq_ctrl = mlx5_rxq_get(dev, i);
-			if (!rxq_ctrl)
+			struct mlx5_rxq_priv *rxq = mlx5_rxq_get(dev, i);
+			struct mlx5_rxq_ctrl *rxq_ctrl;
+
+			if (rxq == NULL)
 				continue;
-			if (rxq_ctrl->type != MLX5_RXQ_TYPE_HAIRPIN) {
-				mlx5_rxq_release(dev, i);
+			rxq_ctrl = rxq->ctrl;
+			if (rxq_ctrl->type != MLX5_RXQ_TYPE_HAIRPIN)
 				continue;
-			}
 			pp = rxq_ctrl->hairpin_conf.peers[0].port;
 			if (pp >= RTE_MAX_ETHPORTS) {
 				rte_errno = ERANGE;
-				mlx5_rxq_release(dev, i);
 				DRV_LOG(ERR, "port %hu queue %u peer port "
 					"out of range %hu",
 					priv->dev_data->port_id, i, pp);
 				return -rte_errno;
 			}
 			bits[pp / 32] |= 1 << (pp % 32);
-			mlx5_rxq_release(dev, i);
 		}
 	}
 	for (i = 0; i < RTE_MAX_ETHPORTS; i++) {
