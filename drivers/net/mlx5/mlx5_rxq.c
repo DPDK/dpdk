@@ -1695,8 +1695,8 @@ mlx5_rxq_hairpin_new(struct rte_eth_dev *dev, struct mlx5_rxq_priv *rxq,
 	tmpl->rxq.elts_n = log2above(desc);
 	tmpl->rxq.elts = NULL;
 	tmpl->rxq.mr_ctrl.cache_bh = (struct mlx5_mr_btree) { 0 };
-	tmpl->hairpin_conf = *hairpin_conf;
 	tmpl->rxq.idx = idx;
+	rxq->hairpin_conf = *hairpin_conf;
 	mlx5_rxq_ref(dev, idx);
 	LIST_INSERT_HEAD(&priv->rxqsctrl, tmpl, next);
 	return tmpl;
@@ -1913,14 +1913,11 @@ const struct rte_eth_hairpin_conf *
 mlx5_rxq_get_hairpin_conf(struct rte_eth_dev *dev, uint16_t idx)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5_rxq_ctrl *rxq_ctrl = NULL;
+	struct mlx5_rxq_priv *rxq = mlx5_rxq_get(dev, idx);
 
-	if (idx < priv->rxqs_n && (*priv->rxqs)[idx]) {
-		rxq_ctrl = container_of((*priv->rxqs)[idx],
-					struct mlx5_rxq_ctrl,
-					rxq);
-		if (rxq_ctrl->type == MLX5_RXQ_TYPE_HAIRPIN)
-			return &rxq_ctrl->hairpin_conf;
+	if (idx < priv->rxqs_n && rxq != NULL) {
+		if (rxq->ctrl->type == MLX5_RXQ_TYPE_HAIRPIN)
+			return &rxq->hairpin_conf;
 	}
 	return NULL;
 }
