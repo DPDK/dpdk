@@ -1926,8 +1926,12 @@ ice_switch_redirect(struct ice_adapter *ad,
 		    struct rte_flow *flow,
 		    struct ice_flow_redirect *rd)
 {
-	struct ice_rule_query_data *rdata = flow->rule;
+	struct ice_rule_query_data *rdata;
+	struct ice_switch_filter_conf *filter_conf_ptr =
+		(struct ice_switch_filter_conf *)flow->rule;
+	struct ice_rule_query_data added_rdata = { 0 };
 	struct ice_adv_fltr_mgmt_list_entry *list_itr;
+	struct ice_adv_lkup_elem *lkups_ref = NULL;
 	struct ice_adv_lkup_elem *lkups_dp = NULL;
 	struct LIST_HEAD_TYPE *list_head;
 	struct ice_adv_rule_info rinfo;
@@ -1935,6 +1939,8 @@ ice_switch_redirect(struct ice_adapter *ad,
 	struct ice_switch_info *sw;
 	uint16_t lkups_cnt;
 	int ret;
+
+	rdata = &filter_conf_ptr->sw_query_data;
 
 	if (rdata->vsi_handle != rd->vsi_handle)
 		return 0;
@@ -1946,56 +1952,98 @@ ice_switch_redirect(struct ice_adapter *ad,
 	if (rd->type != ICE_FLOW_REDIRECT_VSI)
 		return -ENOTSUP;
 
-	list_head = &sw->recp_list[rdata->rid].filt_rules;
-	LIST_FOR_EACH_ENTRY(list_itr, list_head, ice_adv_fltr_mgmt_list_entry,
-			    list_entry) {
-		rinfo = list_itr->rule_info;
-		if ((rinfo.fltr_rule_id == rdata->rule_id &&
-		    rinfo.sw_act.fltr_act == ICE_FWD_TO_VSI &&
-		    rinfo.sw_act.vsi_handle == rd->vsi_handle) ||
-		    (rinfo.fltr_rule_id == rdata->rule_id &&
-		    rinfo.sw_act.fltr_act == ICE_FWD_TO_VSI_LIST)){
-			lkups_cnt = list_itr->lkups_cnt;
-			lkups_dp = (struct ice_adv_lkup_elem *)
-				ice_memdup(hw, list_itr->lkups,
-					   sizeof(*list_itr->lkups) *
-					   lkups_cnt, ICE_NONDMA_TO_NONDMA);
+	switch (filter_conf_ptr->fltr_status) {
+	case ICE_SW_FLTR_ADDED:
+		list_head = &sw->recp_list[rdata->rid].filt_rules;
+		LIST_FOR_EACH_ENTRY(list_itr, list_head,
+				    ice_adv_fltr_mgmt_list_entry,
+				    list_entry) {
+			rinfo = list_itr->rule_info;
+			if ((rinfo.fltr_rule_id == rdata->rule_id &&
+			    rinfo.sw_act.fltr_act == ICE_FWD_TO_VSI &&
+			    rinfo.sw_act.vsi_handle == rd->vsi_handle) ||
+			    (rinfo.fltr_rule_id == rdata->rule_id &&
+			    rinfo.sw_act.fltr_act == ICE_FWD_TO_VSI_LIST)){
+				lkups_cnt = list_itr->lkups_cnt;
 
-			if (!lkups_dp) {
-				PMD_DRV_LOG(ERR, "Failed to allocate memory.");
-				return -EINVAL;
-			}
+				lkups_dp = (struct ice_adv_lkup_elem *)
+					ice_memdup(hw, list_itr->lkups,
+						   sizeof(*list_itr->lkups) *
+						   lkups_cnt,
+						   ICE_NONDMA_TO_NONDMA);
+				if (!lkups_dp) {
+					PMD_DRV_LOG(ERR,
+						    "Failed to allocate memory.");
+					return -EINVAL;
+				}
+				lkups_ref = lkups_dp;
 
-			if (rinfo.sw_act.fltr_act == ICE_FWD_TO_VSI_LIST) {
-				rinfo.sw_act.vsi_handle = rd->vsi_handle;
-				rinfo.sw_act.fltr_act = ICE_FWD_TO_VSI;
+				if (rinfo.sw_act.fltr_act ==
+				    ICE_FWD_TO_VSI_LIST) {
+					rinfo.sw_act.vsi_handle =
+						rd->vsi_handle;
+					rinfo.sw_act.fltr_act = ICE_FWD_TO_VSI;
+				}
+				break;
 			}
-			break;
 		}
+
+		if (!lkups_ref)
+			return -EINVAL;
+
+		goto rmv_rule;
+	case ICE_SW_FLTR_RMV_FAILED_ON_RIDRECT:
+		/* Recover VSI context */
+		hw->vsi_ctx[rd->vsi_handle]->vsi_num = filter_conf_ptr->vsi_num;
+		rinfo = filter_conf_ptr->rule_info;
+		lkups_cnt = filter_conf_ptr->lkups_num;
+		lkups_ref = filter_conf_ptr->lkups;
+
+		if (rinfo.sw_act.fltr_act == ICE_FWD_TO_VSI_LIST) {
+			rinfo.sw_act.vsi_handle = rd->vsi_handle;
+			rinfo.sw_act.fltr_act = ICE_FWD_TO_VSI;
+		}
+
+		goto rmv_rule;
+	case ICE_SW_FLTR_ADD_FAILED_ON_RIDRECT:
+		rinfo = filter_conf_ptr->rule_info;
+		lkups_cnt = filter_conf_ptr->lkups_num;
+		lkups_ref = filter_conf_ptr->lkups;
+
+		goto add_rule;
+	default:
+		return -EINVAL;
 	}
 
-	if (!lkups_dp)
-		return -EINVAL;
-
+rmv_rule:
 	/* Remove the old rule */
-	ret = ice_rem_adv_rule(hw, list_itr->lkups,
-			       lkups_cnt, &rinfo);
+	ret = ice_rem_adv_rule(hw, lkups_ref, lkups_cnt, &rinfo);
 	if (ret) {
 		PMD_DRV_LOG(ERR, "Failed to delete the old rule %d",
 			    rdata->rule_id);
+		filter_conf_ptr->fltr_status =
+			ICE_SW_FLTR_RMV_FAILED_ON_RIDRECT;
 		ret = -EINVAL;
 		goto out;
 	}
 
+add_rule:
 	/* Update VSI context */
 	hw->vsi_ctx[rd->vsi_handle]->vsi_num = rd->new_vsi_num;
 
 	/* Replay the rule */
-	ret = ice_add_adv_rule(hw, lkups_dp, lkups_cnt,
-			       &rinfo, rdata);
+	ret = ice_add_adv_rule(hw, lkups_ref, lkups_cnt,
+			       &rinfo, &added_rdata);
 	if (ret) {
 		PMD_DRV_LOG(ERR, "Failed to replay the rule");
+		filter_conf_ptr->fltr_status =
+			ICE_SW_FLTR_ADD_FAILED_ON_RIDRECT;
 		ret = -EINVAL;
+	} else {
+		filter_conf_ptr->sw_query_data = added_rdata;
+		/* Save VSI number for failure recover */
+		filter_conf_ptr->vsi_num = rd->new_vsi_num;
+		filter_conf_ptr->fltr_status = ICE_SW_FLTR_ADDED;
 	}
 
 out:
