@@ -1200,6 +1200,7 @@ struct mlx5_dev_ctx_shared {
 	struct mlx5_ecpri_parser_profile ecpri_parser;
 	/* Flex parser profiles information. */
 	void *devx_rx_uar; /* DevX UAR for Rx. */
+	LIST_HEAD(shared_rxqs, mlx5_rxq_ctrl) shared_rxqs; /* Shared RXQs. */
 	struct mlx5_aso_age_mng *aso_age_mng;
 	/* Management data for aging mechanism using ASO Flow Hit. */
 	struct mlx5_geneve_tlv_option_resource *geneve_tlv_option_resource;
@@ -1267,6 +1268,7 @@ struct mlx5_rxq_obj {
 		};
 		struct mlx5_devx_obj *rq; /* DevX RQ object for hairpin. */
 		struct {
+			struct mlx5_devx_rmp devx_rmp; /* RMP for shared RQ. */
 			struct mlx5_devx_cq cq_obj; /* DevX CQ object. */
 			void *devx_channel;
 		};

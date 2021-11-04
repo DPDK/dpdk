@@ -420,6 +420,7 @@ mlx5_alloc_shared_dr(struct mlx5_priv *priv)
 			mlx5_glue->dr_create_flow_action_default_miss();
 	if (!sh->default_miss_action)
 		DRV_LOG(WARNING, "Default miss action is not supported.");
+	LIST_INIT(&sh->shared_rxqs);
 	return 0;
 error:
 	/* Rollback the created objects. */
@@ -494,6 +495,7 @@ mlx5_os_free_shared_dr(struct mlx5_priv *priv)
 	MLX5_ASSERT(sh && sh->refcnt);
 	if (sh->refcnt > 1)
 		return;
+	MLX5_ASSERT(LIST_EMPTY(&sh->shared_rxqs));
 #ifdef HAVE_MLX5DV_DR
 	if (sh->rx_domain) {
 		mlx5_glue->dr_destroy_domain(sh->rx_domain);

@@ -60,6 +60,7 @@ Features
 
 - Multi arch support: x86_64, POWER8, ARMv8, i686.
 - Multiple TX and RX queues.
+- Shared Rx queue.
 - Support for scattered TX frames.
 - Advanced support for scattered Rx frames with tunable buffer attributes.
 - IPv4, IPv6, TCPv4, TCPv6, UDPv4 and UDPv6 RSS on any number of queues.
@@ -141,6 +142,11 @@ Limitations
     primary process and remapped to the same virtual address in secondary
     process. If the external memory is registered by primary process but has
     different virtual address in secondary process, unexpected error may happen.
+
+- Shared Rx queue:
+
+  - Counters of received packets and bytes number of devices in same share group are same.
+  - Counters of received packets and bytes number of queues in same group and queue ID are same.
 
 - When using Verbs flow engine (``dv_flow_en`` = 0), flow pattern without any
   specific VLAN will match for VLAN packets as well:

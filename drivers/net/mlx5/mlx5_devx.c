@@ -88,6 +88,8 @@ mlx5_devx_modify_rq(struct mlx5_rxq_priv *rxq, uint8_t type)
 	default:
 		break;
 	}
+	if (rxq->ctrl->type == MLX5_RXQ_TYPE_HAIRPIN)
+		return mlx5_devx_cmd_modify_rq(rxq->ctrl->obj->rq, &rq_attr);
 	return mlx5_devx_cmd_modify_rq(rxq->devx_rq.rq, &rq_attr);
 }
 
@@ -156,18 +158,21 @@ mlx5_txq_devx_modify(struct mlx5_txq_obj *obj, enum mlx5_txq_modify_type type,
 static void
 mlx5_rxq_devx_obj_release(struct mlx5_rxq_priv *rxq)
 {
-	struct mlx5_rxq_ctrl *rxq_ctrl = rxq->ctrl;
-	struct mlx5_rxq_obj *rxq_obj = rxq_ctrl->obj;
+	struct mlx5_rxq_obj *rxq_obj = rxq->ctrl->obj;
 
-	MLX5_ASSERT(rxq != NULL);
-	MLX5_ASSERT(rxq_ctrl != NULL);
+	if (rxq_obj == NULL)
+		return;
 	if (rxq_obj->rxq_ctrl->type == MLX5_RXQ_TYPE_HAIRPIN) {
-		MLX5_ASSERT(rxq_obj->rq);
+		if (rxq_obj->rq == NULL)
+			return;
 		mlx5_devx_modify_rq(rxq, MLX5_RXQ_MOD_RDY2RST);
 		claim_zero(mlx5_devx_cmd_destroy(rxq_obj->rq));
 	} else {
+		if (rxq->devx_rq.rq == NULL)
+			return;
 		mlx5_devx_rq_destroy(&rxq->devx_rq);
-		memset(&rxq->devx_rq, 0, sizeof(rxq->devx_rq));
+		if (rxq->devx_rq.rmp != NULL && rxq->devx_rq.rmp->ref_cnt > 0)
+			return;
 		mlx5_devx_cq_destroy(&rxq_obj->cq_obj);
 		memset(&rxq_obj->cq_obj, 0, sizeof(rxq_obj->cq_obj));
 		if (rxq_obj->devx_channel) {
@@ -176,6 +181,7 @@ mlx5_rxq_devx_obj_release(struct mlx5_rxq_priv *rxq)
 			rxq_obj->devx_channel = NULL;
 		}
 	}
+	rxq->ctrl->started = false;
 }
 
 /**
@@ -271,6 +277,8 @@ mlx5_rxq_create_devx_rq_resources(struct mlx5_rxq_priv *rxq)
 						MLX5_WQ_END_PAD_MODE_NONE;
 	rq_attr.wq_attr.pd = cdev->pdn;
 	rq_attr.counter_set_id = priv->counter_set_id;
+	if (rxq_data->shared) /* Create RMP based RQ. */
+		rxq->devx_rq.rmp = &rxq_ctrl->obj->devx_rmp;
 	/* Create RQ using DevX API. */
 	return mlx5_devx_rq_create(cdev->ctx, &rxq->devx_rq, wqe_size,
 				   log_desc_n, &rq_attr, rxq_ctrl->socket);
@@ -300,6 +308,8 @@ mlx5_rxq_create_devx_cq_resources(struct mlx5_rxq_priv *rxq)
 	uint16_t event_nums[1] = { 0 };
 	int ret = 0;
 
+	if (rxq_ctrl->started)
+		return 0;
 	if (priv->config.cqe_comp && !rxq_data->hw_timestamp &&
 	    !rxq_data->lro) {
 		cq_attr.cqe_comp_en = 1u;
@@ -365,6 +375,7 @@ mlx5_rxq_create_devx_cq_resources(struct mlx5_rxq_priv *rxq)
 	rxq_data->cq_uar = mlx5_os_get_devx_uar_base_addr(sh->devx_rx_uar);
 	rxq_data->cqe_n = log_cqe_n;
 	rxq_data->cqn = cq_obj->cq->id;
+	rxq_data->cq_ci = 0;
 	if (rxq_ctrl->obj->devx_channel) {
 		ret = mlx5_os_devx_subscribe_devx_event
 					      (rxq_ctrl->obj->devx_channel,
@@ -463,7 +474,7 @@ mlx5_rxq_devx_obj_new(struct mlx5_rxq_priv *rxq)
 	if (rxq_ctrl->type == MLX5_RXQ_TYPE_HAIRPIN)
 		return mlx5_rxq_obj_hairpin_new(rxq);
 	tmpl->rxq_ctrl = rxq_ctrl;
-	if (rxq_ctrl->irq) {
+	if (rxq_ctrl->irq && !rxq_ctrl->started) {
 		int devx_ev_flag =
 			  MLX5DV_DEVX_CREATE_EVENT_CHANNEL_FLAGS_OMIT_EV_DATA;
 
@@ -496,11 +507,19 @@ mlx5_rxq_devx_obj_new(struct mlx5_rxq_priv *rxq)
 	ret = mlx5_devx_modify_rq(rxq, MLX5_RXQ_MOD_RST2RDY);
 	if (ret)
 		goto error;
-	rxq_data->wqes = (void *)(uintptr_t)rxq->devx_rq.wq.umem_buf;
-	rxq_data->rq_db = (uint32_t *)(uintptr_t)rxq->devx_rq.wq.db_rec;
-	mlx5_rxq_initialize(rxq_data);
+	if (!rxq_data->shared) {
+		rxq_data->wqes = (void *)(uintptr_t)rxq->devx_rq.wq.umem_buf;
+		rxq_data->rq_db = (uint32_t *)(uintptr_t)rxq->devx_rq.wq.db_rec;
+	} else if (!rxq_ctrl->started) {
+		rxq_data->wqes = (void *)(uintptr_t)tmpl->devx_rmp.wq.umem_buf;
+		rxq_data->rq_db =
+				(uint32_t *)(uintptr_t)tmpl->devx_rmp.wq.db_rec;
+	}
+	if (!rxq_ctrl->started) {
+		mlx5_rxq_initialize(rxq_data);
+		rxq_ctrl->wqn = rxq->devx_rq.rq->id;
+	}
 	priv->dev_data->rx_queue_state[rxq->idx] = RTE_ETH_QUEUE_STATE_STARTED;
-	rxq_ctrl->wqn = rxq->devx_rq.rq->id;
 	return 0;
 error:
 	ret = rte_errno; /* Save rte_errno before cleanup. */
@@ -558,7 +577,10 @@ mlx5_devx_ind_table_create_rqt_attr(struct rte_eth_dev *dev,
 		struct mlx5_rxq_priv *rxq = mlx5_rxq_get(dev, queues[i]);
 
 		MLX5_ASSERT(rxq != NULL);
-		rqt_attr->rq_list[i] = rxq->devx_rq.rq->id;
+		if (rxq->ctrl->type == MLX5_RXQ_TYPE_HAIRPIN)
+			rqt_attr->rq_list[i] = rxq->ctrl->obj->rq->id;
+		else
+			rqt_attr->rq_list[i] = rxq->devx_rq.rq->id;
 	}
 	MLX5_ASSERT(i > 0);
 	for (j = 0; i != rqt_n; ++j, ++i)

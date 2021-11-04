@@ -26,6 +26,7 @@
 #include "mlx5_rx.h"
 #include "mlx5_tx.h"
 #include "mlx5_autoconf.h"
+#include "mlx5_devx.h"
 
 /**
  * Get the interface index from device name.
@@ -336,9 +337,13 @@ mlx5_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *info)
 	info->flow_type_rss_offloads = ~MLX5_RSS_HF_MASK;
 	mlx5_set_default_params(dev, info);
 	mlx5_set_txlimit_params(dev, info);
+	if (priv->config.hca_attr.mem_rq_rmp &&
+	    priv->obj_ops.rxq_obj_new == devx_obj_ops.rxq_obj_new)
+		info->dev_capa |= RTE_ETH_DEV_CAPA_RXQ_SHARE;
 	info->switch_info.name = dev->data->name;
 	info->switch_info.domain_id = priv->domain_id;
 	info->switch_info.port_id = priv->representor_id;
+	info->switch_info.rx_domain = 0; /* No sub Rx domains. */
 	if (priv->representor) {
 		uint16_t port_id;
 

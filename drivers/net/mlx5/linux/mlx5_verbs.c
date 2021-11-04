@@ -424,14 +424,16 @@ mlx5_rxq_ibv_obj_release(struct mlx5_rxq_priv *rxq)
 {
 	struct mlx5_rxq_obj *rxq_obj = rxq->ctrl->obj;
 
-	MLX5_ASSERT(rxq_obj);
-	MLX5_ASSERT(rxq_obj->wq);
-	MLX5_ASSERT(rxq_obj->ibv_cq);
+	if (rxq_obj == NULL || rxq_obj->wq == NULL)
+		return;
 	claim_zero(mlx5_glue->destroy_wq(rxq_obj->wq));
+	rxq_obj->wq = NULL;
+	MLX5_ASSERT(rxq_obj->ibv_cq);
 	claim_zero(mlx5_glue->destroy_cq(rxq_obj->ibv_cq));
 	if (rxq_obj->ibv_channel)
 		claim_zero(mlx5_glue->destroy_comp_channel
 							(rxq_obj->ibv_channel));
+	rxq->ctrl->started = false;
 }
 
 /**
