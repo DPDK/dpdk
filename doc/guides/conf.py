@@ -368,6 +368,11 @@ def setup(app):
                             'Asymmetric',
                             'Asymmetric algorithms in crypto drivers',
                             'Asymmetric algorithm')
+    table_file = dirname(__file__) + '/cryptodevs/overview_os_table.txt'
+    generate_overview_table(table_file, 6,
+                            'OS',
+                            'Operating systems support for crypto drivers',
+                            'Operating system')
     table_file = dirname(__file__) + '/compressdevs/overview_feature_table.txt'
     generate_overview_table(table_file, 1,
                             'Features',

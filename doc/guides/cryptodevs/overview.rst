@@ -80,3 +80,10 @@ Supported Asymmetric Algorithms
 .. _table_crypto_pmd_asym_algos:
 
 .. include:: overview_asym_table.txt
+
+Supported Operating Systems
+-------------------------------
+
+.. _table_crypto_pmd_os:
+
+.. include:: overview_os_table.txt
