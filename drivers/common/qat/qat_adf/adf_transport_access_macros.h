@@ -51,6 +51,8 @@
 #define ADF_MIN_RING_SIZE ADF_RING_SIZE_128
 #define ADF_MAX_RING_SIZE ADF_RING_SIZE_4M
 #define ADF_DEFAULT_RING_SIZE ADF_RING_SIZE_16K
+/* ARB CSR offset */
+#define ADF_ARB_RINGSRVARBEN_OFFSET 0x19C
 
 /* Maximum number of qps on a device for any service type */
 #define ADF_MAX_QPS_ON_ANY_SERVICE	2

@@ -128,9 +128,6 @@ struct qat_pci_device {
 	/* Data relating to compression service */
 	struct qat_comp_dev_private *comp_dev;
 	/**< link back to compressdev private data */
-	struct qat_qp_hw_data qp_gen4_data[QAT_GEN4_BUNDLE_NUM]
-		[QAT_GEN4_QPS_PER_BUNDLE_NUM];
-	/**< Data of ring configuration on gen4 */
 	void *misc_bar_io_addr;
 	/**< Address of misc bar */
 	void *dev_private;

@@ -12,16 +12,6 @@
 
 #define QAT_QP_MIN_INFL_THRESHOLD	256
 
-/* Default qp configuration for GEN4 devices */
-#define QAT_GEN4_QP_DEFCON	(QAT_SERVICE_SYMMETRIC |	\
-				QAT_SERVICE_SYMMETRIC << 8 |	\
-				QAT_SERVICE_SYMMETRIC << 16 |	\
-				QAT_SERVICE_SYMMETRIC << 24)
-
-/* QAT GEN 4 specific macros */
-#define QAT_GEN4_BUNDLE_NUM             4
-#define QAT_GEN4_QPS_PER_BUNDLE_NUM     1
-
 struct qat_pci_device;
 
 /**
@@ -106,7 +96,11 @@ qat_qp_setup(struct qat_pci_device *qat_dev,
 
 int
 qat_qps_per_service(struct qat_pci_device *qat_dev,
-			enum qat_service_type service);
+		enum qat_service_type service);
+
+const struct qat_qp_hw_data *
+qat_qp_get_hw_data(struct qat_pci_device *qat_dev,
+		enum qat_service_type service, uint16_t qp_id);
 
 int
 qat_cq_get_fw_version(struct qat_qp *qp);
@@ -116,11 +110,6 @@ int
 qat_comp_process_response(void **op __rte_unused, uint8_t *resp __rte_unused,
 			  void *op_cookie __rte_unused,
 			  uint64_t *dequeue_err_count __rte_unused);
-
-int
-qat_select_valid_queue(struct qat_pci_device *qat_dev, int qp_id,
-			enum qat_service_type service_type);
-
 int
 qat_read_qp_config(struct qat_pci_device *qat_dev);
 
@@ -165,8 +154,5 @@ struct qat_qp_hw_spec_funcs {
 };
 
 extern struct qat_qp_hw_spec_funcs *qat_qp_hw_spec[];
-
-extern const struct qat_qp_hw_data qat_gen1_qps[][ADF_MAX_QPS_ON_ANY_SERVICE];
-extern const struct qat_qp_hw_data qat_gen3_qps[][ADF_MAX_QPS_ON_ANY_SERVICE];
 
 #endif /* _QAT_QP_H_ */

@@ -164,34 +164,10 @@ static int qat_sym_qp_setup(struct rte_cryptodev *dev, uint16_t qp_id,
 	int ret = 0;
 	uint32_t i;
 	struct qat_qp_config qat_qp_conf;
-	const struct qat_qp_hw_data *sym_hw_qps = NULL;
-	const struct qat_qp_hw_data *qp_hw_data = NULL;
-
 	struct qat_qp **qp_addr =
 			(struct qat_qp **)&(dev->data->queue_pairs[qp_id]);
 	struct qat_sym_dev_private *qat_private = dev->data->dev_private;
 	struct qat_pci_device *qat_dev = qat_private->qat_dev;
-
-	if (qat_dev->qat_dev_gen == QAT_GEN4) {
-		int ring_pair =
-			qat_select_valid_queue(qat_dev, qp_id,
-				QAT_SERVICE_SYMMETRIC);
-
-		if (ring_pair < 0) {
-			QAT_LOG(ERR,
-				"qp_id %u invalid for this device, no enough services allocated for GEN4 device",
-				qp_id);
-			return -EINVAL;
-		}
-		sym_hw_qps =
-			&qat_dev->qp_gen4_data[0][0];
-		qp_hw_data =
-			&qat_dev->qp_gen4_data[ring_pair][0];
-	} else {
-		sym_hw_qps = qat_gen_config[qat_dev->qat_dev_gen]
-				.qp_hw_data[QAT_SERVICE_SYMMETRIC];
-		qp_hw_data = sym_hw_qps + qp_id;
-	}
 
 	/* If qp is already in use free ring memory and qp metadata. */
 	if (*qp_addr != NULL) {
@@ -204,7 +180,13 @@ static int qat_sym_qp_setup(struct rte_cryptodev *dev, uint16_t qp_id,
 		return -EINVAL;
 	}
 
-	qat_qp_conf.hw = qp_hw_data;
+	qat_qp_conf.hw = qat_qp_get_hw_data(qat_dev, QAT_SERVICE_SYMMETRIC,
+			qp_id);
+	if (qat_qp_conf.hw == NULL) {
+		QAT_LOG(ERR, "qp_id %u invalid for this device", qp_id);
+		return -EINVAL;
+	}
+
 	qat_qp_conf.cookie_size = sizeof(struct qat_sym_op_cookie);
 	qat_qp_conf.nb_descriptors = qp_conf->nb_descriptors;
 	qat_qp_conf.socket_id = socket_id;
