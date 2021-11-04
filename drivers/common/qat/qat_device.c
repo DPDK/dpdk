@@ -13,6 +13,10 @@
 #include "adf_pf2vf_msg.h"
 #include "qat_pf2vf.h"
 
+/* Hardware device information per generation */
+struct qat_gen_hw_data qat_gen_config[QAT_N_GENS];
+struct qat_dev_hw_spec_funcs *qat_dev_hw_spec[QAT_N_GENS];
+
 /* pv2vf data Gen 4*/
 struct qat_pf2vf_dev qat_pf2vf_gen4 = {
 	.pf2vf_offset = ADF_4XXXIOV_PF2VM_OFFSET,

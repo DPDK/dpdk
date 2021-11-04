@@ -21,6 +21,29 @@
 #define COMP_ENQ_THRESHOLD_NAME "qat_comp_enq_threshold"
 #define MAX_QP_THRESHOLD_SIZE	32
 
+/**
+ * Function prototypes for GENx specific device operations.
+ **/
+typedef int (*qat_dev_reset_ring_pairs_t)
+		(struct qat_pci_device *);
+typedef const struct rte_mem_resource* (*qat_dev_get_transport_bar_t)
+		(struct rte_pci_device *);
+typedef int (*qat_dev_get_misc_bar_t)
+		(struct rte_mem_resource **, struct rte_pci_device *);
+typedef int (*qat_dev_read_config_t)
+		(struct qat_pci_device *);
+typedef int (*qat_dev_get_extra_size_t)(void);
+
+struct qat_dev_hw_spec_funcs {
+	qat_dev_reset_ring_pairs_t	qat_dev_reset_ring_pairs;
+	qat_dev_get_transport_bar_t	qat_dev_get_transport_bar;
+	qat_dev_get_misc_bar_t		qat_dev_get_misc_bar;
+	qat_dev_read_config_t		qat_dev_read_config;
+	qat_dev_get_extra_size_t	qat_dev_get_extra_size;
+};
+
+extern struct qat_dev_hw_spec_funcs *qat_dev_hw_spec[];
+
 struct qat_dev_cmd_param {
 	const char *name;
 	uint16_t val;

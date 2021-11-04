@@ -15,19 +15,23 @@
 /* Intel(R) QuickAssist Technology device generation is enumerated
  * from one according to the generation of the device
  */
+
 enum qat_device_gen {
-	QAT_GEN1 = 1,
+	QAT_GEN1,
 	QAT_GEN2,
 	QAT_GEN3,
-	QAT_GEN4
+	QAT_GEN4,
+	QAT_N_GENS
 };
 
 enum qat_service_type {
-	QAT_SERVICE_ASYMMETRIC = 0,
+	QAT_SERVICE_ASYMMETRIC,
 	QAT_SERVICE_SYMMETRIC,
 	QAT_SERVICE_COMPRESSION,
-	QAT_SERVICE_INVALID
+	QAT_MAX_SERVICES
 };
+
+#define QAT_SERVICE_INVALID	(QAT_MAX_SERVICES)
 
 enum qat_svc_list {
 	QAT_SVC_UNUSED = 0,
@@ -36,8 +40,6 @@ enum qat_svc_list {
 	QAT_SVC_SYM = 3,
 	QAT_SVC_ASYM = 4,
 };
-
-#define QAT_MAX_SERVICES		(QAT_SERVICE_INVALID)
 
 /**< Common struct for scatter-gather list operations */
 struct qat_flat_buf {
