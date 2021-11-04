@@ -728,3 +728,31 @@ it is only valid to have a single flow to map to that security session.
         +-------+            +--------+    +-----+
         |  Eth  | ->  ... -> |   ESP  | -> | END |
         +-------+            +--------+    +-----+
+
+
+Telemetry support
+-----------------
+
+The Security library has support for displaying Crypto device information
+with respect to its Security capabilities. Telemetry commands that can be used
+are shown below.
+
+#. Get the list of available Crypto devices by ID, that supports Security features::
+
+     --> /security/cryptodev/list
+     {"/security/cryptodev/list": [0, 1, 2, 3]}
+
+#. Get the security capabilities of a Crypto device::
+
+     --> /security/cryptodev/sec_caps,0
+	 {"/security/cryptodev/sec_caps": {"sec_caps": [<array of serialized bytes of
+	 capabilities>], "sec_caps_n": <number of capabilities>}}
+
+ #. Get the security crypto capabilities of a Crypto device::
+
+     --> /security/cryptodev/crypto_caps,0,0
+	 {"/security/cryptodev/crypto_caps": {"crypto_caps": [<array of serialized bytes of
+	 capabilities>], "crypto_caps_n": <number of capabilities>}}
+
+For more information on how to use the Telemetry interface, see
+the :doc:`../howto/telemetry`.

@@ -239,6 +239,11 @@ New Features
   stats for a crypto device, and other device information to be queried.
   Also added callback to get cryptodev capabilities.
 
+* **Added telemetry to security library.**
+
+  Added telemetry callback functions to query security capabilities of
+  crypto device.
+
 * **Updated Marvell cnxk crypto PMD.**
 
   * Added AES-CBC SHA1-HMAC support in lookaside protocol (IPsec) for CN10K.
