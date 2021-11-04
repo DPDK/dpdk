@@ -1428,6 +1428,7 @@ M: Cristian Dumitrescu <cristian.dumitrescu@intel.com>
 M: Jasvinder Singh <jasvinder.singh@intel.com>
 F: lib/sched/
 F: doc/guides/prog_guide/qos_framework.rst
+F: app/test/test_pie.c
 F: app/test/test_red.c
 F: app/test/test_sched.c
 F: examples/qos_sched/

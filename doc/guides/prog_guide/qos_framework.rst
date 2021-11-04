@@ -56,7 +56,8 @@ A functional description of each block is provided in the following table.
    |   |                        |                                                                                |
    +---+------------------------+--------------------------------------------------------------------------------+
    | 7 | Dropper                | Congestion management using the Random Early Detection (RED) algorithm         |
-   |   |                        | (specified by the Sally Floyd - Van Jacobson paper) or Weighted RED (WRED).    |
+   |   |                        | (specified by the Sally Floyd - Van Jacobson paper) or Weighted RED (WRED)     |
+   |   |                        | or Proportional Integral Controller Enhanced (PIE).                            |
    |   |                        | Drop packets based on the current scheduler queue load level and packet        |
    |   |                        | priority. When congestion is experienced, lower priority packets are dropped   |
    |   |                        | first.                                                                         |
@@ -421,7 +422,7 @@ No input packet can be part of more than one pipeline stage at a given time.
 The congestion management scheme implemented by the enqueue pipeline described above is very basic:
 packets are enqueued until a specific queue becomes full,
 then all the packets destined to the same queue are dropped until packets are consumed (by the dequeue operation).
-This can be improved by enabling RED/WRED as part of the enqueue pipeline which looks at the queue occupancy and
+This can be improved by enabling RED/WRED or PIE as part of the enqueue pipeline which looks at the queue occupancy and
 packet priority in order to yield the enqueue/drop decision for a specific packet
 (as opposed to enqueuing all packets / dropping all packets indiscriminately).
 
@@ -1155,13 +1156,13 @@ If the number of queues is small,
 then the performance of the port scheduler for the same level of active traffic is expected to be worse than
 the performance of a small set of message passing queues.
 
-.. _Dropper:
+.. _Droppers:
 
-Dropper
--------
+Droppers
+--------
 
 The purpose of the DPDK dropper is to drop packets arriving at a packet scheduler to avoid congestion.
-The dropper supports the Random Early Detection (RED),
+The dropper supports the Proportional Integral Controller Enhanced (PIE), Random Early Detection (RED),
 Weighted Random Early Detection (WRED) and tail drop algorithms.
 :numref:`figure_blk_diag_dropper` illustrates how the dropper integrates with the scheduler.
 The DPDK currently does not support congestion management
@@ -1174,9 +1175,13 @@ so the dropper provides the only method for congestion avoidance.
    High-level Block Diagram of the DPDK Dropper
 
 
-The dropper uses the Random Early Detection (RED) congestion avoidance algorithm as documented in the reference publication.
-The purpose of the RED algorithm is to monitor a packet queue,
+The dropper uses one of two congestion avoidance algorithms:
+   - the Random Early Detection (RED) as documented in the reference publication.
+   - the Proportional Integral Controller Enhanced (PIE) as documented in RFC8033 publication.
+
+The purpose of the RED/PIE algorithm is to monitor a packet queue,
 determine the current congestion level in the queue and decide whether an arriving packet should be enqueued or dropped.
+
 The RED algorithm uses an Exponential Weighted Moving Average (EWMA) filter to compute average queue size which
 gives an indication of the current congestion level in the queue.
 
@@ -1192,7 +1197,7 @@ This occurs when a packet queue has reached maximum capacity and cannot store an
 In this situation, all arriving packets are dropped.
 
 The flow through the dropper is illustrated in :numref:`figure_flow_tru_droppper`.
-The RED/WRED algorithm is exercised first and tail drop second.
+The RED/WRED/PIE algorithm is exercised first and tail drop second.
 
 .. _figure_flow_tru_droppper:
 
@@ -1200,6 +1205,16 @@ The RED/WRED algorithm is exercised first and tail drop second.
 
    Flow Through the Dropper
 
+The PIE algorithm periodically updates the drop probability based on the latency samples.
+The current latency sample but also analyze whether the latency is trending up or down.
+This is the classical Proportional Integral (PI) controller method, which is known for
+eliminating steady state errors.
+
+When a congestion period ends, we might be left with a high drop probability with light
+packet arrivals. Hence, the PIE algorithm includes a mechanism by which the drop probability
+decays exponentially (rather than linearly) when the system is not congested.
+This would help the drop probability converge to 0 more quickly, while the PI controller ensures
+that it would eventually reach zero.
 
 The use cases supported by the dropper are:
 
@@ -1252,6 +1267,35 @@ an inverse mark probability parameter value of 10 corresponds
 to a mark probability of 1/10 (that is, 1 in 10 packets will be dropped).
 The EWMA filter weight parameter is specified as an inverse log value,
 for example, a filter weight parameter value of 9 corresponds to a filter weight of 1/29.
+
+A PIE configuration contains the parameters given in :numref:`table_qos_16a`.
+
+.. _table_qos_16a:
+
+.. table:: PIE Configuration Parameters
+
+   +--------------------------+---------+---------+------------------+
+   | Parameter                | Minimum | Maximum | Default          |
+   |                          |         |         |                  |
+   +==========================+=========+=========+==================+
+   | Queue delay reference    | 1       | uint16  | 15               |
+   | Latency Target Value     |         |         |                  |
+   | Unit: ms                 |         |         |                  |
+   +--------------------------+---------+---------+------------------+
+   | Max Burst Allowance      | 1       | uint16  | 150              |
+   | Unit: ms                 |         |         |                  |
+   +--------------------------+---------+---------+------------------+
+   | Tail Drop Threshold      | 1       | uint16  | 64               |
+   | Unit: bytes              |         |         |                  |
+   +--------------------------+---------+---------+------------------+
+   | Period to calculate      | 1       | uint16  | 15               |
+   | drop probability         |         |         |                  |
+   | Unit: ms                 |         |         |                  |
+   +--------------------------+---------+---------+------------------+
+
+The meaning of these parameters is explained in more detail in the next sections.
+The format of these parameters as specified to the dropper module API.
+They could made self calculated for fine tuning, within the apps.
 
 .. _Enqueue_Operation:
 
@@ -1396,7 +1440,7 @@ As can be seen, the floating-point implementation achieved the worst performance
    | Method                                                                             | Relative Performance |
    |                                                                                    |                      |
    +====================================================================================+======================+
-   | Current dropper method (see :ref:`Section 23.3.2.1.3 <Dropper>`)                   | 100%                 |
+   | Current dropper method (see :ref:`Section 23.3.2.1.3 <Droppers>`)                  | 100%                 |
    |                                                                                    |                      |
    +------------------------------------------------------------------------------------+----------------------+
    | Fixed-point method with small (512B) look-up table                                 | 148%                 |

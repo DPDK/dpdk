@@ -22,6 +22,7 @@ Main features:
   shared (by multiple nodes) shapers
 * Congestion management for hierarchy leaf nodes: algorithms of tail drop, head
   drop, WRED, private (per node) and shared (by multiple nodes) WRED contexts
+  and PIE.
 * Packet marking: IEEE 802.1q (VLAN DEI), IETF RFC 3168 (IPv4/IPv6 ECN for TCP
   and SCTP), IETF RFC 2597 (IPv4 / IPv6 DSCP)
 
@@ -103,8 +104,9 @@ Congestion Management
 Congestion management is used to control the admission of packets into a packet
 queue or group of packet queues on congestion. The congestion management
 algorithms that are supported are: Tail Drop, Head Drop and Weighted Random
-Early Detection (WRED). They are made available for every leaf node in the
-hierarchy, subject to the specific implementation supporting them.
+Early Detection (WRED), Proportional Integral Controller Enhanced (PIE).
+They are made available for every leaf node in the hierarchy, subject to
+the specific implementation supporting them.
 On request of writing a new packet into the current queue while the queue is
 full, the Tail Drop algorithm drops the new packet while leaving the queue
 unmodified, as opposed to the Head Drop* algorithm, which drops the packet
@@ -127,6 +129,13 @@ management for a group of leaf nodes.
 The configuration of WRED private and shared contexts is done through the
 definition of WRED profiles. Any WRED profile can be used by one or several
 WRED contexts (either private or shared).
+
+The Proportional Integral Controller Enhanced (PIE) algorithm works by proactively
+dropping packets randomly. Calculated drop probability is updated periodically,
+based on latency measured and desired and whether the queuing latency is currently
+trending up or down. Queuing latency can be obtained using direct measurement or
+on estimations calculated from the queue length and dequeue rate. The random drop
+is triggered by a packet's arrival before enqueuing into a queue.
 
 
 Packet Marking

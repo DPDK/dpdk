@@ -242,7 +242,7 @@ cfg_load_subport(struct rte_cfgfile *cfg, struct rte_sched_subport_params *subpo
 	memset(active_queues, 0, sizeof(active_queues));
 	n_active_queues = 0;
 
-#ifdef RTE_SCHED_RED
+#ifdef RTE_SCHED_CMAN
 	char sec_name[CFG_NAME_LEN];
 	struct rte_red_params red_params[RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE][RTE_COLORS];
 
@@ -315,7 +315,7 @@ cfg_load_subport(struct rte_cfgfile *cfg, struct rte_sched_subport_params *subpo
 			}
 		}
 	}
-#endif /* RTE_SCHED_RED */
+#endif /* RTE_SCHED_CMAN */
 
 	for (i = 0; i < MAX_SCHED_SUBPORTS; i++) {
 		char sec_name[CFG_NAME_LEN];
@@ -393,7 +393,7 @@ cfg_load_subport(struct rte_cfgfile *cfg, struct rte_sched_subport_params *subpo
 					}
 				}
 			}
-#ifdef RTE_SCHED_RED
+#ifdef RTE_SCHED_CMAN
 			for (j = 0; j < RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE; j++) {
 				for (k = 0; k < RTE_COLORS; k++) {
 					subport_params[i].red_params[j][k].min_th =

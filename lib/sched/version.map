@@ -30,4 +30,8 @@ EXPERIMENTAL {
 
 	# added in 20.11
 	rte_sched_port_subport_profile_add;
+
+	# added in 21.11
+	rte_pie_rt_data_init;
+	rte_pie_config_init;
 };

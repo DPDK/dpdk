@@ -420,7 +420,7 @@ pmd_tm_node_type_get(struct rte_eth_dev *dev,
 	return 0;
 }
 
-#ifdef RTE_SCHED_RED
+#ifdef RTE_SCHED_CMAN
 #define WRED_SUPPORTED						1
 #else
 #define WRED_SUPPORTED						0
@@ -2306,7 +2306,7 @@ tm_tc_wred_profile_get(struct rte_eth_dev *dev, uint32_t tc_id)
 	return NULL;
 }
 
-#ifdef RTE_SCHED_RED
+#ifdef RTE_SCHED_CMAN
 
 static void
 wred_profiles_set(struct rte_eth_dev *dev, uint32_t subport_id)
@@ -2321,7 +2321,7 @@ wred_profiles_set(struct rte_eth_dev *dev, uint32_t subport_id)
 	for (tc_id = 0; tc_id < RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE; tc_id++)
 		for (color = RTE_COLOR_GREEN; color < RTE_COLORS; color++) {
 			struct rte_red_params *dst =
-				&pp->red_params[tc_id][color];
+				&pp->cman_params->red_params[tc_id][color];
 			struct tm_wred_profile *src_wp =
 				tm_tc_wred_profile_get(dev, tc_id);
 			struct rte_tm_red_params *src =

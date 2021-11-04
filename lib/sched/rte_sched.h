@@ -61,10 +61,9 @@ extern "C" {
 #include <rte_mbuf.h>
 #include <rte_meter.h>
 
-/** Random Early Detection (RED) */
-#ifdef RTE_SCHED_RED
+/** Congestion Management */
 #include "rte_red.h"
-#endif
+#include "rte_pie.h"
 
 /** Maximum number of queues per pipe.
  * Note that the multiple queues (power of 2) can only be assigned to
@@ -110,6 +109,28 @@ extern "C" {
 #define RTE_SCHED_FRAME_OVERHEAD_DEFAULT      24
 #endif
 
+/**
+ * Congestion Management (CMAN) mode
+ *
+ * This is used for controlling the admission of packets into a packet queue or
+ * group of packet queues on congestion.
+ *
+ * The *Random Early Detection (RED)* algorithm works by proactively dropping
+ * more and more input packets as the queue occupancy builds up. When the queue
+ * is full or almost full, RED effectively works as *tail drop*. The *Weighted
+ * RED* algorithm uses a separate set of RED thresholds for each packet color.
+ *
+ * Similar to RED, Proportional Integral Controller Enhanced (PIE) randomly
+ * drops a packet at the onset of the congestion and tries to control the
+ * latency around the target value. The congestion detection, however, is based
+ * on the queueing latency instead of the queue length like RED. For more
+ * information, refer RFC8033.
+ */
+enum rte_sched_cman_mode {
+	RTE_SCHED_CMAN_RED, /**< Random Early Detection (RED) */
+	RTE_SCHED_CMAN_PIE, /**< Proportional Integral Controller Enhanced (PIE) */
+};
+
 /*
  * Pipe configuration parameters. The period and credits_per_period
  * parameters are measured in bytes, with one byte meaning the time
@@ -137,6 +158,22 @@ struct rte_sched_pipe_params {
 
 	/** WRR weights of best-effort traffic class queues */
 	uint8_t wrr_weights[RTE_SCHED_BE_QUEUES_PER_PIPE];
+};
+
+/*
+ * Congestion Management configuration parameters.
+ */
+struct rte_sched_cman_params {
+	/** Congestion Management mode */
+	enum rte_sched_cman_mode cman_mode;
+
+	union {
+		/** RED parameters */
+		struct rte_red_params red_params[RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE][RTE_COLORS];
+
+		/** PIE parameters */
+		struct rte_pie_params pie_params[RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE];
+	};
 };
 
 /*
@@ -174,10 +211,11 @@ struct rte_sched_subport_params {
 	/** Max allowed profiles in the pipe profile table */
 	uint32_t n_max_pipe_profiles;
 
-#ifdef RTE_SCHED_RED
-	/** RED parameters */
-	struct rte_red_params red_params[RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE][RTE_COLORS];
-#endif
+	/** Congestion Management parameters
+	 * If NULL the congestion management is disabled for the subport,
+	 * otherwise proper parameters need to be provided.
+	 */
+	struct rte_sched_cman_params *cman_params;
 };
 
 struct rte_sched_subport_profile_params {
@@ -208,10 +246,8 @@ struct rte_sched_subport_stats {
 	/** Number of bytes dropped for each traffic class */
 	uint64_t n_bytes_tc_dropped[RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE];
 
-#ifdef RTE_SCHED_RED
-	/** Number of packets dropped by red */
-	uint64_t n_pkts_red_dropped[RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE];
-#endif
+	/** Number of packets dropped by congestion management scheme */
+	uint64_t n_pkts_cman_dropped[RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE];
 };
 
 /** Queue statistics */
@@ -222,10 +258,8 @@ struct rte_sched_queue_stats {
 	/** Packets dropped */
 	uint64_t n_pkts_dropped;
 
-#ifdef RTE_SCHED_RED
-	/** Packets dropped by RED */
-	uint64_t n_pkts_red_dropped;
-#endif
+	/** Packets dropped by congestion management scheme */
+	uint64_t n_pkts_cman_dropped;
 
 	/** Bytes successfully written */
 	uint64_t n_bytes;

@@ -89,7 +89,7 @@
 #define RTE_MAX_LCORE_FREQS 64
 
 /* rte_sched defines */
-#undef RTE_SCHED_RED
+#undef RTE_SCHED_CMAN
 #undef RTE_SCHED_COLLECT_STATS
 #undef RTE_SCHED_SUBPORT_TC_OV
 #define RTE_SCHED_PORT_N_GRINDERS 8

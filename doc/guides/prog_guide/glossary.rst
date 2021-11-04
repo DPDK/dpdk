@@ -158,6 +158,9 @@ PCI
 PHY
    An abbreviation for the physical layer of the OSI model.
 
+PIE
+   Proportional Integral Controller Enhanced (RFC8033)
+
 pktmbuf
    An *mbuf* carrying a network packet.
 
