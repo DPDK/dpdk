@@ -34,6 +34,9 @@
 	ADF_CSR_WR(csr_addr, ADF_ARB_RINGSRVARBEN_OFFSET + \
 	(ADF_ARB_REG_SLOT * index), value)
 
+struct qat_qp_hw_spec_funcs*
+	qat_qp_hw_spec[QAT_N_GENS];
+
 __extension__
 const struct qat_qp_hw_data qat_gen1_qps[QAT_MAX_SERVICES]
 					 [ADF_MAX_QPS_ON_ANY_SERVICE] = {
