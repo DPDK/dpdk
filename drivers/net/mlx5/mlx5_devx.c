@@ -277,6 +277,7 @@ mlx5_rxq_create_devx_rq_resources(struct mlx5_rxq_priv *rxq)
 						MLX5_WQ_END_PAD_MODE_NONE;
 	rq_attr.wq_attr.pd = cdev->pdn;
 	rq_attr.counter_set_id = priv->counter_set_id;
+	rq_attr.user_index = rte_cpu_to_be_16(priv->dev_data->port_id);
 	if (rxq_data->shared) /* Create RMP based RQ. */
 		rxq->devx_rq.rmp = &rxq_ctrl->obj->devx_rmp;
 	/* Create RQ using DevX API. */

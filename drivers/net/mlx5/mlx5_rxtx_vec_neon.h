@@ -787,7 +787,17 @@ rxq_cq_process_v(struct mlx5_rxq_data *rxq, volatile struct mlx5_cqe *cq,
 		/* C.4 fill in mbuf - rearm_data and packet_type. */
 		rxq_cq_to_ptype_oflags_v(rxq, ptype_info, flow_tag,
 					 opcode, &elts[pos]);
-		if (rxq->hw_timestamp) {
+		if (unlikely(rxq->shared)) {
+			elts[pos]->port = container_of(p0, struct mlx5_cqe,
+					      pkt_info)->user_index_low;
+			elts[pos + 1]->port = container_of(p1, struct mlx5_cqe,
+					      pkt_info)->user_index_low;
+			elts[pos + 2]->port = container_of(p2, struct mlx5_cqe,
+					      pkt_info)->user_index_low;
+			elts[pos + 3]->port = container_of(p3, struct mlx5_cqe,
+					      pkt_info)->user_index_low;
+		}
+		if (unlikely(rxq->hw_timestamp)) {
 			int offset = rxq->timestamp_offset;
 			if (rxq->rt_timestamp) {
 				struct mlx5_dev_ctx_shared *sh = rxq->sh;

@@ -709,6 +709,7 @@ rxq_cq_to_mbuf(struct mlx5_rxq_data *rxq, struct rte_mbuf *pkt,
 {
 	/* Update packet information. */
 	pkt->packet_type = rxq_cq_to_pkt_type(rxq, cqe, mcqe);
+	pkt->port = unlikely(rxq->shared) ? cqe->user_index_low : rxq->port_id;
 
 	if (rxq->rss_hash) {
 		uint32_t rss_hash_res = 0;

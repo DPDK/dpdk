@@ -186,7 +186,8 @@ rxq_alloc_elts_sprq(struct mlx5_rxq_ctrl *rxq_ctrl)
 		mbuf_init->data_off = RTE_PKTMBUF_HEADROOM;
 		rte_mbuf_refcnt_set(mbuf_init, 1);
 		mbuf_init->nb_segs = 1;
-		mbuf_init->port = rxq->port_id;
+		/* For shared queues port is provided in CQE */
+		mbuf_init->port = rxq->shared ? 0 : rxq->port_id;
 		if (priv->flags & RTE_PKTMBUF_POOL_F_PINNED_EXT_BUF)
 			mbuf_init->ol_flags = RTE_MBUF_F_EXTERNAL;
 		/*

@@ -1189,6 +1189,12 @@ rxq_cq_process_v(struct mlx5_rxq_data *rxq, volatile struct mlx5_cqe *cq,
 
 		/* D.5 fill in mbuf - rearm_data and packet_type. */
 		rxq_cq_to_ptype_oflags_v(rxq, cqes, opcode, &pkts[pos]);
+		if (unlikely(rxq->shared)) {
+			pkts[pos]->port = cq[pos].user_index_low;
+			pkts[pos + p1]->port = cq[pos + p1].user_index_low;
+			pkts[pos + p2]->port = cq[pos + p2].user_index_low;
+			pkts[pos + p3]->port = cq[pos + p3].user_index_low;
+		}
 		if (rxq->hw_timestamp) {
 			int offset = rxq->timestamp_offset;
 			if (rxq->rt_timestamp) {
