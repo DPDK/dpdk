@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2018-2019 Intel Corporation
+ * Copyright(c) 2018-2021 Intel Corporation
  */
 
 #include <rte_mempool.h>
@@ -332,7 +332,8 @@ qat_comp_build_request(void *in_op, uint8_t *out_msg,
 	return 0;
 }
 
-static inline uint32_t adf_modulo(uint32_t data, uint32_t modulo_mask)
+static inline uint32_t
+adf_modulo(uint32_t data, uint32_t modulo_mask)
 {
 	return data & modulo_mask;
 }
@@ -793,8 +794,9 @@ qat_comp_stream_size(void)
 	return RTE_ALIGN_CEIL(sizeof(struct qat_comp_stream), 8);
 }
 
-static void qat_comp_create_req_hdr(struct icp_qat_fw_comn_req_hdr *header,
-				    enum qat_comp_request_type request)
+static void
+qat_comp_create_req_hdr(struct icp_qat_fw_comn_req_hdr *header,
+	    enum qat_comp_request_type request)
 {
 	if (request == QAT_COMP_REQUEST_FIXED_COMP_STATELESS)
 		header->service_cmd_id = ICP_QAT_FW_COMP_CMD_STATIC;
@@ -811,16 +813,17 @@ static void qat_comp_create_req_hdr(struct icp_qat_fw_comn_req_hdr *header,
 	    QAT_COMN_CD_FLD_TYPE_16BYTE_DATA, QAT_COMN_PTR_TYPE_FLAT);
 }
 
-static int qat_comp_create_templates(struct qat_comp_xform *qat_xform,
-			const struct rte_memzone *interm_buff_mz,
-			const struct rte_comp_xform *xform,
-			const struct qat_comp_stream *stream,
-			enum rte_comp_op_type op_type)
+static int
+qat_comp_create_templates(struct qat_comp_xform *qat_xform,
+			  const struct rte_memzone *interm_buff_mz,
+			  const struct rte_comp_xform *xform,
+			  const struct qat_comp_stream *stream,
+			  enum rte_comp_op_type op_type,
+			  enum qat_device_gen qat_dev_gen)
 {
 	struct icp_qat_fw_comp_req *comp_req;
-	int comp_level, algo;
 	uint32_t req_par_flags;
-	int direction = ICP_QAT_HW_COMPRESSION_DIR_COMPRESS;
+	int res;
 
 	if (unlikely(qat_xform == NULL)) {
 		QAT_LOG(ERR, "Session was not created for this device");
@@ -839,46 +842,17 @@ static int qat_comp_create_templates(struct qat_comp_xform *qat_xform,
 		}
 	}
 
-	if (qat_xform->qat_comp_request_type == QAT_COMP_REQUEST_DECOMPRESS) {
-		direction = ICP_QAT_HW_COMPRESSION_DIR_DECOMPRESS;
-		comp_level = ICP_QAT_HW_COMPRESSION_DEPTH_1;
+	if (qat_xform->qat_comp_request_type == QAT_COMP_REQUEST_DECOMPRESS)
 		req_par_flags = ICP_QAT_FW_COMP_REQ_PARAM_FLAGS_BUILD(
 				ICP_QAT_FW_COMP_SOP, ICP_QAT_FW_COMP_EOP,
 				ICP_QAT_FW_COMP_BFINAL,
 				ICP_QAT_FW_COMP_CNV,
 				ICP_QAT_FW_COMP_CNV_RECOVERY);
-	} else {
-		if (xform->compress.level == RTE_COMP_LEVEL_PMD_DEFAULT)
-			comp_level = ICP_QAT_HW_COMPRESSION_DEPTH_8;
-		else if (xform->compress.level == 1)
-			comp_level = ICP_QAT_HW_COMPRESSION_DEPTH_1;
-		else if (xform->compress.level == 2)
-			comp_level = ICP_QAT_HW_COMPRESSION_DEPTH_4;
-		else if (xform->compress.level == 3)
-			comp_level = ICP_QAT_HW_COMPRESSION_DEPTH_8;
-		else if (xform->compress.level >= 4 &&
-			 xform->compress.level <= 9)
-			comp_level = ICP_QAT_HW_COMPRESSION_DEPTH_16;
-		else {
-			QAT_LOG(ERR, "compression level not supported");
-			return -EINVAL;
-		}
+	else
 		req_par_flags = ICP_QAT_FW_COMP_REQ_PARAM_FLAGS_BUILD(
 				ICP_QAT_FW_COMP_SOP, ICP_QAT_FW_COMP_EOP,
 				ICP_QAT_FW_COMP_BFINAL, ICP_QAT_FW_COMP_CNV,
 				ICP_QAT_FW_COMP_CNV_RECOVERY);
-	}
-
-	switch (xform->compress.algo) {
-	case RTE_COMP_ALGO_DEFLATE:
-		algo = ICP_QAT_HW_COMPRESSION_ALGO_DEFLATE;
-		break;
-	case RTE_COMP_ALGO_LZS:
-	default:
-		/* RTE_COMP_NULL */
-		QAT_LOG(ERR, "compression algorithm not supported");
-		return -EINVAL;
-	}
 
 	comp_req = &qat_xform->qat_comp_req_tmpl;
 
@@ -899,18 +873,10 @@ static int qat_comp_create_templates(struct qat_comp_xform *qat_xform,
 		comp_req->comp_cd_ctrl.comp_state_addr =
 				stream->state_registers_decomp_phys;
 
-		/* Enable A, B, C, D, and E (CAMs). */
+		/* RAM bank flags */
 		comp_req->comp_cd_ctrl.ram_bank_flags =
-			ICP_QAT_FW_COMP_RAM_FLAGS_BUILD(
-				ICP_QAT_FW_COMP_BANK_DISABLED, /* Bank I */
-				ICP_QAT_FW_COMP_BANK_DISABLED, /* Bank H */
-				ICP_QAT_FW_COMP_BANK_DISABLED, /* Bank G */
-				ICP_QAT_FW_COMP_BANK_DISABLED, /* Bank F */
-				ICP_QAT_FW_COMP_BANK_ENABLED,  /* Bank E */
-				ICP_QAT_FW_COMP_BANK_ENABLED,  /* Bank D */
-				ICP_QAT_FW_COMP_BANK_ENABLED,  /* Bank C */
-				ICP_QAT_FW_COMP_BANK_ENABLED,  /* Bank B */
-				ICP_QAT_FW_COMP_BANK_ENABLED); /* Bank A */
+				qat_comp_gen_dev_ops[qat_dev_gen]
+					.qat_comp_get_ram_bank_flags();
 
 		comp_req->comp_cd_ctrl.ram_banks_addr =
 				stream->inflate_context_phys;
@@ -924,13 +890,11 @@ static int qat_comp_create_templates(struct qat_comp_xform *qat_xform,
 			ICP_QAT_FW_COMP_ENABLE_SECURE_RAM_USED_AS_INTMD_BUF);
 	}
 
-	comp_req->cd_pars.sl.comp_slice_cfg_word[0] =
-	    ICP_QAT_HW_COMPRESSION_CONFIG_BUILD(
-		direction,
-		/* In CPM 1.6 only valid mode ! */
-		ICP_QAT_HW_COMPRESSION_DELAYED_MATCH_ENABLED, algo,
-		/* Translate level to depth */
-		comp_level, ICP_QAT_HW_COMPRESSION_FILE_TYPE_0);
+	res = qat_comp_gen_dev_ops[qat_dev_gen].qat_comp_set_slice_cfg_word(
+			qat_xform, xform, op_type,
+			comp_req->cd_pars.sl.comp_slice_cfg_word);
+	if (res)
+		return res;
 
 	comp_req->comp_pars.initial_adler = 1;
 	comp_req->comp_pars.initial_crc32 = 0;
@@ -958,7 +922,8 @@ static int qat_comp_create_templates(struct qat_comp_xform *qat_xform,
 				ICP_QAT_FW_SLICE_XLAT);
 
 		comp_req->u1.xlt_pars.inter_buff_ptr =
-				interm_buff_mz->iova;
+				(qat_comp_get_num_im_bufs_required(qat_dev_gen)
+					== 0) ? 0 : interm_buff_mz->iova;
 	}
 
 #if RTE_LOG_DP_LEVEL >= RTE_LOG_DEBUG
@@ -991,6 +956,8 @@ qat_comp_private_xform_create(struct rte_compressdev *dev,
 			      void **private_xform)
 {
 	struct qat_comp_dev_private *qat = dev->data->dev_private;
+	enum qat_device_gen qat_dev_gen = qat->qat_dev->qat_dev_gen;
+	unsigned int im_bufs = qat_comp_get_num_im_bufs_required(qat_dev_gen);
 
 	if (unlikely(private_xform == NULL)) {
 		QAT_LOG(ERR, "QAT: private_xform parameter is NULL");
@@ -1012,7 +979,8 @@ qat_comp_private_xform_create(struct rte_compressdev *dev,
 
 		if (xform->compress.deflate.huffman == RTE_COMP_HUFFMAN_FIXED ||
 		  ((xform->compress.deflate.huffman == RTE_COMP_HUFFMAN_DEFAULT)
-				   && qat->interm_buff_mz == NULL))
+				   && qat->interm_buff_mz == NULL
+				   && im_bufs > 0))
 			qat_xform->qat_comp_request_type =
 					QAT_COMP_REQUEST_FIXED_COMP_STATELESS;
 
@@ -1020,7 +988,8 @@ qat_comp_private_xform_create(struct rte_compressdev *dev,
 				RTE_COMP_HUFFMAN_DYNAMIC ||
 				xform->compress.deflate.huffman ==
 						RTE_COMP_HUFFMAN_DEFAULT) &&
-				qat->interm_buff_mz != NULL)
+				(qat->interm_buff_mz != NULL ||
+						im_bufs == 0))
 
 			qat_xform->qat_comp_request_type =
 					QAT_COMP_REQUEST_DYNAMIC_COMP_STATELESS;
@@ -1039,7 +1008,8 @@ qat_comp_private_xform_create(struct rte_compressdev *dev,
 	}
 
 	if (qat_comp_create_templates(qat_xform, qat->interm_buff_mz, xform,
-				      NULL, RTE_COMP_OP_STATELESS)) {
+				      NULL, RTE_COMP_OP_STATELESS,
+				      qat_dev_gen)) {
 		QAT_LOG(ERR, "QAT: Problem with setting compression");
 		return -EINVAL;
 	}
@@ -1138,7 +1108,8 @@ qat_comp_stream_create(struct rte_compressdev *dev,
 	ptr->qat_xform.checksum_type = xform->decompress.chksum;
 
 	if (qat_comp_create_templates(&ptr->qat_xform, qat->interm_buff_mz,
-				      xform, ptr, RTE_COMP_OP_STATEFUL)) {
+				      xform, ptr, RTE_COMP_OP_STATEFUL,
+				      qat->qat_dev->qat_dev_gen)) {
 		QAT_LOG(ERR, "QAT: problem with creating descriptor template for stream");
 		rte_mempool_put(qat->streampool, *stream);
 		*stream = NULL;

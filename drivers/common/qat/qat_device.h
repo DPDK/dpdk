@@ -49,12 +49,6 @@ struct qat_dev_cmd_param {
 	uint16_t val;
 };
 
-enum qat_comp_num_im_buffers {
-	QAT_NUM_INTERM_BUFS_GEN1 = 12,
-	QAT_NUM_INTERM_BUFS_GEN2 = 20,
-	QAT_NUM_INTERM_BUFS_GEN3 = 64
-};
-
 struct qat_device_info {
 	const struct rte_memzone *mz;
 	/**< mz to store the qat_pci_device so it can be
@@ -137,7 +131,6 @@ struct qat_pci_device {
 struct qat_gen_hw_data {
 	enum qat_device_gen dev_gen;
 	const struct qat_qp_hw_data (*qp_hw_data)[ADF_MAX_QPS_ON_ANY_SERVICE];
-	enum qat_comp_num_im_buffers comp_num_im_bufs_required;
 	struct qat_pf2vf_dev *pf2vf_dev;
 };
 

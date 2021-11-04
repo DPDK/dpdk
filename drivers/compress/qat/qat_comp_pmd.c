@@ -9,30 +9,29 @@
 
 #define QAT_PMD_COMP_SGL_DEF_SEGMENTS 16
 
+struct qat_comp_gen_dev_ops qat_comp_gen_dev_ops[QAT_N_GENS];
+
 struct stream_create_info {
 	struct qat_comp_dev_private *comp_dev;
 	int socket_id;
 	int error;
 };
 
-static const struct rte_compressdev_capabilities qat_comp_gen_capabilities[] = {
-	{/* COMPRESSION - deflate */
-	 .algo = RTE_COMP_ALGO_DEFLATE,
-	 .comp_feature_flags = RTE_COMP_FF_MULTI_PKT_CHECKSUM |
-				RTE_COMP_FF_CRC32_CHECKSUM |
-				RTE_COMP_FF_ADLER32_CHECKSUM |
-				RTE_COMP_FF_CRC32_ADLER32_CHECKSUM |
-				RTE_COMP_FF_SHAREABLE_PRIV_XFORM |
-				RTE_COMP_FF_HUFFMAN_FIXED |
-				RTE_COMP_FF_HUFFMAN_DYNAMIC |
-				RTE_COMP_FF_OOP_SGL_IN_SGL_OUT |
-				RTE_COMP_FF_OOP_SGL_IN_LB_OUT |
-				RTE_COMP_FF_OOP_LB_IN_SGL_OUT |
-				RTE_COMP_FF_STATEFUL_DECOMPRESSION,
-	 .window_size = {.min = 15, .max = 15, .increment = 0} },
-	{RTE_COMP_ALGO_LIST_END, 0, {0, 0, 0} } };
+static struct
+qat_comp_capabilities_info qat_comp_get_capa_info(
+		enum qat_device_gen qat_dev_gen, struct qat_pci_device *qat_dev)
+{
+	struct qat_comp_capabilities_info ret = { .data = NULL, .size = 0 };
 
-static void
+	if (qat_dev_gen >= QAT_N_GENS)
+		return ret;
+	RTE_FUNC_PTR_OR_ERR_RET(qat_comp_gen_dev_ops[qat_dev_gen]
+			.qat_comp_get_capabilities, ret);
+	return qat_comp_gen_dev_ops[qat_dev_gen]
+			.qat_comp_get_capabilities(qat_dev);
+}
+
+void
 qat_comp_stats_get(struct rte_compressdev *dev,
 		struct rte_compressdev_stats *stats)
 {
@@ -52,7 +51,7 @@ qat_comp_stats_get(struct rte_compressdev *dev,
 	stats->dequeue_err_count = qat_stats.dequeue_err_count;
 }
 
-static void
+void
 qat_comp_stats_reset(struct rte_compressdev *dev)
 {
 	struct qat_comp_dev_private *qat_priv;
@@ -67,7 +66,7 @@ qat_comp_stats_reset(struct rte_compressdev *dev)
 
 }
 
-static int
+int
 qat_comp_qp_release(struct rte_compressdev *dev, uint16_t queue_pair_id)
 {
 	struct qat_comp_dev_private *qat_private = dev->data->dev_private;
@@ -95,23 +94,18 @@ qat_comp_qp_release(struct rte_compressdev *dev, uint16_t queue_pair_id)
 			&(dev->data->queue_pairs[queue_pair_id]));
 }
 
-static int
+int
 qat_comp_qp_setup(struct rte_compressdev *dev, uint16_t qp_id,
-		  uint32_t max_inflight_ops, int socket_id)
+		uint32_t max_inflight_ops, int socket_id)
 {
-	struct qat_qp *qp;
-	int ret = 0;
-	uint32_t i;
-	struct qat_qp_config qat_qp_conf;
-
+	struct qat_qp_config qat_qp_conf = {0};
 	struct qat_qp **qp_addr =
 			(struct qat_qp **)&(dev->data->queue_pairs[qp_id]);
 	struct qat_comp_dev_private *qat_private = dev->data->dev_private;
 	struct qat_pci_device *qat_dev = qat_private->qat_dev;
-	const struct qat_qp_hw_data *comp_hw_qps =
-			qat_gen_config[qat_private->qat_dev->qat_dev_gen]
-				      .qp_hw_data[QAT_SERVICE_COMPRESSION];
-	const struct qat_qp_hw_data *qp_hw_data = comp_hw_qps + qp_id;
+	struct qat_qp *qp;
+	uint32_t i;
+	int ret;
 
 	/* If qp is already in use free ring memory and qp metadata. */
 	if (*qp_addr != NULL) {
@@ -125,7 +119,13 @@ qat_comp_qp_setup(struct rte_compressdev *dev, uint16_t qp_id,
 		return -EINVAL;
 	}
 
-	qat_qp_conf.hw = qp_hw_data;
+
+	qat_qp_conf.hw = qat_qp_get_hw_data(qat_dev, QAT_SERVICE_COMPRESSION,
+			qp_id);
+	if (qat_qp_conf.hw == NULL) {
+		QAT_LOG(ERR, "qp_id %u invalid for this device", qp_id);
+		return -EINVAL;
+	}
 	qat_qp_conf.cookie_size = sizeof(struct qat_comp_op_cookie);
 	qat_qp_conf.nb_descriptors = max_inflight_ops;
 	qat_qp_conf.socket_id = socket_id;
@@ -134,7 +134,6 @@ qat_comp_qp_setup(struct rte_compressdev *dev, uint16_t qp_id,
 	ret = qat_qp_setup(qat_private->qat_dev, qp_addr, qp_id, &qat_qp_conf);
 	if (ret != 0)
 		return ret;
-
 	/* store a link to the qp in the qat_pci_device */
 	qat_private->qat_dev->qps_in_use[QAT_SERVICE_COMPRESSION][qp_id]
 								= *qp_addr;
@@ -189,7 +188,7 @@ qat_comp_qp_setup(struct rte_compressdev *dev, uint16_t qp_id,
 
 
 #define QAT_IM_BUFFER_DEBUG 0
-static const struct rte_memzone *
+const struct rte_memzone *
 qat_comp_setup_inter_buffers(struct qat_comp_dev_private *comp_dev,
 			      uint32_t buff_size)
 {
@@ -202,8 +201,8 @@ qat_comp_setup_inter_buffers(struct qat_comp_dev_private *comp_dev,
 	uint32_t full_size;
 	uint32_t offset_of_flat_buffs;
 	int i;
-	int num_im_sgls = qat_gen_config[
-		comp_dev->qat_dev->qat_dev_gen].comp_num_im_bufs_required;
+	int num_im_sgls = qat_comp_get_num_im_bufs_required(
+			comp_dev->qat_dev->qat_dev_gen);
 
 	QAT_LOG(DEBUG, "QAT COMP device %s needs %d sgls",
 				comp_dev->qat_dev->name, num_im_sgls);
@@ -480,8 +479,8 @@ _qat_comp_dev_config_clear(struct qat_comp_dev_private *comp_dev)
 	/* Free intermediate buffers */
 	if (comp_dev->interm_buff_mz) {
 		char mz_name[RTE_MEMZONE_NAMESIZE];
-		int i = qat_gen_config[
-		      comp_dev->qat_dev->qat_dev_gen].comp_num_im_bufs_required;
+		int i = qat_comp_get_num_im_bufs_required(
+				comp_dev->qat_dev->qat_dev_gen);
 
 		while (--i >= 0) {
 			snprintf(mz_name, RTE_MEMZONE_NAMESIZE,
@@ -509,27 +508,12 @@ _qat_comp_dev_config_clear(struct qat_comp_dev_private *comp_dev)
 	}
 }
 
-static int
+int
 qat_comp_dev_config(struct rte_compressdev *dev,
 		struct rte_compressdev_config *config)
 {
 	struct qat_comp_dev_private *comp_dev = dev->data->dev_private;
 	int ret = 0;
-
-	if (RTE_PMD_QAT_COMP_IM_BUFFER_SIZE == 0) {
-		QAT_LOG(WARNING,
-			"RTE_PMD_QAT_COMP_IM_BUFFER_SIZE = 0 in config file, so"
-			" QAT device can't be used for Dynamic Deflate. "
-			"Did you really intend to do this?");
-	} else {
-		comp_dev->interm_buff_mz =
-				qat_comp_setup_inter_buffers(comp_dev,
-					RTE_PMD_QAT_COMP_IM_BUFFER_SIZE);
-		if (comp_dev->interm_buff_mz == NULL) {
-			ret = -ENOMEM;
-			goto error_out;
-		}
-	}
 
 	if (config->max_nb_priv_xforms) {
 		comp_dev->xformpool = qat_comp_create_xform_pool(comp_dev,
@@ -558,19 +542,19 @@ error_out:
 	return ret;
 }
 
-static int
+int
 qat_comp_dev_start(struct rte_compressdev *dev __rte_unused)
 {
 	return 0;
 }
 
-static void
+void
 qat_comp_dev_stop(struct rte_compressdev *dev __rte_unused)
 {
 
 }
 
-static int
+int
 qat_comp_dev_close(struct rte_compressdev *dev)
 {
 	int i;
@@ -588,8 +572,7 @@ qat_comp_dev_close(struct rte_compressdev *dev)
 	return ret;
 }
 
-
-static void
+void
 qat_comp_dev_info_get(struct rte_compressdev *dev,
 			struct rte_compressdev_info *info)
 {
@@ -662,27 +645,6 @@ qat_comp_pmd_dequeue_first_op_burst(void *qp, struct rte_comp_op **ops,
 	return ret;
 }
 
-static struct rte_compressdev_ops compress_qat_ops = {
-
-	/* Device related operations */
-	.dev_configure		= qat_comp_dev_config,
-	.dev_start		= qat_comp_dev_start,
-	.dev_stop		= qat_comp_dev_stop,
-	.dev_close		= qat_comp_dev_close,
-	.dev_infos_get		= qat_comp_dev_info_get,
-
-	.stats_get		= qat_comp_stats_get,
-	.stats_reset		= qat_comp_stats_reset,
-	.queue_pair_setup	= qat_comp_qp_setup,
-	.queue_pair_release	= qat_comp_qp_release,
-
-	/* Compression related operations */
-	.private_xform_create	= qat_comp_private_xform_create,
-	.private_xform_free	= qat_comp_private_xform_free,
-	.stream_create		= qat_comp_stream_create,
-	.stream_free		= qat_comp_stream_free
-};
-
 /* An rte_driver is needed in the registration of the device with compressdev.
  * The actual qat pci's rte_driver can't be used as its name represents
  * the whole pci device with all services. Think of this as a holder for a name
@@ -693,6 +655,7 @@ static const struct rte_driver compdev_qat_driver = {
 	.name = qat_comp_drv_name,
 	.alias = qat_comp_drv_name
 };
+
 int
 qat_comp_dev_create(struct qat_pci_device *qat_pci_dev,
 		struct qat_dev_cmd_param *qat_dev_cmd_param)
@@ -708,16 +671,20 @@ qat_comp_dev_create(struct qat_pci_device *qat_pci_dev,
 	char capa_memz_name[RTE_COMPRESSDEV_NAME_MAX_LEN];
 	struct rte_compressdev *compressdev;
 	struct qat_comp_dev_private *comp_dev;
+	struct qat_comp_capabilities_info capabilities_info;
 	const struct rte_compressdev_capabilities *capabilities;
+	const struct qat_comp_gen_dev_ops *qat_comp_gen_ops =
+			&qat_comp_gen_dev_ops[qat_pci_dev->qat_dev_gen];
 	uint64_t capa_size;
 
-	if (qat_pci_dev->qat_dev_gen == QAT_GEN4) {
-		QAT_LOG(ERR, "Compression PMD not supported on QAT 4xxx");
-		return -EFAULT;
-	}
 	snprintf(name, RTE_COMPRESSDEV_NAME_MAX_LEN, "%s_%s",
 			qat_pci_dev->name, "comp");
 	QAT_LOG(DEBUG, "Creating QAT COMP device %s", name);
+
+	if (qat_comp_gen_ops->compressdev_ops == NULL) {
+		QAT_LOG(DEBUG, "Device %s does not support compression", name);
+		return -ENOTSUP;
+	}
 
 	/* Populate subset device to use in compressdev device creation */
 	qat_dev_instance->comp_rte_dev.driver = &compdev_qat_driver;
@@ -733,13 +700,13 @@ qat_comp_dev_create(struct qat_pci_device *qat_pci_dev,
 	if (compressdev == NULL)
 		return -ENODEV;
 
-	compressdev->dev_ops = &compress_qat_ops;
+	compressdev->dev_ops = qat_comp_gen_ops->compressdev_ops;
 
 	compressdev->enqueue_burst = (compressdev_enqueue_pkt_burst_t)
 			qat_enqueue_comp_op_burst;
 	compressdev->dequeue_burst = qat_comp_pmd_dequeue_first_op_burst;
-
-	compressdev->feature_flags = RTE_COMPDEV_FF_HW_ACCELERATED;
+	compressdev->feature_flags =
+			qat_comp_gen_ops->qat_comp_get_feature_flags();
 
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return 0;
@@ -752,21 +719,19 @@ qat_comp_dev_create(struct qat_pci_device *qat_pci_dev,
 	comp_dev->qat_dev = qat_pci_dev;
 	comp_dev->compressdev = compressdev;
 
-	switch (qat_pci_dev->qat_dev_gen) {
-	case QAT_GEN1:
-	case QAT_GEN2:
-	case QAT_GEN3:
-		capabilities = qat_comp_gen_capabilities;
-		capa_size = sizeof(qat_comp_gen_capabilities);
-		break;
-	default:
-		capabilities = qat_comp_gen_capabilities;
-		capa_size = sizeof(qat_comp_gen_capabilities);
+	capabilities_info = qat_comp_get_capa_info(qat_pci_dev->qat_dev_gen,
+			qat_pci_dev);
+
+	if (capabilities_info.data == NULL) {
 		QAT_LOG(DEBUG,
 			"QAT gen %d capabilities unknown, default to GEN1",
 					qat_pci_dev->qat_dev_gen);
-		break;
+		capabilities_info = qat_comp_get_capa_info(QAT_GEN1,
+				qat_pci_dev);
 	}
+
+	capabilities = capabilities_info.data;
+	capa_size = capabilities_info.size;
 
 	comp_dev->capa_mz = rte_memzone_lookup(capa_memz_name);
 	if (comp_dev->capa_mz == NULL) {

@@ -13,9 +13,9 @@
 #define QAT_64_BTYE_ALIGN_MASK (~0x3f)
 
 /* Intel(R) QuickAssist Technology device generation is enumerated
- * from one according to the generation of the device
+ * from one according to the generation of the device.
+ * QAT_GEN* is used as the index to find all devices
  */
-
 enum qat_device_gen {
 	QAT_GEN1,
 	QAT_GEN2,
