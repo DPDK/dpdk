@@ -1054,19 +1054,6 @@ int32_t
 bnxt_ulp_create_vfr_default_rules(struct rte_eth_dev *vfr_ethdev);
 int32_t
 bnxt_ulp_delete_vfr_default_rules(struct bnxt_representor *vfr);
-void bnxt_get_iface_mac(uint16_t port, enum bnxt_ulp_intf_type type,
-			uint8_t *mac, uint8_t *parent_mac);
-uint16_t bnxt_get_vnic_id(uint16_t port, enum bnxt_ulp_intf_type type);
-uint16_t bnxt_get_parent_vnic_id(uint16_t port, enum bnxt_ulp_intf_type type);
-struct bnxt *bnxt_get_bp(uint16_t port);
-uint16_t bnxt_get_svif(uint16_t port_id, bool func_svif,
-		       enum bnxt_ulp_intf_type type);
-uint16_t bnxt_get_fw_func_id(uint16_t port, enum bnxt_ulp_intf_type type);
-uint16_t bnxt_get_parif(uint16_t port, enum bnxt_ulp_intf_type type);
-uint16_t bnxt_get_phy_port_id(uint16_t port);
-uint16_t bnxt_get_vport(uint16_t port);
-enum bnxt_ulp_intf_type
-bnxt_get_interface_type(uint16_t port);
 int bnxt_rep_dev_start_op(struct rte_eth_dev *eth_dev);
 
 void bnxt_cancel_fc_thread(struct bnxt *bp);
