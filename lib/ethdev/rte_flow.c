@@ -54,11 +54,13 @@ rte_flow_conv_copy(void *buf, const void *data, const size_t size,
 	/**
 	 * Allow PMD private flow item
 	 */
-	size_t sz = type >= 0 ? desc[type].size : sizeof(void *);
+	bool rte_type = type >= 0;
+
+	size_t sz = rte_type ? desc[type].size : sizeof(void *);
 	if (buf == NULL || data == NULL)
 		return 0;
 	rte_memcpy(buf, data, (size > sz ? sz : size));
-	if (desc[type].desc_fn)
+	if (rte_type && desc[type].desc_fn)
 		sz += desc[type].desc_fn(size > 0 ? buf : NULL, data);
 	return sz;
 }
