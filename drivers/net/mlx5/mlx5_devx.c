@@ -515,8 +515,8 @@ mlx5_rxq_devx_obj_new(struct rte_eth_dev *dev, uint16_t idx)
 	ret = mlx5_devx_modify_rq(tmpl, MLX5_RXQ_MOD_RST2RDY);
 	if (ret)
 		goto error;
-	rxq_data->wqes = (void *)(uintptr_t)tmpl->rq_obj.umem_buf;
-	rxq_data->rq_db = (uint32_t *)(uintptr_t)tmpl->rq_obj.db_rec;
+	rxq_data->wqes = (void *)(uintptr_t)tmpl->rq_obj.wq.umem_buf;
+	rxq_data->rq_db = (uint32_t *)(uintptr_t)tmpl->rq_obj.wq.db_rec;
 	rxq_data->cq_arm_sn = 0;
 	rxq_data->cq_ci = 0;
 	mlx5_rxq_initialize(rxq_data);
