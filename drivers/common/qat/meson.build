@@ -74,7 +74,8 @@ endif
 
 if qat_crypto
     foreach f: ['qat_sym_pmd.c', 'qat_sym.c', 'qat_sym_session.c',
-            'qat_sym_hw_dp.c', 'qat_asym_pmd.c', 'qat_asym.c']
+            'qat_sym_hw_dp.c', 'qat_asym_pmd.c', 'qat_asym.c', 'qat_crypto.c',
+        ]
         sources += files(join_paths(qat_crypto_relpath, f))
     endforeach
     deps += ['security']

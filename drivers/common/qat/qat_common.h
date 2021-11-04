@@ -91,4 +91,7 @@ void
 qat_stats_reset(struct qat_pci_device *dev,
 		enum qat_service_type service);
 
+const char *
+qat_service_get_str(enum qat_service_type type);
+
 #endif /* _QAT_COMMON_H_ */

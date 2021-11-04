@@ -14,6 +14,7 @@
 #endif
 
 #include "qat_sym_capabilities.h"
+#include "qat_crypto.h"
 #include "qat_device.h"
 
 /** Intel(R) QAT Symmetric Crypto PMD driver name */
@@ -25,29 +26,15 @@
 
 extern uint8_t qat_sym_driver_id;
 
-/** private data structure for a QAT device.
- * This QAT device is a device offering only symmetric crypto service,
- * there can be one of these on each qat_pci_device (VF).
- */
-struct qat_sym_dev_private {
-	struct qat_pci_device *qat_dev;
-	/**< The qat pci device hosting the service */
-	uint8_t sym_dev_id;
-	/**< Device instance for this rte_cryptodev */
-	const struct rte_cryptodev_capabilities *qat_dev_capabilities;
-	/* QAT device symmetric crypto capabilities */
-	const struct rte_memzone *capa_mz;
-	/* Shared memzone for storing capabilities */
-	uint16_t min_enq_burst_threshold;
-	uint32_t internal_capabilities; /* see flags QAT_SYM_CAP_xxx */
-};
-
 int
 qat_sym_dev_create(struct qat_pci_device *qat_pci_dev,
 		struct qat_dev_cmd_param *qat_dev_cmd_param);
 
 int
 qat_sym_dev_destroy(struct qat_pci_device *qat_pci_dev);
+
+void
+qat_sym_init_op_cookie(void *op_cookie);
 
 #endif
 #endif /* _QAT_SYM_PMD_H_ */

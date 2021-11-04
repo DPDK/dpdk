@@ -131,7 +131,7 @@ ctx_init_err:
 
 static int
 qat_is_cipher_alg_supported(enum rte_crypto_cipher_algorithm algo,
-		struct qat_sym_dev_private *internals)
+		struct qat_cryptodev_private *internals)
 {
 	int i = 0;
 	const struct rte_cryptodev_capabilities *capability;
@@ -152,7 +152,7 @@ qat_is_cipher_alg_supported(enum rte_crypto_cipher_algorithm algo,
 
 static int
 qat_is_auth_alg_supported(enum rte_crypto_auth_algorithm algo,
-		struct qat_sym_dev_private *internals)
+		struct qat_cryptodev_private *internals)
 {
 	int i = 0;
 	const struct rte_cryptodev_capabilities *capability;
@@ -267,7 +267,7 @@ qat_sym_session_configure_cipher(struct rte_cryptodev *dev,
 		struct rte_crypto_sym_xform *xform,
 		struct qat_sym_session *session)
 {
-	struct qat_sym_dev_private *internals = dev->data->dev_private;
+	struct qat_cryptodev_private *internals = dev->data->dev_private;
 	struct rte_crypto_cipher_xform *cipher_xform = NULL;
 	enum qat_device_gen qat_dev_gen =
 				internals->qat_dev->qat_dev_gen;
@@ -532,7 +532,8 @@ static void
 qat_sym_session_handle_mixed(const struct rte_cryptodev *dev,
 		struct qat_sym_session *session)
 {
-	const struct qat_sym_dev_private *qat_private = dev->data->dev_private;
+	const struct qat_cryptodev_private *qat_private =
+			dev->data->dev_private;
 	enum qat_device_gen min_dev_gen = (qat_private->internal_capabilities &
 			QAT_SYM_CAP_MIXED_CRYPTO) ? QAT_GEN2 : QAT_GEN3;
 
@@ -564,7 +565,7 @@ qat_sym_session_set_parameters(struct rte_cryptodev *dev,
 		struct rte_crypto_sym_xform *xform, void *session_private)
 {
 	struct qat_sym_session *session = session_private;
-	struct qat_sym_dev_private *internals = dev->data->dev_private;
+	struct qat_cryptodev_private *internals = dev->data->dev_private;
 	enum qat_device_gen qat_dev_gen = internals->qat_dev->qat_dev_gen;
 	int ret;
 	int qat_cmd_id;
@@ -707,7 +708,7 @@ qat_sym_session_configure_auth(struct rte_cryptodev *dev,
 				struct qat_sym_session *session)
 {
 	struct rte_crypto_auth_xform *auth_xform = qat_get_auth_xform(xform);
-	struct qat_sym_dev_private *internals = dev->data->dev_private;
+	struct qat_cryptodev_private *internals = dev->data->dev_private;
 	const uint8_t *key_data = auth_xform->key.data;
 	uint8_t key_length = auth_xform->key.length;
 	enum qat_device_gen qat_dev_gen =
@@ -875,7 +876,7 @@ qat_sym_session_configure_aead(struct rte_cryptodev *dev,
 {
 	struct rte_crypto_aead_xform *aead_xform = &xform->aead;
 	enum rte_crypto_auth_operation crypto_operation;
-	struct qat_sym_dev_private *internals =
+	struct qat_cryptodev_private *internals =
 			dev->data->dev_private;
 	enum qat_device_gen qat_dev_gen =
 			internals->qat_dev->qat_dev_gen;

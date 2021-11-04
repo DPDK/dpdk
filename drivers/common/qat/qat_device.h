@@ -76,8 +76,7 @@ struct qat_device_info {
 
 extern struct qat_device_info qat_pci_devs[];
 
-struct qat_sym_dev_private;
-struct qat_asym_dev_private;
+struct qat_cryptodev_private;
 struct qat_comp_dev_private;
 
 /*
@@ -106,14 +105,14 @@ struct qat_pci_device {
 	/**< links to qps set up for each service, index same as on API */
 
 	/* Data relating to symmetric crypto service */
-	struct qat_sym_dev_private *sym_dev;
+	struct qat_cryptodev_private *sym_dev;
 	/**< link back to cryptodev private data */
 
 	int qat_sym_driver_id;
 	/**< Symmetric driver id used by this device */
 
 	/* Data relating to asymmetric crypto service */
-	struct qat_asym_dev_private *asym_dev;
+	struct qat_cryptodev_private *asym_dev;
 	/**< link back to cryptodev private data */
 
 	int qat_asym_driver_id;
