@@ -1069,6 +1069,10 @@ enum {
 	MLX5_CMD_OP_CREATE_RQ = 0x908,
 	MLX5_CMD_OP_MODIFY_RQ = 0x909,
 	MLX5_CMD_OP_QUERY_RQ = 0x90b,
+	MLX5_CMD_OP_CREATE_RMP = 0x90c,
+	MLX5_CMD_OP_MODIFY_RMP = 0x90d,
+	MLX5_CMD_OP_DESTROY_RMP = 0x90e,
+	MLX5_CMD_OP_QUERY_RMP = 0x90f,
 	MLX5_CMD_OP_CREATE_TIS = 0x912,
 	MLX5_CMD_OP_QUERY_TIS = 0x915,
 	MLX5_CMD_OP_CREATE_RQT = 0x916,
@@ -1567,7 +1571,8 @@ struct mlx5_ifc_cmd_hca_cap_bits {
 	u8 reserved_at_378[0x3];
 	u8 log_max_tis[0x5];
 	u8 basic_cyclic_rcv_wqe[0x1];
-	u8 reserved_at_381[0x2];
+	u8 reserved_at_381[0x1];
+	u8 mem_rq_rmp[0x1];
 	u8 log_max_rmp[0x5];
 	u8 reserved_at_388[0x3];
 	u8 log_max_rqt[0x5];
@@ -2239,6 +2244,84 @@ struct mlx5_ifc_query_rq_in_bits {
 	u8 reserved_at_40[0x8];
 	u8 rqn[0x18];
 	u8 reserved_at_60[0x20];
+};
+
+enum {
+	MLX5_RMPC_STATE_RDY = 0x1,
+	MLX5_RMPC_STATE_ERR = 0x3,
+};
+
+struct mlx5_ifc_rmpc_bits {
+	u8 reserved_at_0[0x8];
+	u8 state[0x4];
+	u8 reserved_at_c[0x14];
+	u8 basic_cyclic_rcv_wqe[0x1];
+	u8 reserved_at_21[0x1f];
+	u8 reserved_at_40[0x140];
+	struct mlx5_ifc_wq_bits wq;
+};
+
+struct mlx5_ifc_query_rmp_out_bits {
+	u8 status[0x8];
+	u8 reserved_at_8[0x18];
+	u8 syndrome[0x20];
+	u8 reserved_at_40[0xc0];
+	struct mlx5_ifc_rmpc_bits rmp_context;
+};
+
+struct mlx5_ifc_query_rmp_in_bits {
+	u8 opcode[0x10];
+	u8 reserved_at_10[0x10];
+	u8 reserved_at_20[0x10];
+	u8 op_mod[0x10];
+	u8 reserved_at_40[0x8];
+	u8 rmpn[0x18];
+	u8 reserved_at_60[0x20];
+};
+
+struct mlx5_ifc_modify_rmp_out_bits {
+	u8 status[0x8];
+	u8 reserved_at_8[0x18];
+	u8 syndrome[0x20];
+	u8 reserved_at_40[0x40];
+};
+
+struct mlx5_ifc_rmp_bitmask_bits {
+	u8 reserved_at_0[0x20];
+	u8 reserved_at_20[0x1f];
+	u8 lwm[0x1];
+};
+
+struct mlx5_ifc_modify_rmp_in_bits {
+	u8 opcode[0x10];
+	u8 uid[0x10];
+	u8 reserved_at_20[0x10];
+	u8 op_mod[0x10];
+	u8 rmp_state[0x4];
+	u8 reserved_at_44[0x4];
+	u8 rmpn[0x18];
+	u8 reserved_at_60[0x20];
+	struct mlx5_ifc_rmp_bitmask_bits bitmask;
+	u8 reserved_at_c0[0x40];
+	struct mlx5_ifc_rmpc_bits ctx;
+};
+
+struct mlx5_ifc_create_rmp_out_bits {
+	u8 status[0x8];
+	u8 reserved_at_8[0x18];
+	u8 syndrome[0x20];
+	u8 reserved_at_40[0x8];
+	u8 rmpn[0x18];
+	u8 reserved_at_60[0x20];
+};
+
+struct mlx5_ifc_create_rmp_in_bits {
+	u8 opcode[0x10];
+	u8 uid[0x10];
+	u8 reserved_at_20[0x10];
+	u8 op_mod[0x10];
+	u8 reserved_at_40[0xc0];
+	struct mlx5_ifc_rmpc_bits ctx;
 };
 
 struct mlx5_ifc_create_tis_out_bits {

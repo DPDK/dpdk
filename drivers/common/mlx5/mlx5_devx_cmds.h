@@ -152,6 +152,8 @@ mlx5_hca_parse_graph_node_base_hdr_len_mask
 struct mlx5_hca_attr {
 	uint32_t eswitch_manager:1;
 	uint32_t flow_counters_dump:1;
+	uint32_t mem_rq_rmp:1;
+	uint32_t log_max_rmp:5;
 	uint32_t log_max_rqt_size:5;
 	uint32_t parse_graph_flex_node:1;
 	uint8_t flow_counter_bulk_alloc_bitmap;
@@ -318,6 +320,17 @@ struct mlx5_devx_modify_rq_attr {
 	uint32_t hairpin_peer_vhca:16;
 	uint64_t modify_bitmask;
 	uint32_t lwm:16; /* Contained WQ lwm. */
+};
+
+/* Create RMP attributes structure, used by create RMP operation. */
+struct mlx5_devx_create_rmp_attr {
+	uint32_t rsvd0:8;
+	uint32_t state:4;
+	uint32_t rsvd1:20;
+	uint32_t basic_cyclic_rcv_wqe:1;
+	uint32_t rsvd4:31;
+	uint32_t rsvd8[10];
+	struct mlx5_devx_wq_attr wq_attr;
 };
 
 struct mlx5_rx_hash_field_select {
@@ -596,6 +609,9 @@ struct mlx5_devx_obj *mlx5_devx_cmd_create_rq(void *ctx,
 __rte_internal
 int mlx5_devx_cmd_modify_rq(struct mlx5_devx_obj *rq,
 			    struct mlx5_devx_modify_rq_attr *rq_attr);
+__rte_internal
+struct mlx5_devx_obj *mlx5_devx_cmd_create_rmp(void *ctx,
+			struct mlx5_devx_create_rmp_attr *rq_attr, int socket);
 __rte_internal
 struct mlx5_devx_obj *mlx5_devx_cmd_create_tir(void *ctx,
 					   struct mlx5_devx_tir_attr *tir_attr);

@@ -836,6 +836,8 @@ mlx5_devx_cmd_query_hca_attr(void *ctx,
 			MLX5_GET(cmd_hca_cap, hcattr, flow_counter_bulk_alloc);
 	attr->flow_counters_dump = MLX5_GET(cmd_hca_cap, hcattr,
 					    flow_counters_dump);
+	attr->log_max_rmp = MLX5_GET(cmd_hca_cap, hcattr, log_max_rmp);
+	attr->mem_rq_rmp = MLX5_GET(cmd_hca_cap, hcattr, mem_rq_rmp);
 	attr->log_max_rqt_size = MLX5_GET(cmd_hca_cap, hcattr,
 					  log_max_rqt_size);
 	attr->eswitch_manager = MLX5_GET(cmd_hca_cap, hcattr, eswitch_manager);
@@ -1313,6 +1315,56 @@ mlx5_devx_cmd_modify_rq(struct mlx5_devx_obj *rq,
 }
 
 /**
+ * Create RMP using DevX API.
+ *
+ * @param[in] ctx
+ *   Context returned from mlx5 open_device() glue function.
+ * @param [in] rmp_attr
+ *   Pointer to create RMP attributes structure.
+ * @param [in] socket
+ *   CPU socket ID for allocations.
+ *
+ * @return
+ *   The DevX object created, NULL otherwise and rte_errno is set.
+ */
+struct mlx5_devx_obj *
+mlx5_devx_cmd_create_rmp(void *ctx,
+			 struct mlx5_devx_create_rmp_attr *rmp_attr,
+			 int socket)
+{
+	uint32_t in[MLX5_ST_SZ_DW(create_rmp_in)] = {0};
+	uint32_t out[MLX5_ST_SZ_DW(create_rmp_out)] = {0};
+	void *rmp_ctx, *wq_ctx;
+	struct mlx5_devx_wq_attr *wq_attr;
+	struct mlx5_devx_obj *rmp = NULL;
+
+	rmp = mlx5_malloc(MLX5_MEM_ZERO, sizeof(*rmp), 0, socket);
+	if (!rmp) {
+		DRV_LOG(ERR, "Failed to allocate RMP data");
+		rte_errno = ENOMEM;
+		return NULL;
+	}
+	MLX5_SET(create_rmp_in, in, opcode, MLX5_CMD_OP_CREATE_RMP);
+	rmp_ctx = MLX5_ADDR_OF(create_rmp_in, in, ctx);
+	MLX5_SET(rmpc, rmp_ctx, state, rmp_attr->state);
+	MLX5_SET(rmpc, rmp_ctx, basic_cyclic_rcv_wqe,
+		 rmp_attr->basic_cyclic_rcv_wqe);
+	wq_ctx = MLX5_ADDR_OF(rmpc, rmp_ctx, wq);
+	wq_attr = &rmp_attr->wq_attr;
+	devx_cmd_fill_wq_data(wq_ctx, wq_attr);
+	rmp->obj = mlx5_glue->devx_obj_create(ctx, in, sizeof(in), out,
+					      sizeof(out));
+	if (!rmp->obj) {
+		DRV_LOG(ERR, "Failed to create RMP using DevX");
+		rte_errno = errno;
+		mlx5_free(rmp);
+		return NULL;
+	}
+	rmp->id = MLX5_GET(create_rmp_out, out, rmpn);
+	return rmp;
+}
+
+/*
  * Create TIR using DevX API.
  *
  * @param[in] ctx
