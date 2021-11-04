@@ -22,85 +22,7 @@
 
 uint8_t qat_sym_driver_id;
 
-static const struct rte_cryptodev_capabilities qat_gen1_sym_capabilities[] = {
-	QAT_BASE_GEN1_SYM_CAPABILITIES,
-	RTE_CRYPTODEV_END_OF_CAPABILITIES_LIST()
-};
-
-static const struct rte_cryptodev_capabilities qat_gen2_sym_capabilities[] = {
-	QAT_BASE_GEN1_SYM_CAPABILITIES,
-	QAT_EXTRA_GEN2_SYM_CAPABILITIES,
-	RTE_CRYPTODEV_END_OF_CAPABILITIES_LIST()
-};
-
-static const struct rte_cryptodev_capabilities qat_gen3_sym_capabilities[] = {
-	QAT_BASE_GEN1_SYM_CAPABILITIES,
-	QAT_EXTRA_GEN2_SYM_CAPABILITIES,
-	QAT_EXTRA_GEN3_SYM_CAPABILITIES,
-	RTE_CRYPTODEV_END_OF_CAPABILITIES_LIST()
-};
-
-static const struct rte_cryptodev_capabilities qat_gen4_sym_capabilities[] = {
-	QAT_BASE_GEN4_SYM_CAPABILITIES,
-	RTE_CRYPTODEV_END_OF_CAPABILITIES_LIST()
-};
-
-#ifdef RTE_LIB_SECURITY
-static const struct rte_cryptodev_capabilities
-					qat_security_sym_capabilities[] = {
-	QAT_SECURITY_SYM_CAPABILITIES,
-	RTE_CRYPTODEV_END_OF_CAPABILITIES_LIST()
-};
-
-static const struct rte_security_capability qat_security_capabilities[] = {
-	QAT_SECURITY_CAPABILITIES(qat_security_sym_capabilities),
-	{
-		.action = RTE_SECURITY_ACTION_TYPE_NONE
-	}
-};
-#endif
-
-static struct rte_cryptodev_ops crypto_qat_ops = {
-
-		/* Device related operations */
-		.dev_configure		= qat_cryptodev_config,
-		.dev_start		= qat_cryptodev_start,
-		.dev_stop		= qat_cryptodev_stop,
-		.dev_close		= qat_cryptodev_close,
-		.dev_infos_get		= qat_cryptodev_info_get,
-
-		.stats_get		= qat_cryptodev_stats_get,
-		.stats_reset		= qat_cryptodev_stats_reset,
-		.queue_pair_setup	= qat_cryptodev_qp_setup,
-		.queue_pair_release	= qat_cryptodev_qp_release,
-
-		/* Crypto related operations */
-		.sym_session_get_size	= qat_sym_session_get_private_size,
-		.sym_session_configure	= qat_sym_session_configure,
-		.sym_session_clear	= qat_sym_session_clear,
-
-		/* Raw data-path API related operations */
-		.sym_get_raw_dp_ctx_size = qat_sym_get_dp_ctx_size,
-		.sym_configure_raw_dp_ctx = qat_sym_configure_dp_ctx,
-};
-
-#ifdef RTE_LIB_SECURITY
-static const struct rte_security_capability *
-qat_security_cap_get(void *device __rte_unused)
-{
-	return qat_security_capabilities;
-}
-
-static struct rte_security_ops security_qat_ops = {
-
-		.session_create = qat_security_session_create,
-		.session_update = NULL,
-		.session_stats_get = NULL,
-		.session_destroy = qat_security_session_destroy,
-		.set_pkt_metadata = NULL,
-		.capabilities_get = qat_security_cap_get
-};
-#endif
+struct qat_crypto_gen_dev_ops qat_sym_gen_dev_ops[QAT_N_GENS];
 
 void
 qat_sym_init_op_cookie(void *op_cookie)
@@ -156,7 +78,6 @@ qat_sym_dev_create(struct qat_pci_device *qat_pci_dev,
 	int i = 0, ret = 0;
 	struct qat_device_info *qat_dev_instance =
 			&qat_pci_devs[qat_pci_dev->qat_dev_id];
-
 	struct rte_cryptodev_pmd_init_params init_params = {
 		.name = "",
 		.socket_id = qat_dev_instance->pci_dev->device.numa_node,
@@ -166,12 +87,21 @@ qat_sym_dev_create(struct qat_pci_device *qat_pci_dev,
 	char capa_memz_name[RTE_CRYPTODEV_NAME_MAX_LEN];
 	struct rte_cryptodev *cryptodev;
 	struct qat_cryptodev_private *internals;
+	struct qat_capabilities_info capa_info;
 	const struct rte_cryptodev_capabilities *capabilities;
+	const struct qat_crypto_gen_dev_ops *gen_dev_ops =
+		&qat_sym_gen_dev_ops[qat_pci_dev->qat_dev_gen];
 	uint64_t capa_size;
 
 	snprintf(name, RTE_CRYPTODEV_NAME_MAX_LEN, "%s_%s",
 			qat_pci_dev->name, "sym");
 	QAT_LOG(DEBUG, "Creating QAT SYM device %s", name);
+
+	if (gen_dev_ops->cryptodev_ops == NULL) {
+		QAT_LOG(ERR, "Device %s does not support symmetric crypto",
+				name);
+		return -EFAULT;
+	}
 
 	/*
 	 * All processes must use same driver id so they can share sessions.
@@ -206,92 +136,56 @@ qat_sym_dev_create(struct qat_pci_device *qat_pci_dev,
 
 	qat_dev_instance->sym_rte_dev.name = cryptodev->data->name;
 	cryptodev->driver_id = qat_sym_driver_id;
-	cryptodev->dev_ops = &crypto_qat_ops;
+	cryptodev->dev_ops = gen_dev_ops->cryptodev_ops;
 
 	cryptodev->enqueue_burst = qat_sym_pmd_enqueue_op_burst;
 	cryptodev->dequeue_burst = qat_sym_pmd_dequeue_op_burst;
 
-	cryptodev->feature_flags = RTE_CRYPTODEV_FF_SYMMETRIC_CRYPTO |
-			RTE_CRYPTODEV_FF_HW_ACCELERATED |
-			RTE_CRYPTODEV_FF_SYM_OPERATION_CHAINING |
-			RTE_CRYPTODEV_FF_IN_PLACE_SGL |
-			RTE_CRYPTODEV_FF_OOP_SGL_IN_SGL_OUT |
-			RTE_CRYPTODEV_FF_OOP_SGL_IN_LB_OUT |
-			RTE_CRYPTODEV_FF_OOP_LB_IN_SGL_OUT |
-			RTE_CRYPTODEV_FF_OOP_LB_IN_LB_OUT |
-			RTE_CRYPTODEV_FF_DIGEST_ENCRYPTED;
-
-	if (qat_pci_dev->qat_dev_gen < QAT_GEN4)
-		cryptodev->feature_flags |= RTE_CRYPTODEV_FF_SYM_RAW_DP;
+	cryptodev->feature_flags = gen_dev_ops->get_feature_flags(qat_pci_dev);
 
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return 0;
 
+#ifdef RTE_LIB_SECURITY
+	if (gen_dev_ops->create_security_ctx) {
+		cryptodev->security_ctx =
+			gen_dev_ops->create_security_ctx((void *)cryptodev);
+		if (cryptodev->security_ctx == NULL) {
+			QAT_LOG(ERR, "rte_security_ctx memory alloc failed");
+			ret = -ENOMEM;
+			goto error;
+		}
+
+		cryptodev->feature_flags |= RTE_CRYPTODEV_FF_SECURITY;
+		QAT_LOG(INFO, "Device %s rte_security support enabled", name);
+	} else
+		QAT_LOG(INFO, "Device %s rte_security support disabled", name);
+
+#endif
 	snprintf(capa_memz_name, RTE_CRYPTODEV_NAME_MAX_LEN,
 			"QAT_SYM_CAPA_GEN_%d",
 			qat_pci_dev->qat_dev_gen);
 
-#ifdef RTE_LIB_SECURITY
-	struct rte_security_ctx *security_instance;
-	security_instance = rte_malloc("qat_sec",
-				sizeof(struct rte_security_ctx),
-				RTE_CACHE_LINE_SIZE);
-	if (security_instance == NULL) {
-		QAT_LOG(ERR, "rte_security_ctx memory alloc failed");
-		ret = -ENOMEM;
-		goto error;
-	}
-
-	security_instance->device = (void *)cryptodev;
-	security_instance->ops = &security_qat_ops;
-	security_instance->sess_cnt = 0;
-	cryptodev->security_ctx = security_instance;
-	cryptodev->feature_flags |= RTE_CRYPTODEV_FF_SECURITY;
-#endif
-
 	internals = cryptodev->data->dev_private;
 	internals->qat_dev = qat_pci_dev;
 	internals->service_type = QAT_SERVICE_SYMMETRIC;
-
 	internals->dev_id = cryptodev->data->dev_id;
-	switch (qat_pci_dev->qat_dev_gen) {
-	case QAT_GEN1:
-		capabilities = qat_gen1_sym_capabilities;
-		capa_size = sizeof(qat_gen1_sym_capabilities);
-		break;
-	case QAT_GEN2:
-		capabilities = qat_gen2_sym_capabilities;
-		capa_size = sizeof(qat_gen2_sym_capabilities);
-		break;
-	case QAT_GEN3:
-		capabilities = qat_gen3_sym_capabilities;
-		capa_size = sizeof(qat_gen3_sym_capabilities);
-		break;
-	case QAT_GEN4:
-		capabilities = qat_gen4_sym_capabilities;
-		capa_size = sizeof(qat_gen4_sym_capabilities);
-		break;
-	default:
-		QAT_LOG(DEBUG,
-			"QAT gen %d capabilities unknown",
-			qat_pci_dev->qat_dev_gen);
-		ret = -(EINVAL);
-		goto error;
-	}
+
+	capa_info = gen_dev_ops->get_capabilities(qat_pci_dev);
+	capabilities = capa_info.data;
+	capa_size = capa_info.size;
 
 	internals->capa_mz = rte_memzone_lookup(capa_memz_name);
 	if (internals->capa_mz == NULL) {
 		internals->capa_mz = rte_memzone_reserve(capa_memz_name,
-		capa_size,
-		rte_socket_id(), 0);
-	}
-	if (internals->capa_mz == NULL) {
-		QAT_LOG(DEBUG,
-			"Error allocating memzone for capabilities, destroying "
-			"PMD for %s",
-			name);
-		ret = -EFAULT;
-		goto error;
+				capa_size, rte_socket_id(), 0);
+		if (internals->capa_mz == NULL) {
+			QAT_LOG(DEBUG,
+				"Error allocating capability memzon for %s",
+				name);
+			ret = -EFAULT;
+			goto error;
+		}
 	}
 
 	memcpy(internals->capa_mz->addr, capabilities, capa_size);

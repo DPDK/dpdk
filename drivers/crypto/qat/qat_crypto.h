@@ -44,6 +44,22 @@ struct qat_capabilities_info {
 	uint64_t size;
 };
 
+typedef struct qat_capabilities_info (*get_capabilities_info_t)
+			(struct qat_pci_device *qat_dev);
+
+typedef uint64_t (*get_feature_flags_t)(struct qat_pci_device *qat_dev);
+
+typedef void * (*create_security_ctx_t)(void *cryptodev);
+
+struct qat_crypto_gen_dev_ops {
+	get_feature_flags_t get_feature_flags;
+	get_capabilities_info_t get_capabilities;
+	struct rte_cryptodev_ops *cryptodev_ops;
+#ifdef RTE_LIB_SECURITY
+	create_security_ctx_t create_security_ctx;
+#endif
+};
+
 int
 qat_cryptodev_config(struct rte_cryptodev *dev,
 		struct rte_cryptodev_config *config);

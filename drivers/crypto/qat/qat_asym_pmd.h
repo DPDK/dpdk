@@ -7,13 +7,38 @@
 #define _QAT_ASYM_PMD_H_
 
 #include <rte_cryptodev.h>
+#include "qat_crypto.h"
 #include "qat_device.h"
 
 /** Intel(R) QAT Asymmetric Crypto PMD driver name */
 #define CRYPTODEV_NAME_QAT_ASYM_PMD	crypto_qat_asym
 
 
+/**
+ * Helper function to add an asym capability
+ * <name> <op type> <modlen (min, max, increment)>
+ **/
+#define QAT_ASYM_CAP(n, o, l, r, i)					\
+	{								\
+		.op = RTE_CRYPTO_OP_TYPE_ASYMMETRIC,			\
+		{.asym = {						\
+			.xform_capa = {					\
+				.xform_type = RTE_CRYPTO_ASYM_XFORM_##n,\
+				.op_types = o,				\
+				{					\
+				.modlen = {				\
+				.min = l,				\
+				.max = r,				\
+				.increment = i				\
+				}, }					\
+			}						\
+		},							\
+		}							\
+	}
+
 extern uint8_t qat_asym_driver_id;
+
+extern struct qat_crypto_gen_dev_ops qat_asym_gen_dev_ops[];
 
 void
 qat_asym_init_op_cookie(void *op_cookie);

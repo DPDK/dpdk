@@ -9,15 +9,9 @@
 #include "qat_crypto.h"
 #include "qat_asym.h"
 #include "qat_asym_pmd.h"
-#include "qat_sym_capabilities.h"
-#include "qat_asym_capabilities.h"
 
 uint8_t qat_asym_driver_id;
-
-static const struct rte_cryptodev_capabilities qat_gen1_asym_capabilities[] = {
-	QAT_BASE_GEN1_ASYM_CAPABILITIES,
-	RTE_CRYPTODEV_END_OF_CAPABILITIES_LIST()
-};
+struct qat_crypto_gen_dev_ops qat_asym_gen_dev_ops[QAT_N_GENS];
 
 void
 qat_asym_init_op_cookie(void *op_cookie)
@@ -101,22 +95,25 @@ qat_asym_dev_create(struct qat_pci_device *qat_pci_dev,
 		.socket_id = qat_dev_instance->pci_dev->device.numa_node,
 		.private_data_size = sizeof(struct qat_cryptodev_private)
 	};
+	struct qat_capabilities_info capa_info;
+	const struct rte_cryptodev_capabilities *capabilities;
+	const struct qat_crypto_gen_dev_ops *gen_dev_ops =
+		&qat_asym_gen_dev_ops[qat_pci_dev->qat_dev_gen];
 	char name[RTE_CRYPTODEV_NAME_MAX_LEN];
 	char capa_memz_name[RTE_CRYPTODEV_NAME_MAX_LEN];
 	struct rte_cryptodev *cryptodev;
 	struct qat_cryptodev_private *internals;
+	uint64_t capa_size;
 
-	if (qat_pci_dev->qat_dev_gen == QAT_GEN4) {
-		QAT_LOG(ERR, "Asymmetric crypto PMD not supported on QAT 4xxx");
-		return -EFAULT;
-	}
-	if (qat_pci_dev->qat_dev_gen == QAT_GEN3) {
-		QAT_LOG(ERR, "Asymmetric crypto PMD not supported on QAT c4xxx");
-		return -EFAULT;
-	}
 	snprintf(name, RTE_CRYPTODEV_NAME_MAX_LEN, "%s_%s",
 			qat_pci_dev->name, "asym");
 	QAT_LOG(DEBUG, "Creating QAT ASYM device %s\n", name);
+
+	if (gen_dev_ops->cryptodev_ops == NULL) {
+		QAT_LOG(ERR, "Device %s does not support asymmetric crypto",
+				name);
+		return -EFAULT;
+	}
 
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
 		qat_pci_dev->qat_asym_driver_id =
@@ -150,11 +147,8 @@ qat_asym_dev_create(struct qat_pci_device *qat_pci_dev,
 	cryptodev->enqueue_burst = qat_asym_pmd_enqueue_op_burst;
 	cryptodev->dequeue_burst = qat_asym_pmd_dequeue_op_burst;
 
-	cryptodev->feature_flags = RTE_CRYPTODEV_FF_ASYMMETRIC_CRYPTO |
-			RTE_CRYPTODEV_FF_HW_ACCELERATED |
-			RTE_CRYPTODEV_FF_ASYM_SESSIONLESS |
-			RTE_CRYPTODEV_FF_RSA_PRIV_OP_KEY_EXP |
-			RTE_CRYPTODEV_FF_RSA_PRIV_OP_KEY_QT;
+
+	cryptodev->feature_flags = gen_dev_ops->get_feature_flags(qat_pci_dev);
 
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return 0;
@@ -166,27 +160,29 @@ qat_asym_dev_create(struct qat_pci_device *qat_pci_dev,
 	internals = cryptodev->data->dev_private;
 	internals->qat_dev = qat_pci_dev;
 	internals->dev_id = cryptodev->data->dev_id;
-	internals->qat_dev_capabilities = qat_gen1_asym_capabilities;
 	internals->service_type = QAT_SERVICE_ASYMMETRIC;
+
+	capa_info = gen_dev_ops->get_capabilities(qat_pci_dev);
+	capabilities = capa_info.data;
+	capa_size = capa_info.size;
 
 	internals->capa_mz = rte_memzone_lookup(capa_memz_name);
 	if (internals->capa_mz == NULL) {
 		internals->capa_mz = rte_memzone_reserve(capa_memz_name,
-			sizeof(qat_gen1_asym_capabilities),
-			rte_socket_id(), 0);
-	}
-	if (internals->capa_mz == NULL) {
-		QAT_LOG(DEBUG,
-			"Error allocating memzone for capabilities, destroying PMD for %s",
-			name);
-		rte_cryptodev_pmd_destroy(cryptodev);
-		memset(&qat_dev_instance->asym_rte_dev, 0,
-			sizeof(qat_dev_instance->asym_rte_dev));
-		return -EFAULT;
+				capa_size, rte_socket_id(), 0);
+		if (internals->capa_mz == NULL) {
+			QAT_LOG(DEBUG,
+				"Error allocating memzone for capabilities, "
+				"destroying PMD for %s",
+				name);
+			rte_cryptodev_pmd_destroy(cryptodev);
+			memset(&qat_dev_instance->asym_rte_dev, 0,
+				sizeof(qat_dev_instance->asym_rte_dev));
+			return -EFAULT;
+		}
 	}
 
-	memcpy(internals->capa_mz->addr, qat_gen1_asym_capabilities,
-			sizeof(qat_gen1_asym_capabilities));
+	memcpy(internals->capa_mz->addr, capabilities, capa_size);
 	internals->qat_dev_capabilities = internals->capa_mz->addr;
 
 	while (1) {
