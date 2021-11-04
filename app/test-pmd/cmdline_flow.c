@@ -9213,7 +9213,7 @@ cmd_set_raw_parsed(const struct buffer *in)
 					uint8_t qfi:6;
 					uint8_t next;
 				} psc;
-				psc.len = sizeof(psc);
+				psc.len = sizeof(psc) / 4;
 				psc.pdu_type = opt->hdr.type;
 				psc.qfi = opt->hdr.qfi;
 				psc.next = 0;
