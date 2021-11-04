@@ -550,7 +550,7 @@ mlx5_rxq_check_vec_support(struct mlx5_rxq_data *rxq)
 	struct mlx5_rxq_ctrl *ctrl =
 		container_of(rxq, struct mlx5_rxq_ctrl, rxq);
 
-	if (!ctrl->priv->config.rx_vec_en || rxq->sges_n != 0)
+	if (!RXQ_PORT(ctrl)->config.rx_vec_en || rxq->sges_n != 0)
 		return -ENOTSUP;
 	if (rxq->lro)
 		return -ENOTSUP;

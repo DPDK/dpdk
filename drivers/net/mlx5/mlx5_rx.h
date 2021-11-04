@@ -22,6 +22,10 @@
 /* Support tunnel matching. */
 #define MLX5_FLOW_TUNNEL 10
 
+#define RXQ_PORT(rxq_ctrl) LIST_FIRST(&(rxq_ctrl)->owners)->priv
+#define RXQ_DEV(rxq_ctrl) ETH_DEV(RXQ_PORT(rxq_ctrl))
+#define RXQ_PORT_ID(rxq_ctrl) PORT_ID(RXQ_PORT(rxq_ctrl))
+
 /* First entry must be NULL for comparison. */
 #define mlx5_mr_btree_len(bt) ((bt)->len - 1)
 
@@ -152,7 +156,6 @@ struct mlx5_rxq_ctrl {
 	LIST_HEAD(priv, mlx5_rxq_priv) owners; /* Owner rxq list. */
 	struct mlx5_rxq_obj *obj; /* Verbs/DevX elements. */
 	struct mlx5_dev_ctx_shared *sh; /* Shared context. */
-	struct mlx5_priv *priv; /* Back pointer to private data. */
 	enum mlx5_rxq_type type; /* Rxq type. */
 	unsigned int socket; /* CPU socket ID for allocations. */
 	uint32_t share_group; /* Group ID of shared RXQ. */
@@ -318,7 +321,7 @@ mlx5_rx_addr2mr(struct mlx5_rxq_data *rxq, uintptr_t addr)
 	 */
 	rxq_ctrl = container_of(rxq, struct mlx5_rxq_ctrl, rxq);
 	mp = mlx5_rxq_mprq_enabled(rxq) ? rxq->mprq_mp : rxq->mp;
-	return mlx5_mr_mempool2mr_bh(&rxq_ctrl->priv->sh->cdev->mr_scache,
+	return mlx5_mr_mempool2mr_bh(&rxq_ctrl->sh->cdev->mr_scache,
 				     mr_ctrl, mp, addr);
 }
 

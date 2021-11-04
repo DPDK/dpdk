@@ -118,15 +118,7 @@ int
 mlx5_rx_descriptor_status(void *rx_queue, uint16_t offset)
 {
 	struct mlx5_rxq_data *rxq = rx_queue;
-	struct mlx5_rxq_ctrl *rxq_ctrl =
-			container_of(rxq, struct mlx5_rxq_ctrl, rxq);
-	struct rte_eth_dev *dev = ETH_DEV(rxq_ctrl->priv);
 
-	if (dev->rx_pkt_burst == NULL ||
-	    dev->rx_pkt_burst == removed_rx_burst) {
-		rte_errno = ENOTSUP;
-		return -rte_errno;
-	}
 	if (offset >= (1 << rxq->cqe_n)) {
 		rte_errno = EINVAL;
 		return -rte_errno;
@@ -438,10 +430,10 @@ mlx5_rx_err_handle(struct mlx5_rxq_data *rxq, uint8_t vec)
 		sm.is_wq = 1;
 		sm.queue_id = rxq->idx;
 		sm.state = IBV_WQS_RESET;
-		if (mlx5_queue_state_modify(ETH_DEV(rxq_ctrl->priv), &sm))
+		if (mlx5_queue_state_modify(RXQ_DEV(rxq_ctrl), &sm))
 			return -1;
 		if (rxq_ctrl->dump_file_n <
-		    rxq_ctrl->priv->config.max_dump_files_num) {
+		    RXQ_PORT(rxq_ctrl)->config.max_dump_files_num) {
 			MKSTR(err_str, "Unexpected CQE error syndrome "
 			      "0x%02x CQN = %u RQN = %u wqe_counter = %u"
 			      " rq_ci = %u cq_ci = %u", u.err_cqe->syndrome,
@@ -478,8 +470,7 @@ mlx5_rx_err_handle(struct mlx5_rxq_data *rxq, uint8_t vec)
 			sm.is_wq = 1;
 			sm.queue_id = rxq->idx;
 			sm.state = IBV_WQS_RDY;
-			if (mlx5_queue_state_modify(ETH_DEV(rxq_ctrl->priv),
-						    &sm))
+			if (mlx5_queue_state_modify(RXQ_DEV(rxq_ctrl), &sm))
 				return -1;
 			if (vec) {
 				const uint32_t elts_n =

@@ -918,7 +918,7 @@ mlx5_rxq_devx_obj_drop_create(struct rte_eth_dev *dev)
 	}
 	rxq->rxq_ctrl = rxq_ctrl;
 	rxq_ctrl->type = MLX5_RXQ_TYPE_STANDARD;
-	rxq_ctrl->priv = priv;
+	rxq_ctrl->sh = priv->sh;
 	rxq_ctrl->obj = rxq;
 	rxq_data = &rxq_ctrl->rxq;
 	/* Create CQ using DevX API. */
