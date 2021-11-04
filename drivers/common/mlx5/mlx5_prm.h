@@ -393,7 +393,13 @@ struct mlx5_cqe {
 	uint16_t hdr_type_etc;
 	uint16_t vlan_info;
 	uint8_t lro_num_seg;
-	uint8_t rsvd3[3];
+	union {
+		uint8_t user_index_bytes[3];
+		struct {
+			uint8_t user_index_hi;
+			uint16_t user_index_low;
+		} __rte_packed;
+	};
 	uint32_t flow_table_metadata;
 	uint8_t rsvd4[4];
 	uint32_t byte_cnt;
