@@ -231,7 +231,7 @@ mlx5_rxq_start(struct rte_eth_dev *dev)
 			rte_errno = ENOMEM;
 			goto error;
 		}
-		ret = priv->obj_ops.rxq_obj_new(dev, i);
+		ret = priv->obj_ops.rxq_obj_new(rxq);
 		if (ret) {
 			mlx5_free(rxq_ctrl->obj);
 			rxq_ctrl->obj = NULL;

@@ -373,11 +373,9 @@ mlx5_queue_state_modify_primary(struct rte_eth_dev *dev,
 	struct mlx5_priv *priv = dev->data->dev_private;
 
 	if (sm->is_wq) {
-		struct mlx5_rxq_data *rxq = (*priv->rxqs)[sm->queue_id];
-		struct mlx5_rxq_ctrl *rxq_ctrl =
-			container_of(rxq, struct mlx5_rxq_ctrl, rxq);
+		struct mlx5_rxq_priv *rxq = mlx5_rxq_get(dev, sm->queue_id);
 
-		ret = priv->obj_ops.rxq_obj_modify(rxq_ctrl->obj, sm->state);
+		ret = priv->obj_ops.rxq_obj_modify(rxq, sm->state);
 		if (ret) {
 			DRV_LOG(ERR, "Cannot change Rx WQ state to %u  - %s",
 					sm->state, strerror(errno));

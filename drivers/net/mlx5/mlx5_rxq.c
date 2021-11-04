@@ -471,13 +471,13 @@ int
 mlx5_rx_queue_stop_primary(struct rte_eth_dev *dev, uint16_t idx)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5_rxq_data *rxq = (*priv->rxqs)[idx];
-	struct mlx5_rxq_ctrl *rxq_ctrl =
-			container_of(rxq, struct mlx5_rxq_ctrl, rxq);
+	struct mlx5_rxq_priv *rxq = mlx5_rxq_get(dev, idx);
+	struct mlx5_rxq_ctrl *rxq_ctrl = rxq->ctrl;
 	int ret;
 
+	MLX5_ASSERT(rxq != NULL && rxq_ctrl != NULL);
 	MLX5_ASSERT(rte_eal_process_type() == RTE_PROC_PRIMARY);
-	ret = priv->obj_ops.rxq_obj_modify(rxq_ctrl->obj, MLX5_RXQ_MOD_RDY2RST);
+	ret = priv->obj_ops.rxq_obj_modify(rxq, MLX5_RXQ_MOD_RDY2RST);
 	if (ret) {
 		DRV_LOG(ERR, "Cannot change Rx WQ state to RESET:  %s",
 			strerror(errno));
@@ -485,7 +485,7 @@ mlx5_rx_queue_stop_primary(struct rte_eth_dev *dev, uint16_t idx)
 		return ret;
 	}
 	/* Remove all processes CQEs. */
-	rxq_sync_cq(rxq);
+	rxq_sync_cq(&rxq_ctrl->rxq);
 	/* Free all involved mbufs. */
 	rxq_free_elts(rxq_ctrl);
 	/* Set the actual queue state. */
@@ -557,26 +557,26 @@ int
 mlx5_rx_queue_start_primary(struct rte_eth_dev *dev, uint16_t idx)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5_rxq_data *rxq = (*priv->rxqs)[idx];
-	struct mlx5_rxq_ctrl *rxq_ctrl =
-			container_of(rxq, struct mlx5_rxq_ctrl, rxq);
+	struct mlx5_rxq_priv *rxq = mlx5_rxq_get(dev, idx);
+	struct mlx5_rxq_data *rxq_data = &rxq->ctrl->rxq;
 	int ret;
 
-	MLX5_ASSERT(rte_eal_process_type() ==  RTE_PROC_PRIMARY);
+	MLX5_ASSERT(rxq != NULL && rxq->ctrl != NULL);
+	MLX5_ASSERT(rte_eal_process_type() == RTE_PROC_PRIMARY);
 	/* Allocate needed buffers. */
-	ret = rxq_alloc_elts(rxq_ctrl);
+	ret = rxq_alloc_elts(rxq->ctrl);
 	if (ret) {
 		DRV_LOG(ERR, "Cannot reallocate buffers for Rx WQ");
 		rte_errno = errno;
 		return ret;
 	}
 	rte_io_wmb();
-	*rxq->cq_db = rte_cpu_to_be_32(rxq->cq_ci);
+	*rxq_data->cq_db = rte_cpu_to_be_32(rxq_data->cq_ci);
 	rte_io_wmb();
 	/* Reset RQ consumer before moving queue to READY state. */
-	*rxq->rq_db = rte_cpu_to_be_32(0);
+	*rxq_data->rq_db = rte_cpu_to_be_32(0);
 	rte_io_wmb();
-	ret = priv->obj_ops.rxq_obj_modify(rxq_ctrl->obj, MLX5_RXQ_MOD_RST2RDY);
+	ret = priv->obj_ops.rxq_obj_modify(rxq, MLX5_RXQ_MOD_RST2RDY);
 	if (ret) {
 		DRV_LOG(ERR, "Cannot change Rx WQ state to READY:  %s",
 			strerror(errno));
@@ -584,8 +584,8 @@ mlx5_rx_queue_start_primary(struct rte_eth_dev *dev, uint16_t idx)
 		return ret;
 	}
 	/* Reinitialize RQ - set WQEs. */
-	mlx5_rxq_initialize(rxq);
-	rxq->err_state = MLX5_RXQ_ERR_STATE_NO_ERROR;
+	mlx5_rxq_initialize(rxq_data);
+	rxq_data->err_state = MLX5_RXQ_ERR_STATE_NO_ERROR;
 	/* Set actual queue state. */
 	dev->data->rx_queue_state[idx] = RTE_ETH_QUEUE_STATE_STARTED;
 	return 0;
@@ -1835,15 +1835,19 @@ int
 mlx5_rxq_release(struct rte_eth_dev *dev, uint16_t idx)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5_rxq_priv *rxq = mlx5_rxq_get(dev, idx);
-	struct mlx5_rxq_ctrl *rxq_ctrl = rxq->ctrl;
+	struct mlx5_rxq_priv *rxq;
+	struct mlx5_rxq_ctrl *rxq_ctrl;
 
-	if (priv->rxqs == NULL || (*priv->rxqs)[idx] == NULL)
+	if (priv->rxq_privs == NULL)
+		return 0;
+	rxq = mlx5_rxq_get(dev, idx);
+	if (rxq == NULL)
 		return 0;
 	if (mlx5_rxq_deref(dev, idx) > 1)
 		return 1;
-	if (rxq_ctrl->obj) {
-		priv->obj_ops.rxq_obj_release(rxq_ctrl->obj);
+	rxq_ctrl = rxq->ctrl;
+	if (rxq_ctrl->obj != NULL) {
+		priv->obj_ops.rxq_obj_release(rxq);
 		LIST_REMOVE(rxq_ctrl->obj, next);
 		mlx5_free(rxq_ctrl->obj);
 		rxq_ctrl->obj = NULL;

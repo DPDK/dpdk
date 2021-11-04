@@ -29,13 +29,13 @@
 /**
  * Modify Rx WQ vlan stripping offload
  *
- * @param rxq_obj
- *   Rx queue object.
+ * @param rxq
+ *   Rx queue.
  *
  * @return 0 on success, non-0 otherwise
  */
 static int
-mlx5_rxq_obj_modify_wq_vlan_strip(struct mlx5_rxq_obj *rxq_obj, int on)
+mlx5_rxq_obj_modify_wq_vlan_strip(struct mlx5_rxq_priv *rxq, int on)
 {
 	uint16_t vlan_offloads =
 		(on ? IBV_WQ_FLAGS_CVLAN_STRIPPING : 0) |
@@ -47,14 +47,14 @@ mlx5_rxq_obj_modify_wq_vlan_strip(struct mlx5_rxq_obj *rxq_obj, int on)
 		.flags = vlan_offloads,
 	};
 
-	return mlx5_glue->modify_wq(rxq_obj->wq, &mod);
+	return mlx5_glue->modify_wq(rxq->ctrl->obj->wq, &mod);
 }
 
 /**
  * Modifies the attributes for the specified WQ.
  *
- * @param rxq_obj
- *   Verbs Rx queue object.
+ * @param rxq
+ *   Verbs Rx queue.
  * @param type
  *   Type of change queue state.
  *
@@ -62,14 +62,14 @@ mlx5_rxq_obj_modify_wq_vlan_strip(struct mlx5_rxq_obj *rxq_obj, int on)
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 static int
-mlx5_ibv_modify_wq(struct mlx5_rxq_obj *rxq_obj, uint8_t type)
+mlx5_ibv_modify_wq(struct mlx5_rxq_priv *rxq, uint8_t type)
 {
 	struct ibv_wq_attr mod = {
 		.attr_mask = IBV_WQ_ATTR_STATE,
 		.wq_state = (enum ibv_wq_state)type,
 	};
 
-	return mlx5_glue->modify_wq(rxq_obj->wq, &mod);
+	return mlx5_glue->modify_wq(rxq->ctrl->obj->wq, &mod);
 }
 
 /**
@@ -139,21 +139,18 @@ mlx5_ibv_modify_qp(struct mlx5_txq_obj *obj, enum mlx5_txq_modify_type type,
 /**
  * Create a CQ Verbs object.
  *
- * @param dev
- *   Pointer to Ethernet device.
- * @param idx
- *   Queue index in DPDK Rx queue array.
+ * @param rxq
+ *   Pointer to Rx queue.
  *
  * @return
  *   The Verbs CQ object initialized, NULL otherwise and rte_errno is set.
  */
 static struct ibv_cq *
-mlx5_rxq_ibv_cq_create(struct rte_eth_dev *dev, uint16_t idx)
+mlx5_rxq_ibv_cq_create(struct mlx5_rxq_priv *rxq)
 {
-	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5_rxq_data *rxq_data = (*priv->rxqs)[idx];
-	struct mlx5_rxq_ctrl *rxq_ctrl =
-		container_of(rxq_data, struct mlx5_rxq_ctrl, rxq);
+	struct mlx5_priv *priv = rxq->priv;
+	struct mlx5_rxq_ctrl *rxq_ctrl = rxq->ctrl;
+	struct mlx5_rxq_data *rxq_data = &rxq_ctrl->rxq;
 	struct mlx5_rxq_obj *rxq_obj = rxq_ctrl->obj;
 	unsigned int cqe_n = mlx5_rxq_cqe_num(rxq_data);
 	struct {
@@ -199,7 +196,7 @@ mlx5_rxq_ibv_cq_create(struct rte_eth_dev *dev, uint16_t idx)
 		DRV_LOG(DEBUG,
 			"Port %u Rx CQE compression is disabled for HW"
 			" timestamp.",
-			dev->data->port_id);
+			priv->dev_data->port_id);
 	}
 #ifdef HAVE_IBV_MLX5_MOD_CQE_128B_PAD
 	if (RTE_CACHE_LINE_SIZE == 128) {
@@ -216,21 +213,18 @@ mlx5_rxq_ibv_cq_create(struct rte_eth_dev *dev, uint16_t idx)
 /**
  * Create a WQ Verbs object.
  *
- * @param dev
- *   Pointer to Ethernet device.
- * @param idx
- *   Queue index in DPDK Rx queue array.
+ * @param rxq
+ *   Pointer to Rx queue.
  *
  * @return
  *   The Verbs WQ object initialized, NULL otherwise and rte_errno is set.
  */
 static struct ibv_wq *
-mlx5_rxq_ibv_wq_create(struct rte_eth_dev *dev, uint16_t idx)
+mlx5_rxq_ibv_wq_create(struct mlx5_rxq_priv *rxq)
 {
-	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5_rxq_data *rxq_data = (*priv->rxqs)[idx];
-	struct mlx5_rxq_ctrl *rxq_ctrl =
-		container_of(rxq_data, struct mlx5_rxq_ctrl, rxq);
+	struct mlx5_priv *priv = rxq->priv;
+	struct mlx5_rxq_ctrl *rxq_ctrl = rxq->ctrl;
+	struct mlx5_rxq_data *rxq_data = &rxq_ctrl->rxq;
 	struct mlx5_rxq_obj *rxq_obj = rxq_ctrl->obj;
 	unsigned int wqe_n = 1 << rxq_data->elts_n;
 	struct {
@@ -297,7 +291,7 @@ mlx5_rxq_ibv_wq_create(struct rte_eth_dev *dev, uint16_t idx)
 			DRV_LOG(ERR,
 				"Port %u Rx queue %u requested %u*%u but got"
 				" %u*%u WRs*SGEs.",
-				dev->data->port_id, idx,
+				priv->dev_data->port_id, rxq->idx,
 				wqe_n >> rxq_data->sges_n,
 				(1 << rxq_data->sges_n),
 				wq_attr.ibv.max_wr, wq_attr.ibv.max_sge);
@@ -312,21 +306,20 @@ mlx5_rxq_ibv_wq_create(struct rte_eth_dev *dev, uint16_t idx)
 /**
  * Create the Rx queue Verbs object.
  *
- * @param dev
- *   Pointer to Ethernet device.
- * @param idx
- *   Queue index in DPDK Rx queue array.
+ * @param rxq
+ *   Pointer to Rx queue.
  *
  * @return
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 static int
-mlx5_rxq_ibv_obj_new(struct rte_eth_dev *dev, uint16_t idx)
+mlx5_rxq_ibv_obj_new(struct mlx5_rxq_priv *rxq)
 {
-	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5_rxq_data *rxq_data = (*priv->rxqs)[idx];
-	struct mlx5_rxq_ctrl *rxq_ctrl =
-		container_of(rxq_data, struct mlx5_rxq_ctrl, rxq);
+	uint16_t idx = rxq->idx;
+	struct mlx5_priv *priv = rxq->priv;
+	uint16_t port_id = priv->dev_data->port_id;
+	struct mlx5_rxq_ctrl *rxq_ctrl = rxq->ctrl;
+	struct mlx5_rxq_data *rxq_data = &rxq_ctrl->rxq;
 	struct mlx5_rxq_obj *tmpl = rxq_ctrl->obj;
 	struct mlx5dv_cq cq_info;
 	struct mlx5dv_rwq rwq;
@@ -341,17 +334,17 @@ mlx5_rxq_ibv_obj_new(struct rte_eth_dev *dev, uint16_t idx)
 			mlx5_glue->create_comp_channel(priv->sh->cdev->ctx);
 		if (!tmpl->ibv_channel) {
 			DRV_LOG(ERR, "Port %u: comp channel creation failure.",
-				dev->data->port_id);
+				port_id);
 			rte_errno = ENOMEM;
 			goto error;
 		}
 		tmpl->fd = ((struct ibv_comp_channel *)(tmpl->ibv_channel))->fd;
 	}
 	/* Create CQ using Verbs API. */
-	tmpl->ibv_cq = mlx5_rxq_ibv_cq_create(dev, idx);
+	tmpl->ibv_cq = mlx5_rxq_ibv_cq_create(rxq);
 	if (!tmpl->ibv_cq) {
 		DRV_LOG(ERR, "Port %u Rx queue %u CQ creation failure.",
-			dev->data->port_id, idx);
+			port_id, idx);
 		rte_errno = ENOMEM;
 		goto error;
 	}
@@ -366,7 +359,7 @@ mlx5_rxq_ibv_obj_new(struct rte_eth_dev *dev, uint16_t idx)
 		DRV_LOG(ERR,
 			"Port %u wrong MLX5_CQE_SIZE environment "
 			"variable value: it should be set to %u.",
-			dev->data->port_id, RTE_CACHE_LINE_SIZE);
+			port_id, RTE_CACHE_LINE_SIZE);
 		rte_errno = EINVAL;
 		goto error;
 	}
@@ -377,19 +370,19 @@ mlx5_rxq_ibv_obj_new(struct rte_eth_dev *dev, uint16_t idx)
 	rxq_data->cq_uar = cq_info.cq_uar;
 	rxq_data->cqn = cq_info.cqn;
 	/* Create WQ (RQ) using Verbs API. */
-	tmpl->wq = mlx5_rxq_ibv_wq_create(dev, idx);
+	tmpl->wq = mlx5_rxq_ibv_wq_create(rxq);
 	if (!tmpl->wq) {
 		DRV_LOG(ERR, "Port %u Rx queue %u WQ creation failure.",
-			dev->data->port_id, idx);
+			port_id, idx);
 		rte_errno = ENOMEM;
 		goto error;
 	}
 	/* Change queue state to ready. */
-	ret = mlx5_ibv_modify_wq(tmpl, IBV_WQS_RDY);
+	ret = mlx5_ibv_modify_wq(rxq, IBV_WQS_RDY);
 	if (ret) {
 		DRV_LOG(ERR,
 			"Port %u Rx queue %u WQ state to IBV_WQS_RDY failed.",
-			dev->data->port_id, idx);
+			port_id, idx);
 		rte_errno = ret;
 		goto error;
 	}
@@ -405,7 +398,7 @@ mlx5_rxq_ibv_obj_new(struct rte_eth_dev *dev, uint16_t idx)
 	rxq_data->cq_arm_sn = 0;
 	mlx5_rxq_initialize(rxq_data);
 	rxq_data->cq_ci = 0;
-	dev->data->rx_queue_state[idx] = RTE_ETH_QUEUE_STATE_STARTED;
+	priv->dev_data->rx_queue_state[idx] = RTE_ETH_QUEUE_STATE_STARTED;
 	rxq_ctrl->wqn = ((struct ibv_wq *)(tmpl->wq))->wq_num;
 	return 0;
 error:
@@ -423,12 +416,14 @@ error:
 /**
  * Release an Rx verbs queue object.
  *
- * @param rxq_obj
- *   Verbs Rx queue object.
+ * @param rxq
+ *   Pointer to Rx queue.
  */
 static void
-mlx5_rxq_ibv_obj_release(struct mlx5_rxq_obj *rxq_obj)
+mlx5_rxq_ibv_obj_release(struct mlx5_rxq_priv *rxq)
 {
+	struct mlx5_rxq_obj *rxq_obj = rxq->ctrl->obj;
+
 	MLX5_ASSERT(rxq_obj);
 	MLX5_ASSERT(rxq_obj->wq);
 	MLX5_ASSERT(rxq_obj->ibv_cq);
@@ -652,12 +647,24 @@ static void
 mlx5_rxq_ibv_obj_drop_release(struct rte_eth_dev *dev)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5_rxq_obj *rxq = priv->drop_queue.rxq;
+	struct mlx5_rxq_priv *rxq = priv->drop_queue.rxq;
+	struct mlx5_rxq_obj *rxq_obj;
 
-	if (rxq->wq)
-		claim_zero(mlx5_glue->destroy_wq(rxq->wq));
-	if (rxq->ibv_cq)
-		claim_zero(mlx5_glue->destroy_cq(rxq->ibv_cq));
+	if (rxq == NULL)
+		return;
+	if (rxq->ctrl == NULL)
+		goto free_priv;
+	rxq_obj = rxq->ctrl->obj;
+	if (rxq_obj == NULL)
+		goto free_ctrl;
+	if (rxq_obj->wq)
+		claim_zero(mlx5_glue->destroy_wq(rxq_obj->wq));
+	if (rxq_obj->ibv_cq)
+		claim_zero(mlx5_glue->destroy_cq(rxq_obj->ibv_cq));
+	mlx5_free(rxq_obj);
+free_ctrl:
+	mlx5_free(rxq->ctrl);
+free_priv:
 	mlx5_free(rxq);
 	priv->drop_queue.rxq = NULL;
 }
@@ -676,39 +683,58 @@ mlx5_rxq_ibv_obj_drop_create(struct rte_eth_dev *dev)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct ibv_context *ctx = priv->sh->cdev->ctx;
-	struct mlx5_rxq_obj *rxq = priv->drop_queue.rxq;
+	struct mlx5_rxq_priv *rxq = priv->drop_queue.rxq;
+	struct mlx5_rxq_ctrl *rxq_ctrl = NULL;
+	struct mlx5_rxq_obj *rxq_obj = NULL;
 
-	if (rxq)
+	if (rxq != NULL)
 		return 0;
 	rxq = mlx5_malloc(MLX5_MEM_ZERO, sizeof(*rxq), 0, SOCKET_ID_ANY);
-	if (!rxq) {
+	if (rxq == NULL) {
 		DRV_LOG(DEBUG, "Port %u cannot allocate drop Rx queue memory.",
 		      dev->data->port_id);
 		rte_errno = ENOMEM;
 		return -rte_errno;
 	}
 	priv->drop_queue.rxq = rxq;
-	rxq->ibv_cq = mlx5_glue->create_cq(ctx, 1, NULL, NULL, 0);
-	if (!rxq->ibv_cq) {
+	rxq_ctrl = mlx5_malloc(MLX5_MEM_ZERO, sizeof(*rxq_ctrl), 0,
+			       SOCKET_ID_ANY);
+	if (rxq_ctrl == NULL) {
+		DRV_LOG(DEBUG, "Port %u cannot allocate drop Rx queue control memory.",
+		      dev->data->port_id);
+		rte_errno = ENOMEM;
+		goto error;
+	}
+	rxq->ctrl = rxq_ctrl;
+	rxq_obj = mlx5_malloc(MLX5_MEM_ZERO, sizeof(*rxq_obj), 0,
+			      SOCKET_ID_ANY);
+	if (rxq_obj == NULL) {
+		DRV_LOG(DEBUG, "Port %u cannot allocate drop Rx queue memory.",
+		      dev->data->port_id);
+		rte_errno = ENOMEM;
+		goto error;
+	}
+	rxq_ctrl->obj = rxq_obj;
+	rxq_obj->ibv_cq = mlx5_glue->create_cq(ctx, 1, NULL, NULL, 0);
+	if (!rxq_obj->ibv_cq) {
 		DRV_LOG(DEBUG, "Port %u cannot allocate CQ for drop queue.",
 		      dev->data->port_id);
 		rte_errno = errno;
 		goto error;
 	}
-	rxq->wq = mlx5_glue->create_wq(ctx, &(struct ibv_wq_init_attr){
+	rxq_obj->wq = mlx5_glue->create_wq(ctx, &(struct ibv_wq_init_attr){
 						    .wq_type = IBV_WQT_RQ,
 						    .max_wr = 1,
 						    .max_sge = 1,
 						    .pd = priv->sh->cdev->pd,
-						    .cq = rxq->ibv_cq,
+						    .cq = rxq_obj->ibv_cq,
 					      });
-	if (!rxq->wq) {
+	if (!rxq_obj->wq) {
 		DRV_LOG(DEBUG, "Port %u cannot allocate WQ for drop queue.",
 		      dev->data->port_id);
 		rte_errno = errno;
 		goto error;
 	}
-	priv->drop_queue.rxq = rxq;
 	return 0;
 error:
 	mlx5_rxq_ibv_obj_drop_release(dev);
@@ -737,7 +763,7 @@ mlx5_ibv_drop_action_create(struct rte_eth_dev *dev)
 	ret = mlx5_rxq_ibv_obj_drop_create(dev);
 	if (ret < 0)
 		goto error;
-	rxq = priv->drop_queue.rxq;
+	rxq = priv->drop_queue.rxq->ctrl->obj;
 	ind_tbl = mlx5_glue->create_rwq_ind_table
 				(priv->sh->cdev->ctx,
 				 &(struct ibv_rwq_ind_table_init_attr){

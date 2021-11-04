@@ -174,6 +174,7 @@ struct mlx5_rxq_priv {
 	struct mlx5_rxq_ctrl *ctrl; /* Shared Rx Queue. */
 	LIST_ENTRY(mlx5_rxq_priv) owner_entry; /* Entry in shared rxq_ctrl. */
 	struct mlx5_priv *priv; /* Back pointer to private data. */
+	struct mlx5_devx_rq devx_rq;
 	struct rte_eth_hairpin_conf hairpin_conf; /* Hairpin configuration. */
 	uint32_t hairpin_status; /* Hairpin binding status. */
 };
