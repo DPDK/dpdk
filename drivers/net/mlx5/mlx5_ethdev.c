@@ -104,6 +104,16 @@ mlx5_dev_configure(struct rte_eth_dev *dev)
 	       MLX5_RSS_HASH_KEY_LEN);
 	priv->rss_conf.rss_key_len = MLX5_RSS_HASH_KEY_LEN;
 	priv->rss_conf.rss_hf = dev->data->dev_conf.rx_adv_conf.rss_conf.rss_hf;
+	priv->rxq_privs = mlx5_realloc(priv->rxq_privs,
+				       MLX5_MEM_RTE | MLX5_MEM_ZERO,
+				       sizeof(void *) * rxqs_n, 0,
+				       SOCKET_ID_ANY);
+	if (priv->rxq_privs == NULL) {
+		DRV_LOG(ERR, "port %u cannot allocate rxq private data",
+			dev->data->port_id);
+		rte_errno = ENOMEM;
+		return -rte_errno;
+	}
 	priv->rxqs = (void *)dev->data->rx_queues;
 	priv->txqs = (void *)dev->data->tx_queues;
 	if (txqs_n != priv->txqs_n) {

@@ -150,10 +150,14 @@ struct mlx5_rxq_ctrl {
 	struct mlx5_rxq_data rxq; /* Data path structure. */
 	LIST_ENTRY(mlx5_rxq_ctrl) next; /* Pointer to the next element. */
 	uint32_t refcnt; /* Reference counter. */
+	LIST_HEAD(priv, mlx5_rxq_priv) owners; /* Owner rxq list. */
 	struct mlx5_rxq_obj *obj; /* Verbs/DevX elements. */
+	struct mlx5_dev_ctx_shared *sh; /* Shared context. */
 	struct mlx5_priv *priv; /* Back pointer to private data. */
 	enum mlx5_rxq_type type; /* Rxq type. */
 	unsigned int socket; /* CPU socket ID for allocations. */
+	uint32_t share_group; /* Group ID of shared RXQ. */
+	uint16_t share_qid; /* Shared RxQ ID in group. */
 	unsigned int irq:1; /* Whether IRQ is enabled. */
 	uint32_t flow_mark_n; /* Number of Mark/Flag flows using this Queue. */
 	uint32_t flow_tunnels_n[MLX5_FLOW_TUNNEL]; /* Tunnels counters. */
@@ -161,6 +165,14 @@ struct mlx5_rxq_ctrl {
 	uint16_t dump_file_n; /* Number of dump files. */
 	struct rte_eth_hairpin_conf hairpin_conf; /* Hairpin configuration. */
 	uint32_t hairpin_status; /* Hairpin binding status. */
+};
+
+/* RX queue private data. */
+struct mlx5_rxq_priv {
+	uint16_t idx; /* Queue index. */
+	struct mlx5_rxq_ctrl *ctrl; /* Shared Rx Queue. */
+	LIST_ENTRY(mlx5_rxq_priv) owner_entry; /* Entry in shared rxq_ctrl. */
+	struct mlx5_priv *priv; /* Back pointer to private data. */
 };
 
 /* mlx5_rxq.c */
@@ -186,13 +198,14 @@ void mlx5_rx_intr_vec_disable(struct rte_eth_dev *dev);
 int mlx5_rx_intr_enable(struct rte_eth_dev *dev, uint16_t rx_queue_id);
 int mlx5_rx_intr_disable(struct rte_eth_dev *dev, uint16_t rx_queue_id);
 int mlx5_rxq_obj_verify(struct rte_eth_dev *dev);
-struct mlx5_rxq_ctrl *mlx5_rxq_new(struct rte_eth_dev *dev, uint16_t idx,
+struct mlx5_rxq_ctrl *mlx5_rxq_new(struct rte_eth_dev *dev,
+				   struct mlx5_rxq_priv *rxq,
 				   uint16_t desc, unsigned int socket,
 				   const struct rte_eth_rxconf *conf,
 				   const struct rte_eth_rxseg_split *rx_seg,
 				   uint16_t n_seg);
 struct mlx5_rxq_ctrl *mlx5_rxq_hairpin_new
-	(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
+	(struct rte_eth_dev *dev, struct mlx5_rxq_priv *rxq, uint16_t desc,
 	 const struct rte_eth_hairpin_conf *hairpin_conf);
 struct mlx5_rxq_ctrl *mlx5_rxq_get(struct rte_eth_dev *dev, uint16_t idx);
 int mlx5_rxq_release(struct rte_eth_dev *dev, uint16_t idx);

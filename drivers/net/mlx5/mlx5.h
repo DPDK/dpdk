@@ -1345,6 +1345,8 @@ enum mlx5_txq_modify_type {
 	MLX5_TXQ_MOD_ERR2RDY, /* modify state from error to ready. */
 };
 
+struct mlx5_rxq_priv;
+
 /* HW objects operations structure. */
 struct mlx5_obj_ops {
 	int (*rxq_obj_modify_vlan_strip)(struct mlx5_rxq_obj *rxq_obj, int on);
@@ -1408,7 +1410,8 @@ struct mlx5_priv {
 	/* RX/TX queues. */
 	unsigned int rxqs_n; /* RX queues array size. */
 	unsigned int txqs_n; /* TX queues array size. */
-	struct mlx5_rxq_data *(*rxqs)[]; /* RX queues. */
+	struct mlx5_rxq_priv *(*rxq_privs)[]; /* RX queue non-shared data. */
+	struct mlx5_rxq_data *(*rxqs)[]; /* (Shared) RX queues. */
 	struct mlx5_txq_data *(*txqs)[]; /* TX queues. */
 	struct rte_mempool *mprq_mp; /* Mempool for Multi-Packet RQ. */
 	struct rte_eth_rss_conf rss_conf; /* RSS configuration. */
