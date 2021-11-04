@@ -757,10 +757,13 @@ rte_eth_dev_owner_delete(const uint64_t owner_id)
 	rte_spinlock_lock(&eth_dev_shared_data->ownership_lock);
 
 	if (eth_is_valid_owner_id(owner_id)) {
-		for (port_id = 0; port_id < RTE_MAX_ETHPORTS; port_id++)
-			if (rte_eth_devices[port_id].data->owner.id == owner_id)
-				memset(&rte_eth_devices[port_id].data->owner, 0,
+		for (port_id = 0; port_id < RTE_MAX_ETHPORTS; port_id++) {
+			struct rte_eth_dev_data *data =
+				rte_eth_devices[port_id].data;
+			if (data != NULL && data->owner.id == owner_id)
+				memset(&data->owner, 0,
 				       sizeof(struct rte_eth_dev_owner));
+		}
 		RTE_ETHDEV_LOG(NOTICE,
 			"All port owners owned by %016"PRIx64" identifier have removed\n",
 			owner_id);
