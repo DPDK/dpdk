@@ -110,7 +110,7 @@ Please note that following ``devargs`` are only set for backplane NICs.
 
   Toggle behavior to enable/disable polling mode to receive AN interrupt.
 
-- ``present`` (default **1**)
+- ``present`` (default **0**)
 
   Toggle behavior to use present mode or init mode.
 

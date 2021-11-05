@@ -495,7 +495,7 @@ txgbe_parse_devargs(struct txgbe_hw *hw, struct rte_devargs *devargs)
 	struct rte_kvargs *kvlist;
 	u16 auto_neg = 1;
 	u16 poll = 0;
-	u16 present = 1;
+	u16 present = 0;
 	u16 sgmii = 0;
 	u16 ffe_set = 0;
 	u16 ffe_main = 27;
