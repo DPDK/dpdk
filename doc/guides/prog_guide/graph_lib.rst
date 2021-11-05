@@ -220,7 +220,7 @@ the user needs to update the context of the node hence access to
 ``struct rte_node *`` memory.
 
 ``rte_graph_foreach_node()``, ``rte_graph_node_get()``,
-``rte_graph_node_get_by_name()`` APIs can be used to to get the
+``rte_graph_node_get_by_name()`` APIs can be used to get the
 ``struct rte_node*``. ``rte_graph_foreach_node()`` iterator function works on
 ``struct rte_graph *`` fast-path graph object while others works on graph ID or name.
 

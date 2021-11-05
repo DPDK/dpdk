@@ -78,7 +78,7 @@ options.
 Explanation
 -----------
 
-The following sections provide some explanation of the The
+The following sections provide some explanation of the
 Keep-Alive/'Liveliness' conceptual scheme. As mentioned in the
 overview section, the initialization and run-time paths are very
 similar to those of the :doc:`l2_forward_real_virtual`.
