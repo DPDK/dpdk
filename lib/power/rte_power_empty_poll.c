@@ -207,7 +207,7 @@ update_training_stats(struct priority_worker *poll_stats,
 static __rte_always_inline uint32_t
 update_stats(struct priority_worker *poll_stats)
 {
-	uint64_t tot_edpi = 0, tot_ppi = 0;
+	uint64_t tot_edpi = 0;
 	uint32_t j, percent;
 
 	struct priority_worker *s = poll_stats;
@@ -237,7 +237,6 @@ update_stats(struct priority_worker *poll_stats)
 
 	for (j = 0; j < BINS_AV; j++) {
 		tot_edpi += s->edpi_av[j];
-		tot_ppi += s->ppi_av[j];
 	}
 
 	tot_edpi = tot_edpi / BINS_AV;
