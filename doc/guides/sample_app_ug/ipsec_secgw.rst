@@ -421,7 +421,7 @@ where each options means:
 
    * *protect <SA_idx>*: the specified traffic is protected by SA rule
      with id SA_idx
-   * *bypass*: the specified traffic traffic is bypassed
+   * *bypass*: the specified traffic is bypassed
    * *discard*: the specified traffic is discarded
 
 ``<priority>``

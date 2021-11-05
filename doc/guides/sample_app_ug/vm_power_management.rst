@@ -236,7 +236,7 @@ Compiling and Running the Host Application
 Compiling the Host Application
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-For information on compiling the DPDK and sample applications, see
+For information on compiling the DPDK and sample applications,
 see :doc:`compiling`.
 
 The application is located in the ``vm_power_manager`` subdirectory.

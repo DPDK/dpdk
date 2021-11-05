@@ -366,7 +366,7 @@ Packet Matching
 ~~~~~~~~~~~~~~~
 
 The ``rte_flow_classifier_query`` API is used to find packets which match a
-given flow Flow rule in the table.
+given flow rule in the table.
 This API calls the flow_classify_run internal function which calls the
 ``table.ops.f_lookup`` API to see if any packets in a burst match any
 of the Flow rules in the table.
