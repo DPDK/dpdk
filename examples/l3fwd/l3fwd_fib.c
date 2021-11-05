@@ -580,6 +580,7 @@ fib_event_main_loop_tx_q_burst_vector(__rte_unused void *dummy)
 void
 setup_fib(const int socketid)
 {
+	struct rte_eth_dev_info dev_info;
 	struct rte_fib6_conf config;
 	struct rte_fib_conf config_ipv4;
 	unsigned int i;
@@ -611,6 +612,8 @@ setup_fib(const int socketid)
 				enabled_port_mask) == 0)
 			continue;
 
+		rte_eth_dev_info_get(ipv4_l3fwd_route_array[i].if_out,
+				     &dev_info);
 		ret = rte_fib_add(ipv4_l3fwd_fib_lookup_struct[socketid],
 			ipv4_l3fwd_route_array[i].ip,
 			ipv4_l3fwd_route_array[i].depth,
@@ -624,13 +627,14 @@ setup_fib(const int socketid)
 
 		in.s_addr = htonl(ipv4_l3fwd_route_array[i].ip);
 		if (inet_ntop(AF_INET, &in, abuf, sizeof(abuf)) != NULL) {
-			printf("FIB: Adding route %s / %d (%d)\n",
-				abuf,
-				ipv4_l3fwd_route_array[i].depth,
-				ipv4_l3fwd_route_array[i].if_out);
+			printf("FIB: Adding route %s / %d (%d) [%s]\n", abuf,
+			       ipv4_l3fwd_route_array[i].depth,
+			       ipv4_l3fwd_route_array[i].if_out,
+			       dev_info.device->name);
 		} else {
-			printf("FIB: IPv4 route added to port %d\n",
-				ipv4_l3fwd_route_array[i].if_out);
+			printf("FIB: IPv4 route added to port %d [%s]\n",
+			       ipv4_l3fwd_route_array[i].if_out,
+			       dev_info.device->name);
 		}
 	}
 	/* >8 End of setup fib. */
@@ -659,6 +663,8 @@ setup_fib(const int socketid)
 				enabled_port_mask) == 0)
 			continue;
 
+		rte_eth_dev_info_get(ipv6_l3fwd_route_array[i].if_out,
+				     &dev_info);
 		ret = rte_fib6_add(ipv6_l3fwd_fib_lookup_struct[socketid],
 			ipv6_l3fwd_route_array[i].ip,
 			ipv6_l3fwd_route_array[i].depth,
@@ -672,13 +678,14 @@ setup_fib(const int socketid)
 
 		if (inet_ntop(AF_INET6, ipv6_l3fwd_route_array[i].ip,
 				abuf, sizeof(abuf)) != NULL) {
-			printf("FIB: Adding route %s / %d (%d)\n",
-				abuf,
-				ipv6_l3fwd_route_array[i].depth,
-				ipv6_l3fwd_route_array[i].if_out);
+			printf("FIB: Adding route %s / %d (%d) [%s]\n", abuf,
+			       ipv6_l3fwd_route_array[i].depth,
+			       ipv6_l3fwd_route_array[i].if_out,
+			       dev_info.device->name);
 		} else {
-			printf("FIB: IPv6 route added to port %d\n",
-				ipv6_l3fwd_route_array[i].if_out);
+			printf("FIB: IPv6 route added to port %d [%s]\n",
+			       ipv6_l3fwd_route_array[i].if_out,
+			       dev_info.device->name);
 		}
 	}
 }
