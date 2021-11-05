@@ -1376,6 +1376,7 @@ efx_mae_action_set_spec_init(
 	__in				efx_nic_t *enp,
 	__out				efx_mae_actions_t **specp)
 {
+	const efx_nic_cfg_t *encp = efx_nic_cfg_get(enp);
 	efx_mae_actions_t *spec;
 	efx_rc_t rc;
 
@@ -1387,6 +1388,12 @@ efx_mae_action_set_spec_init(
 
 	spec->ema_rsrc.emar_eh_id.id = EFX_MAE_RSRC_ID_INVALID;
 	spec->ema_rsrc.emar_counter_id.id = EFX_MAE_RSRC_ID_INVALID;
+
+	/*
+	 * Helpers which populate v2 actions must reject them when v2 is not
+	 * supported. As they have no EFX NIC argument, save v2 status here.
+	 */
+	spec->ema_v2_is_supported = encp->enc_mae_aset_v2_supported;
 
 	*specp = spec;
 
@@ -1626,6 +1633,9 @@ static const efx_mae_action_desc_t efx_mae_actions[EFX_MAE_NACTIONS] = {
 	[EFX_MAE_ACTION_VLAN_POP] = {
 		.emad_add = efx_mae_action_set_add_vlan_pop
 	},
+	[EFX_MAE_ACTION_DECR_IP_TTL] = {
+		.emad_add = efx_mae_action_set_no_op
+	},
 	[EFX_MAE_ACTION_VLAN_PUSH] = {
 		.emad_add = efx_mae_action_set_add_vlan_push
 	},
@@ -1649,6 +1659,7 @@ static const efx_mae_action_desc_t efx_mae_actions[EFX_MAE_NACTIONS] = {
 static const uint32_t efx_mae_action_ordered_map =
 	(1U << EFX_MAE_ACTION_DECAP) |
 	(1U << EFX_MAE_ACTION_VLAN_POP) |
+	(1U << EFX_MAE_ACTION_DECR_IP_TTL) |
 	(1U << EFX_MAE_ACTION_VLAN_PUSH) |
 	/*
 	 * HW will conduct action COUNT after
@@ -1765,6 +1776,25 @@ efx_mae_action_set_populate_vlan_pop(
 {
 	return (efx_mae_action_set_spec_populate(spec,
 	    EFX_MAE_ACTION_VLAN_POP, 0, NULL));
+}
+
+	__checkReturn			efx_rc_t
+efx_mae_action_set_populate_decr_ip_ttl(
+	__in				efx_mae_actions_t *spec)
+{
+	efx_rc_t rc;
+
+	if (spec->ema_v2_is_supported == B_FALSE) {
+		rc = ENOTSUP;
+		goto fail1;
+	}
+
+	return (efx_mae_action_set_spec_populate(spec,
+	    EFX_MAE_ACTION_DECR_IP_TTL, 0, NULL));
+
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+	return (rc);
 }
 
 	__checkReturn			efx_rc_t
@@ -2541,6 +2571,11 @@ efx_mae_action_set_alloc(
 
 	MCDI_IN_SET_DWORD_FIELD(req, MAE_ACTION_SET_ALLOC_IN_FLAGS,
 	    MAE_ACTION_SET_ALLOC_IN_VLAN_POP, spec->ema_n_vlan_tags_to_pop);
+
+	if ((spec->ema_actions & (1U << EFX_MAE_ACTION_DECR_IP_TTL)) != 0) {
+		MCDI_IN_SET_DWORD_FIELD(req, MAE_ACTION_SET_ALLOC_IN_FLAGS,
+		    MAE_ACTION_SET_ALLOC_IN_DO_DECR_IP_TTL, 1);
+	}
 
 	if (spec->ema_n_vlan_tags_to_push > 0) {
 		unsigned int outer_tag_idx;

@@ -1625,6 +1625,8 @@ typedef struct efx_nic_cfg_s {
 	 * destination (a MAE client or network port).
 	 */
 	boolean_t		enc_mae_admin;
+	/* NIC support for MAE action set v2 features. */
+	boolean_t		enc_mae_aset_v2_supported;
 	/* Firmware support for "FLAG" and "MARK" filter actions */
 	boolean_t		enc_filter_action_flag_supported;
 	boolean_t		enc_filter_action_mark_supported;
@@ -4433,6 +4435,18 @@ efx_mae_action_set_populate_decap(
 LIBEFX_API
 extern	__checkReturn			efx_rc_t
 efx_mae_action_set_populate_vlan_pop(
+	__in				efx_mae_actions_t *spec);
+
+/*
+ * This always amends the outermost header. This way, for a tunnel
+ * packet, if action DECAP is not requested, this will affect the
+ * outer header; otherwise, the inner header will be updated.
+ *
+ * This will also take care to update IPv4 checksum accordingly.
+ */
+LIBEFX_API
+extern	__checkReturn			efx_rc_t
+efx_mae_action_set_populate_decr_ip_ttl(
 	__in				efx_mae_actions_t *spec);
 
 LIBEFX_API

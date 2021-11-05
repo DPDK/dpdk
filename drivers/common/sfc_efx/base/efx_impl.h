@@ -1740,6 +1740,7 @@ typedef enum efx_mae_action_e {
 	/* These actions are strictly ordered. */
 	EFX_MAE_ACTION_DECAP,
 	EFX_MAE_ACTION_VLAN_POP,
+	EFX_MAE_ACTION_DECR_IP_TTL,
 	EFX_MAE_ACTION_VLAN_PUSH,
 	EFX_MAE_ACTION_COUNT,
 	EFX_MAE_ACTION_ENCAP,
@@ -1793,6 +1794,13 @@ struct efx_mae_actions_s {
 	 * to make sure that resource IDs are not compared.
 	 */
 	efx_mae_actions_rsrc_t		ema_rsrc;
+
+	/*
+	 * A copy of encp->enc_mae_aset_v2_supported.
+	 * It is set by efx_mae_action_set_spec_init().
+	 * This value is ignored on spec comparisons.
+	 */
+	boolean_t			ema_v2_is_supported;
 };
 
 #endif /* EFSYS_OPT_MAE */

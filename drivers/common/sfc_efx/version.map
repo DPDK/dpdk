@@ -95,6 +95,7 @@ INTERNAL {
 	efx_mae_action_set_get_nb_count;
 	efx_mae_action_set_populate_count;
 	efx_mae_action_set_populate_decap;
+	efx_mae_action_set_populate_decr_ip_ttl;
 	efx_mae_action_set_populate_deliver;
 	efx_mae_action_set_populate_drop;
 	efx_mae_action_set_populate_encap;

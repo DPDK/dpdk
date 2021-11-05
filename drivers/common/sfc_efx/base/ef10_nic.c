@@ -1452,6 +1452,15 @@ ef10_get_datapath_caps(
 		encp->enc_mae_supported = B_FALSE;
 		encp->enc_mae_admin = B_FALSE;
 	}
+
+	/*
+	 * Check support for MAE action set v2 features.
+	 * These provide support for packet edits.
+	 */
+	if (CAP_FLAGS3(req, MAE_ACTION_SET_ALLOC_V2_SUPPORTED))
+		encp->enc_mae_aset_v2_supported = B_TRUE;
+	else
+		encp->enc_mae_aset_v2_supported = B_FALSE;
 #else
 	encp->enc_mae_supported = B_FALSE;
 	encp->enc_mae_admin = B_FALSE;
