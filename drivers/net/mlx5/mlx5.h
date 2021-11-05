@@ -99,6 +99,13 @@ enum mlx5_flow_type {
 	MLX5_FLOW_TYPE_MAXI,
 };
 
+/* The mode of delay drop for Rx queues. */
+enum mlx5_delay_drop_mode {
+	MLX5_DELAY_DROP_NONE = 0, /* All disabled. */
+	MLX5_DELAY_DROP_STANDARD = RTE_BIT32(0), /* Standard queues enable. */
+	MLX5_DELAY_DROP_HAIRPIN = RTE_BIT32(1), /* Hairpin queues enable. */
+};
+
 /* Hlist and list callback context. */
 struct mlx5_flow_cb_ctx {
 	struct rte_eth_dev *dev;
@@ -264,6 +271,8 @@ struct mlx5_dev_config {
 	unsigned int dv_miss_info:1; /* restore packet after partial hw miss */
 	unsigned int allow_duplicate_pattern:1;
 	/* Allow/Prevent the duplicate rules pattern. */
+	unsigned int std_delay_drop:1; /* Enable standard Rxq delay drop. */
+	unsigned int hp_delay_drop:1; /* Enable hairpin Rxq delay drop. */
 	struct {
 		unsigned int enabled:1; /* Whether MPRQ is enabled. */
 		unsigned int stride_num_n; /* Number of strides. */

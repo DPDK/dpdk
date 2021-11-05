@@ -97,6 +97,7 @@ struct mlx5_rxq_data {
 	unsigned int dynf_meta:1; /* Dynamic metadata is configured. */
 	unsigned int mcqe_format:3; /* CQE compression format. */
 	unsigned int shared:1; /* Shared RXQ. */
+	unsigned int delay_drop:1; /* Enable delay drop. */
 	volatile uint32_t *rq_db;
 	volatile uint32_t *cq_db;
 	uint16_t port_id;

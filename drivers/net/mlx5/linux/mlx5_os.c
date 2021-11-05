@@ -1508,6 +1508,15 @@ err_secondary:
 		goto error;
 #endif
 	}
+	if (config->std_delay_drop || config->hp_delay_drop) {
+		if (!config->hca_attr.rq_delay_drop) {
+			config->std_delay_drop = 0;
+			config->hp_delay_drop = 0;
+			DRV_LOG(WARNING,
+				"dev_port-%u: Rxq delay drop is not supported",
+				priv->dev_port);
+		}
+	}
 	if (sh->devx) {
 		uint32_t reg[MLX5_ST_SZ_DW(register_mtutc)];
 
@@ -2077,6 +2086,8 @@ mlx5_os_config_default(struct mlx5_dev_config *config)
 	config->decap_en = 1;
 	config->log_hp_size = MLX5_ARG_UNSET;
 	config->allow_duplicate_pattern = 1;
+	config->std_delay_drop = 0;
+	config->hp_delay_drop = 0;
 }
 
 /**

@@ -178,6 +178,7 @@ struct mlx5_hca_attr {
 	uint32_t swp_csum:1;
 	uint32_t swp_lso:1;
 	uint32_t lro_max_msg_sz_mode:2;
+	uint32_t rq_delay_drop:1;
 	uint32_t lro_timer_supported_periods[MLX5_LRO_NUM_SUPP_PERIODS];
 	uint16_t lro_min_mss_size;
 	uint32_t flex_parser_protocols;

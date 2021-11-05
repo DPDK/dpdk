@@ -277,6 +277,7 @@ mlx5_rxq_create_devx_rq_resources(struct mlx5_rxq_priv *rxq)
 						MLX5_WQ_END_PAD_MODE_NONE;
 	rq_attr.wq_attr.pd = cdev->pdn;
 	rq_attr.counter_set_id = priv->counter_set_id;
+	rq_attr.delay_drop_en = rxq_data->delay_drop;
 	rq_attr.user_index = rte_cpu_to_be_16(priv->dev_data->port_id);
 	if (rxq_data->shared) /* Create RMP based RQ. */
 		rxq->devx_rq.rmp = &rxq_ctrl->obj->devx_rmp;
@@ -439,6 +440,8 @@ mlx5_rxq_obj_hairpin_new(struct mlx5_rxq_priv *rxq)
 			attr.wq_attr.log_hairpin_data_sz -
 			MLX5_HAIRPIN_QUEUE_STRIDE;
 	attr.counter_set_id = priv->counter_set_id;
+	rxq_ctrl->rxq.delay_drop = priv->config.hp_delay_drop;
+	attr.delay_drop_en = priv->config.hp_delay_drop;
 	tmpl->rq = mlx5_devx_cmd_create_rq(priv->sh->cdev->ctx, &attr,
 					   rxq_ctrl->socket);
 	if (!tmpl->rq) {
@@ -496,6 +499,7 @@ mlx5_rxq_devx_obj_new(struct mlx5_rxq_priv *rxq)
 		DRV_LOG(ERR, "Failed to create CQ.");
 		goto error;
 	}
+	rxq_data->delay_drop = priv->config.std_delay_drop;
 	/* Create RQ using DevX API. */
 	ret = mlx5_rxq_create_devx_rq_resources(rxq);
 	if (ret) {
@@ -941,6 +945,7 @@ mlx5_rxq_devx_obj_drop_create(struct rte_eth_dev *dev)
 			dev->data->port_id);
 		goto error;
 	}
+	rxq_ctrl->rxq.delay_drop = 0;
 	/* Create RQ using DevX API. */
 	ret = mlx5_rxq_create_devx_rq_resources(rxq);
 	if (ret != 0) {

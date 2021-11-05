@@ -183,6 +183,9 @@
 /* Device parameter to configure implicit registration of mempool memory. */
 #define MLX5_MR_MEMPOOL_REG_EN "mr_mempool_reg_en"
 
+/* Device parameter to configure the delay drop when creating Rxqs. */
+#define MLX5_DELAY_DROP "delay_drop"
+
 /* Shared memory between primary and secondary processes. */
 struct mlx5_shared_data *mlx5_shared_data;
 
@@ -2091,6 +2094,9 @@ mlx5_args_check(const char *key, const char *val, void *opaque)
 		config->decap_en = !!tmp;
 	} else if (strcmp(MLX5_ALLOW_DUPLICATE_PATTERN, key) == 0) {
 		config->allow_duplicate_pattern = !!tmp;
+	} else if (strcmp(MLX5_DELAY_DROP, key) == 0) {
+		config->std_delay_drop = tmp & MLX5_DELAY_DROP_STANDARD;
+		config->hp_delay_drop = tmp & MLX5_DELAY_DROP_HAIRPIN;
 	} else {
 		DRV_LOG(WARNING, "%s: unknown parameter", key);
 		rte_errno = EINVAL;
@@ -2153,6 +2159,7 @@ mlx5_args(struct mlx5_dev_config *config, struct rte_devargs *devargs)
 		MLX5_DECAP_EN,
 		MLX5_ALLOW_DUPLICATE_PATTERN,
 		MLX5_MR_MEMPOOL_REG_EN,
+		MLX5_DELAY_DROP,
 		NULL,
 	};
 	struct rte_kvargs *kvlist;

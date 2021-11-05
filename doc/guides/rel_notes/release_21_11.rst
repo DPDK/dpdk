@@ -201,6 +201,7 @@ New Features
   Updated the Mellanox mlx5 driver with new features and improvements, including:
 
   * Added implicit mempool registration to avoid data path hiccups (opt-out).
+  * Added delay drop support for Rx queue.
   * Added NIC offloads for the PMD on Windows (TSO, VLAN strip, CRC keep).
   * Added socket direct mode bonding support.
 

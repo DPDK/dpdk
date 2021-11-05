@@ -965,6 +965,7 @@ mlx5_devx_cmd_query_hca_attr(void *ctx,
 	attr->ct_offload = !!(MLX5_GET64(cmd_hca_cap, hcattr,
 					 general_obj_types) &
 			      MLX5_GENERAL_OBJ_TYPES_CAP_CONN_TRACK_OFFLOAD);
+	attr->rq_delay_drop = MLX5_GET(cmd_hca_cap, hcattr, rq_delay_drop);
 	if (attr->qos.sup) {
 		hcattr = mlx5_devx_get_hca_cap(ctx, in, out, &rc,
 				MLX5_GET_HCA_CAP_OP_MOD_QOS_CAP |
