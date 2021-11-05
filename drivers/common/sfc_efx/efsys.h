@@ -125,7 +125,7 @@ prefetch_read_once(const volatile void *addr)
 /* Enable Riverhead support */
 #define EFSYS_OPT_RIVERHEAD 1
 
-#ifdef RTE_LIBRTE_SFC_EFX_DEBUG
+#ifdef RTE_DEBUG_COMMON_SFC_EFX
 #define EFSYS_OPT_CHECK_REG 1
 #else
 #define EFSYS_OPT_CHECK_REG 0
@@ -742,7 +742,7 @@ typedef uint64_t	efsys_stat_t;
 /* RTE_VERIFY from DPDK treats expressions with % operator incorrectly,
  * so we re-implement it here
  */
-#ifdef RTE_LIBRTE_SFC_EFX_DEBUG
+#ifdef RTE_DEBUG_COMMON_SFC_EFX
 #define EFSYS_ASSERT(_exp)						\
 	do {								\
 		if (unlikely(!(_exp)))					\
