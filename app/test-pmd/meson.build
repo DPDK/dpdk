@@ -29,20 +29,21 @@ sources = files(
 )
 
 deps += ['ethdev', 'gro', 'gso', 'cmdline', 'metrics', 'bus_pci']
-if dpdk_conf.has('RTE_LIB_BITRATESTATS')
-    deps += 'bitratestats'
-endif
-if dpdk_conf.has('RTE_LIB_PDUMP')
-    deps += 'pdump'
+if dpdk_conf.has('RTE_CRYPTO_SCHEDULER')
+    deps += 'crypto_scheduler'
 endif
 if dpdk_conf.has('RTE_LIB_BITRATESTATS')
     deps += 'bitratestats'
+endif
+if dpdk_conf.has('RTE_LIB_BPF')
+    sources += files('bpf_cmd.c')
+    deps += 'bpf'
 endif
 if dpdk_conf.has('RTE_LIB_LATENCYSTATS')
     deps += 'latencystats'
 endif
-if dpdk_conf.has('RTE_CRYPTO_SCHEDULER')
-    deps += 'crypto_scheduler'
+if dpdk_conf.has('RTE_LIB_PDUMP')
+    deps += 'pdump'
 endif
 if dpdk_conf.has('RTE_NET_BOND')
     deps += 'net_bond'
@@ -58,10 +59,6 @@ if dpdk_conf.has('RTE_NET_IXGBE')
 endif
 if dpdk_conf.has('RTE_NET_DPAA')
     deps += ['bus_dpaa', 'mempool_dpaa', 'net_dpaa']
-endif
-if dpdk_conf.has('RTE_LIB_BPF')
-    sources += files('bpf_cmd.c')
-    deps += 'bpf'
 endif
 jansson_dep = dependency('jansson', required: false, method: 'pkg-config')
 if jansson_dep.found()
