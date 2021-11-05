@@ -398,8 +398,10 @@ New Features
 
 * **Updated l3fwd sample application.**
 
-  * Increased number of routes to 16 for some lookup modes (LPM and FIB),
+  * Increased number of routes to 16 for all lookup modes (LPM, EM and FIB),
     this helps in validating SoC with many ethernet devices.
+  * Updated EM mode to use RFC2544 reserved IP address space with RFC863
+    UDP discard protocol.
 
 * **Updated IPsec Security Gateway sample application with new features.**
 
