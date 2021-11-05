@@ -1630,3 +1630,114 @@ mlx5_get_mac(struct rte_eth_dev *dev, uint8_t (*mac)[RTE_ETHER_ADDR_LEN])
 	memcpy(mac, request.ifr_hwaddr.sa_data, RTE_ETHER_ADDR_LEN);
 	return 0;
 }
+
+/*
+ * Query dropless_rq private flag value provided by ETHTOOL.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ *
+ * @return
+ *   - 0 on success, flag is not set.
+ *   - 1 on success, flag is set.
+ *   - negative errno value otherwise and rte_errno is set.
+ */
+int mlx5_get_flag_dropless_rq(struct rte_eth_dev *dev)
+{
+	struct {
+		struct ethtool_sset_info hdr;
+		uint32_t buf[1];
+	} sset_info;
+	struct ethtool_drvinfo drvinfo;
+	struct ifreq ifr;
+	struct ethtool_gstrings *strings = NULL;
+	struct ethtool_value flags;
+	const int32_t flag_len = sizeof(flags.data) * CHAR_BIT;
+	int32_t str_sz;
+	int32_t len;
+	int32_t i;
+	int ret;
+
+	sset_info.hdr.cmd = ETHTOOL_GSSET_INFO;
+	sset_info.hdr.reserved = 0;
+	sset_info.hdr.sset_mask = 1ULL << ETH_SS_PRIV_FLAGS;
+	ifr.ifr_data = (caddr_t)&sset_info;
+	ret = mlx5_ifreq(dev, SIOCETHTOOL, &ifr);
+	if (!ret) {
+		const uint32_t *sset_lengths = sset_info.hdr.data;
+
+		len = sset_info.hdr.sset_mask ? sset_lengths[0] : 0;
+	} else if (ret == -EOPNOTSUPP) {
+		drvinfo.cmd = ETHTOOL_GDRVINFO;
+		ifr.ifr_data = (caddr_t)&drvinfo;
+		ret = mlx5_ifreq(dev, SIOCETHTOOL, &ifr);
+		if (ret) {
+			DRV_LOG(WARNING, "port %u cannot get the driver info",
+				dev->data->port_id);
+			goto exit;
+		}
+		len = *(uint32_t *)((char *)&drvinfo +
+			offsetof(struct ethtool_drvinfo, n_priv_flags));
+	} else {
+		DRV_LOG(WARNING, "port %u cannot get the sset info",
+			dev->data->port_id);
+		goto exit;
+	}
+	if (!len) {
+		DRV_LOG(WARNING, "port %u does not have private flag",
+			dev->data->port_id);
+		rte_errno = EOPNOTSUPP;
+		ret = -rte_errno;
+		goto exit;
+	} else if (len > flag_len) {
+		DRV_LOG(WARNING, "port %u maximal private flags number is %d",
+			dev->data->port_id, flag_len);
+		len = flag_len;
+	}
+	str_sz = ETH_GSTRING_LEN * len;
+	strings = (struct ethtool_gstrings *)
+		  mlx5_malloc(0, str_sz + sizeof(struct ethtool_gstrings), 0,
+			      SOCKET_ID_ANY);
+	if (!strings) {
+		DRV_LOG(WARNING, "port %u unable to allocate memory for"
+			" private flags", dev->data->port_id);
+		rte_errno = ENOMEM;
+		ret = -rte_errno;
+		goto exit;
+	}
+	strings->cmd = ETHTOOL_GSTRINGS;
+	strings->string_set = ETH_SS_PRIV_FLAGS;
+	strings->len = len;
+	ifr.ifr_data = (caddr_t)strings;
+	ret = mlx5_ifreq(dev, SIOCETHTOOL, &ifr);
+	if (ret) {
+		DRV_LOG(WARNING, "port %u unable to get private flags strings",
+			dev->data->port_id);
+		goto exit;
+	}
+	for (i = 0; i < len; i++) {
+		strings->data[(i + 1) * ETH_GSTRING_LEN - 1] = 0;
+		if (!strcmp((const char *)strings->data + i * ETH_GSTRING_LEN,
+			     "dropless_rq"))
+			break;
+	}
+	if (i == len) {
+		DRV_LOG(WARNING, "port %u does not support dropless_rq",
+			dev->data->port_id);
+		rte_errno = EOPNOTSUPP;
+		ret = -rte_errno;
+		goto exit;
+	}
+	flags.cmd = ETHTOOL_GPFLAGS;
+	ifr.ifr_data = (caddr_t)&flags;
+	ret = mlx5_ifreq(dev, SIOCETHTOOL, &ifr);
+	if (ret) {
+		DRV_LOG(WARNING, "port %u unable to get private flags status",
+			dev->data->port_id);
+		goto exit;
+	}
+	ret = !!(flags.data & (1U << i));
+exit:
+	mlx5_free(strings);
+	return ret;
+}

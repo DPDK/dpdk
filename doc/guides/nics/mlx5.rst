@@ -619,6 +619,22 @@ Driver options
   The packets being received will not be dropped immediately when the WQEs are
   exhausted in a Rx queue with delay drop enabled.
 
+  A timeout value is set in the driver to control the waiting time before
+  dropping a packet. Once the timer is expired, the delay drop will be
+  deactivated for all the Rx queues with this feature enable. To re-activeate
+  it, a rearming is needed and it is part of the kernel driver starting from
+  OFED 5.5.
+
+  To enable / disable the delay drop rearming, the private flag ``dropless_rq``
+  can be set and queried via ethtool:
+
+  - ethtool --set-priv-flags <netdev> dropless_rq on (/ off)
+  - ethtool --show-priv-flags <netdev>
+
+  The configuration flag is global per PF and can only be set on the PF, once
+  it is on, all the VFs', SFs' and representors' Rx queues will share the timer
+  and rearming.
+
 - ``mprq_en`` parameter [int]
 
   A nonzero value enables configuring Multi-Packet Rx queues. Rx queue is

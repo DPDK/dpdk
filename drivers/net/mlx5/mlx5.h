@@ -1602,6 +1602,7 @@ int mlx5_os_read_dev_stat(struct mlx5_priv *priv,
 int mlx5_os_read_dev_counters(struct rte_eth_dev *dev, uint64_t *stats);
 int mlx5_os_get_stats_n(struct rte_eth_dev *dev);
 void mlx5_os_stats_init(struct rte_eth_dev *dev);
+int mlx5_get_flag_dropless_rq(struct rte_eth_dev *dev);
 
 /* mlx5_mac.c */
 

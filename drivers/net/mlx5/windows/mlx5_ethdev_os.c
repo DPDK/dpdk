@@ -389,3 +389,20 @@ mlx5_is_removed(struct rte_eth_dev *dev)
 		return 1;
 	return 0;
 }
+
+/*
+ * Query dropless_rq private flag value provided by ETHTOOL.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ *
+ * @return
+ *   - 0 on success, flag is not set.
+ *   - 1 on success, flag is set.
+ *   - negative errno value otherwise and rte_errno is set.
+ */
+int mlx5_get_flag_dropless_rq(struct rte_eth_dev *dev)
+{
+	RTE_SET_USED(dev);
+	return -ENOTSUP;
+}

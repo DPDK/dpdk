@@ -1129,6 +1129,24 @@ mlx5_dev_start(struct rte_eth_dev *dev)
 			dev->data->port_id, strerror(rte_errno));
 		goto error;
 	}
+	if (priv->config.std_delay_drop || priv->config.hp_delay_drop) {
+		if (!priv->config.vf && !priv->config.sf &&
+		    !priv->representor) {
+			ret = mlx5_get_flag_dropless_rq(dev);
+			if (ret < 0)
+				DRV_LOG(WARNING,
+					"port %u cannot query dropless flag",
+					dev->data->port_id);
+			else if (!ret)
+				DRV_LOG(WARNING,
+					"port %u dropless_rq OFF, no rearming",
+					dev->data->port_id);
+		} else {
+			DRV_LOG(DEBUG,
+				"port %u doesn't support dropless_rq flag",
+				dev->data->port_id);
+		}
+	}
 	ret = mlx5_rxq_start(dev);
 	if (ret) {
 		DRV_LOG(ERR, "port %u Rx queue allocation failed: %s",
