@@ -28,7 +28,7 @@ sources = files(
         'util.c',
 )
 
-deps += ['ethdev', 'gro', 'gso', 'cmdline', 'metrics', 'meter', 'bus_pci']
+deps += ['ethdev', 'gro', 'gso', 'cmdline', 'metrics', 'bus_pci']
 if dpdk_conf.has('RTE_LIB_BITRATESTATS')
     deps += 'bitratestats'
 endif
