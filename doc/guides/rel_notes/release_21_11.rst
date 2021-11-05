@@ -396,6 +396,11 @@ New Features
   * Added tests to verify inner checksum.
   * Added tests for CHACHA20_POLY1305 PMD, including a new testcase for SGL OOP.
 
+* **Updated l3fwd sample application.**
+
+  * Increased number of routes to 16 for some lookup modes (LPM and FIB),
+    this helps in validating SoC with many ethernet devices.
+
 * **Updated IPsec Security Gateway sample application with new features.**
 
   * Added support for TSO (only for inline crypto TCP packets).
