@@ -1567,13 +1567,14 @@ efx_mae_action_set_add_count(
 	 * two steps: first add this action to the action spec, and then
 	 * add the counter ID to the spec. This allows validity checking
 	 * and resource allocation to be done separately.
-	 * Mark the counter ID as invalid in the spec to ensure that the
-	 * caller must also invoke efx_mae_action_set_fill_in_counter_id()
-	 * before action set allocation.
+	 *
+	 * In order to fill in the counter ID, the caller is supposed to invoke
+	 * efx_mae_action_set_fill_in_counter_id(). If they do not do that,
+	 * efx_mae_action_set_alloc() invocation will throw an error.
+	 *
+	 * For now, no arguments are supposed to be handled.
 	 */
-	spec->ema_rsrc.emar_counter_id.id = EFX_MAE_RSRC_ID_INVALID;
 
-	/* Nothing else is supposed to take place over here. */
 	if (arg_size != 0) {
 		rc = EINVAL;
 		goto fail1;
@@ -2585,6 +2586,12 @@ efx_mae_action_set_alloc(
 		goto fail2;
 	}
 
+	if (spec->ema_n_count_actions == 1 &&
+	    spec->ema_rsrc.emar_counter_id.id == EFX_MAE_RSRC_ID_INVALID) {
+		rc = EINVAL;
+		goto fail3;
+	}
+
 	req.emr_cmd = MC_CMD_MAE_ACTION_SET_ALLOC;
 	req.emr_in_buf = payload;
 	req.emr_in_length = MC_CMD_MAE_ACTION_SET_ALLOC_IN_LEN;
@@ -2662,24 +2669,26 @@ efx_mae_action_set_alloc(
 
 	if (req.emr_rc != 0) {
 		rc = req.emr_rc;
-		goto fail3;
+		goto fail4;
 	}
 
 	if (req.emr_out_length_used < MC_CMD_MAE_ACTION_SET_ALLOC_OUT_LEN) {
 		rc = EMSGSIZE;
-		goto fail4;
+		goto fail5;
 	}
 
 	aset_id.id = MCDI_OUT_DWORD(req, MAE_ACTION_SET_ALLOC_OUT_AS_ID);
 	if (aset_id.id == EFX_MAE_RSRC_ID_INVALID) {
 		rc = ENOENT;
-		goto fail5;
+		goto fail6;
 	}
 
 	aset_idp->id = aset_id.id;
 
 	return (0);
 
+fail6:
+	EFSYS_PROBE(fail6);
 fail5:
 	EFSYS_PROBE(fail5);
 fail4:
