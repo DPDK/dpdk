@@ -43,7 +43,8 @@ implementer_generic = {
             'compiler_options': ['-moutline-atomics']
         },
         'generic_aarch32': {
-            'machine_args': ['-march=armv8-a', '-mfpu=neon'],
+            'march': 'armv8-a',
+            'compiler_options': ['-mfpu=neon'],
             'flags': [
                 ['RTE_ARCH_ARM_NEON_MEMCPY', false],
                 ['RTE_ARCH_STRICT_ALIGN', true],
