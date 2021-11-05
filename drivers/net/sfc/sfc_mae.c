@@ -3587,6 +3587,14 @@ sfc_mae_rule_parse_action(struct sfc_adapter *sa,
 				       bundle->actions_mask);
 		rc = efx_mae_action_set_populate_vlan_pop(spec);
 		break;
+	case RTE_FLOW_ACTION_TYPE_OF_DEC_NW_TTL:
+	case RTE_FLOW_ACTION_TYPE_DEC_TTL:
+		SFC_BUILD_SET_OVERFLOW(RTE_FLOW_ACTION_TYPE_OF_DEC_NW_TTL,
+				       bundle->actions_mask);
+		SFC_BUILD_SET_OVERFLOW(RTE_FLOW_ACTION_TYPE_DEC_TTL,
+				       bundle->actions_mask);
+		rc = efx_mae_action_set_populate_decr_ip_ttl(spec);
+		break;
 	case RTE_FLOW_ACTION_TYPE_OF_PUSH_VLAN:
 		SFC_BUILD_SET_OVERFLOW(RTE_FLOW_ACTION_TYPE_OF_PUSH_VLAN,
 				       bundle->actions_mask);

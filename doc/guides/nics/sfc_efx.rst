@@ -234,6 +234,10 @@ Supported actions (***transfer*** rules):
 
 - OF_VLAN_SET_PCP
 
+- OF_DEC_NW_TTL
+
+- DEC_TTL
+
 - VXLAN_DECAP
 
 - VXLAN_ENCAP
