@@ -1406,7 +1406,7 @@ efx_mae_action_set_spec_fini(
 }
 
 static	__checkReturn			efx_rc_t
-efx_mae_action_set_add_decap(
+efx_mae_action_set_no_op(
 	__in				efx_mae_actions_t *spec,
 	__in				size_t arg_size,
 	__in_bcount(arg_size)		const uint8_t *arg)
@@ -1511,47 +1511,6 @@ fail1:
 }
 
 static	__checkReturn			efx_rc_t
-efx_mae_action_set_add_encap(
-	__in				efx_mae_actions_t *spec,
-	__in				size_t arg_size,
-	__in_bcount(arg_size)		const uint8_t *arg)
-{
-	efx_rc_t rc;
-
-	/*
-	 * Adding this specific action to an action set spec and setting encap.
-	 * header ID in the spec are two individual steps. This design allows
-	 * the client driver to avoid encap. header allocation when it simply
-	 * needs to check the order of actions submitted by user ("validate"),
-	 * without actually allocating an action set and inserting a rule.
-	 *
-	 * In order to fill in the encap. header ID, the caller is supposed to
-	 * invoke efx_mae_action_set_fill_in_eh_id(). If they do not do that,
-	 * efx_mae_action_set_alloc() invocation will throw an error.
-	 *
-	 * For now, no more work is supposed to be done.
-	 */
-
-	if (arg_size != 0) {
-		rc = EINVAL;
-		goto fail1;
-	}
-
-	if (arg != NULL) {
-		rc = EINVAL;
-		goto fail2;
-	}
-
-	return (0);
-
-fail2:
-	EFSYS_PROBE(fail2);
-fail1:
-	EFSYS_PROBE1(fail1, efx_rc_t, rc);
-	return (rc);
-}
-
-static	__checkReturn			efx_rc_t
 efx_mae_action_set_add_count(
 	__in				efx_mae_actions_t *spec,
 	__in				size_t arg_size,
@@ -1586,37 +1545,6 @@ efx_mae_action_set_add_count(
 	}
 
 	++(spec->ema_n_count_actions);
-
-	return (0);
-
-fail2:
-	EFSYS_PROBE(fail2);
-fail1:
-	EFSYS_PROBE1(fail1, efx_rc_t, rc);
-	return (rc);
-}
-
-static	__checkReturn			efx_rc_t
-efx_mae_action_set_add_flag(
-	__in				efx_mae_actions_t *spec,
-	__in				size_t arg_size,
-	__in_bcount(arg_size)		const uint8_t *arg)
-{
-	efx_rc_t rc;
-
-	_NOTE(ARGUNUSED(spec))
-
-	if (arg_size != 0) {
-		rc = EINVAL;
-		goto fail1;
-	}
-
-	if (arg != NULL) {
-		rc = EINVAL;
-		goto fail2;
-	}
-
-	/* This action does not have any arguments, so do nothing here. */
 
 	return (0);
 
@@ -1693,7 +1621,7 @@ typedef struct efx_mae_action_desc_s {
 
 static const efx_mae_action_desc_t efx_mae_actions[EFX_MAE_NACTIONS] = {
 	[EFX_MAE_ACTION_DECAP] = {
-		.emad_add = efx_mae_action_set_add_decap
+		.emad_add = efx_mae_action_set_no_op
 	},
 	[EFX_MAE_ACTION_VLAN_POP] = {
 		.emad_add = efx_mae_action_set_add_vlan_pop
@@ -1702,13 +1630,13 @@ static const efx_mae_action_desc_t efx_mae_actions[EFX_MAE_NACTIONS] = {
 		.emad_add = efx_mae_action_set_add_vlan_push
 	},
 	[EFX_MAE_ACTION_ENCAP] = {
-		.emad_add = efx_mae_action_set_add_encap
+		.emad_add = efx_mae_action_set_no_op
 	},
 	[EFX_MAE_ACTION_COUNT] = {
 		.emad_add = efx_mae_action_set_add_count
 	},
 	[EFX_MAE_ACTION_FLAG] = {
-		.emad_add = efx_mae_action_set_add_flag
+		.emad_add = efx_mae_action_set_no_op
 	},
 	[EFX_MAE_ACTION_MARK] = {
 		.emad_add = efx_mae_action_set_add_mark
