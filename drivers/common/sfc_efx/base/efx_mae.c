@@ -1525,16 +1525,13 @@ efx_mae_action_set_add_encap(
 	 * needs to check the order of actions submitted by user ("validate"),
 	 * without actually allocating an action set and inserting a rule.
 	 *
-	 * For now, mark encap. header ID as invalid; the caller will invoke
-	 * efx_mae_action_set_fill_in_eh_id() to override the field prior
-	 * to action set allocation; otherwise, the allocation will fail.
+	 * In order to fill in the encap. header ID, the caller is supposed to
+	 * invoke efx_mae_action_set_fill_in_eh_id(). If they do not do that,
+	 * efx_mae_action_set_alloc() invocation will throw an error.
+	 *
+	 * For now, no more work is supposed to be done.
 	 */
-	spec->ema_rsrc.emar_eh_id.id = EFX_MAE_RSRC_ID_INVALID;
 
-	/*
-	 * As explained above, there are no arguments to handle here.
-	 * efx_mae_action_set_fill_in_eh_id() will take care of them.
-	 */
 	if (arg_size != 0) {
 		rc = EINVAL;
 		goto fail1;
@@ -2582,6 +2579,12 @@ efx_mae_action_set_alloc(
 		goto fail1;
 	}
 
+	if ((spec->ema_actions & (1U << EFX_MAE_ACTION_ENCAP)) != 0 &&
+	    spec->ema_rsrc.emar_eh_id.id == EFX_MAE_RSRC_ID_INVALID) {
+		rc = EINVAL;
+		goto fail2;
+	}
+
 	req.emr_cmd = MC_CMD_MAE_ACTION_SET_ALLOC;
 	req.emr_in_buf = payload;
 	req.emr_in_length = MC_CMD_MAE_ACTION_SET_ALLOC_IN_LEN;
@@ -2659,24 +2662,26 @@ efx_mae_action_set_alloc(
 
 	if (req.emr_rc != 0) {
 		rc = req.emr_rc;
-		goto fail2;
+		goto fail3;
 	}
 
 	if (req.emr_out_length_used < MC_CMD_MAE_ACTION_SET_ALLOC_OUT_LEN) {
 		rc = EMSGSIZE;
-		goto fail3;
+		goto fail4;
 	}
 
 	aset_id.id = MCDI_OUT_DWORD(req, MAE_ACTION_SET_ALLOC_OUT_AS_ID);
 	if (aset_id.id == EFX_MAE_RSRC_ID_INVALID) {
 		rc = ENOENT;
-		goto fail4;
+		goto fail5;
 	}
 
 	aset_idp->id = aset_id.id;
 
 	return (0);
 
+fail5:
+	EFSYS_PROBE(fail5);
 fail4:
 	EFSYS_PROBE(fail4);
 fail3:
