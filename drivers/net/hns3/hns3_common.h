@@ -30,6 +30,11 @@ enum {
 #define MSEC_PER_SEC              1000L
 #define USEC_PER_MSEC             1000L
 
+int hns3_fw_version_get(struct rte_eth_dev *eth_dev, char *fw_version,
+			size_t fw_size);
+int hns3_dev_infos_get(struct rte_eth_dev *eth_dev,
+		       struct rte_eth_dev_info *info);
+
 void hns3_clock_gettime(struct timeval *tv);
 uint64_t hns3_clock_calctime_ms(struct timeval *tv);
 uint64_t hns3_clock_gettime_ms(void);
@@ -47,5 +52,10 @@ int hns3_set_mc_mac_addr_list(struct rte_eth_dev *dev,
 			      uint32_t nb_mc_addr);
 void hns3_ether_format_addr(char *buf, uint16_t size,
 			    const struct rte_ether_addr *ether_addr);
+
+int hns3_init_ring_with_vector(struct hns3_hw *hw);
+int hns3_map_rx_interrupt(struct rte_eth_dev *dev);
+void hns3_unmap_rx_interrupt(struct rte_eth_dev *dev);
+int hns3_restore_rx_interrupt(struct hns3_hw *hw);
 
 #endif /* _HNS3_COMMON_H_ */

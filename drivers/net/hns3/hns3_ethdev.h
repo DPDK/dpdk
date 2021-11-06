@@ -437,6 +437,9 @@ struct hns3_hw_ops {
 				struct rte_ether_addr *mac_addr);
 	int (*del_uc_mac_addr)(struct hns3_hw *hw,
 				struct rte_ether_addr *mac_addr);
+	int (*bind_ring_with_vector)(struct hns3_hw *hw, uint16_t vector_id,
+				bool en, enum hns3_ring_type queue_type,
+				uint16_t queue_id);
 };
 
 #define HNS3_INTR_MAPPING_VEC_RSV_ONE		0
@@ -1032,12 +1035,12 @@ hns3_test_and_clear_bit(unsigned int nr, volatile uint64_t *addr)
 	return __atomic_fetch_and(addr, ~mask, __ATOMIC_RELAXED) & mask;
 }
 
+uint32_t hns3_get_speed_capa(struct hns3_hw *hw);
+
 int hns3_buffer_alloc(struct hns3_hw *hw);
 bool hns3_is_reset_pending(struct hns3_adapter *hns);
 bool hns3vf_is_reset_pending(struct hns3_adapter *hns);
 void hns3_update_linkstatus_and_event(struct hns3_hw *hw, bool query);
-int hns3_dev_infos_get(struct rte_eth_dev *eth_dev,
-		       struct rte_eth_dev_info *info);
 void hns3vf_update_link_status(struct hns3_hw *hw, uint8_t link_status,
 			  uint32_t link_speed, uint8_t link_duplex);
 void hns3vf_update_push_lsc_cap(struct hns3_hw *hw, bool supported);
@@ -1067,15 +1070,6 @@ is_reset_pending(struct hns3_adapter *hns)
 	else
 		ret = hns3_is_reset_pending(hns);
 	return ret;
-}
-
-static inline uint64_t
-hns3_txvlan_cap_get(struct hns3_hw *hw)
-{
-	if (hw->port_base_vlan_cfg.state)
-		return RTE_ETH_TX_OFFLOAD_VLAN_INSERT;
-	else
-		return RTE_ETH_TX_OFFLOAD_VLAN_INSERT | RTE_ETH_TX_OFFLOAD_QINQ_INSERT;
 }
 
 #endif /* _HNS3_ETHDEV_H_ */

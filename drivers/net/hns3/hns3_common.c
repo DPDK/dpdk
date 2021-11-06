@@ -3,9 +3,154 @@
  */
 
 #include <rte_kvargs.h>
+#include <rte_bus_pci.h>
+#include <ethdev_pci.h>
+#include <rte_pci.h>
 
-#include "hns3_logs.h"
 #include "hns3_common.h"
+#include "hns3_logs.h"
+#include "hns3_regs.h"
+#include "hns3_rxtx.h"
+
+int
+hns3_fw_version_get(struct rte_eth_dev *eth_dev, char *fw_version,
+		    size_t fw_size)
+{
+	struct hns3_adapter *hns = eth_dev->data->dev_private;
+	struct hns3_hw *hw = &hns->hw;
+	uint32_t version = hw->fw_version;
+	int ret;
+
+	ret = snprintf(fw_version, fw_size, "%lu.%lu.%lu.%lu",
+		       hns3_get_field(version, HNS3_FW_VERSION_BYTE3_M,
+				      HNS3_FW_VERSION_BYTE3_S),
+		       hns3_get_field(version, HNS3_FW_VERSION_BYTE2_M,
+				      HNS3_FW_VERSION_BYTE2_S),
+		       hns3_get_field(version, HNS3_FW_VERSION_BYTE1_M,
+				      HNS3_FW_VERSION_BYTE1_S),
+		       hns3_get_field(version, HNS3_FW_VERSION_BYTE0_M,
+				      HNS3_FW_VERSION_BYTE0_S));
+	if (ret < 0)
+		return -EINVAL;
+
+	ret += 1; /* add the size of '\0' */
+	if (fw_size < (size_t)ret)
+		return ret;
+	else
+		return 0;
+}
+
+int
+hns3_dev_infos_get(struct rte_eth_dev *eth_dev, struct rte_eth_dev_info *info)
+{
+	struct hns3_adapter *hns = eth_dev->data->dev_private;
+	struct hns3_hw *hw = &hns->hw;
+	uint16_t queue_num = hw->tqps_num;
+
+	/*
+	 * In interrupt mode, 'max_rx_queues' is set based on the number of
+	 * MSI-X interrupt resources of the hardware.
+	 */
+	if (hw->data->dev_conf.intr_conf.rxq == 1)
+		queue_num = hw->intr_tqps_num;
+
+	info->max_rx_queues = queue_num;
+	info->max_tx_queues = hw->tqps_num;
+	info->max_rx_pktlen = HNS3_MAX_FRAME_LEN; /* CRC included */
+	info->min_rx_bufsize = HNS3_MIN_BD_BUF_SIZE;
+	info->max_mtu = info->max_rx_pktlen - HNS3_ETH_OVERHEAD;
+	info->max_lro_pkt_size = HNS3_MAX_LRO_SIZE;
+	info->rx_offload_capa = (RTE_ETH_RX_OFFLOAD_IPV4_CKSUM |
+				 RTE_ETH_RX_OFFLOAD_TCP_CKSUM |
+				 RTE_ETH_RX_OFFLOAD_UDP_CKSUM |
+				 RTE_ETH_RX_OFFLOAD_SCTP_CKSUM |
+				 RTE_ETH_RX_OFFLOAD_OUTER_IPV4_CKSUM |
+				 RTE_ETH_RX_OFFLOAD_OUTER_UDP_CKSUM |
+				 RTE_ETH_RX_OFFLOAD_SCATTER |
+				 RTE_ETH_RX_OFFLOAD_VLAN_STRIP |
+				 RTE_ETH_RX_OFFLOAD_VLAN_FILTER |
+				 RTE_ETH_RX_OFFLOAD_RSS_HASH |
+				 RTE_ETH_RX_OFFLOAD_TCP_LRO);
+	info->tx_offload_capa = (RTE_ETH_TX_OFFLOAD_OUTER_IPV4_CKSUM |
+				 RTE_ETH_TX_OFFLOAD_IPV4_CKSUM |
+				 RTE_ETH_TX_OFFLOAD_TCP_CKSUM |
+				 RTE_ETH_TX_OFFLOAD_UDP_CKSUM |
+				 RTE_ETH_TX_OFFLOAD_SCTP_CKSUM |
+				 RTE_ETH_TX_OFFLOAD_MULTI_SEGS |
+				 RTE_ETH_TX_OFFLOAD_TCP_TSO |
+				 RTE_ETH_TX_OFFLOAD_VXLAN_TNL_TSO |
+				 RTE_ETH_TX_OFFLOAD_GRE_TNL_TSO |
+				 RTE_ETH_TX_OFFLOAD_GENEVE_TNL_TSO |
+				 RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE |
+				 RTE_ETH_TX_OFFLOAD_VLAN_INSERT);
+
+	if (!hw->port_base_vlan_cfg.state)
+		info->tx_offload_capa |= RTE_ETH_TX_OFFLOAD_QINQ_INSERT;
+
+	if (hns3_dev_get_support(hw, OUTER_UDP_CKSUM))
+		info->tx_offload_capa |= RTE_ETH_TX_OFFLOAD_OUTER_UDP_CKSUM;
+
+	if (hns3_dev_get_support(hw, INDEP_TXRX))
+		info->dev_capa = RTE_ETH_DEV_CAPA_RUNTIME_RX_QUEUE_SETUP |
+				 RTE_ETH_DEV_CAPA_RUNTIME_TX_QUEUE_SETUP;
+	info->dev_capa &= ~RTE_ETH_DEV_CAPA_FLOW_RULE_KEEP;
+
+	if (hns3_dev_get_support(hw, PTP))
+		info->rx_offload_capa |= RTE_ETH_RX_OFFLOAD_TIMESTAMP;
+
+	info->rx_desc_lim = (struct rte_eth_desc_lim) {
+		.nb_max = HNS3_MAX_RING_DESC,
+		.nb_min = HNS3_MIN_RING_DESC,
+		.nb_align = HNS3_ALIGN_RING_DESC,
+	};
+
+	info->tx_desc_lim = (struct rte_eth_desc_lim) {
+		.nb_max = HNS3_MAX_RING_DESC,
+		.nb_min = HNS3_MIN_RING_DESC,
+		.nb_align = HNS3_ALIGN_RING_DESC,
+		.nb_seg_max = HNS3_MAX_TSO_BD_PER_PKT,
+		.nb_mtu_seg_max = hw->max_non_tso_bd_num,
+	};
+
+	info->default_rxconf = (struct rte_eth_rxconf) {
+		.rx_free_thresh = HNS3_DEFAULT_RX_FREE_THRESH,
+		/*
+		 * If there are no available Rx buffer descriptors, incoming
+		 * packets are always dropped by hardware based on hns3 network
+		 * engine.
+		 */
+		.rx_drop_en = 1,
+		.offloads = 0,
+	};
+	info->default_txconf = (struct rte_eth_txconf) {
+		.tx_rs_thresh = HNS3_DEFAULT_TX_RS_THRESH,
+		.offloads = 0,
+	};
+
+	info->reta_size = hw->rss_ind_tbl_size;
+	info->hash_key_size = HNS3_RSS_KEY_SIZE;
+	info->flow_type_rss_offloads = HNS3_ETH_RSS_SUPPORT;
+
+	info->default_rxportconf.burst_size = HNS3_DEFAULT_PORT_CONF_BURST_SIZE;
+	info->default_txportconf.burst_size = HNS3_DEFAULT_PORT_CONF_BURST_SIZE;
+	info->default_rxportconf.nb_queues = HNS3_DEFAULT_PORT_CONF_QUEUES_NUM;
+	info->default_txportconf.nb_queues = HNS3_DEFAULT_PORT_CONF_QUEUES_NUM;
+	info->default_rxportconf.ring_size = HNS3_DEFAULT_RING_DESC;
+	info->default_txportconf.ring_size = HNS3_DEFAULT_RING_DESC;
+
+	/*
+	 * Next is the PF/VF difference section.
+	 */
+	if (!hns->is_vf) {
+		info->max_mac_addrs = HNS3_UC_MACADDR_NUM;
+		info->rx_offload_capa |= RTE_ETH_RX_OFFLOAD_KEEP_CRC;
+		info->speed_capa = hns3_get_speed_capa(hw);
+	} else {
+		info->max_mac_addrs = HNS3_VF_UC_MACADDR_NUM;
+	}
+
+	return 0;
+}
 
 static int
 hns3_parse_io_hint_func(const char *key, const char *value, void *extra_args)
@@ -68,6 +213,12 @@ hns3_parse_mbx_time_limit(const char *key, const char *value, void *extra_args)
 	RTE_SET_USED(key);
 
 	val = strtoul(value, NULL, HNS3_CONVERT_TO_DECIMAL);
+
+	/*
+	 * 500ms is empirical value in process of mailbox communication. If
+	 * the delay value is set to one lower thanthe empirical value, mailbox
+	 * communication may fail.
+	 */
 	if (val > HNS3_MBX_DEF_TIME_LIMIT_MS && val <= UINT16_MAX)
 		*(uint16_t *)extra_args = val;
 
@@ -116,6 +267,11 @@ hns3_parse_devargs(struct rte_eth_dev *dev)
 		hns3_warn(hw, "parsed %s = 0x%" PRIx64 ".",
 			  HNS3_DEVARG_DEV_CAPS_MASK, dev_caps_mask);
 	hns->dev_caps_mask = dev_caps_mask;
+
+	if (mbx_time_limit_ms != HNS3_MBX_DEF_TIME_LIMIT_MS)
+		hns3_warn(hw, "parsed %s = %u.", HNS3_DEVARG_MBX_TIME_LIMIT_MS,
+				mbx_time_limit_ms);
+	hns->mbx_time_limit_ms = mbx_time_limit_ms;
 }
 
 void
@@ -423,4 +579,185 @@ hns3_remove_mac_addr(struct rte_eth_dev *dev, uint32_t idx)
 		hns3_err(hw, "failed to remove mac addr(%s), ret = %d", mac_str,
 			 ret);
 	}
+}
+
+int
+hns3_init_ring_with_vector(struct hns3_hw *hw)
+{
+	uint16_t vec;
+	int ret;
+	int i;
+
+	/*
+	 * In hns3 network engine, vector 0 is always the misc interrupt of this
+	 * function, vector 1~N can be used respectively for the queues of the
+	 * function. Tx and Rx queues with the same number share the interrupt
+	 * vector. In the initialization clearing the all hardware mapping
+	 * relationship configurations between queues and interrupt vectors is
+	 * needed, so some error caused by the residual configurations, such as
+	 * the unexpected Tx interrupt, can be avoid.
+	 */
+	vec = hw->num_msi - 1; /* vector 0 for misc interrupt, not for queue */
+	if (hw->intr.mapping_mode == HNS3_INTR_MAPPING_VEC_RSV_ONE)
+		vec = vec - 1; /* the last interrupt is reserved */
+	hw->intr_tqps_num = RTE_MIN(vec, hw->tqps_num);
+	for (i = 0; i < hw->intr_tqps_num; i++) {
+		/*
+		 * Set gap limiter/rate limiter/quanity limiter algorithm
+		 * configuration for interrupt coalesce of queue's interrupt.
+		 */
+		hns3_set_queue_intr_gl(hw, i, HNS3_RING_GL_RX,
+				       HNS3_TQP_INTR_GL_DEFAULT);
+		hns3_set_queue_intr_gl(hw, i, HNS3_RING_GL_TX,
+				       HNS3_TQP_INTR_GL_DEFAULT);
+		hns3_set_queue_intr_rl(hw, i, HNS3_TQP_INTR_RL_DEFAULT);
+		/*
+		 * QL(quantity limiter) is not used currently, just set 0 to
+		 * close it.
+		 */
+		hns3_set_queue_intr_ql(hw, i, HNS3_TQP_INTR_QL_DEFAULT);
+
+		ret = hw->ops.bind_ring_with_vector(hw, vec, false,
+						    HNS3_RING_TYPE_TX, i);
+		if (ret) {
+			PMD_INIT_LOG(ERR, "fail to unbind TX ring(%d) with "
+					  "vector: %u, ret=%d", i, vec, ret);
+			return ret;
+		}
+
+		ret = hw->ops.bind_ring_with_vector(hw, vec, false,
+						    HNS3_RING_TYPE_RX, i);
+		if (ret) {
+			PMD_INIT_LOG(ERR, "fail to unbind RX ring(%d) with "
+					  "vector: %u, ret=%d", i, vec, ret);
+			return ret;
+		}
+	}
+
+	return 0;
+}
+
+int
+hns3_map_rx_interrupt(struct rte_eth_dev *dev)
+{
+	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
+	struct rte_intr_handle *intr_handle = pci_dev->intr_handle;
+	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	uint16_t base = RTE_INTR_VEC_ZERO_OFFSET;
+	uint16_t vec = RTE_INTR_VEC_ZERO_OFFSET;
+	uint32_t intr_vector;
+	uint16_t q_id;
+	int ret;
+
+	/*
+	 * hns3 needs a separate interrupt to be used as event interrupt which
+	 * could not be shared with task queue pair, so KERNEL drivers need
+	 * support multiple interrupt vectors.
+	 */
+	if (dev->data->dev_conf.intr_conf.rxq == 0 ||
+	    !rte_intr_cap_multiple(intr_handle))
+		return 0;
+
+	rte_intr_disable(intr_handle);
+	intr_vector = hw->used_rx_queues;
+	/* creates event fd for each intr vector when MSIX is used */
+	if (rte_intr_efd_enable(intr_handle, intr_vector))
+		return -EINVAL;
+
+	/* Allocate vector list */
+	if (rte_intr_vec_list_alloc(intr_handle, "intr_vec",
+				    hw->used_rx_queues)) {
+		hns3_err(hw, "failed to allocate %u rx_queues intr_vec",
+			 hw->used_rx_queues);
+		ret = -ENOMEM;
+		goto alloc_intr_vec_error;
+	}
+
+	if (rte_intr_allow_others(intr_handle)) {
+		vec = RTE_INTR_VEC_RXTX_OFFSET;
+		base = RTE_INTR_VEC_RXTX_OFFSET;
+	}
+
+	for (q_id = 0; q_id < hw->used_rx_queues; q_id++) {
+		ret = hw->ops.bind_ring_with_vector(hw, vec, true,
+						    HNS3_RING_TYPE_RX, q_id);
+		if (ret)
+			goto bind_vector_error;
+
+		if (rte_intr_vec_list_index_set(intr_handle, q_id, vec))
+			goto bind_vector_error;
+		/*
+		 * If there are not enough efds (e.g. not enough interrupt),
+		 * remaining queues will be bond to the last interrupt.
+		 */
+		if (vec < base + rte_intr_nb_efd_get(intr_handle) - 1)
+			vec++;
+	}
+	rte_intr_enable(intr_handle);
+	return 0;
+
+bind_vector_error:
+	rte_intr_vec_list_free(intr_handle);
+alloc_intr_vec_error:
+	rte_intr_efd_disable(intr_handle);
+	return ret;
+}
+
+void
+hns3_unmap_rx_interrupt(struct rte_eth_dev *dev)
+{
+	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
+	struct rte_intr_handle *intr_handle = pci_dev->intr_handle;
+	struct hns3_adapter *hns = dev->data->dev_private;
+	struct hns3_hw *hw = &hns->hw;
+	uint8_t base = RTE_INTR_VEC_ZERO_OFFSET;
+	uint8_t vec = RTE_INTR_VEC_ZERO_OFFSET;
+	uint16_t q_id;
+
+	if (dev->data->dev_conf.intr_conf.rxq == 0)
+		return;
+
+	/* unmap the ring with vector */
+	if (rte_intr_allow_others(intr_handle)) {
+		vec = RTE_INTR_VEC_RXTX_OFFSET;
+		base = RTE_INTR_VEC_RXTX_OFFSET;
+	}
+	if (rte_intr_dp_is_en(intr_handle)) {
+		for (q_id = 0; q_id < hw->used_rx_queues; q_id++) {
+			(void)hw->ops.bind_ring_with_vector(hw, vec, false,
+							HNS3_RING_TYPE_RX,
+							q_id);
+			if (vec < base + rte_intr_nb_efd_get(intr_handle) - 1)
+				vec++;
+		}
+	}
+	/* Clean datapath event and queue/vec mapping */
+	rte_intr_efd_disable(intr_handle);
+	rte_intr_vec_list_free(intr_handle);
+}
+
+int
+hns3_restore_rx_interrupt(struct hns3_hw *hw)
+{
+	struct rte_eth_dev *dev = &rte_eth_devices[hw->data->port_id];
+	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
+	struct rte_intr_handle *intr_handle = pci_dev->intr_handle;
+	uint16_t q_id;
+	int ret;
+
+	if (dev->data->dev_conf.intr_conf.rxq == 0)
+		return 0;
+
+	if (rte_intr_dp_is_en(intr_handle)) {
+		for (q_id = 0; q_id < hw->used_rx_queues; q_id++) {
+			ret = hw->ops.bind_ring_with_vector(hw,
+				rte_intr_vec_list_index_get(intr_handle,
+								   q_id),
+				true, HNS3_RING_TYPE_RX, q_id);
+			if (ret)
+				return ret;
+		}
+	}
+
+	return 0;
 }
