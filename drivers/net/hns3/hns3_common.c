@@ -54,7 +54,7 @@ hns3_parse_dev_caps_mask(const char *key, const char *value, void *extra_args)
 
 	RTE_SET_USED(key);
 
-	val = strtoull(value, NULL, 16);
+	val = strtoull(value, NULL, HNS3_CONVERT_TO_HEXADECIMAL);
 	*(uint64_t *)extra_args = val;
 
 	return 0;
@@ -67,7 +67,7 @@ hns3_parse_mbx_time_limit(const char *key, const char *value, void *extra_args)
 
 	RTE_SET_USED(key);
 
-	val = strtoul(value, NULL, 10);
+	val = strtoul(value, NULL, HNS3_CONVERT_TO_DECIMAL);
 	if (val > HNS3_MBX_DEF_TIME_LIMIT_MS && val <= UINT16_MAX)
 		*(uint16_t *)extra_args = val;
 

@@ -9,6 +9,9 @@
 
 #include "hns3_ethdev.h"
 
+#define HNS3_CONVERT_TO_DECIMAL 10
+#define HNS3_CONVERT_TO_HEXADECIMAL 16
+
 enum {
 	HNS3_IO_FUNC_HINT_NONE = 0,
 	HNS3_IO_FUNC_HINT_VEC,
