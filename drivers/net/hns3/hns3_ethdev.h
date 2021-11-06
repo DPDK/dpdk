@@ -17,6 +17,7 @@
 #include "hns3_fdir.h"
 #include "hns3_stats.h"
 #include "hns3_tm.h"
+#include "hns3_flow.h"
 
 /* Vendor ID */
 #define PCI_VENDOR_ID_HUAWEI			0x19e5
@@ -1032,8 +1033,6 @@ hns3_test_and_clear_bit(unsigned int nr, volatile uint64_t *addr)
 }
 
 int hns3_buffer_alloc(struct hns3_hw *hw);
-int hns3_dev_flow_ops_get(struct rte_eth_dev *dev,
-			  const struct rte_flow_ops **ops);
 bool hns3_is_reset_pending(struct hns3_adapter *hns);
 bool hns3vf_is_reset_pending(struct hns3_adapter *hns);
 void hns3_update_linkstatus_and_event(struct hns3_hw *hw, bool query);

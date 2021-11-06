@@ -15,6 +15,7 @@
 #include "hns3_regs.h"
 #include "hns3_dcb.h"
 #include "hns3_mp.h"
+#include "hns3_flow.h"
 
 #define HNS3_SERVICE_INTERVAL		1000000 /* us */
 #define HNS3_SERVICE_QUICK_INTERVAL	10

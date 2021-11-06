@@ -8,6 +8,7 @@
 
 #include "hns3_ethdev.h"
 #include "hns3_logs.h"
+#include "hns3_flow.h"
 
 /* Default default keys */
 static uint8_t hns3_hash_key[] = {
