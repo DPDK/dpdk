@@ -104,6 +104,19 @@ foreach example: examples
     deps = ['eal', 'mempool', 'net', 'mbuf', 'ethdev', 'cmdline']
     subdir(example)
 
+    if build
+        dep_objs = ext_deps
+        foreach d:deps
+            var_name = get_option('default_library') + '_rte_' + d
+            if not is_variable(var_name)
+                build = false
+                message('Missing dependency "@0@" for example "@1@"'.format(d, name))
+                break
+            endif
+            dep_objs += [get_variable(var_name)]
+        endforeach
+    endif
+
     if not build
         if not allow_skips
             error('Cannot build requested example "' + name + '"')
@@ -112,14 +125,6 @@ foreach example: examples
         continue
     endif
 
-    dep_objs = ext_deps
-    foreach d:deps
-        var_name = get_option('default_library') + '_rte_' + d
-        if not is_variable(var_name)
-            error('Missing dependency "@0@" for example "@1@"'.format(d, name))
-        endif
-        dep_objs += [get_variable(var_name)]
-    endforeach
     if allow_experimental_apis
         cflags += '-DALLOW_EXPERIMENTAL_API'
     endif

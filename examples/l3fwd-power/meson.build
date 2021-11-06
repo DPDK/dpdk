@@ -6,11 +6,6 @@
 # To build this example as a standalone application with an already-installed
 # DPDK instance, use 'make'
 
-if not dpdk_conf.has('RTE_LIB_POWER')
-        build = false
-        subdir_done()
-endif
-
 allow_experimental_apis = true
 deps += ['power', 'timer', 'lpm', 'hash', 'metrics', 'telemetry']
 sources = files(
