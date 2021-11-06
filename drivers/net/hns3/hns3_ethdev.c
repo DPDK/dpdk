@@ -2104,7 +2104,7 @@ hns3_check_mq_mode(struct rte_eth_dev *dev)
 	int max_tc = 0;
 	int i;
 
-	if ((rx_mq_mode & RTE_ETH_MQ_RX_VMDQ_FLAG) ||
+	if (((uint32_t)rx_mq_mode & RTE_ETH_MQ_RX_VMDQ_FLAG) ||
 	    (tx_mq_mode == RTE_ETH_MQ_TX_VMDQ_DCB ||
 	     tx_mq_mode == RTE_ETH_MQ_TX_VMDQ_ONLY)) {
 		hns3_err(hw, "VMDQ is not supported, rx_mq_mode = %d, tx_mq_mode = %d.",
@@ -2114,7 +2114,7 @@ hns3_check_mq_mode(struct rte_eth_dev *dev)
 
 	dcb_rx_conf = &dev->data->dev_conf.rx_adv_conf.dcb_rx_conf;
 	dcb_tx_conf = &dev->data->dev_conf.tx_adv_conf.dcb_tx_conf;
-	if (rx_mq_mode & RTE_ETH_MQ_RX_DCB_FLAG) {
+	if ((uint32_t)rx_mq_mode & RTE_ETH_MQ_RX_DCB_FLAG) {
 		if (dcb_rx_conf->nb_tcs > pf->tc_max) {
 			hns3_err(hw, "nb_tcs(%u) > max_tc(%u) driver supported.",
 				 dcb_rx_conf->nb_tcs, pf->tc_max);
