@@ -711,7 +711,6 @@ uint16_t hns3_recv_pkts_vec_sve(void *rx_queue, struct rte_mbuf **rx_pkts,
 int hns3_rx_burst_mode_get(struct rte_eth_dev *dev,
 			   __rte_unused uint16_t queue_id,
 			   struct rte_eth_burst_mode *mode);
-int hns3_rx_check_vec_support(struct rte_eth_dev *dev);
 uint16_t hns3_prep_pkts(__rte_unused void *tx_queue, struct rte_mbuf **tx_pkts,
 			uint16_t nb_pkts);
 uint16_t hns3_xmit_pkts_simple(void *tx_queue, struct rte_mbuf **tx_pkts,
