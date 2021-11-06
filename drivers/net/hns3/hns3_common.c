@@ -154,10 +154,10 @@ hns3_clock_gettime_ms(void)
 void hns3_ether_format_addr(char *buf, uint16_t size,
 			    const struct rte_ether_addr *ether_addr)
 {
-	snprintf(buf, size, "%02X:**:**:**:%02X:%02X",
-		ether_addr->addr_bytes[0],
-		ether_addr->addr_bytes[4],
-		ether_addr->addr_bytes[5]);
+	(void)snprintf(buf, size, "%02X:**:**:**:%02X:%02X",
+			ether_addr->addr_bytes[0],
+			ether_addr->addr_bytes[4],
+			ether_addr->addr_bytes[5]);
 }
 
 static int
