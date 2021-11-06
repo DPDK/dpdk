@@ -1907,7 +1907,7 @@ hns3_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t nb_desc,
 	 */
 	if (hns->is_vf || hw->vlan_mode == HNS3_SW_SHIFT_AND_DISCARD_MODE)
 		rxq->pvid_sw_discard_en = hw->port_base_vlan_cfg.state ==
-				       HNS3_PORT_BASE_VLAN_ENABLE;
+						HNS3_PORT_BASE_VLAN_ENABLE;
 	else
 		rxq->pvid_sw_discard_en = false;
 	rxq->ptype_en = hns3_dev_get_support(hw, RXD_ADV_LAYOUT) ? true : false;
