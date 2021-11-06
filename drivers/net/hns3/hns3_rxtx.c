@@ -322,7 +322,7 @@ hns3_init_rx_queue_hw(struct hns3_rx_queue *rxq)
 
 	hns3_write_dev(rxq, HNS3_RING_RX_BASEADDR_L_REG, (uint32_t)dma_addr);
 	hns3_write_dev(rxq, HNS3_RING_RX_BASEADDR_H_REG,
-		       (uint32_t)((dma_addr >> 31) >> 1));
+		       (uint32_t)(dma_addr >> 32));
 
 	hns3_write_dev(rxq, HNS3_RING_RX_BD_LEN_REG,
 		       hns3_buf_size2type(rx_buf_len));
@@ -337,7 +337,7 @@ hns3_init_tx_queue_hw(struct hns3_tx_queue *txq)
 
 	hns3_write_dev(txq, HNS3_RING_TX_BASEADDR_L_REG, (uint32_t)dma_addr);
 	hns3_write_dev(txq, HNS3_RING_TX_BASEADDR_H_REG,
-		       (uint32_t)((dma_addr >> 31) >> 1));
+		       (uint32_t)(dma_addr >> 32));
 
 	hns3_write_dev(txq, HNS3_RING_TX_BD_NUM_REG,
 		       HNS3_CFG_DESC_NUM(txq->nb_tx_desc));
