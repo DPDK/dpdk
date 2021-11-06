@@ -29,6 +29,7 @@ sources = files(
         'hns3_mp.c',
         'hns3_tm.c',
         'hns3_ptp.c',
+        'hns3_common.c',
 )
 
 deps += ['hash']

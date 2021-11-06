@@ -8,7 +8,7 @@
 #include <rte_io.h>
 #include <rte_malloc.h>
 
-#include "hns3_ethdev.h"
+#include "hns3_common.h"
 #include "hns3_logs.h"
 #include "hns3_intr.h"
 #include "hns3_regs.h"

@@ -6,7 +6,6 @@
 #define _HNS3_ETHDEV_H_
 
 #include <pthread.h>
-#include <sys/time.h>
 #include <ethdev_driver.h>
 #include <rte_byteorder.h>
 #include <rte_io.h>
@@ -869,14 +868,6 @@ struct hns3_adapter {
 	struct hns3_ptype_table ptype_tbl __rte_cache_aligned;
 };
 
-enum {
-	HNS3_IO_FUNC_HINT_NONE = 0,
-	HNS3_IO_FUNC_HINT_VEC,
-	HNS3_IO_FUNC_HINT_SVE,
-	HNS3_IO_FUNC_HINT_SIMPLE,
-	HNS3_IO_FUNC_HINT_COMMON
-};
-
 #define HNS3_DEVARG_RX_FUNC_HINT	"rx_func_hint"
 #define HNS3_DEVARG_TX_FUNC_HINT	"tx_func_hint"
 
@@ -1011,13 +1002,6 @@ static inline uint32_t hns3_read_reg(void *base, uint32_t reg)
 		}							\
 	} while (0)
 
-#define MSEC_PER_SEC              1000L
-#define USEC_PER_MSEC             1000L
-
-void hns3_clock_gettime(struct timeval *tv);
-uint64_t hns3_clock_calctime_ms(struct timeval *tv);
-uint64_t hns3_clock_gettime_ms(void);
-
 static inline uint64_t
 hns3_atomic_test_bit(unsigned int nr, volatile uint64_t *addr)
 {
@@ -1053,22 +1037,12 @@ int hns3_dev_flow_ops_get(struct rte_eth_dev *dev,
 bool hns3_is_reset_pending(struct hns3_adapter *hns);
 bool hns3vf_is_reset_pending(struct hns3_adapter *hns);
 void hns3_update_linkstatus_and_event(struct hns3_hw *hw, bool query);
-void hns3_ether_format_addr(char *buf, uint16_t size,
-			const struct rte_ether_addr *ether_addr);
 int hns3_dev_infos_get(struct rte_eth_dev *eth_dev,
 		       struct rte_eth_dev_info *info);
 void hns3vf_update_link_status(struct hns3_hw *hw, uint8_t link_status,
 			  uint32_t link_speed, uint8_t link_duplex);
-void hns3_parse_devargs(struct rte_eth_dev *dev);
 void hns3vf_update_push_lsc_cap(struct hns3_hw *hw, bool supported);
-int hns3_configure_all_mc_mac_addr(struct hns3_adapter *hns, bool del);
-int hns3_configure_all_mac_addr(struct hns3_adapter *hns, bool del);
-int hns3_add_mac_addr(struct rte_eth_dev *dev, struct rte_ether_addr *mac_addr,
-		__rte_unused uint32_t idx, __rte_unused uint32_t pool);
-void hns3_remove_mac_addr(struct rte_eth_dev *dev, uint32_t idx);
-int hns3_set_mc_mac_addr_list(struct rte_eth_dev *dev,
-			struct rte_ether_addr *mc_addr_set,
-							uint32_t nb_mc_addr);
+
 int hns3_restore_ptp(struct hns3_adapter *hns);
 int hns3_mbuf_dyn_rx_timestamp_register(struct rte_eth_dev *dev,
 				    struct rte_eth_conf *conf);

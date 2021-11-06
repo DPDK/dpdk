@@ -10,6 +10,7 @@
 #include <rte_vfio.h>
 
 #include "hns3_ethdev.h"
+#include "hns3_common.h"
 #include "hns3_logs.h"
 #include "hns3_rxtx.h"
 #include "hns3_regs.h"

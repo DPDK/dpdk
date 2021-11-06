@@ -16,7 +16,7 @@
 #include <rte_vect.h>
 #endif
 
-#include "hns3_ethdev.h"
+#include "hns3_common.h"
 #include "hns3_rxtx.h"
 #include "hns3_regs.h"
 #include "hns3_logs.h"
