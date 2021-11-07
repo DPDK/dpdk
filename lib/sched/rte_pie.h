@@ -122,7 +122,7 @@ rte_pie_enqueue_empty(const struct rte_pie_config *pie_cfg,
 	struct rte_pie *pie,
 	uint32_t pkt_len)
 {
-	RTE_ASSERT(pkt_len != NULL);
+	RTE_ASSERT(pkt_len != 0);
 
 	/* Update the PIE qlen parameter */
 	pie->qlen++;
