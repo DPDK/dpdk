@@ -480,6 +480,20 @@ Limitations
 
   - Needs OFED 5.4+.
 
+- Timestamps:
+
+  - CQE timestamp field width is limited by hardware to 63 bits, MSB is zero.
+  - In the free-running mode the timestamp counter is reset on power on
+    and 63-bit value provides over 1800 years of uptime till overflow.
+  - In the real-time mode
+    (configurable with ``REAL_TIME_CLOCK_ENABLE`` firmware settings),
+    the timestamp presents the nanoseconds elapsed since 01-Jan-1970,
+    hardware timestamp overflow will happen on 19-Jan-2038
+    (0x80000000 seconds since 01-Jan-1970).
+  - The send scheduling is based on timestamps
+    from the reference "Clock Queue" completions,
+    the scheduled send timestamps should not be specified with non-zero MSB.
+
 Statistics
 ----------
 
@@ -1241,6 +1255,10 @@ Below are some firmware configurations listed.
 
    FLEX_PARSER_PROFILE_ENABLE=4
    PROG_PARSE_GRAPH=1
+
+- enable realtime timestamp format::
+
+   REAL_TIME_CLOCK_ENABLE=1
 
 Linux Prerequisites
 -------------------
