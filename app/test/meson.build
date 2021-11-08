@@ -413,7 +413,10 @@ endif
 
 if dpdk_conf.has('RTE_HAS_LIBPCAP')
     ext_deps += pcap_dep
-    test_sources += 'test_pcapng.c'
+    if dpdk_conf.has('RTE_LIB_PCAPNG')
+        test_deps += 'pcapng'
+        test_sources += 'test_pcapng.c'
+    endif
 endif
 
 if dpdk_conf.has('RTE_LIB_POWER')
