@@ -156,6 +156,8 @@ mlx5_crypto_dek_setup(struct mlx5_crypto_priv *priv)
 void
 mlx5_crypto_dek_unset(struct mlx5_crypto_priv *priv)
 {
-	mlx5_hlist_destroy(priv->dek_hlist);
-	priv->dek_hlist = NULL;
+	if (priv->dek_hlist) {
+		mlx5_hlist_destroy(priv->dek_hlist);
+		priv->dek_hlist = NULL;
+	}
 }
