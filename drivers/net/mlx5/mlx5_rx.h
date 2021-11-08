@@ -291,7 +291,7 @@ uint16_t mlx5_rx_burst_mprq_vec(void *dpdk_rxq, struct rte_mbuf **pkts,
 static int mlx5_rxq_mprq_enabled(struct mlx5_rxq_data *rxq);
 
 /**
- * Query LKey from a packet buffer for Rx. No need to flush local caches
+ * Query LKey for an address on Rx. No need to flush local caches
  * as the Rx mempool database entries are valid for the lifetime of the queue.
  *
  * @param rxq
@@ -320,7 +320,40 @@ mlx5_rx_addr2mr(struct mlx5_rxq_data *rxq, uintptr_t addr)
 				     mp, addr);
 }
 
-#define mlx5_rx_mb2mr(rxq, mb) mlx5_rx_addr2mr(rxq, (uintptr_t)((mb)->buf_addr))
+/**
+ * Query LKey from a packet buffer for Rx. No need to flush local caches
+ * as the Rx mempool database entries are valid for the lifetime of the queue.
+ *
+ * @param rxq
+ *   Pointer to Rx queue structure.
+ * @param mb
+ *   Buffer to search the address of.
+ *
+ * @return
+ *   Searched LKey on success, UINT32_MAX on no match.
+ *   This function always succeeds on valid input.
+ */
+static __rte_always_inline uint32_t
+mlx5_rx_mb2mr(struct mlx5_rxq_data *rxq, struct rte_mbuf *mb)
+{
+	struct mlx5_mr_ctrl *mr_ctrl = &rxq->mr_ctrl;
+	uintptr_t addr = (uintptr_t)mb->buf_addr;
+	struct mlx5_rxq_ctrl *rxq_ctrl;
+	uint32_t lkey;
+
+	/* Linear search on MR cache array. */
+	lkey = mlx5_mr_lookup_lkey(mr_ctrl->cache, &mr_ctrl->mru,
+				   MLX5_MR_CACHE_N, addr);
+	if (likely(lkey != UINT32_MAX))
+		return lkey;
+	/*
+	 * Slower search in the mempool database on miss.
+	 * During queue creation rxq->sh is not yet set, so we use rxq_ctrl.
+	 */
+	rxq_ctrl = container_of(rxq, struct mlx5_rxq_ctrl, rxq);
+	return mlx5_mr_mempool2mr_bh(&rxq_ctrl->sh->cdev->mr_scache,
+				     mr_ctrl, mb->pool, addr);
+}
 
 /**
  * Convert timestamp from HW format to linear counter

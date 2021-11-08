@@ -347,6 +347,7 @@ mlx5_rxq_initialize(struct mlx5_rxq_data *rxq)
 		volatile struct mlx5_wqe_data_seg *scat;
 		uintptr_t addr;
 		uint32_t byte_count;
+		uint32_t lkey;
 
 		if (mlx5_rxq_mprq_enabled(rxq)) {
 			struct mlx5_mprq_buf *buf = (*rxq->mprq_bufs)[i];
@@ -357,6 +358,7 @@ mlx5_rxq_initialize(struct mlx5_rxq_data *rxq)
 							 1 << rxq->strd_num_n);
 			byte_count = (1 << rxq->strd_sz_n) *
 					(1 << rxq->strd_num_n);
+			lkey = mlx5_rx_addr2mr(rxq, addr);
 		} else {
 			struct rte_mbuf *buf = (*rxq->elts)[i];
 
@@ -364,13 +366,14 @@ mlx5_rxq_initialize(struct mlx5_rxq_data *rxq)
 					rxq->wqes)[i];
 			addr = rte_pktmbuf_mtod(buf, uintptr_t);
 			byte_count = DATA_LEN(buf);
+			lkey = mlx5_rx_mb2mr(rxq, buf);
 		}
 		/* scat->addr must be able to store a pointer. */
 		MLX5_ASSERT(sizeof(scat->addr) >= sizeof(uintptr_t));
 		*scat = (struct mlx5_wqe_data_seg){
 			.addr = rte_cpu_to_be_64(addr),
 			.byte_count = rte_cpu_to_be_32(byte_count),
-			.lkey = mlx5_rx_addr2mr(rxq, addr),
+			.lkey = lkey,
 		};
 	}
 	rxq->consumed_strd = 0;
