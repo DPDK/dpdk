@@ -226,7 +226,7 @@ if not pcap_dep.found()
     pcap_dep = cc.find_library(pcap_lib, required: false)
 endif
 if pcap_dep.found() and cc.has_header('pcap.h', dependencies: pcap_dep)
-    dpdk_conf.set('RTE_PORT_PCAP', 1)
+    dpdk_conf.set('RTE_HAS_LIBPCAP', 1)
     dpdk_extra_ldflags += '-l@0@'.format(pcap_lib)
 endif
 

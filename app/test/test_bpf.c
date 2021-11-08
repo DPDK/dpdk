@@ -3250,7 +3250,7 @@ test_bpf(void)
 
 REGISTER_TEST_COMMAND(bpf_autotest, test_bpf);
 
-#ifdef RTE_PORT_PCAP
+#ifdef RTE_HAS_LIBPCAP
 #include <pcap/pcap.h>
 
 static void
@@ -3447,4 +3447,4 @@ test_bpf_convert(void)
 }
 
 REGISTER_TEST_COMMAND(bpf_convert_autotest, test_bpf_convert);
-#endif /* RTE_PORT_PCAP */
+#endif /* RTE_HAS_LIBPCAP */

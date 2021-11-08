@@ -411,7 +411,8 @@ if dpdk_conf.has('RTE_NET_RING')
     fast_tests += [['pdump_autotest', true]]
 endif
 
-if dpdk_conf.has('RTE_PORT_PCAP')
+if dpdk_conf.has('RTE_HAS_LIBPCAP')
+    ext_deps += pcap_dep
     test_sources += 'test_pcapng.c'
 endif
 
@@ -464,7 +465,7 @@ endif
 dpdk_test = executable('dpdk-test',
         test_sources,
         link_whole: link_libs,
-        dependencies: test_dep_objs,
+        dependencies: test_dep_objs + ext_deps,
         c_args: cflags,
         install_rpath: join_paths(get_option('prefix'),
              driver_install_path),

@@ -27,7 +27,7 @@ rte_bpf_elf_load(const struct rte_bpf_prm *prm, const char *fname,
 }
 #endif
 
-#ifndef RTE_PORT_PCAP
+#ifndef RTE_HAS_LIBPCAP
 struct rte_bpf_prm *
 rte_bpf_convert(const struct bpf_program *prog)
 {

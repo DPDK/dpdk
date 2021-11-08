@@ -33,12 +33,12 @@ if dep.found()
     sources += files('bpf_load_elf.c')
     ext_deps += dep
 else
-     warning('libelf is missing, rte_bpf_elf_load API will be disabled')
+    warning('libelf is missing, rte_bpf_elf_load API will be disabled')
 endif
 
-if dpdk_conf.has('RTE_PORT_PCAP')
+if dpdk_conf.has('RTE_HAS_LIBPCAP')
     sources += files('bpf_convert.c')
     ext_deps += pcap_dep
 else
-     warning('RTE_PORT_PCAP is missing, rte_bpf_convert API will be disabled')
+    warning('libpcap is missing, rte_bpf_convert API will be disabled')
 endif
