@@ -1675,6 +1675,7 @@ test_AES_CBC_HMAC_SHA1_encrypt_digest(void)
 {
 	struct crypto_testsuite_params *ts_params = &testsuite_params;
 	struct crypto_unittest_params *ut_params = &unittest_params;
+	int status;
 
 	/* Verify the capabilities */
 	struct rte_cryptodev_sym_capability_idx cap_idx;
@@ -1721,12 +1722,17 @@ test_AES_CBC_HMAC_SHA1_encrypt_digest(void)
 
 	ut_params->sess = rte_cryptodev_sym_session_create(
 			ts_params->session_mpool);
+	TEST_ASSERT_NOT_NULL(ut_params->sess, "Session creation failed");
 
 	/* Create crypto session*/
-	rte_cryptodev_sym_session_init(ts_params->valid_devs[0],
+	status = rte_cryptodev_sym_session_init(ts_params->valid_devs[0],
 			ut_params->sess, &ut_params->cipher_xform,
 			ts_params->session_priv_mpool);
-	TEST_ASSERT_NOT_NULL(ut_params->sess, "Session creation failed");
+
+	if (status == -ENOTSUP)
+		return TEST_SKIPPED;
+
+	TEST_ASSERT_EQUAL(status, 0, "Session init failed");
 
 	/* Generate crypto op data structure */
 	ut_params->op = rte_crypto_op_alloc(ts_params->op_mpool,
@@ -7439,6 +7445,7 @@ create_aead_session(uint8_t dev_id, enum rte_crypto_aead_algorithm algo,
 		uint8_t iv_len)
 {
 	uint8_t aead_key[key_len];
+	int status;
 
 	struct crypto_testsuite_params *ts_params = &testsuite_params;
 	struct crypto_unittest_params *ut_params = &unittest_params;
@@ -7462,14 +7469,13 @@ create_aead_session(uint8_t dev_id, enum rte_crypto_aead_algorithm algo,
 	/* Create Crypto session*/
 	ut_params->sess = rte_cryptodev_sym_session_create(
 			ts_params->session_mpool);
+	TEST_ASSERT_NOT_NULL(ut_params->sess, "Session creation failed");
 
-	rte_cryptodev_sym_session_init(dev_id, ut_params->sess,
+	status = rte_cryptodev_sym_session_init(dev_id, ut_params->sess,
 			&ut_params->aead_xform,
 			ts_params->session_priv_mpool);
 
-	TEST_ASSERT_NOT_NULL(ut_params->sess, "Session creation failed");
-
-	return 0;
+	return status;
 }
 
 static int
@@ -10190,6 +10196,7 @@ static int MD5_HMAC_create_session(struct crypto_testsuite_params *ts_params,
 				   const struct HMAC_MD5_vector *test_case)
 {
 	uint8_t key[64];
+	int status;
 
 	memcpy(key, test_case->key.data, test_case->key.len);
 
@@ -10205,13 +10212,15 @@ static int MD5_HMAC_create_session(struct crypto_testsuite_params *ts_params,
 
 	ut_params->sess = rte_cryptodev_sym_session_create(
 			ts_params->session_mpool);
-
-	rte_cryptodev_sym_session_init(ts_params->valid_devs[0],
-			ut_params->sess, &ut_params->auth_xform,
-			ts_params->session_priv_mpool);
-
+	TEST_ASSERT_NOT_NULL(ut_params->sess, "Session creation failed");
 	if (ut_params->sess == NULL)
 		return TEST_FAILED;
+
+	status = rte_cryptodev_sym_session_init(ts_params->valid_devs[0],
+			ut_params->sess, &ut_params->auth_xform,
+			ts_params->session_priv_mpool);
+	if (status == -ENOTSUP)
+		return TEST_SKIPPED;
 
 	ut_params->ibuf = rte_pktmbuf_alloc(ts_params->mbuf_pool);
 
@@ -10424,6 +10433,7 @@ test_multi_session(void)
 	struct rte_cryptodev_sym_session **sessions;
 
 	uint16_t i;
+	int status;
 
 	/* Verify the capabilities */
 	struct rte_cryptodev_sym_capability_idx cap_idx;
@@ -10453,13 +10463,16 @@ test_multi_session(void)
 
 		sessions[i] = rte_cryptodev_sym_session_create(
 				ts_params->session_mpool);
-
-		rte_cryptodev_sym_session_init(ts_params->valid_devs[0],
-				sessions[i], &ut_params->auth_xform,
-				ts_params->session_priv_mpool);
 		TEST_ASSERT_NOT_NULL(sessions[i],
 				"Session creation failed at session number %u",
 				i);
+
+		status = rte_cryptodev_sym_session_init(
+				ts_params->valid_devs[0],
+				sessions[i], &ut_params->auth_xform,
+				ts_params->session_priv_mpool);
+		if (status == -ENOTSUP)
+			return TEST_SKIPPED;
 
 		/* Attempt to send a request on each session */
 		TEST_ASSERT_SUCCESS( test_AES_CBC_HMAC_SHA512_decrypt_perform(
@@ -10553,6 +10566,7 @@ test_multi_session_random_usage(void)
 		},
 
 	};
+	int status;
 
 	/* Verify the capabilities */
 	struct rte_cryptodev_sym_capability_idx cap_idx;
@@ -10576,6 +10590,9 @@ test_multi_session_random_usage(void)
 	for (i = 0; i < MB_SESSION_NUMBER; i++) {
 		sessions[i] = rte_cryptodev_sym_session_create(
 				ts_params->session_mpool);
+		TEST_ASSERT_NOT_NULL(sessions[i],
+				"Session creation failed at session number %u",
+				i);
 
 		rte_memcpy(&ut_paramz[i].ut_params, &unittest_params,
 				sizeof(struct crypto_unittest_params));
@@ -10585,16 +10602,16 @@ test_multi_session_random_usage(void)
 				ut_paramz[i].cipher_key, ut_paramz[i].hmac_key);
 
 		/* Create multiple crypto sessions*/
-		rte_cryptodev_sym_session_init(
+		status = rte_cryptodev_sym_session_init(
 				ts_params->valid_devs[0],
 				sessions[i],
 				&ut_paramz[i].ut_params.auth_xform,
 				ts_params->session_priv_mpool);
 
-		TEST_ASSERT_NOT_NULL(sessions[i],
-				"Session creation failed at session number %u",
-				i);
+		if (status == -ENOTSUP)
+			return TEST_SKIPPED;
 
+		TEST_ASSERT_EQUAL(status, 0, "Session init failed");
 	}
 
 	srand(time(NULL));
@@ -10706,6 +10723,7 @@ test_null_burst_operation(void)
 {
 	struct crypto_testsuite_params *ts_params = &testsuite_params;
 	struct crypto_unittest_params *ut_params = &unittest_params;
+	int status;
 
 	unsigned i, burst_len = NULL_BURST_LENGTH;
 
@@ -10733,12 +10751,17 @@ test_null_burst_operation(void)
 
 	ut_params->sess = rte_cryptodev_sym_session_create(
 			ts_params->session_mpool);
+	TEST_ASSERT_NOT_NULL(ut_params->sess, "Session creation failed");
 
 	/* Create Crypto session*/
-	rte_cryptodev_sym_session_init(ts_params->valid_devs[0],
+	status = rte_cryptodev_sym_session_init(ts_params->valid_devs[0],
 			ut_params->sess, &ut_params->cipher_xform,
 			ts_params->session_priv_mpool);
-	TEST_ASSERT_NOT_NULL(ut_params->sess, "Session creation failed");
+
+	if (status == -ENOTSUP)
+		return TEST_SKIPPED;
+
+	TEST_ASSERT_EQUAL(status, 0, "Session init failed");
 
 	TEST_ASSERT_EQUAL(rte_crypto_op_bulk_alloc(ts_params->op_mpool,
 			RTE_CRYPTO_OP_TYPE_SYMMETRIC, burst, burst_len),
@@ -10896,6 +10919,7 @@ static int create_gmac_session(uint8_t dev_id,
 		enum rte_crypto_auth_operation auth_op)
 {
 	uint8_t auth_key[tdata->key.len];
+	int status;
 
 	struct crypto_testsuite_params *ts_params = &testsuite_params;
 	struct crypto_unittest_params *ut_params = &unittest_params;
@@ -10916,14 +10940,13 @@ static int create_gmac_session(uint8_t dev_id,
 
 	ut_params->sess = rte_cryptodev_sym_session_create(
 			ts_params->session_mpool);
+	TEST_ASSERT_NOT_NULL(ut_params->sess, "Session creation failed");
 
-	rte_cryptodev_sym_session_init(dev_id, ut_params->sess,
+	status = rte_cryptodev_sym_session_init(dev_id, ut_params->sess,
 			&ut_params->auth_xform,
 			ts_params->session_priv_mpool);
 
-	TEST_ASSERT_NOT_NULL(ut_params->sess, "Session creation failed");
-
-	return 0;
+	return status;
 }
 
 static int
@@ -10961,6 +10984,8 @@ test_AES_GMAC_authentication(const struct gmac_test_data *tdata)
 	retval = create_gmac_session(ts_params->valid_devs[0],
 			tdata, RTE_CRYPTO_AUTH_OP_GENERATE);
 
+	if (retval == -ENOTSUP)
+		return TEST_SKIPPED;
 	if (retval < 0)
 		return retval;
 
@@ -11090,6 +11115,8 @@ test_AES_GMAC_authentication_verify(const struct gmac_test_data *tdata)
 	retval = create_gmac_session(ts_params->valid_devs[0],
 			tdata, RTE_CRYPTO_AUTH_OP_VERIFY);
 
+	if (retval == -ENOTSUP)
+		return TEST_SKIPPED;
 	if (retval < 0)
 		return retval;
 
@@ -11217,6 +11244,8 @@ test_AES_GMAC_authentication_SGL(const struct gmac_test_data *tdata,
 	retval = create_gmac_session(ts_params->valid_devs[0],
 			tdata, RTE_CRYPTO_AUTH_OP_GENERATE);
 
+	if (retval == -ENOTSUP)
+		return TEST_SKIPPED;
 	if (retval < 0)
 		return retval;
 
@@ -11546,6 +11575,7 @@ create_auth_session(struct crypto_unittest_params *ut_params,
 {
 	struct crypto_testsuite_params *ts_params = &testsuite_params;
 	uint8_t auth_key[reference->auth_key.len + 1];
+	int status;
 
 	memcpy(auth_key, reference->auth_key.data, reference->auth_key.len);
 
@@ -11561,14 +11591,13 @@ create_auth_session(struct crypto_unittest_params *ut_params,
 	/* Create Crypto session*/
 	ut_params->sess = rte_cryptodev_sym_session_create(
 			ts_params->session_mpool);
+	TEST_ASSERT_NOT_NULL(ut_params->sess, "Session creation failed");
 
-	rte_cryptodev_sym_session_init(dev_id, ut_params->sess,
+	status = rte_cryptodev_sym_session_init(dev_id, ut_params->sess,
 				&ut_params->auth_xform,
 				ts_params->session_priv_mpool);
 
-	TEST_ASSERT_NOT_NULL(ut_params->sess, "Session creation failed");
-
-	return 0;
+	return status;
 }
 
 static int
@@ -11581,6 +11610,7 @@ create_auth_cipher_session(struct crypto_unittest_params *ut_params,
 	struct crypto_testsuite_params *ts_params = &testsuite_params;
 	uint8_t cipher_key[reference->cipher_key.len + 1];
 	uint8_t auth_key[reference->auth_key.len + 1];
+	int status;
 
 	memcpy(cipher_key, reference->cipher_key.data,
 			reference->cipher_key.len);
@@ -11614,14 +11644,13 @@ create_auth_cipher_session(struct crypto_unittest_params *ut_params,
 	/* Create Crypto session*/
 	ut_params->sess = rte_cryptodev_sym_session_create(
 			ts_params->session_mpool);
+	TEST_ASSERT_NOT_NULL(ut_params->sess, "Session creation failed");
 
-	rte_cryptodev_sym_session_init(dev_id, ut_params->sess,
+	status = rte_cryptodev_sym_session_init(dev_id, ut_params->sess,
 				&ut_params->auth_xform,
 				ts_params->session_priv_mpool);
 
-	TEST_ASSERT_NOT_NULL(ut_params->sess, "Session creation failed");
-
-	return 0;
+	return status;
 }
 
 static int
@@ -11837,6 +11866,9 @@ test_authentication_verify_fail_when_data_corruption(
 			ts_params->valid_devs[0],
 			reference,
 			RTE_CRYPTO_AUTH_OP_VERIFY);
+
+	if (retval == -ENOTSUP)
+		return TEST_SKIPPED;
 	if (retval < 0)
 		return retval;
 
@@ -12009,6 +12041,9 @@ test_authenticated_decryption_fail_when_corruption(
 			reference,
 			RTE_CRYPTO_AUTH_OP_VERIFY,
 			RTE_CRYPTO_CIPHER_OP_DECRYPT);
+
+	if (retval == -ENOTSUP)
+		return TEST_SKIPPED;
 	if (retval < 0)
 		return retval;
 
@@ -12064,6 +12099,7 @@ test_authenticated_encrypt_with_esn(
 		const struct test_crypto_vector *reference)
 {
 	int retval;
+	int status;
 
 	uint8_t *authciphertext, *plaintext, *auth_tag;
 	uint16_t plaintext_pad_len;
@@ -12121,13 +12157,17 @@ test_authenticated_encrypt_with_esn(
 	/* Create Crypto session*/
 	ut_params->sess = rte_cryptodev_sym_session_create(
 			ts_params->session_mpool);
+	TEST_ASSERT_NOT_NULL(ut_params->sess, "Session creation failed");
 
-	rte_cryptodev_sym_session_init(ts_params->valid_devs[0],
+	status = rte_cryptodev_sym_session_init(ts_params->valid_devs[0],
 				ut_params->sess,
 				&ut_params->cipher_xform,
 				ts_params->session_priv_mpool);
 
-	TEST_ASSERT_NOT_NULL(ut_params->sess, "Session creation failed");
+	if (status == -ENOTSUP)
+		return TEST_SKIPPED;
+
+	TEST_ASSERT_EQUAL(status, 0, "Session init failed");
 
 	ut_params->ibuf = rte_pktmbuf_alloc(ts_params->mbuf_pool);
 	TEST_ASSERT_NOT_NULL(ut_params->ibuf,
@@ -12253,13 +12293,17 @@ test_authenticated_decrypt_with_esn(
 	/* Create Crypto session*/
 	ut_params->sess = rte_cryptodev_sym_session_create(
 			ts_params->session_mpool);
+	TEST_ASSERT_NOT_NULL(ut_params->sess, "Session creation failed");
 
-	rte_cryptodev_sym_session_init(ts_params->valid_devs[0],
+	retval = rte_cryptodev_sym_session_init(ts_params->valid_devs[0],
 				ut_params->sess,
 				&ut_params->auth_xform,
 				ts_params->session_priv_mpool);
 
-	TEST_ASSERT_NOT_NULL(ut_params->sess, "Session creation failed");
+	if (retval == -ENOTSUP)
+		return TEST_SKIPPED;
+
+	TEST_ASSERT_EQUAL(retval, 0, "Session init failed");
 
 	ut_params->ibuf = rte_pktmbuf_alloc(ts_params->mbuf_pool);
 	TEST_ASSERT_NOT_NULL(ut_params->ibuf,
