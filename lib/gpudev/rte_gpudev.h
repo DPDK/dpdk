@@ -9,6 +9,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+#include <rte_mbuf.h>
 #include <rte_bitops.h>
 #include <rte_compat.h>
 
@@ -40,6 +41,9 @@ extern "C" {
 
 /** Access variable as volatile. */
 #define RTE_GPU_VOLATILE(x) (*(volatile typeof(x) *)&(x))
+
+/** Max number of packets per communication list. */
+#define RTE_GPU_COMM_LIST_PKTS_MAX 1024
 
 /** Store device info. */
 struct rte_gpu_info {
@@ -85,6 +89,43 @@ struct rte_gpu_comm_flag {
 	uint32_t *ptr;
 	/** Type of memory used to allocate the flag. */
 	enum rte_gpu_comm_flag_type mtype;
+};
+
+/** List of packets shared among CPU and device. */
+struct rte_gpu_comm_pkt {
+	/** Address of the packet in memory (e.g. mbuf->buf_addr). */
+	uintptr_t addr;
+	/** Size in byte of the packet. */
+	size_t size;
+};
+
+/** Possible status for the list of packets shared among CPU and device. */
+enum rte_gpu_comm_list_status {
+	/** Packet list can be filled with new mbufs, no one is using it. */
+	RTE_GPU_COMM_LIST_FREE = 0,
+	/** Packet list has been filled with new mbufs and it's ready to be used .*/
+	RTE_GPU_COMM_LIST_READY,
+	/** Packet list has been processed, it's ready to be freed. */
+	RTE_GPU_COMM_LIST_DONE,
+	/** Some error occurred during packet list processing. */
+	RTE_GPU_COMM_LIST_ERROR,
+};
+
+/**
+ * Communication list holding a number of lists of packets
+ * each having a status flag.
+ */
+struct rte_gpu_comm_list {
+	/** Device that will use the communication list. */
+	uint16_t dev_id;
+	/** List of mbufs populated by the CPU with a set of mbufs. */
+	struct rte_mbuf **mbufs;
+	/** List of packets populated by the CPU with a set of mbufs info. */
+	struct rte_gpu_comm_pkt *pkt_list;
+	/** Number of packets in the list. */
+	uint32_t num_pkts;
+	/** Status of the list. */
+	enum rte_gpu_comm_list_status status;
 };
 
 /**
@@ -512,6 +553,94 @@ int rte_gpu_comm_set_flag(struct rte_gpu_comm_flag *devflag,
 __rte_experimental
 int rte_gpu_comm_get_flag_value(struct rte_gpu_comm_flag *devflag,
 		uint32_t *val);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Create a communication list that can be used to share packets
+ * between CPU and device.
+ * Each element of the list contains:
+ *  - a packet list of RTE_GPU_COMM_LIST_PKTS_MAX elements
+ *  - number of packets in the list
+ *  - a status flag to communicate if the packet list is FREE,
+ *    READY to be processed, DONE with processing.
+ *
+ * The list is allocated in CPU-visible memory.
+ * At creation time, every list is in FREE state.
+ *
+ * @param dev_id
+ *   Reference device ID.
+ * @param num_comm_items
+ *   Number of items in the communication list.
+ *
+ * @return
+ *   A pointer to the allocated list, otherwise NULL and rte_errno is set:
+ *   - EINVAL if invalid input params
+ */
+__rte_experimental
+struct rte_gpu_comm_list *rte_gpu_comm_create_list(uint16_t dev_id,
+		uint32_t num_comm_items);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Destroy a communication list.
+ *
+ * @param comm_list
+ *   Communication list to be destroyed.
+ * @param num_comm_items
+ *   Number of items in the communication list.
+ *
+ * @return
+ *   0 on success, -rte_errno otherwise:
+ *   - EINVAL if invalid input params
+ */
+__rte_experimental
+int rte_gpu_comm_destroy_list(struct rte_gpu_comm_list *comm_list,
+		uint32_t num_comm_items);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Populate the packets list of the communication item
+ * with info from a list of mbufs.
+ * Status flag of that packet list is set to READY.
+ *
+ * @param comm_list_item
+ *   Communication list item to fill.
+ * @param mbufs
+ *   List of mbufs.
+ * @param num_mbufs
+ *   Number of mbufs.
+ *
+ * @return
+ *   0 on success, -rte_errno otherwise:
+ *   - EINVAL if invalid input params
+ *   - ENOTSUP if mbufs are chained (multiple segments)
+ */
+__rte_experimental
+int rte_gpu_comm_populate_list_pkts(struct rte_gpu_comm_list *comm_list_item,
+		struct rte_mbuf **mbufs, uint32_t num_mbufs);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Reset a communication list item to the original state.
+ * The status flag set to FREE and mbufs are returned to the pool.
+ *
+ * @param comm_list_item
+ *   Communication list item to reset.
+ *
+ * @return
+ *   0 on success, -rte_errno otherwise:
+ *   - EINVAL if invalid input params
+ */
+__rte_experimental
+int rte_gpu_comm_cleanup_list(struct rte_gpu_comm_list *comm_list_item);
 
 #ifdef __cplusplus
 }

@@ -105,7 +105,7 @@ New Features
 
   * Device information
   * Memory management
-  * Communication flag
+  * Communication flag & list
 
 * **Added new RSS offload types for IPv4/L4 checksum in RSS flow.**
 

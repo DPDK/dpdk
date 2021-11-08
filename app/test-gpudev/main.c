@@ -209,6 +209,99 @@ create_update_comm_flag(uint16_t gpu_id)
 	return 0;
 }
 
+static int
+simulate_gpu_task(struct rte_gpu_comm_list *comm_list_item, int num_pkts)
+{
+	int idx;
+
+	if (comm_list_item == NULL)
+		return -1;
+
+	for (idx = 0; idx < num_pkts; idx++) {
+		/**
+		 * consume(comm_list_item->pkt_list[idx].addr);
+		 */
+	}
+	comm_list_item->status = RTE_GPU_COMM_LIST_DONE;
+
+	return 0;
+}
+
+static int
+create_update_comm_list(uint16_t gpu_id)
+{
+	int ret = 0;
+	int i = 0;
+	struct rte_gpu_comm_list *comm_list;
+	uint32_t num_comm_items = 1024;
+	struct rte_mbuf *mbufs[10];
+
+	printf("\n=======> TEST: Communication list\n");
+
+	comm_list = rte_gpu_comm_create_list(gpu_id, num_comm_items);
+	if (comm_list == NULL) {
+		fprintf(stderr, "rte_gpu_comm_create_list returned error %d\n", ret);
+		return -1;
+	}
+
+	/**
+	 * Simulate DPDK receive functions like rte_eth_rx_burst()
+	 */
+	for (i = 0; i < 10; i++) {
+		mbufs[i] = rte_zmalloc(NULL, sizeof(struct rte_mbuf), 0);
+		if (mbufs[i] == NULL) {
+			fprintf(stderr, "Failed to allocate fake mbufs in CPU memory.\n");
+			return -1;
+		}
+
+		memset(mbufs[i], 0, sizeof(struct rte_mbuf));
+	}
+
+	/**
+	 * Populate just the first item of  the list
+	 */
+	ret = rte_gpu_comm_populate_list_pkts(&(comm_list[0]), mbufs, 10);
+	if (ret < 0) {
+		fprintf(stderr, "rte_gpu_comm_populate_list_pkts returned error %d\n", ret);
+		return -1;
+	}
+
+	ret = rte_gpu_comm_cleanup_list(&(comm_list[0]));
+	if (ret == 0) {
+		fprintf(stderr, "rte_gpu_comm_cleanup_list erroneously cleaned the list even if packets have not been consumed yet\n");
+		return -1;
+	}
+	fprintf(stderr, "rte_gpu_comm_cleanup_list correctly didn't clean up the packets because they have not been consumed yet\n");
+
+	/**
+	 * Simulate a GPU tasks going through the packet list to consume
+	 * mbufs packets and release them
+	 */
+	simulate_gpu_task(&(comm_list[0]), 10);
+
+	/**
+	 * Packets have been consumed, now the communication item
+	 * and the related mbufs can be all released
+	 */
+	ret = rte_gpu_comm_cleanup_list(&(comm_list[0]));
+	if (ret < 0) {
+		fprintf(stderr, "rte_gpu_comm_cleanup_list returned error %d\n", ret);
+		return -1;
+	}
+
+	ret = rte_gpu_comm_destroy_list(comm_list, num_comm_items);
+	if (ret < 0) {
+		fprintf(stderr, "rte_gpu_comm_destroy_list returned error %d\n", ret);
+		return -1;
+	}
+
+	for (i = 0; i < 10; i++)
+		rte_free(mbufs[i]);
+
+	printf("\nCommunication list test passed!\n");
+	return 0;
+}
+
 int
 main(int argc, char **argv)
 {
@@ -263,6 +356,7 @@ main(int argc, char **argv)
 	 * Communication items test
 	 */
 	create_update_comm_flag(gpu_id);
+	create_update_comm_list(gpu_id);
 
 	/* clean up the EAL */
 	rte_eal_cleanup();

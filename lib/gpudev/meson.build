@@ -8,3 +8,5 @@ headers = files(
 sources = files(
         'gpudev.c',
 )
+
+deps += ['mbuf']

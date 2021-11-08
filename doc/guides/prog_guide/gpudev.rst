@@ -86,3 +86,19 @@ that's waiting to receive a signal from the CPU
 to move forward with the execution.
 The communication flag allocates a CPU memory GPU-visible ``uint32_t`` flag
 that can be used by the CPU to communicate with a GPU task.
+
+Communication list
+~~~~~~~~~~~~~~~~~~
+
+By default, DPDK pulls free mbufs from a mempool to receive packets.
+Best practice, especially in a multithreaded application,
+is to no make any assumption on which mbufs will be used
+to receive the next bursts of packets.
+Considering an application with a GPU memory mempool
+attached to a receive queue having some task waiting on the GPU
+to receive a new burst of packets to be processed,
+there is the need to communicate from the CPU
+the list of mbuf payload addresses where received packet have been stored.
+The ``rte_gpu_comm_*()`` functions are responsible to create a list of packets
+that can be populated with receive mbuf payload addresses
+and communicated to the task running on the GPU.

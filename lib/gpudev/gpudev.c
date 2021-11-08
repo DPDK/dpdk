@@ -736,3 +736,173 @@ rte_gpu_comm_get_flag_value(struct rte_gpu_comm_flag *devflag, uint32_t *val)
 
 	return 0;
 }
+
+struct rte_gpu_comm_list *
+rte_gpu_comm_create_list(uint16_t dev_id,
+		uint32_t num_comm_items)
+{
+	struct rte_gpu_comm_list *comm_list;
+	uint32_t idx_l;
+	int ret;
+	struct rte_gpu *dev;
+
+	if (num_comm_items == 0) {
+		rte_errno = EINVAL;
+		return NULL;
+	}
+
+	dev = gpu_get_by_id(dev_id);
+	if (dev == NULL) {
+		GPU_LOG(ERR, "memory barrier for invalid device ID %d", dev_id);
+		rte_errno = ENODEV;
+		return NULL;
+	}
+
+	comm_list = rte_zmalloc(NULL,
+			sizeof(struct rte_gpu_comm_list) * num_comm_items, 0);
+	if (comm_list == NULL) {
+		rte_errno = ENOMEM;
+		return NULL;
+	}
+
+	ret = rte_gpu_mem_register(dev_id,
+			sizeof(struct rte_gpu_comm_list) * num_comm_items, comm_list);
+	if (ret < 0) {
+		rte_errno = ENOMEM;
+		return NULL;
+	}
+
+	for (idx_l = 0; idx_l < num_comm_items; idx_l++) {
+		comm_list[idx_l].pkt_list = rte_zmalloc(NULL,
+				sizeof(struct rte_gpu_comm_pkt) * RTE_GPU_COMM_LIST_PKTS_MAX, 0);
+		if (comm_list[idx_l].pkt_list == NULL) {
+			rte_errno = ENOMEM;
+			return NULL;
+		}
+
+		ret = rte_gpu_mem_register(dev_id,
+				sizeof(struct rte_gpu_comm_pkt) * RTE_GPU_COMM_LIST_PKTS_MAX,
+				comm_list[idx_l].pkt_list);
+		if (ret < 0) {
+			rte_errno = ENOMEM;
+			return NULL;
+		}
+
+		RTE_GPU_VOLATILE(comm_list[idx_l].status) = RTE_GPU_COMM_LIST_FREE;
+		comm_list[idx_l].num_pkts = 0;
+		comm_list[idx_l].dev_id = dev_id;
+
+		comm_list[idx_l].mbufs = rte_zmalloc(NULL,
+				sizeof(struct rte_mbuf *) * RTE_GPU_COMM_LIST_PKTS_MAX, 0);
+		if (comm_list[idx_l].mbufs == NULL) {
+			rte_errno = ENOMEM;
+			return NULL;
+		}
+	}
+
+	return comm_list;
+}
+
+int
+rte_gpu_comm_destroy_list(struct rte_gpu_comm_list *comm_list,
+		uint32_t num_comm_items)
+{
+	uint32_t idx_l;
+	int ret;
+	uint16_t dev_id;
+
+	if (comm_list == NULL) {
+		rte_errno = EINVAL;
+		return -rte_errno;
+	}
+
+	dev_id = comm_list[0].dev_id;
+
+	for (idx_l = 0; idx_l < num_comm_items; idx_l++) {
+		ret = rte_gpu_mem_unregister(dev_id, comm_list[idx_l].pkt_list);
+		if (ret < 0) {
+			rte_errno = EINVAL;
+			return -1;
+		}
+
+		rte_free(comm_list[idx_l].pkt_list);
+		rte_free(comm_list[idx_l].mbufs);
+	}
+
+	ret = rte_gpu_mem_unregister(dev_id, comm_list);
+	if (ret < 0) {
+		rte_errno = EINVAL;
+		return -1;
+	}
+
+	rte_free(comm_list);
+
+	return 0;
+}
+
+int
+rte_gpu_comm_populate_list_pkts(struct rte_gpu_comm_list *comm_list_item,
+		struct rte_mbuf **mbufs, uint32_t num_mbufs)
+{
+	uint32_t idx;
+
+	if (comm_list_item == NULL || comm_list_item->pkt_list == NULL ||
+			mbufs == NULL || num_mbufs > RTE_GPU_COMM_LIST_PKTS_MAX) {
+		rte_errno = EINVAL;
+		return -rte_errno;
+	}
+
+	for (idx = 0; idx < num_mbufs; idx++) {
+		/* support only unchained mbufs */
+		if (unlikely((mbufs[idx]->nb_segs > 1) ||
+				(mbufs[idx]->next != NULL) ||
+				(mbufs[idx]->data_len != mbufs[idx]->pkt_len))) {
+			rte_errno = ENOTSUP;
+			return -rte_errno;
+		}
+		comm_list_item->pkt_list[idx].addr =
+				rte_pktmbuf_mtod_offset(mbufs[idx], uintptr_t, 0);
+		comm_list_item->pkt_list[idx].size = mbufs[idx]->pkt_len;
+		comm_list_item->mbufs[idx] = mbufs[idx];
+	}
+
+	RTE_GPU_VOLATILE(comm_list_item->num_pkts) = num_mbufs;
+	rte_gpu_wmb(comm_list_item->dev_id);
+	RTE_GPU_VOLATILE(comm_list_item->status) = RTE_GPU_COMM_LIST_READY;
+	rte_gpu_wmb(comm_list_item->dev_id);
+
+	return 0;
+}
+
+int
+rte_gpu_comm_cleanup_list(struct rte_gpu_comm_list *comm_list_item)
+{
+	uint32_t idx = 0;
+
+	if (comm_list_item == NULL) {
+		rte_errno = EINVAL;
+		return -rte_errno;
+	}
+
+	if (RTE_GPU_VOLATILE(comm_list_item->status) ==
+			RTE_GPU_COMM_LIST_READY) {
+		GPU_LOG(ERR, "packet list is still in progress");
+		rte_errno = EINVAL;
+		return -rte_errno;
+	}
+
+	for (idx = 0; idx < RTE_GPU_COMM_LIST_PKTS_MAX; idx++) {
+		if (comm_list_item->pkt_list[idx].addr == 0)
+			break;
+
+		comm_list_item->pkt_list[idx].addr = 0;
+		comm_list_item->pkt_list[idx].size = 0;
+		comm_list_item->mbufs[idx] = NULL;
+	}
+
+	RTE_GPU_VOLATILE(comm_list_item->status) = RTE_GPU_COMM_LIST_FREE;
+	RTE_GPU_VOLATILE(comm_list_item->num_pkts) = 0;
+	rte_mb();
+
+	return 0;
+}
