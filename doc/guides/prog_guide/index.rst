@@ -39,6 +39,8 @@ Programmer's Guide
     member_lib
     lpm_lib
     lpm6_lib
+    fib_lib
+    rib_lib
     flow_classify_lib
     packet_distrib_lib
     reorder_lib

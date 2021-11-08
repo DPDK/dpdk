@@ -1,0 +1,136 @@
+<svg width="945.881" height="658.889" viewBox="0 0 709.411 494.167" xml:space="preserve" color-interpolation-filters="sRGB" version="1.1" id="svg220" style="fill:none;fill-rule:evenodd;font-size:12px;overflow:visible;stroke-linecap:square;stroke-miterlimit:3" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns="http://www.w3.org/2000/svg">
+  <style type="text/css" id="style2">
+    .st1{fill:url(#grad0-4);stroke:#3c63ac;stroke-width:.749999}.st2{fill:#3c63ac;font-family:Calibri;font-size:1.16666em}.st3{marker-end:url(#mrkr4-55);stroke:#4672c4;stroke-linecap:round;stroke-linejoin:round;stroke-width:.999999}.st5{fill:url(#grad0-4);stroke:#3d64ac;stroke-width:.749999}.st6{fill:#3d64ac;font-family:Calibri;font-size:1.16666em}.st8,.st9{stroke:none}.st8{fill:#fff;stroke-linecap:butt;stroke-width:7.2}.st9{fill:none;stroke-width:.25}.st10{fill:#4672c4;font-family:Calibri;font-size:1.16666em;font-weight:700}
+  </style>
+  <defs id="Patterns_And_Gradients">
+    <linearGradient id="grad0-4" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#e8ebf4" stop-opacity="1" id="stop4"/>
+      <stop offset=".24" stop-color="#f4f5f9" stop-opacity="1" id="stop6"/>
+      <stop offset=".54" stop-color="#feffff" stop-opacity="1" id="stop8"/>
+    </linearGradient>
+    <linearGradient xlink:href="#grad0-4" id="linearGradient224" x1="-.573" y1="46.345" x2="277.982" y2="46.345" gradientTransform="scale(.65397 1.52912)" gradientUnits="userSpaceOnUse"/>
+    <linearGradient xlink:href="#grad0-4" id="linearGradient226" x1="-.185" y1="928.807" x2="75.865" y2="928.807" gradientTransform="scale(2.02261 .49441)" gradientUnits="userSpaceOnUse"/>
+    <linearGradient xlink:href="#grad0-4" id="linearGradient228" x1="-.185" y1="928.807" x2="75.865" y2="928.807" gradientTransform="scale(2.02261 .49441)" gradientUnits="userSpaceOnUse"/>
+    <linearGradient xlink:href="#grad0-4" id="linearGradient230" x1="-.185" y1="928.807" x2="75.865" y2="928.807" gradientTransform="scale(2.02261 .49441)" gradientUnits="userSpaceOnUse"/>
+    <linearGradient xlink:href="#grad0-4" id="linearGradient232" x1="-.185" y1="928.807" x2="75.865" y2="928.807" gradientTransform="scale(2.02261 .49441)" gradientUnits="userSpaceOnUse"/>
+    <linearGradient xlink:href="#grad0-4" id="linearGradient234" x1="-.185" y1="928.807" x2="75.865" y2="928.807" gradientTransform="scale(2.02261 .49441)" gradientUnits="userSpaceOnUse"/>
+    <linearGradient xlink:href="#grad0-4" id="linearGradient236" x1="-.185" y1="928.807" x2="75.865" y2="928.807" gradientTransform="scale(2.02261 .49441)" gradientUnits="userSpaceOnUse"/>
+    <linearGradient xlink:href="#grad0-4" id="linearGradient238" x1="-.185" y1="928.807" x2="75.865" y2="928.807" gradientTransform="scale(2.02261 .49441)" gradientUnits="userSpaceOnUse"/>
+    <linearGradient xlink:href="#grad0-4" id="linearGradient240" x1="-.378" y1="309.413" x2="183.201" y2="309.413" gradientTransform="scale(.9923 1.00775)" gradientUnits="userSpaceOnUse"/>
+    <linearGradient xlink:href="#grad0-4" id="linearGradient242" x1="-.185" y1="928.807" x2="75.865" y2="928.807" gradientTransform="scale(2.02261 .49441)" gradientUnits="userSpaceOnUse"/>
+    <linearGradient xlink:href="#grad0-4" id="linearGradient244" x1="-.185" y1="928.807" x2="75.865" y2="928.807" gradientTransform="scale(2.02261 .49441)" gradientUnits="userSpaceOnUse"/>
+    <linearGradient xlink:href="#grad0-4" id="linearGradient246" x1="-.185" y1="928.807" x2="75.865" y2="928.807" gradientTransform="scale(2.02261 .49441)" gradientUnits="userSpaceOnUse"/>
+    <linearGradient xlink:href="#grad0-4" id="linearGradient248" x1="-.181" y1="987.935" x2="42.539" y2="987.935" gradientTransform="scale(2.07454 .48204)" gradientUnits="userSpaceOnUse"/>
+    <linearGradient xlink:href="#grad0-4" id="linearGradient250" x1="-.315" y1="566.074" x2="24.162" y2="566.074" gradientTransform="scale(1.18868 .84127)" gradientUnits="userSpaceOnUse"/>
+    <linearGradient xlink:href="#grad0-4" id="linearGradient252" x1="-.565" y1="550.271" x2="90.593" y2="550.271" gradientTransform="scale(1.29092 .77464)" gradientUnits="userSpaceOnUse"/>
+    <linearGradient xlink:href="#grad0-4" id="linearGradient254" x1="-.181" y1="987.935" x2="42.539" y2="987.935" gradientTransform="scale(2.07454 .48204)" gradientUnits="userSpaceOnUse"/>
+    <linearGradient xlink:href="#grad0-4" id="linearGradient256" x1="-.204" y1="834.253" x2="79.387" y2="834.253" gradientTransform="scale(1.83941 .54365)" gradientUnits="userSpaceOnUse"/>
+  </defs>
+  <defs id="Markers">
+    <marker id="mrkr4-55" refX="0" orient="auto" markerUnits="strokeWidth" overflow="visible" style="fill:#4672c4;fill-opacity:1;stroke:#4672c4;stroke-opacity:1;stroke-width:.28409061414099">
+      <use xlink:href="#lend4" transform="scale(-3.52)" id="use15" x="0" y="0" width="100%" height="100%"/>
+    </marker>
+    <g id="lend4">
+      <path d="M2 1 0 0l2-1v2" style="stroke:none" id="path12"/>
+    </g>
+  </defs>
+  <g id="g218" transform="translate(0 -2.27)">
+    <g id="shape1-1" transform="translate(113.761 -.375)">
+      <path class="st1" id="rect23" style="fill:url(#linearGradient224)" d="M0 71.242h181.417v425.196H0z"/>
+    </g>
+    <g id="shape2-5" transform="translate(127.934 -374.549)">
+      <path class="st1" id="rect30" style="fill:url(#linearGradient226)" d="M0 459.587h153.071v36.85H0z"/>
+      <text x="25.03" y="482.21" class="st2" id="text32">uint[8,16,32,64]_t</text>
+    </g>
+    <g id="shape3-9" transform="translate(127.934 -332.029)">
+      <path class="st1" id="rect37" style="fill:url(#linearGradient228)" d="M0 459.587h153.071v36.85H0z"/>
+    </g>
+    <g id="shape4-12" transform="translate(127.934 -289.509)">
+      <path class="st1" id="rect44" style="fill:url(#linearGradient230)" d="M0 459.587h153.071v36.85H0z"/>
+      <text x="60.41" y="482.21" class="st2" id="text46">nh_id</text>
+    </g>
+    <g id="shape5-16" transform="translate(127.934 -246.99)">
+      <path class="st1" id="rect51" style="fill:url(#linearGradient232)" d="M0 459.587h153.071v36.85H0z"/>
+    </g>
+    <g id="shape6-19" transform="translate(127.934 -110.927)">
+      <path class="st1" id="rect56" style="fill:url(#linearGradient234)" d="M0 459.587h153.071v36.85H0z"/>
+    </g>
+    <g id="shape7-22" transform="translate(127.934 -62.738)">
+      <path class="st1" id="rect61" style="fill:url(#linearGradient236)" d="M0 459.587h153.071v36.85H0z"/>
+    </g>
+    <g id="shape8-25" transform="translate(127.934 -14.549)">
+      <path class="st1" id="rect66" style="fill:url(#linearGradient238)" d="M0 459.587h153.071v36.85H0z"/>
+    </g>
+    <g id="shape9-28" transform="translate(527.619 -241.319)">
+      <path class="st1" id="rect71" style="fill:url(#linearGradient240)" d="M0 312.186h181.417v184.252H0z"/>
+    </g>
+    <g id="shape10-31" transform="translate(541.792 -377.383)">
+      <path class="st1" id="rect78" style="fill:url(#linearGradient242)" d="M0 459.587h153.071v36.85H0z"/>
+      <text x="25.03" y="482.21" class="st2" id="text80">uint[8,16,32,64]_t</text>
+    </g>
+    <g id="shape11-35" transform="translate(541.792 -334.864)">
+      <path class="st1" id="rect87" style="fill:url(#linearGradient244)" d="M0 459.587h153.071v36.85H0z"/>
+      <text x="60.41" y="482.21" class="st2" id="text89">nh_id</text>
+    </g>
+    <g id="shape12-39" transform="translate(541.792 -252.659)">
+      <path class="st1" id="rect94" style="fill:url(#linearGradient246)" d="M0 459.587h153.071v36.85H0z"/>
+    </g>
+    <g id="shape13-42" transform="translate(.375 -461.004)">
+      <path class="st1" id="rect101" style="fill:url(#linearGradient248)" d="M0 476.595h87.874v19.843H0z"/>
+      <text x="36.84" y="490.72" class="st2" id="text103">24</text>
+    </g>
+    <g id="shape14-46" transform="translate(88.25 -461.004)">
+      <path class="st1" id="rect110" style="fill:url(#linearGradient250)" d="M0 476.595h28.346v19.843H0z"/>
+      <text x="10.63" y="490.72" class="st2" id="text112">8</text>
+    </g>
+    <g id="shape15-50" transform="translate(44.312 -307.93)">
+      <path d="M0 343.37v153.07h83.62" class="st3" id="path117"/>
+    </g>
+    <g id="shape16-56" transform="translate(317.855 -198.796)">
+      <path d="m0 461.57 58.11-34.87 58.11 34.87-58.11 34.87z" class="st5" id="path124" style="fill:url(#linearGradient252)"/>
+      <text x="31.32" y="457.37" class="st6" id="text128">Extended <tspan x="39.75" dy="1.2em" id="tspan126" style="font-size:1em">entry?</tspan></text>
+    </g>
+    <g id="shape17-61" transform="translate(332.028 -79.745)">
+      <path class="st1" id="rect135" style="fill:url(#linearGradient254)" d="M0 476.595h87.874v19.843H0z"/>
+      <text x="6.8" y="490.72" class="st2" id="text137">Return nh_id</text>
+    </g>
+    <g id="shape18-65" transform="translate(375.969 -99.587)">
+      <path d="M0 397.23v99.21" class="st3" id="path144"/>
+      <path class="st8" id="rect146" d="M-7.372 438.43H7.366v16.8H-7.372z"/>
+      <text x="-7.37" y="451.03" class="st2" id="text148">no</text>
+    </g>
+    <g id="shape19-72" transform="translate(281.005 -268.529)">
+      <path d="M0 457.04h94.96v39.4" class="st3" id="path153"/>
+    </g>
+    <g id="shape20-77" transform="translate(344.409 -371.713)">
+      <path class="st5" id="rect160" style="fill:url(#linearGradient256)" d="M0 453.918h145.65v42.52H0z"/>
+      <text x="8.68" y="479.38" class="st6" id="text162">nh_id * 256 + ip &amp; 0xff  </text>
+    </g>
+    <g id="shape21-81" transform="translate(116.595 -414.232)">
+      <path d="M0 439.75h300.1v56.69" class="st3" id="path167"/>
+    </g>
+    <g id="shape22-86" transform="translate(490.06 -353.289)">
+      <path d="M0 456.76h21.26v39.68h30.47" class="st3" id="path172"/>
+    </g>
+    <g id="shape23-91" transform="translate(434.073 -233.662)">
+      <path d="M0 496.44h12.05V358.39" class="st3" id="path179"/>
+      <path class="st8" id="rect181" d="M2.661 425.034h18.778v16.8H2.661z"/>
+      <text x="2.66" y="437.63" class="st2" id="text183">yes</text>
+    </g>
+    <g id="shape24-98" transform="translate(375.591 -99.591)">
+      <path d="M242.74 262.59v212.59H0v21.26" class="st3" id="path188"/>
+    </g>
+    <g id="shape25-103" transform="translate(12.047 -483.914)">
+      <path class="st9" id="rect195" d="M0 486.517h89.291v9.921H0z"/>
+      <text x="7.26" y="495.68" class="st10" id="text197">IPv4 Address</text>
+    </g>
+    <g id="shape26-106" transform="translate(170.079 -426.331)">
+      <path class="st9" id="rect204" d="M0 483.398h68.031v13.039H0z"/>
+      <text x="16.57" y="494.12" class="st10" id="text206">tbl24</text>
+    </g>
+    <g id="shape27-109" transform="translate(597.067 -426.331)">
+      <path class="st9" id="rect213" d="M0 483.398h46.772v13.039H0z"/>
+      <text x="9.49" y="494.12" class="st10" id="text215">tbl8</text>
+    </g>
+  </g>
+</svg>
