@@ -16,6 +16,13 @@
 
 #define MLX5_CRYPTO_DEK_HTABLE_SZ (1 << 11)
 #define MLX5_CRYPTO_KEY_LENGTH 80
+#define MLX5_CRYPTO_UMR_WQE_STATIC_SIZE (sizeof(struct mlx5_wqe_cseg) +\
+					sizeof(struct mlx5_wqe_umr_cseg) +\
+					sizeof(struct mlx5_wqe_mkey_cseg) +\
+					sizeof(struct mlx5_wqe_umr_bsf_seg))
+#define MLX5_CRYPTO_KLM_SEGS_NUM(umr_wqe_sz) ((umr_wqe_sz -\
+					MLX5_CRYPTO_UMR_WQE_STATIC_SIZE) /\
+					MLX5_WSEG_SIZE)
 
 struct mlx5_crypto_priv {
 	TAILQ_ENTRY(mlx5_crypto_priv) next;

@@ -149,8 +149,8 @@ regex_ctrl_create_hw_qp(struct mlx5_regex_priv *priv, struct mlx5_regex_qp *qp,
 	qp_obj->qpn = q_ind;
 	qp_obj->ci = 0;
 	qp_obj->pi = 0;
-	attr.rq_size = 0;
-	attr.sq_size = RTE_BIT32(MLX5_REGEX_WQE_LOG_NUM(priv->has_umr,
+	attr.num_of_receive_wqes = 0;
+	attr.num_of_send_wqbbs = RTE_BIT32(MLX5_REGEX_WQE_LOG_NUM(priv->has_umr,
 			log_nb_desc));
 	attr.mmo = priv->mmo_regex_qp_cap;
 	ret = mlx5_devx_qp_create(priv->cdev->ctx, &qp_obj->qp_obj,

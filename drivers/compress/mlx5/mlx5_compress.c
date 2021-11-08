@@ -244,8 +244,8 @@ mlx5_compress_qp_setup(struct rte_compressdev *dev, uint16_t qp_id,
 	qp_attr.cqn = qp->cq.cq->id;
 	qp_attr.ts_format =
 		mlx5_ts_format_conv(priv->cdev->config.hca_attr.qp_ts_format);
-	qp_attr.rq_size = 0;
-	qp_attr.sq_size = RTE_BIT32(log_ops_n);
+	qp_attr.num_of_receive_wqes = 0;
+	qp_attr.num_of_send_wqbbs = RTE_BIT32(log_ops_n);
 	qp_attr.mmo = priv->mmo_decomp_qp && priv->mmo_comp_qp
 			&& priv->mmo_dma_qp;
 	ret = mlx5_devx_qp_create(priv->cdev->ctx, &qp->qp, log_ops_n, &qp_attr,

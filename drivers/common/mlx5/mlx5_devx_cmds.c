@@ -832,6 +832,7 @@ mlx5_devx_cmd_query_hca_attr(void *ctx,
 			MLX5_HCA_CAP_OPMOD_GET_CUR);
 	if (!hcattr)
 		return rc;
+	attr->max_wqe_sz_sq = MLX5_GET(cmd_hca_cap, hcattr, max_wqe_sz_sq);
 	attr->flow_counter_bulk_alloc_bitmap =
 			MLX5_GET(cmd_hca_cap, hcattr, flow_counter_bulk_alloc);
 	attr->flow_counters_dump = MLX5_GET(cmd_hca_cap, hcattr,
@@ -2153,21 +2154,22 @@ mlx5_devx_cmd_create_qp(void *ctx,
 		if (attr->log_page_size > MLX5_ADAPTER_PAGE_SHIFT)
 			MLX5_SET(qpc, qpc, log_page_size,
 				 attr->log_page_size - MLX5_ADAPTER_PAGE_SHIFT);
-		if (attr->sq_size) {
-			MLX5_ASSERT(RTE_IS_POWER_OF_2(attr->sq_size));
+		if (attr->num_of_send_wqbbs) {
+			MLX5_ASSERT(RTE_IS_POWER_OF_2(attr->num_of_send_wqbbs));
 			MLX5_SET(qpc, qpc, cqn_snd, attr->cqn);
 			MLX5_SET(qpc, qpc, log_sq_size,
-				 rte_log2_u32(attr->sq_size));
+				 rte_log2_u32(attr->num_of_send_wqbbs));
 		} else {
 			MLX5_SET(qpc, qpc, no_sq, 1);
 		}
-		if (attr->rq_size) {
-			MLX5_ASSERT(RTE_IS_POWER_OF_2(attr->rq_size));
+		if (attr->num_of_receive_wqes) {
+			MLX5_ASSERT(RTE_IS_POWER_OF_2(
+					attr->num_of_receive_wqes));
 			MLX5_SET(qpc, qpc, cqn_rcv, attr->cqn);
 			MLX5_SET(qpc, qpc, log_rq_stride, attr->log_rq_stride -
 				 MLX5_LOG_RQ_STRIDE_SHIFT);
 			MLX5_SET(qpc, qpc, log_rq_size,
-				 rte_log2_u32(attr->rq_size));
+				 rte_log2_u32(attr->num_of_receive_wqes));
 			MLX5_SET(qpc, qpc, rq_type, MLX5_NON_ZERO_RQ);
 		} else {
 			MLX5_SET(qpc, qpc, rq_type, MLX5_ZERO_LEN_RQ);
