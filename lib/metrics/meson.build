@@ -4,10 +4,8 @@
 sources = files('rte_metrics.c', 'rte_metrics_telemetry.c')
 headers = files('rte_metrics.h', 'rte_metrics_telemetry.h')
 
-jansson = dependency('jansson', required: false, method: 'pkg-config')
-if jansson.found()
-    dpdk_conf.set('RTE_HAS_JANSSON', 1)
-    ext_deps += jansson
+if dpdk_conf.has('RTE_HAS_JANSSON')
+    ext_deps += jansson_dep
 endif
 
 deps += ['ethdev', 'telemetry']

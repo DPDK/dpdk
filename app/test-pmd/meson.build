@@ -28,6 +28,10 @@ sources = files(
         'util.c',
 )
 
+if dpdk_conf.has('RTE_HAS_JANSSON')
+    ext_deps += jansson_dep
+endif
+
 deps += ['ethdev', 'gro', 'gso', 'cmdline', 'metrics', 'bus_pci']
 if dpdk_conf.has('RTE_CRYPTO_SCHEDULER')
     deps += 'crypto_scheduler'
@@ -59,9 +63,4 @@ if dpdk_conf.has('RTE_NET_IXGBE')
 endif
 if dpdk_conf.has('RTE_NET_DPAA')
     deps += ['bus_dpaa', 'mempool_dpaa', 'net_dpaa']
-endif
-jansson_dep = dependency('jansson', required: false, method: 'pkg-config')
-if jansson_dep.found()
-    dpdk_conf.set('RTE_HAS_JANSSON', 1)
-    ext_deps += jansson_dep
 endif

@@ -218,6 +218,11 @@ if libbsd.found()
     dpdk_conf.set('RTE_USE_LIBBSD', 1)
 endif
 
+jansson_dep = dependency('jansson', required: false, method: 'pkg-config')
+if jansson_dep.found()
+    dpdk_conf.set('RTE_HAS_JANSSON', 1)
+endif
+
 # check for pcap
 pcap_dep = dependency('libpcap', required: false, method: 'pkg-config')
 pcap_lib = is_windows ? 'wpcap' : 'pcap'
