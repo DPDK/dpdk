@@ -266,9 +266,11 @@ cnxk_tel_nix_sq(struct roc_nix_sq *sq, struct plt_tel_data *d)
 }
 
 static void
-nix_rq_ctx_cn9k(void *qctx, struct plt_tel_data *d)
+nix_rq_ctx_cn9k(volatile void *qctx, struct plt_tel_data *d)
 {
-	struct nix_rq_ctx_s *ctx = (struct nix_rq_ctx_s *)qctx;
+	volatile struct nix_rq_ctx_s *ctx;
+
+	ctx = (volatile struct nix_rq_ctx_s *)qctx;
 
 	/* W0 */
 	CNXK_TEL_DICT_INT(d, ctx, wqe_aura, w0_);
@@ -343,9 +345,11 @@ nix_rq_ctx_cn9k(void *qctx, struct plt_tel_data *d)
 }
 
 static void
-nix_rq_ctx(void *qctx, struct plt_tel_data *d)
+nix_rq_ctx(volatile void *qctx, struct plt_tel_data *d)
 {
-	struct nix_cn10k_rq_ctx_s *ctx = (struct nix_cn10k_rq_ctx_s *)qctx;
+	volatile struct nix_cn10k_rq_ctx_s *ctx;
+
+	ctx = (volatile struct nix_cn10k_rq_ctx_s *)qctx;
 
 	/* W0 */
 	CNXK_TEL_DICT_INT(d, ctx, wqe_aura, w0_);
@@ -453,9 +457,9 @@ cnxk_tel_nix_rq_ctx(struct roc_nix *roc_nix, uint8_t n, struct plt_tel_data *d)
 	}
 
 	if (roc_model_is_cn9k())
-		nix_rq_ctx_cn9k(&qctx, d);
+		nix_rq_ctx_cn9k(qctx, d);
 	else
-		nix_rq_ctx(&qctx, d);
+		nix_rq_ctx(qctx, d);
 
 	return 0;
 }
@@ -512,9 +516,11 @@ cnxk_tel_nix_cq_ctx(struct roc_nix *roc_nix, uint8_t n, struct plt_tel_data *d)
 }
 
 static void
-nix_sq_ctx_cn9k(void *qctx, struct plt_tel_data *d)
+nix_sq_ctx_cn9k(volatile void *qctx, struct plt_tel_data *d)
 {
-	struct nix_sq_ctx_s *ctx = (struct nix_sq_ctx_s *)qctx;
+	volatile struct nix_sq_ctx_s *ctx;
+
+	ctx = (volatile struct nix_sq_ctx_s *)qctx;
 
 	/* W0 */
 	CNXK_TEL_DICT_INT(d, ctx, sqe_way_mask, w0_);
@@ -595,9 +601,11 @@ nix_sq_ctx_cn9k(void *qctx, struct plt_tel_data *d)
 }
 
 static void
-nix_sq_ctx(void *qctx, struct plt_tel_data *d)
+nix_sq_ctx(volatile void *qctx, struct plt_tel_data *d)
 {
-	struct nix_cn10k_sq_ctx_s *ctx = (struct nix_cn10k_sq_ctx_s *)qctx;
+	volatile struct nix_cn10k_sq_ctx_s *ctx;
+
+	ctx = (volatile struct nix_cn10k_sq_ctx_s *)qctx;
 
 	/* W0 */
 	CNXK_TEL_DICT_INT(d, ctx, sqe_way_mask, w0_);
@@ -698,9 +706,9 @@ cnxk_tel_nix_sq_ctx(struct roc_nix *roc_nix, uint8_t n, struct plt_tel_data *d)
 	}
 
 	if (roc_model_is_cn9k())
-		nix_sq_ctx_cn9k(&qctx, d);
+		nix_sq_ctx_cn9k(qctx, d);
 	else
-		nix_sq_ctx(&qctx, d);
+		nix_sq_ctx(qctx, d);
 
 	return 0;
 }
