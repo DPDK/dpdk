@@ -11,6 +11,10 @@ EXPERIMENTAL {
 	rte_gpu_info_get;
 	rte_gpu_init;
 	rte_gpu_is_valid;
+	rte_gpu_mem_alloc;
+	rte_gpu_mem_free;
+	rte_gpu_mem_register;
+	rte_gpu_mem_unregister;
 };
 
 INTERNAL {

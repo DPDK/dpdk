@@ -104,6 +104,7 @@ New Features
 * **Introduced GPU device class with first features:**
 
   * Device information
+  * Memory management
 
 * **Added new RSS offload types for IPv4/L4 checksum in RSS flow.**
 

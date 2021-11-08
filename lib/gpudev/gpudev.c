@@ -7,6 +7,7 @@
 #include <rte_rwlock.h>
 #include <rte_string_fns.h>
 #include <rte_memzone.h>
+#include <rte_malloc.h>
 #include <rte_errno.h>
 #include <rte_log.h>
 
@@ -523,4 +524,104 @@ rte_gpu_info_get(int16_t dev_id, struct rte_gpu_info *info)
 		return 0;
 	}
 	return GPU_DRV_RET(dev->ops.dev_info_get(dev, info));
+}
+
+void *
+rte_gpu_mem_alloc(int16_t dev_id, size_t size)
+{
+	struct rte_gpu *dev;
+	void *ptr;
+	int ret;
+
+	dev = gpu_get_by_id(dev_id);
+	if (dev == NULL) {
+		GPU_LOG(ERR, "alloc mem for invalid device ID %d", dev_id);
+		rte_errno = ENODEV;
+		return NULL;
+	}
+
+	if (dev->ops.mem_alloc == NULL) {
+		GPU_LOG(ERR, "mem allocation not supported");
+		rte_errno = ENOTSUP;
+		return NULL;
+	}
+
+	if (size == 0) /* dry-run */
+		return NULL;
+
+	ret = dev->ops.mem_alloc(dev, size, &ptr);
+
+	switch (ret) {
+	case 0:
+		return ptr;
+	case -ENOMEM:
+	case -E2BIG:
+		rte_errno = -ret;
+		return NULL;
+	default:
+		rte_errno = -EPERM;
+		return NULL;
+	}
+}
+
+int
+rte_gpu_mem_free(int16_t dev_id, void *ptr)
+{
+	struct rte_gpu *dev;
+
+	dev = gpu_get_by_id(dev_id);
+	if (dev == NULL) {
+		GPU_LOG(ERR, "free mem for invalid device ID %d", dev_id);
+		rte_errno = ENODEV;
+		return -rte_errno;
+	}
+
+	if (dev->ops.mem_free == NULL) {
+		rte_errno = ENOTSUP;
+		return -rte_errno;
+	}
+	return GPU_DRV_RET(dev->ops.mem_free(dev, ptr));
+}
+
+int
+rte_gpu_mem_register(int16_t dev_id, size_t size, void *ptr)
+{
+	struct rte_gpu *dev;
+
+	dev = gpu_get_by_id(dev_id);
+	if (dev == NULL) {
+		GPU_LOG(ERR, "alloc mem for invalid device ID %d", dev_id);
+		rte_errno = ENODEV;
+		return -rte_errno;
+	}
+
+	if (dev->ops.mem_register == NULL) {
+		GPU_LOG(ERR, "mem registration not supported");
+		rte_errno = ENOTSUP;
+		return -rte_errno;
+	}
+
+	if (size == 0 || ptr == NULL) /* dry-run */
+		return -EINVAL;
+
+	return GPU_DRV_RET(dev->ops.mem_register(dev, size, ptr));
+}
+
+int
+rte_gpu_mem_unregister(int16_t dev_id, void *ptr)
+{
+	struct rte_gpu *dev;
+
+	dev = gpu_get_by_id(dev_id);
+	if (dev == NULL) {
+		GPU_LOG(ERR, "unregister mem for invalid device ID %d", dev_id);
+		rte_errno = ENODEV;
+		return -rte_errno;
+	}
+
+	if (dev->ops.mem_unregister == NULL) {
+		rte_errno = ENOTSUP;
+		return -rte_errno;
+	}
+	return GPU_DRV_RET(dev->ops.mem_unregister(dev, ptr));
 }

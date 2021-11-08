@@ -30,6 +30,8 @@ Features
 This library provides a number of features:
 
 - Interoperability with device-specific library through generic handlers.
+- Allocate and free memory on the device.
+- Register CPU memory to make it visible from the device.
 
 
 API Overview
@@ -46,3 +48,20 @@ that will be registered internally by the driver as an additional device (child)
 connected to a physical device (parent).
 Each device (parent or child) is represented through a ID
 required to indicate which device a given operation should be executed on.
+
+Memory Allocation
+~~~~~~~~~~~~~~~~~
+
+gpudev can allocate on an input given GPU device a memory area
+returning the pointer to that memory.
+Later, it's also possible to free that memory with gpudev.
+GPU memory allocated outside of the gpudev library
+(e.g. with GPU-specific library) cannot be freed by the gpudev library.
+
+Memory Registration
+~~~~~~~~~~~~~~~~~~~
+
+gpudev can register a CPU memory area to make it visible from a GPU device.
+Later, it's also possible to unregister that memory with gpudev.
+CPU memory registered outside of the gpudev library
+(e.g. with GPU specific library) cannot be unregistered by the gpudev library.

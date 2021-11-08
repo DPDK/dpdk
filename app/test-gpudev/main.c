@@ -62,6 +62,98 @@ args_parse(int argc, char **argv)
 	}
 }
 
+static int
+alloc_gpu_memory(uint16_t gpu_id)
+{
+	void *ptr_1 = NULL;
+	void *ptr_2 = NULL;
+	size_t buf_bytes = 1024;
+	int ret;
+
+	printf("\n=======> TEST: Allocate GPU memory\n");
+
+	/* Alloc memory on GPU 0 */
+	ptr_1 = rte_gpu_mem_alloc(gpu_id, buf_bytes);
+	if (ptr_1 == NULL) {
+		fprintf(stderr, "rte_gpu_mem_alloc GPU memory returned error\n");
+		return -1;
+	}
+	printf("GPU memory allocated at 0x%p %zdB\n", ptr_1, buf_bytes);
+
+	ptr_2 = rte_gpu_mem_alloc(gpu_id, buf_bytes);
+	if (ptr_2 == NULL) {
+		fprintf(stderr, "rte_gpu_mem_alloc GPU memory returned error\n");
+		return -1;
+	}
+	printf("GPU memory allocated at 0x%p %zdB\n", ptr_2, buf_bytes);
+
+	ret = rte_gpu_mem_free(gpu_id, (uint8_t *)(ptr_1)+0x700);
+	if (ret < 0) {
+		printf("GPU memory 0x%p + 0x700 NOT freed because of memory address not recognized by driver\n", ptr_1);
+	} else {
+		fprintf(stderr, "rte_gpu_mem_free erroneously freed GPU memory 0x%p + 0x700\n", ptr_1);
+		return -1;
+	}
+
+	ret = rte_gpu_mem_free(gpu_id, ptr_2);
+	if (ret < 0) {
+		fprintf(stderr, "rte_gpu_mem_free returned error %d\n", ret);
+		return -1;
+	}
+	printf("GPU memory 0x%p freed\n", ptr_2);
+
+	ret = rte_gpu_mem_free(gpu_id, ptr_1);
+	if (ret < 0) {
+		fprintf(stderr, "rte_gpu_mem_free returned error %d\n", ret);
+		return -1;
+	}
+	printf("GPU memory 0x%p freed\n", ptr_1);
+
+	return 0;
+}
+
+static int
+register_cpu_memory(uint16_t gpu_id)
+{
+	void *ptr = NULL;
+	size_t buf_bytes = 1024;
+	int ret;
+
+	printf("\n=======> TEST: Register CPU memory\n");
+
+	/* Alloc memory on CPU visible from GPU 0 */
+	ptr = rte_zmalloc(NULL, buf_bytes, 0);
+	if (ptr == NULL) {
+		fprintf(stderr, "Failed to allocate CPU memory.\n");
+		return -1;
+	}
+
+	ret = rte_gpu_mem_register(gpu_id, buf_bytes, ptr);
+	if (ret < 0) {
+		fprintf(stderr, "rte_gpu_mem_register CPU memory returned error %d\n", ret);
+		return -1;
+	}
+	printf("CPU memory registered at 0x%p %zdB\n", ptr, buf_bytes);
+
+	ret = rte_gpu_mem_unregister(gpu_id, (uint8_t *)(ptr)+0x700);
+	if (ret < 0) {
+		printf("CPU memory 0x%p + 0x700 NOT unregistered because of memory address not recognized by driver\n", ptr);
+	} else {
+		fprintf(stderr, "rte_gpu_mem_free erroneously freed GPU memory 0x%p + 0x700\n", ptr);
+		return -1;
+	}
+	printf("CPU memory 0x%p unregistered\n", ptr);
+
+	ret = rte_gpu_mem_unregister(gpu_id, ptr);
+	if (ret < 0) {
+		fprintf(stderr, "rte_gpu_mem_unregister returned error %d\n", ret);
+		return -1;
+	}
+	printf("CPU memory 0x%p unregistered\n", ptr);
+
+	return 0;
+}
+
 int
 main(int argc, char **argv)
 {
@@ -98,6 +190,19 @@ main(int argc, char **argv)
 			);
 	}
 	printf("\n\n");
+
+	if (nb_gpus == 0) {
+		fprintf(stderr, "Need at least one GPU on the system to run the example\n");
+		return EXIT_FAILURE;
+	}
+
+	gpu_id = 0;
+
+	/**
+	 * Memory tests
+	 */
+	alloc_gpu_memory(gpu_id);
+	register_cpu_memory(gpu_id);
 
 	/* clean up the EAL */
 	rte_eal_cleanup();

@@ -9,6 +9,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+#include <rte_bitops.h>
 #include <rte_compat.h>
 
 /**
@@ -291,6 +292,100 @@ int rte_gpu_callback_unregister(int16_t dev_id, enum rte_gpu_event event,
  */
 __rte_experimental
 int rte_gpu_info_get(int16_t dev_id, struct rte_gpu_info *info);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Allocate a chunk of memory in the device.
+ *
+ * @param dev_id
+ *   Device ID requiring allocated memory.
+ * @param size
+ *   Number of bytes to allocate.
+ *   Requesting 0 will do nothing.
+ *
+ * @return
+ *   A pointer to the allocated memory, otherwise NULL and rte_errno is set:
+ *   - ENODEV if invalid dev_id
+ *   - EINVAL if reserved flags
+ *   - ENOTSUP if operation not supported by the driver
+ *   - E2BIG if size is higher than limit
+ *   - ENOMEM if out of space
+ *   - EPERM if driver error
+ */
+__rte_experimental
+void *rte_gpu_mem_alloc(int16_t dev_id, size_t size)
+__rte_alloc_size(2);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Deallocate a chunk of memory allocated with rte_gpu_mem_alloc().
+ *
+ * @param dev_id
+ *   Reference device ID.
+ * @param ptr
+ *   Pointer to the memory area to be deallocated.
+ *   NULL is a no-op accepted value.
+ *
+ * @return
+ *   0 on success, -rte_errno otherwise:
+ *   - ENODEV if invalid dev_id
+ *   - ENOTSUP if operation not supported by the driver
+ *   - EPERM if driver error
+ */
+__rte_experimental
+int rte_gpu_mem_free(int16_t dev_id, void *ptr);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Register a chunk of memory on the CPU usable by the device.
+ *
+ * @param dev_id
+ *   Device ID requiring allocated memory.
+ * @param size
+ *   Number of bytes to allocate.
+ *   Requesting 0 will do nothing.
+ * @param ptr
+ *   Pointer to the memory area to be registered.
+ *   NULL is a no-op accepted value.
+
+ * @return
+ *   A pointer to the allocated memory, otherwise NULL and rte_errno is set:
+ *   - ENODEV if invalid dev_id
+ *   - EINVAL if reserved flags
+ *   - ENOTSUP if operation not supported by the driver
+ *   - E2BIG if size is higher than limit
+ *   - ENOMEM if out of space
+ *   - EPERM if driver error
+ */
+__rte_experimental
+int rte_gpu_mem_register(int16_t dev_id, size_t size, void *ptr);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Deregister a chunk of memory previously registered with rte_gpu_mem_register()
+ *
+ * @param dev_id
+ *   Reference device ID.
+ * @param ptr
+ *   Pointer to the memory area to be unregistered.
+ *   NULL is a no-op accepted value.
+ *
+ * @return
+ *   0 on success, -rte_errno otherwise:
+ *   - ENODEV if invalid dev_id
+ *   - ENOTSUP if operation not supported by the driver
+ *   - EPERM if driver error
+ */
+__rte_experimental
+int rte_gpu_mem_unregister(int16_t dev_id, void *ptr);
 
 #ifdef __cplusplus
 }
