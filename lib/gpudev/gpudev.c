@@ -625,3 +625,22 @@ rte_gpu_mem_unregister(int16_t dev_id, void *ptr)
 	}
 	return GPU_DRV_RET(dev->ops.mem_unregister(dev, ptr));
 }
+
+int
+rte_gpu_wmb(int16_t dev_id)
+{
+	struct rte_gpu *dev;
+
+	dev = gpu_get_by_id(dev_id);
+	if (dev == NULL) {
+		GPU_LOG(ERR, "memory barrier for invalid device ID %d", dev_id);
+		rte_errno = ENODEV;
+		return -rte_errno;
+	}
+
+	if (dev->ops.wmb == NULL) {
+		rte_errno = ENOTSUP;
+		return -rte_errno;
+	}
+	return GPU_DRV_RET(dev->ops.wmb(dev));
+}

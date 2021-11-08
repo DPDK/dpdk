@@ -387,6 +387,24 @@ int rte_gpu_mem_register(int16_t dev_id, size_t size, void *ptr);
 __rte_experimental
 int rte_gpu_mem_unregister(int16_t dev_id, void *ptr);
 
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Enforce a GPU write memory barrier.
+ *
+ * @param dev_id
+ *   Reference device ID.
+ *
+ * @return
+ *   0 on success, -rte_errno otherwise:
+ *   - ENODEV if invalid dev_id
+ *   - ENOTSUP if operation not supported by the driver
+ *   - EPERM if driver error
+ */
+__rte_experimental
+int rte_gpu_wmb(int16_t dev_id);
+
 #ifdef __cplusplus
 }
 #endif

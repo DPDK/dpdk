@@ -65,3 +65,11 @@ gpudev can register a CPU memory area to make it visible from a GPU device.
 Later, it's also possible to unregister that memory with gpudev.
 CPU memory registered outside of the gpudev library
 (e.g. with GPU specific library) cannot be unregistered by the gpudev library.
+
+Memory Barrier
+~~~~~~~~~~~~~~
+
+Some GPU drivers may need, under certain conditions,
+to enforce the coherency of external devices writes (e.g. NIC receiving packets)
+into the GPU memory.
+gpudev abstracts and exposes this capability.
