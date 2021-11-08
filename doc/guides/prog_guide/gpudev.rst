@@ -102,3 +102,122 @@ the list of mbuf payload addresses where received packet have been stored.
 The ``rte_gpu_comm_*()`` functions are responsible to create a list of packets
 that can be populated with receive mbuf payload addresses
 and communicated to the task running on the GPU.
+
+
+CUDA Example
+------------
+
+In the example below, there is a pseudo-code to give an example
+about how to use functions in this library in case of a CUDA application.
+
+.. code-block:: c
+
+   //////////////////////////////////////////////////////////////////////////
+   ///// gpudev library + CUDA functions
+   //////////////////////////////////////////////////////////////////////////
+   #define GPU_PAGE_SHIFT 16
+   #define GPU_PAGE_SIZE (1UL << GPU_PAGE_SHIFT)
+
+   int main()
+   {
+       struct rte_gpu_flag quit_flag;
+       struct rte_gpu_comm_list *comm_list;
+       int nb_rx = 0;
+       int comm_list_entry = 0;
+       struct rte_mbuf *rx_mbufs[max_rx_mbufs];
+       cudaStream_t cstream;
+       struct rte_mempool *mpool_payload, *mpool_header;
+       struct rte_pktmbuf_extmem ext_mem;
+       int16_t dev_id;
+       int16_t port_id = 0;
+
+       /* Initialize CUDA objects (cstream, context, etc..). */
+       /* Use gpudev library to register a new CUDA context if any. */
+
+       /* Let's assume the application wants to use the default context of the GPU device 0. */
+       dev_id = 0;
+
+       /* Create an external memory mempool using memory allocated on the GPU. */
+       ext_mem.elt_size = mbufs_headroom_size;
+       ext_mem.buf_len = RTE_ALIGN_CEIL(mbufs_num * ext_mem.elt_size, GPU_PAGE_SIZE);
+       ext_mem.buf_iova = RTE_BAD_IOVA;
+       ext_mem.buf_ptr = rte_gpu_mem_alloc(dev_id, ext_mem.buf_len, 0);
+       rte_extmem_register(ext_mem.buf_ptr, ext_mem.buf_len, NULL, ext_mem.buf_iova, GPU_PAGE_SIZE);
+       rte_dev_dma_map(rte_eth_devices[port_id].device,
+               ext_mem.buf_ptr, ext_mem.buf_iova, ext_mem.buf_len);
+       mpool_payload = rte_pktmbuf_pool_create_extbuf("gpu_mempool", mbufs_num,
+                                                      0, 0, ext_mem.elt_size,
+                                                      rte_socket_id(), &ext_mem, 1);
+
+       /*
+        * Create CPU - device communication flag.
+        * With this flag, the CPU can tell to the CUDA kernel to exit from the main loop.
+        */
+       rte_gpu_comm_create_flag(dev_id, &quit_flag, RTE_GPU_COMM_FLAG_CPU);
+       rte_gpu_comm_set_flag(&quit_flag , 0);
+
+       /*
+        * Create CPU - device communication list.
+        * Each entry of this list will be populated by the CPU
+        * with a new set of received mbufs that the CUDA kernel has to process.
+        */
+       comm_list = rte_gpu_comm_create_list(dev_id, num_entries);
+
+       /* A very simple CUDA kernel with just 1 CUDA block and RTE_GPU_COMM_LIST_PKTS_MAX CUDA threads. */
+       cuda_kernel_packet_processing<<<1, RTE_GPU_COMM_LIST_PKTS_MAX, 0, cstream>>>(quit_flag->ptr, comm_list, num_entries, ...);
+
+       /*
+        * For simplicity, the CPU here receives only 2 bursts of mbufs.
+        * In a real application, network activity and device processing should overlap.
+        */
+       nb_rx = rte_eth_rx_burst(port_id, queue_id, &(rx_mbufs[0]), max_rx_mbufs);
+       rte_gpu_comm_populate_list_pkts(comm_list[0], rx_mbufs, nb_rx);
+       nb_rx = rte_eth_rx_burst(port_id, queue_id, &(rx_mbufs[0]), max_rx_mbufs);
+       rte_gpu_comm_populate_list_pkts(comm_list[1], rx_mbufs, nb_rx);
+
+       /*
+        * CPU waits for the completion of the packets' processing on the CUDA kernel
+        * and then it does a cleanup of the received mbufs.
+        */
+       while (rte_gpu_comm_cleanup_list(comm_list[0]));
+       while (rte_gpu_comm_cleanup_list(comm_list[1]));
+
+       /* CPU notifies the CUDA kernel that it has to terminate. */
+       rte_gpu_comm_set_flag(&quit_flag, 1);
+
+       /* gpudev objects cleanup/destruction */
+       rte_gpu_mem_free(dev_id, ext_mem.buf_len);
+
+       return 0;
+   }
+
+   //////////////////////////////////////////////////////////////////////////
+   ///// CUDA kernel
+   //////////////////////////////////////////////////////////////////////////
+
+   void cuda_kernel(uint32_t * quit_flag_ptr, struct rte_gpu_comm_list *comm_list, int comm_list_entries)
+   {
+       int comm_list_index = 0;
+       struct rte_gpu_comm_pkt *pkt_list = NULL;
+
+       /* Do some pre-processing operations. */
+
+       /* GPU kernel keeps checking this flag to know if it has to quit or wait for more packets. */
+       while (*quit_flag_ptr == 0) {
+           if (comm_list[comm_list_index]->status != RTE_GPU_COMM_LIST_READY)
+               continue;
+
+           if (threadIdx.x < comm_list[comm_list_index]->num_pkts)
+           {
+               /* Each CUDA thread processes a different packet. */
+               packet_processing(comm_list[comm_list_index]->addr, comm_list[comm_list_index]->size, ..);
+           }
+           __threadfence();
+           __syncthreads();
+
+           /* Wait for new packets on the next communication list entry. */
+           comm_list_index = (comm_list_index+1) % comm_list_entries;
+       }
+
+       /* Do some post-processing operations. */
+   }
