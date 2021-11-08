@@ -6,6 +6,7 @@
 #include <rte_tailq.h>
 #include <rte_rwlock.h>
 #include <rte_string_fns.h>
+#include <rte_memzone.h>
 #include <rte_errno.h>
 #include <rte_log.h>
 
@@ -28,6 +29,12 @@ static struct rte_gpu *gpus;
 static int16_t gpu_max;
 /* Number of currently valid devices */
 static int16_t gpu_count;
+
+/* Shared memory between processes. */
+static const char *GPU_MEMZONE = "rte_gpu_shared";
+static struct {
+	__extension__ struct rte_gpu_mpshared gpus[0];
+} *gpu_shared_mem;
 
 /* Event callback object */
 struct rte_gpu_callback {
@@ -76,7 +83,7 @@ bool
 rte_gpu_is_valid(int16_t dev_id)
 {
 	if (dev_id >= 0 && dev_id < gpu_max &&
-		gpus[dev_id].state == RTE_GPU_STATE_INITIALIZED)
+		gpus[dev_id].process_state == RTE_GPU_STATE_INITIALIZED)
 		return true;
 	return false;
 }
@@ -86,7 +93,7 @@ gpu_match_parent(int16_t dev_id, int16_t parent)
 {
 	if (parent == RTE_GPU_ID_ANY)
 		return true;
-	return gpus[dev_id].info.parent == parent;
+	return gpus[dev_id].mpshared->info.parent == parent;
 }
 
 int16_t
@@ -95,7 +102,7 @@ rte_gpu_find_next(int16_t dev_id, int16_t parent)
 	if (dev_id < 0)
 		dev_id = 0;
 	while (dev_id < gpu_max &&
-			(gpus[dev_id].state == RTE_GPU_STATE_UNUSED ||
+			(gpus[dev_id].process_state == RTE_GPU_STATE_UNUSED ||
 			!gpu_match_parent(dev_id, parent)))
 		dev_id++;
 
@@ -110,7 +117,7 @@ gpu_find_free_id(void)
 	int16_t dev_id;
 
 	for (dev_id = 0; dev_id < gpu_max; dev_id++) {
-		if (gpus[dev_id].state == RTE_GPU_STATE_UNUSED)
+		if (gpus[dev_id].process_state == RTE_GPU_STATE_UNUSED)
 			return dev_id;
 	}
 	return RTE_GPU_ID_NONE;
@@ -137,10 +144,33 @@ rte_gpu_get_by_name(const char *name)
 
 	RTE_GPU_FOREACH(dev_id) {
 		dev = &gpus[dev_id];
-		if (strncmp(name, dev->name, RTE_DEV_NAME_MAX_LEN) == 0)
+		if (strncmp(name, dev->mpshared->name, RTE_DEV_NAME_MAX_LEN) == 0)
 			return dev;
 	}
 	return NULL;
+}
+
+static int
+gpu_shared_mem_init(void)
+{
+	const struct rte_memzone *memzone;
+
+	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
+		memzone = rte_memzone_reserve(GPU_MEMZONE,
+				sizeof(*gpu_shared_mem) +
+				sizeof(*gpu_shared_mem->gpus) * gpu_max,
+				SOCKET_ID_ANY, 0);
+	} else {
+		memzone = rte_memzone_lookup(GPU_MEMZONE);
+	}
+	if (memzone == NULL) {
+		GPU_LOG(ERR, "cannot initialize shared memory");
+		rte_errno = ENOMEM;
+		return -rte_errno;
+	}
+
+	gpu_shared_mem = memzone->addr;
+	return 0;
 }
 
 struct rte_gpu *
@@ -164,6 +194,10 @@ rte_gpu_allocate(const char *name)
 	if (gpus == NULL && rte_gpu_init(RTE_GPU_DEFAULT_MAX) < 0)
 		return NULL;
 
+	/* initialize shared memory before adding first device */
+	if (gpu_shared_mem == NULL && gpu_shared_mem_init() < 0)
+		return NULL;
+
 	if (rte_gpu_get_by_name(name) != NULL) {
 		GPU_LOG(ERR, "device with name %s already exists", name);
 		rte_errno = EEXIST;
@@ -179,19 +213,72 @@ rte_gpu_allocate(const char *name)
 	dev = &gpus[dev_id];
 	memset(dev, 0, sizeof(*dev));
 
-	if (rte_strscpy(dev->name, name, RTE_DEV_NAME_MAX_LEN) < 0) {
+	dev->mpshared = &gpu_shared_mem->gpus[dev_id];
+	memset(dev->mpshared, 0, sizeof(*dev->mpshared));
+
+	if (rte_strscpy(dev->mpshared->name, name, RTE_DEV_NAME_MAX_LEN) < 0) {
 		GPU_LOG(ERR, "device name too long: %s", name);
 		rte_errno = ENAMETOOLONG;
 		return NULL;
 	}
-	dev->info.name = dev->name;
-	dev->info.dev_id = dev_id;
-	dev->info.numa_node = -1;
-	dev->info.parent = RTE_GPU_ID_NONE;
+	dev->mpshared->info.name = dev->mpshared->name;
+	dev->mpshared->info.dev_id = dev_id;
+	dev->mpshared->info.numa_node = -1;
+	dev->mpshared->info.parent = RTE_GPU_ID_NONE;
 	TAILQ_INIT(&dev->callbacks);
+	__atomic_fetch_add(&dev->mpshared->process_refcnt, 1, __ATOMIC_RELAXED);
 
 	gpu_count++;
 	GPU_LOG(DEBUG, "new device %s (id %d) of total %d",
+			name, dev_id, gpu_count);
+	return dev;
+}
+
+struct rte_gpu *
+rte_gpu_attach(const char *name)
+{
+	int16_t dev_id;
+	struct rte_gpu *dev;
+	struct rte_gpu_mpshared *shared_dev;
+
+	if (rte_eal_process_type() != RTE_PROC_SECONDARY) {
+		GPU_LOG(ERR, "only secondary process can attach device");
+		rte_errno = EPERM;
+		return NULL;
+	}
+	if (name == NULL) {
+		GPU_LOG(ERR, "attach device without a name");
+		rte_errno = EINVAL;
+		return NULL;
+	}
+
+	/* implicit initialization of library before adding first device */
+	if (gpus == NULL && rte_gpu_init(RTE_GPU_DEFAULT_MAX) < 0)
+		return NULL;
+
+	/* initialize shared memory before adding first device */
+	if (gpu_shared_mem == NULL && gpu_shared_mem_init() < 0)
+		return NULL;
+
+	for (dev_id = 0; dev_id < gpu_max; dev_id++) {
+		shared_dev = &gpu_shared_mem->gpus[dev_id];
+		if (strncmp(name, shared_dev->name, RTE_DEV_NAME_MAX_LEN) == 0)
+			break;
+	}
+	if (dev_id >= gpu_max) {
+		GPU_LOG(ERR, "device with name %s not found", name);
+		rte_errno = ENOENT;
+		return NULL;
+	}
+	dev = &gpus[dev_id];
+	memset(dev, 0, sizeof(*dev));
+
+	TAILQ_INIT(&dev->callbacks);
+	dev->mpshared = shared_dev;
+	__atomic_fetch_add(&dev->mpshared->process_refcnt, 1, __ATOMIC_RELAXED);
+
+	gpu_count++;
+	GPU_LOG(DEBUG, "attached device %s (id %d) of total %d",
 			name, dev_id, gpu_count);
 	return dev;
 }
@@ -211,11 +298,11 @@ rte_gpu_add_child(const char *name, int16_t parent, uint64_t child_context)
 	if (dev == NULL)
 		return -rte_errno;
 
-	dev->info.parent = parent;
-	dev->info.context = child_context;
+	dev->mpshared->info.parent = parent;
+	dev->mpshared->info.context = child_context;
 
 	rte_gpu_complete_new(dev);
-	return dev->info.dev_id;
+	return dev->mpshared->info.dev_id;
 }
 
 void
@@ -224,8 +311,7 @@ rte_gpu_complete_new(struct rte_gpu *dev)
 	if (dev == NULL)
 		return;
 
-	dev->state = RTE_GPU_STATE_INITIALIZED;
-	dev->state = RTE_GPU_STATE_INITIALIZED;
+	dev->process_state = RTE_GPU_STATE_INITIALIZED;
 	rte_gpu_notify(dev, RTE_GPU_EVENT_NEW);
 }
 
@@ -238,7 +324,7 @@ rte_gpu_release(struct rte_gpu *dev)
 		rte_errno = ENODEV;
 		return -rte_errno;
 	}
-	dev_id = dev->info.dev_id;
+	dev_id = dev->mpshared->info.dev_id;
 	RTE_GPU_FOREACH_CHILD(child, dev_id) {
 		GPU_LOG(ERR, "cannot release device %d with child %d",
 				dev_id, child);
@@ -247,11 +333,12 @@ rte_gpu_release(struct rte_gpu *dev)
 	}
 
 	GPU_LOG(DEBUG, "free device %s (id %d)",
-			dev->info.name, dev->info.dev_id);
+			dev->mpshared->info.name, dev->mpshared->info.dev_id);
 	rte_gpu_notify(dev, RTE_GPU_EVENT_DEL);
 
 	gpu_free_callbacks(dev);
-	dev->state = RTE_GPU_STATE_UNUSED;
+	dev->process_state = RTE_GPU_STATE_UNUSED;
+	__atomic_fetch_sub(&dev->mpshared->process_refcnt, 1, __ATOMIC_RELAXED);
 	gpu_count--;
 
 	return 0;
@@ -404,7 +491,7 @@ rte_gpu_notify(struct rte_gpu *dev, enum rte_gpu_event event)
 	int16_t dev_id;
 	struct rte_gpu_callback *callback;
 
-	dev_id = dev->info.dev_id;
+	dev_id = dev->mpshared->info.dev_id;
 	rte_rwlock_read_lock(&gpu_callback_lock);
 	TAILQ_FOREACH(callback, &dev->callbacks, next) {
 		if (callback->event != event || callback->function == NULL)
@@ -432,7 +519,7 @@ rte_gpu_info_get(int16_t dev_id, struct rte_gpu_info *info)
 	}
 
 	if (dev->ops.dev_info_get == NULL) {
-		*info = dev->info;
+		*info = dev->mpshared->info;
 		return 0;
 	}
 	return GPU_DRV_RET(dev->ops.dev_info_get(dev, info));

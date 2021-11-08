@@ -35,19 +35,28 @@ struct rte_gpu_ops {
 	rte_gpu_close_t *dev_close;
 };
 
+struct rte_gpu_mpshared {
+	/* Unique identifier name. */
+	char name[RTE_DEV_NAME_MAX_LEN]; /* Updated by this library. */
+	/* Driver-specific private data shared in multi-process. */
+	void *dev_private;
+	/* Device info structure. */
+	struct rte_gpu_info info;
+	/* Counter of processes using the device. */
+	uint16_t process_refcnt; /* Updated by this library. */
+};
+
 struct rte_gpu {
 	/* Backing device. */
 	struct rte_device *device;
-	/* Unique identifier name. */
-	char name[RTE_DEV_NAME_MAX_LEN]; /* Updated by this library. */
-	/* Device info structure. */
-	struct rte_gpu_info info;
+	/* Data shared between processes. */
+	struct rte_gpu_mpshared *mpshared;
 	/* Driver functions. */
 	struct rte_gpu_ops ops;
 	/* Event callback list. */
 	TAILQ_HEAD(rte_gpu_callback_list, rte_gpu_callback) callbacks;
 	/* Current state (used or not) in the running process. */
-	enum rte_gpu_state state; /* Updated by this library. */
+	enum rte_gpu_state process_state; /* Updated by this library. */
 	/* Driver-specific private data for the running process. */
 	void *process_private;
 } __rte_cache_aligned;
@@ -55,15 +64,19 @@ struct rte_gpu {
 __rte_internal
 struct rte_gpu *rte_gpu_get_by_name(const char *name);
 
-/* First step of initialization */
+/* First step of initialization in primary process. */
 __rte_internal
 struct rte_gpu *rte_gpu_allocate(const char *name);
+
+/* First step of initialization in secondary process. */
+__rte_internal
+struct rte_gpu *rte_gpu_attach(const char *name);
 
 /* Last step of initialization. */
 __rte_internal
 void rte_gpu_complete_new(struct rte_gpu *dev);
 
-/* Last step of removal. */
+/* Last step of removal (primary or secondary process). */
 __rte_internal
 int rte_gpu_release(struct rte_gpu *dev);
 
