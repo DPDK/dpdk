@@ -152,6 +152,9 @@ def generate_overview_table(output_filename, table_id, section, table_name, titl
         name = ini_filename[:-4]
         name = name.replace('_vf', 'vf')
         pmd_names.append(name)
+    if not pmd_names:
+        # Add an empty column if table is empty (required by RST syntax)
+        pmd_names.append(' ')
 
     # Pad the table header names.
     max_header_len = len(max(pmd_names, key=len))
@@ -392,6 +395,11 @@ def setup(app):
     generate_overview_table(table_file, 1,
                             'Features',
                             'Features availability in bbdev drivers',
+                            'Feature')
+    table_file = dirname(__file__) + '/gpus/overview_feature_table.txt'
+    generate_overview_table(table_file, 1,
+                            'Features',
+                            'Features availability in GPU drivers',
                             'Feature')
 
     if LooseVersion(sphinx_version) < LooseVersion('1.3.1'):

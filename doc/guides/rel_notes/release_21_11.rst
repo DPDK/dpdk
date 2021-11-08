@@ -101,6 +101,10 @@ New Features
   Added ``rte_eth_macaddrs_get`` to allow user to retrieve all Ethernet
   addresses assigned to given ethernet port.
 
+* **Introduced GPU device class with first features:**
+
+  * Device information
+
 * **Added new RSS offload types for IPv4/L4 checksum in RSS flow.**
 
   Added macros ETH_RSS_IPV4_CHKSUM and ETH_RSS_L4_CHKSUM, now IPv4 and

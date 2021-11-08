@@ -34,6 +34,7 @@ libraries = [
         'distributor',
         'efd',
         'eventdev',
+        'gpudev',
         'gro',
         'gso',
         'ip_frag',

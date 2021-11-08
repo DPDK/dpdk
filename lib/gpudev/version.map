@@ -1,0 +1,20 @@
+EXPERIMENTAL {
+	global:
+
+	# added in 21.11
+	rte_gpu_close;
+	rte_gpu_count_avail;
+	rte_gpu_find_next;
+	rte_gpu_info_get;
+	rte_gpu_init;
+	rte_gpu_is_valid;
+};
+
+INTERNAL {
+	global:
+
+	rte_gpu_allocate;
+	rte_gpu_complete_new;
+	rte_gpu_get_by_name;
+	rte_gpu_release;
+};

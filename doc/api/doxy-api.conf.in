@@ -41,6 +41,7 @@ INPUT                   = @TOPDIR@/doc/api/doxy-api-index.md \
                           @TOPDIR@/lib/eventdev \
                           @TOPDIR@/lib/fib \
                           @TOPDIR@/lib/flow_classify \
+                          @TOPDIR@/lib/gpudev \
                           @TOPDIR@/lib/graph \
                           @TOPDIR@/lib/gro \
                           @TOPDIR@/lib/gso \

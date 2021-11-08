@@ -15,6 +15,7 @@ doc/guides/compressdevs/overview_feature_table.txt
 doc/guides/regexdevs/overview_feature_table.txt
 doc/guides/vdpadevs/overview_feature_table.txt
 doc/guides/bbdevs/overview_feature_table.txt
+doc/guides/gpus/overview_feature_table.txt
 
 # ignore generated ctags/cscope files
 cscope.out.po

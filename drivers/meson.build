@@ -19,6 +19,7 @@ subdirs = [
         'vdpa',           # depends on common, bus and mempool.
         'event',          # depends on common, bus, mempool and net.
         'baseband',       # depends on common and bus.
+        'gpu',            # depends on common and bus.
 ]
 
 if meson.is_cross_build()

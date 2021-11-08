@@ -467,6 +467,13 @@ M: Bruce Richardson <bruce.richardson@intel.com>
 F: examples/dma/
 F: doc/guides/sample_app_ug/dma.rst
 
+General-Purpose Graphics Processing Unit (GPU) API - EXPERIMENTAL
+M: Elena Agostini <eagostini@nvidia.com>
+F: lib/gpudev/
+F: doc/guides/prog_guide/gpudev.rst
+F: doc/guides/gpus/features/default.ini
+F: app/test-gpudev/
+
 Eventdev API
 M: Jerin Jacob <jerinj@marvell.com>
 T: git://dpdk.org/next/dpdk-next-eventdev
