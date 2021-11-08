@@ -31,6 +31,11 @@ extern "C" {
 
 /** Empty device ID. */
 #define RTE_GPU_ID_NONE -1
+/** Catch-all device ID. */
+#define RTE_GPU_ID_ANY INT16_MIN
+
+/** Catch-all callback data. */
+#define RTE_GPU_CALLBACK_ANY_DATA ((void *)-1)
 
 /** Store device info. */
 struct rte_gpu_info {
@@ -45,6 +50,18 @@ struct rte_gpu_info {
 	/* Local NUMA memory ID. -1 if unknown. */
 	int16_t numa_node;
 };
+
+/** Flags passed in notification callback. */
+enum rte_gpu_event {
+	/** Device is just initialized. */
+	RTE_GPU_EVENT_NEW,
+	/** Device is going to be released. */
+	RTE_GPU_EVENT_DEL,
+};
+
+/** Prototype of event callback function. */
+typedef void (rte_gpu_callback_t)(int16_t dev_id,
+		enum rte_gpu_event event, void *user_data);
 
 /**
  * @warning
@@ -140,6 +157,59 @@ int16_t rte_gpu_find_next(int16_t dev_id);
  */
 __rte_experimental
 int rte_gpu_close(int16_t dev_id);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Register a function as event callback.
+ * A function may be registered multiple times for different events.
+ *
+ * @param dev_id
+ *   Device ID to get notified about.
+ *   RTE_GPU_ID_ANY means all devices.
+ * @param event
+ *   Device event to be registered for.
+ * @param function
+ *   Callback function to be called on event.
+ * @param user_data
+ *   Optional parameter passed in the callback.
+ *
+ * @return
+ *   0 on success, -rte_errno otherwise:
+ *   - ENODEV if invalid dev_id
+ *   - EINVAL if NULL function
+ *   - ENOMEM if out of memory
+ */
+__rte_experimental
+int rte_gpu_callback_register(int16_t dev_id, enum rte_gpu_event event,
+		rte_gpu_callback_t *function, void *user_data);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Unregister for an event.
+ *
+ * @param dev_id
+ *   Device ID to be silenced.
+ *   RTE_GPU_ID_ANY means all devices.
+ * @param event
+ *   Registered event.
+ * @param function
+ *   Registered function.
+ * @param user_data
+ *   Optional parameter as registered.
+ *   RTE_GPU_CALLBACK_ANY_DATA is a catch-all.
+ *
+ * @return
+ *   0 on success, -rte_errno otherwise:
+ *   - ENODEV if invalid dev_id
+ *   - EINVAL if NULL function
+ */
+__rte_experimental
+int rte_gpu_callback_unregister(int16_t dev_id, enum rte_gpu_event event,
+		rte_gpu_callback_t *function, void *user_data);
 
 /**
  * @warning

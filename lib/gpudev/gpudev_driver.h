@@ -12,6 +12,7 @@
 #define RTE_GPUDEV_DRIVER_H
 
 #include <stdint.h>
+#include <sys/queue.h>
 
 #include <rte_dev.h>
 
@@ -43,6 +44,8 @@ struct rte_gpu {
 	struct rte_gpu_info info;
 	/* Driver functions. */
 	struct rte_gpu_ops ops;
+	/* Event callback list. */
+	TAILQ_HEAD(rte_gpu_callback_list, rte_gpu_callback) callbacks;
 	/* Current state (used or not) in the running process. */
 	enum rte_gpu_state state; /* Updated by this library. */
 	/* Driver-specific private data for the running process. */
@@ -63,5 +66,9 @@ void rte_gpu_complete_new(struct rte_gpu *dev);
 /* Last step of removal. */
 __rte_internal
 int rte_gpu_release(struct rte_gpu *dev);
+
+/* Call registered callbacks. No multi-process event. */
+__rte_internal
+void rte_gpu_notify(struct rte_gpu *dev, enum rte_gpu_event);
 
 #endif /* RTE_GPUDEV_DRIVER_H */

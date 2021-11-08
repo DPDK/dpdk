@@ -3,6 +3,8 @@
  */
 
 #include <rte_eal.h>
+#include <rte_tailq.h>
+#include <rte_rwlock.h>
 #include <rte_string_fns.h>
 #include <rte_errno.h>
 #include <rte_log.h>
@@ -26,6 +28,16 @@ static struct rte_gpu *gpus;
 static int16_t gpu_max;
 /* Number of currently valid devices */
 static int16_t gpu_count;
+
+/* Event callback object */
+struct rte_gpu_callback {
+	TAILQ_ENTRY(rte_gpu_callback) next;
+	rte_gpu_callback_t *function;
+	void *user_data;
+	enum rte_gpu_event event;
+};
+static rte_rwlock_t gpu_callback_lock = RTE_RWLOCK_INITIALIZER;
+static void gpu_free_callbacks(struct rte_gpu *dev);
 
 int
 rte_gpu_init(size_t dev_max)
@@ -166,6 +178,7 @@ rte_gpu_allocate(const char *name)
 	dev->info.name = dev->name;
 	dev->info.dev_id = dev_id;
 	dev->info.numa_node = -1;
+	TAILQ_INIT(&dev->callbacks);
 
 	gpu_count++;
 	GPU_LOG(DEBUG, "new device %s (id %d) of total %d",
@@ -180,6 +193,8 @@ rte_gpu_complete_new(struct rte_gpu *dev)
 		return;
 
 	dev->state = RTE_GPU_STATE_INITIALIZED;
+	dev->state = RTE_GPU_STATE_INITIALIZED;
+	rte_gpu_notify(dev, RTE_GPU_EVENT_NEW);
 }
 
 int
@@ -192,6 +207,9 @@ rte_gpu_release(struct rte_gpu *dev)
 
 	GPU_LOG(DEBUG, "free device %s (id %d)",
 			dev->info.name, dev->info.dev_id);
+	rte_gpu_notify(dev, RTE_GPU_EVENT_DEL);
+
+	gpu_free_callbacks(dev);
 	dev->state = RTE_GPU_STATE_UNUSED;
 	gpu_count--;
 
@@ -222,6 +240,137 @@ rte_gpu_close(int16_t dev_id)
 
 	rte_errno = -firsterr;
 	return firsterr;
+}
+
+int
+rte_gpu_callback_register(int16_t dev_id, enum rte_gpu_event event,
+		rte_gpu_callback_t *function, void *user_data)
+{
+	int16_t next_dev, last_dev;
+	struct rte_gpu_callback_list *callbacks;
+	struct rte_gpu_callback *callback;
+
+	if (!rte_gpu_is_valid(dev_id) && dev_id != RTE_GPU_ID_ANY) {
+		GPU_LOG(ERR, "register callback of invalid ID %d", dev_id);
+		rte_errno = ENODEV;
+		return -rte_errno;
+	}
+	if (function == NULL) {
+		GPU_LOG(ERR, "cannot register callback without function");
+		rte_errno = EINVAL;
+		return -rte_errno;
+	}
+
+	if (dev_id == RTE_GPU_ID_ANY) {
+		next_dev = 0;
+		last_dev = gpu_max - 1;
+	} else {
+		next_dev = last_dev = dev_id;
+	}
+
+	rte_rwlock_write_lock(&gpu_callback_lock);
+	do {
+		callbacks = &gpus[next_dev].callbacks;
+
+		/* check if not already registered */
+		TAILQ_FOREACH(callback, callbacks, next) {
+			if (callback->event == event &&
+					callback->function == function &&
+					callback->user_data == user_data) {
+				GPU_LOG(INFO, "callback already registered");
+				return 0;
+			}
+		}
+
+		callback = malloc(sizeof(*callback));
+		if (callback == NULL) {
+			GPU_LOG(ERR, "cannot allocate callback");
+			return -ENOMEM;
+		}
+		callback->function = function;
+		callback->user_data = user_data;
+		callback->event = event;
+		TAILQ_INSERT_TAIL(callbacks, callback, next);
+
+	} while (++next_dev <= last_dev);
+	rte_rwlock_write_unlock(&gpu_callback_lock);
+
+	return 0;
+}
+
+int
+rte_gpu_callback_unregister(int16_t dev_id, enum rte_gpu_event event,
+		rte_gpu_callback_t *function, void *user_data)
+{
+	int16_t next_dev, last_dev;
+	struct rte_gpu_callback_list *callbacks;
+	struct rte_gpu_callback *callback, *nextcb;
+
+	if (!rte_gpu_is_valid(dev_id) && dev_id != RTE_GPU_ID_ANY) {
+		GPU_LOG(ERR, "unregister callback of invalid ID %d", dev_id);
+		rte_errno = ENODEV;
+		return -rte_errno;
+	}
+	if (function == NULL) {
+		GPU_LOG(ERR, "cannot unregister callback without function");
+		rte_errno = EINVAL;
+		return -rte_errno;
+	}
+
+	if (dev_id == RTE_GPU_ID_ANY) {
+		next_dev = 0;
+		last_dev = gpu_max - 1;
+	} else {
+		next_dev = last_dev = dev_id;
+	}
+
+	rte_rwlock_write_lock(&gpu_callback_lock);
+	do {
+		callbacks = &gpus[next_dev].callbacks;
+		RTE_TAILQ_FOREACH_SAFE(callback, callbacks, next, nextcb) {
+			if (callback->event != event ||
+					callback->function != function ||
+					(callback->user_data != user_data &&
+					user_data != (void *)-1))
+				continue;
+			TAILQ_REMOVE(callbacks, callback, next);
+			free(callback);
+		}
+	} while (++next_dev <= last_dev);
+	rte_rwlock_write_unlock(&gpu_callback_lock);
+
+	return 0;
+}
+
+static void
+gpu_free_callbacks(struct rte_gpu *dev)
+{
+	struct rte_gpu_callback_list *callbacks;
+	struct rte_gpu_callback *callback, *nextcb;
+
+	callbacks = &dev->callbacks;
+	rte_rwlock_write_lock(&gpu_callback_lock);
+	RTE_TAILQ_FOREACH_SAFE(callback, callbacks, next, nextcb) {
+		TAILQ_REMOVE(callbacks, callback, next);
+		free(callback);
+	}
+	rte_rwlock_write_unlock(&gpu_callback_lock);
+}
+
+void
+rte_gpu_notify(struct rte_gpu *dev, enum rte_gpu_event event)
+{
+	int16_t dev_id;
+	struct rte_gpu_callback *callback;
+
+	dev_id = dev->info.dev_id;
+	rte_rwlock_read_lock(&gpu_callback_lock);
+	TAILQ_FOREACH(callback, &dev->callbacks, next) {
+		if (callback->event != event || callback->function == NULL)
+			continue;
+		callback->function(dev_id, event, callback->user_data);
+	}
+	rte_rwlock_read_unlock(&gpu_callback_lock);
 }
 
 int

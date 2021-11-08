@@ -2,6 +2,8 @@ EXPERIMENTAL {
 	global:
 
 	# added in 21.11
+	rte_gpu_callback_register;
+	rte_gpu_callback_unregister;
 	rte_gpu_close;
 	rte_gpu_count_avail;
 	rte_gpu_find_next;
@@ -16,5 +18,6 @@ INTERNAL {
 	rte_gpu_allocate;
 	rte_gpu_complete_new;
 	rte_gpu_get_by_name;
+	rte_gpu_notify;
 	rte_gpu_release;
 };
