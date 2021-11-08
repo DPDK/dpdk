@@ -1564,6 +1564,7 @@ i40evf_dev_init(struct rte_eth_dev *eth_dev)
 {
 	struct i40e_hw *hw
 		= I40E_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
+	struct i40e_vf *vf = I40EVF_DEV_PRIVATE_TO_VF(eth_dev->data->dev_private);
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
 
 	PMD_INIT_FUNC_TRACE();
@@ -1594,11 +1595,16 @@ i40evf_dev_init(struct rte_eth_dev *eth_dev)
 	hw->device_id = pci_dev->id.device_id;
 	hw->subsystem_vendor_id = pci_dev->id.subsystem_vendor_id;
 	hw->subsystem_device_id = pci_dev->id.subsystem_device_id;
+	hw->bus.bus_id = pci_dev->addr.bus;
 	hw->bus.device = pci_dev->addr.devid;
 	hw->bus.func = pci_dev->addr.function;
 	hw->hw_addr = (void *)pci_dev->mem_resource[0].addr;
 	hw->adapter_stopped = 1;
 	hw->adapter_closed = 0;
+
+	vf->adapter = I40E_DEV_PRIVATE_TO_ADAPTER(eth_dev->data->dev_private);
+	vf->dev_data = eth_dev->data;
+	hw->back = I40E_DEV_PRIVATE_TO_ADAPTER(vf);
 
 	if(i40evf_init_vf(eth_dev) != 0) {
 		PMD_INIT_LOG(ERR, "Init vf failed");
