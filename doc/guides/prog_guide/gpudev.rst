@@ -34,3 +34,15 @@ This library provides a number of features:
 
 API Overview
 ------------
+
+Child Device
+~~~~~~~~~~~~
+
+By default, DPDK PCIe module detects and registers physical GPU devices
+in the system.
+With the gpudev library is also possible to add additional non-physical devices
+through an ``uint64_t`` generic handler (e.g. CUDA Driver context)
+that will be registered internally by the driver as an additional device (child)
+connected to a physical device (parent).
+Each device (parent or child) is represented through a ID
+required to indicate which device a given operation should be executed on.

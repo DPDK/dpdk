@@ -88,8 +88,9 @@ main(int argc, char **argv)
 		if (rte_gpu_info_get(gpu_id, &ginfo))
 			rte_exit(EXIT_FAILURE, "rte_gpu_info_get error - bye\n");
 
-		printf("\tGPU ID %d\n\t\tGPU Bus ID %s NUMA node %d Tot memory %.02f MB, Tot processors %d\n",
+		printf("\tGPU ID %d\n\t\tparent ID %d GPU Bus ID %s NUMA node %d Tot memory %.02f MB, Tot processors %d\n",
 				ginfo.dev_id,
+				ginfo.parent,
 				ginfo.name,
 				ginfo.numa_node,
 				(((float)ginfo.total_memory)/(float)1024)/(float)1024,

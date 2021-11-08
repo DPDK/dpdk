@@ -31,7 +31,7 @@ typedef int (rte_gpu_info_get_t)(struct rte_gpu *dev, struct rte_gpu_info *info)
 struct rte_gpu_ops {
 	/* Get device info. If NULL, info is just copied. */
 	rte_gpu_info_get_t *dev_info_get;
-	/* Close device. */
+	/* Close device or child context. */
 	rte_gpu_close_t *dev_close;
 };
 

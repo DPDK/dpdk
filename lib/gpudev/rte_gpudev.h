@@ -41,8 +41,12 @@ extern "C" {
 struct rte_gpu_info {
 	/** Unique identifier name. */
 	const char *name;
+	/** Opaque handler of the device context. */
+	uint64_t context;
 	/** Device ID. */
 	int16_t dev_id;
+	/** ID of the parent device, RTE_GPU_ID_NONE if no parent */
+	int16_t parent;
 	/** Total processors available on device. */
 	uint32_t processor_count;
 	/** Total memory available on device. */
@@ -114,17 +118,48 @@ bool rte_gpu_is_valid(int16_t dev_id);
  * @warning
  * @b EXPERIMENTAL: this API may change without prior notice.
  *
+ * Create a virtual device representing a context in the parent device.
+ *
+ * @param name
+ *   Unique string to identify the device.
+ * @param parent
+ *   Device ID of the parent.
+ * @param child_context
+ *   Opaque context handler.
+ *
+ * @return
+ *   Device ID of the new created child, -rte_errno otherwise:
+ *   - EINVAL if empty name
+ *   - ENAMETOOLONG if long name
+ *   - EEXIST if existing device name
+ *   - ENODEV if invalid parent
+ *   - EPERM if secondary process
+ *   - ENOENT if too many devices
+ *   - ENOMEM if out of space
+ */
+__rte_experimental
+int16_t rte_gpu_add_child(const char *name,
+		int16_t parent, uint64_t child_context);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
  * Get the ID of the next valid GPU initialized in DPDK.
  *
  * @param dev_id
  *   The initial device ID to start the research.
+ * @param parent
+ *   The device ID of the parent.
+ *   RTE_GPU_ID_NONE means no parent.
+ *   RTE_GPU_ID_ANY means no or any parent.
  *
  * @return
  *   Next device ID corresponding to a valid and initialized computing device,
  *   RTE_GPU_ID_NONE if there is none.
  */
 __rte_experimental
-int16_t rte_gpu_find_next(int16_t dev_id);
+int16_t rte_gpu_find_next(int16_t dev_id, int16_t parent);
 
 /**
  * @warning
@@ -136,15 +171,41 @@ int16_t rte_gpu_find_next(int16_t dev_id);
  *   The ID of the next possible valid device, usually 0 to iterate all.
  */
 #define RTE_GPU_FOREACH(dev_id) \
-	for (dev_id = rte_gpu_find_next(0); \
-	     dev_id > 0; \
-	     dev_id = rte_gpu_find_next(dev_id + 1))
+	RTE_GPU_FOREACH_CHILD(dev_id, RTE_GPU_ID_ANY)
 
 /**
  * @warning
  * @b EXPERIMENTAL: this API may change without prior notice.
  *
- * Close device.
+ * Macro to iterate over all valid computing devices having no parent.
+ *
+ * @param dev_id
+ *   The ID of the next possible valid device, usually 0 to iterate all.
+ */
+#define RTE_GPU_FOREACH_PARENT(dev_id) \
+	RTE_GPU_FOREACH_CHILD(dev_id, RTE_GPU_ID_NONE)
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Macro to iterate over all valid children of a computing device parent.
+ *
+ * @param dev_id
+ *   The ID of the next possible valid device, usually 0 to iterate all.
+ * @param parent
+ *   The device ID of the parent.
+ */
+#define RTE_GPU_FOREACH_CHILD(dev_id, parent) \
+	for (dev_id = rte_gpu_find_next(0, parent); \
+	     dev_id >= 0; \
+	     dev_id = rte_gpu_find_next(dev_id + 1, parent))
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Close device or child context.
  * All resources are released.
  *
  * @param dev_id

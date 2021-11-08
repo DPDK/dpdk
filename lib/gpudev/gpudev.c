@@ -81,13 +81,22 @@ rte_gpu_is_valid(int16_t dev_id)
 	return false;
 }
 
+static bool
+gpu_match_parent(int16_t dev_id, int16_t parent)
+{
+	if (parent == RTE_GPU_ID_ANY)
+		return true;
+	return gpus[dev_id].info.parent == parent;
+}
+
 int16_t
-rte_gpu_find_next(int16_t dev_id)
+rte_gpu_find_next(int16_t dev_id, int16_t parent)
 {
 	if (dev_id < 0)
 		dev_id = 0;
 	while (dev_id < gpu_max &&
-			gpus[dev_id].state == RTE_GPU_STATE_UNUSED)
+			(gpus[dev_id].state == RTE_GPU_STATE_UNUSED ||
+			!gpu_match_parent(dev_id, parent)))
 		dev_id++;
 
 	if (dev_id >= gpu_max)
@@ -178,12 +187,35 @@ rte_gpu_allocate(const char *name)
 	dev->info.name = dev->name;
 	dev->info.dev_id = dev_id;
 	dev->info.numa_node = -1;
+	dev->info.parent = RTE_GPU_ID_NONE;
 	TAILQ_INIT(&dev->callbacks);
 
 	gpu_count++;
 	GPU_LOG(DEBUG, "new device %s (id %d) of total %d",
 			name, dev_id, gpu_count);
 	return dev;
+}
+
+int16_t
+rte_gpu_add_child(const char *name, int16_t parent, uint64_t child_context)
+{
+	struct rte_gpu *dev;
+
+	if (!rte_gpu_is_valid(parent)) {
+		GPU_LOG(ERR, "add child to invalid parent ID %d", parent);
+		rte_errno = ENODEV;
+		return -rte_errno;
+	}
+
+	dev = rte_gpu_allocate(name);
+	if (dev == NULL)
+		return -rte_errno;
+
+	dev->info.parent = parent;
+	dev->info.context = child_context;
+
+	rte_gpu_complete_new(dev);
+	return dev->info.dev_id;
 }
 
 void
@@ -200,8 +232,17 @@ rte_gpu_complete_new(struct rte_gpu *dev)
 int
 rte_gpu_release(struct rte_gpu *dev)
 {
+	int16_t dev_id, child;
+
 	if (dev == NULL) {
 		rte_errno = ENODEV;
+		return -rte_errno;
+	}
+	dev_id = dev->info.dev_id;
+	RTE_GPU_FOREACH_CHILD(child, dev_id) {
+		GPU_LOG(ERR, "cannot release device %d with child %d",
+				dev_id, child);
+		rte_errno = EBUSY;
 		return -rte_errno;
 	}
 

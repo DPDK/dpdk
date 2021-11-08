@@ -2,6 +2,7 @@ EXPERIMENTAL {
 	global:
 
 	# added in 21.11
+	rte_gpu_add_child;
 	rte_gpu_callback_register;
 	rte_gpu_callback_unregister;
 	rte_gpu_close;
