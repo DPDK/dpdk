@@ -86,7 +86,7 @@ mlx5_devx_cq_create(void *ctx, struct mlx5_devx_cq *cq_obj, uint16_t log_desc_n,
 	size_t alignment = MLX5_CQE_BUF_ALIGNMENT;
 	uint32_t umem_size, umem_dbrec;
 	uint32_t eqn;
-	uint16_t cq_size = 1 << log_desc_n;
+	uint32_t num_of_cqes = RTE_BIT32(log_desc_n);
 	int ret;
 
 	if (page_size == (size_t)-1 || alignment == (size_t)-1) {
@@ -102,7 +102,7 @@ mlx5_devx_cq_create(void *ctx, struct mlx5_devx_cq *cq_obj, uint16_t log_desc_n,
 		return -rte_errno;
 	}
 	/* Allocate memory buffer for CQEs and doorbell record. */
-	umem_size = sizeof(struct mlx5_cqe) * cq_size;
+	umem_size = sizeof(struct mlx5_cqe) * num_of_cqes;
 	umem_dbrec = RTE_ALIGN(umem_size, MLX5_DBR_SIZE);
 	umem_size += MLX5_DBR_SIZE;
 	umem_buf = mlx5_malloc(MLX5_MEM_RTE | MLX5_MEM_ZERO, umem_size,
@@ -142,7 +142,7 @@ mlx5_devx_cq_create(void *ctx, struct mlx5_devx_cq *cq_obj, uint16_t log_desc_n,
 	cq_obj->cq = cq;
 	cq_obj->db_rec = RTE_PTR_ADD(cq_obj->umem_buf, umem_dbrec);
 	/* Mark all CQEs initially as invalid. */
-	mlx5_cq_init(cq_obj, cq_size);
+	mlx5_cq_init(cq_obj, num_of_cqes);
 	return 0;
 error:
 	ret = rte_errno;
@@ -211,7 +211,7 @@ mlx5_devx_sq_create(void *ctx, struct mlx5_devx_sq *sq_obj, uint16_t log_wqbb_n,
 	void *umem_buf = NULL;
 	size_t alignment = MLX5_WQE_BUF_ALIGNMENT;
 	uint32_t umem_size, umem_dbrec;
-	uint16_t sq_size = 1 << log_wqbb_n;
+	uint32_t num_of_wqbbs = RTE_BIT32(log_wqbb_n);
 	int ret;
 
 	if (alignment == (size_t)-1) {
@@ -220,7 +220,7 @@ mlx5_devx_sq_create(void *ctx, struct mlx5_devx_sq *sq_obj, uint16_t log_wqbb_n,
 		return -rte_errno;
 	}
 	/* Allocate memory buffer for WQEs and doorbell record. */
-	umem_size = MLX5_WQE_SIZE * sq_size;
+	umem_size = MLX5_WQE_SIZE * num_of_wqbbs;
 	umem_dbrec = RTE_ALIGN(umem_size, MLX5_DBR_SIZE);
 	umem_size += MLX5_DBR_SIZE;
 	umem_buf = mlx5_malloc(MLX5_MEM_RTE | MLX5_MEM_ZERO, umem_size,
@@ -349,7 +349,7 @@ mlx5_devx_qp_destroy(struct mlx5_devx_qp *qp)
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 int
-mlx5_devx_qp_create(void *ctx, struct mlx5_devx_qp *qp_obj, uint16_t log_wqbb_n,
+mlx5_devx_qp_create(void *ctx, struct mlx5_devx_qp *qp_obj, uint32_t log_wqbb_n,
 		    struct mlx5_devx_qp_attr *attr, int socket)
 {
 	struct mlx5_devx_obj *qp = NULL;
@@ -357,7 +357,7 @@ mlx5_devx_qp_create(void *ctx, struct mlx5_devx_qp *qp_obj, uint16_t log_wqbb_n,
 	void *umem_buf = NULL;
 	size_t alignment = MLX5_WQE_BUF_ALIGNMENT;
 	uint32_t umem_size, umem_dbrec;
-	uint16_t qp_size = 1 << log_wqbb_n;
+	uint32_t num_of_wqbbs = RTE_BIT32(log_wqbb_n);
 	int ret;
 
 	if (alignment == (size_t)-1) {
@@ -366,7 +366,7 @@ mlx5_devx_qp_create(void *ctx, struct mlx5_devx_qp *qp_obj, uint16_t log_wqbb_n,
 		return -rte_errno;
 	}
 	/* Allocate memory buffer for WQEs and doorbell record. */
-	umem_size = MLX5_WQE_SIZE * qp_size;
+	umem_size = MLX5_WQE_SIZE * num_of_wqbbs;
 	umem_dbrec = RTE_ALIGN(umem_size, MLX5_DBR_SIZE);
 	umem_size += MLX5_DBR_SIZE;
 	umem_buf = mlx5_malloc(MLX5_MEM_RTE | MLX5_MEM_ZERO, umem_size,
