@@ -96,7 +96,6 @@ struct mlx5_mr_share_cache {
 struct mlx5_mprq_buf {
 	struct rte_mempool *mp;
 	uint16_t refcnt; /* Atomically accessed refcnt. */
-	uint8_t pad[RTE_PKTMBUF_HEADROOM]; /* Headroom for the first packet. */
 	struct rte_mbuf_ext_shared_info shinfos[];
 	/*
 	 * Shared information per stride.
