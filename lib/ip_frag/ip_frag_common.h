@@ -6,6 +6,7 @@
 #define _IP_FRAG_COMMON_H_
 
 #include "rte_ip_frag.h"
+#include "ip_reassembly.h"
 
 /* logging macros. */
 #ifdef RTE_LIBRTE_IP_FRAG_DEBUG
