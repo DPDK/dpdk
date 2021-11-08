@@ -154,6 +154,61 @@ register_cpu_memory(uint16_t gpu_id)
 	return 0;
 }
 
+static int
+create_update_comm_flag(uint16_t gpu_id)
+{
+	struct rte_gpu_comm_flag devflag;
+	int ret = 0;
+	uint32_t set_val;
+	uint32_t get_val;
+
+	printf("\n=======> TEST: Communication flag\n");
+
+	ret = rte_gpu_comm_create_flag(gpu_id, &devflag, RTE_GPU_COMM_FLAG_CPU);
+	if (ret < 0) {
+		fprintf(stderr, "rte_gpu_comm_create_flag returned error %d\n", ret);
+		return -1;
+	}
+
+	set_val = 25;
+	ret = rte_gpu_comm_set_flag(&devflag, set_val);
+	if (ret < 0) {
+		fprintf(stderr, "rte_gpu_comm_set_flag returned error %d\n", ret);
+		return -1;
+	}
+
+	ret = rte_gpu_comm_get_flag_value(&devflag, &get_val);
+	if (ret < 0) {
+		fprintf(stderr, "rte_gpu_comm_get_flag_value returned error %d\n", ret);
+		return -1;
+	}
+
+	printf("Communication flag value at 0x%p was set to %d and current value is %d\n", devflag.ptr, set_val, get_val);
+
+	set_val = 38;
+	ret = rte_gpu_comm_set_flag(&devflag, set_val);
+	if (ret < 0) {
+		fprintf(stderr, "rte_gpu_comm_set_flag returned error %d\n", ret);
+		return -1;
+	}
+
+	ret = rte_gpu_comm_get_flag_value(&devflag, &get_val);
+	if (ret < 0) {
+		fprintf(stderr, "rte_gpu_comm_get_flag_value returned error %d\n", ret);
+		return -1;
+	}
+
+	printf("Communication flag value at 0x%p was set to %d and current value is %d\n", devflag.ptr, set_val, get_val);
+
+	ret = rte_gpu_comm_destroy_flag(&devflag);
+	if (ret < 0) {
+		fprintf(stderr, "rte_gpu_comm_destroy_flags returned error %d\n", ret);
+		return -1;
+	}
+
+	return 0;
+}
+
 int
 main(int argc, char **argv)
 {
@@ -203,6 +258,11 @@ main(int argc, char **argv)
 	 */
 	alloc_gpu_memory(gpu_id);
 	register_cpu_memory(gpu_id);
+
+	/**
+	 * Communication items test
+	 */
+	create_update_comm_flag(gpu_id);
 
 	/* clean up the EAL */
 	rte_eal_cleanup();

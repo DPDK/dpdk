@@ -644,3 +644,95 @@ rte_gpu_wmb(int16_t dev_id)
 	}
 	return GPU_DRV_RET(dev->ops.wmb(dev));
 }
+
+int
+rte_gpu_comm_create_flag(uint16_t dev_id, struct rte_gpu_comm_flag *devflag,
+		enum rte_gpu_comm_flag_type mtype)
+{
+	size_t flag_size;
+	int ret;
+
+	if (devflag == NULL) {
+		rte_errno = EINVAL;
+		return -rte_errno;
+	}
+	if (mtype != RTE_GPU_COMM_FLAG_CPU) {
+		rte_errno = EINVAL;
+		return -rte_errno;
+	}
+
+	flag_size = sizeof(uint32_t);
+
+	devflag->ptr = rte_zmalloc(NULL, flag_size, 0);
+	if (devflag->ptr == NULL) {
+		rte_errno = ENOMEM;
+		return -rte_errno;
+	}
+
+	ret = rte_gpu_mem_register(dev_id, flag_size, devflag->ptr);
+	if (ret < 0) {
+		rte_errno = ENOMEM;
+		return -rte_errno;
+	}
+
+	devflag->mtype = mtype;
+	devflag->dev_id = dev_id;
+
+	return 0;
+}
+
+int
+rte_gpu_comm_destroy_flag(struct rte_gpu_comm_flag *devflag)
+{
+	int ret;
+
+	if (devflag == NULL) {
+		rte_errno = EINVAL;
+		return -rte_errno;
+	}
+
+	ret = rte_gpu_mem_unregister(devflag->dev_id, devflag->ptr);
+	if (ret < 0) {
+		rte_errno = EINVAL;
+		return -1;
+	}
+
+	rte_free(devflag->ptr);
+
+	return 0;
+}
+
+int
+rte_gpu_comm_set_flag(struct rte_gpu_comm_flag *devflag, uint32_t val)
+{
+	if (devflag == NULL) {
+		rte_errno = EINVAL;
+		return -rte_errno;
+	}
+
+	if (devflag->mtype != RTE_GPU_COMM_FLAG_CPU) {
+		rte_errno = EINVAL;
+		return -rte_errno;
+	}
+
+	RTE_GPU_VOLATILE(*devflag->ptr) = val;
+
+	return 0;
+}
+
+int
+rte_gpu_comm_get_flag_value(struct rte_gpu_comm_flag *devflag, uint32_t *val)
+{
+	if (devflag == NULL) {
+		rte_errno = EINVAL;
+		return -rte_errno;
+	}
+	if (devflag->mtype != RTE_GPU_COMM_FLAG_CPU) {
+		rte_errno = EINVAL;
+		return -rte_errno;
+	}
+
+	*val = RTE_GPU_VOLATILE(*devflag->ptr);
+
+	return 0;
+}

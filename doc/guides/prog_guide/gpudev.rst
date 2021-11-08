@@ -32,6 +32,10 @@ This library provides a number of features:
 - Interoperability with device-specific library through generic handlers.
 - Allocate and free memory on the device.
 - Register CPU memory to make it visible from the device.
+- Communication between the CPU and the device.
+
+The whole CPU - GPU communication is implemented
+using CPU memory visible from the GPU.
 
 
 API Overview
@@ -73,3 +77,12 @@ Some GPU drivers may need, under certain conditions,
 to enforce the coherency of external devices writes (e.g. NIC receiving packets)
 into the GPU memory.
 gpudev abstracts and exposes this capability.
+
+Communication Flag
+~~~~~~~~~~~~~~~~~~
+
+Considering an application with some GPU task
+that's waiting to receive a signal from the CPU
+to move forward with the execution.
+The communication flag allocates a CPU memory GPU-visible ``uint32_t`` flag
+that can be used by the CPU to communicate with a GPU task.

@@ -38,6 +38,9 @@ extern "C" {
 /** Catch-all callback data. */
 #define RTE_GPU_CALLBACK_ANY_DATA ((void *)-1)
 
+/** Access variable as volatile. */
+#define RTE_GPU_VOLATILE(x) (*(volatile typeof(x) *)&(x))
+
 /** Store device info. */
 struct rte_gpu_info {
 	/** Unique identifier name. */
@@ -67,6 +70,22 @@ enum rte_gpu_event {
 /** Prototype of event callback function. */
 typedef void (rte_gpu_callback_t)(int16_t dev_id,
 		enum rte_gpu_event event, void *user_data);
+
+/** Memory where communication flag is allocated. */
+enum rte_gpu_comm_flag_type {
+	/** Allocate flag on CPU memory visible from device. */
+	RTE_GPU_COMM_FLAG_CPU = 0,
+};
+
+/** Communication flag to coordinate CPU with the device. */
+struct rte_gpu_comm_flag {
+	/** Device that will use the device flag. */
+	uint16_t dev_id;
+	/** Pointer to flag memory area. */
+	uint32_t *ptr;
+	/** Type of memory used to allocate the flag. */
+	enum rte_gpu_comm_flag_type mtype;
+};
 
 /**
  * @warning
@@ -404,6 +423,95 @@ int rte_gpu_mem_unregister(int16_t dev_id, void *ptr);
  */
 __rte_experimental
 int rte_gpu_wmb(int16_t dev_id);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Create a communication flag that can be shared
+ * between CPU threads and device workload to exchange some status info
+ * (e.g. work is done, processing can start, etc..).
+ *
+ * @param dev_id
+ *   Reference device ID.
+ * @param devflag
+ *   Pointer to the memory area of the devflag structure.
+ * @param mtype
+ *   Type of memory to allocate the communication flag.
+ *
+ * @return
+ *   0 on success, -rte_errno otherwise:
+ *   - ENODEV if invalid dev_id
+ *   - EINVAL if invalid inputs
+ *   - ENOTSUP if operation not supported by the driver
+ *   - ENOMEM if out of space
+ *   - EPERM if driver error
+ */
+__rte_experimental
+int rte_gpu_comm_create_flag(uint16_t dev_id,
+		struct rte_gpu_comm_flag *devflag,
+		enum rte_gpu_comm_flag_type mtype);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Deallocate a communication flag.
+ *
+ * @param devflag
+ *   Pointer to the memory area of the devflag structure.
+ *
+ * @return
+ *   0 on success, -rte_errno otherwise:
+ *   - ENODEV if invalid dev_id
+ *   - EINVAL if NULL devflag
+ *   - ENOTSUP if operation not supported by the driver
+ *   - EPERM if driver error
+ */
+__rte_experimental
+int rte_gpu_comm_destroy_flag(struct rte_gpu_comm_flag *devflag);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Set the value of a communication flag as the input value.
+ * Flag memory area is treated as volatile.
+ * The flag must have been allocated with RTE_GPU_COMM_FLAG_CPU.
+ *
+ * @param devflag
+ *   Pointer to the memory area of the devflag structure.
+ * @param val
+ *   Value to set in the flag.
+ *
+ * @return
+ *   0 on success, -rte_errno otherwise:
+ *   - EINVAL if invalid input params
+ */
+__rte_experimental
+int rte_gpu_comm_set_flag(struct rte_gpu_comm_flag *devflag,
+		uint32_t val);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Get the value of the communication flag.
+ * Flag memory area is treated as volatile.
+ * The flag must have been allocated with RTE_GPU_COMM_FLAG_CPU.
+ *
+ * @param devflag
+ *   Pointer to the memory area of the devflag structure.
+ * @param val
+ *   Flag output value.
+ *
+ * @return
+ *   0 on success, -rte_errno otherwise:
+ *   - EINVAL if invalid input params
+ */
+__rte_experimental
+int rte_gpu_comm_get_flag_value(struct rte_gpu_comm_flag *devflag,
+		uint32_t *val);
 
 #ifdef __cplusplus
 }
