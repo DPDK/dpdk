@@ -89,7 +89,7 @@ void mlx5_devx_qp_destroy(struct mlx5_devx_qp *qp);
 
 __rte_internal
 int mlx5_devx_qp_create(void *ctx, struct mlx5_devx_qp *qp_obj,
-			uint32_t log_wqbb_n,
+			uint32_t queue_size,
 			struct mlx5_devx_qp_attr *attr, int socket);
 
 __rte_internal

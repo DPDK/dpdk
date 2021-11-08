@@ -338,8 +338,8 @@ mlx5_devx_qp_destroy(struct mlx5_devx_qp *qp)
  *   Context returned from mlx5 open_device() glue function.
  * @param[in/out] qp_obj
  *   Pointer to QP to create.
- * @param[in] log_wqbb_n
- *   Log of number of WQBBs in queue.
+ * @param[in] queue_size
+ *   Size of queue to create.
  * @param[in] attr
  *   Pointer to QP attributes structure.
  * @param[in] socket
@@ -349,7 +349,7 @@ mlx5_devx_qp_destroy(struct mlx5_devx_qp *qp)
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 int
-mlx5_devx_qp_create(void *ctx, struct mlx5_devx_qp *qp_obj, uint32_t log_wqbb_n,
+mlx5_devx_qp_create(void *ctx, struct mlx5_devx_qp *qp_obj, uint32_t queue_size,
 		    struct mlx5_devx_qp_attr *attr, int socket)
 {
 	struct mlx5_devx_obj *qp = NULL;
@@ -357,7 +357,6 @@ mlx5_devx_qp_create(void *ctx, struct mlx5_devx_qp *qp_obj, uint32_t log_wqbb_n,
 	void *umem_buf = NULL;
 	size_t alignment = MLX5_WQE_BUF_ALIGNMENT;
 	uint32_t umem_size, umem_dbrec;
-	uint32_t num_of_wqbbs = RTE_BIT32(log_wqbb_n);
 	int ret;
 
 	if (alignment == (size_t)-1) {
@@ -366,7 +365,7 @@ mlx5_devx_qp_create(void *ctx, struct mlx5_devx_qp *qp_obj, uint32_t log_wqbb_n,
 		return -rte_errno;
 	}
 	/* Allocate memory buffer for WQEs and doorbell record. */
-	umem_size = MLX5_WQE_SIZE * num_of_wqbbs;
+	umem_size = queue_size;
 	umem_dbrec = RTE_ALIGN(umem_size, MLX5_DBR_SIZE);
 	umem_size += MLX5_DBR_SIZE;
 	umem_buf = mlx5_malloc(MLX5_MEM_RTE | MLX5_MEM_ZERO, umem_size,

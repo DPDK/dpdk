@@ -594,8 +594,9 @@ mlx5_vdpa_event_qp_create(struct mlx5_vdpa_priv *priv, uint16_t desc_n,
 	attr.num_of_send_wqbbs = 0; /* No need SQ. */
 	attr.ts_format =
 		mlx5_ts_format_conv(priv->cdev->config.hca_attr.qp_ts_format);
-	ret = mlx5_devx_qp_create(priv->cdev->ctx, &(eqp->sw_qp), log_desc_n,
-				  &attr, SOCKET_ID_ANY);
+	ret = mlx5_devx_qp_create(priv->cdev->ctx, &(eqp->sw_qp),
+					attr.num_of_receive_wqes *
+					MLX5_WSEG_SIZE, &attr, SOCKET_ID_ANY);
 	if (ret) {
 		DRV_LOG(ERR, "Failed to create SW QP(%u).", rte_errno);
 		goto error;

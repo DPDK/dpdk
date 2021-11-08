@@ -629,8 +629,9 @@ mlx5_crypto_queue_pair_setup(struct rte_cryptodev *dev, uint16_t qp_id,
 	attr.num_of_send_wqbbs = RTE_BIT32(log_wqbb_n);
 	attr.ts_format =
 		mlx5_ts_format_conv(priv->cdev->config.hca_attr.qp_ts_format);
-	ret = mlx5_devx_qp_create(priv->cdev->ctx, &qp->qp_obj, log_wqbb_n,
-				  &attr, socket_id);
+	ret = mlx5_devx_qp_create(priv->cdev->ctx, &qp->qp_obj,
+					attr.num_of_send_wqbbs * MLX5_WQE_SIZE,
+					&attr, socket_id);
 	if (ret) {
 		DRV_LOG(ERR, "Failed to create QP.");
 		goto error;
