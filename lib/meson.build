@@ -100,6 +100,13 @@ optional_libs = [
         'vhost',
 ]
 
+always_enable = []
+foreach l:libraries
+    if not optional_libs.contains(l)
+        always_enable += l
+    endif
+endforeach
+
 enable_deprecated_libs = []
 foreach l:run_command(list_dir_globs, get_option('enable_deprecated_libs'),
         check: true).stdout().split()
@@ -109,17 +116,13 @@ foreach l:run_command(list_dir_globs, get_option('enable_deprecated_libs'),
     enable_deprecated_libs += l
 endforeach
 
-disabled_libs = []
-opt_disabled_libs = run_command(list_dir_globs, get_option('disable_libs'),
-        check: true).stdout().split()
-foreach l:opt_disabled_libs
-    if not optional_libs.contains(l)
-        warning('Cannot disable mandatory library "@0@"'.format(l))
-        continue
-    endif
-    disabled_libs += l
-endforeach
+disable_libs = run_command(list_dir_globs, get_option('disable_libs'), check: true).stdout().split()
 
+enable_libs = run_command(list_dir_globs, get_option('enable_libs'), check: true).stdout().split()
+if enable_libs.length() == 0
+    enable_libs += optional_libs
+endif
+enable_libs += always_enable
 
 default_cflags = machine_args
 default_cflags += ['-DALLOW_EXPERIMENTAL_API']
@@ -160,9 +163,16 @@ foreach l:libraries
         else
             warning('Enabling deprecated library, "@0@"'.format(l))
         endif
-    elif disabled_libs.contains(l)
+    elif not enable_libs.contains(l)
         build = false
-        reason = 'explicitly disabled via build config'
+        reason = 'not in enabled libraries build config'
+    elif disable_libs.contains(l)
+        if always_enable.contains(l)
+            warning('Cannot disable mandatory library "@0@"'.format(l))
+        else
+            build = false
+            reason = 'explicitly disabled via build config'
+        endif
     endif
 
     if build
