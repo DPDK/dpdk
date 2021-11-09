@@ -89,6 +89,9 @@ INTERNAL {
 	mlx5_nl_vlan_vmwa_create;
 	mlx5_nl_vlan_vmwa_delete;
 
+	mlx5_os_wrapped_mkey_create;
+	mlx5_os_wrapped_mkey_destroy;
+
 	mlx5_release_dbr;
 
 	mlx5_translate_port_name;
