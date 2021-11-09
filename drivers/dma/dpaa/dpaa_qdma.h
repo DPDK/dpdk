@@ -10,6 +10,12 @@
 #define CORE_NUMBER 4
 #define RETRIES	5
 
+#ifndef GENMASK
+#define BITS_PER_LONG	(__SIZEOF_LONG__ * 8)
+#define GENMASK(h, l) \
+		(((~0UL) << (l)) & (~0UL >> (BITS_PER_LONG - 1 - (h))))
+#endif
+
 #define FSL_QDMA_DMR			0x0
 #define FSL_QDMA_DSR			0x4
 
@@ -44,9 +50,21 @@
 #define FSL_QDMA_DMR_DQD		0x40000000
 #define FSL_QDMA_DSR_DB			0x80000000
 
+#define FSL_QDMA_COMMAND_BUFFER_SIZE	64
+#define FSL_QDMA_DESCRIPTOR_BUFFER_SIZE 32
 #define FSL_QDMA_CIRCULAR_DESC_SIZE_MIN	64
 #define FSL_QDMA_CIRCULAR_DESC_SIZE_MAX	16384
 #define FSL_QDMA_QUEUE_NUM_MAX		8
+
+#define FSL_QDMA_CMD_RWTTYPE		0x4
+#define FSL_QDMA_CMD_LWC		0x2
+
+#define FSL_QDMA_CMD_RWTTYPE_OFFSET	28
+#define FSL_QDMA_CMD_LWC_OFFSET		16
+
+#define QDMA_SG_LEN_MASK		GENMASK(29, 0)
+
+#define COMMAND_QUEUE_OVERFLOW		10
 
 /* qdma engine attribute */
 #define QDMA_QUEUE_SIZE			64
@@ -85,6 +103,22 @@ struct fsl_qdma_format {
 		};
 		__le64 data;
 	};
+};
+
+/* qDMA Source Descriptor Format */
+struct fsl_qdma_sdf {
+	__le32 rev3;
+	__le32 cfg; /* rev4, bit[0-11] - ssd, bit[12-23] sss */
+	__le32 rev5;
+	__le32 cmd;
+};
+
+/* qDMA Destination Descriptor Format */
+struct fsl_qdma_ddf {
+	__le32 rev1;
+	__le32 cfg; /* rev2, bit[0-11] - dsd, bit[12-23] - dss */
+	__le32 rev3;
+	__le32 cmd;
 };
 
 struct fsl_qdma_chan {

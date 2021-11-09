@@ -8,6 +8,19 @@
 #include "dpaa_qdma.h"
 #include "dpaa_qdma_logs.h"
 
+static inline void
+qdma_desc_addr_set64(struct fsl_qdma_format *ccdf, u64 addr)
+{
+	ccdf->addr_hi = upper_32_bits(addr);
+	ccdf->addr_lo = rte_cpu_to_le_32(lower_32_bits(addr));
+}
+
+static inline void
+qdma_csgf_set_len(struct fsl_qdma_format *csgf, int len)
+{
+	csgf->cfg = rte_cpu_to_le_32(len & QDMA_SG_LEN_MASK);
+}
+
 static inline int
 ilog2(int x)
 {
@@ -89,6 +102,77 @@ fsl_qdma_free_chan_resources(struct fsl_qdma_chan *fsl_chan)
 
 finally:
 	fsl_qdma->desc_allocated--;
+}
+
+/*
+ * Pre-request command descriptor and compound S/G for enqueue.
+ */
+static int
+fsl_qdma_pre_request_enqueue_comp_sd_desc(
+					struct fsl_qdma_queue *queue,
+					int size, int aligned)
+{
+	struct fsl_qdma_comp *comp_temp, *_comp_temp;
+	struct fsl_qdma_sdf *sdf;
+	struct fsl_qdma_ddf *ddf;
+	struct fsl_qdma_format *csgf_desc;
+	int i;
+
+	for (i = 0; i < (int)(queue->n_cq + COMMAND_QUEUE_OVERFLOW); i++) {
+		comp_temp = rte_zmalloc("qdma: comp temp",
+					sizeof(*comp_temp), 0);
+		if (!comp_temp)
+			return -ENOMEM;
+
+		comp_temp->virt_addr =
+		dma_pool_alloc(size, aligned, &comp_temp->bus_addr);
+		if (!comp_temp->virt_addr) {
+			rte_free(comp_temp);
+			goto fail;
+		}
+
+		comp_temp->desc_virt_addr =
+		dma_pool_alloc(size, aligned, &comp_temp->desc_bus_addr);
+		if (!comp_temp->desc_virt_addr) {
+			rte_free(comp_temp->virt_addr);
+			rte_free(comp_temp);
+			goto fail;
+		}
+
+		memset(comp_temp->virt_addr, 0, FSL_QDMA_COMMAND_BUFFER_SIZE);
+		memset(comp_temp->desc_virt_addr, 0,
+		       FSL_QDMA_DESCRIPTOR_BUFFER_SIZE);
+
+		csgf_desc = (struct fsl_qdma_format *)comp_temp->virt_addr + 1;
+		sdf = (struct fsl_qdma_sdf *)comp_temp->desc_virt_addr;
+		ddf = (struct fsl_qdma_ddf *)comp_temp->desc_virt_addr + 1;
+		/* Compound Command Descriptor(Frame List Table) */
+		qdma_desc_addr_set64(csgf_desc, comp_temp->desc_bus_addr);
+		/* It must be 32 as Compound S/G Descriptor */
+		qdma_csgf_set_len(csgf_desc, 32);
+		/* Descriptor Buffer */
+		sdf->cmd = rte_cpu_to_le_32(FSL_QDMA_CMD_RWTTYPE <<
+			       FSL_QDMA_CMD_RWTTYPE_OFFSET);
+		ddf->cmd = rte_cpu_to_le_32(FSL_QDMA_CMD_RWTTYPE <<
+			       FSL_QDMA_CMD_RWTTYPE_OFFSET);
+		ddf->cmd |= rte_cpu_to_le_32(FSL_QDMA_CMD_LWC <<
+				FSL_QDMA_CMD_LWC_OFFSET);
+
+		list_add_tail(&comp_temp->list, &queue->comp_free);
+	}
+
+	return 0;
+
+fail:
+	list_for_each_entry_safe(comp_temp, _comp_temp,
+				 &queue->comp_free, list) {
+		list_del(&comp_temp->list);
+		rte_free(comp_temp->virt_addr);
+		rte_free(comp_temp->desc_virt_addr);
+		rte_free(comp_temp);
+	}
+
+	return -ENOMEM;
 }
 
 static struct fsl_qdma_queue
@@ -335,12 +419,129 @@ fsl_qdma_reg_init(struct fsl_qdma_engine *fsl_qdma)
 	return 0;
 }
 
+static int
+fsl_qdma_alloc_chan_resources(struct fsl_qdma_chan *fsl_chan)
+{
+	struct fsl_qdma_queue *fsl_queue = fsl_chan->queue;
+	struct fsl_qdma_engine *fsl_qdma = fsl_chan->qdma;
+	int ret;
+
+	if (fsl_queue->count++)
+		goto finally;
+
+	INIT_LIST_HEAD(&fsl_queue->comp_free);
+	INIT_LIST_HEAD(&fsl_queue->comp_used);
+
+	ret = fsl_qdma_pre_request_enqueue_comp_sd_desc(fsl_queue,
+				FSL_QDMA_COMMAND_BUFFER_SIZE, 64);
+	if (ret) {
+		DPAA_QDMA_ERR(
+			"failed to alloc dma buffer for comp descriptor\n");
+		goto exit;
+	}
+
+finally:
+	return fsl_qdma->desc_allocated++;
+
+exit:
+	return -ENOMEM;
+}
+
+static int
+dpaa_info_get(const struct rte_dma_dev *dev, struct rte_dma_info *dev_info,
+	      uint32_t info_sz)
+{
+#define DPAADMA_MAX_DESC        64
+#define DPAADMA_MIN_DESC        64
+
+	RTE_SET_USED(dev);
+	RTE_SET_USED(info_sz);
+
+	dev_info->dev_capa = RTE_DMA_CAPA_MEM_TO_MEM |
+			     RTE_DMA_CAPA_MEM_TO_DEV |
+			     RTE_DMA_CAPA_DEV_TO_DEV |
+			     RTE_DMA_CAPA_DEV_TO_MEM |
+			     RTE_DMA_CAPA_SILENT |
+			     RTE_DMA_CAPA_OPS_COPY;
+	dev_info->max_vchans = 1;
+	dev_info->max_desc = DPAADMA_MAX_DESC;
+	dev_info->min_desc = DPAADMA_MIN_DESC;
+
+	return 0;
+}
+
+static int
+dpaa_get_channel(struct fsl_qdma_engine *fsl_qdma,  uint16_t vchan)
+{
+	u32 i, start, end;
+	int ret;
+
+	start = fsl_qdma->free_block_id * QDMA_QUEUES;
+	fsl_qdma->free_block_id++;
+
+	end = start + 1;
+	for (i = start; i < end; i++) {
+		struct fsl_qdma_chan *fsl_chan = &fsl_qdma->chans[i];
+
+		if (fsl_chan->free) {
+			fsl_chan->free = false;
+			ret = fsl_qdma_alloc_chan_resources(fsl_chan);
+			if (ret)
+				return ret;
+
+			fsl_qdma->vchan_map[vchan] = i;
+			return 0;
+		}
+	}
+
+	return -1;
+}
+
 static void
 dma_release(void *fsl_chan)
 {
 	((struct fsl_qdma_chan *)fsl_chan)->free = true;
 	fsl_qdma_free_chan_resources((struct fsl_qdma_chan *)fsl_chan);
 }
+
+static int
+dpaa_qdma_configure(__rte_unused struct rte_dma_dev *dmadev,
+		    __rte_unused const struct rte_dma_conf *dev_conf,
+		    __rte_unused uint32_t conf_sz)
+{
+	return 0;
+}
+
+static int
+dpaa_qdma_start(__rte_unused struct rte_dma_dev *dev)
+{
+	return 0;
+}
+
+static int
+dpaa_qdma_close(__rte_unused struct rte_dma_dev *dev)
+{
+	return 0;
+}
+
+static int
+dpaa_qdma_queue_setup(struct rte_dma_dev *dmadev,
+		      uint16_t vchan,
+		      __rte_unused const struct rte_dma_vchan_conf *conf,
+		      __rte_unused uint32_t conf_sz)
+{
+	struct fsl_qdma_engine *fsl_qdma = dmadev->data->dev_private;
+
+	return dpaa_get_channel(fsl_qdma, vchan);
+}
+
+static struct rte_dma_dev_ops dpaa_qdma_ops = {
+	.dev_info_get		  = dpaa_info_get,
+	.dev_configure            = dpaa_qdma_configure,
+	.dev_start                = dpaa_qdma_start,
+	.dev_close                = dpaa_qdma_close,
+	.vchan_setup		  = dpaa_qdma_queue_setup,
+};
 
 static int
 dpaa_qdma_init(struct rte_dma_dev *dmadev)
@@ -448,6 +649,9 @@ dpaa_qdma_probe(__rte_unused struct rte_dpaa_driver *dpaa_drv,
 	}
 
 	dpaa_dev->dmadev = dmadev;
+	dmadev->dev_ops = &dpaa_qdma_ops;
+	dmadev->device = &dpaa_dev->device;
+	dmadev->fp_obj->dev_private = dmadev->data->dev_private;
 
 	/* Invoke PMD device initialization function */
 	ret = dpaa_qdma_init(dmadev);
