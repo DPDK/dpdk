@@ -23,9 +23,10 @@ mlx5_vdpa_mem_dereg(struct mlx5_vdpa_priv *priv)
 	entry = SLIST_FIRST(&priv->mr_list);
 	while (entry) {
 		next = SLIST_NEXT(entry, next);
-		claim_zero(mlx5_devx_cmd_destroy(entry->mkey));
-		if (!entry->is_indirect)
-			claim_zero(mlx5_glue->devx_umem_dereg(entry->umem));
+		if (entry->is_indirect)
+			claim_zero(mlx5_devx_cmd_destroy(entry->mkey));
+		else
+			claim_zero(mlx5_glue->dereg_mr(entry->mr));
 		SLIST_REMOVE(&priv->mr_list, entry, mlx5_vdpa_query_mr, next);
 		rte_free(entry);
 		entry = next;
@@ -210,31 +211,18 @@ mlx5_vdpa_mem_register(struct mlx5_vdpa_priv *priv)
 			DRV_LOG(ERR, "Failed to allocate mem entry memory.");
 			goto error;
 		}
-		entry->umem = mlx5_glue->devx_umem_reg(priv->ctx,
-					 (void *)(uintptr_t)reg->host_user_addr,
-					     reg->size, IBV_ACCESS_LOCAL_WRITE);
-		if (!entry->umem) {
-			DRV_LOG(ERR, "Failed to register Umem by Devx.");
-			ret = -errno;
-			goto error;
-		}
-		mkey_attr.addr = (uintptr_t)(reg->guest_phys_addr);
-		mkey_attr.size = reg->size;
-		mkey_attr.umem_id = entry->umem->umem_id;
-		mkey_attr.pd = priv->pdn;
-		mkey_attr.pg_access = 1;
-		mkey_attr.klm_array = NULL;
-		mkey_attr.klm_num = 0;
+		entry->mr = mlx5_glue->reg_mr_iova(priv->pd,
+				       (void *)(uintptr_t)(reg->host_user_addr),
+				       reg->size, reg->guest_phys_addr,
+				       IBV_ACCESS_LOCAL_WRITE);
+		if (!entry->mr) {
 		mkey_attr.relaxed_ordering_read = 0;
 		mkey_attr.relaxed_ordering_write = 0;
 		entry->mkey = mlx5_devx_cmd_mkey_create(priv->ctx, &mkey_attr);
-		if (!entry->mkey) {
 			DRV_LOG(ERR, "Failed to create direct Mkey.");
 			ret = -rte_errno;
 			goto error;
 		}
-		entry->addr = (void *)(uintptr_t)(reg->host_user_addr);
-		entry->length = reg->size;
 		entry->is_indirect = 0;
 		if (i > 0) {
 			uint64_t sadd;
@@ -264,12 +252,13 @@ mlx5_vdpa_mem_register(struct mlx5_vdpa_priv *priv)
 		for (k = 0; k < reg->size; k += klm_size) {
 			klm_array[klm_index].byte_count = k + klm_size >
 					   reg->size ? reg->size - k : klm_size;
-			klm_array[klm_index].mkey = entry->mkey->id;
+			klm_array[klm_index].mkey = entry->mr->lkey;
 			klm_array[klm_index].address = reg->guest_phys_addr + k;
 			klm_index++;
 		}
 		SLIST_INSERT_HEAD(&priv->mr_list, entry, next);
 	}
+	memset(&mkey_attr, 0, sizeof(mkey_attr));
 	mkey_attr.addr = (uintptr_t)(mem->regions[0].guest_phys_addr);
 	mkey_attr.size = mem_size;
 	mkey_attr.pd = priv->pdn;
@@ -297,13 +286,8 @@ mlx5_vdpa_mem_register(struct mlx5_vdpa_priv *priv)
 	priv->gpa_mkey_index = entry->mkey->id;
 	return 0;
 error:
-	if (entry) {
-		if (entry->mkey)
-			mlx5_devx_cmd_destroy(entry->mkey);
-		if (entry->umem)
-			mlx5_glue->devx_umem_dereg(entry->umem);
+	if (entry)
 		rte_free(entry);
-	}
 	mlx5_vdpa_mem_dereg(priv);
 	rte_errno = -ret;
 	return ret;

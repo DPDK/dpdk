@@ -67,10 +67,10 @@ struct mlx5_vdpa_event_qp {
 
 struct mlx5_vdpa_query_mr {
 	SLIST_ENTRY(mlx5_vdpa_query_mr) next;
-	void *addr;
-	uint64_t length;
-	struct mlx5dv_devx_umem *umem;
-	struct mlx5_devx_obj *mkey;
+	union {
+		struct ibv_mr *mr;
+		struct mlx5_devx_obj *mkey;
+	};
 	int is_indirect;
 };
 
