@@ -188,6 +188,8 @@ has_sym_args = [
 	[ 'HAVE_DEVLINK', 'linux/devlink.h', 'DEVLINK_GENL_NAME' ],
         [ 'HAVE_MLX5_DR_CREATE_ACTION_ASO', 'infiniband/mlx5dv.h',
         'mlx5dv_dr_action_create_aso' ],
+        [ 'HAVE_MLX5_IBV_REG_MR_IOVA', 'infiniband/verbs.h',
+            'ibv_reg_mr_iova' ],
 ]
 config = configuration_data()
 foreach arg:has_sym_args
