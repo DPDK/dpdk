@@ -864,7 +864,7 @@ txa_service_queue_del(uint8_t id,
 		uint16_t i, q, nb_queues;
 		int ret = 0;
 
-		nb_queues = txa->nb_queues;
+		nb_queues = txa->txa_ethdev[port_id].nb_queues;
 		if (nb_queues == 0)
 			return 0;
 
