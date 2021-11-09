@@ -3025,12 +3025,14 @@ handle_telemetry_cmd_ipsec_secgw_stats_outbound(const char *cmd __rte_unused,
 	struct rte_tel_data *spd4_data = rte_tel_data_alloc();
 	struct rte_tel_data *spd6_data = rte_tel_data_alloc();
 	struct rte_tel_data *sad_data = rte_tel_data_alloc();
-
 	unsigned int coreid = UINT32_MAX;
+	int rc = 0;
 
 	/* verify allocated telemetry data structures */
-	if (!spd4_data || !spd6_data || !sad_data)
-		return -ENOMEM;
+	if (!spd4_data || !spd6_data || !sad_data) {
+		rc = -ENOMEM;
+		goto exit;
+	}
 
 	/* initialize telemetry data structs as dicts */
 	rte_tel_data_start_dict(data);
@@ -3041,8 +3043,10 @@ handle_telemetry_cmd_ipsec_secgw_stats_outbound(const char *cmd __rte_unused,
 
 	if (params) {
 		coreid = (uint32_t)atoi(params);
-		if (rte_lcore_is_enabled(coreid) == 0)
-			return -EINVAL;
+		if (rte_lcore_is_enabled(coreid) == 0) {
+			rc = -EINVAL;
+			goto exit;
+		}
 	}
 
 	update_statistics(&total_stats, coreid);
@@ -3076,7 +3080,13 @@ handle_telemetry_cmd_ipsec_secgw_stats_outbound(const char *cmd __rte_unused,
 
 	rte_tel_data_add_dict_container(data, "sad", sad_data, 0);
 
-	return 0;
+exit:
+	if (rc) {
+		rte_tel_data_free(spd4_data);
+		rte_tel_data_free(spd6_data);
+		rte_tel_data_free(sad_data);
+	}
+	return rc;
 }
 
 static int
@@ -3088,12 +3098,14 @@ handle_telemetry_cmd_ipsec_secgw_stats_inbound(const char *cmd __rte_unused,
 	struct rte_tel_data *spd4_data = rte_tel_data_alloc();
 	struct rte_tel_data *spd6_data = rte_tel_data_alloc();
 	struct rte_tel_data *sad_data = rte_tel_data_alloc();
-
 	unsigned int coreid = UINT32_MAX;
+	int rc = 0;
 
 	/* verify allocated telemetry data structures */
-	if (!spd4_data || !spd6_data || !sad_data)
-		return -ENOMEM;
+	if (!spd4_data || !spd6_data || !sad_data) {
+		rc = -ENOMEM;
+		goto exit;
+	}
 
 	/* initialize telemetry data structs as dicts */
 	rte_tel_data_start_dict(data);
@@ -3105,8 +3117,10 @@ handle_telemetry_cmd_ipsec_secgw_stats_inbound(const char *cmd __rte_unused,
 
 	if (params) {
 		coreid = (uint32_t)atoi(params);
-		if (rte_lcore_is_enabled(coreid) == 0)
-			return -EINVAL;
+		if (rte_lcore_is_enabled(coreid) == 0) {
+			rc = -EINVAL;
+			goto exit;
+		}
 	}
 
 	update_statistics(&total_stats, coreid);
@@ -3140,7 +3154,13 @@ handle_telemetry_cmd_ipsec_secgw_stats_inbound(const char *cmd __rte_unused,
 
 	rte_tel_data_add_dict_container(data, "spd6", spd6_data, 0);
 
-	return 0;
+exit:
+	if (rc) {
+		rte_tel_data_free(spd4_data);
+		rte_tel_data_free(spd6_data);
+		rte_tel_data_free(sad_data);
+	}
+	return rc;
 }
 
 static int
@@ -3151,8 +3171,14 @@ handle_telemetry_cmd_ipsec_secgw_stats_routing(const char *cmd __rte_unused,
 
 	struct rte_tel_data *lpm4_data = rte_tel_data_alloc();
 	struct rte_tel_data *lpm6_data = rte_tel_data_alloc();
-
 	unsigned int coreid = UINT32_MAX;
+	int rc = 0;
+
+	/* verify allocated telemetry data structures */
+	if (!lpm4_data || !lpm6_data) {
+		rc = -ENOMEM;
+		goto exit;
+	}
 
 	/* initialize telemetry data structs as dicts */
 	rte_tel_data_start_dict(data);
@@ -3162,8 +3188,10 @@ handle_telemetry_cmd_ipsec_secgw_stats_routing(const char *cmd __rte_unused,
 
 	if (params) {
 		coreid = (uint32_t)atoi(params);
-		if (rte_lcore_is_enabled(coreid) == 0)
-			return -EINVAL;
+		if (rte_lcore_is_enabled(coreid) == 0) {
+			rc = -EINVAL;
+			goto exit;
+		}
 	}
 
 	update_statistics(&total_stats, coreid);
@@ -3180,7 +3208,12 @@ handle_telemetry_cmd_ipsec_secgw_stats_routing(const char *cmd __rte_unused,
 
 	rte_tel_data_add_dict_container(data, "IPv6 LPM", lpm6_data, 0);
 
-	return 0;
+exit:
+	if (rc) {
+		rte_tel_data_free(lpm4_data);
+		rte_tel_data_free(lpm6_data);
+	}
+	return rc;
 }
 
 static void
