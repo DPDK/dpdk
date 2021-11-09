@@ -1293,6 +1293,105 @@ mlx5_range_from_mempool_chunk(struct rte_mempool *mp, void *opaque,
 }
 
 /**
+ * Collect page-aligned memory ranges of the mempool.
+ */
+static int
+mlx5_mempool_get_chunks(struct rte_mempool *mp, struct mlx5_range **out,
+			unsigned int *out_n)
+{
+	struct mlx5_range *chunks;
+	unsigned int n;
+
+	n = mp->nb_mem_chunks;
+	chunks = calloc(sizeof(chunks[0]), n);
+	if (chunks == NULL)
+		return -1;
+	rte_mempool_mem_iter(mp, mlx5_range_from_mempool_chunk, chunks);
+	*out = chunks;
+	*out_n = n;
+	return 0;
+}
+
+struct mlx5_mempool_get_extmem_data {
+	struct mlx5_range *heap;
+	unsigned int heap_size;
+	int ret;
+};
+
+static void
+mlx5_mempool_get_extmem_cb(struct rte_mempool *mp, void *opaque,
+			   void *obj, unsigned int obj_idx)
+{
+	struct mlx5_mempool_get_extmem_data *data = opaque;
+	struct rte_mbuf *mbuf = obj;
+	uintptr_t addr = (uintptr_t)mbuf->buf_addr;
+	struct mlx5_range *seg, *heap;
+	struct rte_memseg_list *msl;
+	size_t page_size;
+	uintptr_t page_start;
+	unsigned int pos = 0, len = data->heap_size, delta;
+
+	RTE_SET_USED(mp);
+	RTE_SET_USED(obj_idx);
+	if (data->ret < 0)
+		return;
+	/* Binary search for an already visited page. */
+	while (len > 1) {
+		delta = len / 2;
+		if (addr < data->heap[pos + delta].start) {
+			len = delta;
+		} else {
+			pos += delta;
+			len -= delta;
+		}
+	}
+	if (data->heap != NULL) {
+		seg = &data->heap[pos];
+		if (seg->start <= addr && addr < seg->end)
+			return;
+	}
+	/* Determine the page boundaries and remember them. */
+	heap = realloc(data->heap, sizeof(heap[0]) * (data->heap_size + 1));
+	if (heap == NULL) {
+		free(data->heap);
+		data->heap = NULL;
+		data->ret = -1;
+		return;
+	}
+	data->heap = heap;
+	data->heap_size++;
+	seg = &heap[data->heap_size - 1];
+	msl = rte_mem_virt2memseg_list((void *)addr);
+	page_size = msl != NULL ? msl->page_sz : rte_mem_page_size();
+	page_start = RTE_PTR_ALIGN_FLOOR(addr, page_size);
+	seg->start = page_start;
+	seg->end = page_start + page_size;
+	/* Maintain the heap order. */
+	qsort(data->heap, data->heap_size, sizeof(heap[0]),
+	      mlx5_range_compare_start);
+}
+
+/**
+ * Recover pages of external memory as close as possible
+ * for a mempool with RTE_PKTMBUF_POOL_PINNED_EXT_BUF.
+ * Pages are stored in a heap for efficient search, for mbufs are many.
+ */
+static int
+mlx5_mempool_get_extmem(struct rte_mempool *mp, struct mlx5_range **out,
+			unsigned int *out_n)
+{
+	struct mlx5_mempool_get_extmem_data data;
+
+	memset(&data, 0, sizeof(data));
+	rte_mempool_obj_iter(mp, mlx5_mempool_get_extmem_cb, &data);
+	if (data.ret < 0)
+		return -1;
+	*out = data.heap;
+	*out_n = data.heap_size;
+	return 0;
+}
+
+/**
  * Get VA-contiguous ranges of the mempool memory.
  * Each range start and end is aligned to the system page size.
  *
@@ -1311,13 +1410,15 @@ mlx5_get_mempool_ranges(struct rte_mempool *mp, struct mlx5_range **out,
 			unsigned int *out_n)
 {
 	struct mlx5_range *chunks;
-	unsigned int chunks_n = mp->nb_mem_chunks, contig_n, i;
+	unsigned int chunks_n, contig_n, i;
+	int ret;
 
-	/* Collect page-aligned memory ranges of the mempool. */
-	chunks = calloc(sizeof(chunks[0]), chunks_n);
-	if (chunks == NULL)
-		return -1;
-	rte_mempool_mem_iter(mp, mlx5_range_from_mempool_chunk, chunks);
+	/* Collect the pool underlying memory. */
+	ret = (rte_pktmbuf_priv_flags(mp) & RTE_PKTMBUF_POOL_F_PINNED_EXT_BUF) ?
+	      mlx5_mempool_get_extmem(mp, &chunks, &chunks_n) :
+	      mlx5_mempool_get_chunks(mp, &chunks, &chunks_n);
+	if (ret < 0)
+		return ret;
 	/* Merge adjacent chunks and place them at the beginning. */
 	qsort(chunks, chunks_n, sizeof(chunks[0]), mlx5_range_compare_start);
 	contig_n = 1;

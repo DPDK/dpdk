@@ -146,12 +146,16 @@ mlx5_rxq_mempool_register(struct mlx5_rxq_ctrl *rxq_ctrl)
 		return 0;
 	}
 	for (s = 0; s < rxq_ctrl->rxq.rxseg_n; s++) {
+		uint32_t flags;
+
 		mp = rxq_ctrl->rxq.rxseg[s].mp;
+		flags = rte_pktmbuf_priv_flags(mp);
 		ret = mlx5_mr_mempool_register(rxq_ctrl->sh->cdev, mp);
 		if (ret < 0 && rte_errno != EEXIST)
 			return ret;
-		rte_mempool_mem_iter(mp, mlx5_rxq_mempool_register_cb,
-				     &rxq_ctrl->rxq);
+		if ((flags & RTE_PKTMBUF_POOL_F_PINNED_EXT_BUF) == 0)
+			rte_mempool_mem_iter(mp, mlx5_rxq_mempool_register_cb,
+					&rxq_ctrl->rxq);
 	}
 	return 0;
 }

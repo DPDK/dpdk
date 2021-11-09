@@ -390,9 +390,13 @@ mlx5_dev_mempool_event_cb(enum rte_mempool_event event, struct rte_mempool *mp,
 			  void *arg)
 {
 	struct mlx5_common_device *cdev = arg;
+	bool extmem = rte_pktmbuf_priv_flags(mp) &
+		      RTE_PKTMBUF_POOL_F_PINNED_EXT_BUF;
 
 	switch (event) {
 	case RTE_MEMPOOL_EVENT_READY:
+		if (extmem)
+			break;
 		if (mlx5_dev_mempool_register(cdev, mp) < 0)
 			DRV_LOG(ERR,
 				"Failed to register new mempool %s for PD %p: %s",
