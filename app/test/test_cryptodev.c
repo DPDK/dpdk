@@ -4102,9 +4102,9 @@ test_kasumi_decryption(const struct kasumi_test_data *tdata)
 
 	/* Create KASUMI operation */
 	retval = create_wireless_algo_cipher_operation(tdata->cipher_iv.data,
-					tdata->cipher_iv.len,
-					tdata->ciphertext.len,
-					tdata->validCipherOffsetInBits.len);
+			tdata->cipher_iv.len,
+			RTE_ALIGN_CEIL(tdata->validCipherLenInBits.len, 8),
+			tdata->validCipherOffsetInBits.len);
 	if (retval < 0)
 		return retval;
 
@@ -6332,19 +6332,19 @@ test_zuc_auth_cipher(const struct wireless_test_data *tdata,
 		ciphertext = (uint8_t *)rte_pktmbuf_append(ut_params->ibuf,
 					ciphertext_pad_len);
 		memcpy(ciphertext, tdata->ciphertext.data, ciphertext_len);
-		if (op_mode == OUT_OF_PLACE)
-			rte_pktmbuf_append(ut_params->obuf, ciphertext_pad_len);
 		debug_hexdump(stdout, "ciphertext:", ciphertext,
 			ciphertext_len);
 	} else {
+		/* make sure enough space to cover partial digest verify case */
 		plaintext = (uint8_t *)rte_pktmbuf_append(ut_params->ibuf,
-					plaintext_pad_len);
+					ciphertext_pad_len);
 		memcpy(plaintext, tdata->plaintext.data, plaintext_len);
-		if (op_mode == OUT_OF_PLACE)
-			rte_pktmbuf_append(ut_params->obuf, plaintext_pad_len);
 		debug_hexdump(stdout, "plaintext:", plaintext,
 			plaintext_len);
 	}
+
+	if (op_mode == OUT_OF_PLACE)
+		rte_pktmbuf_append(ut_params->obuf, ciphertext_pad_len);
 
 	/* Create ZUC operation */
 	retval = create_wireless_algo_auth_cipher_operation(
@@ -7400,18 +7400,18 @@ test_mixed_auth_cipher(const struct mixed_cipher_auth_test_data *tdata,
 		ciphertext = (uint8_t *)rte_pktmbuf_append(ut_params->ibuf,
 				ciphertext_pad_len);
 		memcpy(ciphertext, tdata->ciphertext.data, ciphertext_len);
-		if (op_mode == OUT_OF_PLACE)
-			rte_pktmbuf_append(ut_params->obuf, ciphertext_pad_len);
 		debug_hexdump(stdout, "ciphertext:", ciphertext,
 				ciphertext_len);
 	} else {
+		/* make sure enough space to cover partial digest verify case */
 		plaintext = (uint8_t *)rte_pktmbuf_append(ut_params->ibuf,
-				plaintext_pad_len);
+				ciphertext_pad_len);
 		memcpy(plaintext, tdata->plaintext.data, plaintext_len);
-		if (op_mode == OUT_OF_PLACE)
-			rte_pktmbuf_append(ut_params->obuf, plaintext_pad_len);
 		debug_hexdump(stdout, "plaintext:", plaintext, plaintext_len);
 	}
+
+	if (op_mode == OUT_OF_PLACE)
+		rte_pktmbuf_append(ut_params->obuf, ciphertext_pad_len);
 
 	/* Create the operation */
 	retval = create_wireless_algo_auth_cipher_operation(
