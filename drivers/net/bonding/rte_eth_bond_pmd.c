@@ -1717,13 +1717,20 @@ slave_configure(struct rte_eth_dev *bonded_eth_dev,
 				bonded_eth_dev->data->dev_conf.rxmode.mq_mode;
 	}
 
-	if (bonded_eth_dev->data->dev_conf.rxmode.offloads &
-			DEV_RX_OFFLOAD_VLAN_FILTER)
-		slave_eth_dev->data->dev_conf.rxmode.offloads |=
-				DEV_RX_OFFLOAD_VLAN_FILTER;
-	else
-		slave_eth_dev->data->dev_conf.rxmode.offloads &=
-				~DEV_RX_OFFLOAD_VLAN_FILTER;
+	slave_eth_dev->data->dev_conf.txmode.offloads |=
+		bonded_eth_dev->data->dev_conf.txmode.offloads;
+
+	slave_eth_dev->data->dev_conf.txmode.offloads &=
+		(bonded_eth_dev->data->dev_conf.txmode.offloads |
+		~internals->tx_offload_capa);
+
+	slave_eth_dev->data->dev_conf.rxmode.offloads |=
+		bonded_eth_dev->data->dev_conf.rxmode.offloads;
+
+	slave_eth_dev->data->dev_conf.rxmode.offloads &=
+		(bonded_eth_dev->data->dev_conf.rxmode.offloads |
+		~internals->rx_offload_capa);
+
 
 	nb_rx_queues = bonded_eth_dev->data->nb_rx_queues;
 	nb_tx_queues = bonded_eth_dev->data->nb_tx_queues;
