@@ -1701,10 +1701,9 @@ static int
 iavf_dev_xstats_reset(struct rte_eth_dev *dev)
 {
 	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
-
 	iavf_dev_stats_reset(dev);
-	memset(&vf->vsi.eth_stats_offset, 0, sizeof(struct iavf_eth_xstats));
-
+	memset(&vf->vsi.eth_stats_offset.ips_stats, 0,
+			sizeof(struct iavf_ipsec_crypto_stats));
 	return 0;
 }
 
