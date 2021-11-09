@@ -7,6 +7,12 @@
 
 #include "cnxk_ethdev.h"
 
+struct sdp_channel {
+	bool is_sdp_mask_set;
+	uint16_t channel;
+	uint16_t mask;
+};
+
 static int
 parse_outb_nb_desc(const char *key, const char *value, void *extra_args)
 {
@@ -164,6 +170,27 @@ parse_switch_header_type(const char *key, const char *value, void *extra_args)
 	return 0;
 }
 
+static int
+parse_sdp_channel_mask(const char *key, const char *value, void *extra_args)
+{
+	RTE_SET_USED(key);
+	uint16_t chan = 0, mask = 0;
+	char *next = 0;
+
+	/* next will point to the separator '/' */
+	chan = strtol(value, &next, 16);
+	mask = strtol(++next, 0, 16);
+
+	if (chan > GENMASK(11, 0) || mask > GENMASK(11, 0))
+		return -EINVAL;
+
+	((struct sdp_channel *)extra_args)->channel = chan;
+	((struct sdp_channel *)extra_args)->mask = mask;
+	((struct sdp_channel *)extra_args)->is_sdp_mask_set = true;
+
+	return 0;
+}
+
 #define CNXK_RSS_RETA_SIZE	"reta_size"
 #define CNXK_SCL_ENABLE		"scalar_enable"
 #define CNXK_MAX_SQB_COUNT	"max_sqb_count"
@@ -177,6 +204,7 @@ parse_switch_header_type(const char *key, const char *value, void *extra_args)
 #define CNXK_OUTB_NB_DESC	"outb_nb_desc"
 #define CNXK_FORCE_INB_INL_DEV	"force_inb_inl_dev"
 #define CNXK_OUTB_NB_CRYPTO_QS	"outb_nb_crypto_qs"
+#define CNXK_SDP_CHANNEL_MASK	"sdp_channel_mask"
 
 int
 cnxk_ethdev_parse_devargs(struct rte_devargs *devargs, struct cnxk_eth_dev *dev)
@@ -191,10 +219,13 @@ cnxk_ethdev_parse_devargs(struct rte_devargs *devargs, struct cnxk_eth_dev *dev)
 	uint16_t force_inb_inl_dev = 0;
 	uint16_t outb_nb_crypto_qs = 1;
 	uint16_t outb_nb_desc = 8200;
+	struct sdp_channel sdp_chan;
 	uint16_t rss_tag_as_xor = 0;
 	uint16_t scalar_enable = 0;
 	uint8_t lock_rx_ctx = 0;
 	struct rte_kvargs *kvlist;
+
+	memset(&sdp_chan, 0, sizeof(sdp_chan));
 
 	if (devargs == NULL)
 		goto null_devargs;
@@ -228,6 +259,8 @@ cnxk_ethdev_parse_devargs(struct rte_devargs *devargs, struct cnxk_eth_dev *dev)
 			   &parse_outb_nb_crypto_qs, &outb_nb_crypto_qs);
 	rte_kvargs_process(kvlist, CNXK_FORCE_INB_INL_DEV, &parse_flag,
 			   &force_inb_inl_dev);
+	rte_kvargs_process(kvlist, CNXK_SDP_CHANNEL_MASK,
+			   &parse_sdp_channel_mask, &sdp_chan);
 	rte_kvargs_free(kvlist);
 
 null_devargs:
@@ -246,8 +279,10 @@ null_devargs:
 	dev->npc.flow_prealloc_size = flow_prealloc_size;
 	dev->npc.flow_max_priority = flow_max_priority;
 	dev->npc.switch_header_type = switch_header_type;
+	dev->npc.sdp_channel = sdp_chan.channel;
+	dev->npc.sdp_channel_mask = sdp_chan.mask;
+	dev->npc.is_sdp_mask_set = sdp_chan.is_sdp_mask_set;
 	return 0;
-
 exit:
 	return -EINVAL;
 }
@@ -263,4 +298,5 @@ RTE_PMD_REGISTER_PARAM_STRING(net_cnxk,
 			      CNXK_IPSEC_IN_MAX_SPI "=<1-65535>"
 			      CNXK_OUTB_NB_DESC "=<1-65535>"
 			      CNXK_OUTB_NB_CRYPTO_QS "=<1-64>"
-			      CNXK_FORCE_INB_INL_DEV "=1");
+			      CNXK_FORCE_INB_INL_DEV "=1"
+			      CNXK_SDP_CHANNEL_MASK "=<1-4095>/<1-4095>");

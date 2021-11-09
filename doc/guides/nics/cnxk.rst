@@ -276,6 +276,27 @@ Runtime Config Options
    set with this custom mask, inbound encrypted traffic from all ports with
    matching channel number pattern will be directed to the inline IPSec device.
 
+- ``SDP device channel and mask`` (default ``none``)
+   Set channel and channel mask configuration for the SDP device. This
+   will be used when creating flow rules on the SDP device.
+
+   By default, for rules created on the SDP device, the RTE Flow API sets the
+   channel number and mask to cover the entire SDP channel range in the channel
+   field of the MCAM entry. This behaviour can be modified using the
+   ``sdp_channel_mask`` ``devargs`` parameter.
+
+   For example::
+
+      -a 0002:1d:00.0,sdp_channel_mask=0x700/0xf00
+
+   With the above configuration, RTE Flow rules API will set the channel
+   and channel mask as 0x700 and 0xF00 in the MCAM entries of the  flow rules
+   created on the SDP device. This option needs to be used when more than one
+   SDP interface is in use and RTE Flow rules created need to distinguish
+   between traffic from each SDP interface. The channel and mask combination
+   specified should match all the channels(or rings) configured on the SDP
+   interface.
+
 .. note::
 
    Above devarg parameters are configurable per device, user needs to pass the
