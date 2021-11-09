@@ -7,6 +7,10 @@
 
 #include <rte_io.h>
 
+#ifndef BIT
+#define BIT(nr)		(1UL << (nr))
+#endif
+
 #define CORE_NUMBER 4
 #define RETRIES	5
 
@@ -18,8 +22,16 @@
 
 #define FSL_QDMA_DMR			0x0
 #define FSL_QDMA_DSR			0x4
+#define FSL_QDMA_DEDR			0xe04
+#define FSL_QDMA_DECFDW0R		0xe10
+#define FSL_QDMA_DECFDW1R		0xe14
+#define FSL_QDMA_DECFDW2R		0xe18
+#define FSL_QDMA_DECFDW3R		0xe1c
+#define FSL_QDMA_DECFQIDR		0xe30
+#define FSL_QDMA_DECBR			0xe34
 
 #define FSL_QDMA_BCQMR(x)		(0xc0 + 0x100 * (x))
+#define FSL_QDMA_BCQSR(x)		(0xc4 + 0x100 * (x))
 #define FSL_QDMA_BCQEDPA_SADDR(x)	(0xc8 + 0x100 * (x))
 #define FSL_QDMA_BCQDPA_SADDR(x)	(0xcc + 0x100 * (x))
 #define FSL_QDMA_BCQEEPA_SADDR(x)	(0xd0 + 0x100 * (x))
@@ -32,6 +44,7 @@
 #define FSL_QDMA_SQEEPAR		0x810
 #define FSL_QDMA_SQEPAR			0x814
 #define FSL_QDMA_BSQMR			0x800
+#define FSL_QDMA_BSQSR			0x804
 #define FSL_QDMA_BSQICR			0x828
 #define FSL_QDMA_CQIER			0xa10
 #define FSL_QDMA_SQCCMR			0xa20
@@ -41,11 +54,17 @@
 #define FSL_QDMA_QUEUE_MAX		8
 
 #define FSL_QDMA_BCQMR_EN		0x80000000
+#define FSL_QDMA_BCQMR_EI_BE		0x40
 #define FSL_QDMA_BCQMR_CD_THLD(x)	((x) << 20)
 #define FSL_QDMA_BCQMR_CQ_SIZE(x)	((x) << 16)
 
+#define FSL_QDMA_BCQSR_QF_XOFF_BE	0x1000100
+
 #define FSL_QDMA_BSQMR_EN		0x80000000
+#define FSL_QDMA_BSQMR_DI_BE		0x40
 #define FSL_QDMA_BSQMR_CQ_SIZE(x)	((x) << 16)
+
+#define FSL_QDMA_BSQSR_QE_BE		0x200
 
 #define FSL_QDMA_DMR_DQD		0x40000000
 #define FSL_QDMA_DSR_DB			0x80000000
@@ -62,6 +81,13 @@
 #define FSL_QDMA_CMD_RWTTYPE_OFFSET	28
 #define FSL_QDMA_CMD_LWC_OFFSET		16
 
+#define QDMA_CCDF_STATUS		20
+#define QDMA_CCDF_OFFSET		20
+#define QDMA_CCDF_MASK			GENMASK(28, 20)
+#define QDMA_CCDF_FOTMAT		BIT(29)
+#define QDMA_CCDF_SER			BIT(30)
+
+#define QDMA_SG_FIN			BIT(30)
 #define QDMA_SG_LEN_MASK		GENMASK(29, 0)
 
 #define COMMAND_QUEUE_OVERFLOW		10
@@ -80,9 +106,13 @@
 #ifdef QDMA_BIG_ENDIAN
 #define QDMA_IN(addr)		be32_to_cpu(rte_read32(addr))
 #define QDMA_OUT(addr, val)	rte_write32(be32_to_cpu(val), addr)
+#define QDMA_IN_BE(addr)	rte_read32(addr)
+#define QDMA_OUT_BE(addr, val)	rte_write32(val, addr)
 #else
 #define QDMA_IN(addr)		rte_read32(addr)
 #define QDMA_OUT(addr, val)	rte_write32(val, addr)
+#define QDMA_IN_BE(addr)	be32_to_cpu(rte_write32(addr))
+#define QDMA_OUT_BE(addr, val)	rte_write32(be32_to_cpu(val), addr)
 #endif
 
 #define FSL_QDMA_BLOCK_BASE_OFFSET(fsl_qdma_engine, x)			\

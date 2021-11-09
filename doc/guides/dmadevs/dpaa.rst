@@ -48,6 +48,18 @@ Initialization
 On EAL initialization, DPAA DMA devices will be detected on DPAA bus and
 will be probed and populated into their device list.
 
+Features
+--------
+
+The DPAA DMA implements following features in the dmadev API:
+
+- Supports 1 virtual channel.
+- Supports all 4 DMA transfers: MEM_TO_MEM, MEM_TO_DEV,
+  DEV_TO_MEM, DEV_TO_DEV.
+- Supports DMA silent mode.
+- Supports issuing DMA of data within memory without hogging CPU while
+  performing DMA operation.
+
 Platform Requirement
 --------------------
 

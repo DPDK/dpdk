@@ -15,10 +15,48 @@ qdma_desc_addr_set64(struct fsl_qdma_format *ccdf, u64 addr)
 	ccdf->addr_lo = rte_cpu_to_le_32(lower_32_bits(addr));
 }
 
+static inline u64
+qdma_ccdf_get_queue(const struct fsl_qdma_format *ccdf)
+{
+	return ccdf->cfg8b_w1 & 0xff;
+}
+
+static inline int
+qdma_ccdf_get_offset(const struct fsl_qdma_format *ccdf)
+{
+	return (rte_le_to_cpu_32(ccdf->cfg) & QDMA_CCDF_MASK)
+		>> QDMA_CCDF_OFFSET;
+}
+
+static inline void
+qdma_ccdf_set_format(struct fsl_qdma_format *ccdf, int offset)
+{
+	ccdf->cfg = rte_cpu_to_le_32(QDMA_CCDF_FOTMAT | offset);
+}
+
+static inline int
+qdma_ccdf_get_status(const struct fsl_qdma_format *ccdf)
+{
+	return (rte_le_to_cpu_32(ccdf->status) & QDMA_CCDF_MASK)
+		>> QDMA_CCDF_STATUS;
+}
+
+static inline void
+qdma_ccdf_set_ser(struct fsl_qdma_format *ccdf, int status)
+{
+	ccdf->status = rte_cpu_to_le_32(QDMA_CCDF_SER | status);
+}
+
 static inline void
 qdma_csgf_set_len(struct fsl_qdma_format *csgf, int len)
 {
 	csgf->cfg = rte_cpu_to_le_32(len & QDMA_SG_LEN_MASK);
+}
+
+static inline void
+qdma_csgf_set_f(struct fsl_qdma_format *csgf, int len)
+{
+	csgf->cfg = rte_cpu_to_le_32(QDMA_SG_FIN | (len & QDMA_SG_LEN_MASK));
 }
 
 static inline int
@@ -45,6 +83,18 @@ static void
 qdma_writel(u32 val, void *addr)
 {
 	QDMA_OUT(addr, val);
+}
+
+static u32
+qdma_readl_be(void *addr)
+{
+	return QDMA_IN_BE(addr);
+}
+
+static void
+qdma_writel_be(u32 val, void *addr)
+{
+	QDMA_OUT_BE(addr, val);
 }
 
 static void
@@ -102,6 +152,32 @@ fsl_qdma_free_chan_resources(struct fsl_qdma_chan *fsl_chan)
 
 finally:
 	fsl_qdma->desc_allocated--;
+}
+
+static void
+fsl_qdma_comp_fill_memcpy(struct fsl_qdma_comp *fsl_comp,
+				      dma_addr_t dst, dma_addr_t src, u32 len)
+{
+	struct fsl_qdma_format *csgf_src, *csgf_dest;
+
+	/* Note: command table (fsl_comp->virt_addr) is getting filled
+	 * directly in cmd descriptors of queues while enqueuing the descriptor
+	 * please refer fsl_qdma_enqueue_desc
+	 * frame list table (virt_addr) + 1) and source,
+	 * destination descriptor table
+	 * (fsl_comp->desc_virt_addr and fsl_comp->desc_virt_addr+1) move to
+	 * the control path to fsl_qdma_pre_request_enqueue_comp_sd_desc
+	 */
+	csgf_src = (struct fsl_qdma_format *)fsl_comp->virt_addr + 2;
+	csgf_dest = (struct fsl_qdma_format *)fsl_comp->virt_addr + 3;
+
+	/* Status notification is enqueued to status queue. */
+	qdma_desc_addr_set64(csgf_src, src);
+	qdma_csgf_set_len(csgf_src, len);
+	qdma_desc_addr_set64(csgf_dest, dst);
+	qdma_csgf_set_len(csgf_dest, len);
+	/* This entry is the last entry. */
+	qdma_csgf_set_f(csgf_dest, len);
 }
 
 /*
@@ -173,6 +249,26 @@ fail:
 	}
 
 	return -ENOMEM;
+}
+
+/*
+ * Request a command descriptor for enqueue.
+ */
+static struct fsl_qdma_comp *
+fsl_qdma_request_enqueue_desc(struct fsl_qdma_chan *fsl_chan)
+{
+	struct fsl_qdma_queue *queue = fsl_chan->queue;
+	struct fsl_qdma_comp *comp_temp;
+
+	if (!list_empty(&queue->comp_free)) {
+		comp_temp = list_first_entry(&queue->comp_free,
+					     struct fsl_qdma_comp,
+					     list);
+		list_del(&comp_temp->list);
+		return comp_temp;
+	}
+
+	return NULL;
 }
 
 static struct fsl_qdma_queue
@@ -325,6 +421,54 @@ fsl_qdma_halt(struct fsl_qdma_engine *fsl_qdma)
 }
 
 static int
+fsl_qdma_queue_transfer_complete(struct fsl_qdma_engine *fsl_qdma,
+				 void *block, int id, const uint16_t nb_cpls,
+				 uint16_t *last_idx,
+				 enum rte_dma_status_code *status)
+{
+	struct fsl_qdma_queue *fsl_queue = fsl_qdma->queue;
+	struct fsl_qdma_queue *fsl_status = fsl_qdma->status[id];
+	struct fsl_qdma_queue *temp_queue;
+	struct fsl_qdma_format *status_addr;
+	struct fsl_qdma_comp *fsl_comp = NULL;
+	u32 reg, i;
+	int count = 0;
+
+	while (count < nb_cpls) {
+		reg = qdma_readl_be(block + FSL_QDMA_BSQSR);
+		if (reg & FSL_QDMA_BSQSR_QE_BE)
+			return count;
+
+		status_addr = fsl_status->virt_head;
+
+		i = qdma_ccdf_get_queue(status_addr) +
+			id * fsl_qdma->n_queues;
+		temp_queue = fsl_queue + i;
+		fsl_comp = list_first_entry(&temp_queue->comp_used,
+					    struct fsl_qdma_comp,
+					    list);
+		list_del(&fsl_comp->list);
+
+		reg = qdma_readl_be(block + FSL_QDMA_BSQMR);
+		reg |= FSL_QDMA_BSQMR_DI_BE;
+
+		qdma_desc_addr_set64(status_addr, 0x0);
+		fsl_status->virt_head++;
+		if (fsl_status->virt_head == fsl_status->cq + fsl_status->n_cq)
+			fsl_status->virt_head = fsl_status->cq;
+		qdma_writel_be(reg, block + FSL_QDMA_BSQMR);
+		*last_idx = fsl_comp->index;
+		if (status != NULL)
+			status[count] = RTE_DMA_STATUS_SUCCESSFUL;
+
+		list_add_tail(&fsl_comp->list, &temp_queue->comp_free);
+		count++;
+
+	}
+	return count;
+}
+
+static int
 fsl_qdma_reg_init(struct fsl_qdma_engine *fsl_qdma)
 {
 	struct fsl_qdma_queue *fsl_queue = fsl_qdma->queue;
@@ -417,6 +561,66 @@ fsl_qdma_reg_init(struct fsl_qdma_engine *fsl_qdma)
 	qdma_writel(reg, ctrl + FSL_QDMA_DMR);
 
 	return 0;
+}
+
+static void *
+fsl_qdma_prep_memcpy(void *fsl_chan, dma_addr_t dst,
+			   dma_addr_t src, size_t len,
+			   void *call_back,
+			   void *param)
+{
+	struct fsl_qdma_comp *fsl_comp;
+
+	fsl_comp =
+	fsl_qdma_request_enqueue_desc((struct fsl_qdma_chan *)fsl_chan);
+	if (!fsl_comp)
+		return NULL;
+
+	fsl_comp->qchan = fsl_chan;
+	fsl_comp->call_back_func = call_back;
+	fsl_comp->params = param;
+
+	fsl_qdma_comp_fill_memcpy(fsl_comp, dst, src, len);
+	return (void *)fsl_comp;
+}
+
+static int
+fsl_qdma_enqueue_desc(struct fsl_qdma_chan *fsl_chan,
+				  struct fsl_qdma_comp *fsl_comp,
+				  uint64_t flags)
+{
+	struct fsl_qdma_queue *fsl_queue = fsl_chan->queue;
+	void *block = fsl_queue->block_base;
+	struct fsl_qdma_format *ccdf;
+	u32 reg;
+
+	/* retrieve and store the register value in big endian
+	 * to avoid bits swap
+	 */
+	reg = qdma_readl_be(block +
+			 FSL_QDMA_BCQSR(fsl_queue->id));
+	if (reg & (FSL_QDMA_BCQSR_QF_XOFF_BE))
+		return -1;
+
+	/* filling descriptor  command table */
+	ccdf = (struct fsl_qdma_format *)fsl_queue->virt_head;
+	qdma_desc_addr_set64(ccdf, fsl_comp->bus_addr + 16);
+	qdma_ccdf_set_format(ccdf, qdma_ccdf_get_offset(fsl_comp->virt_addr));
+	qdma_ccdf_set_ser(ccdf, qdma_ccdf_get_status(fsl_comp->virt_addr));
+	fsl_comp->index = fsl_queue->virt_head - fsl_queue->cq;
+	fsl_queue->virt_head++;
+
+	if (fsl_queue->virt_head == fsl_queue->cq + fsl_queue->n_cq)
+		fsl_queue->virt_head = fsl_queue->cq;
+
+	list_add_tail(&fsl_comp->list, &fsl_queue->comp_used);
+
+	if (flags == RTE_DMA_OP_FLAG_SUBMIT) {
+		reg = qdma_readl_be(block + FSL_QDMA_BCQMR(fsl_queue->id));
+		reg |= FSL_QDMA_BCQMR_EI_BE;
+		qdma_writel_be(reg, block + FSL_QDMA_BCQMR(fsl_queue->id));
+	}
+	return fsl_comp->index;
 }
 
 static int
@@ -533,6 +737,132 @@ dpaa_qdma_queue_setup(struct rte_dma_dev *dmadev,
 	struct fsl_qdma_engine *fsl_qdma = dmadev->data->dev_private;
 
 	return dpaa_get_channel(fsl_qdma, vchan);
+}
+
+static int
+dpaa_qdma_submit(void *dev_private, uint16_t vchan)
+{
+	struct fsl_qdma_engine *fsl_qdma = (struct fsl_qdma_engine *)dev_private;
+	struct fsl_qdma_chan *fsl_chan =
+		&fsl_qdma->chans[fsl_qdma->vchan_map[vchan]];
+	struct fsl_qdma_queue *fsl_queue = fsl_chan->queue;
+	void *block = fsl_queue->block_base;
+	u32 reg;
+
+	while (fsl_queue->pending) {
+		reg = qdma_readl_be(block + FSL_QDMA_BCQMR(fsl_queue->id));
+		reg |= FSL_QDMA_BCQMR_EI_BE;
+		qdma_writel_be(reg, block + FSL_QDMA_BCQMR(fsl_queue->id));
+		fsl_queue->pending--;
+	}
+
+	return 0;
+}
+
+static int
+dpaa_qdma_enqueue(void *dev_private, uint16_t vchan,
+		  rte_iova_t src, rte_iova_t dst,
+		  uint32_t length, uint64_t flags)
+{
+	struct fsl_qdma_engine *fsl_qdma = (struct fsl_qdma_engine *)dev_private;
+	struct fsl_qdma_chan *fsl_chan =
+		&fsl_qdma->chans[fsl_qdma->vchan_map[vchan]];
+	int ret;
+
+	void *fsl_comp = NULL;
+
+	fsl_comp = fsl_qdma_prep_memcpy(fsl_chan,
+			(dma_addr_t)dst, (dma_addr_t)src,
+			length, NULL, NULL);
+	if (!fsl_comp) {
+		DPAA_QDMA_DP_DEBUG("fsl_comp is NULL\n");
+		return -1;
+	}
+	ret = fsl_qdma_enqueue_desc(fsl_chan, fsl_comp, flags);
+
+	return ret;
+}
+
+static uint16_t
+dpaa_qdma_dequeue_status(void *dev_private, uint16_t vchan,
+			 const uint16_t nb_cpls, uint16_t *last_idx,
+			 enum rte_dma_status_code *st)
+{
+	struct fsl_qdma_engine *fsl_qdma = (struct fsl_qdma_engine *)dev_private;
+	int id = (int)((fsl_qdma->vchan_map[vchan]) / QDMA_QUEUES);
+	void *block;
+	int intr;
+	void *status = fsl_qdma->status_base;
+
+	intr = qdma_readl_be(status + FSL_QDMA_DEDR);
+	if (intr) {
+		DPAA_QDMA_ERR("DMA transaction error! %x\n", intr);
+		intr = qdma_readl(status + FSL_QDMA_DECFDW0R);
+		DPAA_QDMA_INFO("reg FSL_QDMA_DECFDW0R %x\n", intr);
+		intr = qdma_readl(status + FSL_QDMA_DECFDW1R);
+		DPAA_QDMA_INFO("reg FSL_QDMA_DECFDW1R %x\n", intr);
+		intr = qdma_readl(status + FSL_QDMA_DECFDW2R);
+		DPAA_QDMA_INFO("reg FSL_QDMA_DECFDW2R %x\n", intr);
+		intr = qdma_readl(status + FSL_QDMA_DECFDW3R);
+		DPAA_QDMA_INFO("reg FSL_QDMA_DECFDW3R %x\n", intr);
+		intr = qdma_readl(status + FSL_QDMA_DECFQIDR);
+		DPAA_QDMA_INFO("reg FSL_QDMA_DECFQIDR %x\n", intr);
+		intr = qdma_readl(status + FSL_QDMA_DECBR);
+		DPAA_QDMA_INFO("reg FSL_QDMA_DECBR %x\n", intr);
+		qdma_writel(0xffffffff,
+			    status + FSL_QDMA_DEDR);
+		intr = qdma_readl(status + FSL_QDMA_DEDR);
+	}
+
+	block = fsl_qdma->block_base +
+		FSL_QDMA_BLOCK_BASE_OFFSET(fsl_qdma, id);
+
+	intr = fsl_qdma_queue_transfer_complete(fsl_qdma, block, id, nb_cpls,
+						last_idx, st);
+
+	return intr;
+}
+
+
+static uint16_t
+dpaa_qdma_dequeue(void *dev_private,
+		  uint16_t vchan, const uint16_t nb_cpls,
+		  uint16_t *last_idx, bool *has_error)
+{
+	struct fsl_qdma_engine *fsl_qdma = (struct fsl_qdma_engine *)dev_private;
+	int id = (int)((fsl_qdma->vchan_map[vchan]) / QDMA_QUEUES);
+	void *block;
+	int intr;
+	void *status = fsl_qdma->status_base;
+
+	intr = qdma_readl_be(status + FSL_QDMA_DEDR);
+	if (intr) {
+		DPAA_QDMA_ERR("DMA transaction error! %x\n", intr);
+		intr = qdma_readl(status + FSL_QDMA_DECFDW0R);
+		DPAA_QDMA_INFO("reg FSL_QDMA_DECFDW0R %x\n", intr);
+		intr = qdma_readl(status + FSL_QDMA_DECFDW1R);
+		DPAA_QDMA_INFO("reg FSL_QDMA_DECFDW1R %x\n", intr);
+		intr = qdma_readl(status + FSL_QDMA_DECFDW2R);
+		DPAA_QDMA_INFO("reg FSL_QDMA_DECFDW2R %x\n", intr);
+		intr = qdma_readl(status + FSL_QDMA_DECFDW3R);
+		DPAA_QDMA_INFO("reg FSL_QDMA_DECFDW3R %x\n", intr);
+		intr = qdma_readl(status + FSL_QDMA_DECFQIDR);
+		DPAA_QDMA_INFO("reg FSL_QDMA_DECFQIDR %x\n", intr);
+		intr = qdma_readl(status + FSL_QDMA_DECBR);
+		DPAA_QDMA_INFO("reg FSL_QDMA_DECBR %x\n", intr);
+		qdma_writel(0xffffffff,
+			    status + FSL_QDMA_DEDR);
+		intr = qdma_readl(status + FSL_QDMA_DEDR);
+		*has_error = true;
+	}
+
+	block = fsl_qdma->block_base +
+		FSL_QDMA_BLOCK_BASE_OFFSET(fsl_qdma, id);
+
+	intr = fsl_qdma_queue_transfer_complete(fsl_qdma, block, id, nb_cpls,
+						last_idx, NULL);
+
+	return intr;
 }
 
 static struct rte_dma_dev_ops dpaa_qdma_ops = {
@@ -652,6 +982,10 @@ dpaa_qdma_probe(__rte_unused struct rte_dpaa_driver *dpaa_drv,
 	dmadev->dev_ops = &dpaa_qdma_ops;
 	dmadev->device = &dpaa_dev->device;
 	dmadev->fp_obj->dev_private = dmadev->data->dev_private;
+	dmadev->fp_obj->copy = dpaa_qdma_enqueue;
+	dmadev->fp_obj->submit = dpaa_qdma_submit;
+	dmadev->fp_obj->completed = dpaa_qdma_dequeue;
+	dmadev->fp_obj->completed_status = dpaa_qdma_dequeue_status;
 
 	/* Invoke PMD device initialization function */
 	ret = dpaa_qdma_init(dmadev);
