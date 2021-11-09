@@ -584,6 +584,13 @@ API Changes
 * fib: Added the ``rib_ext_sz`` field to ``rte_fib_conf`` and ``rte_fib6_conf``
   so that user can specify the size of the RIB extension inside the FIB.
 
+* ip_frag: All macros updated to have ``RTE_IP_FRAG_`` prefix.
+  Obsolete macros are kept for compatibility.
+  DPDK components updated to use new names.
+  Experimental function ``rte_frag_table_del_expired_entries`` was renamed
+  to ``rte_ip_frag_table_del_expired_entries``
+  to comply with other public API naming convention.
+
 
 ABI Changes
 -----------

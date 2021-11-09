@@ -186,7 +186,7 @@ process_ipv6(struct rte_port_ring_writer_ras *p, struct rte_mbuf *pkt)
 	struct rte_ipv6_hdr *pkt_hdr =
 		rte_pktmbuf_mtod(pkt, struct rte_ipv6_hdr *);
 
-	struct ipv6_extension_fragment *frag_hdr;
+	struct rte_ipv6_fragment_ext *frag_hdr;
 	uint16_t frag_data = 0;
 	frag_hdr = rte_ipv6_frag_get_ipv6_fragment_header(pkt_hdr);
 	if (frag_hdr != NULL)

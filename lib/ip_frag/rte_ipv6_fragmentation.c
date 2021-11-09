@@ -22,13 +22,13 @@ __fill_ipv6hdr_frag(struct rte_ipv6_hdr *dst,
 		const struct rte_ipv6_hdr *src, uint16_t len, uint16_t fofs,
 		uint32_t mf)
 {
-	struct ipv6_extension_fragment *fh;
+	struct rte_ipv6_fragment_ext *fh;
 
 	rte_memcpy(dst, src, sizeof(*dst));
 	dst->payload_len = rte_cpu_to_be_16(len);
 	dst->proto = IPPROTO_FRAGMENT;
 
-	fh = (struct ipv6_extension_fragment *) ++dst;
+	fh = (struct rte_ipv6_fragment_ext *) ++dst;
 	fh->next_header = src->proto;
 	fh->reserved = 0;
 	fh->frag_data = rte_cpu_to_be_16(RTE_IPV6_SET_FRAG_DATA(fofs, mf));
@@ -94,7 +94,7 @@ rte_ipv6_fragment_packet(struct rte_mbuf *pkt_in,
 	 */
 
 	frag_size = mtu_size - sizeof(struct rte_ipv6_hdr) -
-		sizeof(struct ipv6_extension_fragment);
+		sizeof(struct rte_ipv6_fragment_ext);
 	frag_size = RTE_ALIGN_FLOOR(frag_size, RTE_IPV6_EHDR_FO_ALIGN);
 
 	/* Check that pkts_out is big enough to hold all fragments */
@@ -124,9 +124,9 @@ rte_ipv6_fragment_packet(struct rte_mbuf *pkt_in,
 
 		/* Reserve space for the IP header that will be built later */
 		out_pkt->data_len = sizeof(struct rte_ipv6_hdr) +
-			sizeof(struct ipv6_extension_fragment);
+			sizeof(struct rte_ipv6_fragment_ext);
 		out_pkt->pkt_len  = sizeof(struct rte_ipv6_hdr) +
-			sizeof(struct ipv6_extension_fragment);
+			sizeof(struct rte_ipv6_fragment_ext);
 		frag_bytes_remaining = frag_size;
 
 		out_seg_prev = out_pkt;
@@ -184,7 +184,7 @@ rte_ipv6_fragment_packet(struct rte_mbuf *pkt_in,
 
 		fragment_offset = (uint16_t)(fragment_offset +
 		    out_pkt->pkt_len - sizeof(struct rte_ipv6_hdr)
-			- sizeof(struct ipv6_extension_fragment));
+			- sizeof(struct rte_ipv6_fragment_ext));
 
 		/* Write the fragment to the output list */
 		pkts_out[out_pkt_pos] = out_pkt;

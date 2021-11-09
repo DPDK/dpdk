@@ -27,21 +27,19 @@ extern "C" {
 
 struct rte_mbuf;
 
-#define IP_FRAG_DEATH_ROW_LEN 32 /**< death row size (in packets) */
+/** death row size (in packets) */
+#define RTE_IP_FRAG_DEATH_ROW_LEN 32
 
-/* death row size in mbufs */
-#define IP_FRAG_DEATH_ROW_MBUF_LEN \
-	(IP_FRAG_DEATH_ROW_LEN * (RTE_LIBRTE_IP_FRAG_MAX_FRAG + 1))
+/** death row size in mbufs */
+#define RTE_IP_FRAG_DEATH_ROW_MBUF_LEN \
+	(RTE_IP_FRAG_DEATH_ROW_LEN * (RTE_LIBRTE_IP_FRAG_MAX_FRAG + 1))
 
 /** mbuf death row (packets to be freed) */
 struct rte_ip_frag_death_row {
 	uint32_t cnt;          /**< number of mbufs currently on death row */
-	struct rte_mbuf *row[IP_FRAG_DEATH_ROW_MBUF_LEN];
+	struct rte_mbuf *row[RTE_IP_FRAG_DEATH_ROW_MBUF_LEN];
 	/**< mbufs to be freed */
 };
-
-/* struct ipv6_extension_fragment moved to librte_net/rte_ip.h and renamed. */
-#define ipv6_extension_fragment	rte_ipv6_fragment_ext
 
 /**
  * Create a new IP fragmentation table.
@@ -128,7 +126,7 @@ rte_ipv6_fragment_packet(struct rte_mbuf *pkt_in,
 struct rte_mbuf *rte_ipv6_frag_reassemble_packet(struct rte_ip_frag_tbl *tbl,
 		struct rte_ip_frag_death_row *dr,
 		struct rte_mbuf *mb, uint64_t tms, struct rte_ipv6_hdr *ip_hdr,
-		struct ipv6_extension_fragment *frag_hdr);
+		struct rte_ipv6_fragment_ext *frag_hdr);
 
 /**
  * Return a pointer to the packet's fragment header, if found.
@@ -141,11 +139,11 @@ struct rte_mbuf *rte_ipv6_frag_reassemble_packet(struct rte_ip_frag_tbl *tbl,
  *   Pointer to the IPv6 fragment extension header, or NULL if it's not
  *   present.
  */
-static inline struct ipv6_extension_fragment *
+static inline struct rte_ipv6_fragment_ext *
 rte_ipv6_frag_get_ipv6_fragment_header(struct rte_ipv6_hdr *hdr)
 {
 	if (hdr->proto == IPPROTO_FRAGMENT) {
-		return (struct ipv6_extension_fragment *) ++hdr;
+		return (struct rte_ipv6_fragment_ext *) ++hdr;
 	}
 	else
 		return NULL;
@@ -258,8 +256,19 @@ rte_ip_frag_table_statistics_dump(FILE * f, const struct rte_ip_frag_tbl *tbl);
  */
 __rte_experimental
 void
-rte_frag_table_del_expired_entries(struct rte_ip_frag_tbl *tbl,
+rte_ip_frag_table_del_expired_entries(struct rte_ip_frag_tbl *tbl,
 	struct rte_ip_frag_death_row *dr, uint64_t tms);
+
+/**@{@name Obsolete macros, kept here for compatibility reasons.
+ * Will be deprecated/removed in future DPDK releases.
+ */
+/** Obsolete */
+#define IP_FRAG_DEATH_ROW_LEN		RTE_IP_FRAG_DEATH_ROW_LEN
+/** Obsolete */
+#define IP_FRAG_DEATH_ROW_MBUF_LEN	RTE_IP_FRAG_DEATH_ROW_MBUF_LEN
+/** Obsolete */
+#define ipv6_extension_fragment		rte_ipv6_fragment_ext
+/**@}*/
 
 #ifdef __cplusplus
 }

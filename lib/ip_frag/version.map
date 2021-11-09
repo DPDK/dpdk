@@ -16,5 +16,5 @@ DPDK_22 {
 EXPERIMENTAL {
 	global:
 
-	rte_frag_table_del_expired_entries;
+	rte_ip_frag_table_del_expired_entries;
 };

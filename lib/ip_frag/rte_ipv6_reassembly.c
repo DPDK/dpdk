@@ -33,7 +33,7 @@ struct rte_mbuf *
 ipv6_frag_reassemble(struct ip_frag_pkt *fp)
 {
 	struct rte_ipv6_hdr *ip_hdr;
-	struct ipv6_extension_fragment *frag_hdr;
+	struct rte_ipv6_fragment_ext *frag_hdr;
 	struct rte_mbuf *m, *prev;
 	uint32_t i, n, ofs, first_len;
 	uint32_t last_len, move_len, payload_len;
@@ -102,7 +102,7 @@ ipv6_frag_reassemble(struct ip_frag_pkt *fp)
 	 * the main IPv6 header instead.
 	 */
 	move_len = m->l2_len + m->l3_len - sizeof(*frag_hdr);
-	frag_hdr = (struct ipv6_extension_fragment *) (ip_hdr + 1);
+	frag_hdr = (struct rte_ipv6_fragment_ext *) (ip_hdr + 1);
 	ip_hdr->proto = frag_hdr->next_header;
 
 	ip_frag_memmove(rte_pktmbuf_mtod_offset(m, char *, sizeof(*frag_hdr)),
@@ -136,7 +136,7 @@ ipv6_frag_reassemble(struct ip_frag_pkt *fp)
 struct rte_mbuf *
 rte_ipv6_frag_reassemble_packet(struct rte_ip_frag_tbl *tbl,
 	struct rte_ip_frag_death_row *dr, struct rte_mbuf *mb, uint64_t tms,
-	struct rte_ipv6_hdr *ip_hdr, struct ipv6_extension_fragment *frag_hdr)
+	struct rte_ipv6_hdr *ip_hdr, struct rte_ipv6_fragment_ext *frag_hdr)
 {
 	struct ip_frag_pkt *fp;
 	struct ip_frag_key key;

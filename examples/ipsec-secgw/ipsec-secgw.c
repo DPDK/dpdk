@@ -2647,7 +2647,7 @@ rx_callback(__rte_unused uint16_t port, __rte_unused uint16_t queue,
 				rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV6)) {
 
 			struct rte_ipv6_hdr *iph;
-			struct ipv6_extension_fragment *fh;
+			struct rte_ipv6_fragment_ext *fh;
 
 			iph = (struct rte_ipv6_hdr *)(eth + 1);
 			fh = rte_ipv6_frag_get_ipv6_fragment_header(iph);
