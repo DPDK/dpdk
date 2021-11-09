@@ -36,42 +36,22 @@ int
 mlx5_vdpa_dirty_bitmap_set(struct mlx5_vdpa_priv *priv, uint64_t log_base,
 			   uint64_t log_size)
 {
-	struct mlx5_devx_mkey_attr mkey_attr = {
-			.addr = (uintptr_t)log_base,
-			.size = log_size,
-			.pd = priv->pdn,
-			.pg_access = 1,
-			.klm_array = NULL,
-			.klm_num = 0,
-			.relaxed_ordering_read = 0,
-			.relaxed_ordering_write = 0,
-	};
 	struct mlx5_devx_virtq_attr attr = {
 		.type = MLX5_VIRTQ_MODIFY_TYPE_DIRTY_BITMAP_PARAMS,
 		.dirty_bitmap_addr = log_base,
 		.dirty_bitmap_size = log_size,
 	};
-	struct mlx5_vdpa_query_mr *mr = rte_malloc(__func__, sizeof(*mr), 0);
 	int i;
+	int ret = mlx5_os_wrapped_mkey_create(priv->ctx, priv->pd,
+					      priv->pdn,
+					      (void *)(uintptr_t)log_base,
+					      log_size, &priv->lm_mr);
 
-	if (!mr) {
-		DRV_LOG(ERR, "Failed to allocate mem for lm mr.");
+	if (!ret) {
+		DRV_LOG(ERR, "Failed to allocate wrapped MR for lm.");
 		return -1;
 	}
-	mr->umem = mlx5_glue->devx_umem_reg(priv->ctx,
-					    (void *)(uintptr_t)log_base,
-					    log_size, IBV_ACCESS_LOCAL_WRITE);
-	if (!mr->umem) {
-		DRV_LOG(ERR, "Failed to register umem for lm mr.");
-		goto err;
-	}
-	mkey_attr.umem_id = mr->umem->umem_id;
-	mr->mkey = mlx5_devx_cmd_mkey_create(priv->ctx, &mkey_attr);
-	if (!mr->mkey) {
-		DRV_LOG(ERR, "Failed to create Mkey for lm.");
-		goto err;
-	}
-	attr.dirty_bitmap_mkey = mr->mkey->id;
+	attr.dirty_bitmap_mkey = priv->lm_mr.lkey;
 	for (i = 0; i < priv->nr_virtqs; ++i) {
 		attr.queue_index = i;
 		if (!priv->virtqs[i].virtq) {
@@ -82,15 +62,9 @@ mlx5_vdpa_dirty_bitmap_set(struct mlx5_vdpa_priv *priv, uint64_t log_base,
 			goto err;
 		}
 	}
-	mr->is_indirect = 0;
-	SLIST_INSERT_HEAD(&priv->mr_list, mr, next);
 	return 0;
 err:
-	if (mr->mkey)
-		mlx5_devx_cmd_destroy(mr->mkey);
-	if (mr->umem)
-		mlx5_glue->devx_umem_dereg(mr->umem);
-	rte_free(mr);
+	mlx5_os_wrapped_mkey_destroy(&priv->lm_mr);
 	return -1;
 }
 
