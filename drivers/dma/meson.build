@@ -3,6 +3,7 @@
 
 drivers = [
         'cnxk',
+        'dpaa',
         'hisilicon',
         'idxd',
         'ioat',

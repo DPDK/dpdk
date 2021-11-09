@@ -96,6 +96,10 @@ New Features
   Added dmadev driver for the DPI DMA hardware accelerator
   of Marvell OCTEONTX2 and OCTEONTX3 family of SoCs.
 
+* **Added NXP DPAA DMA driver.**
+
+  Added a new dmadev driver for NXP DPAA platform.
+
 * **Added support to get all MAC addresses of a device.**
 
   Added ``rte_eth_macaddrs_get`` to allow user to retrieve all Ethernet

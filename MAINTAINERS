@@ -1224,6 +1224,12 @@ M: Veerasenareddy Burru <vburru@marvell.com>
 F: drivers/dma/cnxk/
 F: doc/guides/dmadevs/cnxk.rst
 
+NXP DPAA DMA
+M: Gagandeep Singh <g.singh@nxp.com>
+M: Nipun Gupta <nipun.gupta@nxp.com>
+F: drivers/dma/dpaa/
+F: doc/guides/dmadevs/dpaa.rst
+
 
 RegEx Drivers
 -------------

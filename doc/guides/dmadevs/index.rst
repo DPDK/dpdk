@@ -12,6 +12,7 @@ an application through DMA API.
    :numbered:
 
    cnxk
+   dpaa
    hisilicon
    idxd
    ioat

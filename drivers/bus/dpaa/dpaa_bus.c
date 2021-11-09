@@ -250,6 +250,28 @@ dpaa_create_device_list(void)
 
 	rte_dpaa_bus.device_count += i;
 
+	/* Creating QDMA Device */
+	for (i = 0; i < RTE_DPAA_QDMA_DEVICES; i++) {
+		dev = calloc(1, sizeof(struct rte_dpaa_device));
+		if (!dev) {
+			DPAA_BUS_LOG(ERR, "Failed to allocate QDMA device");
+			ret = -1;
+			goto cleanup;
+		}
+
+		dev->device_type = FSL_DPAA_QDMA;
+		dev->id.dev_id = rte_dpaa_bus.device_count + i;
+
+		memset(dev->name, 0, RTE_ETH_NAME_MAX_LEN);
+		sprintf(dev->name, "dpaa_qdma-%d", i+1);
+		DPAA_BUS_LOG(INFO, "%s qdma device added", dev->name);
+		dev->device.name = dev->name;
+		dev->device.devargs = dpaa_devargs_lookup(dev);
+
+		dpaa_add_to_device_list(dev);
+	}
+	rte_dpaa_bus.device_count += i;
+
 	return 0;
 
 cleanup:
