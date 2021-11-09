@@ -390,3 +390,42 @@ mlx5_os_set_reg_mr_cb(mlx5_reg_mr_t *reg_mr_cb, mlx5_dereg_mr_t *dereg_mr_cb)
 	*reg_mr_cb = mlx5_os_reg_mr;
 	*dereg_mr_cb = mlx5_os_dereg_mr;
 }
+
+/*
+ * In Windows, no need to wrap the MR, no known issue for it in kernel.
+ * Use the regular function to create direct MR.
+ */
+int
+mlx5_os_wrapped_mkey_create(void *ctx, void *pd, uint32_t pdn, void *addr,
+			    size_t length, struct mlx5_pmd_wrapped_mr *wpmd_mr)
+{
+	struct mlx5_pmd_mr pmd_mr = {0};
+	int ret = mlx5_os_reg_mr(pd, addr, length, &pmd_mr);
+
+	(void)pdn;
+	(void)ctx;
+	if (ret != 0)
+		return -1;
+	wpmd_mr->addr = addr;
+	wpmd_mr->len = length;
+	wpmd_mr->obj = pmd_mr.obj;
+	wpmd_mr->imkey = pmd_mr.mkey;
+	wpmd_mr->lkey = pmd_mr.mkey->id;
+	return 0;
+}
+
+void
+mlx5_os_wrapped_mkey_destroy(struct mlx5_pmd_wrapped_mr *wpmd_mr)
+{
+	struct mlx5_pmd_mr pmd_mr;
+
+	if (!wpmd_mr)
+		return;
+	pmd_mr.addr = wpmd_mr->addr;
+	pmd_mr.len = wpmd_mr->len;
+	pmd_mr.obj = wpmd_mr->obj;
+	pmd_mr.mkey = wpmd_mr->imkey;
+	pmd_mr.lkey = wpmd_mr->lkey;
+	mlx5_os_dereg_mr(&pmd_mr);
+	memset(wpmd_mr, 0, sizeof(*wpmd_mr));
+}

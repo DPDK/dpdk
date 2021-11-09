@@ -134,6 +134,9 @@ INTERNAL {
 	mlx5_os_umem_dereg;
 	mlx5_os_umem_reg;
 
+	mlx5_os_wrapped_mkey_create;
+	mlx5_os_wrapped_mkey_destroy;
+
 	mlx5_realloc;
 
 	mlx5_translate_port_name; # WINDOWS_NO_EXPORT
