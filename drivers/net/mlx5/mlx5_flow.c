@@ -6496,7 +6496,6 @@ mlx5_counter_query(struct rte_eth_dev *dev, uint32_t cnt,
 static int
 mlx5_flow_create_counter_stat_mem_mng(struct mlx5_dev_ctx_shared *sh)
 {
-	struct mlx5_devx_mkey_attr mkey_attr;
 	struct mlx5_counter_stats_mem_mng *mem_mng;
 	volatile struct flow_counter_stats *raw_data;
 	int raws_n = MLX5_CNT_CONTAINER_RESIZE + MLX5_MAX_PENDING_QUERIES;
@@ -6506,6 +6505,7 @@ mlx5_flow_create_counter_stat_mem_mng(struct mlx5_dev_ctx_shared *sh)
 			sizeof(struct mlx5_counter_stats_mem_mng);
 	size_t pgsize = rte_mem_page_size();
 	uint8_t *mem;
+	int ret;
 	int i;
 
 	if (pgsize == (size_t)-1) {
@@ -6520,26 +6520,10 @@ mlx5_flow_create_counter_stat_mem_mng(struct mlx5_dev_ctx_shared *sh)
 	}
 	mem_mng = (struct mlx5_counter_stats_mem_mng *)(mem + size) - 1;
 	size = sizeof(*raw_data) * MLX5_COUNTERS_PER_POOL * raws_n;
-	mem_mng->umem = mlx5_glue->devx_umem_reg(sh->ctx, mem, size,
-						 IBV_ACCESS_LOCAL_WRITE);
-	if (!mem_mng->umem) {
-		rte_errno = errno;
-		mlx5_free(mem);
-		return -rte_errno;
-	}
-	mkey_attr.addr = (uintptr_t)mem;
-	mkey_attr.size = size;
-	mkey_attr.umem_id = mlx5_os_get_umem_id(mem_mng->umem);
-	mkey_attr.pd = sh->pdn;
-	mkey_attr.log_entity_size = 0;
-	mkey_attr.pg_access = 0;
-	mkey_attr.klm_array = NULL;
-	mkey_attr.klm_num = 0;
-	mkey_attr.relaxed_ordering_write = sh->cmng.relaxed_ordering_write;
-	mkey_attr.relaxed_ordering_read = sh->cmng.relaxed_ordering_read;
-	mem_mng->dm = mlx5_devx_cmd_mkey_create(sh->ctx, &mkey_attr);
-	if (!mem_mng->dm) {
-		mlx5_glue->devx_umem_dereg(mem_mng->umem);
+	ret = mlx5_os_wrapped_mkey_create(sh->ctx, sh->pd,
+					  sh->pdn, mem, size,
+					  &mem_mng->wm);
+	if (ret) {
 		rte_errno = errno;
 		mlx5_free(mem);
 		return -rte_errno;
@@ -6658,7 +6642,7 @@ mlx5_flow_query_alarm(void *arg)
 	ret = mlx5_devx_cmd_flow_counter_query(pool->min_dcs, 0,
 					       MLX5_COUNTERS_PER_POOL,
 					       NULL, NULL,
-					       pool->raw_hw->mem_mng->dm->id,
+					       pool->raw_hw->mem_mng->wm.lkey,
 					       (void *)(uintptr_t)
 					       pool->raw_hw->data,
 					       sh->devx_comp,

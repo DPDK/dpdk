@@ -477,8 +477,7 @@ mlx5_flow_destroy_counter_stat_mem_mng(struct mlx5_counter_stats_mem_mng *mng)
 	uint8_t *mem = (uint8_t *)(uintptr_t)mng->raws[0].data;
 
 	LIST_REMOVE(mng, next);
-	claim_zero(mlx5_devx_cmd_destroy(mng->dm));
-	claim_zero(mlx5_glue->devx_umem_dereg(mng->umem));
+	mlx5_os_wrapped_mkey_destroy(&mng->wm);
 	mlx5_free(mem);
 }
 

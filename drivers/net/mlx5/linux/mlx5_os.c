@@ -1184,16 +1184,6 @@ err_secondary:
 			err = -err;
 			goto error;
 		}
-		/* Check relax ordering support. */
-		if (!haswell_broadwell_cpu) {
-			sh->cmng.relaxed_ordering_write =
-				config->hca_attr.relaxed_ordering_write;
-			sh->cmng.relaxed_ordering_read =
-				config->hca_attr.relaxed_ordering_read;
-		} else {
-			sh->cmng.relaxed_ordering_read = 0;
-			sh->cmng.relaxed_ordering_write = 0;
-		}
 		sh->rq_ts_format = config->hca_attr.rq_ts_format;
 		sh->sq_ts_format = config->hca_attr.sq_ts_format;
 		sh->qp_ts_format = config->hca_attr.qp_ts_format;
