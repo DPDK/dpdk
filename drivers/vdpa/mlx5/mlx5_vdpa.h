@@ -147,6 +147,7 @@ struct mlx5_vdpa_priv {
 	struct mlx5_vdpa_steer steer;
 	struct mlx5dv_var *var;
 	void *virtq_db_addr;
+	struct mlx5_pmd_wrapped_mr lm_mr;
 	SLIST_HEAD(mr_list, mlx5_vdpa_query_mr) mr_list;
 	struct mlx5_vdpa_virtq virtqs[];
 };

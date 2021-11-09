@@ -31,6 +31,8 @@ mlx5_vdpa_mem_dereg(struct mlx5_vdpa_priv *priv)
 		entry = next;
 	}
 	SLIST_INIT(&priv->mr_list);
+	if (priv->lm_mr.addr)
+		mlx5_os_wrapped_mkey_destroy(&priv->lm_mr);
 	if (priv->null_mr) {
 		claim_zero(mlx5_glue->dereg_mr(priv->null_mr));
 		priv->null_mr = NULL;
