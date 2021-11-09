@@ -166,7 +166,7 @@ ice_dcf_handle_virtchnl_msg(struct ice_dcf_hw *hw)
 	info.buf_len = ICE_DCF_AQ_BUF_SZ;
 	info.msg_buf = hw->arq_buf;
 
-	while (pending) {
+	while (pending && !hw->resetting) {
 		ret = iavf_clean_arq_element(&hw->avf, &info, &pending);
 		if (ret != IAVF_SUCCESS)
 			break;
