@@ -522,7 +522,6 @@ mlx5_flow_aging_init(struct mlx5_dev_ctx_shared *sh)
 static void
 mlx5_flow_counters_mng_init(struct mlx5_dev_ctx_shared *sh)
 {
-	struct mlx5_hca_attr *attr = &sh->cdev->config.hca_attr;
 	int i;
 
 	memset(&sh->cmng, 0, sizeof(sh->cmng));
@@ -534,10 +533,6 @@ mlx5_flow_counters_mng_init(struct mlx5_dev_ctx_shared *sh)
 	for (i = 0; i < MLX5_COUNTER_TYPE_MAX; i++) {
 		TAILQ_INIT(&sh->cmng.counters[i]);
 		rte_spinlock_init(&sh->cmng.csl[i]);
-	}
-	if (sh->devx && !haswell_broadwell_cpu) {
-		sh->cmng.relaxed_ordering_write = attr->relaxed_ordering_write;
-		sh->cmng.relaxed_ordering_read = attr->relaxed_ordering_read;
 	}
 }
 
@@ -553,8 +548,7 @@ mlx5_flow_destroy_counter_stat_mem_mng(struct mlx5_counter_stats_mem_mng *mng)
 	uint8_t *mem = (uint8_t *)(uintptr_t)mng->raws[0].data;
 
 	LIST_REMOVE(mng, next);
-	claim_zero(mlx5_devx_cmd_destroy(mng->dm));
-	claim_zero(mlx5_os_umem_dereg(mng->umem));
+	mlx5_os_wrapped_mkey_destroy(&mng->wm);
 	mlx5_free(mem);
 }
 
