@@ -195,6 +195,9 @@ struct roc_npc {
 	uint64_t rx_parse_nibble;
 	/* Parsed RSS Flowkey cfg for current flow being created */
 	uint32_t flowkey_cfg_state;
+	bool is_sdp_mask_set;
+	uint16_t sdp_channel;
+	uint16_t sdp_channel_mask;
 
 #define ROC_NPC_MEM_SZ (5 * 1024)
 	uint8_t reserved[ROC_NPC_MEM_SZ];

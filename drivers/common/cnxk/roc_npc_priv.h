@@ -360,6 +360,9 @@ struct npc {
 	uint32_t keyw[NPC_MAX_INTF];		/* max key + data len bits */
 	uint32_t mcam_entries;			/* mcam entries supported */
 	uint16_t channel;			/* RX Channel number */
+	bool is_sdp_link;
+	uint16_t sdp_channel;
+	uint16_t sdp_channel_mask;
 	uint32_t rss_grps;			/* rss groups supported */
 	uint16_t flow_prealloc_size;		/* Pre allocated mcam size */
 	uint16_t flow_max_priority;		/* Max priority for flow */

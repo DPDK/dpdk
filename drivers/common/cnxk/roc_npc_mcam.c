@@ -575,6 +575,16 @@ npc_mcam_alloc_and_write(struct npc *npc, struct roc_npc_flow *flow,
 			flow->npc_action |= (uint64_t)pf_func << 4;
 			flow->mcam_data[0] |= (uint64_t)inl_dev->channel;
 			flow->mcam_mask[0] |= (uint64_t)inl_dev->chan_mask;
+		} else if (npc->is_sdp_link) {
+			req->entry_data.kw[0] &= ~(GENMASK(11, 0));
+			req->entry_data.kw_mask[0] &= ~(GENMASK(11, 0));
+			req->entry_data.kw[0] |= (uint64_t)npc->sdp_channel;
+			req->entry_data.kw_mask[0] |=
+				(uint64_t)npc->sdp_channel_mask;
+			flow->mcam_data[0] &= ~(GENMASK(11, 0));
+			flow->mcam_mask[0] &= ~(GENMASK(11, 0));
+			flow->mcam_data[0] |= (uint64_t)npc->sdp_channel;
+			flow->mcam_mask[0] |= (uint64_t)npc->sdp_channel_mask;
 		} else {
 			req->entry_data.kw[0] |= (uint64_t)npc->channel;
 			req->entry_data.kw_mask[0] |= (BIT_ULL(12) - 1);

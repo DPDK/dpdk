@@ -1152,6 +1152,19 @@ roc_npc_flow_create(struct roc_npc *roc_npc, const struct roc_npc_attr *attr,
 	int rc;
 
 	npc->channel = roc_npc->channel;
+	npc->is_sdp_link = roc_nix_is_sdp(roc_npc->roc_nix);
+	if (npc->is_sdp_link) {
+		if (roc_npc->is_sdp_mask_set) {
+			npc->sdp_channel = roc_npc->sdp_channel;
+			npc->sdp_channel_mask = roc_npc->sdp_channel_mask;
+		} else {
+			/* By default set the channel and mask to cover
+			 * the whole SDP channel range.
+			 */
+			npc->sdp_channel = (uint16_t)NIX_CHAN_SDP_CH_START;
+			npc->sdp_channel_mask = (uint16_t)NIX_CHAN_SDP_CH_START;
+		}
+	}
 
 	flow = plt_zmalloc(sizeof(*flow), 0);
 	if (flow == NULL) {
