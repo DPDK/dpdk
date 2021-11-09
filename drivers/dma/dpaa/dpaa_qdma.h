@@ -169,6 +169,7 @@ struct fsl_qdma_queue {
 	u32			pending;
 	struct fsl_qdma_format	*cq;
 	void			*block_base;
+	struct rte_dma_stats	stats;
 };
 
 struct fsl_qdma_comp {

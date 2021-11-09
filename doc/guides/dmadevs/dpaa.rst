@@ -59,6 +59,7 @@ The DPAA DMA implements following features in the dmadev API:
 - Supports DMA silent mode.
 - Supports issuing DMA of data within memory without hogging CPU while
   performing DMA operation.
+- Supports statistics.
 
 Platform Requirement
 --------------------
