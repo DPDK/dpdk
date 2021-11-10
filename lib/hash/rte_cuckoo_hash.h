@@ -101,7 +101,13 @@ const rte_hash_cmp_eq_t cmp_jump_table[NUM_KEY_CMP_CASES] = {
 #endif
 
 
-/** Number of items per bucket. */
+/**
+ * Number of items per bucket.
+ * 8 is a tradeoff between performance and memory consumption.
+ * When it is equal to 8, multiple 'struct rte_hash_bucket' can be fit
+ * on a single cache line (64 or 128 bytes long) without any gaps
+ * in memory between them due to alignment.
+ */
 #define RTE_HASH_BUCKET_ENTRIES		8
 
 #if !RTE_IS_POWER_OF_2(RTE_HASH_BUCKET_ENTRIES)
