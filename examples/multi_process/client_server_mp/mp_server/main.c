@@ -233,7 +233,7 @@ process_packets(uint32_t port_num __rte_unused,
 		struct rte_mbuf *pkts[], uint16_t rx_count)
 {
 	uint16_t i;
-	uint8_t client = 0;
+	static uint8_t client;
 
 	for (i = 0; i < rx_count; i++) {
 		enqueue_rx_packet(client, pkts[i]);
