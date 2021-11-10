@@ -7484,25 +7484,28 @@ test_mixed_auth_cipher(const struct mixed_cipher_auth_test_data *tdata,
 				tdata->digest_enc.len);
 	}
 
-	/* Validate obuf */
-	if (verify) {
-		TEST_ASSERT_BUFFERS_ARE_EQUAL_BIT(
-				plaintext,
-				tdata->plaintext.data,
-				tdata->plaintext.len_bits >> 3,
-				"Plaintext data not as expected");
-	} else {
-		TEST_ASSERT_BUFFERS_ARE_EQUAL_BIT(
-				ciphertext,
-				tdata->ciphertext.data,
-				tdata->validDataLen.len_bits,
-				"Ciphertext data not as expected");
-
+	if (!verify) {
 		TEST_ASSERT_BUFFERS_ARE_EQUAL(
 				ut_params->digest,
 				tdata->digest_enc.data,
-				DIGEST_BYTE_LENGTH_SNOW3G_UIA2,
+				tdata->digest_enc.len,
 				"Generated auth tag not as expected");
+	}
+
+	if (tdata->cipher_algo != RTE_CRYPTO_CIPHER_NULL) {
+		if (verify) {
+			TEST_ASSERT_BUFFERS_ARE_EQUAL_BIT(
+					plaintext,
+					tdata->plaintext.data,
+					tdata->plaintext.len_bits >> 3,
+					"Plaintext data not as expected");
+		} else {
+			TEST_ASSERT_BUFFERS_ARE_EQUAL_BIT(
+					ciphertext,
+					tdata->ciphertext.data,
+					tdata->validDataLen.len_bits,
+					"Ciphertext data not as expected");
+		}
 	}
 
 	TEST_ASSERT_EQUAL(ut_params->op->status, RTE_CRYPTO_OP_STATUS_SUCCESS,
@@ -7701,24 +7704,28 @@ test_mixed_auth_cipher_sgl(const struct mixed_cipher_auth_test_data *tdata,
 				tdata->digest_enc.data, tdata->digest_enc.len);
 	}
 
-	/* Validate obuf */
-	if (verify) {
-		TEST_ASSERT_BUFFERS_ARE_EQUAL_BIT(
-				plaintext,
-				tdata->plaintext.data,
-				tdata->plaintext.len_bits >> 3,
-				"Plaintext data not as expected");
-	} else {
-		TEST_ASSERT_BUFFERS_ARE_EQUAL_BIT(
-				ciphertext,
-				tdata->ciphertext.data,
-				tdata->validDataLen.len_bits,
-				"Ciphertext data not as expected");
+	if (!verify) {
 		TEST_ASSERT_BUFFERS_ARE_EQUAL(
 				digest,
 				tdata->digest_enc.data,
 				tdata->digest_enc.len,
 				"Generated auth tag not as expected");
+	}
+
+	if (tdata->cipher_algo != RTE_CRYPTO_CIPHER_NULL) {
+		if (verify) {
+			TEST_ASSERT_BUFFERS_ARE_EQUAL_BIT(
+					plaintext,
+					tdata->plaintext.data,
+					tdata->plaintext.len_bits >> 3,
+					"Plaintext data not as expected");
+		} else {
+			TEST_ASSERT_BUFFERS_ARE_EQUAL_BIT(
+					ciphertext,
+					tdata->ciphertext.data,
+					tdata->validDataLen.len_bits,
+					"Ciphertext data not as expected");
+		}
 	}
 
 	TEST_ASSERT_EQUAL(ut_params->op->status, RTE_CRYPTO_OP_STATUS_SUCCESS,
