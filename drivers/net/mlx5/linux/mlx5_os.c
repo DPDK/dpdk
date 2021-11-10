@@ -1727,8 +1727,7 @@ err_secondary:
 		priv->obj_ops = ibv_obj_ops;
 	}
 	if (config->tx_pp &&
-	    (priv->config.dv_esw_en ||
-	     priv->obj_ops.txq_obj_new != mlx5_txq_devx_obj_new)) {
+	    priv->obj_ops.txq_obj_new != mlx5_txq_devx_obj_new) {
 		/*
 		 * HAVE_MLX5DV_DEVX_UAR_OFFSET is required to support
 		 * packet pacing and already checked above.
