@@ -97,11 +97,6 @@ NUMA node, the card is represented as a single port in DPDK. To work with data
 from the individual queues on the right NUMA node, connection of NUMA nodes on
 first and last queue (each NUMA node has half of the queues) need to be checked.
 
-.. figure:: img/szedata2_nfb200g_architecture.*
-    :align: center
-
-    NFB-200G2QL high-level diagram
-
 Limitations
 -----------
 

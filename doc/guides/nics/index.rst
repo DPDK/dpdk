@@ -58,7 +58,6 @@ Network Interface Controller Drivers
     qede
     sfc_efx
     softnic
-    szedata2
     tap
     thunderx
     txgbe
