@@ -205,6 +205,7 @@ New Features
   * Added IPv4 and L4 (TCP/UDP/SCTP) checksum hash support in RSS flow.
   * Added DEV_RX_OFFLOAD_TIMESTAMP support.
   * Added timesync API support under scalar path.
+  * Added DCF reset API support.
 
 * **Updated Intel ixgbe driver.**
 
