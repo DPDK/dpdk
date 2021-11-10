@@ -930,12 +930,14 @@ roc_cpt_ctx_write(struct roc_cpt_lf *lf, void *sa_dptr, void *sa_cptr,
 		plt_err("Couldn't allocate memory for result address");
 		return -ENOMEM;
 	}
-	dptr = plt_zmalloc(sa_len, 0);
-	if (!dptr) {
+
+	dptr = plt_zmalloc(sa_len, 8);
+	if (dptr == NULL) {
 		plt_err("Couldn't allocate memory for SA dptr");
 		plt_free(res);
 		return -ENOMEM;
 	}
+
 	for (i = 0; i < (sa_len / 8); i++)
 		dptr[i] = plt_cpu_to_be_64(((uint64_t *)sa_dptr)[i]);
 
@@ -962,6 +964,7 @@ roc_cpt_ctx_write(struct roc_cpt_lf *lf, void *sa_dptr, void *sa_cptr,
 		plt_delay_ms(1);
 
 	plt_free(res);
+	plt_free(dptr);
 
 	return 0;
 }
