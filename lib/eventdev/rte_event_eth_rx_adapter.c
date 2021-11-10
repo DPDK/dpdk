@@ -777,19 +777,25 @@ rxa_flush_event_buffer(struct event_eth_rx_adapter *rx_adapter,
 		       struct eth_event_enqueue_buffer *buf,
 		       struct rte_event_eth_rx_adapter_stats *stats)
 {
-	uint16_t count = buf->last ? buf->last - buf->head : buf->count;
+	uint16_t count = buf->count;
+	uint16_t n = 0;
 
 	if (!count)
 		return 0;
 
-	uint16_t n = rte_event_enqueue_new_burst(rx_adapter->eventdev_id,
-					rx_adapter->event_port_id,
-					&buf->events[buf->head],
-					count);
-	if (n != count)
-		stats->rx_enq_retry++;
+	if (buf->last)
+		count = buf->last - buf->head;
 
-	buf->head += n;
+	if (count) {
+		n = rte_event_enqueue_new_burst(rx_adapter->eventdev_id,
+						rx_adapter->event_port_id,
+						&buf->events[buf->head],
+						count);
+		if (n != count)
+			stats->rx_enq_retry++;
+
+		buf->head += n;
+	}
 
 	if (buf->last && n == count) {
 		uint16_t n1;
