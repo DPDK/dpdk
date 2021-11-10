@@ -44,8 +44,8 @@ Port Maintenance
 ~~~~~~~~~~~~~~~~
 
 The distributed software eventdev uses an internal signaling scheme
-between the ports to achieve load balancing. Therefore, it sets the
-``RTE_EVENT_DEV_CAP_REQUIRES_MAINT`` flag.
+between the ports to achieve load balancing. Therefore, it does not
+set the ``RTE_EVENT_DEV_CAP_MAINTENANCE_FREE`` flag.
 
 During periods when the application thread using a particular port is
 neither attempting to enqueue nor to dequeue events, it must

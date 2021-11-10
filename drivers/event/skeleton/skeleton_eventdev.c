@@ -102,7 +102,8 @@ skeleton_eventdev_info_get(struct rte_eventdev *dev,
 	dev_info->event_dev_cap = RTE_EVENT_DEV_CAP_QUEUE_QOS |
 					RTE_EVENT_DEV_CAP_BURST_MODE |
 					RTE_EVENT_DEV_CAP_EVENT_QOS |
-					RTE_EVENT_DEV_CAP_CARRY_FLOW_ID;
+					RTE_EVENT_DEV_CAP_CARRY_FLOW_ID |
+					RTE_EVENT_DEV_CAP_MAINTENANCE_FREE;
 }
 
 static int

@@ -299,13 +299,14 @@ struct rte_event;
  * the content of this field is implementation dependent.
  */
 
-#define RTE_EVENT_DEV_CAP_REQUIRES_MAINT (1ULL << 10)
-/**< Event device requires calls to rte_event_maintain() during
- * periods when neither rte_event_dequeue_burst() nor
- * rte_event_enqueue_burst() are called on a port. This will allow the
- * event device to perform internal processing, such as flushing
- * buffered events, return credits to a global pool, or process
- * signaling related to load balancing.
+#define RTE_EVENT_DEV_CAP_MAINTENANCE_FREE (1ULL << 10)
+/**< Event device *does not* require calls to rte_event_maintain().
+ * An event device that does not set this flag requires calls to
+ * rte_event_maintain() during periods when neither
+ * rte_event_dequeue_burst() nor rte_event_enqueue_burst() are called
+ * on a port. This will allow the event device to perform internal
+ * processing, such as flushing buffered events, return credits to a
+ * global pool, or process signaling related to load balancing.
  */
 
 /* Event device priority levels */
@@ -2082,8 +2083,8 @@ rte_event_dequeue_burst(uint8_t dev_id, uint8_t port_id, struct rte_event ev[],
 /**
  * Maintain an event device.
  *
- * This function is only relevant for event devices which have the
- * @ref RTE_EVENT_DEV_CAP_REQUIRES_MAINT flag set. Such devices
+ * This function is only relevant for event devices which do not have
+ * the @ref RTE_EVENT_DEV_CAP_MAINTENANCE_FREE flag set. Such devices
  * require an application thread using a particular port to
  * periodically call rte_event_maintain() on that port during periods
  * which it is neither attempting to enqueue events to nor dequeue
@@ -2098,9 +2099,9 @@ rte_event_dequeue_burst(uint8_t dev_id, uint8_t port_id, struct rte_event ev[],
  * or dequeue functions are being called, at the cost of a slight
  * increase in overhead.
  *
- * rte_event_maintain() may be called on event devices which haven't
- * set @ref RTE_EVENT_DEV_CAP_REQUIRES_MAINT flag, in which case it is
- * a no-operation.
+ * rte_event_maintain() may be called on event devices which have set
+ * @ref RTE_EVENT_DEV_CAP_MAINTENANCE_FREE, in which case it is a
+ * no-operation.
  *
  * @param dev_id
  *   The identifier of the device.
@@ -2112,7 +2113,7 @@ rte_event_dequeue_burst(uint8_t dev_id, uint8_t port_id, struct rte_event ev[],
  *  - 0 on success.
  *  - -EINVAL if *dev_id*,  *port_id*, or *op* is invalid.
  *
- * @see RTE_EVENT_DEV_CAP_REQUIRES_MAINT
+ * @see RTE_EVENT_DEV_CAP_MAINTENANCE_FREE
  */
 __rte_experimental
 static inline int

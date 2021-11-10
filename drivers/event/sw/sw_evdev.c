@@ -609,7 +609,8 @@ sw_info_get(struct rte_eventdev *dev, struct rte_event_dev_info *info)
 				RTE_EVENT_DEV_CAP_RUNTIME_PORT_LINK |
 				RTE_EVENT_DEV_CAP_MULTIPLE_QUEUE_PORT |
 				RTE_EVENT_DEV_CAP_NONSEQ_MODE |
-				RTE_EVENT_DEV_CAP_CARRY_FLOW_ID),
+				RTE_EVENT_DEV_CAP_CARRY_FLOW_ID |
+				RTE_EVENT_DEV_CAP_MAINTENANCE_FREE),
 	};
 
 	*info = evdev_sw_info;

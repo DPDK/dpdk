@@ -66,7 +66,8 @@ static struct rte_event_dev_info evdev_dlb2_default_info = {
 			  RTE_EVENT_DEV_CAP_BURST_MODE |
 			  RTE_EVENT_DEV_CAP_DISTRIBUTED_SCHED |
 			  RTE_EVENT_DEV_CAP_IMPLICIT_RELEASE_DISABLE |
-			  RTE_EVENT_DEV_CAP_QUEUE_ALL_TYPES),
+			  RTE_EVENT_DEV_CAP_QUEUE_ALL_TYPES |
+			  RTE_EVENT_DEV_CAP_MAINTENANCE_FREE),
 };
 
 struct process_local_port_data
