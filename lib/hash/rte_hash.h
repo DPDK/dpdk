@@ -448,7 +448,7 @@ rte_hash_free_key_with_position(const struct rte_hash *h,
  * @param data
  *   Output with pointer to data returned from the hash table.
  * @return
- *   - A positive value that can be used by the caller as an offset into an
+ *   - A non-negative value that can be used by the caller as an offset into an
  *     array of user data. This value is unique for this key, and is the same
  *     value that was returned when the key was added.
  *   - -EINVAL if the parameters are invalid.
