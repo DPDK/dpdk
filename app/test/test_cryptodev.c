@@ -1417,7 +1417,6 @@ ut_teardown(void)
 {
 	struct crypto_testsuite_params *ts_params = &testsuite_params;
 	struct crypto_unittest_params *ut_params = &unittest_params;
-	struct rte_cryptodev_stats stats;
 
 	/* free crypto session structure */
 #ifdef RTE_LIB_SECURITY
@@ -1463,8 +1462,6 @@ ut_teardown(void)
 	if (ts_params->mbuf_pool != NULL)
 		RTE_LOG(DEBUG, USER1, "CRYPTO_MBUFPOOL count %u\n",
 			rte_mempool_avail_count(ts_params->mbuf_pool));
-
-	rte_cryptodev_stats_get(ts_params->valid_devs[0], &stats);
 
 	/* Stop the device */
 	rte_cryptodev_stop(ts_params->valid_devs[0]);
