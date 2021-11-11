@@ -126,6 +126,337 @@ static struct multi_cores_pool mc_pool = {
 	.cores_count = 1,
 };
 
+static const struct option_dict {
+	const char *str;
+	const uint64_t mask;
+	uint64_t *map;
+	uint8_t *map_idx;
+
+} flow_options[] = {
+	{
+		.str = "ether",
+		.mask = FLOW_ITEM_MASK(RTE_FLOW_ITEM_TYPE_ETH),
+		.map = &flow_items[0],
+		.map_idx = &items_idx
+	},
+	{
+		.str = "ipv4",
+		.mask = FLOW_ITEM_MASK(RTE_FLOW_ITEM_TYPE_IPV4),
+		.map = &flow_items[0],
+		.map_idx = &items_idx
+	},
+	{
+		.str = "ipv6",
+		.mask = FLOW_ITEM_MASK(RTE_FLOW_ITEM_TYPE_IPV6),
+		.map = &flow_items[0],
+		.map_idx = &items_idx
+	},
+	{
+		.str = "vlan",
+		.mask = FLOW_ITEM_MASK(RTE_FLOW_ITEM_TYPE_VLAN),
+		.map = &flow_items[0],
+		.map_idx = &items_idx
+	},
+	{
+		.str = "tcp",
+		.mask = FLOW_ITEM_MASK(RTE_FLOW_ITEM_TYPE_TCP),
+		.map = &flow_items[0],
+		.map_idx = &items_idx
+	},
+	{
+		.str = "udp",
+		.mask = FLOW_ITEM_MASK(RTE_FLOW_ITEM_TYPE_UDP),
+		.map = &flow_items[0],
+		.map_idx = &items_idx
+	},
+	{
+		.str = "vxlan",
+		.mask = FLOW_ITEM_MASK(RTE_FLOW_ITEM_TYPE_VXLAN),
+		.map = &flow_items[0],
+		.map_idx = &items_idx
+	},
+	{
+		.str = "vxlan-gpe",
+		.mask = FLOW_ITEM_MASK(RTE_FLOW_ITEM_TYPE_VXLAN_GPE),
+		.map = &flow_items[0],
+		.map_idx = &items_idx
+	},
+	{
+		.str = "gre",
+		.mask = FLOW_ITEM_MASK(RTE_FLOW_ITEM_TYPE_GRE),
+		.map = &flow_items[0],
+		.map_idx = &items_idx
+	},
+	{
+		.str = "geneve",
+		.mask = FLOW_ITEM_MASK(RTE_FLOW_ITEM_TYPE_GENEVE),
+		.map = &flow_items[0],
+		.map_idx = &items_idx
+	},
+	{
+		.str = "gtp",
+		.mask = FLOW_ITEM_MASK(RTE_FLOW_ITEM_TYPE_GTP),
+		.map = &flow_items[0],
+		.map_idx = &items_idx
+	},
+	{
+		.str = "meta",
+		.mask = FLOW_ITEM_MASK(RTE_FLOW_ITEM_TYPE_META),
+		.map = &flow_items[0],
+		.map_idx = &items_idx
+	},
+	{
+		.str = "tag",
+		.mask = FLOW_ITEM_MASK(RTE_FLOW_ITEM_TYPE_TAG),
+		.map = &flow_items[0],
+		.map_idx = &items_idx
+	},
+	{
+		.str = "icmpv4",
+		.mask = FLOW_ITEM_MASK(RTE_FLOW_ITEM_TYPE_ICMP),
+		.map = &flow_items[0],
+		.map_idx = &items_idx
+	},
+	{
+		.str = "icmpv6",
+		.mask = FLOW_ITEM_MASK(RTE_FLOW_ITEM_TYPE_ICMP6),
+		.map = &flow_items[0],
+		.map_idx = &items_idx
+	},
+	{
+		.str = "ingress",
+		.mask = INGRESS,
+		.map = &flow_attrs[0],
+		.map_idx = &attrs_idx
+	},
+	{
+		.str = "egress",
+		.mask = EGRESS,
+		.map = &flow_attrs[0],
+		.map_idx = &attrs_idx
+	},
+	{
+		.str = "transfer",
+		.mask = TRANSFER,
+		.map = &flow_attrs[0],
+		.map_idx = &attrs_idx
+	},
+	{
+		.str = "port-id",
+		.mask = FLOW_ACTION_MASK(RTE_FLOW_ACTION_TYPE_PORT_ID),
+		.map = &flow_actions[0],
+		.map_idx = &actions_idx
+	},
+	{
+		.str = "rss",
+		.mask = FLOW_ACTION_MASK(RTE_FLOW_ACTION_TYPE_RSS),
+		.map = &flow_actions[0],
+		.map_idx = &actions_idx
+	},
+	{
+		.str = "queue",
+		.mask = FLOW_ACTION_MASK(RTE_FLOW_ACTION_TYPE_QUEUE),
+		.map = &flow_actions[0],
+		.map_idx = &actions_idx
+	},
+	{
+		.str = "jump",
+		.mask = FLOW_ACTION_MASK(RTE_FLOW_ACTION_TYPE_JUMP),
+		.map = &flow_actions[0],
+		.map_idx = &actions_idx
+	},
+	{
+		.str = "mark",
+		.mask = FLOW_ACTION_MASK(RTE_FLOW_ACTION_TYPE_MARK),
+		.map = &flow_actions[0],
+		.map_idx = &actions_idx
+	},
+	{
+		.str = "count",
+		.mask = FLOW_ACTION_MASK(RTE_FLOW_ACTION_TYPE_COUNT),
+		.map = &flow_actions[0],
+		.map_idx = &actions_idx
+	},
+	{
+		.str = "set-meta",
+		.mask = FLOW_ACTION_MASK(RTE_FLOW_ACTION_TYPE_SET_META),
+		.map = &flow_actions[0],
+		.map_idx = &actions_idx
+	},
+	{
+		.str = "set-tag",
+		.mask = FLOW_ACTION_MASK(RTE_FLOW_ACTION_TYPE_SET_TAG),
+		.map = &flow_actions[0],
+		.map_idx = &actions_idx
+	},
+	{
+		.str = "drop",
+		.mask = FLOW_ACTION_MASK(RTE_FLOW_ACTION_TYPE_DROP),
+		.map = &flow_actions[0],
+		.map_idx = &actions_idx
+	},
+	{
+		.str = "set-src-mac",
+		.mask = FLOW_ACTION_MASK(
+			RTE_FLOW_ACTION_TYPE_SET_MAC_SRC
+		),
+		.map = &flow_actions[0],
+		.map_idx = &actions_idx
+	},
+	{
+		.str = "set-dst-mac",
+		.mask = FLOW_ACTION_MASK(
+			RTE_FLOW_ACTION_TYPE_SET_MAC_DST
+		),
+		.map = &flow_actions[0],
+		.map_idx = &actions_idx
+	},
+	{
+		.str = "set-src-ipv4",
+		.mask = FLOW_ACTION_MASK(
+			RTE_FLOW_ACTION_TYPE_SET_IPV4_SRC
+		),
+		.map = &flow_actions[0],
+		.map_idx = &actions_idx
+	},
+	{
+		.str = "set-dst-ipv4",
+		.mask = FLOW_ACTION_MASK(
+			RTE_FLOW_ACTION_TYPE_SET_IPV4_DST
+		),
+		.map = &flow_actions[0],
+		.map_idx = &actions_idx
+	},
+	{
+		.str = "set-src-ipv6",
+		.mask = FLOW_ACTION_MASK(
+			RTE_FLOW_ACTION_TYPE_SET_IPV6_SRC
+		),
+		.map = &flow_actions[0],
+		.map_idx = &actions_idx
+	},
+	{
+		.str = "set-dst-ipv6",
+		.mask = FLOW_ACTION_MASK(
+			RTE_FLOW_ACTION_TYPE_SET_IPV6_DST
+		),
+		.map = &flow_actions[0],
+		.map_idx = &actions_idx
+	},
+	{
+		.str = "set-src-tp",
+		.mask = FLOW_ACTION_MASK(
+			RTE_FLOW_ACTION_TYPE_SET_TP_SRC
+		),
+		.map = &flow_actions[0],
+		.map_idx = &actions_idx
+	},
+	{
+		.str = "set-dst-tp",
+		.mask = FLOW_ACTION_MASK(
+			RTE_FLOW_ACTION_TYPE_SET_TP_DST
+		),
+		.map = &flow_actions[0],
+		.map_idx = &actions_idx
+	},
+	{
+		.str = "inc-tcp-ack",
+		.mask = FLOW_ACTION_MASK(
+			RTE_FLOW_ACTION_TYPE_INC_TCP_ACK
+		),
+		.map = &flow_actions[0],
+		.map_idx = &actions_idx
+	},
+	{
+		.str = "dec-tcp-ack",
+		.mask = FLOW_ACTION_MASK(
+			RTE_FLOW_ACTION_TYPE_DEC_TCP_ACK
+		),
+		.map = &flow_actions[0],
+		.map_idx = &actions_idx
+	},
+	{
+		.str = "inc-tcp-seq",
+		.mask = FLOW_ACTION_MASK(
+			RTE_FLOW_ACTION_TYPE_INC_TCP_SEQ
+		),
+		.map = &flow_actions[0],
+		.map_idx = &actions_idx
+	},
+	{
+		.str = "dec-tcp-seq",
+		.mask = FLOW_ACTION_MASK(
+			RTE_FLOW_ACTION_TYPE_DEC_TCP_SEQ
+		),
+		.map = &flow_actions[0],
+		.map_idx = &actions_idx
+	},
+	{
+		.str = "set-ttl",
+		.mask = FLOW_ACTION_MASK(
+			RTE_FLOW_ACTION_TYPE_SET_TTL
+		),
+		.map = &flow_actions[0],
+		.map_idx = &actions_idx
+	},
+	{
+		.str = "dec-ttl",
+		.mask = FLOW_ACTION_MASK(
+			RTE_FLOW_ACTION_TYPE_DEC_TTL
+		),
+		.map = &flow_actions[0],
+		.map_idx = &actions_idx
+	},
+	{
+		.str = "set-ipv4-dscp",
+		.mask = FLOW_ACTION_MASK(
+			RTE_FLOW_ACTION_TYPE_SET_IPV4_DSCP
+		),
+		.map = &flow_actions[0],
+		.map_idx = &actions_idx
+	},
+	{
+		.str = "set-ipv6-dscp",
+		.mask = FLOW_ACTION_MASK(
+			RTE_FLOW_ACTION_TYPE_SET_IPV6_DSCP
+		),
+		.map = &flow_actions[0],
+		.map_idx = &actions_idx
+	},
+	{
+		.str = "flag",
+		.mask = FLOW_ACTION_MASK(
+			RTE_FLOW_ACTION_TYPE_FLAG
+		),
+		.map = &flow_actions[0],
+		.map_idx = &actions_idx
+	},
+	{
+		.str = "meter",
+		.mask = FLOW_ACTION_MASK(
+			RTE_FLOW_ACTION_TYPE_METER
+		),
+		.map = &flow_actions[0],
+		.map_idx = &actions_idx
+	},
+	{
+		.str = "vxlan-encap",
+		.mask = FLOW_ACTION_MASK(
+			RTE_FLOW_ACTION_TYPE_VXLAN_ENCAP
+		),
+		.map = &flow_actions[0],
+		.map_idx = &actions_idx
+	},
+	{
+		.str = "vxlan-decap",
+		.mask = FLOW_ACTION_MASK(
+			RTE_FLOW_ACTION_TYPE_VXLAN_DECAP
+		),
+		.map = &flow_actions[0],
+		.map_idx = &actions_idx
+	},
+};
+
 static void
 usage(char *progname)
 {
@@ -252,337 +583,6 @@ args_parse(int argc, char **argv)
 	int n, opt;
 	int opt_idx;
 	size_t i;
-
-	static const struct option_dict {
-		const char *str;
-		const uint64_t mask;
-		uint64_t *map;
-		uint8_t *map_idx;
-
-	} flow_options[] = {
-		{
-			.str = "ether",
-			.mask = FLOW_ITEM_MASK(RTE_FLOW_ITEM_TYPE_ETH),
-			.map = &flow_items[0],
-			.map_idx = &items_idx
-		},
-		{
-			.str = "ipv4",
-			.mask = FLOW_ITEM_MASK(RTE_FLOW_ITEM_TYPE_IPV4),
-			.map = &flow_items[0],
-			.map_idx = &items_idx
-		},
-		{
-			.str = "ipv6",
-			.mask = FLOW_ITEM_MASK(RTE_FLOW_ITEM_TYPE_IPV6),
-			.map = &flow_items[0],
-			.map_idx = &items_idx
-		},
-		{
-			.str = "vlan",
-			.mask = FLOW_ITEM_MASK(RTE_FLOW_ITEM_TYPE_VLAN),
-			.map = &flow_items[0],
-			.map_idx = &items_idx
-		},
-		{
-			.str = "tcp",
-			.mask = FLOW_ITEM_MASK(RTE_FLOW_ITEM_TYPE_TCP),
-			.map = &flow_items[0],
-			.map_idx = &items_idx
-		},
-		{
-			.str = "udp",
-			.mask = FLOW_ITEM_MASK(RTE_FLOW_ITEM_TYPE_UDP),
-			.map = &flow_items[0],
-			.map_idx = &items_idx
-		},
-		{
-			.str = "vxlan",
-			.mask = FLOW_ITEM_MASK(RTE_FLOW_ITEM_TYPE_VXLAN),
-			.map = &flow_items[0],
-			.map_idx = &items_idx
-		},
-		{
-			.str = "vxlan-gpe",
-			.mask = FLOW_ITEM_MASK(RTE_FLOW_ITEM_TYPE_VXLAN_GPE),
-			.map = &flow_items[0],
-			.map_idx = &items_idx
-		},
-		{
-			.str = "gre",
-			.mask = FLOW_ITEM_MASK(RTE_FLOW_ITEM_TYPE_GRE),
-			.map = &flow_items[0],
-			.map_idx = &items_idx
-		},
-		{
-			.str = "geneve",
-			.mask = FLOW_ITEM_MASK(RTE_FLOW_ITEM_TYPE_GENEVE),
-			.map = &flow_items[0],
-			.map_idx = &items_idx
-		},
-		{
-			.str = "gtp",
-			.mask = FLOW_ITEM_MASK(RTE_FLOW_ITEM_TYPE_GTP),
-			.map = &flow_items[0],
-			.map_idx = &items_idx
-		},
-		{
-			.str = "meta",
-			.mask = FLOW_ITEM_MASK(RTE_FLOW_ITEM_TYPE_META),
-			.map = &flow_items[0],
-			.map_idx = &items_idx
-		},
-		{
-			.str = "tag",
-			.mask = FLOW_ITEM_MASK(RTE_FLOW_ITEM_TYPE_TAG),
-			.map = &flow_items[0],
-			.map_idx = &items_idx
-		},
-		{
-			.str = "icmpv4",
-			.mask = FLOW_ITEM_MASK(RTE_FLOW_ITEM_TYPE_ICMP),
-			.map = &flow_items[0],
-			.map_idx = &items_idx
-		},
-		{
-			.str = "icmpv6",
-			.mask = FLOW_ITEM_MASK(RTE_FLOW_ITEM_TYPE_ICMP6),
-			.map = &flow_items[0],
-			.map_idx = &items_idx
-		},
-		{
-			.str = "ingress",
-			.mask = INGRESS,
-			.map = &flow_attrs[0],
-			.map_idx = &attrs_idx
-		},
-		{
-			.str = "egress",
-			.mask = EGRESS,
-			.map = &flow_attrs[0],
-			.map_idx = &attrs_idx
-		},
-		{
-			.str = "transfer",
-			.mask = TRANSFER,
-			.map = &flow_attrs[0],
-			.map_idx = &attrs_idx
-		},
-		{
-			.str = "port-id",
-			.mask = FLOW_ACTION_MASK(RTE_FLOW_ACTION_TYPE_PORT_ID),
-			.map = &flow_actions[0],
-			.map_idx = &actions_idx
-		},
-		{
-			.str = "rss",
-			.mask = FLOW_ACTION_MASK(RTE_FLOW_ACTION_TYPE_RSS),
-			.map = &flow_actions[0],
-			.map_idx = &actions_idx
-		},
-		{
-			.str = "queue",
-			.mask = FLOW_ACTION_MASK(RTE_FLOW_ACTION_TYPE_QUEUE),
-			.map = &flow_actions[0],
-			.map_idx = &actions_idx
-		},
-		{
-			.str = "jump",
-			.mask = FLOW_ACTION_MASK(RTE_FLOW_ACTION_TYPE_JUMP),
-			.map = &flow_actions[0],
-			.map_idx = &actions_idx
-		},
-		{
-			.str = "mark",
-			.mask = FLOW_ACTION_MASK(RTE_FLOW_ACTION_TYPE_MARK),
-			.map = &flow_actions[0],
-			.map_idx = &actions_idx
-		},
-		{
-			.str = "count",
-			.mask = FLOW_ACTION_MASK(RTE_FLOW_ACTION_TYPE_COUNT),
-			.map = &flow_actions[0],
-			.map_idx = &actions_idx
-		},
-		{
-			.str = "set-meta",
-			.mask = FLOW_ACTION_MASK(RTE_FLOW_ACTION_TYPE_SET_META),
-			.map = &flow_actions[0],
-			.map_idx = &actions_idx
-		},
-		{
-			.str = "set-tag",
-			.mask = FLOW_ACTION_MASK(RTE_FLOW_ACTION_TYPE_SET_TAG),
-			.map = &flow_actions[0],
-			.map_idx = &actions_idx
-		},
-		{
-			.str = "drop",
-			.mask = FLOW_ACTION_MASK(RTE_FLOW_ACTION_TYPE_DROP),
-			.map = &flow_actions[0],
-			.map_idx = &actions_idx
-		},
-		{
-			.str = "set-src-mac",
-			.mask = FLOW_ACTION_MASK(
-				RTE_FLOW_ACTION_TYPE_SET_MAC_SRC
-			),
-			.map = &flow_actions[0],
-			.map_idx = &actions_idx
-		},
-		{
-			.str = "set-dst-mac",
-			.mask = FLOW_ACTION_MASK(
-				RTE_FLOW_ACTION_TYPE_SET_MAC_DST
-			),
-			.map = &flow_actions[0],
-			.map_idx = &actions_idx
-		},
-		{
-			.str = "set-src-ipv4",
-			.mask = FLOW_ACTION_MASK(
-				RTE_FLOW_ACTION_TYPE_SET_IPV4_SRC
-			),
-			.map = &flow_actions[0],
-			.map_idx = &actions_idx
-		},
-		{
-			.str = "set-dst-ipv4",
-			.mask = FLOW_ACTION_MASK(
-				RTE_FLOW_ACTION_TYPE_SET_IPV4_DST
-			),
-			.map = &flow_actions[0],
-			.map_idx = &actions_idx
-		},
-		{
-			.str = "set-src-ipv6",
-			.mask = FLOW_ACTION_MASK(
-				RTE_FLOW_ACTION_TYPE_SET_IPV6_SRC
-			),
-			.map = &flow_actions[0],
-			.map_idx = &actions_idx
-		},
-		{
-			.str = "set-dst-ipv6",
-			.mask = FLOW_ACTION_MASK(
-				RTE_FLOW_ACTION_TYPE_SET_IPV6_DST
-			),
-			.map = &flow_actions[0],
-			.map_idx = &actions_idx
-		},
-		{
-			.str = "set-src-tp",
-			.mask = FLOW_ACTION_MASK(
-				RTE_FLOW_ACTION_TYPE_SET_TP_SRC
-			),
-			.map = &flow_actions[0],
-			.map_idx = &actions_idx
-		},
-		{
-			.str = "set-dst-tp",
-			.mask = FLOW_ACTION_MASK(
-				RTE_FLOW_ACTION_TYPE_SET_TP_DST
-			),
-			.map = &flow_actions[0],
-			.map_idx = &actions_idx
-		},
-		{
-			.str = "inc-tcp-ack",
-			.mask = FLOW_ACTION_MASK(
-				RTE_FLOW_ACTION_TYPE_INC_TCP_ACK
-			),
-			.map = &flow_actions[0],
-			.map_idx = &actions_idx
-		},
-		{
-			.str = "dec-tcp-ack",
-			.mask = FLOW_ACTION_MASK(
-				RTE_FLOW_ACTION_TYPE_DEC_TCP_ACK
-			),
-			.map = &flow_actions[0],
-			.map_idx = &actions_idx
-		},
-		{
-			.str = "inc-tcp-seq",
-			.mask = FLOW_ACTION_MASK(
-				RTE_FLOW_ACTION_TYPE_INC_TCP_SEQ
-			),
-			.map = &flow_actions[0],
-			.map_idx = &actions_idx
-		},
-		{
-			.str = "dec-tcp-seq",
-			.mask = FLOW_ACTION_MASK(
-				RTE_FLOW_ACTION_TYPE_DEC_TCP_SEQ
-			),
-			.map = &flow_actions[0],
-			.map_idx = &actions_idx
-		},
-		{
-			.str = "set-ttl",
-			.mask = FLOW_ACTION_MASK(
-				RTE_FLOW_ACTION_TYPE_SET_TTL
-			),
-			.map = &flow_actions[0],
-			.map_idx = &actions_idx
-		},
-		{
-			.str = "dec-ttl",
-			.mask = FLOW_ACTION_MASK(
-				RTE_FLOW_ACTION_TYPE_DEC_TTL
-			),
-			.map = &flow_actions[0],
-			.map_idx = &actions_idx
-		},
-		{
-			.str = "set-ipv4-dscp",
-			.mask = FLOW_ACTION_MASK(
-				RTE_FLOW_ACTION_TYPE_SET_IPV4_DSCP
-			),
-			.map = &flow_actions[0],
-			.map_idx = &actions_idx
-		},
-		{
-			.str = "set-ipv6-dscp",
-			.mask = FLOW_ACTION_MASK(
-				RTE_FLOW_ACTION_TYPE_SET_IPV6_DSCP
-			),
-			.map = &flow_actions[0],
-			.map_idx = &actions_idx
-		},
-		{
-			.str = "flag",
-			.mask = FLOW_ACTION_MASK(
-				RTE_FLOW_ACTION_TYPE_FLAG
-			),
-			.map = &flow_actions[0],
-			.map_idx = &actions_idx
-		},
-		{
-			.str = "meter",
-			.mask = FLOW_ACTION_MASK(
-				RTE_FLOW_ACTION_TYPE_METER
-			),
-			.map = &flow_actions[0],
-			.map_idx = &actions_idx
-		},
-		{
-			.str = "vxlan-encap",
-			.mask = FLOW_ACTION_MASK(
-				RTE_FLOW_ACTION_TYPE_VXLAN_ENCAP
-			),
-			.map = &flow_actions[0],
-			.map_idx = &actions_idx
-		},
-		{
-			.str = "vxlan-decap",
-			.mask = FLOW_ACTION_MASK(
-				RTE_FLOW_ACTION_TYPE_VXLAN_DECAP
-			),
-			.map = &flow_actions[0],
-			.map_idx = &actions_idx
-		},
-	};
 
 	static const struct option lgopts[] = {
 		/* Control */
