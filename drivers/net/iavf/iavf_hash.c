@@ -901,10 +901,9 @@ iavf_any_invalid_rss_type(enum rte_eth_hash_function rss_func,
 static int
 iavf_hash_parse_action(struct iavf_pattern_match_item *match_item,
 		       const struct rte_flow_action actions[],
-		       uint64_t pattern_hint, void **meta,
+		       uint64_t pattern_hint, struct iavf_rss_meta *rss_meta,
 		       struct rte_flow_error *error)
 {
-	struct iavf_rss_meta *rss_meta = (struct iavf_rss_meta *)*meta;
 	struct virtchnl_proto_hdrs *proto_hdrs;
 	enum rte_flow_action_type action_type;
 	const struct rte_flow_action_rss *rss;
@@ -1018,7 +1017,7 @@ iavf_hash_parse_pattern_action(__rte_unused struct iavf_adapter *ad,
 		goto error;
 
 	ret = iavf_hash_parse_action(pattern_match_item, actions, phint,
-				     (void **)&rss_meta_ptr, error);
+				     rss_meta_ptr, error);
 
 error:
 	if (!ret && meta)
