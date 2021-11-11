@@ -329,8 +329,7 @@ rte_pmd_failsafe_probe(struct rte_vdev_device *vdev)
 	INFO("Initializing " FAILSAFE_DRIVER_NAME " for %s",
 			name);
 
-	if (rte_eal_process_type() == RTE_PROC_SECONDARY &&
-	    strlen(rte_vdev_device_args(vdev)) == 0) {
+	if (rte_eal_process_type() == RTE_PROC_SECONDARY) {
 		eth_dev = rte_eth_dev_attach_secondary(name);
 		if (!eth_dev) {
 			ERROR("Failed to probe %s", name);
