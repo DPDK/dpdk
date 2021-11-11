@@ -137,6 +137,9 @@ The command line options are:
 *	``--meter-profile=N1,N2,N3``
 	Set the CIR, CBS and EBS parameters, default values are 1250000, 156250 and 0.
 
+*	``--packet-mode``
+	Enable packet mode for meter profile.
+
 Attributes:
 
 *	``--ingress``
