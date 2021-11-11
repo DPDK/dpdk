@@ -12106,34 +12106,24 @@ flow_dv_translate_integrity_l4(const struct rte_flow_item_integrity *mask,
 			       void *headers_m, void *headers_v)
 {
 	if (mask->l4_ok) {
-		/* application l4_ok filter aggregates all hardware l4 filters
-		 * therefore hw l4_checksum_ok must be implicitly added here.
+		/* RTE l4_ok filter aggregates hardware l4_ok and
+		 * l4_checksum_ok filters.
+		 * Positive RTE l4_ok match requires hardware match on both L4
+		 * hardware integrity bits.
+		 * For negative match, check hardware l4_checksum_ok bit only,
+		 * because hardware sets that bit to 0 for all packets
+		 * with bad L4.
 		 */
-		struct rte_flow_item_integrity local_item;
-
-		local_item.l4_csum_ok = 1;
-		MLX5_SET(fte_match_set_lyr_2_4, headers_m, l4_checksum_ok,
-			 local_item.l4_csum_ok);
 		if (value->l4_ok) {
-			/* application l4_ok = 1 matches sets both hw flags
-			 * l4_ok and l4_checksum_ok flags to 1.
-			 */
-			MLX5_SET(fte_match_set_lyr_2_4, headers_v,
-				 l4_checksum_ok, local_item.l4_csum_ok);
-			MLX5_SET(fte_match_set_lyr_2_4, headers_m, l4_ok,
-				 mask->l4_ok);
-			MLX5_SET(fte_match_set_lyr_2_4, headers_v, l4_ok,
-				 value->l4_ok);
-		} else {
-			/* application l4_ok = 0 matches on hw flag
-			 * l4_checksum_ok = 0 only.
-			 */
-			MLX5_SET(fte_match_set_lyr_2_4, headers_v,
-				 l4_checksum_ok, 0);
+			MLX5_SET(fte_match_set_lyr_2_4, headers_m, l4_ok, 1);
+			MLX5_SET(fte_match_set_lyr_2_4, headers_v, l4_ok, 1);
 		}
-	} else if (mask->l4_csum_ok) {
-		MLX5_SET(fte_match_set_lyr_2_4, headers_m, l4_checksum_ok,
-			 mask->l4_csum_ok);
+		MLX5_SET(fte_match_set_lyr_2_4, headers_m, l4_checksum_ok, 1);
+		MLX5_SET(fte_match_set_lyr_2_4, headers_v, l4_checksum_ok,
+			 !!value->l4_ok);
+	}
+	if (mask->l4_csum_ok) {
+		MLX5_SET(fte_match_set_lyr_2_4, headers_m, l4_checksum_ok, 1);
 		MLX5_SET(fte_match_set_lyr_2_4, headers_v, l4_checksum_ok,
 			 value->l4_csum_ok);
 	}
@@ -12145,28 +12135,33 @@ flow_dv_translate_integrity_l3(const struct rte_flow_item_integrity *mask,
 			       void *headers_m, void *headers_v, bool is_ipv4)
 {
 	if (mask->l3_ok) {
-		/* application l3_ok filter aggregates all hardware l3 filters
-		 * therefore hw ipv4_checksum_ok must be implicitly added here.
+		/* RTE l3_ok filter aggregates for IPv4 hardware l3_ok and
+		 * ipv4_csum_ok filters.
+		 * Positive RTE l3_ok match requires hardware match on both L3
+		 * hardware integrity bits.
+		 * For negative match, check hardware l3_csum_ok bit only,
+		 * because hardware sets that bit to 0 for all packets
+		 * with bad L3.
 		 */
-		struct rte_flow_item_integrity local_item;
-
-		local_item.ipv4_csum_ok = !!is_ipv4;
-		MLX5_SET(fte_match_set_lyr_2_4, headers_m, ipv4_checksum_ok,
-			 local_item.ipv4_csum_ok);
-		if (value->l3_ok) {
+		if (is_ipv4) {
+			if (value->l3_ok) {
+				MLX5_SET(fte_match_set_lyr_2_4, headers_m,
+					 l3_ok, 1);
+				MLX5_SET(fte_match_set_lyr_2_4, headers_v,
+					 l3_ok, 1);
+			}
+			MLX5_SET(fte_match_set_lyr_2_4, headers_m,
+				 ipv4_checksum_ok, 1);
 			MLX5_SET(fte_match_set_lyr_2_4, headers_v,
-				 ipv4_checksum_ok, local_item.ipv4_csum_ok);
-			MLX5_SET(fte_match_set_lyr_2_4, headers_m, l3_ok,
-				 mask->l3_ok);
+				 ipv4_checksum_ok, !!value->l3_ok);
+		} else {
+			MLX5_SET(fte_match_set_lyr_2_4, headers_m, l3_ok, 1);
 			MLX5_SET(fte_match_set_lyr_2_4, headers_v, l3_ok,
 				 value->l3_ok);
-		} else {
-			MLX5_SET(fte_match_set_lyr_2_4, headers_v,
-				 ipv4_checksum_ok, 0);
 		}
-	} else if (mask->ipv4_csum_ok) {
-		MLX5_SET(fte_match_set_lyr_2_4, headers_m, ipv4_checksum_ok,
-			 mask->ipv4_csum_ok);
+	}
+	if (mask->ipv4_csum_ok) {
+		MLX5_SET(fte_match_set_lyr_2_4, headers_m, ipv4_checksum_ok, 1);
 		MLX5_SET(fte_match_set_lyr_2_4, headers_v, ipv4_checksum_ok,
 			 value->ipv4_csum_ok);
 	}
