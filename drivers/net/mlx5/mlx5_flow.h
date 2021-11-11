@@ -181,9 +181,9 @@ enum mlx5_feature_name {
 #define MLX5_FLOW_LAYER_ASO_CT (UINT64_C(1) << 36)
 
 /* Flex item */
-#define MLX5_FLOW_ITEM_OUTER_FLEX (UINT64_C(1) << 36)
-#define MLX5_FLOW_ITEM_INNER_FLEX (UINT64_C(1) << 37)
-#define MLX5_FLOW_ITEM_FLEX_TUNNEL (UINT64_C(1) << 38)
+#define MLX5_FLOW_ITEM_OUTER_FLEX (UINT64_C(1) << 37)
+#define MLX5_FLOW_ITEM_INNER_FLEX (UINT64_C(1) << 38)
+#define MLX5_FLOW_ITEM_FLEX_TUNNEL (UINT64_C(1) << 39)
 
 /* Outer Masks. */
 #define MLX5_FLOW_LAYER_OUTER_L3 \
