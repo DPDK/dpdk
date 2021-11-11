@@ -85,6 +85,7 @@ static uint32_t hairpin_queues_num; /* total hairpin q number - default: 0 */
 static uint32_t nb_lcores;
 static uint8_t max_priority;
 static uint32_t rand_seed;
+static uint64_t meter_profile_values[3]; /* CIR CBS EBS values. */
 
 #define MAX_PKT_BURST    32
 #define LCORE_MODE_PKT    1
@@ -484,6 +485,9 @@ usage(char *progname)
 		"and S as seed for pseudo-random number generator\n");
 	printf("  --unique-data: flag to set using unique data for all"
 		" actions that support data, such as header modify and encap actions\n");
+	printf("  --meter-profile=cir,cbs,ebs: set CIR CBS EBS parameters in meter"
+		" profile, default values are %d,%d,%d\n", METER_CIR,
+		METER_CIR / 8, 0);
 
 	printf("To set flow attributes:\n");
 	printf("  --ingress: set ingress attribute in flows\n");
@@ -707,6 +711,7 @@ args_parse(int argc, char **argv)
 		{ "vxlan-encap",                0, 0, 0 },
 		{ "vxlan-decap",                0, 0, 0 },
 		{ "policy-mtr",                 1, 0, 0 },
+		{ "meter-profile",              1, 0, 0 },
 	};
 
 	RTE_ETH_FOREACH_DEV(i)
@@ -926,6 +931,17 @@ args_parse(int argc, char **argv)
 			}
 			if (strcmp(lgopts[opt_idx].name, "policy-mtr") == 0)
 				read_meter_policy(argv[0], optarg);
+			if (strcmp(lgopts[opt_idx].name,
+						"meter-profile") == 0) {
+				i = 0;
+				token = strsep(&optarg, ",\0");
+				while (token != NULL && i < sizeof(
+						meter_profile_values) /
+						sizeof(uint64_t)) {
+					meter_profile_values[i++] = atol(token);
+					token = strsep(&optarg, ",\0");
+				}
+			}
 			break;
 		default:
 			usage(argv[0]);
@@ -1251,9 +1267,11 @@ create_meter_profile(void)
 		if (!((ports_mask >> port_id) & 0x1))
 			continue;
 		mp.alg = RTE_MTR_SRTCM_RFC2697;
-		mp.srtcm_rfc2697.cir = METER_CIR;
-		mp.srtcm_rfc2697.cbs = METER_CIR / 8;
-		mp.srtcm_rfc2697.ebs = 0;
+		mp.srtcm_rfc2697.cir = meter_profile_values[0] ?
+			meter_profile_values[0] : METER_CIR;
+		mp.srtcm_rfc2697.cbs = meter_profile_values[1] ?
+			meter_profile_values[1] : METER_CIR / 8;
+		mp.srtcm_rfc2697.ebs = meter_profile_values[2];
 		ret = rte_mtr_meter_profile_add
 			(port_id, DEFAULT_METER_PROF_ID, &mp, &error);
 		if (ret != 0) {

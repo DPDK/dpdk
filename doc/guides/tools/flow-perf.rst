@@ -134,6 +134,9 @@ The command line options are:
 *	``--total-mbuf-count=N``
 	Set the count of total mbuf number, default count is 32000.
 
+*	``--meter-profile=N1,N2,N3``
+	Set the CIR, CBS and EBS parameters, default values are 1250000, 156250 and 0.
+
 Attributes:
 
 *	``--ingress``
