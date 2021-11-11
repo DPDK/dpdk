@@ -2248,7 +2248,7 @@ cpt_kasumi_dec_prep(uint64_t d_offs,
 	/* consider iv len */
 	encr_offset += iv_len;
 
-	inputlen = iv_len + (RTE_ALIGN(encr_data_len, 8) / 8);
+	inputlen = encr_offset + (RTE_ALIGN(encr_data_len, 8) / 8);
 	outputlen = inputlen;
 
 	/* save space for offset ctrl & iv */
