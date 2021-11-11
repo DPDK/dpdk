@@ -540,8 +540,8 @@ void iavf_dump_tx_descriptor(const struct iavf_tx_queue *txq,
 
 #define FDIR_PROC_ENABLE_PER_QUEUE(ad, on) do { \
 	int i; \
-	for (i = 0; i < (ad)->eth_dev->data->nb_rx_queues; i++) { \
-		struct iavf_rx_queue *rxq = (ad)->eth_dev->data->rx_queues[i]; \
+	for (i = 0; i < (ad)->dev_data->nb_rx_queues; i++) { \
+		struct iavf_rx_queue *rxq = (ad)->dev_data->rx_queues[i]; \
 		if (!rxq) \
 			continue; \
 		rxq->fdir_enabled = on; \

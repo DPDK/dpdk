@@ -644,7 +644,9 @@ _recv_raw_pkts_vec_flex_rxd(struct iavf_rx_queue *rxq,
 	uint16_t nb_pkts_recd;
 	int pos;
 	uint64_t var;
-	const uint32_t *ptype_tbl = rxq->vsi->adapter->ptype_tbl;
+	struct iavf_adapter *adapter = rxq->vsi->adapter;
+	uint64_t offloads = adapter->dev_data->dev_conf.rxmode.offloads;
+	const uint32_t *ptype_tbl = adapter->ptype_tbl;
 	__m128i crc_adjust = _mm_set_epi16
 				(0, 0, 0,       /* ignore non-length fields */
 				 -rxq->crc_len, /* sub crc on data_len */
@@ -817,8 +819,7 @@ _recv_raw_pkts_vec_flex_rxd(struct iavf_rx_queue *rxq,
 		 * needs to load 2nd 16B of each desc for RSS hash parsing,
 		 * will cause performance drop to get into this context.
 		 */
-		if (rxq->vsi->adapter->eth_dev->data->dev_conf.rxmode.offloads &
-				DEV_RX_OFFLOAD_RSS_HASH) {
+		if (offloads & DEV_RX_OFFLOAD_RSS_HASH) {
 			/* load bottom half of every 32B desc */
 			const __m128i raw_desc_bh3 =
 				_mm_load_si128

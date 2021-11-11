@@ -641,7 +641,10 @@ _iavf_recv_raw_pkts_vec_avx512_flex_rxd(struct iavf_rx_queue *rxq,
 					struct rte_mbuf **rx_pkts,
 					uint16_t nb_pkts, uint8_t *split_packet)
 {
-	const uint32_t *type_table = rxq->vsi->adapter->ptype_tbl;
+	struct iavf_adapter *adapter = rxq->vsi->adapter;
+
+	uint64_t offloads = adapter->dev_data->dev_conf.rxmode.offloads;
+	const uint32_t *type_table = adapter->ptype_tbl;
 
 	const __m256i mbuf_init = _mm256_set_epi64x(0, 0, 0,
 						    rxq->mbuf_initializer);
@@ -1014,8 +1017,7 @@ _iavf_recv_raw_pkts_vec_avx512_flex_rxd(struct iavf_rx_queue *rxq,
 		 * needs to load 2nd 16B of each desc for RSS hash parsing,
 		 * will cause performance drop to get into this context.
 		 */
-		if (rxq->vsi->adapter->eth_dev->data->dev_conf.rxmode.offloads &
-		    DEV_RX_OFFLOAD_RSS_HASH) {
+		if (offloads & DEV_RX_OFFLOAD_RSS_HASH) {
 			/* load bottom half of every 32B desc */
 			const __m128i raw_desc_bh7 =
 				_mm_load_si128

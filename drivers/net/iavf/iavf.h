@@ -166,6 +166,8 @@ struct iavf_info {
 	struct iavf_fdir_info fdir; /* flow director info */
 	/* indicate large VF support enabled or not */
 	bool lv_enabled;
+
+	struct rte_eth_dev *eth_dev;
 };
 
 #define IAVF_MAX_PKT_TYPE 1024
@@ -194,7 +196,7 @@ struct iavf_devargs {
 /* Structure to store private data for each VF instance. */
 struct iavf_adapter {
 	struct iavf_hw hw;
-	struct rte_eth_dev *eth_dev;
+	struct rte_eth_dev_data *dev_data;
 	struct iavf_info vf;
 
 	bool rx_bulk_alloc_allowed;
@@ -220,8 +222,6 @@ struct iavf_adapter {
 	(&(((struct iavf_vsi *)vsi)->adapter->hw))
 #define IAVF_VSI_TO_VF(vsi) \
 	(&(((struct iavf_vsi *)vsi)->adapter->vf))
-#define IAVF_VSI_TO_ETH_DEV(vsi) \
-	(((struct iavf_vsi *)vsi)->adapter->eth_dev)
 
 static inline void
 iavf_init_adminq_parameter(struct iavf_hw *hw)
@@ -325,6 +325,6 @@ int iavf_add_del_rss_cfg(struct iavf_adapter *adapter,
 int iavf_add_del_mc_addr_list(struct iavf_adapter *adapter,
 			struct rte_ether_addr *mc_addrs,
 			uint32_t mc_addrs_num, bool add);
-int iavf_request_queues(struct iavf_adapter *adapter, uint16_t num);
+int iavf_request_queues(struct rte_eth_dev *dev, uint16_t num);
 int iavf_get_max_rss_queue_region(struct iavf_adapter *adapter);
 #endif /* _IAVF_ETHDEV_H_ */
