@@ -2529,9 +2529,9 @@ ice_flow_disassoc_prof(struct ice_hw *hw, enum ice_block blk,
 
 #define FLAG_GTPU_MSK	\
 	(FLAG_GTP_EH_PDU | FLAG_GTP_EH_PDU_LINK)
-#define FLAG_GTPU_DW	\
-	(FLAG_GTP_EH_PDU | FLAG_GTP_EH_PDU_LINK)
 #define FLAG_GTPU_UP	\
+	(FLAG_GTP_EH_PDU | FLAG_GTP_EH_PDU_LINK)
+#define FLAG_GTPU_DW	\
 	(FLAG_GTP_EH_PDU)
 /**
  * ice_flow_set_hw_prof - Set HW flow profile based on the parsed profile info
