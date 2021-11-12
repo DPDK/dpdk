@@ -36,7 +36,7 @@ if dpdk_conf.has('RTE_ARCH_X86')
     # compile AVX512 version if:
     # we are building 64-bit binary AND binutils can generate proper code
 
-    if dpdk_conf.has('RTE_ARCH_X86_64') and binutils_ok.returncode() == 0
+    if dpdk_conf.has('RTE_ARCH_X86_64') and binutils_ok
 
         # compile AVX512 version if either:
         # a. we have AVX512 supported in minimum instruction set

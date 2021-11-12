@@ -14,7 +14,7 @@ deps += ['rib']
 
 # compile AVX512 version if:
 # we are building 64-bit binary AND binutils can generate proper code
-if dpdk_conf.has('RTE_ARCH_X86_64') and binutils_ok.returncode() == 0
+if dpdk_conf.has('RTE_ARCH_X86_64') and binutils_ok
     # compile AVX512 version if either:
     # a. we have AVX512F supported in minimum instruction set baseline
     # b. it's not minimum instruction set, but supported by compiler
