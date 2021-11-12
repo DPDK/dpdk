@@ -297,7 +297,7 @@ M: Bruce Richardson <bruce.richardson@intel.com>
 M: Konstantin Ananyev <konstantin.ananyev@intel.com>
 F: config/x86/
 F: doc/guides/linux_gsg/nic_perf_intel_platform.rst
-F: buildtools/binutils-avx512-check.sh
+F: buildtools/binutils-avx512-check.py
 F: doc/guides/howto/avx512.rst
 F: lib/eal/x86/
 F: lib/*/*_sse*
