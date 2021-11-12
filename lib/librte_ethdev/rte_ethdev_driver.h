@@ -73,7 +73,7 @@ typedef int (*eth_is_removed_t)(struct rte_eth_dev *dev);
  * @retval -E_RTE_SECONDARY
  *   Function was called from a secondary process instance and not supported.
  * @retval -ETIMEDOUT
- *   Attempt to enable promiscuos mode failed because of timeout.
+ *   Attempt to enable promiscuous mode failed because of timeout.
  * @retval -EAGAIN
  *   Failed to enable promiscuous mode.
  */
@@ -98,7 +98,7 @@ typedef int (*eth_promiscuous_enable_t)(struct rte_eth_dev *dev);
  * @retval -E_RTE_SECONDARY
  *   Function was called from a secondary process instance and not supported.
  * @retval -ETIMEDOUT
- *   Attempt to disable promiscuos mode failed because of timeout.
+ *   Attempt to disable promiscuous mode failed because of timeout.
  * @retval -EAGAIN
  *   Failed to disable promiscuous mode.
  */

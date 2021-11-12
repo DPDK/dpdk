@@ -3088,7 +3088,7 @@ enum rte_flow_conv_op {
  *   Perform verbose error reporting if not NULL. PMDs initialize this
  *   structure in case of error only.
  * @return
- *   0 on success, a nagative value otherwise.
+ *   0 on success, a negative value otherwise.
  */
 __rte_experimental
 int
@@ -3449,7 +3449,7 @@ rte_flow_conv(enum rte_flow_conv_op op,
  *
  * RTE_ETH_EVENT_FLOW_AGED event will be triggered when at least one new aged
  * out flow was detected after the last call to rte_flow_get_aged_flows.
- * This function can be called to get the aged flows usynchronously from the
+ * This function can be called to get the aged flows asynchronously from the
  * event callback or synchronously regardless the event.
  * This is not safe to call rte_flow_get_aged_flows function with other flow
  * functions from multiple threads simultaneously.
