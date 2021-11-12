@@ -2,9 +2,10 @@
 # Copyright(c) 2017-2020 Intel Corporation
 
 # get binutils version for the workaround of Bug 97
-if not is_windows
-	binutils_ok = run_command(binutils_avx512_check)
-	if binutils_ok.returncode() != 0 and cc.has_argument('-mno-avx512f')
+binutils_ok = true
+if not is_windows and (is_linux or cc.get_id() == 'gcc')
+	binutils_ok = run_command(binutils_avx512_check).returncode() == 0
+	if not binutils_ok and cc.has_argument('-mno-avx512f')
 		machine_args += '-mno-avx512f'
 		warning('Binutils error with AVX512 assembly, disabling AVX512 support')
 	endif
