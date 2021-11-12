@@ -15,6 +15,7 @@
 #include <linux/ethtool.h>
 #include <linux/sockios.h>
 #include "af_xdp_deps.h"
+#include <bpf/bpf.h>
 #include <bpf/xsk.h>
 
 #include <rte_ethdev.h>
@@ -139,6 +140,7 @@ struct pmd_internals {
 	bool shared_umem;
 	char prog_path[PATH_MAX];
 	bool custom_prog_configured;
+	struct bpf_map *map;
 
 	struct rte_ether_addr eth_addr;
 
@@ -1147,11 +1149,10 @@ err:
 }
 
 static int
-load_custom_xdp_prog(const char *prog_path, int if_index)
+load_custom_xdp_prog(const char *prog_path, int if_index, struct bpf_map **map)
 {
 	int ret, prog_fd = -1;
 	struct bpf_object *obj;
-	struct bpf_map *map;
 
 	ret = bpf_prog_load(prog_path, BPF_PROG_TYPE_XDP, &obj, &prog_fd);
 	if (ret) {
@@ -1161,11 +1162,10 @@ load_custom_xdp_prog(const char *prog_path, int if_index)
 
 	/*
 	 * The loaded program must provision for a map of xsks, such that some
-	 * traffic can be redirected to userspace. When the xsk is created,
-	 * libbpf inserts it into the map.
+	 * traffic can be redirected to userspace.
 	 */
-	map = bpf_object__find_map_by_name(obj, "xsks_map");
-	if (!map) {
+	*map = bpf_object__find_map_by_name(obj, "xsks_map");
+	if (!*map) {
 		AF_XDP_LOG(ERR, "Failed to find xsks_map in %s\n", prog_path);
 		return -1;
 	}
@@ -1272,13 +1272,15 @@ xsk_configure(struct pmd_internals *internals, struct pkt_rx_queue *rxq,
 	if (strnlen(internals->prog_path, PATH_MAX) &&
 				!internals->custom_prog_configured) {
 		ret = load_custom_xdp_prog(internals->prog_path,
-					   internals->if_index);
+					   internals->if_index,
+					   &internals->map);
 		if (ret) {
 			AF_XDP_LOG(ERR, "Failed to load custom XDP program %s\n",
 					internals->prog_path);
 			goto err;
 		}
 		internals->custom_prog_configured = 1;
+		cfg.libbpf_flags = XSK_LIBBPF_FLAGS__INHIBIT_PROG_LOAD;
 	}
 
 	if (internals->shared_umem)
@@ -1293,6 +1295,19 @@ xsk_configure(struct pmd_internals *internals, struct pkt_rx_queue *rxq,
 	if (ret) {
 		AF_XDP_LOG(ERR, "Failed to create xsk socket.\n");
 		goto err;
+	}
+
+	/* insert the xsk into the xsks_map */
+	if (internals->custom_prog_configured) {
+		int err, fd;
+
+		fd = xsk_socket__fd(rxq->xsk);
+		err = bpf_map_update_elem(bpf_map__fd(internals->map),
+					  &rxq->xsk_queue_idx, &fd, 0);
+		if (err) {
+			AF_XDP_LOG(ERR, "Failed to insert xsk in map.\n");
+			goto err;
+		}
 	}
 
 #if defined(XDP_UMEM_UNALIGNED_CHUNK_FLAG)
