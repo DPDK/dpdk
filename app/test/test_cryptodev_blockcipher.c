@@ -266,7 +266,10 @@ test_blockcipher_one_case(const struct blockcipher_test_case *t,
 		}
 		memset(obuf->buf_addr, dst_pattern, obuf->buf_len);
 
-		buf_p = rte_pktmbuf_append(obuf, buf_len + pad_len);
+		if (t->op_mask & BLOCKCIPHER_TEST_OP_DIGEST_ENCRYPTED)
+			buf_p = rte_pktmbuf_append(obuf, buf_len + pad_len);
+		else
+			buf_p = rte_pktmbuf_append(obuf, buf_len);
 		if (!buf_p) {
 			snprintf(test_msg, BLOCKCIPHER_TEST_MSG_LEN, "line %u "
 				"FAILED: %s", __LINE__,
