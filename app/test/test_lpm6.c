@@ -261,7 +261,7 @@ test4(void)
 	status = rte_lpm6_add(NULL, ip, depth, next_hop);
 	TEST_LPM_ASSERT(status < 0);
 
-	/*Create vaild lpm to use in rest of test. */
+	/*Create valid lpm to use in rest of test. */
 	lpm = rte_lpm6_create(__func__, SOCKET_ID_ANY, &config);
 	TEST_LPM_ASSERT(lpm != NULL);
 
@@ -299,7 +299,7 @@ test5(void)
 	status = rte_lpm6_delete(NULL, ip, depth);
 	TEST_LPM_ASSERT(status < 0);
 
-	/*Create vaild lpm to use in rest of test. */
+	/*Create valid lpm to use in rest of test. */
 	lpm = rte_lpm6_create(__func__, SOCKET_ID_ANY, &config);
 	TEST_LPM_ASSERT(lpm != NULL);
 
@@ -337,7 +337,7 @@ test6(void)
 	status = rte_lpm6_lookup(NULL, ip, &next_hop_return);
 	TEST_LPM_ASSERT(status < 0);
 
-	/*Create vaild lpm to use in rest of test. */
+	/*Create valid lpm to use in rest of test. */
 	lpm = rte_lpm6_create(__func__, SOCKET_ID_ANY, &config);
 	TEST_LPM_ASSERT(lpm != NULL);
 
@@ -375,7 +375,7 @@ test7(void)
 	status = rte_lpm6_lookup_bulk_func(NULL, ip, next_hop_return, 10);
 	TEST_LPM_ASSERT(status < 0);
 
-	/*Create vaild lpm to use in rest of test. */
+	/*Create valid lpm to use in rest of test. */
 	lpm = rte_lpm6_create(__func__, SOCKET_ID_ANY, &config);
 	TEST_LPM_ASSERT(lpm != NULL);
 
@@ -413,7 +413,7 @@ test8(void)
 	status = rte_lpm6_delete_bulk_func(NULL, ip, depth, 10);
 	TEST_LPM_ASSERT(status < 0);
 
-	/*Create vaild lpm to use in rest of test. */
+	/*Create valid lpm to use in rest of test. */
 	lpm = rte_lpm6_create(__func__, SOCKET_ID_ANY, &config);
 	TEST_LPM_ASSERT(lpm != NULL);
 
@@ -433,7 +433,7 @@ test8(void)
 /*
  * Call add, lookup and delete for a single rule with depth < 24.
  * Check all the combinations for the first three bytes that result in a hit.
- * Delete the rule and check that the same test returs a miss.
+ * Delete the rule and check that the same test returns a miss.
  */
 int32_t
 test9(void)
@@ -1738,7 +1738,7 @@ test27(void)
  * Call add, lookup and delete for a single rule with maximum 21bit next_hop
  * size.
  * Check that next_hop returned from lookup is equal to provisioned value.
- * Delete the rule and check that the same test returs a miss.
+ * Delete the rule and check that the same test returns a miss.
  */
 int32_t
 test28(void)

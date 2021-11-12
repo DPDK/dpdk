@@ -67,7 +67,7 @@ struct ethdev_rx_node_main *ethdev_rx_get_node_data_get(void);
  *
  * Get the Ethernet Rx node.
  *
- * @retrun
+ * @return
  *   Pointer to the Ethernet Rx node.
  */
 struct rte_node_register *ethdev_rx_node_get(void);

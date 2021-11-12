@@ -1730,7 +1730,7 @@ static const struct bpf_ins_check ins_chk[UINT8_MAX + 1] = {
 
 /*
  * make sure that instruction syntax is valid,
- * and it fields don't violate partciular instrcution type restrictions.
+ * and its fields don't violate particular instruction type restrictions.
  */
 static const char *
 check_syntax(const struct ebpf_insn *ins)
@@ -1961,7 +1961,7 @@ log_loop(const struct bpf_verifier *bvf)
  * First pass goes though all instructions in the set, checks that each
  * instruction is a valid one (correct syntax, valid field values, etc.)
  * and constructs control flow graph (CFG).
- * Then deapth-first search is performed over the constructed graph.
+ * Then depth-first search is performed over the constructed graph.
  * Programs with unreachable instructions and/or loops will be rejected.
  */
 static int
@@ -1988,7 +1988,7 @@ validate(struct bpf_verifier *bvf)
 
 		/*
 		 * construct CFG, jcc nodes have to outgoing edges,
-		 * 'exit' nodes - none, all others nodes have exaclty one
+		 * 'exit' nodes - none, all other nodes have exactly one
 		 * outgoing edge.
 		 */
 		switch (ins->code) {
@@ -2258,7 +2258,7 @@ evaluate(struct bpf_verifier *bvf)
 			idx = get_node_idx(bvf, node);
 			op = ins[idx].code;
 
-			/* for jcc node make a copy of evaluatoion state */
+			/* for jcc node make a copy of evaluation state */
 			if (node->nb_edge > 1)
 				rc |= save_eval_state(bvf, node);
 

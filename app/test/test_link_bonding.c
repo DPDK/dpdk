@@ -3040,7 +3040,7 @@ test_balance_tx_burst_slave_tx_fail(void)
 	first_tx_fail_idx = TEST_BAL_SLAVE_TX_FAIL_BURST_SIZE_1 -
 			TEST_BAL_SLAVE_TX_FAIL_PACKETS_COUNT;
 
-	/* copy mbuf referneces for expected transmission failures */
+	/* copy mbuf references for expected transmission failures */
 	for (i = 0; i < TEST_BAL_SLAVE_TX_FAIL_PACKETS_COUNT; i++)
 		expected_fail_pkts[i] = pkts_burst_1[i + first_tx_fail_idx];
 

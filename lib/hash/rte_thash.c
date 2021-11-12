@@ -28,7 +28,7 @@ EAL_REGISTER_TAILQ(rte_thash_tailq)
 
 /**
  * Table of some irreducible polinomials over GF(2).
- * For lfsr they are reperesented in BE bit order, and
+ * For lfsr they are represented in BE bit order, and
  * x^0 is masked out.
  * For example, poly x^5 + x^2 + 1 will be represented
  * as (101001b & 11111b) = 01001b = 0x9

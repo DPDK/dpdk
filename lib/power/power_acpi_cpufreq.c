@@ -159,7 +159,7 @@ power_get_available_freqs(struct acpi_power_info *pi)
 		goto out;
 	}
 
-	/* Store the available frequncies into power context */
+	/* Store the available frequencies into power context */
 	for (i = 0, pi->nb_freqs = 0; i < count; i++) {
 		POWER_DEBUG_TRACE("Lcore %u frequency[%d]: %s\n", pi->lcore_id,
 				i, freqs[i]);

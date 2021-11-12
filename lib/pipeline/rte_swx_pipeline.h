@@ -647,7 +647,7 @@ struct rte_swx_pipeline_selector_params {
 	const char *group_id_field_name;
 
 	/** The set of fields used to select (through a hashing scheme) the
-	 * member within the current group. Inputs into the seletion operation.
+	 * member within the current group. Inputs into the selection operation.
 	 * Restriction: All the selector fields must be part of the same struct,
 	 * i.e. part of the same header or part of the meta-data structure.
 	 */

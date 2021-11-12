@@ -88,7 +88,7 @@
  *
  *   - Invoke ``test_atomic_exchange`` on each lcore.  Before doing
  *     anything else, the cores wait for a synchronization event.
- *     Each core then does the follwoing for N iterations:
+ *     Each core then does the following for N iterations:
  *
  *       Generate a new token with a data integrity check
  *       Exchange the new token for previously generated token

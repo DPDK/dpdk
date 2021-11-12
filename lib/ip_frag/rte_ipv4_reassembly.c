@@ -80,7 +80,7 @@ ipv4_frag_reassemble(struct ip_frag_pkt *fp)
 
 /*
  * Process new mbuf with fragment of IPV4 packet.
- * Incoming mbuf should have it's l2_len/l3_len fields setuped correclty.
+ * Incoming mbuf should have it's l2_len/l3_len fields setup correctly.
  * @param tbl
  *   Table where to lookup/add the fragmented packet.
  * @param mb

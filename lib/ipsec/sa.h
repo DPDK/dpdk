@@ -122,7 +122,7 @@ struct rte_ipsec_sa {
 	 * In case of SA handled by multiple threads *sqn* cacheline
 	 * could be shared by multiple cores.
 	 * To minimise performance impact, we try to locate in a separate
-	 * place from other frequently accesed data.
+	 * place from other frequently accessed data.
 	 */
 	union {
 		uint64_t outb;

@@ -88,7 +88,7 @@ static uint32_t synchro;
 static unsigned n_get_bulk;
 static unsigned n_put_bulk;
 
-/* number of objects retrived from mempool before putting them back */
+/* number of objects retrieved from mempool before putting them back */
 static unsigned n_keep;
 
 /* number of enqueues / dequeues */

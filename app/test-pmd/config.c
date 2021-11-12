@@ -2965,7 +2965,7 @@ port_rss_reta_info(portid_t port_id,
 }
 
 /*
- * Displays the RSS hash functions of a port, and, optionaly, the RSS hash
+ * Displays the RSS hash functions of a port, and, optionally, the RSS hash
  * key of the port.
  */
 void
@@ -5250,7 +5250,7 @@ mcast_addr_pool_remove(struct rte_port *port, uint32_t addr_idx)
 {
 	port->mc_addr_nb--;
 	if (addr_idx == port->mc_addr_nb) {
-		/* No need to recompact the set of multicast addressses. */
+		/* No need to recompact the set of multicast addresses. */
 		if (port->mc_addr_nb == 0) {
 			/* free the pool of multicast addresses. */
 			free(port->mc_addr_pool);

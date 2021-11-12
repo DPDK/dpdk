@@ -432,7 +432,7 @@ timer_basic_cb(struct rte_timer *tim, void *arg)
 		return;
 	}
 
-	/* Explicitelly stop timer 0. Once stop() called, we can even
+	/* Explicitly stop timer 0. Once stop() called, we can even
 	 * erase the content of the structure: it is not referenced
 	 * anymore by any code (in case of dynamic structure, it can
 	 * be freed) */

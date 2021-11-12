@@ -475,7 +475,7 @@ trs_process_check(struct rte_mbuf *mb, struct rte_mbuf **ml,
 
 /*
  * packet checks for tunnel mode:
- * - same as for trasnport mode
+ * - same as for transport mode
  * - esp tail next proto contains expected for that SA value
  */
 static inline int32_t
@@ -561,7 +561,7 @@ trs_process_step3(struct rte_mbuf *mb)
 static inline void
 tun_process_step3(struct rte_mbuf *mb, uint64_t txof_msk, uint64_t txof_val)
 {
-	/* reset mbuf metatdata: L2/L3 len, packet type */
+	/* reset mbuf metadata: L2/L3 len, packet type */
 	mb->packet_type = RTE_PTYPE_UNKNOWN;
 	mb->tx_offload = (mb->tx_offload & txof_msk) | txof_val;
 

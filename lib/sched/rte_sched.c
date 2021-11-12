@@ -590,7 +590,7 @@ rte_sched_subport_config_qsize(struct rte_sched_subport *subport)
 
 	subport->qsize_add[0] = 0;
 
-	/* Strict prority traffic class */
+	/* Strict priority traffic class */
 	for (i = 1; i < RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE; i++)
 		subport->qsize_add[i] = subport->qsize_add[i-1] + subport->qsize[i-1];
 

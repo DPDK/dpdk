@@ -54,7 +54,7 @@ arp_op_name(uint16_t arp_op)
 	default:
 		break;
 	}
-	return "Unkwown ARP op";
+	return "Unknown ARP op";
 }
 
 static const char *

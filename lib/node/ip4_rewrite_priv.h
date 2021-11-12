@@ -49,7 +49,7 @@ struct ip4_rewrite_node_main {
  *
  * Get the ipv4 rewrite node.
  *
- * @retrun
+ * @return
  *   Pointer to the ipv4 rewrite node.
  */
 struct rte_node_register *ip4_rewrite_node_get(void);

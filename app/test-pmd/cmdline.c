@@ -3653,7 +3653,7 @@ parse_item_list(const char *str, const char *item_name, unsigned int max_items,
 		return nb_item;
 
 	/*
-	 * Then, check that all values in the list are differents.
+	 * Then, check that all values in the list are different.
 	 * No optimization here...
 	 */
 	for (i = 0; i < nb_item; i++) {

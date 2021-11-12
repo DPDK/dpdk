@@ -1245,7 +1245,7 @@ emit_epilog(struct bpf_jit_state *st)
 	uint32_t i;
 	int32_t spil, ofs;
 
-	/* if we allready have an epilog generate a jump to it */
+	/* if we already have an epilog generate a jump to it */
 	if (st->exit.num++ != 0) {
 		emit_abs_jmp(st, st->exit.off);
 		return;
