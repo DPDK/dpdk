@@ -139,7 +139,6 @@ struct pmd_internals {
 	bool shared_umem;
 	char prog_path[PATH_MAX];
 	bool custom_prog_configured;
-	bool use_bpf_link;
 
 	struct rte_ether_addr eth_addr;
 
@@ -973,8 +972,7 @@ eth_dev_close(struct rte_eth_dev *dev)
 	 */
 	dev->data->mac_addrs = NULL;
 
-	if (!internals->use_bpf_link)
-		remove_xdp_program(internals);
+	remove_xdp_program(internals);
 
 	if (internals->shared_umem) {
 		struct internal_list *list;
@@ -1149,7 +1147,7 @@ err:
 }
 
 static int
-load_custom_xdp_prog(const char *prog_path, int if_index, bool use_bpf_link)
+load_custom_xdp_prog(const char *prog_path, int if_index)
 {
 	int ret, prog_fd = -1;
 	struct bpf_object *obj;
@@ -1173,7 +1171,8 @@ load_custom_xdp_prog(const char *prog_path, int if_index, bool use_bpf_link)
 	}
 
 	/* Link the program with the given network device */
-	ret = link_xdp_program(if_index, prog_fd, use_bpf_link);
+	ret = bpf_set_link_xdp_fd(if_index, prog_fd,
+					XDP_FLAGS_UPDATE_IF_NOEXIST);
 	if (ret) {
 		AF_XDP_LOG(ERR, "Failed to set prog fd %d on interface\n",
 				prog_fd);
@@ -1273,8 +1272,7 @@ xsk_configure(struct pmd_internals *internals, struct pkt_rx_queue *rxq,
 	if (strnlen(internals->prog_path, PATH_MAX) &&
 				!internals->custom_prog_configured) {
 		ret = load_custom_xdp_prog(internals->prog_path,
-					   internals->if_index,
-					   internals->use_bpf_link);
+					   internals->if_index);
 		if (ret) {
 			AF_XDP_LOG(ERR, "Failed to load custom XDP program %s\n",
 					internals->prog_path);
@@ -1691,7 +1689,6 @@ init_internals(struct rte_vdev_device *dev, const char *if_name,
 	strlcpy(internals->if_name, if_name, IFNAMSIZ);
 	strlcpy(internals->prog_path, prog_path, PATH_MAX);
 	internals->custom_prog_configured = 0;
-	internals->use_bpf_link = probe_bpf_link();
 
 #ifndef ETH_AF_XDP_SHARED_UMEM
 	if (shared_umem) {
