@@ -907,6 +907,10 @@ nfp_net_close(struct rte_eth_dev *dev)
 				     nfp_net_dev_interrupt_handler,
 				     (void *)dev);
 
+	/* Cancel possible impending LSC work here before releasing the port*/
+	rte_eal_alarm_cancel(nfp_net_dev_interrupt_delayed_handler,
+			     (void *)dev);
+
 	/*
 	 * The ixgbe PMD driver disables the pcie master on the
 	 * device. The i40e does not...
