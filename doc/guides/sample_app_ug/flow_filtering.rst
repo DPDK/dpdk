@@ -224,7 +224,7 @@ Setting the first level of the pattern ETH:
 
 .. literalinclude:: ../../../examples/flow_filtering/flow_blocks.c
     :language: c
-    :start-after: IPv4 we set this level to allow all. 8<
+    :start-after: Set this level to allow all. 8<
     :end-before: >8 End of setting the first level of the pattern.
     :dedent: 1
 

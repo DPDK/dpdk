@@ -75,7 +75,7 @@ generate_ipv4_flow(uint16_t port_id, uint16_t rx_q,
 	 * ipv4 we set this level to allow all.
 	 */
 
-	/* IPv4 we set this level to allow all. 8< */
+	/* Set this level to allow all. 8< */
 	pattern[0].type = RTE_FLOW_ITEM_TYPE_ETH;
 	/* >8 End of setting the first level of the pattern. */
 
