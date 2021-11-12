@@ -169,7 +169,7 @@ bpf_eth_cbh_add(struct bpf_eth_cbh *cbh, uint16_t port, uint16_t queue)
 }
 
 /*
- * BPF packet processing routinies.
+ * BPF packet processing routines.
  */
 
 static inline uint32_t

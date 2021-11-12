@@ -1148,7 +1148,7 @@ test_refcnt_mbuf(void)
 
 	rte_eal_mp_wait_lcore();
 
-	/* check that we porcessed all references */
+	/* check that we processed all references */
 	tref = 0;
 	main_lcore = rte_get_main_lcore();
 

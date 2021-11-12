@@ -753,7 +753,7 @@ test_pmd_perf(void)
 				"rte_eth_dev_start: err=%d, port=%d\n",
 				ret, portid);
 
-		/* always eanble promiscuous */
+		/* always enable promiscuous */
 		ret = rte_eth_promiscuous_enable(portid);
 		if (ret != 0)
 			rte_exit(EXIT_FAILURE,

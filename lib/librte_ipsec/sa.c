@@ -126,7 +126,7 @@ ipsec_sa_size(uint64_t type, uint32_t *wnd_sz, uint32_t *nb_bucket)
 		/*
 		 * RFC 4303 recommends 64 as minimum window size.
 		 * there is no point to use ESN mode without SQN window,
-		 * so make sure we have at least 64 window when ESN is enalbed.
+		 * so make sure we have at least 64 window when ESN is enabled.
 		 */
 		wsz = ((type & RTE_IPSEC_SATP_ESN_MASK) ==
 			RTE_IPSEC_SATP_ESN_DISABLE) ?

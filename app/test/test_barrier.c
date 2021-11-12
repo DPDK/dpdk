@@ -66,7 +66,7 @@ struct plock_test {
 struct lcore_plock_test {
 	struct plock_test *pt[2]; /* shared, lock-protected data */
 	uint64_t sum[2];          /* local copy of the shared data */
-	uint64_t iter;            /* number of iterations to perfom */
+	uint64_t iter;            /* number of iterations to perform */
 	uint32_t lc;              /* given lcore id */
 };
 

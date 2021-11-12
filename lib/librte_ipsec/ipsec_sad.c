@@ -62,7 +62,7 @@ EAL_REGISTER_TAILQ(rte_ipsec_sad_tailq)
  * Inserts a rule into an appropriate hash table,
  * updates the value for a given SPI in SPI_ONLY hash table
  * reflecting presence of more specific rule type in two LSBs.
- * Updates a counter that reflects the number of rules whith the same SPI.
+ * Updates a counter that reflects the number of rules with the same SPI.
  */
 static inline int
 add_specific(struct rte_ipsec_sad *sad, const void *key,

@@ -525,7 +525,7 @@ cpu_outb_trs_pkt_prepare(const struct rte_ipsec_session *ss,
 
 /*
  * process outbound packets for SA with ESN support,
- * for algorithms that require SQN.hibits to be implictly included
+ * for algorithms that require SQN.hibits to be implicitly included
  * into digest computation.
  * In that case we have to move ICV bytes back to their proper place.
  */

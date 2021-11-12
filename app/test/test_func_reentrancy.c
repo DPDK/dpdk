@@ -253,7 +253,7 @@ hash_create_free(__rte_unused void *arg)
 			rte_atomic32_inc(&obj_count);
 	}
 
-	/* create mutiple times simultaneously */
+	/* create multiple times simultaneously */
 	for (i = 0; i < MAX_ITER_MULTI; i++) {
 		snprintf(hash_name, sizeof(hash_name), "fr_test_%d_%d", lcore_self, i);
 		hash_params.name = hash_name;
@@ -321,7 +321,7 @@ fbk_create_free(__rte_unused void *arg)
 			rte_atomic32_inc(&obj_count);
 	}
 
-	/* create mutiple fbk tables simultaneously */
+	/* create multiple fbk tables simultaneously */
 	for (i = 0; i < MAX_ITER_MULTI; i++) {
 		snprintf(fbk_name, sizeof(fbk_name), "fr_test_%d_%d", lcore_self, i);
 		fbk_params.name = fbk_name;
@@ -387,7 +387,7 @@ lpm_create_free(__rte_unused void *arg)
 			rte_atomic32_inc(&obj_count);
 	}
 
-	/* create mutiple fbk tables simultaneously */
+	/* create multiple fbk tables simultaneously */
 	for (i = 0; i < MAX_LPM_ITER_TIMES; i++) {
 		snprintf(lpm_name, sizeof(lpm_name), "fr_test_%d_%d", lcore_self, i);
 		lpm = rte_lpm_create(lpm_name, SOCKET_ID_ANY, &config);

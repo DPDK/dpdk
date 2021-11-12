@@ -138,7 +138,7 @@ rte_bbdev_data_alloc(void)
 }
 
 /*
- * Find data alocated for the device or if not found return first unused bbdev
+ * Find data allocated for the device or if not found return first unused bbdev
  * data. If all structures are in use and none is used by the device return
  * NULL.
  */

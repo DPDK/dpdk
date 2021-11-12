@@ -15,7 +15,7 @@
 
 /*
  * Provides backwards compatibility when updating exported functions.
- * When a symol is exported from a library to provide an API, it also provides a
+ * When a symbol is exported from a library to provide an API, it also provides a
  * calling convention (ABI) that is embodied in its name, return type,
  * arguments, etc.  On occasion that function may need to change to accommodate
  * new functionality, behavior, etc.  When that occurs, it is desirable to

@@ -199,7 +199,7 @@ rte_rib6_lookup_exact(struct rte_rib6 *rib,
 }
 
 /*
- *  Traverses on subtree and retreeves more specific routes
+ *  Traverses on subtree and retrieves more specific routes
  *  for a given in args ip/depth prefix
  *  last = NULL means the first invocation
  */

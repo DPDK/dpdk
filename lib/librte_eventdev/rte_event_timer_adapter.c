@@ -493,7 +493,7 @@ event_buffer_flush(struct event_buffer *bufp, uint8_t dev_id, uint8_t port_id,
 
 	RTE_ASSERT(head_idx < EVENT_BUFFER_SZ && tail_idx < EVENT_BUFFER_SZ);
 
-	/* Determine the largest contigous run we can attempt to enqueue to the
+	/* Determine the largest contiguous run we can attempt to enqueue to the
 	 * event device.
 	 */
 	if (head_idx > tail_idx)

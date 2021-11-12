@@ -761,7 +761,7 @@ rte_vhost_get_vhost_ring_inflight(int vid, uint16_t vring_idx,
 /**
  * Set split inflight descriptor.
  *
- * This function save descriptors that has been comsumed in available
+ * This function save descriptors that has been consumed in available
  * ring
  *
  * @param vid
@@ -781,7 +781,7 @@ rte_vhost_set_inflight_desc_split(int vid, uint16_t vring_idx,
 /**
  * Set packed inflight descriptor and get corresponding inflight entry
  *
- * This function save descriptors that has been comsumed
+ * This function save descriptors that has been consumed
  *
  * @param vid
  *  vhost device ID

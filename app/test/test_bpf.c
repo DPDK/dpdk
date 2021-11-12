@@ -2406,7 +2406,7 @@ static const struct ebpf_insn test_call5_prog[] = {
 	},
 };
 
-/* String comparision impelementation, return 0 if equal else difference */
+/* String comparison implementation, return 0 if equal else difference */
 static uint32_t
 dummy_func5(const char *s1, const char *s2)
 {

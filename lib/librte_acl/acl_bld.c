@@ -1494,7 +1494,7 @@ acl_set_data_indexes(struct rte_acl_ctx *ctx)
 /*
  * Internal routine, performs 'build' phase of trie generation:
  * - setups build context.
- * - analizes given set of rules.
+ * - analyzes given set of rules.
  * - builds internal tree(s).
  */
 static int

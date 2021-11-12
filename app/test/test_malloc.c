@@ -603,7 +603,7 @@ test_realloc_numa(void)
 		}
 	}
 
-	/* Print warnign if only a single socket, but don't fail the test */
+	/* Print warning if only a single socket, but don't fail the test */
 	if (socket_count < 2)
 		printf("WARNING: realloc_socket test needs memory on multiple sockets!\n");
 
@@ -971,7 +971,7 @@ test_alloc_socket(void)
 		}
 	}
 
-	/* Print warnign if only a single socket, but don't fail the test */
+	/* Print warning if only a single socket, but don't fail the test */
 	if (socket_count < 2) {
 		printf("WARNING: alloc_socket test needs memory on multiple sockets!\n");
 	}

@@ -2033,7 +2033,7 @@ test_deflate_comp_decomp(const struct interim_data_params *int_data,
 	test_priv_data.all_decomp_data = &all_decomp_data;
 	test_priv_data.decomp_produced_data_size = &decomp_produced_data_size;
 
-	test_priv_data.num_priv_xforms = 0; /* it's used for deompression only */
+	test_priv_data.num_priv_xforms = 0; /* it's used for decompression only */
 
 	capa = rte_compressdev_capability_get(0, RTE_COMP_ALGO_DEFLATE);
 	if (capa == NULL) {

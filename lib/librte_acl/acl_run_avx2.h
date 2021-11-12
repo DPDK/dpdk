@@ -125,7 +125,7 @@ acl_process_matches_avx2x8(const struct rte_acl_ctx *ctx,
 	/* For each transition: put low 32 into tr_lo and high 32 into tr_hi */
 	ACL_TR_HILO(mm256, __m256, t0, t1, lo, hi);
 
-	/* Keep transitions wth NOMATCH intact. */
+	/* Keep transitions with NOMATCH intact. */
 	*tr_lo = _mm256_blendv_epi8(*tr_lo, lo, matches);
 	*tr_hi = _mm256_blendv_epi8(*tr_hi, hi, matches);
 }
