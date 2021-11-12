@@ -1055,10 +1055,9 @@ ice_any_invalid_rss_type(enum rte_eth_hash_function rss_func,
 static int
 ice_hash_parse_action(struct ice_pattern_match_item *pattern_match_item,
 		const struct rte_flow_action actions[],
-		uint64_t pattern_hint, void **meta,
+		uint64_t pattern_hint, struct ice_rss_meta *rss_meta,
 		struct rte_flow_error *error)
 {
-	struct ice_rss_meta *rss_meta = (struct ice_rss_meta *)*meta;
 	struct ice_rss_hash_cfg *cfg = pattern_match_item->meta;
 	enum rte_flow_action_type action_type;
 	const struct rte_flow_action_rss *rss;
@@ -1196,7 +1195,7 @@ ice_hash_parse_pattern_action(__rte_unused struct ice_adapter *ad,
 
 	/* Check rss action. */
 	ret = ice_hash_parse_action(pattern_match_item, actions, phint,
-				    (void **)&rss_meta_ptr, error);
+				    rss_meta_ptr, error);
 
 error:
 	if (!ret && meta)
