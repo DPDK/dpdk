@@ -64,7 +64,11 @@ A good option to choose is the MSI installer for both meson and ninja together::
 
 	http://mesonbuild.com/Getting-meson.html#installing-meson-and-ninja-with-the-msi-installer%22
 
-Recommended version is either Meson 0.57.0 (baseline) or the latest release.
+Recommended version is Meson 0.57.
+
+Versions starting from 0.58 are unusable with LLVM toolchain
+because of a `Meson issue <https://github.com/mesonbuild/meson/issues/8981>`_.
+
 
 Install the Backend
 -------------------
