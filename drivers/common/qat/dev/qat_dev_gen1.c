@@ -95,7 +95,7 @@ qat_qp_rings_per_service_gen1(struct qat_pci_device *qat_dev,
 
 		if (hw_qps == NULL)
 			continue;
-		if (hw_qps->service_type == service)
+		if (hw_qps->service_type == service && hw_qps->tx_msg_size)
 			count++;
 	}
 
