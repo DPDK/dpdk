@@ -18,7 +18,7 @@
 
 #define MLX5_SOCKET_PATH "/var/tmp/dpdk_net_mlx5_%d"
 
-int server_socket; /* Unix socket for primary process. */
+int server_socket = -1; /* Unix socket for primary process. */
 struct rte_intr_handle server_intr_handle; /* Interrupt handler. */
 
 /**
@@ -117,7 +117,7 @@ error:
 static int
 mlx5_pmd_interrupt_handler_install(void)
 {
-	MLX5_ASSERT(server_socket);
+	MLX5_ASSERT(server_socket != -1);
 	server_intr_handle.fd = server_socket;
 	server_intr_handle.type = RTE_INTR_HANDLE_EXT;
 	return rte_intr_callback_register(&server_intr_handle,
@@ -130,7 +130,7 @@ mlx5_pmd_interrupt_handler_install(void)
 static void
 mlx5_pmd_interrupt_handler_uninstall(void)
 {
-	if (server_socket) {
+	if (server_socket != -1) {
 		mlx5_intr_callback_unregister(&server_intr_handle,
 					      mlx5_pmd_socket_handle,
 					      NULL);
@@ -155,7 +155,7 @@ mlx5_pmd_socket_init(void)
 	int flags;
 
 	MLX5_ASSERT(rte_eal_process_type() == RTE_PROC_PRIMARY);
-	if (server_socket)
+	if (server_socket != -1)
 		return 0;
 	ret = socket(AF_UNIX, SOCK_STREAM, 0);
 	if (ret < 0) {
@@ -166,10 +166,10 @@ mlx5_pmd_socket_init(void)
 	server_socket = ret;
 	flags = fcntl(server_socket, F_GETFL, 0);
 	if (flags == -1)
-		goto error;
+		goto close;
 	ret = fcntl(server_socket, F_SETFL, flags | O_NONBLOCK);
 	if (ret < 0)
-		goto error;
+		goto close;
 	snprintf(sun.sun_path, sizeof(sun.sun_path), MLX5_SOCKET_PATH,
 		 getpid());
 	remove(sun.sun_path);
@@ -177,25 +177,26 @@ mlx5_pmd_socket_init(void)
 	if (ret < 0) {
 		DRV_LOG(WARNING,
 			"cannot bind mlx5 socket: %s", strerror(errno));
-		goto close;
+		goto remove;
 	}
 	ret = listen(server_socket, 0);
 	if (ret < 0) {
 		DRV_LOG(WARNING, "cannot listen on mlx5 socket: %s",
 			strerror(errno));
-		goto close;
+		goto remove;
 	}
 	if (mlx5_pmd_interrupt_handler_install()) {
 		DRV_LOG(WARNING, "cannot register interrupt handler for mlx5 socket: %s",
 			strerror(errno));
-		goto close;
+		goto remove;
 	}
 	return 0;
-close:
+remove:
 	remove(sun.sun_path);
-error:
+close:
 	claim_zero(close(server_socket));
-	server_socket = 0;
+	server_socket = -1;
+error:
 	DRV_LOG(ERR, "Cannot initialize socket: %s", strerror(errno));
 	return -errno;
 }
@@ -206,11 +207,11 @@ error:
 void
 mlx5_pmd_socket_uninit(void)
 {
-	if (!server_socket)
+	if (server_socket == -1)
 		return;
 	mlx5_pmd_interrupt_handler_uninstall();
 	claim_zero(close(server_socket));
-	server_socket = 0;
+	server_socket = -1;
 	MKSTR(path, MLX5_SOCKET_PATH, getpid());
 	claim_zero(remove(path));
 }
