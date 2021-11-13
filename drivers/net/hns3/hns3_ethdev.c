@@ -1575,7 +1575,7 @@ hns3_remove_mc_addr_common(struct hns3_hw *hw, struct rte_ether_addr *mac_addr)
 
 static int
 hns3_add_mac_addr(struct rte_eth_dev *dev, struct rte_ether_addr *mac_addr,
-		  uint32_t idx, __rte_unused uint32_t pool)
+		  __rte_unused uint32_t idx, __rte_unused uint32_t pool)
 {
 	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	char mac_str[RTE_ETHER_ADDR_FMT_SIZE];
@@ -1606,8 +1606,6 @@ hns3_add_mac_addr(struct rte_eth_dev *dev, struct rte_ether_addr *mac_addr,
 		return ret;
 	}
 
-	if (idx == 0)
-		hw->mac.default_addr_setted = true;
 	rte_spinlock_unlock(&hw->lock);
 
 	return ret;
@@ -1672,30 +1670,19 @@ hns3_set_default_mac_addr(struct rte_eth_dev *dev,
 	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct rte_ether_addr *oaddr;
 	char mac_str[RTE_ETHER_ADDR_FMT_SIZE];
-	bool default_addr_setted;
 	int ret, ret_val;
 
-	/*
-	 * It has been guaranteed that input parameter named mac_addr is valid
-	 * address in the rte layer of DPDK framework.
-	 */
-	oaddr = (struct rte_ether_addr *)hw->mac.mac_addr;
-	default_addr_setted = hw->mac.default_addr_setted;
-	if (default_addr_setted && !!rte_is_same_ether_addr(mac_addr, oaddr))
-		return 0;
-
 	rte_spinlock_lock(&hw->lock);
-	if (default_addr_setted) {
-		ret = hns3_remove_uc_addr_common(hw, oaddr);
-		if (ret) {
-			rte_ether_format_addr(mac_str, RTE_ETHER_ADDR_FMT_SIZE,
-					      oaddr);
-			hns3_warn(hw, "Remove old uc mac address(%s) fail: %d",
-				  mac_str, ret);
+	oaddr = (struct rte_ether_addr *)hw->mac.mac_addr;
+	ret = hns3_remove_uc_addr_common(hw, oaddr);
+	if (ret) {
+		rte_ether_format_addr(mac_str, RTE_ETHER_ADDR_FMT_SIZE,
+				oaddr);
+		hns3_warn(hw, "Remove old uc mac address(%s) fail: %d",
+				mac_str, ret);
 
-			rte_spinlock_unlock(&hw->lock);
-			return ret;
-		}
+		rte_spinlock_unlock(&hw->lock);
+		return ret;
 	}
 
 	ret = hns3_add_uc_addr_common(hw, mac_addr);
@@ -1714,7 +1701,6 @@ hns3_set_default_mac_addr(struct rte_eth_dev *dev,
 
 	rte_ether_addr_copy(mac_addr,
 			    (struct rte_ether_addr *)hw->mac.mac_addr);
-	hw->mac.default_addr_setted = true;
 	rte_spinlock_unlock(&hw->lock);
 
 	return 0;
@@ -1735,7 +1721,6 @@ err_add_uc_addr:
 		rte_ether_format_addr(mac_str, RTE_ETHER_ADDR_FMT_SIZE, oaddr);
 		hns3_warn(hw, "Failed to restore old uc mac addr(%s): %d",
 				  mac_str, ret_val);
-		hw->mac.default_addr_setted = false;
 	}
 	rte_spinlock_unlock(&hw->lock);
 
@@ -3178,7 +3163,6 @@ hns3_get_board_configuration(struct hns3_hw *hw)
 	hw->rss_dis_flag = false;
 	memcpy(hw->mac.mac_addr, cfg.mac_addr, RTE_ETHER_ADDR_LEN);
 	hw->mac.phy_addr = cfg.phy_addr;
-	hw->mac.default_addr_setted = false;
 	hw->num_tx_desc = cfg.tqp_desc_num;
 	hw->num_rx_desc = cfg.tqp_desc_num;
 	hw->dcb_info.num_pg = 1;
@@ -5121,7 +5105,7 @@ hns3_do_stop(struct hns3_adapter *hns)
 			return ret;
 		}
 	}
-	hw->mac.default_addr_setted = false;
+
 	return 0;
 }
 

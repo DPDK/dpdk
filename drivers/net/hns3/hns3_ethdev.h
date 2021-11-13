@@ -172,7 +172,6 @@ enum hns3_media_type {
 
 struct hns3_mac {
 	uint8_t mac_addr[RTE_ETHER_ADDR_LEN];
-	bool default_addr_setted; /* whether default addr(mac_addr) is set */
 	uint8_t media_type;
 	uint8_t phy_addr;
 	uint8_t link_duplex  : 1; /* ETH_LINK_[HALF/FULL]_DUPLEX */
