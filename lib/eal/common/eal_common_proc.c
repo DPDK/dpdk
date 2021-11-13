@@ -282,8 +282,17 @@ read_msg(struct mp_msg_internal *m, struct sockaddr_un *s)
 	msgh.msg_control = control;
 	msgh.msg_controllen = sizeof(control);
 
+retry:
 	msglen = recvmsg(mp_fd, &msgh, 0);
+
+	/* zero length message means socket was closed */
+	if (msglen == 0)
+		return 0;
+
 	if (msglen < 0) {
+		if (errno == EINTR)
+			goto retry;
+
 		RTE_LOG(ERR, EAL, "recvmsg failed, %s\n", strerror(errno));
 		return -1;
 	}
@@ -311,7 +320,7 @@ read_msg(struct mp_msg_internal *m, struct sockaddr_un *s)
 		RTE_LOG(ERR, EAL, "invalid received data length\n");
 		return -1;
 	}
-	return 0;
+	return msglen;
 }
 
 static void
@@ -385,8 +394,13 @@ mp_handle(void *arg __rte_unused)
 	struct sockaddr_un sa;
 
 	while (mp_fd >= 0) {
-		if (read_msg(&msg, &sa) == 0)
-			process_msg(&msg, &sa);
+		int ret;
+
+		ret = read_msg(&msg, &sa);
+		if (ret <= 0)
+			break;
+
+		process_msg(&msg, &sa);
 	}
 
 	return NULL;
