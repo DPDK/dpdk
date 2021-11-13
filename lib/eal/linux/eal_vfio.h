@@ -133,6 +133,7 @@ int
 vfio_has_supported_extensions(int vfio_container_fd);
 
 int vfio_mp_sync_setup(void);
+void vfio_mp_sync_cleanup(void);
 
 #define EAL_VFIO_MP "eal_vfio_mp_sync"
 

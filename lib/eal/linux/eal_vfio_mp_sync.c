@@ -120,4 +120,12 @@ vfio_mp_sync_setup(void)
 	return 0;
 }
 
+void
+vfio_mp_sync_cleanup(void)
+{
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return;
+
+	rte_mp_action_unregister(EAL_VFIO_MP);
+}
 #endif
