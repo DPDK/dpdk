@@ -1276,7 +1276,11 @@ rte_eal_cleanup(void)
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY &&
 			internal_conf->hugepage_file.unlink_existing)
 		rte_memseg_walk(mark_freeable, NULL);
+
 	rte_service_finalize();
+#ifdef VFIO_PRESENT
+	vfio_mp_sync_cleanup();
+#endif
 	rte_mp_channel_cleanup();
 	/* after this point, any DPDK pointers will become dangling */
 	rte_eal_memory_detach();
