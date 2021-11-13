@@ -2162,7 +2162,7 @@ hns3vf_map_rx_interrupt(struct rte_eth_dev *dev)
 vf_bind_vector_error:
 	rte_intr_efd_disable(intr_handle);
 	if (intr_handle->intr_vec) {
-		free(intr_handle->intr_vec);
+		rte_free(intr_handle->intr_vec);
 		intr_handle->intr_vec = NULL;
 	}
 	return ret;
