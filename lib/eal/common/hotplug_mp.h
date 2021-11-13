@@ -38,6 +38,12 @@ int
 eal_mp_dev_hotplug_init(void);
 
 /**
+ * Unregister all mp action callbacks for hotplug.
+ */
+void
+eal_mp_dev_hotplug_cleanup(void);
+
+/**
  * This is a synchronous wrapper for secondary process send
  * request to primary process, this is invoked when an attach
  * or detach request is issued from primary process.

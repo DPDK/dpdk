@@ -462,3 +462,8 @@ int eal_mp_dev_hotplug_init(void)
 
 	return 0;
 }
+
+void eal_mp_dev_hotplug_cleanup(void)
+{
+	rte_mp_action_unregister(EAL_DEV_MP_ACTION_REQUEST);
+}
