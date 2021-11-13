@@ -18,6 +18,7 @@
 #include <rte_per_lcore.h>
 
 #include "eal_log.h"
+#include "eal_private.h"
 
 struct rte_log_dynamic_type {
 	const char *name;
@@ -534,4 +535,16 @@ eal_log_set_default(FILE *default_log)
 	RTE_LOG(NOTICE, EAL,
 		"Debug dataplane logs available - lower performance\n");
 #endif
+}
+
+/*
+ * Called by eal_cleanup
+ */
+void
+rte_eal_log_cleanup(void)
+{
+	if (default_log_stream) {
+		fclose(default_log_stream);
+		default_log_stream = NULL;
+	}
 }

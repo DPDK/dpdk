@@ -37,8 +37,16 @@ console_log_write(__rte_unused void *c, const char *buf, size_t size)
 	return ret;
 }
 
+static int
+console_log_close(__rte_unused void *c)
+{
+	closelog();
+	return 0;
+}
+
 static cookie_io_functions_t console_log_func = {
 	.write = console_log_write,
+	.close = console_log_close,
 };
 
 /*
