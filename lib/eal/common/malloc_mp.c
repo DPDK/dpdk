@@ -806,3 +806,15 @@ register_mp_requests(void)
 	}
 	return 0;
 }
+
+void
+unregister_mp_requests(void)
+{
+	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
+		rte_mp_action_unregister(MP_ACTION_REQUEST);
+	} else {
+		rte_mp_action_unregister(MP_ACTION_SYNC);
+		rte_mp_action_unregister(MP_ACTION_ROLLBACK);
+		rte_mp_action_unregister(MP_ACTION_RESPONSE);
+	}
+}

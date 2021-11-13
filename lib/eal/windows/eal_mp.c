@@ -87,6 +87,13 @@ register_mp_requests(void)
 	return 0;
 }
 
+void
+unregister_mp_requests(void)
+{
+	/* Non-stub function succeeds if multi-process is not supported. */
+	EAL_LOG_STUB();
+}
+
 int
 request_to_primary(struct malloc_mp_req *req)
 {

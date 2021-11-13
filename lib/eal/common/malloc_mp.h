@@ -63,6 +63,9 @@ struct malloc_mp_req {
 int
 register_mp_requests(void);
 
+void
+unregister_mp_requests(void);
+
 int
 request_to_primary(struct malloc_mp_req *req);
 
