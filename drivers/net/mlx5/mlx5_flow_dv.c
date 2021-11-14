@@ -8962,46 +8962,40 @@ flow_dv_translate_item_vxlan(struct rte_eth_dev *dev,
 
 static void
 flow_dv_translate_item_vxlan_gpe(void *matcher, void *key,
-				 const struct rte_flow_item *item, int inner)
+				 const struct rte_flow_item *item,
+				 const uint64_t pattern_flags)
 {
+	static const struct rte_flow_item_vxlan_gpe dummy_vxlan_gpe_hdr = {0, };
 	const struct rte_flow_item_vxlan_gpe *vxlan_m = item->mask;
 	const struct rte_flow_item_vxlan_gpe *vxlan_v = item->spec;
-	void *headers_m;
-	void *headers_v;
+	/* The item was validated to be on the outer side */
+	void *headers_m = MLX5_ADDR_OF(fte_match_param, matcher, outer_headers);
+	void *headers_v = MLX5_ADDR_OF(fte_match_param, key, outer_headers);
 	void *misc_m =
 		MLX5_ADDR_OF(fte_match_param, matcher, misc_parameters_3);
 	void *misc_v =
 		MLX5_ADDR_OF(fte_match_param, key, misc_parameters_3);
-	char *vni_m;
-	char *vni_v;
-	uint16_t dport;
-	int size;
-	int i;
+	char *vni_m =
+		MLX5_ADDR_OF(fte_match_set_misc3, misc_m, outer_vxlan_gpe_vni);
+	char *vni_v =
+		MLX5_ADDR_OF(fte_match_set_misc3, misc_v, outer_vxlan_gpe_vni);
+	int i, size = sizeof(vxlan_m->vni);
 	uint8_t flags_m = 0xff;
 	uint8_t flags_v = 0xc;
+	uint8_t m_protocol, v_protocol;
 
-	if (inner) {
-		headers_m = MLX5_ADDR_OF(fte_match_param, matcher,
-					 inner_headers);
-		headers_v = MLX5_ADDR_OF(fte_match_param, key, inner_headers);
-	} else {
-		headers_m = MLX5_ADDR_OF(fte_match_param, matcher,
-					 outer_headers);
-		headers_v = MLX5_ADDR_OF(fte_match_param, key, outer_headers);
-	}
-	dport = item->type == RTE_FLOW_ITEM_TYPE_VXLAN ?
-		MLX5_UDP_PORT_VXLAN : MLX5_UDP_PORT_VXLAN_GPE;
 	if (!MLX5_GET16(fte_match_set_lyr_2_4, headers_v, udp_dport)) {
 		MLX5_SET(fte_match_set_lyr_2_4, headers_m, udp_dport, 0xFFFF);
-		MLX5_SET(fte_match_set_lyr_2_4, headers_v, udp_dport, dport);
+		MLX5_SET(fte_match_set_lyr_2_4, headers_v, udp_dport,
+			 MLX5_UDP_PORT_VXLAN_GPE);
 	}
-	if (!vxlan_v)
-		return;
-	if (!vxlan_m)
-		vxlan_m = &rte_flow_item_vxlan_gpe_mask;
-	size = sizeof(vxlan_m->vni);
-	vni_m = MLX5_ADDR_OF(fte_match_set_misc3, misc_m, outer_vxlan_gpe_vni);
-	vni_v = MLX5_ADDR_OF(fte_match_set_misc3, misc_v, outer_vxlan_gpe_vni);
+	if (!vxlan_v) {
+		vxlan_v = &dummy_vxlan_gpe_hdr;
+		vxlan_m = &dummy_vxlan_gpe_hdr;
+	} else {
+		if (!vxlan_m)
+			vxlan_m = &rte_flow_item_vxlan_gpe_mask;
+	}
 	memcpy(vni_m, vxlan_m->vni, size);
 	for (i = 0; i < size; ++i)
 		vni_v[i] = vni_m[i] & vxlan_v->vni[i];
@@ -9011,10 +9005,22 @@ flow_dv_translate_item_vxlan_gpe(void *matcher, void *key,
 	}
 	MLX5_SET(fte_match_set_misc3, misc_m, outer_vxlan_gpe_flags, flags_m);
 	MLX5_SET(fte_match_set_misc3, misc_v, outer_vxlan_gpe_flags, flags_v);
-	MLX5_SET(fte_match_set_misc3, misc_m, outer_vxlan_gpe_next_protocol,
-		 vxlan_m->protocol);
-	MLX5_SET(fte_match_set_misc3, misc_v, outer_vxlan_gpe_next_protocol,
-		 vxlan_v->protocol);
+	m_protocol = vxlan_m->protocol;
+	v_protocol = vxlan_v->protocol;
+	if (!m_protocol) {
+		m_protocol = 0xff;
+		/* Force next protocol to ensure next headers parsing. */
+		if (pattern_flags & MLX5_FLOW_LAYER_INNER_L2)
+			v_protocol = RTE_VXLAN_GPE_TYPE_ETH;
+		else if (pattern_flags & MLX5_FLOW_LAYER_INNER_L3_IPV4)
+			v_protocol = RTE_VXLAN_GPE_TYPE_IPV4;
+		else if (pattern_flags & MLX5_FLOW_LAYER_INNER_L3_IPV6)
+			v_protocol = RTE_VXLAN_GPE_TYPE_IPV6;
+	}
+	MLX5_SET(fte_match_set_misc3, misc_m,
+		 outer_vxlan_gpe_next_protocol, m_protocol);
+	MLX5_SET(fte_match_set_misc3, misc_v,
+		 outer_vxlan_gpe_next_protocol, m_protocol & v_protocol);
 }
 
 /**
@@ -12644,6 +12650,7 @@ flow_dv_translate(struct rte_eth_dev *dev,
 		.std_tbl_fix = true,
 	};
 	const struct rte_flow_item *integrity_items[2] = {NULL, NULL};
+	const struct rte_flow_item *tunnel_item = NULL;
 
 	if (!wks)
 		return rte_flow_error_set(error, ENOMEM,
@@ -13437,11 +13444,9 @@ flow_dv_translate(struct rte_eth_dev *dev,
 			last_item = MLX5_FLOW_LAYER_VXLAN;
 			break;
 		case RTE_FLOW_ITEM_TYPE_VXLAN_GPE:
-			flow_dv_translate_item_vxlan_gpe(match_mask,
-							 match_value, items,
-							 tunnel);
 			matcher.priority = MLX5_TUNNEL_PRIO_GET(rss_desc);
 			last_item = MLX5_FLOW_LAYER_VXLAN_GPE;
+			tunnel_item = items;
 			break;
 		case RTE_FLOW_ITEM_TYPE_GENEVE:
 			flow_dv_translate_item_geneve(match_mask, match_value,
@@ -13573,6 +13578,9 @@ flow_dv_translate(struct rte_eth_dev *dev,
 						      integrity_items,
 						      item_flags);
 	}
+	if (item_flags & MLX5_FLOW_LAYER_VXLAN_GPE)
+		flow_dv_translate_item_vxlan_gpe(match_mask, match_value,
+						 tunnel_item, item_flags);
 #ifdef RTE_LIBRTE_MLX5_DEBUG
 	MLX5_ASSERT(!flow_dv_check_valid_spec(matcher.mask.buf,
 					      dev_flow->dv.value.buf));
