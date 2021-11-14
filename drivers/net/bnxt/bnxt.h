@@ -721,6 +721,7 @@ struct bnxt {
 #define BNXT_VNIC_CAP_COS_CLASSIFY	BIT(0)
 #define BNXT_VNIC_CAP_OUTER_RSS		BIT(1)
 #define BNXT_VNIC_CAP_VLAN_RX_STRIP	BIT(3)
+#define BNXT_RX_VLAN_STRIP_EN(bp)	((bp)->vnic_cap_flags & BNXT_VNIC_CAP_VLAN_RX_STRIP)
 	unsigned int		rx_nr_rings;
 	unsigned int		rx_cp_nr_rings;
 	unsigned int		rx_num_qs_per_vnic;
