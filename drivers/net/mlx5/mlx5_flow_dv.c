@@ -84,6 +84,20 @@ flow_dv_port_id_action_resource_release(struct rte_eth_dev *dev,
 static void
 flow_dv_shared_rss_action_release(struct rte_eth_dev *dev, uint32_t srss);
 
+static inline uint16_t
+mlx5_translate_tunnel_etypes(uint64_t pattern_flags)
+{
+	if (pattern_flags & MLX5_FLOW_LAYER_INNER_L2)
+		return RTE_ETHER_TYPE_TEB;
+	else if (pattern_flags & MLX5_FLOW_LAYER_INNER_L3_IPV4)
+		return RTE_ETHER_TYPE_IPV4;
+	else if (pattern_flags & MLX5_FLOW_LAYER_INNER_L3_IPV6)
+		return RTE_ETHER_TYPE_IPV6;
+	else if (pattern_flags & MLX5_FLOW_LAYER_MPLS)
+		return RTE_ETHER_TYPE_MPLS;
+	return 0;
+}
+
 /**
  * Initialize flow attributes structure according to flow items' types.
  *
@@ -7258,49 +7272,39 @@ flow_dv_translate_item_vxlan_gpe(void *matcher, void *key,
 
 static void
 flow_dv_translate_item_geneve(void *matcher, void *key,
-			      const struct rte_flow_item *item, int inner)
+			      const struct rte_flow_item *item,
+			      uint64_t pattern_flags)
 {
+	static const struct rte_flow_item_geneve empty_geneve = {0,};
 	const struct rte_flow_item_geneve *geneve_m = item->mask;
 	const struct rte_flow_item_geneve *geneve_v = item->spec;
-	void *headers_m;
-	void *headers_v;
+	/* GENEVE flow item validation allows single tunnel item */
+	void *headers_m = MLX5_ADDR_OF(fte_match_param, matcher, outer_headers);
+	void *headers_v = MLX5_ADDR_OF(fte_match_param, key, outer_headers);
 	void *misc_m = MLX5_ADDR_OF(fte_match_param, matcher, misc_parameters);
 	void *misc_v = MLX5_ADDR_OF(fte_match_param, key, misc_parameters);
-	uint16_t dport;
 	uint16_t gbhdr_m;
 	uint16_t gbhdr_v;
-	char *vni_m;
-	char *vni_v;
-	size_t size, i;
+	char *vni_m = MLX5_ADDR_OF(fte_match_set_misc, misc_m, geneve_vni);
+	char *vni_v = MLX5_ADDR_OF(fte_match_set_misc, misc_v, geneve_vni);
+	size_t size = sizeof(geneve_m->vni), i;
+	uint16_t protocol_m, protocol_v;
 
-	if (inner) {
-		headers_m = MLX5_ADDR_OF(fte_match_param, matcher,
-					 inner_headers);
-		headers_v = MLX5_ADDR_OF(fte_match_param, key, inner_headers);
-	} else {
-		headers_m = MLX5_ADDR_OF(fte_match_param, matcher,
-					 outer_headers);
-		headers_v = MLX5_ADDR_OF(fte_match_param, key, outer_headers);
-	}
-	dport = MLX5_UDP_PORT_GENEVE;
 	if (!MLX5_GET16(fte_match_set_lyr_2_4, headers_v, udp_dport)) {
 		MLX5_SET(fte_match_set_lyr_2_4, headers_m, udp_dport, 0xFFFF);
-		MLX5_SET(fte_match_set_lyr_2_4, headers_v, udp_dport, dport);
+		MLX5_SET(fte_match_set_lyr_2_4, headers_v, udp_dport,
+			 MLX5_UDP_PORT_GENEVE);
 	}
-	if (!geneve_v)
-		return;
-	if (!geneve_m)
-		geneve_m = &rte_flow_item_geneve_mask;
-	size = sizeof(geneve_m->vni);
-	vni_m = MLX5_ADDR_OF(fte_match_set_misc, misc_m, geneve_vni);
-	vni_v = MLX5_ADDR_OF(fte_match_set_misc, misc_v, geneve_vni);
+	if (!geneve_v) {
+		geneve_v = &empty_geneve;
+		geneve_m = &empty_geneve;
+	} else {
+		if (!geneve_m)
+			geneve_m = &rte_flow_item_geneve_mask;
+	}
 	memcpy(vni_m, geneve_m->vni, size);
 	for (i = 0; i < size; ++i)
 		vni_v[i] = vni_m[i] & geneve_v->vni[i];
-	MLX5_SET(fte_match_set_misc, misc_m, geneve_protocol_type,
-		 rte_be_to_cpu_16(geneve_m->protocol));
-	MLX5_SET(fte_match_set_misc, misc_v, geneve_protocol_type,
-		 rte_be_to_cpu_16(geneve_v->protocol & geneve_m->protocol));
 	gbhdr_m = rte_be_to_cpu_16(geneve_m->ver_opt_len_o_c_rsvd0);
 	gbhdr_v = rte_be_to_cpu_16(geneve_v->ver_opt_len_o_c_rsvd0);
 	MLX5_SET(fte_match_set_misc, misc_m, geneve_oam,
@@ -7312,6 +7316,16 @@ flow_dv_translate_item_geneve(void *matcher, void *key,
 	MLX5_SET(fte_match_set_misc, misc_v, geneve_opt_len,
 		 MLX5_GENEVE_OPTLEN_VAL(gbhdr_v) &
 		 MLX5_GENEVE_OPTLEN_VAL(gbhdr_m));
+	protocol_m = rte_be_to_cpu_16(geneve_m->protocol);
+	protocol_v = rte_be_to_cpu_16(geneve_v->protocol);
+	if (!protocol_m) {
+		/* Force next protocol to prevent matchers duplication */
+		protocol_m = 0xFFFF;
+		protocol_v = mlx5_translate_tunnel_etypes(pattern_flags);
+	}
+	MLX5_SET(fte_match_set_misc, misc_m, geneve_protocol_type, protocol_m);
+	MLX5_SET(fte_match_set_misc, misc_v, geneve_protocol_type,
+		 protocol_m & protocol_v);
 }
 
 /**
@@ -10561,10 +10575,9 @@ flow_dv_translate(struct rte_eth_dev *dev,
 			tunnel_item = items;
 			break;
 		case RTE_FLOW_ITEM_TYPE_GENEVE:
-			flow_dv_translate_item_geneve(match_mask, match_value,
-						      items, tunnel);
 			matcher.priority = MLX5_TUNNEL_PRIO_GET(rss_desc);
 			last_item = MLX5_FLOW_LAYER_GENEVE;
+			tunnel_item = items;
 			break;
 		case RTE_FLOW_ITEM_TYPE_MPLS:
 			flow_dv_translate_item_mpls(match_mask, match_value,
@@ -10656,6 +10669,9 @@ flow_dv_translate(struct rte_eth_dev *dev,
 	if (item_flags & MLX5_FLOW_LAYER_VXLAN_GPE)
 		flow_dv_translate_item_vxlan_gpe(match_mask, match_value,
 						 tunnel_item, item_flags);
+	else if (item_flags & MLX5_FLOW_LAYER_GENEVE)
+		flow_dv_translate_item_geneve(match_mask, match_value,
+					      tunnel_item, item_flags);
 #ifdef RTE_LIBRTE_MLX5_DEBUG
 	MLX5_ASSERT(!flow_dv_check_valid_spec(matcher.mask.buf,
 					      dev_flow->dv.value.buf));
