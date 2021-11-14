@@ -585,7 +585,8 @@ static const struct mlx5_flow_expand_node mlx5_support_expansion[] = {
 		.type = RTE_FLOW_ITEM_TYPE_VXLAN_GPE,
 	},
 	[MLX5_EXPANSION_GRE] = {
-		.next = MLX5_FLOW_EXPAND_RSS_NEXT(MLX5_EXPANSION_IPV4,
+		.next = MLX5_FLOW_EXPAND_RSS_NEXT(MLX5_EXPANSION_ETH,
+						  MLX5_EXPANSION_IPV4,
 						  MLX5_EXPANSION_IPV6,
 						  MLX5_EXPANSION_GRE_KEY,
 						  MLX5_EXPANSION_MPLS),
