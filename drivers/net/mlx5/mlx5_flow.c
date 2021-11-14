@@ -258,6 +258,29 @@ mlx5_flow_expand_rss_item_complete(const struct rte_flow_item *item)
 		else
 			ret = RTE_FLOW_ITEM_TYPE_END;
 		break;
+	case RTE_FLOW_ITEM_TYPE_GENEVE:
+		ether_type_m = item->mask ?
+			       ((const struct rte_flow_item_geneve *)
+			       (item->mask))->protocol :
+			       rte_flow_item_geneve_mask.protocol;
+		ether_type = ((const struct rte_flow_item_geneve *)
+			     (item->spec))->protocol;
+		ether_type_m = rte_be_to_cpu_16(ether_type_m);
+		ether_type = rte_be_to_cpu_16(ether_type);
+		switch (ether_type_m & ether_type) {
+		case RTE_ETHER_TYPE_TEB:
+			ret = RTE_FLOW_ITEM_TYPE_ETH;
+			break;
+		case RTE_ETHER_TYPE_IPV4:
+			ret = RTE_FLOW_ITEM_TYPE_IPV4;
+			break;
+		case RTE_ETHER_TYPE_IPV6:
+			ret = RTE_FLOW_ITEM_TYPE_IPV6;
+			break;
+		default:
+			ret = RTE_FLOW_ITEM_TYPE_END;
+		}
+		break;
 	default:
 		ret = RTE_FLOW_ITEM_TYPE_VOID;
 		break;
@@ -530,7 +553,8 @@ enum mlx5_expansion {
 	MLX5_EXPANSION_IPV6_UDP,
 	MLX5_EXPANSION_IPV6_TCP,
 	MLX5_EXPANSION_IPV6_FRAG_EXT,
-	MLX5_EXPANSION_GTP
+	MLX5_EXPANSION_GTP,
+	MLX5_EXPANSION_GENEVE,
 };
 
 /** Supported expansion of items. */
@@ -574,6 +598,7 @@ static const struct mlx5_flow_expand_node mlx5_support_expansion[] = {
 		.next = MLX5_FLOW_EXPAND_RSS_NEXT(MLX5_EXPANSION_VXLAN,
 						  MLX5_EXPANSION_VXLAN_GPE,
 						  MLX5_EXPANSION_MPLS,
+						  MLX5_EXPANSION_GENEVE,
 						  MLX5_EXPANSION_GTP),
 		.type = RTE_FLOW_ITEM_TYPE_UDP,
 		.rss_types = RTE_ETH_RSS_NONFRAG_IPV4_UDP,
@@ -598,6 +623,7 @@ static const struct mlx5_flow_expand_node mlx5_support_expansion[] = {
 		.next = MLX5_FLOW_EXPAND_RSS_NEXT(MLX5_EXPANSION_VXLAN,
 						  MLX5_EXPANSION_VXLAN_GPE,
 						  MLX5_EXPANSION_MPLS,
+						  MLX5_EXPANSION_GENEVE,
 						  MLX5_EXPANSION_GTP),
 		.type = RTE_FLOW_ITEM_TYPE_UDP,
 		.rss_types = RTE_ETH_RSS_NONFRAG_IPV6_UDP,
@@ -700,6 +726,12 @@ static const struct mlx5_flow_expand_node mlx5_support_expansion[] = {
 		.next = MLX5_FLOW_EXPAND_RSS_NEXT(MLX5_EXPANSION_IPV4,
 						  MLX5_EXPANSION_IPV6),
 		.type = RTE_FLOW_ITEM_TYPE_GTP,
+	},
+	[MLX5_EXPANSION_GENEVE] = {
+		.next = MLX5_FLOW_EXPAND_RSS_NEXT(MLX5_EXPANSION_ETH,
+						  MLX5_EXPANSION_IPV4,
+						  MLX5_EXPANSION_IPV6),
+		.type = RTE_FLOW_ITEM_TYPE_GENEVE,
 	},
 };
 
