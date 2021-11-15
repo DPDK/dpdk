@@ -200,7 +200,6 @@ ulp_bs_push_msb(uint8_t *bs, uint16_t pos, uint8_t len, uint8_t *val)
 {
 	int i;
 	int cnt = (len + 7) / 8;
-	int tlen = len;
 
 	/* Handle any remainder bits */
 	int tmp = len % 8;
@@ -211,12 +210,10 @@ ulp_bs_push_msb(uint8_t *bs, uint16_t pos, uint8_t len, uint8_t *val)
 	ulp_bs_put_msb(bs, pos, tmp, val[0]);
 
 	pos += tmp;
-	tlen -= tmp;
 
 	for (i = 1; i < cnt; i++) {
 		ulp_bs_put_msb(bs, pos, 8, val[i]);
 		pos += 8;
-		tlen -= 8;
 	}
 
 	return len;

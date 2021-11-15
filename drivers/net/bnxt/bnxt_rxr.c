@@ -823,9 +823,6 @@ void bnxt_set_mark_in_mbuf(struct bnxt *bp,
 			   struct rte_mbuf *mbuf)
 {
 	uint32_t cfa_code = 0;
-	uint8_t meta_fmt = 0;
-	uint16_t flags2 = 0;
-	uint32_t meta =  0;
 
 	cfa_code = rte_le_to_cpu_16(rxcmp1->cfa_code);
 	if (!cfa_code)
@@ -833,25 +830,6 @@ void bnxt_set_mark_in_mbuf(struct bnxt *bp,
 
 	if (cfa_code && !bp->mark_table[cfa_code].valid)
 		return;
-
-	flags2 = rte_le_to_cpu_16(rxcmp1->flags2);
-	meta = rte_le_to_cpu_32(rxcmp1->metadata);
-	if (meta) {
-		meta >>= BNXT_RX_META_CFA_CODE_SHIFT;
-
-		/* The flags field holds extra bits of info from [6:4]
-		 * which indicate if the flow is in TCAM or EM or EEM
-		 */
-		meta_fmt = (flags2 & BNXT_CFA_META_FMT_MASK) >>
-			   BNXT_CFA_META_FMT_SHFT;
-
-		/* meta_fmt == 4 => 'b100 => 'b10x => EM.
-		 * meta_fmt == 5 => 'b101 => 'b10x => EM + VLAN
-		 * meta_fmt == 6 => 'b110 => 'b11x => EEM
-		 * meta_fmt == 7 => 'b111 => 'b11x => EEM + VLAN.
-		 */
-		meta_fmt >>= BNXT_CFA_META_FMT_EM_EEM_SHFT;
-	}
 
 	mbuf->hash.fdir.hi = bp->mark_table[cfa_code].mark_id;
 	mbuf->ol_flags |= RTE_MBUF_F_RX_FDIR | RTE_MBUF_F_RX_FDIR_ID;
