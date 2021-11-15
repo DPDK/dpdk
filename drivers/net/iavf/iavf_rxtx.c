@@ -2161,21 +2161,34 @@ iavf_xmit_cleanup(struct iavf_tx_queue *txq)
 	return 0;
 }
 
-
+/* Check if the context descriptor is needed for TX offloading */
+static inline uint16_t
+iavf_calc_context_desc(uint64_t flags, uint8_t vlan_flag)
+{
+	if (flags & (RTE_MBUF_F_TX_TCP_SEG | RTE_MBUF_F_TX_UDP_SEG |
+			RTE_MBUF_F_TX_TUNNEL_MASK))
+		return 1;
+	if (flags & RTE_MBUF_F_TX_VLAN &&
+	    vlan_flag & IAVF_TX_FLAGS_VLAN_TAG_LOC_L2TAG2)
+		return 1;
+	return 0;
+}
 
 static inline void
-iavf_fill_ctx_desc_cmd_field(volatile uint64_t *field, struct rte_mbuf *m)
+iavf_fill_ctx_desc_cmd_field(volatile uint64_t *field, struct rte_mbuf *m,
+		uint8_t vlan_flag)
 {
 	uint64_t cmd = 0;
 
 	/* TSO enabled */
 	if (m->ol_flags & (RTE_MBUF_F_TX_TCP_SEG | RTE_MBUF_F_TX_UDP_SEG))
-		cmd = IAVF_TX_CTX_DESC_TSO << IAVF_TXD_DATA_QW1_CMD_SHIFT;
+		cmd = IAVF_TX_CTX_DESC_TSO << IAVF_TXD_CTX_QW1_CMD_SHIFT;
 
-	/* Time Sync - Currently not supported */
-
-	/* Outer L2 TAG 2 Insertion - Currently not supported */
-	/* Inner L2 TAG 2 Insertion - Currently not supported */
+	if (m->ol_flags & RTE_MBUF_F_TX_VLAN &&
+			vlan_flag & IAVF_TX_FLAGS_VLAN_TAG_LOC_L2TAG2) {
+		cmd |= IAVF_TX_CTX_DESC_IL2TAG2
+			<< IAVF_TXD_CTX_QW1_CMD_SHIFT;
+	}
 
 	*field |= cmd;
 }
@@ -2267,7 +2280,7 @@ struct iavf_tx_context_desc_qws {
 static inline void
 iavf_fill_context_desc(volatile struct iavf_tx_context_desc *desc,
 	struct rte_mbuf *m, struct iavf_ipsec_crypto_pkt_metadata *ipsec_md,
-	uint16_t *tlen)
+	uint16_t *tlen, uint8_t vlan_flag)
 {
 	volatile struct iavf_tx_context_desc_qws *desc_qws =
 			(volatile struct iavf_tx_context_desc_qws *)desc;
@@ -2275,7 +2288,7 @@ iavf_fill_context_desc(volatile struct iavf_tx_context_desc *desc,
 	desc_qws->qw1 = IAVF_TX_DESC_DTYPE_CONTEXT;
 
 	/* fill command field */
-	iavf_fill_ctx_desc_cmd_field(&desc_qws->qw1, m);
+	iavf_fill_ctx_desc_cmd_field(&desc_qws->qw1, m, vlan_flag);
 
 	/* fill segmentation field */
 	if (m->ol_flags & (RTE_MBUF_F_TX_TCP_SEG | RTE_MBUF_F_TX_UDP_SEG)) {
@@ -2296,6 +2309,9 @@ iavf_fill_context_desc(volatile struct iavf_tx_context_desc *desc,
 
 	desc_qws->qw0 = rte_cpu_to_le_64(desc_qws->qw0);
 	desc_qws->qw1 = rte_cpu_to_le_64(desc_qws->qw1);
+
+	if (vlan_flag & IAVF_TX_FLAGS_VLAN_TAG_LOC_L2TAG2)
+		desc->l2tag2 = m->vlan_tci;
 }
 
 
@@ -2333,7 +2349,7 @@ iavf_fill_ipsec_desc(volatile struct iavf_tx_ipsec_desc *desc,
 
 static inline void
 iavf_build_data_desc_cmd_offset_fields(volatile uint64_t *qw1,
-		struct rte_mbuf *m)
+		struct rte_mbuf *m, uint8_t vlan_flag)
 {
 	uint64_t command = 0;
 	uint64_t offset = 0;
@@ -2344,7 +2360,8 @@ iavf_build_data_desc_cmd_offset_fields(volatile uint64_t *qw1,
 	command = (uint64_t)IAVF_TX_DESC_CMD_ICRC;
 
 	/* Descriptor based VLAN insertion */
-	if (m->ol_flags & RTE_MBUF_F_TX_VLAN) {
+	if ((vlan_flag & IAVF_TX_FLAGS_VLAN_TAG_LOC_L2TAG1) &&
+			m->ol_flags & RTE_MBUF_F_TX_VLAN) {
 		command |= (uint64_t)IAVF_TX_DESC_CMD_IL2TAG1;
 		l2tag1 |= m->vlan_tci;
 	}
@@ -2494,9 +2511,8 @@ iavf_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 		ipsec_md = iavf_ipsec_crypto_get_pkt_metadata(txq, mb);
 
 		nb_desc_data = mb->nb_segs;
-		nb_desc_ctx = !!(mb->ol_flags &
-			(RTE_MBUF_F_TX_TCP_SEG | RTE_MBUF_F_TX_UDP_SEG |
-					RTE_MBUF_F_TX_TUNNEL_MASK));
+		nb_desc_ctx =
+			iavf_calc_context_desc(mb->ol_flags, txq->vlan_flag);
 		nb_desc_ipsec = !!(mb->ol_flags & RTE_MBUF_F_TX_SEC_OFFLOAD);
 
 		/**
@@ -2534,7 +2550,8 @@ iavf_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 			}
 		}
 
-		iavf_build_data_desc_cmd_offset_fields(&ddesc_template, mb);
+		iavf_build_data_desc_cmd_offset_fields(&ddesc_template, mb,
+			txq->vlan_flag);
 
 			/* Setup TX context descriptor if required */
 		if (nb_desc_ctx) {
@@ -2555,7 +2572,8 @@ iavf_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 				txe->mbuf = NULL;
 			}
 
-			iavf_fill_context_desc(ctx_desc, mb, ipsec_md, &tlen);
+			iavf_fill_context_desc(ctx_desc, mb, ipsec_md, &tlen,
+				txq->vlan_flag);
 			IAVF_DUMP_TX_DESC(txq, ctx_desc, desc_idx);
 
 			txe->last_id = desc_idx_last;
