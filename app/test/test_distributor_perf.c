@@ -108,7 +108,6 @@ static int
 handle_work(void *arg)
 {
 	struct rte_distributor *d = arg;
-	unsigned int count = 0;
 	unsigned int num = 0;
 	int i;
 	unsigned int id = __atomic_fetch_add(&worker_idx, 1, __ATOMIC_RELAXED);
@@ -120,11 +119,9 @@ handle_work(void *arg)
 	num = rte_distributor_get_pkt(d, id, buf, buf, num);
 	while (!quit) {
 		worker_stats[id].handled_packets += num;
-		count += num;
 		num = rte_distributor_get_pkt(d, id, buf, buf, num);
 	}
 	worker_stats[id].handled_packets += num;
-	count += num;
 	rte_distributor_return_pkt(d, id, buf, num);
 	return 0;
 }
