@@ -92,12 +92,6 @@ recv_burst_vec_avx2(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 	cons = raw_cons & (cp_ring_size - 1);
 	mbcons = (raw_cons / 2) & (rx_ring_size - 1);
 
-	/* Prefetch first four descriptor pairs. */
-	rte_prefetch0(&cp_desc_ring[cons + 0]);
-	rte_prefetch0(&cp_desc_ring[cons + 4]);
-	rte_prefetch0(&cp_desc_ring[cons + 8]);
-	rte_prefetch0(&cp_desc_ring[cons + 12]);
-
 	/* Return immediately if there is not at least one completed packet. */
 	if (!bnxt_cpr_cmp_valid(&cp_desc_ring[cons], raw_cons, cp_ring_size))
 		return 0;
@@ -135,14 +129,6 @@ recv_burst_vec_avx2(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		t0 = _mm256_loadu_si256((void *)&rxr->rx_buf_ring[mbcons + 4]);
 		_mm256_storeu_si256((void *)&rx_pkts[i + 4], t0);
 #endif
-
-		/* Prefetch eight descriptor pairs for next iteration. */
-		if (i + BNXT_RX_DESCS_PER_LOOP_VEC256 < nb_pkts) {
-			rte_prefetch0(&cp_desc_ring[cons + 16]);
-			rte_prefetch0(&cp_desc_ring[cons + 20]);
-			rte_prefetch0(&cp_desc_ring[cons + 24]);
-			rte_prefetch0(&cp_desc_ring[cons + 28]);
-		}
 
 		/*
 		 * Load eight receive completion descriptors into 256-bit
