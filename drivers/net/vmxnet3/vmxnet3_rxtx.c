@@ -341,6 +341,9 @@ vmxnet3_tq_tx_complete(vmxnet3_tx_queue_t *txq)
 	}
 
 	PMD_TX_LOG(DEBUG, "Processed %d tx comps & command descs.", completed);
+
+	/* To avoid compiler warnings when not in DEBUG mode. */
+	RTE_SET_USED(completed);
 }
 
 uint16_t
