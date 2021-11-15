@@ -84,6 +84,8 @@ net_enetfec is logical Ethernet interface, created by ENETFEC driver.
 ENETFEC Features
 ----------------
 
+- Basic stats
+- Promiscuous
 - Linux
 - ARMv8
 

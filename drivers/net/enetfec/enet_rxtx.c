@@ -1,0 +1,219 @@
+/* SPDX-License-Identifier: BSD-3-Clause
+ * Copyright 2021 NXP
+ */
+
+#include <rte_mbuf.h>
+#include <rte_io.h>
+#include "enet_regs.h"
+#include "enet_ethdev.h"
+#include "enet_pmd_logs.h"
+
+/* This function does enetfec_rx_queue processing. Dequeue packet from Rx queue
+ * When update through the ring, just set the empty indicator.
+ */
+uint16_t
+enetfec_recv_pkts(void *rxq1, struct rte_mbuf **rx_pkts,
+		uint16_t nb_pkts)
+{
+	struct rte_mempool *pool;
+	struct bufdesc *bdp;
+	struct rte_mbuf *mbuf, *new_mbuf = NULL;
+	unsigned short status;
+	unsigned short pkt_len;
+	int pkt_received = 0, index = 0;
+	void *data;
+	struct enetfec_priv_rx_q *rxq  = (struct enetfec_priv_rx_q *)rxq1;
+	struct rte_eth_stats *stats = &rxq->fep->stats;
+	pool = rxq->pool;
+	bdp = rxq->bd.cur;
+
+	/* Process the incoming packet */
+	status = rte_le_to_cpu_16(rte_read16(&bdp->bd_sc));
+	while ((status & RX_BD_EMPTY) == 0) {
+		if (pkt_received >= nb_pkts)
+			break;
+
+		new_mbuf = rte_pktmbuf_alloc(pool);
+		if (unlikely(new_mbuf == NULL)) {
+			stats->rx_nombuf++;
+			break;
+		}
+		/* Check for errors. */
+		status ^= RX_BD_LAST;
+		if (status & (RX_BD_LG | RX_BD_SH | RX_BD_NO |
+			RX_BD_CR | RX_BD_OV | RX_BD_LAST |
+			RX_BD_TR)) {
+			stats->ierrors++;
+			if (status & RX_BD_OV) {
+				/* FIFO overrun */
+				/* enet_dump_rx(rxq); */
+				ENETFEC_DP_LOG(DEBUG, "rx_fifo_error");
+				goto rx_processing_done;
+			}
+			if (status & (RX_BD_LG | RX_BD_SH
+						| RX_BD_LAST)) {
+				/* Frame too long or too short. */
+				ENETFEC_DP_LOG(DEBUG, "rx_length_error");
+				if (status & RX_BD_LAST)
+					ENETFEC_DP_LOG(DEBUG, "rcv is not +last");
+			}
+			if (status & RX_BD_CR) {     /* CRC Error */
+				ENETFEC_DP_LOG(DEBUG, "rx_crc_errors");
+			}
+			/* Report late collisions as a frame error. */
+			if (status & (RX_BD_NO | RX_BD_TR))
+				ENETFEC_DP_LOG(DEBUG, "rx_frame_error");
+			goto rx_processing_done;
+		}
+
+		/* Process the incoming frame. */
+		stats->ipackets++;
+		pkt_len = rte_le_to_cpu_16(rte_read16(&bdp->bd_datlen));
+		stats->ibytes += pkt_len;
+
+		/* shows data with respect to the data_off field. */
+		index = enet_get_bd_index(bdp, &rxq->bd);
+		mbuf = rxq->rx_mbuf[index];
+
+		data = rte_pktmbuf_mtod(mbuf, uint8_t *);
+		rte_prefetch0(data);
+		rte_pktmbuf_append((struct rte_mbuf *)mbuf,
+				pkt_len - 4);
+
+		if (rxq->fep->quirks & QUIRK_RACC)
+			data = rte_pktmbuf_adj(mbuf, 2);
+
+		rx_pkts[pkt_received] = mbuf;
+		pkt_received++;
+		rxq->rx_mbuf[index] = new_mbuf;
+		rte_write32(rte_cpu_to_le_32(rte_pktmbuf_iova(new_mbuf)),
+				&bdp->bd_bufaddr);
+rx_processing_done:
+		/* when rx_processing_done clear the status flags
+		 * for this buffer
+		 */
+		status &= ~RX_BD_STATS;
+
+		/* Mark the buffer empty */
+		status |= RX_BD_EMPTY;
+
+		if (rxq->fep->bufdesc_ex) {
+			struct bufdesc_ex *ebdp = (struct bufdesc_ex *)bdp;
+			rte_write32(rte_cpu_to_le_32(RX_BD_INT),
+				    &ebdp->bd_esc);
+			rte_write32(0, &ebdp->bd_prot);
+			rte_write32(0, &ebdp->bd_bdu);
+		}
+
+		/* Make sure the updates to rest of the descriptor are
+		 * performed before transferring ownership.
+		 */
+		rte_wmb();
+		rte_write16(rte_cpu_to_le_16(status), &bdp->bd_sc);
+
+		/* Update BD pointer to next entry */
+		bdp = enet_get_nextdesc(bdp, &rxq->bd);
+
+		/* Doing this here will keep the FEC running while we process
+		 * incoming frames.
+		 */
+		rte_write32(0, rxq->bd.active_reg_desc);
+		status = rte_le_to_cpu_16(rte_read16(&bdp->bd_sc));
+	}
+	rxq->bd.cur = bdp;
+	return pkt_received;
+}
+
+uint16_t
+enetfec_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
+{
+	struct enetfec_priv_tx_q *txq  =
+			(struct enetfec_priv_tx_q *)tx_queue;
+	struct rte_eth_stats *stats = &txq->fep->stats;
+	struct bufdesc *bdp, *last_bdp;
+	struct rte_mbuf *mbuf;
+	unsigned short status;
+	unsigned short buflen;
+	unsigned int index, estatus = 0;
+	unsigned int i, pkt_transmitted = 0;
+	uint8_t *data;
+	int tx_st = 1;
+
+	while (tx_st) {
+		if (pkt_transmitted >= nb_pkts) {
+			tx_st = 0;
+			break;
+		}
+		bdp = txq->bd.cur;
+		/* First clean the ring */
+		index = enet_get_bd_index(bdp, &txq->bd);
+		status = rte_le_to_cpu_16(rte_read16(&bdp->bd_sc));
+
+		if (status & TX_BD_READY) {
+			stats->oerrors++;
+			break;
+		}
+		if (txq->tx_mbuf[index]) {
+			rte_pktmbuf_free(txq->tx_mbuf[index]);
+			txq->tx_mbuf[index] = NULL;
+		}
+
+		mbuf = *(tx_pkts);
+		tx_pkts++;
+
+		/* Fill in a Tx ring entry */
+		last_bdp = bdp;
+		status &= ~TX_BD_STATS;
+
+		/* Set buffer length and buffer pointer */
+		buflen = rte_pktmbuf_pkt_len(mbuf);
+		stats->opackets++;
+		stats->obytes += buflen;
+
+		if (mbuf->nb_segs > 1) {
+			ENETFEC_DP_LOG(DEBUG, "SG not supported");
+			return -1;
+		}
+		status |= (TX_BD_LAST);
+		data = rte_pktmbuf_mtod(mbuf, void *);
+		for (i = 0; i <= buflen; i += RTE_CACHE_LINE_SIZE)
+			dcbf(data + i);
+
+		rte_write32(rte_cpu_to_le_32(rte_pktmbuf_iova(mbuf)),
+			    &bdp->bd_bufaddr);
+		rte_write16(rte_cpu_to_le_16(buflen), &bdp->bd_datlen);
+
+		if (txq->fep->bufdesc_ex) {
+			struct bufdesc_ex *ebdp = (struct bufdesc_ex *)bdp;
+			rte_write32(0, &ebdp->bd_bdu);
+			rte_write32(rte_cpu_to_le_32(estatus),
+				    &ebdp->bd_esc);
+		}
+
+		index = enet_get_bd_index(last_bdp, &txq->bd);
+		/* Save mbuf pointer */
+		txq->tx_mbuf[index] = mbuf;
+
+		/* Make sure the updates to rest of the descriptor are performed
+		 * before transferring ownership.
+		 */
+		status |= (TX_BD_READY | TX_BD_TC);
+		rte_wmb();
+		rte_write16(rte_cpu_to_le_16(status), &bdp->bd_sc);
+
+		/* Trigger transmission start */
+		rte_write32(0, txq->bd.active_reg_desc);
+		pkt_transmitted++;
+
+		/* If this was the last BD in the ring, start at the
+		 * beginning again.
+		 */
+		bdp = enet_get_nextdesc(last_bdp, &txq->bd);
+
+		/* Make sure the update to bdp and tx_skbuff are performed
+		 * before txq->bd.cur.
+		 */
+		txq->bd.cur = bdp;
+	}
+	return nb_pkts;
+}

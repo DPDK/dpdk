@@ -9,4 +9,5 @@ endif
 sources = files(
         'enet_ethdev.c',
         'enet_uio.c',
+        'enet_rxtx.c',
 )

@@ -7,6 +7,10 @@
 
 #include <rte_ethdev.h>
 
+#define BD_LEN			49152
+#define ENETFEC_TX_FR_SIZE	2048
+#define ETH_HLEN		RTE_ETHER_HDR_LEN
+
 /* full duplex */
 #define FULL_DUPLEX		0x00
 
@@ -17,6 +21,21 @@
 #define ENETFEC_MAX_RX_PKT_LEN	3000
 
 #define __iomem
+#if defined(RTE_ARCH_ARM)
+#if defined(RTE_ARCH_64)
+#define dcbf(p) { asm volatile("dc cvac, %0" : : "r"(p) : "memory"); }
+#define dcbf_64(p) dcbf(p)
+
+#else /* RTE_ARCH_32 */
+#define dcbf(p) RTE_SET_USED(p)
+#define dcbf_64(p) dcbf(p)
+#endif
+
+#else
+#define dcbf(p) RTE_SET_USED(p)
+#define dcbf_64(p) dcbf(p)
+#endif
+
 /*
  * ENETFEC can support 1 rx and tx queue..
  */
@@ -71,6 +90,7 @@ struct enetfec_priv_rx_q {
 
 struct enetfec_private {
 	struct rte_eth_dev	*dev;
+	struct rte_eth_stats	stats;
 	int			full_duplex;
 	int			flag_pause;
 	uint32_t		quirks;
@@ -122,5 +142,10 @@ enet_get_bd_index(struct bufdesc *bdp, struct bufdesc_prop *bd)
 {
 	return ((const char *)bdp - (const char *)bd->base) >> bd->d_size_log2;
 }
+
+uint16_t enetfec_recv_pkts(void *rxq1, struct rte_mbuf **rx_pkts,
+		uint16_t nb_pkts);
+uint16_t enetfec_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
+		uint16_t nb_pkts);
 
 #endif /*__ENETFEC_ETHDEV_H__*/
