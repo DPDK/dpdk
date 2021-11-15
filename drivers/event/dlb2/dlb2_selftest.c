@@ -1354,7 +1354,7 @@ test_delayed_pop(void)
 	}
 
 	/* Release one more event. This will trigger the token pop, and
-	 * dequeue_depth - 1 more events will be scheduled to the device.
+	 * dequeue_depth more events will be scheduled to the device.
 	 */
 	ev.op = RTE_EVENT_OP_RELEASE;
 
@@ -1366,20 +1366,12 @@ test_delayed_pop(void)
 
 	timeout = 0xFFFFFFFFF;
 
-	for (i = 0; i < port_conf.dequeue_depth - 1; i++) {
+	for (i = 0; i < port_conf.dequeue_depth; i++) {
 		if (rte_event_dequeue_burst(evdev, 0, &ev, 1, timeout) != 1) {
 			printf("%d: event dequeue expected to succeed\n",
 			       __LINE__);
 			goto err;
 		}
-	}
-
-	timeout = 0x10000;
-
-	if (rte_event_dequeue_burst(evdev, 0, &ev, 1, timeout) != 0) {
-		printf("%d: event dequeue expected to fail\n",
-		       __LINE__);
-		goto err;
 	}
 
 	cleanup();
