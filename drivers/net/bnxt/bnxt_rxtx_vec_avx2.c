@@ -98,6 +98,10 @@ recv_burst_vec_avx2(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 	rte_prefetch0(&cp_desc_ring[cons + 8]);
 	rte_prefetch0(&cp_desc_ring[cons + 12]);
 
+	/* Return immediately if there is not at least one completed packet. */
+	if (!bnxt_cpr_cmp_valid(&cp_desc_ring[cons], raw_cons, cp_ring_size))
+		return 0;
+
 	/* Ensure that we do not go past the ends of the rings. */
 	nb_pkts = RTE_MIN(nb_pkts, RTE_MIN(rx_ring_size - mbcons,
 					   (cp_ring_size - cons) / 2));
