@@ -1291,6 +1291,9 @@ txgbevf_dev_interrupt_get_status(struct rte_eth_dev *dev)
 	/* Workround for ICR lost */
 	intr->flags |= TXGBE_FLAG_MAILBOX;
 
+	/* To avoid compiler warnings set eicr to used. */
+	RTE_SET_USED(eicr);
+
 	return 0;
 }
 
