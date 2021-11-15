@@ -32,6 +32,11 @@
 
 #define NUM_OF_BD_QUEUES		6
 
+/* Supported Rx offloads */
+static uint64_t dev_rx_offloads_sup =
+		RTE_ETH_RX_OFFLOAD_CHECKSUM |
+		RTE_ETH_RX_OFFLOAD_VLAN;
+
 /*
  * This function is called to start or restart the ENETFEC during a link
  * change, transmit timeout, or to reconfigure the ENETFEC. The network
@@ -177,10 +182,223 @@ enetfec_eth_stop(struct rte_eth_dev *dev)
 	return 0;
 }
 
+static int
+enetfec_eth_info(__rte_unused struct rte_eth_dev *dev,
+	struct rte_eth_dev_info *dev_info)
+{
+	dev_info->max_rx_pktlen = ENETFEC_MAX_RX_PKT_LEN;
+	dev_info->max_rx_queues = ENETFEC_MAX_Q;
+	dev_info->max_tx_queues = ENETFEC_MAX_Q;
+	dev_info->rx_offload_capa = dev_rx_offloads_sup;
+	return 0;
+}
+
+static const unsigned short offset_des_active_rxq[] = {
+	ENETFEC_RDAR_0, ENETFEC_RDAR_1, ENETFEC_RDAR_2
+};
+
+static const unsigned short offset_des_active_txq[] = {
+	ENETFEC_TDAR_0, ENETFEC_TDAR_1, ENETFEC_TDAR_2
+};
+
+static int
+enetfec_tx_queue_setup(struct rte_eth_dev *dev,
+			uint16_t queue_idx,
+			uint16_t nb_desc,
+			unsigned int socket_id __rte_unused,
+			const struct rte_eth_txconf *tx_conf)
+{
+	struct enetfec_private *fep = dev->data->dev_private;
+	unsigned int i;
+	struct bufdesc *bdp, *bd_base;
+	struct enetfec_priv_tx_q *txq;
+	unsigned int size;
+	unsigned int dsize = fep->bufdesc_ex ? sizeof(struct bufdesc_ex) :
+		sizeof(struct bufdesc);
+	unsigned int dsize_log2 = fls64(dsize);
+
+	/* Tx deferred start is not supported */
+	if (tx_conf->tx_deferred_start) {
+		ENETFEC_PMD_ERR("Tx deferred start not supported");
+		return -EINVAL;
+	}
+
+	/* allocate transmit queue */
+	txq = rte_zmalloc(NULL, sizeof(*txq), RTE_CACHE_LINE_SIZE);
+	if (txq == NULL) {
+		ENETFEC_PMD_ERR("transmit queue allocation failed");
+		return -ENOMEM;
+	}
+
+	if (nb_desc > MAX_TX_BD_RING_SIZE) {
+		nb_desc = MAX_TX_BD_RING_SIZE;
+		ENETFEC_PMD_WARN("modified the nb_desc to MAX_TX_BD_RING_SIZE");
+	}
+	txq->bd.ring_size = nb_desc;
+	fep->total_tx_ring_size += txq->bd.ring_size;
+	fep->tx_queues[queue_idx] = txq;
+
+	rte_write32(rte_cpu_to_le_32(fep->bd_addr_p_t[queue_idx]),
+		(uint8_t *)fep->hw_baseaddr_v + ENETFEC_TD_START(queue_idx));
+
+	/* Set transmit descriptor base. */
+	txq = fep->tx_queues[queue_idx];
+	txq->fep = fep;
+	size = dsize * txq->bd.ring_size;
+	bd_base = (struct bufdesc *)fep->dma_baseaddr_t[queue_idx];
+	txq->bd.queue_id = queue_idx;
+	txq->bd.base = bd_base;
+	txq->bd.cur = bd_base;
+	txq->bd.d_size = dsize;
+	txq->bd.d_size_log2 = dsize_log2;
+	txq->bd.active_reg_desc = (uint8_t *)fep->hw_baseaddr_v +
+			offset_des_active_txq[queue_idx];
+	bd_base = (struct bufdesc *)(((uintptr_t)bd_base) + size);
+	txq->bd.last = (struct bufdesc *)(((uintptr_t)bd_base) - dsize);
+	bdp = txq->bd.base;
+	bdp = txq->bd.cur;
+
+	for (i = 0; i < txq->bd.ring_size; i++) {
+		/* Initialize the BD for every fragment in the page. */
+		rte_write16(rte_cpu_to_le_16(0), &bdp->bd_sc);
+		if (txq->tx_mbuf[i] != NULL) {
+			rte_pktmbuf_free(txq->tx_mbuf[i]);
+			txq->tx_mbuf[i] = NULL;
+		}
+		rte_write32(0, &bdp->bd_bufaddr);
+		bdp = enet_get_nextdesc(bdp, &txq->bd);
+	}
+
+	/* Set the last buffer to wrap */
+	bdp = enet_get_prevdesc(bdp, &txq->bd);
+	rte_write16((rte_cpu_to_le_16(TX_BD_WRAP) |
+		rte_read16(&bdp->bd_sc)), &bdp->bd_sc);
+	txq->dirty_tx = bdp;
+	dev->data->tx_queues[queue_idx] = fep->tx_queues[queue_idx];
+	return 0;
+}
+
+static int
+enetfec_rx_queue_setup(struct rte_eth_dev *dev,
+			uint16_t queue_idx,
+			uint16_t nb_rx_desc,
+			unsigned int socket_id __rte_unused,
+			const struct rte_eth_rxconf *rx_conf,
+			struct rte_mempool *mb_pool)
+{
+	struct enetfec_private *fep = dev->data->dev_private;
+	unsigned int i;
+	struct bufdesc *bd_base;
+	struct bufdesc *bdp;
+	struct enetfec_priv_rx_q *rxq;
+	unsigned int size;
+	unsigned int dsize = fep->bufdesc_ex ? sizeof(struct bufdesc_ex) :
+			sizeof(struct bufdesc);
+	unsigned int dsize_log2 = fls64(dsize);
+
+	/* Rx deferred start is not supported */
+	if (rx_conf->rx_deferred_start) {
+		ENETFEC_PMD_ERR("Rx deferred start not supported");
+		return -EINVAL;
+	}
+
+	/* allocate receive queue */
+	rxq = rte_zmalloc(NULL, sizeof(*rxq), RTE_CACHE_LINE_SIZE);
+	if (rxq == NULL) {
+		ENETFEC_PMD_ERR("receive queue allocation failed");
+		return -ENOMEM;
+	}
+
+	if (nb_rx_desc > MAX_RX_BD_RING_SIZE) {
+		nb_rx_desc = MAX_RX_BD_RING_SIZE;
+		ENETFEC_PMD_WARN("modified the nb_desc to MAX_RX_BD_RING_SIZE");
+	}
+
+	rxq->bd.ring_size = nb_rx_desc;
+	fep->total_rx_ring_size += rxq->bd.ring_size;
+	fep->rx_queues[queue_idx] = rxq;
+
+	rte_write32(rte_cpu_to_le_32(fep->bd_addr_p_r[queue_idx]),
+		(uint8_t *)fep->hw_baseaddr_v + ENETFEC_RD_START(queue_idx));
+	rte_write32(rte_cpu_to_le_32(PKT_MAX_BUF_SIZE),
+		(uint8_t *)fep->hw_baseaddr_v + ENETFEC_MRB_SIZE(queue_idx));
+
+	/* Set receive descriptor base. */
+	rxq = fep->rx_queues[queue_idx];
+	rxq->pool = mb_pool;
+	size = dsize * rxq->bd.ring_size;
+	bd_base = (struct bufdesc *)fep->dma_baseaddr_r[queue_idx];
+	rxq->bd.queue_id = queue_idx;
+	rxq->bd.base = bd_base;
+	rxq->bd.cur = bd_base;
+	rxq->bd.d_size = dsize;
+	rxq->bd.d_size_log2 = dsize_log2;
+	rxq->bd.active_reg_desc = (uint8_t *)fep->hw_baseaddr_v +
+			offset_des_active_rxq[queue_idx];
+	bd_base = (struct bufdesc *)(((uintptr_t)bd_base) + size);
+	rxq->bd.last = (struct bufdesc *)(((uintptr_t)bd_base) - dsize);
+
+	rxq->fep = fep;
+	bdp = rxq->bd.base;
+	rxq->bd.cur = bdp;
+
+	for (i = 0; i < nb_rx_desc; i++) {
+		/* Initialize Rx buffers from pktmbuf pool */
+		struct rte_mbuf *mbuf = rte_pktmbuf_alloc(mb_pool);
+		if (mbuf == NULL) {
+			ENETFEC_PMD_ERR("mbuf failed");
+			goto err_alloc;
+		}
+
+		/* Get the virtual address & physical address */
+		rte_write32(rte_cpu_to_le_32(rte_pktmbuf_iova(mbuf)),
+			&bdp->bd_bufaddr);
+
+		rxq->rx_mbuf[i] = mbuf;
+		rte_write16(rte_cpu_to_le_16(RX_BD_EMPTY), &bdp->bd_sc);
+
+		bdp = enet_get_nextdesc(bdp, &rxq->bd);
+	}
+
+	/* Initialize the receive buffer descriptors. */
+	bdp = rxq->bd.cur;
+	for (i = 0; i < rxq->bd.ring_size; i++) {
+		/* Initialize the BD for every fragment in the page. */
+		if (rte_read32(&bdp->bd_bufaddr) > 0)
+			rte_write16(rte_cpu_to_le_16(RX_BD_EMPTY),
+				&bdp->bd_sc);
+		else
+			rte_write16(rte_cpu_to_le_16(0), &bdp->bd_sc);
+
+		bdp = enet_get_nextdesc(bdp, &rxq->bd);
+	}
+
+	/* Set the last buffer to wrap */
+	bdp = enet_get_prevdesc(bdp, &rxq->bd);
+	rte_write16((rte_cpu_to_le_16(RX_BD_WRAP) |
+		rte_read16(&bdp->bd_sc)),  &bdp->bd_sc);
+	dev->data->rx_queues[queue_idx] = fep->rx_queues[queue_idx];
+	rte_write32(0, fep->rx_queues[queue_idx]->bd.active_reg_desc);
+	return 0;
+
+err_alloc:
+	for (i = 0; i < nb_rx_desc; i++) {
+		if (rxq->rx_mbuf[i] != NULL) {
+			rte_pktmbuf_free(rxq->rx_mbuf[i]);
+			rxq->rx_mbuf[i] = NULL;
+		}
+	}
+	rte_free(rxq);
+	return errno;
+}
+
 static const struct eth_dev_ops enetfec_ops = {
 	.dev_configure          = enetfec_eth_configure,
 	.dev_start              = enetfec_eth_start,
-	.dev_stop               = enetfec_eth_stop
+	.dev_stop               = enetfec_eth_stop,
+	.dev_infos_get          = enetfec_eth_info,
+	.rx_queue_setup         = enetfec_rx_queue_setup,
+	.tx_queue_setup         = enetfec_tx_queue_setup
 };
 
 static int
