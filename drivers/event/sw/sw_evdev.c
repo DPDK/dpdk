@@ -712,7 +712,6 @@ sw_dump(struct rte_eventdev *dev, FILE *f)
 			continue;
 		}
 		int affinities_per_port[SW_PORTS_MAX] = {0};
-		uint32_t inflights = 0;
 
 		fprintf(f, "  Queue %d (%s)\n", i, q_type_strings[qid->type]);
 		fprintf(f, "\trx   %"PRIu64"\tdrop %"PRIu64"\ttx   %"PRIu64"\n",
@@ -733,7 +732,6 @@ sw_dump(struct rte_eventdev *dev, FILE *f)
 		for (flow = 0; flow < RTE_DIM(qid->fids); flow++)
 			if (qid->fids[flow].cq != -1) {
 				affinities_per_port[qid->fids[flow].cq]++;
-				inflights += qid->fids[flow].pcount;
 			}
 
 		uint32_t port;
