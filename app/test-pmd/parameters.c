@@ -1527,6 +1527,12 @@ launch_args_parse(int argc, char** argv)
 		rte_exit(EXIT_FAILURE, "Command line is incorrect\n");
 	}
 
+	if (proc_id >= (int)num_procs)
+		rte_exit(EXIT_FAILURE,
+			 "The multi-process option '%s(%d)' should be less than '%s(%u)'\n",
+			 PARAM_PROC_ID, proc_id,
+			 PARAM_NUM_PROCS, num_procs);
+
 	/* Set offload configuration from command line parameters. */
 	rx_mode.offloads = rx_offloads;
 	tx_mode.offloads = tx_offloads;
