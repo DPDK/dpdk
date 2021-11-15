@@ -3044,7 +3044,7 @@ nfp_cpp_bridge_serve_write(int sockfd, struct nfp_cpp *cpp)
 	off_t offset, nfp_offset;
 	uint32_t cpp_id, pos, len;
 	uint32_t tmpbuf[16];
-	size_t count, curlen, totlen = 0;
+	size_t count, curlen;
 	int err = 0;
 
 	PMD_CPP_LOG(DEBUG, "%s: offset size %zu, count_size: %zu\n", __func__,
@@ -3121,7 +3121,6 @@ nfp_cpp_bridge_serve_write(int sockfd, struct nfp_cpp *cpp)
 		}
 
 		nfp_offset += pos;
-		totlen += pos;
 		nfp_cpp_area_release(area);
 		nfp_cpp_area_free(area);
 
@@ -3146,7 +3145,7 @@ nfp_cpp_bridge_serve_read(int sockfd, struct nfp_cpp *cpp)
 	off_t offset, nfp_offset;
 	uint32_t cpp_id, pos, len;
 	uint32_t tmpbuf[16];
-	size_t count, curlen, totlen = 0;
+	size_t count, curlen;
 	int err = 0;
 
 	PMD_CPP_LOG(DEBUG, "%s: offset size %zu, count_size: %zu\n", __func__,
@@ -3222,7 +3221,6 @@ nfp_cpp_bridge_serve_read(int sockfd, struct nfp_cpp *cpp)
 		}
 
 		nfp_offset += pos;
-		totlen += pos;
 		nfp_cpp_area_release(area);
 		nfp_cpp_area_free(area);
 
