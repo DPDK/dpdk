@@ -433,7 +433,7 @@ if get_option('b_sanitize') == 'address' or get_option('b_sanitize') == 'address
         dpdk_extra_ldflags += '-lasan'
     endif
 
-    if is_linux and arch_subdir in ['x86', 'arm'] and dpdk_conf.get('RTE_ARCH_64')
+    if is_linux and dpdk_conf.get('RTE_ARCH_64')
         dpdk_conf.set10('RTE_MALLOC_ASAN', true)
     endif
 endif

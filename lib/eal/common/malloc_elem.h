@@ -112,6 +112,8 @@ malloc_elem_cookies_ok(const struct malloc_elem *elem)
 #define ASAN_SHADOW_OFFSET    0x00007fff8000
 #elif defined(RTE_ARCH_ARM64)
 #define ASAN_SHADOW_OFFSET    0x001000000000
+#elif defined(RTE_ARCH_PPC_64)
+#define ASAN_SHADOW_OFFSET    0x020000000000
 #endif
 
 #define ASAN_SHADOW_GRAIN_SIZE	8
