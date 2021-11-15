@@ -73,7 +73,7 @@ static void ecore_vf_pf_req_end(struct ecore_hwfn *p_hwfn,
 #endif
 static enum _ecore_status_t
 ecore_send_msg2pf(struct ecore_hwfn *p_hwfn,
-		  u8 *done, u32 resp_size)
+		  u8 *done, __rte_unused u32 resp_size)
 {
 	union vfpf_tlvs *p_req = p_hwfn->vf_iov_info->vf2pf_request;
 	struct ustorm_trigger_vf_zone trigger;
@@ -85,9 +85,6 @@ ecore_send_msg2pf(struct ecore_hwfn *p_hwfn,
 
 	/* output tlvs list */
 	ecore_dp_tlv_list(p_hwfn, p_req);
-
-	/* need to add the END TLV to the message size */
-	resp_size += sizeof(struct channel_list_end_tlv);
 
 	/* Send TLVs over HW channel */
 	OSAL_MEMSET(&trigger, 0, sizeof(struct ustorm_trigger_vf_zone));
