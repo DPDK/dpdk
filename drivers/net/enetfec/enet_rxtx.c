@@ -4,6 +4,7 @@
 
 #include <rte_mbuf.h>
 #include <rte_io.h>
+#include <ethdev_driver.h>
 #include "enet_regs.h"
 #include "enet_ethdev.h"
 #include "enet_pmd_logs.h"
@@ -21,9 +22,14 @@ enetfec_recv_pkts(void *rxq1, struct rte_mbuf **rx_pkts,
 	unsigned short status;
 	unsigned short pkt_len;
 	int pkt_received = 0, index = 0;
-	void *data;
+	void *data, *mbuf_data;
+	uint16_t vlan_tag;
+	struct  bufdesc_ex *ebdp = NULL;
+	bool    vlan_packet_rcvd = false;
 	struct enetfec_priv_rx_q *rxq  = (struct enetfec_priv_rx_q *)rxq1;
 	struct rte_eth_stats *stats = &rxq->fep->stats;
+	struct rte_eth_conf *eth_conf = &rxq->fep->dev->data->dev_conf;
+	uint64_t rx_offloads = eth_conf->rxmode.offloads;
 	pool = rxq->pool;
 	bdp = rxq->bd.cur;
 
@@ -76,6 +82,7 @@ enetfec_recv_pkts(void *rxq1, struct rte_mbuf **rx_pkts,
 		mbuf = rxq->rx_mbuf[index];
 
 		data = rte_pktmbuf_mtod(mbuf, uint8_t *);
+		mbuf_data = data;
 		rte_prefetch0(data);
 		rte_pktmbuf_append((struct rte_mbuf *)mbuf,
 				pkt_len - 4);
@@ -85,6 +92,48 @@ enetfec_recv_pkts(void *rxq1, struct rte_mbuf **rx_pkts,
 
 		rx_pkts[pkt_received] = mbuf;
 		pkt_received++;
+
+		/* Extract the enhanced buffer descriptor */
+		ebdp = NULL;
+		if (rxq->fep->bufdesc_ex)
+			ebdp = (struct bufdesc_ex *)bdp;
+
+		/* If this is a VLAN packet remove the VLAN Tag */
+		vlan_packet_rcvd = false;
+		if ((rx_offloads & RTE_ETH_RX_OFFLOAD_VLAN) &&
+				rxq->fep->bufdesc_ex &&
+				(rte_read32(&ebdp->bd_esc) &
+				rte_cpu_to_le_32(BD_ENETFEC_RX_VLAN))) {
+			/* Push and remove the vlan tag */
+			struct rte_vlan_hdr *vlan_header =
+				(struct rte_vlan_hdr *)
+				((uint8_t *)data + ETH_HLEN);
+			vlan_tag = rte_be_to_cpu_16(vlan_header->vlan_tci);
+
+			vlan_packet_rcvd = true;
+			memmove((uint8_t *)mbuf_data + VLAN_HLEN,
+				data, RTE_ETHER_ADDR_LEN * 2);
+			rte_pktmbuf_adj(mbuf, VLAN_HLEN);
+		}
+
+		if (rxq->fep->bufdesc_ex &&
+			(rxq->fep->flag_csum & RX_FLAG_CSUM_EN)) {
+			if ((rte_read32(&ebdp->bd_esc) &
+				rte_cpu_to_le_32(RX_FLAG_CSUM_ERR)) == 0) {
+				/* don't check it */
+				mbuf->ol_flags = RTE_MBUF_F_RX_IP_CKSUM_BAD;
+			} else {
+				mbuf->ol_flags = RTE_MBUF_F_RX_IP_CKSUM_GOOD;
+			}
+		}
+
+		/* Handle received VLAN packets */
+		if (vlan_packet_rcvd) {
+			mbuf->vlan_tci = vlan_tag;
+			mbuf->ol_flags |= RTE_MBUF_F_RX_VLAN_STRIPPED
+						| RTE_MBUF_F_RX_VLAN;
+		}
+
 		rxq->rx_mbuf[index] = new_mbuf;
 		rte_write32(rte_cpu_to_le_32(rte_pktmbuf_iova(new_mbuf)),
 				&bdp->bd_bufaddr);
@@ -185,6 +234,10 @@ enetfec_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 
 		if (txq->fep->bufdesc_ex) {
 			struct bufdesc_ex *ebdp = (struct bufdesc_ex *)bdp;
+
+			if (mbuf->ol_flags == RTE_MBUF_F_RX_IP_CKSUM_GOOD)
+				estatus |= TX_BD_PINS | TX_BD_IINS;
+
 			rte_write32(0, &ebdp->bd_bdu);
 			rte_write32(rte_cpu_to_le_32(estatus),
 				    &ebdp->bd_esc);

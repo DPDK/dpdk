@@ -27,6 +27,12 @@
 #define RX_BD_EMPTY	((ushort)0x8000) /* BD is empty */
 #define RX_BD_STATS	((ushort)0x013f) /* All buffer descriptor status bits */
 
+/* Ethernet receive use control and status of enhanced buffer descriptor */
+#define BD_ENETFEC_RX_VLAN	0x00000004
+
+#define RX_FLAG_CSUM_EN		(RX_BD_ICE | RX_BD_PCR)
+#define RX_FLAG_CSUM_ERR	(RX_BD_ICE | RX_BD_PCR)
+
 /* Ethernet transmit use control and status of buffer descriptor */
 #define TX_BD_TC	((ushort)0x0400) /* Transmit CRC */
 #define TX_BD_LAST	((ushort)0x0800) /* Last in frame */
@@ -56,6 +62,10 @@
 #define QUIRK_HAS_ENETFEC_MAC	(1 << 0)
 /* GBIT supported in controller */
 #define QUIRK_GBIT		(1 << 3)
+/* Controller support hardware checksum */
+#define QUIRK_CSUM		(1 << 5)
+/* Controller support hardware vlan */
+#define QUIRK_VLAN		(1 << 6)
 /* RACC register supported by controller */
 #define QUIRK_RACC		(1 << 12)
 /* i.MX8 ENETFEC IP version added the feature to generate the delayed TXC or

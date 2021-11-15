@@ -70,7 +70,11 @@ enetfec_restart(struct rte_eth_dev *dev)
 		val = rte_read32((uint8_t *)fep->hw_baseaddr_v + ENETFEC_RACC);
 		/* align IP header */
 		val |= ENETFEC_RACC_SHIFT16;
-		val &= ~ENETFEC_RACC_OPTIONS;
+		if (fep->flag_csum & RX_FLAG_CSUM_EN)
+			/* set RX checksum */
+			val |= ENETFEC_RACC_OPTIONS;
+		else
+			val &= ~ENETFEC_RACC_OPTIONS;
 		rte_write32(rte_cpu_to_le_32(val),
 			(uint8_t *)fep->hw_baseaddr_v + ENETFEC_RACC);
 		rte_write32(rte_cpu_to_le_32(PKT_MAX_BUF_SIZE),
@@ -180,6 +184,11 @@ enet_free_buffers(struct rte_eth_dev *dev)
 static int
 enetfec_eth_configure(struct rte_eth_dev *dev)
 {
+	struct enetfec_private *fep = dev->data->dev_private;
+
+	if (dev->data->dev_conf.rxmode.offloads & RTE_ETH_RX_OFFLOAD_CHECKSUM)
+		fep->flag_csum |= RX_FLAG_CSUM_EN;
+
 	if (dev->data->dev_conf.rxmode.offloads & RTE_ETH_RX_OFFLOAD_KEEP_CRC)
 		ENETFEC_PMD_ERR("PMD does not support KEEP_CRC offload");
 
@@ -558,6 +567,7 @@ enetfec_eth_init(struct rte_eth_dev *dev)
 	fep->full_duplex = FULL_DUPLEX;
 	dev->dev_ops = &enetfec_ops;
 	rte_eth_dev_probing_finish(dev);
+
 	return 0;
 }
 

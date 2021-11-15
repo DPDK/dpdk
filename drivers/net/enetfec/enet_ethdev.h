@@ -10,6 +10,7 @@
 #define BD_LEN			49152
 #define ENETFEC_TX_FR_SIZE	2048
 #define ETH_HLEN		RTE_ETHER_HDR_LEN
+#define VLAN_HLEN		4
 
 /* full duplex */
 #define FULL_DUPLEX		0x00
@@ -93,6 +94,7 @@ struct enetfec_private {
 	struct rte_eth_stats	stats;
 	int			full_duplex;
 	int			flag_pause;
+	int			flag_csum;
 	uint32_t		quirks;
 	uint32_t		cbus_size;
 	uint32_t		enetfec_e_cntl;
