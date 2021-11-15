@@ -365,7 +365,7 @@ __octeontx_xmit_mseg_prepare(struct rte_mbuf *tx_pkt, uint64_t *cmd_buf,
 			const uint16_t flag)
 {
 	uint16_t nb_segs, nb_desc = 0;
-	uint16_t gaura_id, len = 0;
+	uint16_t gaura_id;
 	struct rte_mbuf *m_next = NULL, *m_tofree;
 	rte_iova_t iova;
 	uint16_t data_len;
@@ -425,7 +425,6 @@ __octeontx_xmit_mseg_prepare(struct rte_mbuf *tx_pkt, uint64_t *cmd_buf,
 		cmd_buf[nb_desc++] = iova;
 
 		nb_segs--;
-		len += data_len;
 		tx_pkt = m_next;
 	} while (nb_segs);
 
