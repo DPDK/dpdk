@@ -1050,7 +1050,6 @@ lio_update_read_index(struct lio_instr_queue *iq)
 int
 lio_flush_iq(struct lio_device *lio_dev, struct lio_instr_queue *iq)
 {
-	uint32_t tot_inst_processed = 0;
 	uint32_t inst_processed = 0;
 	int tx_done = 1;
 
@@ -1073,7 +1072,6 @@ lio_flush_iq(struct lio_device *lio_dev, struct lio_instr_queue *iq)
 			iq->stats.instr_processed += inst_processed;
 		}
 
-		tot_inst_processed += inst_processed;
 		inst_processed = 0;
 
 	} while (1);
