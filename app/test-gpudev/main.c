@@ -70,46 +70,55 @@ alloc_gpu_memory(uint16_t gpu_id)
 	size_t buf_bytes = 1024;
 	int ret;
 
-	printf("\n=======> TEST: Allocate GPU memory\n");
+	printf("\n=======> TEST: Allocate GPU memory\n\n");
 
 	/* Alloc memory on GPU 0 */
 	ptr_1 = rte_gpu_mem_alloc(gpu_id, buf_bytes);
 	if (ptr_1 == NULL) {
 		fprintf(stderr, "rte_gpu_mem_alloc GPU memory returned error\n");
-		return -1;
+		goto error;
 	}
-	printf("GPU memory allocated at 0x%p %zdB\n", ptr_1, buf_bytes);
+	printf("GPU memory allocated at 0x%p size is %zd bytes\n",
+			ptr_1, buf_bytes);
 
 	ptr_2 = rte_gpu_mem_alloc(gpu_id, buf_bytes);
 	if (ptr_2 == NULL) {
 		fprintf(stderr, "rte_gpu_mem_alloc GPU memory returned error\n");
-		return -1;
+		goto error;
 	}
-	printf("GPU memory allocated at 0x%p %zdB\n", ptr_2, buf_bytes);
+	printf("GPU memory allocated at 0x%p size is %zd bytes\n",
+			ptr_2, buf_bytes);
 
 	ret = rte_gpu_mem_free(gpu_id, (uint8_t *)(ptr_1)+0x700);
 	if (ret < 0) {
-		printf("GPU memory 0x%p + 0x700 NOT freed because of memory address not recognized by driver\n", ptr_1);
+		printf("GPU memory 0x%p NOT freed: GPU driver didn't find this memory address internally.\n",
+				(uint8_t *)(ptr_1)+0x700);
 	} else {
-		fprintf(stderr, "rte_gpu_mem_free erroneously freed GPU memory 0x%p + 0x700\n", ptr_1);
-		return -1;
+		fprintf(stderr, "ERROR: rte_gpu_mem_free freed GPU memory 0x%p\n",
+				(uint8_t *)(ptr_1)+0x700);
+		goto error;
 	}
 
 	ret = rte_gpu_mem_free(gpu_id, ptr_2);
 	if (ret < 0) {
 		fprintf(stderr, "rte_gpu_mem_free returned error %d\n", ret);
-		return -1;
+		goto error;
 	}
 	printf("GPU memory 0x%p freed\n", ptr_2);
 
 	ret = rte_gpu_mem_free(gpu_id, ptr_1);
 	if (ret < 0) {
 		fprintf(stderr, "rte_gpu_mem_free returned error %d\n", ret);
-		return -1;
+		goto error;
 	}
 	printf("GPU memory 0x%p freed\n", ptr_1);
 
+	printf("\n=======> TEST: PASSED\n");
 	return 0;
+
+error:
+	printf("\n=======> TEST: FAILED\n");
+	return -1;
 }
 
 static int
@@ -119,39 +128,45 @@ register_cpu_memory(uint16_t gpu_id)
 	size_t buf_bytes = 1024;
 	int ret;
 
-	printf("\n=======> TEST: Register CPU memory\n");
+	printf("\n=======> TEST: Register CPU memory\n\n");
 
 	/* Alloc memory on CPU visible from GPU 0 */
 	ptr = rte_zmalloc(NULL, buf_bytes, 0);
 	if (ptr == NULL) {
 		fprintf(stderr, "Failed to allocate CPU memory.\n");
-		return -1;
+		goto error;
 	}
 
 	ret = rte_gpu_mem_register(gpu_id, buf_bytes, ptr);
 	if (ret < 0) {
 		fprintf(stderr, "rte_gpu_mem_register CPU memory returned error %d\n", ret);
-		return -1;
+		goto error;
 	}
 	printf("CPU memory registered at 0x%p %zdB\n", ptr, buf_bytes);
 
 	ret = rte_gpu_mem_unregister(gpu_id, (uint8_t *)(ptr)+0x700);
 	if (ret < 0) {
-		printf("CPU memory 0x%p + 0x700 NOT unregistered because of memory address not recognized by driver\n", ptr);
+		printf("CPU memory 0x%p NOT unregistered: GPU driver didn't find this memory address internally\n",
+				(uint8_t *)(ptr)+0x700);
 	} else {
-		fprintf(stderr, "rte_gpu_mem_free erroneously freed GPU memory 0x%p + 0x700\n", ptr);
-		return -1;
+		fprintf(stderr, "ERROR: rte_gpu_mem_unregister unregistered GPU memory 0x%p\n",
+				(uint8_t *)(ptr)+0x700);
+		goto error;
 	}
-	printf("CPU memory 0x%p unregistered\n", ptr);
 
 	ret = rte_gpu_mem_unregister(gpu_id, ptr);
 	if (ret < 0) {
 		fprintf(stderr, "rte_gpu_mem_unregister returned error %d\n", ret);
-		return -1;
+		goto error;
 	}
 	printf("CPU memory 0x%p unregistered\n", ptr);
 
+	printf("\n=======> TEST: PASSED\n");
 	return 0;
+
+error:
+	printf("\n=======> TEST: FAILED\n");
+	return -1;
 }
 
 static int
@@ -162,51 +177,58 @@ create_update_comm_flag(uint16_t gpu_id)
 	uint32_t set_val;
 	uint32_t get_val;
 
-	printf("\n=======> TEST: Communication flag\n");
+	printf("\n=======> TEST: Communication flag\n\n");
 
 	ret = rte_gpu_comm_create_flag(gpu_id, &devflag, RTE_GPU_COMM_FLAG_CPU);
 	if (ret < 0) {
 		fprintf(stderr, "rte_gpu_comm_create_flag returned error %d\n", ret);
-		return -1;
+		goto error;
 	}
 
 	set_val = 25;
 	ret = rte_gpu_comm_set_flag(&devflag, set_val);
 	if (ret < 0) {
 		fprintf(stderr, "rte_gpu_comm_set_flag returned error %d\n", ret);
-		return -1;
+		goto error;
 	}
 
 	ret = rte_gpu_comm_get_flag_value(&devflag, &get_val);
 	if (ret < 0) {
 		fprintf(stderr, "rte_gpu_comm_get_flag_value returned error %d\n", ret);
-		return -1;
+		goto error;
 	}
 
-	printf("Communication flag value at 0x%p was set to %d and current value is %d\n", devflag.ptr, set_val, get_val);
+	printf("Communication flag value at 0x%p was set to %d and current value is %d\n",
+			devflag.ptr, set_val, get_val);
 
 	set_val = 38;
 	ret = rte_gpu_comm_set_flag(&devflag, set_val);
 	if (ret < 0) {
 		fprintf(stderr, "rte_gpu_comm_set_flag returned error %d\n", ret);
-		return -1;
+		goto error;
 	}
 
 	ret = rte_gpu_comm_get_flag_value(&devflag, &get_val);
 	if (ret < 0) {
 		fprintf(stderr, "rte_gpu_comm_get_flag_value returned error %d\n", ret);
-		return -1;
+		goto error;
 	}
 
-	printf("Communication flag value at 0x%p was set to %d and current value is %d\n", devflag.ptr, set_val, get_val);
+	printf("Communication flag value at 0x%p was set to %d and current value is %d\n",
+			devflag.ptr, set_val, get_val);
 
 	ret = rte_gpu_comm_destroy_flag(&devflag);
 	if (ret < 0) {
 		fprintf(stderr, "rte_gpu_comm_destroy_flags returned error %d\n", ret);
-		return -1;
+		goto error;
 	}
 
+	printf("\n=======> TEST: PASSED\n");
 	return 0;
+
+error:
+	printf("\n=======> TEST: FAILED\n");
+	return -1;
 }
 
 static int
@@ -236,12 +258,12 @@ create_update_comm_list(uint16_t gpu_id)
 	uint32_t num_comm_items = 1024;
 	struct rte_mbuf *mbufs[10];
 
-	printf("\n=======> TEST: Communication list\n");
+	printf("\n=======> TEST: Communication list\n\n");
 
 	comm_list = rte_gpu_comm_create_list(gpu_id, num_comm_items);
 	if (comm_list == NULL) {
 		fprintf(stderr, "rte_gpu_comm_create_list returned error %d\n", ret);
-		return -1;
+		goto error;
 	}
 
 	/**
@@ -251,7 +273,7 @@ create_update_comm_list(uint16_t gpu_id)
 		mbufs[i] = rte_zmalloc(NULL, sizeof(struct rte_mbuf), 0);
 		if (mbufs[i] == NULL) {
 			fprintf(stderr, "Failed to allocate fake mbufs in CPU memory.\n");
-			return -1;
+			goto error;
 		}
 
 		memset(mbufs[i], 0, sizeof(struct rte_mbuf));
@@ -263,20 +285,21 @@ create_update_comm_list(uint16_t gpu_id)
 	ret = rte_gpu_comm_populate_list_pkts(&(comm_list[0]), mbufs, 10);
 	if (ret < 0) {
 		fprintf(stderr, "rte_gpu_comm_populate_list_pkts returned error %d\n", ret);
-		return -1;
+		goto error;
 	}
 
 	ret = rte_gpu_comm_cleanup_list(&(comm_list[0]));
 	if (ret == 0) {
 		fprintf(stderr, "rte_gpu_comm_cleanup_list erroneously cleaned the list even if packets have not been consumed yet\n");
-		return -1;
+		goto error;
 	}
-	fprintf(stderr, "rte_gpu_comm_cleanup_list correctly didn't clean up the packets because they have not been consumed yet\n");
+	printf("Communication list not cleaned because packets have not been consumed yet.\n");
 
 	/**
 	 * Simulate a GPU tasks going through the packet list to consume
 	 * mbufs packets and release them
 	 */
+	printf("Consuming packets...\n");
 	simulate_gpu_task(&(comm_list[0]), 10);
 
 	/**
@@ -286,20 +309,26 @@ create_update_comm_list(uint16_t gpu_id)
 	ret = rte_gpu_comm_cleanup_list(&(comm_list[0]));
 	if (ret < 0) {
 		fprintf(stderr, "rte_gpu_comm_cleanup_list returned error %d\n", ret);
-		return -1;
+		goto error;
 	}
+
+	printf("Communication list cleaned because packets have been consumed now.\n");
 
 	ret = rte_gpu_comm_destroy_list(comm_list, num_comm_items);
 	if (ret < 0) {
 		fprintf(stderr, "rte_gpu_comm_destroy_list returned error %d\n", ret);
-		return -1;
+		goto error;
 	}
 
 	for (i = 0; i < 10; i++)
 		rte_free(mbufs[i]);
 
-	printf("\nCommunication list test passed!\n");
+	printf("\n=======> TEST: PASSED\n");
 	return 0;
+
+error:
+	printf("\n=======> TEST: FAILED\n");
+	return -1;
 }
 
 int
@@ -360,7 +389,6 @@ main(int argc, char **argv)
 
 	/* clean up the EAL */
 	rte_eal_cleanup();
-	printf("Bye...\n");
 
 	return EXIT_SUCCESS;
 }
