@@ -1885,7 +1885,6 @@ process_burst(struct rte_mbuf *pkts_burst[MAX_PKT_BURST], int nb_rx,
 static int __rte_noreturn
 cpu_load_collector(__rte_unused void *arg) {
 	unsigned i, j, k;
-	uint64_t hits;
 	uint64_t prev_tsc, diff_tsc, cur_tsc;
 	uint64_t total[MAX_CPU] = { 0 };
 	unsigned min_cpu = MAX_CPU;
@@ -1975,12 +1974,10 @@ cpu_load_collector(__rte_unused void *arg) {
 			printf("cpu#     proc%%  poll%%  overhead%%\n\n");
 
 			for (i = min_cpu; i <= max_cpu; i++) {
-				hits = 0;
 				printf("CPU %d:", i);
 				for (j = 0; j < MAX_CPU_COUNTER; j++) {
 					printf("%7" PRIu64 "",
 							cpu_load.hits[j][i] * 100 / cpu_load.counter);
-					hits += cpu_load.hits[j][i];
 					cpu_load.hits[j][i] = 0;
 				}
 				printf("%7" PRIu64 "\n",
