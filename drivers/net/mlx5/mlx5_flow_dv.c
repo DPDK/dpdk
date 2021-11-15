@@ -5133,6 +5133,8 @@ flow_dv_modify_hdr_action_max(struct rte_eth_dev *dev __rte_unused,
  *   Pointer to rte_eth_dev structure.
  * @param[in] action_flags
  *   Bit-fields that holds the actions detected until now.
+ * @param[in] item_flags
+ *   Holds the items detected.
  * @param[in] action
  *   Pointer to the meter action.
  * @param[in] attr
@@ -5147,7 +5149,7 @@ flow_dv_modify_hdr_action_max(struct rte_eth_dev *dev __rte_unused,
  */
 static int
 mlx5_flow_validate_action_meter(struct rte_eth_dev *dev,
-				uint64_t action_flags,
+				uint64_t action_flags, uint64_t item_flags,
 				const struct rte_flow_action *action,
 				const struct rte_flow_attr *attr,
 				const struct rte_flow_item *port_id_item,
@@ -5251,6 +5253,27 @@ mlx5_flow_validate_action_meter(struct rte_eth_dev *dev,
 						NULL,
 						"Flow and meter policy "
 						"have different src port.");
+		} else if (mtr_policy->is_rss) {
+			struct mlx5_meter_policy_action_container *acg =
+				&mtr_policy->act_cnt[RTE_COLOR_GREEN];
+			struct mlx5_meter_policy_action_container *acy =
+				&mtr_policy->act_cnt[RTE_COLOR_YELLOW];
+			const struct rte_flow_action *rss_act;
+			int ret;
+
+			MLX5_ASSERT(acg->fate_action ==
+				    MLX5_FLOW_FATE_SHARED_RSS ||
+				    acy->fate_action ==
+				    MLX5_FLOW_FATE_SHARED_RSS);
+			if (acg->fate_action == MLX5_FLOW_FATE_SHARED_RSS)
+				rss_act = acg->rss;
+			else
+				rss_act = acy->rss;
+			ret = mlx5_flow_validate_action_rss(rss_act,
+					action_flags, dev, attr,
+					item_flags, error);
+			if (ret)
+				return ret;
 		}
 		*def_policy = false;
 	}
@@ -7684,6 +7707,7 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 		case RTE_FLOW_ACTION_TYPE_METER:
 			ret = mlx5_flow_validate_action_meter(dev,
 							      action_flags,
+							      item_flags,
 							      actions, attr,
 							      port_id_item,
 							      &def_policy,
