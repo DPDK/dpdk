@@ -225,6 +225,11 @@ New Features
   * Added NIC offloads for the PMD on Windows (TSO, VLAN strip, CRC keep).
   * Added socket direct mode bonding support.
 
+* **Added NXP ENETFEC PMD [EXPERIMENTAL].**
+
+  Added the new ENETFEC driver for the NXP IMX8MMEVK platform. See the
+  :doc:`../nics/enetfec` NIC driver guide for more details on this new driver.
+
 * **Updated Solarflare network PMD.**
 
   Updated the Solarflare ``sfc_efx`` driver with changes including:

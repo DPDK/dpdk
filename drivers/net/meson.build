@@ -19,6 +19,7 @@ drivers = [
         'e1000',
         'ena',
         'enetc',
+        'enetfec',
         'enic',
         'failsafe',
         'fm10k',
