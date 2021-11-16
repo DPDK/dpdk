@@ -1344,6 +1344,15 @@ F: drivers/baseband/la12xx/
 F: doc/guides/bbdevs/la12xx.rst
 
 
+GPU Drivers
+-----------
+
+NVIDIA CUDA
+M: Elena Agostini <eagostini@nvidia.com>
+F: drivers/gpu/cuda/
+F: doc/guides/gpus/cuda.rst
+
+
 Rawdev Drivers
 --------------
 
