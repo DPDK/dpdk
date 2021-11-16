@@ -18,6 +18,14 @@ hns3_tx_bulk_free_buffers(struct hns3_tx_queue *txq)
 	int i;
 
 	tx_entry = &txq->sw_ring[txq->next_to_clean];
+	if (txq->mbuf_fast_free_en) {
+		rte_mempool_put_bulk(tx_entry->mbuf->pool, (void **)tx_entry,
+				     txq->tx_rs_thresh);
+		for (i = 0; i < txq->tx_rs_thresh; i++)
+			tx_entry[i].mbuf = NULL;
+		goto update_field;
+	}
+
 	for (i = 0; i < txq->tx_rs_thresh; i++, tx_entry++) {
 		m = rte_pktmbuf_prefree_seg(tx_entry->mbuf);
 		tx_entry->mbuf = NULL;
@@ -36,6 +44,7 @@ hns3_tx_bulk_free_buffers(struct hns3_tx_queue *txq)
 	if (nb_free)
 		rte_mempool_put_bulk(free[0]->pool, (void **)free, nb_free);
 
+update_field:
 	/* Update numbers of available descriptor due to buffer freed */
 	txq->tx_bd_ready += txq->tx_rs_thresh;
 	txq->next_to_clean += txq->tx_rs_thresh;

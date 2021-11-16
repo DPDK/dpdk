@@ -2722,6 +2722,8 @@ hns3_tx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t nb_desc,
 	txq->udp_cksum_mode = hw->udp_cksum_mode;
 	txq->over_length_pkt_cnt = 0;
 	txq->exceed_limit_bd_pkt_cnt = 0;
+	txq->mbuf_fast_free_en = !!(dev->data->dev_conf.txmode.offloads &
+					DEV_TX_OFFLOAD_MBUF_FAST_FREE);
 	txq->exceed_limit_bd_reassem_fail = 0;
 	txq->unsupported_tunnel_pkt_cnt = 0;
 	txq->queue_full_cnt = 0;
@@ -3592,6 +3594,14 @@ hns3_tx_free_buffer_simple(struct hns3_tx_queue *txq)
 
 		tx_entry = &txq->sw_ring[txq->next_to_clean];
 
+		if (txq->mbuf_fast_free_en) {
+			rte_mempool_put_bulk(tx_entry->mbuf->pool,
+					(void **)tx_entry, txq->tx_rs_thresh);
+			for (i = 0; i < txq->tx_rs_thresh; i++)
+				tx_entry[i].mbuf = NULL;
+			goto update_field;
+		}
+
 		for (i = 0; i < txq->tx_rs_thresh; i++)
 			rte_prefetch0((tx_entry + i)->mbuf);
 		for (i = 0; i < txq->tx_rs_thresh; i++, tx_entry++) {
@@ -3599,6 +3609,7 @@ hns3_tx_free_buffer_simple(struct hns3_tx_queue *txq)
 			tx_entry->mbuf = NULL;
 		}
 
+update_field:
 		txq->next_to_clean = (tx_next_clean + 1) % txq->nb_tx_desc;
 		txq->tx_bd_ready += txq->tx_rs_thresh;
 	}

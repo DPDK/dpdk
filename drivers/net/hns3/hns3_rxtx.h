@@ -423,6 +423,8 @@ struct hns3_tx_queue {
 	 */
 	bool pvid_sw_shift_en;
 	bool enabled;           /* indicate if Tx queue has been enabled */
+	/* check whether the mbuf fast free offload is enabled */
+	uint16_t mbuf_fast_free_en:1;
 
 	/*
 	 * The following items are used for the abnormal errors statistics in
