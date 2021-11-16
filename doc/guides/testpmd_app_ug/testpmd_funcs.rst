@@ -527,6 +527,15 @@ Show multicast mac addresses added for a specific port::
 
    testpmd> show port (port_id) mcast_macs
 
+show flow transfer proxy port ID for the given port
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Show proxy port ID to use as the 1st argument in commands to
+manage ``transfer`` flows and their indirect components.
+::
+
+   testpmd> show port (port_id) flow transfer proxy
+
 show device info
 ~~~~~~~~~~~~~~~~
 
@@ -3476,6 +3485,10 @@ specified before the ``pattern`` token.
 - ``ingress``: rule applies to ingress traffic.
 - ``egress``: rule applies to egress traffic.
 - ``transfer``: apply rule directly to endpoints found in pattern.
+
+Please note that use of ``transfer`` attribute requires that the flow and
+its indirect components be managed via so-called ``transfer`` proxy port.
+See `show flow transfer proxy port ID for the given port`_ for details.
 
 Each instance of an attribute specified several times overrides the previous
 value as shown below (group 4 is used)::

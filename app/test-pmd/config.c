@@ -1450,6 +1450,21 @@ port_flow_complain(struct rte_flow_error *error)
 					 error->cause), buf) : "",
 		error->message ? error->message : "(no stated reason)",
 		rte_strerror(err));
+
+	switch (error->type) {
+	case RTE_FLOW_ERROR_TYPE_ATTR_TRANSFER:
+		fprintf(stderr, "The status suggests the use of \"transfer\" "
+				"as the possible cause of the failure. Make "
+				"sure that the flow in question and its "
+				"indirect components (if any) are managed "
+				"via \"transfer\" proxy port. Use command "
+				"\"show port (port_id) flow transfer proxy\" "
+				"to figure out the proxy port ID\n");
+		break;
+	default:
+		break;
+	}
+
 	return -err;
 }
 
@@ -1589,25 +1604,10 @@ port_action_handle_create(portid_t port_id, uint32_t id,
 	struct port_indirect_action *pia;
 	int ret;
 	struct rte_flow_error error;
-	struct rte_port *port;
-
-	if (port_id_is_invalid(port_id, ENABLED_WARN) ||
-	    port_id == (portid_t)RTE_PORT_ALL)
-		return -EINVAL;
 
 	ret = action_alloc(port_id, id, &pia);
 	if (ret)
 		return ret;
-
-	port = &ports[port_id];
-
-	if (conf->transfer)
-		port_id = port->flow_transfer_proxy;
-
-	if (port_id_is_invalid(port_id, ENABLED_WARN) ||
-	    port_id == (portid_t)RTE_PORT_ALL)
-		return -EINVAL;
-
 	if (action->type == RTE_FLOW_ACTION_TYPE_AGE) {
 		struct rte_flow_action_age *age =
 			(struct rte_flow_action_age *)(uintptr_t)(action->conf);
@@ -1630,7 +1630,6 @@ port_action_handle_create(portid_t port_id, uint32_t id,
 		return port_flow_complain(&error);
 	}
 	pia->type = action->type;
-	pia->transfer = conf->transfer;
 	printf("Indirect action #%u created\n", pia->id);
 	return 0;
 }
@@ -1657,18 +1656,9 @@ port_action_handle_destroy(portid_t port_id,
 		for (i = 0; i != n; ++i) {
 			struct rte_flow_error error;
 			struct port_indirect_action *pia = *tmp;
-			portid_t port_id_eff = port_id;
 
 			if (actions[i] != pia->id)
 				continue;
-
-			if (pia->transfer)
-				port_id_eff = port->flow_transfer_proxy;
-
-			if (port_id_is_invalid(port_id_eff, ENABLED_WARN) ||
-			    port_id_eff == (portid_t)RTE_PORT_ALL)
-				return -EINVAL;
-
 			/*
 			 * Poisoning to make sure PMDs update it in case
 			 * of error.
@@ -1676,7 +1666,7 @@ port_action_handle_destroy(portid_t port_id,
 			memset(&error, 0x33, sizeof(error));
 
 			if (pia->handle && rte_flow_action_handle_destroy(
-					port_id_eff, pia->handle, &error)) {
+					port_id, pia->handle, &error)) {
 				ret = port_flow_complain(&error);
 				continue;
 			}
@@ -1711,14 +1701,7 @@ port_action_handle_update(portid_t port_id, uint32_t id,
 	struct rte_flow_error error;
 	struct rte_flow_action_handle *action_handle;
 	struct port_indirect_action *pia;
-	struct rte_port *port;
 	const void *update;
-
-	if (port_id_is_invalid(port_id, ENABLED_WARN) ||
-	    port_id == (portid_t)RTE_PORT_ALL)
-		return -EINVAL;
-
-	port = &ports[port_id];
 
 	action_handle = port_action_handle_get_by_id(port_id, id);
 	if (!action_handle)
@@ -1734,14 +1717,6 @@ port_action_handle_update(portid_t port_id, uint32_t id,
 		update = action;
 		break;
 	}
-
-	if (pia->transfer)
-		port_id = port->flow_transfer_proxy;
-
-	if (port_id_is_invalid(port_id, ENABLED_WARN) ||
-	    port_id == (portid_t)RTE_PORT_ALL)
-		return -EINVAL;
-
 	if (rte_flow_action_handle_update(port_id, action_handle, update,
 					  &error)) {
 		return port_flow_complain(&error);
@@ -1760,14 +1735,6 @@ port_action_handle_query(portid_t port_id, uint32_t id)
 		struct rte_flow_query_age age;
 		struct rte_flow_action_conntrack ct;
 	} query;
-	portid_t port_id_eff = port_id;
-	struct rte_port *port;
-
-	if (port_id_is_invalid(port_id, ENABLED_WARN) ||
-	    port_id == (portid_t)RTE_PORT_ALL)
-		return -EINVAL;
-
-	port = &ports[port_id];
 
 	pia = action_get_by_id(port_id, id);
 	if (!pia)
@@ -1782,19 +1749,10 @@ port_action_handle_query(portid_t port_id, uint32_t id)
 			id, pia->type, port_id);
 		return -ENOTSUP;
 	}
-
-	if (pia->transfer)
-		port_id_eff = port->flow_transfer_proxy;
-
-	if (port_id_is_invalid(port_id_eff, ENABLED_WARN) ||
-	    port_id_eff == (portid_t)RTE_PORT_ALL)
-		return -EINVAL;
-
 	/* Poisoning to make sure PMDs update it in case of error. */
 	memset(&error, 0x55, sizeof(error));
 	memset(&query, 0, sizeof(query));
-	if (rte_flow_action_handle_query(port_id_eff, pia->handle, &query,
-					 &error))
+	if (rte_flow_action_handle_query(port_id, pia->handle, &query, &error))
 		return port_flow_complain(&error);
 	switch (pia->type) {
 	case RTE_FLOW_ACTION_TYPE_AGE:
@@ -2013,20 +1971,6 @@ port_flow_validate(portid_t port_id,
 {
 	struct rte_flow_error error;
 	struct port_flow_tunnel *pft = NULL;
-	struct rte_port *port;
-
-	if (port_id_is_invalid(port_id, ENABLED_WARN) ||
-	    port_id == (portid_t)RTE_PORT_ALL)
-		return -EINVAL;
-
-	port = &ports[port_id];
-
-	if (attr->transfer)
-		port_id = port->flow_transfer_proxy;
-
-	if (port_id_is_invalid(port_id, ENABLED_WARN) ||
-	    port_id == (portid_t)RTE_PORT_ALL)
-		return -EINVAL;
 
 	/* Poisoning to make sure PMDs update it in case of error. */
 	memset(&error, 0x11, sizeof(error));
@@ -2080,19 +2024,7 @@ port_flow_create(portid_t port_id,
 	struct port_flow_tunnel *pft = NULL;
 	struct rte_flow_action_age *age = age_action_get(actions);
 
-	if (port_id_is_invalid(port_id, ENABLED_WARN) ||
-	    port_id == (portid_t)RTE_PORT_ALL)
-		return -EINVAL;
-
 	port = &ports[port_id];
-
-	if (attr->transfer)
-		port_id = port->flow_transfer_proxy;
-
-	if (port_id_is_invalid(port_id, ENABLED_WARN) ||
-	    port_id == (portid_t)RTE_PORT_ALL)
-		return -EINVAL;
-
 	if (port->flow_list) {
 		if (port->flow_list->id == UINT32_MAX) {
 			fprintf(stderr,
@@ -2156,7 +2088,6 @@ port_flow_destroy(portid_t port_id, uint32_t n, const uint32_t *rule)
 		uint32_t i;
 
 		for (i = 0; i != n; ++i) {
-			portid_t port_id_eff = port_id;
 			struct rte_flow_error error;
 			struct port_flow *pf = *tmp;
 
@@ -2167,15 +2098,7 @@ port_flow_destroy(portid_t port_id, uint32_t n, const uint32_t *rule)
 			 * of error.
 			 */
 			memset(&error, 0x33, sizeof(error));
-
-			if (pf->rule.attr->transfer)
-				port_id_eff = port->flow_transfer_proxy;
-
-			if (port_id_is_invalid(port_id_eff, ENABLED_WARN) ||
-			    port_id_eff == (portid_t)RTE_PORT_ALL)
-				return -EINVAL;
-
-			if (rte_flow_destroy(port_id_eff, pf->flow, &error)) {
+			if (rte_flow_destroy(port_id, pf->flow, &error)) {
 				ret = port_flow_complain(&error);
 				continue;
 			}
@@ -2309,14 +2232,6 @@ port_flow_query(portid_t port_id, uint32_t rule,
 		fprintf(stderr, "Flow rule #%u not found\n", rule);
 		return -ENOENT;
 	}
-
-	if (pf->rule.attr->transfer)
-		port_id = port->flow_transfer_proxy;
-
-	if (port_id_is_invalid(port_id, ENABLED_WARN) ||
-	    port_id == (portid_t)RTE_PORT_ALL)
-		return -EINVAL;
-
 	ret = rte_flow_conv(RTE_FLOW_CONV_OP_ACTION_NAME_PTR,
 			    &name, sizeof(name),
 			    (void *)(uintptr_t)action->type, &error);

@@ -253,6 +253,9 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"show port (port_id) macs|mcast_macs"
 			"       Display list of mac addresses added to port.\n\n"
 
+			"show port (port_id) flow transfer proxy\n"
+			"	Display proxy port to manage transfer flows\n\n"
+
 			"show port (port_id) fec capabilities"
 			"	Show fec capabilities of a port.\n\n"
 
@@ -17597,6 +17600,77 @@ cmdline_parse_inst_t cmd_showport_macs = {
 	},
 };
 
+/* *** show flow transfer proxy port ID for the given port *** */
+struct cmd_show_port_flow_transfer_proxy_result {
+	cmdline_fixed_string_t show;
+	cmdline_fixed_string_t port;
+	portid_t port_id;
+	cmdline_fixed_string_t flow;
+	cmdline_fixed_string_t transfer;
+	cmdline_fixed_string_t proxy;
+};
+
+cmdline_parse_token_string_t cmd_show_port_flow_transfer_proxy_show =
+	TOKEN_STRING_INITIALIZER
+		(struct cmd_show_port_flow_transfer_proxy_result,
+		 show, "show");
+cmdline_parse_token_string_t cmd_show_port_flow_transfer_proxy_port =
+	TOKEN_STRING_INITIALIZER
+		(struct cmd_show_port_flow_transfer_proxy_result,
+		 port, "port");
+cmdline_parse_token_num_t cmd_show_port_flow_transfer_proxy_port_id =
+	TOKEN_NUM_INITIALIZER
+		(struct cmd_show_port_flow_transfer_proxy_result,
+		 port_id, RTE_UINT16);
+cmdline_parse_token_string_t cmd_show_port_flow_transfer_proxy_flow =
+	TOKEN_STRING_INITIALIZER
+		(struct cmd_show_port_flow_transfer_proxy_result,
+		 flow, "flow");
+cmdline_parse_token_string_t cmd_show_port_flow_transfer_proxy_transfer =
+	TOKEN_STRING_INITIALIZER
+		(struct cmd_show_port_flow_transfer_proxy_result,
+		 transfer, "transfer");
+cmdline_parse_token_string_t cmd_show_port_flow_transfer_proxy_proxy =
+	TOKEN_STRING_INITIALIZER
+		(struct cmd_show_port_flow_transfer_proxy_result,
+		 proxy, "proxy");
+
+static void
+cmd_show_port_flow_transfer_proxy_parsed(void *parsed_result,
+					 __rte_unused struct cmdline *cl,
+					 __rte_unused void *data)
+{
+	struct cmd_show_port_flow_transfer_proxy_result *res = parsed_result;
+	portid_t proxy_port_id;
+	int ret;
+
+	printf("\n");
+
+	ret = rte_flow_pick_transfer_proxy(res->port_id, &proxy_port_id, NULL);
+	if (ret != 0) {
+		fprintf(stderr, "Failed to pick transfer proxy: %s\n",
+			rte_strerror(-ret));
+		return;
+	}
+
+	printf("Transfer proxy port ID: %u\n\n", proxy_port_id);
+}
+
+cmdline_parse_inst_t cmd_show_port_flow_transfer_proxy = {
+	.f = cmd_show_port_flow_transfer_proxy_parsed,
+	.data = NULL,
+	.help_str = "show port <port_id> flow transfer proxy",
+	.tokens = {
+		(void *)&cmd_show_port_flow_transfer_proxy_show,
+		(void *)&cmd_show_port_flow_transfer_proxy_port,
+		(void *)&cmd_show_port_flow_transfer_proxy_port_id,
+		(void *)&cmd_show_port_flow_transfer_proxy_flow,
+		(void *)&cmd_show_port_flow_transfer_proxy_transfer,
+		(void *)&cmd_show_port_flow_transfer_proxy_proxy,
+		NULL,
+	}
+};
+
 /* ******************************************************************************** */
 
 /* list of instructions */
@@ -17729,6 +17803,7 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_config_rss_reta,
 	(cmdline_parse_inst_t *)&cmd_showport_reta,
 	(cmdline_parse_inst_t *)&cmd_showport_macs,
+	(cmdline_parse_inst_t *)&cmd_show_port_flow_transfer_proxy,
 	(cmdline_parse_inst_t *)&cmd_config_burst,
 	(cmdline_parse_inst_t *)&cmd_config_thresh,
 	(cmdline_parse_inst_t *)&cmd_config_threshold,

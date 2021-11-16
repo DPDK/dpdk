@@ -183,8 +183,6 @@ struct port_indirect_action {
 	enum rte_flow_action_type type; /**< Action type. */
 	struct rte_flow_action_handle *handle;	/**< Indirect action handle. */
 	enum age_action_context_type age_type; /**< Age action context type. */
-	/** If true, the action applies to "transfer" flows, and vice versa */
-	bool transfer;
 };
 
 struct port_flow_tunnel {
@@ -257,8 +255,6 @@ struct rte_port {
 	/**< dynamic flags. */
 	uint64_t		mbuf_dynf;
 	const struct rte_eth_rxtx_callback *tx_set_dynf_cb[RTE_MAX_QUEUES_PER_PORT+1];
-	/** Associated port which is supposed to handle "transfer" flows */
-	portid_t		flow_transfer_proxy;
 	struct xstat_display_info xstats_info;
 };
 
