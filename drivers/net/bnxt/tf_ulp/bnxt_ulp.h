@@ -307,7 +307,7 @@ bool
 bnxt_ulp_cntxt_ha_enabled(struct bnxt_ulp_context *ulp_ctx);
 
 struct bnxt_ulp_context *
-bnxt_ulp_cntxt_entry_acquire(void);
+bnxt_ulp_cntxt_entry_acquire(void *arg);
 
 void
 bnxt_ulp_cntxt_entry_release(void);

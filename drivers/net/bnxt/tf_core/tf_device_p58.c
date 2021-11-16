@@ -354,7 +354,7 @@ tf_dev_p58_set_tcam_slice_info(struct tf *tfp,
 			       enum tf_wc_num_slice num_slices_per_row)
 {
 	int rc;
-	struct tf_session *tfs;
+	struct tf_session *tfs = NULL;
 
 	/* Retrieve the session information */
 	rc = tf_session_get_session_internal(tfp, &tfs);
@@ -401,7 +401,7 @@ tf_dev_p58_get_tcam_slice_info(struct tf *tfp,
 			       uint16_t *num_slices_per_row)
 {
 	int rc;
-	struct tf_session *tfs;
+	struct tf_session *tfs = NULL;
 
 	/* Retrieve the session information */
 	rc = tf_session_get_session_internal(tfp, &tfs);

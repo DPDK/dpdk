@@ -27,7 +27,7 @@
 #define ULP_HA_CLIENT_CNT_IF_TBL_IDX 9
 
 static void ulp_ha_mgr_timer_cancel(void);
-static int32_t ulp_ha_mgr_timer_start(void);
+static int32_t ulp_ha_mgr_timer_start(void *arg);
 static void ulp_ha_mgr_timer_cb(void *arg);
 static int32_t ulp_ha_mgr_app_type_set(struct bnxt_ulp_context *ulp_ctx,
 				enum ulp_ha_mgr_app_type app_type);
@@ -151,7 +151,7 @@ ulp_ha_mgr_app_type_set(struct bnxt_ulp_context *ulp_ctx,
 }
 
 static void
-ulp_ha_mgr_timer_cb(void *arg __rte_unused)
+ulp_ha_mgr_timer_cb(void *arg)
 {
 	struct tf_move_tcam_shared_entries_parms mparms = { 0 };
 	struct tf_clear_tcam_shared_entries_parms cparms = { 0 };
@@ -163,9 +163,9 @@ ulp_ha_mgr_timer_cb(void *arg __rte_unused)
 	struct tf *tfp;
 	int32_t rc;
 
-	ulp_ctx = bnxt_ulp_cntxt_entry_acquire();
+	ulp_ctx = bnxt_ulp_cntxt_entry_acquire(arg);
 	if (ulp_ctx == NULL) {
-		ulp_ha_mgr_timer_start();
+		ulp_ha_mgr_timer_start(arg);
 		return;
 	}
 
@@ -299,14 +299,14 @@ unlock:
 	bnxt_ulp_cntxt_release_fdb_lock(ulp_ctx);
 cb_restart:
 	bnxt_ulp_cntxt_entry_release();
-	ulp_ha_mgr_timer_start();
+	ulp_ha_mgr_timer_start(arg);
 }
 
 static int32_t
-ulp_ha_mgr_timer_start(void)
+ulp_ha_mgr_timer_start(void *arg)
 {
 	rte_eal_alarm_set(US_PER_S * ULP_HA_TIMER_SEC,
-			  ulp_ha_mgr_timer_cb, NULL);
+			  ulp_ha_mgr_timer_cb, arg);
 	return 0;
 }
 
@@ -333,7 +333,7 @@ ulp_ha_mgr_init(struct bnxt_ulp_context *ulp_ctx)
 		PMD_DRV_LOG(ERR, "Failed to initialize ha mutex\n");
 		goto cleanup;
 	}
-	rc = ulp_ha_mgr_timer_start();
+	rc = ulp_ha_mgr_timer_start(ulp_ctx->cfg_data);
 	if (rc) {
 		BNXT_TF_DBG(ERR, "Unable to start timer CB.\n");
 		goto cleanup;

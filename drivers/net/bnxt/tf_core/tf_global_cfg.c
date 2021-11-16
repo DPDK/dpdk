@@ -21,11 +21,6 @@ struct tf_global_cfg_db {
 };
 
 /**
- * Init flag, set on bind and cleared on unbind
- */
-static uint8_t init;
-
-/**
  * Get HCAPI type parameters for a single element
  */
 struct tf_global_cfg_get_hcapi_parms {
@@ -83,11 +78,6 @@ tf_global_cfg_bind(struct tf *tfp,
 
 	TF_CHECK_PARMS2(tfp, parms);
 
-	if (init) {
-		TFP_DRV_LOG(ERR, "Global Cfg DB already initialized\n");
-		return -EINVAL;
-	}
-
 	cparms.nitems = 1;
 	cparms.size = sizeof(struct tf_global_cfg_db);
 	cparms.alignment = 0;
@@ -100,13 +90,9 @@ tf_global_cfg_bind(struct tf *tfp,
 	global_cfg_db = cparms.mem_va;
 	global_cfg_db->global_cfg_db[TF_DIR_RX] = parms->cfg;
 	global_cfg_db->global_cfg_db[TF_DIR_TX] = parms->cfg;
-
 	tf_session_set_global_db(tfp, (void *)global_cfg_db);
 
-	init = 1;
-
 	TFP_DRV_LOG(INFO, "Global Cfg - initialized\n");
-
 	return 0;
 }
 
@@ -118,12 +104,6 @@ tf_global_cfg_unbind(struct tf *tfp)
 
 	TF_CHECK_PARMS1(tfp);
 
-	/* Bail if nothing has been initialized */
-	if (!init) {
-		TFP_DRV_LOG(INFO, "No Global Cfg DBs created\n");
-		return 0;
-	}
-
 	rc = tf_session_get_global_db(tfp, (void **)&global_cfg_db_ptr);
 	if (rc) {
 		TFP_DRV_LOG(INFO, "global_cfg_db is not initialized\n");
@@ -131,8 +111,6 @@ tf_global_cfg_unbind(struct tf *tfp)
 	}
 
 	tfp_free((void *)global_cfg_db_ptr);
-	init = 0;
-
 	return 0;
 }
 
@@ -146,12 +124,6 @@ tf_global_cfg_set(struct tf *tfp,
 	uint16_t hcapi_type;
 
 	TF_CHECK_PARMS3(tfp, parms, parms->config);
-
-	if (!init) {
-		TFP_DRV_LOG(ERR, "%s: No Global Cfg DBs created\n",
-			    tf_dir_2_str(parms->dir));
-		return -EINVAL;
-	}
 
 	rc = tf_session_get_global_db(tfp, (void **)&global_cfg_db_ptr);
 	if (rc) {
@@ -196,13 +168,6 @@ tf_global_cfg_get(struct tf *tfp,
 	uint16_t hcapi_type;
 
 	TF_CHECK_PARMS3(tfp, parms, parms->config);
-
-	if (!init) {
-		TFP_DRV_LOG(ERR,
-			    "%s: No Global Cfg DBs created\n",
-			    tf_dir_2_str(parms->dir));
-		return -EINVAL;
-	}
 
 	rc = tf_session_get_global_db(tfp, (void **)&global_cfg_db_ptr);
 	if (rc) {

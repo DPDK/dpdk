@@ -93,7 +93,7 @@ struct tf_global_cfg_cfg_parms {
  *
  * Returns
  *   - (0) if successful.
- *   - (-EINVAL) on failure.
+ *   - (-ENOMEM) on failure.
  */
 int
 tf_global_cfg_bind(struct tf *tfp,

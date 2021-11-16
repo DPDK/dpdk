@@ -35,6 +35,7 @@ STAILQ_HEAD(, bnxt_ulp_session_state) bnxt_ulp_session_list =
 static pthread_mutex_t bnxt_ulp_global_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 /* Spin lock to protect context global list */
+uint32_t bnxt_ulp_ctxt_lock_created;
 rte_spinlock_t bnxt_ulp_ctxt_lock;
 TAILQ_HEAD(cntx_list_entry_list, ulp_context_list_entry);
 static struct cntx_list_entry_list ulp_cntx_list =
@@ -2010,9 +2011,10 @@ bnxt_ulp_cntxt_ha_enabled(struct bnxt_ulp_context *ulp_ctx)
 static int32_t
 bnxt_ulp_cntxt_list_init(void)
 {
-	/* Create the cntxt spin lock */
-	rte_spinlock_init(&bnxt_ulp_ctxt_lock);
-
+	/* Create the cntxt spin lock only once*/
+	if (!bnxt_ulp_ctxt_lock_created)
+		rte_spinlock_init(&bnxt_ulp_ctxt_lock);
+	bnxt_ulp_ctxt_lock_created = 1;
 	return 0;
 }
 
@@ -2051,14 +2053,14 @@ bnxt_ulp_cntxt_list_del(struct bnxt_ulp_context *ulp_ctx)
 }
 
 struct bnxt_ulp_context *
-bnxt_ulp_cntxt_entry_acquire(void)
+bnxt_ulp_cntxt_entry_acquire(void *arg)
 {
 	struct ulp_context_list_entry	*entry;
 
 	/* take a lock and get the first ulp context available */
 	if (rte_spinlock_trylock(&bnxt_ulp_ctxt_lock)) {
 		TAILQ_FOREACH(entry, &ulp_cntx_list, next)
-			if (entry->ulp_ctx)
+			if (entry->ulp_ctx->cfg_data == arg)
 				return entry->ulp_ctx;
 	}
 	return NULL;

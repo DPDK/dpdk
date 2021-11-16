@@ -203,7 +203,7 @@ ulp_fc_mgr_thread_start(struct bnxt_ulp_context *ctxt)
 
 	if (ulp_fc_info && !(ulp_fc_info->flags & ULP_FLAG_FC_THREAD)) {
 		rte_eal_alarm_set(US_PER_S * ULP_FC_TIMER,
-				  ulp_fc_mgr_alarm_cb, NULL);
+				  ulp_fc_mgr_alarm_cb, (void *)ctxt->cfg_data);
 		ulp_fc_info->flags |= ULP_FLAG_FC_THREAD;
 	}
 
@@ -225,7 +225,7 @@ void ulp_fc_mgr_thread_cancel(struct bnxt_ulp_context *ctxt)
 		return;
 
 	ulp_fc_info->flags &= ~ULP_FLAG_FC_THREAD;
-	rte_eal_alarm_cancel(ulp_fc_mgr_alarm_cb, NULL);
+	rte_eal_alarm_cancel(ulp_fc_mgr_alarm_cb, ctxt->cfg_data);
 }
 
 /*
@@ -434,7 +434,7 @@ static int ulp_get_single_flow_stat(struct bnxt_ulp_context *ctxt,
  */
 
 void
-ulp_fc_mgr_alarm_cb(void *arg __rte_unused)
+ulp_fc_mgr_alarm_cb(void *arg)
 {
 	int rc = 0;
 	unsigned int j;
@@ -445,11 +445,11 @@ ulp_fc_mgr_alarm_cb(void *arg __rte_unused)
 	struct tf *tfp;
 	uint32_t dev_id, hw_cntr_id = 0, num_entries = 0;
 
-	ctxt = bnxt_ulp_cntxt_entry_acquire();
+	ctxt = bnxt_ulp_cntxt_entry_acquire(arg);
 	if (ctxt == NULL) {
 		BNXT_TF_DBG(INFO, "could not get the ulp context lock\n");
 		rte_eal_alarm_set(US_PER_S * ULP_FC_TIMER,
-				  ulp_fc_mgr_alarm_cb, NULL);
+				  ulp_fc_mgr_alarm_cb, arg);
 		return;
 	}
 
@@ -534,7 +534,7 @@ ulp_fc_mgr_alarm_cb(void *arg __rte_unused)
 out:
 	bnxt_ulp_cntxt_entry_release();
 	rte_eal_alarm_set(US_PER_S * ULP_FC_TIMER,
-			  ulp_fc_mgr_alarm_cb, NULL);
+			  ulp_fc_mgr_alarm_cb, arg);
 }
 
 /*
