@@ -794,17 +794,19 @@ tf_sram_mgr_free(void *sram_handle,
 			TFP_DRV_LOG(ERR, "Free block_id(%d) failed error(%s)\n",
 				    block_id, strerror(-rc));
 		}
-		/* Free local entry regardless
-		 */
+		/* Free local entry regardless */
 		tf_sram_free_block(slice_list, block);
 
-		/* Find the next non-full block in the list
-		 */
-		tf_sram_find_first_not_full_block(slice_list,
-					     parms->slice_size,
-					     &slice_list->first_not_full_block);
+		/* Clear the not full block to set it again */
+		slice_list->first_not_full_block = NULL;
 	}
+	if (slice_list->first_not_full_block)
+		return rc;
 
+	/* set the non full block so it can be used in next alloc */
+	tf_sram_find_first_not_full_block(slice_list,
+					  parms->slice_size,
+					  &slice_list->first_not_full_block);
 	return rc;
 }
 
