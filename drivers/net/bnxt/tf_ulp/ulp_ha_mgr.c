@@ -26,7 +26,7 @@
 #define ULP_HA_IF_TBL_IDX 10
 #define ULP_HA_CLIENT_CNT_IF_TBL_IDX 9
 
-static void ulp_ha_mgr_timer_cancel(void);
+static void ulp_ha_mgr_timer_cancel(struct bnxt_ulp_context *ulp_ctx);
 static int32_t ulp_ha_mgr_timer_start(void *arg);
 static void ulp_ha_mgr_timer_cb(void *arg);
 static int32_t ulp_ha_mgr_app_type_set(struct bnxt_ulp_context *ulp_ctx,
@@ -311,9 +311,9 @@ ulp_ha_mgr_timer_start(void *arg)
 }
 
 static void
-ulp_ha_mgr_timer_cancel(void)
+ulp_ha_mgr_timer_cancel(struct bnxt_ulp_context *ulp_ctx)
 {
-	rte_eal_alarm_cancel(ulp_ha_mgr_timer_cb, (void *)NULL);
+	rte_eal_alarm_cancel(ulp_ha_mgr_timer_cb, ulp_ctx->cfg_data);
 }
 
 int32_t
@@ -351,7 +351,7 @@ ulp_ha_mgr_deinit(struct bnxt_ulp_context *ulp_ctx)
 {
 	struct bnxt_ulp_ha_mgr_info *ha_info;
 
-	ulp_ha_mgr_timer_cancel();
+	ulp_ha_mgr_timer_cancel(ulp_ctx);
 
 	ha_info = bnxt_ulp_cntxt_ptr2_ha_info_get(ulp_ctx);
 	if (ha_info == NULL) {

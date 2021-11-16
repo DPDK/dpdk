@@ -1546,9 +1546,6 @@ bnxt_ulp_port_deinit(struct bnxt *bp)
 	BNXT_TF_DBG(DEBUG, "BNXT Port:%d ULP port deinit\n",
 		    bp->eth_dev->data->port_id);
 
-	/* Free the ulp context in the context entry list */
-	bnxt_ulp_cntxt_list_del(bp->ulp_ctx);
-
 	/* Get the session details  */
 	pci_dev = RTE_DEV_TO_PCI(bp->eth_dev->device);
 	pci_addr = &pci_dev->addr;
@@ -1586,6 +1583,9 @@ bnxt_ulp_port_deinit(struct bnxt *bp)
 			bnxt_ulp_deinit(bp, session);
 		}
 	}
+
+	/* Free the ulp context in the context entry list */
+	bnxt_ulp_cntxt_list_del(bp->ulp_ctx);
 
 	/* clean up the session */
 	ulp_session_deinit(session);
@@ -2062,6 +2062,7 @@ bnxt_ulp_cntxt_entry_acquire(void *arg)
 		TAILQ_FOREACH(entry, &ulp_cntx_list, next)
 			if (entry->ulp_ctx->cfg_data == arg)
 				return entry->ulp_ctx;
+		rte_spinlock_unlock(&bnxt_ulp_ctxt_lock);
 	}
 	return NULL;
 }
