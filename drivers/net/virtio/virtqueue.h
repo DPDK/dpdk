@@ -642,19 +642,25 @@ virtqueue_xmit_offload(struct virtio_net_hdr *hdr,
 			bool offload)
 {
 	if (offload) {
+		uint16_t o_l23_len =
+			(cookie->ol_flags & PKT_TX_TUNNEL_MASK) ?
+			cookie->outer_l2_len + cookie->outer_l3_len : 0;
+
 		if (cookie->ol_flags & PKT_TX_TCP_SEG)
 			cookie->ol_flags |= PKT_TX_TCP_CKSUM;
 
 		switch (cookie->ol_flags & PKT_TX_L4_MASK) {
 		case PKT_TX_UDP_CKSUM:
-			hdr->csum_start = cookie->l2_len + cookie->l3_len;
+			hdr->csum_start = o_l23_len +
+					  cookie->l2_len + cookie->l3_len;
 			hdr->csum_offset = offsetof(struct rte_udp_hdr,
 				dgram_cksum);
 			hdr->flags = VIRTIO_NET_HDR_F_NEEDS_CSUM;
 			break;
 
 		case PKT_TX_TCP_CKSUM:
-			hdr->csum_start = cookie->l2_len + cookie->l3_len;
+			hdr->csum_start = o_l23_len +
+					  cookie->l2_len + cookie->l3_len;
 			hdr->csum_offset = offsetof(struct rte_tcp_hdr, cksum);
 			hdr->flags = VIRTIO_NET_HDR_F_NEEDS_CSUM;
 			break;
@@ -673,6 +679,7 @@ virtqueue_xmit_offload(struct virtio_net_hdr *hdr,
 				VIRTIO_NET_HDR_GSO_TCPV4;
 			hdr->gso_size = cookie->tso_segsz;
 			hdr->hdr_len =
+				o_l23_len +
 				cookie->l2_len +
 				cookie->l3_len +
 				cookie->l4_len;
