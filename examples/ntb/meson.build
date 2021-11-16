@@ -12,11 +12,8 @@ if not is_linux
     subdir_done()
 endif
 
-deps += 'rawdev'
+deps += ['rawdev', 'raw_ntb']
 cflags += ['-D_FILE_OFFSET_BITS=64']
 sources = files(
         'ntb_fwd.c',
 )
-if dpdk_conf.has('RTE_RAW_NTB')
-    deps += 'raw_ntb'
-endif
