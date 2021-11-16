@@ -1549,60 +1549,6 @@ virtio_dev_rx_async_submit_split(struct virtio_net *dev,
 	return pkt_idx;
 }
 
-static __rte_always_inline void
-vhost_update_used_packed(struct vhost_virtqueue *vq,
-			struct vring_used_elem_packed *shadow_ring,
-			uint16_t count)
-{
-	int i;
-	uint16_t used_idx = vq->last_used_idx;
-	uint16_t head_idx = vq->last_used_idx;
-	uint16_t head_flags = 0;
-
-	if (count == 0)
-		return;
-
-	/* Split loop in two to save memory barriers */
-	for (i = 0; i < count; i++) {
-		vq->desc_packed[used_idx].id = shadow_ring[i].id;
-		vq->desc_packed[used_idx].len = shadow_ring[i].len;
-
-		used_idx += shadow_ring[i].count;
-		if (used_idx >= vq->size)
-			used_idx -= vq->size;
-	}
-
-	/* The ordering for storing desc flags needs to be enforced. */
-	rte_atomic_thread_fence(__ATOMIC_RELEASE);
-
-	for (i = 0; i < count; i++) {
-		uint16_t flags;
-
-		if (vq->shadow_used_packed[i].len)
-			flags = VRING_DESC_F_WRITE;
-		else
-			flags = 0;
-
-		if (vq->used_wrap_counter) {
-			flags |= VRING_DESC_F_USED;
-			flags |= VRING_DESC_F_AVAIL;
-		} else {
-			flags &= ~VRING_DESC_F_USED;
-			flags &= ~VRING_DESC_F_AVAIL;
-		}
-
-		if (i > 0) {
-			vq->desc_packed[vq->last_used_idx].flags = flags;
-		} else {
-			head_idx = vq->last_used_idx;
-			head_flags = flags;
-		}
-
-		vq_inc_last_used_packed(vq, shadow_ring[i].count);
-	}
-
-	vq->desc_packed[head_idx].flags = head_flags;
-}
 
 static __rte_always_inline int
 vhost_enqueue_async_packed(struct virtio_net *dev,
@@ -1819,23 +1765,63 @@ write_back_completed_descs_packed(struct vhost_virtqueue *vq,
 				uint16_t n_buffers)
 {
 	struct vhost_async *async = vq->async;
-	uint16_t nr_left = n_buffers;
-	uint16_t from, to;
+	uint16_t from = async->last_buffer_idx_packed;
+	uint16_t used_idx = vq->last_used_idx;
+	uint16_t head_idx = vq->last_used_idx;
+	uint16_t head_flags = 0;
+	uint16_t i;
 
-	do {
-		from = async->last_buffer_idx_packed;
-		to = (from + nr_left) % vq->size;
-		if (to > from) {
-			vhost_update_used_packed(vq, async->buffers_packed + from, to - from);
-			async->last_buffer_idx_packed += nr_left;
-			nr_left = 0;
+	/* Split loop in two to save memory barriers */
+	for (i = 0; i < n_buffers; i++) {
+		vq->desc_packed[used_idx].id = async->buffers_packed[from].id;
+		vq->desc_packed[used_idx].len = async->buffers_packed[from].len;
+
+		used_idx += async->buffers_packed[from].count;
+		if (used_idx >= vq->size)
+			used_idx -= vq->size;
+
+		from++;
+		if (from >= vq->size)
+			from = 0;
+	}
+
+	/* The ordering for storing desc flags needs to be enforced. */
+	rte_atomic_thread_fence(__ATOMIC_RELEASE);
+
+	from = async->last_buffer_idx_packed;
+
+	for (i = 0; i < n_buffers; i++) {
+		uint16_t flags;
+
+		if (async->buffers_packed[from].len)
+			flags = VRING_DESC_F_WRITE;
+		else
+			flags = 0;
+
+		if (vq->used_wrap_counter) {
+			flags |= VRING_DESC_F_USED;
+			flags |= VRING_DESC_F_AVAIL;
 		} else {
-			vhost_update_used_packed(vq, async->buffers_packed + from,
-				vq->size - from);
-			async->last_buffer_idx_packed = 0;
-			nr_left -= vq->size - from;
+			flags &= ~VRING_DESC_F_USED;
+			flags &= ~VRING_DESC_F_AVAIL;
 		}
-	} while (nr_left > 0);
+
+		if (i > 0) {
+			vq->desc_packed[vq->last_used_idx].flags = flags;
+		} else {
+			head_idx = vq->last_used_idx;
+			head_flags = flags;
+		}
+
+		vq_inc_last_used_packed(vq, async->buffers_packed[from].count);
+
+		from++;
+		if (from == vq->size)
+			from = 0;
+	}
+
+	vq->desc_packed[head_idx].flags = head_flags;
+	async->last_buffer_idx_packed = from;
 }
 
 static __rte_always_inline uint16_t
