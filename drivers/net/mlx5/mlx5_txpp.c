@@ -890,7 +890,6 @@ mlx5_txpp_start(struct rte_eth_dev *dev)
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_dev_ctx_shared *sh = priv->sh;
 	int err = 0;
-	int ret;
 
 	if (!priv->config.tx_pp) {
 		/* Packet pacing is not requested for the device. */
@@ -903,14 +902,14 @@ mlx5_txpp_start(struct rte_eth_dev *dev)
 		return 0;
 	}
 	if (priv->config.tx_pp > 0) {
-		ret = rte_mbuf_dynflag_lookup
-				(RTE_MBUF_DYNFLAG_TX_TIMESTAMP_NAME, NULL);
-		if (ret < 0)
+		err = rte_mbuf_dynflag_lookup
+			(RTE_MBUF_DYNFLAG_TX_TIMESTAMP_NAME, NULL);
+		/* No flag registered means no service needed. */
+		if (err < 0)
 			return 0;
+		err = 0;
 	}
-	ret = pthread_mutex_lock(&sh->txpp.mutex);
-	MLX5_ASSERT(!ret);
-	RTE_SET_USED(ret);
+	claim_zero(pthread_mutex_lock(&sh->txpp.mutex));
 	if (sh->txpp.refcnt) {
 		priv->txpp_en = 1;
 		++sh->txpp.refcnt;
@@ -924,9 +923,7 @@ mlx5_txpp_start(struct rte_eth_dev *dev)
 			rte_errno = -err;
 		}
 	}
-	ret = pthread_mutex_unlock(&sh->txpp.mutex);
-	MLX5_ASSERT(!ret);
-	RTE_SET_USED(ret);
+	claim_zero(pthread_mutex_unlock(&sh->txpp.mutex));
 	return err;
 }
 
@@ -944,24 +941,21 @@ mlx5_txpp_stop(struct rte_eth_dev *dev)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_dev_ctx_shared *sh = priv->sh;
-	int ret;
 
 	if (!priv->txpp_en) {
 		/* Packet pacing is already disabled for the device. */
 		return;
 	}
 	priv->txpp_en = 0;
-	ret = pthread_mutex_lock(&sh->txpp.mutex);
-	MLX5_ASSERT(!ret);
-	RTE_SET_USED(ret);
+	claim_zero(pthread_mutex_lock(&sh->txpp.mutex));
 	MLX5_ASSERT(sh->txpp.refcnt);
-	if (!sh->txpp.refcnt || --sh->txpp.refcnt)
+	if (!sh->txpp.refcnt || --sh->txpp.refcnt) {
+		claim_zero(pthread_mutex_unlock(&sh->txpp.mutex));
 		return;
+	}
 	/* No references any more, do actual destroy. */
 	mlx5_txpp_destroy(sh);
-	ret = pthread_mutex_unlock(&sh->txpp.mutex);
-	MLX5_ASSERT(!ret);
-	RTE_SET_USED(ret);
+	claim_zero(pthread_mutex_unlock(&sh->txpp.mutex));
 }
 
 /*
