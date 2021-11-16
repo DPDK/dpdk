@@ -1172,6 +1172,17 @@ mlx5_dev_start(struct rte_eth_dev *dev)
 		goto error;
 	}
 	mlx5_os_stats_init(dev);
+	/*
+	 * Attach indirection table objects detached on port stop.
+	 * They may be needed to create RSS in non-isolated mode.
+	 */
+	ret = mlx5_action_handle_attach(dev);
+	if (ret) {
+		DRV_LOG(ERR,
+			"port %u failed to attach indirect actions: %s",
+			dev->data->port_id, rte_strerror(rte_errno));
+		goto error;
+	}
 	ret = mlx5_traffic_enable(dev);
 	if (ret) {
 		DRV_LOG(ERR, "port %u failed to set defaults flows",
@@ -1184,14 +1195,6 @@ mlx5_dev_start(struct rte_eth_dev *dev)
 	mlx5_rxq_timestamp_set(dev);
 	/* Set a mask and offset of scheduling on timestamp into Tx queues. */
 	mlx5_txq_dynf_timestamp_set(dev);
-	/* Attach indirection table objects detached on port stop. */
-	ret = mlx5_action_handle_attach(dev);
-	if (ret) {
-		DRV_LOG(ERR,
-			"port %u failed to attach indirect actions: %s",
-			dev->data->port_id, rte_strerror(rte_errno));
-		goto error;
-	}
 	/*
 	 * In non-cached mode, it only needs to start the default mreg copy
 	 * action and no flow created by application exists anymore.

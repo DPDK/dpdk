@@ -2439,7 +2439,7 @@ mlx5_ind_table_obj_attach(struct rte_eth_dev *dev,
 		return ret;
 	}
 	for (i = 0; i < ind_tbl->queues_n; i++)
-		mlx5_rxq_get(dev, ind_tbl->queues[i]);
+		mlx5_rxq_ref(dev, ind_tbl->queues[i]);
 	return 0;
 }
 
