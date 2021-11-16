@@ -390,8 +390,7 @@ mlx5_dev_mempool_event_cb(enum rte_mempool_event event, struct rte_mempool *mp,
 			  void *arg)
 {
 	struct mlx5_common_device *cdev = arg;
-	bool extmem = rte_pktmbuf_priv_flags(mp) &
-		      RTE_PKTMBUF_POOL_F_PINNED_EXT_BUF;
+	bool extmem = mlx5_mempool_is_extmem(mp);
 
 	switch (event) {
 	case RTE_MEMPOOL_EVENT_READY:

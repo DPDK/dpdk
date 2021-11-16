@@ -1305,6 +1305,7 @@ mlx5_mempool_get_chunks(struct rte_mempool *mp, struct mlx5_range **out,
 	struct mlx5_range *chunks;
 	unsigned int n;
 
+	DRV_LOG(DEBUG, "Collecting chunks of regular mempool %s", mp->name);
 	n = mp->nb_mem_chunks;
 	chunks = calloc(sizeof(chunks[0]), n);
 	if (chunks == NULL)
@@ -1385,6 +1386,8 @@ mlx5_mempool_get_extmem(struct rte_mempool *mp, struct mlx5_range **out,
 {
 	struct mlx5_mempool_get_extmem_data data;
 
+	DRV_LOG(DEBUG, "Recovering external pinned pages of mempool %s",
+		mp->name);
 	memset(&data, 0, sizeof(data));
 	rte_mempool_obj_iter(mp, mlx5_mempool_get_extmem_cb, &data);
 	if (data.ret < 0)
@@ -1417,7 +1420,7 @@ mlx5_get_mempool_ranges(struct rte_mempool *mp, struct mlx5_range **out,
 	int ret;
 
 	/* Collect the pool underlying memory. */
-	ret = (rte_pktmbuf_priv_flags(mp) & RTE_PKTMBUF_POOL_F_PINNED_EXT_BUF) ?
+	ret = mlx5_mempool_is_extmem(mp) ?
 	      mlx5_mempool_get_extmem(mp, &chunks, &chunks_n) :
 	      mlx5_mempool_get_chunks(mp, &chunks, &chunks_n);
 	if (ret < 0)
