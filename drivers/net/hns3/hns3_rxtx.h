@@ -495,6 +495,8 @@ struct hns3_tx_queue {
 	 * this point.
 	 */
 	uint16_t pvid_sw_shift_en:1;
+	/* check whether the mbuf fast free offload is enabled */
+	uint16_t mbuf_fast_free_en:1;
 
 	/*
 	 * For better performance in tx datapath, releasing mbuf in batches is
