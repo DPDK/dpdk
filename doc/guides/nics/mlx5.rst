@@ -248,6 +248,20 @@ Limitations
   extension header type = 0x85).
 - Match on GTP extension header is not supported in group 0.
 
+- Flex item:
+
+  - Hardware support: BlueField 2.
+  - Flex item is supported on PF only.
+  - Hardware limits ``header_length_mask_width`` up to 6 bits.
+  - Firmware supports 8 global sample fields.
+    Each flex item allocates non-shared sample fields from that pool.
+  - Supported flex item can have 1 input link - ``eth`` or ``udp``
+    and up to 2 output links - ``ipv4`` or ``ipv6``.
+  - Flex item fields (``next_header``, ``next_protocol``, ``samples``)
+    do not participate in RSS hash functions.
+  - In flex item configuration, ``next_header.field_base`` value
+    must be byte aligned (multiple of 8).
+
 - No Tx metadata go to the E-Switch steering domain for the Flow group 0.
   The flows within group 0 and set metadata action are rejected by hardware.
 
@@ -1252,6 +1266,11 @@ Below are some firmware configurations listed.
    FLEX_PARSER_PROFILE_ENABLE=3
 
 - enable eCPRI flow matching::
+
+   FLEX_PARSER_PROFILE_ENABLE=4
+   PROG_PARSE_GRAPH=1
+
+- enable dynamic flex parser for flex item::
 
    FLEX_PARSER_PROFILE_ENABLE=4
    PROG_PARSE_GRAPH=1
