@@ -1069,3 +1069,79 @@ tf_session_set_sram_db(struct tf *tfp,
 }
 
 #endif /* TF_TCAM_SHARED */
+
+int
+tf_session_get_global_db(struct tf *tfp,
+			 void **global_handle)
+{
+	struct tf_session *tfs = NULL;
+	int rc = 0;
+
+	*global_handle = NULL;
+
+	if (tfp == NULL)
+		return (-EINVAL);
+
+	rc = tf_session_get_session_internal(tfp, &tfs);
+	if (rc)
+		return rc;
+
+	*global_handle = tfs->global_db_handle;
+	return rc;
+}
+
+int
+tf_session_set_global_db(struct tf *tfp,
+			 void *global_handle)
+{
+	struct tf_session *tfs = NULL;
+	int rc = 0;
+
+	if (tfp == NULL)
+		return (-EINVAL);
+
+	rc = tf_session_get_session_internal(tfp, &tfs);
+	if (rc)
+		return rc;
+
+	tfs->global_db_handle = global_handle;
+	return rc;
+}
+
+int
+tf_session_get_if_tbl_db(struct tf *tfp,
+			 void **if_tbl_handle)
+{
+	struct tf_session *tfs = NULL;
+	int rc = 0;
+
+	*if_tbl_handle = NULL;
+
+	if (tfp == NULL)
+		return (-EINVAL);
+
+	rc = tf_session_get_session_internal(tfp, &tfs);
+	if (rc)
+		return rc;
+
+	*if_tbl_handle = tfs->if_tbl_db_handle;
+	return rc;
+}
+
+int
+tf_session_set_if_tbl_db(struct tf *tfp,
+			 void *if_tbl_handle)
+{
+	struct tf_session *tfs = NULL;
+	int rc = 0;
+
+	if (tfp == NULL)
+		return (-EINVAL);
+
+	rc = tf_session_get_session_internal(tfp, &tfs);
+	if (rc)
+		return rc;
+
+	tfs->if_tbl_db_handle = if_tbl_handle;
+	return rc;
+}

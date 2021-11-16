@@ -13,7 +13,6 @@
 #include "tf_core.h"
 #include "tf_device.h"
 #include "tf_rm.h"
-#include "tf_tbl.h"
 #include "tf_resources.h"
 #include "stack.h"
 #include "ll.h"
@@ -166,10 +165,26 @@ struct tf_session {
 	 */
 	void *tcam_shared_db_handle;
 #endif /* TF_TCAM_SHARED */
+
 	/**
 	 * SRAM db reference for the session
 	 */
 	void *sram_handle;
+
+	/**
+	 * if table db reference for the session
+	 */
+	void *if_tbl_db_handle;
+
+	/**
+	 * global db reference for the session
+	 */
+	void *global_db_handle;
+
+	/**
+	 * Number of slices per row for WC TCAM
+	 */
+	uint16_t wc_num_slices_per_row;
 };
 
 /**
@@ -665,5 +680,57 @@ tf_session_set_sram_db(struct tf *tfp,
 int
 tf_session_get_sram_db(struct tf *tfp,
 		       void **sram_handle);
+
+/**
+ * Set the pointer to the global cfg database
+ *
+ * [in] session, pointer to the session
+ *
+ * Returns:
+ *   - (0) if successful.
+ *   - (-EINVAL) on failure.
+ */
+int
+tf_session_set_global_db(struct tf *tfp,
+			 void *global_handle);
+
+/**
+ * Get the pointer to the global cfg database
+ *
+ * [in] session, pointer to the session
+ *
+ * Returns:
+ *   - (0) if successful.
+ *   - (-EINVAL) on failure.
+ */
+int
+tf_session_get_global_db(struct tf *tfp,
+			 void **global_handle);
+
+/**
+ * Set the pointer to the if table cfg database
+ *
+ * [in] session, pointer to the session
+ *
+ * Returns:
+ *   - (0) if successful.
+ *   - (-EINVAL) on failure.
+ */
+int
+tf_session_set_if_tbl_db(struct tf *tfp,
+			 void *if_tbl_handle);
+
+/**
+ * Get the pointer to the if table cfg database
+ *
+ * [in] session, pointer to the session
+ *
+ * Returns:
+ *   - (0) if successful.
+ *   - (-EINVAL) on failure.
+ */
+int
+tf_session_get_if_tbl_db(struct tf *tfp,
+			 void **if_tbl_handle);
 
 #endif /* _TF_SESSION_H_ */

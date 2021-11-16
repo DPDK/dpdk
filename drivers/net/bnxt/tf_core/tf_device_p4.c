@@ -239,14 +239,22 @@ tf_dev_p4_get_resource_str(struct tf *tfp __rte_unused,
  *   - (-EINVAL) on failure.
  */
 static int
-tf_dev_p4_set_tcam_slice_info(struct tf *tfp __rte_unused,
+tf_dev_p4_set_tcam_slice_info(struct tf *tfp,
 			      enum tf_wc_num_slice num_slices_per_row)
 {
+	int rc;
+	struct tf_session *tfs;
+
+	/* Retrieve the session information */
+	rc = tf_session_get_session_internal(tfp, &tfs);
+	if (rc)
+		return rc;
+
 	switch (num_slices_per_row) {
 	case TF_WC_TCAM_1_SLICE_PER_ROW:
 	case TF_WC_TCAM_2_SLICE_PER_ROW:
 	case TF_WC_TCAM_4_SLICE_PER_ROW:
-		g_wc_num_slices_per_row = num_slices_per_row;
+		tfs->wc_num_slices_per_row = num_slices_per_row;
 	break;
 	default:
 		return -EINVAL;
@@ -276,16 +284,24 @@ tf_dev_p4_set_tcam_slice_info(struct tf *tfp __rte_unused,
  *   - (-EINVAL) on failure.
  */
 static int
-tf_dev_p4_get_tcam_slice_info(struct tf *tfp __rte_unused,
+tf_dev_p4_get_tcam_slice_info(struct tf *tfp,
 			      enum tf_tcam_tbl_type type,
 			      uint16_t key_sz,
 			      uint16_t *num_slices_per_row)
 {
+	int rc;
+	struct tf_session *tfs;
+
+	/* Retrieve the session information */
+	rc = tf_session_get_session_internal(tfp, &tfs);
+	if (rc)
+		return rc;
+
 /* Single slice support */
 #define CFA_P4_WC_TCAM_SLICE_SIZE     12
 
 	if (type == TF_TCAM_TBL_TYPE_WC_TCAM) {
-		*num_slices_per_row = g_wc_num_slices_per_row;
+		*num_slices_per_row = tfs->wc_num_slices_per_row;
 		if (key_sz > *num_slices_per_row * CFA_P4_WC_TCAM_SLICE_SIZE)
 			return -ENOTSUP;
 	} else { /* for other type of tcam */

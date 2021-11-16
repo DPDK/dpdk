@@ -16,9 +16,6 @@
 
 struct tf;
 
-/* Number of slices per row for WC TCAM */
-uint16_t g_wc_num_slices_per_row = TF_WC_TCAM_1_SLICE_PER_ROW;
-
 /* Forward declarations */
 static int tf_dev_unbind_p4(struct tf *tfp);
 static int tf_dev_unbind_p58(struct tf *tfp);
