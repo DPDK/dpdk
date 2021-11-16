@@ -715,6 +715,7 @@ args_parse(int argc, char **argv)
 		{ "policy-mtr",                 1, 0, 0 },
 		{ "meter-profile",              1, 0, 0 },
 		{ "packet-mode",                0, 0, 0 },
+		{ 0, 0, 0, 0 },
 	};
 
 	RTE_ETH_FOREACH_DEV(i)
@@ -951,7 +952,7 @@ args_parse(int argc, char **argv)
 		default:
 			usage(argv[0]);
 			rte_exit(EXIT_FAILURE, "Invalid option: %s\n",
-					argv[optind]);
+					argv[optind - 1]);
 			break;
 		}
 	}
