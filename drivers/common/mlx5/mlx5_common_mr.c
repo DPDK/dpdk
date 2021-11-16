@@ -292,8 +292,8 @@ mlx5_mr_btree_dump(struct mlx5_mr_btree *bt __rte_unused)
  *
  * @param mr_ctrl
  *   Pointer to MR control structure.
- * @param cdev
- *   Pointer to the mlx5 device structure.
+ * @param dev_gen_ptr
+ *   Pointer to generation number of global cache.
  * @param socket
  *   NUMA socket on which memory must be allocated.
  *
@@ -301,16 +301,15 @@ mlx5_mr_btree_dump(struct mlx5_mr_btree *bt __rte_unused)
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 int
-mlx5_mr_ctrl_init(struct mlx5_mr_ctrl *mr_ctrl, struct mlx5_common_device *cdev,
+mlx5_mr_ctrl_init(struct mlx5_mr_ctrl *mr_ctrl, uint32_t *dev_gen_ptr,
 		  int socket)
 {
 	if (mr_ctrl == NULL) {
 		rte_errno = EINVAL;
 		return -rte_errno;
 	}
-	mr_ctrl->cdev = cdev;
 	/* Save pointer of global generation number to check memory event. */
-	mr_ctrl->dev_gen_ptr = &cdev->mr_scache.dev_gen;
+	mr_ctrl->dev_gen_ptr = dev_gen_ptr;
 	/* Initialize B-tree and allocate memory for bottom-half cache table. */
 	return mlx5_mr_btree_init(&mr_ctrl->cache_bh, MLX5_MR_BTREE_CACHE_N,
 				  socket);
@@ -930,7 +929,11 @@ static uint32_t
 mr_lookup_caches(struct mlx5_mr_ctrl *mr_ctrl,
 		 struct mr_cache_entry *entry, uintptr_t addr)
 {
-	struct mlx5_mr_share_cache *share_cache = &mr_ctrl->cdev->mr_scache;
+	struct mlx5_mr_share_cache *share_cache =
+		container_of(mr_ctrl->dev_gen_ptr, struct mlx5_mr_share_cache,
+			     dev_gen);
+	struct mlx5_common_device *cdev =
+		container_of(share_cache, struct mlx5_common_device, mr_scache);
 	struct mlx5_mr_btree *bt = &mr_ctrl->cache_bh;
 	uint32_t lkey;
 	uint16_t idx;
@@ -955,7 +958,7 @@ mr_lookup_caches(struct mlx5_mr_ctrl *mr_ctrl,
 	}
 	rte_rwlock_read_unlock(&share_cache->rwlock);
 	/* First time to see the address? Create a new MR. */
-	lkey = mlx5_mr_create(mr_ctrl->cdev, share_cache, entry, addr);
+	lkey = mlx5_mr_create(cdev, share_cache, entry, addr);
 	/*
 	 * Update the local cache if successfully created a new global MR. Even
 	 * if failed to create one, there's no action to take in this datapath
@@ -1819,8 +1822,6 @@ mlx5_mempool_reg_addr2mr(struct mlx5_mempool_reg *mpr, uintptr_t addr,
 /**
  * Update bottom-half cache from the list of mempool registrations.
  *
- * @param share_cache
- *   Pointer to a global shared MR cache.
  * @param mr_ctrl
  *   Per-queue MR control handle.
  * @param entry
@@ -1834,11 +1835,13 @@ mlx5_mempool_reg_addr2mr(struct mlx5_mempool_reg *mpr, uintptr_t addr,
  *   MR lkey on success, UINT32_MAX on failure.
  */
 static uint32_t
-mlx5_lookup_mempool_regs(struct mlx5_mr_share_cache *share_cache,
-			 struct mlx5_mr_ctrl *mr_ctrl,
+mlx5_lookup_mempool_regs(struct mlx5_mr_ctrl *mr_ctrl,
 			 struct mr_cache_entry *entry,
 			 struct rte_mempool *mp, uintptr_t addr)
 {
+	struct mlx5_mr_share_cache *share_cache =
+		container_of(mr_ctrl->dev_gen_ptr, struct mlx5_mr_share_cache,
+			     dev_gen);
 	struct mlx5_mr_btree *bt = &mr_ctrl->cache_bh;
 	struct mlx5_mempool_reg *mpr;
 	uint32_t lkey = UINT32_MAX;
@@ -1865,8 +1868,6 @@ mlx5_lookup_mempool_regs(struct mlx5_mr_share_cache *share_cache,
 /**
  * Bottom-half lookup for the address from the mempool.
  *
- * @param share_cache
- *   Pointer to a global shared MR cache.
  * @param mr_ctrl
  *   Per-queue MR control handle.
  * @param mp
@@ -1877,8 +1878,7 @@ mlx5_lookup_mempool_regs(struct mlx5_mr_share_cache *share_cache,
  *   MR lkey on success, UINT32_MAX on failure.
  */
 uint32_t
-mlx5_mr_mempool2mr_bh(struct mlx5_mr_share_cache *share_cache,
-		      struct mlx5_mr_ctrl *mr_ctrl,
+mlx5_mr_mempool2mr_bh(struct mlx5_mr_ctrl *mr_ctrl,
 		      struct rte_mempool *mp, uintptr_t addr)
 {
 	struct mr_cache_entry *repl = &mr_ctrl->cache[mr_ctrl->head];
@@ -1891,8 +1891,7 @@ mlx5_mr_mempool2mr_bh(struct mlx5_mr_share_cache *share_cache,
 	if (likely(lkey != UINT32_MAX)) {
 		*repl = (*mr_ctrl->cache_bh.table)[bh_idx];
 	} else {
-		lkey = mlx5_lookup_mempool_regs(share_cache, mr_ctrl, repl,
-						mp, addr);
+		lkey = mlx5_lookup_mempool_regs(mr_ctrl, repl, mp, addr);
 		/* Can only fail if the address is not from the mempool. */
 		if (unlikely(lkey == UINT32_MAX))
 			return UINT32_MAX;
@@ -1909,7 +1908,11 @@ mlx5_mr_mb2mr_bh(struct mlx5_mr_ctrl *mr_ctrl, struct rte_mbuf *mb)
 {
 	uint32_t lkey;
 	uintptr_t addr = (uintptr_t)mb->buf_addr;
-	struct mlx5_common_device *cdev = mr_ctrl->cdev;
+	struct mlx5_mr_share_cache *share_cache =
+		container_of(mr_ctrl->dev_gen_ptr, struct mlx5_mr_share_cache,
+			     dev_gen);
+	struct mlx5_common_device *cdev =
+		container_of(share_cache, struct mlx5_common_device, mr_scache);
 
 	if (cdev->config.mr_mempool_reg_en) {
 		struct rte_mempool *mp = NULL;
@@ -1923,8 +1926,7 @@ mlx5_mr_mb2mr_bh(struct mlx5_mr_ctrl *mr_ctrl, struct rte_mbuf *mb)
 			mp = buf->mp;
 		}
 		if (mp != NULL) {
-			lkey = mlx5_mr_mempool2mr_bh(&cdev->mr_scache,
-						     mr_ctrl, mp, addr);
+			lkey = mlx5_mr_mempool2mr_bh(mr_ctrl, mp, addr);
 			/*
 			 * Lookup can only fail on invalid input, e.g. "addr"
 			 * is not from "mp" or "mp" has MEMPOOL_F_NON_IO set.

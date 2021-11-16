@@ -636,7 +636,7 @@ mlx5_crypto_queue_pair_setup(struct rte_cryptodev *dev, uint16_t qp_id,
 		DRV_LOG(ERR, "Failed to create QP.");
 		goto error;
 	}
-	if (mlx5_mr_ctrl_init(&qp->mr_ctrl, priv->cdev,
+	if (mlx5_mr_ctrl_init(&qp->mr_ctrl, &priv->cdev->mr_scache.dev_gen,
 			      priv->dev_config.socket_id) != 0) {
 		DRV_LOG(ERR, "Cannot allocate MR Btree for qp %u.",
 			(uint32_t)qp_id);

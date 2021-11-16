@@ -66,7 +66,6 @@ struct mlx5_common_device;
 
 /* Per-queue MR control descriptor. */
 struct mlx5_mr_ctrl {
-	struct mlx5_common_device *cdev; /* Pointer to the mlx5 common device.*/
 	uint32_t *dev_gen_ptr; /* Generation number of device to poll. */
 	uint32_t cur_gen; /* Generation number saved to flush caches. */
 	uint16_t mru; /* Index of last hit entry in top-half cache. */
@@ -211,14 +210,13 @@ mlx5_mr_mb2mr(struct mlx5_mr_ctrl *mr_ctrl, struct rte_mbuf *mbuf)
 /* mlx5_common_mr.c */
 
 __rte_internal
-int mlx5_mr_ctrl_init(struct mlx5_mr_ctrl *mr_ctrl,
-		      struct mlx5_common_device *cdev, int socket);
+int mlx5_mr_ctrl_init(struct mlx5_mr_ctrl *mr_ctrl, uint32_t *dev_gen_ptr,
+		      int socket);
 __rte_internal
 void mlx5_mr_btree_free(struct mlx5_mr_btree *bt);
 void mlx5_mr_btree_dump(struct mlx5_mr_btree *bt __rte_unused);
 __rte_internal
-uint32_t mlx5_mr_mempool2mr_bh(struct mlx5_mr_share_cache *share_cache,
-			       struct mlx5_mr_ctrl *mr_ctrl,
+uint32_t mlx5_mr_mempool2mr_bh(struct mlx5_mr_ctrl *mr_ctrl,
 			       struct rte_mempool *mp, uintptr_t addr);
 void mlx5_mr_release_cache(struct mlx5_mr_share_cache *mr_cache);
 int mlx5_mr_create_cache(struct mlx5_mr_share_cache *share_cache, int socket);

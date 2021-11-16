@@ -316,8 +316,7 @@ mlx5_rx_addr2mr(struct mlx5_rxq_data *rxq, uintptr_t addr)
 	if (likely(lkey != UINT32_MAX))
 		return lkey;
 	mp = mlx5_rxq_mprq_enabled(rxq) ? rxq->mprq_mp : rxq->mp;
-	return mlx5_mr_mempool2mr_bh(&mr_ctrl->cdev->mr_scache, mr_ctrl,
-				     mp, addr);
+	return mlx5_mr_mempool2mr_bh(mr_ctrl, mp, addr);
 }
 
 /**
@@ -338,7 +337,6 @@ mlx5_rx_mb2mr(struct mlx5_rxq_data *rxq, struct rte_mbuf *mb)
 {
 	struct mlx5_mr_ctrl *mr_ctrl = &rxq->mr_ctrl;
 	uintptr_t addr = (uintptr_t)mb->buf_addr;
-	struct mlx5_rxq_ctrl *rxq_ctrl;
 	uint32_t lkey;
 
 	/* Linear search on MR cache array. */
@@ -346,13 +344,8 @@ mlx5_rx_mb2mr(struct mlx5_rxq_data *rxq, struct rte_mbuf *mb)
 				   MLX5_MR_CACHE_N, addr);
 	if (likely(lkey != UINT32_MAX))
 		return lkey;
-	/*
-	 * Slower search in the mempool database on miss.
-	 * During queue creation rxq->sh is not yet set, so we use rxq_ctrl.
-	 */
-	rxq_ctrl = container_of(rxq, struct mlx5_rxq_ctrl, rxq);
-	return mlx5_mr_mempool2mr_bh(&rxq_ctrl->sh->cdev->mr_scache,
-				     mr_ctrl, mb->pool, addr);
+	/* Slower search in the mempool database on miss. */
+	return mlx5_mr_mempool2mr_bh(mr_ctrl, mb->pool, addr);
 }
 
 /**
