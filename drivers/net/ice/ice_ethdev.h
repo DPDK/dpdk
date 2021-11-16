@@ -538,6 +538,7 @@ struct ice_adapter {
 	bool rx_use_avx512;
 	bool tx_use_avx2;
 	bool tx_use_avx512;
+	bool rx_vec_offload_support;
 #endif
 };
 
