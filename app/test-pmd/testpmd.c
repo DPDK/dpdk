@@ -36,7 +36,6 @@
 #include <rte_alarm.h>
 #include <rte_per_lcore.h>
 #include <rte_lcore.h>
-#include <rte_atomic.h>
 #include <rte_branch_prediction.h>
 #include <rte_mempool.h>
 #include <rte_malloc.h>
@@ -2521,9 +2520,9 @@ setup_hairpin_queues(portid_t pi, portid_t p_pi, uint16_t cnt_pi)
 			continue;
 
 		/* Fail to setup rx queue, return */
-		if (rte_atomic16_cmpset(&(port->port_status),
-					RTE_PORT_HANDLING,
-					RTE_PORT_STOPPED) == 0)
+		if (port->port_status == RTE_PORT_HANDLING)
+			port->port_status = RTE_PORT_STOPPED;
+		else
 			fprintf(stderr,
 				"Port %d can not be set back to stopped\n", pi);
 		fprintf(stderr, "Fail to configure port %d hairpin queues\n",
@@ -2544,9 +2543,9 @@ setup_hairpin_queues(portid_t pi, portid_t p_pi, uint16_t cnt_pi)
 			continue;
 
 		/* Fail to setup rx queue, return */
-		if (rte_atomic16_cmpset(&(port->port_status),
-					RTE_PORT_HANDLING,
-					RTE_PORT_STOPPED) == 0)
+		if (port->port_status == RTE_PORT_HANDLING)
+			port->port_status = RTE_PORT_STOPPED;
+		else
 			fprintf(stderr,
 				"Port %d can not be set back to stopped\n", pi);
 		fprintf(stderr, "Fail to configure port %d hairpin queues\n",
@@ -2729,8 +2728,9 @@ start_port(portid_t pid)
 
 		need_check_link_status = 0;
 		port = &ports[pi];
-		if (rte_atomic16_cmpset(&(port->port_status), RTE_PORT_STOPPED,
-						 RTE_PORT_HANDLING) == 0) {
+		if (port->port_status == RTE_PORT_STOPPED)
+			port->port_status = RTE_PORT_HANDLING;
+		else {
 			fprintf(stderr, "Port %d is now not stopped\n", pi);
 			continue;
 		}
@@ -2766,8 +2766,9 @@ start_port(portid_t pid)
 						     nb_txq + nb_hairpinq,
 						     &(port->dev_conf));
 			if (diag != 0) {
-				if (rte_atomic16_cmpset(&(port->port_status),
-				RTE_PORT_HANDLING, RTE_PORT_STOPPED) == 0)
+				if (port->port_status == RTE_PORT_HANDLING)
+					port->port_status = RTE_PORT_STOPPED;
+				else
 					fprintf(stderr,
 						"Port %d can not be set back to stopped\n",
 						pi);
@@ -2828,9 +2829,9 @@ start_port(portid_t pid)
 					continue;
 
 				/* Fail to setup tx queue, return */
-				if (rte_atomic16_cmpset(&(port->port_status),
-							RTE_PORT_HANDLING,
-							RTE_PORT_STOPPED) == 0)
+				if (port->port_status == RTE_PORT_HANDLING)
+					port->port_status = RTE_PORT_STOPPED;
+				else
 					fprintf(stderr,
 						"Port %d can not be set back to stopped\n",
 						pi);
@@ -2880,9 +2881,9 @@ start_port(portid_t pid)
 					continue;
 
 				/* Fail to setup rx queue, return */
-				if (rte_atomic16_cmpset(&(port->port_status),
-							RTE_PORT_HANDLING,
-							RTE_PORT_STOPPED) == 0)
+				if (port->port_status == RTE_PORT_HANDLING)
+					port->port_status = RTE_PORT_STOPPED;
+				else
 					fprintf(stderr,
 						"Port %d can not be set back to stopped\n",
 						pi);
@@ -2917,16 +2918,18 @@ start_port(portid_t pid)
 				pi, rte_strerror(-diag));
 
 			/* Fail to setup rx queue, return */
-			if (rte_atomic16_cmpset(&(port->port_status),
-				RTE_PORT_HANDLING, RTE_PORT_STOPPED) == 0)
+			if (port->port_status == RTE_PORT_HANDLING)
+				port->port_status = RTE_PORT_STOPPED;
+			else
 				fprintf(stderr,
 					"Port %d can not be set back to stopped\n",
 					pi);
 			continue;
 		}
 
-		if (rte_atomic16_cmpset(&(port->port_status),
-			RTE_PORT_HANDLING, RTE_PORT_STARTED) == 0)
+		if (port->port_status == RTE_PORT_HANDLING)
+			port->port_status = RTE_PORT_STARTED;
+		else
 			fprintf(stderr, "Port %d can not be set into started\n",
 				pi);
 
@@ -3028,8 +3031,9 @@ stop_port(portid_t pid)
 		}
 
 		port = &ports[pi];
-		if (rte_atomic16_cmpset(&(port->port_status), RTE_PORT_STARTED,
-						RTE_PORT_HANDLING) == 0)
+		if (port->port_status == RTE_PORT_STARTED)
+			port->port_status = RTE_PORT_HANDLING;
+		else
 			continue;
 
 		if (hairpin_mode & 0xf) {
@@ -3055,8 +3059,9 @@ stop_port(portid_t pid)
 			RTE_LOG(ERR, EAL, "rte_eth_dev_stop failed for port %u\n",
 				pi);
 
-		if (rte_atomic16_cmpset(&(port->port_status),
-			RTE_PORT_HANDLING, RTE_PORT_STOPPED) == 0)
+		if (port->port_status == RTE_PORT_HANDLING)
+			port->port_status = RTE_PORT_STOPPED;
+		else
 			fprintf(stderr, "Port %d can not be set into stopped\n",
 				pi);
 		need_check_link_status = 1;
@@ -3119,8 +3124,7 @@ close_port(portid_t pid)
 		}
 
 		port = &ports[pi];
-		if (rte_atomic16_cmpset(&(port->port_status),
-			RTE_PORT_CLOSED, RTE_PORT_CLOSED) == 1) {
+		if (port->port_status == RTE_PORT_CLOSED) {
 			fprintf(stderr, "Port %d is already closed\n", pi);
 			continue;
 		}
