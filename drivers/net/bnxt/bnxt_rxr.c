@@ -986,6 +986,7 @@ reuse_rx_mbuf:
 		goto rx;
 	}
 	rxr->rx_raw_prod = raw_prod;
+rx:
 	rxr->rx_next_cons = RING_IDX(rxr->rx_ring_struct, RING_NEXT(cons));
 
 	if (BNXT_TRUFLOW_EN(bp) && (BNXT_VF_IS_TRUSTED(bp) || BNXT_PF(bp)) &&
@@ -1004,7 +1005,6 @@ reuse_rx_mbuf:
 	 * All MBUFs are allocated with the same size under DPDK,
 	 * no optimization for rx_copy_thresh
 	 */
-rx:
 	*rx_pkt = mbuf;
 
 next_rx:
