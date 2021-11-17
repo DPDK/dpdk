@@ -187,7 +187,7 @@ order_test_setup(struct evt_test *test, struct evt_options *opt)
 		evt_err("failed to allocate t->expected_flow_seq memory");
 		goto exp_nomem;
 	}
-	rte_atomic64_set(&t->outstand_pkts, opt->nb_pkts);
+	__atomic_store_n(&t->outstand_pkts, opt->nb_pkts, __ATOMIC_RELAXED);
 	t->err = false;
 	t->nb_pkts = opt->nb_pkts;
 	t->nb_flows = opt->nb_flows;
@@ -294,7 +294,7 @@ order_launch_lcores(struct evt_test *test, struct evt_options *opt,
 
 	while (t->err == false) {
 		uint64_t new_cycles = rte_get_timer_cycles();
-		int64_t remaining = rte_atomic64_read(&t->outstand_pkts);
+		int64_t remaining = __atomic_load_n(&t->outstand_pkts, __ATOMIC_RELAXED);
 
 		if (remaining <= 0) {
 			t->result = EVT_TEST_SUCCESS;
