@@ -1854,6 +1854,51 @@ fail1:
 	return (rc);
 }
 
+static __checkReturn	efx_rc_t
+efx_mcdi_get_nic_addr_caps(
+	__in		efx_nic_t *enp)
+{
+	efx_nic_cfg_t *encp = &(enp->en_nic_cfg);
+	uint32_t mapping_type;
+	efx_rc_t rc;
+
+	rc = efx_mcdi_get_nic_addr_info(enp, &mapping_type);
+	if (rc != 0) {
+		if (rc == ENOTSUP) {
+			encp->enc_dma_mapping = EFX_NIC_DMA_MAPPING_FLAT;
+			goto out;
+		}
+		goto fail1;
+	}
+
+	switch (mapping_type) {
+	case MC_CMD_GET_DESC_ADDR_INFO_OUT_MAPPING_FLAT:
+		encp->enc_dma_mapping = EFX_NIC_DMA_MAPPING_FLAT;
+		break;
+	case MC_CMD_GET_DESC_ADDR_INFO_OUT_MAPPING_REGIONED:
+		encp->enc_dma_mapping = EFX_NIC_DMA_MAPPING_REGIONED;
+		rc = efx_mcdi_get_nic_addr_regions(enp,
+		    &enp->en_dma.end_u.endu_region_info);
+		if (rc != 0)
+			goto fail2;
+		break;
+	default:
+		goto fail3;
+	}
+
+out:
+	return (0);
+
+fail3:
+	EFSYS_PROBE(fail3);
+fail2:
+	EFSYS_PROBE(fail2);
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+
+	return (rc);
+}
+
 	__checkReturn	efx_rc_t
 efx_mcdi_nic_board_cfg(
 	__in		efx_nic_t *enp)
@@ -1994,8 +2039,14 @@ efx_mcdi_nic_board_cfg(
 	encp->enc_intr_vec_base = base;
 	encp->enc_intr_limit = nvec;
 
+	rc = efx_mcdi_get_nic_addr_caps(enp);
+	if (rc != 0)
+		goto fail12;
+
 	return (0);
 
+fail12:
+	EFSYS_PROBE(fail12);
 fail11:
 	EFSYS_PROBE(fail11);
 fail10:

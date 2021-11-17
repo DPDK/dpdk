@@ -1444,6 +1444,14 @@ typedef enum efx_vi_window_shift_e {
 	EFX_VI_WINDOW_SHIFT_64K = 16,
 } efx_vi_window_shift_t;
 
+typedef enum efx_nic_dma_mapping_e {
+	EFX_NIC_DMA_MAPPING_UNKNOWN = 0,
+	EFX_NIC_DMA_MAPPING_FLAT,
+	EFX_NIC_DMA_MAPPING_REGIONED,
+
+	EFX_NIC_DMA_MAPPING_NTYPES
+} efx_nic_dma_mapping_t;
+
 typedef struct efx_nic_cfg_s {
 	uint32_t		enc_board_type;
 	uint32_t		enc_phy_type;
@@ -1633,6 +1641,8 @@ typedef struct efx_nic_cfg_s {
 	uint32_t		enc_filter_action_mark_max;
 	/* Port assigned to this PCI function */
 	uint32_t		enc_assigned_port;
+	/* NIC DMA mapping type */
+	efx_nic_dma_mapping_t	enc_dma_mapping;
 } efx_nic_cfg_t;
 
 #define	EFX_PCI_VF_INVALID 0xffff
@@ -4896,6 +4906,42 @@ efx_virtio_verify_features(
 	__in		uint64_t features);
 
 #endif /* EFSYS_OPT_VIRTIO */
+
+LIBEFX_API
+extern	 __checkReturn	efx_rc_t
+efx_nic_dma_config_add(
+	__in		efx_nic_t *enp,
+	__in		efsys_dma_addr_t trgt_addr,
+	__in		size_t len,
+	__out_opt	efsys_dma_addr_t *nic_basep,
+	__out_opt	efsys_dma_addr_t *trgt_basep,
+	__out_opt	size_t *map_lenp);
+
+LIBEFX_API
+extern	 __checkReturn	efx_rc_t
+efx_nic_dma_reconfigure(
+	__in		efx_nic_t *enp);
+
+typedef enum efx_nic_dma_addr_type_e {
+	EFX_NIC_DMA_ADDR_MCDI_BUF,
+	EFX_NIC_DMA_ADDR_MAC_STATS_BUF,
+	EFX_NIC_DMA_ADDR_EVENT_RING,
+	EFX_NIC_DMA_ADDR_RX_RING,
+	EFX_NIC_DMA_ADDR_TX_RING,
+	EFX_NIC_DMA_ADDR_RX_BUF,
+	EFX_NIC_DMA_ADDR_TX_BUF,
+
+	EFX_NIC_DMA_ADDR_NTYPES
+} efx_nic_dma_addr_type_t;
+
+LIBEFX_API
+extern	__checkReturn	efx_rc_t
+efx_nic_dma_map(
+	__in		efx_nic_t *enp,
+	__in		efx_nic_dma_addr_type_t addr_type,
+	__in		efsys_dma_addr_t tgt_addr,
+	__in		size_t len,
+	__out		efsys_dma_addr_t *nic_addrp);
 
 #ifdef	__cplusplus
 }

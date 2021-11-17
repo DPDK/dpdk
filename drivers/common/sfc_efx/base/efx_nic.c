@@ -1300,3 +1300,463 @@ fail1:
 
 	return (rc);
 }
+
+/* Required en_eslp lock held */
+static __checkReturn	efx_rc_t
+efx_nic_dma_config_regioned_find_region(
+	__in		const efx_nic_t *enp,
+	__in		efsys_dma_addr_t trgt_addr,
+	__in		size_t len,
+	__out		const efx_nic_dma_region_t **regionp)
+{
+	const efx_nic_dma_region_info_t *region_info;
+	const efx_nic_dma_region_t *region;
+	unsigned int i;
+	efx_rc_t rc;
+
+	if (efx_nic_cfg_get(enp)->enc_dma_mapping !=
+	    EFX_NIC_DMA_MAPPING_REGIONED) {
+		rc = EINVAL;
+		goto fail1;
+	}
+
+	region_info = &enp->en_dma.end_u.endu_region_info;
+
+	for (i = 0; i < region_info->endri_count; ++i) {
+		efsys_dma_addr_t offset;
+
+		region = &region_info->endri_regions[i];
+		if (region->endr_inuse == B_FALSE)
+			continue;
+
+		if (trgt_addr < region->endr_trgt_base)
+			continue;
+
+		EFSYS_ASSERT3U(region->endr_window_log2, <, 64);
+		offset = trgt_addr - region->endr_trgt_base;
+		if (offset + len > (1ULL << region->endr_window_log2))
+			continue;
+
+		*regionp = region;
+		return (0);
+	}
+
+	rc = ENOENT;
+	goto fail2;
+
+fail2:
+	EFSYS_PROBE(fail2);
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+
+	return (rc);
+}
+
+static __checkReturn	efx_rc_t
+efx_nic_dma_config_regioned_add_region(
+	__in		efx_nic_t *enp,
+	__in		efsys_dma_addr_t trgt_addr,
+	__in		size_t len,
+	__out		const efx_nic_dma_region_t **regionp)
+{
+	efx_nic_dma_region_info_t *region_info;
+	efx_nic_dma_region_t *region;
+	unsigned int i;
+	efx_rc_t rc;
+
+	if (efx_nic_cfg_get(enp)->enc_dma_mapping !=
+	    EFX_NIC_DMA_MAPPING_REGIONED) {
+		rc = EINVAL;
+		goto fail1;
+	}
+
+	region_info = &enp->en_dma.end_u.endu_region_info;
+
+	for (i = 0; i < region_info->endri_count; ++i) {
+		efsys_dma_addr_t trgt_base;
+		efsys_dma_addr_t offset;
+
+		region = &region_info->endri_regions[i];
+		if (region->endr_inuse == B_TRUE)
+			continue;
+
+		/*
+		 * Align target address base in accordance with
+		 * the region requirements.
+		 */
+		EFSYS_ASSERT3U(region->endr_align_log2, <, 64);
+		trgt_base = EFX_P2ALIGN(efsys_dma_addr_t, trgt_addr,
+		    (1ULL << region->endr_align_log2));
+
+		offset = trgt_addr - trgt_base;
+
+		/* Check if region window is sufficient */
+		EFSYS_ASSERT3U(region->endr_window_log2, <, 64);
+		if (offset + len > (1ULL << region->endr_window_log2))
+			continue;
+
+		region->endr_trgt_base = trgt_base;
+		region->endr_inuse = B_TRUE;
+
+		*regionp = region;
+		return (0);
+	}
+
+	/* No suitable free region found */
+	rc = ENOMEM;
+	goto fail2;
+
+fail2:
+	EFSYS_PROBE(fail2);
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+
+	return (rc);
+}
+
+static	__checkReturn	efx_rc_t
+efx_nic_dma_config_regioned_add(
+	__in		efx_nic_t *enp,
+	__in		efsys_dma_addr_t trgt_addr,
+	__in		size_t len,
+	__out_opt	efsys_dma_addr_t *nic_basep,
+	__out_opt	efsys_dma_addr_t *trgt_basep,
+	__out_opt	size_t *map_lenp)
+{
+	const efx_nic_dma_region_t *region;
+	efsys_lock_state_t state;
+	efx_rc_t rc;
+
+	EFSYS_LOCK(enp->en_eslp, state);
+
+	rc = efx_nic_dma_config_regioned_find_region(enp, trgt_addr, len,
+	    &region);
+	switch (rc) {
+	case 0:
+		/* Already covered by existing mapping */
+		break;
+	case ENOENT:
+		/* No existing mapping found */
+		rc = efx_nic_dma_config_regioned_add_region(enp,
+		    trgt_addr, len, &region);
+		if (rc != 0)
+			goto fail1;
+		break;
+	default:
+		goto fail2;
+	}
+
+	if (nic_basep != NULL)
+		*nic_basep = region->endr_nic_base;
+	if (trgt_basep != NULL)
+		*trgt_basep = region->endr_trgt_base;
+	if (map_lenp != NULL)
+		*map_lenp = 1ULL << region->endr_window_log2;
+
+	EFSYS_UNLOCK(enp->en_eslp, state);
+
+	return (0);
+
+fail2:
+	EFSYS_PROBE(fail2);
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+
+	EFSYS_UNLOCK(enp->en_eslp, state);
+
+	return (rc);
+}
+
+	 __checkReturn	efx_rc_t
+efx_nic_dma_config_add(
+	__in		efx_nic_t *enp,
+	__in		efsys_dma_addr_t trgt_addr,
+	__in		size_t len,
+	__out_opt	efsys_dma_addr_t *nic_basep,
+	__out_opt	efsys_dma_addr_t *trgt_basep,
+	__out_opt	size_t *map_lenp)
+{
+	const efx_nic_cfg_t *encp = efx_nic_cfg_get(enp);
+	efx_rc_t rc;
+
+	switch (encp->enc_dma_mapping) {
+	case EFX_NIC_DMA_MAPPING_FLAT:
+		/* No mapping is required */
+		if (nic_basep != NULL)
+			*nic_basep = 0;
+		if (trgt_basep != NULL)
+			*trgt_basep = 0;
+		if (map_lenp != NULL)
+			*map_lenp = 0;
+		break;
+	case EFX_NIC_DMA_MAPPING_REGIONED:
+		rc = efx_nic_dma_config_regioned_add(enp, trgt_addr, len,
+		    nic_basep, trgt_basep, map_lenp);
+		if (rc != 0)
+			goto fail1;
+		break;
+	case EFX_NIC_DMA_MAPPING_UNKNOWN:
+	default:
+		rc = ENOTSUP;
+		goto fail2;
+	}
+
+	return (0);
+
+fail2:
+	EFSYS_PROBE(fail2);
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+
+	return (rc);
+}
+
+static	 __checkReturn	efx_rc_t
+efx_nic_dma_reconfigure_regioned(
+	__in		efx_nic_t *enp)
+{
+	efx_rc_t rc;
+
+	rc = efx_mcdi_set_nic_addr_regions(enp,
+	    &enp->en_dma.end_u.endu_region_info);
+	if (rc != 0)
+		goto fail1;
+
+	return (0);
+
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+
+	return (rc);
+
+}
+
+	 __checkReturn	efx_rc_t
+efx_nic_dma_reconfigure(
+	__in		efx_nic_t *enp)
+{
+	const efx_nic_cfg_t *encp = efx_nic_cfg_get(enp);
+	efx_rc_t rc;
+
+	switch (encp->enc_dma_mapping) {
+	case EFX_NIC_DMA_MAPPING_UNKNOWN:
+	case EFX_NIC_DMA_MAPPING_FLAT:
+		/* Nothing to do */
+		break;
+	case EFX_NIC_DMA_MAPPING_REGIONED:
+		rc = efx_nic_dma_reconfigure_regioned(enp);
+		if (rc != 0)
+			goto fail1;
+		break;
+	default:
+		rc = ENOTSUP;
+		goto fail2;
+	}
+
+	return (0);
+
+fail2:
+	EFSYS_PROBE(fail2);
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+
+	return (rc);
+}
+
+static __checkReturn	efx_rc_t
+efx_nic_dma_unknown_map(
+	__in		efx_nic_t *enp,
+	__in		efx_nic_dma_addr_type_t addr_type,
+	__in		efsys_dma_addr_t trgt_addr,
+	__in		size_t len,
+	__out		efsys_dma_addr_t *nic_addrp)
+{
+	efx_rc_t rc;
+
+	/* This function may be called before the NIC has been probed. */
+	if (enp->en_mod_flags & EFX_MOD_PROBE) {
+		EFSYS_ASSERT3U(efx_nic_cfg_get(enp)->enc_dma_mapping, ==,
+		    EFX_NIC_DMA_MAPPING_UNKNOWN);
+	}
+
+	switch (addr_type) {
+	case EFX_NIC_DMA_ADDR_MCDI_BUF:
+		/*
+		 * MC cares about MCDI buffer mapping itself since it cannot
+		 * be really mapped using MCDI because mapped MCDI
+		 * buffer is required to execute MCDI commands.
+		 */
+		*nic_addrp = trgt_addr;
+		break;
+
+	case EFX_NIC_DMA_ADDR_MAC_STATS_BUF:
+	case EFX_NIC_DMA_ADDR_EVENT_RING:
+	case EFX_NIC_DMA_ADDR_RX_RING:
+	case EFX_NIC_DMA_ADDR_TX_RING:
+	case EFX_NIC_DMA_ADDR_RX_BUF:
+	case EFX_NIC_DMA_ADDR_TX_BUF:
+		/* Mapping type must be discovered first */
+		rc = EFAULT;
+		goto fail1;
+
+	default:
+		rc = EINVAL;
+		goto fail2;
+	}
+
+	return (0);
+
+fail2:
+	EFSYS_PROBE(fail2);
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+
+	return (rc);
+}
+
+static __checkReturn	efx_rc_t
+efx_nic_dma_flat_map(
+	__in		efx_nic_t *enp,
+	__in		efx_nic_dma_addr_type_t addr_type,
+	__in		efsys_dma_addr_t trgt_addr,
+	__in		size_t len,
+	__out		efsys_dma_addr_t *nic_addrp)
+{
+	_NOTE(ARGUNUSED(addr_type, len))
+
+	EFSYS_ASSERT3U(efx_nic_cfg_get(enp)->enc_dma_mapping, ==,
+	    EFX_NIC_DMA_MAPPING_FLAT);
+
+	/* No re-mapping is required */
+	*nic_addrp = trgt_addr;
+
+	return (0);
+}
+
+static __checkReturn	efx_rc_t
+efx_nic_dma_regioned_map(
+	__in		efx_nic_t *enp,
+	__in		efx_nic_dma_addr_type_t addr_type,
+	__in		efsys_dma_addr_t trgt_addr,
+	__in		size_t len,
+	__out		efsys_dma_addr_t *nic_addrp)
+{
+	const efx_nic_dma_region_t *region;
+	efsys_lock_state_t state;
+	efx_rc_t rc;
+
+	if (efx_nic_cfg_get(enp)->enc_dma_mapping !=
+	    EFX_NIC_DMA_MAPPING_REGIONED) {
+		rc = EINVAL;
+		goto fail1;
+	}
+
+	switch (addr_type) {
+	case EFX_NIC_DMA_ADDR_MCDI_BUF:
+	case EFX_NIC_DMA_ADDR_MAC_STATS_BUF:
+		/*
+		 * MC cares about MCDI buffer mapping itself since it cannot
+		 * be really mapped using MCDI because mapped MCDI buffer is
+		 * required to execute MCDI commands. It is not a problem
+		 * for MAC stats buffer, but since MC can care about mapping
+		 * itself, it may be done for MAC stats buffer as well.
+		 */
+		*nic_addrp = trgt_addr;
+		goto out;
+
+	case EFX_NIC_DMA_ADDR_EVENT_RING:
+	case EFX_NIC_DMA_ADDR_RX_RING:
+	case EFX_NIC_DMA_ADDR_TX_RING:
+	case EFX_NIC_DMA_ADDR_RX_BUF:
+	case EFX_NIC_DMA_ADDR_TX_BUF:
+		/* Rings and buffer addresses should be mapped */
+		break;
+
+	default:
+		rc = EINVAL;
+		goto fail2;
+	}
+
+	EFSYS_LOCK(enp->en_eslp, state);
+
+	rc = efx_nic_dma_config_regioned_find_region(enp, trgt_addr, len,
+	    &region);
+	if (rc != 0)
+		goto fail3;
+
+	*nic_addrp = region->endr_nic_base +
+		(trgt_addr - region->endr_trgt_base);
+
+	EFSYS_UNLOCK(enp->en_eslp, state);
+
+out:
+	return (0);
+
+fail3:
+	EFSYS_PROBE(fail3);
+	EFSYS_UNLOCK(enp->en_eslp, state);
+fail2:
+	EFSYS_PROBE(fail2);
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+
+	return (rc);
+}
+
+	__checkReturn	efx_rc_t
+efx_nic_dma_map(
+	__in		efx_nic_t *enp,
+	__in		efx_nic_dma_addr_type_t addr_type,
+	__in		efsys_dma_addr_t trgt_addr,
+	__in		size_t len,
+	__out		efsys_dma_addr_t *nic_addrp)
+{
+	efx_nic_dma_mapping_t mapping;
+	efx_rc_t rc;
+
+	/*
+	 * We cannot check configuration of a NIC that hasn't been probed.
+	 * Use EFX_NIC_DMA_MAPPING_UNKNOWN by default.
+	 */
+	if ((enp->en_mod_flags & EFX_MOD_PROBE) == 0)
+		mapping = EFX_NIC_DMA_MAPPING_UNKNOWN;
+	else
+		mapping = efx_nic_cfg_get(enp)->enc_dma_mapping;
+
+	switch (mapping) {
+	case EFX_NIC_DMA_MAPPING_UNKNOWN:
+		rc = efx_nic_dma_unknown_map(enp, addr_type, trgt_addr,
+		    len, nic_addrp);
+		if (rc != 0)
+			goto fail1;
+		break;
+	case EFX_NIC_DMA_MAPPING_FLAT:
+		rc = efx_nic_dma_flat_map(enp, addr_type, trgt_addr,
+		    len, nic_addrp);
+		if (rc != 0)
+			goto fail2;
+		break;
+	case EFX_NIC_DMA_MAPPING_REGIONED:
+		rc = efx_nic_dma_regioned_map(enp, addr_type, trgt_addr,
+		    len, nic_addrp);
+		if (rc != 0)
+			goto fail3;
+		break;
+	default:
+		rc = ENOTSUP;
+		goto fail4;
+	}
+
+	return (0);
+
+fail4:
+	EFSYS_PROBE(fail4);
+fail3:
+	EFSYS_PROBE(fail3);
+fail2:
+	EFSYS_PROBE(fail2);
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+
+	return (rc);
+}

@@ -428,6 +428,25 @@ typedef struct efx_nic_ops_s {
 #define	EFX_RXQ_LIMIT_TARGET 512
 #endif
 
+typedef struct efx_nic_dma_region_s {
+	efsys_dma_addr_t	endr_nic_base;
+	efsys_dma_addr_t	endr_trgt_base;
+	unsigned int		endr_window_log2;
+	unsigned int		endr_align_log2;
+	boolean_t		endr_inuse;
+} efx_nic_dma_region_t;
+
+typedef struct efx_nic_dma_region_info_s {
+	unsigned int		endri_count;
+	efx_nic_dma_region_t	*endri_regions;
+} efx_nic_dma_region_info_t;
+
+typedef struct efx_nic_dma_s {
+	union {
+		/* No configuration in the case flat mapping type */
+		efx_nic_dma_region_info_t	endu_region_info;
+	} end_u;
+} efx_nic_dma_t;
 
 #if EFSYS_OPT_FILTER
 
@@ -859,6 +878,7 @@ struct efx_nic_s {
 	const efx_rx_ops_t	*en_erxop;
 	efx_fw_variant_t	efv;
 	char			en_drv_version[EFX_DRV_VER_MAX];
+	efx_nic_dma_t		en_dma;
 #if EFSYS_OPT_FILTER
 	efx_filter_t		en_filter;
 	const efx_filter_ops_t	*en_efop;

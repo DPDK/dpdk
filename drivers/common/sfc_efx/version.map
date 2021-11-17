@@ -160,6 +160,9 @@ INTERNAL {
 	efx_nic_check_pcie_link_speed;
 	efx_nic_create;
 	efx_nic_destroy;
+	efx_nic_dma_config_add;
+	efx_nic_dma_map;
+	efx_nic_dma_reconfigure;
 	efx_nic_fini;
 	efx_nic_get_bar_region;
 	efx_nic_get_board_info;
