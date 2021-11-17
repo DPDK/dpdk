@@ -1132,9 +1132,17 @@ cperf_options_check(struct cperf_options *options)
 	 * If segment size is not set, assume only one segment,
 	 * big enough to contain the largest buffer and the digest
 	 */
-	if (options->segment_sz == 0)
+	if (options->segment_sz == 0) {
 		options->segment_sz = options->max_buffer_size +
 				options->digest_sz;
+		/* In IPsec operation, packet length will be increased
+		 * by some bytes depend upon the algorithm, so increasing
+		 * the segment size by headroom to cover most of
+		 * the scenarios.
+		 */
+		if (options->op_type == CPERF_IPSEC)
+			options->segment_sz += RTE_PKTMBUF_HEADROOM;
+	}
 
 	if (options->segment_sz < options->digest_sz) {
 		RTE_LOG(ERR, USER1,
