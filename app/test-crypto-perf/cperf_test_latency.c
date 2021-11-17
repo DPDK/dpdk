@@ -126,7 +126,7 @@ cperf_latency_test_runner(void *arg)
 	uint8_t burst_size_idx = 0;
 	uint32_t imix_idx = 0;
 
-	static rte_atomic16_t display_once = RTE_ATOMIC16_INIT(0);
+	static uint16_t display_once;
 
 	if (ctx == NULL)
 		return 0;
@@ -307,8 +307,10 @@ cperf_latency_test_runner(void *arg)
 		time_max = tunit*(double)(tsc_max) / tsc_hz;
 		time_min = tunit*(double)(tsc_min) / tsc_hz;
 
+		uint16_t exp = 0;
 		if (ctx->options->csv) {
-			if (rte_atomic16_test_and_set(&display_once))
+			if (__atomic_compare_exchange_n(&display_once, &exp, 1, 0,
+					__ATOMIC_RELAXED, __ATOMIC_RELAXED))
 				printf("\n# lcore, Buffer Size, Burst Size, Pakt Seq #, "
 						"cycles, time (us)");
 
