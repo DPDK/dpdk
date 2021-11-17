@@ -2633,6 +2633,8 @@ bnxt_free_all_hwrm_stat_ctxs(struct bnxt *bp)
 		cpr = bp->rx_queues[i]->cp_ring;
 		if (BNXT_HAS_RING_GRPS(bp))
 			bp->grp_info[i].fw_stats_ctx = -1;
+		if (cpr == NULL)
+			continue;
 		rc = bnxt_hwrm_stat_ctx_free(bp, cpr);
 		if (rc)
 			return rc;
@@ -2640,6 +2642,8 @@ bnxt_free_all_hwrm_stat_ctxs(struct bnxt *bp)
 
 	for (i = 0; i < bp->tx_cp_nr_rings; i++) {
 		cpr = bp->tx_queues[i]->cp_ring;
+		if (cpr == NULL)
+			continue;
 		rc = bnxt_hwrm_stat_ctx_free(bp, cpr);
 		if (rc)
 			return rc;
@@ -2697,16 +2701,17 @@ void bnxt_free_cp_ring(struct bnxt *bp, struct bnxt_cp_ring_info *cpr)
 void bnxt_free_hwrm_rx_ring(struct bnxt *bp, int queue_index)
 {
 	struct bnxt_rx_queue *rxq = bp->rx_queues[queue_index];
-	struct bnxt_rx_ring_info *rxr = rxq->rx_ring;
-	struct bnxt_ring *ring = rxr->rx_ring_struct;
-	struct bnxt_cp_ring_info *cpr = rxq->cp_ring;
+	struct bnxt_rx_ring_info *rxr = rxq ? rxq->rx_ring : NULL;
+	struct bnxt_ring *ring = rxr ? rxr->rx_ring_struct : NULL;
+	struct bnxt_cp_ring_info *cpr = rxq ? rxq->cp_ring : NULL;
 
 	if (BNXT_HAS_RING_GRPS(bp))
 		bnxt_hwrm_ring_grp_free(bp, queue_index);
 
-	bnxt_hwrm_ring_free(bp, ring,
-			    HWRM_RING_FREE_INPUT_RING_TYPE_RX,
-			    cpr->cp_ring_struct->fw_ring_id);
+	if (ring != NULL && cpr != NULL)
+		bnxt_hwrm_ring_free(bp, ring,
+				    HWRM_RING_FREE_INPUT_RING_TYPE_RX,
+				    cpr->cp_ring_struct->fw_ring_id);
 	if (BNXT_HAS_RING_GRPS(bp))
 		bp->grp_info[queue_index].rx_fw_ring_id = INVALID_HW_RING_ID;
 
@@ -2715,22 +2720,26 @@ void bnxt_free_hwrm_rx_ring(struct bnxt *bp, int queue_index)
 	 * but we may have to deal with agg ring struct before the offload
 	 * flags are updated.
 	 */
-	if (!bnxt_need_agg_ring(bp->eth_dev) || rxr->ag_ring_struct == NULL)
+	if (!bnxt_need_agg_ring(bp->eth_dev) ||
+	    (rxr && rxr->ag_ring_struct == NULL))
 		goto no_agg;
 
-	ring = rxr->ag_ring_struct;
-	bnxt_hwrm_ring_free(bp, ring,
-			    BNXT_CHIP_P5(bp) ?
-			    HWRM_RING_FREE_INPUT_RING_TYPE_RX_AGG :
-			    HWRM_RING_FREE_INPUT_RING_TYPE_RX,
-			    cpr->cp_ring_struct->fw_ring_id);
+	ring = rxr ? rxr->ag_ring_struct : NULL;
+	if (ring != NULL && cpr != NULL) {
+		bnxt_hwrm_ring_free(bp, ring,
+				    BNXT_CHIP_P5(bp) ?
+				    HWRM_RING_FREE_INPUT_RING_TYPE_RX_AGG :
+				    HWRM_RING_FREE_INPUT_RING_TYPE_RX,
+				    cpr->cp_ring_struct->fw_ring_id);
+	}
 	if (BNXT_HAS_RING_GRPS(bp))
 		bp->grp_info[queue_index].ag_fw_ring_id = INVALID_HW_RING_ID;
 
 no_agg:
-	bnxt_hwrm_stat_ctx_free(bp, cpr);
-
-	bnxt_free_cp_ring(bp, cpr);
+	if (cpr != NULL) {
+		bnxt_hwrm_stat_ctx_free(bp, cpr);
+		bnxt_free_cp_ring(bp, cpr);
+	}
 
 	if (BNXT_HAS_RING_GRPS(bp))
 		bp->grp_info[queue_index].cp_fw_ring_id = INVALID_HW_RING_ID;

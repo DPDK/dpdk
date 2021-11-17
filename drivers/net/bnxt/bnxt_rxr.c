@@ -1332,9 +1332,9 @@ int bnxt_init_one_rx_ring(struct bnxt_rx_queue *rxq)
 		if (unlikely(!rxr->rx_buf_ring[i])) {
 			if (bnxt_alloc_rx_data(rxq, rxr, raw_prod) != 0) {
 				PMD_DRV_LOG(WARNING,
-					    "init'ed rx ring %d with %d/%d mbufs only\n",
+					    "RxQ %d allocated %d of %d mbufs\n",
 					    rxq->queue_id, i, ring->ring_size);
-				break;
+				return -ENOMEM;
 			}
 		}
 		rxr->rx_raw_prod = raw_prod;
@@ -1362,9 +1362,9 @@ int bnxt_init_one_rx_ring(struct bnxt_rx_queue *rxq)
 		if (unlikely(!rxr->ag_buf_ring[i])) {
 			if (bnxt_alloc_ag_data(rxq, rxr, raw_prod) != 0) {
 				PMD_DRV_LOG(WARNING,
-					    "init'ed AG ring %d with %d/%d mbufs only\n",
+					    "RxQ %d allocated %d of %d mbufs\n",
 					    rxq->queue_id, i, ring->ring_size);
-				break;
+				return -ENOMEM;
 			}
 		}
 		rxr->ag_raw_prod = raw_prod;
