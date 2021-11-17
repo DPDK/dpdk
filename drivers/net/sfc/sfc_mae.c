@@ -763,13 +763,15 @@ sfc_mae_action_set_attach(struct sfc_adapter *sa,
 
 	SFC_ASSERT(sfc_adapter_is_locked(sa));
 
+	/*
+	 * Shared counters are not supported, hence, action
+	 * sets with counters are not attachable.
+	 */
+	if (n_count != 0)
+		return NULL;
+
 	TAILQ_FOREACH(action_set, &mae->action_sets, entries) {
-		/*
-		 * Shared counters are not supported, hence action sets with
-		 * COUNT are not attachable.
-		 */
 		if (action_set->encap_header == encap_header &&
-		    n_count == 0 &&
 		    efx_mae_action_set_specs_equal(action_set->spec, spec)) {
 			sfc_dbg(sa, "attaching to action_set=%p", action_set);
 			++(action_set->refcnt);
