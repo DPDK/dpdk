@@ -29,6 +29,7 @@ struct sfc_mae_fw_rsrc {
 	union {
 		efx_mae_aset_id_t	aset_id;
 		efx_mae_rule_id_t	rule_id;
+		efx_mae_mac_id_t	mac_id;
 		efx_mae_eh_id_t		eh_id;
 	};
 };
@@ -43,6 +44,16 @@ struct sfc_mae_outer_rule {
 };
 
 TAILQ_HEAD(sfc_mae_outer_rules, sfc_mae_outer_rule);
+
+/** MAC address registry entry */
+struct sfc_mae_mac_addr {
+	TAILQ_ENTRY(sfc_mae_mac_addr)	entries;
+	unsigned int			refcnt;
+	uint8_t				addr_bytes[EFX_MAC_ADDR_LEN];
+	struct sfc_mae_fw_rsrc		fw_rsrc;
+};
+
+TAILQ_HEAD(sfc_mae_mac_addrs, sfc_mae_mac_addr);
 
 /** Encap. header registry entry */
 struct sfc_mae_encap_header {
@@ -79,6 +90,8 @@ struct sfc_mae_action_set {
 	uint32_t			n_counters;
 	efx_mae_actions_t		*spec;
 	struct sfc_mae_encap_header	*encap_header;
+	struct sfc_mae_mac_addr		*dst_mac_addr;
+	struct sfc_mae_mac_addr		*src_mac_addr;
 	struct sfc_mae_fw_rsrc		fw_rsrc;
 };
 
@@ -211,6 +224,8 @@ struct sfc_mae {
 	struct sfc_mae_outer_rules	outer_rules;
 	/** Encap. header registry */
 	struct sfc_mae_encap_headers	encap_headers;
+	/** MAC address registry */
+	struct sfc_mae_mac_addrs	mac_addrs;
 	/** Action set registry */
 	struct sfc_mae_action_sets	action_sets;
 	/** Encap. header bounce buffer */

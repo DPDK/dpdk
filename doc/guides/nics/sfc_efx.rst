@@ -234,6 +234,10 @@ Supported actions (***transfer*** rules):
 
 - OF_VLAN_SET_PCP
 
+- SET_MAC_DST
+
+- SET_MAC_SRC
+
 - OF_DEC_NW_TTL
 
 - DEC_TTL

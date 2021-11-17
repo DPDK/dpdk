@@ -290,6 +290,7 @@ sfc_mae_attach(struct sfc_adapter *sa)
 	}
 
 	TAILQ_INIT(&mae->outer_rules);
+	TAILQ_INIT(&mae->mac_addrs);
 	TAILQ_INIT(&mae->encap_headers);
 	TAILQ_INIT(&mae->action_sets);
 
@@ -501,6 +502,189 @@ sfc_mae_outer_rule_disable(struct sfc_adapter *sa,
 				rule, fw_rsrc->rule_id.id, strerror(rc));
 		}
 		fw_rsrc->rule_id.id = EFX_MAE_RSRC_ID_INVALID;
+	}
+
+	--(fw_rsrc->refcnt);
+}
+
+static struct sfc_mae_mac_addr *
+sfc_mae_mac_addr_attach(struct sfc_adapter *sa,
+			const uint8_t addr_bytes[EFX_MAC_ADDR_LEN])
+{
+	struct sfc_mae_mac_addr *mac_addr;
+	struct sfc_mae *mae = &sa->mae;
+
+	SFC_ASSERT(sfc_adapter_is_locked(sa));
+
+	TAILQ_FOREACH(mac_addr, &mae->mac_addrs, entries) {
+		if (memcmp(mac_addr->addr_bytes, addr_bytes,
+			   EFX_MAC_ADDR_LEN) == 0) {
+			sfc_dbg(sa, "attaching to mac_addr=%p", mac_addr);
+			++(mac_addr->refcnt);
+			return mac_addr;
+		}
+	}
+
+	return NULL;
+}
+
+static int
+sfc_mae_mac_addr_add(struct sfc_adapter *sa,
+		     const uint8_t addr_bytes[EFX_MAC_ADDR_LEN],
+		     struct sfc_mae_mac_addr **mac_addrp)
+{
+	struct sfc_mae_mac_addr *mac_addr;
+	struct sfc_mae *mae = &sa->mae;
+
+	SFC_ASSERT(sfc_adapter_is_locked(sa));
+
+	mac_addr = rte_zmalloc("sfc_mae_mac_addr", sizeof(*mac_addr), 0);
+	if (mac_addr == NULL)
+		return ENOMEM;
+
+	rte_memcpy(mac_addr->addr_bytes, addr_bytes, EFX_MAC_ADDR_LEN);
+
+	mac_addr->refcnt = 1;
+	mac_addr->fw_rsrc.mac_id.id = EFX_MAE_RSRC_ID_INVALID;
+
+	TAILQ_INSERT_TAIL(&mae->mac_addrs, mac_addr, entries);
+
+	*mac_addrp = mac_addr;
+
+	sfc_dbg(sa, "added mac_addr=%p", mac_addr);
+
+	return 0;
+}
+
+static void
+sfc_mae_mac_addr_del(struct sfc_adapter *sa, struct sfc_mae_mac_addr *mac_addr)
+{
+	struct sfc_mae *mae = &sa->mae;
+
+	if (mac_addr == NULL)
+		return;
+
+	SFC_ASSERT(sfc_adapter_is_locked(sa));
+	SFC_ASSERT(mac_addr->refcnt != 0);
+
+	--(mac_addr->refcnt);
+
+	if (mac_addr->refcnt != 0)
+		return;
+
+	if (mac_addr->fw_rsrc.mac_id.id != EFX_MAE_RSRC_ID_INVALID ||
+	    mac_addr->fw_rsrc.refcnt != 0) {
+		sfc_err(sa, "deleting mac_addr=%p abandons its FW resource: MAC_ID=0x%08x, refcnt=%u",
+			mac_addr, mac_addr->fw_rsrc.mac_id.id,
+			mac_addr->fw_rsrc.refcnt);
+	}
+
+	TAILQ_REMOVE(&mae->mac_addrs, mac_addr, entries);
+	rte_free(mac_addr);
+
+	sfc_dbg(sa, "deleted mac_addr=%p", mac_addr);
+}
+
+enum sfc_mae_mac_addr_type {
+	SFC_MAE_MAC_ADDR_DST,
+	SFC_MAE_MAC_ADDR_SRC
+};
+
+static int
+sfc_mae_mac_addr_enable(struct sfc_adapter *sa,
+			struct sfc_mae_mac_addr *mac_addr,
+			enum sfc_mae_mac_addr_type type,
+			efx_mae_actions_t *aset_spec)
+{
+	struct sfc_mae_fw_rsrc *fw_rsrc;
+	int rc = 0;
+
+	if (mac_addr == NULL)
+		return 0;
+
+	SFC_ASSERT(sfc_adapter_is_locked(sa));
+
+	fw_rsrc = &mac_addr->fw_rsrc;
+
+	if (fw_rsrc->refcnt == 0) {
+		SFC_ASSERT(fw_rsrc->mac_id.id == EFX_MAE_RSRC_ID_INVALID);
+
+		rc = efx_mae_mac_addr_alloc(sa->nic, mac_addr->addr_bytes,
+					    &fw_rsrc->mac_id);
+		if (rc != 0) {
+			sfc_err(sa, "failed to enable mac_addr=%p: %s",
+				mac_addr, strerror(rc));
+			return rc;
+		}
+	}
+
+	switch (type) {
+	case SFC_MAE_MAC_ADDR_DST:
+		rc = efx_mae_action_set_fill_in_dst_mac_id(aset_spec,
+							   &fw_rsrc->mac_id);
+		break;
+	case SFC_MAE_MAC_ADDR_SRC:
+		rc = efx_mae_action_set_fill_in_src_mac_id(aset_spec,
+							   &fw_rsrc->mac_id);
+		break;
+	default:
+		rc = EINVAL;
+		break;
+	}
+
+	if (rc != 0) {
+		if (fw_rsrc->refcnt == 0) {
+			(void)efx_mae_mac_addr_free(sa->nic, &fw_rsrc->mac_id);
+			fw_rsrc->mac_id.id = EFX_MAE_RSRC_ID_INVALID;
+		}
+
+		sfc_err(sa, "cannot fill in MAC address entry ID: %s",
+			strerror(rc));
+
+		return rc;
+	}
+
+	if (fw_rsrc->refcnt == 0) {
+		sfc_dbg(sa, "enabled mac_addr=%p: MAC_ID=0x%08x",
+			mac_addr, fw_rsrc->mac_id.id);
+	}
+
+	++(fw_rsrc->refcnt);
+
+	return 0;
+}
+
+static void
+sfc_mae_mac_addr_disable(struct sfc_adapter *sa,
+			 struct sfc_mae_mac_addr *mac_addr)
+{
+	struct sfc_mae_fw_rsrc *fw_rsrc;
+	int rc;
+
+	if (mac_addr == NULL)
+		return;
+
+	SFC_ASSERT(sfc_adapter_is_locked(sa));
+
+	fw_rsrc = &mac_addr->fw_rsrc;
+
+	if (fw_rsrc->mac_id.id == EFX_MAE_RSRC_ID_INVALID ||
+	    fw_rsrc->refcnt == 0) {
+		sfc_err(sa, "failed to disable mac_addr=%p: already disabled; MAC_ID=0x%08x, refcnt=%u",
+			mac_addr, fw_rsrc->mac_id.id, fw_rsrc->refcnt);
+		return;
+	}
+
+	if (fw_rsrc->refcnt == 1) {
+		rc = efx_mae_mac_addr_free(sa->nic, &fw_rsrc->mac_id);
+		if (rc == 0) {
+			sfc_dbg(sa, "disabled mac_addr=%p with MAC_ID=0x%08x",
+				mac_addr, fw_rsrc->mac_id.id);
+		} else {
+			sfc_err(sa, "failed to disable mac_addr=%p with MAC_ID=0x%08x: %s",
+				mac_addr, fw_rsrc->mac_id.id, strerror(rc));
+		}
+		fw_rsrc->mac_id.id = EFX_MAE_RSRC_ID_INVALID;
 	}
 
 	--(fw_rsrc->refcnt);
@@ -757,6 +941,8 @@ struct sfc_mae_aset_ctx {
 	struct sfc_mae_encap_header	*encap_header;
 	struct sfc_flow_tunnel		*counter_ft;
 	unsigned int			n_counters;
+	struct sfc_mae_mac_addr		*dst_mac;
+	struct sfc_mae_mac_addr		*src_mac;
 
 	efx_mae_actions_t		*spec;
 };
@@ -779,6 +965,8 @@ sfc_mae_action_set_attach(struct sfc_adapter *sa,
 
 	TAILQ_FOREACH(action_set, &mae->action_sets, entries) {
 		if (action_set->encap_header == ctx->encap_header &&
+		    action_set->dst_mac_addr == ctx->dst_mac &&
+		    action_set->src_mac_addr == ctx->src_mac &&
 		    efx_mae_action_set_specs_equal(action_set->spec,
 						   ctx->spec)) {
 			sfc_dbg(sa, "attaching to action_set=%p", action_set);
@@ -849,6 +1037,8 @@ sfc_mae_action_set_add(struct sfc_adapter *sa,
 	action_set->refcnt = 1;
 	action_set->spec = ctx->spec;
 	action_set->encap_header = ctx->encap_header;
+	action_set->dst_mac_addr = ctx->dst_mac;
+	action_set->src_mac_addr = ctx->src_mac;
 
 	action_set->fw_rsrc.aset_id.id = EFX_MAE_RSRC_ID_INVALID;
 
@@ -884,6 +1074,8 @@ sfc_mae_action_set_del(struct sfc_adapter *sa,
 
 	efx_mae_action_set_spec_fini(sa->nic, action_set->spec);
 	sfc_mae_encap_header_del(sa, action_set->encap_header);
+	sfc_mae_mac_addr_del(sa, action_set->dst_mac_addr);
+	sfc_mae_mac_addr_del(sa, action_set->src_mac_addr);
 	if (action_set->n_counters > 0) {
 		SFC_ASSERT(action_set->n_counters == 1);
 		SFC_ASSERT(action_set->counters[0].mae_id.id ==
@@ -901,6 +1093,8 @@ sfc_mae_action_set_enable(struct sfc_adapter *sa,
 			  struct sfc_mae_action_set *action_set)
 {
 	struct sfc_mae_encap_header *encap_header = action_set->encap_header;
+	struct sfc_mae_mac_addr *dst_mac_addr = action_set->dst_mac_addr;
+	struct sfc_mae_mac_addr *src_mac_addr = action_set->src_mac_addr;
 	struct sfc_mae_counter_id *counters = action_set->counters;
 	struct sfc_mae_fw_rsrc *fw_rsrc = &action_set->fw_rsrc;
 	int rc;
@@ -911,10 +1105,27 @@ sfc_mae_action_set_enable(struct sfc_adapter *sa,
 		SFC_ASSERT(fw_rsrc->aset_id.id == EFX_MAE_RSRC_ID_INVALID);
 		SFC_ASSERT(action_set->spec != NULL);
 
-		rc = sfc_mae_encap_header_enable(sa, encap_header,
-						 action_set->spec);
+		rc = sfc_mae_mac_addr_enable(sa, dst_mac_addr,
+					     SFC_MAE_MAC_ADDR_DST,
+					     action_set->spec);
 		if (rc != 0)
 			return rc;
+
+		rc = sfc_mae_mac_addr_enable(sa, src_mac_addr,
+					     SFC_MAE_MAC_ADDR_SRC,
+					     action_set->spec);
+		if (rc != 0) {
+			sfc_mae_mac_addr_disable(sa, dst_mac_addr);
+			return rc;
+		}
+
+		rc = sfc_mae_encap_header_enable(sa, encap_header,
+						 action_set->spec);
+		if (rc != 0) {
+			sfc_mae_mac_addr_disable(sa, src_mac_addr);
+			sfc_mae_mac_addr_disable(sa, dst_mac_addr);
+			return rc;
+		}
 
 		rc = sfc_mae_counters_enable(sa, counters,
 					     action_set->n_counters,
@@ -924,6 +1135,8 @@ sfc_mae_action_set_enable(struct sfc_adapter *sa,
 				action_set->n_counters, rte_strerror(rc));
 
 			sfc_mae_encap_header_disable(sa, encap_header);
+			sfc_mae_mac_addr_disable(sa, src_mac_addr);
+			sfc_mae_mac_addr_disable(sa, dst_mac_addr);
 			return rc;
 		}
 
@@ -936,6 +1149,8 @@ sfc_mae_action_set_enable(struct sfc_adapter *sa,
 			(void)sfc_mae_counters_disable(sa, counters,
 						       action_set->n_counters);
 			sfc_mae_encap_header_disable(sa, encap_header);
+			sfc_mae_mac_addr_disable(sa, src_mac_addr);
+			sfc_mae_mac_addr_disable(sa, dst_mac_addr);
 			return rc;
 		}
 
@@ -983,6 +1198,8 @@ sfc_mae_action_set_disable(struct sfc_adapter *sa,
 		}
 
 		sfc_mae_encap_header_disable(sa, action_set->encap_header);
+		sfc_mae_mac_addr_disable(sa, action_set->src_mac_addr);
+		sfc_mae_mac_addr_disable(sa, action_set->dst_mac_addr);
 	}
 
 	--(fw_rsrc->refcnt);
@@ -2895,6 +3112,54 @@ fail_priority_check:
 	return rc;
 }
 
+static int
+sfc_mae_rule_parse_action_set_mac(struct sfc_adapter *sa,
+				  enum sfc_mae_mac_addr_type type,
+				  const struct rte_flow_action_set_mac *conf,
+				  struct sfc_mae_aset_ctx *ctx,
+				  struct rte_flow_error *error)
+{
+	struct sfc_mae_mac_addr **mac_addrp;
+	int rc;
+
+	if (conf == NULL) {
+		return rte_flow_error_set(error, EINVAL,
+				RTE_FLOW_ERROR_TYPE_ACTION_CONF, NULL,
+				"the MAC address entry definition is NULL");
+	}
+
+	switch (type) {
+	case SFC_MAE_MAC_ADDR_DST:
+		rc = efx_mae_action_set_populate_set_dst_mac(ctx->spec);
+		mac_addrp = &ctx->dst_mac;
+		break;
+	case SFC_MAE_MAC_ADDR_SRC:
+		rc = efx_mae_action_set_populate_set_src_mac(ctx->spec);
+		mac_addrp = &ctx->src_mac;
+		break;
+	default:
+		rc = EINVAL;
+		break;
+	}
+
+	if (rc != 0)
+		goto error;
+
+	*mac_addrp = sfc_mae_mac_addr_attach(sa, conf->mac_addr);
+	if (*mac_addrp != NULL)
+		return 0;
+
+	rc = sfc_mae_mac_addr_add(sa, conf->mac_addr, mac_addrp);
+	if (rc != 0)
+		goto error;
+
+	return 0;
+
+error:
+	return rte_flow_error_set(error, rc, RTE_FLOW_ERROR_TYPE_ACTION,
+				  NULL, "failed to request set MAC action");
+}
+
 /*
  * An action supported by MAE may correspond to a bundle of RTE flow actions,
  * in example, VLAN_PUSH = OF_PUSH_VLAN + OF_VLAN_SET_VID + OF_VLAN_SET_PCP.
@@ -3549,6 +3814,8 @@ sfc_mae_rule_parse_action_represented_port(struct sfc_adapter *sa,
 static const char * const action_names[] = {
 	[RTE_FLOW_ACTION_TYPE_VXLAN_DECAP] = "VXLAN_DECAP",
 	[RTE_FLOW_ACTION_TYPE_OF_POP_VLAN] = "OF_POP_VLAN",
+	[RTE_FLOW_ACTION_TYPE_SET_MAC_DST] = "SET_MAC_DST",
+	[RTE_FLOW_ACTION_TYPE_SET_MAC_SRC] = "SET_MAC_SRC",
 	[RTE_FLOW_ACTION_TYPE_OF_DEC_NW_TTL] = "OF_DEC_NW_TTL",
 	[RTE_FLOW_ACTION_TYPE_DEC_TTL] = "DEC_TTL",
 	[RTE_FLOW_ACTION_TYPE_OF_PUSH_VLAN] = "OF_PUSH_VLAN",
@@ -3573,11 +3840,12 @@ sfc_mae_rule_parse_action(struct sfc_adapter *sa,
 			  const struct rte_flow_action *action,
 			  const struct sfc_flow_spec_mae *spec_mae,
 			  struct sfc_mae_actions_bundle *bundle,
-			  efx_mae_actions_t *spec,
+			  struct sfc_mae_aset_ctx *ctx,
 			  struct rte_flow_error *error)
 {
 	const struct sfc_mae_outer_rule *outer_rule = spec_mae->outer_rule;
 	const uint64_t rx_metadata = sa->negotiated_rx_metadata;
+	efx_mae_actions_t *spec = ctx->spec;
 	bool custom_error = B_FALSE;
 	int rc = 0;
 
@@ -3595,6 +3863,22 @@ sfc_mae_rule_parse_action(struct sfc_adapter *sa,
 		SFC_BUILD_SET_OVERFLOW(RTE_FLOW_ACTION_TYPE_OF_POP_VLAN,
 				       bundle->actions_mask);
 		rc = efx_mae_action_set_populate_vlan_pop(spec);
+		break;
+	case RTE_FLOW_ACTION_TYPE_SET_MAC_DST:
+		SFC_BUILD_SET_OVERFLOW(RTE_FLOW_ACTION_TYPE_SET_MAC_DST,
+				       bundle->actions_mask);
+		rc = sfc_mae_rule_parse_action_set_mac(sa, SFC_MAE_MAC_ADDR_DST,
+						       action->conf, ctx,
+						       error);
+		custom_error = B_TRUE;
+		break;
+	case RTE_FLOW_ACTION_TYPE_SET_MAC_SRC:
+		SFC_BUILD_SET_OVERFLOW(RTE_FLOW_ACTION_TYPE_SET_MAC_SRC,
+				       bundle->actions_mask);
+		rc = sfc_mae_rule_parse_action_set_mac(sa, SFC_MAE_MAC_ADDR_SRC,
+						       action->conf, ctx,
+						       error);
+		custom_error = B_TRUE;
 		break;
 	case RTE_FLOW_ACTION_TYPE_OF_DEC_NW_TTL:
 	case RTE_FLOW_ACTION_TYPE_DEC_TTL:
@@ -3813,7 +4097,7 @@ sfc_mae_rule_parse_actions(struct sfc_adapter *sa,
 			goto fail_rule_parse_action;
 
 		rc = sfc_mae_rule_parse_action(sa, action, spec_mae,
-					       &bundle, ctx.spec, error);
+					       &bundle, &ctx, error);
 		if (rc != 0)
 			goto fail_rule_parse_action;
 	}
@@ -3880,6 +4164,8 @@ fail_nb_count:
 
 fail_process_encap_header:
 fail_rule_parse_action:
+	sfc_mae_mac_addr_del(sa, ctx.src_mac);
+	sfc_mae_mac_addr_del(sa, ctx.dst_mac);
 	efx_mae_action_set_spec_fini(sa->nic, ctx.spec);
 
 fail_enforce_ft_count:
