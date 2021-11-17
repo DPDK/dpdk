@@ -66,6 +66,8 @@ libraries = [
 ]
 
 optional_libs = [
+        'gro',
+        'gso',
         'kni',
         'power',
         'vhost',

@@ -9,8 +9,12 @@
 
 #include <rte_pci.h>
 #include <rte_bus_pci.h>
+#ifdef RTE_LIB_GRO
 #include <rte_gro.h>
+#endif
+#ifdef RTE_LIB_GSO
 #include <rte_gso.h>
+#endif
 #include <rte_os_shim.h>
 #include <cmdline.h>
 #include <sys/queue.h>
@@ -143,7 +147,9 @@ struct fwd_stream {
 	/**< received packets has bad outer l4 checksum */
 	uint64_t rx_bad_outer_ip_csum;
 	/**< received packets having bad outer ip checksum */
+#ifdef RTE_LIB_GRO
 	unsigned int gro_times;	/**< GRO operation times */
+#endif
 	uint64_t     core_cycles; /**< used for RX and TX processing */
 	struct pkt_burst_stats rx_burst_stats;
 	struct pkt_burst_stats tx_burst_stats;
@@ -264,9 +270,13 @@ struct rte_port {
  * CPU id. configuration table.
  */
 struct fwd_lcore {
+#ifdef RTE_LIB_GSO
 	struct rte_gso_ctx gso_ctx;     /**< GSO context */
+#endif
 	struct rte_mempool *mbp; /**< The mbuf pool to use by this core */
+#ifdef RTE_LIB_GRO
 	void *gro_ctx;		/**< GRO context */
+#endif
 	streamid_t stream_idx;   /**< index of 1st stream in "fwd_streams" */
 	streamid_t stream_nb;    /**< number of streams in "fwd_streams" */
 	lcoreid_t  cpuid_idx;    /**< index of logical core in CPU id table */
@@ -560,6 +570,7 @@ extern struct rte_ether_addr peer_eth_addrs[RTE_MAX_ETHPORTS];
 extern uint32_t burst_tx_delay_time; /**< Burst tx delay time(us) for mac-retry. */
 extern uint32_t burst_tx_retry_num;  /**< Burst tx retry number for mac-retry. */
 
+#ifdef RTE_LIB_GRO
 #define GRO_DEFAULT_ITEM_NUM_PER_FLOW 32
 #define GRO_DEFAULT_FLOW_NUM (RTE_GRO_MAX_BURST_ITEM_NUM / \
 		GRO_DEFAULT_ITEM_NUM_PER_FLOW)
@@ -573,13 +584,16 @@ struct gro_status {
 };
 extern struct gro_status gro_ports[RTE_MAX_ETHPORTS];
 extern uint8_t gro_flush_cycles;
+#endif /* RTE_LIB_GRO */
 
+#ifdef RTE_LIB_GSO
 #define GSO_MAX_PKT_BURST 2048
 struct gso_status {
 	uint8_t enable;
 };
 extern struct gso_status gso_ports[RTE_MAX_ETHPORTS];
 extern uint16_t gso_max_segment_size;
+#endif /* RTE_LIB_GSO */
 
 /* VXLAN encap/decap parameters. */
 struct vxlan_encap_conf {
@@ -1006,10 +1020,14 @@ void port_rss_hash_key_update(portid_t port_id, char rss_type[],
 			      uint8_t *hash_key, uint8_t hash_key_len);
 int rx_queue_id_is_invalid(queueid_t rxq_id);
 int tx_queue_id_is_invalid(queueid_t txq_id);
+#ifdef RTE_LIB_GRO
 void setup_gro(const char *onoff, portid_t port_id);
 void setup_gro_flush_cycles(uint8_t cycles);
 void show_gro(portid_t port_id);
+#endif
+#ifdef RTE_LIB_GSO
 void setup_gso(const char *mode, portid_t port_id);
+#endif
 int eth_dev_info_get_print_err(uint16_t port_id,
 			struct rte_eth_dev_info *dev_info);
 int eth_dev_conf_get_print_err(uint16_t port_id,

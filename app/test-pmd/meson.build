@@ -32,7 +32,7 @@ if dpdk_conf.has('RTE_HAS_JANSSON')
     ext_deps += jansson_dep
 endif
 
-deps += ['ethdev', 'gro', 'gso', 'cmdline', 'metrics', 'bus_pci']
+deps += ['ethdev', 'cmdline', 'metrics', 'bus_pci']
 if dpdk_conf.has('RTE_CRYPTO_SCHEDULER')
     deps += 'crypto_scheduler'
 endif
@@ -42,6 +42,12 @@ endif
 if dpdk_conf.has('RTE_LIB_BPF')
     sources += files('bpf_cmd.c')
     deps += 'bpf'
+endif
+if dpdk_conf.has('RTE_LIB_GRO')
+    deps += 'gro'
+endif
+if dpdk_conf.has('RTE_LIB_GSO')
+    deps += 'gso'
 endif
 if dpdk_conf.has('RTE_LIB_LATENCYSTATS')
     deps += 'latencystats'

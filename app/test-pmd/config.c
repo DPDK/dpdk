@@ -48,7 +48,9 @@
 #ifdef RTE_NET_BNXT
 #include <rte_pmd_bnxt.h>
 #endif
+#ifdef RTE_LIB_GRO
 #include <rte_gro.h>
+#endif
 #include <rte_hexdump.h>
 
 #include "testpmd.h"
@@ -4191,6 +4193,7 @@ set_tx_pkt_times(unsigned int *tx_times)
 	tx_pkt_times_intra = tx_times[1];
 }
 
+#ifdef RTE_LIB_GRO
 void
 setup_gro(const char *onoff, portid_t port_id)
 {
@@ -4272,7 +4275,9 @@ show_gro(portid_t port_id)
 	} else
 		printf("Port %u doesn't enable GRO.\n", port_id);
 }
+#endif /* RTE_LIB_GRO */
 
+#ifdef RTE_LIB_GSO
 void
 setup_gso(const char *mode, portid_t port_id)
 {
@@ -4296,6 +4301,7 @@ setup_gso(const char *mode, portid_t port_id)
 		gso_ports[port_id].enable = 0;
 	}
 }
+#endif /* RTE_LIB_GSO */
 
 char*
 list_pkt_forwarding_modes(void)

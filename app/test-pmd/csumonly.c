@@ -40,8 +40,12 @@
 #include <rte_prefetch.h>
 #include <rte_string_fns.h>
 #include <rte_flow.h>
+#ifdef RTE_LIB_GRO
 #include <rte_gro.h>
+#endif
+#ifdef RTE_LIB_GSO
 #include <rte_gso.h>
+#endif
 #include <rte_geneve.h>
 
 #include "testpmd.h"
@@ -68,7 +72,9 @@ uint16_t geneve_udp_port = RTE_GENEVE_DEFAULT_PORT;
 /* structure that caches offload info for the current packet */
 struct testpmd_offload_info {
 	uint16_t ethertype;
+#ifdef RTE_LIB_GSO
 	uint8_t gso_enable;
+#endif
 	uint16_t l2_len;
 	uint16_t l3_len;
 	uint16_t l4_len;
@@ -510,8 +516,10 @@ process_inner_cksums(void *l3_hdr, const struct testpmd_offload_info *info,
 						info->ethertype);
 			}
 		}
+#ifdef RTE_LIB_GSO
 		if (info->gso_enable)
 			ol_flags |= RTE_MBUF_F_TX_UDP_SEG;
+#endif
 	} else if (info->l4_proto == IPPROTO_TCP) {
 		tcp_hdr = (struct rte_tcp_hdr *)((char *)l3_hdr + info->l3_len);
 		if (tso_segsz)
@@ -524,8 +532,10 @@ process_inner_cksums(void *l3_hdr, const struct testpmd_offload_info *info,
 				get_udptcp_checksum(l3_hdr, tcp_hdr,
 					info->ethertype);
 		}
+#ifdef RTE_LIB_GSO
 		if (info->gso_enable)
 			ol_flags |= RTE_MBUF_F_TX_TCP_SEG;
+#endif
 	} else if (info->l4_proto == IPPROTO_SCTP) {
 		sctp_hdr = (struct rte_sctp_hdr *)
 			((char *)l3_hdr + info->l3_len);
@@ -794,16 +804,20 @@ static void
 pkt_burst_checksum_forward(struct fwd_stream *fs)
 {
 	struct rte_mbuf *pkts_burst[MAX_PKT_BURST];
+#ifdef RTE_LIB_GSO
 	struct rte_mbuf *gso_segments[GSO_MAX_PKT_BURST];
 	struct rte_gso_ctx *gso_ctx;
+#endif
 	struct rte_mbuf **tx_pkts_burst;
 	struct rte_port *txp;
 	struct rte_mbuf *m, *p;
 	struct rte_ether_hdr *eth_hdr;
 	void *l3_hdr = NULL, *outer_l3_hdr = NULL; /* can be IPv4 or IPv6 */
+#ifdef RTE_LIB_GRO
 	void **gro_ctx;
 	uint16_t gro_pkts_num;
 	uint8_t gro_enable;
+#endif
 	uint16_t nb_rx;
 	uint16_t nb_tx;
 	uint16_t nb_prep;
@@ -816,8 +830,6 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 	uint32_t rx_bad_outer_l4_csum;
 	uint32_t rx_bad_outer_ip_csum;
 	struct testpmd_offload_info info;
-	uint16_t nb_segments = 0;
-	int ret;
 
 	uint64_t start_tsc = 0;
 
@@ -835,15 +847,19 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 	rx_bad_l4_csum = 0;
 	rx_bad_outer_l4_csum = 0;
 	rx_bad_outer_ip_csum = 0;
+#ifdef RTE_LIB_GRO
 	gro_enable = gro_ports[fs->rx_port].enable;
+#endif
 
 	txp = &ports[fs->tx_port];
 	tx_offloads = txp->dev_conf.txmode.offloads;
 	memset(&info, 0, sizeof(info));
 	info.tso_segsz = txp->tso_segsz;
 	info.tunnel_tso_segsz = txp->tunnel_tso_segsz;
+#ifdef RTE_LIB_GSO
 	if (gso_ports[fs->tx_port].enable)
 		info.gso_enable = 1;
+#endif
 
 	for (i = 0; i < nb_rx; i++) {
 		if (likely(i < nb_rx - 1))
@@ -1052,6 +1068,7 @@ tunnel_update:
 		}
 	}
 
+#ifdef RTE_LIB_GRO
 	if (unlikely(gro_enable)) {
 		if (gro_flush_cycles == GRO_DEFAULT_FLUSH_CYCLES) {
 			nb_rx = rte_gro_reassemble_burst(pkts_burst, nb_rx,
@@ -1073,13 +1090,17 @@ tunnel_update:
 			}
 		}
 	}
+#endif
 
-	if (gso_ports[fs->tx_port].enable == 0)
-		tx_pkts_burst = pkts_burst;
-	else {
+#ifdef RTE_LIB_GSO
+	if (gso_ports[fs->tx_port].enable != 0) {
+		uint16_t nb_segments = 0;
+
 		gso_ctx = &(current_fwd_lcore()->gso_ctx);
 		gso_ctx->gso_size = gso_max_segment_size;
 		for (i = 0; i < nb_rx; i++) {
+			int ret;
+
 			ret = rte_gso_segment(pkts_burst[i], gso_ctx,
 					&gso_segments[nb_segments],
 					GSO_MAX_PKT_BURST - nb_segments);
@@ -1101,7 +1122,9 @@ tunnel_update:
 
 		tx_pkts_burst = gso_segments;
 		nb_rx = nb_segments;
-	}
+	} else
+#endif
+		tx_pkts_burst = pkts_burst;
 
 	nb_prep = rte_eth_tx_prepare(fs->tx_port, fs->tx_queue,
 			tx_pkts_burst, nb_rx);

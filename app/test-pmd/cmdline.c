@@ -34,7 +34,9 @@
 #include <rte_string_fns.h>
 #include <rte_devargs.h>
 #include <rte_flow.h>
+#ifdef RTE_LIB_GRO
 #include <rte_gro.h>
+#endif
 #include <rte_mbuf_dyn.h>
 
 #include <cmdline_rdline.h>
@@ -458,6 +460,7 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"tso show (portid)"
 			"    Display the status of TCP Segmentation Offload.\n\n"
 
+#ifdef RTE_LIB_GRO
 			"set port (port_id) gro on|off\n"
 			"    Enable or disable Generic Receive Offload in"
 			" csum forwarding engine.\n\n"
@@ -468,7 +471,9 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"set gro flush (cycles)\n"
 			"    Set the cycle to flush GROed packets from"
 			" reassembly tables.\n\n"
+#endif
 
+#ifdef RTE_LIB_GSO
 			"set port (port_id) gso (on|off)"
 			"    Enable or disable Generic Segmentation Offload in"
 			" csum forwarding engine.\n\n"
@@ -479,6 +484,7 @@ static void cmd_help_long_parsed(void *parsed_result,
 
 			"show port (port_id) gso\n"
 			"    Show GSO configuration.\n\n"
+#endif
 
 			"set fwd (%s)\n"
 			"    Set packet forwarding mode.\n\n"
@@ -5149,6 +5155,7 @@ cmdline_parse_inst_t cmd_tunnel_tso_show = {
 	},
 };
 
+#ifdef RTE_LIB_GRO
 /* *** SET GRO FOR A PORT *** */
 struct cmd_gro_enable_result {
 	cmdline_fixed_string_t cmd_set;
@@ -5292,7 +5299,9 @@ cmdline_parse_inst_t cmd_gro_flush = {
 		NULL,
 	},
 };
+#endif /* RTE_LIB_GRO */
 
+#ifdef RTE_LIB_GSO
 /* *** ENABLE/DISABLE GSO *** */
 struct cmd_gso_enable_result {
 	cmdline_fixed_string_t cmd_set;
@@ -5459,6 +5468,7 @@ cmdline_parse_inst_t cmd_gso_show = {
 		NULL,
 	},
 };
+#endif /* RTE_LIB_GSO */
 
 /* *** ENABLE/DISABLE FLUSH ON RX STREAMS *** */
 struct cmd_set_flush_rx {
@@ -17660,12 +17670,16 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_tso_show,
 	(cmdline_parse_inst_t *)&cmd_tunnel_tso_set,
 	(cmdline_parse_inst_t *)&cmd_tunnel_tso_show,
+#ifdef RTE_LIB_GRO
 	(cmdline_parse_inst_t *)&cmd_gro_enable,
 	(cmdline_parse_inst_t *)&cmd_gro_flush,
 	(cmdline_parse_inst_t *)&cmd_gro_show,
+#endif
+#ifdef RTE_LIB_GSO
 	(cmdline_parse_inst_t *)&cmd_gso_enable,
 	(cmdline_parse_inst_t *)&cmd_gso_size,
 	(cmdline_parse_inst_t *)&cmd_gso_show,
+#endif
 	(cmdline_parse_inst_t *)&cmd_link_flow_control_set,
 	(cmdline_parse_inst_t *)&cmd_link_flow_control_set_rx,
 	(cmdline_parse_inst_t *)&cmd_link_flow_control_set_tx,
