@@ -368,9 +368,11 @@ mlx5_os_reg_mr(void *pd,
 static void
 mlx5_os_dereg_mr(struct mlx5_pmd_mr *pmd_mr)
 {
-	if (pmd_mr && pmd_mr->mkey)
-		claim_zero(mlx5_glue->devx_obj_destroy(pmd_mr->mkey->obj));
-	if (pmd_mr && pmd_mr->obj)
+	if (!pmd_mr)
+		return;
+	if (pmd_mr->mkey)
+		claim_zero(mlx5_devx_cmd_destroy(pmd_mr->mkey));
+	if (pmd_mr->obj)
 		claim_zero(mlx5_os_umem_dereg(pmd_mr->obj));
 	memset(pmd_mr, 0, sizeof(*pmd_mr));
 }
