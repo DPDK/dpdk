@@ -752,11 +752,18 @@ sfc_mae_counters_disable(struct sfc_adapter *sa,
 	return sfc_mae_counter_disable(sa, &counters[0]);
 }
 
+struct sfc_mae_aset_ctx {
+	uint64_t			*ft_group_hit_counter;
+	struct sfc_mae_encap_header	*encap_header;
+	struct sfc_flow_tunnel		*counter_ft;
+	unsigned int			n_counters;
+
+	efx_mae_actions_t		*spec;
+};
+
 static struct sfc_mae_action_set *
 sfc_mae_action_set_attach(struct sfc_adapter *sa,
-			  const struct sfc_mae_encap_header *encap_header,
-			  unsigned int n_count,
-			  const efx_mae_actions_t *spec)
+			  const struct sfc_mae_aset_ctx *ctx)
 {
 	struct sfc_mae_action_set *action_set;
 	struct sfc_mae *mae = &sa->mae;
@@ -767,12 +774,13 @@ sfc_mae_action_set_attach(struct sfc_adapter *sa,
 	 * Shared counters are not supported, hence, action
 	 * sets with counters are not attachable.
 	 */
-	if (n_count != 0)
+	if (ctx->n_counters != 0)
 		return NULL;
 
 	TAILQ_FOREACH(action_set, &mae->action_sets, entries) {
-		if (action_set->encap_header == encap_header &&
-		    efx_mae_action_set_specs_equal(action_set->spec, spec)) {
+		if (action_set->encap_header == ctx->encap_header &&
+		    efx_mae_action_set_specs_equal(action_set->spec,
+						   ctx->spec)) {
 			sfc_dbg(sa, "attaching to action_set=%p", action_set);
 			++(action_set->refcnt);
 			return action_set;
@@ -785,11 +793,7 @@ sfc_mae_action_set_attach(struct sfc_adapter *sa,
 static int
 sfc_mae_action_set_add(struct sfc_adapter *sa,
 		       const struct rte_flow_action actions[],
-		       efx_mae_actions_t *spec,
-		       struct sfc_mae_encap_header *encap_header,
-		       uint64_t *ft_group_hit_counter,
-		       struct sfc_flow_tunnel *ft,
-		       unsigned int n_counters,
+		       const struct sfc_mae_aset_ctx *ctx,
 		       struct sfc_mae_action_set **action_setp)
 {
 	struct sfc_mae_action_set *action_set;
@@ -804,30 +808,30 @@ sfc_mae_action_set_add(struct sfc_adapter *sa,
 		return ENOMEM;
 	}
 
-	if (n_counters > 0) {
+	if (ctx->n_counters > 0) {
 		const struct rte_flow_action *action;
 
 		action_set->counters = rte_malloc("sfc_mae_counter_ids",
-			sizeof(action_set->counters[0]) * n_counters, 0);
+			sizeof(action_set->counters[0]) * ctx->n_counters, 0);
 		if (action_set->counters == NULL) {
 			rte_free(action_set);
 			sfc_err(sa, "failed to alloc counters");
 			return ENOMEM;
 		}
 
-		for (i = 0; i < n_counters; ++i) {
+		for (i = 0; i < ctx->n_counters; ++i) {
 			action_set->counters[i].rte_id_valid = B_FALSE;
 			action_set->counters[i].mae_id.id =
 				EFX_MAE_RSRC_ID_INVALID;
 
 			action_set->counters[i].ft_group_hit_counter =
-				ft_group_hit_counter;
-			action_set->counters[i].ft = ft;
+				ctx->ft_group_hit_counter;
+			action_set->counters[i].ft = ctx->counter_ft;
 		}
 
 		for (action = actions, i = 0;
-		     action->type != RTE_FLOW_ACTION_TYPE_END && i < n_counters;
-		     ++action) {
+		     action->type != RTE_FLOW_ACTION_TYPE_END &&
+		     i < ctx->n_counters; ++action) {
 			const struct rte_flow_action_count *conf;
 
 			if (action->type != RTE_FLOW_ACTION_TYPE_COUNT)
@@ -839,12 +843,12 @@ sfc_mae_action_set_add(struct sfc_adapter *sa,
 			action_set->counters[i].rte_id = conf->id;
 			i++;
 		}
-		action_set->n_counters = n_counters;
+		action_set->n_counters = ctx->n_counters;
 	}
 
 	action_set->refcnt = 1;
-	action_set->spec = spec;
-	action_set->encap_header = encap_header;
+	action_set->spec = ctx->spec;
+	action_set->encap_header = ctx->encap_header;
 
 	action_set->fw_rsrc.aset_id.id = EFX_MAE_RSRC_ID_INVALID;
 
@@ -3752,14 +3756,10 @@ sfc_mae_rule_parse_actions(struct sfc_adapter *sa,
 			   struct sfc_flow_spec_mae *spec_mae,
 			   struct rte_flow_error *error)
 {
-	struct sfc_mae_encap_header *encap_header = NULL;
 	struct sfc_mae_actions_bundle bundle = {0};
-	struct sfc_flow_tunnel *counter_ft = NULL;
-	uint64_t *ft_group_hit_counter = NULL;
 	const struct rte_flow_action *action;
+	struct sfc_mae_aset_ctx ctx = {0};
 	struct sfc_mae *mae = &sa->mae;
-	unsigned int n_count = 0;
-	efx_mae_actions_t *spec;
 	int rc;
 
 	rte_errno = 0;
@@ -3770,34 +3770,35 @@ sfc_mae_rule_parse_actions(struct sfc_adapter *sa,
 				"NULL actions");
 	}
 
-	rc = efx_mae_action_set_spec_init(sa->nic, &spec);
+	rc = efx_mae_action_set_spec_init(sa->nic, &ctx.spec);
 	if (rc != 0)
 		goto fail_action_set_spec_init;
 
 	for (action = actions;
 	     action->type != RTE_FLOW_ACTION_TYPE_END; ++action) {
 		if (action->type == RTE_FLOW_ACTION_TYPE_COUNT)
-			++n_count;
+			++(ctx.n_counters);
 	}
 
 	if (spec_mae->ft_rule_type == SFC_FT_RULE_GROUP) {
 		/* JUMP rules don't decapsulate packets. GROUP rules do. */
-		rc = efx_mae_action_set_populate_decap(spec);
+		rc = efx_mae_action_set_populate_decap(ctx.spec);
 		if (rc != 0)
 			goto fail_enforce_ft_decap;
 
-		if (n_count == 0 && sfc_mae_counter_stream_enabled(sa)) {
+		if (ctx.n_counters == 0 &&
+		    sfc_mae_counter_stream_enabled(sa)) {
 			/*
 			 * The user opted not to use action COUNT in this rule,
 			 * but the counter should be enabled implicitly because
 			 * packets hitting this rule contribute to the tunnel's
 			 * total number of hits. See sfc_mae_counter_get().
 			 */
-			rc = efx_mae_action_set_populate_count(spec);
+			rc = efx_mae_action_set_populate_count(ctx.spec);
 			if (rc != 0)
 				goto fail_enforce_ft_count;
 
-			n_count = 1;
+			ctx.n_counters = 1;
 		}
 	}
 
@@ -3806,27 +3807,30 @@ sfc_mae_rule_parse_actions(struct sfc_adapter *sa,
 
 	for (action = actions;
 	     action->type != RTE_FLOW_ACTION_TYPE_END; ++action) {
-		rc = sfc_mae_actions_bundle_sync(action, &bundle, spec, error);
+		rc = sfc_mae_actions_bundle_sync(action, &bundle,
+						 ctx.spec, error);
 		if (rc != 0)
 			goto fail_rule_parse_action;
 
 		rc = sfc_mae_rule_parse_action(sa, action, spec_mae,
-					       &bundle, spec, error);
+					       &bundle, ctx.spec, error);
 		if (rc != 0)
 			goto fail_rule_parse_action;
 	}
 
-	rc = sfc_mae_actions_bundle_sync(action, &bundle, spec, error);
+	rc = sfc_mae_actions_bundle_sync(action, &bundle, ctx.spec, error);
 	if (rc != 0)
 		goto fail_rule_parse_action;
 
-	rc = sfc_mae_process_encap_header(sa, &mae->bounce_eh, &encap_header);
+	rc = sfc_mae_process_encap_header(sa, &mae->bounce_eh,
+					  &ctx.encap_header);
 	if (rc != 0)
 		goto fail_process_encap_header;
 
-	if (n_count > 1) {
+	if (ctx.n_counters > 1) {
 		rc = ENOTSUP;
-		sfc_err(sa, "too many count actions requested: %u", n_count);
+		sfc_err(sa, "too many count actions requested: %u",
+			ctx.n_counters);
 		goto fail_nb_count;
 	}
 
@@ -3835,11 +3839,11 @@ sfc_mae_rule_parse_actions(struct sfc_adapter *sa,
 		break;
 	case SFC_FT_RULE_JUMP:
 		/* Workaround. See sfc_flow_parse_rte_to_mae() */
-		rc = sfc_mae_rule_parse_action_pf_vf(sa, NULL, spec);
+		rc = sfc_mae_rule_parse_action_pf_vf(sa, NULL, ctx.spec);
 		if (rc != 0)
 			goto fail_workaround_jump_delivery;
 
-		counter_ft = spec_mae->ft;
+		ctx.counter_ft = spec_mae->ft;
 		break;
 	case SFC_FT_RULE_GROUP:
 		/*
@@ -3848,25 +3852,22 @@ sfc_mae_rule_parse_actions(struct sfc_adapter *sa,
 		 * packets. The user may have provided their own action
 		 * MARK above, so don't check the return value here.
 		 */
-		(void)efx_mae_action_set_populate_mark(spec, 0);
+		(void)efx_mae_action_set_populate_mark(ctx.spec, 0);
 
-		ft_group_hit_counter = &spec_mae->ft->group_hit_counter;
+		ctx.ft_group_hit_counter = &spec_mae->ft->group_hit_counter;
 		break;
 	default:
 		SFC_ASSERT(B_FALSE);
 	}
 
-	spec_mae->action_set = sfc_mae_action_set_attach(sa, encap_header,
-							 n_count, spec);
+	spec_mae->action_set = sfc_mae_action_set_attach(sa, &ctx);
 	if (spec_mae->action_set != NULL) {
-		sfc_mae_encap_header_del(sa, encap_header);
-		efx_mae_action_set_spec_fini(sa->nic, spec);
+		sfc_mae_encap_header_del(sa, ctx.encap_header);
+		efx_mae_action_set_spec_fini(sa->nic, ctx.spec);
 		return 0;
 	}
 
-	rc = sfc_mae_action_set_add(sa, actions, spec, encap_header,
-				    ft_group_hit_counter, counter_ft, n_count,
-				    &spec_mae->action_set);
+	rc = sfc_mae_action_set_add(sa, actions, &ctx, &spec_mae->action_set);
 	if (rc != 0)
 		goto fail_action_set_add;
 
@@ -3875,11 +3876,11 @@ sfc_mae_rule_parse_actions(struct sfc_adapter *sa,
 fail_action_set_add:
 fail_workaround_jump_delivery:
 fail_nb_count:
-	sfc_mae_encap_header_del(sa, encap_header);
+	sfc_mae_encap_header_del(sa, ctx.encap_header);
 
 fail_process_encap_header:
 fail_rule_parse_action:
-	efx_mae_action_set_spec_fini(sa->nic, spec);
+	efx_mae_action_set_spec_fini(sa->nic, ctx.spec);
 
 fail_enforce_ft_count:
 fail_enforce_ft_decap:
