@@ -29,7 +29,9 @@
 #include <rte_log.h>
 #include <rte_branch_prediction.h>
 #include <rte_string_fns.h>
+#ifdef RTE_LIB_METRICS
 #include <rte_metrics.h>
+#endif
 #include <rte_cycles.h>
 #ifdef RTE_LIB_SECURITY
 #include <rte_security.h>
@@ -58,8 +60,10 @@ static uint32_t enable_collectd_format;
 static int stdout_fd;
 /**< Host id process is running on */
 static char host_id[MAX_LONG_OPT_SZ];
+#ifdef RTE_LIB_METRICS
 /**< Enable metrics. */
 static uint32_t enable_metrics;
+#endif
 /**< Enable stats reset. */
 static uint32_t reset_stats;
 /**< Enable xstats reset. */
@@ -107,8 +111,10 @@ proc_info_usage(const char *prgname)
 		"  --stats: to display port statistics, enabled by default\n"
 		"  --xstats: to display extended port statistics, disabled by "
 			"default\n"
+#ifdef RTE_LIB_METRICS
 		"  --metrics: to display derived metrics of the ports, disabled by "
 			"default\n"
+#endif
 		"  --xstats-name NAME: to display single xstat id by NAME\n"
 		"  --xstats-ids IDLIST: to display xstat values by id. "
 			"The argument is comma-separated list of xstat ids to print out.\n"
@@ -217,7 +223,9 @@ proc_info_parse_args(int argc, char **argv)
 		{"stats", 0, NULL, 0},
 		{"stats-reset", 0, NULL, 0},
 		{"xstats", 0, NULL, 0},
+#ifdef RTE_LIB_METRICS
 		{"metrics", 0, NULL, 0},
+#endif
 		{"xstats-reset", 0, NULL, 0},
 		{"xstats-name", required_argument, NULL, 1},
 		{"collectd-format", 0, NULL, 0},
@@ -259,10 +267,12 @@ proc_info_parse_args(int argc, char **argv)
 			else if (!strncmp(long_option[option_index].name, "xstats",
 					MAX_LONG_OPT_SZ))
 				enable_xstats = 1;
+#ifdef RTE_LIB_METRICS
 			else if (!strncmp(long_option[option_index].name,
 					"metrics",
 					MAX_LONG_OPT_SZ))
 				enable_metrics = 1;
+#endif
 			/* Reset stats */
 			if (!strncmp(long_option[option_index].name, "stats-reset",
 					MAX_LONG_OPT_SZ))
@@ -592,6 +602,7 @@ nic_xstats_clear(uint16_t port_id)
 	printf("\n  NIC extended statistics for port %d cleared\n", port_id);
 }
 
+#ifdef RTE_LIB_METRICS
 static void
 metrics_display(int port_id)
 {
@@ -652,6 +663,7 @@ metrics_display(int port_id)
 	rte_free(metrics);
 	rte_free(names);
 }
+#endif
 
 static void
 show_security_context(uint16_t portid, bool inline_offload)
@@ -1521,14 +1533,18 @@ main(int argc, char **argv)
 		else if (nb_xstats_ids > 0)
 			nic_xstats_by_ids_display(i, xstats_ids,
 						  nb_xstats_ids);
+#ifdef RTE_LIB_METRICS
 		else if (enable_metrics)
 			metrics_display(i);
+#endif
 
 	}
 
+#ifdef RTE_LIB_METRICS
 	/* print port independent stats */
 	if (enable_metrics)
 		metrics_display(RTE_METRICS_GLOBAL);
+#endif
 
 	/* show information for PMD */
 	if (enable_shw_port)

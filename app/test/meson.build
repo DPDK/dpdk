@@ -98,7 +98,6 @@ test_sources = files(
         'test_mempool_perf.c',
         'test_memzone.c',
         'test_meter.c',
-        'test_metrics.c',
         'test_mcslock.c',
         'test_mp_secondary.c',
         'test_per_lcore.c',
@@ -162,7 +161,6 @@ test_deps = [
         'acl',
         'bus_pci',
         'bus_vdev',
-        'bitratestats',
         'bpf',
         'cfgfile',
         'cmdline',
@@ -177,10 +175,8 @@ test_deps = [
         'graph',
         'hash',
         'ipsec',
-        'latencystats',
         'lpm',
         'member',
-        'metrics',
         'node',
         'pipeline',
         'port',
@@ -280,7 +276,6 @@ fast_tests = [
         ['kni_autotest', false],
         ['kvargs_autotest', true],
         ['member_autotest', true],
-        ['metrics_autotest', true],
         ['power_cpufreq_autotest', false],
         ['power_autotest', true],
         ['power_kvm_vm_autotest', false],
@@ -385,6 +380,11 @@ endif
 if dpdk_conf.has('RTE_EVENT_SKELETON')
     test_deps += 'event_skeleton'
 endif
+if dpdk_conf.has('RTE_LIB_METRICS')
+    test_deps += 'metrics'
+    test_sources += ['test_metrics.c']
+    fast_tests += [['metrics_autotest', true]]
+endif
 if dpdk_conf.has('RTE_LIB_TELEMETRY')
     test_sources += ['test_telemetry_json.c', 'test_telemetry_data.c']
     fast_tests += [['telemetry_json_autotest', true], ['telemetry_data_autotest', true]]
@@ -406,16 +406,22 @@ if dpdk_conf.has('RTE_NET_RING')
     test_sources += 'test_pmd_ring_perf.c'
     test_sources += 'test_pmd_ring.c'
     test_sources += 'test_event_eth_tx_adapter.c'
-    test_sources += 'test_bitratestats.c'
-    test_sources += 'test_latencystats.c'
     test_sources += 'sample_packet_forward.c'
     test_sources += 'test_pdump.c'
     fast_tests += [['ring_pmd_autotest', true]]
     perf_test_names += 'ring_pmd_perf_autotest'
     fast_tests += [['event_eth_tx_adapter_autotest', false]]
-    fast_tests += [['bitratestats_autotest', true]]
-    fast_tests += [['latencystats_autotest', true]]
     fast_tests += [['pdump_autotest', true]]
+    if dpdk_conf.has('RTE_LIB_BITRATESTATS')
+        test_deps += 'bitratestats'
+        test_sources += 'test_bitratestats.c'
+        fast_tests += [['bitratestats_autotest', true]]
+    endif
+    if dpdk_conf.has('RTE_LIB_LATENCYSTATS')
+        test_deps += 'latencystats'
+        test_sources += 'test_latencystats.c'
+        fast_tests += [['latencystats_autotest', true]]
+    endif
 endif
 
 if dpdk_conf.has('RTE_HAS_LIBPCAP')

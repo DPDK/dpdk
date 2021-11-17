@@ -54,7 +54,9 @@
 #include <rte_pdump.h>
 #endif
 #include <rte_flow.h>
+#ifdef RTE_LIB_METRICS
 #include <rte_metrics.h>
+#endif
 #ifdef RTE_LIB_BITRATESTATS
 #include <rte_bitrate.h>
 #endif
@@ -4242,8 +4244,10 @@ main(int argc, char** argv)
 				port_id, rte_strerror(-ret));
 	}
 
+#ifdef RTE_LIB_METRICS
 	/* Init metrics library */
 	rte_metrics_init(rte_socket_id());
+#endif
 
 #ifdef RTE_LIB_LATENCYSTATS
 	if (latencystats_enabled != 0) {

@@ -66,9 +66,13 @@ libraries = [
 ]
 
 optional_libs = [
+        'bitratestats',
         'gro',
         'gso',
         'kni',
+        'jobstats',
+        'latencystats',
+        'metrics',
         'power',
         'vhost',
 ]

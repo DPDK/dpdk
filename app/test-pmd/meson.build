@@ -32,7 +32,7 @@ if dpdk_conf.has('RTE_HAS_JANSSON')
     ext_deps += jansson_dep
 endif
 
-deps += ['ethdev', 'cmdline', 'metrics', 'bus_pci']
+deps += ['ethdev', 'cmdline', 'bus_pci']
 if dpdk_conf.has('RTE_CRYPTO_SCHEDULER')
     deps += 'crypto_scheduler'
 endif
@@ -51,6 +51,9 @@ if dpdk_conf.has('RTE_LIB_GSO')
 endif
 if dpdk_conf.has('RTE_LIB_LATENCYSTATS')
     deps += 'latencystats'
+endif
+if dpdk_conf.has('RTE_LIB_METRICS')
+    deps += 'metrics'
 endif
 if dpdk_conf.has('RTE_LIB_PDUMP')
     deps += 'pdump'
