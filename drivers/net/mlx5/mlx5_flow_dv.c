@@ -1501,7 +1501,7 @@ mlx5_flow_field_id_to_modify_info
 						    (32 - width)) << off);
 		} else {
 			if (data->offset < 16)
-				info[idx++] = (struct field_modify_info){2, 4,
+				info[idx++] = (struct field_modify_info){2, 0,
 						MLX5_MODI_OUT_DMAC_15_0};
 			info[idx] = (struct field_modify_info){4, 0,
 						MLX5_MODI_OUT_DMAC_47_16};
@@ -1531,7 +1531,7 @@ mlx5_flow_field_id_to_modify_info
 						    (32 - width)) << off);
 		} else {
 			if (data->offset < 16)
-				info[idx++] = (struct field_modify_info){2, 4,
+				info[idx++] = (struct field_modify_info){2, 0,
 						MLX5_MODI_OUT_SMAC_15_0};
 			info[idx] = (struct field_modify_info){4, 0,
 						MLX5_MODI_OUT_SMAC_47_16};
@@ -1645,13 +1645,13 @@ mlx5_flow_field_id_to_modify_info
 			mask[0] = rte_cpu_to_be_32(0xffffffff >> (32 - width));
 		} else {
 			if (data->offset < 32)
-				info[idx++] = (struct field_modify_info){4, 12,
+				info[idx++] = (struct field_modify_info){4, 0,
 						MLX5_MODI_OUT_SIPV6_31_0};
 			if (data->offset < 64)
-				info[idx++] = (struct field_modify_info){4, 8,
+				info[idx++] = (struct field_modify_info){4, 0,
 						MLX5_MODI_OUT_SIPV6_63_32};
 			if (data->offset < 96)
-				info[idx++] = (struct field_modify_info){4, 4,
+				info[idx++] = (struct field_modify_info){4, 0,
 						MLX5_MODI_OUT_SIPV6_95_64};
 			if (data->offset < 128)
 				info[idx++] = (struct field_modify_info){4, 0,
@@ -1713,13 +1713,13 @@ mlx5_flow_field_id_to_modify_info
 			mask[0] = rte_cpu_to_be_32(0xffffffff >> (32 - width));
 		} else {
 			if (data->offset < 32)
-				info[idx++] = (struct field_modify_info){4, 12,
+				info[idx++] = (struct field_modify_info){4, 0,
 						MLX5_MODI_OUT_DIPV6_31_0};
 			if (data->offset < 64)
-				info[idx++] = (struct field_modify_info){4, 8,
+				info[idx++] = (struct field_modify_info){4, 0,
 						MLX5_MODI_OUT_DIPV6_63_32};
 			if (data->offset < 96)
-				info[idx++] = (struct field_modify_info){4, 4,
+				info[idx++] = (struct field_modify_info){4, 0,
 						MLX5_MODI_OUT_DIPV6_95_64};
 			if (data->offset < 128)
 				info[idx++] = (struct field_modify_info){4, 0,
