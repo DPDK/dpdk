@@ -5153,7 +5153,7 @@ ixgbe_dev_rx_init(struct rte_eth_dev *dev)
 				       IXGBE_SRRCTL_BSIZEPKT_SHIFT);
 
 		/* It adds dual VLAN length for supporting dual VLAN */
-		if (frame_size + 2 * IXGBE_VLAN_TAG_SIZE > buf_size)
+		if (frame_size + 2 * RTE_VLAN_HLEN > buf_size)
 			dev->data->scattered_rx = 1;
 		if (rxq->offloads & RTE_ETH_RX_OFFLOAD_VLAN_STRIP)
 			rx_conf->offloads |= RTE_ETH_RX_OFFLOAD_VLAN_STRIP;
@@ -5729,7 +5729,7 @@ ixgbevf_dev_rx_init(struct rte_eth_dev *dev)
 
 		if (rxmode->offloads & RTE_ETH_RX_OFFLOAD_SCATTER ||
 		    /* It adds dual VLAN length for supporting dual VLAN */
-		    (frame_size + 2 * IXGBE_VLAN_TAG_SIZE) > buf_size) {
+		    (frame_size + 2 * RTE_VLAN_HLEN) > buf_size) {
 			if (!dev->data->scattered_rx)
 				PMD_INIT_LOG(DEBUG, "forcing scatter mode");
 			dev->data->scattered_rx = 1;

@@ -10,7 +10,6 @@
 #define BD_LEN			49152
 #define ENETFEC_TX_FR_SIZE	2048
 #define ETH_HLEN		RTE_ETHER_HDR_LEN
-#define VLAN_HLEN		4
 
 /* full duplex */
 #define FULL_DUPLEX		0x00

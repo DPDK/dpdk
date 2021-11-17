@@ -36,7 +36,6 @@
  * FreeBSD driver.
  */
 #define TXGBE_VFTA_SIZE 128
-#define TXGBE_VLAN_TAG_SIZE 4
 #define TXGBE_HKEY_MAX_INDEX 10
 /*Default value of Max Rx Queue*/
 #define TXGBE_MAX_RX_QUEUE_NUM	128

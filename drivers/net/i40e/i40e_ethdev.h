@@ -27,8 +27,6 @@
  */
 #define I40E_GL_RXERR1_H(_i)	(0x00318004 + ((_i) * 8))
 
-#define I40E_VLAN_TAG_SIZE        4
-
 #define I40E_AQ_LEN               32
 #define I40E_AQ_BUF_SZ            4096
 /* Number of queues per TC should be one of 1, 2, 4, 8, 16, 32, 64 */
@@ -292,7 +290,7 @@ struct rte_flow {
  * Considering QinQ packet, the VLAN tag needs to be counted twice.
  */
 #define I40E_ETH_OVERHEAD \
-	(RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN + I40E_VLAN_TAG_SIZE * 2)
+	(RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN + RTE_VLAN_HLEN * 2)
 #define I40E_ETH_MAX_LEN (RTE_ETHER_MTU + I40E_ETH_OVERHEAD)
 
 #define I40E_RXTX_BYTES_H_16_BIT(bytes) ((bytes) & ~I40E_48_BIT_MASK)

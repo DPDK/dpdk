@@ -759,7 +759,7 @@ fm10k_dev_rx_init(struct rte_eth_dev *dev)
 
 		/* It adds dual VLAN length for supporting dual VLAN */
 		if ((dev->data->mtu + RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN +
-				2 * FM10K_VLAN_TAG_SIZE) > buf_size ||
+				2 * RTE_VLAN_HLEN) > buf_size ||
 			rxq->offloads & RTE_ETH_RX_OFFLOAD_SCATTER) {
 			uint32_t reg;
 			dev->data->scattered_rx = 1;

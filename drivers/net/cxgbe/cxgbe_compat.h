@@ -75,7 +75,6 @@ extern int cxgbe_mbox_logtype;
 #define CXGBE_ALIGN(x, a) (((x) + (a) - 1) & ~((a) - 1))
 #define PTR_ALIGN(p, a) ((typeof(p))CXGBE_ALIGN((unsigned long)(p), (a)))
 
-#define VLAN_HLEN 4
 #define ETHER_ADDR_LEN 6
 
 #define rmb()     rte_rmb() /* dpdk rte provided rmb */

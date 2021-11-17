@@ -54,7 +54,7 @@ bnx2x_check_bull(struct bnx2x_softc *sc)
 	if (valid_bitmap & (1 << MAC_ADDR_VALID) && memcmp(bull->mac, sc->old_bulletin.mac, ETH_ALEN))
 		rte_memcpy(&sc->link_params.mac_addr, bull->mac, ETH_ALEN);
 	if (valid_bitmap & (1 << VLAN_VALID))
-		rte_memcpy(&bull->vlan, &sc->old_bulletin.vlan, VLAN_HLEN);
+		rte_memcpy(&bull->vlan, &sc->old_bulletin.vlan, RTE_VLAN_HLEN);
 
 	sc->old_bulletin = *bull;
 

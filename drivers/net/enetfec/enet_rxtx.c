@@ -111,9 +111,9 @@ enetfec_recv_pkts(void *rxq1, struct rte_mbuf **rx_pkts,
 			vlan_tag = rte_be_to_cpu_16(vlan_header->vlan_tci);
 
 			vlan_packet_rcvd = true;
-			memmove((uint8_t *)mbuf_data + VLAN_HLEN,
+			memmove((uint8_t *)mbuf_data + RTE_VLAN_HLEN,
 				data, RTE_ETHER_ADDR_LEN * 2);
-			rte_pktmbuf_adj(mbuf, VLAN_HLEN);
+			rte_pktmbuf_adj(mbuf, RTE_VLAN_HLEN);
 		}
 
 		if (rxq->fep->bufdesc_ex &&

@@ -81,7 +81,7 @@ ice_dcf_init_rxq(struct rte_eth_dev *dev, struct ice_rx_queue *rxq)
 
 	rxq->max_pkt_len = max_pkt_len;
 	if ((dev_data->dev_conf.rxmode.offloads & RTE_ETH_RX_OFFLOAD_SCATTER) ||
-	    (rxq->max_pkt_len + 2 * ICE_VLAN_TAG_SIZE) > buf_size) {
+	    (rxq->max_pkt_len + 2 * RTE_VLAN_HLEN) > buf_size) {
 		dev_data->scattered_rx = 1;
 	}
 	rxq->qrx_tail = hw->hw_addr + IAVF_QRX_TAIL1(rxq->queue_id);

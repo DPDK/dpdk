@@ -10,8 +10,6 @@
 
 #include "ecore_sp.h"
 
-#define VLAN_HLEN 4
-
 struct vf_resource_query {
 	uint8_t num_rxqs;
 	uint8_t num_txqs;

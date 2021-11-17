@@ -81,8 +81,6 @@
 	RTE_MIN(((txq)->nb_desc - 2), (txq)->free_thresh)
 #define FM10K_TX_RS_THRESH_DIV(txq)        ((txq)->nb_desc)
 
-#define FM10K_VLAN_TAG_SIZE 4
-
 /* Maximum number of MAC addresses per PF/VF */
 #define FM10K_MAX_MACADDR_NUM       64
 

@@ -14,8 +14,6 @@
 #include "base/ice_adminq_cmd.h"
 #include "base/ice_flow.h"
 
-#define ICE_VLAN_TAG_SIZE        4
-
 #define ICE_ADMINQ_LEN               32
 #define ICE_SBIOQ_LEN                32
 #define ICE_MAILBOXQ_LEN             32
@@ -136,7 +134,7 @@
  * Considering QinQ packet, the VLAN tag needs to be counted twice.
  */
 #define ICE_ETH_OVERHEAD \
-	(RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN + ICE_VLAN_TAG_SIZE * 2)
+	(RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN + RTE_VLAN_HLEN * 2)
 #define ICE_ETH_MAX_LEN (RTE_ETHER_MTU + ICE_ETH_OVERHEAD)
 
 #define ICE_RXTX_BYTES_HIGH(bytes) ((bytes) & ~ICE_40_BIT_MASK)

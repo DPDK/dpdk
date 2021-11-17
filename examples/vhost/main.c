@@ -195,7 +195,6 @@ struct vhost_bufftable *vhost_txbuff[RTE_MAX_LCORE * MAX_VHOST_DEVICE];
 
 #define MBUF_TABLE_DRAIN_TSC	((rte_get_tsc_hz() + US_PER_S - 1) \
 				 / US_PER_S * BURST_TX_DRAIN_US)
-#define VLAN_HLEN       4
 
 static inline int
 open_dma(const char *value)
@@ -1015,7 +1014,7 @@ find_local_dest(struct vhost_dev *vdev, struct rte_mbuf *m,
 	 * by minus length of vlan tag, so need restore
 	 * the packet length by plus it.
 	 */
-	*offset  = VLAN_HLEN;
+	*offset  = RTE_VLAN_HLEN;
 	*vlan_tag = vlan_tags[vdev->vid];
 
 	RTE_LOG_DP(DEBUG, VHOST_DATA,

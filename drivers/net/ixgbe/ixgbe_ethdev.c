@@ -5173,7 +5173,7 @@ ixgbe_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 	 * scattered packets when this feature has not been enabled before.
 	 */
 	if (dev->data->dev_started && !dev->data->scattered_rx &&
-	    frame_size + 2 * IXGBE_VLAN_TAG_SIZE >
+	    frame_size + 2 * RTE_VLAN_HLEN >
 			dev->data->min_rx_buf_size - RTE_PKTMBUF_HEADROOM) {
 		PMD_INIT_LOG(ERR, "Stop port first.");
 		return -EINVAL;
@@ -6341,7 +6341,7 @@ ixgbevf_dev_set_mtu(struct rte_eth_dev *dev, uint16_t mtu)
 	 * scattered packets when this feature has not been enabled before.
 	 */
 	if (dev_data->dev_started && !dev_data->scattered_rx &&
-	    (max_frame + 2 * IXGBE_VLAN_TAG_SIZE >
+	    (max_frame + 2 * RTE_VLAN_HLEN >
 			dev->data->min_rx_buf_size - RTE_PKTMBUF_HEADROOM)) {
 		PMD_INIT_LOG(ERR, "Stop port first.");
 		return -EINVAL;

@@ -45,9 +45,8 @@
 /** Rx queue descriptors alignment in B */
 #define MRVL_NETA_RXD_ALIGN 32
 
-#define MRVL_NETA_VLAN_TAG_LEN	4
 #define MRVL_NETA_ETH_HDRS_LEN	(RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN + \
-				MRVL_NETA_VLAN_TAG_LEN)
+				RTE_VLAN_HLEN)
 
 #define MRVL_NETA_HDRS_LEN		(MV_MH_SIZE + MRVL_NETA_ETH_HDRS_LEN)
 #define MRVL_NETA_MTU_TO_MRU(mtu)	((mtu) + MRVL_NETA_HDRS_LEN)

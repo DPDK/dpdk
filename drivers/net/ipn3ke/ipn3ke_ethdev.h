@@ -633,13 +633,12 @@ ipn3ke_tm_ops_get(struct rte_eth_dev *ethdev,
 #define IPN3KE_MAC_RX_FRAME_CONTROL_EN_ALLMCAST_MASK \
 	IPN3KE_MASK(0x1, IPN3KE_MAC_RX_FRAME_CONTROL_EN_ALLMCAST_SHIFT)
 
-#define IPN3KE_VLAN_TAG_SIZE    4
 /**
  * The overhead from MTU to max frame size.
  * Considering QinQ packet, the VLAN tag needs to be counted twice.
  */
 #define IPN3KE_ETH_OVERHEAD \
-	(RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN + IPN3KE_VLAN_TAG_SIZE * 2)
+	(RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN + RTE_VLAN_HLEN * 2)
 #define IPN3KE_ETH_MAX_LEN (RTE_ETHER_MTU + IPN3KE_ETH_OVERHEAD)
 
 #define IPN3KE_MAC_FRAME_SIZE_MAX    9728

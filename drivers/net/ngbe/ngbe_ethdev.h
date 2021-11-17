@@ -19,7 +19,6 @@
 #define NGBE_FLAG_NEED_LINK_CONFIG  ((uint32_t)(1 << 4))
 
 #define NGBE_VFTA_SIZE 128
-#define NGBE_VLAN_TAG_SIZE 4
 #define NGBE_HKEY_MAX_INDEX 10
 /*Default value of Max Rx Queue*/
 #define NGBE_MAX_RX_QUEUE_NUM	8
