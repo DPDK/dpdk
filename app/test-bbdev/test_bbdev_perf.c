@@ -133,7 +133,7 @@ struct test_op_params {
 	uint16_t num_to_process;
 	uint16_t num_lcores;
 	int vector_mask;
-	rte_atomic16_t sync;
+	uint16_t sync;
 	struct test_buffers q_bufs[RTE_MAX_NUMA_NODES][MAX_QUEUES];
 };
 
@@ -148,9 +148,9 @@ struct thread_params {
 	uint8_t iter_count;
 	double iter_average;
 	double bler;
-	rte_atomic16_t nb_dequeued;
-	rte_atomic16_t processing_status;
-	rte_atomic16_t burst_sz;
+	uint16_t nb_dequeued;
+	int16_t processing_status;
+	uint16_t burst_sz;
 	struct test_op_params *op_params;
 	struct rte_bbdev_dec_op *dec_ops[MAX_BURST];
 	struct rte_bbdev_enc_op *enc_ops[MAX_BURST];
@@ -2637,46 +2637,46 @@ dequeue_event_callback(uint16_t dev_id,
 	}
 
 	if (unlikely(event != RTE_BBDEV_EVENT_DEQUEUE)) {
-		rte_atomic16_set(&tp->processing_status, TEST_FAILED);
+		__atomic_store_n(&tp->processing_status, TEST_FAILED, __ATOMIC_RELAXED);
 		printf(
 			"Dequeue interrupt handler called for incorrect event!\n");
 		return;
 	}
 
-	burst_sz = rte_atomic16_read(&tp->burst_sz);
+	burst_sz = __atomic_load_n(&tp->burst_sz, __ATOMIC_RELAXED);
 	num_ops = tp->op_params->num_to_process;
 
 	if (test_vector.op_type == RTE_BBDEV_OP_TURBO_DEC)
 		deq = rte_bbdev_dequeue_dec_ops(dev_id, queue_id,
 				&tp->dec_ops[
-					rte_atomic16_read(&tp->nb_dequeued)],
+					__atomic_load_n(&tp->nb_dequeued, __ATOMIC_RELAXED)],
 				burst_sz);
 	else if (test_vector.op_type == RTE_BBDEV_OP_LDPC_DEC)
 		deq = rte_bbdev_dequeue_ldpc_dec_ops(dev_id, queue_id,
 				&tp->dec_ops[
-					rte_atomic16_read(&tp->nb_dequeued)],
+					__atomic_load_n(&tp->nb_dequeued, __ATOMIC_RELAXED)],
 				burst_sz);
 	else if (test_vector.op_type == RTE_BBDEV_OP_LDPC_ENC)
 		deq = rte_bbdev_dequeue_ldpc_enc_ops(dev_id, queue_id,
 				&tp->enc_ops[
-					rte_atomic16_read(&tp->nb_dequeued)],
+					__atomic_load_n(&tp->nb_dequeued, __ATOMIC_RELAXED)],
 				burst_sz);
 	else /*RTE_BBDEV_OP_TURBO_ENC*/
 		deq = rte_bbdev_dequeue_enc_ops(dev_id, queue_id,
 				&tp->enc_ops[
-					rte_atomic16_read(&tp->nb_dequeued)],
+					__atomic_load_n(&tp->nb_dequeued, __ATOMIC_RELAXED)],
 				burst_sz);
 
 	if (deq < burst_sz) {
 		printf(
 			"After receiving the interrupt all operations should be dequeued. Expected: %u, got: %u\n",
 			burst_sz, deq);
-		rte_atomic16_set(&tp->processing_status, TEST_FAILED);
+		__atomic_store_n(&tp->processing_status, TEST_FAILED, __ATOMIC_RELAXED);
 		return;
 	}
 
-	if (rte_atomic16_read(&tp->nb_dequeued) + deq < num_ops) {
-		rte_atomic16_add(&tp->nb_dequeued, deq);
+	if (__atomic_load_n(&tp->nb_dequeued, __ATOMIC_RELAXED) + deq < num_ops) {
+		__atomic_fetch_add(&tp->nb_dequeued, deq, __ATOMIC_RELAXED);
 		return;
 	}
 
@@ -2713,7 +2713,7 @@ dequeue_event_callback(uint16_t dev_id,
 
 	if (ret) {
 		printf("Buffers validation failed\n");
-		rte_atomic16_set(&tp->processing_status, TEST_FAILED);
+		__atomic_store_n(&tp->processing_status, TEST_FAILED, __ATOMIC_RELAXED);
 	}
 
 	switch (test_vector.op_type) {
@@ -2734,7 +2734,7 @@ dequeue_event_callback(uint16_t dev_id,
 		break;
 	default:
 		printf("Unknown op type: %d\n", test_vector.op_type);
-		rte_atomic16_set(&tp->processing_status, TEST_FAILED);
+		__atomic_store_n(&tp->processing_status, TEST_FAILED, __ATOMIC_RELAXED);
 		return;
 	}
 
@@ -2743,7 +2743,7 @@ dequeue_event_callback(uint16_t dev_id,
 	tp->mbps += (((double)(num_ops * tb_len_bits)) / 1000000.0) /
 			((double)total_time / (double)rte_get_tsc_hz());
 
-	rte_atomic16_add(&tp->nb_dequeued, deq);
+	__atomic_fetch_add(&tp->nb_dequeued, deq, __ATOMIC_RELAXED);
 }
 
 static int
@@ -2781,11 +2781,10 @@ throughput_intr_lcore_ldpc_dec(void *arg)
 
 	bufs = &tp->op_params->q_bufs[GET_SOCKET(info.socket_id)][queue_id];
 
-	rte_atomic16_clear(&tp->processing_status);
-	rte_atomic16_clear(&tp->nb_dequeued);
+	__atomic_store_n(&tp->processing_status, 0, __ATOMIC_RELAXED);
+	__atomic_store_n(&tp->nb_dequeued, 0, __ATOMIC_RELAXED);
 
-	while (rte_atomic16_read(&tp->op_params->sync) == SYNC_WAIT)
-		rte_pause();
+	rte_wait_until_equal_16(&tp->op_params->sync, SYNC_START, __ATOMIC_RELAXED);
 
 	ret = rte_bbdev_dec_op_alloc_bulk(tp->op_params->mp, ops,
 				num_to_process);
@@ -2833,17 +2832,15 @@ throughput_intr_lcore_ldpc_dec(void *arg)
 			 * the number of operations is not a multiple of
 			 * burst size.
 			 */
-			rte_atomic16_set(&tp->burst_sz, num_to_enq);
+			__atomic_store_n(&tp->burst_sz, num_to_enq, __ATOMIC_RELAXED);
 
 			/* Wait until processing of previous batch is
 			 * completed
 			 */
-			while (rte_atomic16_read(&tp->nb_dequeued) !=
-					(int16_t) enqueued)
-				rte_pause();
+			rte_wait_until_equal_16(&tp->nb_dequeued, enqueued, __ATOMIC_RELAXED);
 		}
 		if (j != TEST_REPETITIONS - 1)
-			rte_atomic16_clear(&tp->nb_dequeued);
+			__atomic_store_n(&tp->nb_dequeued, 0, __ATOMIC_RELAXED);
 	}
 
 	return TEST_SUCCESS;
@@ -2878,11 +2875,10 @@ throughput_intr_lcore_dec(void *arg)
 
 	bufs = &tp->op_params->q_bufs[GET_SOCKET(info.socket_id)][queue_id];
 
-	rte_atomic16_clear(&tp->processing_status);
-	rte_atomic16_clear(&tp->nb_dequeued);
+	__atomic_store_n(&tp->processing_status, 0, __ATOMIC_RELAXED);
+	__atomic_store_n(&tp->nb_dequeued, 0, __ATOMIC_RELAXED);
 
-	while (rte_atomic16_read(&tp->op_params->sync) == SYNC_WAIT)
-		rte_pause();
+	rte_wait_until_equal_16(&tp->op_params->sync, SYNC_START, __ATOMIC_RELAXED);
 
 	ret = rte_bbdev_dec_op_alloc_bulk(tp->op_params->mp, ops,
 				num_to_process);
@@ -2923,17 +2919,15 @@ throughput_intr_lcore_dec(void *arg)
 			 * the number of operations is not a multiple of
 			 * burst size.
 			 */
-			rte_atomic16_set(&tp->burst_sz, num_to_enq);
+			__atomic_store_n(&tp->burst_sz, num_to_enq, __ATOMIC_RELAXED);
 
 			/* Wait until processing of previous batch is
 			 * completed
 			 */
-			while (rte_atomic16_read(&tp->nb_dequeued) !=
-					(int16_t) enqueued)
-				rte_pause();
+			rte_wait_until_equal_16(&tp->nb_dequeued, enqueued, __ATOMIC_RELAXED);
 		}
 		if (j != TEST_REPETITIONS - 1)
-			rte_atomic16_clear(&tp->nb_dequeued);
+			__atomic_store_n(&tp->nb_dequeued, 0, __ATOMIC_RELAXED);
 	}
 
 	return TEST_SUCCESS;
@@ -2968,11 +2962,10 @@ throughput_intr_lcore_enc(void *arg)
 
 	bufs = &tp->op_params->q_bufs[GET_SOCKET(info.socket_id)][queue_id];
 
-	rte_atomic16_clear(&tp->processing_status);
-	rte_atomic16_clear(&tp->nb_dequeued);
+	__atomic_store_n(&tp->processing_status, 0, __ATOMIC_RELAXED);
+	__atomic_store_n(&tp->nb_dequeued, 0, __ATOMIC_RELAXED);
 
-	while (rte_atomic16_read(&tp->op_params->sync) == SYNC_WAIT)
-		rte_pause();
+	rte_wait_until_equal_16(&tp->op_params->sync, SYNC_START, __ATOMIC_RELAXED);
 
 	ret = rte_bbdev_enc_op_alloc_bulk(tp->op_params->mp, ops,
 			num_to_process);
@@ -3012,17 +3005,15 @@ throughput_intr_lcore_enc(void *arg)
 			 * the number of operations is not a multiple of
 			 * burst size.
 			 */
-			rte_atomic16_set(&tp->burst_sz, num_to_enq);
+			__atomic_store_n(&tp->burst_sz, num_to_enq, __ATOMIC_RELAXED);
 
 			/* Wait until processing of previous batch is
 			 * completed
 			 */
-			while (rte_atomic16_read(&tp->nb_dequeued) !=
-					(int16_t) enqueued)
-				rte_pause();
+			rte_wait_until_equal_16(&tp->nb_dequeued, enqueued, __ATOMIC_RELAXED);
 		}
 		if (j != TEST_REPETITIONS - 1)
-			rte_atomic16_clear(&tp->nb_dequeued);
+			__atomic_store_n(&tp->nb_dequeued, 0, __ATOMIC_RELAXED);
 	}
 
 	return TEST_SUCCESS;
@@ -3058,11 +3049,10 @@ throughput_intr_lcore_ldpc_enc(void *arg)
 
 	bufs = &tp->op_params->q_bufs[GET_SOCKET(info.socket_id)][queue_id];
 
-	rte_atomic16_clear(&tp->processing_status);
-	rte_atomic16_clear(&tp->nb_dequeued);
+	__atomic_store_n(&tp->processing_status, 0, __ATOMIC_RELAXED);
+	__atomic_store_n(&tp->nb_dequeued, 0, __ATOMIC_RELAXED);
 
-	while (rte_atomic16_read(&tp->op_params->sync) == SYNC_WAIT)
-		rte_pause();
+	rte_wait_until_equal_16(&tp->op_params->sync, SYNC_START, __ATOMIC_RELAXED);
 
 	ret = rte_bbdev_enc_op_alloc_bulk(tp->op_params->mp, ops,
 			num_to_process);
@@ -3104,17 +3094,15 @@ throughput_intr_lcore_ldpc_enc(void *arg)
 			 * the number of operations is not a multiple of
 			 * burst size.
 			 */
-			rte_atomic16_set(&tp->burst_sz, num_to_enq);
+			__atomic_store_n(&tp->burst_sz, num_to_enq, __ATOMIC_RELAXED);
 
 			/* Wait until processing of previous batch is
 			 * completed
 			 */
-			while (rte_atomic16_read(&tp->nb_dequeued) !=
-					(int16_t) enqueued)
-				rte_pause();
+			rte_wait_until_equal_16(&tp->nb_dequeued, enqueued, __ATOMIC_RELAXED);
 		}
 		if (j != TEST_REPETITIONS - 1)
-			rte_atomic16_clear(&tp->nb_dequeued);
+			__atomic_store_n(&tp->nb_dequeued, 0, __ATOMIC_RELAXED);
 	}
 
 	return TEST_SUCCESS;
@@ -3148,8 +3136,7 @@ throughput_pmd_lcore_dec(void *arg)
 
 	bufs = &tp->op_params->q_bufs[GET_SOCKET(info.socket_id)][queue_id];
 
-	while (rte_atomic16_read(&tp->op_params->sync) == SYNC_WAIT)
-		rte_pause();
+	rte_wait_until_equal_16(&tp->op_params->sync, SYNC_START, __ATOMIC_RELAXED);
 
 	ret = rte_bbdev_dec_op_alloc_bulk(tp->op_params->mp, ops_enq, num_ops);
 	TEST_ASSERT_SUCCESS(ret, "Allocation failed for %d ops", num_ops);
@@ -3252,8 +3239,7 @@ bler_pmd_lcore_ldpc_dec(void *arg)
 
 	bufs = &tp->op_params->q_bufs[GET_SOCKET(info.socket_id)][queue_id];
 
-	while (rte_atomic16_read(&tp->op_params->sync) == SYNC_WAIT)
-		rte_pause();
+	rte_wait_until_equal_16(&tp->op_params->sync, SYNC_START, __ATOMIC_RELAXED);
 
 	ret = rte_bbdev_dec_op_alloc_bulk(tp->op_params->mp, ops_enq, num_ops);
 	TEST_ASSERT_SUCCESS(ret, "Allocation failed for %d ops", num_ops);
@@ -3382,8 +3368,7 @@ throughput_pmd_lcore_ldpc_dec(void *arg)
 
 	bufs = &tp->op_params->q_bufs[GET_SOCKET(info.socket_id)][queue_id];
 
-	while (rte_atomic16_read(&tp->op_params->sync) == SYNC_WAIT)
-		rte_pause();
+	rte_wait_until_equal_16(&tp->op_params->sync, SYNC_START, __ATOMIC_RELAXED);
 
 	ret = rte_bbdev_dec_op_alloc_bulk(tp->op_params->mp, ops_enq, num_ops);
 	TEST_ASSERT_SUCCESS(ret, "Allocation failed for %d ops", num_ops);
@@ -3499,8 +3484,7 @@ throughput_pmd_lcore_enc(void *arg)
 
 	bufs = &tp->op_params->q_bufs[GET_SOCKET(info.socket_id)][queue_id];
 
-	while (rte_atomic16_read(&tp->op_params->sync) == SYNC_WAIT)
-		rte_pause();
+	rte_wait_until_equal_16(&tp->op_params->sync, SYNC_START, __ATOMIC_RELAXED);
 
 	ret = rte_bbdev_enc_op_alloc_bulk(tp->op_params->mp, ops_enq,
 			num_ops);
@@ -3590,8 +3574,7 @@ throughput_pmd_lcore_ldpc_enc(void *arg)
 
 	bufs = &tp->op_params->q_bufs[GET_SOCKET(info.socket_id)][queue_id];
 
-	while (rte_atomic16_read(&tp->op_params->sync) == SYNC_WAIT)
-		rte_pause();
+	rte_wait_until_equal_16(&tp->op_params->sync, SYNC_START, __ATOMIC_RELAXED);
 
 	ret = rte_bbdev_enc_op_alloc_bulk(tp->op_params->mp, ops_enq,
 			num_ops);
@@ -3774,7 +3757,7 @@ bler_test(struct active_device *ad,
 	else
 		return TEST_SKIPPED;
 
-	rte_atomic16_set(&op_params->sync, SYNC_WAIT);
+	__atomic_store_n(&op_params->sync, SYNC_WAIT, __ATOMIC_RELAXED);
 
 	/* Main core is set at first entry */
 	t_params[0].dev_id = ad->dev_id;
@@ -3797,7 +3780,7 @@ bler_test(struct active_device *ad,
 				&t_params[used_cores++], lcore_id);
 	}
 
-	rte_atomic16_set(&op_params->sync, SYNC_START);
+	__atomic_store_n(&op_params->sync, SYNC_START, __ATOMIC_RELAXED);
 	ret = bler_function(&t_params[0]);
 
 	/* Main core is always used */
@@ -3892,7 +3875,7 @@ throughput_test(struct active_device *ad,
 			throughput_function = throughput_pmd_lcore_enc;
 	}
 
-	rte_atomic16_set(&op_params->sync, SYNC_WAIT);
+	__atomic_store_n(&op_params->sync, SYNC_WAIT, __ATOMIC_RELAXED);
 
 	/* Main core is set at first entry */
 	t_params[0].dev_id = ad->dev_id;
@@ -3915,7 +3898,7 @@ throughput_test(struct active_device *ad,
 				&t_params[used_cores++], lcore_id);
 	}
 
-	rte_atomic16_set(&op_params->sync, SYNC_START);
+	__atomic_store_n(&op_params->sync, SYNC_START, __ATOMIC_RELAXED);
 	ret = throughput_function(&t_params[0]);
 
 	/* Main core is always used */
@@ -3945,29 +3928,29 @@ throughput_test(struct active_device *ad,
 	 * Wait for main lcore operations.
 	 */
 	tp = &t_params[0];
-	while ((rte_atomic16_read(&tp->nb_dequeued) <
-			op_params->num_to_process) &&
-			(rte_atomic16_read(&tp->processing_status) !=
-			TEST_FAILED))
+	while ((__atomic_load_n(&tp->nb_dequeued, __ATOMIC_RELAXED) <
+		op_params->num_to_process) &&
+		(__atomic_load_n(&tp->processing_status, __ATOMIC_RELAXED) !=
+		TEST_FAILED))
 		rte_pause();
 
 	tp->ops_per_sec /= TEST_REPETITIONS;
 	tp->mbps /= TEST_REPETITIONS;
-	ret |= (int)rte_atomic16_read(&tp->processing_status);
+	ret |= (int)__atomic_load_n(&tp->processing_status, __ATOMIC_RELAXED);
 
 	/* Wait for worker lcores operations */
 	for (used_cores = 1; used_cores < num_lcores; used_cores++) {
 		tp = &t_params[used_cores];
 
-		while ((rte_atomic16_read(&tp->nb_dequeued) <
-				op_params->num_to_process) &&
-				(rte_atomic16_read(&tp->processing_status) !=
-				TEST_FAILED))
+		while ((__atomic_load_n(&tp->nb_dequeued, __ATOMIC_RELAXED) <
+			op_params->num_to_process) &&
+			(__atomic_load_n(&tp->processing_status, __ATOMIC_RELAXED) !=
+			TEST_FAILED))
 			rte_pause();
 
 		tp->ops_per_sec /= TEST_REPETITIONS;
 		tp->mbps /= TEST_REPETITIONS;
-		ret |= (int)rte_atomic16_read(&tp->processing_status);
+		ret |= (int)__atomic_load_n(&tp->processing_status, __ATOMIC_RELAXED);
 	}
 
 	/* Print throughput if test passed */
