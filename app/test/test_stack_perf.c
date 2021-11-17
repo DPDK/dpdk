@@ -6,7 +6,6 @@
 #include <stdio.h>
 #include <inttypes.h>
 
-#include <rte_atomic.h>
 #include <rte_cycles.h>
 #include <rte_launch.h>
 #include <rte_pause.h>
@@ -24,7 +23,7 @@
  */
 static volatile unsigned int bulk_sizes[] = {8, MAX_BURST};
 
-static rte_atomic32_t lcore_barrier;
+static uint32_t lcore_barrier;
 
 struct lcore_pair {
 	unsigned int c1;
@@ -144,9 +143,8 @@ bulk_push_pop(void *p)
 	s = args->s;
 	size = args->sz;
 
-	rte_atomic32_sub(&lcore_barrier, 1);
-	while (rte_atomic32_read(&lcore_barrier) != 0)
-		rte_pause();
+	__atomic_fetch_sub(&lcore_barrier, 1, __ATOMIC_RELAXED);
+	rte_wait_until_equal_32(&lcore_barrier, 0, __ATOMIC_RELAXED);
 
 	uint64_t start = rte_rdtsc();
 
@@ -175,7 +173,7 @@ run_on_core_pair(struct lcore_pair *cores, struct rte_stack *s,
 	unsigned int i;
 
 	for (i = 0; i < RTE_DIM(bulk_sizes); i++) {
-		rte_atomic32_set(&lcore_barrier, 2);
+		__atomic_store_n(&lcore_barrier, 2, __ATOMIC_RELAXED);
 
 		args[0].sz = args[1].sz = bulk_sizes[i];
 		args[0].s = args[1].s = s;
@@ -208,7 +206,7 @@ run_on_n_cores(struct rte_stack *s, lcore_function_t fn, int n)
 		int cnt = 0;
 		double avg;
 
-		rte_atomic32_set(&lcore_barrier, n);
+		__atomic_store_n(&lcore_barrier, n, __ATOMIC_RELAXED);
 
 		RTE_LCORE_FOREACH_WORKER(lcore_id) {
 			if (++cnt >= n)
@@ -302,7 +300,7 @@ __test_stack_perf(uint32_t flags)
 	struct lcore_pair cores;
 	struct rte_stack *s;
 
-	rte_atomic32_init(&lcore_barrier);
+	__atomic_store_n(&lcore_barrier, 0, __ATOMIC_RELAXED);
 
 	s = rte_stack_create(STACK_NAME, STACK_SIZE, rte_socket_id(), flags);
 	if (s == NULL) {
