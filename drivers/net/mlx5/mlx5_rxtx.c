@@ -3468,7 +3468,7 @@ mlx5_tx_packet_multi_inline(struct mlx5_txq_data *__rte_restrict txq,
 			MLX5_ASSERT(txq->inlen_mode >=
 				    MLX5_ESEG_MIN_INLINE_SIZE);
 			MLX5_ASSERT(txq->inlen_mode <= txq->inlen_send);
-			inlen = txq->inlen_mode;
+			inlen = RTE_MIN(txq->inlen_mode, inlen);
 		} else if (vlan && !txq->vlan_en) {
 			/*
 			 * VLAN insertion is requested and hardware does not
@@ -3481,6 +3481,8 @@ mlx5_tx_packet_multi_inline(struct mlx5_txq_data *__rte_restrict txq,
 		} else {
 			goto do_first;
 		}
+		if (mbuf->ol_flags & PKT_TX_DYNF_NOINLINE)
+			goto do_build;
 		/*
 		 * Now we know the minimal amount of data is requested
 		 * to inline. Check whether we should inline the buffers
@@ -3513,6 +3515,8 @@ do_first:
 				mbuf = NEXT(mbuf);
 				/* There should be not end of packet. */
 				MLX5_ASSERT(mbuf);
+				if (mbuf->ol_flags & PKT_TX_DYNF_NOINLINE)
+					break;
 				nxlen = inlen + rte_pktmbuf_data_len(mbuf);
 			} while (unlikely(nxlen < txq->inlen_send));
 		}
@@ -3540,6 +3544,7 @@ do_align:
 	 * Estimate the number of Data Segments conservatively,
 	 * supposing no any mbufs is being freed during inlining.
 	 */
+do_build:
 	MLX5_ASSERT(inlen <= txq->inlen_send);
 	ds = NB_SEGS(loc->mbuf) + 2 + (inlen -
 				       MLX5_ESEG_MIN_INLINE_SIZE +
