@@ -21,6 +21,7 @@ jobs:
       CC: ccache ${{ matrix.config.compiler }}
       DEF_LIB: ${{ matrix.config.library }}
       LIBABIGAIL_VERSION: libabigail-1.8
+      MINI: ${{ matrix.config.mini != '' }}
       PPC64LE: ${{ matrix.config.cross == 'ppc64le' }}
       REF_GIT_TAG: none
       RUN_TESTS: ${{ contains(matrix.config.checks, 'tests') }}
@@ -32,6 +33,10 @@ jobs:
           - os: ubuntu-18.04
             compiler: gcc
             library: static
+          - os: ubuntu-18.04
+            compiler: gcc
+            library: shared
+            mini: mini
           - os: ubuntu-18.04
             compiler: gcc
             library: shared

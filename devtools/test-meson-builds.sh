@@ -220,6 +220,9 @@ for c in gcc clang ; do
 	done
 done
 
+build build-mini cc skipABI $use_shared -Ddisable_libs=* \
+	-Denable_drivers=bus/vdev,mempool/ring,net/null
+
 # test compilation with minimal x86 instruction set
 # Set the install path for libraries to "lib" explicitly to prevent problems
 # with pkg-config prefixes if installed in "lib/x86_64-linux-gnu" later.
