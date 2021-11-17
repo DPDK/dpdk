@@ -10,7 +10,6 @@
 #include <rte_cycles.h>
 #include <rte_ethdev.h>
 #include <rte_byteorder.h>
-#include <rte_atomic.h>
 #include <rte_malloc.h>
 #include "packet_burst_generator.h"
 #include "test.h"
@@ -525,7 +524,7 @@ main_loop(__rte_unused void *args)
 	return 0;
 }
 
-static rte_atomic64_t start;
+static uint64_t start;
 
 static inline int
 poll_burst(void *args)
@@ -563,8 +562,7 @@ poll_burst(void *args)
 		num[portid] = pkt_per_port;
 	}
 
-	while (!rte_atomic64_read(&start))
-		;
+	rte_wait_until_equal_64(&start, 1, __ATOMIC_ACQUIRE);
 
 	cur_tsc = rte_rdtsc();
 	while (total) {
@@ -616,15 +614,18 @@ exec_burst(uint32_t flags, int lcore)
 	pkt_per_port = MAX_TRAFFIC_BURST;
 	num = pkt_per_port * conf->nb_ports;
 
-	rte_atomic64_init(&start);
+	/* only when polling first */
+	if (flags == SC_BURST_POLL_FIRST)
+		__atomic_store_n(&start, 1, __ATOMIC_RELAXED);
+	else
+		__atomic_store_n(&start, 0, __ATOMIC_RELAXED);
 
-	/* start polling thread, but not actually poll yet */
+	/* start polling thread
+	 * if in POLL_FIRST mode, poll once launched;
+	 * otherwise, not actually poll yet
+	 */
 	rte_eal_remote_launch(poll_burst,
 			      (void *)&pkt_per_port, lcore);
-
-	/* Only when polling first */
-	if (flags == SC_BURST_POLL_FIRST)
-		rte_atomic64_set(&start, 1);
 
 	/* start xmit */
 	i = 0;
@@ -641,7 +642,7 @@ exec_burst(uint32_t flags, int lcore)
 
 	/* only when polling second  */
 	if (flags == SC_BURST_XMIT_FIRST)
-		rte_atomic64_set(&start, 1);
+		__atomic_store_n(&start, 1, __ATOMIC_RELEASE);
 
 	/* wait for polling finished */
 	diff_tsc = rte_eal_wait_lcore(lcore);
