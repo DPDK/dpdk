@@ -1156,6 +1156,9 @@ main_telemetry_loop(__rte_unused void *dummy)
 			ep_nep[nb_rx == 0]++;
 			fp_nfp[nb_rx == MAX_PKT_BURST]++;
 			poll_count++;
+			RTE_LOG(INFO, L3FWD_POWER,
+				"lcore %u has woken up on port %d queue %d\n",
+				rte_lcore_id(), portid, queueid);
 			if (unlikely(nb_rx == 0))
 				continue;
 
