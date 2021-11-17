@@ -15,6 +15,7 @@
 #include "sfc_dp.h"
 #include "sfc_debug.h"
 #include "sfc_tso.h"
+#include "sfc_nic_dma_dp.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -80,6 +81,9 @@ struct sfc_dp_tx_qcreate_info {
 	uint32_t		tso_max_payload_len;
 	/** Maximum number of frames to be generated per TSOv3 transaction */
 	uint32_t		tso_max_nb_outgoing_frames;
+
+	/** NIC's DMA mapping information */
+	const struct sfc_nic_dma_info	*nic_dma_info;
 };
 
 /**

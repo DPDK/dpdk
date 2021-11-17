@@ -440,7 +440,8 @@ sfc_port_attach(struct sfc_adapter *sa)
 
 	mac_nstats = efx_nic_cfg_get(sa->nic)->enc_mac_stats_nstats;
 	mac_stats_size = RTE_ALIGN(mac_nstats * sizeof(uint64_t), EFX_BUF_SIZE);
-	rc = sfc_dma_alloc(sa, "mac_stats", 0, mac_stats_size,
+	rc = sfc_dma_alloc(sa, "mac_stats", 0, EFX_NIC_DMA_ADDR_MAC_STATS_BUF,
+			   mac_stats_size,
 			   sa->socket_id, &port->mac_stats_dma_mem);
 	if (rc != 0)
 		goto fail_mac_stats_dma_alloc;

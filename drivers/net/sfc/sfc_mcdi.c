@@ -19,9 +19,10 @@ static int
 sfc_mcdi_dma_alloc(void *cookie, const char *name, size_t len,
 		   efsys_mem_t *esmp)
 {
-	const struct sfc_adapter *sa = cookie;
+	struct sfc_adapter *sa = cookie;
 
-	return sfc_dma_alloc(sa, name, 0, len, sa->socket_id, esmp);
+	return sfc_dma_alloc(sa, name, 0, EFX_NIC_DMA_ADDR_MCDI_BUF, len,
+			     sa->socket_id, esmp);
 }
 
 static sfc_efx_mcdi_dma_free_cb sfc_mcdi_dma_free;

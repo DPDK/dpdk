@@ -911,6 +911,7 @@ sfc_ev_qinit(struct sfc_adapter *sa,
 
 	/* Allocate DMA space */
 	rc = sfc_dma_alloc(sa, sfc_evq_type2str(type), type_index,
+			   EFX_NIC_DMA_ADDR_EVENT_RING,
 			   efx_evq_size(sa->nic, evq->entries, sa->evq_flags),
 			   socket_id, &evq->mem);
 	if (rc != 0)

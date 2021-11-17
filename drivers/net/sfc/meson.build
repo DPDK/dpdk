@@ -100,4 +100,5 @@ sources = files(
         'sfc_service.c',
         'sfc_repr_proxy.c',
         'sfc_repr.c',
+        'sfc_nic_dma.c',
 )

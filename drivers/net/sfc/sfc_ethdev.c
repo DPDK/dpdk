@@ -32,6 +32,7 @@
 #include "sfc_repr.h"
 #include "sfc_sw_stats.h"
 #include "sfc_switch.h"
+#include "sfc_nic_dma.h"
 
 #define SFC_XSTAT_ID_INVALID_VAL  UINT64_MAX
 #define SFC_XSTAT_ID_INVALID_NAME '\0'
@@ -375,6 +376,7 @@ sfc_dev_close(struct rte_eth_dev *dev)
 
 	sfc_eth_dev_clear_ops(dev);
 
+	sfc_nic_dma_detach(sa);
 	sfc_detach(sa);
 	sfc_unprobe(sa);
 
@@ -2840,11 +2842,22 @@ sfc_eth_dev_init(struct rte_eth_dev *dev, void *init_params)
 	from = (const struct rte_ether_addr *)(encp->enc_mac_addr);
 	rte_ether_addr_copy(from, &dev->data->mac_addrs[0]);
 
+	/*
+	 * Setup the NIC DMA mapping handler. All internal mempools
+	 * MUST be created on attach before this point, and the
+	 * adapter MUST NOT create mempools with the adapter lock
+	 * held after this point.
+	 */
+	rc = sfc_nic_dma_attach(sa);
+	if (rc != 0)
+		goto fail_nic_dma_attach;
+
 	sfc_adapter_unlock(sa);
 
 	sfc_log_init(sa, "done");
 	return 0;
 
+fail_nic_dma_attach:
 fail_switchdev_no_mae:
 	sfc_detach(sa);
 

@@ -194,7 +194,7 @@ sfc_tx_qinit(struct sfc_adapter *sa, sfc_sw_index_t sw_index,
 		SFC_TX_DEFAULT_FREE_THRESH;
 	txq_info->offloads = offloads;
 
-	rc = sfc_dma_alloc(sa, "txq", sw_index,
+	rc = sfc_dma_alloc(sa, "txq", sw_index, EFX_NIC_DMA_ADDR_TX_RING,
 			   efx_txq_size(sa->nic, txq_info->entries),
 			   socket_id, &txq->mem);
 	if (rc != 0)
@@ -225,6 +225,8 @@ sfc_tx_qinit(struct sfc_adapter *sa, sfc_sw_index_t sw_index,
 			(uint32_t)UINT16_MAX);
 	info.tso_max_payload_len = encp->enc_tx_tso_max_payload_length;
 	info.tso_max_nb_outgoing_frames = encp->enc_tx_tso_max_nframes;
+
+	info.nic_dma_info = &sas->nic_dma_info;
 
 	rc = sa->priv.dp_tx->qcreate(sa->eth_dev->data->port_id, sw_index,
 				     &RTE_ETH_DEV_TO_PCI(sa->eth_dev)->addr,
@@ -1082,6 +1084,10 @@ sfc_efx_tx_qcreate(uint16_t port_id, uint16_t queue_id,
 	struct sfc_txq *ctrl_txq;
 	int rc;
 
+	rc = ENOTSUP;
+	if (info->nic_dma_info->nb_regions > 0)
+		goto fail_nic_dma;
+
 	rc = ENOMEM;
 	txq = rte_zmalloc_socket("sfc-efx-txq", sizeof(*txq),
 				 RTE_CACHE_LINE_SIZE, socket_id);
@@ -1133,6 +1139,7 @@ fail_pend_desc_alloc:
 	rte_free(txq);
 
 fail_txq_alloc:
+fail_nic_dma:
 	return rc;
 }
 

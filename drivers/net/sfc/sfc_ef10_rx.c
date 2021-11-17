@@ -651,6 +651,10 @@ sfc_ef10_rx_qcreate(uint16_t port_id, uint16_t queue_id,
 	if (info->rxq_entries != info->evq_entries)
 		goto fail_rxq_args;
 
+	rc = ENOTSUP;
+	if (info->nic_dma_info->nb_regions > 0)
+		goto fail_nic_dma;
+
 	rc = ENOMEM;
 	rxq = rte_zmalloc_socket("sfc-ef10-rxq", sizeof(*rxq),
 				 RTE_CACHE_LINE_SIZE, socket_id);
@@ -696,6 +700,7 @@ fail_desc_alloc:
 	rte_free(rxq);
 
 fail_rxq_alloc:
+fail_nic_dma:
 fail_rxq_args:
 	return rc;
 }

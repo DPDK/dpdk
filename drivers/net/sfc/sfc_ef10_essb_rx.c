@@ -573,6 +573,10 @@ sfc_ef10_essb_rx_qcreate(uint16_t port_id, uint16_t queue_id,
 	struct sfc_ef10_essb_rxq *rxq;
 	int rc;
 
+	rc = ENOTSUP;
+	if (info->nic_dma_info->nb_regions > 0)
+		goto fail_nic_dma;
+
 	rc = rte_mempool_ops_get_info(mp, &mp_info);
 	if (rc != 0) {
 		/* Positive errno is used in the driver */
@@ -641,6 +645,7 @@ fail_desc_alloc:
 fail_rxq_alloc:
 fail_no_block_dequeue:
 fail_get_contig_block_size:
+fail_nic_dma:
 	return rc;
 }
 

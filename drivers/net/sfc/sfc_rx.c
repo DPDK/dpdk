@@ -483,6 +483,10 @@ sfc_efx_rx_qcreate(uint16_t port_id, uint16_t queue_id,
 	struct sfc_efx_rxq *rxq;
 	int rc;
 
+	rc = ENOTSUP;
+	if (info->nic_dma_info->nb_regions > 0)
+		goto fail_nic_dma;
+
 	rc = ENOMEM;
 	rxq = rte_zmalloc_socket("sfc-efx-rxq", sizeof(*rxq),
 				 RTE_CACHE_LINE_SIZE, socket_id);
@@ -518,6 +522,7 @@ fail_desc_alloc:
 	rte_free(rxq);
 
 fail_rxq_alloc:
+fail_nic_dma:
 	return rc;
 }
 
@@ -1218,7 +1223,7 @@ sfc_rx_qinit(struct sfc_adapter *sa, sfc_sw_index_t sw_index,
 
 	rxq->buf_size = buf_size;
 
-	rc = sfc_dma_alloc(sa, "rxq", sw_index,
+	rc = sfc_dma_alloc(sa, "rxq", sw_index, EFX_NIC_DMA_ADDR_RX_RING,
 			   efx_rxq_size(sa->nic, rxq_info->entries),
 			   socket_id, &rxq->mem);
 	if (rc != 0)
@@ -1247,6 +1252,8 @@ sfc_rx_qinit(struct sfc_adapter *sa, sfc_sw_index_t sw_index,
 	info.mem_bar = sa->mem_bar.esb_base;
 	info.vi_window_shift = encp->enc_vi_window_shift;
 	info.fcw_offset = sa->fcw_offset;
+
+	info.nic_dma_info = &sas->nic_dma_info;
 
 	rc = sa->priv.dp_rx->qcreate(sa->eth_dev->data->port_id, sw_index,
 				     &RTE_ETH_DEV_TO_PCI(sa->eth_dev)->addr,

@@ -14,6 +14,7 @@
 #include <ethdev_driver.h>
 
 #include "sfc_dp.h"
+#include "sfc_nic_dma_dp.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -95,6 +96,9 @@ struct sfc_dp_rx_qcreate_info {
 
 	/** Mask to extract user bits from Rx prefix mark field */
 	uint32_t		user_mark_mask;
+
+	/** NIC's DMA mapping information */
+	const struct sfc_nic_dma_info	*nic_dma_info;
 };
 
 /**
