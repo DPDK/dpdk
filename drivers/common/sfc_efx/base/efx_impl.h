@@ -1760,6 +1760,8 @@ typedef enum efx_mae_action_e {
 	/* These actions are strictly ordered. */
 	EFX_MAE_ACTION_DECAP,
 	EFX_MAE_ACTION_VLAN_POP,
+	EFX_MAE_ACTION_SET_DST_MAC,
+	EFX_MAE_ACTION_SET_SRC_MAC,
 	EFX_MAE_ACTION_DECR_IP_TTL,
 	EFX_MAE_ACTION_VLAN_PUSH,
 	EFX_MAE_ACTION_COUNT,
@@ -1792,6 +1794,8 @@ typedef struct efx_mae_action_vlan_push_s {
 } efx_mae_action_vlan_push_t;
 
 typedef struct efx_mae_actions_rsrc_s {
+	efx_mae_mac_id_t		emar_dst_mac_id;
+	efx_mae_mac_id_t		emar_src_mac_id;
 	efx_mae_eh_id_t			emar_eh_id;
 	efx_counter_t			emar_counter_id;
 } efx_mae_actions_rsrc_t;

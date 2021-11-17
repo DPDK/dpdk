@@ -4452,6 +4452,34 @@ efx_mae_action_set_populate_vlan_pop(
  * packet, if action DECAP is not requested, this will affect the
  * outer header; otherwise, the inner header will be updated.
  *
+ * Use efx_mae_action_set_fill_in_dst_mac_id() to set ID of
+ * the allocated MAC address entry in the specification
+ * prior to action set allocation.
+ */
+LIBEFX_API
+extern	__checkReturn			efx_rc_t
+efx_mae_action_set_populate_set_dst_mac(
+	__in				efx_mae_actions_t *spec);
+
+/*
+ * This always amends the outermost header. This way, for a tunnel
+ * packet, if action DECAP is not requested, this will affect the
+ * outer header; otherwise, the inner header will be updated.
+ *
+ * Use efx_mae_action_set_fill_in_src_mac_id() to set ID of
+ * the allocated MAC address entry in the specification
+ * prior to action set allocation.
+ */
+LIBEFX_API
+extern	__checkReturn			efx_rc_t
+efx_mae_action_set_populate_set_src_mac(
+	__in				efx_mae_actions_t *spec);
+
+/*
+ * This always amends the outermost header. This way, for a tunnel
+ * packet, if action DECAP is not requested, this will affect the
+ * outer header; otherwise, the inner header will be updated.
+ *
  * This will also take care to update IPv4 checksum accordingly.
  */
 LIBEFX_API
@@ -4579,6 +4607,38 @@ extern	__checkReturn			efx_rc_t
 efx_mae_match_spec_outer_rule_id_set(
 	__in				efx_mae_match_spec_t *spec,
 	__in				const efx_mae_rule_id_t *or_idp);
+
+/* MAC address entry ID */
+typedef struct efx_mae_mac_id_s {
+	uint32_t id;
+} efx_mae_mac_id_t;
+
+LIBEFX_API
+extern	__checkReturn	efx_rc_t
+efx_mae_mac_addr_alloc(
+	__in		efx_nic_t *enp,
+	__in		uint8_t addr_bytes[EFX_MAC_ADDR_LEN],
+	__out		efx_mae_mac_id_t *mac_idp);
+
+LIBEFX_API
+extern	__checkReturn	efx_rc_t
+efx_mae_mac_addr_free(
+	__in		efx_nic_t *enp,
+	__in		const efx_mae_mac_id_t *mac_idp);
+
+/* See description before efx_mae_action_set_populate_set_dst_mac(). */
+LIBEFX_API
+extern	__checkReturn			efx_rc_t
+efx_mae_action_set_fill_in_dst_mac_id(
+	__in				efx_mae_actions_t *spec,
+	__in				const efx_mae_mac_id_t *mac_idp);
+
+/* See description before efx_mae_action_set_populate_set_src_mac(). */
+LIBEFX_API
+extern	__checkReturn			efx_rc_t
+efx_mae_action_set_fill_in_src_mac_id(
+	__in				efx_mae_actions_t *spec,
+	__in				const efx_mae_mac_id_t *mac_idp);
 
 /* Encap. header ID */
 typedef struct efx_mae_eh_id_s {
