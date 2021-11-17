@@ -6,7 +6,6 @@
 #include <unistd.h>
 #include <signal.h>
 
-#include <rte_atomic.h>
 #include <rte_debug.h>
 #include <rte_eal.h>
 #include <rte_eventdev.h>

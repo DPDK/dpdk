@@ -9,7 +9,6 @@
 #include <rte_lcore.h>
 #include <rte_debug.h>
 #include <rte_memzone.h>
-#include <rte_atomic.h>
 #include <rte_timer.h>
 #include <rte_cycles.h>
 #include <rte_mempool.h>
