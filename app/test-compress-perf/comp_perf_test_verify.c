@@ -388,7 +388,7 @@ cperf_verify_test_runner(void *test_ctx)
 	struct cperf_verify_ctx *ctx = test_ctx;
 	struct comp_test_data *test_data = ctx->options;
 	int ret = EXIT_SUCCESS;
-	static rte_atomic16_t display_once = RTE_ATOMIC16_INIT(0);
+	static uint16_t display_once;
 	uint32_t lcore = rte_lcore_id();
 
 	ctx->mem.lcore_id = lcore;
@@ -427,8 +427,10 @@ cperf_verify_test_runner(void *test_ctx)
 	ctx->ratio = (double) ctx->comp_data_sz /
 			test_data->input_data_sz * 100;
 
+	uint16_t exp = 0;
 	if (!ctx->silent) {
-		if (rte_atomic16_test_and_set(&display_once)) {
+		if (__atomic_compare_exchange_n(&display_once, &exp, 1, 0,
+				__ATOMIC_RELAXED, __ATOMIC_RELAXED)) {
 			printf("%12s%6s%12s%17s\n",
 			    "lcore id", "Level", "Comp size", "Comp ratio [%]");
 		}

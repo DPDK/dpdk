@@ -329,15 +329,17 @@ cperf_throughput_test_runner(void *test_ctx)
 	struct cperf_benchmark_ctx *ctx = test_ctx;
 	struct comp_test_data *test_data = ctx->ver.options;
 	uint32_t lcore = rte_lcore_id();
-	static rte_atomic16_t display_once = RTE_ATOMIC16_INIT(0);
+	static uint16_t display_once;
 	int i, ret = EXIT_SUCCESS;
 
 	ctx->ver.mem.lcore_id = lcore;
 
+	uint16_t exp = 0;
 	/*
 	 * printing information about current compression thread
 	 */
-	if (rte_atomic16_test_and_set(&ctx->ver.mem.print_info_once))
+	if (__atomic_compare_exchange_n(&ctx->ver.mem.print_info_once, &exp,
+				1, 0, __ATOMIC_RELAXED, __ATOMIC_RELAXED))
 		printf("    lcore: %u,"
 				" driver name: %s,"
 				" device name: %s,"
@@ -391,7 +393,9 @@ cperf_throughput_test_runner(void *test_ctx)
 	ctx->decomp_gbps = rte_get_tsc_hz() / ctx->decomp_tsc_byte * 8 /
 			1000000000;
 
-	if (rte_atomic16_test_and_set(&display_once)) {
+	exp = 0;
+	if (__atomic_compare_exchange_n(&display_once, &exp, 1, 0,
+			__ATOMIC_RELAXED, __ATOMIC_RELAXED)) {
 		printf("\n%12s%6s%12s%17s%15s%16s\n",
 			"lcore id", "Level", "Comp size", "Comp ratio [%]",
 			"Comp [Gbps]", "Decomp [Gbps]");
