@@ -407,11 +407,9 @@ if dpdk_conf.has('RTE_NET_RING')
     test_sources += 'test_pmd_ring.c'
     test_sources += 'test_event_eth_tx_adapter.c'
     test_sources += 'sample_packet_forward.c'
-    test_sources += 'test_pdump.c'
     fast_tests += [['ring_pmd_autotest', true]]
     perf_test_names += 'ring_pmd_perf_autotest'
     fast_tests += [['event_eth_tx_adapter_autotest', false]]
-    fast_tests += [['pdump_autotest', true]]
     if dpdk_conf.has('RTE_LIB_BITRATESTATS')
         test_deps += 'bitratestats'
         test_sources += 'test_bitratestats.c'
@@ -421,6 +419,11 @@ if dpdk_conf.has('RTE_NET_RING')
         test_deps += 'latencystats'
         test_sources += 'test_latencystats.c'
         fast_tests += [['latencystats_autotest', true]]
+    endif
+    if dpdk_conf.has('RTE_LIB_PDUMP')
+        test_deps += 'pdump'
+        test_sources += 'test_pdump.c'
+        fast_tests += [['pdump_autotest', true]]
     endif
 endif
 
@@ -437,9 +440,6 @@ if dpdk_conf.has('RTE_LIB_POWER')
 endif
 if dpdk_conf.has('RTE_LIB_KNI')
     test_deps += 'kni'
-endif
-if dpdk_conf.has('RTE_LIB_PDUMP')
-    test_deps += 'pdump'
 endif
 
 if cc.has_argument('-Wno-format-truncation')

@@ -43,14 +43,22 @@ foreach app:apps
 
     subdir(name)
 
+    if build
+        dep_objs = []
+        foreach d:deps
+            var_name = get_option('default_library') + '_rte_' + d
+            if not is_variable(var_name)
+                build = false
+                message('Missing dependency "@0@" for app "@1@"'.format(d, name))
+                break
+            endif
+            dep_objs += [get_variable(var_name)]
+        endforeach
+    endif
+
     if not build
         continue
     endif
-
-    dep_objs = []
-    foreach d:deps
-        dep_objs += get_variable(get_option('default_library') + '_rte_' + d)
-    endforeach
 
     link_libs = []
     if get_option('default_library') == 'static'
