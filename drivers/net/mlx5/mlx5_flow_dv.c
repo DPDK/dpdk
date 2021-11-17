@@ -9328,16 +9328,22 @@ flow_dv_translate_item_mpls(void *matcher, void *key,
 
 	switch (prev_layer) {
 	case MLX5_FLOW_LAYER_OUTER_L4_UDP:
-		MLX5_SET(fte_match_set_lyr_2_4, headers_m, udp_dport, 0xffff);
-		MLX5_SET(fte_match_set_lyr_2_4, headers_v, udp_dport,
-			 MLX5_UDP_PORT_MPLS);
+		if (!MLX5_GET16(fte_match_set_lyr_2_4, headers_v, udp_dport)) {
+			MLX5_SET(fte_match_set_lyr_2_4, headers_m, udp_dport,
+				 0xffff);
+			MLX5_SET(fte_match_set_lyr_2_4, headers_v, udp_dport,
+				 MLX5_UDP_PORT_MPLS);
+		}
 		break;
 	case MLX5_FLOW_LAYER_GRE:
 		/* Fall-through. */
 	case MLX5_FLOW_LAYER_GRE_KEY:
-		MLX5_SET(fte_match_set_misc, misc_m, gre_protocol, 0xffff);
-		MLX5_SET(fte_match_set_misc, misc_v, gre_protocol,
-			 RTE_ETHER_TYPE_MPLS);
+		if (!MLX5_GET16(fte_match_set_misc, misc_v, gre_protocol)) {
+			MLX5_SET(fte_match_set_misc, misc_m, gre_protocol,
+				 0xffff);
+			MLX5_SET(fte_match_set_misc, misc_v, gre_protocol,
+				 RTE_ETHER_TYPE_MPLS);
+		}
 		break;
 	default:
 		break;
