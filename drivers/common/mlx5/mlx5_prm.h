@@ -1140,13 +1140,14 @@ struct mlx5_ifc_cmd_hca_cap_bits {
 	u8 reserved_at_bc[0x4];
 	u8 reserved_at_c0[0x8];
 	u8 log_max_cq_sz[0x8];
-	u8 reserved_at_d0[0xb];
+	u8 reserved_at_d0[0x2];
+	u8 access_register_user[0x1];
+	u8 reserved_at_d3[0x8];
 	u8 log_max_cq[0x5];
 	u8 log_max_eq_sz[0x8];
 	u8 relaxed_ordering_write[0x1];
 	u8 relaxed_ordering_read[0x1];
-	u8 access_register_user[0x1];
-	u8 log_max_mkey[0x5];
+	u8 log_max_mkey[0x6];
 	u8 reserved_at_f0[0x8];
 	u8 dump_fill_mkey[0x1];
 	u8 reserved_at_f9[0x3];
