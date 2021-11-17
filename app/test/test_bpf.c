@@ -1569,32 +1569,32 @@ test_xadd1_check(uint64_t rc, const void *arg)
 	memset(&dfe, 0, sizeof(dfe));
 
 	rv = 1;
-	rte_atomic32_add((rte_atomic32_t *)&dfe.u32, rv);
-	rte_atomic64_add((rte_atomic64_t *)&dfe.u64, rv);
+	__atomic_fetch_add(&dfe.u32, rv, __ATOMIC_RELAXED);
+	__atomic_fetch_add(&dfe.u64, rv, __ATOMIC_RELAXED);
 
 	rv = -1;
-	rte_atomic32_add((rte_atomic32_t *)&dfe.u32, rv);
-	rte_atomic64_add((rte_atomic64_t *)&dfe.u64, rv);
+	__atomic_fetch_add(&dfe.u32, rv, __ATOMIC_RELAXED);
+	__atomic_fetch_add(&dfe.u64, rv, __ATOMIC_RELAXED);
 
 	rv = (int32_t)TEST_FILL_1;
-	rte_atomic32_add((rte_atomic32_t *)&dfe.u32, rv);
-	rte_atomic64_add((rte_atomic64_t *)&dfe.u64, rv);
+	__atomic_fetch_add(&dfe.u32, rv, __ATOMIC_RELAXED);
+	__atomic_fetch_add(&dfe.u64, rv, __ATOMIC_RELAXED);
 
 	rv = TEST_MUL_1;
-	rte_atomic32_add((rte_atomic32_t *)&dfe.u32, rv);
-	rte_atomic64_add((rte_atomic64_t *)&dfe.u64, rv);
+	__atomic_fetch_add(&dfe.u32, rv, __ATOMIC_RELAXED);
+	__atomic_fetch_add(&dfe.u64, rv, __ATOMIC_RELAXED);
 
 	rv = TEST_MUL_2;
-	rte_atomic32_add((rte_atomic32_t *)&dfe.u32, rv);
-	rte_atomic64_add((rte_atomic64_t *)&dfe.u64, rv);
+	__atomic_fetch_add(&dfe.u32, rv, __ATOMIC_RELAXED);
+	__atomic_fetch_add(&dfe.u64, rv, __ATOMIC_RELAXED);
 
 	rv = TEST_JCC_2;
-	rte_atomic32_add((rte_atomic32_t *)&dfe.u32, rv);
-	rte_atomic64_add((rte_atomic64_t *)&dfe.u64, rv);
+	__atomic_fetch_add(&dfe.u32, rv, __ATOMIC_RELAXED);
+	__atomic_fetch_add(&dfe.u64, rv, __ATOMIC_RELAXED);
 
 	rv = TEST_JCC_3;
-	rte_atomic32_add((rte_atomic32_t *)&dfe.u32, rv);
-	rte_atomic64_add((rte_atomic64_t *)&dfe.u64, rv);
+	__atomic_fetch_add(&dfe.u32, rv, __ATOMIC_RELAXED);
+	__atomic_fetch_add(&dfe.u64, rv, __ATOMIC_RELAXED);
 
 	return cmp_res(__func__, 1, rc, &dfe, dft, sizeof(dfe));
 }
