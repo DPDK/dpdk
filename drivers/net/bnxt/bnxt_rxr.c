@@ -916,6 +916,7 @@ static int bnxt_rx_pkt(struct rte_mbuf **rx_pkt,
 		goto rx;
 	}
 	rxr->rx_prod = prod;
+rx:
 	rxr->rx_next_cons = RING_NEXT(rxr->rx_ring_struct, cons);
 
 	if (BNXT_TRUFLOW_EN(bp) && (BNXT_VF_IS_TRUSTED(bp) || BNXT_PF(bp)) &&
@@ -934,7 +935,6 @@ static int bnxt_rx_pkt(struct rte_mbuf **rx_pkt,
 	 * All MBUFs are allocated with the same size under DPDK,
 	 * no optimization for rx_copy_thresh
 	 */
-rx:
 	*rx_pkt = mbuf;
 
 next_rx:
