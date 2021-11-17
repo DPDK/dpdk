@@ -23,6 +23,9 @@ Out of scope of this library is to provide a wrapper for GPU specific libraries
 on the device or create GPU specific objects
 (e.g. CUDA Driver context or CUDA Streams in case of NVIDIA GPUs).
 
+This library is optional in DPDK
+and can be disabled with ``-Ddisable_libs=gpudev``.
+
 
 Features
 --------
