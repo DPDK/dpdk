@@ -2877,6 +2877,12 @@ dpaa2_sec_set_ipsec_session(struct rte_cryptodev *dev,
 	priv->fle_pool = dev_priv->fle_pool;
 	flc = &priv->flc_desc[0].flc;
 
+	if (ipsec_xform->life.bytes_hard_limit != 0 ||
+	    ipsec_xform->life.bytes_soft_limit != 0 ||
+	    ipsec_xform->life.packets_hard_limit != 0 ||
+	    ipsec_xform->life.packets_soft_limit != 0)
+		return -ENOTSUP;
+
 	memset(session, 0, sizeof(dpaa2_sec_session));
 
 	if (conf->crypto_xform->type == RTE_CRYPTO_SYM_XFORM_CIPHER) {

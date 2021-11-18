@@ -1756,6 +1756,12 @@ caam_jr_set_ipsec_session(__rte_unused struct rte_cryptodev *dev,
 
 	PMD_INIT_FUNC_TRACE();
 
+	if (ipsec_xform->life.bytes_hard_limit != 0 ||
+	    ipsec_xform->life.bytes_soft_limit != 0 ||
+	    ipsec_xform->life.packets_hard_limit != 0 ||
+	    ipsec_xform->life.packets_soft_limit != 0)
+		return -ENOTSUP;
+
 	if (ipsec_xform->direction == RTE_SECURITY_IPSEC_SA_DIR_EGRESS) {
 		cipher_xform = &conf->crypto_xform->cipher;
 		auth_xform = &conf->crypto_xform->next->auth;
