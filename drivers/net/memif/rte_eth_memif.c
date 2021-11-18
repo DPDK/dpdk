@@ -1261,6 +1261,13 @@ memif_dev_start(struct rte_eth_dev *dev)
 }
 
 static int
+memif_dev_stop(struct rte_eth_dev *dev)
+{
+	memif_disconnect(dev);
+	return 0;
+}
+
+static int
 memif_dev_close(struct rte_eth_dev *dev)
 {
 	struct pmd_internals *pmd = dev->data->dev_private;
@@ -1268,7 +1275,6 @@ memif_dev_close(struct rte_eth_dev *dev)
 
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
 		memif_msg_enq_disconnect(pmd->cc, "Device closed", 0);
-		memif_disconnect(dev);
 
 		for (i = 0; i < dev->data->nb_rx_queues; i++)
 			(*dev->dev_ops->rx_queue_release)(dev, i);
@@ -1276,8 +1282,6 @@ memif_dev_close(struct rte_eth_dev *dev)
 			(*dev->dev_ops->tx_queue_release)(dev, i);
 
 		memif_socket_remove_device(dev);
-	} else {
-		memif_disconnect(dev);
 	}
 
 	rte_free(dev->process_private);
@@ -1515,6 +1519,7 @@ memif_rx_queue_intr_disable(struct rte_eth_dev *dev, uint16_t qid __rte_unused)
 
 static const struct eth_dev_ops ops = {
 	.dev_start = memif_dev_start,
+	.dev_stop = memif_dev_stop,
 	.dev_close = memif_dev_close,
 	.dev_infos_get = memif_dev_info,
 	.dev_configure = memif_dev_configure,
