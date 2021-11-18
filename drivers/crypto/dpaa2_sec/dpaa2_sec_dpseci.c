@@ -2910,8 +2910,9 @@ dpaa2_sec_set_ipsec_session(struct rte_cryptodev *dev,
 		encap_pdb.options = (IPVERSION << PDBNH_ESP_ENCAP_SHIFT) |
 			PDBOPTS_ESP_OIHI_PDB_INL |
 			PDBOPTS_ESP_IVSRC |
-			PDBHMO_ESP_ENCAP_DTTL |
 			PDBHMO_ESP_SNR;
+		if (ipsec_xform->options.dec_ttl)
+			encap_pdb.options |= PDBHMO_ESP_ENCAP_DTTL;
 		if (ipsec_xform->options.esn)
 			encap_pdb.options |= PDBOPTS_ESP_ESN;
 		encap_pdb.spi = ipsec_xform->spi;
