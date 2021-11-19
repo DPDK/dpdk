@@ -107,13 +107,13 @@ region n (no-zero-copy):
 +-----------------------+-------------------------------------------------------------------------+
 | Rings                 | Buffers                                                                 |
 +-----------+-----------+-----------------+---+---------------------------------------------------+
-| S2M rings | M2S rings | packet buffer 0 | . | pb ((1 << pmd->run.log2_ring_size)*(s2m + m2s))-1 |
+| C2S rings | S2C rings | packet buffer 0 | . | pb ((1 << pmd->run.log2_ring_size)*(c2s + s2c))-1 |
 +-----------+-----------+-----------------+---+---------------------------------------------------+
 
-S2M OR M2S Rings:
+C2S OR S2C Rings:
 
 +--------+--------+-----------------------+
-| ring 0 | ring 1 | ring num_s2m_rings - 1|
+| ring 0 | ring 1 | ring num_c2s_rings - 1|
 +--------+--------+-----------------------+
 
 ring 0:
@@ -123,8 +123,8 @@ ring 0:
 +-------------+---------------------------------------+
 
 Descriptors are assigned packet buffers in order of rings creation. If we have one ring
-in each direction and ring size is 1024, then first 1024 buffers will belong to S2M ring and
-last 1024 will belong to M2S ring. In case of zero-copy, buffers are dequeued and
+in each direction and ring size is 1024, then first 1024 buffers will belong to C2S ring and
+last 1024 will belong to S2C ring. In case of zero-copy, buffers are dequeued and
 enqueued as needed.
 
 **Descriptor format**
@@ -193,7 +193,7 @@ region 0:
 +-----------------------+
 | Rings                 |
 +-----------+-----------+
-| S2M rings | M2S rings |
+| C2S rings | S2C rings |
 +-----------+-----------+
 
 region n:
