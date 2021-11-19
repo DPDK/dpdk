@@ -65,7 +65,8 @@ mlx5_mp_req_mr_create(struct mlx5_common_device *cdev, uintptr_t addr)
  */
 int
 mlx5_mp_req_mempool_reg(struct mlx5_common_device *cdev,
-			struct rte_mempool *mempool, bool reg)
+			struct rte_mempool *mempool, bool reg,
+			bool is_extmem)
 {
 	struct rte_mp_msg mp_req;
 	struct rte_mp_msg *mp_res;
@@ -82,6 +83,7 @@ mlx5_mp_req_mempool_reg(struct mlx5_common_device *cdev,
 		     MLX5_MP_REQ_MEMPOOL_UNREGISTER;
 	mp_init_port_agnostic_msg(&mp_req, type);
 	arg->mempool = mempool;
+	arg->is_extmem = is_extmem;
 	arg->cdev = cdev;
 	ret = rte_mp_request_sync(&mp_req, &mp_rep, &ts);
 	if (ret) {

@@ -1458,7 +1458,7 @@ mlx5_mprq_alloc_mp(struct rte_eth_dev *dev)
 		rte_errno = ENOMEM;
 		return -rte_errno;
 	}
-	ret = mlx5_mr_mempool_register(priv->sh->cdev, mp);
+	ret = mlx5_mr_mempool_register(priv->sh->cdev, mp, false);
 	if (ret < 0 && rte_errno != EEXIST) {
 		ret = rte_errno;
 		DRV_LOG(ERR, "port %u failed to register a mempool for Multi-Packet RQ",

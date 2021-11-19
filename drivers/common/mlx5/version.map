@@ -145,4 +145,5 @@ INTERNAL {
 	mlx5_mr_mempool_unregister;
 	mlx5_mp_req_mempool_reg;
 	mlx5_mr_mempool2mr_bh;
+	mlx5_mr_mempool_populate_cache;
 };

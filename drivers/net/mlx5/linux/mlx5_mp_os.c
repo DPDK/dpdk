@@ -48,7 +48,8 @@ mlx5_mp_os_handle_port_agnostic(const struct rte_mp_msg *mp_msg,
 		return rte_mp_reply(&mp_res, peer);
 	case MLX5_MP_REQ_MEMPOOL_REGISTER:
 		mp_init_port_agnostic_msg(&mp_res, param->type);
-		res->result = mlx5_mr_mempool_register(mng->cdev, mng->mempool);
+		res->result = mlx5_mr_mempool_register(mng->cdev, mng->mempool,
+						       mng->is_extmem);
 		return rte_mp_reply(&mp_res, peer);
 	case MLX5_MP_REQ_MEMPOOL_UNREGISTER:
 		mp_init_port_agnostic_msg(&mp_res, param->type);

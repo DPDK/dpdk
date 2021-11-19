@@ -47,6 +47,8 @@ struct mlx5_mempool_reg {
 	struct mlx5_mempool_mr *mrs;
 	/** Number of memory regions. */
 	unsigned int mrs_n;
+	/** Whether the MR were created for external pinned memory. */
+	bool is_extmem;
 };
 
 void
@@ -1302,16 +1304,14 @@ static int
 mlx5_mempool_get_chunks(struct rte_mempool *mp, struct mlx5_range **out,
 			unsigned int *out_n)
 {
-	struct mlx5_range *chunks;
 	unsigned int n;
 
 	DRV_LOG(DEBUG, "Collecting chunks of regular mempool %s", mp->name);
 	n = mp->nb_mem_chunks;
-	chunks = calloc(sizeof(chunks[0]), n);
-	if (chunks == NULL)
+	*out = calloc(sizeof(**out), n);
+	if (*out == NULL)
 		return -1;
-	rte_mempool_mem_iter(mp, mlx5_range_from_mempool_chunk, chunks);
-	*out = chunks;
+	rte_mempool_mem_iter(mp, mlx5_range_from_mempool_chunk, *out);
 	*out_n = n;
 	return 0;
 }
@@ -1390,11 +1390,9 @@ mlx5_mempool_get_extmem(struct rte_mempool *mp, struct mlx5_range **out,
 		mp->name);
 	memset(&data, 0, sizeof(data));
 	rte_mempool_obj_iter(mp, mlx5_mempool_get_extmem_cb, &data);
-	if (data.ret < 0)
-		return -1;
 	*out = data.heap;
 	*out_n = data.heap_size;
-	return 0;
+	return data.ret;
 }
 
 /**
@@ -1403,26 +1401,27 @@ mlx5_mempool_get_extmem(struct rte_mempool *mp, struct mlx5_range **out,
  *
  * @param[in] mp
  *   Analyzed mempool.
+ * @param[in] is_extmem
+ *   Whether the pool is contains only external pinned buffers.
  * @param[out] out
  *   Receives the ranges, caller must release it with free().
- * @param[out] ount_n
+ * @param[out] out_n
  *   Receives the number of @p out elements.
  *
  * @return
  *   0 on success, (-1) on failure.
  */
 static int
-mlx5_get_mempool_ranges(struct rte_mempool *mp, struct mlx5_range **out,
-			unsigned int *out_n)
+mlx5_get_mempool_ranges(struct rte_mempool *mp, bool is_extmem,
+			struct mlx5_range **out, unsigned int *out_n)
 {
 	struct mlx5_range *chunks;
 	unsigned int chunks_n, contig_n, i;
 	int ret;
 
 	/* Collect the pool underlying memory. */
-	ret = mlx5_mempool_is_extmem(mp) ?
-	      mlx5_mempool_get_extmem(mp, &chunks, &chunks_n) :
-	      mlx5_mempool_get_chunks(mp, &chunks, &chunks_n);
+	ret = is_extmem ? mlx5_mempool_get_extmem(mp, &chunks, &chunks_n) :
+			  mlx5_mempool_get_chunks(mp, &chunks, &chunks_n);
 	if (ret < 0)
 		return ret;
 	/* Merge adjacent chunks and place them at the beginning. */
@@ -1446,6 +1445,8 @@ mlx5_get_mempool_ranges(struct rte_mempool *mp, struct mlx5_range **out,
  *
  * @param[in] mp
  *   Mempool to analyze.
+ * @param[in] is_extmem
+ *   Whether the pool is contains only external pinned buffers.
  * @param[out] out
  *   Receives memory ranges to register, aligned to the system page size.
  *   The caller must release them with free().
@@ -1458,14 +1459,15 @@ mlx5_get_mempool_ranges(struct rte_mempool *mp, struct mlx5_range **out,
  *   0 on success, (-1) on failure.
  */
 static int
-mlx5_mempool_reg_analyze(struct rte_mempool *mp, struct mlx5_range **out,
-			 unsigned int *out_n, bool *share_hugepage)
+mlx5_mempool_reg_analyze(struct rte_mempool *mp, bool is_extmem,
+			 struct mlx5_range **out, unsigned int *out_n,
+			 bool *share_hugepage)
 {
 	struct mlx5_range *ranges = NULL;
 	unsigned int i, ranges_n = 0;
 	struct rte_memseg_list *msl;
 
-	if (mlx5_get_mempool_ranges(mp, &ranges, &ranges_n) < 0) {
+	if (mlx5_get_mempool_ranges(mp, is_extmem, &ranges, &ranges_n) < 0) {
 		DRV_LOG(ERR, "Cannot get address ranges for mempool %s",
 			mp->name);
 		return -1;
@@ -1507,7 +1509,8 @@ mlx5_mempool_reg_analyze(struct rte_mempool *mp, struct mlx5_range **out,
 
 /** Create a registration object for the mempool. */
 static struct mlx5_mempool_reg *
-mlx5_mempool_reg_create(struct rte_mempool *mp, unsigned int mrs_n)
+mlx5_mempool_reg_create(struct rte_mempool *mp, unsigned int mrs_n,
+			bool is_extmem)
 {
 	struct mlx5_mempool_reg *mpr = NULL;
 
@@ -1522,6 +1525,7 @@ mlx5_mempool_reg_create(struct rte_mempool *mp, unsigned int mrs_n)
 	mpr->mp = mp;
 	mpr->mrs = (struct mlx5_mempool_mr *)(mpr + 1);
 	mpr->mrs_n = mrs_n;
+	mpr->is_extmem = is_extmem;
 	return mpr;
 }
 
@@ -1586,31 +1590,32 @@ mlx5_mempool_reg_detach(struct mlx5_mempool_reg *mpr)
 
 static int
 mlx5_mr_mempool_register_primary(struct mlx5_mr_share_cache *share_cache,
-				 void *pd, struct rte_mempool *mp)
+				 void *pd, struct rte_mempool *mp,
+				 bool is_extmem)
 {
 	struct mlx5_range *ranges = NULL;
-	struct mlx5_mempool_reg *mpr, *new_mpr;
+	struct mlx5_mempool_reg *mpr, *old_mpr, *new_mpr;
 	unsigned int i, ranges_n;
-	bool share_hugepage;
+	bool share_hugepage, standalone = false;
 	int ret = -1;
 
 	/* Early check to avoid unnecessary creation of MRs. */
 	rte_rwlock_read_lock(&share_cache->rwlock);
-	mpr = mlx5_mempool_reg_lookup(share_cache, mp);
+	old_mpr = mlx5_mempool_reg_lookup(share_cache, mp);
 	rte_rwlock_read_unlock(&share_cache->rwlock);
-	if (mpr != NULL) {
+	if (old_mpr != NULL && (!is_extmem || old_mpr->is_extmem)) {
 		DRV_LOG(DEBUG, "Mempool %s is already registered for PD %p",
 			mp->name, pd);
 		rte_errno = EEXIST;
 		goto exit;
 	}
-	if (mlx5_mempool_reg_analyze(mp, &ranges, &ranges_n,
+	if (mlx5_mempool_reg_analyze(mp, is_extmem, &ranges, &ranges_n,
 				     &share_hugepage) < 0) {
 		DRV_LOG(ERR, "Cannot get mempool %s memory ranges", mp->name);
 		rte_errno = ENOMEM;
 		goto exit;
 	}
-	new_mpr = mlx5_mempool_reg_create(mp, ranges_n);
+	new_mpr = mlx5_mempool_reg_create(mp, ranges_n, is_extmem);
 	if (new_mpr == NULL) {
 		DRV_LOG(ERR,
 			"Cannot create a registration object for mempool %s in PD %p",
@@ -1670,6 +1675,12 @@ mlx5_mr_mempool_register_primary(struct mlx5_mr_share_cache *share_cache,
 	/* Concurrent registration is not supposed to happen. */
 	rte_rwlock_write_lock(&share_cache->rwlock);
 	mpr = mlx5_mempool_reg_lookup(share_cache, mp);
+	if (mpr == old_mpr && old_mpr != NULL) {
+		LIST_REMOVE(old_mpr, next);
+		standalone = mlx5_mempool_reg_detach(mpr);
+		/* No need to flush the cache: old MRs cannot be in use. */
+		mpr = NULL;
+	}
 	if (mpr == NULL) {
 		mlx5_mempool_reg_attach(new_mpr);
 		LIST_INSERT_HEAD(&share_cache->mempool_reg_list, new_mpr, next);
@@ -1682,6 +1693,10 @@ mlx5_mr_mempool_register_primary(struct mlx5_mr_share_cache *share_cache,
 		mlx5_mempool_reg_destroy(share_cache, new_mpr, true);
 		rte_errno = EEXIST;
 		goto exit;
+	} else if (old_mpr != NULL) {
+		DRV_LOG(DEBUG, "Mempool %s registration for PD %p updated for external memory",
+			mp->name, pd);
+		mlx5_mempool_reg_destroy(share_cache, old_mpr, standalone);
 	}
 exit:
 	free(ranges);
@@ -1690,9 +1705,9 @@ exit:
 
 static int
 mlx5_mr_mempool_register_secondary(struct mlx5_common_device *cdev,
-				   struct rte_mempool *mp)
+				   struct rte_mempool *mp, bool is_extmem)
 {
-	return mlx5_mp_req_mempool_reg(cdev, mp, true);
+	return mlx5_mp_req_mempool_reg(cdev, mp, true, is_extmem);
 }
 
 /**
@@ -1708,16 +1723,17 @@ mlx5_mr_mempool_register_secondary(struct mlx5_common_device *cdev,
  */
 int
 mlx5_mr_mempool_register(struct mlx5_common_device *cdev,
-			 struct rte_mempool *mp)
+			 struct rte_mempool *mp, bool is_extmem)
 {
 	if (mp->flags & RTE_MEMPOOL_F_NON_IO)
 		return 0;
 	switch (rte_eal_process_type()) {
 	case RTE_PROC_PRIMARY:
 		return mlx5_mr_mempool_register_primary(&cdev->mr_scache,
-							cdev->pd, mp);
+							cdev->pd, mp,
+							is_extmem);
 	case RTE_PROC_SECONDARY:
-		return mlx5_mr_mempool_register_secondary(cdev, mp);
+		return mlx5_mr_mempool_register_secondary(cdev, mp, is_extmem);
 	default:
 		return -1;
 	}
@@ -1756,7 +1772,7 @@ static int
 mlx5_mr_mempool_unregister_secondary(struct mlx5_common_device *cdev,
 				     struct rte_mempool *mp)
 {
-	return mlx5_mp_req_mempool_reg(cdev, mp, false);
+	return mlx5_mp_req_mempool_reg(cdev, mp, false, false /* is_extmem */);
 }
 
 /**
@@ -1869,6 +1885,65 @@ mlx5_lookup_mempool_regs(struct mlx5_mr_ctrl *mr_ctrl,
 }
 
 /**
+ * Populate cache with LKeys of all MRs used by the mempool.
+ * It is intended to be used to register Rx mempools in advance.
+ *
+ * @param mr_ctrl
+ *  Per-queue MR control handle.
+ * @param mp
+ *  Registered memory pool.
+ *
+ * @return
+ *  0 on success, (-1) on failure and rte_errno is set.
+ */
+int
+mlx5_mr_mempool_populate_cache(struct mlx5_mr_ctrl *mr_ctrl,
+			       struct rte_mempool *mp)
+{
+	struct mlx5_mr_share_cache *share_cache =
+		container_of(mr_ctrl->dev_gen_ptr, struct mlx5_mr_share_cache,
+			     dev_gen);
+	struct mlx5_mr_btree *bt = &mr_ctrl->cache_bh;
+	struct mlx5_mempool_reg *mpr;
+	unsigned int i;
+
+	/*
+	 * Registration is valid after the lock is released,
+	 * because the function is called after the mempool is registered.
+	 */
+	rte_rwlock_read_lock(&share_cache->rwlock);
+	mpr = mlx5_mempool_reg_lookup(share_cache, mp);
+	rte_rwlock_read_unlock(&share_cache->rwlock);
+	if (mpr == NULL) {
+		DRV_LOG(ERR, "Mempool %s is not registered", mp->name);
+		rte_errno = ENOENT;
+		return -1;
+	}
+	for (i = 0; i < mpr->mrs_n; i++) {
+		struct mlx5_mempool_mr *mr = &mpr->mrs[i];
+		struct mr_cache_entry entry;
+		uint32_t lkey;
+		uint16_t idx;
+
+		lkey = mr_btree_lookup(bt, &idx, (uintptr_t)mr->pmd_mr.addr);
+		if (lkey != UINT32_MAX)
+			continue;
+		if (bt->len == bt->size)
+			mr_btree_expand(bt, bt->size << 1);
+		entry.start = (uintptr_t)mr->pmd_mr.addr;
+		entry.end = entry.start + mr->pmd_mr.len;
+		entry.lkey = rte_cpu_to_be_32(mr->pmd_mr.lkey);
+		if (mr_btree_insert(bt, &entry) < 0) {
+			DRV_LOG(ERR, "Cannot insert cache entry for mempool %s MR %08x",
+				mp->name, entry.lkey);
+			rte_errno = EINVAL;
+			return -1;
+		}
+	}
+	return 0;
+}
+
+/**
  * Bottom-half lookup for the address from the mempool.
  *
  * @param mr_ctrl
@@ -1909,6 +1984,8 @@ mlx5_mr_mempool2mr_bh(struct mlx5_mr_ctrl *mr_ctrl,
 uint32_t
 mlx5_mr_mb2mr_bh(struct mlx5_mr_ctrl *mr_ctrl, struct rte_mbuf *mb)
 {
+	struct rte_mempool *mp;
+	struct mlx5_mprq_buf *buf;
 	uint32_t lkey;
 	uintptr_t addr = (uintptr_t)mb->buf_addr;
 	struct mlx5_mr_share_cache *share_cache =
@@ -1917,27 +1994,26 @@ mlx5_mr_mb2mr_bh(struct mlx5_mr_ctrl *mr_ctrl, struct rte_mbuf *mb)
 	struct mlx5_common_device *cdev =
 		container_of(share_cache, struct mlx5_common_device, mr_scache);
 
-	if (cdev->config.mr_mempool_reg_en) {
-		struct rte_mempool *mp = NULL;
-		struct mlx5_mprq_buf *buf;
-
-		if (!RTE_MBUF_HAS_EXTBUF(mb)) {
-			mp = mlx5_mb2mp(mb);
-		} else if (mb->shinfo->free_cb == mlx5_mprq_buf_free_cb) {
-			/* Recover MPRQ mempool. */
-			buf = mb->shinfo->fcb_opaque;
-			mp = buf->mp;
-		}
-		if (mp != NULL) {
-			lkey = mlx5_mr_mempool2mr_bh(mr_ctrl, mp, addr);
-			/*
-			 * Lookup can only fail on invalid input, e.g. "addr"
-			 * is not from "mp" or "mp" has MEMPOOL_F_NON_IO set.
-			 */
-			if (lkey != UINT32_MAX)
-				return lkey;
-		}
-		/* Fallback for generic mechanism in corner cases. */
+	/* Recover MPRQ mempool. */
+	if (RTE_MBUF_HAS_EXTBUF(mb) &&
+	    mb->shinfo->free_cb == mlx5_mprq_buf_free_cb) {
+		buf = mb->shinfo->fcb_opaque;
+		mp = buf->mp;
+	} else {
+		mp = mlx5_mb2mp(mb);
 	}
+	lkey = mlx5_mr_mempool2mr_bh(mr_ctrl, mp, addr);
+	if (lkey != UINT32_MAX)
+		return lkey;
+	/* Register pinned external memory if the mempool is not used for Rx. */
+	if (cdev->config.mr_mempool_reg_en &&
+	    (rte_pktmbuf_priv_flags(mp) & RTE_PKTMBUF_POOL_F_PINNED_EXT_BUF)) {
+		if (mlx5_mr_mempool_register(cdev, mp, true) < 0)
+			return UINT32_MAX;
+		lkey = mlx5_mr_mempool2mr_bh(mr_ctrl, mp, addr);
+		MLX5_ASSERT(lkey != UINT32_MAX);
+		return lkey;
+	}
+	/* Fallback to generic mechanism in corner cases. */
 	return mlx5_mr_addr2mr_bh(mr_ctrl, addr);
 }

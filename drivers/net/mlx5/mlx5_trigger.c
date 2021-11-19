@@ -106,21 +106,6 @@ error:
 }
 
 /**
- * Translate the chunk address to MR key in order to put in into the cache.
- */
-static void
-mlx5_rxq_mempool_register_cb(struct rte_mempool *mp, void *opaque,
-			     struct rte_mempool_memhdr *memhdr,
-			     unsigned int idx)
-{
-	struct mlx5_rxq_data *rxq = opaque;
-
-	RTE_SET_USED(mp);
-	RTE_SET_USED(idx);
-	mlx5_rx_addr2mr(rxq, (uintptr_t)memhdr->addr);
-}
-
-/**
  * Register Rx queue mempools and fill the Rx queue cache.
  * This function tolerates repeated mempool registration.
  *
@@ -139,24 +124,23 @@ mlx5_rxq_mempool_register(struct mlx5_rxq_ctrl *rxq_ctrl)
 
 	mlx5_mr_flush_local_cache(&rxq_ctrl->rxq.mr_ctrl);
 	/* MPRQ mempool is registered on creation, just fill the cache. */
-	if (mlx5_rxq_mprq_enabled(&rxq_ctrl->rxq)) {
-		rte_mempool_mem_iter(rxq_ctrl->rxq.mprq_mp,
-				     mlx5_rxq_mempool_register_cb,
-				     &rxq_ctrl->rxq);
-		return 0;
-	}
+	if (mlx5_rxq_mprq_enabled(&rxq_ctrl->rxq))
+		return mlx5_mr_mempool_populate_cache(&rxq_ctrl->rxq.mr_ctrl,
+						      rxq_ctrl->rxq.mprq_mp);
 	for (s = 0; s < rxq_ctrl->rxq.rxseg_n; s++) {
-		uint32_t flags;
+		bool is_extmem;
 
 		mp = rxq_ctrl->rxq.rxseg[s].mp;
-		flags = mp != rxq_ctrl->rxq.mprq_mp ?
-			rte_pktmbuf_priv_flags(mp) : 0;
-		ret = mlx5_mr_mempool_register(rxq_ctrl->sh->cdev, mp);
+		is_extmem = (rte_pktmbuf_priv_flags(mp) &
+			     RTE_PKTMBUF_POOL_F_PINNED_EXT_BUF) != 0;
+		ret = mlx5_mr_mempool_register(rxq_ctrl->sh->cdev, mp,
+					       is_extmem);
 		if (ret < 0 && rte_errno != EEXIST)
 			return ret;
-		if ((flags & RTE_PKTMBUF_POOL_F_PINNED_EXT_BUF) == 0)
-			rte_mempool_mem_iter(mp, mlx5_rxq_mempool_register_cb,
-					     &rxq_ctrl->rxq);
+		ret = mlx5_mr_mempool_populate_cache(&rxq_ctrl->rxq.mr_ctrl,
+						     mp);
+		if (ret < 0)
+			return ret;
 	}
 	return 0;
 }

@@ -37,9 +37,12 @@ struct mlx5_mp_arg_queue_id {
 
 struct mlx5_mp_arg_mr_manage {
 	struct mlx5_common_device *cdev;
+	RTE_STD_C11
 	union {
-		struct rte_mempool *mempool;
-		/* MLX5_MP_REQ_MEMPOOL_(UN)REGISTER */
+		struct {
+			struct rte_mempool *mempool;
+			bool is_extmem;
+		}; /* MLX5_MP_REQ_MEMPOOL_(UN)REGISTER */
 		uintptr_t addr; /* MLX5_MP_REQ_CREATE_MR */
 	};
 };
@@ -134,7 +137,8 @@ __rte_internal
 int mlx5_mp_req_mr_create(struct mlx5_common_device *cdev, uintptr_t addr);
 __rte_internal
 int mlx5_mp_req_mempool_reg(struct mlx5_common_device *cdev,
-			    struct rte_mempool *mempool, bool reg);
+			    struct rte_mempool *mempool, bool reg,
+			    bool is_extmem);
 __rte_internal
 int mlx5_mp_req_queue_state_modify(struct mlx5_mp_id *mp_id,
 				   struct mlx5_mp_arg_queue_state_modify *sm);

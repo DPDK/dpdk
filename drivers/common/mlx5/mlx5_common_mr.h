@@ -255,20 +255,15 @@ mlx5_os_set_reg_mr_cb(mlx5_reg_mr_t *reg_mr_cb, mlx5_dereg_mr_t *dereg_mr_cb);
 __rte_internal
 int
 mlx5_mr_mempool_register(struct mlx5_common_device *cdev,
-			 struct rte_mempool *mp);
+			 struct rte_mempool *mp, bool is_extmem);
 __rte_internal
 int
 mlx5_mr_mempool_unregister(struct mlx5_common_device *cdev,
 			   struct rte_mempool *mp);
 
-/** Check if @p mp has buffers pinned in external memory. */
-static inline bool
-mlx5_mempool_is_extmem(struct rte_mempool *mp)
-{
-	return (mp->private_data_size ==
-		sizeof(struct rte_pktmbuf_pool_private)) &&
-	       (mp->elt_size >= sizeof(struct rte_mbuf)) &&
-	       (rte_pktmbuf_priv_flags(mp) & RTE_PKTMBUF_POOL_F_PINNED_EXT_BUF);
-}
+__rte_internal
+int
+mlx5_mr_mempool_populate_cache(struct mlx5_mr_ctrl *mr_ctrl,
+			       struct rte_mempool *mp);
 
 #endif /* RTE_PMD_MLX5_COMMON_MR_H_ */
