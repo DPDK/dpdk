@@ -5881,6 +5881,7 @@ flow_create_split_metadata(struct rte_eth_dev *dev,
 		/* Add suffix subflow to execute Q/RSS. */
 		flow_split_info->prefix_layers = layers;
 		flow_split_info->prefix_mark = 0;
+		flow_split_info->table_id = 0;
 		ret = flow_create_split_inner(dev, flow, &dev_flow,
 					      &q_attr, mtr_sfx ? items :
 					      q_items, q_actions,
