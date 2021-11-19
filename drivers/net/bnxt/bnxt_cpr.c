@@ -387,4 +387,13 @@ void bnxt_stop_rxtx(struct bnxt *bp)
 {
 	bp->eth_dev->rx_pkt_burst = &bnxt_dummy_recv_pkts;
 	bp->eth_dev->tx_pkt_burst = &bnxt_dummy_xmit_pkts;
+
+	rte_eth_fp_ops[bp->eth_dev->data->port_id].rx_pkt_burst =
+		bp->eth_dev->rx_pkt_burst;
+	rte_eth_fp_ops[bp->eth_dev->data->port_id].tx_pkt_burst =
+		bp->eth_dev->tx_pkt_burst;
+	rte_mb();
+
+	/* Allow time for threads to exit the real burst functions. */
+	rte_delay_ms(100);
 }
