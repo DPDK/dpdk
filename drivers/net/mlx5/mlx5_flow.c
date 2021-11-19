@@ -5251,6 +5251,8 @@ exit:
  *   Pointer to the Q/RSS action.
  * @param[in] actions_n
  *   Number of original actions.
+ * @param[in] mtr_sfx
+ *   Check if it is in meter suffix table.
  * @param[out] error
  *   Perform verbose error reporting if not NULL.
  *
@@ -5263,7 +5265,8 @@ flow_mreg_split_qrss_prep(struct rte_eth_dev *dev,
 			  struct rte_flow_action *split_actions,
 			  const struct rte_flow_action *actions,
 			  const struct rte_flow_action *qrss,
-			  int actions_n, struct rte_flow_error *error)
+			  int actions_n, int mtr_sfx,
+			  struct rte_flow_error *error)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_rte_flow_action_set_tag *set_tag;
@@ -5278,15 +5281,15 @@ flow_mreg_split_qrss_prep(struct rte_eth_dev *dev,
 	 * - Add jump to mreg CP_TBL.
 	 * As a result, there will be one more action.
 	 */
-	++actions_n;
 	memcpy(split_actions, actions, sizeof(*split_actions) * actions_n);
+	/* Count MLX5_RTE_FLOW_ACTION_TYPE_TAG. */
+	++actions_n;
 	set_tag = (void *)(split_actions + actions_n);
 	/*
-	 * If tag action is not set to void(it means we are not the meter
-	 * suffix flow), add the tag action. Since meter suffix flow already
-	 * has the tag added.
+	 * If we are not the meter suffix flow, add the tag action.
+	 * Since meter suffix flow already has the tag added.
 	 */
-	if (split_actions[qrss_idx].type != RTE_FLOW_ACTION_TYPE_VOID) {
+	if (!mtr_sfx) {
 		/*
 		 * Allocate the new subflow ID. This one is unique within
 		 * device and not shared with representors. Otherwise,
@@ -5319,6 +5322,12 @@ flow_mreg_split_qrss_prep(struct rte_eth_dev *dev,
 				MLX5_RTE_FLOW_ACTION_TYPE_TAG,
 			.conf = set_tag,
 		};
+	} else {
+		/*
+		 * If we are the suffix flow of meter, tag already exist.
+		 * Set the QUEUE/RSS action to void.
+		 */
+		split_actions[qrss_idx].type = RTE_FLOW_ACTION_TYPE_VOID;
 	}
 	/* JUMP action to jump to mreg copy table (CP_TBL). */
 	jump = (void *)(set_tag + 1);
@@ -5774,24 +5783,14 @@ flow_create_split_metadata(struct rte_eth_dev *dev,
 						  NULL, "no memory to split "
 						  "metadata flow");
 		/*
-		 * If we are the suffix flow of meter, tag already exist.
-		 * Set the tag action to void.
-		 */
-		if (mtr_sfx)
-			ext_actions[qrss - actions].type =
-						RTE_FLOW_ACTION_TYPE_VOID;
-		else
-			ext_actions[qrss - actions].type =
-						(enum rte_flow_action_type)
-						MLX5_RTE_FLOW_ACTION_TYPE_TAG;
-		/*
 		 * Create the new actions list with removed Q/RSS action
 		 * and appended set tag and jump to register copy table
 		 * (RX_CP_TBL). We should preallocate unique tag ID here
 		 * in advance, because it is needed for set tag action.
 		 */
 		qrss_id = flow_mreg_split_qrss_prep(dev, ext_actions, actions,
-						    qrss, actions_n, error);
+						    qrss, actions_n,
+						    mtr_sfx, error);
 		if (!mtr_sfx && !qrss_id) {
 			ret = -rte_errno;
 			goto exit;
