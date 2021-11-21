@@ -20,7 +20,7 @@
 
 #define MLX5_CRYPTO_DRIVER_NAME crypto_mlx5
 #define MLX5_CRYPTO_LOG_NAME pmd.crypto.mlx5
-#define MLX5_CRYPTO_MAX_QPS 1024
+#define MLX5_CRYPTO_MAX_QPS 128
 #define MLX5_CRYPTO_MAX_SEGS 56
 
 #define MLX5_CRYPTO_FEATURE_FLAGS \
