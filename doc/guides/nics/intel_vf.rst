@@ -571,7 +571,7 @@ Fast Host-based Packet Processing
 
 Software Defined Network (SDN) trends are demanding fast host-based packet handling.
 In a virtualization environment,
-the DPDK VF PMD driver performs the same throughput result as a non-VT native environment.
+the DPDK VF PMD performs the same throughput result as a non-VT native environment.
 
 With such host instance fast packet processing, lots of services such as filtering, QoS,
 DPI can be offloaded on the host fast path.

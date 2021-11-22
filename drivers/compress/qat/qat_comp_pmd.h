@@ -13,7 +13,7 @@
 #include "qat_device.h"
 #include "qat_comp.h"
 
-/**< Intel(R) QAT Compression PMD driver name */
+/**< Intel(R) QAT Compression PMD name */
 #define COMPRESSDEV_NAME_QAT_PMD	compress_qat
 
 /* Private data structure for a QAT compression device capability. */

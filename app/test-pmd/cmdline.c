@@ -2701,7 +2701,7 @@ cmd_config_rxtx_queue_parsed(void *parsed_result,
 		ret = rte_eth_dev_tx_queue_stop(res->portid, res->qid);
 
 	if (ret == -ENOTSUP)
-		fprintf(stderr, "Function not supported in PMD driver\n");
+		fprintf(stderr, "Function not supported in PMD\n");
 }
 
 cmdline_parse_token_string_t cmd_config_rxtx_queue_port =
@@ -14700,7 +14700,7 @@ no_print_return:
 		free(proto);
 #endif
 	if (ret == -ENOTSUP)
-		fprintf(stderr, "Function not supported in PMD driver\n");
+		fprintf(stderr, "Function not supported in PMD\n");
 	close_file(pkg);
 }
 

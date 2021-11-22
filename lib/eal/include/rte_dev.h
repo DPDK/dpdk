@@ -8,7 +8,7 @@
 /**
  * @file
  *
- * RTE PMD Driver Registration Interface
+ * RTE PMD Registration Interface
  *
  * This file manages the list of device drivers.
  */

@@ -255,7 +255,7 @@ rx_queue_clean(struct fm10k_rx_queue *q)
 	for (i = 0; i < q->nb_fake_desc; ++i)
 		q->hw_ring[q->nb_desc + i] = zero;
 
-	/* vPMD driver has a different way of releasing mbufs. */
+	/* vPMD has a different way of releasing mbufs. */
 	if (q->rx_using_sse) {
 		fm10k_rx_queue_release_mbufs_vec(q);
 		return;

@@ -35,7 +35,7 @@ extern "C" {
 /**
  * Class type key in global devargs syntax.
  *
- * Legacy devargs parser doesn't parse class type. PMD driver is
+ * Legacy devargs parser doesn't parse class type. PMD is
  * encouraged to use this key to resolve class type.
  */
 #define RTE_DEVARGS_KEY_CLASS "class"
@@ -43,7 +43,7 @@ extern "C" {
 /**
  * Driver type key in global devargs syntax.
  *
- * Legacy devargs parser doesn't parse driver type. PMD driver is
+ * Legacy devargs parser doesn't parse driver type. PMD is
  * encouraged to use this key to resolve driver type.
  */
 #define RTE_DEVARGS_KEY_DRIVER "driver"

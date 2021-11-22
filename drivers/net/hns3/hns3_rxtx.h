@@ -318,7 +318,7 @@ struct hns3_rx_queue {
 	 * should not be transitted to the upper-layer application. For hardware
 	 * network engine whose vlan mode is HNS3_HW_SHIFT_AND_DISCARD_MODE,
 	 * such as kunpeng 930, PVID will not be reported to the BDs. So, PMD
-	 * driver does not need to perform PVID-related operation in Rx. At this
+	 * does not need to perform PVID-related operation in Rx. At this
 	 * point, the pvid_sw_discard_en will be false.
 	 */
 	uint8_t pvid_sw_discard_en:1;
@@ -490,7 +490,7 @@ struct hns3_tx_queue {
 	 * PVID will overwrite the outer VLAN field of Tx BD. For the hardware
 	 * network engine whose vlan mode is HNS3_HW_SHIFT_AND_DISCARD_MODE,
 	 * such as kunpeng 930, if the PVID is set, the hardware will shift the
-	 * VLAN field automatically. So, PMD driver does not need to do
+	 * VLAN field automatically. So, PMD does not need to do
 	 * PVID-related operations in Tx. And pvid_sw_shift_en will be false at
 	 * this point.
 	 */

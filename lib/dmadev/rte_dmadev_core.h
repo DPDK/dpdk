@@ -59,7 +59,7 @@ typedef uint16_t (*rte_dma_burst_capacity_t)(const void *dev_private, uint16_t v
  * functions.
  *
  * The 'dev_private' field was placed in the first cache line to optimize
- * performance because the PMD driver mainly depends on this field.
+ * performance because the PMD mainly depends on this field.
  */
 struct rte_dma_fp_object {
 	/** PMD-specific private data. The driver should copy

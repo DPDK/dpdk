@@ -321,7 +321,7 @@ New Features
 
 * **Added NXP LA12xx baseband PMD.**
 
-  * Added a new baseband PMD driver for NXP LA12xx Software defined radio.
+  * Added a new baseband PMD for NXP LA12xx Software defined radio.
   * See the :doc:`../bbdevs/la12xx` for more details.
 
 * **Updated Mellanox compress driver.**

@@ -119,8 +119,8 @@ The code algorithm that dequeues messages may be something similar to the follow
         my_process_bulk(obj_table, count);
    }
 
-PMD Driver
-----------
+PMD
+---
 
 The DPDK Poll Mode Driver (PMD) is also able to work in bulk/burst mode,
 allowing the factorization of some code for each call in the send or receive function.

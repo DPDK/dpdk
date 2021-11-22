@@ -465,8 +465,8 @@ struct hns3_queue_intr {
 	 *     enable Rx interrupt.
 	 *
 	 *  - HNS3_INTR_MAPPING_VEC_ALL
-	 *     PMD driver can map/unmmap all interrupt vectors with queues When
-	 *     Rx interrupt in enabled.
+	 *     PMD can map/unmmap all interrupt vectors with queues when
+	 *     Rx interrupt is enabled.
 	 */
 	uint8_t mapping_mode;
 	/*
@@ -575,14 +575,14 @@ struct hns3_hw {
 	 *
 	 *  - HNS3_SW_SHIFT_AND_DISCARD_MODE
 	 *     For some versions of hardware network engine, because of the
-	 *     hardware limitation, PMD driver needs to detect the PVID status
+	 *     hardware limitation, PMD needs to detect the PVID status
 	 *     to work with haredware to implement PVID-related functions.
 	 *     For example, driver need discard the stripped PVID tag to ensure
 	 *     the PVID will not report to mbuf and shift the inserted VLAN tag
 	 *     to avoid port based VLAN covering it.
 	 *
 	 *  - HNS3_HW_SHIT_AND_DISCARD_MODE
-	 *     PMD driver does not need to process PVID-related functions in
+	 *     PMD does not need to process PVID-related functions in
 	 *     I/O process, Hardware will adjust the sequence between port based
 	 *     VLAN tag and BD VLAN tag automatically and VLAN tag stripped by
 	 *     PVID will be invisible to driver. And in this mode, hns3 is able

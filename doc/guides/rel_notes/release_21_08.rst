@@ -67,7 +67,7 @@ New Features
 
 * **Added Wangxun ngbe PMD.**
 
-  Added a new PMD driver for Wangxun 1Gb Ethernet NICs.
+  Added a new PMD for Wangxun 1Gb Ethernet NICs.
   See the :doc:`../nics/ngbe` for more details.
 
 * **Added inflight packets clear API in vhost library.**

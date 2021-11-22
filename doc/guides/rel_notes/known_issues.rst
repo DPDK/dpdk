@@ -250,7 +250,7 @@ PMD does not work with --no-huge EAL command line parameter
 
 **Description**:
    Currently, the DPDK does not store any information about memory allocated by ``malloc()` (for example, NUMA node,
-   physical address), hence PMD drivers do not work when the ``--no-huge`` command line parameter is supplied to EAL.
+   physical address), hence PMDs do not work when the ``--no-huge`` command line parameter is supplied to EAL.
 
 **Implication**:
    Sending and receiving data with PMD will not work.

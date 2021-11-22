@@ -149,7 +149,7 @@ Example:
 
 * For AVX512 machines with SDK libraries installed then both 4G and 5G can be enabled for full real time FEC capability.
   For AVX2 machines it is possible to only enable the 4G libraries and the PMD capabilities will be limited to 4G FEC.
-  If no library is present then the PMD driver will still build but its capabilities will be limited accordingly.
+  If no library is present then the PMD will still build but its capabilities will be limited accordingly.
 
 
 To use the PMD in an application, user must:

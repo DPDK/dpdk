@@ -135,7 +135,7 @@ New Features
 
 * **Added mlx5 compress PMD.**
 
-  Added a new compress PMD driver for Bluefield 2 adapters.
+  Added a new compress PMD for Bluefield 2 adapters.
 
   See the :doc:`../compressdevs/mlx5` for more details.
 

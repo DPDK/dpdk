@@ -10,8 +10,8 @@ New Features
 * **Introduce ARMv7 and ARMv8 architectures.**
 
   * It is now possible to build DPDK for the ARMv7 and ARMv8 platforms.
-  * ARMv7 can be tested with virtual PMD drivers.
-  * ARMv8 can be tested with virtual and physical PMD drivers.
+  * ARMv7 can be tested with virtual PMDs.
+  * ARMv8 can be tested with virtual and physical PMDs.
 
 * **Enabled freeing of ring.**
 

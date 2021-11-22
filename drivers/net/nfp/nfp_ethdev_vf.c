@@ -238,7 +238,7 @@ nfp_netvf_close(struct rte_eth_dev *dev)
 			     (void *)dev);
 
 	/*
-	 * The ixgbe PMD driver disables the pcie master on the
+	 * The ixgbe PMD disables the pcie master on the
 	 * device. The i40e does not...
 	 */
 

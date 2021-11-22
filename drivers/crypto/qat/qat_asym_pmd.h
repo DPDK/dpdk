@@ -10,7 +10,7 @@
 #include "qat_crypto.h"
 #include "qat_device.h"
 
-/** Intel(R) QAT Asymmetric Crypto PMD driver name */
+/** Intel(R) QAT Asymmetric Crypto PMD name */
 #define CRYPTODEV_NAME_QAT_ASYM_PMD	crypto_qat_asym
 
 

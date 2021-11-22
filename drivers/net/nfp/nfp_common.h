@@ -8,7 +8,7 @@
  *
  * @file dpdk/pmd/nfp_net_pmd.h
  *
- * Netronome NFP_NET PMD driver
+ * Netronome NFP_NET PMD
  */
 
 #ifndef _NFP_COMMON_H_

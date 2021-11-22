@@ -192,7 +192,7 @@ New Features
 
 * **Added Wangxun txgbe PMD.**
 
-  Added a new PMD driver for Wangxun 10 Gigabit Ethernet NICs.
+  Added a new PMD for Wangxun 10 Gigabit Ethernet NICs.
 
   See the :doc:`../nics/txgbe` for more details.
 
@@ -288,7 +288,7 @@ New Features
 
 * **Added Marvell OCTEON TX2 regex PMD.**
 
-  Added a new PMD driver for the hardware regex offload block for OCTEON TX2 SoC.
+  Added a new PMD for the hardware regex offload block for OCTEON TX2 SoC.
 
   See the :doc:`../regexdevs/octeontx2` for more details.
 

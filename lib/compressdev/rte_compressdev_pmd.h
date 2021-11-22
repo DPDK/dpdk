@@ -319,7 +319,7 @@ rte_compressdev_pmd_release_device(struct rte_compressdev *dev);
  * PMD assist function to parse initialisation arguments for comp driver
  * when creating a new comp PMD device instance.
  *
- * PMD driver should set default values for that PMD before calling function,
+ * PMD should set default values for that PMD before calling function,
  * these default values will be over-written with successfully parsed values
  * from args string.
  *

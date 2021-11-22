@@ -65,7 +65,7 @@ The diagram below shows a system level overview of ENETFEC:
                         | PHY |
                         +-----+
 
-ENETFEC Ethernet driver is traditional DPDK PMD driver running in userspace.
+ENETFEC Ethernet driver is traditional DPDK PMD running in userspace.
 'fec-uio' is the kernel driver.
 The MAC and PHY are the hardware blocks.
 ENETFEC PMD uses standard UIO interface to access kernel

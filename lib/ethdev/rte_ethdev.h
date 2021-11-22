@@ -2610,7 +2610,7 @@ int rte_eth_tx_hairpin_queue_setup
  *   - (-EINVAL) if bad parameter.
  *   - (-ENODEV) if *port_id* invalid
  *   - (-ENOTSUP) if hardware doesn't support.
- *   - Others detailed errors from PMD drivers.
+ *   - Others detailed errors from PMDs.
  */
 __rte_experimental
 int rte_eth_hairpin_get_peer_ports(uint16_t port_id, uint16_t *peer_ports,
@@ -2636,7 +2636,7 @@ int rte_eth_hairpin_get_peer_ports(uint16_t port_id, uint16_t *peer_ports,
  *   - (-ENODEV) if Tx port ID is invalid.
  *   - (-EBUSY) if device is not in started state.
  *   - (-ENOTSUP) if hardware doesn't support.
- *   - Others detailed errors from PMD drivers.
+ *   - Others detailed errors from PMDs.
  */
 __rte_experimental
 int rte_eth_hairpin_bind(uint16_t tx_port, uint16_t rx_port);
@@ -2663,7 +2663,7 @@ int rte_eth_hairpin_bind(uint16_t tx_port, uint16_t rx_port);
  *   - (-ENODEV) if Tx port ID is invalid.
  *   - (-EBUSY) if device is in stopped state.
  *   - (-ENOTSUP) if hardware doesn't support.
- *   - Others detailed errors from PMD drivers.
+ *   - Others detailed errors from PMDs.
  */
 __rte_experimental
 int rte_eth_hairpin_unbind(uint16_t tx_port, uint16_t rx_port);
@@ -2706,7 +2706,7 @@ int rte_eth_dev_is_valid_port(uint16_t port_id);
  *   - -ENODEV: if *port_id* is invalid.
  *   - -EINVAL: The queue_id out of range or belong to hairpin.
  *   - -EIO: if device is removed.
- *   - -ENOTSUP: The function not supported in PMD driver.
+ *   - -ENOTSUP: The function not supported in PMD.
  */
 int rte_eth_dev_rx_queue_start(uint16_t port_id, uint16_t rx_queue_id);
 
@@ -2724,7 +2724,7 @@ int rte_eth_dev_rx_queue_start(uint16_t port_id, uint16_t rx_queue_id);
  *   - -ENODEV: if *port_id* is invalid.
  *   - -EINVAL: The queue_id out of range or belong to hairpin.
  *   - -EIO: if device is removed.
- *   - -ENOTSUP: The function not supported in PMD driver.
+ *   - -ENOTSUP: The function not supported in PMD.
  */
 int rte_eth_dev_rx_queue_stop(uint16_t port_id, uint16_t rx_queue_id);
 
@@ -2743,7 +2743,7 @@ int rte_eth_dev_rx_queue_stop(uint16_t port_id, uint16_t rx_queue_id);
  *   - -ENODEV: if *port_id* is invalid.
  *   - -EINVAL: The queue_id out of range or belong to hairpin.
  *   - -EIO: if device is removed.
- *   - -ENOTSUP: The function not supported in PMD driver.
+ *   - -ENOTSUP: The function not supported in PMD.
  */
 int rte_eth_dev_tx_queue_start(uint16_t port_id, uint16_t tx_queue_id);
 
@@ -2761,7 +2761,7 @@ int rte_eth_dev_tx_queue_start(uint16_t port_id, uint16_t tx_queue_id);
  *   - -ENODEV: if *port_id* is invalid.
  *   - -EINVAL: The queue_id out of range or belong to hairpin.
  *   - -EIO: if device is removed.
- *   - -ENOTSUP: The function not supported in PMD driver.
+ *   - -ENOTSUP: The function not supported in PMD.
  */
 int rte_eth_dev_tx_queue_stop(uint16_t port_id, uint16_t tx_queue_id);
 
@@ -2963,7 +2963,7 @@ int rte_eth_allmulticast_get(uint16_t port_id);
  *   Link information written back.
  * @return
  *   - (0) if successful.
- *   - (-ENOTSUP) if the function is not supported in PMD driver.
+ *   - (-ENOTSUP) if the function is not supported in PMD.
  *   - (-ENODEV) if *port_id* invalid.
  *   - (-EINVAL) if bad parameter.
  */
@@ -2979,7 +2979,7 @@ int rte_eth_link_get(uint16_t port_id, struct rte_eth_link *link);
  *   Link information written back.
  * @return
  *   - (0) if successful.
- *   - (-ENOTSUP) if the function is not supported in PMD driver.
+ *   - (-ENOTSUP) if the function is not supported in PMD.
  *   - (-ENODEV) if *port_id* invalid.
  *   - (-EINVAL) if bad parameter.
  */

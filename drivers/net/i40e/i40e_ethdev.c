@@ -1922,7 +1922,7 @@ i40e_dev_configure(struct rte_eth_dev *dev)
 		goto err;
 
 	/* VMDQ setup.
-	 *  General PMD driver call sequence are NIC init, configure,
+	 *  General PMD call sequence are NIC init, configure,
 	 *  rx/tx_queue_setup and dev_start. In rx/tx_queue_setup() function, it
 	 *  will try to lookup the VSI that specific queue belongs to if VMDQ
 	 *  applicable. So, VMDQ setting has to be done before

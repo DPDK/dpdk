@@ -483,7 +483,7 @@ rte_cryptodev_pmd_release_device(struct rte_cryptodev *cryptodev);
  * PMD assist function to parse initialisation arguments for crypto driver
  * when creating a new crypto PMD device instance.
  *
- * PMD driver should set default values for that PMD before calling function,
+ * PMD should set default values for that PMD before calling function,
  * these default values will be over-written with successfully parsed values
  * from args string.
  *

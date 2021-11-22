@@ -78,7 +78,7 @@ New Features
   * Updated ena_com (HAL) to the latest version.
   * Added indication of the RSS hash presence in the mbuf.
 
-* **Updated Arkville PMD driver.**
+* **Updated Arkville PMD.**
 
   Updated Arkville net driver with new features and improvements, including:
 

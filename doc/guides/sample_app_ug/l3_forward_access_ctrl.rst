@@ -220,7 +220,7 @@ Once the application starts, it transitions through three phases:
 
 *   **Final Phase** - Perform the following tasks:
 
-    Calls the EAL, PMD driver and ACL library to free resource, then quits.
+    Calls the EAL, PMD and ACL library to free resource, then quits.
 
 Compiling the Application
 -------------------------
