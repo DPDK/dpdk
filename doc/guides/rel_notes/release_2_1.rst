@@ -243,7 +243,7 @@ New Features
 * **Added fm10k jumbo frame support.**
 
   Added support for jumbo frame less than 15K in both VF and PF functions in the
-  fm10k pmd.
+  fm10k PMD.
 
 
 * **Added fm10k mac vlan filtering support.**

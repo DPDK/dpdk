@@ -28,7 +28,7 @@ From the command line using the --vdev EAL option
 
 .. code-block:: console
 
-   --vdev  '<pmd name>,socket_id=0'
+   --vdev  '<PMD name>,socket_id=0'
 
 .. Note::
 
@@ -332,7 +332,7 @@ using priv_xform would look like:
      * pseudocode for stateless compression
      */
 
-    uint8_t cdev_id = rte_compressdev_get_dev_id(<pmd name>);
+    uint8_t cdev_id = rte_compressdev_get_dev_id(<PMD name>);
 
     /* configure the device. */
     if (rte_compressdev_configure(cdev_id, &conf) < 0)
@@ -475,7 +475,7 @@ An example pseudocode to set up and process a stream having NUM_CHUNKS with each
      * pseudocode for stateful compression
      */
 
-    uint8_t cdev_id = rte_compressdev_get_dev_id(<pmd name>);
+    uint8_t cdev_id = rte_compressdev_get_dev_id(<PMD name>);
 
     /* configure the  device. */
     if (rte_compressdev_configure(cdev_id, &conf) < 0)

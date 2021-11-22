@@ -108,7 +108,7 @@ for details.
 Initialization
 --------------
 
-The OCTEON TX ethdev pmd is exposed as a vdev device which consists of a set
+The OCTEON TX ethdev PMD is exposed as a vdev device which consists of a set
 of PKI and PKO PCIe VF devices. On EAL initialization,
 PKI/PKO PCIe VF devices will be probed and then the vdev device can be created
 from the application code, or from the EAL command line based on
@@ -126,7 +126,7 @@ the number of interesting ports with ``nr_ports`` argument.
 
 Dependency
 ~~~~~~~~~~
-``eth_octeontx`` pmd is depend on ``event_octeontx`` eventdev device and
+``eth_octeontx`` PMD is depend on ``event_octeontx`` eventdev device and
 ``octeontx_fpavf`` external mempool handler.
 
 Example:

@@ -100,7 +100,7 @@ The following parameters (all optional) can be provided in the previous two call
 
 * ccp_auth_opt: Specify authentication operations to perform on CPU using openssl APIs.
 
-To validate ccp pmd, l2fwd-crypto example can be used with following command:
+To validate ccp PMD, l2fwd-crypto example can be used with following command:
 
 .. code-block:: console
 

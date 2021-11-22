@@ -69,7 +69,7 @@ use version 1.1.1g or newer.
 Initialization
 --------------
 
-User can use app/test application to check how to use this pmd and to verify
+User can use app/test application to check how to use this PMD and to verify
 crypto processing.
 
 Test name is cryptodev_openssl_autotest.

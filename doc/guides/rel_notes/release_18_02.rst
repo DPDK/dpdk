@@ -142,9 +142,9 @@ New Features
   * ``VIRTIO_NET_F_GUEST_UFO``, ``VIRTIO_NET_F_HOST_UFO``
   * ``VIRTIO_NET_F_GSO``
 
-  Also added ``VIRTIO_NET_F_GUEST_ANNOUNCE`` feature support in virtio pmd.
+  Also added ``VIRTIO_NET_F_GUEST_ANNOUNCE`` feature support in virtio PMD.
   In a scenario where the vhost backend doesn't have the ability to generate
-  RARP packets, the VM running virtio pmd can still be live migrated if
+  RARP packets, the VM running virtio PMD can still be live migrated if
   ``VIRTIO_NET_F_GUEST_ANNOUNCE`` feature is negotiated.
 
 * **Updated the AESNI-MB PMD.**

@@ -87,7 +87,7 @@ due to the static nature of the underlying queues. It is because of this
 that the implementation can achieve such high throughput and low latency
 
 The following list is a comprehensive outline of the what is supported and
-the limitations / restrictions imposed by the opdl pmd
+the limitations / restrictions imposed by the opdl PMD
 
  - The order in which packets moved between queues is static and fixed \
    (dynamic scheduling is not supported).

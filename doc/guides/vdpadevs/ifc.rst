@@ -17,9 +17,9 @@ IFCVF vDPA Implementation
 IFCVF's vendor ID and device ID are same as that of virtio net pci device,
 with its specific subsystem vendor ID and device ID. To let the device be
 probed by IFCVF driver, adding "vdpa=1" parameter helps to specify that this
-device is to be used in vDPA mode, rather than polling mode, virtio pmd will
+device is to be used in vDPA mode, rather than polling mode, virtio PMD will
 skip when it detects this message. If no this parameter specified, device
-will not be used as a vDPA device, and it will be driven by virtio pmd.
+will not be used as a vDPA device, and it will be driven by virtio PMD.
 
 Different VF devices serve different virtio frontends which are in different
 VMs, so each VF needs to have its own DMA address translation service. During
