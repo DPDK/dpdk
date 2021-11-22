@@ -1267,6 +1267,18 @@ set_mb_job_params(JOB_AES_HMAC *job, struct aesni_mb_qp *qp,
 
 	const int aead = is_aead_algo(job->hash_alg, job->cipher_mode);
 
+	if (job->cipher_mode == DES3) {
+		job->aes_enc_key_expanded =
+				session->cipher.exp_3des_keys.ks_ptr;
+		job->aes_dec_key_expanded =
+				session->cipher.exp_3des_keys.ks_ptr;
+	} else {
+		job->aes_enc_key_expanded =
+				session->cipher.expanded_aes_keys.encode;
+		job->aes_dec_key_expanded =
+				session->cipher.expanded_aes_keys.decode;
+	}
+
 	switch (job->hash_alg) {
 	case AES_XCBC:
 		job->u.XCBC._k1_expanded = session->auth.xcbc.k1_expanded;
@@ -1339,17 +1351,6 @@ set_mb_job_params(JOB_AES_HMAC *job, struct aesni_mb_qp *qp,
 		job->u.HMAC._hashed_auth_key_xor_ipad = session->auth.pads.inner;
 		job->u.HMAC._hashed_auth_key_xor_opad = session->auth.pads.outer;
 
-		if (job->cipher_mode == DES3) {
-			job->aes_enc_key_expanded =
-				session->cipher.exp_3des_keys.ks_ptr;
-			job->aes_dec_key_expanded =
-				session->cipher.exp_3des_keys.ks_ptr;
-		} else {
-			job->aes_enc_key_expanded =
-				session->cipher.expanded_aes_keys.encode;
-			job->aes_dec_key_expanded =
-				session->cipher.expanded_aes_keys.decode;
-		}
 	}
 
 	if (aead)
