@@ -382,6 +382,7 @@ parse_fup(struct ptpv2_data_slave_ordinary *ptp_data)
 	struct ptp_header *ptp_hdr;
 	struct clock_id *client_clkid;
 	struct ptp_message *ptp_msg;
+	struct delay_req_msg *req_msg;
 	struct rte_mbuf *created_pkt;
 	struct tstamp *origin_tstamp;
 	struct rte_ether_addr eth_multicast = ether_multicast;
@@ -419,7 +420,12 @@ parse_fup(struct ptpv2_data_slave_ordinary *ptp_data)
 
 		created_pkt = rte_pktmbuf_alloc(mbuf_pool);
 		pkt_size = sizeof(struct rte_ether_hdr) +
-			sizeof(struct ptp_message);
+			sizeof(struct delay_req_msg);
+
+		if (rte_pktmbuf_append(created_pkt, pkt_size) == NULL) {
+			rte_pktmbuf_free(created_pkt);
+			return;
+		}
 		created_pkt->data_len = pkt_size;
 		created_pkt->pkt_len = pkt_size;
 		eth_hdr = rte_pktmbuf_mtod(created_pkt, struct rte_ether_hdr *);
@@ -429,22 +435,22 @@ parse_fup(struct ptpv2_data_slave_ordinary *ptp_data)
 		rte_ether_addr_copy(&eth_multicast, &eth_hdr->d_addr);
 
 		eth_hdr->ether_type = htons(PTP_PROTOCOL);
-		ptp_msg = (struct ptp_message *)
-			(rte_pktmbuf_mtod(created_pkt, char *) +
-			sizeof(struct rte_ether_hdr));
+		req_msg = rte_pktmbuf_mtod_offset(created_pkt,
+			struct delay_req_msg *, sizeof(struct
+			rte_ether_hdr));
 
-		ptp_msg->delay_req.hdr.seq_id = htons(ptp_data->seqID_SYNC);
-		ptp_msg->delay_req.hdr.msg_type = DELAY_REQ;
-		ptp_msg->delay_req.hdr.ver = 2;
-		ptp_msg->delay_req.hdr.control = 1;
-		ptp_msg->delay_req.hdr.log_message_interval = 127;
-		ptp_msg->delay_req.hdr.message_length =
+		req_msg->hdr.seq_id = htons(ptp_data->seqID_SYNC);
+		req_msg->hdr.msg_type = DELAY_REQ;
+		req_msg->hdr.ver = 2;
+		req_msg->hdr.control = 1;
+		req_msg->hdr.log_message_interval = 127;
+		req_msg->hdr.message_length =
 			htons(sizeof(struct delay_req_msg));
-		ptp_msg->delay_req.hdr.domain_number = ptp_hdr->domain_number;
+		req_msg->hdr.domain_number = ptp_hdr->domain_number;
 
 		/* Set up clock id. */
 		client_clkid =
-			&ptp_msg->delay_req.hdr.source_port_id.clock_id;
+			&req_msg->hdr.source_port_id.clock_id;
 
 		client_clkid->id[0] = eth_hdr->s_addr.addr_bytes[0];
 		client_clkid->id[1] = eth_hdr->s_addr.addr_bytes[1];
