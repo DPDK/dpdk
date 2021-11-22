@@ -319,7 +319,7 @@ hns3vf_set_default_mac_addr(struct rte_eth_dev *dev,
 				HNS3_TWO_ETHER_ADDR_LEN, true, NULL, 0);
 	if (ret) {
 		/*
-		 * The hns3 VF PMD driver depends on the hns3 PF kernel ethdev
+		 * The hns3 VF PMD depends on the hns3 PF kernel ethdev
 		 * driver. When user has configured a MAC address for VF device
 		 * by "ip link set ..." command based on the PF device, the hns3
 		 * PF kernel ethdev driver does not allow VF driver to request
@@ -573,9 +573,9 @@ hns3vf_set_promisc_mode(struct hns3_hw *hw, bool en_bc_pmc,
 	req = (struct hns3_mbx_vf_to_pf_cmd *)desc.data;
 
 	/*
-	 * The hns3 VF PMD driver depends on the hns3 PF kernel ethdev driver,
+	 * The hns3 VF PMD depends on the hns3 PF kernel ethdev driver,
 	 * so there are some features for promiscuous/allmulticast mode in hns3
-	 * VF PMD driver as below:
+	 * VF PMD as below:
 	 * 1. The promiscuous/allmulticast mode can be configured successfully
 	 *    only based on the trusted VF device. If based on the non trusted
 	 *    VF device, configuring promiscuous/allmulticast mode will fail.
@@ -583,14 +583,14 @@ hns3vf_set_promisc_mode(struct hns3_hw *hw, bool en_bc_pmc,
 	 *    kernel ethdev driver on the host by the following command:
 	 *      "ip link set <eth num> vf <vf id> turst on"
 	 * 2. After the promiscuous mode is configured successfully, hns3 VF PMD
-	 *    driver can receive the ingress and outgoing traffic. In the words,
+	 *    can receive the ingress and outgoing traffic. This includes
 	 *    all the ingress packets, all the packets sent from the PF and
 	 *    other VFs on the same physical port.
 	 * 3. Note: Because of the hardware constraints, By default vlan filter
 	 *    is enabled and couldn't be turned off based on VF device, so vlan
 	 *    filter is still effective even in promiscuous mode. If upper
 	 *    applications don't call rte_eth_dev_vlan_filter API function to
-	 *    set vlan based on VF device, hns3 VF PMD driver will can't receive
+	 *    set vlan based on VF device, hns3 VF PMD will can't receive
 	 *    the packets with vlan tag in promiscuoue mode.
 	 */
 	hns3_cmd_setup_basic_desc(&desc, HNS3_OPC_MBX_VF_TO_PF, false);
@@ -902,9 +902,9 @@ hns3vf_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 	/*
 	 * The hns3 PF/VF devices on the same port share the hardware MTU
 	 * configuration. Currently, we send mailbox to inform hns3 PF kernel
-	 * ethdev driver to finish hardware MTU configuration in hns3 VF PMD
-	 * driver, there is no need to stop the port for hns3 VF device, and the
-	 * MTU value issued by hns3 VF PMD driver must be less than or equal to
+	 * ethdev driver to finish hardware MTU configuration in hns3 VF PMD,
+	 * there is no need to stop the port for hns3 VF device, and the
+	 * MTU value issued by hns3 VF PMD must be less than or equal to
 	 * PF's MTU.
 	 */
 	if (rte_atomic16_read(&hw->reset.resetting)) {
@@ -914,8 +914,8 @@ hns3vf_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 
 	/*
 	 * when Rx of scattered packets is off, we have some possibility of
-	 * using vector Rx process function or simple Rx functions in hns3 PMD
-	 * driver. If the input MTU is increased and the maximum length of
+	 * using vector Rx process function or simple Rx functions in hns3 PMD.
+	 * If the input MTU is increased and the maximum length of
 	 * received packets is greater than the length of a buffer for Rx
 	 * packet, the hardware network engine needs to use multiple BDs and
 	 * buffers to store these packets. This will cause problems when still
@@ -2474,7 +2474,7 @@ hns3vf_check_default_mac_change(struct hns3_hw *hw)
 	 * ethdev driver sets the MAC address for VF device after the
 	 * initialization of the related VF device, the PF driver will notify
 	 * VF driver to reset VF device to make the new MAC address effective
-	 * immediately. The hns3 VF PMD driver should check whether the MAC
+	 * immediately. The hns3 VF PMD should check whether the MAC
 	 * address has been changed by the PF kernel ethdev driver, if changed
 	 * VF driver should configure hardware using the new MAC address in the
 	 * recovering hardware configuration stage of the reset process.
@@ -2814,12 +2814,12 @@ hns3vf_dev_init(struct rte_eth_dev *eth_dev)
 	/*
 	 * The hns3 PF ethdev driver in kernel support setting VF MAC address
 	 * on the host by "ip link set ..." command. To avoid some incorrect
-	 * scenes, for example, hns3 VF PMD driver fails to receive and send
+	 * scenes, for example, hns3 VF PMD fails to receive and send
 	 * packets after user configure the MAC address by using the
-	 * "ip link set ..." command, hns3 VF PMD driver keep the same MAC
+	 * "ip link set ..." command, hns3 VF PMD keep the same MAC
 	 * address strategy as the hns3 kernel ethdev driver in the
 	 * initialization. If user configure a MAC address by the ip command
-	 * for VF device, then hns3 VF PMD driver will start with it, otherwise
+	 * for VF device, then hns3 VF PMD will start with it, otherwise
 	 * start with a random MAC address in the initialization.
 	 */
 	if (rte_is_zero_ether_addr((struct rte_ether_addr *)hw->mac.mac_addr))

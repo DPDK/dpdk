@@ -984,7 +984,7 @@ hns3_vlan_pvid_set(struct rte_eth_dev *dev, uint16_t pvid, int on)
 		return ret;
 	/*
 	 * Only in HNS3_SW_SHIFT_AND_MODE the PVID related operation in Tx/Rx
-	 * need be processed by PMD driver.
+	 * need be processed by PMD.
 	 */
 	if (pvid_en_state_change &&
 	    hw->vlan_mode == HNS3_SW_SHIFT_AND_DISCARD_MODE)
@@ -2930,7 +2930,7 @@ hns3_parse_cfg(struct hns3_cfg *cfg, struct hns3_cmd_desc *desc)
 	 * Field ext_rss_size_max obtained from firmware will be more flexible
 	 * for future changes and expansions, which is an exponent of 2, instead
 	 * of reading out directly. If this field is not zero, hns3 PF PMD
-	 * driver uses it as rss_size_max under one TC. Device, whose revision
+	 * uses it as rss_size_max under one TC. Device, whose revision
 	 * id is greater than or equal to PCI_REVISION_ID_HIP09_A, obtains the
 	 * maximum number of queues supported under a TC through this field.
 	 */
@@ -6090,7 +6090,7 @@ hns3_fec_set(struct rte_eth_dev *dev, uint32_t mode)
 	if (ret < 0)
 		return ret;
 
-	/* HNS3 PMD driver only support one bit set mode, e.g. 0x1, 0x4 */
+	/* HNS3 PMD only support one bit set mode, e.g. 0x1, 0x4 */
 	if (!is_fec_mode_one_bit_set(mode)) {
 		hns3_err(hw, "FEC mode(0x%x) not supported in HNS3 PMD, "
 			     "FEC mode should be only one bit set", mode);

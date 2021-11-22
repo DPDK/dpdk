@@ -1885,8 +1885,8 @@ hns3_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t nb_desc,
 	/*
 	 * For hns3 PF device, if the VLAN mode is HW_SHIFT_AND_DISCARD_MODE,
 	 * the pvid_sw_discard_en in the queue struct should not be changed,
-	 * because PVID-related operations do not need to be processed by PMD
-	 * driver. For hns3 VF device, whether it needs to process PVID depends
+	 * because PVID-related operations do not need to be processed by PMD.
+	 * For hns3 VF device, whether it needs to process PVID depends
 	 * on the configuration of PF kernel mode netdevice driver. And the
 	 * related PF configuration is delivered through the mailbox and finally
 	 * reflectd in port_base_vlan_cfg.
@@ -2700,8 +2700,8 @@ hns3_tx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t nb_desc,
 	/*
 	 * For hns3 PF device, if the VLAN mode is HW_SHIFT_AND_DISCARD_MODE,
 	 * the pvid_sw_shift_en in the queue struct should not be changed,
-	 * because PVID-related operations do not need to be processed by PMD
-	 * driver. For hns3 VF device, whether it needs to process PVID depends
+	 * because PVID-related operations do not need to be processed by PMD.
+	 * For hns3 VF device, whether it needs to process PVID depends
 	 * on the configuration of PF kernel mode netdev driver. And the
 	 * related PF configuration is delivered through the mailbox and finally
 	 * reflectd in port_base_vlan_cfg.

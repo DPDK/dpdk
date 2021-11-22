@@ -5,7 +5,7 @@ AF_PACKET Poll Mode Driver
 ==========================
 
 The AF_PACKET socket in Linux allows an application to receive and send raw
-packets. This Linux-specific PMD driver binds to an AF_PACKET socket and allows
+packets. This Linux-specific PMD binds to an AF_PACKET socket and allows
 a DPDK application to send and receive raw packets through the Kernel.
 
 In order to improve Rx and Tx performance this implementation makes use of

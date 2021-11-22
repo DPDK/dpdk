@@ -174,7 +174,7 @@ rte_bbdev_queue_configure(uint16_t dev_id, uint16_t queue_id,
  *
  * @return
  *   - 0 on success
- *   - negative value on failure - as returned from PMD driver
+ *   - negative value on failure - as returned from PMD
  */
 __rte_experimental
 int
@@ -220,7 +220,7 @@ rte_bbdev_close(uint16_t dev_id);
  *
  * @return
  *   - 0 on success
- *   - negative value on failure - as returned from PMD driver
+ *   - negative value on failure - as returned from PMD
  */
 __rte_experimental
 int
@@ -236,7 +236,7 @@ rte_bbdev_queue_start(uint16_t dev_id, uint16_t queue_id);
  *
  * @return
  *   - 0 on success
- *   - negative value on failure - as returned from PMD driver
+ *   - negative value on failure - as returned from PMD
  */
 __rte_experimental
 int
@@ -807,7 +807,7 @@ rte_bbdev_callback_unregister(uint16_t dev_id, enum rte_bbdev_event_type event,
  *
  * @return
  *   - 0 on success
- *   - negative value on failure - as returned from PMD driver
+ *   - negative value on failure - as returned from PMD
  */
 __rte_experimental
 int
@@ -824,7 +824,7 @@ rte_bbdev_queue_intr_enable(uint16_t dev_id, uint16_t queue_id);
  *
  * @return
  *   - 0 on success
- *   - negative value on failure - as returned from PMD driver
+ *   - negative value on failure - as returned from PMD
  */
 __rte_experimental
 int
@@ -852,7 +852,7 @@ rte_bbdev_queue_intr_disable(uint16_t dev_id, uint16_t queue_id);
  * @return
  *   - 0 on success
  *   - ENOTSUP if interrupts are not supported by the identified device
- *   - negative value on failure - as returned from PMD driver
+ *   - negative value on failure - as returned from PMD
  */
 __rte_experimental
 int

@@ -42,5 +42,5 @@ Some features added in this version:
 3. Add altera SPI master driver and Intel MAX10 device driver.
 4. Add Altera I2C master driver and AT24 eeprom driver.
 5. Add Device Tree support to get the configuration from card.
-6. Instruding and exposing APIs to DPDK PMD driver to access networking
+6. Instruding and exposing APIs to DPDK PMD to access networking
 functionality.

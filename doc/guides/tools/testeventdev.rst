@@ -207,7 +207,7 @@ to the ordered queue. The worker receives the events from ordered queue and
 forwards to atomic queue. Since the events from an ordered queue can be
 processed in parallel on the different workers, the ingress order of events
 might have changed on the downstream atomic queue enqueue. On enqueue to the
-atomic queue, the eventdev PMD driver reorders the event to the original
+atomic queue, the eventdev PMD reorders the event to the original
 ingress order(i.e producer ingress order).
 
 When the event is dequeued from the atomic queue by the worker, this test

@@ -236,7 +236,7 @@ New Features
 
 * **Added Marvell OCTEON TX2 crypto PMD.**
 
-  Added a new PMD driver for hardware crypto offload block on ``OCTEON TX2``
+  Added a new PMD for hardware crypto offload block on ``OCTEON TX2``
   SoC.
 
   See :doc:`../cryptodevs/octeontx2` for more details

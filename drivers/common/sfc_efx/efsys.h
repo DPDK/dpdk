@@ -607,7 +607,7 @@ typedef struct efsys_bar_s {
 /* DMA SYNC */
 
 /*
- * DPDK does not provide any DMA syncing API, and no PMD drivers
+ * DPDK does not provide any DMA syncing API, and no PMDs
  * have any traces of explicit DMA syncing.
  * DMA mapping is assumed to be coherent.
  */

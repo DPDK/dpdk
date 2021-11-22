@@ -14,7 +14,7 @@ This document explains how to use DPDK with the Netronome Poll Mode
 Driver (PMD) supporting Netronome's Network Flow Processor 6xxx
 (NFP-6xxx) and Netronome's Flow Processor 4xxx (NFP-4xxx).
 
-NFP is a SRIOV capable device and the PMD driver supports the physical
+NFP is a SRIOV capable device and the PMD supports the physical
 function (PF) and the virtual functions (VFs).
 
 Dependencies

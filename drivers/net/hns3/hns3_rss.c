@@ -672,7 +672,7 @@ hns3_set_default_rss_args(struct hns3_hw *hw)
 }
 
 /*
- * RSS initialization for hns3 pmd driver.
+ * RSS initialization for hns3 PMD.
  */
 int
 hns3_config_rss(struct hns3_adapter *hns)
@@ -744,7 +744,7 @@ rss_tuple_uninit:
 }
 
 /*
- * RSS uninitialization for hns3 pmd driver.
+ * RSS uninitialization for hns3 PMD.
  */
 void
 hns3_rss_uninit(struct hns3_adapter *hns)

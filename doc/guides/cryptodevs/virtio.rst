@@ -73,7 +73,7 @@ number of the virtio-crypto device:
     echo -n 0000:00:04.0 > /sys/bus/pci/drivers/virtio-pci/unbind
     echo "1af4 1054" > /sys/bus/pci/drivers/uio_pci_generic/new_id
 
-Finally the front-end virtio crypto PMD driver can be installed.
+Finally the front-end virtio crypto PMD can be installed.
 
 Tests
 -----

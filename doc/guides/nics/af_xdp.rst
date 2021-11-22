@@ -12,7 +12,7 @@ For the full details behind AF_XDP socket, you can refer to
 `AF_XDP documentation in the Kernel
 <https://www.kernel.org/doc/Documentation/networking/af_xdp.rst>`_.
 
-This Linux-specific PMD driver creates the AF_XDP socket and binds it to a
+This Linux-specific PMD creates the AF_XDP socket and binds it to a
 specific netdev queue, it allows a DPDK application to send and receive raw
 packets through the socket which would bypass the kernel network stack.
 Current implementation only supports single queue, multi-queues feature will

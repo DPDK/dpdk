@@ -17,7 +17,7 @@ With this enhancement, virtio could achieve quite promising performance.
 For basic qemu-KVM installation and other Intel EM poll mode driver in guest VM,
 please refer to Chapter "Driver for VM Emulated Devices".
 
-In this chapter, we will demonstrate usage of virtio PMD driver with two backends,
+In this chapter, we will demonstrate usage of virtio PMD with two backends,
 standard qemu vhost back end and vhost kni back end.
 
 Virtio Implementation in DPDK
@@ -40,7 +40,7 @@ end if necessary.
 Features and Limitations of virtio PMD
 --------------------------------------
 
-In this release, the virtio PMD driver provides the basic functionality of packet reception and transmission.
+In this release, the virtio PMD provides the basic functionality of packet reception and transmission.
 
 *   It supports merge-able buffers per packet when receiving packets and scattered buffer per packet
     when transmitting packets. The packet size supported is from 64 to 1518.

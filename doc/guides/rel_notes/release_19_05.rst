@@ -93,13 +93,13 @@ New Features
   Updated the KNI kernel module to set the ``max_mtu`` according to the given
   initial MTU size. Without it, the maximum MTU was 1500.
 
-  Updated the KNI PMD driver to set the ``mbuf_size`` and MTU based on
+  Updated the KNI PMD to set the ``mbuf_size`` and MTU based on
   the given mb-pool. This provide the ability to pass jumbo frames
   if the mb-pool contains a suitable buffer size.
 
 * **Added the AF_XDP PMD.**
 
-  Added a Linux-specific PMD driver for AF_XDP. This PMD can create an AF_XDP socket
+  Added a Linux-specific PMD for AF_XDP. This PMD can create an AF_XDP socket
   and bind it to a specific netdev queue. It allows a DPDK application to send
   and receive raw packets through the socket which would bypass the kernel
   network stack to achieve high performance packet processing.
@@ -311,7 +311,7 @@ ABI Changes
 
   The ``rte_eth_dev_info`` structure has had two extra fields
   added: ``min_mtu`` and ``max_mtu``. Each of these are of type ``uint16_t``.
-  The values of these fields can be set specifically by the PMD drivers as
+  The values of these fields can be set specifically by the PMDs as
   supported values can vary from device to device.
 
 * cryptodev: in 18.08 a new structure ``rte_crypto_asym_op`` was introduced and

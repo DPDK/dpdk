@@ -35,7 +35,7 @@ to another with minimal packet loss.
 Features and Limitations of the AVP PMD
 ---------------------------------------
 
-The AVP PMD driver provides the following functionality.
+The AVP PMD provides the following functionality.
 
 *   Receive and transmit of both simple and chained mbuf packets,
 
@@ -74,7 +74,7 @@ Launching a VM with an AVP type network attachment
 The following example will launch a VM with three network attachments.  The
 first attachment will have a default vif-model of "virtio".  The next two
 network attachments will have a vif-model of "avp" and may be used with a DPDK
-application which is built to include the AVP PMD driver.
+application which is built to include the AVP PMD.
 
 .. code-block:: console
 

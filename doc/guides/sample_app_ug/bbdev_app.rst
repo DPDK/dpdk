@@ -31,7 +31,7 @@ Limitations
 Compiling the Application
 -------------------------
 
-DPDK needs to be built with ``baseband_turbo_sw`` PMD driver enabled along
+DPDK needs to be built with ``baseband_turbo_sw`` PMD enabled along
 with ``FLEXRAN SDK`` Libraries. Refer to *SW Turbo Poll Mode Driver*
 documentation for more details on this.
 
