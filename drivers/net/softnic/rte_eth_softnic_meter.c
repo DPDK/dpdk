@@ -791,7 +791,7 @@ mtr_stats_convert(struct pmd_internals *p,
 {
 	struct softnic_mtr_meter_policy *mp;
 
-	memset(&out, 0, sizeof(out));
+	memset(out, 0, sizeof(*out));
 	*out_mask = 0;
 
 	/* Meter policy must exist */
