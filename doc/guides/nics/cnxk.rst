@@ -289,7 +289,7 @@ Limitations
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The OCTEON CN9K/CN10K SoC family NIC has inbuilt HW assisted external mempool manager.
-``net_cnxk`` pmd only works with ``mempool_cnxk`` mempool handler
+``net_cnxk`` PMD only works with ``mempool_cnxk`` mempool handler
 as it is performance wise most effective way for packet allocation and Tx buffer
 recycling on OCTEON TX2 SoC platform.
 

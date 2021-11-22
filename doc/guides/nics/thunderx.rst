@@ -371,7 +371,7 @@ Module params
 skip_data_bytes
 ~~~~~~~~~~~~~~~
 This feature is used to create a hole between HEADROOM and actual data. Size of hole is specified
-in bytes as module param("skip_data_bytes") to pmd.
+in bytes as module param("skip_data_bytes") to PMD.
 This scheme is useful when application would like to insert vlan header without disturbing HEADROOM.
 
 Example:
