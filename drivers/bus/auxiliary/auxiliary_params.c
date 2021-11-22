@@ -18,6 +18,7 @@ enum auxiliary_params {
 
 static const char * const auxiliary_params_keys[] = {
 	[RTE_AUXILIARY_PARAM_NAME] = "name",
+	NULL,
 };
 
 static int
