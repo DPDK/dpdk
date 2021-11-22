@@ -2428,10 +2428,9 @@ iavf_fill_data_desc(volatile struct iavf_tx_desc *desc,
 	desc->buffer_addr = rte_mbuf_data_iova(m);
 
 	/* calculate data buffer size less set header lengths */
-	if ((m->ol_flags & RTE_MBUF_F_TX_TUNNEL_MASK) &&
-			(m->ol_flags & (RTE_MBUF_F_TX_TCP_SEG |
-					RTE_MBUF_F_TX_UDP_SEG))) {
-		hdrlen += m->outer_l3_len;
+	if (m->ol_flags & (RTE_MBUF_F_TX_TCP_SEG | RTE_MBUF_F_TX_UDP_SEG)) {
+		if (m->ol_flags & RTE_MBUF_F_TX_TUNNEL_MASK)
+			hdrlen += m->outer_l3_len;
 		if (m->ol_flags & RTE_MBUF_F_TX_L4_MASK)
 			hdrlen += m->l3_len + m->l4_len;
 		else
