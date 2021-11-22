@@ -159,7 +159,7 @@ rte_cryptodev_pmd_get_named_dev(const char *name);
 
 /**
  * Definitions of all functions exported by a driver through the
- * the generic structure of type *crypto_dev_ops* supplied in the
+ * generic structure of type *crypto_dev_ops* supplied in the
  * *rte_cryptodev* structure associated with a device.
  */
 

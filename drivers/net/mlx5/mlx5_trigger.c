@@ -853,7 +853,7 @@ error:
 
 /*
  * Unbind the hairpin port pair, HW configuration of both devices will be clear
- * and status will be reset for all the queues used between the them.
+ * and status will be reset for all the queues used between them.
  * This function only supports to unbind the Tx from one Rx.
  *
  * @param dev

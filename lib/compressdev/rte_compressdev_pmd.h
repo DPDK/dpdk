@@ -64,7 +64,7 @@ struct rte_compressdev *
 rte_compressdev_pmd_get_named_dev(const char *name);
 
 /**
- * Definitions of all functions exported by a driver through the
+ * Definitions of all functions exported by a driver through
  * the generic structure of type *comp_dev_ops* supplied in the
  * *rte_compressdev* structure associated with a device.
  */

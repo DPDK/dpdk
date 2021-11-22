@@ -237,7 +237,7 @@ rte_event_pmd_is_valid_dev(uint8_t dev_id)
 
 /**
  * Definitions of all functions exported by a driver through the
- * the generic structure of type *event_dev_ops* supplied in the
+ * generic structure of type *event_dev_ops* supplied in the
  * *rte_eventdev* structure associated with a device.
  */
 

@@ -90,7 +90,7 @@ rte_ipv6_fragment_packet(struct rte_mbuf *pkt_in,
 
 	/*
 	 * Ensure the IP payload length of all fragments (except the
-	 * the last fragment) are a multiple of 8 bytes per RFC2460.
+	 * last fragment) are a multiple of 8 bytes per RFC2460.
 	 */
 
 	frag_size = mtu_size - sizeof(struct rte_ipv6_hdr) -

@@ -6,7 +6,7 @@
   * This is a simple functional test for rte_smp_mb() implementation.
   * I.E. make sure that LOAD and STORE operations that precede the
   * rte_smp_mb() call are globally visible across the lcores
-  * before the the LOAD and STORE operations that follows it.
+  * before the LOAD and STORE operations that follows it.
   * The test uses simple implementation of Peterson's lock algorithm
   * (https://en.wikipedia.org/wiki/Peterson%27s_algorithm)
   * for two execution units to make sure that rte_smp_mb() prevents

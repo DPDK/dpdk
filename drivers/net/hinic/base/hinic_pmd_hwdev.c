@@ -826,7 +826,7 @@ static int set_vf_dma_attr_entry(struct hinic_hwdev *hwdev, u8 entry_idx,
 }
 
 /**
- * dma_attr_table_init - initialize the the default dma attributes
+ * dma_attr_table_init - initialize the default dma attributes
  * @hwdev: the pointer to the private hardware device object
  */
 static int dma_attr_table_init(struct hinic_hwdev *hwdev)

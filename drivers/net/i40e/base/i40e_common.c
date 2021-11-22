@@ -5969,7 +5969,7 @@ enum i40e_status_code i40e_aq_add_cloud_filters(struct i40e_hw *hw,
  * @filter_count: number of filters contained in the buffer
  *
  * Set the cloud filters for a given VSI.  The contents of the
- * i40e_aqc_cloud_filters_element_bb are filled in by the caller of the
+ * i40e_aqc_cloud_filters_element_bb are filled in by the caller of
  * the function.
  *
  **/
