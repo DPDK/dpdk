@@ -126,7 +126,7 @@ rte_rawdev_pmd_is_valid_dev(uint8_t dev_id)
 }
 
 /**
- * Definitions of all functions exported by a driver through the
+ * Definitions of all functions exported by a driver through
  * the generic structure of type *rawdev_ops* supplied in the
  * *rte_rawdev* structure associated with a device.
  */

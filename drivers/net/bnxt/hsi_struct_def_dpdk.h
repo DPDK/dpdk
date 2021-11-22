@@ -13591,7 +13591,7 @@ struct hwrm_func_resource_qcaps_output {
 	#define HWRM_FUNC_RESOURCE_QCAPS_OUTPUT_VF_RESERVATION_STRATEGY_MINIMAL \
 		UINT32_C(0x1)
 	/*
-	 * The PF driver should not reserve any resources for each VF until the
+	 * The PF driver should not reserve any resources for each VF until
 	 * the VF interface is brought up.
 	 */
 	#define HWRM_FUNC_RESOURCE_QCAPS_OUTPUT_VF_RESERVATION_STRATEGY_MINIMAL_STATIC \

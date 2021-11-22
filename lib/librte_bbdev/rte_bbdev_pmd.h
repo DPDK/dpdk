@@ -76,7 +76,7 @@ struct rte_bbdev *
 rte_bbdev_get_named_dev(const char *name);
 
 /**
- * Definitions of all functions exported by a driver through the the generic
+ * Definitions of all functions exported by a driver through the generic
  * structure of type *rte_bbdev_ops* supplied in the *rte_bbdev* structure
  * associated with a device.
  */

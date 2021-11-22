@@ -3498,7 +3498,7 @@ bond_ethdev_configure(struct rte_eth_dev *dev)
 
 	/*
 	 * If RSS is enabled, fill table with default values and
-	 * set key to the the value specified in port RSS configuration.
+	 * set key to the value specified in port RSS configuration.
 	 * Fall back to default RSS key if the key is not specified
 	 */
 	if (dev->data->dev_conf.rxmode.mq_mode & ETH_MQ_RX_RSS) {

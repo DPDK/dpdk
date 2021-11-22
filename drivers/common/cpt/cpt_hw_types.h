@@ -466,7 +466,7 @@ typedef union {
 		uint64_t dbell_cnt             : 20;
 		/** [ 19:  0](R/W/H) Number of instruction queue 64-bit words
 		 * to add to the CPT instruction doorbell count. Readback value
-		 * is the the current number of pending doorbell requests.
+		 * is the current number of pending doorbell requests.
 		 *
 		 * If counter overflows CPT()_VQ()_MISC_INT[DBELL_DOVF] is set.
 		 *

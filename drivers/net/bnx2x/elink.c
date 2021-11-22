@@ -15013,7 +15013,7 @@ static void elink_check_kr2_wa(struct elink_params *params,
 
 	/* Once KR2 was disabled, wait 5 seconds before checking KR2 recovery
 	 * Since some switches tend to reinit the AN process and clear the
-	 * the advertised BP/NP after ~2 seconds causing the KR2 to be disabled
+	 * advertised BP/NP after ~2 seconds causing the KR2 to be disabled
 	 * and recovered many times
 	 */
 	if (vars->check_kr2_recovery_cnt > 0) {

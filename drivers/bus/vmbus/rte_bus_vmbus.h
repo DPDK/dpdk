@@ -292,7 +292,7 @@ struct iova_list {
  * @param data
  *	Pointer to the buffer additional data to send
  * @param dlen
- *	 Maximum size of what the the buffer will hold
+ *	 Maximum size of what the buffer will hold
  * @param xact
  *	Identifier of the request
  * @param flags
