@@ -1120,6 +1120,14 @@ set_mb_job_params(IMB_JOB *job, struct ipsec_mb_qp *qp,
 
 	const int aead = is_aead_algo(job->hash_alg, job->cipher_mode);
 
+	if (job->cipher_mode == IMB_CIPHER_DES3) {
+		job->enc_keys = session->cipher.exp_3des_keys.ks_ptr;
+		job->dec_keys = session->cipher.exp_3des_keys.ks_ptr;
+	} else {
+		job->enc_keys = session->cipher.expanded_aes_keys.encode;
+		job->dec_keys = session->cipher.expanded_aes_keys.decode;
+	}
+
 	switch (job->hash_alg) {
 	case IMB_AUTH_AES_XCBC:
 		job->u.XCBC._k1_expanded = session->auth.xcbc.k1_expanded;
@@ -1189,13 +1197,6 @@ set_mb_job_params(IMB_JOB *job, struct ipsec_mb_qp *qp,
 		job->u.HMAC._hashed_auth_key_xor_opad =
 			session->auth.pads.outer;
 
-		if (job->cipher_mode == IMB_CIPHER_DES3) {
-			job->enc_keys = session->cipher.exp_3des_keys.ks_ptr;
-			job->dec_keys = session->cipher.exp_3des_keys.ks_ptr;
-		} else {
-			job->enc_keys = session->cipher.expanded_aes_keys.encode;
-			job->dec_keys = session->cipher.expanded_aes_keys.decode;
-		}
 	}
 
 	if (aead)
