@@ -5063,7 +5063,6 @@ flow_create_split_meter(struct rte_eth_dev *dev,
 			goto exit;
 		}
 		/* Add the prefix subflow. */
-		flow_split_info->prefix_mark = 0;
 		ret = flow_create_split_inner(dev, flow, &dev_flow,
 					      attr, items, pre_actions,
 					      flow_split_info, error);
@@ -5078,7 +5077,7 @@ flow_create_split_meter(struct rte_eth_dev *dev,
 				 MLX5_FLOW_TABLE_LEVEL_SUFFIX;
 		flow_split_info->prefix_layers =
 				flow_get_prefix_layer_flags(dev_flow);
-		flow_split_info->prefix_mark = dev_flow->handle->mark;
+		flow_split_info->prefix_mark |= dev_flow->handle->mark;
 	}
 	/* Add the prefix subflow. */
 	ret = flow_create_split_metadata(dev, flow,
@@ -5209,7 +5208,7 @@ flow_create_split_sample(struct rte_eth_dev *dev,
 					 sfx_table_key.table_id;
 		flow_split_info->prefix_layers =
 				flow_get_prefix_layer_flags(dev_flow);
-		flow_split_info->prefix_mark = dev_flow->handle->mark;
+		flow_split_info->prefix_mark |= dev_flow->handle->mark;
 		/* Suffix group level already be scaled with factor, set
 		 * skip_scale to 1 to avoid scale again in translation.
 		 */
