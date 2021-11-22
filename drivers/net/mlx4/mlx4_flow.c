@@ -713,7 +713,8 @@ fill:
 			flow->internal = 1;
 			continue;
 		}
-		if (flow->promisc || flow->allmulti) {
+		if ((item->type != RTE_FLOW_ITEM_TYPE_VLAN && flow->promisc) ||
+		    flow->allmulti) {
 			msg = "mlx4 does not support additional matching"
 				" criteria combined with indiscriminate"
 				" matching on Ethernet headers";
