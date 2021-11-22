@@ -281,10 +281,10 @@ mlx5_vdpa_dev_close(int vid)
 		DRV_LOG(ERR, "Invalid vDPA device: %s.", vdev->device->name);
 		return -1;
 	}
-	if (priv->configured)
-		ret |= mlx5_vdpa_lm_log(priv);
 	mlx5_vdpa_err_event_unset(priv);
 	mlx5_vdpa_cqe_event_unset(priv);
+	if (priv->configured)
+		ret |= mlx5_vdpa_lm_log(priv);
 	mlx5_vdpa_steer_unset(priv);
 	mlx5_vdpa_virtqs_release(priv);
 	mlx5_vdpa_event_qp_global_release(priv);
