@@ -6096,7 +6096,6 @@ flow_create_split_meter(struct rte_eth_dev *dev,
 			goto exit;
 		}
 		/* Add the prefix subflow. */
-		flow_split_info->prefix_mark = 0;
 		skip_scale_restore = flow_split_info->skip_scale;
 		flow_split_info->skip_scale |=
 			1 << MLX5_SCALE_JUMP_FLOW_GROUP_BIT;
@@ -6129,7 +6128,7 @@ flow_create_split_meter(struct rte_eth_dev *dev,
 				 MLX5_FLOW_TABLE_LEVEL_METER;
 		flow_split_info->prefix_layers =
 				flow_get_prefix_layer_flags(dev_flow);
-		flow_split_info->prefix_mark = dev_flow->handle->mark;
+		flow_split_info->prefix_mark |= dev_flow->handle->mark;
 		flow_split_info->table_id = MLX5_MTR_TABLE_ID_SUFFIX;
 	}
 	/* Add the prefix subflow. */
@@ -6281,7 +6280,7 @@ flow_create_split_sample(struct rte_eth_dev *dev,
 		}
 		flow_split_info->prefix_layers =
 				flow_get_prefix_layer_flags(dev_flow);
-		flow_split_info->prefix_mark = dev_flow->handle->mark;
+		flow_split_info->prefix_mark |= dev_flow->handle->mark;
 		/* Suffix group level already be scaled with factor, set
 		 * MLX5_SCALE_FLOW_GROUP_BIT of skip_scale to 1 to avoid scale
 		 * again in translation.

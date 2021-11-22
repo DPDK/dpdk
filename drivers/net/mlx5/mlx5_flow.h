@@ -1111,13 +1111,13 @@ struct mlx5_flow_workspace {
 };
 
 struct mlx5_flow_split_info {
-	bool external;
+	uint32_t external:1;
 	/**< True if flow is created by request external to PMD. */
-	uint8_t skip_scale; /**< Skip the scale the table with factor. */
+	uint32_t prefix_mark:1; /**< Prefix subflow mark flag. */
+	uint32_t skip_scale:8; /**< Skip the scale the table with factor. */
 	uint32_t flow_idx; /**< This memory pool index to the flow. */
-	uint32_t prefix_mark; /**< Prefix subflow mark flag. */
-	uint64_t prefix_layers; /**< Prefix subflow layers. */
 	uint32_t table_id; /**< Flow table identifier. */
+	uint64_t prefix_layers; /**< Prefix subflow layers. */
 };
 
 typedef int (*mlx5_flow_validate_t)(struct rte_eth_dev *dev,
