@@ -148,7 +148,7 @@ static inline void
 mlx5_rx_mprq_replenish_bulk_mbuf(struct mlx5_rxq_data *rxq)
 {
 	const uint16_t wqe_n = 1 << rxq->elts_n;
-	const uint32_t strd_n = 1 << rxq->strd_num_n;
+	const uint32_t strd_n = RTE_BIT32(rxq->log_strd_num);
 	const uint32_t elts_n = wqe_n * strd_n;
 	const uint32_t wqe_mask = elts_n - 1;
 	uint32_t n = elts_n - (rxq->elts_ci - rxq->rq_pi);
@@ -197,8 +197,8 @@ rxq_copy_mprq_mbuf_v(struct mlx5_rxq_data *rxq,
 {
 	const uint16_t wqe_n = 1 << rxq->elts_n;
 	const uint16_t wqe_mask = wqe_n - 1;
-	const uint16_t strd_sz = 1 << rxq->strd_sz_n;
-	const uint32_t strd_n = 1 << rxq->strd_num_n;
+	const uint16_t strd_sz = RTE_BIT32(rxq->log_strd_sz);
+	const uint32_t strd_n = RTE_BIT32(rxq->log_strd_num);
 	const uint32_t elts_n = wqe_n * strd_n;
 	const uint32_t elts_mask = elts_n - 1;
 	uint32_t elts_idx = rxq->rq_pi & elts_mask;
@@ -428,7 +428,7 @@ rxq_burst_mprq_v(struct mlx5_rxq_data *rxq, struct rte_mbuf **pkts,
 	const uint16_t q_n = 1 << rxq->cqe_n;
 	const uint16_t q_mask = q_n - 1;
 	const uint16_t wqe_n = 1 << rxq->elts_n;
-	const uint32_t strd_n = 1 << rxq->strd_num_n;
+	const uint32_t strd_n = RTE_BIT32(rxq->log_strd_num);
 	const uint32_t elts_n = wqe_n * strd_n;
 	const uint32_t elts_mask = elts_n - 1;
 	volatile struct mlx5_cqe *cq;

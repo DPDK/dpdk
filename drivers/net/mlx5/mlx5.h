@@ -275,10 +275,10 @@ struct mlx5_dev_config {
 	unsigned int hp_delay_drop:1; /* Enable hairpin Rxq delay drop. */
 	struct {
 		unsigned int enabled:1; /* Whether MPRQ is enabled. */
-		unsigned int stride_num_n; /* Number of strides. */
-		unsigned int stride_size_n; /* Size of a stride. */
-		unsigned int min_stride_size_n; /* Min size of a stride. */
-		unsigned int max_stride_size_n; /* Max size of a stride. */
+		unsigned int log_stride_num; /* Log number of strides. */
+		unsigned int log_stride_size; /* Log size of a stride. */
+		unsigned int log_min_stride_size; /* Log min size of a stride.*/
+		unsigned int log_max_stride_size; /* Log max size of a stride.*/
 		unsigned int max_memcpy_len;
 		/* Maximum packet size to memcpy Rx packets. */
 		unsigned int min_rxqs_num;

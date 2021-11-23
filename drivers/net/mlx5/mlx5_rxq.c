@@ -67,7 +67,7 @@ mlx5_rxq_cqe_num(struct mlx5_rxq_data *rxq_data)
 	unsigned int wqe_n = 1 << rxq_data->elts_n;
 
 	if (mlx5_rxq_mprq_enabled(rxq_data))
-		cqe_n = wqe_n * (1 << rxq_data->strd_num_n) - 1;
+		cqe_n = wqe_n * RTE_BIT32(rxq_data->log_strd_num) - 1;
 	else
 		cqe_n = wqe_n - 1;
 	return cqe_n;
@@ -137,8 +137,9 @@ rxq_alloc_elts_sprq(struct mlx5_rxq_ctrl *rxq_ctrl)
 {
 	const unsigned int sges_n = 1 << rxq_ctrl->rxq.sges_n;
 	unsigned int elts_n = mlx5_rxq_mprq_enabled(&rxq_ctrl->rxq) ?
-		(1 << rxq_ctrl->rxq.elts_n) * (1 << rxq_ctrl->rxq.strd_num_n) :
-		(1 << rxq_ctrl->rxq.elts_n);
+			      RTE_BIT32(rxq_ctrl->rxq.elts_n) *
+			      RTE_BIT32(rxq_ctrl->rxq.log_strd_num) :
+			      RTE_BIT32(rxq_ctrl->rxq.elts_n);
 	unsigned int i;
 	int err;
 
@@ -293,8 +294,8 @@ rxq_free_elts_sprq(struct mlx5_rxq_ctrl *rxq_ctrl)
 {
 	struct mlx5_rxq_data *rxq = &rxq_ctrl->rxq;
 	const uint16_t q_n = mlx5_rxq_mprq_enabled(&rxq_ctrl->rxq) ?
-		(1 << rxq->elts_n) * (1 << rxq->strd_num_n) :
-		(1 << rxq->elts_n);
+		RTE_BIT32(rxq->elts_n) * RTE_BIT32(rxq->log_strd_num) :
+		RTE_BIT32(rxq->elts_n);
 	const uint16_t q_mask = q_n - 1;
 	uint16_t elts_ci = mlx5_rxq_mprq_enabled(&rxq_ctrl->rxq) ?
 		rxq->elts_ci : rxq->rq_ci;
@@ -1378,8 +1379,8 @@ mlx5_mprq_alloc_mp(struct rte_eth_dev *dev)
 	unsigned int buf_len;
 	unsigned int obj_num;
 	unsigned int obj_size;
-	unsigned int strd_num_n = 0;
-	unsigned int strd_sz_n = 0;
+	unsigned int log_strd_num = 0;
+	unsigned int log_strd_sz = 0;
 	unsigned int i;
 	unsigned int n_ibv = 0;
 	int ret;
@@ -1398,16 +1399,18 @@ mlx5_mprq_alloc_mp(struct rte_eth_dev *dev)
 		n_ibv++;
 		desc += 1 << rxq->elts_n;
 		/* Get the max number of strides. */
-		if (strd_num_n < rxq->strd_num_n)
-			strd_num_n = rxq->strd_num_n;
+		if (log_strd_num < rxq->log_strd_num)
+			log_strd_num = rxq->log_strd_num;
 		/* Get the max size of a stride. */
-		if (strd_sz_n < rxq->strd_sz_n)
-			strd_sz_n = rxq->strd_sz_n;
+		if (log_strd_sz < rxq->log_strd_sz)
+			log_strd_sz = rxq->log_strd_sz;
 	}
-	MLX5_ASSERT(strd_num_n && strd_sz_n);
-	buf_len = (1 << strd_num_n) * (1 << strd_sz_n);
-	obj_size = sizeof(struct mlx5_mprq_buf) + buf_len + (1 << strd_num_n) *
-		sizeof(struct rte_mbuf_ext_shared_info) + RTE_PKTMBUF_HEADROOM;
+	MLX5_ASSERT(log_strd_num && log_strd_sz);
+	buf_len = RTE_BIT32(log_strd_num) * RTE_BIT32(log_strd_sz);
+	obj_size = sizeof(struct mlx5_mprq_buf) + buf_len +
+		   RTE_BIT32(log_strd_num) *
+		   sizeof(struct rte_mbuf_ext_shared_info) +
+		   RTE_PKTMBUF_HEADROOM;
 	/*
 	 * Received packets can be either memcpy'd or externally referenced. In
 	 * case that the packet is attached to an mbuf as an external buffer, as
@@ -1453,7 +1456,7 @@ mlx5_mprq_alloc_mp(struct rte_eth_dev *dev)
 	snprintf(name, sizeof(name), "port-%u-mprq", dev->data->port_id);
 	mp = rte_mempool_create(name, obj_num, obj_size, MLX5_MPRQ_MP_CACHE_SZ,
 				0, NULL, NULL, mlx5_mprq_buf_init,
-				(void *)((uintptr_t)1 << strd_num_n),
+				(void *)((uintptr_t)1 << log_strd_num),
 				dev->device->numa_node, 0);
 	if (mp == NULL) {
 		DRV_LOG(ERR,
@@ -1569,15 +1572,18 @@ mlx5_rxq_new(struct rte_eth_dev *dev, struct mlx5_rxq_priv *rxq,
 	unsigned int first_mb_free_size = mb_len - RTE_PKTMBUF_HEADROOM;
 	const int mprq_en = mlx5_check_mprq_support(dev) > 0 && n_seg == 1 &&
 			    !rx_seg[0].offset && !rx_seg[0].length;
-	unsigned int mprq_stride_nums = config->mprq.stride_num_n ?
-		config->mprq.stride_num_n : MLX5_MPRQ_STRIDE_NUM_N;
-	unsigned int mprq_stride_size = non_scatter_min_mbuf_size <=
-		(1U << config->mprq.max_stride_size_n) ?
-		log2above(non_scatter_min_mbuf_size) : MLX5_MPRQ_STRIDE_SIZE_N;
-	unsigned int mprq_stride_cap = (config->mprq.stride_num_n ?
-		(1U << config->mprq.stride_num_n) : (1U << mprq_stride_nums)) *
-		(config->mprq.stride_size_n ?
-		(1U << config->mprq.stride_size_n) : (1U << mprq_stride_size));
+	unsigned int log_mprq_stride_nums = config->mprq.log_stride_num ?
+		config->mprq.log_stride_num : MLX5_MPRQ_DEFAULT_LOG_STRIDE_NUM;
+	unsigned int log_mprq_stride_size = non_scatter_min_mbuf_size <=
+		RTE_BIT32(config->mprq.log_max_stride_size) ?
+		log2above(non_scatter_min_mbuf_size) :
+		MLX5_MPRQ_DEFAULT_LOG_STRIDE_SIZE;
+	unsigned int mprq_stride_cap = (config->mprq.log_stride_num ?
+					RTE_BIT32(config->mprq.log_stride_num) :
+					RTE_BIT32(log_mprq_stride_nums)) *
+				       (config->mprq.log_stride_size ?
+				       RTE_BIT32(config->mprq.log_stride_size) :
+					RTE_BIT32(log_mprq_stride_size));
 	/*
 	 * Always allocate extra slots, even if eventually
 	 * the vector Rx will not be used.
@@ -1589,7 +1595,7 @@ mlx5_rxq_new(struct rte_eth_dev *dev, struct mlx5_rxq_priv *rxq,
 	tmpl = mlx5_malloc(MLX5_MEM_RTE | MLX5_MEM_ZERO,
 		sizeof(*tmpl) + desc_n * sizeof(struct rte_mbuf *) +
 		(!!mprq_en) *
-		(desc >> mprq_stride_nums) * sizeof(struct mlx5_mprq_buf *),
+		(desc >> log_mprq_stride_nums) * sizeof(struct mlx5_mprq_buf *),
 		0, socket);
 	if (!tmpl) {
 		rte_errno = ENOMEM;
@@ -1701,37 +1707,37 @@ mlx5_rxq_new(struct rte_eth_dev *dev, struct mlx5_rxq_priv *rxq,
 	 *  - MPRQ is enabled.
 	 *  - The number of descs is more than the number of strides.
 	 *  - max_rx_pktlen plus overhead is less than the max size
-	 *    of a stride or mprq_stride_size is specified by a user.
+	 *    of a stride or log_mprq_stride_size is specified by a user.
 	 *    Need to make sure that there are enough strides to encap
-	 *    the maximum packet size in case mprq_stride_size is set.
+	 *    the maximum packet size in case log_mprq_stride_size is set.
 	 *  Otherwise, enable Rx scatter if necessary.
 	 */
-	if (mprq_en && desc > (1U << mprq_stride_nums) &&
+	if (mprq_en && desc > RTE_BIT32(log_mprq_stride_nums) &&
 	    (non_scatter_min_mbuf_size <=
-	     (1U << config->mprq.max_stride_size_n) ||
-	     (config->mprq.stride_size_n &&
+	     RTE_BIT32(config->mprq.log_max_stride_size) ||
+	     (config->mprq.log_stride_size &&
 	      non_scatter_min_mbuf_size <= mprq_stride_cap))) {
 		/* TODO: Rx scatter isn't supported yet. */
 		tmpl->rxq.sges_n = 0;
 		/* Trim the number of descs needed. */
-		desc >>= mprq_stride_nums;
-		tmpl->rxq.strd_num_n = config->mprq.stride_num_n ?
-			config->mprq.stride_num_n : mprq_stride_nums;
-		tmpl->rxq.strd_sz_n = config->mprq.stride_size_n ?
-			config->mprq.stride_size_n : mprq_stride_size;
+		desc >>= log_mprq_stride_nums;
+		tmpl->rxq.log_strd_num = config->mprq.log_stride_num ?
+			config->mprq.log_stride_num : log_mprq_stride_nums;
+		tmpl->rxq.log_strd_sz = config->mprq.log_stride_size ?
+			config->mprq.log_stride_size : log_mprq_stride_size;
 		tmpl->rxq.strd_shift_en = MLX5_MPRQ_TWO_BYTE_SHIFT;
 		tmpl->rxq.strd_scatter_en =
 				!!(offloads & RTE_ETH_RX_OFFLOAD_SCATTER);
 		tmpl->rxq.mprq_max_memcpy_len = RTE_MIN(first_mb_free_size,
 				config->mprq.max_memcpy_len);
 		max_lro_size = RTE_MIN(max_rx_pktlen,
-				       (1u << tmpl->rxq.strd_num_n) *
-				       (1u << tmpl->rxq.strd_sz_n));
+				       RTE_BIT32(tmpl->rxq.log_strd_num) *
+				       RTE_BIT32(tmpl->rxq.log_strd_sz));
 		DRV_LOG(DEBUG,
 			"port %u Rx queue %u: Multi-Packet RQ is enabled"
 			" strd_num_n = %u, strd_sz_n = %u",
 			dev->data->port_id, idx,
-			tmpl->rxq.strd_num_n, tmpl->rxq.strd_sz_n);
+			tmpl->rxq.log_strd_num, tmpl->rxq.log_strd_sz);
 	} else if (tmpl->rxq.rxseg_n == 1) {
 		MLX5_ASSERT(max_rx_pktlen <= first_mb_free_size);
 		tmpl->rxq.sges_n = 0;
@@ -1774,15 +1780,15 @@ mlx5_rxq_new(struct rte_eth_dev *dev, struct mlx5_rxq_priv *rxq,
 			" min_stride_sz = %u, max_stride_sz = %u).",
 			dev->data->port_id, non_scatter_min_mbuf_size,
 			desc, priv->rxqs_n,
-			config->mprq.stride_size_n ?
-				(1U << config->mprq.stride_size_n) :
-				(1U << mprq_stride_size),
-			config->mprq.stride_num_n ?
-				(1U << config->mprq.stride_num_n) :
-				(1U << mprq_stride_nums),
+			config->mprq.log_stride_size ?
+				RTE_BIT32(config->mprq.log_stride_size) :
+				RTE_BIT32(log_mprq_stride_size),
+			config->mprq.log_stride_num ?
+				RTE_BIT32(config->mprq.log_stride_num) :
+				RTE_BIT32(log_mprq_stride_nums),
 			config->mprq.min_rxqs_num,
-			(1U << config->mprq.min_stride_size_n),
-			(1U << config->mprq.max_stride_size_n));
+			RTE_BIT32(config->mprq.log_min_stride_size),
+			RTE_BIT32(config->mprq.log_max_stride_size));
 	DRV_LOG(DEBUG, "port %u maximum number of segments per packet: %u",
 		dev->data->port_id, 1 << tmpl->rxq.sges_n);
 	if (desc % (1 << tmpl->rxq.sges_n)) {
