@@ -2584,7 +2584,6 @@ mlx5_tx_mseg_memcpy(uint8_t *pdst,
 	uint8_t *psrc;
 
 	MLX5_ASSERT(len);
-	MLX5_ASSERT(must <= len);
 	do {
 		/* Allow zero length packets, must check first. */
 		dlen = rte_pktmbuf_data_len(loc->mbuf);
@@ -2611,9 +2610,11 @@ mlx5_tx_mseg_memcpy(uint8_t *pdst,
 				if (diff <= rte_pktmbuf_data_len(loc->mbuf)) {
 					/*
 					 * Copy only the minimal required
-					 * part of the data buffer.
+					 * part of the data buffer. Limit amount
+					 * of data to be copied to the length of
+					 * available space.
 					 */
-					len = diff;
+					len = RTE_MIN(len, diff);
 				}
 			}
 			continue;
