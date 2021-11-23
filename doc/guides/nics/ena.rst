@@ -158,9 +158,8 @@ Prerequisites
    In DPDK ``igb_uio`` it must be enabled by loading module with
    ``wc_activate=1`` flag (example below). However, mainline's vfio-pci
    driver in kernel doesn't have WC support yet (planed to be added).
-   If vfio-pci used user should be either turn off ENAv2 (to avoid performance
-   impact) or recompile vfio-pci driver with patch provided in
-   `amzn-github <https://github.com/amzn/amzn-drivers/tree/master/userspace/dpdk/enav2-vfio-patch>`_.
+   If vfio-pci is used user should follow `AWS ENA PMD documentation
+   <https://github.com/amzn/amzn-drivers/tree/master/userspace/dpdk/README.md>`_.
 
 #. Insert ``vfio-pci`` or ``igb_uio`` kernel module using the command
    ``modprobe vfio-pci`` or ``modprobe uio; insmod igb_uio.ko wc_activate=1``
