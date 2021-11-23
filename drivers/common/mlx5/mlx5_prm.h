@@ -264,6 +264,9 @@
 /* The maximum log value of segments per RQ WQE. */
 #define MLX5_MAX_LOG_RQ_SEGS 5u
 
+/* Log 2 of the default size of a WQE for Multi-Packet RQ. */
+#define MLX5_MPRQ_LOG_MIN_STRIDE_WQE_SIZE 14U
+
 /* The alignment needed for WQ buffer. */
 #define MLX5_WQE_BUF_ALIGNMENT rte_mem_page_size()
 
@@ -1342,7 +1345,9 @@ enum {
 #define MLX5_STEERING_LOGIC_FORMAT_CONNECTX_6DX 0x1
 
 struct mlx5_ifc_cmd_hca_cap_bits {
-	u8 reserved_at_0[0x30];
+	u8 reserved_at_0[0x20];
+	u8 hca_cap_2[0x1];
+	u8 reserved_at_21[0xf];
 	u8 vhca_id[0x10];
 	u8 reserved_at_40[0x20];
 	u8 reserved_at_60[0x3];
@@ -1909,7 +1914,8 @@ struct mlx5_ifc_cmd_hca_cap_2_bits {
 	u8 max_reformat_insert_offset[0x8];
 	u8 max_reformat_remove_size[0x8];
 	u8 max_reformat_remove_offset[0x8]; /* End of DW6. */
-	u8 aso_conntrack_reg_id[0x8];
+	u8 reserved_at_c0[0x3];
+	u8 log_min_stride_wqe_sz[0x5];
 	u8 reserved_at_c8[0x3];
 	u8 log_conn_track_granularity[0x5];
 	u8 reserved_at_d0[0x3];
@@ -1922,6 +1928,7 @@ struct mlx5_ifc_cmd_hca_cap_2_bits {
 
 union mlx5_ifc_hca_cap_union_bits {
 	struct mlx5_ifc_cmd_hca_cap_bits cmd_hca_cap;
+	struct mlx5_ifc_cmd_hca_cap_2_bits cmd_hca_cap_2;
 	struct mlx5_ifc_per_protocol_networking_offload_caps_bits
 	       per_protocol_networking_offload_caps;
 	struct mlx5_ifc_qos_cap_bits qos_cap;

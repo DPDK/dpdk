@@ -823,6 +823,7 @@ mlx5_devx_cmd_query_hca_attr(void *ctx,
 {
 	uint32_t in[MLX5_ST_SZ_DW(query_hca_cap_in)] = {0};
 	uint32_t out[MLX5_ST_SZ_DW(query_hca_cap_out)] = {0};
+	bool hca_cap_2_sup;
 	uint64_t general_obj_types_supported = 0;
 	void *hcattr;
 	int rc, i;
@@ -832,6 +833,7 @@ mlx5_devx_cmd_query_hca_attr(void *ctx,
 			MLX5_HCA_CAP_OPMOD_GET_CUR);
 	if (!hcattr)
 		return rc;
+	hca_cap_2_sup = MLX5_GET(cmd_hca_cap, hcattr, hca_cap_2);
 	attr->max_wqe_sz_sq = MLX5_GET(cmd_hca_cap, hcattr, max_wqe_sz_sq);
 	attr->flow_counter_bulk_alloc_bitmap =
 			MLX5_GET(cmd_hca_cap, hcattr, flow_counter_bulk_alloc);
@@ -967,6 +969,20 @@ mlx5_devx_cmd_query_hca_attr(void *ctx,
 					 general_obj_types) &
 			      MLX5_GENERAL_OBJ_TYPES_CAP_CONN_TRACK_OFFLOAD);
 	attr->rq_delay_drop = MLX5_GET(cmd_hca_cap, hcattr, rq_delay_drop);
+	if (hca_cap_2_sup) {
+		hcattr = mlx5_devx_get_hca_cap(ctx, in, out, &rc,
+				MLX5_GET_HCA_CAP_OP_MOD_GENERAL_DEVICE_2 |
+				MLX5_HCA_CAP_OPMOD_GET_CUR);
+		if (!hcattr) {
+			DRV_LOG(DEBUG,
+				"Failed to query DevX HCA capabilities 2.");
+			return rc;
+		}
+		attr->log_min_stride_wqe_sz = MLX5_GET(cmd_hca_cap_2, hcattr,
+						       log_min_stride_wqe_sz);
+	}
+	if (attr->log_min_stride_wqe_sz == 0)
+		attr->log_min_stride_wqe_sz = MLX5_MPRQ_LOG_MIN_STRIDE_WQE_SIZE;
 	if (attr->qos.sup) {
 		hcattr = mlx5_devx_get_hca_cap(ctx, in, out, &rc,
 				MLX5_GET_HCA_CAP_OP_MOD_QOS_CAP |

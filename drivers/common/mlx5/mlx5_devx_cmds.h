@@ -251,6 +251,7 @@ struct mlx5_hca_attr {
 	uint32_t log_max_mmo_decompress:5;
 	uint32_t umr_modify_entity_size_disabled:1;
 	uint32_t umr_indirect_mkey_disabled:1;
+	uint32_t log_min_stride_wqe_sz:5;
 	uint16_t max_wqe_sz_sq;
 };
 
