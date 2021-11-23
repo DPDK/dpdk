@@ -5254,13 +5254,21 @@ mlx5_flow_validate_action_meter(struct rte_eth_dev *dev,
 						"Flow and meter policy "
 						"have different src port.");
 		} else if (mtr_policy->is_rss) {
-			struct mlx5_meter_policy_action_container *acg =
-				&mtr_policy->act_cnt[RTE_COLOR_GREEN];
-			struct mlx5_meter_policy_action_container *acy =
-				&mtr_policy->act_cnt[RTE_COLOR_YELLOW];
+			struct mlx5_flow_meter_policy *fp;
+			struct mlx5_meter_policy_action_container *acg;
+			struct mlx5_meter_policy_action_container *acy;
 			const struct rte_flow_action *rss_act;
 			int ret;
 
+			fp = mlx5_flow_meter_hierarchy_get_final_policy(dev,
+								mtr_policy);
+			if (fp == NULL)
+				return rte_flow_error_set(error, EINVAL,
+					RTE_FLOW_ERROR_TYPE_ACTION, NULL,
+						  "Unable to get the final "
+						  "policy in the hierarchy");
+			acg = &fp->act_cnt[RTE_COLOR_GREEN];
+			acy = &fp->act_cnt[RTE_COLOR_YELLOW];
 			MLX5_ASSERT(acg->fate_action ==
 				    MLX5_FLOW_FATE_SHARED_RSS ||
 				    acy->fate_action ==
