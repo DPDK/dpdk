@@ -1515,15 +1515,23 @@ mlx5_mempool_reg_create(struct rte_mempool *mp, unsigned int mrs_n,
 	struct mlx5_mempool_reg *mpr = NULL;
 
 	mpr = mlx5_malloc(MLX5_MEM_RTE | MLX5_MEM_ZERO,
-			  sizeof(*mpr) + mrs_n * sizeof(mpr->mrs[0]),
+			  sizeof(struct mlx5_mempool_reg),
 			  RTE_CACHE_LINE_SIZE, SOCKET_ID_ANY);
 	if (mpr == NULL) {
 		DRV_LOG(ERR, "Cannot allocate mempool %s registration object",
 			mp->name);
 		return NULL;
 	}
+	mpr->mrs = mlx5_malloc(MLX5_MEM_RTE | MLX5_MEM_ZERO,
+			       mrs_n * sizeof(struct mlx5_mempool_mr),
+			       RTE_CACHE_LINE_SIZE, SOCKET_ID_ANY);
+	if (!mpr->mrs) {
+		DRV_LOG(ERR, "Cannot allocate mempool %s registration MRs",
+			mp->name);
+		mlx5_free(mpr);
+		return NULL;
+	}
 	mpr->mp = mp;
-	mpr->mrs = (struct mlx5_mempool_mr *)(mpr + 1);
 	mpr->mrs_n = mrs_n;
 	mpr->is_extmem = is_extmem;
 	return mpr;
@@ -1544,6 +1552,7 @@ mlx5_mempool_reg_destroy(struct mlx5_mr_share_cache *share_cache,
 
 		for (i = 0; i < mpr->mrs_n; i++)
 			share_cache->dereg_mr_cb(&mpr->mrs[i].pmd_mr);
+		mlx5_free(mpr->mrs);
 	}
 	mlx5_free(mpr);
 }
