@@ -14740,7 +14740,7 @@ __flow_dv_action_rss_setup(struct rte_eth_dev *dev,
 error_hrxq_new:
 	err = rte_errno;
 	__flow_dv_action_rss_hrxqs_release(dev, shared_rss);
-	if (!mlx5_ind_table_obj_release(dev, shared_rss->ind_tbl, true))
+	if (!mlx5_ind_table_obj_release(dev, shared_rss->ind_tbl, true, true))
 		shared_rss->ind_tbl = NULL;
 	rte_errno = err;
 	return -rte_errno;
@@ -14883,7 +14883,8 @@ __flow_dv_action_rss_release(struct rte_eth_dev *dev, uint32_t idx,
 					  NULL,
 					  "shared rss hrxq has references");
 	queue = shared_rss->ind_tbl->queues;
-	remaining = mlx5_ind_table_obj_release(dev, shared_rss->ind_tbl, true);
+	remaining = mlx5_ind_table_obj_release(dev, shared_rss->ind_tbl, true,
+					       !!dev->data->dev_started);
 	if (remaining)
 		return rte_flow_error_set(error, EBUSY,
 					  RTE_FLOW_ERROR_TYPE_ACTION,

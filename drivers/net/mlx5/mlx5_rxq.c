@@ -2195,6 +2195,9 @@ mlx5_ind_table_obj_get(struct rte_eth_dev *dev, const uint16_t *queues,
  *   Indirection table to release.
  * @param standalone
  *   Indirection table for Standalone queue.
+ * @param deref_rxqs
+ *   If true, then dereference RX queues related to indirection table.
+ *   Otherwise, no additional action will be taken.
  *
  * @return
  *   1 while a reference on it exists, 0 when freed.
@@ -2202,7 +2205,8 @@ mlx5_ind_table_obj_get(struct rte_eth_dev *dev, const uint16_t *queues,
 int
 mlx5_ind_table_obj_release(struct rte_eth_dev *dev,
 			   struct mlx5_ind_table_obj *ind_tbl,
-			   bool standalone)
+			   bool standalone,
+			   bool deref_rxqs)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	unsigned int i, ret;
@@ -2215,8 +2219,10 @@ mlx5_ind_table_obj_release(struct rte_eth_dev *dev,
 	if (ret)
 		return 1;
 	priv->obj_ops.ind_table_destroy(ind_tbl);
-	for (i = 0; i != ind_tbl->queues_n; ++i)
-		claim_nonzero(mlx5_rxq_deref(dev, ind_tbl->queues[i]));
+	if (deref_rxqs) {
+		for (i = 0; i != ind_tbl->queues_n; ++i)
+			claim_nonzero(mlx5_rxq_deref(dev, ind_tbl->queues[i]));
+	}
 	mlx5_free(ind_tbl);
 	return 0;
 }
@@ -2573,7 +2579,7 @@ mlx5_hrxq_modify(struct rte_eth_dev *dev, uint32_t hrxq_idx,
 	if (ind_tbl != hrxq->ind_table) {
 		MLX5_ASSERT(!hrxq->standalone);
 		mlx5_ind_table_obj_release(dev, hrxq->ind_table,
-					   hrxq->standalone);
+					   hrxq->standalone, true);
 		hrxq->ind_table = ind_tbl;
 	}
 	hrxq->hash_fields = hash_fields;
@@ -2583,7 +2589,8 @@ error:
 	err = rte_errno;
 	if (ind_tbl != hrxq->ind_table) {
 		MLX5_ASSERT(!hrxq->standalone);
-		mlx5_ind_table_obj_release(dev, ind_tbl, hrxq->standalone);
+		mlx5_ind_table_obj_release(dev, ind_tbl, hrxq->standalone,
+					   true);
 	}
 	rte_errno = err;
 	return -rte_errno;
@@ -2600,7 +2607,7 @@ __mlx5_hrxq_remove(struct rte_eth_dev *dev, struct mlx5_hrxq *hrxq)
 	priv->obj_ops.hrxq_destroy(hrxq);
 	if (!hrxq->standalone) {
 		mlx5_ind_table_obj_release(dev, hrxq->ind_table,
-					   hrxq->standalone);
+					   hrxq->standalone, true);
 	}
 	mlx5_ipool_free(priv->sh->ipool[MLX5_IPOOL_HRXQ], hrxq->idx);
 }
@@ -2666,7 +2673,7 @@ __mlx5_hrxq_create(struct rte_eth_dev *dev,
 	return hrxq;
 error:
 	if (!rss_desc->ind_tbl)
-		mlx5_ind_table_obj_release(dev, ind_tbl, standalone);
+		mlx5_ind_table_obj_release(dev, ind_tbl, standalone, true);
 	if (hrxq)
 		mlx5_ipool_free(priv->sh->ipool[MLX5_IPOOL_HRXQ], hrxq_idx);
 	return NULL;
