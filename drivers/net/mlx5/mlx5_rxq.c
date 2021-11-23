@@ -1271,6 +1271,8 @@ mlx5_rxq_obj_verify(struct rte_eth_dev *dev)
 	struct mlx5_rxq_obj *rxq_obj;
 
 	LIST_FOREACH(rxq_obj, &priv->rxqsobj, next) {
+		if (rxq_obj->rxq_ctrl == NULL)
+			continue;
 		if (rxq_obj->rxq_ctrl->rxq.shared &&
 		    !LIST_EMPTY(&rxq_obj->rxq_ctrl->owners))
 			continue;
