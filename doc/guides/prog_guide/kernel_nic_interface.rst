@@ -56,6 +56,12 @@ can be specified when the module is loaded to control its behavior:
                     off   Interfaces will be created with carrier state set to off.
                     on    Interfaces will be created with carrier state set to on.
                      (charp)
+    parm:           enable_bifurcated: Enable request processing support for
+                    bifurcated drivers, which means releasing rtnl_lock before calling
+                    userspace callback and supporting async requests (default=off):
+                    on    Enable request processing support for bifurcated drivers.
+                     (charp)
+
 
 Loading the ``rte_kni`` kernel module without any optional parameters is
 the typical way a DPDK application gets packets into and out of the kernel
@@ -173,6 +179,28 @@ To set the default carrier state to *off*:
 
 If the ``carrier`` parameter is not specified, the default carrier state
 of KNI interfaces will be set to *off*.
+
+.. _kni_bifurcated_device_support:
+
+Bifurcated Device Support
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+User callbacks are executed while kernel module holds the ``rtnl`` lock, this
+causes a deadlock when callbacks run control commands on another Linux kernel
+network interface.
+
+Bifurcated devices has kernel network driver part and to prevent deadlock for
+them ``enable_bifurcated`` is used.
+
+To enable bifurcated device support:
+
+.. code-block:: console
+
+    # insmod <build_dir>/kernel/linux/kni/rte_kni.ko enable_bifurcated=on
+
+Enabling bifurcated device support releases ``rtnl`` lock before calling
+callback and locks it back after callback. Also enables asynchronous request to
+support callbacks that requires rtnl lock to work (interface down).
 
 KNI Creation and Deletion
 -------------------------

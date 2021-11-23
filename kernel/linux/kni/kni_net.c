@@ -113,12 +113,14 @@ kni_net_process_request(struct net_device *dev, struct rte_kni_request *req)
 
 	ASSERT_RTNL();
 
-	/* If we need to wait and RTNL mutex is held
-	 * drop the mutex and hold reference to keep device
-	 */
-	if (req->async == 0) {
-		dev_hold(dev);
-		rtnl_unlock();
+	if (bifurcated_support) {
+		/* If we need to wait and RTNL mutex is held
+		 * drop the mutex and hold reference to keep device
+		 */
+		if (req->async == 0) {
+			dev_hold(dev);
+			rtnl_unlock();
+		}
 	}
 
 	mutex_lock(&kni->sync_lock);
@@ -132,12 +134,14 @@ kni_net_process_request(struct net_device *dev, struct rte_kni_request *req)
 		goto fail;
 	}
 
-	/* No result available since request is handled
-	 * asynchronously. set response to success.
-	 */
-	if (req->async != 0) {
-		req->result = 0;
-		goto async;
+	if (bifurcated_support) {
+		/* No result available since request is handled
+		 * asynchronously. set response to success.
+		 */
+		if (req->async != 0) {
+			req->result = 0;
+			goto async;
+		}
 	}
 
 	ret_val = wait_event_interruptible_timeout(kni->wq,
@@ -160,9 +164,11 @@ async:
 
 fail:
 	mutex_unlock(&kni->sync_lock);
-	if (req->async == 0) {
-		rtnl_lock();
-		dev_put(dev);
+	if (bifurcated_support) {
+		if (req->async == 0) {
+			rtnl_lock();
+			dev_put(dev);
+		}
 	}
 	return ret;
 }
@@ -207,8 +213,10 @@ kni_net_release(struct net_device *dev)
 	/* Setting if_up to 0 means down */
 	req.if_up = 0;
 
-	/* request async because of the deadlock problem */
-	req.async = 1;
+	if (bifurcated_support) {
+		/* request async because of the deadlock problem */
+		req.async = 1;
+	}
 
 	ret = kni_net_process_request(dev, &req);
 

@@ -75,6 +75,12 @@ New Features
     operations.
   * Added multi-process support.
 
+* **Updated default KNI behavior on net devices control callbacks.**
+
+  Updated KNI net devices control callbacks to run with ``rtnl`` kernel lock
+  held by default. A newly added ``enable_bifurcated`` KNI kernel module
+  parameter can be used to run callbacks with ``rtnl`` lock released.
+
 * **Added HiSilicon DMA driver.**
 
   The HiSilicon DMA driver provides device drivers for the Kunpeng's DMA devices.

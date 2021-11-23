@@ -34,6 +34,9 @@
 /* Default carrier state for created KNI network interfaces */
 extern uint32_t kni_dflt_carrier;
 
+/* Request processing support for bifurcated drivers. */
+extern uint32_t bifurcated_support;
+
 /**
  * A structure describing the private information for a kni device.
  */
