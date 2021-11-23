@@ -41,6 +41,10 @@ static uint32_t multiple_kthread_on;
 static char *carrier;
 uint32_t kni_dflt_carrier;
 
+/* Request processing support for bifurcated drivers. */
+static char *enable_bifurcated;
+uint32_t bifurcated_support;
+
 #define KNI_DEV_IN_USE_BIT_NUM 0 /* Bit number for device in use */
 
 static int kni_net_id;
@@ -569,6 +573,22 @@ kni_parse_carrier_state(void)
 }
 
 static int __init
+kni_parse_bifurcated_support(void)
+{
+	if (!enable_bifurcated) {
+		bifurcated_support = 0;
+		return 0;
+	}
+
+	if (strcmp(enable_bifurcated, "on") == 0)
+		bifurcated_support = 1;
+	else
+		return -1;
+
+	return 0;
+}
+
+static int __init
 kni_init(void)
 {
 	int rc;
@@ -592,6 +612,13 @@ kni_init(void)
 		pr_debug("Default carrier state set to off.\n");
 	else
 		pr_debug("Default carrier state set to on.\n");
+
+	if (kni_parse_bifurcated_support() < 0) {
+		pr_err("Invalid parameter for bifurcated support\n");
+		return -EINVAL;
+	}
+	if (bifurcated_support == 1)
+		pr_debug("bifurcated support is enabled.\n");
 
 #ifdef HAVE_SIMPLIFIED_PERNET_OPERATIONS
 	rc = register_pernet_subsys(&kni_net_ops);
@@ -657,5 +684,14 @@ MODULE_PARM_DESC(carrier,
 "Default carrier state for KNI interface (default=off):\n"
 "\t\toff   Interfaces will be created with carrier state set to off.\n"
 "\t\ton    Interfaces will be created with carrier state set to on.\n"
+"\t\t"
+);
+
+module_param(enable_bifurcated, charp, 0644);
+MODULE_PARM_DESC(enable_bifurcated,
+"Enable request processing support for bifurcated drivers, "
+"which means releasing rtnl_lock before calling userspace callback and "
+"supporting async requests (default=off):\n"
+"\t\ton    Enable request processing support for bifurcated drivers.\n"
 "\t\t"
 );
