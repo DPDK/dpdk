@@ -147,6 +147,7 @@ struct fwd_stream {
 	/**< received packets has bad outer l4 checksum */
 	uint64_t rx_bad_outer_ip_csum;
 	/**< received packets having bad outer ip checksum */
+	uint64_t ts_skew; /**< TX scheduling timestamp */
 #ifdef RTE_LIB_GRO
 	unsigned int gro_times;	/**< GRO operation times */
 #endif
