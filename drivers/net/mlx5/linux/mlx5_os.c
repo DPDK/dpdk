@@ -881,10 +881,6 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 	unsigned int mpls_en = 0;
 	unsigned int swp = 0;
 	unsigned int mprq = 0;
-	unsigned int mprq_min_stride_size_n = 0;
-	unsigned int mprq_max_stride_size_n = 0;
-	unsigned int mprq_min_stride_num_n = 0;
-	unsigned int mprq_max_stride_num_n = 0;
 	struct rte_ether_addr mac;
 	char name[RTE_ETH_NAME_MAX_LEN];
 	int own_domain_id = 0;
@@ -1039,15 +1035,17 @@ err_secondary:
 			mprq_caps.max_single_wqe_log_num_of_strides);
 		DRV_LOG(DEBUG, "\tsupported_qpts: %d",
 			mprq_caps.supported_qpts);
+		DRV_LOG(DEBUG, "\tmin_stride_wqe_log_size: %d",
+			config->mprq.log_min_stride_wqe_size);
 		DRV_LOG(DEBUG, "device supports Multi-Packet RQ");
 		mprq = 1;
-		mprq_min_stride_size_n =
+		config->mprq.log_min_stride_size =
 			mprq_caps.min_single_stride_log_num_of_bytes;
-		mprq_max_stride_size_n =
+		config->mprq.log_max_stride_size =
 			mprq_caps.max_single_stride_log_num_of_bytes;
-		mprq_min_stride_num_n =
+		config->mprq.log_min_stride_num =
 			mprq_caps.min_single_wqe_log_num_of_strides;
-		mprq_max_stride_num_n =
+		config->mprq.log_max_stride_num =
 			mprq_caps.max_single_wqe_log_num_of_strides;
 	}
 #endif
@@ -1548,36 +1546,7 @@ err_secondary:
 		config->hw_fcs_strip = 0;
 	DRV_LOG(DEBUG, "FCS stripping configuration is %ssupported",
 		(config->hw_fcs_strip ? "" : "not "));
-	if (config->mprq.enabled && mprq) {
-		if (config->mprq.log_stride_num &&
-		    (config->mprq.log_stride_num > mprq_max_stride_num_n ||
-		     config->mprq.log_stride_num < mprq_min_stride_num_n)) {
-			config->mprq.log_stride_num =
-			       RTE_MIN(RTE_MAX(MLX5_MPRQ_DEFAULT_LOG_STRIDE_NUM,
-					       mprq_min_stride_num_n),
-				       mprq_max_stride_num_n);
-			DRV_LOG(WARNING,
-				"the number of strides"
-				" for Multi-Packet RQ is out of range,"
-				" setting default value (%u)",
-				1 << config->mprq.log_stride_num);
-		}
-		if (config->mprq.log_stride_size &&
-		    (config->mprq.log_stride_size > mprq_max_stride_size_n ||
-		     config->mprq.log_stride_size < mprq_min_stride_size_n)) {
-			config->mprq.log_stride_size =
-			      RTE_MIN(RTE_MAX(MLX5_MPRQ_DEFAULT_LOG_STRIDE_SIZE,
-					      mprq_min_stride_size_n),
-				      mprq_max_stride_size_n);
-			DRV_LOG(WARNING,
-				"the size of a stride"
-				" for Multi-Packet RQ is out of range,"
-				" setting default value (%u)",
-				1 << config->mprq.log_stride_size);
-		}
-		config->mprq.log_min_stride_size = mprq_min_stride_size_n;
-		config->mprq.log_max_stride_size = mprq_max_stride_size_n;
-	} else if (config->mprq.enabled && !mprq) {
+	if (config->mprq.enabled && !mprq) {
 		DRV_LOG(WARNING, "Multi-Packet RQ isn't supported");
 		config->mprq.enabled = 0;
 	}
@@ -2068,7 +2037,8 @@ mlx5_device_bond_pci_match(const char *ibdev_name,
 }
 
 static void
-mlx5_os_config_default(struct mlx5_dev_config *config)
+mlx5_os_config_default(struct mlx5_dev_config *config,
+		       struct mlx5_common_dev_config *cconf)
 {
 	memset(config, 0, sizeof(*config));
 	config->mps = MLX5_ARG_UNSET;
@@ -2080,6 +2050,10 @@ mlx5_os_config_default(struct mlx5_dev_config *config)
 	config->vf_nl_en = 1;
 	config->mprq.max_memcpy_len = MLX5_MPRQ_MEMCPY_DEFAULT_LEN;
 	config->mprq.min_rxqs_num = MLX5_MPRQ_MIN_RXQS;
+	config->mprq.log_min_stride_wqe_size = cconf->devx ?
+					cconf->hca_attr.log_min_stride_wqe_sz :
+					MLX5_MPRQ_LOG_MIN_STRIDE_WQE_SIZE;
+	config->mprq.log_stride_num = MLX5_MPRQ_DEFAULT_LOG_STRIDE_NUM;
 	config->dv_esw_en = 1;
 	config->dv_flow_en = 1;
 	config->decap_en = 1;
@@ -2496,7 +2470,7 @@ mlx5_os_pci_probe_pf(struct mlx5_common_device *cdev,
 		uint32_t restore;
 
 		/* Default configuration. */
-		mlx5_os_config_default(&dev_config);
+		mlx5_os_config_default(&dev_config, &cdev->config);
 		dev_config.vf = dev_config_vf;
 		list[i].eth_dev = mlx5_dev_spawn(cdev->dev, &list[i],
 						 &dev_config, &eth_da);
@@ -2666,7 +2640,7 @@ mlx5_os_auxiliary_probe(struct mlx5_common_device *cdev)
 	if (ret != 0)
 		return ret;
 	/* Set default config data. */
-	mlx5_os_config_default(&config);
+	mlx5_os_config_default(&config, &cdev->config);
 	config.sf = 1;
 	/* Init spawn data. */
 	spawn.max_port = 1;
