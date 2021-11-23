@@ -272,8 +272,8 @@ mlx5_rxq_ibv_wq_create(struct mlx5_rxq_priv *rxq)
 
 		wq_attr.mlx5.comp_mask |= MLX5DV_WQ_INIT_ATTR_MASK_STRIDING_RQ;
 		*mprq_attr = (struct mlx5dv_striding_rq_init_attr){
-			.single_stride_log_num_of_bytes = rxq_data->strd_sz_n,
-			.single_wqe_log_num_of_strides = rxq_data->strd_num_n,
+			.single_stride_log_num_of_bytes = rxq_data->log_strd_sz,
+			.single_wqe_log_num_of_strides = rxq_data->log_strd_num,
 			.two_byte_shift_en = MLX5_MPRQ_TWO_BYTE_SHIFT,
 		};
 	}

@@ -1884,9 +1884,9 @@ mlx5_args_check(const char *key, const char *val, void *opaque)
 	} else if (strcmp(MLX5_RX_MPRQ_EN, key) == 0) {
 		config->mprq.enabled = !!tmp;
 	} else if (strcmp(MLX5_RX_MPRQ_LOG_STRIDE_NUM, key) == 0) {
-		config->mprq.stride_num_n = tmp;
+		config->mprq.log_stride_num = tmp;
 	} else if (strcmp(MLX5_RX_MPRQ_LOG_STRIDE_SIZE, key) == 0) {
-		config->mprq.stride_size_n = tmp;
+		config->mprq.log_stride_size = tmp;
 	} else if (strcmp(MLX5_RX_MPRQ_MAX_MEMCPY_LEN, key) == 0) {
 		config->mprq.max_memcpy_len = tmp;
 	} else if (strcmp(MLX5_RXQS_MIN_MPRQ, key) == 0) {
