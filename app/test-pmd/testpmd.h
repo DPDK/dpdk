@@ -137,6 +137,7 @@ struct fwd_stream {
 	uint64_t rx_bad_l4_csum ; /**< received packets has bad l4 checksum */
 	uint64_t rx_bad_outer_l4_csum;
 	/**< received packets has bad outer l4 checksum */
+	uint64_t ts_skew; /**< TX scheduling timestamp */
 	unsigned int gro_times;	/**< GRO operation times */
 	uint64_t     core_cycles; /**< used for RX and TX processing */
 	struct pkt_burst_stats rx_burst_stats;
