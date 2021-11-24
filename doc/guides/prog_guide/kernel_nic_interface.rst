@@ -8,6 +8,9 @@ Kernel NIC Interface
 
 .. note::
 
+   KNI is deprecated and will be removed in future.
+   See :doc:`../rel_notes/deprecation`.
+
    For an alternative to KNI, that does not require any out-of-tree Linux kernel modules,
    or a custom library, see :ref:`virtio_user_as_exception_path`.
 
