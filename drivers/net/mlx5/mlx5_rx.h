@@ -164,6 +164,9 @@ struct mlx5_rxq_ctrl {
 	uint32_t flow_mark_n; /* Number of Mark/Flag flows using this Queue. */
 	uint32_t flow_tunnels_n[MLX5_FLOW_TUNNEL]; /* Tunnels counters. */
 	uint32_t wqn; /* WQ number. */
+	uint32_t rxseg_n; /* Number of split segment descriptions. */
+	struct rte_eth_rxseg_split rxseg[MLX5_MAX_RXQ_NSEG];
+	/* Saved original buffer split segment configuration. */
 	uint16_t dump_file_n; /* Number of dump files. */
 };
 

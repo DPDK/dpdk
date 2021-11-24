@@ -775,11 +775,14 @@ mlx5_shared_rxq_match(struct mlx5_rxq_ctrl *rxq_ctrl, struct rte_eth_dev *dev,
 			dev->data->port_id, idx);
 		return false;
 	} else if (mp == NULL) {
+		if (conf->rx_nseg != rxq_ctrl->rxseg_n) {
+			DRV_LOG(ERR, "port %u queue index %u failed to join shared group: segment number mismatch",
+				dev->data->port_id, idx);
+			return false;
+		}
 		for (i = 0; i < conf->rx_nseg; i++) {
-			if (conf->rx_seg[i].split.mp !=
-			    rxq_ctrl->rxq.rxseg[i].mp ||
-			    conf->rx_seg[i].split.length !=
-			    rxq_ctrl->rxq.rxseg[i].length) {
+			if (memcmp(&conf->rx_seg[i].split, &rxq_ctrl->rxseg[i],
+				   sizeof(struct rte_eth_rxseg_split))) {
 				DRV_LOG(ERR, "port %u queue index %u failed to join shared group: segment %u configuration mismatch",
 					dev->data->port_id, idx, i);
 				return false;
@@ -1602,6 +1605,13 @@ mlx5_rxq_new(struct rte_eth_dev *dev, struct mlx5_rxq_priv *rxq,
 	rxq->ctrl = tmpl;
 	LIST_INSERT_HEAD(&tmpl->owners, rxq, owner_entry);
 	MLX5_ASSERT(n_seg && n_seg <= MLX5_MAX_RXQ_NSEG);
+	/*
+	 * Save the original segment configuration in the shared queue
+	 * descriptor for the later check on the sibling queue creation.
+	 */
+	tmpl->rxseg_n = n_seg;
+	rte_memcpy(tmpl->rxseg, qs_seg,
+		   sizeof(struct rte_eth_rxseg_split) * n_seg);
 	/*
 	 * Build the array of actual buffer offsets and lengths.
 	 * Pad with the buffers from the last memory pool if
