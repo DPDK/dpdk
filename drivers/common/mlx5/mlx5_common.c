@@ -616,7 +616,6 @@ drivers_remove(struct mlx5_common_device *cdev, uint32_t enabled_classes)
 	unsigned int i = 0;
 	int ret = 0;
 
-	enabled_classes &= cdev->classes_loaded;
 	while (enabled_classes) {
 		driver = driver_get(RTE_BIT64(i));
 		if (driver != NULL) {
@@ -665,9 +664,11 @@ drivers_probe(struct mlx5_common_device *cdev, uint32_t user_classes)
 	cdev->classes_loaded |= enabled_classes;
 	return 0;
 probe_err:
-	/* Only unload drivers which are enabled which were enabled
-	 * in this probe instance.
+	/*
+	 * Need to remove only drivers which were not probed before this probe
+	 * instance, but have already been probed before this failure.
 	 */
+	enabled_classes &= ~cdev->classes_loaded;
 	drivers_remove(cdev, enabled_classes);
 	return ret;
 }
