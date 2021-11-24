@@ -6411,9 +6411,8 @@ error:
 static int
 parse_hex_string(const char *src, uint8_t *dst, uint32_t *size)
 {
-	char *c = NULL;
-	uint32_t i, len;
-	char tmp[3];
+	uint32_t left = *size;
+	const uint8_t *head = dst;
 
 	/* Check input parameters */
 	if ((src == NULL) ||
@@ -6423,19 +6422,23 @@ parse_hex_string(const char *src, uint8_t *dst, uint32_t *size)
 		return -1;
 
 	/* Convert chars to bytes */
-	for (i = 0, len = 0; i < *size; i += 2) {
-		snprintf(tmp, 3, "%s", src + i);
-		dst[len++] = strtoul(tmp, &c, 16);
-		if (*c != 0) {
-			len--;
-			dst[len] = 0;
-			*size = len;
+	while (left) {
+		char tmp[3], *end = tmp;
+		uint32_t read_lim = left & 1 ? 1 : 2;
+
+		snprintf(tmp, read_lim + 1, "%s", src);
+		*dst = strtoul(tmp, &end, 16);
+		if (*end) {
+			*dst = 0;
+			*size = (uint32_t)(dst - head);
 			return -1;
 		}
+		left -= read_lim;
+		src += read_lim;
+		dst++;
 	}
-	dst[len] = 0;
-	*size = len;
-
+	*dst = 0;
+	*size = (uint32_t)(dst - head);
 	return 0;
 }
 
