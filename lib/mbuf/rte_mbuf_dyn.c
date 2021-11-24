@@ -531,7 +531,7 @@ void rte_mbuf_dyn_dump(FILE *out)
 	size_t i;
 
 	rte_mcfg_tailq_write_lock();
-	if (init_shared_mem() < 0) {
+	if (shm == NULL && init_shared_mem() < 0) {
 		rte_mcfg_tailq_write_unlock();
 		return;
 	}
