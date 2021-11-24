@@ -228,7 +228,8 @@ int mlx5_ind_table_obj_release(struct rte_eth_dev *dev,
 			       bool standalone,
 			       bool deref_rxqs);
 int mlx5_ind_table_obj_setup(struct rte_eth_dev *dev,
-			     struct mlx5_ind_table_obj *ind_tbl);
+			     struct mlx5_ind_table_obj *ind_tbl,
+			     bool ref_qs);
 int mlx5_ind_table_obj_modify(struct rte_eth_dev *dev,
 			      struct mlx5_ind_table_obj *ind_tbl,
 			      uint16_t *queues, const uint32_t queues_n,

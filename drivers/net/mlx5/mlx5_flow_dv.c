@@ -14700,7 +14700,8 @@ __flow_dv_action_rss_setup(struct rte_eth_dev *dev,
 	size_t i;
 	int err;
 
-	if (mlx5_ind_table_obj_setup(dev, shared_rss->ind_tbl)) {
+	if (mlx5_ind_table_obj_setup(dev, shared_rss->ind_tbl,
+				     !!dev->data->dev_started)) {
 		return rte_flow_error_set(error, rte_errno,
 					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
 					  "cannot setup indirection table");
