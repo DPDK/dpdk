@@ -7062,8 +7062,9 @@ flow_dv_translate_item_gre(void *matcher, void *key,
 	protocol_v = rte_be_to_cpu_16(gre_v->protocol);
 	if (!protocol_m) {
 		/* Force next protocol to prevent matchers duplication */
-		protocol_m = 0xFFFF;
 		protocol_v = mlx5_translate_tunnel_etypes(pattern_flags);
+		if (protocol_v)
+			protocol_m = 0xFFFF;
 	}
 	MLX5_SET(fte_match_set_misc, misc_m, gre_protocol, protocol_m);
 	MLX5_SET(fte_match_set_misc, misc_v, gre_protocol,
