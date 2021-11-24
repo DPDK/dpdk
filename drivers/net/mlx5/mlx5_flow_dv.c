@@ -15073,6 +15073,7 @@ __flow_dv_action_rss_update(struct rte_eth_dev *dev, uint32_t idx,
 	void *queue = NULL;
 	uint16_t *queue_old = NULL;
 	uint32_t queue_size = action_conf->queue_num * sizeof(uint16_t);
+	bool dev_started = !!dev->data->dev_started;
 
 	if (!shared_rss)
 		return rte_flow_error_set(error, EINVAL,
@@ -15095,7 +15096,10 @@ __flow_dv_action_rss_update(struct rte_eth_dev *dev, uint32_t idx,
 	rte_spinlock_lock(&shared_rss->action_rss_sl);
 	queue_old = shared_rss->ind_tbl->queues;
 	ret = mlx5_ind_table_obj_modify(dev, shared_rss->ind_tbl,
-					queue, action_conf->queue_num, true);
+					queue, action_conf->queue_num,
+					true /* standalone */,
+					dev_started /* ref_new_qs */,
+					dev_started /* deref_old_qs */);
 	if (ret) {
 		mlx5_free(queue);
 		ret = rte_flow_error_set(error, rte_errno,

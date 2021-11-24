@@ -2387,6 +2387,10 @@ mlx5_ind_table_obj_check_standalone(struct rte_eth_dev *dev __rte_unused,
  *   Number of queues in the array.
  * @param standalone
  *   Indirection table for Standalone queue.
+ * @param ref_new_qs
+ *   Whether to increment new RxQ set reference counters.
+ * @param deref_old_qs
+ *   Whether to decrement old RxQ set reference counters.
  *
  * @return
  *   0 on success, a negative errno value otherwise and rte_errno is set.
@@ -2395,10 +2399,10 @@ int
 mlx5_ind_table_obj_modify(struct rte_eth_dev *dev,
 			  struct mlx5_ind_table_obj *ind_tbl,
 			  uint16_t *queues, const uint32_t queues_n,
-			  bool standalone)
+			  bool standalone, bool ref_new_qs, bool deref_old_qs)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	unsigned int i;
+	unsigned int i = 0, j;
 	int ret = 0, err;
 	const unsigned int n = rte_is_power_of_2(queues_n) ?
 			       log2above(queues_n) :
@@ -2408,22 +2412,30 @@ mlx5_ind_table_obj_modify(struct rte_eth_dev *dev,
 	RTE_SET_USED(standalone);
 	if (mlx5_ind_table_obj_check_standalone(dev, ind_tbl) < 0)
 		return -rte_errno;
-	for (i = 0; i != queues_n; ++i) {
-		if (!mlx5_rxq_get(dev, queues[i])) {
-			ret = -rte_errno;
-			goto error;
+	if (ref_new_qs)
+		for (i = 0; i != queues_n; ++i) {
+			if (!mlx5_rxq_ref(dev, queues[i])) {
+				ret = -rte_errno;
+				goto error;
+			}
 		}
-	}
 	MLX5_ASSERT(priv->obj_ops.ind_table_modify);
 	ret = priv->obj_ops.ind_table_modify(dev, n, queues, queues_n, ind_tbl);
 	if (ret)
 		goto error;
+	if (deref_old_qs)
+		for (i = 0; i < ind_tbl->queues_n; i++)
+			claim_nonzero(mlx5_rxq_deref(dev, ind_tbl->queues[i]));
 	ind_tbl->queues_n = queues_n;
 	ind_tbl->queues = queues;
 	return 0;
 error:
-	err = rte_errno;
-	rte_errno = err;
+	if (ref_new_qs) {
+		err = rte_errno;
+		for (j = 0; j < i; j++)
+			mlx5_rxq_deref(dev, queues[j]);
+		rte_errno = err;
+	}
 	DRV_LOG(DEBUG, "Port %u cannot setup indirection table.",
 		dev->data->port_id);
 	return ret;
@@ -2444,19 +2456,17 @@ int
 mlx5_ind_table_obj_attach(struct rte_eth_dev *dev,
 			  struct mlx5_ind_table_obj *ind_tbl)
 {
-	unsigned int i;
 	int ret;
 
 	ret = mlx5_ind_table_obj_modify(dev, ind_tbl, ind_tbl->queues,
-					ind_tbl->queues_n, true);
-	if (ret != 0) {
+					ind_tbl->queues_n,
+					true /* standalone */,
+					true /* ref_new_qs */,
+					false /* deref_old_qs */);
+	if (ret != 0)
 		DRV_LOG(ERR, "Port %u could not modify indirect table obj %p",
 			dev->data->port_id, (void *)ind_tbl);
-		return ret;
-	}
-	for (i = 0; i < ind_tbl->queues_n; i++)
-		mlx5_rxq_ref(dev, ind_tbl->queues[i]);
-	return 0;
+	return ret;
 }
 
 /**
