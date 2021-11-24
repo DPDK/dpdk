@@ -870,6 +870,13 @@ ice_dcf_dev_close(struct rte_eth_dev *dev)
 	return 0;
 }
 
+bool
+ice_dcf_adminq_need_retry(struct ice_adapter *ad)
+{
+	return ad->hw.dcf_enabled &&
+	       !__atomic_load_n(&ad->dcf_state_on, __ATOMIC_RELAXED);
+}
+
 static int
 ice_dcf_link_update(__rte_unused struct rte_eth_dev *dev,
 		    __rte_unused int wait_to_complete)
@@ -905,6 +912,7 @@ static int
 ice_dcf_dev_init(struct rte_eth_dev *eth_dev)
 {
 	struct ice_dcf_adapter *adapter = eth_dev->data->dev_private;
+	struct ice_adapter *parent_adapter = &adapter->parent;
 
 	eth_dev->dev_ops = &ice_dcf_eth_dev_ops;
 	eth_dev->rx_pkt_burst = ice_dcf_recv_pkts;
@@ -916,8 +924,12 @@ ice_dcf_dev_init(struct rte_eth_dev *eth_dev)
 	adapter->real_hw.vc_event_msg_cb = ice_dcf_handle_pf_event_msg;
 	if (ice_dcf_init_hw(eth_dev, &adapter->real_hw) != 0) {
 		PMD_INIT_LOG(ERR, "Failed to init DCF hardware");
+		__atomic_store_n(&parent_adapter->dcf_state_on, false,
+				 __ATOMIC_RELAXED);
 		return -1;
 	}
+
+	__atomic_store_n(&parent_adapter->dcf_state_on, true, __ATOMIC_RELAXED);
 
 	if (ice_dcf_init_parent_adapter(eth_dev) != 0) {
 		PMD_INIT_LOG(ERR, "Failed to init DCF parent adapter");

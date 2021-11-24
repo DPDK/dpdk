@@ -2323,7 +2323,9 @@ ice_flow_flush(struct rte_eth_dev *dev,
 		ret = ice_flow_destroy(dev, p_flow, error);
 		if (ret) {
 			PMD_DRV_LOG(ERR, "Failed to flush flows");
-			return -EINVAL;
+			if (ret != -EAGAIN)
+				ret = -EINVAL;
+			return ret;
 		}
 	}
 

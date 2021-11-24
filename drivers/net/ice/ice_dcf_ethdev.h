@@ -26,5 +26,6 @@ void ice_dcf_handle_pf_event_msg(struct ice_dcf_hw *dcf_hw,
 				 uint8_t *msg, uint16_t msglen);
 int ice_dcf_init_parent_adapter(struct rte_eth_dev *eth_dev);
 void ice_dcf_uninit_parent_adapter(struct rte_eth_dev *eth_dev);
+bool ice_dcf_adminq_need_retry(struct ice_adapter *ad);
 
 #endif /* _ICE_DCF_ETHDEV_H_ */
