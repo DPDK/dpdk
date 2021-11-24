@@ -119,7 +119,9 @@ ice_dcf_vsi_update_service_handler(void *param)
 {
 	struct ice_dcf_reset_event_param *reset_param = param;
 	struct ice_dcf_hw *hw = reset_param->dcf_hw;
-	struct ice_dcf_adapter *adapter;
+	struct ice_dcf_adapter *adapter =
+		container_of(hw, struct ice_dcf_adapter, real_hw);
+	struct ice_adapter *parent_adapter = &adapter->parent;
 
 	pthread_detach(pthread_self());
 
@@ -127,11 +129,12 @@ ice_dcf_vsi_update_service_handler(void *param)
 
 	rte_spinlock_lock(&vsi_update_lock);
 
-	adapter = container_of(hw, struct ice_dcf_adapter, real_hw);
-
-	if (!ice_dcf_handle_vsi_update_event(hw))
+	if (!ice_dcf_handle_vsi_update_event(hw)) {
+		__atomic_store_n(&parent_adapter->dcf_state_on, true,
+				 __ATOMIC_RELAXED);
 		ice_dcf_update_vf_vsi_map(&adapter->parent.hw,
 					  hw->num_vfs, hw->vf_vsi_map);
+	}
 
 	if (reset_param->vfr && adapter->repr_infos) {
 		struct rte_eth_dev *vf_rep_eth_dev =
@@ -224,6 +227,9 @@ ice_dcf_handle_pf_event_msg(struct ice_dcf_hw *dcf_hw,
 			    uint8_t *msg, uint16_t msglen)
 {
 	struct virtchnl_pf_event *pf_msg = (struct virtchnl_pf_event *)msg;
+	struct ice_dcf_adapter *adapter =
+		container_of(dcf_hw, struct ice_dcf_adapter, real_hw);
+	struct ice_adapter *parent_adapter = &adapter->parent;
 
 	if (msglen < sizeof(struct virtchnl_pf_event)) {
 		PMD_DRV_LOG(DEBUG, "Invalid event message length : %u", msglen);
@@ -258,6 +264,8 @@ ice_dcf_handle_pf_event_msg(struct ice_dcf_hw *dcf_hw,
 		PMD_DRV_LOG(DEBUG, "VIRTCHNL_EVENT_DCF_VSI_MAP_UPDATE event : VF%u with VSI num %u",
 			    pf_msg->event_data.vf_vsi_map.vf_id,
 			    pf_msg->event_data.vf_vsi_map.vsi_id);
+		__atomic_store_n(&parent_adapter->dcf_state_on, false,
+				 __ATOMIC_RELAXED);
 		start_vsi_reset_thread(dcf_hw, true,
 				       pf_msg->event_data.vf_vsi_map.vf_id);
 		break;
