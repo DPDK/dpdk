@@ -568,6 +568,7 @@ F: drivers/bus/pci/
 
 VDEV bus driver
 F: drivers/bus/vdev/
+F: app/test/test_vdev.c
 
 VMBUS bus driver
 M: Stephen Hemminger <sthemmin@microsoft.com>

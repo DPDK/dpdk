@@ -426,6 +426,11 @@ if dpdk_conf.has('RTE_NET_RING')
         fast_tests += [['pdump_autotest', true]]
     endif
 endif
+if dpdk_conf.has('RTE_NET_NULL')
+    test_deps += 'net_null'
+    test_sources += 'test_vdev.c'
+    fast_tests += [['vdev_autotest', true]]
+endif
 
 if dpdk_conf.has('RTE_HAS_LIBPCAP')
     ext_deps += pcap_dep
