@@ -347,6 +347,8 @@ and has three available power management schemes:
 ``scale``
   This will use frequency scaling routines
   available in the ``librte_power`` library.
+  The reaction time of the scale mode is longer
+  than the pause and monitor mode.
 
 See :doc:`Power Management<../prog_guide/power_man>` chapter
 in the DPDK Programmer's Guide for more details on PMD power management.

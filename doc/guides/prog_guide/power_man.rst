@@ -217,6 +217,8 @@ power saving whenever empty poll count reaches a certain number.
 * Frequency scaling
    This power saving scheme will use ``librte_power`` library functionality to
    scale the core frequency up/down depending on traffic volume.
+   The reaction time of the frequency scaling mode is longer
+   than the pause and monitor mode.
 
 The "monitor" mode is only supported in the following configurations and scenarios:
 
