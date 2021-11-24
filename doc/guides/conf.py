@@ -401,6 +401,31 @@ def setup(app):
                             'Features',
                             'Features availability in GPU drivers',
                             'Feature')
+    table_file = dirname(__file__) + '/eventdevs/overview_feature_table.txt'
+    generate_overview_table(table_file, 1,
+                            'Scheduling Features',
+                            'Features availability in eventdev drivers',
+                            'Feature')
+    table_file = dirname(__file__) + '/eventdevs/overview_rx_adptr_feature_table.txt'
+    generate_overview_table(table_file, 2,
+                            'Eth Rx adapter Features',
+                            'Features availability for Ethdev Rx adapters',
+                            'Feature')
+    table_file = dirname(__file__) + '/eventdevs/overview_tx_adptr_feature_table.txt'
+    generate_overview_table(table_file, 3,
+                            'Eth Tx adapter Features',
+                            'Features availability for Ethdev Tx adapters',
+                            'Feature')
+    table_file = dirname(__file__) + '/eventdevs/overview_crypto_adptr_feature_table.txt'
+    generate_overview_table(table_file, 4,
+                            'Crypto adapter Features',
+                            'Features availability for Crypto adapters',
+                            'Feature')
+    table_file = dirname(__file__) + '/eventdevs/overview_timer_adptr_feature_table.txt'
+    generate_overview_table(table_file, 5,
+                            'Timer adapter Features',
+                            'Features availability for Timer adapters',
+                            'Feature')
 
     if LooseVersion(sphinx_version) < LooseVersion('1.3.1'):
         print('Upgrade sphinx to version >= 1.3.1 for '
