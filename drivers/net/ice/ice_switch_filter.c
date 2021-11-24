@@ -400,6 +400,14 @@ ice_switch_create(struct ice_adapter *ad,
 			"lookup list should not be NULL");
 		goto error;
 	}
+
+	if (ice_dcf_adminq_need_retry(ad)) {
+		rte_flow_error_set(error, EAGAIN,
+			RTE_FLOW_ERROR_TYPE_ITEM, NULL,
+			"DCF is not on");
+		goto error;
+	}
+
 	ret = ice_add_adv_rule(hw, list, lkups_cnt, rule_info, &rule_added);
 	if (!ret) {
 		filter_conf_ptr = rte_zmalloc("ice_switch_filter",
@@ -423,7 +431,12 @@ ice_switch_create(struct ice_adapter *ad,
 
 		flow->rule = filter_conf_ptr;
 	} else {
-		rte_flow_error_set(error, EINVAL,
+		if (ice_dcf_adminq_need_retry(ad))
+			ret = -EAGAIN;
+		else
+			ret = -EINVAL;
+
+		rte_flow_error_set(error, -ret,
 			RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
 			"switch filter create flow fail");
 		goto error;
@@ -475,9 +488,21 @@ ice_switch_destroy(struct ice_adapter *ad,
 		return -rte_errno;
 	}
 
+	if (ice_dcf_adminq_need_retry(ad)) {
+		rte_flow_error_set(error, EAGAIN,
+			RTE_FLOW_ERROR_TYPE_ITEM, NULL,
+			"DCF is not on");
+		return -rte_errno;
+	}
+
 	ret = ice_rem_adv_rule_by_id(hw, &filter_conf_ptr->sw_query_data);
 	if (ret) {
-		rte_flow_error_set(error, EINVAL,
+		if (ice_dcf_adminq_need_retry(ad))
+			ret = -EAGAIN;
+		else
+			ret = -EINVAL;
+
+		rte_flow_error_set(error, -ret,
 			RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
 			"fail to destroy switch filter rule");
 		return -rte_errno;
@@ -2016,6 +2041,12 @@ ice_switch_redirect(struct ice_adapter *ad,
 	}
 
 rmv_rule:
+	if (ice_dcf_adminq_need_retry(ad)) {
+		PMD_DRV_LOG(WARNING, "DCF is not on");
+		ret = -EAGAIN;
+		goto out;
+	}
+
 	/* Remove the old rule */
 	ret = ice_rem_adv_rule(hw, lkups_ref, lkups_cnt, &rinfo);
 	if (ret) {
@@ -2028,6 +2059,12 @@ rmv_rule:
 	}
 
 add_rule:
+	if (ice_dcf_adminq_need_retry(ad)) {
+		PMD_DRV_LOG(WARNING, "DCF is not on");
+		ret = -EAGAIN;
+		goto out;
+	}
+
 	/* Update VSI context */
 	hw->vsi_ctx[rd->vsi_handle]->vsi_num = rd->new_vsi_num;
 
@@ -2047,6 +2084,10 @@ add_rule:
 	}
 
 out:
+	if (ret == -EINVAL)
+		if (ice_dcf_adminq_need_retry(ad))
+			ret = -EAGAIN;
+
 	ice_free(hw, lkups_dp);
 	return ret;
 }

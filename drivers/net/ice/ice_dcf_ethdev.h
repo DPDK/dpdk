@@ -64,5 +64,6 @@ int ice_dcf_vf_repr_init(struct rte_eth_dev *vf_rep_eth_dev, void *init_param);
 int ice_dcf_vf_repr_uninit(struct rte_eth_dev *vf_rep_eth_dev);
 int ice_dcf_vf_repr_init_vlan(struct rte_eth_dev *vf_rep_eth_dev);
 void ice_dcf_vf_repr_stop_all(struct ice_dcf_adapter *dcf_adapter);
+bool ice_dcf_adminq_need_retry(struct ice_adapter *ad);
 
 #endif /* _ICE_DCF_ETHDEV_H_ */
