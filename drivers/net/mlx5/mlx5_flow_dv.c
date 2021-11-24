@@ -9057,7 +9057,6 @@ flow_dv_translate_item_vxlan_gpe(void *matcher, void *key,
 	m_protocol = vxlan_m->protocol;
 	v_protocol = vxlan_v->protocol;
 	if (!m_protocol) {
-		m_protocol = 0xff;
 		/* Force next protocol to ensure next headers parsing. */
 		if (pattern_flags & MLX5_FLOW_LAYER_INNER_L2)
 			v_protocol = RTE_VXLAN_GPE_TYPE_ETH;
@@ -9065,6 +9064,8 @@ flow_dv_translate_item_vxlan_gpe(void *matcher, void *key,
 			v_protocol = RTE_VXLAN_GPE_TYPE_IPV4;
 		else if (pattern_flags & MLX5_FLOW_LAYER_INNER_L3_IPV6)
 			v_protocol = RTE_VXLAN_GPE_TYPE_IPV6;
+		if (v_protocol)
+			m_protocol = 0xFF;
 	}
 	MLX5_SET(fte_match_set_misc3, misc_m,
 		 outer_vxlan_gpe_next_protocol, m_protocol);
@@ -9135,8 +9136,9 @@ flow_dv_translate_item_geneve(void *matcher, void *key,
 	protocol_v = rte_be_to_cpu_16(geneve_v->protocol);
 	if (!protocol_m) {
 		/* Force next protocol to prevent matchers duplication */
-		protocol_m = 0xFFFF;
 		protocol_v = mlx5_translate_tunnel_etypes(pattern_flags);
+		if (protocol_v)
+			protocol_m = 0xFFFF;
 	}
 	MLX5_SET(fte_match_set_misc, misc_m, geneve_protocol_type, protocol_m);
 	MLX5_SET(fte_match_set_misc, misc_v, geneve_protocol_type,
