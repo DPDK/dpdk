@@ -877,7 +877,6 @@ rte_gpu_comm_populate_list_pkts(struct rte_gpu_comm_list *comm_list_item,
 	RTE_GPU_VOLATILE(comm_list_item->num_pkts) = num_mbufs;
 	rte_gpu_wmb(comm_list_item->dev_id);
 	RTE_GPU_VOLATILE(comm_list_item->status) = RTE_GPU_COMM_LIST_READY;
-	rte_gpu_wmb(comm_list_item->dev_id);
 
 	return 0;
 }
