@@ -1975,9 +1975,9 @@ mlx5_args_check(const char *key, const char *val, void *opaque)
 		config->std_delay_drop = !!(tmp & MLX5_DELAY_DROP_STANDARD);
 		config->hp_delay_drop = !!(tmp & MLX5_DELAY_DROP_HAIRPIN);
 	} else {
-		DRV_LOG(WARNING, "%s: unknown parameter", key);
-		rte_errno = EINVAL;
-		return -rte_errno;
+		DRV_LOG(WARNING,
+			"%s: unknown parameter, maybe it's for another class.",
+			key);
 	}
 	return 0;
 }
@@ -1996,75 +1996,25 @@ mlx5_args_check(const char *key, const char *val, void *opaque)
 int
 mlx5_args(struct mlx5_dev_config *config, struct rte_devargs *devargs)
 {
-	const char **params = (const char *[]){
-		MLX5_DRIVER_KEY,
-		MLX5_RXQ_CQE_COMP_EN,
-		MLX5_RXQ_PKT_PAD_EN,
-		MLX5_RX_MPRQ_EN,
-		MLX5_RX_MPRQ_LOG_STRIDE_NUM,
-		MLX5_RX_MPRQ_LOG_STRIDE_SIZE,
-		MLX5_RX_MPRQ_MAX_MEMCPY_LEN,
-		MLX5_RXQS_MIN_MPRQ,
-		MLX5_TXQ_INLINE,
-		MLX5_TXQ_INLINE_MIN,
-		MLX5_TXQ_INLINE_MAX,
-		MLX5_TXQ_INLINE_MPW,
-		MLX5_TXQS_MIN_INLINE,
-		MLX5_TXQS_MAX_VEC,
-		MLX5_TXQ_MPW_EN,
-		MLX5_TXQ_MPW_HDR_DSEG_EN,
-		MLX5_TXQ_MAX_INLINE_LEN,
-		MLX5_TX_DB_NC,
-		MLX5_TX_PP,
-		MLX5_TX_SKEW,
-		MLX5_TX_VEC_EN,
-		MLX5_RX_VEC_EN,
-		MLX5_L3_VXLAN_EN,
-		MLX5_VF_NL_EN,
-		MLX5_DV_ESW_EN,
-		MLX5_DV_FLOW_EN,
-		MLX5_DV_XMETA_EN,
-		MLX5_LACP_BY_USER,
-		MLX5_MR_EXT_MEMSEG_EN,
-		MLX5_REPRESENTOR,
-		MLX5_MAX_DUMP_FILES_NUM,
-		MLX5_LRO_TIMEOUT_USEC,
-		RTE_DEVARGS_KEY_CLASS,
-		MLX5_HP_BUF_SIZE,
-		MLX5_RECLAIM_MEM,
-		MLX5_SYS_MEM_EN,
-		MLX5_DECAP_EN,
-		MLX5_ALLOW_DUPLICATE_PATTERN,
-		MLX5_MR_MEMPOOL_REG_EN,
-		MLX5_DELAY_DROP,
-		NULL,
-	};
 	struct rte_kvargs *kvlist;
 	int ret = 0;
-	int i;
 
 	if (devargs == NULL)
 		return 0;
 	/* Following UGLY cast is done to pass checkpatch. */
-	kvlist = rte_kvargs_parse(devargs->args, params);
+	kvlist = rte_kvargs_parse(devargs->args, NULL);
 	if (kvlist == NULL) {
 		rte_errno = EINVAL;
 		return -rte_errno;
 	}
 	/* Process parameters. */
-	for (i = 0; (params[i] != NULL); ++i) {
-		if (rte_kvargs_count(kvlist, params[i])) {
-			ret = rte_kvargs_process(kvlist, params[i],
-						 mlx5_args_check, config);
-			if (ret) {
-				rte_errno = EINVAL;
-				rte_kvargs_free(kvlist);
-				return -rte_errno;
-			}
-		}
+	ret = rte_kvargs_process(kvlist, NULL, mlx5_args_check, config);
+	if (ret) {
+		rte_errno = EINVAL;
+		ret = -rte_errno;
 	}
 	rte_kvargs_free(kvlist);
-	return 0;
+	return ret;
 }
 
 /**
