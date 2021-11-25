@@ -2002,21 +2002,29 @@ mlx5_mr_mb2mr_bh(struct mlx5_mr_ctrl *mr_ctrl, struct rte_mbuf *mb)
 			     dev_gen);
 	struct mlx5_common_device *cdev =
 		container_of(share_cache, struct mlx5_common_device, mr_scache);
+	bool external, mprq, pinned = false;
 
 	/* Recover MPRQ mempool. */
-	if (RTE_MBUF_HAS_EXTBUF(mb) &&
-	    mb->shinfo->free_cb == mlx5_mprq_buf_free_cb) {
+	external = RTE_MBUF_HAS_EXTBUF(mb);
+	if (external && mb->shinfo->free_cb == mlx5_mprq_buf_free_cb) {
+		mprq = true;
 		buf = mb->shinfo->fcb_opaque;
 		mp = buf->mp;
 	} else {
+		mprq = false;
 		mp = mlx5_mb2mp(mb);
+		pinned = rte_pktmbuf_priv_flags(mp) &
+			 RTE_PKTMBUF_POOL_F_PINNED_EXT_BUF;
 	}
-	lkey = mlx5_mr_mempool2mr_bh(mr_ctrl, mp, addr);
-	if (lkey != UINT32_MAX)
-		return lkey;
+	if (!external || mprq || pinned) {
+		lkey = mlx5_mr_mempool2mr_bh(mr_ctrl, mp, addr);
+		if (lkey != UINT32_MAX)
+			return lkey;
+		/* MPRQ is always registered. */
+		MLX5_ASSERT(!mprq);
+	}
 	/* Register pinned external memory if the mempool is not used for Rx. */
-	if (cdev->config.mr_mempool_reg_en &&
-	    (rte_pktmbuf_priv_flags(mp) & RTE_PKTMBUF_POOL_F_PINNED_EXT_BUF)) {
+	if (cdev->config.mr_mempool_reg_en && pinned) {
 		if (mlx5_mr_mempool_register(cdev, mp, true) < 0)
 			return UINT32_MAX;
 		lkey = mlx5_mr_mempool2mr_bh(mr_ctrl, mp, addr);
