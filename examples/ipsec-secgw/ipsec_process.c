@@ -232,8 +232,10 @@ prep_process_group(void *sa, struct rte_mbuf *mb[], uint32_t cnt)
 					mb[j]->outer_l3_len = mb[j]->l3_len;
 					mb[j]->outer_l2_len = mb[j]->l2_len;
 					mb[j]->ol_flags |=
-					(RTE_MBUF_F_TX_OUTER_IP_CKSUM |
-						RTE_MBUF_F_TX_TUNNEL_ESP);
+						RTE_MBUF_F_TX_TUNNEL_ESP;
+					if (RTE_ETH_IS_IPV4_HDR(ptype))
+						mb[j]->ol_flags |=
+						RTE_MBUF_F_TX_OUTER_IP_CKSUM;
 				}
 				mb[j]->l4_len = sizeof(struct rte_tcp_hdr);
 				mb[j]->ol_flags |= (RTE_MBUF_F_TX_TCP_SEG |
