@@ -720,3 +720,14 @@ Tested Platforms
       * Firmware version: 8.30 0x8000a489 1.2879.0
       * Device id (pf): 8086:15ff
       * Driver version: 2.17.4 (i40e)
+
+* NXP ARM SoCs (with integrated NICs)
+
+  * SoC:
+
+    * NXP i.MX 8M Mini with ARM Cortex A53, Cortex M4
+
+  * OS (Based on NXP LF support packages):
+
+    * Kernel version: 5.10
+    * Ubuntu 18.04
