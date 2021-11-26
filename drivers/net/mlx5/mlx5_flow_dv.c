@@ -1503,7 +1503,7 @@ mlx5_flow_field_id_to_modify_info
 			if (data->offset < 16)
 				info[idx++] = (struct field_modify_info){2, 0,
 						MLX5_MODI_OUT_DMAC_15_0};
-			info[idx] = (struct field_modify_info){4, 0,
+			info[idx] = (struct field_modify_info){4, off,
 						MLX5_MODI_OUT_DMAC_47_16};
 		}
 		break;
@@ -1533,7 +1533,7 @@ mlx5_flow_field_id_to_modify_info
 			if (data->offset < 16)
 				info[idx++] = (struct field_modify_info){2, 0,
 						MLX5_MODI_OUT_SMAC_15_0};
-			info[idx] = (struct field_modify_info){4, 0,
+			info[idx] = (struct field_modify_info){4, off,
 						MLX5_MODI_OUT_SMAC_47_16};
 		}
 		break;
