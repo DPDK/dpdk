@@ -2363,6 +2363,9 @@ enum rte_flow_action_type {
 	RTE_FLOW_ACTION_TYPE_SECURITY,
 
 	/**
+	 * @deprecated
+	 * @see RTE_FLOW_ACTION_TYPE_MODIFY_FIELD
+	 *
 	 * Implements OFPAT_SET_MPLS_TTL ("MPLS TTL") as defined by the
 	 * OpenFlow Switch Specification.
 	 *
@@ -2371,6 +2374,9 @@ enum rte_flow_action_type {
 	RTE_FLOW_ACTION_TYPE_OF_SET_MPLS_TTL,
 
 	/**
+	 * @deprecated
+	 * @see RTE_FLOW_ACTION_TYPE_MODIFY_FIELD
+	 *
 	 * Implements OFPAT_DEC_MPLS_TTL ("decrement MPLS TTL") as defined
 	 * by the OpenFlow Switch Specification.
 	 *
@@ -2379,6 +2385,9 @@ enum rte_flow_action_type {
 	RTE_FLOW_ACTION_TYPE_OF_DEC_MPLS_TTL,
 
 	/**
+	 * @deprecated
+	 * @see RTE_FLOW_ACTION_TYPE_MODIFY_FIELD
+	 *
 	 * Implements OFPAT_SET_NW_TTL ("IP TTL") as defined by the OpenFlow
 	 * Switch Specification.
 	 *
@@ -2387,6 +2396,9 @@ enum rte_flow_action_type {
 	RTE_FLOW_ACTION_TYPE_OF_SET_NW_TTL,
 
 	/**
+	 * @warning This is a legacy action.
+	 * @see RTE_FLOW_ACTION_TYPE_MODIFY_FIELD
+	 *
 	 * Implements OFPAT_DEC_NW_TTL ("decrement IP TTL") as defined by
 	 * the OpenFlow Switch Specification.
 	 *
@@ -2395,6 +2407,9 @@ enum rte_flow_action_type {
 	RTE_FLOW_ACTION_TYPE_OF_DEC_NW_TTL,
 
 	/**
+	 * @deprecated
+	 * @see RTE_FLOW_ACTION_TYPE_MODIFY_FIELD
+	 *
 	 * Implements OFPAT_COPY_TTL_OUT ("copy TTL "outwards" -- from
 	 * next-to-outermost to outermost") as defined by the OpenFlow
 	 * Switch Specification.
@@ -2404,6 +2419,9 @@ enum rte_flow_action_type {
 	RTE_FLOW_ACTION_TYPE_OF_COPY_TTL_OUT,
 
 	/**
+	 * @deprecated
+	 * @see RTE_FLOW_ACTION_TYPE_MODIFY_FIELD
+	 *
 	 * Implements OFPAT_COPY_TTL_IN ("copy TTL "inwards" -- from
 	 * outermost to next-to-outermost") as defined by the OpenFlow
 	 * Switch Specification.
@@ -2509,6 +2527,9 @@ enum rte_flow_action_type {
 	RTE_FLOW_ACTION_TYPE_RAW_DECAP,
 
 	/**
+	 * @warning This is a legacy action.
+	 * @see RTE_FLOW_ACTION_TYPE_MODIFY_FIELD
+	 *
 	 * Modify IPv4 source address in the outermost IPv4 header.
 	 *
 	 * If flow pattern does not define a valid RTE_FLOW_ITEM_TYPE_IPV4,
@@ -2519,6 +2540,9 @@ enum rte_flow_action_type {
 	RTE_FLOW_ACTION_TYPE_SET_IPV4_SRC,
 
 	/**
+	 * @warning This is a legacy action.
+	 * @see RTE_FLOW_ACTION_TYPE_MODIFY_FIELD
+	 *
 	 * Modify IPv4 destination address in the outermost IPv4 header.
 	 *
 	 * If flow pattern does not define a valid RTE_FLOW_ITEM_TYPE_IPV4,
@@ -2529,6 +2553,9 @@ enum rte_flow_action_type {
 	RTE_FLOW_ACTION_TYPE_SET_IPV4_DST,
 
 	/**
+	 * @warning This is a legacy action.
+	 * @see RTE_FLOW_ACTION_TYPE_MODIFY_FIELD
+	 *
 	 * Modify IPv6 source address in the outermost IPv6 header.
 	 *
 	 * If flow pattern does not define a valid RTE_FLOW_ITEM_TYPE_IPV6,
@@ -2539,6 +2566,9 @@ enum rte_flow_action_type {
 	RTE_FLOW_ACTION_TYPE_SET_IPV6_SRC,
 
 	/**
+	 * @warning This is a legacy action.
+	 * @see RTE_FLOW_ACTION_TYPE_MODIFY_FIELD
+	 *
 	 * Modify IPv6 destination address in the outermost IPv6 header.
 	 *
 	 * If flow pattern does not define a valid RTE_FLOW_ITEM_TYPE_IPV6,
@@ -2549,6 +2579,9 @@ enum rte_flow_action_type {
 	RTE_FLOW_ACTION_TYPE_SET_IPV6_DST,
 
 	/**
+	 * @warning This is a legacy action.
+	 * @see RTE_FLOW_ACTION_TYPE_MODIFY_FIELD
+	 *
 	 * Modify source port number in the outermost TCP/UDP header.
 	 *
 	 * If flow pattern does not define a valid RTE_FLOW_ITEM_TYPE_TCP
@@ -2560,6 +2593,9 @@ enum rte_flow_action_type {
 	RTE_FLOW_ACTION_TYPE_SET_TP_SRC,
 
 	/**
+	 * @warning This is a legacy action.
+	 * @see RTE_FLOW_ACTION_TYPE_MODIFY_FIELD
+	 *
 	 * Modify destination port number in the outermost TCP/UDP header.
 	 *
 	 * If flow pattern does not define a valid RTE_FLOW_ITEM_TYPE_TCP
@@ -2582,6 +2618,9 @@ enum rte_flow_action_type {
 	RTE_FLOW_ACTION_TYPE_MAC_SWAP,
 
 	/**
+	 * @warning This is a legacy action.
+	 * @see RTE_FLOW_ACTION_TYPE_MODIFY_FIELD
+	 *
 	 * Decrease TTL value directly
 	 *
 	 * No associated configuration structure.
@@ -2589,6 +2628,9 @@ enum rte_flow_action_type {
 	RTE_FLOW_ACTION_TYPE_DEC_TTL,
 
 	/**
+	 * @warning This is a legacy action.
+	 * @see RTE_FLOW_ACTION_TYPE_MODIFY_FIELD
+	 *
 	 * Set TTL value
 	 *
 	 * See struct rte_flow_action_set_ttl
@@ -2596,6 +2638,9 @@ enum rte_flow_action_type {
 	RTE_FLOW_ACTION_TYPE_SET_TTL,
 
 	/**
+	 * @warning This is a legacy action.
+	 * @see RTE_FLOW_ACTION_TYPE_MODIFY_FIELD
+	 *
 	 * Set source MAC address from matched flow.
 	 *
 	 * If flow pattern does not define a valid RTE_FLOW_ITEM_TYPE_ETH,
@@ -2606,6 +2651,9 @@ enum rte_flow_action_type {
 	RTE_FLOW_ACTION_TYPE_SET_MAC_SRC,
 
 	/**
+	 * @warning This is a legacy action.
+	 * @see RTE_FLOW_ACTION_TYPE_MODIFY_FIELD
+	 *
 	 * Set destination MAC address from matched flow.
 	 *
 	 * If flow pattern does not define a valid RTE_FLOW_ITEM_TYPE_ETH,
@@ -2616,6 +2664,9 @@ enum rte_flow_action_type {
 	RTE_FLOW_ACTION_TYPE_SET_MAC_DST,
 
 	/**
+	 * @warning This is a legacy action.
+	 * @see RTE_FLOW_ACTION_TYPE_MODIFY_FIELD
+	 *
 	 * Increase sequence number in the outermost TCP header.
 	 *
 	 * Action configuration specifies the value to increase
@@ -2630,6 +2681,9 @@ enum rte_flow_action_type {
 	RTE_FLOW_ACTION_TYPE_INC_TCP_SEQ,
 
 	/**
+	 * @warning This is a legacy action.
+	 * @see RTE_FLOW_ACTION_TYPE_MODIFY_FIELD
+	 *
 	 * Decrease sequence number in the outermost TCP header.
 	 *
 	 * Action configuration specifies the value to decrease
@@ -2644,6 +2698,9 @@ enum rte_flow_action_type {
 	RTE_FLOW_ACTION_TYPE_DEC_TCP_SEQ,
 
 	/**
+	 * @warning This is a legacy action.
+	 * @see RTE_FLOW_ACTION_TYPE_MODIFY_FIELD
+	 *
 	 * Increase acknowledgment number in the outermost TCP header.
 	 *
 	 * Action configuration specifies the value to increase
@@ -2658,6 +2715,9 @@ enum rte_flow_action_type {
 	RTE_FLOW_ACTION_TYPE_INC_TCP_ACK,
 
 	/**
+	 * @warning This is a legacy action.
+	 * @see RTE_FLOW_ACTION_TYPE_MODIFY_FIELD
+	 *
 	 * Decrease acknowledgment number in the outermost TCP header.
 	 *
 	 * Action configuration specifies the value to decrease
@@ -2672,6 +2732,9 @@ enum rte_flow_action_type {
 	RTE_FLOW_ACTION_TYPE_DEC_TCP_ACK,
 
 	/**
+	 * @warning This is a legacy action.
+	 * @see RTE_FLOW_ACTION_TYPE_MODIFY_FIELD
+	 *
 	 * Set Tag.
 	 *
 	 * Tag is for internal flow usage only and
@@ -2682,6 +2745,9 @@ enum rte_flow_action_type {
 	RTE_FLOW_ACTION_TYPE_SET_TAG,
 
 	/**
+	 * @warning This is a legacy action.
+	 * @see RTE_FLOW_ACTION_TYPE_MODIFY_FIELD
+	 *
 	 * Set metadata on ingress or egress path.
 	 *
 	 * See struct rte_flow_action_set_meta.
@@ -2689,6 +2755,9 @@ enum rte_flow_action_type {
 	RTE_FLOW_ACTION_TYPE_SET_META,
 
 	/**
+	 * @warning This is a legacy action.
+	 * @see RTE_FLOW_ACTION_TYPE_MODIFY_FIELD
+	 *
 	 * Modify IPv4 DSCP in the outermost IP header.
 	 *
 	 * If flow pattern does not define a valid RTE_FLOW_ITEM_TYPE_IPV4,
@@ -2699,6 +2768,9 @@ enum rte_flow_action_type {
 	RTE_FLOW_ACTION_TYPE_SET_IPV4_DSCP,
 
 	/**
+	 * @warning This is a legacy action.
+	 * @see RTE_FLOW_ACTION_TYPE_MODIFY_FIELD
+	 *
 	 * Modify IPv6 DSCP in the outermost IP header.
 	 *
 	 * If flow pattern does not define a valid RTE_FLOW_ITEM_TYPE_IPV6,
@@ -3069,6 +3141,9 @@ struct rte_flow_action_security {
 };
 
 /**
+ * @deprecated
+ * @see RTE_FLOW_ACTION_TYPE_MODIFY_FIELD
+ *
  * RTE_FLOW_ACTION_TYPE_OF_SET_MPLS_TTL
  *
  * Implements OFPAT_SET_MPLS_TTL ("MPLS TTL") as defined by the OpenFlow
@@ -3079,6 +3154,9 @@ struct rte_flow_action_of_set_mpls_ttl {
 };
 
 /**
+ * @deprecated
+ * @see RTE_FLOW_ACTION_TYPE_MODIFY_FIELD
+ *
  * RTE_FLOW_ACTION_TYPE_OF_SET_NW_TTL
  *
  * Implements OFPAT_SET_NW_TTL ("IP TTL") as defined by the OpenFlow Switch

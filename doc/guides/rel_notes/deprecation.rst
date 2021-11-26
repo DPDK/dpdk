@@ -93,6 +93,20 @@ Deprecation Notices
   is deprecated as ambiguous with respect to the embedded switch. The use of
   these attributes will become invalid starting from DPDK 22.11.
 
+* ethdev: Actions ``OF_SET_MPLS_TTL``, ``OF_DEC_MPLS_TTL``, ``OF_SET_NW_TTL``,
+  ``OF_COPY_TTL_OUT``, ``OF_COPY_TTL_IN`` are deprecated as not supported by
+  any PMD, so they will be removed in DPDK 22.11.
+
+* ethdev: Actions ``OF_DEC_NW_TTL``, ``SET_IPV4_SRC``, ``SET_IPV4_DST``,
+  ``SET_IPV6_SRC``, ``SET_IPV6_DST``, ``SET_TP_SRC``, ``SET_TP_DST``,
+  ``DEC_TTL``, ``SET_TTL``, ``SET_MAC_SRC``, ``SET_MAC_DST``, ``INC_TCP_SEQ``,
+  ``DEC_TCP_SEQ``, ``INC_TCP_ACK``, ``DEC_TCP_ACK``, ``SET_IPV4_DSCP``,
+  ``SET_IPV6_DSCP``, ``SET_TAG``, ``SET_META`` are marked as legacy and
+  superseded by the generic MODIFY_FIELD action.
+  The legacy actions should be deprecated in 22.07, once MODIFY_FIELD
+  alternative is implemented.
+  The legacy actions should be removed in DPDK 22.11.
+
 * cryptodev: Hide structures ``rte_cryptodev_sym_session`` and
   ``rte_cryptodev_asym_session`` to remove unnecessary indirection between
   session and the private data of session. An opaque pointer can be exposed

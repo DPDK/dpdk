@@ -2238,6 +2238,7 @@ fields in the pattern items.
 
 Action: ``OF_SET_MPLS_TTL``
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+This action is deprecated. Consider `Action: MODIFY_FIELD`_.
 
 Implements ``OFPAT_SET_MPLS_TTL`` ("MPLS TTL") as defined by the `OpenFlow
 Switch Specification`_.
@@ -2254,6 +2255,7 @@ Switch Specification`_.
 
 Action: ``OF_DEC_MPLS_TTL``
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+This action is deprecated. Consider `Action: MODIFY_FIELD`_.
 
 Implements ``OFPAT_DEC_MPLS_TTL`` ("decrement MPLS TTL") as defined by the
 `OpenFlow Switch Specification`_.
@@ -2270,6 +2272,7 @@ Implements ``OFPAT_DEC_MPLS_TTL`` ("decrement MPLS TTL") as defined by the
 
 Action: ``OF_SET_NW_TTL``
 ^^^^^^^^^^^^^^^^^^^^^^^^^
+This action is deprecated. Consider `Action: MODIFY_FIELD`_.
 
 Implements ``OFPAT_SET_NW_TTL`` ("IP TTL") as defined by the `OpenFlow
 Switch Specification`_.
@@ -2286,6 +2289,7 @@ Switch Specification`_.
 
 Action: ``OF_DEC_NW_TTL``
 ^^^^^^^^^^^^^^^^^^^^^^^^^
+This is a legacy action. Consider `Action: MODIFY_FIELD`_ as alternative.
 
 Implements ``OFPAT_DEC_NW_TTL`` ("decrement IP TTL") as defined by the
 `OpenFlow Switch Specification`_.
@@ -2302,6 +2306,7 @@ Implements ``OFPAT_DEC_NW_TTL`` ("decrement IP TTL") as defined by the
 
 Action: ``OF_COPY_TTL_OUT``
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+This action is deprecated. Consider `Action: MODIFY_FIELD`_.
 
 Implements ``OFPAT_COPY_TTL_OUT`` ("copy TTL "outwards" -- from
 next-to-outermost to outermost") as defined by the `OpenFlow Switch
@@ -2319,6 +2324,7 @@ Specification`_.
 
 Action: ``OF_COPY_TTL_IN``
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
+This action is deprecated. Consider `Action: MODIFY_FIELD`_.
 
 Implements ``OFPAT_COPY_TTL_IN`` ("copy TTL "inwards" -- from outermost to
 next-to-outermost") as defined by the `OpenFlow Switch Specification`_.
@@ -2589,6 +2595,7 @@ valid packet.
 
 Action: ``SET_IPV4_SRC``
 ^^^^^^^^^^^^^^^^^^^^^^^^
+This is a legacy action. Consider `Action: MODIFY_FIELD`_ as alternative.
 
 Set a new IPv4 source address in the outermost IPv4 header.
 
@@ -2607,6 +2614,7 @@ Otherwise, RTE_FLOW_ERROR_TYPE_ACTION error will be returned.
 
 Action: ``SET_IPV4_DST``
 ^^^^^^^^^^^^^^^^^^^^^^^^
+This is a legacy action. Consider `Action: MODIFY_FIELD`_ as alternative.
 
 Set a new IPv4 destination address in the outermost IPv4 header.
 
@@ -2625,6 +2633,7 @@ Otherwise, RTE_FLOW_ERROR_TYPE_ACTION error will be returned.
 
 Action: ``SET_IPV6_SRC``
 ^^^^^^^^^^^^^^^^^^^^^^^^
+This is a legacy action. Consider `Action: MODIFY_FIELD`_ as alternative.
 
 Set a new IPv6 source address in the outermost IPv6 header.
 
@@ -2643,6 +2652,7 @@ Otherwise, RTE_FLOW_ERROR_TYPE_ACTION error will be returned.
 
 Action: ``SET_IPV6_DST``
 ^^^^^^^^^^^^^^^^^^^^^^^^
+This is a legacy action. Consider `Action: MODIFY_FIELD`_ as alternative.
 
 Set a new IPv6 destination address in the outermost IPv6 header.
 
@@ -2661,6 +2671,7 @@ Otherwise, RTE_FLOW_ERROR_TYPE_ACTION error will be returned.
 
 Action: ``SET_TP_SRC``
 ^^^^^^^^^^^^^^^^^^^^^^^^^
+This is a legacy action. Consider `Action: MODIFY_FIELD`_ as alternative.
 
 Set a new source port number in the outermost TCP/UDP header.
 
@@ -2679,6 +2690,7 @@ flow pattern item. Otherwise, RTE_FLOW_ERROR_TYPE_ACTION error will be returned.
 
 Action: ``SET_TP_DST``
 ^^^^^^^^^^^^^^^^^^^^^^^^^
+This is a legacy action. Consider `Action: MODIFY_FIELD`_ as alternative.
 
 Set a new destination port number in the outermost TCP/UDP header.
 
@@ -2716,6 +2728,7 @@ Otherwise, RTE_FLOW_ERROR_TYPE_ACTION error will be returned.
 
 Action: ``DEC_TTL``
 ^^^^^^^^^^^^^^^^^^^
+This is a legacy action. Consider `Action: MODIFY_FIELD`_ as alternative.
 
 Decrease TTL value.
 
@@ -2734,6 +2747,7 @@ in pattern, Some PMDs will reject rule because behavior will be undefined.
 
 Action: ``SET_TTL``
 ^^^^^^^^^^^^^^^^^^^
+This is a legacy action. Consider `Action: MODIFY_FIELD`_ as alternative.
 
 Assigns a new TTL value.
 
@@ -2752,6 +2766,7 @@ in pattern, Some PMDs will reject rule because behavior will be undefined.
 
 Action: ``SET_MAC_SRC``
 ^^^^^^^^^^^^^^^^^^^^^^^
+This is a legacy action. Consider `Action: MODIFY_FIELD`_ as alternative.
 
 Set source MAC address.
 
@@ -2770,6 +2785,7 @@ Otherwise, RTE_FLOW_ERROR_TYPE_ACTION error will be returned.
 
 Action: ``SET_MAC_DST``
 ^^^^^^^^^^^^^^^^^^^^^^^
+This is a legacy action. Consider `Action: MODIFY_FIELD`_ as alternative.
 
 Set destination MAC address.
 
@@ -2788,6 +2804,7 @@ Otherwise, RTE_FLOW_ERROR_TYPE_ACTION error will be returned.
 
 Action: ``INC_TCP_SEQ``
 ^^^^^^^^^^^^^^^^^^^^^^^
+This is a legacy action. Consider `Action: MODIFY_FIELD`_ as alternative.
 
 Increase sequence number in the outermost TCP header.
 Value to increase TCP sequence number by is a big-endian 32 bit integer.
@@ -2796,6 +2813,7 @@ Using this action on non-matching traffic will result in undefined behavior.
 
 Action: ``DEC_TCP_SEQ``
 ^^^^^^^^^^^^^^^^^^^^^^^
+This is a legacy action. Consider `Action: MODIFY_FIELD`_ as alternative.
 
 Decrease sequence number in the outermost TCP header.
 Value to decrease TCP sequence number by is a big-endian 32 bit integer.
@@ -2804,6 +2822,7 @@ Using this action on non-matching traffic will result in undefined behavior.
 
 Action: ``INC_TCP_ACK``
 ^^^^^^^^^^^^^^^^^^^^^^^
+This is a legacy action. Consider `Action: MODIFY_FIELD`_ as alternative.
 
 Increase acknowledgment number in the outermost TCP header.
 Value to increase TCP acknowledgment number by is a big-endian 32 bit integer.
@@ -2812,6 +2831,7 @@ Using this action on non-matching traffic will result in undefined behavior.
 
 Action: ``DEC_TCP_ACK``
 ^^^^^^^^^^^^^^^^^^^^^^^
+This is a legacy action. Consider `Action: MODIFY_FIELD`_ as alternative.
 
 Decrease acknowledgment number in the outermost TCP header.
 Value to decrease TCP acknowledgment number by is a big-endian 32 bit integer.
@@ -2820,6 +2840,7 @@ Using this action on non-matching traffic will result in undefined behavior.
 
 Action: ``SET_TAG``
 ^^^^^^^^^^^^^^^^^^^
+This is a legacy action. Consider `Action: MODIFY_FIELD`_ as alternative.
 
 Set Tag.
 
@@ -2842,6 +2863,7 @@ application. Multiple tags are supported by specifying index.
 
 Action: ``SET_META``
 ^^^^^^^^^^^^^^^^^^^^^^^
+This is a legacy action. Consider `Action: MODIFY_FIELD`_ as alternative.
 
 Set metadata. Item ``META`` matches metadata.
 
@@ -2876,6 +2898,7 @@ used to connect the Rx and Tx flows if it can be propagated from Rx to Tx path.
 
 Action: ``SET_IPV4_DSCP``
 ^^^^^^^^^^^^^^^^^^^^^^^^^
+This is a legacy action. Consider `Action: MODIFY_FIELD`_ as alternative.
 
 Set IPv4 DSCP.
 
@@ -2896,6 +2919,7 @@ Otherwise, RTE_FLOW_ERROR_TYPE_ACTION error will be returned.
 
 Action: ``SET_IPV6_DSCP``
 ^^^^^^^^^^^^^^^^^^^^^^^^^
+This is a legacy action. Consider `Action: MODIFY_FIELD`_ as alternative.
 
 Set IPv6 DSCP.
 
