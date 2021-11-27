@@ -225,6 +225,7 @@ enum instruction_type {
 	 */
 	INSTR_TX,   /* port_out = M */
 	INSTR_TX_I, /* port_out = I */
+	INSTR_DROP,
 
 	/* extract h.header */
 	INSTR_HDR_EXTRACT,
@@ -1623,6 +1624,25 @@ __instr_tx_i_exec(struct rte_swx_pipeline *p, struct thread *t, const struct ins
 	TRACE("[Thread %2u]: tx (i) 1 pkt to port %u\n",
 	      p->thread_id,
 	      (uint32_t)port_id);
+
+	/* Headers. */
+	emit_handler(t);
+
+	/* Packet. */
+	port->pkt_tx(port->obj, pkt);
+}
+
+static inline void
+__instr_drop_exec(struct rte_swx_pipeline *p,
+		  struct thread *t,
+		  const struct instruction *ip __rte_unused)
+{
+	uint64_t port_id = p->n_ports_out - 1;
+	struct port_out_runtime *port = &p->out[port_id];
+	struct rte_swx_pkt *pkt = &t->pkt;
+
+	TRACE("[Thread %2u]: drop 1 pkt\n",
+	      p->thread_id);
 
 	/* Headers. */
 	emit_handler(t);

@@ -1370,6 +1370,7 @@ instruction_is_tx(enum instruction_type type)
 	switch (type) {
 	case INSTR_TX:
 	case INSTR_TX_I:
+	case INSTR_DROP:
 		return 1;
 
 	default:
@@ -1383,6 +1384,7 @@ instruction_does_tx(struct instruction *instr)
 	switch (instr->type) {
 	case INSTR_TX:
 	case INSTR_TX_I:
+	case INSTR_DROP:
 	case INSTR_HDR_EMIT_TX:
 	case INSTR_HDR_EMIT2_TX:
 	case INSTR_HDR_EMIT3_TX:
@@ -1591,7 +1593,7 @@ instr_tx_translate(struct rte_swx_pipeline *p,
 }
 
 static int
-instr_drop_translate(struct rte_swx_pipeline *p,
+instr_drop_translate(struct rte_swx_pipeline *p __rte_unused,
 		     struct action *action __rte_unused,
 		     char **tokens __rte_unused,
 		     int n_tokens,
@@ -1600,9 +1602,8 @@ instr_drop_translate(struct rte_swx_pipeline *p,
 {
 	CHECK(n_tokens == 1, EINVAL);
 
-	/* TX_I. */
-	instr->type = INSTR_TX_I;
-	instr->io.io.val = p->n_ports_out - 1;
+	/* DROP. */
+	instr->type = INSTR_DROP;
 	return 0;
 }
 
@@ -1626,6 +1627,19 @@ instr_tx_i_exec(struct rte_swx_pipeline *p)
 	struct instruction *ip = t->ip;
 
 	__instr_tx_i_exec(p, t, ip);
+
+	/* Thread. */
+	thread_ip_reset(p, t);
+	instr_rx_exec(p);
+}
+
+static inline void
+instr_drop_exec(struct rte_swx_pipeline *p)
+{
+	struct thread *t = &p->threads[p->thread_id];
+	struct instruction *ip = t->ip;
+
+	__instr_drop_exec(p, t, ip);
 
 	/* Thread. */
 	thread_ip_reset(p, t);
@@ -6199,7 +6213,7 @@ instr_pattern_emit_many_tx_search(struct instruction *instr,
 	if (!i)
 		return 0;
 
-	if (!instruction_is_tx(instr[i].type))
+	if (instr[i].type != INSTR_TX)
 		return 0;
 
 	if (data[i].n_users)
@@ -6643,6 +6657,7 @@ static instr_exec_t instruction_table[] = {
 	[INSTR_RX] = instr_rx_exec,
 	[INSTR_TX] = instr_tx_exec,
 	[INSTR_TX_I] = instr_tx_i_exec,
+	[INSTR_DROP] = instr_drop_exec,
 
 	[INSTR_HDR_EXTRACT] = instr_hdr_extract_exec,
 	[INSTR_HDR_EXTRACT2] = instr_hdr_extract2_exec,
@@ -9901,6 +9916,7 @@ instr_type_to_name(struct instruction *instr)
 
 	case INSTR_TX: return "INSTR_TX";
 	case INSTR_TX_I: return "INSTR_TX_I";
+	case INSTR_DROP: return "INSTR_DROP";
 
 	case INSTR_HDR_EXTRACT: return "INSTR_HDR_EXTRACT";
 	case INSTR_HDR_EXTRACT2: return "INSTR_HDR_EXTRACT2";
@@ -10126,8 +10142,9 @@ instr_io_export(struct instruction *instr, FILE *f)
 		instr_type_to_name(instr));
 
 	/* instr.io. */
-	fprintf(f,
-		"\t\t.io = {\n");
+	if (n_io || n_io_imm || n_hdrs)
+		fprintf(f,
+			"\t\t.io = {\n");
 
 	/* instr.io.io. */
 	if (n_io)
@@ -10193,8 +10210,9 @@ instr_io_export(struct instruction *instr, FILE *f)
 	}
 
 	/* instr.io - closing curly brace. */
-	fprintf(f,
-		"\t\t},\n");
+	if (n_io || n_io_imm || n_hdrs)
+		fprintf(f,
+			"\t\t},\n");
 
 	/* instr - closing curly brace. */
 	fprintf(f,
@@ -10767,6 +10785,7 @@ static instruction_export_t export_table[] = {
 
 	[INSTR_TX] = instr_io_export,
 	[INSTR_TX_I] = instr_io_export,
+	[INSTR_DROP] = instr_io_export,
 
 	[INSTR_HDR_EXTRACT] = instr_io_export,
 	[INSTR_HDR_EXTRACT2] = instr_io_export,
@@ -10984,6 +11003,7 @@ instr_type_to_func(struct instruction *instr)
 
 	case INSTR_TX: return "__instr_tx_exec";
 	case INSTR_TX_I: return "__instr_tx_i_exec";
+	case INSTR_DROP: return "__instr_drop_exec";
 
 	case INSTR_HDR_EXTRACT: return "__instr_hdr_extract_exec";
 	case INSTR_HDR_EXTRACT2: return "__instr_hdr_extract2_exec";
