@@ -12,6 +12,9 @@
 #include <rte_swx_port_ring.h>
 #include "rte_swx_port_source_sink.h"
 
+#include <rte_swx_table_em.h>
+#include <rte_swx_table_wm.h>
+
 #include "rte_swx_pipeline_internal.h"
 
 #define CHECK(condition, err_code)                                             \
@@ -9088,6 +9091,28 @@ port_out_types_register(struct rte_swx_pipeline *p)
 	return 0;
 }
 
+static int
+table_types_register(struct rte_swx_pipeline *p)
+{
+	int status;
+
+	status = rte_swx_pipeline_table_type_register(p,
+		"exact",
+		RTE_SWX_TABLE_MATCH_EXACT,
+		&rte_swx_table_exact_match_ops);
+	if (status)
+		return status;
+
+	status = rte_swx_pipeline_table_type_register(p,
+		"wildcard",
+		RTE_SWX_TABLE_MATCH_WILDCARD,
+		&rte_swx_table_wildcard_match_ops);
+	if (status)
+		return status;
+
+	return 0;
+}
+
 int
 rte_swx_pipeline_config(struct rte_swx_pipeline **p, int numa_node)
 {
@@ -9131,6 +9156,10 @@ rte_swx_pipeline_config(struct rte_swx_pipeline **p, int numa_node)
 		goto error;
 
 	status = port_out_types_register(pipeline);
+	if (status)
+		goto error;
+
+	status = table_types_register(pipeline);
 	if (status)
 		goto error;
 
