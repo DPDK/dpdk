@@ -16,10 +16,6 @@
 #include <rte_mempool.h>
 #include <rte_mbuf.h>
 #include <rte_ethdev.h>
-#include <rte_swx_port_ethdev.h>
-#include <rte_swx_port_fd.h>
-#include <rte_swx_port_ring.h>
-#include <rte_swx_port_source_sink.h>
 #include <rte_swx_table_em.h>
 #include <rte_swx_table_wm.h>
 #include <rte_swx_pipeline.h>
@@ -540,56 +536,6 @@ pipeline_create(struct obj *obj, const char *name, int numa_node)
 
 	/* Resource create */
 	status = rte_swx_pipeline_config(&p, numa_node);
-	if (status)
-		goto error;
-
-	status = rte_swx_pipeline_port_in_type_register(p,
-		"ethdev",
-		&rte_swx_port_ethdev_reader_ops);
-	if (status)
-		goto error;
-
-	status = rte_swx_pipeline_port_out_type_register(p,
-		"ethdev",
-		&rte_swx_port_ethdev_writer_ops);
-	if (status)
-		goto error;
-
-	status = rte_swx_pipeline_port_in_type_register(p,
-		"ring",
-		&rte_swx_port_ring_reader_ops);
-	if (status)
-		goto error;
-
-	status = rte_swx_pipeline_port_out_type_register(p,
-		"ring",
-		&rte_swx_port_ring_writer_ops);
-	if (status)
-		goto error;
-
-#ifdef RTE_PORT_PCAP
-	status = rte_swx_pipeline_port_in_type_register(p,
-		"source",
-		&rte_swx_port_source_ops);
-	if (status)
-		goto error;
-#endif
-
-	status = rte_swx_pipeline_port_out_type_register(p,
-		"sink",
-		&rte_swx_port_sink_ops);
-	if (status)
-		goto error;
-
-	status = rte_swx_pipeline_port_in_type_register(p,
-		"fd",
-		&rte_swx_port_fd_reader_ops);
-	if (status)
-		goto error;
-
-	status = rte_swx_pipeline_port_out_type_register(p,
-		"fd",
-		&rte_swx_port_fd_writer_ops);
 	if (status)
 		goto error;
 

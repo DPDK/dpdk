@@ -7,6 +7,11 @@
 #include <arpa/inet.h>
 #include <dlfcn.h>
 
+#include <rte_swx_port_ethdev.h>
+#include <rte_swx_port_fd.h>
+#include <rte_swx_port_ring.h>
+#include "rte_swx_port_source_sink.h"
+
 #include "rte_swx_pipeline_internal.h"
 
 #define CHECK(condition, err_code)                                             \
@@ -8982,44 +8987,6 @@ metarray_free(struct rte_swx_pipeline *p)
 /*
  * Pipeline.
  */
-int
-rte_swx_pipeline_config(struct rte_swx_pipeline **p, int numa_node)
-{
-	struct rte_swx_pipeline *pipeline;
-
-	/* Check input parameters. */
-	CHECK(p, EINVAL);
-
-	/* Memory allocation. */
-	pipeline = calloc(1, sizeof(struct rte_swx_pipeline));
-	CHECK(pipeline, ENOMEM);
-
-	/* Initialization. */
-	TAILQ_INIT(&pipeline->struct_types);
-	TAILQ_INIT(&pipeline->port_in_types);
-	TAILQ_INIT(&pipeline->ports_in);
-	TAILQ_INIT(&pipeline->port_out_types);
-	TAILQ_INIT(&pipeline->ports_out);
-	TAILQ_INIT(&pipeline->extern_types);
-	TAILQ_INIT(&pipeline->extern_objs);
-	TAILQ_INIT(&pipeline->extern_funcs);
-	TAILQ_INIT(&pipeline->headers);
-	TAILQ_INIT(&pipeline->actions);
-	TAILQ_INIT(&pipeline->table_types);
-	TAILQ_INIT(&pipeline->tables);
-	TAILQ_INIT(&pipeline->selectors);
-	TAILQ_INIT(&pipeline->learners);
-	TAILQ_INIT(&pipeline->regarrays);
-	TAILQ_INIT(&pipeline->meter_profiles);
-	TAILQ_INIT(&pipeline->metarrays);
-
-	pipeline->n_structs = 1; /* Struct 0 is reserved for action_data. */
-	pipeline->numa_node = numa_node;
-
-	*p = pipeline;
-	return 0;
-}
-
 void
 rte_swx_pipeline_free(struct rte_swx_pipeline *p)
 {
@@ -9053,6 +9020,126 @@ rte_swx_pipeline_free(struct rte_swx_pipeline *p)
 
 	if (lib)
 		dlclose(lib);
+}
+
+static int
+port_in_types_register(struct rte_swx_pipeline *p)
+{
+	int status;
+
+	status = rte_swx_pipeline_port_in_type_register(p,
+		"ethdev",
+		&rte_swx_port_ethdev_reader_ops);
+	if (status)
+		return status;
+
+	status = rte_swx_pipeline_port_in_type_register(p,
+		"ring",
+		&rte_swx_port_ring_reader_ops);
+	if (status)
+		return status;
+
+#ifdef RTE_PORT_PCAP
+	status = rte_swx_pipeline_port_in_type_register(p,
+		"source",
+		&rte_swx_port_source_ops);
+	if (status)
+		return status;
+#endif
+
+	status = rte_swx_pipeline_port_in_type_register(p,
+		"fd",
+		&rte_swx_port_fd_reader_ops);
+	if (status)
+		return status;
+
+	return 0;
+}
+
+static int
+port_out_types_register(struct rte_swx_pipeline *p)
+{
+	int status;
+
+	status = rte_swx_pipeline_port_out_type_register(p,
+		"ethdev",
+		&rte_swx_port_ethdev_writer_ops);
+	if (status)
+		return status;
+
+	status = rte_swx_pipeline_port_out_type_register(p,
+		"ring",
+		&rte_swx_port_ring_writer_ops);
+	if (status)
+		return status;
+
+	status = rte_swx_pipeline_port_out_type_register(p,
+		"sink",
+		&rte_swx_port_sink_ops);
+	if (status)
+		return status;
+
+	status = rte_swx_pipeline_port_out_type_register(p,
+		"fd",
+		&rte_swx_port_fd_writer_ops);
+	if (status)
+		return status;
+
+	return 0;
+}
+
+int
+rte_swx_pipeline_config(struct rte_swx_pipeline **p, int numa_node)
+{
+	struct rte_swx_pipeline *pipeline = NULL;
+	int status = 0;
+
+	/* Check input parameters. */
+	CHECK(p, EINVAL);
+
+	/* Memory allocation. */
+	pipeline = calloc(1, sizeof(struct rte_swx_pipeline));
+	if (!pipeline) {
+		status = -ENOMEM;
+		goto error;
+	}
+
+	/* Initialization. */
+	TAILQ_INIT(&pipeline->struct_types);
+	TAILQ_INIT(&pipeline->port_in_types);
+	TAILQ_INIT(&pipeline->ports_in);
+	TAILQ_INIT(&pipeline->port_out_types);
+	TAILQ_INIT(&pipeline->ports_out);
+	TAILQ_INIT(&pipeline->extern_types);
+	TAILQ_INIT(&pipeline->extern_objs);
+	TAILQ_INIT(&pipeline->extern_funcs);
+	TAILQ_INIT(&pipeline->headers);
+	TAILQ_INIT(&pipeline->actions);
+	TAILQ_INIT(&pipeline->table_types);
+	TAILQ_INIT(&pipeline->tables);
+	TAILQ_INIT(&pipeline->selectors);
+	TAILQ_INIT(&pipeline->learners);
+	TAILQ_INIT(&pipeline->regarrays);
+	TAILQ_INIT(&pipeline->meter_profiles);
+	TAILQ_INIT(&pipeline->metarrays);
+
+	pipeline->n_structs = 1; /* Struct 0 is reserved for action_data. */
+	pipeline->numa_node = numa_node;
+
+	status = port_in_types_register(pipeline);
+	if (status)
+		goto error;
+
+	status = port_out_types_register(pipeline);
+	if (status)
+		goto error;
+
+	*p = pipeline;
+	return 0;
+
+error:
+	rte_swx_pipeline_free(pipeline);
+	return status;
 }
 
 int
