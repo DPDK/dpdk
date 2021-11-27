@@ -2551,10 +2551,17 @@ cmd_pipeline_stats(char **tokens,
 
 		rte_swx_ctl_pipeline_port_out_stats_read(p->p, i, &stats);
 
-		snprintf(out, out_size, "\tPort %u:"
-			" packets %" PRIu64
-			" bytes %" PRIu64 "\n",
-			i, stats.n_pkts, stats.n_bytes);
+		if (i != info.n_ports_out - 1)
+			snprintf(out, out_size, "\tPort %u:"
+				" packets %" PRIu64
+				" bytes %" PRIu64 "\n",
+				i, stats.n_pkts, stats.n_bytes);
+		else
+			snprintf(out, out_size, "\tDROP:"
+				" packets %" PRIu64
+				" bytes %" PRIu64 "\n",
+				stats.n_pkts, stats.n_bytes);
+
 		out_size -= strlen(out);
 		out += strlen(out);
 	}

@@ -9199,12 +9199,23 @@ pipeline_compile(struct rte_swx_pipeline *p);
 int
 rte_swx_pipeline_build(struct rte_swx_pipeline *p)
 {
+	struct rte_swx_port_sink_params drop_port_params = {
+		.file_name = NULL,
+	};
 	int status;
 
 	CHECK(p, EINVAL);
 	CHECK(p->build_done == 0, EEXIST);
 
 	status = port_in_build(p);
+	if (status)
+		goto error;
+
+	/* Drop port. */
+	status = rte_swx_pipeline_port_out_config(p,
+						  p->n_ports_out,
+						  "sink",
+						  &drop_port_params);
 	if (status)
 		goto error;
 

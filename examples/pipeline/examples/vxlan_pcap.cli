@@ -14,7 +14,6 @@ pipeline PIPELINE0 port out 0 sink none
 pipeline PIPELINE0 port out 1 sink none
 pipeline PIPELINE0 port out 2 sink none
 pipeline PIPELINE0 port out 3 sink none
-pipeline PIPELINE0 port out 4 sink none
 
 pipeline PIPELINE0 build ./examples/pipeline/examples/vxlan.spec
 pipeline PIPELINE0 table vxlan_table add ./examples/pipeline/examples/vxlan_table.txt
