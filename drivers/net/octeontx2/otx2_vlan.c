@@ -953,7 +953,7 @@ static void nix_vlan_reinstall_vlan_filters(struct rte_eth_dev *eth_dev)
 	struct vlan_entry *entry;
 	int rc;
 
-	/* VLAN filters can't be set without setting filtern on */
+	/* VLAN filters can't be set without setting filters on */
 	rc = nix_vlan_handle_default_rx_entry(eth_dev, false, true, true);
 	if (rc) {
 		otx2_err("Failed to reinstall vlan filters");

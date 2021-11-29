@@ -1094,7 +1094,7 @@ err_stop:
 	 * register.
 	 * Update the RDT with the value of the last processed RX descriptor
 	 * minus 1, to guarantee that the RDT register is never equal to the
-	 * RDH register, which creates a "full" ring situtation from the
+	 * RDH register, which creates a "full" ring situation from the
 	 * hardware point of view...
 	 */
 	nb_hold = (uint16_t)(nb_hold + rxq->nb_rx_hold);

@@ -1039,7 +1039,7 @@ main(int argc, char** argv)
 	pthread_t kni_link_tid;
 	int pid;
 
-	/* Associate signal_hanlder function with USR signals */
+	/* Associate signal_handler function with USR signals */
 	signal(SIGUSR1, signal_handler);
 	signal(SIGUSR2, signal_handler);
 	signal(SIGRTMIN, signal_handler);

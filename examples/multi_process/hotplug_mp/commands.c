@@ -175,7 +175,7 @@ static void cmd_dev_detach_parsed(void *parsed_result,
 		cmdline_printf(cl, "detached device %s\n",
 			da.name);
 	else
-		cmdline_printf(cl, "failed to dettach device %s\n",
+		cmdline_printf(cl, "failed to detach device %s\n",
 			da.name);
 	rte_devargs_reset(&da);
 }

@@ -117,7 +117,7 @@ otx_ep_setup_iq_regs(struct otx_ep_device *otx_ep, uint32_t iq_no)
 	iq->inst_cnt_reg = (uint8_t *)otx_ep->hw_addr +
 			   OTX_EP_R_IN_CNTS(iq_no);
 
-	otx_ep_dbg("InstQ[%d]:dbell reg @ 0x%p instcnt_reg @ 0x%p\n",
+	otx_ep_dbg("InstQ[%d]:dbell reg @ 0x%p inst_cnt_reg @ 0x%p\n",
 		     iq_no, iq->doorbell_reg, iq->inst_cnt_reg);
 
 	do {

@@ -630,7 +630,7 @@ hns3_stats_get(struct rte_eth_dev *eth_dev, struct rte_eth_stats *rte_stats)
 
 		cnt = hns3_read_dev(rxq, HNS3_RING_RX_PKTNUM_RECORD_REG);
 		/*
-		 * Read hardware and software in adjacent positions to minumize
+		 * Read hardware and software in adjacent positions to minimize
 		 * the timing variance.
 		 */
 		rte_stats->ierrors += rxq->err_stats.l2_errors +
@@ -1289,7 +1289,7 @@ hns3_dev_xstats_get_names(struct rte_eth_dev *dev,
  *   A pointer to an ids array passed by application. This tells which
  *   statistics values function should retrieve. This parameter
  *   can be set to NULL if size is 0. In this case function will retrieve
- *   all avalible statistics.
+ *   all available statistics.
  * @param values
  *   A pointer to a table to be filled with device statistics values.
  * @param size

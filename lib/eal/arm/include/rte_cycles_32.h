@@ -30,7 +30,7 @@ extern "C" {
 
 /**
  * This call is easily portable to any architecture, however,
- * it may require a system call and inprecise for some tasks.
+ * it may require a system call and imprecise for some tasks.
  */
 static inline uint64_t
 __rte_rdtsc_syscall(void)

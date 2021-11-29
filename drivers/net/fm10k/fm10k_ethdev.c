@@ -290,7 +290,7 @@ rx_queue_free(struct fm10k_rx_queue *q)
 }
 
 /*
- * disable RX queue, wait unitl HW finished necessary flush operation
+ * disable RX queue, wait until HW finished necessary flush operation
  */
 static inline int
 rx_queue_disable(struct fm10k_hw *hw, uint16_t qnum)
@@ -379,7 +379,7 @@ tx_queue_free(struct fm10k_tx_queue *q)
 }
 
 /*
- * disable TX queue, wait unitl HW finished necessary flush operation
+ * disable TX queue, wait until HW finished necessary flush operation
  */
 static inline int
 tx_queue_disable(struct fm10k_hw *hw, uint16_t qnum)
@@ -453,7 +453,7 @@ fm10k_dev_configure(struct rte_eth_dev *dev)
 	if (dev->data->dev_conf.rxmode.mq_mode & RTE_ETH_MQ_RX_RSS_FLAG)
 		dev->data->dev_conf.rxmode.offloads |= RTE_ETH_RX_OFFLOAD_RSS_HASH;
 
-	/* multipe queue mode checking */
+	/* multiple queue mode checking */
 	ret  = fm10k_check_mq_mode(dev);
 	if (ret != 0) {
 		PMD_DRV_LOG(ERR, "fm10k_check_mq_mode fails with %d.",
@@ -2553,7 +2553,7 @@ error:
  * @param handle
  *  Pointer to interrupt handle.
  * @param param
- *  The address of parameter (struct rte_eth_dev *) regsitered before.
+ *  The address of parameter (struct rte_eth_dev *) registered before.
  *
  * @return
  *  void
@@ -2676,7 +2676,7 @@ fm10k_dev_interrupt_handler_pf(void *param)
  * @param handle
  *  Pointer to interrupt handle.
  * @param param
- *  The address of parameter (struct rte_eth_dev *) regsitered before.
+ *  The address of parameter (struct rte_eth_dev *) registered before.
  *
  * @return
  *  void
@@ -3034,7 +3034,7 @@ fm10k_params_init(struct rte_eth_dev *dev)
 	struct fm10k_dev_info *info =
 		FM10K_DEV_PRIVATE_TO_INFO(dev->data->dev_private);
 
-	/* Inialize bus info. Normally we would call fm10k_get_bus_info(), but
+	/* Initialize bus info. Normally we would call fm10k_get_bus_info(), but
 	 * there is no way to get link status without reading BAR4.  Until this
 	 * works, assume we have maximum bandwidth.
 	 * @todo - fix bus info

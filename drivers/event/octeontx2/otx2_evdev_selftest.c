@@ -139,7 +139,7 @@ _eventdev_setup(int mode)
 	struct rte_event_dev_info info;
 	int i, ret;
 
-	/* Create and destrory pool for each test case to make it standalone */
+	/* Create and destroy pool for each test case to make it standalone */
 	eventdev_test_mempool = rte_pktmbuf_pool_create(pool_name, MAX_EVENTS,
 							0, 0, 512,
 							rte_socket_id());

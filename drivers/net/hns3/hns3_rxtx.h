@@ -611,7 +611,7 @@ hns3_handle_bdinfo(struct hns3_rx_queue *rxq, struct rte_mbuf *rxm,
 
 	/*
 	 * If packet len bigger than mtu when recv with no-scattered algorithm,
-	 * the first n bd will without FE bit, we need process this sisution.
+	 * the first n bd will without FE bit, we need process this situation.
 	 * Note: we don't need add statistic counter because latest BD which
 	 *       with FE bit will mark HNS3_RXD_L2E_B bit.
 	 */

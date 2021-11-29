@@ -251,7 +251,7 @@ mlx5_flow_meter_xir_man_exp_calc(int64_t xir, uint8_t *man, uint8_t *exp)
 	uint8_t _exp = 0;
 	uint64_t m, e;
 
-	/* Special case xir == 0 ? both exp and matissa are 0. */
+	/* Special case xir == 0 ? both exp and mantissa are 0. */
 	if (xir == 0) {
 		*man = 0;
 		*exp = 0;
@@ -287,7 +287,7 @@ mlx5_flow_meter_xbs_man_exp_calc(uint64_t xbs, uint8_t *man, uint8_t *exp)
 	int _exp;
 	double _man;
 
-	/* Special case xbs == 0 ? both exp and matissa are 0. */
+	/* Special case xbs == 0 ? both exp and mantissa are 0. */
 	if (xbs == 0) {
 		*man = 0;
 		*exp = 0;
@@ -305,7 +305,7 @@ mlx5_flow_meter_xbs_man_exp_calc(uint64_t xbs, uint8_t *man, uint8_t *exp)
  * Fill the prm meter parameter.
  *
  * @param[in,out] fmp
- *   Pointer to meter profie to be converted.
+ *   Pointer to meter profile to be converted.
  * @param[out] error
  *   Pointer to the error structure.
  *
@@ -1101,7 +1101,7 @@ mlx5_flow_meter_action_modify(struct mlx5_priv *priv,
 			if (ret)
 				return ret;
 		}
-		/* Update succeedded modify meter parameters. */
+		/* Update succeeded modify meter parameters. */
 		if (modify_bits & MLX5_FLOW_METER_OBJ_MODIFY_FIELD_ACTIVE)
 			fm->active_state = !!active_state;
 	}
@@ -1615,7 +1615,7 @@ mlx5_flow_meter_profile_update(struct rte_eth_dev *dev,
 		return -rte_mtr_error_set(error, -ret,
 					  RTE_MTR_ERROR_TYPE_MTR_PARAMS,
 					  NULL, "Failed to update meter"
-					  " parmeters in hardware.");
+					  " parameters in hardware.");
 	}
 	old_fmp->ref_cnt--;
 	fmp->ref_cnt++;

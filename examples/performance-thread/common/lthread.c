@@ -178,7 +178,7 @@ lthread_create(struct lthread **new_lt, int lcore_id,
 	bzero(lt, sizeof(struct lthread));
 	lt->root_sched = THIS_SCHED;
 
-	/* set the function args and exit handlder */
+	/* set the function args and exit handler */
 	_lthread_init(lt, fun, arg, _lthread_exit_handler);
 
 	/* put it in the ready queue */
@@ -384,7 +384,7 @@ void lthread_exit(void *ptr)
 	}
 
 
-	/* wait until the joinging thread has collected the exit value */
+	/* wait until the joining thread has collected the exit value */
 	while (lt->join != LT_JOIN_EXIT_VAL_READ)
 		_reschedule();
 
@@ -410,7 +410,7 @@ int lthread_join(struct lthread *lt, void **ptr)
 	/* invalid to join a detached thread, or a thread that is joined */
 	if ((lt_state & BIT(ST_LT_DETACH)) || (lt->join == LT_JOIN_THREAD_SET))
 		return POSIX_ERRNO(EINVAL);
-	/* pointer to the joining thread and a poingter to return a value */
+	/* pointer to the joining thread and a pointer to return a value */
 	lt->lt_join = current;
 	current->lt_exit_ptr = ptr;
 	/* There is a race between lthread_join() and lthread_exit()

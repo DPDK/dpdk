@@ -671,7 +671,7 @@ Resolved Issues
   value 0.
 
 
-  Fixes: 40b966a211ab ("ivshmem: library changes for mmaping using ivshmem")
+  Fixes: 40b966a211ab ("ivshmem: library changes for mmapping using ivshmem")
 
 
 * **ixgbe/base: Fix SFP probing.**

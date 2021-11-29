@@ -1,5 +1,5 @@
 #! /usr/bin/env python3
-# SPDX-License-Identitifer: BSD-3-Clause
+# SPDX-License-Identifier: BSD-3-Clause
 # Copyright(c) 2020 Intel Corporation
 
 import subprocess

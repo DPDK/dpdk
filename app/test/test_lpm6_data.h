@@ -22,7 +22,7 @@ struct ips_tbl_entry {
  * in previous test_lpm6_routes.h . Because this table has only 1000
  * lines, keeping it doesn't make LPM6 test case so large and also
  * make the algorithm to generate rule table unnecessary and the
- * algorithm to genertate test input IPv6 and associated expected
+ * algorithm to generate test input IPv6 and associated expected
  * next_hop much simple.
  */
 

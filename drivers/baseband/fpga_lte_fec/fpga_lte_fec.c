@@ -2097,7 +2097,7 @@ dequeue_enc_one_op_cb(struct fpga_queue *q, struct rte_bbdev_enc_op **op,
 	rte_bbdev_log_debug("DMA response desc %p", desc);
 
 	*op = desc->enc_req.op_addr;
-	/* Check the decriptor error field, return 1 on error */
+	/* Check the descriptor error field, return 1 on error */
 	desc_error = check_desc_error(desc->enc_req.error);
 	(*op)->status = desc_error << RTE_BBDEV_DATA_ERROR;
 
@@ -2139,7 +2139,7 @@ dequeue_enc_one_op_tb(struct fpga_queue *q, struct rte_bbdev_enc_op **op,
 	for (cb_idx = 0; cb_idx < cbs_in_op; ++cb_idx) {
 		desc = q->ring_addr + ((q->head_free_desc + desc_offset +
 				cb_idx) & q->sw_ring_wrap_mask);
-		/* Check the decriptor error field, return 1 on error */
+		/* Check the descriptor error field, return 1 on error */
 		desc_error = check_desc_error(desc->enc_req.error);
 		status |=  desc_error << RTE_BBDEV_DATA_ERROR;
 		rte_bbdev_log_debug("DMA response desc %p", desc);
@@ -2177,7 +2177,7 @@ dequeue_dec_one_op_cb(struct fpga_queue *q, struct rte_bbdev_dec_op **op,
 	(*op)->turbo_dec.iter_count = (desc->dec_req.iter + 2) >> 1;
 	/* crc_pass = 0 when decoder fails */
 	(*op)->status = !(desc->dec_req.crc_pass) << RTE_BBDEV_CRC_ERROR;
-	/* Check the decriptor error field, return 1 on error */
+	/* Check the descriptor error field, return 1 on error */
 	desc_error = check_desc_error(desc->enc_req.error);
 	(*op)->status |= desc_error << RTE_BBDEV_DATA_ERROR;
 	return 1;
@@ -2221,7 +2221,7 @@ dequeue_dec_one_op_tb(struct fpga_queue *q, struct rte_bbdev_dec_op **op,
 		iter_count = RTE_MAX(iter_count, (uint8_t) desc->dec_req.iter);
 		/* crc_pass = 0 when decoder fails, one fails all */
 		status |= !(desc->dec_req.crc_pass) << RTE_BBDEV_CRC_ERROR;
-		/* Check the decriptor error field, return 1 on error */
+		/* Check the descriptor error field, return 1 on error */
 		desc_error = check_desc_error(desc->enc_req.error);
 		status |= desc_error << RTE_BBDEV_DATA_ERROR;
 		rte_bbdev_log_debug("DMA response desc %p", desc);

@@ -630,7 +630,7 @@ sfc_ef10_essb_rx_qcreate(uint16_t port_id, uint16_t queue_id,
 			      rxq->block_size, rxq->buf_stride);
 	sfc_ef10_essb_rx_info(&rxq->dp.dpq,
 			      "max fill level is %u descs (%u bufs), "
-			      "refill threashold %u descs (%u bufs)",
+			      "refill threshold %u descs (%u bufs)",
 			      rxq->max_fill_level,
 			      rxq->max_fill_level * rxq->block_size,
 			      rxq->refill_threshold,

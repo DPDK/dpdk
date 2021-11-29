@@ -1057,7 +1057,7 @@ sfc_rx_mb_pool_buf_size(struct sfc_adapter *sa, struct rte_mempool *mb_pool)
 	/* Make sure that end padding does not write beyond the buffer */
 	if (buf_aligned < nic_align_end) {
 		/*
-		 * Estimate space which can be lost. If guarnteed buffer
+		 * Estimate space which can be lost. If guaranteed buffer
 		 * size is odd, lost space is (nic_align_end - 1). More
 		 * accurate formula is below.
 		 */
@@ -1702,7 +1702,7 @@ sfc_rx_fini_queues(struct sfc_adapter *sa, unsigned int nb_rx_queues)
 
 	/*
 	 * Finalize only ethdev queues since other ones are finalized only
-	 * on device close and they may require additional deinitializaton.
+	 * on device close and they may require additional deinitialization.
 	 */
 	ethdev_qid = sas->ethdev_rxq_count;
 	while (--ethdev_qid >= (int)nb_rx_queues) {
@@ -1775,7 +1775,7 @@ sfc_rx_configure(struct sfc_adapter *sa)
 
 		reconfigure = true;
 
-		/* Do not ununitialize reserved queues */
+		/* Do not uninitialize reserved queues */
 		if (nb_rx_queues < sas->ethdev_rxq_count)
 			sfc_rx_fini_queues(sa, nb_rx_queues);
 

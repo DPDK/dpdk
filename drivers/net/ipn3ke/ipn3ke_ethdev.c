@@ -483,7 +483,7 @@ static int ipn3ke_vswitch_probe(struct rte_afu_device *afu_dev)
 					RTE_CACHE_LINE_SIZE,
 					afu_dev->device.numa_node);
 		if (!hw) {
-			IPN3KE_AFU_PMD_ERR("failed to allocate hardwart data");
+			IPN3KE_AFU_PMD_ERR("failed to allocate hardware data");
 				retval = -ENOMEM;
 				return -ENOMEM;
 		}

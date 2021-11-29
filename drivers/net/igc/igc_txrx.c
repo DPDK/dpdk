@@ -2099,7 +2099,7 @@ eth_igc_tx_done_cleanup(void *txqueue, uint32_t free_cnt)
 				sw_ring[tx_id].mbuf = NULL;
 				sw_ring[tx_id].last_id = tx_id;
 
-				/* Move to next segemnt. */
+				/* Move to next segment. */
 				tx_id = sw_ring[tx_id].next_id;
 			} while (tx_id != tx_next);
 
@@ -2133,7 +2133,7 @@ eth_igc_tx_done_cleanup(void *txqueue, uint32_t free_cnt)
 			 * Walk the list and find the next mbuf, if any.
 			 */
 			do {
-				/* Move to next segemnt. */
+				/* Move to next segment. */
 				tx_id = sw_ring[tx_id].next_id;
 
 				if (sw_ring[tx_id].mbuf)

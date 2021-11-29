@@ -176,7 +176,7 @@ function. The value returned is the number of parsed arguments:
 .. literalinclude:: ../../../examples/l2fwd-cat/l2fwd-cat.c
     :language: c
     :start-after: Initialize the Environment Abstraction Layer (EAL). 8<
-    :end-before: >8 End of initializion the Environment Abstraction Layer (EAL).
+    :end-before: >8 End of initialization the Environment Abstraction Layer (EAL).
     :dedent: 1
 
 The next task is to initialize the PQoS library and configure CAT. The

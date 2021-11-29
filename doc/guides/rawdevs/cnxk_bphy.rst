@@ -37,7 +37,7 @@ using ``rte_rawdev_queue_conf_get()``.
 
 To perform data transfer use standard ``rte_rawdev_enqueue_buffers()`` and
 ``rte_rawdev_dequeue_buffers()`` APIs. Not all messages produce sensible
-responses hence dequeueing is not always necessary.
+responses hence dequeuing is not always necessary.
 
 BPHY CGX/RPM PMD
 ----------------

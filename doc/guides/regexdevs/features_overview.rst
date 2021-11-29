@@ -22,7 +22,7 @@ PCRE back tracking ctrl
   Support PCRE back tracking ctrl.
 
 PCRE call outs
-  Support PCRE call outes.
+  Support PCRE call routes.
 
 PCRE forward reference
   Support Forward reference.

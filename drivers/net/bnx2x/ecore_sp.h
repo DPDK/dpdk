@@ -430,7 +430,7 @@ enum {
 	RAMROD_RESTORE,
 	 /* Execute the next command now */
 	RAMROD_EXEC,
-	/* Don't add a new command and continue execution of posponed
+	/* Don't add a new command and continue execution of postponed
 	 * commands. If not set a new command will be added to the
 	 * pending commands list.
 	 */
@@ -1173,7 +1173,7 @@ struct ecore_rss_config_obj {
 	/* Last configured indirection table */
 	uint8_t			ind_table[T_ETH_INDIRECTION_TABLE_SIZE];
 
-	/* flags for enabling 4-tupple hash on UDP */
+	/* flags for enabling 4-tuple hash on UDP */
 	uint8_t			udp_rss_v4;
 	uint8_t			udp_rss_v6;
 
@@ -1285,7 +1285,7 @@ enum ecore_q_type {
 #define ECORE_MULTI_TX_COS_E3B0			3
 #define ECORE_MULTI_TX_COS			3 /* Maximum possible */
 #define MAC_PAD (ECORE_ALIGN(ETH_ALEN, sizeof(uint32_t)) - ETH_ALEN)
-/* DMAE channel to be used by FW for timesync workaroun. A driver that sends
+/* DMAE channel to be used by FW for timesync workaround. A driver that sends
  * timesync-related ramrods must not use this DMAE command ID.
  */
 #define FW_DMAE_CMD_ID 6

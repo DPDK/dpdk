@@ -197,7 +197,7 @@ rte_vdev_remove_custom_scan(rte_vdev_scan_callback callback, void *user_arg);
 int rte_vdev_init(const char *name, const char *args);
 
 /**
- * Uninitalize a driver specified by name.
+ * Uninitialize a driver specified by name.
  *
  * @param name
  *   The pointer to a driver name to be uninitialized.

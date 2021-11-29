@@ -96,7 +96,7 @@ bond_mode_alb_arp_xmit(struct rte_ether_hdr *eth_h, uint16_t offset,
  * @param internals		Bonding data.
  *
  * @return
- * Index of slawe on which packet should be sent.
+ * Index of slave on which packet should be sent.
  */
 uint16_t
 bond_mode_alb_arp_upd(struct client_data *client_info,

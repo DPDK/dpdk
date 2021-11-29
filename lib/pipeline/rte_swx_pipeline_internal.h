@@ -309,7 +309,7 @@ enum instruction_type {
 	 */
 	INSTR_ALU_CKADD_FIELD,    /* src = H */
 	INSTR_ALU_CKADD_STRUCT20, /* src = h.header, with sizeof(header) = 20 */
-	INSTR_ALU_CKADD_STRUCT,   /* src = h.hdeader, with any sizeof(header) */
+	INSTR_ALU_CKADD_STRUCT,   /* src = h.header, with any sizeof(header) */
 
 	/* cksub dst src
 	 * dst = dst '- src
@@ -1562,7 +1562,7 @@ emit_handler(struct thread *t)
 		return;
 	}
 
-	/* Header encapsulation (optionally, with prior header decasulation). */
+	/* Header encapsulation (optionally, with prior header decapsulation). */
 	if ((t->n_headers_out == 2) &&
 	    (h1->ptr + h1->n_bytes == t->ptr) &&
 	    (h0->ptr == h0->ptr0)) {

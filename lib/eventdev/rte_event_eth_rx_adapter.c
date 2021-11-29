@@ -3334,7 +3334,7 @@ handle_rxa_get_queue_conf(const char *cmd __rte_unused,
 	token = strtok(NULL, "\0");
 	if (token != NULL)
 		RTE_EDEV_LOG_ERR("Extra parameters passed to eventdev"
-				 " telemetry command, igrnoring");
+				 " telemetry command, ignoring");
 
 	if (rte_event_eth_rx_adapter_queue_conf_get(rx_adapter_id, eth_dev_id,
 						    rx_queue_id, &queue_conf)) {
@@ -3398,7 +3398,7 @@ handle_rxa_get_queue_stats(const char *cmd __rte_unused,
 	token = strtok(NULL, "\0");
 	if (token != NULL)
 		RTE_EDEV_LOG_ERR("Extra parameters passed to eventdev"
-				 " telemetry command, igrnoring");
+				 " telemetry command, ignoring");
 
 	if (rte_event_eth_rx_adapter_queue_stats_get(rx_adapter_id, eth_dev_id,
 						    rx_queue_id, &q_stats)) {
@@ -3460,7 +3460,7 @@ handle_rxa_queue_stats_reset(const char *cmd __rte_unused,
 	token = strtok(NULL, "\0");
 	if (token != NULL)
 		RTE_EDEV_LOG_ERR("Extra parameters passed to eventdev"
-				 " telemetry command, igrnoring");
+				 " telemetry command, ignoring");
 
 	if (rte_event_eth_rx_adapter_queue_stats_reset(rx_adapter_id,
 						       eth_dev_id,

@@ -176,7 +176,7 @@ typedef struct t_fm_prs_result {
 #define FM_FD_ERR_PRS_HDR_ERR	0x00000020
 		/**< Header error was identified during parsing */
 #define FM_FD_ERR_BLOCK_LIMIT_EXCEEDED  0x00000008
-			/**< Frame parsed beyind 256 first bytes */
+			/**< Frame parsed beyond 256 first bytes */
 
 #define FM_FD_TX_STATUS_ERR_MASK	(FM_FD_ERR_UNSUPPORTED_FORMAT   | \
 					FM_FD_ERR_LENGTH		| \

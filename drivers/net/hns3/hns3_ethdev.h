@@ -126,7 +126,7 @@ struct hns3_tc_info {
 	uint8_t tc_sch_mode;  /* 0: sp; 1: dwrr */
 	uint8_t pgid;
 	uint32_t bw_limit;
-	uint8_t up_to_tc_map; /* user priority maping on the TC */
+	uint8_t up_to_tc_map; /* user priority mapping on the TC */
 };
 
 struct hns3_dcb_info {
@@ -571,12 +571,12 @@ struct hns3_hw {
 	/*
 	 * vlan mode.
 	 * value range:
-	 *      HNS3_SW_SHIFT_AND_DISCARD_MODE/HNS3_HW_SHFIT_AND_DISCARD_MODE
+	 *      HNS3_SW_SHIFT_AND_DISCARD_MODE/HNS3_HW_SHIFT_AND_DISCARD_MODE
 	 *
 	 *  - HNS3_SW_SHIFT_AND_DISCARD_MODE
 	 *     For some versions of hardware network engine, because of the
 	 *     hardware limitation, PMD needs to detect the PVID status
-	 *     to work with haredware to implement PVID-related functions.
+	 *     to work with hardware to implement PVID-related functions.
 	 *     For example, driver need discard the stripped PVID tag to ensure
 	 *     the PVID will not report to mbuf and shift the inserted VLAN tag
 	 *     to avoid port based VLAN covering it.
@@ -724,7 +724,7 @@ enum hns3_mp_req_type {
 	HNS3_MP_REQ_MAX
 };
 
-/* Pameters for IPC. */
+/* Parameters for IPC. */
 struct hns3_mp_param {
 	enum hns3_mp_req_type type;
 	int port_id;

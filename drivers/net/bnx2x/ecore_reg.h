@@ -19,7 +19,7 @@
 #define ATC_ATC_INT_STS_REG_ATC_RCPL_TO_EMPTY_CNT		 (0x1 << 3)
 #define ATC_ATC_INT_STS_REG_ATC_TCPL_ERROR			 (0x1 << 4)
 #define ATC_ATC_INT_STS_REG_ATC_TCPL_TO_NOT_PEND		 (0x1 << 1)
-/* [R 1] ATC initalization done */
+/* [R 1] ATC initialization done */
 #define ATC_REG_ATC_INIT_DONE					 0x1100bc
 /* [RW 6] Interrupt mask register #0 read/write */
 #define ATC_REG_ATC_INT_MASK					 0x1101c8
@@ -56,7 +56,7 @@
 #define BRB1_REG_PAUSE_HIGH_THRESHOLD_0				 0x60078
 /* [RW 10] Write client 0: Assert pause threshold. Not Functional */
 #define BRB1_REG_PAUSE_LOW_THRESHOLD_0				 0x60068
-/* [R 24] The number of full blocks occpied by port. */
+/* [R 24] The number of full blocks occupied by port. */
 #define BRB1_REG_PORT_NUM_OCC_BLOCKS_0				 0x60094
 /* [R 5] Used to read the value of the XX protection CAM occupancy counter. */
 #define CCM_REG_CAM_OCCUP					 0xd0188
@@ -456,7 +456,7 @@
 #define IGU_REG_PCI_PF_MSIX_FUNC_MASK				 0x130148
 #define IGU_REG_PCI_PF_MSI_EN					 0x130140
 /* [WB_R 32] Each bit represent the pending bits status for that SB. 0 = no
- * pending; 1 = pending. Pendings means interrupt was asserted; and write
+ * pending; 1 = pending. Pending means interrupt was asserted; and write
  * done was not received. Data valid only in addresses 0-4. all the rest are
  * zero.
  */
@@ -1059,14 +1059,14 @@
 /* [R 28] this field hold the last information that caused reserved
  * attention. bits [19:0] - address; [22:20] function; [23] reserved;
  * [27:24] the master that caused the attention - according to the following
- * encodeing:1 = pxp; 2 = mcp; 3 = usdm; 4 = tsdm; 5 = xsdm; 6 = csdm; 7 =
+ * encoding:1 = pxp; 2 = mcp; 3 = usdm; 4 = tsdm; 5 = xsdm; 6 = csdm; 7 =
  * dbu; 8 = dmae
  */
 #define MISC_REG_GRC_RSV_ATTN					 0xa3c0
 /* [R 28] this field hold the last information that caused timeout
  * attention. bits [19:0] - address; [22:20] function; [23] reserved;
  * [27:24] the master that caused the attention - according to the following
- * encodeing:1 = pxp; 2 = mcp; 3 = usdm; 4 = tsdm; 5 = xsdm; 6 = csdm; 7 =
+ * encoding:1 = pxp; 2 = mcp; 3 = usdm; 4 = tsdm; 5 = xsdm; 6 = csdm; 7 =
  * dbu; 8 = dmae
  */
 #define MISC_REG_GRC_TIMEOUT_ATTN				 0xa3c4
@@ -1567,7 +1567,7 @@
  * MAC DA 2. The reset default is set to mask out all parameters.
  */
 #define NIG_REG_P0_LLH_PTP_PARAM_MASK				 0x187a0
-/* [RW 14] Mask regiser for the rules used in detecting PTP packets. Set
+/* [RW 14] Mask register for the rules used in detecting PTP packets. Set
  * each bit to 1 to mask out that particular rule. 0-{IPv4 DA 0; UDP DP 0} .
  * 1-{IPv4 DA 0; UDP DP 1} . 2-{IPv4 DA 1; UDP DP 0} . 3-{IPv4 DA 1; UDP DP
  * 1} . 4-{IPv6 DA 0; UDP DP 0} . 5-{IPv6 DA 0; UDP DP 1} . 6-{IPv6 DA 1;
@@ -1672,7 +1672,7 @@
  * MAC DA 2. The reset default is set to mask out all parameters.
  */
 #define NIG_REG_P0_TLLH_PTP_PARAM_MASK				 0x187f0
-/* [RW 14] Mask regiser for the rules used in detecting PTP packets. Set
+/* [RW 14] Mask register for the rules used in detecting PTP packets. Set
  * each bit to 1 to mask out that particular rule. 0-{IPv4 DA 0; UDP DP 0} .
  * 1-{IPv4 DA 0; UDP DP 1} . 2-{IPv4 DA 1; UDP DP 0} . 3-{IPv4 DA 1; UDP DP
  * 1} . 4-{IPv6 DA 0; UDP DP 0} . 5-{IPv6 DA 0; UDP DP 1} . 6-{IPv6 DA 1;
@@ -1839,7 +1839,7 @@
  * MAC DA 2. The reset default is set to mask out all parameters.
  */
 #define NIG_REG_P1_LLH_PTP_PARAM_MASK				 0x187c8
-/* [RW 14] Mask regiser for the rules used in detecting PTP packets. Set
+/* [RW 14] Mask register for the rules used in detecting PTP packets. Set
  * each bit to 1 to mask out that particular rule. 0-{IPv4 DA 0; UDP DP 0} .
  * 1-{IPv4 DA 0; UDP DP 1} . 2-{IPv4 DA 1; UDP DP 0} . 3-{IPv4 DA 1; UDP DP
  * 1} . 4-{IPv6 DA 0; UDP DP 0} . 5-{IPv6 DA 0; UDP DP 1} . 6-{IPv6 DA 1;
@@ -1926,7 +1926,7 @@
  * MAC DA 2. The reset default is set to mask out all parameters.
  */
 #define NIG_REG_P1_TLLH_PTP_PARAM_MASK				 0x187f8
-/* [RW 14] Mask regiser for the rules used in detecting PTP packets. Set
+/* [RW 14] Mask register for the rules used in detecting PTP packets. Set
  * each bit to 1 to mask out that particular rule. 0-{IPv4 DA 0; UDP DP 0} .
  * 1-{IPv4 DA 0; UDP DP 1} . 2-{IPv4 DA 1; UDP DP 0} . 3-{IPv4 DA 1; UDP DP
  * 1} . 4-{IPv6 DA 0; UDP DP 0} . 5-{IPv6 DA 0; UDP DP 1} . 6-{IPv6 DA 1;
@@ -2306,7 +2306,7 @@
 #define PBF_REG_HDRS_AFTER_BASIC				 0x15c0a8
 /* [RW 6] Bit-map indicating which L2 hdrs may appear after L2 tag 0 */
 #define PBF_REG_HDRS_AFTER_TAG_0				 0x15c0b8
-/* [R 1] Removed for E3 B0 - Indicates which COS is conncted to the highest
+/* [R 1] Removed for E3 B0 - Indicates which COS is connected to the highest
  * priority in the command arbiter.
  */
 #define PBF_REG_HIGH_PRIORITY_COS_NUM				 0x15c04c
@@ -2366,7 +2366,7 @@
  */
 #define PBF_REG_NUM_STRICT_ARB_SLOTS				 0x15c064
 /* [R 11] Removed for E3 B0 - Port 0 threshold used by arbiter in 16 byte
- * lines used when pause not suppoterd.
+ * lines used when pause not supported.
  */
 #define PBF_REG_P0_ARB_THRSH					 0x1400e4
 /* [R 11] Removed for E3 B0 - Current credit for port 0 in the tx port
@@ -3503,7 +3503,7 @@
  * queues.
  */
 #define QM_REG_OVFERROR						 0x16805c
-/* [RC 6] the Q were the qverflow occurs */
+/* [RC 6] the Q were the overflow occurs */
 #define QM_REG_OVFQNUM						 0x168058
 /* [R 16] Pause state for physical queues 15-0 */
 #define QM_REG_PAUSESTATE0					 0x168410
@@ -4890,7 +4890,7 @@
 	if set, generate pcie_err_attn output when this error is seen. WC \
 	*/
 #define PXPCS_TL_FUNC345_STAT_ERR_MASTER_ABRT2 \
-	(1 << 3) /* Receive UR Statusfor Function 2. If set, generate \
+	(1 << 3) /* Receive UR Status for Function 2. If set, generate \
 	pcie_err_attn output when this error is seen. WC */
 #define PXPCS_TL_FUNC345_STAT_ERR_CPL_TIMEOUT2 \
 	(1 << 2) /* Completer Timeout Status Status for Function 2, if \
@@ -4986,7 +4986,7 @@
 	if set, generate pcie_err_attn output when this error is seen. WC \
 	*/
 #define PXPCS_TL_FUNC678_STAT_ERR_MASTER_ABRT5 \
-	(1 << 3) /* Receive UR Statusfor Function 5. If set, generate \
+	(1 << 3) /* Receive UR Status for Function 5. If set, generate \
 	pcie_err_attn output when this error is seen. WC */
 #define PXPCS_TL_FUNC678_STAT_ERR_CPL_TIMEOUT5 \
 	(1 << 2) /* Completer Timeout Status Status for Function 5, if \

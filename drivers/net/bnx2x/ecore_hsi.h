@@ -1062,7 +1062,7 @@ struct port_feat_cfg {		    /* port 0: 0x454  port 1: 0x4c8 */
 		#define PORT_FEATURE_MBA_LINK_SPEED_20G              0x20000000
 
 	/* Secondary MBA configuration,
-	 * see mba_config for the fileds defination.
+	 * see mba_config for the fields definition.
 	 */
 	uint32_t mba_config2;
 
@@ -1075,7 +1075,7 @@ struct port_feat_cfg {		    /* port 0: 0x454  port 1: 0x4c8 */
 	#define PORT_FEATURE_BOFM_CFGD_VEN                  0x00080000
 
 	/* Secondary MBA configuration,
-	 * see mba_vlan_cfg for the fileds defination.
+	 * see mba_vlan_cfg for the fields definition.
 	 */
 	uint32_t mba_vlan_cfg2;
 
@@ -1429,7 +1429,7 @@ struct extended_dev_info_shared_cfg {             /* NVRAM OFFSET */
 	#define EXTENDED_DEV_INFO_SHARED_CFG_DBG_GEN3_COMPLI_ENA      0x00080000
 
 	/*  Override Rx signal detect threshold when enabled the threshold
-	 * will be set staticaly
+	 * will be set statically
 	 */
 	#define EXTENDED_DEV_INFO_SHARED_CFG_OVERRIDE_RX_SIG_MASK     0x00100000
 	#define EXTENDED_DEV_INFO_SHARED_CFG_OVERRIDE_RX_SIG_SHIFT    20
@@ -2189,9 +2189,9 @@ struct eee_remote_vals {
  * elements on a per byte or word boundary.
  *
  * example: an array with 8 entries each 4 bit wide. This array will fit into
- * a single dword. The diagrmas below show the array order of the nibbles.
+ * a single dword. The diagrams below show the array order of the nibbles.
  *
- * SHMEM_ARRAY_BITPOS(i, 4, 4) defines the stadard ordering:
+ * SHMEM_ARRAY_BITPOS(i, 4, 4) defines the standard ordering:
  *
  *                |                |                |               |
  *   0    |   1   |   2    |   3   |   4    |   5   |   6   |   7   |
@@ -2519,17 +2519,17 @@ struct shmem_lfa {
 };
 
 /*
- * Used to suppoert NSCI get OS driver version
+ * Used to support NSCI get OS driver version
  * On driver load the version value will be set
  * On driver unload driver value of 0x0 will be set
  */
 struct os_drv_ver {
 	#define DRV_VER_NOT_LOADED                      0
-	/*personalites orrder is importent */
+	/* personalities order is important */
 	#define DRV_PERS_ETHERNET                       0
 	#define DRV_PERS_ISCSI                          1
 	#define DRV_PERS_FCOE                           2
-	/*shmem2 struct is constatnt can't add more personalites here*/
+	/* shmem2 struct is constant can't add more personalities here */
 	#define MAX_DRV_PERS                            3
 	uint32_t  versions[MAX_DRV_PERS];
 };
@@ -2821,7 +2821,7 @@ struct shmem2_region {
 	/* Flag to the driver that PF's drv_info_host_addr buffer was read */
 	uint32_t mfw_drv_indication;			/* Offset 0x19c */
 
-	/* We use inidcation for each PF (0..3) */
+	/* We use indication for each PF (0..3) */
 	#define MFW_DRV_IND_READ_DONE_OFFSET(_pf_)  (1 << (_pf_))
 
 	union { /* For various OEMs */			/* Offset 0x1a0 */
@@ -6195,7 +6195,7 @@ struct hc_sb_data {
 
 
 /*
- * Segment types for host coaslescing
+ * Segment types for host coalescing
  */
 enum hc_segment {
 	HC_REGULAR_SEGMENT,
@@ -6242,7 +6242,7 @@ struct hc_status_block_data_e2 {
 
 
 /*
- * IGU block operartion modes (in Everest2)
+ * IGU block operation modes (in Everest2)
  */
 enum igu_mode {
 	HC_IGU_BC_MODE,
@@ -6508,7 +6508,7 @@ struct stats_query_header {
 
 
 /*
- * Types of statistcis query entry
+ * Types of statistics query entry
  */
 enum stats_query_type {
 	STATS_TYPE_QUEUE,
@@ -6542,7 +6542,7 @@ enum storm_id {
 
 
 /*
- * Taffic types used in ETS and flow control algorithms
+ * Traffic types used in ETS and flow control algorithms
  */
 enum traffic_type {
 	LLFC_TRAFFIC_TYPE_NW,

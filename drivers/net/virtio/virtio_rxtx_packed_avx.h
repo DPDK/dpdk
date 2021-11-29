@@ -192,7 +192,7 @@ virtqueue_dequeue_batch_packed_vec(struct virtnet_rx *rxvq,
 
 	/*
 	 * load len from desc, store into mbuf pkt_len and data_len
-	 * len limiated by l6bit buf_len, pkt_len[16:31] can be ignored
+	 * len limited by l6bit buf_len, pkt_len[16:31] can be ignored
 	 */
 	const __mmask16 mask = 0x6 | 0x6 << 4 | 0x6 << 8 | 0x6 << 12;
 	__m512i values = _mm512_maskz_shuffle_epi32(mask, v_desc, 0xAA);

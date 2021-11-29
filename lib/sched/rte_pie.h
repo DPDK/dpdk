@@ -252,7 +252,7 @@ _rte_pie_drop(const struct rte_pie_config *pie_cfg,
 }
 
 /**
- * @brief Decides if new packet should be enqeued or dropped for non-empty queue
+ * @brief Decides if new packet should be enqueued or dropped for non-empty queue
  *
  * @param pie_cfg [in] config pointer to a PIE configuration parameter structure
  * @param pie [in,out] data pointer to PIE runtime data
@@ -319,7 +319,7 @@ rte_pie_enqueue_nonempty(const struct rte_pie_config *pie_cfg,
 }
 
 /**
- * @brief Decides if new packet should be enqeued or dropped
+ * @brief Decides if new packet should be enqueued or dropped
  * Updates run time data and gives verdict whether to enqueue or drop the packet.
  *
  * @param pie_cfg [in] config pointer to a PIE configuration parameter structure
@@ -330,7 +330,7 @@ rte_pie_enqueue_nonempty(const struct rte_pie_config *pie_cfg,
  *
  * @return Operation status
  * @retval 0 enqueue the packet
- * @retval 1 drop the packet based on drop probility criteria
+ * @retval 1 drop the packet based on drop probability criteria
  */
 static inline int
 __rte_experimental

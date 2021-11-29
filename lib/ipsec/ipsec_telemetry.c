@@ -236,7 +236,7 @@ RTE_INIT(rte_ipsec_telemetry_init)
 		"Return list of IPsec SAs with telemetry enabled.");
 	rte_telemetry_register_cmd("/ipsec/sa/stats",
 		handle_telemetry_cmd_ipsec_sa_stats,
-		"Returns IPsec SA stastistics. Parameters: int sa_spi");
+		"Returns IPsec SA statistics. Parameters: int sa_spi");
 	rte_telemetry_register_cmd("/ipsec/sa/details",
 		handle_telemetry_cmd_ipsec_sa_details,
 		"Returns IPsec SA configuration. Parameters: int sa_spi");

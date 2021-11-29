@@ -20,7 +20,7 @@ REMOTE_MAC=`ssh ${REMOTE_HOST} ip addr show dev ${REMOTE_IFACE}`
 st=$?
 REMOTE_MAC=`echo ${REMOTE_MAC} | sed -e 's/^.*ether //' -e 's/ brd.*$//'`
 if [[ $st -ne 0 || -z "${REMOTE_MAC}" ]]; then
-	echo "coouldn't retrieve ether addr from ${REMOTE_IFACE}"
+	echo "couldn't retrieve ether addr from ${REMOTE_IFACE}"
 	exit 127
 fi
 
@@ -40,7 +40,7 @@ DPDK_VARS=""
 
 # by default ipsec-secgw can't deal with multi-segment packets
 # make sure our local/remote host wouldn't generate fragmented packets
-# if reassmebly option is not enabled
+# if reassembly option is not enabled
 DEF_MTU_LEN=1400
 DEF_PING_LEN=1200
 

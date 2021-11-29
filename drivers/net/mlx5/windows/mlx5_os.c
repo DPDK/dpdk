@@ -226,7 +226,7 @@ mlx5_os_free_shared_dr(struct mlx5_priv *priv)
  *   Pointer to RQ channel object, which includes the channel fd
  *
  * @param[out] fd
- *   The file descriptor (representing the intetrrupt) used in this channel.
+ *   The file descriptor (representing the interrupt) used in this channel.
  *
  * @return
  *   0 on successfully setting the fd to non-blocking, non-zero otherwise.

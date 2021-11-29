@@ -21,7 +21,7 @@ nicvf_svf_push(struct nicvf *vf)
 
 	entry = rte_zmalloc("nicvf", sizeof(*entry), RTE_CACHE_LINE_SIZE);
 	if (entry == NULL)
-		rte_panic("Cannoc allocate memory for svf_entry\n");
+		rte_panic("Cannot allocate memory for svf_entry\n");
 
 	entry->vf = vf;
 

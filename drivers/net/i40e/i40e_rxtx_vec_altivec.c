@@ -430,7 +430,7 @@ _recv_raw_pkts_vec(struct i40e_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 		desc_to_ptype_v(descs, &rx_pkts[pos], ptype_tbl);
 		desc_to_olflags_v(descs, &rx_pkts[pos]);
 
-		/* C.4 calc avaialbe number of desc */
+		/* C.4 calc available number of desc */
 		var = __builtin_popcountll((vec_ld(0,
 			(vector unsigned long *)&staterr)[0]));
 		nb_pkts_recd += var;

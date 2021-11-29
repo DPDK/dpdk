@@ -303,7 +303,7 @@ __rte_red_drop(const struct rte_red_config *red_cfg, struct rte_red *red)
 }
 
 /**
- * @brief Decides if new packet should be enqeued or dropped in queue non-empty case
+ * @brief Decides if new packet should be enqueued or dropped in queue non-empty case
  *
  * @param red_cfg [in] config pointer to a RED configuration parameter structure
  * @param red [in,out] data pointer to RED runtime data
@@ -361,7 +361,7 @@ rte_red_enqueue_nonempty(const struct rte_red_config *red_cfg,
 }
 
 /**
- * @brief Decides if new packet should be enqeued or dropped
+ * @brief Decides if new packet should be enqueued or dropped
  * Updates run time data based on new queue size value.
  * Based on new queue average and RED configuration parameters
  * gives verdict whether to enqueue or drop the packet.

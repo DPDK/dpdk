@@ -241,7 +241,7 @@ struct vf_close_tlv {
 	uint8_t pad[2];
 };
 
-/* rlease the VF's acquired resources */
+/* release the VF's acquired resources */
 struct vf_release_tlv {
 	struct vf_first_tlv   first_tlv;
 	uint16_t		vf_id;  /* for debug */

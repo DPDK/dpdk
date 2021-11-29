@@ -12,7 +12,7 @@ cnxk_nix_read_clock(struct rte_eth_dev *eth_dev, uint64_t *clock)
 	/* This API returns the raw PTP HI clock value. Since LFs do not
 	 * have direct access to PTP registers and it requires mbox msg
 	 * to AF for this value. In fastpath reading this value for every
-	 * packet (which involes mbox call) becomes very expensive, hence
+	 * packet (which involves mbox call) becomes very expensive, hence
 	 * we should be able to derive PTP HI clock value from tsc by
 	 * using freq_mult and clk_delta calculated during configure stage.
 	 */

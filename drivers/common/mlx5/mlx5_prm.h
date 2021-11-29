@@ -4172,7 +4172,7 @@ mlx5_flow_mark_get(uint32_t val)
  *   timestamp format supported by the queue.
  *
  * @return
- *   Converted timstamp format settings.
+ *   Converted timestamp format settings.
  */
 static inline uint32_t
 mlx5_ts_format_conv(uint32_t ts_format)

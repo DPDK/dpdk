@@ -1541,7 +1541,7 @@ mlx5_mempool_reg_create(struct rte_mempool *mp, unsigned int mrs_n,
  * Destroy a mempool registration object.
  *
  * @param standalone
- *   Whether @p mpr owns its MRs excludively, i.e. they are not shared.
+ *   Whether @p mpr owns its MRs exclusively, i.e. they are not shared.
  */
 static void
 mlx5_mempool_reg_destroy(struct mlx5_mr_share_cache *share_cache,

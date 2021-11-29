@@ -68,7 +68,7 @@ struct port_params {
 	struct rte_ether_addr system;
 	/**< System ID - Slave MAC address, same as bonding MAC address */
 	uint16_t key;
-	/**< Speed information (implementation dependednt) and duplex. */
+	/**< Speed information (implementation dependent) and duplex. */
 	uint16_t port_priority;
 	/**< Priority of this (unused in current implementation) */
 	uint16_t port_number;
@@ -317,7 +317,7 @@ rte_eth_bond_8023ad_dedicated_queues_disable(uint16_t port_id);
  * @param port_id Bonding device id
  *
  * @return
- *   agregator mode on success, negative value otherwise
+ *   aggregator mode on success, negative value otherwise
  */
 int
 rte_eth_bond_8023ad_agg_selection_get(uint16_t port_id);

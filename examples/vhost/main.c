@@ -107,7 +107,7 @@ static uint32_t burst_rx_retry_num = BURST_RX_RETRIES;
 static char *socket_files;
 static int nb_sockets;
 
-/* empty vmdq configuration structure. Filled in programatically */
+/* empty VMDq configuration structure. Filled in programmatically */
 static struct rte_eth_conf vmdq_conf_default = {
 	.rxmode = {
 		.mq_mode        = RTE_ETH_MQ_RX_VMDQ_ONLY,
@@ -115,7 +115,7 @@ static struct rte_eth_conf vmdq_conf_default = {
 		/*
 		 * VLAN strip is necessary for 1G NIC such as I350,
 		 * this fixes bug of ipv4 forwarding in guest can't
-		 * forward pakets from one virtio dev to another virtio dev.
+		 * forward packets from one virtio dev to another virtio dev.
 		 */
 		.offloads = RTE_ETH_RX_OFFLOAD_VLAN_STRIP,
 	},
@@ -463,7 +463,7 @@ us_vhost_usage(const char *prgname)
 	"		--nb-devices ND\n"
 	"		-p PORTMASK: Set mask for ports to be used by application\n"
 	"		--vm2vm [0|1|2]: disable/software(default)/hardware vm2vm comms\n"
-	"		--rx-retry [0|1]: disable/enable(default) retries on rx. Enable retry if destintation queue is full\n"
+	"		--rx-retry [0|1]: disable/enable(default) retries on Rx. Enable retry if destination queue is full\n"
 	"		--rx-retry-delay [0-N]: timeout(in usecond) between retries on RX. This makes effect only if retries on rx enabled\n"
 	"		--rx-retry-num [0-N]: the number of retries on rx. This makes effect only if retries on rx enabled\n"
 	"		--mergeable [0|1]: disable(default)/enable RX mergeable buffers\n"
@@ -1289,7 +1289,7 @@ switch_worker(void *arg __rte_unused)
 	struct vhost_dev *vdev;
 	struct mbuf_table *tx_q;
 
-	RTE_LOG(INFO, VHOST_DATA, "Procesing on Core %u started\n", lcore_id);
+	RTE_LOG(INFO, VHOST_DATA, "Processing on Core %u started\n", lcore_id);
 
 	tx_q = &lcore_tx_queue[lcore_id];
 	for (i = 0; i < rte_lcore_count(); i++) {
@@ -1333,7 +1333,7 @@ switch_worker(void *arg __rte_unused)
 
 /*
  * Remove a device from the specific data core linked list and from the
- * main linked list. Synchonization  occurs through the use of the
+ * main linked list. Synchronization  occurs through the use of the
  * lcore dev_removal_flag. Device is made volatile here to avoid re-ordering
  * of dev->remove=1 which can cause an infinite loop in the rte_pause loop.
  */

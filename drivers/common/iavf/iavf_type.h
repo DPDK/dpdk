@@ -1006,7 +1006,7 @@ struct iavf_profile_tlv_section_record {
 	u8 data[12];
 };
 
-/* Generic AQ section in proflie */
+/* Generic AQ section in profile */
 struct iavf_profile_aq_section {
 	u16 opcode;
 	u16 flags;

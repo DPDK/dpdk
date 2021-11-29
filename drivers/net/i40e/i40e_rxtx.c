@@ -609,7 +609,7 @@ i40e_rx_alloc_bufs(struct i40e_rx_queue *rxq)
 		rxdp[i].read.pkt_addr = dma_addr;
 	}
 
-	/* Update rx tail regsiter */
+	/* Update rx tail register */
 	I40E_PCI_REG_WRITE(rxq->qrx_tail, rxq->rx_free_trigger);
 
 	rxq->rx_free_trigger =
@@ -995,7 +995,7 @@ i40e_recv_scattered_pkts(void *rx_queue,
 	 * threshold of the queue, advance the Receive Descriptor Tail (RDT)
 	 * register. Update the RDT with the value of the last processed RX
 	 * descriptor minus 1, to guarantee that the RDT register is never
-	 * equal to the RDH register, which creates a "full" ring situtation
+	 * equal to the RDH register, which creates a "full" ring situation
 	 * from the hardware point of view.
 	 */
 	nb_hold = (uint16_t)(nb_hold + rxq->nb_rx_hold);
@@ -1467,7 +1467,7 @@ tx_xmit_pkts(struct i40e_tx_queue *txq,
 	i40e_tx_fill_hw_ring(txq, tx_pkts + n, (uint16_t)(nb_pkts - n));
 	txq->tx_tail = (uint16_t)(txq->tx_tail + (nb_pkts - n));
 
-	/* Determin if RS bit needs to be set */
+	/* Determine if RS bit needs to be set */
 	if (txq->tx_tail > txq->tx_next_rs) {
 		txr[txq->tx_next_rs].cmd_type_offset_bsz |=
 			rte_cpu_to_le_64(((uint64_t)I40E_TX_DESC_CMD_RS) <<
@@ -1697,7 +1697,7 @@ i40e_dev_rx_queue_start(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 	}
 
 	if (rxq->rx_deferred_start)
-		PMD_DRV_LOG(WARNING, "RX queue %u is deferrd start",
+		PMD_DRV_LOG(WARNING, "RX queue %u is deferred start",
 			    rx_queue_id);
 
 	err = i40e_alloc_rx_queue_mbufs(rxq);
@@ -1706,7 +1706,7 @@ i40e_dev_rx_queue_start(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 		return err;
 	}
 
-	/* Init the RX tail regieter. */
+	/* Init the RX tail register. */
 	I40E_PCI_REG_WRITE(rxq->qrx_tail, rxq->nb_rx_desc - 1);
 
 	err = i40e_switch_rx_queue(hw, rxq->reg_idx, TRUE);
@@ -1771,7 +1771,7 @@ i40e_dev_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 	}
 
 	if (txq->tx_deferred_start)
-		PMD_DRV_LOG(WARNING, "TX queue %u is deferrd start",
+		PMD_DRV_LOG(WARNING, "TX queue %u is deferred start",
 			    tx_queue_id);
 
 	/*
@@ -1930,7 +1930,7 @@ i40e_dev_rx_queue_setup_runtime(struct rte_eth_dev *dev,
 		PMD_DRV_LOG(ERR, "Can't use default burst.");
 		return -EINVAL;
 	}
-	/* check scatterred conflict */
+	/* check scattered conflict */
 	if (!dev->data->scattered_rx && use_scattered_rx) {
 		PMD_DRV_LOG(ERR, "Scattered rx is required.");
 		return -EINVAL;
@@ -2014,7 +2014,7 @@ i40e_dev_rx_queue_setup(struct rte_eth_dev *dev,
 	rxq->rx_deferred_start = rx_conf->rx_deferred_start;
 	rxq->offloads = offloads;
 
-	/* Allocate the maximun number of RX ring hardware descriptor. */
+	/* Allocate the maximum number of RX ring hardware descriptor. */
 	len = I40E_MAX_RING_DESC;
 
 	/**
@@ -2322,7 +2322,7 @@ i40e_dev_tx_queue_setup(struct rte_eth_dev *dev,
 	 */
 	tx_free_thresh = (uint16_t)((tx_conf->tx_free_thresh) ?
 		tx_conf->tx_free_thresh : DEFAULT_TX_FREE_THRESH);
-	/* force tx_rs_thresh to adapt an aggresive tx_free_thresh */
+	/* force tx_rs_thresh to adapt an aggressive tx_free_thresh */
 	tx_rs_thresh = (DEFAULT_TX_RS_THRESH + tx_free_thresh > nb_desc) ?
 		nb_desc - tx_free_thresh : DEFAULT_TX_RS_THRESH;
 	if (tx_conf->tx_rs_thresh > 0)
@@ -2991,7 +2991,7 @@ i40e_rx_queue_init(struct i40e_rx_queue *rxq)
 	if (rxq->max_pkt_len > buf_size)
 		dev_data->scattered_rx = 1;
 
-	/* Init the RX tail regieter. */
+	/* Init the RX tail register. */
 	I40E_PCI_REG_WRITE(rxq->qrx_tail, rxq->nb_rx_desc - 1);
 
 	return 0;

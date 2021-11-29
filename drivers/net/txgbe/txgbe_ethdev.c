@@ -1678,7 +1678,7 @@ txgbe_dev_start(struct rte_eth_dev *dev)
 			return -ENOMEM;
 		}
 	}
-	/* confiugre msix for sleep until rx interrupt */
+	/* configure msix for sleep until rx interrupt */
 	txgbe_configure_msix(dev);
 
 	/* initialize transmission unit */
@@ -3682,7 +3682,7 @@ txgbe_set_ivar_map(struct txgbe_hw *hw, int8_t direction,
 		wr32(hw, TXGBE_IVARMISC, tmp);
 	} else {
 		/* rx or tx causes */
-		/* Workround for ICR lost */
+		/* Workaround for ICR lost */
 		idx = ((16 * (queue & 1)) + (8 * direction));
 		tmp = rd32(hw, TXGBE_IVAR(queue >> 1));
 		tmp &= ~(0xFF << idx);
@@ -4387,7 +4387,7 @@ txgbe_timesync_disable(struct rte_eth_dev *dev)
 	/* Disable L2 filtering of IEEE1588/802.1AS Ethernet frame types. */
 	wr32(hw, TXGBE_ETFLT(TXGBE_ETF_ID_1588), 0);
 
-	/* Stop incrementating the System Time registers. */
+	/* Stop incrementing the System Time registers. */
 	wr32(hw, TXGBE_TSTIMEINC, 0);
 
 	return 0;

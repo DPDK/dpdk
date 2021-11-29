@@ -1115,7 +1115,7 @@ vhost_user_postcopy_region_register(struct virtio_net *dev,
 	struct uffdio_register reg_struct;
 
 	/*
-	 * Let's register all the mmap'ed area to ensure
+	 * Let's register all the mmapped area to ensure
 	 * alignment on page boundary.
 	 */
 	reg_struct.range.start = (uint64_t)(uintptr_t)reg->mmap_addr;
@@ -1177,7 +1177,7 @@ vhost_user_postcopy_register(struct virtio_net *dev, int main_fd,
 	msg->fd_num = 0;
 	send_vhost_reply(main_fd, msg);
 
-	/* Wait for qemu to acknolwedge it's got the addresses
+	/* Wait for qemu to acknowledge it got the addresses
 	 * we've got to wait before we're allowed to generate faults.
 	 */
 	if (read_vhost_message(main_fd, &ack_msg) <= 0) {

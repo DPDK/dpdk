@@ -19,7 +19,7 @@
 #include <rte_crypto_sym.h>
 #include <cryptodev_pmd.h>
 
-/**< CCP sspecific */
+/**< CCP specific */
 #define MAX_HW_QUEUES                   5
 #define CCP_MAX_TRNG_RETRIES		10
 #define CCP_ALIGN(x, y) ((((x) + (y - 1)) / y) * y)

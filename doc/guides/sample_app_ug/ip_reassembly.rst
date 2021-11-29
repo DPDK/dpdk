@@ -154,8 +154,8 @@ each RX queue uses its own mempool.
 
 .. literalinclude:: ../../../examples/ip_reassembly/main.c
     :language: c
-    :start-after: mbufs stored int the gragment table. 8<
-    :end-before: >8 End of mbufs stored int the fragmentation table.
+    :start-after: mbufs stored in the fragment table. 8<
+    :end-before: >8 End of mbufs stored in the fragmentation table.
     :dedent: 1
 
 Packet Reassembly and Forwarding

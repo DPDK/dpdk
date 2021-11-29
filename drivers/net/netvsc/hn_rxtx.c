@@ -578,7 +578,7 @@ static void hn_rxpkt(struct hn_rx_queue *rxq, struct hn_rx_bufinfo *rxb,
 		rte_iova_t iova;
 
 		/*
-		 * Build an external mbuf that points to recveive area.
+		 * Build an external mbuf that points to receive area.
 		 * Use refcount to handle multiple packets in same
 		 * receive buffer section.
 		 */
@@ -1031,7 +1031,7 @@ hn_dev_rx_queue_count(void *rx_queue)
  * returns:
  *  - -EINVAL               - offset outside of ring
  *  - RTE_ETH_RX_DESC_AVAIL - no data available yet
- *  - RTE_ETH_RX_DESC_DONE  - data is waiting in stagin ring
+ *  - RTE_ETH_RX_DESC_DONE  - data is waiting in staging ring
  */
 int hn_dev_rx_queue_status(void *arg, uint16_t offset)
 {

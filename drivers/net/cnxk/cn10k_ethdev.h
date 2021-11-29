@@ -53,7 +53,7 @@ struct cn10k_outb_priv_data {
 	void *userdata;
 	/* Rlen computation data */
 	struct cnxk_ipsec_outb_rlens rlens;
-	/* Back pinter to eth sec session */
+	/* Back pointer to eth sec session */
 	struct cnxk_eth_sec_sess *eth_sec;
 	/* SA index */
 	uint32_t sa_idx;

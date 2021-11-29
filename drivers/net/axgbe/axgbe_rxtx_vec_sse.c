@@ -11,7 +11,7 @@
 #include <rte_mempool.h>
 #include <rte_mbuf.h>
 
-/* Useful to avoid shifting for every descriptor prepration*/
+/* Useful to avoid shifting for every descriptor preparation */
 #define TX_DESC_CTRL_FLAGS 0xb000000000000000
 #define TX_DESC_CTRL_FLAG_TMST 0x40000000
 #define TX_FREE_BULK	   8

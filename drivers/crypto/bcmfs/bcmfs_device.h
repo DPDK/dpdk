@@ -32,7 +32,7 @@ enum bcmfs_device_type {
 	BCMFS_UNKNOWN
 };
 
-/* A table to store registered queue pair opertations */
+/* A table to store registered queue pair operations */
 struct bcmfs_hw_queue_pair_ops_table {
 	rte_spinlock_t tl;
 	/* Number of used ops structs in the table. */

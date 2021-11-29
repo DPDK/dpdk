@@ -88,7 +88,7 @@
 
 /*
  * In Cavium OCTEON TX SoC, all accesses to the device registers are
- * implictly strongly ordered. So, The relaxed version of IO operation is
+ * implicitly strongly ordered. So, The relaxed version of IO operation is
  * safe to use with out any IO memory barriers.
  */
 #define ssovf_read64 rte_read64_relaxed

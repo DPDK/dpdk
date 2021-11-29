@@ -207,7 +207,7 @@ err_free:
  * nfp_resource_release() - Release a NFP Resource handle
  * @res:	NFP Resource handle
  *
- * NOTE: This function implictly unlocks the resource handle
+ * NOTE: This function implicitly unlocks the resource handle
  */
 void
 nfp_resource_release(struct nfp_resource *res)

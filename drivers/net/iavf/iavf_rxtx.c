@@ -648,8 +648,8 @@ iavf_dev_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 		return -ENOMEM;
 	}
 
-	/* Allocate the maximun number of RX ring hardware descriptor with
-	 * a liitle more to support bulk allocate.
+	/* Allocate the maximum number of RX ring hardware descriptor with
+	 * a little more to support bulk allocate.
 	 */
 	len = IAVF_MAX_RING_DESC + IAVF_RX_MAX_BURST;
 	ring_size = RTE_ALIGN(len * sizeof(union iavf_rx_desc),

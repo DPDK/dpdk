@@ -184,7 +184,7 @@ rte_fib6_lookup_bulk(struct rte_fib6 *fib,
  *   FIB6 object handle
  * @return
  *   Pointer on the dataplane struct on success
- *   NULL othervise
+ *   NULL otherwise
  */
 void *
 rte_fib6_get_dp(struct rte_fib6 *fib);
@@ -196,7 +196,7 @@ rte_fib6_get_dp(struct rte_fib6 *fib);
  *   FIB object handle
  * @return
  *   Pointer on the RIB6 on success
- *   NULL othervise
+ *   NULL otherwise
  */
 struct rte_rib6 *
 rte_fib6_get_rib(struct rte_fib6 *fib);

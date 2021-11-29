@@ -1358,7 +1358,7 @@ bnx2x_prep_fw_stats_req(struct bnx2x_softc *sc)
 
     /*
      * Prepare the first stats ramrod (will be completed with
-     * the counters equal to zero) - init counters to somethig different.
+     * the counters equal to zero) - init counters to something different.
      */
     memset(&sc->fw_stats_data->storm_counters, 0xff,
 	   sizeof(struct stats_counter));

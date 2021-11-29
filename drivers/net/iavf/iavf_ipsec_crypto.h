@@ -73,7 +73,7 @@ enum iavf_ipsec_iv_len {
 };
 
 
-/* IPsec Crypto Packet Metaday offload flags */
+/* IPsec Crypto Packet Metadata offload flags */
 #define IAVF_IPSEC_CRYPTO_OL_FLAGS_IS_TUN		(0x1 << 0)
 #define IAVF_IPSEC_CRYPTO_OL_FLAGS_ESN			(0x1 << 1)
 #define IAVF_IPSEC_CRYPTO_OL_FLAGS_IPV6_EXT_HDRS	(0x1 << 2)

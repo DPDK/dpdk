@@ -288,7 +288,7 @@ txgbe_crypto_remove_sa(struct rte_eth_dev *dev,
 			return -1;
 		}
 
-		/* Disable and clear Rx SPI and key table entryes*/
+		/* Disable and clear Rx SPI and key table entries */
 		reg_val = TXGBE_IPSRXIDX_WRITE |
 			TXGBE_IPSRXIDX_TB_SPI | (sa_index << 3);
 		wr32(hw, TXGBE_IPSRXSPI, 0);

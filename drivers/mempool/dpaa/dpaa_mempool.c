@@ -258,7 +258,7 @@ dpaa_mbuf_alloc_bulk(struct rte_mempool *pool,
 		}
 		/* assigning mbuf from the acquired objects */
 		for (i = 0; (i < ret) && bufs[i].addr; i++) {
-			/* TODO-errata - objerved that bufs may be null
+			/* TODO-errata - observed that bufs may be null
 			 * i.e. first buffer is valid, remaining 6 buffers
 			 * may be null.
 			 */

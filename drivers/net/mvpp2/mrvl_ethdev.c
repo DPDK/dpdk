@@ -579,7 +579,7 @@ mrvl_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 	if (mru - RTE_ETHER_CRC_LEN + MRVL_PKT_OFFS > mbuf_data_size) {
 		mru = mbuf_data_size + RTE_ETHER_CRC_LEN - MRVL_PKT_OFFS;
 		mtu = MRVL_PP2_MRU_TO_MTU(mru);
-		MRVL_LOG(WARNING, "MTU too big, max MTU possible limitted "
+		MRVL_LOG(WARNING, "MTU too big, max MTU possible limited "
 			"by current mbuf size: %u. Set MTU to %u, MRU to %u",
 			mbuf_data_size, mtu, mru);
 	}

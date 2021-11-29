@@ -669,7 +669,7 @@ octeontx_fpa_bufpool_destroy(uintptr_t handle, int node_id)
 			break;
 		}
 
-		/* Imsert it into an ordered linked list */
+		/* Insert it into an ordered linked list */
 		for (curr = &head; curr[0] != NULL; curr = curr[0]) {
 			if ((uintptr_t)node <= (uintptr_t)curr[0])
 				break;
@@ -705,7 +705,7 @@ octeontx_fpa_bufpool_destroy(uintptr_t handle, int node_id)
 
 	ret = octeontx_fpapf_aura_detach(gpool);
 	if (ret) {
-		fpavf_log_err("Failed to dettach gaura %u. error code=%d\n",
+		fpavf_log_err("Failed to detach gaura %u. error code=%d\n",
 			      gpool, ret);
 	}
 

@@ -752,7 +752,7 @@ mlx4_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
  *   Pointer to Ethernet device structure.
  *
  * @return
- *   alwasy 0 on success
+ *   always 0 on success
  */
 int
 mlx4_stats_reset(struct rte_eth_dev *dev)

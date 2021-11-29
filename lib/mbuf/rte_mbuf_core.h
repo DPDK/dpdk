@@ -8,7 +8,7 @@
 
 /**
  * @file
- * This file contains definion of RTE mbuf structure itself,
+ * This file contains definition of RTE mbuf structure itself,
  * packet offload flags and some related macros.
  * For majority of DPDK entities, it is not recommended to include
  * this file directly, use include <rte_mbuf.h> instead.

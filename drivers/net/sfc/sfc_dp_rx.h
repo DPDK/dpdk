@@ -158,7 +158,7 @@ typedef int (sfc_dp_rx_qcreate_t)(uint16_t port_id, uint16_t queue_id,
 				  struct sfc_dp_rxq **dp_rxqp);
 
 /**
- * Free resources allocated for datapath recevie queue.
+ * Free resources allocated for datapath receive queue.
  */
 typedef void (sfc_dp_rx_qdestroy_t)(struct sfc_dp_rxq *dp_rxq);
 
@@ -191,7 +191,7 @@ typedef bool (sfc_dp_rx_qrx_ps_ev_t)(struct sfc_dp_rxq *dp_rxq,
 /**
  * Receive queue purge function called after queue flush.
  *
- * Should be used to free unused recevie buffers.
+ * Should be used to free unused receive buffers.
  */
 typedef void (sfc_dp_rx_qpurge_t)(struct sfc_dp_rxq *dp_rxq);
 

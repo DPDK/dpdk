@@ -24,7 +24,7 @@
 /* Multiple 24-bit flow ids will map to the same DSW-level flow. The
  * number of DSW flows should be high enough make it unlikely that
  * flow ids of several large flows hash to the same DSW-level flow.
- * Such collisions will limit parallism and thus the number of cores
+ * Such collisions will limit parallelism and thus the number of cores
  * that may be utilized. However, configuring a large number of DSW
  * flows might potentially, depending on traffic and actual
  * application flow id value range, result in each such DSW-level flow
@@ -104,7 +104,7 @@
 /* Only one outstanding migration per port is allowed */
 #define DSW_MAX_PAUSED_FLOWS (DSW_MAX_PORTS*DSW_MAX_FLOWS_PER_MIGRATION)
 
-/* Enough room for paus request/confirm and unpaus request/confirm for
+/* Enough room for pause request/confirm and unpaus request/confirm for
  * all possible senders.
  */
 #define DSW_CTL_IN_RING_SIZE ((DSW_MAX_PORTS-1)*4)

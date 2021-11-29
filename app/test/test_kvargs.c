@@ -11,7 +11,7 @@
 
 #include "test.h"
 
-/* incrementd in handler, to check it is properly called once per
+/* incremented in handler, to check it is properly called once per
  * key/value association */
 static unsigned count;
 
@@ -107,14 +107,14 @@ static int test_valid_kvargs(void)
 		goto fail;
 	}
 	count = 0;
-	/* call check_handler() for all entries with key="unexistant_key" */
-	if (rte_kvargs_process(kvlist, "unexistant_key", check_handler, NULL) < 0) {
+	/* call check_handler() for all entries with key="nonexistent_key" */
+	if (rte_kvargs_process(kvlist, "nonexistent_key", check_handler, NULL) < 0) {
 		printf("rte_kvargs_process() error\n");
 		rte_kvargs_free(kvlist);
 		goto fail;
 	}
 	if (count != 0) {
-		printf("invalid count value %d after rte_kvargs_process(unexistant_key)\n",
+		printf("invalid count value %d after rte_kvargs_process(nonexistent_key)\n",
 			count);
 		rte_kvargs_free(kvlist);
 		goto fail;
@@ -135,10 +135,10 @@ static int test_valid_kvargs(void)
 		rte_kvargs_free(kvlist);
 		goto fail;
 	}
-	/* count all entries with key="unexistant_key" */
-	count = rte_kvargs_count(kvlist, "unexistant_key");
+	/* count all entries with key="nonexistent_key" */
+	count = rte_kvargs_count(kvlist, "nonexistent_key");
 	if (count != 0) {
-		printf("invalid count value %d after rte_kvargs_count(unexistant_key)\n",
+		printf("invalid count value %d after rte_kvargs_count(nonexistent_key)\n",
 			count);
 		rte_kvargs_free(kvlist);
 		goto fail;
@@ -156,7 +156,7 @@ static int test_valid_kvargs(void)
 	/* call check_handler() on all entries with key="check", it
 	 * should fail as the value is not recognized by the handler */
 	if (rte_kvargs_process(kvlist, "check", check_handler, NULL) == 0) {
-		printf("rte_kvargs_process() is success bu should not\n");
+		printf("rte_kvargs_process() is success but should not\n");
 		rte_kvargs_free(kvlist);
 		goto fail;
 	}

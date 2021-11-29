@@ -2282,7 +2282,7 @@ ipn3ke_rpst_xstats_get
 		count++;
 	}
 
-	/* Get individiual stats from ipn3ke_rpst_hw_port */
+	/* Get individual stats from ipn3ke_rpst_hw_port */
 	for (i = 0; i < IPN3KE_RPST_HW_PORT_XSTATS_CNT; i++) {
 		xstats[count].value = *(uint64_t *)(((char *)(&hw_stats)) +
 			ipn3ke_rpst_hw_port_strings[i].offset);
@@ -2290,7 +2290,7 @@ ipn3ke_rpst_xstats_get
 		count++;
 	}
 
-	/* Get individiual stats from ipn3ke_rpst_rxq_pri */
+	/* Get individual stats from ipn3ke_rpst_rxq_pri */
 	for (i = 0; i < IPN3KE_RPST_RXQ_PRIO_XSTATS_CNT; i++) {
 		for (prio = 0; prio < IPN3KE_RPST_PRIO_XSTATS_CNT; prio++) {
 			xstats[count].value =
@@ -2302,7 +2302,7 @@ ipn3ke_rpst_xstats_get
 		}
 	}
 
-	/* Get individiual stats from ipn3ke_rpst_txq_prio */
+	/* Get individual stats from ipn3ke_rpst_txq_prio */
 	for (i = 0; i < IPN3KE_RPST_TXQ_PRIO_XSTATS_CNT; i++) {
 		for (prio = 0; prio < IPN3KE_RPST_PRIO_XSTATS_CNT; prio++) {
 			xstats[count].value =
@@ -2340,7 +2340,7 @@ __rte_unused unsigned int limit)
 		count++;
 	}
 
-	/* Get individiual stats from ipn3ke_rpst_hw_port */
+	/* Get individual stats from ipn3ke_rpst_hw_port */
 	for (i = 0; i < IPN3KE_RPST_HW_PORT_XSTATS_CNT; i++) {
 		snprintf(xstats_names[count].name,
 			 sizeof(xstats_names[count].name),
@@ -2349,7 +2349,7 @@ __rte_unused unsigned int limit)
 		count++;
 	}
 
-	/* Get individiual stats from ipn3ke_rpst_rxq_pri */
+	/* Get individual stats from ipn3ke_rpst_rxq_pri */
 	for (i = 0; i < IPN3KE_RPST_RXQ_PRIO_XSTATS_CNT; i++) {
 		for (prio = 0; prio < 8; prio++) {
 			snprintf(xstats_names[count].name,
@@ -2361,7 +2361,7 @@ __rte_unused unsigned int limit)
 		}
 	}
 
-	/* Get individiual stats from ipn3ke_rpst_txq_prio */
+	/* Get individual stats from ipn3ke_rpst_txq_prio */
 	for (i = 0; i < IPN3KE_RPST_TXQ_PRIO_XSTATS_CNT; i++) {
 		for (prio = 0; prio < 8; prio++) {
 			snprintf(xstats_names[count].name,

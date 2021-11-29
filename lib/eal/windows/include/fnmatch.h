@@ -26,14 +26,14 @@ extern "C" {
 #define FNM_PREFIX_DIRS 0x20
 
 /**
- * This function is used for searhing a given string source
+ * This function is used for searching a given string source
  * with the given regular expression pattern.
  *
  * @param pattern
  *	regular expression notation describing the pattern to match
  *
  * @param string
- *	source string to searcg for the pattern
+ *	source string to search for the pattern
  *
  * @param flag
  *	containing information about the pattern

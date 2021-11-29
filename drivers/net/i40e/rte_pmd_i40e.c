@@ -1427,7 +1427,7 @@ rte_pmd_i40e_set_tc_strict_prio(uint16_t port, uint8_t tc_map)
 	/* Get all TCs' bandwidth. */
 	for (i = 0; i < I40E_MAX_TRAFFIC_CLASS; i++) {
 		if (veb->enabled_tc & BIT_ULL(i)) {
-			/* For rubust, if bandwidth is 0, use 1 instead. */
+			/* For robust, if bandwidth is 0, use 1 instead. */
 			if (veb->bw_info.bw_ets_share_credits[i])
 				ets_data.tc_bw_share_credits[i] =
 					veb->bw_info.bw_ets_share_credits[i];

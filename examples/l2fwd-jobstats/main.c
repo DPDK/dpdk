@@ -468,7 +468,7 @@ l2fwd_flush_job(__rte_unused struct rte_timer *timer, __rte_unused void *arg)
 		qconf->next_flush_time[portid] = rte_get_timer_cycles() + drain_tsc;
 	}
 
-	/* Pass target to indicate that this job is happy of time interwal
+	/* Pass target to indicate that this job is happy of time interval
 	 * in which it was called. */
 	rte_jobstats_finish(&qconf->flush_job, qconf->flush_job.target);
 }

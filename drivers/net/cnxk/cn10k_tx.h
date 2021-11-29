@@ -736,7 +736,7 @@ cn10k_nix_xmit_prepare_tstamp(uintptr_t lmt_addr, const uint64_t *cmd,
 			/* Retrieving the default desc values */
 			lmt[off] = cmd[2];
 
-			/* Using compiler barier to avoid voilation of C
+			/* Using compiler barrier to avoid violation of C
 			 * aliasing rules.
 			 */
 			rte_compiler_barrier();
@@ -745,7 +745,7 @@ cn10k_nix_xmit_prepare_tstamp(uintptr_t lmt_addr, const uint64_t *cmd,
 		/* Packets for which RTE_MBUF_F_TX_IEEE1588_TMST is not set, tx tstamp
 		 * should not be recorded, hence changing the alg type to
 		 * NIX_SENDMEMALG_SET and also changing send mem addr field to
-		 * next 8 bytes as it corrpt the actual tx tstamp registered
+		 * next 8 bytes as it corrupts the actual Tx tstamp registered
 		 * address.
 		 */
 		send_mem->w0.subdc = NIX_SUBDC_MEM;
@@ -2254,7 +2254,7 @@ again:
 		}
 
 		if (flags & NIX_TX_OFFLOAD_TSTAMP_F) {
-			/* Tx ol_flag for timestam. */
+			/* Tx ol_flag for timestamp. */
 			const uint64x2_t olf = {RTE_MBUF_F_TX_IEEE1588_TMST,
 						RTE_MBUF_F_TX_IEEE1588_TMST};
 			/* Set send mem alg to SUB. */

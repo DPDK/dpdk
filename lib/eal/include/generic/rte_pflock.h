@@ -157,7 +157,7 @@ rte_pflock_write_lock(rte_pflock_t *pf)
 	uint16_t ticket, w;
 
 	/* Acquire ownership of write-phase.
-	 * This is same as rte_tickelock_lock().
+	 * This is same as rte_ticketlock_lock().
 	 */
 	ticket = __atomic_fetch_add(&pf->wr.in, 1, __ATOMIC_RELAXED);
 	rte_wait_until_equal_16(&pf->wr.out, ticket, __ATOMIC_ACQUIRE);

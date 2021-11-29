@@ -2032,7 +2032,7 @@ flow_dv_validate_item_meta(struct rte_eth_dev *dev __rte_unused,
 		if (reg == REG_NON)
 			return rte_flow_error_set(error, ENOTSUP,
 					RTE_FLOW_ERROR_TYPE_ITEM, item,
-					"unavalable extended metadata register");
+					"unavailable extended metadata register");
 		if (reg == REG_B)
 			return rte_flow_error_set(error, ENOTSUP,
 					  RTE_FLOW_ERROR_TYPE_ITEM, item,
@@ -3205,7 +3205,7 @@ flow_dv_validate_action_set_meta(struct rte_eth_dev *dev,
 	if (reg == REG_NON)
 		return rte_flow_error_set(error, ENOTSUP,
 					  RTE_FLOW_ERROR_TYPE_ACTION, action,
-					  "unavalable extended metadata register");
+					  "unavailable extended metadata register");
 	if (reg != REG_A && reg != REG_B) {
 		struct mlx5_priv *priv = dev->data->dev_private;
 
@@ -5145,7 +5145,7 @@ flow_dv_modify_hdr_action_max(struct rte_eth_dev *dev __rte_unused,
  *   Pointer to error structure.
  *
  * @return
- *   0 on success, a negative errno value otherwise and rte_ernno is set.
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 static int
 mlx5_flow_validate_action_meter(struct rte_eth_dev *dev,
@@ -7858,7 +7858,7 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 	 * - Explicit decap action is prohibited by the tunnel offload API.
 	 * - Drop action in tunnel steer rule is prohibited by the API.
 	 * - Application cannot use MARK action because it's value can mask
-	 *   tunnel default miss nitification.
+	 *   tunnel default miss notification.
 	 * - JUMP in tunnel match rule has no support in current PMD
 	 *   implementation.
 	 * - TAG & META are reserved for future uses.
@@ -9184,7 +9184,7 @@ flow_dev_geneve_tlv_option_resource_register(struct rte_eth_dev *dev,
 			geneve_opt_v->option_type &&
 			geneve_opt_resource->length ==
 			geneve_opt_v->option_len) {
-			/* We already have GENVE TLV option obj allocated. */
+			/* We already have GENEVE TLV option obj allocated. */
 			__atomic_fetch_add(&geneve_opt_resource->refcnt, 1,
 					   __ATOMIC_RELAXED);
 		} else {
@@ -10226,7 +10226,7 @@ __flow_dv_adjust_buf_size(size_t *size, uint8_t match_criteria)
 	 * Check flow matching criteria first, subtract misc5/4 length if flow
 	 * doesn't own misc5/4 parameters. In some old rdma-core releases,
 	 * misc5/4 are not supported, and matcher creation failure is expected
-	 * w/o subtration. If misc5 is provided, misc4 must be counted in since
+	 * w/o subtraction. If misc5 is provided, misc4 must be counted in since
 	 * misc5 is right after misc4.
 	 */
 	if (!(match_criteria & (1 << MLX5_MATCH_CRITERIA_ENABLE_MISC5_BIT))) {
@@ -11425,7 +11425,7 @@ flow_dv_dest_array_create_cb(void *tool_ctx __rte_unused, void *cb_ctx)
 			goto error;
 		}
 	}
-	/* create a dest array actioin */
+	/* create a dest array action */
 	ret = mlx5_os_flow_dr_create_flow_action_dest_array
 						(domain,
 						 resource->num_of_dest,

@@ -653,7 +653,7 @@ static void enqueue_simple_pkts(struct rte_mbuf **pkts,
 		 * The app should not send oversized
 		 * packets. tx_pkt_prepare includes a check as
 		 * well. But some apps ignore the device max size and
-		 * tx_pkt_prepare. Oversized packets cause WQ errrors
+		 * tx_pkt_prepare. Oversized packets cause WQ errors
 		 * and the NIC ends up disabling the whole WQ. So
 		 * truncate packets..
 		 */

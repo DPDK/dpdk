@@ -22,7 +22,7 @@ enum HNS3_MBX_OPCODE {
 	HNS3_MBX_GET_RETA,              /* (VF -> PF) get RETA */
 	HNS3_MBX_GET_RSS_KEY,           /* (VF -> PF) get RSS key */
 	HNS3_MBX_GET_MAC_ADDR,          /* (VF -> PF) get MAC addr */
-	HNS3_MBX_PF_VF_RESP,            /* (PF -> VF) generate respone to VF */
+	HNS3_MBX_PF_VF_RESP,            /* (PF -> VF) generate response to VF */
 	HNS3_MBX_GET_BDNUM,             /* (VF -> PF) get BD num */
 	HNS3_MBX_GET_BUFSIZE,           /* (VF -> PF) get buffer size */
 	HNS3_MBX_GET_STREAMID,          /* (VF -> PF) get stream id */

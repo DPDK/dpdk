@@ -839,7 +839,7 @@ rxq_cq_process_v(struct mlx5_rxq_data *rxq, volatile struct mlx5_cqe *cq,
 			}
 		}
 		if (rxq->dynf_meta) {
-			/* This code is subject for futher optimization. */
+			/* This code is subject for further optimization. */
 			int32_t offs = rxq->flow_meta_offset;
 			uint32_t mask = rxq->flow_meta_port_mask;
 

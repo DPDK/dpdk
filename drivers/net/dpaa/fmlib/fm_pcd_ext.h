@@ -276,7 +276,7 @@ typedef struct ioc_fm_pcd_counters_params_t {
 } ioc_fm_pcd_counters_params_t;
 
 /*
- * @Description   structure for FM exception definitios
+ * @Description   structure for FM exception definitions
  */
 typedef struct ioc_fm_pcd_exception_params_t {
 	ioc_fm_pcd_exceptions exception;	/**< The requested exception */
@@ -883,7 +883,7 @@ typedef enum ioc_fm_pcd_manip_hdr_rmv_specific_l2 {
 	e_IOC_FM_PCD_MANIP_HDR_RMV_ETHERNET,	/**< Ethernet/802.3 MAC */
 	e_IOC_FM_PCD_MANIP_HDR_RMV_STACKED_QTAGS,	/**< stacked QTags */
 	e_IOC_FM_PCD_MANIP_HDR_RMV_ETHERNET_AND_MPLS,
-			/**< MPLS and Ethernet/802.3 MAC header unitl the header
+			/**< MPLS and Ethernet/802.3 MAC header until the header
 			 * which follows the MPLS header
 			 */
 	e_IOC_FM_PCD_MANIP_HDR_RMV_MPLS
@@ -3293,7 +3293,7 @@ typedef struct ioc_fm_pcd_cc_tbl_get_stats_t {
 /*
  * @Function	  fm_pcd_net_env_characteristics_delete
  *
- * @Description   Deletes a set of Network Environment Charecteristics.
+ * @Description   Deletes a set of Network Environment Characteristics.
  *
  * @Param[in]	  ioc_fm_obj_t		The id of a Network Environment object.
  *
@@ -3493,7 +3493,7 @@ typedef struct ioc_fm_pcd_cc_tbl_get_stats_t {
  * @Return	  0 on success; Error code otherwise.
  *
  * @Cautions	  Allowed only following fm_pcd_match_table_set() not only of
- *		  the relevnt node but also the node that points to this node.
+ *		  the relevant node but also the node that points to this node.
  */
 #define FM_PCD_IOC_MATCH_TABLE_MODIFY_KEY_AND_NEXT_ENGINE \
 		_IOW(FM_IOC_TYPE_BASE, FM_PCD_IOC_NUM(35), \

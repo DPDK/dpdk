@@ -12,7 +12,7 @@
 
 /**
  * @file
- * This file contains definion of RTE ring structure itself,
+ * This file contains definition of RTE ring structure itself,
  * init flags and some related macros.
  * For majority of DPDK entities, it is not recommended to include
  * this file directly, use include <rte_ring.h> or <rte_ring_elem.h>

@@ -534,7 +534,7 @@ static void ecore_init_pxp_arb(struct bnx2x_softc *sc, int r_order,
 		REG_WR(sc, PXP2_REG_WR_CDU_MPS, val);
 	}
 
-	/* Validate number of tags suppoted by device */
+	/* Validate number of tags supported by device */
 #define PCIE_REG_PCIER_TL_HDR_FC_ST		0x2980
 	val = REG_RD(sc, PCIE_REG_PCIER_TL_HDR_FC_ST);
 	val &= 0xFF;
@@ -714,7 +714,7 @@ static void ecore_ilt_client_init_op_ilt(struct bnx2x_softc *sc,
 	for (i = ilt_cli->start; i <= ilt_cli->end; i++)
 		ecore_ilt_line_init_op(sc, ilt, i, initop);
 
-	/* init/clear the ILT boundries */
+	/* init/clear the ILT boundaries */
 	ecore_ilt_boundary_init_op(sc, ilt_cli, ilt->start_line, initop);
 }
 
@@ -765,7 +765,7 @@ static void ecore_ilt_init_client_psz(struct bnx2x_softc *sc, int cli_num,
 
 /*
  * called during init common stage, ilt clients should be initialized
- * prioir to calling this function
+ * prior to calling this function
  */
 static void ecore_ilt_init_page_size(struct bnx2x_softc *sc, uint8_t initop)
 {

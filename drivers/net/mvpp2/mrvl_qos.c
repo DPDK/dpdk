@@ -301,7 +301,7 @@ get_entry_values(const char *entry, uint8_t *tab,
 }
 
 /**
- * Parse Traffic Class'es mapping configuration.
+ * Parse Traffic Classes mapping configuration.
  *
  * @param file Config file handle.
  * @param port Which port to look for.
@@ -736,7 +736,7 @@ mrvl_get_cfg(const char *key __rte_unused, const char *path, void *extra_args)
 
 		/* MRVL_TOK_START_HDR replaces MRVL_TOK_DSA_MODE parameter.
 		 * MRVL_TOK_DSA_MODE will be supported for backward
-		 * compatibillity.
+		 * compatibility.
 		 */
 		entry = rte_cfgfile_get_entry(file, sec_name,
 				MRVL_TOK_START_HDR);

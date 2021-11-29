@@ -69,7 +69,7 @@ struct iavf_security_session {
  *  16B - 3
  *
  * but we also need the IV Length for TSO to correctly calculate the total
- * header length so placing it in the upper 6-bits here for easier reterival.
+ * header length so placing it in the upper 6-bits here for easier retrieval.
  */
 static inline uint8_t
 calc_ipsec_desc_iv_len_field(uint16_t iv_sz)
@@ -448,7 +448,7 @@ sa_add_set_auth_params(struct virtchnl_ipsec_crypto_cfg_item *cfg,
 /**
  * Send SA add virtual channel request to Inline IPsec driver.
  *
- * Inline IPsec driver expects SPI and destination IP adderss to be in host
+ * Inline IPsec driver expects SPI and destination IP address to be in host
  * order, but DPDK APIs are network order, therefore we need to do a htonl
  * conversion of these parameters.
  */
@@ -726,7 +726,7 @@ iavf_ipsec_crypto_action_valid(struct rte_eth_dev *ethdev,
 /**
  * Send virtual channel security policy add request to IES driver.
  *
- * IES driver expects SPI and destination IP adderss to be in host
+ * IES driver expects SPI and destination IP address to be in host
  * order, but DPDK APIs are network order, therefore we need to do a htonl
  * conversion of these parameters.
  */
@@ -994,7 +994,7 @@ iavf_ipsec_crypto_sa_del(struct iavf_adapter *adapter,
 	request->req_id = (uint16_t)0xDEADBEEF;
 
 	/**
-	 * SA delete supports deletetion of 1-8 specified SA's or if the flag
+	 * SA delete supports deletion of 1-8 specified SA's or if the flag
 	 * field is zero, all SA's associated with VF will be deleted.
 	 */
 	if (sess) {
@@ -1147,7 +1147,7 @@ iavf_ipsec_crypto_pkt_metadata_set(void *device,
 	md = RTE_MBUF_DYNFIELD(m, iavf_sctx->pkt_md_offset,
 		struct iavf_ipsec_crypto_pkt_metadata *);
 
-	/* Set immutatable metadata values from session template */
+	/* Set immutable metadata values from session template */
 	memcpy(md, &iavf_sess->pkt_metadata_template,
 		sizeof(struct iavf_ipsec_crypto_pkt_metadata));
 
@@ -1355,7 +1355,7 @@ iavf_ipsec_crypto_set_security_capabililites(struct iavf_security_ctx
 	capabilities[number_of_capabilities].op = RTE_CRYPTO_OP_TYPE_UNDEFINED;
 
 	/**
-	 * Iterate over each virtchl crypto capability by crypto type and
+	 * Iterate over each virtchnl crypto capability by crypto type and
 	 * algorithm.
 	 */
 	for (i = 0; i < VIRTCHNL_IPSEC_MAX_CRYPTO_CAP_NUM; i++) {
@@ -1454,7 +1454,7 @@ iavf_ipsec_crypto_capabilities_get(void *device)
 	/**
 	 * Update the security capabilities struct with the runtime discovered
 	 * crypto capabilities, except for last element of the array which is
-	 * the null terminatation
+	 * the null termination
 	 */
 	for (i = 0; i < ((sizeof(iavf_security_capabilities) /
 			sizeof(iavf_security_capabilities[0])) - 1); i++) {

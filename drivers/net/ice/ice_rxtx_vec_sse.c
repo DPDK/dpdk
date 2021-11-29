@@ -202,7 +202,7 @@ ice_rx_desc_to_olflags_v(struct ice_rx_queue *rxq, __m128i descs[4],
 	__m128i l3_l4_mask = _mm_set_epi32(~0x6, ~0x6, ~0x6, ~0x6);
 	__m128i l3_l4_flags = _mm_and_si128(flags, l3_l4_mask);
 	flags = _mm_or_si128(l3_l4_flags, l4_outer_flags);
-	/* we need to mask out the reduntant bits introduced by RSS or
+	/* we need to mask out the redundant bits introduced by RSS or
 	 * VLAN fields.
 	 */
 	flags = _mm_and_si128(flags, cksum_mask);
@@ -566,7 +566,7 @@ _ice_recv_raw_pkts_vec(struct ice_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 		_mm_storeu_si128((void *)&rx_pkts[pos]->rx_descriptor_fields1,
 				 pkt_mb0);
 		ice_rx_desc_to_ptype_v(descs, &rx_pkts[pos], ptype_tbl);
-		/* C.4 calc avaialbe number of desc */
+		/* C.4 calc available number of desc */
 		var = __builtin_popcountll(_mm_cvtsi128_si64(staterr));
 		nb_pkts_recd += var;
 		if (likely(var != ICE_DESCS_PER_LOOP))

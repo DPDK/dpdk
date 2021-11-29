@@ -20,7 +20,7 @@
 /** Maximum number of LACP packets from one slave queued in TX ring. */
 #define BOND_MODE_8023AX_SLAVE_TX_PKTS        1
 /**
- * Timeouts deffinitions (5.4.4 in 802.1AX documentation).
+ * Timeouts definitions (5.4.4 in 802.1AX documentation).
  */
 #define BOND_8023AD_FAST_PERIODIC_MS                900
 #define BOND_8023AD_SLOW_PERIODIC_MS              29000

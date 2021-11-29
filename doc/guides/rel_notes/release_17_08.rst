@@ -232,7 +232,7 @@ API Changes
   * The ``rte_cryptodev_configure()`` function does not create the session
     mempool for the device anymore.
   * The ``rte_cryptodev_queue_pair_attach_sym_session()`` and
-    ``rte_cryptodev_queue_pair_dettach_sym_session()`` functions require
+    ``rte_cryptodev_queue_pair_detach_sym_session()`` functions require
     the new parameter ``device id``.
   * Parameters of ``rte_cryptodev_sym_session_create()`` were modified to
     accept ``mempool``, instead of ``device id`` and ``rte_crypto_sym_xform``.

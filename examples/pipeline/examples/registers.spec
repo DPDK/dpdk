@@ -4,7 +4,7 @@
 ; This program is setting up two register arrays called "pkt_counters" and "byte_counters".
 ; On every input packet (Ethernet/IPv4), the "pkt_counters" register at location indexed by
 ; the IPv4 header "Source Address" field is incremented, while the same location in the
-; "byte_counters" array accummulates the value of the IPv4 header "Total Length" field.
+; "byte_counters" array accumulates the value of the IPv4 header "Total Length" field.
 ;
 ; The "regrd" and "regwr" CLI commands can be used to read and write the current value of
 ; any register array location.

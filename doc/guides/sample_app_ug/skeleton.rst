@@ -54,7 +54,7 @@ function. The value returned is the number of parsed arguments:
 .. literalinclude:: ../../../examples/skeleton/basicfwd.c
     :language: c
     :start-after: Initializion the Environment Abstraction Layer (EAL). 8<
-    :end-before: >8 End of initializion the Environment Abstraction Layer (EAL).
+    :end-before: >8 End of initialization the Environment Abstraction Layer (EAL).
     :dedent: 1
 
 

@@ -1378,7 +1378,7 @@ out:
 }
 
 /*
- * @ret : > 0 filter destroyed succsesfully
+ * @ret : > 0 filter destroyed successfully
  *        < 0 error destroying filter
  *        == 1 filter not active / not found
  */

@@ -67,7 +67,7 @@
 typedef void (*rx_user_meta_hook_fn)(struct rte_mbuf *mbuf,
 				     const uint32_t *meta,
 				     void *ext_user_data);
-/* TX hook poplulate *meta, with up to 20 bytes.  meta_cnt
+/* TX hook populate *meta, with up to 20 bytes.  meta_cnt
  * returns the number of uint32_t words populated, 0 to 5
  */
 typedef void (*tx_user_meta_hook_fn)(const struct rte_mbuf *mbuf,

@@ -42,7 +42,7 @@
 
 /* While processing submitted and completed descriptors (rx and tx path
  * respectively) in a loop it is desired to:
- *  - perform batch submissions while populating sumbissmion queue
+ *  - perform batch submissions while populating submission queue
  *  - avoid blocking transmission of other packets during cleanup phase
  * Hence the utilization ratio of 1/8 of a queue size or max value if the size
  * of the ring is very big - like 8k Rx rings.

@@ -864,7 +864,7 @@ ice_dcf_init_rss(struct ice_dcf_hw *hw)
 			j = 0;
 		hw->rss_lut[i] = j;
 	}
-	/* send virtchnnl ops to configure rss*/
+	/* send virtchnl ops to configure RSS */
 	ret = ice_dcf_configure_rss_lut(hw);
 	if (ret)
 		return ret;

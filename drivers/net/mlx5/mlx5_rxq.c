@@ -2152,7 +2152,7 @@ mlx5_rxq_get_hairpin_conf(struct rte_eth_dev *dev, uint16_t idx)
  *   Number of queues in the array.
  *
  * @return
- *   1 if all queues in indirection table match 0 othrwise.
+ *   1 if all queues in indirection table match 0 otherwise.
  */
 static int
 mlx5_ind_table_obj_match_queues(const struct mlx5_ind_table_obj *ind_tbl,
@@ -2586,7 +2586,7 @@ mlx5_hrxq_modify(struct rte_eth_dev *dev, uint32_t hrxq_idx,
 		if (hrxq->standalone) {
 			/*
 			 * Replacement of indirection table unsupported for
-			 * stanalone hrxq objects (used by shared RSS).
+			 * standalone hrxq objects (used by shared RSS).
 			 */
 			rte_errno = ENOTSUP;
 			return -rte_errno;

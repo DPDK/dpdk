@@ -114,9 +114,9 @@ pfe_hif_init_buffers(struct pfe_hif *hif)
 		 * results, eth id, queue id from PFE block along with data.
 		 * so we have to provide additional memory for each packet to
 		 * HIF rx rings so that PFE block can write its headers.
-		 * so, we are giving the data pointor to HIF rings whose
+		 * so, we are giving the data pointer to HIF rings whose
 		 * calculation is as below:
-		 * mbuf->data_pointor - Required_header_size
+		 * mbuf->data_pointer - Required_header_size
 		 *
 		 * We are utilizing the HEADROOM area to receive the PFE
 		 * block headers. On packet reception, HIF driver will use

@@ -2375,7 +2375,7 @@ ixgbe_dev_configure(struct rte_eth_dev *dev)
 	if (dev->data->dev_conf.rxmode.mq_mode & RTE_ETH_MQ_RX_RSS_FLAG)
 		dev->data->dev_conf.rxmode.offloads |= RTE_ETH_RX_OFFLOAD_RSS_HASH;
 
-	/* multipe queue mode checking */
+	/* multiple queue mode checking */
 	ret  = ixgbe_check_mq_mode(dev);
 	if (ret != 0) {
 		PMD_DRV_LOG(ERR, "ixgbe_check_mq_mode fails with %d.",
@@ -2603,7 +2603,7 @@ ixgbe_dev_start(struct rte_eth_dev *dev)
 		}
 	}
 
-	/* confiugre msix for sleep until rx interrupt */
+	/* configure MSI-X for sleep until Rx interrupt */
 	ixgbe_configure_msix(dev);
 
 	/* initialize transmission unit */
@@ -2907,7 +2907,7 @@ ixgbe_dev_set_link_up(struct rte_eth_dev *dev)
 	if (hw->mac.type == ixgbe_mac_82599EB) {
 #ifdef RTE_LIBRTE_IXGBE_BYPASS
 		if (hw->device_id == IXGBE_DEV_ID_82599_BYPASS) {
-			/* Not suported in bypass mode */
+			/* Not supported in bypass mode */
 			PMD_INIT_LOG(ERR, "Set link up is not supported "
 				     "by device id 0x%x", hw->device_id);
 			return -ENOTSUP;
@@ -2938,7 +2938,7 @@ ixgbe_dev_set_link_down(struct rte_eth_dev *dev)
 	if (hw->mac.type == ixgbe_mac_82599EB) {
 #ifdef RTE_LIBRTE_IXGBE_BYPASS
 		if (hw->device_id == IXGBE_DEV_ID_82599_BYPASS) {
-			/* Not suported in bypass mode */
+			/* Not supported in bypass mode */
 			PMD_INIT_LOG(ERR, "Set link down is not supported "
 				     "by device id 0x%x", hw->device_id);
 			return -ENOTSUP;
@@ -4603,7 +4603,7 @@ ixgbe_dev_interrupt_action(struct rte_eth_dev *dev)
  * @param handle
  *  Pointer to interrupt handle.
  * @param param
- *  The address of parameter (struct rte_eth_dev *) regsitered before.
+ *  The address of parameter (struct rte_eth_dev *) registered before.
  *
  * @return
  *  void
@@ -4659,7 +4659,7 @@ ixgbe_dev_interrupt_delayed_handler(void *param)
  * @param handle
  *  Pointer to interrupt handle.
  * @param param
- *  The address of parameter (struct rte_eth_dev *) regsitered before.
+ *  The address of parameter (struct rte_eth_dev *) registered before.
  *
  * @return
  *  void
@@ -5921,7 +5921,7 @@ ixgbevf_configure_msix(struct rte_eth_dev *dev)
 	/* Configure all RX queues of VF */
 	for (q_idx = 0; q_idx < dev->data->nb_rx_queues; q_idx++) {
 		/* Force all queue use vector 0,
-		 * as IXGBE_VF_MAXMSIVECOTR = 1
+		 * as IXGBE_VF_MAXMSIVECTOR = 1
 		 */
 		ixgbevf_set_ivar_map(hw, 0, q_idx, vector_idx);
 		rte_intr_vec_list_index_set(intr_handle, q_idx,
@@ -6256,7 +6256,7 @@ ixgbe_inject_5tuple_filter(struct rte_eth_dev *dev,
  * @param
  * dev: Pointer to struct rte_eth_dev.
  * index: the index the filter allocates.
- * filter: ponter to the filter that will be added.
+ * filter: pointer to the filter that will be added.
  * rx_queue: the queue id the filter assigned to.
  *
  * @return
@@ -6872,7 +6872,7 @@ ixgbe_timesync_disable(struct rte_eth_dev *dev)
 	/* Disable L2 filtering of IEEE1588/802.1AS Ethernet frame types. */
 	IXGBE_WRITE_REG(hw, IXGBE_ETQF(IXGBE_ETQF_FILTER_1588), 0);
 
-	/* Stop incrementating the System Time registers. */
+	/* Stop incrementing the System Time registers. */
 	IXGBE_WRITE_REG(hw, IXGBE_TIMINCA, 0);
 
 	return 0;

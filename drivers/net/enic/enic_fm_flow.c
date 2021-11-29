@@ -721,7 +721,7 @@ enic_fm_copy_item_gtp(struct copy_item_args *arg)
 	}
 
 	/* NIC does not support GTP tunnels. No Items are allowed after this.
-	 * This prevents the specificaiton of further items.
+	 * This prevents the specification of further items.
 	 */
 	arg->header_level = 0;
 
@@ -733,7 +733,7 @@ enic_fm_copy_item_gtp(struct copy_item_args *arg)
 
 	/*
 	 * Use the raw L4 buffer to match GTP as fm_header_set does not have
-	 * GTP header. UDP dst port must be specifiec. Using the raw buffer
+	 * GTP header. UDP dst port must be specific. Using the raw buffer
 	 * does not affect such UDP item, since we skip UDP in the raw buffer.
 	 */
 	fm_data->fk_header_select |= FKH_L4RAW;
@@ -1846,7 +1846,7 @@ enic_fm_dump_tcam_actions(const struct fm_action *fm_action)
 	/* Remove trailing comma */
 	if (buf[0])
 		*(bp - 1) = '\0';
-	ENICPMD_LOG(DEBUG, "       Acions: %s", buf);
+	ENICPMD_LOG(DEBUG, "       Actions: %s", buf);
 }
 
 static int
@@ -2364,7 +2364,7 @@ enic_action_handle_get(struct enic_flowman *fm, struct fm_action *action_in,
 	if (ret < 0 && ret != -ENOENT)
 		return rte_flow_error_set(error, -ret,
 				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
-				   NULL, "enic: rte_hash_lookup(aciton)");
+				   NULL, "enic: rte_hash_lookup(action)");
 
 	if (ret == -ENOENT) {
 		/* Allocate a new action on the NIC. */
@@ -2435,7 +2435,7 @@ __enic_fm_flow_add_entry(struct enic_flowman *fm,
 
 	ENICPMD_FUNC_TRACE();
 
-	/* Get or create an aciton handle. */
+	/* Get or create an action handle. */
 	ret = enic_action_handle_get(fm, action_in, error, &ah);
 	if (ret)
 		return ret;

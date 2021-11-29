@@ -189,7 +189,7 @@ rte_fib_lookup_bulk(struct rte_fib *fib, uint32_t *ips,
  *   FIB object handle
  * @return
  *   Pointer on the dataplane struct on success
- *   NULL othervise
+ *   NULL otherwise
  */
 void *
 rte_fib_get_dp(struct rte_fib *fib);
@@ -201,7 +201,7 @@ rte_fib_get_dp(struct rte_fib *fib);
  *   FIB object handle
  * @return
  *   Pointer on the RIB on success
- *   NULL othervise
+ *   NULL otherwise
  */
 struct rte_rib *
 rte_fib_get_rib(struct rte_fib *fib);
