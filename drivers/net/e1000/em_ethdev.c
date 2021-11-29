@@ -1064,8 +1064,8 @@ eth_em_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 
 	/*
 	 * Starting with 631xESB hw supports 2 TX/RX queues per port.
-	 * Unfortunatelly, all these nics have just one TX context.
-	 * So we have few choises for TX:
+	 * Unfortunately, all these nics have just one TX context.
+	 * So we have few choices for TX:
 	 * - Use just one TX queue.
 	 * - Allow cksum offload only for one TX queue.
 	 * - Don't allow TX cksum offload at all.
@@ -1074,7 +1074,7 @@ eth_em_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	 * (Multiple Receive Queues are mutually exclusive with UDP
 	 * fragmentation and are not supported when a legacy receive
 	 * descriptor format is used).
-	 * Which means separate RX routinies - as legacy nics (82540, 82545)
+	 * Which means separate RX routines - as legacy nics (82540, 82545)
 	 * don't support extended RXD.
 	 * To avoid it we support just one RX queue for now (no RSS).
 	 */
@@ -1562,7 +1562,7 @@ eth_em_interrupt_get_status(struct rte_eth_dev *dev)
 }
 
 /*
- * It executes link_update after knowing an interrupt is prsent.
+ * It executes link_update after knowing an interrupt is present.
  *
  * @param dev
  *  Pointer to struct rte_eth_dev.
@@ -1620,7 +1620,7 @@ eth_em_interrupt_action(struct rte_eth_dev *dev,
  * @param handle
  *  Pointer to interrupt handle.
  * @param param
- *  The address of parameter (struct rte_eth_dev *) regsitered before.
+ *  The address of parameter (struct rte_eth_dev *) registered before.
  *
  * @return
  *  void

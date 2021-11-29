@@ -681,7 +681,7 @@ The following is an example JSON string for a power management request.
    "resource_id": 10
    }}
 
-To query the available frequences of an lcore, use the query_cpu_freq command.
+To query the available frequencies of an lcore, use the query_cpu_freq command.
 Where {core_num} is the lcore to query.
 Before using this command, please enable responses via the set_query command on the host.
 

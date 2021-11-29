@@ -237,7 +237,7 @@
  * increases .called counter. Function returns value stored in .ret field
  * of the structure.
  * In case of some parameters in some functions the expected value is unknown
- * and cannot be detrmined prior to call. Such parameters are stored
+ * and cannot be determined prior to call. Such parameters are stored
  * in structure and can be compared or analyzed later in test case code.
  *
  * Below structures and functions follow the rules just described.

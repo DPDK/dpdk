@@ -1090,7 +1090,7 @@ dsw_port_ctl_process(struct dsw_evdev *dsw, struct dsw_port *port)
 static void
 dsw_port_note_op(struct dsw_port *port, uint16_t num_events)
 {
-	/* To pull the control ring reasonbly often on busy ports,
+	/* To pull the control ring reasonably often on busy ports,
 	 * each dequeued/enqueued event is considered an 'op' too.
 	 */
 	port->ops_since_bg_task += (num_events+1);
@@ -1174,7 +1174,7 @@ dsw_event_enqueue_burst_generic(struct dsw_port *source_port,
 	 * addition, a port cannot be left "unattended" (e.g. unused)
 	 * for long periods of time, since that would stall
 	 * migration. Eventdev API extensions to provide a cleaner way
-	 * to archieve both of these functions should be
+	 * to archive both of these functions should be
 	 * considered.
 	 */
 	if (unlikely(events_len == 0)) {

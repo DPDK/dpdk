@@ -232,7 +232,7 @@ lthread_sched_stats_display(void)
 }
 
 /*
- * Defafult diagnostic callback
+ * Default diagnostic callback
  */
 static uint64_t
 _lthread_diag_default_cb(uint64_t time, struct lthread *lt, int diag_event,

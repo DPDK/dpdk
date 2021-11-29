@@ -87,7 +87,7 @@ static inline int qede_alloc_rx_bulk_mbufs(struct qede_rx_queue *rxq, int count)
  *    (MTU + Maximum L2 Header Size + 2) / ETH_RX_MAX_BUFF_PER_PKT
  * 3) In regular mode - minimum rx_buf_size should be
  *    (MTU + Maximum L2 Header Size + 2)
- *    In above cases +2 corrosponds to 2 bytes padding in front of L2
+ *    In above cases +2 corresponds to 2 bytes padding in front of L2
  *    header.
  * 4) rx_buf_size should be cacheline-size aligned. So considering
  *    criteria 1, we need to adjust the size to floor instead of ceil,
@@ -103,7 +103,7 @@ qede_calc_rx_buf_size(struct rte_eth_dev *dev, uint16_t mbufsz,
 
 	if (dev->data->scattered_rx) {
 		/* per HW limitation, only ETH_RX_MAX_BUFF_PER_PKT number of
-		 * bufferes can be used for single packet. So need to make sure
+		 * buffers can be used for single packet. So need to make sure
 		 * mbuf size is sufficient enough for this.
 		 */
 		if ((mbufsz * ETH_RX_MAX_BUFF_PER_PKT) <
@@ -244,7 +244,7 @@ qede_rx_queue_setup(struct rte_eth_dev *dev, uint16_t qid,
 
 	/* Fix up RX buffer size */
 	bufsz = (uint16_t)rte_pktmbuf_data_room_size(mp) - RTE_PKTMBUF_HEADROOM;
-	/* cache align the mbuf size to simplfy rx_buf_size calculation */
+	/* cache align the mbuf size to simplify rx_buf_size calculation */
 	bufsz = QEDE_FLOOR_TO_CACHE_LINE_SIZE(bufsz);
 	if ((rxmode->offloads & DEV_RX_OFFLOAD_SCATTER)	||
 	    (max_rx_pkt_len + QEDE_ETH_OVERHEAD) > bufsz) {
@@ -1728,7 +1728,7 @@ next_cqe:
 		}
 	}
 
-	/* Request number of bufferes to be allocated in next loop */
+	/* Request number of buffers to be allocated in next loop */
 	rxq->rx_alloc_count = rx_alloc_count;
 
 	rxq->rcv_pkts += rx_pkt;
@@ -2025,7 +2025,7 @@ next_cqe:
 		}
 	}
 
-	/* Request number of bufferes to be allocated in next loop */
+	/* Request number of buffers to be allocated in next loop */
 	rxq->rx_alloc_count = rx_alloc_count;
 
 	rxq->rcv_pkts += rx_pkt;
@@ -2489,7 +2489,7 @@ qede_xmit_pkts(void *p_txq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 				/* Inner L2 header size in two byte words */
 				inner_l2_hdr_size = (mbuf->l2_len -
 						MPLSINUDP_HDR_SIZE) / 2;
-				/* Inner L4 header offset from the beggining
+				/* Inner L4 header offset from the beginning
 				 * of inner packet in two byte words
 				 */
 				inner_l4_hdr_offset = (mbuf->l2_len -

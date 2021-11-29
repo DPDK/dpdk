@@ -1280,7 +1280,7 @@ eh_display_rx_adapter_conf(struct eventmode_conf *em_conf)
 	for (i = 0; i < nb_rx_adapter; i++) {
 		adapter = &(em_conf->rx_adapter[i]);
 		sprintf(print_buf,
-			"\tRx adaper ID: %-2d\tConnections: %-2d\tEvent dev ID: %-2d",
+			"\tRx adapter ID: %-2d\tConnections: %-2d\tEvent dev ID: %-2d",
 			adapter->adapter_id,
 			adapter->nb_connections,
 			adapter->eventdev_id);

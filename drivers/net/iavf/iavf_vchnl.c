@@ -426,7 +426,7 @@ iavf_check_api_version(struct iavf_adapter *adapter)
 	    (vf->virtchnl_version.major == VIRTCHNL_VERSION_MAJOR_START &&
 	     vf->virtchnl_version.minor < VIRTCHNL_VERSION_MINOR_START)) {
 		PMD_INIT_LOG(ERR, "VIRTCHNL API version should not be lower"
-			     " than (%u.%u) to support Adapative VF",
+			     " than (%u.%u) to support Adaptive VF",
 			     VIRTCHNL_VERSION_MAJOR_START,
 			     VIRTCHNL_VERSION_MAJOR_START);
 		return -1;
@@ -1303,7 +1303,7 @@ iavf_fdir_check(struct iavf_adapter *adapter,
 
 	err = iavf_execute_vf_cmd(adapter, &args);
 	if (err) {
-		PMD_DRV_LOG(ERR, "fail to check flow direcotor rule");
+		PMD_DRV_LOG(ERR, "fail to check flow director rule");
 		return err;
 	}
 

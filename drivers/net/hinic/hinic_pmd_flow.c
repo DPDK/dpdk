@@ -734,7 +734,7 @@ static int hinic_check_ntuple_item_ele(const struct rte_flow_item *item,
  * END
  * other members in mask and spec should set to 0x00.
  * item->last should be NULL.
- * Please aware there's an asumption for all the parsers.
+ * Please be aware there's an assumption for all the parsers.
  * rte_flow_item is using big endian, rte_flow_attr and
  * rte_flow_action are using CPU order.
  * Because the pattern is used to describe the packets,
@@ -1630,7 +1630,7 @@ step_next:
 
 /**
  * Check if the flow rule is supported by nic.
- * It only checkes the format. Don't guarantee the rule can be programmed into
+ * It only checks the format. Don't guarantee the rule can be programmed into
  * the HW. Because there can be no enough room for the rule.
  */
 static int hinic_flow_validate(struct rte_eth_dev *dev,

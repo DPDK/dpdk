@@ -600,8 +600,8 @@ void dpaa_rx_cb_prepare(struct qm_dqrr_entry *dq, void **bufs)
 	void *ptr = rte_dpaa_mem_ptov(qm_fd_addr(&dq->fd));
 
 	/* In case of LS1046, annotation stashing is disabled due to L2 cache
-	 * being bottleneck in case of multicore scanario for this platform.
-	 * So we prefetch the annoation beforehand, so that it is available
+	 * being bottleneck in case of multicore scenario for this platform.
+	 * So we prefetch the annotation beforehand, so that it is available
 	 * in cache when accessed.
 	 */
 	rte_prefetch0((void *)((uint8_t *)ptr + DEFAULT_RX_ICEOF));

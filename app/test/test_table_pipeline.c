@@ -364,7 +364,7 @@ setup_pipeline(int test_type)
 				.action = RTE_PIPELINE_ACTION_PORT,
 				{.port_id = port_out_id[i^1]},
 			};
-			printf("Setting secont table to output to port\n");
+			printf("Setting second table to output to port\n");
 
 			/* Add the default action for the table. */
 			ret = rte_pipeline_table_default_entry_add(p,

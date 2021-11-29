@@ -63,7 +63,7 @@ unsigned int eal_socket_numa_node(unsigned int socket_id);
  * @param arg
  *  Argument to the called function.
  * @return
- *  0 on success, netagive error code on failure.
+ *  0 on success, negative error code on failure.
  */
 int eal_intr_thread_schedule(void (*func)(void *arg), void *arg);
 

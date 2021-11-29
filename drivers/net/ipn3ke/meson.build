@@ -2,7 +2,7 @@
 # Copyright(c) 2019 Intel Corporation
 
 #
-# Add the experimenatal APIs called from this PMD
+# Add the experimental APIs called from this PMD
 #  rte_eth_switch_domain_alloc()
 #  rte_eth_dev_create()
 #  rte_eth_dev_destroy()

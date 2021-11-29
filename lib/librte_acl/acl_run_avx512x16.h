@@ -10,7 +10,7 @@
  */
 
 /*
- * This implementation uses 512-bit registers(zmm) and instrincts.
+ * This implementation uses 512-bit registers(zmm) and intrinsics.
  * So our main SIMD type is 512-bit width and each such variable can
  * process sizeof(__m512i) / sizeof(uint32_t) == 16 entries in parallel.
  */
@@ -25,20 +25,20 @@
 #define _F_(x)		x##_avx512x16
 
 /*
- * Same instrincts have different syntaxis (depending on the bit-width),
+ * Same intrinsics have different syntaxes (depending on the bit-width),
  * so to overcome that few macros need to be defined.
  */
 
-/* Naming convention for generic epi(packed integers) type instrincts. */
+/* Naming convention for generic epi(packed integers) type intrinsics. */
 #define _M_I_(x)	_mm512_##x
 
-/* Naming convention for si(whole simd integer) type instrincts. */
+/* Naming convention for si(whole simd integer) type intrinsics. */
 #define _M_SI_(x)	_mm512_##x##_si512
 
-/* Naming convention for masked gather type instrincts. */
+/* Naming convention for masked gather type intrinsics. */
 #define _M_MGI_(x)	_mm512_##x
 
-/* Naming convention for gather type instrincts. */
+/* Naming convention for gather type intrinsics. */
 #define _M_GI_(name, idx, base, scale)	_mm512_##name(idx, base, scale)
 
 /* num/mask of transitions per SIMD regs */
@@ -239,7 +239,7 @@ _F_(gather_bytes)(__m512i zero, const __m512i p[2], const uint32_t m[2],
 }
 
 /*
- * Resolve matches for multiple categories (GT 8, use 512b instuctions/regs)
+ * Resolve matches for multiple categories (GT 8, use 512b instructions/regs)
  */
 static inline void
 resolve_mcgt8_avx512x1(uint32_t result[],

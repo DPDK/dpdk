@@ -108,7 +108,7 @@ enum join_st {
 	LT_JOIN_EXIT_VAL_READ,	/* joining thread has collected ret val */
 };
 
-/* defnition of an lthread stack object */
+/* definition of an lthread stack object */
 struct lthread_stack {
 	uint8_t stack[LTHREAD_MAX_STACK_SIZE];
 	size_t stack_size;

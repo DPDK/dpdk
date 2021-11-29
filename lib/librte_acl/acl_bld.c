@@ -885,7 +885,7 @@ acl_gen_range_trie(struct acl_build_context *context,
 		return root;
 	}
 
-	/* gather information about divirgent paths */
+	/* gather information about divergent paths */
 	lo_00 = 0;
 	hi_ff = UINT8_MAX;
 	for (k = n - 1; k >= 0; k--) {

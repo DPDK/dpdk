@@ -88,7 +88,7 @@ tfp_send_msg_tunneled(struct tf *tfp,
 }
 
 /**
- * Allocates zero'ed memory from the heap.
+ * Allocates zeroed memory from the heap.
  *
  * Returns success or failure code.
  */

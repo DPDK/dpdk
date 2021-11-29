@@ -1456,7 +1456,7 @@ flow_dv_validate_item_meta(struct rte_eth_dev *dev __rte_unused,
 		if (reg == REG_NON)
 			return rte_flow_error_set(error, ENOTSUP,
 					RTE_FLOW_ERROR_TYPE_ITEM, item,
-					"unavalable extended metadata register");
+					"unavailable extended metadata register");
 		if (reg == REG_B)
 			return rte_flow_error_set(error, ENOTSUP,
 					  RTE_FLOW_ERROR_TYPE_ITEM, item,
@@ -2480,7 +2480,7 @@ flow_dv_validate_action_set_meta(struct rte_eth_dev *dev,
 	if (reg == REG_NON)
 		return rte_flow_error_set(error, ENOTSUP,
 					  RTE_FLOW_ERROR_TYPE_ACTION, action,
-					  "unavalable extended metadata register");
+					  "unavailable extended metadata register");
 	if (reg != REG_A && reg != REG_B) {
 		struct mlx5_priv *priv = dev->data->dev_private;
 
@@ -4145,7 +4145,7 @@ flow_dv_modify_hdr_action_max(struct rte_eth_dev *dev __rte_unused,
  *   Pointer to error structure.
  *
  * @return
- *   0 on success, a negative errno value otherwise and rte_ernno is set.
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 static int
 mlx5_flow_validate_action_meter(struct rte_eth_dev *dev,
@@ -6131,7 +6131,7 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 	 * - Explicit decap action is prohibited by the tunnel offload API.
 	 * - Drop action in tunnel steer rule is prohibited by the API.
 	 * - Application cannot use MARK action because it's value can mask
-	 *   tunnel default miss nitification.
+	 *   tunnel default miss notification.
 	 * - JUMP in tunnel match rule has no support in current PMD
 	 *   implementation.
 	 * - TAG & META are reserved for future uses.
@@ -9056,7 +9056,7 @@ flow_dv_dest_array_create_cb(struct mlx5_cache_list *list __rte_unused,
 			dest_attr[idx]->dest = sample_act->dr_port_id_action;
 		}
 	}
-	/* create a dest array actioin */
+	/* create a dest array action */
 	cache_resource->action = mlx5_glue->dr_create_flow_action_dest_array
 						(domain,
 						 cache_resource->num_of_dest,

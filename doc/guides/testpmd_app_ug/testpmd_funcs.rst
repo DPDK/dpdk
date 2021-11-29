@@ -3465,7 +3465,7 @@ Tunnel offload
 Indicate tunnel offload rule type
 
 - ``tunnel_set {tunnel_id}``: mark rule as tunnel offload decap_set type.
-- ``tunnel_match {tunnel_id}``:  mark rule as tunel offload match type.
+- ``tunnel_match {tunnel_id}``:  mark rule as tunnel offload match type.
 
 Matching pattern
 ^^^^^^^^^^^^^^^^

@@ -1923,7 +1923,7 @@ ixgbe_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 	 * register.
 	 * Update the RDT with the value of the last processed RX descriptor
 	 * minus 1, to guarantee that the RDT register is never equal to the
-	 * RDH register, which creates a "full" ring situtation from the
+	 * RDH register, which creates a "full" ring situation from the
 	 * hardware point of view...
 	 */
 	nb_hold = (uint16_t) (nb_hold + rxq->nb_rx_hold);
@@ -2272,7 +2272,7 @@ next_desc:
 	 * register.
 	 * Update the RDT with the value of the last processed RX descriptor
 	 * minus 1, to guarantee that the RDT register is never equal to the
-	 * RDH register, which creates a "full" ring situtation from the
+	 * RDH register, which creates a "full" ring situation from the
 	 * hardware point of view...
 	 */
 	if (!bulk_alloc && nb_hold > rxq->rx_free_thresh) {
@@ -2635,7 +2635,7 @@ ixgbe_dev_tx_queue_setup(struct rte_eth_dev *dev,
 	 */
 	tx_free_thresh = (uint16_t)((tx_conf->tx_free_thresh) ?
 			tx_conf->tx_free_thresh : DEFAULT_TX_FREE_THRESH);
-	/* force tx_rs_thresh to adapt an aggresive tx_free_thresh */
+	/* force tx_rs_thresh to adapt an aggressive tx_free_thresh */
 	tx_rs_thresh = (DEFAULT_TX_RS_THRESH + tx_free_thresh > nb_desc) ?
 			nb_desc - tx_free_thresh : DEFAULT_TX_RS_THRESH;
 	if (tx_conf->tx_rs_thresh > 0)
@@ -4820,7 +4820,7 @@ ixgbe_set_rx_function(struct rte_eth_dev *dev)
 				     dev->data->port_id);
 			dev->rx_pkt_burst = ixgbe_recv_pkts_lro_bulk_alloc;
 		} else {
-			PMD_INIT_LOG(DEBUG, "Using Regualr (non-vector, "
+			PMD_INIT_LOG(DEBUG, "Using Regular (non-vector, "
 					    "single allocation) "
 					    "Scattered Rx callback "
 					    "(port=%d).",
@@ -5159,7 +5159,7 @@ ixgbe_dev_rx_init(struct rte_eth_dev *dev)
 	/*
 	 * Setup the Checksum Register.
 	 * Disable Full-Packet Checksum which is mutually exclusive with RSS.
-	 * Enable IP/L4 checkum computation by hardware if requested to do so.
+	 * Enable IP/L4 checksum computation by hardware if requested to do so.
 	 */
 	rxcsum = IXGBE_READ_REG(hw, IXGBE_RXCSUM);
 	rxcsum |= IXGBE_RXCSUM_PCSD;

@@ -462,7 +462,7 @@ qat_comp_create_stream_pool(struct qat_comp_dev_private *comp_dev,
 		} else if (info.error) {
 			rte_mempool_obj_iter(mp, qat_comp_stream_destroy, NULL);
 			QAT_LOG(ERR,
-			     "Destoying mempool %s as at least one element failed initialisation",
+			     "Destroying mempool %s as at least one element failed initialisation",
 			     stream_pool_name);
 			rte_mempool_free(mp);
 			mp = NULL;

@@ -72,7 +72,7 @@ main_loop(struct cperf_benchmark_ctx *ctx, enum rte_comp_xform_type type)
 
 	if (ops == NULL) {
 		RTE_LOG(ERR, USER1,
-			"Can't allocate memory for ops strucures\n");
+			"Can't allocate memory for ops structures\n");
 		return -1;
 	}
 

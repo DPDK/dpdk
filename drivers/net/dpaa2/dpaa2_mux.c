@@ -91,7 +91,7 @@ rte_pmd_dpaa2_mux_flow_create(uint32_t dpdmux_id,
 	mask_iova = (void *)((size_t)key_iova + DIST_PARAM_IOVA_SIZE);
 
 	/* Currently taking only IP protocol as an extract type.
-	 * This can be exended to other fields using pattern->type.
+	 * This can be extended to other fields using pattern->type.
 	 */
 	memset(&kg_cfg, 0, sizeof(struct dpkg_profile_cfg));
 

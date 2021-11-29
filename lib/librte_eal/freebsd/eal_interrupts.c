@@ -226,7 +226,7 @@ rte_intr_callback_unregister_pending(const struct rte_intr_handle *intr_handle,
 
 	rte_spinlock_lock(&intr_lock);
 
-	/* check if the insterrupt source for the fd is existent */
+	/* check if the interrupt source for the fd is existent */
 	TAILQ_FOREACH(src, &intr_sources, next)
 		if (src->intr_handle.fd == intr_handle->fd)
 			break;
@@ -280,7 +280,7 @@ rte_intr_callback_unregister(const struct rte_intr_handle *intr_handle,
 
 	rte_spinlock_lock(&intr_lock);
 
-	/* check if the insterrupt source for the fd is existent */
+	/* check if the interrupt source for the fd is existent */
 	TAILQ_FOREACH(src, &intr_sources, next)
 		if (src->intr_handle.fd == intr_handle->fd)
 			break;

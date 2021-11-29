@@ -202,7 +202,7 @@ nfp_cpp_area_alloc(struct nfp_cpp *cpp, uint32_t dest,
  * @address:    start address on CPP target
  * @size:   size of area
  *
- * Allocate and initilizae a CPP area structure, and lock it down so
+ * Allocate and initialize a CPP area structure, and lock it down so
  * that it can be accessed directly.
  *
  * NOTE: @address and @size must be 32-bit aligned values.

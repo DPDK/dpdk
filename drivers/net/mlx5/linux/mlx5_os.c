@@ -74,7 +74,7 @@ static struct mlx5_local_data mlx5_local_data;
  *   Pointer to RQ channel object, which includes the channel fd
  *
  * @param[out] fd
- *   The file descriptor (representing the intetrrupt) used in this channel.
+ *   The file descriptor (representing the interrupt) used in this channel.
  *
  * @return
  *   0 on successfully setting the fd to non-blocking, non-zero otherwise.
@@ -2044,7 +2044,7 @@ mlx5_os_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 						/*
 						 * Force standalone bonding
 						 * device for ROCE LAG
-						 * confgiurations.
+						 * configurations.
 						 */
 						list[ns].info.master = 0;
 						list[ns].info.representor = 0;

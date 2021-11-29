@@ -135,7 +135,7 @@ static s32 ixgbe_bypass_rw_generic(struct ixgbe_hw *hw, u32 cmd, u32 *status)
  * ixgbe_bypass_valid_rd_generic - Verify valid return from bit-bang.
  *
  * If we send a write we can't be sure it took until we can read back
- * that same register.  It can be a problem as some of the feilds may
+ * that same register.  It can be a problem as some of the fields may
  * for valid reasons change between the time wrote the register and
  * we read it again to verify.  So this function check everything we
  * can check and then assumes it worked.
@@ -189,7 +189,7 @@ static bool ixgbe_bypass_valid_rd_generic(u32 in_reg, u32 out_reg)
 }
 
 /**
- *  ixgbe_bypass_set_generic - Set a bypass field in the FW CTRL Regiter.
+ *  ixgbe_bypass_set_generic - Set a bypass field in the FW CTRL Register.
  *
  *  @hw: pointer to hardware structure
  *  @cmd: The control word we are setting.

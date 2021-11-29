@@ -44,7 +44,7 @@
 #define FM10K_TX_MAX_MTU_SEG UINT8_MAX
 
 /*
- * byte aligment for HW RX data buffer
+ * byte alignment for HW RX data buffer
  * Datasheet requires RX buffer addresses shall either be 512-byte aligned or
  * be 8-byte aligned but without crossing host memory pages (4KB alignment
  * boundaries). Satisfy first option.

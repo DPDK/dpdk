@@ -175,14 +175,14 @@ update_pkt_header(struct rte_mbuf *pkt, uint32_t total_pkt_len)
 					sizeof(struct rte_ether_hdr) +
 					sizeof(struct rte_ipv4_hdr) +
 					sizeof(struct rte_udp_hdr)));
-	/* updata udp pkt length */
+	/* update UDP packet length */
 	udp_hdr = rte_pktmbuf_mtod_offset(pkt, struct rte_udp_hdr *,
 				sizeof(struct rte_ether_hdr) +
 				sizeof(struct rte_ipv4_hdr));
 	pkt_len = (uint16_t) (pkt_data_len + sizeof(struct rte_udp_hdr));
 	udp_hdr->dgram_len = RTE_CPU_TO_BE_16(pkt_len);
 
-	/* updata ip pkt length and csum */
+	/* update IP packet length and checksum */
 	ip_hdr = rte_pktmbuf_mtod_offset(pkt, struct rte_ipv4_hdr *,
 				sizeof(struct rte_ether_hdr));
 	ip_hdr->hdr_checksum = 0;

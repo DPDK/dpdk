@@ -278,7 +278,7 @@ usage(char *program)
 		"\t--deq_tmo_nsec     : global dequeue timeout\n"
 		"\t--prod_type_ethdev : use ethernet device as producer.\n"
 		"\t--prod_type_timerdev : use event timer device as producer.\n"
-		"\t                     expity_nsec would be the timeout\n"
+		"\t                     expiry_nsec would be the timeout\n"
 		"\t                     in ns.\n"
 		"\t--prod_type_timerdev_burst : use timer device as producer\n"
 		"\t                             burst mode.\n"

@@ -864,7 +864,7 @@ qid_basic(struct test *t)
 	}
 
 
-	/* Start the devicea */
+	/* Start the device */
 	if (!err) {
 		if (rte_event_dev_start(evdev) < 0) {
 			PMD_DRV_LOG(ERR, "%s:%d: Error with start call\n",

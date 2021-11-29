@@ -241,7 +241,7 @@ static struct rte_lpm6 *socket_lpm6[RTE_MAX_NUMA_NODES];
 #endif /* RTE_LIBRTE_IP_FRAG_TBL_STAT */
 
 /*
- * If number of queued packets reached given threahold, then
+ * If number of queued packets reached given threshold, then
  * send burst of packets on an output interface.
  */
 static inline uint32_t
@@ -870,7 +870,7 @@ setup_queue_tbl(struct rx_queue *rxq, uint32_t lcore, uint32_t queue)
 
 	/*
 	 * At any given moment up to <max_flow_num * (MAX_FRAG_NUM)>
-	 * mbufs could be stored int the fragment table.
+	 * mbufs could be stored in the fragment table.
 	 * Plus, each TX queue can hold up to <max_flow_num> packets.
 	 */
 

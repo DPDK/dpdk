@@ -982,7 +982,7 @@ virtio_rx_offload(struct rte_mbuf *m, struct virtio_net_hdr *hdr)
 			return -EINVAL;
 		}
 
-		/* Update mss lengthes in mbuf */
+		/* Update mss lengths in mbuf */
 		m->tso_segsz = hdr->gso_size;
 		switch (hdr->gso_type & ~VIRTIO_NET_HDR_GSO_ECN) {
 			case VIRTIO_NET_HDR_GSO_TCPV4:

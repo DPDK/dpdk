@@ -296,7 +296,7 @@ cpt_vq_init(struct cpt_vf *cptvf, uint8_t group)
 	/* CPT VF device initialization */
 	otx_cpt_vfvq_init(cptvf);
 
-	/* Send msg to PF to assign currnet Q to required group */
+	/* Send msg to PF to assign current Q to required group */
 	cptvf->vfgrp = group;
 	err = otx_cpt_send_vf_grp_msg(cptvf, group);
 	if (err) {

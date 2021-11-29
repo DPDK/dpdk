@@ -562,7 +562,7 @@ _recv_raw_pkts_vec(struct ixgbe_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 
 		desc_to_ptype_v(descs, rxq->pkt_type_mask, &rx_pkts[pos]);
 
-		/* C.4 calc avaialbe number of desc */
+		/* C.4 calc available number of desc */
 		var = __builtin_popcountll(_mm_cvtsi128_si64(staterr));
 		nb_pkts_recd += var;
 		if (likely(var != RTE_IXGBE_DESCS_PER_LOOP))

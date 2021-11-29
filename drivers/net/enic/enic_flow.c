@@ -405,7 +405,7 @@ enic_copy_item_ipv4_v1(struct copy_item_args *arg)
 		return ENOTSUP;
 	}
 
-	/* check that the suppied mask exactly matches capabilty */
+	/* check that the supplied mask exactly matches capability */
 	if (!mask_exact_match((const uint8_t *)&supported_mask,
 			      (const uint8_t *)item->mask, sizeof(*mask))) {
 		ENICPMD_LOG(ERR, "IPv4 exact match mask");
@@ -443,7 +443,7 @@ enic_copy_item_udp_v1(struct copy_item_args *arg)
 		return ENOTSUP;
 	}
 
-	/* check that the suppied mask exactly matches capabilty */
+	/* check that the supplied mask exactly matches capability */
 	if (!mask_exact_match((const uint8_t *)&supported_mask,
 			      (const uint8_t *)item->mask, sizeof(*mask))) {
 		ENICPMD_LOG(ERR, "UDP exact match mask");
@@ -482,7 +482,7 @@ enic_copy_item_tcp_v1(struct copy_item_args *arg)
 		return ENOTSUP;
 	}
 
-	/* check that the suppied mask exactly matches capabilty */
+	/* check that the supplied mask exactly matches capability */
 	if (!mask_exact_match((const uint8_t *)&supported_mask,
 			     (const uint8_t *)item->mask, sizeof(*mask))) {
 		ENICPMD_LOG(ERR, "TCP exact match mask");
@@ -1044,14 +1044,14 @@ fixup_l5_layer(struct enic *enic, struct filter_generic_1 *gp,
 }
 
 /**
- * Build the intenal enic filter structure from the provided pattern. The
+ * Build the internal enic filter structure from the provided pattern. The
  * pattern is validated as the items are copied.
  *
  * @param pattern[in]
  * @param items_info[in]
  *   Info about this NICs item support, like valid previous items.
  * @param enic_filter[out]
- *   NIC specfilc filters derived from the pattern.
+ *   NIC specific filters derived from the pattern.
  * @param error[out]
  */
 static int
@@ -1123,12 +1123,12 @@ stacking_error:
 }
 
 /**
- * Build the intenal version 1 NIC action structure from the provided pattern.
+ * Build the internal version 1 NIC action structure from the provided pattern.
  * The pattern is validated as the items are copied.
  *
  * @param actions[in]
  * @param enic_action[out]
- *   NIC specfilc actions derived from the actions.
+ *   NIC specific actions derived from the actions.
  * @param error[out]
  */
 static int
@@ -1170,12 +1170,12 @@ enic_copy_action_v1(__rte_unused struct enic *enic,
 }
 
 /**
- * Build the intenal version 2 NIC action structure from the provided pattern.
+ * Build the internal version 2 NIC action structure from the provided pattern.
  * The pattern is validated as the items are copied.
  *
  * @param actions[in]
  * @param enic_action[out]
- *   NIC specfilc actions derived from the actions.
+ *   NIC specific actions derived from the actions.
  * @param error[out]
  */
 static int

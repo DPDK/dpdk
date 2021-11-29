@@ -758,7 +758,7 @@ parse_sa_tokens(char **tokens, uint32_t n_tokens,
 			continue;
 		}
 
-		/* unrecognizeable input */
+		/* unrecognizable input */
 		APP_CHECK(0, status, "unrecognized input \"%s\"",
 			tokens[ti]);
 		return;
@@ -998,7 +998,7 @@ get_spi_proto(uint32_t spi, enum rte_security_ipsec_sa_direction dir,
 	if (rc4 >= 0) {
 		if (rc6 >= 0) {
 			RTE_LOG(ERR, IPSEC,
-				"%s: SPI %u used simultaeously by "
+				"%s: SPI %u used simultaneously by "
 				"IPv4(%d) and IPv6 (%d) SP rules\n",
 				__func__, spi, rc4, rc6);
 			return -EINVAL;
@@ -1377,7 +1377,7 @@ ipsec_sa_init(struct ipsec_sa *lsa, struct rte_ipsec_sa *sa, uint32_t sa_size)
 }
 
 /*
- * Allocate space and init rte_ipsec_sa strcutures,
+ * Allocate space and init rte_ipsec_sa structures,
  * one per session.
  */
 static int

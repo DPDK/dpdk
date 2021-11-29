@@ -440,7 +440,7 @@ opendir(const char *dirname)
  * display correctly on console. The problem can be fixed in two ways:
  * (1) change the character set of console to 1252 using chcp utility
  * and use Lucida Console font, or (2) use _cprintf function when
- * writing to console. The _cprinf() will re-encode ANSI strings to the
+ * writing to console. The _cprintf() will re-encode ANSI strings to the
  * console code page so many non-ASCII characters will display correctly.
  */
 static struct dirent*
@@ -579,7 +579,7 @@ dirent_mbstowcs_s(
 			wcstr[n] = 0;
 		}
 
-		/* Length of resuting multi-byte string WITH zero
+		/* Length of resulting multi-byte string WITH zero
 		 *terminator
 		 */
 		if (pReturnValue)

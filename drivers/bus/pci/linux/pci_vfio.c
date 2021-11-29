@@ -786,7 +786,7 @@ pci_vfio_map_resource_primary(struct rte_pci_device *dev)
 			continue;
 		}
 
-		/* skip non-mmapable BARs */
+		/* skip non-mmappable BARs */
 		if ((reg->flags & VFIO_REGION_INFO_FLAG_MMAP) == 0) {
 			free(reg);
 			continue;

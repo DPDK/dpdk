@@ -329,7 +329,7 @@ hns3vf_set_default_mac_addr(struct rte_eth_dev *dev,
 		if (ret == -EPERM) {
 			rte_ether_format_addr(mac_str, RTE_ETHER_ADDR_FMT_SIZE,
 					      old_addr);
-			hns3_warn(hw, "Has permanet mac addr(%s) for vf",
+			hns3_warn(hw, "Has permanent mac addr(%s) for vf",
 				  mac_str);
 		} else {
 			rte_ether_format_addr(mac_str, RTE_ETHER_ADDR_FMT_SIZE,
@@ -579,7 +579,7 @@ hns3vf_set_promisc_mode(struct hns3_hw *hw, bool en_bc_pmc,
 	 * 1. The promiscuous/allmulticast mode can be configured successfully
 	 *    only based on the trusted VF device. If based on the non trusted
 	 *    VF device, configuring promiscuous/allmulticast mode will fail.
-	 *    The hns3 VF device can be confiruged as trusted device by hns3 PF
+	 *    The hns3 VF device can be configured as trusted device by hns3 PF
 	 *    kernel ethdev driver on the host by the following command:
 	 *      "ip link set <eth num> vf <vf id> turst on"
 	 * 2. After the promiscuous mode is configured successfully, hns3 VF PMD
@@ -591,7 +591,7 @@ hns3vf_set_promisc_mode(struct hns3_hw *hw, bool en_bc_pmc,
 	 *    filter is still effective even in promiscuous mode. If upper
 	 *    applications don't call rte_eth_dev_vlan_filter API function to
 	 *    set vlan based on VF device, hns3 VF PMD will can't receive
-	 *    the packets with vlan tag in promiscuoue mode.
+	 *    the packets with vlan tag in promiscuous mode.
 	 */
 	hns3_cmd_setup_basic_desc(&desc, HNS3_OPC_MBX_VF_TO_PF, false);
 	req->msg[0] = HNS3_MBX_SET_PROMISC_MODE;

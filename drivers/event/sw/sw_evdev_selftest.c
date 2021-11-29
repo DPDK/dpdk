@@ -1109,7 +1109,7 @@ xstats_tests(struct test *t)
 					NULL,
 					0);
 
-	/* Verify that the resetable stats are reset, and others are not */
+	/* Verify that the resettable stats are reset, and others are not */
 	static const uint64_t queue_expected_zero[] = {
 		0 /* rx */,
 		0 /* tx */,

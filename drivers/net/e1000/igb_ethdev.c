@@ -1158,7 +1158,7 @@ eth_igb_configure(struct rte_eth_dev *dev)
 	if (dev->data->dev_conf.rxmode.mq_mode & ETH_MQ_RX_RSS_FLAG)
 		dev->data->dev_conf.rxmode.offloads |= DEV_RX_OFFLOAD_RSS_HASH;
 
-	/* multipe queue mode checking */
+	/* multiple queue mode checking */
 	ret  = igb_check_mq_mode(dev);
 	if (ret != 0) {
 		PMD_DRV_LOG(ERR, "igb_check_mq_mode fails with %d.",
@@ -1275,7 +1275,7 @@ eth_igb_start(struct rte_eth_dev *dev)
 		}
 	}
 
-	/* confiugre msix for rx interrupt */
+	/* configure MSI-X for Rx interrupt */
 	eth_igb_configure_msix_intr(dev);
 
 	/* Configure for OS presence */
@@ -2837,7 +2837,7 @@ eth_igb_interrupt_get_status(struct rte_eth_dev *dev)
 }
 
 /*
- * It executes link_update after knowing an interrupt is prsent.
+ * It executes link_update after knowing an interrupt is present.
  *
  * @param dev
  *  Pointer to struct rte_eth_dev.
@@ -2907,7 +2907,7 @@ eth_igb_interrupt_action(struct rte_eth_dev *dev,
  * @param handle
  *  Pointer to interrupt handle.
  * @param param
- *  The address of parameter (struct rte_eth_dev *) regsitered before.
+ *  The address of parameter (struct rte_eth_dev *) registered before.
  *
  * @return
  *  void
@@ -3807,7 +3807,7 @@ igb_inject_2uple_filter(struct rte_eth_dev *dev,
  *
  * @param
  * dev: Pointer to struct rte_eth_dev.
- * ntuple_filter: ponter to the filter that will be added.
+ * ntuple_filter: pointer to the filter that will be added.
  *
  * @return
  *    - On success, zero.
@@ -3888,7 +3888,7 @@ igb_delete_2tuple_filter(struct rte_eth_dev *dev,
  *
  * @param
  * dev: Pointer to struct rte_eth_dev.
- * ntuple_filter: ponter to the filter that will be removed.
+ * ntuple_filter: pointer to the filter that will be removed.
  *
  * @return
  *    - On success, zero.
@@ -4246,7 +4246,7 @@ igb_inject_5tuple_filter_82576(struct rte_eth_dev *dev,
  *
  * @param
  * dev: Pointer to struct rte_eth_dev.
- * ntuple_filter: ponter to the filter that will be added.
+ * ntuple_filter: pointer to the filter that will be added.
  *
  * @return
  *    - On success, zero.
@@ -4333,7 +4333,7 @@ igb_delete_5tuple_filter_82576(struct rte_eth_dev *dev,
  *
  * @param
  * dev: Pointer to struct rte_eth_dev.
- * ntuple_filter: ponter to the filter that will be removed.
+ * ntuple_filter: pointer to the filter that will be removed.
  *
  * @return
  *    - On success, zero.
@@ -4886,7 +4886,7 @@ igb_timesync_disable(struct rte_eth_dev *dev)
 	/* Disable L2 filtering of IEEE1588/802.1AS Ethernet frame types. */
 	E1000_WRITE_REG(hw, E1000_ETQF(E1000_ETQF_FILTER_1588), 0);
 
-	/* Stop incrementating the System Time registers. */
+	/* Stop incrementing the System Time registers. */
 	E1000_WRITE_REG(hw, E1000_TIMINCA, 0);
 
 	return 0;

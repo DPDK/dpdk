@@ -126,7 +126,7 @@ cb_parse_ptype(__rte_unused uint16_t port, __rte_unused uint16_t queue,
 }
 
 /*
- *  When set to zero, simple forwaring path is eanbled.
+ *  When set to zero, simple forwarding path is enabled.
  *  When set to one, optimized forwarding path is enabled.
  *  Note that LPM optimisation path uses SSE4.1 instructions.
  */
@@ -1529,7 +1529,7 @@ processx4_step3(struct rte_mbuf *pkt[FWDSTEP], uint16_t dst_port[FWDSTEP])
 }
 
 /*
- * We group consecutive packets with the same destionation port into one burst.
+ * We group consecutive packets with the same destination port into one burst.
  * To avoid extra latency this is done together with some other packet
  * processing, but after we made a final decision about packet's destination.
  * To do this we maintain:
@@ -1554,7 +1554,7 @@ processx4_step3(struct rte_mbuf *pkt[FWDSTEP], uint16_t dst_port[FWDSTEP])
 
 /*
  * Group consecutive packets with the same destination port in bursts of 4.
- * Suppose we have array of destionation ports:
+ * Suppose we have array of destination ports:
  * dst_port[] = {a, b, c, d,, e, ... }
  * dp1 should contain: <a, b, c, d>, dp2: <b, c, d, e>.
  * We doing 4 comparisons at once and the result is 4 bit mask.
@@ -1565,7 +1565,7 @@ port_groupx4(uint16_t pn[FWDSTEP + 1], uint16_t *lp, __m128i dp1, __m128i dp2)
 {
 	static const struct {
 		uint64_t pnum; /* prebuild 4 values for pnum[]. */
-		int32_t  idx;  /* index for new last updated elemnet. */
+		int32_t  idx;  /* index for new last updated element. */
 		uint16_t lpv;  /* add value to the last updated element. */
 	} gptbl[GRPSZ] = {
 	{
@@ -1834,7 +1834,7 @@ process_burst(struct rte_mbuf *pkts_burst[MAX_PKT_BURST], int nb_rx,
 
 	/*
 	 * Send packets out, through destination port.
-	 * Consecuteve pacekts with the same destination port
+	 * Consecutive packets with the same destination port
 	 * are already grouped together.
 	 * If destination port for the packet equals BAD_PORT,
 	 * then free the packet without sending it out.
@@ -3504,7 +3504,7 @@ main(int argc, char **argv)
 
 	ret = rte_timer_subsystem_init();
 	if (ret < 0)
-		rte_exit(EXIT_FAILURE, "Failed to initialize timer subystem\n");
+		rte_exit(EXIT_FAILURE, "Failed to initialize timer subsystem\n");
 
 	/* pre-init dst MACs for all ports to 02:00:00:00:00:xx */
 	for (portid = 0; portid < RTE_MAX_ETHPORTS; portid++) {

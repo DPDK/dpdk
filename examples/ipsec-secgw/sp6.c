@@ -515,7 +515,7 @@ parse_sp6_tokens(char **tokens, uint32_t n_tokens,
 			continue;
 		}
 
-		/* unrecognizeable input */
+		/* unrecognizable input */
 		APP_CHECK(0, status, "unrecognized input \"%s\"",
 			tokens[ti]);
 		return;

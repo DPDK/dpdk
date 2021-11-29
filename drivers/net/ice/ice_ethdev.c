@@ -1339,7 +1339,7 @@ ice_handle_aq_msg(struct rte_eth_dev *dev)
  * @param handle
  *  Pointer to interrupt handle.
  * @param param
- *  The address of parameter (struct rte_eth_dev *) regsitered before.
+ *  The address of parameter (struct rte_eth_dev *) registered before.
  *
  * @return
  *  void
@@ -1692,7 +1692,7 @@ ice_setup_vsi(struct ice_pf *pf, enum ice_vsi_type type)
 	}
 
 	/* At the beginning, only TC0. */
-	/* What we need here is the maximam number of the TX queues.
+	/* What we need here is the maximum number of the TX queues.
 	 * Currently vsi->nb_qps means it.
 	 * Correct it if any change.
 	 */
@@ -3541,7 +3541,7 @@ ice_dev_start(struct rte_eth_dev *dev)
 		goto rx_err;
 	}
 
-	/* enable Rx interrput and mapping Rx queue to interrupt vector */
+	/* enable Rx interrupt and mapping Rx queue to interrupt vector */
 	if (ice_rxq_intr_setup(dev))
 		return -EIO;
 
@@ -3568,7 +3568,7 @@ ice_dev_start(struct rte_eth_dev *dev)
 
 	ice_dev_set_link_up(dev);
 
-	/* Call get_link_info aq commond to enable/disable LSE */
+	/* Call get_link_info aq command to enable/disable LSE */
 	ice_link_update(dev, 0);
 
 	pf->adapter_stopped = false;
@@ -5199,7 +5199,7 @@ ice_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstat *xstats,
 		count++;
 	}
 
-	/* Get individiual stats from ice_hw_port struct */
+	/* Get individual stats from ice_hw_port struct */
 	for (i = 0; i < ICE_NB_HW_PORT_XSTATS; i++) {
 		xstats[count].value =
 			*(uint64_t *)((char *)hw_stats +
@@ -5230,7 +5230,7 @@ static int ice_xstats_get_names(__rte_unused struct rte_eth_dev *dev,
 		count++;
 	}
 
-	/* Get individiual stats from ice_hw_port struct */
+	/* Get individual stats from ice_hw_port struct */
 	for (i = 0; i < ICE_NB_HW_PORT_XSTATS; i++) {
 		strlcpy(xstats_names[count].name, ice_hw_port_strings[i].name,
 			sizeof(xstats_names[count].name));

@@ -790,8 +790,8 @@ send_packets(struct rte_mbuf **m, uint32_t *res, int num)
 }
 
 /*
- * Parses IPV6 address, exepcts the following format:
- * XXXX:XXXX:XXXX:XXXX:XXXX:XXXX:XXXX:XXXX (where X - is a hexedecimal digit).
+ * Parse IPv6 address, expects the following format:
+ * XXXX:XXXX:XXXX:XXXX:XXXX:XXXX:XXXX:XXXX (where X is a hexadecimal digit).
  */
 static int
 parse_ipv6_addr(const char *in, const char **end, uint32_t v[IPV6_ADDR_U32],
@@ -1993,7 +1993,7 @@ check_all_ports_link_status(uint32_t port_mask)
 }
 
 /*
- * build-up default vaues for dest MACs.
+ * build-up default values for dest MACs.
  */
 static void
 set_default_dest_mac(void)

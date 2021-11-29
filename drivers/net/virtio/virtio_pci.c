@@ -175,7 +175,7 @@ legacy_get_isr(struct virtio_hw *hw)
 	return dst;
 }
 
-/* Enable one vector (0) for Link State Intrerrupt */
+/* Enable one vector (0) for Link State Interrupt */
 static uint16_t
 legacy_set_config_irq(struct virtio_hw *hw, uint16_t vec)
 {

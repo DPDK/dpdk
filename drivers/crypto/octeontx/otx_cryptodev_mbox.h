@@ -70,7 +70,7 @@ void
 otx_cpt_handle_mbox_intr(struct cpt_vf *cptvf);
 
 /*
- * Checks if VF is able to comminicate with PF
+ * Checks if VF is able to communicate with PF
  * and also gets the CPT number this VF is associated to.
  */
 int

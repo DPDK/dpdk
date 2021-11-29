@@ -1299,7 +1299,7 @@ int ipn3ke_flow_init(void *dev)
 	IPN3KE_AFU_PMD_DEBUG("IPN3KE_CLF_LKUP_ENABLE: %x\n", data);
 
 
-	/* configure rx parse config, settings associatied with VxLAN */
+	/* configure rx parse config, settings associated with VxLAN */
 	IPN3KE_MASK_WRITE_REG(hw,
 			IPN3KE_CLF_RX_PARSE_CFG,
 			0,

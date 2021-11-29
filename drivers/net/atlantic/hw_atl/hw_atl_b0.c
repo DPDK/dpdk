@@ -281,7 +281,7 @@ int hw_atl_b0_hw_init_rx_path(struct aq_hw_s *self)
 	hw_atl_rpf_vlan_outer_etht_set(self, 0x88A8U);
 	hw_atl_rpf_vlan_inner_etht_set(self, 0x8100U);
 
-	/* VLAN proimisc bu defauld */
+	/* VLAN promisc by default */
 	hw_atl_rpf_vlan_prom_mode_en_set(self, 1);
 
 	/* Rx Interrupts */

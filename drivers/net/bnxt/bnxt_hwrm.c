@@ -3606,7 +3606,7 @@ int bnxt_hwrm_allocate_pf_only(struct bnxt *bp)
 	int rc;
 
 	if (!BNXT_PF(bp)) {
-		PMD_DRV_LOG(ERR, "Attempt to allcoate VFs on a VF!\n");
+		PMD_DRV_LOG(ERR, "Attempt to allocate VFs on a VF!\n");
 		return -EINVAL;
 	}
 

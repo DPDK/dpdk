@@ -159,7 +159,7 @@ desc_to_olflags_v(struct iavf_rx_queue *rxq, __m128i descs[4],
 	l3_l4e = _mm_shuffle_epi8(l3_l4e_flags, l3_l4e);
 	/* then we shift left 1 bit */
 	l3_l4e = _mm_slli_epi32(l3_l4e, 1);
-	/* we need to mask out the reduntant bits */
+	/* we need to mask out the redundant bits */
 	l3_l4e = _mm_and_si128(l3_l4e, cksum_mask);
 
 	vlan0 = _mm_or_si128(vlan0, rss);
@@ -611,7 +611,7 @@ _recv_raw_pkts_vec(struct iavf_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 		_mm_storeu_si128((void *)&rx_pkts[pos]->rx_descriptor_fields1,
 				 pkt_mb1);
 		desc_to_ptype_v(descs, &rx_pkts[pos], ptype_tbl);
-		/* C.4 calc avaialbe number of desc */
+		/* C.4 calc available number of desc */
 		var = __builtin_popcountll(_mm_cvtsi128_si64(staterr));
 		nb_pkts_recd += var;
 		if (likely(var != IAVF_VPMD_DESCS_PER_LOOP))

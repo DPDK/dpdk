@@ -141,7 +141,7 @@ i40e_fdir_rx_queue_init(struct i40e_rx_queue *rxq)
 		I40E_QRX_TAIL(rxq->vsi->base_queue);
 
 	rte_wmb();
-	/* Init the RX tail regieter. */
+	/* Init the RX tail register. */
 	I40E_PCI_REG_WRITE(rxq->qrx_tail, rxq->nb_rx_desc - 1);
 
 	return err;
@@ -429,7 +429,7 @@ i40e_check_fdir_flex_payload(const struct rte_eth_flex_payload_cfg *flex_cfg)
 
 	for (i = 0; i < I40E_FDIR_MAX_FLEX_LEN; i++) {
 		if (flex_cfg->src_offset[i] >= I40E_MAX_FLX_SOURCE_OFF) {
-			PMD_DRV_LOG(ERR, "exceeds maxmial payload limit.");
+			PMD_DRV_LOG(ERR, "exceeds maximal payload limit.");
 			return -EINVAL;
 		}
 	}
@@ -437,7 +437,7 @@ i40e_check_fdir_flex_payload(const struct rte_eth_flex_payload_cfg *flex_cfg)
 	memset(flex_pit, 0, sizeof(flex_pit));
 	num = i40e_srcoff_to_flx_pit(flex_cfg->src_offset, flex_pit);
 	if (num > I40E_MAX_FLXPLD_FIED) {
-		PMD_DRV_LOG(ERR, "exceeds maxmial number of flex fields.");
+		PMD_DRV_LOG(ERR, "exceeds maximal number of flex fields.");
 		return -EINVAL;
 	}
 	for (i = 0; i < num; i++) {
@@ -947,7 +947,7 @@ i40e_flow_fdir_construct_pkt(struct i40e_pf *pf,
 	uint8_t pctype = fdir_input->pctype;
 	struct i40e_customized_pctype *cus_pctype;
 
-	/* raw pcket template - just copy contents of the raw packet */
+	/* raw packet template - just copy contents of the raw packet */
 	if (fdir_input->flow_ext.pkt_template) {
 		memcpy(raw_pkt, fdir_input->flow.raw_flow.packet,
 		       fdir_input->flow.raw_flow.length);
@@ -1830,7 +1830,7 @@ i40e_flow_add_del_fdir_filter(struct rte_eth_dev *dev,
 				&check_filter.fdir.input);
 		if (!node) {
 			PMD_DRV_LOG(ERR,
-				    "There's no corresponding flow firector filter!");
+				    "There's no corresponding flow director filter!");
 			return -EINVAL;
 		}
 

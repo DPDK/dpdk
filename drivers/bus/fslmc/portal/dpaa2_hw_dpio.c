@@ -178,7 +178,7 @@ static int dpaa2_dpio_intr_init(struct dpaa2_dpio_dev *dpio_dev, int cpu_id)
 	dpio_epoll_fd = epoll_create(1);
 	ret = rte_dpaa2_intr_enable(&dpio_dev->intr_handle, 0);
 	if (ret) {
-		DPAA2_BUS_ERR("Interrupt registeration failed");
+		DPAA2_BUS_ERR("Interrupt registration failed");
 		return -1;
 	}
 

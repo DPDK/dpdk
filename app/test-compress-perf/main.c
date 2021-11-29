@@ -67,7 +67,7 @@ comp_perf_check_capabilities(struct comp_test_data *test_data, uint8_t cdev_id)
 
 	uint64_t comp_flags = cap->comp_feature_flags;
 
-	/* Huffman enconding */
+	/* Huffman encoding */
 	if (test_data->huffman_enc == RTE_COMP_HUFFMAN_FIXED &&
 			(comp_flags & RTE_COMP_FF_HUFFMAN_FIXED) == 0) {
 		RTE_LOG(ERR, USER1,

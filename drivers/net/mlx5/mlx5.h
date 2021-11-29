@@ -610,7 +610,7 @@ struct mlx5_flow_id_pool {
 	uint32_t base_index;
 	/**< The next index that can be used without any free elements. */
 	uint32_t *curr; /**< Pointer to the index to pop. */
-	uint32_t *last; /**< Pointer to the last element in the empty arrray. */
+	uint32_t *last; /**< Pointer to the last element in the empty array. */
 	uint32_t max_id; /**< Maximum id can be allocated from the pool. */
 };
 
@@ -659,7 +659,7 @@ struct mlx5_dev_txpp {
 	void *pp; /* Packet pacing context. */
 	uint16_t pp_id; /* Packet pacing context index. */
 	uint16_t ts_n; /* Number of captured timestamps. */
-	uint16_t ts_p; /* Pointer to statisticks timestamp. */
+	uint16_t ts_p; /* Pointer to statistics timestamp. */
 	struct mlx5_txpp_ts *tsa; /* Timestamps sliding window stats. */
 	struct mlx5_txpp_ts ts; /* Cached completion id/timestamp. */
 	uint32_t sync_lost:1; /* ci/timestamp synchronization lost. */
@@ -716,7 +716,7 @@ struct mlx5_dev_ctx_shared {
 	/* Shared DV/DR flow data section. */
 	uint32_t dv_meta_mask; /* flow META metadata supported mask. */
 	uint32_t dv_mark_mask; /* flow MARK metadata supported mask. */
-	uint32_t dv_regc0_mask; /* available bits of metatada reg_c[0]. */
+	uint32_t dv_regc0_mask; /* available bits of metadata reg_c[0]. */
 	void *fdb_domain; /* FDB Direct Rules name space handle. */
 	void *rx_domain; /* RX Direct Rules name space handle. */
 	void *tx_domain; /* TX Direct Rules name space handle. */

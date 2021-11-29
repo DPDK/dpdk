@@ -83,7 +83,7 @@ static uint16_t nb_queues = 1;
 /* MAC updating enabled by default. */
 static int mac_updating = 1;
 
-/* hardare copy mode enabled by default. */
+/* hardware copy mode enabled by default. */
 static copy_mode_t copy_mode = COPY_MODE_IOAT_NUM;
 
 /* size of IOAT rawdev ring for hardware copy mode or

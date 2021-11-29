@@ -134,7 +134,7 @@ vmbus_probe_one_driver(struct rte_vmbus_driver *dr,
 
 /*
  * If device class GUID matches, call the probe function of
- * registere drivers for the vmbus device.
+ * register drivers for the vmbus device.
  * Return -1 if initialization failed,
  * and 1 if no driver found for this device.
  */

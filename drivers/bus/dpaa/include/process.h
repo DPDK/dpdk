@@ -49,7 +49,7 @@ struct dpaa_portal_map {
 struct dpaa_ioctl_portal_map {
 	/* Input parameter, is a qman or bman portal required. */
 	enum dpaa_portal_type type;
-	/* Specifes a specific portal index to map or 0xffffffff
+	/* Specifies a specific portal index to map or 0xffffffff
 	 * for don't care.
 	 */
 	uint32_t index;

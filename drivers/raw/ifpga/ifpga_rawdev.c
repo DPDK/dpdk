@@ -382,7 +382,7 @@ ifpga_monitor_sensor(struct rte_rawdev *raw_dev,
 
 			if (HIGH_WARN(sensor, value) ||
 				LOW_WARN(sensor, value)) {
-				IFPGA_RAWDEV_PMD_INFO("%s reach theshold %d\n",
+				IFPGA_RAWDEV_PMD_INFO("%s reach threshold %d\n",
 					sensor->name, value);
 				*gsd_start = true;
 				break;
@@ -393,7 +393,7 @@ ifpga_monitor_sensor(struct rte_rawdev *raw_dev,
 		if (!strcmp(sensor->name, "12V AUX Voltage")) {
 			if (value < AUX_VOLTAGE_WARN) {
 				IFPGA_RAWDEV_PMD_INFO(
-					"%s reach theshold %d mV\n",
+					"%s reach threshold %d mV\n",
 					sensor->name, value);
 				*gsd_start = true;
 				break;
@@ -441,12 +441,12 @@ static int set_surprise_link_check_aer(
 		pos = ifpga_pci_find_ext_capability(fd, RTE_PCI_EXT_CAP_ID_ERR);
 		if (!pos)
 			goto end;
-		/* save previout ECAP_AER+0x08 */
+		/* save previous ECAP_AER+0x08 */
 		ret = pread(fd, &data, sizeof(data), pos+0x08);
 		if (ret == -1)
 			goto end;
 		ifpga_rdev->aer_old[0] = data;
-		/* save previout ECAP_AER+0x14 */
+		/* save previous ECAP_AER+0x14 */
 		ret = pread(fd, &data, sizeof(data), pos+0x14);
 		if (ret == -1)
 			goto end;
@@ -531,7 +531,7 @@ ifpga_monitor_start_func(void)
 			ifpga_rawdev_gsd_handle, NULL);
 		if (ret) {
 			IFPGA_RAWDEV_PMD_ERR(
-				"Fail to create ifpga nonitor thread");
+				"Fail to create ifpga monitor thread");
 			return -1;
 		}
 		ifpga_monitor_start = 1;

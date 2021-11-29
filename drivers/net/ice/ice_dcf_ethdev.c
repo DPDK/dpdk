@@ -207,7 +207,7 @@ ice_dcf_config_rx_queues_irqs(struct rte_eth_dev *dev,
 				    "vector %u are mapping to all Rx queues",
 				    hw->msix_base);
 		} else {
-			/* If Rx interrupt is reuquired, and we can use
+			/* If Rx interrupt is required, and we can use
 			 * multi interrupts, then the vec is from 1
 			 */
 			hw->nb_msix = RTE_MIN(hw->vf_res->max_vectors,

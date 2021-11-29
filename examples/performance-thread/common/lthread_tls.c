@@ -214,7 +214,7 @@ void _lthread_tls_alloc(struct lthread *lt)
 	tls->root_sched = (THIS_SCHED);
 	lt->tls = tls;
 
-	/* allocate data for TLS varaiables using RTE_PER_LTHREAD macros */
+	/* allocate data for TLS variables using RTE_PER_LTHREAD macros */
 	if (sizeof(void *) < (uint64_t)RTE_PER_LTHREAD_SECTION_SIZE) {
 		lt->per_lthread_data =
 		    _lthread_objcache_alloc((THIS_SCHED)->per_lthread_cache);

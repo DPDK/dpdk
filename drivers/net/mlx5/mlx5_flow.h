@@ -534,7 +534,7 @@ struct mlx5_flow_tbl_data_entry {
 	const struct mlx5_flow_tunnel *tunnel;
 	uint32_t group_id;
 	bool external;
-	bool tunnel_offload; /* Tunnel offlod table or not. */
+	bool tunnel_offload; /* Tunnel offload table or not. */
 	bool is_egress; /**< Egress table. */
 };
 
@@ -632,7 +632,7 @@ struct mlx5_flow_handle {
 	/**< Bit-fields of present layers, see MLX5_FLOW_LAYER_*. */
 	void *drv_flow; /**< pointer to driver flow object. */
 	uint32_t split_flow_id:28; /**< Sub flow unique match flow id. */
-	uint32_t mark:1; /**< Metadate rxq mark flag. */
+	uint32_t mark:1; /**< Metadata rxq mark flag. */
 	uint32_t fate_action:3; /**< Fate action type. */
 	union {
 		uint32_t rix_hrxq; /**< Hash Rx queue object index. */

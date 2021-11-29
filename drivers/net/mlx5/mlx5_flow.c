@@ -1143,7 +1143,7 @@ flow_rxq_tunnel_ptype_update(struct mlx5_rxq_ctrl *rxq_ctrl)
 }
 
 /**
- * Set the Rx queue flags (Mark/Flag and Tunnel Ptypes) according to the devive
+ * Set the Rx queue flags (Mark/Flag and Tunnel Ptypes) according to the device
  * flow.
  *
  * @param[in] dev
@@ -3541,7 +3541,7 @@ find_graph_root(uint32_t rss_level)
  *  subflow.
  *
  * @param[in] dev_flow
- *   Pointer the created preifx subflow.
+ *   Pointer the created prefix subflow.
  *
  * @return
  *   The layers get from prefix subflow.
@@ -3786,7 +3786,7 @@ flow_dv_mreg_create_cb(struct mlx5_hlist *list, uint64_t key,
 		[3] = { .type = RTE_FLOW_ACTION_TYPE_END, },
 	};
 
-	/* Fill the register fileds in the flow. */
+	/* Fill the register fields in the flow. */
 	ret = mlx5_flow_get_reg_id(dev, MLX5_FLOW_MARK, 0, error);
 	if (ret < 0)
 		return NULL;
@@ -3854,7 +3854,7 @@ flow_dv_mreg_create_cb(struct mlx5_hlist *list, uint64_t key,
 	/*
 	 * The copy Flows are not included in any list. There
 	 * ones are referenced from other Flows and can not
-	 * be applied, removed, deleted in ardbitrary order
+	 * be applied, removed, deleted in arbitrary order
 	 * by list traversing.
 	 */
 	mcp_res->rix_flow = flow_list_create(dev, NULL, &attr, items,
@@ -4271,7 +4271,7 @@ flow_create_split_inner(struct rte_eth_dev *dev,
 	/*
 	 * If dev_flow is as one of the suffix flow, some actions in suffix
 	 * flow may need some user defined item layer flags, and pass the
-	 * Metadate rxq mark flag to suffix flow as well.
+	 * Metadata rxq mark flag to suffix flow as well.
 	 */
 	if (flow_split_info->prefix_layers)
 		dev_flow->handle->layers = flow_split_info->prefix_layers;
@@ -4577,7 +4577,7 @@ flow_mreg_split_qrss_prep(struct rte_eth_dev *dev,
  * @param[out] error
  *   Perform verbose error reporting if not NULL.
  * @param[in] encap_idx
- *   The encap action inndex.
+ *   The encap action index.
  *
  * @return
  *   0 on success, negative value otherwise
@@ -5808,7 +5808,7 @@ flow_list_destroy(struct rte_eth_dev *dev, uint32_t *list,
  * @param list
  *   Pointer to the Indexed flow list.
  * @param active
- *   If flushing is called avtively.
+ *   If flushing is called actively.
  */
 void
 mlx5_flow_list_flush(struct rte_eth_dev *dev, uint32_t *list, bool active)
@@ -7034,7 +7034,7 @@ mlx5_flow_discover_mreg_c(struct rte_eth_dev *dev)
  *   Perform verbose error reporting if not NULL. PMDs initialize this
  *   structure in case of error only.
  * @return
- *   0 on success, a nagative value otherwise.
+ *   0 on success, a negative value otherwise.
  */
 int
 mlx5_flow_dev_dump(struct rte_eth_dev *dev,
@@ -7361,7 +7361,7 @@ mlx5_get_tof(const struct rte_flow_item *item,
 }
 
 /**
- * tunnel offload functionalilty is defined for DV environment only
+ * tunnel offload functionality is defined for DV environment only
  */
 #ifdef HAVE_IBV_FLOW_DV_SUPPORT
 __extension__

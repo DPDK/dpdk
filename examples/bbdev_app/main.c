@@ -379,7 +379,7 @@ add_awgn(struct rte_mbuf **mbufs, uint16_t num_pkts)
 /* Encoder output to Decoder input adapter. The Decoder accepts only soft input
  * so each bit of the encoder output must be translated into one byte of LLR. If
  * Sub-block Deinterleaver is bypassed, which is the case, the padding bytes
- * must additionally be insterted at the end of each sub-block.
+ * must additionally be inserted at the end of each sub-block.
  */
 static inline void
 transform_enc_out_dec_in(struct rte_mbuf **mbufs, uint8_t *temp_buf,

@@ -74,7 +74,7 @@ enum mlx4_mp_req_type {
 	MLX4_MP_REQ_STOP_RXTX,
 };
 
-/* Pameters for IPC. */
+/* Parameters for IPC. */
 struct mlx4_mp_param {
 	enum mlx4_mp_req_type type;
 	int port_id;

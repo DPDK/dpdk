@@ -20,11 +20,11 @@ struct bcmfs_sym_request;
 
 /** Crypto Request processing successful. */
 #define BCMFS_SYM_RESPONSE_SUCCESS               (0)
-/** Crypot Request processing protocol failure. */
+/** Crypto Request processing protocol failure. */
 #define BCMFS_SYM_RESPONSE_PROTO_FAILURE         (1)
-/** Crypot Request processing completion failure. */
+/** Crypto Request processing completion failure. */
 #define BCMFS_SYM_RESPONSE_COMPL_ERROR           (2)
-/** Crypot Request processing hash tag check error. */
+/** Crypto Request processing hash tag check error. */
 #define BCMFS_SYM_RESPONSE_HASH_TAG_ERROR        (3)
 
 /** Maximum threshold length to adjust AAD in continuation

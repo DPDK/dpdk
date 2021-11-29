@@ -416,10 +416,10 @@ pdcp_sdap_insert_snoop_op(struct program *p, bool swap __maybe_unused,
 
 	/* Set the variable size of data the register will write */
 	if (dir == OP_TYPE_ENCAP_PROTOCOL) {
-		/* We will add the interity data so add its length */
+		/* We will add the integrity data so add its length */
 		MATHI(p, SEQINSZ, ADD, PDCP_MAC_I_LEN, VSEQOUTSZ, 4, IMMED2);
 	} else {
-		/* We will check the interity data so remove its length */
+		/* We will check the integrity data so remove its length */
 		MATHI(p, SEQINSZ, SUB, PDCP_MAC_I_LEN, VSEQOUTSZ, 4, IMMED2);
 		/* Do not take the ICV in the out-snooping configuration */
 		MATHI(p, SEQINSZ, SUB, PDCP_MAC_I_LEN, VSEQINSZ, 4, IMMED2);
@@ -721,7 +721,7 @@ static inline int pdcp_sdap_insert_no_snoop_op(
 		     CLRW_CLR_C1MODE,
 		     CLRW, 0, 4, IMMED);
 
-		/* Load the key for authentcation */
+		/* Load the key for authentication */
 		KEY(p, KEY1, authdata->key_enc_flags, authdata->key,
 		    authdata->keylen, INLINE_KEY(authdata));
 

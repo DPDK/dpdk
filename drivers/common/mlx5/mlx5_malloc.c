@@ -57,7 +57,7 @@ static struct mlx5_sys_mem mlx5_sys_mem = {
  * Check if the address belongs to memory seg list.
  *
  * @param addr
- *   Memory address to be ckeced.
+ *   Memory address to be checked.
  * @param msl
  *   Memory seg list.
  *
@@ -108,7 +108,7 @@ mlx5_mem_update_msl(void *addr)
  * Check if the address belongs to rte memory.
  *
  * @param addr
- *   Memory address to be ckeced.
+ *   Memory address to be checked.
  *
  * @return
  *   True if it belongs, false otherwise.

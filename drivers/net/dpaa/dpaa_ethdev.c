@@ -1048,7 +1048,7 @@ int dpaa_eth_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 				   QM_FQCTRL_CTXASTASHING |
 				   QM_FQCTRL_PREFERINCACHE;
 		opts.fqd.context_a.stashing.exclusive = 0;
-		/* In muticore scenario stashing becomes a bottleneck on LS1046.
+		/* In multicore scenario stashing becomes a bottleneck on LS1046.
 		 * So do not enable stashing in this case
 		 */
 		if (dpaa_svr_family != SVR_LS1046A_FAMILY)
@@ -1879,7 +1879,7 @@ dpaa_dev_init(struct rte_eth_dev *eth_dev)
 
 	dpaa_intf->name = dpaa_device->name;
 
-	/* save fman_if & cfg in the interface struture */
+	/* save fman_if & cfg in the interface structure */
 	eth_dev->process_private = fman_intf;
 	dpaa_intf->ifid = dev_id;
 	dpaa_intf->cfg = cfg;
@@ -2188,7 +2188,7 @@ rte_dpaa_probe(struct rte_dpaa_driver *dpaa_drv,
 		if (dpaa_svr_family == SVR_LS1043A_FAMILY)
 			dpaa_push_mode_max_queue = 0;
 
-		/* if push mode queues to be enabled. Currenly we are allowing
+		/* if push mode queues to be enabled. Currently we are allowing
 		 * only one queue per thread.
 		 */
 		if (getenv("DPAA_PUSH_QUEUES_NUMBER")) {

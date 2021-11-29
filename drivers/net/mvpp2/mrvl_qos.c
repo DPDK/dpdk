@@ -301,7 +301,7 @@ get_entry_values(const char *entry, uint8_t *tab,
 }
 
 /**
- * Parse Traffic Class'es mapping configuration.
+ * Parse Traffic Classes mapping configuration.
  *
  * @param file Config file handle.
  * @param port Which port to look for.

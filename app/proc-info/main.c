@@ -611,7 +611,7 @@ metrics_display(int port_id)
 
 	names =  rte_malloc(NULL, sizeof(struct rte_metric_name) * len, 0);
 	if (names == NULL) {
-		printf("Cannot allocate memory for metrcis names\n");
+		printf("Cannot allocate memory for metrics names\n");
 		rte_free(metrics);
 		return;
 	}
@@ -1089,7 +1089,7 @@ show_tm(void)
 				caplevel.n_nodes_max,
 				caplevel.n_nodes_nonleaf_max,
 				caplevel.n_nodes_leaf_max);
-			printf("\t  -- indetical: non leaf %u leaf %u\n",
+			printf("\t  -- identical: non leaf %u leaf %u\n",
 				caplevel.non_leaf_nodes_identical,
 				caplevel.leaf_nodes_identical);
 
@@ -1243,7 +1243,7 @@ show_ring(char *name)
 			printf("  - Name (%s) on socket (%d)\n"
 				"  - flags:\n"
 				"\t  -- Single Producer Enqueue (%u)\n"
-				"\t  -- Single Consmer Dequeue (%u)\n",
+				"\t  -- Single Consumer Dequeue (%u)\n",
 				ptr->name,
 				ptr->memzone->socket_id,
 				ptr->flags & RING_F_SP_ENQ,

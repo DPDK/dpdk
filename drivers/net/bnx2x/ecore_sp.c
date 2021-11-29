@@ -1338,7 +1338,7 @@ static int __ecore_vlan_mac_execute_step(struct bnx2x_softc *sc,
 	if (rc != ECORE_SUCCESS) {
 		__ecore_vlan_mac_h_pend(sc, o, *ramrod_flags);
 
-		/** Calling function should not diffrentiate between this case
+		/** Calling function should not differentiate between this case
 		 *  and the case in which there is already a pending ramrod
 		 */
 		rc = ECORE_PENDING;
@@ -2246,7 +2246,7 @@ struct ecore_pending_mcast_cmd {
 	union {
 		ecore_list_t macs_head;
 		uint32_t macs_num;	/* Needed for DEL command */
-		int next_bin;	/* Needed for RESTORE flow with aprox match */
+		int next_bin;	/* Needed for RESTORE flow with approx match */
 	} data;
 
 	int done;		/* set to TRUE, when the command has been handled,
@@ -3424,7 +3424,7 @@ void ecore_init_mac_credit_pool(struct bnx2x_softc *sc,
 	} else {
 
 		/*
-		 * CAM credit is equaly divided between all active functions
+		 * CAM credit is equally divided between all active functions
 		 * on the PATH.
 		 */
 		if (func_num > 0) {

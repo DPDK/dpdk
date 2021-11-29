@@ -40,7 +40,7 @@ l2fwd_event_device_setup_internal_port(struct l2fwd_resources *rsrc)
 		ethdev_count++;
 	}
 
-	/* Event device configurtion */
+	/* Event device configuration */
 	rte_event_dev_info_get(event_d_id, &dev_info);
 
 	/* Enable implicit release */

@@ -585,7 +585,7 @@ dpaa2_dev_prefetch_rx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 	rte_prefetch0((void *)(size_t)(dq_storage + 1));
 
 	/* Prepare next pull descriptor. This will give space for the
-	 * prefething done on DQRR entries
+	 * prefetching done on DQRR entries
 	 */
 	q_storage->toggle ^= 1;
 	dq_storage1 = q_storage->dq_storage[q_storage->toggle];
@@ -1339,7 +1339,7 @@ dpaa2_dev_tx_ordered(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 			if (*dpaa2_seqn(*bufs)) {
 				/* Use only queue 0 for Tx in case of atomic/
 				 * ordered packets as packets can get unordered
-				 * when being tranmitted out from the interface
+				 * when being transmitted out from the interface
 				 */
 				dpaa2_set_enqueue_descriptor(order_sendq,
 							     (*bufs),
@@ -1566,7 +1566,7 @@ dpaa2_dev_loopback_rx(void *queue,
 	rte_prefetch0((void *)(size_t)(dq_storage + 1));
 
 	/* Prepare next pull descriptor. This will give space for the
-	 * prefething done on DQRR entries
+	 * prefetching done on DQRR entries
 	 */
 	q_storage->toggle ^= 1;
 	dq_storage1 = q_storage->dq_storage[q_storage->toggle];

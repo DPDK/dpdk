@@ -153,7 +153,7 @@ rte_ipsec_sad_destroy(struct rte_ipsec_sad *sad);
  * @param keys
  *   Array of keys to be looked up in the SAD
  * @param sa
- *   Pointer assocoated with the keys.
+ *   Pointer associated with the keys.
  *   If the lookup for the given key failed, then corresponding sa
  *   will be NULL
  * @param n

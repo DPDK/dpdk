@@ -2392,7 +2392,7 @@ virtio_dev_configure(struct rte_eth_dev *dev)
 	hw->has_rx_offload = rx_offload_enabled(hw);
 
 	if (dev->data->dev_flags & RTE_ETH_DEV_INTR_LSC)
-		/* Enable vector (0) for Link State Intrerrupt */
+		/* Enable vector (0) for Link State Interrupt */
 		if (VTPCI_OPS(hw)->set_config_irq(hw, 0) ==
 				VIRTIO_MSI_NO_VECTOR) {
 			PMD_DRV_LOG(ERR, "failed to set config vector");
@@ -2500,7 +2500,7 @@ virtio_dev_start(struct rte_eth_dev *dev)
 		}
 	}
 
-	/* Enable uio/vfio intr/eventfd mapping: althrough we already did that
+	/* Enable uio/vfio intr/eventfd mapping: although we already did that
 	 * in device configure, but it could be unmapped  when device is
 	 * stopped.
 	 */

@@ -142,7 +142,7 @@ union em_vlan_macip {
 struct em_ctx_info {
 	uint64_t flags;              /**< ol_flags related to context build. */
 	uint32_t cmp_mask;           /**< compare mask */
-	union em_vlan_macip hdrlen;  /**< L2 and L3 header lenghts */
+	union em_vlan_macip hdrlen;  /**< L2 and L3 header lengths */
 };
 
 /**
@@ -830,7 +830,7 @@ eth_em_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 	 * register.
 	 * Update the RDT with the value of the last processed RX descriptor
 	 * minus 1, to guarantee that the RDT register is never equal to the
-	 * RDH register, which creates a "full" ring situtation from the
+	 * RDH register, which creates a "full" ring situation from the
 	 * hardware point of view...
 	 */
 	nb_hold = (uint16_t) (nb_hold + rxq->nb_rx_hold);
@@ -1075,7 +1075,7 @@ eth_em_recv_scattered_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 	 * register.
 	 * Update the RDT with the value of the last processed RX descriptor
 	 * minus 1, to guarantee that the RDT register is never equal to the
-	 * RDH register, which creates a "full" ring situtation from the
+	 * RDH register, which creates a "full" ring situation from the
 	 * hardware point of view...
 	 */
 	nb_hold = (uint16_t) (nb_hold + rxq->nb_rx_hold);

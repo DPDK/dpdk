@@ -2357,7 +2357,7 @@ static int qede_set_mtu(struct rte_eth_dev *dev, uint16_t mtu)
 		if (fp->rxq != NULL) {
 			bufsz = (uint16_t)rte_pktmbuf_data_room_size(
 				fp->rxq->mb_pool) - RTE_PKTMBUF_HEADROOM;
-			/* cache align the mbuf size to simplfy rx_buf_size
+			/* cache align the mbuf size to simplify rx_buf_size
 			 * calculation
 			 */
 			bufsz = QEDE_FLOOR_TO_CACHE_LINE_SIZE(bufsz);

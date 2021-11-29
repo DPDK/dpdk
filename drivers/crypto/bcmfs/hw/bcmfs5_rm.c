@@ -441,7 +441,7 @@ static void bcmfs5_write_doorbell(struct bcmfs_qp *qp)
 {
 	struct bcmfs_queue *txq = &qp->tx_q;
 
-	/* sync in bfeore ringing the door-bell */
+	/* sync in before ringing the door-bell */
 	rte_wmb();
 
 	FS_MMIO_WRITE32(txq->descs_inflight,

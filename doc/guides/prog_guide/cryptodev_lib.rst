@@ -707,7 +707,7 @@ feature is useful when the user wants to abandon partially enqueued operations
 for a failed enqueue burst operation and try enqueuing in a whole later.
 
 Similar as enqueue, there are two dequeue functions:
-``rte_cryptodev_raw_dequeue`` for dequeing single operation, and
+``rte_cryptodev_raw_dequeue`` for dequeuing single operation, and
 ``rte_cryptodev_raw_dequeue_burst`` for dequeuing a burst of operations (e.g.
 all operations in a ``struct rte_crypto_sym_vec`` descriptor). The
 ``rte_cryptodev_raw_dequeue_burst`` function allows the user to provide callback

@@ -46,7 +46,7 @@ RTE_LOG_REGISTER(mlx5_common_logtype, pmd.common.mlx5, NOTICE)
 static bool mlx5_common_initialized;
 
 /**
- * One time innitialization routine for run-time dependency on glue library
+ * One time initialization routine for run-time dependency on glue library
  * for multiple PMDs. Each mlx5 PMD that depends on mlx5_common module,
  * must invoke in its constructor.
  */

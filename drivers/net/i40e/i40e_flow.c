@@ -3043,7 +3043,7 @@ i40e_flow_parse_fdir_pattern(struct rte_eth_dev *dev,
 				rte_flow_error_set(error, EINVAL,
 					   RTE_FLOW_ERROR_TYPE_ITEM,
 					   item,
-					   "Exceeds maxmial payload limit.");
+					   "Exceeds maximal payload limit.");
 				return -rte_errno;
 			}
 

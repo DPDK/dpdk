@@ -922,7 +922,7 @@ storm_memset_eq_prod(struct bnx2x_softc *sc, uint16_t eq_prod, uint16_t pfid)
  *   block.
  *
  * RAMROD_CMD_ID_ETH_UPDATE
- *   Used to update the state of the leading connection, usually to udpate
+ *   Used to update the state of the leading connection, usually to update
  *   the RSS indirection table.  Completes on the RCQ of the leading
  *   connection. (Not currently used under FreeBSD until OS support becomes
  *   available.)
@@ -937,7 +937,7 @@ storm_memset_eq_prod(struct bnx2x_softc *sc, uint16_t eq_prod, uint16_t pfid)
  *   the RCQ of the leading connection.
  *
  * RAMROD_CMD_ID_ETH_CFC_DEL
- *   Used when tearing down a conneciton prior to driver unload.  Completes
+ *   Used when tearing down a connection prior to driver unload.  Completes
  *   on the RCQ of the leading connection (since the current connection
  *   has been completely removed from controller memory).
  *
@@ -1068,7 +1068,7 @@ bnx2x_sp_post(struct bnx2x_softc *sc, int command, int cid, uint32_t data_hi,
 
 	/*
 	 * It's ok if the actual decrement is issued towards the memory
-	 * somewhere between the lock and unlock. Thus no more explict
+	 * somewhere between the lock and unlock. Thus no more explicit
 	 * memory barrier is needed.
 	 */
 	if (common) {
@@ -1186,7 +1186,7 @@ bnx2x_sp_event(struct bnx2x_softc *sc, struct bnx2x_fastpath *fp,
 		break;
 
 	case (RAMROD_CMD_ID_ETH_TERMINATE):
-		PMD_DRV_LOG(DEBUG, sc, "got MULTI[%d] teminate ramrod", cid);
+		PMD_DRV_LOG(DEBUG, sc, "got MULTI[%d] terminate ramrod", cid);
 		drv_cmd = ECORE_Q_CMD_TERMINATE;
 		break;
 
@@ -1472,7 +1472,7 @@ bnx2x_fill_accept_flags(struct bnx2x_softc *sc, uint32_t rx_mode,
 	case BNX2X_RX_MODE_ALLMULTI_PROMISC:
 	case BNX2X_RX_MODE_PROMISC:
 		/*
-		 * According to deffinition of SI mode, iface in promisc mode
+		 * According to definition of SI mode, iface in promisc mode
 		 * should receive matched and unmatched (in resolution of port)
 		 * unicast packets.
 		 */
@@ -1940,7 +1940,7 @@ static void bnx2x_disable_close_the_gate(struct bnx2x_softc *sc)
 
 /*
  * Cleans the object that have internal lists without sending
- * ramrods. Should be run when interrutps are disabled.
+ * ramrods. Should be run when interrupts are disabled.
  */
 static void bnx2x_squeeze_objects(struct bnx2x_softc *sc)
 {
@@ -2039,7 +2039,7 @@ bnx2x_nic_unload(struct bnx2x_softc *sc, uint32_t unload_mode, uint8_t keep_link
 
 	/*
 	 * Nothing to do during unload if previous bnx2x_nic_load()
-	 * did not completed successfully - all resourses are released.
+	 * did not complete successfully - all resources are released.
 	 */
 	if ((sc->state == BNX2X_STATE_CLOSED) || (sc->state == BNX2X_STATE_ERROR)) {
 		return 0;
@@ -2080,7 +2080,7 @@ bnx2x_nic_unload(struct bnx2x_softc *sc, uint32_t unload_mode, uint8_t keep_link
 		/*
 		 * Prevent transactions to host from the functions on the
 		 * engine that doesn't reset global blocks in case of global
-		 * attention once gloabl blocks are reset and gates are opened
+		 * attention once global blocks are reset and gates are opened
 		 * (the engine which leader will perform the recovery
 		 * last).
 		 */
@@ -2097,7 +2097,7 @@ bnx2x_nic_unload(struct bnx2x_softc *sc, uint32_t unload_mode, uint8_t keep_link
 
 	/*
 	 * At this stage no more interrupts will arrive so we may safely clean
-	 * the queue'able objects here in case they failed to get cleaned so far.
+	 * the queueable objects here in case they failed to get cleaned so far.
 	 */
 	if (IS_PF(sc)) {
 		bnx2x_squeeze_objects(sc);
@@ -2147,7 +2147,7 @@ bnx2x_nic_unload(struct bnx2x_softc *sc, uint32_t unload_mode, uint8_t keep_link
 }
 
 /*
- * Encapsulte an mbuf cluster into the tx bd chain and makes the memory
+ * Encapsulate an mbuf cluster into the Tx BD chain and makes the memory
  * visible to the controller.
  *
  * If an mbuf is submitted to this routine and cannot be given to the
@@ -2715,7 +2715,7 @@ static uint8_t bnx2x_clear_pf_load(struct bnx2x_softc *sc)
 	return val1 != 0;
 }
 
-/* send load requrest to mcp and analyze response */
+/* send load request to MCP and analyze response */
 static int bnx2x_nic_load_request(struct bnx2x_softc *sc, uint32_t * load_code)
 {
 	PMD_INIT_FUNC_TRACE(sc);
@@ -5321,7 +5321,7 @@ static void bnx2x_func_init(struct bnx2x_softc *sc, struct bnx2x_func_init_param
  *   sum of vn_min_rates.
  *     or
  *   0 - if all the min_rates are 0.
- * In the later case fainess algorithm should be deactivated.
+ * In the later case fairness algorithm should be deactivated.
  * If all min rates are not zero then those that are zeroes will be set to 1.
  */
 static void bnx2x_calc_vn_min(struct bnx2x_softc *sc, struct cmng_init_input *input)
@@ -6560,7 +6560,7 @@ bnx2x_pf_tx_q_prep(struct bnx2x_softc *sc, struct bnx2x_fastpath *fp,
 	txq_init->fw_sb_id = fp->fw_sb_id;
 
 	/*
-	 * set the TSS leading client id for TX classfication to the
+	 * set the TSS leading client id for Tx classification to the
 	 * leading RSS client id
 	 */
 	txq_init->tss_leading_cl_id = BNX2X_FP(sc, 0, cl_id);
@@ -7630,8 +7630,8 @@ static uint8_t bnx2x_is_pcie_pending(struct bnx2x_softc *sc)
 }
 
 /*
-* Walk the PCI capabiites list for the device to find what features are
-* supported. These capabilites may be enabled/disabled by firmware so it's
+* Walk the PCI capabilities list for the device to find what features are
+* supported. These capabilities may be enabled/disabled by firmware so it's
 * best to walk the list rather than make assumptions.
 */
 static void bnx2x_probe_pci_caps(struct bnx2x_softc *sc)
@@ -8421,7 +8421,7 @@ static int bnx2x_get_device_info(struct bnx2x_softc *sc)
 	} else {
 		sc->devinfo.int_block = INT_BLOCK_IGU;
 
-/* do not allow device reset during IGU info preocessing */
+/* do not allow device reset during IGU info processing */
 		bnx2x_acquire_hw_lock(sc, HW_LOCK_RESOURCE_RESET);
 
 		val = REG_RD(sc, IGU_REG_BLOCK_CONFIGURATION);
@@ -9772,7 +9772,7 @@ int bnx2x_attach(struct bnx2x_softc *sc)
 
 	sc->igu_base_addr = IS_VF(sc) ? PXP_VF_ADDR_IGU_START : BAR_IGU_INTMEM;
 
-	/* get PCI capabilites */
+	/* get PCI capabilities */
 	bnx2x_probe_pci_caps(sc);
 
 	if (sc->devinfo.pcie_msix_cap_reg != 0) {
@@ -10291,7 +10291,7 @@ static int bnx2x_init_hw_common(struct bnx2x_softc *sc)
  *          stay set)
  *      f.  If this is VNIC 3 of a port then also init
  *          first_timers_ilt_entry to zero and last_timers_ilt_entry
- *          to the last enrty in the ILT.
+ *          to the last entry in the ILT.
  *
  *      Notes:
  *      Currently the PF error in the PGLC is non recoverable.
@@ -11097,7 +11097,7 @@ static void bnx2x_hw_enable_status(struct bnx2x_softc *sc)
 /**
  *	bnx2x_pf_flr_clnup
  *	a. re-enable target read on the PF
- *	b. poll cfc per function usgae counter
+ *	b. poll cfc per function usage counter
  *	c. poll the qm perfunction usage counter
  *	d. poll the tm per function usage counter
  *	e. poll the tm per function scan-done indication

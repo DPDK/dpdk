@@ -653,7 +653,7 @@ dpdmai_dev_dequeue_multijob_prefetch(
 	rte_prefetch0((void *)(size_t)(dq_storage + 1));
 
 	/* Prepare next pull descriptor. This will give space for the
-	 * prefething done on DQRR entries
+	 * prefetching done on DQRR entries
 	 */
 	q_storage->toggle ^= 1;
 	dq_storage1 = q_storage->dq_storage[q_storage->toggle];

@@ -382,7 +382,7 @@ mlx5_vdpa_features_validate(struct mlx5_vdpa_priv *priv)
 	if (priv->features & (1ULL << VIRTIO_F_RING_PACKED)) {
 		if (!(priv->caps.virtio_queue_type & (1 <<
 						     MLX5_VIRTQ_TYPE_PACKED))) {
-			DRV_LOG(ERR, "Failed to configur PACKED mode for vdev "
+			DRV_LOG(ERR, "Failed to configure PACKED mode for vdev "
 				"%d - it was not reported by HW/driver"
 				" capability.", priv->vid);
 			return -ENOTSUP;

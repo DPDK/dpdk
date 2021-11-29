@@ -390,7 +390,7 @@ fdir_set_input_mask_x550(struct rte_eth_dev *dev)
 
 		switch (info->mask.tunnel_type_mask) {
 		case 0:
-			/* Mask turnnel type */
+			/* Mask tunnel type */
 			fdiripv6m |= IXGBE_FDIRIP6M_TUNNEL_TYPE;
 			break;
 		case 1:

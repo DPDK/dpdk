@@ -210,7 +210,7 @@ struct virtio_net_ctrl_mac {
  * Control link announce acknowledgement
  *
  * The command VIRTIO_NET_CTRL_ANNOUNCE_ACK is used to indicate that
- * driver has recevied the notification; device would clear the
+ * driver has received the notification; device would clear the
  * VIRTIO_NET_S_ANNOUNCE bit in the status field after it receives
  * this command.
  */
@@ -290,7 +290,7 @@ struct virtqueue {
 	struct vq_desc_extra vq_descx[0];
 };
 
-/* If multiqueue is provided by host, then we suppport it. */
+/* If multiqueue is provided by host, then we support it. */
 #define VIRTIO_NET_CTRL_MQ   4
 #define VIRTIO_NET_CTRL_MQ_VQ_PAIRS_SET        0
 #define VIRTIO_NET_CTRL_MQ_VQ_PAIRS_MIN        1

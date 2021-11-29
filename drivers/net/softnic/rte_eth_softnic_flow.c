@@ -930,7 +930,7 @@ flow_rule_match_acl_get(struct pmd_internals *softnic __rte_unused,
  * Both *tmask* and *fmask* are byte arrays of size *tsize* and *fsize*
  * respectively.
  * They are located within a larger buffer at offsets *toffset* and *foffset*
- * respectivelly. Both *tmask* and *fmask* represent bitmasks for the larger
+ * respectively. Both *tmask* and *fmask* represent bitmasks for the larger
  * buffer.
  * Question: are the two masks equivalent?
  *

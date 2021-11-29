@@ -287,7 +287,7 @@ iavf_init_rss(struct iavf_adapter *adapter)
 			j = 0;
 		vf->rss_lut[i] = j;
 	}
-	/* send virtchnnl ops to configure rss*/
+	/* send virtchnl ops to configure RSS */
 	ret = iavf_configure_rss_lut(adapter);
 	if (ret)
 		return ret;
@@ -570,7 +570,7 @@ static int iavf_config_rx_queues_irqs(struct rte_eth_dev *dev,
 				    "vector %u are mapping to all Rx queues",
 				    vf->msix_base);
 		} else {
-			/* If Rx interrupt is reuquired, and we can use
+			/* If Rx interrupt is required, and we can use
 			 * multi interrupts, then the vec is from 1
 			 */
 			vf->nb_msix = RTE_MIN(intr_handle->nb_efd,
@@ -1075,7 +1075,7 @@ iavf_dev_rss_reta_update(struct rte_eth_dev *dev,
 	}
 
 	rte_memcpy(vf->rss_lut, lut, reta_size);
-	/* send virtchnnl ops to configure rss*/
+	/* send virtchnl ops to configure RSS */
 	ret = iavf_configure_rss_lut(adapter);
 	if (ret) /* revert back */
 		rte_memcpy(vf->rss_lut, lut, reta_size);

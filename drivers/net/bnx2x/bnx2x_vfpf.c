@@ -73,7 +73,7 @@ bnx2x_add_tlv(__rte_unused struct bnx2x_softc *sc, void *tlvs_list,
 	tl->length = length;
 }
 
-/* Initiliaze header of the first tlv and clear mailbox*/
+/* Initialize header of the first TLV and clear mailbox */
 static void
 bnx2x_vf_prep(struct bnx2x_softc *sc, struct vf_first_tlv *first_tlv,
 	      uint16_t type, uint16_t length)

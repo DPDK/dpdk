@@ -69,7 +69,7 @@ print_err_msg(struct rte_tm_error *error)
 		[RTE_TM_ERROR_TYPE_NODE_PARAMS_N_SHARED_SHAPERS]
 			= "num shared shapers field (node params)",
 		[RTE_TM_ERROR_TYPE_NODE_PARAMS_WFQ_WEIGHT_MODE]
-			= "wfq weght mode field (node params)",
+			= "wfq weight mode field (node params)",
 		[RTE_TM_ERROR_TYPE_NODE_PARAMS_N_SP_PRIORITIES]
 			= "num strict priorities field (node params)",
 		[RTE_TM_ERROR_TYPE_NODE_PARAMS_CMAN]
@@ -477,7 +477,7 @@ static void cmd_show_port_tm_level_cap_parsed(void *parsed_result,
 cmdline_parse_inst_t cmd_show_port_tm_level_cap = {
 	.f = cmd_show_port_tm_level_cap_parsed,
 	.data = NULL,
-	.help_str = "Show Port TM Hierarhical level Capabilities",
+	.help_str = "Show port TM hierarchical level capabilities",
 	.tokens = {
 		(void *)&cmd_show_port_tm_level_cap_show,
 		(void *)&cmd_show_port_tm_level_cap_port,

@@ -1788,7 +1788,7 @@ struct ionic_fw_control_cmd {
 };
 
 /**
- * struct ionic_fw_control_comp - Firmware control copletion
+ * struct ionic_fw_control_comp - Firmware control completion
  * @opcode:    opcode
  * @slot:      slot where the firmware was installed
  */

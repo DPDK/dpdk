@@ -548,7 +548,7 @@ otx_cpt_enq_single_sym(struct cpt_instance *instance,
 					 &mdata, (void **)&prep_req);
 
 	if (unlikely(ret)) {
-		CPT_LOG_DP_ERR("prep cryto req : op %p, cpt_op 0x%x "
+		CPT_LOG_DP_ERR("prep crypto req : op %p, cpt_op 0x%x "
 			       "ret 0x%x", op, (unsigned int)cpt_op, ret);
 		return ret;
 	}

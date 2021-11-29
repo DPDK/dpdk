@@ -22,7 +22,7 @@
 /*
  * Basic functional tests for librte_bpf.
  * The main procedure - load eBPF program, execute it and
- * compare restuls with expected values.
+ * compare results with expected values.
  */
 
 struct dummy_offset {
@@ -2706,7 +2706,7 @@ test_ld_mbuf1_check(uint64_t rc, const void *arg)
 }
 
 /*
- * same as ld_mbuf1, but then trancate the mbuf by 1B,
+ * same as ld_mbuf1, but then truncate the mbuf by 1B,
  * so load of last 4B fail.
  */
 static void

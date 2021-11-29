@@ -1079,7 +1079,7 @@ ice_rx_queue_setup(struct rte_eth_dev *dev,
 	rxq->proto_xtr = pf->proto_xtr != NULL ?
 			 pf->proto_xtr[queue_idx] : PROTO_XTR_NONE;
 
-	/* Allocate the maximun number of RX ring hardware descriptor. */
+	/* Allocate the maximum number of RX ring hardware descriptor. */
 	len = ICE_MAX_RING_DESC;
 
 	/**
@@ -1209,7 +1209,7 @@ ice_tx_queue_setup(struct rte_eth_dev *dev,
 	tx_free_thresh = (uint16_t)(tx_conf->tx_free_thresh ?
 				    tx_conf->tx_free_thresh :
 				    ICE_DEFAULT_TX_FREE_THRESH);
-	/* force tx_rs_thresh to adapt an aggresive tx_free_thresh */
+	/* force tx_rs_thresh to adapt an aggressive tx_free_thresh */
 	tx_rs_thresh =
 		(ICE_DEFAULT_TX_RSBIT_THRESH + tx_free_thresh > nb_desc) ?
 			nb_desc - tx_free_thresh : ICE_DEFAULT_TX_RSBIT_THRESH;
@@ -1636,7 +1636,7 @@ ice_rx_alloc_bufs(struct ice_rx_queue *rxq)
 		rxdp[i].read.pkt_addr = dma_addr;
 	}
 
-	/* Update rx tail regsiter */
+	/* Update Rx tail register */
 	ICE_PCI_REG_WRITE(rxq->qrx_tail, rxq->rx_free_trigger);
 
 	rxq->rx_free_trigger =
@@ -1869,7 +1869,7 @@ ice_recv_scattered_pkts(void *rx_queue,
 	 * threshold of the queue, advance the Receive Descriptor Tail (RDT)
 	 * register. Update the RDT with the value of the last processed RX
 	 * descriptor minus 1, to guarantee that the RDT register is never
-	 * equal to the RDH register, which creates a "full" ring situtation
+	 * equal to the RDH register, which creates a "full" ring situation
 	 * from the hardware point of view.
 	 */
 	nb_hold = (uint16_t)(nb_hold + rxq->nb_rx_hold);
@@ -2972,7 +2972,7 @@ tx_xmit_pkts(struct ice_tx_queue *txq,
 	ice_tx_fill_hw_ring(txq, tx_pkts + n, (uint16_t)(nb_pkts - n));
 	txq->tx_tail = (uint16_t)(txq->tx_tail + (nb_pkts - n));
 
-	/* Determin if RS bit needs to be set */
+	/* Determine if RS bit needs to be set */
 	if (txq->tx_tail > txq->tx_next_rs) {
 		txr[txq->tx_next_rs].cmd_type_offset_bsz |=
 			rte_cpu_to_le_64(((uint64_t)ICE_TX_DESC_CMD_RS) <<

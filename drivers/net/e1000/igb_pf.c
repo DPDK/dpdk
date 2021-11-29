@@ -155,7 +155,7 @@ int igb_pf_host_configure(struct rte_eth_dev *eth_dev)
 	else
 		E1000_WRITE_REG(hw, E1000_DTXSWC, E1000_DTXSWC_VMDQ_LOOPBACK_EN);
 
-	/* clear VMDq map to perment rar 0 */
+	/* clear VMDq map to permanent rar 0 */
 	rah = E1000_READ_REG(hw, E1000_RAH(0));
 	rah &= ~ (0xFF << E1000_RAH_POOLSEL_SHIFT);
 	E1000_WRITE_REG(hw, E1000_RAH(0), rah);

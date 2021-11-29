@@ -384,8 +384,8 @@ parse_cb_ipv4_trace(char *str, struct ipv4_5tuple *v)
 }
 
 /*
- * Parses IPV6 address, exepcts the following format:
- * XXXX:XXXX:XXXX:XXXX:XXXX:XXXX:XXXX:XXXX (where X - is a hexedecimal digit).
+ * Parse IPv6 address, expects the following format:
+ * XXXX:XXXX:XXXX:XXXX:XXXX:XXXX:XXXX:XXXX (where X is a hexadecimal digit).
  */
 static int
 parse_ipv6_addr(const char *in, const char **end, uint32_t v[IPV6_ADDR_U32],
@@ -961,7 +961,7 @@ print_usage(const char *prgname)
 			"should be either 1 or multiple of %zu, "
 			"but not greater then %u]\n"
 		"[--" OPT_MAX_SIZE
-			"=<size limit (in bytes) for runtime ACL strucutures> "
+			"=<size limit (in bytes) for runtime ACL structures> "
 			"leave 0 for default behaviour]\n"
 		"[--" OPT_ITER_NUM "=<number of iterations to perform>]\n"
 		"[--" OPT_VERBOSE "=<verbose level>]\n"

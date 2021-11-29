@@ -1514,7 +1514,7 @@ static int ena_populate_rx_queue(struct ena_ring *rxq, unsigned int count)
 		++rxq->rx_stats.refill_partial;
 	}
 
-	/* When we submitted free recources to device... */
+	/* When we submitted free resources to device... */
 	if (likely(i > 0)) {
 		/* ...let HW know that it can fill buffers with data. */
 		ena_com_write_sq_doorbell(rxq->ena_com_io_sq);

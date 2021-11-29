@@ -433,7 +433,7 @@ and decides on a preferred IOVA mode.
 
 - if all buses report RTE_IOVA_PA, then the preferred IOVA mode is RTE_IOVA_PA,
 - if all buses report RTE_IOVA_VA, then the preferred IOVA mode is RTE_IOVA_VA,
-- if all buses report RTE_IOVA_DC, no bus expressed a preferrence, then the
+- if all buses report RTE_IOVA_DC, no bus expressed a preference, then the
   preferred mode is RTE_IOVA_DC,
 - if the buses disagree (at least one wants RTE_IOVA_PA and at least one wants
   RTE_IOVA_VA), then the preferred IOVA mode is RTE_IOVA_DC (see below with the
@@ -658,7 +658,7 @@ Known Issues
 + rte_ring
 
   rte_ring supports multi-producer enqueue and multi-consumer dequeue.
-  However, it is non-preemptive, this has a knock on effect of making rte_mempool non-preemptable.
+  However, it is non-preemptive, this has a knock on effect of making rte_mempool non-preemptible.
 
   .. note::
 

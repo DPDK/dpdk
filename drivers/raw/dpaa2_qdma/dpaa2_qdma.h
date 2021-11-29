@@ -82,7 +82,7 @@ struct qdma_device {
 	/** total number of hw queues. */
 	uint16_t num_hw_queues;
 	/**
-	 * Maximum number of hw queues to be alocated per core.
+	 * Maximum number of hw queues to be allocated per core.
 	 * This is limited by MAX_HW_QUEUE_PER_CORE
 	 */
 	uint16_t max_hw_queues_per_core;
@@ -268,7 +268,7 @@ struct dpaa2_dpdmai_dev {
 	struct fsl_mc_io dpdmai;
 	/** HW ID for DPDMAI object */
 	uint32_t dpdmai_id;
-	/** Tocken of this device */
+	/** Token of this device */
 	uint16_t token;
 	/** Number of queue in this DPDMAI device */
 	uint8_t num_queues;

@@ -527,7 +527,7 @@ rte_fslmc_driver_unregister(struct rte_dpaa2_driver *driver)
 
 	fslmc_bus = driver->fslmc_bus;
 
-	/* Cleanup the PA->VA Translation table; From whereever this function
+	/* Cleanup the PA->VA Translation table; From wherever this function
 	 * is called from.
 	 */
 	if (rte_eal_iova_mode() == RTE_IOVA_PA)

@@ -961,7 +961,7 @@ add_action(struct rte_flow *flow, size_t *act_index, struct action_data *adata)
 }
 
 /**
- * Helper function to send a serie of TC actions to the kernel
+ * Helper function to send a series of TC actions to the kernel
  *
  * @param[in] flow
  *   Pointer to rte flow containing the netlink message
@@ -2017,7 +2017,7 @@ static int bpf_rss_key(enum bpf_rss_key_e cmd, __u32 *key_idx)
 			break;
 
 		/*
-		 * Subtract offest to restore real key index
+		 * Subtract offset to restore real key index
 		 * If a non RSS flow is falsely trying to release map
 		 * entry 0 - the offset subtraction will calculate the real
 		 * map index as an out-of-range value and the release operation

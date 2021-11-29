@@ -251,7 +251,7 @@ mvneta_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 	    (mru + MRVL_NETA_PKT_OFFS > mbuf_data_size)) {
 		mru = mbuf_data_size - MRVL_NETA_PKT_OFFS;
 		mtu = MRVL_NETA_MRU_TO_MTU(mru);
-		MVNETA_LOG(WARNING, "MTU too big, max MTU possible limitted by"
+		MVNETA_LOG(WARNING, "MTU too big, max MTU possible limited by"
 			" current mbuf size: %u. Set MTU to %u, MRU to %u",
 			mbuf_data_size, mtu, mru);
 	}

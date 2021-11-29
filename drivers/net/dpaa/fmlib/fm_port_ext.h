@@ -498,7 +498,7 @@ typedef struct ioc_fm_port_pcd_prs_params_t {
 		/**< Number of bytes from beginning of packet to start parsing
 		 */
 	ioc_net_header_type	first_prs_hdr;
-		/**< The type of the first header axpected at 'parsing_offset'
+		/**< The type of the first header expected at 'parsing_offset'
 		 */
 	bool		include_in_prs_statistics;
 		/**< TRUE to include this port in the parser statistics */
@@ -524,7 +524,7 @@ typedef struct ioc_fm_port_pcd_prs_params_t {
 } ioc_fm_port_pcd_prs_params_t;
 
 /*
- * @Description   A structure for defining coarse alassification parameters
+ * @Description   A structure for defining coarse classification parameters
  *		  (Must match t_fm_portPcdCcParams defined in fm_port_ext.h)
  */
 typedef struct ioc_fm_port_pcd_cc_params_t {
@@ -602,7 +602,7 @@ typedef struct ioc_fm_pcd_prs_start_t {
 		/**< Number of bytes from beginning of packet to start parsing
 		 */
 	ioc_net_header_type first_prs_hdr;
-		/**< The type of the first header axpected at 'parsing_offset'
+		/**< The type of the first header expected at 'parsing_offset'
 		 */
 } ioc_fm_pcd_prs_start_t;
 
@@ -1356,7 +1356,7 @@ typedef uint32_t	fm_port_frame_err_select_t;
 #define FM_PORT_FRM_ERR_PRS_HDR_ERR	FM_FD_ERR_PRS_HDR_ERR
 			/**< Header error was identified during parsing */
 #define FM_PORT_FRM_ERR_BLOCK_LIMIT_EXCEEDED	FM_FD_ERR_BLOCK_LIMIT_EXCEEDED
-			/**< Frame parsed beyind 256 first bytes */
+			/**< Frame parsed beyond 256 first bytes */
 #define FM_PORT_FRM_ERR_PROCESS_TIMEOUT	0x00000001
 			/**< FPM Frame Processing Timeout Exceeded */
 /* @} */
@@ -1390,7 +1390,7 @@ typedef void (t_fm_port_exception_callback) (t_handle h_app,
  * @Param[in]	  length	length of received data
  * @Param[in]	  status	receive status and errors
  * @Param[in]	  position	position of buffer in frame
- * @Param[in]	  h_buf_context	A handle of the user acossiated with this buffer
+ * @Param[in]	  h_buf_context	A handle of the user associated with this buffer
  *
  * @Retval	  e_RX_STORE_RESPONSE_CONTINUE
  *		  order the driver to continue Rx operation for all ready data.
@@ -1414,7 +1414,7 @@ typedef e_rx_store_response(t_fm_port_im_rx_store_callback) (t_handle h_app,
  * @Param[in]	  p_data	A pointer to data received
  * @Param[in]	  status	transmit status and errors
  * @Param[in]	  last_buffer	is last buffer in frame
- * @Param[in]	  h_buf_context	A handle of the user acossiated with this buffer
+ * @Param[in]	  h_buf_context	A handle of the user associated with this buffer
  */
 typedef void (t_fm_port_im_tx_conf_callback) (t_handle   h_app,
 				uint8_t	*p_data,
@@ -2585,7 +2585,7 @@ typedef struct t_fm_port_congestion_grps {
 	bool	pfc_prio_enable[FM_NUM_CONG_GRPS][FM_MAX_PFC_PRIO];
 			/**< a matrix that represents the map between the CG ids
 			 * defined in 'congestion_grps_to_consider' to the
-			 * priorties mapping array.
+			 * priorities mapping array.
 			 */
 } t_fm_port_congestion_grps;
 

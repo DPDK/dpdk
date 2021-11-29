@@ -229,7 +229,7 @@ hn_nvs_conn_rxbuf(struct hn_data *hv)
 	hv->rxbuf_section_cnt = resp.nvs_sect[0].slotcnt;
 
 	/*
-	 * Pimary queue's rxbuf_info is not allocated at creation time.
+	 * Primary queue's rxbuf_info is not allocated at creation time.
 	 * Now we can allocate it after we figure out the slotcnt.
 	 */
 	hv->primary->rxbuf_info = rte_calloc("HN_RXBUF_INFO",

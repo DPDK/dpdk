@@ -95,7 +95,7 @@ enum ntb_spad_idx {
  * @spad_write: Write val to local/peer spad register.
  * @db_read: Read doorbells status.
  * @db_clear: Clear local doorbells.
- * @db_set_mask: Set bits in db mask, preventing db interrpts generated
+ * @db_set_mask: Set bits in db mask, preventing db interrupts generated
  * for those db bits.
  * @peer_db_set: Set doorbell bit to generate peer interrupt for that bit.
  * @vector_bind: Bind vector source [intr] to msix vector [msix].

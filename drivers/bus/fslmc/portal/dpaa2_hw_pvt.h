@@ -156,7 +156,7 @@ struct dpaa2_queue {
 		struct rte_cryptodev_data *crypto_data;
 	};
 	uint32_t fqid;		/*!< Unique ID of this queue */
-	uint16_t flow_id;	/*!< To be used by DPAA2 frmework */
+	uint16_t flow_id;	/*!< To be used by DPAA2 framework */
 	uint8_t tc_index;	/*!< traffic class identifier */
 	uint8_t cgid;		/*! < Congestion Group id for this queue */
 	uint64_t rx_pkts;

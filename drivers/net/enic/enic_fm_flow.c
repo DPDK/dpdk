@@ -1670,7 +1670,7 @@ enic_fm_dump_tcam_actions(const struct fm_action *fm_action)
 	/* Remove trailing comma */
 	if (buf[0])
 		*(bp - 1) = '\0';
-	ENICPMD_LOG(DEBUG, "       Acions: %s", buf);
+	ENICPMD_LOG(DEBUG, "       Actions: %s", buf);
 }
 
 static int
@@ -2188,7 +2188,7 @@ enic_action_handle_get(struct enic_flowman *fm, struct fm_action *action_in,
 	if (ret < 0 && ret != -ENOENT)
 		return rte_flow_error_set(error, -ret,
 				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
-				   NULL, "enic: rte_hash_lookup(aciton)");
+				   NULL, "enic: rte_hash_lookup(action)");
 
 	if (ret == -ENOENT) {
 		/* Allocate a new action on the NIC. */
@@ -2259,7 +2259,7 @@ __enic_fm_flow_add_entry(struct enic_flowman *fm,
 
 	ENICPMD_FUNC_TRACE();
 
-	/* Get or create an aciton handle. */
+	/* Get or create an action handle. */
 	ret = enic_action_handle_get(fm, action_in, error, &ah);
 	if (ret)
 		return ret;

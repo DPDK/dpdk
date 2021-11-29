@@ -67,7 +67,7 @@ cnstr_shdsc_zuce(uint32_t *descbuf, bool ps, bool swap,
  * @authlen: size of digest
  *
  * The IV prepended before hmac payload must be 8 bytes consisting
- * of COUNT||BEAERER||DIR. The COUNT is of 32-bits, bearer is of 5 bits and
+ * of COUNT||BEARER||DIR. The COUNT is of 32-bits, bearer is of 5 bits and
  * direction is of 1 bit - totalling to 38 bits.
  *
  * Return: size of descriptor written in words or negative number on error

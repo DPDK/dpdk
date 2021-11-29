@@ -3,7 +3,7 @@
 
 
 # process all libraries equally, as far as possible
-# "core" libs first, then others alphebetically as far as possible
+# "core" libs first, then others alphabetically as far as possible
 # NOTE: for speed of meson runs, the dependencies in the subdirectories
 # sometimes skip deps that would be implied by others, e.g. if mempool is
 # given as a dep, no need to mention ring. This is especially true for the

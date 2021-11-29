@@ -740,7 +740,7 @@ cpt_ecdsa_verify_prep(struct rte_crypto_ecdsa_op_param *ecdsa,
 	 * Set dlen = sum(sizeof(fpm address), ROUNDUP8(message len),
 	 * ROUNDUP8(sign len(r and s), public key len(x and y coordinates),
 	 * prime len, order len)).
-	 * Please note sign, public key and order can not excede prime length
+	 * Please note sign, public key and order can not exceed prime length
 	 * i.e. 6 * p_align
 	 */
 	dlen = sizeof(fpm_table_iova) + m_align + (6 * p_align);

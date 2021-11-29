@@ -160,7 +160,7 @@ mlx5_vdpa_vhost_mem_regions_prepare(int vid, uint8_t *mode, uint64_t *mem_size,
  * The target here is to group all the physical memory regions of the
  * virtio device in one indirect mkey.
  * For KLM Fixed Buffer Size mode (HW find the translation entry in one
- * read according to the guest phisical address):
+ * read according to the guest physical address):
  * All the sub-direct mkeys of it must be in the same size, hence, each
  * one of them should be in the GCD size of all the virtio memory
  * regions and the holes between them.

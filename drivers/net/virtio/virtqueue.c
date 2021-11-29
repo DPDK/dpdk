@@ -13,7 +13,7 @@
 /*
  * Two types of mbuf to be cleaned:
  * 1) mbuf that has been consumed by backend but not used by virtio.
- * 2) mbuf that hasn't been consued by backend.
+ * 2) mbuf that hasn't been consumed by backend.
  */
 struct rte_mbuf *
 virtqueue_detach_unused(struct virtqueue *vq)

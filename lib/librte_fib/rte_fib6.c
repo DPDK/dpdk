@@ -40,10 +40,10 @@ EAL_REGISTER_TAILQ(rte_fib6_tailq)
 struct rte_fib6 {
 	char			name[FIB6_NAMESIZE];
 	enum rte_fib6_type	type;	/**< Type of FIB struct */
-	struct rte_rib6		*rib;	/**< RIB helper datastruct */
+	struct rte_rib6		*rib;	/**< RIB helper datastructure */
 	void			*dp;	/**< pointer to the dataplane struct*/
-	rte_fib6_lookup_fn_t	lookup;	/**< fib lookup function */
-	rte_fib6_modify_fn_t	modify; /**< modify fib datastruct */
+	rte_fib6_lookup_fn_t	lookup;	/**< FIB lookup function */
+	rte_fib6_modify_fn_t	modify; /**< modify FIB datastructure */
 	uint64_t		def_nh;
 };
 

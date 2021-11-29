@@ -107,7 +107,7 @@ extern int dpaa2_timestamp_dynfield_offset;
 
 #define DPAA2_FLOW_MAX_KEY_SIZE		16
 
-/*Externaly defined*/
+/* Externally defined */
 extern const struct rte_flow_ops dpaa2_flow_ops;
 extern enum rte_filter_type dpaa2_filter_type;
 

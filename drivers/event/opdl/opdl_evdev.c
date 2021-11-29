@@ -702,7 +702,7 @@ opdl_probe(struct rte_vdev_device *vdev)
 	}
 
 	PMD_DRV_LOG(INFO, "DEV_ID:[%02d] : "
-		      "Success - creating eventdev device %s, numa_node:[%d], do_valdation:[%s]"
+		      "Success - creating eventdev device %s, numa_node:[%d], do_validation:[%s]"
 			  " , self_test:[%s]\n",
 		      dev->data->dev_id,
 		      name,

@@ -345,7 +345,7 @@ test_fib_perf(void)
 	fib = rte_fib_create(__func__, SOCKET_ID_ANY, &config);
 	TEST_FIB_ASSERT(fib != NULL);
 
-	/* Measue add. */
+	/* Measure add. */
 	begin = rte_rdtsc();
 
 	for (i = 0; i < NUM_ROUTE_ENTRIES; i++) {

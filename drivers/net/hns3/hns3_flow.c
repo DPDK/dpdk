@@ -337,7 +337,7 @@ hns3_handle_action_queue_region(struct rte_eth_dev *dev,
  *
  * @param actions[in]
  * @param rule[out]
- *   NIC specfilc actions derived from the actions.
+ *   NIC specific actions derived from the actions.
  * @param error[out]
  */
 static int
@@ -368,7 +368,7 @@ hns3_handle_actions(struct rte_eth_dev *dev,
 		 * Queue region is implemented by FDIR + RSS in hns3 hardware,
 		 * the FDIR's action is one queue region (start_queue_id and
 		 * queue_num), then RSS spread packets to the queue region by
-		 * RSS algorigthm.
+		 * RSS algorithm.
 		 */
 		case RTE_FLOW_ACTION_TYPE_RSS:
 			ret = hns3_handle_action_queue_region(dev, actions,
@@ -974,7 +974,7 @@ hns3_parse_nvgre(const struct rte_flow_item *item, struct hns3_fdir_rule *rule,
 	if (nvgre_mask->protocol || nvgre_mask->c_k_s_rsvd0_ver)
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ITEM_MASK, item,
-					  "Ver/protocal is not supported in NVGRE");
+					  "Ver/protocol is not supported in NVGRE");
 
 	/* TNI must be totally masked or not. */
 	if (memcmp(nvgre_mask->tni, full_mask, VNI_OR_TNI_LEN) &&
@@ -1028,7 +1028,7 @@ hns3_parse_geneve(const struct rte_flow_item *item, struct hns3_fdir_rule *rule,
 	if (geneve_mask->ver_opt_len_o_c_rsvd0 || geneve_mask->protocol)
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ITEM_MASK, item,
-					  "Ver/protocal is not supported in GENEVE");
+					  "Ver/protocol is not supported in GENEVE");
 	/* VNI must be totally masked or not. */
 	if (memcmp(geneve_mask->vni, full_mask, VNI_OR_TNI_LEN) &&
 	    memcmp(geneve_mask->vni, zero_mask, VNI_OR_TNI_LEN))
@@ -1313,7 +1313,7 @@ hns3_rss_conf_copy(struct hns3_rss_conf *out,
 }
 
 /*
- * This function is used to parse rss action validatation.
+ * This function is used to parse rss action validation.
  */
 static int
 hns3_parse_rss_filter(struct rte_eth_dev *dev,
@@ -1697,7 +1697,7 @@ hns3_flow_args_check(const struct rte_flow_attr *attr,
 
 /*
  * Check if the flow rule is supported by hns3.
- * It only checkes the format. Don't guarantee the rule can be programmed into
+ * It only checks the format. Don't guarantee the rule can be programmed into
  * the HW. Because there can be no enough room for the rule.
  */
 static int

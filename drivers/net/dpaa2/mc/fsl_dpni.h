@@ -88,7 +88,7 @@ struct fsl_mc_io;
  */
 #define DPNI_OPT_OPR_PER_TC				0x000080
 /**
- * All Tx traffic classes will use a single sender (ignore num_queueus for tx)
+ * All Tx traffic classes will use a single sender (ignore num_queues for tx)
  */
 #define DPNI_OPT_SINGLE_SENDER			0x000100
 /**
@@ -579,7 +579,7 @@ int dpni_get_tx_data_offset(struct fsl_mc_io *mc_io,
  * @page_3.ceetm_reject_bytes: Cumulative count of the number of bytes in all
  *	frames whose enqueue was rejected
  * @page_3.ceetm_reject_frames: Cumulative count of all frame enqueues rejected
- * @page_4: congestion point drops for seleted TC
+ * @page_4: congestion point drops for selected TC
  * @page_4.cgr_reject_frames: number of rejected frames due to congestion point
  * @page_4.cgr_reject_bytes: number of rejected bytes due to congestion point
  * @page_5: policer statistics per TC
@@ -1166,7 +1166,7 @@ int dpni_get_tx_confirmation_mode(struct fsl_mc_io *mc_io,
  *		dpkg_prepare_key_cfg()
  * @discard_on_miss: Set to '1' to discard frames in case of no match (miss);
  *		'0' to use the 'default_tc' in such cases
- * @keep_entries: if set to one will not delele existing table entries. This
+ * @keep_entries: if set to one will not delete existing table entries. This
  *		option will work properly only for dpni objects created with
  *		DPNI_OPT_HAS_KEY_MASKING option. All previous QoS entries must
  *		be compatible with new key composition rule.
@@ -1519,7 +1519,7 @@ int dpni_load_sw_sequence(struct fsl_mc_io *mc_io,
 		  struct dpni_load_ss_cfg *cfg);
 
 /**
- * dpni_eanble_sw_sequence() - Enables a software sequence in the parser
+ * dpni_enable_sw_sequence() - Enables a software sequence in the parser
  *				profile
  * corresponding to the ingress or egress of the DPNI.
  * @mc_io:	Pointer to MC portal's I/O object

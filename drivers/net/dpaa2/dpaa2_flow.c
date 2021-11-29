@@ -1444,7 +1444,7 @@ dpaa2_configure_flow_generic_ip(
 			flow, pattern, &local_cfg,
 			device_configured, group);
 	if (ret) {
-		DPAA2_PMD_ERR("IP discrimation failed!");
+		DPAA2_PMD_ERR("IP discrimination failed!");
 		return -1;
 	}
 
@@ -3285,7 +3285,7 @@ dpaa2_flow_verify_action(
 					(actions[j].conf);
 			if (rss_conf->queue_num > priv->dist_queues) {
 				DPAA2_PMD_ERR(
-					"RSS number exceeds the distrbution size");
+					"RSS number exceeds the distribution size");
 				return -ENOTSUP;
 			}
 			for (i = 0; i < (int)rss_conf->queue_num; i++) {
@@ -3512,7 +3512,7 @@ dpaa2_generic_flow_set(struct rte_flow *flow,
 				qos_cfg.keep_entries = true;
 				qos_cfg.key_cfg_iova =
 					(size_t)priv->extract.qos_extract_param;
-				/* QoS table is effecitive for multiple TCs.*/
+				/* QoS table is effective for multiple TCs. */
 				if (priv->num_rx_tc > 1) {
 					ret = dpni_set_qos_table(dpni, CMD_PRI_LOW,
 						priv->token, &qos_cfg);
@@ -3571,7 +3571,7 @@ dpaa2_generic_flow_set(struct rte_flow *flow,
 						0, 0);
 				if (ret < 0) {
 					DPAA2_PMD_ERR(
-						"Error in addnig entry to QoS table(%d)", ret);
+						"Error in adding entry to QoS table(%d)", ret);
 					return ret;
 				}
 			}

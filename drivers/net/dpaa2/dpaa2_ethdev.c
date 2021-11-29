@@ -143,7 +143,7 @@ dpaa2_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 	PMD_INIT_FUNC_TRACE();
 
 	if (mask & ETH_VLAN_FILTER_MASK) {
-		/* VLAN Filter not avaialble */
+		/* VLAN Filter not available */
 		if (!priv->max_vlan_filters) {
 			DPAA2_PMD_INFO("VLAN filter not available");
 			return -ENOTSUP;
@@ -890,7 +890,7 @@ dpaa2_dev_tx_queue_setup(struct rte_eth_dev *dev,
 		cong_notif_cfg.units = DPNI_CONGESTION_UNIT_FRAMES;
 		cong_notif_cfg.threshold_entry = nb_tx_desc;
 		/* Notify that the queue is not congested when the data in
-		 * the queue is below this thershold.
+		 * the queue is below this threshold.
 		 */
 		cong_notif_cfg.threshold_exit = nb_tx_desc - 24;
 		cong_notif_cfg.message_ctx = 0;
@@ -1039,7 +1039,7 @@ dpaa2_supported_ptypes_get(struct rte_eth_dev *dev)
  * Dpaa2 link Interrupt handler
  *
  * @param param
- *  The address of parameter (struct rte_eth_dev *) regsitered before.
+ *  The address of parameter (struct rte_eth_dev *) registered before.
  *
  * @return
  *  void
@@ -2209,7 +2209,7 @@ int dpaa2_eth_eventq_attach(const struct rte_eth_dev *dev,
 		ocfg.oa = 1;
 		/* Late arrival window size disabled */
 		ocfg.olws = 0;
-		/* ORL resource exhaustaion advance NESN disabled */
+		/* ORL resource exhaustion advance NESN disabled */
 		ocfg.oeane = 0;
 		/* Loose ordering enabled */
 		ocfg.oloe = 1;
@@ -2686,13 +2686,13 @@ dpaa2_dev_init(struct rte_eth_dev *eth_dev)
 	}
 	eth_dev->tx_pkt_burst = dpaa2_dev_tx;
 
-	/*Init fields w.r.t. classficaition*/
+	/* Init fields w.r.t. classification */
 	memset(&priv->extract.qos_key_extract, 0,
 		sizeof(struct dpaa2_key_extract));
 	priv->extract.qos_extract_param = (size_t)rte_malloc(NULL, 256, 64);
 	if (!priv->extract.qos_extract_param) {
 		DPAA2_PMD_ERR(" Error(%d) in allocation resources for flow "
-			    " classificaiton ", ret);
+			    " classification ", ret);
 		goto init_err;
 	}
 	priv->extract.qos_key_extract.key_info.ipv4_src_offset =
@@ -2710,7 +2710,7 @@ dpaa2_dev_init(struct rte_eth_dev *eth_dev)
 		priv->extract.tc_extract_param[i] =
 			(size_t)rte_malloc(NULL, 256, 64);
 		if (!priv->extract.tc_extract_param[i]) {
-			DPAA2_PMD_ERR(" Error(%d) in allocation resources for flow classificaiton",
+			DPAA2_PMD_ERR(" Error(%d) in allocation resources for flow classification",
 				     ret);
 			goto init_err;
 		}

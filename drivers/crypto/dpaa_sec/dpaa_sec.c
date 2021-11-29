@@ -683,7 +683,7 @@ dpaa_sec_deq(struct dpaa_sec_qp *qp, struct rte_crypto_op **ops, int nb_ops)
 		}
 		ops[pkts++] = op;
 
-		/* report op status to sym->op and then free the ctx memeory */
+		/* report op status to sym->op and then free the ctx memory */
 		rte_mempool_put(ctx->ctx_pool, (void *)ctx);
 
 		qman_dqrr_consume(fq, dq);

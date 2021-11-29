@@ -1014,7 +1014,7 @@ memif_regions_init(struct rte_eth_dev *dev)
 		if (ret < 0)
 			return ret;
 	} else {
-		/* create one memory region contaning rings and buffers */
+		/* create one memory region containing rings and buffers */
 		ret = memif_region_init_shm(dev, /* has buffers */ 1);
 		if (ret < 0)
 			return ret;

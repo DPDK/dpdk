@@ -52,7 +52,7 @@ extern int mlx5_logtype;
 
 /*
  * For the case which data is linked with sequence increased index, the
- * array table will be more efficiect than hash table once need to serarch
+ * array table will be more efficient than hash table once need to search
  * one data entry in large numbers of entries. Since the traditional hash
  * tables has fixed table size, when huge numbers of data saved to the hash
  * table, it also comes lots of hash conflict.

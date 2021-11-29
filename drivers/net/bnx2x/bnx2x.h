@@ -681,13 +681,13 @@ struct bnx2x_slowpath {
 }; /* struct bnx2x_slowpath */
 
 /*
- * Port specifc data structure.
+ * Port specific data structure.
  */
 struct bnx2x_port {
     /*
      * Port Management Function (for 57711E only).
      * When this field is set the driver instance is
-     * responsible for managing port specifc
+     * responsible for managing port specific
      * configurations such as handling link attentions.
      */
     uint32_t pmf;
@@ -732,7 +732,7 @@ struct bnx2x_port {
 
     /*
      * MCP scratchpad address for port specific statistics.
-     * The device is responsible for writing statistcss
+     * The device is responsible for writing statistics
      * back to the MCP for use with management firmware such
      * as UMP/NC-SI.
      */
@@ -937,8 +937,8 @@ struct bnx2x_devinfo {
  * already registered for this port (which means that the user wants storage
  * services).
  * 2. During cnic-related load, to know if offload mode is already configured
- * in the HW or needs to be configrued. Since the transition from nic-mode to
- * offload-mode in HW causes traffic coruption, nic-mode is configured only
+ * in the HW or needs to be configured. Since the transition from nic-mode to
+ * offload-mode in HW causes traffic corruption, nic-mode is configured only
  * in ports on which storage services where never requested.
  */
 #define CONFIGURE_NIC_MODE(sc) (!CHIP_IS_E1x(sc) && !CNIC_ENABLED(sc))

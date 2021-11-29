@@ -2556,7 +2556,7 @@ i40e_dev_start(struct rte_eth_dev *dev)
 		if (ret != I40E_SUCCESS)
 			PMD_DRV_LOG(WARNING, "Fail to set phy mask");
 
-		/* Call get_link_info aq commond to enable/disable LSE */
+		/* Call get_link_info aq command to enable/disable LSE */
 		i40e_dev_link_update(dev, 0);
 	}
 
@@ -3650,7 +3650,7 @@ static int i40e_dev_xstats_get_names(__rte_unused struct rte_eth_dev *dev,
 		count++;
 	}
 
-	/* Get individiual stats from i40e_hw_port struct */
+	/* Get individual stats from i40e_hw_port struct */
 	for (i = 0; i < I40E_NB_HW_PORT_XSTATS; i++) {
 		strlcpy(xstats_names[count].name,
 			rte_i40e_hw_port_strings[i].name,
@@ -3708,7 +3708,7 @@ i40e_dev_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstat *xstats,
 		count++;
 	}
 
-	/* Get individiual stats from i40e_hw_port struct */
+	/* Get individual stats from i40e_hw_port struct */
 	for (i = 0; i < I40E_NB_HW_PORT_XSTATS; i++) {
 		xstats[count].value = *(uint64_t *)(((char *)hw_stats) +
 			rte_i40e_hw_port_strings[i].offset);
@@ -5638,7 +5638,7 @@ i40e_vsi_get_bw_config(struct i40e_vsi *vsi)
 					&ets_sla_config, NULL);
 	if (ret != I40E_SUCCESS) {
 		PMD_DRV_LOG(ERR,
-			"VSI failed to get TC bandwdith configuration %u",
+			"VSI failed to get TC bandwidth configuration %u",
 			hw->aq.asq_last_status);
 		return ret;
 	}
@@ -6916,7 +6916,7 @@ i40e_handle_mdd_event(struct rte_eth_dev *dev)
  * @param handle
  *  Pointer to interrupt handle.
  * @param param
- *  The address of parameter (struct rte_eth_dev *) regsitered before.
+ *  The address of parameter (struct rte_eth_dev *) registered before.
  *
  * @return
  *  void
@@ -9838,7 +9838,7 @@ i40e_ethertype_filter_convert(const struct rte_eth_ethertype_filter *input,
 	return 0;
 }
 
-/* Check if there exists the ehtertype filter */
+/* Check if there exists the ethertype filter */
 struct i40e_ethertype_filter *
 i40e_sw_ethertype_filter_lookup(struct i40e_ethertype_rule *ethertype_rule,
 				const struct i40e_ethertype_filter_input *input)

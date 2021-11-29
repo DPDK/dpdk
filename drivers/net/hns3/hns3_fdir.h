@@ -149,7 +149,7 @@ struct hns3_fdir_rule {
 	uint32_t flags;
 	uint32_t fd_id; /* APP marked unique value for this rule. */
 	uint8_t action;
-	/* VF id, avaiblable when flags with HNS3_RULE_FLAG_VF_ID. */
+	/* VF id, available when flags with HNS3_RULE_FLAG_VF_ID. */
 	uint8_t vf_id;
 	/*
 	 * equal 0 when action is drop.

@@ -8,7 +8,7 @@
  */
 
 /*
- * At the momemt of writing DPDK v16.07 has notion of two types of
+ * At the moment of writing DPDK v16.07 has notion of two types of
  * interrupts: LSC (link status change) and RXQ (receive indication).
  * It allows to register interrupt callback for entire device which is
  * not intended to be used for receive indication (i.e. link status

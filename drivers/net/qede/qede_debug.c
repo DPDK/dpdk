@@ -5983,7 +5983,7 @@ static char *qed_get_buf_ptr(void *buf, u32 offset)
 /* Reads a param from the specified buffer. Returns the number of dwords read.
  * If the returned str_param is NULL, the param is numeric and its value is
  * returned in num_param.
- * Otheriwise, the param is a string and its pointer is returned in str_param.
+ * Otherwise, the param is a string and its pointer is returned in str_param.
  */
 static u32 qed_read_param(u32 *dump_buf,
 			  const char **param_name,
@@ -7558,7 +7558,7 @@ static enum dbg_status format_feature(struct ecore_hwfn *p_hwfn,
 		text_buf[i] = '\n';
 
 
-	/* Free the old dump_buf and point the dump_buf to the newly allocagted
+	/* Free the old dump_buf and point the dump_buf to the newly allocated
 	 * and formatted text buffer.
 	 */
 	OSAL_VFREE(p_hwfn, feature->dump_buf);

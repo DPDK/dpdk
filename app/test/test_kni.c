@@ -326,7 +326,7 @@ test_kni_register_handler_mp(void)
 
 		/* Check with the invalid parameters */
 		if (rte_kni_register_handlers(kni, NULL) == 0) {
-			printf("Unexpectedly register successuflly "
+			printf("Unexpectedly register successfully "
 					"with NULL ops pointer\n");
 			exit(-1);
 		}
@@ -475,7 +475,7 @@ test_kni_processing(uint16_t port_id, struct rte_mempool *mp)
 
 	/**
 	 * Check multiple processes support on
-	 * registerring/unregisterring handlers.
+	 * registering/unregistering handlers.
 	 */
 	if (test_kni_register_handler_mp() < 0) {
 		printf("fail to check multiple process support\n");

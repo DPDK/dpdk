@@ -366,7 +366,7 @@ qat_sym_build_request(void *in_op, uint8_t *out_msg,
 				ICP_QAT_HW_AUTH_ALGO_AES_CBC_MAC) {
 
 			/* In case of AES-CCM this may point to user selected
-			 * memory or iv offset in cypto_op
+			 * memory or iv offset in crypto_op
 			 */
 			uint8_t *aad_data = op->sym->aead.aad.data;
 			/* This is true AAD length, it not includes 18 bytes of

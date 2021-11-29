@@ -428,7 +428,7 @@ signal_exit_now(int sigtype)
 
 }
 
-/*  Freqency scale down timer callback */
+/*  Frequency scale down timer callback */
 static void
 power_timer_cb(__rte_unused struct rte_timer *tim,
 			  __rte_unused void *arg)
@@ -2320,7 +2320,7 @@ update_telemetry(__rte_unused struct rte_timer *tim,
 	ret = rte_metrics_update_values(RTE_METRICS_GLOBAL, telstats_index,
 					values, RTE_DIM(values));
 	if (ret < 0)
-		RTE_LOG(WARNING, POWER, "failed to update metrcis\n");
+		RTE_LOG(WARNING, POWER, "failed to update metrics\n");
 }
 
 static int

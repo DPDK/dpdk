@@ -108,7 +108,7 @@ usage(char* progname)
 	       "If the drop-queue doesn't exist, the packet is dropped. "
 	       "By default drop-queue=127.\n");
 #ifdef RTE_LIB_LATENCYSTATS
-	printf("  --latencystats=N: enable latency and jitter statistcs "
+	printf("  --latencystats=N: enable latency and jitter statistics "
 	       "monitoring on forwarding lcore id N.\n");
 #endif
 	printf("  --disable-crc-strip: disable CRC stripping by hardware.\n");

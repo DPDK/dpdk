@@ -10,7 +10,7 @@
  */
 
 /*
- * This implementation uses 256-bit registers(ymm) and instrincts.
+ * This implementation uses 256-bit registers(ymm) and intrinsics.
  * So our main SIMD type is 256-bit width and each such variable can
  * process sizeof(__m256i) / sizeof(uint32_t) == 8 entries in parallel.
  */
@@ -25,20 +25,20 @@
 #define _F_(x)		x##_avx512x8
 
 /*
- * Same instrincts have different syntaxis (depending on the bit-width),
+ * Same intrinsics have different syntaxes (depending on the bit-width),
  * so to overcome that few macros need to be defined.
  */
 
-/* Naming convention for generic epi(packed integers) type instrincts. */
+/* Naming convention for generic epi(packed integers) type intrinsics. */
 #define _M_I_(x)	_mm256_##x
 
-/* Naming convention for si(whole simd integer) type instrincts. */
+/* Naming convention for si(whole simd integer) type intrinsics. */
 #define _M_SI_(x)	_mm256_##x##_si256
 
-/* Naming convention for masked gather type instrincts. */
+/* Naming convention for masked gather type intrinsics. */
 #define _M_MGI_(x)	_mm256_m##x
 
-/* Naming convention for gather type instrincts. */
+/* Naming convention for gather type intrinsics. */
 #define _M_GI_(name, idx, base, scale)	_mm256_##name(base, idx, scale)
 
 /* num/mask of transitions per SIMD regs */

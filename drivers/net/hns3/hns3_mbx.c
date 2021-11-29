@@ -76,14 +76,14 @@ hns3_get_mbx_resp(struct hns3_hw *hw, uint16_t code, uint16_t subcode,
 
 	while (wait_time < HNS3_MAX_RETRY_US) {
 		if (rte_atomic16_read(&hw->reset.disable_cmd)) {
-			hns3_err(hw, "Don't wait for mbx respone because of "
+			hns3_err(hw, "Don't wait for mbx response because of "
 				 "disable_cmd");
 			return -EBUSY;
 		}
 
 		if (is_reset_pending(hns)) {
 			hw->mbx_resp.req_msg_data = 0;
-			hns3_err(hw, "Don't wait for mbx respone because of "
+			hns3_err(hw, "Don't wait for mbx response because of "
 				 "reset pending");
 			return -EIO;
 		}

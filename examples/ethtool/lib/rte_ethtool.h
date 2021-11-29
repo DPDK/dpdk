@@ -189,7 +189,7 @@ int rte_ethtool_get_module_eeprom(uint16_t port_id,
 
 /**
  * Retrieve the Ethernet device pause frame configuration according to
- * parameter attributes desribed by ethtool data structure,
+ * parameter attributes described by ethtool data structure,
  * ethtool_pauseparam.
  *
  * @param port_id
@@ -209,7 +209,7 @@ int rte_ethtool_get_pauseparam(uint16_t port_id,
 
 /**
  * Setting the Ethernet device pause frame configuration according to
- * parameter attributes desribed by ethtool data structure, ethtool_pauseparam.
+ * parameter attributes described by ethtool data structure, ethtool_pauseparam.
  *
  * @param port_id
  *   The port identifier of the Ethernet device.

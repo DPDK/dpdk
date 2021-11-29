@@ -41,7 +41,7 @@ static void cmd_help_parsed(__rte_unused void *parsed_result,
 		"    qavg port X subport Y pipe Z              : Show average queue size per pipe.\n"
 		"    qavg port X subport Y pipe Z tc A         : Show average queue size per pipe and TC.\n"
 		"    qavg port X subport Y pipe Z tc A q B     : Show average queue size of a specific queue.\n"
-		"    qavg [n|period] X                     : Set number of times and peiod (us).\n\n"
+		"    qavg [n|period] X                     : Set number of times and period (us).\n\n"
 	);
 
 }

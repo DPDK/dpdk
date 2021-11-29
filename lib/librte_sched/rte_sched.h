@@ -330,7 +330,7 @@ rte_sched_subport_pipe_profile_add(struct rte_sched_port *port,
  *
  * Hierarchical scheduler subport bandwidth profile add
  * Note that this function is safe to use in runtime for adding new
- * subport bandwidth profile as it doesn't have any impact on hiearchical
+ * subport bandwidth profile as it doesn't have any impact on hierarchical
  * structure of the scheduler.
  * @param port
  *   Handle to port scheduler instance

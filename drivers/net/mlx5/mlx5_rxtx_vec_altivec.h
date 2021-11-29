@@ -1224,7 +1224,7 @@ rxq_cq_process_v(struct mlx5_rxq_data *rxq, volatile struct mlx5_cqe *cq,
 			uint32_t metadata, mask;
 
 			mask = rxq->flow_meta_port_mask;
-			/* This code is subject for futher optimization. */
+			/* This code is subject for further optimization. */
 			metadata = cq[pos].flow_table_metadata & mask;
 			*RTE_MBUF_DYNFIELD(pkts[pos], offs, uint32_t *) =
 								metadata;

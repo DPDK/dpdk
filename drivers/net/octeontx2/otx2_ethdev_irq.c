@@ -372,7 +372,7 @@ oxt2_nix_register_cq_irqs(struct rte_eth_dev *eth_dev)
 				return -ENOMEM;
 			}
 		}
-		/* VFIO vector zero is resereved for misc interrupt so
+		/* VFIO vector zero is reserved for misc interrupt so
 		 * doing required adjustment. (b13bfab4cd)
 		 */
 		handle->intr_vec[q] = RTE_INTR_VEC_RXTX_OFFSET + vec;

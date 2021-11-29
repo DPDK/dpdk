@@ -614,7 +614,7 @@ typedef struct efsys_bar_s {
 
 #define EFSYS_DMA_SYNC_FOR_KERNEL(_esmp, _offset, _size)	((void)0)
 
-/* Just avoid store and compiler (impliciltly) reordering */
+/* Just avoid store and compiler (implicitly) reordering */
 #define EFSYS_DMA_SYNC_FOR_DEVICE(_esmp, _offset, _size)	rte_wmb()
 
 /* TIMESTAMP */

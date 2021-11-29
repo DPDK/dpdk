@@ -61,7 +61,7 @@ otx2_nix_xmit_prepare_tstamp(uint64_t *cmd,  const uint64_t *send_mem_desc,
 			/* Retrieving the default desc values */
 			cmd[off] = send_mem_desc[6];
 
-			/* Using compiler barier to avoid voilation of C
+			/* Using compiler barrier to avoid violation of C
 			 * aliasing rules.
 			 */
 			rte_compiler_barrier();
@@ -70,7 +70,7 @@ otx2_nix_xmit_prepare_tstamp(uint64_t *cmd,  const uint64_t *send_mem_desc,
 		/* Packets for which PKT_TX_IEEE1588_TMST is not set, tx tstamp
 		 * should not be recorded, hence changing the alg type to
 		 * NIX_SENDMEMALG_SET and also changing send mem addr field to
-		 * next 8 bytes as it corrpt the actual tx tstamp registered
+		 * next 8 bytes as it corrupts the actual tx tstamp registered
 		 * address.
 		 */
 		send_mem->alg = NIX_SENDMEMALG_SETTSTMP - (is_ol_tstamp);
