@@ -533,7 +533,7 @@ struct rte_dma_port_param {
 		 * @note If some fields can not be supported by the
 		 * hardware/driver, then the driver ignores those fields.
 		 * Please check driver-specific documentation for limitations
-		 * and capablites.
+		 * and capabilities.
 		 */
 		__extension__
 		struct {
@@ -731,7 +731,7 @@ enum rte_dma_status_code {
 	/** The operation completed successfully. */
 	RTE_DMA_STATUS_SUCCESSFUL,
 	/** The operation failed to complete due abort by user.
-	 * This is mainly used when processing dev_stop, user could modidy the
+	 * This is mainly used when processing dev_stop, user could modify the
 	 * descriptors (e.g. change one bit to tell hardware abort this job),
 	 * it allows outstanding requests to be complete as much as possible,
 	 * so reduce the time to stop the device.

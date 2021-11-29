@@ -12,7 +12,7 @@
 #include "bcmfs_sym_defs.h"
 #include "bcmfs_sym_req.h"
 
-/* structure to hold element's arrtibutes */
+/* structure to hold element's attributes */
 struct fsattr {
 	void *va;
 	uint64_t pa;

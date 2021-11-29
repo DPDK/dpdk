@@ -239,7 +239,7 @@ struct rte_sched_port {
 	int socket;
 
 	/* Timing */
-	uint64_t time_cpu_cycles;     /* Current CPU time measured in CPU cyles */
+	uint64_t time_cpu_cycles;     /* Current CPU time measured in CPU cycles */
 	uint64_t time_cpu_bytes;      /* Current CPU time measured in bytes */
 	uint64_t time;                /* Current NIC TX time measured in bytes */
 	struct rte_reciprocal inv_cycles_per_byte; /* CPU cycles per byte */

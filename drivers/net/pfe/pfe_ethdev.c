@@ -769,7 +769,7 @@ pfe_eth_init(struct rte_vdev_device *vdev, struct pfe *pfe, int id)
 	if (eth_dev == NULL)
 		return -ENOMEM;
 
-	/* Extract pltform data */
+	/* Extract platform data */
 	pfe_info = (struct ls1012a_pfe_platform_data *)&pfe->platform_data;
 	if (!pfe_info) {
 		PFE_PMD_ERR("pfe missing additional platform data");

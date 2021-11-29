@@ -112,7 +112,7 @@ static struct mlx5_indexed_pool_config icfg[] = {
  *   Pointer to RQ channel object, which includes the channel fd
  *
  * @param[out] fd
- *   The file descriptor (representing the intetrrupt) used in this channel.
+ *   The file descriptor (representing the interrupt) used in this channel.
  *
  * @return
  *   0 on successfully setting the fd to non-blocking, non-zero otherwise.
@@ -1743,7 +1743,7 @@ err_secondary:
 	priv->drop_queue.hrxq = mlx5_drop_action_create(eth_dev);
 	if (!priv->drop_queue.hrxq)
 		goto error;
-	/* Port representor shares the same max prioirity with pf port. */
+	/* Port representor shares the same max priority with pf port. */
 	if (!priv->sh->flow_priority_check_flag) {
 		/* Supported Verbs flow priority number detection. */
 		err = mlx5_flow_discover_priorities(eth_dev);
@@ -2300,7 +2300,7 @@ mlx5_os_pci_probe_pf(struct mlx5_common_device *cdev,
 						/*
 						 * Force standalone bonding
 						 * device for ROCE LAG
-						 * confgiurations.
+						 * configurations.
 						 */
 						list[ns].info.master = 0;
 						list[ns].info.representor = 0;
@@ -2637,7 +2637,7 @@ mlx5_os_pci_probe(struct mlx5_common_device *cdev)
 		}
 		if (ret) {
 			DRV_LOG(ERR, "Probe of PCI device " PCI_PRI_FMT " "
-				"aborted due to proding failure of PF %u",
+				"aborted due to prodding failure of PF %u",
 				pci_dev->addr.domain, pci_dev->addr.bus,
 				pci_dev->addr.devid, pci_dev->addr.function,
 				eth_da.ports[p]);

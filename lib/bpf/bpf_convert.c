@@ -412,7 +412,7 @@ do_pass:
 			BPF_EMIT_JMP;
 			break;
 
-			/* ldxb 4 * ([14] & 0xf) is remaped into 6 insns. */
+			/* ldxb 4 * ([14] & 0xf) is remapped into 6 insns. */
 		case BPF_LDX | BPF_MSH | BPF_B:
 			/* tmp = A */
 			*insn++ = BPF_MOV64_REG(BPF_REG_TMP, BPF_REG_A);
@@ -428,7 +428,7 @@ do_pass:
 			*insn = BPF_MOV64_REG(BPF_REG_A, BPF_REG_TMP);
 			break;
 
-			/* RET_K is remaped into 2 insns. RET_A case doesn't need an
+			/* RET_K is remapped into 2 insns. RET_A case doesn't need an
 			 * extra mov as EBPF_REG_0 is already mapped into BPF_REG_A.
 			 */
 		case BPF_RET | BPF_A:

@@ -109,7 +109,7 @@ test_setup(void)
 		return -1;
 	}
 
-	/* Make a pool for cloned packeets */
+	/* Make a pool for cloned packets */
 	mp = rte_pktmbuf_pool_create_by_ops("pcapng_test_pool", NUM_PACKETS,
 					    0, 0,
 					    rte_pcapng_mbuf_size(pkt_len),

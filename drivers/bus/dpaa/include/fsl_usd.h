@@ -40,7 +40,7 @@ struct dpaa_raw_portal {
 	/* Specifies the stash request queue this portal should use */
 	uint8_t sdest;
 
-	/* Specifes a specific portal index to map or QBMAN_ANY_PORTAL_IDX
+	/* Specifies a specific portal index to map or QBMAN_ANY_PORTAL_IDX
 	 * for don't care.  The portal index will be populated by the
 	 * driver when the ioctl() successfully completes.
 	 */

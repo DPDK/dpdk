@@ -70,7 +70,7 @@ compare_dpaa_devices(struct rte_dpaa_device *dev1,
 {
 	int comp = 0;
 
-	/* Segragating ETH from SEC devices */
+	/* Segregating ETH from SEC devices */
 	if (dev1->device_type > dev2->device_type)
 		comp = 1;
 	else if (dev1->device_type < dev2->device_type)

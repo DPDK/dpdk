@@ -103,7 +103,7 @@ static void hn_remove_delayed(void *args)
 	struct rte_device *dev = rte_eth_devices[port_id].device;
 	int ret;
 
-	/* Tell VSP to switch data path to synthentic */
+	/* Tell VSP to switch data path to synthetic */
 	hn_vf_remove(hv);
 
 	PMD_DRV_LOG(NOTICE, "Start to remove port %d", port_id);

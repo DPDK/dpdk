@@ -150,7 +150,7 @@ union igb_tx_offload {
 	(TX_MACIP_LEN_CMP_MASK | TX_TCP_LEN_CMP_MASK | TX_TSO_MSS_CMP_MASK)
 
 /**
- * Strucutre to check if new context need be built
+ * Structure to check if new context need be built
  */
 struct igb_advctx_info {
 	uint64_t flags;           /**< ol_flags related to context build. */
@@ -967,7 +967,7 @@ eth_igb_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 	 * register.
 	 * Update the RDT with the value of the last processed RX descriptor
 	 * minus 1, to guarantee that the RDT register is never equal to the
-	 * RDH register, which creates a "full" ring situtation from the
+	 * RDH register, which creates a "full" ring situation from the
 	 * hardware point of view...
 	 */
 	nb_hold = (uint16_t) (nb_hold + rxq->nb_rx_hold);
@@ -1229,7 +1229,7 @@ eth_igb_recv_scattered_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 	 * register.
 	 * Update the RDT with the value of the last processed RX descriptor
 	 * minus 1, to guarantee that the RDT register is never equal to the
-	 * RDH register, which creates a "full" ring situtation from the
+	 * RDH register, which creates a "full" ring situation from the
 	 * hardware point of view...
 	 */
 	nb_hold = (uint16_t) (nb_hold + rxq->nb_rx_hold);
@@ -1252,7 +1252,7 @@ eth_igb_recv_scattered_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
  * Maximum number of Ring Descriptors.
  *
  * Since RDLEN/TDLEN should be multiple of 128bytes, the number of ring
- * desscriptors should meet the following condition:
+ * descriptors should meet the following condition:
  *      (num_ring_desc * sizeof(struct e1000_rx/tx_desc)) % 128 == 0
  */
 
@@ -1350,7 +1350,7 @@ igb_tx_done_cleanup(struct igb_tx_queue *txq, uint32_t free_cnt)
 						sw_ring[tx_id].last_id = tx_id;
 					}
 
-					/* Move to next segemnt. */
+					/* Move to next segment. */
 					tx_id = sw_ring[tx_id].next_id;
 
 				} while (tx_id != tx_next);
@@ -1383,7 +1383,7 @@ igb_tx_done_cleanup(struct igb_tx_queue *txq, uint32_t free_cnt)
 
 			/* Walk the list and find the next mbuf, if any. */
 			do {
-				/* Move to next segemnt. */
+				/* Move to next segment. */
 				tx_id = sw_ring[tx_id].next_id;
 
 				if (sw_ring[tx_id].mbuf)
@@ -2146,7 +2146,7 @@ igb_vmdq_rx_hw_configure(struct rte_eth_dev *dev)
 
 	igb_rss_disable(dev);
 
-	/* RCTL: eanble VLAN filter */
+	/* RCTL: enable VLAN filter */
 	rctl = E1000_READ_REG(hw, E1000_RCTL);
 	rctl |= E1000_RCTL_VFE;
 	E1000_WRITE_REG(hw, E1000_RCTL, rctl);

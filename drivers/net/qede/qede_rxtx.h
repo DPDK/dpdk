@@ -225,7 +225,7 @@ struct qede_fastpath {
 	struct qede_tx_queue *txq;
 };
 
-/* This structure holds the inforation of fast path queues
+/* This structure holds the information of fast path queues
  * belonging to individual engines in CMT mode.
  */
 struct qede_fastpath_cmt {

@@ -561,7 +561,7 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"    Set the option to enable display of RX and TX bursts.\n"
 
 			"set port (port_id) vf (vf_id) rx|tx on|off\n"
-			"    Enable/Disable a VF receive/tranmit from a port\n\n"
+			"    Enable/Disable a VF receive/transmit from a port\n\n"
 
 			"set port (port_id) vf (vf_id) rxmode (AUPE|ROPE|BAM"
 			"|MPE) (on|off)\n"

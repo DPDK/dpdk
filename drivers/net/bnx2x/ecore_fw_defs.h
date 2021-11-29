@@ -379,7 +379,7 @@
 /* temporarily used for RTT */
 #define XSEMI_CLK1_RESUL_CHIP (1e-3)
 
-/* used for Host Coallescing */
+/* used for Host Coalescing */
 #define SDM_TIMER_TICK_RESUL_CHIP (4 * (1e-6))
 #define TSDM_TIMER_TICK_RESUL_CHIP (1 * (1e-6))
 

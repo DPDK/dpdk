@@ -14,7 +14,7 @@
 #define CGX_CMRX_INT_OVERFLW	       BIT_ULL(1)
 /*
  * CN10K stores number of lmacs in 4 bit filed
- * in contraty to CN9K which uses only 3 bits.
+ * in contrary to CN9K which uses only 3 bits.
  *
  * In theory masks should differ yet on CN9K
  * bits beyond specified range contain zeros.

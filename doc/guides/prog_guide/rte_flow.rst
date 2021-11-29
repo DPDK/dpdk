@@ -1379,7 +1379,7 @@ Matches a network service header (RFC 8300).
 - ``ttl``: maximum SFF hopes (6 bits).
 - ``length``: total length in 4 bytes words (6 bits).
 - ``reserved1``: reserved1 bits (4 bits).
-- ``mdtype``: ndicates format of NSH header (4 bits).
+- ``mdtype``: indicates format of NSH header (4 bits).
 - ``next_proto``: indicates protocol type of encap data (8 bits).
 - ``spi``: service path identifier (3 bytes).
 - ``sindex``: service index (1 byte).

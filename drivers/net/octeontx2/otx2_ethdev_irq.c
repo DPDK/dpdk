@@ -369,7 +369,7 @@ oxt2_nix_register_cq_irqs(struct rte_eth_dev *eth_dev)
 				 "rc=%d", rc);
 			return rc;
 		}
-		/* VFIO vector zero is resereved for misc interrupt so
+		/* VFIO vector zero is reserved for misc interrupt so
 		 * doing required adjustment. (b13bfab4cd)
 		 */
 		if (rte_intr_vec_list_index_set(handle, q,

@@ -205,7 +205,7 @@ mlx5_flex_set_match_sample(void *misc4_m, void *misc4_v,
  * @param dev
  *   Ethernet device to translate flex item on.
  * @param[in, out] matcher
- *   Flow matcher to confgiure
+ *   Flow matcher to configure
  * @param[in, out] key
  *   Flow matcher value.
  * @param[in] item
@@ -457,7 +457,7 @@ mlx5_flex_translate_length(struct mlx5_hca_flex_attr *attr,
 		if (field->offset_shift > 15 || field->offset_shift < 0)
 			return rte_flow_error_set
 				(error, EINVAL, RTE_FLOW_ERROR_TYPE_ITEM, NULL,
-				 "header length field shift exceeeds limit");
+				 "header length field shift exceeds limit");
 		node->header_length_field_shift	= field->offset_shift;
 		node->header_length_field_offset = field->offset_base;
 	}

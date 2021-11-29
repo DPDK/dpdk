@@ -195,7 +195,7 @@ union zip_inst_s {
 		uint64_t bf                    : 1;
 		/** Comp/decomp operation */
 		uint64_t op                    : 2;
-		/** Data sactter */
+		/** Data scatter */
 		uint64_t ds                    : 1;
 		/** Data gather */
 		uint64_t dg                    : 1;
@@ -376,7 +376,7 @@ union zip_inst_s {
 		uint64_t bf                    : 1;
 		/** Comp/decomp operation */
 		uint64_t op                    : 2;
-		/** Data sactter */
+		/** Data scatter */
 		uint64_t ds                    : 1;
 		/** Data gather */
 		uint64_t dg                    : 1;

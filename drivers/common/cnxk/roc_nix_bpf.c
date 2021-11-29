@@ -138,7 +138,7 @@ nix_lf_bpf_dump(__io struct nix_band_prof_s *bpf)
 {
 	plt_dump("W0: cir_mantissa  \t\t\t%d\nW0: pebs_mantissa \t\t\t0x%03x",
 		 bpf->cir_mantissa, bpf->pebs_mantissa);
-	plt_dump("W0: peir_matissa \t\t\t\t%d\nW0: cbs_exponent \t\t\t%d",
+	plt_dump("W0: peir_mantissa \t\t\t\t%d\nW0: cbs_exponent \t\t\t%d",
 		 bpf->peir_mantissa, bpf->cbs_exponent);
 	plt_dump("W0: cir_exponent \t\t\t%d\nW0: pebs_exponent \t\t\t%d",
 		 bpf->cir_exponent, bpf->pebs_exponent);

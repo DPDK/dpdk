@@ -265,7 +265,7 @@ struct socket_ctx socket_ctx[NB_SOCKETS];
 /*
  * Determine is multi-segment support required:
  *  - either frame buffer size is smaller then mtu
- *  - or reassmeble support is requested
+ *  - or reassemble support is requested
  */
 static int
 multi_seg_required(void)
@@ -2050,7 +2050,7 @@ add_mapping(struct rte_hash *map, const char *str, uint16_t cdev_id,
 
 	ret = rte_hash_add_key_data(map, &key, (void *)i);
 	if (ret < 0) {
-		printf("Faled to insert cdev mapping for (lcore %u, "
+		printf("Failed to insert cdev mapping for (lcore %u, "
 				"cdev %u, qp %u), errno %d\n",
 				key.lcore_id, ipsec_ctx->tbl[i].id,
 				ipsec_ctx->tbl[i].qp, ret);
@@ -2083,7 +2083,7 @@ add_cdev_mapping(struct rte_cryptodev_info *dev_info, uint16_t cdev_id,
 		str = "Inbound";
 	}
 
-	/* Required cryptodevs with operation chainning */
+	/* Required cryptodevs with operation chaining */
 	if (!(dev_info->feature_flags &
 				RTE_CRYPTODEV_FF_SYM_OPERATION_CHAINING))
 		return ret;
@@ -2251,7 +2251,7 @@ port_init(uint16_t portid, uint64_t req_rx_offloads, uint64_t req_tx_offloads)
 			"Error during getting device (port %u) info: %s\n",
 			portid, strerror(-ret));
 
-	/* limit allowed HW offloafs, as user requested */
+	/* limit allowed HW offloads, as user requested */
 	dev_info.rx_offload_capa &= dev_rx_offload;
 	dev_info.tx_offload_capa &= dev_tx_offload;
 
@@ -2298,7 +2298,7 @@ port_init(uint16_t portid, uint64_t req_rx_offloads, uint64_t req_tx_offloads)
 			local_port_conf.rxmode.offloads)
 		rte_exit(EXIT_FAILURE,
 			"Error: port %u required RX offloads: 0x%" PRIx64
-			", avaialbe RX offloads: 0x%" PRIx64 "\n",
+			", available RX offloads: 0x%" PRIx64 "\n",
 			portid, local_port_conf.rxmode.offloads,
 			dev_info.rx_offload_capa);
 
@@ -2306,7 +2306,7 @@ port_init(uint16_t portid, uint64_t req_rx_offloads, uint64_t req_tx_offloads)
 			local_port_conf.txmode.offloads)
 		rte_exit(EXIT_FAILURE,
 			"Error: port %u required TX offloads: 0x%" PRIx64
-			", avaialbe TX offloads: 0x%" PRIx64 "\n",
+			", available TX offloads: 0x%" PRIx64 "\n",
 			portid, local_port_conf.txmode.offloads,
 			dev_info.tx_offload_capa);
 
@@ -2317,7 +2317,7 @@ port_init(uint16_t portid, uint64_t req_rx_offloads, uint64_t req_tx_offloads)
 	if (dev_info.tx_offload_capa & RTE_ETH_TX_OFFLOAD_IPV4_CKSUM)
 		local_port_conf.txmode.offloads |= RTE_ETH_TX_OFFLOAD_IPV4_CKSUM;
 
-	printf("port %u configurng rx_offloads=0x%" PRIx64
+	printf("port %u configuring rx_offloads=0x%" PRIx64
 		", tx_offloads=0x%" PRIx64 "\n",
 		portid, local_port_conf.rxmode.offloads,
 		local_port_conf.txmode.offloads);

@@ -1196,12 +1196,12 @@ In the case of severe congestion, the dropper resorts to tail drop.
 This occurs when a packet queue has reached maximum capacity and cannot store any more packets.
 In this situation, all arriving packets are dropped.
 
-The flow through the dropper is illustrated in :numref:`figure_flow_tru_droppper`.
+The flow through the dropper is illustrated in :numref:`figure_flow_tru_dropper`.
 The RED/WRED/PIE algorithm is exercised first and tail drop second.
 
-.. _figure_flow_tru_droppper:
+.. _figure_flow_tru_dropper:
 
-.. figure:: img/flow_tru_droppper.*
+.. figure:: img/flow_tru_dropper.*
 
    Flow Through the Dropper
 

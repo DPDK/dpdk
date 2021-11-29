@@ -121,7 +121,7 @@ test_metrics_update_value(void)
 	err = rte_metrics_update_value(RTE_METRICS_GLOBAL, KEY, VALUE);
 	TEST_ASSERT(err >= 0, "%s, %d", __func__, __LINE__);
 
-	/* Successful Test: Valid port_id otherthan RTE_METRICS_GLOBAL, key
+	/* Successful Test: Valid port_id other than RTE_METRICS_GLOBAL, key
 	 * and value
 	 */
 	err = rte_metrics_update_value(9, KEY, VALUE);

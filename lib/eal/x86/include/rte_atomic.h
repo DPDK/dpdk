@@ -60,7 +60,7 @@ extern "C" {
  * Basic idea is to use lock prefixed add with some dummy memory location
  * as the destination. From their experiments 128B(2 cache lines) below
  * current stack pointer looks like a good candidate.
- * So below we use that techinque for rte_smp_mb() implementation.
+ * So below we use that technique for rte_smp_mb() implementation.
  */
 
 static __rte_always_inline void

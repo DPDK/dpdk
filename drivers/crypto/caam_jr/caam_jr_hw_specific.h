@@ -376,7 +376,7 @@ struct sec_job_ring_t {
 	void *register_base_addr;	/* Base address for SEC's
 					 * register memory for this job ring.
 					 */
-	uint8_t coalescing_en;		/* notifies if coelescing is
+	uint8_t coalescing_en;		/* notifies if coalescing is
 					 * enabled for the job ring
 					 */
 	sec_job_ring_state_t jr_state;	/* The state of this job ring */
@@ -479,7 +479,7 @@ void hw_job_ring_error_print(struct sec_job_ring_t *job_ring, int code);
 
 /* @brief Set interrupt coalescing parameters on the Job Ring.
  * @param [in]  job_ring		The job ring
- * @param [in]  irq_coalesing_timer     Interrupt coalescing timer threshold.
+ * @param [in]  irq_coalescing_timer    Interrupt coalescing timer threshold.
  *					This value determines the maximum
  *					amount of time after processing a
  *					descriptor before raising an interrupt.

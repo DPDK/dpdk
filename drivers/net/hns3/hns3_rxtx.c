@@ -1903,7 +1903,7 @@ hns3_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t nb_desc,
 	 * For hns3 VF device, whether it needs to process PVID depends
 	 * on the configuration of PF kernel mode netdevice driver. And the
 	 * related PF configuration is delivered through the mailbox and finally
-	 * reflectd in port_base_vlan_cfg.
+	 * reflected in port_base_vlan_cfg.
 	 */
 	if (hns->is_vf || hw->vlan_mode == HNS3_SW_SHIFT_AND_DISCARD_MODE)
 		rxq->pvid_sw_discard_en = hw->port_base_vlan_cfg.state ==
@@ -3043,7 +3043,7 @@ hns3_tx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t nb_desc,
 	 * For hns3 VF device, whether it needs to process PVID depends
 	 * on the configuration of PF kernel mode netdev driver. And the
 	 * related PF configuration is delivered through the mailbox and finally
-	 * reflectd in port_base_vlan_cfg.
+	 * reflected in port_base_vlan_cfg.
 	 */
 	if (hns->is_vf || hw->vlan_mode == HNS3_SW_SHIFT_AND_DISCARD_MODE)
 		txq->pvid_sw_shift_en = hw->port_base_vlan_cfg.state ==
@@ -3208,7 +3208,7 @@ hns3_fill_first_desc(struct hns3_tx_queue *txq, struct hns3_desc *desc,
 	 * in Tx direction based on hns3 network engine. So when the number of
 	 * VLANs in the packets represented by rxm plus the number of VLAN
 	 * offload by hardware such as PVID etc, exceeds two, the packets will
-	 * be discarded or the original VLAN of the packets will be overwitted
+	 * be discarded or the original VLAN of the packets will be overwritten
 	 * by hardware. When the PF PVID is enabled by calling the API function
 	 * named rte_eth_dev_set_vlan_pvid or the VF PVID is enabled by the hns3
 	 * PF kernel ether driver, the outer VLAN tag will always be the PVID.
@@ -3393,7 +3393,7 @@ hns3_parse_inner_params(struct rte_mbuf *m, uint32_t *ol_type_vlan_len_msec,
 		/*
 		 * The inner l2 length of mbuf is the sum of outer l4 length,
 		 * tunneling header length and inner l2 length for a tunnel
-		 * packect. But in hns3 tx descriptor, the tunneling header
+		 * packet. But in hns3 tx descriptor, the tunneling header
 		 * length is contained in the field of outer L4 length.
 		 * Therefore, driver need to calculate the outer L4 length and
 		 * inner L2 length.
@@ -3409,7 +3409,7 @@ hns3_parse_inner_params(struct rte_mbuf *m, uint32_t *ol_type_vlan_len_msec,
 		tmp_outer |= hns3_gen_field_val(HNS3_TXD_TUNTYPE_M,
 					HNS3_TXD_TUNTYPE_S, HNS3_TUN_NVGRE);
 		/*
-		 * For NVGRE tunnel packect, the outer L4 is empty. So only
+		 * For NVGRE tunnel packet, the outer L4 is empty. So only
 		 * fill the NVGRE header length to the outer L4 field.
 		 */
 		tmp_outer |= hns3_gen_field_val(HNS3_TXD_L4LEN_M,
@@ -3452,7 +3452,7 @@ hns3_parse_tunneling_params(struct hns3_tx_queue *txq, struct rte_mbuf *m,
 	 * mbuf, but for hns3 descriptor, it is contained in the outer L4. So,
 	 * there is a need that switching between them. To avoid multiple
 	 * calculations, the length of the L2 header include the outer and
-	 * inner, will be filled during the parsing of tunnel packects.
+	 * inner, will be filled during the parsing of tunnel packets.
 	 */
 	if (!(ol_flags & RTE_MBUF_F_TX_TUNNEL_MASK)) {
 		/*
@@ -3632,7 +3632,7 @@ hns3_outer_ipv4_cksum_prepared(struct rte_mbuf *m, uint64_t ol_flags,
 	if (ol_flags & RTE_MBUF_F_TX_OUTER_UDP_CKSUM) {
 		struct rte_udp_hdr *udp_hdr;
 		/*
-		 * If OUTER_UDP_CKSUM is support, HW can caclulate the pseudo
+		 * If OUTER_UDP_CKSUM is support, HW can calculate the pseudo
 		 * header for TSO packets
 		 */
 		if (ol_flags & RTE_MBUF_F_TX_TCP_SEG)
@@ -3657,7 +3657,7 @@ hns3_outer_ipv6_cksum_prepared(struct rte_mbuf *m, uint64_t ol_flags,
 	if (ol_flags & RTE_MBUF_F_TX_OUTER_UDP_CKSUM) {
 		struct rte_udp_hdr *udp_hdr;
 		/*
-		 * If OUTER_UDP_CKSUM is support, HW can caclulate the pseudo
+		 * If OUTER_UDP_CKSUM is support, HW can calculate the pseudo
 		 * header for TSO packets
 		 */
 		if (ol_flags & RTE_MBUF_F_TX_TCP_SEG)

@@ -23,7 +23,7 @@
 /**
  * @internal
  * Copies a value into a buffer if the buffer has enough available space.
- * Nothing written to buffer if an overflow ocurs.
+ * Nothing written to buffer if an overflow occurs.
  * This function is not for use for values larger than given buffer length.
  */
 __rte_format_printf(3, 4)

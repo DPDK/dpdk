@@ -343,7 +343,7 @@ i40e_pf_host_process_cmd_get_vf_resource(struct i40e_pf_vf *vf, uint8_t *msg,
 		vf->request_caps = *(uint32_t *)msg;
 
 	/* enable all RSS by default,
-	 * doesn't support hena setting by virtchnnl yet.
+	 * doesn't support hena setting by virtchnl yet.
 	 */
 	if (vf->request_caps & VIRTCHNL_VF_OFFLOAD_RSS_PF) {
 		I40E_WRITE_REG(hw, I40E_VFQF_HENA1(0, vf->vf_idx),
@@ -725,7 +725,7 @@ i40e_pf_host_process_cmd_config_irq_map(struct i40e_pf_vf *vf,
 		if ((map->rxq_map < qbit_max) && (map->txq_map < qbit_max)) {
 			i40e_pf_config_irq_link_list(vf, map);
 		} else {
-			/* configured queue size excceed limit */
+			/* configured queue size exceed limit */
 			ret = I40E_ERR_PARAM;
 			goto send_msg;
 		}

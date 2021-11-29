@@ -236,7 +236,7 @@ nfp_rtsym_lookup(struct nfp_rtsym_table *rtbl, const char *name)
  * nfp_rtsym_read_le() - Read a simple unsigned scalar value from symbol
  * @rtbl:	NFP RTsym table
  * @name:	Symbol name
- * @error:	Poniter to error code (optional)
+ * @error:	Pointer to error code (optional)
  *
  * Lookup a symbol, map, read it and return it's value. Value of the symbol
  * will be interpreted as a simple little-endian unsigned value. Symbol can

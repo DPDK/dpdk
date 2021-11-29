@@ -31,7 +31,7 @@ struct bbdev_null_params {
 	uint16_t queues_num;  /*< Null BBDEV queues number */
 };
 
-/* Accecptable params for null BBDEV devices */
+/* Acceptable params for null BBDEV devices */
 #define BBDEV_NULL_MAX_NB_QUEUES_ARG  "max_nb_queues"
 #define BBDEV_NULL_SOCKET_ID_ARG      "socket_id"
 

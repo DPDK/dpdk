@@ -272,7 +272,7 @@ int __nfp_eth_set_split(struct nfp_nsp *nsp, unsigned int lanes);
  * @br_primary:   branch id of primary bootloader
  * @br_secondary: branch id of secondary bootloader
  * @br_nsp:       branch id of NSP
- * @primary:      version of primarary bootloader
+ * @primary:      version of primary bootloader
  * @secondary:    version id of secondary bootloader
  * @nsp:          version id of NSP
  * @sensor_mask:  mask of present sensors available on NIC

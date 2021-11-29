@@ -6870,7 +6870,7 @@ test_snow3g_decryption_with_digest_test_case_1(void)
 	}
 
 	/*
-	 * Function prepare data for hash veryfication test case.
+	 * Function prepare data for hash verification test case.
 	 * Digest is allocated in 4 last bytes in plaintext, pattern.
 	 */
 	snow3g_hash_test_vector_setup(&snow3g_test_case_7, &snow3g_hash_data);

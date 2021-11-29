@@ -19,7 +19,7 @@ extern "C" {
  *
  * @param evq_prime	Global address of the prime register
  * @param evq_hw_index	Event queue index
- * @param evq_read_ptr	Masked event qeueu read pointer
+ * @param evq_read_ptr	Masked event queue read pointer
  */
 static inline void
 sfc_ef100_evq_prime(volatile void *evq_prime, unsigned int evq_hw_index,

@@ -400,7 +400,7 @@ mlx5_flow_os_set_specific_workspace(struct mlx5_flow_workspace *data)
 		/*
 		 * set_specific_workspace when current value is NULL
 		 * can happen only once per thread, mark this thread in
-		 * linked list to be able to release reasorces later on.
+		 * linked list to be able to release resources later on.
 		 */
 		err = mlx5_add_workspace_to_list(data);
 		if (err) {

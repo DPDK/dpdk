@@ -603,7 +603,7 @@ hns3_init_ring_with_vector(struct hns3_hw *hw)
 	hw->intr_tqps_num = RTE_MIN(vec, hw->tqps_num);
 	for (i = 0; i < hw->intr_tqps_num; i++) {
 		/*
-		 * Set gap limiter/rate limiter/quanity limiter algorithm
+		 * Set gap limiter/rate limiter/quantity limiter algorithm
 		 * configuration for interrupt coalesce of queue's interrupt.
 		 */
 		hns3_set_queue_intr_gl(hw, i, HNS3_RING_GL_RX,

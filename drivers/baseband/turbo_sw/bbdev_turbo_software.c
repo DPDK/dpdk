@@ -61,7 +61,7 @@ struct turbo_sw_params {
 	uint16_t queues_num;  /*< Turbo SW device queues number */
 };
 
-/* Accecptable params for Turbo SW devices */
+/* Acceptable params for Turbo SW devices */
 #define TURBO_SW_MAX_NB_QUEUES_ARG  "max_nb_queues"
 #define TURBO_SW_SOCKET_ID_ARG      "socket_id"
 

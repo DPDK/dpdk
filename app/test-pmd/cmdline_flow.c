@@ -2162,7 +2162,7 @@ static const struct token token_list[] = {
 	},
 	[COMMON_POLICY_ID] = {
 		.name = "{policy_id}",
-		.type = "POLCIY_ID",
+		.type = "POLICY_ID",
 		.help = "policy id",
 		.call = parse_int,
 		.comp = comp_none,
@@ -2370,7 +2370,7 @@ static const struct token token_list[] = {
 	},
 	[TUNNEL_DESTROY] = {
 		.name = "destroy",
-		.help = "destroy tunel",
+		.help = "destroy tunnel",
 		.next = NEXT(NEXT_ENTRY(TUNNEL_DESTROY_ID),
 			     NEXT_ENTRY(COMMON_PORT_ID)),
 		.args = ARGS(ARGS_ENTRY(struct buffer, port)),
@@ -2378,7 +2378,7 @@ static const struct token token_list[] = {
 	},
 	[TUNNEL_DESTROY_ID] = {
 		.name = "id",
-		.help = "tunnel identifier to testroy",
+		.help = "tunnel identifier to destroy",
 		.next = NEXT(NEXT_ENTRY(COMMON_UNSIGNED)),
 		.args = ARGS(ARGS_ENTRY(struct tunnel_ops, id)),
 		.call = parse_tunnel,

@@ -224,7 +224,7 @@ int power_manager_enable_turbo_core(unsigned int core_num);
 int power_manager_disable_turbo_core(unsigned int core_num);
 
 /**
- * Get the current freuency of the core specified by core_num
+ * Get the current frequency of the core specified by core_num
  *
  * @param core_num
  *  The core number to get the current frequency

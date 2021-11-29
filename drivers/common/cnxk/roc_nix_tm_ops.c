@@ -107,7 +107,7 @@ nix_tm_adjust_shaper_pps_rate(struct nix_tm_shaper_profile *profile)
 	if (profile->peak.rate && min_rate > profile->peak.rate)
 		min_rate = profile->peak.rate;
 
-	/* Each packet accomulate single count, whereas HW
+	/* Each packet accumulate single count, whereas HW
 	 * considers each unit as Byte, so we need convert
 	 * user pps to bps
 	 */

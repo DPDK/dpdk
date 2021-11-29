@@ -466,7 +466,7 @@ hns3_mask_capability(struct hns3_hw *hw,
 	for (i = 0; i < MAX_CAPS_BIT; i++) {
 		if (!(caps_masked & BIT_ULL(i)))
 			continue;
-		hns3_info(hw, "mask capabiliy: id-%u, name-%s.",
+		hns3_info(hw, "mask capability: id-%u, name-%s.",
 			  i, hns3_get_caps_name(i));
 	}
 }
@@ -736,7 +736,7 @@ hns3_cmd_init(struct hns3_hw *hw)
 		return 0;
 
 	/*
-	 * Requiring firmware to enable some features, firber port can still
+	 * Requiring firmware to enable some features, fiber port can still
 	 * work without it, but copper port can't work because the firmware
 	 * fails to take over the PHY.
 	 */

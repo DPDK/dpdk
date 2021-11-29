@@ -64,7 +64,7 @@ update_flow_mask(const struct acl_flow_avx512 *flow, uint32_t *fmsk,
 }
 
 /*
- * Resolve matches for multiple categories (LE 8, use 128b instuctions/regs)
+ * Resolve matches for multiple categories (LE 8, use 128b instructions/regs)
  */
 static inline void
 resolve_mcle8_avx512x1(uint32_t result[],

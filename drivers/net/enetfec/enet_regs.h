@@ -12,7 +12,7 @@
 #define RX_BD_CR	((ushort)0x0004) /* CRC or Frame error */
 #define RX_BD_SH	((ushort)0x0008) /* Reserved */
 #define RX_BD_NO	((ushort)0x0010) /* Rcvd non-octet aligned frame */
-#define RX_BD_LG	((ushort)0x0020) /* Rcvd frame length voilation */
+#define RX_BD_LG	((ushort)0x0020) /* Rcvd frame length violation */
 #define RX_BD_FIRST	((ushort)0x0400) /* Reserved */
 #define RX_BD_LAST	((ushort)0x0800) /* last buffer in the frame */
 #define RX_BD_INT	0x00800000

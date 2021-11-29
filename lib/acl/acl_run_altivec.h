@@ -146,7 +146,7 @@ transition4(xmm_t next_input, const uint64_t *trans,
 
 	dfa_ofs = vec_sub(t, r);
 
-	/* QUAD/SINGLE caluclations. */
+	/* QUAD/SINGLE calculations. */
 	t = (xmm_t)vec_cmpgt((vector signed char)in, (vector signed char)tr_hi);
 	t = (xmm_t)vec_sel(
 		vec_sel(

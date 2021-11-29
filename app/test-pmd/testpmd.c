@@ -449,7 +449,7 @@ uint32_t bypass_timeout = RTE_PMD_IXGBE_BYPASS_TMT_OFF;
 uint8_t latencystats_enabled;
 
 /*
- * Lcore ID to serive latency statistics.
+ * Lcore ID to service latency statistics.
  */
 lcoreid_t latencystats_lcore_id = -1;
 

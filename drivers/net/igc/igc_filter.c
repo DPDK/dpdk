@@ -167,7 +167,7 @@ igc_tuple_filter_lookup(const struct igc_adapter *igc,
 		/* search the filter array */
 		for (; i < IGC_MAX_NTUPLE_FILTERS; i++) {
 			if (igc->ntuple_filters[i].hash_val) {
-				/* compare the hase value */
+				/* compare the hash value */
 				if (ntuple->hash_val ==
 					igc->ntuple_filters[i].hash_val)
 					/* filter be found, return index */

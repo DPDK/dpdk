@@ -11,7 +11,7 @@
   * (https://en.wikipedia.org/wiki/Peterson%27s_algorithm)
   * for two execution units to make sure that rte_smp_mb() prevents
   * store-load reordering to happen.
-  * Also when executed on a single lcore could be used as a approxiamate
+  * Also when executed on a single lcore could be used as a approximate
   * estimation of number of cycles particular implementation of rte_smp_mb()
   * will take.
   */

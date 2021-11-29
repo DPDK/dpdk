@@ -347,7 +347,7 @@ again1:
 
 	retry = 1;
 again2:
-	/* Read the specfied register */
+	/* Read the specified register */
 	i2c_op.cmd = AXGBE_I2C_CMD_READ;
 	i2c_op.target = target;
 	i2c_op.len = val_len;
@@ -1093,7 +1093,7 @@ static int axgbe_phy_an_config(struct axgbe_port *pdata __rte_unused)
 {
 	return 0;
 	/* Dummy API since there is no case to support
-	 * external phy devices registred through kerenl apis
+	 * external phy devices registered through kernel APIs
 	 */
 }
 

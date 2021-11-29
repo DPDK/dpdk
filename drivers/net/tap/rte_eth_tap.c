@@ -525,7 +525,7 @@ tap_tx_l4_cksum(uint16_t *l4_cksum, uint16_t l4_phdr_cksum,
 	}
 }
 
-/* Accumaulate L4 raw checksums */
+/* Accumulate L4 raw checksums */
 static void
 tap_tx_l4_add_rcksum(char *l4_data, unsigned int l4_len, uint16_t *l4_cksum,
 			uint32_t *l4_raw_cksum)

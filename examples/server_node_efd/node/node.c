@@ -296,7 +296,7 @@ handle_packets(struct rte_hash *h, struct rte_mbuf **bufs, uint16_t num_packets)
 		}
 	}
 }
-/* >8 End of packets dequeueing. */
+/* >8 End of packets dequeuing. */
 
 /*
  * Application main function - loops through

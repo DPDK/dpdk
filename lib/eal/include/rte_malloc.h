@@ -58,7 +58,7 @@ rte_malloc(const char *type, size_t size, unsigned align)
 	__rte_alloc_size(2);
 
 /**
- * Allocate zero'ed memory from the heap.
+ * Allocate zeroed memory from the heap.
  *
  * Equivalent to rte_malloc() except that the memory zone is
  * initialised with zeros. In NUMA systems, the memory allocated resides on the
@@ -189,7 +189,7 @@ rte_malloc_socket(const char *type, size_t size, unsigned align, int socket)
 	__rte_alloc_size(2);
 
 /**
- * Allocate zero'ed memory from the heap.
+ * Allocate zeroed memory from the heap.
  *
  * Equivalent to rte_malloc() except that the memory zone is
  * initialised with zeros.

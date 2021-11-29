@@ -155,7 +155,7 @@ rte_swx_table_selector_group_set(void *table,
  * mechanism allows for multiple concurrent select operations into the same table.
  *
  * The typical reason an implementation may choose to split the operation into multiple steps is to
- * hide the latency of the inherrent memory read operations: before a read operation with the
+ * hide the latency of the inherent memory read operations: before a read operation with the
  * source data likely not in the CPU cache, the source data prefetch is issued and the operation is
  * postponed in favor of some other unrelated work, which the CPU executes in parallel with the
  * source data being fetched into the CPU cache; later on, the operation is resumed, this time with

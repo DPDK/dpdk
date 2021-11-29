@@ -1460,7 +1460,7 @@ static void elink_ets_e3b0_pbf_disabled(const struct elink_params *params)
 }
 /******************************************************************************
  * Description:
- *	E3B0 disable will return basicly the values to init values.
+ *	E3B0 disable will return basically the values to init values.
  *.
  ******************************************************************************/
 static elink_status_t elink_ets_e3b0_disabled(const struct elink_params *params,
@@ -1483,7 +1483,7 @@ static elink_status_t elink_ets_e3b0_disabled(const struct elink_params *params,
 
 /******************************************************************************
  * Description:
- *	Disable will return basicly the values to init values.
+ *	Disable will return basically the values to init values.
  *
  ******************************************************************************/
 elink_status_t elink_ets_disabled(struct elink_params *params,
@@ -1506,7 +1506,7 @@ elink_status_t elink_ets_disabled(struct elink_params *params,
 
 /******************************************************************************
  * Description
- *	Set the COS mappimg to SP and BW until this point all the COS are not
+ *	Set the COS mapping to SP and BW until this point all the COS are not
  *	set as SP or BW.
  ******************************************************************************/
 static elink_status_t elink_ets_e3b0_cli_map(const struct elink_params *params,
@@ -1652,7 +1652,7 @@ static elink_status_t elink_ets_e3b0_get_total_bw(
 		}
 		ELINK_DEBUG_P0(sc,
 		   "elink_ets_E3B0_config total BW should be 100");
-		/* We can handle a case whre the BW isn't 100 this can happen
+		/* We can handle a case where the BW isn't 100 this can happen
 		 * if the TC are joined.
 		 */
 	}
@@ -2608,7 +2608,7 @@ static elink_status_t elink_emac_enable(struct elink_params *params,
 	REG_WR(sc, NIG_REG_EGRESS_EMAC0_PORT + port * 4, 1);
 
 #ifdef ELINK_INCLUDE_EMUL
-	/* for paladium */
+	/* for palladium */
 	if (CHIP_REV_IS_EMUL(sc)) {
 		/* Use lane 1 (of lanes 0-3) */
 		REG_WR(sc, NIG_REG_XGXS_LANE_SEL_P0 + port * 4, 1);
@@ -2850,7 +2850,7 @@ static void elink_update_pfc_bmac2(struct elink_params *params,
 
 	/* Set Time (based unit is 512 bit time) between automatic
 	 * re-sending of PP packets amd enable automatic re-send of
-	 * Per-Priroity Packet as long as pp_gen is asserted and
+	 * Per-Priority Packet as long as pp_gen is asserted and
 	 * pp_disable is low.
 	 */
 	val = 0x8000;
@@ -3369,7 +3369,7 @@ static elink_status_t elink_pbf_update(struct elink_params *params,
 }
 
 /**
- * elink_get_emac_base - retrive emac base address
+ * elink_get_emac_base - retrieve emac base address
  *
  * @bp:			driver handle
  * @mdc_mdio_access:	access type
@@ -4518,7 +4518,7 @@ static void elink_warpcore_enable_AN_KR2(struct elink_phy *phy,
 		elink_cl45_write(sc, phy, reg_set[i].devad, reg_set[i].reg,
 				 reg_set[i].val);
 
-	/* Start KR2 work-around timer which handles BNX2X8073 link-parner */
+	/* Start KR2 work-around timer which handles BNX2X8073 link-partner */
 	params->link_attr_sync |= LINK_ATTR_SYNC_KR2_ENABLE;
 	elink_update_link_attr(params, params->link_attr_sync);
 }
@@ -7824,7 +7824,7 @@ elink_status_t elink_link_update(struct elink_params *params,
 			 * hence its link is expected to be down
 			 * - SECOND_PHY means that first phy should not be able
 			 * to link up by itself (using configuration)
-			 * - DEFAULT should be overridden during initialiazation
+			 * - DEFAULT should be overridden during initialization
 			 */
 				ELINK_DEBUG_P1(sc, "Invalid link indication"
 					       " mpc=0x%x. DISABLING LINK !!!",
@@ -10991,7 +10991,7 @@ static elink_status_t elink_84858_cmd_hdlr(struct elink_phy *phy,
 		ELINK_DEBUG_P0(sc, "FW cmd failed.");
 		return ELINK_STATUS_ERROR;
 	}
-	/* Step5: Once the command has completed, read the specficied DATA
+	/* Step5: Once the command has completed, read the specified DATA
 	 * registers for any saved results for the command, if applicable
 	 */
 

@@ -1206,7 +1206,7 @@ flow_rxq_tunnel_ptype_update(struct mlx5_rxq_ctrl *rxq_ctrl)
 }
 
 /**
- * Set the Rx queue flags (Mark/Flag and Tunnel Ptypes) according to the devive
+ * Set the Rx queue flags (Mark/Flag and Tunnel Ptypes) according to the device
  * flow.
  *
  * @param[in] dev
@@ -3008,7 +3008,7 @@ mlx5_flow_validate_item_geneve_opt(const struct rte_flow_item *item,
 	if ((uint32_t)spec->option_len > MLX5_GENEVE_OPTLEN_MASK)
 		return rte_flow_error_set
 			(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_ITEM, item,
-			"Geneve TLV opt length exceeeds the limit (31)");
+			"Geneve TLV opt length exceeds the limit (31)");
 	/* Check if class type and length masks are full. */
 	if (full_mask.option_class != mask->option_class ||
 	    full_mask.option_type != mask->option_type ||
@@ -3957,7 +3957,7 @@ find_graph_root(uint32_t rss_level)
  *  subflow.
  *
  * @param[in] dev_flow
- *   Pointer the created preifx subflow.
+ *   Pointer the created prefix subflow.
  *
  * @return
  *   The layers get from prefix subflow.
@@ -4284,7 +4284,7 @@ flow_dv_mreg_create_cb(void *tool_ctx, void *cb_ctx)
 		[3] = { .type = RTE_FLOW_ACTION_TYPE_END, },
 	};
 
-	/* Fill the register fileds in the flow. */
+	/* Fill the register fields in the flow. */
 	ret = mlx5_flow_get_reg_id(dev, MLX5_FLOW_MARK, 0, error);
 	if (ret < 0)
 		return NULL;
@@ -4353,7 +4353,7 @@ flow_dv_mreg_create_cb(void *tool_ctx, void *cb_ctx)
 	/*
 	 * The copy Flows are not included in any list. There
 	 * ones are referenced from other Flows and can not
-	 * be applied, removed, deleted in ardbitrary order
+	 * be applied, removed, deleted in arbitrary order
 	 * by list traversing.
 	 */
 	mcp_res->rix_flow = flow_list_create(dev, MLX5_FLOW_TYPE_MCP,
@@ -4810,7 +4810,7 @@ flow_create_split_inner(struct rte_eth_dev *dev,
 	/*
 	 * If dev_flow is as one of the suffix flow, some actions in suffix
 	 * flow may need some user defined item layer flags, and pass the
-	 * Metadate rxq mark flag to suffix flow as well.
+	 * Metadata rxq mark flag to suffix flow as well.
 	 */
 	if (flow_split_info->prefix_layers)
 		dev_flow->handle->layers = flow_split_info->prefix_layers;
@@ -5359,7 +5359,7 @@ flow_mreg_split_qrss_prep(struct rte_eth_dev *dev,
  * @param[out] error
  *   Perform verbose error reporting if not NULL.
  * @param[in] encap_idx
- *   The encap action inndex.
+ *   The encap action index.
  *
  * @return
  *   0 on success, negative value otherwise
@@ -6884,7 +6884,7 @@ flow_list_destroy(struct rte_eth_dev *dev, enum mlx5_flow_type type,
  * @param type
  *   Flow type to be flushed.
  * @param active
- *   If flushing is called avtively.
+ *   If flushing is called actively.
  */
 void
 mlx5_flow_list_flush(struct rte_eth_dev *dev, enum mlx5_flow_type type,
@@ -8531,7 +8531,7 @@ mlx5_flow_dev_dump_sh_all(struct rte_eth_dev *dev,
  *   Perform verbose error reporting if not NULL. PMDs initialize this
  *   structure in case of error only.
  * @return
- *   0 on success, a nagative value otherwise.
+ *   0 on success, a negative value otherwise.
  */
 int
 mlx5_flow_dev_dump(struct rte_eth_dev *dev, struct rte_flow *flow_idx,
@@ -9009,7 +9009,7 @@ mlx5_get_tof(const struct rte_flow_item *item,
 }
 
 /**
- * tunnel offload functionalilty is defined for DV environment only
+ * tunnel offload functionality is defined for DV environment only
  */
 #ifdef HAVE_IBV_FLOW_DV_SUPPORT
 __extension__

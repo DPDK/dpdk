@@ -227,7 +227,7 @@ caam_jr_enable_irqs(int uio_fd)
  *  value that indicates an IRQ disable action into UIO file descriptor
  *  of this job ring.
  *
- * @param [in]  uio_fd    UIO File descripto
+ * @param [in]  uio_fd    UIO File descriptor
  * @retval 0 for success
  * @retval -1 value for error
  *

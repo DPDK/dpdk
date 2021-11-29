@@ -96,7 +96,7 @@ static inline int sys_bpf(enum bpf_cmd cmd, union bpf_attr *attr,
  * Load BPF instructions to kernel
  *
  * @param[in] type
- *   BPF program type: classifieir or action
+ *   BPF program type: classifier or action
  *
  * @param[in] insns
  *   Array of BPF instructions (equivalent to BPF instructions)
@@ -104,7 +104,7 @@ static inline int sys_bpf(enum bpf_cmd cmd, union bpf_attr *attr,
  * @param[in] insns_cnt
  *   Number of BPF instructions (size of array)
  *
- * @param[in] lincense
+ * @param[in] license
  *   License string that must be acknowledged by the kernel
  *
  * @return

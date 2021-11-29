@@ -4,7 +4,7 @@
 
 /*
  * This sample application is a simple multi-process application which
- * demostrates sharing of queues and memory pools between processes, and
+ * demonstrates sharing of queues and memory pools between processes, and
  * using those queues/pools for communication between the processes.
  *
  * Application is designed to run with two processes, a primary and a

@@ -9,7 +9,7 @@ packets. This Linux-specific PMD binds to an AF_PACKET socket and allows
 a DPDK application to send and receive raw packets through the Kernel.
 
 In order to improve Rx and Tx performance this implementation makes use of
-PACKET_MMAP, which provides a mmap'ed ring buffer, shared between user space
+PACKET_MMAP, which provides a mmapped ring buffer, shared between user space
 and kernel, that's used to send and receive packets. This helps reducing system
 calls and the copies needed between user space and Kernel.
 

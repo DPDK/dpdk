@@ -534,7 +534,7 @@ telemetry_legacy_init(void)
 	}
 	rc = pthread_create(&t_old, NULL, socket_listener, &v1_socket);
 	if (rc != 0) {
-		TMTY_LOG(ERR, "Error with create legcay socket thread: %s\n",
+		TMTY_LOG(ERR, "Error with create legacy socket thread: %s\n",
 			 strerror(rc));
 		close(v1_socket.sock);
 		v1_socket.sock = -1;

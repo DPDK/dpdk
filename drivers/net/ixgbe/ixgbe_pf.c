@@ -242,7 +242,7 @@ int ixgbe_pf_host_configure(struct rte_eth_dev *eth_dev)
 	/* PFDMA Tx General Switch Control Enables VMDQ loopback */
 	IXGBE_WRITE_REG(hw, IXGBE_PFDTXGSWC, IXGBE_PFDTXGSWC_VT_LBEN);
 
-	/* clear VMDq map to perment rar 0 */
+	/* clear VMDq map to permanent rar 0 */
 	hw->mac.ops.clear_vmdq(hw, 0, IXGBE_CLEAR_VMDQ_ALL);
 
 	/* clear VMDq map to scan rar 127 */

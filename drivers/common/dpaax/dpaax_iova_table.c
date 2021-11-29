@@ -261,7 +261,7 @@ dpaax_iova_table_depopulate(void)
 	rte_free(dpaax_iova_table_p->entries);
 	dpaax_iova_table_p = NULL;
 
-	DPAAX_DEBUG("IOVA Table cleanedup");
+	DPAAX_DEBUG("IOVA Table cleaned");
 }
 
 int

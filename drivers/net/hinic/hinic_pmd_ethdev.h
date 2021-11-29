@@ -170,7 +170,7 @@ struct tag_tcam_key_mem {
 		/*
 		 * tunnel packet, mask must be 0xff, spec value is 1;
 		 * normal packet, mask must be 0, spec value is 0;
-		 * if tunnal packet, ucode use
+		 * if tunnel packet, ucode use
 		 * sip/dip/protocol/src_port/dst_dport from inner packet
 		 */
 		u32 tunnel_flag:8;

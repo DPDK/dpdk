@@ -40,7 +40,7 @@ sfc_ef10_rx_ev_to_offloads(const efx_qword_t rx_ev, struct rte_mbuf *m,
 		rte_cpu_to_le_64((1ull << ESF_DZ_RX_ECC_ERR_LBN) |
 				 (1ull << ESF_DZ_RX_ECRC_ERR_LBN) |
 				 (1ull << ESF_DZ_RX_PARSE_INCOMPLETE_LBN)))) {
-		/* Zero packet type is used as a marker to dicard bad packets */
+		/* Zero packet type is used as a marker to discard bad packets */
 		goto done;
 	}
 

@@ -63,7 +63,7 @@
  * Wildcard indicating a CPP read or write action
  *
  * The action used will be either read or write depending on whether a read or
- * write instruction/call is performed on the NFP_CPP_ID.  It is recomended that
+ * write instruction/call is performed on the NFP_CPP_ID.  It is recommended that
  * the RW action is used even if all actions to be performed on a NFP_CPP_ID are
  * known to be only reads or writes. Doing so will in many cases save NFP CPP
  * internal software resources.
@@ -405,7 +405,7 @@ int nfp_idstr2meid(int chip_family, const char *s, const char **endptr);
  * @param chip_family Chip family ID
  * @param s           A string of format "iX.anything" or "iX"
  * @param endptr      If non-NULL, *endptr will point to the trailing
- *                    striong after the ME ID part of the string, which
+ *                    string after the ME ID part of the string, which
  *                    is either an empty string or the first character
  *                    after the separating period.
  * @return            The island ID on succes, -1 on error.
@@ -425,7 +425,7 @@ int nfp_idstr2island(int chip_family, const char *s, const char **endptr);
  * @param chip_family Chip family ID
  * @param s           A string of format "meX.anything" or "meX"
  * @param endptr      If non-NULL, *endptr will point to the trailing
- *                    striong after the ME ID part of the string, which
+ *                    string after the ME ID part of the string, which
  *                    is either an empty string or the first character
  *                    after the separating period.
  * @return            The ME number on succes, -1 on error.

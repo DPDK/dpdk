@@ -178,7 +178,7 @@ DPDK and must be installed separately:
 
   - mlx4_core: hardware driver managing Mellanox ConnectX-3 devices.
   - mlx4_en: Ethernet device driver that provides kernel network interfaces.
-  - mlx4_ib: InifiniBand device driver.
+  - mlx4_ib: InfiniBand device driver.
   - ib_uverbs: user space driver for verbs (entry point for libibverbs).
 
 - **Firmware update**

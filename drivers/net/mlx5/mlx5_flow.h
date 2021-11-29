@@ -598,7 +598,7 @@ struct mlx5_flow_tbl_data_entry {
 	const struct mlx5_flow_tunnel *tunnel;
 	uint32_t group_id;
 	uint32_t external:1;
-	uint32_t tunnel_offload:1; /* Tunnel offlod table or not. */
+	uint32_t tunnel_offload:1; /* Tunnel offload table or not. */
 	uint32_t is_egress:1; /**< Egress table. */
 	uint32_t is_transfer:1; /**< Transfer table. */
 	uint32_t dummy:1; /**<  DR table. */
@@ -696,8 +696,8 @@ struct mlx5_flow_handle {
 	/**< Bit-fields of present layers, see MLX5_FLOW_LAYER_*. */
 	void *drv_flow; /**< pointer to driver flow object. */
 	uint32_t split_flow_id:27; /**< Sub flow unique match flow id. */
-	uint32_t is_meter_flow_id:1; /**< Indate if flow_id is for meter. */
-	uint32_t mark:1; /**< Metadate rxq mark flag. */
+	uint32_t is_meter_flow_id:1; /**< Indicate if flow_id is for meter. */
+	uint32_t mark:1; /**< Metadata rxq mark flag. */
 	uint32_t fate_action:3; /**< Fate action type. */
 	uint32_t flex_item; /**< referenced Flex Item bitmask. */
 	union {

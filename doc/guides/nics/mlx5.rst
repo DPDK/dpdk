@@ -649,7 +649,7 @@ Driver options
 
   A timeout value is set in the driver to control the waiting time before
   dropping a packet. Once the timer is expired, the delay drop will be
-  deactivated for all the Rx queues with this feature enable. To re-activeate
+  deactivated for all the Rx queues with this feature enable. To re-activate
   it, a rearming is needed and it is part of the kernel driver starting from
   OFED 5.5.
 
@@ -1033,7 +1033,7 @@ Driver options
 
   For the MARK action the last 16 values in the full range are reserved for
   internal PMD purposes (to emulate FLAG action). The valid range for the
-  MARK action values is 0-0xFFEF for the 16-bit mode and 0-xFFFFEF
+  MARK action values is 0-0xFFEF for the 16-bit mode and 0-0xFFFFEF
   for the 24-bit mode, the flows with the MARK action value outside
   the specified range will be rejected.
 
@@ -1317,7 +1317,7 @@ DPDK and must be installed separately:
   - mlx5_core: hardware driver managing Mellanox
     ConnectX-4/ConnectX-5/ConnectX-6/BlueField devices and related Ethernet kernel
     network devices.
-  - mlx5_ib: InifiniBand device driver.
+  - mlx5_ib: InfiniBand device driver.
   - ib_uverbs: user space driver for Verbs (entry point for libibverbs).
 
 - **Firmware update**

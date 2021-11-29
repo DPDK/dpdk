@@ -543,7 +543,7 @@ test_memzone_reserve_max(void)
 		}
 
 		if (mz->len != maxlen) {
-			printf("Memzone reserve with 0 size did not return bigest block\n");
+			printf("Memzone reserve with 0 size did not return biggest block\n");
 			printf("Expected size = %zu, actual size = %zu\n",
 					maxlen, mz->len);
 			rte_dump_physmem_layout(stdout);
@@ -606,7 +606,7 @@ test_memzone_reserve_max_aligned(void)
 
 		if (mz->len < minlen || mz->len > maxlen) {
 			printf("Memzone reserve with 0 size and alignment %u did not return"
-					" bigest block\n", align);
+					" biggest block\n", align);
 			printf("Expected size = %zu-%zu, actual size = %zu\n",
 					minlen, maxlen, mz->len);
 			rte_dump_physmem_layout(stdout);
@@ -1054,7 +1054,7 @@ test_memzone_basic(void)
 	if (mz != memzone1)
 		return -1;
 
-	printf("test duplcate zone name\n");
+	printf("test duplicate zone name\n");
 	mz = rte_memzone_reserve(TEST_MEMZONE_NAME("testzone1"), 100,
 			SOCKET_ID_ANY, 0);
 	if (mz != NULL)

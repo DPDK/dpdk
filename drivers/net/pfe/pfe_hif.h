@@ -8,7 +8,7 @@
 #define HIF_CLIENT_QUEUES_MAX	16
 #define HIF_RX_PKT_MIN_SIZE RTE_CACHE_LINE_SIZE
 /*
- * HIF_TX_DESC_NT value should be always greter than 4,
+ * HIF_TX_DESC_NT value should be always greater than 4,
  * Otherwise HIF_TX_POLL_MARK will become zero.
  */
 #define HIF_RX_DESC_NT		64

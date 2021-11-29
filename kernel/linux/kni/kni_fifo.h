@@ -41,7 +41,7 @@ kni_fifo_put(struct rte_kni_fifo *fifo, void **data, uint32_t num)
 }
 
 /**
- * Get up to num elements from the fifo. Return the number actully read
+ * Get up to num elements from the FIFO. Return the number actually read
  */
 static inline uint32_t
 kni_fifo_get(struct rte_kni_fifo *fifo, void **data, uint32_t num)

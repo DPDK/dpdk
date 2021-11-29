@@ -796,7 +796,7 @@ pkt_copy_split(const struct rte_mbuf *pkt)
  *
  * The testpmd command line for this forward engine sets the flags
  * TESTPMD_TX_OFFLOAD_* in ports[tx_port].tx_ol_flags. They control
- * wether a checksum must be calculated in software or in hardware. The
+ * whether a checksum must be calculated in software or in hardware. The
  * IP, UDP, TCP and SCTP flags always concern the inner layer. The
  * OUTER_IP is only useful for tunnel packets.
  */

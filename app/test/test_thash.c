@@ -684,7 +684,7 @@ test_predictable_rss_multirange(void)
 
 	/*
 	 * calculate hashes, complements, then adjust keys with
-	 * complements and recalsulate hashes
+	 * complements and recalculate hashes
 	 */
 	for (i = 0; i < RTE_DIM(rng_arr); i++) {
 		for (k = 0; k < 100; k++) {

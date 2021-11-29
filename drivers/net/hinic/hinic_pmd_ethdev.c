@@ -255,7 +255,7 @@ static int hinic_vlan_offload_set(struct rte_eth_dev *dev, int mask);
  * Interrupt handler triggered by NIC  for handling
  * specific event.
  *
- * @param: The address of parameter (struct rte_eth_dev *) regsitered before.
+ * @param: The address of parameter (struct rte_eth_dev *) registered before.
  */
 static void hinic_dev_interrupt_handler(void *param)
 {
@@ -336,7 +336,7 @@ static int hinic_dev_configure(struct rte_eth_dev *dev)
 		return err;
 	}
 
-	/* init vlan offoad */
+	/* init VLAN offload */
 	err = hinic_vlan_offload_set(dev,
 				RTE_ETH_VLAN_STRIP_MASK | RTE_ETH_VLAN_FILTER_MASK);
 	if (err) {

@@ -62,7 +62,7 @@ static uint8_t rss_enable;
 
 /* Default structure for VMDq. 8< */
 
-/* empty vmdq configuration structure. Filled in programatically */
+/* empty VMDq configuration structure. Filled in programmatically */
 static const struct rte_eth_conf vmdq_conf_default = {
 	.rxmode = {
 		.mq_mode        = RTE_ETH_MQ_RX_VMDQ_ONLY,

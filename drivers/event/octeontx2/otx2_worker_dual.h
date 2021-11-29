@@ -74,7 +74,7 @@ otx2_ssogws_dual_get_work(struct otx2_ssogws_state *ws,
 					 event.flow_id, flags, lookup_mem);
 			/* Extracting tstamp, if PTP enabled. CGX will prepend
 			 * the timestamp at starting of packet data and it can
-			 * be derieved from WQE 9 dword which corresponds to SG
+			 * be derived from WQE 9 dword which corresponds to SG
 			 * iova.
 			 * rte_pktmbuf_mtod_offset can be used for this purpose
 			 * but it brings down the performance as it reads

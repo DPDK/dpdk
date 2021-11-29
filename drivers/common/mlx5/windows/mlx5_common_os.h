@@ -21,7 +21,7 @@
 /**
  * This API allocates aligned or non-aligned memory.  The free can be on either
  * aligned or nonaligned memory.  To be protected - even though there may be no
- * alignment - in Windows this API will unconditioanlly call _aligned_malloc()
+ * alignment - in Windows this API will unconditionally call _aligned_malloc()
  * with at least a minimal alignment size.
  *
  * @param[in] align

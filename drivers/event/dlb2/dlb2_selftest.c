@@ -223,7 +223,7 @@ test_stop_flush(struct test *t) /* test to check we can properly flush events */
 				    0,
 				    RTE_EVENT_PORT_ATTR_DEQ_DEPTH,
 				    &dequeue_depth)) {
-		printf("%d: Error retrieveing dequeue depth\n", __LINE__);
+		printf("%d: Error retrieving dequeue depth\n", __LINE__);
 		goto err;
 	}
 

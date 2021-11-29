@@ -68,7 +68,7 @@ sfc_dp_register(struct sfc_dp_list *head, struct sfc_dp *entry)
 {
 	if (sfc_dp_find_by_name(head, entry->type, entry->name) != NULL) {
 		SFC_GENERIC_LOG(ERR,
-			"sfc %s dapapath '%s' already registered",
+			"sfc %s datapath '%s' already registered",
 			entry->type == SFC_DP_RX ? "Rx" :
 			entry->type == SFC_DP_TX ? "Tx" :
 			"unknown",

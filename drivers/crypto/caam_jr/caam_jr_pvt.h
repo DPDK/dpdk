@@ -169,7 +169,7 @@ struct sec4_sg_entry {
 
 /* Structure encompassing a job descriptor which is to be processed
  * by SEC. User should also initialise this structure with the callback
- * function pointer which will be called by driver after recieving proccessed
+ * function pointer which will be called by driver after receiving processed
  * descriptor from SEC. User data is also passed in this data structure which
  * will be sent as an argument to the user callback function.
  */
@@ -288,7 +288,7 @@ int caam_jr_enable_irqs(int uio_fd);
  *  value that indicates an IRQ disable action into UIO file descriptor
  *  of this job ring.
  *
- * @param [in]  uio_fd    UIO File descripto
+ * @param [in]  uio_fd    UIO File descriptor
  * @retval 0 for success
  * @retval -1 value for error
  *

@@ -52,7 +52,7 @@ tfp_send_msg_direct(struct bnxt *bp,
 }
 
 /**
- * Allocates zero'ed memory from the heap.
+ * Allocates zeroed memory from the heap.
  *
  * Returns success or failure code.
  */

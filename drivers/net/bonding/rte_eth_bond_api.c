@@ -375,7 +375,7 @@ eth_bond_slave_inherit_dev_info_rx_next(struct bond_dev_private *internals,
 	 * value. Thus, the new internal value of default Rx queue offloads
 	 * has to be masked by rx_queue_offload_capa to make sure that only
 	 * commonly supported offloads are preserved from both the previous
-	 * value and the value being inhereted from the new slave device.
+	 * value and the value being inherited from the new slave device.
 	 */
 	rxconf_i->offloads = (rxconf_i->offloads | rxconf->offloads) &
 			     internals->rx_queue_offload_capa;
@@ -413,7 +413,7 @@ eth_bond_slave_inherit_dev_info_tx_next(struct bond_dev_private *internals,
 	 * value. Thus, the new internal value of default Tx queue offloads
 	 * has to be masked by tx_queue_offload_capa to make sure that only
 	 * commonly supported offloads are preserved from both the previous
-	 * value and the value being inhereted from the new slave device.
+	 * value and the value being inherited from the new slave device.
 	 */
 	txconf_i->offloads = (txconf_i->offloads | txconf->offloads) &
 			     internals->tx_queue_offload_capa;

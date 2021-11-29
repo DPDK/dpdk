@@ -234,7 +234,7 @@ npc_get_kex_capability(struct npc *npc)
 	/* Ethtype: Offset 12B, len 2B */
 	kex_cap.bit.ethtype_0 = npc_is_kex_enabled(
 		npc, NPC_LID_LA, NPC_LT_LA_ETHER, 12 * 8, 2 * 8);
-	/* QINQ VLAN Ethtype: ofset 8B, len 2B */
+	/* QINQ VLAN Ethtype: offset 8B, len 2B */
 	kex_cap.bit.ethtype_x = npc_is_kex_enabled(
 		npc, NPC_LID_LB, NPC_LT_LB_STAG_QINQ, 8 * 8, 2 * 8);
 	/* VLAN ID0 : Outer VLAN: Offset 2B, len 2B */

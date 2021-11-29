@@ -68,7 +68,7 @@
 #define IXGBE_LPBK_NONE   0x0 /* Default value. Loopback is disabled. */
 #define IXGBE_LPBK_TX_RX  0x1 /* Tx->Rx loopback operation is enabled. */
 /* X540-X550 specific loopback operations */
-#define IXGBE_MII_AUTONEG_ENABLE        0x1000 /* Auto-negociation enable (default = 1) */
+#define IXGBE_MII_AUTONEG_ENABLE        0x1000 /* Auto-negotiation enable (default = 1) */
 
 #define IXGBE_MAX_JUMBO_FRAME_SIZE      0x2600 /* Maximum Jumbo frame size. */
 

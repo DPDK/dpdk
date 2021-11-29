@@ -31,7 +31,7 @@ extern int octtx_zip_logtype_driver;
 /**< PCI device id of ZIP VF */
 #define PCI_DEVICE_ID_OCTEONTX_ZIPVF	0xA037
 
-/* maxmum number of zip vf devices */
+/* maximum number of zip vf devices */
 #define ZIP_MAX_VFS 8
 
 /* max size of one chunk */

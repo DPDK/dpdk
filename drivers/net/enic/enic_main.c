@@ -1137,7 +1137,7 @@ int enic_disable(struct enic *enic)
 	}
 
 	/* If we were using interrupts, set the interrupt vector to -1
-	 * to disable interrupts.  We are not disabling link notifcations,
+	 * to disable interrupts.  We are not disabling link notifications,
 	 * though, as we want the polling of link status to continue working.
 	 */
 	if (enic->rte_dev->data->dev_conf.intr_conf.lsc)

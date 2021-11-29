@@ -233,7 +233,7 @@ static inline const char *virtchnl_op_str(enum virtchnl_ops v_opcode)
 	case VIRTCHNL_OP_DCF_CMD_DESC:
 		return "VIRTCHNL_OP_DCF_CMD_DESC";
 	case VIRTCHNL_OP_DCF_CMD_BUFF:
-		return "VIRTCHHNL_OP_DCF_CMD_BUFF";
+		return "VIRTCHNL_OP_DCF_CMD_BUFF";
 	case VIRTCHNL_OP_DCF_DISABLE:
 		return "VIRTCHNL_OP_DCF_DISABLE";
 	case VIRTCHNL_OP_DCF_GET_VSI_MAP:

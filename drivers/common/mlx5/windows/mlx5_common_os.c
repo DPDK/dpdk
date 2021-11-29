@@ -302,7 +302,7 @@ mlx5_os_umem_dereg(void *pumem)
 }
 
 /**
- * Register mr. Given protection doamin pointer, pointer to addr and length
+ * Register mr. Given protection domain pointer, pointer to addr and length
  * register the memory region.
  *
  * @param[in] pd
@@ -310,7 +310,7 @@ mlx5_os_umem_dereg(void *pumem)
  * @param[in] addr
  *   Pointer to memory start address (type devx_device_ctx).
  * @param[in] length
- *   Lengtoh of the memory to register.
+ *   Length of the memory to register.
  * @param[out] pmd_mr
  *   pmd_mr struct set with lkey, address, length, pointer to mr object, mkey
  *

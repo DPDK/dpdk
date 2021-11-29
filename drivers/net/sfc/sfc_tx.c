@@ -356,7 +356,7 @@ sfc_tx_fini_queues(struct sfc_adapter *sa, unsigned int nb_tx_queues)
 
 	/*
 	 * Finalize only ethdev queues since other ones are finalized only
-	 * on device close and they may require additional deinitializaton.
+	 * on device close and they may require additional deinitialization.
 	 */
 	ethdev_qid = sas->ethdev_txq_count;
 	while (--ethdev_qid >= (int)nb_tx_queues) {

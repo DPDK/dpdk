@@ -25,7 +25,7 @@ build_map_changes()
 
 		# Triggering this rule, which starts a line and ends it
 		# with a { identifies a versioned section.  The section name is
-		# the rest of the line with the + and { symbols remvoed.
+		# the rest of the line with the + and { symbols removed.
 		# Triggering this rule sets in_sec to 1, which actives the
 		# symbol rule below
 		/^.*{/ {
@@ -35,7 +35,7 @@ build_map_changes()
 			}
 		}
 
-		# This rule idenfies the end of a section, and disables the
+		# This rule identifies the end of a section, and disables the
 		# symbol rule
 		/.*}/ {in_sec=0}
 
@@ -100,7 +100,7 @@ check_for_rule_violations()
 				# Just inform the user of this occurrence, but
 				# don't flag it as an error
 				echo -n "INFO: symbol $symname is added but "
-				echo -n "patch has insuficient context "
+				echo -n "patch has insufficient context "
 				echo -n "to determine the section name "
 				echo -n "please ensure the version is "
 				echo "EXPERIMENTAL"

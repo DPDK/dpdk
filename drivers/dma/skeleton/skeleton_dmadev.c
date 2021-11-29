@@ -169,7 +169,7 @@ vchan_setup(struct skeldma_hw *hw, uint16_t nb_desc)
 	struct rte_ring *completed;
 	uint16_t i;
 
-	desc = rte_zmalloc_socket("dma_skelteon_desc",
+	desc = rte_zmalloc_socket("dma_skeleton_desc",
 				  nb_desc * sizeof(struct skeldma_desc),
 				  RTE_CACHE_LINE_SIZE, hw->socket_id);
 	if (desc == NULL) {

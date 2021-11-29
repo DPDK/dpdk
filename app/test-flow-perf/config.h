@@ -28,7 +28,7 @@
 #define PORT_ID_DST 1
 #define TEID_VALUE 1
 
-/* Flow items/acctions max size */
+/* Flow items/actions max size */
 #define MAX_ITEMS_NUM 32
 #define MAX_ACTIONS_NUM 32
 #define MAX_ATTRS_NUM 16

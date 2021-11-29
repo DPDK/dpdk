@@ -362,7 +362,7 @@ esp_outb_tun_init(struct rte_ipsec_sa *sa, const struct rte_ipsec_sa_prm *prm)
 
 	memcpy(sa->hdr, prm->tun.hdr, prm->tun.hdr_len);
 
-	/* insert UDP header if UDP encapsulation is inabled */
+	/* insert UDP header if UDP encapsulation is enabled */
 	if (sa->type & RTE_IPSEC_SATP_NATT_ENABLE) {
 		struct rte_udp_hdr *udph = (struct rte_udp_hdr *)
 				&sa->hdr[prm->tun.hdr_len];

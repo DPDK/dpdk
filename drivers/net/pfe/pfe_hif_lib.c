@@ -38,7 +38,7 @@ pfe_hif_shm_clean(struct hif_shm *hif_shm)
  * This function should be called before initializing HIF driver.
  *
  * @param[in] hif_shm		Shared memory address location in DDR
- * @rerurn			0 - on succes, <0 on fail to initialize
+ * @return			0 - on succes, <0 on fail to initialize
  */
 int
 pfe_hif_shm_init(struct hif_shm *hif_shm, struct rte_mempool *mb_pool)
@@ -109,9 +109,9 @@ hif_lib_client_release_rx_buffers(struct hif_client_s *client)
 		for (ii = 0; ii < client->rx_q[qno].size; ii++) {
 			buf = (void *)desc->data;
 			if (buf) {
-			/* Data pointor to mbuf pointor calculation:
+			/* Data pointer to mbuf pointer calculation:
 			 * "Data - User private data - headroom - mbufsize"
-			 * Actual data pointor given to HIF BDs was
+			 * Actual data pointer given to HIF BDs was
 			 * "mbuf->data_offset - PFE_PKT_HEADER_SZ"
 			 */
 				buf = buf + PFE_PKT_HEADER_SZ
@@ -477,7 +477,7 @@ hif_hdr_write(struct hif_hdr *pkt_hdr, unsigned int
 	      client_id, unsigned int qno,
 	      u32 client_ctrl)
 {
-	/* Optimize the write since the destinaton may be non-cacheable */
+	/* Optimize the write since the destination may be non-cacheable */
 	if (!((unsigned long)pkt_hdr & 0x3)) {
 		((u32 *)pkt_hdr)[0] = (client_ctrl << 16) | (qno << 8) |
 					client_id;

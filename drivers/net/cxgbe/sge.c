@@ -211,7 +211,7 @@ static inline unsigned int fl_cap(const struct sge_fl *fl)
  * @fl: the Free List
  *
  * Tests specified Free List to see whether the number of buffers
- * available to the hardware has falled below our "starvation"
+ * available to the hardware has fallen below our "starvation"
  * threshold.
  */
 static inline bool fl_starving(const struct adapter *adapter,
@@ -678,7 +678,7 @@ static void write_sgl(struct rte_mbuf *mbuf, struct sge_txq *q,
  * @q: the Tx queue
  * @n: number of new descriptors to give to HW
  *
- * Ring the doorbel for a Tx queue.
+ * Ring the doorbell for a Tx queue.
  */
 static inline void ring_tx_db(struct adapter *adap, struct sge_txq *q)
 {
@@ -877,7 +877,7 @@ static inline void ship_tx_pkt_coalesce_wr(struct adapter *adap,
 }
 
 /**
- * should_tx_packet_coalesce - decides wether to coalesce an mbuf or not
+ * should_tx_packet_coalesce - decides whether to coalesce an mbuf or not
  * @txq: tx queue where the mbuf is sent
  * @mbuf: mbuf to be sent
  * @nflits: return value for number of flits needed
@@ -1846,7 +1846,7 @@ int t4_sge_alloc_rxq(struct adapter *adap, struct sge_rspq *iq, bool fwevtq,
 		 * for its status page) along with the associated software
 		 * descriptor ring.  The free list size needs to be a multiple
 		 * of the Egress Queue Unit and at least 2 Egress Units larger
-		 * than the SGE's Egress Congrestion Threshold
+		 * than the SGE's Egress Congestion Threshold
 		 * (fl_starve_thres - 1).
 		 */
 		if (fl->size < s->fl_starve_thres - 1 + 2 * 8)

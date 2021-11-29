@@ -151,7 +151,7 @@ desc_to_olflags_v(struct i40e_rx_queue *rxq, uint64x2_t descs[4],
 					      vreinterpretq_u8_u32(l3_l4e)));
 	/* then we shift left 1 bit */
 	l3_l4e = vshlq_n_u32(l3_l4e, 1);
-	/* we need to mask out the reduntant bits */
+	/* we need to mask out the redundant bits */
 	l3_l4e = vandq_u32(l3_l4e, cksum_mask);
 
 	vlan0 = vorrq_u32(vlan0, rss);
@@ -416,7 +416,7 @@ _recv_raw_pkts_vec(struct i40e_rx_queue *__rte_restrict rxq,
 					    I40E_UINT16_BIT - 1));
 		stat = ~vgetq_lane_u64(vreinterpretq_u64_u16(staterr), 0);
 
-		/* C.4 calc avaialbe number of desc */
+		/* C.4 calc available number of desc */
 		if (unlikely(stat == 0)) {
 			nb_pkts_recd += RTE_I40E_DESCS_PER_LOOP;
 		} else {

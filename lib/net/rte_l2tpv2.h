@@ -143,7 +143,7 @@ struct rte_l2tpv2_msg_without_length {
 /**
  * L2TPv2 message Header contains all options except ns_nr(length,
  * offset size, offset padding).
- * Ns and Nr MUST be toghter.
+ * Ns and Nr MUST be together.
  */
 struct rte_l2tpv2_msg_without_ns_nr {
 	rte_be16_t length;		/**< length(16) */
@@ -155,7 +155,7 @@ struct rte_l2tpv2_msg_without_ns_nr {
 
 /**
  * L2TPv2 message Header contains all options except ns_nr(length, ns, nr).
- * offset size and offset padding MUST be toghter.
+ * offset size and offset padding MUST be together.
  */
 struct rte_l2tpv2_msg_without_offset {
 	rte_be16_t length;		/**< length(16) */

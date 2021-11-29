@@ -371,7 +371,7 @@ sfc_set_drv_limits(struct sfc_adapter *sa)
 
 	/*
 	 * Limits are strict since take into account initial estimation.
-	 * Resource allocation stategy is described in
+	 * Resource allocation strategy is described in
 	 * sfc_estimate_resource_limits().
 	 */
 	lim.edl_min_evq_count = lim.edl_max_evq_count =

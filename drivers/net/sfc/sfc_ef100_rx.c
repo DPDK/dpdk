@@ -851,7 +851,7 @@ sfc_ef100_rx_qstart(struct sfc_dp_rxq *dp_rxq, unsigned int evq_read_ptr,
 	unsup_rx_prefix_fields =
 		efx_rx_prefix_layout_check(pinfo, &sfc_ef100_rx_prefix_layout);
 
-	/* LENGTH and CLASS filds must always be present */
+	/* LENGTH and CLASS fields must always be present */
 	if ((unsup_rx_prefix_fields &
 	     ((1U << EFX_RX_PREFIX_FIELD_LENGTH) |
 	      (1U << EFX_RX_PREFIX_FIELD_CLASS))) != 0)

@@ -212,7 +212,7 @@ bcmfs_qp_setup(struct bcmfs_qp **qp_addr,
 		nb_descriptors = FS_RM_MAX_REQS;
 
 	if (qp_conf->iobase == NULL) {
-		BCMFS_LOG(ERR, "IO onfig space null");
+		BCMFS_LOG(ERR, "IO config space null");
 		return -EINVAL;
 	}
 

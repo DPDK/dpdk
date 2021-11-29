@@ -459,7 +459,7 @@ static int test_member_multimatch(void)
 						MAX_MATCH, set_ids_cache);
 		/*
 		 * For cache mode, keys overwrite when signature same.
-		 * the mutimatch should work like single match.
+		 * the multimatch should work like single match.
 		 */
 		TEST_ASSERT(ret_ht == M_MATCH_CNT && ret_vbf == M_MATCH_CNT &&
 				ret_cache == 1,

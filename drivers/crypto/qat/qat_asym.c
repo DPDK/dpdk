@@ -109,7 +109,7 @@ static void qat_clear_arrays_by_alg(struct qat_asym_op_cookie *cookie,
 static int qat_asym_check_nonzero(rte_crypto_param n)
 {
 	if (n.length < 8) {
-		/* Not a case for any cryptograpic function except for DH
+		/* Not a case for any cryptographic function except for DH
 		 * generator which very often can be of one byte length
 		 */
 		size_t i;

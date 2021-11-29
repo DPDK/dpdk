@@ -2011,7 +2011,7 @@ rte_swx_pipeline_build_from_spec(struct rte_swx_pipeline *p,
 		if (err_line)
 			*err_line = 0;
 		if (err_msg)
-			*err_msg = "Null pipeline arument.";
+			*err_msg = "Null pipeline argument.";
 		status = -EINVAL;
 		goto error;
 	}

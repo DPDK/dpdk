@@ -246,7 +246,7 @@ cpt_fc_ciph_set_key(struct cpt_ctx *cpt_ctx, cipher_type_t type,
 	if (cpt_ctx->fc_type == FC_GEN) {
 		/*
 		 * We need to always say IV is from DPTR as user can
-		 * sometimes iverride IV per operation.
+		 * sometimes override IV per operation.
 		 */
 		fctx->enc.iv_source = CPT_FROM_DPTR;
 
@@ -3035,7 +3035,7 @@ prepare_iov_from_pkt_inplace(struct rte_mbuf *pkt,
 		tailroom = rte_pktmbuf_tailroom(pkt);
 		if (likely((headroom >= 24) &&
 		    (tailroom >= 8))) {
-			/* In 83XX this is prerequivisit for Direct mode */
+			/* In 83XX this is prerequisite for Direct mode */
 			*flags |= SINGLE_BUF_HEADTAILROOM;
 		}
 		param->bufs[0].vaddr = seg_data;

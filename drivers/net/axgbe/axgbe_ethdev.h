@@ -641,7 +641,7 @@ struct axgbe_port {
 
 	unsigned int kr_redrv;
 
-	/* Auto-negotiation atate machine support */
+	/* Auto-negotiation state machine support */
 	unsigned int an_int;
 	unsigned int an_status;
 	enum axgbe_an an_result;

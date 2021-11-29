@@ -574,7 +574,7 @@ hns3_set_vlan_rx_offload_cfg(struct hns3_adapter *hns,
 	hns3_set_bit(req->vport_vlan_cfg, HNS3_SHOW_TAG2_EN_B,
 		     vcfg->vlan2_vlan_prionly ? 1 : 0);
 
-	/* firmwall will ignore this configuration for PCI_REVISION_ID_HIP08 */
+	/* firmware will ignore this configuration for PCI_REVISION_ID_HIP08 */
 	hns3_set_bit(req->vport_vlan_cfg, HNS3_DISCARD_TAG1_EN_B,
 		     vcfg->strip_tag1_discard_en ? 1 : 0);
 	hns3_set_bit(req->vport_vlan_cfg, HNS3_DISCARD_TAG2_EN_B,
@@ -784,7 +784,7 @@ hns3_set_vlan_tx_offload_cfg(struct hns3_adapter *hns,
 		     vcfg->insert_tag2_en ? 1 : 0);
 	hns3_set_bit(req->vport_vlan_cfg, HNS3_CFG_NIC_ROCE_SEL_B, 0);
 
-	/* firmwall will ignore this configuration for PCI_REVISION_ID_HIP08 */
+	/* firmware will ignore this configuration for PCI_REVISION_ID_HIP08 */
 	hns3_set_bit(req->vport_vlan_cfg, HNS3_TAG_SHIFT_MODE_EN_B,
 		     vcfg->tag_shift_mode_en ? 1 : 0);
 
@@ -3420,7 +3420,7 @@ hns3_only_alloc_priv_buff(struct hns3_hw *hw,
  * hns3_rx_buffer_calc: calculate the rx private buffer size for all TCs
  * @hw: pointer to struct hns3_hw
  * @buf_alloc: pointer to buffer calculation data
- * @return: 0: calculate sucessful, negative: fail
+ * @return: 0: calculate successful, negative: fail
  */
 static int
 hns3_rx_buffer_calc(struct hns3_hw *hw, struct hns3_pkt_buf_alloc *buf_alloc)
@@ -4550,14 +4550,14 @@ hns3_set_firber_default_support_speed(struct hns3_hw *hw)
 }
 
 /*
- * Validity of supported_speed for firber and copper media type can be
+ * Validity of supported_speed for fiber and copper media type can be
  * guaranteed by the following policy:
  * Copper:
  *       Although the initialization of the phy in the firmware may not be
  *       completed, the firmware can guarantees that the supported_speed is
  *       an valid value.
  * Firber:
- *       If the version of firmware supports the acitive query way of the
+ *       If the version of firmware supports the active query way of the
  *       HNS3_OPC_GET_SFP_INFO opcode, the supported_speed can be obtained
  *       through it. If unsupported, use the SFP's speed as the value of the
  *       supported_speed.
@@ -5327,7 +5327,7 @@ hns3_get_autoneg_fc_mode(struct hns3_hw *hw)
 
 	/*
 	 * Flow control auto-negotiation is not supported for fiber and
-	 * backpalne media type.
+	 * backplane media type.
 	 */
 	case HNS3_MEDIA_TYPE_FIBER:
 	case HNS3_MEDIA_TYPE_BACKPLANE:
@@ -6191,7 +6191,7 @@ hns3_fec_get_internal(struct hns3_hw *hw, uint32_t *fec_capa)
 	}
 
 	/*
-	 * FEC mode order defined in hns3 hardware is inconsistend with
+	 * FEC mode order defined in hns3 hardware is inconsistent with
 	 * that defined in the ethdev library. So the sequence needs
 	 * to be converted.
 	 */

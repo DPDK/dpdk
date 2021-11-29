@@ -1822,7 +1822,7 @@ mlx5_devx_cmd_create_td(void *ctx)
  *   Pointer to file stream.
  *
  * @return
- *   0 on success, a nagative value otherwise.
+ *   0 on success, a negative value otherwise.
  */
 int
 mlx5_devx_cmd_flow_dump(void *fdb_domain __rte_unused,

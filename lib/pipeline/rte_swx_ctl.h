@@ -369,7 +369,7 @@ struct rte_swx_table_stats {
 	uint64_t n_pkts_miss;
 
 	/** Number of packets (with either lookup hit or miss) per pipeline
-	 * action. Array of pipeline *n_actions* elements indedex by the
+	 * action. Array of pipeline *n_actions* elements indexed by the
 	 * pipeline-level *action_id*, therefore this array has the same size
 	 * for all the tables within the same pipeline.
 	 */
@@ -629,7 +629,7 @@ struct rte_swx_learner_stats {
 	uint64_t n_pkts_forget;
 
 	/** Number of packets (with either lookup hit or miss) per pipeline action. Array of
-	 * pipeline *n_actions* elements indedex by the pipeline-level *action_id*, therefore this
+	 * pipeline *n_actions* elements indexed by the pipeline-level *action_id*, therefore this
 	 * array has the same size for all the tables within the same pipeline.
 	 */
 	uint64_t *n_pkts_action;

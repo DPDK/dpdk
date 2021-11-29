@@ -1642,7 +1642,7 @@ mlx5_dev_close(struct rte_eth_dev *dev)
 	/*
 	 * Free the shared context in last turn, because the cleanup
 	 * routines above may use some shared fields, like
-	 * mlx5_os_mac_addr_flush() uses ibdev_path for retrieveing
+	 * mlx5_os_mac_addr_flush() uses ibdev_path for retrieving
 	 * ifindex if Netlink fails.
 	 */
 	mlx5_free_shared_dev_ctx(priv->sh);
@@ -1962,7 +1962,7 @@ mlx5_args_check(const char *key, const char *val, void *opaque)
 		if (tmp != MLX5_RCM_NONE &&
 		    tmp != MLX5_RCM_LIGHT &&
 		    tmp != MLX5_RCM_AGGR) {
-			DRV_LOG(ERR, "Unrecognize %s: \"%s\"", key, val);
+			DRV_LOG(ERR, "Unrecognized %s: \"%s\"", key, val);
 			rte_errno = EINVAL;
 			return -rte_errno;
 		}
@@ -2177,17 +2177,17 @@ mlx5_set_metadata_mask(struct rte_eth_dev *dev)
 		break;
 	}
 	if (sh->dv_mark_mask && sh->dv_mark_mask != mark)
-		DRV_LOG(WARNING, "metadata MARK mask mismatche %08X:%08X",
+		DRV_LOG(WARNING, "metadata MARK mask mismatch %08X:%08X",
 				 sh->dv_mark_mask, mark);
 	else
 		sh->dv_mark_mask = mark;
 	if (sh->dv_meta_mask && sh->dv_meta_mask != meta)
-		DRV_LOG(WARNING, "metadata META mask mismatche %08X:%08X",
+		DRV_LOG(WARNING, "metadata META mask mismatch %08X:%08X",
 				 sh->dv_meta_mask, meta);
 	else
 		sh->dv_meta_mask = meta;
 	if (sh->dv_regc0_mask && sh->dv_regc0_mask != reg_c0)
-		DRV_LOG(WARNING, "metadata reg_c0 mask mismatche %08X:%08X",
+		DRV_LOG(WARNING, "metadata reg_c0 mask mismatch %08X:%08X",
 				 sh->dv_meta_mask, reg_c0);
 	else
 		sh->dv_regc0_mask = reg_c0;

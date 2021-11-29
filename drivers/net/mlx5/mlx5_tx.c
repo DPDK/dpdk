@@ -728,7 +728,7 @@ mlx5_txq_info_get(struct rte_eth_dev *dev, uint16_t tx_queue_id,
  *   Pointer to the device structure.
  *
  * @param tx_queue_id
- *   Tx queue identificatior.
+ *   Tx queue identification.
  *
  * @param mode
  *   Pointer to the burts mode information.

@@ -961,7 +961,7 @@ txgbevf_set_ivar_map(struct txgbe_hw *hw, int8_t direction,
 		wr32(hw, TXGBE_VFIVARMISC, tmp);
 	} else {
 		/* rx or tx cause */
-		/* Workround for ICR lost */
+		/* Workaround for ICR lost */
 		idx = ((16 * (queue & 1)) + (8 * direction));
 		tmp = rd32(hw, TXGBE_VFIVAR(queue >> 1));
 		tmp &= ~(0xFF << idx);
@@ -997,7 +997,7 @@ txgbevf_configure_msix(struct rte_eth_dev *dev)
 	/* Configure all RX queues of VF */
 	for (q_idx = 0; q_idx < dev->data->nb_rx_queues; q_idx++) {
 		/* Force all queue use vector 0,
-		 * as TXGBE_VF_MAXMSIVECOTR = 1
+		 * as TXGBE_VF_MAXMSIVECTOR = 1
 		 */
 		txgbevf_set_ivar_map(hw, 0, q_idx, vector_idx);
 		rte_intr_vec_list_index_set(intr_handle, q_idx,
@@ -1288,7 +1288,7 @@ txgbevf_dev_interrupt_get_status(struct rte_eth_dev *dev)
 
 	/* only one misc vector supported - mailbox */
 	eicr &= TXGBE_VFICR_MASK;
-	/* Workround for ICR lost */
+	/* Workaround for ICR lost */
 	intr->flags |= TXGBE_FLAG_MAILBOX;
 
 	/* To avoid compiler warnings set eicr to used. */

@@ -253,7 +253,7 @@ void
 order_opt_dump(struct evt_options *opt)
 {
 	evt_dump_producer_lcores(opt);
-	evt_dump("nb_wrker_lcores", "%d", evt_nr_active_lcores(opt->wlcores));
+	evt_dump("nb_worker_lcores", "%d", evt_nr_active_lcores(opt->wlcores));
 	evt_dump_worker_lcores(opt);
 	evt_dump("nb_evdev_ports", "%d", order_nb_event_ports(opt));
 }

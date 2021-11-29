@@ -103,7 +103,7 @@ struct vfio_group {
 typedef int (*vfio_dma_func_t)(int);
 
 /* Custom memory region DMA mapping function prototype.
- * Takes VFIO container fd, virtual address, phisical address, length and
+ * Takes VFIO container fd, virtual address, physical address, length and
  * operation type (0 to unmap 1 for map) as a parameters.
  * Returns 0 on success, -1 on error.
  **/

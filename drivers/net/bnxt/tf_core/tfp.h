@@ -150,7 +150,7 @@ tfp_msg_hwrm_oem_cmd(struct tf *tfp,
 		     uint32_t max_flows);
 
 /**
- * Allocates zero'ed memory from the heap.
+ * Allocates zeroed memory from the heap.
  *
  * NOTE: Also performs virt2phy address conversion by default thus is
  * can be expensive to invoke.

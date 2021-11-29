@@ -510,7 +510,7 @@ int qbman_result_has_new_result(struct qbman_swp *s,
 				struct qbman_result *dq);
 
 /**
- * qbman_check_command_complete() - Check if the previous issued dq commnd
+ * qbman_check_command_complete() - Check if the previous issued dq command
  * is completed and results are available in memory.
  * @s: the software portal object.
  * @dq: the dequeue result read from the memory.
@@ -687,7 +687,7 @@ uint16_t qbman_result_DQ_seqnum(const struct qbman_result *dq);
 
 /**
  * qbman_result_DQ_odpid() - Get the seqnum field in dequeue response
- * odpid is valid only if ODPVAILD flag is TRUE.
+ * odpid is valid only if ODPVALID flag is TRUE.
  * @dq: the dequeue result.
  *
  * Return odpid.
@@ -743,7 +743,7 @@ const struct qbman_fd *qbman_result_DQ_fd(const struct qbman_result *dq);
  * qbman_result_SCN_state() - Get the state field in State-change notification
  * @scn: the state change notification.
  *
- * Return the state in the notifiation.
+ * Return the state in the notification.
  */
 __rte_internal
 uint8_t qbman_result_SCN_state(const struct qbman_result *scn);
@@ -825,7 +825,7 @@ uint64_t qbman_result_bpscn_ctx(const struct qbman_result *scn);
 
 /* Parsing CGCU */
 /**
- * qbman_result_cgcu_cgid() - Check CGCU resouce id, i.e. cgid
+ * qbman_result_cgcu_cgid() - Check CGCU resource id, i.e. cgid
  * @scn: the state change notification.
  *
  * Return the CGCU resource id.
@@ -903,14 +903,14 @@ void qbman_eq_desc_clear(struct qbman_eq_desc *d);
 __rte_internal
 void qbman_eq_desc_set_no_orp(struct qbman_eq_desc *d, int respond_success);
 /**
- * qbman_eq_desc_set_orp() - Set order-resotration in the enqueue descriptor
+ * qbman_eq_desc_set_orp() - Set order-restoration in the enqueue descriptor
  * @d: the enqueue descriptor.
  * @response_success: 1 = enqueue with response always; 0 = enqueue with
  * rejections returned on a FQ.
  * @opr_id: the order point record id.
  * @seqnum: the order restoration sequence number.
- * @incomplete: indiates whether this is the last fragments using the same
- * sequeue number.
+ * @incomplete: indicates whether this is the last fragments using the same
+ * sequence number.
  */
 __rte_internal
 void qbman_eq_desc_set_orp(struct qbman_eq_desc *d, int respond_success,
@@ -1052,10 +1052,10 @@ __rte_internal
 uint8_t qbman_result_eqresp_rspid(struct qbman_result *eqresp);
 
 /**
- * qbman_result_eqresp_rc() - determines if enqueue command is sucessful.
+ * qbman_result_eqresp_rc() - determines if enqueue command is successful.
  * @eqresp: enqueue response.
  *
- * Return 0 when command is sucessful.
+ * Return 0 when command is successful.
  */
 __rte_internal
 uint8_t qbman_result_eqresp_rc(struct qbman_result *eqresp);
@@ -1250,7 +1250,7 @@ int qbman_swp_fq_force(struct qbman_swp *s, uint32_t fqid);
 /**
  * These functions change the FQ flow-control stuff between XON/XOFF. (The
  * default is XON.) This setting doesn't affect enqueues to the FQ, just
- * dequeues. XOFF FQs will remain in the tenatively-scheduled state, even when
+ * dequeues. XOFF FQs will remain in the tentatively-scheduled state, even when
  * non-empty, meaning they won't be selected for scheduled dequeuing. If a FQ is
  * changed to XOFF after it had already become truly-scheduled to a channel, and
  * a pull dequeue of that channel occurs that selects that FQ for dequeuing,

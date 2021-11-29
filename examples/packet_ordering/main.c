@@ -686,7 +686,7 @@ main(int argc, char **argv)
 	if (ret < 0)
 		rte_exit(EXIT_FAILURE, "Invalid packet_ordering arguments\n");
 
-	/* Check if we have enought cores */
+	/* Check if we have enough cores */
 	if (rte_lcore_count() < 3)
 		rte_exit(EXIT_FAILURE, "Error, This application needs at "
 				"least 3 logical cores to run:\n"

@@ -519,7 +519,7 @@ struct dlb2_eventdev_port {
 	bool setup_done;
 	/* enq_configured is set when the qm port is created */
 	bool enq_configured;
-	uint8_t implicit_release; /* release events before dequeueing */
+	uint8_t implicit_release; /* release events before dequeuing */
 }  __rte_cache_aligned;
 
 struct dlb2_queue {

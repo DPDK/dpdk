@@ -64,7 +64,7 @@ processx4_step3(struct rte_mbuf *pkt[FWDSTEP], uint16_t dst_port[FWDSTEP])
 
 /*
  * Group consecutive packets with the same destination port in bursts of 4.
- * Suppose we have array of destionation ports:
+ * Suppose we have array of destination ports:
  * dst_port[] = {a, b, c, d,, e, ... }
  * dp1 should contain: <a, b, c, d>, dp2: <b, c, d, e>.
  * We doing 4 comparisons at once and the result is 4 bit mask.

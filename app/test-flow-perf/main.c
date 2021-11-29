@@ -1519,7 +1519,7 @@ dump_used_cpu_time(const char *item,
 	 * threads time.
 	 *
 	 * Throughput: total count of rte rules divided
-	 * over the average of the time cosumed by all
+	 * over the average of the time consumed by all
 	 * threads time.
 	 */
 	double insertion_latency_time;

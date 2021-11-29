@@ -726,7 +726,7 @@ memif_msg_receive(struct memif_control_channel *cc)
 		break;
 	case MEMIF_MSG_TYPE_INIT:
 		/*
-		 * This cc does not have an interface asociated with it.
+		 * This cc does not have an interface associated with it.
 		 * If suitable interface is found it will be assigned here.
 		 */
 		ret = memif_msg_receive_init(cc, &msg);

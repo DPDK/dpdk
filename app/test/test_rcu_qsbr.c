@@ -408,7 +408,7 @@ test_rcu_qsbr_synchronize_reader(void *arg)
 
 /*
  * rte_rcu_qsbr_synchronize: Wait till all the reader threads have entered
- * the queiscent state.
+ * the quiescent state.
  */
 static int
 test_rcu_qsbr_synchronize(void)
@@ -443,7 +443,7 @@ test_rcu_qsbr_synchronize(void)
 	rte_rcu_qsbr_synchronize(t[0], RTE_MAX_LCORE - 1);
 	rte_rcu_qsbr_thread_offline(t[0], RTE_MAX_LCORE - 1);
 
-	/* Test if the API returns after unregisterng all the threads */
+	/* Test if the API returns after unregistering all the threads */
 	for (i = 0; i < RTE_MAX_LCORE; i++)
 		rte_rcu_qsbr_thread_unregister(t[0], i);
 	rte_rcu_qsbr_synchronize(t[0], RTE_QSBR_THRID_INVALID);
