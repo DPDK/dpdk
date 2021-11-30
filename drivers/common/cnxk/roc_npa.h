@@ -155,6 +155,32 @@ roc_npa_aura_op_available(uint64_t aura_handle)
 		return reg & 0xFFFFFFFFF;
 }
 
+/* Wait for a given timeout, repeatedly checking whether the available
+ * pointers has reached the given count. Returns the available pointer
+ * count if it has reached the given count or if timeout has expired
+ */
+static inline uint32_t
+roc_npa_aura_op_available_wait(uint64_t aura_handle, uint32_t count,
+			       uint32_t tmo_ms)
+{
+#define OP_AVAIL_WAIT_MS_DEFAULT   (100)
+#define OP_AVAIL_CHECK_INTERVAL_MS (1)
+	uint32_t op_avail;
+	int retry;
+
+	tmo_ms = tmo_ms ? tmo_ms : OP_AVAIL_WAIT_MS_DEFAULT;
+
+	retry = tmo_ms / OP_AVAIL_CHECK_INTERVAL_MS;
+	op_avail = roc_npa_aura_op_available(aura_handle);
+	while (retry && (op_avail < count)) {
+		plt_delay_ms(OP_AVAIL_CHECK_INTERVAL_MS);
+		op_avail = roc_npa_aura_op_available(aura_handle);
+		retry--;
+	}
+
+	return op_avail;
+}
+
 static inline uint64_t
 roc_npa_pool_op_performance_counter(uint64_t aura_handle, const int drop)
 {
