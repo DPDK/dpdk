@@ -79,6 +79,18 @@ roc_atomic64_cas(uint64_t compare, uint64_t swap, int64_t *ptr)
 }
 
 static __plt_always_inline uint64_t
+roc_atomic64_casl(uint64_t compare, uint64_t swap, int64_t *ptr)
+{
+	asm volatile(PLT_CPU_FEATURE_PREAMBLE
+		     "casl %[compare], %[swap], [%[ptr]]\n"
+		     : [compare] "+r"(compare)
+		     : [swap] "r"(swap), [ptr] "r"(ptr)
+		     : "memory");
+
+	return compare;
+}
+
+static __plt_always_inline uint64_t
 roc_atomic64_add_nosync(int64_t incr, int64_t *ptr)
 {
 	uint64_t result;

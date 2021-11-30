@@ -41,6 +41,15 @@ roc_atomic64_cas(uint64_t compare, uint64_t swap, int64_t *ptr)
 	return compare;
 }
 
+static __plt_always_inline uint64_t
+roc_atomic64_casl(uint64_t compare, uint64_t swap, int64_t *ptr)
+{
+	PLT_SET_USED(swap);
+	PLT_SET_USED(ptr);
+
+	return compare;
+}
+
 static inline uint64_t
 roc_atomic64_add_nosync(int64_t incr, int64_t *ptr)
 {

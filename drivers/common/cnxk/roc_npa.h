@@ -218,7 +218,7 @@ roc_npa_aura_batch_alloc_issue(uint64_t aura_handle, uint64_t *buf,
 	cmp.compare_s.dis_wait = dis_wait;
 	cmp.compare_s.count = num;
 
-	res = roc_atomic64_cas(cmp.u, (uint64_t)buf, addr);
+	res = roc_atomic64_casl(cmp.u, (uint64_t)buf, addr);
 	if (res != ALLOC_RESULT_ACCEPTED && res != ALLOC_RESULT_NOCORE)
 		return -1;
 
