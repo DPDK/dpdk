@@ -453,6 +453,13 @@ sso_hwgrp_init_xaq_aura(struct dev *dev, struct roc_sso_xaq_data *xaq,
 	}
 	roc_npa_aura_op_range_set(xaq->aura_handle, (uint64_t)xaq->mem, iova);
 
+	if (roc_npa_aura_op_available_wait(xaq->aura_handle, xaq->nb_xaq, 0) !=
+	    xaq->nb_xaq) {
+		plt_err("Failed to free all pointers to the pool");
+		rc = -ENOMEM;
+		goto npa_fill_fail;
+	}
+
 	/* When SW does addwork (enqueue) check if there is space in XAQ by
 	 * comparing fc_addr above against the xaq_lmt calculated below.
 	 * There should be a minimum headroom of 7 XAQs per HWGRP for SSO
@@ -461,6 +468,8 @@ sso_hwgrp_init_xaq_aura(struct dev *dev, struct roc_sso_xaq_data *xaq,
 	xaq->xaq_lmt = xaq->nb_xaq - (nb_hwgrp * SSO_XAQ_CACHE_CNT);
 
 	return 0;
+npa_fill_fail:
+	roc_npa_pool_destroy(xaq->aura_handle);
 npa_fail:
 	plt_free(xaq->mem);
 free_fc:
