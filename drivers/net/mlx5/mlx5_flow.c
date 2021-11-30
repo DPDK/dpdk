@@ -414,12 +414,19 @@ mlx5_flow_expand_rss(struct mlx5_flow_expand_rss *buf, size_t size,
 	if (missed_item.type != RTE_FLOW_ITEM_TYPE_VOID) {
 		next = NULL;
 		missed = 1;
-		for (i = 0; node->next && node->next[i]; ++i) {
+		i = 0;
+		while (node->next && node->next[i]) {
 			next = &graph[node->next[i]];
 			if (next->type == missed_item.type) {
 				flow_items[0].type = missed_item.type;
 				flow_items[1].type = RTE_FLOW_ITEM_TYPE_END;
 				break;
+			}
+			if (next->node_flags & MLX5_EXPANSION_NODE_EXPLICIT) {
+				node = next;
+				i = 0;
+			} else {
+				++i;
 			}
 			next = NULL;
 		}
@@ -8150,17 +8157,21 @@ mlx5_flow_expand_rss_adjust_node(const struct rte_flow_item *pattern,
 		const struct mlx5_flow_expand_node *node)
 {
 	const struct rte_flow_item *item = pattern + item_idx, *prev_item;
-	switch (item->type) {
-	case RTE_FLOW_ITEM_TYPE_VXLAN:
+
+	if (item->type == RTE_FLOW_ITEM_TYPE_VXLAN &&
+			node != NULL &&
+			node->type == RTE_FLOW_ITEM_TYPE_VXLAN) {
+		/*
+		 * The expansion node is VXLAN and it is also the last
+		 * expandable item in the pattern, so need to continue
+		 * expansion of the inner tunnel.
+		 */
 		MLX5_ASSERT(item_idx > 0);
 		prev_item = pattern + item_idx - 1;
 		MLX5_ASSERT(prev_item->type == RTE_FLOW_ITEM_TYPE_UDP);
 		if (mlx5_flow_is_std_vxlan_port(prev_item))
 			return &graph[MLX5_EXPANSION_STD_VXLAN];
-		else
-			return &graph[MLX5_EXPANSION_L3_VXLAN];
-		break;
-	default:
-		return node;
+		return &graph[MLX5_EXPANSION_L3_VXLAN];
 	}
+	return node;
 }
