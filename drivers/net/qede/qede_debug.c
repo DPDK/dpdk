@@ -3522,7 +3522,7 @@ static enum dbg_status qed_grc_dump(struct ecore_hwfn *p_hwfn,
 
 	/* Dump MCP HW Dump */
 	if (qed_grc_is_included(p_hwfn, DBG_GRC_PARAM_DUMP_MCP_HW_DUMP) &&
-	    !qed_grc_get_param(p_hwfn, DBG_GRC_PARAM_NO_MCP) && 1)
+	    !qed_grc_get_param(p_hwfn, DBG_GRC_PARAM_NO_MCP))
 		offset += qed_grc_dump_mcp_hw_dump(p_hwfn,
 						   p_ptt,
 						   dump_buf + offset, dump);
