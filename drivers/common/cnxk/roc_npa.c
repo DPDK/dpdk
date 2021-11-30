@@ -205,6 +205,7 @@ static inline const struct plt_memzone *
 npa_stack_dma_alloc(struct npa_lf *lf, char *name, int pool_id, size_t size)
 {
 	const char *mz_name = npa_stack_memzone_name(lf, pool_id, name);
+	size = PLT_ALIGN_CEIL(size, ROC_ALIGN);
 
 	return plt_memzone_reserve_aligned(mz_name, size, 0, ROC_ALIGN);
 }
