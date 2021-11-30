@@ -282,6 +282,26 @@ mlx5_flow_expand_rss_item_complete(const struct rte_flow_item *item)
 	return ret;
 }
 
+static const int *
+mlx5_flow_expand_rss_skip_explicit(const struct mlx5_flow_expand_node graph[],
+		const int *next_node)
+{
+	const struct mlx5_flow_expand_node *node = NULL;
+	const int *next = next_node;
+
+	while (next && *next) {
+		/*
+		 * Skip the nodes with the MLX5_EXPANSION_NODE_EXPLICIT
+		 * flag set, because they were not found in the flow pattern.
+		 */
+		node = &graph[*next];
+		if (!(node->node_flags & MLX5_EXPANSION_NODE_EXPLICIT))
+			break;
+		next = node->next;
+	}
+	return next;
+}
+
 #define MLX5_RSS_EXP_ELT_N 16
 
 /**
@@ -414,17 +434,8 @@ mlx5_flow_expand_rss(struct mlx5_flow_expand_rss *buf, size_t size,
 		}
 	}
 	memset(flow_items, 0, sizeof(flow_items));
-	next_node = node->next;
-	while (next_node) {
-		/*
-		 * Skip the nodes with the MLX5_EXPANSION_NODE_EXPLICIT
-		 * flag set, because they were not found in the flow pattern.
-		 */
-		node = &graph[*next_node];
-		if (!(node->node_flags & MLX5_EXPANSION_NODE_EXPLICIT))
-			break;
-		next_node = node->next;
-	}
+	next_node = mlx5_flow_expand_rss_skip_explicit(graph,
+			node->next);
 	stack[stack_pos] = next_node;
 	node = next_node ? &graph[*next_node] : NULL;
 	while (node) {
@@ -461,7 +472,8 @@ mlx5_flow_expand_rss(struct mlx5_flow_expand_rss *buf, size_t size,
 		/* Go deeper. */
 		if (!(node->node_flags & MLX5_EXPANSION_NODE_OPTIONAL) &&
 				node->next) {
-			next_node = node->next;
+			next_node = mlx5_flow_expand_rss_skip_explicit(graph,
+					node->next);
 			if (stack_pos++ == MLX5_RSS_EXP_ELT_N) {
 				rte_errno = E2BIG;
 				return -rte_errno;
@@ -469,15 +481,17 @@ mlx5_flow_expand_rss(struct mlx5_flow_expand_rss *buf, size_t size,
 			stack[stack_pos] = next_node;
 		} else if (*(next_node + 1)) {
 			/* Follow up with the next possibility. */
-			++next_node;
+			next_node = mlx5_flow_expand_rss_skip_explicit(graph,
+					++next_node);
 		} else {
 			/* Move to the next path. */
 			if (stack_pos)
 				next_node = stack[--stack_pos];
-			next_node++;
+			next_node = mlx5_flow_expand_rss_skip_explicit(graph,
+					++next_node);
 			stack[stack_pos] = next_node;
 		}
-		node = *next_node ? &graph[*next_node] : NULL;
+		node = next_node && *next_node ? &graph[*next_node] : NULL;
 	};
 	return lsize;
 }
