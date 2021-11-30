@@ -653,11 +653,21 @@ sqb_pool_populate(struct roc_nix *roc_nix, struct roc_nix_sq *sq)
 		roc_npa_aura_op_free(sq->aura_handle, 0, iova);
 		iova += blk_sz;
 	}
+
+	if (roc_npa_aura_op_available_wait(sq->aura_handle, NIX_MAX_SQB, 0) !=
+	    NIX_MAX_SQB) {
+		plt_err("Failed to free all pointers to the pool");
+		rc = NIX_ERR_NO_MEM;
+		goto npa_fail;
+	}
+
 	roc_npa_aura_op_range_set(sq->aura_handle, (uint64_t)sq->sqe_mem, iova);
 	roc_npa_aura_limit_modify(sq->aura_handle, sq->nb_sqb_bufs);
 	sq->aura_sqb_bufs = NIX_MAX_SQB;
 
 	return rc;
+npa_fail:
+	plt_free(sq->sqe_mem);
 nomem:
 	roc_npa_pool_destroy(sq->aura_handle);
 fail:
