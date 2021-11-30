@@ -840,7 +840,7 @@ int bnxt_flow_stats_cnt(struct bnxt *bp)
 
 int bnxt_dev_xstats_get_names_op(struct rte_eth_dev *eth_dev,
 		struct rte_eth_xstat_name *xstats_names,
-		__rte_unused unsigned int limit)
+		unsigned int size)
 {
 	struct bnxt *bp = (struct bnxt *)eth_dev->data->dev_private;
 	const unsigned int stat_cnt = RTE_DIM(bnxt_rx_stats_strings) +
@@ -856,63 +856,62 @@ int bnxt_dev_xstats_get_names_op(struct rte_eth_dev *eth_dev,
 	if (rc)
 		return rc;
 
-	if (xstats_names != NULL) {
-		count = 0;
+	if (xstats_names == NULL || size < stat_cnt)
+		return stat_cnt;
 
-		for (i = 0; i < RTE_DIM(bnxt_rx_stats_strings); i++) {
-			strlcpy(xstats_names[count].name,
-				bnxt_rx_stats_strings[i].name,
+	for (i = 0; i < RTE_DIM(bnxt_rx_stats_strings); i++) {
+		strlcpy(xstats_names[count].name,
+			bnxt_rx_stats_strings[i].name,
+			sizeof(xstats_names[count].name));
+		count++;
+	}
+
+	for (i = 0; i < RTE_DIM(bnxt_tx_stats_strings); i++) {
+		strlcpy(xstats_names[count].name,
+			bnxt_tx_stats_strings[i].name,
+			sizeof(xstats_names[count].name));
+		count++;
+	}
+
+	for (i = 0; i < RTE_DIM(bnxt_func_stats_strings); i++) {
+		strlcpy(xstats_names[count].name,
+			bnxt_func_stats_strings[i].name,
+			sizeof(xstats_names[count].name));
+		count++;
+	}
+
+	for (i = 0; i < RTE_DIM(bnxt_rx_ext_stats_strings); i++) {
+		strlcpy(xstats_names[count].name,
+			bnxt_rx_ext_stats_strings[i].name,
+			sizeof(xstats_names[count].name));
+
+		count++;
+	}
+
+	for (i = 0; i < RTE_DIM(bnxt_tx_ext_stats_strings); i++) {
+		strlcpy(xstats_names[count].name,
+			bnxt_tx_ext_stats_strings[i].name,
+			sizeof(xstats_names[count].name));
+
+		count++;
+	}
+
+	if (bp->fw_cap & BNXT_FW_CAP_ADV_FLOW_COUNTERS &&
+	    bp->fw_cap & BNXT_FW_CAP_ADV_FLOW_MGMT &&
+	    BNXT_FLOW_XSTATS_EN(bp)) {
+		for (i = 0; i < bp->max_l2_ctx; i++) {
+			char buf[RTE_ETH_XSTATS_NAME_SIZE];
+
+			sprintf(buf, "flow_%d_bytes", i);
+			strlcpy(xstats_names[count].name, buf,
 				sizeof(xstats_names[count].name));
 			count++;
-		}
 
-		for (i = 0; i < RTE_DIM(bnxt_tx_stats_strings); i++) {
-			strlcpy(xstats_names[count].name,
-				bnxt_tx_stats_strings[i].name,
-				sizeof(xstats_names[count].name));
-			count++;
-		}
-
-		for (i = 0; i < RTE_DIM(bnxt_func_stats_strings); i++) {
-			strlcpy(xstats_names[count].name,
-				bnxt_func_stats_strings[i].name,
-				sizeof(xstats_names[count].name));
-			count++;
-		}
-
-		for (i = 0; i < RTE_DIM(bnxt_rx_ext_stats_strings); i++) {
-			strlcpy(xstats_names[count].name,
-				bnxt_rx_ext_stats_strings[i].name,
+			sprintf(buf, "flow_%d_packets", i);
+			strlcpy(xstats_names[count].name, buf,
 				sizeof(xstats_names[count].name));
 
 			count++;
-		}
-
-		for (i = 0; i < RTE_DIM(bnxt_tx_ext_stats_strings); i++) {
-			strlcpy(xstats_names[count].name,
-				bnxt_tx_ext_stats_strings[i].name,
-				sizeof(xstats_names[count].name));
-
-			count++;
-		}
-
-		if (bp->fw_cap & BNXT_FW_CAP_ADV_FLOW_COUNTERS &&
-		    bp->fw_cap & BNXT_FW_CAP_ADV_FLOW_MGMT &&
-		    BNXT_FLOW_XSTATS_EN(bp)) {
-			for (i = 0; i < bp->max_l2_ctx; i++) {
-				char buf[RTE_ETH_XSTATS_NAME_SIZE];
-
-				sprintf(buf, "flow_%d_bytes", i);
-				strlcpy(xstats_names[count].name, buf,
-					sizeof(xstats_names[count].name));
-				count++;
-
-				sprintf(buf, "flow_%d_packets", i);
-				strlcpy(xstats_names[count].name, buf,
-					sizeof(xstats_names[count].name));
-
-				count++;
-			}
 		}
 	}
 
