@@ -433,7 +433,7 @@ roc_npa_aura_bulk_alloc(uint64_t aura_handle, uint64_t *buf, unsigned int num,
 	switch (num) {
 	case 30:
 		asm volatile(
-			".cpu  generic+lse\n"
+			".arch_extension lse\n"
 			"mov v18.d[0], %[dst]\n"
 			"mov v18.d[1], %[loc]\n"
 			"mov v19.d[0], %[wdata]\n"
@@ -497,7 +497,7 @@ roc_npa_aura_bulk_alloc(uint64_t aura_handle, uint64_t *buf, unsigned int num,
 		break;
 	case 16:
 		asm volatile(
-			".cpu  generic+lse\n"
+			".arch_extension lse\n"
 			"mov x16, %[wdata]\n"
 			"mov x17, %[wdata]\n"
 			"casp x0, x1, x16, x17, [%[loc]]\n"
@@ -517,15 +517,14 @@ roc_npa_aura_bulk_alloc(uint64_t aura_handle, uint64_t *buf, unsigned int num,
 			"stp x12, x13, [%[dst], #96]\n"
 			"stp x14, x15, [%[dst], #112]\n"
 			:
-			: [wdata] "r" (wdata), [dst] "r" (buf), [loc] "r" (addr)
+			: [wdata] "r"(wdata), [dst] "r"(buf), [loc] "r"(addr)
 			: "memory", "x0", "x1", "x2", "x3", "x4", "x5", "x6",
 			  "x7", "x8", "x9", "x10", "x11", "x12", "x13", "x14",
-			  "x15", "x16", "x17"
-		);
+			  "x15", "x16", "x17");
 		break;
 	case 8:
 		asm volatile(
-			".cpu  generic+lse\n"
+			".arch_extension lse\n"
 			"mov x16, %[wdata]\n"
 			"mov x17, %[wdata]\n"
 			"casp x0, x1, x16, x17, [%[loc]]\n"
@@ -537,14 +536,13 @@ roc_npa_aura_bulk_alloc(uint64_t aura_handle, uint64_t *buf, unsigned int num,
 			"stp x4, x5, [%[dst], #32]\n"
 			"stp x6, x7, [%[dst], #48]\n"
 			:
-			: [wdata] "r" (wdata), [dst] "r" (buf), [loc] "r" (addr)
+			: [wdata] "r"(wdata), [dst] "r"(buf), [loc] "r"(addr)
 			: "memory", "x0", "x1", "x2", "x3", "x4", "x5", "x6",
-			  "x7", "x16", "x17"
-		);
+			  "x7", "x16", "x17");
 		break;
 	case 4:
 		asm volatile(
-			".cpu  generic+lse\n"
+			".arch_extension lse\n"
 			"mov x16, %[wdata]\n"
 			"mov x17, %[wdata]\n"
 			"casp x0, x1, x16, x17, [%[loc]]\n"
@@ -552,21 +550,19 @@ roc_npa_aura_bulk_alloc(uint64_t aura_handle, uint64_t *buf, unsigned int num,
 			"stp x0, x1, [%[dst]]\n"
 			"stp x2, x3, [%[dst], #16]\n"
 			:
-			: [wdata] "r" (wdata), [dst] "r" (buf), [loc] "r" (addr)
-			: "memory", "x0", "x1", "x2", "x3", "x16", "x17"
-		);
+			: [wdata] "r"(wdata), [dst] "r"(buf), [loc] "r"(addr)
+			: "memory", "x0", "x1", "x2", "x3", "x16", "x17");
 		break;
 	case 2:
 		asm volatile(
-			".cpu  generic+lse\n"
+			".arch_extension lse\n"
 			"mov x16, %[wdata]\n"
 			"mov x17, %[wdata]\n"
 			"casp x0, x1, x16, x17, [%[loc]]\n"
 			"stp x0, x1, [%[dst]]\n"
 			:
-			: [wdata] "r" (wdata), [dst] "r" (buf), [loc] "r" (addr)
-			: "memory", "x0", "x1", "x16", "x17"
-		);
+			: [wdata] "r"(wdata), [dst] "r"(buf), [loc] "r"(addr)
+			: "memory", "x0", "x1", "x16", "x17");
 		break;
 	case 1:
 		buf[0] = roc_npa_aura_op_alloc(aura_handle, drop);
