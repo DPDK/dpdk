@@ -6000,6 +6000,19 @@ instr_label_check(struct instruction_data *instruction_data,
 			CHECK(strcmp(label, instruction_data[j].label), EINVAL);
 	}
 
+	/* Check that no jump instruction (either conditional or not) can jump to itself (loop). */
+	for (i = 0; i < n_instructions; i++) {
+		struct instruction_data *data = &instruction_data[i];
+		char *label = data->label;
+		char *jmp_label = data->jmp_label;
+
+		/* Continue if this instruction does not have a label or it is not a jump. */
+		if (!label[0] || !jmp_label[0])
+			continue;
+
+		CHECK(strcmp(label, jmp_label), EINVAL);
+	}
+
 	/* Get users for each instruction label. */
 	for (i = 0; i < n_instructions; i++) {
 		struct instruction_data *data = &instruction_data[i];
