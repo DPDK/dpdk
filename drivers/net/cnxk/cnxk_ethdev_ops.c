@@ -517,7 +517,8 @@ cnxk_nix_allmulticast_enable(struct rte_eth_dev *eth_dev)
 {
 	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
 
-	return roc_nix_npc_mcast_config(&dev->nix, true, false);
+	return roc_nix_npc_mcast_config(&dev->nix, true,
+					eth_dev->data->promiscuous);
 }
 
 int
