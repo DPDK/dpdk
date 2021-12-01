@@ -96,7 +96,7 @@ roc_nix_npc_mcast_config(struct roc_nix *roc_nix, bool mcast_enable,
 
 	if (mcast_enable)
 		req->mode = NIX_RX_MODE_ALLMULTI;
-	else if (prom_enable)
+	if (prom_enable)
 		req->mode = NIX_RX_MODE_PROMISC;
 
 	return mbox_process(mbox);
