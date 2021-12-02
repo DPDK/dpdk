@@ -189,9 +189,6 @@ set_session_misc_attributes(struct otx2_sec_session_ipsec_lp *sess,
 		sess->auth_iv_length = auth_xform->auth.iv.length;
 		sess->mac_len = auth_xform->auth.digest_length;
 	}
-
-	sess->ucmd_param1 = OTX2_IPSEC_PO_PER_PKT_IV;
-	sess->ucmd_param2 = 0;
 }
 
 static int
@@ -228,7 +225,6 @@ crypto_sec_ipsec_outb_session_create(struct rte_cryptodev *crypto_dev,
 	lp->ip_id = 0;
 	lp->seq_lo = 1;
 	lp->seq_hi = 0;
-	lp->tunnel_type = ipsec->tunnel.type;
 
 	ret = ipsec_po_sa_ctl_set(ipsec, crypto_xform, ctl);
 	if (ret)
@@ -327,6 +323,10 @@ crypto_sec_ipsec_outb_session_create(struct rte_cryptodev *crypto_dev,
 	lp->ucmd_opcode = (lp->ctx_len << 8) |
 				(OTX2_IPSEC_PO_PROCESS_IPSEC_OUTB);
 
+	/* Set per packet IV and IKEv2 bits */
+	lp->ucmd_param1 = BIT(11) | BIT(9);
+	lp->ucmd_param2 = 0;
+
 	set_session_misc_attributes(lp, crypto_xform,
 				    auth_xform, cipher_xform);
 
@@ -367,7 +367,6 @@ crypto_sec_ipsec_inb_session_create(struct rte_cryptodev *crypto_dev,
 	if (ret)
 		return ret;
 
-	lp->tunnel_type = ipsec->tunnel.type;
 	auth_xform = crypto_xform;
 	cipher_xform = crypto_xform->next;
 
@@ -410,6 +409,10 @@ crypto_sec_ipsec_inb_session_create(struct rte_cryptodev *crypto_dev,
 	lp->cpt_inst_w7 = inst.u64[7];
 	lp->ucmd_opcode = (lp->ctx_len << 8) |
 				(OTX2_IPSEC_PO_PROCESS_IPSEC_INB);
+	lp->ucmd_param1 = 0;
+
+	/* Set IKEv2 bit */
+	lp->ucmd_param2 = BIT(12);
 
 	set_session_misc_attributes(lp, crypto_xform,
 				    auth_xform, cipher_xform);
