@@ -10,6 +10,8 @@
 #include "axgbe_regs.h"
 #include "rte_time.h"
 
+#include "eal_filesystem.h"
+
 static int eth_axgbe_dev_init(struct rte_eth_dev *eth_dev);
 static int  axgbe_dev_configure(struct rte_eth_dev *dev);
 static int  axgbe_dev_start(struct rte_eth_dev *dev);
@@ -2117,28 +2119,27 @@ static void axgbe_default_config(struct axgbe_port *pdata)
 	pdata->power_down = 0;
 }
 
-static int
-pci_device_cmp(const struct rte_device *dev, const void *_pci_id)
+/*
+ * Return PCI root complex device id on success else 0
+ */
+static uint16_t
+get_pci_rc_devid(void)
 {
-	const struct rte_pci_device *pdev = RTE_DEV_TO_PCI_CONST(dev);
-	const struct rte_pci_id *pcid = _pci_id;
+	char pci_sysfs[PATH_MAX];
+	const struct rte_pci_addr pci_rc_addr = {0, 0, 0, 0};
+	unsigned long device_id;
 
-	if (pdev->id.vendor_id == AMD_PCI_VENDOR_ID &&
-			pdev->id.device_id == pcid->device_id)
+	snprintf(pci_sysfs, sizeof(pci_sysfs), "%s/" PCI_PRI_FMT "/device",
+		 rte_pci_get_sysfs_path(), pci_rc_addr.domain,
+		 pci_rc_addr.bus, pci_rc_addr.devid, pci_rc_addr.function);
+
+	/* get device id */
+	if (eal_parse_sysfs_value(pci_sysfs, &device_id) < 0) {
+		PMD_INIT_LOG(ERR, "Error in reading PCI sysfs\n");
 		return 0;
-	return 1;
-}
+	}
 
-static bool
-pci_search_device(int device_id)
-{
-	struct rte_bus *pci_bus;
-	struct rte_pci_id dev_id;
-
-	dev_id.device_id = device_id;
-	pci_bus = rte_bus_find_by_name("pci");
-	return (pci_bus != NULL) &&
-		(pci_bus->find_device(NULL, pci_device_cmp, &dev_id) != NULL);
+	return (uint16_t)device_id;
 }
 
 /*
@@ -2180,7 +2181,7 @@ eth_axgbe_dev_init(struct rte_eth_dev *eth_dev)
 	/*
 	 * Use root complex device ID to differentiate RV AXGBE vs SNOWY AXGBE
 	 */
-	if (pci_search_device(AMD_PCI_RV_ROOT_COMPLEX_ID)) {
+	if ((get_pci_rc_devid()) == AMD_PCI_RV_ROOT_COMPLEX_ID) {
 		pdata->xpcs_window_def_reg = PCS_V2_RV_WINDOW_DEF;
 		pdata->xpcs_window_sel_reg = PCS_V2_RV_WINDOW_SELECT;
 	} else {
