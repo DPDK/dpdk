@@ -814,7 +814,7 @@ virtio_dev_tx_queue_setup(struct rte_eth_dev *dev,
 			unsigned int socket_id __rte_unused,
 			const struct rte_eth_txconf *tx_conf)
 {
-	uint8_t vq_idx = 2 * queue_idx + VTNET_SQ_TQ_QUEUE_IDX;
+	uint16_t vq_idx = 2 * queue_idx + VTNET_SQ_TQ_QUEUE_IDX;
 	struct virtio_hw *hw = dev->data->dev_private;
 	struct virtqueue *vq = hw->vqs[vq_idx];
 	struct virtnet_tx *txvq;
@@ -858,7 +858,7 @@ int
 virtio_dev_tx_queue_setup_finish(struct rte_eth_dev *dev,
 				uint16_t queue_idx)
 {
-	uint8_t vq_idx = 2 * queue_idx + VTNET_SQ_TQ_QUEUE_IDX;
+	uint16_t vq_idx = 2 * queue_idx + VTNET_SQ_TQ_QUEUE_IDX;
 	struct virtio_hw *hw = dev->data->dev_private;
 	struct virtqueue *vq = hw->vqs[vq_idx];
 
