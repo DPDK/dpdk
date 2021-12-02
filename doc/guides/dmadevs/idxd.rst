@@ -117,6 +117,16 @@ the value used as the DPDK ``--file-prefix`` parameter may be used as a workqueu
 name prefix, instead of ``dpdk_``, allowing each DPDK application instance to only
 use a subset of configured queues.
 
+Additionally, the -a (allowlist) or -b (blocklist) commandline parameters
+are also available to further restrict the device list that will be used.
+If the -a option is used, then any device that passes the ``dpdk_``
+or ``--file-prefix`` prefix condition must also be present in the allow list.
+Similarly, when the block list is used,
+any device that passes the prefix condition must not be in the block list.
+For example, to only use ``wq0.3``, assuming the name prefix condition is met::
+
+	$ dpdk-test -a wq0.3
+
 Once probed successfully, irrespective of kernel driver, the device will appear as a ``dmadev``,
 that is a "DMA device type" inside DPDK, and can be accessed using APIs from the
 ``rte_dmadev`` library.

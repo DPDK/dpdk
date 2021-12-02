@@ -9,6 +9,7 @@
 #include <libgen.h>
 
 #include <rte_bus.h>
+#include <rte_devargs.h>
 #include <rte_eal.h>
 #include <rte_log.h>
 #include <rte_dmadev_pmd.h>
@@ -244,8 +245,18 @@ idxd_probe_dsa(struct rte_dsa_device *dev)
 	return 0;
 }
 
+static int search_devargs(const char *name)
+{
+	struct rte_devargs *devargs;
+	RTE_EAL_DEVARGS_FOREACH(dsa_bus.bus.name, devargs) {
+		if (strcmp(devargs->name, name) == 0)
+			return 1;
+	}
+	return 0;
+}
+
 static int
-is_for_this_process_use(const char *name)
+is_for_this_process_use(struct rte_dsa_device *dev, const char *name)
 {
 	char *runtime_dir = strdup(rte_eal_get_runtime_dir());
 	char *prefix = basename(runtime_dir);
@@ -256,6 +267,13 @@ is_for_this_process_use(const char *name)
 		retval = 1;
 	if (strncmp(name, prefix, prefixlen) == 0 && name[prefixlen] == '_')
 		retval = 1;
+
+	if (retval && dsa_bus.bus.conf.scan_mode != RTE_BUS_SCAN_UNDEFINED) {
+		if (dsa_bus.bus.conf.scan_mode == RTE_BUS_SCAN_ALLOWLIST)
+			retval = search_devargs(dev->device.name);
+		else
+			retval = !search_devargs(dev->device.name);
+	}
 
 	free(runtime_dir);
 	return retval;
@@ -273,7 +291,8 @@ dsa_probe(void)
 				read_wq_string(dev, "name", name, sizeof(name)) < 0)
 			continue;
 
-		if (strncmp(type, "user", 4) == 0 && is_for_this_process_use(name)) {
+		if (strncmp(type, "user", 4) == 0 &&
+				is_for_this_process_use(dev, name)) {
 			dev->device.driver = &dsa_bus.driver;
 			idxd_probe_dsa(dev);
 			continue;
@@ -370,8 +389,11 @@ dsa_addr_parse(const char *name, void *addr)
 		return -1;
 	}
 
-	wq->device_id = device_id;
-	wq->wq_id = wq_id;
+	if (wq != NULL) {
+		wq->device_id = device_id;
+		wq->wq_id = wq_id;
+	}
+
 	return 0;
 }
 
