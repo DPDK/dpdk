@@ -23,7 +23,7 @@ jobs:
       LIBABIGAIL_VERSION: libabigail-1.8
       MINI: ${{ matrix.config.mini != '' }}
       PPC64LE: ${{ matrix.config.cross == 'ppc64le' }}
-      REF_GIT_TAG: none
+      REF_GIT_TAG: v21.11
       RUN_TESTS: ${{ contains(matrix.config.checks, 'tests') }}
 
     strategy:
@@ -40,7 +40,7 @@ jobs:
           - os: ubuntu-18.04
             compiler: gcc
             library: shared
-            checks: doc+tests
+            checks: abi+doc+tests
           - os: ubuntu-18.04
             compiler: clang
             library: static
