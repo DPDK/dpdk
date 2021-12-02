@@ -712,6 +712,16 @@ eh_initialize_eventdev(struct eventmode_conf *em_conf)
 		}
 	}
 
+	return 0;
+}
+
+static int
+eh_start_eventdev(struct eventmode_conf *em_conf)
+{
+	struct eventdev_params *eventdev_config;
+	int nb_eventdev = em_conf->nb_eventdev;
+	int i, ret;
+
 	/* Start event devices */
 	for (i = 0; i < nb_eventdev; i++) {
 
@@ -1609,6 +1619,13 @@ eh_devs_init(struct eh_conf *conf)
 	ret = eh_initialize_tx_adapter(em_conf);
 	if (ret < 0) {
 		EH_LOG_ERR("Failed to initialize tx adapter %d", ret);
+		return ret;
+	}
+
+	/* Start eventdev */
+	ret = eh_start_eventdev(em_conf);
+	if (ret < 0) {
+		EH_LOG_ERR("Failed to start event dev %d", ret);
 		return ret;
 	}
 
