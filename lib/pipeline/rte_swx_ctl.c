@@ -372,18 +372,34 @@ table_entry_check(struct rte_swx_ctl_pipeline *ctl,
 
 	if (data_check) {
 		struct action *a;
+		struct rte_swx_ctl_table_action_info *tai;
 		uint32_t i;
 
 		/* action_id. */
-		for (i = 0; i < table->info.n_actions; i++)
-			if (entry->action_id == table->actions[i].action_id)
+		for (i = 0; i < table->info.n_actions; i++) {
+			tai = &table->actions[i];
+
+			if (entry->action_id == tai->action_id)
 				break;
+		}
 
 		CHECK(i < table->info.n_actions, EINVAL);
 
 		/* action_data. */
 		a = &ctl->actions[entry->action_id];
 		CHECK(!(a->data_size && !entry->action_data), EINVAL);
+
+		/* When both key_check and data_check are true, we are interested in both the entry
+		 * key and data, which means the operation is _regular_ table entry add.
+		 */
+		if (key_check && !tai->action_is_for_table_entries)
+			return -EINVAL;
+
+		/* When key_check is false while data_check is true, we are only interested in the
+		 * entry data, which means the operation is _default_ table entry add.
+		 */
+		if (!key_check && !tai->action_is_for_default_entry)
+			return -EINVAL;
 	}
 
 	return 0;
@@ -1446,8 +1462,6 @@ rte_swx_ctl_pipeline_table_entry_add(struct rte_swx_ctl_pipeline *ctl,
 	CHECK(entry, EINVAL);
 	CHECK(!table_entry_check(ctl, table_id, entry, 1, 1), EINVAL);
 
-	CHECK(table->actions[entry->action_id].action_is_for_table_entries, EINVAL);
-
 	new_entry = table_entry_duplicate(ctl, table_id, entry, 1, 1);
 	CHECK(new_entry, ENOMEM);
 
@@ -1652,8 +1666,6 @@ rte_swx_ctl_pipeline_table_default_entry_add(struct rte_swx_ctl_pipeline *ctl,
 
 	CHECK(entry, EINVAL);
 	CHECK(!table_entry_check(ctl, table_id, entry, 0, 1), EINVAL);
-
-	CHECK(table->actions[entry->action_id].action_is_for_default_entry, EINVAL);
 
 	new_entry = table_entry_duplicate(ctl, table_id, entry, 0, 1);
 	CHECK(new_entry, ENOMEM);
