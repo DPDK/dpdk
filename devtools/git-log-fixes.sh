@@ -76,7 +76,7 @@ origin_version () # <origin_hash> ...
 			# look chained fix of fix recursively
 			local rootver="$(origin_version $roothashes)"
 			[ -n "$rootver" ] || continue
-			echo "$rootver (partially fixed in $origver)"
+			echo "$rootver (partially fixed in $origin @ $origver)"
 		else
 			echo "$origver"
 		fi
