@@ -9866,6 +9866,7 @@ flow_dv_translate(struct rte_eth_dev *dev,
 		const struct rte_flow_action_meter *mtr;
 		struct mlx5_flow_tbl_resource *tbl;
 		struct mlx5_aso_age_action *age_act;
+		uint32_t owner_idx;
 		uint32_t port_id = 0;
 		struct mlx5_flow_dv_port_id_action_resource port_id_resource;
 		int action_type = actions->type;
@@ -10005,10 +10006,13 @@ flow_dv_translate(struct rte_eth_dev *dev,
 				MLX5_FLOW_FATE_QUEUE;
 			break;
 		case MLX5_RTE_FLOW_ACTION_TYPE_AGE:
-			flow->age = (uint32_t)(uintptr_t)(action->conf);
-			age_act = flow_aso_age_get_by_idx(dev, flow->age);
-			__atomic_fetch_add(&age_act->refcnt, 1,
-					   __ATOMIC_RELAXED);
+			owner_idx = (uint32_t)(uintptr_t)action->conf;
+			age_act = flow_aso_age_get_by_idx(dev, owner_idx);
+			if (flow->age == 0) {
+				flow->age = owner_idx;
+				__atomic_fetch_add(&age_act->refcnt, 1,
+						   __ATOMIC_RELAXED);
+			}
 			dev_flow->dv.actions[actions_n++] = age_act->dr_action;
 			action_flags |= MLX5_FLOW_ACTION_AGE;
 			break;
