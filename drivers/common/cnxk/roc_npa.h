@@ -10,7 +10,8 @@
 
 #define ROC_NPA_MAX_BLOCK_SZ		   (128 * 1024)
 #define ROC_CN10K_NPA_BATCH_ALLOC_MAX_PTRS 512
-#define ROC_CN10K_NPA_BATCH_FREE_MAX_PTRS  15
+#define ROC_CN10K_NPA_BATCH_FREE_MAX_PTRS  15U
+#define ROC_CN10K_NPA_BATCH_FREE_BURST_MAX 16U
 
 /* This value controls how much of the present average resource level is used to
  * calculate the new resource level.
@@ -388,9 +389,6 @@ roc_npa_aura_batch_free(uint64_t aura_handle, uint64_t const *buf,
 	volatile uint64_t *lmt_data;
 	unsigned int i;
 
-	if (num > ROC_CN10K_NPA_BATCH_FREE_MAX_PTRS)
-		return;
-
 	lmt_data = (uint64_t *)lmt_addr;
 
 	addr = roc_npa_aura_handle_to_base(aura_handle) +
@@ -405,10 +403,8 @@ roc_npa_aura_batch_free(uint64_t aura_handle, uint64_t const *buf,
 	 * -----------------------------------------
 	 */
 	free0 = roc_npa_aura_handle_to_aura(aura_handle);
-	if (fabs)
-		free0 |= (0x1UL << 63);
-	if (num & 0x1)
-		free0 |= (0x1UL << 32);
+	free0 |= ((uint64_t)!!fabs << 63);
+	free0 |= ((uint64_t)(num & 0x1) << 32);
 
 	/* tar_addr[4:6] is LMTST size-1 in units of 128b */
 	tar_addr = addr | ((num >> 1) << 4);
@@ -422,23 +418,77 @@ roc_npa_aura_batch_free(uint64_t aura_handle, uint64_t const *buf,
 }
 
 static inline void
+roc_npa_aura_batch_free_burst(uint64_t aura_handle, uint64_t const *buf,
+			      unsigned int num, const int fabs,
+			      uint64_t lmt_addr, uint64_t lmt_id)
+{
+	uint64_t addr, tar_addr, free0, send_data, lmtline;
+	uint64_t *lmt_data;
+
+	/* 63   52 51  20 19   7 6           4 3  0
+	 * ----------------------------------------
+	 * | RSVD | ADDR | RSVD | LMTST SZ(0) | 0 |
+	 * ----------------------------------------
+	 */
+	addr = roc_npa_aura_handle_to_base(aura_handle) +
+	       NPA_LF_AURA_BATCH_FREE0;
+	tar_addr = addr | (0x7 << 4);
+
+	/* 63   63 62  33 32       32 31  20 19    0
+	 * -----------------------------------------
+	 * | FABS | Rsvd | COUNT_EOT | Rsvd | AURA |
+	 * -----------------------------------------
+	 */
+	free0 = roc_npa_aura_handle_to_aura(aura_handle);
+	free0 |= ((uint64_t)!!fabs << 63);
+	free0 |= (0x1UL << 32);
+
+	/* Fill the lmt lines */
+	lmt_data = (uint64_t *)lmt_addr;
+	lmtline = 0;
+	while (num) {
+		lmt_data[lmtline * 16] = free0;
+		memcpy(&lmt_data[(lmtline * 16) + 1], buf,
+		       ROC_CN10K_NPA_BATCH_FREE_MAX_PTRS * sizeof(uint64_t));
+		lmtline++;
+		num -= ROC_CN10K_NPA_BATCH_FREE_MAX_PTRS;
+		buf += ROC_CN10K_NPA_BATCH_FREE_MAX_PTRS;
+	}
+
+	/* 63                           19 18  16 15   12 11  11 10      0
+	 * ---------------------------------------------------------------
+	 * | LMTST SZ(15) ... LMTST SZ(1) | Rsvd | CNTM1 | Rsvd | LMT_ID |
+	 * ---------------------------------------------------------------
+	 */
+	send_data = lmt_id | ((lmtline - 1) << 12) | (0x1FFFFFFFFFFFUL << 19);
+	roc_lmt_submit_steorl(send_data, tar_addr);
+	plt_io_wmb();
+}
+
+static inline void
 roc_npa_aura_op_batch_free(uint64_t aura_handle, uint64_t const *buf,
 			   unsigned int num, const int fabs, uint64_t lmt_addr,
 			   uint64_t lmt_id)
 {
-	unsigned int chunk;
+	unsigned int max_burst, chunk, bnum;
 
-	while (num) {
-		chunk = (num >= ROC_CN10K_NPA_BATCH_FREE_MAX_PTRS) ?
-				      ROC_CN10K_NPA_BATCH_FREE_MAX_PTRS :
-				      num;
+	max_burst = ROC_CN10K_NPA_BATCH_FREE_MAX_PTRS *
+		    ROC_CN10K_NPA_BATCH_FREE_BURST_MAX;
+	bnum = num / ROC_CN10K_NPA_BATCH_FREE_MAX_PTRS;
+	bnum *= ROC_CN10K_NPA_BATCH_FREE_MAX_PTRS;
+	num -= bnum;
 
-		roc_npa_aura_batch_free(aura_handle, buf, chunk, fabs, lmt_addr,
-					lmt_id);
-
+	while (bnum) {
+		chunk = (bnum >= max_burst) ? max_burst : bnum;
+		roc_npa_aura_batch_free_burst(aura_handle, buf, chunk, fabs,
+					      lmt_addr, lmt_id);
 		buf += chunk;
-		num -= chunk;
+		bnum -= chunk;
 	}
+
+	if (num)
+		roc_npa_aura_batch_free(aura_handle, buf, num, fabs, lmt_addr,
+					lmt_id);
 }
 
 static inline unsigned int
