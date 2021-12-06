@@ -103,6 +103,21 @@ static const struct crypto_param cipher_list[] = {
 		.alg.cipher =  RTE_CRYPTO_CIPHER_AES_CBC,
 		.key_length = 16,
 	},
+	{
+		.type = RTE_CRYPTO_SYM_XFORM_CIPHER,
+		.alg.cipher =  RTE_CRYPTO_CIPHER_AES_CTR,
+		.key_length = 16,
+	},
+	{
+		.type = RTE_CRYPTO_SYM_XFORM_CIPHER,
+		.alg.cipher =  RTE_CRYPTO_CIPHER_AES_CTR,
+		.key_length = 24,
+	},
+	{
+		.type = RTE_CRYPTO_SYM_XFORM_CIPHER,
+		.alg.cipher =  RTE_CRYPTO_CIPHER_AES_CTR,
+		.key_length = 32,
+	},
 };
 
 static const struct crypto_param auth_list[] = {
