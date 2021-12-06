@@ -50,6 +50,13 @@ struct ipsec_test_data {
 	} xform;
 };
 
+enum df_flags {
+	TEST_IPSEC_COPY_DF_INNER_0 = 1,
+	TEST_IPSEC_COPY_DF_INNER_1,
+	TEST_IPSEC_SET_DF_0_INNER_1,
+	TEST_IPSEC_SET_DF_1_INNER_0,
+};
+
 struct ipsec_test_flags {
 	bool display_alg;
 	bool sa_expiry_pkts_soft;
@@ -66,6 +73,7 @@ struct ipsec_test_flags {
 	bool transport;
 	bool fragment;
 	bool stats_success;
+	enum df_flags df;
 };
 
 struct crypto_param {
@@ -225,5 +233,7 @@ int test_ipsec_stats_verify(struct rte_security_ctx *ctx,
 			    struct rte_security_session *sess,
 			    const struct ipsec_test_flags *flags,
 			    enum rte_security_ipsec_sa_direction dir);
+
+int test_ipsec_pkt_update(uint8_t *pkt, const struct ipsec_test_flags *flags);
 
 #endif

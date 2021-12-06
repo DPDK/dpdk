@@ -9169,6 +9169,13 @@ test_ipsec_proto_process(const struct ipsec_test_data td[],
 			       sizeof(src));
 			memcpy(&ipsec_xform.tunnel.ipv4.dst_ip, &dst,
 			       sizeof(dst));
+
+			if (flags->df == TEST_IPSEC_SET_DF_0_INNER_1)
+				ipsec_xform.tunnel.ipv4.df = 0;
+
+			if (flags->df == TEST_IPSEC_SET_DF_1_INNER_0)
+				ipsec_xform.tunnel.ipv4.df = 1;
+
 		} else {
 			memcpy(&ipsec_xform.tunnel.ipv6.src_addr, &v6_src,
 			       sizeof(v6_src));
@@ -9281,6 +9288,9 @@ test_ipsec_proto_process(const struct ipsec_test_data td[],
 
 		memcpy(input_text, td[i].input_text.data,
 		       td[i].input_text.len);
+
+		if (test_ipsec_pkt_update(input_text, flags))
+			return TEST_FAILED;
 
 		/* Generate crypto op data structure */
 		ut_params->op = rte_crypto_op_alloc(ts_params->op_mpool,
@@ -9698,6 +9708,55 @@ test_ipsec_proto_pkt_fragment(const void *data __rte_unused)
 	memset(&flags, 0, sizeof(flags));
 
 	flags.fragment = true;
+
+	return test_ipsec_proto_all(&flags);
+
+}
+
+static int
+test_ipsec_proto_copy_df_inner_0(const void *data __rte_unused)
+{
+	struct ipsec_test_flags flags;
+
+	memset(&flags, 0, sizeof(flags));
+
+	flags.df = TEST_IPSEC_COPY_DF_INNER_0;
+
+	return test_ipsec_proto_all(&flags);
+}
+
+static int
+test_ipsec_proto_copy_df_inner_1(const void *data __rte_unused)
+{
+	struct ipsec_test_flags flags;
+
+	memset(&flags, 0, sizeof(flags));
+
+	flags.df = TEST_IPSEC_COPY_DF_INNER_1;
+
+	return test_ipsec_proto_all(&flags);
+}
+
+static int
+test_ipsec_proto_set_df_0_inner_1(const void *data __rte_unused)
+{
+	struct ipsec_test_flags flags;
+
+	memset(&flags, 0, sizeof(flags));
+
+	flags.df = TEST_IPSEC_SET_DF_0_INNER_1;
+
+	return test_ipsec_proto_all(&flags);
+}
+
+static int
+test_ipsec_proto_set_df_1_inner_0(const void *data __rte_unused)
+{
+	struct ipsec_test_flags flags;
+
+	memset(&flags, 0, sizeof(flags));
+
+	flags.df = TEST_IPSEC_SET_DF_1_INNER_0;
 
 	return test_ipsec_proto_all(&flags);
 }
@@ -14724,6 +14783,22 @@ static struct unit_test_suite ipsec_proto_testsuite  = {
 			"Fragmented packet",
 			ut_setup_security, ut_teardown,
 			test_ipsec_proto_pkt_fragment),
+		TEST_CASE_NAMED_ST(
+			"Tunnel header copy DF (inner 0)",
+			ut_setup_security, ut_teardown,
+			test_ipsec_proto_copy_df_inner_0),
+		TEST_CASE_NAMED_ST(
+			"Tunnel header copy DF (inner 1)",
+			ut_setup_security, ut_teardown,
+			test_ipsec_proto_copy_df_inner_1),
+		TEST_CASE_NAMED_ST(
+			"Tunnel header set DF 0 (inner 1)",
+			ut_setup_security, ut_teardown,
+			test_ipsec_proto_set_df_0_inner_1),
+		TEST_CASE_NAMED_ST(
+			"Tunnel header set DF 1 (inner 0)",
+			ut_setup_security, ut_teardown,
+			test_ipsec_proto_set_df_1_inner_0),
 		TEST_CASES_END() /**< NULL terminate unit test array */
 	}
 };

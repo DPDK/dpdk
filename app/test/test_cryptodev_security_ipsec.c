@@ -427,6 +427,9 @@ test_ipsec_td_prepare(const struct crypto_param *param1,
 			ip->hdr_checksum = rte_ipv4_cksum(ip);
 		}
 
+		if (flags->df == TEST_IPSEC_COPY_DF_INNER_0 ||
+		    flags->df == TEST_IPSEC_COPY_DF_INNER_1)
+			td->ipsec_xform.options.copy_df = 1;
 	}
 }
 
@@ -640,6 +643,7 @@ test_ipsec_td_verify(struct rte_mbuf *m, const struct ipsec_test_data *td,
 {
 	uint8_t *output_text = rte_pktmbuf_mtod(m, uint8_t *);
 	uint32_t skip, len = rte_pktmbuf_pkt_len(m);
+	uint8_t td_output_text[4096];
 	int ret;
 
 	/* For tests with status as error for test success, skip verification */
@@ -720,16 +724,21 @@ test_ipsec_td_verify(struct rte_mbuf *m, const struct ipsec_test_data *td,
 		return ret;
 	}
 
+	memcpy(td_output_text, td->output_text.data + skip, len);
 
-	if (memcmp(output_text, td->output_text.data + skip, len)) {
+	if (test_ipsec_pkt_update(td_output_text, flags)) {
+		printf("Could not update expected vector");
+		return TEST_FAILED;
+	}
+
+	if (memcmp(output_text, td_output_text, len)) {
 		if (silent)
 			return TEST_FAILED;
 
 		printf("TestCase %s line %d: %s\n", __func__, __LINE__,
 			"output text not as expected\n");
 
-		rte_hexdump(stdout, "expected", td->output_text.data + skip,
-			    len);
+		rte_hexdump(stdout, "expected", td_output_text, len);
 		rte_hexdump(stdout, "actual", output_text, len);
 		return TEST_FAILED;
 	}
@@ -797,9 +806,26 @@ test_ipsec_post_process(struct rte_mbuf *m, const struct ipsec_test_data *td,
 		} else {
 			if (td->ipsec_xform.tunnel.type ==
 					RTE_SECURITY_IPSEC_TUNNEL_IPV4) {
+				uint16_t f_off;
+
 				if (is_valid_ipv4_pkt(iph4) == false) {
 					printf("Tunnel outer header is not IPv4\n");
 					return TEST_FAILED;
+				}
+
+				f_off = rte_be_to_cpu_16(iph4->fragment_offset);
+
+				if (flags->df == TEST_IPSEC_COPY_DF_INNER_1 ||
+				    flags->df == TEST_IPSEC_SET_DF_1_INNER_0) {
+					if (!(f_off & RTE_IPV4_HDR_DF_FLAG)) {
+						printf("DF bit is not set\n");
+						return TEST_FAILED;
+					}
+				} else {
+					if ((f_off & RTE_IPV4_HDR_DF_FLAG)) {
+						printf("DF bit is set\n");
+						return TEST_FAILED;
+					}
 				}
 			} else {
 				iph6 = (const struct rte_ipv6_hdr *)output_text;
@@ -908,4 +934,43 @@ test_ipsec_stats_verify(struct rte_security_ctx *ctx,
 	}
 
 	return ret;
+}
+
+int
+test_ipsec_pkt_update(uint8_t *pkt, const struct ipsec_test_flags *flags)
+{
+	struct rte_ipv4_hdr *iph4;
+	bool cksum_dirty = false;
+	uint16_t frag_off;
+
+	iph4 = (struct rte_ipv4_hdr *)pkt;
+
+	if (flags->df == TEST_IPSEC_COPY_DF_INNER_1 ||
+	    flags->df == TEST_IPSEC_SET_DF_0_INNER_1 ||
+	    flags->df == TEST_IPSEC_COPY_DF_INNER_0 ||
+	    flags->df == TEST_IPSEC_SET_DF_1_INNER_0) {
+
+		if (!is_ipv4(iph4)) {
+			printf("Invalid packet type");
+			return -1;
+		}
+
+		frag_off = rte_be_to_cpu_16(iph4->fragment_offset);
+
+		if (flags->df == TEST_IPSEC_COPY_DF_INNER_1 ||
+		    flags->df == TEST_IPSEC_SET_DF_0_INNER_1)
+			frag_off |= RTE_IPV4_HDR_DF_FLAG;
+		else
+			frag_off &= ~RTE_IPV4_HDR_DF_FLAG;
+
+		iph4->fragment_offset = rte_cpu_to_be_16(frag_off);
+		cksum_dirty = true;
+	}
+
+	if (cksum_dirty && is_ipv4(iph4)) {
+		iph4->hdr_checksum = 0;
+		iph4->hdr_checksum = rte_ipv4_cksum(iph4);
+	}
+
+	return 0;
 }
