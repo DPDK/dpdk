@@ -400,12 +400,21 @@ test_ipsec_td_prepare(const struct crypto_param *param1,
 			test_ipsec_csum_init(&td->input_text.data, false, true);
 		}
 
-		if (flags->tunnel_ipv6)
-			td->ipsec_xform.tunnel.type =
-					RTE_SECURITY_IPSEC_TUNNEL_IPV6;
-		else
-			td->ipsec_xform.tunnel.type =
-					RTE_SECURITY_IPSEC_TUNNEL_IPV4;
+		if (flags->transport) {
+			td->ipsec_xform.mode =
+					RTE_SECURITY_IPSEC_SA_MODE_TRANSPORT;
+		} else {
+			td->ipsec_xform.mode =
+					RTE_SECURITY_IPSEC_SA_MODE_TUNNEL;
+
+			if (flags->tunnel_ipv6)
+				td->ipsec_xform.tunnel.type =
+						RTE_SECURITY_IPSEC_TUNNEL_IPV6;
+			else
+				td->ipsec_xform.tunnel.type =
+						RTE_SECURITY_IPSEC_TUNNEL_IPV4;
+		}
+
 
 	}
 }
@@ -748,29 +757,45 @@ test_ipsec_post_process(struct rte_mbuf *m, const struct ipsec_test_data *td,
 	uint8_t *output_text = rte_pktmbuf_mtod(m, uint8_t *);
 	int ret;
 
-	if (flags->iv_gen &&
-	    td->ipsec_xform.direction == RTE_SECURITY_IPSEC_SA_DIR_EGRESS) {
-		ret = test_ipsec_iv_verify_push(m, td);
-		if (ret != TEST_SUCCESS)
-			return ret;
-	}
-
 	if (td->ipsec_xform.direction == RTE_SECURITY_IPSEC_SA_DIR_EGRESS) {
 		const struct rte_ipv4_hdr *iph4;
 		const struct rte_ipv6_hdr *iph6;
 
-		if (td->ipsec_xform.tunnel.type ==
-				RTE_SECURITY_IPSEC_TUNNEL_IPV4) {
-			iph4 = (const struct rte_ipv4_hdr *)output_text;
-			if (is_valid_ipv4_pkt(iph4) == false) {
-				printf("Outer header is not IPv4\n");
-				return TEST_FAILED;
+		if (flags->iv_gen) {
+			ret = test_ipsec_iv_verify_push(m, td);
+			if (ret != TEST_SUCCESS)
+				return ret;
+		}
+
+		iph4 = (const struct rte_ipv4_hdr *)output_text;
+
+		if (td->ipsec_xform.mode ==
+				RTE_SECURITY_IPSEC_SA_MODE_TRANSPORT) {
+			if (flags->ipv6) {
+				iph6 = (const struct rte_ipv6_hdr *)output_text;
+				if (is_valid_ipv6_pkt(iph6) == false) {
+					printf("Transport packet is not IPv6\n");
+					return TEST_FAILED;
+				}
+			} else {
+				if (is_valid_ipv4_pkt(iph4) == false) {
+					printf("Transport packet is not IPv4\n");
+					return TEST_FAILED;
+				}
 			}
 		} else {
-			iph6 = (const struct rte_ipv6_hdr *)output_text;
-			if (is_valid_ipv6_pkt(iph6) == false) {
-				printf("Outer header is not IPv6\n");
-				return TEST_FAILED;
+			if (td->ipsec_xform.tunnel.type ==
+					RTE_SECURITY_IPSEC_TUNNEL_IPV4) {
+				if (is_valid_ipv4_pkt(iph4) == false) {
+					printf("Tunnel outer header is not IPv4\n");
+					return TEST_FAILED;
+				}
+			} else {
+				iph6 = (const struct rte_ipv6_hdr *)output_text;
+				if (is_valid_ipv6_pkt(iph6) == false) {
+					printf("Tunnel outer header is not IPv6\n");
+					return TEST_FAILED;
+				}
 			}
 		}
 	}

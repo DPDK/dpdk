@@ -9162,15 +9162,19 @@ test_ipsec_proto_process(const struct ipsec_test_data td[],
 			dst += 1;
 	}
 
-	if (td->ipsec_xform.tunnel.type ==
-			RTE_SECURITY_IPSEC_TUNNEL_IPV4) {
-		memcpy(&ipsec_xform.tunnel.ipv4.src_ip, &src, sizeof(src));
-		memcpy(&ipsec_xform.tunnel.ipv4.dst_ip, &dst, sizeof(dst));
-	} else {
-		memcpy(&ipsec_xform.tunnel.ipv6.src_addr, &v6_src,
-			sizeof(v6_src));
-		memcpy(&ipsec_xform.tunnel.ipv6.dst_addr, &v6_dst,
-			sizeof(v6_dst));
+	if (td->ipsec_xform.mode == RTE_SECURITY_IPSEC_SA_MODE_TUNNEL) {
+		if (td->ipsec_xform.tunnel.type ==
+				RTE_SECURITY_IPSEC_TUNNEL_IPV4) {
+			memcpy(&ipsec_xform.tunnel.ipv4.src_ip, &src,
+			       sizeof(src));
+			memcpy(&ipsec_xform.tunnel.ipv4.dst_ip, &dst,
+			       sizeof(dst));
+		} else {
+			memcpy(&ipsec_xform.tunnel.ipv6.src_addr, &v6_src,
+			       sizeof(v6_src));
+			memcpy(&ipsec_xform.tunnel.ipv6.dst_addr, &v6_dst,
+			       sizeof(v6_dst));
+		}
 	}
 
 	ctx = rte_cryptodev_get_sec_ctx(dev_id);
@@ -9631,6 +9635,19 @@ test_ipsec_proto_tunnel_v6_in_v4(const void *data __rte_unused)
 
 	flags.ipv6 = true;
 	flags.tunnel_ipv6 = false;
+
+	return test_ipsec_proto_all(&flags);
+}
+
+static int
+test_ipsec_proto_transport_v4(const void *data __rte_unused)
+{
+	struct ipsec_test_flags flags;
+
+	memset(&flags, 0, sizeof(flags));
+
+	flags.ipv6 = false;
+	flags.transport = true;
 
 	return test_ipsec_proto_all(&flags);
 }
@@ -14635,6 +14652,10 @@ static struct unit_test_suite ipsec_proto_testsuite  = {
 			"Tunnel IPv6 in IPv4",
 			ut_setup_security, ut_teardown,
 			test_ipsec_proto_tunnel_v6_in_v4),
+		TEST_CASE_NAMED_ST(
+			"Transport IPv4",
+			ut_setup_security, ut_teardown,
+			test_ipsec_proto_transport_v4),
 		TEST_CASES_END() /**< NULL terminate unit test array */
 	}
 };
