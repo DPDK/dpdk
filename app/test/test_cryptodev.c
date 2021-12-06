@@ -9197,7 +9197,7 @@ test_ipsec_proto_process(const struct ipsec_test_data td[],
 		       sizeof(ut_params->auth_xform));
 		ut_params->cipher_xform.cipher.key.data = td[0].key.data;
 		ut_params->cipher_xform.cipher.iv.offset = IV_OFFSET;
-		ut_params->auth_xform.auth.key.data = td[0].key.data;
+		ut_params->auth_xform.auth.key.data = td[0].auth_key.data;
 
 		/* Verify crypto capabilities */
 
@@ -14423,6 +14423,11 @@ static struct unit_test_suite ipsec_proto_testsuite  = {
 			ut_setup_security, ut_teardown,
 			test_ipsec_proto_known_vec, &pkt_aes_256_gcm),
 		TEST_CASE_NAMED_WITH_DATA(
+			"Outbound known vector (ESP tunnel mode IPv4 AES-CBC 128 HMAC-SHA256 [16B ICV])",
+			ut_setup_security, ut_teardown,
+			test_ipsec_proto_known_vec,
+			&pkt_aes_128_cbc_hmac_sha256),
+		TEST_CASE_NAMED_WITH_DATA(
 			"Inbound known vector (ESP tunnel mode IPv4 AES-GCM 128)",
 			ut_setup_security, ut_teardown,
 			test_ipsec_proto_known_vec_inb, &pkt_aes_128_gcm),
@@ -14438,6 +14443,11 @@ static struct unit_test_suite ipsec_proto_testsuite  = {
 			"Inbound known vector (ESP tunnel mode IPv4 AES-CBC 128)",
 			ut_setup_security, ut_teardown,
 			test_ipsec_proto_known_vec_inb, &pkt_aes_128_cbc_null),
+		TEST_CASE_NAMED_WITH_DATA(
+			"Inbound known vector (ESP tunnel mode IPv4 AES-CBC 128 HMAC-SHA256 [16B ICV])",
+			ut_setup_security, ut_teardown,
+			test_ipsec_proto_known_vec_inb,
+			&pkt_aes_128_cbc_hmac_sha256),
 		TEST_CASE_NAMED_ST(
 			"Combined test alg list",
 			ut_setup_security, ut_teardown,

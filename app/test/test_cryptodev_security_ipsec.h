@@ -14,6 +14,9 @@ struct ipsec_test_data {
 	struct {
 		uint8_t data[32];
 	} key;
+	struct {
+		uint8_t data[32];
+	} auth_key;
 
 	struct {
 		uint8_t data[1024];
