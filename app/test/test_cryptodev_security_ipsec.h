@@ -15,7 +15,7 @@ struct ipsec_test_data {
 		uint8_t data[32];
 	} key;
 	struct {
-		uint8_t data[32];
+		uint8_t data[64];
 	} auth_key;
 
 	struct {
@@ -112,6 +112,18 @@ static const struct crypto_param auth_list[] = {
 		.alg.auth =  RTE_CRYPTO_AUTH_SHA256_HMAC,
 		.key_length = 32,
 		.digest_length = 16,
+	},
+	{
+		.type = RTE_CRYPTO_SYM_XFORM_AUTH,
+		.alg.auth =  RTE_CRYPTO_AUTH_SHA384_HMAC,
+		.key_length = 48,
+		.digest_length = 24,
+	},
+	{
+		.type = RTE_CRYPTO_SYM_XFORM_AUTH,
+		.alg.auth =  RTE_CRYPTO_AUTH_SHA512_HMAC,
+		.key_length = 64,
+		.digest_length = 32,
 	},
 };
 
