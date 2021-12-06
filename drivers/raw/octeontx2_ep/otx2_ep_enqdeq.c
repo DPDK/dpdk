@@ -694,7 +694,6 @@ sdp_droq_read_packet(struct sdp_device *sdpvf __rte_unused,
 		     struct sdp_droq_pkt *droq_pkt)
 {
 	struct sdp_droq_info *info;
-	uint32_t total_len = 0;
 	uint32_t pkt_len = 0;
 
 	info = &droq->info_list[droq->read_idx];
@@ -706,7 +705,6 @@ sdp_droq_read_packet(struct sdp_device *sdpvf __rte_unused,
 
 	/* Deduce the actual data size */
 	info->length -= SDP_RH_SIZE;
-	total_len += (uint32_t)info->length;
 
 	otx2_sdp_dbg("OQ: pkt_len[%ld], buffer_size %d",
 			(long)info->length, droq->buffer_size);
