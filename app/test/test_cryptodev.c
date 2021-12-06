@@ -9368,8 +9368,11 @@ test_ipsec_proto_known_vec(const void *test_data)
 
 	memcpy(&td_outb, test_data, sizeof(td_outb));
 
-	/* Disable IV gen to be able to test with known vectors */
-	td_outb.ipsec_xform.options.iv_gen_disable = 1;
+	if (td_outb.aead ||
+	    td_outb.xform.chain.cipher.cipher.algo != RTE_CRYPTO_CIPHER_NULL) {
+		/* Disable IV gen to be able to test with known vectors */
+		td_outb.ipsec_xform.options.iv_gen_disable = 1;
+	}
 
 	return test_ipsec_proto_process(&td_outb, NULL, 1, false, &flags);
 }
@@ -9428,10 +9431,23 @@ test_ipsec_proto_all(const struct ipsec_test_flags *flags)
 				      td_outb,
 				      nb_pkts);
 
-		if (flags->icv_corrupt && (td_outb->aead == false) &&
-		    (td_outb->xform.chain.auth.auth.algo ==
-		     RTE_CRYPTO_AUTH_NULL))
-			continue;
+		if (!td_outb->aead) {
+			enum rte_crypto_cipher_algorithm cipher_alg;
+			enum rte_crypto_auth_algorithm auth_alg;
+
+			cipher_alg = td_outb->xform.chain.cipher.cipher.algo;
+			auth_alg = td_outb->xform.chain.auth.auth.algo;
+
+			/* ICV is not applicable for NULL auth */
+			if (flags->icv_corrupt &&
+			    auth_alg == RTE_CRYPTO_AUTH_NULL)
+				continue;
+
+			/* IV is not applicable for NULL cipher */
+			if (flags->iv_gen &&
+			    cipher_alg == RTE_CRYPTO_CIPHER_NULL)
+				continue;
+		}
 
 		ret = test_ipsec_proto_process(td_outb, td_inb, nb_pkts, true,
 					       flags);
@@ -14582,6 +14598,11 @@ static struct unit_test_suite ipsec_proto_testsuite  = {
 			test_ipsec_proto_known_vec,
 			&pkt_aes_128_cbc_hmac_sha256_v6),
 		TEST_CASE_NAMED_WITH_DATA(
+			"Outbound known vector (ESP tunnel mode IPv4 NULL AES-XCBC-MAC [12B ICV])",
+			ut_setup_security, ut_teardown,
+			test_ipsec_proto_known_vec,
+			&pkt_null_aes_xcbc),
+		TEST_CASE_NAMED_WITH_DATA(
 			"Outbound fragmented packet",
 			ut_setup_security, ut_teardown,
 			test_ipsec_proto_known_vec_fragmented,
@@ -14626,6 +14647,11 @@ static struct unit_test_suite ipsec_proto_testsuite  = {
 			ut_setup_security, ut_teardown,
 			test_ipsec_proto_known_vec_inb,
 			&pkt_aes_128_cbc_hmac_sha256_v6),
+		TEST_CASE_NAMED_WITH_DATA(
+			"Inbound known vector (ESP tunnel mode IPv4 NULL AES-XCBC-MAC [12B ICV])",
+			ut_setup_security, ut_teardown,
+			test_ipsec_proto_known_vec_inb,
+			&pkt_null_aes_xcbc),
 		TEST_CASE_NAMED_ST(
 			"Combined test alg list",
 			ut_setup_security, ut_teardown,

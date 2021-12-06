@@ -76,6 +76,7 @@ struct crypto_param {
 		enum rte_crypto_aead_algorithm aead;
 	} alg;
 	uint16_t key_length;
+	uint16_t iv_length;
 	uint16_t digest_length;
 };
 
@@ -100,23 +101,33 @@ static const struct crypto_param aead_list[] = {
 static const struct crypto_param cipher_list[] = {
 	{
 		.type = RTE_CRYPTO_SYM_XFORM_CIPHER,
+		.alg.cipher =  RTE_CRYPTO_CIPHER_NULL,
+		.key_length = 0,
+		.iv_length = 0,
+	},
+	{
+		.type = RTE_CRYPTO_SYM_XFORM_CIPHER,
 		.alg.cipher =  RTE_CRYPTO_CIPHER_AES_CBC,
 		.key_length = 16,
+		.iv_length = 16,
 	},
 	{
 		.type = RTE_CRYPTO_SYM_XFORM_CIPHER,
 		.alg.cipher =  RTE_CRYPTO_CIPHER_AES_CTR,
 		.key_length = 16,
+		.iv_length = 16,
 	},
 	{
 		.type = RTE_CRYPTO_SYM_XFORM_CIPHER,
 		.alg.cipher =  RTE_CRYPTO_CIPHER_AES_CTR,
 		.key_length = 24,
+		.iv_length = 16,
 	},
 	{
 		.type = RTE_CRYPTO_SYM_XFORM_CIPHER,
 		.alg.cipher =  RTE_CRYPTO_CIPHER_AES_CTR,
 		.key_length = 32,
+		.iv_length = 16,
 	},
 };
 
@@ -142,6 +153,12 @@ static const struct crypto_param auth_list[] = {
 		.alg.auth =  RTE_CRYPTO_AUTH_SHA512_HMAC,
 		.key_length = 64,
 		.digest_length = 32,
+	},
+	{
+		.type = RTE_CRYPTO_SYM_XFORM_AUTH,
+		.alg.auth =  RTE_CRYPTO_AUTH_AES_XCBC_MAC,
+		.key_length = 16,
+		.digest_length = 12,
 	},
 };
 

@@ -375,6 +375,8 @@ test_ipsec_td_prepare(const struct crypto_param *param1,
 			td->xform.chain.cipher.cipher.algo = param1->alg.cipher;
 			td->xform.chain.cipher.cipher.key.length =
 					param1->key_length;
+			td->xform.chain.cipher.cipher.iv.length =
+					param1->iv_length;
 			td->xform.chain.auth.auth.algo = param2->alg.auth;
 			td->xform.chain.auth.auth.key.length =
 					param2->key_length;
