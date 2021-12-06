@@ -65,6 +65,7 @@ struct ipsec_test_flags {
 	bool tunnel_ipv6;
 	bool transport;
 	bool fragment;
+	bool stats_success;
 };
 
 struct crypto_param {
@@ -187,5 +188,10 @@ int test_ipsec_status_check(struct rte_crypto_op *op,
 			    const struct ipsec_test_flags *flags,
 			    enum rte_security_ipsec_sa_direction dir,
 			    int pkt_num);
+
+int test_ipsec_stats_verify(struct rte_security_ctx *ctx,
+			    struct rte_security_session *sess,
+			    const struct ipsec_test_flags *flags,
+			    enum rte_security_ipsec_sa_direction dir);
 
 #endif

@@ -415,6 +415,8 @@ test_ipsec_td_prepare(const struct crypto_param *param1,
 						RTE_SECURITY_IPSEC_TUNNEL_IPV4;
 		}
 
+		if (flags->stats_success)
+			td->ipsec_xform.options.stats = 1;
 
 	}
 }
@@ -866,6 +868,33 @@ test_ipsec_status_check(struct rte_crypto_op *op,
 		      RTE_CRYPTO_OP_AUX_FLAGS_IPSEC_SOFT_EXPIRY)) {
 			printf("SA soft expiry (pkts) test failed\n");
 			ret = TEST_FAILED;
+		}
+	}
+
+	return ret;
+}
+
+int
+test_ipsec_stats_verify(struct rte_security_ctx *ctx,
+			struct rte_security_session *sess,
+			const struct ipsec_test_flags *flags,
+			enum rte_security_ipsec_sa_direction dir)
+{
+	struct rte_security_stats stats = {0};
+	int ret = TEST_SUCCESS;
+
+	if (flags->stats_success) {
+		if (rte_security_session_stats_get(ctx, sess, &stats) < 0)
+			return TEST_FAILED;
+
+		if (dir == RTE_SECURITY_IPSEC_SA_DIR_EGRESS) {
+			if (stats.ipsec.opackets != 1 ||
+			    stats.ipsec.oerrors != 0)
+				ret = TEST_FAILED;
+		} else {
+			if (stats.ipsec.ipackets != 1 ||
+			    stats.ipsec.ierrors != 0)
+				ret = TEST_FAILED;
 		}
 	}
 

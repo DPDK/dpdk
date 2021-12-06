@@ -9332,6 +9332,11 @@ test_ipsec_proto_process(const struct ipsec_test_data td[],
 		if (ret != TEST_SUCCESS)
 			goto crypto_op_free;
 
+		ret = test_ipsec_stats_verify(ctx, ut_params->sec_session,
+					      flags, dir);
+		if (ret != TEST_SUCCESS)
+			goto crypto_op_free;
+
 		rte_crypto_op_free(ut_params->op);
 		ut_params->op = NULL;
 
@@ -9648,6 +9653,18 @@ test_ipsec_proto_transport_v4(const void *data __rte_unused)
 
 	flags.ipv6 = false;
 	flags.transport = true;
+
+	return test_ipsec_proto_all(&flags);
+}
+
+static int
+test_ipsec_proto_stats(const void *data __rte_unused)
+{
+	struct ipsec_test_flags flags;
+
+	memset(&flags, 0, sizeof(flags));
+
+	flags.stats_success = true;
 
 	return test_ipsec_proto_all(&flags);
 }
@@ -14656,6 +14673,10 @@ static struct unit_test_suite ipsec_proto_testsuite  = {
 			"Transport IPv4",
 			ut_setup_security, ut_teardown,
 			test_ipsec_proto_transport_v4),
+		TEST_CASE_NAMED_ST(
+			"Statistics: success",
+			ut_setup_security, ut_teardown,
+			test_ipsec_proto_stats),
 		TEST_CASES_END() /**< NULL terminate unit test array */
 	}
 };
