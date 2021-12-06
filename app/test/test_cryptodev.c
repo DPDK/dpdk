@@ -9191,22 +9191,58 @@ test_ipsec_proto_process(const struct ipsec_test_data td[],
 			return TEST_SKIPPED;
 		}
 	} else {
-		/* Only AEAD supported now */
-		return TEST_SKIPPED;
+		memcpy(&ut_params->cipher_xform, &td[0].xform.chain.cipher,
+		       sizeof(ut_params->cipher_xform));
+		memcpy(&ut_params->auth_xform, &td[0].xform.chain.auth,
+		       sizeof(ut_params->auth_xform));
+		ut_params->cipher_xform.cipher.key.data = td[0].key.data;
+		ut_params->cipher_xform.cipher.iv.offset = IV_OFFSET;
+		ut_params->auth_xform.auth.key.data = td[0].key.data;
+
+		/* Verify crypto capabilities */
+
+		if (test_ipsec_crypto_caps_cipher_verify(
+				sec_cap,
+				&ut_params->cipher_xform) != 0) {
+			if (!silent)
+				RTE_LOG(INFO, USER1,
+					"Cipher crypto capabilities not supported\n");
+			return TEST_SKIPPED;
+		}
+
+		if (test_ipsec_crypto_caps_auth_verify(
+				sec_cap,
+				&ut_params->auth_xform) != 0) {
+			if (!silent)
+				RTE_LOG(INFO, USER1,
+					"Auth crypto capabilities not supported\n");
+			return TEST_SKIPPED;
+		}
 	}
 
 	if (test_ipsec_sec_caps_verify(&ipsec_xform, sec_cap, silent) != 0)
 		return TEST_SKIPPED;
 
-	salt_len = RTE_MIN(sizeof(ipsec_xform.salt), td[0].salt.len);
-	memcpy(&ipsec_xform.salt, td[0].salt.data, salt_len);
-
 	struct rte_security_session_conf sess_conf = {
 		.action_type = ut_params->type,
 		.protocol = RTE_SECURITY_PROTOCOL_IPSEC,
-		.ipsec = ipsec_xform,
-		.crypto_xform = &ut_params->aead_xform,
 	};
+
+	if (td[0].aead) {
+		salt_len = RTE_MIN(sizeof(ipsec_xform.salt), td[0].salt.len);
+		memcpy(&ipsec_xform.salt, td[0].salt.data, salt_len);
+		sess_conf.ipsec = ipsec_xform;
+		sess_conf.crypto_xform = &ut_params->aead_xform;
+	} else {
+		sess_conf.ipsec = ipsec_xform;
+		if (dir == RTE_SECURITY_IPSEC_SA_DIR_EGRESS) {
+			sess_conf.crypto_xform = &ut_params->cipher_xform;
+			ut_params->cipher_xform.next = &ut_params->auth_xform;
+		} else {
+			sess_conf.crypto_xform = &ut_params->auth_xform;
+			ut_params->auth_xform.next = &ut_params->cipher_xform;
+		}
+	}
 
 	/* Create security session */
 	ut_params->sec_session = rte_security_session_create(ctx, &sess_conf,
@@ -9316,14 +9352,18 @@ test_ipsec_proto_known_vec(const void *test_data)
 }
 
 static int
-test_ipsec_proto_known_vec_inb(const void *td_outb)
+test_ipsec_proto_known_vec_inb(const void *test_data)
 {
+	const struct ipsec_test_data *td = test_data;
 	struct ipsec_test_flags flags;
 	struct ipsec_test_data td_inb;
 
 	memset(&flags, 0, sizeof(flags));
 
-	test_ipsec_td_in_from_out(td_outb, &td_inb);
+	if (td->ipsec_xform.direction == RTE_SECURITY_IPSEC_SA_DIR_EGRESS)
+		test_ipsec_td_in_from_out(td, &td_inb);
+	else
+		memcpy(&td_inb, td, sizeof(td_inb));
 
 	return test_ipsec_proto_process(&td_inb, NULL, 1, false, &flags);
 }
@@ -14394,6 +14434,10 @@ static struct unit_test_suite ipsec_proto_testsuite  = {
 			"Inbound known vector (ESP tunnel mode IPv4 AES-GCM 256)",
 			ut_setup_security, ut_teardown,
 			test_ipsec_proto_known_vec_inb, &pkt_aes_256_gcm),
+		TEST_CASE_NAMED_WITH_DATA(
+			"Inbound known vector (ESP tunnel mode IPv4 AES-CBC 128)",
+			ut_setup_security, ut_teardown,
+			test_ipsec_proto_known_vec_inb, &pkt_aes_128_cbc_null),
 		TEST_CASE_NAMED_ST(
 			"Combined test alg list",
 			ut_setup_security, ut_teardown,

@@ -150,6 +150,57 @@ test_ipsec_crypto_caps_aead_verify(
 	return -ENOTSUP;
 }
 
+int
+test_ipsec_crypto_caps_cipher_verify(
+		const struct rte_security_capability *sec_cap,
+		struct rte_crypto_sym_xform *cipher)
+{
+	const struct rte_cryptodev_symmetric_capability *sym_cap;
+	const struct rte_cryptodev_capabilities *cap;
+	int j = 0;
+
+	while ((cap = &sec_cap->crypto_capabilities[j++])->op !=
+			RTE_CRYPTO_OP_TYPE_UNDEFINED) {
+		if (cap->op == RTE_CRYPTO_OP_TYPE_SYMMETRIC &&
+				cap->sym.xform_type == cipher->type &&
+				cap->sym.cipher.algo == cipher->cipher.algo) {
+			sym_cap = &cap->sym;
+			if (rte_cryptodev_sym_capability_check_cipher(sym_cap,
+					cipher->cipher.key.length,
+					cipher->cipher.iv.length) == 0)
+				return 0;
+		}
+	}
+
+	return -ENOTSUP;
+}
+
+int
+test_ipsec_crypto_caps_auth_verify(
+		const struct rte_security_capability *sec_cap,
+		struct rte_crypto_sym_xform *auth)
+{
+	const struct rte_cryptodev_symmetric_capability *sym_cap;
+	const struct rte_cryptodev_capabilities *cap;
+	int j = 0;
+
+	while ((cap = &sec_cap->crypto_capabilities[j++])->op !=
+			RTE_CRYPTO_OP_TYPE_UNDEFINED) {
+		if (cap->op == RTE_CRYPTO_OP_TYPE_SYMMETRIC &&
+				cap->sym.xform_type == auth->type &&
+				cap->sym.auth.algo == auth->auth.algo) {
+			sym_cap = &cap->sym;
+			if (rte_cryptodev_sym_capability_check_auth(sym_cap,
+					auth->auth.key.length,
+					auth->auth.digest_length,
+					auth->auth.iv.length) == 0)
+				return 0;
+		}
+	}
+
+	return -ENOTSUP;
+}
+
 void
 test_ipsec_td_in_from_out(const struct ipsec_test_data *td_out,
 			  struct ipsec_test_data *td_in)
