@@ -659,6 +659,16 @@ test_ipsec_td_verify(struct rte_mbuf *m, const struct ipsec_test_data *td,
 		return TEST_FAILED;
 	}
 
+	if ((td->ipsec_xform.direction == RTE_SECURITY_IPSEC_SA_DIR_EGRESS) &&
+				flags->fragment) {
+		const struct rte_ipv4_hdr *iph4;
+		iph4 = (const struct rte_ipv4_hdr *)output_text;
+		if (iph4->fragment_offset) {
+			printf("Output packet is fragmented");
+			return TEST_FAILED;
+		}
+	}
+
 	skip = test_ipsec_tunnel_hdr_len_get(td);
 
 	len -= skip;

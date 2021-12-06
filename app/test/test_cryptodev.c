@@ -9383,6 +9383,23 @@ test_ipsec_proto_known_vec_inb(const void *test_data)
 }
 
 static int
+test_ipsec_proto_known_vec_fragmented(const void *test_data)
+{
+	struct ipsec_test_data td_outb;
+	struct ipsec_test_flags flags;
+
+	memset(&flags, 0, sizeof(flags));
+	flags.fragment = true;
+
+	memcpy(&td_outb, test_data, sizeof(td_outb));
+
+	/* Disable IV gen to be able to test with known vectors */
+	td_outb.ipsec_xform.options.iv_gen_disable = 1;
+
+	return test_ipsec_proto_process(&td_outb, NULL, 1, false, &flags);
+}
+
+static int
 test_ipsec_proto_all(const struct ipsec_test_flags *flags)
 {
 	struct ipsec_test_data td_outb[IPSEC_TEST_PACKETS_MAX];
@@ -14513,6 +14530,11 @@ static struct unit_test_suite ipsec_proto_testsuite  = {
 			ut_setup_security, ut_teardown,
 			test_ipsec_proto_known_vec,
 			&pkt_aes_128_cbc_hmac_sha256_v6),
+		TEST_CASE_NAMED_WITH_DATA(
+			"Outbound fragmented packet",
+			ut_setup_security, ut_teardown,
+			test_ipsec_proto_known_vec_fragmented,
+			&pkt_aes_128_gcm_frag),
 		TEST_CASE_NAMED_WITH_DATA(
 			"Inbound known vector (ESP tunnel mode IPv4 AES-GCM 128)",
 			ut_setup_security, ut_teardown,

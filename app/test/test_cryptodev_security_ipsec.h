@@ -63,6 +63,7 @@ struct ipsec_test_flags {
 	bool l4_csum;
 	bool ipv6;
 	bool tunnel_ipv6;
+	bool fragment;
 };
 
 struct crypto_param {
