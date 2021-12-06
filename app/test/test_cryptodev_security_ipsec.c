@@ -19,6 +19,40 @@ struct crypto_param_comb alg_list[RTE_DIM(aead_list) +
 				  (RTE_DIM(cipher_list) *
 				   RTE_DIM(auth_list))];
 
+static bool
+is_valid_ipv4_pkt(const struct rte_ipv4_hdr *pkt)
+{
+	/* The IP version number must be 4 */
+	if (((pkt->version_ihl) >> 4) != 4)
+		return false;
+	/*
+	 * The IP header length field must be large enough to hold the
+	 * minimum length legal IP datagram (20 bytes = 5 words).
+	 */
+	if ((pkt->version_ihl & 0xf) < 5)
+		return false;
+
+	/*
+	 * The IP total length field must be large enough to hold the IP
+	 * datagram header, whose length is specified in the IP header length
+	 * field.
+	 */
+	if (rte_cpu_to_be_16(pkt->total_length) < sizeof(struct rte_ipv4_hdr))
+		return false;
+
+	return true;
+}
+
+static bool
+is_valid_ipv6_pkt(const struct rte_ipv6_hdr *pkt)
+{
+	/* The IP version number must be 6 */
+	if ((rte_be_to_cpu_32((pkt->vtc_flow)) >> 28) != 6)
+		return false;
+
+	return true;
+}
+
 void
 test_ipsec_alg_list_populate(void)
 {
@@ -320,14 +354,22 @@ test_ipsec_td_prepare(const struct crypto_param *param1,
 
 		if (param1->type == RTE_CRYPTO_SYM_XFORM_AEAD) {
 			/* Copy template for packet & key fields */
-			memcpy(td, &pkt_aes_256_gcm, sizeof(*td));
+			if (flags->ipv6)
+				memcpy(td, &pkt_aes_256_gcm_v6, sizeof(*td));
+			else
+				memcpy(td, &pkt_aes_256_gcm, sizeof(*td));
 
 			td->aead = true;
 			td->xform.aead.aead.algo = param1->alg.aead;
 			td->xform.aead.aead.key.length = param1->key_length;
 		} else {
 			/* Copy template for packet & key fields */
-			memcpy(td, &pkt_aes_128_cbc_hmac_sha256, sizeof(*td));
+			if (flags->ipv6)
+				memcpy(td, &pkt_aes_128_cbc_hmac_sha256_v6,
+					sizeof(*td));
+			else
+				memcpy(td, &pkt_aes_128_cbc_hmac_sha256,
+					sizeof(*td));
 
 			td->aead = false;
 			td->xform.chain.cipher.cipher.algo = param1->alg.cipher;
@@ -357,6 +399,13 @@ test_ipsec_td_prepare(const struct crypto_param *param1,
 			td->ipsec_xform.options.l4_csum_enable = 1;
 			test_ipsec_csum_init(&td->input_text.data, false, true);
 		}
+
+		if (flags->tunnel_ipv6)
+			td->ipsec_xform.tunnel.type =
+					RTE_SECURITY_IPSEC_TUNNEL_IPV6;
+		else
+			td->ipsec_xform.tunnel.type =
+					RTE_SECURITY_IPSEC_TUNNEL_IPV4;
 
 	}
 }
@@ -686,6 +735,7 @@ test_ipsec_post_process(struct rte_mbuf *m, const struct ipsec_test_data *td,
 			struct ipsec_test_data *res_d, bool silent,
 			const struct ipsec_test_flags *flags)
 {
+	uint8_t *output_text = rte_pktmbuf_mtod(m, uint8_t *);
 	int ret;
 
 	if (flags->iv_gen &&
@@ -693,6 +743,26 @@ test_ipsec_post_process(struct rte_mbuf *m, const struct ipsec_test_data *td,
 		ret = test_ipsec_iv_verify_push(m, td);
 		if (ret != TEST_SUCCESS)
 			return ret;
+	}
+
+	if (td->ipsec_xform.direction == RTE_SECURITY_IPSEC_SA_DIR_EGRESS) {
+		const struct rte_ipv4_hdr *iph4;
+		const struct rte_ipv6_hdr *iph6;
+
+		if (td->ipsec_xform.tunnel.type ==
+				RTE_SECURITY_IPSEC_TUNNEL_IPV4) {
+			iph4 = (const struct rte_ipv4_hdr *)output_text;
+			if (is_valid_ipv4_pkt(iph4) == false) {
+				printf("Outer header is not IPv4\n");
+				return TEST_FAILED;
+			}
+		} else {
+			iph6 = (const struct rte_ipv6_hdr *)output_text;
+			if (is_valid_ipv6_pkt(iph6) == false) {
+				printf("Outer header is not IPv6\n");
+				return TEST_FAILED;
+			}
+		}
 	}
 
 	/*

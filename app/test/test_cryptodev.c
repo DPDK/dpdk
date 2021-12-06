@@ -9125,6 +9125,10 @@ test_ipsec_proto_process(const struct ipsec_test_data td[],
 			 bool silent,
 			 const struct ipsec_test_flags *flags)
 {
+	uint16_t v6_src[8] = {0x2607, 0xf8b0, 0x400c, 0x0c03, 0x0000, 0x0000,
+				0x0000, 0x001a};
+	uint16_t v6_dst[8] = {0x2001, 0x0470, 0xe5bf, 0xdead, 0x4957, 0x2174,
+				0xe82c, 0x4887};
 	struct crypto_testsuite_params *ts_params = &testsuite_params;
 	struct crypto_unittest_params *ut_params = &unittest_params;
 	struct rte_security_capability_idx sec_cap_idx;
@@ -9158,8 +9162,16 @@ test_ipsec_proto_process(const struct ipsec_test_data td[],
 			dst += 1;
 	}
 
-	memcpy(&ipsec_xform.tunnel.ipv4.src_ip, &src, sizeof(src));
-	memcpy(&ipsec_xform.tunnel.ipv4.dst_ip, &dst, sizeof(dst));
+	if (td->ipsec_xform.tunnel.type ==
+			RTE_SECURITY_IPSEC_TUNNEL_IPV4) {
+		memcpy(&ipsec_xform.tunnel.ipv4.src_ip, &src, sizeof(src));
+		memcpy(&ipsec_xform.tunnel.ipv4.dst_ip, &dst, sizeof(dst));
+	} else {
+		memcpy(&ipsec_xform.tunnel.ipv6.src_addr, &v6_src,
+			sizeof(v6_src));
+		memcpy(&ipsec_xform.tunnel.ipv6.dst_addr, &v6_dst,
+			sizeof(v6_dst));
+	}
 
 	ctx = rte_cryptodev_get_sec_ctx(dev_id);
 
@@ -9550,6 +9562,58 @@ test_ipsec_proto_inner_l4_csum(const void *data __rte_unused)
 	memset(&flags, 0, sizeof(flags));
 
 	flags.l4_csum = true;
+
+	return test_ipsec_proto_all(&flags);
+}
+
+static int
+test_ipsec_proto_tunnel_v4_in_v4(const void *data __rte_unused)
+{
+	struct ipsec_test_flags flags;
+
+	memset(&flags, 0, sizeof(flags));
+
+	flags.ipv6 = false;
+	flags.tunnel_ipv6 = false;
+
+	return test_ipsec_proto_all(&flags);
+}
+
+static int
+test_ipsec_proto_tunnel_v6_in_v6(const void *data __rte_unused)
+{
+	struct ipsec_test_flags flags;
+
+	memset(&flags, 0, sizeof(flags));
+
+	flags.ipv6 = true;
+	flags.tunnel_ipv6 = true;
+
+	return test_ipsec_proto_all(&flags);
+}
+
+static int
+test_ipsec_proto_tunnel_v4_in_v6(const void *data __rte_unused)
+{
+	struct ipsec_test_flags flags;
+
+	memset(&flags, 0, sizeof(flags));
+
+	flags.ipv6 = false;
+	flags.tunnel_ipv6 = true;
+
+	return test_ipsec_proto_all(&flags);
+}
+
+static int
+test_ipsec_proto_tunnel_v6_in_v4(const void *data __rte_unused)
+{
+	struct ipsec_test_flags flags;
+
+	memset(&flags, 0, sizeof(flags));
+
+	flags.ipv6 = true;
+	flags.tunnel_ipv6 = false;
 
 	return test_ipsec_proto_all(&flags);
 }
@@ -14431,6 +14495,15 @@ static struct unit_test_suite ipsec_proto_testsuite  = {
 			test_ipsec_proto_known_vec,
 			&pkt_aes_128_cbc_hmac_sha256),
 		TEST_CASE_NAMED_WITH_DATA(
+			"Outbound known vector (ESP tunnel mode IPv6 AES-GCM 128)",
+			ut_setup_security, ut_teardown,
+			test_ipsec_proto_known_vec, &pkt_aes_256_gcm_v6),
+		TEST_CASE_NAMED_WITH_DATA(
+			"Outbound known vector (ESP tunnel mode IPv6 AES-CBC 128 HMAC-SHA256 [16B ICV])",
+			ut_setup_security, ut_teardown,
+			test_ipsec_proto_known_vec,
+			&pkt_aes_128_cbc_hmac_sha256_v6),
+		TEST_CASE_NAMED_WITH_DATA(
 			"Inbound known vector (ESP tunnel mode IPv4 AES-GCM 128)",
 			ut_setup_security, ut_teardown,
 			test_ipsec_proto_known_vec_inb, &pkt_aes_128_gcm),
@@ -14451,6 +14524,15 @@ static struct unit_test_suite ipsec_proto_testsuite  = {
 			ut_setup_security, ut_teardown,
 			test_ipsec_proto_known_vec_inb,
 			&pkt_aes_128_cbc_hmac_sha256),
+		TEST_CASE_NAMED_WITH_DATA(
+			"Inbound known vector (ESP tunnel mode IPv6 AES-GCM 128)",
+			ut_setup_security, ut_teardown,
+			test_ipsec_proto_known_vec_inb, &pkt_aes_256_gcm_v6),
+		TEST_CASE_NAMED_WITH_DATA(
+			"Inbound known vector (ESP tunnel mode IPv6 AES-CBC 128 HMAC-SHA256 [16B ICV])",
+			ut_setup_security, ut_teardown,
+			test_ipsec_proto_known_vec_inb,
+			&pkt_aes_128_cbc_hmac_sha256_v6),
 		TEST_CASE_NAMED_ST(
 			"Combined test alg list",
 			ut_setup_security, ut_teardown,
@@ -14495,6 +14577,22 @@ static struct unit_test_suite ipsec_proto_testsuite  = {
 			"Inner L4 checksum",
 			ut_setup_security, ut_teardown,
 			test_ipsec_proto_inner_l4_csum),
+		TEST_CASE_NAMED_ST(
+			"Tunnel IPv4 in IPv4",
+			ut_setup_security, ut_teardown,
+			test_ipsec_proto_tunnel_v4_in_v4),
+		TEST_CASE_NAMED_ST(
+			"Tunnel IPv6 in IPv6",
+			ut_setup_security, ut_teardown,
+			test_ipsec_proto_tunnel_v6_in_v6),
+		TEST_CASE_NAMED_ST(
+			"Tunnel IPv4 in IPv6",
+			ut_setup_security, ut_teardown,
+			test_ipsec_proto_tunnel_v4_in_v6),
+		TEST_CASE_NAMED_ST(
+			"Tunnel IPv6 in IPv4",
+			ut_setup_security, ut_teardown,
+			test_ipsec_proto_tunnel_v6_in_v4),
 		TEST_CASES_END() /**< NULL terminate unit test array */
 	}
 };

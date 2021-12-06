@@ -61,6 +61,8 @@ struct ipsec_test_flags {
 	bool udp_ports_verify;
 	bool ip_csum;
 	bool l4_csum;
+	bool ipv6;
+	bool tunnel_ipv6;
 };
 
 struct crypto_param {
@@ -119,7 +121,9 @@ struct crypto_param_comb {
 };
 
 extern struct ipsec_test_data pkt_aes_256_gcm;
+extern struct ipsec_test_data pkt_aes_256_gcm_v6;
 extern struct ipsec_test_data pkt_aes_128_cbc_hmac_sha256;
+extern struct ipsec_test_data pkt_aes_128_cbc_hmac_sha256_v6;
 
 extern struct crypto_param_comb alg_list[RTE_DIM(aead_list) +
 					 (RTE_DIM(cipher_list) *
