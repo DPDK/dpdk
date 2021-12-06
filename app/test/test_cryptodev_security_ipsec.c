@@ -15,7 +15,29 @@
 
 #define IV_LEN_MAX 16
 
-extern struct ipsec_test_data pkt_aes_256_gcm;
+struct crypto_param_comb alg_list[RTE_DIM(aead_list) +
+				  (RTE_DIM(cipher_list) *
+				   RTE_DIM(auth_list))];
+
+void
+test_ipsec_alg_list_populate(void)
+{
+	unsigned long i, j, index = 0;
+
+	for (i = 0; i < RTE_DIM(aead_list); i++) {
+		alg_list[index].param1 = &aead_list[i];
+		alg_list[index].param2 = NULL;
+		index++;
+	}
+
+	for (i = 0; i < RTE_DIM(cipher_list); i++) {
+		for (j = 0; j < RTE_DIM(auth_list); j++) {
+			alg_list[index].param1 = &cipher_list[i];
+			alg_list[index].param2 = &auth_list[j];
+			index++;
+		}
+	}
+}
 
 int
 test_ipsec_sec_caps_verify(struct rte_security_ipsec_xform *ipsec_xform,
@@ -293,18 +315,31 @@ test_ipsec_td_prepare(const struct crypto_param *param1,
 
 	for (i = 0; i < nb_td; i++) {
 		td = &td_array[i];
-		/* Copy template for packet & key fields */
-		memcpy(td, &pkt_aes_256_gcm, sizeof(*td));
 
-		/* Override fields based on param */
+		/* Prepare fields based on param */
 
-		if (param1->type == RTE_CRYPTO_SYM_XFORM_AEAD)
+		if (param1->type == RTE_CRYPTO_SYM_XFORM_AEAD) {
+			/* Copy template for packet & key fields */
+			memcpy(td, &pkt_aes_256_gcm, sizeof(*td));
+
 			td->aead = true;
-		else
-			td->aead = false;
+			td->xform.aead.aead.algo = param1->alg.aead;
+			td->xform.aead.aead.key.length = param1->key_length;
+		} else {
+			/* Copy template for packet & key fields */
+			memcpy(td, &pkt_aes_128_cbc_hmac_sha256, sizeof(*td));
 
-		td->xform.aead.aead.algo = param1->alg.aead;
-		td->xform.aead.aead.key.length = param1->key_length;
+			td->aead = false;
+			td->xform.chain.cipher.cipher.algo = param1->alg.cipher;
+			td->xform.chain.cipher.cipher.key.length =
+					param1->key_length;
+			td->xform.chain.auth.auth.algo = param2->alg.auth;
+			td->xform.chain.auth.auth.key.length =
+					param2->key_length;
+			td->xform.chain.auth.auth.digest_length =
+					param2->digest_length;
+
+		}
 
 		if (flags->iv_gen)
 			td->ipsec_xform.options.iv_gen_disable = 0;
@@ -324,8 +359,6 @@ test_ipsec_td_prepare(const struct crypto_param *param1,
 		}
 
 	}
-
-	RTE_SET_USED(param2);
 }
 
 void
@@ -374,12 +407,21 @@ void
 test_ipsec_display_alg(const struct crypto_param *param1,
 		       const struct crypto_param *param2)
 {
-	if (param1->type == RTE_CRYPTO_SYM_XFORM_AEAD)
-		printf("\t%s [%d]\n",
+	if (param1->type == RTE_CRYPTO_SYM_XFORM_AEAD) {
+		printf("\t%s [%d]",
 		       rte_crypto_aead_algorithm_strings[param1->alg.aead],
-		       param1->key_length);
-
-	RTE_SET_USED(param2);
+		       param1->key_length * 8);
+	} else {
+		printf("\t%s",
+		       rte_crypto_cipher_algorithm_strings[param1->alg.cipher]);
+		if (param1->alg.cipher != RTE_CRYPTO_CIPHER_NULL)
+			printf(" [%d]", param1->key_length * 8);
+		printf(" %s",
+		       rte_crypto_auth_algorithm_strings[param2->alg.auth]);
+		if (param2->alg.auth != RTE_CRYPTO_AUTH_NULL)
+			printf(" [%dB ICV]", param2->digest_length);
+	}
+	printf("\n");
 }
 
 static int
@@ -631,8 +673,9 @@ test_ipsec_res_d_prepare(struct rte_mbuf *m, const struct ipsec_test_data *td,
 	if (res_d->aead) {
 		res_d->xform.aead.aead.op = RTE_CRYPTO_AEAD_OP_DECRYPT;
 	} else {
-		printf("Only AEAD supported\n");
-		return TEST_SKIPPED;
+		res_d->xform.chain.cipher.cipher.op =
+				RTE_CRYPTO_CIPHER_OP_DECRYPT;
+		res_d->xform.chain.auth.auth.op = RTE_CRYPTO_AUTH_OP_VERIFY;
 	}
 
 	return TEST_SUCCESS;

@@ -835,6 +835,8 @@ ipsec_proto_testsuite_setup(void)
 		ret = TEST_SKIPPED;
 	}
 
+	test_ipsec_alg_list_populate();
+
 	/*
 	 * Stop the device. Device would be started again by individual test
 	 * case setup routine.
@@ -9381,9 +9383,9 @@ test_ipsec_proto_all(const struct ipsec_test_flags *flags)
 	    flags->sa_expiry_pkts_hard)
 		nb_pkts = IPSEC_TEST_PACKETS_MAX;
 
-	for (i = 0; i < RTE_DIM(aead_list); i++) {
-		test_ipsec_td_prepare(&aead_list[i],
-				      NULL,
+	for (i = 0; i < RTE_DIM(alg_list); i++) {
+		test_ipsec_td_prepare(alg_list[i].param1,
+				      alg_list[i].param2,
 				      flags,
 				      td_outb,
 				      nb_pkts);
@@ -9407,7 +9409,8 @@ test_ipsec_proto_all(const struct ipsec_test_flags *flags)
 			return TEST_FAILED;
 
 		if (flags->display_alg)
-			test_ipsec_display_alg(&aead_list[i], NULL);
+			test_ipsec_display_alg(alg_list[i].param1,
+					       alg_list[i].param2);
 
 		pass_cnt++;
 	}

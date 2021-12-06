@@ -71,6 +71,7 @@ struct crypto_param {
 		enum rte_crypto_aead_algorithm aead;
 	} alg;
 	uint16_t key_length;
+	uint16_t digest_length;
 };
 
 static const struct crypto_param aead_list[] = {
@@ -90,6 +91,41 @@ static const struct crypto_param aead_list[] = {
 		.key_length = 32
 	},
 };
+
+static const struct crypto_param cipher_list[] = {
+	{
+		.type = RTE_CRYPTO_SYM_XFORM_CIPHER,
+		.alg.cipher =  RTE_CRYPTO_CIPHER_AES_CBC,
+		.key_length = 16,
+	},
+};
+
+static const struct crypto_param auth_list[] = {
+	{
+		.type = RTE_CRYPTO_SYM_XFORM_AUTH,
+		.alg.auth =  RTE_CRYPTO_AUTH_NULL,
+	},
+	{
+		.type = RTE_CRYPTO_SYM_XFORM_AUTH,
+		.alg.auth =  RTE_CRYPTO_AUTH_SHA256_HMAC,
+		.key_length = 32,
+		.digest_length = 16,
+	},
+};
+
+struct crypto_param_comb {
+	const struct crypto_param *param1;
+	const struct crypto_param *param2;
+};
+
+extern struct ipsec_test_data pkt_aes_256_gcm;
+extern struct ipsec_test_data pkt_aes_128_cbc_hmac_sha256;
+
+extern struct crypto_param_comb alg_list[RTE_DIM(aead_list) +
+					 (RTE_DIM(cipher_list) *
+					  RTE_DIM(auth_list))];
+
+void test_ipsec_alg_list_populate(void);
 
 int test_ipsec_sec_caps_verify(struct rte_security_ipsec_xform *ipsec_xform,
 			       const struct rte_security_capability *sec_cap,
