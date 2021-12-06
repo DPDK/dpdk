@@ -418,6 +418,13 @@ test_ipsec_td_prepare(const struct crypto_param *param1,
 		if (flags->stats_success)
 			td->ipsec_xform.options.stats = 1;
 
+		if (flags->fragment) {
+			struct rte_ipv4_hdr *ip;
+			ip = (struct rte_ipv4_hdr *)&td->input_text.data;
+			ip->fragment_offset = 4;
+			ip->hdr_checksum = rte_ipv4_cksum(ip);
+		}
+
 	}
 }
 

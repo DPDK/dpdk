@@ -9670,6 +9670,18 @@ test_ipsec_proto_stats(const void *data __rte_unused)
 }
 
 static int
+test_ipsec_proto_pkt_fragment(const void *data __rte_unused)
+{
+	struct ipsec_test_flags flags;
+
+	memset(&flags, 0, sizeof(flags));
+
+	flags.fragment = true;
+
+	return test_ipsec_proto_all(&flags);
+}
+
+static int
 test_PDCP_PROTO_all(void)
 {
 	struct crypto_testsuite_params *ts_params = &testsuite_params;
@@ -14677,6 +14689,10 @@ static struct unit_test_suite ipsec_proto_testsuite  = {
 			"Statistics: success",
 			ut_setup_security, ut_teardown,
 			test_ipsec_proto_stats),
+		TEST_CASE_NAMED_ST(
+			"Fragmented packet",
+			ut_setup_security, ut_teardown,
+			test_ipsec_proto_pkt_fragment),
 		TEST_CASES_END() /**< NULL terminate unit test array */
 	}
 };
