@@ -178,7 +178,7 @@ A DLB2 eventdev contains one load-balanced and one directed credit pool. These
 pools' sizes are controlled by the nb_events_limit field in struct
 rte_event_dev_config. The load-balanced pool is sized to contain
 nb_events_limit credits, and the directed pool is sized to contain
-nb_events_limit/4 credits. The directed pool size can be overridden with the
+nb_events_limit/2 credits. The directed pool size can be overridden with the
 num_dir_credits devargs argument, like so:
 
     .. code-block:: console
@@ -266,8 +266,8 @@ queue A.
 Due to this, workers should stop retrying after a time, release the events it
 is attempting to enqueue, and dequeue more events. It is important that the
 worker release the events and don't simply set them aside to retry the enqueue
-again later, because the port has limited history list size (by default, twice
-the port's dequeue_depth).
+again later, because the port has limited history list size (by default, same
+as port's dequeue_depth).
 
 Priority
 ~~~~~~~~
@@ -330,17 +330,10 @@ scheduled. The likelihood of this case depends on the eventdev configuration,
 traffic behavior, event processing latency, potential for a worker to be
 interrupted or otherwise delayed, etc.
 
-By default, the PMD allocates 16 buffer entries for each load-balanced queue,
-which provides an even division across all 128 queues but potentially wastes
+By default, the PMD allocates 64 buffer entries for each load-balanced queue,
+which provides an even division across all 32 queues but potentially wastes
 buffer space (e.g. if not all queues are used, or aren't used for atomic
 scheduling).
-
-The PMD provides a dev arg to override the default per-queue allocation. To
-increase per-queue atomic-inflight allocation to (for example) 64:
-
-    .. code-block:: console
-
-       --allow ea:00.0,atm_inflights=64
 
 QID Depth Threshold
 ~~~~~~~~~~~~~~~~~~~
@@ -358,7 +351,7 @@ Per queue threshold metrics are tracked in the DLB2 xstats, and are also
 returned in the impl_opaque field of each received event.
 
 The per qid threshold can be specified as part of the device args, and
-can be applied to all queue, a range of queues, or a single queue, as
+can be applied to all queues, a range of queues, or a single queue, as
 shown below.
 
     .. code-block:: console
