@@ -29,11 +29,9 @@ sources += files(
 	'eal_common_timer.c',
 	'eal_common_trace_points.c',
 	'eal_common_uuid.c',
-	'hotplug_mp.c',
 	'malloc_elem.c',
 	'malloc_heap.c',
 	'rte_malloc.c',
-	'rte_random.c',
 	'rte_reciprocal.c',
 	'rte_service.c',
 )
@@ -50,6 +48,7 @@ if not is_windows
 		'eal_common_trace_utils.c',
 		'hotplug_mp.c',
 		'malloc_mp.c',
+		'rte_random.c',
 		'rte_keepalive.c',
 	)
 endif
