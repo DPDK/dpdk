@@ -15,6 +15,12 @@ if kernel_dir == ''
 	kernel_dir = '/lib/modules/' + kernel_version
 endif
 
+kernel_source_dir = get_option('kernel_dir')
+if kernel_source_dir == ''
+	# use default path for native builds
+	kernel_source_dir = '/lib/modules/' + kernel_version + '/source'
+endif
+
 # test running make in kernel directory, using "make kernelversion"
 make_returncode = run_command('make', '-sC', kernel_dir + '/build',
 		'kernelversion').returncode()
