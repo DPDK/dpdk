@@ -633,67 +633,6 @@ find_internal_resource(struct pmd_internals *port_int)
 	return list;
 }
 
-/* Check if the netdev,qid context already exists */
-static inline bool
-ctx_exists(struct pkt_rx_queue *rxq, const char *ifname,
-		struct pkt_rx_queue *list_rxq, const char *list_ifname)
-{
-	bool exists = false;
-
-	if (rxq->xsk_queue_idx == list_rxq->xsk_queue_idx &&
-			!strncmp(ifname, list_ifname, IFNAMSIZ)) {
-		AF_XDP_LOG(ERR, "ctx %s,%i already exists, cannot share umem\n",
-					ifname, rxq->xsk_queue_idx);
-		exists = true;
-	}
-
-	return exists;
-}
-
-/* Get a pointer to an existing UMEM which overlays the rxq's mb_pool */
-static inline int
-get_shared_umem(struct pkt_rx_queue *rxq, const char *ifname,
-			struct xsk_umem_info **umem)
-{
-	struct internal_list *list;
-	struct pmd_internals *internals;
-	int i = 0, ret = 0;
-	struct rte_mempool *mb_pool = rxq->mb_pool;
-
-	if (mb_pool == NULL)
-		return ret;
-
-	pthread_mutex_lock(&internal_list_lock);
-
-	TAILQ_FOREACH(list, &internal_list, next) {
-		internals = list->eth_dev->data->dev_private;
-		for (i = 0; i < internals->queue_cnt; i++) {
-			struct pkt_rx_queue *list_rxq =
-						&internals->rx_queues[i];
-			if (rxq == list_rxq)
-				continue;
-			if (mb_pool == internals->rx_queues[i].mb_pool) {
-				if (ctx_exists(rxq, ifname, list_rxq,
-						internals->if_name)) {
-					ret = -1;
-					goto out;
-				}
-				if (__atomic_load_n(
-					&internals->rx_queues[i].umem->refcnt,
-							__ATOMIC_ACQUIRE)) {
-					*umem = internals->rx_queues[i].umem;
-					goto out;
-				}
-			}
-		}
-	}
-
-out:
-	pthread_mutex_unlock(&internal_list_lock);
-
-	return ret;
-}
-
 static int
 eth_dev_configure(struct rte_eth_dev *dev)
 {
@@ -918,6 +857,66 @@ static inline uintptr_t get_base_addr(struct rte_mempool *mp, uint64_t *align)
 	*align = memhdr_addr - aligned_addr;
 
 	return aligned_addr;
+}
+
+/* Check if the netdev,qid context already exists */
+static inline bool
+ctx_exists(struct pkt_rx_queue *rxq, const char *ifname,
+		struct pkt_rx_queue *list_rxq, const char *list_ifname)
+{
+	bool exists = false;
+
+	if (rxq->xsk_queue_idx == list_rxq->xsk_queue_idx &&
+			!strncmp(ifname, list_ifname, IFNAMSIZ)) {
+		AF_XDP_LOG(ERR, "ctx %s,%i already exists, cannot share umem\n",
+					ifname, rxq->xsk_queue_idx);
+		exists = true;
+	}
+
+	return exists;
+}
+
+/* Get a pointer to an existing UMEM which overlays the rxq's mb_pool */
+static inline int
+get_shared_umem(struct pkt_rx_queue *rxq, const char *ifname,
+			struct xsk_umem_info **umem)
+{
+	struct internal_list *list;
+	struct pmd_internals *internals;
+	int i = 0, ret = 0;
+	struct rte_mempool *mb_pool = rxq->mb_pool;
+
+	if (mb_pool == NULL)
+		return ret;
+
+	pthread_mutex_lock(&internal_list_lock);
+
+	TAILQ_FOREACH(list, &internal_list, next) {
+		internals = list->eth_dev->data->dev_private;
+		for (i = 0; i < internals->queue_cnt; i++) {
+			struct pkt_rx_queue *list_rxq =
+						&internals->rx_queues[i];
+			if (rxq == list_rxq)
+				continue;
+			if (mb_pool == internals->rx_queues[i].mb_pool) {
+				if (ctx_exists(rxq, ifname, list_rxq,
+						internals->if_name)) {
+					ret = -1;
+					goto out;
+				}
+				if (__atomic_load_n(&internals->rx_queues[i].umem->refcnt,
+						    __ATOMIC_ACQUIRE)) {
+					*umem = internals->rx_queues[i].umem;
+					goto out;
+				}
+			}
+		}
+	}
+
+out:
+	pthread_mutex_unlock(&internal_list_lock);
+
+	return ret;
 }
 
 static struct
