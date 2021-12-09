@@ -30,4 +30,6 @@ deps += ['mbuf', 'port', 'lpm', 'hash', 'acl']
 
 if arch_subdir == 'x86'
 	headers += files('rte_lru_x86.h')
+elif arch_subdir == 'arm' and dpdk_conf.has('RTE_ARCH_ARM64')
+	headers += files('rte_lru_arm64.h')
 endif
