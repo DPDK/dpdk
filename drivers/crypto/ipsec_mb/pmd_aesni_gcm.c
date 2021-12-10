@@ -713,18 +713,16 @@ aesni_gcm_process_bulk(struct rte_cryptodev *dev,
 			__rte_unused union rte_crypto_sym_ofs ofs,
 			struct rte_crypto_sym_vec *vec)
 {
-	void *sess_priv;
 	struct aesni_gcm_session *s;
 	struct gcm_context_data gdata_ctx;
 	IMB_MGR *mb_mgr;
 
-	sess_priv = get_sym_session_private_data(sess, dev->driver_id);
-	if (unlikely(sess_priv == NULL)) {
+	s = (struct aesni_gcm_session *) get_sym_session_private_data(sess,
+		dev->driver_id);
+	if (unlikely(s == NULL)) {
 		aesni_gcm_fill_error_code(vec, EINVAL);
 		return 0;
 	}
-
-	s = sess_priv;
 
 	/* get per-thread MB MGR, create one if needed */
 	mb_mgr = get_per_thread_mb_mgr();
