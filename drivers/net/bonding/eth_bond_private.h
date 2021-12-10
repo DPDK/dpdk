@@ -240,7 +240,7 @@ slave_remove_mac_addresses(struct rte_eth_dev *bonded_eth_dev,
 		uint16_t slave_port_id);
 
 int
-bond_ethdev_mode_set(struct rte_eth_dev *eth_dev, int mode);
+bond_ethdev_mode_set(struct rte_eth_dev *eth_dev, uint8_t mode);
 
 int
 slave_configure(struct rte_eth_dev *bonded_eth_dev,
