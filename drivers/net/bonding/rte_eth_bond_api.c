@@ -668,7 +668,7 @@ __eth_bond_slave_remove_lock_free(uint16_t bonded_port_id,
 		}
 
 	if (slave_idx < 0) {
-		RTE_BOND_LOG(ERR, "Couldn't find slave in port list, slave count %d",
+		RTE_BOND_LOG(ERR, "Couldn't find slave in port list, slave count %u",
 				internals->slave_count);
 		return -1;
 	}

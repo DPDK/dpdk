@@ -1558,7 +1558,7 @@ mac_address_slaves_update(struct rte_eth_dev *bonded_eth_dev)
 }
 
 int
-bond_ethdev_mode_set(struct rte_eth_dev *eth_dev, int mode)
+bond_ethdev_mode_set(struct rte_eth_dev *eth_dev, uint8_t mode)
 {
 	struct bond_dev_private *internals;
 
@@ -3300,7 +3300,7 @@ bond_alloc(struct rte_vdev_device *dev, uint8_t mode)
 	/* Set mode 4 default configuration */
 	bond_mode_8023ad_setup(eth_dev, NULL);
 	if (bond_ethdev_mode_set(eth_dev, mode)) {
-		RTE_BOND_LOG(ERR, "Failed to set bonded device %d mode to %d",
+		RTE_BOND_LOG(ERR, "Failed to set bonded device %u mode to %u",
 				 eth_dev->data->port_id, mode);
 		goto err;
 	}
