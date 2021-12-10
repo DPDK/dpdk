@@ -221,8 +221,11 @@ ipsec_mb_qp_setup(struct rte_cryptodev *dev, uint16_t qp_id,
 				IMB_VERSION_STR, IMB_MP_REQ_VER_STR);
 		return -EINVAL;
 #endif
-		if (dev->data->queue_pairs[qp_id] != NULL)
-			qp = dev->data->queue_pairs[qp_id];
+		qp = dev->data->queue_pairs[qp_id];
+		if (qp == NULL) {
+			IPSEC_MB_LOG(ERR, "Primary process hasn't configured device qp.");
+			return -EINVAL;
+		}
 	} else {
 		/* Free memory prior to re-allocation if needed. */
 		if (dev->data->queue_pairs[qp_id] != NULL)
