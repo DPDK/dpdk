@@ -85,7 +85,7 @@ otx_ep_init_instr_queue(struct otx_ep_device *otx_ep, int iq_no, int num_descs,
 	iq = otx_ep->instr_queue[iq_no];
 	q_size = conf->iq.instr_type * num_descs;
 
-	/* IQ memory creation for Instruction submission to OCTEON TX2 */
+	/* IQ memory creation for Instruction submission to OCTEON 9 */
 	iq->iq_mz = rte_eth_dma_zone_reserve(otx_ep->eth_dev,
 					     "instr_queue", iq_no, q_size,
 					     OTX_EP_PCI_RING_ALIGN,
@@ -106,8 +106,8 @@ otx_ep_init_instr_queue(struct otx_ep_device *otx_ep, int iq_no, int num_descs,
 	iq->nb_desc = num_descs;
 
 	/* Create a IQ request list to hold requests that have been
-	 * posted to OCTEON TX2. This list will be used for freeing the IQ
-	 * data buffer(s) later once the OCTEON TX2 fetched the requests.
+	 * posted to OCTEON 9. This list will be used for freeing the IQ
+	 * data buffer(s) later once the OCTEON 9 fetched the requests.
 	 */
 	iq->req_list = rte_zmalloc_socket("request_list",
 			(iq->nb_desc * OTX_EP_IQREQ_LIST_SIZE),
@@ -450,7 +450,7 @@ post_iqcmd(struct otx_ep_instr_queue *iq, uint8_t *iqcmd)
 	uint8_t *iqptr, cmdsize;
 
 	/* This ensures that the read index does not wrap around to
-	 * the same position if queue gets full before OCTEON TX2 could
+	 * the same position if queue gets full before OCTEON 9 could
 	 * fetch any instr.
 	 */
 	if (iq->instr_pending > (iq->nb_desc - 1))
@@ -979,7 +979,7 @@ otx_ep_check_droq_pkts(struct otx_ep_droq *droq)
 	return new_pkts;
 }
 
-/* Check for response arrival from OCTEON TX2
+/* Check for response arrival from OCTEON 9
  * returns number of requests completed
  */
 uint16_t

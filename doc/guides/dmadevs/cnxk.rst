@@ -7,7 +7,7 @@ CNXK DMA Device Driver
 ======================
 
 The ``cnxk`` dmadev driver provides a poll-mode driver (PMD) for Marvell DPI DMA
-Hardware Accelerator block found in OCTEONTX2 and OCTEONTX3 family of SoCs.
+Hardware Accelerator block found in OCTEON 9 and OCTEON 10 family of SoCs.
 Each DMA queue is exposed as a VF function when SRIOV is enabled.
 
 The block supports following modes of DMA transfers:

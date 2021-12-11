@@ -48,7 +48,7 @@ for dump in $(find $refdir -name "*.dump"); do
 		echo "Skipped removed driver $name."
 		continue
 	fi
-	if grep -qE "\<librte_regex_octeontx2" $dump; then
+	if grep -qE "\<librte_*.*_octeontx2" $dump; then
 		echo "Skipped removed driver $name."
 		continue
 	fi

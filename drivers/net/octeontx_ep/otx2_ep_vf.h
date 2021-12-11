@@ -113,7 +113,7 @@
 #define otx2_read64(addr) rte_read64_relaxed((void *)(addr))
 #define otx2_write64(val, addr) rte_write64_relaxed((val), (void *)(addr))
 
-#define PCI_DEVID_OCTEONTX2_EP_NET_VF		0xB203 /* OCTEON TX2 EP mode */
+#define PCI_DEVID_CN9K_EP_NET_VF		0xB203 /* OCTEON 9 EP mode */
 #define PCI_DEVID_CN98XX_EP_NET_VF		0xB103
 
 int

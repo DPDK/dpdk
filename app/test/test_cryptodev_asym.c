@@ -2376,20 +2376,6 @@ test_cryptodev_octeontx_asym(void)
 }
 
 static int
-test_cryptodev_octeontx2_asym(void)
-{
-	gbl_driver_id = rte_cryptodev_driver_id_get(
-			RTE_STR(CRYPTODEV_NAME_OCTEONTX2_PMD));
-	if (gbl_driver_id == -1) {
-		RTE_LOG(ERR, USER1, "OCTEONTX2 PMD must be loaded.\n");
-		return TEST_FAILED;
-	}
-
-	/* Use test suite registered for crypto_octeontx PMD */
-	return unit_test_suite_runner(&cryptodev_octeontx_asym_testsuite);
-}
-
-static int
 test_cryptodev_cn9k_asym(void)
 {
 	gbl_driver_id = rte_cryptodev_driver_id_get(
@@ -2424,8 +2410,5 @@ REGISTER_TEST_COMMAND(cryptodev_qat_asym_autotest, test_cryptodev_qat_asym);
 
 REGISTER_TEST_COMMAND(cryptodev_octeontx_asym_autotest,
 					  test_cryptodev_octeontx_asym);
-
-REGISTER_TEST_COMMAND(cryptodev_octeontx2_asym_autotest,
-					  test_cryptodev_octeontx2_asym);
 REGISTER_TEST_COMMAND(cryptodev_cn9k_asym_autotest, test_cryptodev_cn9k_asym);
 REGISTER_TEST_COMMAND(cryptodev_cn10k_asym_autotest, test_cryptodev_cn10k_asym);

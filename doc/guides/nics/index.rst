@@ -52,7 +52,6 @@ Network Interface Controller Drivers
     ngbe
     null
     octeontx
-    octeontx2
     octeontx_ep
     pfe
     qede

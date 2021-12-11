@@ -5,7 +5,7 @@ OCTEON TX EP Poll Mode driver
 =============================
 
 The OCTEON TX EP ETHDEV PMD (**librte_pmd_octeontx_ep**) provides poll mode
-ethdev driver support for the virtual functions (VF) of **Marvell OCTEON TX2**
+ethdev driver support for the virtual functions (VF) of **Marvell OCTEON 9**
 and **Cavium OCTEON TX** families of adapters in SR-IOV context.
 
 More information can be found at `Marvell Official Website
@@ -24,4 +24,4 @@ must be installed separately:
   allocates resources such as number of VFs, input/output queues for itself and
   the number of i/o queues each VF can use.
 
-See :doc:`../platform/octeontx2` for SDP interface information which provides PCIe endpoint support for a remote host.
+See :doc:`../platform/cnxk` for SDP interface information which provides PCIe endpoint support for a remote host.

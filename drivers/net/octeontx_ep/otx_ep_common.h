@@ -150,7 +150,7 @@ struct otx_ep_iq_config {
 
 /** The instruction (input) queue.
  *  The input queue is used to post raw (instruction) mode data or packet data
- *  to OCTEON TX2 device from the host. Each IQ of a OTX_EP EP VF device has one
+ *  to OCTEON 9 device from the host. Each IQ of a OTX_EP EP VF device has one
  *  such structure to represent it.
  */
 struct otx_ep_instr_queue {
@@ -170,12 +170,12 @@ struct otx_ep_instr_queue {
 	/* Input ring index, where the driver should write the next packet */
 	uint32_t host_write_index;
 
-	/* Input ring index, where the OCTEON TX2 should read the next packet */
+	/* Input ring index, where the OCTEON 9 should read the next packet */
 	uint32_t otx_read_index;
 
 	uint32_t reset_instr_cnt;
 
-	/** This index aids in finding the window in the queue where OCTEON TX2
+	/** This index aids in finding the window in the queue where OCTEON 9
 	 *  has read the commands.
 	 */
 	uint32_t flush_index;
@@ -195,7 +195,7 @@ struct otx_ep_instr_queue {
 	/* OTX_EP instruction count register for this ring. */
 	void *inst_cnt_reg;
 
-	/* Number of instructions pending to be posted to OCTEON TX2. */
+	/* Number of instructions pending to be posted to OCTEON 9. */
 	uint32_t fill_cnt;
 
 	/* Statistics for this input queue. */
@@ -230,8 +230,8 @@ union otx_ep_rh {
 };
 #define OTX_EP_RH_SIZE (sizeof(union otx_ep_rh))
 
-/** Information about packet DMA'ed by OCTEON TX2.
- *  The format of the information available at Info Pointer after OCTEON TX2
+/** Information about packet DMA'ed by OCTEON 9.
+ *  The format of the information available at Info Pointer after OCTEON 9
  *  has posted a packet. Not all descriptors have valid information. Only
  *  the Info field of the first descriptor for a packet has information
  *  about the packet.
@@ -295,7 +295,7 @@ struct otx_ep_droq {
 	/* Driver should read the next packet at this index */
 	uint32_t read_idx;
 
-	/* OCTEON TX2 will write the next packet at this index */
+	/* OCTEON 9 will write the next packet at this index */
 	uint32_t write_idx;
 
 	/* At this index, the driver will refill the descriptor's buffer */
@@ -326,7 +326,7 @@ struct otx_ep_droq {
 	 */
 	void *pkts_credit_reg;
 
-	/** Pointer to the mapped packet sent register. OCTEON TX2 writes the
+	/** Pointer to the mapped packet sent register. OCTEON 9 writes the
 	 *  number of packets DMA'ed to host memory in this register.
 	 */
 	void *pkts_sent_reg;

@@ -157,7 +157,6 @@ The following are the application command-line options:
            crypto_mvsam
            crypto_null
            crypto_octeontx
-           crypto_octeontx2
            crypto_openssl
            crypto_qat
            crypto_scheduler

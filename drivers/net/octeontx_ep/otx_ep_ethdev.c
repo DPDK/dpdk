@@ -102,7 +102,7 @@ otx_ep_chip_specific_setup(struct otx_ep_device *otx_epvf)
 		ret = otx_ep_vf_setup_device(otx_epvf);
 		otx_epvf->fn_list.disable_io_queues(otx_epvf);
 		break;
-	case PCI_DEVID_OCTEONTX2_EP_NET_VF:
+	case PCI_DEVID_CN9K_EP_NET_VF:
 	case PCI_DEVID_CN98XX_EP_NET_VF:
 		otx_epvf->chip_id = dev_id;
 		ret = otx2_ep_vf_setup_device(otx_epvf);
@@ -137,7 +137,7 @@ otx_epdev_init(struct otx_ep_device *otx_epvf)
 	otx_epvf->eth_dev->rx_pkt_burst = &otx_ep_recv_pkts;
 	if (otx_epvf->chip_id == PCI_DEVID_OCTEONTX_EP_VF)
 		otx_epvf->eth_dev->tx_pkt_burst = &otx_ep_xmit_pkts;
-	else if (otx_epvf->chip_id == PCI_DEVID_OCTEONTX2_EP_NET_VF ||
+	else if (otx_epvf->chip_id == PCI_DEVID_CN9K_EP_NET_VF ||
 		 otx_epvf->chip_id == PCI_DEVID_CN98XX_EP_NET_VF)
 		otx_epvf->eth_dev->tx_pkt_burst = &otx2_ep_xmit_pkts;
 	ethdev_queues = (uint32_t)(otx_epvf->sriov_info.rings_per_vf);
@@ -422,7 +422,7 @@ otx_ep_eth_dev_init(struct rte_eth_dev *eth_dev)
 	otx_epvf->pdev = pdev;
 
 	otx_epdev_init(otx_epvf);
-	if (pdev->id.device_id == PCI_DEVID_OCTEONTX2_EP_NET_VF)
+	if (pdev->id.device_id == PCI_DEVID_CN9K_EP_NET_VF)
 		otx_epvf->pkind = SDP_OTX2_PKIND;
 	else
 		otx_epvf->pkind = SDP_PKIND;
@@ -450,7 +450,7 @@ otx_ep_eth_dev_pci_remove(struct rte_pci_device *pci_dev)
 /* Set of PCI devices this driver supports */
 static const struct rte_pci_id pci_id_otx_ep_map[] = {
 	{ RTE_PCI_DEVICE(PCI_VENDOR_ID_CAVIUM, PCI_DEVID_OCTEONTX_EP_VF) },
-	{ RTE_PCI_DEVICE(PCI_VENDOR_ID_CAVIUM, PCI_DEVID_OCTEONTX2_EP_NET_VF) },
+	{ RTE_PCI_DEVICE(PCI_VENDOR_ID_CAVIUM, PCI_DEVID_CN9K_EP_NET_VF) },
 	{ RTE_PCI_DEVICE(PCI_VENDOR_ID_CAVIUM, PCI_DEVID_CN98XX_EP_NET_VF) },
 	{ .vendor_id = 0, /* sentinel */ }
 };

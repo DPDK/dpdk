@@ -139,7 +139,7 @@ implementer_cavium = {
             'march_features': ['crc', 'crypto', 'lse'],
             'compiler_options': ['-mcpu=octeontx2'],
             'flags': [
-                ['RTE_MACHINE', '"octeontx2"'],
+                ['RTE_MACHINE', '"cn9k"'],
                 ['RTE_ARM_FEATURE_ATOMICS', true],
                 ['RTE_USE_C11_MEM_MODEL', true],
                 ['RTE_MAX_LCORE', 36],
@@ -340,8 +340,8 @@ soc_n2 = {
     'numa': false
 }
 
-soc_octeontx2 = {
-    'description': 'Marvell OCTEON TX2',
+soc_cn9k = {
+    'description': 'Marvell OCTEON 9',
     'implementer': '0x43',
     'part_number': '0xb2',
     'numa': false
@@ -377,6 +377,7 @@ generic_aarch32: Generic un-optimized build for armv8 aarch32 execution mode.
 armada:          Marvell ARMADA
 bluefield:       NVIDIA BlueField
 centriq2400:     Qualcomm Centriq 2400
+cn9k:            Marvell OCTEON 9
 cn10k:           Marvell OCTEON 10
 dpaa:            NXP DPAA
 emag:            Ampere eMAG
@@ -385,7 +386,6 @@ kunpeng920:      HiSilicon Kunpeng 920
 kunpeng930:      HiSilicon Kunpeng 930
 n1sdp:           Arm Neoverse N1SDP
 n2:              Arm Neoverse N2
-octeontx2:       Marvell OCTEON TX2
 stingray:        Broadcom Stingray
 thunderx2:       Marvell ThunderX2 T99
 thunderxt88:     Marvell ThunderX T88
@@ -399,6 +399,7 @@ socs = {
     'armada': soc_armada,
     'bluefield': soc_bluefield,
     'centriq2400': soc_centriq2400,
+    'cn9k': soc_cn9k,
     'cn10k' : soc_cn10k,
     'dpaa': soc_dpaa,
     'emag': soc_emag,
@@ -407,7 +408,6 @@ socs = {
     'kunpeng930': soc_kunpeng930,
     'n1sdp': soc_n1sdp,
     'n2': soc_n2,
-    'octeontx2': soc_octeontx2,
     'stingray': soc_stingray,
     'thunderx2': soc_thunderx2,
     'thunderxt88': soc_thunderxt88

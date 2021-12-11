@@ -13,6 +13,5 @@ application through the mempool API.
 
     cnxk
     octeontx
-    octeontx2
     ring
     stack

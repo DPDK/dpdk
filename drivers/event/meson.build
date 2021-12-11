@@ -11,7 +11,6 @@ drivers = [
         'dpaa',
         'dpaa2',
         'dsw',
-        'octeontx2',
         'opdl',
         'skeleton',
         'sw',

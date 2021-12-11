@@ -13,6 +13,9 @@ More information about CN9K and CN10K SoC can be found at `Marvell Official Webs
 Supported OCTEON cnxk SoCs
 --------------------------
 
+- CN93xx
+- CN96xx
+- CN98xx
 - CN106xx
 - CNF105xx
 
@@ -582,6 +585,15 @@ Cross Compilation
 ~~~~~~~~~~~~~~~~~
 
 Refer to :doc:`../linux_gsg/cross_build_dpdk_for_arm64` for generic arm64 details.
+
+CN9K:
+
+.. code-block:: console
+
+        meson build --cross-file config/arm/arm64_cn9k_linux_gcc
+        ninja -C build
+
+CN10K:
 
 .. code-block:: console
 

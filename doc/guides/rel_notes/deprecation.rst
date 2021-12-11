@@ -125,20 +125,3 @@ Deprecation Notices
   applications should be updated to use the ``dmadev`` library instead,
   with the underlying HW-functionality being provided by the ``ioat`` or
   ``idxd`` dma drivers
-
-* drivers/octeontx2: remove octeontx2 drivers
-
-  In the view of enabling unified driver for ``octeontx2(cn9k)``/``octeontx3(cn10k)``,
-  removing ``drivers/octeontx2`` drivers and replace with ``drivers/cnxk/`` which
-  supports both ``octeontx2(cn9k)`` and ``octeontx3(cn10k)`` SoCs.
-  This deprecation notice is to do following actions in DPDK v22.02 version.
-
-  #. Replace ``drivers/common/octeontx2/`` with ``drivers/common/cnxk/``
-  #. Replace ``drivers/mempool/octeontx2/`` with ``drivers/mempool/cnxk/``
-  #. Replace ``drivers/net/octeontx2/`` with ``drivers/net/cnxk/``
-  #. Replace ``drivers/event/octeontx2/`` with ``drivers/event/cnxk/``
-  #. Replace ``drivers/crypto/octeontx2/`` with ``drivers/crypto/cnxk/``
-  #. Rename ``drivers/regex/octeontx2/`` as ``drivers/regex/cn9k/``
-  #. Rename ``config/arm/arm64_octeontx2_linux_gcc`` as ``config/arm/arm64_cn9k_linux_gcc``
-
-  Last two actions are to align naming convention as cnxk scheme.

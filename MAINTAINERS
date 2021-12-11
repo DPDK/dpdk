@@ -536,15 +536,6 @@ T: git://dpdk.org/next/dpdk-next-net-mrvl
 F: drivers/mempool/cnxk/
 F: doc/guides/mempool/cnxk.rst
 
-Marvell OCTEON TX2
-M: Jerin Jacob <jerinj@marvell.com>
-M: Nithin Dabilpuram <ndabilpuram@marvell.com>
-F: drivers/common/octeontx2/
-F: drivers/mempool/octeontx2/
-F: doc/guides/platform/img/octeontx2_*
-F: doc/guides/platform/octeontx2.rst
-F: doc/guides/mempool/octeontx2.rst
-
 
 Bus Drivers
 -----------
@@ -796,21 +787,6 @@ T: git://dpdk.org/next/dpdk-next-net-mrvl
 F: drivers/net/mvneta/
 F: doc/guides/nics/mvneta.rst
 F: doc/guides/nics/features/mvneta.ini
-
-Marvell OCTEON TX2
-M: Jerin Jacob <jerinj@marvell.com>
-M: Nithin Dabilpuram <ndabilpuram@marvell.com>
-M: Kiran Kumar K <kirankumark@marvell.com>
-T: git://dpdk.org/next/dpdk-next-net-mrvl
-F: drivers/net/octeontx2/
-F: doc/guides/nics/features/octeontx2*.ini
-F: doc/guides/nics/octeontx2.rst
-
-Marvell OCTEON TX2 - security
-M: Anoob Joseph <anoobj@marvell.com>
-T: git://dpdk.org/next/dpdk-next-crypto
-F: drivers/common/octeontx2/otx2_sec*
-F: drivers/net/octeontx2/otx2_ethdev_sec*
 
 Marvell OCTEON TX EP - endpoint
 M: Nalla Pradeep <pnalla@marvell.com>
@@ -1117,13 +1093,6 @@ F: drivers/crypto/nitrox/
 F: doc/guides/cryptodevs/nitrox.rst
 F: doc/guides/cryptodevs/features/nitrox.ini
 
-Marvell OCTEON TX2 crypto
-M: Ankur Dwivedi <adwivedi@marvell.com>
-M: Anoob Joseph <anoobj@marvell.com>
-F: drivers/crypto/octeontx2/
-F: doc/guides/cryptodevs/octeontx2.rst
-F: doc/guides/cryptodevs/features/octeontx2.ini
-
 Mellanox mlx5
 M: Matan Azrad <matan@nvidia.com>
 F: drivers/crypto/mlx5/
@@ -1299,12 +1268,6 @@ M: Pavan Nikhilesh <pbhagavatula@marvell.com>
 M: Shijith Thotton <sthotton@marvell.com>
 F: drivers/event/cnxk/
 F: doc/guides/eventdevs/cnxk.rst
-
-Marvell OCTEON TX2
-M: Pavan Nikhilesh <pbhagavatula@marvell.com>
-M: Jerin Jacob <jerinj@marvell.com>
-F: drivers/event/octeontx2/
-F: doc/guides/eventdevs/octeontx2.rst
 
 NXP DPAA eventdev
 M: Hemant Agrawal <hemant.agrawal@nxp.com>

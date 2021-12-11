@@ -178,7 +178,7 @@ Runtime Config Options
    * ``rss_adder<7:0> = flow_tag<7:0>``
 
    Latter one aligns with standard NIC behavior vs former one is a legacy
-   RSS adder scheme used in OCTEON TX2 products.
+   RSS adder scheme used in OCTEON 9 products.
 
    By default, the driver runs in the latter mode.
    Setting this flag to 1 to select the legacy mode.
@@ -291,7 +291,7 @@ Limitations
 The OCTEON CN9K/CN10K SoC family NIC has inbuilt HW assisted external mempool manager.
 ``net_cnxk`` PMD only works with ``mempool_cnxk`` mempool handler
 as it is performance wise most effective way for packet allocation and Tx buffer
-recycling on OCTEON TX2 SoC platform.
+recycling on OCTEON 9 SoC platform.
 
 CRC stripping
 ~~~~~~~~~~~~~

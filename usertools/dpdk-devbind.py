@@ -65,11 +65,11 @@ intel_ntb_skx = {'Class': '06', 'Vendor': '8086', 'Device': '201c',
 intel_ntb_icx = {'Class': '06', 'Vendor': '8086', 'Device': '347e',
                  'SVendor': None, 'SDevice': None}
 
-octeontx2_sso = {'Class': '08', 'Vendor': '177d', 'Device': 'a0f9,a0fa',
+cnxk_sso = {'Class': '08', 'Vendor': '177d', 'Device': 'a0f9,a0fa',
                  'SVendor': None, 'SDevice': None}
-octeontx2_npa = {'Class': '08', 'Vendor': '177d', 'Device': 'a0fb,a0fc',
+cnxk_npa = {'Class': '08', 'Vendor': '177d', 'Device': 'a0fb,a0fc',
                  'SVendor': None, 'SDevice': None}
-octeontx2_ree = {'Class': '08', 'Vendor': '177d', 'Device': 'a0f4',
+cn9k_ree = {'Class': '08', 'Vendor': '177d', 'Device': 'a0f4',
                  'SVendor': None, 'SDevice': None}
 
 network_devices = [network_class, cavium_pkx, avp_vnic, ifpga_class]
@@ -77,10 +77,10 @@ baseband_devices = [acceleration_class]
 crypto_devices = [encryption_class, intel_processor_class]
 dma_devices = [cnxk_dma, hisilicon_dma,
                intel_idxd_spr, intel_ioat_bdw, intel_ioat_icx, intel_ioat_skx]
-eventdev_devices = [cavium_sso, cavium_tim, intel_dlb, octeontx2_sso]
-mempool_devices = [cavium_fpa, octeontx2_npa]
+eventdev_devices = [cavium_sso, cavium_tim, intel_dlb, cnxk_sso]
+mempool_devices = [cavium_fpa, cnxk_npa]
 compress_devices = [cavium_zip]
-regex_devices = [octeontx2_ree]
+regex_devices = [cn9k_ree]
 misc_devices = [cnxk_bphy, cnxk_bphy_cgx, cnxk_inl_dev,
                 intel_ntb_skx, intel_ntb_icx]
 

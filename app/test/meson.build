@@ -341,7 +341,6 @@ driver_test_names = [
         'cryptodev_dpaa_sec_autotest',
         'cryptodev_dpaa2_sec_autotest',
         'cryptodev_null_autotest',
-        'cryptodev_octeontx2_autotest',
         'cryptodev_openssl_autotest',
         'cryptodev_openssl_asym_autotest',
         'cryptodev_qat_autotest',

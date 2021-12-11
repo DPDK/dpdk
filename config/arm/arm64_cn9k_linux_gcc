@@ -13,5 +13,4 @@ cpu = 'armv8-a'
 endian = 'little'
 
 [properties]
-platform = 'octeontx2'
-disable_drivers = 'common/cnxk'
+platform = 'cn9k'

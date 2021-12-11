@@ -45,7 +45,6 @@ drivers = [
         'ngbe',
         'null',
         'octeontx',
-        'octeontx2',
         'octeontx_ep',
         'pcap',
         'pfe',

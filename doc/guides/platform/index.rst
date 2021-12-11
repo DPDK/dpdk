@@ -15,4 +15,3 @@ The following are platform specific guides and setup information.
     dpaa
     dpaa2
     octeontx
-    octeontx2

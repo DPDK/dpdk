@@ -7,7 +7,6 @@ drivers = [
         'dpaa',
         'dpaa2',
         'octeontx',
-        'octeontx2',
         'ring',
         'stack',
 ]

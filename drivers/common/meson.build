@@ -8,5 +8,4 @@ drivers = [
         'iavf',
         'mvep',
         'octeontx',
-        'octeontx2',
 ]
