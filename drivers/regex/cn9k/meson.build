@@ -16,12 +16,10 @@ if lib.found()
 endif
 
 sources = files(
-        'otx2_regexdev.c',
-        'otx2_regexdev_compiler.c',
-        'otx2_regexdev_hw_access.c',
-        'otx2_regexdev_mbox.c',
+        'cn9k_regexdev.c',
+        'cn9k_regexdev_compiler.c',
 )
 
-deps += ['bus_pci', 'common_octeontx2', 'regexdev']
+deps += ['bus_pci', 'regexdev']
+deps += ['common_cnxk', 'mempool_cnxk']
 
-includes += include_directories('../../common/octeontx2')

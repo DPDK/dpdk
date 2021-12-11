@@ -290,7 +290,7 @@ New Features
 
   Added a new PMD for the hardware regex offload block for OCTEON TX2 SoC.
 
-  See the :doc:`../regexdevs/octeontx2` for more details.
+  See ``regexdevs/octeontx2`` for more details.
 
 * **Updated Software Eventdev driver.**
 

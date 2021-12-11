@@ -156,6 +156,9 @@ This section lists dataplane H/W block(s) available in cnxk SoC.
 #. **Dmadev Driver**
    See :doc:`../dmadevs/cnxk` for DPI Dmadev driver information.
 
+#. **Regex Device Driver**
+   See :doc:`../regexdevs/cn9k` for REE Regex device driver information.
+
 Procedure to Setup Platform
 ---------------------------
 

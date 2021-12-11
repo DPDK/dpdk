@@ -13,12 +13,8 @@
 
 
 /* REE common headers */
-#include "otx2_common.h"
-#include "otx2_dev.h"
-#include "otx2_regexdev.h"
-#include "otx2_regexdev_compiler.h"
-#include "otx2_regexdev_hw_access.h"
-#include "otx2_regexdev_mbox.h"
+#include "cn9k_regexdev.h"
+#include "cn9k_regexdev_compiler.h"
 
 
 /* HW matches are at offset 0x80 from RES_PTR_ADDR
@@ -35,9 +31,6 @@
 #define REE_MAX_RULES_PER_GROUP 0xFFFF
 #define REE_MAX_GROUPS 0xFFFF
 
-/* This is temporarily here */
-#define REE0_PF	19
-#define REE1_PF	20
 
 #define REE_RULE_DB_VERSION	2
 #define REE_RULE_DB_REVISION	0
@@ -58,32 +51,32 @@ struct ree_rule_db {
 static void
 qp_memzone_name_get(char *name, int size, int dev_id, int qp_id)
 {
-	snprintf(name, size, "otx2_ree_lf_mem_%u:%u", dev_id, qp_id);
+	snprintf(name, size, "cn9k_ree_lf_mem_%u:%u", dev_id, qp_id);
 }
 
-static struct otx2_ree_qp *
+static struct roc_ree_qp *
 ree_qp_create(const struct rte_regexdev *dev, uint16_t qp_id)
 {
-	struct otx2_ree_data *data = dev->data->dev_private;
+	struct cn9k_ree_data *data = dev->data->dev_private;
 	uint64_t pg_sz = sysconf(_SC_PAGESIZE);
-	struct otx2_ree_vf *vf = &data->vf;
+	struct roc_ree_vf *vf = &data->vf;
 	const struct rte_memzone *lf_mem;
 	uint32_t len, iq_len, size_div2;
 	char name[RTE_MEMZONE_NAMESIZE];
 	uint64_t used_len, iova;
-	struct otx2_ree_qp *qp;
+	struct roc_ree_qp *qp;
 	uint8_t *va;
 	int ret;
 
 	/* Allocate queue pair */
-	qp = rte_zmalloc("OCTEON TX2 Regex PMD Queue Pair", sizeof(*qp),
-				OTX2_ALIGN);
+	qp = rte_zmalloc("CN9K Regex PMD Queue Pair", sizeof(*qp),
+				ROC_ALIGN);
 	if (qp == NULL) {
-		otx2_err("Could not allocate queue pair");
+		cn9k_err("Could not allocate queue pair");
 		return NULL;
 	}
 
-	iq_len = OTX2_REE_IQ_LEN;
+	iq_len = REE_IQ_LEN;
 
 	/*
 	 * Queue size must be in units of 128B 2 * REE_INST_S (which is 64B),
@@ -93,13 +86,13 @@ ree_qp_create(const struct rte_regexdev *dev, uint16_t qp_id)
 	size_div2 = iq_len >> 1;
 
 	/* For pending queue */
-	len = iq_len * RTE_ALIGN(sizeof(struct otx2_ree_rid), 8);
+	len = iq_len * RTE_ALIGN(sizeof(struct roc_ree_rid), 8);
 
 	/* So that instruction queues start as pg size aligned */
 	len = RTE_ALIGN(len, pg_sz);
 
 	/* For instruction queues */
-	len += OTX2_REE_IQ_LEN * sizeof(union otx2_ree_inst);
+	len += REE_IQ_LEN * sizeof(union roc_ree_inst);
 
 	/* Waste after instruction queues */
 	len = RTE_ALIGN(len, pg_sz);
@@ -107,11 +100,11 @@ ree_qp_create(const struct rte_regexdev *dev, uint16_t qp_id)
 	qp_memzone_name_get(name, RTE_MEMZONE_NAMESIZE, dev->data->dev_id,
 			    qp_id);
 
-	lf_mem = rte_memzone_reserve_aligned(name, len, vf->otx2_dev.node,
+	lf_mem = rte_memzone_reserve_aligned(name, len, rte_socket_id(),
 			RTE_MEMZONE_SIZE_HINT_ONLY | RTE_MEMZONE_256MB,
 			RTE_CACHE_LINE_SIZE);
 	if (lf_mem == NULL) {
-		otx2_err("Could not allocate reserved memzone");
+		cn9k_err("Could not allocate reserved memzone");
 		goto qp_free;
 	}
 
@@ -121,24 +114,24 @@ ree_qp_create(const struct rte_regexdev *dev, uint16_t qp_id)
 	memset(va, 0, len);
 
 	/* Initialize pending queue */
-	qp->pend_q.rid_queue = (struct otx2_ree_rid *)va;
+	qp->pend_q.rid_queue = (struct roc_ree_rid *)va;
 	qp->pend_q.enq_tail = 0;
 	qp->pend_q.deq_head = 0;
 	qp->pend_q.pending_count = 0;
 
-	used_len = iq_len * RTE_ALIGN(sizeof(struct otx2_ree_rid), 8);
+	used_len = iq_len * RTE_ALIGN(sizeof(struct roc_ree_rid), 8);
 	used_len = RTE_ALIGN(used_len, pg_sz);
 	iova += used_len;
 
 	qp->iq_dma_addr = iova;
 	qp->id = qp_id;
-	qp->base = OTX2_REE_LF_BAR2(vf, qp_id);
-	qp->otx2_regexdev_jobid = 0;
+	qp->base = roc_ree_qp_get_base(vf, qp_id);
+	qp->roc_regexdev_jobid = 0;
 	qp->write_offset = 0;
 
-	ret = otx2_ree_iq_enable(dev, qp, OTX2_REE_QUEUE_HI_PRIO, size_div2);
+	ret = roc_ree_iq_enable(vf, qp, REE_QUEUE_HI_PRIO, size_div2);
 	if (ret) {
-		otx2_err("Could not enable instruction queue");
+		cn9k_err("Could not enable instruction queue");
 		goto qp_free;
 	}
 
@@ -150,13 +143,13 @@ qp_free:
 }
 
 static int
-ree_qp_destroy(const struct rte_regexdev *dev, struct otx2_ree_qp *qp)
+ree_qp_destroy(const struct rte_regexdev *dev, struct roc_ree_qp *qp)
 {
 	const struct rte_memzone *lf_mem;
 	char name[RTE_MEMZONE_NAMESIZE];
 	int ret;
 
-	otx2_ree_iq_disable(qp);
+	roc_ree_iq_disable(qp);
 
 	qp_memzone_name_get(name, RTE_MEMZONE_NAMESIZE, dev->data->dev_id,
 			    qp->id);
@@ -175,8 +168,8 @@ ree_qp_destroy(const struct rte_regexdev *dev, struct otx2_ree_qp *qp)
 static int
 ree_queue_pair_release(struct rte_regexdev *dev, uint16_t qp_id)
 {
-	struct otx2_ree_data *data = dev->data->dev_private;
-	struct otx2_ree_qp *qp = data->queue_pairs[qp_id];
+	struct cn9k_ree_data *data = dev->data->dev_private;
+	struct roc_ree_qp *qp = data->queue_pairs[qp_id];
 	int ret;
 
 	ree_func_trace("Queue=%d", qp_id);
@@ -186,7 +179,7 @@ ree_queue_pair_release(struct rte_regexdev *dev, uint16_t qp_id)
 
 	ret = ree_qp_destroy(dev, qp);
 	if (ret) {
-		otx2_err("Could not destroy queue pair %d", qp_id);
+		cn9k_err("Could not destroy queue pair %d", qp_id);
 		return ret;
 	}
 
@@ -200,12 +193,12 @@ ree_dev_register(const char *name)
 {
 	struct rte_regexdev *dev;
 
-	otx2_ree_dbg("Creating regexdev %s\n", name);
+	cn9k_ree_dbg("Creating regexdev %s\n", name);
 
 	/* allocate device structure */
 	dev = rte_regexdev_register(name);
 	if (dev == NULL) {
-		otx2_err("Failed to allocate regex device for %s", name);
+		cn9k_err("Failed to allocate regex device for %s", name);
 		return NULL;
 	}
 
@@ -213,12 +206,12 @@ ree_dev_register(const char *name)
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
 		dev->data->dev_private =
 				rte_zmalloc_socket("regexdev device private",
-						sizeof(struct otx2_ree_data),
+						sizeof(struct cn9k_ree_data),
 						RTE_CACHE_LINE_SIZE,
 						rte_socket_id());
 
 		if (dev->data->dev_private == NULL) {
-			otx2_err("Cannot allocate memory for dev %s private data",
+			cn9k_err("Cannot allocate memory for dev %s private data",
 					name);
 
 			rte_regexdev_unregister(dev);
@@ -232,7 +225,7 @@ ree_dev_register(const char *name)
 static int
 ree_dev_unregister(struct rte_regexdev *dev)
 {
-	otx2_ree_dbg("Closing regex device %s", dev->device->name);
+	cn9k_ree_dbg("Closing regex device %s", dev->device->name);
 
 	/* free regex device */
 	rte_regexdev_unregister(dev);
@@ -246,8 +239,8 @@ ree_dev_unregister(struct rte_regexdev *dev)
 static int
 ree_dev_fini(struct rte_regexdev *dev)
 {
-	struct otx2_ree_data *data = dev->data->dev_private;
-	struct rte_pci_device *pci_dev;
+	struct cn9k_ree_data *data = dev->data->dev_private;
+	struct roc_ree_vf *vf = &data->vf;
 	int i, ret;
 
 	ree_func_trace();
@@ -258,9 +251,9 @@ ree_dev_fini(struct rte_regexdev *dev)
 			return ret;
 	}
 
-	ret = otx2_ree_queues_detach(dev);
+	ret = roc_ree_queues_detach(vf);
 	if (ret)
-		otx2_err("Could not detach queues");
+		cn9k_err("Could not detach queues");
 
 	/* TEMP : should be in lib */
 	if (data->queue_pairs)
@@ -268,33 +261,32 @@ ree_dev_fini(struct rte_regexdev *dev)
 	if (data->rules)
 		rte_free(data->rules);
 
-	pci_dev = container_of(dev->device, struct rte_pci_device, device);
-	otx2_dev_fini(pci_dev, &(data->vf.otx2_dev));
+	roc_ree_dev_fini(vf);
 
 	ret = ree_dev_unregister(dev);
 	if (ret)
-		otx2_err("Could not destroy PMD");
+		cn9k_err("Could not destroy PMD");
 
 	return ret;
 }
 
 static inline int
-ree_enqueue(struct otx2_ree_qp *qp, struct rte_regex_ops *op,
-		 struct otx2_ree_pending_queue *pend_q)
+ree_enqueue(struct roc_ree_qp *qp, struct rte_regex_ops *op,
+		 struct roc_ree_pending_queue *pend_q)
 {
-	union otx2_ree_inst inst;
-	union otx2_ree_res *res;
+	union roc_ree_inst inst;
+	union ree_res *res;
 	uint32_t offset;
 
-	if (unlikely(pend_q->pending_count >= OTX2_REE_DEFAULT_CMD_QLEN)) {
-		otx2_err("Pending count %" PRIu64 " is greater than Q size %d",
-		pend_q->pending_count, OTX2_REE_DEFAULT_CMD_QLEN);
+	if (unlikely(pend_q->pending_count >= REE_DEFAULT_CMD_QLEN)) {
+		cn9k_err("Pending count %" PRIu64 " is greater than Q size %d",
+		pend_q->pending_count, REE_DEFAULT_CMD_QLEN);
 		return -EAGAIN;
 	}
-	if (unlikely(op->mbuf->data_len > OTX2_REE_MAX_PAYLOAD_SIZE ||
+	if (unlikely(op->mbuf->data_len > REE_MAX_PAYLOAD_SIZE ||
 			op->mbuf->data_len == 0)) {
-		otx2_err("Packet length %d is greater than MAX payload %d",
-				op->mbuf->data_len, OTX2_REE_MAX_PAYLOAD_SIZE);
+		cn9k_err("Packet length %d is greater than MAX payload %d",
+				op->mbuf->data_len, REE_MAX_PAYLOAD_SIZE);
 		return -EAGAIN;
 	}
 
@@ -324,7 +316,7 @@ ree_enqueue(struct otx2_ree_qp *qp, struct rte_regex_ops *op,
 		inst.cn98xx.ree_job_ctrl = (0x1 << 8);
 	else
 		inst.cn98xx.ree_job_ctrl = 0;
-	inst.cn98xx.ree_job_id = qp->otx2_regexdev_jobid;
+	inst.cn98xx.ree_job_id = qp->roc_regexdev_jobid;
 	/* W 7 */
 	inst.cn98xx.ree_job_subset_id_0 = op->group_id0;
 	if (op->req_flags & RTE_REGEX_OPS_REQ_GROUP_ID1_VALID_F)
@@ -348,33 +340,33 @@ ree_enqueue(struct otx2_ree_qp *qp, struct rte_regex_ops *op,
 	pend_q->rid_queue[pend_q->enq_tail].user_id = op->user_id;
 
 	/* Mark result as not done */
-	res = (union otx2_ree_res *)(op);
+	res = (union ree_res *)(op);
 	res->s.done = 0;
 	res->s.ree_err = 0;
 
 	/* We will use soft queue length here to limit requests */
-	REE_MOD_INC(pend_q->enq_tail, OTX2_REE_DEFAULT_CMD_QLEN);
+	REE_MOD_INC(pend_q->enq_tail, REE_DEFAULT_CMD_QLEN);
 	pend_q->pending_count += 1;
-	REE_MOD_INC(qp->otx2_regexdev_jobid, 0xFFFFFF);
-	REE_MOD_INC(qp->write_offset, OTX2_REE_IQ_LEN);
+	REE_MOD_INC(qp->roc_regexdev_jobid, 0xFFFFFF);
+	REE_MOD_INC(qp->write_offset, REE_IQ_LEN);
 
 	return 0;
 }
 
 static uint16_t
-otx2_ree_enqueue_burst(struct rte_regexdev *dev, uint16_t qp_id,
+cn9k_ree_enqueue_burst(struct rte_regexdev *dev, uint16_t qp_id,
 		       struct rte_regex_ops **ops, uint16_t nb_ops)
 {
-	struct otx2_ree_data *data = dev->data->dev_private;
-	struct otx2_ree_qp *qp = data->queue_pairs[qp_id];
-	struct otx2_ree_pending_queue *pend_q;
+	struct cn9k_ree_data *data = dev->data->dev_private;
+	struct roc_ree_qp *qp = data->queue_pairs[qp_id];
+	struct roc_ree_pending_queue *pend_q;
 	uint16_t nb_allowed, count = 0;
 	struct rte_regex_ops *op;
 	int ret;
 
 	pend_q = &qp->pend_q;
 
-	nb_allowed = OTX2_REE_DEFAULT_CMD_QLEN - pend_q->pending_count;
+	nb_allowed = REE_DEFAULT_CMD_QLEN - pend_q->pending_count;
 	if (nb_ops > nb_allowed)
 		nb_ops = nb_allowed;
 
@@ -392,7 +384,7 @@ otx2_ree_enqueue_burst(struct rte_regexdev *dev, uint16_t qp_id,
 	rte_io_wmb();
 
 	/* Update Doorbell */
-	otx2_write64(count, qp->base + OTX2_REE_LF_DOORBELL);
+	plt_write64(count, qp->base + REE_LF_DOORBELL);
 
 	return count;
 }
@@ -422,15 +414,15 @@ ree_dequeue_post_process(struct rte_regex_ops *ops)
 	}
 
 	if (unlikely(ree_res_status != REE_TYPE_RESULT_DESC)) {
-		if (ree_res_status & OTX2_REE_STATUS_PMI_SOJ_BIT)
+		if (ree_res_status & REE_STATUS_PMI_SOJ_BIT)
 			ops->rsp_flags |= RTE_REGEX_OPS_RSP_PMI_SOJ_F;
-		if (ree_res_status & OTX2_REE_STATUS_PMI_EOJ_BIT)
+		if (ree_res_status & REE_STATUS_PMI_EOJ_BIT)
 			ops->rsp_flags |= RTE_REGEX_OPS_RSP_PMI_EOJ_F;
-		if (ree_res_status & OTX2_REE_STATUS_ML_CNT_DET_BIT)
+		if (ree_res_status & REE_STATUS_ML_CNT_DET_BIT)
 			ops->rsp_flags |= RTE_REGEX_OPS_RSP_MAX_SCAN_TIMEOUT_F;
-		if (ree_res_status & OTX2_REE_STATUS_MM_CNT_DET_BIT)
+		if (ree_res_status & REE_STATUS_MM_CNT_DET_BIT)
 			ops->rsp_flags |= RTE_REGEX_OPS_RSP_MAX_MATCH_F;
-		if (ree_res_status & OTX2_REE_STATUS_MP_CNT_DET_BIT)
+		if (ree_res_status & REE_STATUS_MP_CNT_DET_BIT)
 			ops->rsp_flags |= RTE_REGEX_OPS_RSP_MAX_PREFIX_F;
 	}
 	if (ops->nb_matches > 0) {
@@ -439,22 +431,22 @@ ree_dequeue_post_process(struct rte_regex_ops *ops)
 			ops->nb_matches : REE_NUM_MATCHES_ALIGN);
 		match = (uint64_t)ops + REE_MATCH_OFFSET;
 		match += (ops->nb_matches - off) *
-			sizeof(union otx2_ree_match);
+			sizeof(union ree_match);
 		memcpy((void *)ops->matches, (void *)match,
-			off * sizeof(union otx2_ree_match));
+			off * sizeof(union ree_match));
 	}
 }
 
 static uint16_t
-otx2_ree_dequeue_burst(struct rte_regexdev *dev, uint16_t qp_id,
+cn9k_ree_dequeue_burst(struct rte_regexdev *dev, uint16_t qp_id,
 		       struct rte_regex_ops **ops, uint16_t nb_ops)
 {
-	struct otx2_ree_data *data = dev->data->dev_private;
-	struct otx2_ree_qp *qp = data->queue_pairs[qp_id];
-	struct otx2_ree_pending_queue *pend_q;
+	struct cn9k_ree_data *data = dev->data->dev_private;
+	struct roc_ree_qp *qp = data->queue_pairs[qp_id];
+	struct roc_ree_pending_queue *pend_q;
 	int i, nb_pending, nb_completed = 0;
 	volatile struct ree_res_s_98 *res;
-	struct otx2_ree_rid *rid;
+	struct roc_ree_rid *rid;
 
 	pend_q = &qp->pend_q;
 
@@ -474,7 +466,7 @@ otx2_ree_dequeue_burst(struct rte_regexdev *dev, uint16_t qp_id,
 		ops[i] = (struct rte_regex_ops *)(rid->rid);
 		ops[i]->user_id = rid->user_id;
 
-		REE_MOD_INC(pend_q->deq_head, OTX2_REE_DEFAULT_CMD_QLEN);
+		REE_MOD_INC(pend_q->deq_head, REE_DEFAULT_CMD_QLEN);
 		pend_q->pending_count -= 1;
 	}
 
@@ -487,10 +479,10 @@ otx2_ree_dequeue_burst(struct rte_regexdev *dev, uint16_t qp_id,
 }
 
 static int
-otx2_ree_dev_info_get(struct rte_regexdev *dev, struct rte_regexdev_info *info)
+cn9k_ree_dev_info_get(struct rte_regexdev *dev, struct rte_regexdev_info *info)
 {
-	struct otx2_ree_data *data = dev->data->dev_private;
-	struct otx2_ree_vf *vf = &data->vf;
+	struct cn9k_ree_data *data = dev->data->dev_private;
+	struct roc_ree_vf *vf = &data->vf;
 
 	ree_func_trace();
 
@@ -502,7 +494,7 @@ otx2_ree_dev_info_get(struct rte_regexdev *dev, struct rte_regexdev_info *info)
 
 	info->max_queue_pairs = vf->max_queues;
 	info->max_matches = vf->max_matches;
-	info->max_payload_size = OTX2_REE_MAX_PAYLOAD_SIZE;
+	info->max_payload_size = REE_MAX_PAYLOAD_SIZE;
 	info->max_rules_per_group = data->max_rules_per_group;
 	info->max_groups = data->max_groups;
 	info->regexdev_capa = data->regexdev_capa;
@@ -512,11 +504,11 @@ otx2_ree_dev_info_get(struct rte_regexdev *dev, struct rte_regexdev_info *info)
 }
 
 static int
-otx2_ree_dev_config(struct rte_regexdev *dev,
+cn9k_ree_dev_config(struct rte_regexdev *dev,
 		    const struct rte_regexdev_config *cfg)
 {
-	struct otx2_ree_data *data = dev->data->dev_private;
-	struct otx2_ree_vf *vf = &data->vf;
+	struct cn9k_ree_data *data = dev->data->dev_private;
+	struct roc_ree_vf *vf = &data->vf;
 	const struct ree_rule_db *rule_db;
 	uint32_t rule_db_len;
 	int ret;
@@ -524,29 +516,29 @@ otx2_ree_dev_config(struct rte_regexdev *dev,
 	ree_func_trace();
 
 	if (cfg->nb_queue_pairs > vf->max_queues) {
-		otx2_err("Invalid number of queue pairs requested");
+		cn9k_err("Invalid number of queue pairs requested");
 		return -EINVAL;
 	}
 
 	if (cfg->nb_max_matches != vf->max_matches) {
-		otx2_err("Invalid number of max matches requested");
+		cn9k_err("Invalid number of max matches requested");
 		return -EINVAL;
 	}
 
 	if (cfg->dev_cfg_flags != 0) {
-		otx2_err("Invalid device configuration flags requested");
+		cn9k_err("Invalid device configuration flags requested");
 		return -EINVAL;
 	}
 
 	/* Unregister error interrupts */
 	if (vf->err_intr_registered)
-		otx2_ree_err_intr_unregister(dev);
+		roc_ree_err_intr_unregister(vf);
 
 	/* Detach queues */
 	if (vf->nb_queues) {
-		ret = otx2_ree_queues_detach(dev);
+		ret = roc_ree_queues_detach(vf);
 		if (ret) {
-			otx2_err("Could not detach REE queues");
+			cn9k_err("Could not detach REE queues");
 			return ret;
 		}
 	}
@@ -559,7 +551,7 @@ otx2_ree_dev_config(struct rte_regexdev *dev,
 
 		if (data->queue_pairs == NULL) {
 			data->nb_queue_pairs = 0;
-			otx2_err("Failed to get memory for qp meta data, nb_queues %u",
+			cn9k_err("Failed to get memory for qp meta data, nb_queues %u",
 					cfg->nb_queue_pairs);
 			return -ENOMEM;
 		}
@@ -579,7 +571,7 @@ otx2_ree_dev_config(struct rte_regexdev *dev,
 		qp = rte_realloc(qp, sizeof(qp[0]) * cfg->nb_queue_pairs,
 				RTE_CACHE_LINE_SIZE);
 		if (qp == NULL) {
-			otx2_err("Failed to realloc qp meta data, nb_queues %u",
+			cn9k_err("Failed to realloc qp meta data, nb_queues %u",
 					cfg->nb_queue_pairs);
 			return -ENOMEM;
 		}
@@ -594,52 +586,52 @@ otx2_ree_dev_config(struct rte_regexdev *dev,
 	data->nb_queue_pairs = cfg->nb_queue_pairs;
 
 	/* Attach queues */
-	otx2_ree_dbg("Attach %d queues", cfg->nb_queue_pairs);
-	ret = otx2_ree_queues_attach(dev, cfg->nb_queue_pairs);
+	cn9k_ree_dbg("Attach %d queues", cfg->nb_queue_pairs);
+	ret = roc_ree_queues_attach(vf, cfg->nb_queue_pairs);
 	if (ret) {
-		otx2_err("Could not attach queues");
+		cn9k_err("Could not attach queues");
 		return -ENODEV;
 	}
 
-	ret = otx2_ree_msix_offsets_get(dev);
+	ret = roc_ree_msix_offsets_get(vf);
 	if (ret) {
-		otx2_err("Could not get MSI-X offsets");
+		cn9k_err("Could not get MSI-X offsets");
 		goto queues_detach;
 	}
 
 	if (cfg->rule_db && cfg->rule_db_len) {
-		otx2_ree_dbg("rule_db length %d", cfg->rule_db_len);
+		cn9k_ree_dbg("rule_db length %d", cfg->rule_db_len);
 		rule_db = (const struct ree_rule_db *)cfg->rule_db;
 		rule_db_len = rule_db->number_of_entries *
 				sizeof(struct ree_rule_db_entry);
-		otx2_ree_dbg("rule_db number of entries %d",
+		cn9k_ree_dbg("rule_db number of entries %d",
 				rule_db->number_of_entries);
 		if (rule_db_len > cfg->rule_db_len) {
-			otx2_err("Could not program rule db");
+			cn9k_err("Could not program rule db");
 			ret = -EINVAL;
 			goto queues_detach;
 		}
-		ret = otx2_ree_rule_db_prog(dev, (const char *)rule_db->entries,
-				rule_db_len, NULL, OTX2_REE_NON_INC_PROG);
+		ret = roc_ree_rule_db_prog(vf, (const char *)rule_db->entries,
+				rule_db_len, NULL, REE_NON_INC_PROG);
 		if (ret) {
-			otx2_err("Could not program rule db");
+			cn9k_err("Could not program rule db");
 			goto queues_detach;
 		}
 	}
 
-	dev->enqueue = otx2_ree_enqueue_burst;
-	dev->dequeue = otx2_ree_dequeue_burst;
+	dev->enqueue = cn9k_ree_enqueue_burst;
+	dev->dequeue = cn9k_ree_dequeue_burst;
 
 	rte_mb();
 	return 0;
 
 queues_detach:
-	otx2_ree_queues_detach(dev);
+	roc_ree_queues_detach(vf);
 	return ret;
 }
 
 static int
-otx2_ree_stop(struct rte_regexdev *dev)
+cn9k_ree_stop(struct rte_regexdev *dev)
 {
 	RTE_SET_USED(dev);
 
@@ -648,18 +640,20 @@ otx2_ree_stop(struct rte_regexdev *dev)
 }
 
 static int
-otx2_ree_start(struct rte_regexdev *dev)
+cn9k_ree_start(struct rte_regexdev *dev)
 {
+	struct cn9k_ree_data *data = dev->data->dev_private;
+	struct roc_ree_vf *vf = &data->vf;
 	uint32_t rule_db_len = 0;
 	int ret;
 
 	ree_func_trace();
 
-	ret = otx2_ree_rule_db_len_get(dev, &rule_db_len, NULL);
+	ret = roc_ree_rule_db_len_get(vf, &rule_db_len, NULL);
 	if (ret)
 		return ret;
 	if (rule_db_len == 0) {
-		otx2_err("Rule db not programmed");
+		cn9k_err("Rule db not programmed");
 		return -EFAULT;
 	}
 
@@ -667,56 +661,55 @@ otx2_ree_start(struct rte_regexdev *dev)
 }
 
 static int
-otx2_ree_close(struct rte_regexdev *dev)
+cn9k_ree_close(struct rte_regexdev *dev)
 {
 	return ree_dev_fini(dev);
 }
 
 static int
-otx2_ree_queue_pair_setup(struct rte_regexdev *dev, uint16_t qp_id,
+cn9k_ree_queue_pair_setup(struct rte_regexdev *dev, uint16_t qp_id,
 		const struct rte_regexdev_qp_conf *qp_conf)
 {
-	struct otx2_ree_data *data = dev->data->dev_private;
-	struct otx2_ree_qp *qp;
+	struct cn9k_ree_data *data = dev->data->dev_private;
+	struct roc_ree_qp *qp;
 
 	ree_func_trace("Queue=%d", qp_id);
 
 	if (data->queue_pairs[qp_id] != NULL)
 		ree_queue_pair_release(dev, qp_id);
 
-	if (qp_conf->nb_desc > OTX2_REE_DEFAULT_CMD_QLEN) {
-		otx2_err("Could not setup queue pair for %u descriptors",
+	if (qp_conf->nb_desc > REE_DEFAULT_CMD_QLEN) {
+		cn9k_err("Could not setup queue pair for %u descriptors",
 				qp_conf->nb_desc);
 		return -EINVAL;
 	}
 	if (qp_conf->qp_conf_flags != 0) {
-		otx2_err("Could not setup queue pair with configuration flags 0x%x",
+		cn9k_err("Could not setup queue pair with configuration flags 0x%x",
 				qp_conf->qp_conf_flags);
 		return -EINVAL;
 	}
 
 	qp = ree_qp_create(dev, qp_id);
 	if (qp == NULL) {
-		otx2_err("Could not create queue pair %d", qp_id);
+		cn9k_err("Could not create queue pair %d", qp_id);
 		return -ENOMEM;
 	}
-	qp->cb = qp_conf->cb;
 	data->queue_pairs[qp_id] = qp;
 
 	return 0;
 }
 
 static int
-otx2_ree_rule_db_compile_activate(struct rte_regexdev *dev)
+cn9k_ree_rule_db_compile_activate(struct rte_regexdev *dev)
 {
-	return otx2_ree_rule_db_compile_prog(dev);
+	return cn9k_ree_rule_db_compile_prog(dev);
 }
 
 static int
-otx2_ree_rule_db_update(struct rte_regexdev *dev,
+cn9k_ree_rule_db_update(struct rte_regexdev *dev,
 		const struct rte_regexdev_rule *rules, uint16_t nb_rules)
 {
-	struct otx2_ree_data *data = dev->data->dev_private;
+	struct cn9k_ree_data *data = dev->data->dev_private;
 	struct rte_regexdev_rule *old_ptr;
 	uint32_t i, sum_nb_rules;
 
@@ -770,10 +763,11 @@ otx2_ree_rule_db_update(struct rte_regexdev *dev,
 }
 
 static int
-otx2_ree_rule_db_import(struct rte_regexdev *dev, const char *rule_db,
+cn9k_ree_rule_db_import(struct rte_regexdev *dev, const char *rule_db,
 		uint32_t rule_db_len)
 {
-
+	struct cn9k_ree_data *data = dev->data->dev_private;
+	struct roc_ree_vf *vf = &data->vf;
 	const struct ree_rule_db *ree_rule_db;
 	uint32_t ree_rule_db_len;
 	int ret;
@@ -784,21 +778,23 @@ otx2_ree_rule_db_import(struct rte_regexdev *dev, const char *rule_db,
 	ree_rule_db_len = ree_rule_db->number_of_entries *
 			sizeof(struct ree_rule_db_entry);
 	if (ree_rule_db_len > rule_db_len) {
-		otx2_err("Could not program rule db");
+		cn9k_err("Could not program rule db");
 		return -EINVAL;
 	}
-	ret = otx2_ree_rule_db_prog(dev, (const char *)ree_rule_db->entries,
-			ree_rule_db_len, NULL, OTX2_REE_NON_INC_PROG);
+	ret = roc_ree_rule_db_prog(vf, (const char *)ree_rule_db->entries,
+			ree_rule_db_len, NULL, REE_NON_INC_PROG);
 	if (ret) {
-		otx2_err("Could not program rule db");
+		cn9k_err("Could not program rule db");
 		return -ENOSPC;
 	}
 	return 0;
 }
 
 static int
-otx2_ree_rule_db_export(struct rte_regexdev *dev, char *rule_db)
+cn9k_ree_rule_db_export(struct rte_regexdev *dev, char *rule_db)
 {
+	struct cn9k_ree_data *data = dev->data->dev_private;
+	struct roc_ree_vf *vf = &data->vf;
 	struct ree_rule_db *ree_rule_db;
 	uint32_t rule_dbi_len;
 	uint32_t rule_db_len;
@@ -806,7 +802,7 @@ otx2_ree_rule_db_export(struct rte_regexdev *dev, char *rule_db)
 
 	ree_func_trace();
 
-	ret = otx2_ree_rule_db_len_get(dev, &rule_db_len, &rule_dbi_len);
+	ret = roc_ree_rule_db_len_get(vf, &rule_db_len, &rule_dbi_len);
 	if (ret)
 		return ret;
 
@@ -816,10 +812,10 @@ otx2_ree_rule_db_export(struct rte_regexdev *dev, char *rule_db)
 	}
 
 	ree_rule_db = (struct ree_rule_db *)rule_db;
-	ret = otx2_ree_rule_db_get(dev, (char *)ree_rule_db->entries,
+	ret = roc_ree_rule_db_get(vf, (char *)ree_rule_db->entries,
 			rule_db_len, NULL, 0);
 	if (ret) {
-		otx2_err("Could not export rule db");
+		cn9k_err("Could not export rule db");
 		return -EFAULT;
 	}
 	ree_rule_db->number_of_entries =
@@ -830,54 +826,43 @@ otx2_ree_rule_db_export(struct rte_regexdev *dev, char *rule_db)
 	return 0;
 }
 
-static int
-ree_get_blkaddr(struct otx2_dev *dev)
-{
-	int pf;
-
-	pf = otx2_get_pf(dev->pf_func);
-	if (pf == REE0_PF)
-		return RVU_BLOCK_ADDR_REE0;
-	else if (pf == REE1_PF)
-		return RVU_BLOCK_ADDR_REE1;
-	else
-		return 0;
-}
-
-static struct rte_regexdev_ops otx2_ree_ops = {
-		.dev_info_get = otx2_ree_dev_info_get,
-		.dev_configure = otx2_ree_dev_config,
-		.dev_qp_setup = otx2_ree_queue_pair_setup,
-		.dev_start = otx2_ree_start,
-		.dev_stop = otx2_ree_stop,
-		.dev_close = otx2_ree_close,
-		.dev_attr_get = NULL,
-		.dev_attr_set = NULL,
-		.dev_rule_db_update = otx2_ree_rule_db_update,
-		.dev_rule_db_compile_activate =
-				otx2_ree_rule_db_compile_activate,
-		.dev_db_import = otx2_ree_rule_db_import,
-		.dev_db_export = otx2_ree_rule_db_export,
-		.dev_xstats_names_get = NULL,
-		.dev_xstats_get = NULL,
-		.dev_xstats_by_name_get = NULL,
-		.dev_xstats_reset = NULL,
-		.dev_selftest = NULL,
-		.dev_dump = NULL,
+static struct rte_regexdev_ops cn9k_ree_ops = {
+	.dev_info_get = cn9k_ree_dev_info_get,
+	.dev_configure = cn9k_ree_dev_config,
+	.dev_qp_setup = cn9k_ree_queue_pair_setup,
+	.dev_start = cn9k_ree_start,
+	.dev_stop = cn9k_ree_stop,
+	.dev_close = cn9k_ree_close,
+	.dev_attr_get = NULL,
+	.dev_attr_set = NULL,
+	.dev_rule_db_update = cn9k_ree_rule_db_update,
+	.dev_rule_db_compile_activate =
+			cn9k_ree_rule_db_compile_activate,
+	.dev_db_import = cn9k_ree_rule_db_import,
+	.dev_db_export = cn9k_ree_rule_db_export,
+	.dev_xstats_names_get = NULL,
+	.dev_xstats_get = NULL,
+	.dev_xstats_by_name_get = NULL,
+	.dev_xstats_reset = NULL,
+	.dev_selftest = NULL,
+	.dev_dump = NULL,
 };
 
 static int
-otx2_ree_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
+cn9k_ree_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		   struct rte_pci_device *pci_dev)
 {
 	char name[RTE_REGEXDEV_NAME_MAX_LEN];
-	struct otx2_ree_data *data;
-	struct otx2_dev *otx2_dev;
+	struct cn9k_ree_data *data;
 	struct rte_regexdev *dev;
-	uint8_t max_matches = 0;
-	struct otx2_ree_vf *vf;
-	uint16_t nb_queues = 0;
+	struct roc_ree_vf *vf;
 	int ret;
+
+	ret = roc_plt_init();
+	if (ret < 0) {
+		plt_err("Failed to initialize platform model");
+		return ret;
+	}
 
 	rte_pci_device_name(&pci_dev->addr, name, sizeof(name));
 
@@ -887,63 +872,19 @@ otx2_ree_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		goto exit;
 	}
 
-	dev->dev_ops = &otx2_ree_ops;
+	dev->dev_ops = &cn9k_ree_ops;
 	dev->device = &pci_dev->device;
 
 	/* Get private data space allocated */
 	data = dev->data->dev_private;
 	vf = &data->vf;
-
-	otx2_dev = &vf->otx2_dev;
-
-	/* Initialize the base otx2_dev object */
-	ret = otx2_dev_init(pci_dev, otx2_dev);
+	vf->pci_dev = pci_dev;
+	ret = roc_ree_dev_init(vf);
 	if (ret) {
-		otx2_err("Could not initialize otx2_dev");
+		plt_err("Failed to initialize roc cpt rc=%d", ret);
 		goto dev_unregister;
 	}
-	/* Get REE block address */
-	vf->block_address = ree_get_blkaddr(otx2_dev);
-	if (!vf->block_address) {
-		otx2_err("Could not determine block PF number");
-		goto otx2_dev_fini;
-	}
 
-	/* Get number of queues available on the device */
-	ret = otx2_ree_available_queues_get(dev, &nb_queues);
-	if (ret) {
-		otx2_err("Could not determine the number of queues available");
-		goto otx2_dev_fini;
-	}
-
-	/* Don't exceed the limits set per VF */
-	nb_queues = RTE_MIN(nb_queues, OTX2_REE_MAX_QUEUES_PER_VF);
-
-	if (nb_queues == 0) {
-		otx2_err("No free queues available on the device");
-		goto otx2_dev_fini;
-	}
-
-	vf->max_queues = nb_queues;
-
-	otx2_ree_dbg("Max queues supported by device: %d", vf->max_queues);
-
-	/* Get number of maximum matches supported on the device */
-	ret = otx2_ree_max_matches_get(dev, &max_matches);
-	if (ret) {
-		otx2_err("Could not determine the maximum matches supported");
-		goto otx2_dev_fini;
-	}
-	/* Don't exceed the limits set per VF */
-	max_matches = RTE_MIN(max_matches, OTX2_REE_MAX_MATCHES_PER_VF);
-	if (max_matches == 0) {
-		otx2_err("Could not determine the maximum matches supported");
-		goto otx2_dev_fini;
-	}
-
-	vf->max_matches = max_matches;
-
-	otx2_ree_dbg("Max matches supported by device: %d", vf->max_matches);
 	data->rule_flags = RTE_REGEX_PCRE_RULE_ALLOW_EMPTY_F |
 			RTE_REGEX_PCRE_RULE_ANCHORED_F;
 	data->regexdev_capa = 0;
@@ -954,18 +895,16 @@ otx2_ree_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	dev->state = RTE_REGEXDEV_READY;
 	return 0;
 
-otx2_dev_fini:
-	otx2_dev_fini(pci_dev, otx2_dev);
 dev_unregister:
 	ree_dev_unregister(dev);
 exit:
-	otx2_err("Could not create device (vendor_id: 0x%x device_id: 0x%x)",
+	cn9k_err("Could not create device (vendor_id: 0x%x device_id: 0x%x)",
 		    pci_dev->id.vendor_id, pci_dev->id.device_id);
 	return ret;
 }
 
 static int
-otx2_ree_pci_remove(struct rte_pci_device *pci_dev)
+cn9k_ree_pci_remove(struct rte_pci_device *pci_dev)
 {
 	char name[RTE_REGEXDEV_NAME_MAX_LEN];
 	struct rte_regexdev *dev = NULL;
@@ -986,20 +925,20 @@ otx2_ree_pci_remove(struct rte_pci_device *pci_dev)
 static struct rte_pci_id pci_id_ree_table[] = {
 	{
 		RTE_PCI_DEVICE(PCI_VENDOR_ID_CAVIUM,
-				PCI_DEVID_OCTEONTX2_RVU_REE_PF)
+				PCI_DEVID_CNXK_RVU_REE_PF)
 	},
 	{
 		.vendor_id = 0,
 	}
 };
 
-static struct rte_pci_driver otx2_regexdev_pmd = {
+static struct rte_pci_driver cn9k_regexdev_pmd = {
 	.id_table = pci_id_ree_table,
 	.drv_flags = RTE_PCI_DRV_NEED_MAPPING,
-	.probe = otx2_ree_pci_probe,
-	.remove = otx2_ree_pci_remove,
+	.probe = cn9k_ree_pci_probe,
+	.remove = cn9k_ree_pci_remove,
 };
 
 
-RTE_PMD_REGISTER_PCI(REGEXDEV_NAME_OCTEONTX2_PMD, otx2_regexdev_pmd);
-RTE_PMD_REGISTER_PCI_TABLE(REGEXDEV_NAME_OCTEONTX2_PMD, pci_id_ree_table);
+RTE_PMD_REGISTER_PCI(REGEXDEV_NAME_CN9K_PMD, cn9k_regexdev_pmd);
+RTE_PMD_REGISTER_PCI_TABLE(REGEXDEV_NAME_CN9K_PMD, pci_id_ree_table);

@@ -3,6 +3,6 @@
 
 drivers = [
         'mlx5',
-        'octeontx2',
+        'cn9k',
 ]
 std_deps = ['ethdev', 'kvargs'] # 'ethdev' also pulls in mbuf, net, eal etc

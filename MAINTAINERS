@@ -1238,11 +1238,11 @@ F: doc/guides/dmadevs/dpaa.rst
 RegEx Drivers
 -------------
 
-Marvell OCTEON TX2 regex
+Marvell OCTEON CN9K regex
 M: Liron Himi <lironh@marvell.com>
-F: drivers/regex/octeontx2/
-F: doc/guides/regexdevs/octeontx2.rst
-F: doc/guides/regexdevs/features/octeontx2.ini
+F: drivers/regex/cn9k/
+F: doc/guides/regexdevs/cn9k.rst
+F: doc/guides/regexdevs/features/cn9k.ini
 
 Mellanox mlx5
 M: Ori Kam <orika@nvidia.com>

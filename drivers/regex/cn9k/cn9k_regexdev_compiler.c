@@ -5,9 +5,8 @@
 #include <rte_malloc.h>
 #include <rte_regexdev.h>
 
-#include "otx2_regexdev.h"
-#include "otx2_regexdev_compiler.h"
-#include "otx2_regexdev_mbox.h"
+#include "cn9k_regexdev.h"
+#include "cn9k_regexdev_compiler.h"
 
 #ifdef REE_COMPILER_SDK
 #include <rxp-compiler.h>
@@ -65,7 +64,7 @@ ree_rule_db_compile(const struct rte_regexdev_rule *rules,
 			nb_rules*sizeof(struct rxp_rule_entry), 0);
 
 	if (ruleset.rules == NULL) {
-		otx2_err("Could not allocate memory for rule compilation\n");
+		cn9k_err("Could not allocate memory for rule compilation\n");
 		return -EFAULT;
 	}
 	if (rof_for_incremental_compile)
@@ -126,9 +125,10 @@ ree_rule_db_compile(const struct rte_regexdev_rule *rules,
 }
 
 int
-otx2_ree_rule_db_compile_prog(struct rte_regexdev *dev)
+cn9k_ree_rule_db_compile_prog(struct rte_regexdev *dev)
 {
-	struct otx2_ree_data *data = dev->data->dev_private;
+	struct cn9k_ree_data *data = dev->data->dev_private;
+	struct roc_ree_vf *vf = &data->vf;
 	char compiler_version[] = "20.5.2.eda0fa2";
 	char timestamp[] = "19700101_000001";
 	uint32_t rule_db_len, rule_dbi_len;
@@ -144,25 +144,25 @@ otx2_ree_rule_db_compile_prog(struct rte_regexdev *dev)
 
 	ree_func_trace();
 
-	ret = otx2_ree_rule_db_len_get(dev, &rule_db_len, &rule_dbi_len);
+	ret = roc_ree_rule_db_len_get(vf, &rule_db_len, &rule_dbi_len);
 	if (ret != 0) {
-		otx2_err("Could not get rule db length");
+		cn9k_err("Could not get rule db length");
 		return ret;
 	}
 
 	if (rule_db_len > 0) {
-		otx2_ree_dbg("Incremental compile, rule db len %d rule dbi len %d",
+		cn9k_ree_dbg("Incremental compile, rule db len %d rule dbi len %d",
 				rule_db_len, rule_dbi_len);
 		rule_db = rte_malloc("ree_rule_db", rule_db_len, 0);
 		if (!rule_db) {
-			otx2_err("Could not allocate memory for rule db");
+			cn9k_err("Could not allocate memory for rule db");
 			return -EFAULT;
 		}
 
-		ret = otx2_ree_rule_db_get(dev, rule_db, rule_db_len,
+		ret = roc_ree_rule_db_get(vf, rule_db, rule_db_len,
 				(char *)rule_dbi, rule_dbi_len);
 		if (ret) {
-			otx2_err("Could not read rule db");
+			cn9k_err("Could not read rule db");
 			rte_free(rule_db);
 			return -EFAULT;
 		}
@@ -188,7 +188,7 @@ otx2_ree_rule_db_compile_prog(struct rte_regexdev *dev)
 		ret = ree_rule_db_compile(data->rules, data->nb_rules, &rof,
 				&rofi, &rof_inc, rofi_inc_p);
 		if (rofi->number_of_entries == 0) {
-			otx2_ree_dbg("No change to rule db");
+			cn9k_ree_dbg("No change to rule db");
 			ret = 0;
 			goto free_structs;
 		}
@@ -201,14 +201,14 @@ otx2_ree_rule_db_compile_prog(struct rte_regexdev *dev)
 				&rofi, NULL, NULL);
 	}
 	if (ret != 0) {
-		otx2_err("Could not compile rule db");
+		cn9k_err("Could not compile rule db");
 		goto free_structs;
 	}
 	rule_db_len = rof->number_of_entries * sizeof(struct rxp_rof_entry);
-	ret = otx2_ree_rule_db_prog(dev, (char *)rof->rof_entries, rule_db_len,
+	ret = roc_ree_rule_db_prog(vf, (char *)rof->rof_entries, rule_db_len,
 			rofi_rof_entries, rule_dbi_len);
 	if (ret)
-		otx2_err("Could not program rule db");
+		cn9k_err("Could not program rule db");
 
 free_structs:
 	rxp_free_structs(NULL, NULL, NULL, NULL, NULL, &rof, NULL, &rofi, NULL,
@@ -221,7 +221,7 @@ free_structs:
 }
 #else
 int
-otx2_ree_rule_db_compile_prog(struct rte_regexdev *dev)
+cn9k_ree_rule_db_compile_prog(struct rte_regexdev *dev)
 {
 	RTE_SET_USED(dev);
 	return -ENOTSUP;

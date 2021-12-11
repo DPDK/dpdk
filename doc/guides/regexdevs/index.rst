@@ -12,5 +12,5 @@ which can be used from an application through RegEx API.
    :numbered:
 
    features_overview
+   cn9k
    mlx5
-   octeontx2

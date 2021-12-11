@@ -155,9 +155,6 @@ This section lists dataplane H/W block(s) available in OCTEON TX2 SoC.
 #. **Crypto Device Driver**
    See :doc:`../cryptodevs/octeontx2` for CPT crypto device driver information.
 
-#. **Regex Device Driver**
-   See :doc:`../regexdevs/octeontx2` for REE regex device driver information.
-
 Procedure to Setup Platform
 ---------------------------
 
