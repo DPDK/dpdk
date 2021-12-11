@@ -197,6 +197,7 @@ extern int cnxk_logtype_npc;
 extern int cnxk_logtype_sso;
 extern int cnxk_logtype_tim;
 extern int cnxk_logtype_tm;
+extern int cnxk_logtype_ree;
 
 #define plt_err(fmt, args...)                                                  \
 	RTE_LOG(ERR, PMD, "%s():%u " fmt "\n", __func__, __LINE__, ##args)
@@ -222,6 +223,7 @@ extern int cnxk_logtype_tm;
 #define plt_sso_dbg(fmt, ...)	plt_dbg(sso, fmt, ##__VA_ARGS__)
 #define plt_tim_dbg(fmt, ...)	plt_dbg(tim, fmt, ##__VA_ARGS__)
 #define plt_tm_dbg(fmt, ...)	plt_dbg(tm, fmt, ##__VA_ARGS__)
+#define plt_ree_dbg(fmt, ...)	plt_dbg(ree, fmt, ##__VA_ARGS__)
 
 /* Datapath logs */
 #define plt_dp_err(fmt, args...)                                               \

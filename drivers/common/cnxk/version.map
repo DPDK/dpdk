@@ -11,6 +11,7 @@ INTERNAL {
 	cnxk_logtype_nix;
 	cnxk_logtype_npa;
 	cnxk_logtype_npc;
+	cnxk_logtype_ree;
 	cnxk_logtype_sso;
 	cnxk_logtype_tim;
 	cnxk_logtype_tm;
@@ -347,6 +348,21 @@ INTERNAL {
 	roc_tim_lf_enable;
 	roc_tim_lf_free;
 	roc_se_ctx_swap;
-
+	roc_ree_af_reg_read;
+	roc_ree_af_reg_write;
+	roc_ree_config_lf;
+	roc_ree_dev_fini;
+	roc_ree_dev_init;
+	roc_ree_err_intr_register;
+	roc_ree_err_intr_unregister;
+	roc_ree_iq_disable;
+	roc_ree_iq_enable;
+	roc_ree_msix_offsets_get;
+	roc_ree_qp_get_base;
+	roc_ree_queues_attach;
+	roc_ree_queues_detach;
+	roc_ree_rule_db_get;
+	roc_ree_rule_db_len_get;
+	roc_ree_rule_db_prog;
 	local: *;
 };

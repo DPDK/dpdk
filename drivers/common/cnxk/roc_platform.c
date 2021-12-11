@@ -65,3 +65,4 @@ RTE_LOG_REGISTER(cnxk_logtype_npc, pmd.net.cnxk.flow, NOTICE);
 RTE_LOG_REGISTER(cnxk_logtype_sso, pmd.event.cnxk, NOTICE);
 RTE_LOG_REGISTER(cnxk_logtype_tim, pmd.event.cnxk.timer, NOTICE);
 RTE_LOG_REGISTER(cnxk_logtype_tm, pmd.net.cnxk.tm, NOTICE);
+RTE_LOG_REGISTER_DEFAULT(cnxk_logtype_ree, NOTICE);
