@@ -130,6 +130,7 @@
 #define RVU_BLOCK_TYPE_RAD  (0xdull)
 #define RVU_BLOCK_TYPE_DFA  (0xeull)
 #define RVU_BLOCK_TYPE_HNA  (0xfull)
+#define RVU_BLOCK_TYPE_REE  (0xeull)
 
 #define RVU_BLOCK_ADDR_RVUM    (0x0ull)
 #define RVU_BLOCK_ADDR_LMT     (0x1ull)
@@ -147,6 +148,8 @@
 #define RVU_BLOCK_ADDR_NDC2    (0xeull)
 #define RVU_BLOCK_ADDR_R_END   (0x1full)
 #define RVU_BLOCK_ADDR_R_START (0x14ull)
+#define RVU_BLOCK_ADDR_REE0    (0x14ull)
+#define RVU_BLOCK_ADDR_REE1    (0x15ull)
 
 #define RVU_VF_INT_VEC_MBOX (0x0ull)
 
@@ -167,6 +170,7 @@
 #define NPA_AF_BAR2_SEL	 (0x9000000ull)
 #define CPT_AF_BAR2_SEL	 (0x9000000ull)
 #define RVU_AF_BAR2_SEL	 (0x9000000ull)
+#define REE_AF_BAR2_SEL	 (0x9000000ull)
 
 #define AF_BAR2_ALIASX(a, b)                                                   \
 	(0x9100000ull | (uint64_t)(a) << 12 | (uint64_t)(b))
@@ -177,6 +181,7 @@
 #define NPA_AF_BAR2_ALIASX(a, b)  AF_BAR2_ALIASX(0, b)
 #define CPT_AF_BAR2_ALIASX(a, b)  AF_BAR2_ALIASX(a, b)
 #define RVU_AF_BAR2_ALIASX(a, b)  AF_BAR2_ALIASX(a, b)
+#define REE_AF_BAR2_ALIASX(a, b)  AF_BAR2_ALIASX(a, b)
 
 /* Structures definitions */
 
