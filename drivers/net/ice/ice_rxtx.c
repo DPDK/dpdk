@@ -2350,18 +2350,35 @@ ice_txd_enable_checksum(uint64_t ol_flags,
 			<< ICE_TX_DESC_LEN_MACLEN_S;
 
 	/* Enable L3 checksum offloads */
-	if (ol_flags & PKT_TX_IP_CKSUM) {
-		*td_cmd |= ICE_TX_DESC_CMD_IIPT_IPV4_CSUM;
-		*td_offset |= (tx_offload.l3_len >> 2) <<
-			      ICE_TX_DESC_LEN_IPLEN_S;
-	} else if (ol_flags & PKT_TX_IPV4) {
-		*td_cmd |= ICE_TX_DESC_CMD_IIPT_IPV4;
-		*td_offset |= (tx_offload.l3_len >> 2) <<
-			      ICE_TX_DESC_LEN_IPLEN_S;
-	} else if (ol_flags & PKT_TX_IPV6) {
-		*td_cmd |= ICE_TX_DESC_CMD_IIPT_IPV6;
-		*td_offset |= (tx_offload.l3_len >> 2) <<
-			      ICE_TX_DESC_LEN_IPLEN_S;
+	/*Tunnel package usage outer len enable L3 checksum offload*/
+	if (ol_flags & PKT_TX_TUNNEL_MASK) {
+		if (ol_flags & PKT_TX_IP_CKSUM) {
+			*td_cmd |= ICE_TX_DESC_CMD_IIPT_IPV4_CSUM;
+			*td_offset |= (tx_offload.outer_l3_len >> 2) <<
+				ICE_TX_DESC_LEN_IPLEN_S;
+		} else if (ol_flags & PKT_TX_IPV4) {
+			*td_cmd |= ICE_TX_DESC_CMD_IIPT_IPV4;
+			*td_offset |= (tx_offload.outer_l3_len >> 2) <<
+				ICE_TX_DESC_LEN_IPLEN_S;
+		} else if (ol_flags & PKT_TX_IPV6) {
+			*td_cmd |= ICE_TX_DESC_CMD_IIPT_IPV6;
+			*td_offset |= (tx_offload.outer_l3_len >> 2) <<
+				ICE_TX_DESC_LEN_IPLEN_S;
+		}
+	} else {
+		if (ol_flags & PKT_TX_IP_CKSUM) {
+			*td_cmd |= ICE_TX_DESC_CMD_IIPT_IPV4_CSUM;
+			*td_offset |= (tx_offload.l3_len >> 2) <<
+				ICE_TX_DESC_LEN_IPLEN_S;
+		} else if (ol_flags & PKT_TX_IPV4) {
+			*td_cmd |= ICE_TX_DESC_CMD_IIPT_IPV4;
+			*td_offset |= (tx_offload.l3_len >> 2) <<
+				ICE_TX_DESC_LEN_IPLEN_S;
+		} else if (ol_flags & PKT_TX_IPV6) {
+			*td_cmd |= ICE_TX_DESC_CMD_IIPT_IPV6;
+			*td_offset |= (tx_offload.l3_len >> 2) <<
+				ICE_TX_DESC_LEN_IPLEN_S;
+		}
 	}
 
 	if (ol_flags & PKT_TX_TCP_SEG) {
