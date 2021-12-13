@@ -164,6 +164,24 @@ Runtime Config Options
 
     -a 0002:0e:00.0,tim_ring_ctl=[2-1023-1-0]
 
+- ``TIM external clock frequency``
+
+  The ``tim_eclk_freq`` devagrs can be used to pass external clock frequencies
+  when external clock source is selected.
+
+  External clock frequencies are mapped as follows::
+
+    RTE_EVENT_TIMER_ADAPTER_EXT_CLK0 = TIM_CLK_SRC_10NS,
+    RTE_EVENT_TIMER_ADAPTER_EXT_CLK1 = TIM_CLK_SRC_GPIO,
+    RTE_EVENT_TIMER_ADAPTER_EXT_CLK2 = TIM_CLK_SRC_PTP,
+    RTE_EVENT_TIMER_ADAPTER_EXT_CLK3 = TIM_CLK_SRC_SYNCE
+
+  The order of frequencies supplied to device args should be GPIO-PTP-SYNCE.
+
+  For Example::
+
+    -a 0002:0e:00.0,tim_eclk_freq=122880000-1000000000-0
+
 Debugging Options
 -----------------
 

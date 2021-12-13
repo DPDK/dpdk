@@ -45,6 +45,7 @@
 #define PLT_MAX			 RTE_MAX
 #define PLT_DIM			 RTE_DIM
 #define PLT_SET_USED		 RTE_SET_USED
+#define PLT_SWAP		 RTE_SWAP
 #define PLT_STATIC_ASSERT(s)	 _Static_assert(s, #s)
 #define PLT_ALIGN		 RTE_ALIGN
 #define PLT_ALIGN_MUL_CEIL	 RTE_ALIGN_MUL_CEIL

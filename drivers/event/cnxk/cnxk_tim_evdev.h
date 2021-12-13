@@ -40,6 +40,7 @@
 #define CNXK_TIM_STATS_ENA   "tim_stats_ena"
 #define CNXK_TIM_RINGS_LMT   "tim_rings_lmt"
 #define CNXK_TIM_RING_CTL    "tim_ring_ctl"
+#define CNXK_TIM_EXT_CLK     "tim_eclk_freq"
 
 #define CNXK_TIM_SP	   0x1
 #define CNXK_TIM_MP	   0x2
@@ -95,6 +96,7 @@ struct cnxk_tim_evdev {
 	uint32_t min_ring_cnt;
 	uint8_t enable_stats;
 	uint16_t ring_ctl_cnt;
+	uint64_t ext_clk_freq[ROC_TIM_CLK_SRC_INVALID];
 	struct cnxk_tim_ctl *ring_ctl_data;
 };
 
@@ -236,6 +238,8 @@ cnxk_tim_get_clk_freq(struct cnxk_tim_evdev *dev, enum roc_tim_clk_src clk_src,
 	case ROC_TIM_CLK_SRC_GPIO:
 	case ROC_TIM_CLK_SRC_PTP:
 	case ROC_TIM_CLK_SRC_SYNCE:
+		*freq = dev->ext_clk_freq[clk_src];
+		break;
 	default:
 		return -EINVAL;
 	}
