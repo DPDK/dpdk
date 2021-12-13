@@ -346,6 +346,7 @@ nix_inl_nix_setup(struct nix_inl_dev *inl_dev)
 	struct mbox *mbox = dev->mbox;
 	struct nix_lf_alloc_rsp *rsp;
 	struct nix_lf_alloc_req *req;
+	struct nix_hw_info *hw_info;
 	size_t inb_sa_sz;
 	int i, rc = -ENOSPC;
 	void *sa;
@@ -381,6 +382,17 @@ nix_inl_nix_setup(struct nix_inl_dev *inl_dev)
 	inl_dev->lf_rx_stats = rsp->lf_rx_stats;
 	inl_dev->qints = rsp->qints;
 	inl_dev->cints = rsp->cints;
+
+	/* Get VWQE info if supported */
+	if (roc_model_is_cn10k()) {
+		mbox_alloc_msg_nix_get_hw_info(mbox);
+		rc = mbox_process_msg(mbox, (void *)&hw_info);
+		if (rc) {
+			plt_err("Failed to get HW info, rc=%d", rc);
+			goto lf_free;
+		}
+		inl_dev->vwqe_interval = hw_info->vwqe_delay;
+	}
 
 	/* Register nix interrupts */
 	rc = nix_inl_nix_register_irqs(inl_dev);

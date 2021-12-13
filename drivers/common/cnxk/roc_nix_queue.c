@@ -28,6 +28,22 @@ nix_qsize_clampup(uint32_t val)
 	return i;
 }
 
+void
+nix_rq_vwqe_flush(struct roc_nix_rq *rq, uint16_t vwqe_interval)
+{
+	uint64_t wait_ns;
+
+	if (!roc_model_is_cn10k())
+		return;
+	/* Due to HW errata writes to VWQE_FLUSH might hang, so instead
+	 * wait for max vwqe timeout interval.
+	 */
+	if (rq->vwqe_ena) {
+		wait_ns = rq->vwqe_wait_tmo * (vwqe_interval + 1) * 100;
+		plt_delay_us((wait_ns / 1E3) + 1);
+	}
+}
+
 int
 nix_rq_ena_dis(struct dev *dev, struct roc_nix_rq *rq, bool enable)
 {
@@ -66,9 +82,8 @@ roc_nix_rq_ena_dis(struct roc_nix_rq *rq, bool enable)
 	int rc;
 
 	rc = nix_rq_ena_dis(&nix->dev, rq, enable);
+	nix_rq_vwqe_flush(rq, nix->vwqe_interval);
 
-	if (roc_model_is_cn10k())
-		plt_write64(rq->qid, nix->base + NIX_LF_OP_VWQE_FLUSH);
 	return rc;
 }
 
