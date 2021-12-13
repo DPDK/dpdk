@@ -377,6 +377,7 @@ int nix_rq_cfg(struct dev *dev, struct roc_nix_rq *rq, uint16_t qints, bool cfg,
 int nix_rq_ena_dis(struct dev *dev, struct roc_nix_rq *rq, bool enable);
 int nix_tm_bp_config_get(struct roc_nix *roc_nix, bool *is_enabled);
 int nix_tm_bp_config_set(struct roc_nix *roc_nix, bool enable);
+void nix_rq_vwqe_flush(struct roc_nix_rq *rq, uint16_t vwqe_interval);
 
 /*
  * TM priv utils.

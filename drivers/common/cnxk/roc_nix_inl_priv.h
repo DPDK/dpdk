@@ -35,6 +35,7 @@ struct nix_inl_dev {
 	/* NIX data */
 	uint8_t lf_tx_stats;
 	uint8_t lf_rx_stats;
+	uint16_t vwqe_interval;
 	uint16_t cints;
 	uint16_t qints;
 	struct roc_nix_rq rq;

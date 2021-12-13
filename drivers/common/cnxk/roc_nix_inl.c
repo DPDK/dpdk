@@ -595,8 +595,7 @@ roc_nix_inl_dev_rq_put(struct roc_nix_rq *rq)
 		plt_err("Failed to disable inline device rq, rc=%d", rc);
 
 	/* Flush NIX LF for CN10K */
-	if (roc_model_is_cn10k())
-		plt_write64(0, inl_dev->nix_base + NIX_LF_OP_VWQE_FLUSH);
+	nix_rq_vwqe_flush(rq, inl_dev->vwqe_interval);
 
 	return rc;
 }
