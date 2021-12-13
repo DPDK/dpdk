@@ -5,8 +5,6 @@
 #include "roc_api.h"
 #include "roc_priv.h"
 
-#define XAQ_CACHE_CNT 0x7
-
 /* Default Rx Config for Inline NIX LF */
 #define NIX_INL_LF_RX_CFG                                                      \
 	(ROC_NIX_LF_RX_CFG_DROP_RE | ROC_NIX_LF_RX_CFG_L2_LEN_ERR |            \
@@ -220,10 +218,8 @@ nix_inl_sso_setup(struct nix_inl_dev *inl_dev)
 {
 	struct sso_lf_alloc_rsp *sso_rsp;
 	struct dev *dev = &inl_dev->dev;
-	uint32_t xaq_cnt, count, aura;
 	uint16_t hwgrp[1] = {0};
-	struct npa_pool_s pool;
-	uintptr_t iova;
+	uint32_t xae_cnt;
 	int rc;
 
 	/* Alloc SSOW LF */
@@ -244,41 +240,17 @@ nix_inl_sso_setup(struct nix_inl_dev *inl_dev)
 	inl_dev->xae_waes = sso_rsp->xaq_wq_entries;
 	inl_dev->iue = sso_rsp->in_unit_entries;
 
-	/* Create XAQ pool */
-	xaq_cnt = XAQ_CACHE_CNT;
-	xaq_cnt += inl_dev->iue / inl_dev->xae_waes;
-	plt_sso_dbg("Configuring %d xaq buffers", xaq_cnt);
-
-	inl_dev->xaq_mem = plt_zmalloc(inl_dev->xaq_buf_size * xaq_cnt,
-				       inl_dev->xaq_buf_size);
-	if (!inl_dev->xaq_mem) {
-		rc = NIX_ERR_NO_MEM;
-		plt_err("Failed to alloc xaq buf mem");
+	xae_cnt = inl_dev->iue;
+	rc = sso_hwgrp_init_xaq_aura(dev, &inl_dev->xaq, xae_cnt,
+				     inl_dev->xae_waes, inl_dev->xaq_buf_size,
+				     1);
+	if (rc) {
+		plt_err("Failed to alloc SSO XAQ aura, rc=%d", rc);
 		goto free_sso;
 	}
 
-	memset(&pool, 0, sizeof(struct npa_pool_s));
-	pool.nat_align = 1;
-	rc = roc_npa_pool_create(&inl_dev->xaq_aura, inl_dev->xaq_buf_size,
-				 xaq_cnt, NULL, &pool);
-	if (rc) {
-		plt_err("Failed to alloc aura for XAQ, rc=%d", rc);
-		goto free_mem;
-	}
-
-	/* Fill the XAQ buffers */
-	iova = (uint64_t)inl_dev->xaq_mem;
-	for (count = 0; count < xaq_cnt; count++) {
-		roc_npa_aura_op_free(inl_dev->xaq_aura, 0, iova);
-		iova += inl_dev->xaq_buf_size;
-	}
-	roc_npa_aura_op_range_set(inl_dev->xaq_aura, (uint64_t)inl_dev->xaq_mem,
-				  iova);
-
-	aura = roc_npa_aura_handle_to_aura(inl_dev->xaq_aura);
-
 	/* Setup xaq for hwgrps */
-	rc = sso_hwgrp_alloc_xaq(dev, aura, 1);
+	rc = sso_hwgrp_alloc_xaq(dev, inl_dev->xaq.aura_handle, 1);
 	if (rc) {
 		plt_err("Failed to setup hwgrp xaq aura, rc=%d", rc);
 		goto destroy_pool;
@@ -302,11 +274,7 @@ nix_inl_sso_setup(struct nix_inl_dev *inl_dev)
 release_xaq:
 	sso_hwgrp_release_xaq(&inl_dev->dev, 1);
 destroy_pool:
-	roc_npa_pool_destroy(inl_dev->xaq_aura);
-	inl_dev->xaq_aura = 0;
-free_mem:
-	plt_free(inl_dev->xaq_mem);
-	inl_dev->xaq_mem = NULL;
+	sso_hwgrp_free_xaq_aura(dev, &inl_dev->xaq, 0);
 free_sso:
 	sso_lf_free(dev, SSO_LF_TYPE_HWGRP, 1);
 free_ssow:
@@ -334,6 +302,9 @@ nix_inl_sso_release(struct nix_inl_dev *inl_dev)
 	/* Free SSO, SSOW LF's */
 	sso_lf_free(&inl_dev->dev, SSO_LF_TYPE_HWS, 1);
 	sso_lf_free(&inl_dev->dev, SSO_LF_TYPE_HWGRP, 1);
+
+	/* Free the XAQ aura */
+	sso_hwgrp_free_xaq_aura(&inl_dev->dev, &inl_dev->xaq, 0);
 
 	return 0;
 }

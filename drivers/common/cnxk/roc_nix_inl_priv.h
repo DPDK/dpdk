@@ -27,8 +27,7 @@ struct nix_inl_dev {
 	uint32_t xaq_buf_size;
 	uint32_t xae_waes;
 	uint32_t iue;
-	uint64_t xaq_aura;
-	void *xaq_mem;
+	struct roc_sso_xaq_data xaq;
 	roc_nix_inl_sso_work_cb_t work_cb;
 	void *cb_args;
 

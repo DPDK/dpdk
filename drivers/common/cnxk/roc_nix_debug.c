@@ -1257,8 +1257,8 @@ roc_nix_inl_dev_dump(struct roc_nix_inl_dev *roc_inl_dev)
 	nix_dump("  \txaq_buf_size = %u", inl_dev->xaq_buf_size);
 	nix_dump("  \txae_waes = %u", inl_dev->xae_waes);
 	nix_dump("  \tiue = %u", inl_dev->iue);
-	nix_dump("  \txaq_aura = 0x%" PRIx64, inl_dev->xaq_aura);
-	nix_dump("  \txaq_mem = 0x%p", inl_dev->xaq_mem);
+	nix_dump("  \txaq_aura = 0x%" PRIx64, inl_dev->xaq.aura_handle);
+	nix_dump("  \txaq_mem = 0x%p", inl_dev->xaq.mem);
 
 	nix_dump("  \tinl_dev_rq:");
 	roc_nix_rq_dump(&inl_dev->rq);
