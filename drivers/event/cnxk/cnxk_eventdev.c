@@ -482,7 +482,7 @@ static void
 parse_queue_param(char *value, void *opaque)
 {
 	struct cnxk_sso_qos queue_qos = {0};
-	uint8_t *val = (uint8_t *)&queue_qos;
+	uint16_t *val = (uint16_t *)&queue_qos;
 	struct cnxk_sso_evdev *dev = opaque;
 	char *tok = strtok(value, "-");
 	struct cnxk_sso_qos *old_ptr;
