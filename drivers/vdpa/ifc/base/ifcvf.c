@@ -94,12 +94,14 @@ next:
 		return -1;
 	}
 
-	DEBUGOUT("capability mapping:\ncommon cfg: %p\n"
-			"notify base: %p\nisr cfg: %p\ndevice cfg: %p\n"
-			"multiplier: %u\n",
-			hw->common_cfg, hw->dev_cfg,
-			hw->isr, hw->notify_base,
-			hw->notify_off_multiplier);
+	DEBUGOUT("capability mapping:\n"
+		 "common cfg: %p\n"
+		 "notify base: %p\n"
+		 "isr cfg: %p\n"
+		 "device cfg: %p\n"
+		 "multiplier: %u\n",
+		 hw->common_cfg, hw->notify_base, hw->isr, hw->dev_cfg,
+		 hw->notify_off_multiplier);
 
 	return 0;
 }
