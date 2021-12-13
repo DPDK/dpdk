@@ -38,7 +38,7 @@ within one month of that version being initially released.
 A Stable Release is used to backport fixes from an ``N`` release back to an
 ``N-1`` release, for example, from 16.11 to 16.07.
 
-The duration of a stable is one complete release cycle (3 months). It can be
+The duration of a stable is one complete release cycle (4 months). It can be
 longer, up to 1 year, if a maintainer continues to support the stable branch,
 or if users supply backported fixes, however the explicit commitment should be
 for one release cycle.
@@ -61,8 +61,10 @@ https://git.dpdk.org/dpdk-stable where bugfixes will be backported to.
 A LTS release may align with the declaration of a new major ABI version,
 please read the :doc:`abi_policy` for more information.
 
-It is anticipated that there will be at least 4 releases per year of the LTS
-or approximately 1 every 3 months. However, the cadence can be shorter or
+It is anticipated that there will be at least 3 releases per year of the LTS
+or approximately 1 every 4 months. This is done to align with the DPDK main
+branch releases so that fixes have already gone through validation as part of
+the DPDK main branch release validation. However, the cadence can be shorter or
 longer depending on the number and criticality of the backported
 fixes. Releases should be coordinated with the validation engineers to ensure
 that a tagged release has been tested.
