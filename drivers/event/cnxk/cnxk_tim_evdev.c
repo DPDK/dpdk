@@ -2,6 +2,8 @@
  * Copyright(C) 2021 Marvell.
  */
 
+#include <math.h>
+
 #include "cnxk_eventdev.h"
 #include "cnxk_tim_evdev.h"
 
@@ -120,7 +122,10 @@ cnxk_tim_ring_create(struct rte_event_timer_adapter *adptr)
 {
 	struct rte_event_timer_adapter_conf *rcfg = &adptr->data->conf;
 	struct cnxk_tim_evdev *dev = cnxk_tim_priv_get();
+	uint64_t min_intvl_ns, min_intvl_cyc;
 	struct cnxk_tim_ring *tim_ring;
+	enum roc_tim_clk_src clk_src;
+	uint64_t clk_freq = 0;
 	int i, rc;
 
 	if (dev == NULL)
@@ -139,25 +144,52 @@ cnxk_tim_ring_create(struct rte_event_timer_adapter *adptr)
 		goto tim_ring_free;
 	}
 
-	if (NSEC2TICK(RTE_ALIGN_MUL_CEIL(
-			      rcfg->timer_tick_ns,
-			      cnxk_tim_min_resolution_ns(cnxk_tim_cntfrq())),
-		      cnxk_tim_cntfrq()) <
-	    cnxk_tim_min_tmo_ticks(cnxk_tim_cntfrq())) {
-		if (rcfg->flags & RTE_EVENT_TIMER_ADAPTER_F_ADJUST_RES)
-			rcfg->timer_tick_ns = TICK2NSEC(
-				cnxk_tim_min_tmo_ticks(cnxk_tim_cntfrq()),
-				cnxk_tim_cntfrq());
-		else {
+	clk_src = cnxk_tim_convert_clk_src(rcfg->clk_src);
+	if (clk_src == ROC_TIM_CLK_SRC_INVALID) {
+		plt_err("Invalid clock source");
+		goto tim_hw_free;
+	}
+
+	rc = cnxk_tim_get_clk_freq(dev, clk_src, &clk_freq);
+	if (rc < 0) {
+		plt_err("Failed to get clock frequency");
+		goto tim_hw_free;
+	}
+
+	rc = roc_tim_lf_interval(&dev->tim, clk_src, clk_freq, &min_intvl_ns,
+				 &min_intvl_cyc);
+	if (rc < 0) {
+		plt_err("Failed to get min interval details");
+		goto tim_hw_free;
+	}
+
+	if (rcfg->timer_tick_ns < min_intvl_ns) {
+		if (rcfg->flags & RTE_EVENT_TIMER_ADAPTER_F_ADJUST_RES) {
+			rcfg->timer_tick_ns = min_intvl_ns;
+		} else {
 			rc = -ERANGE;
 			goto tim_hw_free;
 		}
 	}
+
+	if (rcfg->timer_tick_ns > rcfg->max_tmo_ns) {
+		plt_err("Max timeout to too high");
+		rc = -ERANGE;
+		goto tim_hw_free;
+	}
+
+	/* Round */
+	tim_ring->tck_nsec =
+		round(RTE_ALIGN_MUL_NEAR((long double)rcfg->timer_tick_ns,
+					 cnxk_tim_ns_per_tck(clk_freq)));
+
+	tim_ring->tck_int = round((long double)tim_ring->tck_nsec /
+				  cnxk_tim_ns_per_tck(clk_freq));
+	tim_ring->tck_nsec =
+		ceil(tim_ring->tck_int * cnxk_tim_ns_per_tck(clk_freq));
+
 	tim_ring->ring_id = adptr->data->id;
-	tim_ring->clk_src = (int)rcfg->clk_src;
-	tim_ring->tck_nsec = RTE_ALIGN_MUL_CEIL(
-		rcfg->timer_tick_ns,
-		cnxk_tim_min_resolution_ns(cnxk_tim_cntfrq()));
+	tim_ring->clk_src = clk_src;
 	tim_ring->max_tout = rcfg->max_tmo_ns;
 	tim_ring->nb_bkts = (tim_ring->max_tout / tim_ring->tck_nsec);
 	tim_ring->nb_timers = rcfg->nb_timers;
@@ -201,11 +233,9 @@ cnxk_tim_ring_create(struct rte_event_timer_adapter *adptr)
 	if (rc < 0)
 		goto tim_bkt_free;
 
-	rc = roc_tim_lf_config(
-		&dev->tim, tim_ring->ring_id,
-		cnxk_tim_convert_clk_src(tim_ring->clk_src), 0, 0,
-		tim_ring->nb_bkts, tim_ring->chunk_sz,
-		NSEC2TICK(tim_ring->tck_nsec, cnxk_tim_cntfrq()));
+	rc = roc_tim_lf_config(&dev->tim, tim_ring->ring_id, clk_src, 0, 0,
+			       tim_ring->nb_bkts, tim_ring->chunk_sz,
+			       tim_ring->tck_int, tim_ring->tck_nsec, clk_freq);
 	if (rc < 0) {
 		plt_err("Failed to configure timer ring");
 		goto tim_chnk_free;
@@ -300,7 +330,6 @@ cnxk_tim_ring_start(const struct rte_event_timer_adapter *adptr)
 	if (rc < 0)
 		return rc;
 
-	tim_ring->tck_int = NSEC2TICK(tim_ring->tck_nsec, cnxk_tim_cntfrq());
 	tim_ring->tot_int = tim_ring->tck_int * tim_ring->nb_bkts;
 	tim_ring->fast_div = rte_reciprocal_value_u64(tim_ring->tck_int);
 	tim_ring->fast_bkt = rte_reciprocal_value_u64(tim_ring->nb_bkts);

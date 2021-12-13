@@ -10,6 +10,8 @@ enum roc_tim_clk_src {
 	ROC_TIM_CLK_SRC_GPIO,
 	ROC_TIM_CLK_SRC_GTI,
 	ROC_TIM_CLK_SRC_PTP,
+	ROC_TIM_CLK_SRC_SYNCE,
+	ROC_TIM_CLK_SRC_BTS,
 	ROC_TIM_CLK_SRC_INVALID,
 };
 
@@ -33,7 +35,12 @@ int __roc_api roc_tim_lf_config(struct roc_tim *roc_tim, uint8_t ring_id,
 				enum roc_tim_clk_src clk_src,
 				uint8_t ena_periodic, uint8_t ena_dfb,
 				uint32_t bucket_sz, uint32_t chunk_sz,
-				uint32_t interval);
+				uint32_t interval, uint64_t intervalns,
+				uint64_t clockfreq);
+int __roc_api roc_tim_lf_interval(struct roc_tim *roc_tim,
+				  enum roc_tim_clk_src clk_src,
+				  uint64_t clockfreq, uint64_t *intervalns,
+				  uint64_t *interval);
 int __roc_api roc_tim_lf_alloc(struct roc_tim *roc_tim, uint8_t ring_id,
 			       uint64_t *clk);
 int __roc_api roc_tim_lf_free(struct roc_tim *roc_tim, uint8_t ring_id);

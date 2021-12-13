@@ -98,13 +98,6 @@ struct cnxk_tim_evdev {
 	struct cnxk_tim_ctl *ring_ctl_data;
 };
 
-enum cnxk_tim_clk_src {
-	CNXK_TIM_CLK_SRC_10NS = RTE_EVENT_TIMER_ADAPTER_CPU_CLK,
-	CNXK_TIM_CLK_SRC_GPIO = RTE_EVENT_TIMER_ADAPTER_EXT_CLK0,
-	CNXK_TIM_CLK_SRC_GTI = RTE_EVENT_TIMER_ADAPTER_EXT_CLK1,
-	CNXK_TIM_CLK_SRC_PTP = RTE_EVENT_TIMER_ADAPTER_EXT_CLK2,
-};
-
 struct cnxk_tim_bkt {
 	uint64_t first_chunk;
 	union {
@@ -147,7 +140,7 @@ struct cnxk_tim_ring {
 	uint64_t max_tout;
 	uint64_t nb_chunks;
 	uint64_t chunk_sz;
-	enum cnxk_tim_clk_src clk_src;
+	enum roc_tim_clk_src clk_src;
 } __rte_cache_aligned;
 
 struct cnxk_tim_ent {
@@ -167,31 +160,10 @@ cnxk_tim_priv_get(void)
 	return mz->addr;
 }
 
-static inline uint64_t
-cnxk_tim_min_tmo_ticks(uint64_t freq)
+static inline long double
+cnxk_tim_ns_per_tck(uint64_t freq)
 {
-	if (roc_model_runtime_is_cn9k())
-		return CN9K_TIM_MIN_TMO_TKS;
-	else /* CN10K min tick is of 1us */
-		return freq / USECPERSEC;
-}
-
-static inline uint64_t
-cnxk_tim_min_resolution_ns(uint64_t freq)
-{
-	return NSECPERSEC / freq;
-}
-
-static inline enum roc_tim_clk_src
-cnxk_tim_convert_clk_src(enum cnxk_tim_clk_src clk_src)
-{
-	switch (clk_src) {
-	case RTE_EVENT_TIMER_ADAPTER_CPU_CLK:
-		return roc_model_runtime_is_cn9k() ? ROC_TIM_CLK_SRC_10NS :
-							   ROC_TIM_CLK_SRC_GTI;
-	default:
-		return ROC_TIM_CLK_SRC_INVALID;
-	}
+	return (long double)NSECPERSEC / freq;
 }
 
 #ifdef RTE_ARCH_ARM64
@@ -225,6 +197,51 @@ cnxk_tim_cntfrq(void)
 	return 0;
 }
 #endif
+
+static inline enum roc_tim_clk_src
+cnxk_tim_convert_clk_src(enum rte_event_timer_adapter_clk_src clk_src)
+{
+	switch (clk_src) {
+	case RTE_EVENT_TIMER_ADAPTER_CPU_CLK:
+		return ROC_TIM_CLK_SRC_GTI;
+	case RTE_EVENT_TIMER_ADAPTER_EXT_CLK0:
+		return ROC_TIM_CLK_SRC_10NS;
+	case RTE_EVENT_TIMER_ADAPTER_EXT_CLK1:
+		return ROC_TIM_CLK_SRC_GPIO;
+	case RTE_EVENT_TIMER_ADAPTER_EXT_CLK2:
+		return ROC_TIM_CLK_SRC_PTP;
+	case RTE_EVENT_TIMER_ADAPTER_EXT_CLK3:
+		return roc_model_constant_is_cn9k() ? ROC_TIM_CLK_SRC_INVALID :
+						      ROC_TIM_CLK_SRC_SYNCE;
+	default:
+		return ROC_TIM_CLK_SRC_INVALID;
+	}
+}
+
+static inline int
+cnxk_tim_get_clk_freq(struct cnxk_tim_evdev *dev, enum roc_tim_clk_src clk_src,
+		      uint64_t *freq)
+{
+	if (freq == NULL)
+		return -EINVAL;
+
+	PLT_SET_USED(dev);
+	switch (clk_src) {
+	case ROC_TIM_CLK_SRC_GTI:
+		*freq = cnxk_tim_cntfrq();
+		break;
+	case ROC_TIM_CLK_SRC_10NS:
+		*freq = 1E8;
+		break;
+	case ROC_TIM_CLK_SRC_GPIO:
+	case ROC_TIM_CLK_SRC_PTP:
+	case ROC_TIM_CLK_SRC_SYNCE:
+	default:
+		return -EINVAL;
+	}
+
+	return 0;
+}
 
 #define TIM_ARM_FASTPATH_MODES                                                 \
 	FP(sp, 0, 0, 0, CNXK_TIM_ENA_DFB | CNXK_TIM_SP)                        \

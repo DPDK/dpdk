@@ -145,7 +145,7 @@ int
 roc_tim_lf_config(struct roc_tim *roc_tim, uint8_t ring_id,
 		  enum roc_tim_clk_src clk_src, uint8_t ena_periodic,
 		  uint8_t ena_dfb, uint32_t bucket_sz, uint32_t chunk_sz,
-		  uint32_t interval)
+		  uint32_t interval, uint64_t intervalns, uint64_t clockfreq)
 {
 	struct dev *dev = &roc_sso_to_sso_priv(roc_tim->roc_sso)->dev;
 	struct tim_config_req *req;
@@ -162,6 +162,8 @@ roc_tim_lf_config(struct roc_tim *roc_tim, uint8_t ring_id,
 	req->enableperiodic = ena_periodic;
 	req->enabledontfreebuffer = ena_dfb;
 	req->interval = interval;
+	req->intervalns = intervalns;
+	req->clockfreq = clockfreq;
 	req->gpioedge = TIM_GPIO_LTOH_TRANS;
 
 	rc = mbox_process(dev->mbox);
@@ -169,6 +171,34 @@ roc_tim_lf_config(struct roc_tim *roc_tim, uint8_t ring_id,
 		tim_err_desc(rc);
 		return rc;
 	}
+
+	return 0;
+}
+
+int
+roc_tim_lf_interval(struct roc_tim *roc_tim, enum roc_tim_clk_src clk_src,
+		    uint64_t clockfreq, uint64_t *intervalns,
+		    uint64_t *interval)
+{
+	struct dev *dev = &roc_sso_to_sso_priv(roc_tim->roc_sso)->dev;
+	struct tim_intvl_req *req;
+	struct tim_intvl_rsp *rsp;
+	int rc = -ENOSPC;
+
+	req = mbox_alloc_msg_tim_get_min_intvl(dev->mbox);
+	if (req == NULL)
+		return rc;
+
+	req->clockfreq = clockfreq;
+	req->clocksource = clk_src;
+	rc = mbox_process_msg(dev->mbox, (void **)&rsp);
+	if (rc < 0) {
+		tim_err_desc(rc);
+		return rc;
+	}
+
+	*intervalns = rsp->intvl_ns;
+	*interval = rsp->intvl_cyc;
 
 	return 0;
 }

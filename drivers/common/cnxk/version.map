@@ -347,6 +347,7 @@ INTERNAL {
 	roc_tim_lf_disable;
 	roc_tim_lf_enable;
 	roc_tim_lf_free;
+	roc_tim_lf_interval;
 	roc_se_ctx_swap;
 	roc_ree_af_reg_read;
 	roc_ree_af_reg_write;
