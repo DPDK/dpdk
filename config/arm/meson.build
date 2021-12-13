@@ -277,7 +277,8 @@ soc_cn10k = {
     'implementer' : '0x41',
     'flags': [
         ['RTE_MAX_LCORE', 24],
-        ['RTE_MAX_NUMA_NODES', 1]
+        ['RTE_MAX_NUMA_NODES', 1],
+        ['RTE_MEMPOOL_ALIGN', 128]
     ],
     'part_number': '0xd49',
     'extra_march_features': ['crypto'],
