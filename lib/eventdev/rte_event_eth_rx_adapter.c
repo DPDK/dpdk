@@ -2984,15 +2984,17 @@ rte_event_eth_rx_adapter_queue_stats_get(uint8_t id,
 		return -EINVAL;
 	}
 
-	queue_info = &dev_info->rx_queue[rx_queue_id];
-	event_buf = queue_info->event_buf;
-	q_stats = queue_info->stats;
+	if (dev_info->internal_event_port == 0) {
+		queue_info = &dev_info->rx_queue[rx_queue_id];
+		event_buf = queue_info->event_buf;
+		q_stats = queue_info->stats;
 
-	stats->rx_event_buf_count = event_buf->count;
-	stats->rx_event_buf_size = event_buf->events_size;
-	stats->rx_packets = q_stats->rx_packets;
-	stats->rx_poll_count = q_stats->rx_poll_count;
-	stats->rx_dropped = q_stats->rx_dropped;
+		stats->rx_event_buf_count = event_buf->count;
+		stats->rx_event_buf_size = event_buf->events_size;
+		stats->rx_packets = q_stats->rx_packets;
+		stats->rx_poll_count = q_stats->rx_poll_count;
+		stats->rx_dropped = q_stats->rx_dropped;
+	}
 
 	dev = &rte_eventdevs[rx_adapter->eventdev_id];
 	if (dev->dev_ops->eth_rx_adapter_queue_stats_get != NULL) {
@@ -3086,8 +3088,10 @@ rte_event_eth_rx_adapter_queue_stats_reset(uint8_t id,
 		return -EINVAL;
 	}
 
-	queue_info = &dev_info->rx_queue[rx_queue_id];
-	rxa_queue_stats_reset(queue_info);
+	if (dev_info->internal_event_port == 0) {
+		queue_info = &dev_info->rx_queue[rx_queue_id];
+		rxa_queue_stats_reset(queue_info);
+	}
 
 	dev = &rte_eventdevs[rx_adapter->eventdev_id];
 	if (dev->dev_ops->eth_rx_adapter_queue_stats_reset != NULL) {
