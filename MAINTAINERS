@@ -64,6 +64,8 @@ T: git://dpdk.org/next/dpdk-next-eventdev
 Stable Branches
 M: Luca Boccassi <bluca@debian.org>
 M: Kevin Traynor <ktraynor@redhat.com>
+M: Christian Ehrhardt <christian.ehrhardt@canonical.com>
+M: Xueming Li <xuemingl@nvidia.com>
 T: git://dpdk.org/dpdk-stable
 
 Security Issues
