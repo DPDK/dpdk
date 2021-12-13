@@ -26,6 +26,7 @@ struct sso {
 
 enum sso_err_status {
 	SSO_ERR_PARAM = -4096,
+	SSO_ERR_DEVICE_NOT_BOUNDED = -4097,
 };
 
 enum sso_lf_type {

@@ -220,6 +220,9 @@ roc_error_msg_get(int errorcode)
 	case NIX_AF_ERR_PTP_CONFIG_FAIL:
 		err_msg = "PTP config failed";
 		break;
+	case SSO_ERR_DEVICE_NOT_BOUNDED:
+		err_msg = "SSO pf/vf not found";
+		break;
 	case UTIL_ERR_FS:
 		err_msg = "file operation failed";
 		break;

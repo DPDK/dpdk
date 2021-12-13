@@ -206,3 +206,23 @@ roc_idev_npa_nix_get(void)
 	dev = container_of(npa_lf, struct dev, npa);
 	return dev->roc_nix;
 }
+
+struct roc_sso *
+idev_sso_get(void)
+{
+	struct idev_cfg *idev = idev_get_cfg();
+
+	if (idev != NULL)
+		return __atomic_load_n(&idev->sso, __ATOMIC_ACQUIRE);
+
+	return NULL;
+}
+
+void
+idev_sso_set(struct roc_sso *sso)
+{
+	struct idev_cfg *idev = idev_get_cfg();
+
+	if (idev != NULL)
+		__atomic_store_n(&idev->sso, sso, __ATOMIC_RELEASE);
+}

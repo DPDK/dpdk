@@ -21,6 +21,7 @@ struct idev_cfg {
 	uint64_t lmt_base_addr;
 	struct roc_bphy *bphy;
 	struct roc_cpt *cpt;
+	struct roc_sso *sso;
 	struct nix_inl_dev *nix_inl_dev;
 	plt_spinlock_t nix_inl_dev_lock;
 };
@@ -39,6 +40,8 @@ uint16_t idev_npa_lf_active(struct dev *dev);
 /* idev sso */
 void idev_sso_pffunc_set(uint16_t sso_pf_func);
 uint16_t idev_sso_pffunc_get(void);
+struct roc_sso *idev_sso_get(void);
+void idev_sso_set(struct roc_sso *sso);
 
 /* idev lmt */
 uint16_t idev_lmt_pffunc_get(void);

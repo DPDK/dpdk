@@ -726,6 +726,7 @@ roc_sso_dev_init(struct roc_sso *roc_sso)
 		link_mem = PLT_PTR_ADD(link_mem, link_map_sz);
 	}
 	idev_sso_pffunc_set(sso->dev.pf_func);
+	idev_sso_set(roc_sso);
 	sso->pci_dev = pci_dev;
 	sso->dev.drv_inited = true;
 	roc_sso->lmt_base = sso->dev.lmt_base;

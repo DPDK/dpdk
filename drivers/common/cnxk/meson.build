@@ -78,6 +78,8 @@ includes += include_directories('../../../lib/meter')
 # Telemetry common code
 sources += files('cnxk_telemetry_bphy.c',
                  'cnxk_telemetry_npa.c',
-                 'cnxk_telemetry_nix.c')
+                 'cnxk_telemetry_nix.c',
+                 'cnxk_telemetry_sso.c',
+)
 
 deps += ['bus_pci', 'net', 'telemetry']
