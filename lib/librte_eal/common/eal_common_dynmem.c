@@ -304,6 +304,10 @@ eal_dynmem_hugepage_init(void)
 				needed = num_pages - num_pages_alloc;
 
 				pages = malloc(sizeof(*pages) * needed);
+				if (pages == NULL) {
+					RTE_LOG(ERR, EAL, "Failed to malloc pages\n");
+					return -1;
+				}
 
 				/* do not request exact number of pages */
 				cur_pages = eal_memalloc_alloc_seg_bulk(pages,
