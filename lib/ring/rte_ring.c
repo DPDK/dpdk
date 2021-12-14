@@ -75,7 +75,7 @@ rte_ring_get_memsize_elem(unsigned int esize, unsigned int count)
 		return -EINVAL;
 	}
 
-	sz = sizeof(struct rte_ring) + count * esize;
+	sz = sizeof(struct rte_ring) + (ssize_t)count * esize;
 	sz = RTE_ALIGN(sz, RTE_CACHE_LINE_SIZE);
 	return sz;
 }
