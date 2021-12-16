@@ -502,7 +502,7 @@ iavf_get_vf_resource(struct iavf_adapter *adapter)
 		VIRTCHNL_VF_OFFLOAD_VLAN_V2 |
 		VIRTCHNL_VF_LARGE_NUM_QPAIRS |
 		VIRTCHNL_VF_OFFLOAD_QOS |
-+		VIRTCHNL_VF_OFFLOAD_INLINE_IPSEC_CRYPTO;
+		VIRTCHNL_VF_OFFLOAD_INLINE_IPSEC_CRYPTO;
 
 	args.in_args = (uint8_t *)&caps;
 	args.in_args_size = sizeof(caps);
