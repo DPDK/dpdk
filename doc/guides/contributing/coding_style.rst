@@ -136,6 +136,30 @@ For example:
 Conditional Compilation
 ~~~~~~~~~~~~~~~~~~~~~~~
 
+.. note::
+
+   Conditional compilation should be used only when absolutely necessary,
+   as it increases the number of target binaries that need to be built and tested.
+   See below for details of some utility macros/defines available
+   to allow ifdefs/macros to be replaced by C conditional in some cases.
+
+Some high-level guidelines on the use of conditional compilation:
+
+* If code can compile on all platforms/systems,
+  but cannot run on some due to lack of support,
+  then regular C conditionals, as described in the next section,
+  should be used instead of conditional compilation.
+* If the code in question cannot compile on all systems,
+  but constitutes only a small fragment of a file,
+  then conditional compilation should be used, as described in this section.
+* If the code for conditional compilation implements an interface in an OS
+  or platform-specific way, then create a file for each OS or platform
+  and select the appropriate file using the Meson build system.
+  In most cases, these environment-specific files should be created inside the EAL library,
+  rather than having each library implement its own abstraction layer.
+
+Additional style guidance for the use of conditional compilation macros:
+
 * When code is conditionally compiled using ``#ifdef`` or ``#if``, a comment may be added following the matching
   ``#endif`` or ``#else`` to permit the reader to easily discern where conditionally compiled code regions end.
 * This comment should be used only for (subjectively) long regions, regions greater than 20 lines, or where a series of nested ``#ifdef``'s may be confusing to the reader.
@@ -165,9 +189,45 @@ Conditional Compilation
  /* Or here. */
  #endif /* !COMPAT_43 */
 
-.. note::
+Defines to Avoid Conditional Compilation
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
- Conditional compilation should be used only when absolutely necessary, as it increases the number of target binaries that need to be built and tested.
+In many cases in DPDK, one wants to run code based on
+the target platform, or runtime environment.
+While this can be done using the conditional compilation directives,
+e.g. ``#ifdef RTE_EXEC_ENV_LINUX``, present in DPDK for many releases,
+this can also be done in many cases using regular ``if`` statements
+and the following defines:
+
+* ``RTE_ENV_FREEBSD``, ``RTE_ENV_LINUX``, ``RTE_ENV_WINDOWS`` -
+  these define ids for each operating system environment.
+* ``RTE_EXEC_ENV`` - this defines the id of the current environment,
+  i.e. one of the items in list above.
+* ``RTE_EXEC_ENV_IS_FREEBSD``, ``RTE_EXEC_ENV_IS_LINUX``, ``RTE_EXEC_ENV_IS_WINDOWS`` -
+  0/1 values indicating if the current environment is that specified,
+  shortcuts for checking e.g. ``RTE_EXEC_ENV == RTE_ENV_WINDOWS``
+
+Examples of use:
+
+.. code-block:: c
+
+   /* report a unit tests as unsupported on Windows */
+   if (RTE_EXEC_ENV_IS_WINDOWS)
+       return TEST_SKIPPED;
+
+   /* set different default values depending on OS Environment */
+   switch (RTE_EXEC_ENV) {
+   case RTE_ENV_FREEBSD:
+       default = x;
+       break;
+   case RTE_ENV_LINUX:
+       default = y;
+       break;
+   case RTE_ENV_WINDOWS:
+       default = z;
+       break;
+   }
+
 
 C Types
 -------
