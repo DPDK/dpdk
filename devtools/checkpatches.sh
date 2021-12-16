@@ -158,6 +158,14 @@ check_forbidden_additions() { # <patch>
 		-f $(dirname $(readlink -f $0))/check-forbidden-tokens.awk \
 		"$1" || res=1
 
+	# '// XXX is not set' must be preferred over '#undef XXX'
+	awk -v FOLDERS='config/rte_config.h' \
+		-v EXPRESSIONS='#undef' \
+		-v RET_ON_FAIL=1 \
+		-v MESSAGE='Using "#undef XXX", prefer "// XXX is not set"' \
+		-f $(dirname $(readlink -f $0))/check-forbidden-tokens.awk \
+		"$1" || res=1
+
 	return $res
 }
 

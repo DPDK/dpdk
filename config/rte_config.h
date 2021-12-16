@@ -83,13 +83,13 @@
 
 /* ip_fragmentation defines */
 #define RTE_LIBRTE_IP_FRAG_MAX_FRAG 8
-#undef RTE_LIBRTE_IP_FRAG_TBL_STAT
+// RTE_LIBRTE_IP_FRAG_TBL_STAT is not set
 
 /* rte_power defines */
 #define RTE_MAX_LCORE_FREQS 64
 
 /* rte_sched defines */
-#undef RTE_SCHED_CMAN
+// RTE_SCHED_CMAN is not set
 
 /* rte_graph defines */
 #define RTE_GRAPH_BURST_SIZE 256
@@ -120,7 +120,7 @@
 
 /* i40e defines */
 #define RTE_LIBRTE_I40E_RX_ALLOW_BULK_ALLOC 1
-#undef RTE_LIBRTE_I40E_16BYTE_RX_DESC
+// RTE_LIBRTE_I40E_16BYTE_RX_DESC is not set
 #define RTE_LIBRTE_I40E_QUEUE_NUM_PER_PF 64
 #define RTE_LIBRTE_I40E_QUEUE_NUM_PER_VF 4
 #define RTE_LIBRTE_I40E_QUEUE_NUM_PER_VM 4
@@ -133,6 +133,6 @@
 #define RTE_LIBRTE_QEDE_FW ""
 
 /* DLB2 defines */
-#undef RTE_LIBRTE_PMD_DLB2_QUELL_STATS
+// RTE_LIBRTE_PMD_DLB2_QUELL_STATS is not set
 
 #endif /* _RTE_CONFIG_H_ */
