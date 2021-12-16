@@ -111,6 +111,11 @@ mlx5_common_args_check_handler(const char *key, const char *val, void *opaque)
 	struct mlx5_common_dev_config *config = opaque;
 	signed long tmp;
 
+	if (val == NULL || *val == '\0') {
+		DRV_LOG(ERR, "Key %s is missing value.", key);
+		rte_errno = EINVAL;
+		return -rte_errno;
+	}
 	errno = 0;
 	tmp = strtol(val, NULL, 0);
 	if (errno) {
