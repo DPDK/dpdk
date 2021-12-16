@@ -13,6 +13,10 @@
  * dynamic flags.
  */
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define RTE_PMD_MLX5_FINE_GRANULARITY_INLINE "mlx5_fine_granularity_inline"
 
 /**
@@ -56,5 +60,9 @@ int rte_pmd_mlx5_get_dyn_flag_names(char *names[], unsigned int n);
  */
 __rte_experimental
 int rte_pmd_mlx5_sync_flow(uint16_t port_id, uint32_t domains);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
