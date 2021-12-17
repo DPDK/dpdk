@@ -444,10 +444,6 @@ cnxk_ot_ipsec_outb_sa_fill(struct roc_ot_ipsec_outb_sa *sa,
 		return -EINVAL;
 	}
 
-	/* Default options of DSCP and Flow label/DF */
-	sa->w2.s.dscp_src = ROC_IE_OT_SA_COPY_FROM_SA;
-	sa->w2.s.ipv4_df_src_or_ipv6_flw_lbl_src = ROC_IE_OT_SA_COPY_FROM_SA;
-
 skip_tunnel_info:
 	/* ESN */
 	sa->w0.s.esn_en = !!ipsec_xfrm->options.esn;
