@@ -43,8 +43,6 @@ all_examples = [
         'multi_process/symmetric_mp',
         'ntb',
         'packet_ordering',
-        'performance-thread/l3fwd-thread',
-        'performance-thread/pthread_shim',
         'pipeline',
         'ptpclient',
         'qos_meter',

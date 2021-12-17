@@ -53,7 +53,6 @@ Sample Applications User Guides
     dist_app
     vm_power_management
     ptpclient
-    performance_thread
     fips_validation
     ipsec_secgw
     bbdev_app

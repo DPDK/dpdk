@@ -99,7 +99,6 @@ arm_64_sources()
 
 x86_common()
 {
-	find_sources "examples/performance-thread/common/arch/x86" '*.[chS]'
 	find_sources "$source_dirs" '*_sse*.[chS]'
 	find_sources "$source_dirs" '*_avx*.[chS]'
 	find_sources "$source_dirs" '*x86.[chS]'

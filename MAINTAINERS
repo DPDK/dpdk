@@ -1753,11 +1753,6 @@ Link status interrupt example
 F: examples/link_status_interrupt/
 F: doc/guides/sample_app_ug/link_status_intr.rst
 
-L-threads - EXPERIMENTAL
-M: John McNamara <john.mcnamara@intel.com>
-F: examples/performance-thread/
-F: doc/guides/sample_app_ug/performance_thread.rst
-
 PTP client example
 M: Kirill Rybalchenko <kirill.rybalchenko@intel.com>
 F: examples/ptpclient/
