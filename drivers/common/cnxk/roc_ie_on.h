@@ -22,6 +22,8 @@ enum roc_ie_on_ucc_ipsec {
 
 /* Helper macros */
 #define ROC_IE_ON_INB_RPTR_HDR 0x8
+#define ROC_IE_ON_MAX_IV_LEN   16
+#define ROC_IE_ON_PER_PKT_IV   BIT(43)
 
 enum {
 	ROC_IE_ON_SA_ENC_NULL = 0,
@@ -53,6 +55,11 @@ enum {
 enum {
 	ROC_IE_ON_SA_ENCAP_NONE = 0,
 	ROC_IE_ON_SA_ENCAP_UDP = 1,
+};
+
+enum {
+	ROC_IE_ON_IV_SRC_HW_GEN_DEFAULT = 0,
+	ROC_IE_ON_IV_SRC_FROM_DPTR = 1,
 };
 
 struct roc_ie_on_outb_hdr {

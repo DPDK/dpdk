@@ -24,6 +24,8 @@ struct cn9k_ipsec_sa {
 	uint16_t cipher_iv_off;
 	/** Cipher IV length in bytes */
 	uint8_t cipher_iv_len;
+	/** Outbound custom header length */
+	uint8_t custom_hdr_len;
 	/** Response length calculation data */
 	struct cnxk_ipsec_outb_rlens rlens;
 	/** Outbound IP-ID */

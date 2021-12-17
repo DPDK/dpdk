@@ -1166,7 +1166,9 @@ static void
 cn9k_sec_caps_update(struct rte_security_capability *sec_cap)
 {
 	if (sec_cap->ipsec.direction == RTE_SECURITY_IPSEC_SA_DIR_EGRESS) {
+#ifdef LA_IPSEC_DEBUG
 		sec_cap->ipsec.options.iv_gen_disable = 1;
+#endif
 	}
 }
 

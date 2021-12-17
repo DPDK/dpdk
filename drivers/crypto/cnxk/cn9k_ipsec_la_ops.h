@@ -74,7 +74,7 @@ static __rte_always_inline int
 process_outb_sa(struct rte_crypto_op *cop, struct cn9k_ipsec_sa *sa,
 		struct cpt_inst_s *inst)
 {
-	const unsigned int hdr_len = sizeof(struct roc_ie_on_outb_hdr);
+	const unsigned int hdr_len = sa->custom_hdr_len;
 	struct rte_crypto_sym_op *sym_op = cop->sym;
 	struct rte_mbuf *m_src = sym_op->m_src;
 	struct roc_ie_on_outb_sa *out_sa;
@@ -103,9 +103,15 @@ process_outb_sa(struct rte_crypto_op *cop, struct cn9k_ipsec_sa *sa,
 		return -ENOMEM;
 	}
 
-	memcpy(&hdr->iv[0],
-	       rte_crypto_op_ctod_offset(cop, uint8_t *, sa->cipher_iv_off),
-	       sa->cipher_iv_len);
+#ifdef LA_IPSEC_DEBUG
+	if (sa->inst.w4 & ROC_IE_ON_PER_PKT_IV) {
+		memcpy(&hdr->iv[0],
+		       rte_crypto_op_ctod_offset(cop, uint8_t *,
+						 sa->cipher_iv_off),
+		       sa->cipher_iv_len);
+	}
+#endif
+
 	hdr->seq = rte_cpu_to_be_32(sa->seq_lo);
 	hdr->ip_id = rte_cpu_to_be_32(sa->ip_id);
 

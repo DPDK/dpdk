@@ -426,13 +426,7 @@ cn9k_ipsec_outb_sa_create(struct cnxk_cpt_qp *qp,
 
 	ctx_len += RTE_ALIGN_CEIL(ctx_len, 8);
 
-	if (crypto_xform->type == RTE_CRYPTO_SYM_XFORM_AEAD) {
-		sa->cipher_iv_off = crypto_xform->aead.iv.offset;
-		sa->cipher_iv_len = crypto_xform->aead.iv.length;
-	} else {
-		sa->cipher_iv_off = crypto_xform->cipher.iv.offset;
-		sa->cipher_iv_len = crypto_xform->cipher.iv.length;
-
+	if (crypto_xform->type != RTE_CRYPTO_SYM_XFORM_AEAD) {
 		auth_key = auth_xform->auth.key.data;
 		auth_key_len = auth_xform->auth.key.length;
 
@@ -465,7 +459,31 @@ cn9k_ipsec_outb_sa_create(struct cnxk_cpt_qp *qp,
 
 	param1.u16 = 0;
 	param1.s.ikev2 = 1;
-	param1.s.per_pkt_iv = 1;
+
+	sa->custom_hdr_len = sizeof(struct roc_ie_on_outb_hdr) -
+			     ROC_IE_ON_MAX_IV_LEN;
+
+#ifdef LA_IPSEC_DEBUG
+	/* Use IV from application in debug mode */
+	if (ipsec->options.iv_gen_disable == 1) {
+		param1.s.per_pkt_iv = ROC_IE_ON_IV_SRC_FROM_DPTR;
+		sa->custom_hdr_len = sizeof(struct roc_ie_on_outb_hdr);
+
+		if (crypto_xform->type == RTE_CRYPTO_SYM_XFORM_AEAD) {
+			sa->cipher_iv_off = crypto_xform->aead.iv.offset;
+			sa->cipher_iv_len = crypto_xform->aead.iv.length;
+		} else {
+			sa->cipher_iv_off = crypto_xform->cipher.iv.offset;
+			sa->cipher_iv_len = crypto_xform->cipher.iv.length;
+		}
+	}
+#else
+	if (ipsec->options.iv_gen_disable != 0) {
+		plt_err("Application provided IV is not supported");
+		return -ENOTSUP;
+	}
+#endif
+
 	w4.s.param1 = param1.u16;
 
 	inst_tmpl->w4 = w4.u64;
