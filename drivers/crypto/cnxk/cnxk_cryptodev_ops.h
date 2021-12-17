@@ -166,7 +166,11 @@ pending_queue_retreat(uint64_t *index, const uint64_t mask, uint64_t nb_entry)
 static __rte_always_inline uint64_t
 pending_queue_infl_cnt(uint64_t head, uint64_t tail, const uint64_t mask)
 {
-	return (head - tail) & mask;
+	/*
+	 * Mask is nb_desc - 1. Add nb_desc to head and mask to account for
+	 * cases when tail > head, which happens during wrap around.
+	 */
+	return ((head + mask + 1) - tail) & mask;
 }
 
 static __rte_always_inline uint64_t
