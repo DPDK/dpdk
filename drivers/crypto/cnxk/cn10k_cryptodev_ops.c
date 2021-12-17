@@ -53,7 +53,6 @@ cpt_sec_inst_fill(struct rte_crypto_op *op, struct cn10k_sec_session *sess,
 		  struct cpt_inflight_req *infl_req, struct cpt_inst_s *inst)
 {
 	struct rte_crypto_sym_op *sym_op = op->sym;
-	union roc_ot_ipsec_sa_word2 *w2;
 	struct cn10k_ipsec_sa *sa;
 	int ret;
 
@@ -68,9 +67,8 @@ cpt_sec_inst_fill(struct rte_crypto_op *op, struct cn10k_sec_session *sess,
 	}
 
 	sa = &sess->sa;
-	w2 = (union roc_ot_ipsec_sa_word2 *)&sa->in_sa.w2;
 
-	if (w2->s.dir == ROC_IE_SA_DIR_OUTBOUND)
+	if (sa->is_outbound)
 		ret = process_outb_sa(op, sa, inst);
 	else {
 		infl_req->op_flags |= CPT_OP_FLAGS_IPSEC_DIR_INBOUND;

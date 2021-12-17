@@ -67,7 +67,7 @@ cn10k_ipsec_outb_sa_create(struct roc_cpt *roc_cpt, struct roc_cpt_lf *lf,
 		goto sa_dptr_free;
 	}
 
-	sa->inst.w7 = ipsec_cpt_inst_w7_get(roc_cpt, sa);
+	sa->inst.w7 = ipsec_cpt_inst_w7_get(roc_cpt, out_sa);
 
 #ifdef LA_IPSEC_DEBUG
 	/* Use IV from application in debug mode */
@@ -88,6 +88,8 @@ cn10k_ipsec_outb_sa_create(struct roc_cpt *roc_cpt, struct roc_cpt_lf *lf,
 		goto sa_dptr_free;
 	}
 #endif
+
+	sa->is_outbound = true;
 
 	/* Get Rlen calculation data */
 	ret = cnxk_ipsec_outb_rlens_get(&rlens, ipsec_xfrm, crypto_xfrm);
@@ -127,6 +129,8 @@ cn10k_ipsec_outb_sa_create(struct roc_cpt *roc_cpt, struct roc_cpt_lf *lf,
 	/* Copy word0 from sa_dptr to populate ctx_push_sz ctx_size fields */
 	memcpy(out_sa, sa_dptr, 8);
 
+	plt_atomic_thread_fence(__ATOMIC_SEQ_CST);
+
 	/* Write session using microcode opcode */
 	ret = roc_cpt_ctx_write(lf, sa_dptr, out_sa,
 				ROC_NIX_INL_OT_IPSEC_OUTB_HW_SZ);
@@ -135,8 +139,10 @@ cn10k_ipsec_outb_sa_create(struct roc_cpt *roc_cpt, struct roc_cpt_lf *lf,
 		goto sa_dptr_free;
 	}
 
-	/* Trigger CTX flush to write dirty data back to DRAM */
+	/* Trigger CTX flush so that data is written back to DRAM */
 	roc_cpt_lf_ctx_flush(lf, out_sa, false);
+
+	plt_atomic_thread_fence(__ATOMIC_SEQ_CST);
 
 sa_dptr_free:
 	plt_free(sa_dptr);
@@ -178,7 +184,8 @@ cn10k_ipsec_inb_sa_create(struct roc_cpt *roc_cpt, struct roc_cpt_lf *lf,
 		goto sa_dptr_free;
 	}
 
-	sa->inst.w7 = ipsec_cpt_inst_w7_get(roc_cpt, sa);
+	sa->is_outbound = false;
+	sa->inst.w7 = ipsec_cpt_inst_w7_get(roc_cpt, in_sa);
 
 	/* pre-populate CPT INST word 4 */
 	inst_w4.u64 = 0;
@@ -214,6 +221,8 @@ cn10k_ipsec_inb_sa_create(struct roc_cpt *roc_cpt, struct roc_cpt_lf *lf,
 	/* Copy word0 from sa_dptr to populate ctx_push_sz ctx_size fields */
 	memcpy(in_sa, sa_dptr, 8);
 
+	plt_atomic_thread_fence(__ATOMIC_SEQ_CST);
+
 	/* Write session using microcode opcode */
 	ret = roc_cpt_ctx_write(lf, sa_dptr, in_sa,
 				ROC_NIX_INL_OT_IPSEC_INB_HW_SZ);
@@ -222,8 +231,10 @@ cn10k_ipsec_inb_sa_create(struct roc_cpt *roc_cpt, struct roc_cpt_lf *lf,
 		goto sa_dptr_free;
 	}
 
-	/* Trigger CTX flush to write dirty data back to DRAM */
+	/* Trigger CTX flush so that data is written back to DRAM */
 	roc_cpt_lf_ctx_flush(lf, in_sa, false);
+
+	plt_atomic_thread_fence(__ATOMIC_SEQ_CST);
 
 sa_dptr_free:
 	plt_free(sa_dptr);
@@ -300,21 +311,46 @@ mempool_put:
 }
 
 static int
-cn10k_sec_session_destroy(void *device __rte_unused,
-			  struct rte_security_session *sess)
+cn10k_sec_session_destroy(void *dev, struct rte_security_session *sec_sess)
 {
-	struct cn10k_sec_session *priv;
+	struct rte_cryptodev *crypto_dev = dev;
+	union roc_ot_ipsec_sa_word2 *w2;
+	struct cn10k_sec_session *sess;
 	struct rte_mempool *sess_mp;
+	struct cn10k_ipsec_sa *sa;
+	struct cnxk_cpt_qp *qp;
+	struct roc_cpt_lf *lf;
 
-	priv = get_sec_session_private_data(sess);
-
-	if (priv == NULL)
+	sess = get_sec_session_private_data(sec_sess);
+	if (sess == NULL)
 		return 0;
 
-	sess_mp = rte_mempool_from_obj(priv);
+	qp = crypto_dev->data->queue_pairs[0];
+	if (qp == NULL)
+		return 0;
 
-	set_sec_session_private_data(sess, NULL);
-	rte_mempool_put(sess_mp, priv);
+	lf = &qp->lf;
+
+	sa = &sess->sa;
+
+	/* Trigger CTX flush to write dirty data back to DRAM */
+	roc_cpt_lf_ctx_flush(lf, &sa->in_sa, false);
+
+	/* Wait for 1 ms so that flush is complete */
+	rte_delay_ms(1);
+
+	w2 = (union roc_ot_ipsec_sa_word2 *)&sa->in_sa.w2;
+	w2->s.valid = 0;
+
+	plt_atomic_thread_fence(__ATOMIC_SEQ_CST);
+
+	/* Trigger CTX reload to fetch new data from DRAM */
+	roc_cpt_lf_ctx_reload(lf, &sa->in_sa);
+
+	sess_mp = rte_mempool_from_obj(sess);
+
+	set_sec_session_private_data(sec_sess, NULL);
+	rte_mempool_put(sess_mp, sess);
 
 	return 0;
 }
