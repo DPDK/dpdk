@@ -73,11 +73,15 @@ pdcp_iv_copy(uint8_t *iv_d, uint8_t *iv_s, const uint8_t pdcp_alg_type,
 		for (j = 0; j < 4; j++)
 			iv_temp[j] = iv_s_temp[3 - j];
 		memcpy(iv_d, iv_temp, 16);
-	} else {
+	} else if (pdcp_alg_type == ROC_SE_PDCP_ALG_TYPE_ZUC) {
 		/* ZUC doesn't need a swap */
 		memcpy(iv_d, iv_s, 16);
 		if (pack_iv)
 			cpt_pack_iv(iv_s, iv_d);
+	} else {
+		/* AES-CMAC EIA2, microcode expects 16B zeroized IV */
+		for (j = 0; j < 4; j++)
+			iv_d[j] = 0;
 	}
 }
 
@@ -992,8 +996,8 @@ cpt_dec_hmac_prep(uint32_t flags, uint64_t d_offs, uint64_t d_lens,
 }
 
 static __rte_always_inline int
-cpt_zuc_snow3g_prep(uint32_t req_flags, uint64_t d_offs, uint64_t d_lens,
-		    struct roc_se_fc_params *params, struct cpt_inst_s *inst)
+cpt_pdcp_alg_prep(uint32_t req_flags, uint64_t d_offs, uint64_t d_lens,
+		  struct roc_se_fc_params *params, struct cpt_inst_s *inst)
 {
 	uint32_t size;
 	int32_t inputlen, outputlen;
@@ -1014,33 +1018,43 @@ cpt_zuc_snow3g_prep(uint32_t req_flags, uint64_t d_offs, uint64_t d_lens,
 	mac_len = se_ctx->mac_len;
 	pdcp_alg_type = se_ctx->pdcp_alg_type;
 
-	cpt_inst_w4.s.opcode_major = ROC_SE_MAJOR_OP_ZUC_SNOW3G;
-
+	cpt_inst_w4.s.opcode_major = ROC_SE_MAJOR_OP_PDCP;
 	cpt_inst_w4.s.opcode_minor = se_ctx->template_w4.s.opcode_minor;
 
 	if (flags == 0x1) {
 		iv_s = params->auth_iv_buf;
-		iv_len = params->auth_iv_len;
-
-		if (iv_len == 25) {
-			iv_len -= 2;
-			pack_iv = 1;
-		}
 
 		/*
 		 * Microcode expects offsets in bytes
 		 * TODO: Rounding off
 		 */
 		auth_data_len = ROC_SE_AUTH_DLEN(d_lens);
-
-		/* EIA3 or UIA2 */
 		auth_offset = ROC_SE_AUTH_OFFSET(d_offs);
-		auth_offset = auth_offset / 8;
 
-		/* consider iv len */
-		auth_offset += iv_len;
+		if (se_ctx->pdcp_alg_type != ROC_SE_PDCP_ALG_TYPE_AES_CTR) {
+			iv_len = params->auth_iv_len;
 
-		inputlen = auth_offset + (RTE_ALIGN(auth_data_len, 8) / 8);
+			if (iv_len == 25) {
+				iv_len -= 2;
+				pack_iv = 1;
+			}
+
+			auth_offset = auth_offset / 8;
+
+			/* consider iv len */
+			auth_offset += iv_len;
+
+			inputlen =
+				auth_offset + (RTE_ALIGN(auth_data_len, 8) / 8);
+		} else {
+			iv_len = 16;
+
+			/* consider iv len */
+			auth_offset += iv_len;
+
+			inputlen = auth_offset + auth_data_len;
+		}
+
 		outputlen = mac_len;
 
 		offset_ctrl = rte_cpu_to_be_64((uint64_t)auth_offset);
@@ -1056,7 +1070,6 @@ cpt_zuc_snow3g_prep(uint32_t req_flags, uint64_t d_offs, uint64_t d_lens,
 			pack_iv = 1;
 		}
 
-		/* EEA3 or UEA2 */
 		/*
 		 * Microcode expects offsets in bytes
 		 * TODO: Rounding off
@@ -1589,8 +1602,7 @@ cpt_fc_dec_hmac_prep(uint32_t flags, uint64_t d_offs, uint64_t d_lens,
 	if (likely(fc_type == ROC_SE_FC_GEN)) {
 		ret = cpt_dec_hmac_prep(flags, d_offs, d_lens, fc_params, inst);
 	} else if (fc_type == ROC_SE_PDCP) {
-		ret = cpt_zuc_snow3g_prep(flags, d_offs, d_lens, fc_params,
-					  inst);
+		ret = cpt_pdcp_alg_prep(flags, d_offs, d_lens, fc_params, inst);
 	} else if (fc_type == ROC_SE_KASUMI) {
 		ret = cpt_kasumi_dec_prep(d_offs, d_lens, fc_params, inst);
 	}
@@ -1618,8 +1630,7 @@ cpt_fc_enc_hmac_prep(uint32_t flags, uint64_t d_offs, uint64_t d_lens,
 	if (likely(fc_type == ROC_SE_FC_GEN)) {
 		ret = cpt_enc_hmac_prep(flags, d_offs, d_lens, fc_params, inst);
 	} else if (fc_type == ROC_SE_PDCP) {
-		ret = cpt_zuc_snow3g_prep(flags, d_offs, d_lens, fc_params,
-					  inst);
+		ret = cpt_pdcp_alg_prep(flags, d_offs, d_lens, fc_params, inst);
 	} else if (fc_type == ROC_SE_KASUMI) {
 		ret = cpt_kasumi_enc_prep(flags, d_offs, d_lens, fc_params,
 					  inst);
@@ -1883,8 +1894,11 @@ fill_sess_auth(struct rte_crypto_sym_xform *xform, struct cnxk_se_sess *sess)
 		auth_type = 0;
 		is_null = 1;
 		break;
-	case RTE_CRYPTO_AUTH_AES_XCBC_MAC:
 	case RTE_CRYPTO_AUTH_AES_CMAC:
+		auth_type = ROC_SE_AES_CMAC_EIA2;
+		zsk_flag = ROC_SE_ZS_IA;
+		break;
+	case RTE_CRYPTO_AUTH_AES_XCBC_MAC:
 	case RTE_CRYPTO_AUTH_AES_CBC_MAC:
 		plt_dp_err("Crypto: Unsupported hash algo %u", a_form->algo);
 		return -1;
