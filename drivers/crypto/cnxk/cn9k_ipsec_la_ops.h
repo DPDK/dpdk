@@ -77,9 +77,10 @@ process_outb_sa(struct rte_crypto_op *cop, struct cn9k_ipsec_sa *sa,
 	const unsigned int hdr_len = sizeof(struct roc_ie_on_outb_hdr);
 	struct rte_crypto_sym_op *sym_op = cop->sym;
 	struct rte_mbuf *m_src = sym_op->m_src;
-	uint32_t dlen, rlen, extend_tail;
 	struct roc_ie_on_outb_sa *out_sa;
 	struct roc_ie_on_outb_hdr *hdr;
+	uint32_t dlen, rlen;
+	int32_t extend_tail;
 
 	out_sa = &sa->out_sa;
 
@@ -88,7 +89,8 @@ process_outb_sa(struct rte_crypto_op *cop, struct cn9k_ipsec_sa *sa,
 
 	extend_tail = rlen - dlen;
 	if (unlikely(extend_tail > rte_pktmbuf_tailroom(m_src))) {
-		plt_dp_err("Not enough tail room");
+		plt_dp_err("Not enough tail room (required: %d, available: %d",
+			   extend_tail, rte_pktmbuf_tailroom(m_src));
 		return -ENOMEM;
 	}
 
