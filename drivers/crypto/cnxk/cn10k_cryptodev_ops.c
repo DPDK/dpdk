@@ -49,7 +49,8 @@ sess_put:
 }
 
 static __rte_always_inline int __rte_hot
-cpt_sec_inst_fill(struct rte_crypto_op *op, struct cn10k_sec_session *sess,
+cpt_sec_inst_fill(struct cnxk_cpt_qp *qp, struct rte_crypto_op *op,
+		  struct cn10k_sec_session *sess,
 		  struct cpt_inflight_req *infl_req, struct cpt_inst_s *inst)
 {
 	struct rte_crypto_sym_op *sym_op = op->sym;
@@ -69,7 +70,7 @@ cpt_sec_inst_fill(struct rte_crypto_op *op, struct cn10k_sec_session *sess,
 	sa = &sess->sa;
 
 	if (sa->is_outbound)
-		ret = process_outb_sa(op, sa, inst);
+		ret = process_outb_sa(&qp->lf, op, sa, inst);
 	else {
 		infl_req->op_flags |= CPT_OP_FLAGS_IPSEC_DIR_INBOUND;
 		ret = process_inb_sa(op, sa, inst);
@@ -122,7 +123,7 @@ cn10k_cpt_fill_inst(struct cnxk_cpt_qp *qp, struct rte_crypto_op *ops[],
 		if (op->sess_type == RTE_CRYPTO_OP_SECURITY_SESSION) {
 			sec_sess = get_sec_session_private_data(
 				sym_op->sec_session);
-			ret = cpt_sec_inst_fill(op, sec_sess, infl_req,
+			ret = cpt_sec_inst_fill(qp, op, sec_sess, infl_req,
 						&inst[0]);
 			if (unlikely(ret))
 				return 0;

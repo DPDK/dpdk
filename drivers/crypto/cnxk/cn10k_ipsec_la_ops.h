@@ -48,8 +48,8 @@ ipsec_po_sa_aes_gcm_iv_set(struct cn10k_ipsec_sa *sess,
 }
 
 static __rte_always_inline int
-process_outb_sa(struct rte_crypto_op *cop, struct cn10k_ipsec_sa *sess,
-		struct cpt_inst_s *inst)
+process_outb_sa(struct roc_cpt_lf *lf, struct rte_crypto_op *cop,
+		struct cn10k_ipsec_sa *sess, struct cpt_inst_s *inst)
 {
 	struct rte_crypto_sym_op *sym_op = cop->sym;
 	struct rte_mbuf *m_src = sym_op->m_src;
@@ -61,6 +61,8 @@ process_outb_sa(struct rte_crypto_op *cop, struct cn10k_ipsec_sa *sess,
 		return -ENOMEM;
 	}
 
+	RTE_SET_USED(lf);
+
 #ifdef LA_IPSEC_DEBUG
 	if (sess->out_sa.w2.s.iv_src == ROC_IE_OT_SA_IV_SRC_FROM_SA) {
 		if (sess->out_sa.w2.s.enc_type == ROC_IE_OT_SA_ENC_AES_GCM)
@@ -68,6 +70,10 @@ process_outb_sa(struct rte_crypto_op *cop, struct cn10k_ipsec_sa *sess,
 		else
 			ipsec_po_sa_iv_set(sess, cop);
 	}
+
+	/* Trigger CTX reload to fetch new data from DRAM */
+	roc_cpt_lf_ctx_reload(lf, &sess->out_sa);
+	rte_delay_ms(1);
 #endif
 
 	if (m_src->ol_flags & RTE_MBUF_F_TX_IP_CKSUM)
