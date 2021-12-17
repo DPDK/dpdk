@@ -78,7 +78,13 @@
 #endif
 
 #define EXTMEM_HEAP_NAME "extmem"
-#define EXTBUF_ZONE_SIZE RTE_PGSIZE_2M
+/*
+ * Zone size with the malloc overhead (max of debug and release variants)
+ * must fit into the smallest supported hugepage size (2M),
+ * so that an IOVA-contiguous zone of this size can always be allocated
+ * if there are free 2M hugepages.
+ */
+#define EXTBUF_ZONE_SIZE (RTE_PGSIZE_2M - 4 * RTE_CACHE_LINE_SIZE)
 
 uint16_t verbose_level = 0; /**< Silent by default. */
 int testpmd_logtype; /**< Log type for testpmd logs */
@@ -926,12 +932,11 @@ setup_extbuf(uint32_t nb_mbufs, uint16_t mbuf_sz, unsigned int socket_id,
 			ext_num = 0;
 			break;
 		}
-		mz = rte_memzone_reserve_aligned(mz_name, EXTBUF_ZONE_SIZE,
-						 socket_id,
-						 RTE_MEMZONE_IOVA_CONTIG |
-						 RTE_MEMZONE_1GB |
-						 RTE_MEMZONE_SIZE_HINT_ONLY,
-						 EXTBUF_ZONE_SIZE);
+		mz = rte_memzone_reserve(mz_name, EXTBUF_ZONE_SIZE,
+					 socket_id,
+					 RTE_MEMZONE_IOVA_CONTIG |
+					 RTE_MEMZONE_1GB |
+					 RTE_MEMZONE_SIZE_HINT_ONLY);
 		if (mz == NULL) {
 			/*
 			 * The caller exits on external buffer creation
