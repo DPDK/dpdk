@@ -215,6 +215,8 @@ union cpt_res_s {
 
 		uint64_t reserved_64_127;
 	} cn9k;
+
+	uint64_t u64[2];
 };
 
 /* [CN10K, .) */

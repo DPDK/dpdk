@@ -221,6 +221,10 @@ cn9k_cpt_enqueue_burst(void *qptr, struct rte_crypto_op **ops, uint16_t nb_ops)
 	uint64_t head;
 	int ret;
 
+	const union cpt_res_s res = {
+		.cn10k.compcode = CPT_COMP_NOT_DONE,
+	};
+
 	pend_q = &qp->pend_q;
 
 	const uint64_t lmt_base = qp->lf.lmt_base;
@@ -274,10 +278,12 @@ cn9k_cpt_enqueue_burst(void *qptr, struct rte_crypto_op **ops, uint16_t nb_ops)
 		infl_req_1->op_flags = 0;
 		infl_req_2->op_flags = 0;
 
-		infl_req_1->res.cn9k.compcode = CPT_COMP_NOT_DONE;
+		__atomic_store_n(&infl_req_1->res.u64[0], res.u64[0],
+				 __ATOMIC_RELAXED);
 		inst[0].res_addr = (uint64_t)&infl_req_1->res;
 
-		infl_req_2->res.cn9k.compcode = CPT_COMP_NOT_DONE;
+		__atomic_store_n(&infl_req_2->res.u64[0], res.u64[0],
+				 __ATOMIC_RELAXED);
 		inst[1].res_addr = (uint64_t)&infl_req_2->res;
 
 		ret = cn9k_cpt_inst_prep(qp, op_1, infl_req_1, &inst[0]);
@@ -410,9 +416,9 @@ cn9k_cpt_sec_post_process(struct rte_crypto_op *cop,
 
 static inline void
 cn9k_cpt_dequeue_post_process(struct cnxk_cpt_qp *qp, struct rte_crypto_op *cop,
-			      struct cpt_inflight_req *infl_req)
+			      struct cpt_inflight_req *infl_req,
+			      struct cpt_cn9k_res_s *res)
 {
-	struct cpt_cn9k_res_s *res = (struct cpt_cn9k_res_s *)&infl_req->res;
 	unsigned int sz;
 
 	if (likely(res->compcode == CPT_COMP_GOOD)) {
@@ -492,12 +498,15 @@ cn9k_cpt_crypto_adapter_dequeue(uintptr_t get_work1)
 	struct cpt_inflight_req *infl_req;
 	struct rte_crypto_op *cop;
 	struct cnxk_cpt_qp *qp;
+	union cpt_res_s res;
 
 	infl_req = (struct cpt_inflight_req *)(get_work1);
 	cop = infl_req->cop;
 	qp = infl_req->qp;
 
-	cn9k_cpt_dequeue_post_process(qp, infl_req->cop, infl_req);
+	res.u64[0] = __atomic_load_n(&infl_req->res.u64[0], __ATOMIC_RELAXED);
+
+	cn9k_cpt_dequeue_post_process(qp, infl_req->cop, infl_req, &res.cn9k);
 
 	if (unlikely(infl_req->op_flags & CPT_OP_FLAGS_METABUF))
 		rte_mempool_put(qp->meta_info.pool, infl_req->mdata);
@@ -512,9 +521,9 @@ cn9k_cpt_dequeue_burst(void *qptr, struct rte_crypto_op **ops, uint16_t nb_ops)
 	struct cpt_inflight_req *infl_req;
 	struct cnxk_cpt_qp *qp = qptr;
 	struct pending_queue *pend_q;
-	struct cpt_cn9k_res_s *res;
 	uint64_t infl_cnt, pq_tail;
 	struct rte_crypto_op *cop;
+	union cpt_res_s res;
 	int i;
 
 	pend_q = &qp->pend_q;
@@ -531,9 +540,10 @@ cn9k_cpt_dequeue_burst(void *qptr, struct rte_crypto_op **ops, uint16_t nb_ops)
 	for (i = 0; i < nb_ops; i++) {
 		infl_req = &pend_q->req_queue[pq_tail];
 
-		res = (struct cpt_cn9k_res_s *)&infl_req->res;
+		res.u64[0] = __atomic_load_n(&infl_req->res.u64[0],
+					     __ATOMIC_RELAXED);
 
-		if (unlikely(res->compcode == CPT_COMP_NOT_DONE)) {
+		if (unlikely(res.cn9k.compcode == CPT_COMP_NOT_DONE)) {
 			if (unlikely(rte_get_timer_cycles() >
 				     pend_q->time_out)) {
 				plt_err("Request timed out");
@@ -550,7 +560,7 @@ cn9k_cpt_dequeue_burst(void *qptr, struct rte_crypto_op **ops, uint16_t nb_ops)
 
 		ops[i] = cop;
 
-		cn9k_cpt_dequeue_post_process(qp, cop, infl_req);
+		cn9k_cpt_dequeue_post_process(qp, cop, infl_req, &res.cn9k);
 
 		if (unlikely(infl_req->op_flags & CPT_OP_FLAGS_METABUF))
 			rte_mempool_put(qp->meta_info.pool, infl_req->mdata);
