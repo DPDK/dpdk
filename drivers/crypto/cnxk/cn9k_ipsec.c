@@ -321,14 +321,23 @@ cn9k_ipsec_outb_sa_create(struct cnxk_cpt_qp *qp,
 	    ctl->auth_type == ROC_IE_ON_SA_AUTH_NULL) {
 		template = &out_sa->aes_gcm.template;
 		ctx_len = offsetof(struct roc_ie_on_outb_sa, aes_gcm.template);
-	} else if (ctl->auth_type == ROC_IE_ON_SA_AUTH_SHA1) {
-		template = &out_sa->sha1.template;
-		ctx_len = offsetof(struct roc_ie_on_outb_sa, sha1.template);
-	} else if (ctl->auth_type == ROC_IE_ON_SA_AUTH_SHA2_256) {
-		template = &out_sa->sha2.template;
-		ctx_len = offsetof(struct roc_ie_on_outb_sa, sha2.template);
 	} else {
-		return -EINVAL;
+		switch (ctl->auth_type) {
+		case ROC_IE_ON_SA_AUTH_SHA1:
+			template = &out_sa->sha1.template;
+			ctx_len = offsetof(struct roc_ie_on_outb_sa,
+					   sha1.template);
+			break;
+		case ROC_IE_ON_SA_AUTH_SHA2_256:
+		case ROC_IE_ON_SA_AUTH_SHA2_384:
+		case ROC_IE_ON_SA_AUTH_SHA2_512:
+			template = &out_sa->sha2.template;
+			ctx_len = offsetof(struct roc_ie_on_outb_sa,
+					   sha2.template);
+			break;
+		default:
+			return -EINVAL;
+		}
 	}
 
 	ip4 = (struct rte_ipv4_hdr *)&template->ip4.ipv4_hdr;
@@ -397,10 +406,22 @@ cn9k_ipsec_outb_sa_create(struct cnxk_cpt_qp *qp,
 		auth_key = auth_xform->auth.key.data;
 		auth_key_len = auth_xform->auth.key.length;
 
-		if (auth_xform->auth.algo == RTE_CRYPTO_AUTH_SHA1_HMAC)
+		switch (auth_xform->auth.algo) {
+		case RTE_CRYPTO_AUTH_NULL:
+			break;
+		case RTE_CRYPTO_AUTH_SHA1_HMAC:
 			memcpy(out_sa->sha1.hmac_key, auth_key, auth_key_len);
-		else if (auth_xform->auth.algo == RTE_CRYPTO_AUTH_SHA256_HMAC)
+			break;
+		case RTE_CRYPTO_AUTH_SHA256_HMAC:
+		case RTE_CRYPTO_AUTH_SHA384_HMAC:
+		case RTE_CRYPTO_AUTH_SHA512_HMAC:
 			memcpy(out_sa->sha2.hmac_key, auth_key, auth_key_len);
+			break;
+		default:
+			plt_err("Unsupported auth algorithm %u",
+				auth_xform->auth.algo);
+			return -ENOTSUP;
+		}
 	}
 
 	inst_tmpl = &sa->inst;
@@ -466,16 +487,26 @@ cn9k_ipsec_inb_sa_create(struct cnxk_cpt_qp *qp,
 		auth_key = auth_xform->auth.key.data;
 		auth_key_len = auth_xform->auth.key.length;
 
-		if (auth_xform->auth.algo == RTE_CRYPTO_AUTH_SHA1_HMAC) {
+		switch (auth_xform->auth.algo) {
+		case RTE_CRYPTO_AUTH_NULL:
+			break;
+		case RTE_CRYPTO_AUTH_SHA1_HMAC:
 			memcpy(in_sa->sha1_or_gcm.hmac_key, auth_key,
 			       auth_key_len);
 			ctx_len = offsetof(struct roc_ie_on_inb_sa,
 					   sha1_or_gcm.selector);
-		} else if (auth_xform->auth.algo ==
-			   RTE_CRYPTO_AUTH_SHA256_HMAC) {
+			break;
+		case RTE_CRYPTO_AUTH_SHA256_HMAC:
+		case RTE_CRYPTO_AUTH_SHA384_HMAC:
+		case RTE_CRYPTO_AUTH_SHA512_HMAC:
 			memcpy(in_sa->sha2.hmac_key, auth_key, auth_key_len);
 			ctx_len = offsetof(struct roc_ie_on_inb_sa,
 					   sha2.selector);
+			break;
+		default:
+			plt_err("Unsupported auth algorithm %u",
+				auth_xform->auth.algo);
+			return -ENOTSUP;
 		}
 	}
 

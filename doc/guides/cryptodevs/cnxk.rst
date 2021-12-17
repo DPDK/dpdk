@@ -267,6 +267,8 @@ Auth algorithms
 
 * SHA1-HMAC
 * SHA256-128-HMAC
+* SHA384-192-HMAC
+* SHA512-256-HMAC
 
 CN10XX Features supported
 ~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -293,3 +295,5 @@ Auth algorithms
 * NULL
 * SHA1-HMAC
 * SHA256-128-HMAC
+* SHA384-192-HMAC
+* SHA512-256-HMAC

@@ -817,6 +817,46 @@ static const struct rte_cryptodev_capabilities sec_caps_sha1_sha2[] = {
 			}, }
 		}, }
 	},
+	{	/* SHA384 HMAC */
+		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
+		{.sym = {
+			.xform_type = RTE_CRYPTO_SYM_XFORM_AUTH,
+			{.auth = {
+				.algo = RTE_CRYPTO_AUTH_SHA384_HMAC,
+				.block_size = 64,
+				.key_size = {
+					.min = 48,
+					.max = 48,
+					.increment = 0
+				},
+				.digest_size = {
+					.min = 24,
+					.max = 24,
+					.increment = 0
+					},
+			}, }
+		}, }
+	},
+	{	/* SHA512 HMAC */
+		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
+		{.sym = {
+			.xform_type = RTE_CRYPTO_SYM_XFORM_AUTH,
+			{.auth = {
+				.algo = RTE_CRYPTO_AUTH_SHA512_HMAC,
+				.block_size = 128,
+				.key_size = {
+					.min = 64,
+					.max = 64,
+					.increment = 0
+				},
+				.digest_size = {
+					.min = 32,
+					.max = 32,
+					.increment = 0
+				},
+			}, }
+		}, }
+	},
 };
 
 static const struct rte_security_capability sec_caps_templ[] = {
