@@ -943,8 +943,10 @@ static void
 sec_caps_add(struct rte_cryptodev_capabilities cnxk_caps[], int *cur_pos,
 	     const struct rte_cryptodev_capabilities *caps, int nb_caps)
 {
-	if (*cur_pos + nb_caps > CNXK_SEC_CRYPTO_MAX_CAPS)
+	if (*cur_pos + nb_caps > CNXK_SEC_CRYPTO_MAX_CAPS) {
+		rte_panic("Could not add sec crypto caps");
 		return;
+	}
 
 	memcpy(&cnxk_caps[*cur_pos], caps, nb_caps * sizeof(caps[0]));
 	*cur_pos += nb_caps;
@@ -957,8 +959,10 @@ cn10k_sec_crypto_caps_update(struct rte_cryptodev_capabilities cnxk_caps[],
 	const struct rte_cryptodev_capabilities *cap;
 	unsigned int i;
 
-	if ((CNXK_CPT_MAX_CAPS - *cur_pos) < 1)
+	if ((CNXK_SEC_CRYPTO_MAX_CAPS - *cur_pos) < 1) {
+		rte_panic("Could not add sec crypto caps");
 		return;
+	}
 
 	/* NULL auth */
 	for (i = 0; i < RTE_DIM(caps_null); i++) {
