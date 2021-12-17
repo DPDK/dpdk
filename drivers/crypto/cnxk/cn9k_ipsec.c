@@ -246,6 +246,8 @@ ipsec_sa_ctl_set(struct rte_security_ipsec_xform *ipsec,
 	if (ipsec->options.udp_encap == 1)
 		ctl->encap_type = ROC_IE_ON_SA_ENCAP_UDP;
 
+	ctl->copy_df = ipsec->options.copy_df;
+
 	ctl->spi = rte_cpu_to_be_32(ipsec->spi);
 
 	rte_io_wmb();
@@ -376,13 +378,16 @@ cn9k_ipsec_outb_sa_create(struct cnxk_cpt_qp *qp,
 
 	if (ipsec->mode == RTE_SECURITY_IPSEC_SA_MODE_TUNNEL) {
 		if (ipsec->tunnel.type == RTE_SECURITY_IPSEC_TUNNEL_IPV4) {
+			uint16_t frag_off = 0;
 			ctx_len += sizeof(template->ip4);
 
 			ip4->version_ihl = RTE_IPV4_VHL_DEF;
 			ip4->time_to_live = ipsec->tunnel.ipv4.ttl;
 			ip4->type_of_service |= (ipsec->tunnel.ipv4.dscp << 2);
 			if (ipsec->tunnel.ipv4.df)
-				ip4->fragment_offset = BIT(14);
+				frag_off |= RTE_IPV4_HDR_DF_FLAG;
+			ip4->fragment_offset = rte_cpu_to_be_16(frag_off);
+
 			memcpy(&ip4->src_addr, &ipsec->tunnel.ipv4.src_ip,
 			       sizeof(struct in_addr));
 			memcpy(&ip4->dst_addr, &ipsec->tunnel.ipv4.dst_ip,
