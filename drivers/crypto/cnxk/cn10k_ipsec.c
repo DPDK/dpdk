@@ -130,6 +130,8 @@ cn10k_ipsec_inb_sa_create(struct roc_cpt *roc_cpt,
 	sa = &sess->sa;
 	in_sa = &sa->in_sa;
 
+	memset(in_sa, 0, sizeof(struct roc_ot_ipsec_inb_sa));
+
 	/* Translate security parameters to SA */
 	ret = cnxk_ot_ipsec_inb_sa_fill(in_sa, ipsec_xfrm, crypto_xfrm);
 	if (ret)
