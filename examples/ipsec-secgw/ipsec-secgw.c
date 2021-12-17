@@ -3379,13 +3379,14 @@ main(int32_t argc, char **argv)
 		if ((enabled_port_mask & (1 << portid)) == 0)
 			continue;
 
-		/* Create flow before starting the device */
-		create_default_ipsec_flow(portid, req_rx_offloads[portid]);
-
 		ret = rte_eth_dev_start(portid);
 		if (ret < 0)
 			rte_exit(EXIT_FAILURE, "rte_eth_dev_start: "
 					"err=%d, port=%d\n", ret, portid);
+
+		/* Create flow after starting the device */
+		create_default_ipsec_flow(portid, req_rx_offloads[portid]);
+
 		/*
 		 * If enabled, put device in promiscuous mode.
 		 * This allows IO forwarding mode to forward packets
