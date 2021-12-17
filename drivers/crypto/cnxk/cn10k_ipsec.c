@@ -52,13 +52,11 @@ cn10k_ipsec_outb_sa_create(struct roc_cpt *roc_cpt, struct roc_cpt_lf *lf,
 	out_sa = &sa->out_sa;
 
 	/* Allocate memory to be used as dptr for CPT ucode WRITE_SA op */
-	sa_dptr = plt_zmalloc(ROC_NIX_INL_OT_IPSEC_OUTB_HW_SZ, 0);
+	sa_dptr = plt_zmalloc(sizeof(struct roc_ot_ipsec_outb_sa), 8);
 	if (sa_dptr == NULL) {
 		plt_err("Couldn't allocate memory for SA dptr");
 		return -ENOMEM;
 	}
-
-	memset(sa_dptr, 0, sizeof(struct roc_ot_ipsec_outb_sa));
 
 	/* Translate security parameters to SA */
 	ret = cnxk_ot_ipsec_outb_sa_fill(sa_dptr, ipsec_xfrm, crypto_xfrm);
@@ -133,7 +131,7 @@ cn10k_ipsec_outb_sa_create(struct roc_cpt *roc_cpt, struct roc_cpt_lf *lf,
 
 	/* Write session using microcode opcode */
 	ret = roc_cpt_ctx_write(lf, sa_dptr, out_sa,
-				ROC_NIX_INL_OT_IPSEC_OUTB_HW_SZ);
+				sizeof(struct roc_ot_ipsec_outb_sa));
 	if (ret) {
 		plt_err("Could not write outbound session to hardware");
 		goto sa_dptr_free;
@@ -169,13 +167,11 @@ cn10k_ipsec_inb_sa_create(struct roc_cpt *roc_cpt, struct roc_cpt_lf *lf,
 	in_sa = &sa->in_sa;
 
 	/* Allocate memory to be used as dptr for CPT ucode WRITE_SA op */
-	sa_dptr = plt_zmalloc(ROC_NIX_INL_OT_IPSEC_INB_HW_SZ, 0);
+	sa_dptr = plt_zmalloc(sizeof(struct roc_ot_ipsec_inb_sa), 8);
 	if (sa_dptr == NULL) {
 		plt_err("Couldn't allocate memory for SA dptr");
 		return -ENOMEM;
 	}
-
-	memset(sa_dptr, 0, sizeof(struct roc_ot_ipsec_inb_sa));
 
 	/* Translate security parameters to SA */
 	ret = cnxk_ot_ipsec_inb_sa_fill(sa_dptr, ipsec_xfrm, crypto_xfrm);
@@ -225,7 +221,7 @@ cn10k_ipsec_inb_sa_create(struct roc_cpt *roc_cpt, struct roc_cpt_lf *lf,
 
 	/* Write session using microcode opcode */
 	ret = roc_cpt_ctx_write(lf, sa_dptr, in_sa,
-				ROC_NIX_INL_OT_IPSEC_INB_HW_SZ);
+				sizeof(struct roc_ot_ipsec_inb_sa));
 	if (ret) {
 		plt_err("Could not write inbound session to hardware");
 		goto sa_dptr_free;
