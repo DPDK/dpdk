@@ -122,6 +122,12 @@ cn10k_ipsec_outb_sa_create(struct roc_cpt *roc_cpt, struct roc_cpt_lf *lf,
 
 	sa->inst.w4 = inst_w4.u64;
 
+	if (ipsec_xfrm->options.stats == 1) {
+		/* Enable mib counters */
+		sa_dptr->w0.s.count_mib_bytes = 1;
+		sa_dptr->w0.s.count_mib_pkts = 1;
+	}
+
 	memset(out_sa, 0, sizeof(struct roc_ot_ipsec_outb_sa));
 
 	/* Copy word0 from sa_dptr to populate ctx_push_sz ctx_size fields */
@@ -211,6 +217,12 @@ cn10k_ipsec_inb_sa_create(struct roc_cpt *roc_cpt, struct roc_cpt_lf *lf,
 	inst_w4.s.param1 = param1.u16;
 
 	sa->inst.w4 = inst_w4.u64;
+
+	if (ipsec_xfrm->options.stats == 1) {
+		/* Enable mib counters */
+		sa_dptr->w0.s.count_mib_bytes = 1;
+		sa_dptr->w0.s.count_mib_pkts = 1;
+	}
 
 	memset(in_sa, 0, sizeof(struct roc_ot_ipsec_inb_sa));
 
@@ -357,6 +369,48 @@ cn10k_sec_session_get_size(void *device __rte_unused)
 	return sizeof(struct cn10k_sec_session);
 }
 
+static int
+cn10k_sec_session_stats_get(void *device, struct rte_security_session *sess,
+			    struct rte_security_stats *stats)
+{
+	struct rte_cryptodev *crypto_dev = device;
+	struct roc_ot_ipsec_outb_sa *out_sa;
+	struct roc_ot_ipsec_inb_sa *in_sa;
+	union roc_ot_ipsec_sa_word2 *w2;
+	struct cn10k_sec_session *priv;
+	struct cn10k_ipsec_sa *sa;
+	struct cnxk_cpt_qp *qp;
+
+	priv = get_sec_session_private_data(sess);
+	if (priv == NULL)
+		return -EINVAL;
+
+	qp = crypto_dev->data->queue_pairs[0];
+	if (qp == NULL)
+		return -EINVAL;
+
+	sa = &priv->sa;
+	w2 = (union roc_ot_ipsec_sa_word2 *)&sa->in_sa.w2;
+
+	stats->protocol = RTE_SECURITY_PROTOCOL_IPSEC;
+
+	if (w2->s.dir == ROC_IE_SA_DIR_OUTBOUND) {
+		out_sa = &sa->out_sa;
+		roc_cpt_lf_ctx_flush(&qp->lf, out_sa, false);
+		rte_delay_ms(1);
+		stats->ipsec.opackets = out_sa->ctx.mib_pkts;
+		stats->ipsec.obytes = out_sa->ctx.mib_octs;
+	} else {
+		in_sa = &sa->in_sa;
+		roc_cpt_lf_ctx_flush(&qp->lf, in_sa, false);
+		rte_delay_ms(1);
+		stats->ipsec.ipackets = in_sa->ctx.mib_pkts;
+		stats->ipsec.ibytes = in_sa->ctx.mib_octs;
+	}
+
+	return 0;
+}
+
 /* Update platform specific security ops */
 void
 cn10k_sec_ops_override(void)
@@ -365,4 +419,5 @@ cn10k_sec_ops_override(void)
 	cnxk_sec_ops.session_create = cn10k_sec_session_create;
 	cnxk_sec_ops.session_destroy = cn10k_sec_session_destroy;
 	cnxk_sec_ops.session_get_size = cn10k_sec_session_get_size;
+	cnxk_sec_ops.session_stats_get = cn10k_sec_session_stats_get;
 }

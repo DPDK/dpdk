@@ -15,6 +15,7 @@ struct rte_security_ops cnxk_sec_ops = {
 	.session_create = NULL,
 	.session_destroy = NULL,
 	.session_get_size = NULL,
+	.session_stats_get = NULL,
 	.set_pkt_metadata = NULL,
 	.get_userdata = NULL,
 	.capabilities_get = cnxk_crypto_sec_capabilities_get
