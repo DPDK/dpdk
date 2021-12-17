@@ -64,6 +64,7 @@ union cpt_lf_ctx_flush {
 	struct {
 		uint64_t cptr : 46;
 		uint64_t inval : 1;
+		uint64_t reserved_47_63 : 17;
 	} s;
 };
 
@@ -71,6 +72,7 @@ union cpt_lf_ctx_reload {
 	uint64_t u;
 	struct {
 		uint64_t cptr : 46;
+		uint64_t reserved_46_63 : 18;
 	} s;
 };
 

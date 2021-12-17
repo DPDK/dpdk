@@ -681,8 +681,10 @@ roc_cpt_lf_ctx_flush(struct roc_cpt_lf *lf, void *cptr, bool inval)
 {
 	union cpt_lf_ctx_flush reg;
 
-	if (lf == NULL)
+	if (lf == NULL) {
+		plt_err("Could not trigger CTX flush");
 		return -ENOTSUP;
+	}
 
 	reg.u = 0;
 	reg.s.inval = inval;
