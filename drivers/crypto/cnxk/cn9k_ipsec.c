@@ -141,11 +141,10 @@ ipsec_sa_ctl_set(struct rte_security_ipsec_xform *ipsec,
 			return -EINVAL;
 	}
 
-	ctl->inner_ip_ver = ctl->outer_ip_ver;
-
-	if (ipsec->mode == RTE_SECURITY_IPSEC_SA_MODE_TRANSPORT)
+	if (ipsec->mode == RTE_SECURITY_IPSEC_SA_MODE_TRANSPORT) {
 		ctl->ipsec_mode = ROC_IE_SA_MODE_TRANSPORT;
-	else if (ipsec->mode == RTE_SECURITY_IPSEC_SA_MODE_TUNNEL)
+		ctl->outer_ip_ver = ROC_IE_SA_IP_VERSION_4;
+	} else if (ipsec->mode == RTE_SECURITY_IPSEC_SA_MODE_TUNNEL)
 		ctl->ipsec_mode = ROC_IE_SA_MODE_TUNNEL;
 	else
 		return -EINVAL;
@@ -548,13 +547,55 @@ cn9k_ipsec_inb_sa_create(struct cnxk_cpt_qp *qp,
 }
 
 static inline int
-cn9k_ipsec_xform_verify(struct rte_security_ipsec_xform *ipsec)
+cn9k_ipsec_xform_verify(struct rte_security_ipsec_xform *ipsec,
+			struct rte_crypto_sym_xform *crypto)
 {
 	if (ipsec->life.bytes_hard_limit != 0 ||
 	    ipsec->life.bytes_soft_limit != 0 ||
 	    ipsec->life.packets_hard_limit != 0 ||
 	    ipsec->life.packets_soft_limit != 0)
 		return -ENOTSUP;
+
+	if (ipsec->mode == RTE_SECURITY_IPSEC_SA_MODE_TRANSPORT) {
+		enum rte_crypto_sym_xform_type type = crypto->type;
+
+		if (type == RTE_CRYPTO_SYM_XFORM_AEAD) {
+			if ((crypto->aead.algo == RTE_CRYPTO_AEAD_AES_GCM) &&
+			    (crypto->aead.key.length == 32)) {
+				plt_err("Transport mode AES-256-GCM is not supported");
+				return -ENOTSUP;
+			}
+		} else {
+			struct rte_crypto_cipher_xform *cipher;
+			struct rte_crypto_auth_xform *auth;
+
+			if (crypto->type == RTE_CRYPTO_SYM_XFORM_CIPHER) {
+				cipher = &crypto->cipher;
+				auth = &crypto->next->auth;
+			} else {
+				cipher = &crypto->next->cipher;
+				auth = &crypto->auth;
+			}
+
+			if ((cipher->algo == RTE_CRYPTO_CIPHER_AES_CBC) &&
+			    (auth->algo == RTE_CRYPTO_AUTH_SHA256_HMAC)) {
+				plt_err("Transport mode AES-CBC SHA2 HMAC 256 is not supported");
+				return -ENOTSUP;
+			}
+
+			if ((cipher->algo == RTE_CRYPTO_CIPHER_AES_CBC) &&
+			    (auth->algo == RTE_CRYPTO_AUTH_SHA384_HMAC)) {
+				plt_err("Transport mode AES-CBC SHA2 HMAC 384 is not supported");
+				return -ENOTSUP;
+			}
+
+			if ((cipher->algo == RTE_CRYPTO_CIPHER_AES_CBC) &&
+			    (auth->algo == RTE_CRYPTO_AUTH_SHA512_HMAC)) {
+				plt_err("Transport mode AES-CBC SHA2 HMAC 512 is not supported");
+				return -ENOTSUP;
+			}
+		}
+	}
 
 	return 0;
 }
@@ -580,7 +621,7 @@ cn9k_ipsec_session_create(void *dev,
 	if (ret)
 		return ret;
 
-	ret = cn9k_ipsec_xform_verify(ipsec_xform);
+	ret = cn9k_ipsec_xform_verify(ipsec_xform, crypto_xform);
 	if (ret)
 		return ret;
 
