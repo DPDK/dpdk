@@ -166,6 +166,9 @@ ipsec_sa_ctl_set(struct rte_security_ipsec_xform *ipsec,
 	} else if (cipher_xform->cipher.algo == RTE_CRYPTO_CIPHER_AES_CBC) {
 		ctl->enc_type = ROC_IE_ON_SA_ENC_AES_CBC;
 		aes_key_len = cipher_xform->cipher.key.length;
+	} else if (cipher_xform->cipher.algo == RTE_CRYPTO_CIPHER_AES_CTR) {
+		ctl->enc_type = ROC_IE_ON_SA_ENC_AES_CTR;
+		aes_key_len = cipher_xform->cipher.key.length;
 	} else {
 		return -ENOTSUP;
 	}

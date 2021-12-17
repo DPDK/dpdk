@@ -123,6 +123,9 @@ ot_ipsec_sa_common_param_fill(union roc_ot_ipsec_sa_word2 *w2,
 		case RTE_CRYPTO_CIPHER_AES_CBC:
 			w2->s.enc_type = ROC_IE_OT_SA_ENC_AES_CBC;
 			break;
+		case RTE_CRYPTO_CIPHER_AES_CTR:
+			w2->s.enc_type = ROC_IE_OT_SA_ENC_AES_CTR;
+			break;
 		default:
 			return -ENOTSUP;
 		}
@@ -629,6 +632,9 @@ onf_ipsec_sa_common_param_fill(struct roc_ie_onf_sa_ctl *ctl, uint8_t *salt,
 		switch (cipher_xfrm->cipher.algo) {
 		case RTE_CRYPTO_CIPHER_AES_CBC:
 			ctl->enc_type = ROC_IE_ON_SA_ENC_AES_CBC;
+			break;
+		case RTE_CRYPTO_CIPHER_AES_CTR:
+			ctl->enc_type = ROC_IE_ON_SA_ENC_AES_CTR;
 			break;
 		default:
 			return -ENOTSUP;

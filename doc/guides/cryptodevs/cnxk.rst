@@ -261,6 +261,7 @@ Cipher algorithms
 +++++++++++++++++
 
 * AES-128/192/256-CBC
+* AES-128/192/256-CTR
 
 Auth algorithms
 +++++++++++++++
@@ -288,6 +289,7 @@ Cipher algorithms
 +++++++++++++++++
 
 * AES-128/192/256-CBC
+* AES-128/192/256-CTR
 
 Auth algorithms
 +++++++++++++++

@@ -20,7 +20,8 @@ struct cnxk_cpt_inst_tmpl {
 static inline int
 ipsec_xform_cipher_verify(struct rte_crypto_sym_xform *crypto_xform)
 {
-	if (crypto_xform->cipher.algo == RTE_CRYPTO_CIPHER_AES_CBC) {
+	if (crypto_xform->cipher.algo == RTE_CRYPTO_CIPHER_AES_CBC ||
+	    crypto_xform->cipher.algo == RTE_CRYPTO_CIPHER_AES_CTR) {
 		switch (crypto_xform->cipher.key.length) {
 		case 16:
 		case 24:
