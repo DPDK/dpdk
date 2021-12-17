@@ -2,18 +2,19 @@
  * Copyright(C) 2021 Marvell.
  */
 
-#include <rte_malloc.h>
 #include <cryptodev_pmd.h>
 #include <rte_esp.h>
 #include <rte_ip.h>
+#include <rte_malloc.h>
 #include <rte_security.h>
 #include <rte_security_driver.h>
 #include <rte_udp.h>
 
+#include "cn10k_ipsec.h"
 #include "cnxk_cryptodev.h"
+#include "cnxk_cryptodev_ops.h"
 #include "cnxk_ipsec.h"
 #include "cnxk_security.h"
-#include "cn10k_ipsec.h"
 
 #include "roc_api.h"
 
@@ -32,36 +33,46 @@ ipsec_cpt_inst_w7_get(struct roc_cpt *roc_cpt, void *sa)
 }
 
 static int
-cn10k_ipsec_outb_sa_create(struct roc_cpt *roc_cpt,
+cn10k_ipsec_outb_sa_create(struct roc_cpt *roc_cpt, struct roc_cpt_lf *lf,
 			   struct rte_security_ipsec_xform *ipsec_xfrm,
 			   struct rte_crypto_sym_xform *crypto_xfrm,
 			   struct rte_security_session *sec_sess)
 {
 	union roc_ot_ipsec_outb_param1 param1;
-	struct roc_ot_ipsec_outb_sa *out_sa;
+	struct roc_ot_ipsec_outb_sa *sa_dptr;
 	struct cnxk_ipsec_outb_rlens rlens;
 	struct cn10k_sec_session *sess;
 	struct cn10k_ipsec_sa *sa;
 	union cpt_inst_w4 inst_w4;
-	int ret;
+	void *out_sa;
+	int ret = 0;
 
 	sess = get_sec_session_private_data(sec_sess);
 	sa = &sess->sa;
 	out_sa = &sa->out_sa;
 
-	memset(out_sa, 0, sizeof(struct roc_ot_ipsec_outb_sa));
+	/* Allocate memory to be used as dptr for CPT ucode WRITE_SA op */
+	sa_dptr = plt_zmalloc(ROC_NIX_INL_OT_IPSEC_OUTB_HW_SZ, 0);
+	if (sa_dptr == NULL) {
+		plt_err("Couldn't allocate memory for SA dptr");
+		return -ENOMEM;
+	}
+
+	memset(sa_dptr, 0, sizeof(struct roc_ot_ipsec_outb_sa));
 
 	/* Translate security parameters to SA */
-	ret = cnxk_ot_ipsec_outb_sa_fill(out_sa, ipsec_xfrm, crypto_xfrm);
-	if (ret)
-		return ret;
+	ret = cnxk_ot_ipsec_outb_sa_fill(sa_dptr, ipsec_xfrm, crypto_xfrm);
+	if (ret) {
+		plt_err("Could not fill outbound session parameters");
+		goto sa_dptr_free;
+	}
 
 	sa->inst.w7 = ipsec_cpt_inst_w7_get(roc_cpt, sa);
 
 #ifdef LA_IPSEC_DEBUG
 	/* Use IV from application in debug mode */
 	if (ipsec_xfrm->options.iv_gen_disable == 1) {
-		out_sa->w2.s.iv_src = ROC_IE_OT_SA_IV_SRC_FROM_SA;
+		sa_dptr->w2.s.iv_src = ROC_IE_OT_SA_IV_SRC_FROM_SA;
 		if (crypto_xfrm->type == RTE_CRYPTO_SYM_XFORM_AEAD) {
 			sa->iv_offset = crypto_xfrm->aead.iv.offset;
 			sa->iv_length = crypto_xfrm->aead.iv.length;
@@ -73,14 +84,15 @@ cn10k_ipsec_outb_sa_create(struct roc_cpt *roc_cpt,
 #else
 	if (ipsec_xfrm->options.iv_gen_disable != 0) {
 		plt_err("Application provided IV not supported");
-		return -ENOTSUP;
+		ret = -ENOTSUP;
+		goto sa_dptr_free;
 	}
 #endif
 
 	/* Get Rlen calculation data */
 	ret = cnxk_ipsec_outb_rlens_get(&rlens, ipsec_xfrm, crypto_xfrm);
 	if (ret)
-		return ret;
+		goto sa_dptr_free;
 
 	sa->max_extended_len = rlens.max_extended_len;
 
@@ -110,37 +122,61 @@ cn10k_ipsec_outb_sa_create(struct roc_cpt *roc_cpt,
 
 	sa->inst.w4 = inst_w4.u64;
 
-	return 0;
+	memset(out_sa, 0, sizeof(struct roc_ot_ipsec_outb_sa));
+
+	/* Copy word0 from sa_dptr to populate ctx_push_sz ctx_size fields */
+	memcpy(out_sa, sa_dptr, 8);
+
+	/* Write session using microcode opcode */
+	ret = roc_cpt_ctx_write(lf, sa_dptr, out_sa,
+				ROC_NIX_INL_OT_IPSEC_OUTB_HW_SZ);
+	if (ret) {
+		plt_err("Could not write outbound session to hardware");
+		goto sa_dptr_free;
+	}
+
+	/* Trigger CTX flush to write dirty data back to DRAM */
+	roc_cpt_lf_ctx_flush(lf, out_sa, false);
+
+sa_dptr_free:
+	plt_free(sa_dptr);
+
+	return ret;
 }
 
 static int
-cn10k_ipsec_inb_sa_create(struct roc_cpt *roc_cpt,
+cn10k_ipsec_inb_sa_create(struct roc_cpt *roc_cpt, struct roc_cpt_lf *lf,
 			  struct rte_security_ipsec_xform *ipsec_xfrm,
 			  struct rte_crypto_sym_xform *crypto_xfrm,
 			  struct rte_security_session *sec_sess)
 {
 	union roc_ot_ipsec_inb_param1 param1;
-	struct roc_ot_ipsec_inb_sa *in_sa;
+	struct roc_ot_ipsec_inb_sa *sa_dptr;
 	struct cn10k_sec_session *sess;
 	struct cn10k_ipsec_sa *sa;
 	union cpt_inst_w4 inst_w4;
-	int ret;
+	void *in_sa;
+	int ret = 0;
 
 	sess = get_sec_session_private_data(sec_sess);
 	sa = &sess->sa;
 	in_sa = &sa->in_sa;
 
-	memset(in_sa, 0, sizeof(struct roc_ot_ipsec_inb_sa));
+	/* Allocate memory to be used as dptr for CPT ucode WRITE_SA op */
+	sa_dptr = plt_zmalloc(ROC_NIX_INL_OT_IPSEC_INB_HW_SZ, 0);
+	if (sa_dptr == NULL) {
+		plt_err("Couldn't allocate memory for SA dptr");
+		return -ENOMEM;
+	}
+
+	memset(sa_dptr, 0, sizeof(struct roc_ot_ipsec_inb_sa));
 
 	/* Translate security parameters to SA */
-	ret = cnxk_ot_ipsec_inb_sa_fill(in_sa, ipsec_xfrm, crypto_xfrm);
-	if (ret)
-		return ret;
-
-	/* TODO add support for antireplay */
-	sa->in_sa.w0.s.ar_win = 0;
-
-	/* TODO add support for udp encap */
+	ret = cnxk_ot_ipsec_inb_sa_fill(sa_dptr, ipsec_xfrm, crypto_xfrm);
+	if (ret) {
+		plt_err("Could not fill inbound session parameters");
+		goto sa_dptr_free;
+	}
 
 	sa->inst.w7 = ipsec_cpt_inst_w7_get(roc_cpt, sa);
 
@@ -173,7 +209,26 @@ cn10k_ipsec_inb_sa_create(struct roc_cpt *roc_cpt,
 
 	sa->inst.w4 = inst_w4.u64;
 
-	return 0;
+	memset(in_sa, 0, sizeof(struct roc_ot_ipsec_inb_sa));
+
+	/* Copy word0 from sa_dptr to populate ctx_push_sz ctx_size fields */
+	memcpy(in_sa, sa_dptr, 8);
+
+	/* Write session using microcode opcode */
+	ret = roc_cpt_ctx_write(lf, sa_dptr, in_sa,
+				ROC_NIX_INL_OT_IPSEC_INB_HW_SZ);
+	if (ret) {
+		plt_err("Could not write inbound session to hardware");
+		goto sa_dptr_free;
+	}
+
+	/* Trigger CTX flush to write dirty data back to DRAM */
+	roc_cpt_lf_ctx_flush(lf, in_sa, false);
+
+sa_dptr_free:
+	plt_free(sa_dptr);
+
+	return ret;
 }
 
 static int
@@ -185,12 +240,11 @@ cn10k_ipsec_session_create(void *dev,
 	struct rte_cryptodev *crypto_dev = dev;
 	struct roc_cpt *roc_cpt;
 	struct cnxk_cpt_vf *vf;
+	struct cnxk_cpt_qp *qp;
 	int ret;
 
-	vf = crypto_dev->data->dev_private;
-	roc_cpt = &vf->cpt;
-
-	if (crypto_dev->data->queue_pairs[0] == NULL) {
+	qp = crypto_dev->data->queue_pairs[0];
+	if (qp == NULL) {
 		plt_err("Setup cpt queue pair before creating security session");
 		return -EPERM;
 	}
@@ -199,11 +253,14 @@ cn10k_ipsec_session_create(void *dev,
 	if (ret)
 		return ret;
 
+	vf = crypto_dev->data->dev_private;
+	roc_cpt = &vf->cpt;
+
 	if (ipsec_xfrm->direction == RTE_SECURITY_IPSEC_SA_DIR_INGRESS)
-		return cn10k_ipsec_inb_sa_create(roc_cpt, ipsec_xfrm,
+		return cn10k_ipsec_inb_sa_create(roc_cpt, &qp->lf, ipsec_xfrm,
 						 crypto_xfrm, sess);
 	else
-		return cn10k_ipsec_outb_sa_create(roc_cpt, ipsec_xfrm,
+		return cn10k_ipsec_outb_sa_create(roc_cpt, &qp->lf, ipsec_xfrm,
 						  crypto_xfrm, sess);
 }
 
