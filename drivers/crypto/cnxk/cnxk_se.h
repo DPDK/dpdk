@@ -36,6 +36,9 @@ struct cnxk_se_sess {
 	struct roc_se_ctx roc_se_ctx;
 } __rte_cache_aligned;
 
+static __rte_always_inline int
+fill_sess_gmac(struct rte_crypto_sym_xform *xform, struct cnxk_se_sess *sess);
+
 static inline void
 cpt_pack_iv(uint8_t *iv_src, uint8_t *iv_dst)
 {
@@ -1807,6 +1810,9 @@ fill_sess_auth(struct rte_crypto_sym_xform *xform, struct cnxk_se_sess *sess)
 	struct rte_crypto_auth_xform *a_form;
 	roc_se_auth_type auth_type = 0; /* NULL Auth type */
 	uint8_t zsk_flag = 0, aes_gcm = 0, is_null = 0;
+
+	if (xform->auth.algo == RTE_CRYPTO_AUTH_AES_GMAC)
+		return fill_sess_gmac(xform, sess);
 
 	if (xform->next != NULL &&
 	    xform->next->type == RTE_CRYPTO_SYM_XFORM_CIPHER &&

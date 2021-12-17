@@ -30,16 +30,6 @@ struct cpt_qp_meta_info {
 	int mlen;
 };
 
-enum sym_xform_type {
-	CNXK_CPT_CIPHER = 1,
-	CNXK_CPT_AUTH,
-	CNXK_CPT_AEAD,
-	CNXK_CPT_CIPHER_ENC_AUTH_GEN,
-	CNXK_CPT_AUTH_VRFY_CIPHER_DEC,
-	CNXK_CPT_AUTH_GEN_CIPHER_ENC,
-	CNXK_CPT_CIPHER_DEC_AUTH_VRFY
-};
-
 #define CPT_OP_FLAGS_METABUF	       (1 << 1)
 #define CPT_OP_FLAGS_AUTH_VERIFY       (1 << 0)
 #define CPT_OP_FLAGS_IPSEC_DIR_INBOUND (1 << 2)

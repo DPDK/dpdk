@@ -418,84 +418,121 @@ cnxk_cpt_sym_session_get_size(struct rte_cryptodev *dev __rte_unused)
 }
 
 static int
-sym_xform_verify(struct rte_crypto_sym_xform *xform)
+cnxk_sess_fill(struct rte_crypto_sym_xform *xform, struct cnxk_se_sess *sess)
 {
-	if (xform->type == RTE_CRYPTO_SYM_XFORM_AUTH &&
-	    xform->auth.algo == RTE_CRYPTO_AUTH_NULL &&
-	    xform->auth.op == RTE_CRYPTO_AUTH_OP_VERIFY)
+	struct rte_crypto_sym_xform *aead_xfrm = NULL;
+	struct rte_crypto_sym_xform *c_xfrm = NULL;
+	struct rte_crypto_sym_xform *a_xfrm = NULL;
+	bool ciph_then_auth = false;
+
+	if (xform == NULL)
+		return -EINVAL;
+
+	if (xform->type == RTE_CRYPTO_SYM_XFORM_CIPHER) {
+		c_xfrm = xform;
+		a_xfrm = xform->next;
+		ciph_then_auth = true;
+	} else if (xform->type == RTE_CRYPTO_SYM_XFORM_AUTH) {
+		c_xfrm = xform->next;
+		a_xfrm = xform;
+		ciph_then_auth = false;
+	} else {
+		aead_xfrm = xform;
+	}
+
+	if (c_xfrm != NULL && c_xfrm->type != RTE_CRYPTO_SYM_XFORM_CIPHER) {
+		plt_dp_err("Invalid type in cipher xform");
+		return -EINVAL;
+	}
+
+	if (a_xfrm != NULL && a_xfrm->type != RTE_CRYPTO_SYM_XFORM_AUTH) {
+		plt_dp_err("Invalid type in auth xform");
+		return -EINVAL;
+	}
+
+	if (aead_xfrm != NULL && aead_xfrm->type != RTE_CRYPTO_SYM_XFORM_AEAD) {
+		plt_dp_err("Invalid type in AEAD xform");
+		return -EINVAL;
+	}
+
+	if ((c_xfrm == NULL || c_xfrm->cipher.algo == RTE_CRYPTO_CIPHER_NULL) &&
+	    a_xfrm != NULL && a_xfrm->auth.algo == RTE_CRYPTO_AUTH_NULL &&
+	    a_xfrm->auth.op == RTE_CRYPTO_AUTH_OP_VERIFY) {
+		plt_dp_err("Null cipher + null auth verify is not supported");
 		return -ENOTSUP;
+	}
 
-	if (xform->type == RTE_CRYPTO_SYM_XFORM_CIPHER && xform->next == NULL)
-		return CNXK_CPT_CIPHER;
+	/* Cipher only */
+	if (c_xfrm != NULL &&
+	    (a_xfrm == NULL || a_xfrm->auth.algo == RTE_CRYPTO_AUTH_NULL)) {
+		if (fill_sess_cipher(c_xfrm, sess))
+			return -ENOTSUP;
+		else
+			return 0;
+	}
 
-	if (xform->type == RTE_CRYPTO_SYM_XFORM_AUTH && xform->next == NULL)
-		return CNXK_CPT_AUTH;
+	/* Auth only */
+	if (a_xfrm != NULL &&
+	    (c_xfrm == NULL || c_xfrm->cipher.algo == RTE_CRYPTO_CIPHER_NULL)) {
+		if (fill_sess_auth(a_xfrm, sess))
+			return -ENOTSUP;
+		else
+			return 0;
+	}
 
-	if (xform->type == RTE_CRYPTO_SYM_XFORM_AEAD && xform->next == NULL)
-		return CNXK_CPT_AEAD;
+	/* AEAD */
+	if (aead_xfrm != NULL) {
+		if (fill_sess_aead(aead_xfrm, sess))
+			return -ENOTSUP;
+		else
+			return 0;
+	}
 
-	if (xform->next == NULL)
-		return -EIO;
+	/* Chained ops */
+	if (c_xfrm == NULL || a_xfrm == NULL) {
+		plt_dp_err("Invalid xforms");
+		return -EINVAL;
+	}
 
-	if (xform->type == RTE_CRYPTO_SYM_XFORM_CIPHER &&
-	    xform->cipher.algo == RTE_CRYPTO_CIPHER_3DES_CBC &&
-	    xform->next->type == RTE_CRYPTO_SYM_XFORM_AUTH &&
-	    xform->next->auth.algo == RTE_CRYPTO_AUTH_SHA1)
+	if (c_xfrm->cipher.algo == RTE_CRYPTO_CIPHER_3DES_CBC &&
+	    a_xfrm->auth.algo == RTE_CRYPTO_AUTH_SHA1) {
+		plt_dp_err("3DES-CBC + SHA1 is not supported");
 		return -ENOTSUP;
+	}
 
-	if (xform->type == RTE_CRYPTO_SYM_XFORM_AUTH &&
-	    xform->auth.algo == RTE_CRYPTO_AUTH_SHA1 &&
-	    xform->next->type == RTE_CRYPTO_SYM_XFORM_CIPHER &&
-	    xform->next->cipher.algo == RTE_CRYPTO_CIPHER_3DES_CBC)
-		return -ENOTSUP;
+	/* Cipher then auth */
+	if (ciph_then_auth) {
+		if (fill_sess_cipher(c_xfrm, sess))
+			return -ENOTSUP;
+		if (fill_sess_auth(a_xfrm, sess))
+			return -ENOTSUP;
+		else
+			return 0;
+	}
 
-	if (xform->type == RTE_CRYPTO_SYM_XFORM_CIPHER &&
-	    xform->cipher.op == RTE_CRYPTO_CIPHER_OP_ENCRYPT &&
-	    xform->next->type == RTE_CRYPTO_SYM_XFORM_AUTH &&
-	    xform->next->auth.op == RTE_CRYPTO_AUTH_OP_GENERATE)
-		return CNXK_CPT_CIPHER_ENC_AUTH_GEN;
+	/* else */
 
-	if (xform->type == RTE_CRYPTO_SYM_XFORM_AUTH &&
-	    xform->auth.op == RTE_CRYPTO_AUTH_OP_VERIFY &&
-	    xform->next->type == RTE_CRYPTO_SYM_XFORM_CIPHER &&
-	    xform->next->cipher.op == RTE_CRYPTO_CIPHER_OP_DECRYPT)
-		return CNXK_CPT_AUTH_VRFY_CIPHER_DEC;
-
-	if (xform->type == RTE_CRYPTO_SYM_XFORM_AUTH &&
-	    xform->auth.op == RTE_CRYPTO_AUTH_OP_GENERATE &&
-	    xform->next->type == RTE_CRYPTO_SYM_XFORM_CIPHER &&
-	    xform->next->cipher.op == RTE_CRYPTO_CIPHER_OP_ENCRYPT) {
-		switch (xform->auth.algo) {
+	if (c_xfrm->cipher.op == RTE_CRYPTO_CIPHER_OP_ENCRYPT) {
+		switch (a_xfrm->auth.algo) {
 		case RTE_CRYPTO_AUTH_SHA1_HMAC:
-			switch (xform->next->cipher.algo) {
+			switch (c_xfrm->cipher.algo) {
 			case RTE_CRYPTO_CIPHER_AES_CBC:
-				return CNXK_CPT_AUTH_GEN_CIPHER_ENC;
+				break;
 			default:
 				return -ENOTSUP;
 			}
+			break;
 		default:
 			return -ENOTSUP;
 		}
 	}
 
-	if (xform->type == RTE_CRYPTO_SYM_XFORM_CIPHER &&
-	    xform->cipher.op == RTE_CRYPTO_CIPHER_OP_DECRYPT &&
-	    xform->next->type == RTE_CRYPTO_SYM_XFORM_AUTH &&
-	    xform->next->auth.op == RTE_CRYPTO_AUTH_OP_VERIFY) {
-		switch (xform->cipher.algo) {
-		case RTE_CRYPTO_CIPHER_AES_CBC:
-			switch (xform->next->auth.algo) {
-			case RTE_CRYPTO_AUTH_SHA1_HMAC:
-				return CNXK_CPT_CIPHER_DEC_AUTH_VRFY;
-			default:
-				return -ENOTSUP;
-			}
-		default:
-			return -ENOTSUP;
-		}
-	}
-
-	return -ENOTSUP;
+	if (fill_sess_auth(a_xfrm, sess))
+		return -ENOTSUP;
+	if (fill_sess_cipher(c_xfrm, sess))
+		return -ENOTSUP;
+	else
+		return 0;
 }
 
 static uint64_t
@@ -524,10 +561,6 @@ sym_session_configure(struct roc_cpt *roc_cpt, int driver_id,
 	void *priv;
 	int ret;
 
-	ret = sym_xform_verify(xform);
-	if (unlikely(ret < 0))
-		return ret;
-
 	if (unlikely(rte_mempool_get(pool, &priv))) {
 		plt_dp_err("Could not allocate session private data");
 		return -ENOMEM;
@@ -537,37 +570,7 @@ sym_session_configure(struct roc_cpt *roc_cpt, int driver_id,
 
 	sess_priv = priv;
 
-	switch (ret) {
-	case CNXK_CPT_CIPHER:
-		ret = fill_sess_cipher(xform, sess_priv);
-		break;
-	case CNXK_CPT_AUTH:
-		if (xform->auth.algo == RTE_CRYPTO_AUTH_AES_GMAC)
-			ret = fill_sess_gmac(xform, sess_priv);
-		else
-			ret = fill_sess_auth(xform, sess_priv);
-		break;
-	case CNXK_CPT_AEAD:
-		ret = fill_sess_aead(xform, sess_priv);
-		break;
-	case CNXK_CPT_CIPHER_ENC_AUTH_GEN:
-	case CNXK_CPT_CIPHER_DEC_AUTH_VRFY:
-		ret = fill_sess_cipher(xform, sess_priv);
-		if (ret < 0)
-			break;
-		ret = fill_sess_auth(xform->next, sess_priv);
-		break;
-	case CNXK_CPT_AUTH_VRFY_CIPHER_DEC:
-	case CNXK_CPT_AUTH_GEN_CIPHER_ENC:
-		ret = fill_sess_auth(xform, sess_priv);
-		if (ret < 0)
-			break;
-		ret = fill_sess_cipher(xform->next, sess_priv);
-		break;
-	default:
-		ret = -1;
-	}
-
+	ret = cnxk_sess_fill(xform, sess_priv);
 	if (ret)
 		goto priv_put;
 
@@ -592,7 +595,7 @@ sym_session_configure(struct roc_cpt *roc_cpt, int driver_id,
 priv_put:
 	rte_mempool_put(pool, priv);
 
-	return -ENOTSUP;
+	return ret;
 }
 
 int
