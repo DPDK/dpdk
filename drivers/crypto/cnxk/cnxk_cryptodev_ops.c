@@ -100,8 +100,13 @@ cnxk_cpt_dev_start(struct rte_cryptodev *dev)
 	uint16_t nb_lf = roc_cpt->nb_lf;
 	uint16_t qp_id;
 
-	for (qp_id = 0; qp_id < nb_lf; qp_id++)
+	for (qp_id = 0; qp_id < nb_lf; qp_id++) {
+		/* Application may not setup all queue pair */
+		if (roc_cpt->lf[qp_id] == NULL)
+			continue;
+
 		roc_cpt_iq_enable(roc_cpt->lf[qp_id]);
+	}
 
 	return 0;
 }
@@ -114,8 +119,12 @@ cnxk_cpt_dev_stop(struct rte_cryptodev *dev)
 	uint16_t nb_lf = roc_cpt->nb_lf;
 	uint16_t qp_id;
 
-	for (qp_id = 0; qp_id < nb_lf; qp_id++)
+	for (qp_id = 0; qp_id < nb_lf; qp_id++) {
+		if (roc_cpt->lf[qp_id] == NULL)
+			continue;
+
 		roc_cpt_iq_disable(roc_cpt->lf[qp_id]);
+	}
 }
 
 int
