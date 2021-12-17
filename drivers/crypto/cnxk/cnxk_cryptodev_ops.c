@@ -703,3 +703,46 @@ cnxk_ae_session_cfg(struct rte_cryptodev *dev,
 
 	return 0;
 }
+
+void
+cnxk_cpt_dump_on_err(struct cnxk_cpt_qp *qp)
+{
+	struct pending_queue *pend_q = &qp->pend_q;
+	uint64_t inflight, enq_ptr, deq_ptr, insts;
+	union cpt_lf_q_inst_ptr inst_ptr;
+	union cpt_lf_inprog lf_inprog;
+
+	plt_print("Lcore ID: %d, LF/QP ID: %d", rte_lcore_id(), qp->lf.lf_id);
+	plt_print("");
+	plt_print("S/w pending queue:");
+	plt_print("\tHead: %"PRIu64"", pend_q->head);
+	plt_print("\tTail: %"PRIu64"", pend_q->tail);
+	plt_print("\tMask: 0x%"PRIx64"", pend_q->pq_mask);
+	plt_print("\tInflight count: %"PRIu64"",
+		  pending_queue_infl_cnt(pend_q->head, pend_q->tail,
+					 pend_q->pq_mask));
+
+	plt_print("");
+	plt_print("H/w pending queue:");
+
+	lf_inprog.u = plt_read64(qp->lf.rbase + CPT_LF_INPROG);
+	inflight = lf_inprog.s.inflight;
+	plt_print("\tInflight in engines: %"PRIu64"", inflight);
+
+	inst_ptr.u = plt_read64(qp->lf.rbase + CPT_LF_Q_INST_PTR);
+
+	enq_ptr = inst_ptr.s.nq_ptr;
+	deq_ptr = inst_ptr.s.dq_ptr;
+
+	if (enq_ptr >= deq_ptr)
+		insts = enq_ptr - deq_ptr;
+	else
+		insts = (enq_ptr + pend_q->pq_mask + 1 + 320 + 40) - deq_ptr;
+
+	plt_print("\tNQ ptr: 0x%"PRIx64"", enq_ptr);
+	plt_print("\tDQ ptr: 0x%"PRIx64"", deq_ptr);
+	plt_print("Insts waiting in CPT: %"PRIu64"", insts);
+
+	plt_print("");
+	roc_cpt_afs_print(qp->lf.roc_cpt);
+}

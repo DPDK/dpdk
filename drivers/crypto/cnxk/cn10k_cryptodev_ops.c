@@ -548,6 +548,7 @@ cn10k_cpt_dequeue_burst(void *qptr, struct rte_crypto_op **ops, uint16_t nb_ops)
 			if (unlikely(rte_get_timer_cycles() >
 				     pend_q->time_out)) {
 				plt_err("Request timed out");
+				cnxk_cpt_dump_on_err(qp);
 				pend_q->time_out = rte_get_timer_cycles() +
 						   DEFAULT_COMMAND_TIMEOUT *
 							   rte_get_timer_hz();

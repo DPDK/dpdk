@@ -122,6 +122,7 @@ int cnxk_ae_session_cfg(struct rte_cryptodev *dev,
 			struct rte_crypto_asym_xform *xform,
 			struct rte_cryptodev_asym_session *sess,
 			struct rte_mempool *pool);
+void cnxk_cpt_dump_on_err(struct cnxk_cpt_qp *qp);
 
 static inline union rte_event_crypto_metadata *
 cnxk_event_crypto_mdata_get(struct rte_crypto_op *op)

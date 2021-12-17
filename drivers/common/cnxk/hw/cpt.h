@@ -91,6 +91,17 @@ union cpt_lf_inprog {
 	} s;
 };
 
+union cpt_lf_q_inst_ptr {
+	uint64_t u;
+	struct cpt_lf_q_inst_ptr_s {
+		uint64_t dq_ptr : 20;
+		uint64_t reserved_20_31 : 12;
+		uint64_t nq_ptr : 20;
+		uint64_t reserved_52_62 : 11;
+		uint64_t xq_xor : 1;
+	} s;
+};
+
 union cpt_lf_q_base {
 	uint64_t u;
 	struct cpt_lf_q_base_s {
