@@ -65,6 +65,9 @@ cn10k_ipsec_outb_sa_create(struct roc_cpt *roc_cpt,
 		if (crypto_xfrm->type == RTE_CRYPTO_SYM_XFORM_AEAD) {
 			sa->iv_offset = crypto_xfrm->aead.iv.offset;
 			sa->iv_length = crypto_xfrm->aead.iv.length;
+		} else {
+			sa->iv_offset = crypto_xfrm->cipher.iv.offset;
+			sa->iv_length = crypto_xfrm->cipher.iv.length;
 		}
 	}
 #else

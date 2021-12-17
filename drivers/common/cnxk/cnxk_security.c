@@ -32,6 +32,10 @@ ipsec_hmac_opad_ipad_gen(struct rte_crypto_sym_xform *auth_xform,
 		roc_hash_sha1_gen(opad, (uint32_t *)&hmac_opad_ipad[0]);
 		roc_hash_sha1_gen(ipad, (uint32_t *)&hmac_opad_ipad[24]);
 		break;
+	case RTE_CRYPTO_AUTH_SHA256_HMAC:
+		roc_hash_sha256_gen(opad, (uint32_t *)&hmac_opad_ipad[0]);
+		roc_hash_sha256_gen(ipad, (uint32_t *)&hmac_opad_ipad[64]);
+		break;
 	default:
 		break;
 	}
@@ -121,6 +125,16 @@ ot_ipsec_sa_common_param_fill(union roc_ot_ipsec_sa_word2 *w2,
 			break;
 		case RTE_CRYPTO_AUTH_SHA1_HMAC:
 			w2->s.auth_type = ROC_IE_OT_SA_AUTH_SHA1;
+			ipsec_hmac_opad_ipad_gen(auth_xfrm, hmac_opad_ipad);
+
+			tmp_key = (uint64_t *)hmac_opad_ipad;
+			for (i = 0; i < (int)(ROC_CTX_MAX_OPAD_IPAD_LEN /
+					      sizeof(uint64_t));
+			     i++)
+				tmp_key[i] = rte_be_to_cpu_64(tmp_key[i]);
+			break;
+		case RTE_CRYPTO_AUTH_SHA256_HMAC:
+			w2->s.auth_type = ROC_IE_OT_SA_AUTH_SHA2_256;
 			ipsec_hmac_opad_ipad_gen(auth_xfrm, hmac_opad_ipad);
 
 			tmp_key = (uint64_t *)hmac_opad_ipad;

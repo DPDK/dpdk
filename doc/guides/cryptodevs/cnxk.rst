@@ -246,14 +246,27 @@ CN9XX Features supported
 * IPv4
 * IPv6
 * ESP
+* ESN
+* Anti-replay
 * Tunnel mode
 * Transport mode(IPv4)
 * UDP Encapsulation
+
+AEAD algorithms
++++++++++++++++
+
 * AES-128/192/256-GCM
-* AES-128/192/256-CBC-SHA1-HMAC
-* AES-128/192/256-CBC-SHA256-128-HMAC
-* ESN
-* Anti-replay
+
+Cipher algorithms
++++++++++++++++++
+
+* AES-128/192/256-CBC
+
+Auth algorithms
++++++++++++++++
+
+* SHA1-HMAC
+* SHA256-128-HMAC
 
 CN10XX Features supported
 ~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -263,6 +276,20 @@ CN10XX Features supported
 * Tunnel mode
 * Transport mode
 * UDP Encapsulation
+
+AEAD algorithms
++++++++++++++++
+
 * AES-128/192/256-GCM
-* AES-128/192/256-CBC-NULL
-* AES-128/192/256-CBC-SHA1-HMAC
+
+Cipher algorithms
++++++++++++++++++
+
+* AES-128/192/256-CBC
+
+Auth algorithms
++++++++++++++++
+
+* NULL
+* SHA1-HMAC
+* SHA256-128-HMAC
