@@ -12,6 +12,7 @@ config_flag_fmt = 'RTE_LIBRTE_@0@_COMMON'
 deps = ['eal', 'pci', 'bus_pci', 'mbuf', 'security']
 sources = files(
         'roc_ae.c',
+        'roc_aes.c',
         'roc_ae_fpm_tables.c',
         'roc_bphy.c',
         'roc_bphy_cgx.c',

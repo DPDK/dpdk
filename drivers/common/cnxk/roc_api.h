@@ -94,6 +94,9 @@
 /* REE */
 #include "roc_ree.h"
 
+/* AES */
+#include "roc_aes.h"
+
 /* HASH computation */
 #include "roc_hash.h"
 
