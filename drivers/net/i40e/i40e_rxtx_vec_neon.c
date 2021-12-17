@@ -77,9 +77,130 @@ i40e_rxq_rearm(struct i40e_rx_queue *rxq)
 	I40E_PCI_REG_WRITE_RELAXED(rxq->qrx_tail, rx_id);
 }
 
+#ifndef RTE_LIBRTE_I40E_16BYTE_RX_DESC
+/* NEON version of FDIR mark extraction for 4 32B descriptors at a time */
+static inline uint32x4_t
+descs_to_fdir_32b(volatile union i40e_rx_desc *rxdp, struct rte_mbuf **rx_pkt)
+{
+	/* 32B descriptors: Load 2nd half of descriptors for FDIR ID data */
+	uint64x2_t desc0_qw23, desc1_qw23, desc2_qw23, desc3_qw23;
+	desc0_qw23 = vld1q_u64((uint64_t *)&(rxdp + 0)->wb.qword2);
+	desc1_qw23 = vld1q_u64((uint64_t *)&(rxdp + 1)->wb.qword2);
+	desc2_qw23 = vld1q_u64((uint64_t *)&(rxdp + 2)->wb.qword2);
+	desc3_qw23 = vld1q_u64((uint64_t *)&(rxdp + 3)->wb.qword2);
+
+	/* FDIR ID data: move last u32 of each desc to 4 u32 lanes */
+	uint32x4_t v_unpack_02, v_unpack_13;
+	v_unpack_02 = vzipq_u32(vreinterpretq_u32_u64(desc0_qw23),
+				vreinterpretq_u32_u64(desc2_qw23)).val[1];
+	v_unpack_13 = vzipq_u32(vreinterpretq_u32_u64(desc1_qw23),
+				vreinterpretq_u32_u64(desc3_qw23)).val[1];
+	uint32x4_t v_fdir_ids = vzipq_u32(v_unpack_02, v_unpack_13).val[1];
+
+	/* Extended Status: extract from each lower 32 bits, to u32 lanes */
+	v_unpack_02 = vzipq_u32(vreinterpretq_u32_u64(desc0_qw23),
+				vreinterpretq_u32_u64(desc2_qw23)).val[0];
+	v_unpack_13 = vzipq_u32(vreinterpretq_u32_u64(desc1_qw23),
+				vreinterpretq_u32_u64(desc3_qw23)).val[0];
+	uint32x4_t v_flt_status = vzipq_u32(v_unpack_02, v_unpack_13).val[0];
+
+	/* Shift u32 left and right to "mask away" bits not required.
+	 * Data required is 4:5 (zero based), so left shift by 26 (32-6)
+	 * and then right shift by 30 (32 - 2 bits required).
+	 */
+	v_flt_status = vshlq_n_u32(v_flt_status, 26);
+	v_flt_status = vshrq_n_u32(v_flt_status, 30);
+
+	/* Generate constant 1 in all u32 lanes */
+	RTE_BUILD_BUG_ON(I40E_RX_DESC_EXT_STATUS_FLEXBH_FD_ID != 1);
+	uint32x4_t v_u32_one = vdupq_n_u32(1);
+
+	/* Per desc mask, bits set if FDIR ID is valid */
+	uint32x4_t v_fd_id_mask = vceqq_u32(v_flt_status, v_u32_one);
+
+	/* Mask ID data to zero if the FD_ID bit not set in desc */
+	v_fdir_ids = vandq_u32(v_fdir_ids, v_fd_id_mask);
+
+	/* Store data to fdir.hi in mbuf */
+	rx_pkt[0]->hash.fdir.hi = vgetq_lane_u32(v_fdir_ids, 0);
+	rx_pkt[1]->hash.fdir.hi = vgetq_lane_u32(v_fdir_ids, 1);
+	rx_pkt[2]->hash.fdir.hi = vgetq_lane_u32(v_fdir_ids, 2);
+	rx_pkt[3]->hash.fdir.hi = vgetq_lane_u32(v_fdir_ids, 3);
+
+	/* Convert fdir_id_mask into a single bit, then shift as required for
+	 * correct location in the mbuf->olflags
+	 */
+	RTE_BUILD_BUG_ON(RTE_MBUF_F_RX_FDIR_ID != (1 << 13));
+	v_fd_id_mask = vshrq_n_u32(v_fd_id_mask, 31);
+	v_fd_id_mask = vshlq_n_u32(v_fd_id_mask, 13);
+
+	/* The returned value must be combined into each mbuf. This is already
+	 * being done for RSS and VLAN mbuf olflags, so return bits to OR in.
+	 */
+	return v_fd_id_mask;
+}
+
+#else /* 32 or 16B FDIR ID handling */
+
+/* Handle 16B descriptor FDIR ID flag setting based on FLM(bit11). See scalar driver
+ * for scalar implementation of the same functionality.
+ */
+static inline uint32x4_t
+descs_to_fdir_16b(uint32x4_t fltstat, uint64x2_t descs[4], struct rte_mbuf **rx_pkt)
+{
+	/* Unpack filter-status data from descriptors */
+	uint32x4_t v_tmp_02 = vzipq_u32(vreinterpretq_u32_u64(descs[0]),
+					vreinterpretq_u32_u64(descs[2])).val[0];
+	uint32x4_t v_tmp_13 = vzipq_u32(vreinterpretq_u32_u64(descs[1]),
+					vreinterpretq_u32_u64(descs[3])).val[0];
+	uint32x4_t v_fdir_ids = vzipq_u32(v_tmp_02, v_tmp_13).val[1];
+
+	/* Generate 111 and 11 in each u32 lane */
+	uint32x4_t v_111_mask = vdupq_n_u32(7);
+	uint32x4_t v_11_mask = vdupq_n_u32(3);
+
+	/* Compare and mask away FDIR ID data if bit not set */
+	uint32x4_t v_u32_bits = vandq_u32(v_111_mask, fltstat);
+	uint32x4_t v_fdir_id_mask = vceqq_u32(v_u32_bits, v_11_mask);
+	v_fdir_ids = vandq_u32(v_fdir_id_mask, v_fdir_ids);
+
+	/* Store data to fdir.hi in mbuf */
+	rx_pkt[0]->hash.fdir.hi = vgetq_lane_u32(v_fdir_ids, 0);
+	rx_pkt[1]->hash.fdir.hi = vgetq_lane_u32(v_fdir_ids, 1);
+	rx_pkt[2]->hash.fdir.hi = vgetq_lane_u32(v_fdir_ids, 2);
+	rx_pkt[3]->hash.fdir.hi = vgetq_lane_u32(v_fdir_ids, 3);
+
+	/* Top lane ones mask for FDIR isolation */
+	uint32x4_t v_desc_fdir_mask = {0, UINT32_MAX, 0, 0};
+
+	/* Move fdir_id_mask to correct lane, zero RSS in mbuf if fdir hits */
+	uint32x4_t v_zeros = {0, 0, 0, 0};
+	uint32x4_t v_desc3_shift = vextq_u32(v_fdir_id_mask, v_zeros, 2);
+	uint32x4_t v_desc3_mask = vandq_u32(v_desc_fdir_mask, v_desc3_shift);
+	descs[3] = vbslq_u32(v_desc3_mask, v_zeros, vreinterpretq_u32_u64(descs[3]));
+
+	uint32x4_t v_desc2_shift = vextq_u32(v_fdir_id_mask, v_zeros, 1);
+	uint32x4_t v_desc2_mask = vandq_u32(v_desc_fdir_mask, v_desc2_shift);
+	descs[2] = vbslq_u32(v_desc2_mask, v_zeros, vreinterpretq_u32_u64(descs[2]));
+
+	uint32x4_t v_desc1_shift = v_fdir_id_mask;
+	uint32x4_t v_desc1_mask = vandq_u32(v_desc_fdir_mask, v_desc1_shift);
+	descs[1] = vbslq_u32(v_desc1_mask, v_zeros, vreinterpretq_u32_u64(descs[1]));
+
+	uint32x4_t v_desc0_shift = vextq_u32(v_zeros, v_fdir_id_mask, 3);
+	uint32x4_t v_desc0_mask = vandq_u32(v_desc_fdir_mask, v_desc0_shift);
+	descs[0] = vbslq_u32(v_desc0_mask, v_zeros, vreinterpretq_u32_u64(descs[0]));
+
+	/* Shift to 1 or 0 bit per u32 lane, then to RTE_MBUF_F_RX_FDIR_ID offset */
+	RTE_BUILD_BUG_ON(RTE_MBUF_F_RX_FDIR_ID != (1 << 13));
+	uint32x4_t v_mask_one_bit = vshrq_n_u32(v_fdir_id_mask, 31);
+	return vshlq_n_u32(v_mask_one_bit, 13);
+}
+#endif
+
 static inline void
-desc_to_olflags_v(struct i40e_rx_queue *rxq, uint64x2_t descs[4],
-		  struct rte_mbuf **rx_pkts)
+desc_to_olflags_v(struct i40e_rx_queue *rxq, volatile union i40e_rx_desc *rxdp,
+		  uint64x2_t descs[4], struct rte_mbuf **rx_pkts)
 {
 	uint32x4_t vlan0, vlan1, rss, l3_l4e;
 	const uint64x2_t mbuf_init = {rxq->mbuf_initializer, 0};
@@ -142,9 +263,9 @@ desc_to_olflags_v(struct i40e_rx_queue *rxq, uint64x2_t descs[4],
 	vlan0 = vreinterpretq_u32_u8(vqtbl1q_u8(vlan_flags,
 						vreinterpretq_u8_u32(vlan1)));
 
-	rss = vshrq_n_u32(vlan1, 11);
+	const uint32x4_t desc_fltstat = vshrq_n_u32(vlan1, 11);
 	rss = vreinterpretq_u32_u8(vqtbl1q_u8(rss_flags,
-					      vreinterpretq_u8_u32(rss)));
+					      vreinterpretq_u8_u32(desc_fltstat)));
 
 	l3_l4e = vshrq_n_u32(vlan1, 22);
 	l3_l4e = vreinterpretq_u32_u8(vqtbl1q_u8(l3_l4e_flags,
@@ -156,6 +277,18 @@ desc_to_olflags_v(struct i40e_rx_queue *rxq, uint64x2_t descs[4],
 
 	vlan0 = vorrq_u32(vlan0, rss);
 	vlan0 = vorrq_u32(vlan0, l3_l4e);
+
+	/* Extract FDIR ID only if FDIR is enabled to avoid useless work */
+	if (rxq->fdir_enabled) {
+#ifndef RTE_LIBRTE_I40E_16BYTE_RX_DESC
+		uint32x4_t v_fdir_ol_flags = descs_to_fdir_32b(rxdp, rx_pkts);
+#else
+		(void)rxdp; /* rxdp not required for 16B desc mode */
+		uint32x4_t v_fdir_ol_flags = descs_to_fdir_16b(desc_fltstat, descs, rx_pkts);
+#endif
+		/* OR in ol_flag bits after descriptor specific extraction */
+		vlan0 = vorrq_u32(vlan0, v_fdir_ol_flags);
+	}
 
 	rearm0 = vsetq_lane_u64(vgetq_lane_u32(vlan0, 0), mbuf_init, 1);
 	rearm1 = vsetq_lane_u64(vgetq_lane_u32(vlan0, 1), mbuf_init, 1);
@@ -335,6 +468,8 @@ _recv_raw_pkts_vec(struct i40e_rx_queue *__rte_restrict rxq,
 				 vreinterpretq_u16_u64(descs[0]),
 				 7));
 
+		desc_to_olflags_v(rxq, rxdp, descs, &rx_pkts[pos]);
+
 		/* D.1 pkts convert format from desc to pktmbuf */
 		pkt_mb4 = vqtbl1q_u8(vreinterpretq_u8_u64(descs[3]), shuf_msk);
 		pkt_mb3 = vqtbl1q_u8(vreinterpretq_u8_u64(descs[2]), shuf_msk);
@@ -362,8 +497,6 @@ _recv_raw_pkts_vec(struct i40e_rx_queue *__rte_restrict rxq,
 				pkt_mb1);
 
 		desc_to_ptype_v(descs, &rx_pkts[pos], ptype_tbl);
-
-		desc_to_olflags_v(rxq, descs, &rx_pkts[pos]);
 
 		if (likely(pos + RTE_I40E_DESCS_PER_LOOP < nb_pkts)) {
 			rte_prefetch_non_temporal(rxdp + RTE_I40E_DESCS_PER_LOOP);
