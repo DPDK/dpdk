@@ -21,7 +21,6 @@ enum roc_ie_on_ucc_ipsec {
 };
 
 /* Helper macros */
-#define ROC_IE_ON_PER_PKT_IV   BIT(11)
 #define ROC_IE_ON_INB_RPTR_HDR 0x8
 
 enum {
@@ -100,6 +99,35 @@ struct roc_ie_on_ip_template {
 			uint16_t udp_dst;
 		} ip6;
 	};
+};
+
+union roc_on_ipsec_outb_param1 {
+	uint16_t u16;
+	struct {
+		uint16_t frag_num : 4;
+		uint16_t rsvd_4_6 : 3;
+		uint16_t gre_select : 1;
+		uint16_t dsiv : 1;
+		uint16_t ikev2 : 1;
+		uint16_t min_frag_size : 1;
+		uint16_t per_pkt_iv : 1;
+		uint16_t tfc_pad_enable : 1;
+		uint16_t tfc_dummy_pkt : 1;
+		uint16_t rfc_or_override_mode : 1;
+		uint16_t custom_hdr_or_p99 : 1;
+	} s;
+};
+
+union roc_on_ipsec_inb_param2 {
+	uint16_t u16;
+	struct {
+		uint16_t rsvd_0_10 : 11;
+		uint16_t gre_select : 1;
+		uint16_t ikev2 : 1;
+		uint16_t udp_cksum : 1;
+		uint16_t ctx_addr_sel : 1;
+		uint16_t custom_hdr_or_p99 : 1;
+	} s;
 };
 
 struct roc_ie_on_sa_ctl {

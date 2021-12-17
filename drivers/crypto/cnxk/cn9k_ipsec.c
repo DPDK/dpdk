@@ -280,6 +280,7 @@ cn9k_ipsec_outb_sa_create(struct cnxk_cpt_qp *qp,
 	struct rte_crypto_sym_xform *auth_xform = crypto_xform->next;
 	struct roc_ie_on_ip_template *template = NULL;
 	struct roc_cpt *roc_cpt = qp->lf.roc_cpt;
+	union roc_on_ipsec_outb_param1 param1;
 	struct cnxk_cpt_inst_tmpl *inst_tmpl;
 	struct roc_ie_on_outb_sa *out_sa;
 	struct cn9k_sec_session *sess;
@@ -407,8 +408,12 @@ cn9k_ipsec_outb_sa_create(struct cnxk_cpt_qp *qp,
 	w4.u64 = 0;
 	w4.s.opcode_major = ROC_IE_ON_MAJOR_OP_PROCESS_OUTBOUND_IPSEC;
 	w4.s.opcode_minor = ctx_len >> 3;
-	w4.s.param1 = BIT(9);
-	w4.s.param1 |= ROC_IE_ON_PER_PKT_IV;
+
+	param1.u16 = 0;
+	param1.s.ikev2 = 1;
+	param1.s.per_pkt_iv = 1;
+	w4.s.param1 = param1.u16;
+
 	inst_tmpl->w4 = w4.u64;
 
 	w7.u64 = 0;
@@ -428,6 +433,7 @@ cn9k_ipsec_inb_sa_create(struct cnxk_cpt_qp *qp,
 {
 	struct rte_crypto_sym_xform *auth_xform = crypto_xform;
 	struct roc_cpt *roc_cpt = qp->lf.roc_cpt;
+	union roc_on_ipsec_inb_param2 param2;
 	struct cnxk_cpt_inst_tmpl *inst_tmpl;
 	struct roc_ie_on_inb_sa *in_sa;
 	struct cn9k_sec_session *sess;
@@ -478,7 +484,11 @@ cn9k_ipsec_inb_sa_create(struct cnxk_cpt_qp *qp,
 	w4.u64 = 0;
 	w4.s.opcode_major = ROC_IE_ON_MAJOR_OP_PROCESS_INBOUND_IPSEC;
 	w4.s.opcode_minor = ctx_len >> 3;
-	w4.s.param2 = BIT(12);
+
+	param2.u16 = 0;
+	param2.s.ikev2 = 1;
+	w4.s.param2 = param2.u16;
+
 	inst_tmpl->w4 = w4.u64;
 
 	w7.u64 = 0;
