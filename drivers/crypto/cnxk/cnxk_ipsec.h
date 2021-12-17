@@ -20,6 +20,9 @@ struct cnxk_cpt_inst_tmpl {
 static inline int
 ipsec_xform_cipher_verify(struct rte_crypto_sym_xform *crypto_xform)
 {
+	if (crypto_xform->cipher.algo == RTE_CRYPTO_CIPHER_NULL)
+		return 0;
+
 	if (crypto_xform->cipher.algo == RTE_CRYPTO_CIPHER_AES_CBC ||
 	    crypto_xform->cipher.algo == RTE_CRYPTO_CIPHER_AES_CTR) {
 		switch (crypto_xform->cipher.key.length) {
@@ -57,6 +60,10 @@ ipsec_xform_auth_verify(struct rte_crypto_sym_xform *crypto_xform)
 		if (keylen == 64)
 			return 0;
 	}
+
+	if (crypto_xform->auth.algo == RTE_CRYPTO_AUTH_AES_XCBC_MAC &&
+	    keylen == ROC_CPT_AES_XCBC_KEY_LENGTH)
+		return 0;
 
 	return -ENOTSUP;
 }

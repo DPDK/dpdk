@@ -61,6 +61,8 @@ New Features
   * Added SHA384-HMAC support in lookaside protocol (IPsec) for CN9K & CN10K.
   * Added SHA512-HMAC support in lookaside protocol (IPsec) for CN9K & CN10K.
   * Added AES-CTR support in lookaside protocol (IPsec) for CN9K & CN10K.
+  * Added NULL cipher support in lookaside protocol (IPsec) for CN9K & CN10K.
+  * Added AES-XCBC support in lookaside protocol (IPsec) for CN9K & CN10K.
 
 * **Added an API to retrieve event port id of ethdev Rx adapter.**
 

@@ -120,6 +120,9 @@ ot_ipsec_sa_common_param_fill(union roc_ot_ipsec_sa_word2 *w2,
 		}
 	} else {
 		switch (cipher_xfrm->cipher.algo) {
+		case RTE_CRYPTO_CIPHER_NULL:
+			w2->s.enc_type = ROC_IE_OT_SA_ENC_NULL;
+			break;
 		case RTE_CRYPTO_CIPHER_AES_CBC:
 			w2->s.enc_type = ROC_IE_OT_SA_ENC_AES_CBC;
 			break;
@@ -146,11 +149,19 @@ ot_ipsec_sa_common_param_fill(union roc_ot_ipsec_sa_word2 *w2,
 		case RTE_CRYPTO_AUTH_SHA512_HMAC:
 			w2->s.auth_type = ROC_IE_OT_SA_AUTH_SHA2_512;
 			break;
+		case RTE_CRYPTO_AUTH_AES_XCBC_MAC:
+			w2->s.auth_type = ROC_IE_OT_SA_AUTH_AES_XCBC_128;
+			break;
 		default:
 			return -ENOTSUP;
 		}
 
-		ipsec_hmac_opad_ipad_gen(auth_xfrm, hmac_opad_ipad);
+		if (auth_xfrm->auth.algo == RTE_CRYPTO_AUTH_AES_XCBC_MAC) {
+			const uint8_t *auth_key = auth_xfrm->auth.key.data;
+			roc_aes_xcbc_key_derive(auth_key, hmac_opad_ipad);
+		} else {
+			ipsec_hmac_opad_ipad_gen(auth_xfrm, hmac_opad_ipad);
+		}
 
 		tmp_key = (uint64_t *)hmac_opad_ipad;
 		for (i = 0;
@@ -174,18 +185,26 @@ ot_ipsec_sa_common_param_fill(union roc_ot_ipsec_sa_word2 *w2,
 	for (i = 0; i < (int)(ROC_CTX_MAX_CKEY_LEN / sizeof(uint64_t)); i++)
 		tmp_key[i] = rte_be_to_cpu_64(tmp_key[i]);
 
-	switch (length) {
-	case ROC_CPT_AES128_KEY_LEN:
-		w2->s.aes_key_len = ROC_IE_SA_AES_KEY_LEN_128;
-		break;
-	case ROC_CPT_AES192_KEY_LEN:
-		w2->s.aes_key_len = ROC_IE_SA_AES_KEY_LEN_192;
-		break;
-	case ROC_CPT_AES256_KEY_LEN:
-		w2->s.aes_key_len = ROC_IE_SA_AES_KEY_LEN_256;
-		break;
-	default:
-		return -EINVAL;
+	/* Set AES key length */
+	if (w2->s.enc_type == ROC_IE_OT_SA_ENC_AES_CBC ||
+	    w2->s.enc_type == ROC_IE_OT_SA_ENC_AES_CCM ||
+	    w2->s.enc_type == ROC_IE_OT_SA_ENC_AES_CTR ||
+	    w2->s.enc_type == ROC_IE_OT_SA_ENC_AES_GCM ||
+	    w2->s.auth_type == ROC_IE_OT_SA_AUTH_AES_GMAC) {
+		switch (length) {
+		case ROC_CPT_AES128_KEY_LEN:
+			w2->s.aes_key_len = ROC_IE_SA_AES_KEY_LEN_128;
+			break;
+		case ROC_CPT_AES192_KEY_LEN:
+			w2->s.aes_key_len = ROC_IE_SA_AES_KEY_LEN_192;
+			break;
+		case ROC_CPT_AES256_KEY_LEN:
+			w2->s.aes_key_len = ROC_IE_SA_AES_KEY_LEN_256;
+			break;
+		default:
+			plt_err("Invalid AES key length");
+			return -EINVAL;
+		}
 	}
 
 	if (ipsec_xfrm->life.packets_soft_limit != 0 ||
@@ -814,6 +833,9 @@ cnxk_ipsec_icvlen_get(enum rte_crypto_cipher_algorithm c_algo,
 		break;
 	case RTE_CRYPTO_AUTH_SHA512_HMAC:
 		icv = 32;
+		break;
+	case RTE_CRYPTO_AUTH_AES_XCBC_MAC:
+		icv = 12;
 		break;
 	default:
 		break;

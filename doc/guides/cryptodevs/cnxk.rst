@@ -260,6 +260,7 @@ AEAD algorithms
 Cipher algorithms
 +++++++++++++++++
 
+* NULL
 * AES-128/192/256-CBC
 * AES-128/192/256-CTR
 
@@ -270,6 +271,7 @@ Auth algorithms
 * SHA256-128-HMAC
 * SHA384-192-HMAC
 * SHA512-256-HMAC
+* AES-XCBC-96
 
 CN10XX Features supported
 ~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -288,6 +290,7 @@ AEAD algorithms
 Cipher algorithms
 +++++++++++++++++
 
+* NULL
 * AES-128/192/256-CBC
 * AES-128/192/256-CTR
 
@@ -299,3 +302,4 @@ Auth algorithms
 * SHA256-128-HMAC
 * SHA384-192-HMAC
 * SHA512-256-HMAC
+* AES-XCBC-96

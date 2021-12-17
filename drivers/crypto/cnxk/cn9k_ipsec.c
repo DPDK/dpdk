@@ -118,7 +118,7 @@ ipsec_sa_ctl_set(struct rte_security_ipsec_xform *ipsec,
 		 struct roc_ie_on_sa_ctl *ctl)
 {
 	struct rte_crypto_sym_xform *cipher_xform, *auth_xform;
-	int aes_key_len;
+	int aes_key_len = 0;
 
 	if (ipsec->direction == RTE_SECURITY_IPSEC_SA_DIR_EGRESS) {
 		ctl->direction = ROC_IE_SA_DIR_OUTBOUND;
@@ -157,37 +157,33 @@ ipsec_sa_ctl_set(struct rte_security_ipsec_xform *ipsec,
 		return -EINVAL;
 
 	if (crypto_xform->type == RTE_CRYPTO_SYM_XFORM_AEAD) {
-		if (crypto_xform->aead.algo == RTE_CRYPTO_AEAD_AES_GCM) {
+		switch (crypto_xform->aead.algo) {
+		case RTE_CRYPTO_AEAD_AES_GCM:
 			ctl->enc_type = ROC_IE_ON_SA_ENC_AES_GCM;
 			aes_key_len = crypto_xform->aead.key.length;
-		} else {
+			break;
+		default:
+			plt_err("Unsupported AEAD algorithm");
 			return -ENOTSUP;
 		}
-	} else if (cipher_xform->cipher.algo == RTE_CRYPTO_CIPHER_AES_CBC) {
-		ctl->enc_type = ROC_IE_ON_SA_ENC_AES_CBC;
-		aes_key_len = cipher_xform->cipher.key.length;
-	} else if (cipher_xform->cipher.algo == RTE_CRYPTO_CIPHER_AES_CTR) {
-		ctl->enc_type = ROC_IE_ON_SA_ENC_AES_CTR;
-		aes_key_len = cipher_xform->cipher.key.length;
 	} else {
-		return -ENOTSUP;
-	}
+		switch (cipher_xform->cipher.algo) {
+		case RTE_CRYPTO_CIPHER_NULL:
+			ctl->enc_type = ROC_IE_ON_SA_ENC_NULL;
+			break;
+		case RTE_CRYPTO_CIPHER_AES_CBC:
+			ctl->enc_type = ROC_IE_ON_SA_ENC_AES_CBC;
+			aes_key_len = cipher_xform->cipher.key.length;
+			break;
+		case RTE_CRYPTO_CIPHER_AES_CTR:
+			ctl->enc_type = ROC_IE_ON_SA_ENC_AES_CTR;
+			aes_key_len = cipher_xform->cipher.key.length;
+			break;
+		default:
+			plt_err("Unsupported cipher algorithm");
+			return -ENOTSUP;
+		}
 
-	switch (aes_key_len) {
-	case 16:
-		ctl->aes_key_len = ROC_IE_SA_AES_KEY_LEN_128;
-		break;
-	case 24:
-		ctl->aes_key_len = ROC_IE_SA_AES_KEY_LEN_192;
-		break;
-	case 32:
-		ctl->aes_key_len = ROC_IE_SA_AES_KEY_LEN_256;
-		break;
-	default:
-		return -EINVAL;
-	}
-
-	if (crypto_xform->type != RTE_CRYPTO_SYM_XFORM_AEAD) {
 		switch (auth_xform->auth.algo) {
 		case RTE_CRYPTO_AUTH_NULL:
 			ctl->auth_type = ROC_IE_ON_SA_AUTH_NULL;
@@ -217,7 +213,30 @@ ipsec_sa_ctl_set(struct rte_security_ipsec_xform *ipsec,
 			ctl->auth_type = ROC_IE_ON_SA_AUTH_AES_XCBC_128;
 			break;
 		default:
+			plt_err("Unsupported auth algorithm");
 			return -ENOTSUP;
+		}
+	}
+
+	/* Set AES key length */
+	if (ctl->enc_type == ROC_IE_ON_SA_ENC_AES_CBC ||
+	    ctl->enc_type == ROC_IE_ON_SA_ENC_AES_CCM ||
+	    ctl->enc_type == ROC_IE_ON_SA_ENC_AES_CTR ||
+	    ctl->enc_type == ROC_IE_ON_SA_ENC_AES_GCM ||
+	    ctl->auth_type == ROC_IE_ON_SA_AUTH_AES_GMAC) {
+		switch (aes_key_len) {
+		case 16:
+			ctl->aes_key_len = ROC_IE_SA_AES_KEY_LEN_128;
+			break;
+		case 24:
+			ctl->aes_key_len = ROC_IE_SA_AES_KEY_LEN_192;
+			break;
+		case 32:
+			ctl->aes_key_len = ROC_IE_SA_AES_KEY_LEN_256;
+			break;
+		default:
+			plt_err("Invalid AES key length");
+			return -EINVAL;
 		}
 	}
 
@@ -267,8 +286,6 @@ fill_ipsec_common_sa(struct rte_security_ipsec_xform *ipsec,
 
 	if (cipher_key_len != 0)
 		memcpy(common_sa->cipher_key, cipher_key, cipher_key_len);
-	else
-		return -EINVAL;
 
 	return 0;
 }
@@ -337,7 +354,13 @@ cn9k_ipsec_outb_sa_create(struct cnxk_cpt_qp *qp,
 			ctx_len = offsetof(struct roc_ie_on_outb_sa,
 					   sha2.template);
 			break;
+		case ROC_IE_ON_SA_AUTH_AES_XCBC_128:
+			template = &out_sa->aes_xcbc.template;
+			ctx_len = offsetof(struct roc_ie_on_outb_sa,
+					   aes_xcbc.template);
+			break;
 		default:
+			plt_err("Unsupported auth algorithm");
 			return -EINVAL;
 		}
 	}
@@ -418,6 +441,9 @@ cn9k_ipsec_outb_sa_create(struct cnxk_cpt_qp *qp,
 		case RTE_CRYPTO_AUTH_SHA384_HMAC:
 		case RTE_CRYPTO_AUTH_SHA512_HMAC:
 			memcpy(out_sa->sha2.hmac_key, auth_key, auth_key_len);
+			break;
+		case RTE_CRYPTO_AUTH_AES_XCBC_MAC:
+			memcpy(out_sa->aes_xcbc.key, auth_key, auth_key_len);
 			break;
 		default:
 			plt_err("Unsupported auth algorithm %u",
@@ -504,6 +530,11 @@ cn9k_ipsec_inb_sa_create(struct cnxk_cpt_qp *qp,
 			memcpy(in_sa->sha2.hmac_key, auth_key, auth_key_len);
 			ctx_len = offsetof(struct roc_ie_on_inb_sa,
 					   sha2.selector);
+			break;
+		case RTE_CRYPTO_AUTH_AES_XCBC_MAC:
+			memcpy(in_sa->aes_xcbc.key, auth_key, auth_key_len);
+			ctx_len = offsetof(struct roc_ie_on_inb_sa,
+					   aes_xcbc.selector);
 			break;
 		default:
 			plt_err("Unsupported auth algorithm %u",
@@ -595,6 +626,12 @@ cn9k_ipsec_xform_verify(struct rte_security_ipsec_xform *ipsec,
 			if ((cipher->algo == RTE_CRYPTO_CIPHER_AES_CBC) &&
 			    (auth->algo == RTE_CRYPTO_AUTH_SHA512_HMAC)) {
 				plt_err("Transport mode AES-CBC SHA2 HMAC 512 is not supported");
+				return -ENOTSUP;
+			}
+
+			if ((cipher->algo == RTE_CRYPTO_CIPHER_AES_CBC) &&
+			    (auth->algo == RTE_CRYPTO_AUTH_AES_XCBC_MAC)) {
+				plt_err("Transport mode AES-CBC AES-XCBC is not supported");
 				return -ENOTSUP;
 			}
 		}

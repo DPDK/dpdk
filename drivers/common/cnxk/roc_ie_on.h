@@ -181,6 +181,11 @@ struct roc_ie_on_outb_sa {
 			struct roc_ie_on_ip_template template;
 		} sha1;
 		struct {
+			uint8_t key[16];
+			uint8_t unused[32];
+			struct roc_ie_on_ip_template template;
+		} aes_xcbc;
+		struct {
 			uint8_t hmac_key[64];
 			uint8_t hmac_iv[64];
 			struct roc_ie_on_ip_template template;
@@ -201,6 +206,11 @@ struct roc_ie_on_inb_sa {
 			uint8_t hmac_key[48];
 			struct roc_ie_on_traffic_selector selector;
 		} sha1_or_gcm;
+		struct {
+			uint8_t key[16];
+			uint8_t unused[32];
+			struct roc_ie_on_traffic_selector selector;
+		} aes_xcbc;
 		struct {
 			uint8_t hmac_key[64];
 			uint8_t hmac_iv[64];
