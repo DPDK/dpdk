@@ -19,7 +19,6 @@ struct cn10k_ipsec_sa {
 	uint16_t max_extended_len;
 	uint16_t iv_offset;
 	uint8_t iv_length;
-	bool ip_csum_enable;
 	bool is_outbound;
 
 	/**

@@ -201,7 +201,6 @@ cn10k_ipsec_inb_sa_create(struct roc_cpt *roc_cpt, struct roc_cpt_lf *lf,
 	if (ipsec_xfrm->options.ip_csum_enable) {
 		param1.s.ip_csum_disable =
 			ROC_IE_OT_SA_INNER_PKT_IP_CSUM_ENABLE;
-		sa->ip_csum_enable = true;
 	}
 
 	/* Disable L4 checksum verification by default */
