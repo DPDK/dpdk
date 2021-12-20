@@ -5,14 +5,14 @@
 #include "roc_api.h"
 #include "roc_priv.h"
 
-#define nix_dump(fmt, ...) fprintf(stderr, fmt "\n", ##__VA_ARGS__)
+#define nix_dump plt_dump
 #define NIX_REG_INFO(reg)                                                      \
 	{                                                                      \
 		reg, #reg                                                      \
 	}
 #define NIX_REG_NAME_SZ 48
 
-#define nix_dump_no_nl(fmt, ...) fprintf(stderr, fmt, ##__VA_ARGS__)
+#define nix_dump_no_nl plt_dump_no_nl
 
 struct nix_lf_reg_info {
 	uint32_t offset;

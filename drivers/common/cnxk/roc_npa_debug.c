@@ -5,7 +5,7 @@
 #include "roc_api.h"
 #include "roc_priv.h"
 
-#define npa_dump(fmt, ...) fprintf(stderr, fmt "\n", ##__VA_ARGS__)
+#define npa_dump plt_dump
 
 static inline void
 npa_pool_dump(__io struct npa_pool_s *pool)
