@@ -437,9 +437,11 @@ mem_list_del_item(cuda_ptr_key pk)
 		return -EINVAL;
 
 	/* if key is in head */
-	if (mem_alloc_list_cur->prev == NULL)
+	if (mem_alloc_list_cur->prev == NULL) {
 		mem_alloc_list_head = mem_alloc_list_cur->next;
-	else {
+		if (mem_alloc_list_head != NULL)
+			mem_alloc_list_head->prev = NULL;
+	} else {
 		mem_alloc_list_cur->prev->next = mem_alloc_list_cur->next;
 		if (mem_alloc_list_cur->next != NULL)
 			mem_alloc_list_cur->next->prev = mem_alloc_list_cur->prev;
