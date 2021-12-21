@@ -777,7 +777,7 @@ sfc_sw_xstats_configure(struct sfc_adapter *sa)
 
 	memset(*reset_vals, 0, nb_supported * sizeof(**reset_vals));
 
-	*cache = rte_realloc(*cache, cache_count * sizeof(*cache), 0);
+	*cache = rte_realloc(*cache, cache_count * sizeof(**cache), 0);
 	if (*cache == NULL) {
 		rc = ENOMEM;
 		goto fail_cache;
