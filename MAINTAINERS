@@ -1584,7 +1584,6 @@ F: examples/vm_power_manager/
 F: doc/guides/sample_app_ug/vm_power_management.rst
 
 Timers
-M: Robert Sanford <rsanford@akamai.com>
 M: Erik Gabriel Carrillo <erik.g.carrillo@intel.com>
 F: lib/timer/
 F: doc/guides/prog_guide/timer_lib.rst
