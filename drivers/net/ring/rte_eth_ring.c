@@ -226,6 +226,30 @@ eth_mac_addr_add(struct rte_eth_dev *dev __rte_unused,
 }
 
 static int
+eth_promiscuous_enable(struct rte_eth_dev *dev __rte_unused)
+{
+	return 0;
+}
+
+static int
+eth_promiscuous_disable(struct rte_eth_dev *dev __rte_unused)
+{
+	return 0;
+}
+
+static int
+eth_allmulticast_enable(struct rte_eth_dev *dev __rte_unused)
+{
+	return 0;
+}
+
+static int
+eth_allmulticast_disable(struct rte_eth_dev *dev __rte_unused)
+{
+	return 0;
+}
+
+static int
 eth_link_update(struct rte_eth_dev *dev __rte_unused,
 		int wait_to_complete __rte_unused) { return 0; }
 
@@ -275,6 +299,10 @@ static const struct eth_dev_ops ops = {
 	.stats_reset = eth_stats_reset,
 	.mac_addr_remove = eth_mac_addr_remove,
 	.mac_addr_add = eth_mac_addr_add,
+	.promiscuous_enable = eth_promiscuous_enable,
+	.promiscuous_disable = eth_promiscuous_disable,
+	.allmulticast_enable = eth_allmulticast_enable,
+	.allmulticast_disable = eth_allmulticast_disable,
 };
 
 static int
