@@ -2037,6 +2037,14 @@ ice_fdir_parse_pattern(__rte_unused struct ice_adapter *ad,
 				return -rte_errno;
 			}
 
+			/* Mask for IPv4 src/dst addrs not supported */
+			if (!ipv4_mask->hdr.src_addr &&
+				ipv4_mask->hdr.src_addr != UINT32_MAX)
+				return -rte_errno;
+			if (!ipv4_mask->hdr.dst_addr &&
+				ipv4_mask->hdr.dst_addr != UINT32_MAX)
+				return -rte_errno;
+
 			if (ipv4_mask->hdr.dst_addr == UINT32_MAX)
 				*input_set |= ICE_INSET_IPV4_DST;
 			if (ipv4_mask->hdr.src_addr == UINT32_MAX)
@@ -2178,6 +2186,14 @@ ice_fdir_parse_pattern(__rte_unused struct ice_adapter *ad,
 				return -rte_errno;
 			}
 
+			/* Mask for TCP src/dst ports not supported */
+			if (!tcp_mask->hdr.src_port &&
+				tcp_mask->hdr.src_port != UINT16_MAX)
+				return -rte_errno;
+			if (!tcp_mask->hdr.dst_port &&
+				tcp_mask->hdr.dst_port != UINT16_MAX)
+				return -rte_errno;
+
 			if (tcp_mask->hdr.src_port == UINT16_MAX)
 				*input_set |= ICE_INSET_TCP_SRC_PORT;
 			if (tcp_mask->hdr.dst_port == UINT16_MAX)
@@ -2217,6 +2233,14 @@ ice_fdir_parse_pattern(__rte_unused struct ice_adapter *ad,
 				return -rte_errno;
 			}
 
+			/* Mask for UDP src/dst ports not supported */
+			if (!udp_mask->hdr.src_port &&
+				udp_mask->hdr.src_port != UINT16_MAX)
+				return -rte_errno;
+			if (!udp_mask->hdr.dst_port &&
+				udp_mask->hdr.dst_port != UINT16_MAX)
+				return -rte_errno;
+
 			if (udp_mask->hdr.src_port == UINT16_MAX)
 				*input_set |= ICE_INSET_UDP_SRC_PORT;
 			if (udp_mask->hdr.dst_port == UINT16_MAX)
@@ -2253,6 +2277,14 @@ ice_fdir_parse_pattern(__rte_unused struct ice_adapter *ad,
 						   "Invalid UDP mask");
 				return -rte_errno;
 			}
+
+			/* Mask for SCTP src/dst ports not supported */
+			if (!sctp_mask->hdr.src_port &&
+				sctp_mask->hdr.src_port != UINT16_MAX)
+				return -rte_errno;
+			if (!sctp_mask->hdr.dst_port &&
+				sctp_mask->hdr.dst_port != UINT16_MAX)
+				return -rte_errno;
 
 			if (sctp_mask->hdr.src_port == UINT16_MAX)
 				*input_set |= ICE_INSET_SCTP_SRC_PORT;
