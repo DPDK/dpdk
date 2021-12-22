@@ -51,7 +51,7 @@ ssize_t rte_ring_get_memsize_elem(unsigned int esize, unsigned int count);
  *
  * The new ring size is set to *count*, which must be a power of
  * two. Water marking is disabled by default. The real usable ring size
- * is *count-1* instead of *count* to differentiate a free ring from an
+ * is *count-1* instead of *count* to differentiate a full ring from an
  * empty ring.
  *
  * The ring is added in RTE_TAILQ_RING list.
