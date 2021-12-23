@@ -58,7 +58,7 @@ cnxk_tim_chnk_pool_create(struct cnxk_tim_ring *tim_ring,
 		}
 		tim_ring->aura = roc_npa_aura_handle_to_aura(
 			tim_ring->chunk_pool->pool_id);
-		tim_ring->ena_dfb = 0;
+		tim_ring->ena_dfb = tim_ring->ena_periodic ? 1 : 0;
 	} else {
 		tim_ring->chunk_pool = rte_mempool_create(
 			pool_name, tim_ring->nb_chunks, tim_ring->chunk_sz,
@@ -112,7 +112,9 @@ cnxk_tim_ring_info_get(const struct rte_event_timer_adapter *adptr,
 	struct cnxk_tim_ring *tim_ring = adptr->data->adapter_priv;
 
 	adptr_info->max_tmo_ns = tim_ring->max_tout;
-	adptr_info->min_resolution_ns = tim_ring->tck_nsec;
+	adptr_info->min_resolution_ns = tim_ring->ena_periodic ?
+						tim_ring->max_tout :
+						tim_ring->tck_nsec;
 	rte_memcpy(&adptr_info->conf, &adptr->data->conf,
 		   sizeof(struct rte_event_timer_adapter_conf));
 }
@@ -237,6 +239,12 @@ cnxk_tim_ring_create(struct rte_event_timer_adapter *adptr)
 		goto tim_hw_free;
 	}
 
+	if (rcfg->flags & RTE_EVENT_TIMER_ADAPTER_F_PERIODIC) {
+		/* Use 2 buckets to avoid contention */
+		rcfg->timer_tick_ns /= 2;
+		tim_ring->ena_periodic = 1;
+	}
+
 	if (rcfg->timer_tick_ns < min_intvl_ns) {
 		if (rcfg->flags & RTE_EVENT_TIMER_ADAPTER_F_ADJUST_RES) {
 			rcfg->timer_tick_ns = min_intvl_ns;
@@ -245,6 +253,9 @@ cnxk_tim_ring_create(struct rte_event_timer_adapter *adptr)
 			goto tim_hw_free;
 		}
 	}
+
+	if (tim_ring->ena_periodic)
+		rcfg->max_tmo_ns = rcfg->timer_tick_ns * 2;
 
 	if (rcfg->timer_tick_ns > rcfg->max_tmo_ns) {
 		plt_err("Max timeout to too high");
@@ -322,7 +333,8 @@ cnxk_tim_ring_create(struct rte_event_timer_adapter *adptr)
 	if (rc < 0)
 		goto tim_bkt_free;
 
-	rc = roc_tim_lf_config(&dev->tim, tim_ring->ring_id, clk_src, 0, 0,
+	rc = roc_tim_lf_config(&dev->tim, tim_ring->ring_id, clk_src,
+			       tim_ring->ena_periodic, tim_ring->ena_dfb,
 			       tim_ring->nb_bkts, tim_ring->chunk_sz,
 			       tim_ring->tck_int, tim_ring->tck_nsec, clk_freq);
 	if (rc < 0) {
@@ -493,7 +505,8 @@ cnxk_tim_caps_get(const struct rte_eventdev *evdev, uint64_t flags,
 
 	/* Store evdev pointer for later use. */
 	dev->event_dev = (struct rte_eventdev *)(uintptr_t)evdev;
-	*caps = RTE_EVENT_TIMER_ADAPTER_CAP_INTERNAL_PORT;
+	*caps = RTE_EVENT_TIMER_ADAPTER_CAP_INTERNAL_PORT |
+		RTE_EVENT_TIMER_ADAPTER_CAP_PERIODIC;
 	*ops = &cnxk_tim_ops;
 
 	return 0;
