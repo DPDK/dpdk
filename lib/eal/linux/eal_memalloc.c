@@ -308,8 +308,8 @@ get_seg_fd(char *path, int buflen, struct hugepage_info *hi,
 		if (fd < 0) {
 			fd = open(path, O_CREAT | O_RDWR, 0600);
 			if (fd < 0) {
-				RTE_LOG(ERR, EAL, "%s(): open failed: %s\n",
-					__func__, strerror(errno));
+				RTE_LOG(ERR, EAL, "%s(): open '%s' failed: %s\n",
+					__func__, path, strerror(errno));
 				return -1;
 			}
 			/* take out a read lock and keep it indefinitely */
@@ -346,8 +346,8 @@ get_seg_fd(char *path, int buflen, struct hugepage_info *hi,
 
 			fd = open(path, O_CREAT | O_RDWR, 0600);
 			if (fd < 0) {
-				RTE_LOG(DEBUG, EAL, "%s(): open failed: %s\n",
-					__func__, strerror(errno));
+				RTE_LOG(ERR, EAL, "%s(): open '%s' failed: %s\n",
+					__func__, path, strerror(errno));
 				return -1;
 			}
 			/* take out a read lock */
