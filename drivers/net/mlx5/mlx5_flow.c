@@ -164,128 +164,143 @@ mlx5_flow_is_rss_expandable_item(const struct rte_flow_item *item)
 	return false;
 }
 
+/**
+ * Network Service Header (NSH) and its next protocol values
+ * are described in RFC-8393.
+ */
+static enum rte_flow_item_type
+mlx5_nsh_proto_to_item_type(uint8_t proto_spec, uint8_t proto_mask)
+{
+	enum rte_flow_item_type type;
+
+	switch (proto_mask & proto_spec) {
+	case RTE_VXLAN_GPE_TYPE_IPV4:
+		type = RTE_FLOW_ITEM_TYPE_IPV4;
+		break;
+	case RTE_VXLAN_GPE_TYPE_IPV6:
+		type = RTE_VXLAN_GPE_TYPE_IPV6;
+		break;
+	case RTE_VXLAN_GPE_TYPE_ETH:
+		type = RTE_FLOW_ITEM_TYPE_ETH;
+		break;
+	default:
+		type = RTE_FLOW_ITEM_TYPE_END;
+	}
+	return type;
+}
+
+static enum rte_flow_item_type
+mlx5_inet_proto_to_item_type(uint8_t proto_spec, uint8_t proto_mask)
+{
+	enum rte_flow_item_type type;
+
+	switch (proto_mask & proto_spec) {
+	case IPPROTO_UDP:
+		type = RTE_FLOW_ITEM_TYPE_UDP;
+		break;
+	case IPPROTO_TCP:
+		type = RTE_FLOW_ITEM_TYPE_TCP;
+		break;
+	case IPPROTO_IP:
+		type = RTE_FLOW_ITEM_TYPE_IPV4;
+		break;
+	case IPPROTO_IPV6:
+		type = RTE_FLOW_ITEM_TYPE_IPV6;
+		break;
+	default:
+		type = RTE_FLOW_ITEM_TYPE_END;
+	}
+	return type;
+}
+
+static enum rte_flow_item_type
+mlx5_ethertype_to_item_type(rte_be16_t type_spec,
+			    rte_be16_t type_mask, bool is_tunnel)
+{
+	enum rte_flow_item_type type;
+
+	switch (rte_be_to_cpu_16(type_spec & type_mask)) {
+	case RTE_ETHER_TYPE_TEB:
+		type = is_tunnel ?
+		       RTE_FLOW_ITEM_TYPE_ETH : RTE_FLOW_ITEM_TYPE_END;
+		break;
+	case RTE_ETHER_TYPE_VLAN:
+		type = !is_tunnel ?
+		       RTE_FLOW_ITEM_TYPE_VLAN : RTE_FLOW_ITEM_TYPE_END;
+		break;
+	case RTE_ETHER_TYPE_IPV4:
+		type = RTE_FLOW_ITEM_TYPE_IPV4;
+		break;
+	case RTE_ETHER_TYPE_IPV6:
+		type = RTE_FLOW_ITEM_TYPE_IPV6;
+		break;
+	default:
+		type = RTE_FLOW_ITEM_TYPE_END;
+	}
+	return type;
+}
+
 static enum rte_flow_item_type
 mlx5_flow_expand_rss_item_complete(const struct rte_flow_item *item)
 {
-	enum rte_flow_item_type ret = RTE_FLOW_ITEM_TYPE_VOID;
-	uint16_t ether_type = 0;
-	uint16_t ether_type_m;
-	uint8_t ip_next_proto = 0;
-	uint8_t ip_next_proto_m;
+#define MLX5_XSET_ITEM_MASK_SPEC(type, fld)                              \
+	do {                                                             \
+		const void *m = item->mask;                              \
+		const void *s = item->spec;                              \
+		mask = m ?                                               \
+			((const struct rte_flow_item_##type *)m)->fld :  \
+			rte_flow_item_##type##_mask.fld;                 \
+		spec = ((const struct rte_flow_item_##type *)s)->fld;    \
+	} while (0)
+
+	enum rte_flow_item_type ret;
+	uint16_t spec, mask;
 
 	if (item == NULL || item->spec == NULL)
-		return ret;
+		return RTE_FLOW_ITEM_TYPE_VOID;
 	switch (item->type) {
 	case RTE_FLOW_ITEM_TYPE_ETH:
-		if (item->mask)
-			ether_type_m = ((const struct rte_flow_item_eth *)
-						(item->mask))->type;
-		else
-			ether_type_m = rte_flow_item_eth_mask.type;
-		if (ether_type_m != RTE_BE16(0xFFFF))
-			break;
-		ether_type = ((const struct rte_flow_item_eth *)
-				(item->spec))->type;
-		if (rte_be_to_cpu_16(ether_type) == RTE_ETHER_TYPE_IPV4)
-			ret = RTE_FLOW_ITEM_TYPE_IPV4;
-		else if (rte_be_to_cpu_16(ether_type) == RTE_ETHER_TYPE_IPV6)
-			ret = RTE_FLOW_ITEM_TYPE_IPV6;
-		else if (rte_be_to_cpu_16(ether_type) == RTE_ETHER_TYPE_VLAN)
-			ret = RTE_FLOW_ITEM_TYPE_VLAN;
-		else
-			ret = RTE_FLOW_ITEM_TYPE_END;
+		MLX5_XSET_ITEM_MASK_SPEC(eth, type);
+		if (!mask)
+			return RTE_FLOW_ITEM_TYPE_VOID;
+		ret = mlx5_ethertype_to_item_type(spec, mask, false);
 		break;
 	case RTE_FLOW_ITEM_TYPE_VLAN:
-		if (item->mask)
-			ether_type_m = ((const struct rte_flow_item_vlan *)
-						(item->mask))->inner_type;
-		else
-			ether_type_m = rte_flow_item_vlan_mask.inner_type;
-		if (ether_type_m != RTE_BE16(0xFFFF))
-			break;
-		ether_type = ((const struct rte_flow_item_vlan *)
-				(item->spec))->inner_type;
-		if (rte_be_to_cpu_16(ether_type) == RTE_ETHER_TYPE_IPV4)
-			ret = RTE_FLOW_ITEM_TYPE_IPV4;
-		else if (rte_be_to_cpu_16(ether_type) == RTE_ETHER_TYPE_IPV6)
-			ret = RTE_FLOW_ITEM_TYPE_IPV6;
-		else if (rte_be_to_cpu_16(ether_type) == RTE_ETHER_TYPE_VLAN)
-			ret = RTE_FLOW_ITEM_TYPE_VLAN;
-		else
-			ret = RTE_FLOW_ITEM_TYPE_END;
+		MLX5_XSET_ITEM_MASK_SPEC(vlan, inner_type);
+		if (!mask)
+			return RTE_FLOW_ITEM_TYPE_VOID;
+		ret = mlx5_ethertype_to_item_type(spec, mask, false);
 		break;
 	case RTE_FLOW_ITEM_TYPE_IPV4:
-		if (item->mask)
-			ip_next_proto_m = ((const struct rte_flow_item_ipv4 *)
-					(item->mask))->hdr.next_proto_id;
-		else
-			ip_next_proto_m =
-				rte_flow_item_ipv4_mask.hdr.next_proto_id;
-		if (ip_next_proto_m != 0xFF)
-			break;
-		ip_next_proto = ((const struct rte_flow_item_ipv4 *)
-				(item->spec))->hdr.next_proto_id;
-		if (ip_next_proto == IPPROTO_UDP)
-			ret = RTE_FLOW_ITEM_TYPE_UDP;
-		else if (ip_next_proto == IPPROTO_TCP)
-			ret = RTE_FLOW_ITEM_TYPE_TCP;
-		else if (ip_next_proto == IPPROTO_IP)
-			ret = RTE_FLOW_ITEM_TYPE_IPV4;
-		else if (ip_next_proto == IPPROTO_IPV6)
-			ret = RTE_FLOW_ITEM_TYPE_IPV6;
-		else
-			ret = RTE_FLOW_ITEM_TYPE_END;
+		MLX5_XSET_ITEM_MASK_SPEC(ipv4, hdr.next_proto_id);
+		if (!mask)
+			return RTE_FLOW_ITEM_TYPE_VOID;
+		ret = mlx5_inet_proto_to_item_type(spec, mask);
 		break;
 	case RTE_FLOW_ITEM_TYPE_IPV6:
-		if (item->mask)
-			ip_next_proto_m = ((const struct rte_flow_item_ipv6 *)
-						(item->mask))->hdr.proto;
-		else
-			ip_next_proto_m =
-				rte_flow_item_ipv6_mask.hdr.proto;
-		if (ip_next_proto_m != 0xFF)
-			break;
-		ip_next_proto = ((const struct rte_flow_item_ipv6 *)
-				(item->spec))->hdr.proto;
-		if (ip_next_proto == IPPROTO_UDP)
-			ret = RTE_FLOW_ITEM_TYPE_UDP;
-		else if (ip_next_proto == IPPROTO_TCP)
-			ret = RTE_FLOW_ITEM_TYPE_TCP;
-		else if (ip_next_proto == IPPROTO_IP)
-			ret = RTE_FLOW_ITEM_TYPE_IPV4;
-		else if (ip_next_proto == IPPROTO_IPV6)
-			ret = RTE_FLOW_ITEM_TYPE_IPV6;
-		else
-			ret = RTE_FLOW_ITEM_TYPE_END;
+		MLX5_XSET_ITEM_MASK_SPEC(ipv6, hdr.proto);
+		if (!mask)
+			return RTE_FLOW_ITEM_TYPE_VOID;
+		ret = mlx5_inet_proto_to_item_type(spec, mask);
 		break;
 	case RTE_FLOW_ITEM_TYPE_GENEVE:
-		ether_type_m = item->mask ?
-			       ((const struct rte_flow_item_geneve *)
-			       (item->mask))->protocol :
-			       rte_flow_item_geneve_mask.protocol;
-		ether_type = ((const struct rte_flow_item_geneve *)
-			     (item->spec))->protocol;
-		ether_type_m = rte_be_to_cpu_16(ether_type_m);
-		ether_type = rte_be_to_cpu_16(ether_type);
-		switch (ether_type_m & ether_type) {
-		case RTE_ETHER_TYPE_TEB:
-			ret = RTE_FLOW_ITEM_TYPE_ETH;
-			break;
-		case RTE_ETHER_TYPE_IPV4:
-			ret = RTE_FLOW_ITEM_TYPE_IPV4;
-			break;
-		case RTE_ETHER_TYPE_IPV6:
-			ret = RTE_FLOW_ITEM_TYPE_IPV6;
-			break;
-		default:
-			ret = RTE_FLOW_ITEM_TYPE_END;
-		}
+		MLX5_XSET_ITEM_MASK_SPEC(geneve, protocol);
+		ret = mlx5_ethertype_to_item_type(spec, mask, true);
+		break;
+	case RTE_FLOW_ITEM_TYPE_GRE:
+		MLX5_XSET_ITEM_MASK_SPEC(gre, protocol);
+		ret = mlx5_ethertype_to_item_type(spec, mask, true);
+		break;
+	case RTE_FLOW_ITEM_TYPE_VXLAN_GPE:
+		MLX5_XSET_ITEM_MASK_SPEC(vxlan_gpe, protocol);
+		ret = mlx5_nsh_proto_to_item_type(spec, mask);
 		break;
 	default:
 		ret = RTE_FLOW_ITEM_TYPE_VOID;
 		break;
 	}
 	return ret;
+#undef MLX5_XSET_ITEM_MASK_SPEC
 }
 
 static const int *
