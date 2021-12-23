@@ -960,6 +960,7 @@ flow_verbs_translate_item_gre(struct mlx5_flow *dev_flow,
 		.size = size,
 	};
 #else
+	static const struct rte_flow_item_gre empty_gre = {0,};
 	const struct rte_flow_item_gre *spec = item->spec;
 	const struct rte_flow_item_gre *mask = item->mask;
 	unsigned int size = sizeof(struct ibv_flow_spec_gre);
@@ -968,17 +969,29 @@ flow_verbs_translate_item_gre(struct mlx5_flow *dev_flow,
 		.size = size,
 	};
 
-	if (!mask)
-		mask = &rte_flow_item_gre_mask;
-	if (spec) {
-		tunnel.val.c_ks_res0_ver = spec->c_rsvd0_ver;
-		tunnel.val.protocol = spec->protocol;
-		tunnel.mask.c_ks_res0_ver = mask->c_rsvd0_ver;
-		tunnel.mask.protocol = mask->protocol;
-		/* Remove unwanted bits from values. */
-		tunnel.val.c_ks_res0_ver &= tunnel.mask.c_ks_res0_ver;
+	if (!spec) {
+		spec = &empty_gre;
+		mask = &empty_gre;
+	} else {
+		if (!mask)
+			mask = &rte_flow_item_gre_mask;
+	}
+	tunnel.val.c_ks_res0_ver = spec->c_rsvd0_ver;
+	tunnel.val.protocol = spec->protocol;
+	tunnel.mask.c_ks_res0_ver = mask->c_rsvd0_ver;
+	tunnel.mask.protocol = mask->protocol;
+	/* Remove unwanted bits from values. */
+	tunnel.val.c_ks_res0_ver &= tunnel.mask.c_ks_res0_ver;
+	tunnel.val.key &= tunnel.mask.key;
+	if (tunnel.mask.protocol) {
 		tunnel.val.protocol &= tunnel.mask.protocol;
-		tunnel.val.key &= tunnel.mask.key;
+	} else {
+		tunnel.val.protocol = mlx5_translate_tunnel_etypes(item_flags);
+		if (tunnel.val.protocol) {
+			tunnel.mask.protocol = 0xFFFF;
+			tunnel.val.protocol =
+				rte_cpu_to_be_16(tunnel.val.protocol);
+		}
 	}
 #endif
 	if (item_flags & MLX5_FLOW_LAYER_OUTER_L3_IPV4)
@@ -1846,8 +1859,6 @@ flow_verbs_translate(struct rte_eth_dev *dev,
 			item_flags |= MLX5_FLOW_LAYER_VXLAN_GPE;
 			break;
 		case RTE_FLOW_ITEM_TYPE_GRE:
-			flow_verbs_translate_item_gre(dev_flow, items,
-						      item_flags);
 			subpriority = MLX5_TUNNEL_PRIO_GET(rss_desc);
 			item_flags |= MLX5_FLOW_LAYER_GRE;
 			break;
@@ -1863,6 +1874,8 @@ flow_verbs_translate(struct rte_eth_dev *dev,
 						  NULL, "item not supported");
 		}
 	}
+	if (item_flags & MLX5_FLOW_LAYER_GRE)
+		flow_verbs_translate_item_gre(dev_flow, items, item_flags);
 	dev_flow->handle->layers = item_flags;
 	/* Other members of attr will be ignored. */
 	dev_flow->verbs.attr.priority =
