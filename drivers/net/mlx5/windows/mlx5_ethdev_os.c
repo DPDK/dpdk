@@ -203,7 +203,16 @@ mlx5_os_get_stats_n(struct rte_eth_dev *dev)
 void
 mlx5_os_stats_init(struct rte_eth_dev *dev)
 {
-	RTE_SET_USED(dev);
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_stats_ctrl *stats_ctrl = &priv->stats_ctrl;
+	int ret;
+
+	/* Copy to base at first time. */
+	ret = mlx5_os_read_dev_stat(priv, "out_of_buffer", &stats_ctrl->imissed_base);
+	if (ret)
+		DRV_LOG(ERR, "port %u cannot read device counters: %s",
+			dev->data->port_id, strerror(rte_errno));
+	stats_ctrl->imissed = 0;
 }
 
 /**

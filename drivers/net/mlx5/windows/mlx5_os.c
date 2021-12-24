@@ -72,6 +72,22 @@ static struct mlx5_indexed_pool_config icfg[] = {
 	},
 };
 
+static void
+mlx5_queue_counter_id_prepare(struct rte_eth_dev *dev)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	void *ctx = priv->sh->cdev->ctx;
+
+	priv->q_counters = mlx5_devx_cmd_queue_counter_alloc(ctx);
+	if (!priv->q_counters) {
+		DRV_LOG(ERR, "Port %d queue counter object cannot be created "
+			"by DevX - imissed counter will be unavailable",
+			dev->data->port_id);
+		return;
+	}
+	priv->counter_set_id = priv->q_counters->id;
+}
+
 /**
  * Initialize shared data between primary and secondary process.
  *
@@ -655,6 +671,7 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 		goto error;
 	}
 	mlx5_flow_counter_mode_config(eth_dev);
+	mlx5_queue_counter_id_prepare(eth_dev);
 	return eth_dev;
 error:
 	if (priv) {
@@ -718,7 +735,8 @@ mlx5_os_dev_shared_handler_uninstall(struct mlx5_dev_ctx_shared *sh)
  * @param[out] stat
  *   Pointer to read statistic value.
  * @return
- *   0 on success and stat is valud, 1 if failed to read the value
+ *   0 on success and stat is valid, non-zero if failed to read the value
+ *   or counter is not supported.
  *   rte_errno is set.
  *
  */
@@ -726,10 +744,11 @@ int
 mlx5_os_read_dev_stat(struct mlx5_priv *priv, const char *ctr_name,
 		      uint64_t *stat)
 {
-	RTE_SET_USED(priv);
-	RTE_SET_USED(ctr_name);
-	RTE_SET_USED(stat);
-	DRV_LOG(WARNING, "%s: is not supported", __func__);
+	if (priv->q_counters != NULL && strcmp(ctr_name, "out_of_buffer") == 0)
+		return mlx5_devx_cmd_queue_counter_query
+				(priv->q_counters, 0, (uint32_t *)stat);
+	DRV_LOG(WARNING, "%s: is not supported for the %s counter",
+		__func__, ctr_name);
 	return -ENOTSUP;
 }
 
