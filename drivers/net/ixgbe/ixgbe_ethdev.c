@@ -1223,13 +1223,8 @@ eth_ixgbe_dev_init(struct rte_eth_dev *eth_dev, void *init_params __rte_unused)
 
 	/* initialize PF if max_vfs not zero */
 	ret = ixgbe_pf_host_init(eth_dev);
-	if (ret) {
-		rte_free(eth_dev->data->mac_addrs);
-		eth_dev->data->mac_addrs = NULL;
-		rte_free(eth_dev->data->hash_mac_addrs);
-		eth_dev->data->hash_mac_addrs = NULL;
-		return ret;
-	}
+	if (ret)
+		goto err_pf_host_init;
 
 	ctrl_ext = IXGBE_READ_REG(hw, IXGBE_CTRL_EXT);
 	/* let hardware know driver is loaded */
@@ -1268,10 +1263,14 @@ eth_ixgbe_dev_init(struct rte_eth_dev *eth_dev, void *init_params __rte_unused)
 	TAILQ_INIT(&filter_info->fivetuple_list);
 
 	/* initialize flow director filter list & hash */
-	ixgbe_fdir_filter_init(eth_dev);
+	ret = ixgbe_fdir_filter_init(eth_dev);
+	if (ret)
+		goto err_fdir_filter_init;
 
 	/* initialize l2 tunnel filter list & hash */
-	ixgbe_l2_tn_filter_init(eth_dev);
+	ret = ixgbe_l2_tn_filter_init(eth_dev);
+	if (ret)
+		goto err_l2_tn_filter_init;
 
 	/* initialize flow filter lists */
 	ixgbe_filterlist_init();
@@ -1283,6 +1282,21 @@ eth_ixgbe_dev_init(struct rte_eth_dev *eth_dev, void *init_params __rte_unused)
 	ixgbe_tm_conf_init(eth_dev);
 
 	return 0;
+
+err_l2_tn_filter_init:
+	ixgbe_fdir_filter_uninit(eth_dev);
+err_fdir_filter_init:
+	ixgbe_disable_intr(hw);
+	rte_intr_disable(intr_handle);
+	rte_intr_callback_unregister(intr_handle,
+		ixgbe_dev_interrupt_handler, eth_dev);
+	ixgbe_pf_host_uninit(eth_dev);
+err_pf_host_init:
+	rte_free(eth_dev->data->mac_addrs);
+	eth_dev->data->mac_addrs = NULL;
+	rte_free(eth_dev->data->hash_mac_addrs);
+	eth_dev->data->hash_mac_addrs = NULL;
+	return ret;
 }
 
 static int
