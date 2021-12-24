@@ -2917,7 +2917,7 @@ mlx5_drop_action_create(struct rte_eth_dev *dev)
 
 	if (priv->drop_queue.hrxq)
 		return priv->drop_queue.hrxq;
-	hrxq = mlx5_malloc(MLX5_MEM_ZERO, sizeof(*hrxq), 0, SOCKET_ID_ANY);
+	hrxq = mlx5_malloc(MLX5_MEM_ZERO, sizeof(*hrxq) + MLX5_RSS_HASH_KEY_LEN, 0, SOCKET_ID_ANY);
 	if (!hrxq) {
 		DRV_LOG(WARNING,
 			"Port %u cannot allocate memory for drop queue.",
