@@ -1167,7 +1167,8 @@ mlx5_flow_meter_create(struct rte_eth_dev *dev, uint32_t meter_id,
 	struct mlx5_legacy_flow_meters *fms = &priv->flow_meters;
 	struct mlx5_flow_meter_profile *fmp;
 	struct mlx5_flow_meter_info *fm;
-	struct mlx5_legacy_flow_meter *legacy_fm;
+	/* GCC fails to infer legacy_fm is set when !priv->sh->meter_aso_en. */
+	struct mlx5_legacy_flow_meter *legacy_fm = NULL;
 	struct mlx5_flow_meter_policy *mtr_policy = NULL;
 	struct mlx5_indexed_pool_config flow_ipool_cfg = {
 		.size = 0,
@@ -1273,8 +1274,10 @@ mlx5_flow_meter_create(struct rte_eth_dev *dev, uint32_t meter_id,
 	if (mlx5_flow_create_mtr_tbls(dev, fm, mtr_idx, domain_bitmap))
 		goto error;
 	/* Add to the flow meter list. */
-	if (!priv->sh->meter_aso_en)
+	if (!priv->sh->meter_aso_en) {
+		MLX5_ASSERT(legacy_fm != NULL);
 		TAILQ_INSERT_TAIL(fms, legacy_fm, next);
+	}
 	/* Add to the flow meter list. */
 	fm->active_state = 1; /* Config meter starts as active. */
 	fm->is_enable = 1;
