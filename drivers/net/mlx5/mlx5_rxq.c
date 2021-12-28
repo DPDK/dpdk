@@ -207,6 +207,7 @@ rxq_alloc_elts_sprq(struct mlx5_rxq_ctrl *rxq_ctrl)
 	unsigned int elts_n = mlx5_rxq_mprq_enabled(&rxq_ctrl->rxq) ?
 		(1 << rxq_ctrl->rxq.elts_n) * (1 << rxq_ctrl->rxq.strd_num_n) :
 		(1 << rxq_ctrl->rxq.elts_n);
+	bool has_vec_support = mlx5_rxq_check_vec_support(&rxq_ctrl->rxq) > 0;
 	unsigned int i;
 	int err;
 
@@ -222,8 +223,9 @@ rxq_alloc_elts_sprq(struct mlx5_rxq_ctrl *rxq_ctrl)
 			rte_errno = ENOMEM;
 			goto error;
 		}
-		/* Headroom is reserved by rte_pktmbuf_alloc(). */
-		MLX5_ASSERT(DATA_OFF(buf) == RTE_PKTMBUF_HEADROOM);
+		/* Only vectored Rx routines rely on headroom size. */
+		MLX5_ASSERT(!has_vec_support ||
+			    DATA_OFF(buf) >= RTE_PKTMBUF_HEADROOM);
 		/* Buffer is supposed to be empty. */
 		MLX5_ASSERT(rte_pktmbuf_data_len(buf) == 0);
 		MLX5_ASSERT(rte_pktmbuf_pkt_len(buf) == 0);
@@ -236,7 +238,7 @@ rxq_alloc_elts_sprq(struct mlx5_rxq_ctrl *rxq_ctrl)
 		(*rxq_ctrl->rxq.elts)[i] = buf;
 	}
 	/* If Rx vector is activated. */
-	if (mlx5_rxq_check_vec_support(&rxq_ctrl->rxq) > 0) {
+	if (has_vec_support) {
 		struct mlx5_rxq_data *rxq = &rxq_ctrl->rxq;
 		struct rte_mbuf *mbuf_init = &rxq->fake_mbuf;
 		struct rte_pktmbuf_pool_private *priv =
