@@ -131,6 +131,10 @@ New Features
   * Added AES-XCBC support in lookaside protocol (IPsec) for CN9K & CN10K.
   * Added AES-CMAC support in CN9K & CN10K.
 
+* **Added support for CPM2.0b devices to Intel QuickAssist Technology PMD.**
+
+  * CPM2.0b (4942) devices are now enabled for QAT crypto PMD.
+
 * **Added an API to retrieve event port id of ethdev Rx adapter.**
 
   The new API ``rte_event_eth_rx_adapter_event_port_get()`` was added.

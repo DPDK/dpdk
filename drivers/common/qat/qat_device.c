@@ -47,6 +47,9 @@ static const struct rte_pci_id pci_id_qat_map[] = {
 		{
 			RTE_PCI_DEVICE(0x8086, 0x4941),
 		},
+		{
+			RTE_PCI_DEVICE(0x8086, 0x4943),
+		},
 		{.device_id = 0},
 };
 
@@ -192,6 +195,7 @@ qat_pci_device_allocate(struct rte_pci_device *pci_dev,
 		qat_dev_gen = QAT_GEN3;
 		break;
 	case 0x4941:
+	case 0x4943:
 		qat_dev_gen = QAT_GEN4;
 		break;
 	default:
