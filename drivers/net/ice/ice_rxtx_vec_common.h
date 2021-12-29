@@ -250,7 +250,8 @@ ice_rxq_vec_setup_default(struct ice_rx_queue *rxq)
 #define ICE_TX_NO_VECTOR_FLAGS (			\
 		RTE_ETH_TX_OFFLOAD_MULTI_SEGS |		\
 		RTE_ETH_TX_OFFLOAD_OUTER_IPV4_CKSUM |	\
-		RTE_ETH_TX_OFFLOAD_TCP_TSO)
+		RTE_ETH_TX_OFFLOAD_TCP_TSO |	\
+		RTE_ETH_TX_OFFLOAD_OUTER_UDP_CKSUM)
 
 #define ICE_TX_VECTOR_OFFLOAD (				\
 		RTE_ETH_TX_OFFLOAD_VLAN_INSERT |		\
@@ -364,45 +365,23 @@ ice_txd_enable_offload(struct rte_mbuf *tx_pkt,
 	uint32_t td_offset = 0;
 
 	/* Tx Checksum Offload */
-	/*Tunnel package usage outer len enable L2/L3 checksum offload*/
-	if (ol_flags & RTE_MBUF_F_TX_TUNNEL_MASK) {
-		/* SET MACLEN */
-		td_offset |= (tx_pkt->outer_l2_len >> 1) <<
-			ICE_TX_DESC_LEN_MACLEN_S;
+	/* SET MACLEN */
+	td_offset |= (tx_pkt->l2_len >> 1) <<
+		ICE_TX_DESC_LEN_MACLEN_S;
 
-		/* Enable L3 checksum offload */
-		if (ol_flags & RTE_MBUF_F_TX_IP_CKSUM) {
-			td_cmd |= ICE_TX_DESC_CMD_IIPT_IPV4_CSUM;
-			td_offset |= (tx_pkt->outer_l3_len >> 2) <<
-				ICE_TX_DESC_LEN_IPLEN_S;
-		} else if (ol_flags & RTE_MBUF_F_TX_IPV4) {
-			td_cmd |= ICE_TX_DESC_CMD_IIPT_IPV4;
-			td_offset |= (tx_pkt->outer_l3_len >> 2) <<
-				ICE_TX_DESC_LEN_IPLEN_S;
-		} else if (ol_flags & RTE_MBUF_F_TX_IPV6) {
-			td_cmd |= ICE_TX_DESC_CMD_IIPT_IPV6;
-			td_offset |= (tx_pkt->outer_l3_len >> 2) <<
-				ICE_TX_DESC_LEN_IPLEN_S;
-		}
-	} else {
-		/* SET MACLEN */
-		td_offset |= (tx_pkt->l2_len >> 1) <<
-			ICE_TX_DESC_LEN_MACLEN_S;
-
-		/* Enable L3 checksum offload */
-		if (ol_flags & RTE_MBUF_F_TX_IP_CKSUM) {
-			td_cmd |= ICE_TX_DESC_CMD_IIPT_IPV4_CSUM;
-			td_offset |= (tx_pkt->l3_len >> 2) <<
-				ICE_TX_DESC_LEN_IPLEN_S;
-		} else if (ol_flags & RTE_MBUF_F_TX_IPV4) {
-			td_cmd |= ICE_TX_DESC_CMD_IIPT_IPV4;
-			td_offset |= (tx_pkt->l3_len >> 2) <<
-				ICE_TX_DESC_LEN_IPLEN_S;
-		} else if (ol_flags & RTE_MBUF_F_TX_IPV6) {
-			td_cmd |= ICE_TX_DESC_CMD_IIPT_IPV6;
-			td_offset |= (tx_pkt->l3_len >> 2) <<
-				ICE_TX_DESC_LEN_IPLEN_S;
-		}
+	/* Enable L3 checksum offload */
+	if (ol_flags & RTE_MBUF_F_TX_IP_CKSUM) {
+		td_cmd |= ICE_TX_DESC_CMD_IIPT_IPV4_CSUM;
+		td_offset |= (tx_pkt->l3_len >> 2) <<
+			ICE_TX_DESC_LEN_IPLEN_S;
+	} else if (ol_flags & RTE_MBUF_F_TX_IPV4) {
+		td_cmd |= ICE_TX_DESC_CMD_IIPT_IPV4;
+		td_offset |= (tx_pkt->l3_len >> 2) <<
+			ICE_TX_DESC_LEN_IPLEN_S;
+	} else if (ol_flags & RTE_MBUF_F_TX_IPV6) {
+		td_cmd |= ICE_TX_DESC_CMD_IIPT_IPV6;
+		td_offset |= (tx_pkt->l3_len >> 2) <<
+			ICE_TX_DESC_LEN_IPLEN_S;
 	}
 
 	/* Enable L4 checksum offloads */
