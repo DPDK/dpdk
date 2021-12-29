@@ -511,7 +511,7 @@ process_inner_cksums(void *l3_hdr, const struct testpmd_offload_info *info,
 				ol_flags |= RTE_MBUF_F_TX_UDP_CKSUM;
 			} else {
 				if (info->is_tunnel)
-					l4_off = info->l2_len +
+					l4_off = info->outer_l2_len +
 						 info->outer_l3_len +
 						 info->l2_len + info->l3_len;
 				else
@@ -534,7 +534,7 @@ process_inner_cksums(void *l3_hdr, const struct testpmd_offload_info *info,
 			ol_flags |= RTE_MBUF_F_TX_TCP_CKSUM;
 		} else {
 			if (info->is_tunnel)
-				l4_off = info->l2_len + info->outer_l3_len +
+				l4_off = info->outer_l2_len + info->outer_l3_len +
 					 info->l2_len + info->l3_len;
 			else
 				l4_off = info->l2_len + info->l3_len;
@@ -623,7 +623,7 @@ process_outer_cksums(void *outer_l3_hdr, struct testpmd_offload_info *info,
 	if (udp_hdr->dgram_cksum != 0) {
 		udp_hdr->dgram_cksum = 0;
 		udp_hdr->dgram_cksum = get_udptcp_checksum(m, outer_l3_hdr,
-					info->l2_len + info->outer_l3_len,
+					info->outer_l2_len + info->outer_l3_len,
 					info->outer_ethertype);
 	}
 
