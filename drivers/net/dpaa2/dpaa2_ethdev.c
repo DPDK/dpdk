@@ -74,6 +74,9 @@ int dpaa2_timestamp_dynfield_offset = -1;
 /* Enable error queue */
 bool dpaa2_enable_err_queue;
 
+#define MAX_NB_RX_DESC		11264
+int total_nb_rx_desc;
+
 struct rte_dpaa2_xstats_name_off {
 	char name[RTE_ETH_XSTATS_NAME_SIZE];
 	uint8_t page_id; /* dpni statistics page id */
@@ -694,6 +697,13 @@ dpaa2_dev_rx_queue_setup(struct rte_eth_dev *dev,
 	DPAA2_PMD_DEBUG("dev =%p, queue =%d, pool = %p, conf =%p",
 			dev, rx_queue_id, mb_pool, rx_conf);
 
+	total_nb_rx_desc += nb_rx_desc;
+	if (total_nb_rx_desc > MAX_NB_RX_DESC) {
+		DPAA2_PMD_WARN("\nTotal nb_rx_desc exceeds %d limit. Please use Normal buffers",
+			       MAX_NB_RX_DESC);
+		DPAA2_PMD_WARN("To use Normal buffers, run 'export DPNI_NORMAL_BUF=1' before running dynamic_dpl.sh script");
+	}
+
 	/* Rx deferred start is not supported */
 	if (rx_conf->rx_deferred_start) {
 		DPAA2_PMD_ERR("%p:Rx deferred start not supported",
@@ -984,6 +994,9 @@ dpaa2_dev_rx_queue_release(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 
 	memset(&cfg, 0, sizeof(struct dpni_queue));
 	PMD_INIT_FUNC_TRACE();
+
+	total_nb_rx_desc -= dpaa2_q->nb_desc;
+
 	if (dpaa2_q->cgid != 0xff) {
 		options = DPNI_QUEUE_OPT_CLEAR_CGID;
 		cfg.cgid = dpaa2_q->cgid;
