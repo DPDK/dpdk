@@ -111,10 +111,12 @@ int dpaa2_timesync_read_tx_timestamp(struct rte_eth_dev *dev,
 {
 	struct dpaa2_dev_priv *priv = dev->data->dev_private;
 
-	if (priv->next_tx_conf_queue)
-		dpaa2_dev_tx_conf(priv->next_tx_conf_queue);
-	else
+	if (priv->next_tx_conf_queue) {
+		while (!priv->tx_timestamp)
+			dpaa2_dev_tx_conf(priv->next_tx_conf_queue);
+	} else {
 		return -1;
+	}
 	*timestamp = rte_ns_to_timespec(priv->tx_timestamp);
 
 	return 0;

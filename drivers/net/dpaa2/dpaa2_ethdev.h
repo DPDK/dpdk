@@ -62,7 +62,7 @@
 /* Disable RX tail drop, default is enable */
 #define DPAA2_RX_TAILDROP_OFF	0x04
 /* Tx confirmation enabled */
-#define DPAA2_TX_CONF_ENABLE	0x08
+#define DPAA2_TX_CONF_ENABLE	0x06
 
 #define DPAA2_RSS_OFFLOAD_ALL ( \
 	RTE_ETH_RSS_L2_PAYLOAD | \
