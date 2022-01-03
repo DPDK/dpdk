@@ -208,7 +208,8 @@ int dpaa2_setup_flow_dist(struct rte_eth_dev *eth_dev,
 int dpaa2_remove_flow_dist(struct rte_eth_dev *eth_dev,
 			   uint8_t tc_index);
 
-int dpaa2_attach_bp_list(struct dpaa2_dev_priv *priv, void *blist);
+int dpaa2_attach_bp_list(struct dpaa2_dev_priv *priv,
+	struct fsl_mc_io *dpni, void *blist);
 
 __rte_internal
 int dpaa2_eth_eventq_attach(const struct rte_eth_dev *dev,

@@ -18,6 +18,7 @@
 #include <rte_dev.h>
 #include <rte_fslmc.h>
 #include <rte_flow_driver.h>
+#include "rte_dpaa2_mempool.h"
 
 #include "dpaa2_pmd_logs.h"
 #include <fslmc_vfio.h>
@@ -712,9 +713,14 @@ dpaa2_dev_rx_queue_setup(struct rte_eth_dev *dev,
 	}
 
 	if (!priv->bp_list || priv->bp_list->mp != mb_pool) {
+		if (rte_eal_process_type() != RTE_PROC_PRIMARY) {
+			ret = rte_dpaa2_bpid_info_init(mb_pool);
+			if (ret)
+				return ret;
+		}
 		bpid = mempool_to_bpid(mb_pool);
-		ret = dpaa2_attach_bp_list(priv,
-					   rte_dpaa2_bpid_info[bpid].bp_list);
+		ret = dpaa2_attach_bp_list(priv, dpni,
+				rte_dpaa2_bpid_info[bpid].bp_list);
 		if (ret)
 			return ret;
 	}

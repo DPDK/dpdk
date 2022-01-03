@@ -95,7 +95,7 @@ dpaa2_setup_flow_dist(struct rte_eth_dev *eth_dev,
 	uint64_t req_dist_set, int tc_index)
 {
 	struct dpaa2_dev_priv *priv = eth_dev->data->dev_private;
-	struct fsl_mc_io *dpni = priv->hw;
+	struct fsl_mc_io *dpni = eth_dev->process_private;
 	struct dpni_rx_dist_cfg tc_cfg;
 	struct dpkg_profile_cfg kg_cfg;
 	void *p_params;
@@ -457,13 +457,12 @@ dpaa2_distset_to_dpkg_profile_cfg(
 
 int
 dpaa2_attach_bp_list(struct dpaa2_dev_priv *priv,
-		     void *blist)
+	struct fsl_mc_io *dpni, void *blist)
 {
 	/* Function to attach a DPNI with a buffer pool list. Buffer pool list
 	 * handle is passed in blist.
 	 */
 	int32_t retcode;
-	struct fsl_mc_io *dpni = priv->hw;
 	struct dpni_pools_cfg bpool_cfg;
 	struct dpaa2_bp_list *bp_list = (struct dpaa2_bp_list *)blist;
 	struct dpni_buffer_layout layout;
