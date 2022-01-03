@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  *
  *   Copyright (c) 2015-2016 Freescale Semiconductor, Inc. All rights reserved.
- *   Copyright 2016-2019 NXP
+ *   Copyright 2016-2021 NXP
  *
  */
 
@@ -728,6 +728,7 @@ fslmc_process_iodevices(struct rte_dpaa2_device *dev)
 	case DPAA2_BPOOL:
 	case DPAA2_DPRTC:
 	case DPAA2_MUX:
+	case DPAA2_DPRC:
 		TAILQ_FOREACH(object, &dpaa2_obj_list, next) {
 			if (dev->dev_type == object->dev_type)
 				object->create(dev_fd, &device_info,
@@ -879,6 +880,21 @@ fslmc_vfio_process_group(void)
 	if (!found_mportal) {
 		DPAA2_BUS_ERR("No MC Portal device found. Not continuing");
 		return -1;
+	}
+
+	/* Search for DPRC device next as it updates endpoint of
+	 * other devices.
+	 */
+	current_device = 0;
+	RTE_TAILQ_FOREACH_SAFE(dev, &rte_fslmc_bus.device_list, next, dev_temp) {
+		if (dev->dev_type == DPAA2_DPRC) {
+			ret = fslmc_process_iodevices(dev);
+			if (ret) {
+				DPAA2_BUS_ERR("Unable to process dprc");
+				return -1;
+			}
+			TAILQ_REMOVE(&rte_fslmc_bus.device_list, dev, next);
+		}
 	}
 
 	current_device = 0;

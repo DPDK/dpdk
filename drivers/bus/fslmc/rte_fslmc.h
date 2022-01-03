@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  *
- *   Copyright 2016,2019 NXP
+ *   Copyright 2016,2021 NXP
  *
  */
 
@@ -36,6 +36,9 @@ extern "C" {
 #include <rte_mbuf_dyn.h>
 
 #include <fslmc_vfio.h>
+
+#include "portal/dpaa2_hw_pvt.h"
+#include "portal/dpaa2_hw_dpio.h"
 
 #define FSLMC_OBJECT_MAX_LEN 32   /**< Length of each device on bus */
 
@@ -88,6 +91,8 @@ enum rte_dpaa2_dev_type {
 	DPAA2_QDMA,     /**< DPDMAI type device */
 	DPAA2_MUX,	/**< DPDMUX type device */
 	DPAA2_DPRTC,	/**< DPRTC type device */
+	DPAA2_DPRC,	/**< DPRC type device */
+	DPAA2_MAC,	/**< DPMAC type device */
 	/* Unknown device placeholder */
 	DPAA2_UNKNOWN,
 	DPAA2_DEVTYPE_MAX,
@@ -122,6 +127,9 @@ struct rte_dpaa2_device {
 	};
 	enum rte_dpaa2_dev_type dev_type;   /**< Device Type */
 	uint16_t object_id;                 /**< DPAA2 Object ID */
+	enum rte_dpaa2_dev_type ep_dev_type;   /**< Endpoint Device Type */
+	uint16_t ep_object_id;                 /**< Endpoint DPAA2 Object ID */
+	char ep_name[RTE_DEV_NAME_MAX_LEN];
 	struct rte_intr_handle *intr_handle; /**< Interrupt handle */
 	struct rte_dpaa2_driver *driver;    /**< Associated driver */
 	char name[FSLMC_OBJECT_MAX_LEN];    /**< DPAA2 Object name*/

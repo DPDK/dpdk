@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: BSD-3-Clause
-# Copyright 2018 NXP
+# Copyright 2018,2021 NXP
 
 if not is_linux
     build = false
@@ -16,10 +16,12 @@ sources = files(
         'mc/dpdmai.c',
         'mc/dpio.c',
         'mc/dpmng.c',
+        'mc/dprc.c',
         'mc/mc_sys.c',
         'portal/dpaa2_hw_dpbp.c',
         'portal/dpaa2_hw_dpci.c',
         'portal/dpaa2_hw_dpio.c',
+        'portal/dpaa2_hw_dprc.c',
         'qbman/qbman_portal.c',
         'qbman/qbman_debug.c',
 )

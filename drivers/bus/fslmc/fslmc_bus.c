@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  *
- *   Copyright 2016,2018-2019 NXP
+ *   Copyright 2016,2018-2021 NXP
  *
  */
 
@@ -136,10 +136,6 @@ scan_one_fslmc_device(char *dev_name)
 	if (!dev_name)
 		return ret;
 
-	/* Ignore the Container name itself */
-	if (!strncmp("dprc", dev_name, 4))
-		return 0;
-
 	/* Creating a temporary copy to perform cut-parse over string */
 	dup_dev_name = strdup(dev_name);
 	if (!dup_dev_name) {
@@ -197,6 +193,8 @@ scan_one_fslmc_device(char *dev_name)
 		dev->dev_type = DPAA2_MUX;
 	else if (!strncmp("dprtc", t_ptr, 5))
 		dev->dev_type = DPAA2_DPRTC;
+	else if (!strncmp("dprc", t_ptr, 4))
+		dev->dev_type = DPAA2_DPRC;
 	else
 		dev->dev_type = DPAA2_UNKNOWN;
 
@@ -337,6 +335,13 @@ rte_fslmc_scan(void)
 	if (!dir) {
 		DPAA2_BUS_ERR("Unable to open VFIO group directory");
 		goto scan_fail;
+	}
+
+	/* Scan the DPRC container object */
+	ret = scan_one_fslmc_device(fslmc_container);
+	if (ret != 0) {
+		/* Error in parsing directory - exit gracefully */
+		goto scan_fail_cleanup;
 	}
 
 	while ((entry = readdir(dir)) != NULL) {
