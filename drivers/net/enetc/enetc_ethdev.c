@@ -19,6 +19,9 @@ enetc_dev_start(struct rte_eth_dev *dev)
 	uint32_t val;
 
 	PMD_INIT_FUNC_TRACE();
+	if (hw->device_id == ENETC_DEV_ID_VF)
+		return 0;
+
 	val = enetc_port_rd(enetc_hw, ENETC_PM0_CMD_CFG);
 	enetc_port_wr(enetc_hw, ENETC_PM0_CMD_CFG,
 		      val | ENETC_PM0_TX_EN | ENETC_PM0_RX_EN);
@@ -55,6 +58,9 @@ enetc_dev_stop(struct rte_eth_dev *dev)
 
 	PMD_INIT_FUNC_TRACE();
 	dev->data->dev_started = 0;
+	if (hw->device_id == ENETC_DEV_ID_VF)
+		return 0;
+
 	/* Disable port */
 	val = enetc_port_rd(enetc_hw, ENETC_PMR);
 	enetc_port_wr(enetc_hw, ENETC_PMR, val & (~ENETC_PMR_EN));
@@ -160,11 +166,20 @@ enetc_hardware_init(struct enetc_eth_hw *hw)
 	/* Enabling Station Interface */
 	enetc_wr(enetc_hw, ENETC_SIMR, ENETC_SIMR_EN);
 
-	*mac = (uint32_t)enetc_port_rd(enetc_hw, ENETC_PSIPMAR0(0));
-	high_mac = (uint32_t)*mac;
-	mac++;
-	*mac = (uint16_t)enetc_port_rd(enetc_hw, ENETC_PSIPMAR1(0));
-	low_mac = (uint16_t)*mac;
+
+	if (hw->device_id == ENETC_DEV_ID_VF) {
+		*mac = (uint32_t)enetc_rd(enetc_hw, ENETC_SIPMAR0);
+		high_mac = (uint32_t)*mac;
+		mac++;
+		*mac = (uint32_t)enetc_rd(enetc_hw, ENETC_SIPMAR1);
+		low_mac = (uint16_t)*mac;
+	} else {
+		*mac = (uint32_t)enetc_port_rd(enetc_hw, ENETC_PSIPMAR0(0));
+		high_mac = (uint32_t)*mac;
+		mac++;
+		*mac = (uint16_t)enetc_port_rd(enetc_hw, ENETC_PSIPMAR1(0));
+		low_mac = (uint16_t)*mac;
+	}
 
 	if ((high_mac | low_mac) == 0) {
 		char *first_byte;
