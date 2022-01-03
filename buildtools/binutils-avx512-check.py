@@ -15,7 +15,7 @@ with tempfile.NamedTemporaryFile() as obj:
     src = '__asm__("vpgatherqq {}");'.format(gather_params).encode('utf-8')
     subprocess.run(cc + ['-c', '-xc', '-o', obj.name, '-'], input=src, check=True)
     asm = subprocess.run([objdump, '-d', '--no-show-raw-insn', obj.name],
-                         capture_output=True, check=True).stdout.decode('utf-8')
+                         stdout=subprocess.PIPE, check=True).stdout.decode('utf-8')
     if gather_params not in asm:
 	    print('vpgatherqq displacement error with as')
 	    sys.exit(1)
