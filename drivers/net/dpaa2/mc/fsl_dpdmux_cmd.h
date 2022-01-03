@@ -35,7 +35,7 @@
 
 #define DPDMUX_CMDID_ENABLE			DPDMUX_CMD(0x002)
 #define DPDMUX_CMDID_DISABLE			DPDMUX_CMD(0x003)
-#define DPDMUX_CMDID_GET_ATTR			DPDMUX_CMD_V2(0x004)
+#define DPDMUX_CMDID_GET_ATTR			DPDMUX_CMD_V3(0x004)
 #define DPDMUX_CMDID_RESET			DPDMUX_CMD(0x005)
 #define DPDMUX_CMDID_IS_ENABLED			DPDMUX_CMD(0x006)
 #define DPDMUX_CMDID_SET_MAX_FRAME_LENGTH	DPDMUX_CMD(0x0a1)
@@ -119,6 +119,9 @@ struct dpdmux_rsp_get_attr {
 	uint32_t pad2;
 
 	uint64_t options;
+	uint16_t max_dmat_entries;
+	uint16_t max_mc_groups;
+	uint16_t max_vlan_ids;
 };
 
 struct dpdmux_cmd_set_max_frame_length {

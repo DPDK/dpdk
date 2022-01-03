@@ -36,6 +36,10 @@ struct fsl_mc_io;
  * Maximum number of storage-profiles per DPNI
  */
 #define DPNI_MAX_SP				2
+/**
+ * Maximum number of Tx channels per DPNI
+ */
+#define DPNI_MAX_CHANNELS		16
 
 /**
  * All traffic classes considered; see dpni_set_queue()
@@ -117,6 +121,13 @@ struct fsl_mc_io;
  */
 #define DPNI_SW_SEQUENCE_LAYOUT_SIZE 33
 
+/**
+ * Build a parameter from dpni channel and trafiic class. This parameter
+ * will be used to configure / query information from dpni objects created
+ * to support multiple channels.
+ */
+#define DPNI_BUILD_PARAM(channel, tc_id)	(((channel) << 8) | (tc_id))
+
 int dpni_open(struct fsl_mc_io *mc_io,
 	      uint32_t cmd_flags,
 	      int dpni_id,
@@ -187,6 +198,8 @@ int dpni_close(struct fsl_mc_io *mc_io,
  *		field is ignored if the DPNI has a single TC. Otherwise,
  *		a value of 0 defaults to 64. Maximum supported value
  *		is 64.
+ * @num_channels: Number of egress channels used by this dpni object. If
+ *		set to zero the dpni object will use a single CEETM channel.
  */
 struct dpni_cfg {
 	uint32_t options;
@@ -200,6 +213,7 @@ struct dpni_cfg {
 	uint8_t  num_cgs;
 	uint16_t num_opr;
 	uint8_t  dist_key_size;
+	uint8_t  num_channels;
 };
 
 int dpni_create(struct fsl_mc_io *mc_io,
@@ -362,6 +376,7 @@ struct dpni_attr {
 	uint8_t  fs_key_size;
 	uint16_t wriop_version;
 	uint8_t  num_cgs;
+	uint8_t  num_channels;
 };
 
 int dpni_get_attributes(struct fsl_mc_io *mc_io,
@@ -779,12 +794,29 @@ struct dpni_tx_shaping_cfg {
 	uint16_t max_burst_size;
 };
 
+/**
+ * Build the parameter for dpni_set_tx_shaping() call
+ * @oal:		Overhead accounting length. 11bit value added to the size of
+ *			each frame. Used only for LNI shaping. If set to zero, will use default
+ *			value of 24. Ignored if shaping_lni is set to zero.
+ * @shaping_lni:	1 for LNI shaping (configure whole throughput of the dpni object)
+ *			0 for channel shaping (configure shaping for individual channels)
+ *			Set to one only if dpni is connected to a dpmac object.
+ * @channel_id:		Channel to be configured. Ignored shaping_lni is set to 1
+ * @coupled:		Committed and excess rates are coupled
+ */
+#define DPNI_TX_SHAPING_PARAM(oal, shaping_lni, channel_id, coupled)	( \
+		((uint32_t)(((oal) & 0x7ff) << 16)) | \
+		((uint32_t)((channel_id) & 0xff) << 8) | \
+		((uint32_t)(!!shaping_lni) << 1) | \
+		((uint32_t)!!coupled))
+
 int dpni_set_tx_shaping(struct fsl_mc_io *mc_io,
 			uint32_t cmd_flags,
 			uint16_t token,
 			const struct dpni_tx_shaping_cfg *tx_cr_shaper,
 			const struct dpni_tx_shaping_cfg *tx_er_shaper,
-			int coupled);
+			uint32_t param);
 
 int dpni_set_max_frame_length(struct fsl_mc_io *mc_io,
 			      uint32_t cmd_flags,
@@ -918,12 +950,14 @@ struct dpni_tx_schedule_cfg {
 /**
  * struct dpni_tx_priorities_cfg - Structure representing transmission
  *					priorities for DPNI TCs
+ * @channel_idx: channel to perform the configuration
  * @tc_sched:	An array of traffic-classes
  * @prio_group_A: Priority of group A
  * @prio_group_B: Priority of group B
  * @separate_groups: Treat A and B groups as separate
  */
 struct dpni_tx_priorities_cfg {
+	uint8_t channel_idx;
 	struct dpni_tx_schedule_cfg tc_sched[DPNI_MAX_TC];
 	uint32_t prio_group_A;
 	uint32_t prio_group_B;
@@ -1155,14 +1189,14 @@ int dpni_set_early_drop(struct fsl_mc_io *mc_io,
 			uint32_t cmd_flags,
 			uint16_t token,
 			enum dpni_queue_type qtype,
-			uint8_t tc_id,
+			uint16_t param,
 			uint64_t early_drop_iova);
 
 int dpni_get_early_drop(struct fsl_mc_io *mc_io,
 			uint32_t cmd_flags,
 			uint16_t token,
 			enum dpni_queue_type qtype,
-			uint8_t tc_id,
+			uint16_t param,
 			uint64_t early_drop_iova);
 
 /**
@@ -1290,15 +1324,15 @@ int dpni_set_congestion_notification(struct fsl_mc_io *mc_io,
 				     uint32_t cmd_flags,
 				     uint16_t token,
 				     enum dpni_queue_type qtype,
-				     uint8_t tc_id,
-			const struct dpni_congestion_notification_cfg *cfg);
+				     uint16_t param,
+				     const struct dpni_congestion_notification_cfg *cfg);
 
 int dpni_get_congestion_notification(struct fsl_mc_io *mc_io,
 				     uint32_t cmd_flags,
 				     uint16_t token,
 				     enum dpni_queue_type qtype,
-				     uint8_t tc_id,
-				struct dpni_congestion_notification_cfg *cfg);
+				     uint16_t param,
+				     struct dpni_congestion_notification_cfg *cfg);
 
 /* DPNI FLC stash options */
 
@@ -1590,7 +1624,7 @@ int dpni_set_queue(struct fsl_mc_io *mc_io,
 		   uint32_t cmd_flags,
 		   uint16_t token,
 		   enum dpni_queue_type qtype,
-		   uint8_t tc,
+		   uint16_t param,
 		   uint8_t index,
 		   uint8_t options,
 		   const struct dpni_queue *queue);
@@ -1599,7 +1633,7 @@ int dpni_get_queue(struct fsl_mc_io *mc_io,
 		   uint32_t cmd_flags,
 		   uint16_t token,
 		   enum dpni_queue_type qtype,
-		   uint8_t tc,
+		   uint16_t param,
 		   uint8_t index,
 		   struct dpni_queue *queue,
 		   struct dpni_queue_id *qid);
@@ -1643,7 +1677,7 @@ int dpni_set_taildrop(struct fsl_mc_io *mc_io,
 		      uint16_t token,
 		      enum dpni_congestion_point cg_point,
 		      enum dpni_queue_type q_type,
-		      uint8_t tc,
+		      uint16_t param,
 		      uint8_t q_index,
 		      struct dpni_taildrop *taildrop);
 

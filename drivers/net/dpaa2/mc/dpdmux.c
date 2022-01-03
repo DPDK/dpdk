@@ -398,6 +398,9 @@ int dpdmux_get_attributes(struct fsl_mc_io *mc_io,
 	attr->num_ifs = le16_to_cpu(rsp_params->num_ifs);
 	attr->mem_size = le16_to_cpu(rsp_params->mem_size);
 	attr->default_if = le16_to_cpu(rsp_params->default_if);
+	attr->max_dmat_entries = le16_to_cpu(rsp_params->max_dmat_entries);
+	attr->max_mc_groups = le16_to_cpu(rsp_params->max_mc_groups);
+	attr->max_vlan_ids = le16_to_cpu(rsp_params->max_vlan_ids);
 
 	return 0;
 }
@@ -469,6 +472,11 @@ int dpdmux_if_disable(struct fsl_mc_io *mc_io,
  * In case of VEPA, the maximum frame length on all dmux interfaces
  * will be updated with the minimum value of the mfls of the connected
  * dpnis and the actual value of dmux mfl.
+ *
+ * If dpdmux object is created using DPDMUX_OPT_AUTO_MAX_FRAME_LEN and maximum
+ * frame length is changed for a dpni connected to dpdmux interface the change
+ * is propagated through dpdmux interfaces and will overwrite the value set using
+ * this API.
  *
  * Return:	'0' on Success; Error code otherwise.
  */

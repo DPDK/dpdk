@@ -128,6 +128,7 @@ int dpni_create(struct fsl_mc_io *mc_io,
 	cmd_params->num_cgs = cfg->num_cgs;
 	cmd_params->num_opr = cfg->num_opr;
 	cmd_params->dist_key_size = cfg->dist_key_size;
+	cmd_params->num_channels = cfg->num_channels;
 
 	/* send command to mc*/
 	err = mc_send_command(mc_io, &cmd);
@@ -203,7 +204,7 @@ int dpni_set_pools(struct fsl_mc_io *mc_io,
 	cmd_params = (struct dpni_cmd_set_pools *)cmd.params;
 	cmd_params->num_dpbp = cfg->num_dpbp;
 	cmd_params->pool_options = cfg->pool_options;
-	for (i = 0; i < cmd_params->num_dpbp; i++) {
+	for (i = 0; i < DPNI_MAX_DPBP; i++) {
 		cmd_params->pool[i].dpbp_id =
 			cpu_to_le16(cfg->pools[i].dpbp_id);
 		cmd_params->pool[i].priority_mask =
@@ -592,6 +593,7 @@ int dpni_get_attributes(struct fsl_mc_io *mc_io,
 	attr->num_tx_tcs = rsp_params->num_tx_tcs;
 	attr->mac_filter_entries = rsp_params->mac_filter_entries;
 	attr->vlan_filter_entries = rsp_params->vlan_filter_entries;
+	attr->num_channels = rsp_params->num_channels;
 	attr->qos_entries = rsp_params->qos_entries;
 	attr->fs_entries = le16_to_cpu(rsp_params->fs_entries);
 	attr->qos_key_size = rsp_params->qos_key_size;
@@ -815,6 +817,9 @@ int dpni_get_offload(struct fsl_mc_io *mc_io,
  *			in all enqueue operations
  *
  * Return:	'0' on Success; Error code otherwise.
+ *
+ * If dpni object is created using multiple Tc channels this function will return
+ * qdid value for the first channel
  */
 int dpni_get_qdid(struct fsl_mc_io *mc_io,
 		  uint32_t cmd_flags,
@@ -958,7 +963,12 @@ int dpni_get_link_state(struct fsl_mc_io *mc_io,
  * @token:		Token of DPNI object
  * @tx_cr_shaper:	TX committed rate shaping configuration
  * @tx_er_shaper:	TX excess rate shaping configuration
- * @coupled:		Committed and excess rate shapers are coupled
+ * @param:		Special parameters
+ *			bit0: Committed and excess rates are coupled
+ *			bit1: 1 modify LNI shaper, 0 modify channel shaper
+ *			bit8-15: Tx channel to be shaped. Used only if bit1 is set to zero
+ *			bits16-26: OAL (Overhead accounting length 11bit value). Used only
+ *			when bit1 is set.
  *
  * Return:	'0' on Success; Error code otherwise.
  */
@@ -967,10 +977,13 @@ int dpni_set_tx_shaping(struct fsl_mc_io *mc_io,
 			uint16_t token,
 			const struct dpni_tx_shaping_cfg *tx_cr_shaper,
 			const struct dpni_tx_shaping_cfg *tx_er_shaper,
-			int coupled)
+			uint32_t param)
 {
 	struct dpni_cmd_set_tx_shaping *cmd_params;
 	struct mc_command cmd = { 0 };
+	int coupled, lni_shaper;
+	uint8_t channel_id;
+	uint16_t oal;
 
 	/* prepare command */
 	cmd.header = mc_encode_cmd_header(DPNI_CMDID_SET_TX_SHAPING,
@@ -985,7 +998,18 @@ int dpni_set_tx_shaping(struct fsl_mc_io *mc_io,
 		cpu_to_le32(tx_cr_shaper->rate_limit);
 	cmd_params->tx_er_rate_limit =
 		cpu_to_le32(tx_er_shaper->rate_limit);
-	dpni_set_field(cmd_params->coupled, COUPLED, coupled);
+
+	coupled = !!(param & 0x01);
+	dpni_set_field(cmd_params->options, COUPLED, coupled);
+
+	lni_shaper = !!((param >> 1) & 0x01);
+	dpni_set_field(cmd_params->options, LNI_SHAPER, lni_shaper);
+
+	channel_id = (param >> 8) & 0xff;
+	cmd_params->channel_id = channel_id;
+
+	oal = (param >> 16) & 0x7FF;
+	cmd_params->oal = cpu_to_le16(oal);
 
 	/* send command to mc*/
 	return mc_send_command(mc_io, &cmd);
@@ -1543,6 +1567,7 @@ int dpni_set_tx_priorities(struct fsl_mc_io *mc_io,
 					  cmd_flags,
 					  token);
 	cmd_params = (struct dpni_cmd_set_tx_priorities *)cmd.params;
+	cmd_params->channel_idx = cfg->channel_idx;
 	dpni_set_field(cmd_params->flags,
 				SEPARATE_GRP,
 				cfg->separate_groups);
@@ -2053,7 +2078,13 @@ void dpni_extract_early_drop(struct dpni_early_drop_cfg *cfg,
  * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
  * @token:	Token of DPNI object
  * @qtype:	Type of queue - only Rx and Tx types are supported
- * @tc_id:	Traffic class selection (0-7)
+ * @param:	Traffic class and channel ID.
+ *		MSB - channel id; used only for DPNI_QUEUE_TX and DPNI_QUEUE_TX_CONFIRM,
+ *		ignored for the rest
+ *		LSB - traffic class
+ *		Use macro DPNI_BUILD_PARAM() to build correct value.
+ *		If dpni uses a single channel (uses only channel zero) the parameter can receive
+ *		traffic class directly.
  * @early_drop_iova:  I/O virtual address of 256 bytes DMA-able memory filled
  *	with the early-drop configuration by calling dpni_prepare_early_drop()
  *
@@ -2066,7 +2097,7 @@ int dpni_set_early_drop(struct fsl_mc_io *mc_io,
 			uint32_t cmd_flags,
 			uint16_t token,
 			enum dpni_queue_type qtype,
-			uint8_t tc_id,
+			uint16_t param,
 			uint64_t early_drop_iova)
 {
 	struct dpni_cmd_early_drop *cmd_params;
@@ -2078,7 +2109,8 @@ int dpni_set_early_drop(struct fsl_mc_io *mc_io,
 					  token);
 	cmd_params = (struct dpni_cmd_early_drop *)cmd.params;
 	cmd_params->qtype = qtype;
-	cmd_params->tc = tc_id;
+	cmd_params->tc = (uint8_t)(param & 0xff);
+	cmd_params->channel_id = (uint8_t)((param >> 8) & 0xff);
 	cmd_params->early_drop_iova = cpu_to_le64(early_drop_iova);
 
 	/* send command to mc*/
@@ -2091,7 +2123,13 @@ int dpni_set_early_drop(struct fsl_mc_io *mc_io,
  * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
  * @token:	Token of DPNI object
  * @qtype:	Type of queue - only Rx and Tx types are supported
- * @tc_id:	Traffic class selection (0-7)
+ * @param:	Traffic class and channel ID.
+ *		MSB - channel id; used only for DPNI_QUEUE_TX and DPNI_QUEUE_TX_CONFIRM,
+ *		ignored for the rest
+ *		LSB - traffic class
+ *		Use macro DPNI_BUILD_PARAM() to build correct value.
+ *		If dpni uses a single channel (uses only channel zero) the parameter can receive
+ *		traffic class directly.
  * @early_drop_iova:  I/O virtual address of 256 bytes DMA-able memory
  *
  * warning: After calling this function, call dpni_extract_early_drop() to
@@ -2103,7 +2141,7 @@ int dpni_get_early_drop(struct fsl_mc_io *mc_io,
 			uint32_t cmd_flags,
 			uint16_t token,
 			enum dpni_queue_type qtype,
-			uint8_t tc_id,
+			uint16_t param,
 			uint64_t early_drop_iova)
 {
 	struct dpni_cmd_early_drop *cmd_params;
@@ -2115,7 +2153,8 @@ int dpni_get_early_drop(struct fsl_mc_io *mc_io,
 					  token);
 	cmd_params = (struct dpni_cmd_early_drop *)cmd.params;
 	cmd_params->qtype = qtype;
-	cmd_params->tc = tc_id;
+	cmd_params->tc = (uint8_t)(param & 0xff);
+	cmd_params->channel_id = (uint8_t)((param >> 8) & 0xff);
 	cmd_params->early_drop_iova = cpu_to_le64(early_drop_iova);
 
 	/* send command to mc*/
@@ -2138,8 +2177,8 @@ int dpni_set_congestion_notification(struct fsl_mc_io *mc_io,
 				     uint32_t cmd_flags,
 				     uint16_t token,
 				     enum dpni_queue_type qtype,
-				     uint8_t tc_id,
-			const struct dpni_congestion_notification_cfg *cfg)
+				     uint16_t param,
+				     const struct dpni_congestion_notification_cfg *cfg)
 {
 	struct dpni_cmd_set_congestion_notification *cmd_params;
 	struct mc_command cmd = { 0 };
@@ -2151,7 +2190,8 @@ int dpni_set_congestion_notification(struct fsl_mc_io *mc_io,
 					token);
 	cmd_params = (struct dpni_cmd_set_congestion_notification *)cmd.params;
 	cmd_params->qtype = qtype;
-	cmd_params->tc = tc_id;
+	cmd_params->tc = (uint8_t)(param & 0xff);
+	cmd_params->channel_id = (uint8_t)((param >> 8) & 0xff);
 	cmd_params->congestion_point = cfg->cg_point;
 	cmd_params->cgid = (uint8_t)cfg->cgid;
 	cmd_params->dest_id = cpu_to_le32(cfg->dest_cfg.dest_id);
@@ -2179,7 +2219,8 @@ int dpni_set_congestion_notification(struct fsl_mc_io *mc_io,
  * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
  * @token:	Token of DPNI object
  * @qtype:	Type of queue - Rx, Tx and Tx confirm types are supported
- * @tc_id:	Traffic class selection (0-7)
+ * @param:	Traffic class and channel. Bits[0-7] contain traaffic class,
+ *		byte[8-15] contains channel id
  * @cfg:	congestion notification configuration
  *
  * Return:	'0' on Success; error code otherwise.
@@ -2188,8 +2229,8 @@ int dpni_get_congestion_notification(struct fsl_mc_io *mc_io,
 				     uint32_t cmd_flags,
 				     uint16_t token,
 				     enum dpni_queue_type qtype,
-				     uint8_t tc_id,
-				struct dpni_congestion_notification_cfg *cfg)
+				     uint16_t param,
+				     struct dpni_congestion_notification_cfg *cfg)
 {
 	struct dpni_rsp_get_congestion_notification *rsp_params;
 	struct dpni_cmd_get_congestion_notification *cmd_params;
@@ -2203,7 +2244,8 @@ int dpni_get_congestion_notification(struct fsl_mc_io *mc_io,
 					token);
 	cmd_params = (struct dpni_cmd_get_congestion_notification *)cmd.params;
 	cmd_params->qtype = qtype;
-	cmd_params->tc = tc_id;
+	cmd_params->tc = (uint8_t)(param & 0xff);
+	cmd_params->channel_id = (uint8_t)((param >> 8) & 0xff);
 	cmd_params->congestion_point = cfg->cg_point;
 	cmd_params->cgid = cfg->cgid;
 
@@ -2280,7 +2322,7 @@ int dpni_set_queue(struct fsl_mc_io *mc_io,
 		   uint32_t cmd_flags,
 		   uint16_t token,
 		   enum dpni_queue_type qtype,
-		   uint8_t tc,
+		   uint16_t param,
 		   uint8_t index,
 		   uint8_t options,
 		   const struct dpni_queue *queue)
@@ -2294,7 +2336,8 @@ int dpni_set_queue(struct fsl_mc_io *mc_io,
 					  token);
 	cmd_params = (struct dpni_cmd_set_queue *)cmd.params;
 	cmd_params->qtype = qtype;
-	cmd_params->tc = tc;
+	cmd_params->tc = (uint8_t)(param & 0xff);
+	cmd_params->channel_id = (uint8_t)((param >> 8) & 0xff);
 	cmd_params->index = index;
 	cmd_params->options = options;
 	cmd_params->dest_id = cpu_to_le32(queue->destination.id);
@@ -2317,7 +2360,13 @@ int dpni_set_queue(struct fsl_mc_io *mc_io,
  * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
  * @token:	Token of DPNI object
  * @qtype:	Type of queue - all queue types are supported
- * @tc:		Traffic class, in range 0 to NUM_TCS - 1
+ * @param:	Traffic class and channel ID.
+ *		MSB - channel id; used only for DPNI_QUEUE_TX and DPNI_QUEUE_TX_CONFIRM,
+ *		ignored for the rest
+ *		LSB - traffic class
+ *		Use macro DPNI_BUILD_PARAM() to build correct value.
+ *		If dpni uses a single channel (uses only channel zero) the parameter can receive
+ *		traffic class directly.
  * @index:	Selects the specific queue out of the set allocated for the
  *		same TC. Value must be in range 0 to NUM_QUEUES - 1
  * @queue:	Queue configuration structure
@@ -2329,7 +2378,7 @@ int dpni_get_queue(struct fsl_mc_io *mc_io,
 		   uint32_t cmd_flags,
 		   uint16_t token,
 		   enum dpni_queue_type qtype,
-		   uint8_t tc,
+		   uint16_t param,
 		   uint8_t index,
 		   struct dpni_queue *queue,
 		   struct dpni_queue_id *qid)
@@ -2345,8 +2394,9 @@ int dpni_get_queue(struct fsl_mc_io *mc_io,
 					  token);
 	cmd_params = (struct dpni_cmd_get_queue *)cmd.params;
 	cmd_params->qtype = qtype;
-	cmd_params->tc = tc;
+	cmd_params->tc = (uint8_t)(param & 0xff);
 	cmd_params->index = index;
+	cmd_params->channel_id = (uint8_t)((param >> 8) & 0xff);
 
 	/* send command to mc */
 	err = mc_send_command(mc_io, &cmd);
@@ -2382,8 +2432,16 @@ int dpni_get_queue(struct fsl_mc_io *mc_io,
  * @token:	Token of DPNI object
  * @page:	Selects the statistics page to retrieve, see
  *		DPNI_GET_STATISTICS output. Pages are numbered 0 to 6.
- * @param:	Custom parameter for some pages used to select
- *		a certain statistic source, for example the TC.
+ * @param:  Custom parameter for some pages used to select
+ *		 a certain statistic source, for example the TC.
+ *		 - page_0: not used
+ *		 - page_1: not used
+ *		 - page_2: not used
+ *		 - page_3: high_byte - channel_id, low_byte - traffic class
+ *		 - page_4: high_byte - queue_index have meaning only if dpni is
+ *		 created using option DPNI_OPT_CUSTOM_CG, low_byte - traffic class
+ *		 - page_5: not used
+ *		 - page_6: not used
  * @stat:	Structure containing the statistics
  *
  * Return:	'0' on Success; Error code otherwise.
@@ -2471,7 +2529,7 @@ int dpni_set_taildrop(struct fsl_mc_io *mc_io,
 		      uint16_t token,
 		      enum dpni_congestion_point cg_point,
 		      enum dpni_queue_type qtype,
-		      uint8_t tc,
+		      uint16_t param,
 		      uint8_t index,
 		      struct dpni_taildrop *taildrop)
 {
@@ -2485,7 +2543,8 @@ int dpni_set_taildrop(struct fsl_mc_io *mc_io,
 	cmd_params = (struct dpni_cmd_set_taildrop *)cmd.params;
 	cmd_params->congestion_point = cg_point;
 	cmd_params->qtype = qtype;
-	cmd_params->tc = tc;
+	cmd_params->tc = (uint8_t)(param & 0xff);
+	cmd_params->channel_id = (uint8_t)((param >> 8) & 0xff);
 	cmd_params->index = index;
 	cmd_params->units = taildrop->units;
 	cmd_params->threshold = cpu_to_le32(taildrop->threshold);
