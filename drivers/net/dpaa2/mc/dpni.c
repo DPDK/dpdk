@@ -3087,3 +3087,35 @@ int dpni_get_custom_tpid(struct fsl_mc_io *mc_io, uint32_t cmd_flags,
 	return err;
 }
 
+/**
+ * dpni_set_port_cfg() - performs configurations at physical port connected on
+ *		this dpni. The command have effect only if dpni is connected to
+ *		another dpni object
+ * @mc_io:	Pointer to MC portal's I/O object
+ * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
+ * @token:	Token of DPNI object
+ * @flags:	Valid fields from port_cfg structure
+ * @port_cfg: Configuration data; one or more of DPNI_PORT_CFG_
+ * The command can be called only when dpni is connected to a dpmac object. If
+ * the dpni is unconnected or the endpoint is not a dpni it will return error.
+ * If dpmac endpoint is disconnected the settings will be lost
+ */
+int dpni_set_port_cfg(struct fsl_mc_io *mc_io, uint32_t cmd_flags,
+		uint16_t token, uint32_t flags, struct dpni_port_cfg *port_cfg)
+{
+	struct dpni_cmd_set_port_cfg *cmd_params;
+	struct mc_command cmd = { 0 };
+
+	/* prepare command */
+	cmd.header = mc_encode_cmd_header(DPNI_CMDID_SET_PORT_CFG,
+			cmd_flags, token);
+
+	cmd_params = (struct dpni_cmd_set_port_cfg *)cmd.params;
+	cmd_params->flags = cpu_to_le32(flags);
+	dpni_set_field(cmd_params->bit_params,	PORT_LOOPBACK_EN,
+			!!port_cfg->loopback_en);
+
+	/* send command to MC */
+	return mc_send_command(mc_io, &cmd);
+}
+

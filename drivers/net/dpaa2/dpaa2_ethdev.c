@@ -668,6 +668,30 @@ dpaa2_eth_dev_configure(struct rte_eth_dev *dev)
 	if (rx_offloads & RTE_ETH_RX_OFFLOAD_VLAN_FILTER)
 		dpaa2_vlan_offload_set(dev, RTE_ETH_VLAN_FILTER_MASK);
 
+	if (eth_conf->lpbk_mode) {
+		ret = dpaa2_dev_recycle_config(dev);
+		if (ret) {
+			DPAA2_PMD_ERR("Error to configure %s to recycle port.",
+				dev->data->name);
+
+			return ret;
+		}
+	} else {
+		/** User may disable loopback mode by calling
+		 * "dev_configure" with lpbk_mode cleared.
+		 * No matter the port was configured recycle or not,
+		 * recycle de-configure is called here.
+		 * If port is not recycled, the de-configure will return directly.
+		 */
+		ret = dpaa2_dev_recycle_deconfig(dev);
+		if (ret) {
+			DPAA2_PMD_ERR("Error to de-configure recycle port %s.",
+				dev->data->name);
+
+			return ret;
+		}
+	}
+
 	dpaa2_tm_init(dev);
 
 	return 0;
@@ -2601,6 +2625,9 @@ dpaa2_dev_init(struct rte_eth_dev *eth_dev)
 		return -1;
 	}
 
+	if (eth_dev->data->dev_conf.lpbk_mode)
+		dpaa2_dev_recycle_deconfig(eth_dev);
+
 	/* Clean the device first */
 	ret = dpni_reset(dpni_dev, CMD_PRI_LOW, priv->token);
 	if (ret) {
@@ -2624,6 +2651,7 @@ dpaa2_dev_init(struct rte_eth_dev *eth_dev)
 	priv->dist_queues = attr.num_queues;
 	priv->num_channels = attr.num_channels;
 	priv->channel_inuse = 0;
+	rte_spinlock_init(&priv->lpbk_qp_lock);
 
 	/* only if the custom CG is enabled */
 	if (attr.options & DPNI_OPT_CUSTOM_CG)
@@ -2808,7 +2836,9 @@ dpaa2_dev_init(struct rte_eth_dev *eth_dev)
 			return ret;
 		}
 	}
-	RTE_LOG(INFO, PMD, "%s: netdev created\n", eth_dev->data->name);
+	RTE_LOG(INFO, PMD, "%s: netdev created, connected to %s\n",
+		eth_dev->data->name, dpaa2_dev->ep_name);
+
 	return 0;
 init_err:
 	dpaa2_dev_close(eth_dev);

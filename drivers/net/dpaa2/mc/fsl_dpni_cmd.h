@@ -119,6 +119,7 @@
 #define DPNI_CMDID_REMOVE_CUSTOM_TPID		DPNI_CMD(0x276)
 #define DPNI_CMDID_GET_CUSTOM_TPID		DPNI_CMD(0x277)
 #define DPNI_CMDID_GET_LINK_CFG			DPNI_CMD(0x278)
+#define DPNI_CMDID_SET_PORT_CFG			DPNI_CMD(0x27B)
 
 /* Macros for accessing command fields smaller than 1byte */
 #define DPNI_MASK(field)	\

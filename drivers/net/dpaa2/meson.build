@@ -14,6 +14,7 @@ sources = files(
         'dpaa2_mux.c',
         'dpaa2_ethdev.c',
         'dpaa2_flow.c',
+        'dpaa2_recycle.c',
         'dpaa2_rxtx.c',
         'dpaa2_sparser.c',
         'dpaa2_ptp.c',

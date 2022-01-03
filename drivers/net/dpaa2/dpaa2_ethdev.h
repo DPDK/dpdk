@@ -11,6 +11,7 @@
 #include <rte_event_eth_rx_adapter.h>
 #include <rte_pmd_dpaa2.h>
 
+#include <rte_fslmc.h>
 #include <dpaa2_hw_pvt.h>
 #include "dpaa2_tm.h"
 
@@ -64,6 +65,18 @@
 #define DPAA2_RX_TAILDROP_OFF	0x04
 /* Tx confirmation enabled */
 #define DPAA2_TX_CONF_ENABLE	0x06
+
+/* HW loopback the egress traffic to self ingress*/
+#define DPAA2_TX_MAC_LOOPBACK_MODE 0x20
+
+#define DPAA2_TX_SERDES_LOOPBACK_MODE 0x40
+
+#define DPAA2_TX_DPNI_LOOPBACK_MODE 0x80
+
+#define DPAA2_TX_LOOPBACK_MODE \
+	(DPAA2_TX_MAC_LOOPBACK_MODE | \
+	DPAA2_TX_SERDES_LOOPBACK_MODE | \
+	DPAA2_TX_DPNI_LOOPBACK_MODE)
 
 #define DPAA2_RSS_OFFLOAD_ALL ( \
 	RTE_ETH_RSS_L2_PAYLOAD | \
@@ -192,6 +205,7 @@ struct dpaa2_dev_priv {
 	struct dpaa2_queue *next_tx_conf_queue;
 
 	struct rte_eth_dev *eth_dev; /**< Pointer back to holding ethdev */
+	rte_spinlock_t lpbk_qp_lock;
 
 	uint8_t channel_inuse;
 	LIST_HEAD(, rte_flow) flows; /**< Configured flow rule handles. */
@@ -268,4 +282,13 @@ int dpaa2_timesync_read_rx_timestamp(struct rte_eth_dev *dev,
 						uint32_t flags __rte_unused);
 int dpaa2_timesync_read_tx_timestamp(struct rte_eth_dev *dev,
 					  struct timespec *timestamp);
+
+int dpaa2_dev_recycle_config(struct rte_eth_dev *eth_dev);
+int dpaa2_dev_recycle_deconfig(struct rte_eth_dev *eth_dev);
+int dpaa2_dev_recycle_qp_setup(struct rte_dpaa2_device *dpaa2_dev,
+	uint16_t qidx, uint64_t cntx,
+	eth_rx_burst_t tx_lpbk, eth_tx_burst_t rx_lpbk,
+	struct dpaa2_queue **txq,
+	struct dpaa2_queue **rxq);
+
 #endif /* _DPAA2_ETHDEV_H */

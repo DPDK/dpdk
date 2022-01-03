@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  *
  *   Copyright (c) 2016 Freescale Semiconductor, Inc. All rights reserved.
- *   Copyright 2016-2020 NXP
+ *   Copyright 2016-2021 NXP
  *
  */
 
@@ -176,6 +176,7 @@ struct dpaa2_queue {
 	uint16_t nb_desc;
 	uint16_t resv;
 	uint64_t offloads;
+	uint64_t lpbk_cntx;
 } __rte_cache_aligned;
 
 struct swp_active_dqs {
