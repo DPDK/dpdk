@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright 2018-2019 NXP
+ * Copyright 2018-2021 NXP
  */
 
 #include "pfe_logs.h"
@@ -766,7 +766,7 @@ pfe_hif_rx_idle(struct pfe_hif *hif)
 		if (rx_status & BDP_CSR_RX_DMA_ACTV)
 			send_dummy_pkt_to_hif();
 
-		sleep(1);
+		rte_delay_ms(1);
 	} while (--hif_stop_loop);
 
 	if (readl(HIF_RX_STATUS) & BDP_CSR_RX_DMA_ACTV)
