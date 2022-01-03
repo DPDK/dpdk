@@ -195,6 +195,7 @@ dpaa_eth_dev_configure(struct rte_eth_dev *dev)
 	struct rte_eth_conf *eth_conf = &dev->data->dev_conf;
 	uint64_t rx_offloads = eth_conf->rxmode.offloads;
 	uint64_t tx_offloads = eth_conf->txmode.offloads;
+	struct dpaa_if *dpaa_intf = dev->data->dev_private;
 	struct rte_device *rdev = dev->device;
 	struct rte_eth_link *link = &dev->data->dev_link;
 	struct rte_dpaa_device *dpaa_dev;
@@ -203,13 +204,23 @@ dpaa_eth_dev_configure(struct rte_eth_dev *dev)
 	struct rte_intr_handle *intr_handle;
 	uint32_t max_rx_pktlen;
 	int speed, duplex;
-	int ret;
+	int ret, rx_status;
 
 	PMD_INIT_FUNC_TRACE();
 
 	dpaa_dev = container_of(rdev, struct rte_dpaa_device, device);
 	intr_handle = dpaa_dev->intr_handle;
 	__fif = container_of(fif, struct __fman_if, __if);
+
+	/* Check if interface is enabled in case of shared MAC */
+	if (fif->is_shared_mac) {
+		rx_status = fman_if_get_rx_status(fif);
+		if (!rx_status) {
+			DPAA_PMD_ERR("%s Interface not enabled in kernel!",
+				     dpaa_intf->name);
+			return -EHOSTDOWN;
+		}
+	}
 
 	/* Rx offloads which are enabled by default */
 	if (dev_rx_offloads_nodis & ~rx_offloads) {

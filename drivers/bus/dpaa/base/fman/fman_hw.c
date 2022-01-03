@@ -314,6 +314,17 @@ fman_if_disable_rx(struct fman_if *p)
 	out_be32(__if->ccsr_map + 8, in_be32(__if->ccsr_map + 8) & ~(u32)2);
 }
 
+int
+fman_if_get_rx_status(struct fman_if *p)
+{
+	struct __fman_if *__if = container_of(p, struct __fman_if, __if);
+
+	assert(fman_ccsr_map_fd != -1);
+
+	/* return true if RX bit is set */
+	return !!(in_be32(__if->ccsr_map + 8) & (u32)2);
+}
+
 void
 fman_if_loopback_enable(struct fman_if *p)
 {

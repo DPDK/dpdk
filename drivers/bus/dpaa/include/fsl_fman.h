@@ -81,6 +81,8 @@ __rte_internal
 void fman_if_enable_rx(struct fman_if *p);
 __rte_internal
 void fman_if_disable_rx(struct fman_if *p);
+__rte_internal
+int fman_if_get_rx_status(struct fman_if *p);
 
 /* Enable/disable loopback on specific interfaces */
 __rte_internal
