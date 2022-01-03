@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright 2017,2019 NXP
+ * Copyright 2017,2019-2021 NXP
  */
 
 #include <assert.h>
@@ -1003,15 +1003,19 @@ dpaa2_eventdev_txa_enqueue(void *port,
 			   struct rte_event ev[],
 			   uint16_t nb_events)
 {
-	struct rte_mbuf *m = (struct rte_mbuf *)ev[0].mbuf;
+	void *txq[DPAA2_EVENT_MAX_PORT_ENQUEUE_DEPTH];
+	struct rte_mbuf *m[DPAA2_EVENT_MAX_PORT_ENQUEUE_DEPTH];
 	uint8_t qid, i;
 
 	RTE_SET_USED(port);
 
 	for (i = 0; i < nb_events; i++) {
-		qid = rte_event_eth_tx_adapter_txq_get(m);
-		rte_eth_tx_burst(m->port, qid, &m, 1);
+		m[i] = (struct rte_mbuf *)ev[i].mbuf;
+		qid = rte_event_eth_tx_adapter_txq_get(m[i]);
+		txq[i] = rte_eth_devices[m[i]->port].data->tx_queues[qid];
 	}
+
+	dpaa2_dev_tx_multi_txq_ordered(txq, m, nb_events);
 
 	return nb_events;
 }
