@@ -588,7 +588,7 @@ Supported Features
 
 The following capabilities are supported:
 
-- Level0 (root node) and Level1 are supported.
+- Level0 (root node), Level1 and Level2 are supported.
 - 1 private shaper at root node (port level) is supported.
 - 8 TX queues per port supported (1 channel per port)
 - Both SP and WFQ scheduling mechanisms are supported on all 8 queues.

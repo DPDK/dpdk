@@ -108,16 +108,17 @@
 #define DPNI_CMDID_SET_OFFLOAD			DPNI_CMD(0x26C)
 #define DPNI_CMDID_SET_TX_CONFIRMATION_MODE	DPNI_CMD(0x266)
 #define DPNI_CMDID_GET_TX_CONFIRMATION_MODE	DPNI_CMD(0x26D)
+#define DPNI_CMDID_SET_OPR			DPNI_CMD(0x26e)
+#define DPNI_CMDID_GET_OPR			DPNI_CMD(0x26f)
 #define DPNI_CMDID_LOAD_SW_SEQUENCE		DPNI_CMD(0x270)
 #define DPNI_CMDID_ENABLE_SW_SEQUENCE		DPNI_CMD(0x271)
 #define DPNI_CMDID_GET_SW_SEQUENCE_LAYOUT	DPNI_CMD(0x272)
-#define DPNI_CMDID_SET_OPR			DPNI_CMD(0x26e)
-#define DPNI_CMDID_GET_OPR			DPNI_CMD(0x26f)
 #define DPNI_CMDID_SET_RX_FS_DIST		DPNI_CMD(0x273)
 #define DPNI_CMDID_SET_RX_HASH_DIST		DPNI_CMD(0x274)
 #define DPNI_CMDID_ADD_CUSTOM_TPID		DPNI_CMD(0x275)
 #define DPNI_CMDID_REMOVE_CUSTOM_TPID		DPNI_CMD(0x276)
 #define DPNI_CMDID_GET_CUSTOM_TPID		DPNI_CMD(0x277)
+#define DPNI_CMDID_GET_LINK_CFG			DPNI_CMD(0x278)
 
 /* Macros for accessing command fields smaller than 1byte */
 #define DPNI_MASK(field)	\
@@ -450,8 +451,6 @@ struct dpni_cmd_enable_vlan_filter {
 	/* only the LSB */
 	uint8_t en;
 };
-
-#define DPNI_VLAN_SET_QUEUE_ACTION 1
 
 struct dpni_cmd_vlan_id {
 	uint8_t flags;
@@ -854,42 +853,6 @@ struct dpni_rsp_get_opr {
 	uint16_t opr_id;
 };
 
-struct dpni_cmd_add_custom_tpid {
-	uint16_t	pad;
-	uint16_t	tpid;
-};
-
-struct dpni_cmd_remove_custom_tpid {
-	uint16_t	pad;
-	uint16_t	tpid;
-};
-
-struct dpni_rsp_get_custom_tpid {
-	uint16_t	tpid1;
-	uint16_t	tpid2;
-};
-
-#define DPNI_RX_FS_DIST_ENABLE_SHIFT	0
-#define DPNI_RX_FS_DIST_ENABLE_SIZE		1
-struct dpni_cmd_set_rx_fs_dist {
-	uint16_t	dist_size;
-	uint8_t		enable;
-	uint8_t		tc;
-	uint16_t	miss_flow_id;
-	uint16_t	pad1;
-	uint64_t	key_cfg_iova;
-};
-
-#define DPNI_RX_HASH_DIST_ENABLE_SHIFT	0
-#define DPNI_RX_HASH_DIST_ENABLE_SIZE		1
-struct dpni_cmd_set_rx_hash_dist {
-	uint16_t	dist_size;
-	uint8_t		enable;
-	uint8_t		tc_id;
-	uint32_t	pad;
-	uint64_t	key_cfg_iova;
-};
-
 struct dpni_load_sw_sequence {
 	uint8_t dest;
 	uint8_t pad0[7];
@@ -955,6 +918,42 @@ struct dpni_cmd_set_port_cfg {
 struct dpni_rsp_get_port_cfg {
 	uint32_t	flags;
 	uint32_t	bit_params;
+};
+
+#define DPNI_RX_FS_DIST_ENABLE_SHIFT	0
+#define DPNI_RX_FS_DIST_ENABLE_SIZE		1
+struct dpni_cmd_set_rx_fs_dist {
+	uint16_t	dist_size;
+	uint8_t		enable;
+	uint8_t		tc;
+	uint16_t	miss_flow_id;
+	uint16_t	pad1;
+	uint64_t	key_cfg_iova;
+};
+
+#define DPNI_RX_HASH_DIST_ENABLE_SHIFT	0
+#define DPNI_RX_HASH_DIST_ENABLE_SIZE		1
+struct dpni_cmd_set_rx_hash_dist {
+	uint16_t	dist_size;
+	uint8_t		enable;
+	uint8_t		tc_id;
+	uint32_t	pad;
+	uint64_t	key_cfg_iova;
+};
+
+struct dpni_cmd_add_custom_tpid {
+	uint16_t	pad;
+	uint16_t	tpid;
+};
+
+struct dpni_cmd_remove_custom_tpid {
+	uint16_t	pad;
+	uint16_t	tpid;
+};
+
+struct dpni_rsp_get_custom_tpid {
+	uint16_t	tpid1;
+	uint16_t	tpid2;
 };
 
 #pragma pack(pop)

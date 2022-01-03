@@ -852,6 +852,7 @@ dpaa2_dev_tx_queue_setup(struct rte_eth_dev *dev,
 	struct dpni_queue tx_conf_cfg;
 	struct dpni_queue tx_flow_cfg;
 	uint8_t options = 0, flow_id;
+	uint16_t channel_id;
 	struct dpni_queue_id qid;
 	uint32_t tc_id;
 	int ret;
@@ -877,20 +878,6 @@ dpaa2_dev_tx_queue_setup(struct rte_eth_dev *dev,
 	memset(&tx_conf_cfg, 0, sizeof(struct dpni_queue));
 	memset(&tx_flow_cfg, 0, sizeof(struct dpni_queue));
 
-	tc_id = tx_queue_id;
-	flow_id = 0;
-
-	ret = dpni_set_queue(dpni, CMD_PRI_LOW, priv->token, DPNI_QUEUE_TX,
-			tc_id, flow_id, options, &tx_flow_cfg);
-	if (ret) {
-		DPAA2_PMD_ERR("Error in setting the tx flow: "
-			"tc_id=%d, flow=%d err=%d",
-			tc_id, flow_id, ret);
-			return -1;
-	}
-
-	dpaa2_q->flow_id = flow_id;
-
 	if (tx_queue_id == 0) {
 		/*Set tx-conf and error configuration*/
 		if (priv->flags & DPAA2_TX_CONF_ENABLE)
@@ -907,10 +894,26 @@ dpaa2_dev_tx_queue_setup(struct rte_eth_dev *dev,
 			return -1;
 		}
 	}
+
+	tc_id = tx_queue_id % priv->num_tx_tc;
+	channel_id = (uint8_t)(tx_queue_id / priv->num_tx_tc) % priv->num_channels;
+	flow_id = 0;
+
+	ret = dpni_set_queue(dpni, CMD_PRI_LOW, priv->token, DPNI_QUEUE_TX,
+			((channel_id << 8) | tc_id), flow_id, options, &tx_flow_cfg);
+	if (ret) {
+		DPAA2_PMD_ERR("Error in setting the tx flow: "
+			"tc_id=%d, flow=%d err=%d",
+			tc_id, flow_id, ret);
+			return -1;
+	}
+
+	dpaa2_q->flow_id = flow_id;
+
 	dpaa2_q->tc_index = tc_id;
 
 	ret = dpni_get_queue(dpni, CMD_PRI_LOW, priv->token,
-			     DPNI_QUEUE_TX, dpaa2_q->tc_index,
+			     DPNI_QUEUE_TX, ((channel_id << 8) | dpaa2_q->tc_index),
 			     dpaa2_q->flow_id, &tx_flow_cfg, &qid);
 	if (ret) {
 		DPAA2_PMD_ERR("Error in getting LFQID err=%d", ret);
@@ -942,7 +945,7 @@ dpaa2_dev_tx_queue_setup(struct rte_eth_dev *dev,
 		ret = dpni_set_congestion_notification(dpni, CMD_PRI_LOW,
 						       priv->token,
 						       DPNI_QUEUE_TX,
-						       tc_id,
+						       ((channel_id << 8) | tc_id),
 						       &cong_notif_cfg);
 		if (ret) {
 			DPAA2_PMD_ERR(
@@ -959,7 +962,7 @@ dpaa2_dev_tx_queue_setup(struct rte_eth_dev *dev,
 		options = options | DPNI_QUEUE_OPT_USER_CTX;
 		tx_conf_cfg.user_context = (size_t)(dpaa2_q);
 		ret = dpni_set_queue(dpni, CMD_PRI_LOW, priv->token,
-			     DPNI_QUEUE_TX_CONFIRM, dpaa2_tx_conf_q->tc_index,
+			     DPNI_QUEUE_TX_CONFIRM, ((channel_id << 8) | dpaa2_tx_conf_q->tc_index),
 			     dpaa2_tx_conf_q->flow_id, options, &tx_conf_cfg);
 		if (ret) {
 			DPAA2_PMD_ERR("Error in setting the tx conf flow: "
@@ -970,7 +973,7 @@ dpaa2_dev_tx_queue_setup(struct rte_eth_dev *dev,
 		}
 
 		ret = dpni_get_queue(dpni, CMD_PRI_LOW, priv->token,
-			     DPNI_QUEUE_TX_CONFIRM, dpaa2_tx_conf_q->tc_index,
+			     DPNI_QUEUE_TX_CONFIRM, ((channel_id << 8) | dpaa2_tx_conf_q->tc_index),
 			     dpaa2_tx_conf_q->flow_id, &tx_conf_cfg, &qid);
 		if (ret) {
 			DPAA2_PMD_ERR("Error in getting LFQID err=%d", ret);
@@ -1152,7 +1155,6 @@ dpaa2_dev_start(struct rte_eth_dev *dev)
 	struct fsl_mc_io *dpni = (struct fsl_mc_io *)dev->process_private;
 	struct dpni_queue cfg;
 	struct dpni_error_cfg	err_cfg;
-	uint16_t qdid;
 	struct dpni_queue_id qid;
 	struct dpaa2_queue *dpaa2_q;
 	int ret, i;
@@ -1162,7 +1164,6 @@ dpaa2_dev_start(struct rte_eth_dev *dev)
 	intr_handle = dpaa2_dev->intr_handle;
 
 	PMD_INIT_FUNC_TRACE();
-
 	ret = dpni_enable(dpni, CMD_PRI_LOW, priv->token);
 	if (ret) {
 		DPAA2_PMD_ERR("Failure in enabling dpni %d device: err=%d",
@@ -1172,14 +1173,6 @@ dpaa2_dev_start(struct rte_eth_dev *dev)
 
 	/* Power up the phy. Needed to make the link go UP */
 	dpaa2_dev_set_link_up(dev);
-
-	ret = dpni_get_qdid(dpni, CMD_PRI_LOW, priv->token,
-			    DPNI_QUEUE_TX, &qdid);
-	if (ret) {
-		DPAA2_PMD_ERR("Error in getting qdid: err=%d", ret);
-		return ret;
-	}
-	priv->qdid = qdid;
 
 	for (i = 0; i < data->nb_rx_queues; i++) {
 		dpaa2_q = (struct dpaa2_queue *)data->rx_queues[i];
@@ -2619,9 +2612,12 @@ dpaa2_dev_init(struct rte_eth_dev *eth_dev)
 	}
 
 	priv->num_rx_tc = attr.num_rx_tcs;
+	priv->num_tx_tc = attr.num_tx_tcs;
 	priv->qos_entries = attr.qos_entries;
 	priv->fs_entries = attr.fs_entries;
 	priv->dist_queues = attr.num_queues;
+	priv->num_channels = attr.num_channels;
+	priv->channel_inuse = 0;
 
 	/* only if the custom CG is enabled */
 	if (attr.options & DPNI_OPT_CUSTOM_CG)
@@ -2635,8 +2631,7 @@ dpaa2_dev_init(struct rte_eth_dev *eth_dev)
 	for (i = 0; i < attr.num_rx_tcs; i++)
 		priv->nb_rx_queues += attr.num_queues;
 
-	/* Using number of TX queues as number of TX TCs */
-	priv->nb_tx_queues = attr.num_tx_tcs;
+	priv->nb_tx_queues = attr.num_tx_tcs * attr.num_channels;
 
 	DPAA2_PMD_DEBUG("RX-TC= %d, rx_queues= %d, tx_queues=%d, max_cgs=%d",
 			priv->num_rx_tc, priv->nb_rx_queues,

@@ -25,6 +25,7 @@
 #define MAX_RX_QUEUES		128
 #define MAX_TX_QUEUES		16
 #define MAX_DPNI		8
+#define DPAA2_MAX_CHANNELS	16
 
 #define DPAA2_RX_DEFAULT_NBDESC 512
 
@@ -160,15 +161,17 @@ struct dpaa2_dev_priv {
 	void *rx_vq[MAX_RX_QUEUES];
 	void *tx_vq[MAX_TX_QUEUES];
 	struct dpaa2_bp_list *bp_list; /**<Attached buffer pool list */
-	void *tx_conf_vq[MAX_TX_QUEUES];
+	void *tx_conf_vq[MAX_TX_QUEUES * DPAA2_MAX_CHANNELS];
 	void *rx_err_vq;
 	uint8_t flags; /*dpaa2 config flags */
 	uint8_t max_mac_filters;
 	uint8_t max_vlan_filters;
 	uint8_t num_rx_tc;
+	uint8_t num_tx_tc;
 	uint16_t qos_entries;
 	uint16_t fs_entries;
 	uint8_t dist_queues;
+	uint8_t num_channels;
 	uint8_t en_ordered;
 	uint8_t en_loose_ordered;
 	uint8_t max_cgs;
@@ -190,6 +193,7 @@ struct dpaa2_dev_priv {
 
 	struct rte_eth_dev *eth_dev; /**< Pointer back to holding ethdev */
 
+	uint8_t channel_inuse;
 	LIST_HEAD(, rte_flow) flows; /**< Configured flow rule handles. */
 	LIST_HEAD(nodes, dpaa2_tm_node) nodes;
 	LIST_HEAD(shaper_profiles, dpaa2_tm_shaper_profile) shaper_profiles;

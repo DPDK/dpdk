@@ -761,6 +761,11 @@ int dpni_set_link_cfg(struct fsl_mc_io *mc_io,
 		      uint16_t token,
 		      const struct dpni_link_cfg *cfg);
 
+int dpni_get_link_cfg(struct fsl_mc_io *mc_io,
+		      uint32_t cmd_flags,
+		      uint16_t token,
+		      struct dpni_link_cfg *cfg);
+
 /**
  * struct dpni_link_state - Structure representing DPNI link state
  * @rate:	Rate
@@ -1710,63 +1715,6 @@ int dpni_get_opr(struct fsl_mc_io *mc_io,
 		 uint8_t opr_id);
 
 /**
- * When used for queue_idx in function dpni_set_rx_dist_default_queue will
- * signal to dpni to drop all unclassified frames
- */
-#define DPNI_FS_MISS_DROP		((uint16_t)-1)
-
-/**
- * struct dpni_rx_dist_cfg - distribution configuration
- * @dist_size:	distribution size; supported values: 1,2,3,4,6,7,8,
- *		12,14,16,24,28,32,48,56,64,96,112,128,192,224,256,384,448,
- *		512,768,896,1024
- * @key_cfg_iova: I/O virtual address of 256 bytes DMA-able memory filled with
- *		the extractions to be used for the distribution key by calling
- *		dpkg_prepare_key_cfg() relevant only when enable!=0 otherwise
- *		it can be '0'
- * @enable: enable/disable the distribution.
- * @tc: TC id for which distribution is set
- * @fs_miss_flow_id: when packet misses all rules from flow steering table and
- *		hash is disabled it will be put into this queue id; use
- *		DPNI_FS_MISS_DROP to drop frames. The value of this field is
- *		used only when flow steering distribution is enabled and hash
- *		distribution is disabled
- */
-struct dpni_rx_dist_cfg {
-	uint16_t dist_size;
-	uint64_t key_cfg_iova;
-	uint8_t enable;
-	uint8_t tc;
-	uint16_t fs_miss_flow_id;
-};
-
-int dpni_set_rx_fs_dist(struct fsl_mc_io *mc_io, uint32_t cmd_flags,
-		uint16_t token, const struct dpni_rx_dist_cfg *cfg);
-
-int dpni_set_rx_hash_dist(struct fsl_mc_io *mc_io, uint32_t cmd_flags,
-		uint16_t token, const struct dpni_rx_dist_cfg *cfg);
-
-int dpni_add_custom_tpid(struct fsl_mc_io *mc_io, uint32_t cmd_flags,
-		uint16_t token, uint16_t tpid);
-
-int dpni_remove_custom_tpid(struct fsl_mc_io *mc_io, uint32_t cmd_flags,
-		uint16_t token, uint16_t tpid);
-
-/**
- * struct dpni_custom_tpid_cfg - custom TPID configuration. Contains custom TPID
- *	values used in current dpni object to detect 802.1q frames.
- *	@tpid1: first tag. Not used if zero.
- *	@tpid2: second tag. Not used if zero.
- */
-struct dpni_custom_tpid_cfg {
-	uint16_t tpid1;
-	uint16_t tpid2;
-};
-
-int dpni_get_custom_tpid(struct fsl_mc_io *mc_io, uint32_t cmd_flags,
-		uint16_t token, struct dpni_custom_tpid_cfg *tpid);
-
-/**
  * enum dpni_soft_sequence_dest - Enumeration of WRIOP software sequence
  *				destinations
  * @DPNI_SS_INGRESS: Ingress parser
@@ -1935,5 +1883,62 @@ int dpni_set_port_cfg(struct fsl_mc_io *mc_io, uint32_t cmd_flags,
 
 int dpni_get_port_cfg(struct fsl_mc_io *mc_io, uint32_t cmd_flags,
 		uint16_t token, struct dpni_port_cfg *port_cfg);
+
+/**
+ * When used for queue_idx in function dpni_set_rx_dist_default_queue will
+ * signal to dpni to drop all unclassified frames
+ */
+#define DPNI_FS_MISS_DROP		((uint16_t)-1)
+
+/**
+ * struct dpni_rx_dist_cfg - distribution configuration
+ * @dist_size:	distribution size; supported values: 1,2,3,4,6,7,8,
+ *		12,14,16,24,28,32,48,56,64,96,112,128,192,224,256,384,448,
+ *		512,768,896,1024
+ * @key_cfg_iova: I/O virtual address of 256 bytes DMA-able memory filled with
+ *		the extractions to be used for the distribution key by calling
+ *		dpkg_prepare_key_cfg() relevant only when enable!=0 otherwise
+ *		it can be '0'
+ * @enable: enable/disable the distribution.
+ * @tc: TC id for which distribution is set
+ * @fs_miss_flow_id: when packet misses all rules from flow steering table and
+ *		hash is disabled it will be put into this queue id; use
+ *		DPNI_FS_MISS_DROP to drop frames. The value of this field is
+ *		used only when flow steering distribution is enabled and hash
+ *		distribution is disabled
+ */
+struct dpni_rx_dist_cfg {
+	uint16_t dist_size;
+	uint64_t key_cfg_iova;
+	uint8_t enable;
+	uint8_t tc;
+	uint16_t fs_miss_flow_id;
+};
+
+int dpni_set_rx_fs_dist(struct fsl_mc_io *mc_io, uint32_t cmd_flags,
+		uint16_t token, const struct dpni_rx_dist_cfg *cfg);
+
+int dpni_set_rx_hash_dist(struct fsl_mc_io *mc_io, uint32_t cmd_flags,
+		uint16_t token, const struct dpni_rx_dist_cfg *cfg);
+
+int dpni_add_custom_tpid(struct fsl_mc_io *mc_io, uint32_t cmd_flags,
+		uint16_t token, uint16_t tpid);
+
+int dpni_remove_custom_tpid(struct fsl_mc_io *mc_io, uint32_t cmd_flags,
+		uint16_t token, uint16_t tpid);
+
+/**
+ * struct dpni_custom_tpid_cfg - custom TPID configuration. Contains custom TPID
+ *	values used in current dpni object to detect 802.1q frames.
+ *	@tpid1: first tag. Not used if zero.
+ *	@tpid2: second tag. Not used if zero.
+ */
+struct dpni_custom_tpid_cfg {
+	uint16_t tpid1;
+	uint16_t tpid2;
+};
+
+int dpni_get_custom_tpid(struct fsl_mc_io *mc_io, uint32_t cmd_flags,
+		uint16_t token, struct dpni_custom_tpid_cfg *tpid);
 
 #endif /* __FSL_DPNI_H */
