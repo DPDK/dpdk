@@ -1252,7 +1252,12 @@ dpaa2_dev_stop(struct rte_eth_dev *dev)
 	struct fsl_mc_io *dpni = (struct fsl_mc_io *)dev->process_private;
 	int ret;
 	struct rte_eth_link link;
-	struct rte_intr_handle *intr_handle = dev->intr_handle;
+	struct rte_device *rdev = dev->device;
+	struct rte_intr_handle *intr_handle;
+	struct rte_dpaa2_device *dpaa2_dev;
+
+	dpaa2_dev = container_of(rdev, struct rte_dpaa2_device, device);
+	intr_handle = dpaa2_dev->intr_handle;
 
 	PMD_INIT_FUNC_TRACE();
 
