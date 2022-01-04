@@ -859,6 +859,8 @@ struct bnxt {
 	struct rte_ether_addr	*mcast_addr_list;
 	rte_iova_t		mc_list_dma_addr;
 	uint32_t		nb_mc_addr;
+
+	struct rte_eth_rss_conf	rss_conf; /* RSS configuration. */
 };
 
 static

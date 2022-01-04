@@ -137,7 +137,7 @@ skip_filter_allocation:
 	bp->rx_num_qs_per_vnic = nb_q_per_grp;
 
 	if (dev_conf->rxmode.mq_mode & ETH_MQ_RX_RSS_FLAG) {
-		struct rte_eth_rss_conf *rss = &dev_conf->rx_adv_conf.rss_conf;
+		struct rte_eth_rss_conf *rss = &bp->rss_conf;
 
 		if (bp->flags & BNXT_FLAG_UPDATE_HASH)
 			bp->flags &= ~BNXT_FLAG_UPDATE_HASH;

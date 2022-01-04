@@ -114,7 +114,7 @@ void bnxt_free_vnic_attributes(struct bnxt *bp)
 	}
 }
 
-int bnxt_alloc_vnic_attributes(struct bnxt *bp)
+int bnxt_alloc_vnic_attributes(struct bnxt *bp, bool reconfig)
 {
 	struct bnxt_vnic_info *vnic;
 	struct rte_pci_device *pdev = bp->pdev;
@@ -168,7 +168,12 @@ int bnxt_alloc_vnic_attributes(struct bnxt *bp)
 
 		vnic->rss_hash_key_dma_addr = vnic->rss_table_dma_addr +
 					      rss_table_size;
-		bnxt_prandom_bytes(vnic->rss_hash_key, HW_HASH_KEY_SIZE);
+		if (!reconfig) {
+			bnxt_prandom_bytes(vnic->rss_hash_key, HW_HASH_KEY_SIZE);
+			memcpy(bp->rss_conf.rss_key, vnic->rss_hash_key, HW_HASH_KEY_SIZE);
+		} else {
+			memcpy(vnic->rss_hash_key, bp->rss_conf.rss_key, HW_HASH_KEY_SIZE);
+		}
 	}
 
 	return 0;
