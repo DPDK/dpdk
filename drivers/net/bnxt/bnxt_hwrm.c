@@ -1303,16 +1303,17 @@ static int bnxt_hwrm_port_phy_cfg(struct bnxt *bp, struct bnxt_link_info *conf)
 		    !(conf->phy_flags & HWRM_PORT_PHY_CFG_INPUT_FLAGS_FORCE)) {
 			req.auto_mode =
 				HWRM_PORT_PHY_CFG_INPUT_AUTO_MODE_SPEED_MASK;
-			req.auto_link_speed_mask =
-				conf->auto_link_speed_mask;
-			if (conf->auto_pam4_link_speeds) {
+			if (conf->auto_pam4_link_speed_mask &&
+			    bp->link_info->link_signal_mode) {
 				enables |=
 				HWRM_PORT_PHY_CFG_IN_EN_AUTO_PAM4_LINK_SPD_MASK;
 				req.auto_link_pam4_speed_mask =
-					conf->auto_pam4_link_speeds;
+				rte_cpu_to_le_16(conf->auto_pam4_link_speed_mask);
 			} else {
 				enables |=
 				HWRM_PORT_PHY_CFG_IN_EN_AUTO_LINK_SPEED_MASK;
+				req.auto_link_speed_mask =
+				rte_cpu_to_le_16(conf->auto_link_speed_mask);
 			}
 		}
 		if (conf->auto_link_speed &&
@@ -1385,7 +1386,7 @@ static int bnxt_hwrm_port_phy_qcfg(struct bnxt *bp,
 			rte_le_to_cpu_16(resp->force_pam4_link_speed);
 	link_info->support_pam4_speeds =
 			rte_le_to_cpu_16(resp->support_pam4_speeds);
-	link_info->auto_pam4_link_speeds =
+	link_info->auto_pam4_link_speed_mask =
 			rte_le_to_cpu_16(resp->auto_pam4_link_speed_mask);
 	HWRM_UNLOCK();
 
@@ -1395,7 +1396,7 @@ static int bnxt_hwrm_port_phy_qcfg(struct bnxt *bp,
 		    link_info->support_speeds, link_info->force_link_speed);
 	PMD_DRV_LOG(DEBUG, "Link Signal:%d,PAM::Auto:%x,Support:%x,Force:%x\n",
 		    link_info->link_signal_mode,
-		    link_info->auto_pam4_link_speeds,
+		    link_info->auto_pam4_link_speed_mask,
 		    link_info->support_pam4_speeds,
 		    link_info->force_pam4_link_speed);
 	return rc;
@@ -3137,7 +3138,7 @@ int bnxt_set_hwrm_link_config(struct bnxt *bp, bool link_up)
 	/* No auto speeds and no auto_pam4_link. Disable autoneg */
 	if (bp->link_info->auto_link_speed == 0 &&
 	    bp->link_info->link_signal_mode &&
-	    bp->link_info->auto_pam4_link_speeds == 0)
+	    bp->link_info->auto_pam4_link_speed_mask == 0)
 		autoneg = 0;
 
 	speed = bnxt_parse_eth_link_speed(dev_conf->link_speeds,
@@ -3150,8 +3151,8 @@ int bnxt_set_hwrm_link_config(struct bnxt *bp, bool link_up)
 		link_req.auto_link_speed_mask =
 			bnxt_parse_eth_link_speed_mask(bp,
 						       dev_conf->link_speeds);
-		link_req.auto_pam4_link_speeds =
-			bp->link_info->auto_pam4_link_speeds;
+		link_req.auto_pam4_link_speed_mask =
+			bp->link_info->auto_pam4_link_speed_mask;
 	} else {
 		if (bp->link_info->phy_type ==
 		    HWRM_PORT_PHY_QCFG_OUTPUT_PHY_TYPE_BASET ||
@@ -3170,9 +3171,9 @@ int bnxt_set_hwrm_link_config(struct bnxt *bp, bool link_up)
 		else if (bp->link_info->force_pam4_link_speed)
 			link_req.link_speed =
 				bp->link_info->force_pam4_link_speed;
-		else if (bp->link_info->auto_pam4_link_speeds)
+		else if (bp->link_info->auto_pam4_link_speed_mask)
 			link_req.link_speed =
-				bp->link_info->auto_pam4_link_speeds;
+				bp->link_info->auto_pam4_link_speed_mask;
 		else if (bp->link_info->support_pam4_speeds)
 			link_req.link_speed =
 				bp->link_info->support_pam4_speeds;
@@ -3184,7 +3185,7 @@ int bnxt_set_hwrm_link_config(struct bnxt *bp, bool link_up)
 		 * zero. Use the auto_link_speed.
 		 */
 		if (bp->link_info->auto_link_speed != 0 &&
-		    bp->link_info->auto_pam4_link_speeds == 0)
+		    bp->link_info->auto_pam4_link_speed_mask == 0)
 			link_req.link_speed = bp->link_info->auto_link_speed;
 	}
 	link_req.duplex = bnxt_parse_eth_link_duplex(dev_conf->link_speeds);

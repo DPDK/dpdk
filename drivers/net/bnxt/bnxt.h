@@ -299,7 +299,7 @@ struct bnxt_link_info {
 	uint8_t			link_signal_mode;
 	uint16_t		force_pam4_link_speed;
 	uint16_t		support_pam4_speeds;
-	uint16_t		auto_pam4_link_speeds;
+	uint16_t		auto_pam4_link_speed_mask;
 	uint16_t		support_pam4_auto_speeds;
 	uint8_t			req_signal_mode;
 };
