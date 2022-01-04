@@ -35,16 +35,20 @@ static const struct eth_dev_ops bnxt_rep_dev_ops = {
 uint16_t
 bnxt_vfr_recv(uint16_t port_id, uint16_t queue_id, struct rte_mbuf *mbuf)
 {
-	struct rte_mbuf **prod_rx_buf;
+	struct bnxt_representor *vfr_bp = NULL;
 	struct bnxt_rx_ring_info *rep_rxr;
-	struct bnxt_rx_queue *rep_rxq;
 	struct rte_eth_dev *vfr_eth_dev;
-	struct bnxt_representor *vfr_bp;
+	struct rte_mbuf **prod_rx_buf;
+	struct bnxt_rx_queue *rep_rxq;
 	uint16_t mask;
 	uint8_t que;
 
 	vfr_eth_dev = &rte_eth_devices[port_id];
-	vfr_bp = vfr_eth_dev->data->dev_private;
+	vfr_bp = vfr_eth_dev ? vfr_eth_dev->data->dev_private : NULL;
+
+	if (unlikely(vfr_bp == NULL))
+		return 1;
+
 	/* If rxq_id happens to be > nr_rings, use ring 0 */
 	que = queue_id < vfr_bp->rx_nr_rings ? queue_id : 0;
 	rep_rxq = vfr_bp->rx_queues[que];
