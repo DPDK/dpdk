@@ -824,6 +824,9 @@ void bnxt_set_mark_in_mbuf(struct bnxt *bp,
 {
 	uint32_t cfa_code = 0;
 
+	if (unlikely(bp->mark_table == NULL))
+		return;
+
 	cfa_code = rte_le_to_cpu_16(rxcmp1->cfa_code);
 	if (!cfa_code)
 		return;
