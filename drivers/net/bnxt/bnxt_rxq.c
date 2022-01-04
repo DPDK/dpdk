@@ -214,7 +214,9 @@ void bnxt_rx_queue_release_mbufs(struct bnxt_rx_queue *rxq)
 		}
 	}
 	/* Free up mbufs in Agg ring */
-	if (!bnxt_need_agg_ring(rxq->bp->eth_dev))
+	if (rxq->bp == NULL ||
+	    rxq->bp->eth_dev == NULL ||
+	    !bnxt_need_agg_ring(rxq->bp->eth_dev))
 		return;
 
 	sw_ring = rxq->rx_ring->ag_buf_ring;
