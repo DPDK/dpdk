@@ -741,7 +741,7 @@ int bnxt_dev_xstats_get_op(struct rte_eth_dev *eth_dev,
 					(bp->fw_tx_port_stats_ext_size /
 					 stat_size));
 
-	memset(xstats, 0, sizeof(*xstats));
+	memset(xstats, 0, sizeof(*xstats) * n);
 
 	count = 0;
 	for (i = 0; i < RTE_DIM(bnxt_rx_stats_strings); i++) {
