@@ -117,7 +117,7 @@ void bnxt_wait_for_device_shutdown(struct bnxt *bp);
 bool bnxt_is_recovery_enabled(struct bnxt *bp);
 bool bnxt_is_primary_func(struct bnxt *bp);
 
-void bnxt_stop_rxtx(struct bnxt *bp);
+void bnxt_stop_rxtx(struct rte_eth_dev *eth_dev);
 
 /**
  * Check validity of a completion ring entry. If the entry is valid, include a

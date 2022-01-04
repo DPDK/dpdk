@@ -1471,8 +1471,7 @@ static int bnxt_dev_stop(struct rte_eth_dev *eth_dev)
 	eth_dev->data->dev_started = 0;
 
 	/* Prevent crashes when queues are still in use */
-	eth_dev->rx_pkt_burst = &bnxt_dummy_recv_pkts;
-	eth_dev->tx_pkt_burst = &bnxt_dummy_xmit_pkts;
+	bnxt_stop_rxtx(eth_dev);
 
 	bnxt_disable_int(bp);
 
@@ -4557,7 +4556,7 @@ reset:
 	bp->flags |= BNXT_FLAG_FATAL_ERROR;
 	bp->flags |= BNXT_FLAG_FW_RESET;
 
-	bnxt_stop_rxtx(bp);
+	bnxt_stop_rxtx(bp->eth_dev);
 
 	PMD_DRV_LOG(ERR, "Detected FW dead condition\n");
 

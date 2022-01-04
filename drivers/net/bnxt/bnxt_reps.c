@@ -505,8 +505,7 @@ int bnxt_rep_dev_stop_op(struct rte_eth_dev *eth_dev)
 	struct bnxt_representor *vfr_bp = eth_dev->data->dev_private;
 
 	/* Avoid crashes as we are about to free queues */
-	eth_dev->rx_pkt_burst = &bnxt_dummy_recv_pkts;
-	eth_dev->tx_pkt_burst = &bnxt_dummy_xmit_pkts;
+	bnxt_stop_rxtx(eth_dev);
 
 	BNXT_TF_DBG(DEBUG, "BNXT Port:%d VFR stop\n", eth_dev->data->port_id);
 
