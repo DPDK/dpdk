@@ -4401,7 +4401,8 @@ err:
 					     RTE_ETH_EVENT_INTR_RMV,
 					     NULL);
 	pthread_mutex_unlock(&bp->err_recovery_lock);
-	PMD_DRV_LOG(ERR, "Failed to recover from FW reset\n");
+	PMD_DRV_LOG(ERR, "Port %u: Failed to recover from FW reset\n",
+		    bp->eth_dev->data->port_id);
 }
 
 void bnxt_dev_reset_and_resume(void *arg)
@@ -4437,7 +4438,8 @@ void bnxt_dev_reset_and_resume(void *arg)
 
 	rc = rte_eal_alarm_set(us, bnxt_dev_recover, (void *)bp);
 	if (rc)
-		PMD_DRV_LOG(ERR, "Error setting recovery alarm");
+		PMD_DRV_LOG(ERR, "Port %u: Error setting recovery alarm",
+			    bp->eth_dev->data->port_id);
 }
 
 uint32_t bnxt_read_fw_status_reg(struct bnxt *bp, uint32_t index)
