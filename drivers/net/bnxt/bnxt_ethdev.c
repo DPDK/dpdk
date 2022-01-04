@@ -1530,7 +1530,7 @@ static int bnxt_dev_stop(struct rte_eth_dev *eth_dev)
 }
 
 /* Unload the driver, release resources */
-static int bnxt_dev_stop_op(struct rte_eth_dev *eth_dev)
+int bnxt_dev_stop_op(struct rte_eth_dev *eth_dev)
 {
 	struct bnxt *bp = eth_dev->data->dev_private;
 
@@ -1546,7 +1546,7 @@ static int bnxt_dev_stop_op(struct rte_eth_dev *eth_dev)
 	return bnxt_dev_stop(eth_dev);
 }
 
-static int bnxt_dev_start_op(struct rte_eth_dev *eth_dev)
+int bnxt_dev_start_op(struct rte_eth_dev *eth_dev)
 {
 	struct bnxt *bp = eth_dev->data->dev_private;
 	uint64_t rx_offloads = eth_dev->data->dev_conf.rxmode.offloads;
@@ -1678,6 +1678,7 @@ static int bnxt_dev_close_op(struct rte_eth_dev *eth_dev)
 	rte_eal_alarm_cancel(bnxt_dev_reset_and_resume, (void *)bp);
 	rte_eal_alarm_cancel(bnxt_dev_recover, (void *)bp);
 	bnxt_cancel_fc_thread(bp);
+	rte_eal_alarm_cancel(bnxt_handle_vf_cfg_change, (void *)bp);
 
 	if (eth_dev->data->dev_started)
 		ret = bnxt_dev_stop(eth_dev);
