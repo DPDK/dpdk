@@ -32,10 +32,6 @@ struct bnxt_vnic_info {
 	uint16_t	*rss_table;
 	rte_iova_t	rss_hash_key_dma_addr;
 	void		*rss_hash_key;
-	rte_iova_t	mc_list_dma_addr;
-	char		*mc_list;
-	uint32_t	mc_addr_cnt;
-#define BNXT_MAX_MC_ADDRS		16
 	uint32_t	flags;
 #define BNXT_VNIC_INFO_PROMISC			(1 << 0)
 #define BNXT_VNIC_INFO_ALLMULTI			(1 << 1)

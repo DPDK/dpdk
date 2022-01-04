@@ -2831,9 +2831,8 @@ bnxt_dev_set_mc_addr_list_op(struct rte_eth_dev *eth_dev,
 			  uint32_t nb_mc_addr)
 {
 	struct bnxt *bp = eth_dev->data->dev_private;
-	char *mc_addr_list = (char *)mc_addr_set;
 	struct bnxt_vnic_info *vnic;
-	uint32_t off = 0, i = 0;
+	uint32_t i = 0;
 	int rc;
 
 	rc = is_bnxt_in_error(bp);
@@ -2842,6 +2841,8 @@ bnxt_dev_set_mc_addr_list_op(struct rte_eth_dev *eth_dev,
 
 	vnic = BNXT_GET_DEFAULT_VNIC(bp);
 
+	bp->nb_mc_addr = nb_mc_addr;
+
 	if (nb_mc_addr > BNXT_MAX_MC_ADDRS) {
 		vnic->flags |= BNXT_VNIC_INFO_ALLMULTI;
 		goto allmulti;
@@ -2849,14 +2850,10 @@ bnxt_dev_set_mc_addr_list_op(struct rte_eth_dev *eth_dev,
 
 	/* TODO Check for Duplicate mcast addresses */
 	vnic->flags &= ~BNXT_VNIC_INFO_ALLMULTI;
-	for (i = 0; i < nb_mc_addr; i++) {
-		memcpy(vnic->mc_list + off, &mc_addr_list[i],
-			RTE_ETHER_ADDR_LEN);
-		off += RTE_ETHER_ADDR_LEN;
-	}
+	for (i = 0; i < nb_mc_addr; i++)
+		rte_ether_addr_copy(&mc_addr_set[i], &bp->mcast_addr_list[i]);
 
-	vnic->mc_addr_cnt = i;
-	if (vnic->mc_addr_cnt)
+	if (bp->nb_mc_addr)
 		vnic->flags |= BNXT_VNIC_INFO_MCAST;
 	else
 		vnic->flags &= ~BNXT_VNIC_INFO_MCAST;
@@ -5016,6 +5013,23 @@ static int bnxt_setup_mac_addr(struct rte_eth_dev *eth_dev)
 	/* Copy the permanent MAC from the FUNC_QCAPS response */
 	memcpy(&eth_dev->data->mac_addrs[0], bp->mac_addr, RTE_ETHER_ADDR_LEN);
 
+	/*
+	 *  Allocate memory to hold multicast mac addresses added.
+	 *  Used to restore them during reset recovery
+	 */
+	bp->mcast_addr_list = rte_zmalloc("bnxt_mcast_addr_tbl",
+					  sizeof(struct rte_ether_addr) *
+					  BNXT_MAX_MC_ADDRS, 0);
+	if (bp->mcast_addr_list == NULL) {
+		PMD_DRV_LOG(ERR, "Failed to allocate multicast addr table\n");
+		return -ENOMEM;
+	}
+	bp->mc_list_dma_addr = rte_malloc_virt2iova(bp->mcast_addr_list);
+	if (bp->mc_list_dma_addr == RTE_BAD_IOVA) {
+		PMD_DRV_LOG(ERR, "Fail to map mcast_addr_list to physical memory\n");
+		return -ENOMEM;
+	}
+
 	return rc;
 }
 
@@ -5916,6 +5930,8 @@ bnxt_uninit_resources(struct bnxt *bp, bool reconfig_dev)
 	if (!reconfig_dev) {
 		bnxt_free_hwrm_resources(bp);
 		bnxt_free_error_recovery_info(bp);
+		rte_free(bp->mcast_addr_list);
+		bp->mcast_addr_list = NULL;
 	}
 
 	bnxt_uninit_ctx_mem(bp);
