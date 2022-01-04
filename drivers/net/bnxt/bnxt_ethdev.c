@@ -786,17 +786,11 @@ skip_cosq_cfg:
 		}
 	}
 
-	/* default vnic 0 */
-	rc = bnxt_setup_one_vnic(bp, 0);
-	if (rc)
-		goto err_out;
 	/* VNIC configuration */
-	if (BNXT_RFS_NEEDS_VNIC(bp)) {
-		for (i = 1; i < bp->nr_vnics; i++) {
-			rc = bnxt_setup_one_vnic(bp, i);
-			if (rc)
-				goto err_out;
-		}
+	for (i = 0; i < bp->nr_vnics; i++) {
+		rc = bnxt_setup_one_vnic(bp, i);
+		if (rc)
+			goto err_out;
 	}
 
 	for (j = 0; j < bp->tx_nr_rings; j++) {
@@ -5229,10 +5223,6 @@ static int bnxt_get_config(struct bnxt *bp)
 		return rc;
 
 	rc = bnxt_hwrm_func_qcfg(bp, &mtu);
-	if (rc)
-		return rc;
-
-	rc = bnxt_hwrm_cfa_adv_flow_mgmt_qcaps(bp);
 	if (rc)
 		return rc;
 
