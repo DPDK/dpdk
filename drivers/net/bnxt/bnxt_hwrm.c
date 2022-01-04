@@ -5961,3 +5961,26 @@ int bnxt_hwrm_poll_ver_get(struct bnxt *bp)
 
 	return rc;
 }
+
+int
+bnxt_vnic_rss_clear_p5(struct bnxt *bp, struct bnxt_vnic_info *vnic)
+{
+	struct hwrm_vnic_rss_cfg_output *resp = bp->hwrm_cmd_resp_addr;
+	struct hwrm_vnic_rss_cfg_input req = {0};
+	int nr_ctxs = vnic->num_lb_ctxts;
+	int i, rc = 0;
+
+	for (i = 0; i < nr_ctxs; i++) {
+		HWRM_PREP(&req, HWRM_VNIC_RSS_CFG, BNXT_USE_CHIMP_MB);
+
+		req.rss_ctx_idx = rte_cpu_to_le_16(vnic->fw_grp_ids[i]);
+		req.vnic_id = rte_cpu_to_le_16(vnic->fw_vnic_id);
+
+		rc = bnxt_hwrm_send_message(bp, &req, sizeof(req), BNXT_USE_CHIMP_MB);
+
+		HWRM_CHECK_RESULT();
+		HWRM_UNLOCK();
+	}
+
+	return rc;
+}

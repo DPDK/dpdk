@@ -546,6 +546,9 @@ int bnxt_rx_queue_stop(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 		if (active_queue_cnt == 0) {
 			uint16_t saved_mru = vnic->mru;
 
+			/* clear RSS setting on vnic. */
+			bnxt_vnic_rss_clear_p5(bp, vnic);
+
 			vnic->mru = 0;
 			/* Reconfigure default receive ring and MRU. */
 			bnxt_hwrm_vnic_cfg(bp, vnic);
