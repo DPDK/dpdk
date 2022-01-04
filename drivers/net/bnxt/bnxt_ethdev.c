@@ -4376,15 +4376,15 @@ static void bnxt_dev_recover(void *arg)
 		goto err_start;
 	}
 
+	rc = bnxt_restore_filters(bp);
+	if (rc)
+		goto err_start;
+
 	rte_eth_fp_ops[bp->eth_dev->data->port_id].rx_pkt_burst =
 		bp->eth_dev->rx_pkt_burst;
 	rte_eth_fp_ops[bp->eth_dev->data->port_id].tx_pkt_burst =
 		bp->eth_dev->tx_pkt_burst;
 	rte_mb();
-
-	rc = bnxt_restore_filters(bp);
-	if (rc)
-		goto err_start;
 
 	PMD_DRV_LOG(INFO, "Port: %u Recovered from FW reset\n",
 		    bp->eth_dev->data->port_id);
