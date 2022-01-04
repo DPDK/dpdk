@@ -4308,8 +4308,9 @@ static int bnxt_restore_filters(struct bnxt *bp)
 	if (ret)
 		return ret;
 
+	/* if vlans are already programmed, this can fail with -EEXIST */
 	ret = bnxt_restore_vlan_filters(bp);
-	if (ret)
+	if (ret && ret != -EEXIST)
 		return ret;
 
 	ret = bnxt_restore_mcast_mac_filters(bp);
