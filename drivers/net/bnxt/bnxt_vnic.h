@@ -60,7 +60,7 @@ int bnxt_free_vnic(struct bnxt *bp, struct bnxt_vnic_info *vnic,
 struct bnxt_vnic_info *bnxt_alloc_vnic(struct bnxt *bp);
 void bnxt_free_all_vnics(struct bnxt *bp);
 void bnxt_free_vnic_attributes(struct bnxt *bp);
-int bnxt_alloc_vnic_attributes(struct bnxt *bp);
+int bnxt_alloc_vnic_attributes(struct bnxt *bp, bool reconfig);
 void bnxt_free_vnic_mem(struct bnxt *bp);
 int bnxt_alloc_vnic_mem(struct bnxt *bp);
 int bnxt_vnic_grp_alloc(struct bnxt *bp, struct bnxt_vnic_info *vnic);
