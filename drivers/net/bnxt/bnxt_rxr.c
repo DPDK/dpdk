@@ -1411,6 +1411,9 @@ int bnxt_flush_rx_cmp(struct bnxt_cp_ring_info *cpr)
 		cons = RING_CMP(cpr->cp_ring_struct, raw_cons);
 		rxcmp = (struct rx_pkt_cmpl *)&cpr->cp_desc_ring[cons];
 
+		if (!bnxt_cpr_cmp_valid(rxcmp, raw_cons, ring_mask + 1))
+			break;
+
 		if (CMP_TYPE(rxcmp) == CMPL_BASE_TYPE_HWRM_DONE)
 			return 1;
 

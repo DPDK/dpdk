@@ -602,6 +602,9 @@ int bnxt_flush_tx_cmp(struct bnxt_cp_ring_info *cpr)
 		cons = RING_CMPL(ring_mask, raw_cons);
 		txcmp = (struct tx_cmpl *)&cp_desc_ring[cons];
 
+		if (!bnxt_cpr_cmp_valid(txcmp, raw_cons, ring_mask + 1))
+			break;
+
 		opaque = rte_cpu_to_le_32(txcmp->opaque);
 		raw_cons = NEXT_RAW_CMP(raw_cons);
 
