@@ -4261,6 +4261,18 @@ static int bnxt_restore_mac_filters(struct bnxt *bp)
 	return 0;
 }
 
+static int bnxt_restore_mcast_mac_filters(struct bnxt *bp)
+{
+	int ret = 0;
+
+	ret = bnxt_dev_set_mc_addr_list_op(bp->eth_dev, bp->mcast_addr_list,
+					   bp->nb_mc_addr);
+	if (ret)
+		PMD_DRV_LOG(ERR, "Failed to restore multicast MAC addreeses\n");
+
+	return ret;
+}
+
 static int bnxt_restore_filters(struct bnxt *bp)
 {
 	struct rte_eth_dev *dev = bp->eth_dev;
@@ -4282,7 +4294,13 @@ static int bnxt_restore_filters(struct bnxt *bp)
 		return ret;
 
 	ret = bnxt_restore_vlan_filters(bp);
-	/* TODO restore other filters as well */
+	if (ret)
+		return ret;
+
+	ret = bnxt_restore_mcast_mac_filters(bp);
+	if (ret)
+		return ret;
+
 	return ret;
 }
 
