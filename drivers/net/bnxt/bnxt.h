@@ -854,6 +854,11 @@ struct bnxt {
 	uint16_t		tx_cfa_action;
 	struct bnxt_ring_stats	*prev_rx_ring_stats;
 	struct bnxt_ring_stats	*prev_tx_ring_stats;
+
+#define BNXT_MAX_MC_ADDRS	16
+	struct rte_ether_addr	*mcast_addr_list;
+	rte_iova_t		mc_list_dma_addr;
+	uint32_t		nb_mc_addr;
 };
 
 static

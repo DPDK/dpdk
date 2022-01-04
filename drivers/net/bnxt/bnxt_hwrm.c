@@ -391,8 +391,8 @@ int bnxt_hwrm_cfa_l2_set_rx_mask(struct bnxt *bp,
 		mask |= HWRM_CFA_L2_SET_RX_MASK_INPUT_MASK_ALL_MCAST;
 	} else if (vnic->flags & BNXT_VNIC_INFO_MCAST) {
 		mask |= HWRM_CFA_L2_SET_RX_MASK_INPUT_MASK_MCAST;
-		req.num_mc_entries = rte_cpu_to_le_32(vnic->mc_addr_cnt);
-		req.mc_tbl_addr = rte_cpu_to_le_64(vnic->mc_list_dma_addr);
+		req.num_mc_entries = rte_cpu_to_le_32(bp->nb_mc_addr);
+		req.mc_tbl_addr = rte_cpu_to_le_64(bp->mc_list_dma_addr);
 	}
 	if (vlan_table) {
 		if (!(mask & HWRM_CFA_L2_SET_RX_MASK_INPUT_MASK_VLAN_NONVLAN))

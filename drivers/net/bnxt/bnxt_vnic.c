@@ -126,8 +126,7 @@ int bnxt_alloc_vnic_attributes(struct bnxt *bp)
 	int i;
 	rte_iova_t mz_phys_addr;
 
-	entry_length = HW_HASH_KEY_SIZE +
-		       BNXT_MAX_MC_ADDRS * RTE_ETHER_ADDR_LEN;
+	entry_length = HW_HASH_KEY_SIZE;
 
 	if (BNXT_CHIP_THOR(bp))
 		rss_table_size = BNXT_RSS_TBL_SIZE_THOR *
@@ -169,10 +168,6 @@ int bnxt_alloc_vnic_attributes(struct bnxt *bp)
 
 		vnic->rss_hash_key_dma_addr = vnic->rss_table_dma_addr +
 					      rss_table_size;
-		vnic->mc_list = (void *)((char *)vnic->rss_hash_key +
-				HW_HASH_KEY_SIZE);
-		vnic->mc_list_dma_addr = vnic->rss_hash_key_dma_addr +
-				HW_HASH_KEY_SIZE;
 		bnxt_prandom_bytes(vnic->rss_hash_key, HW_HASH_KEY_SIZE);
 	}
 
