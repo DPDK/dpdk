@@ -1026,6 +1026,9 @@ void bnxt_flow_cnt_alarm_cb(void *arg);
 int bnxt_flow_stats_req(struct bnxt *bp);
 int bnxt_flow_stats_cnt(struct bnxt *bp);
 uint32_t bnxt_get_speed_capabilities(struct bnxt *bp);
+int bnxt_dev_start_op(struct rte_eth_dev *eth_dev);
+int bnxt_dev_stop_op(struct rte_eth_dev *eth_dev);
+void bnxt_handle_vf_cfg_change(void *arg);
 
 int
 bnxt_filter_ctrl_op(struct rte_eth_dev *dev,

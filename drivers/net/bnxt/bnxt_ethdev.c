@@ -964,7 +964,7 @@ static int bnxt_dev_info_get_op(struct rte_eth_dev *eth_dev,
 		return rc;
 
 	/* MAC Specifics */
-	dev_info->max_mac_addrs = RTE_MIN(bp->max_l2_ctx, RTE_ETH_NUM_RECEIVE_MAC_ADDR);
+	dev_info->max_mac_addrs = RTE_MIN(bp->max_l2_ctx, ETH_NUM_RECEIVE_MAC_ADDR);
 	dev_info->max_hash_mac_addrs = 0;
 
 	/* PF/VF specifics */
@@ -1432,7 +1432,7 @@ static int bnxt_ptp_start(struct bnxt *bp)
 }
 
 /* Unload the driver, release resources */
-static int bnxt_dev_stop_op(struct rte_eth_dev *eth_dev)
+int bnxt_dev_stop_op(struct rte_eth_dev *eth_dev)
 {
 	struct bnxt *bp = eth_dev->data->dev_private;
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
@@ -1504,7 +1504,7 @@ static int bnxt_dev_stop_op(struct rte_eth_dev *eth_dev)
 	return 0;
 }
 
-static int bnxt_dev_start_op(struct rte_eth_dev *eth_dev)
+int bnxt_dev_start_op(struct rte_eth_dev *eth_dev)
 {
 	struct bnxt *bp = eth_dev->data->dev_private;
 	uint64_t rx_offloads = eth_dev->data->dev_conf.rxmode.offloads;
@@ -1626,6 +1626,7 @@ static int bnxt_dev_close_op(struct rte_eth_dev *eth_dev)
 	rte_eal_alarm_cancel(bnxt_dev_reset_and_resume, (void *)bp);
 	rte_eal_alarm_cancel(bnxt_dev_recover, (void *)bp);
 	bnxt_cancel_fc_thread(bp);
+	rte_eal_alarm_cancel(bnxt_handle_vf_cfg_change, (void *)bp);
 
 	if (eth_dev->data->dev_started)
 		ret = bnxt_dev_stop_op(eth_dev);
@@ -4781,12 +4782,12 @@ static int bnxt_alloc_stats_mem(struct bnxt *bp)
 static int bnxt_setup_mac_addr(struct rte_eth_dev *eth_dev)
 {
 	struct bnxt *bp = eth_dev->data->dev_private;
-	size_t max_mac_addr = RTE_MIN(bp->max_l2_ctx, RTE_ETH_NUM_RECEIVE_MAC_ADDR);
+	size_t max_mac_addr = RTE_MIN(bp->max_l2_ctx, ETH_NUM_RECEIVE_MAC_ADDR);
 	int rc = 0;
 
-	if (bp->max_l2_ctx > RTE_ETH_NUM_RECEIVE_MAC_ADDR)
+	if (bp->max_l2_ctx > ETH_NUM_RECEIVE_MAC_ADDR)
 		PMD_DRV_LOG(INFO, "Max number of MAC addrs supported is %d, but will be limited to %d\n",
-			    bp->max_l2_ctx, RTE_ETH_NUM_RECEIVE_MAC_ADDR);
+			    bp->max_l2_ctx, ETH_NUM_RECEIVE_MAC_ADDR);
 
 	eth_dev->data->mac_addrs = rte_zmalloc("bnxt_mac_addr_tbl",
 					       RTE_ETHER_ADDR_LEN * max_mac_addr,
