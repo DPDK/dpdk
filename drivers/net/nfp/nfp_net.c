@@ -543,10 +543,6 @@ nfp_set_mac_addr(struct rte_eth_dev *dev, struct rte_ether_addr *mac_addr)
 		return -EBUSY;
 	}
 
-	if ((hw->ctrl & NFP_NET_CFG_CTRL_ENABLE) &&
-	    !(hw->cap & NFP_NET_CFG_CTRL_LIVE_ADDR))
-		return -EBUSY;
-
 	/* Writing new MAC to the specific port BAR address */
 	nfp_net_write_mac(hw, (uint8_t *)mac_addr);
 
