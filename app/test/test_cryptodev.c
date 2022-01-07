@@ -209,6 +209,7 @@ process_sym_raw_dp_op(uint8_t dev_id, uint16_t qp_id,
 	int enqueue_status, dequeue_status;
 	struct crypto_unittest_params *ut_params = &unittest_params;
 	int is_sgl = sop->m_src->nb_segs > 1;
+	int is_oop = 0;
 
 	ctx_service_size = rte_cryptodev_get_raw_dp_ctx_size(dev_id);
 	if (ctx_service_size < 0) {
@@ -247,6 +248,9 @@ process_sym_raw_dp_op(uint8_t dev_id, uint16_t qp_id,
 
 	ofs.raw = 0;
 
+	if ((sop->m_dst != NULL) && (sop->m_dst != sop->m_src))
+		is_oop = 1;
+
 	if (is_cipher && is_auth) {
 		cipher_offset = sop->cipher.data.offset;
 		cipher_len = sop->cipher.data.length;
@@ -277,6 +281,8 @@ process_sym_raw_dp_op(uint8_t dev_id, uint16_t qp_id,
 		if (is_sgl) {
 			uint32_t remaining_off = auth_offset + auth_len;
 			struct rte_mbuf *sgl_buf = sop->m_src;
+			if (is_oop)
+				sgl_buf = sop->m_dst;
 
 			while (remaining_off >= rte_pktmbuf_data_len(sgl_buf)
 					&& sgl_buf->next != NULL) {
@@ -293,7 +299,8 @@ process_sym_raw_dp_op(uint8_t dev_id, uint16_t qp_id,
 		/* Then check if digest-encrypted conditions are met */
 		if ((auth_offset + auth_len < cipher_offset + cipher_len) &&
 				(digest.iova == auth_end_iova) && is_sgl)
-			max_len = RTE_MAX(max_len, auth_offset + auth_len +
+			max_len = RTE_MAX(max_len,
+				auth_offset + auth_len +
 				ut_params->auth_xform.auth.digest_length);
 
 	} else if (is_cipher) {
@@ -356,7 +363,7 @@ process_sym_raw_dp_op(uint8_t dev_id, uint16_t qp_id,
 
 	sgl.num = n;
 	/* Out of place */
-	if (sop->m_dst != NULL) {
+	if (is_oop) {
 		dest_sgl.vec = dest_data_vec;
 		vec.dest_sgl = &dest_sgl;
 		n = rte_crypto_mbuf_to_vec(sop->m_dst, 0, max_len,
