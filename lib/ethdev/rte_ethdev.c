@@ -6320,8 +6320,10 @@ eth_dev_handle_port_info(const char *cmd __rte_unused,
 		return -ENOMEM;
 
 	txq_state = rte_tel_data_alloc();
-	if (!txq_state)
+	if (!txq_state) {
+		rte_tel_data_free(rxq_state);
 		return -ENOMEM;
+	}
 
 	rte_tel_data_start_dict(d);
 	rte_tel_data_add_dict_string(d, "name", eth_dev->data->name);
