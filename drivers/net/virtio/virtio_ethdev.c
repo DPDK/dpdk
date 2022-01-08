@@ -2028,7 +2028,8 @@ virtio_dev_rss_hash_update(struct rte_eth_dev *dev,
 
 	return 0;
 restore_key:
-	memcpy(hw->rss_key, old_rss_key, VIRTIO_NET_RSS_KEY_SIZE);
+	if (rss_conf->rss_key && rss_conf->rss_key_len)
+		memcpy(hw->rss_key, old_rss_key, VIRTIO_NET_RSS_KEY_SIZE);
 restore_types:
 	hw->rss_hash_types = old_hash_types;
 
