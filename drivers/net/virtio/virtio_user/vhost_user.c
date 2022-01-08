@@ -468,8 +468,10 @@ vhost_user_setup(struct virtio_user_dev *dev)
 	}
 
 	flag = fcntl(fd, F_GETFD);
-	if (fcntl(fd, F_SETFD, flag | FD_CLOEXEC) < 0)
-		PMD_DRV_LOG(WARNING, "fcntl failed, %s", strerror(errno));
+	if (flag == -1)
+		PMD_DRV_LOG(WARNING, "fcntl get fd failed, %s", strerror(errno));
+	else if (fcntl(fd, F_SETFD, flag | FD_CLOEXEC) < 0)
+		PMD_DRV_LOG(WARNING, "fcntl set fd failed, %s", strerror(errno));
 
 	memset(&un, 0, sizeof(un));
 	un.sun_family = AF_UNIX;
