@@ -68,12 +68,13 @@ alloc_gpu_memory(uint16_t gpu_id)
 	void *ptr_1 = NULL;
 	void *ptr_2 = NULL;
 	size_t buf_bytes = 1024;
+	unsigned int align = 4096;
 	int ret;
 
 	printf("\n=======> TEST: Allocate GPU memory\n\n");
 
-	/* Alloc memory on GPU 0 */
-	ptr_1 = rte_gpu_mem_alloc(gpu_id, buf_bytes);
+	/* Alloc memory on GPU 0 without any specific alignment */
+	ptr_1 = rte_gpu_mem_alloc(gpu_id, buf_bytes, 0);
 	if (ptr_1 == NULL) {
 		fprintf(stderr, "rte_gpu_mem_alloc GPU memory returned error\n");
 		goto error;
@@ -81,13 +82,19 @@ alloc_gpu_memory(uint16_t gpu_id)
 	printf("GPU memory allocated at 0x%p size is %zd bytes\n",
 			ptr_1, buf_bytes);
 
-	ptr_2 = rte_gpu_mem_alloc(gpu_id, buf_bytes);
+	/* Alloc memory on GPU 0 with 4kB alignment */
+	ptr_2 = rte_gpu_mem_alloc(gpu_id, buf_bytes, align);
 	if (ptr_2 == NULL) {
 		fprintf(stderr, "rte_gpu_mem_alloc GPU memory returned error\n");
 		goto error;
 	}
 	printf("GPU memory allocated at 0x%p size is %zd bytes\n",
 			ptr_2, buf_bytes);
+
+	if (((uintptr_t)ptr_2) % align) {
+		fprintf(stderr, "Memory address 0x%p is not aligned to %u\n", ptr_2, align);
+		goto error;
+	}
 
 	ret = rte_gpu_mem_free(gpu_id, (uint8_t *)(ptr_1)+0x700);
 	if (ret < 0) {

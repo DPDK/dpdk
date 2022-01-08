@@ -27,7 +27,7 @@ enum rte_gpu_state {
 struct rte_gpu;
 typedef int (rte_gpu_close_t)(struct rte_gpu *dev);
 typedef int (rte_gpu_info_get_t)(struct rte_gpu *dev, struct rte_gpu_info *info);
-typedef int (rte_gpu_mem_alloc_t)(struct rte_gpu *dev, size_t size, void **ptr);
+typedef int (rte_gpu_mem_alloc_t)(struct rte_gpu *dev, size_t size, unsigned int align, void **ptr);
 typedef int (rte_gpu_mem_free_t)(struct rte_gpu *dev, void *ptr);
 typedef int (rte_gpu_mem_register_t)(struct rte_gpu *dev, size_t size, void *ptr);
 typedef int (rte_gpu_mem_unregister_t)(struct rte_gpu *dev, void *ptr);

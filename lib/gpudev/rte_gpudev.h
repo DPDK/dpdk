@@ -364,18 +364,23 @@ int rte_gpu_info_get(int16_t dev_id, struct rte_gpu_info *info);
  * @param size
  *   Number of bytes to allocate.
  *   Requesting 0 will do nothing.
+ * @param align
+ *   If 0, the return is a pointer that is suitably aligned
+ *   for any kind of variable (in the same manner as malloc()).
+ *   Otherwise, the return is a pointer that is a multiple of *align*.
+ *   In this case, it must obviously be a power of two.
  *
  * @return
  *   A pointer to the allocated memory, otherwise NULL and rte_errno is set:
  *   - ENODEV if invalid dev_id
- *   - EINVAL if reserved flags
+ *   - EINVAL if align is not a power of two
  *   - ENOTSUP if operation not supported by the driver
  *   - E2BIG if size is higher than limit
  *   - ENOMEM if out of space
  *   - EPERM if driver error
  */
 __rte_experimental
-void *rte_gpu_mem_alloc(int16_t dev_id, size_t size)
+void *rte_gpu_mem_alloc(int16_t dev_id, size_t size, unsigned int align)
 __rte_alloc_size(2);
 
 /**

@@ -144,8 +144,10 @@ typedef uintptr_t cuda_ptr_key;
 /* Single entry of the memory list */
 struct mem_entry {
 	CUdeviceptr ptr_d;
+	CUdeviceptr ptr_orig_d;
 	void *ptr_h;
 	size_t size;
+	size_t size_orig;
 	struct rte_gpu *dev;
 	CUcontext ctx;
 	cuda_ptr_key pkey;
@@ -576,7 +578,7 @@ cuda_dev_info_get(struct rte_gpu *dev, struct rte_gpu_info *info)
  */
 
 static int
-cuda_mem_alloc(struct rte_gpu *dev, size_t size, void **ptr)
+cuda_mem_alloc(struct rte_gpu *dev, size_t size, unsigned int align, void **ptr)
 {
 	CUresult res;
 	const char *err_string;
@@ -617,8 +619,10 @@ cuda_mem_alloc(struct rte_gpu *dev, size_t size, void **ptr)
 
 	/* Allocate memory */
 	mem_alloc_list_tail->size = size;
-	res = pfn_cuMemAlloc(&(mem_alloc_list_tail->ptr_d),
-			mem_alloc_list_tail->size);
+	mem_alloc_list_tail->size_orig = size + align;
+
+	res = pfn_cuMemAlloc(&(mem_alloc_list_tail->ptr_orig_d),
+			mem_alloc_list_tail->size_orig);
 	if (res != 0) {
 		pfn_cuGetErrorString(res, &(err_string));
 		rte_cuda_log(ERR, "cuCtxSetCurrent current failed with %s",
@@ -626,6 +630,12 @@ cuda_mem_alloc(struct rte_gpu *dev, size_t size, void **ptr)
 		rte_errno = EPERM;
 		return -rte_errno;
 	}
+
+	/* Align memory address */
+	mem_alloc_list_tail->ptr_d = mem_alloc_list_tail->ptr_orig_d;
+	if (align && ((uintptr_t)mem_alloc_list_tail->ptr_d) % align)
+		mem_alloc_list_tail->ptr_d += (align -
+				(((uintptr_t)mem_alloc_list_tail->ptr_d) % align));
 
 	/* GPUDirect RDMA attribute required */
 	res = pfn_cuPointerSetAttribute(&flag,
@@ -641,7 +651,6 @@ cuda_mem_alloc(struct rte_gpu *dev, size_t size, void **ptr)
 
 	mem_alloc_list_tail->pkey = get_hash_from_ptr((void *)mem_alloc_list_tail->ptr_d);
 	mem_alloc_list_tail->ptr_h = NULL;
-	mem_alloc_list_tail->size = size;
 	mem_alloc_list_tail->dev = dev;
 	mem_alloc_list_tail->ctx = (CUcontext)((uintptr_t)dev->mpshared->info.context);
 	mem_alloc_list_tail->mtype = GPU_MEM;
@@ -768,6 +777,7 @@ cuda_mem_register(struct rte_gpu *dev, size_t size, void *ptr)
 	mem_alloc_list_tail->dev = dev;
 	mem_alloc_list_tail->ctx = (CUcontext)((uintptr_t)dev->mpshared->info.context);
 	mem_alloc_list_tail->mtype = CPU_REGISTERED;
+	mem_alloc_list_tail->ptr_orig_d = mem_alloc_list_tail->ptr_d;
 
 	/* Restore original ctx as current ctx */
 	res = pfn_cuCtxSetCurrent(current_ctx);
@@ -803,7 +813,7 @@ cuda_mem_free(struct rte_gpu *dev, void *ptr)
 	}
 
 	if (mem_item->mtype == GPU_MEM) {
-		res = pfn_cuMemFree(mem_item->ptr_d);
+		res = pfn_cuMemFree(mem_item->ptr_orig_d);
 		if (res != 0) {
 			pfn_cuGetErrorString(res, &(err_string));
 			rte_cuda_log(ERR, "cuMemFree current failed with %s",

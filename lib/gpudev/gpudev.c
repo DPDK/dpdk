@@ -527,7 +527,7 @@ rte_gpu_info_get(int16_t dev_id, struct rte_gpu_info *info)
 }
 
 void *
-rte_gpu_mem_alloc(int16_t dev_id, size_t size)
+rte_gpu_mem_alloc(int16_t dev_id, size_t size, unsigned int align)
 {
 	struct rte_gpu *dev;
 	void *ptr;
@@ -549,7 +549,13 @@ rte_gpu_mem_alloc(int16_t dev_id, size_t size)
 	if (size == 0) /* dry-run */
 		return NULL;
 
-	ret = dev->ops.mem_alloc(dev, size, &ptr);
+	if (align && !rte_is_power_of_2(align)) {
+		GPU_LOG(ERR, "requested alignment is not a power of two %u", align);
+		rte_errno = EINVAL;
+		return NULL;
+	}
+
+	ret = dev->ops.mem_alloc(dev, size, align, &ptr);
 
 	switch (ret) {
 	case 0:
