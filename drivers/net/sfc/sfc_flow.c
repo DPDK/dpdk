@@ -1382,6 +1382,9 @@ sfc_flow_parse_rss(struct sfc_adapter *sa,
 			rxq_hw_index_max = rxq->hw_index;
 	}
 
+	if (rxq_hw_index_max - rxq_hw_index_min + 1 > EFX_MAXRSS)
+		return -EINVAL;
+
 	switch (action_rss->func) {
 	case RTE_ETH_HASH_FUNCTION_DEFAULT:
 	case RTE_ETH_HASH_FUNCTION_TOEPLITZ:
@@ -1516,9 +1519,8 @@ sfc_flow_filter_insert(struct sfc_adapter *sa,
 		uint8_t *rss_key;
 
 		if (spec_filter->rss) {
-			rss_spread = MIN(flow_rss->rxq_hw_index_max -
-					flow_rss->rxq_hw_index_min + 1,
-					EFX_MAXRSS);
+			rss_spread = flow_rss->rxq_hw_index_max -
+				     flow_rss->rxq_hw_index_min + 1;
 			rss_hash_types = flow_rss->rss_hash_types;
 			rss_key = flow_rss->rss_key;
 		} else {
