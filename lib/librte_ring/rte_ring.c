@@ -267,7 +267,7 @@ rte_ring_create_elem(const char *name, unsigned int esize, unsigned int count,
 
 	ring_size = rte_ring_get_memsize_elem(esize, count);
 	if (ring_size < 0) {
-		rte_errno = ring_size;
+		rte_errno = -ring_size;
 		return NULL;
 	}
 
