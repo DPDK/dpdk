@@ -686,10 +686,11 @@ test_burst_capacity(int16_t dev_id, uint16_t vchan)
 	/* to test capacity, we enqueue elements and check capacity is reduced
 	 * by one each time - rebaselining the expected value after each burst
 	 * as the capacity is only for a burst. We enqueue multiple bursts to
-	 * fill up half the ring, before emptying it again. We do this twice to
-	 * ensure that we get to test scenarios where we get ring wrap-around
+	 * fill up half the ring, before emptying it again. We do this multiple
+	 * times to ensure that we get to test scenarios where we get ring
+	 * wrap-around and wrap-around of the ids returned (at UINT16_MAX).
 	 */
-	for (iter = 0; iter < 2; iter++) {
+	for (iter = 0; iter < 2 * (((int)UINT16_MAX + 1) / ring_space); iter++) {
 		for (i = 0; i < (ring_space / (2 * CAP_TEST_BURST_SIZE)) + 1; i++) {
 			cap = rte_dma_burst_capacity(dev_id, vchan);
 
