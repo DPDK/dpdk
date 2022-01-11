@@ -3634,6 +3634,7 @@ This section lists supported pattern items and their attributes, if any.
   - ``offset {integer}``: absolute or relative offset for pattern.
   - ``limit {unsigned}``: search area limit for start of pattern.
   - ``pattern {string}``: byte string to look for.
+  - ``pattern_hex {string}``: byte string (provided in hexadecimal) to look for.
 
 - ``eth``: match Ethernet header.
 
@@ -5079,6 +5080,18 @@ PPPoL2TPv2oUDP RSS rules can be created by the following commands::
           / tcp / end actions rss types ipv4-tcp end queues end / end
  testpmd> flow create 0 ingress pattern eth / ipv6 / udp / l2tpv2 / ppp / ipv6
           / end actions rss types ipv6 end queues end / end
+
+Sample RAW rule
+~~~~~~~~~~~~~~~
+
+A RAW rule can be created as following using ``pattern_hex`` key and mask.
+
+::
+
+    testpmd> flow create 0 group 0 priority 1 ingress pattern raw relative is 0 search is 0 offset
+             is 0 limit is 0 pattern_hex spec 00000000000000000000000000000000000000000000000000000a0a0a0a
+             pattern_hex mask 0000000000000000000000000000000000000000000000000000ffffffff / end actions
+             queue index 4 / end
 
 BPF Functions
 --------------
