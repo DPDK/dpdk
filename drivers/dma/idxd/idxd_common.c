@@ -480,10 +480,8 @@ idxd_burst_capacity(const void *dev_private, uint16_t vchan __rte_unused)
 			idxd->batch_idx_write + 1 == idxd->batch_idx_read)
 		return 0;
 
-	/* For descriptors, check for wrap-around on write but not read */
-	if (idxd->ids_returned > write_idx)
-		write_idx += idxd->desc_ring_mask + 1;
-	used_space = write_idx - idxd->ids_returned;
+	/* Subtract and mask to get in correct range */
+	used_space = (write_idx - idxd->ids_returned) & idxd->desc_ring_mask;
 
 	const int ret = RTE_MIN((idxd->desc_ring_mask - used_space),
 			(idxd->max_batch_size - idxd->batch_size));
