@@ -118,6 +118,8 @@ l3fwd_event_port_setup_internal_port(void)
 		event_p_conf.event_port_cfg |=
 			RTE_EVENT_PORT_CFG_DISABLE_IMPL_REL;
 
+	evt_rsrc->deq_depth = def_p_conf.dequeue_depth;
+
 	for (event_p_id = 0; event_p_id < evt_rsrc->evp.nb_ports;
 								event_p_id++) {
 		ret = rte_event_port_setup(event_d_id, event_p_id,
