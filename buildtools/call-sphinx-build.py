@@ -7,7 +7,7 @@ import sys
 import os
 from os.path import join
 from subprocess import run, PIPE, STDOUT
-from distutils.version import StrictVersion
+from packaging.version import Version
 
 # assign parameters to variables
 (sphinx, version, src, dst, *extra_args) = sys.argv[1:]
@@ -19,7 +19,7 @@ os.environ['DPDK_VERSION'] = version
 ver = run([sphinx, '--version'], stdout=PIPE,
           stderr=STDOUT).stdout.decode().split()[-1]
 sphinx_cmd = [sphinx] + extra_args
-if StrictVersion(ver) >= StrictVersion('1.7'):
+if Version(ver) >= Version('1.7'):
     sphinx_cmd += ['-j', 'auto']
 
 # find all the files sphinx will process so we can write them as dependencies
