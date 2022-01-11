@@ -17,7 +17,7 @@ __rte_ring_enqueue_elems_32(struct rte_ring *r, const uint32_t size,
 	unsigned int i;
 	uint32_t *ring = (uint32_t *)&r[1];
 	const uint32_t *obj = (const uint32_t *)obj_table;
-	if (likely(idx + n < size)) {
+	if (likely(idx + n <= size)) {
 		for (i = 0; i < (n & ~0x7); i += 8, idx += 8) {
 			ring[idx] = obj[i];
 			ring[idx + 1] = obj[i + 1];
@@ -62,7 +62,7 @@ __rte_ring_enqueue_elems_64(struct rte_ring *r, uint32_t prod_head,
 	uint32_t idx = prod_head & r->mask;
 	uint64_t *ring = (uint64_t *)&r[1];
 	const unaligned_uint64_t *obj = (const unaligned_uint64_t *)obj_table;
-	if (likely(idx + n < size)) {
+	if (likely(idx + n <= size)) {
 		for (i = 0; i < (n & ~0x3); i += 4, idx += 4) {
 			ring[idx] = obj[i];
 			ring[idx + 1] = obj[i + 1];
@@ -95,7 +95,7 @@ __rte_ring_enqueue_elems_128(struct rte_ring *r, uint32_t prod_head,
 	uint32_t idx = prod_head & r->mask;
 	rte_int128_t *ring = (rte_int128_t *)&r[1];
 	const rte_int128_t *obj = (const rte_int128_t *)obj_table;
-	if (likely(idx + n < size)) {
+	if (likely(idx + n <= size)) {
 		for (i = 0; i < (n & ~0x1); i += 2, idx += 2)
 			memcpy((void *)(ring + idx),
 				(const void *)(obj + i), 32);
@@ -151,7 +151,7 @@ __rte_ring_dequeue_elems_32(struct rte_ring *r, const uint32_t size,
 	unsigned int i;
 	uint32_t *ring = (uint32_t *)&r[1];
 	uint32_t *obj = (uint32_t *)obj_table;
-	if (likely(idx + n < size)) {
+	if (likely(idx + n <= size)) {
 		for (i = 0; i < (n & ~0x7); i += 8, idx += 8) {
 			obj[i] = ring[idx];
 			obj[i + 1] = ring[idx + 1];
@@ -196,7 +196,7 @@ __rte_ring_dequeue_elems_64(struct rte_ring *r, uint32_t prod_head,
 	uint32_t idx = prod_head & r->mask;
 	uint64_t *ring = (uint64_t *)&r[1];
 	unaligned_uint64_t *obj = (unaligned_uint64_t *)obj_table;
-	if (likely(idx + n < size)) {
+	if (likely(idx + n <= size)) {
 		for (i = 0; i < (n & ~0x3); i += 4, idx += 4) {
 			obj[i] = ring[idx];
 			obj[i + 1] = ring[idx + 1];
@@ -229,7 +229,7 @@ __rte_ring_dequeue_elems_128(struct rte_ring *r, uint32_t prod_head,
 	uint32_t idx = prod_head & r->mask;
 	rte_int128_t *ring = (rte_int128_t *)&r[1];
 	rte_int128_t *obj = (rte_int128_t *)obj_table;
-	if (likely(idx + n < size)) {
+	if (likely(idx + n <= size)) {
 		for (i = 0; i < (n & ~0x1); i += 2, idx += 2)
 			memcpy((void *)(obj + i), (void *)(ring + idx), 32);
 		switch (n & 0x1) {
