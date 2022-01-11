@@ -3,7 +3,7 @@
 # Copyright(c) 2010-2015 Intel Corporation
 
 from docutils import nodes
-from distutils.version import LooseVersion
+from packaging.version import Version
 from sphinx import __version__ as sphinx_version
 from os import listdir
 from os import environ
@@ -28,7 +28,7 @@ stop_on_error = ('-W' in argv)
 
 project = 'Data Plane Development Kit'
 html_logo = '../logo/DPDK_logo_vertical_rev_small.png'
-if LooseVersion(sphinx_version) >= LooseVersion('3.5'):
+if Version(sphinx_version) >= Version('3.5'):
     html_permalinks = False
 else:
     html_add_permalinks = ""
@@ -427,7 +427,7 @@ def setup(app):
                             'Features availability for Timer adapters',
                             'Feature')
 
-    if LooseVersion(sphinx_version) < LooseVersion('1.3.1'):
+    if Version(sphinx_version) < Version('1.3.1'):
         print('Upgrade sphinx to version >= 1.3.1 for '
               'improved Figure/Table number handling.',
               file=stderr)
