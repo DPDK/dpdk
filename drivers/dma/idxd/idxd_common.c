@@ -485,7 +485,9 @@ idxd_burst_capacity(const void *dev_private, uint16_t vchan __rte_unused)
 		write_idx += idxd->desc_ring_mask + 1;
 	used_space = write_idx - idxd->ids_returned;
 
-	return RTE_MIN((idxd->desc_ring_mask - used_space), idxd->max_batch_size);
+	const int ret = RTE_MIN((idxd->desc_ring_mask - used_space),
+			(idxd->max_batch_size - idxd->batch_size));
+	return ret < 0 ? 0 : (uint16_t)ret;
 }
 
 int
