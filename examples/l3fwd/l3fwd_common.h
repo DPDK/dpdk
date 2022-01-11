@@ -236,6 +236,9 @@ send_packetsx4(struct lcore_conf *qconf, uint16_t port, struct rte_mbuf *m[],
 
 		/* copy rest of the packets into the TX buffer. */
 		len = num - n;
+		if (len == 0)
+			goto exit;
+
 		j = 0;
 		switch (len % FWDSTEP) {
 		while (j < len) {
@@ -258,6 +261,7 @@ send_packetsx4(struct lcore_conf *qconf, uint16_t port, struct rte_mbuf *m[],
 		}
 	}
 
+exit:
 	qconf->tx_mbufs[port].len = len;
 }
 
