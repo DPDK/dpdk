@@ -29,10 +29,17 @@ class SysfsDir:
                 f.write(str(contents))
 
 
+def get_drv_dir(dtype):
+    "Get the sysfs path for the driver, either 'idxd' or 'user'"
+    drv_dir = "/sys/bus/dsa/drivers/" + dtype
+    if not os.path.exists(drv_dir):
+        return "/sys/bus/dsa/drivers/dsa"
+    return drv_dir
+
+
 def configure_dsa(dsa_id, queues):
     "Configure the DSA instance with appropriate number of queues"
     dsa_dir = SysfsDir(f"/sys/bus/dsa/devices/dsa{dsa_id}")
-    drv_dir = SysfsDir("/sys/bus/dsa/drivers/dsa")
 
     max_groups = dsa_dir.read_int("max_groups")
     max_engines = dsa_dir.read_int("max_engines")
@@ -59,9 +66,12 @@ def configure_dsa(dsa_id, queues):
                              "size": int(max_work_queues_size / nb_queues)})
 
     # enable device and then queues
-    drv_dir.write_values({"bind": f"dsa{dsa_id}"})
+    idxd_dir = SysfsDir(get_drv_dir("idxd"))
+    idxd_dir.write_values({"bind": f"dsa{dsa_id}"})
+
+    user_dir = SysfsDir(get_drv_dir("user"))
     for q in range(nb_queues):
-        drv_dir.write_values({"bind": f"wq{dsa_id}.{q}"})
+        user_dir.write_values({"bind": f"wq{dsa_id}.{q}"})
 
 
 def main(args):
