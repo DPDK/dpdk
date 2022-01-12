@@ -1346,7 +1346,7 @@ cmd_pipeline_table_default(char **tokens,
 }
 
 static const char cmd_pipeline_table_show_help[] =
-"pipeline <pipeline_name> table <table_name> show\n";
+"pipeline <pipeline_name> table <table_name> show [filename]\n";
 
 static void
 cmd_pipeline_table_show(char **tokens,
@@ -1357,9 +1357,10 @@ cmd_pipeline_table_show(char **tokens,
 {
 	struct pipeline *p;
 	char *pipeline_name, *table_name;
+	FILE *file = NULL;
 	int status;
 
-	if (n_tokens != 5) {
+	if (n_tokens != 5 && n_tokens != 6) {
 		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
 		return;
 	}
@@ -1372,9 +1373,18 @@ cmd_pipeline_table_show(char **tokens,
 	}
 
 	table_name = tokens[3];
-	status = rte_swx_ctl_pipeline_table_fprintf(stdout, p->ctl, table_name);
+	file = (n_tokens == 6) ? fopen(tokens[5], "w") : stdout;
+	if (!file) {
+		snprintf(out, out_size, "Cannot open file %s.\n", tokens[5]);
+		return;
+	}
+
+	status = rte_swx_ctl_pipeline_table_fprintf(file, p->ctl, table_name);
 	if (status)
 		snprintf(out, out_size, MSG_ARG_INVALID, "table_name");
+
+	if (file)
+		fclose(file);
 }
 
 static const char cmd_pipeline_selector_group_add_help[] =
@@ -1806,7 +1816,7 @@ cmd_pipeline_selector_group_member_delete(char **tokens,
 }
 
 static const char cmd_pipeline_selector_show_help[] =
-"pipeline <pipeline_name> selector <selector_name> show\n";
+"pipeline <pipeline_name> selector <selector_name> show [filename]\n";
 
 static void
 cmd_pipeline_selector_show(char **tokens,
@@ -1817,9 +1827,10 @@ cmd_pipeline_selector_show(char **tokens,
 {
 	struct pipeline *p;
 	char *pipeline_name, *selector_name;
+	FILE *file = NULL;
 	int status;
 
-	if (n_tokens != 5) {
+	if (n_tokens != 5 && n_tokens != 6) {
 		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
 		return;
 	}
@@ -1832,10 +1843,19 @@ cmd_pipeline_selector_show(char **tokens,
 	}
 
 	selector_name = tokens[3];
-	status = rte_swx_ctl_pipeline_selector_fprintf(stdout,
-		p->ctl, selector_name);
+
+	file = (n_tokens == 6) ? fopen(tokens[5], "w") : stdout;
+	if (!file) {
+		snprintf(out, out_size, "Cannot open file %s.\n", tokens[5]);
+		return;
+	}
+
+	status = rte_swx_ctl_pipeline_selector_fprintf(file, p->ctl, selector_name);
 	if (status)
 		snprintf(out, out_size, MSG_ARG_INVALID, "selector_name");
+
+	if (file)
+		fclose(file);
 }
 
 static int
