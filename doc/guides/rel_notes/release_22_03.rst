@@ -100,6 +100,9 @@ API Changes
    Also, make sure to start the actual text at the margin.
    =======================================================
 
+* ethdev: Old public macros and enumeration constants without ``RTE_ETH_`` prefix,
+  which are kept for backward compatibility, are marked as deprecated.
+
 
 ABI Changes
 -----------
