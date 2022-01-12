@@ -411,7 +411,7 @@ parse_ipv4_5tuple_rule(char *str, struct rte_eth_ntuple_filter *ntuple_filter)
 	uint32_t temp;
 
 	s = str;
-	for (i = 0; i != dim; i++, s = NULL) {
+	for (i = 0; i < dim; i++, s = NULL) {
 		in[i] = strtok_r(s, dlm, &sp);
 		if (in[i] == NULL)
 			return -EINVAL;
