@@ -38,48 +38,23 @@ meter_rate_to_nix(uint64_t value, uint64_t *exponent_p, uint64_t *mantissa_p,
 		  uint64_t *div_exp_p, uint32_t timeunit_p)
 {
 	uint64_t div_exp, exponent, mantissa;
-	uint32_t time_us = timeunit_p;
+	uint32_t time_ns = timeunit_p;
 
 	/* Boundary checks */
-	if (value < NIX_BPF_RATE_MIN || value > NIX_BPF_RATE_MAX)
+	if (value < NIX_BPF_RATE(time_ns, 0, 0, 0) ||
+	    value > NIX_BPF_RATE(time_ns, NIX_BPF_MAX_RATE_EXPONENT,
+				 NIX_BPF_MAX_RATE_MANTISSA, 0))
 		return 0;
 
-	if (value <= NIX_BPF_RATE(time_us, 0, 0, 0)) {
-		/* Calculate rate div_exp and mantissa using
-		 * the following formula:
-		 *
-		 * value = (2E6 * (256 + mantissa)
-		 *              / ((1 << div_exp) * 256))
-		 */
-		div_exp = 0;
-		exponent = 0;
-		mantissa = NIX_BPF_MAX_RATE_MANTISSA;
+	div_exp = 0;
+	exponent = NIX_BPF_MAX_RATE_EXPONENT;
+	mantissa = NIX_BPF_MAX_RATE_MANTISSA;
 
-		while (value < (NIX_BPF_RATE_CONST / (1 << div_exp)))
-			div_exp += 1;
+	while (value < (NIX_BPF_RATE(time_ns, exponent, 0, 0)))
+		exponent -= 1;
 
-		while (value < ((NIX_BPF_RATE_CONST * (256 + mantissa)) /
-				((1 << div_exp) * 256)))
-			mantissa -= 1;
-	} else {
-		/* Calculate rate exponent and mantissa using
-		 * the following formula:
-		 *
-		 * value = (2E6 * ((256 + mantissa) << exponent)) / 256
-		 *
-		 */
-		div_exp = 0;
-		exponent = NIX_BPF_MAX_RATE_EXPONENT;
-		mantissa = NIX_BPF_MAX_RATE_MANTISSA;
-
-		while (value < (NIX_BPF_RATE_CONST * (1 << exponent)))
-			exponent -= 1;
-
-		while (value <
-		       ((NIX_BPF_RATE_CONST * ((256 + mantissa) << exponent)) /
-			256))
-			mantissa -= 1;
-	}
+	while (value < (NIX_BPF_RATE(time_ns, exponent, mantissa, 0)))
+		mantissa -= 1;
 
 	if (div_exp > NIX_BPF_MAX_RATE_DIV_EXP ||
 	    exponent > NIX_BPF_MAX_RATE_EXPONENT ||
@@ -94,7 +69,7 @@ meter_rate_to_nix(uint64_t value, uint64_t *exponent_p, uint64_t *mantissa_p,
 		*mantissa_p = mantissa;
 
 	/* Calculate real rate value */
-	return NIX_BPF_RATE(time_us, exponent, mantissa, div_exp);
+	return NIX_BPF_RATE(time_ns, exponent, mantissa, div_exp);
 }
 
 static inline uint64_t
@@ -195,11 +170,7 @@ nix_precolor_conv_table_write(struct roc_nix *roc_nix, uint64_t val,
 	int64_t *addr;
 
 	addr = PLT_PTR_ADD(nix->base, off);
-	/* FIXME: Currently writing to this register throwing kernel dump.
-	 * plt_write64(val, addr);
-	 */
-	PLT_SET_USED(val);
-	PLT_SET_USED(addr);
+	plt_write64(val, addr);
 }
 
 static uint8_t
@@ -665,6 +636,7 @@ roc_nix_bpf_config(struct roc_nix *roc_nix, uint16_t id,
 
 	aq->prof.lmode = cfg->lmode;
 	aq->prof.icolor = cfg->icolor;
+	aq->prof.meter_algo = cfg->alg;
 	aq->prof.pc_mode = cfg->pc_mode;
 	aq->prof.tnl_ena = cfg->tnl_ena;
 	aq->prof.gc_action = cfg->action[ROC_NIX_BPF_COLOR_GREEN];
@@ -673,6 +645,7 @@ roc_nix_bpf_config(struct roc_nix *roc_nix, uint16_t id,
 
 	aq->prof_mask.lmode = ~(aq->prof_mask.lmode);
 	aq->prof_mask.icolor = ~(aq->prof_mask.icolor);
+	aq->prof_mask.meter_algo = ~(aq->prof_mask.meter_algo);
 	aq->prof_mask.pc_mode = ~(aq->prof_mask.pc_mode);
 	aq->prof_mask.tnl_ena = ~(aq->prof_mask.tnl_ena);
 	aq->prof_mask.gc_action = ~(aq->prof_mask.gc_action);

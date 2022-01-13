@@ -2133,11 +2133,6 @@ struct nix_lso_format {
 	((NIX_BPF_RATE_CONST * ((256 + (mantissa)) << (exponent))) /           \
 	 (((1ull << (div_exp)) * 256 * policer_timeunit)))
 
-/* Meter rate limits in Bits/Sec */
-#define NIX_BPF_RATE_MIN NIX_BPF_RATE(1000000000, 0, 0, 0)
-#define NIX_BPF_RATE_MAX                                                       \
-	NIX_BPF_RATE(1, NIX_BPF_MAX_RATE_EXPONENT, NIX_BPF_MAX_RATE_MANTISSA, 0)
-
 #define NIX_BPF_DEFAULT_ADJUST_MANTISSA 511
 #define NIX_BPF_DEFAULT_ADJUST_EXPONENT 0
 
