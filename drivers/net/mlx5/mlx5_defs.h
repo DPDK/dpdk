@@ -50,7 +50,7 @@
 #define MLX5_MAX_XSTATS 32
 
 /* Maximum Packet headers size (L2+L3+L4) for TSO. */
-#define MLX5_MAX_TSO_HEADER (128u + 34u)
+#define MLX5_MAX_TSO_HEADER 192U
 
 /* Inline data size required by NICs. */
 #define MLX5_INLINE_HSIZE_NONE 0
