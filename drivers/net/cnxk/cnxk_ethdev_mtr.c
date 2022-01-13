@@ -35,7 +35,6 @@ static struct rte_mtr_capabilities mtr_capa = {
 	.chaining_n_mtrs_per_flow_max = NIX_MTR_COUNT_PER_FLOW,
 	.chaining_use_prev_mtr_color_supported = true,
 	.chaining_use_prev_mtr_color_enforced = true,
-	.meter_rate_max = NIX_BPF_RATE_MAX / 8, /* Bytes per second */
 	.color_aware_srtcm_rfc2697_supported = true,
 	.color_aware_trtcm_rfc2698_supported = true,
 	.color_aware_trtcm_rfc4115_supported = true,
@@ -180,13 +179,13 @@ cnxk_nix_mtr_capabilities_get(struct rte_eth_dev *dev,
 			      struct rte_mtr_capabilities *capa,
 			      struct rte_mtr_error *error)
 {
-	struct cnxk_eth_dev *eth_dev = cnxk_eth_pmd_priv(dev);
-	uint16_t count[ROC_NIX_BPF_LEVEL_MAX] = {0};
 	uint8_t lvl_mask = ROC_NIX_BPF_LEVEL_F_LEAF | ROC_NIX_BPF_LEVEL_F_MID |
 			   ROC_NIX_BPF_LEVEL_F_TOP;
+	struct cnxk_eth_dev *eth_dev = cnxk_eth_pmd_priv(dev);
+	uint16_t count[ROC_NIX_BPF_LEVEL_MAX] = {0};
 	struct roc_nix *nix = &eth_dev->nix;
-	int rc;
-	int i;
+	uint32_t time_unit;
+	int rc, i;
 
 	RTE_SET_USED(dev);
 
@@ -206,6 +205,15 @@ cnxk_nix_mtr_capabilities_get(struct rte_eth_dev *dev,
 	mtr_capa.meter_trtcm_rfc2698_n_max = mtr_capa.n_max;
 	mtr_capa.meter_trtcm_rfc4115_n_max = mtr_capa.n_max;
 	mtr_capa.meter_policy_n_max = mtr_capa.n_max;
+
+	rc = roc_nix_bpf_timeunit_get(nix, &time_unit);
+	if (rc)
+		return rc;
+
+	mtr_capa.meter_rate_max =
+		NIX_BPF_RATE(time_unit, NIX_BPF_MAX_RATE_EXPONENT,
+			     NIX_BPF_MAX_RATE_MANTISSA, 0) /
+		8;
 
 	*capa = mtr_capa;
 	return 0;
@@ -302,6 +310,9 @@ cnxk_nix_mtr_policy_validate(struct rte_eth_dev *dev,
 					supported[i] = true;
 
 				if (action->type == RTE_FLOW_ACTION_TYPE_DROP)
+					supported[i] = true;
+
+				if (action->type == RTE_FLOW_ACTION_TYPE_VOID)
 					supported[i] = true;
 
 				if (!supported[i]) {

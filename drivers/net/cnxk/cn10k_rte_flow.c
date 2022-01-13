@@ -36,20 +36,20 @@ cn10k_mtr_configure(struct rte_eth_dev *eth_dev,
 	for (i = 0; actions[i].type != RTE_FLOW_ACTION_TYPE_END; i++) {
 		if (actions[i].type == RTE_FLOW_ACTION_TYPE_METER) {
 			mtr_conf = (const struct rte_flow_action_meter
-					    *)(actions->conf);
+					    *)(actions[i].conf);
 			mtr_id = mtr_conf->mtr_id;
 			is_mtr_act = true;
 		}
 		if (actions[i].type == RTE_FLOW_ACTION_TYPE_QUEUE) {
 			q_conf = (const struct rte_flow_action_queue
-					  *)(actions->conf);
+					  *)(actions[i].conf);
 			if (is_mtr_act)
 				nix_mtr_rq_update(eth_dev, mtr_id, 1,
 						  &q_conf->index);
 		}
 		if (actions[i].type == RTE_FLOW_ACTION_TYPE_RSS) {
 			rss_conf = (const struct rte_flow_action_rss
-					    *)(actions->conf);
+					    *)(actions[i].conf);
 			if (is_mtr_act)
 				nix_mtr_rq_update(eth_dev, mtr_id,
 						  rss_conf->queue_num,
@@ -171,7 +171,6 @@ cn10k_flow_create(struct rte_eth_dev *eth_dev, const struct rte_flow_attr *attr,
 			return NULL;
 		}
 	}
-
 	for (i = 0; actions[i].type != RTE_FLOW_ACTION_TYPE_END; i++) {
 		if (actions[i].type == RTE_FLOW_ACTION_TYPE_METER) {
 			mtr = (const struct rte_flow_action_meter *)actions[i]
