@@ -1500,23 +1500,6 @@ memif_stats_reset(struct rte_eth_dev *dev)
 	return 0;
 }
 
-static int
-memif_rx_queue_intr_enable(struct rte_eth_dev *dev __rte_unused,
-			   uint16_t qid __rte_unused)
-{
-	MIF_LOG(WARNING, "Interrupt mode not supported.");
-
-	return -1;
-}
-
-static int
-memif_rx_queue_intr_disable(struct rte_eth_dev *dev, uint16_t qid __rte_unused)
-{
-	struct pmd_internals *pmd __rte_unused = dev->data->dev_private;
-
-	return 0;
-}
-
 static const struct eth_dev_ops ops = {
 	.dev_start = memif_dev_start,
 	.dev_stop = memif_dev_stop,
@@ -1527,8 +1510,6 @@ static const struct eth_dev_ops ops = {
 	.rx_queue_setup = memif_rx_queue_setup,
 	.rx_queue_release = memif_rx_queue_release,
 	.tx_queue_release = memif_tx_queue_release,
-	.rx_queue_intr_enable = memif_rx_queue_intr_enable,
-	.rx_queue_intr_disable = memif_rx_queue_intr_disable,
 	.link_update = memif_link_update,
 	.stats_get = memif_stats_get,
 	.stats_reset = memif_stats_reset,
