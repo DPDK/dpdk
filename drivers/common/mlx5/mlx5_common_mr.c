@@ -1834,12 +1834,13 @@ mlx5_mempool_reg_addr2mr(struct mlx5_mempool_reg *mpr, uintptr_t addr,
 
 	for (i = 0; i < mpr->mrs_n; i++) {
 		const struct mlx5_pmd_mr *mr = &mpr->mrs[i].pmd_mr;
-		uintptr_t mr_addr = (uintptr_t)mr->addr;
+		uintptr_t mr_start = (uintptr_t)mr->addr;
+		uintptr_t mr_end = mr_start + mr->len;
 
-		if (mr_addr <= addr) {
+		if (mr_start <= addr && addr < mr_end) {
 			lkey = rte_cpu_to_be_32(mr->lkey);
-			entry->start = mr_addr;
-			entry->end = mr_addr + mr->len;
+			entry->start = mr_start;
+			entry->end = mr_end;
 			entry->lkey = lkey;
 			break;
 		}
