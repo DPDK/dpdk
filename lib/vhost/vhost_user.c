@@ -973,6 +973,11 @@ vhost_user_set_vring_base(struct virtio_net **pdev,
 		vq->last_avail_idx = msg->payload.state.num;
 	}
 
+	VHOST_LOG_CONFIG(INFO,
+		"(%s) vring base idx:%u last_used_idx:%u last_avail_idx:%u.\n",
+		dev->ifname, msg->payload.state.index, vq->last_used_idx,
+		vq->last_avail_idx);
+
 	return RTE_VHOST_MSG_RESULT_OK;
 }
 
