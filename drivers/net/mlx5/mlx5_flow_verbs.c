@@ -1736,12 +1736,12 @@ flow_verbs_translate(struct rte_eth_dev *dev,
 		case RTE_FLOW_ACTION_TYPE_FLAG:
 			flow_verbs_translate_action_flag(dev_flow, actions);
 			action_flags |= MLX5_FLOW_ACTION_FLAG;
-			dev_flow->handle->mark = 1;
+			wks->mark = 1;
 			break;
 		case RTE_FLOW_ACTION_TYPE_MARK:
 			flow_verbs_translate_action_mark(dev_flow, actions);
 			action_flags |= MLX5_FLOW_ACTION_MARK;
-			dev_flow->handle->mark = 1;
+			wks->mark = 1;
 			break;
 		case RTE_FLOW_ACTION_TYPE_DROP:
 			flow_verbs_translate_action_drop(dev_flow, actions);

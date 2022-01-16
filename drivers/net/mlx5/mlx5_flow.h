@@ -632,7 +632,6 @@ struct mlx5_flow_handle {
 	/**< Bit-fields of present layers, see MLX5_FLOW_LAYER_*. */
 	void *drv_flow; /**< pointer to driver flow object. */
 	uint32_t split_flow_id:28; /**< Sub flow unique match flow id. */
-	uint32_t mark:1; /**< Metadata rxq mark flag. */
 	uint32_t fate_action:3; /**< Fate action type. */
 	union {
 		uint32_t rix_hrxq; /**< Hash Rx queue object index. */
@@ -1123,6 +1122,7 @@ struct mlx5_flow_workspace {
 	struct mlx5_flow_rss_desc rss_desc;
 	uint32_t rssq_num; /* Allocated queue num in rss_desc. */
 	uint32_t flow_idx; /* Intermediate device flow index. */
+	uint32_t mark:1; /* Indicates if flow contains mark action. */
 };
 
 struct mlx5_flow_split_info {

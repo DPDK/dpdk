@@ -9200,7 +9200,7 @@ flow_dv_translate_action_sample(struct rte_eth_dev *dev,
 				(((const struct rte_flow_action_mark *)
 				(sub_actions->conf))->id);
 
-			dev_flow->handle->mark = 1;
+			wks->mark = 1;
 			pre_rix = dev_flow->handle->dvh.rix_tag;
 			/* Save the mark resource before sample */
 			pre_r = dev_flow->dv.tag_resource;
@@ -9889,7 +9889,7 @@ flow_dv_translate(struct rte_eth_dev *dev,
 			break;
 		case RTE_FLOW_ACTION_TYPE_FLAG:
 			action_flags |= MLX5_FLOW_ACTION_FLAG;
-			dev_flow->handle->mark = 1;
+			wks->mark = 1;
 			if (dev_conf->dv_xmeta_en != MLX5_XMETA_MODE_LEGACY) {
 				struct rte_flow_action_mark mark = {
 					.id = MLX5_FLOW_MARK_DEFAULT,
@@ -9918,7 +9918,7 @@ flow_dv_translate(struct rte_eth_dev *dev,
 			break;
 		case RTE_FLOW_ACTION_TYPE_MARK:
 			action_flags |= MLX5_FLOW_ACTION_MARK;
-			dev_flow->handle->mark = 1;
+			wks->mark = 1;
 			if (dev_conf->dv_xmeta_en != MLX5_XMETA_MODE_LEGACY) {
 				const struct rte_flow_action_mark *mark =
 					(const struct rte_flow_action_mark *)
