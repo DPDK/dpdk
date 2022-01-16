@@ -191,12 +191,12 @@ ipsec_mb_parse_xform(const struct rte_crypto_sym_xform *xform,
 			const struct rte_crypto_sym_xform **cipher_xform,
 			const struct rte_crypto_sym_xform **aead_xform)
 {
-	const struct rte_crypto_sym_xform *next = xform->next;
-
 	if (xform == NULL) {
 		*mode = IPSEC_MB_OP_NOT_SUPPORTED;
 		return -ENOTSUP;
 	}
+
+	const struct rte_crypto_sym_xform *next = xform->next;
 
 	if (xform->type == RTE_CRYPTO_SYM_XFORM_CIPHER) {
 		if (next == NULL) {
