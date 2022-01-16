@@ -1413,6 +1413,7 @@ struct mlx5_priv {
 	unsigned int mtr_en:1; /* Whether support meter. */
 	unsigned int mtr_reg_share:1; /* Whether support meter REG_C share. */
 	unsigned int lb_used:1; /* Loopback queue is referred to. */
+	uint32_t mark_enabled:1; /* If mark action is enabled on rxqs. */
 	uint16_t domain_id; /* Switch domain identifier. */
 	uint16_t vport_id; /* Associated VF vport index (if any). */
 	uint32_t vport_meta_tag; /* Used for vport index match ove VF LAG. */

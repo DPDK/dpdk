@@ -697,7 +697,6 @@ struct mlx5_flow_handle {
 	void *drv_flow; /**< pointer to driver flow object. */
 	uint32_t split_flow_id:27; /**< Sub flow unique match flow id. */
 	uint32_t is_meter_flow_id:1; /**< Indicate if flow_id is for meter. */
-	uint32_t mark:1; /**< Metadata rxq mark flag. */
 	uint32_t fate_action:3; /**< Fate action type. */
 	uint32_t flex_item; /**< referenced Flex Item bitmask. */
 	union {
@@ -1108,6 +1107,7 @@ struct mlx5_flow_workspace {
 	/* The final policy when meter policy is hierarchy. */
 	uint32_t skip_matcher_reg:1;
 	/* Indicates if need to skip matcher register in translate. */
+	uint32_t mark:1; /* Indicates if flow contains mark action. */
 };
 
 struct mlx5_flow_split_info {

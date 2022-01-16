@@ -161,7 +161,6 @@ struct mlx5_rxq_ctrl {
 	uint16_t share_qid; /* Shared RxQ ID in group. */
 	unsigned int started:1; /* Whether (shared) RXQ has been started. */
 	unsigned int irq:1; /* Whether IRQ is enabled. */
-	uint32_t flow_mark_n; /* Number of Mark/Flag flows using this Queue. */
 	uint32_t flow_tunnels_n[MLX5_FLOW_TUNNEL]; /* Tunnels counters. */
 	uint32_t wqn; /* WQ number. */
 	uint32_t rxseg_n; /* Number of split segment descriptions. */

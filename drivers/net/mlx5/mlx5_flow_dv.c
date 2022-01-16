@@ -11646,7 +11646,7 @@ flow_dv_translate_action_sample(struct rte_eth_dev *dev,
 				(((const struct rte_flow_action_mark *)
 				(sub_actions->conf))->id);
 
-			dev_flow->handle->mark = 1;
+			wks->mark = 1;
 			pre_rix = dev_flow->handle->dvh.rix_tag;
 			/* Save the mark resource before sample */
 			pre_r = dev_flow->dv.tag_resource;
@@ -12806,7 +12806,7 @@ flow_dv_translate(struct rte_eth_dev *dev,
 			break;
 		case RTE_FLOW_ACTION_TYPE_FLAG:
 			action_flags |= MLX5_FLOW_ACTION_FLAG;
-			dev_flow->handle->mark = 1;
+			wks->mark = 1;
 			if (dev_conf->dv_xmeta_en != MLX5_XMETA_MODE_LEGACY) {
 				struct rte_flow_action_mark mark = {
 					.id = MLX5_FLOW_MARK_DEFAULT,
@@ -12835,7 +12835,7 @@ flow_dv_translate(struct rte_eth_dev *dev,
 			break;
 		case RTE_FLOW_ACTION_TYPE_MARK:
 			action_flags |= MLX5_FLOW_ACTION_MARK;
-			dev_flow->handle->mark = 1;
+			wks->mark = 1;
 			if (dev_conf->dv_xmeta_en != MLX5_XMETA_MODE_LEGACY) {
 				const struct rte_flow_action_mark *mark =
 					(const struct rte_flow_action_mark *)
@@ -15403,7 +15403,9 @@ __flow_dv_create_domain_policy_acts(struct rte_eth_dev *dev,
 			    (MLX5_MAX_MODIFY_NUM + 1)];
 	} mhdr_dummy;
 	struct mlx5_flow_dv_modify_hdr_resource *mhdr_res = &mhdr_dummy.res;
+	struct mlx5_flow_workspace *wks = mlx5_flow_get_thread_workspace();
 
+	MLX5_ASSERT(wks);
 	egress = (domain == MLX5_MTR_DOMAIN_EGRESS) ? 1 : 0;
 	transfer = (domain == MLX5_MTR_DOMAIN_TRANSFER) ? 1 : 0;
 	memset(&dh, 0, sizeof(struct mlx5_flow_handle));
@@ -15441,7 +15443,7 @@ __flow_dv_create_domain_policy_acts(struct rte_eth_dev *dev,
 					  NULL,
 					  "cannot create policy "
 					  "mark action for this color");
-				dev_flow.handle->mark = 1;
+				wks->mark = 1;
 				if (flow_dv_tag_resource_register(dev, tag_be,
 						  &dev_flow, &flow_err))
 					return -rte_mtr_error_set(error,
@@ -16866,7 +16868,9 @@ __flow_dv_meter_get_rss_sub_policy(struct rte_eth_dev *dev,
 	struct mlx5_meter_policy_action_container *act_cnt;
 	uint32_t domain = MLX5_MTR_DOMAIN_INGRESS;
 	uint16_t sub_policy_num;
+	struct mlx5_flow_workspace *wks = mlx5_flow_get_thread_workspace();
 
+	MLX5_ASSERT(wks);
 	rte_spinlock_lock(&mtr_policy->sl);
 	for (i = 0; i < MLX5_MTR_RTE_COLORS; i++) {
 		if (!rss_desc[i])
@@ -16940,7 +16944,7 @@ __flow_dv_meter_get_rss_sub_policy(struct rte_eth_dev *dev,
 			if (act_cnt->rix_mark || act_cnt->modify_hdr) {
 				memset(&dh, 0, sizeof(struct mlx5_flow_handle));
 				if (act_cnt->rix_mark)
-					dh.mark = 1;
+					wks->mark = 1;
 				dh.fate_action = MLX5_FLOW_FATE_QUEUE;
 				dh.rix_hrxq = hrxq_idx[i];
 				flow_drv_rxq_flags_set(dev, &dh);
