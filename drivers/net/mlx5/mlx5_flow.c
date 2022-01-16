@@ -1234,7 +1234,6 @@ flow_drv_rxq_flags_set(struct rte_eth_dev *dev,
 		       struct mlx5_flow_handle *dev_handle)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	const int mark = dev_handle->mark;
 	const int tunnel = !!(dev_handle->layers & MLX5_FLOW_LAYER_TUNNEL);
 	struct mlx5_ind_table_obj *ind_tbl = NULL;
 	unsigned int i;
@@ -1269,15 +1268,6 @@ flow_drv_rxq_flags_set(struct rte_eth_dev *dev,
 		 * this must be always enabled (metadata may arive
 		 * from other port - not from local flows only.
 		 */
-		if (priv->config.dv_flow_en &&
-		    priv->config.dv_xmeta_en != MLX5_XMETA_MODE_LEGACY &&
-		    mlx5_flow_ext_mreg_supported(dev)) {
-			rxq_ctrl->rxq.mark = 1;
-			rxq_ctrl->flow_mark_n = 1;
-		} else if (mark) {
-			rxq_ctrl->rxq.mark = 1;
-			rxq_ctrl->flow_mark_n++;
-		}
 		if (tunnel) {
 			unsigned int j;
 
@@ -1295,6 +1285,20 @@ flow_drv_rxq_flags_set(struct rte_eth_dev *dev,
 	}
 }
 
+static void
+flow_rxq_mark_flag_set(struct rte_eth_dev *dev)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_rxq_ctrl *rxq_ctrl;
+
+	if (priv->mark_enabled)
+		return;
+	LIST_FOREACH(rxq_ctrl, &priv->rxqsctrl, next) {
+		rxq_ctrl->rxq.mark = 1;
+	}
+	priv->mark_enabled = 1;
+}
+
 /**
  * Set the Rx queue flags (Mark/Flag and Tunnel Ptypes) for a flow
  *
@@ -1309,7 +1313,11 @@ flow_rxq_flags_set(struct rte_eth_dev *dev, struct rte_flow *flow)
 	struct mlx5_priv *priv = dev->data->dev_private;
 	uint32_t handle_idx;
 	struct mlx5_flow_handle *dev_handle;
+	struct mlx5_flow_workspace *wks = mlx5_flow_get_thread_workspace();
 
+	MLX5_ASSERT(wks);
+	if (wks->mark)
+		flow_rxq_mark_flag_set(dev);
 	SILIST_FOREACH(priv->sh->ipool[MLX5_IPOOL_MLX5_FLOW], flow->dev_handles,
 		       handle_idx, dev_handle, next)
 		flow_drv_rxq_flags_set(dev, dev_handle);
@@ -1329,7 +1337,6 @@ flow_drv_rxq_flags_trim(struct rte_eth_dev *dev,
 			struct mlx5_flow_handle *dev_handle)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	const int mark = dev_handle->mark;
 	const int tunnel = !!(dev_handle->layers & MLX5_FLOW_LAYER_TUNNEL);
 	struct mlx5_ind_table_obj *ind_tbl = NULL;
 	unsigned int i;
@@ -1360,15 +1367,6 @@ flow_drv_rxq_flags_trim(struct rte_eth_dev *dev,
 		MLX5_ASSERT(rxq_ctrl != NULL);
 		if (rxq_ctrl == NULL)
 			continue;
-		if (priv->config.dv_flow_en &&
-		    priv->config.dv_xmeta_en != MLX5_XMETA_MODE_LEGACY &&
-		    mlx5_flow_ext_mreg_supported(dev)) {
-			rxq_ctrl->rxq.mark = 1;
-			rxq_ctrl->flow_mark_n = 1;
-		} else if (mark) {
-			rxq_ctrl->flow_mark_n--;
-			rxq_ctrl->rxq.mark = !!rxq_ctrl->flow_mark_n;
-		}
 		if (tunnel) {
 			unsigned int j;
 
@@ -1425,12 +1423,12 @@ flow_rxq_flags_clear(struct rte_eth_dev *dev)
 
 		if (rxq == NULL || rxq->ctrl == NULL)
 			continue;
-		rxq->ctrl->flow_mark_n = 0;
 		rxq->ctrl->rxq.mark = 0;
 		for (j = 0; j != MLX5_FLOW_TUNNEL; ++j)
 			rxq->ctrl->flow_tunnels_n[j] = 0;
 		rxq->ctrl->rxq.tunnel = 0;
 	}
+	priv->mark_enabled = 0;
 }
 
 /**
@@ -4811,6 +4809,7 @@ flow_create_split_inner(struct rte_eth_dev *dev,
 			struct rte_flow_error *error)
 {
 	struct mlx5_flow *dev_flow;
+	struct mlx5_flow_workspace *wks = mlx5_flow_get_thread_workspace();
 
 	dev_flow = flow_drv_prepare(dev, flow, attr, items, actions,
 				    flow_split_info->flow_idx, error);
@@ -4829,8 +4828,10 @@ flow_create_split_inner(struct rte_eth_dev *dev,
 	 */
 	if (flow_split_info->prefix_layers)
 		dev_flow->handle->layers = flow_split_info->prefix_layers;
-	if (flow_split_info->prefix_mark)
-		dev_flow->handle->mark = 1;
+	if (flow_split_info->prefix_mark) {
+		MLX5_ASSERT(wks);
+		wks->mark = 1;
+	}
 	if (sub_flow)
 		*sub_flow = dev_flow;
 #ifdef HAVE_IBV_FLOW_DV_SUPPORT
@@ -6143,7 +6144,7 @@ flow_create_split_meter(struct rte_eth_dev *dev,
 				 MLX5_FLOW_TABLE_LEVEL_METER;
 		flow_split_info->prefix_layers =
 				flow_get_prefix_layer_flags(dev_flow);
-		flow_split_info->prefix_mark |= dev_flow->handle->mark;
+		flow_split_info->prefix_mark |= wks->mark;
 		flow_split_info->table_id = MLX5_MTR_TABLE_ID_SUFFIX;
 	}
 	/* Add the prefix subflow. */
@@ -6209,6 +6210,7 @@ flow_create_split_sample(struct rte_eth_dev *dev,
 	struct mlx5_flow_dv_sample_resource *sample_res;
 	struct mlx5_flow_tbl_data_entry *sfx_tbl_data;
 	struct mlx5_flow_tbl_resource *sfx_tbl;
+	struct mlx5_flow_workspace *wks = mlx5_flow_get_thread_workspace();
 #endif
 	size_t act_size;
 	size_t item_size;
@@ -6295,7 +6297,8 @@ flow_create_split_sample(struct rte_eth_dev *dev,
 		}
 		flow_split_info->prefix_layers =
 				flow_get_prefix_layer_flags(dev_flow);
-		flow_split_info->prefix_mark |= dev_flow->handle->mark;
+		MLX5_ASSERT(wks);
+		flow_split_info->prefix_mark |= wks->mark;
 		/* Suffix group level already be scaled with factor, set
 		 * MLX5_SCALE_FLOW_GROUP_BIT of skip_scale to 1 to avoid scale
 		 * again in translation.
