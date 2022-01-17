@@ -17,13 +17,15 @@ int
 hns3_tx_check_vec_support(struct rte_eth_dev *dev)
 {
 	struct rte_eth_txmode *txmode = &dev->data->dev_conf.txmode;
-
-	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	if (hns3_dev_get_support(hw, PTP))
-		return -ENOTSUP;
+	struct hns3_adapter *hns = dev->data->dev_private;
+	struct hns3_pf *pf = &hns->pf;
 
 	/* Only support RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE */
 	if (txmode->offloads != RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE)
+		return -ENOTSUP;
+
+	/* Vec is not supported when PTP enabled */
+	if (pf->ptp_enable)
 		return -ENOTSUP;
 
 	return 0;
@@ -232,10 +234,8 @@ hns3_rx_check_vec_support(struct rte_eth_dev *dev)
 	struct rte_eth_rxmode *rxmode = &dev->data->dev_conf.rxmode;
 	uint64_t offloads_mask = RTE_ETH_RX_OFFLOAD_TCP_LRO |
 				 RTE_ETH_RX_OFFLOAD_VLAN;
-
-	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	if (hns3_dev_get_support(hw, PTP))
-		return -ENOTSUP;
+	struct hns3_adapter *hns = dev->data->dev_private;
+	struct hns3_pf *pf = &hns->pf;
 
 	if (dev->data->scattered_rx)
 		return -ENOTSUP;
@@ -247,6 +247,10 @@ hns3_rx_check_vec_support(struct rte_eth_dev *dev)
 		return -ENOTSUP;
 
 	if (hns3_rxq_iterate(dev, hns3_rxq_vec_check, NULL) != 0)
+		return -ENOTSUP;
+
+	/* Vec is not supported when PTP enabled */
+	if (pf->ptp_enable)
 		return -ENOTSUP;
 
 	return 0;

@@ -227,17 +227,11 @@ out:
 	return ret;
 }
 
-static bool
-hns3_is_1588_event_type(uint32_t event_type)
-{
-	return (event_type == HNS3_VECTOR0_EVENT_PTP);
-}
-
 static void
 hns3_clear_event_cause(struct hns3_hw *hw, uint32_t event_type, uint32_t regclr)
 {
 	if (event_type == HNS3_VECTOR0_EVENT_RST ||
-	    hns3_is_1588_event_type(event_type))
+	    event_type == HNS3_VECTOR0_EVENT_PTP)
 		hns3_write_dev(hw, HNS3_MISC_RESET_STS_REG, regclr);
 	else if (event_type == HNS3_VECTOR0_EVENT_MBX)
 		hns3_write_dev(hw, HNS3_VECTOR0_CMDQ_SRC_REG, regclr);

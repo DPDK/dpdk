@@ -2388,14 +2388,14 @@ hns3_rx_alloc_buffer(struct hns3_rx_queue *rxq)
 		return rte_mbuf_raw_alloc(rxq->mb_pool);
 }
 
-static inline void
+static void
 hns3_rx_ptp_timestamp_handle(struct hns3_rx_queue *rxq, struct rte_mbuf *mbuf,
-		  volatile struct hns3_desc *rxd)
+			     uint64_t timestamp)
 {
 	struct hns3_pf *pf = HNS3_DEV_PRIVATE_TO_PF(rxq->hns);
-	uint64_t timestamp = rte_le_to_cpu_64(rxd->timestamp);
 
-	mbuf->ol_flags |= RTE_MBUF_F_RX_IEEE1588_PTP | RTE_MBUF_F_RX_IEEE1588_TMST;
+	mbuf->ol_flags |= RTE_MBUF_F_RX_IEEE1588_PTP |
+			  RTE_MBUF_F_RX_IEEE1588_TMST;
 	if (hns3_timestamp_rx_dynflag > 0) {
 		*RTE_MBUF_DYNFIELD(mbuf, hns3_timestamp_dynfield_offset,
 			rte_mbuf_timestamp_t *) = timestamp;
@@ -2469,7 +2469,8 @@ hns3_recv_pkts_simple(void *rx_queue,
 		rxe->mbuf = nmb;
 
 		if (unlikely(bd_base_info & BIT(HNS3_RXD_TS_VLD_B)))
-			hns3_rx_ptp_timestamp_handle(rxq, rxm, rxdp);
+			hns3_rx_ptp_timestamp_handle(rxq, rxm,
+				rte_le_to_cpu_64(rxdp->timestamp));
 
 		dma_addr = rte_mbuf_data_iova_default(nmb);
 		rxdp->addr = rte_cpu_to_le_64(dma_addr);
@@ -2540,6 +2541,7 @@ hns3_recv_scattered_pkts(void *rx_queue,
 	struct rte_mbuf *rxm;
 	struct rte_eth_dev *dev;
 	uint32_t bd_base_info;
+	uint64_t timestamp;
 	uint32_t l234_info;
 	uint32_t gro_size;
 	uint32_t ol_info;
@@ -2649,6 +2651,9 @@ hns3_recv_scattered_pkts(void *rx_queue,
 		rxm = rxe->mbuf;
 		rxe->mbuf = nmb;
 
+		if (unlikely(bd_base_info & BIT(HNS3_RXD_TS_VLD_B)))
+			timestamp = rte_le_to_cpu_64(rxdp->timestamp);
+
 		dma_addr = rte_cpu_to_le_64(rte_mbuf_data_iova_default(nmb));
 		rxdp->rx.bd_base_info = 0;
 		rxdp->addr = dma_addr;
@@ -2671,7 +2676,7 @@ hns3_recv_scattered_pkts(void *rx_queue,
 		}
 
 		if (unlikely(bd_base_info & BIT(HNS3_RXD_TS_VLD_B)))
-			hns3_rx_ptp_timestamp_handle(rxq, first_seg, rxdp);
+			hns3_rx_ptp_timestamp_handle(rxq, first_seg, timestamp);
 
 		/*
 		 * The last buffer of the received packet. packet len from
@@ -4044,7 +4049,7 @@ static inline void
 hns3_tx_setup_4bd(struct hns3_desc *txdp, struct rte_mbuf **pkts)
 {
 #define PER_LOOP_NUM	4
-	const uint16_t bd_flag = BIT(HNS3_TXD_VLD_B) | BIT(HNS3_TXD_FE_B);
+	uint16_t bd_flag = BIT(HNS3_TXD_VLD_B) | BIT(HNS3_TXD_FE_B);
 	uint64_t dma_addr;
 	uint32_t i;
 
@@ -4055,6 +4060,8 @@ hns3_tx_setup_4bd(struct hns3_desc *txdp, struct rte_mbuf **pkts)
 		txdp->tx.paylen_fd_dop_ol4cs = 0;
 		txdp->tx.type_cs_vlan_tso_len = 0;
 		txdp->tx.ol_type_vlan_len_msec = 0;
+		if (unlikely((*pkts)->ol_flags & RTE_MBUF_F_TX_IEEE1588_TMST))
+			bd_flag |= BIT(HNS3_TXD_TSYN_B);
 		txdp->tx.tp_fe_sc_vld_ra_ri = rte_cpu_to_le_16(bd_flag);
 	}
 }
@@ -4062,7 +4069,7 @@ hns3_tx_setup_4bd(struct hns3_desc *txdp, struct rte_mbuf **pkts)
 static inline void
 hns3_tx_setup_1bd(struct hns3_desc *txdp, struct rte_mbuf **pkts)
 {
-	const uint16_t bd_flag = BIT(HNS3_TXD_VLD_B) | BIT(HNS3_TXD_FE_B);
+	uint16_t bd_flag = BIT(HNS3_TXD_VLD_B) | BIT(HNS3_TXD_FE_B);
 	uint64_t dma_addr;
 
 	dma_addr = rte_mbuf_data_iova(*pkts);
@@ -4071,6 +4078,8 @@ hns3_tx_setup_1bd(struct hns3_desc *txdp, struct rte_mbuf **pkts)
 	txdp->tx.paylen_fd_dop_ol4cs = 0;
 	txdp->tx.type_cs_vlan_tso_len = 0;
 	txdp->tx.ol_type_vlan_len_msec = 0;
+	if (unlikely((*pkts)->ol_flags & RTE_MBUF_F_TX_IEEE1588_TMST))
+		bd_flag |= BIT(HNS3_TXD_TSYN_B);
 	txdp->tx.tp_fe_sc_vld_ra_ri = rte_cpu_to_le_16(bd_flag);
 }
 
@@ -4311,10 +4320,6 @@ static bool
 hns3_tx_check_simple_support(struct rte_eth_dev *dev)
 {
 	uint64_t offloads = dev->data->dev_conf.txmode.offloads;
-
-	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	if (hns3_dev_get_support(hw, PTP))
-		return false;
 
 	return (offloads == (offloads & RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE));
 }
