@@ -74,7 +74,6 @@ mp_secondary_handle(const struct rte_mp_msg *mp_msg, const void *peer)
 	struct hns3_mp_param *res = (struct hns3_mp_param *)mp_res.param;
 	const struct hns3_mp_param *param =
 		(const struct hns3_mp_param *)mp_msg->param;
-	eth_tx_prep_t prep = NULL;
 	struct rte_eth_dev *dev;
 	int ret;
 
@@ -98,14 +97,12 @@ mp_secondary_handle(const struct rte_mp_msg *mp_msg, const void *peer)
 	case HNS3_MP_REQ_START_TX:
 		PMD_INIT_LOG(INFO, "port %u starting Tx datapath",
 			     dev->data->port_id);
-		dev->tx_pkt_burst = hns3_get_tx_function(dev, &prep);
-		dev->tx_pkt_prepare = prep;
+		hns3_start_tx_datapath(dev);
 		break;
 	case HNS3_MP_REQ_STOP_TX:
 		PMD_INIT_LOG(INFO, "port %u stopping Tx datapath",
 			     dev->data->port_id);
-		dev->tx_pkt_burst = hns3_dummy_rxtx_burst;
-		dev->tx_pkt_prepare = NULL;
+		hns3_stop_tx_datapath(dev);
 		break;
 	default:
 		rte_errno = EINVAL;
