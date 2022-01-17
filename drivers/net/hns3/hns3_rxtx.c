@@ -4408,7 +4408,21 @@ hns3_trace_rxtx_function(struct rte_eth_dev *dev)
 		 rx_mode.info, tx_mode.info);
 }
 
-void hns3_set_rxtx_function(struct rte_eth_dev *eth_dev)
+static void
+hns3_eth_dev_fp_ops_config(const struct rte_eth_dev *dev)
+{
+	struct rte_eth_fp_ops *fpo = rte_eth_fp_ops;
+	uint16_t port_id = dev->data->port_id;
+
+	fpo[port_id].rx_pkt_burst = dev->rx_pkt_burst;
+	fpo[port_id].tx_pkt_burst = dev->tx_pkt_burst;
+	fpo[port_id].tx_pkt_prepare = dev->tx_pkt_prepare;
+	fpo[port_id].rx_descriptor_status = dev->rx_descriptor_status;
+	fpo[port_id].tx_descriptor_status = dev->tx_descriptor_status;
+}
+
+void
+hns3_set_rxtx_function(struct rte_eth_dev *eth_dev)
 {
 	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
 	struct hns3_adapter *hns = eth_dev->data->dev_private;
@@ -4429,6 +4443,8 @@ void hns3_set_rxtx_function(struct rte_eth_dev *eth_dev)
 		eth_dev->tx_pkt_burst = hns3_dummy_rxtx_burst;
 		eth_dev->tx_pkt_prepare = NULL;
 	}
+
+	hns3_eth_dev_fp_ops_config(eth_dev);
 }
 
 void
@@ -4729,6 +4745,11 @@ hns3_stop_tx_datapath(struct rte_eth_dev *dev)
 {
 	dev->tx_pkt_burst = hns3_dummy_rxtx_burst;
 	dev->tx_pkt_prepare = NULL;
+	hns3_eth_dev_fp_ops_config(dev);
+
+	if (rte_eal_process_type() == RTE_PROC_SECONDARY)
+		return;
+
 	rte_wmb();
 	/* Disable tx datapath on secondary process. */
 	hns3_mp_req_stop_tx(dev);
@@ -4743,5 +4764,10 @@ hns3_start_tx_datapath(struct rte_eth_dev *dev)
 
 	dev->tx_pkt_burst = hns3_get_tx_function(dev, &prep);
 	dev->tx_pkt_prepare = prep;
+	hns3_eth_dev_fp_ops_config(dev);
+
+	if (rte_eal_process_type() == RTE_PROC_SECONDARY)
+		return;
+
 	hns3_mp_req_start_tx(dev);
 }
