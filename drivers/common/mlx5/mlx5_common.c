@@ -644,7 +644,7 @@ drivers_probe(struct mlx5_common_device *cdev, uint32_t user_classes)
 	struct mlx5_class_driver *driver;
 	uint32_t enabled_classes = 0;
 	bool already_loaded;
-	int ret;
+	int ret = -EINVAL;
 
 	TAILQ_FOREACH(driver, &drivers_list, next) {
 		if ((driver->drv_class & user_classes) == 0)
@@ -666,8 +666,10 @@ drivers_probe(struct mlx5_common_device *cdev, uint32_t user_classes)
 		}
 		enabled_classes |= driver->drv_class;
 	}
-	cdev->classes_loaded |= enabled_classes;
-	return 0;
+	if (!ret) {
+		cdev->classes_loaded |= enabled_classes;
+		return 0;
+	}
 probe_err:
 	/*
 	 * Need to remove only drivers which were not probed before this probe
