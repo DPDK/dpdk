@@ -216,7 +216,7 @@ hns3_parse_mbx_time_limit(const char *key, const char *value, void *extra_args)
 
 	/*
 	 * 500ms is empirical value in process of mailbox communication. If
-	 * the delay value is set to one lower thanthe empirical value, mailbox
+	 * the delay value is set to one lower than the empirical value, mailbox
 	 * communication may fail.
 	 */
 	if (val > HNS3_MBX_DEF_TIME_LIMIT_MS && val <= UINT16_MAX)
@@ -235,6 +235,12 @@ hns3_parse_devargs(struct rte_eth_dev *dev)
 	struct hns3_hw *hw = &hns->hw;
 	uint64_t dev_caps_mask = 0;
 	struct rte_kvargs *kvlist;
+
+	/* Set default value of runtime config parameters. */
+	hns->rx_func_hint = HNS3_IO_FUNC_HINT_NONE;
+	hns->tx_func_hint = HNS3_IO_FUNC_HINT_NONE;
+	hns->dev_caps_mask = 0;
+	hns->mbx_time_limit_ms = HNS3_MBX_DEF_TIME_LIMIT_MS;
 
 	if (dev->device->devargs == NULL)
 		return;
