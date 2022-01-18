@@ -1600,6 +1600,9 @@ vhost_user_get_inflight_fd(struct virtio_net **pdev,
 	int numa_node = SOCKET_ID_ANY;
 	void *addr;
 
+	if (validate_msg_fds(msg, 0) != 0)
+		return RTE_VHOST_MSG_RESULT_ERR;
+
 	if (msg->size != sizeof(msg->payload.inflight)) {
 		VHOST_LOG_CONFIG(ERR,
 			"invalid get_inflight_fd message size is %d\n",
@@ -1700,6 +1703,9 @@ vhost_user_set_inflight_fd(struct virtio_net **pdev, VhostUserMsg *msg,
 	void *addr;
 	int fd, i;
 	int numa_node = SOCKET_ID_ANY;
+
+	if (validate_msg_fds(msg, 1) != 0)
+		return RTE_VHOST_MSG_RESULT_ERR;
 
 	fd = msg->fds[0];
 	if (msg->size != sizeof(msg->payload.inflight) || fd < 0) {
