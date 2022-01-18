@@ -3511,6 +3511,11 @@ bond_ethdev_configure(struct rte_eth_dev *dev)
 	if (dev->data->dev_conf.rxmode.mq_mode & ETH_MQ_RX_RSS) {
 		struct rte_eth_rss_conf *rss_conf =
 			&dev->data->dev_conf.rx_adv_conf.rss_conf;
+
+		if (internals->rss_key_len == 0) {
+			internals->rss_key_len = sizeof(default_rss_key);
+		}
+
 		if (rss_conf->rss_key != NULL) {
 			if (internals->rss_key_len > rss_conf->rss_key_len) {
 				RTE_BOND_LOG(ERR, "Invalid rss key length(%u)",
