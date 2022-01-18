@@ -424,7 +424,7 @@ parse_ipv4_5tuple_rule(char *str, struct rte_eth_ntuple_filter *ntuple_filter)
 			&ntuple_filter->dst_ip,
 			&ntuple_filter->dst_ip_mask);
 	if (ret != 0) {
-		flow_classify_log("failed to read source address/mask: %s\n",
+		flow_classify_log("failed to read destination address/mask: %s\n",
 			in[CB_FLD_DST_ADDR]);
 		return ret;
 	}
