@@ -450,6 +450,15 @@ static inline int rte_gettid(void)
 }
 
 /**
+ * Get the OS-specific EAL base address.
+ *
+ * @return
+ *    The base address.
+ */
+__rte_internal
+uint64_t rte_eal_get_baseaddr(void);
+
+/**
  * Get the iova mode
  *
  * @return

@@ -62,6 +62,15 @@ rte_eal_iova_mode(void)
 	return rte_eal_get_configuration()->iova_mode;
 }
 
+/* Get the EAL base address */
+uint64_t
+rte_eal_get_baseaddr(void)
+{
+	return (internal_config.base_virtaddr != 0) ?
+		       (uint64_t) internal_config.base_virtaddr :
+		       eal_get_baseaddr();
+}
+
 enum rte_proc_type_t
 rte_eal_process_type(void)
 {
