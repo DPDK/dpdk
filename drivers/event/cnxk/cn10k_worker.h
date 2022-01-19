@@ -169,7 +169,6 @@ cn10k_process_vwqe(uintptr_t vwqe, uint16_t port_id, const uint32_t flags,
 					   CNXK_SSO_WQE_SG_PTR);
 		cnxk_nix_mbuf_to_tstamp((struct rte_mbuf *)mbuf, tstamp,
 					flags & NIX_RX_OFFLOAD_TSTAMP_F,
-					flags & NIX_RX_MULTI_SEG_F,
 					(uint64_t *)tstamp_ptr);
 		wqe[0] = (uint64_t *)mbuf;
 		non_vec--;
@@ -261,7 +260,6 @@ cn10k_sso_hws_get_work(struct cn10k_sso_hws *ws, struct rte_event *ev,
 			cnxk_nix_mbuf_to_tstamp((struct rte_mbuf *)mbuf,
 						ws->tstamp,
 						flags & NIX_RX_OFFLOAD_TSTAMP_F,
-						flags & NIX_RX_MULTI_SEG_F,
 						(uint64_t *)tstamp_ptr);
 			gw.u64[1] = mbuf;
 		} else if (CNXK_EVENT_TYPE_FROM_TAG(gw.u64[0]) ==
