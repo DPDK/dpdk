@@ -470,6 +470,7 @@ nfp_net_rx_queue_release(struct rte_eth_dev *dev, uint16_t queue_idx)
 
 	if (rxq) {
 		nfp_net_rx_queue_release_mbufs(rxq);
+		rte_eth_dma_zone_free(dev, "rx_ring", queue_idx);
 		rte_free(rxq->rxbufs);
 		rte_free(rxq);
 	}
@@ -660,6 +661,7 @@ nfp_net_tx_queue_release(struct rte_eth_dev *dev, uint16_t queue_idx)
 
 	if (txq) {
 		nfp_net_tx_queue_release_mbufs(txq);
+		rte_eth_dma_zone_free(dev, "tx_ring", queue_idx);
 		rte_free(txq->txbufs);
 		rte_free(txq);
 	}
