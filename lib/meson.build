@@ -134,22 +134,28 @@ foreach l:libraries
         warning('Library name, "@0@", and directory name, "@1@", do not match'.format(name, l))
     endif
 
+    shared_deps = ext_deps
+    static_deps = ext_deps
+    foreach d:deps
+        if not build
+            break
+        endif
+        if not is_variable('shared_rte_' + d)
+            build = false
+            reason = 'missing internal dependency, "@0@"'.format(d)
+            message('Disabling @1@ [@2@]: missing internal dependency "@0@"'
+                    .format(d, name, 'lib/' + l))
+        else
+            shared_deps += [get_variable('shared_rte_' + d)]
+            static_deps += [get_variable('static_rte_' + d)]
+        endif
+    endforeach
+
     if not build
         dpdk_libs_disabled += name
         set_variable(name.underscorify() + '_disable_reason', reason)
         continue
     endif
-
-    shared_deps = ext_deps
-    static_deps = ext_deps
-    foreach d:deps
-        if not is_variable('shared_rte_' + d)
-            error('Missing internal dependency "@0@" for @1@ [@2@]'
-                    .format(d, name, 'lib/' + l))
-        endif
-        shared_deps += [get_variable('shared_rte_' + d)]
-        static_deps += [get_variable('static_rte_' + d)]
-    endforeach
 
     enabled_libs += name
     dpdk_conf.set('RTE_LIB_' + name.to_upper(), 1)
