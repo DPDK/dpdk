@@ -247,9 +247,12 @@ rte_pci_probe_one_driver(struct rte_pci_driver *dr,
 			return -ENOMEM;
 		}
 
+		dev->driver = dr;
+
 		if (dr->drv_flags & RTE_PCI_DRV_NEED_MAPPING) {
 			ret = rte_pci_map_device(dev);
 			if (ret != 0) {
+				dev->driver = NULL;
 				rte_intr_instance_free(dev->vfio_req_intr_handle);
 				dev->vfio_req_intr_handle = NULL;
 				rte_intr_instance_free(dev->intr_handle);
@@ -257,8 +260,6 @@ rte_pci_probe_one_driver(struct rte_pci_driver *dr,
 				return ret;
 			}
 		}
-
-		dev->driver = dr;
 	}
 
 	RTE_LOG(INFO, EAL, "Probe PCI driver: %s (%x:%x) device: "PCI_PRI_FMT" (socket %i)\n",
