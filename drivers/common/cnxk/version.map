@@ -109,6 +109,7 @@ INTERNAL {
 	roc_nix_bpf_timeunit_get;
 	roc_nix_cq_dump;
 	roc_nix_cq_fini;
+	roc_nix_cq_head_tail_get;
 	roc_nix_cq_init;
 	roc_nix_cqe_dump;
 	roc_nix_dev_fini;
@@ -224,6 +225,7 @@ INTERNAL {
 	roc_nix_rx_queue_intr_enable;
 	roc_nix_sq_dump;
 	roc_nix_sq_fini;
+	roc_nix_sq_head_tail_get;
 	roc_nix_sq_init;
 	roc_nix_stats_get;
 	roc_nix_stats_queue_get;

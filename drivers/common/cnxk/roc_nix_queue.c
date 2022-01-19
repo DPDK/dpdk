@@ -984,3 +984,56 @@ roc_nix_sq_fini(struct roc_nix_sq *sq)
 
 	return rc;
 }
+
+void
+roc_nix_cq_head_tail_get(struct roc_nix *roc_nix, uint16_t qid, uint32_t *head,
+			 uint32_t *tail)
+{
+	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
+	uint64_t reg, val;
+	int64_t *addr;
+
+	if (head == NULL || tail == NULL)
+		return;
+
+	reg = (((uint64_t)qid) << 32);
+	addr = (int64_t *)(nix->base + NIX_LF_CQ_OP_STATUS);
+	val = roc_atomic64_add_nosync(reg, addr);
+	if (val &
+	    (BIT_ULL(NIX_CQ_OP_STAT_OP_ERR) | BIT_ULL(NIX_CQ_OP_STAT_CQ_ERR)))
+		val = 0;
+
+	*tail = (uint32_t)(val & 0xFFFFF);
+	*head = (uint32_t)((val >> 20) & 0xFFFFF);
+}
+
+void
+roc_nix_sq_head_tail_get(struct roc_nix *roc_nix, uint16_t qid, uint32_t *head,
+			 uint32_t *tail)
+{
+	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
+	struct roc_nix_sq *sq = nix->sqs[qid];
+	uint16_t sqes_per_sqb, sqb_cnt;
+	uint64_t reg, val;
+	int64_t *addr;
+
+	if (head == NULL || tail == NULL)
+		return;
+
+	reg = (((uint64_t)qid) << 32);
+	addr = (int64_t *)(nix->base + NIX_LF_SQ_OP_STATUS);
+	val = roc_atomic64_add_nosync(reg, addr);
+	if (val & BIT_ULL(NIX_CQ_OP_STAT_OP_ERR)) {
+		val = 0;
+		return;
+	}
+
+	*tail = (uint32_t)((val >> 28) & 0x3F);
+	*head = (uint32_t)((val >> 20) & 0x3F);
+	sqb_cnt = (uint16_t)(val & 0xFFFF);
+
+	sqes_per_sqb = 1 << sq->sqes_per_sqb_log2;
+
+	/* Update tail index as per used sqb count */
+	*tail += (sqes_per_sqb * (sqb_cnt - 1));
+}
