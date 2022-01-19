@@ -695,6 +695,66 @@ cnxk_nix_txq_info_get(struct rte_eth_dev *eth_dev, uint16_t qid,
 	memcpy(&qinfo->conf, &txq_sp->qconf.conf.tx, sizeof(qinfo->conf));
 }
 
+uint32_t
+cnxk_nix_rx_queue_count(void *rxq)
+{
+	struct cnxk_eth_rxq_sp *rxq_sp = cnxk_eth_rxq_to_sp(rxq);
+	struct roc_nix *nix = &rxq_sp->dev->nix;
+	uint32_t head, tail;
+
+	roc_nix_cq_head_tail_get(nix, rxq_sp->qid, &head, &tail);
+	return (tail - head) % (rxq_sp->qconf.nb_desc);
+}
+
+static inline int
+nix_offset_has_packet(uint32_t head, uint32_t tail, uint16_t offset, bool is_rx)
+{
+	/* Check given offset(queue index) has packet filled/xmit by HW
+	 * in case of Rx or Tx.
+	 * Also, checks for wrap around case.
+	 */
+	return ((tail > head && offset <= tail && offset >= head) ||
+		(head > tail && (offset >= head || offset <= tail))) ?
+		       is_rx :
+		       !is_rx;
+}
+
+int
+cnxk_nix_rx_descriptor_status(void *rxq, uint16_t offset)
+{
+	struct cnxk_eth_rxq_sp *rxq_sp = cnxk_eth_rxq_to_sp(rxq);
+	struct roc_nix *nix = &rxq_sp->dev->nix;
+	uint32_t head, tail;
+
+	if (rxq_sp->qconf.nb_desc <= offset)
+		return -EINVAL;
+
+	roc_nix_cq_head_tail_get(nix, rxq_sp->qid, &head, &tail);
+
+	if (nix_offset_has_packet(head, tail, offset, 1))
+		return RTE_ETH_RX_DESC_DONE;
+	else
+		return RTE_ETH_RX_DESC_AVAIL;
+}
+
+int
+cnxk_nix_tx_descriptor_status(void *txq, uint16_t offset)
+{
+	struct cnxk_eth_txq_sp *txq_sp = cnxk_eth_txq_to_sp(txq);
+	struct roc_nix *nix = &txq_sp->dev->nix;
+	uint32_t head = 0, tail = 0;
+
+	if (txq_sp->qconf.nb_desc <= offset)
+		return -EINVAL;
+
+	roc_nix_sq_head_tail_get(nix, txq_sp->qid, &head, &tail);
+
+	if (nix_offset_has_packet(head, tail, offset, 0))
+		return RTE_ETH_TX_DESC_DONE;
+	else
+		return RTE_ETH_TX_DESC_FULL;
+}
+
 /* It is a NOP for cnxk as HW frees the buffer on xmit */
 int
 cnxk_nix_tx_done_cleanup(void *txq, uint32_t free_cnt)

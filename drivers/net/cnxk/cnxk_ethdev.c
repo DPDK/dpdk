@@ -1595,6 +1595,9 @@ cnxk_eth_dev_init(struct rte_eth_dev *eth_dev)
 	int rc, max_entries;
 
 	eth_dev->dev_ops = &cnxk_eth_dev_ops;
+	eth_dev->rx_queue_count = cnxk_nix_rx_queue_count;
+	eth_dev->rx_descriptor_status = cnxk_nix_rx_descriptor_status;
+	eth_dev->tx_descriptor_status = cnxk_nix_tx_descriptor_status;
 
 	/* Alloc security context */
 	sec_ctx = plt_zmalloc(sizeof(struct rte_security_ctx), 0);
