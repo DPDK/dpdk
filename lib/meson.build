@@ -67,6 +67,7 @@ libraries = [
 
 optional_libs = [
         'bitratestats',
+        'flow_classify',
         'gpudev',
         'gro',
         'gso',

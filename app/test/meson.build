@@ -65,7 +65,6 @@ test_sources = files(
         'test_fib6.c',
         'test_fib6_perf.c',
         'test_func_reentrancy.c',
-        'test_flow_classify.c',
         'test_graph.c',
         'test_graph_perf.c',
         'test_hash.c',
@@ -196,7 +195,6 @@ fast_tests = [
         ['fib_autotest', true],
         ['fib6_autotest', true],
         ['func_reentrancy_autotest', false],
-        ['flow_classify_autotest', false],
         ['hash_autotest', true],
         ['interrupt_autotest', true],
         ['ipfrag_autotest', false],
@@ -348,6 +346,11 @@ if dpdk_conf.has('RTE_MEMPOOL_STACK')
 endif
 if dpdk_conf.has('RTE_EVENT_SKELETON')
     test_deps += 'event_skeleton'
+endif
+
+if dpdk_conf.has('RTE_LIB_FLOW_CLASSIFY')
+    test_sources += 'test_flow_classify.c'
+    fast_tests += [['flow_classify_autotest', false]]
 endif
 if dpdk_conf.has('RTE_LIB_METRICS')
     test_sources += ['test_metrics.c']
