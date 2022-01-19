@@ -74,6 +74,7 @@ optional_libs = [
         'jobstats',
         'latencystats',
         'metrics',
+        'node',
         'pdump',
         'power',
         'vhost',
