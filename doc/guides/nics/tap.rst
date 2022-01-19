@@ -298,3 +298,8 @@ Systems supporting flow API
 | Azure Ubuntu 16.04,| No limitation         |
 | kernel 4.13        |                       |
 +--------------------+-----------------------+
+
+Limitations
+-----------
+
+* Rx/Tx must have the same number of queues.

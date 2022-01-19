@@ -940,6 +940,14 @@ tap_dev_configure(struct rte_eth_dev *dev)
 			RTE_PMD_TAP_MAX_QUEUES);
 		return -1;
 	}
+	if (dev->data->nb_rx_queues != dev->data->nb_tx_queues) {
+		TAP_LOG(ERR,
+			"%s: number of rx queues %d must be equal to number of tx queues %d",
+			dev->device->name,
+			dev->data->nb_rx_queues,
+			dev->data->nb_tx_queues);
+		return -1;
+	}
 
 	TAP_LOG(INFO, "%s: %s: TX configured queues number: %u",
 		dev->device->name, pmd->name, dev->data->nb_tx_queues);
