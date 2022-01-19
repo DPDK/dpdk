@@ -117,6 +117,10 @@ struct spi_tran_header {
 	u32 addr;
 };
 
+int spi_read(struct altera_spi_device *dev, unsigned int chip_select,
+		unsigned int rlen, void *rdata);
+int spi_write(struct altera_spi_device *dev, unsigned int chip_select,
+		unsigned int wlen, void *wdata);
 int spi_command(struct altera_spi_device *dev, unsigned int chip_select,
 		unsigned int wlen, void *wdata, unsigned int rlen, void *rdata);
 void spi_cs_deactivate(struct altera_spi_device *dev);
