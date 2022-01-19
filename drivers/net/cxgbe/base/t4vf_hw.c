@@ -83,7 +83,7 @@ int t4vf_wr_mbox_core(struct adapter *adapter,
 
 	u32 mbox_ctl = T4VF_CIM_BASE_ADDR + A_CIM_VF_EXT_MAILBOX_CTRL;
 	__be64 cmd_rpl[MBOX_LEN / 8];
-	struct mbox_entry entry;
+	struct mbox_entry *entry;
 	unsigned int delay_idx;
 	u32 v, mbox_data;
 	const __be64 *p;
@@ -106,13 +106,17 @@ int t4vf_wr_mbox_core(struct adapter *adapter,
 			size > NUM_CIM_VF_MAILBOX_DATA_INSTANCES * 4)
 		return -EINVAL;
 
+	entry = t4_os_alloc(sizeof(*entry));
+	if (entry == NULL)
+		return -ENOMEM;
+
 	/*
 	 * Queue ourselves onto the mailbox access list.  When our entry is at
 	 * the front of the list, we have rights to access the mailbox.  So we
 	 * wait [for a while] till we're at the front [or bail out with an
 	 * EBUSY] ...
 	 */
-	t4_os_atomic_add_tail(&entry, &adapter->mbox_list, &adapter->mbox_lock);
+	t4_os_atomic_add_tail(entry, &adapter->mbox_list, &adapter->mbox_lock);
 
 	delay_idx = 0;
 	ms = delay[0];
@@ -125,17 +129,17 @@ int t4vf_wr_mbox_core(struct adapter *adapter,
 		 * contend on access to the mailbox ...
 		 */
 		if (i > (2 * FW_CMD_MAX_TIMEOUT)) {
-			t4_os_atomic_list_del(&entry, &adapter->mbox_list,
+			t4_os_atomic_list_del(entry, &adapter->mbox_list,
 					      &adapter->mbox_lock);
 			ret = -EBUSY;
-			return ret;
+			goto out_free;
 		}
 
 		/*
 		 * If we're at the head, break out and start the mailbox
 		 * protocol.
 		 */
-		if (t4_os_list_first_entry(&adapter->mbox_list) == &entry)
+		if (t4_os_list_first_entry(&adapter->mbox_list) == entry)
 			break;
 
 		/*
@@ -160,10 +164,10 @@ int t4vf_wr_mbox_core(struct adapter *adapter,
 		v = G_MBOWNER(t4_read_reg(adapter, mbox_ctl));
 
 	if (v != X_MBOWNER_PL) {
-		t4_os_atomic_list_del(&entry, &adapter->mbox_list,
+		t4_os_atomic_list_del(entry, &adapter->mbox_list,
 				      &adapter->mbox_lock);
 		ret = (v == X_MBOWNER_FW) ? -EBUSY : -ETIMEDOUT;
-		return ret;
+		goto out_free;
 	}
 
 	/*
@@ -224,7 +228,7 @@ int t4vf_wr_mbox_core(struct adapter *adapter,
 			get_mbox_rpl(adapter, cmd_rpl, size / 8, mbox_data);
 			t4_write_reg(adapter, mbox_ctl,
 				     V_MBOWNER(X_MBOWNER_NONE));
-			t4_os_atomic_list_del(&entry, &adapter->mbox_list,
+			t4_os_atomic_list_del(entry, &adapter->mbox_list,
 					      &adapter->mbox_lock);
 
 			/* return value in high-order host-endian word */
@@ -236,7 +240,8 @@ int t4vf_wr_mbox_core(struct adapter *adapter,
 					 & F_FW_CMD_REQUEST) == 0);
 				memcpy(rpl, cmd_rpl, size);
 			}
-			return -((int)G_FW_CMD_RETVAL(v));
+			ret = -((int)G_FW_CMD_RETVAL(v));
+			goto out_free;
 		}
 	}
 
@@ -246,8 +251,11 @@ int t4vf_wr_mbox_core(struct adapter *adapter,
 	dev_err(adapter, "command %#x timed out\n",
 		*(const u8 *)cmd);
 	dev_err(adapter, "    Control = %#x\n", t4_read_reg(adapter, mbox_ctl));
-	t4_os_atomic_list_del(&entry, &adapter->mbox_list, &adapter->mbox_lock);
+	t4_os_atomic_list_del(entry, &adapter->mbox_list, &adapter->mbox_lock);
 	ret = -ETIMEDOUT;
+
+out_free:
+	t4_os_free(entry);
 	return ret;
 }
 

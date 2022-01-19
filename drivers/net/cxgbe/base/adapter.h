@@ -297,8 +297,6 @@ struct sge {
 	u32 fl_starve_thres;        /* Free List starvation threshold */
 };
 
-#define T4_OS_NEEDS_MBOX_LOCKING 1
-
 /*
  * OS Lock/List primitives for those interfaces in the Common Code which
  * need this.
