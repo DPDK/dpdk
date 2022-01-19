@@ -135,12 +135,6 @@ test_sources = files(
         'test_stack.c',
         'test_stack_perf.c',
         'test_string_fns.c',
-        'test_table.c',
-        'test_table_acl.c',
-        'test_table_combined.c',
-        'test_table_pipeline.c',
-        'test_table_ports.c',
-        'test_table_tables.c',
         'test_tailq.c',
         'test_thash.c',
         'test_thash_perf.c',
@@ -229,7 +223,6 @@ fast_tests = [
         ['stack_autotest', false],
         ['stack_lf_autotest', false],
         ['string_autotest', true],
-        ['table_autotest', true],
         ['tailq_autotest', true],
         ['ticketlock_autotest', true],
         ['timer_autotest', false],
@@ -359,6 +352,19 @@ endif
 if dpdk_conf.has('RTE_LIB_TELEMETRY')
     test_sources += ['test_telemetry_json.c', 'test_telemetry_data.c']
     fast_tests += [['telemetry_json_autotest', true], ['telemetry_data_autotest', true]]
+endif
+if dpdk_conf.has('RTE_LIB_PIPELINE')
+# pipeline lib depends on port and table libs, so those must be present
+# if pipeline library is.
+    test_sources += [
+            'test_table.c',
+            'test_table_acl.c',
+            'test_table_combined.c',
+            'test_table_pipeline.c',
+            'test_table_ports.c',
+            'test_table_tables.c',
+    ]
+    fast_tests += [['table_autotest', true]]
 endif
 
 # The following linkages of drivers are required because

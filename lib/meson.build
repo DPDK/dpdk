@@ -77,7 +77,10 @@ optional_libs = [
         'metrics',
         'node',
         'pdump',
+        'pipeline',
+        'port',
         'power',
+        'table',
         'vhost',
 ]
 
