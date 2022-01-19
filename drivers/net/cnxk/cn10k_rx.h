@@ -364,7 +364,13 @@ cn10k_nix_cqe_to_mbuf(const struct nix_cqe_hdr_s *cq, const uint32_t tag,
 	*(uint64_t *)(&mbuf->rearm_data) = val;
 
 	if (flag & NIX_RX_MULTI_SEG_F)
-		nix_cqe_xtract_mseg(rx, mbuf, val, flag);
+		/*
+		 * For multi segment packets, mbuf length correction according
+		 * to Rx timestamp length will be handled later during
+		 * timestamp data process.
+		 * Hence, flag argument is not required.
+		 */
+		nix_cqe_xtract_mseg(rx, mbuf, val, 0);
 	else
 		mbuf->next = NULL;
 }
@@ -452,7 +458,6 @@ cn10k_nix_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t pkts,
 				      flags);
 		cnxk_nix_mbuf_to_tstamp(mbuf, rxq->tstamp,
 					(flags & NIX_RX_OFFLOAD_TSTAMP_F),
-					(flags & NIX_RX_MULTI_SEG_F),
 					(uint64_t *)((uint8_t *)mbuf
 								+ data_off));
 		rx_pkts[packets++] = mbuf;

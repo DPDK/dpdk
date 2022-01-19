@@ -696,14 +696,11 @@ cnxk_nix_timestamp_dynfield(struct rte_mbuf *mbuf,
 static __rte_always_inline void
 cnxk_nix_mbuf_to_tstamp(struct rte_mbuf *mbuf,
 			struct cnxk_timesync_info *tstamp,
-			const uint8_t ts_enable, const uint8_t mseg_enable,
-			uint64_t *tstamp_ptr)
+			const uint8_t ts_enable, uint64_t *tstamp_ptr)
 {
 	if (ts_enable) {
-		if (!mseg_enable) {
-			mbuf->pkt_len -= CNXK_NIX_TIMESYNC_RX_OFFSET;
-			mbuf->data_len -= CNXK_NIX_TIMESYNC_RX_OFFSET;
-		}
+		mbuf->pkt_len -= CNXK_NIX_TIMESYNC_RX_OFFSET;
+		mbuf->data_len -= CNXK_NIX_TIMESYNC_RX_OFFSET;
 
 		/* Reading the rx timestamp inserted by CGX, viz at
 		 * starting of the packet data.

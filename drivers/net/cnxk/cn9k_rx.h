@@ -391,13 +391,18 @@ skip_parse:
 	mbuf->ol_flags = ol_flags;
 	*(uint64_t *)(&mbuf->rearm_data) = val;
 	mbuf->pkt_len = len;
+	mbuf->data_len = len;
 
-	if (flag & NIX_RX_MULTI_SEG_F) {
-		nix_cqe_xtract_mseg(rx, mbuf, val, flag);
-	} else {
-		mbuf->data_len = len;
+	if (flag & NIX_RX_MULTI_SEG_F)
+		/*
+		 * For multi segment packets, mbuf length correction according
+		 * to Rx timestamp length will be handled later during
+		 * timestamp data process.
+		 * Hence, flag argument is not required.
+		 */
+		nix_cqe_xtract_mseg(rx, mbuf, val, 0);
+	else
 		mbuf->next = NULL;
-	}
 }
 
 static inline uint16_t
@@ -460,7 +465,6 @@ cn9k_nix_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t pkts,
 				     flags);
 		cnxk_nix_mbuf_to_tstamp(mbuf, rxq->tstamp,
 					(flags & NIX_RX_OFFLOAD_TSTAMP_F),
-					(flags & NIX_RX_MULTI_SEG_F),
 					(uint64_t *)((uint8_t *)mbuf
 								+ data_off));
 		rx_pkts[packets++] = mbuf;
