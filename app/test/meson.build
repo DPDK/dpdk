@@ -157,39 +157,9 @@ test_sources = files(
         'virtual_pmd.c',
 )
 
-test_deps = [
-        'acl',
-        'bus_pci',
-        'bus_vdev',
-        'bpf',
-        'cfgfile',
-        'cmdline',
-        'cryptodev',
-        'distributor',
-        'dmadev',
-        'efd',
-        'ethdev',
-        'eventdev',
-        'fib',
-        'flow_classify',
-        'graph',
-        'hash',
-        'ipsec',
-        'lpm',
-        'member',
-        'node',
-        'pipeline',
-        'port',
-        'rawdev',
-        'rcu',
-        'reorder',
-        'rib',
-        'ring',
-        'security',
-        'stack',
-        'telemetry',
-        'timer',
-]
+test_deps = enabled_libs
+# as well as libs, the pci and vdev bus drivers are needed for a lot of tests
+test_deps += ['bus_pci', 'bus_vdev']
 
 # Each test is marked with flag true/false
 # to indicate whether it can run in no-huge mode.
@@ -380,7 +350,6 @@ if dpdk_conf.has('RTE_EVENT_SKELETON')
     test_deps += 'event_skeleton'
 endif
 if dpdk_conf.has('RTE_LIB_METRICS')
-    test_deps += 'metrics'
     test_sources += ['test_metrics.c']
     fast_tests += [['metrics_autotest', true]]
 endif
@@ -410,17 +379,14 @@ if dpdk_conf.has('RTE_NET_RING')
     perf_test_names += 'ring_pmd_perf_autotest'
     fast_tests += [['event_eth_tx_adapter_autotest', false]]
     if dpdk_conf.has('RTE_LIB_BITRATESTATS')
-        test_deps += 'bitratestats'
         test_sources += 'test_bitratestats.c'
         fast_tests += [['bitratestats_autotest', true]]
     endif
     if dpdk_conf.has('RTE_LIB_LATENCYSTATS')
-        test_deps += 'latencystats'
         test_sources += 'test_latencystats.c'
         fast_tests += [['latencystats_autotest', true]]
     endif
     if dpdk_conf.has('RTE_LIB_PDUMP')
-        test_deps += 'pdump'
         test_sources += 'test_pdump.c'
         fast_tests += [['pdump_autotest', true]]
     endif
@@ -434,16 +400,8 @@ endif
 if dpdk_conf.has('RTE_HAS_LIBPCAP')
     ext_deps += pcap_dep
     if dpdk_conf.has('RTE_LIB_PCAPNG')
-        test_deps += 'pcapng'
         test_sources += 'test_pcapng.c'
     endif
-endif
-
-if dpdk_conf.has('RTE_LIB_POWER')
-    test_deps += 'power'
-endif
-if dpdk_conf.has('RTE_LIB_KNI')
-    test_deps += 'kni'
 endif
 
 if cc.has_argument('-Wno-format-truncation')
@@ -462,7 +420,6 @@ if dpdk_conf.has('RTE_LIB_COMPRESSDEV')
     if compress_test_dep.found()
         test_dep_objs += compress_test_dep
         test_sources += 'test_compressdev.c'
-        test_deps += 'compressdev'
         fast_tests += [['compressdev_autotest', false]]
     endif
 endif
