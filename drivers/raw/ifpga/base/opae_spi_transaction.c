@@ -40,7 +40,7 @@ static void print_buffer(const char *string, void *buffer, int len)
 	printf("%s print buffer, len=%d\n", string, len);
 
 	for (i = 0; i < len; i++)
-		printf("%x ", *(p+i));
+		printf("%02x ", *(p+i));
 	printf("\n");
 }
 #else
@@ -72,43 +72,6 @@ static void reorder_phy_data(u8 bits_per_word,
 	}
 }
 
-enum {
-	SPI_FOUND_SOP,
-	SPI_FOUND_EOP,
-	SPI_NOT_FOUND,
-};
-
-static int resp_find_sop_eop(unsigned char *resp, unsigned int len,
-		int flags)
-{
-	int ret = SPI_NOT_FOUND;
-
-	unsigned char *b = resp;
-
-	/* find SOP */
-	if (flags != SPI_FOUND_SOP) {
-		while (b < resp + len && *b != SPI_PACKET_SOP)
-			b++;
-
-		if (*b != SPI_PACKET_SOP)
-			goto done;
-
-		ret = SPI_FOUND_SOP;
-	}
-
-	/* find EOP */
-	while (b < resp + len && *b != SPI_PACKET_EOP)
-		b++;
-
-	if (*b != SPI_PACKET_EOP)
-		goto done;
-
-	ret = SPI_FOUND_EOP;
-
-done:
-	return ret;
-}
-
 static void phy_tx_pad(unsigned char *phy_buf, unsigned int phy_buf_len,
 		unsigned int *aligned_len)
 {
@@ -137,6 +100,104 @@ static void phy_tx_pad(unsigned char *phy_buf, unsigned int phy_buf_len,
 		*p++ = SPI_BYTE_IDLE;
 }
 
+#define RX_ALL_IDLE_DATA (SPI_BYTE_IDLE << 24 | SPI_BYTE_IDLE << 16 |	\
+			 SPI_BYTE_IDLE << 8 | SPI_BYTE_IDLE)
+
+static bool all_idle_data(u8 *rxbuf)
+{
+	return *(u32 *)rxbuf == RX_ALL_IDLE_DATA;
+}
+
+static unsigned char *find_eop(u8 *rxbuf, u32 BPW)
+{
+	return memchr(rxbuf, SPI_PACKET_EOP, BPW);
+}
+
+static int do_spi_txrx(struct spi_transaction_dev *dev,
+		unsigned char *tx_buffer,
+		unsigned int tx_len, unsigned char *rx_buffer,
+		unsigned int rx_len,
+		unsigned int *actual_rx)
+{
+	unsigned int rx_cnt = 0;
+	int ret = 0;
+	unsigned int BPW = 4;
+	bool eop_found = false;
+	unsigned char *eop;
+	unsigned char *ptr;
+	unsigned char *rxbuf = rx_buffer;
+	int add_byte = 0;
+	unsigned long ticks;
+	unsigned long timeout;
+
+	/* send command */
+	ret = spi_write(dev->dev, dev->chipselect, tx_len, tx_buffer);
+	if (ret)
+		return -EBUSY;
+
+	timeout = rte_get_timer_cycles() +
+				msecs_to_timer_cycles(2000);
+
+	/* read out data */
+	while (rx_cnt < rx_len) {
+		ret = spi_read(dev->dev, dev->chipselect, BPW, rxbuf);
+		if (ret)
+			return -EBUSY;
+
+		/* skip all of invalid data */
+		if (!eop_found && all_idle_data(rxbuf)) {
+			ticks = rte_get_timer_cycles();
+			if (!time_after(ticks, timeout)) {
+				continue;
+			} else {
+				dev_err(dev, "read spi data timeout\n");
+				return -ETIMEDOUT;
+			}
+		}
+
+		rx_cnt += BPW;
+		if (!eop_found) {
+			/* EOP is found, we read 2 more bytes and exit. */
+			eop = find_eop(rxbuf, BPW);
+			if (eop) {
+				if ((BPW + rxbuf - eop) > 2) {
+					/*
+					 * check if the last 2 bytes are already
+					 * received in current word.
+					 */
+					break;
+				} else if ((BPW + rxbuf - eop) == 2) {
+					/*
+					 * skip if last byte is not SPI_BYTE_ESC
+					 * or SPI_PACKET_ESC. this is the valid
+					 * end of a response too.
+					 */
+					ptr = eop + 1;
+
+					if (*ptr != SPI_BYTE_ESC &&
+							*ptr != SPI_PACKET_ESC)
+						break;
+
+					add_byte = 1;
+				} else {
+					add_byte = 2;
+				}
+
+				rx_len = min(rx_len,
+						IFPGA_ALIGN(rx_cnt +
+							add_byte, BPW));
+				eop_found = true;
+			}
+		}
+		rxbuf += BPW;
+	}
+
+	*actual_rx = rx_cnt;
+	print_buffer("found valid data:", rx_buffer, rx_cnt);
+
+	return ret;
+}
+
 static int byte_to_core_convert(struct spi_transaction_dev *dev,
 		unsigned int send_len, unsigned char *send_data,
 		unsigned int resp_len, unsigned char *resp_data,
@@ -148,15 +209,9 @@ static int byte_to_core_convert(struct spi_transaction_dev *dev,
 	unsigned char *resp_packet = dev->buffer->bytes_resp;
 	unsigned char *p;
 	unsigned char current_byte;
-	unsigned char *tx_buffer;
 	unsigned int tx_len = 0;
-	unsigned char *rx_buffer;
-	unsigned int rx_len = 0;
-	int retry = 0;
-	int spi_flags;
-	unsigned long timeout = msecs_to_timer_cycles(1000);
-	unsigned long ticks;
 	unsigned int resp_max_len = 2 * resp_len;
+	unsigned int actual_rx;
 
 	print_buffer("before bytes:", send_data, send_len);
 
@@ -190,48 +245,15 @@ static int byte_to_core_convert(struct spi_transaction_dev *dev,
 
 	print_buffer("after order to spi:", send_packet, tx_len);
 
-	/* call spi */
-	tx_buffer = send_packet;
-	rx_buffer = resp_packet;
-	rx_len = resp_max_len;
-	spi_flags = SPI_NOT_FOUND;
-
-read_again:
-	ret = spi_command(dev->dev, dev->chipselect, tx_len, tx_buffer,
-			rx_len, rx_buffer);
+	ret = do_spi_txrx(dev, send_packet, tx_len, resp_packet,
+			resp_max_len, &actual_rx);
 	if (ret)
-		return -EBUSY;
-
-	print_buffer("read from spi:", rx_buffer, rx_len);
-
-	/* look for SOP firstly*/
-	ret = resp_find_sop_eop(rx_buffer, rx_len - 1, spi_flags);
-	if (ret != SPI_FOUND_EOP) {
-		tx_buffer = NULL;
-		tx_len = 0;
-		ticks = rte_get_timer_cycles();
-		if (time_after(ticks, timeout) &&
-				retry++ > SPI_MAX_RETRY) {
-			dev_err(NULL, "Have retry %d, found invalid packet data\n",
-				retry);
-			return -EBUSY;
-		}
-
-		if (ret == SPI_FOUND_SOP) {
-			rx_buffer += rx_len;
-			resp_max_len += rx_len;
-		}
-
-		spi_flags = ret;
-		goto read_again;
-	}
-
-	print_buffer("found valid data:", resp_packet, resp_max_len);
+		return ret;
 
 	/* analyze response packet */
 	i = 0;
 	p = resp_data;
-	while (i < resp_max_len) {
+	while (i < actual_rx) {
 		current_byte = resp_packet[i];
 		switch (current_byte) {
 		case SPI_BYTE_IDLE:
@@ -337,9 +359,13 @@ static int packet_to_byte_conver(struct spi_transaction_dev *dev,
 		current_byte = resp_packet[i];
 
 		switch (current_byte) {
-		case SPI_PACKET_ESC:
-		case SPI_PACKET_CHANNEL:
 		case SPI_PACKET_SOP:
+			dev_err(dev, "error on get SOP after SOP\n");
+			return -EINVAL;
+		case SPI_PACKET_CHANNEL:
+			i += 2;
+			break;
+		case SPI_PACKET_ESC:
 			i++;
 			current_byte = resp_packet[i];
 			*p++ = xor_20(current_byte);
@@ -348,23 +374,30 @@ static int packet_to_byte_conver(struct spi_transaction_dev *dev,
 		case SPI_PACKET_EOP:
 			i++;
 			current_byte = resp_packet[i];
-			if (current_byte == SPI_PACKET_ESC ||
-					current_byte == SPI_PACKET_CHANNEL ||
-					current_byte == SPI_PACKET_SOP) {
+			switch (current_byte) {
+			case SPI_PACKET_ESC:
 				i++;
 				current_byte = resp_packet[i];
 				*p++ = xor_20(current_byte);
-			} else
+				break;
+			case SPI_PACKET_CHANNEL:
+			case SPI_PACKET_SOP:
+			case SPI_PACKET_EOP:
+				dev_err(dev, "error get SOP/EOP after EOP\n");
+				return -EINVAL;
+			default:
 				*p++ = current_byte;
-			i = valid_resp_len;
-			break;
+				break;
+			}
+			goto done;
+
 		default:
 			*p++ = current_byte;
 			i++;
 		}
-
 	}
 
+done:
 	*valid = p - resp_buf;
 
 	print_buffer("after packet:", resp_buf, *valid);
