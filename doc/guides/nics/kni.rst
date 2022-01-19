@@ -33,7 +33,7 @@ Usage
 
 EAL ``--vdev`` argument can be used to create KNI device instance, like::
 
-        testpmd --vdev=net_kni0 --vdev=net_kn1 -- -i
+        testpmd --vdev=net_kni0 --vdev=net_kni1 -- -i
 
 Above command will create ``kni0`` and ``kni1`` Linux network interfaces,
 those interfaces can be controlled by standard Linux tools.
