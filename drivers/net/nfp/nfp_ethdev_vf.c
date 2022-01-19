@@ -219,11 +219,13 @@ nfp_netvf_close(struct rte_eth_dev *dev)
 	for (i = 0; i < dev->data->nb_tx_queues; i++) {
 		this_tx_q =  (struct nfp_net_txq *)dev->data->tx_queues[i];
 		nfp_net_reset_tx_queue(this_tx_q);
+		nfp_net_tx_queue_release(dev, i);
 	}
 
 	for (i = 0; i < dev->data->nb_rx_queues; i++) {
 		this_rx_q =  (struct nfp_net_rxq *)dev->data->rx_queues[i];
 		nfp_net_reset_rx_queue(this_rx_q);
+		nfp_net_rx_queue_release(dev, i);
 	}
 
 	rte_intr_disable(pci_dev->intr_handle);
