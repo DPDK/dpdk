@@ -239,6 +239,18 @@ int spi_command(struct altera_spi_device *dev, unsigned int chip_select,
 	return 0;
 }
 
+int spi_write(struct altera_spi_device *dev, unsigned int chip_select,
+		unsigned int wlen, void *wdata)
+{
+	return spi_command(dev, chip_select, wlen, wdata, 0, NULL);
+}
+
+int spi_read(struct altera_spi_device *dev, unsigned int chip_select,
+		unsigned int rlen, void *rdata)
+{
+	return spi_command(dev, chip_select, 0, NULL, rlen, rdata);
+}
+
 struct altera_spi_device *altera_spi_alloc(void *base, int type)
 {
 	struct altera_spi_device *spi_dev =
