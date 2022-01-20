@@ -848,7 +848,7 @@ struct aesni_mb_session {
 
 			struct gcm_key_data gcm_key;
 			/* *< Expanded GCM key */
-			uint8_t zuc_cipher_key[16];
+			uint8_t zuc_cipher_key[32];
 			/* *< ZUC cipher key */
 			snow3g_key_schedule_t pKeySched_snow3g_cipher;
 			/* *< SNOW3G scheduled cipher key */
@@ -893,7 +893,7 @@ struct aesni_mb_session {
 				/* *< k3. */
 			} cmac;
 			/* *< Expanded XCBC authentication keys */
-			uint8_t zuc_auth_key[16];
+			uint8_t zuc_auth_key[32];
 			/* *< ZUC authentication key */
 			snow3g_key_schedule_t pKeySched_snow3g_auth;
 			/* *< SNOW3G scheduled authentication key */
