@@ -797,10 +797,15 @@ port_eeprom_display(portid_t port_id)
 		return;
 	}
 
-	char buf[len_eeprom];
 	einfo.offset = 0;
 	einfo.length = len_eeprom;
-	einfo.data = buf;
+	einfo.data = calloc(1, len_eeprom);
+	if (!einfo.data) {
+		fprintf(stderr,
+			"Allocation of port %u eeprom data failed\n",
+			port_id);
+		return;
+	}
 
 	ret = rte_eth_dev_get_eeprom(port_id, &einfo);
 	if (ret != 0) {
@@ -818,10 +823,12 @@ port_eeprom_display(portid_t port_id)
 			printf("Unable to get EEPROM: %d\n", ret);
 			break;
 		}
+		free(einfo.data);
 		return;
 	}
 	rte_hexdump(stdout, "hexdump", einfo.data, einfo.length);
 	printf("Finish -- Port: %d EEPROM length: %d bytes\n", port_id, len_eeprom);
+	free(einfo.data);
 }
 
 void
@@ -856,10 +863,15 @@ port_module_eeprom_display(portid_t port_id)
 		return;
 	}
 
-	char buf[minfo.eeprom_len];
 	einfo.offset = 0;
 	einfo.length = minfo.eeprom_len;
-	einfo.data = buf;
+	einfo.data = calloc(1, minfo.eeprom_len);
+	if (!einfo.data) {
+		fprintf(stderr,
+			"Allocation of port %u eeprom data failed\n",
+			port_id);
+		return;
+	}
 
 	ret = rte_eth_dev_get_module_eeprom(port_id, &einfo);
 	if (ret != 0) {
@@ -877,11 +889,13 @@ port_module_eeprom_display(portid_t port_id)
 			printf("Unable to get module EEPROM: %d\n", ret);
 			break;
 		}
+		free(einfo.data);
 		return;
 	}
 
 	rte_hexdump(stdout, "hexdump", einfo.data, einfo.length);
 	printf("Finish -- Port: %d MODULE EEPROM length: %d bytes\n", port_id, einfo.length);
+	free(einfo.data);
 }
 
 void
