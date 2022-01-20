@@ -3145,7 +3145,8 @@ int bnxt_set_hwrm_link_config(struct bnxt *bp, bool link_up)
 					  bp->link_info->link_signal_mode);
 	link_req.phy_flags = HWRM_PORT_PHY_CFG_INPUT_FLAGS_RESET_PHY;
 	/* Autoneg can be done only when the FW allows. */
-	if (autoneg == 1 && bp->link_info->support_auto_speeds) {
+	if (autoneg == 1 &&
+	    (bp->link_info->support_auto_speeds || bp->link_info->support_pam4_auto_speeds)) {
 		link_req.phy_flags |=
 				HWRM_PORT_PHY_CFG_INPUT_FLAGS_RESTART_AUTONEG;
 		link_req.auto_link_speed_mask =
