@@ -7,8 +7,7 @@ if is_windows
     subdir_done()
 endif
 
-build = dpdk_conf.has('RTE_BUS_VMBUS')
-reason = 'missing dependency, DPDK VMBus driver'
+deps += 'bus_vmbus'
 sources = files(
         'hn_ethdev.c',
         'hn_nvs.c',
@@ -17,4 +16,3 @@ sources = files(
         'hn_vf.c',
 )
 
-deps += ['bus_vmbus' ]

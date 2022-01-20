@@ -7,8 +7,6 @@ if is_windows
     subdir_done()
 endif
 
-build = dpdk_conf.has('RTE_LIB_VHOST')
-reason = 'missing dependency, DPDK vhost library'
+deps += 'vhost'
 sources = files('rte_eth_vhost.c')
 headers = files('rte_eth_vhost.h')
-deps += 'vhost'
