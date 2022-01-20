@@ -45,6 +45,10 @@ uint32_t kni_dflt_carrier;
 static char *enable_bifurcated;
 uint32_t bifurcated_support;
 
+/* KNI thread scheduling interval */
+static long min_scheduling_interval = 100; /* us */
+static long max_scheduling_interval = 200; /* us */
+
 #define KNI_DEV_IN_USE_BIT_NUM 0 /* Bit number for device in use */
 
 static int kni_net_id;
@@ -132,11 +136,8 @@ kni_thread_single(void *data)
 			}
 		}
 		up_read(&knet->kni_list_lock);
-#ifdef RTE_KNI_PREEMPT_DEFAULT
 		/* reschedule out for a while */
-		schedule_timeout_interruptible(
-			usecs_to_jiffies(KNI_KTHREAD_RESCHEDULE_INTERVAL));
-#endif
+		usleep_range(min_scheduling_interval, max_scheduling_interval);
 	}
 
 	return 0;
@@ -153,10 +154,7 @@ kni_thread_multiple(void *param)
 			kni_net_rx(dev);
 			kni_net_poll_resp(dev);
 		}
-#ifdef RTE_KNI_PREEMPT_DEFAULT
-		schedule_timeout_interruptible(
-			usecs_to_jiffies(KNI_KTHREAD_RESCHEDULE_INTERVAL));
-#endif
+		usleep_range(min_scheduling_interval, max_scheduling_interval);
 	}
 
 	return 0;
@@ -617,6 +615,14 @@ kni_init(void)
 	if (bifurcated_support == 1)
 		pr_debug("bifurcated support is enabled.\n");
 
+	if (min_scheduling_interval < 0 || max_scheduling_interval < 0 ||
+		min_scheduling_interval > KNI_KTHREAD_MAX_RESCHEDULE_INTERVAL ||
+		max_scheduling_interval > KNI_KTHREAD_MAX_RESCHEDULE_INTERVAL ||
+		min_scheduling_interval >= max_scheduling_interval) {
+		pr_err("Invalid parameters for scheduling interval\n");
+		return -EINVAL;
+	}
+
 #ifdef HAVE_SIMPLIFIED_PERNET_OPERATIONS
 	rc = register_pernet_subsys(&kni_net_ops);
 #else
@@ -691,4 +697,14 @@ MODULE_PARM_DESC(enable_bifurcated,
 "supporting async requests (default=off):\n"
 "\t\ton    Enable request processing support for bifurcated drivers.\n"
 "\t\t"
+);
+
+module_param(min_scheduling_interval, long, 0644);
+MODULE_PARM_DESC(min_scheduling_interval,
+"KNI thread min scheduling interval (default=100 microseconds)"
+);
+
+module_param(max_scheduling_interval, long, 0644);
+MODULE_PARM_DESC(max_scheduling_interval,
+"KNI thread max scheduling interval (default=200 microseconds)"
 );

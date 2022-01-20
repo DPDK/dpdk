@@ -61,6 +61,10 @@ can be specified when the module is loaded to control its behavior:
                     userspace callback and supporting async requests (default=off):
                     on    Enable request processing support for bifurcated drivers.
                      (charp)
+    parm:           min_scheduling_interval: KNI thread min scheduling interval (default=100 microseconds)
+                     (long)
+    parm:           max_scheduling_interval: KNI thread max scheduling interval (default=200 microseconds)
+                     (long)
 
 
 Loading the ``rte_kni`` kernel module without any optional parameters is
@@ -201,6 +205,35 @@ To enable bifurcated device support:
 Enabling bifurcated device support releases ``rtnl`` lock before calling
 callback and locks it back after callback. Also enables asynchronous request to
 support callbacks that requires rtnl lock to work (interface down).
+
+KNI Kthread Scheduling
+~~~~~~~~~~~~~~~~~~~~~~
+
+The ``min_scheduling_interval`` and ``max_scheduling_interval`` parameters
+control the rescheduling interval of the KNI kthreads.
+
+This might be useful if we have use cases in which we require improved
+latency or performance for control plane traffic.
+
+The implementation is backed by Linux High Precision Timers, and uses ``usleep_range``.
+Hence, it will have the same granularity constraints as this Linux subsystem.
+
+For Linux High Precision Timers, you can check the following resource: `Kernel Timers <http://www.kernel.org/doc/Documentation/timers/timers-howto.txt>`_
+
+To set the ``min_scheduling_interval`` to a value of 100 microseconds:
+
+.. code-block:: console
+
+    # insmod <build_dir>/kernel/linux/kni/rte_kni.ko min_scheduling_interval=100
+
+To set the ``max_scheduling_interval`` to a value of 200 microseconds:
+
+.. code-block:: console
+
+    # insmod <build_dir>/kernel/linux/kni/rte_kni.ko max_scheduling_interval=200
+
+If the ``min_scheduling_interval`` and ``max_scheduling_interval`` parameters are
+not specified, the default interval limits will be set to *100* and *200* respectively.
 
 KNI Creation and Deletion
 -------------------------

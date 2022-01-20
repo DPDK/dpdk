@@ -27,7 +27,7 @@
 #include <linux/list.h>
 
 #include <rte_kni_common.h>
-#define KNI_KTHREAD_RESCHEDULE_INTERVAL 5 /* us */
+#define KNI_KTHREAD_MAX_RESCHEDULE_INTERVAL 1000000 /* us */
 
 #define MBUF_BURST_SZ 32
 

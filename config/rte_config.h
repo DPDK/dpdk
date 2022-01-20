@@ -95,9 +95,6 @@
 #define RTE_SCHED_PORT_N_GRINDERS 8
 #undef RTE_SCHED_VECTOR
 
-/* KNI defines */
-#define RTE_KNI_PREEMPT_DEFAULT 1
-
 /* rte_graph defines */
 #define RTE_GRAPH_BURST_SIZE 256
 #define RTE_LIBRTE_GRAPH_STATS 1
