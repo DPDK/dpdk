@@ -8,6 +8,7 @@
 #include <ethdev_driver.h>
 #include <rte_flow_driver.h>
 #include <rte_ether.h>
+#include <rte_geneve.h>
 #include <rte_hash.h>
 #include <rte_jhash.h>
 #include <rte_ip.h>
@@ -205,6 +206,7 @@ struct copy_item_args {
 	const struct rte_flow_item *item;
 	struct fm_tcam_match_entry *fm_tcam_entry;
 	uint8_t header_level;
+	struct rte_flow_error *error;
 };
 
 /* functions for copying items into flowman match */
@@ -233,6 +235,8 @@ static enic_copy_item_fn enic_fm_copy_item_udp;
 static enic_copy_item_fn enic_fm_copy_item_vlan;
 static enic_copy_item_fn enic_fm_copy_item_vxlan;
 static enic_copy_item_fn enic_fm_copy_item_gtp;
+static enic_copy_item_fn enic_fm_copy_item_geneve;
+static enic_copy_item_fn enic_fm_copy_item_geneve_opt;
 
 /* Ingress actions */
 static const enum rte_flow_action_type enic_fm_supported_ig_actions[] = {
@@ -365,6 +369,26 @@ static const struct enic_fm_items enic_fm_items[] = {
 		.valid_start_item = 1,
 		.prev_items = (const enum rte_flow_item_type[]) {
 			       RTE_FLOW_ITEM_TYPE_UDP,
+			       RTE_FLOW_ITEM_TYPE_END,
+		},
+	},
+	[RTE_FLOW_ITEM_TYPE_GENEVE] = {
+		.copy_item = enic_fm_copy_item_geneve,
+		.valid_start_item = 1,
+		.prev_items = (const enum rte_flow_item_type[]) {
+			       RTE_FLOW_ITEM_TYPE_ETH,
+			       RTE_FLOW_ITEM_TYPE_IPV4,
+			       RTE_FLOW_ITEM_TYPE_IPV6,
+			       RTE_FLOW_ITEM_TYPE_UDP,
+			       RTE_FLOW_ITEM_TYPE_END,
+		},
+	},
+	[RTE_FLOW_ITEM_TYPE_GENEVE_OPT] = {
+		.copy_item = enic_fm_copy_item_geneve_opt,
+		.valid_start_item = 1,
+		/* Can match at most 1 option */
+		.prev_items = (const enum rte_flow_item_type[]) {
+			       RTE_FLOW_ITEM_TYPE_GENEVE,
 			       RTE_FLOW_ITEM_TYPE_END,
 		},
 	},
@@ -744,6 +768,115 @@ enic_fm_copy_item_gtp(struct copy_item_args *arg)
 	return 0;
 }
 
+static int
+enic_fm_copy_item_geneve(struct copy_item_args *arg)
+{
+	const struct rte_flow_item *item = arg->item;
+	const struct rte_flow_item_geneve *spec = item->spec;
+	const struct rte_flow_item_geneve *mask = item->mask;
+	struct fm_tcam_match_entry *entry = arg->fm_tcam_entry;
+	struct fm_header_set *fm_data, *fm_mask;
+	int off;
+
+	ENICPMD_FUNC_TRACE();
+	/* Only 2 header levels (outer and inner) allowed */
+	if (arg->header_level > 0)
+		return -EINVAL;
+
+	fm_data = &entry->ftm_data.fk_hdrset[0];
+	fm_mask = &entry->ftm_mask.fk_hdrset[0];
+	fm_data->fk_metadata |= FKM_GENEVE;
+	fm_mask->fk_metadata |= FKM_GENEVE;
+	/* items from here on out are inner header items, except options */
+	arg->header_level = 1;
+
+	/* Match all if no spec */
+	if (!spec)
+		return 0;
+	if (!mask)
+		mask = &rte_flow_item_geneve_mask;
+
+	/*
+	 * Use the raw L4 buffer to match geneve as fm_header_set does
+	 * not have geneve header. A UDP item may precede the geneve
+	 * item. Using the raw buffer does not affect such UDP item,
+	 * since we skip UDP in the raw buffer.
+	 */
+	fm_data->fk_header_select |= FKH_L4RAW;
+	fm_mask->fk_header_select |= FKH_L4RAW;
+	off = sizeof(fm_data->l4.udp);
+	memcpy(&fm_data->l4.rawdata[off], spec, sizeof(struct rte_geneve_hdr));
+	memcpy(&fm_mask->l4.rawdata[off], mask, sizeof(struct rte_geneve_hdr));
+	return 0;
+}
+
+static int
+enic_fm_copy_item_geneve_opt(struct copy_item_args *arg)
+{
+	const struct rte_flow_item *item = arg->item;
+	const struct rte_flow_item_geneve_opt *spec = item->spec;
+	const struct rte_flow_item_geneve_opt *mask = item->mask;
+	struct fm_tcam_match_entry *entry = arg->fm_tcam_entry;
+	struct fm_header_set *fm_data, *fm_mask;
+	struct rte_geneve_hdr *geneve;
+	int off, len;
+
+	ENICPMD_FUNC_TRACE();
+	fm_data = &entry->ftm_data.fk_hdrset[0];
+	fm_mask = &entry->ftm_mask.fk_hdrset[0];
+	/* Match all if no spec */
+	if (!spec)
+		return 0;
+	if (!mask)
+		mask = &rte_flow_item_geneve_opt_mask;
+
+	if (spec->option_len > 0 &&
+	    (spec->data == NULL || mask->data == NULL)) {
+		return rte_flow_error_set(arg->error, EINVAL,
+			RTE_FLOW_ERROR_TYPE_ITEM,
+			NULL, "enic: geneve_opt unexpected null data");
+	}
+	/*
+	 * Geneve item must already be in the raw buffer. Append the
+	 * option pattern to it. There are two limitations.
+	 * (1) Can match only the 1st option, the first one following Geneve
+	 * (2) Geneve header must specify option length, as HW does not
+	 *     have "has Geneve option" flag.
+	 */
+	RTE_ASSERT((fm_data->fk_header_select & FKH_L4RAW) != 0);
+	RTE_ASSERT((fm_mask->fk_header_select & FKH_L4RAW) != 0);
+	off = sizeof(fm_data->l4.udp);
+	geneve = (struct rte_geneve_hdr *)&fm_data->l4.rawdata[off];
+	if (geneve->opt_len == 0) {
+		return rte_flow_error_set(arg->error, EINVAL,
+			RTE_FLOW_ERROR_TYPE_ITEM,
+			NULL, "enic: geneve_opt requires non-zero geneve option length");
+	}
+	geneve = (struct rte_geneve_hdr *)&fm_mask->l4.rawdata[off];
+	if (geneve->opt_len == 0) {
+		return rte_flow_error_set(arg->error, EINVAL,
+			RTE_FLOW_ERROR_TYPE_ITEM,
+			NULL, "enic: geneve_opt requires non-zero geneve option length mask");
+	}
+	off = sizeof(fm_data->l4.udp) + sizeof(struct rte_geneve_hdr);
+	if (off + (spec->option_len + 1) * 4 > FM_LAYER_SIZE) {
+		return rte_flow_error_set(arg->error, EINVAL,
+			RTE_FLOW_ERROR_TYPE_ITEM,
+			NULL, "enic: geneve_opt too large");
+	}
+	/* Copy option header */
+	memcpy(&fm_data->l4.rawdata[off], spec, 4);
+	memcpy(&fm_mask->l4.rawdata[off], mask, 4);
+	/* Copy option data */
+	if (spec->option_len > 0) {
+		off += 4;
+		len = spec->option_len * 4;
+		memcpy(&fm_data->l4.rawdata[off], spec->data, len);
+		memcpy(&fm_mask->l4.rawdata[off], mask->data, len);
+	}
+	return 0;
+}
+
 /*
  * Currently, raw pattern match is very limited. It is intended for matching
  * UDP tunnel header (e.g. vxlan or geneve).
@@ -984,16 +1117,32 @@ enic_fm_copy_entry(struct enic_flowman *fm,
 				RTE_FLOW_ERROR_TYPE_ITEM,
 				NULL, "enic: unsupported item");
 		}
-
+		/*
+		 * Check vNIC feature dependencies. Geneve item needs
+		 * Geneve offload feature
+		 */
+		if (item->type == RTE_FLOW_ITEM_TYPE_GENEVE &&
+		    !fm->user_enic->geneve) {
+			return rte_flow_error_set(error, ENOTSUP,
+				RTE_FLOW_ERROR_TYPE_ITEM,
+				NULL, "enic: geneve not supported");
+		}
 		/* check to see if item stacking is valid */
 		if (!fm_item_stacking_valid(prev_item, item_info,
 					    is_first_item))
 			goto stacking_error;
 
 		args.item = item;
+		args.error = error;
+		if (error)
+			error->type = RTE_FLOW_ERROR_TYPE_NONE;
 		ret = item_info->copy_item(&args);
-		if (ret)
+		if (ret) {
+			/* If copy_item set the error, return that */
+			if (error->type != RTE_FLOW_ERROR_TYPE_NONE)
+				return ret;
 			goto item_not_supported;
+		}
 		/* Going from outer to inner? Treat it as a new packet start */
 		if (prev_header_level != args.header_level) {
 			prev_item = RTE_FLOW_ITEM_TYPE_END;

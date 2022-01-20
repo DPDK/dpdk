@@ -55,6 +55,10 @@ New Features
      Also, make sure to start the actual text at the margin.
      =======================================================
 
+* **Updated Cisco enic driver.**
+
+  * Added rte_flow support for matching GENEVE packets.
+
 * **Updated Marvell cnxk crypto PMD.**
 
   * Added SHA256-HMAC support in lookaside protocol (IPsec) for CN10K.
