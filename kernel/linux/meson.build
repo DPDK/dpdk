@@ -11,7 +11,7 @@ cross_args = []
 
 if not meson.is_cross_build()
     # native build
-    kernel_version = run_command('uname', '-r').stdout().strip()
+    kernel_version = run_command('uname', '-r', check: true).stdout().strip()
     kernel_install_dir = '/lib/modules/' + kernel_version + '/extra/dpdk'
     if kernel_build_dir == ''
         # use default path for native builds
@@ -24,14 +24,14 @@ if not meson.is_cross_build()
 
     # test running make in kernel directory, using "make kernelversion"
     make_returncode = run_command('make', '-sC', kernel_build_dir,
-            'kernelversion').returncode()
+            'kernelversion', check: true).returncode()
     if make_returncode != 0
         # backward compatibility:
         # the headers could still be in the 'build' subdir
         if not kernel_build_dir.endswith('build') and not kernel_build_dir.endswith('build/')
             kernel_build_dir = join_paths(kernel_build_dir, 'build')
             make_returncode = run_command('make', '-sC', kernel_build_dir,
-                    'kernelversion').returncode()
+                    'kernelversion', check: true).returncode()
         endif
     endif
 
@@ -54,7 +54,8 @@ if kernel_build_dir == ''
 endif
 cross_compiler = find_program('c').path()
 if cross_compiler.endswith('gcc')
-    cross_prefix = run_command([py3, '-c', 'print("' + cross_compiler + '"[:-3])']).stdout().strip()
+    cross_prefix = run_command([py3, '-c', 'print("' + cross_compiler + '"[:-3])'],
+            check: true).stdout().strip()
 elif cross_compiler.endswith('clang')
     cross_prefix = ''
     found_target = false

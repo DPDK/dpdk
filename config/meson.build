@@ -22,7 +22,8 @@ is_ms_linker = is_windows and (cc.get_id() == 'clang')
 # depending on the configuration options
 pver = meson.project_version().split('.')
 major_version = '@0@.@1@'.format(pver.get(0), pver.get(1))
-abi_version = run_command(find_program('cat', 'more'), abi_version_file).stdout().strip()
+abi_version = run_command(find_program('cat', 'more'), abi_version_file,
+        check: true).stdout().strip()
 
 # Libraries have the abi_version as the filename extension
 # and have the soname be all but the final part of the abi_version.
@@ -334,7 +335,7 @@ if max_lcores == 'detect'
         error('Discovery of max_lcores is not supported for cross-compilation.')
     endif
     # overwrite the default value with discovered values
-    max_lcores = run_command(get_cpu_count_cmd).stdout().to_int()
+    max_lcores = run_command(get_cpu_count_cmd, check: true).stdout().to_int()
     min_lcores = 2
     # DPDK must be built for at least 2 cores
     if max_lcores < min_lcores
