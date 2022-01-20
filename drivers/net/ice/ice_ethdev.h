@@ -143,6 +143,31 @@
 /* Max number of flexible descriptor rxdid */
 #define ICE_FLEX_DESC_RXDID_MAX_NUM 64
 
+#define ICE_I2C_EEPROM_DEV_ADDR		0xA0
+#define ICE_I2C_EEPROM_DEV_ADDR2	0xA2
+#define ICE_MODULE_TYPE_SFP		0x03
+#define ICE_MODULE_TYPE_QSFP_PLUS	0x0D
+#define ICE_MODULE_TYPE_QSFP28		0x11
+#define ICE_MODULE_SFF_ADDR_MODE	0x04
+#define ICE_MODULE_SFF_DIAG_CAPAB	0x40
+#define ICE_MODULE_REVISION_ADDR	0x01
+#define ICE_MODULE_SFF_8472_COMP	0x5E
+#define ICE_MODULE_SFF_8472_SWAP	0x5C
+#define ICE_MODULE_QSFP_MAX_LEN		640
+
+/* EEPROM Standards for plug in modules */
+#define ICE_MODULE_SFF_8079		0x1
+#define ICE_MODULE_SFF_8079_LEN		256
+#define ICE_MODULE_SFF_8472		0x2
+#define ICE_MODULE_SFF_8472_LEN		512
+#define ICE_MODULE_SFF_8636		0x3
+#define ICE_MODULE_SFF_8636_LEN		256
+#define ICE_MODULE_SFF_8636_MAX_LEN     640
+#define ICE_MODULE_SFF_8436		0x4
+#define ICE_MODULE_SFF_8436_LEN		256
+#define ICE_MODULE_SFF_8436_MAX_LEN     640
+
+
 /* Per-channel register definitions */
 #define GLTSYN_AUX_OUT(_chan, _idx)     (GLTSYN_AUX_OUT_0(_idx) + ((_chan) * 8))
 #define GLTSYN_CLKO(_chan, _idx)        (GLTSYN_CLKO_0(_idx) + ((_chan) * 8))

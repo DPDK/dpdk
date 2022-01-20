@@ -139,6 +139,10 @@ static int ice_vlan_pvid_set(struct rte_eth_dev *dev,
 static int ice_get_eeprom_length(struct rte_eth_dev *dev);
 static int ice_get_eeprom(struct rte_eth_dev *dev,
 			  struct rte_dev_eeprom_info *eeprom);
+static int ice_get_module_info(struct rte_eth_dev *dev,
+			       struct rte_eth_dev_module_info *modinfo);
+static int ice_get_module_eeprom(struct rte_eth_dev *dev,
+				 struct rte_dev_eeprom_info *info);
 static int ice_stats_get(struct rte_eth_dev *dev,
 			 struct rte_eth_stats *stats);
 static int ice_stats_reset(struct rte_eth_dev *dev);
@@ -238,6 +242,8 @@ static const struct eth_dev_ops ice_eth_dev_ops = {
 	.tx_burst_mode_get            = ice_tx_burst_mode_get,
 	.get_eeprom_length            = ice_get_eeprom_length,
 	.get_eeprom                   = ice_get_eeprom,
+	.get_module_info              = ice_get_module_info,
+	.get_module_eeprom            = ice_get_module_eeprom,
 	.stats_get                    = ice_stats_get,
 	.stats_reset                  = ice_stats_reset,
 	.xstats_get                   = ice_xstats_get,
@@ -4929,6 +4935,160 @@ ice_get_eeprom(struct rte_eth_dev *dev,
 	if (status) {
 		PMD_DRV_LOG(ERR, "EEPROM read failed.");
 		return -EIO;
+	}
+
+	return 0;
+}
+
+static int
+ice_get_module_info(struct rte_eth_dev *dev,
+		    struct rte_eth_dev_module_info *modinfo)
+{
+	struct ice_hw *hw = ICE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	enum ice_status status;
+	u8 sff8472_comp = 0;
+	u8 sff8472_swap = 0;
+	u8 sff8636_rev = 0;
+	u8 value = 0;
+
+	status = ice_aq_sff_eeprom(hw, 0, ICE_I2C_EEPROM_DEV_ADDR, 0x00, 0x00,
+				   0, &value, 1, 0, NULL);
+	if (status)
+		return -EIO;
+
+	switch (value) {
+	case ICE_MODULE_TYPE_SFP:
+		status = ice_aq_sff_eeprom(hw, 0, ICE_I2C_EEPROM_DEV_ADDR,
+					   ICE_MODULE_SFF_8472_COMP, 0x00, 0,
+					   &sff8472_comp, 1, 0, NULL);
+		if (status)
+			return -EIO;
+		status = ice_aq_sff_eeprom(hw, 0, ICE_I2C_EEPROM_DEV_ADDR,
+					   ICE_MODULE_SFF_8472_SWAP, 0x00, 0,
+					   &sff8472_swap, 1, 0, NULL);
+		if (status)
+			return -EIO;
+
+		if (sff8472_swap & ICE_MODULE_SFF_ADDR_MODE) {
+			modinfo->type = ICE_MODULE_SFF_8079;
+			modinfo->eeprom_len = ICE_MODULE_SFF_8079_LEN;
+		} else if (sff8472_comp &&
+			   (sff8472_swap & ICE_MODULE_SFF_DIAG_CAPAB)) {
+			modinfo->type = ICE_MODULE_SFF_8472;
+			modinfo->eeprom_len = ICE_MODULE_SFF_8472_LEN;
+		} else {
+			modinfo->type = ICE_MODULE_SFF_8079;
+			modinfo->eeprom_len = ICE_MODULE_SFF_8079_LEN;
+		}
+		break;
+	case ICE_MODULE_TYPE_QSFP_PLUS:
+	case ICE_MODULE_TYPE_QSFP28:
+		status = ice_aq_sff_eeprom(hw, 0, ICE_I2C_EEPROM_DEV_ADDR,
+					   ICE_MODULE_REVISION_ADDR, 0x00, 0,
+					   &sff8636_rev, 1, 0, NULL);
+		if (status)
+			return -EIO;
+		/* Check revision compliance */
+		if (sff8636_rev > 0x02) {
+			/* Module is SFF-8636 compliant */
+			modinfo->type = ICE_MODULE_SFF_8636;
+			modinfo->eeprom_len = ICE_MODULE_QSFP_MAX_LEN;
+		} else {
+			modinfo->type = ICE_MODULE_SFF_8436;
+			modinfo->eeprom_len = ICE_MODULE_QSFP_MAX_LEN;
+		}
+		break;
+	default:
+		PMD_DRV_LOG(WARNING, "SFF Module Type not recognized.\n");
+		return -EINVAL;
+	}
+	return 0;
+}
+
+static int
+ice_get_module_eeprom(struct rte_eth_dev *dev,
+		      struct rte_dev_eeprom_info *info)
+{
+	struct ice_hw *hw = ICE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+#define SFF_READ_BLOCK_SIZE 8
+#define I2C_BUSY_TRY_TIMES 4
+#define I2C_USLEEP_MIN_TIME 1500
+#define I2C_USLEEP_MAX_TIME 2500
+	uint8_t value[SFF_READ_BLOCK_SIZE] = {0};
+	uint8_t addr = ICE_I2C_EEPROM_DEV_ADDR;
+	uint8_t *data = info->data;
+	enum ice_status status;
+	bool is_sfp = false;
+	uint32_t i, j;
+	uint32_t offset = 0;
+	uint8_t page = 0;
+
+	if (!info || !info->length || !data)
+		return -EINVAL;
+
+	status = ice_aq_sff_eeprom(hw, 0, addr, offset, page, 0, value, 1, 0,
+				   NULL);
+	if (status)
+		return -EIO;
+
+	if (value[0] == ICE_MODULE_TYPE_SFP)
+		is_sfp = true;
+
+	memset(data, 0, info->length);
+	for (i = 0; i < info->length; i += SFF_READ_BLOCK_SIZE) {
+		offset = i + info->offset;
+		page = 0;
+
+		/* Check if we need to access the other memory page */
+		if (is_sfp) {
+			if (offset >= ICE_MODULE_SFF_8079_LEN) {
+				offset -= ICE_MODULE_SFF_8079_LEN;
+				addr = ICE_I2C_EEPROM_DEV_ADDR2;
+			}
+		} else {
+			while (offset >= ICE_MODULE_SFF_8436_LEN) {
+				/* Compute memory page number and offset. */
+				offset -= ICE_MODULE_SFF_8436_LEN / 2;
+				page++;
+			}
+		}
+
+		/* Bit 2 of eeprom address 0x02 declares upper
+		 * pages are disabled on QSFP modules.
+		 * SFP modules only ever use page 0.
+		 */
+		if (page == 0 || !(data[0x2] & 0x4)) {
+			/* If i2c bus is busy due to slow page change or
+			 * link management access, call can fail.
+			 * This is normal. So we retry this a few times.
+			 */
+			for (j = 0; j < I2C_BUSY_TRY_TIMES; j++) {
+				status = ice_aq_sff_eeprom(hw, 0, addr, offset,
+							   page, !is_sfp, value,
+							   SFF_READ_BLOCK_SIZE,
+							   0, NULL);
+				PMD_DRV_LOG(DEBUG, "SFF %02X %02X %02X %X = "
+					"%02X%02X%02X%02X."
+					"%02X%02X%02X%02X (%X)\n",
+					addr, offset, page, is_sfp,
+					value[0], value[1],
+					value[2], value[3],
+					value[4], value[5],
+					value[6], value[7],
+					status);
+				if (status) {
+					usleep_range(I2C_USLEEP_MIN_TIME,
+						     I2C_USLEEP_MAX_TIME);
+					memset(value, 0, SFF_READ_BLOCK_SIZE);
+					continue;
+				}
+				break;
+			}
+
+			/* Make sure we have enough room for the new block */
+			if ((i + SFF_READ_BLOCK_SIZE) < info->length)
+				memcpy(data + i, value, SFF_READ_BLOCK_SIZE);
+		}
 	}
 
 	return 0;
