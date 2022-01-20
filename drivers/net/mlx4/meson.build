@@ -42,7 +42,7 @@ foreach libname:libnames
 endforeach
 if static_ibverbs or dlopen_ibverbs
     # Build without adding shared libs to Requires.private
-    ibv_cflags = run_command(pkgconf, '--cflags', 'libibverbs').stdout()
+    ibv_cflags = run_command(pkgconf, '--cflags', 'libibverbs', check:true).stdout()
     ext_deps += declare_dependency(compile_args: ibv_cflags.split())
 endif
 if static_ibverbs
