@@ -3,7 +3,7 @@
 
 dep = dependency('libisal', required: false, method: 'pkg-config')
 if not dep.found()
-    build = false
+    build = true
     reason = 'missing dependency, "libisal"'
 endif
 
