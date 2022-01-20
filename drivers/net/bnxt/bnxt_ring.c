@@ -869,6 +869,7 @@ int bnxt_alloc_async_ring_struct(struct bnxt *bp)
 	ring->ring_mask = ring->ring_size - 1;
 	ring->vmem_size = 0;
 	ring->vmem = NULL;
+	ring->fw_ring_id = INVALID_HW_RING_ID;
 
 	bp->async_cp_ring = cpr;
 	cpr->cp_ring_struct = ring;
