@@ -1554,6 +1554,9 @@ ice_rxd_to_vlan_tci(struct rte_mbuf *mb, volatile union ice_rx_flex_desc *rxdp)
 #if (ICE_LOOK_AHEAD != 8)
 #error "PMD ICE: ICE_LOOK_AHEAD must be 8\n"
 #endif
+
+#define ICE_PTP_TS_VALID 0x1
+
 static inline int
 ice_rx_scan_hw_ring(struct ice_rx_queue *rxq)
 {
@@ -1634,6 +1637,10 @@ ice_rx_scan_hw_ring(struct ice_rx_queue *rxq)
 				   rte_le_to_cpu_32(rxdp[j].wb.flex_ts.ts_high);
 				mb->timesync = rxq->queue_id;
 				pkt_flags |= RTE_MBUF_F_RX_IEEE1588_PTP;
+				if (rxdp[j].wb.time_stamp_low &
+				    ICE_PTP_TS_VALID)
+					pkt_flags |=
+						RTE_MBUF_F_RX_IEEE1588_TMST;
 			}
 #endif
 			mb->ol_flags |= pkt_flags;
