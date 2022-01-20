@@ -49,6 +49,7 @@ implementer_generic = {
                 ['RTE_ARCH_ARM_NEON_MEMCPY', false],
                 ['RTE_ARCH_STRICT_ALIGN', true],
                 ['RTE_ARCH_ARMv8_AARCH32', true],
+                ['RTE_ARCH', 'armv8_aarch32'],
                 ['RTE_CACHE_LINE_SIZE', 64]
             ]
         }
@@ -432,11 +433,13 @@ if dpdk_conf.get('RTE_ARCH_32')
     else
         # armv7 build
         dpdk_conf.set('RTE_ARCH_ARMv7', true)
+        dpdk_conf.set('RTE_ARCH', 'armv7')
         # the minimum architecture supported, armv7-a, needs the following,
         machine_args += '-mfpu=neon'
     endif
 else
     # armv8 build
+    dpdk_conf.set('RTE_ARCH', 'armv8')
     update_flags = true
     soc_config = {}
     if not meson.is_cross_build()
