@@ -125,13 +125,12 @@ virtqueue_enqueue_single_packed_vec(struct virtnet_tx *txvq,
 	 * any_layout => number of segments
 	 * default    => number of segments + 1
 	 */
-	slots = use_indirect ? 1 : (txm->nb_segs + !can_push);
 	can_push = rte_mbuf_refcnt_read(txm) == 1 &&
 		   RTE_MBUF_DIRECT(txm) &&
 		   txm->nb_segs == 1 &&
 		   rte_pktmbuf_headroom(txm) >= hdr_size;
 
-	slots = txm->nb_segs + !can_push;
+	slots = use_indirect ? 1 : (txm->nb_segs + !can_push);
 	need = slots - vq->vq_free_cnt;
 
 	/* Positive value indicates it need free vring descriptors */
