@@ -113,6 +113,8 @@ struct bnxt_pf_resource_info {
 	uint16_t num_rx_rings;
 	uint16_t num_cp_rings;
 	uint16_t num_l2_ctxs;
+	uint16_t num_nq_rings;
+	uint16_t num_vnics;
 	uint32_t num_hw_ring_grps;
 };
 

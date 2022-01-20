@@ -787,15 +787,7 @@ static int __bnxt_hwrm_func_qcaps(struct bnxt *bp)
 	bp->max_l2_ctx = rte_le_to_cpu_16(resp->max_l2_ctxs);
 	if (!BNXT_CHIP_THOR(bp) && !bp->pdev->max_vfs)
 		bp->max_l2_ctx += bp->max_rx_em_flows;
-	/* TODO: For now, do not support VMDq/RFS on VFs. */
-	if (BNXT_PF(bp)) {
-		if (bp->pf->max_vfs)
-			bp->max_vnics = 1;
-		else
-			bp->max_vnics = rte_le_to_cpu_16(resp->max_vnics);
-	} else {
-		bp->max_vnics = 1;
-	}
+	bp->max_vnics = rte_le_to_cpu_16(resp->max_vnics);
 	PMD_DRV_LOG(DEBUG, "Max l2_cntxts is %d vnics is %d\n",
 		    bp->max_l2_ctx, bp->max_vnics);
 	bp->max_stat_ctx = rte_le_to_cpu_16(resp->max_stat_ctx);
@@ -3375,7 +3367,7 @@ static int bnxt_hwrm_pf_func_cfg(struct bnxt *bp,
 			rte_cpu_to_le_16(pf_resc->num_hw_ring_grps);
 	} else if (BNXT_HAS_NQ(bp)) {
 		enables |= HWRM_FUNC_CFG_INPUT_ENABLES_NUM_MSIX;
-		req.num_msix = rte_cpu_to_le_16(bp->max_nq_rings);
+		req.num_msix = rte_cpu_to_le_16(pf_resc->num_nq_rings);
 	}
 
 	req.flags = rte_cpu_to_le_32(bp->pf->func_cfg_flags);
@@ -3387,7 +3379,7 @@ static int bnxt_hwrm_pf_func_cfg(struct bnxt *bp,
 	req.num_tx_rings = rte_cpu_to_le_16(pf_resc->num_tx_rings);
 	req.num_rx_rings = rte_cpu_to_le_16(pf_resc->num_rx_rings);
 	req.num_l2_ctxs = rte_cpu_to_le_16(pf_resc->num_l2_ctxs);
-	req.num_vnics = rte_cpu_to_le_16(bp->max_vnics);
+	req.num_vnics = rte_cpu_to_le_16(pf_resc->num_vnics);
 	req.fid = rte_cpu_to_le_16(0xffff);
 	req.enables = rte_cpu_to_le_32(enables);
 
@@ -3424,14 +3416,12 @@ bnxt_fill_vf_func_cfg_req_new(struct bnxt *bp,
 	req->min_rx_rings = req->max_rx_rings;
 	req->max_l2_ctxs = rte_cpu_to_le_16(bp->max_l2_ctx / (num_vfs + 1));
 	req->min_l2_ctxs = req->max_l2_ctxs;
-	/* TODO: For now, do not support VMDq/RFS on VFs. */
-	req->max_vnics = rte_cpu_to_le_16(1);
+	req->max_vnics = rte_cpu_to_le_16(bp->max_vnics / (num_vfs + 1));
 	req->min_vnics = req->max_vnics;
 	req->max_hw_ring_grps = rte_cpu_to_le_16(bp->max_ring_grps /
 						 (num_vfs + 1));
 	req->min_hw_ring_grps = req->max_hw_ring_grps;
-	req->flags =
-	 rte_cpu_to_le_16(HWRM_FUNC_VF_RESOURCE_CFG_INPUT_FLAGS_MIN_GUARANTEED);
+	req->max_msix = rte_cpu_to_le_16(bp->max_nq_rings / (num_vfs + 1));
 }
 
 static void
@@ -3491,6 +3481,8 @@ static int bnxt_update_max_resources(struct bnxt *bp,
 	bp->max_rx_rings -= rte_le_to_cpu_16(resp->alloc_rx_rings);
 	bp->max_l2_ctx -= rte_le_to_cpu_16(resp->alloc_l2_ctx);
 	bp->max_ring_grps -= rte_le_to_cpu_16(resp->alloc_hw_ring_grps);
+	bp->max_nq_rings -= rte_le_to_cpu_16(resp->alloc_msix);
+	bp->max_vnics -= rte_le_to_cpu_16(resp->alloc_vnics);
 
 	HWRM_UNLOCK();
 
@@ -3564,6 +3556,8 @@ static int bnxt_query_pf_resources(struct bnxt *bp,
 	pf_resc->num_rx_rings = rte_le_to_cpu_16(resp->alloc_rx_rings);
 	pf_resc->num_l2_ctxs = rte_le_to_cpu_16(resp->alloc_l2_ctx);
 	pf_resc->num_hw_ring_grps = rte_le_to_cpu_32(resp->alloc_hw_ring_grps);
+	pf_resc->num_nq_rings = rte_le_to_cpu_32(resp->alloc_msix);
+	pf_resc->num_vnics = rte_le_to_cpu_16(resp->alloc_vnics);
 	bp->pf->evb_mode = resp->evb_mode;
 
 	HWRM_UNLOCK();
@@ -3584,6 +3578,8 @@ bnxt_calculate_pf_resources(struct bnxt *bp,
 		pf_resc->num_rx_rings = bp->max_rx_rings;
 		pf_resc->num_l2_ctxs = bp->max_l2_ctx;
 		pf_resc->num_hw_ring_grps = bp->max_ring_grps;
+		pf_resc->num_nq_rings = bp->max_nq_rings;
+		pf_resc->num_vnics = bp->max_vnics;
 
 		return;
 	}
@@ -3602,6 +3598,10 @@ bnxt_calculate_pf_resources(struct bnxt *bp,
 			       bp->max_l2_ctx % (num_vfs + 1);
 	pf_resc->num_hw_ring_grps = bp->max_ring_grps / (num_vfs + 1) +
 				    bp->max_ring_grps % (num_vfs + 1);
+	pf_resc->num_nq_rings = bp->max_nq_rings / (num_vfs + 1) +
+				bp->max_nq_rings % (num_vfs + 1);
+	pf_resc->num_vnics = bp->max_vnics / (num_vfs + 1) +
+				bp->max_vnics % (num_vfs + 1);
 }
 
 int bnxt_hwrm_allocate_pf_only(struct bnxt *bp)
@@ -3777,6 +3777,8 @@ bnxt_update_pf_resources(struct bnxt *bp,
 	bp->max_tx_rings = pf_resc->num_tx_rings;
 	bp->max_rx_rings = pf_resc->num_rx_rings;
 	bp->max_ring_grps = pf_resc->num_hw_ring_grps;
+	bp->max_nq_rings = pf_resc->num_nq_rings;
+	bp->max_vnics = pf_resc->num_vnics;
 }
 
 static int32_t
