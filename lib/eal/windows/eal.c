@@ -422,6 +422,10 @@ rte_eal_init(int argc, char **argv)
 		/* create a thread for each lcore */
 		if (eal_thread_create(&lcore_config[i].thread_id) != 0)
 			rte_panic("Cannot create thread\n");
+		ret = pthread_setaffinity_np(lcore_config[i].thread_id,
+			sizeof(rte_cpuset_t), &lcore_config[i].cpuset);
+		if (ret != 0)
+			RTE_LOG(DEBUG, EAL, "Cannot set affinity\n");
 	}
 
 	/* Initialize services so drivers can register services during probe. */
