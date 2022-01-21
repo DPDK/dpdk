@@ -642,6 +642,7 @@ nix_tm_shaper_reg_prep(struct nix_tm_node *node,
 	else if (profile)
 		adjust = profile->pkt_len_adj;
 
+	adjust &= 0x1FF;
 	plt_tm_dbg("Shaper config node %s(%u) lvl %u id %u, "
 		   "pir %" PRIu64 "(%" PRIu64 "B),"
 		   " cir %" PRIu64 "(%" PRIu64 "B)"
@@ -708,7 +709,7 @@ nix_tm_shaper_reg_prep(struct nix_tm_node *node,
 		/* Configure RED algo */
 		reg[k] = NIX_AF_TL3X_SHAPE(schq);
 		regval[k] = (adjust | (uint64_t)node->red_algo << 9 |
-			     (uint64_t)node->pkt_mode);
+			     (uint64_t)node->pkt_mode << 24);
 		k++;
 
 		break;
