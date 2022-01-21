@@ -815,9 +815,9 @@ roc_cpt_eng_grp_add(struct roc_cpt *roc_cpt, enum cpt_eng_type eng_type)
 void
 roc_cpt_iq_disable(struct roc_cpt_lf *lf)
 {
+	volatile union cpt_lf_q_grp_ptr grp_ptr = {.u = 0x0};
+	volatile union cpt_lf_inprog lf_inprog = {.u = 0x0};
 	union cpt_lf_ctl lf_ctl = {.u = 0x0};
-	union cpt_lf_q_grp_ptr grp_ptr;
-	union cpt_lf_inprog lf_inprog;
 	int timeout = 20;
 	int cnt;
 
