@@ -323,6 +323,9 @@ nix_q_ctx_get(struct dev *dev, uint8_t ctype, uint16_t qid, __io void **ctx_p)
 		int rc;
 
 		aq = mbox_alloc_msg_nix_aq_enq(mbox);
+		if (!aq)
+			return -ENOSPC;
+
 		aq->qidx = qid;
 		aq->ctype = ctype;
 		aq->op = NIX_AQ_INSTOP_READ;
@@ -341,6 +344,9 @@ nix_q_ctx_get(struct dev *dev, uint8_t ctype, uint16_t qid, __io void **ctx_p)
 		struct nix_cn10k_aq_enq_req *aq;
 
 		aq = mbox_alloc_msg_nix_cn10k_aq_enq(mbox);
+		if (!aq)
+			return -ENOSPC;
+
 		aq->qidx = qid;
 		aq->ctype = ctype;
 		aq->op = NIX_AQ_INSTOP_READ;

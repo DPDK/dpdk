@@ -385,6 +385,9 @@ cpt_lfs_alloc(struct dev *dev, uint8_t eng_grpmsk, uint8_t blkaddr,
 		return -EINVAL;
 
 	req = mbox_alloc_msg_cpt_lf_alloc(mbox);
+	if (!req)
+		return -ENOSPC;
+
 	req->nix_pf_func = 0;
 	if (inl_dev_sso && nix_inl_dev_pffunc_get())
 		req->sso_pf_func = nix_inl_dev_pffunc_get();

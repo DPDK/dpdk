@@ -152,6 +152,11 @@ af_pf_wait_msg(struct dev *dev, uint16_t vf, int num_msg)
 		/* Reserve PF/VF mbox message */
 		size = PLT_ALIGN(size, MBOX_MSG_ALIGN);
 		rsp = mbox_alloc_msg(&dev->mbox_vfpf, vf, size);
+		if (!rsp) {
+			plt_err("Failed to reserve VF%d message", vf);
+			continue;
+		}
+
 		mbox_rsp_init(msg->id, rsp);
 
 		/* Copy message from AF<->PF mbox to PF<->VF mbox */
@@ -236,6 +241,12 @@ vf_pf_process_msgs(struct dev *dev, uint16_t vf)
 				BIT_ULL(vf % max_bits);
 			rsp = (struct ready_msg_rsp *)mbox_alloc_msg(
 				mbox, vf, sizeof(*rsp));
+			if (!rsp) {
+				plt_err("Failed to alloc VF%d READY message",
+					vf);
+				continue;
+			}
+
 			mbox_rsp_init(msg->id, rsp);
 
 			/* PF/VF function ID */
@@ -988,6 +999,9 @@ dev_setup_shared_lmt_region(struct mbox *mbox, bool valid_iova, uint64_t iova)
 	struct lmtst_tbl_setup_req *req;
 
 	req = mbox_alloc_msg_lmtst_tbl_setup(mbox);
+	if (!req)
+		return -ENOSPC;
+
 	/* This pcifunc is defined with primary pcifunc whose LMT address
 	 * will be shared. If call contains valid IOVA, following pcifunc
 	 * field is of no use.
@@ -1061,6 +1075,11 @@ dev_lmt_setup(struct dev *dev)
 	 */
 	if (!dev->disable_shared_lmt) {
 		idev = idev_get_cfg();
+		if (!idev) {
+			errno = EFAULT;
+			goto free;
+		}
+
 		if (!__atomic_load_n(&idev->lmt_pf_func, __ATOMIC_ACQUIRE)) {
 			idev->lmt_base_addr = dev->lmt_base;
 			idev->lmt_pf_func = dev->pf_func;
