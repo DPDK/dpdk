@@ -11,6 +11,7 @@
 #include <rte_byteorder.h>
 #include <rte_common.h>
 #include <rte_cycles.h>
+#include <rte_ether.h>
 #include <rte_interrupts.h>
 #include <rte_io.h>
 #include <rte_log.h>
@@ -55,6 +56,9 @@
 #define PLT_ALIGN_CEIL		 RTE_ALIGN_CEIL
 #define PLT_INIT		 RTE_INIT
 
+#ifndef PLT_ETHER_ADDR_LEN
+#define PLT_ETHER_ADDR_LEN RTE_ETHER_ADDR_LEN
+#endif
 /** Divide ceil */
 #define PLT_DIV_CEIL(x, y)			\
 	({					\
@@ -83,6 +87,7 @@
 #define plt_cpu_to_be_64 rte_cpu_to_be_64
 #define plt_be_to_cpu_64 rte_be_to_cpu_64
 
+#define plt_aligned	    __rte_aligned
 #define plt_align32pow2	    rte_align32pow2
 #define plt_align32prevpow2 rte_align32prevpow2
 

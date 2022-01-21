@@ -613,6 +613,28 @@ npc_mcam_alloc_and_write(struct npc *npc, struct roc_npc_flow *flow,
 	return 0;
 }
 
+static void
+npc_set_vlan_ltype(struct npc_parse_state *pst)
+{
+	uint64_t val, mask;
+	uint8_t lb_offset;
+
+	lb_offset =
+		__builtin_popcount(pst->npc->keyx_supp_nmask[pst->nix_intf] &
+				   ((1ULL << NPC_LTYPE_LB_OFFSET) - 1));
+	lb_offset *= 4;
+
+	mask = ~((0xfULL << lb_offset));
+	pst->flow->mcam_data[0] &= mask;
+	pst->flow->mcam_mask[0] &= mask;
+	/* NPC_LT_LB_CTAG: 0b0010, NPC_LT_LB_STAG_QINQ: 0b0011
+	 * Set LB layertype/mask as 0b0010/0b1110 to match both.
+	 */
+	val = ((uint64_t)(NPC_LT_LB_CTAG & NPC_LT_LB_STAG_QINQ)) << lb_offset;
+	pst->flow->mcam_data[0] |= val;
+	pst->flow->mcam_mask[0] |= (0xeULL << lb_offset);
+}
+
 int
 npc_program_mcam(struct npc *npc, struct npc_parse_state *pst, bool mcam_alloc)
 {
@@ -651,12 +673,16 @@ npc_program_mcam(struct npc *npc, struct npc_parse_state *pst, bool mcam_alloc)
 		if (layer_info) {
 			for (idx = 0; idx <= 2; idx++) {
 				if (layer_info & (1 << idx)) {
-					if (idx == 2)
+					if (idx == 2) {
 						data = lt;
-					else if (idx == 1)
+						mask = 0xf;
+					} else if (idx == 1) {
 						data = ((flags >> 4) & 0xf);
-					else
+						mask = ((flags >> 4) & 0xf);
+					} else {
 						data = (flags & 0xf);
+						mask = (flags & 0xf);
+					}
 
 					if (data_off >= 64) {
 						data_off = 0;
@@ -664,7 +690,7 @@ npc_program_mcam(struct npc *npc, struct npc_parse_state *pst, bool mcam_alloc)
 					}
 					key_data[index] |=
 						((uint64_t)data << data_off);
-					mask = 0xf;
+
 					if (lt == 0)
 						mask = 0;
 					key_mask[index] |=
@@ -679,6 +705,9 @@ npc_program_mcam(struct npc *npc, struct npc_parse_state *pst, bool mcam_alloc)
 	key_len = (pst->npc->keyx_len[intf] + 7) / 8;
 	memcpy(pst->flow->mcam_data, key_data, key_len);
 	memcpy(pst->flow->mcam_mask, key_mask, key_len);
+
+	if (pst->set_vlan_ltype_mask)
+		npc_set_vlan_ltype(pst);
 
 	if (pst->is_vf) {
 		(void)mbox_alloc_msg_npc_read_base_steer_rule(npc->mbox);

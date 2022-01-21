@@ -58,6 +58,60 @@ struct roc_npc_flow_item_raw {
 	const uint8_t *pattern; /**< Byte string to look for. */
 };
 
+struct roc_ether_addr {
+	uint8_t addr_bytes[PLT_ETHER_ADDR_LEN]; /**< Addr bytes in tx order */
+} plt_aligned(2);
+
+struct roc_ether_hdr {
+	struct roc_ether_addr d_addr; /**< Destination address. */
+	PLT_STD_C11
+	union {
+		struct roc_ether_addr s_addr; /**< Source address. */
+		struct {
+			struct roc_ether_addr S_addr;
+		} S_un; /**< Do not use directly; use s_addr instead.*/
+	};
+	uint16_t ether_type; /**< Frame type. */
+} plt_aligned(2);
+
+PLT_STD_C11
+struct roc_npc_flow_item_eth {
+	union {
+		struct {
+			/*
+			 * These fields are retained
+			 * for compatibility.
+			 * Please switch to the new header field below.
+			 */
+			struct roc_ether_addr dst; /**< Destination MAC. */
+			struct roc_ether_addr src; /**< Source MAC. */
+			uint16_t type;		   /**< EtherType or TPID. */
+		};
+		struct roc_ether_hdr hdr;
+	};
+	uint32_t has_vlan : 1; /**< Packet header contains at least one VLAN. */
+	uint32_t reserved : 31; /**< Reserved, must be zero. */
+};
+
+struct roc_vlan_hdr {
+	uint16_t vlan_tci; /**< Priority (3) + CFI (1) + Identifier Code (12) */
+	uint16_t eth_proto; /**< Ethernet type of encapsulated frame. */
+} __plt_packed;
+
+PLT_STD_C11
+struct roc_npc_flow_item_vlan {
+	union {
+		struct {
+			uint16_t tci;	     /**< Tag control information. */
+			uint16_t inner_type; /**< Inner EtherType or TPID. */
+		};
+		struct roc_vlan_hdr hdr;
+	};
+	uint32_t has_more_vlan : 1;
+	/**< Packet header contains at least one more VLAN, after this VLAN. */
+	uint32_t reserved : 31; /**< Reserved, must be zero. */
+};
+
 #define ROC_NPC_MAX_ACTION_COUNT 19
 
 enum roc_npc_action_type {
@@ -97,7 +151,7 @@ struct roc_npc_action_vf {
 };
 
 struct roc_npc_action_port_id {
-	uint32_t original : 1;	/**< Use original DPDK port ID if possible. */
+	uint32_t original : 1;	/**< Use original port ID if possible. */
 	uint32_t reserved : 31; /**< Reserved, must be zero. */
 	uint32_t id;		/**< port ID. */
 };

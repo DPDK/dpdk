@@ -67,6 +67,11 @@
 #define NPC_ACTION_MAX_VLAN_PARAMS    3
 #define NPC_ACTION_MAX_VLANS_STRIPPED 2
 
+#define NPC_LTYPE_OFFSET_START 7
+/* LB OFFSET : START + LA (2b flags + 1b ltype) + LB (2b flags) */
+#define NPC_LTYPE_LB_OFFSET (NPC_LTYPE_OFFSET_START + 5)
+#define NPC_LFLAG_LB_OFFSET (NPC_LTYPE_OFFSET_START + 3)
+
 struct npc_action_vtag_info {
 	uint16_t vlan_id;
 	uint16_t vlan_ethtype;
@@ -176,6 +181,8 @@ struct npc_parse_state {
 	uint8_t *mcam_data; /* point to flow->mcam_data + key_len */
 	uint8_t *mcam_mask; /* point to flow->mcam_mask + key_len */
 	bool is_vf;
+	/* adjust ltype in MCAM to match at least one vlan */
+	bool set_vlan_ltype_mask;
 };
 
 enum npc_kpu_parser_flag {
