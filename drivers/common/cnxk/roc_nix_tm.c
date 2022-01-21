@@ -17,16 +17,16 @@ bitmap_ctzll(uint64_t slab)
 void
 nix_tm_clear_shaper_profiles(struct nix *nix)
 {
-	struct nix_tm_shaper_profile *shaper_profile;
+	struct nix_tm_shaper_profile *shaper_profile, *tmp;
+	struct nix_tm_shaper_profile_list *list;
 
-	shaper_profile = TAILQ_FIRST(&nix->shaper_profile_list);
-	while (shaper_profile != NULL) {
+	list = &nix->shaper_profile_list;
+	PLT_TAILQ_FOREACH_SAFE(shaper_profile, list, shaper, tmp) {
 		if (shaper_profile->ref_cnt)
 			plt_warn("Shaper profile %u has non zero references",
 				 shaper_profile->id);
 		TAILQ_REMOVE(&nix->shaper_profile_list, shaper_profile, shaper);
 		nix_tm_shaper_profile_free(shaper_profile);
-		shaper_profile = TAILQ_FIRST(&nix->shaper_profile_list);
 	}
 }
 

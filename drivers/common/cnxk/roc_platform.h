@@ -20,6 +20,7 @@
 #include <rte_pci.h>
 #include <rte_spinlock.h>
 #include <rte_string_fns.h>
+#include <rte_tailq.h>
 #include <rte_telemetry.h>
 
 #include "roc_bits.h"
@@ -55,6 +56,7 @@
 #define BITMASK_ULL		 GENMASK_ULL
 #define PLT_ALIGN_CEIL		 RTE_ALIGN_CEIL
 #define PLT_INIT		 RTE_INIT
+#define PLT_TAILQ_FOREACH_SAFE	 RTE_TAILQ_FOREACH_SAFE
 
 #ifndef PLT_ETHER_ADDR_LEN
 #define PLT_ETHER_ADDR_LEN RTE_ETHER_ADDR_LEN
