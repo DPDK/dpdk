@@ -7,7 +7,11 @@ project('DPDK', 'C',
         version: run_command(find_program('cat', 'more'),
             files('VERSION'), check: true).stdout().strip(),
         license: 'BSD',
-        default_options: ['buildtype=release', 'default_library=static'],
+        default_options: [
+            'buildtype=release',
+            'default_library=static',
+            'warning_level=2',
+        ],
         meson_version: '>= 0.49.2'
 )
 
