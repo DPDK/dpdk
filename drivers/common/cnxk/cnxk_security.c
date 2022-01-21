@@ -753,6 +753,12 @@ cnxk_onf_ipsec_outb_sa_fill(struct roc_onf_ipsec_outb_sa *sa,
 		return -EINVAL;
 	}
 
+	/* Update udp encap ports */
+	if (ipsec_xfrm->options.udp_encap == 1) {
+		sa->udp_src = 4500;
+		sa->udp_dst = 4500;
+	}
+
 skip_tunnel_info:
 	rte_wmb();
 
