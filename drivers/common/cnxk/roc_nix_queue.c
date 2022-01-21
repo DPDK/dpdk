@@ -54,6 +54,9 @@ nix_rq_ena_dis(struct dev *dev, struct roc_nix_rq *rq, bool enable)
 		struct nix_aq_enq_req *aq;
 
 		aq = mbox_alloc_msg_nix_aq_enq(mbox);
+		if (!aq)
+			return -ENOSPC;
+
 		aq->qidx = rq->qid;
 		aq->ctype = NIX_AQ_CTYPE_RQ;
 		aq->op = NIX_AQ_INSTOP_WRITE;
@@ -64,6 +67,9 @@ nix_rq_ena_dis(struct dev *dev, struct roc_nix_rq *rq, bool enable)
 		struct nix_cn10k_aq_enq_req *aq;
 
 		aq = mbox_alloc_msg_nix_cn10k_aq_enq(mbox);
+		if (!aq)
+			return -ENOSPC;
+
 		aq->qidx = rq->qid;
 		aq->ctype = NIX_AQ_CTYPE_RQ;
 		aq->op = NIX_AQ_INSTOP_WRITE;
@@ -95,6 +101,9 @@ nix_rq_cn9k_cfg(struct dev *dev, struct roc_nix_rq *rq, uint16_t qints,
 	struct nix_aq_enq_req *aq;
 
 	aq = mbox_alloc_msg_nix_aq_enq(mbox);
+	if (!aq)
+		return -ENOSPC;
+
 	aq->qidx = rq->qid;
 	aq->ctype = NIX_AQ_CTYPE_RQ;
 	aq->op = cfg ? NIX_AQ_INSTOP_WRITE : NIX_AQ_INSTOP_INIT;
@@ -210,6 +219,9 @@ nix_rq_cfg(struct dev *dev, struct roc_nix_rq *rq, uint16_t qints, bool cfg,
 	struct mbox *mbox = dev->mbox;
 
 	aq = mbox_alloc_msg_nix_cn10k_aq_enq(mbox);
+	if (!aq)
+		return -ENOSPC;
+
 	aq->qidx = rq->qid;
 	aq->ctype = NIX_AQ_CTYPE_RQ;
 	aq->op = cfg ? NIX_AQ_INSTOP_WRITE : NIX_AQ_INSTOP_INIT;
@@ -478,6 +490,9 @@ roc_nix_cq_init(struct roc_nix *roc_nix, struct roc_nix_cq *cq)
 		struct nix_aq_enq_req *aq;
 
 		aq = mbox_alloc_msg_nix_aq_enq(mbox);
+		if (!aq)
+			return -ENOSPC;
+
 		aq->qidx = cq->qid;
 		aq->ctype = NIX_AQ_CTYPE_CQ;
 		aq->op = NIX_AQ_INSTOP_INIT;
@@ -486,6 +501,9 @@ roc_nix_cq_init(struct roc_nix *roc_nix, struct roc_nix_cq *cq)
 		struct nix_cn10k_aq_enq_req *aq;
 
 		aq = mbox_alloc_msg_nix_cn10k_aq_enq(mbox);
+		if (!aq)
+			return -ENOSPC;
+
 		aq->qidx = cq->qid;
 		aq->ctype = NIX_AQ_CTYPE_CQ;
 		aq->op = NIX_AQ_INSTOP_INIT;
@@ -562,6 +580,9 @@ roc_nix_cq_fini(struct roc_nix_cq *cq)
 		struct nix_aq_enq_req *aq;
 
 		aq = mbox_alloc_msg_nix_aq_enq(mbox);
+		if (!aq)
+			return -ENOSPC;
+
 		aq->qidx = cq->qid;
 		aq->ctype = NIX_AQ_CTYPE_CQ;
 		aq->op = NIX_AQ_INSTOP_WRITE;
@@ -573,6 +594,9 @@ roc_nix_cq_fini(struct roc_nix_cq *cq)
 		struct nix_cn10k_aq_enq_req *aq;
 
 		aq = mbox_alloc_msg_nix_cn10k_aq_enq(mbox);
+		if (!aq)
+			return -ENOSPC;
+
 		aq->qidx = cq->qid;
 		aq->ctype = NIX_AQ_CTYPE_CQ;
 		aq->op = NIX_AQ_INSTOP_WRITE;
@@ -664,7 +688,7 @@ fail:
 	return rc;
 }
 
-static void
+static int
 sq_cn9k_init(struct nix *nix, struct roc_nix_sq *sq, uint32_t rr_quantum,
 	     uint16_t smq)
 {
@@ -672,6 +696,9 @@ sq_cn9k_init(struct nix *nix, struct roc_nix_sq *sq, uint32_t rr_quantum,
 	struct nix_aq_enq_req *aq;
 
 	aq = mbox_alloc_msg_nix_aq_enq(mbox);
+	if (!aq)
+		return -ENOSPC;
+
 	aq->qidx = sq->qid;
 	aq->ctype = NIX_AQ_CTYPE_SQ;
 	aq->op = NIX_AQ_INSTOP_INIT;
@@ -700,6 +727,7 @@ sq_cn9k_init(struct nix *nix, struct roc_nix_sq *sq, uint32_t rr_quantum,
 	 * might result in software missing the interrupt.
 	 */
 	aq->sq.qint_idx = 0;
+	return 0;
 }
 
 static int
@@ -713,6 +741,9 @@ sq_cn9k_fini(struct nix *nix, struct roc_nix_sq *sq)
 	int rc, count;
 
 	aq = mbox_alloc_msg_nix_aq_enq(mbox);
+	if (!aq)
+		return -ENOSPC;
+
 	aq->qidx = sq->qid;
 	aq->ctype = NIX_AQ_CTYPE_SQ;
 	aq->op = NIX_AQ_INSTOP_READ;
@@ -726,6 +757,9 @@ sq_cn9k_fini(struct nix *nix, struct roc_nix_sq *sq)
 
 	/* Disable sq */
 	aq = mbox_alloc_msg_nix_aq_enq(mbox);
+	if (!aq)
+		return -ENOSPC;
+
 	aq->qidx = sq->qid;
 	aq->ctype = NIX_AQ_CTYPE_SQ;
 	aq->op = NIX_AQ_INSTOP_WRITE;
@@ -737,6 +771,9 @@ sq_cn9k_fini(struct nix *nix, struct roc_nix_sq *sq)
 
 	/* Read SQ and free sqb's */
 	aq = mbox_alloc_msg_nix_aq_enq(mbox);
+	if (!aq)
+		return -ENOSPC;
+
 	aq->qidx = sq->qid;
 	aq->ctype = NIX_AQ_CTYPE_SQ;
 	aq->op = NIX_AQ_INSTOP_READ;
@@ -768,7 +805,7 @@ sq_cn9k_fini(struct nix *nix, struct roc_nix_sq *sq)
 	return 0;
 }
 
-static void
+static int
 sq_init(struct nix *nix, struct roc_nix_sq *sq, uint32_t rr_quantum,
 	uint16_t smq)
 {
@@ -776,6 +813,9 @@ sq_init(struct nix *nix, struct roc_nix_sq *sq, uint32_t rr_quantum,
 	struct nix_cn10k_aq_enq_req *aq;
 
 	aq = mbox_alloc_msg_nix_cn10k_aq_enq(mbox);
+	if (!aq)
+		return -ENOSPC;
+
 	aq->qidx = sq->qid;
 	aq->ctype = NIX_AQ_CTYPE_SQ;
 	aq->op = NIX_AQ_INSTOP_INIT;
@@ -803,6 +843,7 @@ sq_init(struct nix *nix, struct roc_nix_sq *sq, uint32_t rr_quantum,
 	 * might result in software missing the interrupt.
 	 */
 	aq->sq.qint_idx = 0;
+	return 0;
 }
 
 static int
@@ -816,6 +857,9 @@ sq_fini(struct nix *nix, struct roc_nix_sq *sq)
 	int rc, count;
 
 	aq = mbox_alloc_msg_nix_cn10k_aq_enq(mbox);
+	if (!aq)
+		return -ENOSPC;
+
 	aq->qidx = sq->qid;
 	aq->ctype = NIX_AQ_CTYPE_SQ;
 	aq->op = NIX_AQ_INSTOP_READ;
@@ -829,6 +873,9 @@ sq_fini(struct nix *nix, struct roc_nix_sq *sq)
 
 	/* Disable sq */
 	aq = mbox_alloc_msg_nix_cn10k_aq_enq(mbox);
+	if (!aq)
+		return -ENOSPC;
+
 	aq->qidx = sq->qid;
 	aq->ctype = NIX_AQ_CTYPE_SQ;
 	aq->op = NIX_AQ_INSTOP_WRITE;
@@ -840,6 +887,9 @@ sq_fini(struct nix *nix, struct roc_nix_sq *sq)
 
 	/* Read SQ and free sqb's */
 	aq = mbox_alloc_msg_nix_cn10k_aq_enq(mbox);
+	if (!aq)
+		return -ENOSPC;
+
 	aq->qidx = sq->qid;
 	aq->ctype = NIX_AQ_CTYPE_SQ;
 	aq->op = NIX_AQ_INSTOP_READ;
@@ -910,9 +960,12 @@ roc_nix_sq_init(struct roc_nix *roc_nix, struct roc_nix_sq *sq)
 
 	/* Init SQ context */
 	if (roc_model_is_cn9k())
-		sq_cn9k_init(nix, sq, rr_quantum, smq);
+		rc = sq_cn9k_init(nix, sq, rr_quantum, smq);
 	else
-		sq_init(nix, sq, rr_quantum, smq);
+		rc = sq_init(nix, sq, rr_quantum, smq);
+
+	if (rc)
+		goto nomem;
 
 	rc = mbox_process(mbox);
 	if (rc)

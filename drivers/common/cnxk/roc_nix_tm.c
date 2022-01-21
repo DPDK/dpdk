@@ -766,6 +766,9 @@ nix_tm_sq_sched_conf(struct nix *nix, struct nix_tm_node *node,
 		struct nix_aq_enq_req *aq;
 
 		aq = mbox_alloc_msg_nix_aq_enq(mbox);
+		if (!aq)
+			return -ENOSPC;
+
 		aq->qidx = qid;
 		aq->ctype = NIX_AQ_CTYPE_SQ;
 		aq->op = NIX_AQ_INSTOP_WRITE;
@@ -781,6 +784,9 @@ nix_tm_sq_sched_conf(struct nix *nix, struct nix_tm_node *node,
 		struct nix_cn10k_aq_enq_req *aq;
 
 		aq = mbox_alloc_msg_nix_cn10k_aq_enq(mbox);
+		if (!aq)
+			return -ENOSPC;
+
 		aq->qidx = qid;
 		aq->ctype = NIX_AQ_CTYPE_SQ;
 		aq->op = NIX_AQ_INSTOP_WRITE;

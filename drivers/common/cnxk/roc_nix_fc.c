@@ -113,6 +113,9 @@ nix_fc_cq_config_get(struct roc_nix *roc_nix, struct roc_nix_fc_cfg *fc_cfg)
 		struct nix_aq_enq_req *aq;
 
 		aq = mbox_alloc_msg_nix_aq_enq(mbox);
+		if (!aq)
+			return -ENOSPC;
+
 		aq->qidx = fc_cfg->cq_cfg.rq;
 		aq->ctype = NIX_AQ_CTYPE_CQ;
 		aq->op = NIX_AQ_INSTOP_READ;
@@ -120,6 +123,9 @@ nix_fc_cq_config_get(struct roc_nix *roc_nix, struct roc_nix_fc_cfg *fc_cfg)
 		struct nix_cn10k_aq_enq_req *aq;
 
 		aq = mbox_alloc_msg_nix_cn10k_aq_enq(mbox);
+		if (!aq)
+			return -ENOSPC;
+
 		aq->qidx = fc_cfg->cq_cfg.rq;
 		aq->ctype = NIX_AQ_CTYPE_CQ;
 		aq->op = NIX_AQ_INSTOP_READ;
@@ -147,6 +153,9 @@ nix_fc_cq_config_set(struct roc_nix *roc_nix, struct roc_nix_fc_cfg *fc_cfg)
 		struct nix_aq_enq_req *aq;
 
 		aq = mbox_alloc_msg_nix_aq_enq(mbox);
+		if (!aq)
+			return -ENOSPC;
+
 		aq->qidx = fc_cfg->cq_cfg.rq;
 		aq->ctype = NIX_AQ_CTYPE_CQ;
 		aq->op = NIX_AQ_INSTOP_WRITE;
@@ -164,6 +173,9 @@ nix_fc_cq_config_set(struct roc_nix *roc_nix, struct roc_nix_fc_cfg *fc_cfg)
 		struct nix_cn10k_aq_enq_req *aq;
 
 		aq = mbox_alloc_msg_nix_cn10k_aq_enq(mbox);
+		if (!aq)
+			return -ENOSPC;
+
 		aq->qidx = fc_cfg->cq_cfg.rq;
 		aq->ctype = NIX_AQ_CTYPE_CQ;
 		aq->op = NIX_AQ_INSTOP_WRITE;
