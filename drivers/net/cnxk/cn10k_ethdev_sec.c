@@ -238,6 +238,8 @@ cn10k_eth_sec_session_create(void *device,
 	struct rte_crypto_sym_xform *crypto;
 	struct cnxk_eth_sec_sess *eth_sec;
 	bool inbound, inl_dev;
+	rte_spinlock_t *lock;
+	char tbuf[128] = {0};
 	int rc = 0;
 
 	if (conf->action_type != RTE_SECURITY_ACTION_TYPE_INLINE_PROTOCOL)
@@ -272,6 +274,9 @@ cn10k_eth_sec_session_create(void *device,
 	memset(eth_sec, 0, sizeof(struct cnxk_eth_sec_sess));
 	sess_priv.u64 = 0;
 
+	lock = inbound ? &dev->inb.lock : &dev->outb.lock;
+	rte_spinlock_lock(lock);
+
 	/* Acquire lock on inline dev for inbound */
 	if (inbound && inl_dev)
 		roc_nix_inl_dev_lock();
@@ -287,12 +292,14 @@ cn10k_eth_sec_session_create(void *device,
 		/* Get Inbound SA from NIX_RX_IPSEC_SA_BASE */
 		sa = roc_nix_inl_inb_sa_get(&dev->nix, inl_dev, ipsec->spi);
 		if (!sa && dev->inb.inl_dev) {
-			plt_err("Failed to create ingress sa, inline dev "
-				"not found or spi not in range");
+			snprintf(tbuf, sizeof(tbuf),
+				 "Failed to create ingress sa, inline dev "
+				 "not found or spi not in range");
 			rc = -ENOTSUP;
 			goto mempool_put;
 		} else if (!sa) {
-			plt_err("Failed to create ingress sa");
+			snprintf(tbuf, sizeof(tbuf),
+				 "Failed to create ingress sa");
 			rc = -EFAULT;
 			goto mempool_put;
 		}
@@ -301,8 +308,9 @@ cn10k_eth_sec_session_create(void *device,
 
 		/* Check if SA is already in use */
 		if (inb_sa->w2.s.valid) {
-			plt_err("Inbound SA with SPI %u already in use",
-				ipsec->spi);
+			snprintf(tbuf, sizeof(tbuf),
+				 "Inbound SA with SPI %u already in use",
+				 ipsec->spi);
 			rc = -EBUSY;
 			goto mempool_put;
 		}
@@ -313,7 +321,8 @@ cn10k_eth_sec_session_create(void *device,
 		/* Fill inbound sa params */
 		rc = cnxk_ot_ipsec_inb_sa_fill(inb_sa_dptr, ipsec, crypto);
 		if (rc) {
-			plt_err("Failed to init inbound sa, rc=%d", rc);
+			snprintf(tbuf, sizeof(tbuf),
+				 "Failed to init inbound sa, rc=%d", rc);
 			goto mempool_put;
 		}
 
@@ -371,7 +380,8 @@ cn10k_eth_sec_session_create(void *device,
 		/* Fill outbound sa params */
 		rc = cnxk_ot_ipsec_outb_sa_fill(outb_sa_dptr, ipsec, crypto);
 		if (rc) {
-			plt_err("Failed to init outbound sa, rc=%d", rc);
+			snprintf(tbuf, sizeof(tbuf),
+				 "Failed to init outbound sa, rc=%d", rc);
 			rc |= cnxk_eth_outb_sa_idx_put(dev, sa_idx);
 			goto mempool_put;
 		}
@@ -409,6 +419,7 @@ cn10k_eth_sec_session_create(void *device,
 	}
 	if (inbound && inl_dev)
 		roc_nix_inl_dev_unlock();
+	rte_spinlock_unlock(lock);
 
 	plt_nix_dbg("Created %s session with spi=%u, sa_idx=%u inl_dev=%u",
 		    inbound ? "inbound" : "outbound", eth_sec->spi,
@@ -422,7 +433,11 @@ cn10k_eth_sec_session_create(void *device,
 mempool_put:
 	if (inbound && inl_dev)
 		roc_nix_inl_dev_unlock();
+	rte_spinlock_unlock(lock);
+
 	rte_mempool_put(mempool, eth_sec);
+	if (rc)
+		plt_err("%s", tbuf);
 	return rc;
 }
 
@@ -433,11 +448,15 @@ cn10k_eth_sec_session_destroy(void *device, struct rte_security_session *sess)
 	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
 	struct cnxk_eth_sec_sess *eth_sec;
 	struct rte_mempool *mp;
+	rte_spinlock_t *lock;
 	void *sa_dptr;
 
 	eth_sec = cnxk_eth_sec_sess_get_by_sess(dev, sess);
 	if (!eth_sec)
 		return -ENOENT;
+
+	lock = eth_sec->inb ? &dev->inb.lock : &dev->outb.lock;
+	rte_spinlock_lock(lock);
 
 	if (eth_sec->inl_dev)
 		roc_nix_inl_dev_lock();
@@ -467,6 +486,8 @@ cn10k_eth_sec_session_destroy(void *device, struct rte_security_session *sess)
 	}
 	if (eth_sec->inl_dev)
 		roc_nix_inl_dev_unlock();
+
+	rte_spinlock_unlock(lock);
 
 	plt_nix_dbg("Destroyed %s session with spi=%u, sa_idx=%u, inl_dev=%u",
 		    eth_sec->inb ? "inbound" : "outbound", eth_sec->spi,

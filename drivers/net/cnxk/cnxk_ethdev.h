@@ -271,6 +271,9 @@ struct cnxk_eth_dev_sec_inb {
 
 	/* DPTR for WRITE_SA microcode op */
 	void *sa_dptr;
+
+	/* Lock to synchronize sa setup/release */
+	rte_spinlock_t lock;
 };
 
 /* Outbound security data */
@@ -304,6 +307,9 @@ struct cnxk_eth_dev_sec_outb {
 
 	/* DPTR for WRITE_SA microcode op */
 	void *sa_dptr;
+
+	/* Lock to synchronize sa setup/release */
+	rte_spinlock_t lock;
 };
 
 struct cnxk_eth_dev {

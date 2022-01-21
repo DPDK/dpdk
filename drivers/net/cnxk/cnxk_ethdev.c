@@ -1611,8 +1611,6 @@ cnxk_eth_dev_init(struct rte_eth_dev *eth_dev)
 	sec_ctx->flags =
 		(RTE_SEC_CTX_F_FAST_SET_MDATA | RTE_SEC_CTX_F_FAST_GET_UDATA);
 	eth_dev->security_ctx = sec_ctx;
-	TAILQ_INIT(&dev->inb.list);
-	TAILQ_INIT(&dev->outb.list);
 
 	/* For secondary processes, the primary has done all the work */
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
@@ -1647,6 +1645,11 @@ cnxk_eth_dev_init(struct rte_eth_dev *eth_dev)
 	dev->eth_dev = eth_dev;
 	dev->configured = 0;
 	dev->ptype_disable = 0;
+
+	TAILQ_INIT(&dev->inb.list);
+	TAILQ_INIT(&dev->outb.list);
+	rte_spinlock_init(&dev->inb.lock);
+	rte_spinlock_init(&dev->outb.lock);
 
 	/* For vfs, returned max_entries will be 0. but to keep default mac
 	 * address, one entry must be allocated. so setting up to 1.
