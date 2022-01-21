@@ -167,7 +167,34 @@ Runtime Config Options
 
    With the above configuration, higig2 will be enabled on that port and the
    traffic on this port should be higig2 traffic only. Supported switch header
-   types are "chlen24b", "chlen90b", "dsa", "exdsa", "higig2" and "vlan_exdsa".
+   types are "chlen24b", "chlen90b", "dsa", "exdsa", "higig2", "vlan_exdsa" and
+   "pre_l2".
+
+- ``Flow pre_l2 info`` (default ``0x0/0x0/0x0``)
+
+   pre_l2 headers are custom headers placed before the ethernet header. For
+   parsing custom pre_l2 headers, an offset, mask within the offset and shift
+   direction has to be provided within the custom header that holds the size of
+   the custom header. This is valid only with switch header pre_l2. Maximum
+   supported offset range is 0 to 255 and mask range is 1 to 255 and
+   shift direction, 0: left shift, 1: right shift.
+   Info format will be "offset/mask/shift direction". All parameters has to be
+   in hexadecimal format and mask should be contiguous. Info can be configured
+   using ``flow_pre_l2_info`` ``devargs`` parameter.
+
+   For example::
+
+      -a 0002:02:00.0,switch_header="pre_l2",flow_pre_l2_info=0x2/0x7e/0x1
+
+   With the above configuration, custom pre_l2 header will be enabled on that
+   port and size of the header is placed at byte offset 0x2 in the packet with
+   mask 0x7e and right shift will be used to get the size. That is, size will be
+   (pkt[0x2] & 0x7e) >> shift count. Shift count will be calculated based on
+   mask and shift direction. For example, if mask is 0x7c and shift direction is
+   1 (i.e., right shift) then the shift count will be 2, that is, absolute
+   position of the rightmost set bit. If the mask is 0x7c and shift direction
+   is 0 (i.e., left shift) then the shift count will be 1, that is, (8 - n),
+   where n is the absolute position of leftmost set bit.
 
 - ``RSS tag as XOR`` (default ``0``)
 

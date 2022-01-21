@@ -13,6 +13,12 @@ struct sdp_channel {
 	uint16_t mask;
 };
 
+struct flow_pre_l2_size_info {
+	uint8_t pre_l2_size_off;
+	uint8_t pre_l2_size_off_mask;
+	uint8_t pre_l2_size_shift_dir;
+};
+
 static int
 parse_outb_nb_desc(const char *key, const char *value, void *extra_args)
 {
@@ -125,6 +131,29 @@ parse_reta_size(const char *key, const char *value, void *extra_args)
 }
 
 static int
+parse_pre_l2_hdr_info(const char *key, const char *value, void *extra_args)
+{
+	struct flow_pre_l2_size_info *info =
+		(struct flow_pre_l2_size_info *)extra_args;
+	char *tok1 = NULL, *tok2 = NULL;
+	uint16_t off, off_mask, dir;
+
+	RTE_SET_USED(key);
+	off = strtol(value, &tok1, 16);
+	tok1++;
+	off_mask = strtol(tok1, &tok2, 16);
+	tok2++;
+	dir = strtol(tok2, 0, 16);
+	if (off >= 256 || off_mask < 1 || off_mask >= 256 || dir > 1)
+		return -EINVAL;
+	info->pre_l2_size_off = off;
+	info->pre_l2_size_off_mask = off_mask;
+	info->pre_l2_size_shift_dir = dir;
+
+	return 0;
+}
+
+static int
 parse_flag(const char *key, const char *value, void *extra_args)
 {
 	RTE_SET_USED(key);
@@ -167,6 +196,9 @@ parse_switch_header_type(const char *key, const char *value, void *extra_args)
 	if (strcmp(value, "vlan_exdsa") == 0)
 		*(uint16_t *)extra_args = ROC_PRIV_FLAGS_VLAN_EXDSA;
 
+	if (strcmp(value, "pre_l2") == 0)
+		*(uint16_t *)extra_args = ROC_PRIV_FLAGS_PRE_L2;
+
 	return 0;
 }
 
@@ -205,12 +237,14 @@ parse_sdp_channel_mask(const char *key, const char *value, void *extra_args)
 #define CNXK_FORCE_INB_INL_DEV	"force_inb_inl_dev"
 #define CNXK_OUTB_NB_CRYPTO_QS	"outb_nb_crypto_qs"
 #define CNXK_SDP_CHANNEL_MASK	"sdp_channel_mask"
+#define CNXK_FLOW_PRE_L2_INFO	"flow_pre_l2_info"
 
 int
 cnxk_ethdev_parse_devargs(struct rte_devargs *devargs, struct cnxk_eth_dev *dev)
 {
 	uint16_t reta_sz = ROC_NIX_RSS_RETA_SZ_64;
 	uint16_t sqb_count = CNXK_NIX_TX_MAX_SQB;
+	struct flow_pre_l2_size_info pre_l2_info;
 	uint16_t ipsec_in_max_spi = BIT(8) - 1;
 	uint16_t ipsec_out_max_sa = BIT(12);
 	uint16_t flow_prealloc_size = 1;
@@ -226,6 +260,7 @@ cnxk_ethdev_parse_devargs(struct rte_devargs *devargs, struct cnxk_eth_dev *dev)
 	struct rte_kvargs *kvlist;
 
 	memset(&sdp_chan, 0, sizeof(sdp_chan));
+	memset(&pre_l2_info, 0, sizeof(struct flow_pre_l2_size_info));
 
 	if (devargs == NULL)
 		goto null_devargs;
@@ -261,6 +296,8 @@ cnxk_ethdev_parse_devargs(struct rte_devargs *devargs, struct cnxk_eth_dev *dev)
 			   &force_inb_inl_dev);
 	rte_kvargs_process(kvlist, CNXK_SDP_CHANNEL_MASK,
 			   &parse_sdp_channel_mask, &sdp_chan);
+	rte_kvargs_process(kvlist, CNXK_FLOW_PRE_L2_INFO,
+			   &parse_pre_l2_hdr_info, &pre_l2_info);
 	rte_kvargs_free(kvlist);
 
 null_devargs:
@@ -282,6 +319,9 @@ null_devargs:
 	dev->npc.sdp_channel = sdp_chan.channel;
 	dev->npc.sdp_channel_mask = sdp_chan.mask;
 	dev->npc.is_sdp_mask_set = sdp_chan.is_sdp_mask_set;
+	dev->npc.pre_l2_size_offset = pre_l2_info.pre_l2_size_off;
+	dev->npc.pre_l2_size_offset_mask = pre_l2_info.pre_l2_size_off_mask;
+	dev->npc.pre_l2_size_shift_dir = pre_l2_info.pre_l2_size_shift_dir;
 	return 0;
 exit:
 	return -EINVAL;
@@ -297,6 +337,7 @@ RTE_PMD_REGISTER_PARAM_STRING(net_cnxk,
 			      CNXK_RSS_TAG_AS_XOR "=1"
 			      CNXK_IPSEC_IN_MAX_SPI "=<1-65535>"
 			      CNXK_OUTB_NB_DESC "=<1-65535>"
+			      CNXK_FLOW_PRE_L2_INFO "=<0-255>/<1-255>/<0-1>"
 			      CNXK_OUTB_NB_CRYPTO_QS "=<1-64>"
 			      CNXK_FORCE_INB_INL_DEV "=1"
 			      CNXK_SDP_CHANNEL_MASK "=<1-4095>/<1-4095>");

@@ -364,7 +364,10 @@ roc_nix_lso_fmt_get(struct roc_nix *roc_nix,
 }
 
 int
-roc_nix_switch_hdr_set(struct roc_nix *roc_nix, uint64_t switch_header_type)
+roc_nix_switch_hdr_set(struct roc_nix *roc_nix, uint64_t switch_header_type,
+		       uint8_t pre_l2_size_offset,
+		       uint8_t pre_l2_size_offset_mask,
+		       uint8_t pre_l2_size_shift_dir)
 {
 	struct mbox *mbox = get_mbox(roc_nix);
 	struct npc_set_pkind *req;
@@ -380,6 +383,7 @@ roc_nix_switch_hdr_set(struct roc_nix *roc_nix, uint64_t switch_header_type)
 	    switch_header_type != ROC_PRIV_FLAGS_LEN_90B &&
 	    switch_header_type != ROC_PRIV_FLAGS_EXDSA &&
 	    switch_header_type != ROC_PRIV_FLAGS_VLAN_EXDSA &&
+	    switch_header_type != ROC_PRIV_FLAGS_PRE_L2 &&
 	    switch_header_type != ROC_PRIV_FLAGS_CUSTOM) {
 		plt_err("switch header type is not supported");
 		return NIX_ERR_PARAM;
@@ -411,6 +415,12 @@ roc_nix_switch_hdr_set(struct roc_nix *roc_nix, uint64_t switch_header_type)
 	} else if (switch_header_type == ROC_PRIV_FLAGS_VLAN_EXDSA) {
 		req->mode = ROC_PRIV_FLAGS_CUSTOM;
 		req->pkind = NPC_RX_VLAN_EXDSA_PKIND;
+	} else if (switch_header_type == ROC_PRIV_FLAGS_PRE_L2) {
+		req->mode = ROC_PRIV_FLAGS_CUSTOM;
+		req->pkind = NPC_RX_CUSTOM_PRE_L2_PKIND;
+		req->var_len_off = pre_l2_size_offset;
+		req->var_len_off_mask = pre_l2_size_offset_mask;
+		req->shift_dir = pre_l2_size_shift_dir;
 	}
 
 	req->dir = PKIND_RX;

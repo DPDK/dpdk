@@ -187,6 +187,14 @@ enum flow_vtag_cfg_dir { VTAG_TX, VTAG_RX };
 struct roc_npc {
 	struct roc_nix *roc_nix;
 	uint8_t switch_header_type;
+	uint8_t pre_l2_size_offset;	 /**< Offset with in header that holds
+					   * size of custom header
+					   */
+	uint8_t pre_l2_size_offset_mask; /**< Offset mask with in header
+					   * that holds size of custom header
+					   */
+	uint8_t pre_l2_size_shift_dir;	 /**< Shift direction to calculate size
+					   */
 	uint16_t flow_prealloc_size;
 	uint16_t flow_max_priority;
 	uint16_t channel;

@@ -323,6 +323,7 @@ struct npc_set_pkind {
 #define ROC_PRIV_FLAGS_LEN_90B	  BIT_ULL(3)
 #define ROC_PRIV_FLAGS_EXDSA	  BIT_ULL(4)
 #define ROC_PRIV_FLAGS_VLAN_EXDSA BIT_ULL(5)
+#define ROC_PRIV_FLAGS_PRE_L2	  BIT_ULL(6)
 #define ROC_PRIV_FLAGS_CUSTOM	  BIT_ULL(63)
 	uint64_t __io mode;
 #define PKIND_TX BIT_ULL(0)
