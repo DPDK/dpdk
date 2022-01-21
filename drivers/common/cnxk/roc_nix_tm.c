@@ -424,7 +424,7 @@ nix_tm_bp_config_get(struct roc_nix *roc_nix, bool *is_enabled)
 
 	if (req) {
 		req->num_regs = k;
-		rc = mbox_process(mbox);
+		rc = mbox_process_msg(mbox, (void **)&rsp);
 		if (rc)
 			goto err;
 		/* Report it as enabled only if enabled or all */

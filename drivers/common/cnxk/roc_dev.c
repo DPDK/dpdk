@@ -57,7 +57,7 @@ pf_af_sync_msg(struct dev *dev, struct mbox_msghdr **rsp)
 	struct mbox *mbox = dev->mbox;
 	struct mbox_dev *mdev = &mbox->dev[0];
 
-	volatile uint64_t int_status;
+	volatile uint64_t int_status = 0;
 	struct mbox_msghdr *msghdr;
 	uint64_t off;
 	int rc = 0;
