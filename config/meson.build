@@ -194,10 +194,9 @@ endif
 add_project_arguments('-include', 'rte_config.h', language: 'c')
 
 # enable extra warnings and disable any unwanted warnings
+# -Wall is added by default at warning level 1, and -Wextra
+# at warning level 2 (DPDK default)
 warning_flags = [
-	# -Wall is added by meson by default, so add -Wextra only
-	'-Wextra',
-
 	# additional warnings in alphabetical order
 	'-Wcast-qual',
 	'-Wdeprecated',
