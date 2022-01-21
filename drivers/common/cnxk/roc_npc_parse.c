@@ -21,6 +21,80 @@ npc_parse_meta_items(struct npc_parse_state *pst)
 	return 0;
 }
 
+static int
+npc_flow_raw_item_prepare(const struct roc_npc_flow_item_raw *raw_spec,
+			  const struct roc_npc_flow_item_raw *raw_mask,
+			  struct npc_parse_item_info *info, uint8_t *spec_buf,
+			  uint8_t *mask_buf)
+{
+
+	memset(spec_buf, 0, NPC_MAX_RAW_ITEM_LEN);
+	memset(mask_buf, 0, NPC_MAX_RAW_ITEM_LEN);
+
+	memcpy(spec_buf + raw_spec->offset, raw_spec->pattern,
+	       raw_spec->length);
+
+	if (raw_mask && raw_mask->pattern) {
+		memcpy(mask_buf + raw_spec->offset, raw_mask->pattern,
+		       raw_spec->length);
+	} else {
+		memset(mask_buf + raw_spec->offset, 0xFF, raw_spec->length);
+	}
+
+	info->len = NPC_MAX_RAW_ITEM_LEN;
+	info->spec = spec_buf;
+	info->mask = mask_buf;
+	return 0;
+}
+
+int
+npc_parse_pre_l2(struct npc_parse_state *pst)
+{
+	uint8_t raw_spec_buf[NPC_MAX_RAW_ITEM_LEN] = {0};
+	uint8_t raw_mask_buf[NPC_MAX_RAW_ITEM_LEN] = {0};
+	uint8_t hw_mask[NPC_MAX_EXTRACT_HW_LEN] = {0};
+	const struct roc_npc_flow_item_raw *raw_spec;
+	struct npc_parse_item_info info;
+	int lid, lt, len;
+	int rc;
+
+	if (pst->npc->switch_header_type != ROC_PRIV_FLAGS_PRE_L2)
+		return 0;
+
+	/* Identify the pattern type into lid, lt */
+	if (pst->pattern->type != ROC_NPC_ITEM_TYPE_RAW)
+		return 0;
+
+	lid = NPC_LID_LA;
+	lt = NPC_LT_LA_CUSTOM_PRE_L2_ETHER;
+	info.hw_hdr_len = 0;
+
+	raw_spec = pst->pattern->spec;
+	len = raw_spec->length + raw_spec->offset;
+	if (len > NPC_MAX_RAW_ITEM_LEN)
+		return -EINVAL;
+
+	if (raw_spec->relative == 0 || raw_spec->search || raw_spec->limit ||
+	    raw_spec->offset < 0)
+		return -EINVAL;
+
+	npc_flow_raw_item_prepare(
+		(const struct roc_npc_flow_item_raw *)pst->pattern->spec,
+		(const struct roc_npc_flow_item_raw *)pst->pattern->mask, &info,
+		raw_spec_buf, raw_mask_buf);
+
+	info.hw_mask = &hw_mask;
+	npc_get_hw_supp_mask(pst, &info, lid, lt);
+
+	/* Basic validation of item parameters */
+	rc = npc_parse_item_basic(pst->pattern, &info);
+	if (rc)
+		return rc;
+
+	/* Update pst if not validate only? clash check? */
+	return npc_update_parse_state(pst, &info, lid, lt, 0);
+}
+
 int
 npc_parse_cpt_hdr(struct npc_parse_state *pst)
 {
@@ -134,35 +208,6 @@ npc_parse_la(struct npc_parse_state *pst)
 
 	/* Update pst if not validate only? clash check? */
 	return npc_update_parse_state(pst, &info, lid, lt, 0);
-}
-
-static int
-npc_flow_raw_item_prepare(const struct roc_npc_flow_item_raw *raw_spec,
-			  const struct roc_npc_flow_item_raw *raw_mask,
-			  struct npc_parse_item_info *info, uint8_t *spec_buf,
-			  uint8_t *mask_buf)
-{
-	uint32_t custom_hdr_size = 0;
-
-	memset(spec_buf, 0, NPC_MAX_RAW_ITEM_LEN);
-	memset(mask_buf, 0, NPC_MAX_RAW_ITEM_LEN);
-	custom_hdr_size = raw_spec->offset + raw_spec->length;
-
-	memcpy(spec_buf + raw_spec->offset, raw_spec->pattern,
-	       raw_spec->length);
-
-	if (raw_mask->pattern) {
-		memcpy(mask_buf + raw_spec->offset, raw_mask->pattern,
-		       raw_spec->length);
-	} else {
-		memset(mask_buf + raw_spec->offset, 0xFF, raw_spec->length);
-	}
-
-	info->len = custom_hdr_size;
-	info->spec = spec_buf;
-	info->mask = mask_buf;
-
-	return 0;
 }
 
 int

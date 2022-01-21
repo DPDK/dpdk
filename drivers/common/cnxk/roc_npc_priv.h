@@ -408,6 +408,7 @@ void npc_get_hw_supp_mask(struct npc_parse_state *pst,
 int npc_parse_item_basic(const struct roc_npc_item_info *item,
 			 struct npc_parse_item_info *info);
 int npc_parse_meta_items(struct npc_parse_state *pst);
+int npc_parse_pre_l2(struct npc_parse_state *pst);
 int npc_parse_higig2_hdr(struct npc_parse_state *pst);
 int npc_parse_cpt_hdr(struct npc_parse_state *pst);
 int npc_parse_la(struct npc_parse_state *pst);
