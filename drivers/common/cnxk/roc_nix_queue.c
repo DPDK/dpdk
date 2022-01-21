@@ -705,7 +705,11 @@ sq_cn9k_init(struct nix *nix, struct roc_nix_sq *sq, uint32_t rr_quantum,
 	aq->sq.sq_int_ena |= BIT(NIX_SQINT_MNQ_ERR);
 
 	/* Many to one reduction */
-	aq->sq.qint_idx = sq->qid % nix->qints;
+	/* Assigning QINT 0 to all the SQs, an errata exists where NIXTX can
+	 * send incorrect QINT_IDX when reporting queue interrupt (QINT). This
+	 * might result in software missing the interrupt.
+	 */
+	aq->sq.qint_idx = 0;
 }
 
 static int
@@ -804,8 +808,11 @@ sq_init(struct nix *nix, struct roc_nix_sq *sq, uint32_t rr_quantum,
 	aq->sq.sq_int_ena |= BIT(NIX_SQINT_SEND_ERR);
 	aq->sq.sq_int_ena |= BIT(NIX_SQINT_MNQ_ERR);
 
-	/* Many to one reduction */
-	aq->sq.qint_idx = sq->qid % nix->qints;
+	/* Assigning QINT 0 to all the SQs, an errata exists where NIXTX can
+	 * send incorrect QINT_IDX when reporting queue interrupt (QINT). This
+	 * might result in software missing the interrupt.
+	 */
+	aq->sq.qint_idx = 0;
 }
 
 static int
