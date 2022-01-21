@@ -112,6 +112,39 @@ struct roc_npc_flow_item_vlan {
 	uint32_t reserved : 31; /**< Reserved, must be zero. */
 };
 
+struct roc_ipv6_hdr {
+	uint32_t vtc_flow;    /**< IP version, traffic class & flow label. */
+	uint16_t payload_len; /**< IP payload size, including ext. headers */
+	uint8_t proto;	      /**< Protocol, next header. */
+	uint8_t hop_limits;   /**< Hop limits. */
+	uint8_t src_addr[16]; /**< IP address of source host. */
+	uint8_t dst_addr[16]; /**< IP address of destination host(s). */
+} __plt_packed;
+
+struct roc_npc_flow_item_ipv6 {
+	struct roc_ipv6_hdr hdr; /**< IPv6 header definition. */
+	uint32_t has_hop_ext : 1;
+	/**< Header contains Hop-by-Hop Options extension header. */
+	uint32_t has_route_ext : 1;
+	/**< Header contains Routing extension header. */
+	uint32_t has_frag_ext : 1;
+	/**< Header contains Fragment extension header. */
+	uint32_t has_auth_ext : 1;
+	/**< Header contains Authentication extension header. */
+	uint32_t has_esp_ext : 1;
+	/**< Header contains Encapsulation Security Payload extension header. */
+	uint32_t has_dest_ext : 1;
+	/**< Header contains Destination Options extension header. */
+	uint32_t has_mobil_ext : 1;
+	/**< Header contains Mobility extension header. */
+	uint32_t has_hip_ext : 1;
+	/**< Header contains Host Identity Protocol extension header. */
+	uint32_t has_shim6_ext : 1;
+	/**< Header contains Shim6 Protocol extension header. */
+	uint32_t reserved : 23;
+	/**< Reserved for future extension headers, must be zero. */
+};
+
 #define ROC_NPC_MAX_ACTION_COUNT 19
 
 enum roc_npc_action_type {

@@ -635,6 +635,46 @@ npc_set_vlan_ltype(struct npc_parse_state *pst)
 	pst->flow->mcam_mask[0] |= (0xeULL << lb_offset);
 }
 
+static void
+npc_set_ipv6ext_ltype_mask(struct npc_parse_state *pst)
+{
+	uint8_t lc_offset, lcflag_offset;
+	uint64_t val, mask;
+
+	lc_offset =
+		__builtin_popcount(pst->npc->keyx_supp_nmask[pst->nix_intf] &
+				   ((1ULL << NPC_LTYPE_LC_OFFSET) - 1));
+	lc_offset *= 4;
+
+	mask = ~((0xfULL << lc_offset));
+	pst->flow->mcam_data[0] &= mask;
+	pst->flow->mcam_mask[0] &= mask;
+	/* NPC_LT_LC_IP6: 0b0100, NPC_LT_LC_IP6_EXT: 0b0101
+	 * Set LC layertype/mask as 0b0100/0b1110 to match both.
+	 */
+	val = ((uint64_t)(NPC_LT_LC_IP6 & NPC_LT_LC_IP6_EXT)) << lc_offset;
+	pst->flow->mcam_data[0] |= val;
+	pst->flow->mcam_mask[0] |= (0xeULL << lc_offset);
+
+	/* If LC LFLAG is non-zero, set the LC LFLAG mask to 0xF. In general
+	 * case flag mask is set same as the value in data. For example, to
+	 * match 3 VLANs, flags have to match a range of values. But, for IPv6
+	 * extended attributes matching, we need an exact match. Hence, set the
+	 * mask as 0xF. This is done only if LC LFLAG value is non-zero,
+	 * because for AH and ESP, LC LFLAG is zero and we don't want to match
+	 * zero in LFLAG.
+	 */
+	lcflag_offset =
+		__builtin_popcount(pst->npc->keyx_supp_nmask[pst->nix_intf] &
+				   ((1ULL << NPC_LFLAG_LC_OFFSET) - 1));
+	lcflag_offset *= 4;
+
+	mask = (0xfULL << lcflag_offset);
+	val = pst->flow->mcam_data[0] & mask;
+	if (val)
+		pst->flow->mcam_mask[0] |= mask;
+}
+
 int
 npc_program_mcam(struct npc *npc, struct npc_parse_state *pst, bool mcam_alloc)
 {
@@ -708,6 +748,9 @@ npc_program_mcam(struct npc *npc, struct npc_parse_state *pst, bool mcam_alloc)
 
 	if (pst->set_vlan_ltype_mask)
 		npc_set_vlan_ltype(pst);
+
+	if (pst->set_ipv6ext_ltype_mask)
+		npc_set_ipv6ext_ltype_mask(pst);
 
 	if (pst->is_vf) {
 		(void)mbox_alloc_msg_npc_read_base_steer_rule(npc->mbox);

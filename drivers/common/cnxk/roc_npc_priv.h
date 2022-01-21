@@ -71,6 +71,11 @@
 /* LB OFFSET : START + LA (2b flags + 1b ltype) + LB (2b flags) */
 #define NPC_LTYPE_LB_OFFSET (NPC_LTYPE_OFFSET_START + 5)
 #define NPC_LFLAG_LB_OFFSET (NPC_LTYPE_OFFSET_START + 3)
+/* LC OFFSET : START + LA (2b flags + 1b ltype) + LB (2b flags + 1b ltype) + LC
+ * (2b flags)
+ */
+#define NPC_LFLAG_LC_OFFSET (NPC_LTYPE_OFFSET_START + 6)
+#define NPC_LTYPE_LC_OFFSET (NPC_LTYPE_OFFSET_START + 8)
 
 struct npc_action_vtag_info {
 	uint16_t vlan_id;
@@ -183,6 +188,7 @@ struct npc_parse_state {
 	bool is_vf;
 	/* adjust ltype in MCAM to match at least one vlan */
 	bool set_vlan_ltype_mask;
+	bool set_ipv6ext_ltype_mask;
 };
 
 enum npc_kpu_parser_flag {

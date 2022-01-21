@@ -480,16 +480,69 @@ npc_check_lc_ip_tunnel(struct npc_parse_state *pst)
 		pst->tunnel = 1;
 }
 
+static int
+npc_handle_ipv6ext_attr(const struct roc_npc_flow_item_ipv6 *ipv6_spec,
+			struct npc_parse_state *pst, uint8_t *flags)
+{
+	int flags_count = 0;
+
+	if (ipv6_spec->has_hop_ext) {
+		*flags = NPC_F_LC_L_EXT_HOP;
+		flags_count++;
+	}
+	if (ipv6_spec->has_route_ext) {
+		*flags = NPC_F_LC_L_EXT_ROUT;
+		flags_count++;
+	}
+	if (ipv6_spec->has_frag_ext) {
+		*flags = NPC_F_LC_U_IP6_FRAG;
+		flags_count++;
+	}
+	if (ipv6_spec->has_dest_ext) {
+		*flags = NPC_F_LC_L_EXT_DEST;
+		flags_count++;
+	}
+	if (ipv6_spec->has_mobil_ext) {
+		*flags = NPC_F_LC_L_EXT_MOBILITY;
+		flags_count++;
+	}
+	if (ipv6_spec->has_hip_ext) {
+		*flags = NPC_F_LC_L_EXT_HOSTID;
+		flags_count++;
+	}
+	if (ipv6_spec->has_shim6_ext) {
+		*flags = NPC_F_LC_L_EXT_SHIM6;
+		flags_count++;
+	}
+	if (ipv6_spec->has_auth_ext) {
+		pst->lt[NPC_LID_LD] = NPC_LT_LD_AH;
+		flags_count++;
+	}
+	if (ipv6_spec->has_esp_ext) {
+		pst->lt[NPC_LID_LE] = NPC_LT_LE_ESP;
+		flags_count++;
+	}
+
+	if (flags_count > 1)
+		return -EINVAL;
+
+	if (flags_count)
+		pst->set_ipv6ext_ltype_mask = true;
+
+	return 0;
+}
+
 int
 npc_parse_lc(struct npc_parse_state *pst)
 {
+	const struct roc_npc_flow_item_ipv6 *ipv6_spec;
 	const struct roc_npc_flow_item_raw *raw_spec;
 	uint8_t raw_spec_buf[NPC_MAX_RAW_ITEM_LEN];
 	uint8_t raw_mask_buf[NPC_MAX_RAW_ITEM_LEN];
 	uint8_t hw_mask[NPC_MAX_EXTRACT_HW_LEN];
 	struct npc_parse_item_info info;
-	int lid, lt, len = 0;
-	int rc;
+	int rc, lid, lt, len = 0;
+	uint8_t flags = 0;
 
 	if (pst->pattern->type == ROC_NPC_ITEM_TYPE_MPLS)
 		return npc_parse_mpls(pst, NPC_LID_LC);
@@ -506,9 +559,13 @@ npc_parse_lc(struct npc_parse_state *pst)
 		info.len = pst->pattern->size;
 		break;
 	case ROC_NPC_ITEM_TYPE_IPV6:
+		ipv6_spec = pst->pattern->spec;
 		lid = NPC_LID_LC;
 		lt = NPC_LT_LC_IP6;
-		info.len = pst->pattern->size;
+		rc = npc_handle_ipv6ext_attr(ipv6_spec, pst, &flags);
+		if (rc)
+			return rc;
+		info.len = sizeof(ipv6_spec->hdr);
 		break;
 	case ROC_NPC_ITEM_TYPE_ARP_ETH_IPV4:
 		lt = NPC_LT_LC_ARP;
@@ -558,7 +615,7 @@ npc_parse_lc(struct npc_parse_state *pst)
 	if (rc != 0)
 		return rc;
 
-	return npc_update_parse_state(pst, &info, lid, lt, 0);
+	return npc_update_parse_state(pst, &info, lid, lt, flags);
 }
 
 int

@@ -320,6 +320,23 @@ enum npc_kpu_lc_uflag {
 	NPC_F_LC_U_IP6_FRAG = 0x40,
 };
 
+enum npc_kpu_lc_lflag {
+	NPC_F_LC_L_IP_IN_IP = 1,
+	NPC_F_LC_L_6TO4,
+	NPC_F_LC_L_MPLS_IN_IP,
+	NPC_F_LC_L_IP6_TUN_IP6,
+	NPC_F_LC_L_IP6_MPLS_IN_IP,
+	NPC_F_LC_L_MPLS_4_LABELS,
+	NPC_F_LC_L_MPLS_3_LABELS,
+	NPC_F_LC_L_MPLS_2_LABELS,
+	NPC_F_LC_L_EXT_HOP,
+	NPC_F_LC_L_EXT_DEST,
+	NPC_F_LC_L_EXT_ROUT,
+	NPC_F_LC_L_EXT_MOBILITY,
+	NPC_F_LC_L_EXT_HOSTID,
+	NPC_F_LC_L_EXT_SHIM6,
+};
+
 /* Structures definitions */
 struct npc_kpu_profile_cam {
 	uint8_t state;
