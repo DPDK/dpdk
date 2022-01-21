@@ -533,8 +533,20 @@ enqueue_one_aead_job(struct qat_sym_session *ctx,
 	/* CPM 1.7 uses single pass to treat AEAD as cipher operation */
 	if (ctx->is_single_pass) {
 		enqueue_one_cipher_job(ctx, req, iv, ofs, data_len);
-		cipher_param->spc_aad_addr = aad->iova;
-		cipher_param->spc_auth_res_addr = digest->iova;
+
+		if (ctx->is_ucs) {
+			/* QAT GEN4 uses single pass to treat AEAD as cipher
+			 * operation
+			 */
+			struct icp_qat_fw_la_cipher_20_req_params *cipher_param_20 =
+				(void *)&req->serv_specif_rqpars;
+			cipher_param_20->spc_aad_addr = aad->iova;
+			cipher_param_20->spc_auth_res_addr = digest->iova;
+		} else {
+			cipher_param->spc_aad_addr = aad->iova;
+			cipher_param->spc_auth_res_addr = digest->iova;
+		}
+
 		return;
 	}
 
