@@ -286,10 +286,11 @@ struct cpt_frag_info_s {
 	union {
 		uint64_t u64;
 		struct {
-			union cpt_frag_info f3;
-			union cpt_frag_info f2;
-			union cpt_frag_info f1;
+			/* CPT HW swaps each 8B word implicitly */
 			union cpt_frag_info f0;
+			union cpt_frag_info f1;
+			union cpt_frag_info f2;
+			union cpt_frag_info f3;
 		};
 	} w0;
 
@@ -297,10 +298,11 @@ struct cpt_frag_info_s {
 	union {
 		uint64_t u64;
 		struct {
-			uint16_t frag_size3;
-			uint16_t frag_size2;
-			uint16_t frag_size1;
+			/* CPT HW swaps each 8B word implicitly */
 			uint16_t frag_size0;
+			uint16_t frag_size1;
+			uint16_t frag_size2;
+			uint16_t frag_size3;
 		};
 	} w1;
 };
