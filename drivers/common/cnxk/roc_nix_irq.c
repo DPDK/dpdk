@@ -202,9 +202,12 @@ nix_lf_sq_debug_reg(struct nix *nix, uint32_t off)
 	uint64_t reg;
 
 	reg = plt_read64(nix->base + off);
-	if (reg & BIT_ULL(44))
+	if (reg & BIT_ULL(44)) {
 		plt_err("SQ=%d err_code=0x%x", (int)((reg >> 8) & 0xfffff),
 			(uint8_t)(reg & 0xff));
+		/* Clear valid bit */
+		plt_write64(BIT_ULL(44), nix->base + off);
+	}
 }
 
 static void
