@@ -211,6 +211,52 @@ ipsec_antireplay_check(struct roc_onf_ipsec_inb_sa *sa,
 	return rc;
 }
 
+static inline uint64_t
+nix_rx_sec_mbuf_err_update(const union nix_rx_parse_u *rx, uint16_t res,
+			   uint64_t *rearm_val, uint16_t *len)
+{
+	uint8_t uc_cc = res >> 8;
+	uint8_t cc = res & 0xFF;
+	uint64_t data_off;
+	uint64_t ol_flags;
+	uint16_t m_len;
+
+	if (unlikely(cc != CPT_COMP_GOOD))
+		return RTE_MBUF_F_RX_SEC_OFFLOAD |
+		       RTE_MBUF_F_RX_SEC_OFFLOAD_FAILED;
+
+	data_off = *rearm_val & (BIT_ULL(16) - 1);
+	m_len = rx->cn9k.pkt_lenm1 + 1;
+
+	switch (uc_cc) {
+	case ROC_IE_ON_UCC_IP_PAYLOAD_TYPE_ERR:
+	case ROC_IE_ON_UCC_AUTH_ERR:
+	case ROC_IE_ON_UCC_PADDING_INVALID:
+		/* Adjust data offset to start at copied L2 */
+		data_off += ROC_ONF_IPSEC_INB_SPI_SEQ_SZ +
+			    ROC_ONF_IPSEC_INB_MAX_L2_SZ;
+		ol_flags = RTE_MBUF_F_RX_SEC_OFFLOAD |
+			   RTE_MBUF_F_RX_SEC_OFFLOAD_FAILED;
+		break;
+	case ROC_IE_ON_UCC_CTX_INVALID:
+	case ROC_IE_ON_UCC_SPI_MISMATCH:
+	case ROC_IE_ON_UCC_SA_MISMATCH:
+		/* Return as normal packet */
+		ol_flags = 0;
+		break;
+	default:
+		/* Return as error packet after updating packet lengths */
+		ol_flags = RTE_MBUF_F_RX_SEC_OFFLOAD |
+			   RTE_MBUF_F_RX_SEC_OFFLOAD_FAILED;
+		break;
+	}
+
+	*len = m_len;
+	*rearm_val = *rearm_val & ~(BIT_ULL(16) - 1);
+	*rearm_val |= data_off;
+	return ol_flags;
+}
+
 static __rte_always_inline uint64_t
 nix_rx_sec_mbuf_update(const struct nix_cqe_hdr_s *cq, struct rte_mbuf *m,
 		       uintptr_t sa_base, uint64_t *rearm_val, uint16_t *len)
@@ -236,8 +282,8 @@ nix_rx_sec_mbuf_update(const struct nix_cqe_hdr_s *cq, struct rte_mbuf *m,
 
 	rte_prefetch0((void *)data);
 
-	if (unlikely(res != (CPT_COMP_GOOD | ROC_IE_ONF_UCC_SUCCESS << 8)))
-		return RTE_MBUF_F_RX_SEC_OFFLOAD | RTE_MBUF_F_RX_SEC_OFFLOAD_FAILED;
+	if (unlikely(res != (CPT_COMP_GOOD | ROC_IE_ON_UCC_SUCCESS << 8)))
+		return nix_rx_sec_mbuf_err_update(rx, res, rearm_val, len);
 
 	data += lcptr;
 	/* 20 bits of tag would have the SPI */

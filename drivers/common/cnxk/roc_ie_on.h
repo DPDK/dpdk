@@ -233,7 +233,21 @@ struct roc_ie_on_inb_sa {
 #define ROC_IE_ONF_MAJOR_OP_PROCESS_INBOUND_IPSEC  0x26UL
 
 /* Ucode completion codes */
-#define ROC_IE_ONF_UCC_SUCCESS 0
+#define ROC_IE_ON_UCC_SUCCESS		  0
+#define ROC_IE_ON_UCC_ENC_TYPE_ERR	  0xB1
+#define ROC_IE_ON_UCC_IP_VER_ERR	  0xB2
+#define ROC_IE_ON_UCC_PROTO_ERR		  0xB3
+#define ROC_IE_ON_UCC_CTX_INVALID	  0xB4
+#define ROC_IE_ON_UCC_CTX_DIR_MISMATCH	  0xB5
+#define ROC_IE_ON_UCC_IP_PAYLOAD_TYPE_ERR 0xB6
+#define ROC_IE_ON_UCC_CTX_FLAG_MISMATCH	  0xB7
+#define ROC_IE_ON_UCC_SPI_MISMATCH	  0xBE
+#define ROC_IE_ON_UCC_IP_CHKSUM_ERR	  0xBF
+#define ROC_IE_ON_UCC_AUTH_ERR		  0xC3
+#define ROC_IE_ON_UCC_PADDING_INVALID	  0xC4
+#define ROC_IE_ON_UCC_SA_MISMATCH	  0xCC
+#define ROC_IE_ON_UCC_L2_HDR_INFO_ERR	  0xCF
+#define ROC_IE_ON_UCC_L2_HDR_LEN_ERR	  0xE0
 
 struct roc_ie_onf_sa_ctl {
 	uint32_t spi;
