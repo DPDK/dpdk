@@ -1405,7 +1405,7 @@ hns3_disable_rss(struct hns3_hw *hw)
 }
 
 static void
-hns3_parse_rss_key(struct hns3_hw *hw, struct rte_flow_action_rss *rss_conf)
+hns3_adjust_rss_key(struct hns3_hw *hw, struct rte_flow_action_rss *rss_conf)
 {
 	if (rss_conf->key == NULL || rss_conf->key_len < HNS3_RSS_KEY_SIZE) {
 		hns3_warn(hw, "Default RSS hash key to be set");
@@ -1449,7 +1449,7 @@ hns3_hw_rss_hash_set(struct hns3_hw *hw, struct rte_flow_action_rss *rss_config)
 	struct hns3_rss_tuple_cfg *tuple;
 	int ret;
 
-	hns3_parse_rss_key(hw, rss_config);
+	hns3_adjust_rss_key(hw, rss_config);
 
 	ret = hns3_parse_rss_algorithm(hw, &rss_config->func,
 				       &hw->rss_info.hash_algo);
