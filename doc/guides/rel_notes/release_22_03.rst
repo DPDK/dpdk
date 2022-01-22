@@ -55,6 +55,10 @@ New Features
      Also, make sure to start the actual text at the margin.
      =======================================================
 
+* **Added an API to retrieve event port id of ethdev Rx adapter.**
+
+  The new API ``rte_event_eth_rx_adapter_event_port_get()`` was added.
+
 
 Removed Items
 -------------

@@ -37,6 +37,7 @@
  *  - rte_event_eth_rx_adapter_queue_conf_get()
  *  - rte_event_eth_rx_adapter_queue_stats_get()
  *  - rte_event_eth_rx_adapter_queue_stats_reset()
+ *  - rte_event_eth_rx_adapter_event_port_get()
  *
  * The application creates an ethernet to event adapter using
  * rte_event_eth_rx_adapter_create_ext() or rte_event_eth_rx_adapter_create()
@@ -683,6 +684,25 @@ int
 rte_event_eth_rx_adapter_queue_stats_reset(uint8_t id,
 		uint16_t eth_dev_id,
 		uint16_t rx_queue_id);
+
+/**
+ * Retrieve the event port ID of an adapter. If the adapter doesn't use
+ * a rte_service function, this function returns -ESRCH.
+ *
+ * @param id
+ *  Adapter identifier.
+ *
+ * @param [out] event_port_id
+ *  A pointer to a uint8_t, to be filled in with the port id.
+ *
+ * @return
+ *  - 0: Success
+ *  - <0: Error code on failure, if the adapter doesn't use a rte_service
+ * function, this function returns -ESRCH.
+ */
+__rte_experimental
+int
+rte_event_eth_rx_adapter_event_port_get(uint8_t id, uint8_t *event_port_id);
 
 #ifdef __cplusplus
 }

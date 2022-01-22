@@ -3124,6 +3124,26 @@ rte_event_eth_rx_adapter_service_id_get(uint8_t id, uint32_t *service_id)
 }
 
 int
+rte_event_eth_rx_adapter_event_port_get(uint8_t id, uint8_t *event_port_id)
+{
+	struct event_eth_rx_adapter *rx_adapter;
+
+	if (rxa_memzone_lookup())
+		return -ENOMEM;
+
+	RTE_EVENT_ETH_RX_ADAPTER_ID_VALID_OR_ERR_RET(id, -EINVAL);
+
+	rx_adapter = rxa_id_to_adapter(id);
+	if (rx_adapter == NULL || event_port_id == NULL)
+		return -EINVAL;
+
+	if (rx_adapter->service_inited)
+		*event_port_id = rx_adapter->event_port_id;
+
+	return rx_adapter->service_inited ? 0 : -ESRCH;
+}
+
+int
 rte_event_eth_rx_adapter_cb_register(uint8_t id,
 					uint16_t eth_dev_id,
 					rte_event_eth_rx_adapter_cb_fn cb_fn,
