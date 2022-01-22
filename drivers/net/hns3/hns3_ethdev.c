@@ -4853,7 +4853,7 @@ hns3_check_port_speed(struct hns3_hw *hw, uint32_t link_speeds)
 	return 0;
 }
 
-static inline uint32_t
+static uint32_t
 hns3_get_link_speed(uint32_t link_speeds)
 {
 	uint32_t speed = RTE_ETH_SPEED_NUM_NONE;
