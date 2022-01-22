@@ -2546,9 +2546,6 @@ hns3_parse_cfg(struct hns3_cfg *cfg, struct hns3_cmd_desc *desc)
 	cfg->media_type = hns3_get_field(rte_le_to_cpu_32(req->param[1]),
 					 HNS3_CFG_MEDIA_TP_M,
 					 HNS3_CFG_MEDIA_TP_S);
-	cfg->rx_buf_len = hns3_get_field(rte_le_to_cpu_32(req->param[1]),
-					 HNS3_CFG_RX_BUF_LEN_M,
-					 HNS3_CFG_RX_BUF_LEN_S);
 	/* get mac address */
 	mac_addr_tmp = rte_le_to_cpu_32(req->param[2]);
 	mac_addr_tmp_high = hns3_get_field(rte_le_to_cpu_32(req->param[3]),

@@ -156,7 +156,6 @@ struct hns3_tc_queue_info {
 struct hns3_cfg {
 	uint8_t tc_num;
 	uint16_t tqp_desc_num;
-	uint16_t rx_buf_len;
 	uint16_t rss_size_max;
 	uint8_t phy_addr;
 	uint8_t media_type;
@@ -804,7 +803,6 @@ struct hns3_pf {
 	uint8_t tc_max; /* max number of tc driver supported */
 	uint8_t local_max_tc; /* max number of local tc */
 	uint8_t pfc_max;
-	uint8_t prio_tc[HNS3_MAX_USER_PRIO]; /* TC indexed by prio */
 	uint16_t pause_time;
 	bool support_fc_autoneg;       /* support FC autonegotiate */
 	bool support_multi_tc_pause;
