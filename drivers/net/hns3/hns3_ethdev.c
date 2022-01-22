@@ -6295,7 +6295,6 @@ hns3_fec_set(struct rte_eth_dev *dev, uint32_t mode)
 	struct hns3_adapter *hns = dev->data->dev_private;
 	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(hns);
 	struct hns3_pf *pf = &hns->pf;
-
 	struct rte_eth_fec_capa fec_capa[FEC_CAPA_NUM];
 	uint32_t cur_capa;
 	uint32_t num = FEC_CAPA_NUM;

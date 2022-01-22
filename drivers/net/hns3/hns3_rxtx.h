@@ -344,7 +344,6 @@ struct hns3_rx_queue {
 
 	struct rte_mbuf fake_mbuf; /* fake mbuf used with vector rx */
 
-
 	/*
 	 * The following fields are not accessed in the I/O path, so they are
 	 * placed at the end.
@@ -517,7 +516,6 @@ struct hns3_tx_queue {
 
 	struct hns3_tx_basic_stats basic_stats;
 	struct hns3_tx_dfx_stats dfx_stats;
-
 
 	/*
 	 * The following fields are not accessed in the I/O path, so they are
