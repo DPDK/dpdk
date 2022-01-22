@@ -6617,8 +6617,6 @@ static int
 hns3_dev_init(struct rte_eth_dev *eth_dev)
 {
 	struct hns3_adapter *hns = eth_dev->data->dev_private;
-	char mac_str[RTE_ETHER_ADDR_FMT_SIZE];
-	struct rte_ether_addr *eth_addr;
 	struct hns3_hw *hw = &hns->hw;
 	int ret;
 
@@ -6661,30 +6659,9 @@ hns3_dev_init(struct rte_eth_dev *eth_dev)
 		goto err_init_pf;
 	}
 
-	/* Allocate memory for storing MAC addresses */
-	eth_dev->data->mac_addrs = rte_zmalloc("hns3-mac",
-					       sizeof(struct rte_ether_addr) *
-					       HNS3_UC_MACADDR_NUM, 0);
-	if (eth_dev->data->mac_addrs == NULL) {
-		PMD_INIT_LOG(ERR, "Failed to allocate %zx bytes needed "
-			     "to store MAC addresses",
-			     sizeof(struct rte_ether_addr) *
-			     HNS3_UC_MACADDR_NUM);
-		ret = -ENOMEM;
-		goto err_rte_zmalloc;
-	}
-
-	eth_addr = (struct rte_ether_addr *)hw->mac.mac_addr;
-	if (!rte_is_valid_assigned_ether_addr(eth_addr)) {
-		rte_eth_random_addr(hw->mac.mac_addr);
-		hns3_ether_format_addr(mac_str, RTE_ETHER_ADDR_FMT_SIZE,
-				(struct rte_ether_addr *)hw->mac.mac_addr);
-		hns3_warn(hw, "default mac_addr from firmware is an invalid "
-			  "unicast address, using random MAC address %s",
-			  mac_str);
-	}
-	rte_ether_addr_copy((struct rte_ether_addr *)hw->mac.mac_addr,
-			    &eth_dev->data->mac_addrs[0]);
+	ret = hns3_init_mac_addrs(eth_dev);
+	if (ret != 0)
+		goto err_init_mac_addrs;
 
 	hw->adapter_state = HNS3_NIC_INITIALIZED;
 
@@ -6700,7 +6677,7 @@ hns3_dev_init(struct rte_eth_dev *eth_dev)
 	hns3_info(hw, "hns3 dev initialization successful!");
 	return 0;
 
-err_rte_zmalloc:
+err_init_mac_addrs:
 	hns3_uninit_pf(eth_dev);
 
 err_init_pf:

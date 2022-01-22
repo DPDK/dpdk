@@ -2400,34 +2400,9 @@ hns3vf_dev_init(struct rte_eth_dev *eth_dev)
 		goto err_init_vf;
 	}
 
-	/* Allocate memory for storing MAC addresses */
-	eth_dev->data->mac_addrs = rte_zmalloc("hns3vf-mac",
-					       sizeof(struct rte_ether_addr) *
-					       HNS3_VF_UC_MACADDR_NUM, 0);
-	if (eth_dev->data->mac_addrs == NULL) {
-		PMD_INIT_LOG(ERR, "Failed to allocate %zx bytes needed "
-			     "to store MAC addresses",
-			     sizeof(struct rte_ether_addr) *
-			     HNS3_VF_UC_MACADDR_NUM);
-		ret = -ENOMEM;
-		goto err_rte_zmalloc;
-	}
-
-	/*
-	 * The hns3 PF ethdev driver in kernel support setting VF MAC address
-	 * on the host by "ip link set ..." command. To avoid some incorrect
-	 * scenes, for example, hns3 VF PMD fails to receive and send
-	 * packets after user configure the MAC address by using the
-	 * "ip link set ..." command, hns3 VF PMD keep the same MAC
-	 * address strategy as the hns3 kernel ethdev driver in the
-	 * initialization. If user configure a MAC address by the ip command
-	 * for VF device, then hns3 VF PMD will start with it, otherwise
-	 * start with a random MAC address in the initialization.
-	 */
-	if (rte_is_zero_ether_addr((struct rte_ether_addr *)hw->mac.mac_addr))
-		rte_eth_random_addr(hw->mac.mac_addr);
-	rte_ether_addr_copy((struct rte_ether_addr *)hw->mac.mac_addr,
-			    &eth_dev->data->mac_addrs[0]);
+	ret = hns3_init_mac_addrs(eth_dev);
+	if (ret != 0)
+		goto err_init_mac_addrs;
 
 	hw->adapter_state = HNS3_NIC_INITIALIZED;
 
@@ -2443,7 +2418,7 @@ hns3vf_dev_init(struct rte_eth_dev *eth_dev)
 			  eth_dev);
 	return 0;
 
-err_rte_zmalloc:
+err_init_mac_addrs:
 	hns3vf_uninit_vf(eth_dev);
 
 err_init_vf:

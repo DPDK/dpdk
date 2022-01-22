@@ -52,6 +52,7 @@ int hns3_set_mc_mac_addr_list(struct rte_eth_dev *dev,
 			      uint32_t nb_mc_addr);
 void hns3_ether_format_addr(char *buf, uint16_t size,
 			    const struct rte_ether_addr *ether_addr);
+int hns3_init_mac_addrs(struct rte_eth_dev *dev);
 
 int hns3_init_ring_with_vector(struct hns3_hw *hw);
 int hns3_map_rx_interrupt(struct rte_eth_dev *dev);
