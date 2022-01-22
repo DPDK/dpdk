@@ -587,22 +587,6 @@ hns3_set_vlan_rx_offload_cfg(struct hns3_adapter *hns,
 	return ret;
 }
 
-static void
-hns3_update_rx_offload_cfg(struct hns3_adapter *hns,
-			   struct hns3_rx_vtag_cfg *vcfg)
-{
-	struct hns3_pf *pf = &hns->pf;
-	memcpy(&pf->vtag_config.rx_vcfg, vcfg, sizeof(pf->vtag_config.rx_vcfg));
-}
-
-static void
-hns3_update_tx_offload_cfg(struct hns3_adapter *hns,
-			   struct hns3_tx_vtag_cfg *vcfg)
-{
-	struct hns3_pf *pf = &hns->pf;
-	memcpy(&pf->vtag_config.tx_vcfg, vcfg, sizeof(pf->vtag_config.tx_vcfg));
-}
-
 static int
 hns3_en_hw_strip_rxvtag(struct hns3_adapter *hns, bool enable)
 {
@@ -632,7 +616,8 @@ hns3_en_hw_strip_rxvtag(struct hns3_adapter *hns, bool enable)
 		return ret;
 	}
 
-	hns3_update_rx_offload_cfg(hns, &rxvlan_cfg);
+	memcpy(&hns->pf.vtag_config.rx_vcfg, &rxvlan_cfg,
+	       sizeof(struct hns3_rx_vtag_cfg));
 
 	return ret;
 }
@@ -830,7 +815,9 @@ hns3_vlan_txvlan_cfg(struct hns3_adapter *hns, uint16_t port_base_vlan_state,
 		return ret;
 	}
 
-	hns3_update_tx_offload_cfg(hns, &txvlan_cfg);
+	memcpy(&hns->pf.vtag_config.tx_vcfg, &txvlan_cfg,
+	       sizeof(struct hns3_tx_vtag_cfg));
+
 	return ret;
 }
 
@@ -956,7 +943,9 @@ hns3_en_pvid_strip(struct hns3_adapter *hns, int on)
 	if (ret)
 		return ret;
 
-	hns3_update_rx_offload_cfg(hns, &rx_vlan_cfg);
+	memcpy(&hns->pf.vtag_config.rx_vcfg, &rx_vlan_cfg,
+	       sizeof(struct hns3_rx_vtag_cfg));
+
 	return ret;
 }
 

@@ -1026,15 +1026,6 @@ hns3vf_get_configuration(struct hns3_hw *hw)
 	return hns3vf_get_port_base_vlan_filter_state(hw);
 }
 
-static int
-hns3vf_set_tc_queue_mapping(struct hns3_adapter *hns, uint16_t nb_rx_q,
-			    uint16_t nb_tx_q)
-{
-	struct hns3_hw *hw = &hns->hw;
-
-	return hns3_queue_to_tc_mapping(hw, nb_rx_q, nb_tx_q);
-}
-
 static void
 hns3vf_request_link_info(struct hns3_hw *hw)
 {
@@ -1530,7 +1521,7 @@ hns3vf_init_vf(struct rte_eth_dev *eth_dev)
 		goto err_set_tc_queue;
 	}
 
-	ret = hns3vf_set_tc_queue_mapping(hns, hw->tqps_num, hw->tqps_num);
+	ret = hns3_queue_to_tc_mapping(hw, hw->tqps_num, hw->tqps_num);
 	if (ret) {
 		PMD_INIT_LOG(ERR, "failed to set tc info, ret = %d.", ret);
 		goto err_set_tc_queue;
@@ -1739,7 +1730,7 @@ hns3vf_do_start(struct hns3_adapter *hns, bool reset_queue)
 	uint16_t nb_tx_q = hw->data->nb_tx_queues;
 	int ret;
 
-	ret = hns3vf_set_tc_queue_mapping(hns, nb_rx_q, nb_tx_q);
+	ret = hns3_queue_to_tc_mapping(hw, nb_rx_q, nb_tx_q);
 	if (ret)
 		return ret;
 
