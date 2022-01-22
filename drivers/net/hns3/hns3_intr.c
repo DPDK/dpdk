@@ -2770,6 +2770,37 @@ err:
 	return -EIO;
 }
 
+static void
+hns3_reset_fail_handle(struct hns3_adapter *hns)
+{
+	struct hns3_hw *hw = &hns->hw;
+	struct timeval tv_delta;
+	struct timeval tv;
+
+	hns3_clear_reset_level(hw, &hw->reset.pending);
+	if (hns3_reset_err_handle(hns)) {
+		hw->reset.stage = RESET_STAGE_PREWAIT;
+		hns3_schedule_reset(hns);
+		return;
+	}
+
+	rte_spinlock_lock(&hw->lock);
+	if (hw->reset.mbuf_deferred_free) {
+		hns3_dev_release_mbufs(hns);
+		hw->reset.mbuf_deferred_free = false;
+	}
+	rte_spinlock_unlock(&hw->lock);
+	__atomic_store_n(&hns->hw.reset.resetting, 0, __ATOMIC_RELAXED);
+	hw->reset.stage = RESET_STAGE_NONE;
+	hns3_clock_gettime(&tv);
+	timersub(&tv, &hw->reset.start_time, &tv_delta);
+	hns3_warn(hw, "%s reset fail delta %" PRIu64 " ms time=%ld.%.6ld",
+		  reset_string[hw->reset.level],
+		  hns3_clock_calctime_ms(&tv_delta),
+		  tv.tv_sec, tv.tv_usec);
+	hw->reset.level = HNS3_NONE_RESET;
+}
+
 /*
  * There are three scenarios as follows:
  * When the reset is not in progress, the reset process starts.
@@ -2784,7 +2815,6 @@ int
 hns3_reset_process(struct hns3_adapter *hns, enum hns3_reset_level new_level)
 {
 	struct hns3_hw *hw = &hns->hw;
-	struct timeval tv_delta;
 	struct timeval tv;
 	int ret;
 
@@ -2843,27 +2873,7 @@ retry:
 	if (ret == -EAGAIN)
 		return ret;
 err:
-	hns3_clear_reset_level(hw, &hw->reset.pending);
-	if (hns3_reset_err_handle(hns)) {
-		hw->reset.stage = RESET_STAGE_PREWAIT;
-		hns3_schedule_reset(hns);
-	} else {
-		rte_spinlock_lock(&hw->lock);
-		if (hw->reset.mbuf_deferred_free) {
-			hns3_dev_release_mbufs(hns);
-			hw->reset.mbuf_deferred_free = false;
-		}
-		rte_spinlock_unlock(&hw->lock);
-		__atomic_store_n(&hns->hw.reset.resetting, 0, __ATOMIC_RELAXED);
-		hw->reset.stage = RESET_STAGE_NONE;
-		hns3_clock_gettime(&tv);
-		timersub(&tv, &hw->reset.start_time, &tv_delta);
-		hns3_warn(hw, "%s reset fail delta %" PRIu64 " ms time=%ld.%.6ld",
-			  reset_string[hw->reset.level],
-			  hns3_clock_calctime_ms(&tv_delta),
-			  tv.tv_sec, tv.tv_usec);
-		hw->reset.level = HNS3_NONE_RESET;
-	}
+	hns3_reset_fail_handle(hns);
 
 	return -EIO;
 }
