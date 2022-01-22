@@ -1382,9 +1382,6 @@ hns3_alloc_rxq_and_dma_zone(struct rte_eth_dev *dev,
 	rxq->rx_ring = (struct hns3_desc *)rx_mz->addr;
 	rxq->rx_ring_phys_addr = rx_mz->iova;
 
-	hns3_dbg(hw, "No.%u rx descriptors iova 0x%" PRIx64, q_info->idx,
-		 rxq->rx_ring_phys_addr);
-
 	return rxq;
 }
 
@@ -1468,9 +1465,6 @@ hns3_alloc_txq_and_dma_zone(struct rte_eth_dev *dev,
 	txq->mz = tx_mz;
 	txq->tx_ring = (struct hns3_desc *)tx_mz->addr;
 	txq->tx_ring_phys_addr = tx_mz->iova;
-
-	hns3_dbg(hw, "No.%u tx descriptors iova 0x%" PRIx64, q_info->idx,
-		 txq->tx_ring_phys_addr);
 
 	/* Clear tx bd */
 	desc = txq->tx_ring;
