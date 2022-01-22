@@ -10,14 +10,7 @@
 	deq_op = deq_ops[dev->rx_offloads & (NIX_RX_OFFLOAD_MAX - 1)]
 
 #define CN10K_SET_EVDEV_ENQ_OP(dev, enq_op, enq_ops)                           \
-	(enq_op =                                                              \
-		 enq_ops[!!(dev->tx_offloads & NIX_TX_OFFLOAD_SECURITY_F)]     \
-			[!!(dev->tx_offloads & NIX_TX_OFFLOAD_TSTAMP_F)]       \
-			[!!(dev->tx_offloads & NIX_TX_OFFLOAD_TSO_F)]          \
-			[!!(dev->tx_offloads & NIX_TX_OFFLOAD_MBUF_NOFF_F)]    \
-			[!!(dev->tx_offloads & NIX_TX_OFFLOAD_VLAN_QINQ_F)]    \
-			[!!(dev->tx_offloads & NIX_TX_OFFLOAD_OL3_OL4_CSUM_F)] \
-			[!!(dev->tx_offloads & NIX_TX_OFFLOAD_L3_L4_CSUM_F)])
+	enq_op = enq_ops[dev->tx_offloads & (NIX_TX_OFFLOAD_MAX - 1)]
 
 static uint32_t
 cn10k_sso_gw_mode_wdata(struct cnxk_sso_evdev *dev)
@@ -384,17 +377,15 @@ cn10k_sso_fp_fns_set(struct rte_eventdev *event_dev)
 
 	/* Tx modes */
 	const event_tx_adapter_enqueue_t
-		sso_hws_tx_adptr_enq[2][2][2][2][2][2][2] = {
-#define T(name, f6, f5, f4, f3, f2, f1, f0, sz, flags)                         \
-	[f6][f5][f4][f3][f2][f1][f0] = cn10k_sso_hws_tx_adptr_enq_##name,
+		sso_hws_tx_adptr_enq[NIX_TX_OFFLOAD_MAX] = {
+#define T(name, sz, flags)[flags] = cn10k_sso_hws_tx_adptr_enq_##name,
 			NIX_TX_FASTPATH_MODES
 #undef T
 		};
 
 	const event_tx_adapter_enqueue_t
-		sso_hws_tx_adptr_enq_seg[2][2][2][2][2][2][2] = {
-#define T(name, f6, f5, f4, f3, f2, f1, f0, sz, flags)                         \
-	[f6][f5][f4][f3][f2][f1][f0] = cn10k_sso_hws_tx_adptr_enq_seg_##name,
+		sso_hws_tx_adptr_enq_seg[NIX_TX_OFFLOAD_MAX] = {
+#define T(name, sz, flags)[flags] = cn10k_sso_hws_tx_adptr_enq_seg_##name,
 			NIX_TX_FASTPATH_MODES
 #undef T
 		};

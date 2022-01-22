@@ -107,11 +107,8 @@ sources += files(
         'cn10k_ethdev.c',
         'cn10k_ethdev_sec.c',
         'cn10k_rte_flow.c',
-        'cn10k_tx.c',
-        'cn10k_tx_mseg.c',
-        'cn10k_tx_vec.c',
-        'cn10k_tx_vec_mseg.c',
         'cn10k_rx_select.c',
+        'cn10k_tx_select.c',
 )
 
 sources += files(
@@ -147,6 +144,41 @@ sources += files(
         'rx/cn10k/rx_80_95_vec_mseg.c',
         'rx/cn10k/rx_96_111_vec_mseg.c',
         'rx/cn10k/rx_112_127_vec_mseg.c',
+)
+
+sources += files(
+        'tx/cn10k/tx_0_15.c',
+        'tx/cn10k/tx_16_31.c',
+        'tx/cn10k/tx_32_47.c',
+        'tx/cn10k/tx_48_63.c',
+        'tx/cn10k/tx_64_79.c',
+        'tx/cn10k/tx_80_95.c',
+        'tx/cn10k/tx_96_111.c',
+        'tx/cn10k/tx_112_127.c',
+        'tx/cn10k/tx_0_15_mseg.c',
+        'tx/cn10k/tx_16_31_mseg.c',
+        'tx/cn10k/tx_32_47_mseg.c',
+        'tx/cn10k/tx_48_63_mseg.c',
+        'tx/cn10k/tx_64_79_mseg.c',
+        'tx/cn10k/tx_80_95_mseg.c',
+        'tx/cn10k/tx_96_111_mseg.c',
+        'tx/cn10k/tx_112_127_mseg.c',
+        'tx/cn10k/tx_0_15_vec.c',
+        'tx/cn10k/tx_16_31_vec.c',
+        'tx/cn10k/tx_32_47_vec.c',
+        'tx/cn10k/tx_48_63_vec.c',
+        'tx/cn10k/tx_64_79_vec.c',
+        'tx/cn10k/tx_80_95_vec.c',
+        'tx/cn10k/tx_96_111_vec.c',
+        'tx/cn10k/tx_112_127_vec.c',
+        'tx/cn10k/tx_0_15_vec_mseg.c',
+        'tx/cn10k/tx_16_31_vec_mseg.c',
+        'tx/cn10k/tx_32_47_vec_mseg.c',
+        'tx/cn10k/tx_48_63_vec_mseg.c',
+        'tx/cn10k/tx_64_79_vec_mseg.c',
+        'tx/cn10k/tx_80_95_vec_mseg.c',
+        'tx/cn10k/tx_96_111_vec_mseg.c',
+        'tx/cn10k/tx_112_127_vec_mseg.c',
 )
 
 deps += ['bus_pci', 'cryptodev', 'eventdev', 'security']

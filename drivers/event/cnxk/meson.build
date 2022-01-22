@@ -13,8 +13,6 @@ sources = files(
         'cn9k_worker.c',
         'cn10k_eventdev.c',
         'cn10k_worker.c',
-        'cn10k_worker_tx_enq.c',
-        'cn10k_worker_tx_enq_seg.c',
         'cnxk_eventdev.c',
         'cnxk_eventdev_adptr.c',
         'cnxk_eventdev_selftest.c',
@@ -452,6 +450,25 @@ sources += files(
         'deq/cn10k/deq_80_95_ca_tmo_seg_burst.c',
         'deq/cn10k/deq_96_111_ca_tmo_seg_burst.c',
         'deq/cn10k/deq_112_127_ca_tmo_seg_burst.c',
+)
+
+sources += files(
+        'tx/cn10k/tx_0_15.c',
+        'tx/cn10k/tx_16_31.c',
+        'tx/cn10k/tx_32_47.c',
+        'tx/cn10k/tx_48_63.c',
+        'tx/cn10k/tx_64_79.c',
+        'tx/cn10k/tx_80_95.c',
+        'tx/cn10k/tx_96_111.c',
+        'tx/cn10k/tx_112_127.c',
+        'tx/cn10k/tx_0_15_seg.c',
+        'tx/cn10k/tx_16_31_seg.c',
+        'tx/cn10k/tx_32_47_seg.c',
+        'tx/cn10k/tx_48_63_seg.c',
+        'tx/cn10k/tx_64_79_seg.c',
+        'tx/cn10k/tx_80_95_seg.c',
+        'tx/cn10k/tx_96_111_seg.c',
+        'tx/cn10k/tx_112_127_seg.c',
 )
 
 extra_flags = ['-flax-vector-conversions', '-Wno-strict-aliasing']
