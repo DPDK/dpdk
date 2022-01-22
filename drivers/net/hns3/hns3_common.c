@@ -821,3 +821,25 @@ hns3_restore_rx_interrupt(struct hns3_hw *hw)
 
 	return 0;
 }
+
+int
+hns3_get_pci_revision_id(struct hns3_hw *hw, uint8_t *revision_id)
+{
+	struct rte_pci_device *pci_dev;
+	struct rte_eth_dev *eth_dev;
+	uint8_t revision;
+	int ret;
+
+	eth_dev = &rte_eth_devices[hw->data->port_id];
+	pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
+	ret = rte_pci_read_config(pci_dev, &revision, HNS3_PCI_REVISION_ID_LEN,
+				  HNS3_PCI_REVISION_ID);
+	if (ret != HNS3_PCI_REVISION_ID_LEN) {
+		hns3_err(hw, "failed to read pci revision id, ret = %d", ret);
+		return -EIO;
+	}
+
+	*revision_id = revision;
+
+	return 0;
+}

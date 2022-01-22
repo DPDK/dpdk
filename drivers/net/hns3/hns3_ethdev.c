@@ -5,7 +5,6 @@
 #include <rte_alarm.h>
 #include <rte_bus_pci.h>
 #include <ethdev_pci.h>
-#include <rte_pci.h>
 
 #include "hns3_ethdev.h"
 #include "hns3_common.h"
@@ -2732,7 +2731,6 @@ hns3_get_capability(struct hns3_hw *hw)
 	struct hns3_pf *pf = &hns->pf;
 	struct rte_eth_dev *eth_dev;
 	uint16_t device_id;
-	uint8_t revision;
 	int ret;
 
 	eth_dev = &rte_eth_devices[hw->data->port_id];
@@ -2745,17 +2743,11 @@ hns3_get_capability(struct hns3_hw *hw)
 	    device_id == HNS3_DEV_ID_200G_RDMA)
 		hns3_set_bit(hw->capability, HNS3_DEV_SUPPORT_DCB_B, 1);
 
-	/* Get PCI revision id */
-	ret = rte_pci_read_config(pci_dev, &revision, HNS3_PCI_REVISION_ID_LEN,
-				  HNS3_PCI_REVISION_ID);
-	if (ret != HNS3_PCI_REVISION_ID_LEN) {
-		PMD_INIT_LOG(ERR, "failed to read pci revision id, ret = %d",
-			     ret);
-		return -EIO;
-	}
-	hw->revision = revision;
+	ret = hns3_get_pci_revision_id(hw, &hw->revision);
+	if (ret)
+		return ret;
 
-	if (revision < PCI_REVISION_ID_HIP09_A) {
+	if (hw->revision < PCI_REVISION_ID_HIP09_A) {
 		hns3_set_default_dev_specifications(hw);
 		hw->intr.mapping_mode = HNS3_INTR_MAPPING_VEC_RSV_ONE;
 		hw->intr.gl_unit = HNS3_INTR_COALESCE_GL_UINT_2US;
