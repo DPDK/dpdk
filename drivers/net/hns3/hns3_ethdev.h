@@ -155,7 +155,6 @@ struct hns3_tc_queue_info {
 
 struct hns3_cfg {
 	uint8_t tc_num;
-	uint16_t tqp_desc_num;
 	uint16_t rss_size_max;
 	uint8_t phy_addr;
 	uint8_t media_type;
@@ -512,8 +511,6 @@ struct hns3_hw {
 	uint16_t intr_tqps_num;     /* num queue pairs mapping interrupt */
 	uint16_t rss_size_max;      /* HW defined max RSS task queue */
 	uint16_t rx_buf_len;        /* hold min hardware rx buf len */
-	uint16_t num_tx_desc;       /* desc num of per tx queue */
-	uint16_t num_rx_desc;       /* desc num of per rx queue */
 	uint32_t mng_entry_num;     /* number of manager table entry */
 	uint32_t mac_entry_num;     /* number of mac-vlan table entry */
 

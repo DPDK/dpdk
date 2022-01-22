@@ -941,27 +941,6 @@ hns3vf_get_queue_info(struct hns3_hw *hw)
 	return hns3vf_check_tqp_info(hw);
 }
 
-static int
-hns3vf_get_queue_depth(struct hns3_hw *hw)
-{
-#define HNS3VF_TQPS_DEPTH_INFO_LEN	4
-	uint8_t resp_msg[HNS3VF_TQPS_DEPTH_INFO_LEN];
-	int ret;
-
-	ret = hns3_send_mbx_msg(hw, HNS3_MBX_GET_QDEPTH, 0, NULL, 0, true,
-				resp_msg, HNS3VF_TQPS_DEPTH_INFO_LEN);
-	if (ret) {
-		PMD_INIT_LOG(ERR, "Failed to get tqp depth info from PF: %d",
-			     ret);
-		return ret;
-	}
-
-	memcpy(&hw->num_tx_desc, &resp_msg[0], sizeof(uint16_t));
-	memcpy(&hw->num_rx_desc, &resp_msg[2], sizeof(uint16_t));
-
-	return 0;
-}
-
 static void
 hns3vf_update_caps(struct hns3_hw *hw, uint32_t caps)
 {
@@ -1049,11 +1028,6 @@ hns3vf_get_configuration(struct hns3_hw *hw)
 
 	/* Get queue configuration from PF */
 	ret = hns3vf_get_queue_info(hw);
-	if (ret)
-		return ret;
-
-	/* Get queue depth info from PF */
-	ret = hns3vf_get_queue_depth(hw);
 	if (ret)
 		return ret;
 

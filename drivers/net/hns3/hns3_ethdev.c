@@ -2536,9 +2536,6 @@ hns3_parse_cfg(struct hns3_cfg *cfg, struct hns3_cmd_desc *desc)
 	/* get the configuration */
 	cfg->tc_num = hns3_get_field(rte_le_to_cpu_32(req->param[0]),
 				     HNS3_CFG_TC_NUM_M, HNS3_CFG_TC_NUM_S);
-	cfg->tqp_desc_num = hns3_get_field(rte_le_to_cpu_32(req->param[0]),
-					   HNS3_CFG_TQP_DESC_N_M,
-					   HNS3_CFG_TQP_DESC_N_S);
 
 	cfg->phy_addr = hns3_get_field(rte_le_to_cpu_32(req->param[1]),
 				       HNS3_CFG_PHY_ADDR_M,
@@ -2849,8 +2846,6 @@ hns3_get_board_configuration(struct hns3_hw *hw)
 	hw->rss_dis_flag = false;
 	memcpy(hw->mac.mac_addr, cfg.mac_addr, RTE_ETHER_ADDR_LEN);
 	hw->mac.phy_addr = cfg.phy_addr;
-	hw->num_tx_desc = cfg.tqp_desc_num;
-	hw->num_rx_desc = cfg.tqp_desc_num;
 	hw->dcb_info.num_pg = 1;
 	hw->dcb_info.hw_pfc_map = 0;
 
