@@ -125,6 +125,7 @@ struct hns3_fd_ad_data {
 #define HNS3_RULE_FLAG_FDID		0x1
 #define HNS3_RULE_FLAG_VF_ID		0x2
 #define HNS3_RULE_FLAG_COUNTER		0x4
+#define HNS3_RULE_FLAG_COUNTER_INDIR	0x8
 
 struct hns3_fdir_key_conf {
 	struct hns3_fd_rule_tuples spec;

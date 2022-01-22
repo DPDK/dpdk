@@ -154,7 +154,7 @@ hns3_counter_lookup(struct rte_eth_dev *dev, uint32_t id)
 }
 
 static int
-hns3_counter_new(struct rte_eth_dev *dev, uint32_t shared, uint32_t id,
+hns3_counter_new(struct rte_eth_dev *dev, uint32_t indirect, uint32_t id,
 		 struct rte_flow_error *error)
 {
 	struct hns3_adapter *hns = dev->data->dev_private;
@@ -166,11 +166,14 @@ hns3_counter_new(struct rte_eth_dev *dev, uint32_t shared, uint32_t id,
 
 	cnt = hns3_counter_lookup(dev, id);
 	if (cnt) {
-		if (!cnt->shared || cnt->shared != shared)
+		if (!cnt->indirect || cnt->indirect != indirect)
 			return rte_flow_error_set(error, ENOTSUP,
 				RTE_FLOW_ERROR_TYPE_ACTION_CONF,
 				cnt,
-				"Counter id is used, shared flag not match");
+				"Counter id is used, indirect flag not match");
+		/* Clear the indirect counter on first use. */
+		if (cnt->indirect && cnt->ref_cnt == 1)
+			(void)hns3_get_count(hw, id, &value);
 		cnt->ref_cnt++;
 		return 0;
 	}
@@ -188,7 +191,7 @@ hns3_counter_new(struct rte_eth_dev *dev, uint32_t shared, uint32_t id,
 					  RTE_FLOW_ERROR_TYPE_HANDLE, cnt,
 					  "Alloc mem for counter failed");
 	cnt->id = id;
-	cnt->shared = shared;
+	cnt->indirect = indirect;
 	cnt->ref_cnt = 1;
 	cnt->hits = 0;
 	LIST_INSERT_HEAD(&pf->flow_counters, cnt, next);
@@ -253,15 +256,29 @@ hns3_counter_release(struct rte_eth_dev *dev, uint32_t id)
 static void
 hns3_counter_flush(struct rte_eth_dev *dev)
 {
-	struct hns3_adapter *hns = dev->data->dev_private;
-	struct hns3_pf *pf = &hns->pf;
+	struct hns3_pf *pf = HNS3_DEV_PRIVATE_TO_PF(dev->data->dev_private);
+	LIST_HEAD(counters, hns3_flow_counter) indir_counters;
 	struct hns3_flow_counter *cnt_ptr;
 
+	LIST_INIT(&indir_counters);
 	cnt_ptr = LIST_FIRST(&pf->flow_counters);
 	while (cnt_ptr) {
 		LIST_REMOVE(cnt_ptr, next);
-		rte_free(cnt_ptr);
+		if (cnt_ptr->indirect)
+			LIST_INSERT_HEAD(&indir_counters, cnt_ptr, next);
+		else
+			rte_free(cnt_ptr);
 		cnt_ptr = LIST_FIRST(&pf->flow_counters);
+	}
+
+	/* Reset the indirect action and add to pf->flow_counters list. */
+	cnt_ptr = LIST_FIRST(&indir_counters);
+	while (cnt_ptr) {
+		LIST_REMOVE(cnt_ptr, next);
+		cnt_ptr->ref_cnt = 1;
+		cnt_ptr->hits = 0;
+		LIST_INSERT_HEAD(&pf->flow_counters, cnt_ptr, next);
+		cnt_ptr = LIST_FIRST(&indir_counters);
 	}
 }
 
@@ -329,6 +346,30 @@ hns3_handle_action_queue_region(struct rte_eth_dev *dev,
 	rule->queue_id = conf->queue[0];
 	rule->nb_queues = conf->queue_num;
 	rule->action = HNS3_FD_ACTION_ACCEPT_PACKET;
+	return 0;
+}
+
+static int
+hns3_handle_action_indirect(struct rte_eth_dev *dev,
+			    const struct rte_flow_action *action,
+			    struct hns3_fdir_rule *rule,
+			    struct rte_flow_error *error)
+{
+	const struct rte_flow_action_handle *indir = action->conf;
+
+	if (indir->indirect_type != HNS3_INDIRECT_ACTION_TYPE_COUNT)
+		return rte_flow_error_set(error, EINVAL,
+				RTE_FLOW_ERROR_TYPE_ACTION_CONF,
+				action, "Invalid indirect type");
+
+	if (hns3_counter_lookup(dev, indir->counter_id) == NULL)
+		return rte_flow_error_set(error, EINVAL,
+				RTE_FLOW_ERROR_TYPE_ACTION_CONF,
+				action, "Counter id not exist");
+
+	rule->act_cnt.id = indir->counter_id;
+	rule->flags |= (HNS3_RULE_FLAG_COUNTER | HNS3_RULE_FLAG_COUNTER_INDIR);
+
 	return 0;
 }
 
@@ -403,6 +444,13 @@ hns3_handle_actions(struct rte_eth_dev *dev,
 						"Invalid counter id");
 			rule->act_cnt = *act_count;
 			rule->flags |= HNS3_RULE_FLAG_COUNTER;
+			rule->flags &= ~HNS3_RULE_FLAG_COUNTER_INDIR;
+			break;
+		case RTE_FLOW_ACTION_TYPE_INDIRECT:
+			ret = hns3_handle_action_indirect(dev, actions, rule,
+							  error);
+			if (ret)
+				return ret;
 			break;
 		case RTE_FLOW_ACTION_TYPE_VOID:
 			break;
@@ -1755,6 +1803,7 @@ hns3_flow_create_fdir_rule(struct rte_eth_dev *dev,
 	struct hns3_adapter *hns = HNS3_DEV_HW_TO_ADAPTER(hw);
 	struct hns3_fdir_rule_ele *fdir_rule_ptr;
 	struct hns3_fdir_rule fdir_rule;
+	bool indir;
 	int ret;
 
 	memset(&fdir_rule, 0, sizeof(struct hns3_fdir_rule));
@@ -1762,9 +1811,10 @@ hns3_flow_create_fdir_rule(struct rte_eth_dev *dev,
 	if (ret != 0)
 		return ret;
 
+	indir = !!(fdir_rule.flags & HNS3_RULE_FLAG_COUNTER_INDIR);
 	if (fdir_rule.flags & HNS3_RULE_FLAG_COUNTER) {
-		ret = hns3_counter_new(dev, 0,
-				       fdir_rule.act_cnt.id, error);
+		ret = hns3_counter_new(dev, indir, fdir_rule.act_cnt.id,
+				       error);
 		if (ret != 0)
 			return ret;
 
@@ -2086,6 +2136,157 @@ hns3_flow_query_wrap(struct rte_eth_dev *dev, struct rte_flow *flow,
 	return ret;
 }
 
+static int
+hns3_check_indir_action(const struct rte_flow_indir_action_conf *conf,
+			const struct rte_flow_action *action,
+			struct rte_flow_error *error)
+{
+	if (!conf->ingress)
+		return rte_flow_error_set(error, EINVAL,
+				RTE_FLOW_ERROR_TYPE_ACTION,
+				NULL, "Indir action ingress can't be zero");
+
+	if (conf->egress)
+		return rte_flow_error_set(error, EINVAL,
+				RTE_FLOW_ERROR_TYPE_ACTION,
+				NULL, "Indir action not support egress");
+
+	if (conf->transfer)
+		return rte_flow_error_set(error, EINVAL,
+				RTE_FLOW_ERROR_TYPE_ACTION,
+				NULL, "Indir action not support transfer");
+
+	if (action->type != RTE_FLOW_ACTION_TYPE_COUNT)
+		return rte_flow_error_set(error, EINVAL,
+				RTE_FLOW_ERROR_TYPE_ACTION,
+				NULL, "Indir action only support count");
+
+	return 0;
+}
+
+static struct rte_flow_action_handle *
+hns3_flow_action_create(struct rte_eth_dev *dev,
+			const struct rte_flow_indir_action_conf *conf,
+			const struct rte_flow_action *action,
+			struct rte_flow_error *error)
+{
+	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct hns3_pf *pf = HNS3_DEV_PRIVATE_TO_PF(dev->data->dev_private);
+	const struct rte_flow_action_count *act_count;
+	struct rte_flow_action_handle *handle = NULL;
+	struct hns3_flow_counter *counter;
+
+	if (hns3_check_indir_action(conf, action, error))
+		return NULL;
+
+	handle = rte_zmalloc("hns3 action handle",
+			     sizeof(struct rte_flow_action_handle), 0);
+	if (handle == NULL) {
+		rte_flow_error_set(error, ENOMEM, RTE_FLOW_ERROR_TYPE_HANDLE,
+				   NULL, "Failed to allocate action memory");
+		return NULL;
+	}
+
+	pthread_mutex_lock(&hw->flows_lock);
+
+	act_count = (const struct rte_flow_action_count *)action->conf;
+	if (act_count->id >= pf->fdir.fd_cfg.cnt_num[HNS3_FD_STAGE_1]) {
+		rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_ACTION_CONF,
+				   action, "Invalid counter id");
+		goto err_exit;
+	}
+
+	if (hns3_counter_new(dev, false, act_count->id, error))
+		goto err_exit;
+
+	counter = hns3_counter_lookup(dev, act_count->id);
+	if (counter == NULL) {
+		rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_ACTION_CONF,
+				   action, "Counter id not found");
+		goto err_exit;
+	}
+
+	counter->indirect = true;
+	handle->indirect_type = HNS3_INDIRECT_ACTION_TYPE_COUNT;
+	handle->counter_id = counter->id;
+
+	pthread_mutex_unlock(&hw->flows_lock);
+	return handle;
+
+err_exit:
+	pthread_mutex_unlock(&hw->flows_lock);
+	rte_free(handle);
+	return NULL;
+}
+
+static int
+hns3_flow_action_destroy(struct rte_eth_dev *dev,
+			 struct rte_flow_action_handle *handle,
+			 struct rte_flow_error *error)
+{
+	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct hns3_flow_counter *counter;
+
+	pthread_mutex_lock(&hw->flows_lock);
+
+	if (handle->indirect_type != HNS3_INDIRECT_ACTION_TYPE_COUNT) {
+		pthread_mutex_unlock(&hw->flows_lock);
+		return rte_flow_error_set(error, EINVAL,
+					RTE_FLOW_ERROR_TYPE_ACTION_CONF,
+					handle, "Invalid indirect type");
+	}
+
+	counter = hns3_counter_lookup(dev, handle->counter_id);
+	if (counter == NULL) {
+		pthread_mutex_unlock(&hw->flows_lock);
+		return rte_flow_error_set(error, EINVAL,
+				RTE_FLOW_ERROR_TYPE_ACTION_CONF,
+				handle, "Counter id not exist");
+	}
+
+	if (counter->ref_cnt > 1) {
+		pthread_mutex_unlock(&hw->flows_lock);
+		return rte_flow_error_set(error, EBUSY,
+				RTE_FLOW_ERROR_TYPE_HANDLE,
+				handle, "Counter id in use");
+	}
+
+	(void)hns3_counter_release(dev, handle->counter_id);
+	rte_free(handle);
+
+	pthread_mutex_unlock(&hw->flows_lock);
+	return 0;
+}
+
+static int
+hns3_flow_action_query(struct rte_eth_dev *dev,
+		 const struct rte_flow_action_handle *handle,
+		 void *data,
+		 struct rte_flow_error *error)
+{
+	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct rte_flow flow;
+	int ret;
+
+	pthread_mutex_lock(&hw->flows_lock);
+
+	if (handle->indirect_type != HNS3_INDIRECT_ACTION_TYPE_COUNT) {
+		pthread_mutex_unlock(&hw->flows_lock);
+		return rte_flow_error_set(error, EINVAL,
+					RTE_FLOW_ERROR_TYPE_ACTION_CONF,
+					handle, "Invalid indirect type");
+	}
+
+	memset(&flow, 0, sizeof(flow));
+	flow.counter_id = handle->counter_id;
+	ret = hns3_counter_query(dev, &flow,
+				 (struct rte_flow_query_count *)data, error);
+	pthread_mutex_unlock(&hw->flows_lock);
+	return ret;
+}
+
 static const struct rte_flow_ops hns3_flow_ops = {
 	.validate = hns3_flow_validate_wrap,
 	.create = hns3_flow_create_wrap,
@@ -2093,6 +2294,9 @@ static const struct rte_flow_ops hns3_flow_ops = {
 	.flush = hns3_flow_flush_wrap,
 	.query = hns3_flow_query_wrap,
 	.isolate = NULL,
+	.action_handle_create = hns3_flow_action_create,
+	.action_handle_destroy = hns3_flow_action_destroy,
+	.action_handle_query = hns3_flow_action_query,
 };
 
 int

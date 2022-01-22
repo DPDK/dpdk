@@ -9,7 +9,7 @@
 
 struct hns3_flow_counter {
 	LIST_ENTRY(hns3_flow_counter) next; /* Pointer to the next counter. */
-	uint32_t shared:1;   /* Share counter ID with other flow rules. */
+	uint32_t indirect:1; /* Indirect counter flag */
 	uint32_t ref_cnt:31; /* Reference counter. */
 	uint16_t id;   /* Counter ID. */
 	uint64_t hits; /* Number of packets matched by the rule. */
@@ -31,6 +31,15 @@ struct hns3_rss_conf_ele {
 struct hns3_flow_mem {
 	TAILQ_ENTRY(hns3_flow_mem) entries;
 	struct rte_flow *flow;
+};
+
+enum {
+	HNS3_INDIRECT_ACTION_TYPE_COUNT = 1,
+};
+
+struct rte_flow_action_handle {
+	int indirect_type;
+	uint32_t counter_id;
 };
 
 TAILQ_HEAD(hns3_rss_filter_list, hns3_rss_conf_ele);
