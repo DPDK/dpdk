@@ -1277,7 +1277,8 @@ hns3_action_rss_same(const struct rte_flow_action_rss *comp,
 	if (comp->func == RTE_ETH_HASH_FUNCTION_MAX)
 		func_is_same = false;
 	else
-		func_is_same = (with->func ? (comp->func == with->func) : true);
+		func_is_same = (with->func != RTE_ETH_HASH_FUNCTION_DEFAULT) ?
+				(comp->func == with->func) : true;
 
 	return (func_is_same &&
 		comp->types == (with->types & HNS3_ETH_RSS_SUPPORT) &&
