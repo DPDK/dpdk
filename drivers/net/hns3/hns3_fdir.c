@@ -919,8 +919,7 @@ static int hns3_insert_fdir_filter(struct hns3_hw *hw,
 	sig = rte_hash_crc(key, sizeof(*key), 0);
 	ret = rte_hash_add_key_with_hash(fdir_info->hash_handle, key, sig);
 	if (ret < 0) {
-		hns3_err(hw, "Hash table full? err:%d(%s)!", ret,
-			 strerror(-ret));
+		hns3_err(hw, "Hash table full? err:%d!", ret);
 		return ret;
 	}
 
