@@ -11,10 +11,6 @@ endif
 sources = files(
         'cn9k_eventdev.c',
         'cn9k_worker.c',
-        'cn9k_worker_tx_enq.c',
-        'cn9k_worker_tx_enq_seg.c',
-        'cn9k_worker_dual_tx_enq.c',
-        'cn9k_worker_dual_tx_enq_seg.c',
         'cn10k_eventdev.c',
         'cn10k_worker.c',
         'cn10k_worker_deq.c',
@@ -291,6 +287,44 @@ sources += files(
         'deq/cn9k/deq_80_95_dual_ca_tmo_seg_burst.c',
         'deq/cn9k/deq_96_111_dual_ca_tmo_seg_burst.c',
         'deq/cn9k/deq_112_127_dual_ca_tmo_seg_burst.c',
+)
+
+sources += files(
+        'tx/cn9k/tx_0_15.c',
+        'tx/cn9k/tx_16_31.c',
+        'tx/cn9k/tx_32_47.c',
+        'tx/cn9k/tx_48_63.c',
+        'tx/cn9k/tx_64_79.c',
+        'tx/cn9k/tx_80_95.c',
+        'tx/cn9k/tx_96_111.c',
+        'tx/cn9k/tx_112_127.c',
+        'tx/cn9k/tx_0_15_seg.c',
+        'tx/cn9k/tx_16_31_seg.c',
+        'tx/cn9k/tx_32_47_seg.c',
+        'tx/cn9k/tx_48_63_seg.c',
+        'tx/cn9k/tx_64_79_seg.c',
+        'tx/cn9k/tx_80_95_seg.c',
+        'tx/cn9k/tx_96_111_seg.c',
+        'tx/cn9k/tx_112_127_seg.c',
+)
+
+sources += files(
+        'tx/cn9k/tx_0_15_dual.c',
+        'tx/cn9k/tx_16_31_dual.c',
+        'tx/cn9k/tx_32_47_dual.c',
+        'tx/cn9k/tx_48_63_dual.c',
+        'tx/cn9k/tx_64_79_dual.c',
+        'tx/cn9k/tx_80_95_dual.c',
+        'tx/cn9k/tx_96_111_dual.c',
+        'tx/cn9k/tx_112_127_dual.c',
+        'tx/cn9k/tx_0_15_dual_seg.c',
+        'tx/cn9k/tx_16_31_dual_seg.c',
+        'tx/cn9k/tx_32_47_dual_seg.c',
+        'tx/cn9k/tx_48_63_dual_seg.c',
+        'tx/cn9k/tx_64_79_dual_seg.c',
+        'tx/cn9k/tx_80_95_dual_seg.c',
+        'tx/cn9k/tx_96_111_dual_seg.c',
+        'tx/cn9k/tx_112_127_dual_seg.c',
 )
 
 extra_flags = ['-flax-vector-conversions', '-Wno-strict-aliasing']

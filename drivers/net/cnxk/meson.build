@@ -29,10 +29,7 @@ sources += files(
         'cn9k_ethdev_sec.c',
         'cn9k_rte_flow.c',
         'cn9k_rx_select.c',
-        'cn9k_tx.c',
-        'cn9k_tx_mseg.c',
-        'cn9k_tx_vec.c',
-        'cn9k_tx_vec_mseg.c',
+        'cn9k_tx_select.c',
 )
 
 sources += files(
@@ -68,6 +65,41 @@ sources += files(
         'rx/cn9k/rx_80_95_vec_mseg.c',
         'rx/cn9k/rx_96_111_vec_mseg.c',
         'rx/cn9k/rx_112_127_vec_mseg.c',
+)
+
+sources += files(
+        'tx/cn9k/tx_0_15.c',
+        'tx/cn9k/tx_16_31.c',
+        'tx/cn9k/tx_32_47.c',
+        'tx/cn9k/tx_48_63.c',
+        'tx/cn9k/tx_64_79.c',
+        'tx/cn9k/tx_80_95.c',
+        'tx/cn9k/tx_96_111.c',
+        'tx/cn9k/tx_112_127.c',
+        'tx/cn9k/tx_0_15_mseg.c',
+        'tx/cn9k/tx_16_31_mseg.c',
+        'tx/cn9k/tx_32_47_mseg.c',
+        'tx/cn9k/tx_48_63_mseg.c',
+        'tx/cn9k/tx_64_79_mseg.c',
+        'tx/cn9k/tx_80_95_mseg.c',
+        'tx/cn9k/tx_96_111_mseg.c',
+        'tx/cn9k/tx_112_127_mseg.c',
+        'tx/cn9k/tx_0_15_vec.c',
+        'tx/cn9k/tx_16_31_vec.c',
+        'tx/cn9k/tx_32_47_vec.c',
+        'tx/cn9k/tx_48_63_vec.c',
+        'tx/cn9k/tx_64_79_vec.c',
+        'tx/cn9k/tx_80_95_vec.c',
+        'tx/cn9k/tx_96_111_vec.c',
+        'tx/cn9k/tx_112_127_vec.c',
+        'tx/cn9k/tx_0_15_vec_mseg.c',
+        'tx/cn9k/tx_16_31_vec_mseg.c',
+        'tx/cn9k/tx_32_47_vec_mseg.c',
+        'tx/cn9k/tx_48_63_vec_mseg.c',
+        'tx/cn9k/tx_64_79_vec_mseg.c',
+        'tx/cn9k/tx_80_95_vec_mseg.c',
+        'tx/cn9k/tx_96_111_vec_mseg.c',
+        'tx/cn9k/tx_112_127_vec_mseg.c',
 )
 
 # CN10K
