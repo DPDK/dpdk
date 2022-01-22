@@ -1890,7 +1890,6 @@ hns3_flow_destroy(struct rte_eth_dev *dev, struct rte_flow *flow,
 		}
 	}
 	rte_free(flow);
-	flow = NULL;
 
 	return 0;
 }
