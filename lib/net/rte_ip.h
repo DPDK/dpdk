@@ -401,6 +401,65 @@ rte_ipv4_udptcp_cksum(const struct rte_ipv4_hdr *ipv4_hdr, const void *l4_hdr)
 }
 
 /**
+ * @internal Calculate the non-complemented IPv4 L4 checksum of a packet
+ */
+static inline uint16_t
+__rte_ipv4_udptcp_cksum_mbuf(const struct rte_mbuf *m,
+			     const struct rte_ipv4_hdr *ipv4_hdr,
+			     uint16_t l4_off)
+{
+	uint16_t raw_cksum;
+	uint32_t cksum;
+
+	if (l4_off > m->pkt_len)
+		return 0;
+
+	if (rte_raw_cksum_mbuf(m, l4_off, m->pkt_len - l4_off, &raw_cksum))
+		return 0;
+
+	cksum = raw_cksum + rte_ipv4_phdr_cksum(ipv4_hdr, 0);
+
+	cksum = ((cksum & 0xffff0000) >> 16) + (cksum & 0xffff);
+
+	return (uint16_t)cksum;
+}
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Compute the IPv4 UDP/TCP checksum of a packet.
+ *
+ * @param m
+ *   The pointer to the mbuf.
+ * @param ipv4_hdr
+ *   The pointer to the contiguous IPv4 header.
+ * @param l4_off
+ *   The offset in bytes to start L4 checksum.
+ * @return
+ *   The complemented checksum to set in the L4 header.
+ */
+__rte_experimental
+static inline uint16_t
+rte_ipv4_udptcp_cksum_mbuf(const struct rte_mbuf *m,
+			   const struct rte_ipv4_hdr *ipv4_hdr, uint16_t l4_off)
+{
+	uint16_t cksum = __rte_ipv4_udptcp_cksum_mbuf(m, ipv4_hdr, l4_off);
+
+	cksum = ~cksum;
+
+	/*
+	 * Per RFC 768: If the computed checksum is zero for UDP,
+	 * it is transmitted as all ones
+	 * (the equivalent in one's complement arithmetic).
+	 */
+	if (cksum == 0 && ipv4_hdr->next_proto_id == IPPROTO_UDP)
+		cksum = 0xffff;
+
+	return cksum;
+}
+
+/**
  * Validate the IPv4 UDP or TCP checksum.
  *
  * In case of UDP, the caller must first check if udp_hdr->dgram_cksum is 0
@@ -419,6 +478,38 @@ rte_ipv4_udptcp_cksum_verify(const struct rte_ipv4_hdr *ipv4_hdr,
 			     const void *l4_hdr)
 {
 	uint16_t cksum = __rte_ipv4_udptcp_cksum(ipv4_hdr, l4_hdr);
+
+	if (cksum != 0xffff)
+		return -1;
+
+	return 0;
+}
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Verify the IPv4 UDP/TCP checksum of a packet.
+ *
+ * In case of UDP, the caller must first check if udp_hdr->dgram_cksum is 0
+ * (i.e. no checksum).
+ *
+ * @param m
+ *   The pointer to the mbuf.
+ * @param ipv4_hdr
+ *   The pointer to the contiguous IPv4 header.
+ * @param l4_off
+ *   The offset in bytes to start L4 checksum.
+ * @return
+ *   Return 0 if the checksum is correct, else -1.
+ */
+__rte_experimental
+static inline uint16_t
+rte_ipv4_udptcp_cksum_mbuf_verify(const struct rte_mbuf *m,
+				  const struct rte_ipv4_hdr *ipv4_hdr,
+				  uint16_t l4_off)
+{
+	uint16_t cksum = __rte_ipv4_udptcp_cksum_mbuf(m, ipv4_hdr, l4_off);
 
 	if (cksum != 0xffff)
 		return -1;
@@ -539,6 +630,68 @@ rte_ipv6_udptcp_cksum(const struct rte_ipv6_hdr *ipv6_hdr, const void *l4_hdr)
 }
 
 /**
+ * @internal Calculate the non-complemented IPv6 L4 checksum of a packet
+ */
+static inline uint16_t
+__rte_ipv6_udptcp_cksum_mbuf(const struct rte_mbuf *m,
+			     const struct rte_ipv6_hdr *ipv6_hdr,
+			     uint16_t l4_off)
+{
+	uint16_t raw_cksum;
+	uint32_t cksum;
+
+	if (l4_off > m->pkt_len)
+		return 0;
+
+	if (rte_raw_cksum_mbuf(m, l4_off, m->pkt_len - l4_off, &raw_cksum))
+		return 0;
+
+	cksum = raw_cksum + rte_ipv6_phdr_cksum(ipv6_hdr, 0);
+
+	cksum = ((cksum & 0xffff0000) >> 16) + (cksum & 0xffff);
+
+	return (uint16_t)cksum;
+}
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Process the IPv6 UDP or TCP checksum of a packet.
+ *
+ * The IPv6 header must not be followed by extension headers. The layer 4
+ * checksum must be set to 0 in the L4 header by the caller.
+ *
+ * @param m
+ *   The pointer to the mbuf.
+ * @param ipv6_hdr
+ *   The pointer to the contiguous IPv6 header.
+ * @param l4_off
+ *   The offset in bytes to start L4 checksum.
+ * @return
+ *   The complemented checksum to set in the L4 header.
+ */
+__rte_experimental
+static inline uint16_t
+rte_ipv6_udptcp_cksum_mbuf(const struct rte_mbuf *m,
+			   const struct rte_ipv6_hdr *ipv6_hdr, uint16_t l4_off)
+{
+	uint16_t cksum = __rte_ipv6_udptcp_cksum_mbuf(m, ipv6_hdr, l4_off);
+
+	cksum = ~cksum;
+
+	/*
+	 * Per RFC 768: If the computed checksum is zero for UDP,
+	 * it is transmitted as all ones
+	 * (the equivalent in one's complement arithmetic).
+	 */
+	if (cksum == 0 && ipv6_hdr->proto == IPPROTO_UDP)
+		cksum = 0xffff;
+
+	return cksum;
+}
+
+/**
  * Validate the IPv6 UDP or TCP checksum.
  *
  * In case of UDP, the caller must first check if udp_hdr->dgram_cksum is 0:
@@ -558,6 +711,39 @@ rte_ipv6_udptcp_cksum_verify(const struct rte_ipv6_hdr *ipv6_hdr,
 			     const void *l4_hdr)
 {
 	uint16_t cksum = __rte_ipv6_udptcp_cksum(ipv6_hdr, l4_hdr);
+
+	if (cksum != 0xffff)
+		return -1;
+
+	return 0;
+}
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Validate the IPv6 UDP or TCP checksum of a packet.
+ *
+ * In case of UDP, the caller must first check if udp_hdr->dgram_cksum is 0:
+ * this is either invalid or means no checksum in some situations. See 8.1
+ * (Upper-Layer Checksums) in RFC 8200.
+ *
+ * @param m
+ *   The pointer to the mbuf.
+ * @param ipv6_hdr
+ *   The pointer to the contiguous IPv6 header.
+ * @param l4_off
+ *   The offset in bytes to start L4 checksum.
+ * @return
+ *   Return 0 if the checksum is correct, else -1.
+ */
+__rte_experimental
+static inline int
+rte_ipv6_udptcp_cksum_mbuf_verify(const struct rte_mbuf *m,
+				  const struct rte_ipv6_hdr *ipv6_hdr,
+				  uint16_t l4_off)
+{
+	uint16_t cksum = __rte_ipv6_udptcp_cksum_mbuf(m, ipv6_hdr, l4_off);
 
 	if (cksum != 0xffff)
 		return -1;

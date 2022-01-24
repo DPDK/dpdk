@@ -62,6 +62,15 @@ New Features
   The new mode is activated with ``--huge-unlink=never``
   and has security implications, refer to the user and programmer guides.
 
+* **Added functions to calculate UDP/TCP checksum in mbuf.**
+
+  * Added the following functions to calculate UDP/TCP checksum of packets
+    which can be over multi-segments:
+    - ``rte_ipv4_udptcp_cksum_mbuf()``
+    - ``rte_ipv4_udptcp_cksum_mbuf_verify()``
+    - ``rte_ipv6_udptcp_cksum_mbuf()``
+    - ``rte_ipv6_udptcp_cksum_mbuf_verify()``
+
 * **Updated AF_XDP PMD**
 
   * Added support for libxdp >=v1.2.2.
@@ -115,6 +124,10 @@ API Changes
    This section is a comment. Do not overwrite or remove it.
    Also, make sure to start the actual text at the margin.
    =======================================================
+
+* net: added experimental functions ``rte_ipv4_udptcp_cksum_mbuf()``,
+  ``rte_ipv4_udptcp_cksum_mbuf_verify()``, ``rte_ipv6_udptcp_cksum_mbuf()``,
+  ``rte_ipv6_udptcp_cksum_mbuf_verify()``
 
 * ethdev: Old public macros and enumeration constants without ``RTE_ETH_`` prefix,
   which are kept for backward compatibility, are marked as deprecated.
