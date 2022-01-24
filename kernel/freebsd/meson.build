@@ -10,7 +10,7 @@ kmods = ['contigmem', 'nic_uio']
 # files from the individual meson.build files, and then use a custom
 # target to call make, passing in the values as env parameters.
 kmod_cflags = ['-I' + meson.build_root(),
-		'-I' + join_paths(meson.source_root(), 'config'),
+		'-I' + join_paths(dpdk_source_root, 'config'),
 		'-include rte_config.h']
 
 # to avoid warnings due to race conditions with creating the dev_if.h, etc.

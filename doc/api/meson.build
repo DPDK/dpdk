@@ -24,7 +24,7 @@ htmldir = join_paths(get_option('datadir'), 'doc', 'dpdk')
 # So use a configure option for now.
 example = custom_target('examples.dox',
 	output: 'examples.dox',
-	command: [generate_examples, join_paths(meson.source_root(), 'examples'), '@OUTPUT@'],
+	command: [generate_examples, join_paths(dpdk_source_root, 'examples'), '@OUTPUT@'],
 	depfile: 'examples.dox.d',
 	install: get_option('enable_docs'),
 	install_dir: htmldir,
@@ -32,11 +32,11 @@ example = custom_target('examples.dox',
 
 cdata = configuration_data()
 cdata.set('VERSION', meson.project_version())
-cdata.set('API_EXAMPLES', join_paths(meson.build_root(), 'doc', 'api', 'examples.dox'))
-cdata.set('OUTPUT', join_paths(meson.build_root(), 'doc', 'api'))
+cdata.set('API_EXAMPLES', join_paths(dpdk_build_root, 'doc', 'api', 'examples.dox'))
+cdata.set('OUTPUT', join_paths(dpdk_build_root, 'doc', 'api'))
 cdata.set('HTML_OUTPUT', 'html')
-cdata.set('TOPDIR', meson.source_root())
-cdata.set('STRIP_FROM_PATH', ' '.join([meson.source_root(), join_paths(meson.build_root(), 'doc', 'api')]))
+cdata.set('TOPDIR', dpdk_source_root)
+cdata.set('STRIP_FROM_PATH', ' '.join([dpdk_source_root, join_paths(dpdk_build_root, 'doc', 'api')]))
 cdata.set('WARN_AS_ERROR', 'NO')
 if get_option('werror')
 	cdata.set('WARN_AS_ERROR', 'YES')
