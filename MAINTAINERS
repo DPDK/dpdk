@@ -428,7 +428,7 @@ F: doc/guides/sample_app_ug/bbdev_app.rst
 
 Crypto API
 M: Akhil Goyal <gakhil@marvell.com>
-M: Declan Doherty <declan.doherty@intel.com>
+M: Fan Zhang <roy.fan.zhang@intel.com>
 T: git://dpdk.org/next/dpdk-next-crypto
 F: lib/cryptodev/
 F: app/test/test_cryptodev*
@@ -436,7 +436,6 @@ F: examples/l2fwd-crypto/
 
 Security API
 M: Akhil Goyal <gakhil@marvell.com>
-M: Declan Doherty <declan.doherty@intel.com>
 T: git://dpdk.org/next/dpdk-next-crypto
 F: lib/security/
 F: doc/guides/prog_guide/rte_security.rst
@@ -1045,9 +1044,7 @@ F: drivers/crypto/scheduler/
 F: doc/guides/cryptodevs/scheduler.rst
 
 Intel QuickAssist
-M: John Griffin <john.griffin@intel.com>
-M: Fiona Trahe <fiona.trahe@intel.com>
-M: Deepak Kumar Jain <deepak.k.jain@intel.com>
+M: Fan Zhang <roy.fan.zhang@intel.com>
 F: drivers/crypto/qat/
 F: drivers/common/qat/
 F: doc/guides/cryptodevs/qat.rst
@@ -1100,7 +1097,7 @@ F: doc/guides/cryptodevs/mlx5.rst
 F: doc/guides/cryptodevs/features/mlx5.ini
 
 Null Crypto
-M: Declan Doherty <declan.doherty@intel.com>
+M: Fan Zhang <roy.fan.zhang@intel.com>
 F: drivers/crypto/null/
 F: doc/guides/cryptodevs/null.rst
 F: doc/guides/cryptodevs/features/null.ini
@@ -1127,7 +1124,7 @@ F: doc/guides/cryptodevs/dpaa2_sec.rst
 F: doc/guides/cryptodevs/features/dpaa2_sec.ini
 
 OpenSSL
-M: Declan Doherty <declan.doherty@intel.com>
+M: Fan Zhang <roy.fan.zhang@intel.com>
 F: drivers/crypto/openssl/
 F: doc/guides/cryptodevs/openssl.rst
 F: doc/guides/cryptodevs/features/openssl.ini
@@ -1150,7 +1147,7 @@ F: doc/guides/compressdevs/octeontx.rst
 F: doc/guides/compressdevs/features/octeontx.ini
 
 Intel QuickAssist
-M: Fiona Trahe <fiona.trahe@intel.com>
+M: Fan Zhang <roy.fan.zhang@intel.com>
 F: drivers/compress/qat/
 F: drivers/common/qat/
 
@@ -1675,7 +1672,6 @@ F: app/test-compress-perf/
 F: doc/guides/tools/comp_perf.rst
 
 Crypto performance test application
-M: Declan Doherty <declan.doherty@intel.com>
 M: Ciara Power <ciara.power@intel.com>
 T: git://dpdk.org/next/dpdk-next-crypto
 F: app/test-crypto-perf/
