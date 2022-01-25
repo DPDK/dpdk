@@ -562,9 +562,11 @@ npc_parse_lc(struct npc_parse_state *pst)
 		ipv6_spec = pst->pattern->spec;
 		lid = NPC_LID_LC;
 		lt = NPC_LT_LC_IP6;
-		rc = npc_handle_ipv6ext_attr(ipv6_spec, pst, &flags);
-		if (rc)
-			return rc;
+		if (ipv6_spec) {
+			rc = npc_handle_ipv6ext_attr(ipv6_spec, pst, &flags);
+			if (rc)
+				return rc;
+		}
 		info.len = sizeof(ipv6_spec->hdr);
 		break;
 	case ROC_NPC_ITEM_TYPE_ARP_ETH_IPV4:
