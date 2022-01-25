@@ -1314,6 +1314,11 @@
 #define MDIO_VEND2_PMA_CDR_CONTROL	0x8056
 #endif
 
+#ifndef MDIO_VEND2_PMA_MISC_CTRL0
+#define MDIO_VEND2_PMA_MISC_CTRL0	0x8090
+#endif
+
+
 #ifndef MDIO_CTRL1_SPEED1G
 #define MDIO_CTRL1_SPEED1G		(MDIO_CTRL1_SPEED10G & ~BMCR_SPEED100)
 #endif
@@ -1391,6 +1396,10 @@ static inline uint32_t high32_value(uint64_t addr)
 {
 	return (addr >> 32) & 0x0ffffffff;
 }
+
+#define XGBE_PMA_PLL_CTRL_MASK         BIT(15)
+#define XGBE_PMA_PLL_CTRL_SET          BIT(15)
+#define XGBE_PMA_PLL_CTRL_CLEAR                0x0000
 
 /*END*/
 

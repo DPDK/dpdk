@@ -1196,8 +1196,22 @@ static void axgbe_phy_set_redrv_mode(struct axgbe_port *pdata)
 	axgbe_phy_put_comm_ownership(pdata);
 }
 
+static void axgbe_phy_pll_ctrl(struct axgbe_port *pdata, bool enable)
+{
+	XMDIO_WRITE_BITS(pdata, MDIO_MMD_PMAPMD, MDIO_VEND2_PMA_MISC_CTRL0,
+			XGBE_PMA_PLL_CTRL_MASK,
+			enable ? XGBE_PMA_PLL_CTRL_SET
+			: XGBE_PMA_PLL_CTRL_CLEAR);
+
+	/* Wait for command to complete */
+	rte_delay_us(150);
+}
+
 static void axgbe_phy_start_ratechange(struct axgbe_port *pdata)
 {
+	/* Clear the PLL so that it helps in power down sequence */
+	axgbe_phy_pll_ctrl(pdata, false);
+
 	/* Log if a previous command did not complete */
 	if (XP_IOREAD_BITS(pdata, XP_DRIVER_INT_RO, STATUS))
 		PMD_DRV_LOG(NOTICE, "firmware mailbox not ready for command\n");
@@ -1213,10 +1227,14 @@ static void axgbe_phy_complete_ratechange(struct axgbe_port *pdata)
 	wait = AXGBE_RATECHANGE_COUNT;
 	while (wait--) {
 		if (!XP_IOREAD_BITS(pdata, XP_DRIVER_INT_RO, STATUS))
-			return;
-
+			goto reenable_pll;
 		rte_delay_us(1500);
 	}
+
+reenable_pll:
+	 /* Re-enable the PLL control */
+	axgbe_phy_pll_ctrl(pdata, true);
+
 	PMD_DRV_LOG(NOTICE, "firmware mailbox command did not complete\n");
 }
 
