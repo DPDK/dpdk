@@ -2372,11 +2372,11 @@ enic_action_handle_get(struct enic_flowman *fm, struct fm_action *action_in,
 		memcpy(fma, action_in, sizeof(*fma));
 
 		ah = calloc(1, sizeof(*ah));
-		memcpy(&ah->key, action_in, sizeof(struct fm_action));
 		if (ah == NULL)
 			return rte_flow_error_set(error, ENOMEM,
 					   RTE_FLOW_ERROR_TYPE_HANDLE,
 					   NULL, "enic: calloc(fm-action)");
+		memcpy(&ah->key, action_in, sizeof(struct fm_action));
 		args[0] = FM_ACTION_ALLOC;
 		args[1] = fm->cmd.pa;
 		ret = flowman_cmd(fm, args, 2);
