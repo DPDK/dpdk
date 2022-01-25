@@ -392,6 +392,8 @@ zip_pmd_qp_setup(struct rte_compressdev *dev, uint16_t qp_id,
 	}
 
 	name =  rte_malloc(NULL, RTE_COMPRESSDEV_NAME_MAX_LEN, 0);
+	if (name == NULL)
+		return (-ENOMEM);
 	snprintf(name, RTE_COMPRESSDEV_NAME_MAX_LEN,
 		 "zip_pmd_%u_qp_%u",
 		 dev->data->dev_id, qp_id);
@@ -399,8 +401,10 @@ zip_pmd_qp_setup(struct rte_compressdev *dev, uint16_t qp_id,
 	/* Allocate the queue pair data structure. */
 	qp = rte_zmalloc_socket(name, sizeof(*qp),
 				RTE_CACHE_LINE_SIZE, socket_id);
-	if (qp == NULL)
+	if (qp == NULL) {
+		rte_free(name);
 		return (-ENOMEM);
+	}
 
 	qp->name = name;
 
