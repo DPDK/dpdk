@@ -752,7 +752,7 @@ npc_program_mcam(struct npc *npc, struct npc_parse_state *pst, bool mcam_alloc)
 	if (pst->set_ipv6ext_ltype_mask)
 		npc_set_ipv6ext_ltype_mask(pst);
 
-	if (pst->is_vf) {
+	if (pst->is_vf && pst->flow->nix_intf == NIX_INTF_RX) {
 		(void)mbox_alloc_msg_npc_read_base_steer_rule(npc->mbox);
 		rc = mbox_process_msg(npc->mbox, (void *)&base_rule_rsp);
 		if (rc) {
