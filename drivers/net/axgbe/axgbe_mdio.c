@@ -80,31 +80,10 @@ static void axgbe_an_clear_interrupts_all(struct axgbe_port *pdata)
 	axgbe_an37_clear_interrupts(pdata);
 }
 
-static void axgbe_an73_enable_kr_training(struct axgbe_port *pdata)
-{
-	unsigned int reg;
 
-	reg = XMDIO_READ(pdata, MDIO_MMD_PMAPMD, MDIO_PMA_10GBR_PMD_CTRL);
-
-	reg |= AXGBE_KR_TRAINING_ENABLE;
-	XMDIO_WRITE(pdata, MDIO_MMD_PMAPMD, MDIO_PMA_10GBR_PMD_CTRL, reg);
-}
-
-static void axgbe_an73_disable_kr_training(struct axgbe_port *pdata)
-{
-	unsigned int reg;
-
-	reg = XMDIO_READ(pdata, MDIO_MMD_PMAPMD, MDIO_PMA_10GBR_PMD_CTRL);
-
-	reg &= ~AXGBE_KR_TRAINING_ENABLE;
-	XMDIO_WRITE(pdata, MDIO_MMD_PMAPMD, MDIO_PMA_10GBR_PMD_CTRL, reg);
-}
 
 static void axgbe_kr_mode(struct axgbe_port *pdata)
 {
-	/* Enable KR training */
-	axgbe_an73_enable_kr_training(pdata);
-
 	/* Set MAC to 10G speed */
 	pdata->hw_if.set_speed(pdata, SPEED_10000);
 
@@ -114,9 +93,6 @@ static void axgbe_kr_mode(struct axgbe_port *pdata)
 
 static void axgbe_kx_2500_mode(struct axgbe_port *pdata)
 {
-	/* Disable KR training */
-	axgbe_an73_disable_kr_training(pdata);
-
 	/* Set MAC to 2.5G speed */
 	pdata->hw_if.set_speed(pdata, SPEED_2500);
 
@@ -126,9 +102,6 @@ static void axgbe_kx_2500_mode(struct axgbe_port *pdata)
 
 static void axgbe_kx_1000_mode(struct axgbe_port *pdata)
 {
-	/* Disable KR training */
-	axgbe_an73_disable_kr_training(pdata);
-
 	/* Set MAC to 1G speed */
 	pdata->hw_if.set_speed(pdata, SPEED_1000);
 
@@ -142,8 +115,6 @@ static void axgbe_sfi_mode(struct axgbe_port *pdata)
 	if (pdata->kr_redrv)
 		return axgbe_kr_mode(pdata);
 
-	/* Disable KR training */
-	axgbe_an73_disable_kr_training(pdata);
 
 	/* Set MAC to 10G speed */
 	pdata->hw_if.set_speed(pdata, SPEED_10000);
@@ -154,8 +125,6 @@ static void axgbe_sfi_mode(struct axgbe_port *pdata)
 
 static void axgbe_x_mode(struct axgbe_port *pdata)
 {
-	/* Disable KR training */
-	axgbe_an73_disable_kr_training(pdata);
 
 	/* Set MAC to 1G speed */
 	pdata->hw_if.set_speed(pdata, SPEED_1000);
@@ -166,8 +135,6 @@ static void axgbe_x_mode(struct axgbe_port *pdata)
 
 static void axgbe_sgmii_1000_mode(struct axgbe_port *pdata)
 {
-	/* Disable KR training */
-	axgbe_an73_disable_kr_training(pdata);
 
 	/* Set MAC to 1G speed */
 	pdata->hw_if.set_speed(pdata, SPEED_1000);
@@ -178,8 +145,6 @@ static void axgbe_sgmii_1000_mode(struct axgbe_port *pdata)
 
 static void axgbe_sgmii_100_mode(struct axgbe_port *pdata)
 {
-	/* Disable KR training */
-	axgbe_an73_disable_kr_training(pdata);
 
 	/* Set MAC to 1G speed */
 	pdata->hw_if.set_speed(pdata, SPEED_1000);
@@ -284,6 +249,12 @@ static void axgbe_an73_set(struct axgbe_port *pdata, bool enable,
 {
 	unsigned int reg;
 
+	/* Disable KR training for now */
+	reg = XMDIO_READ(pdata, MDIO_MMD_PMAPMD, MDIO_PMA_10GBR_PMD_CTRL);
+	reg &= ~AXGBE_KR_TRAINING_ENABLE;
+	XMDIO_WRITE(pdata, MDIO_MMD_PMAPMD, MDIO_PMA_10GBR_PMD_CTRL, reg);
+
+	/* Update AN settings */
 	reg = XMDIO_READ(pdata, MDIO_MMD_AN, MDIO_CTRL1);
 	reg &= ~MDIO_AN_CTRL1_ENABLE;
 
@@ -379,20 +350,17 @@ static enum axgbe_an axgbe_an73_tx_training(struct axgbe_port *pdata,
 	XMDIO_WRITE(pdata, MDIO_MMD_PMAPMD, MDIO_PMA_10GBR_FECCTRL, reg);
 
 	/* Start KR training */
+	if (pdata->phy_if.phy_impl.kr_training_pre)
+		pdata->phy_if.phy_impl.kr_training_pre(pdata);
+
 	reg = XMDIO_READ(pdata, MDIO_MMD_PMAPMD, MDIO_PMA_10GBR_PMD_CTRL);
-	if (reg & AXGBE_KR_TRAINING_ENABLE) {
-		if (pdata->phy_if.phy_impl.kr_training_pre)
-			pdata->phy_if.phy_impl.kr_training_pre(pdata);
+	reg |= AXGBE_KR_TRAINING_ENABLE;
+	reg |= AXGBE_KR_TRAINING_START;
+	XMDIO_WRITE(pdata, MDIO_MMD_PMAPMD, MDIO_PMA_10GBR_PMD_CTRL, reg);
 
-		reg |= AXGBE_KR_TRAINING_START;
-		XMDIO_WRITE(pdata, MDIO_MMD_PMAPMD, MDIO_PMA_10GBR_PMD_CTRL,
-			    reg);
-
-		PMD_DRV_LOG(DEBUG, "KR training initiated\n");
-
-		if (pdata->phy_if.phy_impl.kr_training_post)
-			pdata->phy_if.phy_impl.kr_training_post(pdata);
-	}
+	PMD_DRV_LOG(DEBUG, "KR training initiated\n");
+	if (pdata->phy_if.phy_impl.kr_training_post)
+		pdata->phy_if.phy_impl.kr_training_post(pdata);
 
 	return AXGBE_AN_PAGE_RECEIVED;
 }
