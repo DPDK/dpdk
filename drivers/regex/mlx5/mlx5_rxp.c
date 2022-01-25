@@ -989,7 +989,7 @@ mlx5_regex_configure(struct rte_regexdev *dev,
 	dev->data->dev_conf.nb_queue_pairs = priv->nb_queues;
 	priv->qps = rte_zmalloc(NULL, sizeof(struct mlx5_regex_qp) *
 				priv->nb_queues, 0);
-	if (!priv->nb_queues) {
+	if (!priv->qps) {
 		DRV_LOG(ERR, "can't allocate qps memory");
 		rte_errno = ENOMEM;
 		return -rte_errno;
