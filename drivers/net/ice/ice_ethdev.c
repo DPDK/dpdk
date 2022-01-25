@@ -3604,7 +3604,7 @@ ice_dev_start(struct rte_eth_dev *dev)
 	ice_dev_set_link_up(dev);
 
 	/* Call get_link_info aq command to enable/disable LSE */
-	ice_link_update(dev, 0);
+	ice_link_update(dev, 1);
 
 	pf->adapter_stopped = false;
 
