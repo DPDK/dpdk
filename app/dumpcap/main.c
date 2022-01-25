@@ -786,8 +786,8 @@ int main(int argc, char **argv)
 
 	progname = argv[0];
 
-	dpdk_init();
 	parse_opts(argc, argv);
+	dpdk_init();
 
 	if (filter_str)
 		compile_filter();
