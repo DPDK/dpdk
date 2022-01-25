@@ -35,13 +35,14 @@ NUMA is required by most modern machines, not needed for non-NUMA architectures.
    git checkout v2.0.13 -b v2.0.13
    ./autogen.sh
    autoconf -i
-   ./configure --host=aarch64-linux-gnu CC=<compiler> --prefix=<numa install dir>
+   ./configure --host=aarch64-linux-gnu CC=aarch64-none-linux-gnu-gcc --prefix=<numa install dir>
    make install
 
 .. note::
 
-   The compiler above can be either aarch64-linux-gnu-gcc or clang.
-   See below for information on how to get specific compilers.
+   The compiler is ``aarch64-none-linux-gnu-gcc`` if you download GCC
+   using the below guide. If you're using a different compiler,
+   make sure you're using the proper executable name.
 
 The numa header files and lib file is generated in the include and lib folder
 respectively under ``<numa install dir>``.
