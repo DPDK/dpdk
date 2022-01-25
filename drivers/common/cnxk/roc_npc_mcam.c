@@ -670,7 +670,7 @@ npc_program_mcam(struct npc *npc, struct npc_parse_state *pst, bool mcam_alloc)
 	memcpy(pst->flow->mcam_data, key_data, key_len);
 	memcpy(pst->flow->mcam_mask, key_mask, key_len);
 
-	if (pst->is_vf) {
+	if (pst->is_vf && pst->flow->nix_intf == NIX_INTF_RX) {
 		(void)mbox_alloc_msg_npc_read_base_steer_rule(npc->mbox);
 		rc = mbox_process_msg(npc->mbox, (void *)&base_rule_rsp);
 		if (rc) {
