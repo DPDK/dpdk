@@ -395,6 +395,8 @@ dpaa2_alloc_rx_tx_queues(struct rte_eth_dev *dev)
 	if (dpaa2_enable_err_queue) {
 		priv->rx_err_vq = rte_zmalloc("dpni_rx_err",
 			sizeof(struct dpaa2_queue), 0);
+		if (!priv->rx_err_vq)
+			goto fail;
 
 		dpaa2_q = (struct dpaa2_queue *)priv->rx_err_vq;
 		dpaa2_q->q_storage = rte_malloc("err_dq_storage",
