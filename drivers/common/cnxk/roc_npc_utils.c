@@ -664,14 +664,14 @@ npc_get_free_mcam_entry(struct mbox *mbox, struct roc_npc_flow *flow,
 
 	new_entry->flow = flow;
 
-	plt_info("npc: kernel allocated MCAM entry %d", rsp_local.entry);
+	plt_npc_dbg("kernel allocated MCAM entry %d", rsp_local.entry);
 
 	rc = npc_sort_mcams_by_user_prio_level(mbox, new_entry, npc,
 					       &rsp_local);
 	if (rc)
 		goto err;
 
-	plt_info("npc: allocated MCAM entry after sorting %d", rsp_local.entry);
+	plt_npc_dbg("allocated MCAM entry after sorting %d", rsp_local.entry);
 	flow->mcam_id = rsp_local.entry;
 	npc_insert_into_flow_list(npc, new_entry);
 
