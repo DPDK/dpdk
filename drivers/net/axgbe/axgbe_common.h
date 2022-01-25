@@ -1270,8 +1270,16 @@
 #define MDIO_PMA_10GBR_FECCTRL		0x00ab
 #endif
 
+#ifndef MDIO_PMA_RX_CTRL1
+#define MDIO_PMA_RX_CTRL1		0x8051
+#endif
+
 #ifndef MDIO_PCS_DIG_CTRL
 #define MDIO_PCS_DIG_CTRL		0x8000
+#endif
+
+#ifndef MDIO_PCS_DIGITAL_STAT
+#define MDIO_PCS_DIGITAL_STAT		0x8010
 #endif
 
 #ifndef MDIO_AN_XNP
@@ -1354,6 +1362,8 @@
 #define AXGBE_KR_TRAINING_ENABLE	BIT(1)
 
 #define AXGBE_PCS_CL37_BP		BIT(12)
+#define XGBE_PCS_PSEQ_STATE_MASK	0x1c
+#define XGBE_PCS_PSEQ_STATE_POWER_GOOD	0x10
 
 #define AXGBE_AN_CL37_INT_CMPLT		BIT(0)
 #define AXGBE_AN_CL37_INT_MASK		0x01
@@ -1400,6 +1410,10 @@ static inline uint32_t high32_value(uint64_t addr)
 #define XGBE_PMA_PLL_CTRL_MASK         BIT(15)
 #define XGBE_PMA_PLL_CTRL_SET          BIT(15)
 #define XGBE_PMA_PLL_CTRL_CLEAR                0x0000
+
+#define XGBE_PMA_RX_RST_0_MASK         BIT(4)
+#define XGBE_PMA_RX_RST_0_RESET_ON     0x10
+#define XGBE_PMA_RX_RST_0_RESET_OFF    0x00
 
 /*END*/
 
