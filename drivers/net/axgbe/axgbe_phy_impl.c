@@ -1207,21 +1207,26 @@ static void axgbe_phy_pll_ctrl(struct axgbe_port *pdata, bool enable)
 	rte_delay_us(150);
 }
 
-static void axgbe_phy_start_ratechange(struct axgbe_port *pdata)
+static void axgbe_phy_perform_ratechange(struct axgbe_port *pdata,
+					unsigned int cmd, unsigned int sub_cmd)
 {
+	unsigned int s0 = 0;
+	unsigned int wait;
 	/* Clear the PLL so that it helps in power down sequence */
 	axgbe_phy_pll_ctrl(pdata, false);
 
 	/* Log if a previous command did not complete */
 	if (XP_IOREAD_BITS(pdata, XP_DRIVER_INT_RO, STATUS))
 		PMD_DRV_LOG(NOTICE, "firmware mailbox not ready for command\n");
-	else
-		return;
-}
 
-static void axgbe_phy_complete_ratechange(struct axgbe_port *pdata)
-{
-	unsigned int wait;
+	/* Construct the command */
+	XP_SET_BITS(s0, XP_DRIVER_SCRATCH_0, COMMAND, cmd);
+	XP_SET_BITS(s0, XP_DRIVER_SCRATCH_0, SUB_COMMAND, sub_cmd);
+
+	/* Issue the command */
+	XP_IOWRITE(pdata, XP_DRIVER_SCRATCH_0, s0);
+	XP_IOWRITE(pdata, XP_DRIVER_SCRATCH_1, 0);
+	XP_IOWRITE_BITS(pdata, XP_DRIVER_INT_REQ, REQUEST, 1);
 
 	/* Wait for command to complete */
 	wait = AXGBE_RATECHANGE_COUNT;
@@ -1240,21 +1245,10 @@ reenable_pll:
 
 static void axgbe_phy_rrc(struct axgbe_port *pdata)
 {
-	unsigned int s0;
 
-	axgbe_phy_start_ratechange(pdata);
 
 	/* Receiver Reset Cycle */
-	s0 = 0;
-	XP_SET_BITS(s0, XP_DRIVER_SCRATCH_0, COMMAND, 5);
-	XP_SET_BITS(s0, XP_DRIVER_SCRATCH_0, SUB_COMMAND, 0);
-
-	/* Call FW to make the change */
-	XP_IOWRITE(pdata, XP_DRIVER_SCRATCH_0, s0);
-	XP_IOWRITE(pdata, XP_DRIVER_SCRATCH_1, 0);
-	XP_IOWRITE_BITS(pdata, XP_DRIVER_INT_REQ, REQUEST, 1);
-
-	axgbe_phy_complete_ratechange(pdata);
+	axgbe_phy_perform_ratechange(pdata, 5, 0);
 
 	PMD_DRV_LOG(DEBUG, "receiver reset complete\n");
 }
@@ -1263,13 +1257,9 @@ static void axgbe_phy_power_off(struct axgbe_port *pdata)
 {
 	struct axgbe_phy_data *phy_data = pdata->phy_data;
 
-	axgbe_phy_start_ratechange(pdata);
+	/* Power off */
+	axgbe_phy_perform_ratechange(pdata, 0, 0);
 
-	/* Call FW to make the change */
-	XP_IOWRITE(pdata, XP_DRIVER_SCRATCH_0, 0);
-	XP_IOWRITE(pdata, XP_DRIVER_SCRATCH_1, 0);
-	XP_IOWRITE_BITS(pdata, XP_DRIVER_INT_REQ, REQUEST, 1);
-	axgbe_phy_complete_ratechange(pdata);
 	phy_data->cur_mode = AXGBE_MODE_UNKNOWN;
 
 	PMD_DRV_LOG(DEBUG, "phy powered off\n");
@@ -1278,31 +1268,21 @@ static void axgbe_phy_power_off(struct axgbe_port *pdata)
 static void axgbe_phy_sfi_mode(struct axgbe_port *pdata)
 {
 	struct axgbe_phy_data *phy_data = pdata->phy_data;
-	unsigned int s0;
 
 	axgbe_phy_set_redrv_mode(pdata);
 
-	axgbe_phy_start_ratechange(pdata);
-
 	/* 10G/SFI */
-	s0 = 0;
-	XP_SET_BITS(s0, XP_DRIVER_SCRATCH_0, COMMAND, 3);
 	if (phy_data->sfp_cable != AXGBE_SFP_CABLE_PASSIVE) {
-		XP_SET_BITS(s0, XP_DRIVER_SCRATCH_0, SUB_COMMAND, 0);
+		axgbe_phy_perform_ratechange(pdata, 3, 0);
 	} else {
 		if (phy_data->sfp_cable_len <= 1)
-			XP_SET_BITS(s0, XP_DRIVER_SCRATCH_0, SUB_COMMAND, 1);
+			axgbe_phy_perform_ratechange(pdata, 3, 1);
 		else if (phy_data->sfp_cable_len <= 3)
-			XP_SET_BITS(s0, XP_DRIVER_SCRATCH_0, SUB_COMMAND, 2);
+			axgbe_phy_perform_ratechange(pdata, 3, 2);
 		else
-			XP_SET_BITS(s0, XP_DRIVER_SCRATCH_0, SUB_COMMAND, 3);
+			axgbe_phy_perform_ratechange(pdata, 3, 3);
 	}
 
-	/* Call FW to make the change */
-	XP_IOWRITE(pdata, XP_DRIVER_SCRATCH_0, s0);
-	XP_IOWRITE(pdata, XP_DRIVER_SCRATCH_1, 0);
-	XP_IOWRITE_BITS(pdata, XP_DRIVER_INT_REQ, REQUEST, 1);
-	axgbe_phy_complete_ratechange(pdata);
 	phy_data->cur_mode = AXGBE_MODE_SFI;
 
 	PMD_DRV_LOG(DEBUG, "10GbE SFI mode set\n");
@@ -1311,22 +1291,11 @@ static void axgbe_phy_sfi_mode(struct axgbe_port *pdata)
 static void axgbe_phy_kr_mode(struct axgbe_port *pdata)
 {
 	struct axgbe_phy_data *phy_data = pdata->phy_data;
-	unsigned int s0;
 
 	axgbe_phy_set_redrv_mode(pdata);
 
-	axgbe_phy_start_ratechange(pdata);
-
 	/* 10G/KR */
-	s0 = 0;
-	XP_SET_BITS(s0, XP_DRIVER_SCRATCH_0, COMMAND, 4);
-	XP_SET_BITS(s0, XP_DRIVER_SCRATCH_0, SUB_COMMAND, 0);
-
-	/* Call FW to make the change */
-	XP_IOWRITE(pdata, XP_DRIVER_SCRATCH_0, s0);
-	XP_IOWRITE(pdata, XP_DRIVER_SCRATCH_1, 0);
-	XP_IOWRITE_BITS(pdata, XP_DRIVER_INT_REQ, REQUEST, 1);
-	axgbe_phy_complete_ratechange(pdata);
+	axgbe_phy_perform_ratechange(pdata, 4, 0);
 	phy_data->cur_mode = AXGBE_MODE_KR;
 
 	PMD_DRV_LOG(DEBUG, "10GbE KR mode set\n");
@@ -1335,40 +1304,22 @@ static void axgbe_phy_kr_mode(struct axgbe_port *pdata)
 static void axgbe_phy_kx_2500_mode(struct axgbe_port *pdata)
 {
 	struct axgbe_phy_data *phy_data = pdata->phy_data;
-	unsigned int s0;
 
 	axgbe_phy_set_redrv_mode(pdata);
+
 	/* 2.5G/KX */
-	axgbe_phy_start_ratechange(pdata);
-	s0 = 0;
-	XP_SET_BITS(s0, XP_DRIVER_SCRATCH_0, COMMAND, 2);
-	XP_SET_BITS(s0, XP_DRIVER_SCRATCH_0, SUB_COMMAND, 0);
-
-	XP_IOWRITE(pdata, XP_DRIVER_SCRATCH_0, s0);
-	XP_IOWRITE(pdata, XP_DRIVER_SCRATCH_1, 0);
-
-	XP_IOWRITE_BITS(pdata, XP_DRIVER_INT_REQ, REQUEST, 1);
-
+	axgbe_phy_perform_ratechange(pdata, 2, 0);
 	phy_data->cur_mode = AXGBE_MODE_KX_2500;
 }
 
 static void axgbe_phy_sgmii_1000_mode(struct axgbe_port *pdata)
 {
 	struct axgbe_phy_data *phy_data = pdata->phy_data;
-	unsigned int s0;
 
 	axgbe_phy_set_redrv_mode(pdata);
 
 	/* 1G/SGMII */
-	axgbe_phy_start_ratechange(pdata);
-	s0 = 0;
-	XP_SET_BITS(s0, XP_DRIVER_SCRATCH_0, COMMAND, 1);
-	XP_SET_BITS(s0, XP_DRIVER_SCRATCH_0, SUB_COMMAND, 2);
-
-	XP_IOWRITE(pdata, XP_DRIVER_SCRATCH_0, s0);
-	XP_IOWRITE(pdata, XP_DRIVER_SCRATCH_1, 0);
-
-	XP_IOWRITE_BITS(pdata, XP_DRIVER_INT_REQ, REQUEST, 1);
+	axgbe_phy_perform_ratechange(pdata, 1, 2);
 
 	phy_data->cur_mode = AXGBE_MODE_SGMII_1000;
 }
