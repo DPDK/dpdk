@@ -138,6 +138,32 @@ Cross Compiling DPDK with GNU toolchain using Meson
    Please modify the cross file binaries accordingly
    when using the downloaded cross compilers.
 
+   An example cross file with modified names and added NUMA paths
+   would look like this:
+
+   .. code-block:: console
+
+      [binaries]
+      c = 'aarch64-none-linux-gnu-gcc'
+      cpp = 'aarch64-none-linux-gnu-cpp'
+      ar = 'aarch64-none-linux-gnu-gcc-ar'
+      strip = 'aarch64-none-linux-gnu-strip'
+      pkgconfig = 'aarch64-linux-gnu-pkg-config' # the downloaded binaries
+         # do not contain a pkgconfig binary, so it is not modified
+      pcap-config = ''
+
+      [host_machine]
+      system = 'linux'
+      cpu_family = 'aarch64'
+      cpu = 'armv8-a'
+      endian = 'little'
+
+      [properties]
+      # Generate binaries that are portable across all Armv8 machines
+      platform = 'generic'
+      c_args = ['-I<numa_install_dir>/include']  # replace <numa_install_dir>
+      c_link_args = ['-L<numa_install_dir>/lib'] # with your path
+
 To cross-compile DPDK on a desired target machine we can use the following
 command::
 
