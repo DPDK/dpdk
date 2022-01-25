@@ -1259,6 +1259,16 @@ roc_npc_flow_destroy(struct roc_npc *roc_npc, struct roc_npc_flow *flow)
 			return rc;
 	}
 
+	if (flow->ctr_id != NPC_COUNTER_NONE) {
+		rc = roc_npc_mcam_clear_counter(roc_npc, flow->ctr_id);
+		if (rc != 0)
+			return rc;
+
+		rc = npc_mcam_free_counter(npc, flow->ctr_id);
+		if (rc != 0)
+			return rc;
+	}
+
 	rc = npc_mcam_free_entry(npc, flow->mcam_id);
 	if (rc != 0)
 		return rc;
