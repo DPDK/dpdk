@@ -98,10 +98,6 @@ For aarch32::
 Augment the GNU toolchain with NUMA support
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. note::
-
-   This way is optional, an alternative is to use extra CFLAGS and LDFLAGS.
-
 Copy the NUMA header files and lib to the cross compiler's directories:
 
 .. code-block:: console
@@ -109,6 +105,27 @@ Copy the NUMA header files and lib to the cross compiler's directories:
    cp <numa_install_dir>/include/numa*.h <cross_install_dir>/gcc-arm-9.2-2019.12-x86_64-aarch64-none-linux-gnu/aarch64-none-linux-gnu/libc/usr/include/
    cp <numa_install_dir>/lib/libnuma.a <cross_install_dir>/gcc-arm-9.2-2019.12-x86_64-aarch64-none-linux-gnu/lib/gcc/aarch64-none-linux-gnu/9.2.1/
    cp <numa_install_dir>/lib/libnuma.so <cross_install_dir>/gcc-arm-9.2-2019.12-x86_64-aarch64-none-linux-gnu/lib/gcc/aarch64-none-linux-gnu/9.2.1/
+
+.. note::
+
+   Using LDFLAGS and CFLAGS is not a viable alternative to copying the files.
+   The Meson docs say it is not recommended, as there are many caveats
+   to their use with Meson, especially when rebuilding the project.
+   A viable alternative would be to use the ``c_args`` and ``c_link_args``
+   options with Meson 0.51.0 and higher:
+
+   .. code-block:: console
+
+      -Dc_args=-I<numa_install_dir>/include -Dc_link_args=-L<numa_install_dir>/lib
+
+For Meson versions lower than 0.51.0, the ``c_args`` and ``c_link_args``
+options do not apply to cross compilation.
+However, the compiler/linker flags may be added to cross files under [properties]:
+
+.. code-block:: console
+
+   c_args = ['-I<numa_install_dir>/include']
+   c_link_args = ['-L<numa_install_dir>/lib']
 
 Cross Compiling DPDK with GNU toolchain using Meson
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
