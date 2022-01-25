@@ -14,6 +14,10 @@ pick_tx_func(struct rte_eth_dev *eth_dev,
 	/* [TS] [TSO] [NOFF] [VLAN] [OL3_OL4_CSUM] [IL3_IL4_CSUM] */
 	eth_dev->tx_pkt_burst =
 		tx_burst[dev->tx_offload_flags & (NIX_TX_OFFLOAD_MAX - 1)];
+
+	if (eth_dev->data->dev_started)
+		rte_eth_fp_ops[eth_dev->data->port_id].tx_pkt_burst =
+			eth_dev->tx_pkt_burst;
 }
 
 void

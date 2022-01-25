@@ -15,6 +15,10 @@ pick_rx_func(struct rte_eth_dev *eth_dev,
 	eth_dev->rx_pkt_burst =
 		rx_burst[dev->rx_offload_flags & (NIX_RX_OFFLOAD_MAX - 1)];
 
+	if (eth_dev->data->dev_started)
+		rte_eth_fp_ops[eth_dev->data->port_id].rx_pkt_burst =
+			eth_dev->rx_pkt_burst;
+
 	rte_atomic_thread_fence(__ATOMIC_RELEASE);
 }
 
