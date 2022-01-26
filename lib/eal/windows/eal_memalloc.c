@@ -17,7 +17,7 @@ eal_memalloc_get_seg_fd(int list_idx, int seg_idx)
 	RTE_SET_USED(list_idx);
 	RTE_SET_USED(seg_idx);
 	EAL_LOG_NOT_IMPLEMENTED();
-	return -1;
+	return -ENOTSUP;
 }
 
 int
@@ -28,7 +28,7 @@ eal_memalloc_get_seg_fd_offset(int list_idx, int seg_idx, size_t *offset)
 	RTE_SET_USED(seg_idx);
 	RTE_SET_USED(offset);
 	EAL_LOG_NOT_IMPLEMENTED();
-	return -1;
+	return -ENOTSUP;
 }
 
 static int
@@ -428,7 +428,7 @@ eal_memalloc_sync_with_primary(void)
 {
 	/* No multi-process support. */
 	EAL_LOG_NOT_IMPLEMENTED();
-	return -1;
+	return -ENOTSUP;
 }
 
 int
