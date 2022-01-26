@@ -872,13 +872,13 @@ translate_ring_addresses(struct virtio_net *dev, int vq_index)
 	}
 
 	if (vq->last_used_idx != vq->used->idx) {
-		VHOST_LOG_CONFIG(WARNING,
-			"(%s) last_used_idx (%u) and vq->used->idx (%u) mismatches; "
-			"some packets maybe resent for Tx and dropped for Rx\n",
+		VHOST_LOG_CONFIG(WARNING, "(%s) last_used_idx (%u) and vq->used->idx (%u) mismatches;\n",
 			dev->ifname,
 			vq->last_used_idx, vq->used->idx);
 		vq->last_used_idx  = vq->used->idx;
 		vq->last_avail_idx = vq->used->idx;
+		VHOST_LOG_CONFIG(WARNING, "(%s) some packets maybe resent for Tx and dropped for Rx\n",
+			dev->ifname);
 	}
 
 	vq->access_ok = true;
@@ -1071,15 +1071,14 @@ dump_guest_pages(struct virtio_net *dev)
 	for (i = 0; i < dev->nr_guest_pages; i++) {
 		page = &dev->guest_pages[i];
 
-		VHOST_LOG_CONFIG(INFO,
-			"(%s) guest physical page region %u\n"
-			"\t guest_phys_addr: %" PRIx64 "\n"
-			"\t host_phys_addr : %" PRIx64 "\n"
-			"\t size           : %" PRIx64 "\n",
-			dev->ifname, i,
-			page->guest_phys_addr,
-			page->host_phys_addr,
-			page->size);
+		VHOST_LOG_CONFIG(INFO, "(%s) guest physical page region %u\n",
+				dev->ifname, i);
+		VHOST_LOG_CONFIG(INFO, "(%s)\tguest_phys_addr: %" PRIx64 "\n",
+				dev->ifname, page->guest_phys_addr);
+		VHOST_LOG_CONFIG(INFO, "(%s)\thost_phys_addr : %" PRIx64 "\n",
+				dev->ifname, page->host_phys_addr);
+		VHOST_LOG_CONFIG(INFO, "(%s)\tsize           : %" PRIx64 "\n",
+				dev->ifname, page->size);
 	}
 }
 #else
@@ -1138,7 +1137,8 @@ vhost_user_postcopy_region_register(struct virtio_net *dev,
 		return -1;
 	}
 
-	VHOST_LOG_CONFIG(INFO, "(%s)\t userfaultfd registered for range : %" PRIx64 " - %" PRIx64 "\n",
+	VHOST_LOG_CONFIG(INFO,
+			"(%s)\t userfaultfd registered for range : %" PRIx64 " - %" PRIx64 "\n",
 			dev->ifname,
 			(uint64_t)reg_struct.range.start,
 			(uint64_t)reg_struct.range.start +
@@ -1223,8 +1223,7 @@ vhost_user_mmap_region(struct virtio_net *dev,
 
 	/* Check for memory_size + mmap_offset overflow */
 	if (mmap_offset >= -region->size) {
-		VHOST_LOG_CONFIG(ERR, "(%s) mmap_offset (%#"PRIx64") and memory_size "
-				"(%#"PRIx64") overflow\n",
+		VHOST_LOG_CONFIG(ERR, "(%s) mmap_offset (%#"PRIx64") and memory_size (%#"PRIx64") overflow\n",
 				dev->ifname, mmap_offset, region->size);
 		return -1;
 	}
@@ -1253,8 +1252,7 @@ vhost_user_mmap_region(struct virtio_net *dev,
 		 * mmap() kernel implementation would return an error, but
 		 * better catch it before and provide useful info in the logs.
 		 */
-		VHOST_LOG_CONFIG(ERR, "(%s) mmap size (0x%" PRIx64 ") "
-				"or alignment (0x%" PRIx64 ") is invalid\n",
+		VHOST_LOG_CONFIG(ERR, "(%s) mmap size (0x%" PRIx64 ") or alignment (0x%" PRIx64 ") is invalid\n",
 				dev->ifname, region->size + mmap_offset, alignment);
 		return -1;
 	}
@@ -1290,24 +1288,22 @@ vhost_user_mmap_region(struct virtio_net *dev,
 		}
 	}
 
-	VHOST_LOG_CONFIG(INFO,
-			"(%s) guest memory region size: 0x%" PRIx64 "\n"
-			"\t guest physical addr: 0x%" PRIx64 "\n"
-			"\t guest virtual  addr: 0x%" PRIx64 "\n"
-			"\t host  virtual  addr: 0x%" PRIx64 "\n"
-			"\t mmap addr : 0x%" PRIx64 "\n"
-			"\t mmap size : 0x%" PRIx64 "\n"
-			"\t mmap align: 0x%" PRIx64 "\n"
-			"\t mmap off  : 0x%" PRIx64 "\n",
-			dev->ifname,
-			region->size,
-			region->guest_phys_addr,
-			region->guest_user_addr,
-			region->host_user_addr,
-			(uint64_t)(uintptr_t)mmap_addr,
-			mmap_size,
-			alignment,
-			mmap_offset);
+	VHOST_LOG_CONFIG(INFO, "(%s) guest memory region size: 0x%" PRIx64 "\n",
+			dev->ifname, region->size);
+	VHOST_LOG_CONFIG(INFO, "(%s)\t guest physical addr: 0x%" PRIx64 "\n",
+			dev->ifname, region->guest_phys_addr);
+	VHOST_LOG_CONFIG(INFO, "(%s)\t guest virtual  addr: 0x%" PRIx64 "\n",
+			dev->ifname, region->guest_user_addr);
+	VHOST_LOG_CONFIG(INFO, "(%s)\t host  virtual  addr: 0x%" PRIx64 "\n",
+			dev->ifname, region->host_user_addr);
+	VHOST_LOG_CONFIG(INFO, "(%s)\t mmap addr : 0x%" PRIx64 "\n",
+			dev->ifname, (uint64_t)(uintptr_t)mmap_addr);
+	VHOST_LOG_CONFIG(INFO, "(%s)\t mmap size : 0x%" PRIx64 "\n",
+			dev->ifname, mmap_size);
+	VHOST_LOG_CONFIG(INFO, "(%s)\t mmap align: 0x%" PRIx64 "\n",
+			dev->ifname, alignment);
+	VHOST_LOG_CONFIG(INFO, "(%s)\t mmap off  : 0x%" PRIx64 "\n",
+			dev->ifname, mmap_offset);
 
 	return 0;
 }
@@ -2206,9 +2202,9 @@ vhost_user_set_vring_enable(struct virtio_net **pdev,
 
 	if (enable && dev->virtqueue[index]->async) {
 		if (dev->virtqueue[index]->async->pkts_inflight_n) {
-			VHOST_LOG_CONFIG(ERR, "(%s) failed to enable vring. "
-			"async inflight packets must be completed first\n",
-			dev->ifname);
+			VHOST_LOG_CONFIG(ERR,
+				"(%s) failed to enable vring. Inflight packets must be completed first\n",
+				dev->ifname);
 			return RTE_VHOST_MSG_RESULT_ERR;
 		}
 	}
@@ -2714,22 +2710,21 @@ vhost_user_set_status(struct virtio_net **pdev, struct VhostUserMsg *msg,
 		dev->status &= ~VIRTIO_DEVICE_STATUS_FEATURES_OK;
 	}
 
-	VHOST_LOG_CONFIG(INFO, "(%s) new device status(0x%08x):\n"
-			"\t-RESET: %u\n"
-			"\t-ACKNOWLEDGE: %u\n"
-			"\t-DRIVER: %u\n"
-			"\t-FEATURES_OK: %u\n"
-			"\t-DRIVER_OK: %u\n"
-			"\t-DEVICE_NEED_RESET: %u\n"
-			"\t-FAILED: %u\n",
-			dev->ifname,
-			dev->status,
-			(dev->status == VIRTIO_DEVICE_STATUS_RESET),
-			!!(dev->status & VIRTIO_DEVICE_STATUS_ACK),
-			!!(dev->status & VIRTIO_DEVICE_STATUS_DRIVER),
-			!!(dev->status & VIRTIO_DEVICE_STATUS_FEATURES_OK),
-			!!(dev->status & VIRTIO_DEVICE_STATUS_DRIVER_OK),
-			!!(dev->status & VIRTIO_DEVICE_STATUS_DEV_NEED_RESET),
+	VHOST_LOG_CONFIG(INFO, "(%s) new device status(0x%08x):\n", dev->ifname,
+			dev->status);
+	VHOST_LOG_CONFIG(INFO, "(%s)\t-RESET: %u\n", dev->ifname,
+			(dev->status == VIRTIO_DEVICE_STATUS_RESET));
+	VHOST_LOG_CONFIG(INFO, "(%s)\t-ACKNOWLEDGE: %u\n", dev->ifname,
+			!!(dev->status & VIRTIO_DEVICE_STATUS_ACK));
+	VHOST_LOG_CONFIG(INFO, "(%s)\t-DRIVER: %u\n", dev->ifname,
+			!!(dev->status & VIRTIO_DEVICE_STATUS_DRIVER));
+	VHOST_LOG_CONFIG(INFO, "(%s)\t-FEATURES_OK: %u\n", dev->ifname,
+			!!(dev->status & VIRTIO_DEVICE_STATUS_FEATURES_OK));
+	VHOST_LOG_CONFIG(INFO, "(%s)\t-DRIVER_OK: %u\n", dev->ifname,
+			!!(dev->status & VIRTIO_DEVICE_STATUS_DRIVER_OK));
+	VHOST_LOG_CONFIG(INFO, "(%s)\t-DEVICE_NEED_RESET: %u\n", dev->ifname,
+			!!(dev->status & VIRTIO_DEVICE_STATUS_DEV_NEED_RESET));
+	VHOST_LOG_CONFIG(INFO, "(%s)\t-FAILED: %u\n", dev->ifname,
 			!!(dev->status & VIRTIO_DEVICE_STATUS_FAILED));
 
 	return RTE_VHOST_MSG_RESULT_OK;

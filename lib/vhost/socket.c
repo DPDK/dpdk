@@ -868,8 +868,8 @@ rte_vhost_driver_register(const char *path, uint64_t flags)
 	if (vsocket->async_copy &&
 		(flags & (RTE_VHOST_USER_IOMMU_SUPPORT |
 		RTE_VHOST_USER_POSTCOPY_SUPPORT))) {
-		VHOST_LOG_CONFIG(ERR, "(%s) enabling async copy and IOMMU "
-			"or post-copy feature simultaneously is not supported\n", path);
+		VHOST_LOG_CONFIG(ERR, "(%s) async copy with IOMMU or post-copy not supported\n",
+				path);
 		goto out_mutex;
 	}
 
@@ -908,8 +908,10 @@ rte_vhost_driver_register(const char *path, uint64_t flags)
 				(1ULL << VIRTIO_NET_F_HOST_TSO6) |
 				(1ULL << VIRTIO_NET_F_HOST_UFO);
 
-		VHOST_LOG_CONFIG(INFO, "(%s) Linear buffers requested without external buffers, "
-			"disabling host segmentation offloading support\n", path);
+		VHOST_LOG_CONFIG(INFO, "(%s) Linear buffers requested without external buffers,\n",
+				path);
+		VHOST_LOG_CONFIG(INFO, "(%s) disabling host segmentation offloading support\n",
+				path);
 		vsocket->supported_features &= ~seg_offload_features;
 		vsocket->features &= ~seg_offload_features;
 	}

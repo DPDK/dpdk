@@ -1786,8 +1786,8 @@ rte_vhost_async_channel_unregister(int vid, uint16_t queue_id)
 	}
 
 	if (vq->async->pkts_inflight_n) {
-		VHOST_LOG_CONFIG(ERR, "(%s) failed to unregister async channel. "
-			"async inflight packets must be completed before unregistration.\n",
+		VHOST_LOG_CONFIG(ERR, "(%s) failed to unregister async channel.\n", dev->ifname);
+		VHOST_LOG_CONFIG(ERR, "(%s) inflight packets must be completed before unregistration.\n",
 			dev->ifname);
 		ret = -1;
 		goto out;
@@ -1821,8 +1821,8 @@ rte_vhost_async_channel_unregister_thread_unsafe(int vid, uint16_t queue_id)
 		return 0;
 
 	if (vq->async->pkts_inflight_n) {
-		VHOST_LOG_CONFIG(ERR, "(%s) failed to unregister async channel. "
-			"async inflight packets must be completed before unregistration.\n",
+		VHOST_LOG_CONFIG(ERR, "(%s) failed to unregister async channel.\n", dev->ifname);
+		VHOST_LOG_CONFIG(ERR, "(%s) inflight packets must be completed before unregistration.\n",
 			dev->ifname);
 		return -1;
 	}
