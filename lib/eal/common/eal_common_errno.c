@@ -37,7 +37,11 @@ rte_strerror(int errnum)
 	/* since some implementations of strerror_r throw an error
 	 * themselves if errnum is too big, we handle that case here */
 	if (errnum >= RTE_MAX_ERRNO)
+#ifdef RTE_EXEC_ENV_WINDOWS
+		snprintf(ret, RETVAL_SZ, "Unknown error");
+#else
 		snprintf(ret, RETVAL_SZ, "Unknown error%s %d", sep, errnum);
+#endif
 	else
 		switch (errnum){
 		case E_RTE_SECONDARY:

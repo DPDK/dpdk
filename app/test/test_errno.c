@@ -18,13 +18,19 @@ test_errno(void)
 {
 	const char *rte_retval;
 	const char *libc_retval;
+
+#ifndef RTE_EXEC_ENV_WINDOWS
 #ifdef RTE_EXEC_ENV_FREEBSD
 	/* BSD has a colon in the string, unlike linux */
 	const char unknown_code_result[] = "Unknown error: %d";
 #else
 	const char unknown_code_result[] = "Unknown error %d";
 #endif
-	char expected_libc_retval[sizeof(unknown_code_result)+3];
+	char expected_libc_retval[sizeof(unknown_code_result) + 3];
+#else
+	/* Windows doesn't return error number for error greater than MAX_errno*/
+	static const char expected_libc_retval[] = "Unknown error";
+#endif
 
 	/* use a small selection of standard errors for testing */
 	int std_errs[] = {EAGAIN, EBADF, EACCES, EINTR, EINVAL};
@@ -54,11 +60,13 @@ test_errno(void)
 				rte_retval, libc_retval);
 		if (strcmp(rte_retval, libc_retval) == 0)
 			return -1;
+#ifndef RTE_EXEC_ENV_WINDOWS
 		/* generate appropriate error string for unknown error number
 		 * and then check that this is what we got back. If not, we have
 		 * a duplicate error number that conflicts with errno.h */
 		snprintf(expected_libc_retval, sizeof(expected_libc_retval),
 				unknown_code_result, rte_errs[i]);
+#endif
 		if ((strcmp(expected_libc_retval, libc_retval) != 0) &&
 				(strcmp("", libc_retval) != 0)){
 			printf("Error, duplicate error code %d\n", rte_errs[i]);
@@ -69,8 +77,10 @@ test_errno(void)
 	/* ensure that beyond RTE_MAX_ERRNO, we always get an unknown code */
 	rte_retval = rte_strerror(RTE_MAX_ERRNO + 1);
 	libc_retval = strerror(RTE_MAX_ERRNO + 1);
+#ifndef RTE_EXEC_ENV_WINDOWS
 	snprintf(expected_libc_retval, sizeof(expected_libc_retval),
 			unknown_code_result, RTE_MAX_ERRNO + 1);
+#endif
 	printf("rte_strerror: '%s', strerror: '%s'\n",
 			rte_retval, libc_retval);
 	if ((strcmp(rte_retval, libc_retval) != 0) ||
