@@ -429,6 +429,9 @@ test_interrupt(void)
 	int ret = -1;
 	struct rte_intr_handle *test_intr_handle;
 
+	if (RTE_EXEC_ENV_IS_WINDOWS)
+		return TEST_SKIPPED;
+
 	if (test_interrupt_init() < 0) {
 		printf("fail to initialize for testing interrupt\n");
 		goto out;
