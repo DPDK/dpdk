@@ -206,6 +206,7 @@ static struct ice_flow_parser ice_switch_perm_parser;
 
 static struct
 ice_pattern_match_item ice_switch_pattern_dist_list[] = {
+	{pattern_any,					ICE_INSET_NONE,				ICE_INSET_NONE,				ICE_INSET_NONE},
 	{pattern_ethertype,				ICE_SW_INSET_ETHER,			ICE_INSET_NONE,				ICE_INSET_NONE},
 	{pattern_ethertype_vlan,			ICE_SW_INSET_MAC_VLAN,			ICE_INSET_NONE,				ICE_INSET_NONE},
 	{pattern_ethertype_qinq,			ICE_SW_INSET_MAC_QINQ,			ICE_INSET_NONE,				ICE_INSET_NONE},
@@ -289,6 +290,7 @@ ice_pattern_match_item ice_switch_pattern_dist_list[] = {
 
 static struct
 ice_pattern_match_item ice_switch_pattern_perm_list[] = {
+	{pattern_any,					ICE_INSET_NONE,				ICE_INSET_NONE,				ICE_INSET_NONE},
 	{pattern_ethertype,				ICE_SW_INSET_ETHER,			ICE_INSET_NONE,				ICE_INSET_NONE},
 	{pattern_ethertype_vlan,			ICE_SW_INSET_MAC_VLAN,			ICE_INSET_NONE,				ICE_INSET_NONE},
 	{pattern_ethertype_qinq,			ICE_SW_INSET_MAC_QINQ,			ICE_INSET_NONE,				ICE_INSET_NONE},
@@ -582,6 +584,10 @@ ice_switch_parse_pattern(const struct rte_flow_item pattern[],
 		item_type = item->type;
 
 		switch (item_type) {
+		case RTE_FLOW_ITEM_TYPE_ANY:
+			*tun_type = ICE_SW_TUN_AND_NON_TUN;
+			break;
+
 		case RTE_FLOW_ITEM_TYPE_ETH:
 			eth_spec = item->spec;
 			eth_mask = item->mask;
