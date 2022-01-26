@@ -3,4 +3,3 @@
 
 deps += ['bus_pci', 'common_cnxk', 'dmadev']
 sources = files('cnxk_dmadev.c')
-headers = files('cnxk_dmadev.h')
