@@ -58,7 +58,7 @@ __vhost_iova_to_vva(struct virtio_net *dev, struct vhost_virtqueue *vq,
 
 		vhost_user_iotlb_pending_insert(dev, vq, iova, perm);
 		if (vhost_user_iotlb_miss(dev, iova, perm)) {
-			VHOST_LOG_CONFIG(ERR, "(%s) IOTLB miss req failed for IOVA 0x%" PRIx64 "\n",
+			VHOST_LOG_DATA(ERR, "(%s) IOTLB miss req failed for IOVA 0x%" PRIx64 "\n",
 				dev->ifname, iova);
 			vhost_user_iotlb_pending_remove(vq, iova, 1, perm);
 		}
@@ -420,7 +420,7 @@ translate_log_addr(struct virtio_net *dev, struct vhost_virtqueue *vq,
 
 		gpa = hva_to_gpa(dev, hva, exp_size);
 		if (!gpa) {
-			VHOST_LOG_CONFIG(ERR,
+			VHOST_LOG_DATA(ERR,
 				"(%s) failed to find GPA for log_addr: 0x%"
 				PRIx64 " hva: 0x%" PRIx64 "\n",
 				dev->ifname, log_addr, hva);
