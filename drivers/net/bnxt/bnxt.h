@@ -798,7 +798,7 @@ struct bnxt {
 	uint16_t		max_rx_rings;
 #define MAX_STINGRAY_RINGS		128U
 
-#define BNXT_MAX_VF_REP_RINGS	8
+#define BNXT_MAX_VF_REP_RINGS	8U
 
 	uint16_t		max_nq_rings;
 	uint16_t		max_l2_ctx;

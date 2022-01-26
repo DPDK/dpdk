@@ -523,7 +523,10 @@ int bnxt_rep_dev_info_get_op(struct rte_eth_dev *eth_dev,
 	dev_info->max_mac_addrs = parent_bp->max_l2_ctx;
 	dev_info->max_hash_mac_addrs = 0;
 
-	max_rx_rings = BNXT_MAX_VF_REP_RINGS;
+	max_rx_rings = parent_bp->rx_nr_rings ?
+		RTE_MIN(parent_bp->rx_nr_rings, BNXT_MAX_VF_REP_RINGS) :
+		BNXT_MAX_VF_REP_RINGS;
+
 	/* For the sake of symmetry, max_rx_queues = max_tx_queues */
 	dev_info->max_rx_queues = max_rx_rings;
 	dev_info->max_tx_queues = max_rx_rings;
@@ -603,10 +606,10 @@ int bnxt_rep_rx_queue_setup_op(struct rte_eth_dev *eth_dev,
 	struct rte_mbuf **buf_ring;
 	int rc = 0;
 
-	if (queue_idx >= BNXT_MAX_VF_REP_RINGS) {
+	if (queue_idx >= rep_bp->rx_nr_rings) {
 		PMD_DRV_LOG(ERR,
 			    "Cannot create Rx ring %d. %d rings available\n",
-			    queue_idx, BNXT_MAX_VF_REP_RINGS);
+			    queue_idx, rep_bp->rx_nr_rings);
 		return -EINVAL;
 	}
 
@@ -702,10 +705,10 @@ int bnxt_rep_tx_queue_setup_op(struct rte_eth_dev *eth_dev,
 	struct bnxt_tx_queue *parent_txq, *txq;
 	struct bnxt_vf_rep_tx_queue *vfr_txq;
 
-	if (queue_idx >= BNXT_MAX_VF_REP_RINGS) {
+	if (queue_idx >= rep_bp->rx_nr_rings) {
 		PMD_DRV_LOG(ERR,
 			    "Cannot create Tx rings %d. %d rings available\n",
-			    queue_idx, BNXT_MAX_VF_REP_RINGS);
+			    queue_idx, rep_bp->rx_nr_rings);
 		return -EINVAL;
 	}
 
@@ -777,10 +780,10 @@ int bnxt_rep_stats_get_op(struct rte_eth_dev *eth_dev,
 			     struct rte_eth_stats *stats)
 {
 	struct bnxt_representor *rep_bp = eth_dev->data->dev_private;
-	int i;
+	unsigned int i;
 
 	memset(stats, 0, sizeof(*stats));
-	for (i = 0; i < BNXT_MAX_VF_REP_RINGS; i++) {
+	for (i = 0; i < rep_bp->rx_nr_rings; i++) {
 		stats->obytes += rep_bp->tx_bytes[i];
 		stats->opackets += rep_bp->tx_pkts[i];
 		stats->ibytes += rep_bp->rx_bytes[i];
@@ -800,9 +803,9 @@ int bnxt_rep_stats_get_op(struct rte_eth_dev *eth_dev,
 int bnxt_rep_stats_reset_op(struct rte_eth_dev *eth_dev)
 {
 	struct bnxt_representor *rep_bp = eth_dev->data->dev_private;
-	int i;
+	unsigned int i;
 
-	for (i = 0; i < BNXT_MAX_VF_REP_RINGS; i++) {
+	for (i = 0; i < rep_bp->rx_nr_rings; i++) {
 		rep_bp->tx_pkts[i] = 0;
 		rep_bp->tx_bytes[i] = 0;
 		rep_bp->rx_pkts[i] = 0;
