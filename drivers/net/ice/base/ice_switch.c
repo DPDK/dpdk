@@ -7779,6 +7779,7 @@ ice_get_compat_fv_bitmap(struct ice_hw *hw, struct ice_adv_rule_info *rinfo,
 bool ice_is_prof_rule(enum ice_sw_tunnel_type type)
 {
 	switch (type) {
+	case ICE_SW_TUN_AND_NON_TUN:
 	case ICE_SW_TUN_PROFID_IPV6_ESP:
 	case ICE_SW_TUN_PROFID_IPV6_AH:
 	case ICE_SW_TUN_PROFID_MAC_IPV6_L2TPV3:
