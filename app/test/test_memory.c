@@ -63,7 +63,7 @@ check_seg_fds(const struct rte_memseg_list *msl, const struct rte_memseg *ms,
 	/* we're able to get memseg fd - try getting its offset */
 	ret = rte_memseg_get_fd_offset_thread_unsafe(ms, &offset);
 	if (ret < 0) {
-		if (errno == ENOTSUP)
+		if (rte_errno == ENOTSUP)
 			return 1;
 		return -1;
 	}
