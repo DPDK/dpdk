@@ -723,6 +723,10 @@ static int
 test_hash_perf(void)
 {
 	unsigned int with_pushes, with_locks;
+
+	if (RTE_EXEC_ENV_IS_WINDOWS)
+		return TEST_SKIPPED;
+
 	for (with_locks = 0; with_locks <= 1; with_locks++) {
 		if (with_locks)
 			printf("\nWith locks in the code\n");

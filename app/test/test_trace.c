@@ -9,6 +9,31 @@
 #include "test.h"
 #include "test_trace.h"
 
+#ifdef RTE_EXEC_ENV_WINDOWS
+
+static int
+test_trace(void)
+{
+	printf("trace not supported on Windows, skipping test\n");
+	return TEST_SKIPPED;
+}
+
+static int
+test_trace_dump(void)
+{
+	printf("trace_dump not supported on Windows, skipping test\n");
+	return TEST_SKIPPED;
+}
+
+static int
+test_trace_metadata_dump(void)
+{
+	printf("trace_metadata_dump not supported on Windows, skipping test\n");
+	return TEST_SKIPPED;
+}
+
+#else
+
 static int32_t
 test_trace_point_globbing(void)
 {
@@ -194,8 +219,6 @@ test_trace(void)
 	return unit_test_suite_runner(&trace_tests);
 }
 
-REGISTER_TEST_COMMAND(trace_autotest, test_trace);
-
 static int
 test_trace_dump(void)
 {
@@ -203,12 +226,14 @@ test_trace_dump(void)
 	return 0;
 }
 
-REGISTER_TEST_COMMAND(trace_dump, test_trace_dump);
-
 static int
 test_trace_metadata_dump(void)
 {
 	return rte_trace_metadata_dump(stdout);
 }
 
+#endif /* !RTE_EXEC_ENV_WINDOWS */
+
+REGISTER_TEST_COMMAND(trace_autotest, test_trace);
+REGISTER_TEST_COMMAND(trace_dump, test_trace_dump);
 REGISTER_TEST_COMMAND(trace_metadata_dump, test_trace_metadata_dump);

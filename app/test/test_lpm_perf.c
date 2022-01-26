@@ -3,6 +3,17 @@
  * Copyright(c) 2020 Arm Limited
  */
 
+#include "test.h"
+
+#ifdef RTE_EXEC_ENV_WINDOWS
+static int
+test_lpm_perf(void)
+{
+	printf("lpm_perf not supported on Windows, skipping test\n");
+	return TEST_SKIPPED;
+}
+
+#else
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -15,7 +26,6 @@
 #include <rte_ip.h>
 #include <rte_lpm.h>
 
-#include "test.h"
 #include "test_xmmt_ops.h"
 
 struct rte_lpm *lpm;
@@ -762,5 +772,7 @@ test_lpm_perf(void)
 
 	return 0;
 }
+
+#endif /* !RTE_EXEC_ENV_WINDOWS */
 
 REGISTER_TEST_COMMAND(lpm_perf_autotest, test_lpm_perf);

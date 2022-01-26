@@ -2,6 +2,33 @@
  * Copyright(c) 2010-2014 Intel Corporation
  */
 
+#include "test.h"
+
+#ifdef RTE_EXEC_ENV_WINDOWS
+
+static int
+test_pie(void)
+{
+	printf("pie not supported on Windows, skipping test\n");
+	return TEST_SKIPPED;
+}
+
+static int
+test_pie_perf(void)
+{
+	printf("pie_perf not supported on Windows, skipping test\n");
+	return TEST_SKIPPED;
+}
+
+static int
+test_pie_all(void)
+{
+	printf("pie_all not supported on Windows, skipping test\n");
+	return TEST_SKIPPED;
+}
+
+#else
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -11,8 +38,6 @@
 #include <sys/time.h>
 #include <time.h>
 #include <math.h>
-
-#include "test.h"
 
 #include <rte_pie.h>
 
@@ -1059,6 +1084,8 @@ test_pie_all(void)
 	show_stats(num_tests, num_pass);
 	return tell_the_result(num_tests, num_pass);
 }
+
+#endif /* !RTE_EXEC_ENV_WINDOWS */
 
 REGISTER_TEST_COMMAND(pie_autotest, test_pie);
 REGISTER_TEST_COMMAND(pie_perf, test_pie_perf);

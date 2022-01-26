@@ -14,8 +14,17 @@
 #include <rte_ether.h>
 #include <rte_ip.h>
 #include <rte_byteorder.h>
-#include <rte_sched.h>
 
+#ifdef RTE_EXEC_ENV_WINDOWS
+static int
+test_sched(void)
+{
+	printf("sched not supported on Windows, skipping test\n");
+	return TEST_SKIPPED;
+}
+#else
+
+#include <rte_sched.h>
 
 #define SUBPORT         0
 #define PIPE            1
@@ -203,5 +212,7 @@ test_sched(void)
 
 	return 0;
 }
+
+#endif /* !RTE_EXEC_ENV_WINDOWS */
 
 REGISTER_TEST_COMMAND(sched_autotest, test_sched);

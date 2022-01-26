@@ -11,6 +11,17 @@
 #include <rte_mempool.h>
 #include <rte_mbuf.h>
 #include <rte_mbuf_dyn.h>
+
+#ifdef RTE_EXEC_ENV_WINDOWS
+static int
+test_distributor(void)
+{
+	printf("distributor not supported on Windows, skipping test\n");
+	return TEST_SKIPPED;
+}
+
+#else
+
 #include <rte_distributor.h>
 #include <rte_string_fns.h>
 
@@ -938,5 +949,7 @@ err:
 	quit_workers(&worker_params, p);
 	return -1;
 }
+
+#endif /* !RTE_EXEC_ENV_WINDOWS */
 
 REGISTER_TEST_COMMAND(distributor_autotest, test_distributor);

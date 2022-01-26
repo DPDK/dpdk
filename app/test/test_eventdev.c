@@ -2,16 +2,27 @@
  * Copyright(c) 2016 Cavium, Inc
  */
 
+#include "test.h"
+
 #include <rte_common.h>
 #include <rte_hexdump.h>
 #include <rte_mbuf.h>
 #include <rte_malloc.h>
 #include <rte_memcpy.h>
+
+#ifdef RTE_EXEC_ENV_WINDOWS
+static int
+test_eventdev_common(void)
+{
+	printf("eventdev_common not supported on Windows, skipping test\n");
+	return TEST_SKIPPED;
+}
+
+#else
+
 #include <rte_eventdev.h>
 #include <rte_dev.h>
 #include <rte_bus_vdev.h>
-
-#include "test.h"
 
 #define TEST_DEV_ID   0
 
@@ -1042,7 +1053,11 @@ test_eventdev_selftest_cn10k(void)
 	return test_eventdev_selftest_impl("event_cn10k", "");
 }
 
+#endif /* !RTE_EXEC_ENV_WINDOWS */
+
 REGISTER_TEST_COMMAND(eventdev_common_autotest, test_eventdev_common);
+
+#ifndef RTE_EXEC_ENV_WINDOWS
 REGISTER_TEST_COMMAND(eventdev_selftest_sw, test_eventdev_selftest_sw);
 REGISTER_TEST_COMMAND(eventdev_selftest_octeontx,
 		test_eventdev_selftest_octeontx);
@@ -1050,3 +1065,5 @@ REGISTER_TEST_COMMAND(eventdev_selftest_dpaa2, test_eventdev_selftest_dpaa2);
 REGISTER_TEST_COMMAND(eventdev_selftest_dlb2, test_eventdev_selftest_dlb2);
 REGISTER_TEST_COMMAND(eventdev_selftest_cn9k, test_eventdev_selftest_cn9k);
 REGISTER_TEST_COMMAND(eventdev_selftest_cn10k, test_eventdev_selftest_cn10k);
+
+#endif /* !RTE_EXEC_ENV_WINDOWS */

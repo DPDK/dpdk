@@ -2,16 +2,28 @@
  * Copyright(c) 2020 Intel Corporation
  */
 
+#include "test.h"
+
 #include <stdio.h>
 #include <rte_ip.h>
 #include <rte_malloc.h>
 #include <rte_ring.h>
 #include <rte_mbuf.h>
 #include <rte_cycles.h>
+
+#ifdef RTE_EXEC_ENV_WINDOWS
+static int
+test_libipsec_perf(void)
+{
+	printf("ipsec_perf not supported on Windows, skipping test\n");
+	return TEST_SKIPPED;
+}
+
+#else
+
 #include <rte_ipsec.h>
 #include <rte_random.h>
 
-#include "test.h"
 #include "test_cryptodev.h"
 
 #define RING_SIZE	4096
@@ -610,5 +622,7 @@ test_libipsec_perf(void)
 
 	return TEST_SUCCESS;
 }
+
+#endif /* !RTE_EXEC_ENV_WINDOWS */
 
 REGISTER_TEST_COMMAND(ipsec_perf_autotest, test_libipsec_perf);

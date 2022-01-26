@@ -1,17 +1,36 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  * Copyright(c) 2017 Intel Corporation
  */
+
+#include "test.h"
+
 #include <string.h>
 #include <rte_common.h>
 #include <rte_mempool.h>
 #include <rte_mbuf.h>
 #include <rte_ethdev.h>
+
+#ifdef RTE_EXEC_ENV_WINDOWS
+static int
+test_event_eth_rx_adapter_common(void)
+{
+	printf("event_eth_rx_adapter not supported on Windows, skipping test\n");
+	return TEST_SKIPPED;
+}
+
+static int
+test_event_eth_rx_intr_adapter_common(void)
+{
+	printf("event_eth_rx_intr_adapter not supported on Windows, skipping test\n");
+	return TEST_SKIPPED;
+}
+
+#else
+
 #include <rte_eventdev.h>
 #include <rte_bus_vdev.h>
 
 #include <rte_event_eth_rx_adapter.h>
-
-#include "test.h"
 
 #define MAX_NUM_RX_QUEUE	64
 #define NB_MBUFS		(8192 * num_ports * MAX_NUM_RX_QUEUE)
@@ -1026,6 +1045,8 @@ test_event_eth_rx_intr_adapter_common(void)
 {
 	return unit_test_suite_runner(&event_eth_rx_intr_tests);
 }
+
+#endif /* !RTE_EXEC_ENV_WINDOWS */
 
 REGISTER_TEST_COMMAND(event_eth_rx_adapter_autotest,
 		test_event_eth_rx_adapter_common);

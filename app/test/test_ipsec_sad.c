@@ -2,15 +2,26 @@
  * Copyright(c) 2010-2014 Intel Corporation
  */
 
+#include "test.h"
+
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 
+#ifdef RTE_EXEC_ENV_WINDOWS
+static int
+test_ipsec_sad(void)
+{
+	printf("ipsec_sad not supported on Windows, skipping test\n");
+	return TEST_SKIPPED;
+}
+
+#else
+
 #include <rte_ipsec_sad.h>
 #include <rte_memory.h>
 
-#include "test.h"
 #include "test_xmmt_ops.h"
 
 typedef int32_t (*rte_ipsec_sad_test)(void);
@@ -883,5 +894,7 @@ test_ipsec_sad(void)
 {
 	return unit_test_suite_runner(&ipsec_sad_tests);
 }
+
+#endif /* !RTE_EXEC_ENV_WINDOWS */
 
 REGISTER_TEST_COMMAND(ipsec_sad_autotest, test_ipsec_sad);

@@ -3,16 +3,27 @@
  * All rights reserved.
  */
 
+#include "test.h"
 #include <string.h>
 #include <rte_common.h>
 #include <rte_mempool.h>
 #include <rte_mbuf.h>
 #include <rte_cryptodev.h>
+
+#ifdef RTE_EXEC_ENV_WINDOWS
+static int
+test_event_crypto_adapter(void)
+{
+	printf("event_crypto_adapter not supported on Windows, skipping test\n");
+	return TEST_SKIPPED;
+}
+
+#else
+
 #include <rte_eventdev.h>
 #include <rte_bus_vdev.h>
 #include <rte_service.h>
 #include <rte_event_crypto_adapter.h>
-#include "test.h"
 
 #define PKT_TRACE                  0
 #define NUM                        1
@@ -1010,6 +1021,8 @@ test_event_crypto_adapter(void)
 {
 	return unit_test_suite_runner(&functional_testsuite);
 }
+
+#endif /* !RTE_EXEC_ENV_WINDOWS */
 
 REGISTER_TEST_COMMAND(event_crypto_adapter_autotest,
 		test_event_crypto_adapter);

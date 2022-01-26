@@ -2,8 +2,21 @@
  * Copyright(c) 2010-2014 Intel Corporation
  */
 
+#include "test.h"
+
 #include <stdio.h>
 #include <stdint.h>
+
+#ifdef RTE_EXEC_ENV_WINDOWS
+static int
+test_debug(void)
+{
+	printf("debug not supported on Windows, skipping test\n");
+	return TEST_SKIPPED;
+}
+
+#else
+
 #include <sys/resource.h>
 #include <sys/time.h>
 #include <sys/wait.h>
@@ -13,8 +26,6 @@
 #include <rte_common.h>
 #include <rte_eal.h>
 #include <rte_service_component.h>
-
-#include "test.h"
 
 /*
  * Debug test
@@ -126,5 +137,7 @@ test_debug(void)
 		return -1;
 	return 0;
 }
+
+#endif /* !RTE_EXEC_ENV_WINDOWS */
 
 REGISTER_TEST_COMMAND(debug_autotest, test_debug);

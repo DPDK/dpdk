@@ -1,6 +1,9 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  * Copyright(C) 2020 Marvell International Ltd.
  */
+
+#include "test.h"
+
 #include <inttypes.h>
 #include <signal.h>
 #include <stdio.h>
@@ -9,13 +12,21 @@
 #include <rte_common.h>
 #include <rte_cycles.h>
 #include <rte_errno.h>
+#ifdef RTE_EXEC_ENV_WINDOWS
+static int
+test_graph_perf_func(void)
+{
+	printf("graph_perf not supported on Windows, skipping test\n");
+	return TEST_SKIPPED;
+}
+
+#else
+
 #include <rte_graph.h>
 #include <rte_graph_worker.h>
 #include <rte_lcore.h>
 #include <rte_malloc.h>
 #include <rte_mbuf.h>
-
-#include "test.h"
 
 #define TEST_GRAPH_PERF_MZ	     "graph_perf_data"
 #define TEST_GRAPH_SRC_NAME	     "test_graph_perf_source"
@@ -1059,5 +1070,7 @@ test_graph_perf_func(void)
 {
 	return unit_test_suite_runner(&graph_perf_testsuite);
 }
+
+#endif /* !RTE_EXEC_ENV_WINDOWS */
 
 REGISTER_TEST_COMMAND(graph_perf_autotest, test_graph_perf_func);

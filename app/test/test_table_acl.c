@@ -2,6 +2,8 @@
  * Copyright(c) 2010-2014 Intel Corporation
  */
 
+#ifndef RTE_EXEC_ENV_WINDOWS
+
 #include <rte_ip.h>
 #include <rte_string_fns.h>
 #include <rte_hexdump.h>
@@ -728,3 +730,5 @@ test_table_acl(void)
 
 	return 0;
 }
+
+#endif /* !RTE_EXEC_ENV_WINDOWS */

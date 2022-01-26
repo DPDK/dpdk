@@ -2,6 +2,8 @@
  * Copyright(c) 2010-2016 Intel Corporation
  */
 
+#ifndef RTE_EXEC_ENV_WINDOWS
+
 #include <string.h>
 #include "test_table_combined.h"
 #include "test_table.h"
@@ -840,3 +842,5 @@ test_table_hash_cuckoo_combined(void)
 
 	return 0;
 }
+
+#endif /* !RTE_EXEC_ENV_WINDOWS */

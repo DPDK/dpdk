@@ -384,6 +384,9 @@ test_lcores(void)
 	unsigned int eal_threads_count = 0;
 	unsigned int i;
 
+	if (RTE_EXEC_ENV_IS_WINDOWS)
+		return TEST_SKIPPED;
+
 	for (i = 0; i < RTE_MAX_LCORE; i++) {
 		if (!rte_lcore_has_role(i, ROLE_OFF))
 			eal_threads_count++;

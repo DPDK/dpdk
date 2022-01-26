@@ -2,6 +2,8 @@
  * Copyright(c) 2010-2014 Intel Corporation
  */
 
+#include "test.h"
+
 #include <string.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -32,8 +34,6 @@
 #include <rte_ip.h>
 #include <rte_tcp.h>
 #include <rte_mbuf_dyn.h>
-
-#include "test.h"
 
 #define MEMPOOL_CACHE_SIZE      32
 #define MBUF_DATA_SIZE          2048
@@ -1172,6 +1172,15 @@ err:
 #endif
 }
 
+#ifdef RTE_EXEC_ENV_WINDOWS
+static int
+test_failing_mbuf_sanity_check(struct rte_mempool *pktmbuf_pool)
+{
+	RTE_SET_USED(pktmbuf_pool);
+	return TEST_SKIPPED;
+}
+#else
+
 #include <unistd.h>
 #include <sys/resource.h>
 #include <sys/time.h>
@@ -1266,6 +1275,8 @@ test_failing_mbuf_sanity_check(struct rte_mempool *pktmbuf_pool)
 
 	return 0;
 }
+
+#endif /* !RTE_EXEC_ENV_WINDOWS */
 
 static int
 test_mbuf_linearize(struct rte_mempool *pktmbuf_pool, int pkt_len,

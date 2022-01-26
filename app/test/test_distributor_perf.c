@@ -10,6 +10,17 @@
 #include <rte_cycles.h>
 #include <rte_common.h>
 #include <rte_mbuf.h>
+
+#ifdef RTE_EXEC_ENV_WINDOWS
+static int
+test_distributor_perf(void)
+{
+	printf("distributor perf not supported on Windows, skipping test\n");
+	return TEST_SKIPPED;
+}
+
+#else
+
 #include <rte_distributor.h>
 #include <rte_pause.h>
 
@@ -263,5 +274,7 @@ test_distributor_perf(void)
 
 	return 0;
 }
+
+#endif /* !RTE_EXEC_ENV_WINDOWS */
 
 REGISTER_TEST_COMMAND(distributor_perf_autotest, test_distributor_perf);

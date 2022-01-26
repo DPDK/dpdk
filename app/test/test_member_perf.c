@@ -2,6 +2,8 @@
  * Copyright(c) 2017 Intel Corporation
  */
 
+#include "test.h"
+
 #include <stdio.h>
 #include <inttypes.h>
 
@@ -11,9 +13,18 @@
 #include <rte_random.h>
 #include <rte_memcpy.h>
 #include <rte_thash.h>
-#include <rte_member.h>
 
-#include "test.h"
+#ifdef RTE_EXEC_ENV_WINDOWS
+static int
+test_member_perf(void)
+{
+	printf("member_perf not supported on Windows, skipping test\n");
+	return TEST_SKIPPED;
+}
+
+#else
+
+#include <rte_member.h>
 
 #define NUM_KEYSIZES 10
 #define NUM_SHUFFLES 10
@@ -621,5 +632,7 @@ test_member_perf(void)
 
 	return 0;
 }
+
+#endif /* !RTE_EXEC_ENV_WINDOWS */
 
 REGISTER_TEST_COMMAND(member_perf_autotest, test_member_perf);

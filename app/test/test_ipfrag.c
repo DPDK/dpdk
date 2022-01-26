@@ -2,18 +2,29 @@
  * Copyright(c) 2020 Red Hat, Inc.
  */
 
+#include "test.h"
+
 #include <time.h>
 
 #include <rte_common.h>
 #include <rte_cycles.h>
 #include <rte_hexdump.h>
 #include <rte_ip.h>
+
+#ifdef RTE_EXEC_ENV_WINDOWS
+static int
+test_ipfrag(void)
+{
+	printf("ipfrag not supported on Windows, skipping test\n");
+	return TEST_SKIPPED;
+}
+
+#else
+
 #include <rte_ip_frag.h>
 #include <rte_mbuf.h>
 #include <rte_memcpy.h>
 #include <rte_random.h>
-
-#include "test.h"
 
 #define NUM_MBUFS 128
 #define BURST 32
@@ -321,5 +332,7 @@ test_ipfrag(void)
 
 	return unit_test_suite_runner(&ipfrag_testsuite);
 }
+
+#endif /* !RTE_EXEC_ENV_WINDOWS */
 
 REGISTER_TEST_COMMAND(ipfrag_autotest, test_ipfrag);

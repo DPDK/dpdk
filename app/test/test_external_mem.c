@@ -2,11 +2,24 @@
  * Copyright(c) 2018 Intel Corporation
  */
 
+#include "test.h"
+
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <fcntl.h>
+
+#ifdef RTE_EXEC_ENV_WINDOWS
+static int
+test_external_mem(void)
+{
+	printf("external_mem not supported on Windows, skipping test\n");
+	return TEST_SKIPPED;
+}
+
+#else
+
 #include <sys/mman.h>
 #include <sys/wait.h>
 
@@ -18,8 +31,6 @@
 #include <rte_malloc.h>
 #include <rte_ring.h>
 #include <rte_string_fns.h>
-
-#include "test.h"
 
 #define EXTERNAL_MEM_SZ (RTE_PGSIZE_4K << 10) /* 4M of data */
 
@@ -573,5 +584,7 @@ test_external_mem(void)
 
 	return ret;
 }
+
+#endif /* !RTE_EXEC_ENV_WINDOWS */
 
 REGISTER_TEST_COMMAND(external_mem_autotest, test_external_mem);

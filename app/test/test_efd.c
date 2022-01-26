@@ -1,6 +1,17 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  * Copyright(c) 2016-2017 Intel Corporation
  */
+#include "test.h"
+
+#ifdef RTE_EXEC_ENV_WINDOWS
+static int
+test_efd(void)
+{
+	printf("EFD not supported on Windows, skipping test\n");
+	return TEST_SKIPPED;
+}
+
+#else
 
 #include <rte_memcpy.h>
 #include <rte_malloc.h>
@@ -9,8 +20,6 @@
 #include <rte_random.h>
 #include <rte_debug.h>
 #include <rte_ip.h>
-
-#include "test.h"
 
 #define EFD_TEST_KEY_LEN 8
 #define TABLE_SIZE (1 << 21)
@@ -461,5 +470,7 @@ test_efd(void)
 
 	return 0;
 }
+
+#endif /* !RTE_EXEC_ENV_WINDOWS */
 
 REGISTER_TEST_COMMAND(efd_autotest, test_efd);

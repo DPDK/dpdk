@@ -3,6 +3,8 @@
  * Copyright(c) 2017-2018 Intel Corporation.
  */
 
+#include "test.h"
+
 #include <math.h>
 
 #include <rte_common.h>
@@ -10,6 +12,17 @@
 #include <rte_debug.h>
 #include <rte_eal.h>
 #include <rte_ethdev.h>
+
+#ifdef RTE_EXEC_ENV_WINDOWS
+static int
+test_event_timer_adapter_func(void)
+{
+	printf("event_timer_adapter not supported on Windows, skipping test\n");
+	return TEST_SKIPPED;
+}
+
+#else
+
 #include <rte_eventdev.h>
 #include <rte_event_timer_adapter.h>
 #include <rte_mempool.h>
@@ -20,8 +33,6 @@
 #include <rte_bus_vdev.h>
 #include <rte_service.h>
 #include <stdbool.h>
-
-#include "test.h"
 
 /* 4K timers corresponds to sw evdev max inflight events */
 #define MAX_TIMERS  (4 * 1024)
@@ -1949,5 +1960,7 @@ test_event_timer_adapter_func(void)
 {
 	return unit_test_suite_runner(&event_timer_adptr_functional_testsuite);
 }
+
+#endif /* !RTE_EXEC_ENV_WINDOWS */
 
 REGISTER_TEST_COMMAND(event_timer_adapter_test, test_event_timer_adapter_func);

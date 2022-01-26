@@ -2,6 +2,8 @@
  * Copyright(C) 2021 Marvell.
  */
 
+#ifndef RTE_EXEC_ENV_WINDOWS
+
 #include <rte_common.h>
 #include <rte_cryptodev.h>
 #include <rte_esp.h>
@@ -974,3 +976,5 @@ test_ipsec_pkt_update(uint8_t *pkt, const struct ipsec_test_flags *flags)
 
 	return 0;
 }
+
+#endif /* !RTE_EXEC_ENV_WINDOWS */

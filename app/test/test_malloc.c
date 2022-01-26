@@ -2,13 +2,17 @@
  * Copyright(c) 2010-2019 Intel Corporation
  */
 
+#include "test.h"
+
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
 #include <stdarg.h>
 #include <errno.h>
 #include <stdlib.h>
+#ifndef RTE_EXEC_ENV_WINDOWS
 #include <sys/mman.h>
+#endif
 #include <sys/queue.h>
 #include <unistd.h>
 
@@ -23,10 +27,7 @@
 #include <rte_random.h>
 #include <rte_string_fns.h>
 
-#include "test.h"
-
 #define N 10000
-
 
 static int
 is_mem_on_socket(int32_t socket);
@@ -47,8 +48,8 @@ addr_to_socket(void *addr);
 static int
 is_memory_overlap(void *p1, size_t len1, void *p2, size_t len2)
 {
-	unsigned long ptr1 = (unsigned long)p1;
-	unsigned long ptr2 = (unsigned long)p2;
+	uintptr_t ptr1 = (uintptr_t)p1;
+	uintptr_t ptr2 = (uintptr_t)p2;
 
 	if (ptr2 >= ptr1 && (ptr2 - ptr1) < len1)
 		return 1;
@@ -60,7 +61,7 @@ is_memory_overlap(void *p1, size_t len1, void *p2, size_t len2)
 static int
 is_aligned(void *p, int align)
 {
-	unsigned long addr = (unsigned long)p;
+	uintptr_t addr = (uintptr_t)p;
 	unsigned mask = align - 1;
 
 	if (addr & mask)
@@ -373,6 +374,14 @@ test_multi_alloc_statistics(void)
 	return 0;
 }
 
+#ifdef RTE_EXEC_ENV_WINDOWS
+static int
+test_realloc(void)
+{
+	return TEST_SKIPPED;
+}
+#else
+
 static int
 test_realloc_socket(int socket)
 {
@@ -670,6 +679,8 @@ heap_destroy:
 end:
 	return ret;
 }
+
+#endif /* !RTE_EXEC_ENV_WINDOWS */
 
 static int
 test_random_alloc_free(void *_ __rte_unused)

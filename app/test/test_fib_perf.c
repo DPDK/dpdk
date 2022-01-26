@@ -12,10 +12,21 @@
 #include <rte_random.h>
 #include <rte_branch_prediction.h>
 #include <rte_ip.h>
-#include <rte_fib.h>
 
 #include "test.h"
 #include "test_xmmt_ops.h"
+
+#ifdef RTE_EXEC_ENV_WINDOWS
+static int
+test_fib_perf(void)
+{
+	printf("fib_perf not supported on Windows, skipping test\n");
+	return TEST_SKIPPED;
+}
+
+#else
+
+#include <rte_fib.h>
 
 #define TEST_FIB_ASSERT(cond) do {				\
 	if (!(cond)) {						\
@@ -408,5 +419,7 @@ test_fib_perf(void)
 
 	return 0;
 }
+
+#endif /* !RTE_EXEC_ENV_WINDOWS */
 
 REGISTER_TEST_COMMAND(fib_perf_autotest, test_fib_perf);

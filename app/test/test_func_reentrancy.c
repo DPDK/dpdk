@@ -489,6 +489,9 @@ test_func_reentrancy(void)
 	uint32_t case_id;
 	struct test_case *pt_case = NULL;
 
+	if (RTE_EXEC_ENV_IS_WINDOWS)
+		return TEST_SKIPPED;
+
 	if (rte_lcore_count() < 2) {
 		printf("Not enough cores for func_reentrancy_autotest, expecting at least 2\n");
 		return TEST_SKIPPED;

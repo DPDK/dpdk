@@ -2,6 +2,8 @@
  * Copyright(c) 2010-2016 Intel Corporation
  */
 
+#ifndef RTE_EXEC_ENV_WINDOWS
+
 #include <string.h>
 #include <rte_byteorder.h>
 #include <rte_table_lpm_ipv6.h>
@@ -1052,3 +1054,5 @@ test_table_hash_cuckoo(void)
 
 	return 0;
 }
+
+#endif /* !RTE_EXEC_ENV_WINDOWS */

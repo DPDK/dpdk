@@ -11,6 +11,16 @@
 #include <rte_mbuf.h>
 #include <rte_byteorder.h>
 #include <rte_ip.h>
+
+#ifdef RTE_EXEC_ENV_WINDOWS
+static int
+test_acl(void)
+{
+	printf("ACL not supported on Windows, skipping test\n");
+	return TEST_SKIPPED;
+}
+
+#else
 #include <rte_acl.h>
 #include <rte_common.h>
 
@@ -1740,5 +1750,7 @@ test_acl(void)
 
 	return 0;
 }
+
+#endif /* !RTE_EXEC_ENV_WINDOWS */
 
 REGISTER_TEST_COMMAND(acl_autotest, test_acl);

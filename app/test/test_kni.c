@@ -2,15 +2,12 @@
  * Copyright(c) 2010-2014 Intel Corporation
  */
 
+#include "test.h"
+
 #include <stdio.h>
 #include <stdint.h>
 #include <unistd.h>
 #include <string.h>
-#include <sys/wait.h>
-#include <dirent.h>
-
-#include "test.h"
-
 #if !defined(RTE_EXEC_ENV_LINUX) || !defined(RTE_LIB_KNI)
 
 static int
@@ -21,6 +18,9 @@ test_kni(void)
 }
 
 #else
+
+#include <sys/wait.h>
+#include <dirent.h>
 
 #include <rte_string_fns.h>
 #include <rte_mempool.h>

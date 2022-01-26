@@ -2,11 +2,21 @@
  * Copyright(c) 2010-2017 Intel Corporation
  */
 
+#include "test.h"
+
 #include <string.h>
 
-#include <rte_event_ring.h>
+#ifdef RTE_EXEC_ENV_WINDOWS
+static int
+test_event_ring(void)
+{
+	printf("event_ring not supported on Windows, skipping test\n");
+	return TEST_SKIPPED;
+}
 
-#include "test.h"
+#else
+
+#include <rte_event_ring.h>
 
 /*
  * Event Ring
@@ -243,5 +253,7 @@ test_event_ring(void)
 
 	return 0;
 }
+
+#endif /* !RTE_EXEC_ENV_WINDOWS */
 
 REGISTER_TEST_COMMAND(event_ring_autotest, test_event_ring);

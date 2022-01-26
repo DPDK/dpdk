@@ -2,6 +2,8 @@
  * Copyright(c) 2010-2014 Intel Corporation
  */
 
+#ifndef RTE_EXEC_ENV_WINDOWS
+
 #include <string.h>
 #include <rte_pipeline.h>
 #include <rte_log.h>
@@ -569,3 +571,5 @@ test_table_pipeline(void)
 
 	return 0;
 }
+
+#endif /* !RTE_EXEC_ENV_WINDOWS */

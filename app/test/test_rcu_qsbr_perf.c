@@ -614,6 +614,9 @@ test_rcu_qsbr_main(void)
 {
 	uint16_t core_id;
 
+	if (RTE_EXEC_ENV_IS_WINDOWS)
+		return TEST_SKIPPED;
+
 	if (rte_lcore_count() < 3) {
 		printf("Not enough cores for rcu_qsbr_perf_autotest, expecting at least 3\n");
 		return TEST_SKIPPED;

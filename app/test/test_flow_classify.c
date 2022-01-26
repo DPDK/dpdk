@@ -11,6 +11,17 @@
 #include <rte_mbuf.h>
 #include <rte_byteorder.h>
 #include <rte_ip.h>
+
+#ifdef RTE_EXEC_ENV_WINDOWS
+static int
+test_flow_classify(void)
+{
+	printf("flow_classify not supported on Windows, skipping test\n");
+	return TEST_SKIPPED;
+}
+
+#else
+
 #include <rte_acl.h>
 #include <rte_common.h>
 #include <rte_table_acl.h>
@@ -878,5 +889,7 @@ test_flow_classify(void)
 
 	return TEST_SUCCESS;
 }
+
+#endif /* !RTE_EXEC_ENV_WINDOWS */
 
 REGISTER_TEST_COMMAND(flow_classify_autotest, test_flow_classify);

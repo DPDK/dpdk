@@ -16,6 +16,16 @@
 
 #include "test.h"
 
+#ifdef RTE_EXEC_ENV_WINDOWS
+static int
+test_event_eth_tx_adapter_common(void)
+{
+	printf("event_eth_tx_adapter not supported on Windows, skipping test\n");
+	return TEST_SKIPPED;
+}
+
+#else
+
 #define MAX_NUM_QUEUE		RTE_PMD_RING_MAX_RX_RINGS
 #define TEST_INST_ID		0
 #define TEST_DEV_ID		0
@@ -695,6 +705,8 @@ test_event_eth_tx_adapter_common(void)
 {
 	return unit_test_suite_runner(&event_eth_tx_tests);
 }
+
+#endif /* !RTE_EXEC_ENV_WINDOWS */
 
 REGISTER_TEST_COMMAND(event_eth_tx_adapter_autotest,
 		test_event_eth_tx_adapter_common);

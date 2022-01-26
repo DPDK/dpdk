@@ -4,15 +4,26 @@
 
 /* This test is for membership library's simple feature test */
 
+#include "test.h"
+
 #include <rte_memcpy.h>
 #include <rte_malloc.h>
+
+#ifdef RTE_EXEC_ENV_WINDOWS
+static int
+test_member(void)
+{
+	printf("member not supported on Windows, skipping test\n");
+	return TEST_SKIPPED;
+}
+
+#else
+
 #include <rte_member.h>
 #include <rte_byteorder.h>
 #include <rte_random.h>
 #include <rte_debug.h>
 #include <rte_ip.h>
-
-#include "test.h"
 
 struct rte_member_setsum *setsum_ht;
 struct rte_member_setsum *setsum_cache;
@@ -711,5 +722,7 @@ test_member(void)
 	perform_free();
 	return 0;
 }
+
+#endif /* !RTE_EXEC_ENV_WINDOWS */
 
 REGISTER_TEST_COMMAND(member_autotest, test_member);

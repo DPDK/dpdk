@@ -3,6 +3,8 @@
  * Copyright (c) 2019 Intel Corporation
  */
 
+#ifndef RTE_EXEC_ENV_WINDOWS
+
 #include <rte_bus_vdev.h>
 #include <rte_common.h>
 #include <rte_hexdump.h>
@@ -2412,3 +2414,5 @@ REGISTER_TEST_COMMAND(cryptodev_octeontx_asym_autotest,
 					  test_cryptodev_octeontx_asym);
 REGISTER_TEST_COMMAND(cryptodev_cn9k_asym_autotest, test_cryptodev_cn9k_asym);
 REGISTER_TEST_COMMAND(cryptodev_cn10k_asym_autotest, test_cryptodev_cn10k_asym);
+
+#endif /* !RTE_EXEC_ENV_WINDOWS */
