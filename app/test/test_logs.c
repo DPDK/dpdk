@@ -113,6 +113,7 @@ test_logs(void)
 	rte_log_set_level(logtype1, RTE_LOG_ERR);
 	CHECK_LEVELS(RTE_LOG_ERR, RTE_LOG_INFO, RTE_LOG_ERR);
 
+#ifndef RTE_EXEC_ENV_WINDOWS
 	rte_log_set_level_regexp("type$", RTE_LOG_EMERG);
 	CHECK_LEVELS(RTE_LOG_ERR, RTE_LOG_INFO, RTE_LOG_ERR);
 
@@ -121,6 +122,10 @@ test_logs(void)
 
 	rte_log_set_level_pattern("logtype", RTE_LOG_DEBUG);
 	CHECK_LEVELS(RTE_LOG_ERR, RTE_LOG_EMERG, RTE_LOG_EMERG);
+#else
+	rte_log_set_level_pattern("logtype", RTE_LOG_DEBUG);
+	CHECK_LEVELS(RTE_LOG_ERR, RTE_LOG_INFO, RTE_LOG_ERR);
+#endif
 
 	/* set logtype level low to so we can test global level */
 	rte_log_set_level_pattern("logtype*", RTE_LOG_DEBUG);
