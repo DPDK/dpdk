@@ -1597,8 +1597,12 @@ static enum ice_prof_type
 ice_get_sw_prof_type(struct ice_hw *hw, struct ice_fv *fv)
 {
 	u16 i;
+	bool valid_prof = false;
 
 	for (i = 0; i < hw->blk[ICE_BLK_SW].es.fvw; i++) {
+		if (fv->ew[i].off != ICE_NAN_OFFSET)
+			valid_prof = true;
+
 		/* UDP tunnel will have UDP_OF protocol ID and VNI offset */
 		if (fv->ew[i].prot_id == (u8)ICE_PROT_UDP_OF &&
 		    fv->ew[i].off == ICE_VNI_OFFSET)
@@ -1613,7 +1617,7 @@ ice_get_sw_prof_type(struct ice_hw *hw, struct ice_fv *fv)
 			return ICE_PROF_TUN_PPPOE;
 	}
 
-	return ICE_PROF_NON_TUN;
+	return valid_prof ? ICE_PROF_NON_TUN : ICE_PROF_INVALID;
 }
 
 /**
@@ -1629,11 +1633,6 @@ ice_get_sw_fv_bitmap(struct ice_hw *hw, enum ice_prof_type req_profs,
 	struct ice_pkg_enum state;
 	struct ice_seg *ice_seg;
 	struct ice_fv *fv;
-
-	if (req_profs == ICE_PROF_ALL) {
-		ice_bitmap_set(bm, 0, ICE_MAX_NUM_PROFILES);
-		return;
-	}
 
 	ice_memset(&state, 0, sizeof(state), ICE_NONDMA_MEM);
 	ice_zero_bitmap(bm, ICE_MAX_NUM_PROFILES);
