@@ -70,7 +70,8 @@ vhost_user_iotlb_pending_insert(struct virtio_net *dev, struct vhost_virtqueue *
 
 	ret = rte_mempool_get(vq->iotlb_pool, (void **)&node);
 	if (ret) {
-		VHOST_LOG_CONFIG(DEBUG, "(%s) IOTLB pool %s empty, clear entries\n",
+		VHOST_LOG_CONFIG(DEBUG,
+				"(%s) IOTLB pool %s empty, clear entries for pending insertion\n",
 				dev->ifname, vq->iotlb_pool->name);
 		if (!TAILQ_EMPTY(&vq->iotlb_pending_list))
 			vhost_user_iotlb_pending_remove_all(vq);
@@ -78,7 +79,8 @@ vhost_user_iotlb_pending_insert(struct virtio_net *dev, struct vhost_virtqueue *
 			vhost_user_iotlb_cache_random_evict(vq);
 		ret = rte_mempool_get(vq->iotlb_pool, (void **)&node);
 		if (ret) {
-			VHOST_LOG_CONFIG(ERR, "(%s) IOTLB pool %s still empty, failure\n",
+			VHOST_LOG_CONFIG(ERR,
+					"(%s) IOTLB pool %s still empty, pending insertion failure\n",
 					dev->ifname, vq->iotlb_pool->name);
 			return;
 		}
@@ -167,7 +169,8 @@ vhost_user_iotlb_cache_insert(struct virtio_net *dev, struct vhost_virtqueue *vq
 
 	ret = rte_mempool_get(vq->iotlb_pool, (void **)&new_node);
 	if (ret) {
-		VHOST_LOG_CONFIG(DEBUG, "(%s) IOTLB pool %s empty, clear entries\n",
+		VHOST_LOG_CONFIG(DEBUG,
+				"(%s) IOTLB pool %s empty, clear entries for cache insertion\n",
 				dev->ifname, vq->iotlb_pool->name);
 		if (!TAILQ_EMPTY(&vq->iotlb_list))
 			vhost_user_iotlb_cache_random_evict(vq);
@@ -175,7 +178,8 @@ vhost_user_iotlb_cache_insert(struct virtio_net *dev, struct vhost_virtqueue *vq
 			vhost_user_iotlb_pending_remove_all(vq);
 		ret = rte_mempool_get(vq->iotlb_pool, (void **)&new_node);
 		if (ret) {
-			VHOST_LOG_CONFIG(ERR, "(%s) IOTLB pool %s still empty, failure\n",
+			VHOST_LOG_CONFIG(ERR,
+					"(%s) IOTLB pool %s still empty, cache insertion failed\n",
 					dev->ifname, vq->iotlb_pool->name);
 			return;
 		}
