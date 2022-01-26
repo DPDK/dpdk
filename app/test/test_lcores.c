@@ -12,7 +12,7 @@
 #include "test.h"
 
 struct thread_context {
-	enum { INIT, ERROR, DONE } state;
+	enum { Thread_INIT, Thread_ERROR, Thread_DONE } state;
 	bool lcore_id_any;
 	pthread_t id;
 	unsigned int *registered_count;
@@ -26,7 +26,7 @@ static void *thread_loop(void *arg)
 	lcore_id = rte_lcore_id();
 	if (lcore_id != LCORE_ID_ANY) {
 		printf("Error: incorrect lcore id for new thread %u\n", lcore_id);
-		t->state = ERROR;
+		t->state = Thread_ERROR;
 	}
 	if (rte_thread_register() < 0)
 		printf("Warning: could not register new thread (this might be expected during this test), reason %s\n",
@@ -36,7 +36,7 @@ static void *thread_loop(void *arg)
 			(!t->lcore_id_any && lcore_id == LCORE_ID_ANY)) {
 		printf("Error: could not register new thread, got %u while %sexpecting %u\n",
 			lcore_id, t->lcore_id_any ? "" : "not ", LCORE_ID_ANY);
-		t->state = ERROR;
+		t->state = Thread_ERROR;
 	}
 	/* Report register happened to the control thread. */
 	__atomic_add_fetch(t->registered_count, 1, __ATOMIC_RELEASE);
@@ -49,11 +49,11 @@ static void *thread_loop(void *arg)
 	if (lcore_id != LCORE_ID_ANY) {
 		printf("Error: could not unregister new thread, %u still assigned\n",
 			lcore_id);
-		t->state = ERROR;
+		t->state = Thread_ERROR;
 	}
 
-	if (t->state != ERROR)
-		t->state = DONE;
+	if (t->state != Thread_ERROR)
+		t->state = Thread_DONE;
 
 	return NULL;
 }
@@ -74,7 +74,7 @@ test_non_eal_lcores(unsigned int eal_threads_count)
 	/* Try to create as many threads as possible. */
 	for (i = 0; i < RTE_MAX_LCORE - eal_threads_count; i++) {
 		t = &thread_contexts[i];
-		t->state = INIT;
+		t->state = Thread_INIT;
 		t->registered_count = &registered_count;
 		t->lcore_id_any = false;
 		if (pthread_create(&t->id, NULL, thread_loop, t) != 0)
@@ -93,7 +93,7 @@ test_non_eal_lcores(unsigned int eal_threads_count)
 	if (eal_threads_count + non_eal_threads_count < RTE_MAX_LCORE)
 		goto skip_lcore_any;
 	t = &thread_contexts[non_eal_threads_count];
-	t->state = INIT;
+	t->state = Thread_INIT;
 	t->registered_count = &registered_count;
 	t->lcore_id_any = true;
 	if (pthread_create(&t->id, NULL, thread_loop, t) == 0) {
@@ -111,7 +111,7 @@ skip_lcore_any:
 	for (i = 0; i < non_eal_threads_count; i++) {
 		t = &thread_contexts[i];
 		pthread_join(t->id, NULL);
-		if (t->state != DONE)
+		if (t->state != Thread_DONE)
 			ret = -1;
 	}
 
@@ -259,7 +259,7 @@ test_non_eal_lcores_callback(unsigned int eal_threads_count)
 	}
 	/* First thread that expects a valid lcore id. */
 	t = &thread_contexts[0];
-	t->state = INIT;
+	t->state = Thread_INIT;
 	t->registered_count = &registered_count;
 	t->lcore_id_any = false;
 	if (pthread_create(&t->id, NULL, thread_loop, t) != 0)
@@ -282,7 +282,7 @@ test_non_eal_lcores_callback(unsigned int eal_threads_count)
 	}
 	/* Second thread, that expects LCORE_ID_ANY because of init refusal. */
 	t = &thread_contexts[1];
-	t->state = INIT;
+	t->state = Thread_INIT;
 	t->registered_count = &registered_count;
 	t->lcore_id_any = true;
 	if (pthread_create(&t->id, NULL, thread_loop, t) != 0)
@@ -310,7 +310,7 @@ test_non_eal_lcores_callback(unsigned int eal_threads_count)
 	for (i = 0; i < non_eal_threads_count; i++) {
 		t = &thread_contexts[i];
 		pthread_join(t->id, NULL);
-		if (t->state != DONE)
+		if (t->state != Thread_DONE)
 			ret = -1;
 	}
 	if (ret < 0)
@@ -347,7 +347,7 @@ static void *ctrl_thread_loop(void *arg)
 	printf("Control thread running successfully\n");
 
 	/* Set the thread state to DONE */
-	t->state = DONE;
+	t->state = Thread_DONE;
 
 	return NULL;
 }
@@ -360,7 +360,7 @@ test_ctrl_thread(void)
 
 	/* Create one control thread */
 	t = &ctrl_thread_context;
-	t->state = INIT;
+	t->state = Thread_INIT;
 	if (rte_ctrl_thread_create(&t->id, "test_ctrl_threads",
 					NULL, ctrl_thread_loop, t) != 0)
 		return -1;
@@ -372,7 +372,7 @@ test_ctrl_thread(void)
 	pthread_join(t->id, NULL);
 
 	/* Check if the control thread set the correct state */
-	if (t->state != DONE)
+	if (t->state != Thread_DONE)
 		return -1;
 
 	return 0;

@@ -30,10 +30,10 @@
 #define BURST_SIZE 16
 
 enum operations {
-	ADD = 0,
-	LOOKUP,
-	LOOKUP_MULTI,
-	DELETE,
+	OP_ADD = 0,
+	OP_LOOKUP,
+	OP_LOOKUP_MULTI,
+	OP_DELETE,
 	NUM_OPERATIONS
 };
 
@@ -308,7 +308,7 @@ timed_adds(unsigned int with_hash, unsigned int with_data,
 	const uint64_t end_tsc = rte_rdtsc();
 	const uint64_t time_taken = end_tsc - start_tsc;
 
-	cycles[table_index][ADD][with_hash][with_data] = time_taken/keys_to_add;
+	cycles[table_index][OP_ADD][with_hash][with_data] = time_taken/keys_to_add;
 
 	return 0;
 }
@@ -385,7 +385,7 @@ timed_lookups(unsigned int with_hash, unsigned int with_data,
 	const uint64_t end_tsc = rte_rdtsc();
 	const uint64_t time_taken = end_tsc - start_tsc;
 
-	cycles[table_index][LOOKUP][with_hash][with_data] = time_taken/num_lookups;
+	cycles[table_index][OP_LOOKUP][with_hash][with_data] = time_taken/num_lookups;
 
 	return 0;
 }
@@ -511,7 +511,7 @@ timed_lookups_multi(unsigned int with_hash, unsigned int with_data,
 	const uint64_t end_tsc = rte_rdtsc();
 	const uint64_t time_taken = end_tsc - start_tsc;
 
-	cycles[table_index][LOOKUP_MULTI][with_hash][with_data] =
+	cycles[table_index][OP_LOOKUP_MULTI][with_hash][with_data] =
 		time_taken/num_lookups;
 
 	return 0;
@@ -550,7 +550,7 @@ timed_deletes(unsigned int with_hash, unsigned int with_data,
 	const uint64_t end_tsc = rte_rdtsc();
 	const uint64_t time_taken = end_tsc - start_tsc;
 
-	cycles[table_index][DELETE][with_hash][with_data] = time_taken/keys_to_add;
+	cycles[table_index][OP_DELETE][with_hash][with_data] = time_taken/keys_to_add;
 
 	return 0;
 }
