@@ -2568,7 +2568,7 @@ vhost_user_iotlb_msg(struct virtio_net **pdev, struct VhostUserMsg *msg,
 			if (!vq)
 				continue;
 
-			vhost_user_iotlb_cache_insert(vq, imsg->iova, vva,
+			vhost_user_iotlb_cache_insert(dev, vq, imsg->iova, vva,
 					len, imsg->perm);
 
 			if (is_vring_iotlb(dev, vq, imsg))

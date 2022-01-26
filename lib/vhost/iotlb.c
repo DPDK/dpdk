@@ -62,7 +62,7 @@ vhost_user_iotlb_pending_miss(struct vhost_virtqueue *vq, uint64_t iova,
 }
 
 void
-vhost_user_iotlb_pending_insert(struct vhost_virtqueue *vq,
+vhost_user_iotlb_pending_insert(struct virtio_net *dev, struct vhost_virtqueue *vq,
 				uint64_t iova, uint8_t perm)
 {
 	struct vhost_iotlb_entry *node;
@@ -70,14 +70,16 @@ vhost_user_iotlb_pending_insert(struct vhost_virtqueue *vq,
 
 	ret = rte_mempool_get(vq->iotlb_pool, (void **)&node);
 	if (ret) {
-		VHOST_LOG_CONFIG(DEBUG, "IOTLB pool empty, clear entries\n");
+		VHOST_LOG_CONFIG(DEBUG, "(%s) IOTLB pool %s empty, clear entries\n",
+				dev->ifname, vq->iotlb_pool->name);
 		if (!TAILQ_EMPTY(&vq->iotlb_pending_list))
 			vhost_user_iotlb_pending_remove_all(vq);
 		else
 			vhost_user_iotlb_cache_random_evict(vq);
 		ret = rte_mempool_get(vq->iotlb_pool, (void **)&node);
 		if (ret) {
-			VHOST_LOG_CONFIG(ERR, "IOTLB pool still empty, failure\n");
+			VHOST_LOG_CONFIG(ERR, "(%s) IOTLB pool %s still empty, failure\n",
+					dev->ifname, vq->iotlb_pool->name);
 			return;
 		}
 	}
@@ -156,22 +158,25 @@ vhost_user_iotlb_cache_random_evict(struct vhost_virtqueue *vq)
 }
 
 void
-vhost_user_iotlb_cache_insert(struct vhost_virtqueue *vq, uint64_t iova,
-				uint64_t uaddr, uint64_t size, uint8_t perm)
+vhost_user_iotlb_cache_insert(struct virtio_net *dev, struct vhost_virtqueue *vq,
+				uint64_t iova, uint64_t uaddr,
+				uint64_t size, uint8_t perm)
 {
 	struct vhost_iotlb_entry *node, *new_node;
 	int ret;
 
 	ret = rte_mempool_get(vq->iotlb_pool, (void **)&new_node);
 	if (ret) {
-		VHOST_LOG_CONFIG(DEBUG, "IOTLB pool empty, clear entries\n");
+		VHOST_LOG_CONFIG(DEBUG, "(%s) IOTLB pool %s empty, clear entries\n",
+				dev->ifname, vq->iotlb_pool->name);
 		if (!TAILQ_EMPTY(&vq->iotlb_list))
 			vhost_user_iotlb_cache_random_evict(vq);
 		else
 			vhost_user_iotlb_pending_remove_all(vq);
 		ret = rte_mempool_get(vq->iotlb_pool, (void **)&new_node);
 		if (ret) {
-			VHOST_LOG_CONFIG(ERR, "IOTLB pool still empty, failure\n");
+			VHOST_LOG_CONFIG(ERR, "(%s) IOTLB pool %s still empty, failure\n",
+					dev->ifname, vq->iotlb_pool->name);
 			return;
 		}
 	}
@@ -311,7 +316,7 @@ vhost_user_iotlb_init(struct virtio_net *dev, int vq_index)
 
 	snprintf(pool_name, sizeof(pool_name), "iotlb_%u_%d_%d",
 			getpid(), dev->vid, vq_index);
-	VHOST_LOG_CONFIG(DEBUG, "IOTLB cache name: %s\n", pool_name);
+	VHOST_LOG_CONFIG(DEBUG, "(%s) IOTLB cache name: %s\n", dev->ifname, pool_name);
 
 	/* If already created, free it and recreate */
 	vq->iotlb_pool = rte_mempool_lookup(pool_name);
@@ -324,9 +329,8 @@ vhost_user_iotlb_init(struct virtio_net *dev, int vq_index)
 			RTE_MEMPOOL_F_NO_CACHE_ALIGN |
 			RTE_MEMPOOL_F_SP_PUT);
 	if (!vq->iotlb_pool) {
-		VHOST_LOG_CONFIG(ERR,
-				"Failed to create IOTLB cache pool (%s)\n",
-				pool_name);
+		VHOST_LOG_CONFIG(ERR, "(%s) Failed to create IOTLB cache pool %s\n",
+				dev->ifname, pool_name);
 		return -1;
 	}
 

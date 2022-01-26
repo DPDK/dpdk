@@ -33,17 +33,17 @@ vhost_user_iotlb_wr_unlock(struct vhost_virtqueue *vq)
 	rte_rwlock_write_unlock(&vq->iotlb_lock);
 }
 
-void vhost_user_iotlb_cache_insert(struct vhost_virtqueue *vq, uint64_t iova,
-					uint64_t uaddr, uint64_t size,
-					uint8_t perm);
+void vhost_user_iotlb_cache_insert(struct virtio_net *dev, struct vhost_virtqueue *vq,
+					uint64_t iova, uint64_t uaddr,
+					uint64_t size, uint8_t perm);
 void vhost_user_iotlb_cache_remove(struct vhost_virtqueue *vq,
 					uint64_t iova, uint64_t size);
 uint64_t vhost_user_iotlb_cache_find(struct vhost_virtqueue *vq, uint64_t iova,
 					uint64_t *size, uint8_t perm);
 bool vhost_user_iotlb_pending_miss(struct vhost_virtqueue *vq, uint64_t iova,
 						uint8_t perm);
-void vhost_user_iotlb_pending_insert(struct vhost_virtqueue *vq, uint64_t iova,
-						uint8_t perm);
+void vhost_user_iotlb_pending_insert(struct virtio_net *dev, struct vhost_virtqueue *vq,
+						uint64_t iova, uint8_t perm);
 void vhost_user_iotlb_pending_remove(struct vhost_virtqueue *vq, uint64_t iova,
 						uint64_t size, uint8_t perm);
 void vhost_user_iotlb_flush_all(struct vhost_virtqueue *vq);

@@ -56,7 +56,7 @@ __vhost_iova_to_vva(struct virtio_net *dev, struct vhost_virtqueue *vq,
 		 */
 		vhost_user_iotlb_rd_unlock(vq);
 
-		vhost_user_iotlb_pending_insert(vq, iova, perm);
+		vhost_user_iotlb_pending_insert(dev, vq, iova, perm);
 		if (vhost_user_iotlb_miss(dev, iova, perm)) {
 			VHOST_LOG_CONFIG(ERR,
 				"IOTLB miss req failed for IOVA 0x%" PRIx64 "\n",
