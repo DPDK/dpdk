@@ -8,7 +8,6 @@
 #include <stdarg.h>
 #include <stdlib.h>
 #include <errno.h>
-#include <termios.h>
 #include <ctype.h>
 #include <sys/queue.h>
 
@@ -21,6 +20,12 @@
 #include <cmdline.h>
 
 #include "test_cmdline.h"
+
+#ifndef RTE_EXEC_ENV_WINDOWS
+#define NULL_INPUT "/dev/null"
+#else
+#define NULL_INPUT "NUL"
+#endif
 
 /****************************************************************/
 /* static functions required for some tests */
@@ -156,10 +161,10 @@ test_cmdline_socket_fns(void)
 	cl = cmdline_stdin_new(&ctx, NULL);
 	if (cl != NULL)
 		goto error;
-	cl = cmdline_file_new(NULL, "prompt", "/dev/null");
+	cl = cmdline_file_new(NULL, "prompt", NULL_INPUT);
 	if (cl != NULL)
 		goto error;
-	cl = cmdline_file_new(&ctx, NULL, "/dev/null");
+	cl = cmdline_file_new(&ctx, NULL, NULL_INPUT);
 	if (cl != NULL)
 		goto error;
 	cl = cmdline_file_new(&ctx, "prompt", NULL);
@@ -171,7 +176,7 @@ test_cmdline_socket_fns(void)
 		cmdline_free(cl);
 		return -1;
 	}
-	cl = cmdline_file_new(&ctx, "prompt", "/dev/null");
+	cl = cmdline_file_new(&ctx, "prompt", NULL_INPUT);
 	if (cl == NULL) {
 		printf("Error: failed to open /dev/null for reading!");
 		return -1;

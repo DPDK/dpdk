@@ -4,7 +4,9 @@
 
 #include <string.h>
 #include <sys/socket.h>
+#ifndef RTE_EXEC_ENV_WINDOWS
 #include <sys/un.h>
+#endif
 #include <unistd.h>
 #include <limits.h>
 

@@ -360,7 +360,7 @@ test_mt1(int (*test)(void *))
 	/* signal worker to start test */
 	__atomic_store_n(&wrk_cmd, WRK_CMD_RUN, __ATOMIC_RELEASE);
 
-	usleep(run_time * US_PER_S);
+	rte_delay_us(run_time * US_PER_S);
 
 	/* signal worker to start test */
 	__atomic_store_n(&wrk_cmd, WRK_CMD_STOP, __ATOMIC_RELEASE);

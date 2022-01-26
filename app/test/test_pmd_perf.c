@@ -296,6 +296,7 @@ reset_count(void)
 	idle = 0;
 }
 
+#ifndef RTE_EXEC_ENV_WINDOWS
 static void
 stats_display(uint16_t port_id)
 {
@@ -325,6 +326,7 @@ signal_handler(int signum)
 	if (signum == SIGUSR2)
 		stats_display(0);
 }
+#endif
 
 struct rte_mbuf **tx_burst;
 
@@ -638,7 +640,7 @@ exec_burst(uint32_t flags, int lcore)
 		i = (i >= conf->nb_ports - 1) ? 0 : (i + 1);
 	}
 
-	sleep(5);
+	rte_delay_us(5 * US_PER_S);
 
 	/* only when polling second  */
 	if (flags == SC_BURST_XMIT_FIRST)
@@ -669,8 +671,10 @@ test_pmd_perf(void)
 
 	printf("Start PMD RXTX cycles cost test.\n");
 
+#ifndef RTE_EXEC_ENV_WINDOWS
 	signal(SIGUSR1, signal_handler);
 	signal(SIGUSR2, signal_handler);
+#endif
 
 	nb_ports = rte_eth_dev_count_avail();
 	if (nb_ports < NB_ETHPORTS_USED) {

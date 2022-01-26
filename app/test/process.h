@@ -7,12 +7,14 @@
 
 #include <errno.h>  /* errno */
 #include <limits.h> /* PATH_MAX */
+#ifndef RTE_EXEC_ENV_WINDOWS
 #include <libgen.h> /* basename et al */
+#include <sys/wait.h>
+#endif
 #include <stdlib.h> /* NULL */
 #include <string.h> /* strerror */
 #include <unistd.h> /* readlink */
 #include <dirent.h>
-#include <sys/wait.h>
 
 #include <rte_string_fns.h> /* strlcpy */
 

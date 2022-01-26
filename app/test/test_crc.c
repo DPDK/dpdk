@@ -14,7 +14,6 @@
 #define CRC32_VEC_LEN2     348
 #define CRC16_VEC_LEN1     12
 #define CRC16_VEC_LEN2     2
-#define LINE_LEN           75
 
 /* CRC test vector */
 static const uint8_t crc_vec[CRC_VEC_LEN] = {

@@ -8,7 +8,6 @@
 #include <stdarg.h>
 #include <stdlib.h>
 #include <errno.h>
-#include <termios.h>
 #include <ctype.h>
 #include <sys/queue.h>
 
@@ -63,7 +62,9 @@ do_recursive_call(void)
 		const char *env_var;
 		int (*action_fn)(void);
 	} actions[] =  {
+#ifndef RTE_EXEC_ENV_WINDOWS
 			{ "run_secondary_instances", test_mp_secondary },
+#endif
 #ifdef RTE_LIB_PDUMP
 #ifdef RTE_NET_RING
 			{ "run_pdump_server_tests", test_pdump },
@@ -82,7 +83,9 @@ do_recursive_call(void)
 			{ "test_file_prefix", no_action },
 			{ "test_no_huge_flag", no_action },
 #ifdef RTE_LIB_TIMER
+#ifndef RTE_EXEC_ENV_WINDOWS
 			{ "timer_secondary_spawn_wait", test_timer_secondary },
+#endif
 #endif
 	};
 

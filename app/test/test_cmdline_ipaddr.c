@@ -1,12 +1,9 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  * Copyright(c) 2010-2014 Intel Corporation
  */
-
 #include <stdio.h>
 #include <string.h>
 #include <inttypes.h>
-#include <netinet/in.h>
-#include <sys/socket.h>
 
 #include <rte_string_fns.h>
 
@@ -15,7 +12,7 @@
 
 #include "test_cmdline.h"
 
-#define IP4(a,b,c,d) {((uint32_t)(((a) & 0xff)) | \
+#define IP4(a,b,c,d) {.s_addr = (uint32_t)(((a) & 0xff) | \
 					   (((b) & 0xff) << 8) | \
 					   (((c) & 0xff) << 16)  | \
 					   ((d) & 0xff)  << 24)}
@@ -25,7 +22,11 @@
 
 /* create IPv6 address, swapping bytes where needed */
 #ifndef s6_addr16
-# define s6_addr16      __u6_addr.__u6_addr16
+#ifdef RTE_EXEC_ENV_WINDOWS
+#define s6_addr16 u.Word
+#else
+#define s6_addr16 __u6_addr.__u6_addr16
+#endif
 #endif
 #define IP6(a,b,c,d,e,f,g,h) .ipv6 = \
 		{.s6_addr16 = \
@@ -165,8 +166,6 @@ const char * ipaddr_garbage_network6_strs[] = {
 		"1:2:3:4::8/64\tgarbage",
 };
 #define IPv6_GARBAGE_PREFIX 64
-
-
 
 const char * ipaddr_invalid_strs[] = {
 		/** IPv4 **/

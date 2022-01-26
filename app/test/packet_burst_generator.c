@@ -5,6 +5,7 @@
 #include <rte_byteorder.h>
 #include <rte_mbuf.h>
 #include <rte_ip.h>
+#include <rte_os_shim.h>
 
 #include "packet_burst_generator.h"
 
