@@ -10,6 +10,7 @@
 
 #include "test.h"
 
+#ifndef RTE_EXEC_ENV_WINDOWS
 static volatile int flag;
 
 static void
@@ -18,6 +19,7 @@ test_alarm_callback(void *cb_arg)
 	flag = 1;
 	printf("Callback setting flag - OK. [cb_arg = %p]\n", cb_arg);
 }
+#endif
 
 static int
 test_alarm(void)
@@ -27,6 +29,7 @@ test_alarm(void)
 	return 0;
 #endif
 
+#ifndef RTE_EXEC_ENV_WINDOWS
 	/* check if it will fail to set alarm with wrong us value */
 	printf("check if it will fail to set alarm with wrong ms values\n");
 	if (rte_eal_alarm_set(0, test_alarm_callback,
@@ -39,6 +42,7 @@ test_alarm(void)
 		printf("should not be successful with (UINT64_MAX-1) us value\n");
 		return -1;
 	}
+#endif
 
 	/* check if it will fail to set alarm with null callback parameter */
 	printf("check if it will fail to set alarm with null callback parameter\n");
