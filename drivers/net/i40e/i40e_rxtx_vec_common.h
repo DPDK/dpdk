@@ -103,7 +103,7 @@ i40e_tx_free_bufs(struct i40e_tx_queue *txq)
 	if (txq->offloads & RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE) {
 		for (i = 0; i < n; i++) {
 			free[i] = txep[i].mbuf;
-			txep[i].mbuf = NULL;
+			/* no need to reset txep[i].mbuf in vector path */
 		}
 		rte_mempool_put_bulk(free[0]->pool, (void **)free, n);
 		goto done;
