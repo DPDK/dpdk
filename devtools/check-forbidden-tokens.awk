@@ -20,6 +20,9 @@ BEGIN {
 # state machine assumes the comments structure is enforced by
 # checkpatches.pl
 (in_file) {
+	if ($0 ~ "^@@") {
+		in_comment = 0
+	}
 	# comment start
 	if (index($0,comment_start) > 0) {
 		in_comment = 1
