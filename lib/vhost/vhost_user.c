@@ -2564,8 +2564,11 @@ vhost_user_iotlb_msg(struct virtio_net **pdev,
 			vhost_user_iotlb_cache_insert(dev, vq, imsg->iova, vva,
 					len, imsg->perm);
 
-			if (is_vring_iotlb(dev, vq, imsg))
+			if (is_vring_iotlb(dev, vq, imsg)) {
+				rte_spinlock_lock(&vq->access_lock);
 				*pdev = dev = translate_ring_addresses(dev, i);
+				rte_spinlock_unlock(&vq->access_lock);
+			}
 		}
 		break;
 	case VHOST_IOTLB_INVALIDATE:
@@ -2578,8 +2581,11 @@ vhost_user_iotlb_msg(struct virtio_net **pdev,
 			vhost_user_iotlb_cache_remove(vq, imsg->iova,
 					imsg->size);
 
-			if (is_vring_iotlb(dev, vq, imsg))
+			if (is_vring_iotlb(dev, vq, imsg)) {
+				rte_spinlock_lock(&vq->access_lock);
 				vring_invalidate(dev, vq);
+				rte_spinlock_unlock(&vq->access_lock);
+			}
 		}
 		break;
 	default:
