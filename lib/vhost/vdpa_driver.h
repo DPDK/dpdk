@@ -34,6 +34,9 @@ struct rte_vdpa_dev_ops {
 	/** Driver close the device (Mandatory) */
 	int (*dev_close)(int vid);
 
+	/** Connection closed, clean up resources */
+	int (*dev_cleanup)(int vid);
+
 	/** Enable/disable this vring (Mandatory) */
 	int (*set_vring_state)(int vid, int vring, int state);
 

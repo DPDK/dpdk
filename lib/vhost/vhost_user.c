@@ -219,6 +219,12 @@ free_mem_region(struct virtio_net *dev)
 void
 vhost_backend_cleanup(struct virtio_net *dev)
 {
+	struct rte_vdpa_device *vdpa_dev;
+
+	vdpa_dev = dev->vdpa_dev;
+	if (vdpa_dev && vdpa_dev->ops->dev_cleanup != NULL)
+		vdpa_dev->ops->dev_cleanup(dev->vid);
+
 	if (dev->mem) {
 		free_mem_region(dev);
 		rte_free(dev->mem);
