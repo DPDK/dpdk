@@ -456,6 +456,55 @@ int rte_gpu_mem_unregister(int16_t dev_id, void *ptr);
  * @warning
  * @b EXPERIMENTAL: this API may change without prior notice.
  *
+ * Map a chunk of GPU memory to make it accessible from the CPU
+ * using the memory pointer returned by the function.
+ * GPU memory has to be allocated via rte_gpu_mem_alloc().
+ *
+ * @param dev_id
+ *   Device ID requiring mapped memory.
+ * @param size
+ *   Number of bytes to map.
+ *   Requesting 0 will do nothing.
+ * @param ptr
+ *   Pointer to the GPU memory area to be mapped.
+ *   NULL is a no-op accepted value.
+
+ * @return
+ *   A pointer to the mapped GPU memory usable by the CPU, otherwise NULL and rte_errno is set:
+ *   - ENODEV if invalid dev_id
+ *   - ENOTSUP if operation not supported by the driver
+ *   - E2BIG if size is higher than limit
+ *   - ENOMEM if out of space
+ *   - EPERM if driver error
+ */
+__rte_experimental
+void *rte_gpu_mem_cpu_map(int16_t dev_id, size_t size, void *ptr);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Unmap a chunk of GPU memory previously mapped with rte_gpu_mem_cpu_map()
+ *
+ * @param dev_id
+ *   Reference device ID.
+ * @param ptr
+ *   Pointer to the memory area to be unmapped.
+ *   NULL is a no-op accepted value.
+ *
+ * @return
+ *   0 on success, -rte_errno otherwise:
+ *   - ENODEV if invalid dev_id
+ *   - ENOTSUP if operation not supported by the driver
+ *   - EPERM if driver error
+ */
+__rte_experimental
+int rte_gpu_mem_cpu_unmap(int16_t dev_id, void *ptr);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
  * Enforce a GPU write memory barrier.
  *
  * @param dev_id

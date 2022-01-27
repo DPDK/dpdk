@@ -73,6 +73,15 @@ Later, it's also possible to unregister that memory with gpudev.
 CPU memory registered outside of the gpudev library
 (e.g. with GPU specific library) cannot be unregistered by the gpudev library.
 
+CPU mapping
+~~~~~~~~~~~
+
+gpudev can map into the CPU address space a GPU memory address allocated with gpudev.
+gpudev returns a pointer the CPU can use to access (ready or write) GPU memory.
+Later, it's also possible to unmap that memory with gpudev.
+GPU memory CPU mapped outside of the gpudev library (e.g. with GPU specific library)
+cannot be unmapped by the gpudev library.
+
 Memory Barrier
 ~~~~~~~~~~~~~~
 

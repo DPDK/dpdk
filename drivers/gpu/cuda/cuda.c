@@ -1177,6 +1177,8 @@ cuda_gpu_probe(__rte_unused struct rte_pci_driver *pci_drv, struct rte_pci_devic
 	dev->ops.mem_free = cuda_mem_free;
 	dev->ops.mem_register = cuda_mem_register;
 	dev->ops.mem_unregister = cuda_mem_unregister;
+	dev->ops.mem_cpu_map = NULL;
+	dev->ops.mem_cpu_unmap = NULL;
 	dev->ops.wmb = cuda_wmb;
 
 	rte_gpu_complete_new(dev);

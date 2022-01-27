@@ -640,6 +640,67 @@ rte_gpu_mem_unregister(int16_t dev_id, void *ptr)
 	return GPU_DRV_RET(dev->ops.mem_unregister(dev, ptr));
 }
 
+void *
+rte_gpu_mem_cpu_map(int16_t dev_id, size_t size, void *ptr)
+{
+	struct rte_gpu *dev;
+	void *ptr_out;
+	int ret;
+
+	dev = gpu_get_by_id(dev_id);
+	if (dev == NULL) {
+		GPU_LOG(ERR, "mem CPU map for invalid device ID %d", dev_id);
+		rte_errno = ENODEV;
+		return NULL;
+	}
+
+	if (dev->ops.mem_cpu_map == NULL) {
+		GPU_LOG(ERR, "mem CPU map not supported");
+		rte_errno = ENOTSUP;
+		return NULL;
+	}
+
+	if (ptr == NULL || size == 0) /* dry-run  */
+		return NULL;
+
+	ret = GPU_DRV_RET(dev->ops.mem_cpu_map(dev, size, ptr, &ptr_out));
+
+	switch (ret) {
+	case 0:
+		return ptr_out;
+	case -ENOMEM:
+	case -E2BIG:
+		rte_errno = -ret;
+		return NULL;
+	default:
+		rte_errno = -EPERM;
+		return NULL;
+	}
+}
+
+int
+rte_gpu_mem_cpu_unmap(int16_t dev_id, void *ptr)
+{
+	struct rte_gpu *dev;
+
+	dev = gpu_get_by_id(dev_id);
+	if (dev == NULL) {
+		GPU_LOG(ERR, "cpu_unmap mem for invalid device ID %d", dev_id);
+		rte_errno = ENODEV;
+		return -rte_errno;
+	}
+
+	if (dev->ops.mem_cpu_unmap == NULL) {
+		rte_errno = ENOTSUP;
+		return -rte_errno;
+	}
+
+	if (ptr == NULL) /* dry-run */
+		return 0;
+
+	return GPU_DRV_RET(dev->ops.mem_cpu_unmap(dev, ptr));
+}
+
 int
 rte_gpu_wmb(int16_t dev_id)
 {

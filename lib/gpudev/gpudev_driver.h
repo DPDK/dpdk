@@ -31,6 +31,8 @@ typedef int (rte_gpu_mem_alloc_t)(struct rte_gpu *dev, size_t size, unsigned int
 typedef int (rte_gpu_mem_free_t)(struct rte_gpu *dev, void *ptr);
 typedef int (rte_gpu_mem_register_t)(struct rte_gpu *dev, size_t size, void *ptr);
 typedef int (rte_gpu_mem_unregister_t)(struct rte_gpu *dev, void *ptr);
+typedef int (rte_gpu_mem_cpu_map_t)(struct rte_gpu *dev, size_t size, void *ptr_in, void **ptr_out);
+typedef int (rte_gpu_mem_cpu_unmap_t)(struct rte_gpu *dev, void *ptr);
 typedef int (rte_gpu_wmb_t)(struct rte_gpu *dev);
 
 struct rte_gpu_ops {
@@ -46,6 +48,10 @@ struct rte_gpu_ops {
 	rte_gpu_mem_register_t *mem_register;
 	/* Unregister CPU memory from device. */
 	rte_gpu_mem_unregister_t *mem_unregister;
+	/* Map GPU memory for CPU visibility. */
+	rte_gpu_mem_cpu_map_t *mem_cpu_map;
+	/* Unmap GPU memory for CPU visibility. */
+	rte_gpu_mem_cpu_unmap_t *mem_cpu_unmap;
 	/* Enforce GPU write memory barrier. */
 	rte_gpu_wmb_t *wmb;
 };

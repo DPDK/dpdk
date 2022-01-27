@@ -20,8 +20,10 @@ EXPERIMENTAL {
 	rte_gpu_init;
 	rte_gpu_is_valid;
 	rte_gpu_mem_alloc;
+	rte_gpu_mem_cpu_map;
 	rte_gpu_mem_free;
 	rte_gpu_mem_register;
+	rte_gpu_mem_cpu_unmap;
 	rte_gpu_mem_unregister;
 	rte_gpu_wmb;
 };
