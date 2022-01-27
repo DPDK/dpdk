@@ -711,6 +711,10 @@ parse_opts(int argc, char **argv)
 				print_usage();
 				rte_exit(-EINVAL, "Invalid option -n\n");
 			}
+
+			if (config.nb_routes < config.print_fract)
+				config.print_fract = config.nb_routes;
+
 			break;
 		case 'd':
 			distrib_string = optarg;
@@ -1242,6 +1246,10 @@ main(int argc, char **argv)
 		config.nb_routes = 0;
 		while (fgets(line, sizeof(line), fr) != NULL)
 			config.nb_routes++;
+
+		if (config.nb_routes < config.print_fract)
+			config.print_fract = config.nb_routes;
+
 		rewind(fr);
 	}
 
