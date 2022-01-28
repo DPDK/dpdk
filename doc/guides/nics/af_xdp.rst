@@ -43,9 +43,7 @@ Prerequisites
 This is a Linux-specific PMD, thus the following prerequisites apply:
 
 *  A Linux Kernel (version > v4.18) with XDP sockets configuration enabled;
-*  libbpf (within kernel version > v5.1-rc4) with latest af_xdp support installed,
-   User can install libbpf via `make install_lib` && `make install_headers` in
-   <kernel src tree>/tools/lib/bpf;
+*  Both libxdp >=v1.2.2 and libbpf libraries installed, or, libbpf <=v0.6.0
 *  A Kernel bound interface to attach to;
 *  For need_wakeup feature, it requires kernel version later than v5.3-rc1;
 *  For PMD zero copy, it requires kernel version later than v5.4-rc1;

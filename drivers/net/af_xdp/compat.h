@@ -2,12 +2,16 @@
  * Copyright(c) 2020 Intel Corporation.
  */
 
+#ifdef RTE_NET_AF_XDP_LIBXDP
+#include <xdp/xsk.h>
+#else
 #include <bpf/xsk.h>
+#endif
 #include <linux/version.h>
 #include <poll.h>
 
 #if KERNEL_VERSION(5, 10, 0) <= LINUX_VERSION_CODE && \
-	defined(RTE_LIBRTE_AF_XDP_PMD_SHARED_UMEM)
+	defined(RTE_NET_AF_XDP_SHARED_UMEM)
 #define ETH_AF_XDP_SHARED_UMEM 1
 #endif
 
