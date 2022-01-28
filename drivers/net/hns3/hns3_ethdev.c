@@ -2087,7 +2087,6 @@ static int
 hns3_config_mtu(struct hns3_hw *hw, uint16_t mps)
 {
 	struct hns3_adapter *hns = HNS3_DEV_HW_TO_ADAPTER(hw);
-	uint16_t original_mps = hns->pf.mps;
 	int err;
 	int ret;
 
@@ -2097,22 +2096,20 @@ hns3_config_mtu(struct hns3_hw *hw, uint16_t mps)
 		return ret;
 	}
 
-	hns->pf.mps = mps;
 	ret = hns3_buffer_alloc(hw);
 	if (ret) {
 		hns3_err(hw, "failed to allocate buffer, ret = %d", ret);
 		goto rollback;
 	}
 
+	hns->pf.mps = mps;
+
 	return 0;
 
 rollback:
-	err = hns3_set_mac_mtu(hw, original_mps);
-	if (err) {
+	err = hns3_set_mac_mtu(hw, hns->pf.mps);
+	if (err)
 		hns3_err(hw, "fail to rollback MTU, err = %d", err);
-		return ret;
-	}
-	hns->pf.mps = original_mps;
 
 	return ret;
 }
