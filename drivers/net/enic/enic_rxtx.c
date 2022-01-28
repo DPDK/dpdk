@@ -84,6 +84,7 @@ enic_recv_pkts_common(void *rx_queue, struct rte_mbuf **rx_pkts,
 		uint8_t packet_error;
 		uint16_t ciflags;
 		uint8_t tc;
+		uint16_t rq_idx_msbs = 0;
 
 		max_rx--;
 
@@ -94,17 +95,24 @@ enic_recv_pkts_common(void *rx_queue, struct rte_mbuf **rx_pkts,
 
 		/* Get the cq descriptor and extract rq info from it */
 		cqd = *cqd_ptr;
+
 		/*
-		 * The first 16B of 64B descriptor is identical to the
-		 * 16B descriptor, except type_color. Copy type_color
-		 * from the 64B descriptor into the 16B descriptor's
-		 * field, so the code below can assume the 16B
-		 * descriptor format.
+		 * The first 16B of a 64B descriptor is identical to a 16B
+		 * descriptor except for the type_color and fetch index. Extract
+		 * fetch index and copy the type_color from the 64B to where it
+		 * would be in a 16B descriptor so sebwequent code can run
+		 * without further conditionals.
 		 */
-		if (use_64b_desc)
+		if (use_64b_desc) {
+			rq_idx_msbs = (((volatile struct cq_enet_rq_desc_64 *)
+				      cqd_ptr)->fetch_idx_flags
+				      & CQ_ENET_RQ_DESC_FETCH_IDX_MASK)
+				      << CQ_DESC_COMP_NDX_BITS;
 			cqd.type_color = tc;
+		}
 		rq_num = cqd.q_number & CQ_DESC_Q_NUM_MASK;
-		rq_idx = cqd.completed_index & CQ_DESC_COMP_NDX_MASK;
+		rq_idx = rq_idx_msbs +
+			 (cqd.completed_index & CQ_DESC_COMP_NDX_MASK);
 
 		rq = &enic->rq[rq_num];
 		rqd_ptr = ((struct rq_enet_desc *)rq->ring.descs) + rq_idx;
@@ -362,14 +370,19 @@ static inline void enic_free_wq_bufs(struct vnic_wq *wq,
 				     uint16_t completed_index)
 {
 	struct rte_mbuf *buf;
-	struct rte_mbuf *m, *free[ENIC_MAX_WQ_DESCS];
+	struct rte_mbuf *m, *free[ENIC_LEGACY_MAX_WQ_DESCS];
 	unsigned int nb_to_free, nb_free = 0, i;
 	struct rte_mempool *pool;
 	unsigned int tail_idx;
 	unsigned int desc_count = wq->ring.desc_count;
 
-	nb_to_free = enic_ring_sub(desc_count, wq->tail_idx, completed_index)
-				   + 1;
+	/*
+	 * On 1500 Series VIC and beyond, greater than ENIC_LEGACY_MAX_WQ_DESCS
+	 * may be attempted to be freed. Cap it at ENIC_LEGACY_MAX_WQ_DESCS.
+	 */
+	nb_to_free = RTE_MIN(enic_ring_sub(desc_count, wq->tail_idx,
+			     completed_index) + 1,
+			     (uint32_t)ENIC_LEGACY_MAX_WQ_DESCS);
 	tail_idx = wq->tail_idx;
 	pool = wq->bufs[tail_idx]->pool;
 	for (i = 0; i < nb_to_free; i++) {
@@ -381,7 +394,7 @@ static inline void enic_free_wq_bufs(struct vnic_wq *wq,
 		}
 
 		if (likely(m->pool == pool)) {
-			RTE_ASSERT(nb_free < ENIC_MAX_WQ_DESCS);
+			RTE_ASSERT(nb_free < ENIC_LEGACY_MAX_WQ_DESCS);
 			free[nb_free++] = m;
 		} else {
 			rte_mempool_put_bulk(pool, (void *)free, nb_free);

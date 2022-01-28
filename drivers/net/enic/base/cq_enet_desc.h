@@ -67,7 +67,8 @@ struct cq_enet_rq_desc_64 {
 	uint16_t vlan;
 	uint16_t checksum_fcoe;
 	uint8_t flags;
-	uint8_t unused[48];
+	uint8_t fetch_idx_flags;
+	uint8_t unused[47];
 	uint8_t type_color;
 };
 
@@ -92,6 +93,9 @@ struct cq_enet_rq_desc_64 {
 #define CQ_ENET_RQ_DESC_BYTES_WRITTEN_BITS          14
 #define CQ_ENET_RQ_DESC_BYTES_WRITTEN_MASK \
 	((1 << CQ_ENET_RQ_DESC_BYTES_WRITTEN_BITS) - 1)
+#define CQ_ENET_RQ_DESC_FETCH_IDX_BITS              2
+#define CQ_ENET_RQ_DESC_FETCH_IDX_MASK \
+	((1 << CQ_ENET_RQ_DESC_FETCH_IDX_BITS) - 1)
 #define CQ_ENET_RQ_DESC_FLAGS_TRUNCATED             (0x1 << 14)
 #define CQ_ENET_RQ_DESC_FLAGS_VLAN_STRIPPED         (0x1 << 15)
 

@@ -12,9 +12,11 @@
 #include "vnic_rq.h"
 
 #define ENIC_MIN_WQ_DESCS		64
-#define ENIC_MAX_WQ_DESCS		4096
 #define ENIC_MIN_RQ_DESCS		64
-#define ENIC_MAX_RQ_DESCS		4096
+
+/* 1400 series VICs and prior all have 4K max, after that it's in the config */
+#define ENIC_LEGACY_MAX_WQ_DESCS        4096
+#define ENIC_LEGACY_MAX_RQ_DESCS        4096
 
 /* A descriptor ring has a multiple of 32 descriptors */
 #define ENIC_ALIGN_DESCS		32

@@ -26,6 +26,7 @@ int enic_get_vnic_config(struct enic *enic)
 	struct vnic_enet_config *c = &enic->config;
 	int err;
 	uint64_t sizes;
+	uint32_t max_rq_descs, max_wq_descs;
 
 	err = vnic_dev_get_mac_addr(enic->vdev, enic->mac_addr);
 	if (err) {
@@ -57,6 +58,8 @@ int enic_get_vnic_config(struct enic *enic)
 	GET_CONFIG(loop_tag);
 	GET_CONFIG(num_arfs);
 	GET_CONFIG(max_pkt_size);
+	GET_CONFIG(max_rq_ring);
+	GET_CONFIG(max_wq_ring);
 
 	/* max packet size is only defined in newer VIC firmware
 	 * and will be 0 for legacy firmware and VICs
@@ -101,20 +104,29 @@ int enic_get_vnic_config(struct enic *enic)
 		((enic->filter_actions & FILTER_ACTION_COUNTER_FLAG) ?
 		 "count " : ""));
 
-	c->wq_desc_count = RTE_MIN((uint32_t)ENIC_MAX_WQ_DESCS,
+	/* The max size of RQ and WQ rings are specified in 1500 series VICs and
+	 * beyond. If they are not specified by the VIC or if 64B CQ descriptors
+	 * are not being used, the max number of descriptors is 4096.
+	 */
+	max_wq_descs = (enic->cq64_request && c->max_wq_ring) ? c->max_wq_ring :
+		       ENIC_LEGACY_MAX_WQ_DESCS;
+	c->wq_desc_count = RTE_MIN(max_wq_descs,
 			RTE_MAX((uint32_t)ENIC_MIN_WQ_DESCS, c->wq_desc_count));
 	c->wq_desc_count &= 0xffffffe0; /* must be aligned to groups of 32 */
-
-	c->rq_desc_count = RTE_MIN((uint32_t)ENIC_MAX_RQ_DESCS,
+	max_rq_descs = (enic->cq64_request && c->max_rq_ring) ? c->max_rq_ring
+		       : ENIC_LEGACY_MAX_WQ_DESCS;
+	c->rq_desc_count = RTE_MIN(max_rq_descs,
 			RTE_MAX((uint32_t)ENIC_MIN_RQ_DESCS, c->rq_desc_count));
 	c->rq_desc_count &= 0xffffffe0; /* must be aligned to groups of 32 */
+	dev_debug(NULL, "Max supported VIC descriptors: WQ:%u, RQ:%u\n",
+		  max_wq_descs, max_rq_descs);
 
 	c->intr_timer_usec = RTE_MIN(c->intr_timer_usec,
 				  vnic_dev_get_intr_coal_timer_max(enic->vdev));
 
 	dev_info(enic_get_dev(enic),
 		"vNIC MAC addr " RTE_ETHER_ADDR_PRT_FMT
-		"wq/rq %d/%d mtu %d, max mtu:%d\n",
+		" wq/rq %d/%d mtu %d, max mtu:%d\n",
 		enic->mac_addr[0], enic->mac_addr[1], enic->mac_addr[2],
 		enic->mac_addr[3], enic->mac_addr[4], enic->mac_addr[5],
 		c->wq_desc_count, c->rq_desc_count,
