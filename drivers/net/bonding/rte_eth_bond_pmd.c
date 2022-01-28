@@ -1322,7 +1322,7 @@ bond_ethdev_tx_burst_broadcast(void *queue, struct rte_mbuf **bufs,
 
 	/* Increment reference count on mbufs */
 	for (i = 0; i < nb_pkts; i++)
-		rte_mbuf_refcnt_update(bufs[i], num_of_slaves - 1);
+		rte_pktmbuf_refcnt_update(bufs[i], num_of_slaves - 1);
 
 	/* Transmit burst on each active slave */
 	for (i = 0; i < num_of_slaves; i++) {
