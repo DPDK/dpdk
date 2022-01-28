@@ -3102,6 +3102,10 @@ hns3_get_capability(struct hns3_hw *hw)
 	}
 	hw->revision = revision;
 
+	ret = hns3_query_mac_stats_reg_num(hw);
+	if (ret)
+		return ret;
+
 	if (revision < PCI_REVISION_ID_HIP09_A) {
 		hns3_set_default_dev_specifications(hw);
 		hw->intr.mapping_mode = HNS3_INTR_MAPPING_VEC_RSV_ONE;
