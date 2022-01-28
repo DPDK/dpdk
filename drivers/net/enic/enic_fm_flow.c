@@ -237,6 +237,7 @@ static enic_copy_item_fn enic_fm_copy_item_vxlan;
 static enic_copy_item_fn enic_fm_copy_item_gtp;
 static enic_copy_item_fn enic_fm_copy_item_geneve;
 static enic_copy_item_fn enic_fm_copy_item_geneve_opt;
+static enic_copy_item_fn enic_fm_copy_item_ecpri;
 
 /* Ingress actions */
 static const enum rte_flow_action_type enic_fm_supported_ig_actions[] = {
@@ -389,6 +390,15 @@ static const struct enic_fm_items enic_fm_items[] = {
 		/* Can match at most 1 option */
 		.prev_items = (const enum rte_flow_item_type[]) {
 			       RTE_FLOW_ITEM_TYPE_GENEVE,
+			       RTE_FLOW_ITEM_TYPE_END,
+		},
+	},
+	[RTE_FLOW_ITEM_TYPE_ECPRI] = {
+		.copy_item = enic_fm_copy_item_ecpri,
+		.valid_start_item = 1,
+		.prev_items = (const enum rte_flow_item_type[]) {
+			       RTE_FLOW_ITEM_TYPE_ETH,
+			       RTE_FLOW_ITEM_TYPE_UDP,
 			       RTE_FLOW_ITEM_TYPE_END,
 		},
 	},
@@ -874,6 +884,61 @@ enic_fm_copy_item_geneve_opt(struct copy_item_args *arg)
 		memcpy(&fm_data->l4.rawdata[off], spec->data, len);
 		memcpy(&fm_mask->l4.rawdata[off], mask->data, len);
 	}
+	return 0;
+}
+
+/* Match eCPRI combined message header */
+static int
+enic_fm_copy_item_ecpri(struct copy_item_args *arg)
+{
+	const struct rte_flow_item *item = arg->item;
+	const struct rte_flow_item_ecpri *spec = item->spec;
+	const struct rte_flow_item_ecpri *mask = item->mask;
+	struct fm_tcam_match_entry *entry = arg->fm_tcam_entry;
+	struct fm_header_set *fm_data, *fm_mask;
+	uint8_t *fm_data_to, *fm_mask_to;
+
+	ENICPMD_FUNC_TRACE();
+
+	/* Tunneling not supported- only matching on inner eCPRI fields. */
+	if (arg->header_level > 0)
+		return -EINVAL;
+
+	/* Need both spec and mask */
+	if (!spec || !mask)
+		return -EINVAL;
+
+	fm_data = &entry->ftm_data.fk_hdrset[0];
+	fm_mask = &entry->ftm_mask.fk_hdrset[0];
+
+	/* eCPRI can only follow L2/VLAN layer if ethernet type is 0xAEFE. */
+	if (!(fm_data->fk_metadata & FKM_UDP) &&
+	    (fm_mask->l2.eth.fk_ethtype != UINT16_MAX ||
+	    rte_cpu_to_be_16(fm_data->l2.eth.fk_ethtype) !=
+	    RTE_ETHER_TYPE_ECPRI))
+		return -EINVAL;
+
+	if (fm_data->fk_metadata & FKM_UDP) {
+		/* eCPRI on UDP */
+		fm_data->fk_header_select |= FKH_L4RAW;
+		fm_mask->fk_header_select |= FKH_L4RAW;
+		fm_data_to = &fm_data->l4.rawdata[sizeof(fm_data->l4.udp)];
+		fm_mask_to = &fm_mask->l4.rawdata[sizeof(fm_data->l4.udp)];
+	} else {
+		/* eCPRI directly after Etherent header */
+		fm_data->fk_header_select |= FKH_L3RAW;
+		fm_mask->fk_header_select |= FKH_L3RAW;
+		fm_data_to = &fm_data->l3.rawdata[0];
+		fm_mask_to = &fm_mask->l3.rawdata[0];
+	}
+
+	/*
+	 * Use the raw L3 or L4 buffer to match eCPRI since fm_header_set does
+	 * not have eCPRI header. Only 1st message header of PDU can be matched.
+	 * "C" * bit ignored.
+	 */
+	memcpy(fm_data_to, spec, sizeof(*spec));
+	memcpy(fm_mask_to, mask, sizeof(*mask));
 	return 0;
 }
 

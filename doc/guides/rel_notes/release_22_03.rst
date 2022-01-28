@@ -65,6 +65,7 @@ New Features
 * **Updated Cisco enic driver.**
 
   * Added rte_flow support for matching GENEVE packets.
+  * Added rte_flow support for matching eCPRI packets.
 
 * **Updated Marvell cnxk crypto PMD.**
 
