@@ -4598,6 +4598,10 @@ hns3_init_hardware(struct hns3_adapter *hns)
 	struct hns3_hw *hw = &hns->hw;
 	int ret;
 
+	/*
+	 * All queue-related HW operations must be performed after the TCAM
+	 * table is configured.
+	 */
 	ret = hns3_map_tqp(hw);
 	if (ret) {
 		PMD_INIT_LOG(ERR, "Failed to map tqp: %d", ret);
@@ -5374,15 +5378,15 @@ hns3_reinit_dev(struct hns3_adapter *hns)
 		return ret;
 	}
 
-	ret = hns3_reset_all_tqps(hns);
-	if (ret) {
-		hns3_err(hw, "Failed to reset all queues: %d", ret);
-		return ret;
-	}
-
 	ret = hns3_init_hardware(hns);
 	if (ret) {
 		hns3_err(hw, "Failed to init hardware: %d", ret);
+		return ret;
+	}
+
+	ret = hns3_reset_all_tqps(hns);
+	if (ret) {
+		hns3_err(hw, "Failed to reset all queues: %d", ret);
 		return ret;
 	}
 
