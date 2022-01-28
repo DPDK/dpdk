@@ -1352,6 +1352,8 @@ iavf_ipsec_crypto_set_security_capabililites(struct iavf_security_ctx
 	capabilities = rte_zmalloc("crypto_cap",
 		sizeof(struct rte_cryptodev_capabilities) *
 		(number_of_capabilities + 1), 0);
+	if (!capabilities)
+		return -ENOMEM;
 	capabilities[number_of_capabilities].op = RTE_CRYPTO_OP_TYPE_UNDEFINED;
 
 	/**
