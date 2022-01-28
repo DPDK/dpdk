@@ -500,6 +500,7 @@ struct hns3_hw {
 	struct hns3_tqp_stats tqp_stats;
 	/* Include Mac stats | Rx stats | Tx stats */
 	struct hns3_mac_stats mac_stats;
+	uint32_t mac_stats_reg_num;
 	struct hns3_rx_missed_stats imissed_stats;
 	uint64_t oerror_stats;
 	uint32_t fw_version;
