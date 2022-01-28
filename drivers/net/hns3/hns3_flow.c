@@ -1238,6 +1238,7 @@ static bool
 hns3_action_rss_same(const struct rte_flow_action_rss *comp,
 		     const struct rte_flow_action_rss *with)
 {
+	bool rss_key_is_same;
 	bool func_is_same;
 
 	/*
@@ -1254,11 +1255,16 @@ hns3_action_rss_same(const struct rte_flow_action_rss *comp,
 		func_is_same = (with->func != RTE_ETH_HASH_FUNCTION_DEFAULT) ?
 				(comp->func == with->func) : true;
 
-	return (func_is_same &&
+	if (with->key_len == 0 || with->key == NULL)
+		rss_key_is_same = 1;
+	else
+		rss_key_is_same = comp->key_len == with->key_len &&
+		!memcmp(comp->key, with->key, with->key_len);
+
+	return (func_is_same && rss_key_is_same &&
 		comp->types == (with->types & HNS3_ETH_RSS_SUPPORT) &&
-		comp->level == with->level && comp->key_len == with->key_len &&
+		comp->level == with->level &&
 		comp->queue_num == with->queue_num &&
-		!memcmp(comp->key, with->key, with->key_len) &&
 		!memcmp(comp->queue, with->queue,
 			sizeof(*with->queue) * with->queue_num));
 }
