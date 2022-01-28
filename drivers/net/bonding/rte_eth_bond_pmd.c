@@ -2692,6 +2692,39 @@ bond_ethdev_promiscuous_disable(struct rte_eth_dev *dev)
 }
 
 static int
+bond_ethdev_promiscuous_update(struct rte_eth_dev *dev)
+{
+	struct bond_dev_private *internals = dev->data->dev_private;
+	uint16_t port_id = internals->current_primary_port;
+
+	switch (internals->mode) {
+	case BONDING_MODE_ROUND_ROBIN:
+	case BONDING_MODE_BALANCE:
+	case BONDING_MODE_BROADCAST:
+	case BONDING_MODE_8023AD:
+		/* As promiscuous mode is propagated to all slaves for these
+		 * mode, no need to update for bonding device.
+		 */
+		break;
+	case BONDING_MODE_ACTIVE_BACKUP:
+	case BONDING_MODE_TLB:
+	case BONDING_MODE_ALB:
+	default:
+		/* As promiscuous mode is propagated only to primary slave
+		 * for these mode. When active/standby switchover, promiscuous
+		 * mode should be set to new primary slave according to bonding
+		 * device.
+		 */
+		if (rte_eth_promiscuous_get(internals->port_id) == 1)
+			rte_eth_promiscuous_enable(port_id);
+		else
+			rte_eth_promiscuous_disable(port_id);
+	}
+
+	return 0;
+}
+
+static int
 bond_ethdev_allmulticast_enable(struct rte_eth_dev *eth_dev)
 {
 	struct bond_dev_private *internals = eth_dev->data->dev_private;
@@ -2804,6 +2837,39 @@ bond_ethdev_allmulticast_disable(struct rte_eth_dev *eth_dev)
 	return ret;
 }
 
+static int
+bond_ethdev_allmulticast_update(struct rte_eth_dev *dev)
+{
+	struct bond_dev_private *internals = dev->data->dev_private;
+	uint16_t port_id = internals->current_primary_port;
+
+	switch (internals->mode) {
+	case BONDING_MODE_ROUND_ROBIN:
+	case BONDING_MODE_BALANCE:
+	case BONDING_MODE_BROADCAST:
+	case BONDING_MODE_8023AD:
+		/* As allmulticast mode is propagated to all slaves for these
+		 * mode, no need to update for bonding device.
+		 */
+		break;
+	case BONDING_MODE_ACTIVE_BACKUP:
+	case BONDING_MODE_TLB:
+	case BONDING_MODE_ALB:
+	default:
+		/* As allmulticast mode is propagated only to primary slave
+		 * for these mode. When active/standby switchover, allmulticast
+		 * mode should be set to new primary slave according to bonding
+		 * device.
+		 */
+		if (rte_eth_allmulticast_get(internals->port_id) == 1)
+			rte_eth_allmulticast_enable(port_id);
+		else
+			rte_eth_allmulticast_disable(port_id);
+	}
+
+	return 0;
+}
+
 static void
 bond_ethdev_delayed_lsc_propagation(void *arg)
 {
@@ -2893,6 +2959,8 @@ bond_ethdev_lsc_event_callback(uint16_t port_id, enum rte_eth_event_type type,
 			lsc_flag = 1;
 
 			mac_address_slaves_update(bonded_eth_dev);
+			bond_ethdev_promiscuous_update(bonded_eth_dev);
+			bond_ethdev_allmulticast_update(bonded_eth_dev);
 		}
 
 		activate_slave(bonded_eth_dev, port_id);
@@ -2922,6 +2990,8 @@ bond_ethdev_lsc_event_callback(uint16_t port_id, enum rte_eth_event_type type,
 			else
 				internals->current_primary_port = internals->primary_port;
 			mac_address_slaves_update(bonded_eth_dev);
+			bond_ethdev_promiscuous_update(bonded_eth_dev);
+			bond_ethdev_allmulticast_update(bonded_eth_dev);
 		}
 	}
 
