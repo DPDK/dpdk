@@ -480,6 +480,11 @@ hugepage_info_init(void)
 			continue;
 		}
 
+		RTE_LOG(NOTICE, EAL,
+				"Selected hugepages of size %" PRIu64
+				" mounted at %s\n",
+				hpi->hugepage_sz, hpi->hugedir);
+
 		/* try to obtain a writelock */
 		hpi->lock_descriptor = open(hpi->hugedir, O_RDONLY);
 
