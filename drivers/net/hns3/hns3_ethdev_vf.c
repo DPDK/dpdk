@@ -2472,7 +2472,6 @@ hns3vf_dev_uninit(struct rte_eth_dev *eth_dev)
 	PMD_INIT_FUNC_TRACE();
 
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY) {
-		__atomic_fetch_sub(&hw->secondary_cnt, 1, __ATOMIC_RELAXED);
 		hns3_mp_uninit(eth_dev);
 		return 0;
 	}
