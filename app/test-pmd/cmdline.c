@@ -5771,6 +5771,19 @@ static void cmd_set_bonding_mode_parsed(void *parsed_result,
 {
 	struct cmd_set_bonding_mode_result *res = parsed_result;
 	portid_t port_id = res->port_id;
+	struct rte_port *port = &ports[port_id];
+
+	/*
+	 * Bonding mode changed means resources of device changed, like whether
+	 * started rte timer or not. Device should be restarted when resources
+	 * of device changed.
+	 */
+	if (port->port_status != RTE_PORT_STOPPED) {
+		fprintf(stderr,
+			"\t Error: Can't set bonding mode when port %d is not stopped\n",
+			port_id);
+		return;
+	}
 
 	/* Set the bonding mode for the relevant port. */
 	if (0 != rte_eth_bond_mode_set(port_id, res->value))
