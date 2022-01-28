@@ -16,7 +16,6 @@
 #include <linux/sockios.h>
 #include "af_xdp_deps.h"
 #include <bpf/bpf.h>
-#include <bpf/xsk.h>
 
 #include <rte_ethdev.h>
 #include <ethdev_driver.h>

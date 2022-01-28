@@ -62,6 +62,10 @@ New Features
   The new mode is activated with ``--huge-unlink=never``
   and has security implications, refer to the user and programmer guides.
 
+* **Updated AF_XDP PMD**
+
+  * Added support for libxdp >=v1.2.2.
+
 * **Updated Cisco enic driver.**
 
   * Added rte_flow support for matching GENEVE packets.
