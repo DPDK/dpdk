@@ -328,7 +328,8 @@ sfc_vdpa_pci_remove(struct rte_pci_device *pci_dev)
 
 	sva = sfc_vdpa_get_adapter_by_dev(pci_dev);
 	if (sva == NULL) {
-		sfc_vdpa_info(sva, "invalid device: %s", pci_dev->name);
+		SFC_VDPA_GENERIC_LOG(INFO,
+			"Invalid device: %s.", pci_dev->name);
 		return -1;
 	}
 
