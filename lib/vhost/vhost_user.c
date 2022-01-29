@@ -677,7 +677,7 @@ out_dev_realloc:
 	dev = rte_realloc_socket(old_dev, sizeof(*dev), 0, node);
 	if (!dev) {
 		VHOST_LOG_CONFIG(ERR, "(%s) failed to realloc dev on node %d\n",
-				dev->ifname, node);
+				old_dev->ifname, node);
 		return old_dev;
 	}
 
