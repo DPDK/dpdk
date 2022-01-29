@@ -611,7 +611,7 @@ sfc_vdpa_dev_config(int vid)
 
 	ops_data = sfc_vdpa_get_data_by_dev(vdpa_dev);
 	if (ops_data == NULL) {
-		sfc_vdpa_err(ops_data->dev_handle,
+		SFC_VDPA_GENERIC_LOG(ERR,
 			     "invalid vDPA device : %p, vid : %d",
 			     vdpa_dev, vid);
 		return -1;
@@ -666,7 +666,7 @@ sfc_vdpa_dev_close(int vid)
 
 	ops_data = sfc_vdpa_get_data_by_dev(vdpa_dev);
 	if (ops_data == NULL) {
-		sfc_vdpa_err(ops_data->dev_handle,
+		SFC_VDPA_GENERIC_LOG(ERR,
 			     "invalid vDPA device : %p, vid : %d",
 			     vdpa_dev, vid);
 		return -1;
