@@ -32,7 +32,7 @@ port_init(uint16_t port, struct rte_mempool *mbuf_pool)
 	const uint16_t rx_rings = 1, tx_rings = 1;
 	uint16_t nb_rxd = RX_RING_SIZE;
 	uint16_t nb_txd = TX_RING_SIZE;
-	int retval;
+	int retval = 0;
 	uint16_t q;
 	struct rte_eth_dev_info dev_info;
 	struct rte_eth_txconf txconf;
@@ -102,7 +102,7 @@ port_init(uint16_t port, struct rte_mempool *mbuf_pool)
 	if (retval != 0)
 		return retval;
 
-	return 0;
+	return retval;
 }
 /* >8 End of main functional part of port initialization. */
 
