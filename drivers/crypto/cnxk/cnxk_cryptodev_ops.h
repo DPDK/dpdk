@@ -40,7 +40,9 @@ struct cpt_inflight_req {
 	void *mdata;
 	uint8_t op_flags;
 	void *qp;
-} __rte_aligned(16);
+} __rte_aligned(ROC_ALIGN);
+
+PLT_STATIC_ASSERT(sizeof(struct cpt_inflight_req) == ROC_CACHE_LINE_SZ);
 
 struct pending_queue {
 	/** Array of pending requests */
