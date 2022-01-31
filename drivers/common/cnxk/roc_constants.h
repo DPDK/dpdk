@@ -4,8 +4,9 @@
 #ifndef _ROC_CONSTANTS_H_
 #define _ROC_CONSTANTS_H_
 
-/* Alignment */
-#define ROC_ALIGN 128
+/* ROC Cache */
+#define ROC_CACHE_LINE_SZ 128
+#define ROC_ALIGN	  ROC_CACHE_LINE_SZ
 
 /* LMTST constants */
 /* [CN10K, .) */
