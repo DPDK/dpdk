@@ -2205,6 +2205,8 @@ eth_axgbe_dev_init(struct rte_eth_dev *eth_dev)
 	case AMD_PCI_YC_ROOT_COMPLEX_ID:
 		pdata->xpcs_window_def_reg = PCS_V2_YC_WINDOW_DEF;
 		pdata->xpcs_window_sel_reg = PCS_V2_YC_WINDOW_SELECT;
+		/* Yellow Carp devices do not need cdr workaround */
+		pdata->vdata->an_cdr_workaround = 0;
 		break;
 	case AMD_PCI_SNOWY_ROOT_COMPLEX_ID:
 		pdata->xpcs_window_def_reg = PCS_V2_WINDOW_DEF;
