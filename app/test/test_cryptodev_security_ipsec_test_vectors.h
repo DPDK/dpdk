@@ -102,6 +102,7 @@ struct ipsec_test_data pkt_aes_128_gcm = {
 		.mode = RTE_SECURITY_IPSEC_SA_MODE_TUNNEL,
 		.tunnel.type = RTE_SECURITY_IPSEC_TUNNEL_IPV4,
 		.replay_win_sz = 0,
+		.esn.low = 1,
 	},
 
 	.aead = true,

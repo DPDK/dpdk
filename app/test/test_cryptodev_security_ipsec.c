@@ -178,6 +178,13 @@ test_ipsec_sec_caps_verify(struct rte_security_ipsec_xform *ipsec_xform,
 		return -ENOTSUP;
 	}
 
+	if (ipsec_xform->replay_win_sz > sec_cap->ipsec.replay_win_sz_max) {
+		if (!silent)
+			RTE_LOG(INFO, USER1,
+				"Replay window size is not supported\n");
+		return -ENOTSUP;
+	}
+
 	return 0;
 }
 
@@ -656,7 +663,8 @@ test_ipsec_td_verify(struct rte_mbuf *m, const struct ipsec_test_data *td,
 	if (td->ipsec_xform.direction == RTE_SECURITY_IPSEC_SA_DIR_INGRESS &&
 	    (flags->icv_corrupt ||
 	     flags->sa_expiry_pkts_hard ||
-	     flags->tunnel_hdr_verify))
+	     flags->tunnel_hdr_verify ||
+	     td->ar_packet))
 		return TEST_SUCCESS;
 
 	if (td->ipsec_xform.direction == RTE_SECURITY_IPSEC_SA_DIR_EGRESS &&
@@ -923,12 +931,23 @@ test_ipsec_post_process(struct rte_mbuf *m, const struct ipsec_test_data *td,
 }
 
 int
-test_ipsec_status_check(struct rte_crypto_op *op,
+test_ipsec_status_check(const struct ipsec_test_data *td,
+			struct rte_crypto_op *op,
 			const struct ipsec_test_flags *flags,
 			enum rte_security_ipsec_sa_direction dir,
 			int pkt_num)
 {
 	int ret = TEST_SUCCESS;
+
+	if ((dir == RTE_SECURITY_IPSEC_SA_DIR_INGRESS) &&
+	    td->ar_packet) {
+		if (op->status != RTE_CRYPTO_OP_STATUS_ERROR) {
+			printf("Anti replay test case failed\n");
+			return TEST_FAILED;
+		} else {
+			return TEST_SUCCESS;
+		}
+	}
 
 	if (dir == RTE_SECURITY_IPSEC_SA_DIR_INGRESS &&
 	    flags->sa_expiry_pkts_hard &&

@@ -40,6 +40,8 @@ struct ipsec_test_data {
 	struct rte_security_ipsec_xform ipsec_xform;
 
 	bool aead;
+	/* Antireplay packet */
+	bool ar_packet;
 
 	union {
 		struct {
@@ -82,6 +84,7 @@ struct ipsec_test_flags {
 	bool transport;
 	bool fragment;
 	bool stats_success;
+	bool antireplay;
 	enum df_flags df;
 	enum dscp_flags dscp;
 };
@@ -234,7 +237,8 @@ int test_ipsec_post_process(struct rte_mbuf *m,
 			    struct ipsec_test_data *res_d, bool silent,
 			    const struct ipsec_test_flags *flags);
 
-int test_ipsec_status_check(struct rte_crypto_op *op,
+int test_ipsec_status_check(const struct ipsec_test_data *td,
+			    struct rte_crypto_op *op,
 			    const struct ipsec_test_flags *flags,
 			    enum rte_security_ipsec_sa_direction dir,
 			    int pkt_num);

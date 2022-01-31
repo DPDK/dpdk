@@ -9301,6 +9301,18 @@ test_ipsec_proto_process(const struct ipsec_test_data td[],
 		return TEST_SKIPPED;
 
 	for (i = 0; i < nb_td; i++) {
+		if (flags->antireplay &&
+		    (dir == RTE_SECURITY_IPSEC_SA_DIR_EGRESS)) {
+			sess_conf.ipsec.esn.value = td[i].ipsec_xform.esn.value;
+			ret = rte_security_session_update(ctx,
+				ut_params->sec_session, &sess_conf);
+			if (ret) {
+				printf("Could not update sequence number in "
+				       "session\n");
+				return TEST_SKIPPED;
+			}
+		}
+
 		/* Setup source mbuf payload */
 		ut_params->ibuf = rte_pktmbuf_alloc(ts_params->mbuf_pool);
 		memset(rte_pktmbuf_mtod(ut_params->ibuf, uint8_t *), 0,
@@ -9353,7 +9365,8 @@ test_ipsec_proto_process(const struct ipsec_test_data td[],
 		/* Process crypto operation */
 		process_crypto_request(dev_id, ut_params->op);
 
-		ret = test_ipsec_status_check(ut_params->op, flags, dir, i + 1);
+		ret = test_ipsec_status_check(&td[i], ut_params->op, flags, dir,
+					      i + 1);
 		if (ret != TEST_SUCCESS)
 			goto crypto_op_free;
 
@@ -9902,6 +9915,150 @@ test_ipsec_proto_ipv6_set_dscp_1_inner_0(const void *data __rte_unused)
 	flags.dscp = TEST_IPSEC_SET_DSCP_1_INNER_0;
 
 	return test_ipsec_proto_all(&flags);
+}
+
+static int
+test_ipsec_pkt_replay(const void *test_data, const uint64_t esn[],
+		      bool replayed_pkt[], uint32_t nb_pkts, bool esn_en,
+		      uint64_t winsz)
+{
+	struct ipsec_test_data td_outb[IPSEC_TEST_PACKETS_MAX];
+	struct ipsec_test_data td_inb[IPSEC_TEST_PACKETS_MAX];
+	struct ipsec_test_flags flags;
+	uint32_t i = 0, ret = 0;
+
+	memset(&flags, 0, sizeof(flags));
+	flags.antireplay = true;
+
+	for (i = 0; i < nb_pkts; i++) {
+		memcpy(&td_outb[i], test_data, sizeof(td_outb[i]));
+		td_outb[i].ipsec_xform.options.iv_gen_disable = 1;
+		td_outb[i].ipsec_xform.replay_win_sz = winsz;
+		td_outb[i].ipsec_xform.options.esn = esn_en;
+	}
+
+	for (i = 0; i < nb_pkts; i++)
+		td_outb[i].ipsec_xform.esn.value = esn[i];
+
+	ret = test_ipsec_proto_process(td_outb, td_inb, nb_pkts, true,
+				       &flags);
+	if (ret != TEST_SUCCESS)
+		return ret;
+
+	test_ipsec_td_update(td_inb, td_outb, nb_pkts, &flags);
+
+	for (i = 0; i < nb_pkts; i++) {
+		td_inb[i].ipsec_xform.options.esn = esn_en;
+		/* Set antireplay flag for packets to be dropped */
+		td_inb[i].ar_packet = replayed_pkt[i];
+	}
+
+	ret = test_ipsec_proto_process(td_inb, NULL, nb_pkts, true,
+				       &flags);
+
+	return ret;
+}
+
+static int
+test_ipsec_proto_pkt_antireplay(const void *test_data, uint64_t winsz)
+{
+
+	uint32_t nb_pkts = 5;
+	bool replayed_pkt[5];
+	uint64_t esn[5];
+
+	/* 1. Advance the TOP of the window to WS * 2 */
+	esn[0] = winsz * 2;
+	/* 2. Test sequence number within the new window(WS + 1) */
+	esn[1] = winsz + 1;
+	/* 3. Test sequence number less than the window BOTTOM */
+	esn[2] = winsz;
+	/* 4. Test sequence number in the middle of the window */
+	esn[3] = winsz + (winsz / 2);
+	/* 5. Test replay of the packet in the middle of the window */
+	esn[4] = winsz + (winsz / 2);
+
+	replayed_pkt[0] = false;
+	replayed_pkt[1] = false;
+	replayed_pkt[2] = true;
+	replayed_pkt[3] = false;
+	replayed_pkt[4] = true;
+
+	return test_ipsec_pkt_replay(test_data, esn, replayed_pkt, nb_pkts,
+				     false, winsz);
+}
+
+static int
+test_ipsec_proto_pkt_antireplay1024(const void *test_data)
+{
+	return test_ipsec_proto_pkt_antireplay(test_data, 1024);
+}
+
+static int
+test_ipsec_proto_pkt_antireplay2048(const void *test_data)
+{
+	return test_ipsec_proto_pkt_antireplay(test_data, 2048);
+}
+
+static int
+test_ipsec_proto_pkt_antireplay4096(const void *test_data)
+{
+	return test_ipsec_proto_pkt_antireplay(test_data, 4096);
+}
+
+static int
+test_ipsec_proto_pkt_esn_antireplay(const void *test_data, uint64_t winsz)
+{
+
+	uint32_t nb_pkts = 7;
+	bool replayed_pkt[7];
+	uint64_t esn[7];
+
+	/* Set the initial sequence number */
+	esn[0] = (uint64_t)(0xFFFFFFFF - winsz);
+	/* 1. Advance the TOP of the window to (1<<32 + WS/2) */
+	esn[1] = (uint64_t)((1ULL << 32) + (winsz / 2));
+	/* 2. Test sequence number within new window (1<<32 + WS/2 + 1) */
+	esn[2] = (uint64_t)((1ULL << 32) - (winsz / 2) + 1);
+	/* 3. Test with sequence number within window (1<<32 - 1) */
+	esn[3] = (uint64_t)((1ULL << 32) - 1);
+	/* 4. Test with sequence number within window (1<<32 - 1) */
+	esn[4] = (uint64_t)(1ULL << 32);
+	/* 5. Test with duplicate sequence number within
+	 * new window (1<<32 - 1)
+	 */
+	esn[5] = (uint64_t)((1ULL << 32) - 1);
+	/* 6. Test with duplicate sequence number within new window (1<<32) */
+	esn[6] = (uint64_t)(1ULL << 32);
+
+	replayed_pkt[0] = false;
+	replayed_pkt[1] = false;
+	replayed_pkt[2] = false;
+	replayed_pkt[3] = false;
+	replayed_pkt[4] = false;
+	replayed_pkt[5] = true;
+	replayed_pkt[6] = true;
+
+	return test_ipsec_pkt_replay(test_data, esn, replayed_pkt, nb_pkts,
+				     true, winsz);
+}
+
+static int
+test_ipsec_proto_pkt_esn_antireplay1024(const void *test_data)
+{
+	return test_ipsec_proto_pkt_esn_antireplay(test_data, 1024);
+}
+
+static int
+test_ipsec_proto_pkt_esn_antireplay2048(const void *test_data)
+{
+	return test_ipsec_proto_pkt_esn_antireplay(test_data, 2048);
+}
+
+static int
+test_ipsec_proto_pkt_esn_antireplay4096(const void *test_data)
+{
+	return test_ipsec_proto_pkt_esn_antireplay(test_data, 4096);
 }
 
 static int
@@ -14974,6 +15131,33 @@ static struct unit_test_suite ipsec_proto_testsuite  = {
 			"Tunnel header IPv6 set DSCP 1 (inner 0)",
 			ut_setup_security, ut_teardown,
 			test_ipsec_proto_ipv6_set_dscp_1_inner_0),
+		TEST_CASE_NAMED_WITH_DATA(
+			"Antireplay with window size 1024",
+			ut_setup_security, ut_teardown,
+			test_ipsec_proto_pkt_antireplay1024, &pkt_aes_128_gcm),
+		TEST_CASE_NAMED_WITH_DATA(
+			"Antireplay with window size 2048",
+			ut_setup_security, ut_teardown,
+			test_ipsec_proto_pkt_antireplay2048, &pkt_aes_128_gcm),
+		TEST_CASE_NAMED_WITH_DATA(
+			"Antireplay with window size 4096",
+			ut_setup_security, ut_teardown,
+			test_ipsec_proto_pkt_antireplay4096, &pkt_aes_128_gcm),
+		TEST_CASE_NAMED_WITH_DATA(
+			"ESN and Antireplay with window size 1024",
+			ut_setup_security, ut_teardown,
+			test_ipsec_proto_pkt_esn_antireplay1024,
+			&pkt_aes_128_gcm),
+		TEST_CASE_NAMED_WITH_DATA(
+			"ESN and Antireplay with window size 2048",
+			ut_setup_security, ut_teardown,
+			test_ipsec_proto_pkt_esn_antireplay2048,
+			&pkt_aes_128_gcm),
+		TEST_CASE_NAMED_WITH_DATA(
+			"ESN and Antireplay with window size 4096",
+			ut_setup_security, ut_teardown,
+			test_ipsec_proto_pkt_esn_antireplay4096,
+			&pkt_aes_128_gcm),
 		TEST_CASES_END() /**< NULL terminate unit test array */
 	}
 };
