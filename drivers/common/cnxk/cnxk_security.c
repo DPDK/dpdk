@@ -500,8 +500,10 @@ skip_tunnel_info:
 	offset = offsetof(struct roc_ot_ipsec_outb_sa, ctx);
 	/* Word offset for HW managed SA field */
 	sa->w0.s.hw_ctx_off = offset / 8;
-	/* Context push size is up to hmac_opad_ipad */
-	sa->w0.s.ctx_push_size = sa->w0.s.hw_ctx_off;
+
+	/* Context push size is up to err ctl in HW ctx */
+	sa->w0.s.ctx_push_size = sa->w0.s.hw_ctx_off + 1;
+
 	/* Entire context size in 128B units */
 	offset = sizeof(struct roc_ot_ipsec_outb_sa);
 	sa->w0.s.ctx_size = (PLT_ALIGN_CEIL(offset, ROC_CTX_UNIT_128B) /

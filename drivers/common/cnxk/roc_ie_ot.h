@@ -153,6 +153,13 @@ enum {
 	ROC_IE_OT_REAS_STS_L3P_ERR = 8,
 	ROC_IE_OT_REAS_STS_MAX = 9
 };
+
+enum {
+	ROC_IE_OT_ERR_CTL_MODE_NONE = 0,
+	ROC_IE_OT_ERR_CTL_MODE_CLEAR = 1,
+	ROC_IE_OT_ERR_CTL_MODE_RING = 2,
+};
+
 /* Context units in bytes */
 #define ROC_CTX_UNIT_8B		  8
 #define ROC_CTX_UNIT_128B	  128
@@ -235,7 +242,15 @@ union roc_ot_ipsec_outb_iv {
 };
 
 struct roc_ot_ipsec_outb_ctx_update_reg {
-	uint64_t rsvd;
+	union {
+		struct {
+			uint64_t reserved_0_2 : 3;
+			uint64_t address : 57;
+			uint64_t mode : 4;
+		} s;
+		uint64_t u64;
+	} err_ctl;
+
 	uint64_t esn_val;
 	uint64_t hard_life;
 	uint64_t soft_life;
