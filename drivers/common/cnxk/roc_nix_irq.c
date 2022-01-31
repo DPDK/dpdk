@@ -196,18 +196,42 @@ nix_lf_sq_irq_get_and_clear(struct nix *nix, uint16_t sq)
 	return nix_lf_q_irq_get_and_clear(nix, sq, NIX_LF_SQ_OP_INT, ~0x1ff00);
 }
 
-static inline void
+static inline bool
+nix_lf_is_sqb_null(struct dev *dev, int q)
+{
+	bool is_sqb_null = false;
+	volatile void *ctx;
+	int rc;
+
+	rc = nix_q_ctx_get(dev, NIX_AQ_CTYPE_SQ, q, &ctx);
+	if (rc) {
+		plt_err("Failed to get sq context");
+	} else {
+		is_sqb_null =
+			roc_model_is_cn9k() ?
+				(((__io struct nix_sq_ctx_s *)ctx)->next_sqb ==
+				 0) :
+				(((__io struct nix_cn10k_sq_ctx_s *)ctx)
+					 ->next_sqb == 0);
+	}
+
+	return is_sqb_null;
+}
+
+static inline uint8_t
 nix_lf_sq_debug_reg(struct nix *nix, uint32_t off)
 {
+	uint8_t err = 0;
 	uint64_t reg;
 
 	reg = plt_read64(nix->base + off);
 	if (reg & BIT_ULL(44)) {
-		plt_err("SQ=%d err_code=0x%x", (int)((reg >> 8) & 0xfffff),
-			(uint8_t)(reg & 0xff));
+		err = reg & 0xff;
 		/* Clear valid bit */
 		plt_write64(BIT_ULL(44), nix->base + off);
 	}
+
+	return err;
 }
 
 static void
@@ -229,6 +253,7 @@ nix_lf_q_irq(void *param)
 	struct dev *dev = &nix->dev;
 	int q, cq, rq, sq;
 	uint64_t intr;
+	uint8_t rc;
 
 	intr = plt_read64(nix->base + NIX_LF_QINTX_INT(qintx));
 	if (intr == 0)
@@ -269,22 +294,25 @@ nix_lf_q_irq(void *param)
 		sq = q % nix->qints;
 		irq = nix_lf_sq_irq_get_and_clear(nix, sq);
 
-		if (irq & BIT_ULL(NIX_SQINT_LMT_ERR)) {
-			plt_err("SQ=%d NIX_SQINT_LMT_ERR", sq);
-			nix_lf_sq_debug_reg(nix, NIX_LF_SQ_OP_ERR_DBG);
-		}
-		if (irq & BIT_ULL(NIX_SQINT_MNQ_ERR)) {
-			plt_err("SQ=%d NIX_SQINT_MNQ_ERR", sq);
-			nix_lf_sq_debug_reg(nix, NIX_LF_MNQ_ERR_DBG);
-		}
-		if (irq & BIT_ULL(NIX_SQINT_SEND_ERR)) {
-			plt_err("SQ=%d NIX_SQINT_SEND_ERR", sq);
-			nix_lf_sq_debug_reg(nix, NIX_LF_SEND_ERR_DBG);
-		}
-		if (irq & BIT_ULL(NIX_SQINT_SQB_ALLOC_FAIL)) {
+		/* Detect LMT store error */
+		rc = nix_lf_sq_debug_reg(nix, NIX_LF_SQ_OP_ERR_DBG);
+		if (rc)
+			plt_err("SQ=%d NIX_SQINT_LMT_ERR, errcode %x", sq, rc);
+
+		/* Detect Meta-descriptor enqueue error */
+		rc = nix_lf_sq_debug_reg(nix, NIX_LF_MNQ_ERR_DBG);
+		if (rc)
+			plt_err("SQ=%d NIX_SQINT_MNQ_ERR, errcode %x", sq, rc);
+
+		/* Detect Send error */
+		rc = nix_lf_sq_debug_reg(nix, NIX_LF_SEND_ERR_DBG);
+		if (rc)
+			plt_err("SQ=%d NIX_SQINT_SEND_ERR, errcode %x", sq, rc);
+
+		/* Detect SQB fault, read SQ context to check SQB NULL case */
+		if (irq & BIT_ULL(NIX_SQINT_SQB_ALLOC_FAIL) ||
+		    nix_lf_is_sqb_null(dev, q))
 			plt_err("SQ=%d NIX_SQINT_SQB_ALLOC_FAIL", sq);
-			nix_lf_sq_debug_reg(nix, NIX_LF_SEND_ERR_DBG);
-		}
 	}
 
 	/* Clear interrupt */
