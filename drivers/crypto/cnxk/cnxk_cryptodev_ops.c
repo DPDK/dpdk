@@ -361,6 +361,7 @@ cnxk_cpt_queue_pair_setup(struct rte_cryptodev *dev, uint16_t qp_id,
 	struct roc_cpt *roc_cpt = &vf->cpt;
 	struct rte_pci_device *pci_dev;
 	struct cnxk_cpt_qp *qp;
+	uint32_t nb_desc;
 	int ret;
 
 	if (dev->data->queue_pairs[qp_id] != NULL)
@@ -373,14 +374,17 @@ cnxk_cpt_queue_pair_setup(struct rte_cryptodev *dev, uint16_t qp_id,
 		return -EIO;
 	}
 
-	qp = cnxk_cpt_qp_create(dev, qp_id, conf->nb_descriptors);
+	/* Update nb_desc to next power of 2 to aid in pending queue checks */
+	nb_desc = plt_align32pow2(conf->nb_descriptors);
+
+	qp = cnxk_cpt_qp_create(dev, qp_id, nb_desc);
 	if (qp == NULL) {
 		plt_err("Could not create queue pair %d", qp_id);
 		return -ENOMEM;
 	}
 
 	qp->lf.lf_id = qp_id;
-	qp->lf.nb_desc = conf->nb_descriptors;
+	qp->lf.nb_desc = nb_desc;
 
 	ret = roc_cpt_lf_init(roc_cpt, &qp->lf);
 	if (ret < 0) {
