@@ -60,6 +60,7 @@ generic_headers = files(
         'generic/rte_mcslock.h',
         'generic/rte_memcpy.h',
         'generic/rte_pause.h',
+        'generic/rte_pflock.h',
         'generic/rte_power_intrinsics.h',
         'generic/rte_prefetch.h',
         'generic/rte_rwlock.h',
