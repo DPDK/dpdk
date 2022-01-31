@@ -9,6 +9,7 @@
 
 #include "cnxk_cryptodev.h"
 #include "cnxk_cryptodev_capabilities.h"
+#include "cnxk_security_ar.h"
 
 #define CPT_CAPS_ADD(cnxk_caps, cur_pos, hw_caps, name)                        \
 	do {                                                                   \
@@ -1161,6 +1162,8 @@ cn10k_sec_caps_update(struct rte_security_capability *sec_cap)
 	sec_cap->ipsec.options.ip_csum_enable = 1;
 	sec_cap->ipsec.options.l4_csum_enable = 1;
 	sec_cap->ipsec.options.stats = 1;
+	sec_cap->ipsec.options.esn = 1;
+	sec_cap->ipsec.replay_win_sz_max = ROC_AR_WIN_SIZE_MAX;
 }
 
 static void
@@ -1171,6 +1174,7 @@ cn9k_sec_caps_update(struct rte_security_capability *sec_cap)
 		sec_cap->ipsec.options.iv_gen_disable = 1;
 #endif
 	}
+	sec_cap->ipsec.replay_win_sz_max = CNXK_ON_AR_WIN_SIZE_MAX;
 }
 
 void

@@ -289,6 +289,11 @@ fill_ipsec_common_sa(struct rte_security_ipsec_xform *ipsec,
 	if (cipher_key_len != 0)
 		memcpy(common_sa->cipher_key, cipher_key, cipher_key_len);
 
+	if (ipsec->esn.value) {
+		common_sa->esn_low = ipsec->esn.low;
+		common_sa->esn_hi = ipsec->esn.hi;
+	}
+
 	return 0;
 }
 
@@ -329,6 +334,9 @@ cn9k_ipsec_outb_sa_create(struct cnxk_cpt_qp *qp,
 	sa->ip_id = 1;
 	sa->seq_lo = 1;
 	sa->seq_hi = 0;
+
+	if (ipsec->esn.value)
+		sa->esn = ipsec->esn.value;
 
 	ret = fill_ipsec_common_sa(ipsec, crypto_xform, &out_sa->common_sa);
 	if (ret)
@@ -595,8 +603,8 @@ cn9k_ipsec_inb_sa_create(struct cnxk_cpt_qp *qp,
 		sa->ar.wint = sa->replay_win_sz;
 		sa->ar.base = sa->replay_win_sz;
 
-		in_sa->common_sa.esn_low = 0;
-		in_sa->common_sa.esn_hi = 0;
+		in_sa->common_sa.esn_low = sa->seq_lo;
+		in_sa->common_sa.esn_hi = sa->seq_hi;
 	}
 
 	return cn9k_cpt_enq_sa_write(
@@ -772,6 +780,36 @@ cn9k_sec_session_get_size(void *device __rte_unused)
 	return sizeof(struct cn9k_sec_session);
 }
 
+static int
+cn9k_sec_session_update(void *device, struct rte_security_session *sec_sess,
+			struct rte_security_session_conf *conf)
+{
+	struct rte_cryptodev *crypto_dev = device;
+	struct cnxk_cpt_qp *qp;
+	int ret;
+
+	qp = crypto_dev->data->queue_pairs[0];
+	if (qp == NULL) {
+		plt_err("CPT queue pairs need to be setup for updating security"
+			" session");
+		return -EPERM;
+	}
+
+	if (conf->ipsec.direction == RTE_SECURITY_IPSEC_SA_DIR_INGRESS)
+		return -ENOTSUP;
+
+	ret = cnxk_ipsec_xform_verify(&conf->ipsec, conf->crypto_xform);
+	if (ret)
+		return ret;
+
+	ret = cn9k_ipsec_xform_verify(&conf->ipsec, conf->crypto_xform);
+	if (ret)
+		return ret;
+
+	return cn9k_ipsec_outb_sa_create(qp, &conf->ipsec, conf->crypto_xform,
+					 sec_sess);
+}
+
 /* Update platform specific security ops */
 void
 cn9k_sec_ops_override(void)
@@ -780,4 +818,5 @@ cn9k_sec_ops_override(void)
 	cnxk_sec_ops.session_create = cn9k_sec_session_create;
 	cnxk_sec_ops.session_destroy = cn9k_sec_session_destroy;
 	cnxk_sec_ops.session_get_size = cn9k_sec_session_get_size;
+	cnxk_sec_ops.session_update = cn9k_sec_session_update;
 }

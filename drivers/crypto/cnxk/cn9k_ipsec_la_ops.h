@@ -140,8 +140,20 @@ process_inb_sa(struct rte_crypto_op *cop, struct cn9k_ipsec_sa *sa,
 	if (sa->replay_win_sz) {
 		ret = ipsec_antireplay_check(sa, sa->replay_win_sz, m_src);
 		if (unlikely(ret)) {
-			plt_dp_err("Anti replay check failed");
-			return ret;
+			/* Use PASSTHROUGH op for failed antireplay packet */
+			inst->w4.u64 = 0;
+			inst->w4.s.opcode_major = ROC_SE_MAJOR_OP_MISC;
+			inst->w4.s.opcode_minor =
+				ROC_SE_MISC_MINOR_OP_PASSTHROUGH;
+			inst->w4.s.param1 = 1;
+			/* Send out completion code only */
+			inst->w4.s.param2 =
+				(ROC_IE_ON_SWCC_ANTI_REPLAY << 8) | 0x1;
+			inst->w4.s.dlen = 1;
+			inst->dptr = rte_pktmbuf_iova(m_src);
+			inst->rptr = inst->dptr;
+			inst->w7.u64 = sa->inst.w7;
+			return 0;
 		}
 	}
 

@@ -130,6 +130,7 @@ New Features
   * Added NULL cipher support in lookaside protocol (IPsec) for CN9K & CN10K.
   * Added AES-XCBC support in lookaside protocol (IPsec) for CN9K & CN10K.
   * Added AES-CMAC support in CN9K & CN10K.
+  * Added ESN and anti-replay support in lookaside protocol (IPsec) for CN10K.
 
 * **Added support for CPM2.0b devices to Intel QuickAssist Technology PMD.**
 

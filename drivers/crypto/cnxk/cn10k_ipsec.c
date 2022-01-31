@@ -239,7 +239,7 @@ cn10k_ipsec_inb_sa_create(struct roc_cpt *roc_cpt, struct roc_cpt_lf *lf,
 	}
 
 	/* Trigger CTX flush so that data is written back to DRAM */
-	roc_cpt_lf_ctx_flush(lf, in_sa, false);
+	roc_cpt_lf_ctx_flush(lf, in_sa, true);
 
 	plt_atomic_thread_fence(__ATOMIC_SEQ_CST);
 
@@ -410,6 +410,39 @@ cn10k_sec_session_stats_get(void *device, struct rte_security_session *sess,
 	return 0;
 }
 
+static int
+cn10k_sec_session_update(void *device, struct rte_security_session *sess,
+			 struct rte_security_session_conf *conf)
+{
+	struct rte_cryptodev *crypto_dev = device;
+	struct cn10k_sec_session *priv;
+	struct roc_cpt *roc_cpt;
+	struct cnxk_cpt_qp *qp;
+	struct cnxk_cpt_vf *vf;
+	int ret;
+
+	priv = get_sec_session_private_data(sess);
+	if (priv == NULL)
+		return -EINVAL;
+
+	qp = crypto_dev->data->queue_pairs[0];
+	if (qp == NULL)
+		return -EINVAL;
+
+	if (conf->ipsec.direction == RTE_SECURITY_IPSEC_SA_DIR_INGRESS)
+		return -ENOTSUP;
+
+	ret = cnxk_ipsec_xform_verify(&conf->ipsec, conf->crypto_xform);
+	if (ret)
+		return ret;
+
+	vf = crypto_dev->data->dev_private;
+	roc_cpt = &vf->cpt;
+
+	return cn10k_ipsec_outb_sa_create(roc_cpt, &qp->lf, &conf->ipsec,
+					  conf->crypto_xform, sess);
+}
+
 /* Update platform specific security ops */
 void
 cn10k_sec_ops_override(void)
@@ -419,4 +452,5 @@ cn10k_sec_ops_override(void)
 	cnxk_sec_ops.session_destroy = cn10k_sec_session_destroy;
 	cnxk_sec_ops.session_get_size = cn10k_sec_session_get_size;
 	cnxk_sec_ops.session_stats_get = cn10k_sec_session_stats_get;
+	cnxk_sec_ops.session_update = cn10k_sec_session_update;
 }

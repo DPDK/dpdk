@@ -279,6 +279,8 @@ CN10XX Features supported
 
 * IPv4
 * ESP
+* ESN
+* Anti-replay
 * Tunnel mode
 * Transport mode
 * UDP Encapsulation

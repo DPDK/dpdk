@@ -492,6 +492,9 @@ skip_tunnel_info:
 	/* ESN */
 	sa->w0.s.esn_en = !!ipsec_xfrm->options.esn;
 
+	if (ipsec_xfrm->esn.value)
+		sa->ctx.esn_val = ipsec_xfrm->esn.value - 1;
+
 	if (ipsec_xfrm->options.udp_encap) {
 		sa->w10.s.udp_src_port = 4500;
 		sa->w10.s.udp_dst_port = 4500;

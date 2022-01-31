@@ -18,6 +18,8 @@ enum roc_ie_on_ucc_ipsec {
 	ROC_IE_ON_UCC_SUCCESS = 0,
 	ROC_IE_ON_AUTH_UNSUPPORTED = 0xB0,
 	ROC_IE_ON_ENCRYPT_UNSUPPORTED = 0xB1,
+	/* Software defined completion code for anti-replay failed packets */
+	ROC_IE_ON_SWCC_ANTI_REPLAY = 0xE7,
 };
 
 /* Helper macros */
