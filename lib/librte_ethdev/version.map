@@ -251,6 +251,7 @@ INTERNAL {
 	rte_eth_dev_callback_process;
 	rte_eth_dev_create;
 	rte_eth_dev_destroy;
+	rte_eth_dev_get_by_name;
 	rte_eth_dev_is_rx_hairpin_queue;
 	rte_eth_dev_is_tx_hairpin_queue;
 	rte_eth_dev_probing_finish;

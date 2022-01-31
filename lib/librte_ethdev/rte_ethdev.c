@@ -839,6 +839,17 @@ rte_eth_dev_get_port_by_name(const char *name, uint16_t *port_id)
 	return -ENODEV;
 }
 
+struct rte_eth_dev *
+rte_eth_dev_get_by_name(const char *name)
+{
+	uint16_t pid;
+
+	if (rte_eth_dev_get_port_by_name(name, &pid))
+		return NULL;
+
+	return &rte_eth_devices[pid];
+}
+
 static int
 eth_err(uint16_t port_id, int ret)
 {
