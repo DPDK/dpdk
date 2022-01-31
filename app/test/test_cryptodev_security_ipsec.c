@@ -432,6 +432,10 @@ test_ipsec_td_prepare(const struct crypto_param *param1,
 		if (flags->df == TEST_IPSEC_COPY_DF_INNER_0 ||
 		    flags->df == TEST_IPSEC_COPY_DF_INNER_1)
 			td->ipsec_xform.options.copy_df = 1;
+
+		if (flags->dscp == TEST_IPSEC_COPY_DSCP_INNER_0 ||
+		    flags->dscp == TEST_IPSEC_COPY_DSCP_INNER_1)
+			td->ipsec_xform.options.copy_dscp = 1;
 	}
 }
 
@@ -771,6 +775,87 @@ test_ipsec_res_d_prepare(struct rte_mbuf *m, const struct ipsec_test_data *td,
 	return TEST_SUCCESS;
 }
 
+static int
+test_ipsec_iph4_hdr_validate(const struct rte_ipv4_hdr *iph4,
+			     const struct ipsec_test_flags *flags)
+{
+	uint8_t tos, dscp;
+	uint16_t f_off;
+
+	if (!is_valid_ipv4_pkt(iph4)) {
+		printf("Tunnel outer header is not IPv4\n");
+		return -1;
+	}
+
+	f_off = rte_be_to_cpu_16(iph4->fragment_offset);
+	if (flags->df == TEST_IPSEC_COPY_DF_INNER_1 ||
+	    flags->df == TEST_IPSEC_SET_DF_1_INNER_0) {
+		if (!(f_off & RTE_IPV4_HDR_DF_FLAG)) {
+			printf("DF bit is not set\n");
+			return -1;
+		}
+	} else {
+		if (f_off & RTE_IPV4_HDR_DF_FLAG) {
+			printf("DF bit is set\n");
+			return -1;
+		}
+	}
+
+	tos = iph4->type_of_service;
+	dscp = (tos & RTE_IPV4_HDR_DSCP_MASK) >> 2;
+
+	if (flags->dscp == TEST_IPSEC_COPY_DSCP_INNER_1 ||
+	    flags->dscp == TEST_IPSEC_SET_DSCP_1_INNER_0) {
+		if (dscp != TEST_IPSEC_DSCP_VAL) {
+			printf("DSCP value is not matching [exp: %x, actual: %x]\n",
+			       TEST_IPSEC_DSCP_VAL, dscp);
+			return -1;
+		}
+	} else {
+		if (dscp != 0) {
+			printf("DSCP value is set [exp: 0, actual: %x]\n",
+			       dscp);
+			return -1;
+		}
+	}
+
+	return 0;
+}
+
+static int
+test_ipsec_iph6_hdr_validate(const struct rte_ipv6_hdr *iph6,
+			     const struct ipsec_test_flags *flags)
+{
+	uint32_t vtc_flow;
+	uint8_t dscp;
+
+	if (!is_valid_ipv6_pkt(iph6)) {
+		printf("Tunnel outer header is not IPv6\n");
+		return -1;
+	}
+
+	vtc_flow = rte_be_to_cpu_32(iph6->vtc_flow);
+	dscp = (vtc_flow & RTE_IPV6_HDR_DSCP_MASK) >>
+	       (RTE_IPV6_HDR_TC_SHIFT + 2);
+
+	if (flags->dscp == TEST_IPSEC_COPY_DSCP_INNER_1 ||
+	    flags->dscp == TEST_IPSEC_SET_DSCP_1_INNER_0) {
+		if (dscp != TEST_IPSEC_DSCP_VAL) {
+			printf("DSCP value is not matching [exp: %x, actual: %x]\n",
+			       TEST_IPSEC_DSCP_VAL, dscp);
+			return -1;
+		}
+	} else {
+		if (dscp != 0) {
+			printf("DSCP value is set [exp: 0, actual: %x]\n",
+			       dscp);
+			return -1;
+		}
+	}
+
+	return 0;
+}
+
 int
 test_ipsec_post_process(struct rte_mbuf *m, const struct ipsec_test_data *td,
 			struct ipsec_test_data *res_d, bool silent,
@@ -808,33 +893,12 @@ test_ipsec_post_process(struct rte_mbuf *m, const struct ipsec_test_data *td,
 		} else {
 			if (td->ipsec_xform.tunnel.type ==
 					RTE_SECURITY_IPSEC_TUNNEL_IPV4) {
-				uint16_t f_off;
-
-				if (is_valid_ipv4_pkt(iph4) == false) {
-					printf("Tunnel outer header is not IPv4\n");
+				if (test_ipsec_iph4_hdr_validate(iph4, flags))
 					return TEST_FAILED;
-				}
-
-				f_off = rte_be_to_cpu_16(iph4->fragment_offset);
-
-				if (flags->df == TEST_IPSEC_COPY_DF_INNER_1 ||
-				    flags->df == TEST_IPSEC_SET_DF_1_INNER_0) {
-					if (!(f_off & RTE_IPV4_HDR_DF_FLAG)) {
-						printf("DF bit is not set\n");
-						return TEST_FAILED;
-					}
-				} else {
-					if ((f_off & RTE_IPV4_HDR_DF_FLAG)) {
-						printf("DF bit is set\n");
-						return TEST_FAILED;
-					}
-				}
 			} else {
 				iph6 = (const struct rte_ipv6_hdr *)output_text;
-				if (is_valid_ipv6_pkt(iph6) == false) {
-					printf("Tunnel outer header is not IPv6\n");
+				if (test_ipsec_iph6_hdr_validate(iph6, flags))
 					return TEST_FAILED;
-				}
 			}
 		}
 	}
@@ -942,8 +1006,8 @@ int
 test_ipsec_pkt_update(uint8_t *pkt, const struct ipsec_test_flags *flags)
 {
 	struct rte_ipv4_hdr *iph4;
+	struct rte_ipv6_hdr *iph6;
 	bool cksum_dirty = false;
-	uint16_t frag_off;
 
 	iph4 = (struct rte_ipv4_hdr *)pkt;
 
@@ -951,9 +1015,10 @@ test_ipsec_pkt_update(uint8_t *pkt, const struct ipsec_test_flags *flags)
 	    flags->df == TEST_IPSEC_SET_DF_0_INNER_1 ||
 	    flags->df == TEST_IPSEC_COPY_DF_INNER_0 ||
 	    flags->df == TEST_IPSEC_SET_DF_1_INNER_0) {
+		uint16_t frag_off;
 
 		if (!is_ipv4(iph4)) {
-			printf("Invalid packet type");
+			printf("Invalid packet type\n");
 			return -1;
 		}
 
@@ -967,6 +1032,41 @@ test_ipsec_pkt_update(uint8_t *pkt, const struct ipsec_test_flags *flags)
 
 		iph4->fragment_offset = rte_cpu_to_be_16(frag_off);
 		cksum_dirty = true;
+	}
+
+	if (flags->dscp == TEST_IPSEC_COPY_DSCP_INNER_1 ||
+	    flags->dscp == TEST_IPSEC_SET_DSCP_0_INNER_1 ||
+	    flags->dscp == TEST_IPSEC_COPY_DSCP_INNER_0 ||
+	    flags->dscp == TEST_IPSEC_SET_DSCP_1_INNER_0) {
+
+		if (is_ipv4(iph4)) {
+			uint8_t tos;
+
+			tos = iph4->type_of_service;
+			if (flags->dscp == TEST_IPSEC_COPY_DSCP_INNER_1 ||
+			    flags->dscp == TEST_IPSEC_SET_DSCP_0_INNER_1)
+				tos |= (RTE_IPV4_HDR_DSCP_MASK &
+					(TEST_IPSEC_DSCP_VAL << 2));
+			else
+				tos &= ~RTE_IPV4_HDR_DSCP_MASK;
+
+			iph4->type_of_service = tos;
+			cksum_dirty = true;
+		} else {
+			uint32_t vtc_flow;
+
+			iph6 = (struct rte_ipv6_hdr *)pkt;
+
+			vtc_flow = rte_be_to_cpu_32(iph6->vtc_flow);
+			if (flags->dscp == TEST_IPSEC_COPY_DSCP_INNER_1 ||
+			    flags->dscp == TEST_IPSEC_SET_DSCP_0_INNER_1)
+				vtc_flow |= (RTE_IPV6_HDR_DSCP_MASK &
+					     (TEST_IPSEC_DSCP_VAL << (RTE_IPV6_HDR_TC_SHIFT + 2)));
+			else
+				vtc_flow &= ~RTE_IPV6_HDR_DSCP_MASK;
+
+			iph6->vtc_flow = rte_cpu_to_be_32(vtc_flow);
+		}
 	}
 
 	if (cksum_dirty && is_ipv4(iph4)) {

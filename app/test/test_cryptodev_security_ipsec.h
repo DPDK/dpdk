@@ -57,6 +57,15 @@ enum df_flags {
 	TEST_IPSEC_SET_DF_1_INNER_0,
 };
 
+#define TEST_IPSEC_DSCP_VAL 0x12
+
+enum dscp_flags {
+	TEST_IPSEC_COPY_DSCP_INNER_0 = 1,
+	TEST_IPSEC_COPY_DSCP_INNER_1,
+	TEST_IPSEC_SET_DSCP_0_INNER_1,
+	TEST_IPSEC_SET_DSCP_1_INNER_0,
+};
+
 struct ipsec_test_flags {
 	bool display_alg;
 	bool sa_expiry_pkts_soft;
@@ -74,6 +83,7 @@ struct ipsec_test_flags {
 	bool fragment;
 	bool stats_success;
 	enum df_flags df;
+	enum dscp_flags dscp;
 };
 
 struct crypto_param {

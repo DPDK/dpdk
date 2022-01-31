@@ -9185,7 +9185,21 @@ test_ipsec_proto_process(const struct ipsec_test_data td[],
 			if (flags->df == TEST_IPSEC_SET_DF_1_INNER_0)
 				ipsec_xform.tunnel.ipv4.df = 1;
 
+			if (flags->dscp == TEST_IPSEC_SET_DSCP_0_INNER_1)
+				ipsec_xform.tunnel.ipv4.dscp = 0;
+
+			if (flags->dscp == TEST_IPSEC_SET_DSCP_1_INNER_0)
+				ipsec_xform.tunnel.ipv4.dscp =
+						TEST_IPSEC_DSCP_VAL;
+
 		} else {
+			if (flags->dscp == TEST_IPSEC_SET_DSCP_0_INNER_1)
+				ipsec_xform.tunnel.ipv6.dscp = 0;
+
+			if (flags->dscp == TEST_IPSEC_SET_DSCP_1_INNER_0)
+				ipsec_xform.tunnel.ipv6.dscp =
+						TEST_IPSEC_DSCP_VAL;
+
 			memcpy(&ipsec_xform.tunnel.ipv6.src_addr, &v6_src,
 			       sizeof(v6_src));
 			memcpy(&ipsec_xform.tunnel.ipv6.dst_addr, &v6_dst,
@@ -9766,6 +9780,126 @@ test_ipsec_proto_set_df_1_inner_0(const void *data __rte_unused)
 	memset(&flags, 0, sizeof(flags));
 
 	flags.df = TEST_IPSEC_SET_DF_1_INNER_0;
+
+	return test_ipsec_proto_all(&flags);
+}
+
+static int
+test_ipsec_proto_ipv4_copy_dscp_inner_0(const void *data __rte_unused)
+{
+	struct ipsec_test_flags flags;
+
+	memset(&flags, 0, sizeof(flags));
+
+	flags.dscp = TEST_IPSEC_COPY_DSCP_INNER_0;
+
+	return test_ipsec_proto_all(&flags);
+}
+
+static int
+test_ipsec_proto_ipv4_copy_dscp_inner_1(const void *data __rte_unused)
+{
+	struct ipsec_test_flags flags;
+
+	memset(&flags, 0, sizeof(flags));
+
+	flags.dscp = TEST_IPSEC_COPY_DSCP_INNER_1;
+
+	return test_ipsec_proto_all(&flags);
+}
+
+static int
+test_ipsec_proto_ipv4_set_dscp_0_inner_1(const void *data __rte_unused)
+{
+	struct ipsec_test_flags flags;
+
+	if (gbl_driver_id == rte_cryptodev_driver_id_get(
+			RTE_STR(CRYPTODEV_NAME_CN9K_PMD)))
+		return TEST_SKIPPED;
+
+	memset(&flags, 0, sizeof(flags));
+
+	flags.dscp = TEST_IPSEC_SET_DSCP_0_INNER_1;
+
+	return test_ipsec_proto_all(&flags);
+}
+
+static int
+test_ipsec_proto_ipv4_set_dscp_1_inner_0(const void *data __rte_unused)
+{
+	struct ipsec_test_flags flags;
+
+	if (gbl_driver_id == rte_cryptodev_driver_id_get(
+			RTE_STR(CRYPTODEV_NAME_CN9K_PMD)))
+		return TEST_SKIPPED;
+
+	memset(&flags, 0, sizeof(flags));
+
+	flags.dscp = TEST_IPSEC_SET_DSCP_1_INNER_0;
+
+	return test_ipsec_proto_all(&flags);
+}
+
+static int
+test_ipsec_proto_ipv6_copy_dscp_inner_0(const void *data __rte_unused)
+{
+	struct ipsec_test_flags flags;
+
+	memset(&flags, 0, sizeof(flags));
+
+	flags.ipv6 = true;
+	flags.tunnel_ipv6 = true;
+	flags.dscp = TEST_IPSEC_COPY_DSCP_INNER_0;
+
+	return test_ipsec_proto_all(&flags);
+}
+
+static int
+test_ipsec_proto_ipv6_copy_dscp_inner_1(const void *data __rte_unused)
+{
+	struct ipsec_test_flags flags;
+
+	memset(&flags, 0, sizeof(flags));
+
+	flags.ipv6 = true;
+	flags.tunnel_ipv6 = true;
+	flags.dscp = TEST_IPSEC_COPY_DSCP_INNER_1;
+
+	return test_ipsec_proto_all(&flags);
+}
+
+static int
+test_ipsec_proto_ipv6_set_dscp_0_inner_1(const void *data __rte_unused)
+{
+	struct ipsec_test_flags flags;
+
+	if (gbl_driver_id == rte_cryptodev_driver_id_get(
+			RTE_STR(CRYPTODEV_NAME_CN9K_PMD)))
+		return TEST_SKIPPED;
+
+	memset(&flags, 0, sizeof(flags));
+
+	flags.ipv6 = true;
+	flags.tunnel_ipv6 = true;
+	flags.dscp = TEST_IPSEC_SET_DSCP_0_INNER_1;
+
+	return test_ipsec_proto_all(&flags);
+}
+
+static int
+test_ipsec_proto_ipv6_set_dscp_1_inner_0(const void *data __rte_unused)
+{
+	struct ipsec_test_flags flags;
+
+	if (gbl_driver_id == rte_cryptodev_driver_id_get(
+			RTE_STR(CRYPTODEV_NAME_CN9K_PMD)))
+		return TEST_SKIPPED;
+
+	memset(&flags, 0, sizeof(flags));
+
+	flags.ipv6 = true;
+	flags.tunnel_ipv6 = true;
+	flags.dscp = TEST_IPSEC_SET_DSCP_1_INNER_0;
 
 	return test_ipsec_proto_all(&flags);
 }
@@ -14808,6 +14942,38 @@ static struct unit_test_suite ipsec_proto_testsuite  = {
 			"Tunnel header set DF 1 (inner 0)",
 			ut_setup_security, ut_teardown,
 			test_ipsec_proto_set_df_1_inner_0),
+		TEST_CASE_NAMED_ST(
+			"Tunnel header IPv4 copy DSCP (inner 0)",
+			ut_setup_security, ut_teardown,
+			test_ipsec_proto_ipv4_copy_dscp_inner_0),
+		TEST_CASE_NAMED_ST(
+			"Tunnel header IPv4 copy DSCP (inner 1)",
+			ut_setup_security, ut_teardown,
+			test_ipsec_proto_ipv4_copy_dscp_inner_1),
+		TEST_CASE_NAMED_ST(
+			"Tunnel header IPv4 set DSCP 0 (inner 1)",
+			ut_setup_security, ut_teardown,
+			test_ipsec_proto_ipv4_set_dscp_0_inner_1),
+		TEST_CASE_NAMED_ST(
+			"Tunnel header IPv4 set DSCP 1 (inner 0)",
+			ut_setup_security, ut_teardown,
+			test_ipsec_proto_ipv4_set_dscp_1_inner_0),
+		TEST_CASE_NAMED_ST(
+			"Tunnel header IPv6 copy DSCP (inner 0)",
+			ut_setup_security, ut_teardown,
+			test_ipsec_proto_ipv6_copy_dscp_inner_0),
+		TEST_CASE_NAMED_ST(
+			"Tunnel header IPv6 copy DSCP (inner 1)",
+			ut_setup_security, ut_teardown,
+			test_ipsec_proto_ipv6_copy_dscp_inner_1),
+		TEST_CASE_NAMED_ST(
+			"Tunnel header IPv6 set DSCP 0 (inner 1)",
+			ut_setup_security, ut_teardown,
+			test_ipsec_proto_ipv6_set_dscp_0_inner_1),
+		TEST_CASE_NAMED_ST(
+			"Tunnel header IPv6 set DSCP 1 (inner 0)",
+			ut_setup_security, ut_teardown,
+			test_ipsec_proto_ipv6_set_dscp_1_inner_0),
 		TEST_CASES_END() /**< NULL terminate unit test array */
 	}
 };
