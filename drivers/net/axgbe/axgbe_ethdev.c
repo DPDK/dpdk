@@ -173,6 +173,8 @@ static const struct axgbe_xstats axgbe_xstats_strings[] = {
 /* The set of PCI devices this driver supports */
 #define AMD_PCI_VENDOR_ID       0x1022
 #define AMD_PCI_RV_ROOT_COMPLEX_ID	0x15d0
+#define AMD_PCI_YC_ROOT_COMPLEX_ID	0x14b5
+#define AMD_PCI_SNOWY_ROOT_COMPLEX_ID	0x1450
 #define AMD_PCI_AXGBE_DEVICE_V2A 0x1458
 #define AMD_PCI_AXGBE_DEVICE_V2B 0x1459
 
@@ -2178,17 +2180,6 @@ eth_axgbe_dev_init(struct rte_eth_dev *eth_dev)
 	pci_dev = RTE_DEV_TO_PCI(eth_dev->device);
 	pdata->pci_dev = pci_dev;
 
-	/*
-	 * Use root complex device ID to differentiate RV AXGBE vs SNOWY AXGBE
-	 */
-	if ((get_pci_rc_devid()) == AMD_PCI_RV_ROOT_COMPLEX_ID) {
-		pdata->xpcs_window_def_reg = PCS_V2_RV_WINDOW_DEF;
-		pdata->xpcs_window_sel_reg = PCS_V2_RV_WINDOW_SELECT;
-	} else {
-		pdata->xpcs_window_def_reg = PCS_V2_WINDOW_DEF;
-		pdata->xpcs_window_sel_reg = PCS_V2_WINDOW_SELECT;
-	}
-
 	pdata->xgmac_regs =
 		(void *)pci_dev->mem_resource[AXGBE_AXGMAC_BAR].addr;
 	pdata->xprop_regs = (void *)((uint8_t *)pdata->xgmac_regs
@@ -2202,6 +2193,27 @@ eth_axgbe_dev_init(struct rte_eth_dev *eth_dev)
 		pdata->vdata = &axgbe_v2a;
 	else
 		pdata->vdata = &axgbe_v2b;
+
+	/*
+	 * Use PCI root complex device ID to identify the CPU
+	 */
+	switch (get_pci_rc_devid()) {
+	case AMD_PCI_RV_ROOT_COMPLEX_ID:
+		pdata->xpcs_window_def_reg = PCS_V2_RV_WINDOW_DEF;
+		pdata->xpcs_window_sel_reg = PCS_V2_RV_WINDOW_SELECT;
+		break;
+	case AMD_PCI_YC_ROOT_COMPLEX_ID:
+		pdata->xpcs_window_def_reg = PCS_V2_YC_WINDOW_DEF;
+		pdata->xpcs_window_sel_reg = PCS_V2_YC_WINDOW_SELECT;
+		break;
+	case AMD_PCI_SNOWY_ROOT_COMPLEX_ID:
+		pdata->xpcs_window_def_reg = PCS_V2_WINDOW_DEF;
+		pdata->xpcs_window_sel_reg = PCS_V2_WINDOW_SELECT;
+		break;
+	default:
+		PMD_DRV_LOG(ERR, "No supported devices found\n");
+		return -ENODEV;
+	}
 
 	/* Configure the PCS indirect addressing support */
 	reg = XPCS32_IOREAD(pdata, pdata->xpcs_window_def_reg);
