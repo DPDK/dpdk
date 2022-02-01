@@ -504,6 +504,7 @@ efx_rx_scale_context_alloc(
 	__in		uint32_t num_queues,
 	__out		uint32_t *rss_contextp)
 {
+	uint32_t table_nentries = EFX_RSS_TBL_SIZE;
 	const efx_rx_ops_t *erxop = enp->en_erxop;
 	efx_rc_t rc;
 
@@ -515,8 +516,11 @@ efx_rx_scale_context_alloc(
 		goto fail1;
 	}
 
+	if (type == EFX_RX_SCALE_EVEN_SPREAD)
+		table_nentries = 0;
+
 	if ((rc = erxop->erxo_scale_context_alloc(enp, type, num_queues,
-			    EFX_RSS_TBL_SIZE, rss_contextp)) != 0) {
+			    table_nentries, rss_contextp)) != 0) {
 		goto fail2;
 	}
 

@@ -1496,6 +1496,11 @@ typedef struct efx_nic_cfg_s {
 	uint32_t		enc_rx_buf_align_end;
 #if EFSYS_OPT_RX_SCALE
 	/*
+	 * The limit on how many queues an RSS context in the even spread
+	 * mode can span. When this mode is not supported, the value is 0.
+	 */
+	uint32_t		enc_rx_scale_even_spread_max_nqueues;
+	/*
 	 * The limit on how many queues an RSS indirection table can address.
 	 *
 	 * Indirection table entries are offsets relative to a base queue ID.
@@ -2784,7 +2789,8 @@ typedef enum efx_rx_hash_support_e {
 typedef enum efx_rx_scale_context_type_e {
 	EFX_RX_SCALE_UNAVAILABLE = 0,	/* No RX scale context */
 	EFX_RX_SCALE_EXCLUSIVE,		/* Writable key/indirection table */
-	EFX_RX_SCALE_SHARED		/* Read-only key/indirection table */
+	EFX_RX_SCALE_SHARED,		/* Read-only key/indirection table */
+	EFX_RX_SCALE_EVEN_SPREAD,	/* No indirection table, writable key */
 } efx_rx_scale_context_type_t;
 
 /*

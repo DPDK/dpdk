@@ -121,6 +121,9 @@ siena_board_cfg(
 #if EFSYS_OPT_RX_SCALE
 	encp->enc_rx_scale_indirection_max_nqueues = EFX_MAXRSS;
 
+	/* There is no support for the even spread contexts. */
+	encp->enc_rx_scale_even_spread_max_nqueues = 0;
+
 	/* There is one RSS context per function */
 	encp->enc_rx_scale_max_exclusive_contexts = 1;
 

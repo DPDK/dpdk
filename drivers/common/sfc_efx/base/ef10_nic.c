@@ -1482,10 +1482,32 @@ ef10_get_datapath_caps(
 		encp->enc_rx_scale_tbl_max_nentries =
 		    MCDI_OUT_DWORD(req,
 			GET_CAPABILITIES_V9_OUT_RSS_MAX_INDIRECTION_TABLE_SIZE);
+
+		if (CAP_FLAGS3(req, RSS_EVEN_SPREADING)) {
+#define	RSS_MAX_EVEN_SPREADING_QUEUES				\
+	GET_CAPABILITIES_V9_OUT_RSS_MAX_EVEN_SPREADING_QUEUES
+			/*
+			 * The even spreading mode distributes traffic across
+			 * the specified number of queues without the need to
+			 * allocate precious indirection entry pool resources.
+			 */
+			encp->enc_rx_scale_even_spread_max_nqueues =
+			    MCDI_OUT_DWORD(req, RSS_MAX_EVEN_SPREADING_QUEUES);
+#undef RSS_MAX_EVEN_SPREADING_QUEUES
+		} else {
+			/* There is no support for the even spread contexts. */
+			encp->enc_rx_scale_even_spread_max_nqueues = 0;
+		}
 	} else {
 		encp->enc_rx_scale_indirection_max_nqueues = EFX_MAXRSS;
 		encp->enc_rx_scale_tbl_min_nentries = EFX_RSS_TBL_SIZE;
 		encp->enc_rx_scale_tbl_max_nentries = EFX_RSS_TBL_SIZE;
+
+		/*
+		 * Assume that there is no support
+		 * for the even spread contexts.
+		 */
+		encp->enc_rx_scale_even_spread_max_nqueues = 0;
 	}
 #endif /* EFSYS_OPT_RX_SCALE */
 

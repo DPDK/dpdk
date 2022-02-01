@@ -23,30 +23,45 @@ efx_mcdi_rss_context_alloc(
 	efx_mcdi_req_t req;
 	EFX_MCDI_DECLARE_BUF(payload, MC_CMD_RSS_CONTEXT_ALLOC_V2_IN_LEN,
 		MC_CMD_RSS_CONTEXT_ALLOC_OUT_LEN);
+	uint32_t table_nentries_min;
+	uint32_t table_nentries_max;
+	uint32_t num_queues_max;
 	uint32_t rss_context;
 	uint32_t context_type;
 	efx_rc_t rc;
 
-	if (num_queues > encp->enc_rx_scale_indirection_max_nqueues) {
+	switch (type) {
+	case EFX_RX_SCALE_EXCLUSIVE:
+		context_type = MC_CMD_RSS_CONTEXT_ALLOC_IN_TYPE_EXCLUSIVE;
+		num_queues_max = encp->enc_rx_scale_indirection_max_nqueues;
+		table_nentries_min = encp->enc_rx_scale_tbl_min_nentries;
+		table_nentries_max = encp->enc_rx_scale_tbl_max_nentries;
+		break;
+	case EFX_RX_SCALE_SHARED:
+		context_type = MC_CMD_RSS_CONTEXT_ALLOC_IN_TYPE_SHARED;
+		num_queues_max = encp->enc_rx_scale_indirection_max_nqueues;
+		table_nentries_min = encp->enc_rx_scale_tbl_min_nentries;
+		table_nentries_max = encp->enc_rx_scale_tbl_max_nentries;
+		break;
+	case EFX_RX_SCALE_EVEN_SPREAD:
+		context_type = MC_CMD_RSS_CONTEXT_ALLOC_IN_TYPE_EVEN_SPREADING;
+		num_queues_max = encp->enc_rx_scale_even_spread_max_nqueues;
+		table_nentries_min = 0;
+		table_nentries_max = 0;
+		break;
+	default:
 		rc = EINVAL;
 		goto fail1;
 	}
 
-	if (table_nentries < encp->enc_rx_scale_tbl_min_nentries ||
-	    table_nentries > encp->enc_rx_scale_tbl_max_nentries ||
-	    !ISP2(table_nentries)) {
+	if (num_queues == 0 || num_queues > num_queues_max) {
 		rc = EINVAL;
 		goto fail2;
 	}
 
-	switch (type) {
-	case EFX_RX_SCALE_EXCLUSIVE:
-		context_type = MC_CMD_RSS_CONTEXT_ALLOC_IN_TYPE_EXCLUSIVE;
-		break;
-	case EFX_RX_SCALE_SHARED:
-		context_type = MC_CMD_RSS_CONTEXT_ALLOC_IN_TYPE_SHARED;
-		break;
-	default:
+	if (table_nentries < table_nentries_min ||
+	    table_nentries > table_nentries_max ||
+	    (table_nentries != 0 && !ISP2(table_nentries))) {
 		rc = EINVAL;
 		goto fail3;
 	}
@@ -69,6 +84,9 @@ efx_mcdi_rss_context_alloc(
 	 * indirection table offsets.
 	 * For shared contexts, the provided context will spread traffic over
 	 * NUM_QUEUES many queues.
+	 * For the even spread contexts, the provided context will spread
+	 * traffic over NUM_QUEUES many queues, but that will not involve
+	 * the use of precious indirection table resources in the adapter.
 	 */
 	MCDI_IN_SET_DWORD(req, RSS_CONTEXT_ALLOC_IN_NUM_QUEUES, num_queues);
 
