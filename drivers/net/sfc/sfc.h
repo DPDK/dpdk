@@ -27,6 +27,7 @@
 #include "sfc_debug.h"
 #include "sfc_log.h"
 #include "sfc_filter.h"
+#include "sfc_flow_rss.h"
 #include "sfc_flow_tunnel.h"
 #include "sfc_sriov.h"
 #include "sfc_mae.h"
@@ -118,7 +119,7 @@ struct sfc_rss {
 	unsigned int			tbl[EFX_RSS_TBL_SIZE];
 	uint8_t				key[EFX_RSS_KEY_SIZE];
 
-	uint32_t			dummy_rss_context;
+	struct sfc_flow_rss_ctx		dummy_ctx;
 };
 
 /* Adapter private data shared by primary and secondary processes */
@@ -238,6 +239,7 @@ struct sfc_adapter {
 	struct sfc_intr			intr;
 	struct sfc_port			port;
 	struct sfc_sw_stats		sw_stats;
+	struct sfc_flow_rss		flow_rss;
 	/* Registry of tunnel offload contexts */
 	struct sfc_flow_tunnel		flow_tunnels[SFC_FT_MAX_NTUNNELS];
 	struct sfc_filter		filter;

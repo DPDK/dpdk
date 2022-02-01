@@ -848,7 +848,9 @@ sfc_rss_attach(struct sfc_adapter *sa)
 	efx_intr_fini(sa->nic);
 
 	rte_memcpy(rss->key, default_rss_key, sizeof(rss->key));
-	rss->dummy_rss_context = EFX_RSS_CONTEXT_DEFAULT;
+	memset(&rss->dummy_ctx, 0, sizeof(rss->dummy_ctx));
+	rss->dummy_ctx.conf.qid_span = 1;
+	rss->dummy_ctx.dummy = true;
 
 	return 0;
 
@@ -970,6 +972,10 @@ sfc_attach(struct sfc_adapter *sa)
 	if (rc != 0)
 		goto fail_rss_attach;
 
+	rc = sfc_flow_rss_attach(sa);
+	if (rc != 0)
+		goto fail_flow_rss_attach;
+
 	rc = sfc_filter_attach(sa);
 	if (rc != 0)
 		goto fail_filter_attach;
@@ -1033,6 +1039,9 @@ fail_mae_counter_rxq_attach:
 	sfc_filter_detach(sa);
 
 fail_filter_attach:
+	sfc_flow_rss_detach(sa);
+
+fail_flow_rss_attach:
 	sfc_rss_detach(sa);
 
 fail_rss_attach:
@@ -1087,6 +1096,7 @@ sfc_detach(struct sfc_adapter *sa)
 	sfc_mae_detach(sa);
 	sfc_mae_counter_rxq_detach(sa);
 	sfc_filter_detach(sa);
+	sfc_flow_rss_detach(sa);
 	sfc_rss_detach(sa);
 	sfc_port_detach(sa);
 	sfc_ev_detach(sa);

@@ -90,6 +90,7 @@ sources = files(
         'sfc_mae.c',
         'sfc_mae_counter.c',
         'sfc_flow.c',
+        'sfc_flow_rss.c',
         'sfc_flow_tunnel.c',
         'sfc_dp.c',
         'sfc_ef10_rx.c',

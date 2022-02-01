@@ -15,6 +15,8 @@
 
 #include "efx.h"
 
+#include "sfc_flow_rss.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -29,15 +31,6 @@ extern "C" {
 /* Used to guard action masks */
 #define SFC_BUILD_SET_OVERFLOW(_action, _set) \
 	RTE_BUILD_BUG_ON((_action) >= sizeof(_set) * CHAR_BIT)
-
-/* RSS configuration storage */
-struct sfc_flow_rss {
-	unsigned int	rxq_hw_index_min;
-	unsigned int	rxq_hw_index_max;
-	unsigned int	rss_hash_types;
-	uint8_t		rss_key[EFX_RSS_KEY_SIZE];
-	unsigned int	rss_tbl[EFX_RSS_TBL_SIZE];
-};
 
 /* Flow engines supported by the implementation */
 enum sfc_flow_spec_type {
@@ -55,12 +48,8 @@ struct sfc_flow_spec_filter {
 	efx_filter_spec_t filters[SF_FLOW_SPEC_NB_FILTERS_MAX];
 	/* number of complete specifications */
 	unsigned int count;
-	/* RSS toggle */
-	boolean_t rss;
-	/* RSS hash toggle */
-	boolean_t rss_hash_required;
-	/* RSS configuration */
-	struct sfc_flow_rss rss_conf;
+	/* RSS context (or NULL) */
+	struct sfc_flow_rss_ctx *rss_ctx;
 };
 
 /* Indicates the role of a given flow in tunnel offload */

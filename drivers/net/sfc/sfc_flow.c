@@ -22,6 +22,7 @@
 #include "sfc_rx.h"
 #include "sfc_filter.h"
 #include "sfc_flow.h"
+#include "sfc_flow_rss.h"
 #include "sfc_flow_tunnel.h"
 #include "sfc_log.h"
 #include "sfc_dp_rx.h"
@@ -41,11 +42,12 @@ static sfc_flow_parse_cb_t sfc_flow_parse_rte_to_filter;
 static sfc_flow_parse_cb_t sfc_flow_parse_rte_to_mae;
 static sfc_flow_insert_cb_t sfc_flow_filter_insert;
 static sfc_flow_remove_cb_t sfc_flow_filter_remove;
+static sfc_flow_cleanup_cb_t sfc_flow_cleanup;
 
 static const struct sfc_flow_ops_by_spec sfc_flow_ops_filter = {
 	.parse = sfc_flow_parse_rte_to_filter,
 	.verify = NULL,
-	.cleanup = NULL,
+	.cleanup = sfc_flow_cleanup,
 	.insert = sfc_flow_filter_insert,
 	.remove = sfc_flow_filter_remove,
 	.query = NULL,
@@ -1429,8 +1431,14 @@ sfc_flow_parse_queue(struct sfc_adapter *sa,
 	spec_filter->template.efs_dmaq_id = (uint16_t)rxq->hw_index;
 
 	rxq_info = &sfc_sa2shared(sa)->rxq_info[queue->index];
-	spec_filter->rss_hash_required = !!(rxq_info->rxq_flags &
-					    SFC_RXQ_FLAG_RSS_HASH);
+
+	if ((rxq_info->rxq_flags & SFC_RXQ_FLAG_RSS_HASH) != 0) {
+		struct sfc_adapter_shared * const sas = sfc_sa2shared(sa);
+		struct sfc_rss *ethdev_rss = &sas->rss;
+
+		spec_filter->template.efs_flags |= EFX_FILTER_FLAG_RX_RSS;
+		spec_filter->rss_ctx = &ethdev_rss->dummy_ctx;
+	}
 
 	return 0;
 }
@@ -1440,107 +1448,30 @@ sfc_flow_parse_rss(struct sfc_adapter *sa,
 		   const struct rte_flow_action_rss *action_rss,
 		   struct rte_flow *flow)
 {
-	struct sfc_adapter_shared * const sas = sfc_sa2shared(sa);
-	struct sfc_rss *rss = &sas->rss;
-	sfc_ethdev_qid_t ethdev_qid;
+	struct sfc_flow_spec_filter *spec_filter = &flow->spec.filter;
+	struct sfc_flow_rss_conf conf;
+	uint16_t sw_qid_min;
 	struct sfc_rxq *rxq;
-	unsigned int rxq_hw_index_min;
-	unsigned int rxq_hw_index_max;
-	efx_rx_hash_type_t efx_hash_types;
-	const uint8_t *rss_key;
-	struct sfc_flow_spec *spec = &flow->spec;
-	struct sfc_flow_spec_filter *spec_filter = &spec->filter;
-	struct sfc_flow_rss *sfc_rss_conf = &spec_filter->rss_conf;
-	unsigned int i;
+	int rc;
 
-	if (action_rss->queue_num == 0)
-		return -EINVAL;
+	spec_filter->template.efs_flags |= EFX_FILTER_FLAG_RX_RSS;
 
-	ethdev_qid = sfc_sa2shared(sa)->ethdev_rxq_count - 1;
-	rxq = sfc_rxq_ctrl_by_ethdev_qid(sa, ethdev_qid);
-	rxq_hw_index_min = rxq->hw_index;
-	rxq_hw_index_max = 0;
+	rc = sfc_flow_rss_parse_conf(sa, action_rss, &conf, &sw_qid_min);
+	if (rc != 0)
+		return -rc;
 
-	for (i = 0; i < action_rss->queue_num; ++i) {
-		ethdev_qid = action_rss->queue[i];
+	rxq = sfc_rxq_ctrl_by_ethdev_qid(sa, sw_qid_min);
+	spec_filter->template.efs_dmaq_id = rxq->hw_index;
 
-		if ((unsigned int)ethdev_qid >=
-		    sfc_sa2shared(sa)->ethdev_rxq_count)
-			return -EINVAL;
-
-		rxq = sfc_rxq_ctrl_by_ethdev_qid(sa, ethdev_qid);
-
-		if (rxq->hw_index < rxq_hw_index_min)
-			rxq_hw_index_min = rxq->hw_index;
-
-		if (rxq->hw_index > rxq_hw_index_max)
-			rxq_hw_index_max = rxq->hw_index;
-	}
-
-	if (rxq_hw_index_max - rxq_hw_index_min + 1 > EFX_MAXRSS)
-		return -EINVAL;
-
-	switch (action_rss->func) {
-	case RTE_ETH_HASH_FUNCTION_DEFAULT:
-	case RTE_ETH_HASH_FUNCTION_TOEPLITZ:
-		break;
-	default:
-		return -EINVAL;
-	}
-
-	if (action_rss->level)
-		return -EINVAL;
-
-	/*
-	 * Dummy RSS action with only one queue and no specific settings
-	 * for hash types and key does not require dedicated RSS context
-	 * and may be simplified to single queue action.
-	 */
-	if (action_rss->queue_num == 1 && action_rss->types == 0 &&
-	    action_rss->key_len == 0) {
-		spec_filter->template.efs_dmaq_id = rxq_hw_index_min;
+	spec_filter->rss_ctx = sfc_flow_rss_ctx_reuse(sa, &conf, sw_qid_min,
+						      action_rss->queue);
+	if (spec_filter->rss_ctx != NULL)
 		return 0;
-	}
 
-	if (action_rss->types) {
-		int rc;
-
-		rc = sfc_rx_hf_rte_to_efx(sa, action_rss->types,
-					  &efx_hash_types);
-		if (rc != 0)
-			return -rc;
-	} else {
-		unsigned int i;
-
-		efx_hash_types = 0;
-		for (i = 0; i < rss->hf_map_nb_entries; ++i)
-			efx_hash_types |= rss->hf_map[i].efx;
-	}
-
-	if (action_rss->key_len) {
-		if (action_rss->key_len != sizeof(rss->key))
-			return -EINVAL;
-
-		rss_key = action_rss->key;
-	} else {
-		rss_key = rss->key;
-	}
-
-	spec_filter->rss = B_TRUE;
-
-	sfc_rss_conf->rxq_hw_index_min = rxq_hw_index_min;
-	sfc_rss_conf->rxq_hw_index_max = rxq_hw_index_max;
-	sfc_rss_conf->rss_hash_types = efx_hash_types;
-	rte_memcpy(sfc_rss_conf->rss_key, rss_key, sizeof(rss->key));
-
-	for (i = 0; i < RTE_DIM(sfc_rss_conf->rss_tbl); ++i) {
-		unsigned int nb_queues = action_rss->queue_num;
-		struct sfc_rxq *rxq;
-
-		ethdev_qid = action_rss->queue[i % nb_queues];
-		rxq = sfc_rxq_ctrl_by_ethdev_qid(sa, ethdev_qid);
-		sfc_rss_conf->rss_tbl[i] = rxq->hw_index - rxq_hw_index_min;
-	}
+	rc = sfc_flow_rss_ctx_add(sa, &conf, sw_qid_min, action_rss->queue,
+				  &spec_filter->rss_ctx);
+	if (rc != 0)
+		return -rc;
 
 	return 0;
 }
@@ -1597,61 +1528,17 @@ static int
 sfc_flow_filter_insert(struct sfc_adapter *sa,
 		       struct rte_flow *flow)
 {
-	struct sfc_adapter_shared * const sas = sfc_sa2shared(sa);
-	struct sfc_rss *rss = &sas->rss;
 	struct sfc_flow_spec_filter *spec_filter = &flow->spec.filter;
-	struct sfc_flow_rss *flow_rss = &spec_filter->rss_conf;
-	uint32_t efs_rss_context = EFX_RSS_CONTEXT_DEFAULT;
-	boolean_t create_context;
-	unsigned int i;
+	struct sfc_flow_rss_ctx *rss_ctx = spec_filter->rss_ctx;
 	int rc = 0;
 
-	create_context = spec_filter->rss || (spec_filter->rss_hash_required &&
-			rss->dummy_rss_context == EFX_RSS_CONTEXT_DEFAULT);
+	rc = sfc_flow_rss_ctx_program(sa, rss_ctx);
+	if (rc != 0)
+		goto fail_rss_ctx_program;
 
-	if (create_context) {
-		unsigned int rss_spread;
-		unsigned int rss_hash_types;
-		uint8_t *rss_key;
+	if (rss_ctx != NULL) {
+		unsigned int i;
 
-		if (spec_filter->rss) {
-			rss_spread = flow_rss->rxq_hw_index_max -
-				     flow_rss->rxq_hw_index_min + 1;
-			rss_hash_types = flow_rss->rss_hash_types;
-			rss_key = flow_rss->rss_key;
-		} else {
-			/*
-			 * Initialize dummy RSS context parameters to have
-			 * valid RSS hash. Use default RSS hash function and
-			 * key.
-			 */
-			rss_spread = 1;
-			rss_hash_types = rss->hash_types;
-			rss_key = rss->key;
-		}
-
-		rc = efx_rx_scale_context_alloc(sa->nic,
-						EFX_RX_SCALE_EXCLUSIVE,
-						rss_spread,
-						&efs_rss_context);
-		if (rc != 0)
-			goto fail_scale_context_alloc;
-
-		rc = efx_rx_scale_mode_set(sa->nic, efs_rss_context,
-					   rss->hash_alg,
-					   rss_hash_types, B_TRUE);
-		if (rc != 0)
-			goto fail_scale_mode_set;
-
-		rc = efx_rx_scale_key_set(sa->nic, efs_rss_context,
-					  rss_key, sizeof(rss->key));
-		if (rc != 0)
-			goto fail_scale_key_set;
-	} else {
-		efs_rss_context = rss->dummy_rss_context;
-	}
-
-	if (spec_filter->rss || spec_filter->rss_hash_required) {
 		/*
 		 * At this point, fully elaborated filter specifications
 		 * have been produced from the template. To make sure that
@@ -1661,10 +1548,7 @@ sfc_flow_filter_insert(struct sfc_adapter *sa,
 		for (i = 0; i < spec_filter->count; i++) {
 			efx_filter_spec_t *spec = &spec_filter->filters[i];
 
-			spec->efs_rss_context = efs_rss_context;
-			spec->efs_flags |= EFX_FILTER_FLAG_RX_RSS;
-			if (spec_filter->rss)
-				spec->efs_dmaq_id = flow_rss->rxq_hw_index_min;
+			spec->efs_rss_context = rss_ctx->nic_handle;
 		}
 	}
 
@@ -1672,42 +1556,12 @@ sfc_flow_filter_insert(struct sfc_adapter *sa,
 	if (rc != 0)
 		goto fail_filter_insert;
 
-	if (create_context) {
-		unsigned int dummy_tbl[RTE_DIM(flow_rss->rss_tbl)] = {0};
-		unsigned int *tbl;
-
-		tbl = spec_filter->rss ? flow_rss->rss_tbl : dummy_tbl;
-
-		/*
-		 * Scale table is set after filter insertion because
-		 * the table entries are relative to the base RxQ ID
-		 * and the latter is submitted to the HW by means of
-		 * inserting a filter, so by the time of the request
-		 * the HW knows all the information needed to verify
-		 * the table entries, and the operation will succeed
-		 */
-		rc = efx_rx_scale_tbl_set(sa->nic, efs_rss_context,
-					  tbl, RTE_DIM(flow_rss->rss_tbl));
-		if (rc != 0)
-			goto fail_scale_tbl_set;
-
-		/* Remember created dummy RSS context */
-		if (!spec_filter->rss)
-			rss->dummy_rss_context = efs_rss_context;
-	}
-
 	return 0;
 
-fail_scale_tbl_set:
-	sfc_flow_spec_remove(sa, &flow->spec);
-
 fail_filter_insert:
-fail_scale_key_set:
-fail_scale_mode_set:
-	if (create_context)
-		efx_rx_scale_context_free(sa->nic, efs_rss_context);
+	sfc_flow_rss_ctx_terminate(sa, rss_ctx);
 
-fail_scale_context_alloc:
+fail_rss_ctx_program:
 	return rc;
 }
 
@@ -1722,18 +1576,9 @@ sfc_flow_filter_remove(struct sfc_adapter *sa,
 	if (rc != 0)
 		return rc;
 
-	if (spec_filter->rss) {
-		/*
-		 * All specifications for a given flow rule have the same RSS
-		 * context, so that RSS context value is taken from the first
-		 * filter specification
-		 */
-		efx_filter_spec_t *spec = &spec_filter->filters[0];
+	sfc_flow_rss_ctx_terminate(sa, spec_filter->rss_ctx);
 
-		rc = efx_rx_scale_context_free(sa->nic, spec->efs_rss_context);
-	}
-
-	return rc;
+	return 0;
 }
 
 static int
@@ -2985,19 +2830,12 @@ sfc_flow_fini(struct sfc_adapter *sa)
 void
 sfc_flow_stop(struct sfc_adapter *sa)
 {
-	struct sfc_adapter_shared * const sas = sfc_sa2shared(sa);
-	struct sfc_rss *rss = &sas->rss;
 	struct rte_flow *flow;
 
 	SFC_ASSERT(sfc_adapter_is_locked(sa));
 
 	TAILQ_FOREACH(flow, &sa->flow_list, entries)
 		sfc_flow_remove(sa, flow, NULL);
-
-	if (rss->dummy_rss_context != EFX_RSS_CONTEXT_DEFAULT) {
-		efx_rx_scale_context_free(sa->nic, rss->dummy_rss_context);
-		rss->dummy_rss_context = EFX_RSS_CONTEXT_DEFAULT;
-	}
 
 	/*
 	 * MAE counter service is not stopped on flow rule remove to avoid
@@ -3028,4 +2866,13 @@ sfc_flow_start(struct sfc_adapter *sa)
 
 fail_bad_flow:
 	return rc;
+}
+
+static void
+sfc_flow_cleanup(struct sfc_adapter *sa, struct rte_flow *flow)
+{
+	if (flow == NULL)
+		return;
+
+	sfc_flow_rss_ctx_del(sa, flow->spec.filter.rss_ctx);
 }

@@ -1674,14 +1674,12 @@ sfc_dev_rss_hash_update(struct rte_eth_dev *dev,
 	struct sfc_adapter *sa = sfc_adapter_by_eth_dev(dev);
 	struct sfc_rss *rss = &sfc_sa2shared(sa)->rss;
 	unsigned int efx_hash_types;
-	uint32_t contexts[] = {EFX_RSS_CONTEXT_DEFAULT, rss->dummy_rss_context};
 	unsigned int n_contexts;
 	unsigned int mode_i = 0;
 	unsigned int key_i = 0;
+	uint32_t contexts[2];
 	unsigned int i = 0;
 	int rc = 0;
-
-	n_contexts = rss->dummy_rss_context == EFX_RSS_CONTEXT_DEFAULT ? 1 : 2;
 
 	if (sfc_sa2shared(sa)->isolated)
 		return -ENOTSUP;
@@ -1708,6 +1706,10 @@ sfc_dev_rss_hash_update(struct rte_eth_dev *dev,
 	rc = sfc_rx_hf_rte_to_efx(sa, rss_conf->rss_hf, &efx_hash_types);
 	if (rc != 0)
 		goto fail_rx_hf_rte_to_efx;
+
+	contexts[0] = EFX_RSS_CONTEXT_DEFAULT;
+	contexts[1] = rss->dummy_ctx.nic_handle;
+	n_contexts = (rss->dummy_ctx.nic_handle_refcnt == 0) ? 1 : 2;
 
 	for (mode_i = 0; mode_i < n_contexts; mode_i++) {
 		rc = efx_rx_scale_mode_set(sa->nic, contexts[mode_i],
