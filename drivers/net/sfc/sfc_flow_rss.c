@@ -21,9 +21,12 @@
 int
 sfc_flow_rss_attach(struct sfc_adapter *sa)
 {
+	const efx_nic_cfg_t *encp = efx_nic_cfg_get(sa->nic);
 	struct sfc_flow_rss *flow_rss = &sa->flow_rss;
 
 	sfc_log_init(sa, "entry");
+
+	flow_rss->qid_span_max = encp->enc_rx_scale_indirection_max_nqueues;
 
 	TAILQ_INIT(&flow_rss->ctx_list);
 
@@ -46,6 +49,7 @@ sfc_flow_rss_parse_conf(struct sfc_adapter *sa,
 			struct sfc_flow_rss_conf *out, uint16_t *sw_qid_minp)
 {
 	struct sfc_adapter_shared * const sas = sfc_sa2shared(sa);
+	const struct sfc_flow_rss *flow_rss = &sa->flow_rss;
 	const struct sfc_rss *ethdev_rss = &sas->rss;
 	uint16_t sw_qid_min;
 	uint16_t sw_qid_max;
@@ -156,9 +160,9 @@ sfc_flow_rss_parse_conf(struct sfc_adapter *sa,
 
 	out->qid_span = sw_qid_max - sw_qid_min + 1;
 
-	if (out->qid_span > EFX_MAXRSS) {
+	if (out->qid_span > flow_rss->qid_span_max) {
 		sfc_err(sa, "flow-rss: parse: queue ID span %u is too large; MAX=%u",
-			out->qid_span, EFX_MAXRSS);
+			out->qid_span, flow_rss->qid_span_max);
 		return EINVAL;
 	}
 
