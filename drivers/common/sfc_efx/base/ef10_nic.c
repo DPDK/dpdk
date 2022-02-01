@@ -1051,14 +1051,14 @@ ef10_get_datapath_caps(
 	efx_nic_cfg_t *encp = &(enp->en_nic_cfg);
 	efx_mcdi_req_t req;
 	EFX_MCDI_DECLARE_BUF(payload, MC_CMD_GET_CAPABILITIES_IN_LEN,
-		MC_CMD_GET_CAPABILITIES_V7_OUT_LEN);
+		MC_CMD_GET_CAPABILITIES_V9_OUT_LEN);
 	efx_rc_t rc;
 
 	req.emr_cmd = MC_CMD_GET_CAPABILITIES;
 	req.emr_in_buf = payload;
 	req.emr_in_length = MC_CMD_GET_CAPABILITIES_IN_LEN;
 	req.emr_out_buf = payload;
-	req.emr_out_length = MC_CMD_GET_CAPABILITIES_V7_OUT_LEN;
+	req.emr_out_length = MC_CMD_GET_CAPABILITIES_V9_OUT_LEN;
 
 	efx_mcdi_execute_quiet(enp, &req);
 
@@ -1465,6 +1465,16 @@ ef10_get_datapath_caps(
 	encp->enc_mae_supported = B_FALSE;
 	encp->enc_mae_admin = B_FALSE;
 #endif /* EFSYS_OPT_MAE */
+
+#if EFSYS_OPT_RX_SCALE
+	if (req.emr_out_length_used >= MC_CMD_GET_CAPABILITIES_V9_OUT_LEN) {
+		encp->enc_rx_scale_indirection_max_nqueues =
+		    MCDI_OUT_DWORD(req,
+			GET_CAPABILITIES_V9_OUT_RSS_MAX_INDIRECTION_QUEUES);
+	} else {
+		encp->enc_rx_scale_indirection_max_nqueues = EFX_MAXRSS;
+	}
+#endif /* EFSYS_OPT_RX_SCALE */
 
 #undef CAP_FLAGS1
 #undef CAP_FLAGS2

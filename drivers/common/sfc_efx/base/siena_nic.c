@@ -119,6 +119,8 @@ siena_board_cfg(
 	encp->enc_rx_push_align = 1;
 
 #if EFSYS_OPT_RX_SCALE
+	encp->enc_rx_scale_indirection_max_nqueues = EFX_MAXRSS;
+
 	/* There is one RSS context per function */
 	encp->enc_rx_scale_max_exclusive_contexts = 1;
 

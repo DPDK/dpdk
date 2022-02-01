@@ -18,6 +18,7 @@ efx_mcdi_rss_context_alloc(
 	__in		uint32_t num_queues,
 	__out		uint32_t *rss_contextp)
 {
+	const efx_nic_cfg_t *encp = efx_nic_cfg_get(enp);
 	efx_mcdi_req_t req;
 	EFX_MCDI_DECLARE_BUF(payload, MC_CMD_RSS_CONTEXT_ALLOC_IN_LEN,
 		MC_CMD_RSS_CONTEXT_ALLOC_OUT_LEN);
@@ -25,7 +26,7 @@ efx_mcdi_rss_context_alloc(
 	uint32_t context_type;
 	efx_rc_t rc;
 
-	if (num_queues > EFX_MAXRSS) {
+	if (num_queues > encp->enc_rx_scale_indirection_max_nqueues) {
 		rc = EINVAL;
 		goto fail1;
 	}

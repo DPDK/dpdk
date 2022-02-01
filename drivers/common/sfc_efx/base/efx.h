@@ -1495,6 +1495,13 @@ typedef struct efx_nic_cfg_s {
 	uint32_t		enc_rx_buf_align_start;
 	uint32_t		enc_rx_buf_align_end;
 #if EFSYS_OPT_RX_SCALE
+	/*
+	 * The limit on how many queues an RSS indirection table can address.
+	 *
+	 * Indirection table entries are offsets relative to a base queue ID.
+	 * This means that the maximum offset has to be less than this value.
+	 */
+	uint32_t		enc_rx_scale_indirection_max_nqueues;
 	uint32_t		enc_rx_scale_max_exclusive_contexts;
 	/*
 	 * Mask of supported hash algorithms.
