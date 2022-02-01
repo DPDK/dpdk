@@ -32,7 +32,9 @@
 #include <unistd.h>
 #include <sys/mman.h>
 
+#ifndef PAGE_SIZE
 #define PAGE_SIZE			(sysconf(_SC_PAGESIZE))
+#endif
 #define PAGE_MASK			(~(PAGE_SIZE - 1))
 
 #define LSX_SERDES_LAN_NB		8
