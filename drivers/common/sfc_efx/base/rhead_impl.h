@@ -261,6 +261,7 @@ rhead_rx_scale_context_alloc(
 	__in		efx_nic_t *enp,
 	__in		efx_rx_scale_context_type_t type,
 	__in		uint32_t num_queues,
+	__in		uint32_t table_nentries,
 	__out		uint32_t *rss_contextp);
 
 LIBEFX_INTERNAL

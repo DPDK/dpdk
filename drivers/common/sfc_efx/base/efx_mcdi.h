@@ -315,6 +315,10 @@ efx_mcdi_set_nic_addr_regions(
 #define	MCDI_IN2(_emr, _type, _ofst)					\
 	MCDI_IN(_emr, _type, MC_CMD_ ## _ofst ## _OFST)
 
+#define	MCDI_INDEXED_IN2(_emr, _type, _ofst, _idx)			\
+	MCDI_IN(_emr, _type, MC_CMD_ ## _ofst ## _OFST +		\
+		_idx * MC_CMD_ ## _ofst ## _LEN)
+
 #define	MCDI_IN_SET_BYTE(_emr, _ofst, _value)				\
 	EFX_POPULATE_BYTE_1(*MCDI_IN2(_emr, efx_byte_t, _ofst),		\
 		EFX_BYTE_0, _value)
@@ -353,6 +357,13 @@ efx_mcdi_set_nic_addr_regions(
 #define	MCDI_IN_POPULATE_DWORD_2(_emr, _ofst, _field1, _value1,		\
 		_field2, _value2)					\
 	EFX_POPULATE_DWORD_2(*MCDI_IN2(_emr, efx_dword_t, _ofst),	\
+		MC_CMD_ ## _field1, _value1,				\
+		MC_CMD_ ## _field2, _value2)
+
+#define	MCDI_IN_POPULATE_INDEXED_DWORD_2(_emr, _ofst, _idx,		\
+		_field1, _value1, _field2, _value2)			\
+	EFX_POPULATE_DWORD_2(						\
+		*MCDI_INDEXED_IN2(_emr, efx_dword_t, _ofst, _idx),	\
 		MC_CMD_ ## _field1, _value1,				\
 		MC_CMD_ ## _field2, _value2)
 

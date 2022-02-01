@@ -216,6 +216,7 @@ INTERNAL {
 	efx_rx_qpost;
 	efx_rx_qpush;
 	efx_rx_scale_context_alloc;
+	efx_rx_scale_context_alloc_v2;
 	efx_rx_scale_context_free;
 	efx_rx_scale_default_support_get;
 	efx_rx_scale_hash_flags_get;

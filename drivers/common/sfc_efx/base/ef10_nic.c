@@ -1409,6 +1409,11 @@ ef10_get_datapath_caps(
 		 */
 		encp->enc_rx_scale_l4_hash_supported = B_TRUE;
 	}
+
+	if (CAP_FLAGS3(req, RSS_SELECTABLE_TABLE_SIZE))
+		encp->enc_rx_scale_tbl_entry_count_is_selectable = B_TRUE;
+	else
+		encp->enc_rx_scale_tbl_entry_count_is_selectable = B_FALSE;
 #endif /* EFSYS_OPT_RX_SCALE */
 
 	/* Check if the firmware supports "FLAG" and "MARK" filter actions */
@@ -1471,8 +1476,16 @@ ef10_get_datapath_caps(
 		encp->enc_rx_scale_indirection_max_nqueues =
 		    MCDI_OUT_DWORD(req,
 			GET_CAPABILITIES_V9_OUT_RSS_MAX_INDIRECTION_QUEUES);
+		encp->enc_rx_scale_tbl_min_nentries =
+		    MCDI_OUT_DWORD(req,
+			GET_CAPABILITIES_V9_OUT_RSS_MIN_INDIRECTION_TABLE_SIZE);
+		encp->enc_rx_scale_tbl_max_nentries =
+		    MCDI_OUT_DWORD(req,
+			GET_CAPABILITIES_V9_OUT_RSS_MAX_INDIRECTION_TABLE_SIZE);
 	} else {
 		encp->enc_rx_scale_indirection_max_nqueues = EFX_MAXRSS;
+		encp->enc_rx_scale_tbl_min_nentries = EFX_RSS_TBL_SIZE;
+		encp->enc_rx_scale_tbl_max_nentries = EFX_RSS_TBL_SIZE;
 	}
 #endif /* EFSYS_OPT_RX_SCALE */
 

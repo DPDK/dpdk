@@ -16,11 +16,12 @@ efx_mcdi_rss_context_alloc(
 	__in		efx_nic_t *enp,
 	__in		efx_rx_scale_context_type_t type,
 	__in		uint32_t num_queues,
+	__in		uint32_t table_nentries,
 	__out		uint32_t *rss_contextp)
 {
 	const efx_nic_cfg_t *encp = efx_nic_cfg_get(enp);
 	efx_mcdi_req_t req;
-	EFX_MCDI_DECLARE_BUF(payload, MC_CMD_RSS_CONTEXT_ALLOC_IN_LEN,
+	EFX_MCDI_DECLARE_BUF(payload, MC_CMD_RSS_CONTEXT_ALLOC_V2_IN_LEN,
 		MC_CMD_RSS_CONTEXT_ALLOC_OUT_LEN);
 	uint32_t rss_context;
 	uint32_t context_type;
@@ -29,6 +30,13 @@ efx_mcdi_rss_context_alloc(
 	if (num_queues > encp->enc_rx_scale_indirection_max_nqueues) {
 		rc = EINVAL;
 		goto fail1;
+	}
+
+	if (table_nentries < encp->enc_rx_scale_tbl_min_nentries ||
+	    table_nentries > encp->enc_rx_scale_tbl_max_nentries ||
+	    !ISP2(table_nentries)) {
+		rc = EINVAL;
+		goto fail2;
 	}
 
 	switch (type) {
@@ -40,12 +48,15 @@ efx_mcdi_rss_context_alloc(
 		break;
 	default:
 		rc = EINVAL;
-		goto fail2;
+		goto fail3;
 	}
 
 	req.emr_cmd = MC_CMD_RSS_CONTEXT_ALLOC;
 	req.emr_in_buf = payload;
-	req.emr_in_length = MC_CMD_RSS_CONTEXT_ALLOC_IN_LEN;
+	req.emr_in_length =
+	    (encp->enc_rx_scale_tbl_entry_count_is_selectable != B_FALSE) ?
+	    MC_CMD_RSS_CONTEXT_ALLOC_V2_IN_LEN :
+	    MC_CMD_RSS_CONTEXT_ALLOC_IN_LEN;
 	req.emr_out_buf = payload;
 	req.emr_out_length = MC_CMD_RSS_CONTEXT_ALLOC_OUT_LEN;
 
@@ -61,28 +72,36 @@ efx_mcdi_rss_context_alloc(
 	 */
 	MCDI_IN_SET_DWORD(req, RSS_CONTEXT_ALLOC_IN_NUM_QUEUES, num_queues);
 
+	if (encp->enc_rx_scale_tbl_entry_count_is_selectable != B_FALSE) {
+		MCDI_IN_SET_DWORD(req,
+		    RSS_CONTEXT_ALLOC_V2_IN_INDIRECTION_TABLE_SIZE,
+		    table_nentries);
+	}
+
 	efx_mcdi_execute(enp, &req);
 
 	if (req.emr_rc != 0) {
 		rc = req.emr_rc;
-		goto fail3;
+		goto fail4;
 	}
 
 	if (req.emr_out_length_used < MC_CMD_RSS_CONTEXT_ALLOC_OUT_LEN) {
 		rc = EMSGSIZE;
-		goto fail4;
+		goto fail5;
 	}
 
 	rss_context = MCDI_OUT_DWORD(req, RSS_CONTEXT_ALLOC_OUT_RSS_CONTEXT_ID);
 	if (rss_context == EF10_RSS_CONTEXT_INVALID) {
 		rc = ENOENT;
-		goto fail5;
+		goto fail6;
 	}
 
 	*rss_contextp = rss_context;
 
 	return (0);
 
+fail6:
+	EFSYS_PROBE(fail6);
 fail5:
 	EFSYS_PROBE(fail5);
 fail4:
@@ -347,6 +366,76 @@ fail1:
 }
 #endif /* EFSYS_OPT_RX_SCALE */
 
+#if EFSYS_OPT_RX_SCALE
+static	__checkReturn		efx_rc_t
+efx_mcdi_rss_context_write_table(
+	__in			efx_nic_t *enp,
+	__in			uint32_t context,
+	__in			unsigned int start_idx,
+	__in_ecount(nentries)	unsigned int *table,
+	__in			unsigned int nentries)
+{
+	const efx_nic_cfg_t *encp = efx_nic_cfg_get(enp);
+	efx_mcdi_req_t req;
+	EFX_MCDI_DECLARE_BUF(payload,
+	     MC_CMD_RSS_CONTEXT_WRITE_TABLE_IN_LENMAX_MCDI2,
+	     MC_CMD_RSS_CONTEXT_WRITE_TABLE_OUT_LEN);
+	unsigned int i;
+	int rc;
+
+	if (nentries >
+	    MC_CMD_RSS_CONTEXT_WRITE_TABLE_IN_ENTRIES_MAXNUM_MCDI2) {
+		rc = EINVAL;
+		goto fail1;
+	}
+
+	if (start_idx + nentries >
+	    encp->enc_rx_scale_tbl_max_nentries) {
+		rc = EINVAL;
+		goto fail2;
+	}
+
+	req.emr_cmd = MC_CMD_RSS_CONTEXT_WRITE_TABLE;
+	req.emr_in_buf = payload;
+	req.emr_in_length = MC_CMD_RSS_CONTEXT_WRITE_TABLE_IN_LEN(nentries);
+	req.emr_out_buf = payload;
+	req.emr_out_length = MC_CMD_RSS_CONTEXT_WRITE_TABLE_OUT_LEN;
+
+	MCDI_IN_SET_DWORD(req,
+	    RSS_CONTEXT_WRITE_TABLE_IN_RSS_CONTEXT_ID, context);
+
+	for (i = 0; i < nentries; ++i) {
+		if (table[i] >= encp->enc_rx_scale_indirection_max_nqueues) {
+			rc = EINVAL;
+			goto fail3;
+		}
+
+		MCDI_IN_POPULATE_INDEXED_DWORD_2(req,
+		    RSS_CONTEXT_WRITE_TABLE_IN_ENTRIES, i,
+		    RSS_CONTEXT_WRITE_TABLE_ENTRY_INDEX, start_idx + i,
+		    RSS_CONTEXT_WRITE_TABLE_ENTRY_VALUE, table[i]);
+	}
+
+	efx_mcdi_execute(enp, &req);
+	if (req.emr_rc != 0) {
+		rc = req.emr_rc;
+		goto fail4;
+	}
+
+	return (0);
+
+fail4:
+	EFSYS_PROBE(fail4);
+fail3:
+	EFSYS_PROBE(fail3);
+fail2:
+	EFSYS_PROBE(fail2);
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+	return (rc);
+}
+#endif /* EFSYS_OPT_RX_SCALE */
+
 
 	__checkReturn	efx_rc_t
 ef10_rx_init(
@@ -355,7 +444,7 @@ ef10_rx_init(
 #if EFSYS_OPT_RX_SCALE
 
 	if (efx_mcdi_rss_context_alloc(enp, EFX_RX_SCALE_EXCLUSIVE, EFX_MAXRSS,
-		&enp->en_rss_context) == 0) {
+		EFX_RSS_TBL_SIZE, &enp->en_rss_context) == 0) {
 		/*
 		 * Allocated an exclusive RSS context, which allows both the
 		 * indirection table and key to be modified.
@@ -398,11 +487,13 @@ ef10_rx_scale_context_alloc(
 	__in		efx_nic_t *enp,
 	__in		efx_rx_scale_context_type_t type,
 	__in		uint32_t num_queues,
+	__in		uint32_t table_nentries,
 	__out		uint32_t *rss_contextp)
 {
 	efx_rc_t rc;
 
-	rc = efx_mcdi_rss_context_alloc(enp, type, num_queues, rss_contextp);
+	rc = efx_mcdi_rss_context_alloc(enp, type, num_queues, table_nentries,
+					rss_contextp);
 	if (rc != 0)
 		goto fail1;
 
@@ -522,6 +613,7 @@ ef10_rx_scale_tbl_set(
 	__in_ecount(nentries)	unsigned int *table,
 	__in			size_t nentries)
 {
+	const efx_nic_cfg_t *encp = efx_nic_cfg_get(enp);
 	efx_rc_t rc;
 
 
@@ -533,12 +625,34 @@ ef10_rx_scale_tbl_set(
 		rss_context = enp->en_rss_context;
 	}
 
-	if ((rc = efx_mcdi_rss_context_set_table(enp,
-		    rss_context, table, nentries)) != 0)
-		goto fail2;
+	if (encp->enc_rx_scale_tbl_entry_count_is_selectable != B_FALSE) {
+		uint32_t index, remain, batch;
+
+		batch = MC_CMD_RSS_CONTEXT_WRITE_TABLE_IN_ENTRIES_MAXNUM_MCDI2;
+		index = 0;
+
+		for (remain = nentries; remain > 0; remain -= batch) {
+			if (batch > remain)
+				batch = remain;
+
+			rc = efx_mcdi_rss_context_write_table(enp, rss_context,
+				    index, &table[index], batch);
+			if (rc != 0)
+				goto fail2;
+
+			index += batch;
+		}
+	} else {
+		rc = efx_mcdi_rss_context_set_table(enp, rss_context, table,
+			    nentries);
+		if (rc != 0)
+			goto fail3;
+	}
 
 	return (0);
 
+fail3:
+	EFSYS_PROBE(fail3);
 fail2:
 	EFSYS_PROBE(fail2);
 fail1:

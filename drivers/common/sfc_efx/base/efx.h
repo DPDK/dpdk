@@ -1502,6 +1502,10 @@ typedef struct efx_nic_cfg_s {
 	 * This means that the maximum offset has to be less than this value.
 	 */
 	uint32_t		enc_rx_scale_indirection_max_nqueues;
+	/* Minimum number of entries an RSS indirection table can contain. */
+	uint32_t		enc_rx_scale_tbl_min_nentries;
+	/* Maximum number of entries an RSS indirection table can contain. */
+	uint32_t		enc_rx_scale_tbl_max_nentries;
 	uint32_t		enc_rx_scale_max_exclusive_contexts;
 	/*
 	 * Mask of supported hash algorithms.
@@ -1514,6 +1518,11 @@ typedef struct efx_nic_cfg_s {
 	 */
 	boolean_t		enc_rx_scale_l4_hash_supported;
 	boolean_t		enc_rx_scale_additional_modes_supported;
+	/*
+	 * Indicates whether the user can decide how many entries to
+	 * have in the indirection table of an exclusive RSS context.
+	 */
+	boolean_t		enc_rx_scale_tbl_entry_count_is_selectable;
 #endif /* EFSYS_OPT_RX_SCALE */
 #if EFSYS_OPT_LOOPBACK
 	efx_qword_t		enc_loopback_types[EFX_LINK_NMODES];
@@ -2885,6 +2894,15 @@ efx_rx_scale_context_alloc(
 	__in		efx_nic_t *enp,
 	__in		efx_rx_scale_context_type_t type,
 	__in		uint32_t num_queues,
+	__out		uint32_t *rss_contextp);
+
+LIBEFX_API
+extern	__checkReturn	efx_rc_t
+efx_rx_scale_context_alloc_v2(
+	__in		efx_nic_t *enp,
+	__in		efx_rx_scale_context_type_t type,
+	__in		uint32_t num_queues,
+	__in		uint32_t table_nentries,
 	__out		uint32_t *rss_contextp);
 
 LIBEFX_API

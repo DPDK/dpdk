@@ -514,8 +514,44 @@ efx_rx_scale_context_alloc(
 		rc = ENOTSUP;
 		goto fail1;
 	}
+
+	if ((rc = erxop->erxo_scale_context_alloc(enp, type, num_queues,
+			    EFX_RSS_TBL_SIZE, rss_contextp)) != 0) {
+		goto fail2;
+	}
+
+	return (0);
+
+fail2:
+	EFSYS_PROBE(fail2);
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+	return (rc);
+}
+#endif	/* EFSYS_OPT_RX_SCALE */
+
+#if EFSYS_OPT_RX_SCALE
+	__checkReturn	efx_rc_t
+efx_rx_scale_context_alloc_v2(
+	__in		efx_nic_t *enp,
+	__in		efx_rx_scale_context_type_t type,
+	__in		uint32_t num_queues,
+	__in		uint32_t table_nentries,
+	__out		uint32_t *rss_contextp)
+{
+	const efx_rx_ops_t *erxop = enp->en_erxop;
+	efx_rc_t rc;
+
+	EFSYS_ASSERT3U(enp->en_magic, ==, EFX_NIC_MAGIC);
+	EFSYS_ASSERT3U(enp->en_mod_flags, &, EFX_MOD_RX);
+
+	if (erxop->erxo_scale_context_alloc == NULL) {
+		rc = ENOTSUP;
+		goto fail1;
+	}
+
 	if ((rc = erxop->erxo_scale_context_alloc(enp, type,
-			    num_queues, rss_contextp)) != 0) {
+			    num_queues, table_nentries, rss_contextp)) != 0) {
 		goto fail2;
 	}
 
