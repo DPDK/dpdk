@@ -1163,12 +1163,12 @@ ef10_rx_scale_key_set(
 	__in		size_t n);
 
 LIBEFX_INTERNAL
-extern	__checkReturn	efx_rc_t
+extern	__checkReturn		efx_rc_t
 ef10_rx_scale_tbl_set(
-	__in		efx_nic_t *enp,
-	__in		uint32_t rss_context,
-	__in_ecount(n)	unsigned int *table,
-	__in		size_t n);
+	__in			efx_nic_t *enp,
+	__in			uint32_t rss_context,
+	__in_ecount(nentries)	unsigned int *table,
+	__in			size_t nentries);
 
 LIBEFX_INTERNAL
 extern	__checkReturn	uint32_t

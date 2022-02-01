@@ -2903,12 +2903,12 @@ efx_rx_scale_mode_set(
 	__in	boolean_t insert);
 
 LIBEFX_API
-extern	__checkReturn	efx_rc_t
+extern	__checkReturn		efx_rc_t
 efx_rx_scale_tbl_set(
-	__in		efx_nic_t *enp,
-	__in		uint32_t rss_context,
-	__in_ecount(n)	unsigned int *table,
-	__in		size_t n);
+	__in			efx_nic_t *enp,
+	__in			uint32_t rss_context,
+	__in_ecount(nentries)	unsigned int *table,
+	__in			size_t nentries);
 
 LIBEFX_API
 extern	__checkReturn	efx_rc_t

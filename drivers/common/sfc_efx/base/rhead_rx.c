@@ -162,16 +162,16 @@ fail1:
 	return (rc);
 }
 
-	__checkReturn	efx_rc_t
+	__checkReturn		efx_rc_t
 rhead_rx_scale_tbl_set(
-	__in		efx_nic_t *enp,
-	__in		uint32_t rss_context,
-	__in_ecount(n)	unsigned int *table,
-	__in		size_t n)
+	__in			efx_nic_t *enp,
+	__in			uint32_t rss_context,
+	__in_ecount(nentries)	unsigned int *table,
+	__in			size_t nentries)
 {
 	efx_rc_t rc;
 
-	rc = ef10_rx_scale_tbl_set(enp, rss_context, table, n);
+	rc = ef10_rx_scale_tbl_set(enp, rss_context, table, nentries);
 	if (rc != 0)
 		goto fail1;
 

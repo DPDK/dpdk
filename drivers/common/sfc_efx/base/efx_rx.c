@@ -41,12 +41,12 @@ siena_rx_scale_key_set(
 	__in_ecount(n)	uint8_t *key,
 	__in		size_t n);
 
-static	__checkReturn	efx_rc_t
+static	__checkReturn		efx_rc_t
 siena_rx_scale_tbl_set(
-	__in		efx_nic_t *enp,
-	__in		uint32_t rss_context,
-	__in_ecount(n)	unsigned int *table,
-	__in		size_t n);
+	__in			efx_nic_t *enp,
+	__in			uint32_t rss_context,
+	__in_ecount(nentries)	unsigned int *table,
+	__in			size_t nentries);
 
 static	__checkReturn	uint32_t
 siena_rx_prefix_hash(
@@ -690,12 +690,12 @@ fail1:
 #endif	/* EFSYS_OPT_RX_SCALE */
 
 #if EFSYS_OPT_RX_SCALE
-	__checkReturn	efx_rc_t
+	__checkReturn		efx_rc_t
 efx_rx_scale_tbl_set(
-	__in		efx_nic_t *enp,
-	__in		uint32_t rss_context,
-	__in_ecount(n)	unsigned int *table,
-	__in		size_t n)
+	__in			efx_nic_t *enp,
+	__in			uint32_t rss_context,
+	__in_ecount(nentries)	unsigned int *table,
+	__in			size_t nentries)
 {
 	const efx_rx_ops_t *erxop = enp->en_erxop;
 	efx_rc_t rc;
@@ -703,7 +703,8 @@ efx_rx_scale_tbl_set(
 	EFSYS_ASSERT3U(enp->en_magic, ==, EFX_NIC_MAGIC);
 	EFSYS_ASSERT3U(enp->en_mod_flags, &, EFX_MOD_RX);
 
-	if ((rc = erxop->erxo_scale_tbl_set(enp, rss_context, table, n)) != 0)
+	if ((rc = erxop->erxo_scale_tbl_set(enp, rss_context, table,
+		    nentries)) != 0)
 		goto fail1;
 
 	return (0);
@@ -1419,12 +1420,12 @@ fail1:
 #endif
 
 #if EFSYS_OPT_RX_SCALE
-static	__checkReturn	efx_rc_t
+static	__checkReturn		efx_rc_t
 siena_rx_scale_tbl_set(
-	__in		efx_nic_t *enp,
-	__in		uint32_t rss_context,
-	__in_ecount(n)	unsigned int *table,
-	__in		size_t n)
+	__in			efx_nic_t *enp,
+	__in			uint32_t rss_context,
+	__in_ecount(nentries)	unsigned int *table,
+	__in			size_t nentries)
 {
 	efx_oword_t oword;
 	int index;
@@ -1438,7 +1439,7 @@ siena_rx_scale_tbl_set(
 		goto fail1;
 	}
 
-	if (n > FR_BZ_RX_INDIRECTION_TBL_ROWS) {
+	if (nentries > FR_BZ_RX_INDIRECTION_TBL_ROWS) {
 		rc = EINVAL;
 		goto fail2;
 	}
@@ -1447,7 +1448,7 @@ siena_rx_scale_tbl_set(
 		uint32_t byte;
 
 		/* Calculate the entry to place in the table */
-		byte = (n > 0) ? (uint32_t)table[index % n] : 0;
+		byte = (nentries > 0) ? (uint32_t)table[index % nentries] : 0;
 
 		EFSYS_PROBE2(table, int, index, uint32_t, byte);
 
@@ -1462,7 +1463,7 @@ siena_rx_scale_tbl_set(
 		uint32_t byte;
 
 		/* Determine if we're starting a new batch */
-		byte = (n > 0) ? (uint32_t)table[index % n] : 0;
+		byte = (nentries > 0) ? (uint32_t)table[index % nentries] : 0;
 
 		/* Read the table */
 		EFX_BAR_TBL_READO(enp, FR_BZ_RX_INDIRECTION_TBL,

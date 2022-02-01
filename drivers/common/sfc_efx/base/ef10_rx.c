@@ -292,12 +292,12 @@ fail1:
 #endif /* EFSYS_OPT_RX_SCALE */
 
 #if EFSYS_OPT_RX_SCALE
-static			efx_rc_t
+static				efx_rc_t
 efx_mcdi_rss_context_set_table(
-	__in		efx_nic_t *enp,
-	__in		uint32_t rss_context,
-	__in_ecount(n)	unsigned int *table,
-	__in		size_t n)
+	__in			efx_nic_t *enp,
+	__in			uint32_t rss_context,
+	__in_ecount(nentries)	unsigned int *table,
+	__in			size_t nentries)
 {
 	efx_mcdi_req_t req;
 	EFX_MCDI_DECLARE_BUF(payload, MC_CMD_RSS_CONTEXT_SET_TABLE_IN_LEN,
@@ -325,7 +325,8 @@ efx_mcdi_rss_context_set_table(
 	for (i = 0;
 	    i < MC_CMD_RSS_CONTEXT_SET_TABLE_IN_INDIRECTION_TABLE_LEN;
 	    i++) {
-		req_table[i] = (n > 0) ? (uint8_t)table[i % n] : 0;
+		req_table[i] = (nentries > 0) ?
+		    (uint8_t)table[i % nentries] : 0;
 	}
 
 	efx_mcdi_execute(enp, &req);
@@ -514,12 +515,12 @@ fail1:
 #endif /* EFSYS_OPT_RX_SCALE */
 
 #if EFSYS_OPT_RX_SCALE
-	__checkReturn	efx_rc_t
+	__checkReturn		efx_rc_t
 ef10_rx_scale_tbl_set(
-	__in		efx_nic_t *enp,
-	__in		uint32_t rss_context,
-	__in_ecount(n)	unsigned int *table,
-	__in		size_t n)
+	__in			efx_nic_t *enp,
+	__in			uint32_t rss_context,
+	__in_ecount(nentries)	unsigned int *table,
+	__in			size_t nentries)
 {
 	efx_rc_t rc;
 
@@ -533,7 +534,7 @@ ef10_rx_scale_tbl_set(
 	}
 
 	if ((rc = efx_mcdi_rss_context_set_table(enp,
-		    rss_context, table, n)) != 0)
+		    rss_context, table, nentries)) != 0)
 		goto fail2;
 
 	return (0);
