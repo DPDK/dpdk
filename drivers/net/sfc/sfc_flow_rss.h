@@ -20,6 +20,7 @@ extern "C" {
 
 struct sfc_flow_rss_conf {
 	uint8_t				key[EFX_RSS_KEY_SIZE];
+	enum rte_eth_hash_function	rte_hash_function;
 	efx_rx_hash_type_t		efx_hash_types;
 	unsigned int			nb_qid_offsets;
 	unsigned int			qid_span;

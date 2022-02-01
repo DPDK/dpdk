@@ -140,6 +140,8 @@ sfc_flow_rss_parse_conf(struct sfc_adapter *sa,
 		return EINVAL;
 	}
 
+	out->rte_hash_function = in->func;
+
 	if (in->queue_num == 0) {
 		sfc_err(sa, "flow-rss: parse: 'queue_num' is 0; MIN=1");
 		return EINVAL;
@@ -317,6 +319,9 @@ sfc_flow_rss_ctx_program_tbl(struct sfc_adapter *sa,
 
 	SFC_ASSERT(sfc_adapter_is_locked(sa));
 
+	if (nb_tbl_entries == 0)
+		return 0;
+
 	if (conf->nb_qid_offsets != 0) {
 		SFC_ASSERT(ctx->qid_offsets != NULL);
 
@@ -336,6 +341,7 @@ sfc_flow_rss_ctx_program(struct sfc_adapter *sa, struct sfc_flow_rss_ctx *ctx)
 {
 	efx_rx_scale_context_type_t ctx_type = EFX_RX_SCALE_EXCLUSIVE;
 	struct sfc_adapter_shared * const sas = sfc_sa2shared(sa);
+	const efx_nic_cfg_t *encp = efx_nic_cfg_get(sa->nic);
 	const struct sfc_flow_rss *flow_rss = &sa->flow_rss;
 	struct sfc_rss *ethdev_rss = &sas->rss;
 	struct sfc_flow_rss_conf *conf;
@@ -365,6 +371,19 @@ sfc_flow_rss_ctx_program(struct sfc_adapter *sa, struct sfc_flow_rss_ctx *ctx)
 	}
 
 	nb_tbl_entries = RTE_MAX(flow_rss->nb_tbl_entries_min, nb_qid_offsets);
+
+	if (conf->rte_hash_function == RTE_ETH_HASH_FUNCTION_DEFAULT &&
+	    conf->nb_qid_offsets == 0 &&
+	    conf->qid_span <= encp->enc_rx_scale_even_spread_max_nqueues) {
+		/*
+		 * Conformance to a specific hash algorithm is a don't care to
+		 * the user. The queue array is contiguous and ascending. That
+		 * means that the even spread context may be requested here in
+		 * order to avoid wasting precious indirection table resources.
+		 */
+		ctx_type = EFX_RX_SCALE_EVEN_SPREAD;
+		nb_tbl_entries = 0;
+	}
 
 	if (ctx->nic_handle_refcnt == 0) {
 		rc = efx_rx_scale_context_alloc_v2(sa->nic, ctx_type,
