@@ -42,9 +42,11 @@ struct sfc_flow_rss_ctx {
 TAILQ_HEAD(sfc_flow_rss_ctx_list, sfc_flow_rss_ctx);
 
 struct sfc_flow_rss {
+	unsigned int			nb_tbl_entries_min;
+	unsigned int			nb_tbl_entries_max;
 	unsigned int			qid_span_max;
 
-	unsigned int			bounce_tbl[EFX_RSS_TBL_SIZE];
+	unsigned int			*bounce_tbl; /* MAX */
 
 	struct sfc_flow_rss_ctx_list	ctx_list;
 };

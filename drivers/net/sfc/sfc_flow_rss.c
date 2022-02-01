@@ -23,22 +23,44 @@ sfc_flow_rss_attach(struct sfc_adapter *sa)
 {
 	const efx_nic_cfg_t *encp = efx_nic_cfg_get(sa->nic);
 	struct sfc_flow_rss *flow_rss = &sa->flow_rss;
+	int rc;
 
 	sfc_log_init(sa, "entry");
 
 	flow_rss->qid_span_max = encp->enc_rx_scale_indirection_max_nqueues;
+	flow_rss->nb_tbl_entries_min = encp->enc_rx_scale_tbl_min_nentries;
+	flow_rss->nb_tbl_entries_max = encp->enc_rx_scale_tbl_max_nentries;
+
+	sfc_log_init(sa, "allocate the bounce buffer for indirection entries");
+	flow_rss->bounce_tbl = rte_calloc("sfc_flow_rss_bounce_tbl",
+					  flow_rss->nb_tbl_entries_max,
+					  sizeof(*flow_rss->bounce_tbl), 0);
+	if (flow_rss->bounce_tbl == NULL) {
+		rc = ENOMEM;
+		goto fail;
+	}
 
 	TAILQ_INIT(&flow_rss->ctx_list);
 
 	sfc_log_init(sa, "done");
 
 	return 0;
+
+fail:
+	sfc_log_init(sa, "failed %d", rc);
+
+	return rc;
 }
 
 void
 sfc_flow_rss_detach(struct sfc_adapter *sa)
 {
+	struct sfc_flow_rss *flow_rss = &sa->flow_rss;
+
 	sfc_log_init(sa, "entry");
+
+	sfc_log_init(sa, "free the bounce buffer for indirection entries");
+	rte_free(flow_rss->bounce_tbl);
 
 	sfc_log_init(sa, "done");
 }
@@ -123,9 +145,9 @@ sfc_flow_rss_parse_conf(struct sfc_adapter *sa,
 		return EINVAL;
 	}
 
-	if (in->queue_num > EFX_RSS_TBL_SIZE) {
+	if (in->queue_num > flow_rss->nb_tbl_entries_max) {
 		sfc_err(sa, "flow-rss: parse: 'queue_num' is too large; MAX=%u",
-			EFX_RSS_TBL_SIZE);
+			flow_rss->nb_tbl_entries_max);
 		return EINVAL;
 	}
 
@@ -286,6 +308,7 @@ sfc_flow_rss_ctx_del(struct sfc_adapter *sa, struct sfc_flow_rss_ctx *ctx)
 
 static int
 sfc_flow_rss_ctx_program_tbl(struct sfc_adapter *sa,
+			     unsigned int nb_tbl_entries,
 			     const struct sfc_flow_rss_ctx *ctx)
 {
 	const struct sfc_flow_rss_conf *conf = &ctx->conf;
@@ -297,15 +320,15 @@ sfc_flow_rss_ctx_program_tbl(struct sfc_adapter *sa,
 	if (conf->nb_qid_offsets != 0) {
 		SFC_ASSERT(ctx->qid_offsets != NULL);
 
-		for (i = 0; i < EFX_RSS_TBL_SIZE; ++i)
+		for (i = 0; i < nb_tbl_entries; ++i)
 			tbl[i] = ctx->qid_offsets[i % conf->nb_qid_offsets];
 	} else {
-		for (i = 0; i < EFX_RSS_TBL_SIZE; ++i)
+		for (i = 0; i < nb_tbl_entries; ++i)
 			tbl[i] = i % conf->qid_span;
 	}
 
 	return efx_rx_scale_tbl_set(sa->nic, ctx->nic_handle,
-				    tbl, EFX_RSS_TBL_SIZE);
+				    tbl, nb_tbl_entries);
 }
 
 int
@@ -313,9 +336,12 @@ sfc_flow_rss_ctx_program(struct sfc_adapter *sa, struct sfc_flow_rss_ctx *ctx)
 {
 	efx_rx_scale_context_type_t ctx_type = EFX_RX_SCALE_EXCLUSIVE;
 	struct sfc_adapter_shared * const sas = sfc_sa2shared(sa);
+	const struct sfc_flow_rss *flow_rss = &sa->flow_rss;
 	struct sfc_rss *ethdev_rss = &sas->rss;
 	struct sfc_flow_rss_conf *conf;
 	bool allocation_done = B_FALSE;
+	unsigned int nb_qid_offsets;
+	unsigned int nb_tbl_entries;
 	int rc;
 
 	if (ctx == NULL)
@@ -325,18 +351,34 @@ sfc_flow_rss_ctx_program(struct sfc_adapter *sa, struct sfc_flow_rss_ctx *ctx)
 
 	SFC_ASSERT(sfc_adapter_is_locked(sa));
 
+	if (conf->nb_qid_offsets != 0)
+		nb_qid_offsets = conf->nb_qid_offsets;
+	else
+		nb_qid_offsets = conf->qid_span;
+
+	if (!RTE_IS_POWER_OF_2(nb_qid_offsets)) {
+		/*
+		 * Most likely, it pays to enlarge the indirection
+		 * table to facilitate better distribution quality.
+		 */
+		nb_qid_offsets = flow_rss->nb_tbl_entries_max;
+	}
+
+	nb_tbl_entries = RTE_MAX(flow_rss->nb_tbl_entries_min, nb_qid_offsets);
+
 	if (ctx->nic_handle_refcnt == 0) {
-		rc = efx_rx_scale_context_alloc(sa->nic, ctx_type,
-						conf->qid_span,
-						&ctx->nic_handle);
+		rc = efx_rx_scale_context_alloc_v2(sa->nic, ctx_type,
+						   conf->qid_span,
+						   nb_tbl_entries,
+						   &ctx->nic_handle);
 		if (rc != 0) {
-			sfc_err(sa, "flow-rss: failed to allocate NIC resource for ctx=%p: type=%d, qid_span=%u, rc=%d",
-				ctx, ctx_type, conf->qid_span, rc);
+			sfc_err(sa, "flow-rss: failed to allocate NIC resource for ctx=%p: type=%d, qid_span=%u, nb_tbl_entries=%u; rc=%d",
+				ctx, ctx_type, conf->qid_span, nb_tbl_entries, rc);
 			goto fail;
 		}
 
-		sfc_dbg(sa, "flow-rss: allocated NIC resource for ctx=%p: type=%d, qid_span=%u; handle=0x%08x",
-			ctx, ctx_type, conf->qid_span,
+		sfc_dbg(sa, "flow-rss: allocated NIC resource for ctx=%p: type=%d, qid_span=%u, nb_tbl_entries=%u; handle=0x%08x",
+			ctx, ctx_type, conf->qid_span, nb_tbl_entries,
 			ctx->nic_handle);
 
 		++(ctx->nic_handle_refcnt);
@@ -369,10 +411,10 @@ sfc_flow_rss_ctx_program(struct sfc_adapter *sa, struct sfc_flow_rss_ctx *ctx)
 		goto fail;
 	}
 
-	rc = sfc_flow_rss_ctx_program_tbl(sa, ctx);
+	rc = sfc_flow_rss_ctx_program_tbl(sa, nb_tbl_entries, ctx);
 	if (rc != 0) {
-		sfc_err(sa, "flow-rss: failed to program table for ctx=%p; rc=%d",
-			ctx, rc);
+		sfc_err(sa, "flow-rss: failed to program table for ctx=%p: nb_tbl_entries=%u; rc=%d",
+			ctx, nb_tbl_entries, rc);
 		goto fail;
 	}
 
