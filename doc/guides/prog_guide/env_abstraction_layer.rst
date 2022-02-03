@@ -86,7 +86,7 @@ See chapter
 Memory Mapping Discovery and Memory Reservation
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The allocation of large contiguous physical memory is done using the hugetlbfs kernel filesystem.
+The allocation of large contiguous physical memory is done using hugepages.
 The EAL provides an API to reserve named memory zones in this contiguous memory.
 The physical address of the reserved memory for that memory zone is also returned to the user by the memory zone reservation API.
 
@@ -95,11 +95,13 @@ and legacy mode. Both modes are explained below.
 
 .. note::
 
-    Memory reservations done using the APIs provided by rte_malloc are also backed by pages from the hugetlbfs filesystem.
+    Memory reservations done using the APIs provided by rte_malloc
+    are also backed by hugepages unless ``--no-huge`` option is given.
 
-+ Dynamic memory mode
+Dynamic Memory Mode
+^^^^^^^^^^^^^^^^^^^
 
-Currently, this mode is only supported on Linux.
+Currently, this mode is only supported on Linux and Windows.
 
 In this mode, usage of hugepages by DPDK application will grow and shrink based
 on application's requests. Any memory allocation through ``rte_malloc()``,
@@ -155,7 +157,8 @@ of memory that can be used by DPDK application.
     :ref:`Multi-process Support <Multi-process_Support>` for more details about
     DPDK IPC.
 
-+ Legacy memory mode
+Legacy Memory Mode
+^^^^^^^^^^^^^^^^^^
 
 This mode is enabled by specifying ``--legacy-mem`` command-line switch to the
 EAL. This switch will have no effect on FreeBSD as FreeBSD only supports
@@ -168,7 +171,8 @@ not allow acquiring or releasing hugepages from the system at runtime.
 If neither ``-m`` nor ``--socket-mem`` were specified, the entire available
 hugepage memory will be preallocated.
 
-+ Hugepage allocation matching
+Hugepage Allocation Matching
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 This behavior is enabled by specifying the ``--match-allocations`` command-line
 switch to the EAL. This switch is Linux-only and not supported with
@@ -182,7 +186,8 @@ matching can be used by these types of applications to satisfy both of these
 requirements. This can result in some increased memory usage which is
 very dependent on the memory allocation patterns of the application.
 
-+ 32-bit support
+32-bit Support
+^^^^^^^^^^^^^^
 
 Additional restrictions are present when running in 32-bit mode. In dynamic
 memory mode, by default maximum of 2 gigabytes of VA space will be preallocated,
@@ -192,7 +197,8 @@ used.
 In legacy mode, VA space will only be preallocated for segments that were
 requested (plus padding, to keep IOVA-contiguousness).
 
-+ Maximum amount of memory
+Maximum Amount of Memory
+^^^^^^^^^^^^^^^^^^^^^^^^
 
 All possible virtual memory space that can ever be used for hugepage mapping in
 a DPDK process is preallocated at startup, thereby placing an upper limit on how
@@ -222,7 +228,78 @@ Normally, these options do not need to be changed.
     can later be mapped into that preallocated VA space (if dynamic memory mode
     is enabled), and can optionally be mapped into it at startup.
 
-+ Segment file descriptors
+Hugepage Mapping
+^^^^^^^^^^^^^^^^
+
+Below is an overview of methods used for each OS to obtain hugepages,
+explaining why certain limitations and options exist in EAL.
+See the user guide for a specific OS for configuration details.
+
+FreeBSD uses ``contigmem`` kernel module
+to reserve a fixed number of hugepages at system start,
+which are mapped by EAL at initialization using a specific ``sysctl()``.
+
+Windows EAL allocates hugepages from the OS as needed using Win32 API,
+so available amount depends on the system load.
+It uses ``virt2phys`` kernel module to obtain physical addresses,
+unless running in IOVA-as-VA mode (e.g. forced with ``--iova-mode=va``).
+
+Linux allows to select any combination of the following:
+
+* use files in hugetlbfs (the default)
+  or anonymous mappings (``--in-memory``);
+* map each hugepage from its own file (the default)
+  or map multiple hugepages from one big file (``--single-file-segments``).
+
+Mapping hugepages from files in hugetlbfs is essential for multi-process,
+because secondary processes need to map the same hugepages.
+EAL creates files like ``rtemap_0``
+in directories specified with ``--huge-dir`` option
+(or in the mount point for a specific hugepage size).
+The ``rte`` prefix can be changed using ``--file-prefix``.
+This may be needed for running multiple primary processes
+that share a hugetlbfs mount point.
+Each backing file by default corresponds to one hugepage,
+it is opened and locked for the entire time the hugepage is used.
+This may exhaust the number of open files limit (``NOFILE``).
+See :ref:`segment-file-descriptors` section
+on how the number of open backing file descriptors can be reduced.
+
+In dynamic memory mode, EAL removes a backing hugepage file
+when all pages mapped from it are freed back to the system.
+However, backing files may persist after the application terminates
+in case of a crash or a leak of DPDK memory (e.g. ``rte_free()`` is missing).
+This reduces the number of hugepages available to other processes
+as reported by ``/sys/kernel/mm/hugepages/hugepages-*/free_hugepages``.
+EAL can remove the backing files after opening them for mapping
+if ``--huge-unlink`` is given to avoid polluting hugetlbfs.
+However, since it disables multi-process anyway,
+using anonymous mapping (``--in-memory``) is recommended instead.
+
+:ref:`EAL memory allocator <malloc>` relies on hugepages being zero-filled.
+Hugepages are cleared by the kernel when a file in hugetlbfs or its part
+is mapped for the first time system-wide
+to prevent data leaks from previous users of the same hugepage.
+EAL ensures this behavior by removing existing backing files at startup
+and by recreating them before opening for mapping (as a precaution).
+
+Anonymous mapping does not allow multi-process architecture.
+This mode does not use hugetlbfs
+and thus does not require root permissions for memory management
+(the limit of locked memory amount, ``MEMLOCK``, still applies).
+It is free of filename conflict and leftover file issues.
+If ``memfd_create(2)`` is supported both at build and run time,
+DPDK memory manager can provide file descriptors for memory segments,
+which are required for VirtIO with vhost-user backend.
+This can exhaust the number of open files limit (``NOFILE``)
+despite not creating any visible files.
+See :ref:`segment-file-descriptors` section
+on how the number of open file descriptors used by EAL can be reduced.
+
+.. _segment-file-descriptors:
+
+Segment File Descriptors
+^^^^^^^^^^^^^^^^^^^^^^^^
 
 On Linux, in most cases, EAL will store segment file descriptors in EAL. This
 can become a problem when using smaller page sizes due to underlying limitations
@@ -731,6 +808,7 @@ We expect only 50% of CPU spend on packet IO.
     echo 100000 > pkt_io/cpu.cfs_period_us
     echo  50000 > pkt_io/cpu.cfs_quota_us
 
+.. _malloc:
 
 Malloc
 ------
