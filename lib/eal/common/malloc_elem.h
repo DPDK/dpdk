@@ -27,7 +27,13 @@ struct malloc_elem {
 	LIST_ENTRY(malloc_elem) free_list;
 	/**< list of free elements in heap */
 	struct rte_memseg_list *msl;
-	volatile enum elem_state state;
+	/** Element state, @c dirty and @c pad validity depends on it. */
+	/* An extra bit is needed to represent enum elem_state as signed int. */
+	enum elem_state state : 3;
+	/** If state == ELEM_FREE: the memory is not filled with zeroes. */
+	uint32_t dirty : 1;
+	/** Reserved for future use. */
+	uint32_t reserved : 28;
 	uint32_t pad;
 	size_t size;
 	struct malloc_elem *orig_elem;
@@ -320,7 +326,8 @@ malloc_elem_init(struct malloc_elem *elem,
 		struct rte_memseg_list *msl,
 		size_t size,
 		struct malloc_elem *orig_elem,
-		size_t orig_size);
+		size_t orig_size,
+		bool dirty);
 
 void
 malloc_elem_insert(struct malloc_elem *elem);

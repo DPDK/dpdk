@@ -956,6 +956,10 @@ to be virtually contiguous.
     In that case, the pad header is used to locate the actual malloc element
     header for the block.
 
+*   dirty - this flag is only meaningful when ``state`` is ``FREE``.
+    It indicates that the content of the element is not fully zero-filled.
+    Memory from such blocks must be cleared when requested via ``rte_zmalloc*()``.
+
 *   pad - this holds the length of the padding present at the start of the block.
     In the case of a normal block header, it is added to the address of the end
     of the header to give the address of the start of the data area, i.e. the

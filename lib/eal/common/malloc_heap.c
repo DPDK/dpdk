@@ -93,11 +93,11 @@ malloc_socket_to_heap_id(unsigned int socket_id)
  */
 static struct malloc_elem *
 malloc_heap_add_memory(struct malloc_heap *heap, struct rte_memseg_list *msl,
-		void *start, size_t len)
+		void *start, size_t len, bool dirty)
 {
 	struct malloc_elem *elem = start;
 
-	malloc_elem_init(elem, heap, msl, len, elem, len);
+	malloc_elem_init(elem, heap, msl, len, elem, len, dirty);
 
 	malloc_elem_insert(elem);
 
@@ -135,7 +135,8 @@ malloc_add_seg(const struct rte_memseg_list *msl,
 
 	found_msl = &mcfg->memsegs[msl_idx];
 
-	malloc_heap_add_memory(heap, found_msl, ms->addr, len);
+	malloc_heap_add_memory(heap, found_msl, ms->addr, len,
+			ms->flags & RTE_MEMSEG_FLAG_DIRTY);
 
 	heap->total_size += len;
 
@@ -303,7 +304,8 @@ alloc_pages_on_heap(struct malloc_heap *heap, uint64_t pg_sz, size_t elt_size,
 	struct rte_memseg_list *msl;
 	struct malloc_elem *elem = NULL;
 	size_t alloc_sz;
-	int allocd_pages;
+	int allocd_pages, i;
+	bool dirty = false;
 	void *ret, *map_addr;
 
 	alloc_sz = (size_t)pg_sz * n_segs;
@@ -372,8 +374,12 @@ alloc_pages_on_heap(struct malloc_heap *heap, uint64_t pg_sz, size_t elt_size,
 		goto fail;
 	}
 
+	/* Element is dirty if it contains at least one dirty page. */
+	for (i = 0; i < allocd_pages; i++)
+		dirty |= ms[i]->flags & RTE_MEMSEG_FLAG_DIRTY;
+
 	/* add newly minted memsegs to malloc heap */
-	elem = malloc_heap_add_memory(heap, msl, map_addr, alloc_sz);
+	elem = malloc_heap_add_memory(heap, msl, map_addr, alloc_sz, dirty);
 
 	/* try once more, as now we have allocated new memory */
 	ret = find_suitable_element(heap, elt_size, flags, align, bound,
@@ -1260,7 +1266,7 @@ malloc_heap_add_external_memory(struct malloc_heap *heap,
 	memset(msl->base_va, 0, msl->len);
 
 	/* now, add newly minted memory to the malloc heap */
-	malloc_heap_add_memory(heap, msl, msl->base_va, msl->len);
+	malloc_heap_add_memory(heap, msl, msl->base_va, msl->len, false);
 
 	heap->total_size += msl->len;
 

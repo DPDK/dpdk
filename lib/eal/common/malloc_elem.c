@@ -129,7 +129,7 @@ malloc_elem_find_max_iova_contig(struct malloc_elem *elem, size_t align)
 void
 malloc_elem_init(struct malloc_elem *elem, struct malloc_heap *heap,
 		struct rte_memseg_list *msl, size_t size,
-		struct malloc_elem *orig_elem, size_t orig_size)
+		struct malloc_elem *orig_elem, size_t orig_size, bool dirty)
 {
 	elem->heap = heap;
 	elem->msl = msl;
@@ -137,6 +137,7 @@ malloc_elem_init(struct malloc_elem *elem, struct malloc_heap *heap,
 	elem->next = NULL;
 	memset(&elem->free_list, 0, sizeof(elem->free_list));
 	elem->state = ELEM_FREE;
+	elem->dirty = dirty;
 	elem->size = size;
 	elem->pad = 0;
 	elem->orig_elem = orig_elem;
@@ -300,7 +301,7 @@ split_elem(struct malloc_elem *elem, struct malloc_elem *split_pt)
 	const size_t new_elem_size = elem->size - old_elem_size;
 
 	malloc_elem_init(split_pt, elem->heap, elem->msl, new_elem_size,
-			 elem->orig_elem, elem->orig_size);
+			elem->orig_elem, elem->orig_size, elem->dirty);
 	split_pt->prev = elem;
 	split_pt->next = next_elem;
 	if (next_elem)
@@ -506,6 +507,7 @@ join_elem(struct malloc_elem *elem1, struct malloc_elem *elem2)
 	else
 		elem1->heap->last = elem1;
 	elem1->next = next;
+	elem1->dirty |= elem2->dirty;
 	if (elem1->pad) {
 		struct malloc_elem *inner = RTE_PTR_ADD(elem1, elem1->pad);
 		inner->size = elem1->size - elem1->pad;
@@ -579,6 +581,14 @@ malloc_elem_free(struct malloc_elem *elem)
 	ptr = RTE_PTR_ADD(elem, MALLOC_ELEM_HEADER_LEN);
 	data_len = elem->size - MALLOC_ELEM_OVERHEAD;
 
+	/*
+	 * Consider the element clean for the purposes of joining.
+	 * If both neighbors are clean or non-existent,
+	 * the joint element will be clean,
+	 * which means the memory should be cleared.
+	 * There is no need to clear the memory if the joint element is dirty.
+	 */
+	elem->dirty = false;
 	elem = malloc_elem_join_adjacent_free(elem);
 
 	malloc_elem_free_list_insert(elem);
@@ -588,8 +598,14 @@ malloc_elem_free(struct malloc_elem *elem)
 	/* decrease heap's count of allocated elements */
 	elem->heap->alloc_count--;
 
-	/* poison memory */
+#ifndef RTE_MALLOC_DEBUG
+	/* Normally clear the memory when needed. */
+	if (!elem->dirty)
+		memset(ptr, 0, data_len);
+#else
+	/* Always poison the memory in debug mode. */
 	memset(ptr, MALLOC_POISON, data_len);
+#endif
 
 	return elem;
 }

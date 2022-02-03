@@ -115,15 +115,22 @@ rte_zmalloc_socket(const char *type, size_t size, unsigned align, int socket)
 {
 	void *ptr = rte_malloc_socket(type, size, align, socket);
 
+	if (ptr != NULL) {
+		struct malloc_elem *elem = malloc_elem_from_data(ptr);
+
+		if (elem->dirty) {
+			memset(ptr, 0, size);
+		} else {
 #ifdef RTE_MALLOC_DEBUG
-	/*
-	 * If DEBUG is enabled, then freed memory is marked with poison
-	 * value and set to zero on allocation.
-	 * If DEBUG is not enabled then  memory is already zeroed.
-	 */
-	if (ptr != NULL)
-		memset(ptr, 0, size);
+			/*
+			 * If DEBUG is enabled, then freed memory is marked
+			 * with a poison value and set to zero on allocation.
+			 * If DEBUG is disabled then memory is already zeroed.
+			 */
+			memset(ptr, 0, size);
 #endif
+		}
+	}
 
 	rte_eal_trace_mem_zmalloc(type, size, align, socket, ptr);
 	return ptr;
