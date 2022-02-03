@@ -2030,8 +2030,6 @@ test_pktmbuf_read_from_offset(struct rte_mempool *pktmbuf_pool)
 			NULL);
 	if (data_copy == NULL)
 		GOTO_FAIL("%s: Error in reading packet data!\n", __func__);
-	if (strlen(data_copy) != MBUF_TEST_DATA_LEN2 - 5)
-		GOTO_FAIL("%s: Incorrect data length!\n", __func__);
 	for (off = 0; off < MBUF_TEST_DATA_LEN2 - 5; off++) {
 		if (data_copy[off] != (char)0xcc)
 			GOTO_FAIL("Data corrupted at offset %u", off);
@@ -2053,8 +2051,6 @@ test_pktmbuf_read_from_offset(struct rte_mempool *pktmbuf_pool)
 	data_copy = rte_pktmbuf_read(m, hdr_len, 0, NULL);
 	if (data_copy == NULL)
 		GOTO_FAIL("%s: Error in reading packet data!\n", __func__);
-	if (strlen(data_copy) != MBUF_TEST_DATA_LEN2)
-		GOTO_FAIL("%s: Corrupted data content!\n", __func__);
 	for (off = 0; off < MBUF_TEST_DATA_LEN2; off++) {
 		if (data_copy[off] != (char)0xcc)
 			GOTO_FAIL("Data corrupted at offset %u", off);
