@@ -1428,7 +1428,7 @@ eal_legacy_hugepage_init(void)
 	}
 
 	/* free the hugepage backing files */
-	if (internal_conf->hugepage_unlink &&
+	if (internal_conf->hugepage_file.unlink_before_mapping &&
 		unlink_hugepage_files(tmp_hp, internal_conf->num_hugepage_sizes) < 0) {
 		RTE_LOG(ERR, EAL, "Unlinking hugepage files failed!\n");
 		goto fail;

@@ -1737,7 +1737,7 @@ eal_parse_common_option(int opt, const char *optarg,
 
 	/* long options */
 	case OPT_HUGE_UNLINK_NUM:
-		conf->hugepage_unlink = 1;
+		conf->hugepage_file.unlink_before_mapping = true;
 		break;
 
 	case OPT_NO_HUGE_NUM:
@@ -1766,7 +1766,7 @@ eal_parse_common_option(int opt, const char *optarg,
 		conf->in_memory = 1;
 		/* in-memory is a superset of noshconf and huge-unlink */
 		conf->no_shconf = 1;
-		conf->hugepage_unlink = 1;
+		conf->hugepage_file.unlink_before_mapping = true;
 		break;
 
 	case OPT_PROC_TYPE_NUM:
@@ -2050,7 +2050,8 @@ eal_check_common_options(struct internal_config *internal_cfg)
 			"be specified together with --"OPT_NO_HUGE"\n");
 		return -1;
 	}
-	if (internal_cfg->no_hugetlbfs && internal_cfg->hugepage_unlink &&
+	if (internal_cfg->no_hugetlbfs &&
+			internal_cfg->hugepage_file.unlink_before_mapping &&
 			!internal_cfg->in_memory) {
 		RTE_LOG(ERR, EAL, "Option --"OPT_HUGE_UNLINK" cannot "
 			"be specified together with --"OPT_NO_HUGE"\n");
@@ -2061,7 +2062,7 @@ eal_check_common_options(struct internal_config *internal_cfg)
 			" is only supported in non-legacy memory mode\n");
 	}
 	if (internal_cfg->single_file_segments &&
-			internal_cfg->hugepage_unlink &&
+			internal_cfg->hugepage_file.unlink_before_mapping &&
 			!internal_cfg->in_memory) {
 		RTE_LOG(ERR, EAL, "Option --"OPT_SINGLE_FILE_SEGMENTS" is "
 			"not compatible with --"OPT_HUGE_UNLINK"\n");

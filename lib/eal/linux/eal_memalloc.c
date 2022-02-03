@@ -564,7 +564,7 @@ alloc_seg(struct rte_memseg *ms, void *addr, int socket_id,
 					__func__, strerror(errno));
 				goto resized;
 			}
-			if (internal_conf->hugepage_unlink &&
+			if (internal_conf->hugepage_file.unlink_before_mapping &&
 					!internal_conf->in_memory) {
 				if (unlink(path)) {
 					RTE_LOG(DEBUG, EAL, "%s(): unlink() failed: %s\n",
@@ -697,7 +697,7 @@ resized:
 			close_hugefile(fd, path, list_idx);
 	} else {
 		/* only remove file if we can take out a write lock */
-		if (internal_conf->hugepage_unlink == 0 &&
+		if (!internal_conf->hugepage_file.unlink_before_mapping &&
 				internal_conf->in_memory == 0 &&
 				lock(fd, LOCK_EX) == 1)
 			unlink(path);
@@ -756,7 +756,8 @@ free_seg(struct rte_memseg *ms, struct hugepage_info *hi,
 		/* if we're able to take out a write lock, we're the last one
 		 * holding onto this page.
 		 */
-		if (!internal_conf->in_memory && !internal_conf->hugepage_unlink) {
+		if (!internal_conf->in_memory &&
+				!internal_conf->hugepage_file.unlink_before_mapping) {
 			ret = lock(fd, LOCK_EX);
 			if (ret >= 0) {
 				/* no one else is using this page */
