@@ -84,7 +84,7 @@ static int get_hp_sysfs_value(const char *subdir, const char *file, unsigned lon
 /* this function is only called from eal_hugepage_info_init which itself
  * is only called from a primary process */
 static uint32_t
-get_num_hugepages(const char *subdir, size_t sz)
+get_num_hugepages(const char *subdir, size_t sz, unsigned int reusable_pages)
 {
 	unsigned long resv_pages, num_pages, over_pages, surplus_pages;
 	const char *nr_hp_file = "free_hugepages";
@@ -116,12 +116,16 @@ get_num_hugepages(const char *subdir, size_t sz)
 	else
 		over_pages = 0;
 
-	if (num_pages == 0 && over_pages == 0)
+	if (num_pages == 0 && over_pages == 0 && reusable_pages)
 		RTE_LOG(WARNING, EAL, "No available %zu kB hugepages reported\n",
 				sz >> 10);
 
 	num_pages += over_pages;
 	if (num_pages < over_pages) /* overflow */
+		num_pages = UINT32_MAX;
+
+	num_pages += reusable_pages;
+	if (num_pages < reusable_pages) /* overflow */
 		num_pages = UINT32_MAX;
 
 	/* we want to return a uint32_t and more than this looks suspicious
@@ -297,20 +301,28 @@ get_hugepage_dir(uint64_t hugepage_sz, char *hugedir, int len)
 	return -1;
 }
 
+struct walk_hugedir_data {
+	int dir_fd;
+	int file_fd;
+	const char *file_name;
+	void *user_data;
+};
+
+typedef void (walk_hugedir_t)(const struct walk_hugedir_data *whd);
+
 /*
- * Clear the hugepage directory of whatever hugepage files
- * there are. Checks if the file is locked (i.e.
- * if it's in use by another DPDK process).
+ * Search the hugepage directory for whatever hugepage files there are.
+ * Check if the file is in use by another DPDK process.
+ * If not, execute a callback on it.
  */
 static int
-clear_hugedir(const char * hugedir)
+walk_hugedir(const char *hugedir, walk_hugedir_t *cb, void *user_data)
 {
 	DIR *dir;
 	struct dirent *dirent;
 	int dir_fd, fd, lck_result;
 	const char filter[] = "*map_*"; /* matches hugepage files */
 
-	/* open directory */
 	dir = opendir(hugedir);
 	if (!dir) {
 		RTE_LOG(ERR, EAL, "Unable to open hugepage directory %s\n",
@@ -326,7 +338,7 @@ clear_hugedir(const char * hugedir)
 		goto error;
 	}
 
-	while(dirent != NULL){
+	while (dirent != NULL) {
 		/* skip files that don't match the hugepage pattern */
 		if (fnmatch(filter, dirent->d_name, 0) > 0) {
 			dirent = readdir(dir);
@@ -345,9 +357,15 @@ clear_hugedir(const char * hugedir)
 		/* non-blocking lock */
 		lck_result = flock(fd, LOCK_EX | LOCK_NB);
 
-		/* if lock succeeds, remove the file */
+		/* if lock succeeds, execute callback */
 		if (lck_result != -1)
-			unlinkat(dir_fd, dirent->d_name, 0);
+			cb(&(struct walk_hugedir_data){
+				.dir_fd = dir_fd,
+				.file_fd = fd,
+				.file_name = dirent->d_name,
+				.user_data = user_data,
+			});
+
 		close (fd);
 		dirent = readdir(dir);
 	}
@@ -359,10 +377,46 @@ error:
 	if (dir)
 		closedir(dir);
 
-	RTE_LOG(ERR, EAL, "Error while clearing hugepage dir: %s\n",
+	RTE_LOG(ERR, EAL, "Error while walking hugepage dir: %s\n",
 		strerror(errno));
 
 	return -1;
+}
+
+static void
+clear_hugedir_cb(const struct walk_hugedir_data *whd)
+{
+	unlinkat(whd->dir_fd, whd->file_name, 0);
+}
+
+/* Remove hugepage files not used by other DPDK processes from a directory. */
+static int
+clear_hugedir(const char *hugedir)
+{
+	return walk_hugedir(hugedir, clear_hugedir_cb, NULL);
+}
+
+static void
+inspect_hugedir_cb(const struct walk_hugedir_data *whd)
+{
+	uint64_t *total_size = whd->user_data;
+	struct stat st;
+
+	if (fstat(whd->file_fd, &st) < 0)
+		RTE_LOG(DEBUG, EAL, "%s(): stat(\"%s\") failed: %s",
+				__func__, whd->file_name, strerror(errno));
+	else
+		(*total_size) += st.st_size;
+}
+
+/*
+ * Count the total size in bytes of all files in the directory
+ * not mapped by other DPDK process.
+ */
+static int
+inspect_hugedir(const char *hugedir, uint64_t *total_size)
+{
+	return walk_hugedir(hugedir, inspect_hugedir_cb, total_size);
 }
 
 static int
@@ -375,7 +429,8 @@ compare_hpi(const void *a, const void *b)
 }
 
 static void
-calc_num_pages(struct hugepage_info *hpi, struct dirent *dirent)
+calc_num_pages(struct hugepage_info *hpi, struct dirent *dirent,
+		unsigned int reusable_pages)
 {
 	uint64_t total_pages = 0;
 	unsigned int i;
@@ -388,8 +443,15 @@ calc_num_pages(struct hugepage_info *hpi, struct dirent *dirent)
 	 * in one socket and sorting them later
 	 */
 	total_pages = 0;
-	/* we also don't want to do this for legacy init */
-	if (!internal_conf->legacy_mem)
+
+	/*
+	 * We also don't want to do this for legacy init.
+	 * When there are hugepage files to reuse it is unknown
+	 * what NUMA node the pages are on.
+	 * This could be determined by mapping,
+	 * but it is precisely what hugepage file reuse is trying to avoid.
+	 */
+	if (!internal_conf->legacy_mem && reusable_pages == 0)
 		for (i = 0; i < rte_socket_count(); i++) {
 			int socket = rte_socket_id_by_idx(i);
 			unsigned int num_pages =
@@ -405,7 +467,7 @@ calc_num_pages(struct hugepage_info *hpi, struct dirent *dirent)
 	 */
 	if (total_pages == 0) {
 		hpi->num_pages[0] = get_num_hugepages(dirent->d_name,
-				hpi->hugepage_sz);
+				hpi->hugepage_sz, reusable_pages);
 
 #ifndef RTE_ARCH_64
 		/* for 32-bit systems, limit number of hugepages to
@@ -421,6 +483,8 @@ hugepage_info_init(void)
 {	const char dirent_start_text[] = "hugepages-";
 	const size_t dirent_start_len = sizeof(dirent_start_text) - 1;
 	unsigned int i, num_sizes = 0;
+	uint64_t reusable_bytes;
+	unsigned int reusable_pages;
 	DIR *dir;
 	struct dirent *dirent;
 	struct internal_config *internal_conf =
@@ -454,7 +518,7 @@ hugepage_info_init(void)
 			uint32_t num_pages;
 
 			num_pages = get_num_hugepages(dirent->d_name,
-					hpi->hugepage_sz);
+					hpi->hugepage_sz, 0);
 			if (num_pages > 0)
 				RTE_LOG(NOTICE, EAL,
 					"%" PRIu32 " hugepages of size "
@@ -473,7 +537,7 @@ hugepage_info_init(void)
 					"hugepages of size %" PRIu64 " bytes "
 					"will be allocated anonymously\n",
 					hpi->hugepage_sz);
-				calc_num_pages(hpi, dirent);
+				calc_num_pages(hpi, dirent, 0);
 				num_sizes++;
 			}
 #endif
@@ -489,11 +553,23 @@ hugepage_info_init(void)
 				"Failed to lock hugepage directory!\n");
 			break;
 		}
-		/* clear out the hugepages dir from unused pages */
-		if (clear_hugedir(hpi->hugedir) == -1)
-			break;
 
-		calc_num_pages(hpi, dirent);
+		/*
+		 * Check for existing hugepage files and either remove them
+		 * or count how many of them can be reused.
+		 */
+		reusable_pages = 0;
+		if (!internal_conf->hugepage_file.unlink_existing) {
+			reusable_bytes = 0;
+			if (inspect_hugedir(hpi->hugedir,
+					&reusable_bytes) < 0)
+				break;
+			RTE_ASSERT(reusable_bytes % hpi->hugepage_sz == 0);
+			reusable_pages = reusable_bytes / hpi->hugepage_sz;
+		} else if (clear_hugedir(hpi->hugedir) < 0) {
+			break;
+		}
+		calc_num_pages(hpi, dirent, reusable_pages);
 
 		num_sizes++;
 	}

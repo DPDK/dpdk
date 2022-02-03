@@ -311,6 +311,8 @@ eal_reset_internal_config(struct internal_config *internal_cfg)
 	internal_cfg->force_nchannel = 0;
 	internal_cfg->hugefile_prefix = NULL;
 	internal_cfg->hugepage_dir = NULL;
+	internal_cfg->hugepage_file.unlink_before_mapping = false;
+	internal_cfg->hugepage_file.unlink_existing = true;
 	internal_cfg->force_sockets = 0;
 	/* zero out the NUMA config */
 	for (i = 0; i < RTE_MAX_NUMA_NODES; i++)

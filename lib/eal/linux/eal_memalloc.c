@@ -287,11 +287,18 @@ get_seg_memfd(struct hugepage_info *hi __rte_unused,
 
 static int
 get_seg_fd(char *path, int buflen, struct hugepage_info *hi,
-		unsigned int list_idx, unsigned int seg_idx)
+		unsigned int list_idx, unsigned int seg_idx,
+		bool *dirty)
 {
 	int fd;
+	int *out_fd;
+	struct stat st;
+	int ret;
 	const struct internal_config *internal_conf =
 		eal_get_internal_configuration();
+
+	if (dirty != NULL)
+		*dirty = false;
 
 	/* for in-memory mode, we only make it here when we're sure we support
 	 * memfd, and this is a special case.
@@ -300,66 +307,70 @@ get_seg_fd(char *path, int buflen, struct hugepage_info *hi,
 		return get_seg_memfd(hi, list_idx, seg_idx);
 
 	if (internal_conf->single_file_segments) {
-		/* create a hugepage file path */
+		out_fd = &fd_list[list_idx].memseg_list_fd;
 		eal_get_hugefile_path(path, buflen, hi->hugedir, list_idx);
-
-		fd = fd_list[list_idx].memseg_list_fd;
-
-		if (fd < 0) {
-			fd = open(path, O_CREAT | O_RDWR, 0600);
-			if (fd < 0) {
-				RTE_LOG(ERR, EAL, "%s(): open '%s' failed: %s\n",
-					__func__, path, strerror(errno));
-				return -1;
-			}
-			/* take out a read lock and keep it indefinitely */
-			if (lock(fd, LOCK_SH) < 0) {
-				RTE_LOG(ERR, EAL, "%s(): lock failed: %s\n",
-					__func__, strerror(errno));
-				close(fd);
-				return -1;
-			}
-			fd_list[list_idx].memseg_list_fd = fd;
-		}
 	} else {
-		/* create a hugepage file path */
+		out_fd = &fd_list[list_idx].fds[seg_idx];
 		eal_get_hugefile_path(path, buflen, hi->hugedir,
 				list_idx * RTE_MAX_MEMSEG_PER_LIST + seg_idx);
+	}
+	fd = *out_fd;
+	if (fd >= 0)
+		return fd;
 
-		fd = fd_list[list_idx].fds[seg_idx];
+	/*
+	 * There is no TOCTOU between stat() and unlink()/open()
+	 * because the hugepage directory is locked.
+	 */
+	ret = stat(path, &st);
+	if (ret < 0 && errno != ENOENT) {
+		RTE_LOG(DEBUG, EAL, "%s(): stat() for '%s' failed: %s\n",
+			__func__, path, strerror(errno));
+		return -1;
+	}
+	if (!internal_conf->hugepage_file.unlink_existing && ret == 0 &&
+			dirty != NULL)
+		*dirty = true;
 
-		if (fd < 0) {
-			/* A primary process is the only one creating these
-			 * files. If there is a leftover that was not cleaned
-			 * by clear_hugedir(), we must *now* make sure to drop
-			 * the file or we will remap old stuff while the rest
-			 * of the code is built on the assumption that a new
-			 * page is clean.
-			 */
-			if (rte_eal_process_type() == RTE_PROC_PRIMARY &&
-					unlink(path) == -1 &&
-					errno != ENOENT) {
-				RTE_LOG(DEBUG, EAL, "%s(): could not remove '%s': %s\n",
-					__func__, path, strerror(errno));
-				return -1;
-			}
-
-			fd = open(path, O_CREAT | O_RDWR, 0600);
-			if (fd < 0) {
-				RTE_LOG(ERR, EAL, "%s(): open '%s' failed: %s\n",
-					__func__, path, strerror(errno));
-				return -1;
-			}
-			/* take out a read lock */
-			if (lock(fd, LOCK_SH) < 0) {
-				RTE_LOG(ERR, EAL, "%s(): lock failed: %s\n",
-					__func__, strerror(errno));
-				close(fd);
-				return -1;
-			}
-			fd_list[list_idx].fds[seg_idx] = fd;
+	/*
+	 * The kernel clears a hugepage only when it is mapped
+	 * from a particular file for the first time.
+	 * If the file already exists, the old content will be mapped.
+	 * If the memory manager assumes all mapped pages to be clean,
+	 * the file must be removed and created anew.
+	 * Otherwise, the primary caller must be notified
+	 * that mapped pages will be dirty
+	 * (secondary callers receive the segment state from the primary one).
+	 * When multiple hugepages are mapped from the same file,
+	 * whether they will be dirty depends on the part that is mapped.
+	 */
+	if (!internal_conf->single_file_segments &&
+			internal_conf->hugepage_file.unlink_existing &&
+			rte_eal_process_type() == RTE_PROC_PRIMARY &&
+			ret == 0) {
+		/* coverity[toctou] */
+		if (unlink(path) < 0) {
+			RTE_LOG(DEBUG, EAL, "%s(): could not remove '%s': %s\n",
+				__func__, path, strerror(errno));
+			return -1;
 		}
 	}
+
+	/* coverity[toctou] */
+	fd = open(path, O_CREAT | O_RDWR, 0600);
+	if (fd < 0) {
+		RTE_LOG(ERR, EAL, "%s(): open '%s' failed: %s\n",
+			__func__, path, strerror(errno));
+		return -1;
+	}
+	/* take out a read lock */
+	if (lock(fd, LOCK_SH) < 0) {
+		RTE_LOG(ERR, EAL, "%s(): lock '%s' failed: %s\n",
+			__func__, path, strerror(errno));
+		close(fd);
+		return -1;
+	}
+	*out_fd = fd;
 	return fd;
 }
 
@@ -385,8 +396,10 @@ resize_hugefile_in_memory(int fd, uint64_t fa_offset,
 
 static int
 resize_hugefile_in_filesystem(int fd, uint64_t fa_offset, uint64_t page_sz,
-		bool grow)
+		bool grow, bool *dirty)
 {
+	const struct internal_config *internal_conf =
+			eal_get_internal_configuration();
 	bool again = false;
 
 	do {
@@ -405,6 +418,8 @@ resize_hugefile_in_filesystem(int fd, uint64_t fa_offset, uint64_t page_sz,
 			uint64_t cur_size = get_file_size(fd);
 
 			/* fallocate isn't supported, fall back to ftruncate */
+			if (dirty != NULL)
+				*dirty = new_size <= cur_size;
 			if (new_size > cur_size &&
 					ftruncate(fd, new_size) < 0) {
 				RTE_LOG(DEBUG, EAL, "%s(): ftruncate() failed: %s\n",
@@ -447,8 +462,17 @@ resize_hugefile_in_filesystem(int fd, uint64_t fa_offset, uint64_t page_sz,
 						strerror(errno));
 					return -1;
 				}
-			} else
+			} else {
 				fallocate_supported = 1;
+				/*
+				 * It is unknown which portions of an existing
+				 * hugepage file were allocated previously,
+				 * so all pages within the file are considered
+				 * dirty, unless the file is a fresh one.
+				 */
+				if (dirty != NULL)
+					*dirty &= !internal_conf->hugepage_file.unlink_existing;
+			}
 		}
 	} while (again);
 
@@ -475,7 +499,8 @@ close_hugefile(int fd, char *path, int list_idx)
 }
 
 static int
-resize_hugefile(int fd, uint64_t fa_offset, uint64_t page_sz, bool grow)
+resize_hugefile(int fd, uint64_t fa_offset, uint64_t page_sz, bool grow,
+		bool *dirty)
 {
 	/* in-memory mode is a special case, because we can be sure that
 	 * fallocate() is supported.
@@ -483,12 +508,15 @@ resize_hugefile(int fd, uint64_t fa_offset, uint64_t page_sz, bool grow)
 	const struct internal_config *internal_conf =
 		eal_get_internal_configuration();
 
-	if (internal_conf->in_memory)
+	if (internal_conf->in_memory) {
+		if (dirty != NULL)
+			*dirty = false;
 		return resize_hugefile_in_memory(fd, fa_offset,
 				page_sz, grow);
+	}
 
 	return resize_hugefile_in_filesystem(fd, fa_offset, page_sz,
-				grow);
+			grow, dirty);
 }
 
 static int
@@ -505,6 +533,7 @@ alloc_seg(struct rte_memseg *ms, void *addr, int socket_id,
 	char path[PATH_MAX];
 	int ret = 0;
 	int fd;
+	bool dirty;
 	size_t alloc_sz;
 	int flags;
 	void *new_addr;
@@ -534,6 +563,7 @@ alloc_seg(struct rte_memseg *ms, void *addr, int socket_id,
 
 		pagesz_flag = pagesz_flags(alloc_sz);
 		fd = -1;
+		dirty = false;
 		mmap_flags = in_memory_flags | pagesz_flag;
 
 		/* single-file segments codepath will never be active
@@ -544,7 +574,8 @@ alloc_seg(struct rte_memseg *ms, void *addr, int socket_id,
 		map_offset = 0;
 	} else {
 		/* takes out a read lock on segment or segment list */
-		fd = get_seg_fd(path, sizeof(path), hi, list_idx, seg_idx);
+		fd = get_seg_fd(path, sizeof(path), hi, list_idx, seg_idx,
+				&dirty);
 		if (fd < 0) {
 			RTE_LOG(ERR, EAL, "Couldn't get fd on hugepage file\n");
 			return -1;
@@ -552,7 +583,8 @@ alloc_seg(struct rte_memseg *ms, void *addr, int socket_id,
 
 		if (internal_conf->single_file_segments) {
 			map_offset = seg_idx * alloc_sz;
-			ret = resize_hugefile(fd, map_offset, alloc_sz, true);
+			ret = resize_hugefile(fd, map_offset, alloc_sz, true,
+					&dirty);
 			if (ret < 0)
 				goto resized;
 
@@ -662,6 +694,7 @@ alloc_seg(struct rte_memseg *ms, void *addr, int socket_id,
 	ms->nrank = rte_memory_get_nrank();
 	ms->iova = iova;
 	ms->socket_id = socket_id;
+	ms->flags = dirty ? RTE_MEMSEG_FLAG_DIRTY : 0;
 
 	return 0;
 
@@ -689,7 +722,7 @@ resized:
 		return -1;
 
 	if (internal_conf->single_file_segments) {
-		resize_hugefile(fd, map_offset, alloc_sz, false);
+		resize_hugefile(fd, map_offset, alloc_sz, false, NULL);
 		/* ignore failure, can't make it any worse */
 
 		/* if refcount is at zero, close the file */
@@ -739,13 +772,13 @@ free_seg(struct rte_memseg *ms, struct hugepage_info *hi,
 	 * segment and thus drop the lock on original fd, but hugepage dir is
 	 * now locked so we can take out another one without races.
 	 */
-	fd = get_seg_fd(path, sizeof(path), hi, list_idx, seg_idx);
+	fd = get_seg_fd(path, sizeof(path), hi, list_idx, seg_idx, NULL);
 	if (fd < 0)
 		return -1;
 
 	if (internal_conf->single_file_segments) {
 		map_offset = seg_idx * ms->len;
-		if (resize_hugefile(fd, map_offset, ms->len, false))
+		if (resize_hugefile(fd, map_offset, ms->len, false, NULL))
 			return -1;
 
 		if (--(fd_list[list_idx].count) == 0)
@@ -757,6 +790,7 @@ free_seg(struct rte_memseg *ms, struct hugepage_info *hi,
 		 * holding onto this page.
 		 */
 		if (!internal_conf->in_memory &&
+				internal_conf->hugepage_file.unlink_existing &&
 				!internal_conf->hugepage_file.unlink_before_mapping) {
 			ret = lock(fd, LOCK_EX);
 			if (ret >= 0) {
@@ -1741,6 +1775,12 @@ eal_memalloc_init(void)
 		/* this cannot ever happen but better safe than sorry */
 		if (!anonymous_hugepages_supported) {
 			RTE_LOG(ERR, EAL, "Using anonymous memory is not supported\n");
+			return -1;
+		}
+		/* safety net, should be impossible to configure */
+		if (internal_conf->hugepage_file.unlink_before_mapping &&
+				!internal_conf->hugepage_file.unlink_existing) {
+			RTE_LOG(ERR, EAL, "Unlinking existing hugepage files is prohibited, cannot unlink them before mapping.\n");
 			return -1;
 		}
 	}

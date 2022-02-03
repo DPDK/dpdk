@@ -1360,7 +1360,8 @@ rte_eal_cleanup(void)
 	struct internal_config *internal_conf =
 		eal_get_internal_configuration();
 
-	if (rte_eal_process_type() == RTE_PROC_PRIMARY)
+	if (rte_eal_process_type() == RTE_PROC_PRIMARY &&
+			internal_conf->hugepage_file.unlink_existing)
 		rte_memseg_walk(mark_freeable, NULL);
 	rte_service_finalize();
 	rte_mp_channel_cleanup();
