@@ -81,6 +81,7 @@ test_sources = files(
         'test_lpm6_perf.c',
         'test_lpm_perf.c',
         'test_malloc.c',
+        'test_malloc_perf.c',
         'test_mbuf.c',
         'test_member.c',
         'test_member_perf.c',
@@ -250,6 +251,7 @@ extra_test_names = [
 
 perf_test_names = [
         'ring_perf_autotest',
+        'malloc_perf_autotest',
         'mempool_perf_autotest',
         'memcpy_perf_autotest',
         'hash_perf_autotest',

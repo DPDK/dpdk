@@ -208,6 +208,7 @@ F: app/test/test_external_mem.c
 F: app/test/test_func_reentrancy.c
 F: app/test/test_fbarray.c
 F: app/test/test_malloc.c
+F: app/test/test_malloc_perf.c
 F: app/test/test_memory.c
 F: app/test/test_memzone.c
 
