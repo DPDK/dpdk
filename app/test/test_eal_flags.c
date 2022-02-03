@@ -1210,6 +1210,11 @@ test_file_prefix(void)
 		DEFAULT_MEM_SIZE, "--single-file-segments",
 		"--file-prefix=" memtest1 };
 
+	/* primary process with memtest1 and --huge-unlink=never mode */
+	const char * const argv9[] = {prgname, "-m",
+		DEFAULT_MEM_SIZE, "--huge-unlink=never",
+		"--file-prefix=" memtest1 };
+
 	/* check if files for current prefix are present */
 	if (process_hugefiles(prefix, HUGEPAGE_CHECK_EXISTS) != 1) {
 		printf("Error - hugepage files for %s were not created!\n", prefix);
@@ -1375,6 +1380,25 @@ test_file_prefix(void)
 	if (process_hugefiles(memtest1, HUGEPAGE_CHECK_EXISTS) != 0) {
 		printf("Error - hugepage files for %s were not deleted!\n",
 				memtest1);
+		return -1;
+	}
+
+	/* this process will run with --huge-unlink,
+	 * so it should not remove hugepage files when it exits
+	 */
+	if (launch_proc(argv9) != 0) {
+		printf("Error - failed to run with --huge-unlink=never\n");
+		return -1;
+	}
+
+	/* check if hugefiles for memtest1 are present */
+	if (process_hugefiles(memtest1, HUGEPAGE_CHECK_EXISTS) == 0) {
+		printf("Error - hugepage files for %s were deleted!\n",
+				memtest1);
+		return -1;
+	}
+	if (process_hugefiles(memtest1, HUGEPAGE_DELETE) != 1) {
+		printf("Error - deleting hugepages failed!\n");
 		return -1;
 	}
 

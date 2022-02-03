@@ -84,10 +84,26 @@ Memory-related options
     Use specified hugetlbfs directory instead of autodetected ones. This can be
     a sub-directory within a hugetlbfs mountpoint.
 
-*   ``--huge-unlink``
+*   ``--huge-unlink[=existing|always|never]``
 
-    Unlink hugepage files after creating them (implies no secondary process
-    support).
+    No ``--huge-unlink`` option or ``--huge-unlink=existing`` is the default:
+    existing hugepage files are removed and re-created
+    to ensure the kernel clears the memory and prevents any data leaks.
+
+    With ``--huge-unlink`` (no value) or ``--huge-unlink=always``,
+    hugepage files are also removed before mapping them,
+    so that the application leaves no files in hugetlbfs.
+    This mode implies no multi-process support.
+
+    When ``--huge-unlink=never`` is specified, existing hugepage files
+    are never removed, but are remapped instead, allowing hugepage reuse.
+    This makes restart faster by saving time to clear memory at initialization,
+    but it may slow down zeroed allocations later.
+    Reused hugepages can contain data from previous processes that used them,
+    which may be a security concern.
+    Hugepage files created in this mode are also not removed
+    when all the hugepages mapped from them are freed,
+    which allows to reuse these files after a restart.
 
 *   ``--match-allocations``
 

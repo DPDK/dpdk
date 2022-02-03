@@ -74,7 +74,7 @@ eal_long_options[] = {
 	{OPT_FILE_PREFIX,       1, NULL, OPT_FILE_PREFIX_NUM      },
 	{OPT_HELP,              0, NULL, OPT_HELP_NUM             },
 	{OPT_HUGE_DIR,          1, NULL, OPT_HUGE_DIR_NUM         },
-	{OPT_HUGE_UNLINK,       0, NULL, OPT_HUGE_UNLINK_NUM      },
+	{OPT_HUGE_UNLINK,       2, NULL, OPT_HUGE_UNLINK_NUM      },
 	{OPT_IOVA_MODE,	        1, NULL, OPT_IOVA_MODE_NUM        },
 	{OPT_LCORES,            1, NULL, OPT_LCORES_NUM           },
 	{OPT_LOG_LEVEL,         1, NULL, OPT_LOG_LEVEL_NUM        },
@@ -1598,6 +1598,28 @@ available_cores(void)
 	return str;
 }
 
+#define HUGE_UNLINK_NEVER "never"
+
+static int
+eal_parse_huge_unlink(const char *arg, struct hugepage_file_discipline *out)
+{
+	if (arg == NULL || strcmp(arg, "always") == 0) {
+		out->unlink_before_mapping = true;
+		return 0;
+	}
+	if (strcmp(arg, "existing") == 0) {
+		/* same as not specifying the option */
+		return 0;
+	}
+	if (strcmp(arg, HUGE_UNLINK_NEVER) == 0) {
+		RTE_LOG(WARNING, EAL, "Using --"OPT_HUGE_UNLINK"="
+			HUGE_UNLINK_NEVER" may create data leaks.\n");
+		out->unlink_existing = false;
+		return 0;
+	}
+	return -1;
+}
+
 int
 eal_parse_common_option(int opt, const char *optarg,
 			struct internal_config *conf)
@@ -1739,7 +1761,10 @@ eal_parse_common_option(int opt, const char *optarg,
 
 	/* long options */
 	case OPT_HUGE_UNLINK_NUM:
-		conf->hugepage_file.unlink_before_mapping = true;
+		if (eal_parse_huge_unlink(optarg, &conf->hugepage_file) < 0) {
+			RTE_LOG(ERR, EAL, "invalid --"OPT_HUGE_UNLINK" option\n");
+			return -1;
+		}
 		break;
 
 	case OPT_NO_HUGE_NUM:
@@ -2070,6 +2095,12 @@ eal_check_common_options(struct internal_config *internal_cfg)
 			"not compatible with --"OPT_HUGE_UNLINK"\n");
 		return -1;
 	}
+	if (!internal_cfg->hugepage_file.unlink_existing &&
+			internal_cfg->in_memory) {
+		RTE_LOG(ERR, EAL, "Option --"OPT_IN_MEMORY" is not compatible "
+			"with --"OPT_HUGE_UNLINK"="HUGE_UNLINK_NEVER"\n");
+		return -1;
+	}
 	if (internal_cfg->legacy_mem &&
 			internal_cfg->in_memory) {
 		RTE_LOG(ERR, EAL, "Option --"OPT_LEGACY_MEM" is not compatible "
@@ -2202,7 +2233,9 @@ eal_common_usage(void)
 	       "  --"OPT_NO_TELEMETRY"   Disable telemetry support\n"
 	       "  --"OPT_FORCE_MAX_SIMD_BITWIDTH" Force the max SIMD bitwidth\n"
 	       "\nEAL options for DEBUG use only:\n"
-	       "  --"OPT_HUGE_UNLINK"       Unlink hugepage files after init\n"
+	       "  --"OPT_HUGE_UNLINK"[=existing|always|never]\n"
+	       "                      When to unlink files in hugetlbfs\n"
+	       "                      ('existing' by default, no value means 'always')\n"
 	       "  --"OPT_NO_HUGE"           Use malloc instead of hugetlbfs\n"
 	       "  --"OPT_NO_PCI"            Disable PCI\n"
 	       "  --"OPT_NO_HPET"           Disable HPET\n"
