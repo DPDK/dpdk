@@ -1451,7 +1451,7 @@ static void
 mlx5_flow_field_id_to_modify_info
 		(const struct rte_flow_action_modify_data *data,
 		 struct field_modify_info *info, uint32_t *mask,
-		 uint32_t width, uint32_t *shift, struct rte_eth_dev *dev,
+		 uint32_t width, struct rte_eth_dev *dev,
 		 const struct rte_flow_attr *attr, struct rte_flow_error *error)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
@@ -1806,16 +1806,11 @@ mlx5_flow_field_id_to_modify_info
 		{
 			uint32_t meta_mask = priv->sh->dv_meta_mask;
 			uint32_t meta_count = __builtin_popcount(meta_mask);
-			uint32_t msk_c0 =
-				rte_cpu_to_be_32(priv->sh->dv_regc0_mask);
-			uint32_t shl_c0 = rte_bsf32(msk_c0);
 			int reg = flow_dv_get_metadata_reg(dev, attr, error);
 			if (reg < 0)
 				return;
 			MLX5_ASSERT(reg != REG_NON);
 			MLX5_ASSERT((unsigned int)reg < RTE_DIM(reg_to_field));
-			if (reg == REG_C_0)
-				*shift = shl_c0;
 			info[idx] = (struct field_modify_info){4, 0,
 						reg_to_field[reg]};
 			if (mask)
@@ -1868,14 +1863,13 @@ flow_dv_convert_action_modify_field
 								{0, 0, 0} };
 	uint32_t mask[MLX5_ACT_MAX_MOD_FIELDS] = {0, 0, 0, 0, 0};
 	uint32_t type, meta = 0;
-	uint32_t shift = 0;
 
 	if (conf->src.field == RTE_FLOW_FIELD_POINTER ||
 	    conf->src.field == RTE_FLOW_FIELD_VALUE) {
 		type = MLX5_MODIFICATION_TYPE_SET;
 		/** For SET fill the destination field (field) first. */
 		mlx5_flow_field_id_to_modify_info(&conf->dst, field, mask,
-						  conf->width, &shift, dev,
+						  conf->width, dev,
 						  attr, error);
 		item.spec = conf->src.field == RTE_FLOW_FIELD_POINTER ?
 					(void *)(uintptr_t)conf->src.pvalue :
@@ -1889,12 +1883,12 @@ flow_dv_convert_action_modify_field
 		type = MLX5_MODIFICATION_TYPE_COPY;
 		/** For COPY fill the destination field (dcopy) without mask. */
 		mlx5_flow_field_id_to_modify_info(&conf->dst, dcopy, NULL,
-						  conf->width, &shift, dev,
+						  conf->width, dev,
 						  attr, error);
 		/** Then construct the source field (field) with mask. */
 		mlx5_flow_field_id_to_modify_info(&conf->src, field, mask,
-						  conf->width, &shift,
-						  dev, attr, error);
+						  conf->width, dev,
+						  attr, error);
 	}
 	item.mask = &mask;
 	return flow_dv_convert_modify_action(&item,
