@@ -88,17 +88,14 @@ memif_mp_send_region(const struct rte_mp_msg *msg, const void *peer)
 	const struct mp_region_msg *msg_param = (const struct mp_region_msg *)msg->param;
 	struct rte_mp_msg reply;
 	struct mp_region_msg *reply_param = (struct mp_region_msg *)reply.param;
-	uint16_t port_id;
-	int ret;
 
 	/* Get requested port */
-	ret = rte_eth_dev_get_port_by_name(msg_param->port_name, &port_id);
-	if (ret) {
+	dev = rte_eth_dev_get_by_name(msg_param->port_name);
+	if (!dev) {
 		MIF_LOG(ERR, "Failed to get port id for %s",
 			msg_param->port_name);
 		return -1;
 	}
-	dev = &rte_eth_devices[port_id];
 	proc_private = dev->process_private;
 
 	memset(&reply, 0, sizeof(reply));

@@ -151,8 +151,8 @@ int
 rte_eth_bond_create(const char *name, uint8_t mode, uint8_t socket_id)
 {
 	struct bond_dev_private *internals;
+	struct rte_eth_dev *bond_dev;
 	char devargs[52];
-	uint16_t port_id;
 	int ret;
 
 	if (name == NULL) {
@@ -169,8 +169,8 @@ rte_eth_bond_create(const char *name, uint8_t mode, uint8_t socket_id)
 	if (ret)
 		return ret;
 
-	ret = rte_eth_dev_get_port_by_name(name, &port_id);
-	RTE_ASSERT(!ret);
+	bond_dev = rte_eth_dev_get_by_name(name);
+	RTE_ASSERT(bond_dev);
 
 	/*
 	 * To make bond_ethdev_configure() happy we need to free the
@@ -178,11 +178,11 @@ rte_eth_bond_create(const char *name, uint8_t mode, uint8_t socket_id)
 	 *
 	 * Also see comment in bond_ethdev_configure().
 	 */
-	internals = rte_eth_devices[port_id].data->dev_private;
+	internals = bond_dev->data->dev_private;
 	rte_kvargs_free(internals->kvlist);
 	internals->kvlist = NULL;
 
-	return port_id;
+	return bond_dev->data->port_id;
 }
 
 int

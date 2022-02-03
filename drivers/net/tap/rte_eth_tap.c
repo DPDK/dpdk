@@ -2428,19 +2428,16 @@ tap_mp_sync_queues(const struct rte_mp_msg *request, const void *peer)
 		(const struct ipc_queues *)request->param;
 	struct ipc_queues *reply_param =
 		(struct ipc_queues *)reply.param;
-	uint16_t port_id;
 	int queue;
-	int ret;
 
 	/* Get requested port */
 	TAP_LOG(DEBUG, "Received IPC request for %s", request_param->port_name);
-	ret = rte_eth_dev_get_port_by_name(request_param->port_name, &port_id);
-	if (ret) {
+	dev = rte_eth_dev_get_by_name(request_param->port_name);
+	if (!dev) {
 		TAP_LOG(ERR, "Failed to get port id for %s",
 			request_param->port_name);
 		return -1;
 	}
-	dev = &rte_eth_devices[port_id];
 	process_private = dev->process_private;
 
 	/* Fill file descriptors for all queues */
