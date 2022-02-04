@@ -138,6 +138,9 @@ Limitations
 - For secondary process:
 
   - Forked secondary process not supported.
+  - MPRQ is not supported. Callback to free externally attached MPRQ buffer is set
+    in a primary process, but has a different virtual address in a secondary process.
+    Calling a function at the wrong address leads to a segmentation fault.
   - External memory unregistered in EAL memseg list cannot be used for DMA
     unless such memory has been registered by ``mlx5_mr_update_ext_mp()`` in
     primary process and remapped to the same virtual address in secondary
