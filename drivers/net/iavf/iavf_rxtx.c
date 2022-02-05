@@ -1714,7 +1714,7 @@ iavf_rx_scan_hw_ring(struct iavf_rx_queue *rxq)
 	uint16_t pkt_len;
 	uint64_t qword1;
 	uint32_t rx_status;
-	int32_t s[IAVF_LOOK_AHEAD], nb_dd;
+	int32_t s[IAVF_LOOK_AHEAD], var, nb_dd;
 	int32_t i, j, nb_rx = 0;
 	uint64_t pkt_flags;
 	const uint32_t *ptype_tbl = rxq->vsi->adapter->ptype_tbl;
@@ -1745,9 +1745,27 @@ iavf_rx_scan_hw_ring(struct iavf_rx_queue *rxq)
 
 		rte_smp_rmb();
 
-		/* Compute how many status bits were set */
-		for (j = 0, nb_dd = 0; j < IAVF_LOOK_AHEAD; j++)
-			nb_dd += s[j] & (1 << IAVF_RX_DESC_STATUS_DD_SHIFT);
+		/* Compute how many contiguous DD bits were set */
+		for (j = 0, nb_dd = 0; j < IAVF_LOOK_AHEAD; j++) {
+			var = s[j] & (1 << IAVF_RX_DESC_STATUS_DD_SHIFT);
+#ifdef RTE_ARCH_ARM
+			/* For Arm platforms, count only contiguous descriptors
+			 * whose DD bit is set to 1. On Arm platforms, reads of
+			 * descriptors can be reordered. Since the CPU may
+			 * be reading the descriptors as the NIC updates them
+			 * in memory, it is possbile that the DD bit for a
+			 * descriptor earlier in the queue is read as not set
+			 * while the DD bit for a descriptor later in the queue
+			 * is read as set.
+			 */
+			if (var)
+				nb_dd += 1;
+			else
+				break;
+#else
+			nb_dd += var;
+#endif
+		}
 
 		nb_rx += nb_dd;
 
