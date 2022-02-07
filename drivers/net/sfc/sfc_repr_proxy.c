@@ -1413,6 +1413,7 @@ sfc_repr_proxy_add_rxq(uint16_t pf_port_id, uint16_t repr_id,
 	port = sfc_repr_proxy_find_port(rp, repr_id);
 	if (port == NULL) {
 		sfc_err(sa, "%s() failed: no such port", __func__);
+		sfc_put_adapter(sa);
 		return ENOENT;
 	}
 
@@ -1451,6 +1452,7 @@ sfc_repr_proxy_del_rxq(uint16_t pf_port_id, uint16_t repr_id,
 	port = sfc_repr_proxy_find_port(rp, repr_id);
 	if (port == NULL) {
 		sfc_err(sa, "%s() failed: no such port", __func__);
+		sfc_put_adapter(sa);
 		return;
 	}
 
@@ -1484,6 +1486,7 @@ sfc_repr_proxy_add_txq(uint16_t pf_port_id, uint16_t repr_id,
 	port = sfc_repr_proxy_find_port(rp, repr_id);
 	if (port == NULL) {
 		sfc_err(sa, "%s() failed: no such port", __func__);
+		sfc_put_adapter(sa);
 		return ENOENT;
 	}
 
@@ -1516,6 +1519,7 @@ sfc_repr_proxy_del_txq(uint16_t pf_port_id, uint16_t repr_id,
 	port = sfc_repr_proxy_find_port(rp, repr_id);
 	if (port == NULL) {
 		sfc_err(sa, "%s() failed: no such port", __func__);
+		sfc_put_adapter(sa);
 		return;
 	}
 
@@ -1614,6 +1618,7 @@ sfc_repr_proxy_stop_repr(uint16_t pf_port_id, uint16_t repr_id)
 	port = sfc_repr_proxy_find_port(rp, repr_id);
 	if (port == NULL) {
 		sfc_err(sa, "%s() failed: no such port", __func__);
+		sfc_put_adapter(sa);
 		return ENOENT;
 	}
 
