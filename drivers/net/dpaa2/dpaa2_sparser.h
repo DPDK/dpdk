@@ -13,10 +13,6 @@
 #ifndef _DPAA2_SPARSER_H
 #define _DPAA2_SPARSER_H
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #define WRIOP_SS_INITIALIZER(priv)				\
 do {								\
 	/* Base offset of parse profile memory in WRIOP */	\
