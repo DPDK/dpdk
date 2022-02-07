@@ -5016,14 +5016,14 @@ ice_get_module_eeprom(struct rte_eth_dev *dev,
 #define I2C_USLEEP_MAX_TIME 2500
 	uint8_t value[SFF_READ_BLOCK_SIZE] = {0};
 	uint8_t addr = ICE_I2C_EEPROM_DEV_ADDR;
-	uint8_t *data = info->data;
+	uint8_t *data = NULL;
 	enum ice_status status;
 	bool is_sfp = false;
 	uint32_t i, j;
 	uint32_t offset = 0;
 	uint8_t page = 0;
 
-	if (!info || !info->length || !data)
+	if (!info || !info->length || !info->data)
 		return -EINVAL;
 
 	status = ice_aq_sff_eeprom(hw, 0, addr, offset, page, 0, value, 1, 0,
@@ -5034,6 +5034,7 @@ ice_get_module_eeprom(struct rte_eth_dev *dev,
 	if (value[0] == ICE_MODULE_TYPE_SFP)
 		is_sfp = true;
 
+	data = info->data;
 	memset(data, 0, info->length);
 	for (i = 0; i < info->length; i += SFF_READ_BLOCK_SIZE) {
 		offset = i + info->offset;
