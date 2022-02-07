@@ -12,10 +12,6 @@
 #include "t4_chip_type.h"
 #include "t4fw_interface.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #define CXGBE_PAGE_SIZE RTE_PGSIZE_4K
 
 #define T4_MEMORY_WRITE 0
