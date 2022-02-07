@@ -439,11 +439,14 @@ mlx5_flow_mtr_cap_get(struct rte_eth_dev *dev,
 		/* 2 meters per one ASO cache line. */
 		cap->n_max = 1 << (qattr->log_max_num_meter_aso + 1);
 		cap->srtcm_rfc2697_packet_mode_supported = 1;
+		cap->trtcm_rfc2698_packet_mode_supported = 1;
+		cap->trtcm_rfc4115_packet_mode_supported = 1;
 	} else {
 		cap->n_max = 1 << qattr->log_max_flow_meter;
-		cap->srtcm_rfc2697_packet_mode_supported = 0;
 	}
 	cap->srtcm_rfc2697_byte_mode_supported = 1;
+	cap->trtcm_rfc2698_byte_mode_supported = 1;
+	cap->trtcm_rfc4115_byte_mode_supported = 1;
 	cap->n_shared_max = cap->n_max;
 	cap->identical = 1;
 	cap->shared_identical = 1;
@@ -451,7 +454,10 @@ mlx5_flow_mtr_cap_get(struct rte_eth_dev *dev,
 	/* 2M flows can share the same meter. */
 	cap->chaining_n_mtrs_per_flow_max = 1; /* Chaining is not supported. */
 	cap->meter_srtcm_rfc2697_n_max = qattr->flow_meter_old ? cap->n_max : 0;
+	cap->meter_trtcm_rfc2698_n_max = qattr->flow_meter_old ? cap->n_max : 0;
+	cap->meter_trtcm_rfc4115_n_max = qattr->flow_meter_old ? cap->n_max : 0;
 	cap->meter_rate_max = 1ULL << 40; /* 1 Tera tokens per sec. */
+	cap->meter_policy_n_max = cap->n_max;
 	cap->stats_mask = RTE_MTR_STATS_N_BYTES_DROPPED |
 			  RTE_MTR_STATS_N_PKTS_DROPPED;
 	return 0;
