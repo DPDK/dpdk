@@ -166,6 +166,9 @@ npc_update_extraction_data(struct npc_parse_state *pst,
 	int len = 0;
 
 	x = xinfo;
+	if (x->len > NPC_MAX_EXTRACT_DATA_LEN)
+		return NPC_ERR_INVALID_SIZE;
+
 	len = x->len;
 	hdr_off = x->hdr_off;
 
