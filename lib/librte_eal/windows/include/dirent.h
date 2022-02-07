@@ -658,7 +658,4 @@ dirent_set_errno(int error)
 #endif
 }
 
-#ifdef __cplusplus
-}
-#endif
 #endif /*DIRENT_H*/
