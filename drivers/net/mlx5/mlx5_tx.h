@@ -1710,7 +1710,6 @@ mlx5_tx_packet_multi_tso(struct mlx5_txq_data *__rte_restrict txq,
 		     inlen <= MLX5_ESEG_MIN_INLINE_SIZE ||
 		     inlen > (dlen + vlan)))
 		return MLX5_TXCMP_CODE_ERROR;
-	MLX5_ASSERT(inlen >= txq->inlen_mode);
 	/*
 	 * Check whether there are enough free WQEBBs:
 	 * - Control Segment
