@@ -295,8 +295,10 @@ mlx5_flow_meter_xbs_man_exp_calc(uint64_t xbs, uint8_t *man, uint8_t *exp)
 	}
 	/* xbs = xbs_mantissa * 2^xbs_exponent */
 	_man = frexp(xbs, &_exp);
-	_man = _man * pow(2, MLX5_MAN_WIDTH);
-	_exp = _exp - MLX5_MAN_WIDTH;
+	if (_exp >= MLX5_MAN_WIDTH) {
+		_man = _man * pow(2, MLX5_MAN_WIDTH);
+		_exp = _exp - MLX5_MAN_WIDTH;
+	}
 	*man = (uint8_t)ceil(_man);
 	*exp = _exp;
 }
