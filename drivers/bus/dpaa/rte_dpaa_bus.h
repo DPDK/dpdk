@@ -17,6 +17,10 @@
 #include <fsl_bman.h>
 #include <netcfg.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* This sequence number field is used to store event entry index for
  * driver specific usage. For parallel mode queues, invalid
  * index will be set and for atomic mode queues, valid value

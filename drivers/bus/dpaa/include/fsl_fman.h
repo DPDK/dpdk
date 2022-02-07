@@ -9,10 +9,6 @@
 
 #include <rte_compat.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /* Status field in FD is updated on Rx side by FMAN with following information.
  * Refer to field description in FM BG.
  */
