@@ -97,7 +97,6 @@ struct vhost_user_msg {
 		struct vhost_vring_addr addr;
 		struct vhost_memory memory;
 	} payload;
-	int fds[VHOST_MEMORY_MAX_NREGIONS];
 } __rte_packed;
 
 #define VHOST_USER_HDR_SIZE offsetof(struct vhost_user_msg, payload.u64)

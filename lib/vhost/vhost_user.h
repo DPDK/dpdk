@@ -149,9 +149,14 @@ typedef struct VhostUserMsg {
 		VhostUserVringArea area;
 		VhostUserInflight inflight;
 	} payload;
+	/* Nothing should be added after the payload */
+} __rte_packed VhostUserMsg;
+
+struct vhu_msg_context {
 	int fds[VHOST_MEMORY_MAX_NREGIONS];
 	int fd_num;
-} __rte_packed VhostUserMsg;
+	VhostUserMsg msg;
+};
 
 #define VHOST_USER_HDR_SIZE offsetof(VhostUserMsg, payload.u64)
 

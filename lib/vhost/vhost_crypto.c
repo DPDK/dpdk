@@ -453,7 +453,7 @@ vhost_crypto_msg_post_handler(int vid, void *msg)
 {
 	struct virtio_net *dev = get_device(vid);
 	struct vhost_crypto *vcrypto;
-	VhostUserMsg *vmsg = msg;
+	struct vhu_msg_context *ctx = msg;
 	enum rte_vhost_msg_result ret = RTE_VHOST_MSG_RESULT_OK;
 
 	if (dev == NULL) {
@@ -467,15 +467,15 @@ vhost_crypto_msg_post_handler(int vid, void *msg)
 		return RTE_VHOST_MSG_RESULT_ERR;
 	}
 
-	switch (vmsg->request.master) {
+	switch (ctx->msg.request.master) {
 	case VHOST_USER_CRYPTO_CREATE_SESS:
 		vhost_crypto_create_sess(vcrypto,
-				&vmsg->payload.crypto_session);
-		vmsg->fd_num = 0;
+				&ctx->msg.payload.crypto_session);
+		ctx->fd_num = 0;
 		ret = RTE_VHOST_MSG_RESULT_REPLY;
 		break;
 	case VHOST_USER_CRYPTO_CLOSE_SESS:
-		if (vhost_crypto_close_sess(vcrypto, vmsg->payload.u64))
+		if (vhost_crypto_close_sess(vcrypto, ctx->msg.payload.u64))
 			ret = RTE_VHOST_MSG_RESULT_ERR;
 		break;
 	default:
