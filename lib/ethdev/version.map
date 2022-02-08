@@ -256,6 +256,10 @@ EXPERIMENTAL {
 	rte_flow_flex_item_create;
 	rte_flow_flex_item_release;
 	rte_flow_pick_transfer_proxy;
+
+	# added in 22.03
+	rte_eth_dev_priority_flow_ctrl_queue_configure;
+	rte_eth_dev_priority_flow_ctrl_queue_info_get;
 };
 
 INTERNAL {

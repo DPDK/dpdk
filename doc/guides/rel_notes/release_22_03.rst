@@ -71,6 +71,11 @@ New Features
     - ``rte_ipv6_udptcp_cksum_mbuf()``
     - ``rte_ipv6_udptcp_cksum_mbuf_verify()``
 
+* **Added an API to enable queue based priority flow ctrl(PFC).**
+
+  New APIs, ``rte_eth_dev_priority_flow_ctrl_queue_info_get()`` and
+  ``rte_eth_dev_priority_flow_ctrl_queue_configure()``, was added.
+
 * **Updated AF_XDP PMD**
 
   * Added support for libxdp >=v1.2.2.
