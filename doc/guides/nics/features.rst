@@ -503,6 +503,19 @@ improves signal quality but also brings a delay to signals. This function can be
 * **[related]    API**: ``rte_eth_fec_get_capability()``, ``rte_eth_fec_get()``, ``rte_eth_fec_set()``.
 
 
+.. _nic_features_ip_reassembly:
+
+IP reassembly
+-------------
+
+Supports IP reassembly in hardware.
+
+* **[provides] eth_dev_ops**: ``ip_reassembly_capability_get``,
+  ``ip_reassembly_conf_get``, ``ip_reassembly_conf_set``.
+* **[related]    API**: ``rte_eth_ip_reassembly_capability_get()``,
+  ``rte_eth_ip_reassembly_conf_get()``, ``rte_eth_ip_reassembly_conf_set()``.
+
+
 .. _nic_features_l3_checksum_offload:
 
 L3 checksum offload

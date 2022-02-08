@@ -76,6 +76,12 @@ New Features
   Added macro RTE_ETH_RSS_L2TPV2, now L2TPv2 session ID field can be used as
   input set for RSS.
 
+* **Added IP reassembly Ethernet offload API, to get and set config.**
+
+  Added IP reassembly offload APIs which provide functions to query IP
+  reassembly capabilities, to set configuration and to get currently set
+  reassembly configuration.
+
 * **Added an API to enable queue based priority flow ctrl(PFC).**
 
   New APIs, ``rte_eth_dev_priority_flow_ctrl_queue_info_get()`` and

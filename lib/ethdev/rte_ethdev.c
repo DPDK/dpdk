@@ -6627,6 +6627,102 @@ rte_eth_rx_metadata_negotiate(uint16_t port_id, uint64_t *features)
 		       (*dev->dev_ops->rx_metadata_negotiate)(dev, features));
 }
 
+int
+rte_eth_ip_reassembly_capability_get(uint16_t port_id,
+		struct rte_eth_ip_reassembly_params *reassembly_capa)
+{
+	struct rte_eth_dev *dev;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
+	dev = &rte_eth_devices[port_id];
+
+	if (dev->data->dev_configured == 0) {
+		RTE_ETHDEV_LOG(ERR,
+			"Device with port_id=%u is not configured.\n"
+			"Cannot get IP reassembly capability\n",
+			port_id);
+		return -EINVAL;
+	}
+
+	if (reassembly_capa == NULL) {
+		RTE_ETHDEV_LOG(ERR, "Cannot get reassembly capability to NULL");
+		return -EINVAL;
+	}
+
+	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->ip_reassembly_capability_get,
+				-ENOTSUP);
+	memset(reassembly_capa, 0, sizeof(struct rte_eth_ip_reassembly_params));
+
+	return eth_err(port_id, (*dev->dev_ops->ip_reassembly_capability_get)
+					(dev, reassembly_capa));
+}
+
+int
+rte_eth_ip_reassembly_conf_get(uint16_t port_id,
+		struct rte_eth_ip_reassembly_params *conf)
+{
+	struct rte_eth_dev *dev;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
+	dev = &rte_eth_devices[port_id];
+
+	if (dev->data->dev_configured == 0) {
+		RTE_ETHDEV_LOG(ERR,
+			"Device with port_id=%u is not configured.\n"
+			"Cannot get IP reassembly configuration\n",
+			port_id);
+		return -EINVAL;
+	}
+
+	if (conf == NULL) {
+		RTE_ETHDEV_LOG(ERR, "Cannot get reassembly info to NULL");
+		return -EINVAL;
+	}
+
+	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->ip_reassembly_conf_get,
+				-ENOTSUP);
+	memset(conf, 0, sizeof(struct rte_eth_ip_reassembly_params));
+	return eth_err(port_id,
+		       (*dev->dev_ops->ip_reassembly_conf_get)(dev, conf));
+}
+
+int
+rte_eth_ip_reassembly_conf_set(uint16_t port_id,
+		const struct rte_eth_ip_reassembly_params *conf)
+{
+	struct rte_eth_dev *dev;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
+	dev = &rte_eth_devices[port_id];
+
+	if (dev->data->dev_configured == 0) {
+		RTE_ETHDEV_LOG(ERR,
+			"Device with port_id=%u is not configured.\n"
+			"Cannot set IP reassembly configuration",
+			port_id);
+		return -EINVAL;
+	}
+
+	if (dev->data->dev_started != 0) {
+		RTE_ETHDEV_LOG(ERR,
+			"Device with port_id=%u started,\n"
+			"cannot configure IP reassembly params.\n",
+			port_id);
+		return -EINVAL;
+	}
+
+	if (conf == NULL) {
+		RTE_ETHDEV_LOG(ERR,
+				"Invalid IP reassembly configuration (NULL)\n");
+		return -EINVAL;
+	}
+
+	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->ip_reassembly_conf_set,
+				-ENOTSUP);
+	return eth_err(port_id,
+		       (*dev->dev_ops->ip_reassembly_conf_set)(dev, conf));
+}
+
 RTE_LOG_REGISTER_DEFAULT(rte_eth_dev_logtype, INFO);
 
 RTE_INIT(ethdev_init_telemetry)

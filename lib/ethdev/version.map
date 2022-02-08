@@ -260,6 +260,9 @@ EXPERIMENTAL {
 	# added in 22.03
 	rte_eth_dev_priority_flow_ctrl_queue_configure;
 	rte_eth_dev_priority_flow_ctrl_queue_info_get;
+	rte_eth_ip_reassembly_capability_get;
+	rte_eth_ip_reassembly_conf_get;
+	rte_eth_ip_reassembly_conf_set;
 };
 
 INTERNAL {
