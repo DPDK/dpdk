@@ -104,8 +104,6 @@ if [ "$AARCH64" != "true" ] && [ "$PPC64LE" != "true" ]; then
 fi
 
 if [ "$ABI_CHECKS" = "true" ]; then
-    LIBABIGAIL_VERSION=${LIBABIGAIL_VERSION:-libabigail-1.6}
-
     if [ "$(cat libabigail/VERSION 2>/dev/null)" != "$LIBABIGAIL_VERSION" ]; then
         rm -rf libabigail
         # if we change libabigail, invalidate existing abi cache
@@ -113,14 +111,13 @@ if [ "$ABI_CHECKS" = "true" ]; then
     fi
 
     if [ ! -d libabigail ]; then
-        install_libabigail $LIBABIGAIL_VERSION $(pwd)/libabigail
+        install_libabigail "$LIBABIGAIL_VERSION" $(pwd)/libabigail
         echo $LIBABIGAIL_VERSION > libabigail/VERSION
     fi
 
     export PATH=$(pwd)/libabigail/bin:$PATH
 
     REF_GIT_REPO=${REF_GIT_REPO:-https://dpdk.org/git/dpdk}
-    REF_GIT_TAG=${REF_GIT_TAG:-v19.11}
 
     if [ "$(cat reference/VERSION 2>/dev/null)" != "$REF_GIT_TAG" ]; then
         rm -rf reference
@@ -128,7 +125,7 @@ if [ "$ABI_CHECKS" = "true" ]; then
 
     if [ ! -d reference ]; then
         refsrcdir=$(readlink -f $(pwd)/../dpdk-$REF_GIT_TAG)
-        git clone --single-branch -b $REF_GIT_TAG $REF_GIT_REPO $refsrcdir
+        git clone --single-branch -b "$REF_GIT_TAG" $REF_GIT_REPO $refsrcdir
         meson $OPTS -Dexamples= $refsrcdir $refsrcdir/build
         ninja -C $refsrcdir/build
         DESTDIR=$(pwd)/reference ninja -C $refsrcdir/build install
