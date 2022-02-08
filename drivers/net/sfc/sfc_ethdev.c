@@ -94,7 +94,6 @@ sfc_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	struct sfc_adapter *sa = sfc_adapter_by_eth_dev(dev);
 	struct sfc_rss *rss = &sas->rss;
 	struct sfc_mae *mae = &sa->mae;
-	uint64_t txq_offloads_def = 0;
 
 	sfc_log_init(sa, "entry");
 
@@ -145,11 +144,6 @@ sfc_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	 */
 	dev_info->tx_offload_capa = sfc_tx_get_dev_offload_caps(sa) |
 				    dev_info->tx_queue_offload_capa;
-
-	if (dev_info->tx_offload_capa & RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE)
-		txq_offloads_def |= RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE;
-
-	dev_info->default_txconf.offloads |= txq_offloads_def;
 
 	if (rss->context_type != EFX_RX_SCALE_UNAVAILABLE) {
 		uint64_t rte_hf = 0;
