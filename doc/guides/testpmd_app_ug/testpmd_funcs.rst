@@ -1561,6 +1561,29 @@ Where:
 
 * ``priority`` (0-7): VLAN User Priority.
 
+set pfc_queue_ctrl
+~~~~~~~~~~~~~~~~~~
+
+Set the priority flow control parameter on a given Rx and Tx queue of a port::
+
+   testpmd> set pfc_queue_ctrl <port_id> rx (on|off) <tx_qid> <tx_tc> \
+            tx (on|off) <rx_qid> <rx_tc> <pause_time>
+
+Where:
+
+* ``tx_qid`` (integer): Tx qid for which ``tx_tc`` will be applied and traffic
+  will be paused when PFC frame is received with ``tx_tc`` enabled.
+
+* ``tx_tc`` (0-15): TC for which traffic is to be paused for xmit.
+
+* ``rx_qid`` (integer): Rx qid for which threshold will be applied and PFC
+  frame will be generated with ``tx_tc`` when exceeds the threshold.
+
+* ``rx_tc`` (0-15): TC filled in PFC frame for which remote Tx is to be paused.
+
+* ``pause_time`` (integer): Pause quanta filled in the PFC frame for which
+  interval, remote Tx will be paused. Valid only if Tx pause is on.
+
 set stat_qmap
 ~~~~~~~~~~~~~
 

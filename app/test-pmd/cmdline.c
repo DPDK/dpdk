@@ -544,6 +544,11 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"    Set the priority flow control parameter on a"
 			" port.\n\n"
 
+			"set pfc_queue_ctrl (port_id) rx (on|off) (tx_qid)"
+			" (tx_tc) tx (on|off) (rx_qid) (rx_tc) (pause_time)\n"
+			"    Set the queue priority flow control parameter on a"
+			" given Rx and Tx queues of a port.\n\n"
+
 			"set stat_qmap (tx|rx) (port_id) (queue_id) (qmapping)\n"
 			"    Set statistics mapping (qmapping 0..15) for RX/TX"
 			" queue on port.\n"
@@ -7699,6 +7704,122 @@ cmdline_parse_inst_t cmd_priority_flow_control_set = {
 		(void *)&cmd_pfc_set_pause_time,
 		(void *)&cmd_pfc_set_priority,
 		(void *)&cmd_pfc_set_portid,
+		NULL,
+	},
+};
+
+struct cmd_queue_priority_flow_ctrl_set_result {
+	cmdline_fixed_string_t set;
+	cmdline_fixed_string_t pfc_queue_ctrl;
+	portid_t port_id;
+	cmdline_fixed_string_t rx;
+	cmdline_fixed_string_t rx_pfc_mode;
+	uint16_t tx_qid;
+	uint8_t  tx_tc;
+	cmdline_fixed_string_t tx;
+	cmdline_fixed_string_t tx_pfc_mode;
+	uint16_t rx_qid;
+	uint8_t  rx_tc;
+	uint16_t pause_time;
+};
+
+static void
+cmd_queue_priority_flow_ctrl_set_parsed(void *parsed_result,
+					__rte_unused struct cmdline *cl,
+					__rte_unused void *data)
+{
+	struct cmd_queue_priority_flow_ctrl_set_result *res = parsed_result;
+	struct rte_eth_pfc_queue_conf pfc_queue_conf;
+	int rx_fc_enable, tx_fc_enable;
+	int ret;
+
+	/*
+	 * Rx on/off, flow control is enabled/disabled on RX side. This can
+	 * indicate the RTE_ETH_FC_TX_PAUSE, Transmit pause frame at the Rx
+	 * side. Tx on/off, flow control is enabled/disabled on TX side. This
+	 * can indicate the RTE_ETH_FC_RX_PAUSE, Respond to the pause frame at
+	 * the Tx side.
+	 */
+	static enum rte_eth_fc_mode rx_tx_onoff_2_mode[2][2] = {
+		{RTE_ETH_FC_NONE, RTE_ETH_FC_TX_PAUSE},
+		{RTE_ETH_FC_RX_PAUSE, RTE_ETH_FC_FULL}
+	};
+
+	memset(&pfc_queue_conf, 0, sizeof(struct rte_eth_pfc_queue_conf));
+	rx_fc_enable = (!strncmp(res->rx_pfc_mode, "on", 2)) ? 1 : 0;
+	tx_fc_enable = (!strncmp(res->tx_pfc_mode, "on", 2)) ? 1 : 0;
+	pfc_queue_conf.mode = rx_tx_onoff_2_mode[rx_fc_enable][tx_fc_enable];
+	pfc_queue_conf.rx_pause.tc  = res->tx_tc;
+	pfc_queue_conf.rx_pause.tx_qid = res->tx_qid;
+	pfc_queue_conf.tx_pause.tc  = res->rx_tc;
+	pfc_queue_conf.tx_pause.rx_qid  = res->rx_qid;
+	pfc_queue_conf.tx_pause.pause_time = res->pause_time;
+
+	ret = rte_eth_dev_priority_flow_ctrl_queue_configure(res->port_id,
+							     &pfc_queue_conf);
+	if (ret != 0) {
+		fprintf(stderr,
+			"bad queue priority flow control parameter, rc = %d\n",
+			ret);
+	}
+}
+
+cmdline_parse_token_string_t cmd_q_pfc_set_set =
+	TOKEN_STRING_INITIALIZER(struct cmd_queue_priority_flow_ctrl_set_result,
+				set, "set");
+cmdline_parse_token_string_t cmd_q_pfc_set_flow_ctrl =
+	TOKEN_STRING_INITIALIZER(struct cmd_queue_priority_flow_ctrl_set_result,
+				pfc_queue_ctrl, "pfc_queue_ctrl");
+cmdline_parse_token_num_t cmd_q_pfc_set_portid =
+	TOKEN_NUM_INITIALIZER(struct cmd_queue_priority_flow_ctrl_set_result,
+				port_id, RTE_UINT16);
+cmdline_parse_token_string_t cmd_q_pfc_set_rx =
+	TOKEN_STRING_INITIALIZER(struct cmd_queue_priority_flow_ctrl_set_result,
+				rx, "rx");
+cmdline_parse_token_string_t cmd_q_pfc_set_rx_mode =
+	TOKEN_STRING_INITIALIZER(struct cmd_queue_priority_flow_ctrl_set_result,
+				rx_pfc_mode, "on#off");
+cmdline_parse_token_num_t cmd_q_pfc_set_tx_qid =
+	TOKEN_NUM_INITIALIZER(struct cmd_queue_priority_flow_ctrl_set_result,
+				tx_qid, RTE_UINT16);
+cmdline_parse_token_num_t cmd_q_pfc_set_tx_tc =
+	TOKEN_NUM_INITIALIZER(struct cmd_queue_priority_flow_ctrl_set_result,
+				tx_tc, RTE_UINT8);
+cmdline_parse_token_string_t cmd_q_pfc_set_tx =
+	TOKEN_STRING_INITIALIZER(struct cmd_queue_priority_flow_ctrl_set_result,
+				tx, "tx");
+cmdline_parse_token_string_t cmd_q_pfc_set_tx_mode =
+	TOKEN_STRING_INITIALIZER(struct cmd_queue_priority_flow_ctrl_set_result,
+				tx_pfc_mode, "on#off");
+cmdline_parse_token_num_t cmd_q_pfc_set_rx_qid =
+	TOKEN_NUM_INITIALIZER(struct cmd_queue_priority_flow_ctrl_set_result,
+				rx_qid, RTE_UINT16);
+cmdline_parse_token_num_t cmd_q_pfc_set_rx_tc =
+	TOKEN_NUM_INITIALIZER(struct cmd_queue_priority_flow_ctrl_set_result,
+				rx_tc, RTE_UINT8);
+cmdline_parse_token_num_t cmd_q_pfc_set_pause_time =
+	TOKEN_NUM_INITIALIZER(struct cmd_queue_priority_flow_ctrl_set_result,
+				pause_time, RTE_UINT16);
+
+cmdline_parse_inst_t cmd_queue_priority_flow_control_set = {
+	.f = cmd_queue_priority_flow_ctrl_set_parsed,
+	.data = NULL,
+	.help_str = "set pfc_queue_ctrl <port_id> rx <on|off> <tx_qid> <tx_tc> "
+		"tx <on|off> <rx_qid> <rx_tc> <pause_time>: "
+		"Configure the Ethernet queue priority flow control",
+	.tokens = {
+		(void *)&cmd_q_pfc_set_set,
+		(void *)&cmd_q_pfc_set_flow_ctrl,
+		(void *)&cmd_q_pfc_set_portid,
+		(void *)&cmd_q_pfc_set_rx,
+		(void *)&cmd_q_pfc_set_rx_mode,
+		(void *)&cmd_q_pfc_set_tx_qid,
+		(void *)&cmd_q_pfc_set_tx_tc,
+		(void *)&cmd_q_pfc_set_tx,
+		(void *)&cmd_q_pfc_set_tx_mode,
+		(void *)&cmd_q_pfc_set_rx_qid,
+		(void *)&cmd_q_pfc_set_rx_tc,
+		(void *)&cmd_q_pfc_set_pause_time,
 		NULL,
 	},
 };
@@ -17778,6 +17899,7 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_link_flow_control_set_autoneg,
 	(cmdline_parse_inst_t *)&cmd_link_flow_control_show,
 	(cmdline_parse_inst_t *)&cmd_priority_flow_control_set,
+	(cmdline_parse_inst_t *)&cmd_queue_priority_flow_control_set,
 	(cmdline_parse_inst_t *)&cmd_config_dcb,
 	(cmdline_parse_inst_t *)&cmd_read_reg,
 	(cmdline_parse_inst_t *)&cmd_read_reg_bit_field,
