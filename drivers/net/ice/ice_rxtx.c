@@ -129,6 +129,8 @@ ice_rxd_to_pkt_fields_by_comms_aux_v1(struct ice_rx_queue *rxq,
 			*RTE_NET_ICE_DYNF_PROTO_XTR_METADATA(mb) = metadata;
 		}
 	}
+#else
+	RTE_SET_USED(rxq);
 #endif
 }
 
@@ -167,6 +169,8 @@ ice_rxd_to_pkt_fields_by_comms_aux_v2(struct ice_rx_queue *rxq,
 			*RTE_NET_ICE_DYNF_PROTO_XTR_METADATA(mb) = metadata;
 		}
 	}
+#else
+	RTE_SET_USED(rxq);
 #endif
 }
 
