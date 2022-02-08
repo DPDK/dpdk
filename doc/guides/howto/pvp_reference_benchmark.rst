@@ -48,7 +48,7 @@ Host tuning
 
    .. code-block:: console
 
-      intel_pstate=disable mce=ignore_ce default_hugepagesz=1G hugepagesz=1G hugepages=6 isolcpus=2-7 rcu_nocbs=2-7 nohz_full=2-7 iommu=pt intel_iommu=on
+      intel_pstate=disable mce=ignore_ce default_hugepagesz=1G hugepagesz=1G hugepages=6 isolcpus=2-7 nohz_full=2-7 iommu=pt intel_iommu=on
 
 #. Disable hyper-threads at runtime if necessary or if BIOS is not accessible:
 
@@ -278,7 +278,7 @@ Guest tuning
 
    .. code-block:: console
 
-      default_hugepagesz=1G hugepagesz=1G hugepages=1 intel_iommu=on iommu=pt isolcpus=1,2 rcu_nocbs=1,2 nohz_full=1,2
+      default_hugepagesz=1G hugepagesz=1G hugepages=1 intel_iommu=on iommu=pt isolcpus=1,2 nohz_full=1,2
 
 #. Disable NMIs:
 
