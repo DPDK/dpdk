@@ -5389,6 +5389,12 @@ int rte_eth_ip_reassembly_conf_get(uint16_t port_id,
  * configuration. The use of this API is mandatory to enable this feature and
  * should be called before rte_eth_dev_start().
  *
+ * In datapath, PMD cannot guarantee that IP reassembly is always successful.
+ * Hence, PMD shall register mbuf dynamic field and dynamic flag using
+ * rte_eth_ip_reassembly_dynfield_register() to denote incomplete IP reassembly.
+ * If dynfield is not successfully registered, error will be returned and
+ * IP reassembly offload cannot be used.
+ *
  * @param port_id
  *   The port identifier of the device.
  * @param conf
@@ -5398,12 +5404,32 @@ int rte_eth_ip_reassembly_conf_get(uint16_t port_id,
  *   - (-ENODEV) if *port_id* invalid.
  *   - (-EIO) if device is removed.
  *   - (-EINVAL) if device is not configured or if device is already started or
- *               if *conf* passed is NULL.
+ *               if *conf* passed is NULL or if mbuf dynfield is not registered
+ *               successfully by the PMD.
  *   - (0) on success.
  */
 __rte_experimental
 int rte_eth_ip_reassembly_conf_set(uint16_t port_id,
 		const struct rte_eth_ip_reassembly_params *conf);
+
+/**
+ * In case of IP reassembly offload failure, packet will be updated with
+ * dynamic flag - RTE_MBUF_DYNFLAG_IP_REASSEMBLY_INCOMPLETE_NAME and packets
+ * will be returned without alteration.
+ * The application can retrieve the attached fragments using mbuf dynamic field
+ * RTE_MBUF_DYNFIELD_IP_REASSEMBLY_NAME.
+ */
+typedef struct {
+	/**
+	 * Next fragment packet. Application should fetch dynamic field of
+	 * each fragment until a NULL is received and nb_frags is 0.
+	 */
+	struct rte_mbuf *next_frag;
+	/** Time spent(in ms) by HW in waiting for further fragments. */
+	uint16_t time_spent;
+	/** Number of more fragments attached in mbuf dynamic fields. */
+	uint16_t nb_frags;
+} rte_eth_ip_reassembly_dynfield_t;
 
 
 #include <rte_ethdev_core.h>

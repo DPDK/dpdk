@@ -287,6 +287,7 @@ INTERNAL {
 	rte_eth_hairpin_queue_peer_bind;
 	rte_eth_hairpin_queue_peer_unbind;
 	rte_eth_hairpin_queue_peer_update;
+	rte_eth_ip_reassembly_dynfield_register;
 	rte_eth_representor_id_get;
 	rte_eth_switch_domain_alloc;
 	rte_eth_switch_domain_free;
