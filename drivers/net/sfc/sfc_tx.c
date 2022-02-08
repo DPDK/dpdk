@@ -308,6 +308,7 @@ sfc_tx_qinit_info(struct sfc_adapter *sa, sfc_sw_index_t sw_index)
 static int
 sfc_tx_check_mode(struct sfc_adapter *sa, const struct rte_eth_txmode *txmode)
 {
+	uint64_t dev_tx_offload_cap = sfc_tx_get_dev_offload_caps(sa);
 	int rc = 0;
 
 	switch (txmode->mq_mode) {
@@ -316,6 +317,13 @@ sfc_tx_check_mode(struct sfc_adapter *sa, const struct rte_eth_txmode *txmode)
 	default:
 		sfc_err(sa, "Tx multi-queue mode %u not supported",
 			txmode->mq_mode);
+		rc = EINVAL;
+	}
+
+	if ((dev_tx_offload_cap & RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE) != 0 &&
+	    (txmode->offloads & RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE) == 0) {
+		sfc_err(sa, "There is no FAST_FREE flag in the attempted Tx mode configuration");
+		sfc_err(sa, "FAST_FREE is always active as per the current Tx datapath variant");
 		rc = EINVAL;
 	}
 
