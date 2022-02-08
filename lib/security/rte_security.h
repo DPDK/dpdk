@@ -264,6 +264,19 @@ struct rte_security_ipsec_sa_options {
 	 */
 	uint32_t l4_csum_enable : 1;
 
+	/** Enable IP reassembly on inline inbound packets.
+	 *
+	 * * 1: Enable driver to try reassembly of encrypted IP packets for
+	 *      this SA, if supported by the driver. This feature will work
+	 *      only if user has successfully set IP reassembly config params
+	 *      using rte_eth_ip_reassembly_conf_set() for the inline Ethernet
+	 *      device. PMD need to register mbuf dynamic fields using
+	 *      rte_eth_ip_reassembly_dynfield_register() and security session
+	 *      creation would fail if dynfield is not registered successfully.
+	 * * 0: Disable IP reassembly of packets (default).
+	 */
+	uint32_t ip_reassembly_en : 1;
+
 	/** Reserved bit fields for future extension
 	 *
 	 * User should ensure reserved_opts is cleared as it may change in
@@ -271,7 +284,7 @@ struct rte_security_ipsec_sa_options {
 	 *
 	 * Note: Reduce number of bits in reserved_opts for every new option.
 	 */
-	uint32_t reserved_opts : 18;
+	uint32_t reserved_opts : 17;
 };
 
 /** IPSec security association direction */
