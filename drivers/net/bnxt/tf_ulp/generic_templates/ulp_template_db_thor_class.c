@@ -3,7 +3,7 @@
  * All rights reserved.
  */
 
-/* date: Fri Nov 12 19:33:52 2021 */
+/* date: Wed Nov 24 17:15:38 2021 */
 
 #include "ulp_template_db_enum.h"
 #include "ulp_template_db_field.h"
@@ -19943,20 +19943,30 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 	.field_info_mask = {
 		.description = "l2_dmac",
 		.field_bit_size = 48,
-		.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
-		.field_src1 = BNXT_ULP_FIELD_SRC_HF,
+		.field_opc = BNXT_ULP_FIELD_OPC_SRC1_THEN_SRC2_ELSE_SRC3,
+		.field_src1 = BNXT_ULP_FIELD_SRC_FIELD_BIT,
 		.field_opr1 = {
 		(BNXT_ULP_GLB_HF_ID_I_ETH_DMAC >> 8) & 0xff,
-		BNXT_ULP_GLB_HF_ID_I_ETH_DMAC & 0xff}
+		BNXT_ULP_GLB_HF_ID_I_ETH_DMAC & 0xff},
+		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
+		.field_opr2 = {
+		(BNXT_ULP_GLB_HF_ID_I_ETH_DMAC >> 8) & 0xff,
+		BNXT_ULP_GLB_HF_ID_I_ETH_DMAC & 0xff},
+		.field_src3 = BNXT_ULP_FIELD_SRC_SKIP
 		},
 	.field_info_spec = {
 		.description = "l2_dmac",
 		.field_bit_size = 48,
-		.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
-		.field_src1 = BNXT_ULP_FIELD_SRC_HF,
+		.field_opc = BNXT_ULP_FIELD_OPC_SRC1_THEN_SRC2_ELSE_SRC3,
+		.field_src1 = BNXT_ULP_FIELD_SRC_FIELD_BIT,
 		.field_opr1 = {
 		(BNXT_ULP_GLB_HF_ID_I_ETH_DMAC >> 8) & 0xff,
-		BNXT_ULP_GLB_HF_ID_I_ETH_DMAC & 0xff}
+		BNXT_ULP_GLB_HF_ID_I_ETH_DMAC & 0xff},
+		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
+		.field_opr2 = {
+		(BNXT_ULP_GLB_HF_ID_I_ETH_DMAC >> 8) & 0xff,
+		BNXT_ULP_GLB_HF_ID_I_ETH_DMAC & 0xff},
+		.field_src3 = BNXT_ULP_FIELD_SRC_SKIP
 		}
 	},
 	{
@@ -22215,20 +22225,30 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 	.field_info_mask = {
 		.description = "l2_dmac",
 		.field_bit_size = 48,
-		.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
-		.field_src1 = BNXT_ULP_FIELD_SRC_HF,
+		.field_opc = BNXT_ULP_FIELD_OPC_SRC1_THEN_SRC2_ELSE_SRC3,
+		.field_src1 = BNXT_ULP_FIELD_SRC_FIELD_BIT,
 		.field_opr1 = {
 		(BNXT_ULP_GLB_HF_ID_I_ETH_DMAC >> 8) & 0xff,
-		BNXT_ULP_GLB_HF_ID_I_ETH_DMAC & 0xff}
+		BNXT_ULP_GLB_HF_ID_I_ETH_DMAC & 0xff},
+		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
+		.field_opr2 = {
+		(BNXT_ULP_GLB_HF_ID_I_ETH_DMAC >> 8) & 0xff,
+		BNXT_ULP_GLB_HF_ID_I_ETH_DMAC & 0xff},
+		.field_src3 = BNXT_ULP_FIELD_SRC_ZERO
 		},
 	.field_info_spec = {
 		.description = "l2_dmac",
 		.field_bit_size = 48,
-		.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
-		.field_src1 = BNXT_ULP_FIELD_SRC_HF,
+		.field_opc = BNXT_ULP_FIELD_OPC_SRC1_THEN_SRC2_ELSE_SRC3,
+		.field_src1 = BNXT_ULP_FIELD_SRC_FIELD_BIT,
 		.field_opr1 = {
 		(BNXT_ULP_GLB_HF_ID_I_ETH_DMAC >> 8) & 0xff,
-		BNXT_ULP_GLB_HF_ID_I_ETH_DMAC & 0xff}
+		BNXT_ULP_GLB_HF_ID_I_ETH_DMAC & 0xff},
+		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
+		.field_opr2 = {
+		(BNXT_ULP_GLB_HF_ID_I_ETH_DMAC >> 8) & 0xff,
+		BNXT_ULP_GLB_HF_ID_I_ETH_DMAC & 0xff},
+		.field_src3 = BNXT_ULP_FIELD_SRC_ZERO
 		}
 	},
 	{
@@ -37866,9 +37886,10 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[] = {
 	.description = "l2_dmac.en",
 	.field_bit_size = 1,
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
-	.field_src1 = BNXT_ULP_FIELD_SRC_CONST,
+	.field_src1 = BNXT_ULP_FIELD_SRC_FIELD_BIT,
 	.field_opr1 = {
-	1}
+	(BNXT_ULP_GLB_HF_ID_I_ETH_DMAC >> 8) & 0xff,
+	BNXT_ULP_GLB_HF_ID_I_ETH_DMAC & 0xff}
 	},
 	{
 	.description = "l2_smac.en",
