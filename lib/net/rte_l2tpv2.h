@@ -89,25 +89,25 @@ struct rte_l2tpv2_common_hdr {
 		__extension__
 		struct {
 #if RTE_BYTE_ORDER == RTE_LITTLE_ENDIAN
-			uint16_t t:1;		/**< message Type */
-			uint16_t l:1;		/**< length option bit */
-			uint16_t res1:2;	/**< reserved */
-			uint16_t s:1;		/**< ns/nr option bit */
-			uint16_t res2:1;	/**< reserved */
-			uint16_t o:1;		/**< offset option bit */
-			uint16_t p:1;		/**< priority option bit */
-			uint16_t res3:4;	/**< reserved */
 			uint16_t ver:4;		/**< protocol version */
+			uint16_t res3:4;	/**< reserved */
+			uint16_t p:1;		/**< priority option bit */
+			uint16_t o:1;		/**< offset option bit */
+			uint16_t res2:1;	/**< reserved */
+			uint16_t s:1;		/**< ns/nr option bit */
+			uint16_t res1:2;	/**< reserved */
+			uint16_t l:1;		/**< length option bit */
+			uint16_t t:1;		/**< message Type */
 #elif RTE_BYTE_ORDER == RTE_BIG_ENDIAN
-			uint16_t ver:4;		/**< protocol version */
-			uint16_t res3:4;	/**< reserved */
-			uint16_t p:1;		/**< priority option bit */
-			uint16_t o:1;		/**< offset option bit */
-			uint16_t res2:1;	/**< reserved */
-			uint16_t s:1;		/**< ns/nr option bit */
-			uint16_t res1:2;	/**< reserved */
-			uint16_t l:1;		/**< length option bit */
 			uint16_t t:1;		/**< message Type */
+			uint16_t l:1;		/**< length option bit */
+			uint16_t res1:2;	/**< reserved */
+			uint16_t s:1;		/**< ns/nr option bit */
+			uint16_t res2:1;	/**< reserved */
+			uint16_t o:1;		/**< offset option bit */
+			uint16_t p:1;		/**< priority option bit */
+			uint16_t res3:4;	/**< reserved */
+			uint16_t ver:4;		/**< protocol version */
 #endif
 		};
 	};
