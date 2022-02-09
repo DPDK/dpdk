@@ -338,3 +338,52 @@ s32 ngbe_hic_check_cap(struct ngbe_hw *hw)
 
 	return err;
 }
+
+s32 ngbe_phy_led_oem_chk(struct ngbe_hw *hw, u32 *data)
+{
+	struct ngbe_hic_read_shadow_ram command;
+	s32 err;
+	int i;
+
+	DEBUGFUNC("\n");
+
+	command.hdr.req.cmd = FW_PHY_LED_CONF;
+	command.hdr.req.buf_lenh = 0;
+	command.hdr.req.buf_lenl = 0;
+	command.hdr.req.checksum = FW_DEFAULT_CHECKSUM;
+
+	/* convert offset from words to bytes */
+	command.address = 0;
+	/* one word */
+	command.length = 0;
+
+	for (i = 0; i <= FW_CEM_MAX_RETRIES; i++) {
+		err = ngbe_host_interface_command(hw, (u32 *)&command,
+				sizeof(command),
+				NGBE_HI_COMMAND_TIMEOUT, true);
+		if (err)
+			continue;
+
+		command.hdr.rsp.ret_status &= 0x1F;
+		if (command.hdr.rsp.ret_status !=
+			FW_CEM_RESP_STATUS_SUCCESS)
+			err = NGBE_ERR_HOST_INTERFACE_COMMAND;
+
+		break;
+	}
+
+	if (err)
+		return err;
+
+	if (command.address == FW_CHECKSUM_CAP_ST_PASS) {
+		*data = ((u32 *)&command)[2];
+		err = 0;
+	} else if (command.address == FW_CHECKSUM_CAP_ST_FAIL) {
+		*data = FW_CHECKSUM_CAP_ST_FAIL;
+		err = -1;
+	} else {
+		err = NGBE_ERR_EEPROM_CHECKSUM;
+	}
+
+	return err;
+}

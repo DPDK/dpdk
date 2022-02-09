@@ -123,16 +123,9 @@ s32 ngbe_init_phy_mvl(struct ngbe_hw *hw)
 	value = MVL_INTR_EN_ANC | MVL_INTR_EN_LSC;
 	hw->phy.write_reg(hw, MVL_INTR_EN, 0, value);
 
-	/* LED control */
-	ngbe_write_phy_reg_mdi(hw, MVL_PAGE_SEL, 0, 3);
-	ngbe_read_phy_reg_mdi(hw, MVL_LEDFCR, 0, &value);
-	value &= ~(MVL_LEDFCR_CTL0 | MVL_LEDFCR_CTL1);
-	value |= MVL_LEDFCR_CTL0_CONF | MVL_LEDFCR_CTL1_CONF;
-	ngbe_write_phy_reg_mdi(hw, MVL_LEDFCR, 0, value);
-	ngbe_read_phy_reg_mdi(hw, MVL_LEDPCR, 0, &value);
-	value &= ~(MVL_LEDPCR_CTL0 | MVL_LEDPCR_CTL1);
-	value |= MVL_LEDPCR_CTL0_CONF | MVL_LEDPCR_CTL1_CONF;
-	ngbe_write_phy_reg_mdi(hw, MVL_LEDPCR, 0, value);
+	ngbe_read_phy_reg_mdi(hw, MVL_CTRL, 0, &value);
+	value |= MVL_CTRL_PWDN;
+	ngbe_write_phy_reg_mdi(hw, MVL_CTRL, 0, value);
 
 	return ret_val;
 }
@@ -146,6 +139,19 @@ s32 ngbe_setup_phy_link_mvl(struct ngbe_hw *hw, u32 speed,
 
 	DEBUGFUNC("ngbe_setup_phy_link_mvl");
 	UNREFERENCED_PARAMETER(autoneg_wait_to_complete);
+
+	if (hw->led_conf == 0xFFFF) {
+		/* LED control */
+		ngbe_write_phy_reg_mdi(hw, MVL_PAGE_SEL, 0, 3);
+		ngbe_read_phy_reg_mdi(hw, MVL_LEDFCR, 0, &value);
+		value &= ~(MVL_LEDFCR_CTL0 | MVL_LEDFCR_CTL1);
+		value |= MVL_LEDFCR_CTL0_CONF | MVL_LEDFCR_CTL1_CONF;
+		ngbe_write_phy_reg_mdi(hw, MVL_LEDFCR, 0, value);
+		ngbe_read_phy_reg_mdi(hw, MVL_LEDPCR, 0, &value);
+		value &= ~(MVL_LEDPCR_CTL0 | MVL_LEDPCR_CTL1);
+		value |= MVL_LEDPCR_CTL0_CONF | MVL_LEDPCR_CTL1_CONF;
+		ngbe_write_phy_reg_mdi(hw, MVL_LEDPCR, 0, value);
+	}
 
 	hw->phy.autoneg_advertised = 0;
 

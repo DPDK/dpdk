@@ -314,6 +314,7 @@ eth_ngbe_dev_init(struct rte_eth_dev *eth_dev, void *init_params __rte_unused)
 	struct rte_intr_handle *intr_handle = pci_dev->intr_handle;
 	const struct rte_memzone *mz;
 	uint32_t ctrl_ext;
+	u32 led_conf = 0;
 	int err, ret;
 
 	PMD_INIT_FUNC_TRACE();
@@ -400,6 +401,12 @@ eth_ngbe_dev_init(struct rte_eth_dev *eth_dev, void *init_params __rte_unused)
 		PMD_INIT_LOG(ERR, "The EEPROM checksum is not valid: %d", err);
 		return -EIO;
 	}
+
+	err = hw->phy.led_oem_chk(hw, &led_conf);
+	if (err == 0)
+		hw->led_conf = led_conf;
+	else
+		hw->led_conf = 0xFFFF;
 
 	err = hw->mac.init_hw(hw);
 	if (err != 0) {

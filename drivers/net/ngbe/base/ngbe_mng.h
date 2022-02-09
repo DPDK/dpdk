@@ -26,6 +26,7 @@
 #define FW_DEFAULT_CHECKSUM             0xFF /* checksum always 0xFF */
 #define FW_NVM_DATA_OFFSET              3
 #define FW_EEPROM_CHECK_STATUS		0xE9
+#define FW_PHY_LED_CONF			0xF1
 
 #define FW_CHECKSUM_CAP_ST_PASS	0x80658383
 #define FW_CHECKSUM_CAP_ST_FAIL	0x70657376
@@ -101,4 +102,6 @@ s32 ngbe_hic_pcie_read(struct ngbe_hw *hw, u16 addr, u32 *buf, int len);
 s32 ngbe_hic_pcie_write(struct ngbe_hw *hw, u16 addr, u32 *buf, int len);
 
 s32 ngbe_hic_check_cap(struct ngbe_hw *hw);
+s32 ngbe_phy_led_oem_chk(struct ngbe_hw *hw, u32 *data);
+
 #endif /* _NGBE_MNG_H_ */

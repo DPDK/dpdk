@@ -355,6 +355,7 @@ struct ngbe_phy_info {
 				bool autoneg_wait_to_complete);
 	s32 (*check_link)(struct ngbe_hw *hw, u32 *speed, bool *link_up);
 	s32 (*set_phy_power)(struct ngbe_hw *hw, bool on);
+	s32 (*led_oem_chk)(struct ngbe_hw *hw, u32 *data);
 	s32 (*get_adv_pause)(struct ngbe_hw *hw, u8 *pause_bit);
 	s32 (*get_lp_adv_pause)(struct ngbe_hw *hw, u8 *pause_bit);
 	s32 (*set_pause_adv)(struct ngbe_hw *hw, u16 pause_bit);
@@ -430,6 +431,7 @@ struct ngbe_hw {
 	bool offset_loaded;
 	bool is_pf;
 	bool gpio_ctl;
+	u32 led_conf;
 	struct {
 		u64 rx_qp_packets;
 		u64 tx_qp_packets;

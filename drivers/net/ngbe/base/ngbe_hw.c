@@ -1972,6 +1972,7 @@ s32 ngbe_init_ops_pf(struct ngbe_hw *hw)
 	phy->read_reg_unlocked = ngbe_read_phy_reg_mdi;
 	phy->write_reg_unlocked = ngbe_write_phy_reg_mdi;
 	phy->reset_hw = ngbe_reset_phy;
+	phy->led_oem_chk = ngbe_phy_led_oem_chk;
 
 	/* MAC */
 	mac->init_hw = ngbe_init_hw;

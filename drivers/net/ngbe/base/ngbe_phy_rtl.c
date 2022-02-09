@@ -36,6 +36,30 @@ s32 ngbe_write_phy_reg_rtl(struct ngbe_hw *hw,
 	return 0;
 }
 
+static void ngbe_phy_led_ctrl_rtl(struct ngbe_hw *hw)
+{
+	u16 value = 0;
+
+	if (hw->led_conf != 0xFFFF)
+		value = hw->led_conf & 0xFFFF;
+	else
+		value = 0x205B;
+
+	hw->phy.write_reg(hw, RTL_LCR, 0xd04, value);
+	hw->phy.write_reg(hw, RTL_EEELCR, 0xd04, 0);
+
+	hw->phy.read_reg(hw, RTL_LPCR, 0xd04, &value);
+	if (hw->led_conf != 0xFFFF) {
+		value &= ~0x73;
+		value |= hw->led_conf >> 16;
+	} else {
+		value &= 0xFFFC;
+		/*act led blinking mode set to 60ms*/
+		value |= 0x2;
+	}
+	hw->phy.write_reg(hw, RTL_LPCR, 0xd04, value);
+}
+
 s32 ngbe_init_phy_rtl(struct ngbe_hw *hw)
 {
 	int i;
@@ -219,15 +243,7 @@ s32 ngbe_setup_phy_link_rtl(struct ngbe_hw *hw,
 	hw->phy.write_reg(hw, RTL_BMCR, RTL_DEV_ZERO, autoneg_reg);
 
 skip_an:
-	autoneg_reg = 0x205B;
-	hw->phy.write_reg(hw, RTL_LCR, 0xd04, autoneg_reg);
-	hw->phy.write_reg(hw, RTL_EEELCR, 0xd04, 0);
-
-	hw->phy.read_reg(hw, RTL_LPCR, 0xd04, &autoneg_reg);
-	autoneg_reg = autoneg_reg & 0xFFFC;
-	/* act led blinking mode set to 60ms */
-	autoneg_reg |= 0x2;
-	hw->phy.write_reg(hw, RTL_LPCR, 0xd04, autoneg_reg);
+	ngbe_phy_led_ctrl_rtl(hw);
 
 	return 0;
 }
