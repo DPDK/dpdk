@@ -103,6 +103,13 @@ New Features
   * Added rte_flow support for matching GENEVE packets.
   * Added rte_flow support for matching eCPRI packets.
 
+* **Updated Wangxun ngbe driver.**
+
+  * Added support for devices of custom PHY interfaces.
+    - M88E1512 PHY connects to RJ45
+    - M88E1512 PHY connects to RGMII combo
+    - YT8521S PHY connects to SFP
+
 * **Updated Marvell cnxk crypto PMD.**
 
   * Added SHA256-HMAC support in lookaside protocol (IPsec) for CN10K.

@@ -44,6 +44,12 @@ enum ngbe_eeprom_type {
 	ngbe_eeprom_none /* No NVM support */
 };
 
+enum ngbe_link_type {
+	ngbe_link_type_unknown = 0,
+	ngbe_link_fiber,
+	ngbe_link_copper
+};
+
 enum ngbe_mac_type {
 	ngbe_mac_unknown = 0,
 	ngbe_mac_em,
@@ -312,6 +318,7 @@ struct ngbe_mac_info {
 	s32 (*check_overtemp)(struct ngbe_hw *hw);
 
 	enum ngbe_mac_type type;
+	enum ngbe_link_type link_type;
 	u8 addr[ETH_ADDR_LEN];
 	u8 perm_addr[ETH_ADDR_LEN];
 #define NGBE_MAX_MTA			128
@@ -422,6 +429,7 @@ struct ngbe_hw {
 	u32 q_tx_regs[8 * 4];
 	bool offset_loaded;
 	bool is_pf;
+	bool gpio_ctl;
 	struct {
 		u64 rx_qp_packets;
 		u64 tx_qp_packets;

@@ -1097,8 +1097,7 @@ skip_link_setup:
 	/* resume enabled intr since HW reset */
 	ngbe_enable_intr(dev);
 
-	if ((hw->sub_system_id & NGBE_OEM_MASK) == NGBE_LY_M88E1512_SFP ||
-		(hw->sub_system_id & NGBE_OEM_MASK) == NGBE_LY_YT8521S_SFP) {
+	if (hw->gpio_ctl) {
 		/* gpio0 is used to power on/off control*/
 		wr32(hw, NGBE_GPIODATA, 0);
 	}
@@ -1141,8 +1140,7 @@ ngbe_dev_stop(struct rte_eth_dev *dev)
 
 	rte_eal_alarm_cancel(ngbe_dev_setup_link_alarm_handler, dev);
 
-	if ((hw->sub_system_id & NGBE_OEM_MASK) == NGBE_LY_M88E1512_SFP ||
-		(hw->sub_system_id & NGBE_OEM_MASK) == NGBE_LY_YT8521S_SFP) {
+	if (hw->gpio_ctl) {
 		/* gpio0 is used to power on/off control*/
 		wr32(hw, NGBE_GPIODATA, NGBE_GPIOBIT_0);
 	}

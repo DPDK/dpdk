@@ -48,7 +48,7 @@ typedef struct mdi_reg mdi_reg_t;
 s32 ngbe_mdi_map_register(mdi_reg_t *reg, mdi_reg_22_t *reg22);
 
 bool ngbe_validate_phy_addr(struct ngbe_hw *hw, u32 phy_addr);
-enum ngbe_phy_type ngbe_get_phy_type_from_id(struct ngbe_hw *hw);
+s32 ngbe_get_phy_type_from_id(struct ngbe_hw *hw);
 s32 ngbe_get_phy_id(struct ngbe_hw *hw);
 s32 ngbe_identify_phy(struct ngbe_hw *hw);
 s32 ngbe_reset_phy(struct ngbe_hw *hw);

@@ -48,6 +48,31 @@ s32 ngbe_write_phy_reg_mvl(struct ngbe_hw *hw,
 	return 0;
 }
 
+s32 ngbe_check_phy_mode_mvl(struct ngbe_hw *hw)
+{
+	u16 value = 0;
+
+	/* select page 18 reg 20 */
+	ngbe_write_phy_reg_mdi(hw, MVL_PAGE_SEL, 0, 18);
+	ngbe_read_phy_reg_mdi(hw, MVL_GEN_CTL, 0, &value);
+	if (MVL_GEN_CTL_MODE(value) == MVL_GEN_CTL_MODE_COPPER) {
+		/* mode select to RGMII-to-copper */
+		hw->phy.type = ngbe_phy_mvl;
+		hw->phy.media_type = ngbe_media_type_copper;
+		hw->mac.link_type = ngbe_link_copper;
+	} else if (MVL_GEN_CTL_MODE(value) == MVL_GEN_CTL_MODE_FIBER) {
+		/* mode select to RGMII-to-sfi */
+		hw->phy.type = ngbe_phy_mvl_sfi;
+		hw->phy.media_type = ngbe_media_type_fiber;
+		hw->mac.link_type = ngbe_link_fiber;
+	} else {
+		DEBUGOUT("marvell 88E1512 mode %x is not supported.\n", value);
+		return NGBE_ERR_DEVICE_NOT_SUPPORTED;
+	}
+
+	return 0;
+}
+
 s32 ngbe_init_phy_mvl(struct ngbe_hw *hw)
 {
 	s32 ret_val = 0;
@@ -125,6 +150,29 @@ s32 ngbe_setup_phy_link_mvl(struct ngbe_hw *hw, u32 speed,
 	hw->phy.autoneg_advertised = 0;
 
 	if (hw->phy.type == ngbe_phy_mvl) {
+		if (!hw->mac.autoneg) {
+			switch (speed) {
+			case NGBE_LINK_SPEED_1GB_FULL:
+				value = MVL_CTRL_SPEED_SELECT1;
+				break;
+			case NGBE_LINK_SPEED_100M_FULL:
+				value = MVL_CTRL_SPEED_SELECT0;
+				break;
+			case NGBE_LINK_SPEED_10M_FULL:
+				value = 0;
+				break;
+			default:
+				value = MVL_CTRL_SPEED_SELECT0 |
+					MVL_CTRL_SPEED_SELECT1;
+				DEBUGOUT("unknown speed = 0x%x.\n", speed);
+				break;
+			}
+			/* duplex full */
+			value |= MVL_CTRL_DUPLEX | MVL_CTRL_RESET;
+			ngbe_write_phy_reg_mdi(hw, MVL_CTRL, 0, value);
+
+			goto skip_an;
+		}
 		if (speed & NGBE_LINK_SPEED_1GB_FULL) {
 			value_r9 |= MVL_PHY_1000BASET_FULL;
 			hw->phy.autoneg_advertised |= NGBE_LINK_SPEED_1GB_FULL;
@@ -162,7 +210,12 @@ s32 ngbe_setup_phy_link_mvl(struct ngbe_hw *hw, u32 speed,
 		hw->phy.write_reg(hw, MVL_ANA, 0, value);
 	}
 
-	value = MVL_CTRL_RESTART_AN | MVL_CTRL_ANE;
+	value = MVL_CTRL_RESTART_AN | MVL_CTRL_ANE | MVL_CTRL_RESET;
+	ngbe_write_phy_reg_mdi(hw, MVL_CTRL, 0, value);
+
+skip_an:
+	ngbe_read_phy_reg_mdi(hw, MVL_CTRL, 0, &value);
+	value |= MVL_CTRL_PWDN;
 	ngbe_write_phy_reg_mdi(hw, MVL_CTRL, 0, value);
 
 	hw->phy.read_reg(hw, MVL_INTR, 0, &value);

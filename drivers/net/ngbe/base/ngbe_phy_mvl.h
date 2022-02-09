@@ -12,8 +12,12 @@
 /* Page 0 for Copper, Page 1 for Fiber */
 #define MVL_CTRL			0x0
 #define   MVL_CTRL_RESET		MS16(15, 0x1)
+#define	  MVL_CTRL_SPEED_SELECT0	MS16(13, 0x1)
 #define   MVL_CTRL_ANE			MS16(12, 0x1)
+#define   MVL_CTRL_PWDN			MS16(11, 0x1)
 #define   MVL_CTRL_RESTART_AN		MS16(9, 0x1)
+#define   MVL_CTRL_DUPLEX		MS16(8, 0x1)
+#define	  MVL_CTRL_SPEED_SELECT1	MS16(6, 0x1)
 #define MVL_ANA				0x4
 /* copper */
 #define   MVL_CANA_ASM_PAUSE		MS16(11, 0x1)
@@ -86,6 +90,7 @@ s32 ngbe_read_phy_reg_mvl(struct ngbe_hw *hw, u32 reg_addr, u32 device_type,
 			u16 *phy_data);
 s32 ngbe_write_phy_reg_mvl(struct ngbe_hw *hw, u32 reg_addr, u32 device_type,
 			u16 phy_data);
+s32 ngbe_check_phy_mode_mvl(struct ngbe_hw *hw);
 s32 ngbe_init_phy_mvl(struct ngbe_hw *hw);
 
 s32 ngbe_reset_phy_mvl(struct ngbe_hw *hw);

@@ -124,8 +124,7 @@ ngbe_reset_misc_em(struct ngbe_hw *hw)
 
 	wr32m(hw, NGBE_GPIE, NGBE_GPIE_MSIX, NGBE_GPIE_MSIX);
 
-	if ((hw->sub_system_id & NGBE_OEM_MASK) == NGBE_LY_M88E1512_SFP ||
-		(hw->sub_system_id & NGBE_OEM_MASK) == NGBE_LY_YT8521S_SFP) {
+	if (hw->gpio_ctl) {
 		/* gpio0 is used to power on/off control*/
 		wr32(hw, NGBE_GPIODIR, NGBE_GPIODIR_DDR(1));
 		wr32(hw, NGBE_GPIODATA, NGBE_GPIOBIT_0);
@@ -1617,19 +1616,21 @@ s32 ngbe_get_link_capabilities_em(struct ngbe_hw *hw,
 				      bool *autoneg)
 {
 	s32 status = 0;
-
+	u16 value = 0;
 	DEBUGFUNC("\n");
 
 	hw->mac.autoneg = *autoneg;
 
-	switch (hw->sub_device_id) {
-	case NGBE_SUB_DEV_ID_EM_RTL_SGMII:
+	if (hw->phy.type == ngbe_phy_rtl) {
 		*speed = NGBE_LINK_SPEED_1GB_FULL |
 			NGBE_LINK_SPEED_100M_FULL |
 			NGBE_LINK_SPEED_10M_FULL;
-		break;
-	default:
-		break;
+	}
+
+	if (hw->phy.type == ngbe_phy_yt8521s_sfi) {
+		ngbe_read_phy_reg_ext_yt(hw, YT_CHIP, 0, &value);
+		if ((value & YT_CHIP_MODE_MASK) == YT_CHIP_MODE_SEL(1))
+			*speed = NGBE_LINK_SPEED_1GB_FULL;
 	}
 
 	return status;
@@ -1815,11 +1816,23 @@ s32 ngbe_set_mac_type(struct ngbe_hw *hw)
 	case NGBE_SUB_DEV_ID_EM_MVL_RGMII:
 		hw->phy.media_type = ngbe_media_type_copper;
 		hw->mac.type = ngbe_mac_em;
+		hw->mac.link_type = ngbe_link_copper;
+		break;
+	case NGBE_SUB_DEV_ID_EM_RTL_YT8521S_SFP:
+		hw->phy.media_type = ngbe_media_type_copper;
+		hw->mac.type = ngbe_mac_em;
+		hw->mac.link_type = ngbe_link_fiber;
 		break;
 	case NGBE_SUB_DEV_ID_EM_MVL_SFP:
 	case NGBE_SUB_DEV_ID_EM_YT8521S_SFP:
 		hw->phy.media_type = ngbe_media_type_fiber;
 		hw->mac.type = ngbe_mac_em;
+		hw->mac.link_type = ngbe_link_fiber;
+		break;
+	case NGBE_SUB_DEV_ID_EM_MVL_MIX:
+		hw->phy.media_type = ngbe_media_type_unknown;
+		hw->mac.type = ngbe_mac_em;
+		hw->mac.link_type = ngbe_link_type_unknown;
 		break;
 	case NGBE_SUB_DEV_ID_EM_VF:
 		hw->phy.media_type = ngbe_media_type_virtual;
@@ -1871,7 +1884,7 @@ s32 ngbe_enable_rx_dma(struct ngbe_hw *hw, u32 regval)
 void ngbe_map_device_id(struct ngbe_hw *hw)
 {
 	u16 oem = hw->sub_system_id & NGBE_OEM_MASK;
-	u16 internal = hw->sub_system_id & NGBE_INTERNAL_MASK;
+
 	hw->is_pf = true;
 
 	/* move subsystem_device_id to device_id */
@@ -1905,20 +1918,31 @@ void ngbe_map_device_id(struct ngbe_hw *hw)
 	case NGBE_DEV_ID_EM_WX1860A1:
 	case NGBE_DEV_ID_EM_WX1860A1L:
 		hw->device_id = NGBE_DEV_ID_EM;
-		if (oem == NGBE_LY_M88E1512_SFP ||
-				internal == NGBE_INTERNAL_SFP)
+		if (oem == NGBE_M88E1512_SFP || oem == NGBE_LY_M88E1512_SFP)
 			hw->sub_device_id = NGBE_SUB_DEV_ID_EM_MVL_SFP;
-		else if (hw->sub_system_id == NGBE_SUB_DEV_ID_EM_M88E1512_RJ45)
+		else if (oem == NGBE_M88E1512_RJ45 ||
+			(hw->sub_system_id == NGBE_SUB_DEV_ID_EM_M88E1512_RJ45))
 			hw->sub_device_id = NGBE_SUB_DEV_ID_EM_MVL_RGMII;
+		else if (oem == NGBE_M88E1512_MIX)
+			hw->sub_device_id = NGBE_SUB_DEV_ID_EM_MVL_MIX;
 		else if (oem == NGBE_YT8521S_SFP ||
-				oem == NGBE_LY_YT8521S_SFP)
+			 oem == NGBE_YT8521S_SFP_GPIO ||
+			 oem == NGBE_LY_YT8521S_SFP)
 			hw->sub_device_id = NGBE_SUB_DEV_ID_EM_YT8521S_SFP;
+		else if (oem == NGBE_INTERNAL_YT8521S_SFP ||
+			 oem == NGBE_INTERNAL_YT8521S_SFP_GPIO)
+			hw->sub_device_id = NGBE_SUB_DEV_ID_EM_RTL_YT8521S_SFP;
 		else
 			hw->sub_device_id = NGBE_SUB_DEV_ID_EM_RTL_SGMII;
 		break;
 	default:
 		break;
 	}
+
+	if (oem == NGBE_LY_M88E1512_SFP || oem == NGBE_YT8521S_SFP_GPIO ||
+			oem == NGBE_INTERNAL_YT8521S_SFP_GPIO ||
+			oem == NGBE_LY_YT8521S_SFP)
+		hw->gpio_ctl = true;
 }
 
 /**
