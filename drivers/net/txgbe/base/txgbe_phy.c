@@ -1455,6 +1455,10 @@ txgbe_set_link_to_kr(struct txgbe_hw *hw, bool autoneg)
 		if (!(hw->devarg.auto_neg == 1)) {
 			wr32_epcs(hw, SR_AN_CTRL, 0);
 			wr32_epcs(hw, VR_AN_KR_MODE_CL, 0);
+		} else {
+			value = rd32_epcs(hw, TXGBE_PHY_TX_EQ_CTL1);
+			value &= ~(1 << 6);
+			wr32_epcs(hw, TXGBE_PHY_TX_EQ_CTL1, value);
 		}
 		if (hw->devarg.present == 1) {
 			value = rd32_epcs(hw, TXGBE_PHY_TX_EQ_CTL1);
