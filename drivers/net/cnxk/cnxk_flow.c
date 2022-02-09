@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  * Copyright(C) 2021 Marvell.
  */
-#include <cnxk_rte_flow.h>
+#include <cnxk_flow.h>
 
 const struct cnxk_rte_flow_term_info term[] = {
 	[RTE_FLOW_ITEM_TYPE_ETH] = {ROC_NPC_ITEM_TYPE_ETH,

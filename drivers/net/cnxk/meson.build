@@ -19,7 +19,7 @@ sources = files(
         'cnxk_link.c',
         'cnxk_lookup.c',
         'cnxk_ptp.c',
-        'cnxk_rte_flow.c',
+        'cnxk_flow.c',
         'cnxk_stats.c',
         'cnxk_tm.c',
 )
@@ -28,7 +28,7 @@ sources = files(
 sources += files(
         'cn9k_ethdev.c',
         'cn9k_ethdev_sec.c',
-        'cn9k_rte_flow.c',
+        'cn9k_flow.c',
         'cn9k_rx_select.c',
         'cn9k_tx_select.c',
 )
@@ -107,7 +107,7 @@ sources += files(
 sources += files(
         'cn10k_ethdev.c',
         'cn10k_ethdev_sec.c',
-        'cn10k_rte_flow.c',
+        'cn10k_flow.c',
         'cn10k_rx_select.c',
         'cn10k_tx_select.c',
 )

@@ -2,7 +2,7 @@
  * Copyright(C) 2021 Marvell.
  */
 #include "cn10k_ethdev.h"
-#include "cn10k_rte_flow.h"
+#include "cn10k_flow.h"
 #include "cn10k_rx.h"
 #include "cn10k_tx.h"
 

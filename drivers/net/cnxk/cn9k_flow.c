@@ -1,9 +1,9 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  * Copyright(C) 2020 Marvell.
  */
-#include <cnxk_rte_flow.h>
+#include <cnxk_flow.h>
 #include "cn9k_ethdev.h"
-#include "cn9k_rte_flow.h"
+#include "cn9k_flow.h"
 #include "cn9k_rx.h"
 
 struct rte_flow *
