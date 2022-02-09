@@ -13,6 +13,7 @@
 #define NGBE_EM_RAR_ENTRIES   32
 #define NGBE_EM_MC_TBL_SIZE   32
 #define NGBE_EM_VFT_TBL_SIZE  128
+#define NGBE_EM_RX_PB_SIZE    42 /*KB*/
 
 s32 ngbe_init_hw(struct ngbe_hw *hw);
 s32 ngbe_start_hw(struct ngbe_hw *hw);
@@ -44,6 +45,7 @@ s32 ngbe_update_mc_addr_list(struct ngbe_hw *hw, u8 *mc_addr_list,
 				      ngbe_mc_addr_itr func, bool clear);
 s32 ngbe_disable_sec_rx_path(struct ngbe_hw *hw);
 s32 ngbe_enable_sec_rx_path(struct ngbe_hw *hw);
+void ngbe_set_pba(struct ngbe_hw *hw);
 
 s32 ngbe_setup_fc_em(struct ngbe_hw *hw);
 s32 ngbe_fc_enable(struct ngbe_hw *hw);

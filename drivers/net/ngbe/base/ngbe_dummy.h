@@ -114,6 +114,9 @@ static inline s32 ngbe_mac_get_link_capabilities_dummy(struct ngbe_hw *TUP0,
 {
 	return NGBE_ERR_OPS_DUMMY;
 }
+static inline void ngbe_setup_pba_dummy(struct ngbe_hw *TUP0)
+{
+}
 static inline s32 ngbe_mac_led_on_dummy(struct ngbe_hw *TUP0, u32 TUP1)
 {
 	return NGBE_ERR_OPS_DUMMY;
@@ -298,6 +301,7 @@ static inline void ngbe_init_ops_dummy(struct ngbe_hw *hw)
 	hw->mac.setup_link = ngbe_mac_setup_link_dummy;
 	hw->mac.check_link = ngbe_mac_check_link_dummy;
 	hw->mac.get_link_capabilities = ngbe_mac_get_link_capabilities_dummy;
+	hw->mac.setup_pba = ngbe_setup_pba_dummy;
 	hw->mac.led_on = ngbe_mac_led_on_dummy;
 	hw->mac.led_off = ngbe_mac_led_off_dummy;
 	hw->mac.set_rar = ngbe_mac_set_rar_dummy;
