@@ -32,10 +32,8 @@ virtqueue_detatch_unused(struct virtqueue *vq)
 		for (idx = 0; idx < vq->vq_nentries; idx++) {
 			cop = vq->vq_descx[idx].crypto_op;
 			if (cop) {
-				if (cop->sym->m_src)
-					rte_pktmbuf_free(cop->sym->m_src);
-				if (cop->sym->m_dst)
-					rte_pktmbuf_free(cop->sym->m_dst);
+				rte_pktmbuf_free(cop->sym->m_src);
+				rte_pktmbuf_free(cop->sym->m_dst);
 				rte_crypto_op_free(cop);
 				vq->vq_descx[idx].crypto_op = NULL;
 			}

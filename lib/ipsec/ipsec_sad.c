@@ -440,8 +440,7 @@ rte_ipsec_sad_destroy(struct rte_ipsec_sad *sad)
 	rte_hash_free(sad->hash[RTE_IPSEC_SAD_SPI_DIP]);
 	rte_hash_free(sad->hash[RTE_IPSEC_SAD_SPI_DIP_SIP]);
 	rte_free(sad);
-	if (te != NULL)
-		rte_free(te);
+	rte_free(te);
 }
 
 /*

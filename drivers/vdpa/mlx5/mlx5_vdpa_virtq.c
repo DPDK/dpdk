@@ -91,8 +91,7 @@ mlx5_vdpa_virtq_unset(struct mlx5_vdpa_virtq *virtq)
 		if (virtq->umems[i].obj)
 			claim_zero(mlx5_glue->devx_umem_dereg
 							 (virtq->umems[i].obj));
-		if (virtq->umems[i].buf)
-			rte_free(virtq->umems[i].buf);
+		rte_free(virtq->umems[i].buf);
 	}
 	memset(&virtq->umems, 0, sizeof(virtq->umems));
 	if (virtq->eqp.fw_qp)

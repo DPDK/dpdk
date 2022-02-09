@@ -471,8 +471,7 @@ mr_free(struct mlx4_mr *mr)
 	DEBUG("freeing MR(%p):", (void *)mr);
 	if (mr->ibv_mr != NULL)
 		claim_zero(mlx4_glue->dereg_mr(mr->ibv_mr));
-	if (mr->ms_bmp != NULL)
-		rte_bitmap_free(mr->ms_bmp);
+	rte_bitmap_free(mr->ms_bmp);
 	rte_free(mr);
 }
 

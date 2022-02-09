@@ -339,16 +339,9 @@ static inline void copy_bytes(void *dest, const void *src, size_t sz)
 
 /* Allocator stuff */
 #define kmalloc(sz, t)	rte_malloc(NULL, sz, 0)
+#define kzalloc(sz, t)  rte_zmalloc(NULL, sz, 0)
 #define vmalloc(sz)	rte_malloc(NULL, sz, 0)
-#define kfree(p)	{ if (p) rte_free(p); }
-static inline void *kzalloc(size_t sz, gfp_t __foo __rte_unused)
-{
-	void *ptr = rte_malloc(NULL, sz, 0);
-
-	if (ptr)
-		memset(ptr, 0, sz);
-	return ptr;
-}
+#define kfree(p)	rte_free(p)
 
 static inline unsigned long get_zeroed_page(gfp_t __foo __rte_unused)
 {

@@ -315,8 +315,7 @@ hn_dev_tx_queue_setup(struct rte_eth_dev *dev,
 	}
 
 error:
-	if (txq->txdesc_pool)
-		rte_mempool_free(txq->txdesc_pool);
+	rte_mempool_free(txq->txdesc_pool);
 	rte_memzone_free(txq->tx_rndis_mz);
 	rte_free(txq);
 	return err;
@@ -365,8 +364,7 @@ hn_dev_tx_queue_release(struct rte_eth_dev *dev, uint16_t qid)
 	if (!txq)
 		return;
 
-	if (txq->txdesc_pool)
-		rte_mempool_free(txq->txdesc_pool);
+	rte_mempool_free(txq->txdesc_pool);
 
 	rte_memzone_free(txq->tx_rndis_mz);
 	rte_free(txq);

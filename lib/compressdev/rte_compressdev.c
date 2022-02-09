@@ -405,8 +405,7 @@ rte_compressdev_queue_pairs_release(struct rte_compressdev *dev)
 			return ret;
 	}
 
-	if (dev->data->queue_pairs != NULL)
-		rte_free(dev->data->queue_pairs);
+	rte_free(dev->data->queue_pairs);
 	dev->data->queue_pairs = NULL;
 	dev->data->nb_queue_pairs = 0;
 

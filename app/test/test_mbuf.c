@@ -304,8 +304,7 @@ test_one_pktmbuf(struct rte_mempool *pktmbuf_pool)
 	return 0;
 
 fail:
-	if (m)
-		rte_pktmbuf_free(m);
+	rte_pktmbuf_free(m);
 	return -1;
 }
 
@@ -416,12 +415,9 @@ testclone_testupdate_testdetach(struct rte_mempool *pktmbuf_pool,
 	return 0;
 
 fail:
-	if (m)
-		rte_pktmbuf_free(m);
-	if (clone)
-		rte_pktmbuf_free(clone);
-	if (clone2)
-		rte_pktmbuf_free(clone2);
+	rte_pktmbuf_free(m);
+	rte_pktmbuf_free(clone);
+	rte_pktmbuf_free(clone2);
 	return -1;
 }
 
@@ -572,12 +568,9 @@ test_pktmbuf_copy(struct rte_mempool *pktmbuf_pool,
 	return 0;
 
 fail:
-	if (m)
-		rte_pktmbuf_free(m);
-	if (copy)
-		rte_pktmbuf_free(copy);
-	if (copy2)
-		rte_pktmbuf_free(copy2);
+	rte_pktmbuf_free(m);
+	rte_pktmbuf_free(copy);
+	rte_pktmbuf_free(copy2);
 	return -1;
 }
 
@@ -679,12 +672,9 @@ test_attach_from_different_pool(struct rte_mempool *pktmbuf_pool,
 	return 0;
 
 fail:
-	if (m)
-		rte_pktmbuf_free(m);
-	if (clone)
-		rte_pktmbuf_free(clone);
-	if (clone2)
-		rte_pktmbuf_free(clone2);
+	rte_pktmbuf_free(m);
+	rte_pktmbuf_free(clone);
+	rte_pktmbuf_free(clone2);
 	return -1;
 }
 
@@ -722,8 +712,7 @@ test_pktmbuf_pool(struct rte_mempool *pktmbuf_pool)
 	}
 	/* free them */
 	for (i=0; i<NB_MBUF; i++) {
-		if (m[i] != NULL)
-			rte_pktmbuf_free(m[i]);
+		rte_pktmbuf_free(m[i]);
 	}
 
 	return ret;
@@ -924,8 +913,7 @@ test_pktmbuf_pool_ptr(struct rte_mempool *pktmbuf_pool)
 
 	/* free them */
 	for (i=0; i<NB_MBUF; i++) {
-		if (m[i] != NULL)
-			rte_pktmbuf_free(m[i]);
+		rte_pktmbuf_free(m[i]);
 	}
 
 	for (i=0; i<NB_MBUF; i++)
@@ -947,8 +935,7 @@ test_pktmbuf_pool_ptr(struct rte_mempool *pktmbuf_pool)
 
 	/* free them */
 	for (i=0; i<NB_MBUF; i++) {
-		if (m[i] != NULL)
-			rte_pktmbuf_free(m[i]);
+		rte_pktmbuf_free(m[i]);
 	}
 
 	return ret;
@@ -1366,8 +1353,7 @@ test_mbuf_linearize(struct rte_mempool *pktmbuf_pool, int pkt_len,
 	return 0;
 
 fail:
-	if (mbuf)
-		rte_pktmbuf_free(mbuf);
+	rte_pktmbuf_free(mbuf);
 	return -1;
 }
 
@@ -2779,8 +2765,7 @@ test_nb_segs_and_next_reset(void)
 	return 0;
 
 fail:
-	if (pool != NULL)
-		rte_mempool_free(pool);
+	rte_mempool_free(pool);
 	return -1;
 }
 

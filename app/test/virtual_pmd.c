@@ -397,8 +397,7 @@ virtual_ethdev_tx_burst_fail(void *queue, struct rte_mbuf **bufs,
 		/* free packets in burst */
 		for (i = 0; i < successfully_txd; i++) {
 			/* free packets in burst */
-			if (bufs[i] != NULL)
-				rte_pktmbuf_free(bufs[i]);
+			rte_pktmbuf_free(bufs[i]);
 
 			bufs[i] = NULL;
 		}

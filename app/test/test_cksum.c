@@ -218,8 +218,7 @@ test_l4_cksum(struct rte_mempool *pktmbuf_pool, const char *pktdata, size_t len)
 	return 0;
 
 fail:
-	if (m)
-		rte_pktmbuf_free(m);
+	rte_pktmbuf_free(m);
 
 	return -1;
 }

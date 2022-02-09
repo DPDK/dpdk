@@ -7008,8 +7008,7 @@ flow_alloc_thread_workspace(void)
 	data->rssq_num = MLX5_RSSQ_DEFAULT_NUM;
 	return data;
 err:
-	if (data->rss_desc.queue)
-		free(data->rss_desc.queue);
+	free(data->rss_desc.queue);
 	free(data);
 	return NULL;
 }

@@ -230,8 +230,7 @@ create_segmented_mbuf(struct rte_mempool *mbuf_pool, int pkt_len,
 	return mbuf;
 
 fail:
-	if (mbuf)
-		rte_pktmbuf_free(mbuf);
+	rte_pktmbuf_free(mbuf);
 	return NULL;
 }
 

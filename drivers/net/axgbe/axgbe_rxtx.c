@@ -22,8 +22,7 @@ axgbe_rx_queue_release(struct axgbe_rx_queue *rx_queue)
 		sw_ring = rx_queue->sw_ring;
 		if (sw_ring) {
 			for (i = 0; i < rx_queue->nb_desc; i++) {
-				if (sw_ring[i])
-					rte_pktmbuf_free(sw_ring[i]);
+				rte_pktmbuf_free(sw_ring[i]);
 			}
 			rte_free(sw_ring);
 		}
@@ -507,8 +506,7 @@ static void axgbe_tx_queue_release(struct axgbe_tx_queue *tx_queue)
 		sw_ring = tx_queue->sw_ring;
 		if (sw_ring) {
 			for (i = 0; i < tx_queue->nb_desc; i++) {
-				if (sw_ring[i])
-					rte_pktmbuf_free(sw_ring[i]);
+				rte_pktmbuf_free(sw_ring[i]);
 			}
 			rte_free(sw_ring);
 		}

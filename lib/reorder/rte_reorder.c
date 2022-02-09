@@ -192,10 +192,8 @@ rte_reorder_free_mbufs(struct rte_reorder_buffer *b)
 
 	/* Free up the mbufs of order buffer & ready buffer */
 	for (i = 0; i < b->order_buf.size; i++) {
-		if (b->order_buf.entries[i])
-			rte_pktmbuf_free(b->order_buf.entries[i]);
-		if (b->ready_buf.entries[i])
-			rte_pktmbuf_free(b->ready_buf.entries[i]);
+		rte_pktmbuf_free(b->order_buf.entries[i]);
+		rte_pktmbuf_free(b->ready_buf.entries[i]);
 	}
 }
 

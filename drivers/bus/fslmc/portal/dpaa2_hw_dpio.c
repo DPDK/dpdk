@@ -149,8 +149,7 @@ dpaa2_affine_dpio_intr_to_respective_core(int32_t dpio_id, int cpu_id)
 	if (!token) {
 		DPAA2_BUS_WARN("Failed to get interrupt id for dpio.%d",
 			       dpio_id);
-		if (temp)
-			free(temp);
+		free(temp);
 		fclose(file);
 		return;
 	}
@@ -574,8 +573,7 @@ dpaa2_free_dq_storage(struct queue_storage_info_t *q_storage)
 	int i = 0;
 
 	for (i = 0; i < NUM_DQS_PER_QUEUE; i++) {
-		if (q_storage->dq_storage[i])
-			rte_free(q_storage->dq_storage[i]);
+		rte_free(q_storage->dq_storage[i]);
 	}
 }
 

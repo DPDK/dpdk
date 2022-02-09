@@ -151,10 +151,8 @@ cryptodev_create(const char *name, struct cryptodev_params *params)
 	return cryptodev;
 
 error_exit:
-	if (cryptodev->mp_create)
-		rte_mempool_free(cryptodev->mp_create);
-	if (cryptodev->mp_init)
-		rte_mempool_free(cryptodev->mp_init);
+	rte_mempool_free(cryptodev->mp_create);
+	rte_mempool_free(cryptodev->mp_init);
 
 	free(cryptodev);
 

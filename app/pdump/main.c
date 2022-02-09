@@ -502,14 +502,11 @@ cleanup_rings(void)
 	for (i = 0; i < num_tuples; i++) {
 		pt = &pdump_t[i];
 
-		if (pt->device_id)
-			free(pt->device_id);
+		free(pt->device_id);
 
 		/* free the rings */
-		if (pt->rx_ring)
-			rte_ring_free(pt->rx_ring);
-		if (pt->tx_ring)
-			rte_ring_free(pt->tx_ring);
+		rte_ring_free(pt->rx_ring);
+		rte_ring_free(pt->tx_ring);
 	}
 }
 

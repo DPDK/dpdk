@@ -180,8 +180,7 @@ end:
 			CloseHandle(netuio);
 	}
 
-	if (dev_ifx_detail)
-		free(dev_ifx_detail);
+	free(dev_ifx_detail);
 
 	if (di_set != INVALID_HANDLE_VALUE)
 		SetupDiDestroyDeviceInfoList(di_set);

@@ -823,7 +823,7 @@ test_zero_aligned_alloc(void)
 
 err_return:
 	/*clean up */
-	if (p1) rte_free(p1);
+	rte_free(p1);
 	return -1;
 }
 
@@ -876,8 +876,7 @@ test_malloc_bad_params(void)
 
 err_return:
 	/* clean up pointer */
-	if (bad_ptr)
-		rte_free(bad_ptr);
+	rte_free(bad_ptr);
 	return -1;
 }
 

@@ -551,10 +551,8 @@ parse_file(struct cperf_test_vector *vector, struct cperf_options *opts)
 err:
 	if (fp)
 		fclose(fp);
-	if (line)
-		free(line);
-	if (entry)
-		rte_free(entry);
+	free(line);
+	rte_free(entry);
 
 	return -1;
 }

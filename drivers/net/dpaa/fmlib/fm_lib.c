@@ -408,8 +408,7 @@ fm_port_close(t_handle h_fm_port)
 	_fml_dbg("Calling...\n");
 
 	close(p_dev->fd);
-	if (p_dev->h_user_priv)
-		free(p_dev->h_user_priv);
+	free(p_dev->h_user_priv);
 	free(p_dev);
 
 	_fml_dbg("Finishing.\n");

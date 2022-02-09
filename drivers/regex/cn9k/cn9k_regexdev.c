@@ -256,10 +256,8 @@ ree_dev_fini(struct rte_regexdev *dev)
 		cn9k_err("Could not detach queues");
 
 	/* TEMP : should be in lib */
-	if (data->queue_pairs)
-		rte_free(data->queue_pairs);
-	if (data->rules)
-		rte_free(data->rules);
+	rte_free(data->queue_pairs);
+	rte_free(data->rules);
 
 	roc_ree_dev_fini(vf);
 

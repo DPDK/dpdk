@@ -717,8 +717,7 @@ vdev_netvsc_vdev_probe(struct rte_vdev_device *dev)
 error:
 	++vdev_netvsc_ctx_inst;
 ignore:
-	if (kvargs)
-		rte_kvargs_free(kvargs);
+	rte_kvargs_free(kvargs);
 	/* Reset alarm if there are device context created */
 	if (vdev_netvsc_ctx_count) {
 		ret = rte_eal_alarm_set(VDEV_NETVSC_PROBE_MS * 1000,

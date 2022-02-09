@@ -395,13 +395,11 @@ test_rawdev_enqdeq(void)
 	RTE_TEST_ASSERT_EQUAL((unsigned int)ret, count,
 			      "Unable to dequeue buffers");
 
-	if (deq_buffers)
-		free(deq_buffers);
+	free(deq_buffers);
 
 	return TEST_SUCCESS;
 cleanup:
-	if (buffers[0].buf_addr)
-		free(buffers[0].buf_addr);
+	free(buffers[0].buf_addr);
 
 	return TEST_FAILED;
 }

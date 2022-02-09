@@ -175,11 +175,9 @@ qat_qp_setup(struct qat_pci_device *qat_dev,
 
 create_err:
 	if (qp) {
-		if (qp->op_cookie_pool)
-			rte_mempool_free(qp->op_cookie_pool);
+		rte_mempool_free(qp->op_cookie_pool);
 
-		if (qp->op_cookies)
-			rte_free(qp->op_cookies);
+		rte_free(qp->op_cookies);
 
 		rte_free(qp);
 	}
@@ -329,8 +327,7 @@ qat_qp_release(enum qat_device_gen qat_dev_gen, struct qat_qp **qp_addr)
 	for (i = 0; i < qp->nb_descriptors; i++)
 		rte_mempool_put(qp->op_cookie_pool, qp->op_cookies[i]);
 
-	if (qp->op_cookie_pool)
-		rte_mempool_free(qp->op_cookie_pool);
+	rte_mempool_free(qp->op_cookie_pool);
 
 	rte_free(qp->op_cookies);
 	rte_free(qp);

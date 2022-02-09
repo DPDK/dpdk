@@ -945,8 +945,7 @@ setup_tc(struct pp2_ppio_tc_params *param, uint8_t inqs,
 	param->num_in_qs = inqs;
 
 	/* Release old config if necessary. */
-	if (param->inqs_params)
-		rte_free(param->inqs_params);
+	rte_free(param->inqs_params);
 
 	param->inqs_params = inq_params;
 

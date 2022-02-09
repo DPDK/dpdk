@@ -218,8 +218,7 @@ test_reorder_insert(void)
 exit:
 	rte_reorder_free(b);
 	for (i = 0; i < num_bufs; i++) {
-		if (bufs[i] != NULL)
-			rte_pktmbuf_free(bufs[i]);
+		rte_pktmbuf_free(bufs[i]);
 	}
 	return ret;
 }
@@ -278,8 +277,7 @@ test_reorder_drain(void)
 		ret = -1;
 		goto exit;
 	}
-	if (robufs[0] != NULL)
-		rte_pktmbuf_free(robufs[0]);
+	rte_pktmbuf_free(robufs[0]);
 
 	/* Insert more packets
 	 * RB[] = {NULL, NULL, NULL, NULL}
@@ -313,8 +311,7 @@ test_reorder_drain(void)
 		goto exit;
 	}
 	for (i = 0; i < 3; i++) {
-		if (robufs[i] != NULL)
-			rte_pktmbuf_free(robufs[i]);
+		rte_pktmbuf_free(robufs[i]);
 	}
 
 	/*
@@ -332,10 +329,8 @@ test_reorder_drain(void)
 exit:
 	rte_reorder_free(b);
 	for (i = 0; i < num_bufs; i++) {
-		if (bufs[i] != NULL)
-			rte_pktmbuf_free(bufs[i]);
-		if (robufs[i] != NULL)
-			rte_pktmbuf_free(robufs[i]);
+		rte_pktmbuf_free(bufs[i]);
+		rte_pktmbuf_free(robufs[i]);
 	}
 	return ret;
 }

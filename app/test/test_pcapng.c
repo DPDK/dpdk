@@ -240,8 +240,7 @@ test_validate(void)
 static void
 test_cleanup(void)
 {
-	if (mp)
-		rte_mempool_free(mp);
+	rte_mempool_free(mp);
 
 	if (pcapng)
 		rte_pcapng_close(pcapng);

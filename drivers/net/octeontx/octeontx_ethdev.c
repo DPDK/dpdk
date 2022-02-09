@@ -1037,8 +1037,7 @@ octeontx_dev_tx_queue_setup(struct rte_eth_dev *dev, uint16_t qidx,
 	return res;
 
 err:
-	if (txq)
-		rte_free(txq);
+	rte_free(txq);
 
 	return res;
 }

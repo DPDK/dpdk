@@ -689,14 +689,10 @@ virtio_user_pmd_probe(struct rte_vdev_device *vdev)
 	ret = 0;
 
 end:
-	if (kvlist)
-		rte_kvargs_free(kvlist);
-	if (path)
-		free(path);
-	if (mac_addr)
-		free(mac_addr);
-	if (ifname)
-		free(ifname);
+	rte_kvargs_free(kvlist);
+	free(path);
+	free(mac_addr);
+	free(ifname);
 	return ret;
 }
 

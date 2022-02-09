@@ -1396,8 +1396,7 @@ check_aead_result(struct rte_crypto_op *op,
 	if (!mbuf)
 		return -1;
 
-	if (op->sym->aead.aad.data)
-		rte_free(op->sym->aead.aad.data);
+	rte_free(op->sym->aead.aad.data);
 
 	if (dir == self_test_dir_enc_auth_gen) {
 		src = vec->output.data;
@@ -1523,18 +1522,13 @@ static void
 fips_dev_auto_test_uninit(uint8_t dev_id,
 		struct fips_dev_auto_test_env *env)
 {
-	if (env->mbuf)
-		rte_pktmbuf_free(env->mbuf);
+	rte_pktmbuf_free(env->mbuf);
 	if (env->op)
 		rte_crypto_op_free(env->op);
-	if (env->mpool)
-		rte_mempool_free(env->mpool);
-	if (env->op_pool)
-		rte_mempool_free(env->op_pool);
-	if (env->sess_pool)
-		rte_mempool_free(env->sess_pool);
-	if (env->sess_priv_pool)
-		rte_mempool_free(env->sess_priv_pool);
+	rte_mempool_free(env->mpool);
+	rte_mempool_free(env->op_pool);
+	rte_mempool_free(env->sess_pool);
+	rte_mempool_free(env->sess_priv_pool);
 
 	rte_cryptodev_stop(dev_id);
 }

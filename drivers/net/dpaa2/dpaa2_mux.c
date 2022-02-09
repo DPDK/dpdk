@@ -353,8 +353,7 @@ dpaa2_create_dpdmux_device(int vdev_fd __rte_unused,
 	return 0;
 
 init_err:
-	if (dpdmux_dev)
-		rte_free(dpdmux_dev);
+	rte_free(dpdmux_dev);
 
 	return -1;
 }

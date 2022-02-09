@@ -89,15 +89,13 @@ ring_clean(unsigned int lcore_id)
 	int i;
 
 	rp = rte_ring_lookup("fr_test_once");
-	if (rp != NULL)
-		rte_ring_free(rp);
+	rte_ring_free(rp);
 
 	for (i = 0; i < MAX_ITER_MULTI; i++) {
 		snprintf(ring_name, sizeof(ring_name),
 				"fr_test_%d_%d", lcore_id, i);
 		rp = rte_ring_lookup(ring_name);
-		if (rp != NULL)
-			rte_ring_free(rp);
+		rte_ring_free(rp);
 	}
 }
 
@@ -152,15 +150,13 @@ mempool_clean(unsigned int lcore_id)
 	int i;
 
 	mp = rte_mempool_lookup("fr_test_once");
-	if (mp != NULL)
-		rte_mempool_free(mp);
+	rte_mempool_free(mp);
 
 	for (i = 0; i < MAX_ITER_MULTI; i++) {
 		snprintf(mempool_name, sizeof(mempool_name), "fr_test_%d_%d",
 			 lcore_id, i);
 		mp = rte_mempool_lookup(mempool_name);
-		if (mp != NULL)
-			rte_mempool_free(mp);
+		rte_mempool_free(mp);
 	}
 }
 
@@ -215,8 +211,7 @@ hash_clean(unsigned lcore_id)
 	int i;
 
 	handle = rte_hash_find_existing("fr_test_once");
-	if (handle != NULL)
-		rte_hash_free(handle);
+	rte_hash_free(handle);
 
 	for (i = 0; i < MAX_ITER_MULTI; i++) {
 		snprintf(hash_name, sizeof(hash_name), "fr_test_%d_%d",  lcore_id, i);

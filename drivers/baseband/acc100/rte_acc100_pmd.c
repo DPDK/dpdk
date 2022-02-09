@@ -4402,8 +4402,7 @@ poweron_cleanup(struct rte_bbdev *bbdev, struct acc100_device *d,
 	}
 	printf("Number of 5GUL engines %d\n", numEngines);
 
-	if (d->sw_rings_base != NULL)
-		rte_free(d->sw_rings_base);
+	rte_free(d->sw_rings_base);
 	usleep(ACC100_LONG_WAIT);
 }
 

@@ -97,8 +97,7 @@ pci_ids_table_update(const struct rte_pci_id *driver_id_table)
 	updated_table[i].vendor_id = 0;
 	mlx5_common_pci_driver.id_table = updated_table;
 	mlx5_pci_id_table = updated_table;
-	if (old_table)
-		free(old_table);
+	free(old_table);
 	return 0;
 }
 

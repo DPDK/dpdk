@@ -226,8 +226,7 @@ ifcvf_dma_map(struct ifcvf_internal *internal, bool do_map)
 	}
 
 exit:
-	if (mem)
-		free(mem);
+	free(mem);
 	return ret;
 }
 
@@ -253,8 +252,7 @@ hva_to_gpa(int vid, uint64_t hva)
 	}
 
 exit:
-	if (mem)
-		free(mem);
+	free(mem);
 	return gpa;
 }
 
@@ -661,8 +659,7 @@ m_ifcvf_start(struct ifcvf_internal *internal)
 
 error:
 	for (i = 0; i < nr_vring; i++)
-		if (internal->m_vring[i].desc)
-			rte_free(internal->m_vring[i].desc);
+		rte_free(internal->m_vring[i].desc);
 
 	return -1;
 }

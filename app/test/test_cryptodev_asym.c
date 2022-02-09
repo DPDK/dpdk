@@ -520,8 +520,7 @@ error_exit:
 		if (op != NULL)
 			rte_crypto_op_free(op);
 
-		if (result != NULL)
-			rte_free(result);
+		rte_free(result);
 
 	return status;
 }

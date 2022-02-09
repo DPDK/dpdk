@@ -1781,10 +1781,8 @@ i40e_rm_ethtype_filter_list(struct i40e_pf *pf)
 
 	ethertype_rule = &pf->ethertype;
 	/* Remove all ethertype filter rules and hash */
-	if (ethertype_rule->hash_map)
-		rte_free(ethertype_rule->hash_map);
-	if (ethertype_rule->hash_table)
-		rte_hash_free(ethertype_rule->hash_table);
+	rte_free(ethertype_rule->hash_map);
+	rte_hash_free(ethertype_rule->hash_table);
 
 	while ((p_ethertype = TAILQ_FIRST(&ethertype_rule->ethertype_list))) {
 		TAILQ_REMOVE(&ethertype_rule->ethertype_list,
@@ -1801,10 +1799,8 @@ i40e_rm_tunnel_filter_list(struct i40e_pf *pf)
 
 	tunnel_rule = &pf->tunnel;
 	/* Remove all tunnel director rules and hash */
-	if (tunnel_rule->hash_map)
-		rte_free(tunnel_rule->hash_map);
-	if (tunnel_rule->hash_table)
-		rte_hash_free(tunnel_rule->hash_table);
+	rte_free(tunnel_rule->hash_map);
+	rte_hash_free(tunnel_rule->hash_table);
 
 	while ((p_tunnel = TAILQ_FIRST(&tunnel_rule->tunnel_list))) {
 		TAILQ_REMOVE(&tunnel_rule->tunnel_list, p_tunnel, rules);
@@ -1833,16 +1829,11 @@ i40e_fdir_memory_cleanup(struct i40e_pf *pf)
 	fdir_info = &pf->fdir;
 
 	/* flow director memory cleanup */
-	if (fdir_info->hash_map)
-		rte_free(fdir_info->hash_map);
-	if (fdir_info->hash_table)
-		rte_hash_free(fdir_info->hash_table);
-	if (fdir_info->fdir_flow_pool.bitmap)
-		rte_free(fdir_info->fdir_flow_pool.bitmap);
-	if (fdir_info->fdir_flow_pool.pool)
-		rte_free(fdir_info->fdir_flow_pool.pool);
-	if (fdir_info->fdir_filter_array)
-		rte_free(fdir_info->fdir_filter_array);
+	rte_free(fdir_info->hash_map);
+	rte_hash_free(fdir_info->hash_table);
+	rte_free(fdir_info->fdir_flow_pool.bitmap);
+	rte_free(fdir_info->fdir_flow_pool.pool);
+	rte_free(fdir_info->fdir_filter_array);
 }
 
 void i40e_flex_payload_reg_set_default(struct i40e_hw *hw)

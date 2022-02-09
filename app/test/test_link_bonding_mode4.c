@@ -194,8 +194,7 @@ free_pkts(struct rte_mbuf **pkts, uint16_t count)
 	uint16_t i;
 
 	for (i = 0; i < count; i++) {
-		if (pkts[i] != NULL)
-			rte_pktmbuf_free(pkts[i]);
+		rte_pktmbuf_free(pkts[i]);
 	}
 }
 

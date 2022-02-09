@@ -3773,10 +3773,8 @@ parse_free_sym_crypto_param_data(struct rte_table_action_sym_crypto_params *p)
 
 		switch (xform[i]->type) {
 		case RTE_CRYPTO_SYM_XFORM_CIPHER:
-			if (p->cipher_auth.cipher_iv.val)
-				free(p->cipher_auth.cipher_iv.val);
-			if (p->cipher_auth.cipher_iv_update.val)
-				free(p->cipher_auth.cipher_iv_update.val);
+			free(p->cipher_auth.cipher_iv.val);
+			free(p->cipher_auth.cipher_iv_update.val);
 			break;
 		case RTE_CRYPTO_SYM_XFORM_AUTH:
 			if (p->cipher_auth.auth_iv.val)
@@ -3785,10 +3783,8 @@ parse_free_sym_crypto_param_data(struct rte_table_action_sym_crypto_params *p)
 				free(p->cipher_auth.cipher_iv_update.val);
 			break;
 		case RTE_CRYPTO_SYM_XFORM_AEAD:
-			if (p->aead.iv.val)
-				free(p->aead.iv.val);
-			if (p->aead.aad.val)
-				free(p->aead.aad.val);
+			free(p->aead.iv.val);
+			free(p->aead.aad.val);
 			break;
 		default:
 			continue;

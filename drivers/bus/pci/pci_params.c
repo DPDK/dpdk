@@ -117,8 +117,7 @@ rte_pci_devargs_parse(struct rte_devargs *da)
 	rte_pci_device_name(&addr, da->name, sizeof(da->name));
 
 out:
-	if (kvargs != NULL)
-		rte_kvargs_free(kvargs);
+	rte_kvargs_free(kvargs);
 	if (ret != 0)
 		rte_errno = -ret;
 	return ret;

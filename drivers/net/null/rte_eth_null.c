@@ -717,8 +717,7 @@ rte_pmd_null_probe(struct rte_vdev_device *dev)
 	ret = eth_dev_null_create(dev, &args);
 
 free_kvlist:
-	if (kvlist)
-		rte_kvargs_free(kvlist);
+	rte_kvargs_free(kvlist);
 	return ret;
 }
 

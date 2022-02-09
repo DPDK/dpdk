@@ -456,9 +456,7 @@ eal_parse_args(int argc, char **argv)
 				RTE_LOG(ERR, EAL, "Could not store mbuf pool ops name\n");
 			else {
 				/* free old ops name */
-				if (internal_conf->user_mbuf_pool_ops_name !=
-						NULL)
-					free(internal_conf->user_mbuf_pool_ops_name);
+				free(internal_conf->user_mbuf_pool_ops_name);
 
 				internal_conf->user_mbuf_pool_ops_name =
 						ops_name;

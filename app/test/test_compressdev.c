@@ -2144,8 +2144,7 @@ exit:
 
 	if (stream != NULL)
 		rte_compressdev_stream_free(0, stream);
-	if (all_decomp_data != NULL)
-		rte_free(all_decomp_data);
+	rte_free(all_decomp_data);
 
 	/* Free compress private xforms */
 	for (i = 0; i < test_priv_data.num_priv_xforms; i++) {

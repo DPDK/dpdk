@@ -526,8 +526,7 @@ sw_dev_configure(const struct rte_eventdev *dev)
 	 * IQ chunk references were cleaned out of the QIDs in sw_stop(), and
 	 * will be reinitialized in sw_start().
 	 */
-	if (sw->chunks)
-		rte_free(sw->chunks);
+	rte_free(sw->chunks);
 
 	sw->chunks = rte_malloc_socket(NULL,
 				       sizeof(struct sw_queue_chunk) *

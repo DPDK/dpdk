@@ -86,8 +86,7 @@ hns3_rx_queue_release(void *queue)
 		hns3_rx_queue_release_mbufs(rxq);
 		if (rxq->mz)
 			rte_memzone_free(rxq->mz);
-		if (rxq->sw_ring)
-			rte_free(rxq->sw_ring);
+		rte_free(rxq->sw_ring);
 		rte_free(rxq);
 	}
 }
@@ -100,10 +99,8 @@ hns3_tx_queue_release(void *queue)
 		hns3_tx_queue_release_mbufs(txq);
 		if (txq->mz)
 			rte_memzone_free(txq->mz);
-		if (txq->sw_ring)
-			rte_free(txq->sw_ring);
-		if (txq->free)
-			rte_free(txq->free);
+		rte_free(txq->sw_ring);
+		rte_free(txq->free);
 		rte_free(txq);
 	}
 }

@@ -106,12 +106,7 @@ create_table(unsigned int with_data, unsigned int table_index,
 	ut_params.key_len = hashtest_key_lens[table_index];
 	ut_params.socket_id = rte_socket_id();
 	h[table_index] = rte_hash_find_existing(name);
-	if (h[table_index] != NULL)
-		/*
-		 * If table was already created, free it to create it again,
-		 * so we force it is empty
-		 */
-		rte_hash_free(h[table_index]);
+	rte_hash_free(h[table_index]);
 	h[table_index] = rte_hash_create(&ut_params);
 	if (h[table_index] == NULL) {
 		printf("Error creating table\n");

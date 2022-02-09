@@ -166,7 +166,6 @@ mlx5_regex_configure(struct rte_regexdev *dev,
 		DRV_LOG(DEBUG, "Regex config without rules programming!");
 	return 0;
 configure_error:
-	if (priv->qps)
-		rte_free(priv->qps);
+	rte_free(priv->qps);
 	return -rte_errno;
 }

@@ -673,8 +673,7 @@ fail:
 	CCP_LOG_ERR("CCP Device probe failed");
 	if (uio_fd >= 0)
 		close(uio_fd);
-	if (ccp_dev)
-		rte_free(ccp_dev);
+	rte_free(ccp_dev);
 	return -1;
 }
 

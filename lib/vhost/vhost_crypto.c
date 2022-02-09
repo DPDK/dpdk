@@ -1498,10 +1498,8 @@ rte_vhost_crypto_create(int vid, uint8_t cryptodev_id,
 	return 0;
 
 error_exit:
-	if (vcrypto->session_map)
-		rte_hash_free(vcrypto->session_map);
-	if (vcrypto->mbuf_pool)
-		rte_mempool_free(vcrypto->mbuf_pool);
+	rte_hash_free(vcrypto->session_map);
+	rte_mempool_free(vcrypto->mbuf_pool);
 
 	rte_free(vcrypto);
 

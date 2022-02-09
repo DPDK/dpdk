@@ -744,8 +744,7 @@ ccp_pmd_qp_setup(struct rte_cryptodev *dev, uint16_t qp_id,
 
 qp_setup_cleanup:
 	dev->data->queue_pairs[qp_id] = NULL;
-	if (qp)
-		rte_free(qp);
+	rte_free(qp);
 	return -1;
 }
 

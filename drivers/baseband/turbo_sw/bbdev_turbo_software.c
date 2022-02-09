@@ -1918,8 +1918,7 @@ parse_turbo_sw_params(struct turbo_sw_params *params, const char *input_args)
 	}
 
 exit:
-	if (kvlist)
-		rte_kvargs_free(kvlist);
+	rte_kvargs_free(kvlist);
 	return ret;
 }
 

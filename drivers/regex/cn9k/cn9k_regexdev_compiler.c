@@ -214,8 +214,7 @@ free_structs:
 	rxp_free_structs(NULL, NULL, NULL, NULL, NULL, &rof, NULL, &rofi, NULL,
 			1);
 
-	if (rule_db)
-		rte_free(rule_db);
+	rte_free(rule_db);
 
 	return ret;
 }

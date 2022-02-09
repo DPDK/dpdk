@@ -162,8 +162,7 @@ rte_eal_alarm_set(uint64_t us, rte_eal_alarm_callback cb_fn, void *cb_arg)
 fail:
 	if (timer != NULL)
 		CloseHandle(timer);
-	if (ap != NULL)
-		free(ap);
+	free(ap);
 
 exit:
 	rte_eal_trace_alarm_set(us, cb_fn, cb_arg, ret);

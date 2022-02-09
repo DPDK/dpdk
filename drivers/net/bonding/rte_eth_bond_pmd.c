@@ -2155,8 +2155,7 @@ bond_ethdev_close(struct rte_eth_dev *dev)
 	 */
 	rte_mempool_free(internals->mode6.mempool);
 
-	if (internals->kvlist != NULL)
-		rte_kvargs_free(internals->kvlist);
+	rte_kvargs_free(internals->kvlist);
 
 	return 0;
 }

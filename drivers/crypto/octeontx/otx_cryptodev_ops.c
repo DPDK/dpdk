@@ -335,8 +335,7 @@ sym_session_clear(int driver_id, struct rte_cryptodev_sym_session *sess)
 	misc = priv;
 	ctx = SESS_PRIV(misc);
 
-	if (ctx->auth_key != NULL)
-		rte_free(ctx->auth_key);
+	rte_free(ctx->auth_key);
 
 	memset(priv, 0, cpt_get_session_size());
 

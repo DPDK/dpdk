@@ -146,8 +146,7 @@ mlx5_compress_qp_release(struct rte_compressdev *dev, uint16_t qp_id)
 		void *opaq = qp->opaque_mr.addr;
 
 		mlx5_common_verbs_dereg_mr(&qp->opaque_mr);
-		if (opaq != NULL)
-			rte_free(opaq);
+		rte_free(opaq);
 	}
 	mlx5_mr_btree_free(&qp->mr_ctrl.cache_bh);
 	rte_free(qp);

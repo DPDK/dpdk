@@ -975,8 +975,7 @@ parse_bbdev_la12xx_params(struct bbdev_la12xx_params *params,
 	}
 
 exit:
-	if (kvlist)
-		rte_kvargs_free(kvlist);
+	rte_kvargs_free(kvlist);
 	return ret;
 }
 

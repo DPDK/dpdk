@@ -14830,8 +14830,7 @@ no_print_pctypes:
 
 	ret = 0;
 no_print_return:
-	if (proto)
-		free(proto);
+	free(proto);
 #endif
 	if (ret == -ENOTSUP)
 		fprintf(stderr, "Function not supported in PMD\n");

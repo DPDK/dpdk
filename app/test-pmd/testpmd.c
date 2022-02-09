@@ -908,8 +908,7 @@ create_extmem(uint32_t nb_mbufs, uint32_t mbuf_sz, struct extmem_param *param,
 
 	return 0;
 fail:
-	if (iovas)
-		free(iovas);
+	free(iovas);
 	if (addr)
 		munmap(addr, mem_sz);
 

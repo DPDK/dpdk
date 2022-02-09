@@ -335,8 +335,7 @@ err1:
 err:
 #ifdef CONFIG_ECORE_BINARY_FW
 	if (IS_PF(edev)) {
-		if (edev->firmware)
-			rte_free(edev->firmware);
+		rte_free(edev->firmware);
 		edev->firmware = NULL;
 	}
 #endif

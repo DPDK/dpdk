@@ -191,10 +191,8 @@ ifpga_scan_one(struct rte_rawdev *rawdev,
 	return afu_dev;
 
 end:
-	if (kvlist)
-		rte_kvargs_free(kvlist);
-	if (path)
-		free(path);
+	rte_kvargs_free(kvlist);
+	free(path);
 	if (afu_dev) {
 		rte_intr_instance_free(afu_dev->intr_handle);
 		free(afu_dev);
@@ -254,10 +252,8 @@ ifpga_scan(void)
 	}
 
 end:
-	if (kvlist)
-		rte_kvargs_free(kvlist);
-	if (name)
-		free(name);
+	rte_kvargs_free(kvlist);
+	free(name);
 
 	return 0;
 }

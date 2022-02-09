@@ -836,8 +836,7 @@ rte_fpga_do_pr(struct rte_rawdev *rawdev, int port_id,
 	}
 
 free_buffer:
-	if (buf_to_free)
-		rte_free(buf_to_free);
+	rte_free(buf_to_free);
 close_fd:
 	close(file_fd);
 	file_fd = 0;
@@ -1739,10 +1738,8 @@ ifpga_cfg_probe(struct rte_vdev_device *dev)
 	ret = rte_eal_hotplug_add(RTE_STR(IFPGA_BUS_NAME),
 			dev_name, devargs->args);
 end:
-	if (kvlist)
-		rte_kvargs_free(kvlist);
-	if (name)
-		free(name);
+	rte_kvargs_free(kvlist);
+	free(name);
 
 	return ret;
 }

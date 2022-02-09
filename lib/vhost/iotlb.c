@@ -324,8 +324,7 @@ vhost_user_iotlb_init(struct virtio_net *dev, int vq_index)
 
 	/* If already created, free it and recreate */
 	vq->iotlb_pool = rte_mempool_lookup(pool_name);
-	if (vq->iotlb_pool)
-		rte_mempool_free(vq->iotlb_pool);
+	rte_mempool_free(vq->iotlb_pool);
 
 	vq->iotlb_pool = rte_mempool_create(pool_name,
 			IOTLB_CACHE_SIZE, sizeof(struct vhost_iotlb_entry), 0,

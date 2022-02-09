@@ -79,14 +79,11 @@ cperf_pmd_cyclecount_test_free(struct cperf_pmd_cyclecount_ctx *ctx)
 		}
 	}
 
-	if (ctx->pool)
-		rte_mempool_free(ctx->pool);
+	rte_mempool_free(ctx->pool);
 
-	if (ctx->ops)
-		rte_free(ctx->ops);
+	rte_free(ctx->ops);
 
-	if (ctx->ops_processed)
-		rte_free(ctx->ops_processed);
+	rte_free(ctx->ops_processed);
 
 	rte_free(ctx);
 }

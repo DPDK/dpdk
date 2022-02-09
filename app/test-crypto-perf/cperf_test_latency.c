@@ -49,8 +49,7 @@ cperf_latency_test_free(struct cperf_latency_ctx *ctx)
 			rte_cryptodev_sym_session_free(ctx->sess);
 		}
 
-		if (ctx->pool)
-			rte_mempool_free(ctx->pool);
+		rte_mempool_free(ctx->pool);
 
 		rte_free(ctx->res);
 		rte_free(ctx);

@@ -1989,12 +1989,9 @@ compute_ctrl_threads_cpuset(struct internal_config *internal_cfg)
 int
 eal_cleanup_config(struct internal_config *internal_cfg)
 {
-	if (internal_cfg->hugefile_prefix != NULL)
-		free(internal_cfg->hugefile_prefix);
-	if (internal_cfg->hugepage_dir != NULL)
-		free(internal_cfg->hugepage_dir);
-	if (internal_cfg->user_mbuf_pool_ops_name != NULL)
-		free(internal_cfg->user_mbuf_pool_ops_name);
+	free(internal_cfg->hugefile_prefix);
+	free(internal_cfg->hugepage_dir);
+	free(internal_cfg->user_mbuf_pool_ops_name);
 
 	return 0;
 }

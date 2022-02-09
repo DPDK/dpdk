@@ -1639,8 +1639,7 @@ test_roundrobin_rx_burst_on_single_slave(void)
 
 	/* free mbufs */
 	for (i = 0; i < MAX_PKT_BURST; i++) {
-		if (rx_pkt_burst[i] != NULL)
-			rte_pktmbuf_free(rx_pkt_burst[i]);
+		rte_pktmbuf_free(rx_pkt_burst[i]);
 	}
 
 
@@ -1722,8 +1721,7 @@ test_roundrobin_rx_burst_on_multiple_slaves(void)
 
 	/* free mbufs */
 	for (i = 0; i < MAX_PKT_BURST; i++) {
-		if (rx_pkt_burst[i] != NULL)
-			rte_pktmbuf_free(rx_pkt_burst[i]);
+		rte_pktmbuf_free(rx_pkt_burst[i]);
 	}
 
 	/* Clean up and remove slaves from bonded device */
@@ -2010,8 +2008,7 @@ test_roundrobin_verify_slave_link_status_change_behaviour(void)
 
 	/* free mbufs */
 	for (i = 0; i < MAX_PKT_BURST; i++) {
-		if (rx_pkt_burst[i] != NULL)
-			rte_pktmbuf_free(rx_pkt_burst[i]);
+		rte_pktmbuf_free(rx_pkt_burst[i]);
 	}
 
 	/* Clean up and remove slaves from bonded device */

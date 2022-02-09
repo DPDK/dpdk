@@ -92,11 +92,9 @@ thread_free(void)
 			continue;
 
 		/* MSGQs */
-		if (t->msgq_req)
-			rte_ring_free(t->msgq_req);
+		rte_ring_free(t->msgq_req);
 
-		if (t->msgq_rsp)
-			rte_ring_free(t->msgq_rsp);
+		rte_ring_free(t->msgq_rsp);
 	}
 }
 

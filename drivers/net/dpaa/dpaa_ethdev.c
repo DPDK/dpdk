@@ -474,8 +474,7 @@ static int dpaa_eth_dev_close(struct rte_eth_dev *dev)
 	}
 
 	/* release configuration memory */
-	if (dpaa_intf->fc_conf)
-		rte_free(dpaa_intf->fc_conf);
+	rte_free(dpaa_intf->fc_conf);
 
 	/* Release RX congestion Groups */
 	if (dpaa_intf->cgr_rx) {

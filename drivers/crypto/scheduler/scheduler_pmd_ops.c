@@ -371,10 +371,8 @@ scheduler_pmd_qp_release(struct rte_cryptodev *dev, uint16_t qp_id)
 	if (!qp_ctx)
 		return 0;
 
-	if (qp_ctx->order_ring)
-		rte_ring_free(qp_ctx->order_ring);
-	if (qp_ctx->private_qp_ctx)
-		rte_free(qp_ctx->private_qp_ctx);
+	rte_ring_free(qp_ctx->order_ring);
+	rte_free(qp_ctx->private_qp_ctx);
 
 	rte_free(qp_ctx);
 	dev->data->queue_pairs[qp_id] = NULL;

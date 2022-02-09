@@ -1115,11 +1115,9 @@ dpaa2_qdma_reset(struct rte_rawdev *rawdev)
 
 	/* Reset and free virtual queues */
 	for (i = 0; i < qdma_dev->max_vqs; i++) {
-		if (qdma_dev->vqs[i].status_ring)
-			rte_ring_free(qdma_dev->vqs[i].status_ring);
+		rte_ring_free(qdma_dev->vqs[i].status_ring);
 	}
-	if (qdma_dev->vqs)
-		rte_free(qdma_dev->vqs);
+	rte_free(qdma_dev->vqs);
 	qdma_dev->vqs = NULL;
 
 	/* Reset per core info */
@@ -1314,8 +1312,7 @@ dpaa2_qdma_queue_setup(struct rte_rawdev *rawdev,
 
 	if (qdma_dev->vqs[i].hw_queue == NULL) {
 		DPAA2_QDMA_ERR("No H/W queue available for VQ");
-		if (qdma_dev->vqs[i].status_ring)
-			rte_ring_free(qdma_dev->vqs[i].status_ring);
+		rte_ring_free(qdma_dev->vqs[i].status_ring);
 		qdma_dev->vqs[i].status_ring = NULL;
 		rte_spinlock_unlock(&qdma_dev->lock);
 		return -ENODEV;
@@ -1516,14 +1513,12 @@ dpaa2_qdma_queue_release(struct rte_rawdev *rawdev,
 	if (qdma_vq->exclusive_hw_queue)
 		free_hw_queue(qdma_vq->hw_queue);
 	else {
-		if (qdma_vq->status_ring)
-			rte_ring_free(qdma_vq->status_ring);
+		rte_ring_free(qdma_vq->status_ring);
 
 		put_hw_queue(qdma_vq->hw_queue);
 	}
 
-	if (qdma_vq->fle_pool)
-		rte_mempool_free(qdma_vq->fle_pool);
+	rte_mempool_free(qdma_vq->fle_pool);
 
 	memset(qdma_vq, 0, sizeof(struct qdma_virt_queue));
 

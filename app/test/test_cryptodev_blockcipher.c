@@ -807,20 +807,16 @@ error_exit:
 			rte_cryptodev_sym_session_clear(dev_id, sess);
 			rte_cryptodev_sym_session_free(sess);
 		}
-		if (cipher_xform)
-			rte_free(cipher_xform);
-		if (auth_xform)
-			rte_free(auth_xform);
+		rte_free(cipher_xform);
+		rte_free(auth_xform);
 	}
 
 	if (op)
 		rte_crypto_op_free(op);
 
-	if (obuf)
-		rte_pktmbuf_free(obuf);
+	rte_pktmbuf_free(obuf);
 
-	if (ibuf)
-		rte_pktmbuf_free(ibuf);
+	rte_pktmbuf_free(ibuf);
 
 	return status;
 }

@@ -2662,8 +2662,7 @@ static int hinic_copy_mempool_init(struct hinic_nic_dev *nic_dev)
 
 static void hinic_copy_mempool_uninit(struct hinic_nic_dev *nic_dev)
 {
-	if (nic_dev->cpy_mpool != NULL)
-		rte_mempool_free(nic_dev->cpy_mpool);
+	rte_mempool_free(nic_dev->cpy_mpool);
 }
 
 static int hinic_init_sw_rxtxqs(struct hinic_nic_dev *nic_dev)

@@ -29,11 +29,9 @@ softnic_thread_free(struct pmd_internals *softnic)
 		struct softnic_thread *t = &softnic->thread[i];
 
 		/* MSGQs */
-		if (t->msgq_req)
-			rte_ring_free(t->msgq_req);
+		rte_ring_free(t->msgq_req);
 
-		if (t->msgq_rsp)
-			rte_ring_free(t->msgq_rsp);
+		rte_ring_free(t->msgq_rsp);
 	}
 }
 

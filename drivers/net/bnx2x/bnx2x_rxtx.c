@@ -27,8 +27,7 @@ bnx2x_rx_queue_release(struct bnx2x_rx_queue *rx_queue)
 		sw_ring = rx_queue->sw_ring;
 		if (NULL != sw_ring) {
 			for (i = 0; i < rx_queue->nb_rx_desc; i++) {
-				if (NULL != sw_ring[i])
-					rte_pktmbuf_free(sw_ring[i]);
+				rte_pktmbuf_free(sw_ring[i]);
 			}
 			rte_free(sw_ring);
 		}
@@ -172,8 +171,7 @@ bnx2x_tx_queue_release(struct bnx2x_tx_queue *tx_queue)
 		sw_ring = tx_queue->sw_ring;
 		if (NULL != sw_ring) {
 			for (i = 0; i < tx_queue->nb_tx_desc; i++) {
-				if (NULL != sw_ring[i])
-					rte_pktmbuf_free(sw_ring[i]);
+				rte_pktmbuf_free(sw_ring[i]);
 			}
 			rte_free(sw_ring);
 		}

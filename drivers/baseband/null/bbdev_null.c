@@ -251,8 +251,7 @@ parse_bbdev_null_params(struct bbdev_null_params *params,
 	}
 
 exit:
-	if (kvlist)
-		rte_kvargs_free(kvlist);
+	rte_kvargs_free(kvlist);
 	return ret;
 }
 

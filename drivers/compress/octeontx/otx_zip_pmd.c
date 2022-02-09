@@ -337,8 +337,7 @@ zip_pmd_qp_release(struct rte_compressdev *dev, uint16_t qp_id)
 	if (qp != NULL) {
 		zipvf_q_term(qp);
 
-		if (qp->processed_pkts)
-			rte_ring_free(qp->processed_pkts);
+		rte_ring_free(qp->processed_pkts);
 
 		rte_free(qp);
 		dev->data->queue_pairs[qp_id] = NULL;
@@ -423,10 +422,8 @@ zip_pmd_qp_setup(struct rte_compressdev *dev, uint16_t qp_id,
 	return 0;
 
 qp_setup_cleanup:
-	if (qp->processed_pkts)
-		rte_ring_free(qp->processed_pkts);
-	if (qp)
-		rte_free(qp);
+	rte_ring_free(qp->processed_pkts);
+	rte_free(qp);
 	return -1;
 }
 

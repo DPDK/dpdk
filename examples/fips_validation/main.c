@@ -143,12 +143,9 @@ cryptodev_fips_validate_app_int(void)
 error_exit:
 
 	rte_mempool_free(env.mpool);
-	if (env.sess_mpool)
-		rte_mempool_free(env.sess_mpool);
-	if (env.sess_priv_mpool)
-		rte_mempool_free(env.sess_priv_mpool);
-	if (env.op_pool)
-		rte_mempool_free(env.op_pool);
+	rte_mempool_free(env.sess_mpool);
+	rte_mempool_free(env.sess_priv_mpool);
+	rte_mempool_free(env.op_pool);
 
 	return ret;
 }
@@ -523,8 +520,7 @@ prepare_data_mbufs(struct fips_val *val)
 	uint16_t nb_seg;
 	int ret = 0;
 
-	if (env.mbuf)
-		rte_pktmbuf_free(env.mbuf);
+	rte_pktmbuf_free(env.mbuf);
 
 	if (total_len > RTE_MBUF_MAX_NB_SEGS) {
 		RTE_LOG(ERR, USER1, "Data len %u too big\n", total_len);
@@ -598,8 +594,7 @@ prepare_data_mbufs(struct fips_val *val)
 	return 0;
 
 error_exit:
-	if (head)
-		rte_pktmbuf_free(head);
+	rte_pktmbuf_free(head);
 	return ret;
 }
 
@@ -656,8 +651,7 @@ prepare_auth_op(void)
 	if (ret < 0)
 		return ret;
 
-	if (env.digest)
-		rte_free(env.digest);
+	rte_free(env.digest);
 
 	env.digest = rte_zmalloc(NULL, vec.cipher_auth.digest.len,
 			RTE_CACHE_LINE_SIZE);
@@ -705,8 +699,7 @@ prepare_aead_op(void)
 		if (ret < 0)
 			return ret;
 
-		if (env.digest)
-			rte_free(env.digest);
+		rte_free(env.digest);
 		env.digest = rte_zmalloc(NULL, vec.aead.digest.len,
 				RTE_CACHE_LINE_SIZE);
 		if (!env.digest) {
@@ -1430,8 +1423,7 @@ fips_mct_tdes_test(void)
 		}
 	}
 
-	if (val.val)
-		free(val.val);
+	free(val.val);
 
 	return 0;
 }
@@ -1510,8 +1502,7 @@ fips_mct_aes_ecb_test(void)
 		}
 	}
 
-	if (val.val)
-		free(val.val);
+	free(val.val);
 
 	return 0;
 }
@@ -1619,8 +1610,7 @@ fips_mct_aes_test(void)
 			memcpy(vec.iv.val, val.val, AES_BLOCK_SIZE);
 	}
 
-	if (val.val)
-		free(val.val);
+	free(val.val);
 
 	return 0;
 }
@@ -1706,8 +1696,7 @@ fips_mct_sha_test(void)
 
 	rte_free(vec.pt.val);
 
-	if (val.val)
-		free(val.val);
+	free(val.val);
 
 	return 0;
 }
@@ -1851,8 +1840,7 @@ error_one_case:
 		rte_free(env.digest);
 		env.digest = NULL;
 	}
-	if (env.mbuf)
-		rte_pktmbuf_free(env.mbuf);
+	rte_pktmbuf_free(env.mbuf);
 
 	return ret;
 }

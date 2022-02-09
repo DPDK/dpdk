@@ -108,8 +108,7 @@ octeontx_dev_vlan_filter_set(struct rte_eth_dev *dev, uint16_t vlan_id, int on)
 	if (rc != 0) {
 		octeontx_log_err("Fail to configure vlan filter entry "
 				 "for port %d", nic->port_id);
-		if (entry)
-			rte_free(entry);
+		rte_free(entry);
 
 		goto done;
 	}

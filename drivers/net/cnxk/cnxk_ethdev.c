@@ -934,10 +934,8 @@ tx_queue_release:
 	for (i = 0; i < eth_dev->data->nb_tx_queues; i++)
 		dev_ops->tx_queue_release(eth_dev, i);
 fail:
-	if (tx_qconf)
-		free(tx_qconf);
-	if (rx_qconf)
-		free(rx_qconf);
+	free(tx_qconf);
+	free(rx_qconf);
 
 	return rc;
 }

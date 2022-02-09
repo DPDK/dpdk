@@ -161,8 +161,7 @@ rte_devargs_layers_parse(struct rte_devargs *devargs,
 
 get_out:
 	for (i = 0; i < RTE_DIM(layers); i++) {
-		if (layers[i].kvlist)
-			rte_kvargs_free(layers[i].kvlist);
+		rte_kvargs_free(layers[i].kvlist);
 	}
 	if (ret != 0) {
 		if (allocated_data) {
@@ -285,8 +284,7 @@ rte_devargs_reset(struct rte_devargs *da)
 {
 	if (da == NULL)
 		return;
-	if (da->data)
-		free(da->data);
+	free(da->data);
 	da->data = NULL;
 }
 

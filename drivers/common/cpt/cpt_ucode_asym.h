@@ -192,13 +192,11 @@ cpt_free_asym_session_parameters(struct cpt_asym_sess_misc *sess)
 	switch (sess->xfrm_type) {
 	case RTE_CRYPTO_ASYM_XFORM_RSA:
 		rsa = &sess->rsa_ctx;
-		if (rsa->n.data)
-			rte_free(rsa->n.data);
+		rte_free(rsa->n.data);
 		break;
 	case RTE_CRYPTO_ASYM_XFORM_MODEX:
 		mod = &sess->mod_ctx;
-		if (mod->modulus.data)
-			rte_free(mod->modulus.data);
+		rte_free(mod->modulus.data);
 		break;
 	case RTE_CRYPTO_ASYM_XFORM_ECDSA:
 		/* Fall through */

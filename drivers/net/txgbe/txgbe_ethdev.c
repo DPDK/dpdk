@@ -821,10 +821,8 @@ static int txgbe_fdir_filter_uninit(struct rte_eth_dev *eth_dev)
 	struct txgbe_hw_fdir_info *fdir_info = TXGBE_DEV_FDIR(eth_dev);
 	struct txgbe_fdir_filter *fdir_filter;
 
-	if (fdir_info->hash_map)
-		rte_free(fdir_info->hash_map);
-	if (fdir_info->hash_handle)
-		rte_hash_free(fdir_info->hash_handle);
+	rte_free(fdir_info->hash_map);
+	rte_hash_free(fdir_info->hash_handle);
 
 	while ((fdir_filter = TAILQ_FIRST(&fdir_info->fdir_list))) {
 		TAILQ_REMOVE(&fdir_info->fdir_list,
@@ -841,10 +839,8 @@ static int txgbe_l2_tn_filter_uninit(struct rte_eth_dev *eth_dev)
 	struct txgbe_l2_tn_info *l2_tn_info = TXGBE_DEV_L2_TN(eth_dev);
 	struct txgbe_l2_tn_filter *l2_tn_filter;
 
-	if (l2_tn_info->hash_map)
-		rte_free(l2_tn_info->hash_map);
-	if (l2_tn_info->hash_handle)
-		rte_hash_free(l2_tn_info->hash_handle);
+	rte_free(l2_tn_info->hash_map);
+	rte_hash_free(l2_tn_info->hash_handle);
 
 	while ((l2_tn_filter = TAILQ_FIRST(&l2_tn_info->l2_tn_list))) {
 		TAILQ_REMOVE(&l2_tn_info->l2_tn_list,

@@ -418,8 +418,7 @@ pci_scan_one(HDEVINFO dev_info, PSP_DEVINFO_DATA device_info_data)
 
 	return 0;
 end:
-	if (dev)
-		free(dev);
+	free(dev);
 	return ret;
 }
 

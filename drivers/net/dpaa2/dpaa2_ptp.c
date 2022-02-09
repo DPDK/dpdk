@@ -170,8 +170,7 @@ dpaa2_create_dprtc_device(int vdev_fd __rte_unused,
 	return 0;
 
 init_err:
-	if (dprtc_dev)
-		rte_free(dprtc_dev);
+	rte_free(dprtc_dev);
 
 	return -1;
 }

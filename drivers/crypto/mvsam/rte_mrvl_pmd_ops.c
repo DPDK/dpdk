@@ -774,10 +774,8 @@ mrvl_crypto_pmd_sym_session_configure(__rte_unused struct rte_cryptodev *dev,
 	}
 
 	/* free the keys memory allocated for session creation */
-	if (mrvl_sess->sam_sess_params.cipher_key != NULL)
-		free(mrvl_sess->sam_sess_params.cipher_key);
-	if (mrvl_sess->sam_sess_params.auth_key != NULL)
-		free(mrvl_sess->sam_sess_params.auth_key);
+	free(mrvl_sess->sam_sess_params.cipher_key);
+	free(mrvl_sess->sam_sess_params.auth_key);
 
 	return 0;
 }

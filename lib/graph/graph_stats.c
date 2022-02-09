@@ -233,8 +233,7 @@ free:
 static void
 cluster_fini(struct cluster *cluster)
 {
-	if (cluster->graphs)
-		free(cluster->graphs);
+	free(cluster->graphs);
 }
 
 static int

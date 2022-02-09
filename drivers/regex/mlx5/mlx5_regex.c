@@ -127,8 +127,7 @@ error:
 	if (priv->regexdev)
 		rte_regexdev_unregister(priv->regexdev);
 dev_error:
-	if (priv)
-		rte_free(priv);
+	rte_free(priv);
 	return -rte_errno;
 }
 

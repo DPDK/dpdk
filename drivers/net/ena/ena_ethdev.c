@@ -567,16 +567,13 @@ static void ena_rx_queue_release(struct rte_eth_dev *dev, uint16_t qid)
 	struct ena_ring *ring = dev->data->rx_queues[qid];
 
 	/* Free ring resources */
-	if (ring->rx_buffer_info)
-		rte_free(ring->rx_buffer_info);
+	rte_free(ring->rx_buffer_info);
 	ring->rx_buffer_info = NULL;
 
-	if (ring->rx_refill_buffer)
-		rte_free(ring->rx_refill_buffer);
+	rte_free(ring->rx_refill_buffer);
 	ring->rx_refill_buffer = NULL;
 
-	if (ring->empty_rx_reqs)
-		rte_free(ring->empty_rx_reqs);
+	rte_free(ring->empty_rx_reqs);
 	ring->empty_rx_reqs = NULL;
 
 	ring->configured = 0;
@@ -590,14 +587,11 @@ static void ena_tx_queue_release(struct rte_eth_dev *dev, uint16_t qid)
 	struct ena_ring *ring = dev->data->tx_queues[qid];
 
 	/* Free ring resources */
-	if (ring->push_buf_intermediate_buf)
-		rte_free(ring->push_buf_intermediate_buf);
+	rte_free(ring->push_buf_intermediate_buf);
 
-	if (ring->tx_buffer_info)
-		rte_free(ring->tx_buffer_info);
+	rte_free(ring->tx_buffer_info);
 
-	if (ring->empty_tx_reqs)
-		rte_free(ring->empty_tx_reqs);
+	rte_free(ring->empty_tx_reqs);
 
 	ring->empty_tx_reqs = NULL;
 	ring->tx_buffer_info = NULL;

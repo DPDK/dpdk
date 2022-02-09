@@ -221,13 +221,11 @@ scan_one_fslmc_device(char *dev_name)
 	insert_in_device_list(dev);
 
 	/* Don't need the duplicated device filesystem entry anymore */
-	if (dup_dev_name)
-		free(dup_dev_name);
+	free(dup_dev_name);
 
 	return 0;
 cleanup:
-	if (dup_dev_name)
-		free(dup_dev_name);
+	free(dup_dev_name);
 	if (dev) {
 		rte_intr_instance_free(dev->intr_handle);
 		free(dev);

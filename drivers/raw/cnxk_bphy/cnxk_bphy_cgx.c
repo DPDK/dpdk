@@ -233,8 +233,7 @@ cnxk_bphy_cgx_fini_queues(struct cnxk_bphy_cgx *cgx)
 	unsigned int i;
 
 	for (i = 0; i < cgx->num_queues; i++) {
-		if (cgx->queues[i].rsp)
-			rte_free(cgx->queues[i].rsp);
+		rte_free(cgx->queues[i].rsp);
 	}
 
 	cgx->num_queues = 0;

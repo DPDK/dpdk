@@ -283,8 +283,7 @@ mlx5_vdpa_mem_register(struct mlx5_vdpa_priv *priv)
 	priv->gpa_mkey_index = entry->mkey->id;
 	return 0;
 error:
-	if (entry)
-		rte_free(entry);
+	rte_free(entry);
 	mlx5_vdpa_mem_dereg(priv);
 	rte_errno = -ret;
 	return ret;

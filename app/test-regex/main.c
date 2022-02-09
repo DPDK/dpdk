@@ -210,8 +210,7 @@ error:
 	printf("Error, can't open file %s\n, err = %d", file, res);
 	if (fp)
 		fclose(fp);
-	if (*buf)
-		rte_free(*buf);
+	rte_free(*buf);
 	return -res;
 }
 
@@ -299,8 +298,7 @@ init_port(uint16_t *nb_max_payload, char *rules_file, uint8_t *nb_max_matches,
 	rte_free(rules);
 	return 0;
 error:
-	if (rules)
-		rte_free(rules);
+	rte_free(rules);
 	return res;
 }
 
@@ -367,8 +365,7 @@ regex_create_segmented_mbuf(struct rte_mempool *mbuf_pool, int pkt_len,
 	return mbuf;
 
 fail:
-	if (mbuf)
-		rte_pktmbuf_free(mbuf);
+	rte_pktmbuf_free(mbuf);
 	return NULL;
 }
 
@@ -612,8 +609,7 @@ end:
 		rte_free(qp->buf);
 		qp->buf = NULL;
 	}
-	if (mbuf_mp)
-		rte_mempool_free(mbuf_mp);
+	rte_mempool_free(mbuf_mp);
 	rte_free(qps);
 	return res;
 }

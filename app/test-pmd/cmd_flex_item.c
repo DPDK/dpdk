@@ -364,8 +364,7 @@ flex_item_create(portid_t port_id, uint16_t flex_id, const char *filename)
 		       flow_error.message ? flow_error.message : "");
 	}
 out:
-	if (fp)
-		free(fp);
+	free(fp);
 }
 
 #else /* RTE_HAS_JANSSON */

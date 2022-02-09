@@ -872,8 +872,7 @@ cat_fini(void)
 #if PQOS_VERSION <= 103
 	memset(m_sockets, 0, sizeof(m_sockets));
 #else
-	if (m_sockets != NULL)
-		free(m_sockets);
+	free(m_sockets);
 #endif
 	m_sock_count = 0;
 	memset(m_config, 0, sizeof(m_config));

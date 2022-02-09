@@ -190,8 +190,7 @@ eal_mem_virt2iova_init(void)
 	ret = 0;
 
 exit:
-	if (detail != NULL)
-		free(detail);
+	free(detail);
 	if (list != INVALID_HANDLE_VALUE)
 		SetupDiDestroyDeviceInfoList(list);
 

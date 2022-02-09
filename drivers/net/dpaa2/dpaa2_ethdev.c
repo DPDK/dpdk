@@ -510,8 +510,7 @@ dpaa2_free_rx_tx_queues(struct rte_eth_dev *dev)
 		/* cleaning up queue storage */
 		for (i = 0; i < priv->nb_rx_queues; i++) {
 			dpaa2_q = (struct dpaa2_queue *)priv->rx_vq[i];
-			if (dpaa2_q->q_storage)
-				rte_free(dpaa2_q->q_storage);
+			rte_free(dpaa2_q->q_storage);
 		}
 		/* cleanup tx queue cscn */
 		for (i = 0; i < priv->nb_tx_queues; i++) {

@@ -457,8 +457,7 @@ rte_power_empty_poll_stat_free(void)
 
 	RTE_LOG(INFO, POWER, "Close the Empty Poll\n");
 
-	if (ep_params != NULL)
-		rte_free(ep_params);
+	rte_free(ep_params);
 }
 
 int

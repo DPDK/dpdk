@@ -421,10 +421,8 @@ ice_fdir_release_filter_list(struct ice_pf *pf)
 {
 	struct ice_fdir_info *fdir_info = &pf->fdir;
 
-	if (fdir_info->hash_map)
-		rte_free(fdir_info->hash_map);
-	if (fdir_info->hash_table)
-		rte_hash_free(fdir_info->hash_table);
+	rte_free(fdir_info->hash_map);
+	rte_hash_free(fdir_info->hash_table);
 
 	fdir_info->hash_map = NULL;
 	fdir_info->hash_table = NULL;

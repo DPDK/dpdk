@@ -706,12 +706,10 @@ void qede_dealloc_fp_resc(struct rte_eth_dev *eth_dev)
 		}
 	}
 
-	if (qdev->fp_array)
-		rte_free(qdev->fp_array);
+	rte_free(qdev->fp_array);
 	qdev->fp_array = NULL;
 
-	if (qdev->fp_array_cmt)
-		rte_free(qdev->fp_array_cmt);
+	rte_free(qdev->fp_array_cmt);
 	qdev->fp_array_cmt = NULL;
 }
 
