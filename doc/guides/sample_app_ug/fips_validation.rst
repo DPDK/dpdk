@@ -77,11 +77,12 @@ Compiling the Application
     .. code-block:: console
 
          dos2unix AES/req/*
-         dos2unix AES_GCM/req/*
+         dos2unix GCM/req/*
          dos2unix CCM/req/*
          dos2unix CMAC/req/*
          dos2unix HMAC/req/*
          dos2unix TDES/req/*
+         dos2unix SHA/req/*
 
 Running the Application
 -----------------------
