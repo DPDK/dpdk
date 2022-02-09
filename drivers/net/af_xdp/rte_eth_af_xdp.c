@@ -1078,6 +1078,12 @@ xsk_umem_info *xdp_umem_configure(struct pmd_internals *internals,
 		__atomic_store_n(&umem->refcnt, 1, __ATOMIC_RELEASE);
 	}
 
+	return umem;
+
+err:
+	xdp_umem_destroy(umem);
+	return NULL;
+}
 #else
 static struct
 xsk_umem_info *xdp_umem_configure(struct pmd_internals *internals,
@@ -1138,13 +1144,13 @@ xsk_umem_info *xdp_umem_configure(struct pmd_internals *internals,
 	}
 	umem->mz = mz;
 
-#endif
 	return umem;
 
 err:
 	xdp_umem_destroy(umem);
 	return NULL;
 }
+#endif
 
 static int
 load_custom_xdp_prog(const char *prog_path, int if_index, struct bpf_map **map)
