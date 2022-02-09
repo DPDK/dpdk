@@ -243,6 +243,63 @@ s32 ngbe_hic_sr_write(struct ngbe_hw *hw, u32 addr, u8 *buf, int len)
 	return err;
 }
 
+s32 ngbe_hic_pcie_read(struct ngbe_hw *hw, u16 addr, u32 *buf, int len)
+{
+	struct ngbe_hic_read_pcie command;
+	u32 value = 0;
+	int err, i = 0;
+
+	if (len > NGBE_PMMBX_DATA_SIZE)
+		return NGBE_ERR_HOST_INTERFACE_COMMAND;
+
+	memset(&command, 0, sizeof(command));
+	command.hdr.cmd = FW_PCIE_READ_CMD;
+	command.hdr.buf_len = sizeof(command) - sizeof(command.hdr);
+	command.hdr.checksum = FW_DEFAULT_CHECKSUM;
+	command.lan_id = hw->bus.lan_id;
+	command.addr = addr;
+
+	err = ngbe_host_interface_command(hw, (u32 *)&command,
+			sizeof(command), NGBE_HI_COMMAND_TIMEOUT, false);
+	if (err)
+		return err;
+
+	while (i < (len >> 2)) {
+		value = rd32a(hw, NGBE_MNGMBX, FW_PCIE_BUSMASTER_OFFSET + i);
+		((u32 *)buf)[i] = value;
+		i++;
+	}
+
+	return 0;
+}
+
+s32 ngbe_hic_pcie_write(struct ngbe_hw *hw, u16 addr, u32 *buf, int len)
+{
+	struct ngbe_hic_write_pcie command;
+	u32 value = 0;
+	int err, i = 0;
+
+	while (i < (len >> 2)) {
+		value = ((u32 *)buf)[i];
+		i++;
+	}
+
+	memset(&command, 0, sizeof(command));
+	command.hdr.cmd = FW_PCIE_WRITE_CMD;
+	command.hdr.buf_len = sizeof(command) - sizeof(command.hdr);
+	command.hdr.checksum = FW_DEFAULT_CHECKSUM;
+	command.lan_id = hw->bus.lan_id;
+	command.addr = addr;
+	command.data = value;
+
+	err = ngbe_host_interface_command(hw, (u32 *)&command,
+			sizeof(command), NGBE_HI_COMMAND_TIMEOUT, false);
+	if (err)
+		return err;
+
+	return 0;
+}
+
 s32 ngbe_hic_check_cap(struct ngbe_hw *hw)
 {
 	struct ngbe_hic_read_shadow_ram command;

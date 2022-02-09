@@ -950,7 +950,6 @@ ngbe_dev_start(struct rte_eth_dev *dev)
 
 	/* stop adapter */
 	hw->adapter_stopped = 0;
-	ngbe_stop_hw(hw);
 
 	/* reinitialize adapter, this calls reset and start */
 	hw->nb_rx_queues = dev->data->nb_rx_queues;
@@ -960,6 +959,8 @@ ngbe_dev_start(struct rte_eth_dev *dev)
 		return -1;
 	hw->mac.start_hw(hw);
 	hw->mac.get_link_status = true;
+
+	ngbe_set_pcie_master(hw, true);
 
 	/* configure PF module if SRIOV enabled */
 	ngbe_pf_host_configure(dev);
@@ -1174,6 +1175,8 @@ ngbe_dev_stop(struct rte_eth_dev *dev)
 	rte_intr_efd_disable(intr_handle);
 	rte_intr_vec_list_free(intr_handle);
 
+	ngbe_set_pcie_master(hw, true);
+
 	adapter->rss_reta_updated = 0;
 
 	hw->adapter_stopped = true;
@@ -1201,6 +1204,8 @@ ngbe_dev_close(struct rte_eth_dev *dev)
 	ngbe_dev_stop(dev);
 
 	ngbe_dev_free_queues(dev);
+
+	ngbe_set_pcie_master(hw, false);
 
 	/* reprogram the RAR[0] in case user changed it. */
 	ngbe_set_rar(hw, 0, hw->mac.addr, 0, true);

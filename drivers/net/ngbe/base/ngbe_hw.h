@@ -54,6 +54,7 @@ void ngbe_fc_autoneg(struct ngbe_hw *hw);
 s32 ngbe_validate_mac_addr(u8 *mac_addr);
 s32 ngbe_acquire_swfw_sync(struct ngbe_hw *hw, u32 mask);
 void ngbe_release_swfw_sync(struct ngbe_hw *hw, u32 mask);
+s32 ngbe_set_pcie_master(struct ngbe_hw *hw, bool enable);
 
 s32 ngbe_set_vmdq(struct ngbe_hw *hw, u32 rar, u32 vmdq);
 s32 ngbe_clear_vmdq(struct ngbe_hw *hw, u32 rar, u32 vmdq);

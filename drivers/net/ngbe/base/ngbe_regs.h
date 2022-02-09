@@ -866,6 +866,9 @@ enum ngbe_5tuple_protocol {
  * PF(Physical Function) Registers
  ******************************************************************************/
 /* Interrupt */
+#define NGBE_BMECTL		0x012020
+#define   NGBE_BMECTL_VFDRP	MS(1, 0x1)
+#define   NGBE_BMECTL_PFDRP	MS(0, 0x1)
 #define NGBE_ICRMISC		0x000100
 #define   NGBE_ICRMISC_MASK	MS(8, 0xFFFFFF)
 #define   NGBE_ICRMISC_RST	MS(10, 0x1) /* device reset event */
