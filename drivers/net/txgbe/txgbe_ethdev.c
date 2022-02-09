@@ -1933,6 +1933,7 @@ txgbe_dev_set_link_up(struct rte_eth_dev *dev)
 	} else {
 		/* Turn on the laser */
 		hw->mac.enable_tx_laser(hw);
+		hw->dev_start = true;
 		txgbe_dev_link_update(dev, 0);
 	}
 
@@ -1953,6 +1954,7 @@ txgbe_dev_set_link_down(struct rte_eth_dev *dev)
 	} else {
 		/* Turn off the laser */
 		hw->mac.disable_tx_laser(hw);
+		hw->dev_start = false;
 		txgbe_dev_link_update(dev, 0);
 	}
 
