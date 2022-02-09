@@ -1058,7 +1058,11 @@ ngbe_dev_start(struct rte_eth_dev *dev)
 			speed |= NGBE_LINK_SPEED_10M_FULL;
 	}
 
-	hw->phy.init_hw(hw);
+	err = hw->phy.init_hw(hw);
+	if (err != 0) {
+		PMD_INIT_LOG(ERR, "PHY init failed");
+		goto error;
+	}
 	err = hw->mac.setup_link(hw, speed, link_up);
 	if (err != 0)
 		goto error;

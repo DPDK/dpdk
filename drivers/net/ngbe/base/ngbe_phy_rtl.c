@@ -4,8 +4,6 @@
 
 #include "ngbe_phy_rtl.h"
 
-#define RTL_PHY_RST_WAIT_PERIOD               5
-
 s32 ngbe_read_phy_reg_rtl(struct ngbe_hw *hw,
 		u32 reg_addr, u32 device_type, u16 *phy_data)
 {
@@ -61,34 +59,44 @@ s32 ngbe_init_phy_rtl(struct ngbe_hw *hw)
 		return NGBE_ERR_PHY_TIMEOUT;
 	}
 
-	for (i = 0; i < 1000; i++) {
-		hw->phy.read_reg(hw, RTL_INSR, 0xa43, &value);
-		if (value & RTL_INSR_ACCESS)
-			break;
+	hw->phy.write_reg(hw, RTL_SCR, 0xa46, RTL_SCR_EFUSE);
+	hw->phy.read_reg(hw, RTL_SCR, 0xa46, &value);
+	if (!(value & RTL_SCR_EFUSE)) {
+		DEBUGOUT("Write EFUSE failed.\n");
+		return NGBE_ERR_PHY_TIMEOUT;
 	}
 
-	hw->phy.write_reg(hw, RTL_SCR, 0xa46, RTL_SCR_EFUSE);
 	for (i = 0; i < 1000; i++) {
 		hw->phy.read_reg(hw, RTL_INSR, 0xa43, &value);
 		if (value & RTL_INSR_ACCESS)
 			break;
+		msec_delay(1);
 	}
 	if (i == 1000)
-		return NGBE_ERR_PHY_TIMEOUT;
+		DEBUGOUT("PHY wait mdio 1 access timeout.\n");
+
 
 	hw->phy.write_reg(hw, RTL_SCR, 0xa46, RTL_SCR_EXTINI);
+	hw->phy.read_reg(hw, RTL_SCR, 0xa46, &value);
+	if (!(value & RTL_SCR_EXTINI)) {
+		DEBUGOUT("Write EXIINI failed.\n");
+		return NGBE_ERR_PHY_TIMEOUT;
+	}
+
 	for (i = 0; i < 1000; i++) {
 		hw->phy.read_reg(hw, RTL_INSR, 0xa43, &value);
 		if (value & RTL_INSR_ACCESS)
 			break;
+		msec_delay(1);
 	}
 	if (i == 1000)
-		return NGBE_ERR_PHY_TIMEOUT;
+		DEBUGOUT("PHY wait mdio 2 access timeout.\n");
 
 	for (i = 0; i < 1000; i++) {
 		hw->phy.read_reg(hw, RTL_GSR, 0xa42, &value);
 		if ((value & RTL_GSR_ST) == RTL_GSR_ST_LANON)
 			break;
+		msec_delay(1);
 	}
 	if (i == 1000)
 		return NGBE_ERR_PHY_TIMEOUT;
@@ -226,7 +234,7 @@ skip_an:
 
 s32 ngbe_reset_phy_rtl(struct ngbe_hw *hw)
 {
-	u16 value = 0, i;
+	u16 value = 0;
 	s32 status = 0;
 
 	DEBUGFUNC("ngbe_reset_phy_rtl");
@@ -234,17 +242,7 @@ s32 ngbe_reset_phy_rtl(struct ngbe_hw *hw)
 	value |= RTL_BMCR_RESET;
 	status = hw->phy.write_reg(hw, RTL_BMCR, RTL_DEV_ZERO, value);
 
-	for (i = 0; i < RTL_PHY_RST_WAIT_PERIOD; i++) {
-		status = hw->phy.read_reg(hw, RTL_BMCR, RTL_DEV_ZERO, &value);
-		if (!(value & RTL_BMCR_RESET))
-			break;
-		msleep(1);
-	}
-
-	if (i == RTL_PHY_RST_WAIT_PERIOD) {
-		DEBUGOUT("PHY reset polling failed to complete.\n");
-		return NGBE_ERR_RESET_FAILED;
-	}
+	msec_delay(5);
 
 	return status;
 }

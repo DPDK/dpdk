@@ -1145,6 +1145,7 @@ out:
 s32 ngbe_acquire_swfw_sync(struct ngbe_hw *hw, u32 mask)
 {
 	u32 mngsem = 0;
+	u32 fwsm = 0;
 	u32 swmask = NGBE_MNGSEM_SW(mask);
 	u32 fwmask = NGBE_MNGSEM_FW(mask);
 	u32 timeout = 200;
@@ -1173,9 +1174,9 @@ s32 ngbe_acquire_swfw_sync(struct ngbe_hw *hw, u32 mask)
 		}
 	}
 
-	/* If time expired clear the bits holding the lock and retry */
-	if (mngsem & (fwmask | swmask))
-		ngbe_release_swfw_sync(hw, mngsem & (fwmask | swmask));
+	fwsm = rd32(hw, NGBE_MNGFWSYNC);
+	DEBUGOUT("SWFW semaphore not granted: MNG_SWFW_SYNC = 0x%x, MNG_FW_SM = 0x%x\n",
+			mngsem, fwsm);
 
 	msec_delay(5);
 	return NGBE_ERR_SWFW_SYNC;
