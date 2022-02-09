@@ -84,6 +84,9 @@ EXPERIMENTAL {
 
 	# added in 21.11
 	rte_vhost_get_monitor_addr;
+
+	# added in 22.03
+	rte_vhost_async_dma_configure;
 };
 
 INTERNAL {

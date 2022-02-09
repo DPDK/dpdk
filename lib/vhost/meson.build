@@ -36,4 +36,4 @@ headers = files(
 driver_sdk_headers = files(
         'vdpa_driver.h',
 )
-deps += ['ethdev', 'cryptodev', 'hash', 'pci']
+deps += ['ethdev', 'cryptodev', 'hash', 'pci', 'dmadev']

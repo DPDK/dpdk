@@ -12,13 +12,9 @@ if not is_linux
 endif
 
 deps += 'vhost'
+deps += 'dmadev'
 allow_experimental_apis = true
 sources = files(
         'main.c',
         'virtio_net.c',
 )
-
-if dpdk_conf.has('RTE_RAW_IOAT')
-    deps += 'raw_ioat'
-    sources += files('ioat.c')
-endif

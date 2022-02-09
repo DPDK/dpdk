@@ -5,7 +5,7 @@
 APP = vhost-switch
 
 # all source are stored in SRCS-y
-SRCS-y := main.c virtio_net.c ioat.c
+SRCS-y := main.c virtio_net.c
 
 PKGCONF ?= pkg-config
 

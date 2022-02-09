@@ -24,8 +24,9 @@
 #include <rte_ip.h>
 #include <rte_tcp.h>
 #include <rte_pause.h>
+#include <rte_dmadev.h>
+#include <rte_vhost_async.h>
 
-#include "ioat.h"
 #include "main.h"
 
 #ifndef MAX_QUEUES
@@ -56,6 +57,13 @@
 #define RTE_TEST_TX_DESC_DEFAULT 512
 
 #define INVALID_PORT_ID 0xFF
+#define INVALID_DMA_ID -1
+
+#define DMA_RING_SIZE 4096
+
+struct dma_for_vhost dma_bind[RTE_MAX_VHOST_DEVICE];
+int16_t dmas_id[RTE_DMADEV_DEFAULT_MAX];
+static int dma_count;
 
 /* mask of enabled ports */
 static uint32_t enabled_port_mask = 0;
@@ -93,10 +101,6 @@ static uint32_t enable_tso;
 static int client_mode;
 
 static int builtin_net_driver;
-
-static int async_vhost_driver;
-
-static char *dma_type;
 
 /* Specify timeout (in useconds) between retries on RX. */
 static uint32_t burst_rx_delay_time = BURST_RX_WAIT_US;
@@ -191,18 +195,150 @@ struct mbuf_table lcore_tx_queue[RTE_MAX_LCORE];
  * Every data core maintains a TX buffer for every vhost device,
  * which is used for batch pkts enqueue for higher performance.
  */
-struct vhost_bufftable *vhost_txbuff[RTE_MAX_LCORE * MAX_VHOST_DEVICE];
+struct vhost_bufftable *vhost_txbuff[RTE_MAX_LCORE * RTE_MAX_VHOST_DEVICE];
 
 #define MBUF_TABLE_DRAIN_TSC	((rte_get_tsc_hz() + US_PER_S - 1) \
 				 / US_PER_S * BURST_TX_DRAIN_US)
 
+static inline bool
+is_dma_configured(int16_t dev_id)
+{
+	int i;
+
+	for (i = 0; i < dma_count; i++)
+		if (dmas_id[i] == dev_id)
+			return true;
+	return false;
+}
+
 static inline int
 open_dma(const char *value)
 {
-	if (dma_type != NULL && strncmp(dma_type, "ioat", 4) == 0)
-		return open_ioat(value);
+	struct dma_for_vhost *dma_info = dma_bind;
+	char *input = strndup(value, strlen(value) + 1);
+	char *addrs = input;
+	char *ptrs[2];
+	char *start, *end, *substr;
+	int64_t vid;
 
-	return -1;
+	struct rte_dma_info info;
+	struct rte_dma_conf dev_config = { .nb_vchans = 1 };
+	struct rte_dma_vchan_conf qconf = {
+		.direction = RTE_DMA_DIR_MEM_TO_MEM,
+		.nb_desc = DMA_RING_SIZE
+	};
+
+	int dev_id;
+	int ret = 0;
+	uint16_t i = 0;
+	char *dma_arg[RTE_MAX_VHOST_DEVICE];
+	int args_nr;
+
+	while (isblank(*addrs))
+		addrs++;
+	if (*addrs == '\0') {
+		ret = -1;
+		goto out;
+	}
+
+	/* process DMA devices within bracket. */
+	addrs++;
+	substr = strtok(addrs, ";]");
+	if (!substr) {
+		ret = -1;
+		goto out;
+	}
+
+	args_nr = rte_strsplit(substr, strlen(substr), dma_arg, RTE_MAX_VHOST_DEVICE, ',');
+	if (args_nr <= 0) {
+		ret = -1;
+		goto out;
+	}
+
+	while (i < args_nr) {
+		char *arg_temp = dma_arg[i];
+		uint8_t sub_nr;
+
+		sub_nr = rte_strsplit(arg_temp, strlen(arg_temp), ptrs, 2, '@');
+		if (sub_nr != 2) {
+			ret = -1;
+			goto out;
+		}
+
+		start = strstr(ptrs[0], "txd");
+		if (start == NULL) {
+			ret = -1;
+			goto out;
+		}
+
+		start += 3;
+		vid = strtol(start, &end, 0);
+		if (end == start) {
+			ret = -1;
+			goto out;
+		}
+
+		dev_id = rte_dma_get_dev_id_by_name(ptrs[1]);
+		if (dev_id < 0) {
+			RTE_LOG(ERR, VHOST_CONFIG, "Fail to find DMA %s.\n", ptrs[1]);
+			ret = -1;
+			goto out;
+		}
+
+		/* DMA device is already configured, so skip */
+		if (is_dma_configured(dev_id))
+			goto done;
+
+		if (rte_dma_info_get(dev_id, &info) != 0) {
+			RTE_LOG(ERR, VHOST_CONFIG, "Error with rte_dma_info_get()\n");
+			ret = -1;
+			goto out;
+		}
+
+		if (info.max_vchans < 1) {
+			RTE_LOG(ERR, VHOST_CONFIG, "No channels available on device %d\n", dev_id);
+			ret = -1;
+			goto out;
+		}
+
+		if (rte_dma_configure(dev_id, &dev_config) != 0) {
+			RTE_LOG(ERR, VHOST_CONFIG, "Fail to configure DMA %d.\n", dev_id);
+			ret = -1;
+			goto out;
+		}
+
+		/* Check the max desc supported by DMA device */
+		rte_dma_info_get(dev_id, &info);
+		if (info.nb_vchans != 1) {
+			RTE_LOG(ERR, VHOST_CONFIG, "No configured queues reported by DMA %d.\n",
+					dev_id);
+			ret = -1;
+			goto out;
+		}
+
+		qconf.nb_desc = RTE_MIN(DMA_RING_SIZE, info.max_desc);
+
+		if (rte_dma_vchan_setup(dev_id, 0, &qconf) != 0) {
+			RTE_LOG(ERR, VHOST_CONFIG, "Fail to set up DMA %d.\n", dev_id);
+			ret = -1;
+			goto out;
+		}
+
+		if (rte_dma_start(dev_id) != 0) {
+			RTE_LOG(ERR, VHOST_CONFIG, "Fail to start DMA %u.\n", dev_id);
+			ret = -1;
+			goto out;
+		}
+
+		dmas_id[dma_count++] = dev_id;
+
+done:
+		(dma_info + vid)->dmas[VIRTIO_RXQ].dev_id = dev_id;
+		i++;
+	}
+out:
+	free(input);
+	return ret;
 }
 
 /*
@@ -500,8 +636,6 @@ enum {
 	OPT_CLIENT_NUM,
 #define OPT_BUILTIN_NET_DRIVER  "builtin-net-driver"
 	OPT_BUILTIN_NET_DRIVER_NUM,
-#define OPT_DMA_TYPE            "dma-type"
-	OPT_DMA_TYPE_NUM,
 #define OPT_DMAS                "dmas"
 	OPT_DMAS_NUM,
 };
@@ -539,8 +673,6 @@ us_vhost_parse_args(int argc, char **argv)
 				NULL, OPT_CLIENT_NUM},
 		{OPT_BUILTIN_NET_DRIVER, no_argument,
 				NULL, OPT_BUILTIN_NET_DRIVER_NUM},
-		{OPT_DMA_TYPE, required_argument,
-				NULL, OPT_DMA_TYPE_NUM},
 		{OPT_DMAS, required_argument,
 				NULL, OPT_DMAS_NUM},
 		{NULL, 0, 0, 0},
@@ -661,10 +793,6 @@ us_vhost_parse_args(int argc, char **argv)
 			}
 			break;
 
-		case OPT_DMA_TYPE_NUM:
-			dma_type = optarg;
-			break;
-
 		case OPT_DMAS_NUM:
 			if (open_dma(optarg) == -1) {
 				RTE_LOG(INFO, VHOST_CONFIG,
@@ -672,7 +800,6 @@ us_vhost_parse_args(int argc, char **argv)
 				us_vhost_usage(prgname);
 				return -1;
 			}
-			async_vhost_driver = 1;
 			break;
 
 		case OPT_CLIENT_NUM:
@@ -841,9 +968,10 @@ complete_async_pkts(struct vhost_dev *vdev)
 {
 	struct rte_mbuf *p_cpl[MAX_PKT_BURST];
 	uint16_t complete_count;
+	int16_t dma_id = dma_bind[vdev->vid].dmas[VIRTIO_RXQ].dev_id;
 
 	complete_count = rte_vhost_poll_enqueue_completed(vdev->vid,
-					VIRTIO_RXQ, p_cpl, MAX_PKT_BURST);
+					VIRTIO_RXQ, p_cpl, MAX_PKT_BURST, dma_id, 0);
 	if (complete_count) {
 		free_pkts(p_cpl, complete_count);
 		__atomic_sub_fetch(&vdev->pkts_inflight, complete_count, __ATOMIC_SEQ_CST);
@@ -877,17 +1005,18 @@ static __rte_always_inline void
 drain_vhost(struct vhost_dev *vdev)
 {
 	uint16_t ret;
-	uint32_t buff_idx = rte_lcore_id() * MAX_VHOST_DEVICE + vdev->vid;
+	uint32_t buff_idx = rte_lcore_id() * RTE_MAX_VHOST_DEVICE + vdev->vid;
 	uint16_t nr_xmit = vhost_txbuff[buff_idx]->len;
 	struct rte_mbuf **m = vhost_txbuff[buff_idx]->m_table;
 
 	if (builtin_net_driver) {
 		ret = vs_enqueue_pkts(vdev, VIRTIO_RXQ, m, nr_xmit);
-	} else if (async_vhost_driver) {
+	} else if (dma_bind[vdev->vid].dmas[VIRTIO_RXQ].async_enabled) {
 		uint16_t enqueue_fail = 0;
+		int16_t dma_id = dma_bind[vdev->vid].dmas[VIRTIO_RXQ].dev_id;
 
 		complete_async_pkts(vdev);
-		ret = rte_vhost_submit_enqueue_burst(vdev->vid, VIRTIO_RXQ, m, nr_xmit);
+		ret = rte_vhost_submit_enqueue_burst(vdev->vid, VIRTIO_RXQ, m, nr_xmit, dma_id, 0);
 		__atomic_add_fetch(&vdev->pkts_inflight, ret, __ATOMIC_SEQ_CST);
 
 		enqueue_fail = nr_xmit - ret;
@@ -905,7 +1034,7 @@ drain_vhost(struct vhost_dev *vdev)
 				__ATOMIC_SEQ_CST);
 	}
 
-	if (!async_vhost_driver)
+	if (!dma_bind[vdev->vid].dmas[VIRTIO_RXQ].async_enabled)
 		free_pkts(m, nr_xmit);
 }
 
@@ -921,8 +1050,7 @@ drain_vhost_table(void)
 		if (unlikely(vdev->remove == 1))
 			continue;
 
-		vhost_txq = vhost_txbuff[lcore_id * MAX_VHOST_DEVICE
-						+ vdev->vid];
+		vhost_txq = vhost_txbuff[lcore_id * RTE_MAX_VHOST_DEVICE + vdev->vid];
 
 		cur_tsc = rte_rdtsc();
 		if (unlikely(cur_tsc - vhost_txq->pre_tsc
@@ -970,7 +1098,7 @@ virtio_tx_local(struct vhost_dev *vdev, struct rte_mbuf *m)
 		return 0;
 	}
 
-	vhost_txq = vhost_txbuff[lcore_id * MAX_VHOST_DEVICE + dst_vdev->vid];
+	vhost_txq = vhost_txbuff[lcore_id * RTE_MAX_VHOST_DEVICE + dst_vdev->vid];
 	vhost_txq->m_table[vhost_txq->len++] = m;
 
 	if (enable_stats) {
@@ -1211,12 +1339,13 @@ drain_eth_rx(struct vhost_dev *vdev)
 	if (builtin_net_driver) {
 		enqueue_count = vs_enqueue_pkts(vdev, VIRTIO_RXQ,
 						pkts, rx_count);
-	} else if (async_vhost_driver) {
+	} else if (dma_bind[vdev->vid].dmas[VIRTIO_RXQ].async_enabled) {
 		uint16_t enqueue_fail = 0;
+		int16_t dma_id = dma_bind[vdev->vid].dmas[VIRTIO_RXQ].dev_id;
 
 		complete_async_pkts(vdev);
 		enqueue_count = rte_vhost_submit_enqueue_burst(vdev->vid,
-					VIRTIO_RXQ, pkts, rx_count);
+					VIRTIO_RXQ, pkts, rx_count, dma_id, 0);
 		__atomic_add_fetch(&vdev->pkts_inflight, enqueue_count, __ATOMIC_SEQ_CST);
 
 		enqueue_fail = rx_count - enqueue_count;
@@ -1235,7 +1364,7 @@ drain_eth_rx(struct vhost_dev *vdev)
 				__ATOMIC_SEQ_CST);
 	}
 
-	if (!async_vhost_driver)
+	if (!dma_bind[vdev->vid].dmas[VIRTIO_RXQ].async_enabled)
 		free_pkts(pkts, rx_count);
 }
 
@@ -1357,7 +1486,7 @@ destroy_device(int vid)
 	}
 
 	for (i = 0; i < RTE_MAX_LCORE; i++)
-		rte_free(vhost_txbuff[i * MAX_VHOST_DEVICE + vid]);
+		rte_free(vhost_txbuff[i * RTE_MAX_VHOST_DEVICE + vid]);
 
 	if (builtin_net_driver)
 		vs_vhost_net_remove(vdev);
@@ -1387,18 +1516,20 @@ destroy_device(int vid)
 		"(%d) device has been removed from data core\n",
 		vdev->vid);
 
-	if (async_vhost_driver) {
+	if (dma_bind[vid].dmas[VIRTIO_RXQ].async_enabled) {
 		uint16_t n_pkt = 0;
+		int16_t dma_id = dma_bind[vid].dmas[VIRTIO_RXQ].dev_id;
 		struct rte_mbuf *m_cpl[vdev->pkts_inflight];
 
 		while (vdev->pkts_inflight) {
 			n_pkt = rte_vhost_clear_queue_thread_unsafe(vid, VIRTIO_RXQ,
-						m_cpl, vdev->pkts_inflight);
+						m_cpl, vdev->pkts_inflight, dma_id, 0);
 			free_pkts(m_cpl, n_pkt);
 			__atomic_sub_fetch(&vdev->pkts_inflight, n_pkt, __ATOMIC_SEQ_CST);
 		}
 
 		rte_vhost_async_channel_unregister(vid, VIRTIO_RXQ);
+		dma_bind[vid].dmas[VIRTIO_RXQ].async_enabled = false;
 	}
 
 	rte_free(vdev);
@@ -1425,12 +1556,12 @@ new_device(int vid)
 	vdev->vid = vid;
 
 	for (i = 0; i < RTE_MAX_LCORE; i++) {
-		vhost_txbuff[i * MAX_VHOST_DEVICE + vid]
+		vhost_txbuff[i * RTE_MAX_VHOST_DEVICE + vid]
 			= rte_zmalloc("vhost bufftable",
 				sizeof(struct vhost_bufftable),
 				RTE_CACHE_LINE_SIZE);
 
-		if (vhost_txbuff[i * MAX_VHOST_DEVICE + vid] == NULL) {
+		if (vhost_txbuff[i * RTE_MAX_VHOST_DEVICE + vid] == NULL) {
 			RTE_LOG(INFO, VHOST_DATA,
 			  "(%d) couldn't allocate memory for vhost TX\n", vid);
 			return -1;
@@ -1468,20 +1599,13 @@ new_device(int vid)
 		"(%d) device has been added to data core %d\n",
 		vid, vdev->coreid);
 
-	if (async_vhost_driver) {
-		struct rte_vhost_async_config config = {0};
-		struct rte_vhost_async_channel_ops channel_ops;
+	if (dma_bind[vid].dmas[VIRTIO_RXQ].dev_id != INVALID_DMA_ID) {
+		int ret;
 
-		if (dma_type != NULL && strncmp(dma_type, "ioat", 4) == 0) {
-			channel_ops.transfer_data = ioat_transfer_data_cb;
-			channel_ops.check_completed_copies =
-				ioat_check_completed_copies_cb;
-
-			config.features = RTE_VHOST_ASYNC_INORDER;
-
-			return rte_vhost_async_channel_register(vid, VIRTIO_RXQ,
-				config, &channel_ops);
-		}
+		ret = rte_vhost_async_channel_register(vid, VIRTIO_RXQ);
+		if (ret == 0)
+			dma_bind[vid].dmas[VIRTIO_RXQ].async_enabled = true;
+		return ret;
 	}
 
 	return 0;
@@ -1502,14 +1626,15 @@ vring_state_changed(int vid, uint16_t queue_id, int enable)
 	if (queue_id != VIRTIO_RXQ)
 		return 0;
 
-	if (async_vhost_driver) {
+	if (dma_bind[vid].dmas[queue_id].async_enabled) {
 		if (!enable) {
 			uint16_t n_pkt = 0;
+			int16_t dma_id = dma_bind[vid].dmas[VIRTIO_RXQ].dev_id;
 			struct rte_mbuf *m_cpl[vdev->pkts_inflight];
 
 			while (vdev->pkts_inflight) {
 				n_pkt = rte_vhost_clear_queue_thread_unsafe(vid, queue_id,
-							m_cpl, vdev->pkts_inflight);
+							m_cpl, vdev->pkts_inflight, dma_id, 0);
 				free_pkts(m_cpl, n_pkt);
 				__atomic_sub_fetch(&vdev->pkts_inflight, n_pkt, __ATOMIC_SEQ_CST);
 			}
@@ -1657,6 +1782,24 @@ create_mbuf_pool(uint16_t nr_port, uint32_t nr_switch_core, uint32_t mbuf_size,
 		rte_exit(EXIT_FAILURE, "Cannot create mbuf pool\n");
 }
 
+static void
+reset_dma(void)
+{
+	int i;
+
+	for (i = 0; i < RTE_MAX_VHOST_DEVICE; i++) {
+		int j;
+
+		for (j = 0; j < RTE_MAX_QUEUES_PER_PORT * 2; j++) {
+			dma_bind[i].dmas[j].dev_id = INVALID_DMA_ID;
+			dma_bind[i].dmas[j].async_enabled = false;
+		}
+	}
+
+	for (i = 0; i < RTE_DMADEV_DEFAULT_MAX; i++)
+		dmas_id[i] = INVALID_DMA_ID;
+}
+
 /*
  * Main function, does initialisation and calls the per-lcore functions.
  */
@@ -1678,6 +1821,9 @@ main(int argc, char *argv[])
 		rte_exit(EXIT_FAILURE, "Error with EAL initialization\n");
 	argc -= ret;
 	argv += ret;
+
+	/* initialize dma structures */
+	reset_dma();
 
 	/* parse app arguments */
 	ret = us_vhost_parse_args(argc, argv);
@@ -1754,11 +1900,18 @@ main(int argc, char *argv[])
 	if (client_mode)
 		flags |= RTE_VHOST_USER_CLIENT;
 
+	for (i = 0; i < dma_count; i++) {
+		if (rte_vhost_async_dma_configure(dmas_id[i], 0) < 0) {
+			RTE_LOG(ERR, VHOST_PORT, "Failed to configure DMA in vhost.\n");
+			rte_exit(EXIT_FAILURE, "Cannot use given DMA device\n");
+		}
+	}
+
 	/* Register vhost user driver to handle vhost messages. */
 	for (i = 0; i < nb_sockets; i++) {
 		char *file = socket_files + i * PATH_MAX;
 
-		if (async_vhost_driver)
+		if (dma_count)
 			flags = flags | RTE_VHOST_USER_ASYNC_COPY;
 
 		ret = rte_vhost_driver_register(file, flags);

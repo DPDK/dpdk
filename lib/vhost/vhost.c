@@ -25,7 +25,7 @@
 #include "vhost.h"
 #include "vhost_user.h"
 
-struct virtio_net *vhost_devices[MAX_VHOST_DEVICE];
+struct virtio_net *vhost_devices[RTE_MAX_VHOST_DEVICE];
 pthread_mutex_t vhost_dev_lock = PTHREAD_MUTEX_INITIALIZER;
 
 /* Called with iotlb_lock read-locked */
@@ -343,6 +343,7 @@ vhost_free_async_mem(struct vhost_virtqueue *vq)
 		return;
 
 	rte_free(vq->async->pkts_info);
+	rte_free(vq->async->pkts_cmpl_flag);
 
 	rte_free(vq->async->buffers_packed);
 	vq->async->buffers_packed = NULL;
@@ -665,12 +666,12 @@ vhost_new_device(void)
 	int i;
 
 	pthread_mutex_lock(&vhost_dev_lock);
-	for (i = 0; i < MAX_VHOST_DEVICE; i++) {
+	for (i = 0; i < RTE_MAX_VHOST_DEVICE; i++) {
 		if (vhost_devices[i] == NULL)
 			break;
 	}
 
-	if (i == MAX_VHOST_DEVICE) {
+	if (i == RTE_MAX_VHOST_DEVICE) {
 		VHOST_LOG_CONFIG(ERR, "failed to find a free slot for new device.\n");
 		pthread_mutex_unlock(&vhost_dev_lock);
 		return -1;
@@ -1621,8 +1622,7 @@ rte_vhost_extern_callback_register(int vid,
 }
 
 static __rte_always_inline int
-async_channel_register(int vid, uint16_t queue_id,
-		struct rte_vhost_async_channel_ops *ops)
+async_channel_register(int vid, uint16_t queue_id)
 {
 	struct virtio_net *dev = get_device(vid);
 	struct vhost_virtqueue *vq = dev->virtqueue[queue_id];
@@ -1651,6 +1651,14 @@ async_channel_register(int vid, uint16_t queue_id,
 		goto out_free_async;
 	}
 
+	async->pkts_cmpl_flag = rte_zmalloc_socket(NULL, vq->size * sizeof(bool),
+			RTE_CACHE_LINE_SIZE, node);
+	if (!async->pkts_cmpl_flag) {
+		VHOST_LOG_CONFIG(ERR, "(%s) failed to allocate async pkts_cmpl_flag (qid: %d)\n",
+				dev->ifname, queue_id);
+		goto out_free_async;
+	}
+
 	if (vq_is_packed(dev)) {
 		async->buffers_packed = rte_malloc_socket(NULL,
 				vq->size * sizeof(struct vring_used_elem_packed),
@@ -1671,9 +1679,6 @@ async_channel_register(int vid, uint16_t queue_id,
 		}
 	}
 
-	async->ops.check_completed_copies = ops->check_completed_copies;
-	async->ops.transfer_data = ops->transfer_data;
-
 	vq->async = async;
 
 	return 0;
@@ -1686,15 +1691,13 @@ out_free_async:
 }
 
 int
-rte_vhost_async_channel_register(int vid, uint16_t queue_id,
-		struct rte_vhost_async_config config,
-		struct rte_vhost_async_channel_ops *ops)
+rte_vhost_async_channel_register(int vid, uint16_t queue_id)
 {
 	struct vhost_virtqueue *vq;
 	struct virtio_net *dev = get_device(vid);
 	int ret;
 
-	if (dev == NULL || ops == NULL)
+	if (dev == NULL)
 		return -1;
 
 	if (queue_id >= VHOST_MAX_VRING)
@@ -1705,33 +1708,20 @@ rte_vhost_async_channel_register(int vid, uint16_t queue_id,
 	if (unlikely(vq == NULL || !dev->async_copy))
 		return -1;
 
-	if (unlikely(!(config.features & RTE_VHOST_ASYNC_INORDER))) {
-		VHOST_LOG_CONFIG(ERR,
-			"(%s) async copy is not supported on non-inorder mode (qid: %d)\n",
-			dev->ifname, queue_id);
-		return -1;
-	}
-
-	if (unlikely(ops->check_completed_copies == NULL ||
-		ops->transfer_data == NULL))
-		return -1;
-
 	rte_spinlock_lock(&vq->access_lock);
-	ret = async_channel_register(vid, queue_id, ops);
+	ret = async_channel_register(vid, queue_id);
 	rte_spinlock_unlock(&vq->access_lock);
 
 	return ret;
 }
 
 int
-rte_vhost_async_channel_register_thread_unsafe(int vid, uint16_t queue_id,
-		struct rte_vhost_async_config config,
-		struct rte_vhost_async_channel_ops *ops)
+rte_vhost_async_channel_register_thread_unsafe(int vid, uint16_t queue_id)
 {
 	struct vhost_virtqueue *vq;
 	struct virtio_net *dev = get_device(vid);
 
-	if (dev == NULL || ops == NULL)
+	if (dev == NULL)
 		return -1;
 
 	if (queue_id >= VHOST_MAX_VRING)
@@ -1742,18 +1732,7 @@ rte_vhost_async_channel_register_thread_unsafe(int vid, uint16_t queue_id,
 	if (unlikely(vq == NULL || !dev->async_copy))
 		return -1;
 
-	if (unlikely(!(config.features & RTE_VHOST_ASYNC_INORDER))) {
-		VHOST_LOG_CONFIG(ERR,
-			"(%s) async copy is not supported on non-inorder mode (qid: %d)\n",
-			dev->ifname, queue_id);
-		return -1;
-	}
-
-	if (unlikely(ops->check_completed_copies == NULL ||
-		ops->transfer_data == NULL))
-		return -1;
-
-	return async_channel_register(vid, queue_id, ops);
+	return async_channel_register(vid, queue_id);
 }
 
 int
@@ -1828,6 +1807,68 @@ rte_vhost_async_channel_unregister_thread_unsafe(int vid, uint16_t queue_id)
 	}
 
 	vhost_free_async_mem(vq);
+
+	return 0;
+}
+
+int
+rte_vhost_async_dma_configure(int16_t dma_id, uint16_t vchan_id)
+{
+	struct rte_dma_info info;
+	void *pkts_cmpl_flag_addr;
+	uint16_t max_desc;
+
+	if (!rte_dma_is_valid(dma_id)) {
+		VHOST_LOG_CONFIG(ERR, "DMA %d is not found.\n", dma_id);
+		return -1;
+	}
+
+	rte_dma_info_get(dma_id, &info);
+	if (vchan_id >= info.max_vchans) {
+		VHOST_LOG_CONFIG(ERR, "Invalid DMA %d vChannel %u.\n", dma_id, vchan_id);
+		return -1;
+	}
+
+	if (!dma_copy_track[dma_id].vchans) {
+		struct async_dma_vchan_info *vchans;
+
+		vchans = rte_zmalloc(NULL, sizeof(struct async_dma_vchan_info) * info.max_vchans,
+				RTE_CACHE_LINE_SIZE);
+		if (vchans == NULL) {
+			VHOST_LOG_CONFIG(ERR, "Failed to allocate vchans for DMA %d vChannel %u.\n",
+					dma_id, vchan_id);
+			return -1;
+		}
+
+		dma_copy_track[dma_id].vchans = vchans;
+	}
+
+	if (dma_copy_track[dma_id].vchans[vchan_id].pkts_cmpl_flag_addr) {
+		VHOST_LOG_CONFIG(INFO, "DMA %d vChannel %u already registered.\n", dma_id,
+				vchan_id);
+		return 0;
+	}
+
+	max_desc = info.max_desc;
+	if (!rte_is_power_of_2(max_desc))
+		max_desc = rte_align32pow2(max_desc);
+
+	pkts_cmpl_flag_addr = rte_zmalloc(NULL, sizeof(bool *) * max_desc, RTE_CACHE_LINE_SIZE);
+	if (!pkts_cmpl_flag_addr) {
+		VHOST_LOG_CONFIG(ERR, "Failed to allocate pkts_cmpl_flag_addr for DMA %d "
+				"vChannel %u.\n", dma_id, vchan_id);
+
+		if (dma_copy_track[dma_id].nr_vchans == 0) {
+			rte_free(dma_copy_track[dma_id].vchans);
+			dma_copy_track[dma_id].vchans = NULL;
+		}
+		return -1;
+	}
+
+	dma_copy_track[dma_id].vchans[vchan_id].pkts_cmpl_flag_addr = pkts_cmpl_flag_addr;
+	dma_copy_track[dma_id].vchans[vchan_id].ring_size = max_desc;
+	dma_copy_track[dma_id].vchans[vchan_id].ring_mask = max_desc - 1;
+	dma_copy_track[dma_id].nr_vchans++;
 
 	return 0;
 }

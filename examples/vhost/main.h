@@ -8,6 +8,7 @@
 #include <sys/queue.h>
 
 #include <rte_ether.h>
+#include <rte_pci.h>
 
 /* Macros for printing using RTE_LOG */
 #define RTE_LOGTYPE_VHOST_CONFIG RTE_LOGTYPE_USER1
@@ -77,6 +78,16 @@ struct lcore_info {
 	volatile uint8_t	dev_removal_flag;
 
 	struct vhost_dev_tailq_list vdev_list;
+};
+
+struct dma_info {
+	struct rte_pci_addr addr;
+	int16_t dev_id;
+	bool async_enabled;
+};
+
+struct dma_for_vhost {
+	struct dma_info dmas[RTE_MAX_QUEUES_PER_PORT * 2];
 };
 
 /* we implement non-extra virtio net features */
