@@ -6465,8 +6465,6 @@ eth_dev_handle_port_info(const char *cmd __rte_unused,
 		return -EINVAL;
 
 	eth_dev = &rte_eth_devices[port_id];
-	if (!eth_dev)
-		return -EINVAL;
 
 	rxq_state = rte_tel_data_alloc();
 	if (!rxq_state)
