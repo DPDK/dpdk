@@ -123,7 +123,7 @@ eal_create_runtime_dir(void)
 		return -1;
 	}
 
-	if (eal_set_runtime_dir(run_dir, sizeof(run_dir)))
+	if (eal_set_runtime_dir(run_dir))
 		return -1;
 
 	return 0;

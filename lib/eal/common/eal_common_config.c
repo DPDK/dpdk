@@ -29,12 +29,9 @@ rte_eal_get_runtime_dir(void)
 }
 
 int
-eal_set_runtime_dir(char *run_dir, size_t size)
+eal_set_runtime_dir(const char *run_dir)
 {
-	size_t str_size;
-
-	str_size = strlcpy(runtime_dir, run_dir, size);
-	if (str_size >= size) {
+	if (strlcpy(runtime_dir, run_dir, PATH_MAX) >= PATH_MAX) {
 		RTE_LOG(ERR, EAL, "Runtime directory string too long\n");
 		return -1;
 	}

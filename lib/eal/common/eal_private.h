@@ -681,13 +681,11 @@ eal_mem_set_dump(void *virt, size_t size, bool dump);
  *
  * @param run_dir
  *   The new runtime directory path of DPDK
- * @param size
- *   The size of the new runtime directory path in bytes.
  * @return
  *   0 on success, (-1) on failure.
  */
 int
-eal_set_runtime_dir(char *run_dir, size_t size);
+eal_set_runtime_dir(const char *run_dir);
 
 /**
  * Get the internal configuration structure.
