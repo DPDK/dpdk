@@ -90,7 +90,7 @@ const struct rss_type_info rss_type_table[] = {
 	{ "all", RTE_ETH_RSS_ETH | RTE_ETH_RSS_VLAN | RTE_ETH_RSS_IP | RTE_ETH_RSS_TCP |
 		RTE_ETH_RSS_UDP | RTE_ETH_RSS_SCTP | RTE_ETH_RSS_L2_PAYLOAD |
 		RTE_ETH_RSS_L2TPV3 | RTE_ETH_RSS_ESP | RTE_ETH_RSS_AH | RTE_ETH_RSS_PFCP |
-		RTE_ETH_RSS_GTPU | RTE_ETH_RSS_ECPRI | RTE_ETH_RSS_MPLS},
+		RTE_ETH_RSS_GTPU | RTE_ETH_RSS_ECPRI | RTE_ETH_RSS_MPLS | RTE_ETH_RSS_L2TPV2},
 	{ "none", 0 },
 	{ "eth", RTE_ETH_RSS_ETH },
 	{ "l2-src-only", RTE_ETH_RSS_L2_SRC_ONLY },
@@ -143,6 +143,7 @@ const struct rss_type_info rss_type_table[] = {
 	{ "mpls", RTE_ETH_RSS_MPLS },
 	{ "ipv4-chksum", RTE_ETH_RSS_IPV4_CHKSUM },
 	{ "l4-chksum", RTE_ETH_RSS_L4_CHKSUM },
+	{ "l2tpv2", RTE_ETH_RSS_L2TPV2 },
 	{ NULL, 0 },
 };
 

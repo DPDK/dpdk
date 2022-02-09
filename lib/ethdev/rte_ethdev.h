@@ -651,6 +651,8 @@ struct rte_eth_rss_conf {
 #define RTE_ETH_RSS_L4_CHKSUM          RTE_BIT64(35)
 #define ETH_RSS_L4_CHKSUM RTE_DEPRECATED(ETH_RSS_L4_CHKSUM) RTE_ETH_RSS_L4_CHKSUM
 
+#define RTE_ETH_RSS_L2TPV2             RTE_BIT64(36)
+
 /*
  * We use the following macros to combine with above RTE_ETH_RSS_* for
  * more specific input set selection. These bits are defined starting

@@ -798,8 +798,8 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"receive buffers available.\n\n"
 
 			"port config all rss (all|default|ip|tcp|udp|sctp|"
-			"ether|port|vxlan|geneve|nvgre|vxlan-gpe|ecpri|mpls|none|level-default|"
-			"level-outer|level-inner|<flowtype_id>)\n"
+			"ether|port|vxlan|geneve|nvgre|vxlan-gpe|ecpri|mpls|ipv4-chksum|l2tpv2|"
+			"none|level-default|level-outer|level-inner|<flowtype_id>)\n"
 			"    Set the RSS mode.\n\n"
 
 			"port config port-id rss reta (hash,queue)[,(hash,queue)]\n"
@@ -2183,7 +2183,7 @@ cmd_config_rss_parsed(void *parsed_result,
 			RTE_ETH_RSS_TCP | RTE_ETH_RSS_UDP | RTE_ETH_RSS_SCTP |
 			RTE_ETH_RSS_L2_PAYLOAD | RTE_ETH_RSS_L2TPV3 | RTE_ETH_RSS_ESP |
 			RTE_ETH_RSS_AH | RTE_ETH_RSS_PFCP | RTE_ETH_RSS_GTPU |
-			RTE_ETH_RSS_ECPRI;
+			RTE_ETH_RSS_ECPRI | RTE_ETH_RSS_L2TPV2;
 	else if (!strcmp(res->value, "eth"))
 		rss_conf.rss_hf = RTE_ETH_RSS_ETH;
 	else if (!strcmp(res->value, "vlan"))
@@ -2248,6 +2248,8 @@ cmd_config_rss_parsed(void *parsed_result,
 		rss_conf.rss_hf = RTE_ETH_RSS_MPLS;
 	else if (!strcmp(res->value, "ipv4-chksum"))
 		rss_conf.rss_hf = RTE_ETH_RSS_IPV4_CHKSUM;
+	else if (!strcmp(res->value, "l2tpv2"))
+		rss_conf.rss_hf = RTE_ETH_RSS_L2TPV2;
 	else if (!strcmp(res->value, "none"))
 		rss_conf.rss_hf = 0;
 	else if (!strcmp(res->value, "level-default")) {
@@ -2318,8 +2320,8 @@ cmdline_parse_inst_t cmd_config_rss = {
 	.data = NULL,
 	.help_str = "port config all rss "
 		"all|default|eth|vlan|ip|tcp|udp|sctp|ether|port|vxlan|geneve|"
-		"nvgre|vxlan-gpe|l2tpv3|esp|ah|pfcp|ecpri|mpls|none|level-default|"
-		"level-outer|level-inner|ipv4-chksum|<flowtype_id>",
+		"nvgre|vxlan-gpe|l2tpv3|esp|ah|pfcp|ecpri|mpls|ipv4-chksum|l2tpv2|"
+		"none|level-default|level-outer|level-inner|<flowtype_id>",
 	.tokens = {
 		(void *)&cmd_config_rss_port,
 		(void *)&cmd_config_rss_keyword,
@@ -2434,7 +2436,7 @@ cmdline_parse_token_string_t cmd_config_rss_hash_key_rss_type =
 				 "ipv6-tcp-ex#ipv6-udp-ex#"
 				 "l3-src-only#l3-dst-only#l4-src-only#l4-dst-only#"
 				 "l2-src-only#l2-dst-only#s-vlan#c-vlan#"
-				 "l2tpv3#esp#ah#pfcp#pppoe#gtpu#ecpri#mpls");
+				 "l2tpv3#esp#ah#pfcp#pppoe#gtpu#ecpri#mpls#l2tpv2");
 cmdline_parse_token_string_t cmd_config_rss_hash_key_value =
 	TOKEN_STRING_INITIALIZER(struct cmd_config_rss_hash_key, key, NULL);
 
@@ -2447,7 +2449,7 @@ cmdline_parse_inst_t cmd_config_rss_hash_key = {
 		"l2-payload|ipv6-ex|ipv6-tcp-ex|ipv6-udp-ex|"
 		"l3-src-only|l3-dst-only|l4-src-only|l4-dst-only|"
 		"l2-src-only|l2-dst-only|s-vlan|c-vlan|"
-		"l2tpv3|esp|ah|pfcp|pppoe|gtpu|ecpri|mpls "
+		"l2tpv3|esp|ah|pfcp|pppoe|gtpu|ecpri|mpls|l2tpv2 "
 		"<string of hex digits (variable length, NIC dependent)>",
 	.tokens = {
 		(void *)&cmd_config_rss_hash_key_port,

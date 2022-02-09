@@ -71,6 +71,11 @@ New Features
     - ``rte_ipv6_udptcp_cksum_mbuf()``
     - ``rte_ipv6_udptcp_cksum_mbuf_verify()``
 
+* **Added new RSS offload types for L2TPv2 in RSS flow.**
+
+  Added macro RTE_ETH_RSS_L2TPV2, now L2TPv2 session ID field can be used as
+  input set for RSS.
+
 * **Added an API to enable queue based priority flow ctrl(PFC).**
 
   New APIs, ``rte_eth_dev_priority_flow_ctrl_queue_info_get()`` and

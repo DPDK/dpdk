@@ -2308,11 +2308,11 @@ port config - RSS
 
 Set the RSS (Receive Side Scaling) mode on or off::
 
-   testpmd> port config all rss (all|default|eth|vlan|ip|tcp|udp|sctp|ether|port|vxlan|geneve|nvgre|vxlan-gpe|l2tpv3|esp|ah|pfcp|ecpri|mpls|none)
+   testpmd> port config all rss (all|default|eth|vlan|ip|tcp|udp|sctp|ether|port|vxlan|geneve|nvgre|vxlan-gpe|l2tpv3|esp|ah|pfcp|ecpri|mpls|l2tpv2|none)
 
 RSS is on by default.
 
-The ``all`` option is equivalent to eth|vlan|ip|tcp|udp|sctp|ether|l2tpv3|esp|ah|pfcp.
+The ``all`` option is equivalent to eth|vlan|ip|tcp|udp|sctp|ether|l2tpv3|esp|ah|pfcp|l2tpv2.
 
 The ``default`` option enables all supported RSS types reported by device info.
 
