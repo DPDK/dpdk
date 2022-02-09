@@ -174,8 +174,10 @@ rte_hash_find_existing(const char *name);
 
 /**
  * De-allocate all memory used by hash table.
+ *
  * @param h
- *   Hash table to free
+ *   Hash table to free, if NULL, the function does nothing.
+ *
  */
 void
 rte_hash_free(struct rte_hash *h);

@@ -193,7 +193,8 @@ struct rte_ring *rte_ring_create(const char *name, unsigned int count,
  * De-allocate all memory used by the ring.
  *
  * @param r
- *   Ring to free
+ *   Ring to free.
+ *   If NULL then, the function does nothing.
  */
 void rte_ring_free(struct rte_ring *r);
 

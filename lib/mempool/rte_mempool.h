@@ -1101,6 +1101,7 @@ rte_mempool_create_empty(const char *name, unsigned n, unsigned elt_size,
  *
  * @param mp
  *   A pointer to the mempool structure.
+ *   If NULL then, the function does nothing.
  */
 void
 rte_mempool_free(struct rte_mempool *mp);
