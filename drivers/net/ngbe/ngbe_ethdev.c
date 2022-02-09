@@ -1004,6 +1004,7 @@ ngbe_dev_start(struct rte_eth_dev *dev)
 		goto error;
 	}
 
+	hw->mac.setup_pba(hw);
 	ngbe_configure_port(dev);
 
 	err = ngbe_dev_rxtx_start(dev);

@@ -11,6 +11,9 @@
 #define NGBE_FRAME_SIZE_MAX       (9728) /* Maximum frame size, +FCS */
 #define NGBE_FRAME_SIZE_DFT       (1522) /* Default frame size, +FCS */
 #define NGBE_NUM_POOL             (32)
+#define NGBE_PBRXSIZE_MAX         0x00080000 /* 512KB Packet Buffer */
+#define NGBE_PBTXSIZE_MAX         0x00005000 /* 20KB Packet Buffer */
+#define NGBE_TXPKT_SIZE_MAX       0xA /* Max Tx Packet size */
 #define NGBE_MAX_QP               (8)
 #define NGBE_MAX_UTA              128
 
@@ -269,6 +272,9 @@ struct ngbe_mac_info {
 	s32 (*get_link_capabilities)(struct ngbe_hw *hw,
 				      u32 *speed, bool *autoneg);
 
+	/* Packet Buffer manipulation */
+	void (*setup_pba)(struct ngbe_hw *hw);
+
 	/* LED */
 	s32 (*led_on)(struct ngbe_hw *hw, u32 index);
 	s32 (*led_off)(struct ngbe_hw *hw, u32 index);
@@ -311,6 +317,7 @@ struct ngbe_mac_info {
 	u32 mcft_size;
 	u32 vft_size;
 	u32 num_rar_entries;
+	u32 rx_pb_size;
 	u32 max_tx_queues;
 	u32 max_rx_queues;
 	bool get_link_status;

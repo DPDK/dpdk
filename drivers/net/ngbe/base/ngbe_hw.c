@@ -1610,6 +1610,30 @@ void ngbe_set_mac_anti_spoofing(struct ngbe_hw *hw, bool enable, int vf)
 }
 
 /**
+ * ngbe_set_pba - Initialize Rx packet buffer
+ * @hw: pointer to hardware structure
+ * @headroom: reserve n KB of headroom
+ **/
+void ngbe_set_pba(struct ngbe_hw *hw)
+{
+	u32 rxpktsize = hw->mac.rx_pb_size;
+	u32 txpktsize, txpbthresh;
+
+	/* Reserve 256 KB of headroom */
+	rxpktsize -= 256;
+
+	rxpktsize <<= 10;
+	wr32(hw, NGBE_PBRXSIZE, rxpktsize);
+
+	/* Only support an equally distributed Tx packet buffer strategy. */
+	txpktsize = NGBE_PBTXSIZE_MAX;
+	txpbthresh = (txpktsize / 1024) - NGBE_TXPKT_SIZE_MAX;
+
+	wr32(hw, NGBE_PBTXSIZE, txpktsize);
+	wr32(hw, NGBE_PBTXDMATH, txpbthresh);
+}
+
+/**
  *  ngbe_set_vlan_anti_spoofing - Enable/Disable VLAN anti-spoofing
  *  @hw: pointer to hardware structure
  *  @enable: enable or disable switch for VLAN anti-spoofing
@@ -1907,6 +1931,8 @@ s32 ngbe_init_ops_pf(struct ngbe_hw *hw)
 	mac->check_link = ngbe_check_mac_link_em;
 	mac->setup_link = ngbe_setup_mac_link_em;
 
+	mac->setup_pba = ngbe_set_pba;
+
 	/* Manageability interface */
 	mac->init_thermal_sensor_thresh = ngbe_init_thermal_sensor_thresh;
 	mac->check_overtemp = ngbe_mac_check_overtemp;
@@ -1928,6 +1954,7 @@ s32 ngbe_init_ops_pf(struct ngbe_hw *hw)
 	mac->mcft_size		= NGBE_EM_MC_TBL_SIZE;
 	mac->vft_size		= NGBE_EM_VFT_TBL_SIZE;
 	mac->num_rar_entries	= NGBE_EM_RAR_ENTRIES;
+	mac->rx_pb_size		= NGBE_EM_RX_PB_SIZE;
 	mac->max_rx_queues	= NGBE_EM_MAX_RX_QUEUES;
 	mac->max_tx_queues	= NGBE_EM_MAX_TX_QUEUES;
 
