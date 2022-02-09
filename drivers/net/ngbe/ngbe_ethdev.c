@@ -89,7 +89,6 @@ static int ngbe_dev_macsec_interrupt_setup(struct rte_eth_dev *dev);
 static int ngbe_dev_misc_interrupt_setup(struct rte_eth_dev *dev);
 static int ngbe_dev_rxq_interrupt_setup(struct rte_eth_dev *dev);
 static void ngbe_dev_interrupt_handler(void *param);
-static void ngbe_dev_interrupt_delayed_handler(void *param);
 static void ngbe_configure_msix(struct rte_eth_dev *dev);
 
 #define NGBE_SET_HWSTRIP(h, q) do {\
@@ -943,6 +942,9 @@ ngbe_dev_start(struct rte_eth_dev *dev)
 
 	PMD_INIT_FUNC_TRACE();
 
+	/* Stop the link setup handler before resetting the HW. */
+	rte_eal_alarm_cancel(ngbe_dev_setup_link_alarm_handler, dev);
+
 	/* disable uio/vfio intr/eventfd mapping */
 	rte_intr_disable(intr_handle);
 
@@ -1131,6 +1133,8 @@ ngbe_dev_stop(struct rte_eth_dev *dev)
 		return 0;
 
 	PMD_INIT_FUNC_TRACE();
+
+	rte_eal_alarm_cancel(ngbe_dev_setup_link_alarm_handler, dev);
 
 	if ((hw->sub_system_id & NGBE_OEM_MASK) == NGBE_LY_M88E1512_SFP ||
 		(hw->sub_system_id & NGBE_OEM_MASK) == NGBE_LY_YT8521S_SFP) {
@@ -1801,6 +1805,24 @@ ngbe_dev_supported_ptypes_get(struct rte_eth_dev *dev)
 	return NULL;
 }
 
+void
+ngbe_dev_setup_link_alarm_handler(void *param)
+{
+	struct rte_eth_dev *dev = (struct rte_eth_dev *)param;
+	struct ngbe_hw *hw = ngbe_dev_hw(dev);
+	struct ngbe_interrupt *intr = ngbe_dev_intr(dev);
+	u32 speed;
+	bool autoneg = false;
+
+	speed = hw->phy.autoneg_advertised;
+	if (!speed)
+		hw->mac.get_link_capabilities(hw, &speed, &autoneg);
+
+	hw->mac.setup_link(hw, speed, true);
+
+	intr->flags &= ~NGBE_FLAG_NEED_LINK_CONFIG;
+}
+
 /* return 0 means link status changed, -1 means not changed */
 int
 ngbe_dev_link_update_share(struct rte_eth_dev *dev,
@@ -1838,8 +1860,16 @@ ngbe_dev_link_update_share(struct rte_eth_dev *dev,
 		return rte_eth_linkstatus_set(dev, &link);
 	}
 
-	if (!link_up)
+	if (!link_up) {
+		if (hw->phy.media_type == ngbe_media_type_fiber &&
+			hw->phy.type != ngbe_phy_mvl_sfi) {
+			intr->flags |= NGBE_FLAG_NEED_LINK_CONFIG;
+			rte_eal_alarm_set(10,
+				ngbe_dev_setup_link_alarm_handler, dev);
+		}
+
 		return rte_eth_linkstatus_set(dev, &link);
+	}
 
 	intr->flags &= ~NGBE_FLAG_NEED_LINK_CONFIG;
 	link.link_status = RTE_ETH_LINK_UP;
@@ -2062,9 +2092,6 @@ ngbe_dev_interrupt_get_status(struct rte_eth_dev *dev)
 	struct ngbe_hw *hw = ngbe_dev_hw(dev);
 	struct ngbe_interrupt *intr = ngbe_dev_intr(dev);
 
-	/* clear all cause mask */
-	ngbe_disable_intr(hw);
-
 	/* read-on-clear nic registers here */
 	eicr = ((u32 *)hw->isb_mem)[NGBE_ISB_MISC];
 	PMD_DRV_LOG(DEBUG, "eicr %x", eicr);
@@ -2083,6 +2110,8 @@ ngbe_dev_interrupt_get_status(struct rte_eth_dev *dev)
 
 	if (eicr & NGBE_ICRMISC_GPIO)
 		intr->flags |= NGBE_FLAG_NEED_LINK_UPDATE;
+
+	((u32 *)hw->isb_mem)[NGBE_ISB_MISC] = 0;
 
 	return 0;
 }
@@ -2136,7 +2165,6 @@ static int
 ngbe_dev_interrupt_action(struct rte_eth_dev *dev)
 {
 	struct ngbe_interrupt *intr = ngbe_dev_intr(dev);
-	int64_t timeout;
 
 	PMD_DRV_LOG(DEBUG, "intr action type %d", intr->flags);
 
@@ -2152,84 +2180,17 @@ ngbe_dev_interrupt_action(struct rte_eth_dev *dev)
 		rte_eth_linkstatus_get(dev, &link);
 
 		ngbe_dev_link_update(dev, 0);
-
-		/* likely to up */
-		if (link.link_status != RTE_ETH_LINK_UP)
-			/* handle it 1 sec later, wait it being stable */
-			timeout = NGBE_LINK_UP_CHECK_TIMEOUT;
-		/* likely to down */
-		else
-			/* handle it 4 sec later, wait it being stable */
-			timeout = NGBE_LINK_DOWN_CHECK_TIMEOUT;
-
+		intr->flags &= ~NGBE_FLAG_NEED_LINK_UPDATE;
 		ngbe_dev_link_status_print(dev);
-		if (rte_eal_alarm_set(timeout * 1000,
-				      ngbe_dev_interrupt_delayed_handler,
-				      (void *)dev) < 0) {
-			PMD_DRV_LOG(ERR, "Error setting alarm");
-		} else {
-			/* remember original mask */
-			intr->mask_misc_orig = intr->mask_misc;
-			/* only disable lsc interrupt */
-			intr->mask_misc &= ~NGBE_ICRMISC_PHY;
-
-			intr->mask_orig = intr->mask;
-			/* only disable all misc interrupts */
-			intr->mask &= ~(1ULL << NGBE_MISC_VEC_ID);
-		}
+		if (dev->data->dev_link.link_speed != link.link_speed)
+			rte_eth_dev_callback_process(dev,
+				RTE_ETH_EVENT_INTR_LSC, NULL);
 	}
 
 	PMD_DRV_LOG(DEBUG, "enable intr immediately");
 	ngbe_enable_intr(dev);
 
 	return 0;
-}
-
-/**
- * Interrupt handler which shall be registered for alarm callback for delayed
- * handling specific interrupt to wait for the stable nic state. As the
- * NIC interrupt state is not stable for ngbe after link is just down,
- * it needs to wait 4 seconds to get the stable status.
- *
- * @param param
- *  The address of parameter (struct rte_eth_dev *) registered before.
- */
-static void
-ngbe_dev_interrupt_delayed_handler(void *param)
-{
-	struct rte_eth_dev *dev = (struct rte_eth_dev *)param;
-	struct ngbe_interrupt *intr = ngbe_dev_intr(dev);
-	struct ngbe_hw *hw = ngbe_dev_hw(dev);
-	uint32_t eicr;
-
-	ngbe_disable_intr(hw);
-
-	eicr = ((u32 *)hw->isb_mem)[NGBE_ISB_MISC];
-	if (eicr & NGBE_ICRMISC_VFMBX)
-		ngbe_pf_mbx_process(dev);
-
-	if (intr->flags & NGBE_FLAG_NEED_LINK_UPDATE) {
-		ngbe_dev_link_update(dev, 0);
-		intr->flags &= ~NGBE_FLAG_NEED_LINK_UPDATE;
-		ngbe_dev_link_status_print(dev);
-		rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_INTR_LSC,
-					      NULL);
-	}
-
-	if (intr->flags & NGBE_FLAG_MACSEC) {
-		rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_MACSEC,
-					      NULL);
-		intr->flags &= ~NGBE_FLAG_MACSEC;
-	}
-
-	/* restore original mask */
-	intr->mask_misc = intr->mask_misc_orig;
-	intr->mask_misc_orig = 0;
-	intr->mask = intr->mask_orig;
-	intr->mask_orig = 0;
-
-	PMD_DRV_LOG(DEBUG, "enable intr in delayed handler S[%08x]", eicr);
-	ngbe_enable_intr(dev);
 }
 
 /**
