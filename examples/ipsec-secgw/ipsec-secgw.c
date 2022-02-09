@@ -3293,6 +3293,9 @@ main(int32_t argc, char **argv)
 		rte_exit(EXIT_FAILURE, "Invalid unprotected portmask 0x%x\n",
 				unprotected_port_mask);
 
+	if (unprotected_port_mask && !nb_sa_in)
+		rte_exit(EXIT_FAILURE, "Cannot use unprotected portmask without configured SA inbound\n");
+
 	if (check_poll_mode_params(eh_conf) < 0)
 		rte_exit(EXIT_FAILURE, "check_poll_mode_params failed\n");
 
