@@ -111,6 +111,10 @@ New Features
     - YT8521S PHY connects to SFP
   * Added LED OEM support.
 
+* **Updated Wangxun txgbe driver.**
+
+  * Added LED OEM support.
+
 * **Updated Marvell cnxk crypto PMD.**
 
   * Added SHA256-HMAC support in lookaside protocol (IPsec) for CN10K.

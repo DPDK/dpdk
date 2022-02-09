@@ -3162,7 +3162,7 @@ txgbe_dev_led_on(struct rte_eth_dev *dev)
 	struct txgbe_hw *hw;
 
 	hw = TXGBE_DEV_HW(dev);
-	return txgbe_led_on(hw, 4) == 0 ? 0 : -ENOTSUP;
+	return txgbe_led_on(hw, TXGBE_LEDCTL_ACTIVE) == 0 ? 0 : -ENOTSUP;
 }
 
 static int
@@ -3171,7 +3171,7 @@ txgbe_dev_led_off(struct rte_eth_dev *dev)
 	struct txgbe_hw *hw;
 
 	hw = TXGBE_DEV_HW(dev);
-	return txgbe_led_off(hw, 4) == 0 ? 0 : -ENOTSUP;
+	return txgbe_led_off(hw, TXGBE_LEDCTL_ACTIVE) == 0 ? 0 : -ENOTSUP;
 }
 
 static int

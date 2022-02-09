@@ -302,11 +302,13 @@
 #define TXGBE_TEREDOPORT                0x01441C
 #define TXGBE_LEDCTL                    0x014424
 #define   TXGBE_LEDCTL_SEL_MASK         MS(0, 0xFFFF)
-#define   TXGBE_LEDCTL_SEL(s)           MS((s), 0x1)
-#define   TXGBE_LEDCTL_ORD_MASK          MS(16, 0xFFFF)
-#define   TXGBE_LEDCTL_ORD(s)            MS(((s)+16), 0x1)
-	/* s=UP(0),10G(1),1G(2),100M(3),BSY(4) */
-#define   TXGBE_LEDCTL_ACTIVE      (TXGBE_LEDCTL_SEL(4) | TXGBE_LEDCTL_ORD(4))
+#define   TXGBE_LEDCTL_ORD_MASK         MS(16, 0xFFFF)
+#define   TXGBE_LEDCTL_ORD_SHIFT        16
+#define   TXGBE_LEDCTL_UP		MS(0, 0x1)
+#define   TXGBE_LEDCTL_10G		MS(1, 0x1)
+#define   TXGBE_LEDCTL_1G		MS(2, 0x1)
+#define   TXGBE_LEDCTL_100M		MS(3, 0x1)
+#define   TXGBE_LEDCTL_ACTIVE		MS(4, 0x1)
 #define TXGBE_TAGTPID(i)                (0x014430 + (i) * 4) /* 0-3 */
 #define   TXGBE_TAGTPID_LSB_MASK        MS(0, 0xFFFF)
 #define   TXGBE_TAGTPID_LSB(v)          LS(v, 0, 0xFFFF)

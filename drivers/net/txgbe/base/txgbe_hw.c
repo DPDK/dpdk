@@ -529,12 +529,9 @@ s32 txgbe_led_on(struct txgbe_hw *hw, u32 index)
 
 	DEBUGFUNC("txgbe_led_on");
 
-	if (index > 4)
-		return TXGBE_ERR_PARAM;
-
 	/* To turn on the LED, set mode to ON. */
-	led_reg |= TXGBE_LEDCTL_SEL(index);
-	led_reg |= TXGBE_LEDCTL_ORD(index);
+	led_reg |= index << TXGBE_LEDCTL_ORD_SHIFT;
+	led_reg |= index;
 	wr32(hw, TXGBE_LEDCTL, led_reg);
 	txgbe_flush(hw);
 
@@ -552,12 +549,9 @@ s32 txgbe_led_off(struct txgbe_hw *hw, u32 index)
 
 	DEBUGFUNC("txgbe_led_off");
 
-	if (index > 4)
-		return TXGBE_ERR_PARAM;
-
 	/* To turn off the LED, set mode to OFF. */
-	led_reg &= ~(TXGBE_LEDCTL_SEL(index));
-	led_reg &= ~(TXGBE_LEDCTL_ORD(index));
+	led_reg &= ~(index << TXGBE_LEDCTL_ORD_SHIFT);
+	led_reg |= index;
 	wr32(hw, TXGBE_LEDCTL, led_reg);
 	txgbe_flush(hw);
 
@@ -3054,6 +3048,10 @@ void txgbe_disable_tx_laser_multispeed_fiber(struct txgbe_hw *hw)
 	if (txgbe_check_reset_blocked(hw))
 		return;
 
+	if (txgbe_close_notify(hw))
+		txgbe_led_off(hw, TXGBE_LEDCTL_UP | TXGBE_LEDCTL_10G |
+				TXGBE_LEDCTL_1G | TXGBE_LEDCTL_ACTIVE);
+
 	/* Disable Tx laser; allow 100us to go dark per spec */
 	esdp_reg |= (TXGBE_GPIOBIT_0 | TXGBE_GPIOBIT_1);
 	wr32(hw, TXGBE_GPIODATA, esdp_reg);
@@ -3072,6 +3070,9 @@ void txgbe_disable_tx_laser_multispeed_fiber(struct txgbe_hw *hw)
 void txgbe_enable_tx_laser_multispeed_fiber(struct txgbe_hw *hw)
 {
 	u32 esdp_reg = rd32(hw, TXGBE_GPIODATA);
+
+	if (txgbe_open_notify(hw))
+		wr32(hw, TXGBE_LEDCTL, 0);
 
 	/* Enable Tx laser; allow 100ms to light up */
 	esdp_reg &= ~(TXGBE_GPIOBIT_0 | TXGBE_GPIOBIT_1);

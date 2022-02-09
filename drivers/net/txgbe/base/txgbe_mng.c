@@ -82,6 +82,11 @@ txgbe_hic_unlocked(struct txgbe_hw *hw, u32 *buffer, u32 length, u32 timeout)
 		return TXGBE_ERR_HOST_INTERFACE_COMMAND;
 	}
 
+	if ((rd32(hw, TXGBE_MNGMBX) & 0xff0000) >> 16 == 0x80) {
+		DEBUGOUT("It's unknown command.\n");
+		return TXGBE_ERR_MNG_ACCESS_FAILED;
+	}
+
 	return 0;
 }
 
@@ -260,6 +265,70 @@ s32 txgbe_hic_sr_write(struct txgbe_hw *hw, u32 addr, u8 *buf, int len)
 	UNREFERENCED_PARAMETER(&command);
 
 	return err;
+}
+
+s32 txgbe_close_notify(struct txgbe_hw *hw)
+{
+	u32 tmp;
+	s32 status;
+	struct txgbe_hic_write_shadow_ram buffer;
+
+	DEBUGFUNC("txgbe_close_notify");
+
+	buffer.hdr.req.cmd = FW_DW_CLOSE_NOTIFY;
+	buffer.hdr.req.buf_lenh = 0;
+	buffer.hdr.req.buf_lenl = 0;
+	buffer.hdr.req.checksum = FW_DEFAULT_CHECKSUM;
+
+	/* one word */
+	buffer.length = 0;
+	buffer.address = 0;
+
+	status = txgbe_host_interface_command(hw, (u32 *)&buffer,
+					      sizeof(buffer),
+					      TXGBE_HI_COMMAND_TIMEOUT, false);
+	if (status)
+		return status;
+
+	tmp = rd32(hw, TXGBE_MNGSWSYNC);
+	if (tmp == TXGBE_CHECKSUM_CAP_ST_PASS)
+		status = 0;
+	else
+		status = TXGBE_ERR_EEPROM_CHECKSUM;
+
+	return status;
+}
+
+s32 txgbe_open_notify(struct txgbe_hw *hw)
+{
+	u32 tmp;
+	s32 status;
+	struct txgbe_hic_write_shadow_ram buffer;
+
+	DEBUGFUNC("txgbe_open_notify");
+
+	buffer.hdr.req.cmd = FW_DW_OPEN_NOTIFY;
+	buffer.hdr.req.buf_lenh = 0;
+	buffer.hdr.req.buf_lenl = 0;
+	buffer.hdr.req.checksum = FW_DEFAULT_CHECKSUM;
+
+	/* one word */
+	buffer.length = 0;
+	buffer.address = 0;
+
+	status = txgbe_host_interface_command(hw, (u32 *)&buffer,
+					      sizeof(buffer),
+					      TXGBE_HI_COMMAND_TIMEOUT, false);
+	if (status)
+		return status;
+
+	tmp = rd32(hw, TXGBE_MNGSWSYNC);
+	if (tmp == TXGBE_CHECKSUM_CAP_ST_PASS)
+		status = 0;
+	else
+		status = TXGBE_ERR_EEPROM_CHECKSUM;
+
+	return status;
 }
 
 /**

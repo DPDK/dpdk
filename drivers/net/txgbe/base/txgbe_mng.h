@@ -51,6 +51,11 @@
 #define FW_PHY_TOKEN_DELAY		5	/* milliseconds */
 #define FW_PHY_TOKEN_WAIT		5	/* seconds */
 #define FW_PHY_TOKEN_RETRIES ((FW_PHY_TOKEN_WAIT * 1000) / FW_PHY_TOKEN_DELAY)
+#define FW_DW_OPEN_NOTIFY               0xE9
+#define FW_DW_CLOSE_NOTIFY              0xEA
+
+#define TXGBE_CHECKSUM_CAP_ST_PASS      0x80658383
+#define TXGBE_CHECKSUM_CAP_ST_FAIL      0x70657376
 
 /* Host Interface Command Structures */
 struct txgbe_hic_hdr {
@@ -168,6 +173,8 @@ struct txgbe_hic_upg_verify {
 
 s32 txgbe_hic_sr_read(struct txgbe_hw *hw, u32 addr, u8 *buf, int len);
 s32 txgbe_hic_sr_write(struct txgbe_hw *hw, u32 addr, u8 *buf, int len);
+s32 txgbe_close_notify(struct txgbe_hw *hw);
+s32 txgbe_open_notify(struct txgbe_hw *hw);
 
 s32 txgbe_hic_set_drv_ver(struct txgbe_hw *hw, u8 maj, u8 min, u8 build,
 			u8 ver, u16 len, const char *str);
