@@ -184,12 +184,16 @@ kni_dev_remove(struct kni_dev *dev)
 	if (!dev)
 		return -ENODEV;
 
+	/*
+	 * The memory of kni device is allocated and released together
+	 * with net device. Release mbuf before freeing net device.
+	 */
+	kni_net_release_fifo_phy(dev);
+
 	if (dev->net_dev) {
 		unregister_netdev(dev->net_dev);
 		free_netdev(dev->net_dev);
 	}
-
-	kni_net_release_fifo_phy(dev);
 
 	return 0;
 }
@@ -220,8 +224,8 @@ kni_release(struct inode *inode, struct file *file)
 			dev->pthread = NULL;
 		}
 
-		kni_dev_remove(dev);
 		list_del(&dev->list);
+		kni_dev_remove(dev);
 	}
 	up_write(&knet->kni_list_lock);
 
@@ -470,8 +474,8 @@ kni_ioctl_release(struct net *net, uint32_t ioctl_num,
 			dev->pthread = NULL;
 		}
 
-		kni_dev_remove(dev);
 		list_del(&dev->list);
+		kni_dev_remove(dev);
 		ret = 0;
 		break;
 	}
