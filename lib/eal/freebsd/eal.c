@@ -72,62 +72,6 @@ struct lcore_config lcore_config[RTE_MAX_LCORE];
 /* used by rte_rdtsc() */
 int rte_cycles_vmware_tsc_map;
 
-static const char *default_runtime_dir = "/var/run";
-
-int
-eal_create_runtime_dir(void)
-{
-	const char *directory = default_runtime_dir;
-	const char *xdg_runtime_dir = getenv("XDG_RUNTIME_DIR");
-	const char *fallback = "/tmp";
-	char run_dir[PATH_MAX];
-	char tmp[PATH_MAX];
-	int ret;
-
-	if (getuid() != 0) {
-		/* try XDG path first, fall back to /tmp */
-		if (xdg_runtime_dir != NULL)
-			directory = xdg_runtime_dir;
-		else
-			directory = fallback;
-	}
-	/* create DPDK subdirectory under runtime dir */
-	ret = snprintf(tmp, sizeof(tmp), "%s/dpdk", directory);
-	if (ret < 0 || ret == sizeof(tmp)) {
-		RTE_LOG(ERR, EAL, "Error creating DPDK runtime path name\n");
-		return -1;
-	}
-
-	/* create prefix-specific subdirectory under DPDK runtime dir */
-	ret = snprintf(run_dir, sizeof(run_dir), "%s/%s",
-			tmp, eal_get_hugefile_prefix());
-	if (ret < 0 || ret == sizeof(run_dir)) {
-		RTE_LOG(ERR, EAL, "Error creating prefix-specific runtime path name\n");
-		return -1;
-	}
-
-	/* create the path if it doesn't exist. no "mkdir -p" here, so do it
-	 * step by step.
-	 */
-	ret = mkdir(tmp, 0700);
-	if (ret < 0 && errno != EEXIST) {
-		RTE_LOG(ERR, EAL, "Error creating '%s': %s\n",
-			tmp, strerror(errno));
-		return -1;
-	}
-
-	ret = mkdir(run_dir, 0700);
-	if (ret < 0 && errno != EEXIST) {
-		RTE_LOG(ERR, EAL, "Error creating '%s': %s\n",
-			run_dir, strerror(errno));
-		return -1;
-	}
-
-	if (eal_set_runtime_dir(run_dir))
-		return -1;
-
-	return 0;
-}
 
 int
 eal_clean_runtime_dir(void)
@@ -137,38 +81,6 @@ eal_clean_runtime_dir(void)
 	 */
 	return 0;
 }
-
-/* parse a sysfs (or other) file containing one integer value */
-int
-eal_parse_sysfs_value(const char *filename, unsigned long *val)
-{
-	FILE *f;
-	char buf[BUFSIZ];
-	char *end = NULL;
-
-	if ((f = fopen(filename, "r")) == NULL) {
-		RTE_LOG(ERR, EAL, "%s(): cannot open sysfs value %s\n",
-			__func__, filename);
-		return -1;
-	}
-
-	if (fgets(buf, sizeof(buf), f) == NULL) {
-		RTE_LOG(ERR, EAL, "%s(): cannot read sysfs value %s\n",
-			__func__, filename);
-		fclose(f);
-		return -1;
-	}
-	*val = strtoul(buf, &end, 0);
-	if ((buf[0] == '\0') || (end == NULL) || (*end != '\n')) {
-		RTE_LOG(ERR, EAL, "%s(): cannot parse sysfs value %s\n",
-				__func__, filename);
-		fclose(f);
-		return -1;
-	}
-	fclose(f);
-	return 0;
-}
-
 
 /* create memory configuration in shared/mmap memory. Take out
  * a write lock on the memsegs, so we can auto-detect primary/secondary.
