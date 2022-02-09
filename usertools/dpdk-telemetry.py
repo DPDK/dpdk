@@ -75,9 +75,13 @@ def print_socket_options(prefix, paths):
 def get_dpdk_runtime_dir(fp):
     """ Using the same logic as in DPDK's EAL, get the DPDK runtime directory
     based on the file-prefix and user """
-    if (os.getuid() == 0):
-        return os.path.join('/var/run/dpdk', fp)
-    return os.path.join(os.environ.get('XDG_RUNTIME_DIR', '/tmp'), 'dpdk', fp)
+    run_dir = os.environ.get('RUNTIME_DIRECTORY')
+    if not run_dir:
+        if (os.getuid() == 0):
+            run_dir = '/var/run'
+        else:
+            run_dir = os.environ.get('XDG_RUNTIME_DIR', '/tmp')
+    return os.path.join(run_dir, 'dpdk', fp)
 
 
 def list_fp():

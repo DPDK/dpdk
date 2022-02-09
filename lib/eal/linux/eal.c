@@ -86,25 +86,28 @@ struct lcore_config lcore_config[RTE_MAX_LCORE];
 /* used by rte_rdtsc() */
 int rte_cycles_vmware_tsc_map;
 
-static const char *default_runtime_dir = "/var/run";
-
 int
 eal_create_runtime_dir(void)
 {
-	const char *directory = default_runtime_dir;
-	const char *xdg_runtime_dir = getenv("XDG_RUNTIME_DIR");
-	const char *fallback = "/tmp";
+	const char *directory;
 	char run_dir[PATH_MAX];
 	char tmp[PATH_MAX];
 	int ret;
 
-	if (getuid() != 0) {
-		/* try XDG path first, fall back to /tmp */
-		if (xdg_runtime_dir != NULL)
-			directory = xdg_runtime_dir;
+	/* from RuntimeDirectory= see systemd.exec */
+	directory = getenv("RUNTIME_DIRECTORY");
+	if (directory == NULL) {
+		/*
+		 * Used standard convention defined in
+		 * XDG Base Directory Specification and
+		 * Filesystem Hierarchy Standard.
+		 */
+		if (getuid() == 0)
+			directory = "/var/run";
 		else
-			directory = fallback;
+			directory = getenv("XDG_RUNTIME_DIR") ? : "/tmp";
 	}
+
 	/* create DPDK subdirectory under runtime dir */
 	ret = snprintf(tmp, sizeof(tmp), "%s/dpdk", directory);
 	if (ret < 0 || ret == sizeof(tmp)) {
