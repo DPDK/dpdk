@@ -806,10 +806,8 @@ txa_service_queue_add(uint8_t id,
 
 	rte_spinlock_lock(&txa->tx_lock);
 
-	if (txa_service_is_queue_added(txa, eth_dev, tx_queue_id)) {
-		rte_spinlock_unlock(&txa->tx_lock);
-		return 0;
-	}
+	if (txa_service_is_queue_added(txa, eth_dev, tx_queue_id))
+		goto ret_unlock;
 
 	ret = txa_service_queue_array_alloc(txa, eth_dev->data->port_id);
 	if (ret)
@@ -821,6 +819,8 @@ txa_service_queue_add(uint8_t id,
 
 	tdi = &txa->txa_ethdev[eth_dev->data->port_id];
 	tqi = txa_service_queue(txa, eth_dev->data->port_id, tx_queue_id);
+	if (tqi == NULL)
+		goto err_unlock;
 
 	txa_retry = &tqi->txa_retry;
 	txa_retry->id = txa->id;
@@ -836,6 +836,10 @@ txa_service_queue_add(uint8_t id,
 	tdi->nb_queues++;
 	txa->nb_queues++;
 
+ret_unlock:
+	rte_spinlock_unlock(&txa->tx_lock);
+	return 0;
+
 err_unlock:
 	if (txa->nb_queues == 0) {
 		txa_service_queue_array_free(txa,
@@ -844,7 +848,7 @@ err_unlock:
 	}
 
 	rte_spinlock_unlock(&txa->tx_lock);
-	return 0;
+	return -1;
 }
 
 static int
