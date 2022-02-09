@@ -3857,6 +3857,7 @@ This section lists supported pattern items and their attributes, if any.
   - ``session_id {unsigned}``: L2TPv2 session identifier.
   - ``ns {unsigned}``: L2TPv2 option ns.
   - ``nr {unsigned}``: L2TPv2 option nr.
+  - ``offset_size {unsigned}``: L2TPv2 option offset.
 
 - ``ppp``: match PPP header.
 
@@ -5090,19 +5091,45 @@ The meter policy action list: ``green -> green, yellow -> yellow, red -> red``.
    testpmd> create port meter 0 1 13 1 yes 0xffff 0 0
    testpmd> flow create 0 priority 0 ingress group 1 pattern eth / end actions meter mtr_id 1 / end
 
-Sample PPPoL2TPv2oUDP RSS rules
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Sample L2TPv2 RSS rules
+~~~~~~~~~~~~~~~~~~~~~~~
 
-PPPoL2TPv2oUDP RSS rules can be created by the following commands::
+L2TPv2 RSS rules can be created by the following commands::
 
- testpmd> flow create 0 ingress pattern eth / ipv4 / udp / l2tpv2 / ppp / ipv4
-          / end actions rss types ipv4 end queues end / end
- testpmd> flow create 0 ingress pattern eth / ipv4 / udp / l2tpv2 / ppp / ipv6
-          / udp / end actions rss types ipv6-udp end queues end / end
- testpmd> flow create 0 ingress pattern eth / ipv6 / udp / l2tpv2 / ppp / ipv4
-          / tcp / end actions rss types ipv4-tcp end queues end / end
- testpmd> flow create 0 ingress pattern eth / ipv6 / udp / l2tpv2 / ppp / ipv6
-          / end actions rss types ipv6 end queues end / end
+   testpmd> flow create 0 ingress pattern eth / ipv4 / udp / l2tpv2 type control
+            / end actions rss types l2tpv2 end queues end / end
+   testpmd> flow create 0 ingress pattern eth / ipv4 / udp / l2tpv2 / end
+            actions rss types eth l2-src-only end queues end / end
+   testpmd> flow create 0 ingress pattern eth / ipv4 / udp / l2tpv2 / ppp / end
+            actions rss types l2tpv2 end queues end / end
+   testpmd> flow create 0 ingress pattern eth / ipv4 / udp / l2tpv2 / ppp / ipv4
+            / end actions rss types ipv4 end queues end / end
+   testpmd> flow create 0 ingress pattern eth / ipv4 / udp / l2tpv2 / ppp / ipv6
+            / udp / end actions rss types ipv6-udp end queues end / end
+   testpmd> flow create 0 ingress pattern eth / ipv6 / udp / l2tpv2 / ppp / ipv4
+            / tcp / end actions rss types ipv4-tcp end queues end / end
+   testpmd> flow create 0 ingress pattern eth / ipv6 / udp / l2tpv2 / ppp / ipv6
+            / end actions rss types ipv6 end queues end / end
+
+Sample L2TPv2 FDIR rules
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+L2TPv2 FDIR rules can be created by the following commands::
+
+   testpmd> flow create 0 ingress pattern eth / ipv4 / udp / l2tpv2 type control
+            session_id is 0x1111 / end actions queue index 3 / end
+   testpmd> flow create 0 ingress pattern eth src is 00:00:00:00:00:01 / ipv4
+            / udp / l2tpv2 type data / end actions queue index 3 / end
+   testpmd> flow create 0 ingress pattern eth / ipv4 / udp / l2tpv2 type data
+            session_id is 0x1111 / ppp / end actions queue index 3 / end
+   testpmd> flow create 0 ingress pattern eth / ipv4 / udp / l2tpv2 / ppp / ipv4
+            src is 10.0.0.1 / end actions queue index 3 / end
+   testpmd> flow create 0 ingress pattern eth / ipv6 / udp / l2tpv2 / ppp / ipv6
+            dst is ABAB:910B:6666:3457:8295:3333:1800:2929 / end actions queue index 3 / end
+   testpmd> flow create 0 ingress pattern eth / ipv4 / udp / l2tpv2 / ppp / ipv4
+            / udp src is 22 / end actions queue index 3 / end
+   testpmd> flow create 0 ingress pattern eth / ipv4 / udp / l2tpv2 / ppp / ipv4
+            / tcp dst is 23 / end actions queue index 3 / end
 
 Sample RAW rule
 ~~~~~~~~~~~~~~~

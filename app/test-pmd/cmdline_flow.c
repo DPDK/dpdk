@@ -323,13 +323,30 @@ enum index {
 	ITEM_FLEX_ITEM_HANDLE,
 	ITEM_FLEX_PATTERN_HANDLE,
 	ITEM_L2TPV2,
-	ITEM_L2TPV2_COMMON,
-	ITEM_L2TPV2_COMMON_TYPE,
-	ITEM_L2TPV2_COMMON_TYPE_DATA_L,
-	ITEM_L2TPV2_COMMON_TYPE_CTRL,
+	ITEM_L2TPV2_TYPE,
+	ITEM_L2TPV2_TYPE_DATA,
+	ITEM_L2TPV2_TYPE_DATA_L,
+	ITEM_L2TPV2_TYPE_DATA_S,
+	ITEM_L2TPV2_TYPE_DATA_O,
+	ITEM_L2TPV2_TYPE_DATA_L_S,
+	ITEM_L2TPV2_TYPE_CTRL,
+	ITEM_L2TPV2_MSG_DATA_TUNNEL_ID,
+	ITEM_L2TPV2_MSG_DATA_SESSION_ID,
 	ITEM_L2TPV2_MSG_DATA_L_LENGTH,
 	ITEM_L2TPV2_MSG_DATA_L_TUNNEL_ID,
 	ITEM_L2TPV2_MSG_DATA_L_SESSION_ID,
+	ITEM_L2TPV2_MSG_DATA_S_TUNNEL_ID,
+	ITEM_L2TPV2_MSG_DATA_S_SESSION_ID,
+	ITEM_L2TPV2_MSG_DATA_S_NS,
+	ITEM_L2TPV2_MSG_DATA_S_NR,
+	ITEM_L2TPV2_MSG_DATA_O_TUNNEL_ID,
+	ITEM_L2TPV2_MSG_DATA_O_SESSION_ID,
+	ITEM_L2TPV2_MSG_DATA_O_OFFSET,
+	ITEM_L2TPV2_MSG_DATA_L_S_LENGTH,
+	ITEM_L2TPV2_MSG_DATA_L_S_TUNNEL_ID,
+	ITEM_L2TPV2_MSG_DATA_L_S_SESSION_ID,
+	ITEM_L2TPV2_MSG_DATA_L_S_NS,
+	ITEM_L2TPV2_MSG_DATA_L_S_NR,
 	ITEM_L2TPV2_MSG_CTRL_LENGTH,
 	ITEM_L2TPV2_MSG_CTRL_TUNNEL_ID,
 	ITEM_L2TPV2_MSG_CTRL_SESSION_ID,
@@ -1451,19 +1468,70 @@ static const enum index item_flex[] = {
 };
 
 static const enum index item_l2tpv2[] = {
-	ITEM_L2TPV2_COMMON,
+	ITEM_L2TPV2_TYPE,
 	ITEM_NEXT,
 	ZERO,
 };
 
-static const enum index item_l2tpv2_common[] = {
-	ITEM_L2TPV2_COMMON_TYPE,
+static const enum index item_l2tpv2_type[] = {
+	ITEM_L2TPV2_TYPE_DATA,
+	ITEM_L2TPV2_TYPE_DATA_L,
+	ITEM_L2TPV2_TYPE_DATA_S,
+	ITEM_L2TPV2_TYPE_DATA_O,
+	ITEM_L2TPV2_TYPE_DATA_L_S,
+	ITEM_L2TPV2_TYPE_CTRL,
 	ZERO,
 };
 
-static const enum index item_l2tpv2_common_type[] = {
-	ITEM_L2TPV2_COMMON_TYPE_DATA_L,
-	ITEM_L2TPV2_COMMON_TYPE_CTRL,
+static const enum index item_l2tpv2_type_data[] = {
+	ITEM_L2TPV2_MSG_DATA_TUNNEL_ID,
+	ITEM_L2TPV2_MSG_DATA_SESSION_ID,
+	ITEM_NEXT,
+	ZERO,
+};
+
+static const enum index item_l2tpv2_type_data_l[] = {
+	ITEM_L2TPV2_MSG_DATA_L_LENGTH,
+	ITEM_L2TPV2_MSG_DATA_L_TUNNEL_ID,
+	ITEM_L2TPV2_MSG_DATA_L_SESSION_ID,
+	ITEM_NEXT,
+	ZERO,
+};
+
+static const enum index item_l2tpv2_type_data_s[] = {
+	ITEM_L2TPV2_MSG_DATA_S_TUNNEL_ID,
+	ITEM_L2TPV2_MSG_DATA_S_SESSION_ID,
+	ITEM_L2TPV2_MSG_DATA_S_NS,
+	ITEM_L2TPV2_MSG_DATA_S_NR,
+	ITEM_NEXT,
+	ZERO,
+};
+
+static const enum index item_l2tpv2_type_data_o[] = {
+	ITEM_L2TPV2_MSG_DATA_O_TUNNEL_ID,
+	ITEM_L2TPV2_MSG_DATA_O_SESSION_ID,
+	ITEM_L2TPV2_MSG_DATA_O_OFFSET,
+	ITEM_NEXT,
+	ZERO,
+};
+
+static const enum index item_l2tpv2_type_data_l_s[] = {
+	ITEM_L2TPV2_MSG_DATA_L_S_LENGTH,
+	ITEM_L2TPV2_MSG_DATA_L_S_TUNNEL_ID,
+	ITEM_L2TPV2_MSG_DATA_L_S_SESSION_ID,
+	ITEM_L2TPV2_MSG_DATA_L_S_NS,
+	ITEM_L2TPV2_MSG_DATA_L_S_NR,
+	ITEM_NEXT,
+	ZERO,
+};
+
+static const enum index item_l2tpv2_type_ctrl[] = {
+	ITEM_L2TPV2_MSG_CTRL_LENGTH,
+	ITEM_L2TPV2_MSG_CTRL_TUNNEL_ID,
+	ITEM_L2TPV2_MSG_CTRL_SESSION_ID,
+	ITEM_L2TPV2_MSG_CTRL_NS,
+	ITEM_L2TPV2_MSG_CTRL_NR,
+	ITEM_NEXT,
 	ZERO,
 };
 
@@ -3858,31 +3926,46 @@ static const struct token token_list[] = {
 		.next = NEXT(item_l2tpv2),
 		.call = parse_vc,
 	},
-	[ITEM_L2TPV2_COMMON] = {
-		.name = "common",
-		.help = "L2TPv2 common header",
-		.next = NEXT(item_l2tpv2_common),
-	},
-	[ITEM_L2TPV2_COMMON_TYPE] = {
+	[ITEM_L2TPV2_TYPE] = {
 		.name = "type",
-		.help = "type of common header",
-		.next = NEXT(item_l2tpv2_common_type),
+		.help = "type of l2tpv2",
+		.next = NEXT(item_l2tpv2_type),
 		.args = ARGS(ARG_ENTRY_HTON(struct rte_flow_item_l2tpv2)),
 	},
-	[ITEM_L2TPV2_COMMON_TYPE_DATA_L] = {
+	[ITEM_L2TPV2_TYPE_DATA] = {
+		.name = "data",
+		.help = "Type #7: data message without any options",
+		.next = NEXT(item_l2tpv2_type_data),
+		.call = parse_vc_item_l2tpv2_type,
+	},
+	[ITEM_L2TPV2_MSG_DATA_TUNNEL_ID] = {
+		.name = "tunnel_id",
+		.help = "tunnel identifier",
+		.next = NEXT(item_l2tpv2_type_data,
+			     NEXT_ENTRY(COMMON_UNSIGNED),
+			     item_param),
+		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_l2tpv2,
+					     hdr.type7.tunnel_id)),
+	},
+	[ITEM_L2TPV2_MSG_DATA_SESSION_ID] = {
+		.name = "session_id",
+		.help = "session identifier",
+		.next = NEXT(item_l2tpv2_type_data,
+			     NEXT_ENTRY(COMMON_UNSIGNED),
+			     item_param),
+		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_l2tpv2,
+					     hdr.type7.session_id)),
+	},
+	[ITEM_L2TPV2_TYPE_DATA_L] = {
 		.name = "data_l",
 		.help = "Type #6: data message with length option",
-		.next = NEXT(NEXT_ENTRY(ITEM_L2TPV2_MSG_DATA_L_LENGTH,
-					ITEM_L2TPV2_MSG_DATA_L_TUNNEL_ID,
-					ITEM_L2TPV2_MSG_DATA_L_SESSION_ID,
-					ITEM_NEXT)),
+		.next = NEXT(item_l2tpv2_type_data_l),
 		.call = parse_vc_item_l2tpv2_type,
 	},
 	[ITEM_L2TPV2_MSG_DATA_L_LENGTH] = {
 		.name = "length",
 		.help = "message length",
-		.next = NEXT(NEXT_ENTRY(ITEM_L2TPV2_MSG_DATA_L_LENGTH,
-					ITEM_L2TPV2_COMMON, ITEM_NEXT),
+		.next = NEXT(item_l2tpv2_type_data_l,
 			     NEXT_ENTRY(COMMON_UNSIGNED),
 			     item_param),
 		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_l2tpv2,
@@ -3891,8 +3974,7 @@ static const struct token token_list[] = {
 	[ITEM_L2TPV2_MSG_DATA_L_TUNNEL_ID] = {
 		.name = "tunnel_id",
 		.help = "tunnel identifier",
-		.next = NEXT(NEXT_ENTRY(ITEM_L2TPV2_MSG_DATA_L_TUNNEL_ID,
-					ITEM_L2TPV2_COMMON, ITEM_NEXT),
+		.next = NEXT(item_l2tpv2_type_data_l,
 			     NEXT_ENTRY(COMMON_UNSIGNED),
 			     item_param),
 		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_l2tpv2,
@@ -3901,29 +3983,150 @@ static const struct token token_list[] = {
 	[ITEM_L2TPV2_MSG_DATA_L_SESSION_ID] = {
 		.name = "session_id",
 		.help = "session identifier",
-		.next = NEXT(NEXT_ENTRY(ITEM_L2TPV2_MSG_DATA_L_SESSION_ID,
-					ITEM_L2TPV2_COMMON, ITEM_NEXT),
+		.next = NEXT(item_l2tpv2_type_data_l,
 			     NEXT_ENTRY(COMMON_UNSIGNED),
 			     item_param),
 		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_l2tpv2,
 					     hdr.type6.session_id)),
 	},
-	[ITEM_L2TPV2_COMMON_TYPE_CTRL] = {
+	[ITEM_L2TPV2_TYPE_DATA_S] = {
+		.name = "data_s",
+		.help = "Type #5: data message with ns, nr option",
+		.next = NEXT(item_l2tpv2_type_data_s),
+		.call = parse_vc_item_l2tpv2_type,
+	},
+	[ITEM_L2TPV2_MSG_DATA_S_TUNNEL_ID] = {
+		.name = "tunnel_id",
+		.help = "tunnel identifier",
+		.next = NEXT(item_l2tpv2_type_data_s,
+			     NEXT_ENTRY(COMMON_UNSIGNED),
+			     item_param),
+		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_l2tpv2,
+					     hdr.type5.tunnel_id)),
+	},
+	[ITEM_L2TPV2_MSG_DATA_S_SESSION_ID] = {
+		.name = "session_id",
+		.help = "session identifier",
+		.next = NEXT(item_l2tpv2_type_data_s,
+			     NEXT_ENTRY(COMMON_UNSIGNED),
+			     item_param),
+		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_l2tpv2,
+					     hdr.type5.session_id)),
+	},
+	[ITEM_L2TPV2_MSG_DATA_S_NS] = {
+		.name = "ns",
+		.help = "sequence number for message",
+		.next = NEXT(item_l2tpv2_type_data_s,
+			     NEXT_ENTRY(COMMON_UNSIGNED),
+			     item_param),
+		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_l2tpv2,
+					     hdr.type5.ns)),
+	},
+	[ITEM_L2TPV2_MSG_DATA_S_NR] = {
+		.name = "nr",
+		.help = "sequence number for next receive message",
+		.next = NEXT(item_l2tpv2_type_data_s,
+			     NEXT_ENTRY(COMMON_UNSIGNED),
+			     item_param),
+		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_l2tpv2,
+					     hdr.type5.nr)),
+	},
+	[ITEM_L2TPV2_TYPE_DATA_O] = {
+		.name = "data_o",
+		.help = "Type #4: data message with offset option",
+		.next = NEXT(item_l2tpv2_type_data_o),
+		.call = parse_vc_item_l2tpv2_type,
+	},
+	[ITEM_L2TPV2_MSG_DATA_O_TUNNEL_ID] = {
+		.name = "tunnel_id",
+		.help = "tunnel identifier",
+		.next = NEXT(item_l2tpv2_type_data_o,
+			     NEXT_ENTRY(COMMON_UNSIGNED),
+			     item_param),
+		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_l2tpv2,
+					     hdr.type4.tunnel_id)),
+	},
+	[ITEM_L2TPV2_MSG_DATA_O_SESSION_ID] = {
+		.name = "session_id",
+		.help = "session identifier",
+		.next = NEXT(item_l2tpv2_type_data_o,
+			     NEXT_ENTRY(COMMON_UNSIGNED),
+			     item_param),
+		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_l2tpv2,
+					     hdr.type5.session_id)),
+	},
+	[ITEM_L2TPV2_MSG_DATA_O_OFFSET] = {
+		.name = "offset_size",
+		.help = "the size of offset padding",
+		.next = NEXT(item_l2tpv2_type_data_o,
+			     NEXT_ENTRY(COMMON_UNSIGNED),
+			     item_param),
+		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_l2tpv2,
+					     hdr.type4.offset_size)),
+	},
+	[ITEM_L2TPV2_TYPE_DATA_L_S] = {
+		.name = "data_l_s",
+		.help = "Type #3: data message contains length, ns, nr "
+			"options",
+		.next = NEXT(item_l2tpv2_type_data_l_s),
+		.call = parse_vc_item_l2tpv2_type,
+	},
+	[ITEM_L2TPV2_MSG_DATA_L_S_LENGTH] = {
+		.name = "length",
+		.help = "message length",
+		.next = NEXT(item_l2tpv2_type_data_l_s,
+			     NEXT_ENTRY(COMMON_UNSIGNED),
+			     item_param),
+		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_l2tpv2,
+					     hdr.type3.length)),
+	},
+	[ITEM_L2TPV2_MSG_DATA_L_S_TUNNEL_ID] = {
+		.name = "tunnel_id",
+		.help = "tunnel identifier",
+		.next = NEXT(item_l2tpv2_type_data_l_s,
+			     NEXT_ENTRY(COMMON_UNSIGNED),
+			     item_param),
+		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_l2tpv2,
+					     hdr.type3.tunnel_id)),
+	},
+	[ITEM_L2TPV2_MSG_DATA_L_S_SESSION_ID] = {
+		.name = "session_id",
+		.help = "session identifier",
+		.next = NEXT(item_l2tpv2_type_data_l_s,
+			     NEXT_ENTRY(COMMON_UNSIGNED),
+			     item_param),
+		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_l2tpv2,
+					     hdr.type3.session_id)),
+	},
+	[ITEM_L2TPV2_MSG_DATA_L_S_NS] = {
+		.name = "ns",
+		.help = "sequence number for message",
+		.next = NEXT(item_l2tpv2_type_data_l_s,
+			     NEXT_ENTRY(COMMON_UNSIGNED),
+			     item_param),
+		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_l2tpv2,
+					     hdr.type3.ns)),
+	},
+	[ITEM_L2TPV2_MSG_DATA_L_S_NR] = {
+		.name = "nr",
+		.help = "sequence number for next receive message",
+		.next = NEXT(item_l2tpv2_type_data_l_s,
+			     NEXT_ENTRY(COMMON_UNSIGNED),
+			     item_param),
+		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_l2tpv2,
+					     hdr.type3.nr)),
+	},
+	[ITEM_L2TPV2_TYPE_CTRL] = {
 		.name = "control",
-		.help = "Type #3: conrtol message contains length, ns, nr options",
-		.next = NEXT(NEXT_ENTRY(ITEM_L2TPV2_MSG_CTRL_LENGTH,
-					ITEM_L2TPV2_MSG_CTRL_TUNNEL_ID,
-					ITEM_L2TPV2_MSG_CTRL_SESSION_ID,
-					ITEM_L2TPV2_MSG_CTRL_NS,
-					ITEM_L2TPV2_MSG_CTRL_NR,
-					ITEM_NEXT)),
+		.help = "Type #3: conrtol message contains length, ns, nr "
+			"options",
+		.next = NEXT(item_l2tpv2_type_ctrl),
 		.call = parse_vc_item_l2tpv2_type,
 	},
 	[ITEM_L2TPV2_MSG_CTRL_LENGTH] = {
 		.name = "length",
 		.help = "message length",
-		.next = NEXT(NEXT_ENTRY(ITEM_L2TPV2_MSG_CTRL_LENGTH,
-					ITEM_L2TPV2_COMMON, ITEM_NEXT),
+		.next = NEXT(item_l2tpv2_type_ctrl,
 			     NEXT_ENTRY(COMMON_UNSIGNED),
 			     item_param),
 		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_l2tpv2,
@@ -3932,8 +4135,7 @@ static const struct token token_list[] = {
 	[ITEM_L2TPV2_MSG_CTRL_TUNNEL_ID] = {
 		.name = "tunnel_id",
 		.help = "tunnel identifier",
-		.next = NEXT(NEXT_ENTRY(ITEM_L2TPV2_MSG_CTRL_TUNNEL_ID,
-					ITEM_L2TPV2_COMMON, ITEM_NEXT),
+		.next = NEXT(item_l2tpv2_type_ctrl,
 			     NEXT_ENTRY(COMMON_UNSIGNED),
 			     item_param),
 		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_l2tpv2,
@@ -3942,8 +4144,7 @@ static const struct token token_list[] = {
 	[ITEM_L2TPV2_MSG_CTRL_SESSION_ID] = {
 		.name = "session_id",
 		.help = "session identifier",
-		.next = NEXT(NEXT_ENTRY(ITEM_L2TPV2_MSG_CTRL_SESSION_ID,
-					ITEM_L2TPV2_COMMON, ITEM_NEXT),
+		.next = NEXT(item_l2tpv2_type_ctrl,
 			     NEXT_ENTRY(COMMON_UNSIGNED),
 			     item_param),
 		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_l2tpv2,
@@ -3952,8 +4153,7 @@ static const struct token token_list[] = {
 	[ITEM_L2TPV2_MSG_CTRL_NS] = {
 		.name = "ns",
 		.help = "sequence number for message",
-		.next = NEXT(NEXT_ENTRY(ITEM_L2TPV2_MSG_CTRL_NS,
-					ITEM_L2TPV2_COMMON, ITEM_NEXT),
+		.next = NEXT(item_l2tpv2_type_ctrl,
 			     NEXT_ENTRY(COMMON_UNSIGNED),
 			     item_param),
 		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_l2tpv2,
@@ -3962,8 +4162,7 @@ static const struct token token_list[] = {
 	[ITEM_L2TPV2_MSG_CTRL_NR] = {
 		.name = "nr",
 		.help = "sequence number for next receive message",
-		.next = NEXT(NEXT_ENTRY(ITEM_L2TPV2_MSG_CTRL_NS,
-					ITEM_L2TPV2_COMMON, ITEM_NEXT),
+		.next = NEXT(item_l2tpv2_type_ctrl,
 			     NEXT_ENTRY(COMMON_UNSIGNED),
 			     item_param),
 		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_l2tpv2,
@@ -5904,11 +6103,23 @@ parse_vc_item_l2tpv2_type(struct context *ctx, const struct token *token,
 	if (parse_default(ctx, token, str, len, NULL, 0) < 0)
 		return -1;
 	switch (ctx->curr) {
-	case ITEM_L2TPV2_COMMON_TYPE_DATA_L:
-		msg_type |= 0x4000;
+	case ITEM_L2TPV2_TYPE_DATA:
+		msg_type |= RTE_L2TPV2_MSG_TYPE_DATA;
 		break;
-	case ITEM_L2TPV2_COMMON_TYPE_CTRL:
-		msg_type |= 0xC800;
+	case ITEM_L2TPV2_TYPE_DATA_L:
+		msg_type |= RTE_L2TPV2_MSG_TYPE_DATA_L;
+		break;
+	case ITEM_L2TPV2_TYPE_DATA_S:
+		msg_type |= RTE_L2TPV2_MSG_TYPE_DATA_S;
+		break;
+	case ITEM_L2TPV2_TYPE_DATA_O:
+		msg_type |= RTE_L2TPV2_MSG_TYPE_DATA_O;
+		break;
+	case ITEM_L2TPV2_TYPE_DATA_L_S:
+		msg_type |= RTE_L2TPV2_MSG_TYPE_DATA_L_S;
+		break;
+	case ITEM_L2TPV2_TYPE_CTRL:
+		msg_type |= RTE_L2TPV2_MSG_TYPE_CONTROL;
 		break;
 	default:
 		return -1;
