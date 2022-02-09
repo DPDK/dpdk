@@ -80,6 +80,18 @@ RTE_LOG_REGISTER_DEFAULT(af_xdp_logtype, NOTICE);
 
 #define ETH_AF_XDP_ETH_OVERHEAD		(RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN)
 
+#define ETH_AF_XDP_MP_KEY "afxdp_mp_send_fds"
+
+static int afxdp_dev_count;
+
+/* Message header to synchronize fds via IPC */
+struct ipc_hdr {
+	char port_name[RTE_DEV_NAME_MAX_LEN];
+	/* The file descriptors are in the dedicated part
+	 * of the Unix message to be translated by the kernel.
+	 */
+};
+
 struct xsk_umem_info {
 	struct xsk_umem *umem;
 	struct rte_ring *buf_ring;
@@ -145,6 +157,10 @@ struct pmd_internals {
 
 	struct pkt_rx_queue *rx_queues;
 	struct pkt_tx_queue *tx_queues;
+};
+
+struct pmd_process_private {
+	int rxq_xsk_fds[RTE_MAX_QUEUES_PER_PORT];
 };
 
 #define ETH_AF_XDP_IFACE_ARG			"iface"
@@ -795,11 +811,12 @@ static int
 eth_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 {
 	struct pmd_internals *internals = dev->data->dev_private;
+	struct pmd_process_private *process_private = dev->process_private;
 	struct xdp_statistics xdp_stats;
 	struct pkt_rx_queue *rxq;
 	struct pkt_tx_queue *txq;
 	socklen_t optlen;
-	int i, ret;
+	int i, ret, fd;
 
 	for (i = 0; i < dev->data->nb_rx_queues; i++) {
 		optlen = sizeof(struct xdp_statistics);
@@ -815,8 +832,9 @@ eth_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 		stats->ibytes += stats->q_ibytes[i];
 		stats->imissed += rxq->stats.rx_dropped;
 		stats->oerrors += txq->stats.tx_dropped;
-		ret = getsockopt(xsk_socket__fd(rxq->xsk), SOL_XDP,
-				XDP_STATISTICS, &xdp_stats, &optlen);
+		fd = process_private->rxq_xsk_fds[i];
+		ret = fd >= 0 ? getsockopt(fd, SOL_XDP, XDP_STATISTICS,
+					   &xdp_stats, &optlen) : -1;
 		if (ret != 0) {
 			AF_XDP_LOG(ERR, "getsockopt() failed for XDP_STATISTICS.\n");
 			return -1;
@@ -884,7 +902,7 @@ eth_dev_close(struct rte_eth_dev *dev)
 	int i;
 
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
-		return 0;
+		goto out;
 
 	AF_XDP_LOG(INFO, "Closing AF_XDP ethdev on numa socket %u\n",
 		rte_socket_id());
@@ -926,6 +944,9 @@ eth_dev_close(struct rte_eth_dev *dev)
 			rte_free(list);
 		}
 	}
+
+out:
+	rte_free(dev->process_private);
 
 	return 0;
 }
@@ -1355,6 +1376,7 @@ eth_rx_queue_setup(struct rte_eth_dev *dev,
 		   struct rte_mempool *mb_pool)
 {
 	struct pmd_internals *internals = dev->data->dev_private;
+	struct pmd_process_private *process_private = dev->process_private;
 	struct pkt_rx_queue *rxq;
 	int ret;
 
@@ -1392,6 +1414,8 @@ eth_rx_queue_setup(struct rte_eth_dev *dev,
 
 	rxq->fds[0].fd = xsk_socket__fd(rxq->xsk);
 	rxq->fds[0].events = POLLIN;
+
+	process_private->rxq_xsk_fds[rx_queue_id] = rxq->fds[0].fd;
 
 	dev->data->rx_queues[rx_queue_id] = rxq;
 	return 0;
@@ -1694,6 +1718,7 @@ init_internals(struct rte_vdev_device *dev, const char *if_name,
 {
 	const char *name = rte_vdev_device_name(dev);
 	const unsigned int numa_node = dev->device.numa_node;
+	struct pmd_process_private *process_private;
 	struct pmd_internals *internals;
 	struct rte_eth_dev *eth_dev;
 	int ret;
@@ -1759,9 +1784,17 @@ init_internals(struct rte_vdev_device *dev, const char *if_name,
 	if (ret)
 		goto err_free_tx;
 
+	process_private = (struct pmd_process_private *)
+		rte_zmalloc_socket(name, sizeof(struct pmd_process_private),
+				   RTE_CACHE_LINE_SIZE, numa_node);
+	if (process_private == NULL) {
+		AF_XDP_LOG(ERR, "Failed to alloc memory for process private\n");
+		goto err_free_tx;
+	}
+
 	eth_dev = rte_eth_vdev_allocate(dev, 0);
 	if (eth_dev == NULL)
-		goto err_free_tx;
+		goto err_free_pp;
 
 	eth_dev->data->dev_private = internals;
 	eth_dev->data->dev_link = pmd_link;
@@ -1770,6 +1803,10 @@ init_internals(struct rte_vdev_device *dev, const char *if_name,
 	eth_dev->dev_ops = &ops;
 	eth_dev->rx_pkt_burst = eth_af_xdp_rx;
 	eth_dev->tx_pkt_burst = eth_af_xdp_tx;
+	eth_dev->process_private = process_private;
+
+	for (i = 0; i < queue_cnt; i++)
+		process_private->rxq_xsk_fds[i] = -1;
 
 #if defined(XDP_UMEM_UNALIGNED_CHUNK_FLAG)
 	AF_XDP_LOG(INFO, "Zero copy between umem and mbuf enabled.\n");
@@ -1777,6 +1814,8 @@ init_internals(struct rte_vdev_device *dev, const char *if_name,
 
 	return eth_dev;
 
+err_free_pp:
+	rte_free(process_private);
 err_free_tx:
 	rte_free(internals->tx_queues);
 err_free_rx:
@@ -1784,6 +1823,119 @@ err_free_rx:
 err_free_internals:
 	rte_free(internals);
 	return NULL;
+}
+
+/* Secondary process requests rxq fds from primary. */
+static int
+afxdp_mp_request_fds(const char *name, struct rte_eth_dev *dev)
+{
+	struct pmd_process_private *process_private = dev->process_private;
+	struct timespec timeout = {.tv_sec = 1, .tv_nsec = 0};
+	struct rte_mp_msg request, *reply;
+	struct rte_mp_reply replies;
+	struct ipc_hdr *request_param = (struct ipc_hdr *)request.param;
+	int i, ret;
+
+	/* Prepare the request */
+	memset(&request, 0, sizeof(request));
+	strlcpy(request.name, ETH_AF_XDP_MP_KEY, sizeof(request.name));
+	strlcpy(request_param->port_name, name,
+		sizeof(request_param->port_name));
+	request.len_param = sizeof(*request_param);
+
+	/* Send the request and receive the reply */
+	AF_XDP_LOG(DEBUG, "Sending multi-process IPC request for %s\n", name);
+	ret = rte_mp_request_sync(&request, &replies, &timeout);
+	if (ret < 0 || replies.nb_received != 1) {
+		AF_XDP_LOG(ERR, "Failed to request fds from primary: %d",
+			   rte_errno);
+		return -1;
+	}
+	reply = replies.msgs;
+	AF_XDP_LOG(DEBUG, "Received multi-process IPC reply for %s\n", name);
+	if (dev->data->nb_rx_queues != reply->num_fds) {
+		AF_XDP_LOG(ERR, "Incorrect number of fds received: %d != %d\n",
+			   reply->num_fds, dev->data->nb_rx_queues);
+		return -EINVAL;
+	}
+
+	for (i = 0; i < reply->num_fds; i++)
+		process_private->rxq_xsk_fds[i] = reply->fds[i];
+
+	free(reply);
+	return 0;
+}
+
+/* Primary process sends rxq fds to secondary. */
+static int
+afxdp_mp_send_fds(const struct rte_mp_msg *request, const void *peer)
+{
+	struct rte_eth_dev *dev;
+	struct pmd_process_private *process_private;
+	struct rte_mp_msg reply;
+	const struct ipc_hdr *request_param =
+		(const struct ipc_hdr *)request->param;
+	struct ipc_hdr *reply_param =
+		(struct ipc_hdr *)reply.param;
+	const char *request_name = request_param->port_name;
+	int i;
+
+	AF_XDP_LOG(DEBUG, "Received multi-process IPC request for %s\n",
+		   request_name);
+
+	/* Find the requested port */
+	dev = rte_eth_dev_get_by_name(request_name);
+	if (!dev) {
+		AF_XDP_LOG(ERR, "Failed to get port id for %s\n", request_name);
+		return -1;
+	}
+	process_private = dev->process_private;
+
+	/* Populate the reply with the xsk fd for each queue */
+	reply.num_fds = 0;
+	if (dev->data->nb_rx_queues > RTE_MP_MAX_FD_NUM) {
+		AF_XDP_LOG(ERR, "Number of rx queues (%d) exceeds max number of fds (%d)\n",
+			   dev->data->nb_rx_queues, RTE_MP_MAX_FD_NUM);
+		return -EINVAL;
+	}
+
+	for (i = 0; i < dev->data->nb_rx_queues; i++)
+		reply.fds[reply.num_fds++] = process_private->rxq_xsk_fds[i];
+
+	/* Send the reply */
+	strlcpy(reply.name, request->name, sizeof(reply.name));
+	strlcpy(reply_param->port_name, request_name,
+		sizeof(reply_param->port_name));
+	reply.len_param = sizeof(*reply_param);
+	AF_XDP_LOG(DEBUG, "Sending multi-process IPC reply for %s\n",
+		   reply_param->port_name);
+	if (rte_mp_reply(&reply, peer) < 0) {
+		AF_XDP_LOG(ERR, "Failed to reply to multi-process IPC request\n");
+		return -1;
+	}
+	return 0;
+}
+
+/* Secondary process rx function. RX is disabled because memory mapping of the
+ * rings being assigned by the kernel in the primary process only.
+ */
+static uint16_t
+eth_af_xdp_rx_noop(void *queue __rte_unused,
+		struct rte_mbuf **bufs __rte_unused,
+		uint16_t nb_pkts __rte_unused)
+{
+	return 0;
+}
+
+/* Secondary process tx function. TX is disabled because memory mapping of the
+ * rings being assigned by the kernel in the primary process only.
+ */
+static uint16_t
+eth_af_xdp_tx_noop(void *queue __rte_unused,
+			struct rte_mbuf **bufs __rte_unused,
+			uint16_t nb_pkts __rte_unused)
+{
+	return 0;
 }
 
 static int
@@ -1795,19 +1947,39 @@ rte_pmd_af_xdp_probe(struct rte_vdev_device *dev)
 	int xsk_queue_cnt = ETH_AF_XDP_DFLT_QUEUE_COUNT;
 	int shared_umem = 0;
 	char prog_path[PATH_MAX] = {'\0'};
-	int busy_budget = -1;
+	int busy_budget = -1, ret;
 	struct rte_eth_dev *eth_dev = NULL;
-	const char *name;
+	const char *name = rte_vdev_device_name(dev);
 
-	AF_XDP_LOG(INFO, "Initializing pmd_af_xdp for %s\n",
-		rte_vdev_device_name(dev));
+	AF_XDP_LOG(INFO, "Initializing pmd_af_xdp for %s\n", name);
 
-	name = rte_vdev_device_name(dev);
 	if (rte_eal_process_type() == RTE_PROC_SECONDARY) {
-		AF_XDP_LOG(ERR, "Failed to probe %s. "
-				"AF_XDP PMD does not support secondary processes.\n",
-				name);
-		return -ENOTSUP;
+		eth_dev = rte_eth_dev_attach_secondary(name);
+		if (eth_dev == NULL) {
+			AF_XDP_LOG(ERR, "Failed to probe %s\n", name);
+			return -EINVAL;
+		}
+		eth_dev->dev_ops = &ops;
+		eth_dev->device = &dev->device;
+		eth_dev->rx_pkt_burst = eth_af_xdp_rx_noop;
+		eth_dev->tx_pkt_burst = eth_af_xdp_tx_noop;
+		eth_dev->process_private = (struct pmd_process_private *)
+			rte_zmalloc_socket(name,
+					   sizeof(struct pmd_process_private),
+					   RTE_CACHE_LINE_SIZE,
+					   eth_dev->device->numa_node);
+		if (eth_dev->process_private == NULL) {
+			AF_XDP_LOG(ERR,
+				"Failed to alloc memory for process private\n");
+			return -ENOMEM;
+		}
+
+		/* Obtain the xsk fds from the primary process. */
+		if (afxdp_mp_request_fds(name, eth_dev))
+			return -1;
+
+		rte_eth_dev_probing_finish(eth_dev);
+		return 0;
 	}
 
 	kvlist = rte_kvargs_parse(rte_vdev_device_args(dev), valid_arguments);
@@ -1842,6 +2014,17 @@ rte_pmd_af_xdp_probe(struct rte_vdev_device *dev)
 		return -1;
 	}
 
+	/* Register IPC callback which shares xsk fds from primary to secondary */
+	if (!afxdp_dev_count) {
+		ret = rte_mp_action_register(ETH_AF_XDP_MP_KEY, afxdp_mp_send_fds);
+		if (ret < 0) {
+			AF_XDP_LOG(ERR, "%s: Failed to register multi-process IPC callback: %s",
+				   name, strerror(rte_errno));
+			return -1;
+		}
+	}
+	afxdp_dev_count++;
+
 	rte_eth_dev_probing_finish(eth_dev);
 
 	return 0;
@@ -1864,8 +2047,10 @@ rte_pmd_af_xdp_remove(struct rte_vdev_device *dev)
 		return 0;
 
 	eth_dev_close(eth_dev);
+	if (afxdp_dev_count == 1)
+		rte_mp_action_unregister(ETH_AF_XDP_MP_KEY);
+	afxdp_dev_count--;
 	rte_eth_dev_release_port(eth_dev);
-
 
 	return 0;
 }

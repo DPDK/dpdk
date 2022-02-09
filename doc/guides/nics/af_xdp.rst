@@ -141,4 +141,13 @@ Limitations
   NAPI context from a watchdog timer instead of from softirqs. More information
   on this feature can be found at [1].
 
+- **Secondary Processes**
+
+  Rx and Tx are not supported for secondary processes due to memory mapping of
+  the AF_XDP rings being assigned by the kernel in the primary process only.
+  However other operations including statistics retrieval are permitted.
+  The maximum number of queues permitted for PMDs operating in this model is 8
+  as this is the maximum number of fds that can be sent through the IPC APIs as
+  defined by RTE_MP_MAX_FD_NUM.
+
   [1] https://lwn.net/Articles/837010/

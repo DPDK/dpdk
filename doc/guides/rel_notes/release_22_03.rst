@@ -97,6 +97,7 @@ New Features
 * **Updated AF_XDP PMD**
 
   * Added support for libxdp >=v1.2.2.
+  * Re-enabled secondary process support. RX/TX is not supported.
 
 * **Updated Cisco enic driver.**
 
