@@ -28,6 +28,7 @@
 #include <fsl_dpopr.h>
 #include <fsl_dpseci.h>
 #include <fsl_mc_sys.h>
+#include <rte_hexdump.h>
 
 #include "dpaa2_sec_priv.h"
 #include "dpaa2_sec_event.h"
@@ -50,7 +51,17 @@
 
 #define NO_PREFETCH 0
 
+#define DRIVER_DUMP_MODE "drv_dump_mode"
+
+/* DPAA2_SEC_DP_DUMP levels */
+enum dpaa2_sec_dump_levels {
+	DPAA2_SEC_DP_NO_DUMP,
+	DPAA2_SEC_DP_ERR_DUMP,
+	DPAA2_SEC_DP_FULL_DUMP
+};
+
 uint8_t cryptodev_driver_id;
+uint8_t dpaa2_sec_dp_dump = DPAA2_SEC_DP_ERR_DUMP;
 
 #ifdef RTE_LIB_SECURITY
 static inline int
@@ -1621,6 +1632,83 @@ sec_fd_to_mbuf(const struct qbman_fd *fd)
 	return op;
 }
 
+static void
+dpaa2_sec_dump(struct rte_crypto_op *op)
+{
+	int i;
+	dpaa2_sec_session *sess = NULL;
+	struct ctxt_priv *priv;
+	uint8_t bufsize;
+	struct rte_crypto_sym_op *sym_op;
+
+	if (op->sess_type == RTE_CRYPTO_OP_WITH_SESSION)
+		sess = (dpaa2_sec_session *)get_sym_session_private_data(
+			op->sym->session, cryptodev_driver_id);
+#ifdef RTE_LIBRTE_SECURITY
+	else if (op->sess_type == RTE_CRYPTO_OP_SECURITY_SESSION)
+		sess = (dpaa2_sec_session *)get_sec_session_private_data(
+			op->sym->sec_session);
+#endif
+
+	if (sess == NULL)
+		goto mbuf_dump;
+
+	priv = (struct ctxt_priv *)sess->ctxt;
+	printf("\n****************************************\n"
+		"session params:\n\tContext type:\t%d\n\tDirection:\t%s\n"
+		"\tCipher alg:\t%d\n\tAuth alg:\t%d\n\tAead alg:\t%d\n"
+		"\tCipher key len:\t%zd\n", sess->ctxt_type,
+		(sess->dir == DIR_ENC) ? "DIR_ENC" : "DIR_DEC",
+		sess->cipher_alg, sess->auth_alg, sess->aead_alg,
+		sess->cipher_key.length);
+		rte_hexdump(stdout, "cipher key", sess->cipher_key.data,
+				sess->cipher_key.length);
+		rte_hexdump(stdout, "auth key", sess->auth_key.data,
+				sess->auth_key.length);
+	printf("\tAuth key len:\t%zd\n\tIV len:\t\t%d\n\tIV offset:\t%d\n"
+		"\tdigest length:\t%d\n\tstatus:\t\t%d\n\taead auth only"
+		" len:\t%d\n\taead cipher text:\t%d\n",
+		sess->auth_key.length, sess->iv.length, sess->iv.offset,
+		sess->digest_length, sess->status,
+		sess->ext_params.aead_ctxt.auth_only_len,
+		sess->ext_params.aead_ctxt.auth_cipher_text);
+#ifdef RTE_LIBRTE_SECURITY
+	printf("PDCP session params:\n"
+		"\tDomain:\t\t%d\n\tBearer:\t\t%d\n\tpkt_dir:\t%d\n\thfn_ovd:"
+		"\t%d\n\tsn_size:\t%d\n\thfn_ovd_offset:\t%d\n\thfn:\t\t%d\n"
+		"\thfn_threshold:\t0x%x\n", sess->pdcp.domain,
+		sess->pdcp.bearer, sess->pdcp.pkt_dir, sess->pdcp.hfn_ovd,
+		sess->pdcp.sn_size, sess->pdcp.hfn_ovd_offset, sess->pdcp.hfn,
+		sess->pdcp.hfn_threshold);
+
+#endif
+	bufsize = (uint8_t)priv->flc_desc[0].flc.word1_sdl;
+	printf("Descriptor Dump:\n");
+	for (i = 0; i < bufsize; i++)
+		printf("\tDESC[%d]:0x%x\n", i, priv->flc_desc[0].desc[i]);
+
+	printf("\n");
+mbuf_dump:
+	sym_op = op->sym;
+	if (sym_op->m_src) {
+		printf("Source mbuf:\n");
+		rte_pktmbuf_dump(stdout, sym_op->m_src, sym_op->m_src->data_len);
+	}
+	if (sym_op->m_dst) {
+		printf("Destination mbuf:\n");
+		rte_pktmbuf_dump(stdout, sym_op->m_dst, sym_op->m_dst->data_len);
+	}
+
+	printf("Session address = %p\ncipher offset: %d, length: %d\n"
+		"auth offset: %d, length:  %d\n aead offset: %d, length: %d\n"
+		, sym_op->session,
+		sym_op->cipher.data.offset, sym_op->cipher.data.length,
+		sym_op->auth.data.offset, sym_op->auth.data.length,
+		sym_op->aead.data.offset, sym_op->aead.data.length);
+	printf("\n");
+
+}
+
 static uint16_t
 dpaa2_sec_dequeue_burst(void *qp, struct rte_crypto_op **ops,
 			uint16_t nb_ops)
@@ -1702,8 +1790,13 @@ dpaa2_sec_dequeue_burst(void *qp, struct rte_crypto_op **ops,
 
 		if (unlikely(fd->simple.frc)) {
 			/* TODO Parse SEC errors */
-			DPAA2_SEC_DP_ERR("SEC returned Error - %x\n",
-				      fd->simple.frc);
+			if (dpaa2_sec_dp_dump > DPAA2_SEC_DP_NO_DUMP) {
+				DPAA2_SEC_DP_ERR("SEC returned Error - %x\n",
+						 fd->simple.frc);
+				if (dpaa2_sec_dp_dump > DPAA2_SEC_DP_ERR_DUMP)
+					dpaa2_sec_dump(ops[num_rx]);
+			}
+
 			dpaa2_qp->rx_vq.err_pkts += 1;
 			ops[num_rx]->status = RTE_CRYPTO_OP_STATUS_ERROR;
 		} else {
@@ -3884,6 +3977,42 @@ dpaa2_sec_uninit(const struct rte_cryptodev *dev)
 }
 
 static int
+check_devargs_handler(__rte_unused const char *key, const char *value,
+		      __rte_unused void *opaque)
+{
+	dpaa2_sec_dp_dump = atoi(value);
+	if (dpaa2_sec_dp_dump > DPAA2_SEC_DP_FULL_DUMP) {
+		DPAA2_SEC_WARN("WARN: DPAA2_SEC_DP_DUMP_LEVEL is not "
+			      "supported, changing to FULL error prints\n");
+		dpaa2_sec_dp_dump = DPAA2_SEC_DP_FULL_DUMP;
+	}
+
+	return 0;
+}
+
+static void
+dpaa2_sec_get_devargs(struct rte_devargs *devargs, const char *key)
+{
+	struct rte_kvargs *kvlist;
+
+	if (!devargs)
+		return;
+
+	kvlist = rte_kvargs_parse(devargs->args, NULL);
+	if (!kvlist)
+		return;
+
+	if (!rte_kvargs_count(kvlist, key)) {
+		rte_kvargs_free(kvlist);
+		return;
+	}
+
+	rte_kvargs_process(kvlist, key,
+			check_devargs_handler, NULL);
+	rte_kvargs_free(kvlist);
+}
+
+static int
 dpaa2_sec_dev_init(struct rte_cryptodev *cryptodev)
 {
 	struct dpaa2_sec_dev_private *internals;
@@ -3984,6 +4113,7 @@ dpaa2_sec_dev_init(struct rte_cryptodev *cryptodev)
 		goto init_error;
 	}
 
+	dpaa2_sec_get_devargs(cryptodev->device->devargs, DRIVER_DUMP_MODE);
 	DPAA2_SEC_INFO("driver %s: created", cryptodev->data->name);
 	return 0;
 
@@ -4082,4 +4212,6 @@ static struct cryptodev_driver dpaa2_sec_crypto_drv;
 RTE_PMD_REGISTER_DPAA2(CRYPTODEV_NAME_DPAA2_SEC_PMD, rte_dpaa2_sec_driver);
 RTE_PMD_REGISTER_CRYPTO_DRIVER(dpaa2_sec_crypto_drv,
 		rte_dpaa2_sec_driver.driver, cryptodev_driver_id);
+RTE_PMD_REGISTER_PARAM_STRING(CRYPTODEV_NAME_DPAA2_SEC_PMD,
+		DRIVER_DUMP_MODE "=<int>");
 RTE_LOG_REGISTER(dpaa2_logtype_sec, pmd.crypto.dpaa2, NOTICE);
