@@ -144,6 +144,7 @@ struct cn10k_sso_hws {
 /* Event port a.k.a GWS */
 struct cn9k_sso_hws {
 	uint64_t base;
+	uint64_t gw_wdata;
 	/* PTP timestamp */
 	struct cnxk_timesync_info *tstamp;
 	void *lookup_mem;
@@ -160,6 +161,7 @@ struct cn9k_sso_hws {
 
 struct cn9k_sso_hws_dual {
 	uint64_t base[2]; /* Ping and Pong */
+	uint64_t gw_wdata;
 	/* PTP timestamp */
 	struct cnxk_timesync_info *tstamp;
 	void *lookup_mem;

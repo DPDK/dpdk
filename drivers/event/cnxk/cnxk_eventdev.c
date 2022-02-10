@@ -610,7 +610,7 @@ cnxk_sso_init(struct rte_eventdev *event_dev)
 	}
 
 	dev->is_timeout_deq = 0;
-	dev->min_dequeue_timeout_ns = USEC2NSEC(1);
+	dev->min_dequeue_timeout_ns = 0;
 	dev->max_dequeue_timeout_ns = USEC2NSEC(0x3FF);
 	dev->max_num_events = -1;
 	dev->nb_event_queues = 0;

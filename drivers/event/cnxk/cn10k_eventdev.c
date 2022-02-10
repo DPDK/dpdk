@@ -15,7 +15,10 @@
 static uint32_t
 cn10k_sso_gw_mode_wdata(struct cnxk_sso_evdev *dev)
 {
-	uint32_t wdata = BIT(16) | 1;
+	uint32_t wdata = 1;
+
+	if (dev->deq_tmo_ns)
+		wdata |= BIT(16);
 
 	switch (dev->gw_mode) {
 	case CN10K_GW_MODE_NONE:
@@ -88,7 +91,8 @@ cn10k_sso_hws_setup(void *arg, void *hws, uintptr_t grp_base)
 	ws->xaq_lmt = dev->xaq_lmt;
 
 	/* Set get_work timeout for HWS */
-	val = NSEC2USEC(dev->deq_tmo_ns) - 1;
+	val = NSEC2USEC(dev->deq_tmo_ns);
+	val = val ? val - 1 : 0;
 	plt_write64(val, ws->base + SSOW_LF_GWS_NW_TIM);
 }
 

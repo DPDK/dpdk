@@ -72,7 +72,8 @@ cn9k_sso_hws_setup(void *arg, void *hws, uintptr_t grp_base)
 	uint64_t val;
 
 	/* Set get_work tmo for HWS */
-	val = dev->deq_tmo_ns ? NSEC2USEC(dev->deq_tmo_ns) - 1 : 0;
+	val = NSEC2USEC(dev->deq_tmo_ns);
+	val = val ? val - 1 : 0;
 	if (dev->dual_ws) {
 		dws = hws;
 		dws->grp_base = grp_base;
@@ -677,6 +678,9 @@ cn9k_sso_init_hws_mem(void *arg, uint8_t port_id)
 		dws->hws_id = port_id;
 		dws->swtag_req = 0;
 		dws->vws = 0;
+		if (dev->deq_tmo_ns)
+			dws->gw_wdata = BIT_ULL(16);
+		dws->gw_wdata |= 1;
 
 		data = dws;
 	} else {
@@ -695,6 +699,9 @@ cn9k_sso_init_hws_mem(void *arg, uint8_t port_id)
 		ws->base = roc_sso_hws_base_get(&dev->sso, port_id);
 		ws->hws_id = port_id;
 		ws->swtag_req = 0;
+		if (dev->deq_tmo_ns)
+			ws->gw_wdata = BIT_ULL(16);
+		ws->gw_wdata |= 1;
 
 		data = ws;
 	}

@@ -149,10 +149,8 @@ cn9k_wqe_to_mbuf(uint64_t wqe, const uint64_t mbuf, uint8_t port_id,
 static __rte_always_inline uint16_t
 cn9k_sso_hws_dual_get_work(uint64_t base, uint64_t pair_base,
 			   struct rte_event *ev, const uint32_t flags,
-			   const void *const lookup_mem,
-			   struct cnxk_timesync_info *const tstamp)
+			   struct cn9k_sso_hws_dual *dws)
 {
-	const uint64_t set_gw = BIT_ULL(16) | 1;
 	union {
 		__uint128_t get_work;
 		uint64_t u64[2];
@@ -161,7 +159,7 @@ cn9k_sso_hws_dual_get_work(uint64_t base, uint64_t pair_base,
 	uint64_t mbuf;
 
 	if (flags & NIX_RX_OFFLOAD_PTYPE_F)
-		rte_prefetch_non_temporal(lookup_mem);
+		rte_prefetch_non_temporal(dws->lookup_mem);
 #ifdef RTE_ARCH_ARM64
 	asm volatile(PLT_CPU_FEATURE_PREAMBLE
 		     "rty%=:					\n"
@@ -175,14 +173,14 @@ cn9k_sso_hws_dual_get_work(uint64_t base, uint64_t pair_base,
 		     : [tag] "=&r"(gw.u64[0]), [wqp] "=&r"(gw.u64[1]),
 		       [mbuf] "=&r"(mbuf)
 		     : [tag_loc] "r"(base + SSOW_LF_GWS_TAG),
-		       [wqp_loc] "r"(base + SSOW_LF_GWS_WQP), [gw] "r"(set_gw),
+		       [wqp_loc] "r"(base + SSOW_LF_GWS_WQP), [gw] "r"(dws->gw_wdata),
 		       [pong] "r"(pair_base + SSOW_LF_GWS_OP_GET_WORK0));
 #else
 	gw.u64[0] = plt_read64(base + SSOW_LF_GWS_TAG);
 	while ((BIT_ULL(63)) & gw.u64[0])
 		gw.u64[0] = plt_read64(base + SSOW_LF_GWS_TAG);
 	gw.u64[1] = plt_read64(base + SSOW_LF_GWS_WQP);
-	plt_write64(set_gw, pair_base + SSOW_LF_GWS_OP_GET_WORK0);
+	plt_write64(dws->gw_wdata, pair_base + SSOW_LF_GWS_OP_GET_WORK0);
 	mbuf = (uint64_t)((char *)gw.u64[1] - sizeof(struct rte_mbuf));
 #endif
 
@@ -202,12 +200,13 @@ cn9k_sso_hws_dual_get_work(uint64_t base, uint64_t pair_base,
 			gw.u64[0] = CNXK_CLR_SUB_EVENT(gw.u64[0]);
 			cn9k_wqe_to_mbuf(gw.u64[1], mbuf, port,
 					 gw.u64[0] & 0xFFFFF, flags,
-					 lookup_mem);
+					 dws->lookup_mem);
 			/* Extracting tstamp, if PTP enabled*/
 			tstamp_ptr = *(uint64_t *)(((struct nix_wqe_hdr_s *)
 							    gw.u64[1]) +
 						   CNXK_SSO_WQE_SG_PTR);
-			cnxk_nix_mbuf_to_tstamp((struct rte_mbuf *)mbuf, tstamp,
+			cnxk_nix_mbuf_to_tstamp((struct rte_mbuf *)mbuf,
+						dws->tstamp,
 						flags & NIX_RX_OFFLOAD_TSTAMP_F,
 						flags & NIX_RX_MULTI_SEG_F,
 						(uint64_t *)tstamp_ptr);
@@ -232,9 +231,7 @@ cn9k_sso_hws_get_work(struct cn9k_sso_hws *ws, struct rte_event *ev,
 	uint64_t tstamp_ptr;
 	uint64_t mbuf;
 
-	plt_write64(BIT_ULL(16) | /* wait for work. */
-			    1,	  /* Use Mask set 0. */
-		    ws->base + SSOW_LF_GWS_OP_GET_WORK0);
+	plt_write64(ws->gw_wdata, ws->base + SSOW_LF_GWS_OP_GET_WORK0);
 
 	if (flags & NIX_RX_OFFLOAD_PTYPE_F)
 		rte_prefetch_non_temporal(lookup_mem);
@@ -529,9 +526,9 @@ NIX_RX_FASTPATH_MODES
 						SSOW_LF_GWS_TAG);              \
 			return 1;                                              \
 		}                                                              \
-		gw = cn9k_sso_hws_dual_get_work(                               \
-			dws->base[dws->vws], dws->base[!dws->vws], ev, flags,  \
-			dws->lookup_mem, dws->tstamp);                         \
+		gw = cn9k_sso_hws_dual_get_work(dws->base[dws->vws],           \
+						dws->base[!dws->vws], ev,      \
+						flags, dws);                   \
 		dws->vws = !dws->vws;                                          \
 		return gw;                                                     \
 	}
@@ -554,14 +551,14 @@ NIX_RX_FASTPATH_MODES
 						SSOW_LF_GWS_TAG);              \
 			return ret;                                            \
 		}                                                              \
-		ret = cn9k_sso_hws_dual_get_work(                              \
-			dws->base[dws->vws], dws->base[!dws->vws], ev, flags,  \
-			dws->lookup_mem, dws->tstamp);                         \
+		ret = cn9k_sso_hws_dual_get_work(dws->base[dws->vws],          \
+						 dws->base[!dws->vws], ev,     \
+						 flags, dws);                  \
 		dws->vws = !dws->vws;                                          \
 		for (iter = 1; iter < timeout_ticks && (ret == 0); iter++) {   \
-			ret = cn9k_sso_hws_dual_get_work(                      \
-				dws->base[dws->vws], dws->base[!dws->vws], ev, \
-				flags, dws->lookup_mem, dws->tstamp);          \
+			ret = cn9k_sso_hws_dual_get_work(dws->base[dws->vws],  \
+							 dws->base[!dws->vws], \
+							 ev, flags, dws);      \
 			dws->vws = !dws->vws;                                  \
 		}                                                              \
 		return ret;                                                    \
