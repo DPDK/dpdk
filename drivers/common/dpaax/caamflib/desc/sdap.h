@@ -225,10 +225,6 @@ static inline int pdcp_sdap_insert_no_int_op(struct program *p,
 		break;
 
 	case PDCP_CIPHER_TYPE_ZUC:
-		if (rta_sec_era < RTA_SEC_ERA_5) {
-			pr_err("Invalid era for selected algorithm\n");
-			return -ENOTSUP;
-		}
 		/* The LSB and MSB is the same for ZUC context */
 		MOVEB(p, MATH2, 0, CONTEXT1, 0, 0x08, IMMED);
 		MOVEB(p, MATH2, 0, CONTEXT1, 0x08, 0x08, WAITCOMP | IMMED);
@@ -253,7 +249,6 @@ pdcp_sdap_insert_enc_only_op(struct program *p, bool swap __maybe_unused,
 			     struct alginfo *cipherdata,
 			     struct alginfo *authdata __maybe_unused,
 			     unsigned int dir, enum pdcp_sn_size sn_size,
-			     unsigned char era_2_sw_hfn_ovrd __maybe_unused,
 			     enum pdb_type_e pdb_type)
 {
 	uint32_t offset = 0, length = 0, sn_mask = 0;
@@ -293,12 +288,7 @@ pdcp_sdap_insert_enc_only_op(struct program *p, bool swap __maybe_unused,
 	/* Write header */
 	SEQSTORE(p, MATH0, offset, length, 0);
 
-	if (rta_sec_era > RTA_SEC_ERA_2) {
-		MATHB(p, SEQINSZ, SUB, ZERO, VSEQINSZ, 4, 0);
-	} else {
-		MATHB(p, SEQINSZ, SUB, ONE, MATH1, 4, 0);
-		MATHB(p, MATH1, ADD, ONE, VSEQINSZ, 4, 0);
-	}
+	MATHB(p, SEQINSZ, SUB, ZERO, VSEQINSZ, 4, 0);
 
 	if (dir == OP_TYPE_ENCAP_PROTOCOL)
 		MATHB(p, SEQINSZ, ADD, PDCP_MAC_I_LEN, VSEQOUTSZ, 4, IMMED2);
@@ -326,11 +316,6 @@ pdcp_sdap_insert_enc_only_op(struct program *p, bool swap __maybe_unused,
 		break;
 
 	case PDCP_CIPHER_TYPE_ZUC:
-		if (rta_sec_era < RTA_SEC_ERA_5) {
-			pr_err("Invalid era for selected algorithm\n");
-			return -ENOTSUP;
-		}
-
 		MOVEB(p, MATH2, 0, CONTEXT1, 0, 0x08, IMMED);
 		MOVEB(p, MATH2, 0, CONTEXT1, 0x08, 0x08, WAITCOMP | IMMED);
 
@@ -378,7 +363,6 @@ static inline int
 pdcp_sdap_insert_snoop_op(struct program *p, bool swap __maybe_unused,
 			  struct alginfo *cipherdata, struct alginfo *authdata,
 			  unsigned int dir, enum pdcp_sn_size sn_size,
-			  unsigned char era_2_sw_hfn_ovrd __maybe_unused,
 			  enum pdb_type_e pdb_type)
 {
 	uint32_t offset = 0, length = 0, sn_mask = 0;
@@ -390,13 +374,6 @@ pdcp_sdap_insert_snoop_op(struct program *p, bool swap __maybe_unused,
 		(pdb_type == PDCP_PDB_TYPE_FULL_PDB) ?
 			FULL_PDB_DESCBUF_HFN_BEARER_DIR_OFFSET :
 			REDUCED_PDB_DESCBUF_HFN_BEARER_DIR_OFFSET;
-
-	if (authdata->algtype == PDCP_CIPHER_TYPE_ZUC) {
-		if (rta_sec_era < RTA_SEC_ERA_5) {
-			pr_err("Invalid era for selected algorithm\n");
-			return -ENOTSUP;
-		}
-	}
 
 	if (pdcp_sdap_get_sn_parameters(sn_size, swap, &offset, &length,
 					&sn_mask))
@@ -588,8 +565,7 @@ pdcp_sdap_insert_snoop_op(struct program *p, bool swap __maybe_unused,
 		 */
 		JUMP(p, 1, LOCAL_JUMP, ALL_TRUE, CLASS1 | NOP | NIFP);
 
-		if (rta_sec_era >= RTA_SEC_ERA_6)
-			LOAD(p, 0, DCTRL, 0, LDLEN_RST_CHA_OFIFO_PTR, IMMED);
+		LOAD(p, 0, DCTRL, 0, LDLEN_RST_CHA_OFIFO_PTR, IMMED);
 
 		/* Save the content left in the Output FIFO (the ICV) to MATH0
 		 */
@@ -604,13 +580,7 @@ pdcp_sdap_insert_snoop_op(struct program *p, bool swap __maybe_unused,
 		 * Note: As configured by the altsource, this will send
 		 * the
 		 */
-		if (rta_sec_era <= RTA_SEC_ERA_2) {
-			/* Shut off automatic Info FIFO entries */
-			LOAD(p, 0, DCTRL, LDOFF_DISABLE_AUTO_NFIFO, 0, IMMED);
-			MOVE(p, MATH0, 0, IFIFOAB2, 0, 4, WAITCOMP | IMMED);
-		} else {
-			MOVE(p, MATH0, 0, IFIFO, 0, 4, WAITCOMP | IMMED);
-		}
+		MOVE(p, MATH0, 0, IFIFO, 0, 4, WAITCOMP | IMMED);
 	}
 
 	if (authdata->algtype == PDCP_CIPHER_TYPE_ZUC) {
@@ -638,7 +608,6 @@ pdcp_sdap_insert_snoop_op(struct program *p, bool swap __maybe_unused,
 static inline int pdcp_sdap_insert_no_snoop_op(
 	struct program *p, bool swap __maybe_unused, struct alginfo *cipherdata,
 	struct alginfo *authdata, unsigned int dir, enum pdcp_sn_size sn_size,
-	unsigned char era_2_sw_hfn_ovrd __maybe_unused,
 	enum pdb_type_e pdb_type)
 {
 	uint32_t offset = 0, length = 0, sn_mask = 0;
@@ -648,13 +617,6 @@ static inline int pdcp_sdap_insert_no_snoop_op(
 		(pdb_type == PDCP_PDB_TYPE_FULL_PDB) ?
 			FULL_PDB_DESCBUF_HFN_BEARER_DIR_OFFSET :
 			REDUCED_PDB_DESCBUF_HFN_BEARER_DIR_OFFSET;
-
-	if (authdata->algtype == PDCP_CIPHER_TYPE_ZUC) {
-		if (rta_sec_era < RTA_SEC_ERA_5) {
-			pr_err("Invalid era for selected algorithm\n");
-			return -ENOTSUP;
-		}
-	}
 
 	if (pdcp_sdap_get_sn_parameters(sn_size, swap, &offset, &length,
 					&sn_mask))
@@ -842,11 +804,10 @@ pdcp_sdap_insert_cplane_null_op(struct program *p,
 			   struct alginfo *authdata,
 			   unsigned int dir,
 			   enum pdcp_sn_size sn_size,
-			   unsigned char era_2_sw_hfn_ovrd,
 			   enum pdb_type_e pdb_type __maybe_unused)
 {
 	return pdcp_insert_cplane_null_op(p, swap, cipherdata, authdata, dir,
-					  sn_size, era_2_sw_hfn_ovrd);
+					  sn_size);
 }
 
 static inline int
@@ -856,24 +817,22 @@ pdcp_sdap_insert_cplane_int_only_op(struct program *p,
 			   struct alginfo *authdata,
 			   unsigned int dir,
 			   enum pdcp_sn_size sn_size,
-			   unsigned char era_2_sw_hfn_ovrd,
 			   enum pdb_type_e pdb_type __maybe_unused)
 {
 	return pdcp_insert_cplane_int_only_op(p, swap, cipherdata, authdata,
-				dir, sn_size, era_2_sw_hfn_ovrd);
+				dir, sn_size);
 }
 
 static int pdcp_sdap_insert_with_int_op(
 	struct program *p, bool swap __maybe_unused, struct alginfo *cipherdata,
 	struct alginfo *authdata, enum pdcp_sn_size sn_size,
-	unsigned char era_2_sw_hfn_ovrd, unsigned int dir,
+	unsigned int dir,
 	enum pdb_type_e pdb_type)
 {
 	static int (
 		*pdcp_cp_fp[PDCP_CIPHER_TYPE_INVALID][PDCP_AUTH_TYPE_INVALID])(
 		struct program *, bool swap, struct alginfo *, struct alginfo *,
-		unsigned int, enum pdcp_sn_size,
-		unsigned char __maybe_unused, enum pdb_type_e pdb_type) = {
+		unsigned int dir, enum pdcp_sn_size, enum pdb_type_e pdb_type) = {
 		{
 			/* NULL */
 			pdcp_sdap_insert_cplane_null_op,     /* NULL */
@@ -907,7 +866,7 @@ static int pdcp_sdap_insert_with_int_op(
 
 	err = pdcp_cp_fp[cipherdata->algtype]
 			[authdata->algtype](p, swap, cipherdata, authdata, dir,
-					sn_size, era_2_sw_hfn_ovrd, pdb_type);
+					sn_size, pdb_type);
 	if (err)
 		return err;
 
@@ -925,7 +884,6 @@ cnstr_shdsc_pdcp_sdap_u_plane(uint32_t *descbuf,
 			       uint32_t hfn_threshold,
 			       struct alginfo *cipherdata,
 			       struct alginfo *authdata,
-			       unsigned char era_2_sw_hfn_ovrd,
 			       uint32_t caps_mode)
 {
 	struct program prg;
@@ -965,12 +923,6 @@ cnstr_shdsc_pdcp_sdap_u_plane(uint32_t *descbuf,
 		};
 
 	LABEL(pdb_end);
-
-	/* Check HFN override for ERA 2 */
-	if (rta_sec_era != RTA_SEC_ERA_2 && era_2_sw_hfn_ovrd) {
-		pr_err("Cannot select SW HFN ovrd for other era than 2");
-		return -EINVAL;
-	}
 
 	/* Check the confidentiality algorithm is supported by the code */
 	switch (cipherdata->algtype) {
@@ -1013,14 +965,6 @@ cnstr_shdsc_pdcp_sdap_u_plane(uint32_t *descbuf,
 		return -ENOTSUP;
 	}
 
-	/* Check that we are not performing ZUC algo on old platforms */
-	if (cipherdata->algtype == PDCP_CIPHER_TYPE_ZUC &&
-			rta_sec_era < RTA_SEC_ERA_5) {
-		pr_err("ZUC algorithm not supported for era: %d\n",
-				rta_sec_era);
-		return -ENOTSUP;
-	}
-
 	/* Initialize the program */
 	PROGRAM_CNTXT_INIT(p, descbuf, 0);
 
@@ -1047,7 +991,7 @@ cnstr_shdsc_pdcp_sdap_u_plane(uint32_t *descbuf,
 	SET_LABEL(p, pdb_end);
 
 	/* Inser the HFN override operation */
-	err = insert_hfn_ov_op(p, sn_size, pdb_type, era_2_sw_hfn_ovrd, false);
+	err = insert_hfn_ov_op(p, sn_size, pdb_type, false);
 	if (err)
 		return err;
 
@@ -1068,7 +1012,6 @@ cnstr_shdsc_pdcp_sdap_u_plane(uint32_t *descbuf,
 	} else {
 		err = pdcp_sdap_insert_with_int_op(p, swap, cipherdata,
 						   authdata, sn_size,
-						   era_2_sw_hfn_ovrd,
 						   caps_mode, pdb_type);
 		if (err) {
 			pr_err("Fail pdcp_sdap_insert_with_int_op\n");
@@ -1096,9 +1039,6 @@ cnstr_shdsc_pdcp_sdap_u_plane(uint32_t *descbuf,
  *                 keys should be renegotiated at the earliest convenience.
  * @cipherdata: pointer to block cipher transform definitions
  *              Valid algorithm values are those from cipher_type_pdcp enum.
- * @era_2_sw_hfn_ovrd: if software HFN override mechanism is desired for
- *                     this descriptor. Note: Can only be used for
- *                     SEC ERA 2.
  *
  * Return: size of descriptor written in words or negative number on error.
  *         Once the function returns, the value of this parameter can be used
@@ -1118,12 +1058,11 @@ cnstr_shdsc_pdcp_sdap_u_plane_encap(uint32_t *descbuf,
 			       unsigned short direction,
 			       uint32_t hfn_threshold,
 			       struct alginfo *cipherdata,
-			       struct alginfo *authdata,
-			       unsigned char era_2_sw_hfn_ovrd)
+			       struct alginfo *authdata)
 {
 	return cnstr_shdsc_pdcp_sdap_u_plane(descbuf, ps, swap, sn_size,
 			hfn, bearer, direction, hfn_threshold, cipherdata,
-			authdata, era_2_sw_hfn_ovrd, OP_TYPE_ENCAP_PROTOCOL);
+			authdata, OP_TYPE_ENCAP_PROTOCOL);
 }
 
 /**
@@ -1141,9 +1080,6 @@ cnstr_shdsc_pdcp_sdap_u_plane_encap(uint32_t *descbuf,
  *                 keys should be renegotiated at the earliest convenience.
  * @cipherdata: pointer to block cipher transform definitions
  *              Valid algorithm values are those from cipher_type_pdcp enum.
- * @era_2_sw_hfn_ovrd: if software HFN override mechanism is desired for
- *                     this descriptor. Note: Can only be used for
- *                     SEC ERA 2.
  *
  * Return: size of descriptor written in words or negative number on error.
  *         Once the function returns, the value of this parameter can be used
@@ -1163,12 +1099,11 @@ cnstr_shdsc_pdcp_sdap_u_plane_decap(uint32_t *descbuf,
 			       unsigned short direction,
 			       uint32_t hfn_threshold,
 			       struct alginfo *cipherdata,
-			       struct alginfo *authdata,
-			       unsigned char era_2_sw_hfn_ovrd)
+			       struct alginfo *authdata)
 {
 	return cnstr_shdsc_pdcp_sdap_u_plane(descbuf, ps, swap, sn_size, hfn,
 			bearer, direction, hfn_threshold, cipherdata, authdata,
-			era_2_sw_hfn_ovrd, OP_TYPE_DECAP_PROTOCOL);
+			OP_TYPE_DECAP_PROTOCOL);
 }
 
 #endif /* __DESC_SDAP_H__ */

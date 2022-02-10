@@ -296,8 +296,7 @@ dpaa_sec_prep_pdcp_cdb(dpaa_sec_session *ses)
 					ses->pdcp.bearer,
 					ses->pdcp.pkt_dir,
 					ses->pdcp.hfn_threshold,
-					&cipherdata, &authdata,
-					0);
+					&cipherdata, &authdata);
 		else if (ses->dir == DIR_DEC)
 			shared_desc_len = cnstr_shdsc_pdcp_c_plane_decap(
 					cdb->sh_desc, 1, swap,
@@ -306,8 +305,7 @@ dpaa_sec_prep_pdcp_cdb(dpaa_sec_session *ses)
 					ses->pdcp.bearer,
 					ses->pdcp.pkt_dir,
 					ses->pdcp.hfn_threshold,
-					&cipherdata, &authdata,
-					0);
+					&cipherdata, &authdata);
 	} else if (ses->pdcp.domain == RTE_SECURITY_PDCP_MODE_SHORT_MAC) {
 		shared_desc_len = cnstr_shdsc_pdcp_short_mac(cdb->sh_desc,
 						     1, swap, &authdata);
@@ -322,7 +320,7 @@ dpaa_sec_prep_pdcp_cdb(dpaa_sec_session *ses)
 						ses->pdcp.bearer,
 						ses->pdcp.pkt_dir,
 						ses->pdcp.hfn_threshold,
-						&cipherdata, p_authdata, 0);
+						&cipherdata, p_authdata);
 			else
 				shared_desc_len =
 					cnstr_shdsc_pdcp_u_plane_encap(
@@ -332,7 +330,7 @@ dpaa_sec_prep_pdcp_cdb(dpaa_sec_session *ses)
 						ses->pdcp.bearer,
 						ses->pdcp.pkt_dir,
 						ses->pdcp.hfn_threshold,
-						&cipherdata, p_authdata, 0);
+						&cipherdata, p_authdata);
 		} else if (ses->dir == DIR_DEC) {
 			if (ses->pdcp.sdap_enabled)
 				shared_desc_len =
@@ -343,7 +341,7 @@ dpaa_sec_prep_pdcp_cdb(dpaa_sec_session *ses)
 						ses->pdcp.bearer,
 						ses->pdcp.pkt_dir,
 						ses->pdcp.hfn_threshold,
-						&cipherdata, p_authdata, 0);
+						&cipherdata, p_authdata);
 			else
 				shared_desc_len =
 					cnstr_shdsc_pdcp_u_plane_decap(
@@ -353,7 +351,7 @@ dpaa_sec_prep_pdcp_cdb(dpaa_sec_session *ses)
 						ses->pdcp.bearer,
 						ses->pdcp.pkt_dir,
 						ses->pdcp.hfn_threshold,
-						&cipherdata, p_authdata, 0);
+						&cipherdata, p_authdata);
 		}
 	}
 	return shared_desc_len;
