@@ -370,7 +370,7 @@ do { \
 do { \
 	if (unlikely(in == NULL)) \
 		return; \
-	rte_strscpy(mem, in, __RTE_TRACE_EMIT_STRING_LEN_MAX); \
+	rte_strscpy((char *)mem, in, __RTE_TRACE_EMIT_STRING_LEN_MAX); \
 	mem = RTE_PTR_ADD(mem, __RTE_TRACE_EMIT_STRING_LEN_MAX); \
 } while (0)
 
