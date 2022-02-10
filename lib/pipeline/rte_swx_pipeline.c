@@ -8531,7 +8531,7 @@ table_state_build(struct rte_swx_pipeline *p)
 	struct selector *s;
 	struct learner *l;
 
-	p->table_state = calloc(p->n_tables + p->n_selectors,
+	p->table_state = calloc(p->n_tables + p->n_selectors + p->n_learners,
 				sizeof(struct rte_swx_table_state));
 	CHECK(p->table_state, ENOMEM);
 
