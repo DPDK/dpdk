@@ -1021,15 +1021,16 @@ learner_action_data_size_get(struct rte_swx_ctl_pipeline *ctl, struct learner *l
 static void
 table_state_free(struct rte_swx_ctl_pipeline *ctl)
 {
-	uint32_t i;
+	uint32_t table_base_index, selector_base_index, learner_base_index, i;
 
 	if (!ctl->ts_next)
 		return;
 
 	/* For each table, free its table state. */
+	table_base_index = 0;
 	for (i = 0; i < ctl->info.n_tables; i++) {
 		struct table *table = &ctl->tables[i];
-		struct rte_swx_table_state *ts = &ctl->ts_next[i];
+		struct rte_swx_table_state *ts = &ctl->ts_next[table_base_index + i];
 
 		/* Default action data. */
 		free(ts->default_action_data);
@@ -1040,8 +1041,9 @@ table_state_free(struct rte_swx_ctl_pipeline *ctl)
 	}
 
 	/* For each selector table, free its table state. */
+	selector_base_index = ctl->info.n_tables;
 	for (i = 0; i < ctl->info.n_selectors; i++) {
-		struct rte_swx_table_state *ts = &ctl->ts_next[i];
+		struct rte_swx_table_state *ts = &ctl->ts_next[selector_base_index + i];
 
 		/* Table object. */
 		if (ts->obj)
@@ -1049,8 +1051,9 @@ table_state_free(struct rte_swx_ctl_pipeline *ctl)
 	}
 
 	/* For each learner table, free its table state. */
+	learner_base_index = ctl->info.n_tables + ctl->info.n_selectors;
 	for (i = 0; i < ctl->info.n_learners; i++) {
-		struct rte_swx_table_state *ts = &ctl->ts_next[i];
+		struct rte_swx_table_state *ts = &ctl->ts_next[learner_base_index + i];
 
 		/* Default action data. */
 		free(ts->default_action_data);
@@ -1063,10 +1066,10 @@ table_state_free(struct rte_swx_ctl_pipeline *ctl)
 static int
 table_state_create(struct rte_swx_ctl_pipeline *ctl)
 {
+	uint32_t table_base_index, selector_base_index, learner_base_index, i;
 	int status = 0;
-	uint32_t i;
 
-	ctl->ts_next = calloc(ctl->info.n_tables + ctl->info.n_selectors,
+	ctl->ts_next = calloc(ctl->info.n_tables + ctl->info.n_selectors + ctl->info.n_learners,
 			      sizeof(struct rte_swx_table_state));
 	if (!ctl->ts_next) {
 		status = -ENOMEM;
@@ -1074,10 +1077,11 @@ table_state_create(struct rte_swx_ctl_pipeline *ctl)
 	}
 
 	/* Tables. */
+	table_base_index = 0;
 	for (i = 0; i < ctl->info.n_tables; i++) {
 		struct table *table = &ctl->tables[i];
-		struct rte_swx_table_state *ts = &ctl->ts[i];
-		struct rte_swx_table_state *ts_next = &ctl->ts_next[i];
+		struct rte_swx_table_state *ts = &ctl->ts[table_base_index + i];
+		struct rte_swx_table_state *ts_next = &ctl->ts_next[table_base_index + i];
 
 		/* Table object. */
 		if (!table->is_stub && table->ops.add) {
@@ -1110,9 +1114,10 @@ table_state_create(struct rte_swx_ctl_pipeline *ctl)
 	}
 
 	/* Selector tables. */
+	selector_base_index = ctl->info.n_tables;
 	for (i = 0; i < ctl->info.n_selectors; i++) {
 		struct selector *s = &ctl->selectors[i];
-		struct rte_swx_table_state *ts_next = &ctl->ts_next[ctl->info.n_tables + i];
+		struct rte_swx_table_state *ts_next = &ctl->ts_next[selector_base_index + i];
 
 		/* Table object. */
 		ts_next->obj = rte_swx_table_selector_create(&s->params, NULL, ctl->numa_node);
@@ -1123,10 +1128,11 @@ table_state_create(struct rte_swx_ctl_pipeline *ctl)
 	}
 
 	/* Learner tables. */
+	learner_base_index = ctl->info.n_tables + ctl->info.n_selectors;
 	for (i = 0; i < ctl->info.n_learners; i++) {
 		struct learner *l = &ctl->learners[i];
-		struct rte_swx_table_state *ts = &ctl->ts[i];
-		struct rte_swx_table_state *ts_next = &ctl->ts_next[i];
+		struct rte_swx_table_state *ts = &ctl->ts[learner_base_index + i];
+		struct rte_swx_table_state *ts_next = &ctl->ts_next[learner_base_index + i];
 
 		/* Table object: duplicate from the current table state. */
 		ts_next->obj = ts->obj;
