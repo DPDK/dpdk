@@ -6,4 +6,6 @@ headers = files('rte_stack.h',
 		'rte_stack_std.h',
 		'rte_stack_lf.h',
 		'rte_stack_lf_generic.h',
-		'rte_stack_lf_c11.h')
+		'rte_stack_lf_c11.h',
+		'rte_stack_lf_stubs.h',
+)
