@@ -3273,8 +3273,10 @@ test_bpf_dump(struct bpf_program *cbf, const struct rte_bpf_prm *prm)
 	printf("cBPF program (%u insns)\n", cbf->bf_len);
 	bpf_dump(cbf, 1);
 
-	printf("\neBPF program (%u insns)\n", prm->nb_ins);
-	rte_bpf_dump(stdout, prm->ins, prm->nb_ins);
+	if (prm != NULL) {
+		printf("\neBPF program (%u insns)\n", prm->nb_ins);
+		rte_bpf_dump(stdout, prm->ins, prm->nb_ins);
+	}
 }
 
 static int
