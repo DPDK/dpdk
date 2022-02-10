@@ -895,27 +895,27 @@ cnstr_shdsc_pdcp_sdap_u_plane(uint32_t *descbuf,
 			{
 				/* NULL */
 				SHR_WAIT,   /* NULL */
-				SHR_ALWAYS, /* SNOW f9 */
-				SHR_ALWAYS, /* AES CMAC */
-				SHR_ALWAYS  /* ZUC-I */
+				SHR_WAIT, /* SNOW f9 */
+				SHR_WAIT, /* AES CMAC */
+				SHR_WAIT  /* ZUC-I */
 			},
 			{
 				/* SNOW f8 */
-				SHR_ALWAYS, /* NULL */
-				SHR_ALWAYS, /* SNOW f9 */
+				SHR_WAIT, /* NULL */
+				SHR_WAIT, /* SNOW f9 */
 				SHR_WAIT,   /* AES CMAC */
 				SHR_WAIT    /* ZUC-I */
 			},
 			{
 				/* AES CTR */
-				SHR_ALWAYS, /* NULL */
-				SHR_ALWAYS, /* SNOW f9 */
-				SHR_ALWAYS, /* AES CMAC */
+				SHR_WAIT, /* NULL */
+				SHR_WAIT, /* SNOW f9 */
+				SHR_WAIT, /* AES CMAC */
 				SHR_WAIT    /* ZUC-I */
 			},
 			{
 				/* ZUC-E */
-				SHR_ALWAYS, /* NULL */
+				SHR_WAIT, /* NULL */
 				SHR_WAIT,   /* SNOW f9 */
 				SHR_WAIT,   /* AES CMAC */
 				SHR_WAIT    /* ZUC-I */
@@ -979,7 +979,7 @@ cnstr_shdsc_pdcp_sdap_u_plane(uint32_t *descbuf,
 		SHR_HDR(p, desc_share[cipherdata->algtype][authdata->algtype],
 			0, 0);
 	else
-		SHR_HDR(p, SHR_ALWAYS, 0, 0);
+		SHR_HDR(p, SHR_WAIT, 0, 0);
 
 	/* Construct the PDB */
 	pdb_type = cnstr_pdcp_u_plane_pdb(p, sn_size, hfn, bearer, direction,
