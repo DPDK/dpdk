@@ -185,3 +185,10 @@ on error, mode 1 means dump HW error code and mode 2 means dump HW error code
 along with other useful debugging information like session, queue, descriptor
 data.
 e.g. ``fslmc:dpseci.1,drv_dump_mode=1``
+
+Enable strict ordering
+----------------------
+
+Use dev arg option ``drv_strict_order=1`` to enable strict ordering.
+By default, loose ordering is set for ordered schedule type event.
+e.g. ``fslmc:dpseci.1,drv_strict_order=1``
