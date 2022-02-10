@@ -58,8 +58,8 @@ static inline uint64_t
 rte_table_hash_crc_key8(void *key, void *mask, __rte_unused uint32_t key_size,
 	uint64_t seed)
 {
-	uint64_t *k = key;
-	uint64_t *m = mask;
+	uint64_t *k = (uint64_t *)key;
+	uint64_t *m = (uint64_t *)mask;
 	uint64_t crc0;
 
 	crc0 = rte_crc32_u64(seed, k[0] & m[0]);
@@ -72,8 +72,8 @@ static inline uint64_t
 rte_table_hash_crc_key16(void *key, void *mask, __rte_unused uint32_t key_size,
 	uint64_t seed)
 {
-	uint64_t *k = key;
-	uint64_t *m = mask;
+	uint64_t *k = (uint64_t *)key;
+	uint64_t *m = (uint64_t *)mask;
 	uint64_t k0, crc0, crc1;
 
 	k0 = k[0] & m[0];
@@ -91,8 +91,8 @@ static inline uint64_t
 rte_table_hash_crc_key24(void *key, void *mask, __rte_unused uint32_t key_size,
 	uint64_t seed)
 {
-	uint64_t *k = key;
-	uint64_t *m = mask;
+	uint64_t *k = (uint64_t *)key;
+	uint64_t *m = (uint64_t *)mask;
 	uint64_t k0, k2, crc0, crc1;
 
 	k0 = k[0] & m[0];
@@ -113,8 +113,8 @@ static inline uint64_t
 rte_table_hash_crc_key32(void *key, void *mask, __rte_unused uint32_t key_size,
 	uint64_t seed)
 {
-	uint64_t *k = key;
-	uint64_t *m = mask;
+	uint64_t *k = (uint64_t *)key;
+	uint64_t *m = (uint64_t *)mask;
 	uint64_t k0, k2, crc0, crc1, crc2, crc3;
 
 	k0 = k[0] & m[0];
@@ -139,8 +139,8 @@ static inline uint64_t
 rte_table_hash_crc_key40(void *key, void *mask, __rte_unused uint32_t key_size,
 	uint64_t seed)
 {
-	uint64_t *k = key;
-	uint64_t *m = mask;
+	uint64_t *k = (uint64_t *)key;
+	uint64_t *m = (uint64_t *)mask;
 	uint64_t k0, k2, crc0, crc1, crc2, crc3;
 
 	k0 = k[0] & m[0];
@@ -165,8 +165,8 @@ static inline uint64_t
 rte_table_hash_crc_key48(void *key, void *mask, __rte_unused uint32_t key_size,
 	uint64_t seed)
 {
-	uint64_t *k = key;
-	uint64_t *m = mask;
+	uint64_t *k = (uint64_t *)key;
+	uint64_t *m = (uint64_t *)mask;
 	uint64_t k0, k2, k5, crc0, crc1, crc2, crc3;
 
 	k0 = k[0] & m[0];
@@ -192,8 +192,8 @@ static inline uint64_t
 rte_table_hash_crc_key56(void *key, void *mask, __rte_unused uint32_t key_size,
 	uint64_t seed)
 {
-	uint64_t *k = key;
-	uint64_t *m = mask;
+	uint64_t *k = (uint64_t *)key;
+	uint64_t *m = (uint64_t *)mask;
 	uint64_t k0, k2, k5, crc0, crc1, crc2, crc3, crc4, crc5;
 
 	k0 = k[0] & m[0];
@@ -222,8 +222,8 @@ static inline uint64_t
 rte_table_hash_crc_key64(void *key, void *mask, __rte_unused uint32_t key_size,
 	uint64_t seed)
 {
-	uint64_t *k = key;
-	uint64_t *m = mask;
+	uint64_t *k = (uint64_t *)key;
+	uint64_t *m = (uint64_t *)mask;
 	uint64_t k0, k2, k5, crc0, crc1, crc2, crc3, crc4, crc5;
 
 	k0 = k[0] & m[0];
