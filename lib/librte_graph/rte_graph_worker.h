@@ -155,7 +155,7 @@ rte_graph_walk(struct rte_graph *graph)
 	 *	+-----+ <= cir_start + mask
 	 */
 	while (likely(head != graph->tail)) {
-		node = RTE_PTR_ADD(graph, cir_start[(int32_t)head++]);
+		node = (struct rte_node *)RTE_PTR_ADD(graph, cir_start[(int32_t)head++]);
 		RTE_ASSERT(node->fence == RTE_GRAPH_FENCE);
 		objs = node->objs;
 		rte_prefetch0(objs);
