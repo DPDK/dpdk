@@ -176,11 +176,15 @@ rte_event_crypto_adapter_caps_get(uint8_t dev_id, uint8_t cdev_id,
 
 	if (caps == NULL)
 		return -EINVAL;
-	*caps = 0;
+
+	if (dev->dev_ops->crypto_adapter_caps_get == NULL)
+		*caps = RTE_EVENT_CRYPTO_ADAPTER_SW_CAP;
+	else
+		*caps = 0;
 
 	return dev->dev_ops->crypto_adapter_caps_get ?
 		(*dev->dev_ops->crypto_adapter_caps_get)
-		(dev, cdev, caps) : -ENOTSUP;
+		(dev, cdev, caps) : 0;
 }
 
 int
