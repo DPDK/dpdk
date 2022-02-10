@@ -52,11 +52,11 @@ cnxk_sso_hws_swtag_flush(uint64_t tag_op, uint64_t flush_op)
 	plt_write64(0, flush_op);
 }
 
-static __rte_always_inline void
+static __rte_always_inline uint64_t
 cnxk_sso_hws_swtag_wait(uintptr_t tag_op)
 {
-#ifdef RTE_ARCH_ARM64
 	uint64_t swtp;
+#ifdef RTE_ARCH_ARM64
 
 	asm volatile(PLT_CPU_FEATURE_PREAMBLE
 		     "		ldr %[swtb], [%[swtp_loc]]	\n"
@@ -70,9 +70,12 @@ cnxk_sso_hws_swtag_wait(uintptr_t tag_op)
 		     : [swtp_loc] "r"(tag_op));
 #else
 	/* Wait for the SWTAG/SWTAG_FULL operation */
-	while (plt_read64(tag_op) & BIT_ULL(62))
-		;
+	do {
+		swtp = plt_read64(tag_op);
+	} while (swtp & BIT_ULL(62));
 #endif
+
+	return swtp;
 }
 
 #endif

@@ -700,7 +700,7 @@ cn9k_sso_hws_xmit_sec_one(const struct cn9k_eth_txq *txq, uint64_t base,
 
 	/* Head wait if needed */
 	if (base)
-		roc_sso_hws_head_wait(base + SSOW_LF_GWS_TAG);
+		roc_sso_hws_head_wait(base);
 
 	/* ESN */
 	outb_priv = roc_nix_inl_onf_ipsec_outb_sa_sw_rsvd((void *)sa);
@@ -793,7 +793,7 @@ cn9k_sso_hws_event_tx(uint64_t base, struct rte_event *ev, uint64_t *cmd,
 					     flags);
 		if (!CNXK_TT_FROM_EVENT(ev->event)) {
 			cn9k_nix_xmit_mseg_prep_lmt(cmd, txq->lmt_addr, segdw);
-			roc_sso_hws_head_wait(base + SSOW_LF_GWS_TAG);
+			roc_sso_hws_head_wait(base);
 			cn9k_sso_txq_fc_wait(txq);
 			if (cn9k_nix_xmit_submit_lmt(txq->io_addr) == 0)
 				cn9k_nix_xmit_mseg_one(cmd, txq->lmt_addr,
@@ -806,7 +806,7 @@ cn9k_sso_hws_event_tx(uint64_t base, struct rte_event *ev, uint64_t *cmd,
 		cn9k_nix_xmit_prepare_tstamp(txq, cmd, m->ol_flags, 4, flags);
 		if (!CNXK_TT_FROM_EVENT(ev->event)) {
 			cn9k_nix_xmit_prep_lmt(cmd, txq->lmt_addr, flags);
-			roc_sso_hws_head_wait(base + SSOW_LF_GWS_TAG);
+			roc_sso_hws_head_wait(base);
 			cn9k_sso_txq_fc_wait(txq);
 			if (cn9k_nix_xmit_submit_lmt(txq->io_addr) == 0)
 				cn9k_nix_xmit_one(cmd, txq->lmt_addr,

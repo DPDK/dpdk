@@ -47,6 +47,7 @@
 #define CNXK_CLR_SUB_EVENT(x)	    (~(0xffu << 20) & x)
 #define CNXK_GRP_FROM_TAG(x)	    (((x) >> 36) & 0x3ff)
 #define CNXK_SWTAG_PEND(x)	    (BIT_ULL(62) & x)
+#define CNXK_TAG_IS_HEAD(x)	    (BIT_ULL(35) & x)
 
 #define CN9K_SSOW_GET_BASE_ADDR(_GW) ((_GW)-SSOW_LF_GWS_OP_GET_WORK0)
 
@@ -123,6 +124,7 @@ struct cnxk_sso_evdev {
 
 struct cn10k_sso_hws {
 	uint64_t base;
+	uint64_t gw_rdata;
 	/* PTP timestamp */
 	struct cnxk_timesync_info *tstamp;
 	void *lookup_mem;

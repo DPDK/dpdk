@@ -54,12 +54,13 @@ struct roc_sso {
 	uint8_t reserved[ROC_SSO_MEM_SZ] __plt_cache_aligned;
 } __plt_cache_aligned;
 
-static __plt_always_inline void
-roc_sso_hws_head_wait(uintptr_t tag_op)
+static __plt_always_inline uint64_t
+roc_sso_hws_head_wait(uintptr_t base)
 {
-#ifdef RTE_ARCH_ARM64
+	uintptr_t tag_op = base + SSOW_LF_GWS_TAG;
 	uint64_t tag;
 
+#if defined(__aarch64__)
 	asm volatile(PLT_CPU_FEATURE_PREAMBLE
 		     "		ldr %[tag], [%[tag_op]]	\n"
 		     "		tbnz %[tag], 35, done%=		\n"
@@ -71,10 +72,11 @@ roc_sso_hws_head_wait(uintptr_t tag_op)
 		     : [tag] "=&r"(tag)
 		     : [tag_op] "r"(tag_op));
 #else
-	/* Wait for the SWTAG/SWTAG_FULL operation */
-	while (!(plt_read64(tag_op) & BIT_ULL(35)))
-		;
+	do {
+		tag = plt_read64(tag_op);
+	} while (!(tag & BIT_ULL(35)));
 #endif
+	return tag;
 }
 
 /* SSO device initialization */

@@ -40,8 +40,7 @@ cn10k_sso_hws_fwd_swtag(struct cn10k_sso_hws *ws, const struct rte_event *ev)
 {
 	const uint32_t tag = (uint32_t)ev->event;
 	const uint8_t new_tt = ev->sched_type;
-	const uint8_t cur_tt =
-		CNXK_TT_FROM_TAG(plt_read64(ws->base + SSOW_LF_GWS_WQE0));
+	const uint8_t cur_tt = CNXK_TT_FROM_TAG(ws->gw_rdata);
 
 	/* CNXK model
 	 * cur_tt/new_tt     SSO_TT_ORDERED SSO_TT_ATOMIC SSO_TT_UNTAGGED
@@ -81,7 +80,7 @@ cn10k_sso_hws_forward_event(struct cn10k_sso_hws *ws,
 	const uint8_t grp = ev->queue_id;
 
 	/* Group hasn't changed, Use SWTAG to forward the event */
-	if (CNXK_GRP_FROM_TAG(plt_read64(ws->base + SSOW_LF_GWS_WQE0)) == grp)
+	if (CNXK_GRP_FROM_TAG(ws->gw_rdata) == grp)
 		cn10k_sso_hws_fwd_swtag(ws, ev);
 	else
 		/*
@@ -211,6 +210,7 @@ cn10k_sso_hws_get_work(struct cn10k_sso_hws *ws, struct rte_event *ev,
 	} while (gw.u64[0] & BIT_ULL(63));
 	mbuf = (uint64_t)((char *)gw.u64[1] - sizeof(struct rte_mbuf));
 #endif
+	ws->gw_rdata = gw.u64[0];
 	gw.u64[0] = (gw.u64[0] & (0x3ull << 32)) << 6 |
 		    (gw.u64[0] & (0x3FFull << 36)) << 4 |
 		    (gw.u64[0] & 0xffffffff);
@@ -405,7 +405,8 @@ NIX_RX_FASTPATH_MODES
 		RTE_SET_USED(timeout_ticks);                                   \
 		if (ws->swtag_req) {                                           \
 			ws->swtag_req = 0;                                     \
-			cnxk_sso_hws_swtag_wait(ws->base + SSOW_LF_GWS_WQE0);  \
+			ws->gw_rdata = cnxk_sso_hws_swtag_wait(                \
+				ws->base + SSOW_LF_GWS_WQE0);                  \
 			return 1;                                              \
 		}                                                              \
 		return cn10k_sso_hws_get_work(ws, ev, flags, ws->lookup_mem);  \
@@ -424,7 +425,8 @@ NIX_RX_FASTPATH_MODES
 		uint64_t iter;                                                 \
 		if (ws->swtag_req) {                                           \
 			ws->swtag_req = 0;                                     \
-			cnxk_sso_hws_swtag_wait(ws->base + SSOW_LF_GWS_WQE0);  \
+			ws->gw_rdata = cnxk_sso_hws_swtag_wait(                \
+				ws->base + SSOW_LF_GWS_WQE0);                  \
 			return ret;                                            \
 		}                                                              \
 		ret = cn10k_sso_hws_get_work(ws, ev, flags, ws->lookup_mem);   \
@@ -507,8 +509,8 @@ cn10k_sso_tx_one(struct cn10k_sso_hws *ws, struct rte_mbuf *m, uint64_t *cmd,
 	else
 		pa = txq->io_addr | ((segdw - 1) << 4);
 
-	if (!sched_type)
-		roc_sso_hws_head_wait(ws->base + SSOW_LF_GWS_TAG);
+	if (!CNXK_TAG_IS_HEAD(ws->gw_rdata) && !sched_type)
+		ws->gw_rdata = roc_sso_hws_head_wait(ws->base);
 
 	roc_lmt_submit_steorl(lmt_id, pa);
 }
