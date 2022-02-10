@@ -161,7 +161,7 @@ cn9k_cpt_inst_submit(struct cpt_inst_s *inst, uint64_t lmtline,
 
 	do {
 		/* Copy CPT command to LMTLINE */
-		roc_lmt_mov((void *)lmtline, inst, 2);
+		roc_lmt_mov64((void *)lmtline, inst);
 
 		/*
 		 * Make sure compiler does not reorder memcpy and ldeor.

@@ -186,23 +186,26 @@ cn10k_cpt_tx_steor_data(void)
 }
 
 static __rte_always_inline void
-cn10k_nix_tx_skeleton(const struct cn10k_eth_txq *txq, uint64_t *cmd,
-		      const uint16_t flags)
+cn10k_nix_tx_skeleton(struct cn10k_eth_txq *txq, uint64_t *cmd,
+		      const uint16_t flags, const uint16_t static_sz)
 {
-	/* Send hdr */
-	cmd[0] = txq->send_hdr_w0;
+	if (static_sz)
+		cmd[0] = txq->send_hdr_w0;
+	else
+		cmd[0] = (txq->send_hdr_w0 & 0xFFFFF00000000000) |
+			 ((uint64_t)(cn10k_nix_tx_ext_subs(flags) + 1) << 40);
 	cmd[1] = 0;
-	cmd += 2;
 
-	/* Send ext if present */
 	if (flags & NIX_TX_NEED_EXT_HDR) {
-		*(__uint128_t *)cmd = *(const __uint128_t *)txq->cmd;
-		cmd += 2;
+		if (flags & NIX_TX_OFFLOAD_TSTAMP_F)
+			cmd[2] = (NIX_SUBDC_EXT << 60) | BIT_ULL(15);
+		else
+			cmd[2] = NIX_SUBDC_EXT << 60;
+		cmd[3] = 0;
+		cmd[4] = (NIX_SUBDC_SG << 60) | BIT_ULL(48);
+	} else {
+		cmd[2] = (NIX_SUBDC_SG << 60) | BIT_ULL(48);
 	}
-
-	/* Send sg */
-	cmd[0] = txq->sg_w0;
-	cmd[1] = 0;
 }
 
 static __rte_always_inline void
@@ -718,41 +721,29 @@ cn10k_nix_xmit_mv_lmt_base(uintptr_t lmt_addr, uint64_t *cmd,
 }
 
 static __rte_always_inline void
-cn10k_nix_xmit_prepare_tstamp(uintptr_t lmt_addr, const uint64_t *cmd,
+cn10k_nix_xmit_prepare_tstamp(struct cn10k_eth_txq *txq, uintptr_t lmt_addr,
 			      const uint64_t ol_flags, const uint16_t no_segdw,
 			      const uint16_t flags)
 {
 	if (flags & NIX_TX_OFFLOAD_TSTAMP_F) {
-		const uint8_t is_ol_tstamp = !(ol_flags & RTE_MBUF_F_TX_IEEE1588_TMST);
-		struct nix_send_ext_s *send_hdr_ext =
-			(struct nix_send_ext_s *)lmt_addr + 16;
+		const uint8_t is_ol_tstamp =
+			!(ol_flags & RTE_MBUF_F_TX_IEEE1588_TMST);
 		uint64_t *lmt = (uint64_t *)lmt_addr;
 		uint16_t off = (no_segdw - 1) << 1;
 		struct nix_send_mem_s *send_mem;
 
 		send_mem = (struct nix_send_mem_s *)(lmt + off);
-		send_hdr_ext->w0.subdc = NIX_SUBDC_EXT;
-		send_hdr_ext->w0.tstmp = 1;
-		if (flags & NIX_TX_MULTI_SEG_F) {
-			/* Retrieving the default desc values */
-			lmt[off] = cmd[2];
-
-			/* Using compiler barrier to avoid violation of C
-			 * aliasing rules.
-			 */
-			rte_compiler_barrier();
-		}
-
-		/* Packets for which RTE_MBUF_F_TX_IEEE1588_TMST is not set, tx tstamp
+		/* Packets for which PKT_TX_IEEE1588_TMST is not set, tx tstamp
 		 * should not be recorded, hence changing the alg type to
-		 * NIX_SENDMEMALG_SET and also changing send mem addr field to
+		 * NIX_SENDMEMALG_SUB and also changing send mem addr field to
 		 * next 8 bytes as it corrupts the actual Tx tstamp registered
 		 * address.
 		 */
 		send_mem->w0.subdc = NIX_SUBDC_MEM;
-		send_mem->w0.alg = NIX_SENDMEMALG_SETTSTMP - (is_ol_tstamp);
+		send_mem->w0.alg =
+			NIX_SENDMEMALG_SETTSTMP + (is_ol_tstamp << 3);
 		send_mem->addr =
-			(rte_iova_t)(((uint64_t *)cmd[3]) + is_ol_tstamp);
+			(rte_iova_t)(((uint64_t *)txq->ts_mem) + is_ol_tstamp);
 	}
 }
 
@@ -841,8 +832,8 @@ done:
 }
 
 static __rte_always_inline uint16_t
-cn10k_nix_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t pkts,
-		    uint64_t *cmd, uintptr_t base, const uint16_t flags)
+cn10k_nix_xmit_pkts(void *tx_queue, uint64_t *ws, struct rte_mbuf **tx_pkts,
+		    uint16_t pkts, uint64_t *cmd, const uint16_t flags)
 {
 	struct cn10k_eth_txq *txq = tx_queue;
 	const rte_iova_t io_addr = txq->io_addr;
@@ -863,9 +854,8 @@ cn10k_nix_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t pkts,
 		/* Reduce the cached count */
 		txq->fc_cache_pkts -= pkts;
 	}
-
 	/* Get cmd skeleton */
-	cn10k_nix_tx_skeleton(txq, cmd, flags);
+	cn10k_nix_tx_skeleton(txq, cmd, flags, !(flags & NIX_TX_VWQE_F));
 
 	if (flags & NIX_TX_OFFLOAD_TSO_F)
 		lso_tun_fmt = txq->lso_tun_fmt;
@@ -909,14 +899,14 @@ again:
 
 		/* Move NIX desc to LMT/NIXTX area */
 		cn10k_nix_xmit_mv_lmt_base(laddr, cmd, flags);
-		cn10k_nix_xmit_prepare_tstamp(laddr, &txq->cmd[0],
-					      tx_pkts[i]->ol_flags, 4, flags);
+		cn10k_nix_xmit_prepare_tstamp(txq, laddr, tx_pkts[i]->ol_flags,
+					      4, flags);
 		if (!(flags & NIX_TX_OFFLOAD_SECURITY_F) || !sec)
 			lnum++;
 	}
 
 	if (flags & NIX_TX_VWQE_F)
-		roc_sso_hws_head_wait(base);
+		roc_sso_hws_head_wait(ws[0]);
 
 	left -= burst;
 	tx_pkts += burst;
@@ -967,9 +957,9 @@ again:
 }
 
 static __rte_always_inline uint16_t
-cn10k_nix_xmit_pkts_mseg(void *tx_queue, struct rte_mbuf **tx_pkts,
-			 uint16_t pkts, uint64_t *cmd, uintptr_t base,
-			 const uint16_t flags)
+cn10k_nix_xmit_pkts_mseg(void *tx_queue, uint64_t *ws,
+			 struct rte_mbuf **tx_pkts, uint16_t pkts,
+			 uint64_t *cmd, const uint16_t flags)
 {
 	struct cn10k_eth_txq *txq = tx_queue;
 	uintptr_t pa0, pa1, lbase = txq->lmt_base;
@@ -987,12 +977,13 @@ cn10k_nix_xmit_pkts_mseg(void *tx_queue, struct rte_mbuf **tx_pkts,
 	uintptr_t laddr;
 	bool sec;
 
-	NIX_XMIT_FC_OR_RETURN(txq, pkts);
-
-	cn10k_nix_tx_skeleton(txq, cmd, flags);
-
-	/* Reduce the cached count */
-	txq->fc_cache_pkts -= pkts;
+	if (!(flags & NIX_TX_VWQE_F)) {
+		NIX_XMIT_FC_OR_RETURN(txq, pkts);
+		/* Reduce the cached count */
+		txq->fc_cache_pkts -= pkts;
+	}
+	/* Get cmd skeleton */
+	cn10k_nix_tx_skeleton(txq, cmd, flags, !(flags & NIX_TX_VWQE_F));
 
 	if (flags & NIX_TX_OFFLOAD_TSO_F)
 		lso_tun_fmt = txq->lso_tun_fmt;
@@ -1038,13 +1029,11 @@ again:
 
 		/* Move NIX desc to LMT/NIXTX area */
 		cn10k_nix_xmit_mv_lmt_base(laddr, cmd, flags);
-
 		/* Store sg list directly on lmt line */
 		segdw = cn10k_nix_prepare_mseg(tx_pkts[i], (uint64_t *)laddr,
 					       flags);
-		cn10k_nix_xmit_prepare_tstamp(laddr, &txq->cmd[0],
-					      tx_pkts[i]->ol_flags, segdw,
-					      flags);
+		cn10k_nix_xmit_prepare_tstamp(txq, laddr, tx_pkts[i]->ol_flags,
+					      segdw, flags);
 		if (!(flags & NIX_TX_OFFLOAD_SECURITY_F) || !sec) {
 			lnum++;
 			data128 |= (((__uint128_t)(segdw - 1)) << shft);
@@ -1053,7 +1042,7 @@ again:
 	}
 
 	if (flags & NIX_TX_VWQE_F)
-		roc_sso_hws_head_wait(base);
+		roc_sso_hws_head_wait(ws[0]);
 
 	left -= burst;
 	tx_pkts += burst;
@@ -1474,9 +1463,9 @@ cn10k_nix_xmit_store(struct rte_mbuf *mbuf, uint8_t segdw, uintptr_t laddr,
 }
 
 static __rte_always_inline uint16_t
-cn10k_nix_xmit_pkts_vector(void *tx_queue, struct rte_mbuf **tx_pkts,
-			   uint16_t pkts, uint64_t *cmd, uintptr_t base,
-			   const uint16_t flags)
+cn10k_nix_xmit_pkts_vector(void *tx_queue, uint64_t *ws,
+			   struct rte_mbuf **tx_pkts, uint16_t pkts,
+			   uint64_t *cmd, const uint16_t flags)
 {
 	uint64x2_t dataoff_iova0, dataoff_iova1, dataoff_iova2, dataoff_iova3;
 	uint64x2_t len_olflags0, len_olflags1, len_olflags2, len_olflags3;
@@ -1526,25 +1515,42 @@ cn10k_nix_xmit_pkts_vector(void *tx_queue, struct rte_mbuf **tx_pkts,
 			cn10k_nix_xmit_prepare_tso(tx_pkts[i], flags);
 	}
 
-	senddesc01_w0 = vld1q_dup_u64(&txq->send_hdr_w0);
+	if (!(flags & NIX_TX_VWQE_F)) {
+		senddesc01_w0 = vld1q_dup_u64(&txq->send_hdr_w0);
+	} else {
+		uint64_t w0 =
+			(txq->send_hdr_w0 & 0xFFFFF00000000000) |
+			((uint64_t)(cn10k_nix_tx_ext_subs(flags) + 1) << 40);
+
+		senddesc01_w0 = vdupq_n_u64(w0);
+	}
 	senddesc23_w0 = senddesc01_w0;
+
 	senddesc01_w1 = vdupq_n_u64(0);
 	senddesc23_w1 = senddesc01_w1;
-	sgdesc01_w0 = vld1q_dup_u64(&txq->sg_w0);
+	sgdesc01_w0 = vdupq_n_u64((NIX_SUBDC_SG << 60) | BIT_ULL(48));
 	sgdesc23_w0 = sgdesc01_w0;
 
-	/* Load command defaults into vector variables. */
 	if (flags & NIX_TX_NEED_EXT_HDR) {
-		sendext01_w0 = vld1q_dup_u64(&txq->cmd[0]);
-		sendext23_w0 = sendext01_w0;
-		sendext01_w1 = vdupq_n_u64(12 | 12U << 24);
-		sendext23_w1 = sendext01_w1;
 		if (flags & NIX_TX_OFFLOAD_TSTAMP_F) {
-			sendmem01_w0 = vld1q_dup_u64(&txq->cmd[2]);
+			sendext01_w0 = vdupq_n_u64((NIX_SUBDC_EXT << 60) |
+						   BIT_ULL(15));
+			sendmem01_w0 =
+				vdupq_n_u64((NIX_SUBDC_MEM << 60) |
+					    (NIX_SENDMEMALG_SETTSTMP << 56));
 			sendmem23_w0 = sendmem01_w0;
-			sendmem01_w1 = vld1q_dup_u64(&txq->cmd[3]);
+			sendmem01_w1 = vdupq_n_u64(txq->ts_mem);
 			sendmem23_w1 = sendmem01_w1;
+		} else {
+			sendext01_w0 = vdupq_n_u64((NIX_SUBDC_EXT << 60));
 		}
+		sendext23_w0 = sendext01_w0;
+
+		if (flags & NIX_TX_OFFLOAD_VLAN_QINQ_F)
+			sendext01_w1 = vdupq_n_u64(12 | 12U << 24);
+		else
+			sendext01_w1 = vdupq_n_u64(0);
+		sendext23_w1 = sendext01_w1;
 	}
 
 	/* Get LMT base address and LMT ID as lcore id */
@@ -2577,7 +2583,7 @@ again:
 		wd.data[0] >>= 16;
 
 	if (flags & NIX_TX_VWQE_F)
-		roc_sso_hws_head_wait(base);
+		roc_sso_hws_head_wait(ws[0]);
 
 	left -= burst;
 
@@ -2640,12 +2646,11 @@ again:
 
 	if (unlikely(scalar)) {
 		if (flags & NIX_TX_MULTI_SEG_F)
-			pkts += cn10k_nix_xmit_pkts_mseg(tx_queue, tx_pkts,
-							 scalar, cmd, base,
-							 flags);
+			pkts += cn10k_nix_xmit_pkts_mseg(tx_queue, ws, tx_pkts,
+							 scalar, cmd, flags);
 		else
-			pkts += cn10k_nix_xmit_pkts(tx_queue, tx_pkts, scalar,
-						    cmd, base, flags);
+			pkts += cn10k_nix_xmit_pkts(tx_queue, ws, tx_pkts,
+						    scalar, cmd, flags);
 	}
 
 	return pkts;
@@ -2653,16 +2658,16 @@ again:
 
 #else
 static __rte_always_inline uint16_t
-cn10k_nix_xmit_pkts_vector(void *tx_queue, struct rte_mbuf **tx_pkts,
-			   uint16_t pkts, uint64_t *cmd, uintptr_t base,
-			   const uint16_t flags)
+cn10k_nix_xmit_pkts_vector(void *tx_queue, uint64_t *ws,
+			   struct rte_mbuf **tx_pkts, uint16_t pkts,
+			   uint64_t *cmd, const uint16_t flags)
 {
+	RTE_SET_USED(ws);
 	RTE_SET_USED(tx_queue);
 	RTE_SET_USED(tx_pkts);
 	RTE_SET_USED(pkts);
 	RTE_SET_USED(cmd);
 	RTE_SET_USED(flags);
-	RTE_SET_USED(base);
 	return 0;
 }
 #endif
@@ -2892,7 +2897,7 @@ NIX_TX_FASTPATH_MODES
 		if (((flags) & NIX_TX_OFFLOAD_TSO_F) &&                        \
 		    !((flags) & NIX_TX_OFFLOAD_L3_L4_CSUM_F))                  \
 			return 0;                                              \
-		return cn10k_nix_xmit_pkts(tx_queue, tx_pkts, pkts, cmd, 0,    \
+		return cn10k_nix_xmit_pkts(tx_queue, NULL, tx_pkts, pkts, cmd, \
 					   flags);                             \
 	}
 
@@ -2905,8 +2910,8 @@ NIX_TX_FASTPATH_MODES
 		if (((flags) & NIX_TX_OFFLOAD_TSO_F) &&                        \
 		    !((flags) & NIX_TX_OFFLOAD_L3_L4_CSUM_F))                  \
 			return 0;                                              \
-		return cn10k_nix_xmit_pkts_mseg(tx_queue, tx_pkts, pkts, cmd,  \
-						0,                             \
+		return cn10k_nix_xmit_pkts_mseg(tx_queue, NULL, tx_pkts, pkts, \
+						cmd,                           \
 						flags | NIX_TX_MULTI_SEG_F);   \
 	}
 
@@ -2919,8 +2924,8 @@ NIX_TX_FASTPATH_MODES
 		if (((flags) & NIX_TX_OFFLOAD_TSO_F) &&                        \
 		    !((flags) & NIX_TX_OFFLOAD_L3_L4_CSUM_F))                  \
 			return 0;                                              \
-		return cn10k_nix_xmit_pkts_vector(tx_queue, tx_pkts, pkts,     \
-						  cmd, 0, (flags));            \
+		return cn10k_nix_xmit_pkts_vector(tx_queue, NULL, tx_pkts,     \
+						  pkts, cmd, (flags));         \
 	}
 
 #define NIX_TX_XMIT_VEC_MSEG(fn, sz, flags)                                    \
@@ -2933,7 +2938,7 @@ NIX_TX_FASTPATH_MODES
 		    !((flags) & NIX_TX_OFFLOAD_L3_L4_CSUM_F))                  \
 			return 0;                                              \
 		return cn10k_nix_xmit_pkts_vector(                             \
-			tx_queue, tx_pkts, pkts, cmd, 0,                       \
+			tx_queue, NULL, tx_pkts, pkts, cmd,                    \
 			(flags) | NIX_TX_MULTI_SEG_F);                         \
 	}
 

@@ -99,7 +99,10 @@ struct cnxk_sso_evdev {
 	uint16_t rx_adptr_pool_cnt;
 	uint64_t *rx_adptr_pools;
 	uint64_t *tx_adptr_data;
+	size_t tx_adptr_data_sz;
 	uint16_t max_port_id;
+	uint16_t max_queue_id[RTE_MAX_ETHPORTS];
+	uint8_t tx_adptr_configured;
 	uint16_t tim_adptr_ring_cnt;
 	uint16_t *timer_adptr_rings;
 	uint64_t *timer_adptr_sz;
@@ -131,8 +134,8 @@ struct cn10k_sso_hws {
 	uint64_t *fc_mem;
 	uintptr_t grp_base;
 	/* Tx Fastpath data */
-	uint64_t tx_base __rte_cache_aligned;
-	uintptr_t lmt_base;
+	uintptr_t lmt_base __rte_cache_aligned;
+	uint64_t lso_tun_fmt;
 	uint8_t tx_adptr_data[];
 } __rte_cache_aligned;
 
@@ -149,7 +152,8 @@ struct cn9k_sso_hws {
 	uint64_t *fc_mem;
 	uintptr_t grp_base;
 	/* Tx Fastpath data */
-	uint8_t tx_adptr_data[] __rte_cache_aligned;
+	uint64_t lso_tun_fmt __rte_cache_aligned;
+	uint8_t tx_adptr_data[];
 } __rte_cache_aligned;
 
 struct cn9k_sso_hws_dual {
@@ -165,7 +169,8 @@ struct cn9k_sso_hws_dual {
 	uint64_t *fc_mem;
 	uintptr_t grp_base;
 	/* Tx Fastpath data */
-	uint8_t tx_adptr_data[] __rte_cache_aligned;
+	uint64_t lso_tun_fmt __rte_cache_aligned;
+	uint8_t tx_adptr_data[];
 } __rte_cache_aligned;
 
 struct cnxk_sso_hws_cookie {

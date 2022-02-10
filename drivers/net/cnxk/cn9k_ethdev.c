@@ -131,51 +131,31 @@ static void
 nix_form_default_desc(struct cnxk_eth_dev *dev, struct cn9k_eth_txq *txq,
 		      uint16_t qid)
 {
-	struct nix_send_ext_s *send_hdr_ext;
-	struct nix_send_hdr_s *send_hdr;
-	struct nix_send_mem_s *send_mem;
-	union nix_send_sg_s *sg;
+	union nix_send_hdr_w0_u send_hdr_w0;
 
 	/* Initialize the fields based on basic single segment packet */
-	memset(&txq->cmd, 0, sizeof(txq->cmd));
-
+	send_hdr_w0.u = 0;
 	if (dev->tx_offload_flags & NIX_TX_NEED_EXT_HDR) {
-		send_hdr = (struct nix_send_hdr_s *)&txq->cmd[0];
 		/* 2(HDR) + 2(EXT_HDR) + 1(SG) + 1(IOVA) = 6/2 - 1 = 2 */
-		send_hdr->w0.sizem1 = 2;
-
-		send_hdr_ext = (struct nix_send_ext_s *)&txq->cmd[2];
-		send_hdr_ext->w0.subdc = NIX_SUBDC_EXT;
+		send_hdr_w0.sizem1 = 2;
 		if (dev->tx_offload_flags & NIX_TX_OFFLOAD_TSTAMP_F) {
 			/* Default: one seg packet would have:
 			 * 2(HDR) + 2(EXT) + 1(SG) + 1(IOVA) + 2(MEM)
 			 * => 8/2 - 1 = 3
 			 */
-			send_hdr->w0.sizem1 = 3;
-			send_hdr_ext->w0.tstmp = 1;
+			send_hdr_w0.sizem1 = 3;
 
 			/* To calculate the offset for send_mem,
 			 * send_hdr->w0.sizem1 * 2
 			 */
-			send_mem = (struct nix_send_mem_s *)
-				(txq->cmd + (send_hdr->w0.sizem1 << 1));
-			send_mem->w0.cn9k.subdc = NIX_SUBDC_MEM;
-			send_mem->w0.cn9k.alg = NIX_SENDMEMALG_SETTSTMP;
-			send_mem->addr = dev->tstamp.tx_tstamp_iova;
+			txq->ts_mem = dev->tstamp.tx_tstamp_iova;
 		}
-		sg = (union nix_send_sg_s *)&txq->cmd[4];
 	} else {
-		send_hdr = (struct nix_send_hdr_s *)&txq->cmd[0];
 		/* 2(HDR) + 1(SG) + 1(IOVA) = 4/2 - 1 = 1 */
-		send_hdr->w0.sizem1 = 1;
-		sg = (union nix_send_sg_s *)&txq->cmd[2];
+		send_hdr_w0.sizem1 = 1;
 	}
-
-	send_hdr->w0.sq = qid;
-	sg->subdc = NIX_SUBDC_SG;
-	sg->segs = 1;
-	sg->ld_type = NIX_SENDLDTYPE_LDD;
-
+	send_hdr_w0.sq = qid;
+	txq->send_hdr_w0 = send_hdr_w0.u;
 	rte_wmb();
 }
 

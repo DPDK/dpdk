@@ -53,7 +53,7 @@ cn9k_cpt_enq_sa_write(struct cn9k_ipsec_sa *sa, struct cnxk_cpt_qp *qp,
 
 	do {
 		/* Copy CPT command to LMTLINE */
-		roc_lmt_mov((void *)lmtline, &inst, 2);
+		roc_lmt_mov64((void *)lmtline, &inst);
 		lmt_status = roc_lmt_submit_ldeor(io_addr);
 	} while (lmt_status == 0);
 

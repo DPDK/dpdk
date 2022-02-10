@@ -9,7 +9,6 @@
 
 struct cn10k_eth_txq {
 	uint64_t send_hdr_w0;
-	uint64_t sg_w0;
 	int64_t fc_cache_pkts;
 	uint64_t *fc_mem;
 	uintptr_t lmt_base;
@@ -20,8 +19,8 @@ struct cn10k_eth_txq {
 	uint64_t sa_base;
 	uint64_t *cpt_fc;
 	uint16_t cpt_desc;
-	uint64_t cmd[4];
 	uint64_t lso_tun_fmt;
+	uint64_t ts_mem;
 } __plt_cache_aligned;
 
 struct cn10k_eth_rxq {

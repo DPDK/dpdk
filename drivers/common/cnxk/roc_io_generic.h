@@ -107,6 +107,21 @@ roc_lmt_mov(void *out, const void *in, const uint32_t lmtext)
 }
 
 static __plt_always_inline void
+roc_lmt_mov64(void *out, const void *in)
+{
+	PLT_SET_USED(out);
+	PLT_SET_USED(in);
+}
+
+static __plt_always_inline void
+roc_lmt_mov_nv(void *out, const void *in, const uint32_t lmtext)
+{
+	PLT_SET_USED(in);
+	PLT_SET_USED(lmtext);
+	memset(out, 0, sizeof(__uint128_t) * (lmtext ? lmtext > 1 ? 4 : 3 : 2));
+}
+
+static __plt_always_inline void
 roc_lmt_mov_seg(void *out, const void *in, const uint16_t segdw)
 {
 	PLT_SET_USED(out);

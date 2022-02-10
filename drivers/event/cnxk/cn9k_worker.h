@@ -599,20 +599,13 @@ cn9k_sso_txq_fc_wait(const struct cn9k_eth_txq *txq)
 		;
 }
 
-static __rte_always_inline const struct cn9k_eth_txq *
-cn9k_sso_hws_xtract_meta(struct rte_mbuf *m,
-			 const uint64_t txq_data[][RTE_MAX_QUEUES_PER_PORT])
+static __rte_always_inline struct cn9k_eth_txq *
+cn9k_sso_hws_xtract_meta(struct rte_mbuf *m, uint64_t *txq_data)
 {
-	return (const struct cn9k_eth_txq *)
-		txq_data[m->port][rte_event_eth_tx_adapter_txq_get(m)];
-}
-
-static __rte_always_inline void
-cn9k_sso_hws_prepare_pkt(const struct cn9k_eth_txq *txq, struct rte_mbuf *m,
-			 uint64_t *cmd, const uint32_t flags)
-{
-	roc_lmt_mov(cmd, txq->cmd, cn9k_nix_tx_ext_subs(flags));
-	cn9k_nix_xmit_prepare(m, cmd, flags, txq->lso_tun_fmt);
+	return (struct cn9k_eth_txq
+			*)(txq_data[(txq_data[m->port] >> 48) +
+				    rte_event_eth_tx_adapter_txq_get(m)] &
+			   (BIT_ULL(48) - 1));
 }
 
 #if defined(RTE_ARCH_ARM64)
@@ -669,7 +662,7 @@ cn9k_sso_hws_xmit_sec_one(const struct cn9k_eth_txq *txq, uint64_t base,
 	nixtx += BIT_ULL(7);
 	nixtx = (nixtx - 1) & ~(BIT_ULL(7) - 1);
 
-	roc_lmt_mov((void *)(nixtx + 16), cmd, cn9k_nix_tx_ext_subs(flags));
+	roc_lmt_mov_nv((void *)(nixtx + 16), cmd, cn9k_nix_tx_ext_subs(flags));
 
 	/* Load opcode and cptr already prepared at pkt metadata set */
 	pkt_len -= l2_len;
@@ -756,12 +749,11 @@ cn9k_sso_hws_xmit_sec_one(const struct cn9k_eth_txq *txq, uint64_t base,
 
 static __rte_always_inline uint16_t
 cn9k_sso_hws_event_tx(uint64_t base, struct rte_event *ev, uint64_t *cmd,
-		      const uint64_t txq_data[][RTE_MAX_QUEUES_PER_PORT],
-		      const uint32_t flags)
+		      uint64_t *txq_data, const uint32_t flags)
 {
 	struct rte_mbuf *m = ev->mbuf;
-	const struct cn9k_eth_txq *txq;
 	uint16_t ref_cnt = m->refcnt;
+	struct cn9k_eth_txq *txq;
 
 	/* Perform header writes before barrier for TSO */
 	cn9k_nix_xmit_prepare_tso(m, flags);
@@ -774,7 +766,8 @@ cn9k_sso_hws_event_tx(uint64_t base, struct rte_event *ev, uint64_t *cmd,
 	    !(flags & NIX_TX_OFFLOAD_SECURITY_F))
 		rte_io_wmb();
 	txq = cn9k_sso_hws_xtract_meta(m, txq_data);
-	cn9k_sso_hws_prepare_pkt(txq, m, cmd, flags);
+	cn9k_nix_tx_skeleton(txq, cmd, flags, 0);
+	cn9k_nix_xmit_prepare(m, cmd, flags, txq->lso_tun_fmt);
 
 	if (flags & NIX_TX_OFFLOAD_SECURITY_F) {
 		uint64_t ol_flags = m->ol_flags;
@@ -796,6 +789,8 @@ cn9k_sso_hws_event_tx(uint64_t base, struct rte_event *ev, uint64_t *cmd,
 
 	if (flags & NIX_TX_MULTI_SEG_F) {
 		const uint16_t segdw = cn9k_nix_prepare_mseg(m, cmd, flags);
+		cn9k_nix_xmit_prepare_tstamp(txq, cmd, m->ol_flags, segdw,
+					     flags);
 		if (!CNXK_TT_FROM_EVENT(ev->event)) {
 			cn9k_nix_xmit_mseg_prep_lmt(cmd, txq->lmt_addr, segdw);
 			roc_sso_hws_head_wait(base + SSOW_LF_GWS_TAG);
@@ -808,6 +803,7 @@ cn9k_sso_hws_event_tx(uint64_t base, struct rte_event *ev, uint64_t *cmd,
 					       segdw);
 		}
 	} else {
+		cn9k_nix_xmit_prepare_tstamp(txq, cmd, m->ol_flags, 4, flags);
 		if (!CNXK_TT_FROM_EVENT(ev->event)) {
 			cn9k_nix_xmit_prep_lmt(cmd, txq->lmt_addr, flags);
 			roc_sso_hws_head_wait(base + SSOW_LF_GWS_TAG);
@@ -853,11 +849,9 @@ NIX_TX_FASTPATH_MODES
 		struct cn9k_sso_hws *ws = port;                                \
 		uint64_t cmd[sz];                                              \
 		RTE_SET_USED(nb_events);                                       \
-		return cn9k_sso_hws_event_tx(                                  \
-			ws->base, &ev[0], cmd,                                 \
-			(const uint64_t(*)[RTE_MAX_QUEUES_PER_PORT]) &         \
-				ws->tx_adptr_data,                             \
-			flags);                                                \
+		return cn9k_sso_hws_event_tx(ws->base, &ev[0], cmd,            \
+					     (uint64_t *)ws->tx_adptr_data,    \
+					     flags);                           \
 	}
 
 #define SSO_TX_SEG(fn, sz, flags)                                              \
@@ -867,11 +861,9 @@ NIX_TX_FASTPATH_MODES
 		uint64_t cmd[(sz) + CNXK_NIX_TX_MSEG_SG_DWORDS - 2];           \
 		struct cn9k_sso_hws *ws = port;                                \
 		RTE_SET_USED(nb_events);                                       \
-		return cn9k_sso_hws_event_tx(                                  \
-			ws->base, &ev[0], cmd,                                 \
-			(const uint64_t(*)[RTE_MAX_QUEUES_PER_PORT]) &         \
-				ws->tx_adptr_data,                             \
-			(flags) | NIX_TX_MULTI_SEG_F);                         \
+		return cn9k_sso_hws_event_tx(ws->base, &ev[0], cmd,            \
+					     (uint64_t *)ws->tx_adptr_data,    \
+					     (flags) | NIX_TX_MULTI_SEG_F);    \
 	}
 
 #define SSO_DUAL_TX(fn, sz, flags)                                             \
@@ -881,11 +873,9 @@ NIX_TX_FASTPATH_MODES
 		struct cn9k_sso_hws_dual *ws = port;                           \
 		uint64_t cmd[sz];                                              \
 		RTE_SET_USED(nb_events);                                       \
-		return cn9k_sso_hws_event_tx(                                  \
-			ws->base[!ws->vws], &ev[0], cmd,                       \
-			(const uint64_t(*)[RTE_MAX_QUEUES_PER_PORT]) &         \
-				ws->tx_adptr_data,                             \
-			flags);                                                \
+		return cn9k_sso_hws_event_tx(ws->base[!ws->vws], &ev[0], cmd,  \
+					     (uint64_t *)ws->tx_adptr_data,    \
+					     flags);                           \
 	}
 
 #define SSO_DUAL_TX_SEG(fn, sz, flags)                                         \
@@ -895,11 +885,9 @@ NIX_TX_FASTPATH_MODES
 		uint64_t cmd[(sz) + CNXK_NIX_TX_MSEG_SG_DWORDS - 2];           \
 		struct cn9k_sso_hws_dual *ws = port;                           \
 		RTE_SET_USED(nb_events);                                       \
-		return cn9k_sso_hws_event_tx(                                  \
-			ws->base[!ws->vws], &ev[0], cmd,                       \
-			(const uint64_t(*)[RTE_MAX_QUEUES_PER_PORT]) &         \
-				ws->tx_adptr_data,                             \
-			(flags) | NIX_TX_MULTI_SEG_F);                         \
+		return cn9k_sso_hws_event_tx(ws->base[!ws->vws], &ev[0], cmd,  \
+					     (uint64_t *)ws->tx_adptr_data,    \
+					     (flags) | NIX_TX_MULTI_SEG_F);    \
 	}
 
 #endif

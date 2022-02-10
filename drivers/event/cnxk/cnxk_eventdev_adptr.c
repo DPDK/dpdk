@@ -339,30 +339,179 @@ cnxk_sso_sqb_aura_limit_edit(struct roc_nix_sq *sq, uint16_t nb_sqb_bufs)
 		sq->aura_handle, RTE_MIN(nb_sqb_bufs, sq->aura_sqb_bufs));
 }
 
+static void
+cnxk_sso_tx_queue_data_init(struct cnxk_sso_evdev *dev, uint64_t *txq_data,
+			    uint16_t eth_port_id, uint16_t tx_queue_id)
+{
+	uint64_t offset = 0;
+	int i;
+
+	dev->max_queue_id[0] = RTE_MAX(dev->max_queue_id[0], eth_port_id);
+	for (i = 1; i < eth_port_id; i++) {
+		offset += (dev->max_queue_id[i - 1] + 1);
+		txq_data[i] |= offset << 48;
+	}
+	dev->max_port_id = RTE_MAX(dev->max_port_id, eth_port_id);
+	dev->max_queue_id[eth_port_id] =
+		RTE_MAX(dev->max_queue_id[eth_port_id], tx_queue_id);
+}
+
+static void
+cnxk_sso_tx_queue_data_cpy(struct cnxk_sso_evdev *dev, uint64_t *txq_data,
+			   uint64_t *otxq_data, uint16_t eth_port_id)
+{
+	uint64_t offset = 0;
+	int i, j;
+
+	for (i = 1; i < eth_port_id; i++) {
+		offset += (dev->max_queue_id[i - 1] + 1);
+		txq_data[i] |= offset << 48;
+		for (j = 0;
+		     (i < dev->max_port_id) && (j < dev->max_queue_id[i] + 1);
+		     j++)
+			txq_data[offset + j] =
+				otxq_data[(otxq_data[i] >> 48) + j];
+	}
+}
+
+static void
+cnxk_sso_tx_queue_data_cpy_max(struct cnxk_sso_evdev *dev, uint64_t *txq_data,
+			       uint64_t *otxq_data, uint16_t eth_port_id,
+			       uint16_t max_port_id, uint16_t max_queue_id)
+{
+	uint64_t offset = 0;
+	int i, j;
+
+	for (i = 1; i < max_port_id + 1; i++) {
+		offset += (dev->max_queue_id[i - 1] + 1);
+		txq_data[i] |= offset << 48;
+		for (j = 0; j < dev->max_queue_id[i] + 1; j++) {
+			if (i == eth_port_id && j > max_queue_id)
+				continue;
+			txq_data[offset + j] =
+				otxq_data[(otxq_data[i] >> 48) + j];
+		}
+	}
+}
+
+static void
+cnxk_sso_tx_queue_data_rewrite(struct cnxk_sso_evdev *dev, uint64_t *txq_data,
+			       uint16_t eth_port_id, uint16_t tx_queue_id,
+			       uint64_t *otxq_data, uint16_t max_port_id,
+			       uint16_t max_queue_id)
+{
+	int i;
+
+	for (i = 0; i < dev->max_queue_id[0] + 1; i++)
+		txq_data[i] |= (otxq_data[i] & ~((BIT_ULL(16) - 1) << 48));
+
+	if (eth_port_id > max_port_id) {
+		dev->max_queue_id[0] =
+			RTE_MAX(dev->max_queue_id[0], eth_port_id);
+		dev->max_port_id = RTE_MAX(dev->max_port_id, eth_port_id);
+
+		cnxk_sso_tx_queue_data_cpy(dev, txq_data, otxq_data,
+					   eth_port_id);
+		dev->max_queue_id[eth_port_id] =
+			RTE_MAX(dev->max_queue_id[eth_port_id], tx_queue_id);
+	} else if (tx_queue_id > max_queue_id) {
+		dev->max_queue_id[eth_port_id] =
+			RTE_MAX(dev->max_queue_id[eth_port_id], tx_queue_id);
+		dev->max_port_id = RTE_MAX(max_port_id, eth_port_id);
+		cnxk_sso_tx_queue_data_cpy_max(dev, txq_data, otxq_data,
+					       eth_port_id, max_port_id,
+					       max_queue_id);
+	}
+}
+
+static void
+cnxk_sso_tx_queue_data_sz(struct cnxk_sso_evdev *dev, uint16_t eth_port_id,
+			  uint16_t tx_queue_id, uint16_t max_port_id,
+			  uint16_t max_queue_id, uint64_t *r, size_t *sz)
+{
+	uint64_t row = 0;
+	size_t size = 0;
+	int i;
+
+	if (dev->tx_adptr_data == NULL) {
+		size = (eth_port_id + 1);
+		size += (eth_port_id + tx_queue_id);
+		row = 2 * eth_port_id;
+		*r = row;
+		*sz = size;
+		return;
+	}
+
+	if (eth_port_id > max_port_id) {
+		size = (RTE_MAX(eth_port_id, dev->max_queue_id[0]) + 1);
+		for (i = 1; i < eth_port_id; i++)
+			size += (dev->max_queue_id[i] + 1);
+		row = size;
+		size += (tx_queue_id + 1);
+	} else if (tx_queue_id > max_queue_id) {
+		size = !eth_port_id ?
+			       tx_queue_id + 1 :
+				     RTE_MAX(max_port_id, dev->max_queue_id[0]) + 1;
+		for (i = 1; i < max_port_id + 1; i++) {
+			if (i == eth_port_id) {
+				row = size;
+				size += tx_queue_id + 1;
+			} else {
+				size += dev->max_queue_id[i] + 1;
+			}
+		}
+	}
+	*r = row;
+	*sz = size;
+}
+
 static int
 cnxk_sso_updt_tx_queue_data(const struct rte_eventdev *event_dev,
 			    uint16_t eth_port_id, uint16_t tx_queue_id,
 			    void *txq)
 {
 	struct cnxk_sso_evdev *dev = cnxk_sso_pmd_priv(event_dev);
+	uint16_t max_queue_id = dev->max_queue_id[eth_port_id];
 	uint16_t max_port_id = dev->max_port_id;
-	uint64_t *txq_data = dev->tx_adptr_data;
+	uint64_t *txq_data = NULL;
+	uint64_t row = 0;
+	size_t size = 0;
 
-	if (txq_data == NULL || eth_port_id > max_port_id) {
-		max_port_id = RTE_MAX(max_port_id, eth_port_id);
-		txq_data = rte_realloc_socket(
-			txq_data,
-			(sizeof(uint64_t) * (max_port_id + 1) *
-			 RTE_MAX_QUEUES_PER_PORT),
-			RTE_CACHE_LINE_SIZE, event_dev->data->socket_id);
+	if (((uint64_t)txq) & 0xFFFF000000000000)
+		return -EINVAL;
+
+	cnxk_sso_tx_queue_data_sz(dev, eth_port_id, tx_queue_id, max_port_id,
+				  max_queue_id, &row, &size);
+
+	size *= sizeof(uint64_t);
+
+	if (size) {
+		uint64_t *otxq_data = dev->tx_adptr_data;
+
+		txq_data = malloc(size);
 		if (txq_data == NULL)
 			return -ENOMEM;
+		memset(txq_data, 0, size);
+		txq_data[eth_port_id] = ((uint64_t)row) << 48;
+		txq_data[row + tx_queue_id] = (uint64_t)txq;
+
+		if (otxq_data != NULL)
+			cnxk_sso_tx_queue_data_rewrite(
+				dev, txq_data, eth_port_id, tx_queue_id,
+				otxq_data, max_port_id, max_queue_id);
+		else
+			cnxk_sso_tx_queue_data_init(dev, txq_data, eth_port_id,
+						    tx_queue_id);
+		dev->tx_adptr_data_sz = size;
+		free(otxq_data);
+		dev->tx_adptr_data = txq_data;
+	} else {
+		txq_data = dev->tx_adptr_data;
+		row = txq_data[eth_port_id] >> 48;
+		txq_data[row + tx_queue_id] &= ~(BIT_ULL(48) - 1);
+		txq_data[row + tx_queue_id] |= (uint64_t)txq;
 	}
 
-	((uint64_t(*)[RTE_MAX_QUEUES_PER_PORT])
-		 txq_data)[eth_port_id][tx_queue_id] = (uint64_t)txq;
-	dev->max_port_id = max_port_id;
-	dev->tx_adptr_data = txq_data;
 	return 0;
 }
 
@@ -372,7 +521,6 @@ cnxk_sso_tx_adapter_queue_add(const struct rte_eventdev *event_dev,
 			      int32_t tx_queue_id)
 {
 	struct cnxk_eth_dev *cnxk_eth_dev = eth_dev->data->dev_private;
-	struct cnxk_sso_evdev *dev = cnxk_sso_pmd_priv(event_dev);
 	struct roc_nix_sq *sq;
 	int i, ret;
 	void *txq;
@@ -388,8 +536,6 @@ cnxk_sso_tx_adapter_queue_add(const struct rte_eventdev *event_dev,
 			event_dev, eth_dev->data->port_id, tx_queue_id, txq);
 		if (ret < 0)
 			return ret;
-
-		dev->tx_offloads |= cnxk_eth_dev->tx_offload_flags;
 	}
 
 	return 0;

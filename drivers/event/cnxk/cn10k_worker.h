@@ -455,18 +455,18 @@ NIX_RX_FASTPATH_MODES
 	}
 
 static __rte_always_inline struct cn10k_eth_txq *
-cn10k_sso_hws_xtract_meta(struct rte_mbuf *m,
-			  const uint64_t txq_data[][RTE_MAX_QUEUES_PER_PORT])
+cn10k_sso_hws_xtract_meta(struct rte_mbuf *m, const uint64_t *txq_data)
 {
-	return (struct cn10k_eth_txq *)
-		txq_data[m->port][rte_event_eth_tx_adapter_txq_get(m)];
+	return (struct cn10k_eth_txq
+			*)(txq_data[(txq_data[m->port] >> 48) +
+				    rte_event_eth_tx_adapter_txq_get(m)] &
+			   (BIT_ULL(48) - 1));
 }
 
 static __rte_always_inline void
-cn10k_sso_tx_one(struct rte_mbuf *m, uint64_t *cmd, uint16_t lmt_id,
-		 uintptr_t lmt_addr, uint8_t sched_type, uintptr_t base,
-		 const uint64_t txq_data[][RTE_MAX_QUEUES_PER_PORT],
-		 const uint32_t flags)
+cn10k_sso_tx_one(struct cn10k_sso_hws *ws, struct rte_mbuf *m, uint64_t *cmd,
+		 uint16_t lmt_id, uintptr_t lmt_addr, uint8_t sched_type,
+		 const uint64_t *txq_data, const uint32_t flags)
 {
 	uint8_t lnum = 0, loff = 0, shft = 0;
 	struct cn10k_eth_txq *txq;
@@ -476,7 +476,7 @@ cn10k_sso_tx_one(struct rte_mbuf *m, uint64_t *cmd, uint16_t lmt_id,
 	bool sec;
 
 	txq = cn10k_sso_hws_xtract_meta(m, txq_data);
-	cn10k_nix_tx_skeleton(txq, cmd, flags);
+	cn10k_nix_tx_skeleton(txq, cmd, flags, 0);
 	/* Perform header writes before barrier
 	 * for TSO
 	 */
@@ -501,23 +501,23 @@ cn10k_sso_tx_one(struct rte_mbuf *m, uint64_t *cmd, uint16_t lmt_id,
 	else
 		segdw = cn10k_nix_tx_ext_subs(flags) + 2;
 
+	cn10k_nix_xmit_prepare_tstamp(txq, laddr, m->ol_flags, segdw, flags);
 	if (flags & NIX_TX_OFFLOAD_SECURITY_F && sec)
 		pa = txq->cpt_io_addr | 3 << 4;
 	else
 		pa = txq->io_addr | ((segdw - 1) << 4);
 
 	if (!sched_type)
-		roc_sso_hws_head_wait(base + SSOW_LF_GWS_TAG);
+		roc_sso_hws_head_wait(ws->base + SSOW_LF_GWS_TAG);
 
 	roc_lmt_submit_steorl(lmt_id, pa);
 }
 
 static __rte_always_inline void
-cn10k_sso_vwqe_split_tx(struct rte_mbuf **mbufs, uint16_t nb_mbufs,
-			uint64_t *cmd, uint16_t lmt_id, uintptr_t lmt_addr,
-			uint8_t sched_type, uintptr_t base,
-			const uint64_t txq_data[][RTE_MAX_QUEUES_PER_PORT],
-			const uint32_t flags)
+cn10k_sso_vwqe_split_tx(struct cn10k_sso_hws *ws, struct rte_mbuf **mbufs,
+			uint16_t nb_mbufs, uint64_t *cmd, uint16_t lmt_id,
+			uintptr_t lmt_addr, uint8_t sched_type,
+			const uint64_t *txq_data, const uint32_t flags)
 {
 	uint16_t port[4], queue[4];
 	uint16_t i, j, pkts, scalar;
@@ -540,14 +540,16 @@ cn10k_sso_vwqe_split_tx(struct rte_mbuf **mbufs, uint16_t nb_mbufs,
 		if (((port[0] ^ port[1]) & (port[2] ^ port[3])) ||
 		    ((queue[0] ^ queue[1]) & (queue[2] ^ queue[3]))) {
 			for (j = 0; j < 4; j++)
-				cn10k_sso_tx_one(mbufs[i + j], cmd, lmt_id,
-						 lmt_addr, sched_type, base,
-						 txq_data, flags);
+				cn10k_sso_tx_one(ws, mbufs[i + j], cmd, lmt_id,
+						 lmt_addr, sched_type, txq_data,
+						 flags);
 		} else {
-			txq = (struct cn10k_eth_txq *)
-				txq_data[port[0]][queue[0]];
-			cn10k_nix_xmit_pkts_vector(txq, &mbufs[i], 4, cmd,
-						   base + SSOW_LF_GWS_TAG,
+			txq = (struct cn10k_eth_txq
+				       *)(txq_data[(txq_data[port[0]] >> 48) +
+						   queue[0]] &
+					  (BIT_ULL(48) - 1));
+			cn10k_nix_xmit_pkts_vector(txq, (uint64_t *)ws,
+						   &mbufs[i], 4, cmd,
 						   flags | NIX_TX_VWQE_F);
 		}
 	}
@@ -555,15 +557,14 @@ cn10k_sso_vwqe_split_tx(struct rte_mbuf **mbufs, uint16_t nb_mbufs,
 	mbufs += i;
 
 	for (i = 0; i < scalar; i++) {
-		cn10k_sso_tx_one(mbufs[i], cmd, lmt_id, lmt_addr, sched_type,
-				 base, txq_data, flags);
+		cn10k_sso_tx_one(ws, mbufs[i], cmd, lmt_id, lmt_addr,
+				 sched_type, txq_data, flags);
 	}
 }
 
 static __rte_always_inline uint16_t
 cn10k_sso_hws_event_tx(struct cn10k_sso_hws *ws, struct rte_event *ev,
-		       uint64_t *cmd,
-		       const uint64_t txq_data[][RTE_MAX_QUEUES_PER_PORT],
+		       uint64_t *cmd, const uint64_t *txq_data,
 		       const uint32_t flags)
 {
 	struct cn10k_eth_txq *txq;
@@ -580,17 +581,19 @@ cn10k_sso_hws_event_tx(struct cn10k_sso_hws *ws, struct rte_event *ev,
 		uint64_t meta = *(uint64_t *)ev->vec;
 
 		if (meta & BIT(31)) {
-			txq = (struct cn10k_eth_txq *)
-				txq_data[meta >> 32][meta >> 48];
+			txq = (struct cn10k_eth_txq
+				       *)(txq_data[(txq_data[meta >> 32] >>
+						    48) +
+						   (meta >> 48)] &
+					  (BIT_ULL(48) - 1));
 
-			cn10k_nix_xmit_pkts_vector(
-				txq, mbufs, meta & 0xFFFF, cmd,
-				ws->tx_base + SSOW_LF_GWS_TAG,
-				flags | NIX_TX_VWQE_F);
+			cn10k_nix_xmit_pkts_vector(txq, (uint64_t *)ws, mbufs,
+						   meta & 0xFFFF, cmd,
+						   flags | NIX_TX_VWQE_F);
 		} else {
 			cn10k_sso_vwqe_split_tx(
-				mbufs, meta & 0xFFFF, cmd, lmt_id, lmt_addr,
-				ev->sched_type, ws->tx_base, txq_data, flags);
+				ws, mbufs, meta & 0xFFFF, cmd, lmt_id, lmt_addr,
+				ev->sched_type, txq_data, flags);
 		}
 		rte_mempool_put(rte_mempool_from_obj(ev->vec), ev->vec);
 		return (meta & 0xFFFF);
@@ -598,16 +601,16 @@ cn10k_sso_hws_event_tx(struct cn10k_sso_hws *ws, struct rte_event *ev,
 
 	m = ev->mbuf;
 	ref_cnt = m->refcnt;
-	cn10k_sso_tx_one(m, cmd, lmt_id, lmt_addr, ev->sched_type, ws->tx_base,
-			 txq_data, flags);
+	cn10k_sso_tx_one(ws, m, cmd, lmt_id, lmt_addr, ev->sched_type, txq_data,
+			 flags);
 
 	if (flags & NIX_TX_OFFLOAD_MBUF_NOFF_F) {
 		if (ref_cnt > 1)
 			return 1;
 	}
 
-	cnxk_sso_hws_swtag_flush(ws->tx_base + SSOW_LF_GWS_TAG,
-				 ws->tx_base + SSOW_LF_GWS_OP_SWTAG_FLUSH);
+	cnxk_sso_hws_swtag_flush(ws->base + SSOW_LF_GWS_TAG,
+				 ws->base + SSOW_LF_GWS_OP_SWTAG_FLUSH);
 	return 1;
 }
 
@@ -628,9 +631,7 @@ NIX_TX_FASTPATH_MODES
 		uint64_t cmd[sz];                                              \
 		RTE_SET_USED(nb_events);                                       \
 		return cn10k_sso_hws_event_tx(                                 \
-			ws, &ev[0], cmd,                                       \
-			(const uint64_t(*)[RTE_MAX_QUEUES_PER_PORT]) &         \
-				ws->tx_adptr_data,                             \
+			ws, &ev[0], cmd, (const uint64_t *)ws->tx_adptr_data,  \
 			flags);                                                \
 	}
 
@@ -642,9 +643,7 @@ NIX_TX_FASTPATH_MODES
 		struct cn10k_sso_hws *ws = port;                               \
 		RTE_SET_USED(nb_events);                                       \
 		return cn10k_sso_hws_event_tx(                                 \
-			ws, &ev[0], cmd,                                       \
-			(const uint64_t(*)[RTE_MAX_QUEUES_PER_PORT]) &         \
-				ws->tx_adptr_data,                             \
+			ws, &ev[0], cmd, (const uint64_t *)ws->tx_adptr_data,  \
 			(flags) | NIX_TX_MULTI_SEG_F);                         \
 	}
 

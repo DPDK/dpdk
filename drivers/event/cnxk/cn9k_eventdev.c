@@ -259,17 +259,14 @@ cn9k_sso_updt_tx_adptr_data(const struct rte_eventdev *event_dev)
 				ws_cookie,
 				sizeof(struct cnxk_sso_hws_cookie) +
 					sizeof(struct cn9k_sso_hws_dual) +
-					(sizeof(uint64_t) *
-					 (dev->max_port_id + 1) *
-					 RTE_MAX_QUEUES_PER_PORT),
+					dev->tx_adptr_data_sz,
 				RTE_CACHE_LINE_SIZE, SOCKET_ID_ANY);
 			if (ws_cookie == NULL)
 				return -ENOMEM;
 			dws = RTE_PTR_ADD(ws_cookie,
 					  sizeof(struct cnxk_sso_hws_cookie));
 			memcpy(&dws->tx_adptr_data, dev->tx_adptr_data,
-			       sizeof(uint64_t) * (dev->max_port_id + 1) *
-				       RTE_MAX_QUEUES_PER_PORT);
+			       dev->tx_adptr_data_sz);
 			event_dev->data->ports[i] = dws;
 		} else {
 			struct cn9k_sso_hws *ws = event_dev->data->ports[i];
@@ -280,17 +277,14 @@ cn9k_sso_updt_tx_adptr_data(const struct rte_eventdev *event_dev)
 				ws_cookie,
 				sizeof(struct cnxk_sso_hws_cookie) +
 					sizeof(struct cn9k_sso_hws_dual) +
-					(sizeof(uint64_t) *
-					 (dev->max_port_id + 1) *
-					 RTE_MAX_QUEUES_PER_PORT),
+					dev->tx_adptr_data_sz,
 				RTE_CACHE_LINE_SIZE, SOCKET_ID_ANY);
 			if (ws_cookie == NULL)
 				return -ENOMEM;
 			ws = RTE_PTR_ADD(ws_cookie,
 					 sizeof(struct cnxk_sso_hws_cookie));
 			memcpy(&ws->tx_adptr_data, dev->tx_adptr_data,
-			       sizeof(uint64_t) * (dev->max_port_id + 1) *
-				       RTE_MAX_QUEUES_PER_PORT);
+			       dev->tx_adptr_data_sz);
 			event_dev->data->ports[i] = ws;
 		}
 	}
@@ -987,17 +981,36 @@ cn9k_sso_tx_adapter_queue_add(uint8_t id, const struct rte_eventdev *event_dev,
 			      const struct rte_eth_dev *eth_dev,
 			      int32_t tx_queue_id)
 {
+	struct cnxk_eth_dev *cnxk_eth_dev = eth_dev->data->dev_private;
+	struct cnxk_sso_evdev *dev = cnxk_sso_pmd_priv(event_dev);
+	uint64_t tx_offloads;
 	int rc;
 
 	RTE_SET_USED(id);
 	rc = cnxk_sso_tx_adapter_queue_add(event_dev, eth_dev, tx_queue_id);
 	if (rc < 0)
 		return rc;
+
+	/* Can't enable tstamp if all the ports don't have it enabled. */
+	tx_offloads = cnxk_eth_dev->tx_offload_flags;
+	if (dev->tx_adptr_configured) {
+		uint8_t tstmp_req = !!(tx_offloads & NIX_TX_OFFLOAD_TSTAMP_F);
+		uint8_t tstmp_ena =
+			!!(dev->tx_offloads & NIX_TX_OFFLOAD_TSTAMP_F);
+
+		if (tstmp_ena && !tstmp_req)
+			dev->tx_offloads &= ~(NIX_TX_OFFLOAD_TSTAMP_F);
+		else if (!tstmp_ena && tstmp_req)
+			tx_offloads &= ~(NIX_TX_OFFLOAD_TSTAMP_F);
+	}
+
+	dev->tx_offloads |= tx_offloads;
 	cn9k_sso_txq_fc_update(eth_dev, tx_queue_id, true);
 	rc = cn9k_sso_updt_tx_adptr_data(event_dev);
 	if (rc < 0)
 		return rc;
 	cn9k_sso_fp_fns_set((struct rte_eventdev *)(uintptr_t)event_dev);
+	dev->tx_adptr_configured = 1;
 
 	return 0;
 }
