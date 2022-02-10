@@ -49,10 +49,10 @@ rte_ipsec_ses_from_crypto(const struct rte_crypto_op *cop)
 
 	if (cop->sess_type == RTE_CRYPTO_OP_SECURITY_SESSION) {
 		ss = cop->sym[0].sec_session;
-		return (void *)(uintptr_t)ss->opaque_data;
+		return (struct rte_ipsec_session *)(uintptr_t)ss->opaque_data;
 	} else if (cop->sess_type == RTE_CRYPTO_OP_WITH_SESSION) {
 		cs = cop->sym[0].session;
-		return (void *)(uintptr_t)cs->opaque_data;
+		return (struct rte_ipsec_session *)(uintptr_t)cs->opaque_data;
 	}
 	return NULL;
 }
