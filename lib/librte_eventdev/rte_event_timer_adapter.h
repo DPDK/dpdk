@@ -665,4 +665,8 @@ rte_event_timer_cancel_burst(const struct rte_event_timer_adapter *adapter,
 	return adapter->cancel_burst(adapter, evtims, nb_evtims);
 }
 
+#ifdef __cplusplus
+}
+#endif
+
 #endif /* __RTE_EVENT_TIMER_ADAPTER_H__ */
