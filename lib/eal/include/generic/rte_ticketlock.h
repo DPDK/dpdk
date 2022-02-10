@@ -91,13 +91,13 @@ rte_ticketlock_unlock(rte_ticketlock_t *tl)
 static inline int
 rte_ticketlock_trylock(rte_ticketlock_t *tl)
 {
-	rte_ticketlock_t old, new;
-	old.tickets = __atomic_load_n(&tl->tickets, __ATOMIC_RELAXED);
-	new.tickets = old.tickets;
-	new.s.next++;
-	if (old.s.next == old.s.current) {
-		if (__atomic_compare_exchange_n(&tl->tickets, &old.tickets,
-		    new.tickets, 0, __ATOMIC_ACQUIRE, __ATOMIC_RELAXED))
+	rte_ticketlock_t oldl, newl;
+	oldl.tickets = __atomic_load_n(&tl->tickets, __ATOMIC_RELAXED);
+	newl.tickets = oldl.tickets;
+	newl.s.next++;
+	if (oldl.s.next == oldl.s.current) {
+		if (__atomic_compare_exchange_n(&tl->tickets, &oldl.tickets,
+		    newl.tickets, 0, __ATOMIC_ACQUIRE, __ATOMIC_RELAXED))
 			return 1;
 	}
 
