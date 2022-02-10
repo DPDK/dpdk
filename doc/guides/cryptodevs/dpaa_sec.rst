@@ -123,3 +123,13 @@ For enabling logs, use the following EAL parameter:
 
 Using ``pmd.crypto.dpaa`` as log matching criteria, all Crypto PMD logs can be
 enabled which are lower than logging ``level``.
+
+Enabling debug prints
+---------------------
+
+Use dev arg option ``drv_dump_mode=x`` to dump useful debug prints on HW sec
+error. There are 3 dump modes available 0, 1 and 2. Mode 0 means no dump print
+on error, mode 1 means dump HW error code and mode 2 means dump HW error code
+along with other useful debugging information like session, queue, descriptor
+data.
+e.g. ``dpaa_bus:dpaa_sec-1,drv_dump_mode=1``

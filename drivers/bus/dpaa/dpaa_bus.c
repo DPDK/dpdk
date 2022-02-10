@@ -429,6 +429,7 @@ rte_dpaa_bus_parse(const char *name, void *out)
 {
 	unsigned int i, j;
 	size_t delta;
+	size_t max_name_len;
 
 	/* There are two ways of passing device name, with and without
 	 * separator. "dpaa_bus:fm1-mac3" with separator, and "fm1-mac3"
@@ -444,14 +445,21 @@ rte_dpaa_bus_parse(const char *name, void *out)
 		delta = 5;
 	}
 
-	if (sscanf(&name[delta], "fm%u-mac%u", &i, &j) != 2 ||
-	    i >= 2 || j >= 16) {
-		return -EINVAL;
+	if (strncmp("dpaa_sec", &name[delta], 8) == 0) {
+		if (sscanf(&name[delta], "dpaa_sec-%u", &i) != 1 ||
+				i < 1 || i > 4)
+			return -EINVAL;
+		max_name_len = sizeof("dpaa_sec-.") - 1;
+	} else {
+		if (sscanf(&name[delta], "fm%u-mac%u", &i, &j) != 2 ||
+				i >= 2 || j >= 16)
+			return -EINVAL;
+
+		max_name_len = sizeof("fm.-mac..") - 1;
 	}
 
 	if (out != NULL) {
 		char *out_name = out;
-		const size_t max_name_len = sizeof("fm.-mac..") - 1;
 
 		/* Do not check for truncation, either name ends with
 		 * '\0' or the device name is followed by parameters and there
