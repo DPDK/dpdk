@@ -2881,11 +2881,13 @@ dpaa_sec_set_pdcp_session(struct rte_cryptodev *dev,
 	/* find xfrm types */
 	if (xform->type == RTE_CRYPTO_SYM_XFORM_CIPHER) {
 		cipher_xform = &xform->cipher;
-		if (xform->next != NULL)
+		if (xform->next != NULL &&
+			xform->next->type == RTE_CRYPTO_SYM_XFORM_AUTH)
 			auth_xform = &xform->next->auth;
 	} else if (xform->type == RTE_CRYPTO_SYM_XFORM_AUTH) {
 		auth_xform = &xform->auth;
-		if (xform->next != NULL)
+		if (xform->next != NULL &&
+			xform->next->type == RTE_CRYPTO_SYM_XFORM_CIPHER)
 			cipher_xform = &xform->next->cipher;
 	} else {
 		DPAA_SEC_ERR("Invalid crypto type");
