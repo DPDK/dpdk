@@ -118,10 +118,16 @@ cn10k_process_vwqe(uintptr_t vwqe, uint16_t port_id, const uint32_t flags,
 	uint8_t loff = 0;
 	uint64_t sa_base;
 	uint64_t **wqe;
+	int i;
 
 	mbuf_init |= ((uint64_t)port_id) << 48;
 	vec = (struct rte_event_vector *)vwqe;
 	wqe = vec->u64s;
+
+	rte_prefetch_non_temporal(&vec->ptrs[0]);
+#define OBJS_PER_CLINE (RTE_CACHE_LINE_SIZE / sizeof(void *))
+	for (i = OBJS_PER_CLINE; i < vec->nb_elem; i += OBJS_PER_CLINE)
+		rte_prefetch_non_temporal(&vec->ptrs[i]);
 
 	nb_mbufs = RTE_ALIGN_FLOOR(vec->nb_elem, NIX_DESCS_PER_LOOP);
 	nb_mbufs = cn10k_nix_recv_pkts_vector(&mbuf_init, vec->mbufs, nb_mbufs,
@@ -191,15 +197,13 @@ cn10k_sso_hws_get_work(struct cn10k_sso_hws *ws, struct rte_event *ev,
 		uint64_t u64[2];
 	} gw;
 	uint64_t tstamp_ptr;
-	uint64_t mbuf;
 
 	gw.get_work = ws->gw_wdata;
 #if defined(RTE_ARCH_ARM64) && !defined(__clang__)
 	asm volatile(
 		PLT_CPU_FEATURE_PREAMBLE
-		"caspl %[wdata], %H[wdata], %[wdata], %H[wdata], [%[gw_loc]]\n"
-		"sub %[mbuf], %H[wdata], #0x80				\n"
-		: [wdata] "+r"(gw.get_work), [mbuf] "=&r"(mbuf)
+		"caspal %[wdata], %H[wdata], %[wdata], %H[wdata], [%[gw_loc]]\n"
+		: [wdata] "+r"(gw.get_work)
 		: [gw_loc] "r"(ws->base + SSOW_LF_GWS_OP_GET_WORK0)
 		: "memory");
 #else
@@ -208,14 +212,12 @@ cn10k_sso_hws_get_work(struct cn10k_sso_hws *ws, struct rte_event *ev,
 		roc_load_pair(gw.u64[0], gw.u64[1],
 			      ws->base + SSOW_LF_GWS_WQE0);
 	} while (gw.u64[0] & BIT_ULL(63));
-	mbuf = (uint64_t)((char *)gw.u64[1] - sizeof(struct rte_mbuf));
 #endif
 	ws->gw_rdata = gw.u64[0];
-	gw.u64[0] = (gw.u64[0] & (0x3ull << 32)) << 6 |
-		    (gw.u64[0] & (0x3FFull << 36)) << 4 |
-		    (gw.u64[0] & 0xffffffff);
-
-	if (CNXK_TT_FROM_EVENT(gw.u64[0]) != SSO_TT_EMPTY) {
+	if (gw.u64[1]) {
+		gw.u64[0] = (gw.u64[0] & (0x3ull << 32)) << 6 |
+			    (gw.u64[0] & (0x3FFull << 36)) << 4 |
+			    (gw.u64[0] & 0xffffffff);
 		if ((flags & CPT_RX_WQE_F) &&
 		    (CNXK_EVENT_TYPE_FROM_TAG(gw.u64[0]) ==
 		     RTE_EVENT_TYPE_CRYPTODEV)) {
@@ -223,7 +225,10 @@ cn10k_sso_hws_get_work(struct cn10k_sso_hws *ws, struct rte_event *ev,
 		} else if (CNXK_EVENT_TYPE_FROM_TAG(gw.u64[0]) ==
 			   RTE_EVENT_TYPE_ETHDEV) {
 			uint8_t port = CNXK_SUB_EVENT_FROM_TAG(gw.u64[0]);
+			uint64_t mbuf;
 
+			mbuf = gw.u64[1] - sizeof(struct rte_mbuf);
+			rte_prefetch0((void *)mbuf);
 			if (flags & NIX_RX_OFFLOAD_SECURITY_F) {
 				struct rte_mbuf *m;
 				uintptr_t sa_base;

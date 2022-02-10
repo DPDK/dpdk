@@ -388,16 +388,16 @@ skip_parse:
 		ol_flags =
 			nix_update_match_id(rx->cn9k.match_id, ol_flags, mbuf);
 
-	mbuf->pkt_len = len;
-	mbuf->data_len = len;
-	*(uint64_t *)(&mbuf->rearm_data) = val;
-
 	mbuf->ol_flags = ol_flags;
+	*(uint64_t *)(&mbuf->rearm_data) = val;
+	mbuf->pkt_len = len;
 
-	if (flag & NIX_RX_MULTI_SEG_F)
+	if (flag & NIX_RX_MULTI_SEG_F) {
 		nix_cqe_xtract_mseg(rx, mbuf, val, flag);
-	else
+	} else {
+		mbuf->data_len = len;
 		mbuf->next = NULL;
+	}
 }
 
 static inline uint16_t
@@ -769,10 +769,6 @@ cn9k_nix_recv_pkts_vector(void *rx_queue, struct rte_mbuf **rx_pkts,
 		vst1q_u64((uint64_t *)mbuf2->rearm_data, rearm2);
 		vst1q_u64((uint64_t *)mbuf3->rearm_data, rearm3);
 
-		/* Store the mbufs to rx_pkts */
-		vst1q_u64((uint64_t *)&rx_pkts[packets], mbuf01);
-		vst1q_u64((uint64_t *)&rx_pkts[packets + 2], mbuf23);
-
 		if (flags & NIX_RX_MULTI_SEG_F) {
 			/* Multi segment is enable build mseg list for
 			 * individual mbufs in scalar mode.
@@ -796,6 +792,10 @@ cn9k_nix_recv_pkts_vector(void *rx_queue, struct rte_mbuf **rx_pkts,
 			mbuf2->next = NULL;
 			mbuf3->next = NULL;
 		}
+
+		/* Store the mbufs to rx_pkts */
+		vst1q_u64((uint64_t *)&rx_pkts[packets], mbuf01);
+		vst1q_u64((uint64_t *)&rx_pkts[packets + 2], mbuf23);
 
 		/* Prefetch mbufs */
 		roc_prefetch_store_keep(mbuf0);

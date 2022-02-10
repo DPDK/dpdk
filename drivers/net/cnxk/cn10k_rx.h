@@ -610,10 +610,10 @@ cn10k_nix_recv_pkts_vector(void *args, struct rte_mbuf **mbufs, uint16_t pkts,
 		}
 
 		/* Prefetch N desc ahead */
-		rte_prefetch_non_temporal(CQE_PTR_OFF(cq0, 8, 0, flags));
-		rte_prefetch_non_temporal(CQE_PTR_OFF(cq0, 9, 0, flags));
-		rte_prefetch_non_temporal(CQE_PTR_OFF(cq0, 10, 0, flags));
-		rte_prefetch_non_temporal(CQE_PTR_OFF(cq0, 11, 0, flags));
+		rte_prefetch_non_temporal(CQE_PTR_OFF(cq0, 4, 64, flags));
+		rte_prefetch_non_temporal(CQE_PTR_OFF(cq0, 5, 64, flags));
+		rte_prefetch_non_temporal(CQE_PTR_OFF(cq0, 6, 64, flags));
+		rte_prefetch_non_temporal(CQE_PTR_OFF(cq0, 7, 64, flags));
 
 		/* Get NIX_RX_SG_S for size and buffer pointer */
 		cq0_w8 = vld1q_u64(CQE_PTR_OFF(cq0, 0, 64, flags));
