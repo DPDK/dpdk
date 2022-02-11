@@ -748,9 +748,7 @@ get_session(struct openssl_qp *qp, struct rte_crypto_op *op)
 		} else {
 			if (likely(op->asym->session != NULL))
 				asym_sess = (struct openssl_asym_session *)
-						get_asym_session_private_data(
-						op->asym->session,
-						cryptodev_driver_id);
+						op->asym->session->sess_private_data;
 			if (asym_sess == NULL)
 				op->status =
 					RTE_CRYPTO_OP_STATUS_INVALID_SESSION;

@@ -919,9 +919,13 @@ struct rte_cryptodev_sym_session {
 };
 
 /** Cryptodev asymmetric crypto session */
-struct rte_cryptodev_asym_session {
-	__extension__ void *sess_private_data[0];
-	/**< Private asymmetric session material */
+RTE_STD_C11 struct rte_cryptodev_asym_session {
+	uint8_t driver_id;
+	/**< Session driver ID. */
+	uint16_t max_priv_data_sz;
+	/**< Size of private data used when creating mempool */
+	uint8_t padding[5];
+	uint8_t sess_private_data[0];
 };
 
 /**
@@ -957,6 +961,29 @@ rte_cryptodev_sym_session_pool_create(const char *name, uint32_t nb_elts,
 	int socket_id);
 
 /**
+ * Create an asymmetric session mempool.
+ *
+ * @param name
+ *   The unique mempool name.
+ * @param nb_elts
+ *   The number of elements in the mempool.
+ * @param cache_size
+ *   The number of per-lcore cache elements
+ * @param socket_id
+ *   The *socket_id* argument is the socket identifier in the case of
+ *   NUMA. The value can be *SOCKET_ID_ANY* if there is no NUMA
+ *   constraint for the reserved zone.
+ *
+ * @return
+ *  - On success return mempool
+ *  - On failure returns NULL
+ */
+__rte_experimental
+struct rte_mempool *
+rte_cryptodev_asym_session_pool_create(const char *name, uint32_t nb_elts,
+	uint32_t cache_size, int socket_id);
+
+/**
  * Create symmetric crypto session header (generic with no private data)
  *
  * @param   mempool    Symmetric session mempool to allocate session
@@ -969,17 +996,22 @@ struct rte_cryptodev_sym_session *
 rte_cryptodev_sym_session_create(struct rte_mempool *mempool);
 
 /**
- * Create asymmetric crypto session header (generic with no private data)
+ * Create and initialise an asymmetric crypto session structure.
+ * Calls the PMD to configure the private session data.
  *
- * @param   mempool    mempool to allocate asymmetric session
- *                     objects from
+ * @param   dev_id   ID of device that we want the session to be used on
+ * @param   xforms   Asymmetric crypto transform operations to apply on flow
+ *                   processed with this session
+ * @param   mp       mempool to allocate asymmetric session
+ *                   objects from
  * @return
  *  - On success return pointer to asym-session
  *  - On failure returns NULL
  */
 __rte_experimental
 struct rte_cryptodev_asym_session *
-rte_cryptodev_asym_session_create(struct rte_mempool *mempool);
+rte_cryptodev_asym_session_create(uint8_t dev_id,
+		struct rte_crypto_asym_xform *xforms, struct rte_mempool *mp);
 
 /**
  * Frees symmetric crypto session header, after checking that all
@@ -997,20 +1029,20 @@ int
 rte_cryptodev_sym_session_free(struct rte_cryptodev_sym_session *sess);
 
 /**
- * Frees asymmetric crypto session header, after checking that all
- * the device private data has been freed, returning it
- * to its original mempool.
+ * Clears and frees asymmetric crypto session header and private data,
+ * returning it to its original mempool.
  *
+ * @param   dev_id   ID of device that uses the asymmetric session.
  * @param   sess     Session header to be freed.
  *
  * @return
  *  - 0 if successful.
- *  - -EINVAL if session is NULL.
- *  - -EBUSY if not all device private data has been freed.
+ *  - -EINVAL if device is invalid or session is NULL.
  */
 __rte_experimental
 int
-rte_cryptodev_asym_session_free(struct rte_cryptodev_asym_session *sess);
+rte_cryptodev_asym_session_free(uint8_t dev_id,
+		struct rte_cryptodev_asym_session *sess);
 
 /**
  * Fill out private data for the device id, based on its device type.
@@ -1035,28 +1067,6 @@ rte_cryptodev_sym_session_init(uint8_t dev_id,
 			struct rte_mempool *mempool);
 
 /**
- * Initialize asymmetric session on a device with specific asymmetric xform
- *
- * @param   dev_id   ID of device that we want the session to be used on
- * @param   sess     Session to be set up on a device
- * @param   xforms   Asymmetric crypto transform operations to apply on flow
- *                   processed with this session
- * @param   mempool  Mempool to be used for internal allocation.
- *
- * @return
- *  - On success, zero.
- *  - -EINVAL if input parameters are invalid.
- *  - -ENOTSUP if crypto device does not support the crypto transform.
- *  - -ENOMEM if the private session could not be allocated.
- */
-__rte_experimental
-int
-rte_cryptodev_asym_session_init(uint8_t dev_id,
-			struct rte_cryptodev_asym_session *sess,
-			struct rte_crypto_asym_xform *xforms,
-			struct rte_mempool *mempool);
-
-/**
  * Frees private data for the device id, based on its device type,
  * returning it to its mempool. It is the application's responsibility
  * to ensure that private session data is not cleared while there are
@@ -1073,21 +1083,6 @@ rte_cryptodev_asym_session_init(uint8_t dev_id,
 int
 rte_cryptodev_sym_session_clear(uint8_t dev_id,
 			struct rte_cryptodev_sym_session *sess);
-
-/**
- * Frees resources held by asymmetric session during rte_cryptodev_session_init
- *
- * @param   dev_id   ID of device that uses the asymmetric session.
- * @param   sess     Asymmetric session setup on device using
- *					 rte_cryptodev_session_init
- * @return
- *  - 0 if successful.
- *  - -EINVAL if device is invalid or session is NULL.
- */
-__rte_experimental
-int
-rte_cryptodev_asym_session_clear(uint8_t dev_id,
-			struct rte_cryptodev_asym_session *sess);
 
 /**
  * Get the size of the header session, for all registered drivers excluding
@@ -1116,7 +1111,7 @@ rte_cryptodev_sym_get_existing_header_session_size(
 		struct rte_cryptodev_sym_session *sess);
 
 /**
- * Get the size of the asymmetric session header, for all registered drivers.
+ * Get the size of the asymmetric session header.
  *
  * @return
  *   Size of the asymmetric header session.

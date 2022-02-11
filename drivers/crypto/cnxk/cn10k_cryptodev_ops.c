@@ -157,8 +157,8 @@ cn10k_cpt_fill_inst(struct cnxk_cpt_qp *qp, struct rte_crypto_op *ops[],
 
 		if (op->sess_type == RTE_CRYPTO_OP_WITH_SESSION) {
 			asym_op = op->asym;
-			ae_sess = get_asym_session_private_data(
-				asym_op->session, cn10k_cryptodev_driver_id);
+			ae_sess = (struct cnxk_ae_sess *)
+					asym_op->session->sess_private_data;
 			ret = cnxk_ae_enqueue(qp, op, infl_req, &inst[0],
 					      ae_sess);
 			if (unlikely(ret))
@@ -431,8 +431,8 @@ cn10k_cpt_dequeue_post_process(struct cnxk_cpt_qp *qp,
 			uintptr_t *mdata = infl_req->mdata;
 			struct cnxk_ae_sess *sess;
 
-			sess = get_asym_session_private_data(
-				op->session, cn10k_cryptodev_driver_id);
+			sess = (struct cnxk_ae_sess *)
+					op->session->sess_private_data;
 
 			cnxk_ae_post_process(cop, sess, (uint8_t *)mdata[0]);
 		}

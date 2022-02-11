@@ -35,11 +35,9 @@ cperf_throughput_test_free(struct cperf_throughput_ctx *ctx)
 	if (!ctx)
 		return;
 	if (ctx->sess) {
-		if (ctx->options->op_type == CPERF_ASYM_MODEX) {
-			rte_cryptodev_asym_session_clear(ctx->dev_id,
-							 (void *)ctx->sess);
-			rte_cryptodev_asym_session_free((void *)ctx->sess);
-		}
+		if (ctx->options->op_type == CPERF_ASYM_MODEX)
+			rte_cryptodev_asym_session_free(ctx->dev_id,
+					(void *)ctx->sess);
 #ifdef RTE_LIB_SECURITY
 		else if (ctx->options->op_type == CPERF_PDCP ||
 			 ctx->options->op_type == CPERF_DOCSIS ||

@@ -46,10 +46,9 @@ struct qat_asym_session {
 };
 
 int
-qat_asym_session_configure(struct rte_cryptodev *dev,
+qat_asym_session_configure(struct rte_cryptodev *dev __rte_unused,
 		struct rte_crypto_asym_xform *xform,
-		struct rte_cryptodev_asym_session *sess,
-		struct rte_mempool *mempool);
+		struct rte_cryptodev_asym_session *sess);
 
 unsigned int
 qat_asym_session_get_private_size(struct rte_cryptodev *dev);

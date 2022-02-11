@@ -1038,20 +1038,17 @@ It is the application's responsibility to create and manage the session mempools
 Application using both symmetric and asymmetric sessions should allocate and maintain
 different sessions pools for each type.
 
-An application can use ``rte_cryptodev_get_asym_session_private_size()`` to
-get the private size of asymmetric session on a given crypto device. This
-function would allow an application to calculate the max device asymmetric
-session size of all crypto devices to create a single session mempool.
-If instead an application creates multiple asymmetric session mempools,
-the Crypto device framework also provides ``rte_cryptodev_asym_get_header_session_size()`` to get
-the size of an uninitialized session.
+An application can use ``rte_cryptodev_asym_session_pool_create()`` to create a mempool
+with a specified number of elements. The element size will allow for the session header,
+and the max private session size.
+The max private session size is chosen based on available crypto devices,
+the biggest private session size is used. This means any of those devices can be used,
+and the mempool element will have available space for its private session data.
 
 Once the session mempools have been created, ``rte_cryptodev_asym_session_create()``
-is used to allocate an uninitialized asymmetric session from the given mempool.
-The session then must be initialized using ``rte_cryptodev_asym_session_init()``
-for each of the required crypto devices. An asymmetric transform chain
-is used to specify the operation and its parameters. See the section below for
-details on transforms.
+is used to allocate and initialize an asymmetric session from the given mempool.
+An asymmetric transform chain is used to specify the operation and its parameters.
+See the section below for details on transforms.
 
 When a session is no longer used, user must call ``rte_cryptodev_asym_session_clear()``
 for each of the crypto devices that are using the session, to free all driver

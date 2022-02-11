@@ -658,10 +658,9 @@ void
 cnxk_ae_session_clear(struct rte_cryptodev *dev,
 		      struct rte_cryptodev_asym_session *sess)
 {
-	struct rte_mempool *sess_mp;
 	struct cnxk_ae_sess *priv;
 
-	priv = get_asym_session_private_data(sess, dev->driver_id);
+	priv = (struct cnxk_ae_sess *) sess->sess_private_data;
 	if (priv == NULL)
 		return;
 
@@ -670,40 +669,29 @@ cnxk_ae_session_clear(struct rte_cryptodev *dev,
 
 	/* Reset and free object back to pool */
 	memset(priv, 0, cnxk_ae_session_size_get(dev));
-	sess_mp = rte_mempool_from_obj(priv);
-	set_asym_session_private_data(sess, dev->driver_id, NULL);
-	rte_mempool_put(sess_mp, priv);
 }
 
 int
 cnxk_ae_session_cfg(struct rte_cryptodev *dev,
 		    struct rte_crypto_asym_xform *xform,
-		    struct rte_cryptodev_asym_session *sess,
-		    struct rte_mempool *pool)
+		    struct rte_cryptodev_asym_session *sess)
 {
+	struct cnxk_ae_sess *priv =
+			(struct cnxk_ae_sess *) sess->sess_private_data;
 	struct cnxk_cpt_vf *vf = dev->data->dev_private;
 	struct roc_cpt *roc_cpt = &vf->cpt;
-	struct cnxk_ae_sess *priv;
 	union cpt_inst_w7 w7;
 	int ret;
 
-	if (rte_mempool_get(pool, (void **)&priv))
-		return -ENOMEM;
-
-	memset(priv, 0, sizeof(struct cnxk_ae_sess));
-
 	ret = cnxk_ae_fill_session_parameters(priv, xform);
-	if (ret) {
-		rte_mempool_put(pool, priv);
+	if (ret)
 		return ret;
-	}
 
 	w7.u64 = 0;
 	w7.s.egrp = roc_cpt->eng_grp[CPT_ENG_TYPE_AE];
 	priv->cpt_inst_w7 = w7.u64;
 	priv->cnxk_fpm_iova = vf->cnxk_fpm_iova;
 	priv->ec_grp = vf->ec_grp;
-	set_asym_session_private_data(sess, dev->driver_id, priv);
 
 	return 0;
 }

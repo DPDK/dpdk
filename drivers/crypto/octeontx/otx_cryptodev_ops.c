@@ -374,35 +374,24 @@ otx_cpt_asym_session_size_get(struct rte_cryptodev *dev __rte_unused)
 }
 
 static int
-otx_cpt_asym_session_cfg(struct rte_cryptodev *dev,
+otx_cpt_asym_session_cfg(struct rte_cryptodev *dev __rte_unused,
 			 struct rte_crypto_asym_xform *xform __rte_unused,
-			 struct rte_cryptodev_asym_session *sess,
-			 struct rte_mempool *pool)
+			 struct rte_cryptodev_asym_session *sess)
 {
-	struct cpt_asym_sess_misc *priv;
+	struct cpt_asym_sess_misc *priv = (struct cpt_asym_sess_misc *)
+			sess->sess_private_data;
 	int ret;
 
 	CPT_PMD_INIT_FUNC_TRACE();
 
-	if (rte_mempool_get(pool, (void **)&priv)) {
-		CPT_LOG_ERR("Could not allocate session private data");
-		return -ENOMEM;
-	}
-
-	memset(priv, 0, sizeof(struct cpt_asym_sess_misc));
-
 	ret = cpt_fill_asym_session_parameters(priv, xform);
 	if (ret) {
 		CPT_LOG_ERR("Could not configure session parameters");
-
-		/* Return session to mempool */
-		rte_mempool_put(pool, priv);
 		return ret;
 	}
 
 	priv->cpt_inst_w7 = 0;
 
-	set_asym_session_private_data(sess, dev->driver_id, priv);
 	return 0;
 }
 
@@ -411,11 +400,10 @@ otx_cpt_asym_session_clear(struct rte_cryptodev *dev,
 			   struct rte_cryptodev_asym_session *sess)
 {
 	struct cpt_asym_sess_misc *priv;
-	struct rte_mempool *sess_mp;
 
 	CPT_PMD_INIT_FUNC_TRACE();
 
-	priv = get_asym_session_private_data(sess, dev->driver_id);
+	priv = (struct cpt_asym_sess_misc *) sess->sess_private_data;
 
 	if (priv == NULL)
 		return;
@@ -423,9 +411,6 @@ otx_cpt_asym_session_clear(struct rte_cryptodev *dev,
 	/* Free resources allocated during session configure */
 	cpt_free_asym_session_parameters(priv);
 	memset(priv, 0, otx_cpt_asym_session_size_get(dev));
-	sess_mp = rte_mempool_from_obj(priv);
-	set_asym_session_private_data(sess, dev->driver_id, NULL);
-	rte_mempool_put(sess_mp, priv);
 }
 
 static __rte_always_inline void * __rte_hot
@@ -470,8 +455,8 @@ otx_cpt_enq_single_asym(struct cpt_instance *instance,
 		return NULL;
 	}
 
-	sess = get_asym_session_private_data(asym_op->session,
-					     otx_cryptodev_driver_id);
+	sess = (struct cpt_asym_sess_misc *)
+			asym_op->session->sess_private_data;
 
 	/* Store phys_addr of the mdata to meta_buf */
 	params.meta_buf = rte_mempool_virt2iova(mdata);
@@ -851,8 +836,7 @@ otx_cpt_asym_post_process(struct rte_crypto_op *cop,
 	struct rte_crypto_asym_op *op = cop->asym;
 	struct cpt_asym_sess_misc *sess;
 
-	sess = get_asym_session_private_data(op->session,
-					     otx_cryptodev_driver_id);
+	sess = (struct cpt_asym_sess_misc *) op->session->sess_private_data;
 
 	switch (sess->xfrm_type) {
 	case RTE_CRYPTO_ASYM_XFORM_RSA:

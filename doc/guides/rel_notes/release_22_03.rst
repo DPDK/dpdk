@@ -183,6 +183,13 @@ API Changes
 * ethdev: Old public macros and enumeration constants without ``RTE_ETH_`` prefix,
   which are kept for backward compatibility, are marked as deprecated.
 
+* cryptodev: The asymmetric session handling was modified to use a single
+  mempool object. An API ``rte_cryptodev_asym_session_pool_create`` was added
+  to create a mempool with element size big enough to hold the generic asymmetric
+  session header and max size for a device private session data.
+  The API ``rte_cryptodev_asym_session_init`` was removed as the initialization
+  is now moved to ``rte_cryptodev_asym_session_create``.
+
 
 ABI Changes
 -----------

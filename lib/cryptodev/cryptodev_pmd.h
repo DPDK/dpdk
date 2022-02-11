@@ -319,7 +319,6 @@ typedef int (*cryptodev_sym_configure_session_t)(struct rte_cryptodev *dev,
  * @param	dev		Crypto device pointer
  * @param	xform		Single or chain of crypto xforms
  * @param	session		Pointer to cryptodev's private session structure
- * @param	mp		Mempool where the private session is allocated
  *
  * @return
  *  - Returns 0 if private session structure have been created successfully.
@@ -329,8 +328,7 @@ typedef int (*cryptodev_sym_configure_session_t)(struct rte_cryptodev *dev,
  */
 typedef int (*cryptodev_asym_configure_session_t)(struct rte_cryptodev *dev,
 		struct rte_crypto_asym_xform *xform,
-		struct rte_cryptodev_asym_session *session,
-		struct rte_mempool *mp);
+		struct rte_cryptodev_asym_session *session);
 /**
  * Free driver private session data.
  *
@@ -340,12 +338,12 @@ typedef int (*cryptodev_asym_configure_session_t)(struct rte_cryptodev *dev,
 typedef void (*cryptodev_sym_free_session_t)(struct rte_cryptodev *dev,
 		struct rte_cryptodev_sym_session *sess);
 /**
- * Free asymmetric session private data.
+ * Clear asymmetric session private data.
  *
  * @param	dev		Crypto device pointer
  * @param	sess		Cryptodev session structure
  */
-typedef void (*cryptodev_asym_free_session_t)(struct rte_cryptodev *dev,
+typedef void (*cryptodev_asym_clear_session_t)(struct rte_cryptodev *dev,
 		struct rte_cryptodev_asym_session *sess);
 /**
  * Perform actual crypto processing (encrypt/digest or auth/decrypt)
@@ -429,7 +427,7 @@ struct rte_cryptodev_ops {
 	/**< Configure asymmetric Crypto session. */
 	cryptodev_sym_free_session_t sym_session_clear;
 	/**< Clear a Crypto sessions private data. */
-	cryptodev_asym_free_session_t asym_session_clear;
+	cryptodev_asym_clear_session_t asym_session_clear;
 	/**< Clear a Crypto sessions private data. */
 	union {
 		cryptodev_sym_cpu_crypto_process_t sym_cpu_process;
@@ -625,19 +623,6 @@ set_sym_session_private_data(struct rte_cryptodev_sym_session *sess,
 	}
 
 	sess->sess_data[driver_id].data = private_data;
-}
-
-static inline void *
-get_asym_session_private_data(const struct rte_cryptodev_asym_session *sess,
-		uint8_t driver_id) {
-	return sess->sess_private_data[driver_id];
-}
-
-static inline void
-set_asym_session_private_data(struct rte_cryptodev_asym_session *sess,
-		uint8_t driver_id, void *private_data)
-{
-	sess->sess_private_data[driver_id] = private_data;
 }
 
 #endif /* _CRYPTODEV_PMD_H_ */

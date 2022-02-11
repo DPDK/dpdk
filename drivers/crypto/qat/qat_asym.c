@@ -492,8 +492,7 @@ qat_asym_build_request(void *in_op,
 	op->status = RTE_CRYPTO_OP_STATUS_NOT_PROCESSED;
 	if (op->sess_type == RTE_CRYPTO_OP_WITH_SESSION) {
 		ctx = (struct qat_asym_session *)
-			get_asym_session_private_data(
-			op->asym->session, qat_asym_driver_id);
+				op->asym->session->sess_private_data;
 		if (unlikely(ctx == NULL)) {
 			QAT_LOG(ERR, "Session has not been created for this device");
 			goto error;
@@ -711,8 +710,8 @@ qat_asym_process_response(void **op, uint8_t *resp,
 	}
 
 	if (rx_op->sess_type == RTE_CRYPTO_OP_WITH_SESSION) {
-		ctx = (struct qat_asym_session *)get_asym_session_private_data(
-			rx_op->asym->session, qat_asym_driver_id);
+		ctx = (struct qat_asym_session *)
+				rx_op->asym->session->sess_private_data;
 		qat_asym_collect_response(rx_op, cookie, ctx->xform);
 	} else if (rx_op->sess_type == RTE_CRYPTO_OP_SESSIONLESS) {
 		qat_asym_collect_response(rx_op, cookie, rx_op->asym->xform);
@@ -726,61 +725,42 @@ qat_asym_process_response(void **op, uint8_t *resp,
 }
 
 int
-qat_asym_session_configure(struct rte_cryptodev *dev,
+qat_asym_session_configure(struct rte_cryptodev *dev __rte_unused,
 		struct rte_crypto_asym_xform *xform,
-		struct rte_cryptodev_asym_session *sess,
-		struct rte_mempool *mempool)
+		struct rte_cryptodev_asym_session *sess)
 {
-	int err = 0;
-	void *sess_private_data;
 	struct qat_asym_session *session;
 
-	if (rte_mempool_get(mempool, &sess_private_data)) {
-		QAT_LOG(ERR,
-			"Couldn't get object from session mempool");
-		return -ENOMEM;
-	}
-
-	session = sess_private_data;
+	session = (struct qat_asym_session *) sess->sess_private_data;
 	if (xform->xform_type == RTE_CRYPTO_ASYM_XFORM_MODEX) {
 		if (xform->modex.exponent.length == 0 ||
 				xform->modex.modulus.length == 0) {
 			QAT_LOG(ERR, "Invalid mod exp input parameter");
-			err = -EINVAL;
-			goto error;
+			return -EINVAL;
 		}
 	} else if (xform->xform_type == RTE_CRYPTO_ASYM_XFORM_MODINV) {
 		if (xform->modinv.modulus.length == 0) {
 			QAT_LOG(ERR, "Invalid mod inv input parameter");
-			err = -EINVAL;
-			goto error;
+			return -EINVAL;
 		}
 	} else if (xform->xform_type == RTE_CRYPTO_ASYM_XFORM_RSA) {
 		if (xform->rsa.n.length == 0) {
 			QAT_LOG(ERR, "Invalid rsa input parameter");
-			err = -EINVAL;
-			goto error;
+			return -EINVAL;
 		}
 	} else if (xform->xform_type >= RTE_CRYPTO_ASYM_XFORM_TYPE_LIST_END
 			|| xform->xform_type <= RTE_CRYPTO_ASYM_XFORM_NONE) {
 		QAT_LOG(ERR, "Invalid asymmetric crypto xform");
-		err = -EINVAL;
-		goto error;
+		return -EINVAL;
 	} else {
 		QAT_LOG(ERR, "Asymmetric crypto xform not implemented");
-		err = -EINVAL;
-		goto error;
+		return -EINVAL;
 	}
 
 	session->xform = xform;
-	qat_asym_build_req_tmpl(sess_private_data);
-	set_asym_session_private_data(sess, dev->driver_id,
-		sess_private_data);
+	qat_asym_build_req_tmpl(session);
 
 	return 0;
-error:
-	rte_mempool_put(mempool, sess_private_data);
-	return err;
 }
 
 unsigned int qat_asym_session_get_private_size(
@@ -793,15 +773,9 @@ void
 qat_asym_session_clear(struct rte_cryptodev *dev,
 		struct rte_cryptodev_asym_session *sess)
 {
-	uint8_t index = dev->driver_id;
-	void *sess_priv = get_asym_session_private_data(sess, index);
+	void *sess_priv = sess->sess_private_data;
 	struct qat_asym_session *s = (struct qat_asym_session *)sess_priv;
 
-	if (sess_priv) {
+	if (sess_priv)
 		memset(s, 0, qat_asym_session_get_private_size(dev));
-		struct rte_mempool *sess_mp = rte_mempool_from_obj(sess_priv);
-
-		set_asym_session_private_data(sess, index, NULL);
-		rte_mempool_put(sess_mp, sess_priv);
-	}
 }

@@ -55,10 +55,8 @@ EXPERIMENTAL {
 	rte_cryptodev_asym_get_header_session_size;
 	rte_cryptodev_asym_get_private_session_size;
 	rte_cryptodev_asym_get_xform_enum;
-	rte_cryptodev_asym_session_clear;
 	rte_cryptodev_asym_session_create;
 	rte_cryptodev_asym_session_free;
-	rte_cryptodev_asym_session_init;
 	rte_cryptodev_asym_xform_capability_check_modlen;
 	rte_cryptodev_asym_xform_capability_check_optype;
 	rte_cryptodev_sym_cpu_crypto_process;
@@ -81,9 +79,7 @@ EXPERIMENTAL {
 	__rte_cryptodev_trace_sym_session_free;
 	__rte_cryptodev_trace_asym_session_free;
 	__rte_cryptodev_trace_sym_session_init;
-	__rte_cryptodev_trace_asym_session_init;
 	__rte_cryptodev_trace_sym_session_clear;
-	__rte_cryptodev_trace_asym_session_clear;
 	__rte_cryptodev_trace_dequeue_burst;
 	__rte_cryptodev_trace_enqueue_burst;
 
@@ -104,6 +100,9 @@ EXPERIMENTAL {
 	rte_cryptodev_remove_deq_callback;
 	rte_cryptodev_remove_enq_callback;
 
+	# added 22.03
+	rte_cryptodev_asym_session_pool_create;
+	__rte_cryptodev_trace_asym_session_pool_create;
 };
 
 INTERNAL {

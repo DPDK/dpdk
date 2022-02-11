@@ -195,13 +195,21 @@ const char *rte_crypto_asym_op_strings[] = {
 };
 
 /**
- * The private data structure stored in the session mempool private data.
+ * The private data structure stored in the sym session mempool private data.
  */
 struct rte_cryptodev_sym_session_pool_private_data {
 	uint16_t nb_drivers;
 	/**< number of elements in sess_data array */
 	uint16_t user_data_sz;
 	/**< session user data will be placed after sess_data */
+};
+
+/**
+ * The private data structure stored in the asym session mempool private data.
+ */
+struct rte_cryptodev_asym_session_pool_private_data {
+	uint16_t max_priv_session_sz;
+	/**< Size of private session data used when creating mempool */
 };
 
 int
@@ -1751,47 +1759,6 @@ rte_cryptodev_sym_session_init(uint8_t dev_id,
 	return 0;
 }
 
-int
-rte_cryptodev_asym_session_init(uint8_t dev_id,
-		struct rte_cryptodev_asym_session *sess,
-		struct rte_crypto_asym_xform *xforms,
-		struct rte_mempool *mp)
-{
-	struct rte_cryptodev *dev;
-	uint8_t index;
-	int ret;
-
-	if (!rte_cryptodev_is_valid_dev(dev_id)) {
-		CDEV_LOG_ERR("Invalid dev_id=%" PRIu8, dev_id);
-		return -EINVAL;
-	}
-
-	dev = rte_cryptodev_pmd_get_dev(dev_id);
-
-	if (sess == NULL || xforms == NULL || dev == NULL)
-		return -EINVAL;
-
-	index = dev->driver_id;
-
-	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->asym_session_configure,
-				-ENOTSUP);
-
-	if (sess->sess_private_data[index] == NULL) {
-		ret = dev->dev_ops->asym_session_configure(dev,
-							xforms,
-							sess, mp);
-		if (ret < 0) {
-			CDEV_LOG_ERR(
-				"dev_id %d failed to configure session details",
-				dev_id);
-			return ret;
-		}
-	}
-
-	rte_cryptodev_trace_asym_session_init(dev_id, sess, xforms, mp);
-	return 0;
-}
-
 struct rte_mempool *
 rte_cryptodev_sym_session_pool_create(const char *name, uint32_t nb_elts,
 	uint32_t elt_size, uint32_t cache_size, uint16_t user_data_size,
@@ -1831,6 +1798,53 @@ rte_cryptodev_sym_session_pool_create(const char *name, uint32_t nb_elts,
 
 	rte_cryptodev_trace_sym_session_pool_create(name, nb_elts,
 		elt_size, cache_size, user_data_size, mp);
+	return mp;
+}
+
+struct rte_mempool *
+rte_cryptodev_asym_session_pool_create(const char *name, uint32_t nb_elts,
+	uint32_t cache_size, int socket_id)
+{
+	struct rte_mempool *mp;
+	struct rte_cryptodev_asym_session_pool_private_data *pool_priv;
+	uint32_t obj_sz, obj_sz_aligned;
+	uint8_t dev_id, priv_sz, max_priv_sz = 0;
+
+	for (dev_id = 0; dev_id < RTE_CRYPTO_MAX_DEVS; dev_id++)
+		if (rte_cryptodev_is_valid_dev(dev_id)) {
+			priv_sz = rte_cryptodev_asym_get_private_session_size(dev_id);
+			if (priv_sz > max_priv_sz)
+				max_priv_sz = priv_sz;
+		}
+	if (max_priv_sz == 0) {
+		CDEV_LOG_INFO("Could not set max private session size\n");
+		return NULL;
+	}
+
+	obj_sz = rte_cryptodev_asym_get_header_session_size() + max_priv_sz;
+	obj_sz_aligned =  RTE_ALIGN_CEIL(obj_sz, RTE_CACHE_LINE_SIZE);
+
+	mp = rte_mempool_create(name, nb_elts, obj_sz_aligned, cache_size,
+			(uint32_t)(sizeof(*pool_priv)),
+			NULL, NULL, NULL, NULL,
+			socket_id, 0);
+	if (mp == NULL) {
+		CDEV_LOG_ERR("%s(name=%s) failed, rte_errno=%d\n",
+			__func__, name, rte_errno);
+		return NULL;
+	}
+
+	pool_priv = rte_mempool_get_priv(mp);
+	if (!pool_priv) {
+		CDEV_LOG_ERR("%s(name=%s) failed to get private data\n",
+			__func__, name);
+		rte_mempool_free(mp);
+		return NULL;
+	}
+	pool_priv->max_priv_session_sz = max_priv_sz;
+
+	rte_cryptodev_trace_asym_session_pool_create(name, nb_elts,
+		cache_size, mp);
 	return mp;
 }
 
@@ -1895,19 +1909,44 @@ rte_cryptodev_sym_session_create(struct rte_mempool *mp)
 }
 
 struct rte_cryptodev_asym_session *
-rte_cryptodev_asym_session_create(struct rte_mempool *mp)
+rte_cryptodev_asym_session_create(uint8_t dev_id,
+		struct rte_crypto_asym_xform *xforms, struct rte_mempool *mp)
 {
 	struct rte_cryptodev_asym_session *sess;
-	unsigned int session_size =
+	uint32_t session_priv_data_sz;
+	struct rte_cryptodev_asym_session_pool_private_data *pool_priv;
+	unsigned int session_header_size =
 			rte_cryptodev_asym_get_header_session_size();
+	struct rte_cryptodev *dev;
+	int ret;
+
+	if (!rte_cryptodev_is_valid_dev(dev_id)) {
+		CDEV_LOG_ERR("Invalid dev_id=%" PRIu8, dev_id);
+		return NULL;
+	}
+
+	dev = rte_cryptodev_pmd_get_dev(dev_id);
+
+	if (dev == NULL)
+		return NULL;
 
 	if (!mp) {
 		CDEV_LOG_ERR("invalid mempool\n");
 		return NULL;
 	}
 
+	session_priv_data_sz = rte_cryptodev_asym_get_private_session_size(
+			dev_id);
+	pool_priv = rte_mempool_get_priv(mp);
+
+	if (pool_priv->max_priv_session_sz < session_priv_data_sz) {
+		CDEV_LOG_DEBUG(
+			"The private session data size used when creating the mempool is smaller than this device's private session data.");
+		return NULL;
+	}
+
 	/* Verify if provided mempool can hold elements big enough. */
-	if (mp->elt_size < session_size) {
+	if (mp->elt_size < session_header_size + session_priv_data_sz) {
 		CDEV_LOG_ERR(
 			"mempool elements too small to hold session objects");
 		return NULL;
@@ -1919,12 +1958,25 @@ rte_cryptodev_asym_session_create(struct rte_mempool *mp)
 		return NULL;
 	}
 
-	/* Clear device session pointer.
-	 * Include the flag indicating presence of private data
-	 */
-	memset(sess, 0, session_size);
+	sess->driver_id = dev->driver_id;
+	sess->max_priv_data_sz = pool_priv->max_priv_session_sz;
 
-	rte_cryptodev_trace_asym_session_create(mp, sess);
+	/* Clear device session pointer.*/
+	memset(sess->sess_private_data, 0, session_priv_data_sz);
+
+	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->asym_session_configure, NULL);
+
+	if (sess->sess_private_data[0] == 0) {
+		ret = dev->dev_ops->asym_session_configure(dev, xforms, sess);
+		if (ret < 0) {
+			CDEV_LOG_ERR(
+				"dev_id %d failed to configure session details",
+				dev_id);
+			return NULL;
+		}
+	}
+
+	rte_cryptodev_trace_asym_session_create(dev_id, xforms, mp);
 	return sess;
 }
 
@@ -1960,30 +2012,6 @@ rte_cryptodev_sym_session_clear(uint8_t dev_id,
 }
 
 int
-rte_cryptodev_asym_session_clear(uint8_t dev_id,
-		struct rte_cryptodev_asym_session *sess)
-{
-	struct rte_cryptodev *dev;
-
-	if (!rte_cryptodev_is_valid_dev(dev_id)) {
-		CDEV_LOG_ERR("Invalid dev_id=%" PRIu8, dev_id);
-		return -EINVAL;
-	}
-
-	dev = rte_cryptodev_pmd_get_dev(dev_id);
-
-	if (dev == NULL || sess == NULL)
-		return -EINVAL;
-
-	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->asym_session_clear, -ENOTSUP);
-
-	dev->dev_ops->asym_session_clear(dev, sess);
-
-	rte_cryptodev_trace_sym_session_clear(dev_id, sess);
-	return 0;
-}
-
-int
 rte_cryptodev_sym_session_free(struct rte_cryptodev_sym_session *sess)
 {
 	uint8_t i;
@@ -2007,27 +2035,31 @@ rte_cryptodev_sym_session_free(struct rte_cryptodev_sym_session *sess)
 }
 
 int
-rte_cryptodev_asym_session_free(struct rte_cryptodev_asym_session *sess)
+rte_cryptodev_asym_session_free(uint8_t dev_id,
+		struct rte_cryptodev_asym_session *sess)
 {
-	uint8_t i;
-	void *sess_priv;
 	struct rte_mempool *sess_mp;
+	struct rte_cryptodev *dev;
 
-	if (sess == NULL)
+	if (!rte_cryptodev_is_valid_dev(dev_id)) {
+		CDEV_LOG_ERR("Invalid dev_id=%" PRIu8, dev_id);
+		return -EINVAL;
+	}
+
+	dev = rte_cryptodev_pmd_get_dev(dev_id);
+
+	if (dev == NULL || sess == NULL)
 		return -EINVAL;
 
-	/* Check that all device private data has been freed */
-	for (i = 0; i < nb_drivers; i++) {
-		sess_priv = get_asym_session_private_data(sess, i);
-		if (sess_priv != NULL)
-			return -EBUSY;
-	}
+	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->asym_session_clear, -ENOTSUP);
+
+	dev->dev_ops->asym_session_clear(dev, sess);
 
 	/* Return session to mempool */
 	sess_mp = rte_mempool_from_obj(sess);
 	rte_mempool_put(sess_mp, sess);
 
-	rte_cryptodev_trace_asym_session_free(sess);
+	rte_cryptodev_trace_asym_session_free(dev_id, sess);
 	return 0;
 }
 
@@ -2061,12 +2093,7 @@ rte_cryptodev_sym_get_existing_header_session_size(
 unsigned int
 rte_cryptodev_asym_get_header_session_size(void)
 {
-	/*
-	 * Header contains pointers to the private data
-	 * of all registered drivers, and a flag which
-	 * indicates presence of private data
-	 */
-	return ((sizeof(void *) * nb_drivers) + sizeof(uint8_t));
+	return sizeof(struct rte_cryptodev_asym_session);
 }
 
 unsigned int
@@ -2092,7 +2119,6 @@ unsigned int
 rte_cryptodev_asym_get_private_session_size(uint8_t dev_id)
 {
 	struct rte_cryptodev *dev;
-	unsigned int header_size = sizeof(void *) * nb_drivers;
 	unsigned int priv_sess_size;
 
 	if (!rte_cryptodev_is_valid_dev(dev_id))
@@ -2104,11 +2130,8 @@ rte_cryptodev_asym_get_private_session_size(uint8_t dev_id)
 		return 0;
 
 	priv_sess_size = (*dev->dev_ops->asym_session_get_size)(dev);
-	if (priv_sess_size < header_size)
-		return header_size;
 
 	return priv_sess_size;
-
 }
 
 int

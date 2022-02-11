@@ -735,7 +735,6 @@ cperf_create_session(struct rte_mempool *sess_mp,
 	struct rte_crypto_sym_xform aead_xform;
 	struct rte_cryptodev_sym_session *sess = NULL;
 	struct rte_crypto_asym_xform xform = {0};
-	int rc;
 
 	if (options->op_type == CPERF_ASYM_MODEX) {
 		xform.next = NULL;
@@ -745,19 +744,10 @@ cperf_create_session(struct rte_mempool *sess_mp,
 		xform.modex.exponent.data = perf_mod_e;
 		xform.modex.exponent.length = sizeof(perf_mod_e);
 
-		sess = (void *)rte_cryptodev_asym_session_create(sess_mp);
+		sess = (void *)rte_cryptodev_asym_session_create(dev_id, &xform, sess_mp);
 		if (sess == NULL)
 			return NULL;
-		rc = rte_cryptodev_asym_session_init(dev_id, (void *)sess,
-						     &xform, priv_mp);
-		if (rc < 0) {
-			if (sess != NULL) {
-				rte_cryptodev_asym_session_clear(dev_id,
-								 (void *)sess);
-				rte_cryptodev_asym_session_free((void *)sess);
-			}
-			return NULL;
-		}
+
 		return sess;
 	}
 #ifdef RTE_LIB_SECURITY

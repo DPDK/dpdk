@@ -24,6 +24,9 @@ RTE_TRACE_POINT_REGISTER(rte_cryptodev_trace_queue_pair_setup,
 RTE_TRACE_POINT_REGISTER(rte_cryptodev_trace_sym_session_pool_create,
 	lib.cryptodev.sym.pool.create)
 
+RTE_TRACE_POINT_REGISTER(rte_cryptodev_trace_asym_session_pool_create,
+	lib.cryptodev.asym.pool.create)
+
 RTE_TRACE_POINT_REGISTER(rte_cryptodev_trace_sym_session_create,
 	lib.cryptodev.sym.create)
 
@@ -39,14 +42,8 @@ RTE_TRACE_POINT_REGISTER(rte_cryptodev_trace_asym_session_free,
 RTE_TRACE_POINT_REGISTER(rte_cryptodev_trace_sym_session_init,
 	lib.cryptodev.sym.init)
 
-RTE_TRACE_POINT_REGISTER(rte_cryptodev_trace_asym_session_init,
-	lib.cryptodev.asym.init)
-
 RTE_TRACE_POINT_REGISTER(rte_cryptodev_trace_sym_session_clear,
 	lib.cryptodev.sym.clear)
-
-RTE_TRACE_POINT_REGISTER(rte_cryptodev_trace_asym_session_clear,
-	lib.cryptodev.asym.clear)
 
 RTE_TRACE_POINT_REGISTER(rte_cryptodev_trace_enqueue_burst,
 	lib.cryptodev.enq.burst)
