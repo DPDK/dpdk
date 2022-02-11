@@ -116,7 +116,7 @@ jobs:
           libdw-dev
     - name: Install i386 cross compiling packages
       if: env.BUILD_32BIT == 'true'
-      run: sudo apt install -y gcc-multilib
+      run: sudo apt install -y gcc-multilib g++-multilib
     - name: Install aarch64 cross compiling packages
       if: env.AARCH64 == 'true'
       run: sudo apt install -y gcc-aarch64-linux-gnu libc6-dev-arm64-cross

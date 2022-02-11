@@ -74,6 +74,7 @@ fi
 
 if [ "$BUILD_32BIT" = "true" ]; then
     OPTS="$OPTS -Dc_args=-m32 -Dc_link_args=-m32"
+    OPTS="$OPTS -Dcpp_args=-m32 -Dcpp_link_args=-m32"
     export PKG_CONFIG_LIBDIR="/usr/lib32/pkgconfig"
 fi
 

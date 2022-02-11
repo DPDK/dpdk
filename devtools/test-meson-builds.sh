@@ -246,7 +246,8 @@ if check_cc_flags '-m32' ; then
 		export PKG_CONFIG_LIBDIR='/usr/lib/pkgconfig'
 	fi
 	target_override='i386-pc-linux-gnu'
-	build build-32b cc ABI -Dc_args='-m32' -Dc_link_args='-m32'
+	build build-32b cc ABI -Dc_args='-m32' -Dc_link_args='-m32' \
+			-Dcpp_args='-m32' -Dcpp_link_args='-m32'
 	target_override=
 	unset PKG_CONFIG_LIBDIR
 fi

@@ -27,3 +27,21 @@ executable('chkincs', sources,
         include_directories: includes,
         dependencies: deps,
         install: false)
+
+# run tests for c++ builds also
+if not add_languages('cpp', required: false)
+    subdir_done()
+endif
+
+gen_cpp_files = generator(gen_c_file_for_header,
+        output: '@BASENAME@.cpp',
+        arguments: ['@INPUT@', '@OUTPUT@'])
+
+cpp_sources = files('main.cpp')
+cpp_sources += gen_cpp_files.process(dpdk_chkinc_headers)
+
+executable('chkincs-cpp', cpp_sources,
+        cpp_args: ['-include', 'rte_config.h', cflags],
+        include_directories: includes,
+        dependencies: deps,
+        install: false)
