@@ -55,6 +55,28 @@ get_io_func_hint_name(uint32_t hint)
 }
 
 static void
+get_dev_mac_info(FILE *file, struct hns3_adapter *hns)
+{
+	struct hns3_hw *hw = &hns->hw;
+	struct hns3_pf *pf = &hns->pf;
+
+	fprintf(file, "  - MAC Info:\n");
+	fprintf(file,
+		"\t  -- query_type=%u\n"
+		"\t  -- supported_speed=0x%x\n"
+		"\t  -- advertising=0x%x\n"
+		"\t  -- lp_advertising=0x%x\n"
+		"\t  -- support_autoneg=%s\n"
+		"\t  -- support_fc_autoneg=%s\n",
+		hw->mac.query_type,
+		hw->mac.supported_speed,
+		hw->mac.advertising,
+		hw->mac.lp_advertising,
+		hw->mac.support_autoneg != 0 ? "Yes" : "No",
+		pf->support_fc_autoneg ? "Yes" : "No");
+}
+
+static void
 get_dev_feature_capability(FILE *file, struct hns3_hw *hw)
 {
 	const char * const caps_name[] = {
@@ -124,6 +146,12 @@ hns3_eth_dev_priv_dump(struct rte_eth_dev *dev, FILE *file)
 
 	get_device_basic_info(file, dev);
 	get_dev_feature_capability(file, hw);
+
+	/* VF only supports dumping basic info and feaure capability */
+	if (hns->is_vf)
+		return 0;
+
+	get_dev_mac_info(file, hns);
 
 	return 0;
 }
