@@ -3,9 +3,21 @@
  */
 
 #include <rte_debug.h>
+
 #include "rte_ethdev.h"
 #include "ethdev_driver.h"
 #include "ethdev_private.h"
+
+static const char *MZ_RTE_ETH_DEV_DATA = "rte_eth_dev_data";
+
+/* Shared memory between primary and secondary processes. */
+struct eth_dev_shared *eth_dev_shared_data;
+
+/* spinlock for shared data allocation */
+static rte_spinlock_t eth_dev_shared_data_lock = RTE_SPINLOCK_INITIALIZER;
+
+/* spinlock for eth device callbacks */
+rte_spinlock_t eth_dev_cb_lock = RTE_SPINLOCK_INITIALIZER;
 
 uint16_t
 eth_dev_to_id(const struct rte_eth_dev *dev)
@@ -302,3 +314,122 @@ rte_eth_call_tx_callbacks(uint16_t port_id, uint16_t queue_id,
 
 	return nb_pkts;
 }
+
+void
+eth_dev_shared_data_prepare(void)
+{
+	const unsigned int flags = 0;
+	const struct rte_memzone *mz;
+
+	rte_spinlock_lock(&eth_dev_shared_data_lock);
+
+	if (eth_dev_shared_data == NULL) {
+		if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
+			/* Allocate port data and ownership shared memory. */
+			mz = rte_memzone_reserve(MZ_RTE_ETH_DEV_DATA,
+					sizeof(*eth_dev_shared_data),
+					rte_socket_id(), flags);
+		} else
+			mz = rte_memzone_lookup(MZ_RTE_ETH_DEV_DATA);
+		if (mz == NULL)
+			rte_panic("Cannot allocate ethdev shared data\n");
+
+		eth_dev_shared_data = mz->addr;
+		if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
+			eth_dev_shared_data->next_owner_id =
+					RTE_ETH_DEV_NO_OWNER + 1;
+			rte_spinlock_init(&eth_dev_shared_data->ownership_lock);
+			memset(eth_dev_shared_data->data, 0,
+			       sizeof(eth_dev_shared_data->data));
+		}
+	}
+
+	rte_spinlock_unlock(&eth_dev_shared_data_lock);
+}
+
+void
+eth_dev_rxq_release(struct rte_eth_dev *dev, uint16_t qid)
+{
+	void **rxq = dev->data->rx_queues;
+
+	if (rxq[qid] == NULL)
+		return;
+
+	if (dev->dev_ops->rx_queue_release != NULL)
+		(*dev->dev_ops->rx_queue_release)(dev, qid);
+	rxq[qid] = NULL;
+}
+
+void
+eth_dev_txq_release(struct rte_eth_dev *dev, uint16_t qid)
+{
+	void **txq = dev->data->tx_queues;
+
+	if (txq[qid] == NULL)
+		return;
+
+	if (dev->dev_ops->tx_queue_release != NULL)
+		(*dev->dev_ops->tx_queue_release)(dev, qid);
+	txq[qid] = NULL;
+}
+
+int
+eth_dev_rx_queue_config(struct rte_eth_dev *dev, uint16_t nb_queues)
+{
+	uint16_t old_nb_queues = dev->data->nb_rx_queues;
+	unsigned int i;
+
+	if (dev->data->rx_queues == NULL && nb_queues != 0) { /* first time configuration */
+		dev->data->rx_queues = rte_zmalloc("ethdev->rx_queues",
+				sizeof(dev->data->rx_queues[0]) *
+				RTE_MAX_QUEUES_PER_PORT,
+				RTE_CACHE_LINE_SIZE);
+		if (dev->data->rx_queues == NULL) {
+			dev->data->nb_rx_queues = 0;
+			return -(ENOMEM);
+		}
+	} else if (dev->data->rx_queues != NULL && nb_queues != 0) { /* re-configure */
+		for (i = nb_queues; i < old_nb_queues; i++)
+			eth_dev_rxq_release(dev, i);
+
+	} else if (dev->data->rx_queues != NULL && nb_queues == 0) {
+		for (i = nb_queues; i < old_nb_queues; i++)
+			eth_dev_rxq_release(dev, i);
+
+		rte_free(dev->data->rx_queues);
+		dev->data->rx_queues = NULL;
+	}
+	dev->data->nb_rx_queues = nb_queues;
+	return 0;
+}
+
+int
+eth_dev_tx_queue_config(struct rte_eth_dev *dev, uint16_t nb_queues)
+{
+	uint16_t old_nb_queues = dev->data->nb_tx_queues;
+	unsigned int i;
+
+	if (dev->data->tx_queues == NULL && nb_queues != 0) { /* first time configuration */
+		dev->data->tx_queues = rte_zmalloc("ethdev->tx_queues",
+				sizeof(dev->data->tx_queues[0]) *
+				RTE_MAX_QUEUES_PER_PORT,
+				RTE_CACHE_LINE_SIZE);
+		if (dev->data->tx_queues == NULL) {
+			dev->data->nb_tx_queues = 0;
+			return -(ENOMEM);
+		}
+	} else if (dev->data->tx_queues != NULL && nb_queues != 0) { /* re-configure */
+		for (i = nb_queues; i < old_nb_queues; i++)
+			eth_dev_txq_release(dev, i);
+
+	} else if (dev->data->tx_queues != NULL && nb_queues == 0) {
+		for (i = nb_queues; i < old_nb_queues; i++)
+			eth_dev_txq_release(dev, i);
+
+		rte_free(dev->data->tx_queues);
+		dev->data->tx_queues = NULL;
+	}
+	dev->data->nb_tx_queues = nb_queues;
+	return 0;
+}
+
