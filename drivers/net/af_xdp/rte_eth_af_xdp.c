@@ -1916,28 +1916,6 @@ afxdp_mp_send_fds(const struct rte_mp_msg *request, const void *peer)
 	return 0;
 }
 
-/* Secondary process rx function. RX is disabled because memory mapping of the
- * rings being assigned by the kernel in the primary process only.
- */
-static uint16_t
-eth_af_xdp_rx_noop(void *queue __rte_unused,
-		struct rte_mbuf **bufs __rte_unused,
-		uint16_t nb_pkts __rte_unused)
-{
-	return 0;
-}
-
-/* Secondary process tx function. TX is disabled because memory mapping of the
- * rings being assigned by the kernel in the primary process only.
- */
-static uint16_t
-eth_af_xdp_tx_noop(void *queue __rte_unused,
-			struct rte_mbuf **bufs __rte_unused,
-			uint16_t nb_pkts __rte_unused)
-{
-	return 0;
-}
-
 static int
 rte_pmd_af_xdp_probe(struct rte_vdev_device *dev)
 {
@@ -1961,8 +1939,8 @@ rte_pmd_af_xdp_probe(struct rte_vdev_device *dev)
 		}
 		eth_dev->dev_ops = &ops;
 		eth_dev->device = &dev->device;
-		eth_dev->rx_pkt_burst = eth_af_xdp_rx_noop;
-		eth_dev->tx_pkt_burst = eth_af_xdp_tx_noop;
+		eth_dev->rx_pkt_burst = rte_eth_pkt_burst_dummy;
+		eth_dev->tx_pkt_burst = rte_eth_pkt_burst_dummy;
 		eth_dev->process_private = (struct pmd_process_private *)
 			rte_zmalloc_socket(name,
 					   sizeof(struct pmd_process_private),

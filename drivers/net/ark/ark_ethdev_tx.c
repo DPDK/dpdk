@@ -107,15 +107,6 @@ eth_ark_tx_desc_fill(struct ark_tx_queue *queue,
 
 /* ************************************************************************* */
 uint16_t
-eth_ark_xmit_pkts_noop(void *vtxq __rte_unused,
-		       struct rte_mbuf **tx_pkts __rte_unused,
-		       uint16_t nb_pkts __rte_unused)
-{
-	return 0;
-}
-
-/* ************************************************************************* */
-uint16_t
 eth_ark_xmit_pkts(void *vtxq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 {
 	struct ark_tx_queue *queue;

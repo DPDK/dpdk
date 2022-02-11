@@ -538,7 +538,7 @@ static const uint32_t *enicpmd_dev_supported_ptypes_get(struct rte_eth_dev *dev)
 		RTE_PTYPE_UNKNOWN
 	};
 
-	if (dev->rx_pkt_burst != enic_dummy_recv_pkts &&
+	if (dev->rx_pkt_burst != rte_eth_pkt_burst_dummy &&
 	    dev->rx_pkt_burst != NULL) {
 		struct enic *enic = pmd_priv(dev);
 		if (enic->overlay_offload)

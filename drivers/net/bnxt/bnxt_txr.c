@@ -527,20 +527,6 @@ uint16_t bnxt_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 	return nb_tx_pkts;
 }
 
-/*
- * Dummy DPDK callback for TX.
- *
- * This function is used to temporarily replace the real callback during
- * unsafe control operations on the queue, or in case of error.
- */
-uint16_t
-bnxt_dummy_xmit_pkts(void *tx_queue __rte_unused,
-		     struct rte_mbuf **tx_pkts __rte_unused,
-		     uint16_t nb_pkts __rte_unused)
-{
-	return 0;
-}
-
 int bnxt_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 {
 	struct bnxt *bp = dev->data->dev_private;

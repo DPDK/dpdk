@@ -221,8 +221,6 @@ void mlx5_txq_dynf_timestamp_set(struct rte_eth_dev *dev);
 
 /* mlx5_tx.c */
 
-uint16_t removed_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts,
-			  uint16_t pkts_n);
 void mlx5_tx_handle_completion(struct mlx5_txq_data *__rte_restrict txq,
 			       unsigned int olx __rte_unused);
 int mlx5_tx_descriptor_status(void *tx_queue, uint16_t offset);

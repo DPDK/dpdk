@@ -322,8 +322,8 @@ qede_assign_rxtx_handlers(struct rte_eth_dev *dev, bool is_dummy)
 	bool use_tx_offload = false;
 
 	if (is_dummy) {
-		dev->rx_pkt_burst = qede_rxtx_pkts_dummy;
-		dev->tx_pkt_burst = qede_rxtx_pkts_dummy;
+		dev->rx_pkt_burst = rte_eth_pkt_burst_dummy;
+		dev->tx_pkt_burst = rte_eth_pkt_burst_dummy;
 		return;
 	}
 

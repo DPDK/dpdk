@@ -1244,8 +1244,8 @@ mlx5_dev_stop(struct rte_eth_dev *dev)
 
 	dev->data->dev_started = 0;
 	/* Prevent crashes when queues are still in use. */
-	dev->rx_pkt_burst = removed_rx_burst;
-	dev->tx_pkt_burst = removed_tx_burst;
+	dev->rx_pkt_burst = rte_eth_pkt_burst_dummy;
+	dev->tx_pkt_burst = rte_eth_pkt_burst_dummy;
 	rte_wmb();
 	/* Disable datapath on secondary process. */
 	mlx5_mp_os_req_stop_rxtx(dev);

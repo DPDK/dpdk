@@ -136,31 +136,6 @@ mlx5_tx_error_cqe_handle(struct mlx5_txq_data *__rte_restrict txq,
 }
 
 /**
- * Dummy DPDK callback for TX.
- *
- * This function is used to temporarily replace the real callback during
- * unsafe control operations on the queue, or in case of error.
- *
- * @param dpdk_txq
- *   Generic pointer to TX queue structure.
- * @param[in] pkts
- *   Packets to transmit.
- * @param pkts_n
- *   Number of packets in array.
- *
- * @return
- *   Number of packets successfully transmitted (<= pkts_n).
- */
-uint16_t
-removed_tx_burst(void *dpdk_txq __rte_unused,
-		 struct rte_mbuf **pkts __rte_unused,
-		 uint16_t pkts_n __rte_unused)
-{
-	rte_mb();
-	return 0;
-}
-
-/**
  * Update completion queue consuming index via doorbell
  * and flush the completed data buffers.
  *

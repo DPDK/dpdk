@@ -2,6 +2,7 @@
 # Copyright(c) 2017 Intel Corporation
 
 sources = files(
+        'ethdev_driver.c',
         'ethdev_private.c',
         'ethdev_profile.c',
         'ethdev_trace_points.c',

@@ -1147,20 +1147,6 @@ done:
 	return nb_rx_pkts;
 }
 
-/*
- * Dummy DPDK callback for RX.
- *
- * This function is used to temporarily replace the real callback during
- * unsafe control operations on the queue, or in case of error.
- */
-uint16_t
-bnxt_dummy_recv_pkts(void *rx_queue __rte_unused,
-		     struct rte_mbuf **rx_pkts __rte_unused,
-		     uint16_t nb_pkts __rte_unused)
-{
-	return 0;
-}
-
 void bnxt_free_rx_rings(struct bnxt *bp)
 {
 	int i;

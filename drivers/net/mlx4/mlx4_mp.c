@@ -150,8 +150,8 @@ mp_secondary_handle(const struct rte_mp_msg *mp_msg, const void *peer)
 		break;
 	case MLX4_MP_REQ_STOP_RXTX:
 		INFO("port %u stopping datapath", dev->data->port_id);
-		dev->tx_pkt_burst = mlx4_tx_burst_removed;
-		dev->rx_pkt_burst = mlx4_rx_burst_removed;
+		dev->tx_pkt_burst = rte_eth_pkt_burst_dummy;
+		dev->rx_pkt_burst = rte_eth_pkt_burst_dummy;
 		rte_mb();
 		mp_init_msg(dev, &mp_res, param->type);
 		res->result = 0;

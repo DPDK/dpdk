@@ -4380,14 +4380,6 @@ hns3_get_tx_function(struct rte_eth_dev *dev, eth_tx_prep_t *prep)
 	return hns3_xmit_pkts;
 }
 
-uint16_t
-hns3_dummy_rxtx_burst(void *dpdk_txq __rte_unused,
-		      struct rte_mbuf **pkts __rte_unused,
-		      uint16_t pkts_n __rte_unused)
-{
-	return 0;
-}
-
 static void
 hns3_trace_rxtx_function(struct rte_eth_dev *dev)
 {
@@ -4429,14 +4421,14 @@ hns3_set_rxtx_function(struct rte_eth_dev *eth_dev)
 		eth_dev->rx_pkt_burst = hns3_get_rx_function(eth_dev);
 		eth_dev->rx_descriptor_status = hns3_dev_rx_descriptor_status;
 		eth_dev->tx_pkt_burst = hw->set_link_down ?
-					hns3_dummy_rxtx_burst :
+					rte_eth_pkt_burst_dummy :
 					hns3_get_tx_function(eth_dev, &prep);
 		eth_dev->tx_pkt_prepare = prep;
 		eth_dev->tx_descriptor_status = hns3_dev_tx_descriptor_status;
 		hns3_trace_rxtx_function(eth_dev);
 	} else {
-		eth_dev->rx_pkt_burst = hns3_dummy_rxtx_burst;
-		eth_dev->tx_pkt_burst = hns3_dummy_rxtx_burst;
+		eth_dev->rx_pkt_burst = rte_eth_pkt_burst_dummy;
+		eth_dev->tx_pkt_burst = rte_eth_pkt_burst_dummy;
 		eth_dev->tx_pkt_prepare = NULL;
 	}
 
@@ -4629,7 +4621,7 @@ hns3_tx_done_cleanup(void *txq, uint32_t free_cnt)
 
 	if (dev->tx_pkt_burst == hns3_xmit_pkts)
 		return hns3_tx_done_cleanup_full(q, free_cnt);
-	else if (dev->tx_pkt_burst == hns3_dummy_rxtx_burst)
+	else if (dev->tx_pkt_burst == rte_eth_pkt_burst_dummy)
 		return 0;
 	else
 		return -ENOTSUP;
@@ -4739,7 +4731,7 @@ hns3_enable_rxd_adv_layout(struct hns3_hw *hw)
 void
 hns3_stop_tx_datapath(struct rte_eth_dev *dev)
 {
-	dev->tx_pkt_burst = hns3_dummy_rxtx_burst;
+	dev->tx_pkt_burst = rte_eth_pkt_burst_dummy;
 	dev->tx_pkt_prepare = NULL;
 	hns3_eth_dev_fp_ops_config(dev);
 

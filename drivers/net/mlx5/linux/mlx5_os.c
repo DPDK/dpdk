@@ -1623,8 +1623,8 @@ err_secondary:
 	DRV_LOG(DEBUG, "port %u MTU is %u", eth_dev->data->port_id,
 		priv->mtu);
 	/* Initialize burst functions to prevent crashes before link-up. */
-	eth_dev->rx_pkt_burst = removed_rx_burst;
-	eth_dev->tx_pkt_burst = removed_tx_burst;
+	eth_dev->rx_pkt_burst = rte_eth_pkt_burst_dummy;
+	eth_dev->tx_pkt_burst = rte_eth_pkt_burst_dummy;
 	eth_dev->dev_ops = &mlx5_dev_ops;
 	eth_dev->rx_descriptor_status = mlx5_rx_descriptor_status;
 	eth_dev->tx_descriptor_status = mlx5_tx_descriptor_status;

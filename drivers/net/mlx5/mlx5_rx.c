@@ -252,7 +252,7 @@ mlx5_rx_queue_count(void *rx_queue)
 	dev = &rte_eth_devices[rxq->port_id];
 
 	if (dev->rx_pkt_burst == NULL ||
-	    dev->rx_pkt_burst == removed_rx_burst) {
+	    dev->rx_pkt_burst == rte_eth_pkt_burst_dummy) {
 		rte_errno = ENOTSUP;
 		return -rte_errno;
 	}
@@ -1151,31 +1151,6 @@ mlx5_rx_burst_mprq(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 	rxq->stats.ipackets += i;
 #endif
 	return i;
-}
-
-/**
- * Dummy DPDK callback for RX.
- *
- * This function is used to temporarily replace the real callback during
- * unsafe control operations on the queue, or in case of error.
- *
- * @param dpdk_rxq
- *   Generic pointer to RX queue structure.
- * @param[out] pkts
- *   Array to store received packets.
- * @param pkts_n
- *   Maximum number of packets in array.
- *
- * @return
- *   Number of packets successfully received (<= pkts_n).
- */
-uint16_t
-removed_rx_burst(void *dpdk_rxq __rte_unused,
-		 struct rte_mbuf **pkts __rte_unused,
-		 uint16_t pkts_n __rte_unused)
-{
-	rte_mb();
-	return 0;
 }
 
 /*

@@ -20,8 +20,6 @@ int eth_ark_dev_rx_queue_setup(struct rte_eth_dev *dev,
 uint32_t eth_ark_dev_rx_queue_count(void *rx_queue);
 int eth_ark_rx_stop_queue(struct rte_eth_dev *dev, uint16_t queue_id);
 int eth_ark_rx_start_queue(struct rte_eth_dev *dev, uint16_t queue_id);
-uint16_t eth_ark_recv_pkts_noop(void *rx_queue, struct rte_mbuf **rx_pkts,
-				uint16_t nb_pkts);
 uint16_t eth_ark_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 			   uint16_t nb_pkts);
 void eth_ark_dev_rx_queue_release(void *rx_queue);

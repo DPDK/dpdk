@@ -1510,6 +1510,23 @@ rte_eth_linkstatus_get(const struct rte_eth_dev *dev,
 }
 
 /**
+ * @internal
+ * Dummy DPDK callback for Rx/Tx packet burst.
+ *
+ * @param queue
+ *  Pointer to Rx/Tx queue
+ * @param pkts
+ *  Packet array
+ * @param nb_pkts
+ *  Number of packets in packet array
+ */
+__rte_internal
+uint16_t
+rte_eth_pkt_burst_dummy(void *queue __rte_unused,
+		struct rte_mbuf **pkts __rte_unused,
+		uint16_t nb_pkts __rte_unused);
+
+/**
  * Allocate an unique switch domain identifier.
  *
  * A pool of switch domain identifiers which can be allocated on request. This

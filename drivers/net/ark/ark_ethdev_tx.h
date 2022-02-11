@@ -10,9 +10,6 @@
 #include <ethdev_driver.h>
 
 
-uint16_t eth_ark_xmit_pkts_noop(void *vtxq,
-				struct rte_mbuf **tx_pkts,
-				uint16_t nb_pkts);
 uint16_t eth_ark_xmit_pkts(void *vtxq,
 			   struct rte_mbuf **tx_pkts,
 			   uint16_t nb_pkts);

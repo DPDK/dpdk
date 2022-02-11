@@ -31,17 +31,6 @@
 #define rte_packet_prefetch(p) do {} while (0)
 #endif
 
-/* dummy receive function to replace actual function in
- * order to do safe reconfiguration operations.
- */
-uint16_t
-enic_dummy_recv_pkts(__rte_unused void *rx_queue,
-		     __rte_unused struct rte_mbuf **rx_pkts,
-		     __rte_unused uint16_t nb_pkts)
-{
-	return 0;
-}
-
 static inline uint16_t
 enic_recv_pkts_common(void *rx_queue, struct rte_mbuf **rx_pkts,
 		      uint16_t nb_pkts, const bool use_64b_desc)

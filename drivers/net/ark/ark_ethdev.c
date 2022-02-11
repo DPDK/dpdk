@@ -271,8 +271,8 @@ eth_ark_dev_init(struct rte_eth_dev *dev)
 	dev->data->dev_flags |= RTE_ETH_DEV_AUTOFILL_QUEUE_XSTATS;
 
 	/* Use dummy function until setup */
-	dev->rx_pkt_burst = &eth_ark_recv_pkts_noop;
-	dev->tx_pkt_burst = &eth_ark_xmit_pkts_noop;
+	dev->rx_pkt_burst = rte_eth_pkt_burst_dummy;
+	dev->tx_pkt_burst = rte_eth_pkt_burst_dummy;
 
 	ark->bar0 = (uint8_t *)pci_dev->mem_resource[0].addr;
 	ark->a_bar = (uint8_t *)pci_dev->mem_resource[2].addr;
@@ -605,8 +605,8 @@ eth_ark_dev_stop(struct rte_eth_dev *dev)
 	if (ark->start_pg)
 		ark_pktgen_pause(ark->pg);
 
-	dev->rx_pkt_burst = &eth_ark_recv_pkts_noop;
-	dev->tx_pkt_burst = &eth_ark_xmit_pkts_noop;
+	dev->rx_pkt_burst = rte_eth_pkt_burst_dummy;
+	dev->tx_pkt_burst = rte_eth_pkt_burst_dummy;
 
 	/* STOP TX Side */
 	for (i = 0; i < dev->data->nb_tx_queues; i++) {

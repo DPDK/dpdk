@@ -149,10 +149,6 @@ uint16_t mlx4_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts,
 		       uint16_t pkts_n);
 uint16_t mlx4_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts,
 		       uint16_t pkts_n);
-uint16_t mlx4_tx_burst_removed(void *dpdk_txq, struct rte_mbuf **pkts,
-			       uint16_t pkts_n);
-uint16_t mlx4_rx_burst_removed(void *dpdk_rxq, struct rte_mbuf **pkts,
-			       uint16_t pkts_n);
 
 /* mlx4_txq.c */
 

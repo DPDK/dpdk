@@ -408,8 +408,8 @@ bool bnxt_is_recovery_enabled(struct bnxt *bp)
 
 void bnxt_stop_rxtx(struct rte_eth_dev *eth_dev)
 {
-	eth_dev->rx_pkt_burst = &bnxt_dummy_recv_pkts;
-	eth_dev->tx_pkt_burst = &bnxt_dummy_xmit_pkts;
+	eth_dev->rx_pkt_burst = rte_eth_pkt_burst_dummy;
+	eth_dev->tx_pkt_burst = rte_eth_pkt_burst_dummy;
 
 	rte_eth_fp_ops[eth_dev->data->port_id].rx_pkt_burst =
 		eth_dev->rx_pkt_burst;

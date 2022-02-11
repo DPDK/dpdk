@@ -940,16 +940,6 @@ fail:
 	return rc;
 }
 
-static uint16_t
-nix_eth_nop_burst(void *queue, struct rte_mbuf **mbufs, uint16_t pkts)
-{
-	RTE_SET_USED(queue);
-	RTE_SET_USED(mbufs);
-	RTE_SET_USED(pkts);
-
-	return 0;
-}
-
 static void
 nix_set_nop_rxtx_function(struct rte_eth_dev *eth_dev)
 {
@@ -960,8 +950,8 @@ nix_set_nop_rxtx_function(struct rte_eth_dev *eth_dev)
 	 * which caused app crash since rx/tx burst is still
 	 * on different lcores
 	 */
-	eth_dev->tx_pkt_burst = nix_eth_nop_burst;
-	eth_dev->rx_pkt_burst = nix_eth_nop_burst;
+	eth_dev->tx_pkt_burst = rte_eth_pkt_burst_dummy;
+	eth_dev->rx_pkt_burst = rte_eth_pkt_burst_dummy;
 	rte_mb();
 }
 

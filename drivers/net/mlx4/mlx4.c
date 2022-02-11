@@ -350,8 +350,8 @@ mlx4_dev_stop(struct rte_eth_dev *dev)
 		return 0;
 	DEBUG("%p: detaching flows from all RX queues", (void *)dev);
 	priv->started = 0;
-	dev->tx_pkt_burst = mlx4_tx_burst_removed;
-	dev->rx_pkt_burst = mlx4_rx_burst_removed;
+	dev->tx_pkt_burst = rte_eth_pkt_burst_dummy;
+	dev->rx_pkt_burst = rte_eth_pkt_burst_dummy;
 	rte_wmb();
 	/* Disable datapath on secondary process. */
 	mlx4_mp_req_stop_rxtx(dev);
@@ -383,8 +383,8 @@ mlx4_dev_close(struct rte_eth_dev *dev)
 	DEBUG("%p: closing device \"%s\"",
 	      (void *)dev,
 	      ((priv->ctx != NULL) ? priv->ctx->device->name : ""));
-	dev->rx_pkt_burst = mlx4_rx_burst_removed;
-	dev->tx_pkt_burst = mlx4_tx_burst_removed;
+	dev->rx_pkt_burst = rte_eth_pkt_burst_dummy;
+	dev->tx_pkt_burst = rte_eth_pkt_burst_dummy;
 	rte_wmb();
 	/* Disable datapath on secondary process. */
 	mlx4_mp_req_stop_rxtx(dev);

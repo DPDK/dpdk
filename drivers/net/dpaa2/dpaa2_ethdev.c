@@ -2004,7 +2004,7 @@ dpaa2_dev_set_link_down(struct rte_eth_dev *dev)
 	}
 
 	/*changing  tx burst function to avoid any more enqueues */
-	dev->tx_pkt_burst = dummy_dev_tx;
+	dev->tx_pkt_burst = rte_eth_pkt_burst_dummy;
 
 	/* Loop while dpni_disable() attempts to drain the egress FQs
 	 * and confirm them back to us.

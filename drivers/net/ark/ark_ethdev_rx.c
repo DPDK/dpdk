@@ -230,15 +230,6 @@ eth_ark_dev_rx_queue_setup(struct rte_eth_dev *dev,
 
 /* ************************************************************************* */
 uint16_t
-eth_ark_recv_pkts_noop(void *rx_queue __rte_unused,
-		       struct rte_mbuf **rx_pkts __rte_unused,
-		       uint16_t nb_pkts __rte_unused)
-{
-	return 0;
-}
-
-/* ************************************************************************* */
-uint16_t
 eth_ark_recv_pkts(void *rx_queue,
 		  struct rte_mbuf **rx_pkts,
 		  uint16_t nb_pkts)

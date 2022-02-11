@@ -192,8 +192,8 @@ struct rte_mp_msg mp_res;
 		break;
 	case MLX5_MP_REQ_STOP_RXTX:
 		DRV_LOG(INFO, "port %u stopping datapath", dev->data->port_id);
-		dev->rx_pkt_burst = removed_rx_burst;
-		dev->tx_pkt_burst = removed_tx_burst;
+		dev->rx_pkt_burst = rte_eth_pkt_burst_dummy;
+		dev->tx_pkt_burst = rte_eth_pkt_burst_dummy;
 		rte_mb();
 		mp_init_msg(&priv->mp_id, &mp_res, param->type);
 		res->result = 0;

@@ -463,18 +463,10 @@ next_rx:
 	return nb_rx;
 }
 
-static uint16_t
-bnx2x_rxtx_pkts_dummy(__rte_unused void *p_rxq,
-		      __rte_unused struct rte_mbuf **rx_pkts,
-		      __rte_unused uint16_t nb_pkts)
-{
-	return 0;
-}
-
 void bnx2x_dev_rxtx_init_dummy(struct rte_eth_dev *dev)
 {
-	dev->rx_pkt_burst = bnx2x_rxtx_pkts_dummy;
-	dev->tx_pkt_burst = bnx2x_rxtx_pkts_dummy;
+	dev->rx_pkt_burst = rte_eth_pkt_burst_dummy;
+	dev->tx_pkt_burst = rte_eth_pkt_burst_dummy;
 }
 
 void bnx2x_dev_rxtx_init(struct rte_eth_dev *dev)

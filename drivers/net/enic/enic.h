@@ -426,9 +426,6 @@ uint16_t enic_recv_pkts_64(void *rx_queue, struct rte_mbuf **rx_pkts,
 			   uint16_t nb_pkts);
 uint16_t enic_noscatter_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 				  uint16_t nb_pkts);
-uint16_t enic_dummy_recv_pkts(void *rx_queue,
-			      struct rte_mbuf **rx_pkts,
-			      uint16_t nb_pkts);
 uint16_t enic_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 			uint16_t nb_pkts);
 uint16_t enic_simple_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,

@@ -1802,31 +1802,6 @@ skip_tx:
 	return num_tx;
 }
 
-/**
- * Dummy DPDK callback for TX.
- *
- * This function is used to temporarily replace the real callback during
- * unsafe control operations on the queue, or in case of error.
- *
- * @param dpdk_txq
- *   Generic pointer to TX queue structure.
- * @param[in] pkts
- *   Packets to transmit.
- * @param pkts_n
- *   Number of packets in array.
- *
- * @return
- *   Number of packets successfully transmitted (<= pkts_n).
- */
-uint16_t
-dummy_dev_tx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
-{
-	(void)queue;
-	(void)bufs;
-	(void)nb_pkts;
-	return 0;
-}
-
 #if defined(RTE_TOOLCHAIN_GCC)
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wcast-qual"
