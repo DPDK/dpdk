@@ -222,7 +222,7 @@ struct rte_crypto_rsa_xform {
 
 	enum rte_crypto_rsa_priv_key_type key_type;
 
-	__extension__
+	RTE_STD_C11
 	union {
 		rte_crypto_param d;
 		/**< d - Private key exponent
@@ -408,7 +408,7 @@ struct rte_crypto_asym_xform {
 	enum rte_crypto_asym_xform_type xform_type;
 	/**< Asymmetric crypto transform */
 
-	__extension__
+	RTE_STD_C11
 	union {
 		struct rte_crypto_rsa_xform rsa;
 		/**< RSA xform parameters */
@@ -642,7 +642,7 @@ struct rte_crypto_asym_op {
 		/**< Session-less API crypto operation parameters */
 	};
 
-	__extension__
+	RTE_STD_C11
 	union {
 		struct rte_crypto_rsa_op_param rsa;
 		struct rte_crypto_mod_op_param modex;
