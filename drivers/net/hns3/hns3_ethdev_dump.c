@@ -55,6 +55,32 @@ get_io_func_hint_name(uint32_t hint)
 }
 
 static void
+get_dev_feature_capability(FILE *file, struct hns3_hw *hw)
+{
+	const char * const caps_name[] = {
+		"DCB",
+		"COPPER",
+		"FD QUEUE REGION",
+		"PTP",
+		"TX PUSH",
+		"INDEP TXRX",
+		"STASH",
+		"SIMPLE BD",
+		"RXD Advanced Layout",
+		"OUTER UDP CKSUM",
+		"RAS IMP",
+		"TM",
+		"VF VLAN FILTER MOD",
+	};
+	uint32_t i;
+
+	fprintf(file, "  - Dev Capability:\n");
+	for (i = 0; i < RTE_DIM(caps_name); i++)
+		fprintf(file, "\t  -- support %s: %s\n", caps_name[i],
+			hw->capability & BIT(i) ? "yes" : "no");
+}
+
+static void
 get_device_basic_info(FILE *file, struct rte_eth_dev *dev)
 {
 	struct hns3_adapter *hns = dev->data->dev_private;
@@ -93,7 +119,11 @@ get_device_basic_info(FILE *file, struct rte_eth_dev *dev)
 int
 hns3_eth_dev_priv_dump(struct rte_eth_dev *dev, FILE *file)
 {
+	struct hns3_adapter *hns = dev->data->dev_private;
+	struct hns3_hw *hw = &hns->hw;
+
 	get_device_basic_info(file, dev);
+	get_dev_feature_capability(file, hw);
 
 	return 0;
 }
