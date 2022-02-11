@@ -102,6 +102,89 @@ get_dev_feature_capability(FILE *file, struct hns3_hw *hw)
 			hw->capability & BIT(i) ? "yes" : "no");
 }
 
+static const char *
+get_fdir_tuple_name(uint32_t index)
+{
+	static const char * const tuple_name[] = {
+		"outer_dst_mac",
+		"outer_src_mac",
+		"outer_vlan_1st_tag",
+		"outer_vlan_2nd_tag",
+		"outer_eth_type",
+		"outer_l2_rsv",
+		"outer_ip_tos",
+		"outer_ip_proto",
+		"outer_src_ip",
+		"outer_dst_ip",
+		"outer_l3_rsv",
+		"outer_src_port",
+		"outer_dst_port",
+		"outer_l4_rsv",
+		"outer_tun_vni",
+		"outer_tun_flow_id",
+		"inner_dst_mac",
+		"inner_src_mac",
+		"inner_vlan_tag1",
+		"inner_vlan_tag2",
+		"inner_eth_type",
+		"inner_l2_rsv",
+		"inner_ip_tos",
+		"inner_ip_proto",
+		"inner_src_ip",
+		"inner_dst_ip",
+		"inner_l3_rsv",
+		"inner_src_port",
+		"inner_dst_port",
+		"inner_sctp_tag",
+	};
+	if (index < RTE_DIM(tuple_name))
+		return tuple_name[index];
+	else
+		return "unknown";
+}
+
+static void
+get_fdir_basic_info(FILE *file, struct hns3_pf *pf)
+{
+#define TMPBUF_SIZE		2048
+#define PERLINE_TUPLE_NAMES	4
+	struct hns3_fd_cfg *fdcfg = &pf->fdir.fd_cfg;
+	char tmpbuf[TMPBUF_SIZE] = {0};
+	uint32_t i, count = 0;
+
+	fprintf(file, "  - Fdir Info:\n");
+	fprintf(file,
+		"\t  -- mode=%u max_key_len=%u rule_num:%u cnt_num:%u\n"
+		"\t  -- key_sel=%u tuple_active=0x%x meta_data_active=0x%x\n"
+		"\t  -- ipv6_word_en: in_s=%u in_d=%u out_s=%u out_d=%u\n"
+		"\t  -- active_tuples:\n",
+		fdcfg->fd_mode, fdcfg->max_key_length,
+		fdcfg->rule_num[HNS3_FD_STAGE_1],
+		fdcfg->cnt_num[HNS3_FD_STAGE_1],
+		fdcfg->key_cfg[HNS3_FD_STAGE_1].key_sel,
+		fdcfg->key_cfg[HNS3_FD_STAGE_1].tuple_active,
+		fdcfg->key_cfg[HNS3_FD_STAGE_1].meta_data_active,
+		fdcfg->key_cfg[HNS3_FD_STAGE_1].inner_sipv6_word_en,
+		fdcfg->key_cfg[HNS3_FD_STAGE_1].inner_dipv6_word_en,
+		fdcfg->key_cfg[HNS3_FD_STAGE_1].outer_sipv6_word_en,
+		fdcfg->key_cfg[HNS3_FD_STAGE_1].outer_dipv6_word_en);
+
+	for (i = 0; i < MAX_TUPLE; i++) {
+		if (!(fdcfg->key_cfg[HNS3_FD_STAGE_1].tuple_active & BIT(i)))
+			continue;
+		if (count % PERLINE_TUPLE_NAMES == 0)
+			fprintf(file, "\t      ");
+		fprintf(file, " %s", get_fdir_tuple_name(i));
+		count++;
+		if (count % PERLINE_TUPLE_NAMES == 0)
+			fprintf(file, "\n");
+	}
+	if (count % PERLINE_TUPLE_NAMES)
+		fprintf(file, "\n");
+
+	fprintf(file, "%s", tmpbuf);
+}
+
 static void
 get_device_basic_info(FILE *file, struct rte_eth_dev *dev)
 {
@@ -572,6 +655,7 @@ hns3_eth_dev_priv_dump(struct rte_eth_dev *dev, FILE *file)
 	get_dev_mac_info(file, hns);
 	get_rxtx_queue_info(file, dev);
 	get_vlan_config_info(file, hw);
+	get_fdir_basic_info(file, &hns->pf);
 
 	return 0;
 }
