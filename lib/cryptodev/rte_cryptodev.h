@@ -996,14 +996,19 @@ rte_cryptodev_sym_session_create(struct rte_mempool *mempool);
  *                   processed with this session
  * @param   mp       mempool to allocate asymmetric session
  *                   objects from
+ * @param   session  void ** for session to be used
+ *
  * @return
- *  - On success return pointer to asym-session
- *  - On failure returns NULL
+ *  - 0 on success.
+ *  - -EINVAL on invalid arguments.
+ *  - -ENOMEM on memory error for session allocation.
+ *  - -ENOTSUP if device doesn't support session configuration.
  */
 __rte_experimental
-void *
+int
 rte_cryptodev_asym_session_create(uint8_t dev_id,
-		struct rte_crypto_asym_xform *xforms, struct rte_mempool *mp);
+		struct rte_crypto_asym_xform *xforms, struct rte_mempool *mp,
+		void **session);
 
 /**
  * Frees symmetric crypto session header, after checking that all

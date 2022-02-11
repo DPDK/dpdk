@@ -1912,9 +1912,10 @@ rte_cryptodev_sym_session_create(struct rte_mempool *mp)
 	return sess;
 }
 
-void *
+int
 rte_cryptodev_asym_session_create(uint8_t dev_id,
-		struct rte_crypto_asym_xform *xforms, struct rte_mempool *mp)
+		struct rte_crypto_asym_xform *xforms, struct rte_mempool *mp,
+		void **session)
 {
 	struct rte_cryptodev_asym_session *sess;
 	uint32_t session_priv_data_sz;
@@ -1926,17 +1927,17 @@ rte_cryptodev_asym_session_create(uint8_t dev_id,
 
 	if (!rte_cryptodev_is_valid_dev(dev_id)) {
 		CDEV_LOG_ERR("Invalid dev_id=%" PRIu8, dev_id);
-		return NULL;
+		return -EINVAL;
 	}
 
 	dev = rte_cryptodev_pmd_get_dev(dev_id);
 
 	if (dev == NULL)
-		return NULL;
+		return -EINVAL;
 
 	if (!mp) {
 		CDEV_LOG_ERR("invalid mempool\n");
-		return NULL;
+		return -EINVAL;
 	}
 
 	session_priv_data_sz = rte_cryptodev_asym_get_private_session_size(
@@ -1946,22 +1947,23 @@ rte_cryptodev_asym_session_create(uint8_t dev_id,
 	if (pool_priv->max_priv_session_sz < session_priv_data_sz) {
 		CDEV_LOG_DEBUG(
 			"The private session data size used when creating the mempool is smaller than this device's private session data.");
-		return NULL;
+		return -EINVAL;
 	}
 
 	/* Verify if provided mempool can hold elements big enough. */
 	if (mp->elt_size < session_header_size + session_priv_data_sz) {
 		CDEV_LOG_ERR(
 			"mempool elements too small to hold session objects");
-		return NULL;
+		return -EINVAL;
 	}
 
 	/* Allocate a session structure from the session pool */
-	if (rte_mempool_get(mp, (void **)&sess)) {
+	if (rte_mempool_get(mp, session)) {
 		CDEV_LOG_ERR("couldn't get object from session mempool");
-		return NULL;
+		return -ENOMEM;
 	}
 
+	sess = *session;
 	sess->driver_id = dev->driver_id;
 	sess->user_data_sz = pool_priv->user_data_sz;
 	sess->max_priv_data_sz = pool_priv->max_priv_session_sz;
@@ -1969,7 +1971,7 @@ rte_cryptodev_asym_session_create(uint8_t dev_id,
 	/* Clear device session pointer.*/
 	memset(sess->sess_private_data, 0, session_priv_data_sz + sess->user_data_sz);
 
-	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->asym_session_configure, NULL);
+	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->asym_session_configure, -ENOTSUP);
 
 	if (sess->sess_private_data[0] == 0) {
 		ret = dev->dev_ops->asym_session_configure(dev, xforms, sess);
@@ -1977,12 +1979,12 @@ rte_cryptodev_asym_session_create(uint8_t dev_id,
 			CDEV_LOG_ERR(
 				"dev_id %d failed to configure session details",
 				dev_id);
-			return NULL;
+			return ret;
 		}
 	}
 
-	rte_cryptodev_trace_asym_session_create(dev_id, xforms, mp);
-	return sess;
+	rte_cryptodev_trace_asym_session_create(dev_id, xforms, mp, sess);
+	return 0;
 }
 
 int

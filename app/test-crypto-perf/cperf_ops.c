@@ -734,7 +734,9 @@ cperf_create_session(struct rte_mempool *sess_mp,
 	struct rte_crypto_sym_xform auth_xform;
 	struct rte_crypto_sym_xform aead_xform;
 	struct rte_cryptodev_sym_session *sess = NULL;
+	void *asym_sess = NULL;
 	struct rte_crypto_asym_xform xform = {0};
+	int ret;
 
 	if (options->op_type == CPERF_ASYM_MODEX) {
 		xform.next = NULL;
@@ -744,11 +746,13 @@ cperf_create_session(struct rte_mempool *sess_mp,
 		xform.modex.exponent.data = perf_mod_e;
 		xform.modex.exponent.length = sizeof(perf_mod_e);
 
-		sess = (void *)rte_cryptodev_asym_session_create(dev_id, &xform, sess_mp);
-		if (sess == NULL)
+		ret = rte_cryptodev_asym_session_create(dev_id, &xform,
+				sess_mp, &asym_sess);
+		if (ret < 0) {
+			RTE_LOG(ERR, USER1, "Asym session create failed\n");
 			return NULL;
-
-		return sess;
+		}
+		return asym_sess;
 	}
 #ifdef RTE_LIB_SECURITY
 	/*

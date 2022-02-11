@@ -194,7 +194,8 @@ API Changes
   The session structure was moved to ``cryptodev_pmd.h``,
   hiding it from applications.
   The API ``rte_cryptodev_asym_session_init`` was removed as the initialization
-  is now moved to ``rte_cryptodev_asym_session_create``.
+  is now moved to ``rte_cryptodev_asym_session_create``, which was updated to
+  return an integer value to indicate initialisation errors.
 
 
 ABI Changes
