@@ -210,6 +210,8 @@ struct rte_cryptodev_sym_session_pool_private_data {
 struct rte_cryptodev_asym_session_pool_private_data {
 	uint16_t max_priv_session_sz;
 	/**< Size of private session data used when creating mempool */
+	uint16_t user_data_sz;
+	/**< Session user data will be placed after sess_private_data */
 };
 
 int
@@ -1803,7 +1805,7 @@ rte_cryptodev_sym_session_pool_create(const char *name, uint32_t nb_elts,
 
 struct rte_mempool *
 rte_cryptodev_asym_session_pool_create(const char *name, uint32_t nb_elts,
-	uint32_t cache_size, int socket_id)
+	uint32_t cache_size, uint16_t user_data_size, int socket_id)
 {
 	struct rte_mempool *mp;
 	struct rte_cryptodev_asym_session_pool_private_data *pool_priv;
@@ -1821,7 +1823,8 @@ rte_cryptodev_asym_session_pool_create(const char *name, uint32_t nb_elts,
 		return NULL;
 	}
 
-	obj_sz = rte_cryptodev_asym_get_header_session_size() + max_priv_sz;
+	obj_sz = rte_cryptodev_asym_get_header_session_size() + max_priv_sz +
+			user_data_size;
 	obj_sz_aligned =  RTE_ALIGN_CEIL(obj_sz, RTE_CACHE_LINE_SIZE);
 
 	mp = rte_mempool_create(name, nb_elts, obj_sz_aligned, cache_size,
@@ -1842,9 +1845,10 @@ rte_cryptodev_asym_session_pool_create(const char *name, uint32_t nb_elts,
 		return NULL;
 	}
 	pool_priv->max_priv_session_sz = max_priv_sz;
+	pool_priv->user_data_sz = user_data_size;
 
 	rte_cryptodev_trace_asym_session_pool_create(name, nb_elts,
-		cache_size, mp);
+		user_data_size, cache_size, mp);
 	return mp;
 }
 
@@ -1959,10 +1963,11 @@ rte_cryptodev_asym_session_create(uint8_t dev_id,
 	}
 
 	sess->driver_id = dev->driver_id;
+	sess->user_data_sz = pool_priv->user_data_sz;
 	sess->max_priv_data_sz = pool_priv->max_priv_session_sz;
 
 	/* Clear device session pointer.*/
-	memset(sess->sess_private_data, 0, session_priv_data_sz);
+	memset(sess->sess_private_data, 0, session_priv_data_sz + sess->user_data_sz);
 
 	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->asym_session_configure, NULL);
 
@@ -2157,6 +2162,33 @@ rte_cryptodev_sym_session_get_user_data(
 		return NULL;
 
 	return (void *)(sess->sess_data + sess->nb_drivers);
+}
+
+int
+rte_cryptodev_asym_session_set_user_data(void *session, void *data, uint16_t size)
+{
+	struct rte_cryptodev_asym_session *sess = session;
+	if (sess == NULL)
+		return -EINVAL;
+
+	if (sess->user_data_sz < size)
+		return -ENOMEM;
+
+	rte_memcpy(sess->sess_private_data +
+			sess->max_priv_data_sz,
+			data, size);
+	return 0;
+}
+
+void *
+rte_cryptodev_asym_session_get_user_data(void *session)
+{
+	struct rte_cryptodev_asym_session *sess = session;
+	if (sess == NULL || sess->user_data_sz == 0)
+		return NULL;
+
+	return (void *)(sess->sess_private_data +
+			sess->max_priv_data_sz);
 }
 
 static inline void

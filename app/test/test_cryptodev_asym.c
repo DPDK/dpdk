@@ -893,7 +893,7 @@ testsuite_setup(void)
 	}
 
 	ts_params->session_mpool = rte_cryptodev_asym_session_pool_create(
-			"test_asym_sess_mp", TEST_NUM_SESSIONS, 0,
+			"test_asym_sess_mp", TEST_NUM_SESSIONS, 0, 0,
 			SOCKET_ID_ANY);
 
 	TEST_ASSERT_NOT_NULL(ts_params->session_mpool,

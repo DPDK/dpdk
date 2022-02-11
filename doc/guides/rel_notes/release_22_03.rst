@@ -121,6 +121,10 @@ New Features
 
   * Added LED OEM support.
 
+* **Added an API for private user data in asymmetric crypto session.**
+
+  An API was added to get/set an asymmetric crypto session's user data.
+
 * **Updated Marvell cnxk crypto PMD.**
 
   * Added SHA256-HMAC support in lookaside protocol (IPsec) for CN10K.
@@ -186,7 +190,7 @@ API Changes
 * cryptodev: The asymmetric session handling was modified to use a single
   mempool object. An API ``rte_cryptodev_asym_session_pool_create`` was added
   to create a mempool with element size big enough to hold the generic asymmetric
-  session header and max size for a device private session data.
+  session header, max size for a device private session data, and user data size.
   The session structure was moved to ``cryptodev_pmd.h``,
   hiding it from applications.
   The API ``rte_cryptodev_asym_session_init`` was removed as the initialization

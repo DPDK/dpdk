@@ -634,7 +634,9 @@ RTE_STD_C11 struct rte_cryptodev_asym_session {
 	/**< Session driver ID. */
 	uint16_t max_priv_data_sz;
 	/**< Size of private data used when creating mempool */
-	uint8_t padding[5];
+	uint16_t user_data_sz;
+	/**< Session user data will be placed after sess_data */
+	uint8_t padding[3];
 	uint8_t sess_private_data[0];
 };
 

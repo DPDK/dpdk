@@ -959,6 +959,8 @@ rte_cryptodev_sym_session_pool_create(const char *name, uint32_t nb_elts,
  *   The number of elements in the mempool.
  * @param cache_size
  *   The number of per-lcore cache elements
+ * @param user_data_size
+ *   The size of user data to be placed after session private data.
  * @param socket_id
  *   The *socket_id* argument is the socket identifier in the case of
  *   NUMA. The value can be *SOCKET_ID_ANY* if there is no NUMA
@@ -971,7 +973,7 @@ rte_cryptodev_sym_session_pool_create(const char *name, uint32_t nb_elts,
 __rte_experimental
 struct rte_mempool *
 rte_cryptodev_asym_session_pool_create(const char *name, uint32_t nb_elts,
-	uint32_t cache_size, int socket_id);
+	uint32_t cache_size, uint16_t user_data_size, int socket_id);
 
 /**
  * Create symmetric crypto session header (generic with no private data)
@@ -1201,6 +1203,37 @@ __rte_experimental
 void *
 rte_cryptodev_sym_session_get_user_data(
 					struct rte_cryptodev_sym_session *sess);
+
+/**
+ * Store user data in an asymmetric session.
+ *
+ * @param	sess		Session pointer allocated by
+ *				*rte_cryptodev_asym_session_create*.
+ * @param	data		Pointer to the user data.
+ * @param	size		Size of the user data.
+ *
+ * @return
+ *  - On success, zero.
+ *  - -EINVAL if the session pointer is invalid.
+ *  - -ENOMEM if the available user data size is smaller than the size parameter.
+ */
+__rte_experimental
+int
+rte_cryptodev_asym_session_set_user_data(void *sess, void *data, uint16_t size);
+
+/**
+ * Get user data stored in an asymmetric session.
+ *
+ * @param	sess		Session pointer allocated by
+ *				*rte_cryptodev_asym_session_create*.
+ *
+ * @return
+ *  - On success return pointer to user data.
+ *  - On failure returns NULL.
+ */
+__rte_experimental
+void *
+rte_cryptodev_asym_session_get_user_data(void *sess);
 
 /**
  * Perform actual crypto processing (encrypt/digest or auth/decrypt)

@@ -1110,6 +1110,25 @@ They operate on data buffer of type ``rte_crypto_param``.
 
 See *DPDK API Reference* for details on each rte_crypto_xxx_op_param struct
 
+Private user data
+~~~~~~~~~~~~~~~~~
+
+Similar to symmetric above, asymmetric also has a set and get API that provides a
+mechanism for an application to store and retrieve the private user data information
+stored along with the crypto session.
+
+.. code-block:: c
+
+	int rte_cryptodev_asym_session_set_user_data(void *sess,
+		void *data, uint16_t size);
+
+	void * rte_cryptodev_asym_session_get_user_data(void *sess);
+
+Please note the ``size`` passed to set API cannot be bigger than the predefined
+``user_data_sz`` when creating the session mempool, otherwise the function will
+return an error. Also when ``user_data_sz`` was defined as ``0`` when
+creating the session mempool, the get API will always return ``NULL``.
+
 Asymmetric crypto Sample code
 -----------------------------
 

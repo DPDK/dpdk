@@ -78,7 +78,7 @@ create_asym_op_pool_socket(int32_t socket_id, uint32_t nb_sessions)
 		snprintf(mp_name, RTE_MEMPOOL_NAMESIZE, "perf_asym_sess_pool%u",
 			 socket_id);
 		mpool = rte_cryptodev_asym_session_pool_create(mp_name,
-				nb_sessions, 0, socket_id);
+				nb_sessions, 0, 0, socket_id);
 		if (mpool == NULL) {
 			printf("Cannot create pool \"%s\" on socket %d\n",
 			       mp_name, socket_id);
