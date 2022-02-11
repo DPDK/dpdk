@@ -37,6 +37,7 @@
 #include <rte_gtp.h>
 #include <rte_l2tpv2.h>
 #include <rte_ppp.h>
+#include <rte_gre.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -660,6 +661,13 @@ enum rte_flow_item_type {
 	 * See struct rte_flow_item_ppp.
 	 */
 	RTE_FLOW_ITEM_TYPE_PPP,
+
+	/**
+	 * Matches GRE optional fields.
+	 *
+	 * See struct rte_flow_item_gre_opt.
+	 */
+	RTE_FLOW_ITEM_TYPE_GRE_OPTION,
 };
 
 /**
@@ -1194,6 +1202,17 @@ static const struct rte_flow_item_gre rte_flow_item_gre_mask = {
 	.protocol = RTE_BE16(0xffff),
 };
 #endif
+
+/**
+ * RTE_FLOW_ITEM_TYPE_GRE_OPTION.
+ *
+ * Matches GRE optional fields in header.
+ */
+struct rte_flow_item_gre_opt {
+	struct rte_gre_hdr_opt_checksum_rsvd checksum_rsvd;
+	struct rte_gre_hdr_opt_key key;
+	struct rte_gre_hdr_opt_sequence sequence;
+};
 
 /**
  * RTE_FLOW_ITEM_TYPE_FUZZY

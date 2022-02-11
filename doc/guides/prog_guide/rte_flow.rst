@@ -1106,12 +1106,29 @@ Matches a GRE header.
 
 Item: ``GRE_KEY``
 ^^^^^^^^^^^^^^^^^
+This action is deprecated. Consider `Item: GRE_OPTION`.
 
 Matches a GRE key field.
 This should be preceded by item ``GRE``.
 
 - Value to be matched is a big-endian 32 bit integer.
 - When this item present it implicitly match K bit in default mask as "1"
+
+Item: ``GRE_OPTION``
+^^^^^^^^^^^^^^^^^^^^
+
+Matches a GRE optional fields (checksum/key/sequence).
+This should be preceded by item ``GRE``.
+
+- ``checksum``: checksum.
+- ``key``: key.
+- ``sequence``: sequence.
+- The items in GRE_OPTION do not change bit flags(c_bit/k_bit/s_bit) in GRE
+  item. The bit flags need be set with GRE item by application. When the items
+  present, the corresponding bits in GRE spec and mask should be set "1" by
+  application, it means to match specified value of the fields. When the items
+  no present, but the corresponding bits in GRE spec and mask is "1", it means
+  to match any value of the fields.
 
 Item: ``FUZZY``
 ^^^^^^^^^^^^^^^

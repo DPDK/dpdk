@@ -71,6 +71,11 @@ New Features
     - ``rte_ipv6_udptcp_cksum_mbuf()``
     - ``rte_ipv6_udptcp_cksum_mbuf_verify()``
 
+* **Added rte_flow support for matching GRE optional fields.**
+
+  Added ``gre_option`` item in rte_flow to support checksum/key/sequence
+  matching in GRE packets.
+
 * **Added new RSS offload types for L2TPv2 in RSS flow.**
 
   Added macro RTE_ETH_RSS_L2TPV2, now L2TPv2 session ID field can be used as
