@@ -361,6 +361,201 @@ get_rxtx_queue_info(FILE *file, struct rte_eth_dev *dev)
 	get_rxtx_queue_enable_state(file, dev);
 }
 
+static int
+get_vlan_filter_cfg(FILE *file, struct hns3_hw *hw)
+{
+#define HNS3_FILTER_TYPE_VF		0
+#define HNS3_FILTER_TYPE_PORT		1
+#define HNS3_FILTER_FE_NIC_INGRESS_B	BIT(0)
+#define HNS3_FILTER_FE_NIC_EGRESS_B	BIT(1)
+	struct hns3_vlan_filter_ctrl_cmd *req;
+	struct hns3_cmd_desc desc;
+	uint8_t i;
+	int ret;
+
+	static const uint32_t vlan_filter_type[] = {
+		HNS3_FILTER_TYPE_PORT,
+		HNS3_FILTER_TYPE_VF
+	};
+
+	for (i = 0; i < RTE_DIM(vlan_filter_type); i++) {
+		hns3_cmd_setup_basic_desc(&desc, HNS3_OPC_VLAN_FILTER_CTRL,
+						true);
+		req = (struct hns3_vlan_filter_ctrl_cmd *)desc.data;
+		req->vlan_type = vlan_filter_type[i];
+		req->vf_id = HNS3_PF_FUNC_ID;
+		ret = hns3_cmd_send(hw, &desc, 1);
+		if (ret != 0) {
+			hns3_err(hw,
+				"NIC IMP exec ret=%d desc_num=%d optcode=0x%x!",
+				ret, 1, rte_le_to_cpu_16(desc.opcode));
+			return ret;
+		}
+		fprintf(file,
+			"\t  -- %s VLAN filter configuration\n"
+			"\t       nic_ingress           :%s\n"
+			"\t       nic_egress            :%s\n",
+			req->vlan_type == HNS3_FILTER_TYPE_PORT ?
+			"Port" : "VF",
+			req->vlan_fe & HNS3_FILTER_FE_NIC_INGRESS_B ?
+			"Enable" : "Disable",
+			req->vlan_fe & HNS3_FILTER_FE_NIC_EGRESS_B ?
+			"Enable" : "Disable");
+	}
+
+	return 0;
+}
+
+static int
+get_vlan_rx_offload_cfg(FILE *file, struct hns3_hw *hw)
+{
+	struct hns3_vport_vtag_rx_cfg_cmd *req;
+	struct hns3_cmd_desc desc;
+	uint16_t vport_id;
+	uint8_t bitmap;
+	int ret;
+
+	hns3_cmd_setup_basic_desc(&desc, HNS3_OPC_VLAN_PORT_RX_CFG, true);
+	req = (struct hns3_vport_vtag_rx_cfg_cmd *)desc.data;
+	vport_id = HNS3_PF_FUNC_ID;
+	req->vf_offset = vport_id / HNS3_VF_NUM_PER_CMD;
+	bitmap = 1 << (vport_id % HNS3_VF_NUM_PER_BYTE);
+	req->vf_bitmap[req->vf_offset] = bitmap;
+
+	/*
+	 * current version VF is not supported when PF is driven by DPDK driver,
+	 * just need to configure rx parameters for PF vport.
+	 */
+	ret = hns3_cmd_send(hw, &desc, 1);
+	if (ret != 0) {
+		hns3_err(hw,
+			"NIC IMP exec ret=%d desc_num=%d optcode=0x%x!",
+			ret, 1, rte_le_to_cpu_16(desc.opcode));
+		return ret;
+	}
+
+	fprintf(file,
+		"\t  -- RX VLAN configuration\n"
+		"\t       vlan1_strip_en        :%s\n"
+		"\t       vlan2_strip_en        :%s\n"
+		"\t       vlan1_vlan_prionly    :%s\n"
+		"\t       vlan2_vlan_prionly    :%s\n"
+		"\t       vlan1_strip_discard   :%s\n"
+		"\t       vlan2_strip_discard   :%s\n",
+		hns3_get_bit(req->vport_vlan_cfg,
+			HNS3_REM_TAG1_EN_B) ? "Enable" : "Disable",
+		hns3_get_bit(req->vport_vlan_cfg,
+			HNS3_REM_TAG2_EN_B) ? "Enable" : "Disable",
+		hns3_get_bit(req->vport_vlan_cfg,
+			HNS3_SHOW_TAG1_EN_B) ? "Enable" : "Disable",
+		hns3_get_bit(req->vport_vlan_cfg,
+			HNS3_SHOW_TAG2_EN_B) ? "Enable" : "Disable",
+		hns3_get_bit(req->vport_vlan_cfg,
+			HNS3_DISCARD_TAG1_EN_B) ? "Enable" : "Disable",
+		hns3_get_bit(req->vport_vlan_cfg,
+			HNS3_DISCARD_TAG2_EN_B) ? "Enable" : "Disable");
+
+	return 0;
+}
+
+static void
+parse_tx_vlan_cfg(FILE *file, struct hns3_vport_vtag_tx_cfg_cmd *req)
+{
+#define VLAN_VID_MASK 0x0fff
+#define VLAN_PRIO_SHIFT 13
+
+	fprintf(file,
+		"\t  -- TX VLAN configuration\n"
+		"\t       accept_tag1           :%s\n"
+		"\t       accept_untag1         :%s\n"
+		"\t       insert_tag1_en        :%s\n"
+		"\t       default_vlan_tag1 = %d, qos = %d\n"
+		"\t       accept_tag2           :%s\n"
+		"\t       accept_untag2         :%s\n"
+		"\t       insert_tag2_en        :%s\n"
+		"\t       default_vlan_tag2 = %d, qos = %d\n"
+		"\t       vlan_shift_mode       :%s\n",
+		hns3_get_bit(req->vport_vlan_cfg,
+			HNS3_ACCEPT_TAG1_B) ? "Enable" : "Disable",
+		hns3_get_bit(req->vport_vlan_cfg,
+			HNS3_ACCEPT_UNTAG1_B) ? "Enable" : "Disable",
+		hns3_get_bit(req->vport_vlan_cfg,
+			HNS3_PORT_INS_TAG1_EN_B) ? "Enable" : "Disable",
+		req->def_vlan_tag1 & VLAN_VID_MASK,
+		req->def_vlan_tag1 >> VLAN_PRIO_SHIFT,
+		hns3_get_bit(req->vport_vlan_cfg,
+			HNS3_ACCEPT_TAG2_B) ? "Enable" : "Disable",
+		hns3_get_bit(req->vport_vlan_cfg,
+			HNS3_ACCEPT_UNTAG2_B) ? "Enable" : "Disable",
+		hns3_get_bit(req->vport_vlan_cfg,
+			HNS3_PORT_INS_TAG2_EN_B) ? "Enable" : "Disable",
+		req->def_vlan_tag2 & VLAN_VID_MASK,
+		req->def_vlan_tag2 >> VLAN_PRIO_SHIFT,
+		hns3_get_bit(req->vport_vlan_cfg,
+			HNS3_TAG_SHIFT_MODE_EN_B) ? "Enable" :
+			"Disable");
+}
+
+static int
+get_vlan_tx_offload_cfg(FILE *file, struct hns3_hw *hw)
+{
+	struct hns3_vport_vtag_tx_cfg_cmd *req;
+	struct hns3_cmd_desc desc;
+	uint16_t vport_id;
+	uint8_t bitmap;
+	int ret;
+
+	hns3_cmd_setup_basic_desc(&desc, HNS3_OPC_VLAN_PORT_TX_CFG, true);
+	req = (struct hns3_vport_vtag_tx_cfg_cmd *)desc.data;
+	vport_id = HNS3_PF_FUNC_ID;
+	req->vf_offset = vport_id / HNS3_VF_NUM_PER_CMD;
+	bitmap = 1 << (vport_id % HNS3_VF_NUM_PER_BYTE);
+	req->vf_bitmap[req->vf_offset] = bitmap;
+	/*
+	 * current version VF is not supported when PF is driven by DPDK driver,
+	 * just need to configure tx parameters for PF vport.
+	 */
+	ret = hns3_cmd_send(hw, &desc, 1);
+	if (ret != 0) {
+		hns3_err(hw,
+			"NIC IMP exec ret=%d desc_num=%d optcode=0x%x!",
+			ret, 1, rte_le_to_cpu_16(desc.opcode));
+		return ret;
+	}
+
+	parse_tx_vlan_cfg(file, req);
+
+	return 0;
+}
+
+static void
+get_port_pvid_info(FILE *file, struct hns3_hw *hw)
+{
+	fprintf(file, "\t  -- pvid status: %s\n",
+		hw->port_base_vlan_cfg.state ? "on" : "off");
+}
+
+static void
+get_vlan_config_info(FILE *file, struct hns3_hw *hw)
+{
+	int ret;
+
+	fprintf(file, "  - VLAN Config Info:\n");
+	ret = get_vlan_filter_cfg(file, hw);
+	if (ret < 0)
+		return;
+
+	ret = get_vlan_rx_offload_cfg(file, hw);
+	if (ret < 0)
+		return;
+
+	ret = get_vlan_tx_offload_cfg(file, hw);
+	if (ret < 0)
+		return;
+
+	get_port_pvid_info(file, hw);
+}
+
 int
 hns3_eth_dev_priv_dump(struct rte_eth_dev *dev, FILE *file)
 {
@@ -376,6 +571,7 @@ hns3_eth_dev_priv_dump(struct rte_eth_dev *dev, FILE *file)
 
 	get_dev_mac_info(file, hns);
 	get_rxtx_queue_info(file, dev);
+	get_vlan_config_info(file, hw);
 
 	return 0;
 }
