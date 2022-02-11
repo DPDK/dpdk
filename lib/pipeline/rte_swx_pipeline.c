@@ -2887,8 +2887,8 @@ instr_alu_ckadd_translate(struct rte_swx_pipeline *p,
 	CHECK(n_tokens == 3, EINVAL);
 
 	fdst = header_field_parse(p, dst, &hdst);
-	CHECK(fdst && (fdst->n_bits == 16), EINVAL);
-	CHECK(!fdst->var_size, EINVAL);
+	CHECK(fdst, EINVAL);
+	CHECK(!fdst->var_size && (fdst->n_bits == 16), EINVAL);
 
 	/* CKADD_FIELD. */
 	fsrc = header_field_parse(p, src, &hsrc);
@@ -2908,17 +2908,16 @@ instr_alu_ckadd_translate(struct rte_swx_pipeline *p,
 	/* CKADD_STRUCT, CKADD_STRUCT20. */
 	hsrc = header_parse(p, src);
 	CHECK(hsrc, EINVAL);
-	CHECK(!hsrc->st->var_size, EINVAL);
 
 	instr->type = INSTR_ALU_CKADD_STRUCT;
-	if ((hsrc->st->n_bits / 8) == 20)
+	if (!hsrc->st->var_size && ((hsrc->st->n_bits / 8) == 20))
 		instr->type = INSTR_ALU_CKADD_STRUCT20;
 
 	instr->alu.dst.struct_id = (uint8_t)hdst->struct_id;
 	instr->alu.dst.n_bits = fdst->n_bits;
 	instr->alu.dst.offset = fdst->offset / 8;
 	instr->alu.src.struct_id = (uint8_t)hsrc->struct_id;
-	instr->alu.src.n_bits = hsrc->st->n_bits;
+	instr->alu.src.n_bits = (uint8_t)hsrc->id; /* The src header ID is stored here. */
 	instr->alu.src.offset = 0; /* Unused. */
 	return 0;
 }
@@ -2938,8 +2937,8 @@ instr_alu_cksub_translate(struct rte_swx_pipeline *p,
 	CHECK(n_tokens == 3, EINVAL);
 
 	fdst = header_field_parse(p, dst, &hdst);
-	CHECK(fdst && (fdst->n_bits == 16), EINVAL);
-	CHECK(!fdst->var_size, EINVAL);
+	CHECK(fdst, EINVAL);
+	CHECK(!fdst->var_size && (fdst->n_bits == 16), EINVAL);
 
 	fsrc = header_field_parse(p, src, &hsrc);
 	CHECK(fsrc, EINVAL);

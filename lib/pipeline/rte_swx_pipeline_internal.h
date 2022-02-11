@@ -305,16 +305,16 @@ enum instruction_type {
 	INSTR_ALU_SUB_HI, /* dst = H, src = I */
 
 	/* ckadd dst src
-	 * dst = dst '+ src[0:1] '+ src[2:3] + ...
-	 * dst = H, src = {H, h.header}
+	 * dst = dst '+ src[0:1] '+ src[2:3] '+ ...
+	 * dst = H, src = {H, h.header}, '+ = 1's complement addition operator
 	 */
 	INSTR_ALU_CKADD_FIELD,    /* src = H */
-	INSTR_ALU_CKADD_STRUCT20, /* src = h.header, with sizeof(header) = 20 */
-	INSTR_ALU_CKADD_STRUCT,   /* src = h.header, with any sizeof(header) */
+	INSTR_ALU_CKADD_STRUCT20, /* src = h.header, with sizeof(header) = 20 bytes. */
+	INSTR_ALU_CKADD_STRUCT,   /* src = h.header, with sizeof(header) any 4-byte multiple. */
 
 	/* cksub dst src
 	 * dst = dst '- src
-	 * dst = H, src = H
+	 * dst = H, src = H, '- = 1's complement subtraction operator
 	 */
 	INSTR_ALU_CKSUB_FIELD,
 
@@ -2700,6 +2700,7 @@ __instr_alu_ckadd_field_exec(struct rte_swx_pipeline *p __rte_unused,
 	src64_mask = UINT64_MAX >> (64 - ip->alu.src.n_bits);
 	src = src64 & src64_mask;
 
+	/* Initialize the result with destination 1's complement. */
 	r = dst;
 	r = ~r & 0xFFFF;
 
@@ -2727,6 +2728,7 @@ __instr_alu_ckadd_field_exec(struct rte_swx_pipeline *p __rte_unused,
 	 */
 	r = (r & 0xFFFF) + (r >> 16);
 
+	/* Apply 1's complement to the result. */
 	r = ~r & 0xFFFF;
 	r = r ? r : 0xFFFF;
 
@@ -2756,6 +2758,7 @@ __instr_alu_cksub_field_exec(struct rte_swx_pipeline *p __rte_unused,
 	src64_mask = UINT64_MAX >> (64 - ip->alu.src.n_bits);
 	src = src64 & src64_mask;
 
+	/* Initialize the result with destination 1's complement. */
 	r = dst;
 	r = ~r & 0xFFFF;
 
@@ -2795,6 +2798,7 @@ __instr_alu_cksub_field_exec(struct rte_swx_pipeline *p __rte_unused,
 	 */
 	r = (r & 0xFFFF) + (r >> 16);
 
+	/* Apply 1's complement to the result. */
 	r = ~r & 0xFFFF;
 	r = r ? r : 0xFFFF;
 
@@ -2807,7 +2811,7 @@ __instr_alu_ckadd_struct20_exec(struct rte_swx_pipeline *p __rte_unused,
 				const struct instruction *ip)
 {
 	uint8_t *dst_struct, *src_struct;
-	uint16_t *dst16_ptr;
+	uint16_t *dst16_ptr, dst;
 	uint32_t *src32_ptr;
 	uint64_t r0, r1;
 
@@ -2816,13 +2820,18 @@ __instr_alu_ckadd_struct20_exec(struct rte_swx_pipeline *p __rte_unused,
 	/* Structs. */
 	dst_struct = t->structs[ip->alu.dst.struct_id];
 	dst16_ptr = (uint16_t *)&dst_struct[ip->alu.dst.offset];
+	dst = *dst16_ptr;
 
 	src_struct = t->structs[ip->alu.src.struct_id];
 	src32_ptr = (uint32_t *)&src_struct[0];
 
-	r0 = src32_ptr[0]; /* r0 is a 32-bit number. */
+	/* Initialize the result with destination 1's complement. */
+	r0 = dst;
+	r0 = ~r0 & 0xFFFF;
+
+	r0 += src32_ptr[0]; /* The output r0 is a 33-bit number. */
 	r1 = src32_ptr[1]; /* r1 is a 32-bit number. */
-	r0 += src32_ptr[2]; /* The output r0 is a 33-bit number. */
+	r0 += src32_ptr[2]; /* The output r0 is a 34-bit number. */
 	r1 += src32_ptr[3]; /* The output r1 is a 33-bit number. */
 	r0 += r1 + src32_ptr[4]; /* The output r0 is a 35-bit number. */
 
@@ -2843,6 +2852,7 @@ __instr_alu_ckadd_struct20_exec(struct rte_swx_pipeline *p __rte_unused,
 	 */
 	r0 = (r0 & 0xFFFF) + (r0 >> 16);
 
+	/* Apply 1's complement to the result. */
 	r0 = ~r0 & 0xFFFF;
 	r0 = r0 ? r0 : 0xFFFF;
 
@@ -2854,45 +2864,58 @@ __instr_alu_ckadd_struct_exec(struct rte_swx_pipeline *p __rte_unused,
 			      struct thread *t,
 			      const struct instruction *ip)
 {
+	uint32_t src_header_id = ip->alu.src.n_bits; /* The src header ID is stored here. */
+	uint32_t n_src_header_bytes = t->headers[src_header_id].n_bytes;
 	uint8_t *dst_struct, *src_struct;
-	uint16_t *dst16_ptr;
+	uint16_t *dst16_ptr, dst;
 	uint32_t *src32_ptr;
-	uint64_t r = 0;
+	uint64_t r;
 	uint32_t i;
+
+	if (n_src_header_bytes == 20) {
+		__instr_alu_ckadd_struct20_exec(p, t, ip);
+		return;
+	}
 
 	TRACE("[Thread %2u] ckadd (struct)\n", p->thread_id);
 
 	/* Structs. */
 	dst_struct = t->structs[ip->alu.dst.struct_id];
 	dst16_ptr = (uint16_t *)&dst_struct[ip->alu.dst.offset];
+	dst = *dst16_ptr;
 
 	src_struct = t->structs[ip->alu.src.struct_id];
 	src32_ptr = (uint32_t *)&src_struct[0];
 
-	/* The max number of 32-bit words in a 256-byte header is 8 = 2^3.
-	 * Therefore, in the worst case scenario, a 35-bit number is added to a
-	 * 16-bit number (the input r), so the output r is 36-bit number.
+	/* Initialize the result with destination 1's complement. */
+	r = dst;
+	r = ~r & 0xFFFF;
+
+	/* The max number of 32-bit words in a 32K-byte header is 2^13.
+	 * Therefore, in the worst case scenario, a 45-bit number is added to a
+	 * 16-bit number (the input r), so the output r is 46-bit number.
 	 */
-	for (i = 0; i < ip->alu.src.n_bits / 32; i++, src32_ptr++)
+	for (i = 0; i < n_src_header_bytes / 4; i++, src32_ptr++)
 		r += *src32_ptr;
 
-	/* The first input is a 16-bit number. The second input is a 20-bit
-	 * number. Their sum is a 21-bit number.
+	/* The first input is a 16-bit number. The second input is a 30-bit
+	 * number. Their sum is a 31-bit number.
 	 */
 	r = (r & 0xFFFF) + (r >> 16);
 
 	/* The first input is a 16-bit number (0 .. 0xFFFF). The second input is
-	 * a 5-bit number (0 .. 31). The sum is a 17-bit number (0 .. 0x1000E).
+	 * a 15-bit number (0 .. 0x7FFF). The sum is a 17-bit number (0 .. 0x17FFE).
 	 */
 	r = (r & 0xFFFF) + (r >> 16);
 
 	/* When the input r is (0 .. 0xFFFF), the output r is equal to the input
 	 * r, so the output is (0 .. 0xFFFF). When the input r is (0x10000 ..
-	 * 0x1001E), the output r is (0 .. 31). So no carry bit can be
+	 * 0x17FFE), the output r is (0 .. 0x7FFF). So no carry bit can be
 	 * generated, therefore the output r is always a 16-bit number.
 	 */
 	r = (r & 0xFFFF) + (r >> 16);
 
+	/* Apply 1's complement to the result. */
 	r = ~r & 0xFFFF;
 	r = r ? r : 0xFFFF;
 
