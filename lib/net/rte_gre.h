@@ -48,6 +48,28 @@ struct rte_gre_hdr {
 	uint16_t proto;  /**< Protocol Type */
 } __rte_packed;
 
+/**
+ * Optional field checksum in GRE header
+ */
+struct rte_gre_hdr_opt_checksum_rsvd {
+	rte_be16_t checksum;
+	rte_be16_t reserved1;
+} __rte_packed;
+
+/**
+ * Optional field key in GRE header
+ */
+struct rte_gre_hdr_opt_key {
+	rte_be32_t key;
+} __rte_packed;
+
+/**
+ * Optional field sequence in GRE header
+ */
+struct rte_gre_hdr_opt_sequence {
+	rte_be32_t sequence;
+} __rte_packed;
+
 #ifdef __cplusplus
 }
 #endif
