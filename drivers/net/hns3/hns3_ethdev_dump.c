@@ -138,6 +138,229 @@ get_device_basic_info(FILE *file, struct rte_eth_dev *dev)
 		dev->data->dev_conf.intr_conf.rxq);
 }
 
+/*
+ * Note: caller must make sure queue_id < nb_queues
+ *       nb_queues = RTE_MAX(eth_dev->data->nb_rx_queues,
+ *                           eth_dev->data->nb_tx_queues)
+ */
+static struct hns3_rx_queue *
+get_rx_queue(struct rte_eth_dev *dev, unsigned int queue_id)
+{
+	struct hns3_adapter *hns = dev->data->dev_private;
+	struct hns3_hw *hw = &hns->hw;
+	unsigned int offset;
+	void **rx_queues;
+
+	if (queue_id < dev->data->nb_rx_queues) {
+		rx_queues = dev->data->rx_queues;
+		offset = queue_id;
+	} else {
+		/*
+		 * For kunpeng930, fake queue is not exist. But since the queues
+		 * are usually accessd in pairs, this branch may still exist.
+		 */
+		if (hns3_dev_get_support(hw, INDEP_TXRX))
+			return NULL;
+
+		rx_queues = hw->fkq_data.rx_queues;
+		offset = queue_id - dev->data->nb_rx_queues;
+	}
+
+	if (rx_queues != NULL && rx_queues[offset] != NULL)
+		return rx_queues[offset];
+
+	hns3_err(hw, "Detect rx_queues is NULL!\n");
+	return NULL;
+}
+
+/*
+ * Note: caller must make sure queue_id < nb_queues
+ *       nb_queues = RTE_MAX(eth_dev->data->nb_rx_queues,
+ *                           eth_dev->data->nb_tx_queues)
+ */
+static struct hns3_tx_queue *
+get_tx_queue(struct rte_eth_dev *dev, unsigned int queue_id)
+{
+	struct hns3_adapter *hns = dev->data->dev_private;
+	struct hns3_hw *hw = &hns->hw;
+	unsigned int offset;
+	void **tx_queues;
+
+	if (queue_id < dev->data->nb_tx_queues) {
+		tx_queues = dev->data->tx_queues;
+		offset = queue_id;
+	} else {
+		/*
+		 * For kunpeng930, fake queue is not exist. But since the queues
+		 * are usually accessd in pairs, this branch may still exist.
+		 */
+		if (hns3_dev_get_support(hw, INDEP_TXRX))
+			return NULL;
+		tx_queues = hw->fkq_data.tx_queues;
+		offset = queue_id - dev->data->nb_tx_queues;
+	}
+
+	if (tx_queues != NULL && tx_queues[offset] != NULL)
+		return tx_queues[offset];
+
+	hns3_err(hw, "Detect tx_queues is NULL!\n");
+	return NULL;
+}
+
+static void
+get_rxtx_fake_queue_info(FILE *file, struct rte_eth_dev *dev)
+{
+	struct hns3_adapter *hns = dev->data->dev_private;
+	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(hns);
+	struct hns3_rx_queue *rxq;
+	struct hns3_tx_queue *txq;
+	unsigned int queue_id;
+
+	if (dev->data->nb_rx_queues != dev->data->nb_tx_queues &&
+	    !hns3_dev_get_support(hw, INDEP_TXRX)) {
+		queue_id = RTE_MIN(dev->data->nb_rx_queues,
+				   dev->data->nb_tx_queues);
+		rxq = get_rx_queue(dev, queue_id);
+		if (rxq == NULL)
+			return;
+		txq = get_tx_queue(dev, queue_id);
+		if (txq == NULL)
+			return;
+		fprintf(file,
+			"\t  -- first fake_queue rxtx info:\n"
+			"\t       rx: port=%u nb_desc=%u free_thresh=%u\n"
+			"\t       tx: port=%u nb_desc=%u\n",
+			rxq->port_id, rxq->nb_rx_desc, rxq->rx_free_thresh,
+			txq->port_id, txq->nb_tx_desc);
+	}
+}
+
+static void
+get_queue_enable_state(struct hns3_hw *hw, uint32_t *queue_state,
+			uint32_t nb_queues, bool is_rxq)
+{
+#define STATE_SIZE (sizeof(*queue_state) * CHAR_BIT)
+	uint32_t queue_en_reg;
+	uint32_t reg_offset;
+	uint32_t state;
+	uint32_t i;
+
+	queue_en_reg = is_rxq ? HNS3_RING_RX_EN_REG : HNS3_RING_TX_EN_REG;
+	for (i = 0; i < nb_queues; i++) {
+		reg_offset = hns3_get_tqp_reg_offset(i);
+		state = hns3_read_dev(hw, reg_offset + HNS3_RING_EN_REG);
+		if (hns3_dev_get_support(hw, INDEP_TXRX))
+			state = state && hns3_read_dev(hw, reg_offset +
+						       queue_en_reg);
+		hns3_set_bit(queue_state[i / STATE_SIZE],
+				i % STATE_SIZE, state);
+	}
+}
+
+static void
+print_queue_state_perline(FILE *file, const uint32_t *queue_state,
+			  uint32_t nb_queues, uint32_t line_num)
+{
+#define NUM_QUEUE_PER_LINE (sizeof(*queue_state) * CHAR_BIT)
+	uint32_t qid = line_num * NUM_QUEUE_PER_LINE;
+	uint32_t j;
+
+	for (j = 0; j < NUM_QUEUE_PER_LINE; j++) {
+		fprintf(file, "%1lx", hns3_get_bit(queue_state[line_num], j));
+
+		if (qid % CHAR_BIT == CHAR_BIT - 1) {
+			fprintf(file, "%s",
+				j == NUM_QUEUE_PER_LINE - 1 ? "\n" : ":");
+		}
+		qid++;
+		if (qid >= nb_queues) {
+			fprintf(file, "\n");
+			break;
+		}
+	}
+}
+
+static void
+display_queue_enable_state(FILE *file, const uint32_t *queue_state,
+			   uint32_t nb_queues, bool is_rxq)
+{
+#define NUM_QUEUE_PER_LINE (sizeof(*queue_state) * CHAR_BIT)
+	uint32_t i;
+
+	if (nb_queues == 0) {
+		fprintf(file, "\t       %s queue number is 0\n",
+				is_rxq ? "Rx" : "Tx");
+		return;
+	}
+
+	fprintf(file, "\t       %s queue id | enable state bitMap\n",
+			is_rxq ? "rx" : "tx");
+
+	for (i = 0; i < (nb_queues - 1) / NUM_QUEUE_PER_LINE + 1; i++) {
+		uint32_t line_end = (i + 1) * NUM_QUEUE_PER_LINE - 1;
+		uint32_t line_start = i * NUM_QUEUE_PER_LINE;
+		fprintf(file, "\t       %04u - %04u | ", line_start,
+			nb_queues - 1 > line_end ? line_end : nb_queues - 1);
+
+
+		print_queue_state_perline(file, queue_state, nb_queues, i);
+	}
+}
+
+static void
+get_rxtx_queue_enable_state(FILE *file, struct rte_eth_dev *dev)
+{
+#define MAX_TQP_NUM 1280
+#define QUEUE_BITMAP_SIZE (MAX_TQP_NUM / 32)
+	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	uint32_t rx_queue_state[QUEUE_BITMAP_SIZE] = {0};
+	uint32_t tx_queue_state[QUEUE_BITMAP_SIZE] = {0};
+	uint32_t nb_rx_queues;
+	uint32_t nb_tx_queues;
+
+	nb_rx_queues = dev->data->nb_rx_queues;
+	nb_tx_queues = dev->data->nb_tx_queues;
+
+	fprintf(file, "\t  -- enable state:\n");
+	get_queue_enable_state(hw, rx_queue_state, nb_rx_queues, true);
+	display_queue_enable_state(file, rx_queue_state, nb_rx_queues,
+					 true);
+
+	get_queue_enable_state(hw, tx_queue_state, nb_tx_queues, false);
+	display_queue_enable_state(file, tx_queue_state, nb_tx_queues,
+					 false);
+}
+
+static void
+get_rxtx_queue_info(FILE *file, struct rte_eth_dev *dev)
+{
+	struct hns3_rx_queue *rxq;
+	struct hns3_tx_queue *txq;
+	unsigned int queue_id = 0;
+
+	rxq = get_rx_queue(dev, queue_id);
+	if (rxq == NULL)
+		return;
+	txq = get_tx_queue(dev, queue_id);
+	if (txq == NULL)
+		return;
+	fprintf(file, "  - Rx/Tx Queue Info:\n");
+	fprintf(file,
+		"\t  -- nb_rx_queues=%u nb_tx_queues=%u, "
+		"first queue rxtx info:\n"
+		"\t       rx: port=%u nb_desc=%u free_thresh=%u\n"
+		"\t       tx: port=%u nb_desc=%u\n"
+		"\t  -- tx push: %s\n",
+		dev->data->nb_rx_queues,
+		dev->data->nb_tx_queues,
+		rxq->port_id, rxq->nb_rx_desc, rxq->rx_free_thresh,
+		txq->port_id, txq->nb_tx_desc,
+		txq->tx_push_enable ? "enabled" : "disabled");
+
+	get_rxtx_fake_queue_info(file, dev);
+	get_rxtx_queue_enable_state(file, dev);
+}
+
 int
 hns3_eth_dev_priv_dump(struct rte_eth_dev *dev, FILE *file)
 {
@@ -152,6 +375,7 @@ hns3_eth_dev_priv_dump(struct rte_eth_dev *dev, FILE *file)
 		return 0;
 
 	get_dev_mac_info(file, hns);
+	get_rxtx_queue_info(file, dev);
 
 	return 0;
 }
