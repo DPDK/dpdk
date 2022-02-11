@@ -27,26 +27,7 @@ extern "C" {
 
 #include "rte_crypto_sym.h"
 
-/**
- * Buffer to hold crypto params required for asym operations.
- *
- * These buffers can be used for both input to PMD and output from PMD. When
- * used for output from PMD, application has to ensure the buffer is large
- * enough to hold the target data.
- *
- * If an operation requires the PMD to generate a random number,
- * and the device supports CSRNG, 'data' should be set to NULL.
- * The crypto parameter in question will not be used by the PMD,
- * as it is internally generated.
- */
-typedef struct rte_crypto_param_t {
-	uint8_t *data;
-	/**< pointer to buffer holding data */
-	rte_iova_t iova;
-	/**< IO address of data buffer */
-	size_t length;
-	/**< length of data in bytes */
-} rte_crypto_param;
+struct rte_cryptodev_asym_session;
 
 /** asym xform type name strings */
 extern const char *
@@ -55,6 +36,19 @@ rte_crypto_asym_xform_strings[];
 /** asym operations type name strings */
 extern const char *
 rte_crypto_asym_op_strings[];
+
+/**
+ * TLS named curves
+ * https://tools.ietf.org/html/rfc8422
+ */
+enum rte_crypto_ec_group {
+	RTE_CRYPTO_EC_GROUP_UNKNOWN  = 0,
+	RTE_CRYPTO_EC_GROUP_SECP192R1 = 19,
+	RTE_CRYPTO_EC_GROUP_SECP224R1 = 21,
+	RTE_CRYPTO_EC_GROUP_SECP256R1 = 23,
+	RTE_CRYPTO_EC_GROUP_SECP384R1 = 24,
+	RTE_CRYPTO_EC_GROUP_SECP521R1 = 25,
+};
 
 /**
  * Asymmetric crypto transformation types.
@@ -158,47 +152,54 @@ enum rte_crypto_rsa_priv_key_type {
 };
 
 /**
+ * Buffer to hold crypto params required for asym operations.
+ *
+ * These buffers can be used for both input to PMD and output from PMD. When
+ * used for output from PMD, application has to ensure the buffer is large
+ * enough to hold the target data.
+ *
+ * If an operation requires the PMD to generate a random number,
+ * and the device supports CSRNG, 'data' should be set to NULL.
+ * The crypto parameter in question will not be used by the PMD,
+ * as it is internally generated.
+ */
+typedef struct rte_crypto_param_t {
+	uint8_t *data;
+	/**< pointer to buffer holding data */
+	rte_iova_t iova;
+	/**< IO address of data buffer */
+	size_t length;
+	/**< length of data in bytes */
+} rte_crypto_param;
+
+/** Unsigned big-integer in big-endian format */
+typedef rte_crypto_param rte_crypto_uint;
+
+/**
+ * Structure for elliptic curve point
+ */
+struct rte_crypto_ec_point {
+	rte_crypto_param x;
+	/**< X coordinate */
+	rte_crypto_param y;
+	/**< Y coordinate */
+};
+
+/**
  * Structure describing RSA private key in quintuple format.
  * See PKCS V1.5 RSA Cryptography Standard.
  */
 struct rte_crypto_rsa_priv_key_qt {
-	rte_crypto_param p;
-	/**< p - Private key component P
-	 * Private key component of RSA parameter  required for CRT method
-	 * of private key operations in Octet-string network byte order
-	 * format.
-	 */
-
-	rte_crypto_param q;
-	/**< q - Private key component Q
-	 * Private key component of RSA parameter  required for CRT method
-	 * of private key operations in Octet-string network byte order
-	 * format.
-	 */
-
-	rte_crypto_param dP;
-	/**< dP - Private CRT component
-	 * Private CRT component of RSA parameter  required for CRT method
-	 * RSA private key operations in Octet-string network byte order
-	 * format.
-	 * dP = d mod ( p - 1 )
-	 */
-
-	rte_crypto_param dQ;
-	/**< dQ - Private CRT component
-	 * Private CRT component of RSA parameter  required for CRT method
-	 * RSA private key operations in Octet-string network byte order
-	 * format.
-	 * dQ = d mod ( q - 1 )
-	 */
-
-	rte_crypto_param qInv;
-	/**< qInv - Private CRT component
-	 * Private CRT component of RSA parameter  required for CRT method
-	 * RSA private key operations in Octet-string network byte order
-	 * format.
-	 * qInv = inv q mod p
-	 */
+	rte_crypto_uint p;
+	/**< the first factor */
+	rte_crypto_uint q;
+	/**< the second factor */
+	rte_crypto_uint dP;
+	/**< the first factor's CRT exponent */
+	rte_crypto_uint dQ;
+	/**< the second's factor's CRT exponent */
+	rte_crypto_uint qInv;
+	/**< the CRT coefficient */
 };
 
 /**
@@ -208,29 +209,17 @@ struct rte_crypto_rsa_priv_key_qt {
  *
  */
 struct rte_crypto_rsa_xform {
-	rte_crypto_param n;
-	/**< n - Modulus
-	 * Modulus data of RSA operation in Octet-string network
-	 * byte order format.
-	 */
-
-	rte_crypto_param e;
-	/**< e - Public key exponent
-	 * Public key exponent used for RSA public key operations in Octet-
-	 * string network byte order format.
-	 */
+	rte_crypto_uint n;
+	/**< the RSA modulus */
+	rte_crypto_uint e;
+	/**< the RSA public exponent */
 
 	enum rte_crypto_rsa_priv_key_type key_type;
 
 	RTE_STD_C11
 	union {
-		rte_crypto_param d;
-		/**< d - Private key exponent
-		 * Private key exponent used for RSA
-		 * private key operations in
-		 * Octet-string  network byte order format.
-		 */
-
+		rte_crypto_uint d;
+		/**< the RSA private exponent */
 		struct rte_crypto_rsa_priv_key_qt qt;
 		/**< qt - Private key in quintuple format */
 	};
@@ -243,20 +232,10 @@ struct rte_crypto_rsa_xform {
  *
  */
 struct rte_crypto_modex_xform {
-	rte_crypto_param modulus;
-	/**< modulus
-	 * Pointer to the modulus data for modexp transform operation
-	 * in octet-string network byte order format
-	 *
-	 * In case this number is equal to zero the driver shall set
-	 * the crypto op status field to RTE_CRYPTO_OP_STATUS_ERROR
-	 */
-
-	rte_crypto_param exponent;
-	/**< exponent
-	 * Exponent of the modexp transform operation in
-	 * octet-string network byte order format
-	 */
+	rte_crypto_uint modulus;
+	/**< Modulus data for modexp transform operation */
+	rte_crypto_uint exponent;
+	/**< Exponent of the modexp transform operation */
 };
 
 /**
@@ -266,18 +245,8 @@ struct rte_crypto_modex_xform {
  *
  */
 struct rte_crypto_modinv_xform {
-	rte_crypto_param modulus;
-	/**<
-	 * Pointer to the modulus data for modular multiplicative inverse
-	 * operation in octet-string network byte order format
-	 *
-	 * In case this number is equal to zero the driver shall set
-	 * the crypto op status field to RTE_CRYPTO_OP_STATUS_ERROR
-	 *
-	 * This number shall be relatively prime to base
-	 * in corresponding Modular Multiplicative Inverse
-	 * rte_crypto_mod_op_param
-	 */
+	rte_crypto_uint modulus;
+	/**< Modulus data for modular multiplicative inverse operation */
 };
 
 /**
@@ -289,19 +258,10 @@ struct rte_crypto_modinv_xform {
 struct rte_crypto_dh_xform {
 	enum rte_crypto_asym_op_type type;
 	/**< Setup xform for key generate or shared secret compute */
-
-	rte_crypto_param p;
-	/**< p : Prime modulus data
-	 * DH prime modulus data in octet-string network byte order format.
-	 *
-	 */
-
-	rte_crypto_param g;
-	/**< g : Generator
-	 * DH group generator data in octet-string network byte order
-	 * format.
-	 *
-	 */
+	rte_crypto_uint p;
+	/**< Prime modulus data */
+	rte_crypto_uint g;
+	/**< DH Generator */
 };
 
 /**
@@ -311,22 +271,13 @@ struct rte_crypto_dh_xform {
  *
  */
 struct rte_crypto_dsa_xform {
-	rte_crypto_param p;
-	/**< p - Prime modulus
-	 * Prime modulus data for DSA operation in Octet-string network byte
-	 * order format.
-	 */
-	rte_crypto_param q;
-	/**< q : Order of the subgroup.
-	 * Order of the subgroup data in Octet-string network byte order
-	 * format.
-	 * (p-1) % q = 0
-	 */
-	rte_crypto_param g;
-	/**< g: Generator of the subgroup
-	 * Generator  data in Octet-string network byte order format.
-	 */
-	rte_crypto_param x;
+	rte_crypto_uint p;
+	/**< Prime modulus */
+	rte_crypto_uint q;
+	/**< Order of the subgroup */
+	rte_crypto_uint g;
+	/**< Generator of the subgroup */
+	rte_crypto_uint x;
 	/**< x: Private key of the signer in octet-string network
 	 * byte order format.
 	 * Used when app has pre-defined private key.
@@ -334,29 +285,6 @@ struct rte_crypto_dsa_xform {
 	 * if xform chain is DH private key generate + DSA, then DSA sign
 	 * compute will use internally generated key.
 	 */
-};
-
-/**
- * TLS named curves
- * https://tools.ietf.org/html/rfc8422
- */
-enum rte_crypto_ec_group {
-	RTE_CRYPTO_EC_GROUP_UNKNOWN  = 0,
-	RTE_CRYPTO_EC_GROUP_SECP192R1 = 19,
-	RTE_CRYPTO_EC_GROUP_SECP224R1 = 21,
-	RTE_CRYPTO_EC_GROUP_SECP256R1 = 23,
-	RTE_CRYPTO_EC_GROUP_SECP384R1 = 24,
-	RTE_CRYPTO_EC_GROUP_SECP521R1 = 25,
-};
-
-/**
- * Structure for elliptic curve point
- */
-struct rte_crypto_ec_point {
-	rte_crypto_param x;
-	/**< X coordinate */
-	rte_crypto_param y;
-	/**< Y coordinate */
 };
 
 /**
@@ -376,63 +304,11 @@ struct rte_crypto_ec_xform {
  *
  */
 struct rte_crypto_mod_op_param {
-	rte_crypto_param base;
-	/**<
-	 * Pointer to base of modular exponentiation/multiplicative
-	 * inverse data in octet-string network byte order format
-	 *
-	 * In case Multiplicative Inverse is used this number shall
-	 * be relatively prime to modulus in corresponding Modular
-	 * Multiplicative Inverse rte_crypto_modinv_xform
-	 */
-
-	rte_crypto_param result;
-	/**<
-	 * Pointer to the result of modular exponentiation/multiplicative inverse
-	 * data in octet-string network byte order format.
-	 *
-	 * This field shall be big enough to hold the result of Modular
-	 * Exponentiation or Modular Multiplicative Inverse
-	 * (bigger or equal to length of modulus)
-	 */
+	rte_crypto_uint base;
+	/** Base of modular exponentiation/multiplicative inverse */
+	rte_crypto_uint result;
+	/** Result of modular exponentiation/multiplicative inverse */
 };
-
-/**
- * Asymmetric crypto transform data
- *
- * Structure describing asym xforms.
- */
-struct rte_crypto_asym_xform {
-	struct rte_crypto_asym_xform *next;
-	/**< Pointer to next xform to set up xform chain.*/
-	enum rte_crypto_asym_xform_type xform_type;
-	/**< Asymmetric crypto transform */
-
-	RTE_STD_C11
-	union {
-		struct rte_crypto_rsa_xform rsa;
-		/**< RSA xform parameters */
-
-		struct rte_crypto_modex_xform modex;
-		/**< Modular Exponentiation xform parameters */
-
-		struct rte_crypto_modinv_xform modinv;
-		/**< Modular Multiplicative Inverse xform parameters */
-
-		struct rte_crypto_dh_xform dh;
-		/**< DH xform parameters */
-
-		struct rte_crypto_dsa_xform dsa;
-		/**< DSA xform parameters */
-
-		struct rte_crypto_ec_xform ec;
-		/**< EC xform parameters, used by elliptic curve based
-		 * operations.
-		 */
-	};
-};
-
-struct rte_cryptodev_asym_session;
 
 /**
  * RSA operation params
@@ -515,30 +391,27 @@ struct rte_crypto_rsa_op_param {
  * @note:
  */
 struct rte_crypto_dh_op_param {
-	rte_crypto_param pub_key;
+	rte_crypto_uint pub_key;
 	/**<
 	 * Output generated public key when xform type is
 	 * DH PUB_KEY_GENERATION.
 	 * Input peer public key when xform type is DH
 	 * SHARED_SECRET_COMPUTATION
-	 * pub_key is in octet-string network byte order format.
 	 *
 	 */
 
-	rte_crypto_param priv_key;
+	rte_crypto_uint priv_key;
 	/**<
 	 * Output generated private key if xform type is
 	 * DH PRIVATE_KEY_GENERATION
 	 * Input when xform type is DH SHARED_SECRET_COMPUTATION.
-	 * priv_key is in octet-string network byte order format.
 	 *
 	 */
 
-	rte_crypto_param shared_secret;
+	rte_crypto_uint shared_secret;
 	/**<
 	 * Output with calculated shared secret
 	 * when dh xform set up with op type = SHARED_SECRET_COMPUTATION.
-	 * shared_secret is an octet-string network byte order format.
 	 *
 	 */
 };
@@ -552,28 +425,26 @@ struct rte_crypto_dsa_op_param {
 	/**< Signature Generation or Verification */
 	rte_crypto_param message;
 	/**< input message to be signed or verified */
-	rte_crypto_param k;
+	rte_crypto_uint k;
 	/**< Per-message secret number, which is an integer
 	 * in the interval (1, q-1).
 	 * If the random number is generated by the PMD,
 	 * the 'rte_crypto_param.data' parameter should be set to NULL.
 	 */
-	rte_crypto_param r;
+	rte_crypto_uint r;
 	/**< dsa sign component 'r' value
 	 *
 	 * output if op_type = sign generate,
 	 * input if op_type = sign verify
 	 */
-	rte_crypto_param s;
+	rte_crypto_uint s;
 	/**< dsa sign component 's' value
 	 *
 	 * output if op_type = sign generate,
 	 * input if op_type = sign verify
 	 */
-	rte_crypto_param y;
+	rte_crypto_uint y;
 	/**< y : Public key of the signer.
-	 * Public key data of the signer in Octet-string network byte order
-	 * format.
 	 * y = g^x mod p
 	 */
 };
@@ -585,7 +456,7 @@ struct rte_crypto_ecdsa_op_param {
 	enum rte_crypto_asym_op_type op_type;
 	/**< Signature generation or verification */
 
-	rte_crypto_param pkey;
+	rte_crypto_uint pkey;
 	/**< Private key of the signer for signature generation */
 
 	struct rte_crypto_ec_point q;
@@ -594,19 +465,19 @@ struct rte_crypto_ecdsa_op_param {
 	rte_crypto_param message;
 	/**< Input message digest to be signed or verified */
 
-	rte_crypto_param k;
+	rte_crypto_uint k;
 	/**< The ECDSA per-message secret number, which is an integer
 	 * in the interval (1, n-1).
 	 * If the random number is generated by the PMD,
 	 * the 'rte_crypto_param.data' parameter should be set to NULL.
 	 */
 
-	rte_crypto_param r;
+	rte_crypto_uint r;
 	/**< r component of elliptic curve signature
 	 *     output : for signature generation
 	 *     input  : for signature verification
 	 */
-	rte_crypto_param s;
+	rte_crypto_uint s;
 	/**< s component of elliptic curve signature
 	 *     output : for signature generation
 	 *     input  : for signature verification
@@ -625,6 +496,41 @@ struct rte_crypto_ecpm_op_param {
 
 	rte_crypto_param scalar;
 	/**< Scalar to multiply the input point */
+};
+
+/**
+ * Asymmetric crypto transform data
+ *
+ * Structure describing asym xforms.
+ */
+struct rte_crypto_asym_xform {
+	struct rte_crypto_asym_xform *next;
+	/**< Pointer to next xform to set up xform chain.*/
+	enum rte_crypto_asym_xform_type xform_type;
+	/**< Asymmetric crypto transform */
+
+	RTE_STD_C11
+	union {
+		struct rte_crypto_rsa_xform rsa;
+		/**< RSA xform parameters */
+
+		struct rte_crypto_modex_xform modex;
+		/**< Modular Exponentiation xform parameters */
+
+		struct rte_crypto_modinv_xform modinv;
+		/**< Modular Multiplicative Inverse xform parameters */
+
+		struct rte_crypto_dh_xform dh;
+		/**< DH xform parameters */
+
+		struct rte_crypto_dsa_xform dsa;
+		/**< DSA xform parameters */
+
+		struct rte_crypto_ec_xform ec;
+		/**< EC xform parameters, used by elliptic curve based
+		 * operations.
+		 */
+	};
 };
 
 /**
