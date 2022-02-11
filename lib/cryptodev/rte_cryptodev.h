@@ -918,16 +918,6 @@ struct rte_cryptodev_sym_session {
 	/**< Driver specific session material, variable size */
 };
 
-/** Cryptodev asymmetric crypto session */
-RTE_STD_C11 struct rte_cryptodev_asym_session {
-	uint8_t driver_id;
-	/**< Session driver ID. */
-	uint16_t max_priv_data_sz;
-	/**< Size of private data used when creating mempool */
-	uint8_t padding[5];
-	uint8_t sess_private_data[0];
-};
-
 /**
  * Create a symmetric session mempool.
  *
@@ -1009,7 +999,7 @@ rte_cryptodev_sym_session_create(struct rte_mempool *mempool);
  *  - On failure returns NULL
  */
 __rte_experimental
-struct rte_cryptodev_asym_session *
+void *
 rte_cryptodev_asym_session_create(uint8_t dev_id,
 		struct rte_crypto_asym_xform *xforms, struct rte_mempool *mp);
 
@@ -1041,8 +1031,7 @@ rte_cryptodev_sym_session_free(struct rte_cryptodev_sym_session *sess);
  */
 __rte_experimental
 int
-rte_cryptodev_asym_session_free(uint8_t dev_id,
-		struct rte_cryptodev_asym_session *sess);
+rte_cryptodev_asym_session_free(uint8_t dev_id, void *sess);
 
 /**
  * Fill out private data for the device id, based on its device type.

@@ -46,7 +46,7 @@ struct crypto_testsuite_params_asym {
 };
 
 struct crypto_unittest_params {
-	struct rte_cryptodev_asym_session *sess;
+	void *sess;
 	struct rte_crypto_op *op;
 };
 
@@ -67,7 +67,7 @@ static uint32_t test_index;
 static struct crypto_testsuite_params_asym testsuite_params = { NULL };
 
 static int
-queue_ops_rsa_sign_verify(struct rte_cryptodev_asym_session *sess)
+queue_ops_rsa_sign_verify(void *sess)
 {
 	struct crypto_testsuite_params_asym *ts_params = &testsuite_params;
 	struct rte_mempool *op_mpool = ts_params->op_mpool;
@@ -158,7 +158,7 @@ error_exit:
 }
 
 static int
-queue_ops_rsa_enc_dec(struct rte_cryptodev_asym_session *sess)
+queue_ops_rsa_enc_dec(void *sess)
 {
 	struct crypto_testsuite_params_asym *ts_params = &testsuite_params;
 	struct rte_mempool *op_mpool = ts_params->op_mpool;
@@ -310,7 +310,7 @@ test_cryptodev_asym_op(struct crypto_testsuite_params_asym *ts_params,
 	struct rte_crypto_op *op = NULL;
 	struct rte_crypto_op *result_op = NULL;
 	struct rte_crypto_asym_xform xform_tc;
-	struct rte_cryptodev_asym_session *sess = NULL;
+	void *sess = NULL;
 	struct rte_cryptodev_asym_capability_idx cap_idx;
 	const struct rte_cryptodev_asymmetric_xform_capability *capability;
 	uint8_t dev_id = ts_params->valid_devs[0];
@@ -643,7 +643,7 @@ test_rsa_sign_verify(void)
 	struct crypto_testsuite_params_asym *ts_params = &testsuite_params;
 	struct rte_mempool *sess_mpool = ts_params->session_mpool;
 	uint8_t dev_id = ts_params->valid_devs[0];
-	struct rte_cryptodev_asym_session *sess;
+	void *sess = NULL;
 	struct rte_cryptodev_info dev_info;
 	int status = TEST_SUCCESS;
 
@@ -683,7 +683,7 @@ test_rsa_enc_dec(void)
 	struct crypto_testsuite_params_asym *ts_params = &testsuite_params;
 	struct rte_mempool *sess_mpool = ts_params->session_mpool;
 	uint8_t dev_id = ts_params->valid_devs[0];
-	struct rte_cryptodev_asym_session *sess;
+	void *sess = NULL;
 	struct rte_cryptodev_info dev_info;
 	int status = TEST_SUCCESS;
 
@@ -723,7 +723,7 @@ test_rsa_sign_verify_crt(void)
 	struct crypto_testsuite_params_asym *ts_params = &testsuite_params;
 	struct rte_mempool *sess_mpool = ts_params->session_mpool;
 	uint8_t dev_id = ts_params->valid_devs[0];
-	struct rte_cryptodev_asym_session *sess;
+	void *sess = NULL;
 	struct rte_cryptodev_info dev_info;
 	int status = TEST_SUCCESS;
 
@@ -763,7 +763,7 @@ test_rsa_enc_dec_crt(void)
 	struct crypto_testsuite_params_asym *ts_params = &testsuite_params;
 	struct rte_mempool *sess_mpool = ts_params->session_mpool;
 	uint8_t dev_id = ts_params->valid_devs[0];
-	struct rte_cryptodev_asym_session *sess;
+	void *sess = NULL;
 	struct rte_cryptodev_info dev_info;
 	int status = TEST_SUCCESS;
 
@@ -1045,7 +1045,7 @@ test_dh_gen_shared_sec(struct rte_crypto_asym_xform *xfrm)
 	uint8_t dev_id = ts_params->valid_devs[0];
 	struct rte_crypto_asym_op *asym_op = NULL;
 	struct rte_crypto_op *op = NULL, *result_op = NULL;
-	struct rte_cryptodev_asym_session *sess = NULL;
+	void *sess = NULL;
 	int status = TEST_SUCCESS;
 	uint8_t output[TEST_DH_MOD_LEN];
 	struct rte_crypto_asym_xform xform = *xfrm;
@@ -1128,7 +1128,7 @@ test_dh_gen_priv_key(struct rte_crypto_asym_xform *xfrm)
 	uint8_t dev_id = ts_params->valid_devs[0];
 	struct rte_crypto_asym_op *asym_op = NULL;
 	struct rte_crypto_op *op = NULL, *result_op = NULL;
-	struct rte_cryptodev_asym_session *sess = NULL;
+	void *sess = NULL;
 	int status = TEST_SUCCESS;
 	uint8_t output[TEST_DH_MOD_LEN];
 	struct rte_crypto_asym_xform xform = *xfrm;
@@ -1209,7 +1209,7 @@ test_dh_gen_pub_key(struct rte_crypto_asym_xform *xfrm)
 	uint8_t dev_id = ts_params->valid_devs[0];
 	struct rte_crypto_asym_op *asym_op = NULL;
 	struct rte_crypto_op *op = NULL, *result_op = NULL;
-	struct rte_cryptodev_asym_session *sess = NULL;
+	void *sess = NULL;
 	int status = TEST_SUCCESS;
 	uint8_t output[TEST_DH_MOD_LEN];
 	struct rte_crypto_asym_xform xform = *xfrm;
@@ -1298,7 +1298,7 @@ test_dh_gen_kp(struct rte_crypto_asym_xform *xfrm)
 	uint8_t dev_id = ts_params->valid_devs[0];
 	struct rte_crypto_asym_op *asym_op = NULL;
 	struct rte_crypto_op *op = NULL, *result_op = NULL;
-	struct rte_cryptodev_asym_session *sess = NULL;
+	void *sess = NULL;
 	int status = TEST_SUCCESS;
 	uint8_t out_pub_key[TEST_DH_MOD_LEN];
 	uint8_t out_prv_key[TEST_DH_MOD_LEN];
@@ -1385,7 +1385,7 @@ test_mod_inv(void)
 	uint8_t dev_id = ts_params->valid_devs[0];
 	struct rte_crypto_asym_op *asym_op = NULL;
 	struct rte_crypto_op *op = NULL, *result_op = NULL;
-	struct rte_cryptodev_asym_session *sess = NULL;
+	void *sess = NULL;
 	int status = TEST_SUCCESS;
 	struct rte_cryptodev_asym_capability_idx cap_idx;
 	const struct rte_cryptodev_asymmetric_xform_capability *capability;
@@ -1498,7 +1498,7 @@ test_mod_exp(void)
 	uint8_t dev_id = ts_params->valid_devs[0];
 	struct rte_crypto_asym_op *asym_op = NULL;
 	struct rte_crypto_op *op = NULL, *result_op = NULL;
-	struct rte_cryptodev_asym_session *sess = NULL;
+	void *sess = NULL;
 	int status = TEST_SUCCESS;
 	struct rte_cryptodev_asym_capability_idx cap_idx;
 	const struct rte_cryptodev_asymmetric_xform_capability *capability;
@@ -1647,7 +1647,7 @@ test_dsa_sign(void)
 	uint8_t dev_id = ts_params->valid_devs[0];
 	struct rte_crypto_asym_op *asym_op = NULL;
 	struct rte_crypto_op *op = NULL, *result_op = NULL;
-	struct rte_cryptodev_asym_session *sess = NULL;
+	void *sess = NULL;
 	int status = TEST_SUCCESS;
 	uint8_t r[TEST_DH_MOD_LEN];
 	uint8_t s[TEST_DH_MOD_LEN];
@@ -1778,7 +1778,7 @@ test_ecdsa_sign_verify(enum curve curve_id)
 	struct rte_mempool *sess_mpool = ts_params->session_mpool;
 	struct rte_mempool *op_mpool = ts_params->op_mpool;
 	struct crypto_testsuite_ecdsa_params input_params;
-	struct rte_cryptodev_asym_session *sess = NULL;
+	void *sess = NULL;
 	uint8_t dev_id = ts_params->valid_devs[0];
 	struct rte_crypto_op *result_op = NULL;
 	uint8_t output_buf_r[TEST_DATA_SIZE];
@@ -1980,7 +1980,7 @@ test_ecpm(enum curve curve_id)
 	struct rte_mempool *sess_mpool = ts_params->session_mpool;
 	struct rte_mempool *op_mpool = ts_params->op_mpool;
 	struct crypto_testsuite_ecpm_params input_params;
-	struct rte_cryptodev_asym_session *sess = NULL;
+	void *sess = NULL;
 	uint8_t dev_id = ts_params->valid_devs[0];
 	struct rte_crypto_op *result_op = NULL;
 	uint8_t output_buf_x[TEST_DATA_SIZE];

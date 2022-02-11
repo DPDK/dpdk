@@ -625,4 +625,17 @@ set_sym_session_private_data(struct rte_cryptodev_sym_session *sess,
 	sess->sess_data[driver_id].data = private_data;
 }
 
+/**
+ * @internal
+ * Cryptodev asymmetric crypto session.
+ */
+RTE_STD_C11 struct rte_cryptodev_asym_session {
+	uint8_t driver_id;
+	/**< Session driver ID. */
+	uint16_t max_priv_data_sz;
+	/**< Size of private data used when creating mempool */
+	uint8_t padding[5];
+	uint8_t sess_private_data[0];
+};
+
 #endif /* _CRYPTODEV_PMD_H_ */

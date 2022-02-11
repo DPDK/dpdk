@@ -21,7 +21,7 @@ cperf_set_ops_asym(struct rte_crypto_op **ops,
 		   uint64_t *tsc_start __rte_unused)
 {
 	uint16_t i;
-	struct rte_cryptodev_asym_session *asym_sess = (void *)sess;
+	void *asym_sess = (void *)sess;
 
 	for (i = 0; i < nb_ops; i++) {
 		struct rte_crypto_asym_op *asym_op = ops[i]->asym;

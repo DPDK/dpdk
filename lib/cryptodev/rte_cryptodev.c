@@ -1908,7 +1908,7 @@ rte_cryptodev_sym_session_create(struct rte_mempool *mp)
 	return sess;
 }
 
-struct rte_cryptodev_asym_session *
+void *
 rte_cryptodev_asym_session_create(uint8_t dev_id,
 		struct rte_crypto_asym_xform *xforms, struct rte_mempool *mp)
 {
@@ -2035,8 +2035,7 @@ rte_cryptodev_sym_session_free(struct rte_cryptodev_sym_session *sess)
 }
 
 int
-rte_cryptodev_asym_session_free(uint8_t dev_id,
-		struct rte_cryptodev_asym_session *sess)
+rte_cryptodev_asym_session_free(uint8_t dev_id, void *sess)
 {
 	struct rte_mempool *sess_mp;
 	struct rte_cryptodev *dev;

@@ -187,6 +187,8 @@ API Changes
   mempool object. An API ``rte_cryptodev_asym_session_pool_create`` was added
   to create a mempool with element size big enough to hold the generic asymmetric
   session header and max size for a device private session data.
+  The session structure was moved to ``cryptodev_pmd.h``,
+  hiding it from applications.
   The API ``rte_cryptodev_asym_session_init`` was removed as the initialization
   is now moved to ``rte_cryptodev_asym_session_create``.
 

@@ -1155,6 +1155,10 @@ Generate crypto op, create and attach a session, then process packets.
    :end-before: >8 End of create op, create session, and process packets section.
    :dedent: 1
 
+.. note::
+   The ``rte_cryptodev_asym_session`` struct is hidden from the application.
+   The ``sess`` pointer used above is a void pointer.
+
 
 Asymmetric Crypto Device API
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
