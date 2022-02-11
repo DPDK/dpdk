@@ -384,6 +384,7 @@ rte_dev_event_monitor_stop(void)
 	close(rte_intr_fd_get(intr_handle));
 	rte_intr_instance_free(intr_handle);
 	intr_handle = NULL;
+	ret = 0;
 
 	monitor_refcount--;
 
