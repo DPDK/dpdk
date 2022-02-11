@@ -791,6 +791,108 @@ get_tm_conf_info(FILE *file, struct rte_eth_dev *dev)
 	get_tm_conf_queue_node_info(file, conf, dev->data->nb_tx_queues);
 }
 
+static void
+hns3_fc_mode_to_rxtx_pause(enum hns3_fc_mode fc_mode, bool *rx_pause,
+			   bool *tx_pause)
+{
+	switch (fc_mode) {
+	case HNS3_FC_NONE:
+		*tx_pause = false;
+		*rx_pause = false;
+		break;
+	case HNS3_FC_RX_PAUSE:
+		*rx_pause = true;
+		*tx_pause = false;
+		break;
+	case HNS3_FC_TX_PAUSE:
+		*rx_pause = false;
+		*tx_pause = true;
+		break;
+	case HNS3_FC_FULL:
+		*rx_pause = true;
+		*tx_pause = true;
+		break;
+	default:
+		*rx_pause = false;
+		*tx_pause = false;
+		break;
+	}
+}
+
+static bool
+is_link_fc_mode(struct hns3_adapter *hns)
+{
+	struct hns3_hw *hw = &hns->hw;
+	struct hns3_pf *pf = &hns->pf;
+
+	if (hw->current_fc_status == HNS3_FC_STATUS_PFC)
+		return false;
+
+	if (hw->num_tc > 1 && !pf->support_multi_tc_pause)
+		return false;
+
+	return true;
+}
+
+static void
+get_link_fc_info(FILE *file, struct rte_eth_dev *dev)
+{
+	struct hns3_adapter *hns = dev->data->dev_private;
+	struct hns3_hw *hw = &hns->hw;
+	struct rte_eth_fc_conf fc_conf;
+	bool rx_pause1;
+	bool tx_pause1;
+	bool rx_pause2;
+	bool tx_pause2;
+	int ret;
+
+	if (!is_link_fc_mode(hns))
+		return;
+
+	ret = hns3_flow_ctrl_get(dev, &fc_conf);
+	if (ret)  {
+		fprintf(file, "get device flow control info fail!\n");
+		return;
+	}
+
+	hns3_fc_mode_to_rxtx_pause(hw->requested_fc_mode,
+				   &rx_pause1, &tx_pause1);
+	hns3_fc_mode_to_rxtx_pause((enum hns3_fc_mode)fc_conf.mode,
+				   &rx_pause2, &tx_pause2);
+
+	fprintf(file,
+		"\t  -- link_fc_info:\n"
+		"\t       Requested fc:\n"
+		"\t         Rx:	%s\n"
+		"\t         Tx:	%s\n"
+		"\t       Current fc:\n"
+		"\t         Rx:	%s\n"
+		"\t         Tx:	%s\n"
+		"\t       Autonegotiate: %s\n"
+		"\t       Pause time:	0x%x\n",
+		rx_pause1 ? "On" : "Off", tx_pause1 ? "On" : "Off",
+		rx_pause2 ? "On" : "Off", tx_pause2 ? "On" : "Off",
+		fc_conf.autoneg == RTE_ETH_LINK_AUTONEG ? "On" : "Off",
+		fc_conf.pause_time);
+}
+
+static void
+get_flow_ctrl_info(FILE *file, struct rte_eth_dev *dev)
+{
+	struct hns3_adapter *hns = dev->data->dev_private;
+	struct hns3_hw *hw = &hns->hw;
+
+	fprintf(file, "  - Flow Ctrl Info:\n");
+	fprintf(file,
+		"\t  -- fc_common_info:\n"
+		"\t       current_fc_status=%u\n"
+		"\t       requested_fc_mode=%u\n",
+		hw->current_fc_status,
+		hw->requested_fc_mode);
+
+	get_link_fc_info(file, dev);
+}
+
 int
 hns3_eth_dev_priv_dump(struct rte_eth_dev *dev, FILE *file)
 {
@@ -809,6 +911,7 @@ hns3_eth_dev_priv_dump(struct rte_eth_dev *dev, FILE *file)
 	get_vlan_config_info(file, hw);
 	get_fdir_basic_info(file, &hns->pf);
 	get_tm_conf_info(file, dev);
+	get_flow_ctrl_info(file, dev);
 
 	return 0;
 }

@@ -5350,7 +5350,7 @@ hns3_get_current_fc_mode(struct rte_eth_dev *dev)
 	return hns3_get_autoneg_fc_mode(hw);
 }
 
-static int
+int
 hns3_flow_ctrl_get(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 {
 	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);

@@ -1030,6 +1030,8 @@ hns3_test_and_clear_bit(unsigned int nr, volatile uint64_t *addr)
 	return __atomic_fetch_and(addr, ~mask, __ATOMIC_RELAXED) & mask;
 }
 
+int
+hns3_flow_ctrl_get(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf);
 uint32_t hns3_get_speed_capa(struct hns3_hw *hw);
 
 int hns3_buffer_alloc(struct hns3_hw *hw);
