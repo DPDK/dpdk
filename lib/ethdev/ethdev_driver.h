@@ -1046,6 +1046,25 @@ typedef int (*eth_ip_reassembly_conf_set_t)(struct rte_eth_dev *dev,
 		const struct rte_eth_ip_reassembly_params *conf);
 
 /**
+ * @internal
+ * Dump private info from device to a file.
+ *
+ * @param dev
+ *   Port (ethdev) handle.
+ * @param file
+ *   A pointer to a file for output.
+ *
+ * @return
+ *   Negative value on error, 0 on success.
+ *
+ * @retval 0
+ *   Success
+ * @retval -EINVAL
+ *   Invalid file
+ */
+typedef int (*eth_dev_priv_dump_t)(struct rte_eth_dev *dev, FILE *file);
+
+/**
  * @internal A structure containing the functions exported by an Ethernet driver.
  */
 struct eth_dev_ops {
@@ -1252,6 +1271,9 @@ struct eth_dev_ops {
 	eth_ip_reassembly_conf_get_t ip_reassembly_conf_get;
 	/** Set IP reassembly configuration */
 	eth_ip_reassembly_conf_set_t ip_reassembly_conf_set;
+
+	/** Dump private info from device */
+	eth_dev_priv_dump_t eth_dev_priv_dump;
 };
 
 /**

@@ -87,6 +87,13 @@ New Features
   New APIs, ``rte_eth_dev_priority_flow_ctrl_queue_info_get()`` and
   ``rte_eth_dev_priority_flow_ctrl_queue_configure()``, was added.
 
+* **Added a private dump API, to dump private info from device.**
+
+  Added the private dump API which provides querying private info from device.
+  There exists many private properties in different PMD drivers.
+  The information of these properties is important for debug.
+  As the information is private, a dump function is introduced.
+
 * **Updated AF_XDP PMD**
 
   * Added support for libxdp >=v1.2.2.

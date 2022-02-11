@@ -6749,6 +6749,23 @@ rte_eth_ip_reassembly_dynfield_register(int *field_offset, int *flag_offset)
 	return 0;
 }
 
+int
+rte_eth_dev_priv_dump(uint16_t port_id, FILE *file)
+{
+	struct rte_eth_dev *dev;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
+	dev = &rte_eth_devices[port_id];
+
+	if (file == NULL) {
+		RTE_ETHDEV_LOG(ERR, "Invalid file (NULL)\n");
+		return -EINVAL;
+	}
+
+	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->eth_dev_priv_dump, -ENOTSUP);
+	return eth_err(port_id, (*dev->dev_ops->eth_dev_priv_dump)(dev, file));
+}
+
 RTE_LOG_REGISTER_DEFAULT(rte_eth_dev_logtype, INFO);
 
 RTE_INIT(ethdev_init_telemetry)

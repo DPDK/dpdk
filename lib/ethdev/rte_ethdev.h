@@ -5431,6 +5431,26 @@ typedef struct {
 	uint16_t nb_frags;
 } rte_eth_ip_reassembly_dynfield_t;
 
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change, or be removed, without prior notice
+ *
+ * Dump private info from device to a file. Provided data and the order depends
+ * on the PMD.
+ *
+ * @param port_id
+ *   The port identifier of the Ethernet device.
+ * @param file
+ *   A pointer to a file for output.
+ * @return
+ *   - (0) on success.
+ *   - (-ENODEV) if *port_id* is invalid.
+ *   - (-EINVAL) if null file.
+ *   - (-ENOTSUP) if the device does not support this function.
+ *   - (-EIO) if device is removed.
+ */
+__rte_experimental
+int rte_eth_dev_priv_dump(uint16_t port_id, FILE *file);
 
 #include <rte_ethdev_core.h>
 
