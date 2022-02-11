@@ -854,6 +854,7 @@ testsuite_setup(void)
 	test_vector.size = 0;
 	load_test_vectors();
 
+	/* Device, op pool and session configuration for asymmetric crypto. 8< */
 	ts_params->op_mpool = rte_crypto_op_pool_create(
 			"CRYPTO_ASYM_OP_POOL",
 			RTE_CRYPTO_OP_TYPE_ASYMMETRIC,
@@ -952,7 +953,7 @@ testsuite_setup(void)
 
 	TEST_ASSERT_NOT_NULL(ts_params->session_mpool,
 			"session mempool allocation failed");
-
+	/* >8 End of device, op pool and session configuration for asymmetric crypto section. */
 	return TEST_SUCCESS;
 }
 
@@ -1636,7 +1637,7 @@ test_mod_exp(void)
 				return TEST_SKIPPED;
 		}
 
-	/* generate crypto op data structure */
+	/* Create op, create session, and process packets. 8< */
 	op = rte_crypto_op_alloc(op_mpool, RTE_CRYPTO_OP_TYPE_ASYMMETRIC);
 	if (!op) {
 		RTE_LOG(ERR, USER1,
@@ -1695,7 +1696,7 @@ test_mod_exp(void)
 		status = TEST_FAILED;
 		goto error_exit;
 	}
-
+	/* >8 End of create op, create session, and process packets section. */
 	ret = verify_modexp(mod_exp, result_op);
 	if (ret) {
 		RTE_LOG(ERR, USER1,

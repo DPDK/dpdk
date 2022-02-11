@@ -979,6 +979,7 @@ uint8_t base[] = {
 	0xA8, 0xEB, 0x7E, 0x78, 0xA0, 0x50
 };
 
+/* MODEX data. 8< */
 uint8_t mod_p[] = {
 	0x00, 0xb3, 0xa1, 0xaf, 0xb7, 0x13, 0x08, 0x00,
 	0x0a, 0x35, 0xdc, 0x2b, 0x20, 0x8d, 0xa1, 0xb5,
@@ -1000,6 +1001,7 @@ uint8_t mod_p[] = {
 };
 
 uint8_t mod_e[] = {0x01, 0x00, 0x01};
+/* >8 End of MODEX data. */
 
 /* Precomputed modular exponentiation for verification */
 uint8_t mod_exp[] = {
@@ -1041,6 +1043,7 @@ uint8_t mod_inv[] = {
 	0x9a, 0x66, 0x9a, 0x3a, 0xc1, 0xb8, 0x4b, 0xc3
 };
 
+/* MODEX vector. 8< */
 struct rte_crypto_asym_xform modex_xform = {
 	.next = NULL,
 	.xform_type = RTE_CRYPTO_ASYM_XFORM_MODEX,
@@ -1055,6 +1058,7 @@ struct rte_crypto_asym_xform modex_xform = {
 		}
 	}
 };
+/* >8 End of MODEX vector. */
 
 struct rte_crypto_asym_xform modinv_xform = {
 	.next = NULL,
