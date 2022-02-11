@@ -19,12 +19,11 @@ sources += gen_c_files.process(dpdk_chkinc_headers)
 
 deps = []
 foreach l:enabled_libs
-    deps += get_variable('static_rte_' + l)
+    deps += get_variable('shared_rte_' + l)
 endforeach
 
 executable('chkincs', sources,
         c_args: cflags,
         include_directories: includes,
         dependencies: deps,
-        link_whole: dpdk_static_libraries + dpdk_drivers,
         install: false)
