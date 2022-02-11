@@ -639,6 +639,158 @@ get_vlan_config_info(FILE *file, struct hns3_hw *hw)
 	get_port_pvid_info(file, hw);
 }
 
+static void
+get_tm_conf_shaper_info(FILE *file, struct hns3_tm_conf *conf)
+{
+	struct hns3_shaper_profile_list *shaper_profile_list =
+		&conf->shaper_profile_list;
+	struct hns3_tm_shaper_profile *shaper_profile;
+
+	if (!conf->nb_shaper_profile)
+		return;
+
+	fprintf(file, "  shaper_profile:\n");
+	TAILQ_FOREACH(shaper_profile, shaper_profile_list, node) {
+		fprintf(file,
+			"    id=%u reference_count=%u peak_rate=%" PRIu64 "Bps\n",
+			shaper_profile->shaper_profile_id,
+			shaper_profile->reference_count,
+			shaper_profile->profile.peak.rate);
+	}
+}
+
+static void
+get_tm_conf_port_node_info(FILE *file, struct hns3_tm_conf *conf)
+{
+	if (!conf->root)
+		return;
+
+	fprintf(file,
+		"  port_node:\n"
+		"    node_id=%u reference_count=%u shaper_profile_id=%d\n",
+		conf->root->id, conf->root->reference_count,
+		conf->root->shaper_profile ?
+		(int)conf->root->shaper_profile->shaper_profile_id : -1);
+}
+
+static void
+get_tm_conf_tc_node_info(FILE *file, struct hns3_tm_conf *conf)
+{
+	struct hns3_tm_node_list *tc_list = &conf->tc_list;
+	struct hns3_tm_node *tc_node[HNS3_MAX_TC_NUM];
+	struct hns3_tm_node *tm_node;
+	uint32_t tidx;
+
+	if (!conf->nb_tc_node)
+		return;
+
+	fprintf(file, "  tc_node:\n");
+	memset(tc_node, 0, sizeof(tc_node));
+	TAILQ_FOREACH(tm_node, tc_list, node) {
+		tidx = hns3_tm_calc_node_tc_no(conf, tm_node->id);
+		if (tidx < HNS3_MAX_TC_NUM)
+			tc_node[tidx] = tm_node;
+	}
+
+	for (tidx = 0; tidx < HNS3_MAX_TC_NUM; tidx++) {
+		tm_node = tc_node[tidx];
+		if (tm_node == NULL)
+			continue;
+		fprintf(file,
+			"    id=%u TC%u reference_count=%u parent_id=%d "
+			"shaper_profile_id=%d\n",
+			tm_node->id, hns3_tm_calc_node_tc_no(conf, tm_node->id),
+			tm_node->reference_count,
+			tm_node->parent ? (int)tm_node->parent->id : -1,
+			tm_node->shaper_profile ?
+			(int)tm_node->shaper_profile->shaper_profile_id : -1);
+	}
+}
+
+static void
+get_tm_conf_queue_format_info(FILE *file, struct hns3_tm_node **queue_node,
+			      uint32_t *queue_node_tc,  uint32_t nb_tx_queues)
+{
+#define PERLINE_QUEUES	32
+#define PERLINE_STRIDE	8
+#define LINE_BUF_SIZE	1024
+	uint32_t i, j, line_num, start_queue, end_queue;
+	char tmpbuf[LINE_BUF_SIZE] = {0};
+
+	line_num = (nb_tx_queues + PERLINE_QUEUES - 1) / PERLINE_QUEUES;
+	for (i = 0; i < line_num; i++) {
+		start_queue = i * PERLINE_QUEUES;
+		end_queue = (i + 1) * PERLINE_QUEUES - 1;
+		if (end_queue > nb_tx_queues - 1)
+			end_queue = nb_tx_queues - 1;
+		fprintf(file, "    %04u - %04u | ", start_queue, end_queue);
+		for (j = start_queue; j < nb_tx_queues; j++) {
+			if (j >= end_queue + 1)
+				break;
+			if (j > start_queue && j % PERLINE_STRIDE == 0)
+				fprintf(file, ":");
+			fprintf(file, "%u",
+				queue_node[j] ? queue_node_tc[j] :
+				HNS3_MAX_TC_NUM);
+		}
+		fprintf(file, "%s\n", tmpbuf);
+	}
+}
+
+static void
+get_tm_conf_queue_node_info(FILE *file, struct hns3_tm_conf *conf,
+			    uint32_t nb_tx_queues)
+{
+	struct hns3_tm_node_list *queue_list = &conf->queue_list;
+	uint32_t nb_queue_node = conf->nb_leaf_nodes_max + 1;
+	struct hns3_tm_node *queue_node[nb_queue_node];
+	uint32_t queue_node_tc[nb_queue_node];
+	struct hns3_tm_node *tm_node;
+
+	if (!conf->nb_queue_node)
+		return;
+
+	fprintf(file,
+		"  queue_node:\n"
+		"    tx queue id | mapped tc (8 mean node not exist)\n");
+
+	memset(queue_node, 0, sizeof(queue_node));
+	memset(queue_node_tc, 0, sizeof(queue_node_tc));
+	nb_tx_queues = RTE_MIN(nb_tx_queues, nb_queue_node);
+	TAILQ_FOREACH(tm_node, queue_list, node) {
+		if (tm_node->id >= nb_queue_node)
+			continue;
+		queue_node[tm_node->id] = tm_node;
+		queue_node_tc[tm_node->id] = tm_node->parent ?
+			hns3_tm_calc_node_tc_no(conf, tm_node->parent->id) : 0;
+		nb_tx_queues = RTE_MAX(nb_tx_queues, tm_node->id + 1);
+	}
+
+	get_tm_conf_queue_format_info(file, queue_node, queue_node_tc,
+				      nb_tx_queues);
+}
+
+static void
+get_tm_conf_info(FILE *file, struct rte_eth_dev *dev)
+{
+	struct hns3_pf *pf = HNS3_DEV_PRIVATE_TO_PF(dev->data->dev_private);
+	struct hns3_tm_conf *conf = &pf->tm_conf;
+
+	fprintf(file, "  - TM config info:\n");
+	fprintf(file,
+		"\t  -- nb_leaf_nodes_max=%u nb_nodes_max=%u\n"
+		"\t  -- nb_shaper_profile=%u nb_tc_node=%u nb_queue_node=%u\n"
+		"\t  -- committed=%u\n",
+		conf->nb_leaf_nodes_max, conf->nb_nodes_max,
+		conf->nb_shaper_profile, conf->nb_tc_node, conf->nb_queue_node,
+		conf->committed);
+
+	get_tm_conf_shaper_info(file, conf);
+	get_tm_conf_port_node_info(file, conf);
+	get_tm_conf_tc_node_info(file, conf);
+	get_tm_conf_queue_node_info(file, conf, dev->data->nb_tx_queues);
+}
+
 int
 hns3_eth_dev_priv_dump(struct rte_eth_dev *dev, FILE *file)
 {
@@ -656,6 +808,7 @@ hns3_eth_dev_priv_dump(struct rte_eth_dev *dev, FILE *file)
 	get_rxtx_queue_info(file, dev);
 	get_vlan_config_info(file, hw);
 	get_fdir_basic_info(file, &hns->pf);
+	get_tm_conf_info(file, dev);
 
 	return 0;
 }
