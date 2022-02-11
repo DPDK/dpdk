@@ -547,6 +547,10 @@ struct rte_crypto_dsa_op_param {
 	/**< Signature Generation or Verification */
 	rte_crypto_param message;
 	/**< input message to be signed or verified */
+	rte_crypto_param k;
+	/**< Per-message secret number, which is an integer
+	 * in the interval (1, q-1)
+	 */
 	rte_crypto_param r;
 	/**< dsa sign component 'r' value
 	 *

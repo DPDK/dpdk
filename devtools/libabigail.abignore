@@ -16,3 +16,7 @@
 [suppress_type]
        name = rte_security_ipsec_sa_options
        has_data_member_inserted_between = {offset_of(reserved_opts), end}
+
+; Ignore changes to rte_crypto_asym_op, asymmetric crypto API is experimental
+[suppress_type]
+        name = rte_crypto_asym_op
