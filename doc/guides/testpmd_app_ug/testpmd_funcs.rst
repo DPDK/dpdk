@@ -3738,6 +3738,12 @@ This section lists supported pattern items and their attributes, if any.
 
   - ``value {unsigned}``: key value.
 
+- ``gre_option``: match GRE optional fields(checksum/key/sequence).
+
+  - ``checksum {unsigned}``: checksum value.
+  - ``key {unsigned}``: key value.
+  - ``sequence {unsigned}``: sequence number value.
+
 - ``fuzzy``: fuzzy pattern match, expect faster than default.
 
   - ``thresh {unsigned}``: accuracy threshold.
