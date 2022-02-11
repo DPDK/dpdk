@@ -6568,6 +6568,7 @@ static const struct eth_dev_ops hns3_eth_dev_ops = {
 	.timesync_adjust_time       = hns3_timesync_adjust_time,
 	.timesync_read_time         = hns3_timesync_read_time,
 	.timesync_write_time        = hns3_timesync_write_time,
+	.eth_dev_priv_dump          = hns3_eth_dev_priv_dump,
 };
 
 static const struct hns3_reset_ops hns3_reset_ops = {
