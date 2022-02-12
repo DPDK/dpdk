@@ -109,24 +109,21 @@ cn9k_sso_hws_release(void *arg, void *hws)
 	struct cnxk_sso_evdev *dev = arg;
 	struct cn9k_sso_hws_dual *dws;
 	struct cn9k_sso_hws *ws;
-	int i;
+	uint16_t i;
 
 	if (dev->dual_ws) {
 		dws = hws;
 		for (i = 0; i < dev->nb_event_queues; i++) {
 			roc_sso_hws_unlink(&dev->sso,
-					   CN9K_DUAL_WS_PAIR_ID(dws->hws_id, 0),
-					   (uint16_t *)&i, 1);
+					   CN9K_DUAL_WS_PAIR_ID(dws->hws_id, 0), &i, 1);
 			roc_sso_hws_unlink(&dev->sso,
-					   CN9K_DUAL_WS_PAIR_ID(dws->hws_id, 1),
-					   (uint16_t *)&i, 1);
+					   CN9K_DUAL_WS_PAIR_ID(dws->hws_id, 1), &i, 1);
 		}
 		memset(dws, 0, sizeof(*dws));
 	} else {
 		ws = hws;
 		for (i = 0; i < dev->nb_event_queues; i++)
-			roc_sso_hws_unlink(&dev->sso, ws->hws_id,
-					   (uint16_t *)&i, 1);
+			roc_sso_hws_unlink(&dev->sso, ws->hws_id, &i, 1);
 		memset(ws, 0, sizeof(*ws));
 	}
 }

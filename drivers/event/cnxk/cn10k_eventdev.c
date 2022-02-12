@@ -111,10 +111,10 @@ cn10k_sso_hws_release(void *arg, void *hws)
 {
 	struct cnxk_sso_evdev *dev = arg;
 	struct cn10k_sso_hws *ws = hws;
-	int i;
+	uint16_t i;
 
 	for (i = 0; i < dev->nb_event_queues; i++)
-		roc_sso_hws_unlink(&dev->sso, ws->hws_id, (uint16_t *)&i, 1);
+		roc_sso_hws_unlink(&dev->sso, ws->hws_id, &i, 1);
 	memset(ws, 0, sizeof(*ws));
 }
 
