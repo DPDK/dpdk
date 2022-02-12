@@ -233,8 +233,8 @@ cnxk_tim_add_entry_sp(struct cnxk_tim_ring *const tim_ring,
 		      const struct cnxk_tim_ent *const pent,
 		      const uint8_t flags)
 {
+	struct cnxk_tim_ent *chunk = NULL;
 	struct cnxk_tim_bkt *mirr_bkt;
-	struct cnxk_tim_ent *chunk;
 	struct cnxk_tim_bkt *bkt;
 	uint64_t lock_sema;
 	int16_t rem;
@@ -316,8 +316,8 @@ cnxk_tim_add_entry_mp(struct cnxk_tim_ring *const tim_ring,
 		      const struct cnxk_tim_ent *const pent,
 		      const uint8_t flags)
 {
+	struct cnxk_tim_ent *chunk = NULL;
 	struct cnxk_tim_bkt *mirr_bkt;
-	struct cnxk_tim_ent *chunk;
 	struct cnxk_tim_bkt *bkt;
 	uint64_t lock_sema;
 	int64_t rem;
