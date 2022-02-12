@@ -160,7 +160,10 @@ dev_irq_register(struct plt_intr_handle *intr_handle, plt_intr_callback_fn cb,
 		return rc;
 	}
 
-	plt_intr_efds_index_set(intr_handle, vec, fd);
+	rc = plt_intr_efds_index_set(intr_handle, vec, fd);
+	if (rc)
+		return rc;
+
 	nb_efd = (vec > (uint32_t)plt_intr_nb_efd_get(intr_handle)) ?
 		vec : (uint32_t)plt_intr_nb_efd_get(intr_handle);
 	plt_intr_nb_efd_set(intr_handle, nb_efd);

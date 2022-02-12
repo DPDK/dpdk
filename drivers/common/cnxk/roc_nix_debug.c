@@ -52,7 +52,9 @@ nix_bitmap_dump(struct plt_bitmap *bmp)
 	int i;
 
 	plt_bitmap_scan_init(bmp);
-	plt_bitmap_scan(bmp, &pos, &slab);
+	if (!plt_bitmap_scan(bmp, &pos, &slab))
+		return;
+
 	start_pos = pos;
 
 	nix_dump_no_nl("  \t\t[");
