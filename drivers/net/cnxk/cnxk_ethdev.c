@@ -177,7 +177,7 @@ nix_meter_fini(struct cnxk_eth_dev *dev)
 	struct roc_nix *nix = &dev->nix;
 	struct roc_nix_rq *rq;
 	uint32_t i;
-	int rc;
+	int rc = 0;
 
 	RTE_TAILQ_FOREACH_SAFE(mtr, fms, next, next_mtr) {
 		for (i = 0; i < mtr->rq_num; i++) {
