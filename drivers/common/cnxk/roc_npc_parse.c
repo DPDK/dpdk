@@ -38,6 +38,7 @@ npc_parse_cpt_hdr(struct npc_parse_state *pst)
 	info.hw_hdr_len = 0;
 
 	/* Prepare for parsing the item */
+	info.def_mask = NULL;
 	info.hw_mask = &hw_mask;
 	info.len = pst->pattern->size;
 	npc_get_hw_supp_mask(pst, &info, lid, lt);
@@ -75,6 +76,7 @@ npc_parse_higig2_hdr(struct npc_parse_state *pst)
 	}
 
 	/* Prepare for parsing the item */
+	info.def_mask = NULL;
 	info.hw_mask = &hw_mask;
 	info.len = pst->pattern->size;
 	npc_get_hw_supp_mask(pst, &info, lid, lt);
@@ -121,6 +123,7 @@ npc_parse_la(struct npc_parse_state *pst)
 	}
 
 	/* Prepare for parsing the item */
+	info.def_mask = NULL;
 	info.hw_mask = &hw_mask;
 	info.len = pst->pattern->size;
 	npc_get_hw_supp_mask(pst, &info, lid, lt);
@@ -179,6 +182,7 @@ npc_parse_lb(struct npc_parse_state *pst)
 	int nr_vlans = 0;
 	int rc;
 
+	info.def_mask = NULL;
 	info.spec = NULL;
 	info.mask = NULL;
 	info.def_mask = NULL;
@@ -307,12 +311,12 @@ npc_parse_mpls_label_stack(struct npc_parse_state *pst, int *flag)
 	 * pst->pattern points to first MPLS label. We only check
 	 * that subsequent labels do not have anything to match.
 	 */
+	info.def_mask = NULL;
 	info.hw_mask = NULL;
 	info.len = pattern->size;
 	info.spec = NULL;
 	info.mask = NULL;
 	info.hw_hdr_len = 0;
-	info.def_mask = NULL;
 
 	while (pattern->type == ROC_NPC_ITEM_TYPE_MPLS) {
 		nr_labels++;
@@ -358,6 +362,7 @@ npc_parse_mpls(struct npc_parse_state *pst, int lid)
 	info.len = pst->pattern->size;
 	info.spec = NULL;
 	info.mask = NULL;
+	info.def_mask = NULL;
 	info.hw_hdr_len = 0;
 
 	npc_get_hw_supp_mask(pst, &info, lid, lt);
@@ -405,6 +410,7 @@ npc_parse_lc(struct npc_parse_state *pst)
 	if (pst->pattern->type == ROC_NPC_ITEM_TYPE_MPLS)
 		return npc_parse_mpls(pst, NPC_LID_LC);
 
+	info.def_mask = NULL;
 	info.hw_mask = &hw_mask;
 	info.spec = NULL;
 	info.mask = NULL;
@@ -492,10 +498,10 @@ npc_parse_ld(struct npc_parse_state *pst)
 			return npc_parse_mpls(pst, NPC_LID_LD);
 		return 0;
 	}
+	info.def_mask = NULL;
 	info.hw_mask = &hw_mask;
 	info.spec = NULL;
 	info.mask = NULL;
-	info.def_mask = NULL;
 	info.len = 0;
 	info.hw_hdr_len = 0;
 
@@ -651,6 +657,7 @@ npc_parse_lf(struct npc_parse_state *pst)
 	lflags = 0;
 
 	/* No match support for vlan tags */
+	info.def_mask = NULL;
 	info.hw_mask = NULL;
 	info.len = pst->pattern->size;
 	info.spec = NULL;
@@ -709,6 +716,7 @@ npc_parse_lg(struct npc_parse_state *pst)
 	if (!pst->tunnel)
 		return 0;
 
+	info.def_mask = NULL;
 	info.hw_mask = &hw_mask;
 	info.spec = NULL;
 	info.mask = NULL;
@@ -745,6 +753,7 @@ npc_parse_lh(struct npc_parse_state *pst)
 	if (!pst->tunnel)
 		return 0;
 
+	info.def_mask = NULL;
 	info.hw_mask = &hw_mask;
 	info.spec = NULL;
 	info.mask = NULL;
