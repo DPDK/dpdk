@@ -560,7 +560,7 @@ cnxk_tim_parse_ring_ctl_list(const char *value, void *opaque)
 	char *f = s;
 
 	if (s == NULL || !strlen(s))
-		return;
+		goto free;
 
 	while (*s) {
 		if (*s == '[')
@@ -579,6 +579,7 @@ cnxk_tim_parse_ring_ctl_list(const char *value, void *opaque)
 		s++;
 	}
 
+free:
 	free(f);
 }
 
@@ -607,7 +608,7 @@ cnxk_tim_parse_clk_list(const char *value, void *opaque)
 	int i = 0;
 
 	if (str == NULL || !strlen(str))
-		return;
+		goto free;
 
 	tok = strtok(str, "-");
 	while (tok != NULL && src[i] != ROC_TIM_CLK_SRC_INVALID) {
@@ -616,6 +617,7 @@ cnxk_tim_parse_clk_list(const char *value, void *opaque)
 		i++;
 	}
 
+free:
 	free(str);
 }
 
