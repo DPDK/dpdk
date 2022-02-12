@@ -63,7 +63,7 @@ cnxk_tim_timer_arm_burst(const struct rte_event_timer_adapter *adptr,
 	struct cnxk_tim_ring *tim_ring = adptr->data->adapter_priv;
 	struct cnxk_tim_ent entry;
 	uint16_t index;
-	int ret;
+	int ret = 0;
 
 	cnxk_tim_sync_start_cyc(tim_ring);
 	for (index = 0; index < nb_timers; index++) {
