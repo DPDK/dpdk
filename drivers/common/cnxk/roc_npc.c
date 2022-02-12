@@ -969,14 +969,14 @@ npc_vtag_insert_action_configure(struct mbox *mbox, struct roc_npc_flow *flow,
 	vtag_cfg->cfg_type = VTAG_TX;
 	vtag_cfg->vtag_size = NIX_VTAGSIZE_T4;
 	vtag_cfg->tx.vtag0 =
-		((vlan_info[0].vlan_ethtype << 16) |
+		(((uint32_t)vlan_info[0].vlan_ethtype << 16) |
 		 (vlan_info[0].vlan_pcp << 13) | vlan_info[0].vlan_id);
 
 	vtag_cfg->tx.cfg_vtag0 = 1;
 
 	if (flow->vtag_insert_count == 2) {
 		vtag_cfg->tx.vtag1 =
-			((vlan_info[1].vlan_ethtype << 16) |
+			(((uint32_t)vlan_info[1].vlan_ethtype << 16) |
 			 (vlan_info[1].vlan_pcp << 13) | vlan_info[1].vlan_id);
 
 		vtag_cfg->tx.cfg_vtag1 = 1;
