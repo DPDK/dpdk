@@ -765,6 +765,9 @@ cnxk_nix_tel_handle_info_x(const char *cmd, const char *params,
 
 	plt_strlcpy(buf, params, PCI_PRI_STR_SIZE + 1);
 	name = strtok(buf, ",");
+	if (name == NULL)
+		goto exit;
+
 	param = strtok(NULL, "\0");
 
 	node = nix_tel_node_get_by_pcidev_name(name);
