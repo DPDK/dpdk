@@ -1532,11 +1532,6 @@ void mlx5_set_metadata_mask(struct rte_eth_dev *dev);
 int mlx5_dev_check_sibling_config(struct mlx5_priv *priv,
 				  struct mlx5_dev_config *config,
 				  struct rte_device *dpdk_dev);
-int mlx5_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *info);
-int mlx5_fw_version_get(struct rte_eth_dev *dev, char *fw_ver, size_t fw_size);
-int mlx5_dev_set_mtu(struct rte_eth_dev *dev, uint16_t mtu);
-int mlx5_hairpin_cap_get(struct rte_eth_dev *dev,
-			 struct rte_eth_hairpin_cap *cap);
 bool mlx5_flex_parser_ecpri_exist(struct rte_eth_dev *dev);
 int mlx5_flex_parser_ecpri_alloc(struct rte_eth_dev *dev);
 int mlx5_flow_aso_age_mng_init(struct mlx5_dev_ctx_shared *sh);
@@ -1556,10 +1551,8 @@ int mlx5_representor_info_get(struct rte_eth_dev *dev,
 		(((repr_id) >> 12) & 3)
 uint16_t mlx5_representor_id_encode(const struct mlx5_switch_info *info,
 				    enum rte_eth_representor_type hpf_type);
-int mlx5_fw_version_get(struct rte_eth_dev *dev, char *fw_ver,
-			size_t fw_size);
-int mlx5_dev_infos_get(struct rte_eth_dev *dev,
-		       struct rte_eth_dev_info *info);
+int mlx5_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *info);
+int mlx5_fw_version_get(struct rte_eth_dev *dev, char *fw_ver, size_t fw_size);
 const uint32_t *mlx5_dev_supported_ptypes_get(struct rte_eth_dev *dev);
 int mlx5_dev_set_mtu(struct rte_eth_dev *dev, uint16_t mtu);
 int mlx5_hairpin_cap_get(struct rte_eth_dev *dev,
