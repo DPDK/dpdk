@@ -155,7 +155,7 @@ mlx5_flow_meter_profile_validate(struct rte_eth_dev *dev,
 					  "Meter profile already exists.");
 	if (!priv->sh->meter_aso_en) {
 		/* Old version is even not supported. */
-		if (!priv->config.hca_attr.qos.flow_meter_old)
+		if (!priv->sh->cdev->config.hca_attr.qos.flow_meter_old)
 			return -rte_mtr_error_set(error, ENOTSUP,
 				RTE_MTR_ERROR_TYPE_METER_PROFILE,
 				NULL, "Metering is not supported.");
@@ -428,7 +428,7 @@ mlx5_flow_mtr_cap_get(struct rte_eth_dev *dev,
 		 struct rte_mtr_error *error __rte_unused)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5_hca_qos_attr *qattr = &priv->config.hca_attr.qos;
+	struct mlx5_hca_qos_attr *qattr = &priv->sh->cdev->config.hca_attr.qos;
 
 	if (!priv->mtr_en)
 		return -rte_mtr_error_set(error, ENOTSUP,

@@ -299,7 +299,6 @@ struct mlx5_dev_config {
 	int txq_inline_mpw; /* Max packet size for inlining with eMPW. */
 	int tx_pp; /* Timestamp scheduling granularity in nanoseconds. */
 	int tx_skew; /* Tx scheduling skew between WQE and data on wire. */
-	struct mlx5_hca_attr hca_attr; /* HCA attributes. */
 	struct mlx5_lro_config lro; /* LRO configuration. */
 };
 

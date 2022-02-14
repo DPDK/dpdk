@@ -889,7 +889,7 @@ mlx5_flex_parser_ecpri_alloc(struct rte_eth_dev *dev)
 	uint32_t ids[8];
 	int ret;
 
-	if (!priv->config.hca_attr.parse_graph_flex_node) {
+	if (!priv->sh->cdev->config.hca_attr.parse_graph_flex_node) {
 		DRV_LOG(ERR, "Dynamic flex parser is not supported "
 			"for device %s.", priv->dev_data->name);
 		return -ENOTSUP;
@@ -2035,6 +2035,8 @@ void
 mlx5_set_min_inline(struct mlx5_dev_spawn_data *spawn,
 		    struct mlx5_dev_config *config)
 {
+	struct mlx5_hca_attr *hca_attr = &spawn->cdev->config.hca_attr;
+
 	if (config->txq_inline_min != MLX5_ARG_UNSET) {
 		/* Application defines size of inlined data explicitly. */
 		if (spawn->pci_dev != NULL) {
@@ -2054,9 +2056,9 @@ mlx5_set_min_inline(struct mlx5_dev_spawn_data *spawn,
 		}
 		goto exit;
 	}
-	if (config->hca_attr.eth_net_offloads) {
+	if (hca_attr->eth_net_offloads) {
 		/* We have DevX enabled, inline mode queried successfully. */
-		switch (config->hca_attr.wqe_inline_mode) {
+		switch (hca_attr->wqe_inline_mode) {
 		case MLX5_CAP_INLINE_MODE_L2:
 			/* outer L2 header must be inlined. */
 			config->txq_inline_min = MLX5_INLINE_HSIZE_L2;
@@ -2065,14 +2067,14 @@ mlx5_set_min_inline(struct mlx5_dev_spawn_data *spawn,
 			/* No inline data are required by NIC. */
 			config->txq_inline_min = MLX5_INLINE_HSIZE_NONE;
 			config->hw_vlan_insert =
-				config->hca_attr.wqe_vlan_insert;
+				hca_attr->wqe_vlan_insert;
 			DRV_LOG(DEBUG, "Tx VLAN insertion is supported");
 			goto exit;
 		case MLX5_CAP_INLINE_MODE_VPORT_CONTEXT:
 			/* inline mode is defined by NIC vport context. */
-			if (!config->hca_attr.eth_virt)
+			if (!hca_attr->eth_virt)
 				break;
-			switch (config->hca_attr.vport_inline_mode) {
+			switch (hca_attr->vport_inline_mode) {
 			case MLX5_INLINE_MODE_NONE:
 				config->txq_inline_min =
 					MLX5_INLINE_HSIZE_NONE;

@@ -2906,7 +2906,7 @@ mlx5_flow_validate_item_geneve(const struct rte_flow_item *item,
 	const struct rte_flow_item_geneve *mask = item->mask;
 	int ret;
 	uint16_t gbhdr;
-	uint8_t opt_len = priv->config.hca_attr.geneve_max_opt_len ?
+	uint8_t opt_len = priv->sh->cdev->config.hca_attr.geneve_max_opt_len ?
 			  MLX5_GENEVE_OPT_LEN_1 : MLX5_GENEVE_OPT_LEN_0;
 	const struct rte_flow_item_geneve nic_mask = {
 		.ver_opt_len_o_c_rsvd0 = RTE_BE16(0x3f80),
@@ -2914,7 +2914,7 @@ mlx5_flow_validate_item_geneve(const struct rte_flow_item *item,
 		.protocol = RTE_BE16(UINT16_MAX),
 	};
 
-	if (!priv->config.hca_attr.tunnel_stateless_geneve_rx)
+	if (!priv->sh->cdev->config.hca_attr.tunnel_stateless_geneve_rx)
 		return rte_flow_error_set(error, ENOTSUP,
 					  RTE_FLOW_ERROR_TYPE_ITEM, item,
 					  "L3 Geneve is not enabled by device"
@@ -2994,10 +2994,9 @@ mlx5_flow_validate_item_geneve_opt(const struct rte_flow_item *item,
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_dev_ctx_shared *sh = priv->sh;
 	struct mlx5_geneve_tlv_option_resource *geneve_opt_resource;
-	struct mlx5_hca_attr *hca_attr = &priv->config.hca_attr;
+	struct mlx5_hca_attr *hca_attr = &sh->cdev->config.hca_attr;
 	uint8_t data_max_supported =
 			hca_attr->max_geneve_tlv_option_data_len * 4;
-	struct mlx5_dev_config *config = &priv->config;
 	const struct rte_flow_item_geneve *geneve_spec;
 	const struct rte_flow_item_geneve *geneve_mask;
 	const struct rte_flow_item_geneve_opt *spec = item->spec;
@@ -3031,11 +3030,11 @@ mlx5_flow_validate_item_geneve_opt(const struct rte_flow_item *item,
 			"Geneve TLV opt class/type/length masks must be full");
 	/* Check if length is supported */
 	if ((uint32_t)spec->option_len >
-			config->hca_attr.max_geneve_tlv_option_data_len)
+			hca_attr->max_geneve_tlv_option_data_len)
 		return rte_flow_error_set
 			(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_ITEM, item,
 			"Geneve TLV opt length not supported");
-	if (config->hca_attr.max_geneve_tlv_options > 1)
+	if (hca_attr->max_geneve_tlv_options > 1)
 		DRV_LOG(DEBUG,
 			"max_geneve_tlv_options supports more than 1 option");
 	/* Check GENEVE item preceding. */
@@ -3090,7 +3089,7 @@ mlx5_flow_validate_item_geneve_opt(const struct rte_flow_item *item,
 					"Data mask is of unsupported size");
 	}
 	/* Check GENEVE option is supported in NIC. */
-	if (!config->hca_attr.geneve_tlv_opt)
+	if (!hca_attr->geneve_tlv_opt)
 		return rte_flow_error_set
 			(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_ITEM, item,
 			"Geneve TLV opt not supported");
@@ -6249,7 +6248,8 @@ flow_create_split_sample(struct rte_eth_dev *dev,
 		 * When reg_c_preserve is set, metadata registers Cx preserve
 		 * their value even through packet duplication.
 		 */
-		add_tag = (!fdb_tx || priv->config.hca_attr.reg_c_preserve);
+		add_tag = (!fdb_tx ||
+			   priv->sh->cdev->config.hca_attr.reg_c_preserve);
 		if (add_tag)
 			sfx_items = (struct rte_flow_item *)((char *)sfx_actions
 					+ act_size);

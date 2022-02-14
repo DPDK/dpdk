@@ -268,6 +268,7 @@ mlx5_flow_counter_mode_config(struct rte_eth_dev *dev __rte_unused)
 #ifdef HAVE_IBV_FLOW_DV_SUPPORT
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_dev_ctx_shared *sh = priv->sh;
+	struct mlx5_hca_attr *hca_attr = &sh->cdev->config.hca_attr;
 	bool fallback;
 
 #ifndef HAVE_IBV_DEVX_ASYNC
@@ -275,16 +276,16 @@ mlx5_flow_counter_mode_config(struct rte_eth_dev *dev __rte_unused)
 #else
 	fallback = false;
 	if (!sh->devx || !priv->config.dv_flow_en ||
-	    !priv->config.hca_attr.flow_counters_dump ||
-	    !(priv->config.hca_attr.flow_counter_bulk_alloc_bitmap & 0x4) ||
+	    !hca_attr->flow_counters_dump ||
+	    !(hca_attr->flow_counter_bulk_alloc_bitmap & 0x4) ||
 	    (mlx5_flow_dv_discover_counter_offset_support(dev) == -ENOTSUP))
 		fallback = true;
 #endif
 	if (fallback)
 		DRV_LOG(INFO, "Use fall-back DV counter management. Flow "
 			"counter dump:%d, bulk_alloc_bitmap:0x%hhx.",
-			priv->config.hca_attr.flow_counters_dump,
-			priv->config.hca_attr.flow_counter_bulk_alloc_bitmap);
+			hca_attr->flow_counters_dump,
+			hca_attr->flow_counter_bulk_alloc_bitmap);
 	/* Initialize fallback mode only on the port initializes sh. */
 	if (sh->refcnt == 1)
 		sh->cmng.counter_fallback = fallback;
@@ -318,6 +319,7 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 	const struct mlx5_switch_info *switch_info = &spawn->info;
 	struct mlx5_dev_ctx_shared *sh = NULL;
 	struct mlx5_dev_attr device_attr;
+	struct mlx5_hca_attr *hca_attr;
 	struct rte_eth_dev *eth_dev = NULL;
 	struct mlx5_priv *priv = NULL;
 	int err = 0;
@@ -475,19 +477,19 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 		config->cqe_comp = 0;
 	}
 	if (sh->devx) {
-		config->hca_attr = sh->cdev->config.hca_attr;
-		config->hw_csum = config->hca_attr.csum_cap;
+		hca_attr = &sh->cdev->config.hca_attr;
+		config->hw_csum = hca_attr->csum_cap;
 		DRV_LOG(DEBUG, "checksum offloading is %ssupported",
-		    (config->hw_csum ? "" : "not "));
-		config->hw_vlan_strip = config->hca_attr.vlan_cap;
+			(config->hw_csum ? "" : "not "));
+		config->hw_vlan_strip = hca_attr->vlan_cap;
 		DRV_LOG(DEBUG, "VLAN stripping is %ssupported",
 			(config->hw_vlan_strip ? "" : "not "));
-		config->hw_fcs_strip = config->hca_attr.scatter_fcs;
+		config->hw_fcs_strip = hca_attr->scatter_fcs;
 	}
 	if (sh->devx) {
 		uint32_t reg[MLX5_ST_SZ_DW(register_mtutc)];
 
-		err = config->hca_attr.access_register_user ?
+		err = hca_attr->access_register_user ?
 			mlx5_devx_cmd_register_read
 				(sh->cdev->ctx, MLX5_REGISTER_ID_MTUTC, 0,
 				reg, MLX5_ST_SZ_DW(register_mtutc)) : ENOTSUP;
@@ -501,8 +503,7 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 				config->rt_timestamp = 1;
 		} else {
 			/* Kernel does not support register reading. */
-			if (config->hca_attr.dev_freq_khz ==
-						 (NS_PER_S / MS_PER_S))
+			if (hca_attr->dev_freq_khz == (NS_PER_S / MS_PER_S))
 				config->rt_timestamp = 1;
 		}
 	}

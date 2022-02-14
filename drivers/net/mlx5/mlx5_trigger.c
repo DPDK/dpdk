@@ -341,14 +341,16 @@ mlx5_hairpin_auto_bind(struct rte_eth_dev *dev)
 		sq_attr.state = MLX5_SQC_STATE_RDY;
 		sq_attr.sq_state = MLX5_SQC_STATE_RST;
 		sq_attr.hairpin_peer_rq = rq->id;
-		sq_attr.hairpin_peer_vhca = priv->config.hca_attr.vhca_id;
+		sq_attr.hairpin_peer_vhca =
+				priv->sh->cdev->config.hca_attr.vhca_id;
 		ret = mlx5_devx_cmd_modify_sq(sq, &sq_attr);
 		if (ret)
 			goto error;
 		rq_attr.state = MLX5_SQC_STATE_RDY;
 		rq_attr.rq_state = MLX5_SQC_STATE_RST;
 		rq_attr.hairpin_peer_sq = sq->id;
-		rq_attr.hairpin_peer_vhca = priv->config.hca_attr.vhca_id;
+		rq_attr.hairpin_peer_vhca =
+				priv->sh->cdev->config.hca_attr.vhca_id;
 		ret = mlx5_devx_cmd_modify_rq(rq, &rq_attr);
 		if (ret)
 			goto error;
@@ -425,7 +427,7 @@ mlx5_hairpin_queue_peer_update(struct rte_eth_dev *dev, uint16_t peer_queue,
 			return -rte_errno;
 		}
 		peer_info->qp_id = txq_ctrl->obj->sq->id;
-		peer_info->vhca_id = priv->config.hca_attr.vhca_id;
+		peer_info->vhca_id = priv->sh->cdev->config.hca_attr.vhca_id;
 		/* 1-to-1 mapping, only the first one is used. */
 		peer_info->peer_q = txq_ctrl->hairpin_conf.peers[0].queue;
 		peer_info->tx_explicit = txq_ctrl->hairpin_conf.tx_explicit;
@@ -455,7 +457,7 @@ mlx5_hairpin_queue_peer_update(struct rte_eth_dev *dev, uint16_t peer_queue,
 			return -rte_errno;
 		}
 		peer_info->qp_id = rxq_ctrl->obj->rq->id;
-		peer_info->vhca_id = priv->config.hca_attr.vhca_id;
+		peer_info->vhca_id = priv->sh->cdev->config.hca_attr.vhca_id;
 		peer_info->peer_q = rxq->hairpin_conf.peers[0].queue;
 		peer_info->tx_explicit = rxq->hairpin_conf.tx_explicit;
 		peer_info->manual_bind = rxq->hairpin_conf.manual_bind;
@@ -817,7 +819,7 @@ mlx5_hairpin_bind_single_port(struct rte_eth_dev *dev, uint16_t rx_port)
 		/* Pass TxQ's information to peer RxQ and try binding. */
 		cur.peer_q = rx_queue;
 		cur.qp_id = txq_ctrl->obj->sq->id;
-		cur.vhca_id = priv->config.hca_attr.vhca_id;
+		cur.vhca_id = priv->sh->cdev->config.hca_attr.vhca_id;
 		cur.tx_explicit = txq_ctrl->hairpin_conf.tx_explicit;
 		cur.manual_bind = txq_ctrl->hairpin_conf.manual_bind;
 		/*

@@ -910,7 +910,7 @@ mlx5_flex_translate_sample(struct mlx5_hca_flex_attr *attr,
 	 * offsets in any order.
 	 *
 	 * Gather all similar fields together, build array of bit intervals
-	 * in asсending order and try to cover with the smallest set of sample
+	 * in ascending order and try to cover with the smallest set of sample
 	 * registers.
 	 */
 	memset(&cover, 0, sizeof(cover));
@@ -1153,7 +1153,7 @@ mlx5_flex_translate_conf(struct rte_eth_dev *dev,
 			 struct rte_flow_error *error)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5_hca_flex_attr *attr = &priv->config.hca_attr.flex;
+	struct mlx5_hca_flex_attr *attr = &priv->sh->cdev->config.hca_attr.flex;
 	int ret;
 
 	ret = mlx5_flex_translate_length(attr, conf, devx, error);

@@ -825,7 +825,7 @@ mlx5_txpp_create(struct mlx5_dev_ctx_shared *sh, struct mlx5_priv *priv)
 	sh->txpp.tick = tx_pp >= 0 ? tx_pp : -tx_pp;
 	sh->txpp.test = !!(tx_pp < 0);
 	sh->txpp.skew = priv->config.tx_skew;
-	sh->txpp.freq = priv->config.hca_attr.dev_freq_khz;
+	sh->txpp.freq = sh->cdev->config.hca_attr.dev_freq_khz;
 	ret = mlx5_txpp_create_event_channel(sh);
 	if (ret)
 		goto exit;

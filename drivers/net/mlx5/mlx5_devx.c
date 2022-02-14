@@ -419,7 +419,8 @@ mlx5_rxq_obj_hairpin_new(struct mlx5_rxq_priv *rxq)
 	MLX5_ASSERT(rxq != NULL && rxq->ctrl != NULL && tmpl != NULL);
 	tmpl->rxq_ctrl = rxq_ctrl;
 	attr.hairpin = 1;
-	max_wq_data = priv->config.hca_attr.log_max_hairpin_wq_data_sz;
+	max_wq_data =
+		priv->sh->cdev->config.hca_attr.log_max_hairpin_wq_data_sz;
 	/* Jumbo frames > 9KB should be supported, and more packets. */
 	if (priv->config.log_hp_size != (uint32_t)MLX5_ARG_UNSET) {
 		if (priv->config.log_hp_size > max_wq_data) {
@@ -1117,7 +1118,8 @@ mlx5_txq_obj_hairpin_new(struct rte_eth_dev *dev, uint16_t idx)
 	tmpl->txq_ctrl = txq_ctrl;
 	attr.hairpin = 1;
 	attr.tis_lst_sz = 1;
-	max_wq_data = priv->config.hca_attr.log_max_hairpin_wq_data_sz;
+	max_wq_data =
+		priv->sh->cdev->config.hca_attr.log_max_hairpin_wq_data_sz;
 	/* Jumbo frames > 9KB should be supported, and more packets. */
 	if (priv->config.log_hp_size != (uint32_t)MLX5_ARG_UNSET) {
 		if (priv->config.log_hp_size > max_wq_data) {
@@ -1193,7 +1195,7 @@ mlx5_txq_create_devx_sq_resources(struct rte_eth_dev *dev, uint16_t idx,
 	struct mlx5_devx_create_sq_attr sq_attr = {
 		.flush_in_error_en = 1,
 		.allow_multi_pkt_send_wqe = !!priv->config.mps,
-		.min_wqe_inline_mode = priv->config.hca_attr.vport_inline_mode,
+		.min_wqe_inline_mode = cdev->config.hca_attr.vport_inline_mode,
 		.allow_swp = !!priv->config.swp,
 		.cqn = txq_obj->cq_obj.cq->id,
 		.tis_lst_sz = 1,

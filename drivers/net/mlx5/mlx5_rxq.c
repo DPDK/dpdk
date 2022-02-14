@@ -863,7 +863,7 @@ mlx5_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 		MLX5_ASSERT(n_seg < MLX5_MAX_RXQ_NSEG);
 	}
 	if (conf->share_group > 0) {
-		if (!priv->config.hca_attr.mem_rq_rmp) {
+		if (!priv->sh->cdev->config.hca_attr.mem_rq_rmp) {
 			DRV_LOG(ERR, "port %u queue index %u shared Rx queue not supported by fw",
 				     dev->data->port_id, idx);
 			rte_errno = EINVAL;
@@ -1517,7 +1517,7 @@ mlx5_max_lro_msg_size_adjust(struct rte_eth_dev *dev, uint16_t idx,
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 
-	if (priv->config.hca_attr.lro_max_msg_sz_mode ==
+	if (priv->sh->cdev->config.hca_attr.lro_max_msg_sz_mode ==
 	    MLX5_LRO_MAX_MSG_SIZE_START_FROM_L4 && max_lro_size >
 	    MLX5_MAX_TCP_HDR_OFFSET)
 		max_lro_size -= MLX5_MAX_TCP_HDR_OFFSET;

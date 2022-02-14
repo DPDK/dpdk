@@ -2317,7 +2317,7 @@ flow_dv_validate_item_gtp(struct rte_eth_dev *dev,
 		.teid = RTE_BE32(0xffffffff),
 	};
 
-	if (!priv->config.hca_attr.tunnel_stateless_gtp)
+	if (!priv->sh->cdev->config.hca_attr.tunnel_stateless_gtp)
 		return rte_flow_error_set(error, ENOTSUP,
 					  RTE_FLOW_ERROR_TYPE_ITEM, item,
 					  "GTP support is not enabled");
@@ -2426,6 +2426,7 @@ flow_dv_validate_item_ipv4(struct rte_eth_dev *dev,
 {
 	int ret;
 	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_hca_attr *attr = &priv->sh->cdev->config.hca_attr;
 	const struct rte_flow_item_ipv4 *spec = item->spec;
 	const struct rte_flow_item_ipv4 *last = item->last;
 	const struct rte_flow_item_ipv4 *mask = item->mask;
@@ -2444,8 +2445,8 @@ flow_dv_validate_item_ipv4(struct rte_eth_dev *dev,
 
 	if (mask && (mask->hdr.version_ihl & RTE_IPV4_HDR_IHL_MASK)) {
 		int tunnel = !!(item_flags & MLX5_FLOW_LAYER_TUNNEL);
-		bool ihl_cap = !tunnel ? priv->config.hca_attr.outer_ipv4_ihl :
-			       priv->config.hca_attr.inner_ipv4_ihl;
+		bool ihl_cap = !tunnel ?
+			       attr->outer_ipv4_ihl : attr->inner_ipv4_ihl;
 		if (!ihl_cap)
 			return rte_flow_error_set(error, ENOTSUP,
 						  RTE_FLOW_ERROR_TYPE_ITEM,
@@ -3384,7 +3385,7 @@ flow_dv_validate_action_decap(struct rte_eth_dev *dev,
 {
 	const struct mlx5_priv *priv = dev->data->dev_private;
 
-	if (priv->config.hca_attr.scatter_fcs_w_decap_disable &&
+	if (priv->sh->cdev->config.hca_attr.scatter_fcs_w_decap_disable &&
 	    !priv->config.decap_en)
 		return rte_flow_error_set(error, ENOTSUP,
 					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
@@ -5753,7 +5754,7 @@ flow_dv_validate_action_sample(uint64_t *action_flags,
 						  NULL,
 						  "E-Switch must has a dest "
 						  "port for mirroring");
-		if (!priv->config.hca_attr.reg_c_preserve &&
+		if (!priv->sh->cdev->config.hca_attr.reg_c_preserve &&
 		     priv->representor_id != UINT16_MAX)
 			*fdb_mirror_limit = 1;
 	}
@@ -6686,7 +6687,7 @@ flow_dv_validate_item_integrity(struct rte_eth_dev *dev,
 	const struct rte_flow_item_integrity *spec = (typeof(spec))
 						     integrity_item->spec;
 
-	if (!priv->config.hca_attr.pkt_integrity_match)
+	if (!priv->sh->cdev->config.hca_attr.pkt_integrity_match)
 		return rte_flow_error_set(error, ENOTSUP,
 					  RTE_FLOW_ERROR_TYPE_ITEM,
 					  integrity_item,
