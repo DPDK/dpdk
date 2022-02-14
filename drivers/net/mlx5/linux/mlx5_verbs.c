@@ -998,7 +998,7 @@ mlx5_txq_ibv_obj_new(struct rte_eth_dev *dev, uint16_t idx)
 	qp.comp_mask = MLX5DV_QP_MASK_UAR_MMAP_OFFSET;
 #ifdef HAVE_IBV_FLOW_DV_SUPPORT
 	/* If using DevX, need additional mask to read tisn value. */
-	if (priv->sh->devx && !priv->sh->tdn)
+	if (priv->sh->cdev->config.devx && !priv->sh->tdn)
 		qp.comp_mask |= MLX5DV_QP_MASK_RAW_QP_HANDLES;
 #endif
 	obj.cq.in = txq_obj->cq;
@@ -1042,7 +1042,7 @@ mlx5_txq_ibv_obj_new(struct rte_eth_dev *dev, uint16_t idx)
 	 * This is done once per port.
 	 * Will use this value on Rx, when creating matching TIR.
 	 */
-	if (priv->sh->devx && !priv->sh->tdn) {
+	if (priv->sh->cdev->config.devx && !priv->sh->tdn) {
 		ret = mlx5_devx_cmd_qp_query_tis_td(txq_obj->qp, qp.tisn,
 						    &priv->sh->tdn);
 		if (ret) {

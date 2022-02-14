@@ -1182,7 +1182,6 @@ mlx5_alloc_shared_dev_ctx(const struct mlx5_dev_spawn_data *spawn,
 	pthread_mutex_init(&sh->txpp.mutex, NULL);
 	sh->numa_node = spawn->cdev->dev->numa_node;
 	sh->cdev = spawn->cdev;
-	sh->devx = sh->cdev->config.devx;
 	if (spawn->bond_info)
 		sh->bond = *spawn->bond_info;
 	err = mlx5_os_get_dev_attr(sh->cdev, &sh->device_attr);
@@ -1205,7 +1204,7 @@ mlx5_alloc_shared_dev_ctx(const struct mlx5_dev_spawn_data *spawn,
 		sh->port[i].ih_port_id = RTE_MAX_ETHPORTS;
 		sh->port[i].devx_ih_port_id = RTE_MAX_ETHPORTS;
 	}
-	if (sh->devx) {
+	if (sh->cdev->config.devx) {
 		sh->td = mlx5_devx_cmd_create_td(sh->cdev->ctx);
 		if (!sh->td) {
 			DRV_LOG(ERR, "TD allocation failure");

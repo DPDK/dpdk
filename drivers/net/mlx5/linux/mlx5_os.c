@@ -682,7 +682,7 @@ mlx5_flow_counter_mode_config(struct rte_eth_dev *dev __rte_unused)
 	fallback = true;
 #else
 	fallback = false;
-	if (!sh->devx || !priv->config.dv_flow_en ||
+	if (!sh->cdev->config.devx || !priv->config.dv_flow_en ||
 	    !hca_attr->flow_counters_dump ||
 	    !(hca_attr->flow_counter_bulk_alloc_bitmap & 0x4) ||
 	    (mlx5_flow_dv_discover_counter_offset_support(dev) == -ENOTSUP))
@@ -1316,7 +1316,7 @@ err_secondary:
 		config->mps == MLX5_MPW_ENHANCED ? "enhanced " :
 		config->mps == MLX5_MPW ? "legacy " : "",
 		config->mps != MLX5_MPW_DISABLED ? "enabled" : "disabled");
-	if (sh->devx) {
+	if (sh->cdev->config.devx) {
 		sh->steering_format_version = hca_attr->steering_format_version;
 		/* Check for LRO support. */
 		if (config->dest_tir && hca_attr->lro_cap &&
@@ -1434,13 +1434,13 @@ err_secondary:
 		config->cqe_comp = 0;
 	}
 	if (config->cqe_comp_fmt == MLX5_CQE_RESP_FORMAT_FTAG_STRIDX &&
-	    (!sh->devx || !hca_attr->mini_cqe_resp_flow_tag)) {
+	    (!sh->cdev->config.devx || !hca_attr->mini_cqe_resp_flow_tag)) {
 		DRV_LOG(WARNING, "Flow Tag CQE compression"
 				 " format isn't supported.");
 		config->cqe_comp = 0;
 	}
 	if (config->cqe_comp_fmt == MLX5_CQE_RESP_FORMAT_L34H_STRIDX &&
-	    (!sh->devx || !hca_attr->mini_cqe_resp_l3_l4_tag)) {
+	    (!sh->cdev->config.devx || !hca_attr->mini_cqe_resp_l3_l4_tag)) {
 		DRV_LOG(WARNING, "L3/L4 Header CQE compression"
 				 " format isn't supported.");
 		config->cqe_comp = 0;
@@ -1463,7 +1463,7 @@ err_secondary:
 			hca_attr->log_max_static_sq_wq);
 		DRV_LOG(DEBUG, "WQE rate PP mode is %ssupported",
 			hca_attr->qos.wqe_rate_pp ? "" : "not ");
-		if (!sh->devx) {
+		if (!sh->cdev->config.devx) {
 			DRV_LOG(ERR, "DevX is required for packet pacing");
 			err = ENODEV;
 			goto error;
@@ -1519,7 +1519,7 @@ err_secondary:
 				priv->dev_port);
 		}
 	}
-	if (sh->devx) {
+	if (sh->cdev->config.devx) {
 		uint32_t reg[MLX5_ST_SZ_DW(register_mtutc)];
 
 		err = hca_attr->access_register_user ?
@@ -1676,7 +1676,7 @@ err_secondary:
 		if (mlx5_flex_item_port_init(eth_dev) < 0)
 			goto error;
 	}
-	if (sh->devx && config->dv_flow_en && config->dest_tir) {
+	if (sh->cdev->config.devx && config->dv_flow_en && config->dest_tir) {
 		priv->obj_ops = devx_obj_ops;
 		mlx5_queue_counter_id_prepare(eth_dev);
 		priv->obj_ops.lb_dummy_queue_create =
@@ -2735,7 +2735,7 @@ mlx5_os_dev_shared_handler_install(struct mlx5_dev_ctx_shared *sh)
 			rte_intr_fd_set(sh->intr_handle, -1);
 		}
 	}
-	if (sh->devx) {
+	if (sh->cdev->config.devx) {
 #ifdef HAVE_IBV_DEVX_ASYNC
 		sh->intr_handle_devx =
 			rte_intr_instance_alloc(RTE_INTR_INSTANCE_F_SHARED);

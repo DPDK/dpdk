@@ -9965,7 +9965,7 @@ mlx5_flow_discover_priorities(struct rte_eth_dev *dev)
 	type = mlx5_flow_os_get_type();
 	if (type == MLX5_FLOW_TYPE_MAX) {
 		type = MLX5_FLOW_TYPE_VERBS;
-		if (priv->sh->devx && priv->config.dv_flow_en)
+		if (priv->sh->cdev->config.devx && priv->config.dv_flow_en)
 			type = MLX5_FLOW_TYPE_DV;
 	}
 	fops = flow_get_drv_ops(type);

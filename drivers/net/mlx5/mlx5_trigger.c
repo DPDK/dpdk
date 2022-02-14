@@ -1104,7 +1104,7 @@ mlx5_dev_start(struct rte_eth_dev *dev)
 			dev->data->port_id, strerror(rte_errno));
 		goto error;
 	}
-	if ((priv->sh->devx && priv->config.dv_flow_en &&
+	if ((priv->sh->cdev->config.devx && priv->config.dv_flow_en &&
 	    priv->config.dest_tir) && priv->obj_ops.lb_dummy_queue_create) {
 		ret = priv->obj_ops.lb_dummy_queue_create(dev);
 		if (ret)

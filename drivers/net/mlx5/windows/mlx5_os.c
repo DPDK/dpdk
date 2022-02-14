@@ -275,7 +275,7 @@ mlx5_flow_counter_mode_config(struct rte_eth_dev *dev __rte_unused)
 	fallback = true;
 #else
 	fallback = false;
-	if (!sh->devx || !priv->config.dv_flow_en ||
+	if (!sh->cdev->config.devx || !priv->config.dv_flow_en ||
 	    !hca_attr->flow_counters_dump ||
 	    !(hca_attr->flow_counter_bulk_alloc_bitmap & 0x4) ||
 	    (mlx5_flow_dv_discover_counter_offset_support(dev) == -ENOTSUP))
@@ -476,7 +476,7 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 		DRV_LOG(WARNING, "Rx CQE compression isn't supported.");
 		config->cqe_comp = 0;
 	}
-	if (sh->devx) {
+	if (sh->cdev->config.devx) {
 		hca_attr = &sh->cdev->config.hca_attr;
 		config->hw_csum = hca_attr->csum_cap;
 		DRV_LOG(DEBUG, "checksum offloading is %ssupported",
@@ -661,7 +661,7 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 			goto error;
 		}
 	}
-	if (sh->devx) {
+	if (sh->cdev->config.devx) {
 		priv->obj_ops = devx_obj_ops;
 	} else {
 		DRV_LOG(ERR, "Windows flow must be DevX.");
