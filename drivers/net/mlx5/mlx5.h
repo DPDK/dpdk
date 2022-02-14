@@ -1535,6 +1535,7 @@ int mlx5_dev_check_sibling_config(struct mlx5_dev_ctx_shared *sh,
 				  struct rte_device *dpdk_dev);
 bool mlx5_flex_parser_ecpri_exist(struct rte_eth_dev *dev);
 int mlx5_flex_parser_ecpri_alloc(struct rte_eth_dev *dev);
+void mlx5_flow_counter_mode_config(struct rte_eth_dev *dev);
 int mlx5_flow_aso_age_mng_init(struct mlx5_dev_ctx_shared *sh);
 int mlx5_aso_flow_mtrs_mng_init(struct mlx5_dev_ctx_shared *sh);
 int mlx5_flow_aso_ct_mng_init(struct mlx5_dev_ctx_shared *sh);

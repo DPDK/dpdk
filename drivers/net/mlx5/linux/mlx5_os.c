@@ -674,46 +674,6 @@ out:
 }
 
 /**
- * DV flow counter mode detect and config.
- *
- * @param dev
- *   Pointer to rte_eth_dev structure.
- *
- */
-static void
-mlx5_flow_counter_mode_config(struct rte_eth_dev *dev __rte_unused)
-{
-#ifdef HAVE_IBV_FLOW_DV_SUPPORT
-	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5_dev_ctx_shared *sh = priv->sh;
-	struct mlx5_hca_attr *hca_attr = &sh->cdev->config.hca_attr;
-	bool fallback;
-
-#ifndef HAVE_IBV_DEVX_ASYNC
-	fallback = true;
-#else
-	fallback = false;
-	if (!sh->cdev->config.devx || !priv->config.dv_flow_en ||
-	    !hca_attr->flow_counters_dump ||
-	    !(hca_attr->flow_counter_bulk_alloc_bitmap & 0x4) ||
-	    (mlx5_flow_dv_discover_counter_offset_support(dev) == -ENOTSUP))
-		fallback = true;
-#endif
-	if (fallback)
-		DRV_LOG(INFO, "Use fall-back DV counter management. Flow "
-			"counter dump:%d, bulk_alloc_bitmap:0x%hhx.",
-			hca_attr->flow_counters_dump,
-			hca_attr->flow_counter_bulk_alloc_bitmap);
-	/* Initialize fallback mode only on the port initializes sh. */
-	if (sh->refcnt == 1)
-		sh->cmng.counter_fallback = fallback;
-	else if (fallback != sh->cmng.counter_fallback)
-		DRV_LOG(WARNING, "Port %d in sh has different fallback mode "
-			"with others:%d.", PORT_ID(priv), fallback);
-#endif
-}
-
-/**
  * DR flow drop action support detect.
  *
  * @param dev
