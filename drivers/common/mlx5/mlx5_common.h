@@ -281,6 +281,37 @@ struct mlx5_klm {
 	uint64_t address;
 };
 
+/** Control for key/values list. */
+struct mlx5_kvargs_ctrl {
+	struct rte_kvargs *kvlist; /* Structure containing list of key/values.*/
+	bool is_used[RTE_KVARGS_MAX]; /* Indicator which devargs were used. */
+};
+
+/**
+ * Call a handler function for each key/value in the list of keys.
+ *
+ * For each key/value association that matches the given key, calls the
+ * handler function with the for a given arg_name passing the value on the
+ * dictionary for that key and a given extra argument.
+ *
+ * @param mkvlist
+ *   The mlx5_kvargs structure.
+ * @param keys
+ *   A list of keys to process (table of const char *, the last must be NULL).
+ * @param handler
+ *   The function to call for each matching key.
+ * @param opaque_arg
+ *   A pointer passed unchanged to the handler.
+ *
+ * @return
+ *   - 0 on success
+ *   - Negative on error
+ */
+__rte_internal
+int
+mlx5_kvargs_process(struct mlx5_kvargs_ctrl *mkvlist, const char *const keys[],
+		    arg_handler_t handler, void *opaque_arg);
+
 /* All UAR arguments using doorbell register in datapath. */
 struct mlx5_uar_data {
 	uint64_t *db;
@@ -437,12 +468,13 @@ struct mlx5_common_device {
 /**
  * Initialization function for the driver called during device probing.
  */
-typedef int (mlx5_class_driver_probe_t)(struct mlx5_common_device *dev);
+typedef int (mlx5_class_driver_probe_t)(struct mlx5_common_device *cdev,
+					struct mlx5_kvargs_ctrl *mkvlist);
 
 /**
  * Uninitialization function for the driver called during hot-unplugging.
  */
-typedef int (mlx5_class_driver_remove_t)(struct mlx5_common_device *dev);
+typedef int (mlx5_class_driver_remove_t)(struct mlx5_common_device *cdev);
 
 /** Device already probed can be probed again to check for new ports. */
 #define MLX5_DRV_PROBE_AGAIN 0x0004

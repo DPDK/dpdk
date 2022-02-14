@@ -656,41 +656,36 @@ mlx5_compress_args_check_handler(const char *key, const char *val, void *opaque)
 		errno = 0;
 		devarg_prms->log_block_sz = (uint32_t)strtoul(val, NULL, 10);
 		if (errno) {
-			DRV_LOG(WARNING, "%s: \"%s\" is an invalid integer."
-				, key, val);
+			DRV_LOG(WARNING, "%s: \"%s\" is an invalid integer.",
+				key, val);
 			return -errno;
 		}
-		return 0;
 	}
 	return 0;
 }
 
 static int
-mlx5_compress_handle_devargs(struct rte_devargs *devargs,
-			  struct mlx5_compress_devarg_params *devarg_prms,
-			  struct mlx5_hca_attr *att)
+mlx5_compress_handle_devargs(struct mlx5_kvargs_ctrl *mkvlist,
+			     struct mlx5_compress_devarg_params *devarg_prms,
+			     struct mlx5_hca_attr *att)
 {
-	struct rte_kvargs *kvlist;
+	const char **params = (const char *[]){
+		"log-block-size",
+		NULL,
+	};
 
 	devarg_prms->log_block_sz = MLX5_GGA_COMP_LOG_BLOCK_SIZE_MAX;
-	if (devargs == NULL)
+	if (mkvlist == NULL)
 		return 0;
-	kvlist = rte_kvargs_parse(devargs->args, NULL);
-	if (kvlist == NULL) {
-		DRV_LOG(ERR, "Failed to parse devargs.");
-		rte_errno = EINVAL;
-		return -1;
-	}
-	if (rte_kvargs_process(kvlist, NULL, mlx5_compress_args_check_handler,
-			   devarg_prms) != 0) {
+	if (mlx5_kvargs_process(mkvlist, params,
+				mlx5_compress_args_check_handler,
+				devarg_prms) != 0) {
 		DRV_LOG(ERR, "Devargs handler function Failed.");
-		rte_kvargs_free(kvlist);
 		rte_errno = EINVAL;
 		return -1;
 	}
-	rte_kvargs_free(kvlist);
 	if (devarg_prms->log_block_sz > MLX5_GGA_COMP_LOG_BLOCK_SIZE_MAX ||
-		devarg_prms->log_block_sz < att->compress_min_block_size) {
+	    devarg_prms->log_block_sz < att->compress_min_block_size) {
 		DRV_LOG(WARNING, "Log block size provided is out of range("
 			"%u); default it to %u.",
 			devarg_prms->log_block_sz,
@@ -701,7 +696,8 @@ mlx5_compress_handle_devargs(struct rte_devargs *devargs,
 }
 
 static int
-mlx5_compress_dev_probe(struct mlx5_common_device *cdev)
+mlx5_compress_dev_probe(struct mlx5_common_device *cdev,
+			struct mlx5_kvargs_ctrl *mkvlist)
 {
 	struct rte_compressdev *compressdev;
 	struct mlx5_compress_priv *priv;
@@ -725,7 +721,7 @@ mlx5_compress_dev_probe(struct mlx5_common_device *cdev)
 		rte_errno = ENOTSUP;
 		return -ENOTSUP;
 	}
-	mlx5_compress_handle_devargs(cdev->dev->devargs, &devarg_prms, attr);
+	mlx5_compress_handle_devargs(mkvlist, &devarg_prms, attr);
 	compressdev = rte_compressdev_pmd_create(ibdev_name, cdev->dev,
 						 sizeof(*priv), &init_params);
 	if (compressdev == NULL) {

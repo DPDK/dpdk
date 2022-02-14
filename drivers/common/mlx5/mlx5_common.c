@@ -21,6 +21,24 @@
 
 uint8_t haswell_broadwell_cpu;
 
+/* Driver type key for new device global syntax. */
+#define MLX5_DRIVER_KEY "driver"
+
+/* Enable extending memsegs when creating a MR. */
+#define MLX5_MR_EXT_MEMSEG_EN "mr_ext_memseg_en"
+
+/* Device parameter to configure implicit registration of mempool memory. */
+#define MLX5_MR_MEMPOOL_REG_EN "mr_mempool_reg_en"
+
+/* The default memory allocator used in PMD. */
+#define MLX5_SYS_MEM_EN "sys_mem_en"
+
+/*
+ * Device parameter to force doorbell register mapping
+ * to non-cahed region eliminating the extra write memory barrier.
+ */
+#define MLX5_TX_DB_NC "tx_db_nc"
+
 /* In case this is an x86_64 intel processor to check if
  * we should use relaxed ordering.
  */
@@ -92,6 +110,122 @@ driver_get(uint32_t class)
 	return NULL;
 }
 
+int
+mlx5_kvargs_process(struct mlx5_kvargs_ctrl *mkvlist, const char *const keys[],
+		    arg_handler_t handler, void *opaque_arg)
+{
+	const struct rte_kvargs_pair *pair;
+	uint32_t i, j;
+
+	MLX5_ASSERT(mkvlist && mkvlist->kvlist);
+	/* Process parameters. */
+	for (i = 0; i < mkvlist->kvlist->count; i++) {
+		pair = &mkvlist->kvlist->pairs[i];
+		for (j = 0; keys[j] != NULL; ++j) {
+			if (strcmp(pair->key, keys[j]) != 0)
+				continue;
+			if ((*handler)(pair->key, pair->value, opaque_arg) < 0)
+				return -1;
+			mkvlist->is_used[i] = true;
+			break;
+		}
+	}
+	return 0;
+}
+
+/**
+ * Prepare a mlx5 kvargs control.
+ *
+ * @param[out] mkvlist
+ *   Pointer to mlx5 kvargs control.
+ * @param[in] devargs
+ *   The input string containing the key/value associations.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+static int
+mlx5_kvargs_prepare(struct mlx5_kvargs_ctrl *mkvlist,
+		    const struct rte_devargs *devargs)
+{
+	struct rte_kvargs *kvlist;
+	uint32_t i;
+
+	if (devargs == NULL)
+		return 0;
+	kvlist = rte_kvargs_parse(devargs->args, NULL);
+	if (kvlist == NULL) {
+		rte_errno = EINVAL;
+		return -rte_errno;
+	}
+	/*
+	 * rte_kvargs_parse enable key without value, in mlx5 PMDs we disable
+	 * this syntax.
+	 */
+	for (i = 0; i < kvlist->count; i++) {
+		const struct rte_kvargs_pair *pair = &kvlist->pairs[i];
+		if (pair->value == NULL || *(pair->value) == '\0') {
+			DRV_LOG(ERR, "Key %s is missing value.", pair->key);
+			rte_kvargs_free(kvlist);
+			rte_errno = EINVAL;
+			return -rte_errno;
+		}
+	}
+	/* Makes sure all devargs used array is false. */
+	memset(mkvlist, 0, sizeof(*mkvlist));
+	mkvlist->kvlist = kvlist;
+	DRV_LOG(DEBUG, "Parse successfully %u devargs.",
+		mkvlist->kvlist->count);
+	return 0;
+}
+
+/**
+ * Release a mlx5 kvargs control.
+ *
+ * @param[out] mkvlist
+ *   Pointer to mlx5 kvargs control.
+ */
+static void
+mlx5_kvargs_release(struct mlx5_kvargs_ctrl *mkvlist)
+{
+	if (mkvlist == NULL)
+		return;
+	rte_kvargs_free(mkvlist->kvlist);
+	memset(mkvlist, 0, sizeof(*mkvlist));
+}
+
+/**
+ * Validate device arguments list.
+ * It report about the first unknown parameter.
+ *
+ * @param[in] mkvlist
+ *   Pointer to mlx5 kvargs control.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+static int
+mlx5_kvargs_validate(struct mlx5_kvargs_ctrl *mkvlist)
+{
+	uint32_t i;
+
+	/* Secondary process should not handle devargs. */
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return 0;
+	if (mkvlist == NULL)
+		return 0;
+	for (i = 0; i < mkvlist->kvlist->count; i++) {
+		if (mkvlist->is_used[i] == 0) {
+			DRV_LOG(ERR, "Key \"%s\" "
+				"is unknown for the provided classes.",
+				mkvlist->kvlist->pairs[i].key);
+			rte_errno = EINVAL;
+			return -rte_errno;
+		}
+	}
+	return 0;
+}
+
 /**
  * Verify and store value for devargs.
  *
@@ -111,11 +245,9 @@ mlx5_common_args_check_handler(const char *key, const char *val, void *opaque)
 	struct mlx5_common_dev_config *config = opaque;
 	signed long tmp;
 
-	if (val == NULL || *val == '\0') {
-		DRV_LOG(ERR, "Key %s is missing value.", key);
-		rte_errno = EINVAL;
-		return -rte_errno;
-	}
+	if (strcmp(MLX5_DRIVER_KEY, key) == 0 ||
+	    strcmp(RTE_DEVARGS_KEY_CLASS, key) == 0)
+		return 0;
 	errno = 0;
 	tmp = strtol(val, NULL, 0);
 	if (errno) {
@@ -123,7 +255,7 @@ mlx5_common_args_check_handler(const char *key, const char *val, void *opaque)
 		DRV_LOG(WARNING, "%s: \"%s\" is an invalid integer.", key, val);
 		return -rte_errno;
 	}
-	if (strcmp(key, "tx_db_nc") == 0) {
+	if (strcmp(key, MLX5_TX_DB_NC) == 0) {
 		if (tmp != MLX5_TXDB_CACHED &&
 		    tmp != MLX5_TXDB_NCACHED &&
 		    tmp != MLX5_TXDB_HEURISTIC) {
@@ -132,11 +264,11 @@ mlx5_common_args_check_handler(const char *key, const char *val, void *opaque)
 			return -rte_errno;
 		}
 		config->dbnc = tmp;
-	} else if (strcmp(key, "mr_ext_memseg_en") == 0) {
+	} else if (strcmp(key, MLX5_MR_EXT_MEMSEG_EN) == 0) {
 		config->mr_ext_memseg_en = !!tmp;
-	} else if (strcmp(key, "mr_mempool_reg_en") == 0) {
+	} else if (strcmp(key, MLX5_MR_MEMPOOL_REG_EN) == 0) {
 		config->mr_mempool_reg_en = !!tmp;
-	} else if (strcmp(key, "sys_mem_en") == 0) {
+	} else if (strcmp(key, MLX5_SYS_MEM_EN) == 0) {
 		config->sys_mem_en = !!tmp;
 	}
 	return 0;
@@ -154,29 +286,34 @@ mlx5_common_args_check_handler(const char *key, const char *val, void *opaque)
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 static int
-mlx5_common_config_get(struct rte_devargs *devargs,
+mlx5_common_config_get(struct mlx5_kvargs_ctrl *mkvlist,
 		       struct mlx5_common_dev_config *config)
 {
-	struct rte_kvargs *kvlist;
+	const char **params = (const char *[]){
+		RTE_DEVARGS_KEY_CLASS,
+		MLX5_DRIVER_KEY,
+		MLX5_TX_DB_NC,
+		MLX5_MR_EXT_MEMSEG_EN,
+		MLX5_SYS_MEM_EN,
+		MLX5_MR_MEMPOOL_REG_EN,
+		NULL,
+	};
 	int ret = 0;
 
+	if (mkvlist == NULL)
+		return 0;
 	/* Set defaults. */
 	config->mr_ext_memseg_en = 1;
 	config->mr_mempool_reg_en = 1;
 	config->sys_mem_en = 0;
 	config->dbnc = MLX5_ARG_UNSET;
-	if (devargs == NULL)
-		return 0;
-	kvlist = rte_kvargs_parse(devargs->args, NULL);
-	if (kvlist == NULL) {
+	/* Process common parameters. */
+	ret = mlx5_kvargs_process(mkvlist, params,
+				  mlx5_common_args_check_handler, config);
+	if (ret) {
 		rte_errno = EINVAL;
-		return -rte_errno;
-	}
-	ret = rte_kvargs_process(kvlist, NULL, mlx5_common_args_check_handler,
-				 config);
-	if (ret)
 		ret = -rte_errno;
-	rte_kvargs_free(kvlist);
+	}
 	DRV_LOG(DEBUG, "mr_ext_memseg_en is %u.", config->mr_ext_memseg_en);
 	DRV_LOG(DEBUG, "mr_mempool_reg_en is %u.", config->mr_mempool_reg_en);
 	DRV_LOG(DEBUG, "sys_mem_en is %u.", config->sys_mem_en);
@@ -225,9 +362,9 @@ err:
 }
 
 static int
-parse_class_options(const struct rte_devargs *devargs)
+parse_class_options(const struct rte_devargs *devargs,
+		    struct mlx5_kvargs_ctrl *mkvlist)
 {
-	struct rte_kvargs *kvlist;
 	int ret = 0;
 
 	if (devargs == NULL)
@@ -236,12 +373,8 @@ parse_class_options(const struct rte_devargs *devargs)
 		/* Global syntax, only one class type. */
 		return class_name_to_value(devargs->cls->name);
 	/* Legacy devargs support multiple classes. */
-	kvlist = rte_kvargs_parse(devargs->args, NULL);
-	if (kvlist == NULL)
-		return 0;
-	rte_kvargs_process(kvlist, RTE_DEVARGS_KEY_CLASS,
+	rte_kvargs_process(mkvlist->kvlist, RTE_DEVARGS_KEY_CLASS,
 			   devargs_class_handler, &ret);
-	rte_kvargs_free(kvlist);
 	return ret;
 }
 
@@ -564,7 +697,8 @@ mlx5_common_dev_release(struct mlx5_common_device *cdev)
 }
 
 static struct mlx5_common_device *
-mlx5_common_dev_create(struct rte_device *eal_dev, uint32_t classes)
+mlx5_common_dev_create(struct rte_device *eal_dev, uint32_t classes,
+		       struct mlx5_kvargs_ctrl *mkvlist)
 {
 	struct mlx5_common_device *cdev;
 	int ret;
@@ -579,7 +713,7 @@ mlx5_common_dev_create(struct rte_device *eal_dev, uint32_t classes)
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		goto exit;
 	/* Parse device parameters. */
-	ret = mlx5_common_config_get(eal_dev->devargs, &cdev->config);
+	ret = mlx5_common_config_get(mkvlist, &cdev->config);
 	if (ret < 0) {
 		DRV_LOG(ERR, "Failed to process device arguments: %s",
 			strerror(rte_errno));
@@ -624,12 +758,15 @@ exit:
  *
  * @param cdev
  *   Pointer to mlx5 device structure.
+ * @param mkvlist
+ *   Pointer to mlx5 kvargs control, can be NULL if there is no devargs.
  *
  * @return
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 static int
-mlx5_common_probe_again_args_validate(struct mlx5_common_device *cdev)
+mlx5_common_probe_again_args_validate(struct mlx5_common_device *cdev,
+				      struct mlx5_kvargs_ctrl *mkvlist)
 {
 	struct mlx5_common_dev_config *config;
 	int ret;
@@ -638,7 +775,7 @@ mlx5_common_probe_again_args_validate(struct mlx5_common_device *cdev)
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return 0;
 	/* Probe again doesn't have to generate devargs. */
-	if (cdev->dev->devargs == NULL)
+	if (mkvlist == NULL)
 		return 0;
 	config = mlx5_malloc(MLX5_MEM_ZERO | MLX5_MEM_RTE,
 			     sizeof(struct mlx5_common_dev_config),
@@ -651,7 +788,7 @@ mlx5_common_probe_again_args_validate(struct mlx5_common_device *cdev)
 	 * Creates a temporary common configure structure according to new
 	 * devargs attached in probing again.
 	 */
-	ret = mlx5_common_config_get(cdev->dev->devargs, config);
+	ret = mlx5_common_config_get(mkvlist, config);
 	if (ret) {
 		DRV_LOG(ERR, "Failed to process device configure: %s",
 			strerror(rte_errno));
@@ -719,7 +856,8 @@ drivers_remove(struct mlx5_common_device *cdev, uint32_t enabled_classes)
 }
 
 static int
-drivers_probe(struct mlx5_common_device *cdev, uint32_t user_classes)
+drivers_probe(struct mlx5_common_device *cdev, uint32_t user_classes,
+	      struct mlx5_kvargs_ctrl *mkvlist)
 {
 	struct mlx5_class_driver *driver;
 	uint32_t enabled_classes = 0;
@@ -738,7 +876,7 @@ drivers_probe(struct mlx5_common_device *cdev, uint32_t user_classes)
 			ret = -EEXIST;
 			goto probe_err;
 		}
-		ret = driver->probe(cdev);
+		ret = driver->probe(cdev, mkvlist);
 		if (ret < 0) {
 			DRV_LOG(ERR, "Failed to load driver %s",
 				driver->name);
@@ -764,16 +902,26 @@ int
 mlx5_common_dev_probe(struct rte_device *eal_dev)
 {
 	struct mlx5_common_device *cdev;
+	struct mlx5_kvargs_ctrl mkvlist;
+	struct mlx5_kvargs_ctrl *mkvlist_p = NULL;
 	uint32_t classes = 0;
 	bool new_device = false;
 	int ret;
 
 	DRV_LOG(INFO, "probe device \"%s\".", eal_dev->name);
-	ret = parse_class_options(eal_dev->devargs);
+	if (eal_dev->devargs != NULL)
+		mkvlist_p = &mkvlist;
+	ret = mlx5_kvargs_prepare(mkvlist_p, eal_dev->devargs);
+	if (ret < 0) {
+		DRV_LOG(ERR, "Unsupported device arguments: %s",
+			eal_dev->devargs->args);
+		return ret;
+	}
+	ret = parse_class_options(eal_dev->devargs, mkvlist_p);
 	if (ret < 0) {
 		DRV_LOG(ERR, "Unsupported mlx5 class type: %s",
 			eal_dev->devargs->args);
-		return ret;
+		goto class_err;
 	}
 	classes = ret;
 	if (classes == 0)
@@ -792,18 +940,20 @@ mlx5_common_dev_probe(struct rte_device *eal_dev)
 	cdev = to_mlx5_device(eal_dev);
 	if (!cdev) {
 		/* It isn't probing again, creates a new device. */
-		cdev = mlx5_common_dev_create(eal_dev, classes);
-		if (!cdev)
-			return -ENOMEM;
+		cdev = mlx5_common_dev_create(eal_dev, classes, mkvlist_p);
+		if (!cdev) {
+			ret = -ENOMEM;
+			goto class_err;
+		}
 		new_device = true;
 	} else {
 		/* It is probing again, validate common devargs match. */
-		ret = mlx5_common_probe_again_args_validate(cdev);
+		ret = mlx5_common_probe_again_args_validate(cdev, mkvlist_p);
 		if (ret) {
 			DRV_LOG(ERR,
 				"Probe again parameters aren't compatible : %s",
 				strerror(rte_errno));
-			return ret;
+			goto class_err;
 		}
 	}
 	/*
@@ -816,13 +966,30 @@ mlx5_common_dev_probe(struct rte_device *eal_dev)
 		DRV_LOG(ERR, "Unsupported mlx5 classes combination.");
 		goto class_err;
 	}
-	ret = drivers_probe(cdev, classes);
+	ret = drivers_probe(cdev, classes, mkvlist_p);
 	if (ret)
 		goto class_err;
+	/*
+	 * Validate that all devargs have been used, unused key -> unknown Key.
+	 * When probe again validate is failed, the added drivers aren't removed
+	 * here but when device is released.
+	 */
+	ret = mlx5_kvargs_validate(mkvlist_p);
+	if (ret)
+		goto class_err;
+	mlx5_kvargs_release(mkvlist_p);
 	return 0;
 class_err:
-	if (new_device)
+	if (new_device) {
+		/*
+		 * For new device, classes_loaded is always 0 before
+		 * drivers_probe function.
+		 */
+		if (cdev->classes_loaded)
+			drivers_remove(cdev, cdev->classes_loaded);
 		mlx5_common_dev_release(cdev);
+	}
+	mlx5_kvargs_release(mkvlist_p);
 	return ret;
 }
 

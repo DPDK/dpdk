@@ -284,6 +284,8 @@ mlx5_os_set_nonblock_channel_fd(int fd)
  *   Backing DPDK device.
  * @param spawn
  *   Verbs device parameters (name, port, switch_info) to spawn.
+ * @param mkvlist
+ *   Pointer to mlx5 kvargs control, can be NULL if there is no devargs.
  *
  * @return
  *   A valid Ethernet device object on success, NULL otherwise and rte_errno
@@ -293,7 +295,8 @@ mlx5_os_set_nonblock_channel_fd(int fd)
  */
 static struct rte_eth_dev *
 mlx5_dev_spawn(struct rte_device *dpdk_dev,
-	       struct mlx5_dev_spawn_data *spawn)
+	       struct mlx5_dev_spawn_data *spawn,
+	       struct mlx5_kvargs_ctrl *mkvlist)
 {
 	const struct mlx5_switch_info *switch_info = &spawn->info;
 	struct mlx5_dev_ctx_shared *sh = NULL;
@@ -314,7 +317,7 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 		return NULL;
 	}
 	DRV_LOG(DEBUG, "naming Ethernet device \"%s\"", name);
-	sh = mlx5_alloc_shared_dev_ctx(spawn);
+	sh = mlx5_alloc_shared_dev_ctx(spawn, mkvlist);
 	if (!sh)
 		return NULL;
 	if (!sh->config.dv_flow_en) {
@@ -386,7 +389,7 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 		own_domain_id = 1;
 	}
 	/* Process parameters and store port configuration on priv structure. */
-	err = mlx5_port_args_config(priv, dpdk_dev->devargs, &priv->config);
+	err = mlx5_port_args_config(priv, mkvlist, &priv->config);
 	if (err) {
 		err = rte_errno;
 		DRV_LOG(ERR, "Failed to process port configure: %s",
@@ -770,14 +773,17 @@ mlx5_os_set_allmulti(struct rte_eth_dev *dev, int enable)
  *
  * This function spawns Ethernet devices out of a given device.
  *
- * @param[in] dev
+ * @param[in] cdev
  *   Pointer to the common device.
+ * @param[in, out] mkvlist
+ *   Pointer to mlx5 kvargs control, can be NULL if there is no devargs.
  *
  * @return
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 int
-mlx5_os_net_probe(struct mlx5_common_device *cdev)
+mlx5_os_net_probe(struct mlx5_common_device *cdev,
+		  struct mlx5_kvargs_ctrl *mkvlist)
 {
 	struct rte_pci_device *pci_dev = RTE_DEV_TO_PCI(cdev->dev);
 	struct mlx5_dev_spawn_data spawn = {
@@ -805,7 +811,7 @@ mlx5_os_net_probe(struct mlx5_common_device *cdev)
 			strerror(rte_errno));
 		return -rte_errno;
 	}
-	spawn.eth_dev = mlx5_dev_spawn(cdev->dev, &spawn);
+	spawn.eth_dev = mlx5_dev_spawn(cdev->dev, &spawn, mkvlist);
 	if (!spawn.eth_dev)
 		return -rte_errno;
 	restore = spawn.eth_dev->data->dev_flags;

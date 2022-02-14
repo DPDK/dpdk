@@ -67,7 +67,8 @@ mlx5_regex_get_name(char *name, struct rte_device *dev)
 }
 
 static int
-mlx5_regex_dev_probe(struct mlx5_common_device *cdev)
+mlx5_regex_dev_probe(struct mlx5_common_device *cdev,
+		     struct mlx5_kvargs_ctrl *mkvlist __rte_unused)
 {
 	struct mlx5_regex_priv *priv = NULL;
 	struct mlx5_hca_attr *attr = &cdev->config.hca_attr;

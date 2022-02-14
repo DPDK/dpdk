@@ -1001,6 +1001,8 @@ mlx5_representor_match(struct mlx5_dev_spawn_data *spawn,
  *   Verbs device parameters (name, port, switch_info) to spawn.
  * @param eth_da
  *   Device arguments.
+ * @param mkvlist
+ *   Pointer to mlx5 kvargs control, can be NULL if there is no devargs.
  *
  * @return
  *   A valid Ethernet device object on success, NULL otherwise and rte_errno
@@ -1012,7 +1014,8 @@ mlx5_representor_match(struct mlx5_dev_spawn_data *spawn,
 static struct rte_eth_dev *
 mlx5_dev_spawn(struct rte_device *dpdk_dev,
 	       struct mlx5_dev_spawn_data *spawn,
-	       struct rte_eth_devargs *eth_da)
+	       struct rte_eth_devargs *eth_da,
+	       struct mlx5_kvargs_ctrl *mkvlist)
 {
 	const struct mlx5_switch_info *switch_info = &spawn->info;
 	struct mlx5_dev_ctx_shared *sh = NULL;
@@ -1062,6 +1065,12 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 		DRV_LOG(WARNING, "device name overflow %s", name);
 	/* check if the device is already spawned */
 	if (rte_eth_dev_get_port_by_name(name, &port_id) == 0) {
+		/*
+		 * When device is already spawned, its devargs should be set
+		 * as used. otherwise, mlx5_kvargs_validate() will fail.
+		 */
+		if (mkvlist)
+			mlx5_port_args_set_used(name, port_id, mkvlist);
 		rte_errno = EEXIST;
 		return NULL;
 	}
@@ -1103,7 +1112,7 @@ err_secondary:
 		mlx5_dev_close(eth_dev);
 		return NULL;
 	}
-	sh = mlx5_alloc_shared_dev_ctx(spawn);
+	sh = mlx5_alloc_shared_dev_ctx(spawn, mkvlist);
 	if (!sh)
 		return NULL;
 	nl_rdma = mlx5_nl_init(NETLINK_RDMA);
@@ -1354,7 +1363,7 @@ err_secondary:
 #endif
 	}
 	/* Process parameters and store port configuration on priv structure. */
-	err = mlx5_port_args_config(priv, dpdk_dev->devargs, &priv->config);
+	err = mlx5_port_args_config(priv, mkvlist, &priv->config);
 	if (err) {
 		err = rte_errno;
 		DRV_LOG(ERR, "Failed to process port configure: %s",
@@ -1840,6 +1849,8 @@ mlx5_device_bond_pci_match(const char *ibdev_name,
  *   Requested ethdev device argument.
  * @param[in] owner_id
  *   Requested owner PF port ID within bonding device, default to 0.
+ * @param[in, out] mkvlist
+ *   Pointer to mlx5 kvargs control, can be NULL if there is no devargs.
  *
  * @return
  *   0 on success, a negative errno value otherwise and rte_errno is set.
@@ -1847,7 +1858,7 @@ mlx5_device_bond_pci_match(const char *ibdev_name,
 static int
 mlx5_os_pci_probe_pf(struct mlx5_common_device *cdev,
 		     struct rte_eth_devargs *req_eth_da,
-		     uint16_t owner_id)
+		     uint16_t owner_id, struct mlx5_kvargs_ctrl *mkvlist)
 {
 	struct ibv_device **ibv_list;
 	/*
@@ -2217,7 +2228,8 @@ mlx5_os_pci_probe_pf(struct mlx5_common_device *cdev,
 	for (i = 0; i != ns; ++i) {
 		uint32_t restore;
 
-		list[i].eth_dev = mlx5_dev_spawn(cdev->dev, &list[i], &eth_da);
+		list[i].eth_dev = mlx5_dev_spawn(cdev->dev, &list[i], &eth_da,
+						 mkvlist);
 		if (!list[i].eth_dev) {
 			if (rte_errno != EBUSY && rte_errno != EEXIST)
 				break;
@@ -2329,12 +2341,15 @@ mlx5_os_parse_eth_devargs(struct rte_device *dev,
  *
  * @param[in] cdev
  *   Pointer to common mlx5 device structure.
+ * @param[in, out] mkvlist
+ *   Pointer to mlx5 kvargs control, can be NULL if there is no devargs.
  *
  * @return
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 static int
-mlx5_os_pci_probe(struct mlx5_common_device *cdev)
+mlx5_os_pci_probe(struct mlx5_common_device *cdev,
+		  struct mlx5_kvargs_ctrl *mkvlist)
 {
 	struct rte_pci_device *pci_dev = RTE_DEV_TO_PCI(cdev->dev);
 	struct rte_eth_devargs eth_da = { .nb_ports = 0 };
@@ -2349,7 +2364,7 @@ mlx5_os_pci_probe(struct mlx5_common_device *cdev)
 		/* Iterate all port if devargs pf is range: "pf[0-1]vf[...]". */
 		for (p = 0; p < eth_da.nb_ports; p++) {
 			ret = mlx5_os_pci_probe_pf(cdev, &eth_da,
-						   eth_da.ports[p]);
+						   eth_da.ports[p], mkvlist);
 			if (ret)
 				break;
 		}
@@ -2362,14 +2377,15 @@ mlx5_os_pci_probe(struct mlx5_common_device *cdev)
 			mlx5_net_remove(cdev);
 		}
 	} else {
-		ret = mlx5_os_pci_probe_pf(cdev, &eth_da, 0);
+		ret = mlx5_os_pci_probe_pf(cdev, &eth_da, 0, mkvlist);
 	}
 	return ret;
 }
 
 /* Probe a single SF device on auxiliary bus, no representor support. */
 static int
-mlx5_os_auxiliary_probe(struct mlx5_common_device *cdev)
+mlx5_os_auxiliary_probe(struct mlx5_common_device *cdev,
+			struct mlx5_kvargs_ctrl *mkvlist)
 {
 	struct rte_eth_devargs eth_da = { .nb_ports = 0 };
 	struct mlx5_dev_spawn_data spawn = { .pf_bond = -1 };
@@ -2394,7 +2410,7 @@ mlx5_os_auxiliary_probe(struct mlx5_common_device *cdev)
 	spawn.ifindex = ret;
 	spawn.cdev = cdev;
 	/* Spawn device. */
-	eth_dev = mlx5_dev_spawn(dev, &spawn, &eth_da);
+	eth_dev = mlx5_dev_spawn(dev, &spawn, &eth_da, mkvlist);
 	if (eth_dev == NULL)
 		return -rte_errno;
 	/* Post create. */
@@ -2415,12 +2431,15 @@ mlx5_os_auxiliary_probe(struct mlx5_common_device *cdev)
  *
  * @param[in] cdev
  *   Pointer to the common mlx5 device.
+ * @param[in, out] mkvlist
+ *   Pointer to mlx5 kvargs control, can be NULL if there is no devargs.
  *
  * @return
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 int
-mlx5_os_net_probe(struct mlx5_common_device *cdev)
+mlx5_os_net_probe(struct mlx5_common_device *cdev,
+		  struct mlx5_kvargs_ctrl *mkvlist)
 {
 	int ret;
 
@@ -2432,16 +2451,16 @@ mlx5_os_net_probe(struct mlx5_common_device *cdev)
 			strerror(rte_errno));
 		return -rte_errno;
 	}
-	ret = mlx5_probe_again_args_validate(cdev);
+	ret = mlx5_probe_again_args_validate(cdev, mkvlist);
 	if (ret) {
 		DRV_LOG(ERR, "Probe again parameters are not compatible : %s",
 			strerror(rte_errno));
 		return -rte_errno;
 	}
 	if (mlx5_dev_is_pci(cdev->dev))
-		return mlx5_os_pci_probe(cdev);
+		return mlx5_os_pci_probe(cdev, mkvlist);
 	else
-		return mlx5_os_auxiliary_probe(cdev);
+		return mlx5_os_auxiliary_probe(cdev, mkvlist);
 }
 
 /**

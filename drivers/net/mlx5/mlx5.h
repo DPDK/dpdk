@@ -1541,16 +1541,21 @@ void mlx5_age_event_prepare(struct mlx5_dev_ctx_shared *sh);
 void mlx5_rt_timestamp_config(struct mlx5_dev_ctx_shared *sh,
 			      struct mlx5_hca_attr *hca_attr);
 struct mlx5_dev_ctx_shared *
-mlx5_alloc_shared_dev_ctx(const struct mlx5_dev_spawn_data *spawn);
+mlx5_alloc_shared_dev_ctx(const struct mlx5_dev_spawn_data *spawn,
+			  struct mlx5_kvargs_ctrl *mkvlist);
 void mlx5_free_shared_dev_ctx(struct mlx5_dev_ctx_shared *sh);
 int mlx5_dev_ctx_shared_mempool_subscribe(struct rte_eth_dev *dev);
 void mlx5_free_table_hash_list(struct mlx5_priv *priv);
 int mlx5_alloc_table_hash_list(struct mlx5_priv *priv);
 void mlx5_set_min_inline(struct mlx5_priv *priv);
 void mlx5_set_metadata_mask(struct rte_eth_dev *dev);
-int mlx5_probe_again_args_validate(struct mlx5_common_device *cdev);
-int mlx5_port_args_config(struct mlx5_priv *priv, struct rte_devargs *devargs,
+int mlx5_probe_again_args_validate(struct mlx5_common_device *cdev,
+				   struct mlx5_kvargs_ctrl *mkvlist);
+int mlx5_port_args_config(struct mlx5_priv *priv,
+			  struct mlx5_kvargs_ctrl *mkvlist,
 			  struct mlx5_port_config *config);
+void mlx5_port_args_set_used(const char *name, uint16_t port_id,
+			     struct mlx5_kvargs_ctrl *mkvlist);
 bool mlx5_flex_parser_ecpri_exist(struct rte_eth_dev *dev);
 int mlx5_flex_parser_ecpri_alloc(struct rte_eth_dev *dev);
 void mlx5_flow_counter_mode_config(struct rte_eth_dev *dev);
@@ -1811,7 +1816,8 @@ void mlx5_flow_meter_rxq_flush(struct rte_eth_dev *dev);
 struct rte_pci_driver;
 int mlx5_os_capabilities_prepare(struct mlx5_dev_ctx_shared *sh);
 void mlx5_os_free_shared_dr(struct mlx5_priv *priv);
-int mlx5_os_net_probe(struct mlx5_common_device *cdev);
+int mlx5_os_net_probe(struct mlx5_common_device *cdev,
+		      struct mlx5_kvargs_ctrl *mkvlist);
 void mlx5_os_dev_shared_handler_install(struct mlx5_dev_ctx_shared *sh);
 void mlx5_os_dev_shared_handler_uninstall(struct mlx5_dev_ctx_shared *sh);
 void mlx5_os_mac_addr_remove(struct rte_eth_dev *dev, uint32_t index);

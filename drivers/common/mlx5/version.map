@@ -85,6 +85,8 @@ INTERNAL {
 
 	mlx5_glue;
 
+	mlx5_kvargs_process;
+
 	mlx5_list_create;
 	mlx5_list_register;
 	mlx5_list_unregister;

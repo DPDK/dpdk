@@ -722,8 +722,6 @@ mlx5_crypto_args_check_handler(const char *key, const char *val, void *opaque)
 	int ret;
 	int i;
 
-	if (strcmp(key, "class") == 0)
-		return 0;
 	if (strcmp(key, "wcs_file") == 0) {
 		file = fopen(val, "rb");
 		if (file == NULL) {
@@ -763,48 +761,44 @@ mlx5_crypto_args_check_handler(const char *key, const char *val, void *opaque)
 		attr->credential_pointer = (uint32_t)tmp;
 	} else if (strcmp(key, "keytag") == 0) {
 		devarg_prms->keytag = tmp;
-	} else {
-		DRV_LOG(WARNING, "Invalid key %s.", key);
 	}
 	return 0;
 }
 
 static int
-mlx5_crypto_parse_devargs(struct rte_devargs *devargs,
+mlx5_crypto_parse_devargs(struct mlx5_kvargs_ctrl *mkvlist,
 			  struct mlx5_crypto_devarg_params *devarg_prms)
 {
 	struct mlx5_devx_crypto_login_attr *attr = &devarg_prms->login_attr;
-	struct rte_kvargs *kvlist;
+	const char **params = (const char *[]){
+		"credential_id",
+		"import_kek_id",
+		"keytag",
+		"max_segs_num",
+		"wcs_file",
+		NULL,
+	};
 
 	/* Default values. */
 	attr->credential_pointer = 0;
 	attr->session_import_kek_ptr = 0;
 	devarg_prms->keytag = 0;
 	devarg_prms->max_segs_num = 8;
-	if (devargs == NULL) {
+	if (mkvlist == NULL) {
 		DRV_LOG(ERR,
-	"No login devargs in order to enable crypto operations in the device.");
+			"No login devargs in order to enable crypto operations in the device.");
 		rte_errno = EINVAL;
 		return -1;
 	}
-	kvlist = rte_kvargs_parse(devargs->args, NULL);
-	if (kvlist == NULL) {
-		DRV_LOG(ERR, "Failed to parse devargs.");
-		rte_errno = EINVAL;
-		return -1;
-	}
-	if (rte_kvargs_process(kvlist, NULL, mlx5_crypto_args_check_handler,
-			   devarg_prms) != 0) {
+	if (mlx5_kvargs_process(mkvlist, params, mlx5_crypto_args_check_handler,
+				devarg_prms) != 0) {
 		DRV_LOG(ERR, "Devargs handler function Failed.");
-		rte_kvargs_free(kvlist);
 		rte_errno = EINVAL;
 		return -1;
 	}
-	rte_kvargs_free(kvlist);
 	if (devarg_prms->login_devarg == false) {
 		DRV_LOG(ERR,
-	"No login credential devarg in order to enable crypto operations "
-	"in the device.");
+			"No login credential devarg in order to enable crypto operations in the device.");
 		rte_errno = EINVAL;
 		return -1;
 	}
@@ -887,7 +881,8 @@ mlx5_crypto_configure_wqe_size(struct mlx5_crypto_priv *priv,
 }
 
 static int
-mlx5_crypto_dev_probe(struct mlx5_common_device *cdev)
+mlx5_crypto_dev_probe(struct mlx5_common_device *cdev,
+		      struct mlx5_kvargs_ctrl *mkvlist)
 {
 	struct rte_cryptodev *crypto_dev;
 	struct mlx5_devx_obj *login;
@@ -914,7 +909,7 @@ mlx5_crypto_dev_probe(struct mlx5_common_device *cdev)
 		rte_errno = ENOTSUP;
 		return -ENOTSUP;
 	}
-	ret = mlx5_crypto_parse_devargs(cdev->dev->devargs, &devarg_prms);
+	ret = mlx5_crypto_parse_devargs(mkvlist, &devarg_prms);
 	if (ret) {
 		DRV_LOG(ERR, "Failed to parse devargs.");
 		return -rte_errno;

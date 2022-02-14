@@ -43,9 +43,6 @@
 
 #define MLX5_ETH_DRIVER_NAME mlx5_eth
 
-/* Driver type key for new device global syntax. */
-#define MLX5_DRIVER_KEY "driver"
-
 /* Device parameter to enable RX completion queue compression. */
 #define MLX5_RXQ_CQE_COMP_EN "rxq_cqe_comp_en"
 
@@ -93,12 +90,6 @@
 
 /* Device parameter to enable multi-packet send WQEs. */
 #define MLX5_TXQ_MPW_EN "txq_mpw_en"
-
-/*
- * Device parameter to force doorbell register mapping
- * to non-cahed region eliminating the extra write memory barrier.
- */
-#define MLX5_TX_DB_NC "tx_db_nc"
 
 /*
  * Device parameter to include 2 dsegs in the title WQEBB.
@@ -152,9 +143,6 @@
 /* Activate Netlink support in VF mode. */
 #define MLX5_VF_NL_EN "vf_nl_en"
 
-/* Enable extending memsegs when creating a MR. */
-#define MLX5_MR_EXT_MEMSEG_EN "mr_ext_memseg_en"
-
 /* Select port representors to instantiate. */
 #define MLX5_REPRESENTOR "representor"
 
@@ -173,16 +161,11 @@
 /* Flow memory reclaim mode. */
 #define MLX5_RECLAIM_MEM "reclaim_mem_mode"
 
-/* The default memory allocator used in PMD. */
-#define MLX5_SYS_MEM_EN "sys_mem_en"
 /* Decap will be used or not. */
 #define MLX5_DECAP_EN "decap_en"
 
 /* Device parameter to configure allow or prevent duplicate rules pattern. */
 #define MLX5_ALLOW_DUPLICATE_PATTERN "allow_duplicate_pattern"
-
-/* Device parameter to configure implicit registration of mempool memory. */
-#define MLX5_MR_MEMPOOL_REG_EN "mr_mempool_reg_en"
 
 /* Device parameter to configure the delay drop when creating Rxqs. */
 #define MLX5_DELAY_DROP "delay_drop"
@@ -1255,8 +1238,8 @@ mlx5_dev_args_check_handler(const char *key, const char *val, void *opaque)
  *
  * @param sh
  *   Pointer to shared device context.
- * @param devargs
- *   Device arguments structure.
+ * @param mkvlist
+ *   Pointer to mlx5 kvargs control, can be NULL if there is no devargs.
  * @param config
  *   Pointer to shared device configuration structure.
  *
@@ -1265,10 +1248,23 @@ mlx5_dev_args_check_handler(const char *key, const char *val, void *opaque)
  */
 static int
 mlx5_shared_dev_ctx_args_config(struct mlx5_dev_ctx_shared *sh,
-				struct rte_devargs *devargs,
+				struct mlx5_kvargs_ctrl *mkvlist,
 				struct mlx5_sh_config *config)
 {
-	struct rte_kvargs *kvlist;
+	const char **params = (const char *[]){
+		MLX5_TX_PP,
+		MLX5_TX_SKEW,
+		MLX5_L3_VXLAN_EN,
+		MLX5_VF_NL_EN,
+		MLX5_DV_ESW_EN,
+		MLX5_DV_FLOW_EN,
+		MLX5_DV_XMETA_EN,
+		MLX5_LACP_BY_USER,
+		MLX5_RECLAIM_MEM,
+		MLX5_DECAP_EN,
+		MLX5_ALLOW_DUPLICATE_PATTERN,
+		NULL,
+	};
 	int ret = 0;
 
 	/* Default configuration. */
@@ -1278,19 +1274,10 @@ mlx5_shared_dev_ctx_args_config(struct mlx5_dev_ctx_shared *sh,
 	config->dv_flow_en = 1;
 	config->decap_en = 1;
 	config->allow_duplicate_pattern = 1;
-	/* Parse device parameters. */
-	if (devargs != NULL) {
-		kvlist = rte_kvargs_parse(devargs->args, NULL);
-		if (kvlist == NULL) {
-			DRV_LOG(ERR,
-				"Failed to parse shared device arguments.");
-			rte_errno = EINVAL;
-			return -rte_errno;
-		}
+	if (mkvlist != NULL) {
 		/* Process parameters. */
-		ret = rte_kvargs_process(kvlist, NULL,
-					 mlx5_dev_args_check_handler, config);
-		rte_kvargs_free(kvlist);
+		ret = mlx5_kvargs_process(mkvlist, params,
+					  mlx5_dev_args_check_handler, config);
 		if (ret) {
 			DRV_LOG(ERR, "Failed to process device arguments: %s",
 				strerror(rte_errno));
@@ -1398,13 +1385,16 @@ mlx5_rt_timestamp_config(struct mlx5_dev_ctx_shared *sh,
  *
  * @param[in] spawn
  *   Pointer to the device attributes (name, port, etc).
+ * @param mkvlist
+ *   Pointer to mlx5 kvargs control, can be NULL if there is no devargs.
  *
  * @return
  *   Pointer to mlx5_dev_ctx_shared object on success,
  *   otherwise NULL and rte_errno is set.
  */
 struct mlx5_dev_ctx_shared *
-mlx5_alloc_shared_dev_ctx(const struct mlx5_dev_spawn_data *spawn)
+mlx5_alloc_shared_dev_ctx(const struct mlx5_dev_spawn_data *spawn,
+			  struct mlx5_kvargs_ctrl *mkvlist)
 {
 	struct mlx5_dev_ctx_shared *sh;
 	int err = 0;
@@ -1443,8 +1433,7 @@ mlx5_alloc_shared_dev_ctx(const struct mlx5_dev_spawn_data *spawn)
 		DRV_LOG(ERR, "Fail to configure device capabilities.");
 		goto error;
 	}
-	err = mlx5_shared_dev_ctx_args_config(sh, sh->cdev->dev->devargs,
-					      &sh->config);
+	err = mlx5_shared_dev_ctx_args_config(sh, mkvlist, &sh->config);
 	if (err) {
 		DRV_LOG(ERR, "Failed to process device configure: %s",
 			strerror(rte_errno));
@@ -2107,15 +2096,7 @@ mlx5_port_args_check_handler(const char *key, const char *val, void *opaque)
 	signed long tmp;
 
 	/* No-op, port representors are processed in mlx5_dev_spawn(). */
-	if (!strcmp(MLX5_DRIVER_KEY, key) || !strcmp(MLX5_REPRESENTOR, key) ||
-	    !strcmp(MLX5_SYS_MEM_EN, key) || !strcmp(MLX5_TX_DB_NC, key) ||
-	    !strcmp(MLX5_MR_MEMPOOL_REG_EN, key) || !strcmp(MLX5_TX_PP, key) ||
-	    !strcmp(MLX5_MR_EXT_MEMSEG_EN, key) || !strcmp(MLX5_TX_SKEW, key) ||
-	    !strcmp(MLX5_RECLAIM_MEM, key) || !strcmp(MLX5_DECAP_EN, key) ||
-	    !strcmp(MLX5_ALLOW_DUPLICATE_PATTERN, key) ||
-	    !strcmp(MLX5_L3_VXLAN_EN, key) || !strcmp(MLX5_VF_NL_EN, key) ||
-	    !strcmp(MLX5_DV_ESW_EN, key) || !strcmp(MLX5_DV_FLOW_EN, key) ||
-	    !strcmp(MLX5_DV_XMETA_EN, key) || !strcmp(MLX5_LACP_BY_USER, key))
+	if (!strcmp(MLX5_REPRESENTOR, key))
 		return 0;
 	errno = 0;
 	tmp = strtol(val, NULL, 0);
@@ -2181,17 +2162,11 @@ mlx5_port_args_check_handler(const char *key, const char *val, void *opaque)
 		config->max_dump_files_num = tmp;
 	} else if (strcmp(MLX5_LRO_TIMEOUT_USEC, key) == 0) {
 		config->lro_timeout = tmp;
-	} else if (strcmp(RTE_DEVARGS_KEY_CLASS, key) == 0) {
-		DRV_LOG(DEBUG, "class argument is %s.", val);
 	} else if (strcmp(MLX5_HP_BUF_SIZE, key) == 0) {
 		config->log_hp_size = tmp;
 	} else if (strcmp(MLX5_DELAY_DROP, key) == 0) {
 		config->std_delay_drop = !!(tmp & MLX5_DELAY_DROP_STANDARD);
 		config->hp_delay_drop = !!(tmp & MLX5_DELAY_DROP_HAIRPIN);
-	} else {
-		DRV_LOG(WARNING,
-			"%s: unknown parameter, maybe it's for another class.",
-			key);
 	}
 	return 0;
 }
@@ -2201,8 +2176,8 @@ mlx5_port_args_check_handler(const char *key, const char *val, void *opaque)
  *
  * @param priv
  *   Pointer to shared device context.
- * @param devargs
- *   Device arguments structure.
+ * @param mkvlist
+ *   Pointer to mlx5 kvargs control, can be NULL if there is no devargs.
  * @param config
  *   Pointer to port configuration structure.
  *
@@ -2210,13 +2185,38 @@ mlx5_port_args_check_handler(const char *key, const char *val, void *opaque)
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 int
-mlx5_port_args_config(struct mlx5_priv *priv, struct rte_devargs *devargs,
+mlx5_port_args_config(struct mlx5_priv *priv, struct mlx5_kvargs_ctrl *mkvlist,
 		      struct mlx5_port_config *config)
 {
-	struct rte_kvargs *kvlist;
 	struct mlx5_hca_attr *hca_attr = &priv->sh->cdev->config.hca_attr;
 	struct mlx5_dev_cap *dev_cap = &priv->sh->dev_cap;
 	bool devx = priv->sh->cdev->config.devx;
+	const char **params = (const char *[]){
+		MLX5_RXQ_CQE_COMP_EN,
+		MLX5_RXQ_PKT_PAD_EN,
+		MLX5_RX_MPRQ_EN,
+		MLX5_RX_MPRQ_LOG_STRIDE_NUM,
+		MLX5_RX_MPRQ_LOG_STRIDE_SIZE,
+		MLX5_RX_MPRQ_MAX_MEMCPY_LEN,
+		MLX5_RXQS_MIN_MPRQ,
+		MLX5_TXQ_INLINE,
+		MLX5_TXQ_INLINE_MIN,
+		MLX5_TXQ_INLINE_MAX,
+		MLX5_TXQ_INLINE_MPW,
+		MLX5_TXQS_MIN_INLINE,
+		MLX5_TXQS_MAX_VEC,
+		MLX5_TXQ_MPW_EN,
+		MLX5_TXQ_MPW_HDR_DSEG_EN,
+		MLX5_TXQ_MAX_INLINE_LEN,
+		MLX5_TX_VEC_EN,
+		MLX5_RX_VEC_EN,
+		MLX5_REPRESENTOR,
+		MLX5_MAX_DUMP_FILES_NUM,
+		MLX5_LRO_TIMEOUT_USEC,
+		MLX5_HP_BUF_SIZE,
+		MLX5_DELAY_DROP,
+		NULL,
+	};
 	int ret = 0;
 
 	/* Default configuration. */
@@ -2234,19 +2234,10 @@ mlx5_port_args_config(struct mlx5_priv *priv, struct rte_devargs *devargs,
 	config->log_hp_size = MLX5_ARG_UNSET;
 	config->std_delay_drop = 0;
 	config->hp_delay_drop = 0;
-	/* Parse device parameters. */
-	if (devargs != NULL) {
-		kvlist = rte_kvargs_parse(devargs->args, NULL);
-		if (kvlist == NULL) {
-			DRV_LOG(ERR,
-				"Failed to parse device arguments.");
-			rte_errno = EINVAL;
-			return -rte_errno;
-		}
+	if (mkvlist != NULL) {
 		/* Process parameters. */
-		ret = rte_kvargs_process(kvlist, NULL,
-					 mlx5_port_args_check_handler, config);
-		rte_kvargs_free(kvlist);
+		ret = mlx5_kvargs_process(mkvlist, params,
+					  mlx5_port_args_check_handler, config);
 		if (ret) {
 			DRV_LOG(ERR, "Failed to process port arguments: %s",
 				strerror(rte_errno));
@@ -2350,6 +2341,85 @@ mlx5_port_args_config(struct mlx5_priv *priv, struct rte_devargs *devargs,
 }
 
 /**
+ * Print the key for device argument.
+ *
+ * It is "dummy" handler whose whole purpose is to enable using
+ * mlx5_kvargs_process() function which set devargs as used.
+ *
+ * @param key
+ *   Key argument.
+ * @param val
+ *   Value associated with key, unused.
+ * @param opaque
+ *   Unused, can be NULL.
+ *
+ * @return
+ *   0 on success, function cannot fail.
+ */
+static int
+mlx5_dummy_handler(const char *key, const char *val, void *opaque)
+{
+	DRV_LOG(DEBUG, "\tKey: \"%s\" is set as used.", key);
+	RTE_SET_USED(opaque);
+	RTE_SET_USED(val);
+	return 0;
+}
+
+/**
+ * Set requested devargs as used when device is already spawned.
+ *
+ * It is necessary since it is valid to ask probe again for existing device,
+ * if its devargs don't assign as used, mlx5_kvargs_validate() will fail.
+ *
+ * @param name
+ *   Name of the existing device.
+ * @param port_id
+ *   Port identifier of the device.
+ * @param mkvlist
+ *   Pointer to mlx5 kvargs control to sign as used.
+ */
+void
+mlx5_port_args_set_used(const char *name, uint16_t port_id,
+			struct mlx5_kvargs_ctrl *mkvlist)
+{
+	const char **params = (const char *[]){
+		MLX5_RXQ_CQE_COMP_EN,
+		MLX5_RXQ_PKT_PAD_EN,
+		MLX5_RX_MPRQ_EN,
+		MLX5_RX_MPRQ_LOG_STRIDE_NUM,
+		MLX5_RX_MPRQ_LOG_STRIDE_SIZE,
+		MLX5_RX_MPRQ_MAX_MEMCPY_LEN,
+		MLX5_RXQS_MIN_MPRQ,
+		MLX5_TXQ_INLINE,
+		MLX5_TXQ_INLINE_MIN,
+		MLX5_TXQ_INLINE_MAX,
+		MLX5_TXQ_INLINE_MPW,
+		MLX5_TXQS_MIN_INLINE,
+		MLX5_TXQS_MAX_VEC,
+		MLX5_TXQ_MPW_EN,
+		MLX5_TXQ_MPW_HDR_DSEG_EN,
+		MLX5_TXQ_MAX_INLINE_LEN,
+		MLX5_TX_VEC_EN,
+		MLX5_RX_VEC_EN,
+		MLX5_REPRESENTOR,
+		MLX5_MAX_DUMP_FILES_NUM,
+		MLX5_LRO_TIMEOUT_USEC,
+		MLX5_HP_BUF_SIZE,
+		MLX5_DELAY_DROP,
+		NULL,
+	};
+
+	/* Secondary process should not handle devargs. */
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return;
+	MLX5_ASSERT(mkvlist != NULL);
+	DRV_LOG(DEBUG, "Ethernet device \"%s\" for port %u "
+		"already exists, set devargs as used:", name, port_id);
+	/* This function cannot fail with this handler. */
+	mlx5_kvargs_process(mkvlist, params, mlx5_dummy_handler, NULL);
+}
+
+/**
  * Check sibling device configurations when probing again.
  *
  * Sibling devices sharing infiniband device context should have compatible
@@ -2357,12 +2427,15 @@ mlx5_port_args_config(struct mlx5_priv *priv, struct rte_devargs *devargs,
  *
  * @param cdev
  *   Pointer to mlx5 device structure.
+ * @param mkvlist
+ *   Pointer to mlx5 kvargs control, can be NULL if there is no devargs.
  *
  * @return
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 int
-mlx5_probe_again_args_validate(struct mlx5_common_device *cdev)
+mlx5_probe_again_args_validate(struct mlx5_common_device *cdev,
+			       struct mlx5_kvargs_ctrl *mkvlist)
 {
 	struct mlx5_dev_ctx_shared *sh = NULL;
 	struct mlx5_sh_config *config;
@@ -2391,8 +2464,7 @@ mlx5_probe_again_args_validate(struct mlx5_common_device *cdev)
 	 * Creates a temporary IB context configure structure according to new
 	 * devargs attached in probing again.
 	 */
-	ret = mlx5_shared_dev_ctx_args_config(sh, sh->cdev->dev->devargs,
-					      config);
+	ret = mlx5_shared_dev_ctx_args_config(sh, mkvlist, config);
 	if (ret) {
 		DRV_LOG(ERR, "Failed to process device configure: %s",
 			strerror(rte_errno));
