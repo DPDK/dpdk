@@ -1496,6 +1496,30 @@ enum dr_dump_rec_type {
 	DR_DUMP_REC_TYPE_PMD_COUNTER = 4430,
 };
 
+/**
+ * Indicates whether HW objects operations can be created by DevX.
+ *
+ * This function is used for both:
+ *  Before creation - deciding whether to create HW objects operations by DevX.
+ *  After creation - indicator if HW objects operations were created by DevX.
+ *
+ * @param sh
+ *   Pointer to shared device context.
+ *
+ * @return
+ *   True if HW objects were created by DevX, False otherwise.
+ */
+static inline bool
+mlx5_devx_obj_ops_en(struct mlx5_dev_ctx_shared *sh)
+{
+	/*
+	 * When advanced DR API is available and DV flow is supported and
+	 * DevX is supported, HW objects operations are created by DevX.
+	 */
+	return (sh->cdev->config.devx && sh->config.dv_flow_en &&
+		sh->dev_cap.dest_tir);
+}
+
 /* mlx5.c */
 
 int mlx5_getenv_int(const char *);

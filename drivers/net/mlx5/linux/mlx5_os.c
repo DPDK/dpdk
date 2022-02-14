@@ -370,8 +370,7 @@ mlx5_os_capabilities_prepare(struct mlx5_dev_ctx_shared *sh)
 	sh->dev_cap.txpp_en = 0;
 #endif
 	/* Check for LRO support. */
-	if (sh->dev_cap.dest_tir && sh->dev_cap.dv_flow_en &&
-	    hca_attr->lro_cap) {
+	if (mlx5_devx_obj_ops_en(sh) && hca_attr->lro_cap) {
 		/* TBD check tunnel lro caps. */
 		sh->dev_cap.lro_supported = 1;
 		DRV_LOG(DEBUG, "Device supports LRO.");
@@ -1550,8 +1549,7 @@ err_secondary:
 		if (mlx5_flex_item_port_init(eth_dev) < 0)
 			goto error;
 	}
-	if (sh->cdev->config.devx && sh->config.dv_flow_en &&
-	    sh->dev_cap.dest_tir) {
+	if (mlx5_devx_obj_ops_en(sh)) {
 		priv->obj_ops = devx_obj_ops;
 		mlx5_queue_counter_id_prepare(eth_dev);
 		priv->obj_ops.lb_dummy_queue_create =
