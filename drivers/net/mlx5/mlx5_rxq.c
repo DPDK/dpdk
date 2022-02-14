@@ -1720,12 +1720,6 @@ mlx5_rxq_new(struct rte_eth_dev *dev, struct mlx5_rxq_priv *rxq,
 		return NULL;
 	}
 	LIST_INIT(&tmpl->owners);
-	if (conf->share_group > 0) {
-		tmpl->rxq.shared = 1;
-		tmpl->share_group = conf->share_group;
-		tmpl->share_qid = conf->share_qid;
-		LIST_INSERT_HEAD(&priv->sh->shared_rxqs, tmpl, share_entry);
-	}
 	rxq->ctrl = tmpl;
 	LIST_INSERT_HEAD(&tmpl->owners, rxq, owner_entry);
 	MLX5_ASSERT(n_seg && n_seg <= MLX5_MAX_RXQ_NSEG);
@@ -1934,6 +1928,12 @@ mlx5_rxq_new(struct rte_eth_dev *dev, struct mlx5_rxq_priv *rxq,
 	tmpl->rxq.mprq_bufs =
 		(struct mlx5_mprq_buf *(*)[desc])(*tmpl->rxq.elts + desc_n);
 	tmpl->rxq.idx = idx;
+	if (conf->share_group > 0) {
+		tmpl->rxq.shared = 1;
+		tmpl->share_group = conf->share_group;
+		tmpl->share_qid = conf->share_qid;
+		LIST_INSERT_HEAD(&priv->sh->shared_rxqs, tmpl, share_entry);
+	}
 	LIST_INSERT_HEAD(&priv->rxqsctrl, tmpl, next);
 	return tmpl;
 error:
