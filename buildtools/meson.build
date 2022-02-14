@@ -31,6 +31,9 @@ if host_machine.system() == 'windows'
         pmdinfo += 'llvm-ar'
     endif
     pmdinfogen += 'coff'
+elif host_machine.system() == 'freebsd'
+    pmdinfo += 'llvm-ar'
+    pmdinfogen += 'elf'
 else
     pmdinfo += 'ar'
     pmdinfogen += 'elf'
