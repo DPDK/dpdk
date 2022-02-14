@@ -613,6 +613,86 @@ exit:
 	return cdev;
 }
 
+/**
+ * Validate common devargs when probing again.
+ *
+ * When common device probing again, it cannot change its configurations.
+ * If user ask non compatible configurations in devargs, it is error.
+ * This function checks the match between:
+ *  - Common device configurations requested by probe again devargs.
+ *  - Existing common device configurations.
+ *
+ * @param cdev
+ *   Pointer to mlx5 device structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+static int
+mlx5_common_probe_again_args_validate(struct mlx5_common_device *cdev)
+{
+	struct mlx5_common_dev_config *config;
+	int ret;
+
+	/* Secondary process should not handle devargs. */
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return 0;
+	/* Probe again doesn't have to generate devargs. */
+	if (cdev->dev->devargs == NULL)
+		return 0;
+	config = mlx5_malloc(MLX5_MEM_ZERO | MLX5_MEM_RTE,
+			     sizeof(struct mlx5_common_dev_config),
+			     RTE_CACHE_LINE_SIZE, SOCKET_ID_ANY);
+	if (config == NULL) {
+		rte_errno = -ENOMEM;
+		return -rte_errno;
+	}
+	/*
+	 * Creates a temporary common configure structure according to new
+	 * devargs attached in probing again.
+	 */
+	ret = mlx5_common_config_get(cdev->dev->devargs, config);
+	if (ret) {
+		DRV_LOG(ERR, "Failed to process device configure: %s",
+			strerror(rte_errno));
+		mlx5_free(config);
+		return ret;
+	}
+	/*
+	 * Checks the match between the temporary structure and the existing
+	 * common device structure.
+	 */
+	if (cdev->config.mr_ext_memseg_en ^ config->mr_ext_memseg_en) {
+		DRV_LOG(ERR, "\"mr_ext_memseg_en\" "
+			"configuration mismatch for device %s.",
+			cdev->dev->name);
+		goto error;
+	}
+	if (cdev->config.mr_mempool_reg_en ^ config->mr_mempool_reg_en) {
+		DRV_LOG(ERR, "\"mr_mempool_reg_en\" "
+			"configuration mismatch for device %s.",
+			cdev->dev->name);
+		goto error;
+	}
+	if (cdev->config.sys_mem_en ^ config->sys_mem_en) {
+		DRV_LOG(ERR,
+			"\"sys_mem_en\" configuration mismatch for device %s.",
+			cdev->dev->name);
+		goto error;
+	}
+	if (cdev->config.dbnc ^ config->dbnc) {
+		DRV_LOG(ERR, "\"dbnc\" configuration mismatch for device %s.",
+			cdev->dev->name);
+		goto error;
+	}
+	mlx5_free(config);
+	return 0;
+error:
+	mlx5_free(config);
+	rte_errno = EINVAL;
+	return -rte_errno;
+}
+
 static int
 drivers_remove(struct mlx5_common_device *cdev, uint32_t enabled_classes)
 {
@@ -699,12 +779,32 @@ mlx5_common_dev_probe(struct rte_device *eal_dev)
 	if (classes == 0)
 		/* Default to net class. */
 		classes = MLX5_CLASS_ETH;
+	/*
+	 * MLX5 common driver supports probing again in two scenarios:
+	 * - Add new driver under existing common device (regardless of the
+	 *   driver's own support in probing again).
+	 * - Transfer the probing again support of the drivers themselves.
+	 *
+	 * In both scenarios it uses in the existing device. here it looks for
+	 * device that match to rte device, if it exists, the request classes
+	 * were probed with this device.
+	 */
 	cdev = to_mlx5_device(eal_dev);
 	if (!cdev) {
+		/* It isn't probing again, creates a new device. */
 		cdev = mlx5_common_dev_create(eal_dev, classes);
 		if (!cdev)
 			return -ENOMEM;
 		new_device = true;
+	} else {
+		/* It is probing again, validate common devargs match. */
+		ret = mlx5_common_probe_again_args_validate(cdev);
+		if (ret) {
+			DRV_LOG(ERR,
+				"Probe again parameters aren't compatible : %s",
+				strerror(rte_errno));
+			return ret;
+		}
 	}
 	/*
 	 * Validate combination here.
