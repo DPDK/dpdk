@@ -2876,6 +2876,9 @@ vhost_user_check_and_alloc_queue_pair(struct virtio_net *dev,
 	case VHOST_USER_SET_VRING_ADDR:
 		vring_idx = msg->payload.addr.index;
 		break;
+	case VHOST_USER_SET_INFLIGHT_FD:
+		vring_idx = msg->payload.inflight.num_queues - 1;
+		break;
 	default:
 		return 0;
 	}
