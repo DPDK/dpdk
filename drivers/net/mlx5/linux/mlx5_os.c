@@ -141,11 +141,12 @@ int
 mlx5_os_capabilities_prepare(struct mlx5_dev_ctx_shared *sh)
 {
 	int err;
-	struct ibv_context *ctx = sh->cdev->ctx;
+	struct mlx5_common_device *cdev = sh->cdev;
+	struct mlx5_hca_attr *hca_attr = &cdev->config.hca_attr;
 	struct ibv_device_attr_ex attr_ex = { .comp_mask = 0 };
 	struct mlx5dv_context dv_attr = { .comp_mask = 0 };
 
-	err = mlx5_glue->query_device_ex(ctx, NULL, &attr_ex);
+	err = mlx5_glue->query_device_ex(cdev->ctx, NULL, &attr_ex);
 	if (err) {
 		rte_errno = errno;
 		return -rte_errno;
@@ -159,45 +160,229 @@ mlx5_os_capabilities_prepare(struct mlx5_dev_ctx_shared *sh)
 #ifdef HAVE_IBV_DEVICE_STRIDING_RQ_SUPPORT
 	dv_attr.comp_mask |= MLX5DV_CONTEXT_MASK_STRIDING_RQ;
 #endif
-	err = mlx5_glue->dv_query_device(ctx, &dv_attr);
+	err = mlx5_glue->dv_query_device(cdev->ctx, &dv_attr);
 	if (err) {
 		rte_errno = errno;
 		return -rte_errno;
 	}
 	memset(&sh->dev_cap, 0, sizeof(struct mlx5_dev_cap));
-	sh->dev_cap.device_cap_flags_ex = attr_ex.device_cap_flags_ex;
+	if (mlx5_dev_is_pci(cdev->dev))
+		sh->dev_cap.vf = mlx5_dev_is_vf_pci(RTE_DEV_TO_PCI(cdev->dev));
+	else
+		sh->dev_cap.sf = 1;
 	sh->dev_cap.max_qp_wr = attr_ex.orig_attr.max_qp_wr;
 	sh->dev_cap.max_sge = attr_ex.orig_attr.max_sge;
 	sh->dev_cap.max_cq = attr_ex.orig_attr.max_cq;
 	sh->dev_cap.max_qp = attr_ex.orig_attr.max_qp;
-	sh->dev_cap.raw_packet_caps = attr_ex.raw_packet_caps;
-	sh->dev_cap.max_rwq_indirection_table_size =
-		attr_ex.rss_caps.max_rwq_indirection_table_size;
-	sh->dev_cap.max_tso = attr_ex.tso_caps.max_tso;
-	sh->dev_cap.tso_supported_qpts = attr_ex.tso_caps.supported_qpts;
+#ifdef HAVE_MLX5DV_DR_ACTION_DEST_DEVX_TIR
+	sh->dev_cap.dest_tir = 1;
+#endif
+#if defined(HAVE_IBV_FLOW_DV_SUPPORT) && defined(HAVE_MLX5DV_DR)
+	DRV_LOG(DEBUG, "DV flow is supported.");
+	sh->dev_cap.dv_flow_en = 1;
+#endif
+#ifdef HAVE_MLX5DV_DR_ESWITCH
+	if (hca_attr->eswitch_manager && sh->dev_cap.dv_flow_en && sh->esw_mode)
+		sh->dev_cap.dv_esw_en = 1;
+#endif
+	/*
+	 * Multi-packet send is supported by ConnectX-4 Lx PF as well
+	 * as all ConnectX-5 devices.
+	 */
+	if (dv_attr.flags & MLX5DV_CONTEXT_FLAGS_MPW_ALLOWED) {
+		if (dv_attr.flags & MLX5DV_CONTEXT_FLAGS_ENHANCED_MPW) {
+			DRV_LOG(DEBUG, "Enhanced MPW is supported.");
+			sh->dev_cap.mps = MLX5_MPW_ENHANCED;
+		} else {
+			DRV_LOG(DEBUG, "MPW is supported.");
+			sh->dev_cap.mps = MLX5_MPW;
+		}
+	} else {
+		DRV_LOG(DEBUG, "MPW isn't supported.");
+		sh->dev_cap.mps = MLX5_MPW_DISABLED;
+	}
+#if (RTE_CACHE_LINE_SIZE == 128)
+	if (dv_attr.flags & MLX5DV_CONTEXT_FLAGS_CQE_128B_COMP)
+		sh->dev_cap.cqe_comp = 1;
+	DRV_LOG(DEBUG, "Rx CQE 128B compression is %ssupported.",
+		sh->dev_cap.cqe_comp ? "" : "not ");
+#else
+	sh->dev_cap.cqe_comp = 1;
+#endif
+#ifdef HAVE_IBV_DEVICE_MPLS_SUPPORT
+	sh->dev_cap.mpls_en =
+		((dv_attr.tunnel_offloads_caps &
+		  MLX5DV_RAW_PACKET_CAP_TUNNELED_OFFLOAD_CW_MPLS_OVER_GRE) &&
+		 (dv_attr.tunnel_offloads_caps &
+		  MLX5DV_RAW_PACKET_CAP_TUNNELED_OFFLOAD_CW_MPLS_OVER_UDP));
+	DRV_LOG(DEBUG, "MPLS over GRE/UDP tunnel offloading is %ssupported.",
+		sh->dev_cap.mpls_en ? "" : "not ");
+#else
+	DRV_LOG(WARNING,
+		"MPLS over GRE/UDP tunnel offloading disabled due to old OFED/rdma-core version or firmware configuration");
+#endif
+#if defined(HAVE_IBV_WQ_FLAG_RX_END_PADDING)
+	sh->dev_cap.hw_padding = !!attr_ex.rx_pad_end_addr_align;
+#elif defined(HAVE_IBV_WQ_FLAGS_PCI_WRITE_END_PADDING)
+	sh->dev_cap.hw_padding = !!(attr_ex.device_cap_flags_ex &
+				    IBV_DEVICE_PCI_WRITE_END_PADDING);
+#endif
+	sh->dev_cap.hw_csum =
+		!!(attr_ex.device_cap_flags_ex & IBV_DEVICE_RAW_IP_CSUM);
+	DRV_LOG(DEBUG, "Checksum offloading is %ssupported.",
+		sh->dev_cap.hw_csum ? "" : "not ");
+	sh->dev_cap.hw_vlan_strip = !!(attr_ex.raw_packet_caps &
+				       IBV_RAW_PACKET_CAP_CVLAN_STRIPPING);
+	DRV_LOG(DEBUG, "VLAN stripping is %ssupported.",
+		(sh->dev_cap.hw_vlan_strip ? "" : "not "));
+	sh->dev_cap.hw_fcs_strip = !!(attr_ex.raw_packet_caps &
+				      IBV_RAW_PACKET_CAP_SCATTER_FCS);
+#if !defined(HAVE_IBV_DEVICE_COUNTERS_SET_V42) && \
+	!defined(HAVE_IBV_DEVICE_COUNTERS_SET_V45)
+	DRV_LOG(DEBUG, "Counters are not supported.");
+#endif
+	/*
+	 * DPDK doesn't support larger/variable indirection tables.
+	 * Once DPDK supports it, take max size from device attr.
+	 */
+	sh->dev_cap.ind_table_max_size =
+			RTE_MIN(attr_ex.rss_caps.max_rwq_indirection_table_size,
+				(unsigned int)RTE_ETH_RSS_RETA_SIZE_512);
+	DRV_LOG(DEBUG, "Maximum Rx indirection table size is %u",
+		sh->dev_cap.ind_table_max_size);
+	sh->dev_cap.tso = (attr_ex.tso_caps.max_tso > 0 &&
+			   (attr_ex.tso_caps.supported_qpts &
+			    (1 << IBV_QPT_RAW_PACKET)));
+	if (sh->dev_cap.tso)
+		sh->dev_cap.tso_max_payload_sz = attr_ex.tso_caps.max_tso;
 	strlcpy(sh->dev_cap.fw_ver, attr_ex.orig_attr.fw_ver,
 		sizeof(sh->dev_cap.fw_ver));
-	sh->dev_cap.flags = dv_attr.flags;
-	sh->dev_cap.comp_mask = dv_attr.comp_mask;
 #ifdef HAVE_IBV_MLX5_MOD_SWP
-	sh->dev_cap.sw_parsing_offloads =
-		dv_attr.sw_parsing_caps.sw_parsing_offloads;
+	if (dv_attr.comp_mask & MLX5DV_CONTEXT_MASK_SWP)
+		sh->dev_cap.swp = dv_attr.sw_parsing_caps.sw_parsing_offloads &
+				  (MLX5_SW_PARSING_CAP |
+				   MLX5_SW_PARSING_CSUM_CAP |
+				   MLX5_SW_PARSING_TSO_CAP);
+	DRV_LOG(DEBUG, "SWP support: %u", sh->dev_cap.swp);
 #endif
 #ifdef HAVE_IBV_DEVICE_STRIDING_RQ_SUPPORT
-	sh->dev_cap.min_single_stride_log_num_of_bytes =
-		dv_attr.striding_rq_caps.min_single_stride_log_num_of_bytes;
-	sh->dev_cap.max_single_stride_log_num_of_bytes =
-		dv_attr.striding_rq_caps.max_single_stride_log_num_of_bytes;
-	sh->dev_cap.min_single_wqe_log_num_of_strides =
-		dv_attr.striding_rq_caps.min_single_wqe_log_num_of_strides;
-	sh->dev_cap.max_single_wqe_log_num_of_strides =
-		dv_attr.striding_rq_caps.max_single_wqe_log_num_of_strides;
-	sh->dev_cap.stride_supported_qpts =
-		dv_attr.striding_rq_caps.supported_qpts;
+	if (dv_attr.comp_mask & MLX5DV_CONTEXT_MASK_STRIDING_RQ) {
+		struct mlx5dv_striding_rq_caps *strd_rq_caps =
+				&dv_attr.striding_rq_caps;
+
+		sh->dev_cap.mprq.enabled = 1;
+		sh->dev_cap.mprq.log_min_stride_size =
+			strd_rq_caps->min_single_stride_log_num_of_bytes;
+		sh->dev_cap.mprq.log_max_stride_size =
+			strd_rq_caps->max_single_stride_log_num_of_bytes;
+		sh->dev_cap.mprq.log_min_stride_num =
+			strd_rq_caps->min_single_wqe_log_num_of_strides;
+		sh->dev_cap.mprq.log_max_stride_num =
+			strd_rq_caps->max_single_wqe_log_num_of_strides;
+		sh->dev_cap.mprq.log_min_stride_wqe_size =
+					cdev->config.devx ?
+					hca_attr->log_min_stride_wqe_sz :
+					MLX5_MPRQ_LOG_MIN_STRIDE_WQE_SIZE;
+		DRV_LOG(DEBUG, "\tmin_single_stride_log_num_of_bytes: %u",
+			sh->dev_cap.mprq.log_min_stride_size);
+		DRV_LOG(DEBUG, "\tmax_single_stride_log_num_of_bytes: %u",
+			sh->dev_cap.mprq.log_max_stride_size);
+		DRV_LOG(DEBUG, "\tmin_single_wqe_log_num_of_strides: %u",
+			sh->dev_cap.mprq.log_min_stride_num);
+		DRV_LOG(DEBUG, "\tmax_single_wqe_log_num_of_strides: %u",
+			sh->dev_cap.mprq.log_max_stride_num);
+		DRV_LOG(DEBUG, "\tmin_stride_wqe_log_size: %u",
+			sh->dev_cap.mprq.log_min_stride_wqe_size);
+		DRV_LOG(DEBUG, "\tsupported_qpts: %d",
+			strd_rq_caps->supported_qpts);
+		DRV_LOG(DEBUG, "Device supports Multi-Packet RQ.");
+	}
 #endif
 #ifdef HAVE_IBV_DEVICE_TUNNEL_SUPPORT
-	sh->dev_cap.tunnel_offloads_caps = dv_attr.tunnel_offloads_caps;
+	if (dv_attr.comp_mask & MLX5DV_CONTEXT_MASK_TUNNEL_OFFLOADS) {
+		sh->dev_cap.tunnel_en = dv_attr.tunnel_offloads_caps &
+					(MLX5_TUNNELED_OFFLOADS_VXLAN_CAP |
+					 MLX5_TUNNELED_OFFLOADS_GRE_CAP |
+					 MLX5_TUNNELED_OFFLOADS_GENEVE_CAP);
+	}
+	if (sh->dev_cap.tunnel_en) {
+		DRV_LOG(DEBUG, "Tunnel offloading is supported for %s%s%s",
+			sh->dev_cap.tunnel_en &
+			MLX5_TUNNELED_OFFLOADS_VXLAN_CAP ? "[VXLAN]" : "",
+			sh->dev_cap.tunnel_en &
+			MLX5_TUNNELED_OFFLOADS_GRE_CAP ? "[GRE]" : "",
+			sh->dev_cap.tunnel_en &
+			MLX5_TUNNELED_OFFLOADS_GENEVE_CAP ? "[GENEVE]" : "");
+	} else {
+		DRV_LOG(DEBUG, "Tunnel offloading is not supported.");
+	}
+#else
+	DRV_LOG(WARNING,
+		"Tunnel offloading disabled due to old OFED/rdma-core version");
 #endif
+	if (!sh->cdev->config.devx)
+		return 0;
+	/* Check capabilities for Packet Pacing. */
+	DRV_LOG(DEBUG, "Timestamp counter frequency %u kHz.",
+		hca_attr->dev_freq_khz);
+	DRV_LOG(DEBUG, "Packet pacing is %ssupported.",
+		hca_attr->qos.packet_pacing ? "" : "not ");
+	DRV_LOG(DEBUG, "Cross channel ops are %ssupported.",
+		hca_attr->cross_channel ? "" : "not ");
+	DRV_LOG(DEBUG, "WQE index ignore is %ssupported.",
+		hca_attr->wqe_index_ignore ? "" : "not ");
+	DRV_LOG(DEBUG, "Non-wire SQ feature is %ssupported.",
+		hca_attr->non_wire_sq ? "" : "not ");
+	DRV_LOG(DEBUG, "Static WQE SQ feature is %ssupported (%d)",
+		hca_attr->log_max_static_sq_wq ? "" : "not ",
+		hca_attr->log_max_static_sq_wq);
+	DRV_LOG(DEBUG, "WQE rate PP mode is %ssupported.",
+		hca_attr->qos.wqe_rate_pp ? "" : "not ");
+	sh->dev_cap.txpp_en = hca_attr->qos.packet_pacing;
+	if (!hca_attr->cross_channel) {
+		DRV_LOG(DEBUG,
+			"Cross channel operations are required for packet pacing.");
+		sh->dev_cap.txpp_en = 0;
+	}
+	if (!hca_attr->wqe_index_ignore) {
+		DRV_LOG(DEBUG,
+			"WQE index ignore feature is required for packet pacing.");
+		sh->dev_cap.txpp_en = 0;
+	}
+	if (!hca_attr->non_wire_sq) {
+		DRV_LOG(DEBUG,
+			"Non-wire SQ feature is required for packet pacing.");
+		sh->dev_cap.txpp_en = 0;
+	}
+	if (!hca_attr->log_max_static_sq_wq) {
+		DRV_LOG(DEBUG,
+			"Static WQE SQ feature is required for packet pacing.");
+		sh->dev_cap.txpp_en = 0;
+	}
+	if (!hca_attr->qos.wqe_rate_pp) {
+		DRV_LOG(DEBUG,
+			"WQE rate mode is required for packet pacing.");
+		sh->dev_cap.txpp_en = 0;
+	}
+#ifndef HAVE_MLX5DV_DEVX_UAR_OFFSET
+	DRV_LOG(DEBUG,
+		"DevX does not provide UAR offset, can't create queues for packet pacing.");
+	sh->dev_cap.txpp_en = 0;
+#endif
+	/* Check for LRO support. */
+	if (sh->dev_cap.dest_tir && sh->dev_cap.dv_flow_en &&
+	    hca_attr->lro_cap) {
+		/* TBD check tunnel lro caps. */
+		sh->dev_cap.lro_supported = 1;
+		DRV_LOG(DEBUG, "Device supports LRO.");
+		DRV_LOG(DEBUG,
+			"LRO minimal size of TCP segment required for coalescing is %d bytes.",
+			hca_attr->lro_min_mss_size);
+	}
+	sh->dev_cap.scatter_fcs_w_decap_disable =
+					hca_attr->scatter_fcs_w_decap_disable;
+	sh->dev_cap.rq_delay_drop_en = hca_attr->rq_delay_drop;
+	mlx5_rt_timestamp_config(sh, hca_attr);
 	return 0;
 }
 
@@ -840,11 +1025,6 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 	struct rte_eth_dev *eth_dev = NULL;
 	struct mlx5_priv *priv = NULL;
 	int err = 0;
-	unsigned int hw_padding = 0;
-	unsigned int mps;
-	unsigned int mpls_en = 0;
-	unsigned int swp = 0;
-	unsigned int mprq = 0;
 	struct rte_ether_addr mac;
 	char name[RTE_ETH_NAME_MAX_LEN];
 	int own_domain_id = 0;
@@ -939,18 +1119,14 @@ err_secondary:
 	if (!sh)
 		return NULL;
 	/* Update final values for devargs before check sibling config. */
-#if !defined(HAVE_IBV_FLOW_DV_SUPPORT) || !defined(HAVE_MLX5DV_DR)
-	if (config->dv_flow_en) {
+	if (config->dv_flow_en && !sh->dev_cap.dv_flow_en) {
 		DRV_LOG(WARNING, "DV flow is not supported.");
 		config->dv_flow_en = 0;
 	}
-#endif
-#ifdef HAVE_MLX5DV_DR_ESWITCH
-	if (!(hca_attr->eswitch_manager && config->dv_flow_en && sh->esw_mode))
+	if (config->dv_esw_en && !sh->dev_cap.dv_esw_en) {
+		DRV_LOG(WARNING, "E-Switch DV flow is not supported.");
 		config->dv_esw_en = 0;
-#else
-	config->dv_esw_en = 0;
-#endif
+	}
 	if (config->dv_miss_info && config->dv_esw_en)
 		config->dv_xmeta_en = MLX5_XMETA_MODE_META16;
 	if (!config->dv_esw_en &&
@@ -964,93 +1140,6 @@ err_secondary:
 	err = mlx5_dev_check_sibling_config(sh, config, dpdk_dev);
 	if (err)
 		goto error;
-#ifdef HAVE_MLX5DV_DR_ACTION_DEST_DEVX_TIR
-	config->dest_tir = 1;
-#endif
-	/*
-	 * Multi-packet send is supported by ConnectX-4 Lx PF as well
-	 * as all ConnectX-5 devices.
-	 */
-	if (sh->dev_cap.flags & MLX5DV_CONTEXT_FLAGS_MPW_ALLOWED) {
-		if (sh->dev_cap.flags & MLX5DV_CONTEXT_FLAGS_ENHANCED_MPW) {
-			DRV_LOG(DEBUG, "enhanced MPW is supported");
-			mps = MLX5_MPW_ENHANCED;
-		} else {
-			DRV_LOG(DEBUG, "MPW is supported");
-			mps = MLX5_MPW;
-		}
-	} else {
-		DRV_LOG(DEBUG, "MPW isn't supported");
-		mps = MLX5_MPW_DISABLED;
-	}
-#ifdef HAVE_IBV_MLX5_MOD_SWP
-	if (sh->dev_cap.comp_mask & MLX5DV_CONTEXT_MASK_SWP)
-		swp = sh->dev_cap.sw_parsing_offloads;
-	DRV_LOG(DEBUG, "SWP support: %u", swp);
-#endif
-	config->swp = swp & (MLX5_SW_PARSING_CAP | MLX5_SW_PARSING_CSUM_CAP |
-		MLX5_SW_PARSING_TSO_CAP);
-#ifdef HAVE_IBV_DEVICE_STRIDING_RQ_SUPPORT
-	if (sh->dev_cap.comp_mask & MLX5DV_CONTEXT_MASK_STRIDING_RQ) {
-		DRV_LOG(DEBUG, "\tmin_single_stride_log_num_of_bytes: %d",
-			sh->dev_cap.min_single_stride_log_num_of_bytes);
-		DRV_LOG(DEBUG, "\tmax_single_stride_log_num_of_bytes: %d",
-			sh->dev_cap.max_single_stride_log_num_of_bytes);
-		DRV_LOG(DEBUG, "\tmin_single_wqe_log_num_of_strides: %d",
-			sh->dev_cap.min_single_wqe_log_num_of_strides);
-		DRV_LOG(DEBUG, "\tmax_single_wqe_log_num_of_strides: %d",
-			sh->dev_cap.max_single_wqe_log_num_of_strides);
-		DRV_LOG(DEBUG, "\tsupported_qpts: %d",
-			sh->dev_cap.stride_supported_qpts);
-		DRV_LOG(DEBUG, "\tmin_stride_wqe_log_size: %d",
-			config->mprq.log_min_stride_wqe_size);
-		DRV_LOG(DEBUG, "device supports Multi-Packet RQ");
-		mprq = 1;
-		config->mprq.log_min_stride_size =
-			sh->dev_cap.min_single_stride_log_num_of_bytes;
-		config->mprq.log_max_stride_size =
-			sh->dev_cap.max_single_stride_log_num_of_bytes;
-		config->mprq.log_min_stride_num =
-			sh->dev_cap.min_single_wqe_log_num_of_strides;
-		config->mprq.log_max_stride_num =
-			sh->dev_cap.max_single_wqe_log_num_of_strides;
-	}
-#endif
-#ifdef HAVE_IBV_DEVICE_TUNNEL_SUPPORT
-	if (sh->dev_cap.comp_mask & MLX5DV_CONTEXT_MASK_TUNNEL_OFFLOADS) {
-		config->tunnel_en = sh->dev_cap.tunnel_offloads_caps &
-			     (MLX5DV_RAW_PACKET_CAP_TUNNELED_OFFLOAD_VXLAN |
-			      MLX5DV_RAW_PACKET_CAP_TUNNELED_OFFLOAD_GRE |
-			      MLX5DV_RAW_PACKET_CAP_TUNNELED_OFFLOAD_GENEVE);
-	}
-	if (config->tunnel_en) {
-		DRV_LOG(DEBUG, "tunnel offloading is supported for %s%s%s",
-		config->tunnel_en &
-		MLX5DV_RAW_PACKET_CAP_TUNNELED_OFFLOAD_VXLAN ? "[VXLAN]" : "",
-		config->tunnel_en &
-		MLX5DV_RAW_PACKET_CAP_TUNNELED_OFFLOAD_GRE ? "[GRE]" : "",
-		config->tunnel_en &
-		MLX5DV_RAW_PACKET_CAP_TUNNELED_OFFLOAD_GENEVE ? "[GENEVE]" : ""
-		);
-	} else {
-		DRV_LOG(DEBUG, "tunnel offloading is not supported");
-	}
-#else
-	DRV_LOG(WARNING,
-		"tunnel offloading disabled due to old OFED/rdma-core version");
-#endif
-#ifdef HAVE_IBV_DEVICE_MPLS_SUPPORT
-	mpls_en = ((sh->dev_cap.tunnel_offloads_caps &
-		    MLX5DV_RAW_PACKET_CAP_TUNNELED_OFFLOAD_CW_MPLS_OVER_GRE) &&
-		   (sh->dev_cap.tunnel_offloads_caps &
-		    MLX5DV_RAW_PACKET_CAP_TUNNELED_OFFLOAD_CW_MPLS_OVER_UDP));
-	DRV_LOG(DEBUG, "MPLS over GRE/UDP tunnel offloading is %ssupported",
-		mpls_en ? "" : "not ");
-#else
-	DRV_LOG(WARNING, "MPLS over GRE/UDP tunnel offloading disabled due to"
-		" old OFED/rdma-core version or firmware configuration");
-#endif
-	config->mpls_en = mpls_en;
 	nl_rdma = mlx5_nl_init(NETLINK_RDMA);
 	/* Check port status. */
 	if (spawn->phys_port <= UINT8_MAX) {
@@ -1203,80 +1292,40 @@ err_secondary:
 		DRV_LOG(DEBUG, "dev_port-%u new domain_id=%u\n",
 			priv->dev_port, priv->domain_id);
 	}
-	config->hw_csum = !!(sh->dev_cap.device_cap_flags_ex &
-			    IBV_DEVICE_RAW_IP_CSUM);
-	DRV_LOG(DEBUG, "checksum offloading is %ssupported",
-		(config->hw_csum ? "" : "not "));
-#if !defined(HAVE_IBV_DEVICE_COUNTERS_SET_V42) && \
-	!defined(HAVE_IBV_DEVICE_COUNTERS_SET_V45)
-	DRV_LOG(DEBUG, "counters are not supported");
-#endif
-	config->ind_table_max_size =
-		sh->dev_cap.max_rwq_indirection_table_size;
-	/*
-	 * Remove this check once DPDK supports larger/variable
-	 * indirection tables.
-	 */
-	if (config->ind_table_max_size > (unsigned int)RTE_ETH_RSS_RETA_SIZE_512)
-		config->ind_table_max_size = RTE_ETH_RSS_RETA_SIZE_512;
-	DRV_LOG(DEBUG, "maximum Rx indirection table size is %u",
-		config->ind_table_max_size);
-	config->hw_vlan_strip = !!(sh->dev_cap.raw_packet_caps &
-				  IBV_RAW_PACKET_CAP_CVLAN_STRIPPING);
-	DRV_LOG(DEBUG, "VLAN stripping is %ssupported",
-		(config->hw_vlan_strip ? "" : "not "));
-	config->hw_fcs_strip = !!(sh->dev_cap.raw_packet_caps &
-				 IBV_RAW_PACKET_CAP_SCATTER_FCS);
-#if defined(HAVE_IBV_WQ_FLAG_RX_END_PADDING)
-	hw_padding = !!sh->dev_cap.rx_pad_end_addr_align;
-#elif defined(HAVE_IBV_WQ_FLAGS_PCI_WRITE_END_PADDING)
-	hw_padding = !!(sh->dev_cap.device_cap_flags_ex &
-			IBV_DEVICE_PCI_WRITE_END_PADDING);
-#endif
-	if (config->hw_padding && !hw_padding) {
+	if (config->hw_padding && !sh->dev_cap.hw_padding) {
 		DRV_LOG(DEBUG, "Rx end alignment padding isn't supported");
 		config->hw_padding = 0;
 	} else if (config->hw_padding) {
 		DRV_LOG(DEBUG, "Rx end alignment padding is enabled");
 	}
-	config->tso = (sh->dev_cap.max_tso > 0 &&
-		      (sh->dev_cap.tso_supported_qpts &
-		       (1 << IBV_QPT_RAW_PACKET)));
-	if (config->tso)
-		config->tso_max_payload_sz = sh->dev_cap.max_tso;
 	/*
 	 * MPW is disabled by default, while the Enhanced MPW is enabled
 	 * by default.
 	 */
 	if (config->mps == MLX5_ARG_UNSET)
-		config->mps = (mps == MLX5_MPW_ENHANCED) ? MLX5_MPW_ENHANCED :
-							  MLX5_MPW_DISABLED;
+		config->mps = (sh->dev_cap.mps == MLX5_MPW_ENHANCED) ?
+			      MLX5_MPW_ENHANCED : MLX5_MPW_DISABLED;
 	else
-		config->mps = config->mps ? mps : MLX5_MPW_DISABLED;
+		config->mps = config->mps ? sh->dev_cap.mps : MLX5_MPW_DISABLED;
 	DRV_LOG(INFO, "%sMPS is %s",
 		config->mps == MLX5_MPW_ENHANCED ? "enhanced " :
 		config->mps == MLX5_MPW ? "legacy " : "",
 		config->mps != MLX5_MPW_DISABLED ? "enabled" : "disabled");
 	if (sh->cdev->config.devx) {
 		sh->steering_format_version = hca_attr->steering_format_version;
-		/* Check for LRO support. */
-		if (config->dest_tir && hca_attr->lro_cap &&
-		    config->dv_flow_en) {
-			/* TBD check tunnel lro caps. */
-			config->lro.supported = hca_attr->lro_cap;
-			DRV_LOG(DEBUG, "Device supports LRO");
+		/* LRO is supported only when DV flow enabled. */
+		if (sh->dev_cap.lro_supported && config->dv_flow_en)
+			sh->dev_cap.lro_supported = 0;
+		if (sh->dev_cap.lro_supported) {
 			/*
 			 * If LRO timeout is not configured by application,
 			 * use the minimal supported value.
 			 */
-			if (!config->lro.timeout)
-				config->lro.timeout =
+			if (!config->lro_timeout)
+				config->lro_timeout =
 				       hca_attr->lro_timer_supported_periods[0];
 			DRV_LOG(DEBUG, "LRO session timeout set to %d usec",
-				config->lro.timeout);
-			DRV_LOG(DEBUG, "LRO minimal size of TCP segment "
-				"required for coalescing is %d bytes",
-				hca_attr->lro_min_mss_size);
+				config->lro_timeout);
 		}
 #if defined(HAVE_MLX5DV_DR) && \
 	(defined(HAVE_MLX5_DR_CREATE_ACTION_FLOW_METER) || \
@@ -1369,9 +1418,8 @@ err_secondary:
 		}
 #endif
 	}
-	if (config->cqe_comp && RTE_CACHE_LINE_SIZE == 128 &&
-	    !(sh->dev_cap.flags & MLX5DV_CONTEXT_FLAGS_CQE_128B_COMP)) {
-		DRV_LOG(WARNING, "Rx CQE 128B compression is not supported");
+	if (config->cqe_comp && !sh->dev_cap.cqe_comp) {
+		DRV_LOG(WARNING, "Rx CQE 128B compression is not supported.");
 		config->cqe_comp = 0;
 	}
 	if (config->cqe_comp_fmt == MLX5_CQE_RESP_FORMAT_FTAG_STRIDX &&
@@ -1388,68 +1436,10 @@ err_secondary:
 	}
 	DRV_LOG(DEBUG, "Rx CQE compression is %ssupported",
 			config->cqe_comp ? "" : "not ");
-	if (config->tx_pp) {
-		DRV_LOG(DEBUG, "Timestamp counter frequency %u kHz",
-			hca_attr->dev_freq_khz);
-		DRV_LOG(DEBUG, "Packet pacing is %ssupported",
-			hca_attr->qos.packet_pacing ? "" : "not ");
-		DRV_LOG(DEBUG, "Cross channel ops are %ssupported",
-			hca_attr->cross_channel ? "" : "not ");
-		DRV_LOG(DEBUG, "WQE index ignore is %ssupported",
-			hca_attr->wqe_index_ignore ? "" : "not ");
-		DRV_LOG(DEBUG, "Non-wire SQ feature is %ssupported",
-			hca_attr->non_wire_sq ? "" : "not ");
-		DRV_LOG(DEBUG, "Static WQE SQ feature is %ssupported (%d)",
-			hca_attr->log_max_static_sq_wq ? "" : "not ",
-			hca_attr->log_max_static_sq_wq);
-		DRV_LOG(DEBUG, "WQE rate PP mode is %ssupported",
-			hca_attr->qos.wqe_rate_pp ? "" : "not ");
-		if (!sh->cdev->config.devx) {
-			DRV_LOG(ERR, "DevX is required for packet pacing");
-			err = ENODEV;
-			goto error;
-		}
-		if (!hca_attr->qos.packet_pacing) {
-			DRV_LOG(ERR, "Packet pacing is not supported");
-			err = ENODEV;
-			goto error;
-		}
-		if (!hca_attr->cross_channel) {
-			DRV_LOG(ERR, "Cross channel operations are"
-				     " required for packet pacing");
-			err = ENODEV;
-			goto error;
-		}
-		if (!hca_attr->wqe_index_ignore) {
-			DRV_LOG(ERR, "WQE index ignore feature is"
-				     " required for packet pacing");
-			err = ENODEV;
-			goto error;
-		}
-		if (!hca_attr->non_wire_sq) {
-			DRV_LOG(ERR, "Non-wire SQ feature is"
-				     " required for packet pacing");
-			err = ENODEV;
-			goto error;
-		}
-		if (!hca_attr->log_max_static_sq_wq) {
-			DRV_LOG(ERR, "Static WQE SQ feature is"
-				     " required for packet pacing");
-			err = ENODEV;
-			goto error;
-		}
-		if (!hca_attr->qos.wqe_rate_pp) {
-			DRV_LOG(ERR, "WQE rate mode is required"
-				     " for packet pacing");
-			err = ENODEV;
-			goto error;
-		}
-#ifndef HAVE_MLX5DV_DEVX_UAR_OFFSET
-		DRV_LOG(ERR, "DevX does not provide UAR offset,"
-			     " can't create queues for packet pacing");
+	if (config->tx_pp && !sh->dev_cap.txpp_en) {
+		DRV_LOG(ERR, "Packet pacing is not supported.");
 		err = ENODEV;
 		goto error;
-#endif
 	}
 	if (config->std_delay_drop || config->hp_delay_drop) {
 		if (!hca_attr->rq_delay_drop) {
@@ -1460,19 +1450,19 @@ err_secondary:
 				priv->dev_port);
 		}
 	}
-	if (sh->cdev->config.devx)
-		mlx5_rt_timestamp_config(sh, config, hca_attr);
 	/*
 	 * If HW has bug working with tunnel packet decapsulation and
 	 * scatter FCS, and decapsulation is needed, clear the hw_fcs_strip
 	 * bit. Then RTE_ETH_RX_OFFLOAD_KEEP_CRC bit will not be set anymore.
 	 */
-	if (hca_attr->scatter_fcs_w_decap_disable && config->decap_en)
+	if (sh->dev_cap.scatter_fcs_w_decap_disable && config->decap_en)
 		config->hw_fcs_strip = 0;
+	else
+		config->hw_fcs_strip = sh->dev_cap.hw_fcs_strip;
 	DRV_LOG(DEBUG, "FCS stripping configuration is %ssupported",
 		(config->hw_fcs_strip ? "" : "not "));
-	if (config->mprq.enabled && !mprq) {
-		DRV_LOG(WARNING, "Multi-Packet RQ isn't supported");
+	if (config->mprq.enabled && !sh->dev_cap.mprq.enabled) {
+		DRV_LOG(WARNING, "Multi-Packet RQ isn't supported.");
 		config->mprq.enabled = 0;
 	}
 	if (config->max_dump_files_num == 0)
@@ -1556,7 +1546,7 @@ err_secondary:
 	eth_dev->rx_queue_count = mlx5_rx_queue_count;
 	/* Register MAC address. */
 	claim_zero(mlx5_mac_addr_add(eth_dev, &mac, 0, 0));
-	if (config->vf && config->vf_nl_en)
+	if (sh->dev_cap.vf && config->vf_nl_en)
 		mlx5_nl_mac_addr_sync(priv->nl_socket_route,
 				      mlx5_ifindex(eth_dev),
 				      eth_dev->data->mac_addrs,
@@ -1598,7 +1588,8 @@ err_secondary:
 		if (mlx5_flex_item_port_init(eth_dev) < 0)
 			goto error;
 	}
-	if (sh->cdev->config.devx && config->dv_flow_en && config->dest_tir) {
+	if (sh->cdev->config.devx && config->dv_flow_en &&
+	    sh->dev_cap.dest_tir) {
 		priv->obj_ops = devx_obj_ops;
 		mlx5_queue_counter_id_prepare(eth_dev);
 		priv->obj_ops.lb_dummy_queue_create =
@@ -1949,8 +1940,7 @@ mlx5_device_bond_pci_match(const char *ibdev_name,
 }
 
 static void
-mlx5_os_config_default(struct mlx5_dev_config *config,
-		       struct mlx5_common_dev_config *cconf)
+mlx5_os_config_default(struct mlx5_dev_config *config)
 {
 	memset(config, 0, sizeof(*config));
 	config->mps = MLX5_ARG_UNSET;
@@ -1963,9 +1953,6 @@ mlx5_os_config_default(struct mlx5_dev_config *config,
 	config->vf_nl_en = 1;
 	config->mprq.max_memcpy_len = MLX5_MPRQ_MEMCPY_DEFAULT_LEN;
 	config->mprq.min_rxqs_num = MLX5_MPRQ_MIN_RXQS;
-	config->mprq.log_min_stride_wqe_size = cconf->devx ?
-					cconf->hca_attr.log_min_stride_wqe_sz :
-					MLX5_MPRQ_LOG_MIN_STRIDE_WQE_SIZE;
 	config->mprq.log_stride_num = MLX5_MPRQ_DEFAULT_LOG_STRIDE_NUM;
 	config->dv_esw_en = 1;
 	config->dv_flow_en = 1;
@@ -2367,8 +2354,7 @@ mlx5_os_pci_probe_pf(struct mlx5_common_device *cdev,
 		uint32_t restore;
 
 		/* Default configuration. */
-		mlx5_os_config_default(&dev_config, &cdev->config);
-		dev_config.vf = mlx5_dev_is_vf_pci(pci_dev);
+		mlx5_os_config_default(&dev_config);
 		list[i].eth_dev = mlx5_dev_spawn(cdev->dev, &list[i],
 						 &dev_config, &eth_da);
 		if (!list[i].eth_dev) {
@@ -2537,8 +2523,7 @@ mlx5_os_auxiliary_probe(struct mlx5_common_device *cdev)
 	if (ret != 0)
 		return ret;
 	/* Set default config data. */
-	mlx5_os_config_default(&config, &cdev->config);
-	config.sf = 1;
+	mlx5_os_config_default(&config);
 	/* Init spawn data. */
 	spawn.max_port = 1;
 	spawn.phys_port = 1;
@@ -2769,7 +2754,7 @@ void
 mlx5_os_mac_addr_remove(struct rte_eth_dev *dev, uint32_t index)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	const int vf = priv->config.vf;
+	const int vf = priv->sh->dev_cap.vf;
 
 	if (vf)
 		mlx5_nl_mac_addr_remove(priv->nl_socket_route,
@@ -2795,7 +2780,7 @@ mlx5_os_mac_addr_add(struct rte_eth_dev *dev, struct rte_ether_addr *mac,
 		     uint32_t index)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	const int vf = priv->config.vf;
+	const int vf = priv->sh->dev_cap.vf;
 	int ret = 0;
 
 	if (vf)

@@ -159,6 +159,8 @@ mlx5_os_capabilities_prepare(struct mlx5_dev_ctx_shared *sh)
 	void *pv_iseg = NULL;
 	u32 cb_iseg = 0;
 
+	MLX5_ASSERT(sh->cdev->config.devx);
+	MLX5_ASSERT(mlx5_dev_is_pci(sh->cdev->dev));
 	pv_iseg = mlx5_glue->query_hca_iseg(mlx5_ctx, &cb_iseg);
 	if (pv_iseg == NULL) {
 		DRV_LOG(ERR, "Failed to get device hca_iseg.");
@@ -166,22 +168,55 @@ mlx5_os_capabilities_prepare(struct mlx5_dev_ctx_shared *sh)
 		return -rte_errno;
 	}
 	memset(&sh->dev_cap, 0, sizeof(struct mlx5_dev_cap));
+	sh->dev_cap.vf = mlx5_dev_is_vf_pci(RTE_DEV_TO_PCI(sh->cdev->dev));
 	sh->dev_cap.max_cq = 1 << hca_attr->log_max_cq;
 	sh->dev_cap.max_qp = 1 << hca_attr->log_max_qp;
 	sh->dev_cap.max_qp_wr = 1 << hca_attr->log_max_qp_sz;
-	sh->dev_cap.max_tso = 1 << hca_attr->max_lso_cap;
+	sh->dev_cap.dv_flow_en = 1;
+	sh->dev_cap.mps = MLX5_MPW_DISABLED;
+	DRV_LOG(DEBUG, "MPW isn't supported.");
+	DRV_LOG(DEBUG, "MPLS over GRE/UDP tunnel offloading is no supported.");
+	sh->dev_cap.hw_csum = hca_attr->csum_cap;
+	DRV_LOG(DEBUG, "Checksum offloading is %ssupported.",
+		(sh->dev_cap.hw_csum ? "" : "not "));
+	sh->dev_cap.hw_vlan_strip = hca_attr->vlan_cap;
+	DRV_LOG(DEBUG, "VLAN stripping is %ssupported.",
+		(sh->dev_cap.hw_vlan_strip ? "" : "not "));
+	sh->dev_cap.hw_fcs_strip = hca_attr->scatter_fcs;
+	sh->dev_cap.tso = ((1 << hca_attr->max_lso_cap) > 0);
+	if (sh->dev_cap.tso)
+		sh->dev_cap.tso_max_payload_sz = 1 << hca_attr->max_lso_cap;
+	DRV_LOG(DEBUG, "Counters are not supported.");
 	if (hca_attr->rss_ind_tbl_cap) {
-		sh->dev_cap.max_rwq_indirection_table_size =
-			1 << hca_attr->rss_ind_tbl_cap;
+		/*
+		 * DPDK doesn't support larger/variable indirection tables.
+		 * Once DPDK supports it, take max size from device attr.
+		 */
+		sh->dev_cap.ind_table_max_size =
+			RTE_MIN(1 << hca_attr->rss_ind_tbl_cap,
+				(unsigned int)RTE_ETH_RSS_RETA_SIZE_512);
+		DRV_LOG(DEBUG, "Maximum Rx indirection table size is %u",
+			sh->dev_cap.ind_table_max_size);
 	}
-	sh->dev_cap.sw_parsing_offloads =
-		mlx5_get_supported_sw_parsing_offloads(hca_attr);
-	sh->dev_cap.tunnel_offloads_caps =
-		mlx5_get_supported_tunneling_offloads(hca_attr);
+	sh->dev_cap.swp = mlx5_get_supported_sw_parsing_offloads(hca_attr);
+	sh->dev_cap.tunnel_en = mlx5_get_supported_tunneling_offloads(hca_attr);
+	if (sh->dev_cap.tunnel_en) {
+		DRV_LOG(DEBUG, "Tunnel offloading is supported for %s%s%s",
+			sh->dev_cap.tunnel_en &
+			MLX5_TUNNELED_OFFLOADS_VXLAN_CAP ? "[VXLAN]" : "",
+			sh->dev_cap.tunnel_en &
+			MLX5_TUNNELED_OFFLOADS_GRE_CAP ? "[GRE]" : "",
+			sh->dev_cap.tunnel_en &
+			MLX5_TUNNELED_OFFLOADS_GENEVE_CAP ? "[GENEVE]" : "");
+	} else {
+		DRV_LOG(DEBUG, "Tunnel offloading is not supported.");
+	}
 	snprintf(sh->dev_cap.fw_ver, 64, "%x.%x.%04x",
 		 MLX5_GET(initial_seg, pv_iseg, fw_rev_major),
 		 MLX5_GET(initial_seg, pv_iseg, fw_rev_minor),
 		 MLX5_GET(initial_seg, pv_iseg, fw_rev_subminor));
+	DRV_LOG(DEBUG, "Packet pacing is not supported.");
+	mlx5_rt_timestamp_config(sh, hca_attr);
 	return 0;
 }
 
@@ -265,7 +300,6 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 {
 	const struct mlx5_switch_info *switch_info = &spawn->info;
 	struct mlx5_dev_ctx_shared *sh = NULL;
-	struct mlx5_hca_attr *hca_attr;
 	struct rte_eth_dev *eth_dev = NULL;
 	struct mlx5_priv *priv = NULL;
 	int err = 0;
@@ -321,30 +355,6 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 			strerror(errno));
 		goto error;
 	}
-	DRV_LOG(DEBUG, "MPW isn't supported");
-	config->swp = sh->dev_cap.sw_parsing_offloads &
-		(MLX5_SW_PARSING_CAP | MLX5_SW_PARSING_CSUM_CAP |
-		 MLX5_SW_PARSING_TSO_CAP);
-	config->ind_table_max_size =
-		sh->dev_cap.max_rwq_indirection_table_size;
-	config->tunnel_en = sh->dev_cap.tunnel_offloads_caps &
-		(MLX5_TUNNELED_OFFLOADS_VXLAN_CAP |
-		 MLX5_TUNNELED_OFFLOADS_GRE_CAP |
-		 MLX5_TUNNELED_OFFLOADS_GENEVE_CAP);
-	if (config->tunnel_en) {
-		DRV_LOG(DEBUG, "tunnel offloading is supported for %s%s%s",
-		config->tunnel_en &
-		MLX5_TUNNELED_OFFLOADS_VXLAN_CAP ? "[VXLAN]" : "",
-		config->tunnel_en &
-		MLX5_TUNNELED_OFFLOADS_GRE_CAP ? "[GRE]" : "",
-		config->tunnel_en &
-		MLX5_TUNNELED_OFFLOADS_GENEVE_CAP ? "[GENEVE]" : ""
-		);
-	} else {
-		DRV_LOG(DEBUG, "tunnel offloading is not supported");
-	}
-	DRV_LOG(DEBUG, "MPLS over GRE/UDP tunnel offloading is no supported");
-	config->mpls_en = 0;
 	/* Allocate private eth device data. */
 	priv = mlx5_malloc(MLX5_MEM_ZERO | MLX5_MEM_RTE,
 			   sizeof(*priv),
@@ -395,24 +405,10 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 		}
 		own_domain_id = 1;
 	}
-	DRV_LOG(DEBUG, "counters are not supported");
-	config->ind_table_max_size =
-		sh->dev_cap.max_rwq_indirection_table_size;
-	/*
-	 * Remove this check once DPDK supports larger/variable
-	 * indirection tables.
-	 */
-	if (config->ind_table_max_size > (unsigned int)RTE_ETH_RSS_RETA_SIZE_512)
-		config->ind_table_max_size = RTE_ETH_RSS_RETA_SIZE_512;
-	DRV_LOG(DEBUG, "maximum Rx indirection table size is %u",
-		config->ind_table_max_size);
 	if (config->hw_padding) {
 		DRV_LOG(DEBUG, "Rx end alignment padding isn't supported");
 		config->hw_padding = 0;
 	}
-	config->tso = (sh->dev_cap.max_tso > 0);
-	if (config->tso)
-		config->tso_max_payload_sz = sh->dev_cap.max_tso;
 	DRV_LOG(DEBUG, "%sMPS is %s.",
 		config->mps == MLX5_MPW_ENHANCED ? "enhanced " :
 		config->mps == MLX5_MPW ? "legacy " : "",
@@ -421,17 +417,7 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 		DRV_LOG(WARNING, "Rx CQE compression isn't supported.");
 		config->cqe_comp = 0;
 	}
-	if (sh->cdev->config.devx) {
-		hca_attr = &sh->cdev->config.hca_attr;
-		config->hw_csum = hca_attr->csum_cap;
-		DRV_LOG(DEBUG, "checksum offloading is %ssupported",
-			(config->hw_csum ? "" : "not "));
-		config->hw_vlan_strip = hca_attr->vlan_cap;
-		DRV_LOG(DEBUG, "VLAN stripping is %ssupported",
-			(config->hw_vlan_strip ? "" : "not "));
-		config->hw_fcs_strip = hca_attr->scatter_fcs;
-		mlx5_rt_timestamp_config(sh, config, hca_attr);
-	}
+	config->hw_fcs_strip = sh->dev_cap.hw_fcs_strip;
 	if (config->mprq.enabled) {
 		DRV_LOG(WARNING, "Multi-Packet RQ isn't supported");
 		config->mprq.enabled = 0;
@@ -853,7 +839,6 @@ mlx5_os_net_probe(struct mlx5_common_device *cdev)
 		},
 		.dv_flow_en = 1,
 		.log_hp_size = MLX5_ARG_UNSET,
-		.vf = mlx5_dev_is_vf_pci(pci_dev),
 	};
 	int ret;
 	uint32_t restore;

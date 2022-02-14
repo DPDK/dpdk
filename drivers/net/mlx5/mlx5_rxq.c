@@ -368,13 +368,13 @@ mlx5_get_rx_queue_offloads(struct rte_eth_dev *dev)
 		offloads |= RTE_ETH_RX_OFFLOAD_BUFFER_SPLIT;
 	if (config->hw_fcs_strip)
 		offloads |= RTE_ETH_RX_OFFLOAD_KEEP_CRC;
-	if (config->hw_csum)
+	if (priv->sh->dev_cap.hw_csum)
 		offloads |= (RTE_ETH_RX_OFFLOAD_IPV4_CKSUM |
 			     RTE_ETH_RX_OFFLOAD_UDP_CKSUM |
 			     RTE_ETH_RX_OFFLOAD_TCP_CKSUM);
-	if (config->hw_vlan_strip)
+	if (priv->sh->dev_cap.hw_vlan_strip)
 		offloads |= RTE_ETH_RX_OFFLOAD_VLAN_STRIP;
-	if (MLX5_LRO_SUPPORTED(dev))
+	if (priv->sh->dev_cap.lro_supported)
 		offloads |= RTE_ETH_RX_OFFLOAD_TCP_LRO;
 	return offloads;
 }
@@ -1564,14 +1564,15 @@ mlx5_mprq_prepare(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_dev_config *config = &priv->config;
-	uint32_t log_min_stride_num = config->mprq.log_min_stride_num;
-	uint32_t log_max_stride_num = config->mprq.log_max_stride_num;
+	struct mlx5_dev_cap *dev_cap = &priv->sh->dev_cap;
+	uint32_t log_min_stride_num = dev_cap->mprq.log_min_stride_num;
+	uint32_t log_max_stride_num = dev_cap->mprq.log_max_stride_num;
 	uint32_t log_def_stride_num =
 			RTE_MIN(RTE_MAX(MLX5_MPRQ_DEFAULT_LOG_STRIDE_NUM,
 					log_min_stride_num),
 				log_max_stride_num);
-	uint32_t log_min_stride_size = config->mprq.log_min_stride_size;
-	uint32_t log_max_stride_size = config->mprq.log_max_stride_size;
+	uint32_t log_min_stride_size = dev_cap->mprq.log_min_stride_size;
+	uint32_t log_max_stride_size = dev_cap->mprq.log_max_stride_size;
 	uint32_t log_def_stride_size =
 			RTE_MIN(RTE_MAX(MLX5_MPRQ_DEFAULT_LOG_STRIDE_SIZE,
 					log_min_stride_size),
@@ -1610,7 +1611,7 @@ mlx5_mprq_prepare(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 	}
 	log_stride_wqe_size = *actual_log_stride_num + *actual_log_stride_size;
 	/* Check if WQE buffer size is supported by hardware. */
-	if (log_stride_wqe_size < config->mprq.log_min_stride_wqe_size) {
+	if (log_stride_wqe_size < dev_cap->mprq.log_min_stride_wqe_size) {
 		*actual_log_stride_num = log_def_stride_num;
 		*actual_log_stride_size = log_def_stride_size;
 		DRV_LOG(WARNING,
@@ -1619,7 +1620,8 @@ mlx5_mprq_prepare(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 			RTE_BIT32(log_def_stride_size));
 		log_stride_wqe_size = log_def_stride_num + log_def_stride_size;
 	}
-	MLX5_ASSERT(log_stride_wqe_size >= config->mprq.log_min_stride_wqe_size);
+	MLX5_ASSERT(log_stride_wqe_size >=
+		    dev_cap->mprq.log_min_stride_wqe_size);
 	if (desc <= RTE_BIT32(*actual_log_stride_num))
 		goto unsupport;
 	if (min_mbuf_size > RTE_BIT32(log_stride_wqe_size)) {
@@ -1648,9 +1650,9 @@ unsupport:
 			RTE_BIT32(config->mprq.log_stride_size),
 			RTE_BIT32(config->mprq.log_stride_num),
 			config->mprq.min_rxqs_num,
-			RTE_BIT32(config->mprq.log_min_stride_wqe_size),
-			RTE_BIT32(config->mprq.log_min_stride_size),
-			RTE_BIT32(config->mprq.log_max_stride_size),
+			RTE_BIT32(dev_cap->mprq.log_min_stride_wqe_size),
+			RTE_BIT32(dev_cap->mprq.log_min_stride_size),
+			RTE_BIT32(dev_cap->mprq.log_max_stride_size),
 			rx_seg_en ? "" : "not ");
 	return -1;
 }
@@ -2370,7 +2372,7 @@ mlx5_ind_table_obj_setup(struct rte_eth_dev *dev,
 	int ret = 0, err;
 	const unsigned int n = rte_is_power_of_2(queues_n) ?
 			       log2above(queues_n) :
-			       log2above(priv->config.ind_table_max_size);
+			       log2above(priv->sh->dev_cap.ind_table_max_size);
 
 	if (ref_qs)
 		for (i = 0; i != queues_n; ++i) {
@@ -2495,7 +2497,7 @@ mlx5_ind_table_obj_modify(struct rte_eth_dev *dev,
 	int ret = 0, err;
 	const unsigned int n = rte_is_power_of_2(queues_n) ?
 			       log2above(queues_n) :
-			       log2above(priv->config.ind_table_max_size);
+			       log2above(priv->sh->dev_cap.ind_table_max_size);
 
 	MLX5_ASSERT(standalone);
 	RTE_SET_USED(standalone);
@@ -2576,7 +2578,7 @@ mlx5_ind_table_obj_detach(struct rte_eth_dev *dev,
 	struct mlx5_priv *priv = dev->data->dev_private;
 	const unsigned int n = rte_is_power_of_2(ind_tbl->queues_n) ?
 			       log2above(ind_tbl->queues_n) :
-			       log2above(priv->config.ind_table_max_size);
+			       log2above(priv->sh->dev_cap.ind_table_max_size);
 	unsigned int i;
 	int ret;
 
@@ -2994,6 +2996,6 @@ mlx5_rxq_timestamp_set(struct rte_eth_dev *dev)
 		if (data == NULL)
 			continue;
 		data->sh = sh;
-		data->rt_timestamp = priv->config.rt_timestamp;
+		data->rt_timestamp = sh->dev_cap.rt_timestamp;
 	}
 }

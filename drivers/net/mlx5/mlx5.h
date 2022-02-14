@@ -116,7 +116,6 @@ struct mlx5_flow_cb_ctx {
 
 /* Device capabilities structure which isn't changed in any stage. */
 struct mlx5_dev_cap {
-	uint64_t device_cap_flags_ex;
 	int max_cq; /* Maximum number of supported CQs */
 	int max_qp; /* Maximum number of supported QPs. */
 	int max_qp_wr; /* Maximum number of outstanding WR on any WQ. */
@@ -124,20 +123,40 @@ struct mlx5_dev_cap {
 	/* Maximum number of s/g per WR for SQ & RQ of QP for non RDMA Read
 	 * operations.
 	 */
-	uint32_t raw_packet_caps;
-	uint32_t max_rwq_indirection_table_size;
+	int mps; /* Multi-packet send supported mode. */
+	uint32_t vf:1; /* This is a VF. */
+	uint32_t sf:1; /* This is a SF. */
+	uint32_t txpp_en:1; /* Tx packet pacing is supported. */
+	uint32_t mpls_en:1; /* MPLS over GRE/UDP is supported. */
+	uint32_t cqe_comp:1; /* CQE compression is supported. */
+	uint32_t hw_csum:1; /* Checksum offload is supported. */
+	uint32_t hw_padding:1; /* End alignment padding is supported. */
+	uint32_t dest_tir:1; /* Whether advanced DR API is available. */
+	uint32_t dv_esw_en:1; /* E-Switch DV flow is supported. */
+	uint32_t dv_flow_en:1; /* DV flow is supported. */
+	uint32_t swp:3; /* Tx generic tunnel checksum and TSO offload. */
+	uint32_t hw_vlan_strip:1; /* VLAN stripping is supported. */
+	uint32_t scatter_fcs_w_decap_disable:1;
+	/* HW has bug working with tunnel packet decap and scatter FCS. */
+	uint32_t hw_fcs_strip:1; /* FCS stripping is supported. */
+	uint32_t rt_timestamp:1; /* Realtime timestamp format. */
+	uint32_t lro_supported:1; /* Whether LRO is supported. */
+	uint32_t rq_delay_drop_en:1; /* Enable RxQ delay drop. */
+	uint32_t tunnel_en:3;
+	/* Whether tunnel stateless offloads are supported. */
+	uint32_t ind_table_max_size;
 	/* Maximum receive WQ indirection table size. */
-	uint32_t max_tso; /* Maximum TCP payload for TSO. */
-	uint32_t tso_supported_qpts;
-	uint64_t flags;
-	uint64_t comp_mask;
-	uint32_t sw_parsing_offloads;
-	uint32_t min_single_stride_log_num_of_bytes;
-	uint32_t max_single_stride_log_num_of_bytes;
-	uint32_t min_single_wqe_log_num_of_strides;
-	uint32_t max_single_wqe_log_num_of_strides;
-	uint32_t stride_supported_qpts;
-	uint32_t tunnel_offloads_caps;
+	uint32_t tso:1; /* Whether TSO is supported. */
+	uint32_t tso_max_payload_sz; /* Maximum TCP payload for TSO. */
+	struct {
+		uint32_t enabled:1; /* Whether MPRQ is enabled. */
+		uint32_t log_min_stride_size; /* Log min size of a stride. */
+		uint32_t log_max_stride_size; /* Log max size of a stride. */
+		uint32_t log_min_stride_num; /* Log min num of strides. */
+		uint32_t log_max_stride_num; /* Log max num of strides. */
+		uint32_t log_min_stride_wqe_size;
+		/* Log min WQE size, (size of single stride)*(num of strides).*/
+	} mprq; /* Capability for Multi-Packet RQ. */
 	char fw_ver[64]; /* Firmware version of this device. */
 };
 
@@ -214,9 +233,6 @@ struct mlx5_stats_ctrl {
 	uint64_t imissed;
 };
 
-#define MLX5_LRO_SUPPORTED(dev) \
-	(((struct mlx5_priv *)((dev)->data->dev_private))->config.lro.supported)
-
 /* Maximal size of coalesced segment for LRO is set in chunks of 256 Bytes. */
 #define MLX5_LRO_SEG_CHUNK_SIZE	256u
 
@@ -225,12 +241,6 @@ struct mlx5_stats_ctrl {
 
 /* Maximal number of segments to split. */
 #define MLX5_MAX_RXQ_NSEG (1u << MLX5_MAX_LOG_RQ_SEGS)
-
-/* LRO configurations structure. */
-struct mlx5_lro_config {
-	uint32_t supported:1; /* Whether LRO is supported. */
-	uint32_t timeout; /* User configuration. */
-};
 
 /*
  * Device configuration structure.
@@ -241,19 +251,11 @@ struct mlx5_lro_config {
  *  - User device parameters disabled features.
  */
 struct mlx5_dev_config {
-	unsigned int hw_csum:1; /* Checksum offload is supported. */
-	unsigned int hw_vlan_strip:1; /* VLAN stripping is supported. */
 	unsigned int hw_vlan_insert:1; /* VLAN insertion in WQE is supported. */
 	unsigned int hw_fcs_strip:1; /* FCS stripping is supported. */
 	unsigned int hw_padding:1; /* End alignment padding is supported. */
-	unsigned int vf:1; /* This is a VF. */
-	unsigned int sf:1; /* This is a SF. */
-	unsigned int tunnel_en:3;
-	/* Whether tunnel stateless offloads are supported. */
-	unsigned int mpls_en:1; /* MPLS over GRE/UDP is enabled. */
 	unsigned int cqe_comp:1; /* CQE compression is enabled. */
 	unsigned int cqe_comp_fmt:3; /* CQE compression format. */
-	unsigned int tso:1; /* Whether TSO is supported. */
 	unsigned int rx_vec_en:1; /* Rx vector is enabled. */
 	unsigned int l3_vxlan_en:1; /* Enable L3 VXLAN flow creation. */
 	unsigned int vf_nl_en:1; /* Enable Netlink requests in VF mode. */
@@ -262,10 +264,7 @@ struct mlx5_dev_config {
 	unsigned int dv_xmeta_en:2; /* Enable extensive flow metadata. */
 	unsigned int lacp_by_user:1;
 	/* Enable user to manage LACP traffic. */
-	unsigned int swp:3; /* Tx generic tunnel checksum and TSO offload. */
-	unsigned int dest_tir:1; /* Whether advanced DR API is available. */
 	unsigned int reclaim_mode:2; /* Memory reclaim mode. */
-	unsigned int rt_timestamp:1; /* realtime timestamp format. */
 	unsigned int decap_en:1; /* Whether decap will be used or not. */
 	unsigned int dv_miss_info:1; /* restore packet after partial hw miss */
 	unsigned int allow_duplicate_pattern:1;
@@ -276,29 +275,21 @@ struct mlx5_dev_config {
 		unsigned int enabled:1; /* Whether MPRQ is enabled. */
 		unsigned int log_stride_num; /* Log number of strides. */
 		unsigned int log_stride_size; /* Log size of a stride. */
-		unsigned int log_min_stride_size; /* Log min size of a stride.*/
-		unsigned int log_max_stride_size; /* Log max size of a stride.*/
-		unsigned int log_min_stride_num; /* Log min num of strides. */
-		unsigned int log_max_stride_num; /* Log max num of strides. */
-		unsigned int log_min_stride_wqe_size;
-		/* Log min WQE size, (size of single stride)*(num of strides).*/
 		unsigned int max_memcpy_len;
 		/* Maximum packet size to memcpy Rx packets. */
 		unsigned int min_rxqs_num;
 		/* Rx queue count threshold to enable MPRQ. */
 	} mprq; /* Configurations for Multi-Packet RQ. */
 	int mps; /* Multi-packet send supported mode. */
-	unsigned int tso_max_payload_sz; /* Maximum TCP payload for TSO. */
-	unsigned int ind_table_max_size; /* Maximum indirection table size. */
 	unsigned int max_dump_files_num; /* Maximum dump files per queue. */
 	unsigned int log_hp_size; /* Single hairpin queue data size in total. */
+	unsigned int lro_timeout; /* LRO user configuration. */
 	int txqs_inline; /* Queue number threshold for inlining. */
 	int txq_inline_min; /* Minimal amount of data bytes to inline. */
 	int txq_inline_max; /* Max packet size for inlining with SEND. */
 	int txq_inline_mpw; /* Max packet size for inlining with eMPW. */
 	int tx_pp; /* Timestamp scheduling granularity in nanoseconds. */
 	int tx_skew; /* Tx scheduling skew between WQE and data on wire. */
-	struct mlx5_lro_config lro; /* LRO configuration. */
 };
 
 
@@ -1518,7 +1509,6 @@ void mlx5_age_event_prepare(struct mlx5_dev_ctx_shared *sh);
 	     port_id = mlx5_eth_find_next(port_id + 1, dev))
 int mlx5_args(struct mlx5_dev_config *config, struct rte_devargs *devargs);
 void mlx5_rt_timestamp_config(struct mlx5_dev_ctx_shared *sh,
-			      struct mlx5_dev_config *config,
 			      struct mlx5_hca_attr *hca_attr);
 struct mlx5_dev_ctx_shared *
 mlx5_alloc_shared_dev_ctx(const struct mlx5_dev_spawn_data *spawn,

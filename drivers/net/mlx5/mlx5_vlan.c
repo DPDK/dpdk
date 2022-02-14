@@ -97,7 +97,7 @@ mlx5_vlan_strip_queue_set(struct rte_eth_dev *dev, uint16_t queue, int on)
 
 	MLX5_ASSERT(rxq != NULL && rxq->ctrl != NULL);
 	/* Validate hw support */
-	if (!priv->config.hw_vlan_strip) {
+	if (!priv->sh->dev_cap.hw_vlan_strip) {
 		DRV_LOG(ERR, "port %u VLAN stripping is not supported",
 			dev->data->port_id);
 		return;
@@ -146,7 +146,7 @@ mlx5_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 		int hw_vlan_strip = !!(dev->data->dev_conf.rxmode.offloads &
 				       RTE_ETH_RX_OFFLOAD_VLAN_STRIP);
 
-		if (!priv->config.hw_vlan_strip) {
+		if (!priv->sh->dev_cap.hw_vlan_strip) {
 			DRV_LOG(ERR, "port %u VLAN stripping is not supported",
 				dev->data->port_id);
 			return 0;

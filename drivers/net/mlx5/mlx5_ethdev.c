@@ -121,7 +121,7 @@ mlx5_dev_configure(struct rte_eth_dev *dev)
 			dev->data->port_id, priv->txqs_n, txqs_n);
 		priv->txqs_n = txqs_n;
 	}
-	if (rxqs_n > priv->config.ind_table_max_size) {
+	if (rxqs_n > priv->sh->dev_cap.ind_table_max_size) {
 		DRV_LOG(ERR, "port %u cannot handle this many Rx queues (%u)",
 			dev->data->port_id, rxqs_n);
 		rte_errno = EINVAL;
@@ -177,7 +177,7 @@ mlx5_dev_configure_rss_reta(struct rte_eth_dev *dev)
 			rss_queue_arr[j++] = i;
 	}
 	rss_queue_n = j;
-	if (rss_queue_n > priv->config.ind_table_max_size) {
+	if (rss_queue_n > priv->sh->dev_cap.ind_table_max_size) {
 		DRV_LOG(ERR, "port %u cannot handle this many Rx queues (%u)",
 			dev->data->port_id, rss_queue_n);
 		rte_errno = EINVAL;
@@ -193,8 +193,8 @@ mlx5_dev_configure_rss_reta(struct rte_eth_dev *dev)
 	 * The result is always rounded to the next power of two.
 	 */
 	reta_idx_n = (1 << log2above((rss_queue_n & (rss_queue_n - 1)) ?
-				priv->config.ind_table_max_size :
-				rss_queue_n));
+				     priv->sh->dev_cap.ind_table_max_size :
+				     rss_queue_n));
 	ret = mlx5_rss_reta_index_resize(dev, reta_idx_n);
 	if (ret) {
 		mlx5_free(rss_queue_arr);
@@ -330,7 +330,7 @@ mlx5_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *info)
 	info->dev_capa = RTE_ETH_DEV_CAPA_FLOW_SHARED_OBJECT_KEEP;
 	info->if_index = mlx5_ifindex(dev);
 	info->reta_size = priv->reta_idx_n ?
-		priv->reta_idx_n : config->ind_table_max_size;
+		priv->reta_idx_n : priv->sh->dev_cap.ind_table_max_size;
 	info->hash_key_size = MLX5_RSS_HASH_KEY_LEN;
 	info->speed_capa = priv->link_speed_capa;
 	info->flow_type_rss_offloads = ~MLX5_RSS_HF_MASK;
@@ -722,7 +722,7 @@ mlx5_hairpin_cap_get(struct rte_eth_dev *dev, struct rte_eth_hairpin_cap *cap)
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_dev_config *config = &priv->config;
 
-	if (!priv->sh->cdev->config.devx || !config->dest_tir ||
+	if (!priv->sh->cdev->config.devx || !priv->sh->dev_cap.dest_tir ||
 	    !config->dv_flow_en) {
 		rte_errno = ENOTSUP;
 		return -rte_errno;

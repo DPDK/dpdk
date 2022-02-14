@@ -1759,7 +1759,7 @@ mlx5_validate_action_rss(struct rte_eth_dev *dev,
 					  RTE_FLOW_ERROR_TYPE_ACTION_CONF,
 					  &rss->key_len,
 					  "RSS hash key too large");
-	if (rss->queue_num > priv->config.ind_table_max_size)
+	if (rss->queue_num > priv->sh->dev_cap.ind_table_max_size)
 		return rte_flow_error_set(error, ENOTSUP,
 					  RTE_FLOW_ERROR_TYPE_ACTION_CONF,
 					  &rss->queue_num,
@@ -3138,7 +3138,7 @@ mlx5_flow_validate_item_mpls(struct rte_eth_dev *dev __rte_unused,
 	struct mlx5_priv *priv = dev->data->dev_private;
 	int ret;
 
-	if (!priv->config.mpls_en)
+	if (!priv->sh->dev_cap.mpls_en)
 		return rte_flow_error_set(error, ENOTSUP,
 					  RTE_FLOW_ERROR_TYPE_ITEM, item,
 					  "MPLS not supported or"

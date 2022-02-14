@@ -1174,14 +1174,11 @@ mlx5_setup_tis(struct mlx5_dev_ctx_shared *sh)
  *
  * @param sh
  *   Pointer to mlx5_dev_ctx_shared object.
- * @param config
- *   Device configuration parameters.
  * @param hca_attr
  *   Pointer to DevX HCA capabilities structure.
  */
 void
 mlx5_rt_timestamp_config(struct mlx5_dev_ctx_shared *sh,
-			 struct mlx5_dev_config *config,
 			 struct mlx5_hca_attr *hca_attr)
 {
 	uint32_t dw_cnt = MLX5_ST_SZ_DW(register_mtutc);
@@ -1198,11 +1195,11 @@ mlx5_rt_timestamp_config(struct mlx5_dev_ctx_shared *sh,
 		/* MTUTC register is read successfully. */
 		ts_mode = MLX5_GET(register_mtutc, reg, time_stamp_mode);
 		if (ts_mode == MLX5_MTUTC_TIMESTAMP_MODE_REAL_TIME)
-			config->rt_timestamp = 1;
+			sh->dev_cap.rt_timestamp = 1;
 	} else {
 		/* Kernel does not support register reading. */
 		if (hca_attr->dev_freq_khz == (NS_PER_S / MS_PER_S))
-			config->rt_timestamp = 1;
+			sh->dev_cap.rt_timestamp = 1;
 	}
 }
 
@@ -1676,7 +1673,7 @@ mlx5_dev_close(struct rte_eth_dev *dev)
 		mlx5_free(priv->rss_conf.rss_key);
 	if (priv->reta_idx != NULL)
 		mlx5_free(priv->reta_idx);
-	if (priv->config.vf)
+	if (priv->sh->dev_cap.vf)
 		mlx5_os_mac_addr_flush(dev);
 	if (priv->nl_socket_route >= 0)
 		close(priv->nl_socket_route);
@@ -2028,7 +2025,7 @@ mlx5_args_check(const char *key, const char *val, void *opaque)
 	} else if (strcmp(MLX5_MAX_DUMP_FILES_NUM, key) == 0) {
 		config->max_dump_files_num = tmp;
 	} else if (strcmp(MLX5_LRO_TIMEOUT_USEC, key) == 0) {
-		config->lro.timeout = tmp;
+		config->lro_timeout = tmp;
 	} else if (strcmp(RTE_DEVARGS_KEY_CLASS, key) == 0) {
 		DRV_LOG(DEBUG, "class argument is %s.", val);
 	} else if (strcmp(MLX5_HP_BUF_SIZE, key) == 0) {

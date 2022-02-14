@@ -571,7 +571,7 @@ mlx5_devx_ind_table_create_rqt_attr(struct rte_eth_dev *dev,
 		rte_errno = ENOMEM;
 		return NULL;
 	}
-	rqt_attr->rqt_max_size = priv->config.ind_table_max_size;
+	rqt_attr->rqt_max_size = priv->sh->dev_cap.ind_table_max_size;
 	rqt_attr->rqt_actual_size = rqt_n;
 	if (queues == NULL) {
 		for (i = 0; i < rqt_n; i++)
@@ -769,7 +769,7 @@ mlx5_devx_tir_attr_set(struct rte_eth_dev *dev, const uint8_t *rss_key,
 		tir_attr->self_lb_block =
 					MLX5_TIRC_SELF_LB_BLOCK_BLOCK_UNICAST;
 	if (lro) {
-		tir_attr->lro_timeout_period_usecs = priv->config.lro.timeout;
+		tir_attr->lro_timeout_period_usecs = priv->config.lro_timeout;
 		tir_attr->lro_max_msg_sz = priv->max_lro_msg_size;
 		tir_attr->lro_enable_mask =
 				MLX5_TIRC_LRO_ENABLE_MASK_IPV4_LRO |
@@ -1196,7 +1196,7 @@ mlx5_txq_create_devx_sq_resources(struct rte_eth_dev *dev, uint16_t idx,
 		.flush_in_error_en = 1,
 		.allow_multi_pkt_send_wqe = !!priv->config.mps,
 		.min_wqe_inline_mode = cdev->config.hca_attr.vport_inline_mode,
-		.allow_swp = !!priv->config.swp,
+		.allow_swp = !!priv->sh->dev_cap.swp,
 		.cqn = txq_obj->cq_obj.cq->id,
 		.tis_lst_sz = 1,
 		.wq_attr = (struct mlx5_devx_wq_attr){

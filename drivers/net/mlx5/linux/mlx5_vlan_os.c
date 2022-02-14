@@ -103,12 +103,11 @@ void *
 mlx5_vlan_vmwa_init(struct rte_eth_dev *dev, uint32_t ifindex)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5_dev_config *config = &priv->config;
 	struct mlx5_nl_vlan_vmwa_context *vmwa;
 	enum rte_hypervisor hv_type;
 
 	/* Do not engage workaround over PF. */
-	if (!config->vf)
+	if (!priv->sh->dev_cap.vf)
 		return NULL;
 	/* Check whether there is desired virtual environment */
 	hv_type = rte_hypervisor_get();
