@@ -977,10 +977,6 @@ err_secondary:
 			strerror(rte_errno));
 		goto error;
 	}
-	if (config->dv_miss_info) {
-		if (switch_info->master || switch_info->representor)
-			config->dv_xmeta_en = MLX5_XMETA_MODE_META16;
-	}
 	sh = mlx5_alloc_shared_dev_ctx(spawn, config);
 	if (!sh)
 		return NULL;
@@ -1242,6 +1238,10 @@ err_secondary:
 	/* Override some values set by hardware configuration. */
 	mlx5_args(config, dpdk_dev->devargs);
 	/* Update final values for devargs before check sibling config. */
+	if (config->dv_miss_info) {
+		if (switch_info->master || switch_info->representor)
+			config->dv_xmeta_en = MLX5_XMETA_MODE_META16;
+	}
 #if !defined(HAVE_IBV_FLOW_DV_SUPPORT) || !defined(HAVE_MLX5DV_DR)
 	if (config->dv_flow_en) {
 		DRV_LOG(WARNING, "DV flow is not supported.");
