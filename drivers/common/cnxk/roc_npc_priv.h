@@ -413,6 +413,7 @@ int npc_mcam_alloc_entries(struct npc *npc, int ref_mcam, int *alloc_entry,
 int npc_mcam_ena_dis_entry(struct npc *npc, struct roc_npc_flow *mcam,
 			   bool enable);
 int npc_mcam_write_entry(struct npc *npc, struct roc_npc_flow *mcam);
+int npc_flow_enable_all_entries(struct npc *npc, bool enable);
 int npc_update_parse_state(struct npc_parse_state *pst,
 			   struct npc_parse_item_info *info, int lid, int lt,
 			   uint8_t flags);

@@ -781,6 +781,26 @@ npc_program_mcam(struct npc *npc, struct npc_parse_state *pst, bool mcam_alloc)
 }
 
 int
+npc_flow_enable_all_entries(struct npc *npc, bool enable)
+{
+	struct npc_flow_list *list;
+	struct roc_npc_flow *flow;
+	int rc = 0, idx;
+
+	/* Free any MCAM counters and delete flow list */
+	for (idx = 0; idx < npc->flow_max_priority; idx++) {
+		list = &npc->flow_list[idx];
+		TAILQ_FOREACH(flow, list, next) {
+			flow->enable = enable;
+			rc = npc_mcam_write_entry(npc, flow);
+			if (rc)
+				return rc;
+		}
+	}
+	return rc;
+}
+
+int
 npc_flow_free_all_resources(struct npc *npc)
 {
 	struct roc_npc_flow *flow;

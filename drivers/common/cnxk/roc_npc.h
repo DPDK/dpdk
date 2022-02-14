@@ -309,6 +309,8 @@ roc_npc_flow_create(struct roc_npc *roc_npc, const struct roc_npc_attr *attr,
 int __roc_api roc_npc_flow_destroy(struct roc_npc *roc_npc,
 				   struct roc_npc_flow *flow);
 int __roc_api roc_npc_mcam_free_entry(struct roc_npc *roc_npc, uint32_t entry);
+int __roc_api roc_npc_mcam_enable_all_entries(struct roc_npc *roc_npc,
+					      bool enable);
 int __roc_api roc_npc_mcam_alloc_entry(struct roc_npc *roc_npc,
 				       struct roc_npc_flow *mcam,
 				       struct roc_npc_flow *ref_mcam, int prio,

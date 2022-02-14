@@ -75,6 +75,14 @@ roc_npc_mcam_alloc_entries(struct roc_npc *roc_npc, int ref_entry,
 }
 
 int
+roc_npc_mcam_enable_all_entries(struct roc_npc *roc_npc, bool enable)
+{
+	struct npc *npc = roc_npc_to_npc_priv(roc_npc);
+
+	return npc_flow_enable_all_entries(npc, enable);
+}
+
+int
 roc_npc_mcam_alloc_entry(struct roc_npc *roc_npc, struct roc_npc_flow *mcam,
 			 struct roc_npc_flow *ref_mcam, int prio,
 			 int *resp_count)

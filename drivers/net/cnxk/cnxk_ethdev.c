@@ -1395,8 +1395,10 @@ cnxk_nix_dev_stop(struct rte_eth_dev *eth_dev)
 	int count, i, j, rc;
 	void *rxq;
 
-	/* Disable switch hdr pkind */
-	roc_nix_switch_hdr_set(&dev->nix, 0, 0, 0, 0);
+	/* Disable all the NPC entries */
+	rc = roc_npc_mcam_enable_all_entries(&dev->npc, 0);
+	if (rc)
+		return rc;
 
 	/* Stop link change events */
 	if (!roc_nix_is_vf_or_sdp(&dev->nix))
@@ -1468,6 +1470,12 @@ cnxk_nix_dev_start(struct rte_eth_dev *eth_dev)
 	rc = roc_nix_npc_rx_ena_dis(&dev->nix, true);
 	if (rc) {
 		plt_err("Failed to enable NPC rx %d", rc);
+		return rc;
+	}
+
+	rc = roc_npc_mcam_enable_all_entries(&dev->npc, 1);
+	if (rc) {
+		plt_err("Failed to enable NPC entries %d", rc);
 		return rc;
 	}
 
@@ -1720,6 +1728,9 @@ cnxk_eth_dev_uninit(struct rte_eth_dev *eth_dev, bool reset)
 	const struct eth_dev_ops *dev_ops = eth_dev->dev_ops;
 	struct roc_nix *nix = &dev->nix;
 	int rc, i;
+
+	/* Disable switch hdr pkind */
+	roc_nix_switch_hdr_set(&dev->nix, 0, 0, 0, 0);
 
 	plt_free(eth_dev->security_ctx);
 	eth_dev->security_ctx = NULL;
