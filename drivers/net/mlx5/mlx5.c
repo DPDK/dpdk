@@ -1172,12 +1172,11 @@ mlx5_alloc_shared_dev_ctx(const struct mlx5_dev_spawn_data *spawn,
 	MLX5_ASSERT(spawn->max_port);
 	sh = mlx5_malloc(MLX5_MEM_ZERO | MLX5_MEM_RTE,
 			 sizeof(struct mlx5_dev_ctx_shared) +
-			 spawn->max_port *
-			 sizeof(struct mlx5_dev_shared_port),
+			 spawn->max_port * sizeof(struct mlx5_dev_shared_port),
 			 RTE_CACHE_LINE_SIZE, SOCKET_ID_ANY);
 	if (!sh) {
-		DRV_LOG(ERR, "shared context allocation failure");
-		rte_errno  = ENOMEM;
+		DRV_LOG(ERR, "Shared context allocation failure.");
+		rte_errno = ENOMEM;
 		goto exit;
 	}
 	pthread_mutex_init(&sh->txpp.mutex, NULL);
@@ -1199,9 +1198,8 @@ mlx5_alloc_shared_dev_ctx(const struct mlx5_dev_spawn_data *spawn,
 	strncpy(sh->ibdev_path, mlx5_os_get_ctx_device_path(sh->cdev->ctx),
 		sizeof(sh->ibdev_path) - 1);
 	/*
-	 * Setting port_id to max unallowed value means
-	 * there is no interrupt subhandler installed for
-	 * the given port index i.
+	 * Setting port_id to max unallowed value means there is no interrupt
+	 * subhandler installed for the given port index i.
 	 */
 	for (i = 0; i < sh->max_port; i++) {
 		sh->port[i].ih_port_id = RTE_MAX_ETHPORTS;
@@ -1211,12 +1209,12 @@ mlx5_alloc_shared_dev_ctx(const struct mlx5_dev_spawn_data *spawn,
 		sh->td = mlx5_devx_cmd_create_td(sh->cdev->ctx);
 		if (!sh->td) {
 			DRV_LOG(ERR, "TD allocation failure");
-			err = ENOMEM;
+			rte_errno = ENOMEM;
 			goto error;
 		}
 		if (mlx5_setup_tis(sh)) {
 			DRV_LOG(ERR, "TIS allocation failure");
-			err = ENOMEM;
+			rte_errno = ENOMEM;
 			goto error;
 		}
 		err = mlx5_rxtx_uars_prepare(sh);
@@ -1246,19 +1244,19 @@ exit:
 	pthread_mutex_unlock(&mlx5_dev_ctx_list_mutex);
 	return sh;
 error:
+	err = rte_errno;
 	pthread_mutex_destroy(&sh->txpp.mutex);
 	pthread_mutex_unlock(&mlx5_dev_ctx_list_mutex);
 	MLX5_ASSERT(sh);
-	if (sh->td)
-		claim_zero(mlx5_devx_cmd_destroy(sh->td));
+	mlx5_rxtx_uars_release(sh);
 	i = 0;
 	do {
 		if (sh->tis[i])
 			claim_zero(mlx5_devx_cmd_destroy(sh->tis[i]));
 	} while (++i < (uint32_t)sh->bond.n_port);
-	mlx5_rxtx_uars_release(sh);
+	if (sh->td)
+		claim_zero(mlx5_devx_cmd_destroy(sh->td));
 	mlx5_free(sh);
-	MLX5_ASSERT(err > 0);
 	rte_errno = err;
 	return NULL;
 }

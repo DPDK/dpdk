@@ -138,7 +138,7 @@ mlx5_os_set_nonblock_channel_fd(int fd)
  *   Pointer to mlx5 device attributes.
  *
  * @return
- *   0 on success, non zero error number otherwise
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 int
 mlx5_os_get_dev_attr(struct mlx5_common_device *cdev,
@@ -150,8 +150,10 @@ mlx5_os_get_dev_attr(struct mlx5_common_device *cdev,
 
 	memset(device_attr, 0, sizeof(*device_attr));
 	err = mlx5_glue->query_device_ex(ctx, NULL, &attr_ex);
-	if (err)
-		return err;
+	if (err) {
+		rte_errno = errno;
+		return -rte_errno;
+	}
 	device_attr->device_cap_flags_ex = attr_ex.device_cap_flags_ex;
 	device_attr->max_qp_wr = attr_ex.orig_attr.max_qp_wr;
 	device_attr->max_sge = attr_ex.orig_attr.max_sge;
@@ -170,8 +172,10 @@ mlx5_os_get_dev_attr(struct mlx5_common_device *cdev,
 
 	struct mlx5dv_context dv_attr = { .comp_mask = 0 };
 	err = mlx5_glue->dv_query_device(ctx, &dv_attr);
-	if (err)
-		return err;
+	if (err) {
+		rte_errno = errno;
+		return -rte_errno;
+	}
 
 	device_attr->flags = dv_attr.flags;
 	device_attr->comp_mask = dv_attr.comp_mask;
@@ -195,7 +199,7 @@ mlx5_os_get_dev_attr(struct mlx5_common_device *cdev,
 	strlcpy(device_attr->fw_ver, attr_ex.orig_attr.fw_ver,
 		sizeof(device_attr->fw_ver));
 
-	return err;
+	return 0;
 }
 
 /**

@@ -136,7 +136,7 @@ mlx5_init_once(void)
  *   Pointer to mlx5 device attributes.
  *
  * @return
- *   0 on success, non zero error number otherwise.
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 int
 mlx5_os_get_dev_attr(struct mlx5_common_device *cdev,
@@ -145,10 +145,11 @@ mlx5_os_get_dev_attr(struct mlx5_common_device *cdev,
 	struct mlx5_context *mlx5_ctx;
 	void *pv_iseg = NULL;
 	u32 cb_iseg = 0;
-	int err = 0;
 
-	if (!cdev || !cdev->ctx)
-		return -EINVAL;
+	if (!cdev || !cdev->ctx) {
+		rte_errno = EINVAL;
+		return -rte_errno;
+	}
 	mlx5_ctx = (struct mlx5_context *)cdev->ctx;
 	memset(device_attr, 0, sizeof(*device_attr));
 	device_attr->max_cq = 1 << cdev->config.hca_attr.log_max_cq;
@@ -171,15 +172,14 @@ mlx5_os_get_dev_attr(struct mlx5_common_device *cdev,
 	pv_iseg = mlx5_glue->query_hca_iseg(mlx5_ctx, &cb_iseg);
 	if (pv_iseg == NULL) {
 		DRV_LOG(ERR, "Failed to get device hca_iseg");
-		return errno;
+		rte_errno = errno;
+		return -rte_errno;
 	}
-	if (!err) {
-		snprintf(device_attr->fw_ver, 64, "%x.%x.%04x",
-			MLX5_GET(initial_seg, pv_iseg, fw_rev_major),
-			MLX5_GET(initial_seg, pv_iseg, fw_rev_minor),
-			MLX5_GET(initial_seg, pv_iseg, fw_rev_subminor));
-	}
-	return err;
+	snprintf(device_attr->fw_ver, 64, "%x.%x.%04x",
+		 MLX5_GET(initial_seg, pv_iseg, fw_rev_major),
+		 MLX5_GET(initial_seg, pv_iseg, fw_rev_minor),
+		 MLX5_GET(initial_seg, pv_iseg, fw_rev_subminor));
+	return 0;
 }
 
 /**
