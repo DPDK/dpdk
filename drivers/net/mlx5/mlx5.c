@@ -1321,6 +1321,8 @@ mlx5_free_shared_dev_ctx(struct mlx5_dev_ctx_shared *sh)
 	 *  Only primary process handles async device events.
 	 **/
 	mlx5_flow_counters_mng_close(sh);
+	if (sh->ct_mng)
+		mlx5_flow_aso_ct_mng_close(sh);
 	if (sh->aso_age_mng) {
 		mlx5_flow_aso_age_mng_close(sh);
 		sh->aso_age_mng = NULL;
@@ -1594,8 +1596,6 @@ mlx5_dev_close(struct rte_eth_dev *dev)
 	if (priv->mreg_cp_tbl)
 		mlx5_hlist_destroy(priv->mreg_cp_tbl);
 	mlx5_mprq_free_mp(dev);
-	if (priv->sh->ct_mng)
-		mlx5_flow_aso_ct_mng_close(priv->sh);
 	mlx5_os_free_shared_dr(priv);
 	if (priv->rss_conf.rss_key != NULL)
 		mlx5_free(priv->rss_conf.rss_key);
