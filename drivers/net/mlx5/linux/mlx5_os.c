@@ -868,10 +868,6 @@ err_secondary:
 			strerror(rte_errno));
 		goto error;
 	}
-	if (config->dv_miss_info) {
-		if (switch_info->master || switch_info->representor)
-			config->dv_xmeta_en = MLX5_XMETA_MODE_META16;
-	}
 	mlx5_malloc_mem_select(config->sys_mem_en);
 	sh = mlx5_alloc_shared_dev_ctx(spawn, config);
 	if (!sh)
@@ -1111,6 +1107,10 @@ err_secondary:
 	}
 	/* Override some values set by hardware configuration. */
 	mlx5_args(config, dpdk_dev->devargs);
+	if (config->dv_miss_info) {
+		if (switch_info->master || switch_info->representor)
+			config->dv_xmeta_en = MLX5_XMETA_MODE_META16;
+	}
 	err = mlx5_dev_check_sibling_config(priv, config);
 	if (err)
 		goto error;
