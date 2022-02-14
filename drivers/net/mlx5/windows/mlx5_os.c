@@ -318,7 +318,6 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 {
 	const struct mlx5_switch_info *switch_info = &spawn->info;
 	struct mlx5_dev_ctx_shared *sh = NULL;
-	struct mlx5_dev_attr device_attr;
 	struct mlx5_hca_attr *hca_attr;
 	struct rte_eth_dev *eth_dev = NULL;
 	struct mlx5_priv *priv = NULL;
@@ -376,13 +375,12 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 		goto error;
 	}
 	DRV_LOG(DEBUG, "MPW isn't supported");
-	mlx5_os_get_dev_attr(sh->cdev, &device_attr);
-	config->swp = device_attr.sw_parsing_offloads &
+	config->swp = sh->device_attr.sw_parsing_offloads &
 		(MLX5_SW_PARSING_CAP | MLX5_SW_PARSING_CSUM_CAP |
 		 MLX5_SW_PARSING_TSO_CAP);
 	config->ind_table_max_size =
 		sh->device_attr.max_rwq_indirection_table_size;
-	config->tunnel_en = device_attr.tunnel_offloads_caps &
+	config->tunnel_en = sh->device_attr.tunnel_offloads_caps &
 		(MLX5_TUNNELED_OFFLOADS_VXLAN_CAP |
 		 MLX5_TUNNELED_OFFLOADS_GRE_CAP |
 		 MLX5_TUNNELED_OFFLOADS_GENEVE_CAP);

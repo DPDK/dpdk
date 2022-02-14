@@ -171,6 +171,15 @@ mlx5_os_get_dev_attr(struct mlx5_common_device *cdev,
 	device_attr->tso_supported_qpts = attr_ex.tso_caps.supported_qpts;
 
 	struct mlx5dv_context dv_attr = { .comp_mask = 0 };
+#ifdef HAVE_IBV_MLX5_MOD_SWP
+	dv_attr.comp_mask |= MLX5DV_CONTEXT_MASK_SWP;
+#endif
+#ifdef HAVE_IBV_DEVICE_TUNNEL_SUPPORT
+	dv_attr.comp_mask |= MLX5DV_CONTEXT_MASK_TUNNEL_OFFLOADS;
+#endif
+#ifdef HAVE_IBV_DEVICE_STRIDING_RQ_SUPPORT
+	dv_attr.comp_mask |= MLX5DV_CONTEXT_MASK_STRIDING_RQ;
+#endif
 	err = mlx5_glue->dv_query_device(ctx, &dv_attr);
 	if (err) {
 		rte_errno = errno;
@@ -183,6 +192,7 @@ mlx5_os_get_dev_attr(struct mlx5_common_device *cdev,
 	device_attr->sw_parsing_offloads =
 		dv_attr.sw_parsing_caps.sw_parsing_offloads;
 #endif
+#ifdef HAVE_IBV_DEVICE_STRIDING_RQ_SUPPORT
 	device_attr->min_single_stride_log_num_of_bytes =
 		dv_attr.striding_rq_caps.min_single_stride_log_num_of_bytes;
 	device_attr->max_single_stride_log_num_of_bytes =
@@ -193,6 +203,7 @@ mlx5_os_get_dev_attr(struct mlx5_common_device *cdev,
 		dv_attr.striding_rq_caps.max_single_wqe_log_num_of_strides;
 	device_attr->stride_supported_qpts =
 		dv_attr.striding_rq_caps.supported_qpts;
+#endif
 #ifdef HAVE_IBV_DEVICE_TUNNEL_SUPPORT
 	device_attr->tunnel_offloads_caps = dv_attr.tunnel_offloads_caps;
 #endif
@@ -878,7 +889,6 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 	struct mlx5_dev_ctx_shared *sh = NULL;
 	struct mlx5_hca_attr *hca_attr = &spawn->cdev->config.hca_attr;
 	struct ibv_port_attr port_attr = { .state = IBV_PORT_NOP };
-	struct mlx5dv_context dv_attr = { .comp_mask = 0 };
 	struct rte_eth_dev *eth_dev = NULL;
 	struct mlx5_priv *priv = NULL;
 	int err = 0;
@@ -1012,22 +1022,12 @@ err_secondary:
 #ifdef HAVE_MLX5DV_DR_ACTION_DEST_DEVX_TIR
 	config->dest_tir = 1;
 #endif
-#ifdef HAVE_IBV_MLX5_MOD_SWP
-	dv_attr.comp_mask |= MLX5DV_CONTEXT_MASK_SWP;
-#endif
 	/*
 	 * Multi-packet send is supported by ConnectX-4 Lx PF as well
 	 * as all ConnectX-5 devices.
 	 */
-#ifdef HAVE_IBV_DEVICE_TUNNEL_SUPPORT
-	dv_attr.comp_mask |= MLX5DV_CONTEXT_MASK_TUNNEL_OFFLOADS;
-#endif
-#ifdef HAVE_IBV_DEVICE_STRIDING_RQ_SUPPORT
-	dv_attr.comp_mask |= MLX5DV_CONTEXT_MASK_STRIDING_RQ;
-#endif
-	mlx5_glue->dv_query_device(sh->cdev->ctx, &dv_attr);
-	if (dv_attr.flags & MLX5DV_CONTEXT_FLAGS_MPW_ALLOWED) {
-		if (dv_attr.flags & MLX5DV_CONTEXT_FLAGS_ENHANCED_MPW) {
+	if (sh->device_attr.flags & MLX5DV_CONTEXT_FLAGS_MPW_ALLOWED) {
+		if (sh->device_attr.flags & MLX5DV_CONTEXT_FLAGS_ENHANCED_MPW) {
 			DRV_LOG(DEBUG, "enhanced MPW is supported");
 			mps = MLX5_MPW_ENHANCED;
 		} else {
@@ -1039,44 +1039,41 @@ err_secondary:
 		mps = MLX5_MPW_DISABLED;
 	}
 #ifdef HAVE_IBV_MLX5_MOD_SWP
-	if (dv_attr.comp_mask & MLX5DV_CONTEXT_MASK_SWP)
-		swp = dv_attr.sw_parsing_caps.sw_parsing_offloads;
+	if (sh->device_attr.comp_mask & MLX5DV_CONTEXT_MASK_SWP)
+		swp = sh->device_attr.sw_parsing_offloads;
 	DRV_LOG(DEBUG, "SWP support: %u", swp);
 #endif
 	config->swp = swp & (MLX5_SW_PARSING_CAP | MLX5_SW_PARSING_CSUM_CAP |
 		MLX5_SW_PARSING_TSO_CAP);
 #ifdef HAVE_IBV_DEVICE_STRIDING_RQ_SUPPORT
-	if (dv_attr.comp_mask & MLX5DV_CONTEXT_MASK_STRIDING_RQ) {
-		struct mlx5dv_striding_rq_caps mprq_caps =
-			dv_attr.striding_rq_caps;
-
+	if (sh->device_attr.comp_mask & MLX5DV_CONTEXT_MASK_STRIDING_RQ) {
 		DRV_LOG(DEBUG, "\tmin_single_stride_log_num_of_bytes: %d",
-			mprq_caps.min_single_stride_log_num_of_bytes);
+			sh->device_attr.min_single_stride_log_num_of_bytes);
 		DRV_LOG(DEBUG, "\tmax_single_stride_log_num_of_bytes: %d",
-			mprq_caps.max_single_stride_log_num_of_bytes);
+			sh->device_attr.max_single_stride_log_num_of_bytes);
 		DRV_LOG(DEBUG, "\tmin_single_wqe_log_num_of_strides: %d",
-			mprq_caps.min_single_wqe_log_num_of_strides);
+			sh->device_attr.min_single_wqe_log_num_of_strides);
 		DRV_LOG(DEBUG, "\tmax_single_wqe_log_num_of_strides: %d",
-			mprq_caps.max_single_wqe_log_num_of_strides);
+			sh->device_attr.max_single_wqe_log_num_of_strides);
 		DRV_LOG(DEBUG, "\tsupported_qpts: %d",
-			mprq_caps.supported_qpts);
+			sh->device_attr.stride_supported_qpts);
 		DRV_LOG(DEBUG, "\tmin_stride_wqe_log_size: %d",
 			config->mprq.log_min_stride_wqe_size);
 		DRV_LOG(DEBUG, "device supports Multi-Packet RQ");
 		mprq = 1;
 		config->mprq.log_min_stride_size =
-			mprq_caps.min_single_stride_log_num_of_bytes;
+			sh->device_attr.min_single_stride_log_num_of_bytes;
 		config->mprq.log_max_stride_size =
-			mprq_caps.max_single_stride_log_num_of_bytes;
+			sh->device_attr.max_single_stride_log_num_of_bytes;
 		config->mprq.log_min_stride_num =
-			mprq_caps.min_single_wqe_log_num_of_strides;
+			sh->device_attr.min_single_wqe_log_num_of_strides;
 		config->mprq.log_max_stride_num =
-			mprq_caps.max_single_wqe_log_num_of_strides;
+			sh->device_attr.max_single_wqe_log_num_of_strides;
 	}
 #endif
 #ifdef HAVE_IBV_DEVICE_TUNNEL_SUPPORT
-	if (dv_attr.comp_mask & MLX5DV_CONTEXT_MASK_TUNNEL_OFFLOADS) {
-		config->tunnel_en = dv_attr.tunnel_offloads_caps &
+	if (sh->device_attr.comp_mask & MLX5DV_CONTEXT_MASK_TUNNEL_OFFLOADS) {
+		config->tunnel_en = sh->device_attr.tunnel_offloads_caps &
 			     (MLX5DV_RAW_PACKET_CAP_TUNNELED_OFFLOAD_VXLAN |
 			      MLX5DV_RAW_PACKET_CAP_TUNNELED_OFFLOAD_GRE |
 			      MLX5DV_RAW_PACKET_CAP_TUNNELED_OFFLOAD_GENEVE);
@@ -1098,9 +1095,9 @@ err_secondary:
 		"tunnel offloading disabled due to old OFED/rdma-core version");
 #endif
 #ifdef HAVE_IBV_DEVICE_MPLS_SUPPORT
-	mpls_en = ((dv_attr.tunnel_offloads_caps &
+	mpls_en = ((sh->device_attr.tunnel_offloads_caps &
 		    MLX5DV_RAW_PACKET_CAP_TUNNELED_OFFLOAD_CW_MPLS_OVER_GRE) &&
-		   (dv_attr.tunnel_offloads_caps &
+		   (sh->device_attr.tunnel_offloads_caps &
 		    MLX5DV_RAW_PACKET_CAP_TUNNELED_OFFLOAD_CW_MPLS_OVER_UDP));
 	DRV_LOG(DEBUG, "MPLS over GRE/UDP tunnel offloading is %ssupported",
 		mpls_en ? "" : "not ");
@@ -1429,7 +1426,7 @@ err_secondary:
 #endif
 	}
 	if (config->cqe_comp && RTE_CACHE_LINE_SIZE == 128 &&
-	    !(dv_attr.flags & MLX5DV_CONTEXT_FLAGS_CQE_128B_COMP)) {
+	    !(sh->device_attr.flags & MLX5DV_CONTEXT_FLAGS_CQE_128B_COMP)) {
 		DRV_LOG(WARNING, "Rx CQE 128B compression is not supported");
 		config->cqe_comp = 0;
 	}
