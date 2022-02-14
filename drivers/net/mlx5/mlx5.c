@@ -1259,6 +1259,7 @@ mlx5_alloc_shared_dev_ctx(const struct mlx5_dev_spawn_data *spawn,
 	pthread_mutex_init(&sh->txpp.mutex, NULL);
 	sh->numa_node = spawn->cdev->dev->numa_node;
 	sh->cdev = spawn->cdev;
+	sh->esw_mode = !!(spawn->info.master || spawn->info.representor);
 	if (spawn->bond_info)
 		sh->bond = *spawn->bond_info;
 	err = mlx5_os_get_dev_attr(sh->cdev, &sh->device_attr);

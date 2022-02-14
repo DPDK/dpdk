@@ -1146,6 +1146,7 @@ struct mlx5_flex_item {
 struct mlx5_dev_ctx_shared {
 	LIST_ENTRY(mlx5_dev_ctx_shared) next;
 	uint32_t refcnt;
+	uint32_t esw_mode:1; /* Whether is E-Switch mode. */
 	uint32_t flow_hit_aso_en:1; /* Flow Hit ASO is supported. */
 	uint32_t steering_format_version:4;
 	/* Indicates the device steering logic format. */

@@ -1330,8 +1330,7 @@ mlx5_traffic_enable(struct rte_eth_dev *dev)
 				goto error;
 			}
 		}
-		if ((priv->representor || priv->master) &&
-		    priv->config.dv_esw_en) {
+		if (priv->config.dv_esw_en) {
 			if (mlx5_flow_create_devx_sq_miss_flow(dev, i) == 0) {
 				DRV_LOG(ERR,
 					"Port %u Tx queue %u SQ create representor devx default miss rule failed.",
@@ -1341,7 +1340,7 @@ mlx5_traffic_enable(struct rte_eth_dev *dev)
 		}
 		mlx5_txq_release(dev, i);
 	}
-	if ((priv->master || priv->representor) && priv->config.dv_esw_en) {
+	if (priv->config.dv_esw_en) {
 		if (mlx5_flow_create_esw_table_zero_flow(dev))
 			priv->fdb_def_rule = 1;
 		else

@@ -6600,11 +6600,6 @@ flow_dv_validate_attributes(struct rte_eth_dev *dev,
 				(error, ENOTSUP,
 				 RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
 				 "E-Switch dr is not supported");
-		if (!(priv->representor || priv->master))
-			return rte_flow_error_set
-				(error, EINVAL, RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
-				 NULL, "E-Switch configuration can only be"
-				 " done by a master or a representor device");
 		if (attributes->egress)
 			return rte_flow_error_set
 				(error, ENOTSUP,
@@ -13612,8 +13607,7 @@ flow_dv_translate(struct rte_eth_dev *dev,
 	 * E-Switch rule where no port_id item was found. In both cases
 	 * the source port is set according the current port in use.
 	 */
-	if (!(item_flags & MLX5_FLOW_ITEM_PORT_ID) &&
-	    (priv->representor || priv->master)) {
+	if (!(item_flags & MLX5_FLOW_ITEM_PORT_ID) && priv->sh->esw_mode) {
 		if (flow_dv_translate_item_port_id(dev, match_mask,
 						   match_value, NULL, attr))
 			return -rte_errno;
@@ -16173,7 +16167,7 @@ __flow_dv_create_policy_flow(struct rte_eth_dev *dev,
 	struct mlx5_priv *priv = dev->data->dev_private;
 	uint8_t misc_mask;
 
-	if (match_src_port && (priv->representor || priv->master)) {
+	if (match_src_port && priv->sh->esw_mode) {
 		if (flow_dv_translate_item_port_id(dev, matcher.buf,
 						   value.buf, item, attr)) {
 			DRV_LOG(ERR, "Failed to create meter policy%d flow's"
@@ -16225,7 +16219,7 @@ __flow_dv_create_policy_matcher(struct rte_eth_dev *dev,
 	struct mlx5_priv *priv = dev->data->dev_private;
 	const uint32_t color_mask = (UINT32_C(1) << MLX5_MTR_COLOR_BITS) - 1;
 
-	if (match_src_port && (priv->representor || priv->master)) {
+	if (match_src_port && priv->sh->esw_mode) {
 		if (flow_dv_translate_item_port_id(dev, matcher.mask.buf,
 						   value.buf, item, attr)) {
 			DRV_LOG(ERR, "Failed to register meter policy%d matcher"

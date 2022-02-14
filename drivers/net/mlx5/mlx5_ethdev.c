@@ -672,7 +672,7 @@ mlx5_port_to_eswitch_info(uint16_t port, bool valid)
 	}
 	dev = &rte_eth_devices[port];
 	priv = dev->data->dev_private;
-	if (!(priv->representor || priv->master)) {
+	if (!priv->sh->esw_mode) {
 		rte_errno = EINVAL;
 		return NULL;
 	}
@@ -699,7 +699,7 @@ mlx5_dev_to_eswitch_info(struct rte_eth_dev *dev)
 	struct mlx5_priv *priv;
 
 	priv = dev->data->dev_private;
-	if (!(priv->representor || priv->master)) {
+	if (!priv->sh->esw_mode) {
 		rte_errno = EINVAL;
 		return NULL;
 	}
