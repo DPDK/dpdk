@@ -321,7 +321,6 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 	struct rte_eth_dev *eth_dev = NULL;
 	struct mlx5_priv *priv = NULL;
 	int err = 0;
-	unsigned int cqe_comp;
 	struct rte_ether_addr mac;
 	char name[RTE_ETH_NAME_MAX_LEN];
 	int own_domain_id = 0;
@@ -336,11 +335,7 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 		return NULL;
 	}
 	DRV_LOG(DEBUG, "naming Ethernet device \"%s\"", name);
-	/*
-	 * Some parameters are needed in advance to create device context. We
-	 * process the devargs here to get ones, and later process devargs
-	 * again to override some hardware settings.
-	 */
+	/* Process parameters. */
 	err = mlx5_args(config, dpdk_dev->devargs);
 	if (err) {
 		err = rte_errno;
@@ -351,6 +346,24 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 	sh = mlx5_alloc_shared_dev_ctx(spawn, config);
 	if (!sh)
 		return NULL;
+	/* Update final values for devargs before check sibling config. */
+	config->dv_esw_en = 0;
+	if (!config->dv_flow_en) {
+		DRV_LOG(ERR, "Windows flow mode must be DV flow enable.");
+		err = ENOTSUP;
+		goto error;
+	}
+	if (!config->dv_esw_en &&
+	    config->dv_xmeta_en != MLX5_XMETA_MODE_LEGACY) {
+		DRV_LOG(WARNING,
+			"Metadata mode %u is not supported (no E-Switch).",
+			config->dv_xmeta_en);
+		config->dv_xmeta_en = MLX5_XMETA_MODE_LEGACY;
+	}
+	/* Check sibling device configurations. */
+	err = mlx5_dev_check_sibling_config(sh, config, dpdk_dev);
+	if (err)
+		goto error;
 	/* Initialize the shutdown event in mlx5_dev_spawn to
 	 * support mlx5_is_removed for Windows.
 	 */
@@ -367,8 +380,6 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 		 MLX5_SW_PARSING_TSO_CAP);
 	config->ind_table_max_size =
 		sh->device_attr.max_rwq_indirection_table_size;
-	cqe_comp = 0;
-	config->cqe_comp = cqe_comp;
 	config->tunnel_en = device_attr.tunnel_offloads_caps &
 		(MLX5_TUNNELED_OFFLOADS_VXLAN_CAP |
 		 MLX5_TUNNELED_OFFLOADS_GRE_CAP |
@@ -437,26 +448,6 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 		}
 		own_domain_id = 1;
 	}
-	/* Override some values set by hardware configuration. */
-	mlx5_args(config, dpdk_dev->devargs);
-	/* Update final values for devargs before check sibling config. */
-	config->dv_esw_en = 0;
-	if (!config->dv_flow_en) {
-		DRV_LOG(ERR, "Windows flow mode must be DV flow enable.");
-		err = ENOTSUP;
-		goto error;
-	}
-	if (!priv->config.dv_esw_en &&
-	    priv->config.dv_xmeta_en != MLX5_XMETA_MODE_LEGACY) {
-		DRV_LOG(WARNING,
-			"Metadata mode %u is not supported (no E-Switch).",
-			priv->config.dv_xmeta_en);
-		priv->config.dv_xmeta_en = MLX5_XMETA_MODE_LEGACY;
-	}
-	/* Check sibling device configurations. */
-	err = mlx5_dev_check_sibling_config(priv, config, dpdk_dev);
-	if (err)
-		goto error;
 	DRV_LOG(DEBUG, "counters are not supported");
 	config->ind_table_max_size =
 		sh->device_attr.max_rwq_indirection_table_size;
@@ -479,7 +470,7 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 		config->mps == MLX5_MPW_ENHANCED ? "enhanced " :
 		config->mps == MLX5_MPW ? "legacy " : "",
 		config->mps != MLX5_MPW_DISABLED ? "enabled" : "disabled");
-	if (config->cqe_comp && !cqe_comp) {
+	if (config->cqe_comp) {
 		DRV_LOG(WARNING, "Rx CQE compression isn't supported.");
 		config->cqe_comp = 0;
 	}

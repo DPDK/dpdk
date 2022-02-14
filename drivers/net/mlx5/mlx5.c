@@ -2216,25 +2216,26 @@ rte_pmd_mlx5_get_dyn_flag_names(char *names[], unsigned int n)
 }
 
 /**
- * Comparison callback to sort device data.
+ * Check sibling device configurations.
  *
- * This is meant to be used with qsort().
+ * Sibling devices sharing the Infiniband device context should have compatible
+ * configurations. This regards representors and bonding device.
  *
- * @param a[in]
- *   Pointer to pointer to first data object.
- * @param b[in]
- *   Pointer to pointer to second data object.
+ * @param sh
+ *   Shared device context.
+ * @param config
+ *   Configuration of the device is going to be created.
+ * @param dpdk_dev
+ *   Backing DPDK device.
  *
  * @return
- *   0 if both objects are equal, less than 0 if the first argument is less
- *   than the second, greater than 0 otherwise.
+ *   0 on success, EINVAL otherwise
  */
 int
-mlx5_dev_check_sibling_config(struct mlx5_priv *priv,
+mlx5_dev_check_sibling_config(struct mlx5_dev_ctx_shared *sh,
 			      struct mlx5_dev_config *config,
 			      struct rte_device *dpdk_dev)
 {
-	struct mlx5_dev_ctx_shared *sh = priv->sh;
 	struct mlx5_dev_config *sh_conf = NULL;
 	uint16_t port_id;
 
@@ -2247,7 +2248,7 @@ mlx5_dev_check_sibling_config(struct mlx5_priv *priv,
 		struct mlx5_priv *opriv =
 			rte_eth_devices[port_id].data->dev_private;
 
-		if (opriv && opriv != priv && opriv->sh == sh) {
+		if (opriv && opriv->sh == sh) {
 			sh_conf = &opriv->config;
 			break;
 		}

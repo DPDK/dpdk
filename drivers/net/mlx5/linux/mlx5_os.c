@@ -968,22 +968,45 @@ err_secondary:
 		mlx5_dev_close(eth_dev);
 		return NULL;
 	}
-	/*
-	 * Some parameters ("tx_db_nc" in particularly) are needed in
-	 * advance to create dv/verbs device context. We proceed the
-	 * devargs here to get ones, and later proceed devargs again
-	 * to override some hardware settings.
-	 */
+	/* Process parameters. */
 	err = mlx5_args(config, dpdk_dev->devargs);
 	if (err) {
-		err = rte_errno;
 		DRV_LOG(ERR, "failed to process device arguments: %s",
 			strerror(rte_errno));
-		goto error;
+		return NULL;
 	}
 	sh = mlx5_alloc_shared_dev_ctx(spawn, config);
 	if (!sh)
 		return NULL;
+	/* Update final values for devargs before check sibling config. */
+	if (config->dv_miss_info) {
+		if (switch_info->master || switch_info->representor)
+			config->dv_xmeta_en = MLX5_XMETA_MODE_META16;
+	}
+#if !defined(HAVE_IBV_FLOW_DV_SUPPORT) || !defined(HAVE_MLX5DV_DR)
+	if (config->dv_flow_en) {
+		DRV_LOG(WARNING, "DV flow is not supported.");
+		config->dv_flow_en = 0;
+	}
+#endif
+#ifdef HAVE_MLX5DV_DR_ESWITCH
+	if (!(sh->cdev->config.hca_attr.eswitch_manager && config->dv_flow_en &&
+	      (switch_info->representor || switch_info->master)))
+		config->dv_esw_en = 0;
+#else
+	config->dv_esw_en = 0;
+#endif
+	if (!config->dv_esw_en &&
+	    config->dv_xmeta_en != MLX5_XMETA_MODE_LEGACY) {
+		DRV_LOG(WARNING,
+			"Metadata mode %u is not supported (no E-Switch).",
+			config->dv_xmeta_en);
+		config->dv_xmeta_en = MLX5_XMETA_MODE_LEGACY;
+	}
+	/* Check sibling device configurations. */
+	err = mlx5_dev_check_sibling_config(sh, config, dpdk_dev);
+	if (err)
+		goto error;
 #ifdef HAVE_MLX5DV_DR_ACTION_DEST_DEVX_TIR
 	config->dest_tir = 1;
 #endif
@@ -1049,8 +1072,6 @@ err_secondary:
 			mprq_caps.max_single_wqe_log_num_of_strides;
 	}
 #endif
-	/* Rx CQE compression is enabled by default. */
-	config->cqe_comp = 1;
 #ifdef HAVE_IBV_DEVICE_TUNNEL_SUPPORT
 	if (dv_attr.comp_mask & MLX5DV_CONTEXT_MASK_TUNNEL_OFFLOADS) {
 		config->tunnel_en = dv_attr.tunnel_offloads_caps &
@@ -1239,37 +1260,6 @@ err_secondary:
 		DRV_LOG(DEBUG, "dev_port-%u new domain_id=%u\n",
 			priv->dev_port, priv->domain_id);
 	}
-	/* Override some values set by hardware configuration. */
-	mlx5_args(config, dpdk_dev->devargs);
-	/* Update final values for devargs before check sibling config. */
-	if (config->dv_miss_info) {
-		if (switch_info->master || switch_info->representor)
-			config->dv_xmeta_en = MLX5_XMETA_MODE_META16;
-	}
-#if !defined(HAVE_IBV_FLOW_DV_SUPPORT) || !defined(HAVE_MLX5DV_DR)
-	if (config->dv_flow_en) {
-		DRV_LOG(WARNING, "DV flow is not supported.");
-		config->dv_flow_en = 0;
-	}
-#endif
-#ifdef HAVE_MLX5DV_DR_ESWITCH
-	if (!(sh->cdev->config.hca_attr.eswitch_manager && config->dv_flow_en &&
-	      (switch_info->representor || switch_info->master)))
-		config->dv_esw_en = 0;
-#else
-	config->dv_esw_en = 0;
-#endif
-	if (!priv->config.dv_esw_en &&
-	    priv->config.dv_xmeta_en != MLX5_XMETA_MODE_LEGACY) {
-		DRV_LOG(WARNING,
-			"Metadata mode %u is not supported (no E-Switch).",
-			priv->config.dv_xmeta_en);
-		priv->config.dv_xmeta_en = MLX5_XMETA_MODE_LEGACY;
-	}
-	/* Check sibling device configurations. */
-	err = mlx5_dev_check_sibling_config(priv, config, dpdk_dev);
-	if (err)
-		goto error;
 	config->hw_csum = !!(sh->device_attr.device_cap_flags_ex &
 			    IBV_DEVICE_RAW_IP_CSUM);
 	DRV_LOG(DEBUG, "checksum offloading is %ssupported",
@@ -2049,6 +2039,7 @@ mlx5_os_config_default(struct mlx5_dev_config *config,
 {
 	memset(config, 0, sizeof(*config));
 	config->mps = MLX5_ARG_UNSET;
+	config->cqe_comp = 1;
 	config->rx_vec_en = 1;
 	config->txq_inline_max = MLX5_ARG_UNSET;
 	config->txq_inline_min = MLX5_ARG_UNSET;
