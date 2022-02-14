@@ -266,7 +266,7 @@ static void
 mlx5_set_txlimit_params(struct rte_eth_dev *dev, struct rte_eth_dev_info *info)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5_dev_config *config = &priv->config;
+	struct mlx5_port_config *config = &priv->config;
 	unsigned int inlen;
 	uint16_t nb_max;
 
@@ -302,7 +302,6 @@ int
 mlx5_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *info)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5_dev_config *config = &priv->config;
 	unsigned int max;
 
 	/* FIXME: we should ask the device for these values. */
@@ -321,8 +320,8 @@ mlx5_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *info)
 	info->max_mac_addrs = MLX5_MAX_UC_MAC_ADDRESSES;
 	info->rx_queue_offload_capa = mlx5_get_rx_queue_offloads(dev);
 	info->rx_seg_capa.max_nseg = MLX5_MAX_RXQ_NSEG;
-	info->rx_seg_capa.multi_pools = !config->mprq.enabled;
-	info->rx_seg_capa.offset_allowed = !config->mprq.enabled;
+	info->rx_seg_capa.multi_pools = !priv->config.mprq.enabled;
+	info->rx_seg_capa.offset_allowed = !priv->config.mprq.enabled;
 	info->rx_seg_capa.offset_align_log2 = 0;
 	info->rx_offload_capa = (mlx5_get_rx_port_offloads() |
 				 info->rx_queue_offload_capa);

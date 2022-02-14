@@ -243,14 +243,13 @@ struct mlx5_stats_ctrl {
 #define MLX5_MAX_RXQ_NSEG (1u << MLX5_MAX_LOG_RQ_SEGS)
 
 /*
- * Device configuration structure.
- *
- * Merged configuration from:
- *
- *  - Device capabilities,
- *  - User device parameters disabled features.
+ * Port configuration structure.
+ * User device parameters disabled features.
+ * This structure contains all configurations coming from devargs which
+ * oriented to port. When probing again, devargs doesn't have to be compatible
+ * with primary devargs. It is updated for each port in spawn function.
  */
-struct mlx5_dev_config {
+struct mlx5_port_config {
 	unsigned int hw_vlan_insert:1; /* VLAN insertion in WQE is supported. */
 	unsigned int hw_padding:1; /* End alignment padding is supported. */
 	unsigned int cqe_comp:1; /* CQE compression is enabled. */
@@ -1450,7 +1449,7 @@ struct mlx5_priv {
 	uint32_t link_speed_capa; /* Link speed capabilities. */
 	struct mlx5_xstats_ctrl xstats_ctrl; /* Extended stats control. */
 	struct mlx5_stats_ctrl stats_ctrl; /* Stats control. */
-	struct mlx5_dev_config config; /* Device configuration. */
+	struct mlx5_port_config config; /* Port configuration. */
 	/* Context for Verbs allocator. */
 	int nl_socket_rdma; /* Netlink socket (NETLINK_RDMA). */
 	int nl_socket_route; /* Netlink socket (NETLINK_ROUTE). */
@@ -1539,7 +1538,6 @@ void mlx5_age_event_prepare(struct mlx5_dev_ctx_shared *sh);
 	for (port_id = mlx5_eth_find_next(0, dev); \
 	     port_id < RTE_MAX_ETHPORTS; \
 	     port_id = mlx5_eth_find_next(port_id + 1, dev))
-int mlx5_args(struct mlx5_dev_config *config, struct rte_devargs *devargs);
 void mlx5_rt_timestamp_config(struct mlx5_dev_ctx_shared *sh,
 			      struct mlx5_hca_attr *hca_attr);
 struct mlx5_dev_ctx_shared *
@@ -1548,10 +1546,11 @@ void mlx5_free_shared_dev_ctx(struct mlx5_dev_ctx_shared *sh);
 int mlx5_dev_ctx_shared_mempool_subscribe(struct rte_eth_dev *dev);
 void mlx5_free_table_hash_list(struct mlx5_priv *priv);
 int mlx5_alloc_table_hash_list(struct mlx5_priv *priv);
-void mlx5_set_min_inline(struct mlx5_dev_spawn_data *spawn,
-			 struct mlx5_dev_config *config);
+void mlx5_set_min_inline(struct mlx5_priv *priv);
 void mlx5_set_metadata_mask(struct rte_eth_dev *dev);
 int mlx5_probe_again_args_validate(struct mlx5_common_device *cdev);
+int mlx5_port_args_config(struct mlx5_priv *priv, struct rte_devargs *devargs,
+			  struct mlx5_port_config *config);
 bool mlx5_flex_parser_ecpri_exist(struct rte_eth_dev *dev);
 int mlx5_flex_parser_ecpri_alloc(struct rte_eth_dev *dev);
 void mlx5_flow_counter_mode_config(struct rte_eth_dev *dev);

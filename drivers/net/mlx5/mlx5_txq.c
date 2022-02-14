@@ -100,7 +100,7 @@ mlx5_get_tx_port_offloads(struct rte_eth_dev *dev)
 	struct mlx5_priv *priv = dev->data->dev_private;
 	uint64_t offloads = (RTE_ETH_TX_OFFLOAD_MULTI_SEGS |
 			     RTE_ETH_TX_OFFLOAD_VLAN_INSERT);
-	struct mlx5_dev_config *config = &priv->config;
+	struct mlx5_port_config *config = &priv->config;
 	struct mlx5_dev_cap *dev_cap = &priv->sh->dev_cap;
 
 	if (dev_cap->hw_csum)
@@ -741,7 +741,7 @@ static void
 txq_set_params(struct mlx5_txq_ctrl *txq_ctrl)
 {
 	struct mlx5_priv *priv = txq_ctrl->priv;
-	struct mlx5_dev_config *config = &priv->config;
+	struct mlx5_port_config *config = &priv->config;
 	struct mlx5_dev_cap *dev_cap = &priv->sh->dev_cap;
 	unsigned int inlen_send; /* Inline data for ordinary SEND.*/
 	unsigned int inlen_empw; /* Inline data for enhanced MPW. */
@@ -960,7 +960,7 @@ static int
 txq_adjust_params(struct mlx5_txq_ctrl *txq_ctrl)
 {
 	struct mlx5_priv *priv = txq_ctrl->priv;
-	struct mlx5_dev_config *config = &priv->config;
+	struct mlx5_port_config *config = &priv->config;
 	unsigned int max_inline;
 
 	max_inline = txq_calc_inline_max(txq_ctrl);

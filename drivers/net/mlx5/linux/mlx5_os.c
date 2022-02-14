@@ -999,8 +999,6 @@ mlx5_representor_match(struct mlx5_dev_spawn_data *spawn,
  *   Backing DPDK device.
  * @param spawn
  *   Verbs device parameters (name, port, switch_info) to spawn.
- * @param config
- *   Device configuration parameters.
  * @param eth_da
  *   Device arguments.
  *
@@ -1014,12 +1012,10 @@ mlx5_representor_match(struct mlx5_dev_spawn_data *spawn,
 static struct rte_eth_dev *
 mlx5_dev_spawn(struct rte_device *dpdk_dev,
 	       struct mlx5_dev_spawn_data *spawn,
-	       struct mlx5_dev_config *config,
 	       struct rte_eth_devargs *eth_da)
 {
 	const struct mlx5_switch_info *switch_info = &spawn->info;
 	struct mlx5_dev_ctx_shared *sh = NULL;
-	struct mlx5_hca_attr *hca_attr = &spawn->cdev->config.hca_attr;
 	struct ibv_port_attr port_attr = { .state = IBV_PORT_NOP };
 	struct rte_eth_dev *eth_dev = NULL;
 	struct mlx5_priv *priv = NULL;
@@ -1029,7 +1025,7 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 	int own_domain_id = 0;
 	uint16_t port_id;
 	struct mlx5_port_info vport_info = { .query_flags = 0 };
-	int nl_rdma = -1;
+	int nl_rdma;
 	int i;
 
 	/* Determine if this port representor is supposed to be spawned. */
@@ -1105,13 +1101,6 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 		return eth_dev;
 err_secondary:
 		mlx5_dev_close(eth_dev);
-		return NULL;
-	}
-	/* Process parameters. */
-	err = mlx5_args(config, dpdk_dev->devargs);
-	if (err) {
-		DRV_LOG(ERR, "failed to process device arguments: %s",
-			strerror(rte_errno));
 		return NULL;
 	}
 	sh = mlx5_alloc_shared_dev_ctx(spawn);
@@ -1269,41 +1258,10 @@ err_secondary:
 		DRV_LOG(DEBUG, "dev_port-%u new domain_id=%u\n",
 			priv->dev_port, priv->domain_id);
 	}
-	if (config->hw_padding && !sh->dev_cap.hw_padding) {
-		DRV_LOG(DEBUG, "Rx end alignment padding isn't supported");
-		config->hw_padding = 0;
-	} else if (config->hw_padding) {
-		DRV_LOG(DEBUG, "Rx end alignment padding is enabled");
-	}
-	/*
-	 * MPW is disabled by default, while the Enhanced MPW is enabled
-	 * by default.
-	 */
-	if (config->mps == MLX5_ARG_UNSET)
-		config->mps = (sh->dev_cap.mps == MLX5_MPW_ENHANCED) ?
-			      MLX5_MPW_ENHANCED : MLX5_MPW_DISABLED;
-	else
-		config->mps = config->mps ? sh->dev_cap.mps : MLX5_MPW_DISABLED;
-	DRV_LOG(INFO, "%sMPS is %s",
-		config->mps == MLX5_MPW_ENHANCED ? "enhanced " :
-		config->mps == MLX5_MPW ? "legacy " : "",
-		config->mps != MLX5_MPW_DISABLED ? "enabled" : "disabled");
 	if (sh->cdev->config.devx) {
+		struct mlx5_hca_attr *hca_attr = &sh->cdev->config.hca_attr;
+
 		sh->steering_format_version = hca_attr->steering_format_version;
-		/* LRO is supported only when DV flow enabled. */
-		if (sh->dev_cap.lro_supported && sh->config.dv_flow_en)
-			sh->dev_cap.lro_supported = 0;
-		if (sh->dev_cap.lro_supported) {
-			/*
-			 * If LRO timeout is not configured by application,
-			 * use the minimal supported value.
-			 */
-			if (!config->lro_timeout)
-				config->lro_timeout =
-				       hca_attr->lro_timer_supported_periods[0];
-			DRV_LOG(DEBUG, "LRO session timeout set to %d usec",
-				config->lro_timeout);
-		}
 #if defined(HAVE_MLX5DV_DR) && \
 	(defined(HAVE_MLX5_DR_CREATE_ACTION_FLOW_METER) || \
 	 defined(HAVE_MLX5_DR_CREATE_ACTION_ASO))
@@ -1395,39 +1353,14 @@ err_secondary:
 		}
 #endif
 	}
-	if (config->cqe_comp && !sh->dev_cap.cqe_comp) {
-		DRV_LOG(WARNING, "Rx CQE 128B compression is not supported.");
-		config->cqe_comp = 0;
+	/* Process parameters and store port configuration on priv structure. */
+	err = mlx5_port_args_config(priv, dpdk_dev->devargs, &priv->config);
+	if (err) {
+		err = rte_errno;
+		DRV_LOG(ERR, "Failed to process port configure: %s",
+			strerror(rte_errno));
+		goto error;
 	}
-	if (config->cqe_comp_fmt == MLX5_CQE_RESP_FORMAT_FTAG_STRIDX &&
-	    (!sh->cdev->config.devx || !hca_attr->mini_cqe_resp_flow_tag)) {
-		DRV_LOG(WARNING, "Flow Tag CQE compression"
-				 " format isn't supported.");
-		config->cqe_comp = 0;
-	}
-	if (config->cqe_comp_fmt == MLX5_CQE_RESP_FORMAT_L34H_STRIDX &&
-	    (!sh->cdev->config.devx || !hca_attr->mini_cqe_resp_l3_l4_tag)) {
-		DRV_LOG(WARNING, "L3/L4 Header CQE compression"
-				 " format isn't supported.");
-		config->cqe_comp = 0;
-	}
-	DRV_LOG(DEBUG, "Rx CQE compression is %ssupported",
-			config->cqe_comp ? "" : "not ");
-	if (config->std_delay_drop || config->hp_delay_drop) {
-		if (!hca_attr->rq_delay_drop) {
-			config->std_delay_drop = 0;
-			config->hp_delay_drop = 0;
-			DRV_LOG(WARNING,
-				"dev_port-%u: Rxq delay drop is not supported",
-				priv->dev_port);
-		}
-	}
-	if (config->mprq.enabled && !sh->dev_cap.mprq.enabled) {
-		DRV_LOG(WARNING, "Multi-Packet RQ isn't supported.");
-		config->mprq.enabled = 0;
-	}
-	if (config->max_dump_files_num == 0)
-		config->max_dump_files_num = 128;
 	eth_dev = rte_eth_dev_allocate(name);
 	if (eth_dev == NULL) {
 		DRV_LOG(ERR, "can not allocate rte ethdev");
@@ -1528,10 +1461,6 @@ err_secondary:
 	 * Verbs context returned by ibv_open_device().
 	 */
 	mlx5_link_update(eth_dev, 0);
-	/* Detect minimal data bytes to inline. */
-	mlx5_set_min_inline(spawn, config);
-	/* Store device configuration on private structure. */
-	priv->config = *config;
 	for (i = 0; i < MLX5_FLOW_TYPE_MAXI; i++) {
 		icfg[i].release_mem_en = !!sh->config.reclaim_mode;
 		if (sh->config.reclaim_mode)
@@ -1899,25 +1828,6 @@ mlx5_device_bond_pci_match(const char *ibdev_name,
 	return pf;
 }
 
-static void
-mlx5_os_config_default(struct mlx5_dev_config *config)
-{
-	memset(config, 0, sizeof(*config));
-	config->mps = MLX5_ARG_UNSET;
-	config->cqe_comp = 1;
-	config->rx_vec_en = 1;
-	config->txq_inline_max = MLX5_ARG_UNSET;
-	config->txq_inline_min = MLX5_ARG_UNSET;
-	config->txq_inline_mpw = MLX5_ARG_UNSET;
-	config->txqs_inline = MLX5_ARG_UNSET;
-	config->mprq.max_memcpy_len = MLX5_MPRQ_MEMCPY_DEFAULT_LEN;
-	config->mprq.min_rxqs_num = MLX5_MPRQ_MIN_RXQS;
-	config->mprq.log_stride_num = MLX5_MPRQ_DEFAULT_LOG_STRIDE_NUM;
-	config->log_hp_size = MLX5_ARG_UNSET;
-	config->std_delay_drop = 0;
-	config->hp_delay_drop = 0;
-}
-
 /**
  * Register a PCI device within bonding.
  *
@@ -1966,7 +1876,6 @@ mlx5_os_pci_probe_pf(struct mlx5_common_device *cdev,
 	int bd = -1;
 	struct rte_pci_device *pci_dev = RTE_DEV_TO_PCI(cdev->dev);
 	struct mlx5_dev_spawn_data *list = NULL;
-	struct mlx5_dev_config dev_config;
 	struct rte_eth_devargs eth_da = *req_eth_da;
 	struct rte_pci_addr owner_pci = pci_dev->addr; /* Owner PF. */
 	struct mlx5_bond_info bond_info;
@@ -2308,10 +2217,7 @@ mlx5_os_pci_probe_pf(struct mlx5_common_device *cdev,
 	for (i = 0; i != ns; ++i) {
 		uint32_t restore;
 
-		/* Default configuration. */
-		mlx5_os_config_default(&dev_config);
-		list[i].eth_dev = mlx5_dev_spawn(cdev->dev, &list[i],
-						 &dev_config, &eth_da);
+		list[i].eth_dev = mlx5_dev_spawn(cdev->dev, &list[i], &eth_da);
 		if (!list[i].eth_dev) {
 			if (rte_errno != EBUSY && rte_errno != EEXIST)
 				break;
@@ -2466,7 +2372,6 @@ static int
 mlx5_os_auxiliary_probe(struct mlx5_common_device *cdev)
 {
 	struct rte_eth_devargs eth_da = { .nb_ports = 0 };
-	struct mlx5_dev_config config;
 	struct mlx5_dev_spawn_data spawn = { .pf_bond = -1 };
 	struct rte_device *dev = cdev->dev;
 	struct rte_auxiliary_device *adev = RTE_DEV_TO_AUXILIARY(dev);
@@ -2477,8 +2382,6 @@ mlx5_os_auxiliary_probe(struct mlx5_common_device *cdev)
 	ret = mlx5_os_parse_eth_devargs(dev, &eth_da);
 	if (ret != 0)
 		return ret;
-	/* Set default config data. */
-	mlx5_os_config_default(&config);
 	/* Init spawn data. */
 	spawn.max_port = 1;
 	spawn.phys_port = 1;
@@ -2491,7 +2394,7 @@ mlx5_os_auxiliary_probe(struct mlx5_common_device *cdev)
 	spawn.ifindex = ret;
 	spawn.cdev = cdev;
 	/* Spawn device. */
-	eth_dev = mlx5_dev_spawn(dev, &spawn, &config, &eth_da);
+	eth_dev = mlx5_dev_spawn(dev, &spawn, &eth_da);
 	if (eth_dev == NULL)
 		return -rte_errno;
 	/* Post create. */

@@ -766,8 +766,7 @@ mlx5_devx_tir_attr_set(struct rte_eth_dev *dev, const uint8_t *rss_key,
 	memcpy(tir_attr->rx_hash_toeplitz_key, rss_key, MLX5_RSS_HASH_KEY_LEN);
 	tir_attr->indirect_table = ind_tbl->rqt->id;
 	if (dev->data->dev_conf.lpbk_mode)
-		tir_attr->self_lb_block =
-					MLX5_TIRC_SELF_LB_BLOCK_BLOCK_UNICAST;
+		tir_attr->self_lb_block = MLX5_TIRC_SELF_LB_BLOCK_BLOCK_UNICAST;
 	if (lro) {
 		tir_attr->lro_timeout_period_usecs = priv->config.lro_timeout;
 		tir_attr->lro_max_msg_sz = priv->max_lro_msg_size;

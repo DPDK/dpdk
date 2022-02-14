@@ -2101,9 +2101,9 @@ const struct eth_dev_ops mlx5_dev_ops_isolate = {
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 static int
-mlx5_args_check(const char *key, const char *val, void *opaque)
+mlx5_port_args_check_handler(const char *key, const char *val, void *opaque)
 {
-	struct mlx5_dev_config *config = opaque;
+	struct mlx5_port_config *config = opaque;
 	signed long tmp;
 
 	/* No-op, port representors are processed in mlx5_dev_spawn(). */
@@ -2197,38 +2197,156 @@ mlx5_args_check(const char *key, const char *val, void *opaque)
 }
 
 /**
- * Parse device parameters.
+ * Parse user port parameters and adjust them according to device capabilities.
  *
- * @param config
- *   Pointer to device configuration structure.
+ * @param priv
+ *   Pointer to shared device context.
  * @param devargs
  *   Device arguments structure.
+ * @param config
+ *   Pointer to port configuration structure.
  *
  * @return
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 int
-mlx5_args(struct mlx5_dev_config *config, struct rte_devargs *devargs)
+mlx5_port_args_config(struct mlx5_priv *priv, struct rte_devargs *devargs,
+		      struct mlx5_port_config *config)
 {
 	struct rte_kvargs *kvlist;
+	struct mlx5_hca_attr *hca_attr = &priv->sh->cdev->config.hca_attr;
+	struct mlx5_dev_cap *dev_cap = &priv->sh->dev_cap;
+	bool devx = priv->sh->cdev->config.devx;
 	int ret = 0;
 
-	if (devargs == NULL)
-		return 0;
-	/* Following UGLY cast is done to pass checkpatch. */
-	kvlist = rte_kvargs_parse(devargs->args, NULL);
-	if (kvlist == NULL) {
-		rte_errno = EINVAL;
-		return -rte_errno;
+	/* Default configuration. */
+	memset(config, 0, sizeof(*config));
+	config->mps = MLX5_ARG_UNSET;
+	config->cqe_comp = 1;
+	config->rx_vec_en = 1;
+	config->txq_inline_max = MLX5_ARG_UNSET;
+	config->txq_inline_min = MLX5_ARG_UNSET;
+	config->txq_inline_mpw = MLX5_ARG_UNSET;
+	config->txqs_inline = MLX5_ARG_UNSET;
+	config->mprq.max_memcpy_len = MLX5_MPRQ_MEMCPY_DEFAULT_LEN;
+	config->mprq.min_rxqs_num = MLX5_MPRQ_MIN_RXQS;
+	config->mprq.log_stride_num = MLX5_MPRQ_DEFAULT_LOG_STRIDE_NUM;
+	config->log_hp_size = MLX5_ARG_UNSET;
+	config->std_delay_drop = 0;
+	config->hp_delay_drop = 0;
+	/* Parse device parameters. */
+	if (devargs != NULL) {
+		kvlist = rte_kvargs_parse(devargs->args, NULL);
+		if (kvlist == NULL) {
+			DRV_LOG(ERR,
+				"Failed to parse device arguments.");
+			rte_errno = EINVAL;
+			return -rte_errno;
+		}
+		/* Process parameters. */
+		ret = rte_kvargs_process(kvlist, NULL,
+					 mlx5_port_args_check_handler, config);
+		rte_kvargs_free(kvlist);
+		if (ret) {
+			DRV_LOG(ERR, "Failed to process port arguments: %s",
+				strerror(rte_errno));
+			return -rte_errno;
+		}
 	}
-	/* Process parameters. */
-	ret = rte_kvargs_process(kvlist, NULL, mlx5_args_check, config);
-	if (ret) {
-		rte_errno = EINVAL;
-		ret = -rte_errno;
+	/* Adjust parameters according to device capabilities. */
+	if (config->hw_padding && !dev_cap->hw_padding) {
+		DRV_LOG(DEBUG, "Rx end alignment padding isn't supported.");
+		config->hw_padding = 0;
+	} else if (config->hw_padding) {
+		DRV_LOG(DEBUG, "Rx end alignment padding is enabled.");
 	}
-	rte_kvargs_free(kvlist);
-	return ret;
+	/*
+	 * MPW is disabled by default, while the Enhanced MPW is enabled
+	 * by default.
+	 */
+	if (config->mps == MLX5_ARG_UNSET)
+		config->mps = (dev_cap->mps == MLX5_MPW_ENHANCED) ?
+			      MLX5_MPW_ENHANCED : MLX5_MPW_DISABLED;
+	else
+		config->mps = config->mps ? dev_cap->mps : MLX5_MPW_DISABLED;
+	DRV_LOG(INFO, "%sMPS is %s",
+		config->mps == MLX5_MPW_ENHANCED ? "enhanced " :
+		config->mps == MLX5_MPW ? "legacy " : "",
+		config->mps != MLX5_MPW_DISABLED ? "enabled" : "disabled");
+	/* LRO is supported only when DV flow enabled. */
+	if (dev_cap->lro_supported && !priv->sh->config.dv_flow_en)
+		dev_cap->lro_supported = 0;
+	if (dev_cap->lro_supported) {
+		/*
+		 * If LRO timeout is not configured by application,
+		 * use the minimal supported value.
+		 */
+		if (!config->lro_timeout)
+			config->lro_timeout =
+				       hca_attr->lro_timer_supported_periods[0];
+		DRV_LOG(DEBUG, "LRO session timeout set to %d usec.",
+			config->lro_timeout);
+	}
+	if (config->cqe_comp && !dev_cap->cqe_comp) {
+		DRV_LOG(WARNING, "Rx CQE 128B compression is not supported.");
+		config->cqe_comp = 0;
+	}
+	if (config->cqe_comp_fmt == MLX5_CQE_RESP_FORMAT_FTAG_STRIDX &&
+	    (!devx || !hca_attr->mini_cqe_resp_flow_tag)) {
+		DRV_LOG(WARNING,
+			"Flow Tag CQE compression format isn't supported.");
+		config->cqe_comp = 0;
+	}
+	if (config->cqe_comp_fmt == MLX5_CQE_RESP_FORMAT_L34H_STRIDX &&
+	    (!devx || !hca_attr->mini_cqe_resp_l3_l4_tag)) {
+		DRV_LOG(WARNING,
+			"L3/L4 Header CQE compression format isn't supported.");
+		config->cqe_comp = 0;
+	}
+	DRV_LOG(DEBUG, "Rx CQE compression is %ssupported.",
+		config->cqe_comp ? "" : "not ");
+	if ((config->std_delay_drop || config->hp_delay_drop) &&
+	    !dev_cap->rq_delay_drop_en) {
+		config->std_delay_drop = 0;
+		config->hp_delay_drop = 0;
+		DRV_LOG(WARNING, "dev_port-%u: Rxq delay drop isn't supported.",
+			priv->dev_port);
+	}
+	if (config->mprq.enabled && !priv->sh->dev_cap.mprq.enabled) {
+		DRV_LOG(WARNING, "Multi-Packet RQ isn't supported.");
+		config->mprq.enabled = 0;
+	}
+	if (config->max_dump_files_num == 0)
+		config->max_dump_files_num = 128;
+	/* Detect minimal data bytes to inline. */
+	mlx5_set_min_inline(priv);
+	DRV_LOG(DEBUG, "VLAN insertion in WQE is %ssupported.",
+		config->hw_vlan_insert ? "" : "not ");
+	DRV_LOG(DEBUG, "\"rxq_pkt_pad_en\" is %u.", config->hw_padding);
+	DRV_LOG(DEBUG, "\"rxq_cqe_comp_en\" is %u.", config->cqe_comp);
+	DRV_LOG(DEBUG, "\"cqe_comp_fmt\" is %u.", config->cqe_comp_fmt);
+	DRV_LOG(DEBUG, "\"rx_vec_en\" is %u.", config->rx_vec_en);
+	DRV_LOG(DEBUG, "Standard \"delay_drop\" is %u.",
+		config->std_delay_drop);
+	DRV_LOG(DEBUG, "Hairpin \"delay_drop\" is %u.", config->hp_delay_drop);
+	DRV_LOG(DEBUG, "\"max_dump_files_num\" is %u.",
+		config->max_dump_files_num);
+	DRV_LOG(DEBUG, "\"log_hp_size\" is %u.", config->log_hp_size);
+	DRV_LOG(DEBUG, "\"mprq_en\" is %u.", config->mprq.enabled);
+	DRV_LOG(DEBUG, "\"mprq_log_stride_num\" is %u.",
+		config->mprq.log_stride_num);
+	DRV_LOG(DEBUG, "\"mprq_log_stride_size\" is %u.",
+		config->mprq.log_stride_size);
+	DRV_LOG(DEBUG, "\"mprq_max_memcpy_len\" is %u.",
+		config->mprq.max_memcpy_len);
+	DRV_LOG(DEBUG, "\"rxqs_min_mprq\" is %u.", config->mprq.min_rxqs_num);
+	DRV_LOG(DEBUG, "\"lro_timeout_usec\" is %u.", config->lro_timeout);
+	DRV_LOG(DEBUG, "\"txq_mpw_en\" is %d.", config->mps);
+	DRV_LOG(DEBUG, "\"txqs_min_inline\" is %d.", config->txqs_inline);
+	DRV_LOG(DEBUG, "\"txq_inline_min\" is %d.", config->txq_inline_min);
+	DRV_LOG(DEBUG, "\"txq_inline_max\" is %d.", config->txq_inline_max);
+	DRV_LOG(DEBUG, "\"txq_inline_mpw\" is %d.", config->txq_inline_mpw);
+	return 0;
 }
 
 /**
@@ -2366,21 +2484,19 @@ error:
  * - otherwise L2 mode (18 bytes) is assumed for ConnectX-4/4 Lx
  *   and none (0 bytes) for other NICs
  *
- * @param spawn
- *   Verbs device parameters (name, port, switch_info) to spawn.
- * @param config
- *   Device configuration parameters.
+ * @param priv
+ *   Pointer to the private device data structure.
  */
 void
-mlx5_set_min_inline(struct mlx5_dev_spawn_data *spawn,
-		    struct mlx5_dev_config *config)
+mlx5_set_min_inline(struct mlx5_priv *priv)
 {
-	struct mlx5_hca_attr *hca_attr = &spawn->cdev->config.hca_attr;
+	struct mlx5_hca_attr *hca_attr = &priv->sh->cdev->config.hca_attr;
+	struct mlx5_port_config *config = &priv->config;
 
 	if (config->txq_inline_min != MLX5_ARG_UNSET) {
 		/* Application defines size of inlined data explicitly. */
-		if (spawn->pci_dev != NULL) {
-			switch (spawn->pci_dev->id.device_id) {
+		if (priv->pci_dev != NULL) {
+			switch (priv->pci_dev->id.device_id) {
 			case PCI_DEVICE_ID_MELLANOX_CONNECTX4:
 			case PCI_DEVICE_ID_MELLANOX_CONNECTX4VF:
 				if (config->txq_inline_min <
@@ -2446,7 +2562,7 @@ mlx5_set_min_inline(struct mlx5_dev_spawn_data *spawn,
 			}
 		}
 	}
-	if (spawn->pci_dev == NULL) {
+	if (priv->pci_dev == NULL) {
 		config->txq_inline_min = MLX5_INLINE_HSIZE_NONE;
 		goto exit;
 	}
@@ -2455,7 +2571,7 @@ mlx5_set_min_inline(struct mlx5_dev_spawn_data *spawn,
 	 * inline data size with DevX. Try PCI ID
 	 * to determine old NICs.
 	 */
-	switch (spawn->pci_dev->id.device_id) {
+	switch (priv->pci_dev->id.device_id) {
 	case PCI_DEVICE_ID_MELLANOX_CONNECTX4:
 	case PCI_DEVICE_ID_MELLANOX_CONNECTX4VF:
 	case PCI_DEVICE_ID_MELLANOX_CONNECTX4LX:

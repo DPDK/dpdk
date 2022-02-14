@@ -1562,7 +1562,7 @@ mlx5_mprq_prepare(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 		  uint32_t *actual_log_stride_size)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5_dev_config *config = &priv->config;
+	struct mlx5_port_config *config = &priv->config;
 	struct mlx5_dev_cap *dev_cap = &priv->sh->dev_cap;
 	uint32_t log_min_stride_num = dev_cap->mprq.log_min_stride_num;
 	uint32_t log_max_stride_num = dev_cap->mprq.log_max_stride_num;
@@ -1681,7 +1681,7 @@ mlx5_rxq_new(struct rte_eth_dev *dev, struct mlx5_rxq_priv *rxq,
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_rxq_ctrl *tmpl;
 	unsigned int mb_len = rte_pktmbuf_data_room_size(rx_seg[0].mp);
-	struct mlx5_dev_config *config = &priv->config;
+	struct mlx5_port_config *config = &priv->config;
 	uint64_t offloads = conf->offloads |
 			   dev->data->dev_conf.rxmode.offloads;
 	unsigned int lro_on_queue = !!(offloads & RTE_ETH_RX_OFFLOAD_TCP_LRO);

@@ -284,8 +284,6 @@ mlx5_os_set_nonblock_channel_fd(int fd)
  *   Backing DPDK device.
  * @param spawn
  *   Verbs device parameters (name, port, switch_info) to spawn.
- * @param config
- *   Device configuration parameters.
  *
  * @return
  *   A valid Ethernet device object on success, NULL otherwise and rte_errno
@@ -295,8 +293,7 @@ mlx5_os_set_nonblock_channel_fd(int fd)
  */
 static struct rte_eth_dev *
 mlx5_dev_spawn(struct rte_device *dpdk_dev,
-	       struct mlx5_dev_spawn_data *spawn,
-	       struct mlx5_dev_config *config)
+	       struct mlx5_dev_spawn_data *spawn)
 {
 	const struct mlx5_switch_info *switch_info = &spawn->info;
 	struct mlx5_dev_ctx_shared *sh = NULL;
@@ -317,14 +314,6 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 		return NULL;
 	}
 	DRV_LOG(DEBUG, "naming Ethernet device \"%s\"", name);
-	/* Process parameters. */
-	err = mlx5_args(config, dpdk_dev->devargs);
-	if (err) {
-		err = rte_errno;
-		DRV_LOG(ERR, "failed to process device arguments: %s",
-			strerror(rte_errno));
-		goto error;
-	}
 	sh = mlx5_alloc_shared_dev_ctx(spawn);
 	if (!sh)
 		return NULL;
@@ -396,24 +385,14 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 		}
 		own_domain_id = 1;
 	}
-	if (config->hw_padding) {
-		DRV_LOG(DEBUG, "Rx end alignment padding isn't supported");
-		config->hw_padding = 0;
+	/* Process parameters and store port configuration on priv structure. */
+	err = mlx5_port_args_config(priv, dpdk_dev->devargs, &priv->config);
+	if (err) {
+		err = rte_errno;
+		DRV_LOG(ERR, "Failed to process port configure: %s",
+			strerror(rte_errno));
+		goto error;
 	}
-	DRV_LOG(DEBUG, "%sMPS is %s.",
-		config->mps == MLX5_MPW_ENHANCED ? "enhanced " :
-		config->mps == MLX5_MPW ? "legacy " : "",
-		config->mps != MLX5_MPW_DISABLED ? "enabled" : "disabled");
-	if (config->cqe_comp) {
-		DRV_LOG(WARNING, "Rx CQE compression isn't supported.");
-		config->cqe_comp = 0;
-	}
-	if (config->mprq.enabled) {
-		DRV_LOG(WARNING, "Multi-Packet RQ isn't supported");
-		config->mprq.enabled = 0;
-	}
-	if (config->max_dump_files_num == 0)
-		config->max_dump_files_num = 128;
 	eth_dev = rte_eth_dev_allocate(name);
 	if (eth_dev == NULL) {
 		DRV_LOG(ERR, "can not allocate rte ethdev");
@@ -508,10 +487,6 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 	 * Verbs context returned by ibv_open_device().
 	 */
 	mlx5_link_update(eth_dev, 0);
-	/* Detect minimal data bytes to inline. */
-	mlx5_set_min_inline(spawn, config);
-	/* Store device configuration on private structure. */
-	priv->config = *config;
 	for (i = 0; i < MLX5_FLOW_TYPE_MAXI; i++) {
 		icfg[i].release_mem_en = !!sh->config.reclaim_mode;
 		if (sh->config.reclaim_mode)
@@ -817,18 +792,6 @@ mlx5_os_net_probe(struct mlx5_common_device *cdev)
 			.name_type = MLX5_PHYS_PORT_NAME_TYPE_UPLINK,
 		},
 	};
-	struct mlx5_dev_config dev_config = {
-		.rx_vec_en = 1,
-		.txq_inline_max = MLX5_ARG_UNSET,
-		.txq_inline_min = MLX5_ARG_UNSET,
-		.txq_inline_mpw = MLX5_ARG_UNSET,
-		.txqs_inline = MLX5_ARG_UNSET,
-		.mprq = {
-			.max_memcpy_len = MLX5_MPRQ_MEMCPY_DEFAULT_LEN,
-			.min_rxqs_num = MLX5_MPRQ_MIN_RXQS,
-		},
-		.log_hp_size = MLX5_ARG_UNSET,
-	};
 	int ret;
 	uint32_t restore;
 
@@ -842,7 +805,7 @@ mlx5_os_net_probe(struct mlx5_common_device *cdev)
 			strerror(rte_errno));
 		return -rte_errno;
 	}
-	spawn.eth_dev = mlx5_dev_spawn(cdev->dev, &spawn, &dev_config);
+	spawn.eth_dev = mlx5_dev_spawn(cdev->dev, &spawn);
 	if (!spawn.eth_dev)
 		return -rte_errno;
 	restore = spawn.eth_dev->data->dev_flags;

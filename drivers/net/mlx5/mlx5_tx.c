@@ -492,7 +492,7 @@ eth_tx_burst_t
 mlx5_select_tx_function(struct rte_eth_dev *dev)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5_dev_config *config = &priv->config;
+	struct mlx5_port_config *config = &priv->config;
 	uint64_t tx_offloads = dev->data->dev_conf.txmode.offloads;
 	unsigned int diff = 0, olx = 0, i, m;
 
