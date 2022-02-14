@@ -1241,6 +1241,28 @@ err_secondary:
 	}
 	/* Override some values set by hardware configuration. */
 	mlx5_args(config, dpdk_dev->devargs);
+	/* Update final values for devargs before check sibling config. */
+#if !defined(HAVE_IBV_FLOW_DV_SUPPORT) || !defined(HAVE_MLX5DV_DR)
+	if (config->dv_flow_en) {
+		DRV_LOG(WARNING, "DV flow is not supported.");
+		config->dv_flow_en = 0;
+	}
+#endif
+#ifdef HAVE_MLX5DV_DR_ESWITCH
+	if (!(sh->cdev->config.hca_attr.eswitch_manager && config->dv_flow_en &&
+	      (switch_info->representor || switch_info->master)))
+		config->dv_esw_en = 0;
+#else
+	config->dv_esw_en = 0;
+#endif
+	if (!priv->config.dv_esw_en &&
+	    priv->config.dv_xmeta_en != MLX5_XMETA_MODE_LEGACY) {
+		DRV_LOG(WARNING,
+			"Metadata mode %u is not supported (no E-Switch).",
+			priv->config.dv_xmeta_en);
+		priv->config.dv_xmeta_en = MLX5_XMETA_MODE_LEGACY;
+	}
+	/* Check sibling device configurations. */
 	err = mlx5_dev_check_sibling_config(priv, config, dpdk_dev);
 	if (err)
 		goto error;
@@ -1251,12 +1273,6 @@ err_secondary:
 #if !defined(HAVE_IBV_DEVICE_COUNTERS_SET_V42) && \
 	!defined(HAVE_IBV_DEVICE_COUNTERS_SET_V45)
 	DRV_LOG(DEBUG, "counters are not supported");
-#endif
-#if !defined(HAVE_IBV_FLOW_DV_SUPPORT) || !defined(HAVE_MLX5DV_DR)
-	if (config->dv_flow_en) {
-		DRV_LOG(WARNING, "DV flow is not supported");
-		config->dv_flow_en = 0;
-	}
 #endif
 	config->ind_table_max_size =
 		sh->device_attr.max_rwq_indirection_table_size;
@@ -1652,13 +1668,6 @@ err_secondary:
 	 * Verbs context returned by ibv_open_device().
 	 */
 	mlx5_link_update(eth_dev, 0);
-#ifdef HAVE_MLX5DV_DR_ESWITCH
-	if (!(config->hca_attr.eswitch_manager && config->dv_flow_en &&
-	      (switch_info->representor || switch_info->master)))
-		config->dv_esw_en = 0;
-#else
-	config->dv_esw_en = 0;
-#endif
 	/* Detect minimal data bytes to inline. */
 	mlx5_set_min_inline(spawn, config);
 	/* Store device configuration on private structure. */
@@ -1724,12 +1733,6 @@ err_secondary:
 	if (err < 0) {
 		err = -err;
 		goto error;
-	}
-	if (!priv->config.dv_esw_en &&
-	    priv->config.dv_xmeta_en != MLX5_XMETA_MODE_LEGACY) {
-		DRV_LOG(WARNING, "metadata mode %u is not supported "
-				 "(no E-Switch)", priv->config.dv_xmeta_en);
-		priv->config.dv_xmeta_en = MLX5_XMETA_MODE_LEGACY;
 	}
 	mlx5_set_metadata_mask(eth_dev);
 	if (priv->config.dv_xmeta_en != MLX5_XMETA_MODE_LEGACY &&
