@@ -191,6 +191,7 @@ rte_devargs_parse(struct rte_devargs *da, const char *dev)
 
 	if (da == NULL)
 		return -EINVAL;
+	memset(da, 0, sizeof(*da));
 
 	/* First parse according global device syntax. */
 	if (rte_devargs_layers_parse(da, dev) == 0) {
