@@ -114,32 +114,31 @@ struct mlx5_flow_cb_ctx {
 	void *data2;
 };
 
-/* Device attributes used in mlx5 PMD */
-struct mlx5_dev_attr {
-	uint64_t	device_cap_flags_ex;
-	int		max_qp_wr;
-	int		max_sge;
-	int		max_cq;
-	int		max_qp;
-	int		max_cqe;
-	uint32_t	max_pd;
-	uint32_t	max_mr;
-	uint32_t	max_srq;
-	uint32_t	max_srq_wr;
-	uint32_t	raw_packet_caps;
-	uint32_t	max_rwq_indirection_table_size;
-	uint32_t	max_tso;
-	uint32_t	tso_supported_qpts;
-	uint64_t	flags;
-	uint64_t	comp_mask;
-	uint32_t	sw_parsing_offloads;
-	uint32_t	min_single_stride_log_num_of_bytes;
-	uint32_t	max_single_stride_log_num_of_bytes;
-	uint32_t	min_single_wqe_log_num_of_strides;
-	uint32_t	max_single_wqe_log_num_of_strides;
-	uint32_t	stride_supported_qpts;
-	uint32_t	tunnel_offloads_caps;
-	char		fw_ver[64];
+/* Device capabilities structure which isn't changed in any stage. */
+struct mlx5_dev_cap {
+	uint64_t device_cap_flags_ex;
+	int max_cq; /* Maximum number of supported CQs */
+	int max_qp; /* Maximum number of supported QPs. */
+	int max_qp_wr; /* Maximum number of outstanding WR on any WQ. */
+	int max_sge;
+	/* Maximum number of s/g per WR for SQ & RQ of QP for non RDMA Read
+	 * operations.
+	 */
+	uint32_t raw_packet_caps;
+	uint32_t max_rwq_indirection_table_size;
+	/* Maximum receive WQ indirection table size. */
+	uint32_t max_tso; /* Maximum TCP payload for TSO. */
+	uint32_t tso_supported_qpts;
+	uint64_t flags;
+	uint64_t comp_mask;
+	uint32_t sw_parsing_offloads;
+	uint32_t min_single_stride_log_num_of_bytes;
+	uint32_t max_single_stride_log_num_of_bytes;
+	uint32_t min_single_wqe_log_num_of_strides;
+	uint32_t max_single_wqe_log_num_of_strides;
+	uint32_t stride_supported_qpts;
+	uint32_t tunnel_offloads_caps;
+	char fw_ver[64]; /* Firmware version of this device. */
 };
 
 /** Data associated with devices to spawn. */
@@ -1165,7 +1164,7 @@ struct mlx5_dev_ctx_shared {
 	uint32_t tdn; /* Transport Domain number. */
 	char ibdev_name[MLX5_FS_NAME_MAX]; /* SYSFS dev name. */
 	char ibdev_path[MLX5_FS_PATH_MAX]; /* SYSFS dev path for secondary */
-	struct mlx5_dev_attr device_attr; /* Device properties. */
+	struct mlx5_dev_cap dev_cap; /* Device capabilities. */
 	int numa_node; /* Numa node of backing physical device. */
 	/* Packet pacing related structure. */
 	struct mlx5_dev_txpp txpp;
@@ -1792,8 +1791,7 @@ void mlx5_flow_meter_rxq_flush(struct rte_eth_dev *dev);
 /* mlx5_os.c */
 
 struct rte_pci_driver;
-int mlx5_os_get_dev_attr(struct mlx5_common_device *dev,
-			 struct mlx5_dev_attr *dev_attr);
+int mlx5_os_capabilities_prepare(struct mlx5_dev_ctx_shared *sh);
 void mlx5_os_free_shared_dr(struct mlx5_priv *priv);
 int mlx5_os_net_probe(struct mlx5_common_device *cdev);
 void mlx5_os_dev_shared_handler_install(struct mlx5_dev_ctx_shared *sh);

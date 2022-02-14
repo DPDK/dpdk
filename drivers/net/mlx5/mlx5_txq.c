@@ -714,7 +714,7 @@ txq_calc_inline_max(struct mlx5_txq_ctrl *txq_ctrl)
 	struct mlx5_priv *priv = txq_ctrl->priv;
 	unsigned int wqe_size;
 
-	wqe_size = priv->sh->device_attr.max_qp_wr / desc;
+	wqe_size = priv->sh->dev_cap.max_qp_wr / desc;
 	if (!wqe_size)
 		return 0;
 	/*
@@ -982,8 +982,7 @@ txq_adjust_params(struct mlx5_txq_ctrl *txq_ctrl)
 			" satisfied (%u) on port %u, try the smaller"
 			" Tx queue size (%d)",
 			txq_ctrl->txq.inlen_mode, max_inline,
-			priv->dev_data->port_id,
-			priv->sh->device_attr.max_qp_wr);
+			priv->dev_data->port_id, priv->sh->dev_cap.max_qp_wr);
 		goto error;
 	}
 	if (txq_ctrl->txq.inlen_send > max_inline &&
@@ -994,8 +993,7 @@ txq_adjust_params(struct mlx5_txq_ctrl *txq_ctrl)
 			" satisfied (%u) on port %u, try the smaller"
 			" Tx queue size (%d)",
 			txq_ctrl->txq.inlen_send, max_inline,
-			priv->dev_data->port_id,
-			priv->sh->device_attr.max_qp_wr);
+			priv->dev_data->port_id, priv->sh->dev_cap.max_qp_wr);
 		goto error;
 	}
 	if (txq_ctrl->txq.inlen_empw > max_inline &&
@@ -1006,8 +1004,7 @@ txq_adjust_params(struct mlx5_txq_ctrl *txq_ctrl)
 			" satisfied (%u) on port %u, try the smaller"
 			" Tx queue size (%d)",
 			txq_ctrl->txq.inlen_empw, max_inline,
-			priv->dev_data->port_id,
-			priv->sh->device_attr.max_qp_wr);
+			priv->dev_data->port_id, priv->sh->dev_cap.max_qp_wr);
 		goto error;
 	}
 	if (txq_ctrl->txq.tso_en && max_inline < MLX5_MAX_TSO_HEADER) {
@@ -1016,8 +1013,7 @@ txq_adjust_params(struct mlx5_txq_ctrl *txq_ctrl)
 			" satisfied (%u) on port %u, try the smaller"
 			" Tx queue size (%d)",
 			MLX5_MAX_TSO_HEADER, max_inline,
-			priv->dev_data->port_id,
-			priv->sh->device_attr.max_qp_wr);
+			priv->dev_data->port_id, priv->sh->dev_cap.max_qp_wr);
 		goto error;
 	}
 	if (txq_ctrl->txq.inlen_send > max_inline) {
@@ -1098,12 +1094,12 @@ mlx5_txq_new(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 	if (txq_adjust_params(tmpl))
 		goto error;
 	if (txq_calc_wqebb_cnt(tmpl) >
-	    priv->sh->device_attr.max_qp_wr) {
+	    priv->sh->dev_cap.max_qp_wr) {
 		DRV_LOG(ERR,
 			"port %u Tx WQEBB count (%d) exceeds the limit (%d),"
 			" try smaller queue size",
 			dev->data->port_id, txq_calc_wqebb_cnt(tmpl),
-			priv->sh->device_attr.max_qp_wr);
+			priv->sh->dev_cap.max_qp_wr);
 		rte_errno = ENOMEM;
 		goto error;
 	}

@@ -131,46 +131,25 @@ mlx5_os_set_nonblock_channel_fd(int fd)
  * with out parameter of type 'struct ibv_device_attr_ex *'. Then fill in mlx5
  * device attributes from the glue out parameter.
  *
- * @param cdev
- *   Pointer to mlx5 device.
- *
- * @param device_attr
- *   Pointer to mlx5 device attributes.
+ * @param sh
+ *   Pointer to shared device context.
  *
  * @return
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 int
-mlx5_os_get_dev_attr(struct mlx5_common_device *cdev,
-		     struct mlx5_dev_attr *device_attr)
+mlx5_os_capabilities_prepare(struct mlx5_dev_ctx_shared *sh)
 {
 	int err;
-	struct ibv_context *ctx = cdev->ctx;
-	struct ibv_device_attr_ex attr_ex;
+	struct ibv_context *ctx = sh->cdev->ctx;
+	struct ibv_device_attr_ex attr_ex = { .comp_mask = 0 };
+	struct mlx5dv_context dv_attr = { .comp_mask = 0 };
 
-	memset(device_attr, 0, sizeof(*device_attr));
 	err = mlx5_glue->query_device_ex(ctx, NULL, &attr_ex);
 	if (err) {
 		rte_errno = errno;
 		return -rte_errno;
 	}
-	device_attr->device_cap_flags_ex = attr_ex.device_cap_flags_ex;
-	device_attr->max_qp_wr = attr_ex.orig_attr.max_qp_wr;
-	device_attr->max_sge = attr_ex.orig_attr.max_sge;
-	device_attr->max_cq = attr_ex.orig_attr.max_cq;
-	device_attr->max_cqe = attr_ex.orig_attr.max_cqe;
-	device_attr->max_mr = attr_ex.orig_attr.max_mr;
-	device_attr->max_pd = attr_ex.orig_attr.max_pd;
-	device_attr->max_qp = attr_ex.orig_attr.max_qp;
-	device_attr->max_srq = attr_ex.orig_attr.max_srq;
-	device_attr->max_srq_wr = attr_ex.orig_attr.max_srq_wr;
-	device_attr->raw_packet_caps = attr_ex.raw_packet_caps;
-	device_attr->max_rwq_indirection_table_size =
-		attr_ex.rss_caps.max_rwq_indirection_table_size;
-	device_attr->max_tso = attr_ex.tso_caps.max_tso;
-	device_attr->tso_supported_qpts = attr_ex.tso_caps.supported_qpts;
-
-	struct mlx5dv_context dv_attr = { .comp_mask = 0 };
 #ifdef HAVE_IBV_MLX5_MOD_SWP
 	dv_attr.comp_mask |= MLX5DV_CONTEXT_MASK_SWP;
 #endif
@@ -185,31 +164,40 @@ mlx5_os_get_dev_attr(struct mlx5_common_device *cdev,
 		rte_errno = errno;
 		return -rte_errno;
 	}
-
-	device_attr->flags = dv_attr.flags;
-	device_attr->comp_mask = dv_attr.comp_mask;
+	memset(&sh->dev_cap, 0, sizeof(struct mlx5_dev_cap));
+	sh->dev_cap.device_cap_flags_ex = attr_ex.device_cap_flags_ex;
+	sh->dev_cap.max_qp_wr = attr_ex.orig_attr.max_qp_wr;
+	sh->dev_cap.max_sge = attr_ex.orig_attr.max_sge;
+	sh->dev_cap.max_cq = attr_ex.orig_attr.max_cq;
+	sh->dev_cap.max_qp = attr_ex.orig_attr.max_qp;
+	sh->dev_cap.raw_packet_caps = attr_ex.raw_packet_caps;
+	sh->dev_cap.max_rwq_indirection_table_size =
+		attr_ex.rss_caps.max_rwq_indirection_table_size;
+	sh->dev_cap.max_tso = attr_ex.tso_caps.max_tso;
+	sh->dev_cap.tso_supported_qpts = attr_ex.tso_caps.supported_qpts;
+	strlcpy(sh->dev_cap.fw_ver, attr_ex.orig_attr.fw_ver,
+		sizeof(sh->dev_cap.fw_ver));
+	sh->dev_cap.flags = dv_attr.flags;
+	sh->dev_cap.comp_mask = dv_attr.comp_mask;
 #ifdef HAVE_IBV_MLX5_MOD_SWP
-	device_attr->sw_parsing_offloads =
+	sh->dev_cap.sw_parsing_offloads =
 		dv_attr.sw_parsing_caps.sw_parsing_offloads;
 #endif
 #ifdef HAVE_IBV_DEVICE_STRIDING_RQ_SUPPORT
-	device_attr->min_single_stride_log_num_of_bytes =
+	sh->dev_cap.min_single_stride_log_num_of_bytes =
 		dv_attr.striding_rq_caps.min_single_stride_log_num_of_bytes;
-	device_attr->max_single_stride_log_num_of_bytes =
+	sh->dev_cap.max_single_stride_log_num_of_bytes =
 		dv_attr.striding_rq_caps.max_single_stride_log_num_of_bytes;
-	device_attr->min_single_wqe_log_num_of_strides =
+	sh->dev_cap.min_single_wqe_log_num_of_strides =
 		dv_attr.striding_rq_caps.min_single_wqe_log_num_of_strides;
-	device_attr->max_single_wqe_log_num_of_strides =
+	sh->dev_cap.max_single_wqe_log_num_of_strides =
 		dv_attr.striding_rq_caps.max_single_wqe_log_num_of_strides;
-	device_attr->stride_supported_qpts =
+	sh->dev_cap.stride_supported_qpts =
 		dv_attr.striding_rq_caps.supported_qpts;
 #endif
 #ifdef HAVE_IBV_DEVICE_TUNNEL_SUPPORT
-	device_attr->tunnel_offloads_caps = dv_attr.tunnel_offloads_caps;
+	sh->dev_cap.tunnel_offloads_caps = dv_attr.tunnel_offloads_caps;
 #endif
-	strlcpy(device_attr->fw_ver, attr_ex.orig_attr.fw_ver,
-		sizeof(device_attr->fw_ver));
-
 	return 0;
 }
 
@@ -983,8 +971,8 @@ err_secondary:
 	 * Multi-packet send is supported by ConnectX-4 Lx PF as well
 	 * as all ConnectX-5 devices.
 	 */
-	if (sh->device_attr.flags & MLX5DV_CONTEXT_FLAGS_MPW_ALLOWED) {
-		if (sh->device_attr.flags & MLX5DV_CONTEXT_FLAGS_ENHANCED_MPW) {
+	if (sh->dev_cap.flags & MLX5DV_CONTEXT_FLAGS_MPW_ALLOWED) {
+		if (sh->dev_cap.flags & MLX5DV_CONTEXT_FLAGS_ENHANCED_MPW) {
 			DRV_LOG(DEBUG, "enhanced MPW is supported");
 			mps = MLX5_MPW_ENHANCED;
 		} else {
@@ -996,41 +984,41 @@ err_secondary:
 		mps = MLX5_MPW_DISABLED;
 	}
 #ifdef HAVE_IBV_MLX5_MOD_SWP
-	if (sh->device_attr.comp_mask & MLX5DV_CONTEXT_MASK_SWP)
-		swp = sh->device_attr.sw_parsing_offloads;
+	if (sh->dev_cap.comp_mask & MLX5DV_CONTEXT_MASK_SWP)
+		swp = sh->dev_cap.sw_parsing_offloads;
 	DRV_LOG(DEBUG, "SWP support: %u", swp);
 #endif
 	config->swp = swp & (MLX5_SW_PARSING_CAP | MLX5_SW_PARSING_CSUM_CAP |
 		MLX5_SW_PARSING_TSO_CAP);
 #ifdef HAVE_IBV_DEVICE_STRIDING_RQ_SUPPORT
-	if (sh->device_attr.comp_mask & MLX5DV_CONTEXT_MASK_STRIDING_RQ) {
+	if (sh->dev_cap.comp_mask & MLX5DV_CONTEXT_MASK_STRIDING_RQ) {
 		DRV_LOG(DEBUG, "\tmin_single_stride_log_num_of_bytes: %d",
-			sh->device_attr.min_single_stride_log_num_of_bytes);
+			sh->dev_cap.min_single_stride_log_num_of_bytes);
 		DRV_LOG(DEBUG, "\tmax_single_stride_log_num_of_bytes: %d",
-			sh->device_attr.max_single_stride_log_num_of_bytes);
+			sh->dev_cap.max_single_stride_log_num_of_bytes);
 		DRV_LOG(DEBUG, "\tmin_single_wqe_log_num_of_strides: %d",
-			sh->device_attr.min_single_wqe_log_num_of_strides);
+			sh->dev_cap.min_single_wqe_log_num_of_strides);
 		DRV_LOG(DEBUG, "\tmax_single_wqe_log_num_of_strides: %d",
-			sh->device_attr.max_single_wqe_log_num_of_strides);
+			sh->dev_cap.max_single_wqe_log_num_of_strides);
 		DRV_LOG(DEBUG, "\tsupported_qpts: %d",
-			sh->device_attr.stride_supported_qpts);
+			sh->dev_cap.stride_supported_qpts);
 		DRV_LOG(DEBUG, "\tmin_stride_wqe_log_size: %d",
 			config->mprq.log_min_stride_wqe_size);
 		DRV_LOG(DEBUG, "device supports Multi-Packet RQ");
 		mprq = 1;
 		config->mprq.log_min_stride_size =
-			sh->device_attr.min_single_stride_log_num_of_bytes;
+			sh->dev_cap.min_single_stride_log_num_of_bytes;
 		config->mprq.log_max_stride_size =
-			sh->device_attr.max_single_stride_log_num_of_bytes;
+			sh->dev_cap.max_single_stride_log_num_of_bytes;
 		config->mprq.log_min_stride_num =
-			sh->device_attr.min_single_wqe_log_num_of_strides;
+			sh->dev_cap.min_single_wqe_log_num_of_strides;
 		config->mprq.log_max_stride_num =
-			sh->device_attr.max_single_wqe_log_num_of_strides;
+			sh->dev_cap.max_single_wqe_log_num_of_strides;
 	}
 #endif
 #ifdef HAVE_IBV_DEVICE_TUNNEL_SUPPORT
-	if (sh->device_attr.comp_mask & MLX5DV_CONTEXT_MASK_TUNNEL_OFFLOADS) {
-		config->tunnel_en = sh->device_attr.tunnel_offloads_caps &
+	if (sh->dev_cap.comp_mask & MLX5DV_CONTEXT_MASK_TUNNEL_OFFLOADS) {
+		config->tunnel_en = sh->dev_cap.tunnel_offloads_caps &
 			     (MLX5DV_RAW_PACKET_CAP_TUNNELED_OFFLOAD_VXLAN |
 			      MLX5DV_RAW_PACKET_CAP_TUNNELED_OFFLOAD_GRE |
 			      MLX5DV_RAW_PACKET_CAP_TUNNELED_OFFLOAD_GENEVE);
@@ -1052,9 +1040,9 @@ err_secondary:
 		"tunnel offloading disabled due to old OFED/rdma-core version");
 #endif
 #ifdef HAVE_IBV_DEVICE_MPLS_SUPPORT
-	mpls_en = ((sh->device_attr.tunnel_offloads_caps &
+	mpls_en = ((sh->dev_cap.tunnel_offloads_caps &
 		    MLX5DV_RAW_PACKET_CAP_TUNNELED_OFFLOAD_CW_MPLS_OVER_GRE) &&
-		   (sh->device_attr.tunnel_offloads_caps &
+		   (sh->dev_cap.tunnel_offloads_caps &
 		    MLX5DV_RAW_PACKET_CAP_TUNNELED_OFFLOAD_CW_MPLS_OVER_UDP));
 	DRV_LOG(DEBUG, "MPLS over GRE/UDP tunnel offloading is %ssupported",
 		mpls_en ? "" : "not ");
@@ -1215,7 +1203,7 @@ err_secondary:
 		DRV_LOG(DEBUG, "dev_port-%u new domain_id=%u\n",
 			priv->dev_port, priv->domain_id);
 	}
-	config->hw_csum = !!(sh->device_attr.device_cap_flags_ex &
+	config->hw_csum = !!(sh->dev_cap.device_cap_flags_ex &
 			    IBV_DEVICE_RAW_IP_CSUM);
 	DRV_LOG(DEBUG, "checksum offloading is %ssupported",
 		(config->hw_csum ? "" : "not "));
@@ -1224,7 +1212,7 @@ err_secondary:
 	DRV_LOG(DEBUG, "counters are not supported");
 #endif
 	config->ind_table_max_size =
-		sh->device_attr.max_rwq_indirection_table_size;
+		sh->dev_cap.max_rwq_indirection_table_size;
 	/*
 	 * Remove this check once DPDK supports larger/variable
 	 * indirection tables.
@@ -1233,16 +1221,16 @@ err_secondary:
 		config->ind_table_max_size = RTE_ETH_RSS_RETA_SIZE_512;
 	DRV_LOG(DEBUG, "maximum Rx indirection table size is %u",
 		config->ind_table_max_size);
-	config->hw_vlan_strip = !!(sh->device_attr.raw_packet_caps &
+	config->hw_vlan_strip = !!(sh->dev_cap.raw_packet_caps &
 				  IBV_RAW_PACKET_CAP_CVLAN_STRIPPING);
 	DRV_LOG(DEBUG, "VLAN stripping is %ssupported",
 		(config->hw_vlan_strip ? "" : "not "));
-	config->hw_fcs_strip = !!(sh->device_attr.raw_packet_caps &
+	config->hw_fcs_strip = !!(sh->dev_cap.raw_packet_caps &
 				 IBV_RAW_PACKET_CAP_SCATTER_FCS);
 #if defined(HAVE_IBV_WQ_FLAG_RX_END_PADDING)
-	hw_padding = !!sh->device_attr.rx_pad_end_addr_align;
+	hw_padding = !!sh->dev_cap.rx_pad_end_addr_align;
 #elif defined(HAVE_IBV_WQ_FLAGS_PCI_WRITE_END_PADDING)
-	hw_padding = !!(sh->device_attr.device_cap_flags_ex &
+	hw_padding = !!(sh->dev_cap.device_cap_flags_ex &
 			IBV_DEVICE_PCI_WRITE_END_PADDING);
 #endif
 	if (config->hw_padding && !hw_padding) {
@@ -1251,11 +1239,11 @@ err_secondary:
 	} else if (config->hw_padding) {
 		DRV_LOG(DEBUG, "Rx end alignment padding is enabled");
 	}
-	config->tso = (sh->device_attr.max_tso > 0 &&
-		      (sh->device_attr.tso_supported_qpts &
+	config->tso = (sh->dev_cap.max_tso > 0 &&
+		      (sh->dev_cap.tso_supported_qpts &
 		       (1 << IBV_QPT_RAW_PACKET)));
 	if (config->tso)
-		config->tso_max_payload_sz = sh->device_attr.max_tso;
+		config->tso_max_payload_sz = sh->dev_cap.max_tso;
 	/*
 	 * MPW is disabled by default, while the Enhanced MPW is enabled
 	 * by default.
@@ -1382,7 +1370,7 @@ err_secondary:
 #endif
 	}
 	if (config->cqe_comp && RTE_CACHE_LINE_SIZE == 128 &&
-	    !(sh->device_attr.flags & MLX5DV_CONTEXT_FLAGS_CQE_128B_COMP)) {
+	    !(sh->dev_cap.flags & MLX5DV_CONTEXT_FLAGS_CQE_128B_COMP)) {
 		DRV_LOG(WARNING, "Rx CQE 128B compression is not supported");
 		config->cqe_comp = 0;
 	}

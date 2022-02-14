@@ -872,13 +872,12 @@ mlx5_txq_ibv_qp_create(struct rte_eth_dev *dev, uint16_t idx)
 	/* CQ to be associated with the receive queue. */
 	qp_attr.recv_cq = txq_ctrl->obj->cq;
 	/* Max number of outstanding WRs. */
-	qp_attr.cap.max_send_wr = ((priv->sh->device_attr.max_qp_wr < desc) ?
-				   priv->sh->device_attr.max_qp_wr : desc);
+	qp_attr.cap.max_send_wr = RTE_MIN(priv->sh->dev_cap.max_qp_wr, desc);
 	/*
 	 * Max number of scatter/gather elements in a WR, must be 1 to prevent
 	 * libmlx5 from trying to affect must be 1 to prevent libmlx5 from
 	 * trying to affect too much memory. TX gather is not impacted by the
-	 * device_attr.max_sge limit and will still work properly.
+	 * dev_cap.max_sge limit and will still work properly.
 	 */
 	qp_attr.cap.max_send_sge = 1;
 	qp_attr.qp_type = IBV_QPT_RAW_PACKET,

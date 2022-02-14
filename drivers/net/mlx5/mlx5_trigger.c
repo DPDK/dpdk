@@ -215,10 +215,10 @@ mlx5_rxq_start(struct rte_eth_dev *dev)
 		/* Should not release Rx queues but return immediately. */
 		return -rte_errno;
 	}
-	DRV_LOG(DEBUG, "Port %u device_attr.max_qp_wr is %d.",
-		dev->data->port_id, priv->sh->device_attr.max_qp_wr);
-	DRV_LOG(DEBUG, "Port %u device_attr.max_sge is %d.",
-		dev->data->port_id, priv->sh->device_attr.max_sge);
+	DRV_LOG(DEBUG, "Port %u dev_cap.max_qp_wr is %d.",
+		dev->data->port_id, priv->sh->dev_cap.max_qp_wr);
+	DRV_LOG(DEBUG, "Port %u dev_cap.max_sge is %d.",
+		dev->data->port_id, priv->sh->dev_cap.max_sge);
 	for (i = 0; i != priv->rxqs_n; ++i) {
 		struct mlx5_rxq_priv *rxq = mlx5_rxq_ref(dev, i);
 		struct mlx5_rxq_ctrl *rxq_ctrl;

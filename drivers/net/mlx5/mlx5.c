@@ -1262,9 +1262,9 @@ mlx5_alloc_shared_dev_ctx(const struct mlx5_dev_spawn_data *spawn,
 	sh->esw_mode = !!(spawn->info.master || spawn->info.representor);
 	if (spawn->bond_info)
 		sh->bond = *spawn->bond_info;
-	err = mlx5_os_get_dev_attr(sh->cdev, &sh->device_attr);
+	err = mlx5_os_capabilities_prepare(sh);
 	if (err) {
-		DRV_LOG(DEBUG, "mlx5_os_get_dev_attr() failed");
+		DRV_LOG(ERR, "Fail to configure device capabilities.");
 		goto error;
 	}
 	sh->refcnt = 1;

@@ -143,55 +143,42 @@ mlx5_init_once(void)
 }
 
 /**
- * Get mlx5 device attributes.
+ * Get mlx5 device capabilities.
  *
- * @param cdev
- *   Pointer to mlx5 device.
- *
- * @param device_attr
- *   Pointer to mlx5 device attributes.
+ * @param sh
+ *   Pointer to shared device context.
  *
  * @return
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 int
-mlx5_os_get_dev_attr(struct mlx5_common_device *cdev,
-		     struct mlx5_dev_attr *device_attr)
+mlx5_os_capabilities_prepare(struct mlx5_dev_ctx_shared *sh)
 {
-	struct mlx5_context *mlx5_ctx;
+	struct mlx5_hca_attr *hca_attr = &sh->cdev->config.hca_attr;
+	struct mlx5_context *mlx5_ctx = sh->cdev->ctx;
 	void *pv_iseg = NULL;
 	u32 cb_iseg = 0;
 
-	if (!cdev || !cdev->ctx) {
-		rte_errno = EINVAL;
-		return -rte_errno;
-	}
-	mlx5_ctx = (struct mlx5_context *)cdev->ctx;
-	memset(device_attr, 0, sizeof(*device_attr));
-	device_attr->max_cq = 1 << cdev->config.hca_attr.log_max_cq;
-	device_attr->max_qp = 1 << cdev->config.hca_attr.log_max_qp;
-	device_attr->max_qp_wr = 1 << cdev->config.hca_attr.log_max_qp_sz;
-	device_attr->max_cqe = 1 << cdev->config.hca_attr.log_max_cq_sz;
-	device_attr->max_mr = 1 << cdev->config.hca_attr.log_max_mrw_sz;
-	device_attr->max_pd = 1 << cdev->config.hca_attr.log_max_pd;
-	device_attr->max_srq = 1 << cdev->config.hca_attr.log_max_srq;
-	device_attr->max_srq_wr = 1 << cdev->config.hca_attr.log_max_srq_sz;
-	device_attr->max_tso = 1 << cdev->config.hca_attr.max_lso_cap;
-	if (cdev->config.hca_attr.rss_ind_tbl_cap) {
-		device_attr->max_rwq_indirection_table_size =
-			1 << cdev->config.hca_attr.rss_ind_tbl_cap;
-	}
-	device_attr->sw_parsing_offloads =
-		mlx5_get_supported_sw_parsing_offloads(&cdev->config.hca_attr);
-	device_attr->tunnel_offloads_caps =
-		mlx5_get_supported_tunneling_offloads(&cdev->config.hca_attr);
 	pv_iseg = mlx5_glue->query_hca_iseg(mlx5_ctx, &cb_iseg);
 	if (pv_iseg == NULL) {
-		DRV_LOG(ERR, "Failed to get device hca_iseg");
+		DRV_LOG(ERR, "Failed to get device hca_iseg.");
 		rte_errno = errno;
 		return -rte_errno;
 	}
-	snprintf(device_attr->fw_ver, 64, "%x.%x.%04x",
+	memset(&sh->dev_cap, 0, sizeof(struct mlx5_dev_cap));
+	sh->dev_cap.max_cq = 1 << hca_attr->log_max_cq;
+	sh->dev_cap.max_qp = 1 << hca_attr->log_max_qp;
+	sh->dev_cap.max_qp_wr = 1 << hca_attr->log_max_qp_sz;
+	sh->dev_cap.max_tso = 1 << hca_attr->max_lso_cap;
+	if (hca_attr->rss_ind_tbl_cap) {
+		sh->dev_cap.max_rwq_indirection_table_size =
+			1 << hca_attr->rss_ind_tbl_cap;
+	}
+	sh->dev_cap.sw_parsing_offloads =
+		mlx5_get_supported_sw_parsing_offloads(hca_attr);
+	sh->dev_cap.tunnel_offloads_caps =
+		mlx5_get_supported_tunneling_offloads(hca_attr);
+	snprintf(sh->dev_cap.fw_ver, 64, "%x.%x.%04x",
 		 MLX5_GET(initial_seg, pv_iseg, fw_rev_major),
 		 MLX5_GET(initial_seg, pv_iseg, fw_rev_minor),
 		 MLX5_GET(initial_seg, pv_iseg, fw_rev_subminor));
@@ -335,12 +322,12 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 		goto error;
 	}
 	DRV_LOG(DEBUG, "MPW isn't supported");
-	config->swp = sh->device_attr.sw_parsing_offloads &
+	config->swp = sh->dev_cap.sw_parsing_offloads &
 		(MLX5_SW_PARSING_CAP | MLX5_SW_PARSING_CSUM_CAP |
 		 MLX5_SW_PARSING_TSO_CAP);
 	config->ind_table_max_size =
-		sh->device_attr.max_rwq_indirection_table_size;
-	config->tunnel_en = sh->device_attr.tunnel_offloads_caps &
+		sh->dev_cap.max_rwq_indirection_table_size;
+	config->tunnel_en = sh->dev_cap.tunnel_offloads_caps &
 		(MLX5_TUNNELED_OFFLOADS_VXLAN_CAP |
 		 MLX5_TUNNELED_OFFLOADS_GRE_CAP |
 		 MLX5_TUNNELED_OFFLOADS_GENEVE_CAP);
@@ -410,7 +397,7 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 	}
 	DRV_LOG(DEBUG, "counters are not supported");
 	config->ind_table_max_size =
-		sh->device_attr.max_rwq_indirection_table_size;
+		sh->dev_cap.max_rwq_indirection_table_size;
 	/*
 	 * Remove this check once DPDK supports larger/variable
 	 * indirection tables.
@@ -423,9 +410,9 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 		DRV_LOG(DEBUG, "Rx end alignment padding isn't supported");
 		config->hw_padding = 0;
 	}
-	config->tso = (sh->device_attr.max_tso > 0);
+	config->tso = (sh->dev_cap.max_tso > 0);
 	if (config->tso)
-		config->tso_max_payload_sz = sh->device_attr.max_tso;
+		config->tso_max_payload_sz = sh->dev_cap.max_tso;
 	DRV_LOG(DEBUG, "%sMPS is %s.",
 		config->mps == MLX5_MPW_ENHANCED ? "enhanced " :
 		config->mps == MLX5_MPW ? "legacy " : "",
