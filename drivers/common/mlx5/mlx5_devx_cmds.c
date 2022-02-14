@@ -1975,7 +1975,7 @@ mlx5_devx_cmd_modify_qp_state(struct mlx5_devx_obj *qp, uint32_t qp_st_mod_op,
 	case MLX5_CMD_OP_RTR2RTS_QP:
 		qpc = MLX5_ADDR_OF(rtr2rts_qp_in, &in, qpc);
 		MLX5_SET(rtr2rts_qp_in, &in, qpn, qp->id);
-		MLX5_SET(qpc, qpc, primary_address_path.ack_timeout, 14);
+		MLX5_SET(qpc, qpc, primary_address_path.ack_timeout, 16);
 		MLX5_SET(qpc, qpc, log_ack_req_freq, 0);
 		MLX5_SET(qpc, qpc, retry_count, 7);
 		MLX5_SET(qpc, qpc, rnr_retry, 7);
