@@ -423,6 +423,21 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 	}
 	/* Override some values set by hardware configuration. */
 	mlx5_args(config, dpdk_dev->devargs);
+	/* Update final values for devargs before check sibling config. */
+	config->dv_esw_en = 0;
+	if (!config->dv_flow_en) {
+		DRV_LOG(ERR, "Windows flow mode must be DV flow enable.");
+		err = ENOTSUP;
+		goto error;
+	}
+	if (!priv->config.dv_esw_en &&
+	    priv->config.dv_xmeta_en != MLX5_XMETA_MODE_LEGACY) {
+		DRV_LOG(WARNING,
+			"Metadata mode %u is not supported (no E-Switch).",
+			priv->config.dv_xmeta_en);
+		priv->config.dv_xmeta_en = MLX5_XMETA_MODE_LEGACY;
+	}
+	/* Check sibling device configurations. */
 	err = mlx5_dev_check_sibling_config(priv, config, dpdk_dev);
 	if (err)
 		goto error;
@@ -584,7 +599,6 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 	 * Verbs context returned by ibv_open_device().
 	 */
 	mlx5_link_update(eth_dev, 0);
-	config->dv_esw_en = 0;
 	/* Detect minimal data bytes to inline. */
 	mlx5_set_min_inline(spawn, config);
 	/* Store device configuration on private structure. */
@@ -606,12 +620,6 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 	}
 	/* No supported flow priority number detection. */
 	priv->sh->flow_max_priority = -1;
-	if (!priv->config.dv_esw_en &&
-	    priv->config.dv_xmeta_en != MLX5_XMETA_MODE_LEGACY) {
-		DRV_LOG(WARNING, "metadata mode %u is not supported "
-				 "(no E-Switch)", priv->config.dv_xmeta_en);
-		priv->config.dv_xmeta_en = MLX5_XMETA_MODE_LEGACY;
-	}
 	mlx5_set_metadata_mask(eth_dev);
 	if (priv->config.dv_xmeta_en != MLX5_XMETA_MODE_LEGACY &&
 	    !priv->sh->dv_regc0_mask) {
@@ -645,12 +653,10 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 			goto error;
 		}
 	}
-	if (sh->devx && config->dv_flow_en) {
+	if (sh->devx) {
 		priv->obj_ops = devx_obj_ops;
 	} else {
-		DRV_LOG(ERR, "Flow mode %u is not supported "
-				"(Windows flow must be DevX with DV flow enabled).",
-				priv->config.dv_flow_en);
+		DRV_LOG(ERR, "Windows flow must be DevX.");
 		err = ENOTSUP;
 		goto error;
 	}
