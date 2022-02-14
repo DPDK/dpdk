@@ -13,6 +13,7 @@ INTERNAL {
 	mlx5_common_verbs_dereg_mr; # WINDOWS_NO_EXPORT
 
 	mlx5_dev_is_pci;
+	mlx5_dev_is_vf_pci;
 	mlx5_dev_mempool_unregister;
 	mlx5_dev_mempool_subscribe;
 

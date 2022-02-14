@@ -8,6 +8,7 @@
 #include <stdio.h>
 
 #include <rte_pci.h>
+#include <rte_bus_pci.h>
 #include <rte_debug.h>
 #include <rte_atomic.h>
 #include <rte_rwlock.h>
@@ -486,6 +487,20 @@ mlx5_class_driver_register(struct mlx5_class_driver *driver);
 __rte_internal
 bool
 mlx5_dev_is_pci(const struct rte_device *dev);
+
+/**
+ * Test PCI device is a VF device.
+ *
+ * @param pci_dev
+ *   Pointer to PCI device.
+ *
+ * @return
+ *   - True on PCI device is a VF device.
+ *   - False otherwise.
+ */
+__rte_internal
+bool
+mlx5_dev_is_vf_pci(struct rte_pci_device *pci_dev);
 
 __rte_internal
 int

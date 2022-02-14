@@ -926,6 +926,7 @@ mlx5_os_net_probe(struct mlx5_common_device *cdev)
 		},
 		.dv_flow_en = 1,
 		.log_hp_size = MLX5_ARG_UNSET,
+		.vf = mlx5_dev_is_vf_pci(pci_dev),
 	};
 	int ret;
 	uint32_t restore;
@@ -939,21 +940,6 @@ mlx5_os_net_probe(struct mlx5_common_device *cdev)
 		DRV_LOG(ERR, "unable to init PMD global data: %s",
 			strerror(rte_errno));
 		return -rte_errno;
-	}
-	/* Device specific configuration. */
-	switch (pci_dev->id.device_id) {
-	case PCI_DEVICE_ID_MELLANOX_CONNECTX4VF:
-	case PCI_DEVICE_ID_MELLANOX_CONNECTX4LXVF:
-	case PCI_DEVICE_ID_MELLANOX_CONNECTX5VF:
-	case PCI_DEVICE_ID_MELLANOX_CONNECTX5EXVF:
-	case PCI_DEVICE_ID_MELLANOX_CONNECTX5BFVF:
-	case PCI_DEVICE_ID_MELLANOX_CONNECTX6VF:
-	case PCI_DEVICE_ID_MELLANOX_CONNECTXVF:
-		dev_config.vf = 1;
-		break;
-	default:
-		dev_config.vf = 0;
-		break;
 	}
 	spawn.eth_dev = mlx5_dev_spawn(cdev->dev, &spawn, &dev_config);
 	if (!spawn.eth_dev)

@@ -2100,7 +2100,6 @@ mlx5_os_pci_probe_pf(struct mlx5_common_device *cdev,
 	struct rte_pci_device *pci_dev = RTE_DEV_TO_PCI(cdev->dev);
 	struct mlx5_dev_spawn_data *list = NULL;
 	struct mlx5_dev_config dev_config;
-	unsigned int dev_config_vf;
 	struct rte_eth_devargs eth_da = *req_eth_da;
 	struct rte_pci_addr owner_pci = pci_dev->addr; /* Owner PF. */
 	struct mlx5_bond_info bond_info;
@@ -2421,21 +2420,6 @@ mlx5_os_pci_probe_pf(struct mlx5_common_device *cdev,
 	 * (i.e. master first, then representors from lowest to highest ID).
 	 */
 	qsort(list, ns, sizeof(*list), mlx5_dev_spawn_data_cmp);
-	/* Device specific configuration. */
-	switch (pci_dev->id.device_id) {
-	case PCI_DEVICE_ID_MELLANOX_CONNECTX4VF:
-	case PCI_DEVICE_ID_MELLANOX_CONNECTX4LXVF:
-	case PCI_DEVICE_ID_MELLANOX_CONNECTX5VF:
-	case PCI_DEVICE_ID_MELLANOX_CONNECTX5EXVF:
-	case PCI_DEVICE_ID_MELLANOX_CONNECTX5BFVF:
-	case PCI_DEVICE_ID_MELLANOX_CONNECTX6VF:
-	case PCI_DEVICE_ID_MELLANOX_CONNECTXVF:
-		dev_config_vf = 1;
-		break;
-	default:
-		dev_config_vf = 0;
-		break;
-	}
 	if (eth_da.type != RTE_ETH_REPRESENTOR_NONE) {
 		/* Set devargs default values. */
 		if (eth_da.nb_mh_controllers == 0) {
@@ -2459,7 +2443,7 @@ mlx5_os_pci_probe_pf(struct mlx5_common_device *cdev,
 
 		/* Default configuration. */
 		mlx5_os_config_default(&dev_config, &cdev->config);
-		dev_config.vf = dev_config_vf;
+		dev_config.vf = mlx5_dev_is_vf_pci(pci_dev);
 		list[i].eth_dev = mlx5_dev_spawn(cdev->dev, &list[i],
 						 &dev_config, &eth_da);
 		if (!list[i].eth_dev) {
