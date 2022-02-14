@@ -40,6 +40,8 @@ endif
 
 # these drivers must always be enabled, otherwise the build breaks
 always_enable = ['bus/pci', 'bus/vdev']
+# we always need a mempool driver, and ring is default, so make it mandatory
+always_enable += ['mempool/ring']
 enable_drivers += always_enable
 
 default_cflags = machine_args
