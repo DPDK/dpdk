@@ -533,7 +533,7 @@ mlx5_flow_counter_mode_config(struct rte_eth_dev *dev __rte_unused)
 	fallback = true;
 #else
 	fallback = false;
-	if (!sh->cdev->config.devx || !priv->config.dv_flow_en ||
+	if (!sh->cdev->config.devx || !sh->config.dv_flow_en ||
 	    !hca_attr->flow_counters_dump ||
 	    !(hca_attr->flow_counter_bulk_alloc_bitmap & 0x4) ||
 	    (mlx5_flow_dv_discover_counter_offset_support(dev) == -ENOTSUP))
@@ -836,12 +836,9 @@ mlx5_flow_aso_ct_mng_close(struct mlx5_dev_ctx_shared *sh)
  *
  * @param[in] sh
  *   Pointer to mlx5_dev_ctx_shared object.
- * @param[in] config
- *   Pointer to user dev config.
  */
 static void
-mlx5_flow_ipool_create(struct mlx5_dev_ctx_shared *sh,
-		       const struct mlx5_dev_config *config)
+mlx5_flow_ipool_create(struct mlx5_dev_ctx_shared *sh)
 {
 	uint8_t i;
 	struct mlx5_indexed_pool_config cfg;
@@ -856,12 +853,12 @@ mlx5_flow_ipool_create(struct mlx5_dev_ctx_shared *sh,
 		 * according to PCI function flow configuration.
 		 */
 		case MLX5_IPOOL_MLX5_FLOW:
-			cfg.size = config->dv_flow_en ?
+			cfg.size = sh->config.dv_flow_en ?
 				sizeof(struct mlx5_flow_handle) :
 				MLX5_FLOW_HANDLE_VERBS_SIZE;
 			break;
 		}
-		if (config->reclaim_mode) {
+		if (sh->config.reclaim_mode) {
 			cfg.release_mem_en = 1;
 			cfg.per_core_cache = 0;
 		} else {
@@ -1170,6 +1167,191 @@ mlx5_setup_tis(struct mlx5_dev_ctx_shared *sh)
 }
 
 /**
+ * Verify and store value for share device argument.
+ *
+ * @param[in] key
+ *   Key argument to verify.
+ * @param[in] val
+ *   Value associated with key.
+ * @param opaque
+ *   User data.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+static int
+mlx5_dev_args_check_handler(const char *key, const char *val, void *opaque)
+{
+	struct mlx5_sh_config *config = opaque;
+	signed long tmp;
+
+	errno = 0;
+	tmp = strtol(val, NULL, 0);
+	if (errno) {
+		rte_errno = errno;
+		DRV_LOG(WARNING, "%s: \"%s\" is not a valid integer", key, val);
+		return -rte_errno;
+	}
+	if (tmp < 0 && strcmp(MLX5_TX_PP, key) && strcmp(MLX5_TX_SKEW, key)) {
+		/* Negative values are acceptable for some keys only. */
+		rte_errno = EINVAL;
+		DRV_LOG(WARNING, "%s: invalid negative value \"%s\"", key, val);
+		return -rte_errno;
+	}
+	if (strcmp(MLX5_TX_PP, key) == 0) {
+		unsigned long mod = tmp >= 0 ? tmp : -tmp;
+
+		if (!mod) {
+			DRV_LOG(ERR, "Zero Tx packet pacing parameter.");
+			rte_errno = EINVAL;
+			return -rte_errno;
+		}
+		config->tx_pp = tmp;
+	} else if (strcmp(MLX5_TX_SKEW, key) == 0) {
+		config->tx_skew = tmp;
+	} else if (strcmp(MLX5_L3_VXLAN_EN, key) == 0) {
+		config->l3_vxlan_en = !!tmp;
+	} else if (strcmp(MLX5_VF_NL_EN, key) == 0) {
+		config->vf_nl_en = !!tmp;
+	} else if (strcmp(MLX5_DV_ESW_EN, key) == 0) {
+		config->dv_esw_en = !!tmp;
+	} else if (strcmp(MLX5_DV_FLOW_EN, key) == 0) {
+		config->dv_flow_en = !!tmp;
+	} else if (strcmp(MLX5_DV_XMETA_EN, key) == 0) {
+		if (tmp != MLX5_XMETA_MODE_LEGACY &&
+		    tmp != MLX5_XMETA_MODE_META16 &&
+		    tmp != MLX5_XMETA_MODE_META32 &&
+		    tmp != MLX5_XMETA_MODE_MISS_INFO) {
+			DRV_LOG(ERR, "Invalid extensive metadata parameter.");
+			rte_errno = EINVAL;
+			return -rte_errno;
+		}
+		if (tmp != MLX5_XMETA_MODE_MISS_INFO)
+			config->dv_xmeta_en = tmp;
+		else
+			config->dv_miss_info = 1;
+	} else if (strcmp(MLX5_LACP_BY_USER, key) == 0) {
+		config->lacp_by_user = !!tmp;
+	} else if (strcmp(MLX5_RECLAIM_MEM, key) == 0) {
+		if (tmp != MLX5_RCM_NONE &&
+		    tmp != MLX5_RCM_LIGHT &&
+		    tmp != MLX5_RCM_AGGR) {
+			DRV_LOG(ERR, "Unrecognize %s: \"%s\"", key, val);
+			rte_errno = EINVAL;
+			return -rte_errno;
+		}
+		config->reclaim_mode = tmp;
+	} else if (strcmp(MLX5_DECAP_EN, key) == 0) {
+		config->decap_en = !!tmp;
+	} else if (strcmp(MLX5_ALLOW_DUPLICATE_PATTERN, key) == 0) {
+		config->allow_duplicate_pattern = !!tmp;
+	}
+	return 0;
+}
+
+/**
+ * Parse user device parameters and adjust them according to device
+ * capabilities.
+ *
+ * @param sh
+ *   Pointer to shared device context.
+ * @param devargs
+ *   Device arguments structure.
+ * @param config
+ *   Pointer to shared device configuration structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+static int
+mlx5_shared_dev_ctx_args_config(struct mlx5_dev_ctx_shared *sh,
+				struct rte_devargs *devargs,
+				struct mlx5_sh_config *config)
+{
+	struct rte_kvargs *kvlist;
+	int ret = 0;
+
+	/* Default configuration. */
+	memset(config, 0, sizeof(*config));
+	config->vf_nl_en = 1;
+	config->dv_esw_en = 1;
+	config->dv_flow_en = 1;
+	config->decap_en = 1;
+	config->allow_duplicate_pattern = 1;
+	/* Parse device parameters. */
+	if (devargs != NULL) {
+		kvlist = rte_kvargs_parse(devargs->args, NULL);
+		if (kvlist == NULL) {
+			DRV_LOG(ERR,
+				"Failed to parse shared device arguments.");
+			rte_errno = EINVAL;
+			return -rte_errno;
+		}
+		/* Process parameters. */
+		ret = rte_kvargs_process(kvlist, NULL,
+					 mlx5_dev_args_check_handler, config);
+		rte_kvargs_free(kvlist);
+		if (ret) {
+			DRV_LOG(ERR, "Failed to process device arguments: %s",
+				strerror(rte_errno));
+			return -rte_errno;
+		}
+	}
+	/* Adjust parameters according to device capabilities. */
+	if (config->dv_flow_en && !sh->dev_cap.dv_flow_en) {
+		DRV_LOG(WARNING, "DV flow is not supported.");
+		config->dv_flow_en = 0;
+	}
+	if (config->dv_esw_en && !sh->dev_cap.dv_esw_en) {
+		DRV_LOG(DEBUG, "E-Switch DV flow is not supported.");
+		config->dv_esw_en = 0;
+	}
+	if (config->dv_miss_info && config->dv_esw_en)
+		config->dv_xmeta_en = MLX5_XMETA_MODE_META16;
+	if (!config->dv_esw_en &&
+	    config->dv_xmeta_en != MLX5_XMETA_MODE_LEGACY) {
+		DRV_LOG(WARNING,
+			"Metadata mode %u is not supported (no E-Switch).",
+			config->dv_xmeta_en);
+		config->dv_xmeta_en = MLX5_XMETA_MODE_LEGACY;
+	}
+	if (config->tx_pp && !sh->dev_cap.txpp_en) {
+		DRV_LOG(ERR, "Packet pacing is not supported.");
+		rte_errno = ENODEV;
+		return -rte_errno;
+	}
+	if (!config->tx_pp && config->tx_skew) {
+		DRV_LOG(WARNING,
+			"\"tx_skew\" doesn't affect without \"tx_pp\".");
+	}
+	/*
+	 * If HW has bug working with tunnel packet decapsulation and scatter
+	 * FCS, and decapsulation is needed, clear the hw_fcs_strip bit.
+	 * Then RTE_ETH_RX_OFFLOAD_KEEP_CRC bit will not be set anymore.
+	 */
+	if (sh->dev_cap.scatter_fcs_w_decap_disable && sh->config.decap_en)
+		config->hw_fcs_strip = 0;
+	else
+		config->hw_fcs_strip = sh->dev_cap.hw_fcs_strip;
+	DRV_LOG(DEBUG, "FCS stripping configuration is %ssupported",
+		(config->hw_fcs_strip ? "" : "not "));
+	DRV_LOG(DEBUG, "\"tx_pp\" is %d.", config->tx_pp);
+	DRV_LOG(DEBUG, "\"tx_skew\" is %d.", config->tx_skew);
+	DRV_LOG(DEBUG, "\"reclaim_mode\" is %u.", config->reclaim_mode);
+	DRV_LOG(DEBUG, "\"dv_esw_en\" is %u.", config->dv_esw_en);
+	DRV_LOG(DEBUG, "\"dv_flow_en\" is %u.", config->dv_flow_en);
+	DRV_LOG(DEBUG, "\"dv_xmeta_en\" is %u.", config->dv_xmeta_en);
+	DRV_LOG(DEBUG, "\"dv_miss_info\" is %u.", config->dv_miss_info);
+	DRV_LOG(DEBUG, "\"l3_vxlan_en\" is %u.", config->l3_vxlan_en);
+	DRV_LOG(DEBUG, "\"vf_nl_en\" is %u.", config->vf_nl_en);
+	DRV_LOG(DEBUG, "\"lacp_by_user\" is %u.", config->lacp_by_user);
+	DRV_LOG(DEBUG, "\"decap_en\" is %u.", config->decap_en);
+	DRV_LOG(DEBUG, "\"allow_duplicate_pattern\" is %u.",
+		config->allow_duplicate_pattern);
+	return 0;
+}
+
+/**
  * Configure realtime timestamp format.
  *
  * @param sh
@@ -1216,16 +1398,13 @@ mlx5_rt_timestamp_config(struct mlx5_dev_ctx_shared *sh,
  *
  * @param[in] spawn
  *   Pointer to the device attributes (name, port, etc).
- * @param[in] config
- *   Pointer to device configuration structure.
  *
  * @return
  *   Pointer to mlx5_dev_ctx_shared object on success,
  *   otherwise NULL and rte_errno is set.
  */
 struct mlx5_dev_ctx_shared *
-mlx5_alloc_shared_dev_ctx(const struct mlx5_dev_spawn_data *spawn,
-			  const struct mlx5_dev_config *config)
+mlx5_alloc_shared_dev_ctx(const struct mlx5_dev_spawn_data *spawn)
 {
 	struct mlx5_dev_ctx_shared *sh;
 	int err = 0;
@@ -1264,9 +1443,15 @@ mlx5_alloc_shared_dev_ctx(const struct mlx5_dev_spawn_data *spawn,
 		DRV_LOG(ERR, "Fail to configure device capabilities.");
 		goto error;
 	}
+	err = mlx5_shared_dev_ctx_args_config(sh, sh->cdev->dev->devargs,
+					      &sh->config);
+	if (err) {
+		DRV_LOG(ERR, "Failed to process device configure: %s",
+			strerror(rte_errno));
+		goto error;
+	}
 	sh->refcnt = 1;
 	sh->max_port = spawn->max_port;
-	sh->reclaim_mode = config->reclaim_mode;
 	strncpy(sh->ibdev_name, mlx5_os_get_ctx_device_name(sh->cdev->ctx),
 		sizeof(sh->ibdev_name) - 1);
 	strncpy(sh->ibdev_path, mlx5_os_get_ctx_device_path(sh->cdev->ctx),
@@ -1310,7 +1495,7 @@ mlx5_alloc_shared_dev_ctx(const struct mlx5_dev_spawn_data *spawn,
 	}
 	mlx5_flow_aging_init(sh);
 	mlx5_flow_counters_mng_init(sh);
-	mlx5_flow_ipool_create(sh, config);
+	mlx5_flow_ipool_create(sh);
 	/* Add context to the global device list. */
 	LIST_INSERT_HEAD(&mlx5_dev_ctx_list, sh, next);
 	rte_spinlock_init(&sh->geneve_tlv_opt_sl);
@@ -1919,14 +2104,18 @@ static int
 mlx5_args_check(const char *key, const char *val, void *opaque)
 {
 	struct mlx5_dev_config *config = opaque;
-	unsigned long mod;
 	signed long tmp;
 
 	/* No-op, port representors are processed in mlx5_dev_spawn(). */
 	if (!strcmp(MLX5_DRIVER_KEY, key) || !strcmp(MLX5_REPRESENTOR, key) ||
 	    !strcmp(MLX5_SYS_MEM_EN, key) || !strcmp(MLX5_TX_DB_NC, key) ||
-	    !strcmp(MLX5_MR_MEMPOOL_REG_EN, key) ||
-	    !strcmp(MLX5_MR_EXT_MEMSEG_EN, key))
+	    !strcmp(MLX5_MR_MEMPOOL_REG_EN, key) || !strcmp(MLX5_TX_PP, key) ||
+	    !strcmp(MLX5_MR_EXT_MEMSEG_EN, key) || !strcmp(MLX5_TX_SKEW, key) ||
+	    !strcmp(MLX5_RECLAIM_MEM, key) || !strcmp(MLX5_DECAP_EN, key) ||
+	    !strcmp(MLX5_ALLOW_DUPLICATE_PATTERN, key) ||
+	    !strcmp(MLX5_L3_VXLAN_EN, key) || !strcmp(MLX5_VF_NL_EN, key) ||
+	    !strcmp(MLX5_DV_ESW_EN, key) || !strcmp(MLX5_DV_FLOW_EN, key) ||
+	    !strcmp(MLX5_DV_XMETA_EN, key) || !strcmp(MLX5_LACP_BY_USER, key))
 		return 0;
 	errno = 0;
 	tmp = strtol(val, NULL, 0);
@@ -1935,13 +2124,12 @@ mlx5_args_check(const char *key, const char *val, void *opaque)
 		DRV_LOG(WARNING, "%s: \"%s\" is not a valid integer", key, val);
 		return -rte_errno;
 	}
-	if (tmp < 0 && strcmp(MLX5_TX_PP, key) && strcmp(MLX5_TX_SKEW, key)) {
+	if (tmp < 0) {
 		/* Negative values are acceptable for some keys only. */
 		rte_errno = EINVAL;
 		DRV_LOG(WARNING, "%s: invalid negative value \"%s\"", key, val);
 		return -rte_errno;
 	}
-	mod = tmp >= 0 ? tmp : -tmp;
 	if (strcmp(MLX5_RXQ_CQE_COMP_EN, key) == 0) {
 		if (tmp > MLX5_CQE_RESP_FORMAT_L34H_STRIDX) {
 			DRV_LOG(ERR, "invalid CQE compression "
@@ -1987,41 +2175,8 @@ mlx5_args_check(const char *key, const char *val, void *opaque)
 		config->txq_inline_mpw = tmp;
 	} else if (strcmp(MLX5_TX_VEC_EN, key) == 0) {
 		DRV_LOG(WARNING, "%s: deprecated parameter, ignored", key);
-	} else if (strcmp(MLX5_TX_PP, key) == 0) {
-		if (!mod) {
-			DRV_LOG(ERR, "Zero Tx packet pacing parameter");
-			rte_errno = EINVAL;
-			return -rte_errno;
-		}
-		config->tx_pp = tmp;
-	} else if (strcmp(MLX5_TX_SKEW, key) == 0) {
-		config->tx_skew = tmp;
 	} else if (strcmp(MLX5_RX_VEC_EN, key) == 0) {
 		config->rx_vec_en = !!tmp;
-	} else if (strcmp(MLX5_L3_VXLAN_EN, key) == 0) {
-		config->l3_vxlan_en = !!tmp;
-	} else if (strcmp(MLX5_VF_NL_EN, key) == 0) {
-		config->vf_nl_en = !!tmp;
-	} else if (strcmp(MLX5_DV_ESW_EN, key) == 0) {
-		config->dv_esw_en = !!tmp;
-	} else if (strcmp(MLX5_DV_FLOW_EN, key) == 0) {
-		config->dv_flow_en = !!tmp;
-	} else if (strcmp(MLX5_DV_XMETA_EN, key) == 0) {
-		if (tmp != MLX5_XMETA_MODE_LEGACY &&
-		    tmp != MLX5_XMETA_MODE_META16 &&
-		    tmp != MLX5_XMETA_MODE_META32 &&
-		    tmp != MLX5_XMETA_MODE_MISS_INFO) {
-			DRV_LOG(ERR, "invalid extensive "
-				     "metadata parameter");
-			rte_errno = EINVAL;
-			return -rte_errno;
-		}
-		if (tmp != MLX5_XMETA_MODE_MISS_INFO)
-			config->dv_xmeta_en = tmp;
-		else
-			config->dv_miss_info = 1;
-	} else if (strcmp(MLX5_LACP_BY_USER, key) == 0) {
-		config->lacp_by_user = !!tmp;
 	} else if (strcmp(MLX5_MAX_DUMP_FILES_NUM, key) == 0) {
 		config->max_dump_files_num = tmp;
 	} else if (strcmp(MLX5_LRO_TIMEOUT_USEC, key) == 0) {
@@ -2030,19 +2185,6 @@ mlx5_args_check(const char *key, const char *val, void *opaque)
 		DRV_LOG(DEBUG, "class argument is %s.", val);
 	} else if (strcmp(MLX5_HP_BUF_SIZE, key) == 0) {
 		config->log_hp_size = tmp;
-	} else if (strcmp(MLX5_RECLAIM_MEM, key) == 0) {
-		if (tmp != MLX5_RCM_NONE &&
-		    tmp != MLX5_RCM_LIGHT &&
-		    tmp != MLX5_RCM_AGGR) {
-			DRV_LOG(ERR, "Unrecognized %s: \"%s\"", key, val);
-			rte_errno = EINVAL;
-			return -rte_errno;
-		}
-		config->reclaim_mode = tmp;
-	} else if (strcmp(MLX5_DECAP_EN, key) == 0) {
-		config->decap_en = !!tmp;
-	} else if (strcmp(MLX5_ALLOW_DUPLICATE_PATTERN, key) == 0) {
-		config->allow_duplicate_pattern = !!tmp;
 	} else if (strcmp(MLX5_DELAY_DROP, key) == 0) {
 		config->std_delay_drop = !!(tmp & MLX5_DELAY_DROP_STANDARD);
 		config->hp_delay_drop = !!(tmp & MLX5_DELAY_DROP_HAIRPIN);
@@ -2087,6 +2229,130 @@ mlx5_args(struct mlx5_dev_config *config, struct rte_devargs *devargs)
 	}
 	rte_kvargs_free(kvlist);
 	return ret;
+}
+
+/**
+ * Check sibling device configurations when probing again.
+ *
+ * Sibling devices sharing infiniband device context should have compatible
+ * configurations. This regards representors and bonding device.
+ *
+ * @param cdev
+ *   Pointer to mlx5 device structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+int
+mlx5_probe_again_args_validate(struct mlx5_common_device *cdev)
+{
+	struct mlx5_dev_ctx_shared *sh = NULL;
+	struct mlx5_sh_config *config;
+	int ret;
+
+	/* Secondary process should not handle devargs. */
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return 0;
+	pthread_mutex_lock(&mlx5_dev_ctx_list_mutex);
+	/* Search for IB context by common device pointer. */
+	LIST_FOREACH(sh, &mlx5_dev_ctx_list, next)
+		if (sh->cdev == cdev)
+			break;
+	pthread_mutex_unlock(&mlx5_dev_ctx_list_mutex);
+	/* There is sh for this device -> it isn't probe again. */
+	if (sh == NULL)
+		return 0;
+	config = mlx5_malloc(MLX5_MEM_ZERO | MLX5_MEM_RTE,
+			     sizeof(struct mlx5_sh_config),
+			     RTE_CACHE_LINE_SIZE, SOCKET_ID_ANY);
+	if (config == NULL) {
+		rte_errno = -ENOMEM;
+		return -rte_errno;
+	}
+	/*
+	 * Creates a temporary IB context configure structure according to new
+	 * devargs attached in probing again.
+	 */
+	ret = mlx5_shared_dev_ctx_args_config(sh, sh->cdev->dev->devargs,
+					      config);
+	if (ret) {
+		DRV_LOG(ERR, "Failed to process device configure: %s",
+			strerror(rte_errno));
+		mlx5_free(config);
+		return ret;
+	}
+	/*
+	 * Checks the match between the temporary structure and the existing
+	 * IB context structure.
+	 */
+	if (sh->config.dv_flow_en ^ config->dv_flow_en) {
+		DRV_LOG(ERR, "\"dv_flow_en\" "
+			"configuration mismatch for shared %s context.",
+			sh->ibdev_name);
+		goto error;
+	}
+	if ((sh->config.dv_xmeta_en ^ config->dv_xmeta_en) ||
+	    (sh->config.dv_miss_info ^ config->dv_miss_info)) {
+		DRV_LOG(ERR, "\"dv_xmeta_en\" "
+			"configuration mismatch for shared %s context.",
+			sh->ibdev_name);
+		goto error;
+	}
+	if (sh->config.dv_esw_en ^ config->dv_esw_en) {
+		DRV_LOG(ERR, "\"dv_esw_en\" "
+			"configuration mismatch for shared %s context.",
+			sh->ibdev_name);
+		goto error;
+	}
+	if (sh->config.reclaim_mode ^ config->reclaim_mode) {
+		DRV_LOG(ERR, "\"reclaim_mode\" "
+			"configuration mismatch for shared %s context.",
+			sh->ibdev_name);
+		goto error;
+	}
+	if (sh->config.allow_duplicate_pattern ^
+	    config->allow_duplicate_pattern) {
+		DRV_LOG(ERR, "\"allow_duplicate_pattern\" "
+			"configuration mismatch for shared %s context.",
+			sh->ibdev_name);
+		goto error;
+	}
+	if (sh->config.l3_vxlan_en ^ config->l3_vxlan_en) {
+		DRV_LOG(ERR, "\"l3_vxlan_en\" "
+			"configuration mismatch for shared %s context.",
+			sh->ibdev_name);
+		goto error;
+	}
+	if (sh->config.decap_en ^ config->decap_en) {
+		DRV_LOG(ERR, "\"decap_en\" "
+			"configuration mismatch for shared %s context.",
+			sh->ibdev_name);
+		goto error;
+	}
+	if (sh->config.lacp_by_user ^ config->lacp_by_user) {
+		DRV_LOG(ERR, "\"lacp_by_user\" "
+			"configuration mismatch for shared %s context.",
+			sh->ibdev_name);
+		goto error;
+	}
+	if (sh->config.tx_pp ^ config->tx_pp) {
+		DRV_LOG(ERR, "\"tx_pp\" "
+			"configuration mismatch for shared %s context.",
+			sh->ibdev_name);
+		goto error;
+	}
+	if (sh->config.tx_skew ^ config->tx_skew) {
+		DRV_LOG(ERR, "\"tx_skew\" "
+			"configuration mismatch for shared %s context.",
+			sh->ibdev_name);
+		goto error;
+	}
+	mlx5_free(config);
+	return 0;
+error:
+	mlx5_free(config);
+	rte_errno = EINVAL;
+	return -rte_errno;
 }
 
 /**
@@ -2231,7 +2497,7 @@ mlx5_set_metadata_mask(struct rte_eth_dev *dev)
 	uint32_t meta, mark, reg_c0;
 
 	reg_c0 = ~priv->vport_meta_mask;
-	switch (priv->config.dv_xmeta_en) {
+	switch (sh->config.dv_xmeta_en) {
 	case MLX5_XMETA_MODE_LEGACY:
 		meta = UINT32_MAX;
 		mark = MLX5_FLOW_MARK_MASK;
@@ -2265,7 +2531,7 @@ mlx5_set_metadata_mask(struct rte_eth_dev *dev)
 				 sh->dv_meta_mask, reg_c0);
 	else
 		sh->dv_regc0_mask = reg_c0;
-	DRV_LOG(DEBUG, "metadata mode %u", priv->config.dv_xmeta_en);
+	DRV_LOG(DEBUG, "metadata mode %u", sh->config.dv_xmeta_en);
 	DRV_LOG(DEBUG, "metadata MARK mask %08X", sh->dv_mark_mask);
 	DRV_LOG(DEBUG, "metadata META mask %08X", sh->dv_meta_mask);
 	DRV_LOG(DEBUG, "metadata reg_c0 mask %08X", sh->dv_regc0_mask);
@@ -2289,61 +2555,6 @@ rte_pmd_mlx5_get_dyn_flag_names(char *names[], unsigned int n)
 		strcpy(names[i], dynf_names[i]);
 	}
 	return RTE_DIM(dynf_names);
-}
-
-/**
- * Check sibling device configurations.
- *
- * Sibling devices sharing the Infiniband device context should have compatible
- * configurations. This regards representors and bonding device.
- *
- * @param sh
- *   Shared device context.
- * @param config
- *   Configuration of the device is going to be created.
- * @param dpdk_dev
- *   Backing DPDK device.
- *
- * @return
- *   0 on success, EINVAL otherwise
- */
-int
-mlx5_dev_check_sibling_config(struct mlx5_dev_ctx_shared *sh,
-			      struct mlx5_dev_config *config,
-			      struct rte_device *dpdk_dev)
-{
-	struct mlx5_dev_config *sh_conf = NULL;
-	uint16_t port_id;
-
-	MLX5_ASSERT(sh);
-	/* Nothing to compare for the single/first device. */
-	if (sh->refcnt == 1)
-		return 0;
-	/* Find the device with shared context. */
-	MLX5_ETH_FOREACH_DEV(port_id, dpdk_dev) {
-		struct mlx5_priv *opriv =
-			rte_eth_devices[port_id].data->dev_private;
-
-		if (opriv && opriv->sh == sh) {
-			sh_conf = &opriv->config;
-			break;
-		}
-	}
-	if (!sh_conf)
-		return 0;
-	if (sh_conf->dv_flow_en ^ config->dv_flow_en) {
-		DRV_LOG(ERR, "\"dv_flow_en\" configuration mismatch"
-			     " for shared %s context", sh->ibdev_name);
-		rte_errno = EINVAL;
-		return rte_errno;
-	}
-	if (sh_conf->dv_xmeta_en ^ config->dv_xmeta_en) {
-		DRV_LOG(ERR, "\"dv_xmeta_en\" configuration mismatch"
-			     " for shared %s context", sh->ibdev_name);
-		rte_errno = EINVAL;
-		return rte_errno;
-	}
-	return 0;
 }
 
 /**

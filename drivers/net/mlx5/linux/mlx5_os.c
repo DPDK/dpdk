@@ -436,7 +436,7 @@ __mlx5_discovery_misc5_cap(struct mlx5_priv *priv)
 	dv_attr.priority = 3;
 #ifdef HAVE_MLX5DV_DR_ESWITCH
 	void *misc2_m;
-	if (priv->config.dv_esw_en) {
+	if (priv->sh->config.dv_esw_en) {
 		/* FDB enabled reg_c_0 */
 		dv_attr.match_criteria_enable |=
 				(1 << MLX5_MATCH_CRITERIA_ENABLE_MISC2_BIT);
@@ -557,7 +557,7 @@ mlx5_alloc_shared_dr(struct mlx5_priv *priv)
 	}
 	sh->tx_domain = domain;
 #ifdef HAVE_MLX5DV_DR_ESWITCH
-	if (priv->config.dv_esw_en) {
+	if (sh->config.dv_esw_en) {
 		domain = mlx5_glue->dr_create_domain(sh->cdev->ctx,
 						     MLX5DV_DR_DOMAIN_TYPE_FDB);
 		if (!domain) {
@@ -579,20 +579,20 @@ mlx5_alloc_shared_dr(struct mlx5_priv *priv)
 		goto error;
 	}
 #endif
-	if (!sh->tunnel_hub && priv->config.dv_miss_info)
+	if (!sh->tunnel_hub && sh->config.dv_miss_info)
 		err = mlx5_alloc_tunnel_hub(sh);
 	if (err) {
 		DRV_LOG(ERR, "mlx5_alloc_tunnel_hub failed err=%d", err);
 		goto error;
 	}
-	if (priv->config.reclaim_mode == MLX5_RCM_AGGR) {
+	if (sh->config.reclaim_mode == MLX5_RCM_AGGR) {
 		mlx5_glue->dr_reclaim_domain_memory(sh->rx_domain, 1);
 		mlx5_glue->dr_reclaim_domain_memory(sh->tx_domain, 1);
 		if (sh->fdb_domain)
 			mlx5_glue->dr_reclaim_domain_memory(sh->fdb_domain, 1);
 	}
 	sh->pop_vlan_action = mlx5_glue->dr_create_flow_action_pop_vlan();
-	if (!priv->config.allow_duplicate_pattern) {
+	if (!sh->config.allow_duplicate_pattern) {
 #ifndef HAVE_MLX5_DR_ALLOW_DUPLICATE
 		DRV_LOG(WARNING, "Disallow duplicate pattern is not supported - maybe old rdma-core version?");
 #endif
@@ -859,7 +859,7 @@ mlx5_flow_drop_action_config(struct rte_eth_dev *dev __rte_unused)
 #ifdef HAVE_MLX5DV_DR
 	struct mlx5_priv *priv = dev->data->dev_private;
 
-	if (!priv->config.dv_flow_en || !priv->sh->dr_drop_action)
+	if (!priv->sh->config.dv_flow_en || !priv->sh->dr_drop_action)
 		return;
 	/**
 	 * DR supports drop action placeholder when it is supported;
@@ -1115,31 +1115,9 @@ err_secondary:
 			strerror(rte_errno));
 		return NULL;
 	}
-	sh = mlx5_alloc_shared_dev_ctx(spawn, config);
+	sh = mlx5_alloc_shared_dev_ctx(spawn);
 	if (!sh)
 		return NULL;
-	/* Update final values for devargs before check sibling config. */
-	if (config->dv_flow_en && !sh->dev_cap.dv_flow_en) {
-		DRV_LOG(WARNING, "DV flow is not supported.");
-		config->dv_flow_en = 0;
-	}
-	if (config->dv_esw_en && !sh->dev_cap.dv_esw_en) {
-		DRV_LOG(WARNING, "E-Switch DV flow is not supported.");
-		config->dv_esw_en = 0;
-	}
-	if (config->dv_miss_info && config->dv_esw_en)
-		config->dv_xmeta_en = MLX5_XMETA_MODE_META16;
-	if (!config->dv_esw_en &&
-	    config->dv_xmeta_en != MLX5_XMETA_MODE_LEGACY) {
-		DRV_LOG(WARNING,
-			"Metadata mode %u is not supported (no E-Switch).",
-			config->dv_xmeta_en);
-		config->dv_xmeta_en = MLX5_XMETA_MODE_LEGACY;
-	}
-	/* Check sibling device configurations. */
-	err = mlx5_dev_check_sibling_config(sh, config, dpdk_dev);
-	if (err)
-		goto error;
 	nl_rdma = mlx5_nl_init(NETLINK_RDMA);
 	/* Check port status. */
 	if (spawn->phys_port <= UINT8_MAX) {
@@ -1314,7 +1292,7 @@ err_secondary:
 	if (sh->cdev->config.devx) {
 		sh->steering_format_version = hca_attr->steering_format_version;
 		/* LRO is supported only when DV flow enabled. */
-		if (sh->dev_cap.lro_supported && config->dv_flow_en)
+		if (sh->dev_cap.lro_supported && sh->config.dv_flow_en)
 			sh->dev_cap.lro_supported = 0;
 		if (sh->dev_cap.lro_supported) {
 			/*
@@ -1331,7 +1309,7 @@ err_secondary:
 	(defined(HAVE_MLX5_DR_CREATE_ACTION_FLOW_METER) || \
 	 defined(HAVE_MLX5_DR_CREATE_ACTION_ASO))
 		if (hca_attr->qos.sup && hca_attr->qos.flow_meter_old &&
-		    config->dv_flow_en) {
+		    sh->config.dv_flow_en) {
 			uint8_t reg_c_mask = hca_attr->qos.flow_meter_reg_c_ids;
 			/*
 			 * Meter needs two REG_C's for color match and pre-sfx
@@ -1405,7 +1383,7 @@ err_secondary:
 #endif /* HAVE_MLX5_DR_CREATE_ACTION_ASO && HAVE_MLX5_DR_ACTION_ASO_CT */
 #if defined(HAVE_MLX5DV_DR) && defined(HAVE_MLX5_DR_CREATE_ACTION_FLOW_SAMPLE)
 		if (hca_attr->log_max_ft_sampler_num > 0  &&
-		    config->dv_flow_en) {
+		    sh->config.dv_flow_en) {
 			priv->sampler_en = 1;
 			DRV_LOG(DEBUG, "Sampler enabled!");
 		} else {
@@ -1436,11 +1414,6 @@ err_secondary:
 	}
 	DRV_LOG(DEBUG, "Rx CQE compression is %ssupported",
 			config->cqe_comp ? "" : "not ");
-	if (config->tx_pp && !sh->dev_cap.txpp_en) {
-		DRV_LOG(ERR, "Packet pacing is not supported.");
-		err = ENODEV;
-		goto error;
-	}
 	if (config->std_delay_drop || config->hp_delay_drop) {
 		if (!hca_attr->rq_delay_drop) {
 			config->std_delay_drop = 0;
@@ -1450,17 +1423,6 @@ err_secondary:
 				priv->dev_port);
 		}
 	}
-	/*
-	 * If HW has bug working with tunnel packet decapsulation and
-	 * scatter FCS, and decapsulation is needed, clear the hw_fcs_strip
-	 * bit. Then RTE_ETH_RX_OFFLOAD_KEEP_CRC bit will not be set anymore.
-	 */
-	if (sh->dev_cap.scatter_fcs_w_decap_disable && config->decap_en)
-		config->hw_fcs_strip = 0;
-	else
-		config->hw_fcs_strip = sh->dev_cap.hw_fcs_strip;
-	DRV_LOG(DEBUG, "FCS stripping configuration is %ssupported",
-		(config->hw_fcs_strip ? "" : "not "));
 	if (config->mprq.enabled && !sh->dev_cap.mprq.enabled) {
 		DRV_LOG(WARNING, "Multi-Packet RQ isn't supported.");
 		config->mprq.enabled = 0;
@@ -1546,7 +1508,7 @@ err_secondary:
 	eth_dev->rx_queue_count = mlx5_rx_queue_count;
 	/* Register MAC address. */
 	claim_zero(mlx5_mac_addr_add(eth_dev, &mac, 0, 0));
-	if (sh->dev_cap.vf && config->vf_nl_en)
+	if (sh->dev_cap.vf && sh->config.vf_nl_en)
 		mlx5_nl_mac_addr_sync(priv->nl_socket_route,
 				      mlx5_ifindex(eth_dev),
 				      eth_dev->data->mac_addrs,
@@ -1572,8 +1534,8 @@ err_secondary:
 	/* Store device configuration on private structure. */
 	priv->config = *config;
 	for (i = 0; i < MLX5_FLOW_TYPE_MAXI; i++) {
-		icfg[i].release_mem_en = !!config->reclaim_mode;
-		if (config->reclaim_mode)
+		icfg[i].release_mem_en = !!sh->config.reclaim_mode;
+		if (sh->config.reclaim_mode)
 			icfg[i].per_core_cache = 0;
 		priv->flows[i] = mlx5_ipool_create(&icfg[i]);
 		if (!priv->flows[i])
@@ -1581,14 +1543,14 @@ err_secondary:
 	}
 	/* Create context for virtual machine VLAN workaround. */
 	priv->vmwa_context = mlx5_vlan_vmwa_init(eth_dev, spawn->ifindex);
-	if (config->dv_flow_en) {
+	if (sh->config.dv_flow_en) {
 		err = mlx5_alloc_shared_dr(priv);
 		if (err)
 			goto error;
 		if (mlx5_flex_item_port_init(eth_dev) < 0)
 			goto error;
 	}
-	if (sh->cdev->config.devx && config->dv_flow_en &&
+	if (sh->cdev->config.devx && sh->config.dv_flow_en &&
 	    sh->dev_cap.dest_tir) {
 		priv->obj_ops = devx_obj_ops;
 		mlx5_queue_counter_id_prepare(eth_dev);
@@ -1604,7 +1566,7 @@ err_secondary:
 	} else {
 		priv->obj_ops = ibv_obj_ops;
 	}
-	if (config->tx_pp &&
+	if (sh->config.tx_pp &&
 	    priv->obj_ops.txq_obj_new != mlx5_txq_devx_obj_new) {
 		/*
 		 * HAVE_MLX5DV_DEVX_UAR_OFFSET is required to support
@@ -1635,11 +1597,11 @@ err_secondary:
 		goto error;
 	}
 	mlx5_set_metadata_mask(eth_dev);
-	if (priv->config.dv_xmeta_en != MLX5_XMETA_MODE_LEGACY &&
+	if (sh->config.dv_xmeta_en != MLX5_XMETA_MODE_LEGACY &&
 	    !priv->sh->dv_regc0_mask) {
 		DRV_LOG(ERR, "metadata mode %u is not supported "
 			     "(no metadata reg_c[0] is available)",
-			     priv->config.dv_xmeta_en);
+			     sh->config.dv_xmeta_en);
 			err = ENOTSUP;
 			goto error;
 	}
@@ -1664,16 +1626,16 @@ err_secondary:
 		DRV_LOG(DEBUG,
 			"port %u extensive metadata register is not supported",
 			eth_dev->data->port_id);
-		if (priv->config.dv_xmeta_en != MLX5_XMETA_MODE_LEGACY) {
+		if (sh->config.dv_xmeta_en != MLX5_XMETA_MODE_LEGACY) {
 			DRV_LOG(ERR, "metadata mode %u is not supported "
 				     "(no metadata registers available)",
-				     priv->config.dv_xmeta_en);
+				     sh->config.dv_xmeta_en);
 			err = ENOTSUP;
 			goto error;
 		}
 	}
-	if (priv->config.dv_flow_en &&
-	    priv->config.dv_xmeta_en != MLX5_XMETA_MODE_LEGACY &&
+	if (sh->config.dv_flow_en &&
+	    sh->config.dv_xmeta_en != MLX5_XMETA_MODE_LEGACY &&
 	    mlx5_flow_ext_mreg_supported(eth_dev) &&
 	    priv->sh->dv_regc0_mask) {
 		priv->mreg_cp_tbl = mlx5_hlist_create(MLX5_FLOW_MREG_HNAME,
@@ -1692,7 +1654,7 @@ err_secondary:
 	rte_spinlock_init(&priv->shared_act_sl);
 	mlx5_flow_counter_mode_config(eth_dev);
 	mlx5_flow_drop_action_config(eth_dev);
-	if (priv->config.dv_flow_en)
+	if (sh->config.dv_flow_en)
 		eth_dev->data->dev_flags |= RTE_ETH_DEV_FLOW_OPS_THREAD_SAFE;
 	return eth_dev;
 error:
@@ -1950,15 +1912,10 @@ mlx5_os_config_default(struct mlx5_dev_config *config)
 	config->txq_inline_min = MLX5_ARG_UNSET;
 	config->txq_inline_mpw = MLX5_ARG_UNSET;
 	config->txqs_inline = MLX5_ARG_UNSET;
-	config->vf_nl_en = 1;
 	config->mprq.max_memcpy_len = MLX5_MPRQ_MEMCPY_DEFAULT_LEN;
 	config->mprq.min_rxqs_num = MLX5_MPRQ_MIN_RXQS;
 	config->mprq.log_stride_num = MLX5_MPRQ_DEFAULT_LOG_STRIDE_NUM;
-	config->dv_esw_en = 1;
-	config->dv_flow_en = 1;
-	config->decap_en = 1;
 	config->log_hp_size = MLX5_ARG_UNSET;
-	config->allow_duplicate_pattern = 1;
 	config->std_delay_drop = 0;
 	config->hp_delay_drop = 0;
 }
@@ -2571,6 +2528,12 @@ mlx5_os_net_probe(struct mlx5_common_device *cdev)
 	ret = mlx5_init_once();
 	if (ret) {
 		DRV_LOG(ERR, "Unable to init PMD global data: %s",
+			strerror(rte_errno));
+		return -rte_errno;
+	}
+	ret = mlx5_probe_again_args_validate(cdev);
+	if (ret) {
+		DRV_LOG(ERR, "Probe again parameters are not compatible : %s",
 			strerror(rte_errno));
 		return -rte_errno;
 	}

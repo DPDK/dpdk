@@ -963,7 +963,7 @@ is_tunnel_offload_active(const struct rte_eth_dev *dev)
 {
 #ifdef HAVE_IBV_FLOW_DV_SUPPORT
 	const struct mlx5_priv *priv = dev->data->dev_private;
-	return !!priv->config.dv_miss_info;
+	return !!priv->sh->config.dv_miss_info;
 #else
 	RTE_SET_USED(dev);
 	return false;

@@ -252,23 +252,10 @@ struct mlx5_stats_ctrl {
  */
 struct mlx5_dev_config {
 	unsigned int hw_vlan_insert:1; /* VLAN insertion in WQE is supported. */
-	unsigned int hw_fcs_strip:1; /* FCS stripping is supported. */
 	unsigned int hw_padding:1; /* End alignment padding is supported. */
 	unsigned int cqe_comp:1; /* CQE compression is enabled. */
 	unsigned int cqe_comp_fmt:3; /* CQE compression format. */
 	unsigned int rx_vec_en:1; /* Rx vector is enabled. */
-	unsigned int l3_vxlan_en:1; /* Enable L3 VXLAN flow creation. */
-	unsigned int vf_nl_en:1; /* Enable Netlink requests in VF mode. */
-	unsigned int dv_esw_en:1; /* Enable E-Switch DV flow. */
-	unsigned int dv_flow_en:1; /* Enable DV flow. */
-	unsigned int dv_xmeta_en:2; /* Enable extensive flow metadata. */
-	unsigned int lacp_by_user:1;
-	/* Enable user to manage LACP traffic. */
-	unsigned int reclaim_mode:2; /* Memory reclaim mode. */
-	unsigned int decap_en:1; /* Whether decap will be used or not. */
-	unsigned int dv_miss_info:1; /* restore packet after partial hw miss */
-	unsigned int allow_duplicate_pattern:1;
-	/* Allow/Prevent the duplicate rules pattern. */
 	unsigned int std_delay_drop:1; /* Enable standard Rxq delay drop. */
 	unsigned int hp_delay_drop:1; /* Enable hairpin Rxq delay drop. */
 	struct {
@@ -288,8 +275,29 @@ struct mlx5_dev_config {
 	int txq_inline_min; /* Minimal amount of data bytes to inline. */
 	int txq_inline_max; /* Max packet size for inlining with SEND. */
 	int txq_inline_mpw; /* Max packet size for inlining with eMPW. */
+};
+
+/*
+ * Share context device configuration structure.
+ * User device parameters disabled features.
+ * This structure updated once for device in mlx5_alloc_shared_dev_ctx()
+ * function and cannot change even when probing again.
+ */
+struct mlx5_sh_config {
 	int tx_pp; /* Timestamp scheduling granularity in nanoseconds. */
 	int tx_skew; /* Tx scheduling skew between WQE and data on wire. */
+	uint32_t reclaim_mode:2; /* Memory reclaim mode. */
+	uint32_t dv_esw_en:1; /* Enable E-Switch DV flow. */
+	uint32_t dv_flow_en:1; /* Enable DV flow. */
+	uint32_t dv_xmeta_en:2; /* Enable extensive flow metadata. */
+	uint32_t dv_miss_info:1; /* Restore packet after partial hw miss. */
+	uint32_t l3_vxlan_en:1; /* Enable L3 VXLAN flow creation. */
+	uint32_t vf_nl_en:1; /* Enable Netlink requests in VF mode. */
+	uint32_t lacp_by_user:1; /* Enable user to manage LACP traffic. */
+	uint32_t decap_en:1; /* Whether decap will be used or not. */
+	uint32_t hw_fcs_strip:1; /* FCS stripping is supported. */
+	uint32_t allow_duplicate_pattern:1;
+	/* Allow/Prevent the duplicate rules pattern. */
 };
 
 
@@ -1144,7 +1152,6 @@ struct mlx5_dev_ctx_shared {
 	uint32_t ct_aso_en:1; /* Connection Tracking ASO is supported. */
 	uint32_t tunnel_header_0_1:1; /* tunnel_header_0_1 is supported. */
 	uint32_t misc5_cap:1; /* misc5 matcher parameter is supported. */
-	uint32_t reclaim_mode:1; /* Reclaim memory. */
 	uint32_t dr_drop_action_en:1; /* Use DR drop action. */
 	uint32_t drop_action_check_flag:1; /* Check Flag for drop action. */
 	uint32_t flow_priority_check_flag:1; /* Check Flag for flow priority. */
@@ -1156,6 +1163,7 @@ struct mlx5_dev_ctx_shared {
 	char ibdev_name[MLX5_FS_NAME_MAX]; /* SYSFS dev name. */
 	char ibdev_path[MLX5_FS_PATH_MAX]; /* SYSFS dev path for secondary */
 	struct mlx5_dev_cap dev_cap; /* Device capabilities. */
+	struct mlx5_sh_config config; /* Device configuration. */
 	int numa_node; /* Numa node of backing physical device. */
 	/* Packet pacing related structure. */
 	struct mlx5_dev_txpp txpp;
@@ -1511,8 +1519,7 @@ int mlx5_args(struct mlx5_dev_config *config, struct rte_devargs *devargs);
 void mlx5_rt_timestamp_config(struct mlx5_dev_ctx_shared *sh,
 			      struct mlx5_hca_attr *hca_attr);
 struct mlx5_dev_ctx_shared *
-mlx5_alloc_shared_dev_ctx(const struct mlx5_dev_spawn_data *spawn,
-			   const struct mlx5_dev_config *config);
+mlx5_alloc_shared_dev_ctx(const struct mlx5_dev_spawn_data *spawn);
 void mlx5_free_shared_dev_ctx(struct mlx5_dev_ctx_shared *sh);
 int mlx5_dev_ctx_shared_mempool_subscribe(struct rte_eth_dev *dev);
 void mlx5_free_table_hash_list(struct mlx5_priv *priv);
@@ -1520,9 +1527,7 @@ int mlx5_alloc_table_hash_list(struct mlx5_priv *priv);
 void mlx5_set_min_inline(struct mlx5_dev_spawn_data *spawn,
 			 struct mlx5_dev_config *config);
 void mlx5_set_metadata_mask(struct rte_eth_dev *dev);
-int mlx5_dev_check_sibling_config(struct mlx5_dev_ctx_shared *sh,
-				  struct mlx5_dev_config *config,
-				  struct rte_device *dpdk_dev);
+int mlx5_probe_again_args_validate(struct mlx5_common_device *cdev);
 bool mlx5_flex_parser_ecpri_exist(struct rte_eth_dev *dev);
 int mlx5_flex_parser_ecpri_alloc(struct rte_eth_dev *dev);
 void mlx5_flow_counter_mode_config(struct rte_eth_dev *dev);

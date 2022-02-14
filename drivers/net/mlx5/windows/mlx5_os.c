@@ -325,27 +325,18 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 			strerror(rte_errno));
 		goto error;
 	}
-	sh = mlx5_alloc_shared_dev_ctx(spawn, config);
+	sh = mlx5_alloc_shared_dev_ctx(spawn);
 	if (!sh)
 		return NULL;
-	/* Update final values for devargs before check sibling config. */
-	config->dv_esw_en = 0;
-	if (!config->dv_flow_en) {
+	if (!sh->config.dv_flow_en) {
 		DRV_LOG(ERR, "Windows flow mode must be DV flow enable.");
 		err = ENOTSUP;
 		goto error;
 	}
-	if (!config->dv_esw_en &&
-	    config->dv_xmeta_en != MLX5_XMETA_MODE_LEGACY) {
-		DRV_LOG(WARNING,
-			"Metadata mode %u is not supported (no E-Switch).",
-			config->dv_xmeta_en);
-		config->dv_xmeta_en = MLX5_XMETA_MODE_LEGACY;
+	if (sh->config.vf_nl_en) {
+		DRV_LOG(DEBUG, "VF netlink isn't supported.");
+		sh->config.vf_nl_en = 0;
 	}
-	/* Check sibling device configurations. */
-	err = mlx5_dev_check_sibling_config(sh, config, dpdk_dev);
-	if (err)
-		goto error;
 	/* Initialize the shutdown event in mlx5_dev_spawn to
 	 * support mlx5_is_removed for Windows.
 	 */
@@ -417,7 +408,6 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 		DRV_LOG(WARNING, "Rx CQE compression isn't supported.");
 		config->cqe_comp = 0;
 	}
-	config->hw_fcs_strip = sh->dev_cap.hw_fcs_strip;
 	if (config->mprq.enabled) {
 		DRV_LOG(WARNING, "Multi-Packet RQ isn't supported");
 		config->mprq.enabled = 0;
@@ -523,8 +513,8 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 	/* Store device configuration on private structure. */
 	priv->config = *config;
 	for (i = 0; i < MLX5_FLOW_TYPE_MAXI; i++) {
-		icfg[i].release_mem_en = !!config->reclaim_mode;
-		if (config->reclaim_mode)
+		icfg[i].release_mem_en = !!sh->config.reclaim_mode;
+		if (sh->config.reclaim_mode)
 			icfg[i].per_core_cache = 0;
 		priv->flows[i] = mlx5_ipool_create(&icfg[i]);
 		if (!priv->flows[i])
@@ -532,7 +522,7 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 	}
 	/* Create context for virtual machine VLAN workaround. */
 	priv->vmwa_context = NULL;
-	if (config->dv_flow_en) {
+	if (sh->config.dv_flow_en) {
 		err = mlx5_alloc_shared_dr(priv);
 		if (err)
 			goto error;
@@ -540,11 +530,11 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 	/* No supported flow priority number detection. */
 	priv->sh->flow_max_priority = -1;
 	mlx5_set_metadata_mask(eth_dev);
-	if (priv->config.dv_xmeta_en != MLX5_XMETA_MODE_LEGACY &&
+	if (sh->config.dv_xmeta_en != MLX5_XMETA_MODE_LEGACY &&
 	    !priv->sh->dv_regc0_mask) {
 		DRV_LOG(ERR, "metadata mode %u is not supported "
 			     "(no metadata reg_c[0] is available).",
-			     priv->config.dv_xmeta_en);
+			     sh->config.dv_xmeta_en);
 			err = ENOTSUP;
 			goto error;
 	}
@@ -564,10 +554,10 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 		DRV_LOG(DEBUG,
 			"port %u extensive metadata register is not supported.",
 			eth_dev->data->port_id);
-		if (priv->config.dv_xmeta_en != MLX5_XMETA_MODE_LEGACY) {
+		if (sh->config.dv_xmeta_en != MLX5_XMETA_MODE_LEGACY) {
 			DRV_LOG(ERR, "metadata mode %u is not supported "
 				     "(no metadata registers available).",
-				     priv->config.dv_xmeta_en);
+				     sh->config.dv_xmeta_en);
 			err = ENOTSUP;
 			goto error;
 		}
@@ -837,7 +827,6 @@ mlx5_os_net_probe(struct mlx5_common_device *cdev)
 			.max_memcpy_len = MLX5_MPRQ_MEMCPY_DEFAULT_LEN,
 			.min_rxqs_num = MLX5_MPRQ_MIN_RXQS,
 		},
-		.dv_flow_en = 1,
 		.log_hp_size = MLX5_ARG_UNSET,
 	};
 	int ret;

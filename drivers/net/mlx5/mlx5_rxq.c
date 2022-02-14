@@ -359,14 +359,13 @@ uint64_t
 mlx5_get_rx_queue_offloads(struct rte_eth_dev *dev)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5_dev_config *config = &priv->config;
 	uint64_t offloads = (RTE_ETH_RX_OFFLOAD_SCATTER |
 			     RTE_ETH_RX_OFFLOAD_TIMESTAMP |
 			     RTE_ETH_RX_OFFLOAD_RSS_HASH);
 
-	if (!config->mprq.enabled)
+	if (!priv->config.mprq.enabled)
 		offloads |= RTE_ETH_RX_OFFLOAD_BUFFER_SPLIT;
-	if (config->hw_fcs_strip)
+	if (priv->sh->config.hw_fcs_strip)
 		offloads |= RTE_ETH_RX_OFFLOAD_KEEP_CRC;
 	if (priv->sh->dev_cap.hw_csum)
 		offloads |= (RTE_ETH_RX_OFFLOAD_IPV4_CKSUM |
@@ -1896,7 +1895,7 @@ mlx5_rxq_new(struct rte_eth_dev *dev, struct mlx5_rxq_priv *rxq,
 	tmpl->rxq.crc_present = 0;
 	tmpl->rxq.lro = lro_on_queue;
 	if (offloads & RTE_ETH_RX_OFFLOAD_KEEP_CRC) {
-		if (config->hw_fcs_strip) {
+		if (priv->sh->config.hw_fcs_strip) {
 			/*
 			 * RQs used for LRO-enabled TIRs should not be
 			 * configured to scatter the FCS.

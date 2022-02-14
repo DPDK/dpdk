@@ -109,7 +109,7 @@ mlx5_get_tx_port_offloads(struct rte_eth_dev *dev)
 			     RTE_ETH_TX_OFFLOAD_TCP_CKSUM);
 	if (dev_cap->tso)
 		offloads |= RTE_ETH_TX_OFFLOAD_TCP_TSO;
-	if (config->tx_pp)
+	if (priv->sh->config.tx_pp)
 		offloads |= RTE_ETH_TX_OFFLOAD_SEND_ON_TIMESTAMP;
 	if (dev_cap->swp) {
 		if (dev_cap->swp & MLX5_SW_PARSING_CSUM_CAP)

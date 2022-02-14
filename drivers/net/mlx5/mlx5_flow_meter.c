@@ -658,8 +658,8 @@ mlx5_flow_meter_policy_validate(struct rte_eth_dev *dev,
 	struct rte_mtr_error *error)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	struct rte_flow_attr attr = { .transfer =
-			priv->config.dv_esw_en ? 1 : 0};
+	struct rte_flow_attr attr = { .transfer = priv->sh->config.dv_esw_en ?
+						  1 : 0 };
 	bool is_rss = false;
 	uint8_t policy_mode;
 	uint8_t domain_bitmap;
@@ -746,8 +746,8 @@ mlx5_flow_meter_policy_add(struct rte_eth_dev *dev,
 			struct rte_mtr_error *error)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	struct rte_flow_attr attr = { .transfer =
-			priv->config.dv_esw_en ? 1 : 0};
+	struct rte_flow_attr attr = { .transfer = priv->sh->config.dv_esw_en ?
+						  1 : 0 };
 	uint32_t sub_policy_idx = 0;
 	uint32_t policy_idx = 0;
 	struct mlx5_flow_meter_policy *mtr_policy = NULL;
@@ -1213,7 +1213,7 @@ mlx5_flow_meter_create(struct rte_eth_dev *dev, uint32_t meter_id,
 			(&priv->sh->mtrmng->def_policy_ref_cnt,
 			1, __ATOMIC_RELAXED);
 		domain_bitmap = MLX5_MTR_ALL_DOMAIN_BIT;
-		if (!priv->config.dv_esw_en)
+		if (!priv->sh->config.dv_esw_en)
 			domain_bitmap &= ~MLX5_MTR_DOMAIN_TRANSFER_BIT;
 	} else {
 		if (!priv->sh->meter_aso_en)
