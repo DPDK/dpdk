@@ -372,7 +372,7 @@ mlx5_flow_os_init_workspace_once(void)
 
 	if (err) {
 		DRV_LOG(ERR, "Can't create flow workspace data thread key.");
-		return err;
+		return -rte_errno;
 	}
 	pthread_mutex_init(&lock_thread_list, NULL);
 	return 0;
