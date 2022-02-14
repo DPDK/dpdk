@@ -3218,11 +3218,11 @@ rte_event_eth_rx_adapter_queue_conf_get(uint8_t id,
 			uint16_t rx_queue_id,
 			struct rte_event_eth_rx_adapter_queue_conf *queue_conf)
 {
+#define TICK2NSEC(_ticks, _freq) (((_ticks) * (1E9)) / (_freq))
 	struct rte_eventdev *dev;
 	struct event_eth_rx_adapter *rx_adapter;
 	struct eth_device_info *dev_info;
 	struct eth_rx_queue_info *queue_info;
-	struct rte_event *qi_ev;
 	int ret;
 
 	if (rxa_memzone_lookup())
@@ -3253,7 +3253,6 @@ rte_event_eth_rx_adapter_queue_conf_get(uint8_t id,
 	}
 
 	queue_info = &dev_info->rx_queue[rx_queue_id];
-	qi_ev = (struct rte_event *)&queue_info->event;
 
 	memset(queue_conf, 0, sizeof(*queue_conf));
 	queue_conf->rx_queue_flags = 0;
@@ -3262,7 +3261,18 @@ rte_event_eth_rx_adapter_queue_conf_get(uint8_t id,
 			RTE_EVENT_ETH_RX_ADAPTER_QUEUE_FLOW_ID_VALID;
 	queue_conf->servicing_weight = queue_info->wt;
 
-	memcpy(&queue_conf->ev, qi_ev, sizeof(*qi_ev));
+	queue_conf->ev.event = queue_info->event;
+
+	queue_conf->vector_sz = queue_info->vector_data.max_vector_count;
+	queue_conf->vector_mp = queue_info->vector_data.vector_pool;
+	/* need to be converted from ticks to ns */
+	queue_conf->vector_timeout_ns = TICK2NSEC(
+		queue_info->vector_data.vector_timeout_ticks, rte_get_timer_hz());
+
+	if (queue_info->event_buf != NULL)
+		queue_conf->event_buf_size = queue_info->event_buf->events_size;
+	else
+		queue_conf->event_buf_size = 0;
 
 	dev = &rte_eventdevs[rx_adapter->eventdev_id];
 	if (dev->dev_ops->eth_rx_adapter_queue_conf_get != NULL) {
