@@ -1204,7 +1204,7 @@ enic_fm_copy_entry(struct enic_flowman *fm,
 		ret = item_info->copy_item(&args);
 		if (ret) {
 			/* If copy_item set the error, return that */
-			if (error->type != RTE_FLOW_ERROR_TYPE_NONE)
+			if (error && error->type != RTE_FLOW_ERROR_TYPE_NONE)
 				return ret;
 			goto item_not_supported;
 		}
