@@ -1130,6 +1130,43 @@ mlx5_setup_tis(struct mlx5_dev_ctx_shared *sh)
 }
 
 /**
+ * Configure realtime timestamp format.
+ *
+ * @param sh
+ *   Pointer to mlx5_dev_ctx_shared object.
+ * @param config
+ *   Device configuration parameters.
+ * @param hca_attr
+ *   Pointer to DevX HCA capabilities structure.
+ */
+void
+mlx5_rt_timestamp_config(struct mlx5_dev_ctx_shared *sh,
+			 struct mlx5_dev_config *config,
+			 struct mlx5_hca_attr *hca_attr)
+{
+	uint32_t dw_cnt = MLX5_ST_SZ_DW(register_mtutc);
+	uint32_t reg[dw_cnt];
+	int ret = ENOTSUP;
+
+	if (hca_attr->access_register_user)
+		ret = mlx5_devx_cmd_register_read(sh->cdev->ctx,
+						  MLX5_REGISTER_ID_MTUTC, 0,
+						  reg, dw_cnt);
+	if (!ret) {
+		uint32_t ts_mode;
+
+		/* MTUTC register is read successfully. */
+		ts_mode = MLX5_GET(register_mtutc, reg, time_stamp_mode);
+		if (ts_mode == MLX5_MTUTC_TIMESTAMP_MODE_REAL_TIME)
+			config->rt_timestamp = 1;
+	} else {
+		/* Kernel does not support register reading. */
+		if (hca_attr->dev_freq_khz == (NS_PER_S / MS_PER_S))
+			config->rt_timestamp = 1;
+	}
+}
+
+/**
  * Allocate shared device context. If there is multiport device the
  * master and representors will share this context, if there is single
  * port dedicated device, the context will be used by only given

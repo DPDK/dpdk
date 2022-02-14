@@ -483,27 +483,7 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 		DRV_LOG(DEBUG, "VLAN stripping is %ssupported",
 			(config->hw_vlan_strip ? "" : "not "));
 		config->hw_fcs_strip = hca_attr->scatter_fcs;
-	}
-	if (sh->devx) {
-		uint32_t reg[MLX5_ST_SZ_DW(register_mtutc)];
-
-		err = hca_attr->access_register_user ?
-			mlx5_devx_cmd_register_read
-				(sh->cdev->ctx, MLX5_REGISTER_ID_MTUTC, 0,
-				reg, MLX5_ST_SZ_DW(register_mtutc)) : ENOTSUP;
-		if (!err) {
-			uint32_t ts_mode;
-
-			/* MTUTC register is read successfully. */
-			ts_mode = MLX5_GET(register_mtutc, reg,
-					   time_stamp_mode);
-			if (ts_mode == MLX5_MTUTC_TIMESTAMP_MODE_REAL_TIME)
-				config->rt_timestamp = 1;
-		} else {
-			/* Kernel does not support register reading. */
-			if (hca_attr->dev_freq_khz == (NS_PER_S / MS_PER_S))
-				config->rt_timestamp = 1;
-		}
+		mlx5_rt_timestamp_config(sh, config, hca_attr);
 	}
 	if (config->mprq.enabled) {
 		DRV_LOG(WARNING, "Multi-Packet RQ isn't supported");

@@ -1517,6 +1517,9 @@ void mlx5_age_event_prepare(struct mlx5_dev_ctx_shared *sh);
 	     port_id < RTE_MAX_ETHPORTS; \
 	     port_id = mlx5_eth_find_next(port_id + 1, dev))
 int mlx5_args(struct mlx5_dev_config *config, struct rte_devargs *devargs);
+void mlx5_rt_timestamp_config(struct mlx5_dev_ctx_shared *sh,
+			      struct mlx5_dev_config *config,
+			      struct mlx5_hca_attr *hca_attr);
 struct mlx5_dev_ctx_shared *
 mlx5_alloc_shared_dev_ctx(const struct mlx5_dev_spawn_data *spawn,
 			   const struct mlx5_dev_config *config);
