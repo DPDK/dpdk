@@ -204,8 +204,7 @@ void mlx5_rx_intr_vec_disable(struct rte_eth_dev *dev);
 int mlx5_rx_intr_enable(struct rte_eth_dev *dev, uint16_t rx_queue_id);
 int mlx5_rx_intr_disable(struct rte_eth_dev *dev, uint16_t rx_queue_id);
 int mlx5_rxq_obj_verify(struct rte_eth_dev *dev);
-struct mlx5_rxq_ctrl *mlx5_rxq_new(struct rte_eth_dev *dev,
-				   struct mlx5_rxq_priv *rxq,
+struct mlx5_rxq_ctrl *mlx5_rxq_new(struct rte_eth_dev *dev, uint16_t idx,
 				   uint16_t desc, unsigned int socket,
 				   const struct rte_eth_rxconf *conf,
 				   const struct rte_eth_rxseg_split *rx_seg,

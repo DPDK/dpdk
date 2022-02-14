@@ -909,25 +909,23 @@ mlx5_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 		rte_errno = ENOMEM;
 		return -rte_errno;
 	}
-	rxq->priv = priv;
-	rxq->idx = idx;
-	(*priv->rxq_privs)[idx] = rxq;
-	if (rxq_ctrl != NULL) {
-		/* Join owner list. */
-		LIST_INSERT_HEAD(&rxq_ctrl->owners, rxq, owner_entry);
-		rxq->ctrl = rxq_ctrl;
-	} else {
-		rxq_ctrl = mlx5_rxq_new(dev, rxq, desc, socket, conf, rx_seg,
+	if (rxq_ctrl == NULL) {
+		rxq_ctrl = mlx5_rxq_new(dev, idx, desc, socket, conf, rx_seg,
 					n_seg);
 		if (rxq_ctrl == NULL) {
 			DRV_LOG(ERR, "port %u unable to allocate rx queue index %u",
 				dev->data->port_id, idx);
 			mlx5_free(rxq);
-			(*priv->rxq_privs)[idx] = NULL;
 			rte_errno = ENOMEM;
 			return -rte_errno;
 		}
 	}
+	rxq->priv = priv;
+	rxq->idx = idx;
+	(*priv->rxq_privs)[idx] = rxq;
+	/* Join owner list. */
+	LIST_INSERT_HEAD(&rxq_ctrl->owners, rxq, owner_entry);
+	rxq->ctrl = rxq_ctrl;
 	mlx5_rxq_ref(dev, idx);
 	DRV_LOG(DEBUG, "port %u adding Rx queue %u to list",
 		dev->data->port_id, idx);
@@ -1661,8 +1659,8 @@ unsupport:
  *
  * @param dev
  *   Pointer to Ethernet device.
- * @param rxq
- *   RX queue private data.
+ * @param idx
+ *   RX queue index.
  * @param desc
  *   Number of descriptors to configure in queue.
  * @param socket
@@ -1672,12 +1670,10 @@ unsupport:
  *   A DPDK queue object on success, NULL otherwise and rte_errno is set.
  */
 struct mlx5_rxq_ctrl *
-mlx5_rxq_new(struct rte_eth_dev *dev, struct mlx5_rxq_priv *rxq,
-	     uint16_t desc,
+mlx5_rxq_new(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 	     unsigned int socket, const struct rte_eth_rxconf *conf,
 	     const struct rte_eth_rxseg_split *rx_seg, uint16_t n_seg)
 {
-	uint16_t idx = rxq->idx;
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_rxq_ctrl *tmpl;
 	unsigned int mb_len = rte_pktmbuf_data_room_size(rx_seg[0].mp);
@@ -1720,8 +1716,6 @@ mlx5_rxq_new(struct rte_eth_dev *dev, struct mlx5_rxq_priv *rxq,
 		return NULL;
 	}
 	LIST_INIT(&tmpl->owners);
-	rxq->ctrl = tmpl;
-	LIST_INSERT_HEAD(&tmpl->owners, rxq, owner_entry);
 	MLX5_ASSERT(n_seg && n_seg <= MLX5_MAX_RXQ_NSEG);
 	/*
 	 * Save the original segment configuration in the shared queue
