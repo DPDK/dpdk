@@ -312,7 +312,8 @@ flow_dv_hlist_prepare(struct mlx5_dev_ctx_shared *sh, struct mlx5_hlist **phl,
 		     mlx5_list_match_cb cb_match,
 		     mlx5_list_remove_cb cb_remove,
 		     mlx5_list_clone_cb cb_clone,
-		     mlx5_list_clone_free_cb cb_clone_free)
+		     mlx5_list_clone_free_cb cb_clone_free,
+		     struct rte_flow_error *error)
 {
 	struct mlx5_hlist *hl;
 	struct mlx5_hlist *expected = NULL;
@@ -327,7 +328,9 @@ flow_dv_hlist_prepare(struct mlx5_dev_ctx_shared *sh, struct mlx5_hlist **phl,
 			cb_clone_free);
 	if (!hl) {
 		DRV_LOG(ERR, "%s hash creation failed", name);
-		rte_errno = ENOMEM;
+		rte_flow_error_set(error, ENOMEM,
+				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+				   "cannot allocate resource memory");
 		return NULL;
 	}
 	if (!__atomic_compare_exchange_n(phl, &expected, hl, false,
@@ -3727,7 +3730,8 @@ flow_dv_encap_decap_resource_register
 				flow_dv_encap_decap_match_cb,
 				flow_dv_encap_decap_remove_cb,
 				flow_dv_encap_decap_clone_cb,
-				flow_dv_encap_decap_clone_free_cb);
+				flow_dv_encap_decap_clone_free_cb,
+				error);
 	if (unlikely(!encaps_decaps))
 		return -rte_errno;
 	resource->flags = dev_flow->dv.group ? 0 : 1;
@@ -5825,7 +5829,8 @@ flow_dv_modify_hdr_resource_register
 				flow_dv_modify_match_cb,
 				flow_dv_modify_remove_cb,
 				flow_dv_modify_clone_cb,
-				flow_dv_modify_clone_free_cb);
+				flow_dv_modify_clone_free_cb,
+				error);
 	if (unlikely(!modify_cmds))
 		return -rte_errno;
 	resource->root = !dev_flow->dv.group;
@@ -10757,7 +10762,8 @@ flow_dv_tag_resource_register
 				      flow_dv_tag_match_cb,
 				      flow_dv_tag_remove_cb,
 				      flow_dv_tag_clone_cb,
-				      flow_dv_tag_clone_free_cb);
+				      flow_dv_tag_clone_free_cb,
+				      error);
 	if (unlikely(!tag_table))
 		return -rte_errno;
 	entry = mlx5_hlist_register(tag_table, tag_be24, &ctx);
