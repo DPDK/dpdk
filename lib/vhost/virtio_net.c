@@ -870,20 +870,21 @@ async_mbuf_to_desc_seg(struct virtio_net *dev, struct vhost_virtqueue *vq,
 	struct vhost_async *async = vq->async;
 	uint64_t mapped_len;
 	uint32_t buf_offset = 0;
-	void *hpa;
+	void *host_iova;
 
 	while (cpy_len) {
-		hpa = (void *)(uintptr_t)gpa_to_first_hpa(dev,
+		host_iova = (void *)(uintptr_t)gpa_to_first_hpa(dev,
 				buf_iova + buf_offset, cpy_len, &mapped_len);
-		if (unlikely(!hpa)) {
-			VHOST_LOG_DATA(ERR, "(%d) %s: failed to get hpa.\n", dev->vid, __func__);
+		if (unlikely(!host_iova)) {
+			VHOST_LOG_DATA(ERR, "(%d) %s: failed to get host_iova.\n",
+				       dev->vid, __func__);
 			return -1;
 		}
 
 		if (unlikely(async_iter_add_iovec(async,
 						(void *)(uintptr_t)rte_pktmbuf_iova_offset(m,
 							mbuf_offset),
-						hpa, (size_t)mapped_len)))
+						host_iova, (size_t)mapped_len)))
 			return -1;
 
 		cpy_len -= (uint32_t)mapped_len;
