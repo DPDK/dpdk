@@ -1553,8 +1553,8 @@ iavf_security_ctx_destroy(struct iavf_adapter *adapter)
 	rte_free(iavf_sctx);
 	rte_free(sctx);
 
-	iavf_sctx = NULL;
-	sctx = NULL;
+	adapter->security_ctx = NULL;
+	adapter->vf.eth_dev->security_ctx = NULL;
 
 	return 0;
 }
