@@ -202,6 +202,30 @@ nfb_eth_dev_configure(struct rte_eth_dev *dev __rte_unused)
 	return 0;
 }
 
+static uint32_t
+nfb_eth_get_max_mac_address_count(struct rte_eth_dev *dev)
+{
+	uint16_t i;
+	uint32_t c;
+	uint32_t ret = (uint32_t)-1;
+	struct pmd_internals *internals = dev->data->dev_private;
+
+	/*
+	 * Go through all RX MAC components in firmware and find
+	 * the minimal indicated space size for MAC addresses.
+	 */
+	for (i = 0; i < internals->max_rxmac; i++) {
+		c = nc_rxmac_mac_address_count(internals->rxmac[i]);
+		ret = RTE_MIN(c, ret);
+	}
+
+	/* The driver must support at least 1 MAC address, pretend that */
+	if (internals->max_rxmac == 0 || ret == 0)
+		ret = 1;
+
+	return ret;
+}
+
 /**
  * DPDK callback to get information about the device.
  *
@@ -214,7 +238,8 @@ static int
 nfb_eth_dev_info(struct rte_eth_dev *dev,
 	struct rte_eth_dev_info *dev_info)
 {
-	dev_info->max_mac_addrs = 1;
+	dev_info->max_mac_addrs = nfb_eth_get_max_mac_address_count(dev);
+
 	dev_info->max_rx_pktlen = (uint32_t)-1;
 	dev_info->max_rx_queues = dev->data->nb_rx_queues;
 	dev_info->max_tx_queues = dev->data->nb_tx_queues;
@@ -376,6 +401,18 @@ nfb_eth_dev_set_link_down(struct rte_eth_dev *dev)
 	return 0;
 }
 
+static uint64_t
+nfb_eth_mac_addr_conv(struct rte_ether_addr *mac_addr)
+{
+	int i;
+	uint64_t res = 0;
+	for (i = 0; i < RTE_ETHER_ADDR_LEN; i++) {
+		res <<= 8;
+		res |= mac_addr->addr_bytes[i] & 0xFF;
+	}
+	return res;
+}
+
 /**
  * DPDK callback to set primary MAC address.
  *
@@ -392,24 +429,46 @@ nfb_eth_mac_addr_set(struct rte_eth_dev *dev,
 	struct rte_ether_addr *mac_addr)
 {
 	unsigned int i;
-	uint64_t mac = 0;
+	uint64_t mac;
 	struct rte_eth_dev_data *data = dev->data;
 	struct pmd_internals *internals = (struct pmd_internals *)
 		data->dev_private;
 
-	if (!rte_is_valid_assigned_ether_addr(mac_addr))
-		return -EINVAL;
-
-	for (i = 0; i < RTE_ETHER_ADDR_LEN; i++) {
-		mac <<= 8;
-		mac |= mac_addr->addr_bytes[i] & 0xFF;
-	}
-
+	mac = nfb_eth_mac_addr_conv(mac_addr);
+	/* Until no real multi-port support, configure all RX MACs the same */
 	for (i = 0; i < internals->max_rxmac; ++i)
 		nc_rxmac_set_mac(internals->rxmac[i], 0, mac, 1);
 
-	rte_ether_addr_copy(mac_addr, data->mac_addrs);
 	return 0;
+}
+
+static int
+nfb_eth_mac_addr_add(struct rte_eth_dev *dev,
+	struct rte_ether_addr *mac_addr, uint32_t index, uint32_t pool __rte_unused)
+{
+	unsigned int i;
+	uint64_t mac;
+	struct rte_eth_dev_data *data = dev->data;
+	struct pmd_internals *internals = (struct pmd_internals *)
+		data->dev_private;
+
+	mac = nfb_eth_mac_addr_conv(mac_addr);
+	for (i = 0; i < internals->max_rxmac; ++i)
+		nc_rxmac_set_mac(internals->rxmac[i], index, mac, 1);
+
+	return 0;
+}
+
+static void
+nfb_eth_mac_addr_remove(struct rte_eth_dev *dev, uint32_t index)
+{
+	unsigned int i;
+	struct rte_eth_dev_data *data = dev->data;
+	struct pmd_internals *internals = (struct pmd_internals *)
+		data->dev_private;
+
+	for (i = 0; i < internals->max_rxmac; ++i)
+		nc_rxmac_set_mac(internals->rxmac[i], index, 0, 0);
 }
 
 static const struct eth_dev_ops ops = {
@@ -436,6 +495,8 @@ static const struct eth_dev_ops ops = {
 	.stats_get = nfb_eth_stats_get,
 	.stats_reset = nfb_eth_stats_reset,
 	.mac_addr_set = nfb_eth_mac_addr_set,
+	.mac_addr_add = nfb_eth_mac_addr_add,
+	.mac_addr_remove = nfb_eth_mac_addr_remove,
 };
 
 /**
@@ -450,6 +511,7 @@ static const struct eth_dev_ops ops = {
 static int
 nfb_eth_dev_init(struct rte_eth_dev *dev)
 {
+	uint32_t mac_count;
 	struct rte_eth_dev_data *data = dev->data;
 	struct pmd_internals *internals = (struct pmd_internals *)
 		data->dev_private;
@@ -516,9 +578,10 @@ nfb_eth_dev_init(struct rte_eth_dev *dev)
 	/* Get link state */
 	nfb_eth_link_update(dev, 0);
 
-	/* Allocate space for one mac address */
-	data->mac_addrs = rte_zmalloc(data->name, sizeof(struct rte_ether_addr),
-		RTE_CACHE_LINE_SIZE);
+	/* Allocate space for MAC addresses */
+	mac_count = nfb_eth_get_max_mac_address_count(dev);
+	data->mac_addrs = rte_zmalloc(data->name,
+		sizeof(struct rte_ether_addr) * mac_count, RTE_CACHE_LINE_SIZE);
 	if (data->mac_addrs == NULL) {
 		RTE_LOG(ERR, PMD, "Could not alloc space for MAC address!\n");
 		nfb_close(internals->nfb);
@@ -531,6 +594,7 @@ nfb_eth_dev_init(struct rte_eth_dev *dev)
 	eth_addr_init.addr_bytes[2] = eth_addr.addr_bytes[2];
 
 	nfb_eth_mac_addr_set(dev, &eth_addr_init);
+	rte_ether_addr_copy(&eth_addr_init, &dev->data->mac_addrs[0]);
 
 	data->promiscuous = nfb_eth_promiscuous_get(dev);
 	data->all_multicast = nfb_eth_allmulticast_get(dev);
