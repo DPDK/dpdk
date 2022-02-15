@@ -425,6 +425,7 @@ struct vring_packed_desc_event {
 struct guest_page {
 	uint64_t guest_phys_addr;
 	uint64_t host_iova;
+	uint64_t host_user_addr;
 	uint64_t size;
 };
 
