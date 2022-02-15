@@ -6,12 +6,10 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#include <rte_eal.h>
 #include <rte_eal_memconfig.h>
 #include <rte_errno.h>
 #include <rte_malloc.h>
 #include <rte_mempool.h>
-#include <rte_rwlock.h>
 #include <rte_string_fns.h>
 #include <rte_tailq.h>
 

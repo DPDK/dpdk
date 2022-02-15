@@ -7,7 +7,6 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdint.h>
-#include <stdarg.h>
 #include <unistd.h>
 #include <inttypes.h>
 #include <errno.h>
@@ -19,16 +18,10 @@
 #include <rte_memory.h>
 #include <rte_memzone.h>
 #include <rte_malloc.h>
-#include <rte_atomic.h>
-#include <rte_launch.h>
 #include <rte_eal.h>
 #include <rte_eal_memconfig.h>
-#include <rte_per_lcore.h>
-#include <rte_lcore.h>
-#include <rte_branch_prediction.h>
 #include <rte_errno.h>
 #include <rte_string_fns.h>
-#include <rte_spinlock.h>
 #include <rte_tailq.h>
 #include <rte_eal_paging.h>
 #include <rte_telemetry.h>

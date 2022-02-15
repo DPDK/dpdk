@@ -6,13 +6,10 @@
 #include <stdio.h>
 
 #include <rte_common.h>
-#include <rte_mbuf.h>
-#include <rte_memory.h>
 #include <rte_malloc.h>
 #include <rte_log.h>
 
 #include "rte_table_acl.h"
-#include <rte_ether.h>
 
 #ifdef RTE_TABLE_STATS_COLLECT
 

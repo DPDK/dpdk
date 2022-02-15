@@ -5,8 +5,6 @@
 #include <elf.h>
 #include <fcntl.h>
 #include <string.h>
-#include <sys/stat.h>
-#include <sys/types.h>
 #include <unistd.h>
 
 #if defined(__GLIBC__) && defined(__GLIBC_PREREQ)

@@ -5,7 +5,6 @@
 #ifndef _TELEMETRY_DATA_H_
 #define _TELEMETRY_DATA_H_
 
-#include <inttypes.h>
 #include "rte_telemetry.h"
 
 enum tel_container_types {

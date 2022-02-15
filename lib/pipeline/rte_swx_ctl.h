@@ -13,7 +13,6 @@ extern "C" {
  * RTE SWX Pipeline Control
  */
 
-#include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
 
@@ -22,7 +21,6 @@ extern "C" {
 
 #include "rte_swx_port.h"
 #include "rte_swx_table.h"
-#include "rte_swx_table_selector.h"
 
 struct rte_swx_pipeline;
 

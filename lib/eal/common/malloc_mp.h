@@ -10,8 +10,6 @@
 
 #include <rte_common.h>
 #include <rte_random.h>
-#include <rte_spinlock.h>
-#include <rte_tailq.h>
 
 /* forward declarations */
 struct malloc_heap;

@@ -5,8 +5,6 @@
 #include <string.h>
 
 #include <rte_lcore.h>
-#include <rte_cycles.h>
-#include <rte_atomic.h>
 #include <rte_malloc.h>
 #include <inttypes.h>
 

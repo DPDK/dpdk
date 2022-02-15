@@ -6,7 +6,6 @@
 #define _RTE_FLOW_CLASSIFY_PARSE_H_
 
 #include <rte_ethdev.h>
-#include <rte_ether.h>
 #include <rte_flow.h>
 #include <stdbool.h>
 

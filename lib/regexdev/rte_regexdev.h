@@ -199,11 +199,8 @@ extern "C" {
 #endif
 
 #include <rte_common.h>
-#include <rte_config.h>
 #include <rte_dev.h>
-#include <rte_errno.h>
 #include <rte_mbuf.h>
-#include <rte_memory.h>
 
 #define RTE_REGEXDEV_NAME_MAX_LEN RTE_DEV_NAME_MAX_LEN
 

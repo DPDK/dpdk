@@ -5,7 +5,6 @@
 #ifndef _SA_H_
 #define _SA_H_
 
-#include <rte_rwlock.h>
 
 #define IPSEC_MAX_HDR_SIZE	64
 #define IPSEC_MAX_IV_SIZE	16

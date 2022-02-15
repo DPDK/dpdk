@@ -3,21 +3,14 @@
  */
 #include <stdio.h>
 #include <stdint.h>
-#include <signal.h>
 #include <errno.h>
-#include <string.h>
 #include <sys/queue.h>
 #include <sys/time.h>
 #include <sys/timerfd.h>
 
-#include <rte_memory.h>
 #include <rte_interrupts.h>
 #include <rte_alarm.h>
 #include <rte_common.h>
-#include <rte_per_lcore.h>
-#include <rte_eal.h>
-#include <rte_launch.h>
-#include <rte_lcore.h>
 #include <rte_errno.h>
 #include <rte_spinlock.h>
 #include <rte_eal_trace.h>

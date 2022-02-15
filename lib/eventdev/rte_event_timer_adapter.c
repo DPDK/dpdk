@@ -6,19 +6,14 @@
 #include <string.h>
 #include <inttypes.h>
 #include <stdbool.h>
-#include <sys/queue.h>
 
 #include <rte_memzone.h>
-#include <rte_memory.h>
-#include <rte_dev.h>
 #include <rte_errno.h>
 #include <rte_malloc.h>
-#include <rte_ring.h>
 #include <rte_mempool.h>
 #include <rte_common.h>
 #include <rte_timer.h>
 #include <rte_service_component.h>
-#include <rte_cycles.h>
 
 #include "event_timer_adapter_pmd.h"
 #include "eventdev_pmd.h"

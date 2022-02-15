@@ -2,13 +2,9 @@
  * Copyright(c) 2018 Intel Corporation
  */
 
-#include <unistd.h>
-#include <sys/types.h>
-#include <stdbool.h>
 #include <math.h>
 
 #include <rte_string_fns.h>
-#include <rte_mbuf.h>
 #include <rte_mbuf_dyn.h>
 #include <rte_log.h>
 #include <rte_cycles.h>

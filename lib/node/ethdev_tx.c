@@ -6,7 +6,6 @@
 #include <rte_ethdev.h>
 #include <rte_graph.h>
 #include <rte_graph_worker.h>
-#include <rte_mbuf.h>
 
 #include "ethdev_tx_priv.h"
 

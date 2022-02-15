@@ -3,23 +3,10 @@
  * Copyright 2013-2014 6WIND S.A.
  */
 
-#include <string.h>
-#include <inttypes.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include <sys/queue.h>
 
-#include <rte_errno.h>
-#include <rte_interrupts.h>
-#include <rte_log.h>
-#include <rte_bus.h>
-#include <rte_eal_paging.h>
-#include <rte_per_lcore.h>
-#include <rte_memory.h>
-#include <rte_eal.h>
-#include <rte_string_fns.h>
-#include <rte_common.h>
 #include <rte_debug.h>
 
 #include "rte_pci.h"

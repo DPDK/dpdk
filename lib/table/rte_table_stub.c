@@ -4,7 +4,6 @@
 
 #include <string.h>
 
-#include <rte_mbuf.h>
 #include <rte_malloc.h>
 
 #include "rte_table_stub.h"

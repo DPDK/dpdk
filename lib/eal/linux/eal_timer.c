@@ -3,28 +3,13 @@
  * Copyright(c) 2012-2013 6WIND S.A.
  */
 
-#include <string.h>
-#include <stdlib.h>
 #include <stdio.h>
 #include <stdint.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include <inttypes.h>
-#include <sys/mman.h>
-#include <sys/queue.h>
-#include <pthread.h>
-#include <errno.h>
 
 #include <rte_common.h>
-#include <rte_log.h>
 #include <rte_cycles.h>
-#include <rte_lcore.h>
-#include <rte_memory.h>
-#include <rte_eal.h>
-#include <rte_debug.h>
 
 #include "eal_private.h"
-#include "eal_internal_cfg.h"
 
 enum timer_source eal_timer_source = EAL_TIMER_HPET;
 

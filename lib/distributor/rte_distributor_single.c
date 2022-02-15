@@ -4,9 +4,7 @@
 
 #include <stdio.h>
 #include <sys/queue.h>
-#include <string.h>
 #include <rte_mbuf.h>
-#include <rte_memory.h>
 #include <rte_memzone.h>
 #include <rte_errno.h>
 #include <rte_string_fns.h>

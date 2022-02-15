@@ -14,7 +14,6 @@
  * the best mempool ops available.
  */
 
-#include <rte_compat.h>
 
 #ifdef __cplusplus
 extern "C" {

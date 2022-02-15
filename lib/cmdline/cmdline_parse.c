@@ -5,11 +5,8 @@
  */
 
 #include <stdio.h>
-#include <stdarg.h>
 #include <errno.h>
 #include <string.h>
-#include <inttypes.h>
-#include <ctype.h>
 
 #include <rte_string_fns.h>
 

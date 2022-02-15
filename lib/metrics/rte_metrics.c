@@ -3,13 +3,10 @@
  */
 
 #include <string.h>
-#include <sys/queue.h>
 
 #include <rte_common.h>
 #include <rte_string_fns.h>
-#include <rte_malloc.h>
 #include <rte_metrics.h>
-#include <rte_lcore.h>
 #include <rte_memzone.h>
 #include <rte_spinlock.h>
 

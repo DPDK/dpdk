@@ -12,13 +12,9 @@
  */
 
 #include <errno.h>
-#include <sys/queue.h>
 #include <stdint.h>
-#include <stdlib.h>
 #include <rte_branch_prediction.h>
 #include <rte_byteorder.h>
-#include <rte_config.h>
-#include <rte_memory.h>
 #include <rte_common.h>
 #include <rte_vect.h>
 #include <rte_rcu_qsbr.h>

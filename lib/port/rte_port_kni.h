@@ -21,7 +21,6 @@ extern "C" {
 
 #include <stdint.h>
 
-#include <rte_kni.h>
 
 #include "rte_port.h"
 

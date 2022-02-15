@@ -3,10 +3,8 @@
  */
 
 #include <rte_mbuf.h>
-#include "rte_distributor.h"
 #include "distributor_private.h"
 #include "smmintrin.h"
-#include "nmmintrin.h"
 
 
 void

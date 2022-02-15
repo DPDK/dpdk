@@ -17,12 +17,10 @@
 
 #include <rte_log.h>
 #include <rte_ether.h>
-#include <rte_rwlock.h>
 #include <rte_malloc.h>
 #include <rte_dmadev.h>
 
 #include "rte_vhost.h"
-#include "rte_vdpa.h"
 #include "vdpa_driver.h"
 
 #include "rte_vhost_async.h"

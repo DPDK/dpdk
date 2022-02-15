@@ -17,7 +17,6 @@ extern "C" {
 #endif
 
 #include <stdio.h>
-#include <limits.h>
 #include <inttypes.h>
 #include <sys/types.h>
 

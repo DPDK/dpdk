@@ -2,14 +2,8 @@
  * Copyright(c) 2010-2014 Intel Corporation
  */
 
-#include <stdint.h>
 #include <stdio.h>
-#include <stdlib.h>
-#include <sys/socket.h>
-#include <sys/time.h>
-#include <sys/types.h>
 #include <unistd.h>
-#include <string.h>
 
 #include <rte_common.h>
 #include <rte_log.h>

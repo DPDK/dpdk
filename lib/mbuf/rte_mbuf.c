@@ -5,28 +5,17 @@
 
 #include <string.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <stdint.h>
-#include <stdarg.h>
 #include <inttypes.h>
 #include <errno.h>
-#include <ctype.h>
-#include <sys/queue.h>
 
-#include <rte_compat.h>
 #include <rte_debug.h>
 #include <rte_common.h>
 #include <rte_log.h>
-#include <rte_memory.h>
-#include <rte_launch.h>
-#include <rte_eal.h>
-#include <rte_per_lcore.h>
-#include <rte_lcore.h>
 #include <rte_branch_prediction.h>
 #include <rte_mempool.h>
 #include <rte_mbuf.h>
 #include <rte_mbuf_pool_ops.h>
-#include <rte_string_fns.h>
 #include <rte_hexdump.h>
 #include <rte_errno.h>
 #include <rte_memcpy.h>

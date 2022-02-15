@@ -10,8 +10,6 @@
  * @file
  * RTE IPv6 Longest Prefix Match (LPM)
  */
-#include <rte_prefetch.h>
-#include <rte_branch_prediction.h>
 
 /* @internal Total number of tbl24 entries. */
 #define TRIE_TBL24_NUM_ENT	(1 << 24)

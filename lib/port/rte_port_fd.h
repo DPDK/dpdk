@@ -20,7 +20,6 @@ extern "C" {
 
 #include <stdint.h>
 
-#include <rte_mempool.h>
 #include "rte_port.h"
 
 /** fd_reader port parameters */

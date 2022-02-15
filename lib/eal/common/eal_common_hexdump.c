@@ -1,10 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  * Copyright(c) 2010-2014 Intel Corporation
  */
-#include <stdlib.h>
 #include <stdio.h>
-#include <errno.h>
-#include <stdint.h>
 #include <rte_hexdump.h>
 #include <rte_string_fns.h>
 

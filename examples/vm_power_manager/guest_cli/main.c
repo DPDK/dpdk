@@ -13,6 +13,7 @@
 #include <rte_debug.h>
 #include <rte_eal.h>
 #include <rte_log.h>
+#include <rte_string_fns.h>
 
 #include "vm_power_cli_guest.h"
 #include "parse.h"

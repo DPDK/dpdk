@@ -24,7 +24,6 @@ extern "C" {
 
 #include <string.h>
 
-#include <rte_config.h>
 #include <rte_hash_crc.h>
 #include <rte_jhash.h>
 

@@ -5,9 +5,7 @@
 #ifndef _GRO_TCP4_H_
 #define _GRO_TCP4_H_
 
-#include <rte_ip.h>
 #include <rte_tcp.h>
-#include <rte_vxlan.h>
 
 #define INVALID_ARRAY_INDEX 0xffffffffUL
 #define GRO_TCP4_TBL_MAX_ITEM_NUM (1024UL * 1024UL)

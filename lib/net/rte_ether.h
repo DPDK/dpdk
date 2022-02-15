@@ -18,7 +18,6 @@ extern "C" {
 #include <stdint.h>
 #include <stdio.h>
 
-#include <rte_memcpy.h>
 #include <rte_random.h>
 #include <rte_mbuf.h>
 #include <rte_byteorder.h>

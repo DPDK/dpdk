@@ -5,8 +5,6 @@
 #include <stdio.h>
 
 #include <rte_common.h>
-#include <rte_mbuf.h>
-#include <rte_memory.h>
 #include <rte_malloc.h>
 #include <rte_log.h>
 

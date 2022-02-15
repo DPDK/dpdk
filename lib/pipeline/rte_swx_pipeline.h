@@ -13,7 +13,6 @@ extern "C" {
  * RTE SWX Pipeline
  */
 
-#include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
 

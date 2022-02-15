@@ -2,16 +2,12 @@
  * Copyright(c) 2010-2014 Intel Corporation
  */
 
-#include <fcntl.h>
 #include <errno.h>
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
-#include <stdarg.h>
 #include <string.h>
-#include <unistd.h>
 #include <inttypes.h>
-#include <sys/queue.h>
 
 #include <rte_fbarray.h>
 #include <rte_memory.h>

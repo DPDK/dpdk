@@ -4,7 +4,6 @@
 
 #ifndef _FD_MAN_H_
 #define _FD_MAN_H_
-#include <stdint.h>
 #include <pthread.h>
 #include <poll.h>
 

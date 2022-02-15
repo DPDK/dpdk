@@ -32,11 +32,7 @@ extern "C" {
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdint.h>
-#include <inttypes.h>
-#include <errno.h>
 #include <rte_common.h>
-#include <rte_memory.h>
-#include <rte_lcore.h>
 #include <rte_debug.h>
 #include <rte_atomic.h>
 #include <rte_ring.h>

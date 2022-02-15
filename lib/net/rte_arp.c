@@ -3,7 +3,6 @@
  */
 
 #include <rte_arp.h>
-#include <rte_byteorder.h>
 
 #define RARP_PKT_SIZE	64
 struct rte_mbuf *

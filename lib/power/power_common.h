@@ -5,7 +5,6 @@
 #ifndef _POWER_COMMON_H_
 #define _POWER_COMMON_H_
 
-#include <inttypes.h>
 
 #include <rte_common.h>
 

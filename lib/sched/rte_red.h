@@ -18,7 +18,6 @@ extern "C" {
 
 #include <stdint.h>
 #include <limits.h>
-#include <rte_common.h>
 #include <rte_debug.h>
 #include <rte_cycles.h>
 #include <rte_branch_prediction.h>

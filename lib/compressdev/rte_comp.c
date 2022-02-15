@@ -3,7 +3,6 @@
  */
 
 #include "rte_comp.h"
-#include "rte_compressdev.h"
 #include "rte_compressdev_internal.h"
 
 const char *

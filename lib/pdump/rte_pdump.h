@@ -13,8 +13,6 @@
  */
 
 #include <stdint.h>
-#include <rte_mempool.h>
-#include <rte_ring.h>
 #include <rte_bpf.h>
 
 #ifdef __cplusplus

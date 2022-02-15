@@ -6,7 +6,6 @@
 #include <stdint.h>
 #include <inttypes.h>
 #include <errno.h>
-#include <stdarg.h>
 #include <sys/queue.h>
 
 #include <rte_string_fns.h>
@@ -21,11 +20,9 @@
 #include <rte_jhash.h>
 #include <rte_hash_crc.h>
 #include <rte_tailq.h>
-#include <rte_vect.h>
 
 #include "rte_efd.h"
 #if defined(RTE_ARCH_X86)
-#include "rte_efd_x86.h"
 #elif defined(RTE_ARCH_ARM64)
 #include "rte_efd_arm64.h"
 #endif

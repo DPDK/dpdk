@@ -3,12 +3,9 @@
  */
 
 #include <rte_string_fns.h>
-#include <rte_compat.h>
 #include <rte_flow_classify.h>
 #include "rte_flow_classify_parse.h"
-#include <rte_flow_driver.h>
 #include <rte_table_acl.h>
-#include <stdbool.h>
 
 static uint32_t unique_id = 1;
 

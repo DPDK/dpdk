@@ -4,7 +4,6 @@
 
 #include <rte_malloc.h>
 #include <rte_mbuf.h>
-#include <rte_cycles.h>
 #include <rte_ethdev.h>
 
 #include "gro_udp4.h"

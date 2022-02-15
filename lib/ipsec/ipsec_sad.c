@@ -10,7 +10,6 @@
 #include <rte_hash_crc.h>
 #include <rte_malloc.h>
 #include <rte_random.h>
-#include <rte_rwlock.h>
 #include <rte_tailq.h>
 
 #include "rte_ipsec_sad.h"

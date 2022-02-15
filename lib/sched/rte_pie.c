@@ -5,8 +5,6 @@
 #include <stdlib.h>
 
 #include "rte_pie.h"
-#include <rte_common.h>
-#include <rte_cycles.h>
 #include <rte_malloc.h>
 
 #ifdef __INTEL_COMPILER

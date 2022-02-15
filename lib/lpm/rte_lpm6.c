@@ -4,23 +4,16 @@
 #include <string.h>
 #include <stdint.h>
 #include <errno.h>
-#include <stdarg.h>
 #include <stdio.h>
 #include <sys/queue.h>
 
 #include <rte_log.h>
-#include <rte_branch_prediction.h>
 #include <rte_common.h>
-#include <rte_memory.h>
 #include <rte_malloc.h>
 #include <rte_memcpy.h>
-#include <rte_eal.h>
 #include <rte_eal_memconfig.h>
-#include <rte_per_lcore.h>
 #include <rte_string_fns.h>
 #include <rte_errno.h>
-#include <rte_rwlock.h>
-#include <rte_spinlock.h>
 #include <rte_hash.h>
 #include <assert.h>
 #include <rte_jhash.h>

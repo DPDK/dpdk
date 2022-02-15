@@ -7,10 +7,8 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
-#include <stdarg.h>
 #include <unistd.h>
 #include <pthread.h>
-#include <syslog.h>
 #include <getopt.h>
 #include <sys/file.h>
 #include <dirent.h>
@@ -20,32 +18,24 @@
 #include <errno.h>
 #include <limits.h>
 #include <sys/mman.h>
-#include <sys/queue.h>
 #include <sys/stat.h>
 #if defined(RTE_ARCH_X86)
 #include <sys/io.h>
 #endif
 #include <linux/version.h>
 
-#include <rte_compat.h>
 #include <rte_common.h>
 #include <rte_debug.h>
 #include <rte_memory.h>
 #include <rte_launch.h>
 #include <rte_eal.h>
 #include <rte_errno.h>
-#include <rte_per_lcore.h>
 #include <rte_lcore.h>
 #include <rte_service_component.h>
 #include <rte_log.h>
-#include <rte_random.h>
-#include <rte_cycles.h>
 #include <rte_string_fns.h>
 #include <rte_cpuflags.h>
-#include <rte_interrupts.h>
 #include <rte_bus.h>
-#include <rte_dev.h>
-#include <rte_devargs.h>
 #include <rte_version.h>
 #include <malloc_heap.h>
 #include <rte_vfio.h>

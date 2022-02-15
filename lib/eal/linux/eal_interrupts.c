@@ -7,13 +7,10 @@
 #include <stdlib.h>
 #include <pthread.h>
 #include <sys/queue.h>
-#include <stdarg.h>
 #include <unistd.h>
 #include <string.h>
 #include <errno.h>
-#include <inttypes.h>
 #include <sys/epoll.h>
-#include <sys/signalfd.h>
 #include <sys/ioctl.h>
 #include <sys/eventfd.h>
 #include <assert.h>
@@ -21,9 +18,6 @@
 
 #include <rte_common.h>
 #include <rte_interrupts.h>
-#include <rte_memory.h>
-#include <rte_launch.h>
-#include <rte_eal.h>
 #include <rte_per_lcore.h>
 #include <rte_lcore.h>
 #include <rte_branch_prediction.h>
@@ -36,8 +30,6 @@
 #include <rte_eal_trace.h>
 
 #include "eal_private.h"
-#include "eal_vfio.h"
-#include "eal_thread.h"
 
 #define EAL_INTR_EPOLL_WAIT_FOREVER (-1)
 #define NB_OTHER_INTR               1

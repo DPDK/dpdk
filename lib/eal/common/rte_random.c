@@ -5,14 +5,11 @@
 #ifdef __RDSEED__
 #include <x86intrin.h>
 #endif
-#include <stdlib.h>
 #include <unistd.h>
 
 #include <rte_branch_prediction.h>
 #include <rte_cycles.h>
-#include <rte_eal.h>
 #include <rte_lcore.h>
-#include <rte_memory.h>
 #include <rte_random.h>
 
 struct rte_rand_state {

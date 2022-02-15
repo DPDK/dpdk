@@ -2,7 +2,6 @@
  * Copyright(c) 2010-2014 Intel Corporation
  */
 
-#include <inttypes.h>
 #include <string.h>
 
 #include <rte_string_fns.h>

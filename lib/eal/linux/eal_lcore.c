@@ -4,15 +4,8 @@
 
 #include <unistd.h>
 #include <limits.h>
-#include <string.h>
-#include <dirent.h>
 
 #include <rte_log.h>
-#include <rte_eal.h>
-#include <rte_lcore.h>
-#include <rte_common.h>
-#include <rte_string_fns.h>
-#include <rte_debug.h>
 
 #include "eal_private.h"
 #include "eal_filesystem.h"

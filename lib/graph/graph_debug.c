@@ -2,8 +2,6 @@
  * Copyright(C) 2020 Marvell International Ltd.
  */
 
-#include <rte_common.h>
-#include <rte_debug.h>
 
 #include "graph_private.h"
 

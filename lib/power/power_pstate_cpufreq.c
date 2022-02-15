@@ -3,20 +3,14 @@
  */
 
 #include <stdio.h>
-#include <sys/types.h>
-#include <sys/stat.h>
 #include <fcntl.h>
-#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <signal.h>
 #include <limits.h>
 #include <errno.h>
 #include <inttypes.h>
 
 #include <rte_memcpy.h>
-#include <rte_memory.h>
-#include <rte_string_fns.h>
 
 #include "power_pstate_cpufreq.h"
 #include "power_common.h"

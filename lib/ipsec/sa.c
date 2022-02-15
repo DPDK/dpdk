@@ -7,14 +7,11 @@
 #include <rte_ip.h>
 #include <rte_udp.h>
 #include <rte_errno.h>
-#include <rte_cryptodev.h>
 
 #include "sa.h"
 #include "ipsec_sqn.h"
 #include "crypto.h"
-#include "iph.h"
 #include "misc.h"
-#include "pad.h"
 
 #define MBUF_MAX_L2_LEN		RTE_LEN2MASK(RTE_MBUF_L2_LEN_BITS, uint64_t)
 #define MBUF_MAX_L3_LEN		RTE_LEN2MASK(RTE_MBUF_L3_LEN_BITS, uint64_t)

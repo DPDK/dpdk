@@ -5,10 +5,8 @@
  */
 
 #include <rte_cryptodev.h>
-#include <rte_malloc.h>
 #include <rte_dev.h>
 #include <rte_telemetry.h>
-#include "rte_compat.h"
 #include "rte_security.h"
 #include "rte_security_driver.h"
 

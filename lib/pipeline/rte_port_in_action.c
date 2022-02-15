@@ -6,9 +6,7 @@
 #include <string.h>
 
 #include <rte_common.h>
-#include <rte_byteorder.h>
 #include <rte_malloc.h>
-#include <rte_memcpy.h>
 
 #include "rte_port_in_action.h"
 

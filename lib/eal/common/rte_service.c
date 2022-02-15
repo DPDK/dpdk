@@ -3,22 +3,16 @@
  */
 
 #include <stdio.h>
-#include <unistd.h>
 #include <inttypes.h>
-#include <limits.h>
 #include <string.h>
 
-#include <rte_compat.h>
 #include <rte_service.h>
 #include <rte_service_component.h>
 
-#include <rte_eal.h>
 #include <rte_lcore.h>
 #include <rte_common.h>
-#include <rte_debug.h>
 #include <rte_cycles.h>
 #include <rte_atomic.h>
-#include <rte_memory.h>
 #include <rte_malloc.h>
 #include <rte_spinlock.h>
 

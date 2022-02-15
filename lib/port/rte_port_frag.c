@@ -3,9 +3,7 @@
  */
 #include <string.h>
 
-#include <rte_ether.h>
 #include <rte_ip_frag.h>
-#include <rte_memory.h>
 
 #include "rte_port_frag.h"
 

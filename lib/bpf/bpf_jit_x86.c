@@ -2,17 +2,12 @@
  * Copyright(c) 2018 Intel Corporation
  */
 
-#include <stdarg.h>
 #include <errno.h>
 #include <stdint.h>
-#include <inttypes.h>
 
 #include <rte_common.h>
 #include <rte_log.h>
 #include <rte_debug.h>
-#include <rte_memory.h>
-#include <rte_eal.h>
-#include <rte_byteorder.h>
 
 #include "bpf_impl.h"
 

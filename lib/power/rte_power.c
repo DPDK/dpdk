@@ -10,7 +10,6 @@
 #include "power_cppc_cpufreq.h"
 #include "power_kvm_vm.h"
 #include "power_pstate_cpufreq.h"
-#include "power_common.h"
 
 enum power_management_env global_default_env = PM_ENV_NOT_SET;
 

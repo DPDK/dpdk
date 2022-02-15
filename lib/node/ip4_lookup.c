@@ -5,17 +5,12 @@
 #include <arpa/inet.h>
 #include <sys/socket.h>
 
-#include <rte_debug.h>
 #include <rte_ethdev.h>
 #include <rte_ether.h>
 #include <rte_graph.h>
 #include <rte_graph_worker.h>
 #include <rte_ip.h>
 #include <rte_lpm.h>
-#include <rte_mbuf.h>
-#include <rte_tcp.h>
-#include <rte_udp.h>
-#include <rte_vect.h>
 
 #include "rte_node_ip4_api.h"
 

@@ -2,10 +2,6 @@
  * Copyright (C) 2020 Marvell.
  */
 
-#include <rte_debug.h>
-#include <rte_ether.h>
-#include <rte_ethdev.h>
-#include <rte_mbuf.h>
 #include <rte_graph.h>
 #include <rte_graph_worker.h>
 

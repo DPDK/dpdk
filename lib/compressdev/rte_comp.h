@@ -16,7 +16,6 @@
 extern "C" {
 #endif
 
-#include <rte_mempool.h>
 #include <rte_mbuf.h>
 
 /**

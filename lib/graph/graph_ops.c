@@ -5,7 +5,6 @@
 #include <stdbool.h>
 #include <string.h>
 
-#include <rte_common.h>
 #include <rte_errno.h>
 
 #include "graph_private.h"

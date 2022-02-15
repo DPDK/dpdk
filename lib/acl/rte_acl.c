@@ -6,7 +6,6 @@
 #include <rte_string_fns.h>
 #include <rte_acl.h>
 #include <rte_tailq.h>
-#include <rte_vect.h>
 
 #include "acl.h"
 

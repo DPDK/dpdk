@@ -23,10 +23,7 @@ extern "C" {
 #include <rte_common.h>
 #include <rte_crypto.h>
 #include <rte_ip.h>
-#include <rte_mbuf.h>
 #include <rte_mbuf_dyn.h>
-#include <rte_memory.h>
-#include <rte_mempool.h>
 
 /** IPSec protocol mode */
 enum rte_security_ipsec_sa_mode {

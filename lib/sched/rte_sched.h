@@ -56,7 +56,6 @@ extern "C" {
  *
  */
 
-#include <sys/types.h>
 #include <rte_compat.h>
 #include <rte_mbuf.h>
 #include <rte_meter.h>

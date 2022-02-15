@@ -7,7 +7,6 @@
 #include <stdint.h>
 #include <errno.h>
 #include <stdio.h>
-#include <stdarg.h>
 #include <sys/queue.h>
 
 #include <rte_common.h>
@@ -16,14 +15,11 @@
 #include <rte_prefetch.h>
 #include <rte_branch_prediction.h>
 #include <rte_malloc.h>
-#include <rte_eal.h>
 #include <rte_eal_memconfig.h>
-#include <rte_per_lcore.h>
 #include <rte_errno.h>
 #include <rte_string_fns.h>
 #include <rte_cpuflags.h>
 #include <rte_rwlock.h>
-#include <rte_spinlock.h>
 #include <rte_ring_elem.h>
 #include <rte_compat.h>
 #include <rte_vect.h>

@@ -8,7 +8,6 @@
  * Device specific vhost lib
  */
 
-#include <stdbool.h>
 #include <sys/queue.h>
 
 #include <rte_class.h>

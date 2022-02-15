@@ -26,9 +26,7 @@
 #include <stdint.h>
 #include <sys/types.h>
 #include <rte_compat.h>
-#include <rte_common.h>
 #include <rte_mempool.h>
-#include <rte_ring.h>
 
 #ifdef __cplusplus
 extern "C" {

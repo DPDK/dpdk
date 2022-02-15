@@ -4,7 +4,6 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <errno.h>
-#include <arpa/inet.h>
 #include <dlfcn.h>
 
 #include <rte_swx_port_ethdev.h>

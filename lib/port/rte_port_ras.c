@@ -3,7 +3,6 @@
  */
 #include <string.h>
 
-#include <rte_ether.h>
 #include <rte_ip_frag.h>
 #include <rte_cycles.h>
 #include <rte_log.h>

@@ -4,7 +4,6 @@
 
 #include <linux/vhost.h>
 #include <linux/virtio_net.h>
-#include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>
 #ifdef RTE_LIBRTE_VHOST_NUMA
@@ -13,13 +12,10 @@
 #endif
 
 #include <rte_errno.h>
-#include <rte_ethdev.h>
 #include <rte_log.h>
-#include <rte_string_fns.h>
 #include <rte_memory.h>
 #include <rte_malloc.h>
 #include <rte_vhost.h>
-#include <rte_rwlock.h>
 
 #include "iotlb.h"
 #include "vhost.h"

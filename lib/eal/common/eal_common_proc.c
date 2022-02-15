@@ -15,7 +15,6 @@
 #include <string.h>
 #include <sys/file.h>
 #include <sys/time.h>
-#include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <unistd.h>
@@ -27,7 +26,6 @@
 #include <rte_errno.h>
 #include <rte_lcore.h>
 #include <rte_log.h>
-#include <rte_tailq.h>
 
 #include "eal_memcfg.h"
 #include "eal_private.h"

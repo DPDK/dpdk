@@ -12,7 +12,6 @@
 
 #include <rte_bus.h>
 #include <rte_class.h>
-#include <rte_compat.h>
 #include <rte_dev.h>
 #include <rte_devargs.h>
 #include <rte_errno.h>

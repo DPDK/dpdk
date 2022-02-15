@@ -22,7 +22,6 @@ extern "C" {
  */
 
 #include <stdint.h>
-#include <sys/queue.h>
 
 #include <rte_compat.h>
 

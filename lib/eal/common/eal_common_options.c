@@ -4,7 +4,6 @@
  */
 
 #include <stdlib.h>
-#include <unistd.h>
 #include <string.h>
 #ifndef RTE_EXEC_ENV_WINDOWS
 #include <syslog.h>
@@ -17,7 +16,6 @@
 #include <dlfcn.h>
 #include <libgen.h>
 #endif
-#include <sys/types.h>
 #include <sys/stat.h>
 #ifndef RTE_EXEC_ENV_WINDOWS
 #include <dirent.h>

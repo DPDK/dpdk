@@ -5,15 +5,11 @@
 /* Use XSI-compliant portable version of strerror_r() */
 #undef _GNU_SOURCE
 
-#include <stdint.h>
 #include <stdio.h>
 #include <string.h>
-#include <stdarg.h>
-#include <errno.h>
 
 #include <rte_per_lcore.h>
 #include <rte_errno.h>
-#include <rte_string_fns.h>
 
 #ifdef RTE_EXEC_ENV_WINDOWS
 #define strerror_r(errnum, buf, buflen) strerror_s(buf, buflen, errnum)

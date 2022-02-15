@@ -6,11 +6,8 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <inttypes.h>
-#include <ctype.h>
 #include <string.h>
 #include <errno.h>
-#include <stdarg.h>
 
 #include <rte_string_fns.h>
 #include "cmdline_parse.h"

@@ -17,8 +17,6 @@
 #include <stdint.h>
 
 #include <rte_common.h>
-#include <rte_memory.h>
-#include <rte_malloc.h>
 #include <rte_ring.h>
 #include <rte_ring_elem.h>
 #include "rte_eventdev.h"

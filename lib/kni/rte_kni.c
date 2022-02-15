@@ -12,7 +12,6 @@
 #include <sys/ioctl.h>
 #include <linux/version.h>
 
-#include <rte_spinlock.h>
 #include <rte_string_fns.h>
 #include <rte_ethdev.h>
 #include <rte_malloc.h>
@@ -20,7 +19,6 @@
 #include <rte_kni.h>
 #include <rte_memzone.h>
 #include <rte_tailq.h>
-#include <rte_rwlock.h>
 #include <rte_eal_memconfig.h>
 #include <rte_kni_common.h>
 #include "rte_kni_fifo.h"

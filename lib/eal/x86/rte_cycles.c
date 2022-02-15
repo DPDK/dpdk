@@ -6,7 +6,6 @@
 #include <unistd.h>
 #include <cpuid.h>
 
-#include <rte_common.h>
 
 #include "eal_private.h"
 

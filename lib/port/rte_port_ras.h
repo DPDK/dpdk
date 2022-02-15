@@ -30,7 +30,6 @@ extern "C" {
 
 #include <stdint.h>
 
-#include <rte_ring.h>
 
 #include "rte_port.h"
 

@@ -2,7 +2,6 @@
  * Copyright(c) 2016-2018 Intel Corporation
  */
 
-#include <rte_memcpy.h>
 #include <rte_mbuf.h>
 #include <rte_ethdev.h>
 #include <rte_lcore.h>

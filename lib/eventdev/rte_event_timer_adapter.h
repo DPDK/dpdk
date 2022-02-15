@@ -111,8 +111,6 @@
 extern "C" {
 #endif
 
-#include <rte_spinlock.h>
-#include <rte_memory.h>
 
 #include "rte_eventdev.h"
 #include "rte_eventdev_trace_fp.h"

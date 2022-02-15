@@ -20,9 +20,7 @@ extern "C" {
 
 #include "rte_kvargs.h"
 #include "rte_crypto.h"
-#include "rte_dev.h"
 #include <rte_common.h>
-#include <rte_config.h>
 #include <rte_rcu_qsbr.h>
 
 #include "rte_cryptodev_trace_fp.h"

@@ -5,20 +5,15 @@
 
 #include <stdio.h>
 #include <string.h>
-#include <inttypes.h>
 #include <sys/queue.h>
 
-#include <rte_compat.h>
 #include <rte_bus.h>
 #include <rte_class.h>
 #include <rte_dev.h>
 #include <rte_devargs.h>
-#include <rte_debug.h>
 #include <rte_errno.h>
-#include <rte_kvargs.h>
 #include <rte_log.h>
 #include <rte_spinlock.h>
-#include <rte_malloc.h>
 #include <rte_string_fns.h>
 
 #include "eal_private.h"

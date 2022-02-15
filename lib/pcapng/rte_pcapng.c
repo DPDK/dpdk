@@ -8,7 +8,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/uio.h>
-#include <sys/utsname.h>
 #include <time.h>
 #include <unistd.h>
 

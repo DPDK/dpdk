@@ -13,7 +13,6 @@ extern "C" {
  * RTE SWX Wildcard Match Table
  */
 
-#include <stdint.h>
 
 #include <rte_swx_table.h>
 

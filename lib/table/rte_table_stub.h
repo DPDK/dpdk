@@ -17,7 +17,6 @@ extern "C" {
  *
  ***/
 
-#include <stdint.h>
 
 #include "rte_table.h"
 

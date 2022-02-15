@@ -2,7 +2,6 @@
  * Copyright(C) 2020 Marvell International Ltd.
  */
 
-#include <rte_debug.h>
 #include <rte_graph.h>
 #include <rte_mbuf.h>
 

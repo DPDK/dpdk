@@ -6,7 +6,6 @@
 #include <sys/queue.h>
 #include <string.h>
 #include <rte_mbuf.h>
-#include <rte_memory.h>
 #include <rte_cycles.h>
 #include <rte_memzone.h>
 #include <rte_errno.h>
@@ -14,7 +13,6 @@
 #include <rte_eal_memconfig.h>
 #include <rte_pause.h>
 #include <rte_tailq.h>
-#include <rte_vect.h>
 
 #include "rte_distributor.h"
 #include "rte_distributor_single.h"

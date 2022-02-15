@@ -34,17 +34,13 @@
  */
 
 #include <stdio.h>
-#include <stdlib.h>
 #include <stdint.h>
-#include <errno.h>
 #include <inttypes.h>
 
 #include <rte_config.h>
 #include <rte_spinlock.h>
-#include <rte_log.h>
 #include <rte_debug.h>
 #include <rte_lcore.h>
-#include <rte_memory.h>
 #include <rte_branch_prediction.h>
 #include <rte_ring.h>
 #include <rte_memcpy.h>

@@ -3,7 +3,6 @@
  */
 #include <string.h>
 
-#include <rte_mbuf.h>
 #include <rte_malloc.h>
 
 #include "rte_port_sched.h"

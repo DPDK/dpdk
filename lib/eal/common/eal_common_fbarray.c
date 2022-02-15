@@ -2,7 +2,6 @@
  * Copyright(c) 2017-2018 Intel Corporation
  */
 
-#include <fcntl.h>
 #include <inttypes.h>
 #include <limits.h>
 #include <stdint.h>
@@ -14,9 +13,7 @@
 #include <rte_eal_paging.h>
 #include <rte_errno.h>
 #include <rte_log.h>
-#include <rte_memory.h>
 #include <rte_spinlock.h>
-#include <rte_tailq.h>
 
 #include "eal_filesystem.h"
 #include "eal_private.h"

@@ -8,7 +8,6 @@
 #include <errno.h>
 
 #include "rte_swx_pipeline.h"
-#include "rte_swx_ctl.h"
 
 #define MAX_LINE_LENGTH RTE_SWX_INSTRUCTION_SIZE
 #define MAX_TOKENS RTE_SWX_INSTRUCTION_TOKENS_MAX

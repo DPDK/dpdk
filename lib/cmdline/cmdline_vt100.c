@@ -4,12 +4,9 @@
  * All rights reserved.
  */
 
-#include <stdlib.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
-#include <stdarg.h>
-#include <ctype.h>
 
 #include "cmdline_vt100.h"
 

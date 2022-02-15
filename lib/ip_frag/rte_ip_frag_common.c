@@ -5,7 +5,6 @@
 #include <stddef.h>
 #include <stdio.h>
 
-#include <rte_memory.h>
 #include <rte_log.h>
 
 #include "ip_frag_common.h"

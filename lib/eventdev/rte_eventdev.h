@@ -211,10 +211,8 @@ extern "C" {
 #endif
 
 #include <rte_common.h>
-#include <rte_config.h>
 #include <rte_errno.h>
 #include <rte_mbuf_pool_ops.h>
-#include <rte_memory.h>
 #include <rte_mempool.h>
 
 #include "rte_eventdev_trace_fp.h"

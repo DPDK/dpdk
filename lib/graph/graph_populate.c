@@ -2,8 +2,6 @@
  * Copyright(C) 2020 Marvell International Ltd.
  */
 
-#include <fnmatch.h>
-#include <stdbool.h>
 
 #include <rte_common.h>
 #include <rte_errno.h>

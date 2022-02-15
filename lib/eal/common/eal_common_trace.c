@@ -3,7 +3,6 @@
  */
 
 #include <fnmatch.h>
-#include <inttypes.h>
 #include <sys/queue.h>
 #include <regex.h>
 

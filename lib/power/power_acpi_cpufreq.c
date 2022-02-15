@@ -3,17 +3,10 @@
  */
 
 #include <stdio.h>
-#include <sys/types.h>
-#include <sys/stat.h>
 #include <fcntl.h>
 #include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
-#include <signal.h>
-#include <limits.h>
 
 #include <rte_memcpy.h>
-#include <rte_memory.h>
 #include <rte_string_fns.h>
 
 #include "power_acpi_cpufreq.h"

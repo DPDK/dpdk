@@ -4,10 +4,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdint.h>
-#include <unistd.h>
 #include <pthread.h>
-#include <signal.h>
 #include <sched.h>
 #include <assert.h>
 #include <string.h>

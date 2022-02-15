@@ -7,7 +7,6 @@
 #include <errno.h>
 
 #include <rte_common.h>
-#include <rte_prefetch.h>
 
 #include "rte_swx_table_selector.h"
 

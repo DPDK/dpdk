@@ -4,7 +4,6 @@
 
 #include <rte_flow_classify.h>
 #include "rte_flow_classify_parse.h"
-#include <rte_flow_driver.h>
 
 struct classify_valid_pattern {
 	enum rte_flow_item_type *items;

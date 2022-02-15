@@ -5,12 +5,9 @@
 #include <string.h>
 
 #include <rte_errno.h>
-#include <rte_lcore.h>
 #include <rte_fbarray.h>
-#include <rte_memzone.h>
 #include <rte_memory.h>
 #include <rte_string_fns.h>
-#include <rte_rwlock.h>
 
 #include "eal_private.h"
 #include "eal_internal_cfg.h"

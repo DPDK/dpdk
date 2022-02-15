@@ -2,16 +2,10 @@
  * Copyright(c) 2010-2014 Intel Corporation
  */
 
-#include <string.h>
 #include <stdio.h>
-#include <unistd.h>
 #include <inttypes.h>
-#include <sys/types.h>
-#include <time.h>
-#include <errno.h>
 
 #include <rte_common.h>
-#include <rte_compat.h>
 #include <rte_log.h>
 #include <rte_cycles.h>
 #include <rte_pause.h>

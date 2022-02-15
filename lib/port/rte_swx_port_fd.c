@@ -6,7 +6,6 @@
 #include <unistd.h>
 
 #include <rte_mbuf.h>
-#include <rte_malloc.h>
 #include <rte_hexdump.h>
 
 #include "rte_swx_port_fd.h"

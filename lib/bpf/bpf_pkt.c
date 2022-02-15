@@ -2,28 +2,16 @@
  * Copyright(c) 2018 Intel Corporation
  */
 
-#include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
 #include <stdint.h>
-#include <unistd.h>
-#include <inttypes.h>
 
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
 #include <sys/queue.h>
 
 #include <rte_common.h>
-#include <rte_byteorder.h>
 #include <rte_malloc.h>
 #include <rte_log.h>
-#include <rte_debug.h>
-#include <rte_cycles.h>
-#include <rte_eal.h>
-#include <rte_per_lcore.h>
-#include <rte_lcore.h>
 #include <rte_atomic.h>
 #include <rte_mbuf.h>
 #include <rte_ethdev.h>

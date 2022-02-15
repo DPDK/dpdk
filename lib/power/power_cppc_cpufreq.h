@@ -11,10 +11,6 @@
  * RTE Power Management via userspace CPPC cpufreq
  */
 
-#include <rte_common.h>
-#include <rte_byteorder.h>
-#include <rte_log.h>
-#include <rte_string_fns.h>
 #include "rte_power.h"
 
 /**

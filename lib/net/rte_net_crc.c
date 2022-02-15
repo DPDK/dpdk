@@ -3,13 +3,11 @@
  */
 
 #include <stddef.h>
-#include <string.h>
 #include <stdint.h>
 
 #include <rte_cpuflags.h>
 #include <rte_common.h>
 #include <rte_net_crc.h>
-#include <rte_eal.h>
 #include <rte_log.h>
 #include <rte_vect.h>
 

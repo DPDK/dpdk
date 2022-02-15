@@ -6,8 +6,6 @@
 #define _GRO_UDP4_H_
 
 #include <rte_ip.h>
-#include <rte_udp.h>
-#include <rte_vxlan.h>
 
 #define INVALID_ARRAY_INDEX 0xffffffffUL
 #define GRO_UDP4_TBL_MAX_ITEM_NUM (1024UL * 1024UL)

@@ -12,7 +12,6 @@
 #include <fnmatch.h>
 #include <sys/queue.h>
 
-#include <rte_eal.h>
 #include <rte_log.h>
 #include <rte_os_shim.h>
 #include <rte_per_lcore.h>

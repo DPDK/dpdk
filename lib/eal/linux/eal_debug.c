@@ -5,16 +5,11 @@
 #ifdef RTE_BACKTRACE
 #include <execinfo.h>
 #endif
-#include <stdarg.h>
-#include <signal.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include <stdint.h>
 
 #include <rte_log.h>
 #include <rte_debug.h>
-#include <rte_common.h>
-#include <rte_eal.h>
 
 #define BACKTRACE_SIZE 256
 

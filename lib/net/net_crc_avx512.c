@@ -2,11 +2,8 @@
  * Copyright(c) 2020 Intel Corporation
  */
 
-#include <string.h>
 
 #include <rte_common.h>
-#include <rte_branch_prediction.h>
-#include <rte_cpuflags.h>
 
 #include "net_crc.h"
 

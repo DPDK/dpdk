@@ -2,19 +2,14 @@
  * Copyright(c) 2010-2014 Intel Corporation
  */
 
-#include <unistd.h>
-#include <limits.h>
 #include <string.h>
 
 #include <rte_common.h>
-#include <rte_debug.h>
-#include <rte_eal.h>
+#include <rte_branch_prediction.h>
 #include <rte_errno.h>
 #include <rte_lcore.h>
 #include <rte_log.h>
-#include <rte_rwlock.h>
 
-#include "eal_memcfg.h"
 #include "eal_private.h"
 #include "eal_thread.h"
 

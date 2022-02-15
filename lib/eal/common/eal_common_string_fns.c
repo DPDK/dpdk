@@ -2,9 +2,7 @@
  * Copyright(c) 2010-2014 Intel Corporation
  */
 
-#include <string.h>
 #include <stdio.h>
-#include <stdarg.h>
 #include <errno.h>
 
 #include <rte_string_fns.h>

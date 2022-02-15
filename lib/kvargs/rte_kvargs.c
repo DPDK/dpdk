@@ -8,7 +8,6 @@
 #include <stdbool.h>
 
 #include <rte_os_shim.h>
-#include <rte_string_fns.h>
 
 #include "rte_kvargs.h"
 

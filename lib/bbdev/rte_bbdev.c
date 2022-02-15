@@ -6,19 +6,15 @@
 #include <string.h>
 #include <stdbool.h>
 
-#include <rte_compat.h>
 #include <rte_common.h>
 #include <rte_errno.h>
 #include <rte_log.h>
-#include <rte_debug.h>
 #include <rte_eal.h>
 #include <rte_malloc.h>
 #include <rte_mempool.h>
 #include <rte_memzone.h>
 #include <rte_lcore.h>
-#include <rte_dev.h>
 #include <rte_spinlock.h>
-#include <rte_tailq.h>
 #include <rte_interrupts.h>
 
 #include "rte_bbdev_op.h"

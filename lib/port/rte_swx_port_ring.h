@@ -16,7 +16,6 @@ extern "C" {
 
 #include <stdint.h>
 
-#include <rte_ring.h>
 
 #include "rte_swx_port.h"
 

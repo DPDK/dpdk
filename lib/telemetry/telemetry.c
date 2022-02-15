@@ -8,7 +8,6 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <sys/stat.h>
-#include <dlfcn.h>
 #endif /* !RTE_EXEC_ENV_WINDOWS */
 
 /* we won't link against libbsd, so just always use DPDKs-specific strlcpy */

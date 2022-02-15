@@ -6,7 +6,6 @@
 #define _HOTPLUG_MP_H_
 
 #include "rte_dev.h"
-#include "rte_bus.h"
 
 #define EAL_DEV_MP_ACTION_REQUEST      "eal_dev_mp_request"
 #define EAL_DEV_MP_ACTION_RESPONSE     "eal_dev_mp_response"

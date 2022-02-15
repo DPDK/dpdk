@@ -4,15 +4,11 @@
  */
 
 #include <stdint.h>
-#include <stdlib.h>
 #include <stdio.h>
-#include <string.h>
-#include <inttypes.h>
 
 #include <rte_debug.h>
 #include <rte_malloc.h>
 #include <rte_errno.h>
-#include <rte_memory.h>
 #include <rte_vect.h>
 
 #include <rte_rib.h>

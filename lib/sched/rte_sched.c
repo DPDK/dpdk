@@ -7,7 +7,6 @@
 
 #include <rte_common.h>
 #include <rte_log.h>
-#include <rte_memory.h>
 #include <rte_malloc.h>
 #include <rte_cycles.h>
 #include <rte_prefetch.h>
