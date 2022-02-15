@@ -90,7 +90,7 @@ EXPERIMENTAL {
 };
 
 INTERNAL {
-	global;
+	global:
 
 	rte_vdpa_register_device;
 	rte_vdpa_relay_vring_used;
