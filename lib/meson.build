@@ -171,6 +171,7 @@ foreach l:libraries
         install_headers(driver_sdk_headers)
     endif
     dpdk_chkinc_headers += headers
+    dpdk_chkinc_headers += driver_sdk_headers
 
     libname = 'rte_' + name
     includes += include_directories(l)

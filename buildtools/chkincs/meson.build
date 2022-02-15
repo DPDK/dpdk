@@ -13,11 +13,15 @@ gen_c_files = generator(gen_c_file_for_header,
 
 cflags = machine_args
 cflags += '-DALLOW_EXPERIMENTAL_API'
+cflags += '-DALLOW_INTERNAL_API'
 
 sources = files('main.c')
 sources += gen_c_files.process(dpdk_chkinc_headers)
 
-deps = []
+# some driver SDK headers depend on these two buses, which are mandatory in build
+# so we always include them in deps list
+deps = [get_variable('shared_rte_bus_vdev'), get_variable('shared_rte_bus_pci')]
+# add the rest of the libs to the dependencies
 foreach l:enabled_libs
     deps += get_variable('shared_rte_' + l)
 endforeach
