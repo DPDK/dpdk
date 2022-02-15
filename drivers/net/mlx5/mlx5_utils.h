@@ -460,34 +460,6 @@ int32_t mlx5_l3t_get_entry(struct mlx5_l3t_tbl *tbl, uint32_t idx,
 			    union mlx5_l3t_data *data);
 
 /**
- * This function gets the index entry from Three-level table.
- *
- * If the index entry is not available, allocate new one by callback
- * function and fill in the entry.
- *
- * @param tbl
- *   Pointer to the l3t.
- * @param idx
- *   Index to the entry.
- * @param data
- *   Pointer to the memory which saves the entry data.
- *   When function call returns 0, data contains the entry data get from
- *   l3t.
- *   When function call returns -1, data is not modified.
- * @param cb
- *   Callback function to allocate new data.
- * @param ctx
- *   Context for callback function.
- *
- * @return
- *   0 if success, -1 on error.
- */
-
-int32_t mlx5_l3t_prepare_entry(struct mlx5_l3t_tbl *tbl, uint32_t idx,
-			       union mlx5_l3t_data *data,
-			       mlx5_l3t_alloc_callback_fn cb, void *ctx);
-
-/**
  * This function decreases and clear index entry if reference
  * counter is 0 from Three-level table.
  *
