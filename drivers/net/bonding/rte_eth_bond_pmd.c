@@ -1678,14 +1678,10 @@ int
 slave_configure(struct rte_eth_dev *bonded_eth_dev,
 		struct rte_eth_dev *slave_eth_dev)
 {
-	struct bond_rx_queue *bd_rx_q;
-	struct bond_tx_queue *bd_tx_q;
 	uint16_t nb_rx_queues;
 	uint16_t nb_tx_queues;
 
 	int errval;
-	uint16_t q_id;
-	struct rte_flow_error flow_error;
 
 	struct bond_dev_private *internals = bonded_eth_dev->data->dev_private;
 
@@ -1758,6 +1754,19 @@ slave_configure(struct rte_eth_dev *bonded_eth_dev,
 				slave_eth_dev->data->port_id, errval);
 		return errval;
 	}
+	return 0;
+}
+
+int
+slave_start(struct rte_eth_dev *bonded_eth_dev,
+		struct rte_eth_dev *slave_eth_dev)
+{
+	int errval = 0;
+	struct bond_rx_queue *bd_rx_q;
+	struct bond_tx_queue *bd_tx_q;
+	uint16_t q_id;
+	struct rte_flow_error flow_error;
+	struct bond_dev_private *internals = bonded_eth_dev->data->dev_private;
 
 	/* Setup Rx Queues */
 	for (q_id = 0; q_id < bonded_eth_dev->data->nb_rx_queues; q_id++) {
@@ -1806,10 +1815,13 @@ slave_configure(struct rte_eth_dev *bonded_eth_dev,
 			return errval;
 		}
 
-		if (internals->mode4.dedicated_queues.flow[slave_eth_dev->data->port_id] != NULL)
-			rte_flow_destroy(slave_eth_dev->data->port_id,
+		if (internals->mode4.dedicated_queues.flow[slave_eth_dev->data->port_id] != NULL) {
+			errval = rte_flow_destroy(slave_eth_dev->data->port_id,
 					internals->mode4.dedicated_queues.flow[slave_eth_dev->data->port_id],
 					&flow_error);
+			RTE_BOND_LOG(ERR, "bond_ethdev_8023ad_flow_destroy: port=%d, err (%d)",
+				slave_eth_dev->data->port_id, errval);
+		}
 
 		errval = bond_ethdev_8023ad_flow_set(bonded_eth_dev,
 				slave_eth_dev->data->port_id);
@@ -1997,6 +2009,13 @@ bond_ethdev_start(struct rte_eth_dev *eth_dev)
 		if (slave_configure(eth_dev, slave_ethdev) != 0) {
 			RTE_BOND_LOG(ERR,
 				"bonded port (%d) failed to reconfigure slave device (%d)",
+				eth_dev->data->port_id,
+				internals->slaves[i].port_id);
+			goto out_err;
+		}
+		if (slave_start(eth_dev, slave_ethdev) != 0) {
+			RTE_BOND_LOG(ERR,
+				"bonded port (%d) failed to start slave device (%d)",
 				eth_dev->data->port_id,
 				internals->slaves[i].port_id);
 			goto out_err;
@@ -3848,6 +3867,18 @@ bond_ethdev_configure(struct rte_eth_dev *dev)
 		return -1;
 	}
 
+	/* configure slaves so we can pass mtu setting */
+	for (i = 0; i < internals->slave_count; i++) {
+		struct rte_eth_dev *slave_ethdev =
+				&(rte_eth_devices[internals->slaves[i].port_id]);
+		if (slave_configure(dev, slave_ethdev) != 0) {
+			RTE_BOND_LOG(ERR,
+				"bonded port (%d) failed to configure slave device (%d)",
+				dev->data->port_id,
+				internals->slaves[i].port_id);
+			return -1;
+		}
+	}
 	return 0;
 }
 

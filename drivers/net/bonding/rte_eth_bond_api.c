@@ -566,6 +566,12 @@ __eth_bond_slave_add_lock_free(uint16_t bonded_port_id, uint16_t slave_port_id)
 					slave_port_id);
 			return -1;
 		}
+		if (slave_start(bonded_eth_dev, slave_eth_dev) != 0) {
+			internals->slave_count--;
+			RTE_BOND_LOG(ERR, "rte_bond_slaves_start: port=%d",
+					slave_port_id);
+			return -1;
+		}
 	}
 
 	/* Update all slave devices MACs */
