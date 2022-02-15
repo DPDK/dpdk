@@ -136,7 +136,10 @@ nfb_eth_ndp_tx(void *queue,
 
 	struct ndp_packet packets[nb_pkts];
 
-	if (unlikely(ndp->queue == NULL || nb_pkts == 0)) {
+	if (unlikely(nb_pkts == 0))
+		return 0;
+
+	if (unlikely(ndp->queue == NULL)) {
 		RTE_LOG(ERR, PMD, "TX invalid arguments!\n");
 		return 0;
 	}
