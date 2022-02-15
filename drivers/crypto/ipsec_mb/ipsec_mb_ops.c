@@ -285,8 +285,6 @@ ipsec_mb_qp_setup(struct rte_cryptodev *dev, uint16_t qp_id,
 	return 0;
 
 qp_setup_cleanup:
-	if (qp == NULL)
-		return ret;
 #if IMB_VERSION(1, 1, 0) > IMB_VERSION_NUM
 	if (qp->mb_mgr)
 		free_mb_mgr(qp->mb_mgr);
