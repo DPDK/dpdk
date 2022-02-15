@@ -128,6 +128,10 @@ configure_ethdev(uint16_t port_id, struct rte_eth_conf *eth_conf,
 			RXTX_QUEUE_COUNT, eth_conf) == 0, "Failed to configure device %u",
 			port_id);
 
+	int ret = rte_eth_dev_set_mtu(port_id, 1550);
+	RTE_TEST_ASSERT(ret == 0 || ret == -ENOTSUP,
+			"rte_eth_dev_set_mtu for port %d failed", port_id);
+
 	for (rxq = 0; rxq < RXTX_QUEUE_COUNT; rxq++) {
 		TEST_ASSERT(rte_eth_rx_queue_setup(port_id, rxq, RXTX_RING_SIZE,
 				rte_eth_dev_socket_id(port_id), NULL,

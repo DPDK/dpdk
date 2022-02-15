@@ -181,6 +181,10 @@ configure_ethdev(uint16_t port_id, uint8_t start, uint8_t en_isr)
 			test_params->nb_tx_q, &default_pmd_conf),
 			"rte_eth_dev_configure for port %d failed", port_id);
 
+	int ret = rte_eth_dev_set_mtu(port_id, 1550);
+	RTE_TEST_ASSERT(ret == 0 || ret == -ENOTSUP,
+			"rte_eth_dev_set_mtu for port %d failed", port_id);
+
 	for (q_id = 0; q_id < test_params->nb_rx_q; q_id++)
 		TEST_ASSERT_SUCCESS(rte_eth_rx_queue_setup(port_id, q_id, RX_RING_SIZE,
 				rte_eth_dev_socket_id(port_id), &rx_conf_default,

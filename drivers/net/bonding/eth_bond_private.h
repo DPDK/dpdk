@@ -246,6 +246,10 @@ int
 slave_configure(struct rte_eth_dev *bonded_eth_dev,
 		struct rte_eth_dev *slave_eth_dev);
 
+int
+slave_start(struct rte_eth_dev *bonded_eth_dev,
+		struct rte_eth_dev *slave_eth_dev);
+
 void
 slave_remove(struct bond_dev_private *internals,
 		struct rte_eth_dev *slave_eth_dev);
