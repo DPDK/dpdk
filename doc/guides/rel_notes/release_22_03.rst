@@ -113,6 +113,10 @@ New Features
 
   * Added L2TPv2 (include PPP over L2TPv2) RSS support based on outer
     MAC src/dst address and L2TPv2 session ID.
+  * Added L2TPv2 (include PPP over L2TPv2) FDIR support based on outer
+    MAC src/dst address and L2TPv2 session ID.
+  * Added PPPoL2TPv2oUDP FDIR distribute packets based on inner IP
+    src/dst address and UDP/TCP src/dst port.
 
 * **Updated Wangxun ngbe driver.**
 

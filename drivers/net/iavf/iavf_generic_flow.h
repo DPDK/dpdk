@@ -35,6 +35,7 @@
 #define IAVF_PROT_L2TPV3OIP	    (1ULL << 24)
 #define IAVF_PROT_PFCP		    (1ULL << 25)
 #define IAVF_PROT_ECPRI		    (1ULL << 26)
+#define IAVF_PROT_L2TPV2	    (1ULL << 27)
 
 
 /* field */
@@ -62,6 +63,7 @@
 #define IAVF_PFCP_SEID		    (1ULL << 43)
 #define IAVF_ECPRI_PC_RTC_ID	    (1ULL << 42)
 #define IAVF_IP_PKID		    (1ULL << 41)
+#define IAVF_L2TPV2_SESSION_ID	    (1ULL << 40)
 
 /* input set */
 
@@ -175,6 +177,8 @@
 	(IAVF_PROT_PFCP | IAVF_PFCP_S_FIELD | IAVF_PFCP_SEID)
 #define IAVF_INSET_ECPRI \
 	(IAVF_PROT_ECPRI | IAVF_ECPRI_PC_RTC_ID)
+#define IAVF_INSET_L2TPV2 \
+	(IAVF_PROT_L2TPV2 | IAVF_L2TPV2_SESSION_ID)
 
 /* empty pattern */
 extern enum rte_flow_item_type iavf_pattern_empty[];
