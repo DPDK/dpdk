@@ -68,6 +68,7 @@ ark_mpu_reset(struct ark_mpu_t *mpu)
 	int cnt = 0;
 
 	mpu->cfg.command = MPU_CMD_RESET;
+	rte_wmb();
 
 	while (mpu->cfg.command != MPU_CMD_IDLE) {
 		if (cnt++ > 1000)

@@ -55,6 +55,7 @@ ark_ddm_stop(struct ark_ddm_t *ddm, const int wait)
 	int cnt = 0;
 
 	ddm->cfg.command = 2;
+	rte_wmb();
 	while (wait && (ddm->cfg.stop_flushed & 0x01) == 0) {
 		if (cnt++ > 1000)
 			return 1;

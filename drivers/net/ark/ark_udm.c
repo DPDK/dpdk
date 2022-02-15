@@ -34,6 +34,7 @@ ark_udm_stop(struct ark_udm_t *udm, const int wait)
 	int cnt = 0;
 
 	udm->cfg.command = 2;
+	rte_wmb();
 
 	while (wait && (udm->cfg.stop_flushed & 0x01) == 0) {
 		if (cnt++ > 1000)
