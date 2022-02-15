@@ -37,8 +37,7 @@
 #define RTE_NFB_DRIVER_NAME net_nfb
 
 /* Device arguments */
-#define TIMESTAMP_ARG  "timestamp"
-static const char * const VALID_KEYS[] = {TIMESTAMP_ARG, NULL};
+static const char * const VALID_KEYS[] = {NULL};
 
 struct pmd_internals {
 	uint16_t         max_rxmac;

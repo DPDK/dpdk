@@ -59,13 +59,9 @@ Timestamps
 
 The PMD supports hardware timestamps of frame receipt on physical network interface. In order to use
 the timestamps, the hardware timestamping unit must be enabled (follow the documentation of the NFB
-products) and the device argument `timestamp=1` must be used.
+products). The standard `RTE_ETH_RX_OFFLOAD_TIMESTAMP` flag can be used for this feature.
 
-.. code-block:: console
-
-    ./<build_dir>/app/dpdk-testpmd -a b3:00.0,timestamp=1 <other EAL params> -- <testpmd params>
-
-When the timestamps are enabled with the *devarg*, a timestamp validity flag is set in the MBUFs
+When the timestamps are enabled, a timestamp validity flag is set in the MBUFs
 containing received frames and timestamp is inserted into the `rte_mbuf` struct.
 
 The timestamp is an `uint64_t` field. Its lower 32 bits represent *seconds* portion of the timestamp

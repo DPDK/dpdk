@@ -14,8 +14,6 @@
 #include <rte_mbuf_dyn.h>
 #include <rte_ethdev.h>
 
-#define NFB_TIMESTAMP_FLAG (1 << 0)
-
 extern uint64_t nfb_timestamp_rx_dynflag;
 extern int nfb_timestamp_dynfield_offset;
 
@@ -145,7 +143,6 @@ nfb_eth_ndp_rx(void *queue,
 	uint16_t nb_pkts)
 {
 	struct ndp_rx_queue *ndp = queue;
-	uint8_t timestamping_enabled;
 	uint16_t packet_size;
 	uint64_t num_bytes = 0;
 	uint16_t num_rx;
@@ -162,8 +159,6 @@ nfb_eth_ndp_rx(void *queue,
 		RTE_LOG(ERR, PMD, "RX invalid arguments!\n");
 		return 0;
 	}
-
-	timestamping_enabled = ndp->flags & NFB_TIMESTAMP_FLAG;
 
 	/* returns either all or nothing */
 	i = rte_pktmbuf_alloc_bulk(ndp->mb_pool, mbufs, nb_pkts);
@@ -202,7 +197,7 @@ nfb_eth_ndp_rx(void *queue,
 			mbuf->port = ndp->in_port;
 			mbuf->ol_flags = 0;
 
-			if (timestamping_enabled) {
+			if (nfb_timestamp_dynfield_offset >= 0) {
 				rte_mbuf_timestamp_t timestamp;
 
 				/* nanoseconds */

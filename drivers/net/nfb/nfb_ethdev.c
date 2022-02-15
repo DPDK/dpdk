@@ -183,6 +183,22 @@ nfb_eth_dev_stop(struct rte_eth_dev *dev)
 static int
 nfb_eth_dev_configure(struct rte_eth_dev *dev __rte_unused)
 {
+	int ret;
+	struct pmd_internals *internals = dev->data->dev_private;
+	struct rte_eth_conf *dev_conf = &dev->data->dev_conf;
+
+	if (dev_conf->rxmode.offloads & RTE_ETH_RX_OFFLOAD_TIMESTAMP) {
+		ret = rte_mbuf_dyn_rx_timestamp_register
+				(&nfb_timestamp_dynfield_offset,
+				&nfb_timestamp_rx_dynflag);
+		if (ret != 0) {
+			RTE_LOG(ERR, PMD, "Cannot register Rx timestamp"
+					" field/flag %d\n", ret);
+			nfb_close(internals->nfb);
+			return -rte_errno;
+		}
+	}
+
 	return 0;
 }
 
@@ -203,6 +219,8 @@ nfb_eth_dev_info(struct rte_eth_dev *dev,
 	dev_info->max_rx_queues = dev->data->nb_rx_queues;
 	dev_info->max_tx_queues = dev->data->nb_tx_queues;
 	dev_info->speed_capa = RTE_ETH_LINK_SPEED_100G;
+	dev_info->rx_offload_capa =
+		RTE_ETH_RX_OFFLOAD_TIMESTAMP;
 
 	return 0;
 }
@@ -609,4 +627,3 @@ static struct rte_pci_driver nfb_eth_driver = {
 RTE_PMD_REGISTER_PCI(RTE_NFB_DRIVER_NAME, nfb_eth_driver);
 RTE_PMD_REGISTER_PCI_TABLE(RTE_NFB_DRIVER_NAME, nfb_pci_id_table);
 RTE_PMD_REGISTER_KMOD_DEP(RTE_NFB_DRIVER_NAME, "* nfb");
-RTE_PMD_REGISTER_PARAM_STRING(RTE_NFB_DRIVER_NAME, TIMESTAMP_ARG "=<0|1>");
