@@ -91,6 +91,7 @@ F: devtools/get-maintainer.sh
 F: devtools/git-log-fixes.sh
 F: devtools/load-devel-config
 F: devtools/parse-flow-support.sh
+F: devtools/process-iwyu.py
 F: devtools/update-patches.py
 F: devtools/words-case.txt
 F: license/
