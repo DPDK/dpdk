@@ -424,7 +424,7 @@ struct vring_packed_desc_event {
 
 struct guest_page {
 	uint64_t guest_phys_addr;
-	uint64_t host_phys_addr;
+	uint64_t host_iova;
 	uint64_t size;
 };
 
@@ -687,13 +687,13 @@ gpa_to_first_hpa(struct virtio_net *dev, uint64_t gpa,
 			if (gpa + gpa_size <=
 					page->guest_phys_addr + page->size) {
 				return gpa - page->guest_phys_addr +
-					page->host_phys_addr;
+					page->host_iova;
 			} else if (gpa < page->guest_phys_addr +
 						page->size) {
 				*hpa_size = page->guest_phys_addr +
 					page->size - gpa;
 				return gpa - page->guest_phys_addr +
-					page->host_phys_addr;
+					page->host_iova;
 			}
 		}
 	} else {
@@ -704,13 +704,13 @@ gpa_to_first_hpa(struct virtio_net *dev, uint64_t gpa,
 				if (gpa + gpa_size <=
 					page->guest_phys_addr + page->size) {
 					return gpa - page->guest_phys_addr +
-						page->host_phys_addr;
+						page->host_iova;
 				} else if (gpa < page->guest_phys_addr +
 							page->size) {
 					*hpa_size = page->guest_phys_addr +
 						page->size - gpa;
 					return gpa - page->guest_phys_addr +
-						page->host_phys_addr;
+						page->host_iova;
 				}
 			}
 		}
