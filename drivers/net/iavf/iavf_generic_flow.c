@@ -1611,6 +1611,40 @@ enum rte_flow_item_type iavf_pattern_eth_ipv6_gre_ipv6_udp[] = {
 	RTE_FLOW_ITEM_TYPE_END,
 };
 
+enum rte_flow_item_type iavf_pattern_eth_ipv4_udp_l2tpv2[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_IPV4,
+	RTE_FLOW_ITEM_TYPE_UDP,
+	RTE_FLOW_ITEM_TYPE_L2TPV2,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+enum rte_flow_item_type iavf_pattern_eth_ipv4_udp_l2tpv2_ppp[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_IPV4,
+	RTE_FLOW_ITEM_TYPE_UDP,
+	RTE_FLOW_ITEM_TYPE_L2TPV2,
+	RTE_FLOW_ITEM_TYPE_PPP,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+enum rte_flow_item_type iavf_pattern_eth_ipv6_udp_l2tpv2[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_IPV6,
+	RTE_FLOW_ITEM_TYPE_UDP,
+	RTE_FLOW_ITEM_TYPE_L2TPV2,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+enum rte_flow_item_type iavf_pattern_eth_ipv6_udp_l2tpv2_ppp[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_IPV6,
+	RTE_FLOW_ITEM_TYPE_UDP,
+	RTE_FLOW_ITEM_TYPE_L2TPV2,
+	RTE_FLOW_ITEM_TYPE_PPP,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
 /* PPPoL2TPv2oUDP */
 enum rte_flow_item_type iavf_pattern_eth_ipv4_udp_l2tpv2_ppp_ipv4[] = {
 	RTE_FLOW_ITEM_TYPE_ETH,

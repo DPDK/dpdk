@@ -93,6 +93,8 @@
 
 #define IAVF_VLAN_TAG_PCP_OFFSET 13
 
+#define IAVF_L2TPV2_FLAGS_LEN	0x4000
+
 struct iavf_adapter;
 struct iavf_rx_queue;
 struct iavf_tx_queue;

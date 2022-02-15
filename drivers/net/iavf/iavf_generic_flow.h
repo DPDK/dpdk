@@ -410,6 +410,12 @@ extern enum rte_flow_item_type iavf_pattern_eth_ipv6_gre_ipv6_tcp[];
 extern enum rte_flow_item_type iavf_pattern_eth_ipv6_gre_ipv4_udp[];
 extern enum rte_flow_item_type iavf_pattern_eth_ipv6_gre_ipv6_udp[];
 
+/* L2TPv2 */
+extern enum rte_flow_item_type iavf_pattern_eth_ipv4_udp_l2tpv2[];
+extern enum rte_flow_item_type iavf_pattern_eth_ipv4_udp_l2tpv2_ppp[];
+extern enum rte_flow_item_type iavf_pattern_eth_ipv6_udp_l2tpv2[];
+extern enum rte_flow_item_type iavf_pattern_eth_ipv6_udp_l2tpv2_ppp[];
+
 /* PPPoL2TPv2oUDP */
 extern enum rte_flow_item_type iavf_pattern_eth_ipv4_udp_l2tpv2_ppp_ipv4[];
 extern enum rte_flow_item_type iavf_pattern_eth_ipv4_udp_l2tpv2_ppp_ipv6[];
