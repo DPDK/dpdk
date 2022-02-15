@@ -3438,8 +3438,10 @@ bond_probe(struct rte_vdev_device *dev)
 
 	kvlist = rte_kvargs_parse(rte_vdev_device_args(dev),
 		pmd_bond_init_valid_arguments);
-	if (kvlist == NULL)
+	if (kvlist == NULL) {
+		RTE_BOND_LOG(ERR, "Invalid args in %s", rte_vdev_device_args(dev));
 		return -1;
+	}
 
 	/* Parse link bonding mode */
 	if (rte_kvargs_count(kvlist, PMD_BOND_MODE_KVARG) == 1) {
