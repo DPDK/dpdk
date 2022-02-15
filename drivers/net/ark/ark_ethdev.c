@@ -94,6 +94,8 @@ static const struct rte_pci_id pci_id_ark_map[] = {
 	{RTE_PCI_DEVICE(AR_VENDOR_ID, 0x1017)},
 	{RTE_PCI_DEVICE(AR_VENDOR_ID, 0x1018)},
 	{RTE_PCI_DEVICE(AR_VENDOR_ID, 0x1019)},
+	{RTE_PCI_DEVICE(AR_VENDOR_ID, 0x101e)},
+	{RTE_PCI_DEVICE(AR_VENDOR_ID, 0x101f)},
 	{.vendor_id = 0, /* sentinel */ },
 };
 
@@ -125,6 +127,8 @@ ark_device_caps[] = {
 		     SET_DEV_CAPS(0x1017, true),
 		     SET_DEV_CAPS(0x1018, true),
 		     SET_DEV_CAPS(0x1019, true),
+		     SET_DEV_CAPS(0x101e, false),
+		     SET_DEV_CAPS(0x101f, false),
 		     {.device_id = 0,}
 };
 
