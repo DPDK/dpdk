@@ -990,7 +990,7 @@ async_mbuf_to_desc(struct virtio_net *dev, struct vhost_virtqueue *vq,
 
 	uint32_t tlen = 0;
 	int tvec_idx = 0;
-	void *hpa;
+	void *host_iova;
 
 	if (unlikely(m == NULL)) {
 		error = -1;
@@ -1081,11 +1081,11 @@ async_mbuf_to_desc(struct virtio_net *dev, struct vhost_virtqueue *vq,
 		cpy_len = RTE_MIN(buf_avail, mbuf_avail);
 
 		while (unlikely(cpy_len && cpy_len >= cpy_threshold)) {
-			hpa = (void *)(uintptr_t)gpa_to_first_hpa(dev,
+			host_iova = (void *)(uintptr_t)gpa_to_first_hpa(dev,
 					buf_iova + buf_offset,
 					cpy_len, &mapped_len);
 
-			if (unlikely(!hpa || mapped_len < cpy_threshold))
+			if (unlikely(!host_iova || mapped_len < cpy_threshold))
 				break;
 
 			async_fill_vec(src_iovec + tvec_idx,
@@ -1093,7 +1093,7 @@ async_mbuf_to_desc(struct virtio_net *dev, struct vhost_virtqueue *vq,
 				mbuf_offset), (size_t)mapped_len);
 
 			async_fill_vec(dst_iovec + tvec_idx,
-					hpa, (size_t)mapped_len);
+					host_iova, (size_t)mapped_len);
 
 			tlen += (uint32_t)mapped_len;
 			cpy_len -= (uint32_t)mapped_len;
