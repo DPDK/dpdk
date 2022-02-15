@@ -534,7 +534,6 @@ nfb_eth_dev_init(struct rte_eth_dev *dev)
 
 	data->promiscuous = nfb_eth_promiscuous_get(dev);
 	data->all_multicast = nfb_eth_allmulticast_get(dev);
-	internals->rx_filter_original = data->promiscuous;
 
 	dev->data->dev_flags |= RTE_ETH_DEV_AUTOFILL_QUEUE_XSTATS;
 
