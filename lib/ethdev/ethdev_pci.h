@@ -50,8 +50,9 @@ rte_eth_copy_pci_info(struct rte_eth_dev *eth_dev,
 }
 
 static inline int
-eth_dev_pci_specific_init(struct rte_eth_dev *eth_dev, void *bus_device) {
-	struct rte_pci_device *pci_dev = bus_device;
+eth_dev_pci_specific_init(struct rte_eth_dev *eth_dev, void *bus_device)
+{
+	struct rte_pci_device *pci_dev = (struct rte_pci_device *)bus_device;
 
 	if (!pci_dev)
 		return -ENODEV;
