@@ -33,7 +33,7 @@ struct ark_rx_meta {
 #define ARK_RX_WRITE_TIME_NS 2500
 #define ARK_UDM_SETUP 0
 #define ARK_UDM_CONST2 0xbACECACE
-#define ARK_UDM_CONST3 0x334d4455
+#define ARK_UDM_CONST3 0x344d4455
 #define ARK_UDM_CONST ARK_UDM_CONST3
 struct ark_udm_setup_t {
 	uint32_t r0;

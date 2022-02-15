@@ -12,7 +12,6 @@
 
 #define ARK_RX_META_SIZE 32
 #define ARK_RX_META_OFFSET (RTE_PKTMBUF_HEADROOM - ARK_RX_META_SIZE)
-#define ARK_RX_MAX_NOCHAIN (RTE_MBUF_DEFAULT_DATAROOM)
 
 /* Forward declarations */
 struct ark_rx_queue;
@@ -40,6 +39,9 @@ struct ark_rx_queue {
 
 	rx_user_meta_hook_fn rx_user_meta_hook;
 	void *ext_user_data;
+
+	uint32_t dataroom;
+	uint32_t headroom;
 
 	uint32_t queue_size;
 	uint32_t queue_mask;
@@ -164,6 +166,9 @@ eth_ark_dev_rx_queue_setup(struct rte_eth_dev *dev,
 
 	/* NOTE zmalloc is used, no need to 0 indexes, etc. */
 	queue->mb_pool = mb_pool;
+	queue->dataroom = rte_pktmbuf_data_room_size(mb_pool) -
+		RTE_PKTMBUF_HEADROOM;
+	queue->headroom = RTE_PKTMBUF_HEADROOM;
 	queue->phys_qid = qidx;
 	queue->queue_index = queue_idx;
 	queue->queue_size = nb_desc;
@@ -195,6 +200,15 @@ eth_ark_dev_rx_queue_setup(struct rte_eth_dev *dev,
 	dev->data->rx_queues[queue_idx] = queue;
 	queue->udm = RTE_PTR_ADD(ark->udm.v, qidx * ARK_UDM_QOFFSET);
 	queue->mpu = RTE_PTR_ADD(ark->mpurx.v, qidx * ARK_MPU_QOFFSET);
+
+	/* Configure UDM per queue */
+	ark_udm_stop(queue->udm, 0);
+	ark_udm_configure(queue->udm,
+			  RTE_PKTMBUF_HEADROOM,
+			  queue->dataroom,
+			  ARK_RX_WRITE_TIME_NS);
+	ark_udm_stats_reset(queue->udm);
+	ark_udm_stop(queue->udm, 0);
 
 	/* populate mbuf reserve */
 	status = eth_ark_rx_seed_mbufs(queue);
@@ -267,6 +281,7 @@ eth_ark_recv_pkts(void *rx_queue,
 		mbuf->data_len = meta->pkt_len;
 
 		if (ARK_DEBUG_CORE) {	/* debug sanity checks */
+
 			if ((meta->pkt_len > (1024 * 16)) ||
 			    (meta->pkt_len == 0)) {
 				ARK_PMD_LOG(DEBUG, "RX: Bad Meta Q: %u"
@@ -295,7 +310,7 @@ eth_ark_recv_pkts(void *rx_queue,
 			}
 		}
 
-		if (unlikely(meta->pkt_len > ARK_RX_MAX_NOCHAIN))
+		if (unlikely(meta->pkt_len > queue->dataroom))
 			cons_index = eth_ark_rx_jumbo
 				(queue, meta, mbuf, cons_index + 1);
 		else
@@ -336,14 +351,14 @@ eth_ark_rx_jumbo(struct ark_rx_queue *queue,
 	/* first buf populated by called */
 	mbuf_prev = mbuf0;
 	segments = 1;
-	data_len = RTE_MIN(meta->pkt_len, RTE_MBUF_DEFAULT_DATAROOM);
+	data_len = RTE_MIN(meta->pkt_len, queue->dataroom);
 	remaining = meta->pkt_len - data_len;
 	mbuf0->data_len = data_len;
 
 	/* HW guarantees that the data does not exceed prod_index! */
 	while (remaining != 0) {
 		data_len = RTE_MIN(remaining,
-				   RTE_MBUF_DEFAULT_DATAROOM);
+				   queue->dataroom);
 
 		remaining -= data_len;
 		segments += 1;

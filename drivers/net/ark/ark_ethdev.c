@@ -527,14 +527,6 @@ ark_config_device(struct rte_eth_dev *dev)
 		mpu = RTE_PTR_ADD(mpu, ARK_MPU_QOFFSET);
 	}
 
-	ark_udm_stop(ark->udm.v, 0);
-	ark_udm_configure(ark->udm.v,
-			  RTE_PKTMBUF_HEADROOM,
-			  RTE_MBUF_DEFAULT_DATAROOM,
-			  ARK_RX_WRITE_TIME_NS);
-	ark_udm_stats_reset(ark->udm.v);
-	ark_udm_stop(ark->udm.v, 0);
-
 	/* TX -- DDM */
 	if (ark_ddm_stop(ark->ddm.v, 1))
 		ARK_PMD_LOG(ERR, "Unable to stop DDM\n");
