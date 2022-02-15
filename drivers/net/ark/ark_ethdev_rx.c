@@ -12,6 +12,7 @@
 
 #define ARK_RX_META_SIZE 32
 #define ARK_RX_META_OFFSET (RTE_PKTMBUF_HEADROOM - ARK_RX_META_SIZE)
+#define ARK_RX_MPU_CHUNK (64U)
 
 /* Forward declarations */
 struct ark_rx_queue;
@@ -104,7 +105,7 @@ static inline void
 eth_ark_rx_update_cons_index(struct ark_rx_queue *queue, uint32_t cons_index)
 {
 	queue->cons_index = cons_index;
-	if ((cons_index + queue->queue_size - queue->seed_index) >= 64U) {
+	if ((cons_index + queue->queue_size - queue->seed_index) >= ARK_RX_MPU_CHUNK) {
 		eth_ark_rx_seed_mbufs(queue);
 		ark_mpu_set_producer(queue->mpu, queue->seed_index);
 	}
@@ -179,12 +180,12 @@ eth_ark_dev_rx_queue_setup(struct rte_eth_dev *dev,
 	queue->reserve_q =
 		rte_zmalloc_socket("Ark_rx_queue mbuf",
 				   nb_desc * sizeof(struct rte_mbuf *),
-				   64,
+				   512,
 				   socket_id);
 	queue->paddress_q =
 		rte_zmalloc_socket("Ark_rx_queue paddr",
 				   nb_desc * sizeof(rte_iova_t),
-				   64,
+				   512,
 				   socket_id);
 
 	if (queue->reserve_q == 0 || queue->paddress_q == 0) {
@@ -446,7 +447,8 @@ eth_ark_rx_stop_queue(struct rte_eth_dev *dev, uint16_t queue_id)
 static inline int
 eth_ark_rx_seed_mbufs(struct ark_rx_queue *queue)
 {
-	uint32_t limit = queue->cons_index + queue->queue_size;
+	uint32_t limit = (queue->cons_index & ~(ARK_RX_MPU_CHUNK - 1)) +
+		queue->queue_size;
 	uint32_t seed_index = queue->seed_index;
 
 	uint32_t count = 0;
@@ -609,14 +611,14 @@ eth_ark_udm_force_close(struct rte_eth_dev *dev)
 
 			ark_mpu_start(queue->mpu);
 			/* Add some buffers */
-			index = 100000 + queue->seed_index;
+			index = ARK_RX_MPU_CHUNK + queue->seed_index;
 			ark_mpu_set_producer(queue->mpu, index);
 		}
 		/* Wait to allow data to pass */
 		usleep(100);
 
-		ARK_PMD_LOG(DEBUG, "UDM forced flush attempt, stopped = %d\n",
-				ark_udm_is_flushed(ark->udm.v));
+		ARK_PMD_LOG(NOTICE, "UDM forced flush attempt, stopped = %d\n",
+			    ark_udm_is_flushed(ark->udm.v));
 	}
 	ark_udm_reset(ark->udm.v);
 }
