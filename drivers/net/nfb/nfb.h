@@ -48,10 +48,6 @@ struct pmd_internals {
 
 	char             nfb_dev[PATH_MAX];
 	struct nfb_device *nfb;
-	/* Place to remember if filter was promiscuous or filtering by table,
-	 * when disabling allmulticast
-	 */
-	enum nc_rxmac_mac_filter rx_filter_original;
 };
 
 #endif /* _NFB_H_ */
