@@ -33,6 +33,7 @@ ark_udm_stop(struct ark_udm_t *udm, const int wait)
 {
 	int cnt = 0;
 
+	udm->setup.r0 = 0;
 	udm->cfg.command = 2;
 	rte_wmb();
 
@@ -71,6 +72,7 @@ ark_udm_reset(struct ark_udm_t *udm)
 void
 ark_udm_start(struct ark_udm_t *udm)
 {
+	udm->setup.r0 = 0x100;
 	udm->cfg.command = 1;
 }
 
