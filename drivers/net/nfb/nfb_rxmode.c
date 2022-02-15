@@ -14,8 +14,6 @@ nfb_eth_promiscuous_enable(struct rte_eth_dev *dev)
 		dev->data->dev_private;
 	uint16_t i;
 
-	internals->rx_filter_original = RXMAC_MAC_FILTER_PROMISCUOUS;
-
 	for (i = 0; i < internals->max_rxmac; ++i) {
 		nc_rxmac_mac_filter_enable(internals->rxmac[i],
 			RXMAC_MAC_FILTER_PROMISCUOUS);
@@ -30,16 +28,13 @@ nfb_eth_promiscuous_disable(struct rte_eth_dev *dev)
 	struct pmd_internals *internals = (struct pmd_internals *)
 		dev->data->dev_private;
 	uint16_t i;
+	enum nc_rxmac_mac_filter filter = RXMAC_MAC_FILTER_TABLE_BCAST;
 
-	internals->rx_filter_original = RXMAC_MAC_FILTER_TABLE;
-
-	/* if promisc is not enabled, do nothing */
-	if (!nfb_eth_promiscuous_get(dev))
-		return 0;
+	if (dev->data->all_multicast)
+		filter = RXMAC_MAC_FILTER_TABLE_BCAST_MCAST;
 
 	for (i = 0; i < internals->max_rxmac; ++i) {
-		nc_rxmac_mac_filter_enable(internals->rxmac[i],
-			RXMAC_MAC_FILTER_TABLE);
+		nc_rxmac_mac_filter_enable(internals->rxmac[i], filter);
 	}
 
 	return 0;
@@ -67,6 +62,8 @@ nfb_eth_allmulticast_enable(struct rte_eth_dev *dev)
 		dev->data->dev_private;
 
 	uint16_t i;
+	if (dev->data->promiscuous)
+		return 0;
 	for (i = 0; i < internals->max_rxmac; ++i) {
 		nc_rxmac_mac_filter_enable(internals->rxmac[i],
 			RXMAC_MAC_FILTER_TABLE_BCAST_MCAST);
@@ -83,13 +80,12 @@ nfb_eth_allmulticast_disable(struct rte_eth_dev *dev)
 
 	uint16_t i;
 
-	/* if multicast is not enabled do nothing */
-	if (!nfb_eth_allmulticast_get(dev))
+	if (dev->data->promiscuous)
 		return 0;
 
 	for (i = 0; i < internals->max_rxmac; ++i) {
 		nc_rxmac_mac_filter_enable(internals->rxmac[i],
-			internals->rx_filter_original);
+			RXMAC_MAC_FILTER_TABLE_BCAST);
 	}
 
 	return 0;
