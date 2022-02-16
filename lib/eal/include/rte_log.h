@@ -136,7 +136,6 @@ int rte_log_get_level(uint32_t logtype);
  * @return
  * Returns 'true' if log can be printed and 'false' if it can't.
  */
-__rte_experimental
 bool rte_log_can_log(uint32_t logtype, uint32_t loglevel);
 
 /**
@@ -378,9 +377,6 @@ RTE_INIT(__##type)							    \
 }
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Register a dynamic log type in constructor context with its name and level.
  *
  * It is a wrapper macro for declaring the logtype, register the log and
@@ -397,9 +393,6 @@ RTE_INIT(__##type)							    \
 	RTE_LOG_REGISTER_IMPL(type, RTE_STR(name), level)
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * This is an equivalent to RTE_LOG_REGISTER, but relying on the build system
  * to select the right format for the logtype.
  */
@@ -407,9 +400,6 @@ RTE_INIT(__##type)							    \
 	RTE_LOG_REGISTER_IMPL(type, RTE_STR(RTE_LOG_DEFAULT_LOGTYPE), level)
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * This is an equivalent to RTE_LOG_REGISTER, but relying on the build system
  * to select the right prefix for the logtype.
  */
