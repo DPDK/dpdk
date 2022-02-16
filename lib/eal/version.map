@@ -109,8 +109,10 @@ DPDK_22 {
 	rte_hexdump;
 	rte_hypervisor_get;
 	rte_hypervisor_get_name; # WINDOWS_NO_EXPORT
+	rte_intr_ack;
 	rte_intr_callback_register;
 	rte_intr_callback_unregister;
+	rte_intr_callback_unregister_pending;
 	rte_intr_disable;
 	rte_intr_enable;
 	rte_keepalive_create; # WINDOWS_NO_EXPORT
@@ -263,6 +265,7 @@ DPDK_22 {
 	rte_strsplit;
 	rte_sys_gettid;
 	rte_thread_get_affinity;
+	rte_thread_is_intr;
 	rte_thread_register;
 	rte_thread_set_affinity;
 	rte_thread_setname;
@@ -320,13 +323,6 @@ EXPERIMENTAL {
 	# added in 19.05
 	rte_dev_dma_map;
 	rte_dev_dma_unmap;
-	rte_intr_callback_unregister_pending;
-
-	# added in 19.08
-	rte_intr_ack;
-
-	# added in 20.02
-	rte_thread_is_intr;
 
 	# added in 20.05
 	__rte_eal_trace_alarm_cancel;

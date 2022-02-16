@@ -121,7 +121,6 @@ int rte_intr_callback_unregister(const struct rte_intr_handle *intr_handle,
  *  - On success, return the number of callback entities marked for remove.
  *  - On failure, a negative value.
  */
-__rte_experimental
 int
 rte_intr_callback_unregister_pending(const struct rte_intr_handle *intr_handle,
 				rte_intr_callback_fn cb_fn, void *cb_arg,
@@ -177,9 +176,6 @@ int rte_intr_enable(const struct rte_intr_handle *intr_handle);
 int rte_intr_disable(const struct rte_intr_handle *intr_handle);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * It acknowledges an interrupt raised for the specified handle.
  *
  * This function should be called at the end of each interrupt handler either
@@ -193,22 +189,16 @@ int rte_intr_disable(const struct rte_intr_handle *intr_handle);
  *  - On success, zero.
  *  - On failure, a negative value.
  */
-__rte_experimental
 int rte_intr_ack(const struct rte_intr_handle *intr_handle);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Check if currently executing in interrupt context
  *
  * @return
  *  - non zero in case of interrupt context
  *  - zero in case of process context
  */
-__rte_experimental
-int
-rte_thread_is_intr(void);
+int rte_thread_is_intr(void);
 
 /**
  * @warning
