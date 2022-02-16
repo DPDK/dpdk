@@ -5,6 +5,10 @@
 #ifndef _RTE_EVENTDEV_PMD_PCI_H_
 #define _RTE_EVENTDEV_PMD_PCI_H_
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /** @file
  * RTE Eventdev PCI PMD APIs
  *

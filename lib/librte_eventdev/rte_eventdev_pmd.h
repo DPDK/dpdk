@@ -5,6 +5,10 @@
 #ifndef _RTE_EVENTDEV_PMD_H_
 #define _RTE_EVENTDEV_PMD_H_
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /** @file
  * RTE Event PMD APIs
  *
@@ -1137,6 +1141,10 @@ rte_event_pmd_allocate(const char *name, int socket_id);
  */
 int
 rte_event_pmd_release(struct rte_eventdev *eventdev);
+
+#ifdef __cplusplus
+}
+#endif
 
 #ifdef __cplusplus
 }
