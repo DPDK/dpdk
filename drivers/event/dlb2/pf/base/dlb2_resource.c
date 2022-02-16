@@ -2356,16 +2356,26 @@ static bool dlb2_domain_finish_unmap_port(struct dlb2_hw *hw,
 {
 	u32 infl_cnt;
 	int i;
+	const int max_iters = 1000;
+	const int iter_poll_us = 100;
 
 	if (port->num_pending_removals == 0)
 		return false;
 
 	/*
 	 * The unmap requires all the CQ's outstanding inflights to be
-	 * completed.
+	 * completed. Poll up to 100ms.
 	 */
-	infl_cnt = DLB2_CSR_RD(hw, DLB2_LSP_CQ_LDB_INFL_CNT(hw->ver,
+	for (i = 0; i < max_iters; i++) {
+		infl_cnt = DLB2_CSR_RD(hw, DLB2_LSP_CQ_LDB_INFL_CNT(hw->ver,
 						       port->id.phys_id));
+
+		if (DLB2_BITS_GET(infl_cnt,
+				  DLB2_LSP_CQ_LDB_INFL_CNT_COUNT) == 0)
+			break;
+		rte_delay_us_sleep(iter_poll_us);
+	}
+
 	if (DLB2_BITS_GET(infl_cnt, DLB2_LSP_CQ_LDB_INFL_CNT_COUNT) > 0)
 		return false;
 
@@ -5316,6 +5326,7 @@ static void dlb2_log_map_qid(struct dlb2_hw *hw,
  * EINVAL - A requested resource is unavailable, invalid port or queue ID, or
  *	    the domain is not configured.
  * EFAULT - Internal error (resp->status not set).
+ * EBUSY  - The requested port has outstanding detach operations.
  */
 int dlb2_hw_map_qid(struct dlb2_hw *hw,
 		    u32 domain_id,
@@ -5356,8 +5367,12 @@ int dlb2_hw_map_qid(struct dlb2_hw *hw,
 	 * attempt to complete them. This may be necessary to free up a QID
 	 * slot for this requested mapping.
 	 */
-	if (port->num_pending_removals)
-		dlb2_domain_finish_unmap_port(hw, domain, port);
+	if (port->num_pending_removals) {
+		bool bool_ret;
+		bool_ret = dlb2_domain_finish_unmap_port(hw, domain, port);
+		if (!bool_ret)
+			return -EBUSY;
+	}
 
 	ret = dlb2_verify_map_qid_slot_available(port, queue, resp);
 	if (ret)
