@@ -5,6 +5,10 @@
 #ifndef _RTE_DEV_INFO_H_
 #define _RTE_DEV_INFO_H_
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <stdint.h>
 
 /*
@@ -47,5 +51,9 @@ struct rte_eth_dev_module_info {
 #define RTE_ETH_MODULE_SFF_8436             0x4
 #define RTE_ETH_MODULE_SFF_8436_LEN         256
 #define RTE_ETH_MODULE_SFF_8436_MAX_LEN     640
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* _RTE_DEV_INFO_H_ */
