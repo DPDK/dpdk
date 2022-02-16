@@ -5,6 +5,10 @@
 #ifndef _RTE_EVENTDEV_PMD_H_
 #define _RTE_EVENTDEV_PMD_H_
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /** @file
  * RTE Event PMD APIs
  *
@@ -1365,5 +1369,9 @@ __rte_internal
 void
 event_dev_fp_ops_set(struct rte_event_fp_ops *fp_ops,
 		     const struct rte_eventdev *dev);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* _RTE_EVENTDEV_PMD_H_ */

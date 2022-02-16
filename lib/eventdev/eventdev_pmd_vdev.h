@@ -5,6 +5,10 @@
 #ifndef _RTE_EVENTDEV_PMD_VDEV_H_
 #define _RTE_EVENTDEV_PMD_VDEV_H_
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /** @file
  * RTE Eventdev VDEV PMD APIs
  *
@@ -98,5 +102,9 @@ rte_event_pmd_vdev_uninit(const char *name)
 
 	return 0;
 }
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* _RTE_EVENTDEV_PMD_VDEV_H_ */
