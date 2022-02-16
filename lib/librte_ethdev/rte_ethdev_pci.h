@@ -6,6 +6,10 @@
 #ifndef _RTE_ETHDEV_PCI_H_
 #define _RTE_ETHDEV_PCI_H_
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <rte_malloc.h>
 #include <rte_pci.h>
 #include <rte_bus_pci.h>
@@ -170,5 +174,9 @@ rte_eth_dev_pci_generic_remove(struct rte_pci_device *pci_dev,
 	rte_eth_dev_release_port(eth_dev);
 	return 0;
 }
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* _RTE_ETHDEV_PCI_H_ */

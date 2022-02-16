@@ -6,6 +6,10 @@
 #ifndef _RTE_ETHDEV_VDEV_H_
 #define _RTE_ETHDEV_VDEV_H_
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <rte_config.h>
 #include <rte_malloc.h>
 #include <rte_bus_vdev.h>
@@ -51,5 +55,9 @@ rte_eth_vdev_allocate(struct rte_vdev_device *dev, size_t private_data_size)
 	eth_dev->data->numa_node = dev->device.numa_node;
 	return eth_dev;
 }
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* _RTE_ETHDEV_VDEV_H_ */
