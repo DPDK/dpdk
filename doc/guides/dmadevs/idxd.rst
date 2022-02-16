@@ -55,7 +55,6 @@ such as priority or queue depth, need to be set for each queue.
 To assign an engine to a group::
 
         $ accel-config config-engine dsa0/engine0.0 --group-id=0
-        $ accel-config config-engine dsa0/engine0.1 --group-id=1
 
 To assign work queues to groups for passing descriptors to the engines a similar accel-config command can be used.
 However, the work queues also need to be configured depending on the use case.
@@ -71,7 +70,7 @@ Example configuration for a work queue::
 
         $ accel-config config-wq dsa0/wq0.0 --group-id=0 \
            --mode=dedicated --priority=10 --wq-size=8 \
-           --type=user --name=dpdk_app1
+           --max-batch-size=512 --type=user --name=dpdk_app1
 
 Once the devices have been configured, they need to be enabled::
 
@@ -81,6 +80,32 @@ Once the devices have been configured, they need to be enabled::
 Check the device configuration::
 
         $ accel-config list
+
+Every Intel\ |reg| DSA instance supports multiple queues and each should be similarly configured.
+As a further example, the following set of commands will configure and enable 4 queues on instance 0,
+giving each an equal share of resources::
+
+        # configure 4 groups, each with one engine
+        accel-config config-engine dsa0/engine0.0 --group-id=0
+        accel-config config-engine dsa0/engine0.1 --group-id=1
+        accel-config config-engine dsa0/engine0.2 --group-id=2
+        accel-config config-engine dsa0/engine0.3 --group-id=3
+
+        # configure 4 queues, putting each in a different group, so each
+        # is backed by a single engine
+        accel-config config-wq dsa0/wq0.0 --group-id=0 --type=user --wq-size=32 \
+            --priority=10 --max-batch-size=1024 --mode=dedicated --name=dpdk_app1
+        accel-config config-wq dsa0/wq0.1 --group-id=1 --type=user --wq-size=32 \
+            --priority=10 --max-batch-size=1024 --mode=dedicated --name=dpdk_app1
+        accel-config config-wq dsa0/wq0.2 --group-id=2 --type=user --wq-size=32 \
+            --priority=10 --max-batch-size=1024 --mode=dedicated --name=dpdk_app1
+        accel-config config-wq dsa0/wq0.3 --group-id=3 --type=user --wq-size=32 \
+            --priority=10 --max-batch-size=1024 --mode=dedicated --name=dpdk_app1
+
+        # enable device and queues
+        accel-config enable-device dsa0
+        accel-config enable-wq dsa0/wq0.0 dsa0/wq0.1 dsa0/wq0.2 dsa0/wq0.3
+
 
 Devices using VFIO/UIO drivers
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
