@@ -5,6 +5,10 @@
 #ifndef _RTE_EVENTDEV_PMD_PCI_H_
 #define _RTE_EVENTDEV_PMD_PCI_H_
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /** @file
  * RTE Eventdev PCI PMD APIs
  *
@@ -149,5 +153,9 @@ rte_event_pmd_pci_remove(struct rte_pci_device *pci_dev,
 
 	return 0;
 }
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* _RTE_EVENTDEV_PMD_PCI_H_ */
