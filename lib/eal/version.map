@@ -26,6 +26,7 @@ DPDK_22 {
 	rte_delay_us;
 	rte_delay_us_block;
 	rte_delay_us_callback_register;
+	rte_delay_us_sleep;
 	rte_dev_is_probed;
 	rte_dev_probe;
 	rte_dev_remove;
@@ -315,7 +316,6 @@ EXPERIMENTAL {
 	rte_dev_iterator_next;
 
 	# added in 18.11
-	rte_delay_us_sleep;
 	rte_dev_event_callback_process;
 	rte_dev_hotplug_handle_disable;
 	rte_dev_hotplug_handle_enable;
