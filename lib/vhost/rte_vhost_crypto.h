@@ -5,6 +5,10 @@
 #ifndef _VHOST_CRYPTO_H_
 #define _VHOST_CRYPTO_H_
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <stdint.h>
 
 #include <rte_compat.h>
@@ -131,5 +135,9 @@ rte_vhost_crypto_fetch_requests(int vid, uint32_t qid,
 uint16_t
 rte_vhost_crypto_finalize_requests(struct rte_crypto_op **ops,
 		uint16_t nb_ops, int *callfds, uint16_t *nb_callfds);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /**< _VHOST_CRYPTO_H_ */

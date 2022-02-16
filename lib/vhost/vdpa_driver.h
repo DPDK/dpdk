@@ -5,6 +5,10 @@
 #ifndef _VDPA_DRIVER_H_
 #define _VDPA_DRIVER_H_
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <stdbool.h>
 
 #include <rte_compat.h>
@@ -143,5 +147,9 @@ rte_vhost_host_notifier_ctrl(int vid, uint16_t qid, bool enable);
 __rte_internal
 int
 rte_vdpa_relay_vring_used(int vid, uint16_t qid, void *vring_m);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* _VDPA_DRIVER_H_ */

@@ -5,6 +5,10 @@
 #ifndef _RTE_VHOST_ASYNC_H_
 #define _RTE_VHOST_ASYNC_H_
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <stdint.h>
 
 #include <rte_compat.h>
@@ -182,5 +186,9 @@ uint16_t rte_vhost_clear_queue_thread_unsafe(int vid, uint16_t queue_id,
  */
 __rte_experimental
 int rte_vhost_async_dma_configure(int16_t dma_id, uint16_t vchan_id);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* _RTE_VHOST_ASYNC_H_ */
