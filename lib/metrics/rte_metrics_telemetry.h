@@ -13,6 +13,9 @@
 #ifndef _RTE_METRICS_TELEMETRY_H_
 #define _RTE_METRICS_TELEMETRY_H_
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 enum rte_telemetry_stats_type {
 	PORT_STATS = 0,
@@ -59,5 +62,9 @@ rte_metrics_tel_get_ports_stats_json(struct telemetry_encode_param *ep,
 __rte_experimental
 int32_t
 rte_metrics_tel_extract_data(struct telemetry_encode_param *ep, json_t *data);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
