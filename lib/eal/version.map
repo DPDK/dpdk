@@ -122,11 +122,13 @@ DPDK_22 {
 	rte_lcore_callback_register;
 	rte_lcore_callback_unregister;
 	rte_lcore_count;
+	rte_lcore_cpuset;
 	rte_lcore_dump;
 	rte_lcore_has_role;
 	rte_lcore_index;
 	rte_lcore_is_enabled;
 	rte_lcore_iterate;
+	rte_lcore_to_cpu_id;
 	rte_lcore_to_socket_id;
 	rte_log;
 	rte_log_can_log;
@@ -322,8 +324,6 @@ EXPERIMENTAL {
 
 	# added in 19.08
 	rte_intr_ack;
-	rte_lcore_cpuset;
-	rte_lcore_to_cpu_id;
 
 	# added in 20.02
 	rte_thread_is_intr;
