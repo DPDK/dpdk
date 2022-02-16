@@ -5,6 +5,10 @@
 #ifndef _RTE_TRACE_POINT_REGISTER_H_
 #define _RTE_TRACE_POINT_REGISTER_H_
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #ifdef _RTE_TRACE_POINT_H_
 #error for registration, include this file first before <rte_trace_point.h>
 #endif
@@ -41,5 +45,9 @@ do { \
 	__rte_trace_point_emit_field(__RTE_TRACE_EMIT_STRING_LEN_MAX, \
 		RTE_STR(in)"[32]", "string_bounded_t"); \
 } while (0)
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* _RTE_TRACE_POINT_REGISTER_H_ */

@@ -11,6 +11,10 @@
 #ifndef _KEEPALIVE_H_
 #define _KEEPALIVE_H_
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <rte_config.h>
 #include <rte_memory.h>
 
@@ -138,5 +142,9 @@ void
 rte_keepalive_register_relay_callback(struct rte_keepalive *keepcfg,
 	rte_keepalive_relay_callback_t callback,
 	void *data);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* _KEEPALIVE_H_ */
