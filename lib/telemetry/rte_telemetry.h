@@ -9,6 +9,10 @@
 #ifndef _RTE_TELEMETRY_H_
 #define _RTE_TELEMETRY_H_
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /** Maximum length for string used in object. */
 #define RTE_TEL_MAX_STRING_LEN 128
 /** Maximum length of string. */
@@ -293,5 +297,9 @@ rte_tel_data_alloc(void);
  */
 void
 rte_tel_data_free(struct rte_tel_data *data);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
