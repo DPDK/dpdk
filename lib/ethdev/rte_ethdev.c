@@ -5631,7 +5631,7 @@ eth_dev_handle_port_info(const char *cmd __rte_unused,
 		struct rte_tel_data *d)
 {
 	struct rte_tel_data *rxq_state, *txq_state;
-	char mac_addr[RTE_ETHER_ADDR_LEN];
+	char mac_addr[RTE_ETHER_ADDR_FMT_SIZE];
 	struct rte_eth_dev *eth_dev;
 	char *end_param;
 	int port_id, i;
@@ -5672,13 +5672,8 @@ eth_dev_handle_port_info(const char *cmd __rte_unused,
 			eth_dev->data->min_rx_buf_size);
 	rte_tel_data_add_dict_int(d, "rx_mbuf_alloc_fail",
 			eth_dev->data->rx_mbuf_alloc_failed);
-	snprintf(mac_addr, RTE_ETHER_ADDR_LEN, "%02x:%02x:%02x:%02x:%02x:%02x",
-			 eth_dev->data->mac_addrs->addr_bytes[0],
-			 eth_dev->data->mac_addrs->addr_bytes[1],
-			 eth_dev->data->mac_addrs->addr_bytes[2],
-			 eth_dev->data->mac_addrs->addr_bytes[3],
-			 eth_dev->data->mac_addrs->addr_bytes[4],
-			 eth_dev->data->mac_addrs->addr_bytes[5]);
+	rte_ether_format_addr(mac_addr, sizeof(mac_addr),
+			eth_dev->data->mac_addrs);
 	rte_tel_data_add_dict_string(d, "mac_addr", mac_addr);
 	rte_tel_data_add_dict_int(d, "promiscuous",
 			eth_dev->data->promiscuous);
