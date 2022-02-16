@@ -63,6 +63,7 @@ def configure_dsa(dsa_id, queues):
                              "mode": "dedicated",
                              "name": f"dpdk_wq{dsa_id}.{q}",
                              "priority": 1,
+                             "max_batch_size": 1024,
                              "size": int(max_work_queues_size / nb_queues)})
 
     # enable device and then queues
