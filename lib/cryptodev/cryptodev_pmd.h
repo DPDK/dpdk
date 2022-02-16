@@ -5,6 +5,10 @@
 #ifndef _CRYPTODEV_PMD_H_
 #define _CRYPTODEV_PMD_H_
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /** @file
  * RTE Crypto PMD APIs
  *
@@ -635,5 +639,9 @@ RTE_STD_C11 struct rte_cryptodev_asym_session {
 	uint8_t padding[3];
 	uint8_t sess_private_data[0];
 };
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* _CRYPTODEV_PMD_H_ */
