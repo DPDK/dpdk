@@ -5,6 +5,10 @@
 #ifndef _RTE_VDPA_H_
 #define _RTE_VDPA_H_
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @file
  *
@@ -183,4 +187,9 @@ rte_vdpa_get_stats(struct rte_vdpa_device *dev, uint16_t qid,
  */
 int
 rte_vdpa_reset_stats(struct rte_vdpa_device *dev, uint16_t qid);
+
+#ifdef __cplusplus
+}
+#endif
+
 #endif /* _RTE_VDPA_H_ */
