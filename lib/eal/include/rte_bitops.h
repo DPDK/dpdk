@@ -17,6 +17,10 @@
 #include <rte_debug.h>
 #include <rte_compat.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * Get the uint64_t value for a specified bit set.
  *
@@ -270,5 +274,9 @@ rte_bit_relaxed_test_and_clear64(unsigned int nr, volatile uint64_t *addr)
 	*addr = val & (~mask);
 	return val & mask;
 }
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* _RTE_BITOPS_H_ */
