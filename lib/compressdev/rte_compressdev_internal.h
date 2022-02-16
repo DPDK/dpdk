@@ -5,6 +5,10 @@
 #ifndef _RTE_COMPRESSDEV_INTERNAL_H_
 #define _RTE_COMPRESSDEV_INTERNAL_H_
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* rte_compressdev_internal.h
  * This file holds Compressdev private data structures.
  */
@@ -111,4 +115,9 @@ struct rte_compressdev_data {
 	void *dev_private;
 	/**< PMD-specific private data */
 } __rte_cache_aligned;
+
+#ifdef __cplusplus
+}
+#endif
+
 #endif
