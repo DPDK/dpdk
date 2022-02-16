@@ -3897,31 +3897,45 @@ dlb2_hw_dequeue_sparse(struct dlb2_eventdev *dlb2,
 	while (num < max_num) {
 		struct dlb2_dequeue_qe qes[DLB2_NUM_QES_PER_CACHE_LINE];
 		int num_avail;
+
 		if (use_scalar) {
+			int n_iter = 0;
+			uint64_t m_rshift, m_lshift, m2_rshift, m2_lshift;
+
 			num_avail = dlb2_recv_qe_sparse(qm_port, qes);
 			num_avail = RTE_MIN(num_avail, max_num - num);
 			dlb2_inc_cq_idx(qm_port, num_avail << 2);
 			if (num_avail == DLB2_NUM_QES_PER_CACHE_LINE)
-				num += dlb2_process_dequeue_four_qes(ev_port,
-								  qm_port,
-								  &events[num],
-								  &qes[0]);
+				n_iter = dlb2_process_dequeue_four_qes(ev_port,
+								qm_port,
+								&events[num],
+								&qes[0]);
 			else if (num_avail)
-				num += dlb2_process_dequeue_qes(ev_port,
+				n_iter = dlb2_process_dequeue_qes(ev_port,
 								qm_port,
 								&events[num],
 								&qes[0],
 								num_avail);
+			num += n_iter;
+			/* update rolling_mask for vector code support */
+			m_rshift = qm_port->cq_rolling_mask >> n_iter;
+			m_lshift = qm_port->cq_rolling_mask << (64 - n_iter);
+			m2_rshift = qm_port->cq_rolling_mask_2 >> n_iter;
+			m2_lshift = qm_port->cq_rolling_mask_2 <<
+					(64 - n_iter);
+			qm_port->cq_rolling_mask = (m_rshift | m2_lshift);
+			qm_port->cq_rolling_mask_2 = (m2_rshift | m_lshift);
 		} else { /* !use_scalar */
 			num_avail = dlb2_recv_qe_sparse_vec(qm_port,
 							    &events[num],
 							    max_num - num);
-			num += num_avail;
 			dlb2_inc_cq_idx(qm_port, num_avail << 2);
+			num += num_avail;
 			DLB2_INC_STAT(ev_port->stats.traffic.rx_ok, num_avail);
 		}
 		if (!num_avail) {
-			if (num > 0)
+			if ((timeout == 0) || (num > 0))
+				/* Not waiting in any form or 1+ events recd */
 				break;
 			else if (dlb2_dequeue_wait(dlb2, ev_port, qm_port,
 						   timeout, start_ticks))
