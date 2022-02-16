@@ -774,6 +774,9 @@ test_dmadev_instance(int16_t dev_id)
 	if (rte_dma_stats_get(dev_id, vchan, &stats) != 0)
 		ERR_RETURN("Error with rte_dma_stats_get()\n");
 
+	if (rte_dma_burst_capacity(dev_id, vchan) < 32)
+		ERR_RETURN("Error: Device does not have sufficient burst capacity to run tests");
+
 	if (stats.completed != 0 || stats.submitted != 0 || stats.errors != 0)
 		ERR_RETURN("Error device stats are not all zero: completed = %"PRIu64", "
 				"submitted = %"PRIu64", errors = %"PRIu64"\n",
@@ -795,7 +798,10 @@ test_dmadev_instance(int16_t dev_id)
 		goto err;
 
 	/* run some burst capacity tests */
-	if (runtest("burst capacity", test_burst_capacity, 1, dev_id, vchan, CHECK_ERRS) < 0)
+	if (rte_dma_burst_capacity(dev_id, vchan) < 64)
+		printf("DMA Dev %u: insufficient burst capacity (64 required), skipping tests\n",
+				dev_id);
+	else if (runtest("burst capacity", test_burst_capacity, 1, dev_id, vchan, CHECK_ERRS) < 0)
 		goto err;
 
 	/* to test error handling we can provide null pointers for source or dest in copies. This
