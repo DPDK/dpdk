@@ -10,6 +10,10 @@
 #ifndef _RTE_BRANCH_PREDICTION_H_
 #define _RTE_BRANCH_PREDICTION_H_
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * Check if a branch is likely to be taken.
  *
@@ -37,5 +41,9 @@
 #ifndef unlikely
 #define unlikely(x)	__builtin_expect(!!(x), 0)
 #endif /* unlikely */
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* _RTE_BRANCH_PREDICTION_H_ */

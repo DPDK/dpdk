@@ -5,6 +5,10 @@
 #ifndef RTE_HYPERVISOR_H
 #define RTE_HYPERVISOR_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @file
  * Hypervisor awareness.
@@ -29,5 +33,9 @@ rte_hypervisor_get(void);
  */
 const char *
 rte_hypervisor_get_name(enum rte_hypervisor id);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* RTE_HYPERVISOR_H */
