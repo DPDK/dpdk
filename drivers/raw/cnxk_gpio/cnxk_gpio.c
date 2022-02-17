@@ -267,6 +267,78 @@ cnxk_gpio_queue_count(struct rte_rawdev *dev)
 	return gpiochip->num_gpios;
 }
 
+static const struct {
+	enum cnxk_gpio_pin_edge edge;
+	const char *name;
+} cnxk_gpio_edge_name[] = {
+	{ CNXK_GPIO_PIN_EDGE_NONE, "none" },
+	{ CNXK_GPIO_PIN_EDGE_FALLING, "falling" },
+	{ CNXK_GPIO_PIN_EDGE_RISING, "rising" },
+	{ CNXK_GPIO_PIN_EDGE_BOTH, "both" },
+};
+
+static const char *
+cnxk_gpio_edge_to_name(enum cnxk_gpio_pin_edge edge)
+{
+	unsigned int i;
+
+	for (i = 0; i < RTE_DIM(cnxk_gpio_edge_name); i++) {
+		if (cnxk_gpio_edge_name[i].edge == edge)
+			return cnxk_gpio_edge_name[i].name;
+	}
+
+	return NULL;
+}
+
+static enum cnxk_gpio_pin_edge
+cnxk_gpio_name_to_edge(const char *name)
+{
+	unsigned int i;
+
+	for (i = 0; i < RTE_DIM(cnxk_gpio_edge_name); i++) {
+		if (!strcmp(cnxk_gpio_edge_name[i].name, name))
+			break;
+	}
+
+	return cnxk_gpio_edge_name[i].edge;
+}
+
+static const struct {
+	enum cnxk_gpio_pin_dir dir;
+	const char *name;
+} cnxk_gpio_dir_name[] = {
+	{ CNXK_GPIO_PIN_DIR_IN, "in" },
+	{ CNXK_GPIO_PIN_DIR_OUT, "out" },
+	{ CNXK_GPIO_PIN_DIR_HIGH, "high" },
+	{ CNXK_GPIO_PIN_DIR_LOW, "low" },
+};
+
+static const char *
+cnxk_gpio_dir_to_name(enum cnxk_gpio_pin_dir dir)
+{
+	unsigned int i;
+
+	for (i = 0; i < RTE_DIM(cnxk_gpio_dir_name); i++) {
+		if (cnxk_gpio_dir_name[i].dir == dir)
+			return cnxk_gpio_dir_name[i].name;
+	}
+
+	return NULL;
+}
+
+static enum cnxk_gpio_pin_dir
+cnxk_gpio_name_to_dir(const char *name)
+{
+	unsigned int i;
+
+	for (i = 0; i < RTE_DIM(cnxk_gpio_dir_name); i++) {
+		if (!strcmp(cnxk_gpio_dir_name[i].name, name))
+			break;
+	}
+
+	return cnxk_gpio_dir_name[i].dir;
+}
+
 static int
 cnxk_gpio_dev_close(struct rte_rawdev *dev)
 {
@@ -279,10 +351,83 @@ static int
 cnxk_gpio_process_buf(struct cnxk_gpio *gpio, struct rte_rawdev_buf *rbuf)
 {
 	struct cnxk_gpio_msg *msg = rbuf->buf_addr;
+	enum cnxk_gpio_pin_edge edge;
+	enum cnxk_gpio_pin_dir dir;
+	char buf[CNXK_GPIO_BUFSZ];
 	void *rsp = NULL;
-	int ret;
+	int ret, val, n;
+
+	n = snprintf(buf, sizeof(buf), "%s/gpio%d", CNXK_GPIO_CLASS_PATH,
+		     gpio->num);
 
 	switch (msg->type) {
+	case CNXK_GPIO_MSG_TYPE_SET_PIN_VALUE:
+		snprintf(buf + n, sizeof(buf) - n, "/value");
+		ret = cnxk_gpio_write_attr_int(buf, !!*(int *)msg->data);
+		break;
+	case CNXK_GPIO_MSG_TYPE_SET_PIN_EDGE:
+		snprintf(buf + n, sizeof(buf) - n, "/edge");
+		edge = *(enum cnxk_gpio_pin_edge *)msg->data;
+		ret = cnxk_gpio_write_attr(buf, cnxk_gpio_edge_to_name(edge));
+		break;
+	case CNXK_GPIO_MSG_TYPE_SET_PIN_DIR:
+		snprintf(buf + n, sizeof(buf) - n, "/direction");
+		dir = *(enum cnxk_gpio_pin_dir *)msg->data;
+		ret = cnxk_gpio_write_attr(buf, cnxk_gpio_dir_to_name(dir));
+		break;
+	case CNXK_GPIO_MSG_TYPE_SET_PIN_ACTIVE_LOW:
+		snprintf(buf + n, sizeof(buf) - n, "/active_low");
+		val = *(int *)msg->data;
+		ret = cnxk_gpio_write_attr_int(buf, val);
+		break;
+	case CNXK_GPIO_MSG_TYPE_GET_PIN_VALUE:
+		snprintf(buf + n, sizeof(buf) - n, "/value");
+		ret = cnxk_gpio_read_attr_int(buf, &val);
+		if (ret)
+			break;
+
+		rsp = rte_zmalloc(NULL, sizeof(int), 0);
+		if (!rsp)
+			return -ENOMEM;
+
+		*(int *)rsp = val;
+		break;
+	case CNXK_GPIO_MSG_TYPE_GET_PIN_EDGE:
+		snprintf(buf + n, sizeof(buf) - n, "/edge");
+		ret = cnxk_gpio_read_attr(buf, buf);
+		if (ret)
+			break;
+
+		rsp = rte_zmalloc(NULL, sizeof(enum cnxk_gpio_pin_edge), 0);
+		if (!rsp)
+			return -ENOMEM;
+
+		*(enum cnxk_gpio_pin_edge *)rsp = cnxk_gpio_name_to_edge(buf);
+		break;
+	case CNXK_GPIO_MSG_TYPE_GET_PIN_DIR:
+		snprintf(buf + n, sizeof(buf) - n, "/direction");
+		ret = cnxk_gpio_read_attr(buf, buf);
+		if (ret)
+			break;
+
+		rsp = rte_zmalloc(NULL, sizeof(enum cnxk_gpio_pin_dir), 0);
+		if (!rsp)
+			return -ENOMEM;
+
+		*(enum cnxk_gpio_pin_dir *)rsp = cnxk_gpio_name_to_dir(buf);
+		break;
+	case CNXK_GPIO_MSG_TYPE_GET_PIN_ACTIVE_LOW:
+		snprintf(buf + n, sizeof(buf) - n, "/active_low");
+		ret = cnxk_gpio_read_attr_int(buf, &val);
+		if (ret)
+			break;
+
+		rsp = rte_zmalloc(NULL, sizeof(int), 0);
+		if (!rsp)
+			return -ENOMEM;
+
+		*(int *)rsp = val;
+		break;
 	default:
 		return -EINVAL;
 	}
