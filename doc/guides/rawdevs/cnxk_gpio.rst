@@ -57,6 +57,11 @@ former returns number GPIOs available in the system irrespective of GPIOs
 being controllable or not. Thus it is user responsibility to pick the proper
 ones. The latter call simply returns queue capacity.
 
+In order to allow using only subset of available GPIOs `allowlist` PMD param may
+be used. For example passing `--vdev=cnxk_gpio,gpiochip=448,allowlist=[0,1,2,3]`
+to EAL will deny using all GPIOs except those specified explicitly in the
+`allowlist`.
+
 Respective queue needs to be configured with ``rte_rawdev_queue_setup()``. This
 call barely exports GPIO to userspace.
 

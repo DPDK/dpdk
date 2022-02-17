@@ -20,7 +20,9 @@ struct cnxk_gpiochip {
 	int num;
 	int base;
 	int num_gpios;
+	int num_queues;
 	struct cnxk_gpio **gpios;
+	int *allowlist;
 };
 
 int cnxk_gpio_selftest(uint16_t dev_id);

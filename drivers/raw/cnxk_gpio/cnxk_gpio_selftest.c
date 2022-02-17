@@ -302,12 +302,13 @@ out:
 int
 cnxk_gpio_selftest(uint16_t dev_id)
 {
+	struct cnxk_gpio_queue_conf conf;
 	struct cnxk_gpiochip *gpiochip;
-	unsigned int queues, i, size;
 	char buf[CNXK_GPIO_BUFSZ];
 	struct rte_rawdev *rawdev;
+	unsigned int queues, i;
 	struct cnxk_gpio *gpio;
-	int ret;
+	int ret, ret2;
 
 	rawdev = rte_rawdev_pmd_get_named_dev("cnxk_gpio");
 	gpiochip = rawdev->dev_private;
@@ -325,62 +326,68 @@ cnxk_gpio_selftest(uint16_t dev_id)
 		return -errno;
 
 	for (i = 0; i < queues; i++) {
-		RTE_LOG(INFO, PMD, "testing queue %d (gpio%d)\n", i,
-			gpiochip->base + i);
-
-		ret = rte_rawdev_queue_conf_get(dev_id, i, &size, sizeof(size));
+		ret = rte_rawdev_queue_conf_get(dev_id, i, &conf, sizeof(conf));
 		if (ret) {
 			RTE_LOG(ERR, PMD,
 				"failed to read queue configuration (%d)\n",
 				ret);
-			continue;
+			goto out;
 		}
 
-		if (size != 1) {
+		RTE_LOG(INFO, PMD, "testing queue%d (gpio%d)\n", i, conf.gpio);
+
+		if (conf.size != 1) {
 			RTE_LOG(ERR, PMD, "wrong queue size received\n");
-			continue;
+			ret = -EIO;
+			goto out;
 		}
 
 		ret = rte_rawdev_queue_setup(dev_id, i, NULL, 0);
 		if (ret) {
 			RTE_LOG(ERR, PMD, "failed to setup queue (%d)\n", ret);
-			continue;
+			goto out;
 		}
 
-		gpio = gpiochip->gpios[i];
+		gpio = gpiochip->gpios[conf.gpio];
 		snprintf(buf, sizeof(buf), CNXK_GPIO_PATH_FMT, gpio->num);
 		if (!cnxk_gpio_attr_exists(buf)) {
 			RTE_LOG(ERR, PMD, "%s does not exist\n", buf);
-			continue;
+			ret = -ENOENT;
+			goto release;
 		}
 
-		ret = cnxk_gpio_test_input(dev_id, gpiochip->base, i);
+		ret = cnxk_gpio_test_input(dev_id, gpiochip->base, conf.gpio);
 		if (ret)
 			goto release;
 
-		ret = cnxk_gpio_test_irq(dev_id, i);
+		ret = cnxk_gpio_test_irq(dev_id, conf.gpio);
 		if (ret)
 			goto release;
 
-		ret = cnxk_gpio_test_output(dev_id, gpiochip->base, i);
-		if (ret)
-			goto release;
-
+		ret = cnxk_gpio_test_output(dev_id, gpiochip->base, conf.gpio);
 release:
+		ret2 = ret;
 		ret = rte_rawdev_queue_release(dev_id, i);
 		if (ret) {
 			RTE_LOG(ERR, PMD, "failed to release queue (%d)\n",
 				ret);
-			continue;
+			break;
 		}
 
 		if (cnxk_gpio_attr_exists(buf)) {
 			RTE_LOG(ERR, PMD, "%s still exists\n", buf);
-			continue;
+			ret = -EIO;
+			break;
+		}
+
+		if (ret2) {
+			ret = ret2;
+			break;
 		}
 	}
 
+out:
 	close(fd);
 
-	return 0;
+	return ret;
 }

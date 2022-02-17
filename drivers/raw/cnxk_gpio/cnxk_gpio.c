@@ -22,8 +22,12 @@
 static const char *const cnxk_gpio_args[] = {
 #define CNXK_GPIO_ARG_GPIOCHIP "gpiochip"
 	CNXK_GPIO_ARG_GPIOCHIP,
+#define CNXK_GPIO_ARG_ALLOWLIST "allowlist"
+	CNXK_GPIO_ARG_ALLOWLIST,
 	NULL
 };
+
+static char *allowlist;
 
 static void
 cnxk_gpio_format_name(char *name, size_t len)
@@ -73,13 +77,23 @@ cnxk_gpio_parse_arg_gpiochip(const char *key __rte_unused, const char *value,
 }
 
 static int
-cnxk_gpio_parse_args(struct cnxk_gpiochip *gpiochip,
-		     struct rte_devargs *devargs)
+cnxk_gpio_parse_arg_allowlist(const char *key __rte_unused, const char *value,
+			      void *extra_args __rte_unused)
+{
+	allowlist = strdup(value);
+	if (!allowlist)
+		return -ENOMEM;
+
+	return 0;
+}
+
+static int
+cnxk_gpio_parse_args(struct cnxk_gpiochip *gpiochip, const char *args)
 {
 	struct rte_kvargs *kvlist;
 	int ret;
 
-	kvlist = rte_kvargs_parse(devargs->args, cnxk_gpio_args);
+	kvlist = rte_kvargs_parse(args, cnxk_gpio_args);
 	if (!kvlist)
 		return 0;
 
@@ -92,9 +106,71 @@ cnxk_gpio_parse_args(struct cnxk_gpiochip *gpiochip,
 			goto out;
 	}
 
+	ret = rte_kvargs_count(kvlist, CNXK_GPIO_ARG_ALLOWLIST);
+	if (ret == 1) {
+		ret = rte_kvargs_process(kvlist, CNXK_GPIO_ARG_ALLOWLIST,
+					 cnxk_gpio_parse_arg_allowlist, NULL);
+		if (ret)
+			goto out;
+	}
+
 	ret = 0;
 out:
 	rte_kvargs_free(kvlist);
+
+	return ret;
+}
+
+static int
+cnxk_gpio_parse_allowlist(struct cnxk_gpiochip *gpiochip)
+{
+	int i, ret, val, queue = 0;
+	char *token;
+	int *list;
+
+	list = rte_calloc(NULL, gpiochip->num_gpios, sizeof(*list), 0);
+	if (!list)
+		return -ENOMEM;
+
+	/* replace brackets with something meaningless for strtol() */
+	allowlist[0] = ' ';
+	allowlist[strlen(allowlist) - 1] = ' ';
+
+	/* quiesce -Wcast-qual */
+	token = strtok((char *)(uintptr_t)allowlist, ",");
+	do {
+		errno = 0;
+		val = strtol(token, NULL, 10);
+		if (errno) {
+			RTE_LOG(ERR, PMD, "failed to parse %s\n", token);
+			ret = -errno;
+			goto out;
+		}
+
+		if (val < 0 || val >= gpiochip->num_gpios) {
+			RTE_LOG(ERR, PMD, "gpio%d out of 0-%d range\n", val,
+				gpiochip->num_gpios - 1);
+			ret = -EINVAL;
+			goto out;
+		}
+
+		for (i = 0; i < queue; i++) {
+			if (list[i] != val)
+				continue;
+
+			RTE_LOG(WARNING, PMD, "gpio%d already allowed\n", val);
+			break;
+		}
+		if (i == queue)
+			list[queue++] = val;
+	} while ((token = strtok(NULL, ",")));
+
+	gpiochip->allowlist = list;
+	gpiochip->num_queues = queue;
+
+	return 0;
+out:
+	rte_free(list);
 
 	return ret;
 }
@@ -175,13 +251,24 @@ cnxk_gpio_write_attr_int(const char *attr, int val)
 	return cnxk_gpio_write_attr(attr, buf);
 }
 
+static bool
+cnxk_gpio_queue_valid(struct cnxk_gpiochip *gpiochip, uint16_t queue)
+{
+	return queue < gpiochip->num_queues;
+}
+
+static int
+cnxk_queue_to_gpio(struct cnxk_gpiochip *gpiochip, uint16_t queue)
+{
+	return gpiochip->allowlist ? gpiochip->allowlist[queue] : queue;
+}
+
 static struct cnxk_gpio *
 cnxk_gpio_lookup(struct cnxk_gpiochip *gpiochip, uint16_t queue)
 {
-	if (queue >= gpiochip->num_gpios)
-		return NULL;
+	int gpio = cnxk_queue_to_gpio(gpiochip, queue);
 
-	return gpiochip->gpios[queue];
+	return gpiochip->gpios[gpio];
 }
 
 static int
@@ -191,10 +278,13 @@ cnxk_gpio_queue_setup(struct rte_rawdev *dev, uint16_t queue_id,
 	struct cnxk_gpiochip *gpiochip = dev->dev_private;
 	char buf[CNXK_GPIO_BUFSZ];
 	struct cnxk_gpio *gpio;
-	int ret;
+	int num, ret;
 
 	RTE_SET_USED(queue_conf);
 	RTE_SET_USED(queue_conf_size);
+
+	if (!cnxk_gpio_queue_valid(gpiochip, queue_id))
+		return -EINVAL;
 
 	gpio = cnxk_gpio_lookup(gpiochip, queue_id);
 	if (gpio)
@@ -203,7 +293,9 @@ cnxk_gpio_queue_setup(struct rte_rawdev *dev, uint16_t queue_id,
 	gpio = rte_zmalloc(NULL, sizeof(*gpio), 0);
 	if (!gpio)
 		return -ENOMEM;
-	gpio->num = queue_id + gpiochip->base;
+
+	num = cnxk_queue_to_gpio(gpiochip, queue_id);
+	gpio->num = num + gpiochip->base;
 	gpio->gpiochip = gpiochip;
 
 	snprintf(buf, sizeof(buf), "%s/export", CNXK_GPIO_CLASS_PATH);
@@ -213,7 +305,7 @@ cnxk_gpio_queue_setup(struct rte_rawdev *dev, uint16_t queue_id,
 		return ret;
 	}
 
-	gpiochip->gpios[queue_id] = gpio;
+	gpiochip->gpios[num] = gpio;
 
 	return 0;
 }
@@ -224,18 +316,22 @@ cnxk_gpio_queue_release(struct rte_rawdev *dev, uint16_t queue_id)
 	struct cnxk_gpiochip *gpiochip = dev->dev_private;
 	char buf[CNXK_GPIO_BUFSZ];
 	struct cnxk_gpio *gpio;
-	int ret;
+	int num, ret;
+
+	if (!cnxk_gpio_queue_valid(gpiochip, queue_id))
+		return -EINVAL;
 
 	gpio = cnxk_gpio_lookup(gpiochip, queue_id);
 	if (!gpio)
 		return -ENODEV;
 
 	snprintf(buf, sizeof(buf), "%s/unexport", CNXK_GPIO_CLASS_PATH);
-	ret = cnxk_gpio_write_attr_int(buf, gpiochip->base + queue_id);
+	ret = cnxk_gpio_write_attr_int(buf, gpio->num);
 	if (ret)
 		return ret;
 
-	gpiochip->gpios[queue_id] = NULL;
+	num = cnxk_queue_to_gpio(gpiochip, queue_id);
+	gpiochip->gpios[num] = NULL;
 	rte_free(gpio);
 
 	return 0;
@@ -245,16 +341,17 @@ static int
 cnxk_gpio_queue_def_conf(struct rte_rawdev *dev, uint16_t queue_id,
 			 rte_rawdev_obj_t queue_conf, size_t queue_conf_size)
 {
-	unsigned int *conf;
+	struct cnxk_gpiochip *gpiochip = dev->dev_private;
+	struct cnxk_gpio_queue_conf *conf = queue_conf;
 
-	RTE_SET_USED(dev);
-	RTE_SET_USED(queue_id);
+	if (!cnxk_gpio_queue_valid(gpiochip, queue_id))
+		return -EINVAL;
 
 	if (queue_conf_size != sizeof(*conf))
 		return -EINVAL;
 
-	conf = (unsigned int *)queue_conf;
-	*conf = 1;
+	conf->size = 1;
+	conf->gpio = cnxk_queue_to_gpio(gpiochip, queue_id);
 
 	return 0;
 }
@@ -264,7 +361,7 @@ cnxk_gpio_queue_count(struct rte_rawdev *dev)
 {
 	struct cnxk_gpiochip *gpiochip = dev->dev_private;
 
-	return gpiochip->num_gpios;
+	return gpiochip->num_queues;
 }
 
 static const struct {
@@ -463,21 +560,27 @@ cnxk_gpio_process_buf(struct cnxk_gpio *gpio, struct rte_rawdev_buf *rbuf)
 	return ret;
 }
 
+static bool
+cnxk_gpio_valid(struct cnxk_gpiochip *gpiochip, int gpio)
+{
+	return gpio < gpiochip->num_gpios && gpiochip->gpios[gpio];
+}
+
 static int
 cnxk_gpio_enqueue_bufs(struct rte_rawdev *dev, struct rte_rawdev_buf **buffers,
 		       unsigned int count, rte_rawdev_obj_t context)
 {
 	struct cnxk_gpiochip *gpiochip = dev->dev_private;
-	unsigned int queue = (size_t)context;
+	unsigned int gpio_num = (size_t)context;
 	struct cnxk_gpio *gpio;
 	int ret;
 
 	if (count == 0)
 		return 0;
 
-	gpio = cnxk_gpio_lookup(gpiochip, queue);
-	if (!gpio)
-		return -ENODEV;
+	if (!cnxk_gpio_valid(gpiochip, gpio_num))
+		return -EINVAL;
+	gpio = gpiochip->gpios[gpio_num];
 
 	ret = cnxk_gpio_process_buf(gpio, buffers[0]);
 	if (ret)
@@ -491,15 +594,15 @@ cnxk_gpio_dequeue_bufs(struct rte_rawdev *dev, struct rte_rawdev_buf **buffers,
 		       unsigned int count, rte_rawdev_obj_t context)
 {
 	struct cnxk_gpiochip *gpiochip = dev->dev_private;
-	unsigned int queue = (size_t)context;
+	unsigned int gpio_num = (size_t)context;
 	struct cnxk_gpio *gpio;
 
 	if (count == 0)
 		return 0;
 
-	gpio = cnxk_gpio_lookup(gpiochip, queue);
-	if (!gpio)
-		return -ENODEV;
+	if (!cnxk_gpio_valid(gpiochip, gpio_num))
+		return -EINVAL;
+	gpio = gpiochip->gpios[gpio_num];
 
 	if (gpio->rsp) {
 		buffers[0]->buf_addr = gpio->rsp;
@@ -558,7 +661,7 @@ cnxk_gpio_probe(struct rte_vdev_device *dev)
 	cnxk_gpio_set_defaults(gpiochip);
 
 	/* defaults may be overwritten by this call */
-	ret = cnxk_gpio_parse_args(gpiochip, dev->device.devargs);
+	ret = cnxk_gpio_parse_args(gpiochip, rte_vdev_device_args(dev));
 	if (ret)
 		goto out;
 
@@ -583,6 +686,15 @@ cnxk_gpio_probe(struct rte_vdev_device *dev)
 		RTE_LOG(ERR, PMD, "failed to read %s", buf);
 		goto out;
 	}
+	gpiochip->num_queues = gpiochip->num_gpios;
+
+	if (allowlist) {
+		ret = cnxk_gpio_parse_allowlist(gpiochip);
+		free(allowlist);
+		allowlist = NULL;
+		if (ret)
+			goto out;
+	}
 
 	gpiochip->gpios = rte_calloc(NULL, gpiochip->num_gpios,
 				     sizeof(struct cnxk_gpio *), 0);
@@ -594,6 +706,8 @@ cnxk_gpio_probe(struct rte_vdev_device *dev)
 
 	return 0;
 out:
+	free(allowlist);
+	rte_free(gpiochip->allowlist);
 	rte_rawdev_pmd_release(rawdev);
 
 	return ret;
@@ -630,6 +744,7 @@ cnxk_gpio_remove(struct rte_vdev_device *dev)
 		cnxk_gpio_queue_release(rawdev, gpio->num);
 	}
 
+	rte_free(gpiochip->allowlist);
 	rte_free(gpiochip->gpios);
 	cnxk_gpio_irq_fini();
 	rte_rawdev_pmd_release(rawdev);
@@ -643,4 +758,6 @@ static struct rte_vdev_driver cnxk_gpio_drv = {
 };
 
 RTE_PMD_REGISTER_VDEV(cnxk_gpio, cnxk_gpio_drv);
-RTE_PMD_REGISTER_PARAM_STRING(cnxk_gpio, "gpiochip=<int>");
+RTE_PMD_REGISTER_PARAM_STRING(cnxk_gpio,
+		"gpiochip=<int> "
+		"allowlist=<list>");

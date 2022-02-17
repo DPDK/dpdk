@@ -22,6 +22,14 @@
 extern "C" {
 #endif
 
+/* Queue default configuration */
+struct cnxk_gpio_queue_conf {
+	/** Queue size */
+	int size;
+	/** GPIO number as seen by hardware */
+	int gpio;
+};
+
 /** Available message types */
 enum cnxk_gpio_msg_type {
 	/** Type used to set output value */
