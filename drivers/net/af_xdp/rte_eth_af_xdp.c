@@ -15,7 +15,6 @@
 #include <linux/ethtool.h>
 #include <linux/sockios.h>
 #include "af_xdp_deps.h"
-#include <bpf/bpf.h>
 
 #include <rte_ethdev.h>
 #include <ethdev_driver.h>
@@ -1176,13 +1175,13 @@ err:
 static int
 load_custom_xdp_prog(const char *prog_path, int if_index, struct bpf_map **map)
 {
-	int ret, prog_fd = -1;
+	int ret, prog_fd;
 	struct bpf_object *obj;
 
-	ret = bpf_prog_load(prog_path, BPF_PROG_TYPE_XDP, &obj, &prog_fd);
-	if (ret) {
+	prog_fd = load_program(prog_path, &obj);
+	if (prog_fd < 0) {
 		AF_XDP_LOG(ERR, "Failed to load program %s\n", prog_path);
-		return ret;
+		return -1;
 	}
 
 	/*
