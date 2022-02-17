@@ -14,6 +14,7 @@
 #include <roc_api.h>
 
 #include "cnxk_gpio.h"
+#include "rte_pmd_cnxk_gpio.h"
 
 #define CNXK_GPIO_BUFSZ 128
 #define CNXK_GPIO_CLASS_PATH "/sys/class/gpio"
@@ -274,8 +275,54 @@ cnxk_gpio_dev_close(struct rte_rawdev *dev)
 	return 0;
 }
 
+static int
+cnxk_gpio_process_buf(struct cnxk_gpio *gpio, struct rte_rawdev_buf *rbuf)
+{
+	struct cnxk_gpio_msg *msg = rbuf->buf_addr;
+	void *rsp = NULL;
+	int ret;
+
+	switch (msg->type) {
+	default:
+		return -EINVAL;
+	}
+
+	/* get rid of last response if any */
+	if (gpio->rsp) {
+		RTE_LOG(WARNING, PMD, "previous response got overwritten\n");
+		rte_free(gpio->rsp);
+	}
+	gpio->rsp = rsp;
+
+	return ret;
+}
+
+static int
+cnxk_gpio_enqueue_bufs(struct rte_rawdev *dev, struct rte_rawdev_buf **buffers,
+		       unsigned int count, rte_rawdev_obj_t context)
+{
+	struct cnxk_gpiochip *gpiochip = dev->dev_private;
+	unsigned int queue = (size_t)context;
+	struct cnxk_gpio *gpio;
+	int ret;
+
+	if (count == 0)
+		return 0;
+
+	gpio = cnxk_gpio_lookup(gpiochip, queue);
+	if (!gpio)
+		return -ENODEV;
+
+	ret = cnxk_gpio_process_buf(gpio, buffers[0]);
+	if (ret)
+		return ret;
+
+	return 1;
+}
+
 static const struct rte_rawdev_ops cnxk_gpio_rawdev_ops = {
 	.dev_close = cnxk_gpio_dev_close,
+	.enqueue_bufs = cnxk_gpio_enqueue_bufs,
 	.queue_def_conf = cnxk_gpio_queue_def_conf,
 	.queue_count = cnxk_gpio_queue_count,
 	.queue_setup = cnxk_gpio_queue_setup,

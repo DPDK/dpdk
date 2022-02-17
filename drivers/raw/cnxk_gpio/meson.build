@@ -6,3 +6,4 @@ deps += ['bus_vdev', 'common_cnxk', 'rawdev', 'kvargs']
 sources = files(
         'cnxk_gpio.c',
 )
+headers = files('rte_pmd_cnxk_gpio.h')
