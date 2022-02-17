@@ -320,9 +320,35 @@ cnxk_gpio_enqueue_bufs(struct rte_rawdev *dev, struct rte_rawdev_buf **buffers,
 	return 1;
 }
 
+static int
+cnxk_gpio_dequeue_bufs(struct rte_rawdev *dev, struct rte_rawdev_buf **buffers,
+		       unsigned int count, rte_rawdev_obj_t context)
+{
+	struct cnxk_gpiochip *gpiochip = dev->dev_private;
+	unsigned int queue = (size_t)context;
+	struct cnxk_gpio *gpio;
+
+	if (count == 0)
+		return 0;
+
+	gpio = cnxk_gpio_lookup(gpiochip, queue);
+	if (!gpio)
+		return -ENODEV;
+
+	if (gpio->rsp) {
+		buffers[0]->buf_addr = gpio->rsp;
+		gpio->rsp = NULL;
+
+		return 1;
+	}
+
+	return 0;
+}
+
 static const struct rte_rawdev_ops cnxk_gpio_rawdev_ops = {
 	.dev_close = cnxk_gpio_dev_close,
 	.enqueue_bufs = cnxk_gpio_enqueue_bufs,
+	.dequeue_bufs = cnxk_gpio_dequeue_bufs,
 	.queue_def_conf = cnxk_gpio_queue_def_conf,
 	.queue_count = cnxk_gpio_queue_count,
 	.queue_setup = cnxk_gpio_queue_setup,
