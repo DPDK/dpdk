@@ -460,28 +460,12 @@ hisi_dma_stats_reset(struct rte_dma_dev *dev, uint16_t vchan)
 }
 
 static void
-hisi_dma_get_dump_range(struct hisi_dma_dev *hw, uint32_t *start, uint32_t *end)
-{
-	if (hw->reg_layout == HISI_DMA_REG_LAYOUT_HIP08) {
-		*start = HISI_DMA_HIP08_DUMP_START_REG;
-		*end = HISI_DMA_HIP08_DUMP_END_REG;
-	} else {
-		*start = 0;
-		*end = 0;
-	}
-}
-
-static void
-hisi_dma_dump_common(struct hisi_dma_dev *hw, FILE *f)
+hisi_dma_dump_range(struct hisi_dma_dev *hw, FILE *f, uint32_t start,
+		    uint32_t end)
 {
 #define DUMP_REGNUM_PER_LINE	4
 
-	uint32_t start, end;
 	uint32_t cnt, i;
-
-	hisi_dma_get_dump_range(hw, &start, &end);
-
-	(void)fprintf(f, "    common-register:\n");
 
 	cnt = 0;
 	for (i = start; i <= end; i += sizeof(uint32_t)) {
@@ -494,6 +478,40 @@ hisi_dma_dump_common(struct hisi_dma_dev *hw, FILE *f)
 	}
 	if (cnt % DUMP_REGNUM_PER_LINE)
 		(void)fprintf(f, "\n");
+}
+
+static void
+hisi_dma_dump_common(struct hisi_dma_dev *hw, FILE *f)
+{
+	struct {
+		uint8_t reg_layout;
+		uint32_t start;
+		uint32_t end;
+	} reg_info[] = {
+		{ HISI_DMA_REG_LAYOUT_HIP08,
+		  HISI_DMA_HIP08_DUMP_START_REG,
+		  HISI_DMA_HIP08_DUMP_END_REG },
+		{ HISI_DMA_REG_LAYOUT_HIP09,
+		  HISI_DMA_HIP09_DUMP_REGION_A_START_REG,
+		  HISI_DMA_HIP09_DUMP_REGION_A_END_REG },
+		{ HISI_DMA_REG_LAYOUT_HIP09,
+		  HISI_DMA_HIP09_DUMP_REGION_B_START_REG,
+		  HISI_DMA_HIP09_DUMP_REGION_B_END_REG },
+		{ HISI_DMA_REG_LAYOUT_HIP09,
+		  HISI_DMA_HIP09_DUMP_REGION_C_START_REG,
+		  HISI_DMA_HIP09_DUMP_REGION_C_END_REG },
+		{ HISI_DMA_REG_LAYOUT_HIP09,
+		  HISI_DMA_HIP09_DUMP_REGION_D_START_REG,
+		  HISI_DMA_HIP09_DUMP_REGION_D_END_REG },
+	};
+	uint32_t i;
+
+	(void)fprintf(f, "    common-register:\n");
+	for (i = 0; i < RTE_DIM(reg_info); i++) {
+		if (hw->reg_layout != reg_info[i].reg_layout)
+			continue;
+		hisi_dma_dump_range(hw, f, reg_info[i].start, reg_info[i].end);
+	}
 }
 
 static void
