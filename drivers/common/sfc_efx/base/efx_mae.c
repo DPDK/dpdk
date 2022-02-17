@@ -2242,7 +2242,8 @@ efx_mae_outer_rule_insert(
 	memcpy(payload + offset, spec->emms_mask_value_pairs.outer,
 	    MAE_ENC_FIELD_PAIRS_LEN);
 
-	MCDI_IN_SET_BYTE(req, MAE_OUTER_RULE_INSERT_IN_RECIRC_ID,
+	MCDI_IN_SET_DWORD_FIELD(req, MAE_OUTER_RULE_INSERT_IN_LOOKUP_CONTROL,
+	    MAE_OUTER_RULE_INSERT_IN_RECIRC_ID,
 	    spec->emms_outer_rule_recirc_id);
 
 	efx_mcdi_execute(enp, &req);
