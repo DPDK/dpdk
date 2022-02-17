@@ -161,3 +161,24 @@ Payload contains an integer set to 0 or 1. The latter means inverted logic
 is turned on.
 
 Consider using ``rte_pmd_gpio_get_pin_active_low()`` wrapper.
+
+Request interrupt
+~~~~~~~~~~~~~~~~~
+
+Message is used to install custom interrupt handler.
+
+Message must have type set to ``CNXK_GPIO_MSG_TYPE_REGISTER_IRQ``.
+
+Payload needs to be set to ``struct cnxk_gpio_irq`` which describes interrupt
+being requested.
+
+Consider using ``rte_pmd_gpio_register_gpio()`` wrapper.
+
+Free interrupt
+~~~~~~~~~~~~~~
+
+Message is used to remove installed interrupt handler.
+
+Message must have type set to ``CNXK_GPIO_MSG_TYPE_UNREGISTER_IRQ``.
+
+Consider using ``rte_pmd_gpio_unregister_gpio()`` wrapper.

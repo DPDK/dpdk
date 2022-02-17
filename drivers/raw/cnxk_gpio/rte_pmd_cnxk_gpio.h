@@ -40,6 +40,10 @@ enum cnxk_gpio_msg_type {
 	CNXK_GPIO_MSG_TYPE_GET_PIN_DIR,
 	/** Type used to read inverted logic state */
 	CNXK_GPIO_MSG_TYPE_GET_PIN_ACTIVE_LOW,
+	/** Type used to register interrupt handler */
+	CNXK_GPIO_MSG_TYPE_REGISTER_IRQ,
+	/** Type used to remove interrupt handler */
+	CNXK_GPIO_MSG_TYPE_UNREGISTER_IRQ,
 };
 
 /** Available edges */
@@ -64,6 +68,25 @@ enum cnxk_gpio_pin_dir {
 	CNXK_GPIO_PIN_DIR_HIGH,
 	/* Set direction to output and value to 0 */
 	CNXK_GPIO_PIN_DIR_LOW,
+};
+
+/**
+ * GPIO interrupt handler
+ *
+ * @param gpio
+ *   Zero-based GPIO number
+ * @param data
+ *   Cookie passed to interrupt handler
+ */
+typedef void (*cnxk_gpio_irq_handler_t)(int gpio, void *data);
+
+struct cnxk_gpio_irq {
+	/** Interrupt handler */
+	cnxk_gpio_irq_handler_t handler;
+	/** User data passed to irq handler */
+	void *data;
+	/** CPU which will run irq handler */
+	int cpu;
 };
 
 struct cnxk_gpio_msg {
@@ -304,6 +327,99 @@ rte_pmd_gpio_get_pin_active_low(uint16_t dev_id, int gpio, int *val)
 	};
 
 	return __rte_pmd_gpio_enq_deq(dev_id, gpio, &msg, val, sizeof(*val));
+}
+
+/**
+ * Attach interrupt handler to GPIO
+ *
+ * @param dev_id
+ *   The identifier of the device
+ * @param gpio
+ *   Zero-based GPIO number
+ * @param cpu
+ *   CPU which will be handling interrupt
+ * @param handler
+ *   Interrupt handler to be executed
+ * @param data
+ *   Data to be passed to interrupt handler
+ *
+ * @return
+ *   Returns 0 on success, negative error code otherwise
+ */
+static __rte_always_inline int
+rte_pmd_gpio_register_irq(uint16_t dev_id, int gpio, int cpu,
+			  cnxk_gpio_irq_handler_t handler, void *data)
+{
+	struct cnxk_gpio_irq irq = {
+		.handler = handler,
+		.data = data,
+		.cpu = cpu,
+	};
+	struct cnxk_gpio_msg msg = {
+		.type = CNXK_GPIO_MSG_TYPE_REGISTER_IRQ,
+		.data = &irq,
+	};
+
+	return __rte_pmd_gpio_enq_deq(dev_id, gpio, &msg, NULL, 0);
+}
+
+/**
+ * Detach interrupt handler from GPIO
+ *
+ * @param dev_id
+ *   The identifier of the device
+ * @param gpio
+ *   Zero-based GPIO number
+ *
+ * @return
+ *   Returns 0 on success, negative error code otherwise
+ */
+static __rte_always_inline int
+rte_pmd_gpio_unregister_irq(uint16_t dev_id, int gpio)
+{
+	struct cnxk_gpio_msg msg = {
+		.type = CNXK_GPIO_MSG_TYPE_UNREGISTER_IRQ,
+		.data = &gpio,
+	};
+
+	return __rte_pmd_gpio_enq_deq(dev_id, gpio, &msg, NULL, 0);
+}
+
+/**
+ * Enable interrupt
+ *
+ * @param dev_id
+ *   The identifier of the device
+ * @param gpio
+ *   Zero-based GPIO number
+ * @param edge
+ *   Edge that should trigger interrupt
+ *
+ * @return
+ *   Returns 0 on success, negative error code otherwise
+ */
+static __rte_always_inline int
+rte_pmd_gpio_enable_interrupt(uint16_t dev_id, int gpio,
+			      enum cnxk_gpio_pin_edge edge)
+{
+	return rte_pmd_gpio_set_pin_edge(dev_id, gpio, edge);
+}
+
+/**
+ * Disable interrupt
+ *
+ * @param dev_id
+ *   The identifier of the device
+ * @param gpio
+ *   Zero-based GPIO number
+ *
+ * @return
+ *   Returns 0 on success, negative error code otherwise
+ */
+static __rte_always_inline int
+rte_pmd_gpio_disable_interrupt(uint16_t dev_id, int gpio)
+{
+	return rte_pmd_gpio_set_pin_edge(dev_id, gpio, CNXK_GPIO_PIN_EDGE_NONE);
 }
 
 #ifdef __cplusplus

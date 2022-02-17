@@ -340,11 +340,25 @@ cnxk_gpio_name_to_dir(const char *name)
 }
 
 static int
-cnxk_gpio_dev_close(struct rte_rawdev *dev)
+cnxk_gpio_register_irq(struct cnxk_gpio *gpio, struct cnxk_gpio_irq *irq)
 {
-	RTE_SET_USED(dev);
+	int ret;
+
+	ret = cnxk_gpio_irq_request(gpio->num - gpio->gpiochip->base, irq->cpu);
+	if (ret)
+		return ret;
+
+	gpio->handler = irq->handler;
+	gpio->data = irq->data;
+	gpio->cpu = irq->cpu;
 
 	return 0;
+}
+
+static int
+cnxk_gpio_unregister_irq(struct cnxk_gpio *gpio)
+{
+	return cnxk_gpio_irq_free(gpio->num - gpio->gpiochip->base);
 }
 
 static int
@@ -428,6 +442,13 @@ cnxk_gpio_process_buf(struct cnxk_gpio *gpio, struct rte_rawdev_buf *rbuf)
 
 		*(int *)rsp = val;
 		break;
+	case CNXK_GPIO_MSG_TYPE_REGISTER_IRQ:
+		ret = cnxk_gpio_register_irq(gpio,
+					     (struct cnxk_gpio_irq *)msg->data);
+		break;
+	case CNXK_GPIO_MSG_TYPE_UNREGISTER_IRQ:
+		ret = cnxk_gpio_unregister_irq(gpio);
+		break;
 	default:
 		return -EINVAL;
 	}
@@ -490,6 +511,14 @@ cnxk_gpio_dequeue_bufs(struct rte_rawdev *dev, struct rte_rawdev_buf **buffers,
 	return 0;
 }
 
+static int
+cnxk_gpio_dev_close(struct rte_rawdev *dev)
+{
+	RTE_SET_USED(dev);
+
+	return 0;
+}
+
 static const struct rte_rawdev_ops cnxk_gpio_rawdev_ops = {
 	.dev_close = cnxk_gpio_dev_close,
 	.enqueue_bufs = cnxk_gpio_enqueue_bufs,
@@ -529,6 +558,10 @@ cnxk_gpio_probe(struct rte_vdev_device *dev)
 
 	/* defaults may be overwritten by this call */
 	ret = cnxk_gpio_parse_args(gpiochip, dev->device.devargs);
+	if (ret)
+		goto out;
+
+	ret = cnxk_gpio_irq_init(gpiochip);
 	if (ret)
 		goto out;
 
@@ -590,10 +623,14 @@ cnxk_gpio_remove(struct rte_vdev_device *dev)
 		if (!gpio)
 			continue;
 
+		if (gpio->handler)
+			cnxk_gpio_unregister_irq(gpio);
+
 		cnxk_gpio_queue_release(rawdev, gpio->num);
 	}
 
 	rte_free(gpiochip->gpios);
+	cnxk_gpio_irq_fini();
 	rte_rawdev_pmd_release(rawdev);
 
 	return 0;
