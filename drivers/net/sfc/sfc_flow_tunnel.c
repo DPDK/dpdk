@@ -21,7 +21,7 @@ sfc_flow_tunnel_is_supported(struct sfc_adapter *sa)
 	SFC_ASSERT(sfc_adapter_is_locked(sa));
 
 	return ((sa->priv.dp_rx->features & SFC_DP_RX_FEAT_FLOW_MARK) != 0 &&
-		sa->mae.status == SFC_MAE_STATUS_SUPPORTED);
+		sa->mae.status == SFC_MAE_STATUS_ADMIN);
 }
 
 bool
