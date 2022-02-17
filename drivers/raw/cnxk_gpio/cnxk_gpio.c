@@ -164,9 +164,18 @@ cnxk_gpio_queue_def_conf(struct rte_rawdev *dev, uint16_t queue_id,
 	return 0;
 }
 
+static uint16_t
+cnxk_gpio_queue_count(struct rte_rawdev *dev)
+{
+	struct cnxk_gpiochip *gpiochip = dev->dev_private;
+
+	return gpiochip->num_gpios;
+}
+
 static const struct rte_rawdev_ops cnxk_gpio_rawdev_ops = {
 	.dev_close = cnxk_gpio_dev_close,
 	.queue_def_conf = cnxk_gpio_queue_def_conf,
+	.queue_count = cnxk_gpio_queue_count,
 };
 
 static int
