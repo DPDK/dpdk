@@ -39,6 +39,8 @@ hisi_dma_queue_base(struct hisi_dma_dev *hw)
 {
 	if (hw->reg_layout == HISI_DMA_REG_LAYOUT_HIP08)
 		return HISI_DMA_HIP08_QUEUE_BASE;
+	else if (hw->reg_layout == HISI_DMA_REG_LAYOUT_HIP09)
+		return HISI_DMA_HIP09_QUEUE_BASE;
 	else
 		return 0;
 }
@@ -174,7 +176,7 @@ hisi_dma_reset_hw(struct hisi_dma_dev *hw)
 }
 
 static void
-hisi_dma_init_hw(struct hisi_dma_dev *hw)
+hisi_dma_init_common(struct hisi_dma_dev *hw)
 {
 	hisi_dma_write_queue(hw, HISI_DMA_QUEUE_SQ_BASE_L_REG,
 			     lower_32_bits(hw->sqe_iova));
@@ -192,6 +194,12 @@ hisi_dma_init_hw(struct hisi_dma_dev *hw)
 	hisi_dma_write_queue(hw, HISI_DMA_QUEUE_ERR_INT_NUM0_REG, 0);
 	hisi_dma_write_queue(hw, HISI_DMA_QUEUE_ERR_INT_NUM1_REG, 0);
 	hisi_dma_write_queue(hw, HISI_DMA_QUEUE_ERR_INT_NUM2_REG, 0);
+}
+
+static void
+hisi_dma_init_hw(struct hisi_dma_dev *hw)
+{
+	hisi_dma_init_common(hw);
 
 	if (hw->reg_layout == HISI_DMA_REG_LAYOUT_HIP08) {
 		hisi_dma_write_queue(hw, HISI_DMA_HIP08_QUEUE_ERR_INT_NUM3_REG,
@@ -206,9 +214,27 @@ hisi_dma_init_hw(struct hisi_dma_dev *hw)
 				HISI_DMA_HIP08_QUEUE_CTRL0_ERR_ABORT_B, false);
 		hisi_dma_update_queue_mbit(hw, HISI_DMA_QUEUE_INT_STATUS_REG,
 				HISI_DMA_HIP08_QUEUE_INT_MASK_M, true);
-		hisi_dma_update_queue_mbit(hw,
-				HISI_DMA_HIP08_QUEUE_INT_MASK_REG,
+		hisi_dma_update_queue_mbit(hw, HISI_DMA_QUEUE_INT_MASK_REG,
 				HISI_DMA_HIP08_QUEUE_INT_MASK_M, true);
+	} else if (hw->reg_layout == HISI_DMA_REG_LAYOUT_HIP09) {
+		hisi_dma_update_queue_mbit(hw, HISI_DMA_QUEUE_CTRL0_REG,
+				HISI_DMA_HIP09_QUEUE_CTRL0_ERR_ABORT_M, false);
+		hisi_dma_update_queue_mbit(hw, HISI_DMA_QUEUE_INT_STATUS_REG,
+				HISI_DMA_HIP09_QUEUE_INT_MASK_M, true);
+		hisi_dma_update_queue_mbit(hw, HISI_DMA_QUEUE_INT_MASK_REG,
+				HISI_DMA_HIP09_QUEUE_INT_MASK_M, true);
+		hisi_dma_update_queue_mbit(hw,
+				HISI_DMA_HIP09_QUEUE_ERR_INT_STATUS_REG,
+				HISI_DMA_HIP09_QUEUE_ERR_INT_MASK_M, true);
+		hisi_dma_update_queue_mbit(hw,
+				HISI_DMA_HIP09_QUEUE_ERR_INT_MASK_REG,
+				HISI_DMA_HIP09_QUEUE_ERR_INT_MASK_M, true);
+		hisi_dma_update_queue_bit(hw, HISI_DMA_QUEUE_CTRL1_REG,
+				HISI_DMA_HIP09_QUEUE_CTRL1_VA_ENABLE_B, true);
+		hisi_dma_update_bit(hw,
+				HISI_DMA_HIP09_QUEUE_CFG_REG(hw->queue_id),
+				HISI_DMA_HIP09_QUEUE_CFG_LINK_DOWN_MASK_B,
+				true);
 	}
 }
 
@@ -230,6 +256,8 @@ hisi_dma_reg_layout(uint8_t revision)
 {
 	if (revision == HISI_DMA_REVISION_HIP08B)
 		return HISI_DMA_REG_LAYOUT_HIP08;
+	else if (revision >= HISI_DMA_REVISION_HIP09A)
+		return HISI_DMA_REG_LAYOUT_HIP09;
 	else
 		return HISI_DMA_REG_LAYOUT_INVALID;
 }

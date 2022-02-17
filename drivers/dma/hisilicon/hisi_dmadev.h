@@ -23,20 +23,22 @@
 #define HISI_DMA_DEVICE_ID			0xA122
 #define HISI_DMA_PCI_REVISION_ID_REG		0x08
 #define HISI_DMA_REVISION_HIP08B		0x21
+#define HISI_DMA_REVISION_HIP09A		0x30
 
 #define HISI_DMA_MAX_HW_QUEUES			4
 #define HISI_DMA_MAX_DESC_NUM			8192
 #define HISI_DMA_MIN_DESC_NUM			32
 
 /**
- * The HIP08B(HiSilicon IP08) and later Chip(e.g. HiSilicon IP09) are DMA iEPs,
- * they have the same pci device id but with different pci revision.
- * Unfortunately, they have different register layouts, so the layout
+ * The HIP08B(HiSilicon IP08) and HIP09B(HiSilicon IP09) are DMA iEPs, they
+ * have the same pci device id but different pci revision.
+ * Unfortunately, they have different register layouts, so two layout
  * enumerations are defined.
  */
 enum {
 	HISI_DMA_REG_LAYOUT_INVALID = 0,
-	HISI_DMA_REG_LAYOUT_HIP08
+	HISI_DMA_REG_LAYOUT_HIP08,
+	HISI_DMA_REG_LAYOUT_HIP09
 };
 
 /**
@@ -66,7 +68,7 @@ enum {
  * calculated by:
  *     offset = queue-base + (queue-id * queue-region) + reg-offset-in-region.
  *
- * The first part of queue region is basically the same for HIP08 and later chip
+ * The first part of queue region is basically the same for HIP08 and HIP09
  * register layouts, therefore, HISI_QUEUE_* registers are defined for it.
  */
 #define HISI_DMA_QUEUE_SQ_BASE_L_REG		0x0
@@ -85,6 +87,7 @@ enum {
 #define HISI_DMA_QUEUE_FSM_REG			0x30
 #define HISI_DMA_QUEUE_FSM_STS_M		GENMASK(3, 0)
 #define HISI_DMA_QUEUE_INT_STATUS_REG		0x40
+#define HISI_DMA_QUEUE_INT_MASK_REG		0x44
 #define HISI_DMA_QUEUE_ERR_INT_NUM0_REG		0x84
 #define HISI_DMA_QUEUE_ERR_INT_NUM1_REG		0x88
 #define HISI_DMA_QUEUE_ERR_INT_NUM2_REG		0x8C
@@ -95,7 +98,6 @@ enum {
  */
 #define HISI_DMA_HIP08_QUEUE_BASE			0x0
 #define HISI_DMA_HIP08_QUEUE_CTRL0_ERR_ABORT_B		2
-#define HISI_DMA_HIP08_QUEUE_INT_MASK_REG		0x44
 #define HISI_DMA_HIP08_QUEUE_INT_MASK_M			GENMASK(14, 0)
 #define HISI_DMA_HIP08_QUEUE_ERR_INT_NUM3_REG		0x90
 #define HISI_DMA_HIP08_QUEUE_ERR_INT_NUM4_REG		0x94
@@ -105,6 +107,20 @@ enum {
 #define HISI_DMA_HIP08_MODE_SEL_B			0
 #define HISI_DMA_HIP08_DUMP_START_REG			0x2000
 #define HISI_DMA_HIP08_DUMP_END_REG			0x2280
+
+/**
+ * HiSilicon IP09 DMA register and field define:
+ */
+#define HISI_DMA_HIP09_QUEUE_BASE			0x2000
+#define HISI_DMA_HIP09_QUEUE_CTRL0_ERR_ABORT_M		GENMASK(31, 28)
+#define HISI_DMA_HIP09_QUEUE_CTRL1_VA_ENABLE_B		2
+#define HISI_DMA_HIP09_QUEUE_INT_MASK_M			0x1
+#define HISI_DMA_HIP09_QUEUE_ERR_INT_STATUS_REG		0x48
+#define HISI_DMA_HIP09_QUEUE_ERR_INT_MASK_REG		0x4C
+#define HISI_DMA_HIP09_QUEUE_ERR_INT_MASK_M		GENMASK(18, 1)
+#define HISI_DMA_HIP09_QUEUE_CFG_REG(queue_id)		(0x800 + \
+							 (queue_id) * 0x20)
+#define HISI_DMA_HIP09_QUEUE_CFG_LINK_DOWN_MASK_B	16
 
 /**
  * In fact, there are multiple states, but it need to pay attention to

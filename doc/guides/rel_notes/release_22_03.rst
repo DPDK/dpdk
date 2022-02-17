@@ -144,6 +144,10 @@ New Features
 
   The new API ``rte_event_eth_rx_adapter_event_port_get()`` was added.
 
+* **Added support for Kunpeng930 DMA devices to HiSilicon DMA PMD.**
+
+  * Kunpeng930 DMA devices are now enabled for HiSilicon DMA PMD.
+
 * **Added CNXK GPIO PMD.**
 
   Added a new rawdevice PMD which allows to manage userspace GPIOs and install

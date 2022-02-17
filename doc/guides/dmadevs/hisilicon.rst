@@ -13,6 +13,7 @@ Supported Kunpeng SoCs
 ----------------------
 
 * Kunpeng 920
+* Kunpeng 930
 
 
 Device Setup
