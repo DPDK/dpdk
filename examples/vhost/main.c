@@ -608,7 +608,6 @@ us_vhost_usage(const char *prgname)
 	"		--tx-csum [0|1] disable/enable TX checksum offload.\n"
 	"		--tso [0|1] disable/enable TCP segment offload.\n"
 	"		--client register a vhost-user socket as client mode.\n"
-	"		--dma-type register dma type for your vhost async driver. For example \"ioat\" for now.\n"
 	"		--dmas register dma channel for specific vhost device.\n",
 	       prgname);
 }
