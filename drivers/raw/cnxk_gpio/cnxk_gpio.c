@@ -139,9 +139,80 @@ cnxk_gpio_read_attr_int(char *attr, int *val)
 }
 
 static int
-cnxk_gpio_dev_close(struct rte_rawdev *dev)
+cnxk_gpio_write_attr(const char *attr, const char *val)
 {
-	RTE_SET_USED(dev);
+	FILE *fp;
+	int ret;
+
+	if (!val)
+		return -EINVAL;
+
+	fp = fopen(attr, "w");
+	if (!fp)
+		return -errno;
+
+	ret = fprintf(fp, "%s", val);
+	if (ret < 0) {
+		fclose(fp);
+		return ret;
+	}
+
+	ret = fclose(fp);
+	if (ret)
+		return -errno;
+
+	return 0;
+}
+
+static int
+cnxk_gpio_write_attr_int(const char *attr, int val)
+{
+	char buf[CNXK_GPIO_BUFSZ];
+
+	snprintf(buf, sizeof(buf), "%d", val);
+
+	return cnxk_gpio_write_attr(attr, buf);
+}
+
+static struct cnxk_gpio *
+cnxk_gpio_lookup(struct cnxk_gpiochip *gpiochip, uint16_t queue)
+{
+	if (queue >= gpiochip->num_gpios)
+		return NULL;
+
+	return gpiochip->gpios[queue];
+}
+
+static int
+cnxk_gpio_queue_setup(struct rte_rawdev *dev, uint16_t queue_id,
+		      rte_rawdev_obj_t queue_conf, size_t queue_conf_size)
+{
+	struct cnxk_gpiochip *gpiochip = dev->dev_private;
+	char buf[CNXK_GPIO_BUFSZ];
+	struct cnxk_gpio *gpio;
+	int ret;
+
+	RTE_SET_USED(queue_conf);
+	RTE_SET_USED(queue_conf_size);
+
+	gpio = cnxk_gpio_lookup(gpiochip, queue_id);
+	if (gpio)
+		return -EEXIST;
+
+	gpio = rte_zmalloc(NULL, sizeof(*gpio), 0);
+	if (!gpio)
+		return -ENOMEM;
+	gpio->num = queue_id + gpiochip->base;
+	gpio->gpiochip = gpiochip;
+
+	snprintf(buf, sizeof(buf), "%s/export", CNXK_GPIO_CLASS_PATH);
+	ret = cnxk_gpio_write_attr_int(buf, gpio->num);
+	if (ret) {
+		rte_free(gpio);
+		return ret;
+	}
+
+	gpiochip->gpios[queue_id] = gpio;
 
 	return 0;
 }
@@ -172,10 +243,19 @@ cnxk_gpio_queue_count(struct rte_rawdev *dev)
 	return gpiochip->num_gpios;
 }
 
+static int
+cnxk_gpio_dev_close(struct rte_rawdev *dev)
+{
+	RTE_SET_USED(dev);
+
+	return 0;
+}
+
 static const struct rte_rawdev_ops cnxk_gpio_rawdev_ops = {
 	.dev_close = cnxk_gpio_dev_close,
 	.queue_def_conf = cnxk_gpio_queue_def_conf,
 	.queue_count = cnxk_gpio_queue_count,
+	.queue_setup = cnxk_gpio_queue_setup,
 };
 
 static int
