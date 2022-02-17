@@ -146,8 +146,27 @@ cnxk_gpio_dev_close(struct rte_rawdev *dev)
 	return 0;
 }
 
+static int
+cnxk_gpio_queue_def_conf(struct rte_rawdev *dev, uint16_t queue_id,
+			 rte_rawdev_obj_t queue_conf, size_t queue_conf_size)
+{
+	unsigned int *conf;
+
+	RTE_SET_USED(dev);
+	RTE_SET_USED(queue_id);
+
+	if (queue_conf_size != sizeof(*conf))
+		return -EINVAL;
+
+	conf = (unsigned int *)queue_conf;
+	*conf = 1;
+
+	return 0;
+}
+
 static const struct rte_rawdev_ops cnxk_gpio_rawdev_ops = {
 	.dev_close = cnxk_gpio_dev_close,
+	.queue_def_conf = cnxk_gpio_queue_def_conf,
 };
 
 static int
