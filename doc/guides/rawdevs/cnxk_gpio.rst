@@ -182,3 +182,14 @@ Message is used to remove installed interrupt handler.
 Message must have type set to ``CNXK_GPIO_MSG_TYPE_UNREGISTER_IRQ``.
 
 Consider using ``rte_pmd_gpio_unregister_gpio()`` wrapper.
+
+Self test
+---------
+
+On EAL initialization CNXK GPIO device will be probed and populated into
+the list of raw devices on condition ``--vdev=cnxk_gpio,gpiochip=<number>`` was
+passed. ``rte_rawdev_get_dev_id("CNXK_GPIO")`` returns unique device id. Use
+this identifier for further rawdev function calls.
+
+Selftest rawdev API can be used to verify the PMD functionality. Note it blindly
+assumes that all GPIOs are controllable so some errors during test are expected.

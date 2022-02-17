@@ -23,6 +23,8 @@ struct cnxk_gpiochip {
 	struct cnxk_gpio **gpios;
 };
 
+int cnxk_gpio_selftest(uint16_t dev_id);
+
 int cnxk_gpio_irq_init(struct cnxk_gpiochip *gpiochip);
 void cnxk_gpio_irq_fini(void);
 int cnxk_gpio_irq_request(int gpio, int cpu);

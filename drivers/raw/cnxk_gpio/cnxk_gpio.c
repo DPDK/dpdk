@@ -527,6 +527,7 @@ static const struct rte_rawdev_ops cnxk_gpio_rawdev_ops = {
 	.queue_count = cnxk_gpio_queue_count,
 	.queue_setup = cnxk_gpio_queue_setup,
 	.queue_release = cnxk_gpio_queue_release,
+	.dev_selftest = cnxk_gpio_selftest,
 };
 
 static int
