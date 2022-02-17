@@ -422,27 +422,6 @@ Differences in how different Intel NICs handle maximum packet length for jumbo f
    Poll Mode Driver (PMD).
 
 
-Binding PCI devices to igb_uio fails on Linux kernel 3.9 when more than one device is used
-------------------------------------------------------------------------------------------
-
-**Description**:
-   A known bug in the UIO driver included in Linux kernel version 3.9 prevents more than one PCI device to be
-   bound to the igb_uio driver.
-
-**Implication**:
-   The Poll Mode Driver (PMD) will crash on initialization.
-
-**Resolution/Workaround**:
-   Use earlier or later kernel versions, or apply the following
-   `patch  <https://github.com/torvalds/linux/commit/5ed0505c713805f89473cdc0bbfb5110dfd840cb>`_.
-
-**Affected Environment/Platform**:
-   Linux systems with kernel version 3.9
-
-**Driver/Module**:
-   igb_uio module
-
-
 GCC might generate Intel® AVX instructions for processors without Intel® AVX support
 ------------------------------------------------------------------------------------
 
