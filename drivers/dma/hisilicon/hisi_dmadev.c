@@ -328,11 +328,14 @@ hisi_dma_info_get(const struct rte_dma_dev *dev,
 		  struct rte_dma_info *dev_info,
 		  uint32_t info_sz)
 {
-	RTE_SET_USED(dev);
+	struct hisi_dma_dev *hw = dev->data->dev_private;
 	RTE_SET_USED(info_sz);
 
 	dev_info->dev_capa = RTE_DMA_CAPA_MEM_TO_MEM |
 			     RTE_DMA_CAPA_OPS_COPY;
+	if (hw->reg_layout == HISI_DMA_REG_LAYOUT_HIP09)
+		dev_info->dev_capa |= RTE_DMA_CAPA_HANDLES_ERRORS;
+
 	dev_info->max_vchans = 1;
 	dev_info->max_desc = HISI_DMA_MAX_DESC_NUM;
 	dev_info->min_desc = HISI_DMA_MIN_DESC_NUM;
