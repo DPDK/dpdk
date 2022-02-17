@@ -29,8 +29,8 @@ which can be accessed using API from the ``rte_dmadev`` library.
 
 The name of the ``dmadev`` created is like "B:D.F-chX", e.g. DMA 0000:7b:00.0
 will create four ``dmadev``,
-the 1st ``dmadev`` name is "7b:00.0-ch0",
-and the 2nd ``dmadev`` name is "7b:00.0-ch1".
+the 1st ``dmadev`` name is "0000:7b:00.0-ch0",
+and the 2nd ``dmadev`` name is "0000:7b:00.0-ch1".
 
 Device Configuration
 ~~~~~~~~~~~~~~~~~~~~~
