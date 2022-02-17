@@ -218,6 +218,29 @@ cnxk_gpio_queue_setup(struct rte_rawdev *dev, uint16_t queue_id,
 }
 
 static int
+cnxk_gpio_queue_release(struct rte_rawdev *dev, uint16_t queue_id)
+{
+	struct cnxk_gpiochip *gpiochip = dev->dev_private;
+	char buf[CNXK_GPIO_BUFSZ];
+	struct cnxk_gpio *gpio;
+	int ret;
+
+	gpio = cnxk_gpio_lookup(gpiochip, queue_id);
+	if (!gpio)
+		return -ENODEV;
+
+	snprintf(buf, sizeof(buf), "%s/unexport", CNXK_GPIO_CLASS_PATH);
+	ret = cnxk_gpio_write_attr_int(buf, gpiochip->base + queue_id);
+	if (ret)
+		return ret;
+
+	gpiochip->gpios[queue_id] = NULL;
+	rte_free(gpio);
+
+	return 0;
+}
+
+static int
 cnxk_gpio_queue_def_conf(struct rte_rawdev *dev, uint16_t queue_id,
 			 rte_rawdev_obj_t queue_conf, size_t queue_conf_size)
 {
@@ -256,6 +279,7 @@ static const struct rte_rawdev_ops cnxk_gpio_rawdev_ops = {
 	.queue_def_conf = cnxk_gpio_queue_def_conf,
 	.queue_count = cnxk_gpio_queue_count,
 	.queue_setup = cnxk_gpio_queue_setup,
+	.queue_release = cnxk_gpio_queue_release,
 };
 
 static int
@@ -329,6 +353,8 @@ cnxk_gpio_remove(struct rte_vdev_device *dev)
 	char name[RTE_RAWDEV_NAME_MAX_LEN];
 	struct cnxk_gpiochip *gpiochip;
 	struct rte_rawdev *rawdev;
+	struct cnxk_gpio *gpio;
+	int i;
 
 	RTE_SET_USED(dev);
 
@@ -341,6 +367,14 @@ cnxk_gpio_remove(struct rte_vdev_device *dev)
 		return -ENODEV;
 
 	gpiochip = rawdev->dev_private;
+	for (i = 0; i < gpiochip->num_gpios; i++) {
+		gpio = gpiochip->gpios[i];
+		if (!gpio)
+			continue;
+
+		cnxk_gpio_queue_release(rawdev, gpio->num);
+	}
+
 	rte_free(gpiochip->gpios);
 	rte_rawdev_pmd_release(rawdev);
 
