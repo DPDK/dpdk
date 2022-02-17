@@ -407,6 +407,7 @@ hisi_dma_start(struct rte_dma_dev *dev)
 	hw->submitted = 0;
 	hw->completed = 0;
 	hw->errors = 0;
+	hw->qfulls = 0;
 
 	hisi_dma_update_queue_bit(hw, HISI_DMA_QUEUE_CTRL0_REG,
 				  HISI_DMA_QUEUE_CTRL0_EN_B, true);
@@ -455,6 +456,7 @@ hisi_dma_stats_reset(struct rte_dma_dev *dev, uint16_t vchan)
 	hw->submitted = 0;
 	hw->completed = 0;
 	hw->errors = 0;
+	hw->qfulls = 0;
 
 	return 0;
 }
@@ -566,14 +568,14 @@ hisi_dma_dump(const struct rte_dma_dev *dev, FILE *f)
 		"    ridx: %u cridx: %u\n"
 		"    sq_head: %u sq_tail: %u cq_sq_head: %u\n"
 		"    cq_head: %u cqs_completed: %u cqe_vld: %u\n"
-		"    submitted: %" PRIu64 " completed: %" PRIu64 " errors %"
-		PRIu64"\n",
+		"    submitted: %" PRIu64 " completed: %" PRIu64 " errors: %"
+		PRIu64 " qfulls: %" PRIu64 "\n",
 		hw->revision, hw->queue_id,
 		hw->sq_depth_mask > 0 ? hw->sq_depth_mask + 1 : 0,
 		hw->ridx, hw->cridx,
 		hw->sq_head, hw->sq_tail, hw->cq_sq_head,
 		hw->cq_head, hw->cqs_completed, hw->cqe_vld,
-		hw->submitted, hw->completed, hw->errors);
+		hw->submitted, hw->completed, hw->errors, hw->qfulls);
 	hisi_dma_dump_queue(hw, f);
 	hisi_dma_dump_common(hw, f);
 
@@ -590,8 +592,10 @@ hisi_dma_copy(void *dev_private, uint16_t vchan,
 
 	RTE_SET_USED(vchan);
 
-	if (((hw->sq_tail + 1) & hw->sq_depth_mask) == hw->sq_head)
+	if (((hw->sq_tail + 1) & hw->sq_depth_mask) == hw->sq_head) {
+		hw->qfulls++;
 		return -ENOSPC;
+	}
 
 	sqe->dw0 = rte_cpu_to_le_32(SQE_OPCODE_M2M);
 	sqe->dw1 = 0;

@@ -241,6 +241,7 @@ struct hisi_dma_dev {
 	uint64_t submitted;
 	uint64_t completed;
 	uint64_t errors;
+	uint64_t qfulls;
 
 	/**
 	 * The following fields are not accessed in the I/O path, so they are
