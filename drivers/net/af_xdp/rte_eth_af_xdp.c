@@ -1071,7 +1071,7 @@ xsk_umem_info *xdp_umem_configure(struct pmd_internals *internals,
 		umem = rte_zmalloc_socket("umem", sizeof(*umem), 0,
 					  rte_socket_id());
 		if (umem == NULL) {
-			AF_XDP_LOG(ERR, "Failed to allocate umem info");
+			AF_XDP_LOG(ERR, "Failed to allocate umem info\n");
 			return NULL;
 		}
 
@@ -1084,7 +1084,7 @@ xsk_umem_info *xdp_umem_configure(struct pmd_internals *internals,
 		ret = xsk_umem__create(&umem->umem, base_addr, umem_size,
 				&rxq->fq, &rxq->cq, &usr_config);
 		if (ret) {
-			AF_XDP_LOG(ERR, "Failed to create umem");
+			AF_XDP_LOG(ERR, "Failed to create umem\n");
 			goto err;
 		}
 		umem->buffer = base_addr;
@@ -1124,7 +1124,7 @@ xsk_umem_info *xdp_umem_configure(struct pmd_internals *internals,
 
 	umem = rte_zmalloc_socket("umem", sizeof(*umem), 0, rte_socket_id());
 	if (umem == NULL) {
-		AF_XDP_LOG(ERR, "Failed to allocate umem info");
+		AF_XDP_LOG(ERR, "Failed to allocate umem info\n");
 		return NULL;
 	}
 
@@ -1160,7 +1160,7 @@ xsk_umem_info *xdp_umem_configure(struct pmd_internals *internals,
 			       &usr_config);
 
 	if (ret) {
-		AF_XDP_LOG(ERR, "Failed to create umem");
+		AF_XDP_LOG(ERR, "Failed to create umem\n");
 		goto err;
 	}
 	umem->mz = mz;
@@ -1847,7 +1847,7 @@ afxdp_mp_request_fds(const char *name, struct rte_eth_dev *dev)
 	AF_XDP_LOG(DEBUG, "Sending multi-process IPC request for %s\n", name);
 	ret = rte_mp_request_sync(&request, &replies, &timeout);
 	if (ret < 0 || replies.nb_received != 1) {
-		AF_XDP_LOG(ERR, "Failed to request fds from primary: %d",
+		AF_XDP_LOG(ERR, "Failed to request fds from primary: %d\n",
 			   rte_errno);
 		return -1;
 	}
@@ -1996,7 +1996,7 @@ rte_pmd_af_xdp_probe(struct rte_vdev_device *dev)
 	if (!afxdp_dev_count) {
 		ret = rte_mp_action_register(ETH_AF_XDP_MP_KEY, afxdp_mp_send_fds);
 		if (ret < 0 && rte_errno != ENOTSUP) {
-			AF_XDP_LOG(ERR, "%s: Failed to register multi-process IPC callback: %s",
+			AF_XDP_LOG(ERR, "%s: Failed to register multi-process IPC callback: %s\n",
 				   name, strerror(rte_errno));
 			return -1;
 		}
