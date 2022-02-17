@@ -2442,6 +2442,13 @@ start_port(portid_t pid)
 		if (pid != pi && pid != (portid_t)RTE_PORT_ALL)
 			continue;
 
+		if (port_is_bonding_slave(pi)) {
+			fprintf(stderr,
+				"Please remove port %d from bonded device.\n",
+				pi);
+			continue;
+		}
+
 		need_check_link_status = 0;
 		port = &ports[pi];
 		if (rte_atomic16_cmpset(&(port->port_status), RTE_PORT_STOPPED,
