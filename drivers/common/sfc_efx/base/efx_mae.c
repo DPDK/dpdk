@@ -1027,6 +1027,10 @@ efx_mae_match_spec_field_set(
 			memcpy(mvp + descp->emmd_value_offset,
 			    &dword, sizeof (dword));
 			break;
+		case 1:
+			memcpy(mvp + descp->emmd_value_offset,
+			    value, 1);
+			break;
 		default:
 			EFSYS_ASSERT(B_FALSE);
 		}
@@ -1038,6 +1042,10 @@ efx_mae_match_spec_field_set(
 
 			memcpy(mvp + descp->emmd_mask_offset,
 			    &dword, sizeof (dword));
+			break;
+		case 1:
+			memcpy(mvp + descp->emmd_mask_offset,
+			    mask, 1);
 			break;
 		default:
 			EFSYS_ASSERT(B_FALSE);
