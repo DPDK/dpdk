@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright(C) 2021 Marvell.
+#
+
+deps += ['bus_vdev', 'common_cnxk', 'rawdev', 'kvargs']
+sources = files(
+        'cnxk_gpio.c',
+)

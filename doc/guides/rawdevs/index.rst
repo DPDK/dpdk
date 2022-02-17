@@ -12,6 +12,7 @@ application through rawdev API.
     :numbered:
 
     cnxk_bphy
+    cnxk_gpio
     dpaa2_cmdif
     dpaa2_qdma
     ifpga

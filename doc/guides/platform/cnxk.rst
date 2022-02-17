@@ -73,6 +73,8 @@ DPDK subsystem.
    +---+-----+--------------------------------------------------------------+
    | 11| BPHY| rte_rawdev                                                   |
    +---+-----+--------------------------------------------------------------+
+   | 12| GPIO| rte_rawdev                                                   |
+   +---+-----+--------------------------------------------------------------+
 
 PF0 is called the administrative / admin function (AF) and has exclusive
 privileges to provision RVU functional block's LFs to each of the PF/VF.

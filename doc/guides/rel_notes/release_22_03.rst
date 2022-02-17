@@ -144,6 +144,16 @@ New Features
 
   The new API ``rte_event_eth_rx_adapter_event_port_get()`` was added.
 
+* **Added CNXK GPIO PMD.**
+
+  Added a new rawdevice PMD which allows to manage userspace GPIOs and install
+  custom GPIO interrupt handlers which bypass kernel. This is especially useful
+  for applications, that besides providing standard dataplane functionality
+  want to have fast and low latency access to GPIO pin state.
+
+  See the :doc:`../rawdevs/cnxk_gpio` rawdev guide for more details on this
+  driver.
+
 * **Updated testpmd.**
 
   * Called ``rte_ipv4/6_udptcp_cksum_mbuf()`` functions in testpmd csum mode
