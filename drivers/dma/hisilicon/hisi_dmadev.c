@@ -785,23 +785,14 @@ hisi_dma_burst_capacity(const void *dev_private, uint16_t vchan)
 }
 
 static void
-hisi_dma_gen_pci_device_name(const struct rte_pci_device *pci_dev,
-			     char *name, size_t size)
-{
-	memset(name, 0, size);
-	(void)snprintf(name, size, "%x:%x.%x",
-		 pci_dev->addr.bus, pci_dev->addr.devid,
-		 pci_dev->addr.function);
-}
-
-static void
 hisi_dma_gen_dev_name(const struct rte_pci_device *pci_dev,
-		      uint8_t queue_id, char *name, size_t size)
+		      uint8_t queue_id, char *dev_name, size_t size)
 {
-	memset(name, 0, size);
-	(void)snprintf(name, size, "%x:%x.%x-ch%u",
-		 pci_dev->addr.bus, pci_dev->addr.devid,
-		 pci_dev->addr.function, queue_id);
+	char name[RTE_DEV_NAME_MAX_LEN] = { 0 };
+
+	memset(dev_name, 0, size);
+	rte_pci_device_name(&pci_dev->addr, name, sizeof(name));
+	(void)snprintf(dev_name, size, "%s-ch%u", name, queue_id);
 }
 
 /**
@@ -917,7 +908,7 @@ hisi_dma_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	uint8_t i;
 	int ret;
 
-	hisi_dma_gen_pci_device_name(pci_dev, name, sizeof(name));
+	rte_pci_device_name(&pci_dev->addr, name, sizeof(name));
 
 	if (pci_dev->mem_resource[2].addr == NULL) {
 		HISI_DMA_LOG(ERR, "%s BAR2 is NULL!\n", name);
