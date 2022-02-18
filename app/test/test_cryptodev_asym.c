@@ -559,7 +559,7 @@ test_one_case(const void *test_case, int sessionless)
 						status = test_cryptodev_asym_op(
 							&testsuite_params,
 							&tc, test_msg, sessionless, i,
-							RTE_RSA_KET_TYPE_QT);
+							RTE_RSA_KEY_TYPE_QT);
 					}
 					if (status)
 						break;
