@@ -378,7 +378,7 @@ struct rte_crypto_asym_xform rsa_xform_crt = {
 			.data = rsa_e,
 			.length = sizeof(rsa_e)
 		},
-		.key_type = RTE_RSA_KET_TYPE_QT,
+		.key_type = RTE_RSA_KEY_TYPE_QT,
 		.qt = {
 			.p = {
 				.data = rsa_p,
