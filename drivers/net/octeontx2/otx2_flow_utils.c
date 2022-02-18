@@ -909,7 +909,7 @@ otx2_flow_mcam_alloc_and_write(struct rte_flow *flow, struct otx2_mbox *mbox,
 		return NPC_MCAM_ALLOC_FAILED;
 	}
 
-	if (pst->is_vf) {
+	if (pst->is_vf && flow->nix_intf == OTX2_INTF_RX) {
 		(void)otx2_mbox_alloc_msg_npc_read_base_steer_rule(mbox);
 		rc = otx2_mbox_process_msg(mbox, (void *)&base_rule_rsp);
 		if (rc) {
