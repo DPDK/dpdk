@@ -1125,7 +1125,7 @@ xsk_configure(struct pmd_internals *internals, struct pkt_rx_queue *rxq,
 		if (ret) {
 			AF_XDP_LOG(ERR, "Failed to load custom XDP program %s\n",
 					internals->prog_path);
-			goto err;
+			goto out_umem;
 		}
 		internals->custom_prog_configured = 1;
 	}
@@ -1141,26 +1141,27 @@ xsk_configure(struct pmd_internals *internals, struct pkt_rx_queue *rxq,
 
 	if (ret) {
 		AF_XDP_LOG(ERR, "Failed to create xsk socket.\n");
-		goto err;
+		goto out_umem;
 	}
 
 #if defined(XDP_UMEM_UNALIGNED_CHUNK_FLAG)
 	ret = rte_pktmbuf_alloc_bulk(rxq->umem->mb_pool, fq_bufs, reserve_size);
 	if (ret) {
 		AF_XDP_LOG(DEBUG, "Failed to get enough buffers for fq.\n");
-		goto err;
+		goto out_xsk;
 	}
 #endif
 	ret = reserve_fill_queue(rxq->umem, reserve_size, fq_bufs, &rxq->fq);
 	if (ret) {
-		xsk_socket__delete(rxq->xsk);
 		AF_XDP_LOG(ERR, "Failed to reserve fill queue.\n");
-		goto err;
+		goto out_xsk;
 	}
 
 	return 0;
 
-err:
+out_xsk:
+	xsk_socket__delete(rxq->xsk);
+out_umem:
 	if (__atomic_sub_fetch(&rxq->umem->refcnt, 1, __ATOMIC_ACQUIRE) == 0)
 		xdp_umem_destroy(rxq->umem);
 
