@@ -340,7 +340,7 @@ ice_dcf_init_parent_hw(struct ice_hw *hw)
 		goto err_unroll_alloc;
 
 	/* Initialize port_info struct with link information */
-	status = ice_aq_get_link_info(hw->port_info, false, NULL, NULL);
+	status = ice_aq_get_link_info(hw->port_info, true, NULL, NULL);
 	if (status)
 		goto err_unroll_alloc;
 
