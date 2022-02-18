@@ -102,6 +102,8 @@ cn10k_ipsec_outb_sa_create(struct roc_cpt *roc_cpt, struct roc_cpt_lf *lf,
 
 	param1.u16 = 0;
 
+	param1.s.ttl_or_hop_limit = ipsec_xfrm->options.dec_ttl;
+
 	/* Disable IP checksum computation by default */
 	param1.s.ip_csum_disable = ROC_IE_OT_SA_INNER_PKT_IP_CSUM_DISABLE;
 
