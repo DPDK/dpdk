@@ -97,7 +97,7 @@ static void qat_clear_arrays_by_alg(struct qat_asym_op_cookie *cookie,
 		qat_clear_arrays(cookie, QAT_ASYM_MODINV_NUM_IN_PARAMS,
 				QAT_ASYM_MODINV_NUM_OUT_PARAMS, alg_size);
 	else if (xform->xform_type == RTE_CRYPTO_ASYM_XFORM_RSA) {
-		if (xform->rsa.key_type == RTE_RSA_KET_TYPE_QT)
+		if (xform->rsa.key_type == RTE_RSA_KEY_TYPE_QT)
 			qat_clear_arrays_crt(cookie, alg_size);
 		else {
 			qat_clear_arrays(cookie, QAT_ASYM_RSA_NUM_IN_PARAMS,
@@ -370,7 +370,7 @@ qat_asym_fill_arrays(struct rte_crypto_asym_op *asym_op,
 					return -(EINVAL);
 				}
 			}
-			if (xform->rsa.key_type == RTE_RSA_KET_TYPE_QT) {
+			if (xform->rsa.key_type == RTE_RSA_KEY_TYPE_QT) {
 
 				qat_req->input_param_count =
 						QAT_ASYM_RSA_QT_NUM_IN_PARAMS;
