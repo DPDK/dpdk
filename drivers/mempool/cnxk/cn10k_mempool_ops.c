@@ -202,7 +202,7 @@ cn10k_mempool_deq(struct rte_mempool *mp, void **obj_table, unsigned int n)
 						    BATCH_ALLOC_SZ, 0, 1);
 		/* If issue fails, try falling back to default alloc */
 		if (unlikely(rc))
-			return cn10k_mempool_enq(mp, obj_table, n);
+			return cnxk_mempool_deq(mp, obj_table, n);
 		mem->status = BATCH_ALLOC_OP_ISSUED;
 	}
 
