@@ -1283,6 +1283,20 @@ xsk_configure(struct pmd_internals *internals, struct pkt_rx_queue *rxq,
 		return -ENOMEM;
 	txq->umem = rxq->umem;
 
+#if defined(XDP_UMEM_UNALIGNED_CHUNK_FLAG)
+	ret = rte_pktmbuf_alloc_bulk(rxq->umem->mb_pool, fq_bufs, reserve_size);
+	if (ret) {
+		AF_XDP_LOG(DEBUG, "Failed to get enough buffers for fq.\n");
+		goto out_umem;
+	}
+#endif
+
+	ret = reserve_fill_queue(rxq->umem, reserve_size, fq_bufs, &rxq->fq);
+	if (ret) {
+		AF_XDP_LOG(ERR, "Failed to reserve fill queue.\n");
+		goto out_umem;
+	}
+
 	cfg.rx_size = ring_size;
 	cfg.tx_size = ring_size;
 	cfg.libbpf_flags = 0;
@@ -1334,26 +1348,12 @@ xsk_configure(struct pmd_internals *internals, struct pkt_rx_queue *rxq,
 		}
 	}
 
-#if defined(XDP_UMEM_UNALIGNED_CHUNK_FLAG)
-	ret = rte_pktmbuf_alloc_bulk(rxq->umem->mb_pool, fq_bufs, reserve_size);
-	if (ret) {
-		AF_XDP_LOG(DEBUG, "Failed to get enough buffers for fq.\n");
-		goto out_xsk;
-	}
-#endif
-
 	if (rxq->busy_budget) {
 		ret = configure_preferred_busy_poll(rxq);
 		if (ret) {
 			AF_XDP_LOG(ERR, "Failed configure busy polling.\n");
 			goto out_xsk;
 		}
-	}
-
-	ret = reserve_fill_queue(rxq->umem, reserve_size, fq_bufs, &rxq->fq);
-	if (ret) {
-		AF_XDP_LOG(ERR, "Failed to reserve fill queue.\n");
-		goto out_xsk;
 	}
 
 	return 0;
