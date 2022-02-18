@@ -1799,7 +1799,8 @@ rte_cryptodev_asym_session_pool_create(const char *name, uint32_t nb_elts,
 	struct rte_mempool *mp;
 	struct rte_cryptodev_asym_session_pool_private_data *pool_priv;
 	uint32_t obj_sz, obj_sz_aligned;
-	uint8_t dev_id, priv_sz, max_priv_sz = 0;
+	uint8_t dev_id;
+	unsigned int priv_sz, max_priv_sz = 0;
 
 	for (dev_id = 0; dev_id < RTE_CRYPTO_MAX_DEVS; dev_id++)
 		if (rte_cryptodev_is_valid_dev(dev_id)) {
