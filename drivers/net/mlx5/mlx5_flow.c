@@ -5021,6 +5021,7 @@ flow_meter_split_prep(struct rte_eth_dev *dev,
 	uint32_t tag_id = 0;
 	struct rte_flow_item *vlan_item_dst = NULL;
 	const struct rte_flow_item *vlan_item_src = NULL;
+	const struct rte_flow_item *orig_items = items;
 	struct rte_flow_action *hw_mtr_action;
 	struct rte_flow_action *action_pre_head = NULL;
 	int32_t flow_src_port = priv->representor_id;
@@ -5145,7 +5146,8 @@ flow_meter_split_prep(struct rte_eth_dev *dev,
 
 		if (!fm->def_policy) {
 			sub_policy = get_meter_sub_policy(dev, flow, wks,
-							  attr, items, error);
+							  attr, orig_items,
+							  error);
 			if (!sub_policy)
 				return -rte_errno;
 		} else {
