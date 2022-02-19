@@ -471,6 +471,14 @@ cn10k_sso_hws_xtract_meta(struct rte_mbuf *m, const uint64_t *txq_data)
 }
 
 static __rte_always_inline void
+cn10k_sso_txq_fc_wait(const struct cn10k_eth_txq *txq)
+{
+	while ((uint64_t)txq->nb_sqb_bufs_adj <=
+	       __atomic_load_n(txq->fc_mem, __ATOMIC_RELAXED))
+		;
+}
+
+static __rte_always_inline void
 cn10k_sso_tx_one(struct cn10k_sso_hws *ws, struct rte_mbuf *m, uint64_t *cmd,
 		 uint16_t lmt_id, uintptr_t lmt_addr, uint8_t sched_type,
 		 const uint64_t *txq_data, const uint32_t flags)
@@ -517,6 +525,7 @@ cn10k_sso_tx_one(struct cn10k_sso_hws *ws, struct rte_mbuf *m, uint64_t *cmd,
 	if (!CNXK_TAG_IS_HEAD(ws->gw_rdata) && !sched_type)
 		ws->gw_rdata = roc_sso_hws_head_wait(ws->base);
 
+	cn10k_sso_txq_fc_wait(txq);
 	roc_lmt_submit_steorl(lmt_id, pa);
 }
 
@@ -577,7 +586,6 @@ cn10k_sso_hws_event_tx(struct cn10k_sso_hws *ws, struct rte_event *ev,
 	struct cn10k_eth_txq *txq;
 	struct rte_mbuf *m;
 	uintptr_t lmt_addr;
-	uint16_t ref_cnt;
 	uint16_t lmt_id;
 
 	lmt_addr = ws->lmt_base;
@@ -607,17 +615,9 @@ cn10k_sso_hws_event_tx(struct cn10k_sso_hws *ws, struct rte_event *ev,
 	}
 
 	m = ev->mbuf;
-	ref_cnt = m->refcnt;
 	cn10k_sso_tx_one(ws, m, cmd, lmt_id, lmt_addr, ev->sched_type, txq_data,
 			 flags);
 
-	if (flags & NIX_TX_OFFLOAD_MBUF_NOFF_F) {
-		if (ref_cnt > 1)
-			return 1;
-	}
-
-	cnxk_sso_hws_swtag_flush(ws->base + SSOW_LF_GWS_TAG,
-				 ws->base + SSOW_LF_GWS_OP_SWTAG_FLUSH);
 	return 1;
 }
 

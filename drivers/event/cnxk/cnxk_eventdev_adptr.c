@@ -335,8 +335,18 @@ cnxk_sso_rx_adapter_stop(const struct rte_eventdev *event_dev,
 static int
 cnxk_sso_sqb_aura_limit_edit(struct roc_nix_sq *sq, uint16_t nb_sqb_bufs)
 {
-	return roc_npa_aura_limit_modify(
-		sq->aura_handle, RTE_MIN(nb_sqb_bufs, sq->aura_sqb_bufs));
+	int rc;
+
+	if (sq->nb_sqb_bufs != nb_sqb_bufs) {
+		rc = roc_npa_aura_limit_modify(
+			sq->aura_handle,
+			RTE_MIN(nb_sqb_bufs, sq->aura_sqb_bufs));
+		if (rc < 0)
+			return rc;
+
+		sq->nb_sqb_bufs = RTE_MIN(nb_sqb_bufs, sq->aura_sqb_bufs);
+	}
+	return 0;
 }
 
 static void
@@ -522,20 +532,27 @@ cnxk_sso_tx_adapter_queue_add(const struct rte_eventdev *event_dev,
 {
 	struct cnxk_eth_dev *cnxk_eth_dev = eth_dev->data->dev_private;
 	struct roc_nix_sq *sq;
-	int i, ret;
+	int i, ret = 0;
 	void *txq;
 
 	if (tx_queue_id < 0) {
 		for (i = 0; i < eth_dev->data->nb_tx_queues; i++)
-			cnxk_sso_tx_adapter_queue_add(event_dev, eth_dev, i);
+			ret |= cnxk_sso_tx_adapter_queue_add(event_dev, eth_dev,
+							     i);
 	} else {
 		txq = eth_dev->data->tx_queues[tx_queue_id];
 		sq = &cnxk_eth_dev->sqs[tx_queue_id];
-		cnxk_sso_sqb_aura_limit_edit(sq, CNXK_SSO_SQB_LIMIT);
+		cnxk_sso_sqb_aura_limit_edit(sq, sq->nb_sqb_bufs);
 		ret = cnxk_sso_updt_tx_queue_data(
 			event_dev, eth_dev->data->port_id, tx_queue_id, txq);
 		if (ret < 0)
 			return ret;
+	}
+
+	if (ret < 0) {
+		plt_err("Failed to configure Tx adapter port=%d, q=%d",
+			eth_dev->data->port_id, tx_queue_id);
+		return ret;
 	}
 
 	return 0;
@@ -548,12 +565,13 @@ cnxk_sso_tx_adapter_queue_del(const struct rte_eventdev *event_dev,
 {
 	struct cnxk_eth_dev *cnxk_eth_dev = eth_dev->data->dev_private;
 	struct roc_nix_sq *sq;
-	int i, ret;
+	int i, ret = 0;
 
 	RTE_SET_USED(event_dev);
 	if (tx_queue_id < 0) {
 		for (i = 0; i < eth_dev->data->nb_tx_queues; i++)
-			cnxk_sso_tx_adapter_queue_del(event_dev, eth_dev, i);
+			ret |= cnxk_sso_tx_adapter_queue_del(event_dev, eth_dev,
+							     i);
 	} else {
 		sq = &cnxk_eth_dev->sqs[tx_queue_id];
 		cnxk_sso_sqb_aura_limit_edit(sq, sq->nb_sqb_bufs);
@@ -561,6 +579,12 @@ cnxk_sso_tx_adapter_queue_del(const struct rte_eventdev *event_dev,
 			event_dev, eth_dev->data->port_id, tx_queue_id, NULL);
 		if (ret < 0)
 			return ret;
+	}
+
+	if (ret < 0) {
+		plt_err("Failed to clear Tx adapter config port=%d, q=%d",
+			eth_dev->data->port_id, tx_queue_id);
+		return ret;
 	}
 
 	return 0;

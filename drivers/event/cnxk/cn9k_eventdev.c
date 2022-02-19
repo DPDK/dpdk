@@ -952,8 +952,7 @@ cn9k_sso_tx_adapter_caps_get(const struct rte_eventdev *dev,
 }
 
 static void
-cn9k_sso_txq_fc_update(const struct rte_eth_dev *eth_dev, int32_t tx_queue_id,
-		       bool ena)
+cn9k_sso_txq_fc_update(const struct rte_eth_dev *eth_dev, int32_t tx_queue_id)
 {
 	struct cnxk_eth_dev *cnxk_eth_dev = eth_dev->data->dev_private;
 	struct cn9k_eth_txq *txq;
@@ -962,20 +961,21 @@ cn9k_sso_txq_fc_update(const struct rte_eth_dev *eth_dev, int32_t tx_queue_id,
 
 	if (tx_queue_id < 0) {
 		for (i = 0; i < eth_dev->data->nb_tx_queues; i++)
-			cn9k_sso_txq_fc_update(eth_dev, i, ena);
+			cn9k_sso_txq_fc_update(eth_dev, i);
 	} else {
-		uint16_t sq_limit;
+		uint16_t sqes_per_sqb;
 
 		sq = &cnxk_eth_dev->sqs[tx_queue_id];
 		txq = eth_dev->data->tx_queues[tx_queue_id];
-		sq_limit =
-			ena ? RTE_MIN(CNXK_SSO_SQB_LIMIT, sq->aura_sqb_bufs) :
-				    sq->nb_sqb_bufs;
-		txq->nb_sqb_bufs_adj =
-			sq_limit -
-			RTE_ALIGN_MUL_CEIL(sq_limit,
-					   (1ULL << txq->sqes_per_sqb_log2)) /
-				(1ULL << txq->sqes_per_sqb_log2);
+		sqes_per_sqb = 1U << txq->sqes_per_sqb_log2;
+		sq->nb_sqb_bufs_adj =
+			sq->nb_sqb_bufs -
+			RTE_ALIGN_MUL_CEIL(sq->nb_sqb_bufs, sqes_per_sqb) /
+				sqes_per_sqb;
+		if (cnxk_eth_dev->tx_offloads & RTE_ETH_TX_OFFLOAD_SECURITY)
+			sq->nb_sqb_bufs_adj -= (cnxk_eth_dev->outb.nb_desc /
+						(sqes_per_sqb - 1));
+		txq->nb_sqb_bufs_adj = sq->nb_sqb_bufs_adj;
 		txq->nb_sqb_bufs_adj = (70 * txq->nb_sqb_bufs_adj) / 100;
 	}
 }
@@ -1009,7 +1009,7 @@ cn9k_sso_tx_adapter_queue_add(uint8_t id, const struct rte_eventdev *event_dev,
 	}
 
 	dev->tx_offloads |= tx_offloads;
-	cn9k_sso_txq_fc_update(eth_dev, tx_queue_id, true);
+	cn9k_sso_txq_fc_update(eth_dev, tx_queue_id);
 	rc = cn9k_sso_updt_tx_adptr_data(event_dev);
 	if (rc < 0)
 		return rc;
@@ -1030,7 +1030,7 @@ cn9k_sso_tx_adapter_queue_del(uint8_t id, const struct rte_eventdev *event_dev,
 	rc = cnxk_sso_tx_adapter_queue_del(event_dev, eth_dev, tx_queue_id);
 	if (rc < 0)
 		return rc;
-	cn9k_sso_txq_fc_update(eth_dev, tx_queue_id, false);
+	cn9k_sso_txq_fc_update(eth_dev, tx_queue_id);
 	return cn9k_sso_updt_tx_adptr_data(event_dev);
 }
 

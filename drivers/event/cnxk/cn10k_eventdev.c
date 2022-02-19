@@ -717,6 +717,35 @@ cn10k_sso_tx_adapter_caps_get(const struct rte_eventdev *dev,
 	return 0;
 }
 
+static void
+cn10k_sso_txq_fc_update(const struct rte_eth_dev *eth_dev, int32_t tx_queue_id)
+{
+	struct cnxk_eth_dev *cnxk_eth_dev = eth_dev->data->dev_private;
+	struct cn10k_eth_txq *txq;
+	struct roc_nix_sq *sq;
+	int i;
+
+	if (tx_queue_id < 0) {
+		for (i = 0; i < eth_dev->data->nb_tx_queues; i++)
+			cn10k_sso_txq_fc_update(eth_dev, i);
+	} else {
+		uint16_t sqes_per_sqb;
+
+		sq = &cnxk_eth_dev->sqs[tx_queue_id];
+		txq = eth_dev->data->tx_queues[tx_queue_id];
+		sqes_per_sqb = 1U << txq->sqes_per_sqb_log2;
+		sq->nb_sqb_bufs_adj =
+			sq->nb_sqb_bufs -
+			RTE_ALIGN_MUL_CEIL(sq->nb_sqb_bufs, sqes_per_sqb) /
+				sqes_per_sqb;
+		if (cnxk_eth_dev->tx_offloads & RTE_ETH_TX_OFFLOAD_SECURITY)
+			sq->nb_sqb_bufs_adj -= (cnxk_eth_dev->outb.nb_desc /
+						(sqes_per_sqb - 1));
+		txq->nb_sqb_bufs_adj = sq->nb_sqb_bufs_adj;
+		txq->nb_sqb_bufs_adj = (70 * txq->nb_sqb_bufs_adj) / 100;
+	}
+}
+
 static int
 cn10k_sso_tx_adapter_queue_add(uint8_t id, const struct rte_eventdev *event_dev,
 			       const struct rte_eth_dev *eth_dev,
@@ -746,6 +775,7 @@ cn10k_sso_tx_adapter_queue_add(uint8_t id, const struct rte_eventdev *event_dev,
 	}
 
 	dev->tx_offloads |= tx_offloads;
+	cn10k_sso_txq_fc_update(eth_dev, tx_queue_id);
 	rc = cn10k_sso_updt_tx_adptr_data(event_dev);
 	if (rc < 0)
 		return rc;

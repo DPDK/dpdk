@@ -613,9 +613,8 @@ NIX_RX_FASTPATH_MODES
 static __rte_always_inline void
 cn9k_sso_txq_fc_wait(const struct cn9k_eth_txq *txq)
 {
-	while (!((txq->nb_sqb_bufs_adj -
-		  __atomic_load_n(txq->fc_mem, __ATOMIC_RELAXED))
-		 << (txq)->sqes_per_sqb_log2))
+	while ((uint64_t)txq->nb_sqb_bufs_adj <=
+	       __atomic_load_n(txq->fc_mem, __ATOMIC_RELAXED))
 		;
 }
 
