@@ -63,15 +63,18 @@ cn9k_sso_hws_fwd_swtag(uint64_t base, const struct rte_event *ev)
 }
 
 static __rte_always_inline void
-cn9k_sso_hws_fwd_group(uint64_t base, const struct rte_event *ev,
-		       const uint16_t grp)
+cn9k_sso_hws_new_event_wait(struct cn9k_sso_hws *ws, const struct rte_event *ev)
 {
 	const uint32_t tag = (uint32_t)ev->event;
 	const uint8_t new_tt = ev->sched_type;
+	const uint64_t event_ptr = ev->u64;
+	const uint16_t grp = ev->queue_id;
 
-	plt_write64(ev->u64, base + SSOW_LF_GWS_OP_UPD_WQP_GRP1);
-	cnxk_sso_hws_swtag_desched(tag, new_tt, grp,
-				   base + SSOW_LF_GWS_OP_SWTAG_DESCHED);
+	while (ws->xaq_lmt <= __atomic_load_n(ws->fc_mem, __ATOMIC_RELAXED))
+		;
+
+	cnxk_sso_hws_add_work(event_ptr, tag, new_tt,
+			      ws->grp_base + (grp << 12));
 }
 
 static __rte_always_inline void
@@ -86,10 +89,12 @@ cn9k_sso_hws_forward_event(struct cn9k_sso_hws *ws, const struct rte_event *ev)
 	} else {
 		/*
 		 * Group has been changed for group based work pipelining,
-		 * Use deschedule/add_work operation to transfer the event to
+		 * Use add_work operation to transfer the event to
 		 * new group/core
 		 */
-		cn9k_sso_hws_fwd_group(ws->base, ev, grp);
+		rte_atomic_thread_fence(__ATOMIC_RELEASE);
+		roc_sso_hws_head_wait(ws->base);
+		cn9k_sso_hws_new_event_wait(ws, ev);
 	}
 }
 
@@ -114,6 +119,22 @@ cn9k_sso_hws_dual_new_event(struct cn9k_sso_hws_dual *dws,
 }
 
 static __rte_always_inline void
+cn9k_sso_hws_dual_new_event_wait(struct cn9k_sso_hws_dual *dws,
+				 const struct rte_event *ev)
+{
+	const uint32_t tag = (uint32_t)ev->event;
+	const uint8_t new_tt = ev->sched_type;
+	const uint64_t event_ptr = ev->u64;
+	const uint16_t grp = ev->queue_id;
+
+	while (dws->xaq_lmt <= __atomic_load_n(dws->fc_mem, __ATOMIC_RELAXED))
+		;
+
+	cnxk_sso_hws_add_work(event_ptr, tag, new_tt,
+			      dws->grp_base + (grp << 12));
+}
+
+static __rte_always_inline void
 cn9k_sso_hws_dual_forward_event(struct cn9k_sso_hws_dual *dws, uint64_t base,
 				const struct rte_event *ev)
 {
@@ -126,10 +147,12 @@ cn9k_sso_hws_dual_forward_event(struct cn9k_sso_hws_dual *dws, uint64_t base,
 	} else {
 		/*
 		 * Group has been changed for group based work pipelining,
-		 * Use deschedule/add_work operation to transfer the event to
+		 * Use add_work operation to transfer the event to
 		 * new group/core
 		 */
-		cn9k_sso_hws_fwd_group(base, ev, grp);
+		rte_atomic_thread_fence(__ATOMIC_RELEASE);
+		roc_sso_hws_head_wait(base);
+		cn9k_sso_hws_dual_new_event_wait(dws, ev);
 	}
 }
 
