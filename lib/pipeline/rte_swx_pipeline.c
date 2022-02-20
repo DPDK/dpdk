@@ -9250,16 +9250,14 @@ table_state_build_free(struct rte_swx_pipeline *p)
 		struct rte_swx_table_state *ts = &p->table_state[p->n_tables + i];
 
 		/* ts->obj. */
-		if (ts->obj)
-			rte_swx_table_selector_free(ts->obj);
+		rte_swx_table_selector_free(ts->obj);
 	}
 
 	for (i = 0; i < p->n_learners; i++) {
 		struct rte_swx_table_state *ts = &p->table_state[p->n_tables + p->n_selectors + i];
 
 		/* ts->obj. */
-		if (ts->obj)
-			rte_swx_table_learner_free(ts->obj);
+		rte_swx_table_learner_free(ts->obj);
 
 		/* ts->default_action_data. */
 		free(ts->default_action_data);

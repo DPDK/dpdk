@@ -1159,8 +1159,7 @@ fbk_hash_unit_test(void)
 	RETURN_IF_ERROR_FBK(handle == NULL, "fbk hash creation should have succeeded");
 
 	tmp = rte_fbk_hash_create(&invalid_params_same_name_2);
-	if (tmp != NULL)
-		rte_fbk_hash_free(tmp);
+	rte_fbk_hash_free(tmp);
 	RETURN_IF_ERROR_FBK(tmp != NULL, "fbk hash creation should have failed");
 
 	/* we are not freeing  handle here because we need a hash list

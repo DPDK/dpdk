@@ -1018,8 +1018,7 @@ mlx5_os_interrupt_handler_create(int mode, bool set_fd_nonblock, int fd,
 	}
 	return tmp_intr_handle;
 err:
-	if (tmp_intr_handle)
-		rte_intr_instance_free(tmp_intr_handle);
+	rte_intr_instance_free(tmp_intr_handle);
 	return NULL;
 }
 

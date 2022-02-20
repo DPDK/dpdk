@@ -278,8 +278,7 @@ fbk_clean(unsigned lcore_id)
 	int i;
 
 	handle = rte_fbk_hash_find_existing("fr_test_once");
-	if (handle != NULL)
-		rte_fbk_hash_free(handle);
+	rte_fbk_hash_free(handle);
 
 	for (i = 0; i < MAX_ITER_MULTI; i++) {
 		snprintf(fbk_name, sizeof(fbk_name), "fr_test_%d_%d",  lcore_id, i);
@@ -348,8 +347,7 @@ lpm_clean(unsigned int lcore_id)
 	int i;
 
 	lpm = rte_lpm_find_existing("fr_test_once");
-	if (lpm != NULL)
-		rte_lpm_free(lpm);
+	rte_lpm_free(lpm);
 
 	for (i = 0; i < MAX_LPM_ITER_TIMES; i++) {
 		snprintf(lpm_name, sizeof(lpm_name), "fr_test_%d_%d",  lcore_id, i);

@@ -145,8 +145,7 @@ rte_table_acl_free(void *table)
 	}
 
 	/* Free previously allocated resources */
-	if (acl->ctx != NULL)
-		rte_acl_free(acl->ctx);
+	rte_acl_free(acl->ctx);
 
 	rte_free(acl);
 
@@ -317,8 +316,7 @@ rte_table_acl_entry_add(
 	}
 
 	/* Commit changes */
-	if (acl->ctx != NULL)
-		rte_acl_free(acl->ctx);
+	rte_acl_free(acl->ctx);
 	acl->ctx = ctx;
 	*key_found = 0;
 	*entry_ptr = &acl->memory[free_pos * acl->entry_size];
@@ -397,8 +395,7 @@ rte_table_acl_entry_delete(
 	}
 
 	/* Commit changes */
-	if (acl->ctx != NULL)
-		rte_acl_free(acl->ctx);
+	rte_acl_free(acl->ctx);
 
 	acl->ctx = ctx;
 	*key_found = 1;
@@ -574,8 +571,7 @@ rte_table_acl_entry_add_bulk(
 	}
 
 	/* Commit changes */
-	if (acl->ctx != NULL)
-		rte_acl_free(acl->ctx);
+	rte_acl_free(acl->ctx);
 	acl->ctx = ctx;
 
 	for (i = 0; i < n_keys; i++) {
@@ -693,8 +689,7 @@ rte_table_acl_entry_delete_bulk(
 	}
 
 	/* Commit changes */
-	if (acl->ctx != NULL)
-		rte_acl_free(acl->ctx);
+	rte_acl_free(acl->ctx);
 
 	acl->ctx = ctx;
 	for (i = 0; i < n_keys; i++) {

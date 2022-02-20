@@ -1523,8 +1523,7 @@ fips_dev_auto_test_uninit(uint8_t dev_id,
 		struct fips_dev_auto_test_env *env)
 {
 	rte_pktmbuf_free(env->mbuf);
-	if (env->op)
-		rte_crypto_op_free(env->op);
+	rte_crypto_op_free(env->op);
 	rte_mempool_free(env->mpool);
 	rte_mempool_free(env->op_pool);
 	rte_mempool_free(env->sess_pool);

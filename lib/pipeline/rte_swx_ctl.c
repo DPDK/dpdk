@@ -1046,8 +1046,7 @@ table_state_free(struct rte_swx_ctl_pipeline *ctl)
 		struct rte_swx_table_state *ts = &ctl->ts_next[selector_base_index + i];
 
 		/* Table object. */
-		if (ts->obj)
-			rte_swx_table_selector_free(ts->obj);
+		rte_swx_table_selector_free(ts->obj);
 	}
 
 	/* For each learner table, free its table state. */

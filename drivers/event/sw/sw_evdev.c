@@ -166,8 +166,7 @@ sw_port_setup(struct rte_eventdev *dev, uint8_t port_id,
 	snprintf(buf, sizeof(buf), "sw%d_p%u_%s", dev->data->dev_id,
 			port_id, "rx_worker_ring");
 	struct rte_event_ring *existing_ring = rte_event_ring_lookup(buf);
-	if (existing_ring)
-		rte_event_ring_free(existing_ring);
+	rte_event_ring_free(existing_ring);
 
 	p->rx_worker_ring = rte_event_ring_create(buf, MAX_SW_PROD_Q_DEPTH,
 			dev->data->socket_id,
@@ -186,8 +185,7 @@ sw_port_setup(struct rte_eventdev *dev, uint8_t port_id,
 	snprintf(buf, sizeof(buf), "sw%d_p%u, %s", dev->data->dev_id,
 			port_id, "cq_worker_ring");
 	existing_ring = rte_event_ring_lookup(buf);
-	if (existing_ring)
-		rte_event_ring_free(existing_ring);
+	rte_event_ring_free(existing_ring);
 
 	p->cq_worker_ring = rte_event_ring_create(buf, conf->dequeue_depth,
 			dev->data->socket_id,

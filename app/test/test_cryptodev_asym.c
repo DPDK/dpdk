@@ -505,8 +505,7 @@ error_exit:
 		if (sess != NULL)
 			rte_cryptodev_asym_session_free(dev_id, sess);
 
-		if (op != NULL)
-			rte_crypto_op_free(op);
+		rte_crypto_op_free(op);
 
 		rte_free(result);
 
@@ -1115,8 +1114,7 @@ test_dh_gen_shared_sec(struct rte_crypto_asym_xform *xfrm)
 error_exit:
 	if (sess != NULL)
 		rte_cryptodev_asym_session_free(dev_id, sess);
-	if (op != NULL)
-		rte_crypto_op_free(op);
+	rte_crypto_op_free(op);
 	return status;
 }
 
@@ -1194,8 +1192,7 @@ test_dh_gen_priv_key(struct rte_crypto_asym_xform *xfrm)
 error_exit:
 	if (sess != NULL)
 		rte_cryptodev_asym_session_free(dev_id, sess);
-	if (op != NULL)
-		rte_crypto_op_free(op);
+	rte_crypto_op_free(op);
 
 	return status;
 }
@@ -1284,8 +1281,7 @@ test_dh_gen_pub_key(struct rte_crypto_asym_xform *xfrm)
 error_exit:
 	if (sess != NULL)
 		rte_cryptodev_asym_session_free(dev_id, sess);
-	if (op != NULL)
-		rte_crypto_op_free(op);
+	rte_crypto_op_free(op);
 
 	return status;
 }
@@ -1371,8 +1367,7 @@ test_dh_gen_kp(struct rte_crypto_asym_xform *xfrm)
 error_exit:
 	if (sess != NULL)
 		rte_cryptodev_asym_session_free(dev_id, sess);
-	if (op != NULL)
-		rte_crypto_op_free(op);
+	rte_crypto_op_free(op);
 
 	return status;
 }
@@ -1482,8 +1477,7 @@ error_exit:
 	if (sess)
 		rte_cryptodev_asym_session_free(dev_id, sess);
 
-	if (op)
-		rte_crypto_op_free(op);
+	rte_crypto_op_free(op);
 
 	TEST_ASSERT_EQUAL(status, 0, "Test failed");
 
@@ -1594,8 +1588,7 @@ error_exit:
 	if (sess != NULL)
 		rte_cryptodev_asym_session_free(dev_id, sess);
 
-	if (op != NULL)
-		rte_crypto_op_free(op);
+	rte_crypto_op_free(op);
 
 	TEST_ASSERT_EQUAL(status, 0, "Test failed");
 
@@ -1718,8 +1711,7 @@ test_dsa_sign(struct rte_crypto_dsa_op_param *dsa_op)
 error_exit:
 	if (sess != NULL)
 		rte_cryptodev_asym_session_free(dev_id, sess);
-	if (op != NULL)
-		rte_crypto_op_free(op);
+	rte_crypto_op_free(op);
 	return status;
 }
 
@@ -1809,8 +1801,7 @@ test_dsa_verify(struct rte_crypto_dsa_op_param *dsa_op)
 error_exit:
 	if (sess != NULL)
 		rte_cryptodev_asym_session_free(dev_id, sess);
-	if (op != NULL)
-		rte_crypto_op_free(op);
+	rte_crypto_op_free(op);
 	return status;
 }
 
@@ -2012,8 +2003,7 @@ test_ecdsa_sign_verify(enum curve curve_id)
 exit:
 	if (sess != NULL)
 		rte_cryptodev_asym_session_free(dev_id, sess);
-	if (op != NULL)
-		rte_crypto_op_free(op);
+	rte_crypto_op_free(op);
 	return status;
 };
 
@@ -2174,8 +2164,7 @@ test_ecpm(enum curve curve_id)
 exit:
 	if (sess != NULL)
 		rte_cryptodev_asym_session_free(dev_id, sess);
-	if (op != NULL)
-		rte_crypto_op_free(op);
+	rte_crypto_op_free(op);
 	return status;
 }
 

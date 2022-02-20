@@ -229,8 +229,7 @@ test_cmdline_fns(void)
 
 error:
 	printf("Error: function accepted null parameter!\n");
-	if (cl != NULL)
-		cmdline_free(cl);
+	cmdline_free(cl);
 	return -1;
 }
 

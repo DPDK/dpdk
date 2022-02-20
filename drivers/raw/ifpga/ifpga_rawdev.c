@@ -1768,8 +1768,7 @@ ifpga_vdev_parse_devargs(struct rte_devargs *devargs,
 	ret = 0;
 
 end:
-	if (kvlist)
-		rte_kvargs_free(kvlist);
+	rte_kvargs_free(kvlist);
 
 	return ret;
 }

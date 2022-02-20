@@ -1404,11 +1404,9 @@ dpaa2_qdma_reset(struct rte_dma_dev *dev)
 
 	/* Reset and free virtual queues */
 	for (i = 0; i < qdma_dev->num_vqs; i++) {
-		if (qdma_dev->vqs[i].status_ring)
-			rte_ring_free(qdma_dev->vqs[i].status_ring);
+		rte_ring_free(qdma_dev->vqs[i].status_ring);
 	}
-	if (qdma_dev->vqs)
-		rte_free(qdma_dev->vqs);
+	rte_free(qdma_dev->vqs);
 	qdma_dev->vqs = NULL;
 
 	/* Reset QDMA device structure */
