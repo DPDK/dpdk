@@ -31,14 +31,24 @@ static const struct rte_driver cryptodev_qat_asym_driver = {
 	.alias = qat_asym_drv_name
 };
 
+/*
+ * Macros with suffix _F are used with some of predefinded identifiers:
+ * - cookie->input_buffer
+ * - qat_alg_bytesize
+ */
 #if RTE_LOG_DP_LEVEL >= RTE_LOG_DEBUG
 #define HEXDUMP(name, where, size) QAT_DP_HEXDUMP_LOG(DEBUG, name, \
 			where, size)
 #define HEXDUMP_OFF(name, where, size, idx) QAT_DP_HEXDUMP_LOG(DEBUG, name, \
 			&where[idx * size], size)
+
+#define HEXDUMP_OFF_F(name, idx) QAT_DP_HEXDUMP_LOG(DEBUG, name, \
+			&cookie->input_buffer[idx * qat_alg_bytesize], \
+			qat_alg_bytesize)
 #else
 #define HEXDUMP(name, where, size)
 #define HEXDUMP_OFF(name, where, size, idx)
+#define HEXDUMP_OFF_F(name, idx)
 #endif
 
 #define CHECK_IF_NOT_EMPTY(param, name, pname, status) \
@@ -78,6 +88,17 @@ static const struct rte_driver cryptodev_qat_asym_driver = {
 			how, \
 			what.data, \
 			how)
+
+#define SET_PKE_LN_9A_F(what, idx) \
+		rte_memcpy(&cookie->input_buffer[idx * qat_alg_bytesize] + \
+			qat_alg_bytesize - what.length, \
+			what.data, what.length)
+
+#define SET_PKE_LN_EC_F(what, how, idx) \
+		rte_memcpy(&cookie->input_buffer[idx * \
+			RTE_ALIGN_CEIL(how, 8)] + \
+			RTE_ALIGN_CEIL(how, 8) - how, \
+			what.data, how)
 
 static void
 request_init(struct icp_qat_fw_pke_request *qat_req)
@@ -544,6 +565,128 @@ rsa_collect(struct rte_crypto_asym_op *asym_op,
 	return RTE_CRYPTO_OP_STATUS_SUCCESS;
 }
 
+static int
+ecdsa_set_input(struct rte_crypto_asym_op *asym_op,
+		struct icp_qat_fw_pke_request *qat_req,
+		struct qat_asym_op_cookie *cookie,
+		struct rte_crypto_asym_xform *xform)
+{
+	struct qat_asym_function qat_function;
+	uint32_t alg_bytesize, qat_alg_bytesize, func_id;
+	int curve_id;
+
+	curve_id = pick_curve(xform);
+	if (curve_id < 0) {
+		QAT_LOG(ERR, "Incorrect elliptic curve");
+		return -EINVAL;
+	}
+
+	switch (asym_op->ecdsa.op_type) {
+	case RTE_CRYPTO_ASYM_OP_SIGN:
+		qat_function = get_ecdsa_function(xform);
+		func_id = qat_function.func_id;
+		if (func_id == 0) {
+			QAT_LOG(ERR, "Cannot obtain functionality id");
+			return -EINVAL;
+		}
+		alg_bytesize = qat_function.bytesize;
+		qat_alg_bytesize = RTE_ALIGN_CEIL(alg_bytesize, 8);
+
+		SET_PKE_LN_9A_F(asym_op->ecdsa.pkey, 0);
+		SET_PKE_LN_9A_F(asym_op->ecdsa.message, 1);
+		SET_PKE_LN_9A_F(asym_op->ecdsa.k, 2);
+		SET_PKE_LN_EC_F(curve[curve_id].b, alg_bytesize, 3);
+		SET_PKE_LN_EC_F(curve[curve_id].a, alg_bytesize, 4);
+		SET_PKE_LN_EC_F(curve[curve_id].p, alg_bytesize, 5);
+		SET_PKE_LN_EC_F(curve[curve_id].n, alg_bytesize, 6);
+		SET_PKE_LN_EC_F(curve[curve_id].y, alg_bytesize, 7);
+		SET_PKE_LN_EC_F(curve[curve_id].x, alg_bytesize, 8);
+
+		cookie->alg_bytesize = alg_bytesize;
+		qat_req->pke_hdr.cd_pars.func_id = func_id;
+		qat_req->input_param_count =
+				QAT_ASYM_ECDSA_RS_SIGN_IN_PARAMS;
+		qat_req->output_param_count =
+				QAT_ASYM_ECDSA_RS_SIGN_OUT_PARAMS;
+
+		HEXDUMP_OFF_F("ECDSA d", 0);
+		HEXDUMP_OFF_F("ECDSA e", 1);
+		HEXDUMP_OFF_F("ECDSA k", 2);
+		HEXDUMP_OFF_F("ECDSA b", 3);
+		HEXDUMP_OFF_F("ECDSA a", 4);
+		HEXDUMP_OFF_F("ECDSA n", 5);
+		HEXDUMP_OFF_F("ECDSA y", 6);
+		HEXDUMP_OFF_F("ECDSA x", 7);
+		break;
+	case RTE_CRYPTO_ASYM_OP_VERIFY:
+		qat_function = get_ecdsa_verify_function(xform);
+		func_id = qat_function.func_id;
+		if (func_id == 0) {
+			QAT_LOG(ERR, "Cannot obtain functionality id");
+			return -EINVAL;
+		}
+		alg_bytesize = qat_function.bytesize;
+		qat_alg_bytesize = RTE_ALIGN_CEIL(alg_bytesize, 8);
+
+		SET_PKE_LN_9A_F(asym_op->ecdsa.message, 10);
+		SET_PKE_LN_9A_F(asym_op->ecdsa.s, 9);
+		SET_PKE_LN_9A_F(asym_op->ecdsa.r, 8);
+		SET_PKE_LN_EC_F(curve[curve_id].n, alg_bytesize, 7);
+		SET_PKE_LN_EC_F(curve[curve_id].x, alg_bytesize, 6);
+		SET_PKE_LN_EC_F(curve[curve_id].y, alg_bytesize, 5);
+		SET_PKE_LN_9A_F(asym_op->ecdsa.q.x, 4);
+		SET_PKE_LN_9A_F(asym_op->ecdsa.q.y, 3);
+		SET_PKE_LN_EC_F(curve[curve_id].a, alg_bytesize, 2);
+		SET_PKE_LN_EC_F(curve[curve_id].b, alg_bytesize, 1);
+		SET_PKE_LN_EC_F(curve[curve_id].p, alg_bytesize, 0);
+
+		cookie->alg_bytesize = alg_bytesize;
+		qat_req->pke_hdr.cd_pars.func_id = func_id;
+		qat_req->input_param_count =
+				QAT_ASYM_ECDSA_RS_VERIFY_IN_PARAMS;
+		qat_req->output_param_count =
+				QAT_ASYM_ECDSA_RS_VERIFY_OUT_PARAMS;
+
+		HEXDUMP_OFF_F("e", 0);
+		HEXDUMP_OFF_F("s", 1);
+		HEXDUMP_OFF_F("r", 2);
+		HEXDUMP_OFF_F("n", 3);
+		HEXDUMP_OFF_F("xG", 4);
+		HEXDUMP_OFF_F("yG", 5);
+		HEXDUMP_OFF_F("xQ", 6);
+		HEXDUMP_OFF_F("yQ", 7);
+		HEXDUMP_OFF_F("a", 8);
+		HEXDUMP_OFF_F("b", 9);
+		HEXDUMP_OFF_F("q", 10);
+		break;
+	default:
+		return -1;
+	}
+
+	return 0;
+}
+
+static uint8_t
+ecdsa_collect(struct rte_crypto_asym_op *asym_op,
+		struct qat_asym_op_cookie *cookie)
+{
+	uint32_t alg_bytesize = RTE_ALIGN_CEIL(cookie->alg_bytesize, 8);
+
+	if (asym_op->rsa.op_type == RTE_CRYPTO_ASYM_OP_SIGN) {
+		uint8_t *r = asym_op->ecdsa.r.data;
+		uint8_t *s = asym_op->ecdsa.s.data;
+
+		asym_op->ecdsa.r.length = alg_bytesize;
+		asym_op->ecdsa.s.length = alg_bytesize;
+		rte_memcpy(r, cookie->output_array[0], alg_bytesize);
+		rte_memcpy(s, cookie->output_array[1], alg_bytesize);
+		HEXDUMP("R", cookie->output_array[0],
+			alg_bytesize);
+		HEXDUMP("S", cookie->output_array[1],
+			alg_bytesize);
+	}
+	return RTE_CRYPTO_OP_STATUS_SUCCESS;
+}
 
 static int
 asym_set_input(struct rte_crypto_asym_op *asym_op,
@@ -560,6 +703,9 @@ asym_set_input(struct rte_crypto_asym_op *asym_op,
 				cookie, xform);
 	case RTE_CRYPTO_ASYM_XFORM_RSA:
 		return rsa_set_input(asym_op, qat_req,
+				cookie, xform);
+	case RTE_CRYPTO_ASYM_XFORM_ECDSA:
+		return ecdsa_set_input(asym_op, qat_req,
 				cookie, xform);
 	default:
 		QAT_LOG(ERR, "Invalid/unsupported asymmetric crypto xform");
@@ -635,6 +781,8 @@ qat_asym_collect_response(struct rte_crypto_op *rx_op,
 		return modinv_collect(asym_op, cookie, xform);
 	case RTE_CRYPTO_ASYM_XFORM_RSA:
 		return rsa_collect(asym_op, cookie);
+	case RTE_CRYPTO_ASYM_XFORM_ECDSA:
+		return ecdsa_collect(asym_op, cookie);
 	default:
 		QAT_LOG(ERR, "Not supported xform type");
 		return  RTE_CRYPTO_OP_STATUS_ERROR;

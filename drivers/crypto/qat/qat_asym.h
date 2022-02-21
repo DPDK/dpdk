@@ -28,6 +28,10 @@ typedef uint64_t large_int_ptr;
 #define QAT_ASYM_RSA_NUM_IN_PARAMS		3
 #define QAT_ASYM_RSA_NUM_OUT_PARAMS		1
 #define QAT_ASYM_RSA_QT_NUM_IN_PARAMS		6
+#define QAT_ASYM_ECDSA_RS_SIGN_IN_PARAMS	1
+#define QAT_ASYM_ECDSA_RS_SIGN_OUT_PARAMS	2
+#define QAT_ASYM_ECDSA_RS_VERIFY_IN_PARAMS	1
+#define QAT_ASYM_ECDSA_RS_VERIFY_OUT_PARAMS	0
 
 /**
  * helper function to add an asym capability
