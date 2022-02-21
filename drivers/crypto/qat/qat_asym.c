@@ -13,6 +13,7 @@
 #include "icp_qat_fw_pke.h"
 #include "icp_qat_fw.h"
 #include "qat_pke.h"
+#include "qat_ec.h"
 
 uint8_t qat_asym_driver_id;
 
@@ -63,6 +64,20 @@ static const struct rte_driver cryptodev_qat_asym_driver = {
 		what.length, \
 		what.data, \
 		what.length)
+
+#define SET_PKE_LN_9A(where, what, how, idx) \
+		rte_memcpy(&where[idx * RTE_ALIGN_CEIL(how, 8)] + \
+			RTE_ALIGN_CEIL(how, 8) - \
+			what.length, \
+			what.data, \
+			what.length)
+
+#define SET_PKE_LN_EC(where, what, how, idx) \
+		rte_memcpy(&where[idx * RTE_ALIGN_CEIL(how, 8)] + \
+			RTE_ALIGN_CEIL(how, 8) - \
+			how, \
+			what.data, \
+			how)
 
 static void
 request_init(struct icp_qat_fw_pke_request *qat_req)
