@@ -32,6 +32,8 @@ typedef uint64_t large_int_ptr;
 #define QAT_ASYM_ECDSA_RS_SIGN_OUT_PARAMS	2
 #define QAT_ASYM_ECDSA_RS_VERIFY_IN_PARAMS	1
 #define QAT_ASYM_ECDSA_RS_VERIFY_OUT_PARAMS	0
+#define QAT_ASYM_ECPM_IN_PARAMS			7
+#define QAT_ASYM_ECPM_OUT_PARAMS		2
 
 /**
  * helper function to add an asym capability

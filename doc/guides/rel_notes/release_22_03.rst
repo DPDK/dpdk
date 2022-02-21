@@ -140,6 +140,7 @@ New Features
 
   * Added support for CPM2.0b (4942) devices.
   * Added ECDSA algorithm support.
+  * Added ECPM algorithm support.
 
 * **Added an API to retrieve event port id of ethdev Rx adapter.**
 
