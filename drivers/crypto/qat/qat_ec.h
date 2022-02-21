@@ -31,7 +31,7 @@ struct elliptic_curve {
 	buffer h;
 };
 
-static struct elliptic_curve __rte_unused curve[] = {
+static struct elliptic_curve curve[] = {
 	[SECP256R1] = {
 		.name = "secp256r1",
 		.bytesize = 32,
@@ -190,7 +190,7 @@ static struct elliptic_curve __rte_unused curve[] = {
 	}
 };
 
-static int __rte_unused
+static int
 pick_curve(struct rte_crypto_asym_xform *xform)
 {
 	switch (xform->ec.curve_id) {

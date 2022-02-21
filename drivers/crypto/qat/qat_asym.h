@@ -73,7 +73,7 @@ struct qat_asym_op_cookie {
 
 struct qat_asym_session {
 	struct icp_qat_fw_pke_request req_tmpl;
-	struct rte_crypto_asym_xform *xform;
+	struct rte_crypto_asym_xform xform;
 };
 
 static inline void
