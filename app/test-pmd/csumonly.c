@@ -258,8 +258,7 @@ parse_gtp(struct rte_udp_hdr *udp_hdr,
 /* Parse a vxlan header */
 static void
 parse_vxlan(struct rte_udp_hdr *udp_hdr,
-	    struct testpmd_offload_info *info,
-	    uint32_t pkt_type)
+	    struct testpmd_offload_info *info)
 {
 	struct rte_ether_hdr *eth_hdr;
 
@@ -267,8 +266,7 @@ parse_vxlan(struct rte_udp_hdr *udp_hdr,
 	 * default vxlan port (rfc7348) or that the rx offload flag is set
 	 * (i40e only currently)
 	 */
-	if (udp_hdr->dst_port != _htons(RTE_VXLAN_DEFAULT_PORT) &&
-		RTE_ETH_IS_TUNNEL_PKT(pkt_type) == 0)
+	if (udp_hdr->dst_port != _htons(RTE_VXLAN_DEFAULT_PORT))
 		return;
 
 	update_tunnel_outer(info);
@@ -922,8 +920,7 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 						RTE_MBUF_F_TX_TUNNEL_VXLAN_GPE;
 					goto tunnel_update;
 				}
-				parse_vxlan(udp_hdr, &info,
-					    m->packet_type);
+				parse_vxlan(udp_hdr, &info);
 				if (info.is_tunnel) {
 					tx_ol_flags |=
 						RTE_MBUF_F_TX_TUNNEL_VXLAN;
@@ -934,6 +931,12 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 					tx_ol_flags |=
 						RTE_MBUF_F_TX_TUNNEL_GENEVE;
 					goto tunnel_update;
+				}
+				/* Always keep last. */
+				if (unlikely(RTE_ETH_IS_TUNNEL_PKT(
+							m->packet_type) != 0)) {
+					TESTPMD_LOG(DEBUG, "Unknown tunnel packet. UDP dst port: %hu",
+						udp_hdr->dst_port);
 				}
 			} else if (info.l4_proto == IPPROTO_GRE) {
 				struct simple_gre_hdr *gre_hdr;
