@@ -216,7 +216,7 @@ static int ifpga_rawdev_fill_info(struct ifpga_rawdev *ifpga_dev,
 	char dir[1024] = "/sys/devices/";
 	char *c;
 	int ret;
-	char sub_brg_bdf[4][16];
+	char sub_brg_bdf[4][16] = {{0}};
 	int point;
 	DIR *dp = NULL;
 	struct dirent *entry;
