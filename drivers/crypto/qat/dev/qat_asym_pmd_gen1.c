@@ -7,7 +7,6 @@
 #include "qat_asym.h"
 #include "qat_crypto.h"
 #include "qat_crypto_pmd_gens.h"
-#include "qat_pke_functionality_arrays.h"
 
 struct rte_cryptodev_ops qat_asym_crypto_ops_gen1 = {
 	/* Device related operations */

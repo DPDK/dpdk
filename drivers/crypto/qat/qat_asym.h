@@ -52,7 +52,7 @@ typedef uint64_t large_int_ptr;
 	}
 
 struct qat_asym_op_cookie {
-	size_t alg_size;
+	size_t alg_bytesize;
 	uint64_t error;
 	rte_iova_t input_addr;
 	rte_iova_t output_addr;
@@ -102,20 +102,6 @@ qat_asym_session_get_private_size(struct rte_cryptodev *dev);
 void
 qat_asym_session_clear(struct rte_cryptodev *dev,
 		struct rte_cryptodev_asym_session *sess);
-
-/*
- * Process PKE response received from outgoing queue of QAT
- *
- * @param	op		a ptr to the rte_crypto_op referred to by
- *				the response message is returned in this param
- * @param	resp		icp_qat_fw_pke_resp message received from
- *				outgoing fw message queue
- * @param	op_cookie	Cookie pointer that holds private metadata
- *
- */
-int
-qat_asym_process_response(void **op, uint8_t *resp,
-		void *op_cookie,  __rte_unused uint64_t *dequeue_err_count);
 
 void
 qat_asym_init_op_cookie(void *cookie);

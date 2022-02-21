@@ -174,6 +174,7 @@ The QAT ASYM PMD has support for:
 
 * ``RTE_CRYPTO_ASYM_XFORM_MODEX``
 * ``RTE_CRYPTO_ASYM_XFORM_MODINV``
+* ``RTE_CRYPTO_ASYM_XFORM_RSA``
 
 Limitations
 ~~~~~~~~~~~
