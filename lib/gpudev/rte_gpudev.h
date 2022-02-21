@@ -489,7 +489,7 @@ void *rte_gpu_mem_cpu_map(int16_t dev_id, size_t size, void *ptr);
  * @param dev_id
  *   Reference device ID.
  * @param ptr
- *   Pointer to the memory area to be unmapped.
+ *   Pointer to the GPU memory area to be unmapped.
  *   NULL is a no-op accepted value.
  *
  * @return

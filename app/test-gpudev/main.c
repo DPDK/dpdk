@@ -210,7 +210,7 @@ gpu_mem_cpu_map(uint16_t gpu_id)
 		fprintf(stderr, "rte_gpu_mem_cpu_map returned error\n");
 		goto error;
 	}
-	printf("GPU memory mapped for CPU access at 0x%p\n", ptr_cpu);
+	printf("GPU memory CPU mapped at 0x%p\n", ptr_cpu);
 
 	((uint8_t *)ptr_cpu)[0] = 0x4;
 	((uint8_t *)ptr_cpu)[1] = 0x5;
@@ -221,12 +221,12 @@ gpu_mem_cpu_map(uint16_t gpu_id)
 			((uint8_t *)ptr_cpu)[1],
 			((uint8_t *)ptr_cpu)[2]);
 
-	ret = rte_gpu_mem_cpu_unmap(gpu_id, ptr_cpu);
+	ret = rte_gpu_mem_cpu_unmap(gpu_id, ptr_gpu);
 	if (ret < 0) {
 		fprintf(stderr, "rte_gpu_mem_cpu_unmap returned error %d\n", ret);
 		goto error;
 	}
-	printf("GPU memory mapped for CPU access at 0x%p\n", ptr_cpu);
+	printf("GPU memory CPU unmapped, 0x%p not valid anymore\n", ptr_cpu);
 
 	ret = rte_gpu_mem_free(gpu_id, ptr_gpu);
 	if (ret < 0) {
@@ -240,7 +240,7 @@ gpu_mem_cpu_map(uint16_t gpu_id)
 
 error:
 
-	rte_gpu_mem_cpu_unmap(gpu_id, ptr_cpu);
+	rte_gpu_mem_cpu_unmap(gpu_id, ptr_gpu);
 	rte_gpu_mem_free(gpu_id, ptr_gpu);
 
 	printf("\n=======> TEST: FAILED\n");
