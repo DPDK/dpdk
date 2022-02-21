@@ -1726,7 +1726,7 @@ mlx5_flow_meter_stats_read(struct rte_eth_dev *dev,
 	memset(stats, 0, sizeof(*stats));
 	if (fm->drop_cnt) {
 		ret = mlx5_counter_query(dev, fm->drop_cnt, clear, &pkts,
-						 &bytes);
+						 &bytes, NULL);
 		if (ret)
 			goto error;
 		/* If need to read the packets, set it. */

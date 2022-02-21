@@ -7799,14 +7799,15 @@ mlx5_counter_free(struct rte_eth_dev *dev, uint32_t cnt)
  */
 int
 mlx5_counter_query(struct rte_eth_dev *dev, uint32_t cnt,
-		   bool clear, uint64_t *pkts, uint64_t *bytes)
+		   bool clear, uint64_t *pkts, uint64_t *bytes, void **action)
 {
 	const struct mlx5_flow_driver_ops *fops;
 	struct rte_flow_attr attr = { .transfer = 0 };
 
 	if (flow_get_drv_type(dev, &attr) == MLX5_FLOW_TYPE_DV) {
 		fops = flow_get_drv_ops(MLX5_FLOW_TYPE_DV);
-		return fops->counter_query(dev, cnt, clear, pkts, bytes);
+		return fops->counter_query(dev, cnt, clear, pkts,
+					bytes, action);
 	}
 	DRV_LOG(ERR,
 		"port %u counter query is not supported.",
@@ -8378,6 +8379,16 @@ mlx5_flow_dev_dump_ipool(struct rte_eth_dev *dev,
 				"invalid flow handle");
 	}
 	handle_idx = flow->dev_handles;
+	/* query counter */
+	if (flow->counter &&
+	(!mlx5_counter_query(dev, flow->counter, false,
+	&count.hits, &count.bytes, &action)) && action) {
+		id = (uint64_t)(uintptr_t)action;
+		type = DR_DUMP_REC_TYPE_PMD_COUNTER;
+		save_dump_file(NULL, 0, type,
+			id, (void *)&count, file);
+	}
+
 	while (handle_idx) {
 		dh = mlx5_ipool_get(priv->sh->ipool
 				[MLX5_IPOOL_MLX5_FLOW], handle_idx);
@@ -8385,16 +8396,6 @@ mlx5_flow_dev_dump_ipool(struct rte_eth_dev *dev,
 			continue;
 		handle_idx = dh->next.next;
 
-		/* query counter */
-		type = DR_DUMP_REC_TYPE_PMD_COUNTER;
-		flow_dv_query_count_ptr(dev, flow->counter,
-						&action, error);
-		if (action) {
-			id = (uint64_t)(uintptr_t)action;
-			if (!mlx5_flow_query_counter(dev, flow, &count, error))
-				save_dump_file(NULL, 0, type,
-						id, (void *)&count, file);
-		}
 		/* Get modify_hdr and encap_decap buf from ipools. */
 		encap_decap = NULL;
 		modify_hdr = dh->dvh.modify_hdr;
@@ -8440,7 +8441,7 @@ mlx5_flow_dev_dump_ipool(struct rte_eth_dev *dev,
  */
 static int
 mlx5_flow_dev_dump_sh_all(struct rte_eth_dev *dev,
-	FILE *file, struct rte_flow_error *error)
+	FILE *file, struct rte_flow_error *error __rte_unused)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_dev_ctx_shared *sh = priv->sh;
@@ -8525,14 +8526,12 @@ mlx5_flow_dev_dump_sh_all(struct rte_eth_dev *dev,
 	max = MLX5_COUNTERS_PER_POOL * cmng->n_valid;
 	for (j = 1; j <= max; j++) {
 		action = NULL;
-		flow_dv_query_count_ptr(dev, j, &action, error);
-		if (action) {
-			if (!flow_dv_query_count(dev, j, &count, error)) {
-				type = DR_DUMP_REC_TYPE_PMD_COUNTER;
-				id = (uint64_t)(uintptr_t)action;
-				save_dump_file(NULL, 0, type,
-						id, (void *)&count, file);
-			}
+		if ((!mlx5_counter_query(dev, j, false, &count.hits,
+		&count.bytes, &action)) && action) {
+			id = (uint64_t)(uintptr_t)action;
+			type = DR_DUMP_REC_TYPE_PMD_COUNTER;
+			save_dump_file(NULL, 0, type,
+					id, (void *)&count, file);
 		}
 	}
 	return 0;

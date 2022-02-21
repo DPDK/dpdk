@@ -15830,7 +15830,7 @@ flow_dv_create_mtr_policy_acts(struct rte_eth_dev *dev,
  * @return
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
-int
+static int
 flow_dv_query_count(struct rte_eth_dev *dev, uint32_t cnt_idx, void *data,
 		    struct rte_flow_error *error)
 {
@@ -15861,48 +15861,6 @@ flow_dv_query_count(struct rte_eth_dev *dev, uint32_t cnt_idx, void *data,
 			cnt->bytes = bytes;
 		}
 		return 0;
-	}
-	return rte_flow_error_set(error, EINVAL,
-				  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
-				  NULL,
-				  "counters are not available");
-}
-
-
-/**
- * Query counter's action pointer for a DV flow rule via DevX.
- *
- * @param[in] dev
- *   Pointer to Ethernet device.
- * @param[in] cnt_idx
- *   Index to the flow counter.
- * @param[out] action_ptr
- *   Action pointer for counter.
- * @param[out] error
- *   Perform verbose error reporting if not NULL.
- *
- * @return
- *   0 on success, a negative errno value otherwise and rte_errno is set.
- */
-int
-flow_dv_query_count_ptr(struct rte_eth_dev *dev, uint32_t cnt_idx,
-	void **action_ptr, struct rte_flow_error *error)
-{
-	struct mlx5_priv *priv = dev->data->dev_private;
-
-	if (!priv->sh->cdev->config.devx || !action_ptr)
-		return rte_flow_error_set(error, ENOTSUP,
-					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
-					  NULL,
-					  "counters are not supported");
-
-	if (cnt_idx) {
-		struct mlx5_flow_counter *cnt = NULL;
-		cnt = flow_dv_counter_get_by_idx(dev, cnt_idx, NULL);
-		if (cnt) {
-			*action_ptr = cnt->action;
-			return 0;
-		}
 	}
 	return rte_flow_error_set(error, EINVAL,
 				  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
@@ -17488,7 +17446,7 @@ err:
  */
 static int
 flow_dv_counter_query(struct rte_eth_dev *dev, uint32_t counter, bool clear,
-		      uint64_t *pkts, uint64_t *bytes)
+		      uint64_t *pkts, uint64_t *bytes, void **action)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_flow_counter *cnt;
@@ -17502,6 +17460,9 @@ flow_dv_counter_query(struct rte_eth_dev *dev, uint32_t counter, bool clear,
 	if (ret)
 		return -1;
 	cnt = flow_dv_counter_get_by_idx(dev, counter, NULL);
+	if (cnt && action)
+		*action = cnt->action;
+
 	*pkts = inn_pkts - cnt->hits;
 	*bytes = inn_bytes - cnt->bytes;
 	if (clear) {

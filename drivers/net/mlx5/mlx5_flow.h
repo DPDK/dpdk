@@ -1180,7 +1180,7 @@ typedef void (*mlx5_flow_counter_free_t)(struct rte_eth_dev *dev,
 typedef int (*mlx5_flow_counter_query_t)(struct rte_eth_dev *dev,
 					 uint32_t cnt,
 					 bool clear, uint64_t *pkts,
-					 uint64_t *bytes);
+					 uint64_t *bytes, void **action);
 typedef int (*mlx5_flow_get_aged_flows_t)
 					(struct rte_eth_dev *dev,
 					 void **context,
@@ -1723,11 +1723,6 @@ struct mlx5_list_entry *flow_dv_dest_array_clone_cb(void *tool_ctx,
 				   struct mlx5_list_entry *entry, void *cb_ctx);
 void flow_dv_dest_array_clone_free_cb(void *tool_ctx,
 				      struct mlx5_list_entry *entry);
-int flow_dv_query_count_ptr(struct rte_eth_dev *dev, uint32_t cnt_idx,
-				void **action, struct rte_flow_error *error);
-int
-flow_dv_query_count(struct rte_eth_dev *dev, uint32_t cnt_idx, void *data,
-		    struct rte_flow_error *error);
 
 struct mlx5_aso_age_action *flow_aso_age_get_by_idx(struct rte_eth_dev *dev,
 						    uint32_t age_idx);
