@@ -2719,7 +2719,7 @@ initialize_ports(struct l2fwd_crypto_options *options)
 			last_portid = portid;
 		}
 
-		l2fwd_enabled_port_mask |= (1 << portid);
+		l2fwd_enabled_port_mask |= (1ULL << portid);
 		enabled_portcount++;
 	}
 
