@@ -88,6 +88,12 @@ aesni_mb_set_session_auth_parameters(const IMB_MGR *mb_mgr,
 	sess->auth.operation = xform->auth.op;
 
 	/* Set Authentication Parameters */
+	if (xform->auth.algo == RTE_CRYPTO_AUTH_NULL) {
+		sess->auth.algo = IMB_AUTH_NULL;
+		sess->auth.gen_digest_len = 0;
+		return 0;
+	}
+
 	if (xform->auth.algo == RTE_CRYPTO_AUTH_AES_XCBC_MAC) {
 		sess->auth.algo = IMB_AUTH_AES_XCBC;
 
@@ -434,6 +440,12 @@ aesni_mb_set_session_cipher_parameters(const IMB_MGR *mb_mgr,
 		sess->cipher.mode = IMB_CIPHER_KASUMI_UEA1_BITLEN;
 		is_kasumi = 1;
 		break;
+	case RTE_CRYPTO_CIPHER_NULL:
+		sess->cipher.mode = IMB_CIPHER_NULL;
+		sess->cipher.key_length_in_bytes = 0;
+		sess->iv.offset = xform->cipher.iv.offset;
+		sess->iv.length = xform->cipher.iv.length;
+		return 0;
 	default:
 		IPSEC_MB_LOG(ERR, "Unsupported cipher mode parameter");
 		return -ENOTSUP;
@@ -1322,6 +1334,12 @@ set_mb_job_params(IMB_JOB *job, struct ipsec_mb_qp *qp,
 
 		job->iv = rte_crypto_op_ctod_offset(op, uint8_t *,
 			session->iv.offset);
+	}
+
+	if (job->cipher_mode == IMB_CIPHER_NULL && oop) {
+		memcpy(job->dst + job->cipher_start_src_offset_in_bytes,
+			job->src + job->cipher_start_src_offset_in_bytes,
+			job->msg_len_to_cipher_in_bytes);
 	}
 
 	if (job->cipher_mode == IMB_CIPHER_ZUC_EEA3)
