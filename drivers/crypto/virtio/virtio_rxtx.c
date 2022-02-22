@@ -264,6 +264,9 @@ virtqueue_crypto_sym_enqueue_xmit(
 		if (cop->phys_addr)
 			desc[idx].addr = cop->phys_addr + session->iv.offset;
 		else {
+			if (session->iv.length > VIRTIO_CRYPTO_MAX_IV_SIZE)
+				return -ENOMEM;
+
 			rte_memcpy(crypto_op_cookie->iv,
 					rte_crypto_op_ctod_offset(cop,
 					uint8_t *, session->iv.offset),
