@@ -64,6 +64,18 @@ The following example will set up an af_xdp interface in DPDK:
 
     --vdev net_af_xdp,iface=ens786f1
 
+If 'start_queue' is not specified in the vdev arguments,
+the socket will by default be created on Rx queue 0.
+To ensure traffic lands on this queue,
+one can use flow steering if the network card supports it.
+Or, a simpler way is to reduce the number of configured queues
+for the device which will ensure that all traffic will land on queue 0
+and thus reach the socket:
+
+.. code-block:: console
+
+    ethtool -L ens786f1 combined 1
+
 Limitations
 -----------
 
