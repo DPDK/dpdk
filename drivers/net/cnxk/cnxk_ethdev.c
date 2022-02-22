@@ -3,6 +3,8 @@
  */
 #include <cnxk_ethdev.h>
 
+#include <rte_eventdev.h>
+
 static inline uint64_t
 nix_get_rx_offload_capa(struct cnxk_eth_dev *dev)
 {
@@ -597,6 +599,13 @@ cnxk_nix_rx_queue_setup(struct rte_eth_dev *eth_dev, uint16_t qid,
 	rxq_sp->qconf.mp = mp;
 
 	if (dev->rx_offloads & RTE_ETH_RX_OFFLOAD_SECURITY) {
+		/* Pass a tagmask used to handle error packets in inline device.
+		 * Ethdev rq's tag_mask field will be overwritten later
+		 * when sso is setup.
+		 */
+		rq->tag_mask =
+			0x0FF00000 | ((uint32_t)RTE_EVENT_TYPE_ETHDEV << 28);
+
 		/* Setup rq reference for inline dev if present */
 		rc = roc_nix_inl_dev_rq_get(rq);
 		if (rc)

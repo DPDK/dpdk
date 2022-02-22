@@ -533,7 +533,7 @@ roc_nix_inl_dev_rq_get(struct roc_nix_rq *rq)
 
 	inl_rq->flow_tag_width = 20;
 	/* Special tag mask */
-	inl_rq->tag_mask = 0xFFF00000;
+	inl_rq->tag_mask = rq->tag_mask;
 	inl_rq->tt = SSO_TT_ORDERED;
 	inl_rq->hwgrp = 0;
 	inl_rq->wqe_skip = 1;
