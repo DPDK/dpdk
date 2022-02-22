@@ -1460,8 +1460,7 @@ acc100_dma_fill_blk_type_in(struct acc100_dma_req_desc *desc,
 	next_triplet++;
 
 	while (cb_len > 0) {
-		if (next_triplet < ACC100_DMA_MAX_NUM_POINTERS &&
-				m->next != NULL) {
+		if (next_triplet < ACC100_DMA_MAX_NUM_POINTERS_IN && m->next != NULL) {
 
 			m = m->next;
 			*seg_total_left = rte_pktmbuf_data_len(m);
