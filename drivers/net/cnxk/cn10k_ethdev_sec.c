@@ -252,6 +252,63 @@ cn10k_eth_sec_sso_work_cb(uint64_t *gw, void *args)
 	cnxk_pktmbuf_free_no_cache(mbuf);
 }
 
+static void
+outb_dbg_iv_update(struct roc_ot_ipsec_outb_sa *outb_sa, const char *__iv_str)
+{
+	uint8_t *iv_dbg = outb_sa->iv.iv_dbg;
+	char *iv_str = strdup(__iv_str);
+	char *iv_b = NULL, len = 16;
+	char *save;
+	int i;
+
+	if (!iv_str)
+		return;
+
+	if (outb_sa->w2.s.enc_type == ROC_IE_OT_SA_ENC_AES_GCM ||
+	    outb_sa->w2.s.enc_type == ROC_IE_OT_SA_ENC_AES_CTR ||
+	    outb_sa->w2.s.enc_type == ROC_IE_OT_SA_ENC_AES_CCM ||
+	    outb_sa->w2.s.auth_type == ROC_IE_OT_SA_AUTH_AES_GMAC) {
+		memset(outb_sa->iv.s.iv_dbg1, 0, sizeof(outb_sa->iv.s.iv_dbg1));
+		memset(outb_sa->iv.s.iv_dbg2, 0, sizeof(outb_sa->iv.s.iv_dbg2));
+
+		iv_dbg = outb_sa->iv.s.iv_dbg1;
+		for (i = 0; i < 4; i++) {
+			iv_b = strtok_r(i ? NULL : iv_str, ",", &save);
+			if (!iv_b)
+				break;
+			iv_dbg[i] = strtoul(iv_b, NULL, 0);
+		}
+		*(uint32_t *)iv_dbg = rte_be_to_cpu_32(*(uint32_t *)iv_dbg);
+
+		iv_dbg = outb_sa->iv.s.iv_dbg2;
+		for (i = 0; i < 4; i++) {
+			iv_b = strtok_r(NULL, ",", &save);
+			if (!iv_b)
+				break;
+			iv_dbg[i] = strtoul(iv_b, NULL, 0);
+		}
+		*(uint32_t *)iv_dbg = rte_be_to_cpu_32(*(uint32_t *)iv_dbg);
+
+	} else {
+		iv_dbg = outb_sa->iv.iv_dbg;
+		memset(iv_dbg, 0, sizeof(outb_sa->iv.iv_dbg));
+
+		for (i = 0; i < len; i++) {
+			iv_b = strtok_r(i ? NULL : iv_str, ",", &save);
+			if (!iv_b)
+				break;
+			iv_dbg[i] = strtoul(iv_b, NULL, 0);
+		}
+		*(uint64_t *)iv_dbg = rte_be_to_cpu_64(*(uint64_t *)iv_dbg);
+		*(uint64_t *)&iv_dbg[8] =
+			rte_be_to_cpu_64(*(uint64_t *)&iv_dbg[8]);
+	}
+
+	/* Update source of IV */
+	outb_sa->w2.s.iv_src = ROC_IE_OT_SA_IV_SRC_FROM_SA;
+	free(iv_str);
+}
+
 static int
 cn10k_eth_sec_session_create(void *device,
 			     struct rte_security_session_conf *conf,
@@ -390,6 +447,7 @@ cn10k_eth_sec_session_create(void *device,
 		struct cn10k_outb_priv_data *outb_priv;
 		struct cnxk_ipsec_outb_rlens *rlens;
 		uint64_t sa_base = dev->outb.sa_base;
+		const char *iv_str;
 		uint32_t sa_idx;
 
 		PLT_STATIC_ASSERT(sizeof(struct cn10k_outb_priv_data) <
@@ -415,6 +473,10 @@ cn10k_eth_sec_session_create(void *device,
 			rc |= cnxk_eth_outb_sa_idx_put(dev, sa_idx);
 			goto mempool_put;
 		}
+
+		iv_str = getenv("CN10K_ETH_SEC_IV_OVR");
+		if (iv_str)
+			outb_dbg_iv_update(outb_sa_dptr, iv_str);
 
 		/* Save userdata */
 		outb_priv->userdata = conf->userdata;
