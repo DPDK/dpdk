@@ -67,6 +67,24 @@ nix_get_mbuf_from_cqe(void *cq, const uint64_t data_off)
 }
 
 static __rte_always_inline void
+nix_sec_flush_meta_burst(uint16_t lmt_id, uint64_t data, uint16_t lnum,
+			 uintptr_t aura_handle)
+{
+	uint64_t pa;
+
+	/* Prepare PA and Data */
+	pa = roc_npa_aura_handle_to_base(aura_handle) + NPA_LF_AURA_BATCH_FREE0;
+	pa |= ((data & 0x7) << 4);
+
+	data >>= 3;
+	data <<= 19;
+	data |= (uint64_t)lmt_id;
+	data |= (uint64_t)(lnum - 1) << 12;
+
+	roc_lmt_submit_steorl(data, pa);
+}
+
+static __rte_always_inline void
 nix_sec_flush_meta(uintptr_t laddr, uint16_t lmt_id, uint8_t loff,
 		   uintptr_t aura_handle)
 {
@@ -82,7 +100,7 @@ nix_sec_flush_meta(uintptr_t laddr, uint16_t lmt_id, uint8_t loff,
 	*(uint64_t *)laddr = (((uint64_t)(loff & 0x1) << 32) |
 			      roc_npa_aura_handle_to_aura(aura_handle));
 
-	pa |= ((loff >> 1) << 4);
+	pa |= ((uint64_t)(loff >> 1) << 4);
 	roc_lmt_submit_steorl(lmt_id, pa);
 }
 
@@ -121,6 +139,12 @@ nix_sec_meta_to_mbuf_sc(uint64_t cq_w1, const uint64_t sa_base, uintptr_t laddr,
 		 */
 		*(uint64_t *)(laddr + (*loff << 3)) = (uint64_t)mbuf;
 		*loff = *loff + 1;
+
+		/* Mark meta mbuf as put */
+		RTE_MEMPOOL_CHECK_COOKIES(mbuf->pool, (void **)&mbuf, 1, 0);
+
+		/* Mark inner mbuf as get */
+		RTE_MEMPOOL_CHECK_COOKIES(inner->pool, (void **)&inner, 1, 1);
 
 		return inner;
 	}
@@ -180,6 +204,12 @@ nix_sec_meta_to_mbuf(uint64_t cq_w1, uintptr_t sa_base, uintptr_t laddr,
 		 */
 		*(uint64_t *)(laddr + (*loff << 3)) = (uint64_t)mbuf;
 		*loff = *loff + 1;
+
+		/* Mark meta mbuf as put */
+		RTE_MEMPOOL_CHECK_COOKIES(mbuf->pool, (void **)&mbuf, 1, 0);
+
+		/* Mark inner mbuf as get */
+		RTE_MEMPOOL_CHECK_COOKIES(inner->pool, (void **)&inner, 1, 1);
 
 		/* Return inner mbuf */
 		return inner;
@@ -305,9 +335,6 @@ cn10k_nix_cqe_to_mbuf(const struct nix_cqe_hdr_s *cq, const uint32_t tag,
 	const uint64_t w1 = *(const uint64_t *)rx;
 	uint16_t len = rx->pkt_lenm1 + 1;
 	uint64_t ol_flags = 0;
-
-	/* Mark mempool obj as "get" as it is alloc'ed by NIX */
-	RTE_MEMPOOL_CHECK_COOKIES(mbuf->pool, (void **)&mbuf, 1, 1);
 
 	if (flag & NIX_RX_OFFLOAD_PTYPE_F)
 		mbuf->packet_type = nix_ptype_get(lookup_mem, w1);
@@ -446,6 +473,9 @@ cn10k_nix_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t pkts,
 
 		mbuf = nix_get_mbuf_from_cqe(cq, data_off);
 
+		/* Mark mempool obj as "get" as it is alloc'ed by NIX */
+		RTE_MEMPOOL_CHECK_COOKIES(mbuf->pool, (void **)&mbuf, 1, 1);
+
 		/* Translate meta to mbuf */
 		if (flags & NIX_RX_OFFLOAD_SECURITY_F) {
 			const uint64_t cq_w1 = *((const uint64_t *)cq + 1);
@@ -543,7 +573,7 @@ cn10k_nix_recv_pkts_vector(void *args, struct rte_mbuf **mbufs, uint16_t pkts,
 	uint64x2_t rearm3 = vdupq_n_u64(mbuf_initializer);
 	struct rte_mbuf *mbuf0, *mbuf1, *mbuf2, *mbuf3;
 	uint64_t aura_handle, lbase, laddr;
-	uint8_t loff = 0, lnum = 0;
+	uint8_t loff = 0, lnum = 0, shft = 0;
 	uint8x16_t f0, f1, f2, f3;
 	uint16_t lmt_id, d_off;
 	uint16_t packets = 0;
@@ -713,6 +743,12 @@ cn10k_nix_recv_pkts_vector(void *args, struct rte_mbuf **mbufs, uint16_t pkts,
 			ol_flags2 |= nix_rx_olflags_get(lookup_mem, cq2_w1);
 			ol_flags3 |= nix_rx_olflags_get(lookup_mem, cq3_w1);
 		}
+
+		/* Mark mempool obj as "get" as it is alloc'ed by NIX */
+		RTE_MEMPOOL_CHECK_COOKIES(mbuf0->pool, (void **)&mbuf0, 1, 1);
+		RTE_MEMPOOL_CHECK_COOKIES(mbuf1->pool, (void **)&mbuf1, 1, 1);
+		RTE_MEMPOOL_CHECK_COOKIES(mbuf2->pool, (void **)&mbuf2, 1, 1);
+		RTE_MEMPOOL_CHECK_COOKIES(mbuf3->pool, (void **)&mbuf3, 1, 1);
 
 		/* Translate meta to mbuf */
 		if (flags & NIX_RX_OFFLOAD_SECURITY_F) {
@@ -910,12 +946,6 @@ cn10k_nix_recv_pkts_vector(void *args, struct rte_mbuf **mbufs, uint16_t pkts,
 		roc_prefetch_store_keep(mbuf2);
 		roc_prefetch_store_keep(mbuf3);
 
-		/* Mark mempool obj as "get" as it is alloc'ed by NIX */
-		RTE_MEMPOOL_CHECK_COOKIES(mbuf0->pool, (void **)&mbuf0, 1, 1);
-		RTE_MEMPOOL_CHECK_COOKIES(mbuf1->pool, (void **)&mbuf1, 1, 1);
-		RTE_MEMPOOL_CHECK_COOKIES(mbuf2->pool, (void **)&mbuf2, 1, 1);
-		RTE_MEMPOOL_CHECK_COOKIES(mbuf3->pool, (void **)&mbuf3, 1, 1);
-
 		packets += NIX_DESCS_PER_LOOP;
 
 		if (!(flags & NIX_RX_VWQE_F)) {
@@ -925,22 +955,66 @@ cn10k_nix_recv_pkts_vector(void *args, struct rte_mbuf **mbufs, uint16_t pkts,
 		}
 
 		if (flags & NIX_RX_OFFLOAD_SECURITY_F) {
-			/* Flush when we don't have space for 4 meta */
-			if ((15 - loff) < 4) {
-				nix_sec_flush_meta(laddr, lmt_id + lnum, loff,
-						   aura_handle);
+			/* Check if lmtline border is crossed and adjust lnum */
+			if (loff > 15) {
+				/* Update aura handle */
+				*(uint64_t *)(laddr - 8) =
+					(((uint64_t)(15 & 0x1) << 32) |
+				    roc_npa_aura_handle_to_aura(aura_handle));
+				loff = loff - 15;
+				shft += 3;
+
 				lnum++;
-				lnum &= BIT_ULL(ROC_LMT_LINES_PER_CORE_LOG2) -
-					1;
+				laddr = (uintptr_t)LMT_OFF(lbase, lnum, 8);
+				/* Pick the pointer from 16th index and put it
+				 * at end of this new line.
+				 */
+				*(uint64_t *)(laddr + (loff << 3) - 8) =
+					*(uint64_t *)(laddr - 8);
+			}
+
+			/* Flush it when we are in 16th line and might
+			 * overflow it
+			 */
+			if (lnum >= 15 && loff >= 12) {
+				/* 16 LMT Line size m1 */
+				uint64_t data = BIT_ULL(48) - 1;
+
+				/* Update aura handle */
+				*(uint64_t *)(laddr - 8) =
+					(((uint64_t)(loff & 0x1) << 32) |
+				    roc_npa_aura_handle_to_aura(aura_handle));
+
+				data = (data & ~(0x7UL << shft)) |
+				       (((uint64_t)loff >> 1) << shft);
+
+				/* Send up to 16 lmt lines of pointers */
+				nix_sec_flush_meta_burst(lmt_id, data, lnum + 1,
+							 aura_handle);
+				rte_io_wmb();
+				lnum = 0;
+				loff = 0;
+				shft = 0;
 				/* First pointer starts at 8B offset */
 				laddr = (uintptr_t)LMT_OFF(lbase, lnum, 8);
-				loff = 0;
 			}
 		}
 	}
 
 	if (flags & NIX_RX_OFFLOAD_SECURITY_F && loff) {
-		nix_sec_flush_meta(laddr, lmt_id + lnum, loff, aura_handle);
+		/* 16 LMT Line size m1 */
+		uint64_t data = BIT_ULL(48) - 1;
+
+		/* Update aura handle */
+		*(uint64_t *)(laddr - 8) =
+			(((uint64_t)(loff & 0x1) << 32) |
+			 roc_npa_aura_handle_to_aura(aura_handle));
+
+		data = (data & ~(0x7UL << shft)) |
+		       (((uint64_t)loff >> 1) << shft);
+
+		/* Send up to 16 lmt lines of pointers */
+		nix_sec_flush_meta_burst(lmt_id, data, lnum + 1, aura_handle);
 		if (flags & NIX_RX_VWQE_F)
 			plt_io_wmb();
 	}

@@ -92,12 +92,16 @@ cn10k_sso_hws_forward_event(struct cn10k_sso_hws *ws,
 }
 
 static __rte_always_inline void
-cn10k_wqe_to_mbuf(uint64_t wqe, const uint64_t mbuf, uint8_t port_id,
+cn10k_wqe_to_mbuf(uint64_t wqe, const uint64_t __mbuf, uint8_t port_id,
 		  const uint32_t tag, const uint32_t flags,
 		  const void *const lookup_mem)
 {
 	const uint64_t mbuf_init = 0x100010000ULL | RTE_PKTMBUF_HEADROOM |
 				   (flags & NIX_RX_OFFLOAD_TSTAMP_F ? 8 : 0);
+	struct rte_mbuf *mbuf = (struct rte_mbuf *)__mbuf;
+
+	/* Mark mempool obj as "get" as it is alloc'ed by NIX */
+	RTE_MEMPOOL_CHECK_COOKIES(mbuf->pool, (void **)&mbuf, 1, 1);
 
 	cn10k_nix_cqe_to_mbuf((struct nix_cqe_hdr_s *)wqe, tag,
 			      (struct rte_mbuf *)mbuf, lookup_mem,
@@ -158,6 +162,9 @@ cn10k_process_vwqe(uintptr_t vwqe, uint16_t port_id, const uint32_t flags,
 
 		mbuf = (struct rte_mbuf *)((char *)cqe -
 					   sizeof(struct rte_mbuf));
+
+		/* Mark mempool obj as "get" as it is alloc'ed by NIX */
+		RTE_MEMPOOL_CHECK_COOKIES(mbuf->pool, (void **)&mbuf, 1, 1);
 
 		/* Translate meta to mbuf */
 		if (flags & NIX_RX_OFFLOAD_SECURITY_F) {
@@ -278,6 +285,10 @@ cn10k_sso_hws_get_work(struct cn10k_sso_hws *ws, struct rte_event *ev,
 			*(uint64_t *)gw.u64[1] = (uint64_t)vwqe_hdr;
 			cn10k_process_vwqe(gw.u64[1], port, flags, lookup_mem,
 					   ws->tstamp, ws->lmt_base);
+			/* Mark vector mempool object as get */
+			RTE_MEMPOOL_CHECK_COOKIES(
+				rte_mempool_from_obj((void *)gw.u64[1]),
+				(void **)&gw.u64[1], 1, 1);
 		}
 	}
 
