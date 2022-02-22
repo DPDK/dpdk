@@ -219,7 +219,6 @@ nix_inl_sso_setup(struct nix_inl_dev *inl_dev)
 	struct sso_lf_alloc_rsp *sso_rsp;
 	struct dev *dev = &inl_dev->dev;
 	uint16_t hwgrp[1] = {0};
-	uint32_t xae_cnt;
 	int rc;
 
 	/* Alloc SSOW LF */
@@ -240,8 +239,8 @@ nix_inl_sso_setup(struct nix_inl_dev *inl_dev)
 	inl_dev->xae_waes = sso_rsp->xaq_wq_entries;
 	inl_dev->iue = sso_rsp->in_unit_entries;
 
-	xae_cnt = inl_dev->iue;
-	rc = sso_hwgrp_init_xaq_aura(dev, &inl_dev->xaq, xae_cnt,
+	inl_dev->nb_xae = inl_dev->iue;
+	rc = sso_hwgrp_init_xaq_aura(dev, &inl_dev->xaq, inl_dev->nb_xae,
 				     inl_dev->xae_waes, inl_dev->xaq_buf_size,
 				     1);
 	if (rc) {
@@ -516,6 +515,111 @@ nix_inl_lf_detach(struct nix_inl_dev *inl_dev)
 	req->cptlfs = !!inl_dev->attach_cptlf;
 
 	return mbox_process(dev->mbox);
+}
+
+static int
+nix_inl_dev_wait_for_sso_empty(struct nix_inl_dev *inl_dev)
+{
+	uintptr_t sso_base = inl_dev->sso_base;
+	int wait_ms = 3000;
+
+	while (wait_ms > 0) {
+		/* Break when empty */
+		if (!plt_read64(sso_base + SSO_LF_GGRP_XAQ_CNT) &&
+		    !plt_read64(sso_base + SSO_LF_GGRP_AQ_CNT))
+			return 0;
+
+		plt_delay_us(1000);
+		wait_ms -= 1;
+	}
+
+	return -ETIMEDOUT;
+}
+
+int
+roc_nix_inl_dev_xaq_realloc(uint64_t aura_handle)
+{
+	struct idev_cfg *idev = idev_get_cfg();
+	struct nix_inl_dev *inl_dev;
+	int rc, i;
+
+	if (idev == NULL)
+		return 0;
+
+	inl_dev = idev->nix_inl_dev;
+	/* Nothing to do if no inline device */
+	if (!inl_dev)
+		return 0;
+
+	if (!aura_handle) {
+		inl_dev->nb_xae = inl_dev->iue;
+		goto no_pool;
+	}
+
+	/* Check if aura is already considered */
+	for (i = 0; i < inl_dev->pkt_pools_cnt; i++) {
+		if (inl_dev->pkt_pools[i] == aura_handle)
+			return 0;
+	}
+
+no_pool:
+	/* Disable RQ if enabled */
+	if (inl_dev->rq_refs) {
+		rc = nix_rq_ena_dis(&inl_dev->dev, &inl_dev->rq, false);
+		if (rc) {
+			plt_err("Failed to disable inline dev RQ, rc=%d", rc);
+			return rc;
+		}
+	}
+
+	/* Wait for events to be removed */
+	rc = nix_inl_dev_wait_for_sso_empty(inl_dev);
+	if (rc) {
+		plt_err("Timeout waiting for inline device event cleanup");
+		goto exit;
+	}
+
+	/* Disable HWGRP */
+	plt_write64(0, inl_dev->sso_base + SSO_LF_GGRP_QCTL);
+
+	inl_dev->pkt_pools_cnt++;
+	inl_dev->pkt_pools =
+		plt_realloc(inl_dev->pkt_pools,
+			    sizeof(uint64_t *) * inl_dev->pkt_pools_cnt, 0);
+	if (!inl_dev->pkt_pools)
+		inl_dev->pkt_pools_cnt = 0;
+	else
+		inl_dev->pkt_pools[inl_dev->pkt_pools_cnt - 1] = aura_handle;
+	inl_dev->nb_xae += roc_npa_aura_op_limit_get(aura_handle);
+
+	/* Realloc XAQ aura */
+	rc = sso_hwgrp_init_xaq_aura(&inl_dev->dev, &inl_dev->xaq,
+				     inl_dev->nb_xae, inl_dev->xae_waes,
+				     inl_dev->xaq_buf_size, 1);
+	if (rc) {
+		plt_err("Failed to reinitialize xaq aura, rc=%d", rc);
+		return rc;
+	}
+
+	/* Setup xaq for hwgrps */
+	rc = sso_hwgrp_alloc_xaq(&inl_dev->dev, inl_dev->xaq.aura_handle, 1);
+	if (rc) {
+		plt_err("Failed to setup hwgrp xaq aura, rc=%d", rc);
+		return rc;
+	}
+
+	/* Enable HWGRP */
+	plt_write64(0x1, inl_dev->sso_base + SSO_LF_GGRP_QCTL);
+
+exit:
+	/* Renable RQ */
+	if (inl_dev->rq_refs) {
+		rc = nix_rq_ena_dis(&inl_dev->dev, &inl_dev->rq, true);
+		if (rc)
+			plt_err("Failed to enable inline dev RQ, rc=%d", rc);
+	}
+
+	return rc;
 }
 
 int

@@ -124,6 +124,7 @@ void __roc_api roc_nix_inl_dev_dump(struct roc_nix_inl_dev *roc_inl_dev);
 bool __roc_api roc_nix_inl_dev_is_probed(void);
 void __roc_api roc_nix_inl_dev_lock(void);
 void __roc_api roc_nix_inl_dev_unlock(void);
+int __roc_api roc_nix_inl_dev_xaq_realloc(uint64_t aura_handle);
 
 /* NIX Inline Inbound API */
 int __roc_api roc_nix_inl_inb_init(struct roc_nix *roc_nix);

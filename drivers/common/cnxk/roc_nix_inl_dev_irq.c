@@ -72,7 +72,7 @@ nix_inl_sso_hwgrp_irq(void *param)
 	if (intr & BIT(1))
 		nix_inl_sso_work_cb(inl_dev);
 
-	if (!(intr & BIT(1)))
+	if (intr & ~BIT(1))
 		plt_err("GGRP 0 GGRP_INT=0x%" PRIx64 "", intr);
 
 	/* Clear interrupt */

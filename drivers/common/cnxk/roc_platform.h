@@ -148,6 +148,7 @@
 #define plt_intr_handle rte_intr_handle
 
 #define plt_zmalloc(sz, align) rte_zmalloc("cnxk", sz, align)
+#define plt_realloc	       rte_realloc
 #define plt_free	       rte_free
 
 #define plt_read64(addr) rte_read64_relaxed((volatile void *)(addr))
