@@ -304,12 +304,16 @@ ot_ipsec_inb_tunnel_hdr_fill(struct roc_ot_ipsec_inb_sa *sa,
 int
 cnxk_ot_ipsec_inb_sa_fill(struct roc_ot_ipsec_inb_sa *sa,
 			  struct rte_security_ipsec_xform *ipsec_xfrm,
-			  struct rte_crypto_sym_xform *crypto_xfrm)
+			  struct rte_crypto_sym_xform *crypto_xfrm,
+			  bool is_inline)
 {
 	union roc_ot_ipsec_sa_word2 w2;
 	uint32_t replay_win_sz;
 	size_t offset;
 	int rc;
+
+	/* Initialize the SA */
+	roc_ot_ipsec_inb_sa_init(sa, is_inline);
 
 	w2.u64 = 0;
 	rc = ot_ipsec_sa_common_param_fill(&w2, sa->cipher_key, sa->w8.s.salt,
@@ -334,13 +338,6 @@ cnxk_ot_ipsec_inb_sa_fill(struct roc_ot_ipsec_inb_sa *sa,
 	rc = ot_ipsec_inb_tunnel_hdr_fill(sa, ipsec_xfrm);
 	if (rc)
 		return rc;
-
-	/* Default options for pkt_out and pkt_fmt are with
-	 * second pass meta and no defrag.
-	 */
-	sa->w0.s.pkt_format = ROC_IE_OT_SA_PKT_FMT_META;
-	sa->w0.s.pkt_output = ROC_IE_OT_SA_PKT_OUTPUT_HW_BASED_DEFRAG;
-	sa->w0.s.pkind = ROC_OT_CPT_META_PKIND;
 
 	/* ESN */
 	sa->w2.s.esn_en = !!ipsec_xfrm->options.esn;
@@ -390,11 +387,6 @@ cnxk_ot_ipsec_inb_sa_fill(struct roc_ot_ipsec_inb_sa *sa,
 		sa->w0.s.hard_life_dec = 1;
 	}
 
-	/* There are two words of CPT_CTX_HW_S for ucode to skip */
-	sa->w0.s.ctx_hdr_size = 1;
-	sa->w0.s.aop_valid = 1;
-	sa->w0.s.et_ovrwr = 1;
-
 	rte_wmb();
 
 	/* Enable SA */
@@ -411,6 +403,9 @@ cnxk_ot_ipsec_outb_sa_fill(struct roc_ot_ipsec_outb_sa *sa,
 	union roc_ot_ipsec_sa_word2 w2;
 	size_t offset;
 	int rc;
+
+	/* Initialize the SA */
+	roc_ot_ipsec_outb_sa_init(sa);
 
 	w2.u64 = 0;
 	rc = ot_ipsec_sa_common_param_fill(&w2, sa->cipher_key, sa->iv.s.salt,

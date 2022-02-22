@@ -1,12 +1,9 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(C) 2021 Marvell.
+ * Copyright(C) 2022 Marvell.
  */
 
 #ifndef __ROC_IE_OT_H__
 #define __ROC_IE_OT_H__
-
-/* PKIND to be used for CPT Meta parsing */
-#define ROC_OT_CPT_META_PKIND 58
 
 /* CN10K IPSEC opcodes */
 #define ROC_IE_OT_MAJOR_OP_PROCESS_OUTBOUND_IPSEC 0x28UL
@@ -16,6 +13,9 @@
 #define ROC_IE_OT_MINOR_OP_WRITE_SA 0x09UL
 
 #define ROC_IE_OT_CTX_ILEN 2
+/* PKIND to be used for CPT Meta parsing */
+#define ROC_IE_OT_CPT_PKIND	  58
+#define ROC_IE_OT_SA_CTX_HDR_SIZE 1
 
 enum roc_ie_ot_ucc_ipsec {
 	ROC_IE_OT_UCC_SUCCESS = 0x00,
@@ -532,4 +532,7 @@ PLT_STATIC_ASSERT(offsetof(struct roc_ot_ipsec_outb_sa, hmac_opad_ipad) ==
 PLT_STATIC_ASSERT(offsetof(struct roc_ot_ipsec_outb_sa, ctx) ==
 		  31 * sizeof(uint64_t));
 
+void __roc_api roc_ot_ipsec_inb_sa_init(struct roc_ot_ipsec_inb_sa *sa,
+					bool is_inline);
+void __roc_api roc_ot_ipsec_outb_sa_init(struct roc_ot_ipsec_outb_sa *sa);
 #endif /* __ROC_IE_OT_H__ */

@@ -43,7 +43,7 @@ nix_inl_inb_sa_tbl_setup(struct roc_nix *roc_nix)
 	if (roc_model_is_cn10k()) {
 		for (i = 0; i < ipsec_in_max_spi; i++) {
 			sa = ((uint8_t *)nix->inb_sa_base) + (i * inb_sa_sz);
-			roc_nix_inl_inb_sa_init(sa);
+			roc_ot_ipsec_inb_sa_init(sa, true);
 		}
 	}
 
@@ -401,7 +401,7 @@ roc_nix_inl_outb_init(struct roc_nix *roc_nix)
 	if (roc_model_is_cn10k()) {
 		for (i = 0; i < roc_nix->ipsec_out_max_sa; i++) {
 			sa = ((uint8_t *)sa_base) + (i * sa_sz);
-			roc_nix_inl_outb_sa_init(sa);
+			roc_ot_ipsec_outb_sa_init(sa);
 		}
 	}
 	nix->outb_sa_base = sa_base;
@@ -864,33 +864,6 @@ roc_nix_inl_ctx_write(struct roc_nix *roc_nix, void *sa_dptr, void *sa_cptr,
 	}
 	plt_nix_dbg("Could not get CPT LF for CTX write");
 	return -ENOTSUP;
-}
-
-void
-roc_nix_inl_inb_sa_init(struct roc_ot_ipsec_inb_sa *sa)
-{
-	size_t offset;
-
-	memset(sa, 0, sizeof(struct roc_ot_ipsec_inb_sa));
-
-	offset = offsetof(struct roc_ot_ipsec_inb_sa, ctx);
-	sa->w0.s.hw_ctx_off = offset / ROC_CTX_UNIT_8B;
-	sa->w0.s.ctx_push_size = sa->w0.s.hw_ctx_off + 1;
-	sa->w0.s.ctx_size = ROC_IE_OT_CTX_ILEN;
-	sa->w0.s.aop_valid = 1;
-}
-
-void
-roc_nix_inl_outb_sa_init(struct roc_ot_ipsec_outb_sa *sa)
-{
-	size_t offset;
-
-	memset(sa, 0, sizeof(struct roc_ot_ipsec_outb_sa));
-
-	offset = offsetof(struct roc_ot_ipsec_outb_sa, ctx);
-	sa->w0.s.ctx_push_size = (offset / ROC_CTX_UNIT_8B);
-	sa->w0.s.ctx_size = ROC_IE_OT_CTX_ILEN;
-	sa->w0.s.aop_valid = 1;
 }
 
 void

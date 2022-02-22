@@ -397,7 +397,7 @@ nix_inl_nix_setup(struct nix_inl_dev *inl_dev)
 		for (i = 0; i < ipsec_in_max_spi; i++) {
 			sa = ((uint8_t *)inl_dev->inb_sa_base) +
 			     (i * inb_sa_sz);
-			roc_nix_inl_inb_sa_init(sa);
+			roc_ot_ipsec_inb_sa_init(sa, true);
 		}
 	}
 	/* Setup device specific inb SA table */
