@@ -543,6 +543,7 @@ struct roc_nix_tm_shaper_profile {
 	uint64_t peak_sz;
 	int32_t pkt_len_adj;
 	bool pkt_mode;
+	int8_t accuracy;
 	/* Function to free this memory */
 	void (*free_fn)(void *profile);
 };

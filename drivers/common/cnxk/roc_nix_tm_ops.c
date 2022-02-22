@@ -173,8 +173,8 @@ nix_tm_shaper_profile_add(struct roc_nix *roc_nix,
 	if (commit_rate || commit_sz) {
 		if (commit_sz < min_burst || commit_sz > max_burst)
 			return NIX_ERR_TM_INVALID_COMMIT_SZ;
-		else if (!nix_tm_shaper_rate_conv(commit_rate, NULL, NULL,
-						  NULL))
+		else if (!nix_tm_shaper_rate_conv(commit_rate, NULL, NULL, NULL,
+						  profile->accuracy))
 			return NIX_ERR_TM_INVALID_COMMIT_RATE;
 	}
 
@@ -182,7 +182,8 @@ nix_tm_shaper_profile_add(struct roc_nix *roc_nix,
 	if (peak_sz || peak_rate) {
 		if (peak_sz < min_burst || peak_sz > max_burst)
 			return NIX_ERR_TM_INVALID_PEAK_SZ;
-		else if (!nix_tm_shaper_rate_conv(peak_rate, NULL, NULL, NULL))
+		else if (!nix_tm_shaper_rate_conv(peak_rate, NULL, NULL, NULL,
+						  profile->accuracy))
 			return NIX_ERR_TM_INVALID_PEAK_RATE;
 	}
 
@@ -230,6 +231,7 @@ roc_nix_tm_shaper_profile_add(struct roc_nix *roc_nix,
 	profile->pkt_len_adj = roc_profile->pkt_len_adj;
 	profile->pkt_mode = roc_profile->pkt_mode;
 	profile->free_fn = roc_profile->free_fn;
+	profile->accuracy = roc_profile->accuracy;
 
 	return nix_tm_shaper_profile_add(roc_nix, profile, 0);
 }
@@ -246,6 +248,8 @@ roc_nix_tm_shaper_profile_update(struct roc_nix *roc_nix,
 	profile->peak.rate = roc_profile->peak_rate;
 	profile->commit.size = roc_profile->commit_sz;
 	profile->peak.size = roc_profile->peak_sz;
+	profile->pkt_len_adj = roc_profile->pkt_len_adj;
+	profile->accuracy = roc_profile->accuracy;
 
 	return nix_tm_shaper_profile_add(roc_nix, profile, 1);
 }

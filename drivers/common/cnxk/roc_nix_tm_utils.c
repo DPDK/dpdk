@@ -125,9 +125,72 @@ nix_tm_node_search(struct nix *nix, uint32_t node_id, enum roc_nix_tm_tree tree)
 	return NULL;
 }
 
-uint64_t
-nix_tm_shaper_rate_conv(uint64_t value, uint64_t *exponent_p,
-			uint64_t *mantissa_p, uint64_t *div_exp_p)
+static uint64_t
+nix_tm_shaper_rate_conv_floor(uint64_t value, uint64_t *exponent_p,
+			      uint64_t *mantissa_p, uint64_t *div_exp_p)
+{
+	uint64_t div_exp, exponent, mantissa;
+
+	/* Boundary checks */
+	if (value < NIX_TM_MIN_SHAPER_RATE || value > NIX_TM_MAX_SHAPER_RATE)
+		return 0;
+
+	if (value <= NIX_TM_SHAPER_RATE(0, 0, 0)) {
+		/* Calculate rate div_exp and mantissa using
+		 * the following formula:
+		 *
+		 * value = (2E6 * (256 + mantissa)
+		 *              / ((1 << div_exp) * 256))
+		 */
+		div_exp = 0;
+		exponent = 0;
+		mantissa = NIX_TM_MAX_RATE_MANTISSA;
+
+		while (value <= (NIX_TM_SHAPER_RATE_CONST / (1 << div_exp)))
+			div_exp += 1;
+
+		while (value <= ((NIX_TM_SHAPER_RATE_CONST * (256 + mantissa)) /
+				 ((1 << div_exp) * 256)))
+			mantissa -= 1;
+	} else {
+		/* Calculate rate exponent and mantissa using
+		 * the following formula:
+		 *
+		 * value = (2E6 * ((256 + mantissa) << exponent)) / 256
+		 *
+		 */
+		div_exp = 0;
+		exponent = NIX_TM_MAX_RATE_EXPONENT;
+		mantissa = NIX_TM_MAX_RATE_MANTISSA;
+
+		while (value <= (NIX_TM_SHAPER_RATE_CONST * (1 << exponent)))
+			exponent -= 1;
+
+		while (value <= ((NIX_TM_SHAPER_RATE_CONST *
+				  ((256 + mantissa) << exponent)) /
+				 256))
+			mantissa -= 1;
+	}
+
+	if (div_exp > NIX_TM_MAX_RATE_DIV_EXP ||
+	    exponent > NIX_TM_MAX_RATE_EXPONENT ||
+	    mantissa > NIX_TM_MAX_RATE_MANTISSA)
+		return 0;
+
+	if (div_exp_p)
+		*div_exp_p = div_exp;
+	if (exponent_p)
+		*exponent_p = exponent;
+	if (mantissa_p)
+		*mantissa_p = mantissa;
+
+	/* Calculate real rate value */
+	return NIX_TM_SHAPER_RATE(exponent, mantissa, div_exp);
+}
+
+static uint64_t
+nix_tm_shaper_rate_conv_exact(uint64_t value, uint64_t *exponent_p,
+			      uint64_t *mantissa_p, uint64_t *div_exp_p)
 {
 	uint64_t div_exp, exponent, mantissa;
 
@@ -188,6 +251,23 @@ nix_tm_shaper_rate_conv(uint64_t value, uint64_t *exponent_p,
 	return NIX_TM_SHAPER_RATE(exponent, mantissa, div_exp);
 }
 
+/* With zero accuracy we will tune parameters as defined by HW,
+ * non zero accuracy will keep the parameters close to lower values
+ * and make sure long-term shaper rate will not exceed the requested rate.
+ */
+uint64_t
+nix_tm_shaper_rate_conv(uint64_t value, uint64_t *exponent_p,
+			uint64_t *mantissa_p, uint64_t *div_exp_p,
+			int8_t accuracy)
+{
+	if (!accuracy)
+		return nix_tm_shaper_rate_conv_exact(value, exponent_p,
+						     mantissa_p, div_exp_p);
+
+	return nix_tm_shaper_rate_conv_floor(value, exponent_p, mantissa_p,
+					     div_exp_p);
+}
+
 uint64_t
 nix_tm_shaper_burst_conv(uint64_t value, uint64_t *exponent_p,
 			 uint64_t *mantissa_p)
@@ -245,13 +325,13 @@ nix_tm_shaper_conf_get(struct nix_tm_shaper_profile *profile,
 	if (profile->commit.rate)
 		cir->rate = nix_tm_shaper_rate_conv(
 			profile->commit.rate, &cir->exponent, &cir->mantissa,
-			&cir->div_exp);
+			&cir->div_exp, profile->accuracy);
 
 	/* Calculate PIR exponent and mantissa */
 	if (profile->peak.rate)
 		pir->rate = nix_tm_shaper_rate_conv(
 			profile->peak.rate, &pir->exponent, &pir->mantissa,
-			&pir->div_exp);
+			&pir->div_exp, profile->accuracy);
 
 	/* Calculate CIR burst exponent and mantissa */
 	if (profile->commit.size)

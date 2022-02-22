@@ -97,6 +97,7 @@ struct nix_tm_shaper_profile {
 	int32_t pkt_mode_adj;
 	bool pkt_mode;
 	uint32_t id;
+	int8_t accuracy;
 	void (*free_fn)(void *profile);
 
 	uint32_t ref_cnt;
@@ -403,7 +404,8 @@ uint32_t nix_tm_check_rr(struct nix *nix, uint32_t parent_id,
 			 uint32_t *max_prio);
 uint64_t nix_tm_shaper_profile_rate_min(struct nix *nix);
 uint64_t nix_tm_shaper_rate_conv(uint64_t value, uint64_t *exponent_p,
-				 uint64_t *mantissa_p, uint64_t *div_exp_p);
+				 uint64_t *mantissa_p, uint64_t *div_exp_p,
+				 int8_t accuracy);
 uint64_t nix_tm_shaper_burst_conv(uint64_t value, uint64_t *exponent_p,
 				  uint64_t *mantissa_p);
 bool nix_tm_child_res_valid(struct nix_tm_node_list *list,
