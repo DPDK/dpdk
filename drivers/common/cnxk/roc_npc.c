@@ -174,8 +174,6 @@ roc_npc_init(struct roc_npc *roc_npc)
 	roc_npc->kex_capability = npc_get_kex_capability(npc);
 	roc_npc->rx_parse_nibble = npc->keyx_supp_nmask[NPC_MCAM_RX];
 
-	npc->mark_actions = 0;
-
 	npc->mcam_entries = npc_mcam_tot_entries() >> npc->keyw[NPC_MCAM_RX];
 
 	/* Free, free_rev, live and live_rev entries */
@@ -331,13 +329,11 @@ npc_parse_actions(struct roc_npc *roc_npc, const struct roc_npc_attr *attr,
 			}
 			mark = act_mark->id + 1;
 			req_act |= ROC_NPC_ACTION_TYPE_MARK;
-			npc->mark_actions += 1;
 			break;
 
 		case ROC_NPC_ACTION_TYPE_FLAG:
 			mark = NPC_FLOW_FLAG_VAL;
 			req_act |= ROC_NPC_ACTION_TYPE_FLAG;
-			npc->mark_actions += 1;
 			break;
 
 		case ROC_NPC_ACTION_TYPE_COUNT:
@@ -818,23 +814,6 @@ npc_rss_action_program(struct roc_npc *roc_npc,
 		}
 	}
 	return 0;
-}
-
-int
-roc_npc_mark_actions_get(struct roc_npc *roc_npc)
-{
-	struct npc *npc = roc_npc_to_npc_priv(roc_npc);
-
-	return npc->mark_actions;
-}
-
-int
-roc_npc_mark_actions_sub_return(struct roc_npc *roc_npc, uint32_t count)
-{
-	struct npc *npc = roc_npc_to_npc_priv(roc_npc);
-
-	npc->mark_actions -= count;
-	return npc->mark_actions;
 }
 
 static int
