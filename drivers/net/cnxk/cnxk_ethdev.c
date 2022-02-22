@@ -545,6 +545,11 @@ cnxk_nix_rx_queue_setup(struct rte_eth_dev *eth_dev, uint16_t qid,
 		nb_desc = RTE_MAX(nb_desc, pkt_pool_limit);
 	}
 
+	/* Its a no-op when inline device is not used */
+	if (dev->rx_offloads & RTE_ETH_RX_OFFLOAD_SECURITY ||
+	    dev->tx_offloads & RTE_ETH_TX_OFFLOAD_SECURITY)
+		roc_nix_inl_dev_xaq_realloc(mp->pool_id);
+
 	/* Setup ROC CQ */
 	cq = &dev->cqs[qid];
 	cq->qid = qid;
