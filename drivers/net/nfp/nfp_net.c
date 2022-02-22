@@ -223,6 +223,7 @@ nfp_net_rx_queue_release(void *rx_queue)
 
 	if (rxq) {
 		nfp_net_rx_queue_release_mbufs(rxq);
+		rte_memzone_free(rxq->tz);
 		rte_free(rxq->rxbufs);
 		rte_free(rxq);
 	}
@@ -259,6 +260,7 @@ nfp_net_tx_queue_release(void *tx_queue)
 
 	if (txq) {
 		nfp_net_tx_queue_release_mbufs(txq);
+		rte_memzone_free(txq->tz);
 		rte_free(txq->txbufs);
 		rte_free(txq);
 	}
@@ -888,10 +890,14 @@ nfp_net_close(struct rte_eth_dev *dev)
 	for (i = 0; i < dev->data->nb_tx_queues; i++) {
 		nfp_net_reset_tx_queue(
 			(struct nfp_net_txq *)dev->data->tx_queues[i]);
+		nfp_net_tx_queue_release(
+			(struct nfp_net_txq *)dev->data->tx_queues[i]);
 	}
 
 	for (i = 0; i < dev->data->nb_rx_queues; i++) {
 		nfp_net_reset_rx_queue(
+			(struct nfp_net_rxq *)dev->data->rx_queues[i]);
+		nfp_net_rx_queue_release(
 			(struct nfp_net_rxq *)dev->data->rx_queues[i]);
 	}
 
@@ -1609,6 +1615,11 @@ nfp_net_rx_queue_setup(struct rte_eth_dev *dev,
 	rxq->dma = (uint64_t)tz->iova;
 	rxq->rxds = (struct nfp_net_rx_desc *)tz->addr;
 
+	/* Also save the pointer to the memzone struct so it can be freed
+	 * if needed
+	 */
+	rxq->tz = tz;
+
 	/* mbuf pointers array for referencing mbufs linked to RX descriptors */
 	rxq->rxbufs = rte_zmalloc_socket("rxq->rxbufs",
 					 sizeof(*rxq->rxbufs) * nb_desc,
@@ -1748,6 +1759,11 @@ nfp_net_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 		nfp_net_tx_queue_release(txq);
 		return -ENOMEM;
 	}
+
+	/* Save the pointer to the memzone struct so it can be freed
+	 * if needed
+	 */
+	txq->tz = tz;
 
 	txq->tx_count = nb_desc;
 	txq->tx_free_thresh = tx_free_thresh;

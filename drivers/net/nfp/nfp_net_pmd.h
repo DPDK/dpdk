@@ -235,6 +235,9 @@ struct nfp_net_txq {
 	 */
 	struct nfp_net_tx_desc *txds;
 
+	/* Pointer to the memzone for the ring */
+	const struct rte_memzone *tz;
+
 	/*
 	 * At this point 48 bytes have been used for all the fields in the
 	 * TX critical path. We have room for 8 bytes and still all placed
@@ -369,6 +372,9 @@ struct nfp_net_rxq {
 
 	/* DMA address of the queue */
 	__le64 dma;
+
+	/* Pointer to the memzone for the ring */
+	const struct rte_memzone *tz;
 
 	/*
 	 * Queue information: @qidx is the queue index from Linux's
