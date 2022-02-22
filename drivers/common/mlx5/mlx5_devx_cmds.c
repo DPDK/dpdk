@@ -1130,6 +1130,18 @@ mlx5_devx_cmd_query_hca_attr(void *ctx,
 			goto error;
 		}
 	}
+	if (attr->eswitch_manager) {
+		hcattr = mlx5_devx_get_hca_cap(ctx, in, out, &rc,
+				MLX5_SET_HCA_CAP_OP_MOD_ESW |
+				MLX5_HCA_CAP_OPMOD_GET_CUR);
+		if (!hcattr)
+			return rc;
+		attr->esw_mgr_vport_id_valid =
+			MLX5_GET(esw_cap, hcattr,
+				 esw_manager_vport_number_valid);
+		attr->esw_mgr_vport_id =
+			MLX5_GET(esw_cap, hcattr, esw_manager_vport_number);
+	}
 	return 0;
 error:
 	rc = (rc > 0) ? -rc : rc;

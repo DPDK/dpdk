@@ -97,6 +97,10 @@ static int16_t
 flow_dv_get_esw_manager_vport_id(struct rte_eth_dev *dev)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_common_device *cdev = priv->sh->cdev;
+
+	if (cdev->config.hca_attr.esw_mgr_vport_id_valid)
+		return (int16_t)cdev->config.hca_attr.esw_mgr_vport_id;
 
 	if (priv->pci_dev == NULL)
 		return 0;
