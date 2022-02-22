@@ -5,6 +5,8 @@
 #include "roc_api.h"
 #include "roc_priv.h"
 
+#define WORK_LIMIT 1000
+
 static void
 nix_inl_sso_work_cb(struct nix_inl_dev *inl_dev)
 {
@@ -15,6 +17,7 @@ nix_inl_sso_work_cb(struct nix_inl_dev *inl_dev)
 		__uint128_t get_work;
 		uint64_t u64[2];
 	} gw;
+	uint16_t cnt = 0;
 	uint64_t work;
 
 again:
@@ -33,7 +36,9 @@ again:
 		else
 			plt_warn("Undelivered inl dev work gw0: %p gw1: %p",
 				 (void *)gw.u64[0], (void *)gw.u64[1]);
-		goto again;
+		cnt++;
+		if (cnt < WORK_LIMIT)
+			goto again;
 	}
 
 	plt_atomic_thread_fence(__ATOMIC_ACQ_REL);
@@ -138,8 +143,10 @@ nix_inl_sso_register_irqs(struct nix_inl_dev *inl_dev)
 	/* Enable hw interrupt */
 	plt_write64(~0ull, sso_base + SSO_LF_GGRP_INT_ENA_W1S);
 
-	/* Setup threshold for work exec interrupt to 1 wqe in IAQ */
-	plt_write64(0x1ull, sso_base + SSO_LF_GGRP_INT_THR);
+	/* Setup threshold for work exec interrupt to 100us timeout
+	 * based on time counter.
+	 */
+	plt_write64(BIT_ULL(63) | 10ULL << 48, sso_base + SSO_LF_GGRP_INT_THR);
 
 	return rc;
 }
