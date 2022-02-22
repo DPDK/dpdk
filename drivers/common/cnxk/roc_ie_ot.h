@@ -351,7 +351,8 @@ struct roc_ot_ipsec_inb_sa {
 			uint64_t ip_hdr_verify : 2;
 			uint64_t udp_ports_verify : 1;
 
-			uint64_t rsvd6 : 7;
+			uint64_t l3hdr_on_err : 1;
+			uint64_t rsvd6 : 6;
 			uint64_t async_mode : 1;
 
 			uint64_t spi : 32;

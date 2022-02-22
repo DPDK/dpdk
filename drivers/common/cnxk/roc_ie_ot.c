@@ -17,6 +17,7 @@ roc_ot_ipsec_inb_sa_init(struct roc_ot_ipsec_inb_sa *sa, bool is_inline)
 		sa->w0.s.pkt_format = ROC_IE_OT_SA_PKT_FMT_META;
 		sa->w0.s.pkind = ROC_IE_OT_CPT_PKIND;
 		sa->w0.s.et_ovrwr = 1;
+		sa->w2.s.l3hdr_on_err = 1;
 	}
 
 	offset = offsetof(struct roc_ot_ipsec_inb_sa, ctx);
