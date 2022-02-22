@@ -311,6 +311,10 @@ roc_nix_inl_outb_init(struct roc_nix *roc_nix)
 	/* Retrieve inline device if present */
 	inl_dev = idev->nix_inl_dev;
 	sso_pffunc = inl_dev ? inl_dev->dev.pf_func : idev_sso_pffunc_get();
+	/* Use sso_pffunc if explicitly requested */
+	if (roc_nix->ipsec_out_sso_pffunc)
+		sso_pffunc = idev_sso_pffunc_get();
+
 	if (!sso_pffunc) {
 		plt_err("Failed to setup inline outb, need either "
 			"inline device or sso device");
@@ -328,7 +332,8 @@ roc_nix_inl_outb_init(struct roc_nix *roc_nix)
 	eng_grpmask = (1ULL << ROC_CPT_DFLT_ENG_GRP_SE |
 		       1ULL << ROC_CPT_DFLT_ENG_GRP_SE_IE |
 		       1ULL << ROC_CPT_DFLT_ENG_GRP_AE);
-	rc = cpt_lfs_alloc(dev, eng_grpmask, blkaddr, true);
+	rc = cpt_lfs_alloc(dev, eng_grpmask, blkaddr,
+			   !roc_nix->ipsec_out_sso_pffunc);
 	if (rc) {
 		plt_err("Failed to alloc CPT LF resources, rc=%d", rc);
 		goto lf_detach;

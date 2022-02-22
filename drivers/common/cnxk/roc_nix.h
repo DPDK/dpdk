@@ -397,6 +397,7 @@ struct roc_nix {
 	uint16_t outb_nb_crypto_qs;
 	uint16_t ipsec_in_max_spi;
 	uint16_t ipsec_out_max_sa;
+	bool ipsec_out_sso_pffunc;
 	/* End of input parameters */
 	/* LMT line base for "Per Core Tx LMT line" mode*/
 	uintptr_t lmt_base;
