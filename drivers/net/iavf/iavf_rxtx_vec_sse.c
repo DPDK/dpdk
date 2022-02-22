@@ -1120,9 +1120,6 @@ iavf_xmit_fixed_burst_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
 	uint64_t rs = IAVF_TX_DESC_CMD_RS | flags;
 	int i;
 
-	/* cross rx_thresh boundary is not allowed */
-	nb_pkts = RTE_MIN(nb_pkts, txq->rs_thresh);
-
 	if (txq->nb_free < txq->free_thresh)
 		iavf_tx_free_bufs(txq);
 
@@ -1189,6 +1186,7 @@ iavf_xmit_pkts_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
 	while (nb_pkts) {
 		uint16_t ret, num;
 
+		/* cross rs_thresh boundary is not allowed */
 		num = (uint16_t)RTE_MIN(nb_pkts, txq->rs_thresh);
 		ret = iavf_xmit_fixed_burst_vec(tx_queue, &tx_pkts[nb_tx], num);
 		nb_tx += ret;
