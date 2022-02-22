@@ -351,6 +351,7 @@ struct cnxk_eth_dev {
 	uint8_t ptype_disable;
 	bool scalar_ena;
 	bool ptp_en;
+	bool rx_mark_update; /* Enable/Disable mark update to mbuf */
 
 	/* Pointer back to rte */
 	struct rte_eth_dev *eth_dev;

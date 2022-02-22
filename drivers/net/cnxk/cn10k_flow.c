@@ -131,9 +131,9 @@ cn10k_flow_create(struct rte_eth_dev *eth_dev, const struct rte_flow_attr *attr,
 	const struct rte_flow_action *action_rss = NULL;
 	const struct rte_flow_action_meter *mtr = NULL;
 	const struct rte_flow_action *act_q = NULL;
-	int mark_actions = 0, vtag_actions = 0;
 	struct roc_npc *npc = &dev->npc;
 	struct roc_npc_flow *flow;
+	int vtag_actions = 0;
 	uint32_t req_act = 0;
 	int i, rc;
 
@@ -197,13 +197,6 @@ cn10k_flow_create(struct rte_eth_dev *eth_dev, const struct rte_flow_attr *attr,
 			cn10k_mtr_connect(eth_dev, mtr->mtr_id);
 	}
 
-	mark_actions = roc_npc_mark_actions_get(npc);
-
-	if (mark_actions) {
-		dev->rx_offload_flags |= NIX_RX_OFFLOAD_MARK_UPDATE_F;
-		cn10k_eth_set_rx_function(eth_dev);
-	}
-
 	vtag_actions = roc_npc_vtag_actions_get(npc);
 
 	if (vtag_actions) {
@@ -220,19 +213,10 @@ cn10k_flow_destroy(struct rte_eth_dev *eth_dev, struct rte_flow *rte_flow,
 {
 	struct roc_npc_flow *flow = (struct roc_npc_flow *)rte_flow;
 	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
-	int mark_actions = 0, vtag_actions = 0;
 	struct roc_npc *npc = &dev->npc;
+	int vtag_actions = 0;
 	uint32_t mtr_id;
 	int rc;
-
-	mark_actions = roc_npc_mark_actions_get(npc);
-	if (mark_actions) {
-		mark_actions = roc_npc_mark_actions_sub_return(npc, 1);
-		if (mark_actions == 0) {
-			dev->rx_offload_flags &= ~NIX_RX_OFFLOAD_MARK_UPDATE_F;
-			cn10k_eth_set_rx_function(eth_dev);
-		}
-	}
 
 	vtag_actions = roc_npc_vtag_actions_get(npc);
 	if (vtag_actions) {

@@ -39,6 +39,9 @@ nix_rx_offload_flags(struct rte_eth_dev *eth_dev)
 	if (dev->rx_offloads & RTE_ETH_RX_OFFLOAD_SECURITY)
 		flags |= NIX_RX_OFFLOAD_SECURITY_F;
 
+	if (dev->rx_mark_update)
+		flags |= NIX_RX_OFFLOAD_MARK_UPDATE_F;
+
 	return flags;
 }
 
@@ -448,6 +451,27 @@ cn10k_nix_dev_start(struct rte_eth_dev *eth_dev)
 	return 0;
 }
 
+static int
+cn10k_nix_rx_metadata_negotiate(struct rte_eth_dev *eth_dev, uint64_t *features)
+{
+	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+
+	*features &=
+		(RTE_ETH_RX_METADATA_USER_FLAG | RTE_ETH_RX_METADATA_USER_MARK);
+
+	if (*features) {
+		dev->rx_offload_flags |= NIX_RX_OFFLOAD_MARK_UPDATE_F;
+		dev->rx_mark_update = true;
+	} else {
+		dev->rx_offload_flags &= ~NIX_RX_OFFLOAD_MARK_UPDATE_F;
+		dev->rx_mark_update = false;
+	}
+
+	cn10k_eth_set_rx_function(eth_dev);
+
+	return 0;
+}
+
 /* Update platform specific eth dev ops */
 static void
 nix_eth_dev_ops_override(void)
@@ -467,6 +491,8 @@ nix_eth_dev_ops_override(void)
 	cnxk_eth_dev_ops.dev_ptypes_set = cn10k_nix_ptypes_set;
 	cnxk_eth_dev_ops.timesync_enable = cn10k_nix_timesync_enable;
 	cnxk_eth_dev_ops.timesync_disable = cn10k_nix_timesync_disable;
+	cnxk_eth_dev_ops.rx_metadata_negotiate =
+		cn10k_nix_rx_metadata_negotiate;
 }
 
 static void
