@@ -138,7 +138,7 @@ static const struct rte_security_capability cn10k_eth_sec_capabilities[] = {
 	}
 };
 
-static void
+void
 cn10k_eth_sec_sso_work_cb(uint64_t *gw, void *args)
 {
 	struct rte_eth_event_ipsec_desc desc;
@@ -250,9 +250,6 @@ cn10k_eth_sec_session_create(void *device,
 
 	if (rte_security_dynfield_register() < 0)
 		return -ENOTSUP;
-
-	if (rte_eal_process_type() == RTE_PROC_PRIMARY)
-		roc_nix_inl_cb_register(cn10k_eth_sec_sso_work_cb, NULL);
 
 	ipsec = &conf->ipsec;
 	crypto = conf->crypto_xform;
