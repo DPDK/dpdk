@@ -9,6 +9,7 @@
 #include <rte_malloc.h>
 #include <rte_errno.h>
 #include <rte_log.h>
+#include <rte_eal_paging.h>
 
 #include "rte_gpudev.h"
 #include "gpudev_driver.h"
@@ -846,6 +847,46 @@ rte_gpu_comm_create_list(uint16_t dev_id,
 		return NULL;
 	}
 
+	/*
+	 * Use GPU memory CPU map feature if enabled in the driver
+	 * to allocate the status flags of the list.
+	 * Allocating this flag in GPU memory will reduce
+	 * the latency when GPU workload is polling this flag.
+	 */
+	comm_list[0].status_d = rte_gpu_mem_alloc(dev_id,
+			sizeof(enum rte_gpu_comm_list_status) * num_comm_items,
+			rte_mem_page_size());
+	if (ret < 0) {
+		rte_errno = ENOMEM;
+		return NULL;
+	}
+
+	comm_list[0].status_h = rte_gpu_mem_cpu_map(dev_id,
+			sizeof(enum rte_gpu_comm_list_status) * num_comm_items,
+			comm_list[0].status_d);
+	if (comm_list[0].status_h == NULL) {
+		/*
+		 * If CPU mapping is not supported by driver
+		 * use regular CPU registered memory.
+		 */
+		comm_list[0].status_h = rte_zmalloc(NULL,
+				sizeof(enum rte_gpu_comm_list_status) * num_comm_items, 0);
+		if (comm_list[0].status_h == NULL) {
+			rte_errno = ENOMEM;
+			return NULL;
+		}
+
+		ret = rte_gpu_mem_register(dev_id,
+				sizeof(enum rte_gpu_comm_list_status) * num_comm_items,
+				comm_list[0].status_h);
+		if (ret < 0) {
+			rte_errno = ENOMEM;
+			return NULL;
+		}
+
+		comm_list[0].status_d = comm_list[0].status_h;
+	}
+
 	for (idx_l = 0; idx_l < num_comm_items; idx_l++) {
 		comm_list[idx_l].pkt_list = rte_zmalloc(NULL,
 				sizeof(struct rte_gpu_comm_pkt) * RTE_GPU_COMM_LIST_PKTS_MAX, 0);
@@ -862,7 +903,6 @@ rte_gpu_comm_create_list(uint16_t dev_id,
 			return NULL;
 		}
 
-		RTE_GPU_VOLATILE(comm_list[idx_l].status) = RTE_GPU_COMM_LIST_FREE;
 		comm_list[idx_l].num_pkts = 0;
 		comm_list[idx_l].dev_id = dev_id;
 
@@ -871,6 +911,17 @@ rte_gpu_comm_create_list(uint16_t dev_id,
 		if (comm_list[idx_l].mbufs == NULL) {
 			rte_errno = ENOMEM;
 			return NULL;
+		}
+
+		if (idx_l > 0) {
+			comm_list[idx_l].status_h = &(comm_list[0].status_h[idx_l]);
+			comm_list[idx_l].status_d = &(comm_list[0].status_d[idx_l]);
+
+			ret = rte_gpu_comm_set_status(&comm_list[idx_l], RTE_GPU_COMM_LIST_FREE);
+			if (ret < 0) {
+				rte_errno = ENOMEM;
+				return NULL;
+			}
 		}
 	}
 
@@ -909,6 +960,14 @@ rte_gpu_comm_destroy_list(struct rte_gpu_comm_list *comm_list,
 		return -1;
 	}
 
+	ret = rte_gpu_mem_cpu_unmap(dev_id, comm_list[0].status_d);
+	if (ret == 0) {
+		rte_gpu_mem_free(dev_id, comm_list[0].status_d);
+	} else {
+		rte_gpu_mem_unregister(dev_id, comm_list[0].status_h);
+		rte_free(comm_list[0].status_h);
+	}
+
 	rte_free(comm_list);
 
 	return 0;
@@ -919,6 +978,7 @@ rte_gpu_comm_populate_list_pkts(struct rte_gpu_comm_list *comm_list_item,
 		struct rte_mbuf **mbufs, uint32_t num_mbufs)
 {
 	uint32_t idx;
+	int ret;
 
 	if (comm_list_item == NULL || comm_list_item->pkt_list == NULL ||
 			mbufs == NULL || num_mbufs > RTE_GPU_COMM_LIST_PKTS_MAX) {
@@ -942,7 +1002,39 @@ rte_gpu_comm_populate_list_pkts(struct rte_gpu_comm_list *comm_list_item,
 
 	RTE_GPU_VOLATILE(comm_list_item->num_pkts) = num_mbufs;
 	rte_gpu_wmb(comm_list_item->dev_id);
-	RTE_GPU_VOLATILE(comm_list_item->status) = RTE_GPU_COMM_LIST_READY;
+	ret = rte_gpu_comm_set_status(comm_list_item, RTE_GPU_COMM_LIST_READY);
+	if (ret < 0) {
+		rte_errno = EINVAL;
+		return -rte_errno;
+	}
+
+	return 0;
+}
+
+int
+rte_gpu_comm_set_status(struct rte_gpu_comm_list *comm_list_item,
+		enum rte_gpu_comm_list_status status)
+{
+	if (comm_list_item == NULL) {
+		rte_errno = EINVAL;
+		return -rte_errno;
+	}
+
+	RTE_GPU_VOLATILE(comm_list_item->status_h[0]) = status;
+
+	return 0;
+}
+
+int
+rte_gpu_comm_get_status(struct rte_gpu_comm_list *comm_list_item,
+		enum rte_gpu_comm_list_status *status)
+{
+	if (comm_list_item == NULL || status == NULL) {
+		rte_errno = EINVAL;
+		return -rte_errno;
+	}
+
+	*status = RTE_GPU_VOLATILE(comm_list_item->status_h[0]);
 
 	return 0;
 }
@@ -951,14 +1043,21 @@ int
 rte_gpu_comm_cleanup_list(struct rte_gpu_comm_list *comm_list_item)
 {
 	uint32_t idx = 0;
+	enum rte_gpu_comm_list_status status;
+	int ret;
 
 	if (comm_list_item == NULL) {
 		rte_errno = EINVAL;
 		return -rte_errno;
 	}
 
-	if (RTE_GPU_VOLATILE(comm_list_item->status) ==
-			RTE_GPU_COMM_LIST_READY) {
+	ret = rte_gpu_comm_get_status(comm_list_item, &status);
+	if (ret < 0) {
+		rte_errno = EINVAL;
+		return -rte_errno;
+	}
+
+	if (status == RTE_GPU_COMM_LIST_READY) {
 		GPU_LOG(ERR, "packet list is still in progress");
 		rte_errno = EINVAL;
 		return -rte_errno;
@@ -973,7 +1072,11 @@ rte_gpu_comm_cleanup_list(struct rte_gpu_comm_list *comm_list_item)
 		comm_list_item->mbufs[idx] = NULL;
 	}
 
-	RTE_GPU_VOLATILE(comm_list_item->status) = RTE_GPU_COMM_LIST_FREE;
+	ret = rte_gpu_comm_set_status(comm_list_item, RTE_GPU_COMM_LIST_FREE);
+	if (ret < 0) {
+		rte_errno = EINVAL;
+		return -rte_errno;
+	}
 	RTE_GPU_VOLATILE(comm_list_item->num_pkts) = 0;
 	rte_mb();
 

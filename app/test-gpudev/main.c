@@ -324,7 +324,13 @@ simulate_gpu_task(struct rte_gpu_comm_list *comm_list_item, int num_pkts)
 		 * consume(comm_list_item->pkt_list[idx].addr);
 		 */
 	}
-	comm_list_item->status = RTE_GPU_COMM_LIST_DONE;
+	/*
+	 * A real GPU workload function can't directly call rte_gpu_comm_set_status
+	 * because it's a CPU-only function.
+	 * A real GPU workload should implement the content
+	 * of rte_gpu_comm_set_status() in GPU specific code.
+	 */
+	rte_gpu_comm_set_status(comm_list_item, RTE_GPU_COMM_LIST_DONE);
 
 	return 0;
 }

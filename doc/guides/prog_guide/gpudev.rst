@@ -216,7 +216,7 @@ about how to use functions in this library in case of a CUDA application.
 
        /* GPU kernel keeps checking this flag to know if it has to quit or wait for more packets. */
        while (*quit_flag_ptr == 0) {
-           if (comm_list[comm_list_index]->status != RTE_GPU_COMM_LIST_READY)
+           if (comm_list[comm_list_index]->status_d[0] != RTE_GPU_COMM_LIST_READY)
                continue;
 
            if (threadIdx.x < comm_list[comm_list_index]->num_pkts)

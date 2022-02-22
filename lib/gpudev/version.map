@@ -12,8 +12,10 @@ EXPERIMENTAL {
 	rte_gpu_comm_destroy_flag;
 	rte_gpu_comm_destroy_list;
 	rte_gpu_comm_get_flag_value;
+	rte_gpu_comm_get_status;
 	rte_gpu_comm_populate_list_pkts;
 	rte_gpu_comm_set_flag;
+	rte_gpu_comm_set_status;
 	rte_gpu_count_avail;
 	rte_gpu_find_next;
 	rte_gpu_info_get;

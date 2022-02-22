@@ -124,8 +124,10 @@ struct rte_gpu_comm_list {
 	struct rte_gpu_comm_pkt *pkt_list;
 	/** Number of packets in the list. */
 	uint32_t num_pkts;
-	/** Status of the list. */
-	enum rte_gpu_comm_list_status status;
+	/** Status of the list. CPU pointer. */
+	enum rte_gpu_comm_list_status *status_h;
+	/** Status of the list. GPU pointer. */
+	enum rte_gpu_comm_list_status *status_d;
 };
 
 /**
@@ -678,6 +680,46 @@ int rte_gpu_comm_destroy_list(struct rte_gpu_comm_list *comm_list,
 __rte_experimental
 int rte_gpu_comm_populate_list_pkts(struct rte_gpu_comm_list *comm_list_item,
 		struct rte_mbuf **mbufs, uint32_t num_mbufs);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Set status flag value of a communication list item.
+ *
+ * @param comm_list_item
+ *   Communication list item to query.
+ * @param status
+ *   Status value to set.
+ *
+ * @return
+ *   0 on success, -rte_errno otherwise:
+ *   - EINVAL if invalid input params
+ */
+__rte_experimental
+int rte_gpu_comm_set_status(struct rte_gpu_comm_list *comm_list_item,
+		enum rte_gpu_comm_list_status status);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Get status flag value of a communication list item.
+ *
+ * @param comm_list_item
+ *   Communication list item to query.
+ *   Input parameter.
+ * @param status
+ *   Communication list item status flag value.
+ *   Output parameter.
+ *
+ * @return
+ *   0 on success, -rte_errno otherwise:
+ *   - EINVAL if invalid input params
+ */
+__rte_experimental
+int rte_gpu_comm_get_status(struct rte_gpu_comm_list *comm_list_item,
+		enum rte_gpu_comm_list_status *status);
 
 /**
  * @warning
