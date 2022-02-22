@@ -58,6 +58,7 @@ struct nix_inl_dev {
 	bool is_multi_channel;
 	uint16_t ipsec_in_max_spi;
 	bool attach_cptlf;
+	bool wqe_skip;
 };
 
 int nix_inl_sso_register_irqs(struct nix_inl_dev *inl_dev);

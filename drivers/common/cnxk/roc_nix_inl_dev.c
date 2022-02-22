@@ -27,6 +27,12 @@ nix_inl_dev_pffunc_get(void)
 	return 0;
 }
 
+uint16_t
+roc_nix_inl_dev_pffunc_get(void)
+{
+	return nix_inl_dev_pffunc_get();
+}
+
 static void
 nix_inl_selftest_work_cb(uint64_t *gw, void *args)
 {
@@ -655,6 +661,7 @@ roc_nix_inl_dev_init(struct roc_nix_inl_dev *roc_inl_dev)
 	inl_dev->channel = roc_inl_dev->channel;
 	inl_dev->chan_mask = roc_inl_dev->chan_mask;
 	inl_dev->attach_cptlf = roc_inl_dev->attach_cptlf;
+	inl_dev->wqe_skip = roc_inl_dev->wqe_skip;
 
 	/* Initialize base device */
 	rc = dev_init(&inl_dev->dev, pci_dev);

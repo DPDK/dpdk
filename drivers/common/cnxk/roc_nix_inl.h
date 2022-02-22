@@ -111,6 +111,7 @@ struct roc_nix_inl_dev {
 	uint16_t channel;
 	uint16_t chan_mask;
 	bool attach_cptlf;
+	bool wqe_skip;
 	/* End of input parameters */
 
 #define ROC_NIX_INL_MEM_SZ (1280)
@@ -125,6 +126,7 @@ bool __roc_api roc_nix_inl_dev_is_probed(void);
 void __roc_api roc_nix_inl_dev_lock(void);
 void __roc_api roc_nix_inl_dev_unlock(void);
 int __roc_api roc_nix_inl_dev_xaq_realloc(uint64_t aura_handle);
+uint16_t __roc_api roc_nix_inl_dev_pffunc_get(void);
 
 /* NIX Inline Inbound API */
 int __roc_api roc_nix_inl_inb_init(struct roc_nix *roc_nix);

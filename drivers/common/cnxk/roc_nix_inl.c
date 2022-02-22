@@ -107,18 +107,24 @@ roc_nix_inl_outb_sa_base_get(struct roc_nix *roc_nix)
 uintptr_t
 roc_nix_inl_inb_sa_base_get(struct roc_nix *roc_nix, bool inb_inl_dev)
 {
-	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
 	struct idev_cfg *idev = idev_get_cfg();
 	struct nix_inl_dev *inl_dev;
+	struct nix *nix = NULL;
 
 	if (idev == NULL)
 		return 0;
 
-	if (!nix->inl_inb_ena)
-		return 0;
+	if (!inb_inl_dev && roc_nix == NULL)
+		return -EINVAL;
 
-	inl_dev = idev->nix_inl_dev;
+	if (roc_nix) {
+		nix = roc_nix_to_nix_priv(roc_nix);
+		if (!nix->inl_inb_ena)
+			return 0;
+	}
+
 	if (inb_inl_dev) {
+		inl_dev = idev->nix_inl_dev;
 		/* Return inline dev sa base */
 		if (inl_dev)
 			return (uintptr_t)inl_dev->inb_sa_base;
@@ -131,18 +137,24 @@ roc_nix_inl_inb_sa_base_get(struct roc_nix *roc_nix, bool inb_inl_dev)
 uint32_t
 roc_nix_inl_inb_sa_max_spi(struct roc_nix *roc_nix, bool inb_inl_dev)
 {
-	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
 	struct idev_cfg *idev = idev_get_cfg();
 	struct nix_inl_dev *inl_dev;
+	struct nix *nix;
 
 	if (idev == NULL)
 		return 0;
 
-	if (!nix->inl_inb_ena)
-		return 0;
+	if (!inb_inl_dev && roc_nix == NULL)
+		return -EINVAL;
 
-	inl_dev = idev->nix_inl_dev;
+	if (roc_nix) {
+		nix = roc_nix_to_nix_priv(roc_nix);
+		if (!nix->inl_inb_ena)
+			return 0;
+	}
+
 	if (inb_inl_dev) {
+		inl_dev = idev->nix_inl_dev;
 		if (inl_dev)
 			return inl_dev->ipsec_in_max_spi;
 		return 0;
@@ -154,21 +166,28 @@ roc_nix_inl_inb_sa_max_spi(struct roc_nix *roc_nix, bool inb_inl_dev)
 uint32_t
 roc_nix_inl_inb_sa_sz(struct roc_nix *roc_nix, bool inl_dev_sa)
 {
-	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
 	struct idev_cfg *idev = idev_get_cfg();
 	struct nix_inl_dev *inl_dev;
+	struct nix *nix;
 
 	if (idev == NULL)
 		return 0;
 
-	if (!inl_dev_sa)
-		return nix->inb_sa_sz;
+	if (!inl_dev_sa && roc_nix == NULL)
+		return -EINVAL;
 
-	inl_dev = idev->nix_inl_dev;
-	if (inl_dev_sa && inl_dev)
-		return inl_dev->inb_sa_sz;
+	if (roc_nix) {
+		nix = roc_nix_to_nix_priv(roc_nix);
+		if (!inl_dev_sa)
+			return nix->inb_sa_sz;
+	}
 
-	/* On error */
+	if (inl_dev_sa) {
+		inl_dev = idev->nix_inl_dev;
+		if (inl_dev)
+			return inl_dev->inb_sa_sz;
+	}
+
 	return 0;
 }
 
@@ -536,7 +555,7 @@ roc_nix_inl_dev_rq_get(struct roc_nix_rq *rq)
 	inl_rq->tag_mask = 0xFFF00000;
 	inl_rq->tt = SSO_TT_ORDERED;
 	inl_rq->hwgrp = 0;
-	inl_rq->wqe_skip = 1;
+	inl_rq->wqe_skip = inl_dev->wqe_skip;
 	inl_rq->sso_ena = true;
 
 	/* Prepare and send RQ init mbox */
@@ -731,13 +750,14 @@ int
 roc_nix_inl_sa_sync(struct roc_nix *roc_nix, void *sa, bool inb,
 		    enum roc_nix_inl_sa_sync_op op)
 {
-	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
-	struct roc_cpt_lf *outb_lf = nix->cpt_lf_base;
 	struct idev_cfg *idev = idev_get_cfg();
 	struct nix_inl_dev *inl_dev = NULL;
+	struct roc_cpt_lf *outb_lf = NULL;
 	union cpt_lf_ctx_reload reload;
 	union cpt_lf_ctx_flush flush;
+	bool get_inl_lf = true;
 	uintptr_t rbase;
+	struct nix *nix;
 
 	/* Nothing much to do on cn9k */
 	if (roc_model_is_cn9k()) {
@@ -745,11 +765,22 @@ roc_nix_inl_sa_sync(struct roc_nix *roc_nix, void *sa, bool inb,
 		return 0;
 	}
 
-	if (inb && nix->inb_inl_dev) {
+	if (idev)
+		inl_dev = idev->nix_inl_dev;
+
+	if (!inl_dev && roc_nix == NULL)
+		return -EINVAL;
+
+	if (roc_nix) {
+		nix = roc_nix_to_nix_priv(roc_nix);
+		outb_lf = nix->cpt_lf_base;
+		if (inb && !nix->inb_inl_dev)
+			get_inl_lf = false;
+	}
+
+	if (inb && get_inl_lf) {
 		outb_lf = NULL;
-		if (idev)
-			inl_dev = idev->nix_inl_dev;
-		if (inl_dev)
+		if (inl_dev && inl_dev->attach_cptlf)
 			outb_lf = &inl_dev->cpt_lf;
 	}
 
@@ -783,12 +814,13 @@ int
 roc_nix_inl_ctx_write(struct roc_nix *roc_nix, void *sa_dptr, void *sa_cptr,
 		      bool inb, uint16_t sa_len)
 {
-	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
-	struct roc_cpt_lf *outb_lf = nix->cpt_lf_base;
 	struct idev_cfg *idev = idev_get_cfg();
 	struct nix_inl_dev *inl_dev = NULL;
+	struct roc_cpt_lf *outb_lf = NULL;
 	union cpt_lf_ctx_flush flush;
+	bool get_inl_lf = true;
 	uintptr_t rbase;
+	struct nix *nix;
 	int rc;
 
 	/* Nothing much to do on cn9k */
@@ -797,10 +829,22 @@ roc_nix_inl_ctx_write(struct roc_nix *roc_nix, void *sa_dptr, void *sa_cptr,
 		return 0;
 	}
 
-	if (inb && nix->inb_inl_dev) {
+	if (idev)
+		inl_dev = idev->nix_inl_dev;
+
+	if (!inl_dev && roc_nix == NULL)
+		return -EINVAL;
+
+	if (roc_nix) {
+		nix = roc_nix_to_nix_priv(roc_nix);
+		outb_lf = nix->cpt_lf_base;
+
+		if (inb && !nix->inb_inl_dev)
+			get_inl_lf = false;
+	}
+
+	if (inb && get_inl_lf) {
 		outb_lf = NULL;
-		if (idev)
-			inl_dev = idev->nix_inl_dev;
 		if (inl_dev && inl_dev->attach_cptlf)
 			outb_lf = &inl_dev->cpt_lf;
 	}
