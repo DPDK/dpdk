@@ -5,6 +5,7 @@
 #include <cnxk_ethdev.h>
 
 #define CNXK_NIX_INL_SELFTEST	      "selftest"
+#define CNXK_NIX_INL_IPSEC_IN_MIN_SPI "ipsec_in_min_spi"
 #define CNXK_NIX_INL_IPSEC_IN_MAX_SPI "ipsec_in_max_spi"
 #define CNXK_INL_CPT_CHANNEL	      "inl_cpt_channel"
 
@@ -119,14 +120,17 @@ struct rte_security_ops cnxk_eth_sec_ops = {
 };
 
 static int
-parse_ipsec_in_max_spi(const char *key, const char *value, void *extra_args)
+parse_ipsec_in_spi_range(const char *key, const char *value, void *extra_args)
 {
 	RTE_SET_USED(key);
 	uint32_t val;
 
-	val = atoi(value);
+	errno = 0;
+	val = strtoul(value, NULL, 0);
+	if (errno)
+		val = 0;
 
-	*(uint16_t *)extra_args = val;
+	*(uint32_t *)extra_args = val;
 
 	return 0;
 }
@@ -169,6 +173,7 @@ nix_inl_parse_devargs(struct rte_devargs *devargs,
 		      struct roc_nix_inl_dev *inl_dev)
 {
 	uint32_t ipsec_in_max_spi = BIT(8) - 1;
+	uint32_t ipsec_in_min_spi = 0;
 	struct inl_cpt_channel cpt_channel;
 	struct rte_kvargs *kvlist;
 	uint8_t selftest = 0;
@@ -184,13 +189,16 @@ nix_inl_parse_devargs(struct rte_devargs *devargs,
 
 	rte_kvargs_process(kvlist, CNXK_NIX_INL_SELFTEST, &parse_selftest,
 			   &selftest);
+	rte_kvargs_process(kvlist, CNXK_NIX_INL_IPSEC_IN_MIN_SPI,
+			   &parse_ipsec_in_spi_range, &ipsec_in_min_spi);
 	rte_kvargs_process(kvlist, CNXK_NIX_INL_IPSEC_IN_MAX_SPI,
-			   &parse_ipsec_in_max_spi, &ipsec_in_max_spi);
+			   &parse_ipsec_in_spi_range, &ipsec_in_max_spi);
 	rte_kvargs_process(kvlist, CNXK_INL_CPT_CHANNEL, &parse_inl_cpt_channel,
 			   &cpt_channel);
 	rte_kvargs_free(kvlist);
 
 null_devargs:
+	inl_dev->ipsec_in_min_spi = ipsec_in_min_spi;
 	inl_dev->ipsec_in_max_spi = ipsec_in_max_spi;
 	inl_dev->selftest = selftest;
 	inl_dev->channel = cpt_channel.channel;

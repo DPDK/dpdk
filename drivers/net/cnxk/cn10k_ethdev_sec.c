@@ -264,6 +264,7 @@ cn10k_eth_sec_session_create(void *device,
 	struct cn10k_sec_sess_priv sess_priv;
 	struct rte_crypto_sym_xform *crypto;
 	struct cnxk_eth_sec_sess *eth_sec;
+	struct roc_nix *nix = &dev->nix;
 	bool inbound, inl_dev;
 	rte_spinlock_t *lock;
 	char tbuf[128] = {0};
@@ -308,13 +309,16 @@ cn10k_eth_sec_session_create(void *device,
 	if (inbound) {
 		struct roc_ot_ipsec_inb_sa *inb_sa, *inb_sa_dptr;
 		struct cn10k_inb_priv_data *inb_priv;
+		uint32_t spi_mask;
 		uintptr_t sa;
 
 		PLT_STATIC_ASSERT(sizeof(struct cn10k_inb_priv_data) <
 				  ROC_NIX_INL_OT_IPSEC_INB_SW_RSVD);
 
+		spi_mask = roc_nix_inl_inb_spi_range(nix, inl_dev, NULL, NULL);
+
 		/* Get Inbound SA from NIX_RX_IPSEC_SA_BASE */
-		sa = roc_nix_inl_inb_sa_get(&dev->nix, inl_dev, ipsec->spi);
+		sa = roc_nix_inl_inb_sa_get(nix, inl_dev, ipsec->spi);
 		if (!sa && dev->inb.inl_dev) {
 			snprintf(tbuf, sizeof(tbuf),
 				 "Failed to create ingress sa, inline dev "
@@ -358,16 +362,17 @@ cn10k_eth_sec_session_create(void *device,
 		inb_priv->userdata = conf->userdata;
 
 		/* Save SA index/SPI in cookie for now */
-		inb_sa_dptr->w1.s.cookie = rte_cpu_to_be_32(ipsec->spi);
+		inb_sa_dptr->w1.s.cookie =
+			rte_cpu_to_be_32(ipsec->spi & spi_mask);
 
 		/* Prepare session priv */
 		sess_priv.inb_sa = 1;
-		sess_priv.sa_idx = ipsec->spi;
+		sess_priv.sa_idx = ipsec->spi & spi_mask;
 
 		/* Pointer from eth_sec -> inb_sa */
 		eth_sec->sa = inb_sa;
 		eth_sec->sess = sess;
-		eth_sec->sa_idx = ipsec->spi;
+		eth_sec->sa_idx = ipsec->spi & spi_mask;
 		eth_sec->spi = ipsec->spi;
 		eth_sec->inl_dev = !!dev->inb.inl_dev;
 		eth_sec->inb = true;

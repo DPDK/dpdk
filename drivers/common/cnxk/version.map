@@ -144,7 +144,7 @@ INTERNAL {
 	roc_nix_inl_inb_init;
 	roc_nix_inl_inb_sa_base_get;
 	roc_nix_inl_inb_sa_get;
-	roc_nix_inl_inb_sa_max_spi;
+	roc_nix_inl_inb_spi_range;
 	roc_nix_inl_inb_sa_sz;
 	roc_nix_inl_inb_tag_update;
 	roc_nix_inl_inb_fini;

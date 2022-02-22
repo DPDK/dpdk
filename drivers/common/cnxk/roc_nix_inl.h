@@ -105,7 +105,8 @@ typedef void (*roc_nix_inl_sso_work_cb_t)(uint64_t *gw, void *args);
 struct roc_nix_inl_dev {
 	/* Input parameters */
 	struct plt_pci_device *pci_dev;
-	uint16_t ipsec_in_max_spi;
+	uint32_t ipsec_in_min_spi;
+	uint32_t ipsec_in_max_spi;
 	bool selftest;
 	bool is_multi_channel;
 	uint16_t channel;
@@ -136,8 +137,9 @@ int __roc_api roc_nix_inl_inb_fini(struct roc_nix *roc_nix);
 bool __roc_api roc_nix_inl_inb_is_enabled(struct roc_nix *roc_nix);
 uintptr_t __roc_api roc_nix_inl_inb_sa_base_get(struct roc_nix *roc_nix,
 						bool inl_dev_sa);
-uint32_t __roc_api roc_nix_inl_inb_sa_max_spi(struct roc_nix *roc_nix,
-					      bool inl_dev_sa);
+uint32_t __roc_api roc_nix_inl_inb_spi_range(struct roc_nix *roc_nix,
+					     bool inl_dev_sa, uint32_t *min,
+					     uint32_t *max);
 uint32_t __roc_api roc_nix_inl_inb_sa_sz(struct roc_nix *roc_nix,
 					 bool inl_dev_sa);
 uintptr_t __roc_api roc_nix_inl_inb_sa_get(struct roc_nix *roc_nix,

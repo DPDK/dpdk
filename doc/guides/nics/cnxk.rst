@@ -215,6 +215,18 @@ Runtime Config Options
 
       -a 0002:02:00.0,tag_as_xor=1
 
+- ``Min SPI for inbound inline IPsec`` (default ``0``)
+
+   Min SPI supported for inbound inline IPsec processing can be specified by
+   ``ipsec_in_min_spi`` ``devargs`` parameter.
+
+   For example::
+
+      -a 0002:02:00.0,ipsec_in_min_spi=6
+
+   With the above configuration, application can enable inline IPsec processing
+   for inbound SA with min SPI of 6.
+
 - ``Max SPI for inbound inline IPsec`` (default ``255``)
 
    Max SPI supported for inbound inline IPsec processing can be specified by
@@ -225,7 +237,7 @@ Runtime Config Options
       -a 0002:02:00.0,ipsec_in_max_spi=128
 
    With the above configuration, application can enable inline IPsec processing
-   for 128 inbound SAs (SPI 0-127).
+   with max SPI of 128.
 
 - ``Max SA's for outbound inline IPsec`` (default ``4096``)
 
@@ -414,6 +426,18 @@ VF ``177D:A0F1``.
 Runtime Config Options for inline device
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+- ``Min SPI for inbound inline IPsec`` (default ``0``)
+
+   Min SPI supported for inbound inline IPsec processing can be specified by
+   ``ipsec_in_min_spi`` ``devargs`` parameter.
+
+   For example::
+
+      -a 0002:1d:00.0,ipsec_in_min_spi=6
+
+   With the above configuration, application can enable inline IPsec processing
+   for inbound SA with min SPI of 6 for traffic aggregated on inline device.
+
 - ``Max SPI for inbound inline IPsec`` (default ``255``)
 
    Max SPI supported for inbound inline IPsec processing can be specified by
@@ -424,7 +448,7 @@ Runtime Config Options for inline device
       -a 0002:1d:00.0,ipsec_in_max_spi=128
 
    With the above configuration, application can enable inline IPsec processing
-   for 128 inbound SAs (SPI 0-127) for traffic aggregated on inline device.
+   for inbound SA with max SPI of 128 for traffic aggregated on inline device.
 
 
 Debugging Options

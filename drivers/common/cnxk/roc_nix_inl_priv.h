@@ -58,7 +58,9 @@ struct nix_inl_dev {
 	uint16_t channel;
 	uint16_t chan_mask;
 	bool is_multi_channel;
-	uint16_t ipsec_in_max_spi;
+	uint32_t ipsec_in_min_spi;
+	uint32_t ipsec_in_max_spi;
+	uint32_t inb_spi_mask;
 	bool attach_cptlf;
 	bool wqe_skip;
 };

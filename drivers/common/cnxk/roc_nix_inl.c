@@ -19,12 +19,16 @@ PLT_STATIC_ASSERT(ROC_NIX_INL_OT_IPSEC_OUTB_SA_SZ ==
 static int
 nix_inl_inb_sa_tbl_setup(struct roc_nix *roc_nix)
 {
-	uint16_t ipsec_in_max_spi = roc_nix->ipsec_in_max_spi;
+	uint32_t ipsec_in_min_spi = roc_nix->ipsec_in_min_spi;
+	uint32_t ipsec_in_max_spi = roc_nix->ipsec_in_max_spi;
 	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
 	struct roc_nix_ipsec_cfg cfg;
+	uint64_t max_sa, i;
 	size_t inb_sa_sz;
-	int rc, i;
 	void *sa;
+	int rc;
+
+	max_sa = plt_align32pow2(ipsec_in_max_spi - ipsec_in_min_spi + 1);
 
 	/* CN9K SA size is different */
 	if (roc_model_is_cn9k())
@@ -34,14 +38,15 @@ nix_inl_inb_sa_tbl_setup(struct roc_nix *roc_nix)
 
 	/* Alloc contiguous memory for Inbound SA's */
 	nix->inb_sa_sz = inb_sa_sz;
-	nix->inb_sa_base = plt_zmalloc(inb_sa_sz * ipsec_in_max_spi,
+	nix->inb_spi_mask = max_sa - 1;
+	nix->inb_sa_base = plt_zmalloc(inb_sa_sz * max_sa,
 				       ROC_NIX_INL_SA_BASE_ALIGN);
 	if (!nix->inb_sa_base) {
 		plt_err("Failed to allocate memory for Inbound SA");
 		return -ENOMEM;
 	}
 	if (roc_model_is_cn10k()) {
-		for (i = 0; i < ipsec_in_max_spi; i++) {
+		for (i = 0; i < max_sa; i++) {
 			sa = ((uint8_t *)nix->inb_sa_base) + (i * inb_sa_sz);
 			roc_ot_ipsec_inb_sa_init(sa, true);
 		}
@@ -50,7 +55,7 @@ nix_inl_inb_sa_tbl_setup(struct roc_nix *roc_nix)
 	memset(&cfg, 0, sizeof(cfg));
 	cfg.sa_size = inb_sa_sz;
 	cfg.iova = (uintptr_t)nix->inb_sa_base;
-	cfg.max_sa = ipsec_in_max_spi + 1;
+	cfg.max_sa = max_sa;
 	cfg.tt = SSO_TT_ORDERED;
 
 	/* Setup device specific inb SA table */
@@ -135,11 +140,13 @@ roc_nix_inl_inb_sa_base_get(struct roc_nix *roc_nix, bool inb_inl_dev)
 }
 
 uint32_t
-roc_nix_inl_inb_sa_max_spi(struct roc_nix *roc_nix, bool inb_inl_dev)
+roc_nix_inl_inb_spi_range(struct roc_nix *roc_nix, bool inb_inl_dev,
+			  uint32_t *min_spi, uint32_t *max_spi)
 {
 	struct idev_cfg *idev = idev_get_cfg();
+	uint32_t min = 0, max = 0, mask = 0;
 	struct nix_inl_dev *inl_dev;
-	struct nix *nix;
+	struct nix *nix = NULL;
 
 	if (idev == NULL)
 		return 0;
@@ -147,20 +154,25 @@ roc_nix_inl_inb_sa_max_spi(struct roc_nix *roc_nix, bool inb_inl_dev)
 	if (!inb_inl_dev && roc_nix == NULL)
 		return -EINVAL;
 
-	if (roc_nix) {
+	inl_dev = idev->nix_inl_dev;
+	if (inb_inl_dev) {
+		min = inl_dev->ipsec_in_min_spi;
+		max = inl_dev->ipsec_in_max_spi;
+		mask = inl_dev->inb_spi_mask;
+	} else {
 		nix = roc_nix_to_nix_priv(roc_nix);
 		if (!nix->inl_inb_ena)
-			return 0;
+			goto exit;
+		min = roc_nix->ipsec_in_min_spi;
+		max = roc_nix->ipsec_in_max_spi;
+		mask = nix->inb_spi_mask;
 	}
-
-	if (inb_inl_dev) {
-		inl_dev = idev->nix_inl_dev;
-		if (inl_dev)
-			return inl_dev->ipsec_in_max_spi;
-		return 0;
-	}
-
-	return roc_nix->ipsec_in_max_spi;
+exit:
+	if (min_spi)
+		*min_spi = min;
+	if (max_spi)
+		*max_spi = max;
+	return mask;
 }
 
 uint32_t
@@ -194,8 +206,8 @@ roc_nix_inl_inb_sa_sz(struct roc_nix *roc_nix, bool inl_dev_sa)
 uintptr_t
 roc_nix_inl_inb_sa_get(struct roc_nix *roc_nix, bool inb_inl_dev, uint32_t spi)
 {
+	uint32_t max_spi, min_spi, mask;
 	uintptr_t sa_base;
-	uint32_t max_spi;
 	uint64_t sz;
 
 	sa_base = roc_nix_inl_inb_sa_base_get(roc_nix, inb_inl_dev);
@@ -204,11 +216,11 @@ roc_nix_inl_inb_sa_get(struct roc_nix *roc_nix, bool inb_inl_dev, uint32_t spi)
 		return 0;
 
 	/* Check if SPI is in range */
-	max_spi = roc_nix_inl_inb_sa_max_spi(roc_nix, inb_inl_dev);
-	if (spi > max_spi) {
-		plt_err("Inbound SA SPI %u exceeds max %u", spi, max_spi);
-		return 0;
-	}
+	mask = roc_nix_inl_inb_spi_range(roc_nix, inb_inl_dev, &min_spi,
+					 &max_spi);
+	if (spi > max_spi || spi < min_spi)
+		plt_warn("Inbound SA SPI %u not in range (%u..%u)", spi,
+			 min_spi, max_spi);
 
 	/* Get SA size */
 	sz = roc_nix_inl_inb_sa_sz(roc_nix, inb_inl_dev);
@@ -216,7 +228,7 @@ roc_nix_inl_inb_sa_get(struct roc_nix *roc_nix, bool inb_inl_dev, uint32_t spi)
 		return 0;
 
 	/* Basic logic of SPI->SA for now */
-	return (sa_base + (spi * sz));
+	return (sa_base + ((spi & mask) * sz));
 }
 
 int
@@ -295,11 +307,11 @@ roc_nix_inl_outb_init(struct roc_nix *roc_nix)
 	struct nix_inl_dev *inl_dev;
 	uint16_t sso_pffunc;
 	uint8_t eng_grpmask;
-	uint64_t blkaddr;
+	uint64_t blkaddr, i;
 	uint16_t nb_lf;
 	void *sa_base;
 	size_t sa_sz;
-	int i, j, rc;
+	int j, rc;
 	void *sa;
 
 	if (idev == NULL)
@@ -775,7 +787,7 @@ roc_nix_inl_inb_tag_update(struct roc_nix *roc_nix, uint32_t tag_const,
 	memset(&cfg, 0, sizeof(cfg));
 	cfg.sa_size = nix->inb_sa_sz;
 	cfg.iova = (uintptr_t)nix->inb_sa_base;
-	cfg.max_sa = roc_nix->ipsec_in_max_spi + 1;
+	cfg.max_sa = nix->inb_spi_mask + 1;
 	cfg.tt = tt;
 	cfg.tag_const = tag_const;
 

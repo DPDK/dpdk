@@ -337,7 +337,8 @@ cnxk_nix_lookup_mem_sa_base_set(struct cnxk_eth_dev *dev)
 	if (!sa_base)
 		return -ENOTSUP;
 
-	sa_w = plt_log2_u32(dev->nix.ipsec_in_max_spi + 1);
+	sa_w = plt_log2_u32(dev->nix.ipsec_in_max_spi + 1 -
+			    dev->nix.ipsec_in_min_spi);
 
 	/* Set SA Base in lookup mem */
 	sa_base_tbl = (uintptr_t)lookup_mem;

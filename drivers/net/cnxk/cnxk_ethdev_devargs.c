@@ -49,14 +49,17 @@ parse_outb_nb_crypto_qs(const char *key, const char *value, void *extra_args)
 }
 
 static int
-parse_ipsec_in_max_spi(const char *key, const char *value, void *extra_args)
+parse_ipsec_in_spi_range(const char *key, const char *value, void *extra_args)
 {
 	RTE_SET_USED(key);
 	uint32_t val;
 
-	val = atoi(value);
+	errno = 0;
+	val = strtoul(value, NULL, 0);
+	if (errno)
+		val = 0;
 
-	*(uint16_t *)extra_args = val;
+	*(uint32_t *)extra_args = val;
 
 	return 0;
 }
@@ -67,7 +70,10 @@ parse_ipsec_out_max_sa(const char *key, const char *value, void *extra_args)
 	RTE_SET_USED(key);
 	uint32_t val;
 
-	val = atoi(value);
+	errno = 0;
+	val = strtoul(value, NULL, 0);
+	if (errno)
+		val = 0;
 
 	*(uint16_t *)extra_args = val;
 
@@ -231,6 +237,7 @@ parse_sdp_channel_mask(const char *key, const char *value, void *extra_args)
 #define CNXK_SWITCH_HEADER_TYPE "switch_header"
 #define CNXK_RSS_TAG_AS_XOR	"tag_as_xor"
 #define CNXK_LOCK_RX_CTX	"lock_rx_ctx"
+#define CNXK_IPSEC_IN_MIN_SPI	"ipsec_in_min_spi"
 #define CNXK_IPSEC_IN_MAX_SPI	"ipsec_in_max_spi"
 #define CNXK_IPSEC_OUT_MAX_SA	"ipsec_out_max_sa"
 #define CNXK_OUTB_NB_DESC	"outb_nb_desc"
@@ -245,13 +252,14 @@ cnxk_ethdev_parse_devargs(struct rte_devargs *devargs, struct cnxk_eth_dev *dev)
 	uint16_t reta_sz = ROC_NIX_RSS_RETA_SZ_64;
 	uint16_t sqb_count = CNXK_NIX_TX_MAX_SQB;
 	struct flow_pre_l2_size_info pre_l2_info;
-	uint16_t ipsec_in_max_spi = BIT(8) - 1;
-	uint16_t ipsec_out_max_sa = BIT(12);
+	uint32_t ipsec_in_max_spi = BIT(8) - 1;
+	uint32_t ipsec_out_max_sa = BIT(12);
 	uint16_t flow_prealloc_size = 1;
 	uint16_t switch_header_type = 0;
 	uint16_t flow_max_priority = 3;
 	uint16_t force_inb_inl_dev = 0;
 	uint16_t outb_nb_crypto_qs = 1;
+	uint32_t ipsec_in_min_spi = 0;
 	uint16_t outb_nb_desc = 8200;
 	struct sdp_channel sdp_chan;
 	uint16_t rss_tag_as_xor = 0;
@@ -284,8 +292,10 @@ cnxk_ethdev_parse_devargs(struct rte_devargs *devargs, struct cnxk_eth_dev *dev)
 	rte_kvargs_process(kvlist, CNXK_RSS_TAG_AS_XOR, &parse_flag,
 			   &rss_tag_as_xor);
 	rte_kvargs_process(kvlist, CNXK_LOCK_RX_CTX, &parse_flag, &lock_rx_ctx);
+	rte_kvargs_process(kvlist, CNXK_IPSEC_IN_MIN_SPI,
+			   &parse_ipsec_in_spi_range, &ipsec_in_min_spi);
 	rte_kvargs_process(kvlist, CNXK_IPSEC_IN_MAX_SPI,
-			   &parse_ipsec_in_max_spi, &ipsec_in_max_spi);
+			   &parse_ipsec_in_spi_range, &ipsec_in_max_spi);
 	rte_kvargs_process(kvlist, CNXK_IPSEC_OUT_MAX_SA,
 			   &parse_ipsec_out_max_sa, &ipsec_out_max_sa);
 	rte_kvargs_process(kvlist, CNXK_OUTB_NB_DESC, &parse_outb_nb_desc,
@@ -307,6 +317,7 @@ null_devargs:
 	dev->outb.max_sa = ipsec_out_max_sa;
 	dev->outb.nb_desc = outb_nb_desc;
 	dev->outb.nb_crypto_qs = outb_nb_crypto_qs;
+	dev->nix.ipsec_in_min_spi = ipsec_in_min_spi;
 	dev->nix.ipsec_in_max_spi = ipsec_in_max_spi;
 	dev->nix.ipsec_out_max_sa = ipsec_out_max_sa;
 	dev->nix.rss_tag_as_xor = !!rss_tag_as_xor;

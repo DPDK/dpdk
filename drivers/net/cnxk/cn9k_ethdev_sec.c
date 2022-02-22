@@ -146,6 +146,7 @@ cn9k_eth_sec_session_create(void *device,
 	struct cn9k_sec_sess_priv sess_priv;
 	struct rte_crypto_sym_xform *crypto;
 	struct cnxk_eth_sec_sess *eth_sec;
+	struct roc_nix *nix = &dev->nix;
 	rte_spinlock_t *lock;
 	char tbuf[128] = {0};
 	bool inbound;
@@ -185,15 +186,18 @@ cn9k_eth_sec_session_create(void *device,
 	if (inbound) {
 		struct cn9k_inb_priv_data *inb_priv;
 		struct roc_onf_ipsec_inb_sa *inb_sa;
+		uint32_t spi_mask;
 
 		PLT_STATIC_ASSERT(sizeof(struct cn9k_inb_priv_data) <
 				  ROC_NIX_INL_ONF_IPSEC_INB_SW_RSVD);
+
+		spi_mask = roc_nix_inl_inb_spi_range(nix, false, NULL, NULL);
 
 		/* Get Inbound SA from NIX_RX_IPSEC_SA_BASE. Assume no inline
 		 * device always for CN9K.
 		 */
 		inb_sa = (struct roc_onf_ipsec_inb_sa *)
-			 roc_nix_inl_inb_sa_get(&dev->nix, false, ipsec->spi);
+			 roc_nix_inl_inb_sa_get(nix, false, ipsec->spi);
 		if (!inb_sa) {
 			snprintf(tbuf, sizeof(tbuf),
 				 "Failed to create ingress sa");
@@ -236,12 +240,12 @@ cn9k_eth_sec_session_create(void *device,
 
 		/* Prepare session priv */
 		sess_priv.inb_sa = 1;
-		sess_priv.sa_idx = ipsec->spi;
+		sess_priv.sa_idx = ipsec->spi & spi_mask;
 
 		/* Pointer from eth_sec -> inb_sa */
 		eth_sec->sa = inb_sa;
 		eth_sec->sess = sess;
-		eth_sec->sa_idx = ipsec->spi;
+		eth_sec->sa_idx = ipsec->spi & spi_mask;
 		eth_sec->spi = ipsec->spi;
 		eth_sec->inb = true;
 

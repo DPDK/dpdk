@@ -177,6 +177,7 @@ struct nix {
 	bool inl_outb_ena;
 	void *inb_sa_base;
 	size_t inb_sa_sz;
+	uint32_t inb_spi_mask;
 	void *outb_sa_base;
 	size_t outb_sa_sz;
 	uint16_t outb_err_sso_pffunc;

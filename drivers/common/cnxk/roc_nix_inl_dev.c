@@ -120,6 +120,7 @@ nix_inl_nix_ipsec_cfg(struct nix_inl_dev *inl_dev, bool ena)
 {
 	struct nix_inline_ipsec_lf_cfg *lf_cfg;
 	struct mbox *mbox = (&inl_dev->dev)->mbox;
+	uint64_t max_sa;
 	uint32_t sa_w;
 
 	lf_cfg = mbox_alloc_msg_nix_inline_ipsec_lf_cfg(mbox);
@@ -127,8 +128,9 @@ nix_inl_nix_ipsec_cfg(struct nix_inl_dev *inl_dev, bool ena)
 		return -ENOSPC;
 
 	if (ena) {
-		sa_w = plt_align32pow2(inl_dev->ipsec_in_max_spi + 1);
-		sa_w = plt_log2_u32(sa_w);
+
+		max_sa = inl_dev->inb_spi_mask + 1;
+		sa_w = plt_log2_u32(max_sa);
 
 		lf_cfg->enable = 1;
 		lf_cfg->sa_base_addr = (uintptr_t)inl_dev->inb_sa_base;
@@ -138,7 +140,7 @@ nix_inl_nix_ipsec_cfg(struct nix_inl_dev *inl_dev, bool ena)
 			lf_cfg->ipsec_cfg0.lenm1_max = NIX_CN9K_MAX_HW_FRS - 1;
 		else
 			lf_cfg->ipsec_cfg0.lenm1_max = NIX_RPM_MAX_HW_FRS - 1;
-		lf_cfg->ipsec_cfg1.sa_idx_max = inl_dev->ipsec_in_max_spi;
+		lf_cfg->ipsec_cfg1.sa_idx_max = max_sa - 1;
 		lf_cfg->ipsec_cfg0.sa_pow2_size =
 			plt_log2_u32(inl_dev->inb_sa_sz);
 
@@ -319,15 +321,19 @@ nix_inl_sso_release(struct nix_inl_dev *inl_dev)
 static int
 nix_inl_nix_setup(struct nix_inl_dev *inl_dev)
 {
-	uint16_t ipsec_in_max_spi = inl_dev->ipsec_in_max_spi;
+	uint32_t ipsec_in_min_spi = inl_dev->ipsec_in_min_spi;
+	uint32_t ipsec_in_max_spi = inl_dev->ipsec_in_max_spi;
 	struct dev *dev = &inl_dev->dev;
 	struct mbox *mbox = dev->mbox;
 	struct nix_lf_alloc_rsp *rsp;
 	struct nix_lf_alloc_req *req;
 	struct nix_hw_info *hw_info;
+	uint64_t max_sa, i;
 	size_t inb_sa_sz;
-	int i, rc = -ENOSPC;
+	int rc = -ENOSPC;
 	void *sa;
+
+	max_sa = plt_align32pow2(ipsec_in_max_spi - ipsec_in_min_spi + 1);
 
 	/* Alloc NIX LF needed for single RQ */
 	req = mbox_alloc_msg_nix_lf_alloc(mbox);
@@ -387,7 +393,8 @@ nix_inl_nix_setup(struct nix_inl_dev *inl_dev)
 
 	/* Alloc contiguous memory for Inbound SA's */
 	inl_dev->inb_sa_sz = inb_sa_sz;
-	inl_dev->inb_sa_base = plt_zmalloc(inb_sa_sz * ipsec_in_max_spi,
+	inl_dev->inb_spi_mask = max_sa - 1;
+	inl_dev->inb_sa_base = plt_zmalloc(inb_sa_sz * max_sa,
 					   ROC_NIX_INL_SA_BASE_ALIGN);
 	if (!inl_dev->inb_sa_base) {
 		plt_err("Failed to allocate memory for Inbound SA");
@@ -396,7 +403,7 @@ nix_inl_nix_setup(struct nix_inl_dev *inl_dev)
 	}
 
 	if (roc_model_is_cn10k()) {
-		for (i = 0; i < ipsec_in_max_spi; i++) {
+		for (i = 0; i < max_sa; i++) {
 			sa = ((uint8_t *)inl_dev->inb_sa_base) +
 			     (i * inb_sa_sz);
 			roc_ot_ipsec_inb_sa_init(sa, true);
@@ -657,6 +664,7 @@ roc_nix_inl_dev_init(struct roc_nix_inl_dev *roc_inl_dev)
 	memset(inl_dev, 0, sizeof(*inl_dev));
 
 	inl_dev->pci_dev = pci_dev;
+	inl_dev->ipsec_in_min_spi = roc_inl_dev->ipsec_in_min_spi;
 	inl_dev->ipsec_in_max_spi = roc_inl_dev->ipsec_in_max_spi;
 	inl_dev->selftest = roc_inl_dev->selftest;
 	inl_dev->is_multi_channel = roc_inl_dev->is_multi_channel;
