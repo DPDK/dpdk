@@ -138,6 +138,20 @@ static const struct rte_security_capability cn10k_eth_sec_capabilities[] = {
 	}
 };
 
+static inline void
+cnxk_pktmbuf_free_no_cache(struct rte_mbuf *mbuf)
+{
+	struct rte_mbuf *next;
+
+	if (!mbuf)
+		return;
+	do {
+		next = mbuf->next;
+		roc_npa_aura_op_free(mbuf->pool->pool_id, 1, (rte_iova_t)mbuf);
+		mbuf = next;
+	} while (mbuf != NULL);
+}
+
 void
 cn10k_eth_sec_sso_work_cb(uint64_t *gw, void *args)
 {
@@ -148,6 +162,7 @@ cn10k_eth_sec_sso_work_cb(uint64_t *gw, void *args)
 	struct cpt_cn10k_res_s *res;
 	struct rte_eth_dev *eth_dev;
 	struct cnxk_eth_dev *dev;
+	static uint64_t warn_cnt;
 	uint16_t dlen_adj, rlen;
 	struct rte_mbuf *mbuf;
 	uintptr_t sa_base;
@@ -161,7 +176,7 @@ cn10k_eth_sec_sso_work_cb(uint64_t *gw, void *args)
 		/* Event from inbound inline dev due to IPSEC packet bad L4 */
 		mbuf = (struct rte_mbuf *)(gw[1] - sizeof(struct rte_mbuf));
 		plt_nix_dbg("Received mbuf %p from inline dev inbound", mbuf);
-		rte_pktmbuf_free(mbuf);
+		cnxk_pktmbuf_free_no_cache(mbuf);
 		return;
 	case RTE_EVENT_TYPE_CPU:
 		/* Check for subtype */
@@ -212,17 +227,29 @@ cn10k_eth_sec_sso_work_cb(uint64_t *gw, void *args)
 	case ROC_IE_OT_UCC_ERR_SA_OVERFLOW:
 		desc.subtype = RTE_ETH_EVENT_IPSEC_ESN_OVERFLOW;
 		break;
+	case ROC_IE_OT_UCC_ERR_PKT_IP:
+		warn_cnt++;
+		if (warn_cnt % 10000 == 0)
+			plt_warn("Outbound error, bad ip pkt, mbuf %p,"
+				 " sa_index %u (total warnings %" PRIu64 ")",
+				 mbuf, sess_priv.sa_idx, warn_cnt);
+		desc.subtype = RTE_ETH_EVENT_IPSEC_UNKNOWN;
+		break;
 	default:
-		plt_warn("Outbound error, mbuf %p, sa_index %u, "
-			 "compcode %x uc %x", mbuf, sess_priv.sa_idx,
-			 res->compcode, res->uc_compcode);
+		warn_cnt++;
+		if (warn_cnt % 10000 == 0)
+			plt_warn("Outbound error, mbuf %p, sa_index %u,"
+				 " compcode %x uc %x,"
+				 " (total warnings %" PRIu64 ")",
+				 mbuf, sess_priv.sa_idx, res->compcode,
+				 res->uc_compcode, warn_cnt);
 		desc.subtype = RTE_ETH_EVENT_IPSEC_UNKNOWN;
 		break;
 	}
 
 	desc.metadata = (uint64_t)priv->userdata;
 	rte_eth_dev_callback_process(eth_dev, RTE_ETH_EVENT_IPSEC, &desc);
-	rte_pktmbuf_free(mbuf);
+	cnxk_pktmbuf_free_no_cache(mbuf);
 }
 
 static int
