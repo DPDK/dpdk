@@ -137,10 +137,22 @@
 /* SPI will be in 20 bits of tag */
 #define CNXK_ETHDEV_SPI_TAG_MASK 0xFFFFFUL
 
+#define CNXK_NIX_PFC_CHAN_COUNT 16
+
 struct cnxk_fc_cfg {
 	enum rte_eth_fc_mode mode;
 	uint8_t rx_pause;
 	uint8_t tx_pause;
+};
+
+struct cnxk_pfc_cfg {
+	struct cnxk_fc_cfg fc_cfg;
+	uint16_t class_en;
+	uint16_t pause_time;
+	uint8_t rx_tc;
+	uint8_t rx_qid;
+	uint8_t tx_tc;
+	uint8_t tx_qid;
 };
 
 struct cnxk_eth_qconf {
@@ -372,6 +384,8 @@ struct cnxk_eth_dev {
 	struct cnxk_eth_qconf *rx_qconf;
 
 	/* Flow control configuration */
+	uint16_t pfc_tc_sq_map[CNXK_NIX_PFC_CHAN_COUNT];
+	struct cnxk_pfc_cfg pfc_cfg;
 	struct cnxk_fc_cfg fc_cfg;
 
 	/* PTP Counters */
@@ -473,6 +487,10 @@ int cnxk_nix_flow_ctrl_set(struct rte_eth_dev *eth_dev,
 			   struct rte_eth_fc_conf *fc_conf);
 int cnxk_nix_flow_ctrl_get(struct rte_eth_dev *eth_dev,
 			   struct rte_eth_fc_conf *fc_conf);
+int cnxk_nix_priority_flow_ctrl_queue_config(struct rte_eth_dev *eth_dev,
+					     struct rte_eth_pfc_queue_conf *pfc_conf);
+int cnxk_nix_priority_flow_ctrl_queue_info_get(struct rte_eth_dev *eth_dev,
+					       struct rte_eth_pfc_queue_info *pfc_info);
 int cnxk_nix_set_link_up(struct rte_eth_dev *eth_dev);
 int cnxk_nix_set_link_down(struct rte_eth_dev *eth_dev);
 int cnxk_nix_get_module_info(struct rte_eth_dev *eth_dev,
@@ -617,6 +635,8 @@ int nix_mtr_color_action_validate(struct rte_eth_dev *eth_dev, uint32_t id,
 				  uint32_t *prev_id, uint32_t *next_id,
 				  struct cnxk_mtr_policy_node *policy,
 				  int *tree_level);
+int nix_priority_flow_ctrl_configure(struct rte_eth_dev *eth_dev,
+				     struct cnxk_pfc_cfg *conf);
 
 /* Inlines */
 static __rte_always_inline uint64_t

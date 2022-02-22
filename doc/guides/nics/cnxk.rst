@@ -36,6 +36,7 @@ Features of the CNXK Ethdev PMD are:
 - Support Rx interrupt
 - Inline IPsec processing support
 - Ingress meter support
+- Queue based priority flow control support
 
 Prerequisites
 -------------

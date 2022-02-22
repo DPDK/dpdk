@@ -131,6 +131,10 @@ New Features
   * Added PPPoL2TPv2oUDP FDIR distribute packets based on inner IP
     src/dst address and UDP/TCP src/dst port.
 
+* **Updated Marvell cnxk ethdev PMD.**
+
+  * Added queue based priority flow control support for CN9K & CN10K.
+
 * **Updated Wangxun ngbe driver.**
 
   * Added support for devices of custom PHY interfaces.
