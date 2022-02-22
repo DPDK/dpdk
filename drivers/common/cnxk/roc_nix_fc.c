@@ -36,7 +36,7 @@ nix_fc_rxchan_bpid_set(struct roc_nix *roc_nix, bool enable)
 	struct mbox *mbox = get_mbox(roc_nix);
 	struct nix_bp_cfg_req *req;
 	struct nix_bp_cfg_rsp *rsp;
-	int rc = -ENOSPC;
+	int rc = -ENOSPC, i;
 
 	if (roc_nix_is_sdp(roc_nix))
 		return 0;
@@ -45,22 +45,28 @@ nix_fc_rxchan_bpid_set(struct roc_nix *roc_nix, bool enable)
 		req = mbox_alloc_msg_nix_bp_enable(mbox);
 		if (req == NULL)
 			return rc;
+
 		req->chan_base = 0;
-		req->chan_cnt = 1;
-		req->bpid_per_chan = 0;
+		if (roc_nix_is_lbk(roc_nix))
+			req->chan_cnt = NIX_LBK_MAX_CHAN;
+		else
+			req->chan_cnt = NIX_CGX_MAX_CHAN;
+
+		req->bpid_per_chan = true;
 
 		rc = mbox_process_msg(mbox, (void *)&rsp);
 		if (rc || (req->chan_cnt != rsp->chan_cnt))
 			goto exit;
 
-		nix->bpid[0] = rsp->chan_bpid[0];
 		nix->chan_cnt = rsp->chan_cnt;
+		for (i = 0; i < rsp->chan_cnt; i++)
+			nix->bpid[i] = rsp->chan_bpid[i] & 0x1FF;
 	} else {
 		req = mbox_alloc_msg_nix_bp_disable(mbox);
 		if (req == NULL)
 			return rc;
 		req->chan_base = 0;
-		req->chan_cnt = 1;
+		req->chan_cnt = nix->chan_cnt;
 
 		rc = mbox_process(mbox);
 		if (rc)
@@ -161,7 +167,7 @@ nix_fc_cq_config_set(struct roc_nix *roc_nix, struct roc_nix_fc_cfg *fc_cfg)
 		aq->op = NIX_AQ_INSTOP_WRITE;
 
 		if (fc_cfg->cq_cfg.enable) {
-			aq->cq.bpid = nix->bpid[0];
+			aq->cq.bpid = nix->bpid[fc_cfg->cq_cfg.tc];
 			aq->cq_mask.bpid = ~(aq->cq_mask.bpid);
 			aq->cq.bp = fc_cfg->cq_cfg.cq_drop;
 			aq->cq_mask.bp = ~(aq->cq_mask.bp);
@@ -181,7 +187,7 @@ nix_fc_cq_config_set(struct roc_nix *roc_nix, struct roc_nix_fc_cfg *fc_cfg)
 		aq->op = NIX_AQ_INSTOP_WRITE;
 
 		if (fc_cfg->cq_cfg.enable) {
-			aq->cq.bpid = nix->bpid[0];
+			aq->cq.bpid = nix->bpid[fc_cfg->cq_cfg.tc];
 			aq->cq_mask.bpid = ~(aq->cq_mask.bpid);
 			aq->cq.bp = fc_cfg->cq_cfg.cq_drop;
 			aq->cq_mask.bp = ~(aq->cq_mask.bp);
@@ -222,7 +228,9 @@ roc_nix_fc_config_set(struct roc_nix *roc_nix, struct roc_nix_fc_cfg *fc_cfg)
 		return nix_fc_rxchan_bpid_set(roc_nix,
 					      fc_cfg->rxchan_cfg.enable);
 	else if (fc_cfg->type == ROC_NIX_FC_TM_CFG)
-		return nix_tm_bp_config_set(roc_nix, fc_cfg->tm_cfg.enable);
+		return nix_tm_bp_config_set(roc_nix, fc_cfg->tm_cfg.sq,
+					    fc_cfg->tm_cfg.tc,
+					    fc_cfg->tm_cfg.enable);
 
 	return -EINVAL;
 }
@@ -402,4 +410,75 @@ rox_nix_fc_npa_bp_cfg(struct roc_nix *roc_nix, uint64_t pool_id, uint8_t ena,
 	req->aura_mask.bp_ena = ~(req->aura_mask.bp_ena);
 
 	mbox_process(mbox);
+}
+
+int
+roc_nix_pfc_mode_set(struct roc_nix *roc_nix, struct roc_nix_pfc_cfg *pfc_cfg)
+{
+	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
+	struct mbox *mbox = get_mbox(roc_nix);
+	uint8_t tx_pause, rx_pause;
+	struct cgx_pfc_cfg *req;
+	struct cgx_pfc_rsp *rsp;
+	int rc = -ENOSPC;
+
+	if (roc_nix_is_lbk(roc_nix))
+		return NIX_ERR_OP_NOTSUP;
+
+	rx_pause = (pfc_cfg->mode == ROC_NIX_FC_FULL) ||
+		   (pfc_cfg->mode == ROC_NIX_FC_RX);
+	tx_pause = (pfc_cfg->mode == ROC_NIX_FC_FULL) ||
+		   (pfc_cfg->mode == ROC_NIX_FC_TX);
+
+	req = mbox_alloc_msg_cgx_prio_flow_ctrl_cfg(mbox);
+	if (req == NULL)
+		goto exit;
+
+	req->pfc_en = pfc_cfg->tc;
+	req->rx_pause = rx_pause;
+	req->tx_pause = tx_pause;
+
+	rc = mbox_process_msg(mbox, (void *)&rsp);
+	if (rc)
+		goto exit;
+
+	nix->rx_pause = rsp->rx_pause;
+	nix->tx_pause = rsp->tx_pause;
+	if (rsp->tx_pause)
+		nix->cev |= BIT(pfc_cfg->tc);
+	else
+		nix->cev &= ~BIT(pfc_cfg->tc);
+
+exit:
+	return rc;
+}
+
+int
+roc_nix_pfc_mode_get(struct roc_nix *roc_nix, struct roc_nix_pfc_cfg *pfc_cfg)
+{
+	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
+
+	if (roc_nix_is_lbk(roc_nix))
+		return NIX_ERR_OP_NOTSUP;
+
+	pfc_cfg->tc = nix->cev;
+
+	if (nix->rx_pause && nix->tx_pause)
+		pfc_cfg->mode = ROC_NIX_FC_FULL;
+	else if (nix->rx_pause)
+		pfc_cfg->mode = ROC_NIX_FC_RX;
+	else if (nix->tx_pause)
+		pfc_cfg->mode = ROC_NIX_FC_TX;
+	else
+		pfc_cfg->mode = ROC_NIX_FC_NONE;
+
+	return 0;
+}
+
+uint16_t
+roc_nix_chan_count_get(struct roc_nix *roc_nix)
+{
+	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
+
+	return nix->chan_cnt;
 }

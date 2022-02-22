@@ -95,6 +95,8 @@ struct mbox_msghdr {
 	  msg_rsp)                                                             \
 	M(CGX_STATS_RST, 0x21A, cgx_stats_rst, msg_req, msg_rsp)               \
 	M(RPM_STATS, 0x21C, rpm_stats, msg_req, rpm_stats_rsp)                 \
+	M(CGX_PRIO_FLOW_CTRL_CFG, 0x21F, cgx_prio_flow_ctrl_cfg, cgx_pfc_cfg,  \
+	  cgx_pfc_rsp)                                                         \
 	/* NPA mbox IDs (range 0x400 - 0x5FF) */                               \
 	M(NPA_LF_ALLOC, 0x400, npa_lf_alloc, npa_lf_alloc_req,                 \
 	  npa_lf_alloc_rsp)                                                    \
@@ -547,6 +549,19 @@ struct cgx_pause_frm_cfg {
 	uint8_t __io set;
 	/* set = 1 if the request is to config pause frames */
 	/* set = 0 if the request is to fetch pause frames config */
+	uint8_t __io rx_pause;
+	uint8_t __io tx_pause;
+};
+
+struct cgx_pfc_cfg {
+	struct mbox_msghdr hdr;
+	uint8_t __io rx_pause;
+	uint8_t __io tx_pause;
+	uint16_t __io pfc_en; /*  bitmap indicating enabled traffic classes */
+};
+
+struct cgx_pfc_rsp {
+	struct mbox_msghdr hdr;
 	uint8_t __io rx_pause;
 	uint8_t __io tx_pause;
 };
@@ -1125,7 +1140,9 @@ struct nix_bp_cfg_req {
 /* PF can be mapped to either CGX or LBK interface,
  * so maximum 64 channels are possible.
  */
-#define NIX_MAX_CHAN 64
+#define NIX_MAX_CHAN	 64
+#define NIX_CGX_MAX_CHAN 16
+#define NIX_LBK_MAX_CHAN 1
 struct nix_bp_cfg_rsp {
 	struct mbox_msghdr hdr;
 	/* Channel and bpid mapping */

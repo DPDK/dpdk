@@ -33,6 +33,7 @@ struct nix_qint {
 /* Traffic Manager */
 #define NIX_TM_MAX_HW_TXSCHQ 512
 #define NIX_TM_HW_ID_INVALID UINT32_MAX
+#define NIX_TM_CHAN_INVALID UINT16_MAX
 
 /* TM flags */
 #define NIX_TM_HIERARCHY_ENA BIT_ULL(0)
@@ -56,6 +57,7 @@ struct nix_tm_node {
 	uint32_t priority;
 	uint32_t weight;
 	uint16_t lvl;
+	uint16_t rel_chan;
 	uint32_t parent_id;
 	uint32_t shaper_profile_id;
 	void (*free_fn)(void *node);
@@ -139,6 +141,7 @@ struct nix {
 	uint16_t msixoff;
 	uint8_t rx_pause;
 	uint8_t tx_pause;
+	uint16_t cev;
 	uint64_t rx_cfg;
 	struct dev dev;
 	uint16_t cints;
@@ -376,7 +379,8 @@ int nix_rq_cfg(struct dev *dev, struct roc_nix_rq *rq, uint16_t qints, bool cfg,
 	       bool ena);
 int nix_rq_ena_dis(struct dev *dev, struct roc_nix_rq *rq, bool enable);
 int nix_tm_bp_config_get(struct roc_nix *roc_nix, bool *is_enabled);
-int nix_tm_bp_config_set(struct roc_nix *roc_nix, bool enable);
+int nix_tm_bp_config_set(struct roc_nix *roc_nix, uint16_t sq, uint16_t tc,
+			 bool enable);
 void nix_rq_vwqe_flush(struct roc_nix_rq *rq, uint16_t vwqe_interval);
 
 /*

@@ -464,10 +464,16 @@ roc_nix_tm_hierarchy_disable(struct roc_nix *roc_nix)
 	/* Disable backpressure, it will be enabled back if needed on
 	 * hierarchy enable
 	 */
-	rc = nix_tm_bp_config_set(roc_nix, false);
-	if (rc) {
-		plt_err("Failed to disable backpressure for flush, rc=%d", rc);
-		goto cleanup;
+	for (i = 0; i < sq_cnt; i++) {
+		sq = nix->sqs[i];
+		if (!sq)
+			continue;
+
+		rc = nix_tm_bp_config_set(roc_nix, sq->qid, 0, false);
+		if (rc) {
+			plt_err("Failed to disable backpressure, rc=%d", rc);
+			goto cleanup;
+		}
 	}
 
 	/* Flush all tx queues */

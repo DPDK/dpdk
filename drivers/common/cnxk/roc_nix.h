@@ -165,14 +165,25 @@ struct roc_nix_fc_cfg {
 
 		struct {
 			uint32_t rq;
+			uint16_t tc;
 			uint16_t cq_drop;
 			bool enable;
 		} cq_cfg;
 
 		struct {
+			uint32_t sq;
+			uint16_t tc;
 			bool enable;
 		} tm_cfg;
 	};
+};
+
+struct roc_nix_pfc_cfg {
+	enum roc_nix_fc_mode mode;
+	/* For SET, tc must be [0, 15].
+	 * For GET, TC will represent bitmap
+	 */
+	uint16_t tc;
 };
 
 struct roc_nix_eeprom_info {
@@ -478,6 +489,7 @@ void __roc_api roc_nix_unregister_cq_irqs(struct roc_nix *roc_nix);
 enum roc_nix_tm_tree {
 	ROC_NIX_TM_DEFAULT = 0,
 	ROC_NIX_TM_RLIMIT,
+	ROC_NIX_TM_PFC,
 	ROC_NIX_TM_USER,
 	ROC_NIX_TM_TREE_MAX,
 };
@@ -624,6 +636,7 @@ roc_nix_tm_shaper_default_red_algo(struct roc_nix_tm_node *node,
 int __roc_api roc_nix_tm_lvl_cnt_get(struct roc_nix *roc_nix);
 int __roc_api roc_nix_tm_lvl_have_link_access(struct roc_nix *roc_nix, int lvl);
 int __roc_api roc_nix_tm_prepare_rate_limited_tree(struct roc_nix *roc_nix);
+int __roc_api roc_nix_tm_pfc_prepare_tree(struct roc_nix *roc_nix);
 bool __roc_api roc_nix_tm_is_user_hierarchy_enabled(struct roc_nix *nix);
 int __roc_api roc_nix_tm_tree_type_get(struct roc_nix *nix);
 
@@ -738,6 +751,14 @@ int __roc_api roc_nix_fc_config_get(struct roc_nix *roc_nix,
 
 int __roc_api roc_nix_fc_mode_set(struct roc_nix *roc_nix,
 				  enum roc_nix_fc_mode mode);
+
+int __roc_api roc_nix_pfc_mode_set(struct roc_nix *roc_nix,
+				   struct roc_nix_pfc_cfg *pfc_cfg);
+
+int __roc_api roc_nix_pfc_mode_get(struct roc_nix *roc_nix,
+				   struct roc_nix_pfc_cfg *pfc_cfg);
+
+uint16_t __roc_api roc_nix_chan_count_get(struct roc_nix *roc_nix);
 
 enum roc_nix_fc_mode __roc_api roc_nix_fc_mode_get(struct roc_nix *roc_nix);
 

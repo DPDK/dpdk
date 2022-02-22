@@ -121,7 +121,7 @@ nix_tm_txsch_reg_config(struct nix *nix, enum roc_nix_tm_tree tree)
 			if (is_pf_or_lbk && !skip_bp &&
 			    node->hw_lvl == nix->tm_link_cfg_lvl) {
 				node->bp_capa = 1;
-				skip_bp = true;
+				skip_bp = false;
 			}
 
 			rc = nix_tm_node_reg_conf(nix, node);
@@ -317,26 +317,46 @@ nix_tm_clear_path_xoff(struct nix *nix, struct nix_tm_node *node)
 }
 
 int
-nix_tm_bp_config_set(struct roc_nix *roc_nix, bool enable)
+nix_tm_bp_config_set(struct roc_nix *roc_nix, uint16_t sq, uint16_t tc,
+		     bool enable)
 {
 	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
 	enum roc_nix_tm_tree tree = nix->tm_tree;
 	struct mbox *mbox = (&nix->dev)->mbox;
 	struct nix_txschq_config *req = NULL;
 	struct nix_tm_node_list *list;
+	struct nix_tm_node *sq_node;
+	struct nix_tm_node *parent;
 	struct nix_tm_node *node;
 	uint8_t k = 0;
 	uint16_t link;
 	int rc = 0;
 
+	sq_node = nix_tm_node_search(nix, sq, nix->tm_tree);
+	parent = sq_node->parent;
+	while (parent) {
+		if (parent->lvl == ROC_TM_LVL_SCH2)
+			break;
+
+		parent = parent->parent;
+	}
+
 	list = nix_tm_node_list(nix, tree);
 	link = nix->tx_link;
+
+	if (parent->rel_chan != NIX_TM_CHAN_INVALID && parent->rel_chan != tc) {
+		rc = -EINVAL;
+		goto err;
+	}
 
 	TAILQ_FOREACH(node, list, node) {
 		if (node->hw_lvl != nix->tm_link_cfg_lvl)
 			continue;
 
 		if (!(node->flags & NIX_TM_NODE_HWRES) || !node->bp_capa)
+			continue;
+
+		if (node->hw_id != parent->hw_id)
 			continue;
 
 		if (!req) {
@@ -346,8 +366,9 @@ nix_tm_bp_config_set(struct roc_nix *roc_nix, bool enable)
 		}
 
 		req->reg[k] = NIX_AF_TL3_TL2X_LINKX_CFG(node->hw_id, link);
-		req->regval[k] = enable ? BIT_ULL(13) : 0;
-		req->regval_mask[k] = ~BIT_ULL(13);
+		req->regval[k] = enable ? tc : 0;
+		req->regval[k] |= enable ? BIT_ULL(13) : 0;
+		req->regval_mask[k] = ~(BIT_ULL(13) | GENMASK_ULL(7, 0));
 		k++;
 
 		if (k >= MAX_REGS_PER_MBOX_MSG) {
@@ -366,6 +387,7 @@ nix_tm_bp_config_set(struct roc_nix *roc_nix, bool enable)
 			goto err;
 	}
 
+	parent->rel_chan = enable ? tc : NIX_TM_CHAN_INVALID;
 	return 0;
 err:
 	plt_err("Failed to %s bp on link %u, rc=%d(%s)",
@@ -602,7 +624,7 @@ nix_tm_sq_flush_pre(struct roc_nix_sq *sq)
 	}
 
 	/* Disable backpressure */
-	rc = nix_tm_bp_config_set(roc_nix, false);
+	rc = nix_tm_bp_config_set(roc_nix, sq->qid, 0, false);
 	if (rc) {
 		plt_err("Failed to disable backpressure for flush, rc=%d", rc);
 		return rc;
@@ -731,7 +753,7 @@ nix_tm_sq_flush_post(struct roc_nix_sq *sq)
 		return 0;
 
 	/* Restore backpressure */
-	rc = nix_tm_bp_config_set(roc_nix, true);
+	rc = nix_tm_bp_config_set(roc_nix, sq->qid, 0, true);
 	if (rc) {
 		plt_err("Failed to restore backpressure, rc=%d", rc);
 		return rc;
@@ -1301,6 +1323,7 @@ nix_tm_prepare_default_tree(struct roc_nix *roc_nix)
 		node->shaper_profile_id = ROC_NIX_TM_SHAPER_PROFILE_NONE;
 		node->lvl = lvl;
 		node->tree = ROC_NIX_TM_DEFAULT;
+		node->rel_chan = NIX_TM_CHAN_INVALID;
 
 		rc = nix_tm_node_add(roc_nix, node);
 		if (rc)
@@ -1327,6 +1350,7 @@ nix_tm_prepare_default_tree(struct roc_nix *roc_nix)
 		node->shaper_profile_id = ROC_NIX_TM_SHAPER_PROFILE_NONE;
 		node->lvl = leaf_lvl;
 		node->tree = ROC_NIX_TM_DEFAULT;
+		node->rel_chan = NIX_TM_CHAN_INVALID;
 
 		rc = nix_tm_node_add(roc_nix, node);
 		if (rc)
@@ -1367,6 +1391,7 @@ roc_nix_tm_prepare_rate_limited_tree(struct roc_nix *roc_nix)
 		node->shaper_profile_id = ROC_NIX_TM_SHAPER_PROFILE_NONE;
 		node->lvl = lvl;
 		node->tree = ROC_NIX_TM_RLIMIT;
+		node->rel_chan = NIX_TM_CHAN_INVALID;
 
 		rc = nix_tm_node_add(roc_nix, node);
 		if (rc)
@@ -1392,6 +1417,7 @@ roc_nix_tm_prepare_rate_limited_tree(struct roc_nix *roc_nix)
 		node->shaper_profile_id = ROC_NIX_TM_SHAPER_PROFILE_NONE;
 		node->lvl = lvl;
 		node->tree = ROC_NIX_TM_RLIMIT;
+		node->rel_chan = NIX_TM_CHAN_INVALID;
 
 		rc = nix_tm_node_add(roc_nix, node);
 		if (rc)
@@ -1416,6 +1442,139 @@ roc_nix_tm_prepare_rate_limited_tree(struct roc_nix *roc_nix)
 		node->shaper_profile_id = ROC_NIX_TM_SHAPER_PROFILE_NONE;
 		node->lvl = leaf_lvl;
 		node->tree = ROC_NIX_TM_RLIMIT;
+		node->rel_chan = NIX_TM_CHAN_INVALID;
+
+		rc = nix_tm_node_add(roc_nix, node);
+		if (rc)
+			goto error;
+	}
+
+	return 0;
+error:
+	nix_tm_node_free(node);
+	return rc;
+}
+
+int
+roc_nix_tm_pfc_prepare_tree(struct roc_nix *roc_nix)
+{
+	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
+	uint32_t nonleaf_id = nix->nb_tx_queues;
+	struct nix_tm_node *node = NULL;
+	uint8_t leaf_lvl, lvl, lvl_end;
+	uint32_t tl2_node_id;
+	uint32_t parent, i;
+	int rc = -ENOMEM;
+
+	parent = ROC_NIX_TM_NODE_ID_INVALID;
+	lvl_end = ROC_TM_LVL_SCH3;
+	leaf_lvl = ROC_TM_LVL_QUEUE;
+
+	/* TL1 node */
+	node = nix_tm_node_alloc();
+	if (!node)
+		goto error;
+
+	node->id = nonleaf_id;
+	node->parent_id = parent;
+	node->priority = 0;
+	node->weight = NIX_TM_DFLT_RR_WT;
+	node->shaper_profile_id = ROC_NIX_TM_SHAPER_PROFILE_NONE;
+	node->lvl = ROC_TM_LVL_ROOT;
+	node->tree = ROC_NIX_TM_PFC;
+	node->rel_chan = NIX_TM_CHAN_INVALID;
+
+	rc = nix_tm_node_add(roc_nix, node);
+	if (rc)
+		goto error;
+
+	parent = nonleaf_id;
+	nonleaf_id++;
+
+	/* TL2 node */
+	rc = -ENOMEM;
+	node = nix_tm_node_alloc();
+	if (!node)
+		goto error;
+
+	node->id = nonleaf_id;
+	node->parent_id = parent;
+	node->priority = 0;
+	node->weight = NIX_TM_DFLT_RR_WT;
+	node->shaper_profile_id = ROC_NIX_TM_SHAPER_PROFILE_NONE;
+	node->lvl = ROC_TM_LVL_SCH1;
+	node->tree = ROC_NIX_TM_PFC;
+	node->rel_chan = NIX_TM_CHAN_INVALID;
+
+	rc = nix_tm_node_add(roc_nix, node);
+	if (rc)
+		goto error;
+
+	tl2_node_id = nonleaf_id;
+	nonleaf_id++;
+
+	for (i = 0; i < nix->nb_tx_queues; i++) {
+		parent = tl2_node_id;
+		for (lvl = ROC_TM_LVL_SCH2; lvl <= lvl_end; lvl++) {
+			rc = -ENOMEM;
+			node = nix_tm_node_alloc();
+			if (!node)
+				goto error;
+
+			node->id = nonleaf_id;
+			node->parent_id = parent;
+			node->priority = 0;
+			node->weight = NIX_TM_DFLT_RR_WT;
+			node->shaper_profile_id =
+				ROC_NIX_TM_SHAPER_PROFILE_NONE;
+			node->lvl = lvl;
+			node->tree = ROC_NIX_TM_PFC;
+			node->rel_chan = NIX_TM_CHAN_INVALID;
+
+			rc = nix_tm_node_add(roc_nix, node);
+			if (rc)
+				goto error;
+
+			parent = nonleaf_id;
+			nonleaf_id++;
+		}
+
+		lvl = ROC_TM_LVL_SCH4;
+
+		rc = -ENOMEM;
+		node = nix_tm_node_alloc();
+		if (!node)
+			goto error;
+
+		node->id = nonleaf_id;
+		node->parent_id = parent;
+		node->priority = 0;
+		node->weight = NIX_TM_DFLT_RR_WT;
+		node->shaper_profile_id = ROC_NIX_TM_SHAPER_PROFILE_NONE;
+		node->lvl = lvl;
+		node->tree = ROC_NIX_TM_PFC;
+		node->rel_chan = NIX_TM_CHAN_INVALID;
+
+		rc = nix_tm_node_add(roc_nix, node);
+		if (rc)
+			goto error;
+
+		parent = nonleaf_id;
+		nonleaf_id++;
+
+		rc = -ENOMEM;
+		node = nix_tm_node_alloc();
+		if (!node)
+			goto error;
+
+		node->id = i;
+		node->parent_id = parent;
+		node->priority = 0;
+		node->weight = NIX_TM_DFLT_RR_WT;
+		node->shaper_profile_id = ROC_NIX_TM_SHAPER_PROFILE_NONE;
+		node->lvl = leaf_lvl;
+		node->tree = ROC_NIX_TM_PFC;
+		node->rel_chan = NIX_TM_CHAN_INVALID;
 
 		rc = nix_tm_node_add(roc_nix, node);
 		if (rc)
