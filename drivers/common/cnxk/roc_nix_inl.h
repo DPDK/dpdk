@@ -112,6 +112,8 @@ struct roc_nix_inl_dev {
 	uint16_t chan_mask;
 	bool attach_cptlf;
 	bool wqe_skip;
+	uint8_t spb_drop_pc;
+	uint8_t lpb_drop_pc;
 	/* End of input parameters */
 
 #define ROC_NIX_INL_MEM_SZ (1280)

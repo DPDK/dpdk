@@ -297,6 +297,10 @@ struct roc_nix_rq {
 	uint8_t spb_red_drop;
 	/* Average SPB aura level pass threshold for RED */
 	uint8_t spb_red_pass;
+	/* LPB aura drop enable */
+	bool lpb_drop_ena;
+	/* SPB aura drop enable */
+	bool spb_drop_ena;
 	/* End of Input parameters */
 	struct roc_nix *roc_nix;
 	bool inl_dev_ref;

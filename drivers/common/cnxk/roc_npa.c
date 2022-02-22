@@ -193,6 +193,35 @@ roc_npa_pool_op_pc_reset(uint64_t aura_handle)
 	}
 	return 0;
 }
+
+int
+roc_npa_aura_drop_set(uint64_t aura_handle, uint64_t limit, bool ena)
+{
+	struct npa_aq_enq_req *aura_req;
+	struct npa_lf *lf;
+	int rc;
+
+	lf = idev_npa_obj_get();
+	if (lf == NULL)
+		return NPA_ERR_DEVICE_NOT_BOUNDED;
+
+	aura_req = mbox_alloc_msg_npa_aq_enq(lf->mbox);
+	if (aura_req == NULL)
+		return -ENOMEM;
+	aura_req->aura_id = roc_npa_aura_handle_to_aura(aura_handle);
+	aura_req->ctype = NPA_AQ_CTYPE_AURA;
+	aura_req->op = NPA_AQ_INSTOP_WRITE;
+
+	aura_req->aura.aura_drop_ena = ena;
+	aura_req->aura.aura_drop = limit;
+	aura_req->aura_mask.aura_drop_ena =
+		~(aura_req->aura_mask.aura_drop_ena);
+	aura_req->aura_mask.aura_drop = ~(aura_req->aura_mask.aura_drop);
+	rc = mbox_process(lf->mbox);
+
+	return rc;
+}
+
 static inline char *
 npa_stack_memzone_name(struct npa_lf *lf, int pool_id, char *name)
 {
@@ -299,7 +328,7 @@ npa_aura_pool_pair_alloc(struct npa_lf *lf, const uint32_t block_size,
 	aura->err_int_ena |= BIT(NPA_AURA_ERR_INT_AURA_ADD_UNDER);
 	aura->err_int_ena |= BIT(NPA_AURA_ERR_INT_AURA_FREE_UNDER);
 	aura->err_int_ena |= BIT(NPA_AURA_ERR_INT_POOL_DIS);
-	aura->avg_con = ROC_NPA_AVG_CONT;
+	aura->avg_con = 0;
 	/* Many to one reduction */
 	aura->err_qint_idx = aura_id % lf->qints;
 
@@ -316,7 +345,7 @@ npa_aura_pool_pair_alloc(struct npa_lf *lf, const uint32_t block_size,
 	pool->err_int_ena = BIT(NPA_POOL_ERR_INT_OVFLS);
 	pool->err_int_ena |= BIT(NPA_POOL_ERR_INT_RANGE);
 	pool->err_int_ena |= BIT(NPA_POOL_ERR_INT_PERR);
-	pool->avg_con = ROC_NPA_AVG_CONT;
+	pool->avg_con = 0;
 
 	/* Many to one reduction */
 	pool->err_qint_idx = pool_id % lf->qints;

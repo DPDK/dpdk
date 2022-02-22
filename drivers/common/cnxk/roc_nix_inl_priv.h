@@ -43,6 +43,8 @@ struct nix_inl_dev {
 	struct roc_nix_rq rq;
 	uint16_t rq_refs;
 	bool is_nix1;
+	uint8_t spb_drop_pc;
+	uint8_t lpb_drop_pc;
 
 	/* NIX/CPT data */
 	void *inb_sa_base;

@@ -299,7 +299,9 @@ nix_rq_cfg(struct dev *dev, struct roc_nix_rq *rq, uint16_t qints, bool cfg,
 	aq->rq.rq_int_ena = 0;
 	/* Many to one reduction */
 	aq->rq.qint_idx = rq->qid % qints;
-	aq->rq.xqe_drop_ena = 1;
+	aq->rq.xqe_drop_ena = 0;
+	aq->rq.lpb_drop_ena = rq->lpb_drop_ena;
+	aq->rq.spb_drop_ena = rq->spb_drop_ena;
 
 	/* If RED enabled, then fill enable for all cases */
 	if (rq->red_pass && (rq->red_pass >= rq->red_drop)) {
@@ -366,6 +368,8 @@ nix_rq_cfg(struct dev *dev, struct roc_nix_rq *rq, uint16_t qints, bool cfg,
 		aq->rq_mask.rq_int_ena = ~aq->rq_mask.rq_int_ena;
 		aq->rq_mask.qint_idx = ~aq->rq_mask.qint_idx;
 		aq->rq_mask.xqe_drop_ena = ~aq->rq_mask.xqe_drop_ena;
+		aq->rq_mask.lpb_drop_ena = ~aq->rq_mask.lpb_drop_ena;
+		aq->rq_mask.spb_drop_ena = ~aq->rq_mask.spb_drop_ena;
 
 		if (rq->red_pass && (rq->red_pass >= rq->red_drop)) {
 			aq->rq_mask.spb_pool_pass = ~aq->rq_mask.spb_pool_pass;

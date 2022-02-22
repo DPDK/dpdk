@@ -5,6 +5,8 @@
 #include "roc_api.h"
 #include "roc_priv.h"
 
+#define NIX_AURA_DROP_PC_DFLT 40
+
 /* Default Rx Config for Inline NIX LF */
 #define NIX_INL_LF_RX_CFG                                                      \
 	(ROC_NIX_LF_RX_CFG_DROP_RE | ROC_NIX_LF_RX_CFG_L2_LEN_ERR |            \
@@ -662,6 +664,13 @@ roc_nix_inl_dev_init(struct roc_nix_inl_dev *roc_inl_dev)
 	inl_dev->chan_mask = roc_inl_dev->chan_mask;
 	inl_dev->attach_cptlf = roc_inl_dev->attach_cptlf;
 	inl_dev->wqe_skip = roc_inl_dev->wqe_skip;
+	inl_dev->spb_drop_pc = NIX_AURA_DROP_PC_DFLT;
+	inl_dev->lpb_drop_pc = NIX_AURA_DROP_PC_DFLT;
+
+	if (roc_inl_dev->spb_drop_pc)
+		inl_dev->spb_drop_pc = roc_inl_dev->spb_drop_pc;
+	if (roc_inl_dev->lpb_drop_pc)
+		inl_dev->lpb_drop_pc = roc_inl_dev->lpb_drop_pc;
 
 	/* Initialize base device */
 	rc = dev_init(&inl_dev->dev, pci_dev);

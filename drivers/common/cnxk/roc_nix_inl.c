@@ -528,23 +528,50 @@ roc_nix_inl_dev_rq_get(struct roc_nix_rq *rq)
 	inl_rq->first_skip = rq->first_skip;
 	inl_rq->later_skip = rq->later_skip;
 	inl_rq->lpb_size = rq->lpb_size;
+	inl_rq->lpb_drop_ena = true;
+	inl_rq->spb_ena = rq->spb_ena;
+	inl_rq->spb_aura_handle = rq->spb_aura_handle;
+	inl_rq->spb_size = rq->spb_size;
+	inl_rq->spb_drop_ena = !!rq->spb_ena;
 
 	if (!roc_model_is_cn9k()) {
 		uint64_t aura_limit =
 			roc_npa_aura_op_limit_get(inl_rq->aura_handle);
 		uint64_t aura_shift = plt_log2_u32(aura_limit);
+		uint64_t aura_drop, drop_pc;
 
 		if (aura_shift < 8)
 			aura_shift = 0;
 		else
 			aura_shift = aura_shift - 8;
 
-		/* Set first pass RQ to drop when half of the buffers are in
+		/* Set first pass RQ to drop after part of buffers are in
 		 * use to avoid metabuf alloc failure. This is needed as long
-		 * as we cannot use different
+		 * as we cannot use different aura.
 		 */
-		inl_rq->red_pass = (aura_limit / 2) >> aura_shift;
-		inl_rq->red_drop = ((aura_limit / 2) - 1) >> aura_shift;
+		drop_pc = inl_dev->lpb_drop_pc;
+		aura_drop = ((aura_limit * drop_pc) / 100) >> aura_shift;
+		roc_npa_aura_drop_set(inl_rq->aura_handle, aura_drop, true);
+	}
+
+	if (inl_rq->spb_ena) {
+		uint64_t aura_limit =
+			roc_npa_aura_op_limit_get(inl_rq->spb_aura_handle);
+		uint64_t aura_shift = plt_log2_u32(aura_limit);
+		uint64_t aura_drop, drop_pc;
+
+		if (aura_shift < 8)
+			aura_shift = 0;
+		else
+			aura_shift = aura_shift - 8;
+
+		/* Set first pass RQ to drop after part of buffers are in
+		 * use to avoid metabuf alloc failure. This is needed as long
+		 * as we cannot use different aura.
+		 */
+		drop_pc = inl_dev->spb_drop_pc;
+		aura_drop = ((aura_limit * drop_pc) / 100) >> aura_shift;
+		roc_npa_aura_drop_set(inl_rq->spb_aura_handle, aura_drop, true);
 	}
 
 	/* Enable IPSec */
@@ -612,6 +639,10 @@ roc_nix_inl_dev_rq_put(struct roc_nix_rq *rq)
 	rc = nix_rq_ena_dis(dev, inl_rq, false);
 	if (rc)
 		plt_err("Failed to disable inline device rq, rc=%d", rc);
+
+	roc_npa_aura_drop_set(inl_rq->aura_handle, 0, false);
+	if (inl_rq->spb_ena)
+		roc_npa_aura_drop_set(inl_rq->spb_aura_handle, 0, false);
 
 	/* Flush NIX LF for CN10K */
 	nix_rq_vwqe_flush(rq, inl_dev->vwqe_interval);
