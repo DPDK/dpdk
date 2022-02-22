@@ -313,6 +313,12 @@ cn10k_nix_configure(struct rte_eth_dev *eth_dev)
 	if (rc)
 		return rc;
 
+	if (dev->tx_offloads & RTE_ETH_TX_OFFLOAD_SECURITY ||
+	    dev->rx_offloads & RTE_ETH_RX_OFFLOAD_SECURITY) {
+		/* Register callback to handle security error work */
+		roc_nix_inl_cb_register(cn10k_eth_sec_sso_work_cb, NULL);
+	}
+
 	/* Update offload flags */
 	dev->rx_offload_flags = nix_rx_offload_flags(eth_dev);
 	dev->tx_offload_flags = nix_tx_offload_flags(eth_dev);
