@@ -1778,8 +1778,6 @@ rte_sched_port_queue_is_empty(struct rte_sched_subport *subport,
 
 #endif /* RTE_SCHED_DEBUG */
 
-#ifdef RTE_SCHED_COLLECT_STATS
-
 static inline void
 rte_sched_port_update_subport_stats(struct rte_sched_port *port,
 	struct rte_sched_subport *subport,
@@ -1836,8 +1834,6 @@ rte_sched_port_update_queue_stats_on_drop(struct rte_sched_subport *subport,
 		qe->stats.n_pkts_cman_dropped += n_pkts_cman_dropped;
 #endif
 }
-
-#endif /* RTE_SCHED_COLLECT_STATS */
 
 #ifdef RTE_SCHED_CMAN
 
@@ -1977,18 +1973,14 @@ rte_sched_port_enqueue_qptrs_prefetch0(struct rte_sched_subport *subport,
 	struct rte_mbuf *pkt, uint32_t subport_qmask)
 {
 	struct rte_sched_queue *q;
-#ifdef RTE_SCHED_COLLECT_STATS
 	struct rte_sched_queue_extra *qe;
-#endif
 	uint32_t qindex = rte_mbuf_sched_queue_get(pkt);
 	uint32_t subport_queue_id = subport_qmask & qindex;
 
 	q = subport->queue + subport_queue_id;
 	rte_prefetch0(q);
-#ifdef RTE_SCHED_COLLECT_STATS
 	qe = subport->queue_extra + subport_queue_id;
 	rte_prefetch0(qe);
-#endif
 
 	return subport_queue_id;
 }
@@ -2030,12 +2022,10 @@ rte_sched_port_enqueue_qwa(struct rte_sched_port *port,
 	if (unlikely(rte_sched_port_cman_drop(port, subport, pkt, qindex, qlen) ||
 		     (qlen >= qsize))) {
 		rte_pktmbuf_free(pkt);
-#ifdef RTE_SCHED_COLLECT_STATS
 		rte_sched_port_update_subport_stats_on_drop(port, subport,
 			qindex, pkt, qlen < qsize);
 		rte_sched_port_update_queue_stats_on_drop(subport, qindex, pkt,
 			qlen < qsize);
-#endif
 		return 0;
 	}
 
@@ -2047,10 +2037,8 @@ rte_sched_port_enqueue_qwa(struct rte_sched_port *port,
 	rte_bitmap_set(subport->bmp, qindex);
 
 	/* Statistics */
-#ifdef RTE_SCHED_COLLECT_STATS
 	rte_sched_port_update_subport_stats(port, subport, qindex, pkt);
 	rte_sched_port_update_queue_stats(subport, qindex, pkt);
-#endif
 
 	return 1;
 }

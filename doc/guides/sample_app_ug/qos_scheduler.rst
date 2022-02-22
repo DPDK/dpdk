@@ -41,12 +41,6 @@ The application is located in the ``qos_sched`` sub-directory.
 
 .. note::
 
-    To get statistics on the sample app using the command line interface as described in the next section,
-    DPDK must be compiled defining *RTE_SCHED_COLLECT_STATS*, which can be done by changing the relevant
-    entry in the ``config/rte_config.h`` file.
-
-.. note::
-
     Number of grinders is currently set to 8.
     This can be modified by specifying RTE_SCHED_PORT_N_GRINDERS=N
     in CFLAGS, where N is number of grinders.
