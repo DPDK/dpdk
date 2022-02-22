@@ -23,17 +23,6 @@
 #pragma warning(disable:2259) /* conversion may lose significant bits */
 #endif
 
-#ifdef RTE_SCHED_VECTOR
-#include <rte_vect.h>
-
-#ifdef RTE_ARCH_X86
-#define SCHED_VECTOR_SSE4
-#elif defined(__ARM_NEON)
-#define SCHED_VECTOR_NEON
-#endif
-
-#endif
-
 #define RTE_SCHED_TB_RATE_CONFIG_ERR          (1e-7)
 #define RTE_SCHED_WRR_SHIFT                   3
 #define RTE_SCHED_MAX_QUEUES_PER_TC           RTE_SCHED_BE_QUEUES_PER_PIPE
@@ -2544,47 +2533,6 @@ grinder_schedule(struct rte_sched_port *port,
 	return 1;
 }
 
-#ifdef SCHED_VECTOR_SSE4
-
-static inline int
-grinder_pipe_exists(struct rte_sched_subport *subport, uint32_t base_pipe)
-{
-	__m128i index = _mm_set1_epi32(base_pipe);
-	__m128i pipes = _mm_load_si128((__m128i *)subport->grinder_base_bmp_pos);
-	__m128i res = _mm_cmpeq_epi32(pipes, index);
-
-	pipes = _mm_load_si128((__m128i *)(subport->grinder_base_bmp_pos + 4));
-	pipes = _mm_cmpeq_epi32(pipes, index);
-	res = _mm_or_si128(res, pipes);
-
-	if (_mm_testz_si128(res, res))
-		return 0;
-
-	return 1;
-}
-
-#elif defined(SCHED_VECTOR_NEON)
-
-static inline int
-grinder_pipe_exists(struct rte_sched_subport *subport, uint32_t base_pipe)
-{
-	uint32x4_t index, pipes;
-	uint32_t *pos = (uint32_t *)subport->grinder_base_bmp_pos;
-
-	index = vmovq_n_u32(base_pipe);
-	pipes = vld1q_u32(pos);
-	if (!vminvq_u32(veorq_u32(pipes, index)))
-		return 1;
-
-	pipes = vld1q_u32(pos + 4);
-	if (!vminvq_u32(veorq_u32(pipes, index)))
-		return 1;
-
-	return 0;
-}
-
-#else
-
 static inline int
 grinder_pipe_exists(struct rte_sched_subport *subport, uint32_t base_pipe)
 {
@@ -2597,8 +2545,6 @@ grinder_pipe_exists(struct rte_sched_subport *subport, uint32_t base_pipe)
 
 	return 0;
 }
-
-#endif /* RTE_SCHED_OPTIMIZATIONS */
 
 static inline void
 grinder_pcache_populate(struct rte_sched_subport *subport,

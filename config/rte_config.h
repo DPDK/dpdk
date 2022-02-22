@@ -93,7 +93,6 @@
 #undef RTE_SCHED_COLLECT_STATS
 #undef RTE_SCHED_SUBPORT_TC_OV
 #define RTE_SCHED_PORT_N_GRINDERS 8
-#undef RTE_SCHED_VECTOR
 
 /* rte_graph defines */
 #define RTE_GRAPH_BURST_SIZE 256
