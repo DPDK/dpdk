@@ -311,6 +311,8 @@ cnxk_gpio_selftest(uint16_t dev_id)
 	int ret, ret2;
 
 	rawdev = rte_rawdev_pmd_get_named_dev("cnxk_gpio");
+	if (!rawdev)
+		return -ENODEV;
 	gpiochip = rawdev->dev_private;
 
 	queues = rte_rawdev_queue_count(dev_id);
