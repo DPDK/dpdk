@@ -595,15 +595,9 @@ static const struct rte_tm_level_capabilities tm_level_cap[] = {
 			.sched_sp_n_priorities_max = 1,
 			.sched_wfq_n_children_per_group_max = UINT32_MAX,
 			.sched_wfq_n_groups_max = 1,
-#ifdef RTE_SCHED_SUBPORT_TC_OV
 			.sched_wfq_weight_max = UINT32_MAX,
 			.sched_wfq_packet_mode_supported = 0,
 			.sched_wfq_byte_mode_supported = 1,
-#else
-			.sched_wfq_weight_max = 1,
-			.sched_wfq_packet_mode_supported = 0,
-			.sched_wfq_byte_mode_supported = 1,
-#endif
 
 			.stats_mask = STATS_MASK_DEFAULT,
 		} },
@@ -2828,8 +2822,6 @@ pmd_tm_hierarchy_commit(struct rte_eth_dev *dev,
 	return 0;
 }
 
-#ifdef RTE_SCHED_SUBPORT_TC_OV
-
 static int
 update_pipe_weight(struct rte_eth_dev *dev, struct tm_node *np, uint32_t weight)
 {
@@ -2866,8 +2858,6 @@ update_pipe_weight(struct rte_eth_dev *dev, struct tm_node *np, uint32_t weight)
 
 	return 0;
 }
-
-#endif
 
 static int
 update_queue_weight(struct rte_eth_dev *dev,
@@ -2983,7 +2973,6 @@ pmd_tm_node_parent_update(struct rte_eth_dev *dev,
 			rte_strerror(EINVAL));
 		/* fall-through */
 	case TM_NODE_LEVEL_PIPE:
-#ifdef RTE_SCHED_SUBPORT_TC_OV
 		if (update_pipe_weight(dev, n, weight))
 			return -rte_tm_error_set(error,
 				EINVAL,
@@ -2991,13 +2980,6 @@ pmd_tm_node_parent_update(struct rte_eth_dev *dev,
 				NULL,
 				rte_strerror(EINVAL));
 		return 0;
-#else
-		return -rte_tm_error_set(error,
-			EINVAL,
-			RTE_TM_ERROR_TYPE_NODE_WEIGHT,
-			NULL,
-			rte_strerror(EINVAL));
-#endif
 		/* fall-through */
 	case TM_NODE_LEVEL_TC:
 		return -rte_tm_error_set(error,

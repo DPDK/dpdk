@@ -183,9 +183,7 @@ static struct rte_sched_pipe_params pipe_profiles[MAX_SCHED_PIPE_PROFILES] = {
 		.tc_rate = {305175, 305175, 305175, 305175, 305175, 305175,
 			305175, 305175, 305175, 305175, 305175, 305175, 305175},
 		.tc_period = 40,
-#ifdef RTE_SCHED_SUBPORT_TC_OV
 		.tc_ov_weight = 1,
-#endif
 
 		.wrr_weights = {1, 1, 1, 1},
 	},

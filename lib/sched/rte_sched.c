@@ -1317,14 +1317,12 @@ rte_sched_subport_config(struct rte_sched_port *port,
 		for (i = 0; i < RTE_SCHED_PORT_N_GRINDERS; i++)
 			s->grinder_base_bmp_pos[i] = RTE_SCHED_PIPE_INVALID;
 
-#ifdef RTE_SCHED_SUBPORT_TC_OV
 		/* TC oversubscription */
 		s->tc_ov_wm_min = port->mtu;
 		s->tc_ov_period_id = 0;
 		s->tc_ov = 0;
 		s->tc_ov_n = 0;
 		s->tc_ov_rate = 0;
-#endif
 	}
 
 	{
@@ -1344,11 +1342,9 @@ rte_sched_subport_config(struct rte_sched_port *port,
 			else
 				profile->tc_credits_per_period[i] = 0;
 
-#ifdef RTE_SCHED_SUBPORT_TC_OV
 		s->tc_ov_wm_max = rte_sched_time_ms_to_bytes(profile->tc_period,
 							s->pipe_tc_be_rate_max);
 		s->tc_ov_wm = s->tc_ov_wm_max;
-#endif
 		s->profile = subport_profile_id;
 
 	}
@@ -2255,50 +2251,6 @@ rte_sched_port_enqueue(struct rte_sched_port *port, struct rte_mbuf **pkts,
 	return result;
 }
 
-#ifndef RTE_SCHED_SUBPORT_TC_OV
-
-static inline void
-grinder_credits_update(struct rte_sched_port *port,
-	struct rte_sched_subport *subport, uint32_t pos)
-{
-	struct rte_sched_grinder *grinder = subport->grinder + pos;
-	struct rte_sched_pipe *pipe = grinder->pipe;
-	struct rte_sched_pipe_profile *params = grinder->pipe_params;
-	struct rte_sched_subport_profile *sp = grinder->subport_params;
-	uint64_t n_periods;
-	uint32_t i;
-
-	/* Subport TB */
-	n_periods = (port->time - subport->tb_time) / sp->tb_period;
-	subport->tb_credits += n_periods * sp->tb_credits_per_period;
-	subport->tb_credits = RTE_MIN(subport->tb_credits, sp->tb_size);
-	subport->tb_time += n_periods * sp->tb_period;
-
-	/* Pipe TB */
-	n_periods = (port->time - pipe->tb_time) / params->tb_period;
-	pipe->tb_credits += n_periods * params->tb_credits_per_period;
-	pipe->tb_credits = RTE_MIN(pipe->tb_credits, params->tb_size);
-	pipe->tb_time += n_periods * params->tb_period;
-
-	/* Subport TCs */
-	if (unlikely(port->time >= subport->tc_time)) {
-		for (i = 0; i < RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE; i++)
-			subport->tc_credits[i] = sp->tc_credits_per_period[i];
-
-		subport->tc_time = port->time + sp->tc_period;
-	}
-
-	/* Pipe TCs */
-	if (unlikely(port->time >= pipe->tc_time)) {
-		for (i = 0; i < RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE; i++)
-			pipe->tc_credits[i] = params->tc_credits_per_period[i];
-
-		pipe->tc_time = port->time + params->tc_period;
-	}
-}
-
-#else
-
 static inline uint64_t
 grinder_tc_ov_credits_update(struct rte_sched_port *port,
 	struct rte_sched_subport *subport, uint32_t pos)
@@ -2393,46 +2345,6 @@ grinder_credits_update(struct rte_sched_port *port,
 	}
 }
 
-#endif /* RTE_SCHED_TS_CREDITS_UPDATE, RTE_SCHED_SUBPORT_TC_OV */
-
-
-#ifndef RTE_SCHED_SUBPORT_TC_OV
-
-static inline int
-grinder_credits_check(struct rte_sched_port *port,
-	struct rte_sched_subport *subport, uint32_t pos)
-{
-	struct rte_sched_grinder *grinder = subport->grinder + pos;
-	struct rte_sched_pipe *pipe = grinder->pipe;
-	struct rte_mbuf *pkt = grinder->pkt;
-	uint32_t tc_index = grinder->tc_index;
-	uint64_t pkt_len = pkt->pkt_len + port->frame_overhead;
-	uint64_t subport_tb_credits = subport->tb_credits;
-	uint64_t subport_tc_credits = subport->tc_credits[tc_index];
-	uint64_t pipe_tb_credits = pipe->tb_credits;
-	uint64_t pipe_tc_credits = pipe->tc_credits[tc_index];
-	int enough_credits;
-
-	/* Check queue credits */
-	enough_credits = (pkt_len <= subport_tb_credits) &&
-		(pkt_len <= subport_tc_credits) &&
-		(pkt_len <= pipe_tb_credits) &&
-		(pkt_len <= pipe_tc_credits);
-
-	if (!enough_credits)
-		return 0;
-
-	/* Update port credits */
-	subport->tb_credits -= pkt_len;
-	subport->tc_credits[tc_index] -= pkt_len;
-	pipe->tb_credits -= pkt_len;
-	pipe->tc_credits[tc_index] -= pkt_len;
-
-	return 1;
-}
-
-#else
-
 static inline int
 grinder_credits_check(struct rte_sched_port *port,
 	struct rte_sched_subport *subport, uint32_t pos)
@@ -2478,8 +2390,6 @@ grinder_credits_check(struct rte_sched_port *port,
 
 	return 1;
 }
-
-#endif /* RTE_SCHED_SUBPORT_TC_OV */
 
 
 static inline int
