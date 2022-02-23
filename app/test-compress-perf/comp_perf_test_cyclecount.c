@@ -273,7 +273,7 @@ main_loop(struct cperf_cyclecount_ctx *ctx, enum rte_comp_xform_type type)
 			/* Allocate compression operations */
 			if (ops_needed && rte_mempool_get_bulk(
 						mem->op_pool,
-						(void **)ops,
+						(void **)&ops[ops_unused],
 						ops_needed) != 0) {
 				RTE_LOG(ERR, USER1,
 				      "Could not allocate enough operations\n");
