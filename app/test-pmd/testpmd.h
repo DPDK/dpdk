@@ -166,6 +166,17 @@ enum age_action_context_type {
 	ACTION_AGE_CONTEXT_TYPE_INDIRECT_ACTION,
 };
 
+/** Descriptor for a template. */
+struct port_template {
+	struct port_template *next; /**< Next template in list. */
+	struct port_template *tmp; /**< Temporary linking. */
+	uint32_t id; /**< Template ID. */
+	union {
+		struct rte_flow_pattern_template *pattern_template;
+		struct rte_flow_actions_template *actions_template;
+	} template; /**< PMD opaque template object */
+};
+
 /** Descriptor for a single flow. */
 struct port_flow {
 	struct port_flow *next; /**< Next flow in list. */
@@ -246,6 +257,8 @@ struct rte_port {
 	queueid_t               queue_nb; /**< nb. of queues for flow rules */
 	uint32_t                queue_sz; /**< size of a queue for flow rules */
 	uint8_t                 slave_flag; /**< bonding slave port */
+	struct port_template    *pattern_templ_list; /**< Pattern templates. */
+	struct port_template    *actions_templ_list; /**< Actions templates. */
 	struct port_flow        *flow_list; /**< Associated flows. */
 	struct port_indirect_action *actions_list;
 	/**< Associated indirect actions. */
@@ -892,6 +905,17 @@ int port_flow_configure(portid_t port_id,
 			const struct rte_flow_port_attr *port_attr,
 			uint16_t nb_queue,
 			const struct rte_flow_queue_attr *queue_attr);
+int port_flow_pattern_template_create(portid_t port_id, uint32_t id,
+				      const struct rte_flow_pattern_template_attr *attr,
+				      const struct rte_flow_item *pattern);
+int port_flow_pattern_template_destroy(portid_t port_id, uint32_t n,
+				       const uint32_t *template);
+int port_flow_actions_template_create(portid_t port_id, uint32_t id,
+				      const struct rte_flow_actions_template_attr *attr,
+				      const struct rte_flow_action *actions,
+				      const struct rte_flow_action *masks);
+int port_flow_actions_template_destroy(portid_t port_id, uint32_t n,
+				       const uint32_t *template);
 int port_flow_validate(portid_t port_id,
 		       const struct rte_flow_attr *attr,
 		       const struct rte_flow_item *pattern,

@@ -3344,6 +3344,26 @@ following sections.
        [aging_counters_number {number}]
        [meters_number {number}]
 
+- Create a pattern template::
+   flow pattern_template {port_id} create [pattern_template_id {id}]
+       [relaxed {boolean}] [ingress] [egress] [transfer]
+	   template {item} [/ {item} [...]] / end
+
+- Destroy a pattern template::
+
+   flow pattern_template {port_id} destroy pattern_template {id} [...]
+
+- Create an actions template::
+
+   flow actions_template {port_id} create [actions_template_id {id}]
+       [ingress] [egress] [transfer]
+       template {action} [/ {action} [...]] / end
+       mask {action} [/ {action} [...]] / end
+
+- Destroy an actions template::
+
+   flow actions_template {port_id} destroy actions_template {id} [...]
+
 - Check whether a flow rule can be created::
 
    flow validate {port_id}
@@ -3445,6 +3465,87 @@ If successful, it will show::
    Configure flows on port #[...]: number of queues #[...] with #[...] elements
 
 Otherwise it will show an error message of the form::
+
+   Caught error type [...] ([...]): [...]
+
+Creating pattern templates
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+``flow pattern_template create`` creates the specified pattern template.
+It is bound to ``rte_flow_pattern_template_create()``::
+
+   flow pattern_template {port_id} create [pattern_template_id {id}]
+       [relaxed {boolean}] [ingress] [egress] [transfer]
+	   template {item} [/ {item} [...]] / end
+
+If successful, it will show::
+
+   Pattern template #[...] created
+
+Otherwise it will show an error message of the form::
+
+   Caught error type [...] ([...]): [...]
+
+This command uses the same pattern items as ``flow create``,
+their format is described in `Creating flow rules`_.
+
+Destroying pattern templates
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+``flow pattern_template destroy`` destroys one or more pattern templates
+from their template ID (as returned by ``flow pattern_template create``),
+this command calls ``rte_flow_pattern_template_destroy()`` as many
+times as necessary::
+
+   flow pattern_template {port_id} destroy pattern_template {id} [...]
+
+If successful, it will show::
+
+   Pattern template #[...] destroyed
+
+It does not report anything for pattern template IDs that do not exist.
+The usual error message is shown when a pattern template cannot be destroyed::
+
+   Caught error type [...] ([...]): [...]
+
+Creating actions templates
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+``flow actions_template create`` creates the specified actions template.
+It is bound to ``rte_flow_actions_template_create()``::
+
+   flow actions_template {port_id} create [actions_template_id {id}]
+       [ingress] [egress] [transfer]
+	   template {action} [/ {action} [...]] / end
+       mask {action} [/ {action} [...]] / end
+
+If successful, it will show::
+
+   Actions template #[...] created
+
+Otherwise it will show an error message of the form::
+
+   Caught error type [...] ([...]): [...]
+
+This command uses the same actions as ``flow create``,
+their format is described in `Creating flow rules`_.
+
+Destroying actions templates
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+``flow actions_template destroy`` destroys one or more actions templates
+from their template ID (as returned by ``flow actions_template create``),
+this command calls ``rte_flow_actions_template_destroy()`` as many
+times as necessary::
+
+   flow actions_template {port_id} destroy actions_template {id} [...]
+
+If successful, it will show::
+
+   Actions template #[...] destroyed
+
+It does not report anything for actions template IDs that do not exist.
+The usual error message is shown when an actions template cannot be destroyed::
 
    Caught error type [...] ([...]): [...]
 
