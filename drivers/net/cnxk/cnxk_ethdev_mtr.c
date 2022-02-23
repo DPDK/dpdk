@@ -278,14 +278,53 @@ cnxk_nix_mtr_profile_delete(struct rte_eth_dev *eth_dev, uint32_t profile_id,
 }
 
 static int
+update_mtr_err(uint32_t act_color, struct rte_mtr_error *error, bool action)
+{
+	const char *str;
+	switch (act_color) {
+	case RTE_COLOR_GREEN:
+		if (action) {
+			str = "Green action is not valid";
+			goto notsup;
+		} else {
+			str = "Green action is null";
+			goto notvalid;
+		}
+		break;
+	case RTE_COLOR_YELLOW:
+		if (action) {
+			str = "Yellow action is not valid";
+			goto notsup;
+		} else {
+			str = "Yellow action is null";
+			goto notvalid;
+		}
+		break;
+	case RTE_COLOR_RED:
+		if (action) {
+			str = "Red action is not valid";
+			goto notsup;
+		} else {
+			str = "Red action is null";
+			goto notvalid;
+		}
+		break;
+	}
+notsup:
+	return -rte_mtr_error_set(error, ENOTSUP,
+				  RTE_MTR_ERROR_TYPE_METER_POLICY, NULL, str);
+notvalid:
+	return -rte_mtr_error_set(error, EINVAL,
+				  RTE_MTR_ERROR_TYPE_METER_POLICY, NULL, str);
+}
+
+static int
 cnxk_nix_mtr_policy_validate(struct rte_eth_dev *dev,
 			     struct rte_mtr_meter_policy_params *policy,
 			     struct rte_mtr_error *error)
 {
-	static const char *const action_color[] = {"Green", "Yellow", "Red"};
 	bool supported[RTE_COLORS] = {false, false, false};
 	const struct rte_flow_action *action;
-	char message[1024];
 	uint32_t i;
 
 	RTE_SET_USED(dev);
@@ -304,21 +343,11 @@ cnxk_nix_mtr_policy_validate(struct rte_eth_dev *dev,
 				if (action->type == RTE_FLOW_ACTION_TYPE_DROP)
 					supported[i] = true;
 
-				if (!supported[i]) {
-					sprintf(message,
-						"%s action is not valid",
-						action_color[i]);
-					return -rte_mtr_error_set(error,
-					  ENOTSUP,
-					  RTE_MTR_ERROR_TYPE_METER_POLICY, NULL,
-					  message);
-				}
+				if (!supported[i])
+					return update_mtr_err(i, error, true);
 			}
 		} else {
-			sprintf(message, "%s action is null", action_color[i]);
-			return -rte_mtr_error_set(error, EINVAL,
-				RTE_MTR_ERROR_TYPE_METER_POLICY, NULL,
-				message);
+			return update_mtr_err(i, error, false);
 		}
 	}
 
