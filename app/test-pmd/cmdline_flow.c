@@ -58,6 +58,7 @@ enum index {
 	COMMON_FLEX_TOKEN,
 	COMMON_PATTERN_TEMPLATE_ID,
 	COMMON_ACTIONS_TEMPLATE_ID,
+	COMMON_TABLE_ID,
 
 	/* TOP-level command. */
 	ADD,
@@ -78,6 +79,7 @@ enum index {
 	CONFIGURE,
 	PATTERN_TEMPLATE,
 	ACTIONS_TEMPLATE,
+	TABLE,
 	INDIRECT_ACTION,
 	VALIDATE,
 	CREATE,
@@ -117,6 +119,20 @@ enum index {
 	ACTIONS_TEMPLATE_TRANSFER,
 	ACTIONS_TEMPLATE_SPEC,
 	ACTIONS_TEMPLATE_MASK,
+
+	/* Table arguments. */
+	TABLE_CREATE,
+	TABLE_DESTROY,
+	TABLE_CREATE_ID,
+	TABLE_DESTROY_ID,
+	TABLE_GROUP,
+	TABLE_PRIORITY,
+	TABLE_INGRESS,
+	TABLE_EGRESS,
+	TABLE_TRANSFER,
+	TABLE_RULES_NUMBER,
+	TABLE_PATTERN_TEMPLATE,
+	TABLE_ACTIONS_TEMPLATE,
 
 	/* Tunnel arguments. */
 	TUNNEL_CREATE,
@@ -913,6 +929,18 @@ struct buffer {
 			uint32_t template_id_n;
 		} templ_destroy; /**< Template destroy arguments. */
 		struct {
+			uint32_t id;
+			struct rte_flow_template_table_attr attr;
+			uint32_t *pat_templ_id;
+			uint32_t pat_templ_id_n;
+			uint32_t *act_templ_id;
+			uint32_t act_templ_id_n;
+		} table; /**< Table arguments. */
+		struct {
+			uint32_t *table_id;
+			uint32_t table_id_n;
+		} table_destroy; /**< Template destroy arguments. */
+		struct {
 			uint32_t *action_id;
 			uint32_t action_id_n;
 		} ia_destroy; /**< Indirect action destroy arguments. */
@@ -1045,6 +1073,32 @@ static const enum index next_at_attr[] = {
 
 static const enum index next_at_destroy_attr[] = {
 	ACTIONS_TEMPLATE_DESTROY_ID,
+	END,
+	ZERO,
+};
+
+static const enum index next_table_subcmd[] = {
+	TABLE_CREATE,
+	TABLE_DESTROY,
+	ZERO,
+};
+
+static const enum index next_table_attr[] = {
+	TABLE_CREATE_ID,
+	TABLE_GROUP,
+	TABLE_PRIORITY,
+	TABLE_INGRESS,
+	TABLE_EGRESS,
+	TABLE_TRANSFER,
+	TABLE_RULES_NUMBER,
+	TABLE_PATTERN_TEMPLATE,
+	TABLE_ACTIONS_TEMPLATE,
+	END,
+	ZERO,
+};
+
+static const enum index next_table_destroy_attr[] = {
+	TABLE_DESTROY_ID,
 	END,
 	ZERO,
 };
@@ -2154,6 +2208,11 @@ static int parse_template(struct context *, const struct token *,
 static int parse_template_destroy(struct context *, const struct token *,
 				  const char *, unsigned int,
 				  void *, unsigned int);
+static int parse_table(struct context *, const struct token *,
+		       const char *, unsigned int, void *, unsigned int);
+static int parse_table_destroy(struct context *, const struct token *,
+			       const char *, unsigned int,
+			       void *, unsigned int);
 static int parse_tunnel(struct context *, const struct token *,
 			const char *, unsigned int,
 			void *, unsigned int);
@@ -2227,6 +2286,8 @@ static int comp_pattern_template_id(struct context *, const struct token *,
 				    unsigned int, char *, unsigned int);
 static int comp_actions_template_id(struct context *, const struct token *,
 				    unsigned int, char *, unsigned int);
+static int comp_table_id(struct context *, const struct token *,
+			 unsigned int, char *, unsigned int);
 
 /** Token definitions. */
 static const struct token token_list[] = {
@@ -2391,6 +2452,13 @@ static const struct token token_list[] = {
 		.call = parse_int,
 		.comp = comp_actions_template_id,
 	},
+	[COMMON_TABLE_ID] = {
+		.name = "{table_id}",
+		.type = "TABLE_ID",
+		.help = "table id",
+		.call = parse_int,
+		.comp = comp_table_id,
+	},
 	/* Top-level command. */
 	[FLOW] = {
 		.name = "flow",
@@ -2401,6 +2469,7 @@ static const struct token token_list[] = {
 			      CONFIGURE,
 			      PATTERN_TEMPLATE,
 			      ACTIONS_TEMPLATE,
+			      TABLE,
 			      INDIRECT_ACTION,
 			      VALIDATE,
 			      CREATE,
@@ -2615,6 +2684,104 @@ static const struct token token_list[] = {
 		.help = "specify action mask to create actions template",
 		.next = NEXT(next_action),
 		.call = parse_template,
+	},
+	/* Top-level command. */
+	[TABLE] = {
+		.name = "template_table",
+		.type = "{command} {port_id} [{arg} [...]]",
+		.help = "manage template tables",
+		.next = NEXT(next_table_subcmd, NEXT_ENTRY(COMMON_PORT_ID)),
+		.args = ARGS(ARGS_ENTRY(struct buffer, port)),
+		.call = parse_table,
+	},
+	/* Sub-level commands. */
+	[TABLE_CREATE] = {
+		.name = "create",
+		.help = "create template table",
+		.next = NEXT(next_table_attr),
+		.call = parse_table,
+	},
+	[TABLE_DESTROY] = {
+		.name = "destroy",
+		.help = "destroy template table",
+		.next = NEXT(NEXT_ENTRY(TABLE_DESTROY_ID)),
+		.args = ARGS(ARGS_ENTRY(struct buffer, port)),
+		.call = parse_table_destroy,
+	},
+	/* Table  arguments. */
+	[TABLE_CREATE_ID] = {
+		.name = "table_id",
+		.help = "specify table id to create",
+		.next = NEXT(next_table_attr,
+			     NEXT_ENTRY(COMMON_TABLE_ID)),
+		.args = ARGS(ARGS_ENTRY(struct buffer, args.table.id)),
+	},
+	[TABLE_DESTROY_ID] = {
+		.name = "table",
+		.help = "specify table id to destroy",
+		.next = NEXT(next_table_destroy_attr,
+			     NEXT_ENTRY(COMMON_TABLE_ID)),
+		.args = ARGS(ARGS_ENTRY_PTR(struct buffer,
+					    args.table_destroy.table_id)),
+		.call = parse_table_destroy,
+	},
+	[TABLE_GROUP] = {
+		.name = "group",
+		.help = "specify a group",
+		.next = NEXT(next_table_attr, NEXT_ENTRY(COMMON_GROUP_ID)),
+		.args = ARGS(ARGS_ENTRY(struct buffer,
+					args.table.attr.flow_attr.group)),
+	},
+	[TABLE_PRIORITY] = {
+		.name = "priority",
+		.help = "specify a priority level",
+		.next = NEXT(next_table_attr, NEXT_ENTRY(COMMON_PRIORITY_LEVEL)),
+		.args = ARGS(ARGS_ENTRY(struct buffer,
+					args.table.attr.flow_attr.priority)),
+	},
+	[TABLE_EGRESS] = {
+		.name = "egress",
+		.help = "affect rule to egress",
+		.next = NEXT(next_table_attr),
+		.call = parse_table,
+	},
+	[TABLE_INGRESS] = {
+		.name = "ingress",
+		.help = "affect rule to ingress",
+		.next = NEXT(next_table_attr),
+		.call = parse_table,
+	},
+	[TABLE_TRANSFER] = {
+		.name = "transfer",
+		.help = "affect rule to transfer",
+		.next = NEXT(next_table_attr),
+		.call = parse_table,
+	},
+	[TABLE_RULES_NUMBER] = {
+		.name = "rules_number",
+		.help = "number of rules in table",
+		.next = NEXT(next_table_attr,
+			     NEXT_ENTRY(COMMON_UNSIGNED)),
+		.args = ARGS(ARGS_ENTRY(struct buffer,
+					args.table.attr.nb_flows)),
+	},
+	[TABLE_PATTERN_TEMPLATE] = {
+		.name = "pattern_template",
+		.help = "specify pattern template id",
+		.next = NEXT(next_table_attr,
+			     NEXT_ENTRY(COMMON_PATTERN_TEMPLATE_ID)),
+		.args = ARGS(ARGS_ENTRY_PTR(struct buffer,
+					    args.table.pat_templ_id)),
+		.call = parse_table,
+	},
+	[TABLE_ACTIONS_TEMPLATE] = {
+		.name = "actions_template",
+		.help = "specify actions template id",
+		.next = NEXT(next_table_attr,
+			     NEXT_ENTRY(COMMON_ACTIONS_TEMPLATE_ID)),
+		.args = ARGS(ARGS_ENTRY_PTR(struct buffer,
+					    args.table.act_templ_id)),
+		.call = parse_table,
 	},
 	/* Top-level command. */
 	[INDIRECT_ACTION] = {
@@ -8223,6 +8390,119 @@ parse_template_destroy(struct context *ctx, const struct token *token,
 	return len;
 }
 
+/** Parse tokens for table create command. */
+static int
+parse_table(struct context *ctx, const struct token *token,
+	    const char *str, unsigned int len,
+	    void *buf, unsigned int size)
+{
+	struct buffer *out = buf;
+	uint32_t *template_id;
+
+	/* Token name must match. */
+	if (parse_default(ctx, token, str, len, NULL, 0) < 0)
+		return -1;
+	/* Nothing else to do if there is no buffer. */
+	if (!out)
+		return len;
+	if (!out->command) {
+		if (ctx->curr != TABLE)
+			return -1;
+		if (sizeof(*out) > size)
+			return -1;
+		out->command = ctx->curr;
+		ctx->objdata = 0;
+		ctx->object = out;
+		ctx->objmask = NULL;
+		return len;
+	}
+	switch (ctx->curr) {
+	case TABLE_CREATE:
+		out->command = ctx->curr;
+		ctx->objdata = 0;
+		ctx->object = out;
+		ctx->objmask = NULL;
+		out->args.table.id = UINT32_MAX;
+		return len;
+	case TABLE_PATTERN_TEMPLATE:
+		out->args.table.pat_templ_id =
+			(void *)RTE_ALIGN_CEIL((uintptr_t)(out + 1),
+					       sizeof(double));
+		template_id = out->args.table.pat_templ_id
+				+ out->args.table.pat_templ_id_n++;
+		if ((uint8_t *)template_id > (uint8_t *)out + size)
+			return -1;
+		ctx->objdata = 0;
+		ctx->object = template_id;
+		ctx->objmask = NULL;
+		return len;
+	case TABLE_ACTIONS_TEMPLATE:
+		out->args.table.act_templ_id =
+			(void *)RTE_ALIGN_CEIL((uintptr_t)
+					       (out->args.table.pat_templ_id +
+						out->args.table.pat_templ_id_n),
+					       sizeof(double));
+		template_id = out->args.table.act_templ_id
+				+ out->args.table.act_templ_id_n++;
+		if ((uint8_t *)template_id > (uint8_t *)out + size)
+			return -1;
+		ctx->objdata = 0;
+		ctx->object = template_id;
+		ctx->objmask = NULL;
+		return len;
+	case TABLE_INGRESS:
+		out->args.table.attr.flow_attr.ingress = 1;
+		return len;
+	case TABLE_EGRESS:
+		out->args.table.attr.flow_attr.egress = 1;
+		return len;
+	case TABLE_TRANSFER:
+		out->args.table.attr.flow_attr.transfer = 1;
+		return len;
+	default:
+		return -1;
+	}
+}
+
+/** Parse tokens for table destroy command. */
+static int
+parse_table_destroy(struct context *ctx, const struct token *token,
+		    const char *str, unsigned int len,
+		    void *buf, unsigned int size)
+{
+	struct buffer *out = buf;
+	uint32_t *table_id;
+
+	/* Token name must match. */
+	if (parse_default(ctx, token, str, len, NULL, 0) < 0)
+		return -1;
+	/* Nothing else to do if there is no buffer. */
+	if (!out)
+		return len;
+	if (!out->command || out->command == TABLE) {
+		if (ctx->curr != TABLE_DESTROY)
+			return -1;
+		if (sizeof(*out) > size)
+			return -1;
+		out->command = ctx->curr;
+		ctx->objdata = 0;
+		ctx->object = out;
+		ctx->objmask = NULL;
+		out->args.table_destroy.table_id =
+			(void *)RTE_ALIGN_CEIL((uintptr_t)(out + 1),
+					       sizeof(double));
+		return len;
+	}
+	table_id = out->args.table_destroy.table_id
+		    + out->args.table_destroy.table_id_n++;
+	if ((uint8_t *)table_id > (uint8_t *)out + size)
+		return -1;
+	ctx->objdata = 0;
+	ctx->object = table_id;
+	ctx->objmask = NULL;
+	return len;
+}
+
 static int
 parse_flex(struct context *ctx, const struct token *token,
 	     const char *str, unsigned int len,
@@ -9240,6 +9520,30 @@ comp_actions_template_id(struct context *ctx, const struct token *token,
 	return i;
 }
 
+/** Complete available table IDs. */
+static int
+comp_table_id(struct context *ctx, const struct token *token,
+	      unsigned int ent, char *buf, unsigned int size)
+{
+	unsigned int i = 0;
+	struct rte_port *port;
+	struct port_table *pt;
+
+	(void)token;
+	if (port_id_is_invalid(ctx->port, DISABLED_WARN) ||
+	    ctx->port == (portid_t)RTE_PORT_ALL)
+		return -1;
+	port = &ports[ctx->port];
+	for (pt = port->table_list; pt != NULL; pt = pt->next) {
+		if (buf && i == ent)
+			return snprintf(buf, size, "%u", pt->id);
+		++i;
+	}
+	if (buf)
+		return -1;
+	return i;
+}
+
 /** Internal context. */
 static struct context cmd_flow_context;
 
@@ -9539,6 +9843,17 @@ cmd_flow_parsed(const struct buffer *in)
 		port_flow_actions_template_destroy(in->port,
 				in->args.templ_destroy.template_id_n,
 				in->args.templ_destroy.template_id);
+		break;
+	case TABLE_CREATE:
+		port_flow_template_table_create(in->port, in->args.table.id,
+			&in->args.table.attr, in->args.table.pat_templ_id_n,
+			in->args.table.pat_templ_id, in->args.table.act_templ_id_n,
+			in->args.table.act_templ_id);
+		break;
+	case TABLE_DESTROY:
+		port_flow_template_table_destroy(in->port,
+					in->args.table_destroy.table_id_n,
+					in->args.table_destroy.table_id);
 		break;
 	case INDIRECT_ACTION_CREATE:
 		port_action_handle_create(

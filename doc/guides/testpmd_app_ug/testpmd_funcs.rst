@@ -3364,6 +3364,19 @@ following sections.
 
    flow actions_template {port_id} destroy actions_template {id} [...]
 
+- Create a table::
+
+   flow table {port_id} create
+       [table_id {id}]
+       [group {group_id}] [priority {level}] [ingress] [egress] [transfer]
+       rules_number {number}
+       pattern_template {pattern_template_id}
+       actions_template {actions_template_id}
+
+- Destroy a table::
+
+   flow table {port_id} destroy table {id} [...]
+
 - Check whether a flow rule can be created::
 
    flow validate {port_id}
@@ -3546,6 +3559,46 @@ If successful, it will show::
 
 It does not report anything for actions template IDs that do not exist.
 The usual error message is shown when an actions template cannot be destroyed::
+
+   Caught error type [...] ([...]): [...]
+
+Creating template table
+~~~~~~~~~~~~~~~~~~~~~~~
+
+``flow template_table create`` creates the specified template table.
+It is bound to ``rte_flow_template_table_create()``::
+
+   flow template_table {port_id} create
+       [table_id {id}] [group {group_id}]
+       [priority {level}] [ingress] [egress] [transfer]
+       rules_number {number}
+       pattern_template {pattern_template_id}
+       actions_template {actions_template_id}
+
+If successful, it will show::
+
+   Template table #[...] created
+
+Otherwise it will show an error message of the form::
+
+   Caught error type [...] ([...]): [...]
+
+Destroying flow table
+~~~~~~~~~~~~~~~~~~~~~
+
+``flow template_table destroy`` destroys one or more template tables
+from their table ID (as returned by ``flow template_table create``),
+this command calls ``rte_flow_template_table_destroy()`` as many
+times as necessary::
+
+   flow template_table {port_id} destroy table {id} [...]
+
+If successful, it will show::
+
+   Template table #[...] destroyed
+
+It does not report anything for table IDs that do not exist.
+The usual error message is shown when a table cannot be destroyed::
 
    Caught error type [...] ([...]): [...]
 

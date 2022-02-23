@@ -1653,6 +1653,49 @@ template_alloc(uint32_t id, struct port_template **template,
 	return 0;
 }
 
+static int
+table_alloc(uint32_t id, struct port_table **table,
+	    struct port_table **list)
+{
+	struct port_table *lst = *list;
+	struct port_table **ppt;
+	struct port_table *pt = NULL;
+
+	*table = NULL;
+	if (id == UINT32_MAX) {
+		/* taking first available ID */
+		if (lst) {
+			if (lst->id == UINT32_MAX - 1) {
+				printf("Highest table ID is already"
+				" assigned, delete it first\n");
+				return -ENOMEM;
+			}
+			id = lst->id + 1;
+		} else {
+			id = 0;
+		}
+	}
+	pt = calloc(1, sizeof(*pt));
+	if (!pt) {
+		printf("Allocation of table failed\n");
+		return -ENOMEM;
+	}
+	ppt = list;
+	while (*ppt && (*ppt)->id > id)
+		ppt = &(*ppt)->next;
+	if (*ppt && (*ppt)->id == id) {
+		printf("Table #%u is already assigned,"
+			" delete it first\n", id);
+		free(pt);
+		return -EINVAL;
+	}
+	pt->next = *ppt;
+	pt->id = id;
+	*ppt = pt;
+	*table = pt;
+	return 0;
+}
+
 /** Get info about flow management resources. */
 int
 port_flow_get_info(portid_t port_id)
@@ -2280,6 +2323,134 @@ port_flow_actions_template_destroy(portid_t port_id, uint32_t n,
 			*tmp = pat->next;
 			printf("Actions template #%u destroyed\n", pat->id);
 			free(pat);
+			break;
+		}
+		if (i == n)
+			tmp = &(*tmp)->next;
+		++c;
+	}
+	return ret;
+}
+
+/** Create table */
+int
+port_flow_template_table_create(portid_t port_id, uint32_t id,
+		const struct rte_flow_template_table_attr *table_attr,
+		uint32_t nb_pattern_templates, uint32_t *pattern_templates,
+		uint32_t nb_actions_templates, uint32_t *actions_templates)
+{
+	struct rte_port *port;
+	struct port_table *pt;
+	struct port_template *temp = NULL;
+	int ret;
+	uint32_t i;
+	struct rte_flow_error error;
+	struct rte_flow_pattern_template
+			*flow_pattern_templates[nb_pattern_templates];
+	struct rte_flow_actions_template
+			*flow_actions_templates[nb_actions_templates];
+
+	if (port_id_is_invalid(port_id, ENABLED_WARN) ||
+	    port_id == (portid_t)RTE_PORT_ALL)
+		return -EINVAL;
+	port = &ports[port_id];
+	for (i = 0; i < nb_pattern_templates; ++i) {
+		bool found = false;
+		temp = port->pattern_templ_list;
+		while (temp) {
+			if (pattern_templates[i] == temp->id) {
+				flow_pattern_templates[i] =
+					temp->template.pattern_template;
+				found = true;
+				break;
+			}
+			temp = temp->next;
+		}
+		if (!found) {
+			printf("Pattern template #%u is invalid\n",
+			       pattern_templates[i]);
+			return -EINVAL;
+		}
+	}
+	for (i = 0; i < nb_actions_templates; ++i) {
+		bool found = false;
+		temp = port->actions_templ_list;
+		while (temp) {
+			if (actions_templates[i] == temp->id) {
+				flow_actions_templates[i] =
+					temp->template.actions_template;
+				found = true;
+				break;
+			}
+			temp = temp->next;
+		}
+		if (!found) {
+			printf("Actions template #%u is invalid\n",
+			       actions_templates[i]);
+			return -EINVAL;
+		}
+	}
+	ret = table_alloc(id, &pt, &port->table_list);
+	if (ret)
+		return ret;
+	/* Poisoning to make sure PMDs update it in case of error. */
+	memset(&error, 0x22, sizeof(error));
+	pt->table = rte_flow_template_table_create(port_id, table_attr,
+		      flow_pattern_templates, nb_pattern_templates,
+		      flow_actions_templates, nb_actions_templates,
+		      &error);
+
+	if (!pt->table) {
+		uint32_t destroy_id = pt->id;
+		port_flow_template_table_destroy(port_id, 1, &destroy_id);
+		return port_flow_complain(&error);
+	}
+	pt->nb_pattern_templates = nb_pattern_templates;
+	pt->nb_actions_templates = nb_actions_templates;
+	printf("Template table #%u created\n", pt->id);
+	return 0;
+}
+
+/** Destroy table */
+int
+port_flow_template_table_destroy(portid_t port_id,
+				 uint32_t n, const uint32_t *table)
+{
+	struct rte_port *port;
+	struct port_table **tmp;
+	uint32_t c = 0;
+	int ret = 0;
+
+	if (port_id_is_invalid(port_id, ENABLED_WARN) ||
+	    port_id == (portid_t)RTE_PORT_ALL)
+		return -EINVAL;
+	port = &ports[port_id];
+	tmp = &port->table_list;
+	while (*tmp) {
+		uint32_t i;
+
+		for (i = 0; i != n; ++i) {
+			struct rte_flow_error error;
+			struct port_table *pt = *tmp;
+
+			if (table[i] != pt->id)
+				continue;
+			/*
+			 * Poisoning to make sure PMDs update it in case
+			 * of error.
+			 */
+			memset(&error, 0x33, sizeof(error));
+
+			if (pt->table &&
+			    rte_flow_template_table_destroy(port_id,
+							    pt->table,
+							    &error)) {
+				ret = port_flow_complain(&error);
+				continue;
+			}
+			*tmp = pt->next;
+			printf("Template table #%u destroyed\n", pt->id);
+			free(pt);
 			break;
 		}
 		if (i == n)
