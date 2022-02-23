@@ -111,6 +111,7 @@ New Features
   * Added new checksum related xstats: ``l3_csum_bad``, ``l4_csum_bad`` and
     ``l4_csum_good``.
   * Added support for the link status configuration.
+  * Added optimized memcpy support for the ARM platforms.
 
 * **Updated Cisco enic driver.**
 

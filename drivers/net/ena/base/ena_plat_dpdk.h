@@ -66,8 +66,11 @@ typedef uint64_t dma_addr_t;
 #define ENA_UDELAY(x) rte_delay_us_block(x)
 
 #define ENA_TOUCH(x) ((void)(x))
-/* Avoid nested declaration on arm64, as it may define rte_memcpy as memcpy. */
-#if defined(RTE_ARCH_X86)
+/* Redefine memcpy with caution: rte_memcpy can be simply aliased to memcpy, so
+ * make the redefinition only if it's safe (and beneficial) to do so.
+ */
+#if defined(RTE_ARCH_X86) || defined(RTE_ARCH_ARM64_MEMCPY) || \
+	defined(RTE_ARCH_ARM_NEON_MEMCPY)
 #undef memcpy
 #define memcpy rte_memcpy
 #endif
