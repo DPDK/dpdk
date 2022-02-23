@@ -14,6 +14,7 @@
 #include <string.h>
 #include <errno.h>
 
+#include <ethdev_driver.h>
 #include <rte_atomic.h>
 #include <rte_branch_prediction.h>
 #include <rte_cycles.h>
@@ -202,35 +203,20 @@ typedef struct {
 #define ENA_GET_SYSTEM_TIMEOUT(timeout_us)				       \
 	((timeout_us) * rte_get_timer_hz() / 1000000 + rte_get_timer_cycles())
 
-/*
- * Each rte_memzone should have unique name.
- * To satisfy it, count number of allocations and add it to name.
- */
-extern rte_atomic64_t ena_alloc_cnt;
+const struct rte_memzone *
+ena_mem_alloc_coherent(struct rte_eth_dev_data *data, size_t size,
+		       int socket_id, unsigned int alignment, void **virt_addr,
+		       dma_addr_t *phys_addr);
 
 #define ENA_MEM_ALLOC_COHERENT_ALIGNED(					       \
 	dmadev, size, virt, phys, mem_handle, alignment)		       \
 	do {								       \
-		const struct rte_memzone *mz = NULL;			       \
-		ENA_TOUCH(dmadev);					       \
-		if ((size) > 0) {					       \
-			char z_name[RTE_MEMZONE_NAMESIZE];		       \
-			snprintf(z_name, sizeof(z_name),		       \
-				"ena_alloc_%" PRIi64 "",		       \
-				rte_atomic64_add_return(&ena_alloc_cnt,	1));   \
-			mz = rte_memzone_reserve_aligned(z_name, (size),       \
-					SOCKET_ID_ANY, RTE_MEMZONE_IOVA_CONTIG,\
-					alignment);			       \
-			mem_handle = mz;				       \
-		}							       \
-		if (mz == NULL) {					       \
-			virt = NULL;					       \
-			phys = 0;					       \
-		} else {						       \
-			memset(mz->addr, 0, (size));			       \
-			virt = mz->addr;				       \
-			phys = mz->iova;				       \
-		}							       \
+		void *virt_addr;					       \
+		dma_addr_t phys_addr;					       \
+		(mem_handle) = ena_mem_alloc_coherent((dmadev), (size),	       \
+			SOCKET_ID_ANY, (alignment), &virt_addr, &phys_addr);   \
+		(virt) = virt_addr;					       \
+		(phys) = phys_addr;					       \
 	} while (0)
 #define ENA_MEM_ALLOC_COHERENT(dmadev, size, virt, phys, mem_handle)	       \
 		ENA_MEM_ALLOC_COHERENT_ALIGNED(dmadev, size, virt, phys,       \
@@ -242,25 +228,13 @@ extern rte_atomic64_t ena_alloc_cnt;
 #define ENA_MEM_ALLOC_COHERENT_NODE_ALIGNED(				       \
 	dmadev, size, virt, phys, mem_handle, node, dev_node, alignment)       \
 	do {								       \
-		const struct rte_memzone *mz = NULL;			       \
-		ENA_TOUCH(dmadev); ENA_TOUCH(dev_node);			       \
-		if ((size) > 0) {					       \
-			char z_name[RTE_MEMZONE_NAMESIZE];		       \
-			snprintf(z_name, sizeof(z_name),		       \
-				"ena_alloc_%" PRIi64 "",		       \
-				rte_atomic64_add_return(&ena_alloc_cnt, 1));   \
-			mz = rte_memzone_reserve_aligned(z_name, (size),       \
-				node, RTE_MEMZONE_IOVA_CONTIG, alignment);     \
-			mem_handle = mz;				       \
-		}							       \
-		if (mz == NULL) {					       \
-			virt = NULL;					       \
-			phys = 0;					       \
-		} else {						       \
-			memset(mz->addr, 0, (size));			       \
-			virt = mz->addr;				       \
-			phys = mz->iova;				       \
-		}							       \
+		void *virt_addr;					       \
+		dma_addr_t phys_addr;					       \
+		ENA_TOUCH(dev_node);					       \
+		(mem_handle) = ena_mem_alloc_coherent((dmadev), (size),	       \
+			(node), (alignment), &virt_addr, &phys_addr);      \
+		(virt) = virt_addr;					       \
+		(phys) = phys_addr;					       \
 	} while (0)
 #define ENA_MEM_ALLOC_COHERENT_NODE(					       \
 	dmadev, size, virt, phys, mem_handle, node, dev_node)		       \

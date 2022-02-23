@@ -308,6 +308,8 @@ struct ena_adapter {
 	uint64_t missing_tx_completion_to;
 	uint64_t missing_tx_completion_budget;
 	uint64_t tx_cleanup_stall_delay;
+
+	uint64_t memzone_cnt;
 };
 
 int ena_mp_indirect_table_set(struct ena_adapter *adapter);

@@ -2110,8 +2110,10 @@ static int eth_ena_dev_init(struct rte_eth_dev *eth_dev)
 	}
 
 	ena_dev->reg_bar = adapter->regs;
-	/* This is a dummy pointer for ena_com functions. */
-	ena_dev->dmadev = adapter;
+	/* Pass device data as a pointer which can be passed to the IO functions
+	 * by the ena_com (for example - the memory allocation).
+	 */
+	ena_dev->dmadev = eth_dev->data;
 
 	adapter->id_number = adapters_found;
 
@@ -3487,6 +3489,52 @@ int ena_mp_indirect_table_get(struct ena_adapter *adapter,
 	return ENA_PROXY(adapter, ena_com_indirect_table_get, &adapter->ena_dev,
 		indirect_table);
 }
+
+/*********************************************************************
+ *  ena_plat_dpdk.h functions implementations
+ *********************************************************************/
+
+const struct rte_memzone *
+ena_mem_alloc_coherent(struct rte_eth_dev_data *data, size_t size,
+		       int socket_id, unsigned int alignment, void **virt_addr,
+		       dma_addr_t *phys_addr)
+{
+	char z_name[RTE_MEMZONE_NAMESIZE];
+	struct ena_adapter *adapter = data->dev_private;
+	const struct rte_memzone *memzone;
+	int rc;
+
+	rc = snprintf(z_name, RTE_MEMZONE_NAMESIZE, "ena_p%d_mz%" PRIu64 "",
+		data->port_id, adapter->memzone_cnt);
+	if (rc >= RTE_MEMZONE_NAMESIZE) {
+		PMD_DRV_LOG(ERR,
+			"Name for the ena_com memzone is too long. Port: %d, mz_num: %" PRIu64 "\n",
+			data->port_id, adapter->memzone_cnt);
+		goto error;
+	}
+	adapter->memzone_cnt++;
+
+	memzone = rte_memzone_reserve_aligned(z_name, size, socket_id,
+		RTE_MEMZONE_IOVA_CONTIG, alignment);
+	if (memzone == NULL) {
+		PMD_DRV_LOG(ERR, "Failed to allocate ena_com memzone: %s\n",
+			z_name);
+		goto error;
+	}
+
+	memset(memzone->addr, 0, size);
+	*virt_addr = memzone->addr;
+	*phys_addr = memzone->iova;
+
+	return memzone;
+
+error:
+	*virt_addr = NULL;
+	*phys_addr = 0;
+
+	return NULL;
+}
+
 
 /*********************************************************************
  *  PMD configuration
