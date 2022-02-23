@@ -933,6 +933,13 @@ int port_flow_template_table_create(portid_t port_id, uint32_t id,
 		   uint32_t nb_actions_templates, uint32_t *actions_templates);
 int port_flow_template_table_destroy(portid_t port_id,
 			    uint32_t n, const uint32_t *table);
+int port_queue_flow_create(portid_t port_id, queueid_t queue_id,
+			   bool postpone, uint32_t table_id,
+			   uint32_t pattern_idx, uint32_t actions_idx,
+			   const struct rte_flow_item *pattern,
+			   const struct rte_flow_action *actions);
+int port_queue_flow_destroy(portid_t port_id, queueid_t queue_id,
+			    bool postpone, uint32_t n, const uint32_t *rule);
 int port_flow_validate(portid_t port_id,
 		       const struct rte_flow_attr *attr,
 		       const struct rte_flow_item *pattern,

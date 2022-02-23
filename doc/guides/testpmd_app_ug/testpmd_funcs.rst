@@ -3384,6 +3384,20 @@ following sections.
        pattern {item} [/ {item} [...]] / end
        actions {action} [/ {action} [...]] / end
 
+- Enqueue creation of a flow rule::
+
+   flow queue {port_id} create {queue_id}
+       [postpone {boolean}] template_table {table_id}
+       pattern_template {pattern_template_index}
+       actions_template {actions_template_index}
+       pattern {item} [/ {item} [...]] / end
+       actions {action} [/ {action} [...]] / end
+
+- Enqueue destruction of specific flow rules::
+
+   flow queue {port_id} destroy {queue_id}
+       [postpone {boolean}] rule {rule_id} [...]
+
 - Create a flow rule::
 
    flow create {port_id}
@@ -3707,6 +3721,30 @@ Note that PMDs may refuse rules that essentially do nothing such as this
 one.
 
 **All unspecified object values are automatically initialized to 0.**
+
+Enqueueing creation of flow rules
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+``flow queue create`` adds creation operation of a flow rule to a queue.
+It is bound to ``rte_flow_async_create()``::
+
+   flow queue {port_id} create {queue_id}
+       [postpone {boolean}] template_table {table_id}
+       pattern_template {pattern_template_index}
+       actions_template {actions_template_index}
+       pattern {item} [/ {item} [...]] / end
+       actions {action} [/ {action} [...]] / end
+
+If successful, it will return a flow rule ID usable with other commands::
+
+   Flow rule #[...] creaion enqueued
+
+Otherwise it will show an error message of the form::
+
+   Caught error type [...] ([...]): [...]
+
+This command uses the same pattern items and actions as ``flow create``,
+their format is described in `Creating flow rules`_.
 
 Attributes
 ^^^^^^^^^^
@@ -4429,6 +4467,25 @@ Non-existent rule IDs are ignored::
    testpmd> flow destroy 0 rule 0
    Flow rule #0 destroyed
    testpmd>
+
+Enqueueing destruction of flow rules
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+``flow queue destroy`` adds destruction operations to destroy one or more rules
+from their rule ID (as returned by ``flow queue create``) to a queue,
+this command calls ``rte_flow_async_destroy()`` as many times as necessary::
+
+   flow queue {port_id} destroy {queue_id}
+        [postpone {boolean}] rule {rule_id} [...]
+
+If successful, it will show::
+
+   Flow rule #[...] destruction enqueued
+
+It does not report anything for rule IDs that do not exist. The usual error
+message is shown when a rule cannot be destroyed::
+
+   Caught error type [...] ([...]): [...]
 
 Querying flow rules
 ~~~~~~~~~~~~~~~~~~~
