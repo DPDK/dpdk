@@ -35,9 +35,16 @@ uint8_t haswell_broadwell_cpu;
 
 /*
  * Device parameter to force doorbell register mapping
- * to non-cahed region eliminating the extra write memory barrier.
+ * to non-cached region eliminating the extra write memory barrier.
+ * Deprecated, ignored (Name changed to sq_db_nc).
  */
 #define MLX5_TX_DB_NC "tx_db_nc"
+
+/*
+ * Device parameter to force doorbell register mapping
+ * to non-cached region eliminating the extra write memory barrier.
+ */
+#define MLX5_SQ_DB_NC "sq_db_nc"
 
 /* In case this is an x86_64 intel processor to check if
  * we should use relaxed ordering.
@@ -255,11 +262,17 @@ mlx5_common_args_check_handler(const char *key, const char *val, void *opaque)
 		DRV_LOG(WARNING, "%s: \"%s\" is an invalid integer.", key, val);
 		return -rte_errno;
 	}
-	if (strcmp(key, MLX5_TX_DB_NC) == 0) {
-		if (tmp != MLX5_TXDB_CACHED &&
-		    tmp != MLX5_TXDB_NCACHED &&
-		    tmp != MLX5_TXDB_HEURISTIC) {
-			DRV_LOG(ERR, "Invalid Tx doorbell mapping parameter.");
+	if (strcmp(key, MLX5_TX_DB_NC) == 0)
+		DRV_LOG(WARNING,
+			"%s: deprecated parameter, converted to queue_db_nc",
+			key);
+	if (strcmp(key, MLX5_SQ_DB_NC) == 0 ||
+	    strcmp(key, MLX5_TX_DB_NC) == 0) {
+		if (tmp != MLX5_SQ_DB_CACHED &&
+		    tmp != MLX5_SQ_DB_NCACHED &&
+		    tmp != MLX5_SQ_DB_HEURISTIC) {
+			DRV_LOG(ERR,
+				"Invalid Send Queue doorbell mapping parameter.");
 			rte_errno = EINVAL;
 			return -rte_errno;
 		}
@@ -293,6 +306,7 @@ mlx5_common_config_get(struct mlx5_kvargs_ctrl *mkvlist,
 		RTE_DEVARGS_KEY_CLASS,
 		MLX5_DRIVER_KEY,
 		MLX5_TX_DB_NC,
+		MLX5_SQ_DB_NC,
 		MLX5_MR_EXT_MEMSEG_EN,
 		MLX5_SYS_MEM_EN,
 		MLX5_MR_MEMPOOL_REG_EN,
@@ -317,7 +331,8 @@ mlx5_common_config_get(struct mlx5_kvargs_ctrl *mkvlist,
 	DRV_LOG(DEBUG, "mr_ext_memseg_en is %u.", config->mr_ext_memseg_en);
 	DRV_LOG(DEBUG, "mr_mempool_reg_en is %u.", config->mr_mempool_reg_en);
 	DRV_LOG(DEBUG, "sys_mem_en is %u.", config->sys_mem_en);
-	DRV_LOG(DEBUG, "Tx doorbell mapping parameter is %d.", config->dbnc);
+	DRV_LOG(DEBUG, "Send Queue doorbell mapping parameter is %d.",
+		config->dbnc);
 	return ret;
 }
 
@@ -1231,7 +1246,7 @@ mlx5_devx_alloc_uar(struct mlx5_common_device *cdev)
 	for (retry = 0; retry < MLX5_ALLOC_UAR_RETRY; ++retry) {
 #ifdef MLX5DV_UAR_ALLOC_TYPE_NC
 		/* Control the mapping type according to the settings. */
-		uar_mapping = (cdev->config.dbnc == MLX5_TXDB_NCACHED) ?
+		uar_mapping = (cdev->config.dbnc == MLX5_SQ_DB_NCACHED) ?
 			    MLX5DV_UAR_ALLOC_TYPE_NC : MLX5DV_UAR_ALLOC_TYPE_BF;
 #else
 		/*

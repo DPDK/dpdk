@@ -600,3 +600,42 @@ and below are the arguments supported by the common mlx5 layer.
   from system by default, without explicit rte memory flag.
 
   By default, the PMD will set this value to 0.
+
+- ``sq_db_nc`` parameter [int]
+
+  The rdma core library can map doorbell register in two ways,
+  depending on the environment variable "MLX5_SHUT_UP_BF":
+
+  - As regular cached memory (usually with write combining attribute),
+    if the variable is either missing or set to zero.
+  - As non-cached memory, if the variable is present and set to not "0" value.
+
+   The same doorbell mapping approach is implemented directly by PMD
+   in UAR generation for queues created with DevX.
+
+  The type of mapping may slightly affect the send queue performance,
+  the optimal choice strongly relied on the host architecture
+  and should be deduced practically.
+
+  If ``sq_db_nc`` is set to zero, the doorbell is forced to be mapped to
+  regular memory (with write combining), the PMD will perform the extra write
+  memory barrier after writing to doorbell, it might increase the needed CPU
+  clocks per packet to send, but latency might be improved.
+
+  If ``sq_db_nc`` is set to one, the doorbell is forced to be mapped to non
+  cached memory, the PMD will not perform the extra write memory barrier after
+  writing to doorbell, on some architectures it might improve the performance.
+
+  If ``sq_db_nc`` is set to two, the doorbell is forced to be mapped to
+  regular memory, the PMD will use heuristics to decide whether a write memory
+  barrier should be performed. For bursts with size multiple of recommended one
+  (64 pkts) it is supposed the next burst is coming and no need to issue the
+  extra memory barrier (it is supposed to be issued in the next coming burst,
+  at least after descriptor writing). It might increase latency (on some hosts
+  till the next packets transmit) and should be used with care.
+  The PMD uses heuristics only for Tx queue, for other semd queues the doorbell
+  is forced to be mapped to regular memory as same as ``sq_db_nc`` is set to 0.
+
+  If ``sq_db_nc`` is omitted, the preset (if any) environment variable
+  "MLX5_SHUT_UP_BF" value is used. If there is no "MLX5_SHUT_UP_BF", the
+  default ``sq_db_nc`` value is zero for ARM64 hosts and one for others.

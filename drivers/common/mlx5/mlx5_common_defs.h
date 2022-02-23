@@ -34,10 +34,10 @@
 /* Default PMD specific parameter value. */
 #define MLX5_ARG_UNSET (-1)
 
-/* MLX5_TX_DB_NC supported values. */
-#define MLX5_TXDB_CACHED 0
-#define MLX5_TXDB_NCACHED 1
-#define MLX5_TXDB_HEURISTIC 2
+/* MLX5_SQ_DB_NC supported values. */
+#define MLX5_SQ_DB_CACHED 0
+#define MLX5_SQ_DB_NCACHED 1
+#define MLX5_SQ_DB_HEURISTIC 2
 
 /* Fields of memory mapping type in offset parameter of mmap() */
 #define MLX5_UAR_MMAP_CMD_SHIFT 8

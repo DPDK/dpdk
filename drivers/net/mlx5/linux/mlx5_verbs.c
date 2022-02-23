@@ -926,7 +926,7 @@ mlx5_txq_ibv_uar_init(struct mlx5_txq_ctrl *txq_ctrl, void *bf_reg)
 		DRV_LOG(ERR, "Failed to get mem page size");
 		rte_errno = ENOMEM;
 	}
-	txq->db_heu = priv->sh->cdev->config.dbnc == MLX5_TXDB_HEURISTIC;
+	txq->db_heu = priv->sh->cdev->config.dbnc == MLX5_SQ_DB_HEURISTIC;
 	txq->db_nc = mlx5_db_map_type_get(uar_mmap_offset, page_size);
 	ppriv->uar_table[txq->idx].db = bf_reg;
 #ifndef RTE_ARCH_64

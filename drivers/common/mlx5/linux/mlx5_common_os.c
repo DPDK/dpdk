@@ -630,7 +630,7 @@ mlx5_config_doorbell_mapping_env(int dbnc)
 		setenv(MLX5_SHUT_UP_BF, MLX5_SHUT_UP_BF_DEFAULT, 1);
 	else
 		setenv(MLX5_SHUT_UP_BF,
-		       dbnc == MLX5_TXDB_NCACHED ? "1" : "0", 1);
+		       dbnc == MLX5_SQ_DB_NCACHED ? "1" : "0", 1);
 	return value;
 }
 
