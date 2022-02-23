@@ -160,10 +160,9 @@ static const struct rte_pci_id pci_id_ena_map[] = {
 
 static struct ena_aenq_handlers aenq_handlers;
 
-static int ena_device_init(struct ena_com_dev *ena_dev,
+static int ena_device_init(struct ena_adapter *adapter,
 			   struct rte_pci_device *pdev,
-			   struct ena_com_dev_get_features_ctx *get_feat_ctx,
-			   bool *wd_state);
+			   struct ena_com_dev_get_features_ctx *get_feat_ctx);
 static int ena_dev_configure(struct rte_eth_dev *dev);
 static void ena_tx_map_mbuf(struct ena_ring *tx_ring,
 	struct ena_tx_buffer *tx_info,
@@ -249,6 +248,7 @@ static int ena_rx_queue_intr_enable(struct rte_eth_dev *dev,
 				    uint16_t queue_id);
 static int ena_rx_queue_intr_disable(struct rte_eth_dev *dev,
 				     uint16_t queue_id);
+static int ena_configure_aenq(struct ena_adapter *adapter);
 
 static const struct eth_dev_ops ena_dev_ops = {
 	.dev_configure        = ena_dev_configure,
@@ -1416,11 +1416,11 @@ static int ena_populate_rx_queue(struct ena_ring *rxq, unsigned int count)
 	return i;
 }
 
-static int ena_device_init(struct ena_com_dev *ena_dev,
+static int ena_device_init(struct ena_adapter *adapter,
 			   struct rte_pci_device *pdev,
-			   struct ena_com_dev_get_features_ctx *get_feat_ctx,
-			   bool *wd_state)
+			   struct ena_com_dev_get_features_ctx *get_feat_ctx)
 {
+	struct ena_com_dev *ena_dev = &adapter->ena_dev;
 	uint32_t aenq_groups;
 	int rc;
 	bool readless_supported;
@@ -1485,13 +1485,8 @@ static int ena_device_init(struct ena_com_dev *ena_dev,
 		      BIT(ENA_ADMIN_WARNING);
 
 	aenq_groups &= get_feat_ctx->aenq.supported_groups;
-	rc = ena_com_set_aenq_config(ena_dev, aenq_groups);
-	if (rc) {
-		PMD_DRV_LOG(ERR, "Cannot configure AENQ groups, rc: %d\n", rc);
-		goto err_admin_init;
-	}
 
-	*wd_state = !!(aenq_groups & BIT(ENA_ADMIN_KEEP_ALIVE));
+	adapter->all_aenq_groups = aenq_groups;
 
 	return 0;
 
@@ -1517,7 +1512,7 @@ static void ena_interrupt_handler_rte(void *cb_arg)
 
 static void check_for_missing_keep_alive(struct ena_adapter *adapter)
 {
-	if (!adapter->wd_state)
+	if (!(adapter->active_aenq_groups & BIT(ENA_ADMIN_KEEP_ALIVE)))
 		return;
 
 	if (adapter->keep_alive_timeout == ENA_HW_HINTS_NO_TIMEOUT)
@@ -1798,7 +1793,6 @@ static int eth_ena_dev_init(struct rte_eth_dev *eth_dev)
 	int rc;
 	static int adapters_found;
 	bool disable_meta_caching;
-	bool wd_state = false;
 
 	eth_dev->dev_ops = &ena_dev_ops;
 	eth_dev->rx_pkt_burst = &eth_ena_recv_pkts;
@@ -1850,12 +1844,15 @@ static int eth_ena_dev_init(struct rte_eth_dev *eth_dev)
 	}
 
 	/* device specific initialization routine */
-	rc = ena_device_init(ena_dev, pci_dev, &get_feat_ctx, &wd_state);
+	rc = ena_device_init(adapter, pci_dev, &get_feat_ctx);
 	if (rc) {
 		PMD_INIT_LOG(CRIT, "Failed to init ENA device\n");
 		goto err;
 	}
-	adapter->wd_state = wd_state;
+
+	/* Check if device supports LSC */
+	if (!(adapter->all_aenq_groups & BIT(ENA_ADMIN_LINK_CHANGE)))
+		adapter->edev_data->dev_flags &= ~RTE_ETH_DEV_INTR_LSC;
 
 	set_default_llq_configurations(&llq_config, &get_feat_ctx.llq,
 		adapter->use_large_llq_hdr);
@@ -1999,6 +1996,7 @@ static int eth_ena_dev_uninit(struct rte_eth_dev *eth_dev)
 static int ena_dev_configure(struct rte_eth_dev *dev)
 {
 	struct ena_adapter *adapter = dev->data->dev_private;
+	int rc;
 
 	adapter->state = ENA_ADAPTER_STATE_CONFIG;
 
@@ -2025,7 +2023,9 @@ static int ena_dev_configure(struct rte_eth_dev *dev)
 	 */
 	adapter->tx_cleanup_stall_delay = adapter->missing_tx_completion_to / 2;
 
-	return 0;
+	rc = ena_configure_aenq(adapter);
+
+	return rc;
 }
 
 static void ena_init_rings(struct ena_adapter *adapter,
@@ -3161,6 +3161,38 @@ static int ena_rx_queue_intr_disable(struct rte_eth_dev *dev,
 				     uint16_t queue_id)
 {
 	ena_rx_queue_intr_set(dev, queue_id, false);
+
+	return 0;
+}
+
+static int ena_configure_aenq(struct ena_adapter *adapter)
+{
+	uint32_t aenq_groups = adapter->all_aenq_groups;
+	int rc;
+
+	/* All_aenq_groups holds all AENQ functions supported by the device and
+	 * the HW, so at first we need to be sure the LSC request is valid.
+	 */
+	if (adapter->edev_data->dev_conf.intr_conf.lsc != 0) {
+		if (!(aenq_groups & BIT(ENA_ADMIN_LINK_CHANGE))) {
+			PMD_DRV_LOG(ERR,
+				"LSC requested, but it's not supported by the AENQ\n");
+			return -EINVAL;
+		}
+	} else {
+		/* If LSC wasn't enabled by the app, let's enable all supported
+		 * AENQ procedures except the LSC.
+		 */
+		aenq_groups &= ~BIT(ENA_ADMIN_LINK_CHANGE);
+	}
+
+	rc = ena_com_set_aenq_config(&adapter->ena_dev, aenq_groups);
+	if (rc != 0) {
+		PMD_DRV_LOG(ERR, "Cannot configure AENQ groups, rc=%d\n", rc);
+		return rc;
+	}
+
+	adapter->active_aenq_groups = aenq_groups;
 
 	return 0;
 }

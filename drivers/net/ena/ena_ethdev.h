@@ -291,9 +291,10 @@ struct ena_adapter {
 	struct ena_stats_dev dev_stats;
 	struct ena_stats_eni eni_stats;
 
-	bool trigger_reset;
+	uint32_t all_aenq_groups;
+	uint32_t active_aenq_groups;
 
-	bool wd_state;
+	bool trigger_reset;
 
 	bool use_large_llq_hdr;
 
