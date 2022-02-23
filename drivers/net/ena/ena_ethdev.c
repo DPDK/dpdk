@@ -2776,6 +2776,10 @@ static uint16_t eth_ena_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 	}
 #endif
 
+	available_desc = ena_com_free_q_entries(tx_ring->ena_com_io_sq);
+	if (available_desc < tx_ring->tx_free_thresh)
+		ena_tx_cleanup(tx_ring);
+
 	for (sent_idx = 0; sent_idx < nb_pkts; sent_idx++) {
 		if (ena_xmit_mbuf(tx_ring, tx_pkts[sent_idx]))
 			break;
@@ -2784,9 +2788,6 @@ static uint16_t eth_ena_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 			tx_ring->size_mask)]);
 	}
 
-	available_desc = ena_com_free_q_entries(tx_ring->ena_com_io_sq);
-	tx_ring->tx_stats.available_desc = available_desc;
-
 	/* If there are ready packets to be xmitted... */
 	if (likely(tx_ring->pkts_without_db)) {
 		/* ...let HW do its best :-) */
@@ -2794,9 +2795,6 @@ static uint16_t eth_ena_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		tx_ring->tx_stats.doorbells++;
 		tx_ring->pkts_without_db = false;
 	}
-
-	if (available_desc < tx_ring->tx_free_thresh)
-		ena_tx_cleanup(tx_ring);
 
 	tx_ring->tx_stats.available_desc =
 		ena_com_free_q_entries(tx_ring->ena_com_io_sq);
