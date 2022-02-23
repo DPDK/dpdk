@@ -12,7 +12,10 @@
 extern uint8_t qat_sym_driver_id;
 extern uint8_t qat_asym_driver_id;
 
-/** helper macro to set cryptodev capability range **/
+/**
+ * helper macro to set cryptodev capability range
+ * <n: name> <l: min > <r: max> <i: increment> <v: value>
+ **/
 #define CAP_RNG(n, l, r, i) .n = {.min = l, .max = r, .increment = i}
 
 #define CAP_RNG_ZERO(n) .n = {.min = 0, .max = 0, .increment = 0}

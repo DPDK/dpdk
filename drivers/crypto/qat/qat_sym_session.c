@@ -20,7 +20,7 @@
 
 #include "qat_logs.h"
 #include "qat_sym_session.h"
-#include "qat_sym_pmd.h"
+#include "qat_sym.h"
 
 /* SHA1 - 20 bytes - Initialiser state can be found in FIPS stds 180-2 */
 static const uint8_t sha1InitialState[] = {

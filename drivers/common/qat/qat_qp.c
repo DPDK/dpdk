@@ -838,7 +838,8 @@ qat_dequeue_op_burst(void *qp, void **ops,
 
 		if (tmp_qp->service_type == QAT_SERVICE_SYMMETRIC)
 			qat_sym_process_response(ops, resp_msg,
-				tmp_qp->op_cookies[head >> rx_queue->trailz]);
+				tmp_qp->op_cookies[head >> rx_queue->trailz],
+				NULL);
 		else if (tmp_qp->service_type == QAT_SERVICE_COMPRESSION)
 			nb_fw_responses = qat_comp_process_response(
 				ops, resp_msg,

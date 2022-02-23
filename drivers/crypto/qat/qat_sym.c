@@ -17,6 +17,27 @@ uint8_t qat_sym_driver_id;
 
 struct qat_crypto_gen_dev_ops qat_sym_gen_dev_ops[QAT_N_GENS];
 
+void
+qat_sym_init_op_cookie(void *op_cookie)
+{
+	struct qat_sym_op_cookie *cookie = op_cookie;
+
+	cookie->qat_sgl_src_phys_addr =
+			rte_mempool_virt2iova(cookie) +
+			offsetof(struct qat_sym_op_cookie,
+			qat_sgl_src);
+
+	cookie->qat_sgl_dst_phys_addr =
+			rte_mempool_virt2iova(cookie) +
+			offsetof(struct qat_sym_op_cookie,
+			qat_sgl_dst);
+
+	cookie->opt.spc_gmac.cd_phys_addr =
+			rte_mempool_virt2iova(cookie) +
+			offsetof(struct qat_sym_op_cookie,
+			opt.spc_gmac.cd_cipher);
+}
+
 static inline void
 set_cipher_iv(uint16_t iv_length, uint16_t iv_offset,
 		struct icp_qat_fw_la_cipher_req_params *cipher_param,

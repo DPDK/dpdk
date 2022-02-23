@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: BSD-3-Clause
-# Copyright(c) 2017-2018 Intel Corporation
+# Copyright(c) 2017-2022 Intel Corporation
 
 if is_windows
     build = false
@@ -73,7 +73,7 @@ if qat_compress
 endif
 
 if qat_crypto
-    foreach f: ['qat_sym_pmd.c', 'qat_sym.c', 'qat_sym_session.c',
+    foreach f: ['qat_sym.c', 'qat_sym_session.c',
             'qat_sym_hw_dp.c', 'qat_asym_pmd.c', 'qat_asym.c', 'qat_crypto.c',
             'dev/qat_sym_pmd_gen1.c',
             'dev/qat_asym_pmd_gen1.c',

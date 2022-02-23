@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2020 Intel Corporation
+ * Copyright(c) 2022 Intel Corporation
  */
 
 #include <cryptodev_pmd.h>
@@ -9,17 +9,8 @@
 #include "icp_qat_fw_la.h"
 
 #include "qat_sym.h"
-#include "qat_sym_pmd.h"
 #include "qat_sym_session.h"
 #include "qat_qp.h"
-
-struct qat_sym_dp_ctx {
-	struct qat_sym_session *session;
-	uint32_t tail;
-	uint32_t head;
-	uint16_t cached_enqueue;
-	uint16_t cached_dequeue;
-};
 
 static __rte_always_inline int32_t
 qat_sym_dp_parse_data_vec(struct qat_qp *qp, struct icp_qat_fw_la_bulk_req *req,

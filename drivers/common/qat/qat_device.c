@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2018-2020 Intel Corporation
+ * Copyright(c) 2018-2022 Intel Corporation
  */
 
 #include <rte_string_fns.h>
@@ -8,7 +8,7 @@
 
 #include "qat_device.h"
 #include "adf_transport_access_macros.h"
-#include "qat_sym_pmd.h"
+#include "qat_sym.h"
 #include "qat_comp_pmd.h"
 #include "adf_pf2vf_msg.h"
 #include "qat_pf2vf.h"
