@@ -529,10 +529,8 @@ eca_crypto_cdev_flush(struct event_crypto_adapter *adapter,
 	uint16_t qp;
 
 	curr_dev = &adapter->cdevs[cdev_id];
-	if (unlikely(curr_dev == NULL))
-		return 0;
-
 	dev = rte_cryptodev_pmd_get_dev(cdev_id);
+
 	for (qp = 0; qp < dev->data->nb_queue_pairs; qp++) {
 
 		curr_queue = &curr_dev->qpairs[qp];
