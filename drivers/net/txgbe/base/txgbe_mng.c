@@ -45,10 +45,8 @@ txgbe_hic_unlocked(struct txgbe_hw *hw, u32 *buffer, u32 length, u32 timeout)
 	u32 value, loop;
 	u16 i, dword_len;
 
-	DEBUGFUNC("txgbe_hic_unlocked");
-
 	if (!length || length > TXGBE_PMMBX_BSIZE) {
-		DEBUGOUT("Buffer length failure buffersize=%d.\n", length);
+		DEBUGOUT("Buffer length failure buffersize=%d.", length);
 		return TXGBE_ERR_HOST_INTERFACE_COMMAND;
 	}
 
@@ -78,7 +76,7 @@ txgbe_hic_unlocked(struct txgbe_hw *hw, u32 *buffer, u32 length, u32 timeout)
 		TXGBE_MNGMBXCTL_FWRDY, TXGBE_MNGMBXCTL_FWRDY,
 		&value, timeout, 1000);
 	if (!loop || !(value & TXGBE_MNGMBXCTL_FWACK)) {
-		DEBUGOUT("Command has failed with no status valid.\n");
+		DEBUGOUT("Command has failed with no status valid.");
 		return TXGBE_ERR_HOST_INTERFACE_COMMAND;
 	}
 
@@ -114,10 +112,8 @@ txgbe_host_interface_command(struct txgbe_hw *hw, u32 *buffer,
 	u32 bi;
 	u32 dword_len;
 
-	DEBUGFUNC("txgbe_host_interface_command");
-
 	if (length == 0 || length > TXGBE_PMMBX_BSIZE) {
-		DEBUGOUT("Buffer length failure buffersize=%d.\n", length);
+		DEBUGOUT("Buffer length failure buffersize=%d.", length);
 		return TXGBE_ERR_HOST_INTERFACE_COMMAND;
 	}
 
@@ -159,7 +155,7 @@ txgbe_host_interface_command(struct txgbe_hw *hw, u32 *buffer,
 		goto rel_out;
 
 	if (length < buf_len + hdr_size) {
-		DEBUGOUT("Buffer not large enough for reply message.\n");
+		DEBUGOUT("Buffer not large enough for reply message.");
 		err = TXGBE_ERR_HOST_INTERFACE_COMMAND;
 		goto rel_out;
 	}
@@ -285,7 +281,6 @@ s32 txgbe_hic_set_drv_ver(struct txgbe_hw *hw, u8 maj, u8 min,
 	int i;
 	s32 ret_val = 0;
 
-	DEBUGFUNC("txgbe_hic_set_drv_ver");
 	UNREFERENCED_PARAMETER(len, driver_ver);
 
 	fw_cmd.hdr.cmd = FW_CEM_CMD_DRIVER_INFO;
@@ -337,8 +332,6 @@ txgbe_hic_reset(struct txgbe_hw *hw)
 	struct txgbe_hic_reset reset_cmd;
 	int i;
 	s32 err = 0;
-
-	DEBUGFUNC("\n");
 
 	reset_cmd.hdr.cmd = FW_RESET_CMD;
 	reset_cmd.hdr.buf_len = FW_RESET_LEN;

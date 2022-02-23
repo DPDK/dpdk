@@ -21,8 +21,6 @@ s32 txgbe_init_eeprom_params(struct txgbe_hw *hw)
 	u16 eeprom_size;
 	int err = 0;
 
-	DEBUGFUNC("txgbe_init_eeprom_params");
-
 	if (eeprom->type != txgbe_eeprom_unknown)
 		return 0;
 
@@ -54,12 +52,12 @@ s32 txgbe_init_eeprom_params(struct txgbe_hw *hw)
 
 	err = eeprom->read32(hw, TXGBE_SW_REGION_PTR << 1, &eeprom->sw_addr);
 	if (err) {
-		DEBUGOUT("EEPROM read failed.\n");
+		DEBUGOUT("EEPROM read failed.");
 		return err;
 	}
 
-	DEBUGOUT("eeprom params: type = %d, size = %d, address bits: "
-		  "%d %d\n", eeprom->type, eeprom->word_size,
+	DEBUGOUT("eeprom params: type = %d, size = %d, address bits: %d %d",
+		  eeprom->type, eeprom->word_size,
 		  eeprom->address_bits, eeprom->sw_addr);
 
 	return 0;
@@ -78,9 +76,6 @@ s32 txgbe_get_eeprom_semaphore(struct txgbe_hw *hw)
 	u32 i;
 	u32 swsm;
 
-	DEBUGFUNC("txgbe_get_eeprom_semaphore");
-
-
 	/* Get SMBI software semaphore between device drivers first */
 	for (i = 0; i < timeout; i++) {
 		/*
@@ -96,8 +91,7 @@ s32 txgbe_get_eeprom_semaphore(struct txgbe_hw *hw)
 	}
 
 	if (i == timeout) {
-		DEBUGOUT("Driver can't access the eeprom - SMBI Semaphore "
-			 "not granted.\n");
+		DEBUGOUT("Driver can't access the eeprom - SMBI Semaphore not granted.");
 		/*
 		 * this release is particularly important because our attempts
 		 * above to get the semaphore may have succeeded, and if there
@@ -140,13 +134,12 @@ s32 txgbe_get_eeprom_semaphore(struct txgbe_hw *hw)
 		 * was not granted because we don't have access to the EEPROM
 		 */
 		if (i >= timeout) {
-			DEBUGOUT("SWESMBI Software EEPROM semaphore not granted.\n");
+			DEBUGOUT("SWESMBI Software EEPROM semaphore not granted.");
 			txgbe_release_eeprom_semaphore(hw);
 			status = TXGBE_ERR_EEPROM;
 		}
 	} else {
-		DEBUGOUT("Software semaphore SMBI between device drivers "
-			 "not granted.\n");
+		DEBUGOUT("Software semaphore SMBI between device drivers not granted.");
 	}
 
 	return status;
@@ -160,8 +153,6 @@ s32 txgbe_get_eeprom_semaphore(struct txgbe_hw *hw)
  **/
 void txgbe_release_eeprom_semaphore(struct txgbe_hw *hw)
 {
-	DEBUGFUNC("txgbe_release_eeprom_semaphore");
-
 	wr32m(hw, TXGBE_MNGSWSYNC, TXGBE_MNGSWSYNC_REQ, 0);
 	wr32m(hw, TXGBE_SWSEM, TXGBE_SWSEM_PF, 0);
 	txgbe_flush(hw);
@@ -290,8 +281,6 @@ s32 txgbe_ee_write16(struct txgbe_hw *hw, u32 offset,
 	u32 addr = (offset << 1);
 	int err;
 
-	DEBUGFUNC("\n");
-
 	err = hw->mac.acquire_swfw_sync(hw, mask);
 	if (err)
 		return err;
@@ -348,8 +337,6 @@ s32 txgbe_ee_writew_sw(struct txgbe_hw *hw, u32 offset,
 	u32 addr = hw->rom.sw_addr + (offset << 1);
 	int err;
 
-	DEBUGFUNC("\n");
-
 	err = hw->mac.acquire_swfw_sync(hw, mask);
 	if (err)
 		return err;
@@ -399,11 +386,9 @@ s32 txgbe_calc_eeprom_checksum(struct txgbe_hw *hw)
 	int err;
 	u16 buffer[BUFF_SIZE];
 
-	DEBUGFUNC("txgbe_calc_eeprom_checksum");
-
 	err = hw->rom.readw_sw(hw, TXGBE_EEPROM_CHECKSUM, &read_checksum);
 	if (err) {
-		DEBUGOUT("EEPROM read failed\n");
+		DEBUGOUT("EEPROM read failed");
 		return err;
 	}
 
@@ -437,15 +422,13 @@ s32 txgbe_validate_eeprom_checksum(struct txgbe_hw *hw,
 	u16 read_checksum = 0;
 	int err;
 
-	DEBUGFUNC("txgbe_validate_eeprom_checksum");
-
 	/* Read the first word from the EEPROM. If this times out or fails, do
 	 * not continue or we could be in for a very long wait while every
 	 * EEPROM read fails
 	 */
 	err = hw->rom.read16(hw, 0, &checksum);
 	if (err) {
-		DEBUGOUT("EEPROM read failed\n");
+		DEBUGOUT("EEPROM read failed");
 		return err;
 	}
 
@@ -457,7 +440,7 @@ s32 txgbe_validate_eeprom_checksum(struct txgbe_hw *hw,
 
 	err = hw->rom.readw_sw(hw, TXGBE_EEPROM_CHECKSUM, &read_checksum);
 	if (err) {
-		DEBUGOUT("EEPROM read failed\n");
+		DEBUGOUT("EEPROM read failed");
 		return err;
 	}
 
@@ -466,7 +449,7 @@ s32 txgbe_validate_eeprom_checksum(struct txgbe_hw *hw,
 	 */
 	if (read_checksum != checksum) {
 		err = TXGBE_ERR_EEPROM_CHECKSUM;
-		DEBUGOUT("EEPROM checksum error\n");
+		DEBUGOUT("EEPROM checksum error");
 	}
 
 	/* If the user cares, return the calculated checksum */
@@ -485,15 +468,13 @@ s32 txgbe_update_eeprom_checksum(struct txgbe_hw *hw)
 	s32 status;
 	u16 checksum;
 
-	DEBUGFUNC("txgbe_update_eeprom_checksum");
-
 	/* Read the first word from the EEPROM. If this times out or fails, do
 	 * not continue or we could be in for a very long wait while every
 	 * EEPROM read fails
 	 */
 	status = hw->rom.read16(hw, 0, &checksum);
 	if (status) {
-		DEBUGOUT("EEPROM read failed\n");
+		DEBUGOUT("EEPROM read failed");
 		return status;
 	}
 

@@ -48,11 +48,8 @@ extern int txgbe_logtype_tx_free;
 #define PMD_TX_FREE_LOG(level, fmt, args...) do { } while (0)
 #endif
 
-#define TLOG_DEBUG(fmt, args...)  PMD_DRV_LOG(DEBUG, fmt, ##args)
-
-#define DEBUGOUT(fmt, args...)    TLOG_DEBUG(fmt, ##args)
-#define PMD_INIT_FUNC_TRACE()     TLOG_DEBUG(" >>")
-#define DEBUGFUNC(fmt)            TLOG_DEBUG(fmt)
+#define DEBUGOUT(fmt, args...)    PMD_DRV_LOG(DEBUG, fmt, ##args)
+#define PMD_INIT_FUNC_TRACE()     PMD_DRV_LOG(DEBUG, ">>")
 
 extern int txgbe_logtype_bp;
 #define BP_LOG(fmt, args...) \

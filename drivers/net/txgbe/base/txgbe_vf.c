@@ -107,8 +107,6 @@ s32 txgbe_reset_hw_vf(struct txgbe_hw *hw)
 	u32 msgbuf[TXGBE_VF_PERMADDR_MSG_LEN];
 	u8 *addr = (u8 *)(&msgbuf[1]);
 
-	DEBUGFUNC("txgbevf_reset_hw_vf");
-
 	/* Call adapter stop to disable tx/rx and clear interrupts */
 	hw->mac.stop_hw(hw);
 
@@ -121,7 +119,7 @@ s32 txgbe_reset_hw_vf(struct txgbe_hw *hw)
 	mbx->write_posted(hw, msgbuf, 1, 0);
 	msec_delay(10);
 
-	DEBUGOUT("Issuing a function level reset to MAC\n");
+	DEBUGOUT("Issuing a function level reset to MAC");
 	wr32(hw, TXGBE_VFRST, TXGBE_VFRST_SET);
 	txgbe_flush(hw);
 	msec_delay(50);
@@ -238,7 +236,7 @@ STATIC s32 txgbe_mta_vector(struct txgbe_hw *hw, u8 *mc_addr)
 		vector = ((mc_addr[4]) | (((u16)mc_addr[5]) << 8));
 		break;
 	default:  /* Invalid mc_filter_type */
-		DEBUGOUT("MC filter type param set incorrectly\n");
+		DEBUGOUT("MC filter type param set incorrectly");
 		ASSERT(0);
 		break;
 	}
@@ -316,8 +314,6 @@ s32 txgbe_update_mc_addr_list_vf(struct txgbe_hw *hw, u8 *mc_addr_list,
 
 	UNREFERENCED_PARAMETER(clear);
 
-	DEBUGFUNC("txgbe_update_mc_addr_list_vf");
-
 	/* Each entry in the list uses 1 16 bit word.  We have 30
 	 * 16 bit words available in our HW msg buffer (minus 1 for the
 	 * msg type).  That's 30 hash values if we pack 'em right.  If
@@ -327,7 +323,7 @@ s32 txgbe_update_mc_addr_list_vf(struct txgbe_hw *hw, u8 *mc_addr_list,
 	 * addresses except for in large enterprise network environments.
 	 */
 
-	DEBUGOUT("MC Addr Count = %d\n", mc_addr_count);
+	DEBUGOUT("MC Addr Count = %d", mc_addr_count);
 
 	cnt = (mc_addr_count > 30) ? 30 : mc_addr_count;
 	msgbuf[0] = TXGBE_VF_SET_MULTICAST;
@@ -335,7 +331,7 @@ s32 txgbe_update_mc_addr_list_vf(struct txgbe_hw *hw, u8 *mc_addr_list,
 
 	for (i = 0; i < cnt; i++) {
 		vector = txgbe_mta_vector(hw, next(hw, &mc_addr_list, &vmdq));
-		DEBUGOUT("Hash value = 0x%03X\n", vector);
+		DEBUGOUT("Hash value = 0x%03X", vector);
 		vector_list[i] = (u16)vector;
 	}
 

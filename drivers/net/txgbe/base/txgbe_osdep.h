@@ -18,6 +18,7 @@
 #include <rte_byteorder.h>
 #include <rte_config.h>
 #include <rte_io.h>
+#include <rte_ether.h>
 
 #include "../txgbe_logs.h"
 
