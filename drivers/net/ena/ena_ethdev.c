@@ -539,6 +539,15 @@ ENA_PROXY_DESC(ena_com_indirect_table_get, ENA_MP_IND_TBL_GET,
 }),
 	struct ena_com_dev *ena_dev, u32 *ind_tbl);
 
+static inline void ena_trigger_reset(struct ena_adapter *adapter,
+				     enum ena_regs_reset_reason_types reason)
+{
+	if (likely(!adapter->trigger_reset)) {
+		adapter->reset_reason = reason;
+		adapter->trigger_reset = true;
+	}
+}
+
 static inline void ena_rx_mbuf_prepare(struct ena_ring *rx_ring,
 				       struct rte_mbuf *mbuf,
 				       struct ena_com_rx_ctx *ena_rx_ctx,
@@ -666,8 +675,7 @@ static int validate_tx_req_id(struct ena_ring *tx_ring, u16 req_id)
 
 	/* Trigger device reset */
 	++tx_ring->tx_stats.bad_req_id;
-	tx_ring->adapter->reset_reason = ENA_REGS_RESET_INV_TX_REQ_ID;
-	tx_ring->adapter->trigger_reset	= true;
+	ena_trigger_reset(tx_ring->adapter, ENA_REGS_RESET_INV_TX_REQ_ID);
 	return -EFAULT;
 }
 
@@ -1783,8 +1791,7 @@ static void check_for_missing_keep_alive(struct ena_adapter *adapter)
 	if (unlikely((rte_get_timer_cycles() - adapter->timestamp_wd) >=
 	    adapter->keep_alive_timeout)) {
 		PMD_DRV_LOG(ERR, "Keep alive timeout\n");
-		adapter->reset_reason = ENA_REGS_RESET_KEEP_ALIVE_TO;
-		adapter->trigger_reset = true;
+		ena_trigger_reset(adapter, ENA_REGS_RESET_KEEP_ALIVE_TO);
 		++adapter->dev_stats.wd_expired;
 	}
 }
@@ -1794,8 +1801,7 @@ static void check_for_admin_com_state(struct ena_adapter *adapter)
 {
 	if (unlikely(!ena_com_get_admin_running_state(&adapter->ena_dev))) {
 		PMD_DRV_LOG(ERR, "ENA admin queue is not in running state\n");
-		adapter->reset_reason = ENA_REGS_RESET_ADMIN_TO;
-		adapter->trigger_reset = true;
+		ena_trigger_reset(adapter, ENA_REGS_RESET_ADMIN_TO);
 	}
 }
 
@@ -2606,14 +2612,13 @@ static uint16_t eth_ena_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 				rc);
 			if (rc == ENA_COM_NO_SPACE) {
 				++rx_ring->rx_stats.bad_desc_num;
-				rx_ring->adapter->reset_reason =
-					ENA_REGS_RESET_TOO_MANY_RX_DESCS;
+				ena_trigger_reset(rx_ring->adapter,
+					ENA_REGS_RESET_TOO_MANY_RX_DESCS);
 			} else {
 				++rx_ring->rx_stats.bad_req_id;
-				rx_ring->adapter->reset_reason =
-					ENA_REGS_RESET_INV_RX_REQ_ID;
+				ena_trigger_reset(rx_ring->adapter,
+					ENA_REGS_RESET_INV_RX_REQ_ID);
 			}
-			rx_ring->adapter->trigger_reset = true;
 			return 0;
 		}
 
@@ -2978,9 +2983,8 @@ static int ena_xmit_mbuf(struct ena_ring *tx_ring, struct rte_mbuf *mbuf)
 	if (unlikely(rc)) {
 		PMD_DRV_LOG(ERR, "Failed to prepare Tx buffers, rc: %d\n", rc);
 		++tx_ring->tx_stats.prepare_ctx_err;
-		tx_ring->adapter->reset_reason =
-		    ENA_REGS_RESET_DRIVER_INVALID_STATE;
-		tx_ring->adapter->trigger_reset = true;
+		ena_trigger_reset(tx_ring->adapter,
+			ENA_REGS_RESET_DRIVER_INVALID_STATE);
 		return rc;
 	}
 
