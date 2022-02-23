@@ -246,11 +246,6 @@ struct ena_adapter {
 	struct ena_driver_stats *drv_stats;
 	enum ena_adapter_state state;
 
-	uint64_t tx_supported_offloads;
-	uint64_t tx_selected_offloads;
-	uint64_t rx_supported_offloads;
-	uint64_t rx_selected_offloads;
-
 	bool link_status;
 
 	enum ena_regs_reset_reason_types reset_reason;

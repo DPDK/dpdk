@@ -2023,9 +2023,6 @@ static int ena_dev_configure(struct rte_eth_dev *dev)
 	 */
 	dev->data->scattered_rx = 1;
 
-	adapter->tx_selected_offloads = dev->data->dev_conf.txmode.offloads;
-	adapter->rx_selected_offloads = dev->data->dev_conf.rxmode.offloads;
-
 	return 0;
 }
 
