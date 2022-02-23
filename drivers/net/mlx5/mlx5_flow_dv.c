@@ -10620,7 +10620,8 @@ flow_dv_tbl_remove_cb(void *tool_ctx, struct mlx5_list_entry *entry)
 			tbl_data->tunnel->tunnel_id : 0,
 			tbl_data->group_id);
 	}
-	mlx5_list_destroy(tbl_data->matchers);
+	if (tbl_data->matchers)
+		mlx5_list_destroy(tbl_data->matchers);
 	mlx5_ipool_free(sh->ipool[MLX5_IPOOL_JUMP], tbl_data->idx);
 }
 
