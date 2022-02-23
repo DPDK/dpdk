@@ -2015,9 +2015,6 @@ static int ena_dev_configure(struct rte_eth_dev *dev)
 	 */
 	adapter->tx_cleanup_stall_delay = adapter->missing_tx_completion_to / 2;
 
-	adapter->tx_selected_offloads = dev->data->dev_conf.txmode.offloads;
-	adapter->rx_selected_offloads = dev->data->dev_conf.rxmode.offloads;
-
 	return 0;
 }
 
