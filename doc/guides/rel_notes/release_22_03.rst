@@ -114,6 +114,7 @@ New Features
   * Added optimized memcpy support for the ARM platforms.
   * Added ENA admin queue support for the MP applications.
   * Added free Tx mbuf on demand feature support.
+  * Added ``rte_eth_xstats_get_names_by_id`` API support.
 
 * **Updated Cisco enic driver.**
 

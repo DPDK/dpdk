@@ -230,6 +230,10 @@ static int eth_ena_dev_init(struct rte_eth_dev *eth_dev);
 static int ena_xstats_get_names(struct rte_eth_dev *dev,
 				struct rte_eth_xstat_name *xstats_names,
 				unsigned int n);
+static int ena_xstats_get_names_by_id(struct rte_eth_dev *dev,
+				      const uint64_t *ids,
+				      struct rte_eth_xstat_name *xstats_names,
+				      unsigned int size);
 static int ena_xstats_get(struct rte_eth_dev *dev,
 			  struct rte_eth_xstat *stats,
 			  unsigned int n);
@@ -254,29 +258,30 @@ static int ena_mp_primary_handle(const struct rte_mp_msg *mp_msg,
 				 const void *peer);
 
 static const struct eth_dev_ops ena_dev_ops = {
-	.dev_configure        = ena_dev_configure,
-	.dev_infos_get        = ena_infos_get,
-	.rx_queue_setup       = ena_rx_queue_setup,
-	.tx_queue_setup       = ena_tx_queue_setup,
-	.dev_start            = ena_start,
-	.dev_stop             = ena_stop,
-	.link_update          = ena_link_update,
-	.stats_get            = ena_stats_get,
-	.xstats_get_names     = ena_xstats_get_names,
-	.xstats_get	      = ena_xstats_get,
-	.xstats_get_by_id     = ena_xstats_get_by_id,
-	.mtu_set              = ena_mtu_set,
-	.rx_queue_release     = ena_rx_queue_release,
-	.tx_queue_release     = ena_tx_queue_release,
-	.dev_close            = ena_close,
-	.dev_reset            = ena_dev_reset,
-	.reta_update          = ena_rss_reta_update,
-	.reta_query           = ena_rss_reta_query,
-	.rx_queue_intr_enable = ena_rx_queue_intr_enable,
-	.rx_queue_intr_disable = ena_rx_queue_intr_disable,
-	.rss_hash_update      = ena_rss_hash_update,
-	.rss_hash_conf_get    = ena_rss_hash_conf_get,
-	.tx_done_cleanup      = ena_tx_cleanup,
+	.dev_configure          = ena_dev_configure,
+	.dev_infos_get          = ena_infos_get,
+	.rx_queue_setup         = ena_rx_queue_setup,
+	.tx_queue_setup         = ena_tx_queue_setup,
+	.dev_start              = ena_start,
+	.dev_stop               = ena_stop,
+	.link_update            = ena_link_update,
+	.stats_get              = ena_stats_get,
+	.xstats_get_names       = ena_xstats_get_names,
+	.xstats_get_names_by_id = ena_xstats_get_names_by_id,
+	.xstats_get             = ena_xstats_get,
+	.xstats_get_by_id       = ena_xstats_get_by_id,
+	.mtu_set                = ena_mtu_set,
+	.rx_queue_release       = ena_rx_queue_release,
+	.tx_queue_release       = ena_tx_queue_release,
+	.dev_close              = ena_close,
+	.dev_reset              = ena_dev_reset,
+	.reta_update            = ena_rss_reta_update,
+	.reta_query             = ena_rss_reta_query,
+	.rx_queue_intr_enable   = ena_rx_queue_intr_enable,
+	.rx_queue_intr_disable  = ena_rx_queue_intr_disable,
+	.rss_hash_update        = ena_rss_hash_update,
+	.rss_hash_conf_get      = ena_rss_hash_conf_get,
+	.tx_done_cleanup        = ena_tx_cleanup,
 };
 
 /*********************************************************************
@@ -3163,6 +3168,85 @@ static int ena_xstats_get_names(struct rte_eth_dev *dev,
 				ena_stats_tx_strings[stat].name);
 
 	return xstats_count;
+}
+
+/**
+ * DPDK callback to retrieve names of extended device statistics for the given
+ * ids.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ * @param[out] xstats_names
+ *   Buffer to insert names into.
+ * @param ids
+ *   IDs array for which the names should be retrieved.
+ * @param size
+ *   Number of ids.
+ *
+ * @return
+ *   Positive value: number of xstats names. Negative value: error code.
+ */
+static int ena_xstats_get_names_by_id(struct rte_eth_dev *dev,
+				      const uint64_t *ids,
+				      struct rte_eth_xstat_name *xstats_names,
+				      unsigned int size)
+{
+	uint64_t xstats_count = ena_xstats_calc_num(dev->data);
+	uint64_t id, qid;
+	unsigned int i;
+
+	if (xstats_names == NULL)
+		return xstats_count;
+
+	for (i = 0; i < size; ++i) {
+		id = ids[i];
+		if (id > xstats_count) {
+			PMD_DRV_LOG(ERR,
+				"ID value out of range: id=%" PRIu64 ", xstats_num=%" PRIu64 "\n",
+				 id, xstats_count);
+			return -EINVAL;
+		}
+
+		if (id < ENA_STATS_ARRAY_GLOBAL) {
+			strcpy(xstats_names[i].name,
+			       ena_stats_global_strings[id].name);
+			continue;
+		}
+
+		id -= ENA_STATS_ARRAY_GLOBAL;
+		if (id < ENA_STATS_ARRAY_ENI) {
+			strcpy(xstats_names[i].name,
+			       ena_stats_eni_strings[id].name);
+			continue;
+		}
+
+		id -= ENA_STATS_ARRAY_ENI;
+		if (id < ENA_STATS_ARRAY_RX) {
+			qid = id / dev->data->nb_rx_queues;
+			id %= dev->data->nb_rx_queues;
+			snprintf(xstats_names[i].name,
+				 sizeof(xstats_names[i].name),
+				 "rx_q%" PRIu64 "d_%s",
+				 qid, ena_stats_rx_strings[id].name);
+			continue;
+		}
+
+		id -= ENA_STATS_ARRAY_RX;
+		/* Although this condition is not needed, it was added for
+		 * compatibility if new xstat structure would be ever added.
+		 */
+		if (id < ENA_STATS_ARRAY_TX) {
+			qid = id / dev->data->nb_tx_queues;
+			id %= dev->data->nb_tx_queues;
+			snprintf(xstats_names[i].name,
+				 sizeof(xstats_names[i].name),
+				 "tx_q%" PRIu64 "_%s",
+				 qid, ena_stats_tx_strings[id].name);
+			continue;
+		}
+	}
+
+	return i;
 }
 
 /**
