@@ -205,12 +205,16 @@ check_sp_sa_bulk(struct sp_ctx *sp, struct sa_ctx *sa_ctx,
 			ip->pkts[j++] = m;
 		else {
 			sa = *(struct ipsec_sa **)rte_security_dynfield(m);
-			if (sa == NULL)
+			if (sa == NULL) {
 				free_pkts(&m, 1);
+				continue;
+			}
 
 			/* SPI on the packet should match with the one in SA */
-			if (unlikely(sa->spi != sa_ctx->sa[res - 1].spi))
+			if (unlikely(sa->spi != sa_ctx->sa[res - 1].spi)) {
 				free_pkts(&m, 1);
+				continue;
+			}
 
 			ip->pkts[j++] = m;
 		}
@@ -535,6 +539,7 @@ ipsec_ev_route_pkts(struct rte_event_vector *vec, struct route_table *rt,
 				RTE_SECURITY_ACTION_TYPE_INLINE_PROTOCOL)) {
 				RTE_LOG(ERR, IPSEC, "SA type not supported\n");
 				free_pkts(&pkt, 1);
+				continue;
 			}
 			rte_security_set_pkt_metadata(sess->security.ctx,
 						sess->security.ses, pkt, NULL);
@@ -693,11 +698,13 @@ ipsec_ev_vector_process(struct lcore_conf_ev_tx_int_port_wrkr *lconf,
 		ret = process_ipsec_ev_outbound_vector(&lconf->outbound,
 						       &lconf->rt, vec);
 
-	if (ret > 0) {
+	if (likely(ret > 0)) {
 		vec->nb_elem = ret;
 		rte_event_eth_tx_adapter_enqueue(links[0].eventdev_id,
 						 links[0].event_port_id,
 						 ev, 1, 0);
+	} else {
+		rte_mempool_put(rte_mempool_from_obj(vec), vec);
 	}
 }
 
@@ -718,6 +725,8 @@ ipsec_ev_vector_drv_mode_process(struct eh_event_link_info *links,
 		rte_event_eth_tx_adapter_enqueue(links[0].eventdev_id,
 						 links[0].event_port_id,
 						 ev, 1, 0);
+	else
+		rte_mempool_put(rte_mempool_from_obj(vec), vec);
 }
 
 /*
