@@ -11,7 +11,6 @@
 #include <rte_cpuflags.h>
 
 #include "zuc_pmd_private.h"
-#define ZUC_MAX_BURST 16
 #define BYTE_LEN 8
 
 static uint8_t cryptodev_driver_id;
@@ -264,7 +263,7 @@ process_zuc_hash_op(struct zuc_qp *qp, struct rte_crypto_op **ops,
 
 		hash_keys[i] = sess->pKey_hash;
 		if (sess->auth_op == RTE_CRYPTO_AUTH_OP_VERIFY)
-			dst[i] = (uint32_t *)qp->temp_digest;
+			dst[i] = (uint32_t *)qp->temp_digest[i];
 		else
 			dst[i] = (uint32_t *)ops[i]->sym->auth.digest.data;
 
