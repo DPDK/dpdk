@@ -152,6 +152,16 @@ struct rte_flow_ops {
 		(struct rte_eth_dev *dev,
 		 const struct rte_flow_item_flex_handle *handle,
 		 struct rte_flow_error *error);
+	/** See rte_flow_info_get() */
+	int (*info_get)
+		(struct rte_eth_dev *dev,
+		 struct rte_flow_port_info *port_info,
+		 struct rte_flow_error *err);
+	/** See rte_flow_configure() */
+	int (*configure)
+		(struct rte_eth_dev *dev,
+		 const struct rte_flow_port_attr *port_attr,
+		 struct rte_flow_error *err);
 };
 
 /**

@@ -71,6 +71,12 @@ New Features
     - ``rte_ipv6_udptcp_cksum_mbuf()``
     - ``rte_ipv6_udptcp_cksum_mbuf_verify()``
 
+* **Added functions to configure flow engine.**
+
+  * Added ``rte_flow_configure`` API to configure flow management
+    engine, allowing to pre-allocate some resources for better performance.
+    Added ``rte_flow_info_get`` API to retrieve available resources.
+
 * **Added rte_flow support for matching GRE optional fields.**
 
   Added ``gre_option`` item in rte_flow to support checksum/key/sequence

@@ -1392,3 +1392,71 @@ rte_flow_flex_item_release(uint16_t port_id,
 	ret = ops->flex_item_release(dev, handle, error);
 	return flow_err(port_id, ret, error);
 }
+
+int
+rte_flow_info_get(uint16_t port_id,
+		  struct rte_flow_port_info *port_info,
+		  struct rte_flow_error *error)
+{
+	struct rte_eth_dev *dev = &rte_eth_devices[port_id];
+	const struct rte_flow_ops *ops = rte_flow_ops_get(port_id, error);
+
+	if (unlikely(!ops))
+		return -rte_errno;
+	if (dev->data->dev_configured == 0) {
+		RTE_FLOW_LOG(INFO,
+			"Device with port_id=%"PRIu16" is not configured.\n",
+			port_id);
+		return -EINVAL;
+	}
+	if (port_info == NULL) {
+		RTE_FLOW_LOG(ERR, "Port %"PRIu16" info is NULL.\n", port_id);
+		return -EINVAL;
+	}
+	if (likely(!!ops->info_get)) {
+		return flow_err(port_id,
+				ops->info_get(dev, port_info, error),
+				error);
+	}
+	return rte_flow_error_set(error, ENOTSUP,
+				  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				  NULL, rte_strerror(ENOTSUP));
+}
+
+int
+rte_flow_configure(uint16_t port_id,
+		   const struct rte_flow_port_attr *port_attr,
+		   struct rte_flow_error *error)
+{
+	struct rte_eth_dev *dev = &rte_eth_devices[port_id];
+	const struct rte_flow_ops *ops = rte_flow_ops_get(port_id, error);
+	int ret;
+
+	if (unlikely(!ops))
+		return -rte_errno;
+	if (dev->data->dev_configured == 0) {
+		RTE_FLOW_LOG(INFO,
+			"Device with port_id=%"PRIu16" is not configured.\n",
+			port_id);
+		return -EINVAL;
+	}
+	if (dev->data->dev_started != 0) {
+		RTE_FLOW_LOG(INFO,
+			"Device with port_id=%"PRIu16" already started.\n",
+			port_id);
+		return -EINVAL;
+	}
+	if (port_attr == NULL) {
+		RTE_FLOW_LOG(ERR, "Port %"PRIu16" info is NULL.\n", port_id);
+		return -EINVAL;
+	}
+	if (likely(!!ops->configure)) {
+		ret = ops->configure(dev, port_attr, error);
+		if (ret == 0)
+			dev->data->flow_configured = 1;
+		return flow_err(port_id, ret, error);
+	}
+	return rte_flow_error_set(error, ENOTSUP,
+				  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				  NULL, rte_strerror(ENOTSUP));
+}

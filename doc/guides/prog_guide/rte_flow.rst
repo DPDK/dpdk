@@ -3606,6 +3606,42 @@ Return values:
 
 - 0 on success, a negative errno value otherwise and ``rte_errno`` is set.
 
+Flow engine configuration
+-------------------------
+
+Configure flow API management.
+
+An application may provide some parameters at the initialization phase about
+rules engine configuration and/or expected flow rules characteristics.
+These parameters may be used by PMD to preallocate resources and configure NIC.
+
+Configuration
+~~~~~~~~~~~~~
+
+This function performs the flow API engine configuration and allocates
+requested resources beforehand to avoid costly allocations later.
+Expected number of resources in an application allows PMD to prepare
+and optimize NIC hardware configuration and memory layout in advance.
+``rte_flow_configure()`` must be called before any flow rule is created,
+but after an Ethernet device is configured.
+
+.. code-block:: c
+
+   int
+   rte_flow_configure(uint16_t port_id,
+                      const struct rte_flow_port_attr *port_attr,
+                      struct rte_flow_error *error);
+
+Information about the number of available resources can be retrieved via
+``rte_flow_info_get()`` API.
+
+.. code-block:: c
+
+   int
+   rte_flow_info_get(uint16_t port_id,
+                     struct rte_flow_port_info *port_info,
+                     struct rte_flow_error *error);
+
 .. _flow_isolated_mode:
 
 Flow isolated mode

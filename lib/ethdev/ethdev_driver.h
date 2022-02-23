@@ -142,7 +142,12 @@ struct rte_eth_dev_data {
 		 * Indicates whether the device is configured:
 		 * CONFIGURED(1) / NOT CONFIGURED(0)
 		 */
-		dev_configured : 1;
+		dev_configured : 1,
+		/**
+		 * Indicates whether the flow engine is configured:
+		 * CONFIGURED(1) / NOT CONFIGURED(0)
+		 */
+		flow_configured : 1;
 
 	/** Queues state: HAIRPIN(2) / STARTED(1) / STOPPED(0) */
 	uint8_t rx_queue_state[RTE_MAX_QUEUES_PER_PORT];

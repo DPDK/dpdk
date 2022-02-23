@@ -264,6 +264,8 @@ EXPERIMENTAL {
 	rte_eth_ip_reassembly_capability_get;
 	rte_eth_ip_reassembly_conf_get;
 	rte_eth_ip_reassembly_conf_set;
+	rte_flow_info_get;
+	rte_flow_configure;
 };
 
 INTERNAL {
