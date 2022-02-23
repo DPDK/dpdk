@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2015-2019 Intel Corporation
+ * Copyright(c) 2015-2022 Intel Corporation
  */
 #ifndef _QAT_SYM_SESSION_H_
 #define _QAT_SYM_SESSION_H_
@@ -63,6 +63,16 @@ enum qat_sym_proto_flag {
 	QAT_CRYPTO_PROTO_FLAG_ZUC = 4
 };
 
+struct qat_sym_session;
+
+/*
+ * typedef qat_op_build_request_t function pointer, passed in as argument
+ * in enqueue op burst, where a build request assigned base on the type of
+ * crypto op.
+ */
+typedef int (*qat_sym_build_request_t)(void *in_op, struct qat_sym_session *ctx,
+		uint8_t *out_msg, void *op_cookie);
+
 /* Common content descriptor */
 struct qat_sym_cd {
 	struct icp_qat_hw_cipher_algo_blk cipher;
@@ -107,6 +117,7 @@ struct qat_sym_session {
 	/* Some generations need different setup of counter */
 	uint32_t slice_types;
 	enum qat_sym_proto_flag qat_proto_flag;
+	qat_sym_build_request_t build_request[2];
 };
 
 int

@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2015-2019 Intel Corporation
+ * Copyright(c) 2015-2022 Intel Corporation
  */
 
 #include <rte_malloc.h>
@@ -620,7 +620,7 @@ static uint16_t
 qat_comp_pmd_dequeue_first_op_burst(void *qp, struct rte_comp_op **ops,
 				   uint16_t nb_ops)
 {
-	uint16_t ret = qat_dequeue_op_burst(qp, (void **)ops, nb_ops);
+	uint16_t ret = qat_dequeue_op_burst(qp, (void **)ops, NULL, nb_ops);
 	struct qat_qp *tmp_qp = (struct qat_qp *)qp;
 
 	if (ret) {
@@ -639,7 +639,7 @@ qat_comp_pmd_dequeue_first_op_burst(void *qp, struct rte_comp_op **ops,
 		} else {
 			tmp_qp->qat_dev->comp_dev->compressdev->dequeue_burst =
 					(compressdev_dequeue_pkt_burst_t)
-					qat_dequeue_op_burst;
+					qat_comp_pmd_enq_deq_dummy_op_burst;
 		}
 	}
 	return ret;

@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2018 Intel Corporation
+ * Copyright(c) 2018-2022 Intel Corporation
  */
 #ifndef _QAT_QP_H_
 #define _QAT_QP_H_
@@ -36,6 +36,51 @@ struct qat_queue {
 	/* number of responses processed since last CSR head write */
 };
 
+/**
+ * Type define qat_op_build_request_t function pointer, passed in as argument
+ * in enqueue op burst, where a build request assigned base on the type of
+ * crypto op.
+ *
+ * @param in_op
+ *    An input op pointer
+ * @param out_msg
+ *    out_meg pointer
+ * @param op_cookie
+ *    op cookie pointer
+ * @param opaque
+ *    an opaque data may be used to store context may be useful between
+ *    2 enqueue operations.
+ * @param dev_gen
+ *    qat device gen id
+ * @return
+ *   - 0 if the crypto request is build successfully,
+ *   - EINVAL if error
+ **/
+typedef int (*qat_op_build_request_t)(void *in_op, uint8_t *out_msg,
+		void *op_cookie, uint64_t *opaque, enum qat_device_gen dev_gen);
+
+/**
+ * Type define qat_op_dequeue_t function pointer, passed in as argument
+ * in dequeue op burst, where a dequeue op assigned base on the type of
+ * crypto op.
+ *
+ * @param op
+ *    An input op pointer
+ * @param resp
+ *    qat response msg pointer
+ * @param op_cookie
+ *    op cookie pointer
+ * @param dequeue_err_count
+ *    dequeue error counter
+ * @return
+ *    - 0 if dequeue OP is successful
+ *    - EINVAL if error
+ **/
+typedef int (*qat_op_dequeue_t)(void **op, uint8_t *resp, void *op_cookie,
+		uint64_t *dequeue_err_count __rte_unused);
+
+#define QAT_BUILD_REQUEST_MAX_OPAQUE_SIZE	2
+
 struct qat_qp {
 	void			*mmap_bar_addr;
 	struct qat_queue	tx_q;
@@ -44,6 +89,7 @@ struct qat_qp {
 	struct rte_mempool *op_cookie_pool;
 	void **op_cookies;
 	uint32_t nb_descriptors;
+	uint64_t opaque[QAT_BUILD_REQUEST_MAX_OPAQUE_SIZE];
 	enum qat_device_gen qat_dev_gen;
 	enum qat_service_type service_type;
 	struct qat_pci_device *qat_dev;
@@ -78,13 +124,15 @@ struct qat_qp_config {
 };
 
 uint16_t
-qat_enqueue_op_burst(void *qp, void **ops, uint16_t nb_ops);
+qat_enqueue_op_burst(void *qp, qat_op_build_request_t op_build_request,
+		void **ops, uint16_t nb_ops);
 
 uint16_t
 qat_enqueue_comp_op_burst(void *qp, void **ops, uint16_t nb_ops);
 
 uint16_t
-qat_dequeue_op_burst(void *qp, void **ops, uint16_t nb_ops);
+qat_dequeue_op_burst(void *qp, void **ops,
+		qat_op_dequeue_t qat_dequeue_process_response, uint16_t nb_ops);
 
 int
 qat_qp_release(enum qat_device_gen qat_dev_gen, struct qat_qp **qp_addr);

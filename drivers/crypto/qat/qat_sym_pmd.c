@@ -49,14 +49,14 @@ static uint16_t
 qat_sym_pmd_enqueue_op_burst(void *qp, struct rte_crypto_op **ops,
 		uint16_t nb_ops)
 {
-	return qat_enqueue_op_burst(qp, (void **)ops, nb_ops);
+	return qat_enqueue_op_burst(qp, NULL, (void **)ops, nb_ops);
 }
 
 static uint16_t
 qat_sym_pmd_dequeue_op_burst(void *qp, struct rte_crypto_op **ops,
 		uint16_t nb_ops)
 {
-	return qat_dequeue_op_burst(qp, (void **)ops, nb_ops);
+	return qat_dequeue_op_burst(qp, (void **)ops, NULL, nb_ops);
 }
 
 /* An rte_driver is needed in the registration of both the device and the driver

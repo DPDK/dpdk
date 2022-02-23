@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2015-2018 Intel Corporation
+ * Copyright(c) 2015-2022 Intel Corporation
  */
 
 #include <rte_common.h>
@@ -547,7 +547,9 @@ adf_modulo(uint32_t data, uint32_t modulo_mask)
 }
 
 uint16_t
-qat_enqueue_op_burst(void *qp, void **ops, uint16_t nb_ops)
+qat_enqueue_op_burst(void *qp,
+		__rte_unused qat_op_build_request_t op_build_request,
+		void **ops, uint16_t nb_ops)
 {
 	register struct qat_queue *queue;
 	struct qat_qp *tmp_qp = (struct qat_qp *)qp;
@@ -814,7 +816,9 @@ kick_tail:
 }
 
 uint16_t
-qat_dequeue_op_burst(void *qp, void **ops, uint16_t nb_ops)
+qat_dequeue_op_burst(void *qp, void **ops,
+		__rte_unused qat_op_dequeue_t qat_dequeue_process_response,
+		uint16_t nb_ops)
 {
 	struct qat_queue *rx_queue;
 	struct qat_qp *tmp_qp = (struct qat_qp *)qp;
