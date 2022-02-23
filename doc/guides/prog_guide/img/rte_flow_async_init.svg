@@ -1,0 +1,205 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- SPDX-License-Identifier: BSD-3-Clause -->
+
+<!-- Copyright(c) 2022 NVIDIA Corporation & Affiliates -->
+
+<svg
+   width="485"
+   height="535"
+   overflow="hidden"
+   version="1.1"
+   id="svg61"
+   sodipodi:docname="rte_flow_async_init.svg"
+   inkscape:version="1.1.1 (3bf5ae0d25, 2021-09-20)"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <sodipodi:namedview
+     id="namedview63"
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1.0"
+     inkscape:pageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     showgrid="false"
+     inkscape:zoom="1.517757"
+     inkscape:cx="242.79249"
+     inkscape:cy="267.17057"
+     inkscape:window-width="2400"
+     inkscape:window-height="1271"
+     inkscape:window-x="2391"
+     inkscape:window-y="-9"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="g59" />
+  <defs
+     id="defs5">
+    <clipPath
+       id="clip0">
+      <rect
+         x="0"
+         y="0"
+         width="485"
+         height="535"
+         id="rect2" />
+    </clipPath>
+  </defs>
+  <g
+     clip-path="url(#clip0)"
+     id="g59">
+    <rect
+       x="0"
+       y="0"
+       width="485"
+       height="535"
+       fill="#FFFFFF"
+       id="rect7" />
+    <rect
+       x="0.500053"
+       y="79.5001"
+       width="482"
+       height="59"
+       stroke="#000000"
+       stroke-width="1.33333"
+       stroke-miterlimit="8"
+       fill="#A6A6A6"
+       id="rect9" />
+    <text
+       font-family="Calibri,Calibri_MSFontService,sans-serif"
+       font-weight="400"
+       font-size="24"
+       transform="translate(121.6 116)"
+       id="text13">
+         rte_eth_dev_configure
+         <tspan
+   font-size="24"
+   x="224.007"
+   y="0"
+   id="tspan11">()</tspan></text>
+    <rect
+       x="0.500053"
+       y="158.5"
+       width="482"
+       height="59"
+       stroke="#000000"
+       stroke-width="1.33333"
+       stroke-miterlimit="8"
+       fill="#FFFFFF"
+       id="rect15" />
+    <text
+       font-family="Calibri,Calibri_MSFontService,sans-serif"
+       font-weight="400"
+       font-size="24"
+       transform="translate(140.273 195)"
+       id="text17">
+         rte_flow_configure()
+      </text>
+    <rect
+       x="0.500053"
+       y="236.5"
+       width="482"
+       height="60"
+       stroke="#000000"
+       stroke-width="1.33333"
+       stroke-miterlimit="8"
+       fill="#FFFFFF"
+       id="rect19" />
+    <text
+       font-family="Calibri, Calibri_MSFontService, sans-serif"
+       font-weight="400"
+       font-size="24px"
+       id="text21"
+       x="63.425903"
+       y="274">rte_flow_pattern_template_create()</text>
+    <rect
+       x="0.500053"
+       y="316.5"
+       width="482"
+       height="59"
+       stroke="#000000"
+       stroke-width="1.33333"
+       stroke-miterlimit="8"
+       fill="#FFFFFF"
+       id="rect23" />
+    <text
+       font-family="Calibri, Calibri_MSFontService, sans-serif"
+       font-weight="400"
+       font-size="24px"
+       id="text27"
+       x="69.379204"
+       y="353">rte_flow_actions_template_create()</text>
+    <rect
+       x="0.500053"
+       y="0.500053"
+       width="482"
+       height="60"
+       stroke="#000000"
+       stroke-width="1.33333"
+       stroke-miterlimit="8"
+       fill="#A6A6A6"
+       id="rect29" />
+    <text
+       font-family="Calibri, Calibri_MSFontService, sans-serif"
+       font-weight="400"
+       font-size="24px"
+       transform="translate(177.233,37)"
+       id="text33">rte_eal_init()</text>
+    <path
+       d="M2-1.09108e-05 2.00005 9.2445-1.99995 9.24452-2 1.09108e-05ZM6.00004 7.24448 0.000104987 19.2445-5.99996 7.24455Z"
+       transform="matrix(-1 0 0 1 241 60)"
+       id="path35" />
+    <path
+       d="M2-1.08133e-05 2.00005 9.41805-1.99995 9.41807-2 1.08133e-05ZM6.00004 7.41802 0.000104987 19.4181-5.99996 7.41809Z"
+       transform="matrix(-1 0 0 1 241 138)"
+       id="path37" />
+    <path
+       d="M2-1.09108e-05 2.00005 9.2445-1.99995 9.24452-2 1.09108e-05ZM6.00004 7.24448 0.000104987 19.2445-5.99996 7.24455Z"
+       transform="matrix(-1 0 0 1 241 217)"
+       id="path39" />
+    <rect
+       x="0.500053"
+       y="395.5"
+       width="482"
+       height="59"
+       stroke="#000000"
+       stroke-width="1.33333"
+       stroke-miterlimit="8"
+       fill="#FFFFFF"
+       id="rect41" />
+    <text
+       font-family="Calibri, Calibri_MSFontService, sans-serif"
+       font-weight="400"
+       font-size="24px"
+       id="text47"
+       x="76.988998"
+       y="432">rte_flow_template_table_create()</text>
+    <path
+       d="M2-1.05859e-05 2.00005 9.83526-1.99995 9.83529-2 1.05859e-05ZM6.00004 7.83524 0.000104987 19.8353-5.99996 7.83531Z"
+       transform="matrix(-1 0 0 1 241 296)"
+       id="path49" />
+    <path
+       d="M243 375 243 384.191 239 384.191 239 375ZM247 382.191 241 394.191 235 382.191Z"
+       id="path51" />
+    <rect
+       x="0.500053"
+       y="473.5"
+       width="482"
+       height="60"
+       stroke="#000000"
+       stroke-width="1.33333"
+       stroke-miterlimit="8"
+       fill="#A6A6A6"
+       id="rect53" />
+    <text
+       font-family="Calibri, Calibri_MSFontService, sans-serif"
+       font-weight="400"
+       font-size="24px"
+       id="text55"
+       x="149.30299"
+       y="511">rte_eth_dev_start()</text>
+    <path
+       d="M245 454 245 463.191 241 463.191 241 454ZM249 461.191 243 473.191 237 461.191Z"
+       id="path57" />
+  </g>
+</svg>

@@ -272,6 +272,10 @@ EXPERIMENTAL {
 	rte_flow_actions_template_destroy;
 	rte_flow_template_table_create;
 	rte_flow_template_table_destroy;
+	rte_flow_async_create;
+	rte_flow_async_destroy;
+	rte_flow_push;
+	rte_flow_pull;
 };
 
 INTERNAL {

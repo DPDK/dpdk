@@ -85,6 +85,13 @@ New Features
     ``rte_flow_template_table_destroy``, ``rte_flow_pattern_template_destroy``
     and ``rte_flow_actions_template_destroy``.
 
+* **Added functions for asynchronous flow rules creation/destruction.**
+
+  * Added ``rte_flow_async_create`` and ``rte_flow_async_destroy`` API
+    to enqueue flow creaion/destruction operations asynchronously as well as
+    ``rte_flow_pull`` to poll and retrieve results of these operations and
+    ``rte_flow_push`` to push all the in-flight	operations to the NIC.
+
 * **Added rte_flow support for matching GRE optional fields.**
 
   Added ``gre_option`` item in rte_flow to support checksum/key/sequence

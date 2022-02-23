@@ -1396,6 +1396,7 @@ rte_flow_flex_item_release(uint16_t port_id,
 int
 rte_flow_info_get(uint16_t port_id,
 		  struct rte_flow_port_info *port_info,
+		  struct rte_flow_queue_info *queue_info,
 		  struct rte_flow_error *error)
 {
 	struct rte_eth_dev *dev = &rte_eth_devices[port_id];
@@ -1415,7 +1416,7 @@ rte_flow_info_get(uint16_t port_id,
 	}
 	if (likely(!!ops->info_get)) {
 		return flow_err(port_id,
-				ops->info_get(dev, port_info, error),
+				ops->info_get(dev, port_info, queue_info, error),
 				error);
 	}
 	return rte_flow_error_set(error, ENOTSUP,
@@ -1426,6 +1427,8 @@ rte_flow_info_get(uint16_t port_id,
 int
 rte_flow_configure(uint16_t port_id,
 		   const struct rte_flow_port_attr *port_attr,
+		   uint16_t nb_queue,
+		   const struct rte_flow_queue_attr *queue_attr[],
 		   struct rte_flow_error *error)
 {
 	struct rte_eth_dev *dev = &rte_eth_devices[port_id];
@@ -1450,8 +1453,12 @@ rte_flow_configure(uint16_t port_id,
 		RTE_FLOW_LOG(ERR, "Port %"PRIu16" info is NULL.\n", port_id);
 		return -EINVAL;
 	}
+	if (queue_attr == NULL) {
+		RTE_FLOW_LOG(ERR, "Port %"PRIu16" queue info is NULL.\n", port_id);
+		return -EINVAL;
+	}
 	if (likely(!!ops->configure)) {
-		ret = ops->configure(dev, port_attr, error);
+		ret = ops->configure(dev, port_attr, nb_queue, queue_attr, error);
 		if (ret == 0)
 			dev->data->flow_configured = 1;
 		return flow_err(port_id, ret, error);
@@ -1711,4 +1718,76 @@ rte_flow_template_table_destroy(uint16_t port_id,
 	return rte_flow_error_set(error, ENOTSUP,
 				  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
 				  NULL, rte_strerror(ENOTSUP));
+}
+
+struct rte_flow *
+rte_flow_async_create(uint16_t port_id,
+		      uint32_t queue_id,
+		      const struct rte_flow_op_attr *op_attr,
+		      struct rte_flow_template_table *template_table,
+		      const struct rte_flow_item pattern[],
+		      uint8_t pattern_template_index,
+		      const struct rte_flow_action actions[],
+		      uint8_t actions_template_index,
+		      void *user_data,
+		      struct rte_flow_error *error)
+{
+	struct rte_eth_dev *dev = &rte_eth_devices[port_id];
+	const struct rte_flow_ops *ops = rte_flow_ops_get(port_id, error);
+	struct rte_flow *flow;
+
+	flow = ops->async_create(dev, queue_id,
+				 op_attr, template_table,
+				 pattern, pattern_template_index,
+				 actions, actions_template_index,
+				 user_data, error);
+	if (flow == NULL)
+		flow_err(port_id, -rte_errno, error);
+	return flow;
+}
+
+int
+rte_flow_async_destroy(uint16_t port_id,
+		       uint32_t queue_id,
+		       const struct rte_flow_op_attr *op_attr,
+		       struct rte_flow *flow,
+		       void *user_data,
+		       struct rte_flow_error *error)
+{
+	struct rte_eth_dev *dev = &rte_eth_devices[port_id];
+	const struct rte_flow_ops *ops = rte_flow_ops_get(port_id, error);
+
+	return flow_err(port_id,
+			ops->async_destroy(dev, queue_id,
+					   op_attr, flow,
+					   user_data, error),
+			error);
+}
+
+int
+rte_flow_push(uint16_t port_id,
+	      uint32_t queue_id,
+	      struct rte_flow_error *error)
+{
+	struct rte_eth_dev *dev = &rte_eth_devices[port_id];
+	const struct rte_flow_ops *ops = rte_flow_ops_get(port_id, error);
+
+	return flow_err(port_id,
+			ops->push(dev, queue_id, error),
+			error);
+}
+
+int
+rte_flow_pull(uint16_t port_id,
+	      uint32_t queue_id,
+	      struct rte_flow_op_result res[],
+	      uint16_t n_res,
+	      struct rte_flow_error *error)
+{
+	struct rte_eth_dev *dev = &rte_eth_devices[port_id];
+	const struct rte_flow_ops *ops = rte_flow_ops_get(port_id, error);
+	int ret;
+
+	ret = ops->pull(dev, queue_id, res, n_res, error);
+	return ret ? ret : flow_err(port_id, ret, error);
 }

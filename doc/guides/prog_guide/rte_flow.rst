@@ -3624,12 +3624,16 @@ Expected number of resources in an application allows PMD to prepare
 and optimize NIC hardware configuration and memory layout in advance.
 ``rte_flow_configure()`` must be called before any flow rule is created,
 but after an Ethernet device is configured.
+It also creates flow queues for asynchronous flow rules operations via
+queue-based API, see `Asynchronous operations`_ section.
 
 .. code-block:: c
 
    int
    rte_flow_configure(uint16_t port_id,
                       const struct rte_flow_port_attr *port_attr,
+                      uint16_t nb_queue,
+                      const struct rte_flow_queue_attr *queue_attr[],
                       struct rte_flow_error *error);
 
 Information about the number of available resources can be retrieved via
@@ -3640,6 +3644,7 @@ Information about the number of available resources can be retrieved via
    int
    rte_flow_info_get(uint16_t port_id,
                      struct rte_flow_port_info *port_info,
+                     struct rte_flow_queue_info *queue_info,
                      struct rte_flow_error *error);
 
 Flow templates
@@ -3776,6 +3781,125 @@ and pattern and actions templates are created.
                    &pattern_templates, nb_pattern_templ,
                    &actions_templates, nb_actions_templ,
                    &error);
+
+Asynchronous operations
+-----------------------
+
+Flow rules management can be done via special lockless flow management queues.
+- Queue operations are asynchronous and not thread-safe.
+
+- Operations can thus be invoked by the app's datapath,
+  packet processing can continue while queue operations are processed by NIC.
+
+- Number of flow queues is configured at initialization stage.
+
+- Available operation types: rule creation, rule destruction,
+  indirect rule creation, indirect rule destruction, indirect rule update.
+
+- Operations may be reordered within a queue.
+
+- Operations can be postponed and pushed to NIC in batches.
+
+- Results pulling must be done on time to avoid queue overflows.
+
+- User data is returned as part of the result to identify an operation.
+
+- Flow handle is valid once the creation operation is enqueued and must be
+  destroyed even if the operation is not successful and the rule is not inserted.
+
+- Application must wait for the creation operation result before enqueueing
+  the deletion operation to make sure the creation is processed by NIC.
+
+The asynchronous flow rule insertion logic can be broken into two phases.
+
+1. Initialization stage as shown here:
+
+.. _figure_rte_flow_async_init:
+
+.. figure:: img/rte_flow_async_init.*
+
+2. Main loop as presented on a datapath application example:
+
+.. _figure_rte_flow_async_usage:
+
+.. figure:: img/rte_flow_async_usage.*
+
+Enqueue creation operation
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Enqueueing a flow rule creation operation is similar to simple creation.
+
+.. code-block:: c
+
+   struct rte_flow *
+   rte_flow_async_create(uint16_t port_id,
+                         uint32_t queue_id,
+                         const struct rte_flow_op_attr *op_attr,
+                         struct rte_flow_template_table *template_table,
+                         const struct rte_flow_item pattern[],
+                         uint8_t pattern_template_index,
+                         const struct rte_flow_action actions[],
+                         uint8_t actions_template_index,
+                         void *user_data,
+                         struct rte_flow_error *error);
+
+A valid handle in case of success is returned. It must be destroyed later
+by calling ``rte_flow_async_destroy()`` even if the rule is rejected by HW.
+
+Enqueue destruction operation
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Enqueueing a flow rule destruction operation is similar to simple destruction.
+
+.. code-block:: c
+
+   int
+   rte_flow_async_destroy(uint16_t port_id,
+                          uint32_t queue_id,
+                          const struct rte_flow_op_attr *op_attr,
+                          struct rte_flow *flow,
+                          void *user_data,
+                          struct rte_flow_error *error);
+
+Push enqueued operations
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+Pushing all internally stored rules from a queue to the NIC.
+
+.. code-block:: c
+
+   int
+   rte_flow_push(uint16_t port_id,
+                 uint32_t queue_id,
+                 struct rte_flow_error *error);
+
+There is the postpone attribute in the queue operation attributes.
+When it is set, multiple operations can be bulked together and not sent to HW
+right away to save SW/HW interactions and prioritize throughput over latency.
+The application must invoke this function to actually push all outstanding
+operations to HW in this case.
+
+Pull enqueued operations
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+Pulling asynchronous operations results.
+
+The application must invoke this function in order to complete asynchronous
+flow rule operations and to receive flow rule operations statuses.
+
+.. code-block:: c
+
+   int
+   rte_flow_pull(uint16_t port_id,
+                 uint32_t queue_id,
+                 struct rte_flow_op_result res[],
+                 uint16_t n_res,
+                 struct rte_flow_error *error);
+
+Multiple outstanding operation results can be pulled simultaneously.
+User data may be provided during a flow creation/destruction in order
+to distinguish between multiple operations. User data is returned as part
+of the result to provide a method to detect which operation is completed.
 
 .. _flow_isolated_mode:
 

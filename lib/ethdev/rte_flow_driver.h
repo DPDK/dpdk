@@ -156,11 +156,14 @@ struct rte_flow_ops {
 	int (*info_get)
 		(struct rte_eth_dev *dev,
 		 struct rte_flow_port_info *port_info,
+		 struct rte_flow_queue_info *queue_info,
 		 struct rte_flow_error *err);
 	/** See rte_flow_configure() */
 	int (*configure)
 		(struct rte_eth_dev *dev,
 		 const struct rte_flow_port_attr *port_attr,
+		 uint16_t nb_queue,
+		 const struct rte_flow_queue_attr *queue_attr[],
 		 struct rte_flow_error *err);
 	/** See rte_flow_pattern_template_create() */
 	struct rte_flow_pattern_template *(*pattern_template_create)
@@ -199,6 +202,38 @@ struct rte_flow_ops {
 		(struct rte_eth_dev *dev,
 		 struct rte_flow_template_table *template_table,
 		 struct rte_flow_error *err);
+	/** See rte_flow_async_create() */
+	struct rte_flow *(*async_create)
+		(struct rte_eth_dev *dev,
+		 uint32_t queue_id,
+		 const struct rte_flow_op_attr *op_attr,
+		 struct rte_flow_template_table *template_table,
+		 const struct rte_flow_item pattern[],
+		 uint8_t pattern_template_index,
+		 const struct rte_flow_action actions[],
+		 uint8_t actions_template_index,
+		 void *user_data,
+		 struct rte_flow_error *err);
+	/** See rte_flow_async_destroy() */
+	int (*async_destroy)
+		(struct rte_eth_dev *dev,
+		 uint32_t queue_id,
+		 const struct rte_flow_op_attr *op_attr,
+		 struct rte_flow *flow,
+		 void *user_data,
+		 struct rte_flow_error *err);
+	/** See rte_flow_push() */
+	int (*push)
+		(struct rte_eth_dev *dev,
+		 uint32_t queue_id,
+		 struct rte_flow_error *err);
+	/** See rte_flow_pull() */
+	int (*pull)
+		(struct rte_eth_dev *dev,
+		 uint32_t queue_id,
+		 struct rte_flow_op_result res[],
+		 uint16_t n_res,
+		 struct rte_flow_error *error);
 };
 
 /**
