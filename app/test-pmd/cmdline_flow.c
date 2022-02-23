@@ -72,6 +72,8 @@ enum index {
 	/* Top-level command. */
 	FLOW,
 	/* Sub-level commands. */
+	INFO,
+	CONFIGURE,
 	INDIRECT_ACTION,
 	VALIDATE,
 	CREATE,
@@ -121,6 +123,13 @@ enum index {
 	/* Dump arguments */
 	DUMP_ALL,
 	DUMP_ONE,
+
+	/* Configure arguments */
+	CONFIG_QUEUES_NUMBER,
+	CONFIG_QUEUES_SIZE,
+	CONFIG_COUNTERS_NUMBER,
+	CONFIG_AGING_OBJECTS_NUMBER,
+	CONFIG_METERS_NUMBER,
 
 	/* Indirect action arguments */
 	INDIRECT_ACTION_CREATE,
@@ -869,6 +878,11 @@ struct buffer {
 	portid_t port; /**< Affected port ID. */
 	union {
 		struct {
+			struct rte_flow_port_attr port_attr;
+			uint32_t nb_queue;
+			struct rte_flow_queue_attr queue_attr;
+		} configure; /**< Configuration arguments. */
+		struct {
 			uint32_t *action_id;
 			uint32_t action_id_n;
 		} ia_destroy; /**< Indirect action destroy arguments. */
@@ -946,6 +960,16 @@ static const enum index next_flex_item[] = {
 	FLEX_ITEM_INIT,
 	FLEX_ITEM_CREATE,
 	FLEX_ITEM_DESTROY,
+	ZERO,
+};
+
+static const enum index next_config_attr[] = {
+	CONFIG_QUEUES_NUMBER,
+	CONFIG_QUEUES_SIZE,
+	CONFIG_COUNTERS_NUMBER,
+	CONFIG_AGING_OBJECTS_NUMBER,
+	CONFIG_METERS_NUMBER,
+	END,
 	ZERO,
 };
 
@@ -2045,6 +2069,9 @@ static int parse_aged(struct context *, const struct token *,
 static int parse_isolate(struct context *, const struct token *,
 			 const char *, unsigned int,
 			 void *, unsigned int);
+static int parse_configure(struct context *, const struct token *,
+			   const char *, unsigned int,
+			   void *, unsigned int);
 static int parse_tunnel(struct context *, const struct token *,
 			const char *, unsigned int,
 			void *, unsigned int);
@@ -2270,7 +2297,9 @@ static const struct token token_list[] = {
 		.type = "{command} {port_id} [{arg} [...]]",
 		.help = "manage ingress/egress flow rules",
 		.next = NEXT(NEXT_ENTRY
-			     (INDIRECT_ACTION,
+			     (INFO,
+			      CONFIGURE,
+			      INDIRECT_ACTION,
 			      VALIDATE,
 			      CREATE,
 			      DESTROY,
@@ -2283,6 +2312,65 @@ static const struct token token_list[] = {
 			      TUNNEL,
 			      FLEX)),
 		.call = parse_init,
+	},
+	/* Top-level command. */
+	[INFO] = {
+		.name = "info",
+		.help = "get information about flow engine",
+		.next = NEXT(NEXT_ENTRY(END),
+			     NEXT_ENTRY(COMMON_PORT_ID)),
+		.args = ARGS(ARGS_ENTRY(struct buffer, port)),
+		.call = parse_configure,
+	},
+	/* Top-level command. */
+	[CONFIGURE] = {
+		.name = "configure",
+		.help = "configure flow engine",
+		.next = NEXT(next_config_attr,
+			     NEXT_ENTRY(COMMON_PORT_ID)),
+		.args = ARGS(ARGS_ENTRY(struct buffer, port)),
+		.call = parse_configure,
+	},
+	/* Configure arguments. */
+	[CONFIG_QUEUES_NUMBER] = {
+		.name = "queues_number",
+		.help = "number of queues",
+		.next = NEXT(next_config_attr,
+			     NEXT_ENTRY(COMMON_UNSIGNED)),
+		.args = ARGS(ARGS_ENTRY(struct buffer,
+					args.configure.nb_queue)),
+	},
+	[CONFIG_QUEUES_SIZE] = {
+		.name = "queues_size",
+		.help = "number of elements in queues",
+		.next = NEXT(next_config_attr,
+			     NEXT_ENTRY(COMMON_UNSIGNED)),
+		.args = ARGS(ARGS_ENTRY(struct buffer,
+					args.configure.queue_attr.size)),
+	},
+	[CONFIG_COUNTERS_NUMBER] = {
+		.name = "counters_number",
+		.help = "number of counters",
+		.next = NEXT(next_config_attr,
+			     NEXT_ENTRY(COMMON_UNSIGNED)),
+		.args = ARGS(ARGS_ENTRY(struct buffer,
+					args.configure.port_attr.nb_counters)),
+	},
+	[CONFIG_AGING_OBJECTS_NUMBER] = {
+		.name = "aging_counters_number",
+		.help = "number of aging objects",
+		.next = NEXT(next_config_attr,
+			     NEXT_ENTRY(COMMON_UNSIGNED)),
+		.args = ARGS(ARGS_ENTRY(struct buffer,
+					args.configure.port_attr.nb_aging_objects)),
+	},
+	[CONFIG_METERS_NUMBER] = {
+		.name = "meters_number",
+		.help = "number of meters",
+		.next = NEXT(next_config_attr,
+			     NEXT_ENTRY(COMMON_UNSIGNED)),
+		.args = ARGS(ARGS_ENTRY(struct buffer,
+					args.configure.port_attr.nb_meters)),
 	},
 	/* Top-level command. */
 	[INDIRECT_ACTION] = {
@@ -7736,6 +7824,33 @@ parse_isolate(struct context *ctx, const struct token *token,
 	return len;
 }
 
+/** Parse tokens for info/configure command. */
+static int
+parse_configure(struct context *ctx, const struct token *token,
+		const char *str, unsigned int len,
+		void *buf, unsigned int size)
+{
+	struct buffer *out = buf;
+
+	/* Token name must match. */
+	if (parse_default(ctx, token, str, len, NULL, 0) < 0)
+		return -1;
+	/* Nothing else to do if there is no buffer. */
+	if (!out)
+		return len;
+	if (!out->command) {
+		if (ctx->curr != INFO && ctx->curr != CONFIGURE)
+			return -1;
+		if (sizeof(*out) > size)
+			return -1;
+		out->command = ctx->curr;
+		ctx->objdata = 0;
+		ctx->object = out;
+		ctx->objmask = NULL;
+	}
+	return len;
+}
+
 static int
 parse_flex(struct context *ctx, const struct token *token,
 	     const char *str, unsigned int len,
@@ -8964,6 +9079,15 @@ static void
 cmd_flow_parsed(const struct buffer *in)
 {
 	switch (in->command) {
+	case INFO:
+		port_flow_get_info(in->port);
+		break;
+	case CONFIGURE:
+		port_flow_configure(in->port,
+				    &in->args.configure.port_attr,
+				    in->args.configure.nb_queue,
+				    &in->args.configure.queue_attr);
+		break;
 	case INDIRECT_ACTION_CREATE:
 		port_action_handle_create(
 				in->port, in->args.vc.attr.group,

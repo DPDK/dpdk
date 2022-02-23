@@ -1610,6 +1610,67 @@ action_alloc(portid_t port_id, uint32_t id,
 	return 0;
 }
 
+/** Get info about flow management resources. */
+int
+port_flow_get_info(portid_t port_id)
+{
+	struct rte_flow_port_info port_info;
+	struct rte_flow_queue_info queue_info;
+	struct rte_flow_error error;
+
+	if (port_id_is_invalid(port_id, ENABLED_WARN) ||
+	    port_id == (portid_t)RTE_PORT_ALL)
+		return -EINVAL;
+	/* Poisoning to make sure PMDs update it in case of error. */
+	memset(&error, 0x99, sizeof(error));
+	memset(&port_info, 0, sizeof(port_info));
+	memset(&queue_info, 0, sizeof(queue_info));
+	if (rte_flow_info_get(port_id, &port_info, &queue_info, &error))
+		return port_flow_complain(&error);
+	printf("Flow engine resources on port %u:\n"
+	       "Number of queues: %d\n"
+		   "Size of queues: %d\n"
+	       "Number of counters: %d\n"
+	       "Number of aging objects: %d\n"
+	       "Number of meter actions: %d\n",
+	       port_id, port_info.max_nb_queues,
+		   queue_info.max_size,
+	       port_info.max_nb_counters,
+	       port_info.max_nb_aging_objects,
+	       port_info.max_nb_meters);
+	return 0;
+}
+
+/** Configure flow management resources. */
+int
+port_flow_configure(portid_t port_id,
+	const struct rte_flow_port_attr *port_attr,
+	uint16_t nb_queue,
+	const struct rte_flow_queue_attr *queue_attr)
+{
+	struct rte_port *port;
+	struct rte_flow_error error;
+	const struct rte_flow_queue_attr *attr_list[nb_queue];
+	int std_queue;
+
+	if (port_id_is_invalid(port_id, ENABLED_WARN) ||
+	    port_id == (portid_t)RTE_PORT_ALL)
+		return -EINVAL;
+	port = &ports[port_id];
+	port->queue_nb = nb_queue;
+	port->queue_sz = queue_attr->size;
+	for (std_queue = 0; std_queue < nb_queue; std_queue++)
+		attr_list[std_queue] = queue_attr;
+	/* Poisoning to make sure PMDs update it in case of error. */
+	memset(&error, 0x66, sizeof(error));
+	if (rte_flow_configure(port_id, port_attr, nb_queue, attr_list, &error))
+		return port_flow_complain(&error);
+	printf("Configure flows on port %u: "
+	       "number of queues %d with %d elements\n",
+	       port_id, nb_queue, queue_attr->size);
+	return 0;
+}
+
 /** Create indirect action */
 int
 port_action_handle_create(portid_t port_id, uint32_t id,
