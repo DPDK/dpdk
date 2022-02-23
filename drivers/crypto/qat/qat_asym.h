@@ -104,28 +104,6 @@ qat_asym_session_clear(struct rte_cryptodev *dev,
 		struct rte_cryptodev_asym_session *sess);
 
 /*
- * Build PKE request to be sent to the fw, partially uses template
- * request generated during session creation.
- *
- * @param	in_op		Pointer to the crypto operation, for every
- *				service it points to service specific struct.
- * @param	out_msg		Message to be returned to enqueue function
- * @param	op_cookie	Cookie pointer that holds private metadata
- * @param	qat_dev_gen	Generation of QAT hardware
- *
- * @return
- *	This function always returns zero,
- *	it is because of backward compatibility.
- *	- 0: Always returned
- *
- */
-int
-qat_asym_build_request(void *in_op, uint8_t *out_msg,
-		void *op_cookie,
-		__rte_unused uint64_t *opaque,
-		enum qat_device_gen qat_dev_gen);
-
-/*
  * Process PKE response received from outgoing queue of QAT
  *
  * @param	op		a ptr to the rte_crypto_op referred to by

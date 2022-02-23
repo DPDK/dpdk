@@ -131,11 +131,6 @@ uint16_t
 qat_sym_dequeue_burst(void *qp, struct rte_crypto_op **ops,
 		uint16_t nb_ops);
 
-int
-qat_sym_build_request(void *in_op, uint8_t *out_msg,
-		void *op_cookie, enum qat_device_gen qat_dev_gen);
-
-
 /** Encrypt a single partial block
  *  Depends on openssl libcrypto
  *  Uses ECB+XOR to do CFB encryption, same result, more performant

@@ -507,7 +507,7 @@ qat_asym_fill_arrays(struct rte_crypto_asym_op *asym_op,
 	return 0;
 }
 
-int
+static __rte_always_inline int
 qat_asym_build_request(void *in_op, uint8_t *out_msg, void *op_cookie,
 		__rte_unused uint64_t *opaque,
 		__rte_unused enum qat_device_gen dev_gen)

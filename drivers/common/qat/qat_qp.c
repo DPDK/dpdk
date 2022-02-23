@@ -547,8 +547,7 @@ adf_modulo(uint32_t data, uint32_t modulo_mask)
 }
 
 uint16_t
-qat_enqueue_op_burst(void *qp,
-		__rte_unused qat_op_build_request_t op_build_request,
+qat_enqueue_op_burst(void *qp, qat_op_build_request_t op_build_request,
 		void **ops, uint16_t nb_ops)
 {
 	register struct qat_queue *queue;
@@ -599,29 +598,18 @@ qat_enqueue_op_burst(void *qp,
 		}
 	}
 
-#ifdef BUILD_QAT_SYM
+#ifdef RTE_LIB_SECURITY
 	if (tmp_qp->service_type == QAT_SERVICE_SYMMETRIC)
 		qat_sym_preprocess_requests(ops, nb_ops_possible);
 #endif
 
+	memset(tmp_qp->opaque, 0xff, sizeof(tmp_qp->opaque));
+
 	while (nb_ops_sent != nb_ops_possible) {
-		if (tmp_qp->service_type == QAT_SERVICE_SYMMETRIC) {
-#ifdef BUILD_QAT_SYM
-			ret = qat_sym_build_request(*ops, base_addr + tail,
+		ret = op_build_request(*ops, base_addr + tail,
 				tmp_qp->op_cookies[tail >> queue->trailz],
-				tmp_qp->qat_dev_gen);
-#endif
-		} else if (tmp_qp->service_type == QAT_SERVICE_COMPRESSION) {
-			ret = qat_comp_build_request(*ops, base_addr + tail,
-				tmp_qp->op_cookies[tail >> queue->trailz],
-				tmp_qp->qat_dev_gen);
-		} else if (tmp_qp->service_type == QAT_SERVICE_ASYMMETRIC) {
-#ifdef BUILD_QAT_ASYM
-			ret = qat_asym_build_request(*ops, base_addr + tail,
-				tmp_qp->op_cookies[tail >> queue->trailz],
-				NULL, tmp_qp->qat_dev_gen);
-#endif
-		}
+				tmp_qp->opaque, tmp_qp->qat_dev_gen);
+
 		if (ret != 0) {
 			tmp_qp->stats.enqueue_err_count++;
 			/* This message cannot be enqueued */
@@ -817,8 +805,7 @@ kick_tail:
 
 uint16_t
 qat_dequeue_op_burst(void *qp, void **ops,
-		__rte_unused qat_op_dequeue_t qat_dequeue_process_response,
-		uint16_t nb_ops)
+		qat_op_dequeue_t qat_dequeue_process_response, uint16_t nb_ops)
 {
 	struct qat_queue *rx_queue;
 	struct qat_qp *tmp_qp = (struct qat_qp *)qp;
@@ -836,21 +823,10 @@ qat_dequeue_op_burst(void *qp, void **ops,
 
 		nb_fw_responses = 1;
 
-		if (tmp_qp->service_type == QAT_SERVICE_SYMMETRIC)
-			qat_sym_process_response(ops, resp_msg,
-				tmp_qp->op_cookies[head >> rx_queue->trailz],
-				NULL);
-		else if (tmp_qp->service_type == QAT_SERVICE_COMPRESSION)
-			nb_fw_responses = qat_comp_process_response(
+		nb_fw_responses = qat_dequeue_process_response(
 				ops, resp_msg,
 				tmp_qp->op_cookies[head >> rx_queue->trailz],
 				&tmp_qp->stats.dequeue_err_count);
-#ifdef BUILD_QAT_ASYM
-		else if (tmp_qp->service_type == QAT_SERVICE_ASYMMETRIC)
-			qat_asym_process_response(ops, resp_msg,
-				tmp_qp->op_cookies[head >> rx_queue->trailz],
-				NULL);
-#endif
 
 		head = adf_modulo(head + rx_queue->msg_size,
 				  rx_queue->modulo_mask);

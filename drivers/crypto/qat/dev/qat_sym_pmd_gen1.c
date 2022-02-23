@@ -146,10 +146,6 @@ struct rte_cryptodev_ops qat_sym_crypto_ops_gen1 = {
 	.sym_session_get_size	= qat_sym_session_get_private_size,
 	.sym_session_configure	= qat_sym_session_configure,
 	.sym_session_clear	= qat_sym_session_clear,
-
-	/* Raw data-path API related operations */
-	.sym_get_raw_dp_ctx_size = qat_sym_get_dp_ctx_size,
-	.sym_configure_raw_dp_ctx = qat_sym_configure_dp_ctx,
 };
 
 static struct qat_capabilities_info
