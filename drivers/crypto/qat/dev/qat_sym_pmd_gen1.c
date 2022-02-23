@@ -526,9 +526,18 @@ qat_sym_dp_enqueue_cipher_jobs_gen1(void *qp_data, uint8_t *drv_ctx,
 			(uint8_t *)tx_queue->base_addr + tail);
 		rte_mov128((uint8_t *)req, (const uint8_t *)&(ctx->fw_req));
 
-		data_len = qat_sym_build_req_set_data(req, user_data[i],
-				cookie, vec->src_sgl[i].vec,
+		if (vec->dest_sgl) {
+			data_len = qat_sym_build_req_set_data(req,
+				user_data[i], cookie,
+				vec->src_sgl[i].vec, vec->src_sgl[i].num,
+				vec->dest_sgl[i].vec, vec->dest_sgl[i].num);
+		} else {
+			data_len = qat_sym_build_req_set_data(req,
+				user_data[i], cookie,
+				vec->src_sgl[i].vec,
 				vec->src_sgl[i].num, NULL, 0);
+		}
+
 		if (unlikely(data_len < 0))
 			break;
 		enqueue_one_cipher_job_gen1(ctx, req, &vec->iv[i], ofs,
@@ -625,8 +634,18 @@ qat_sym_dp_enqueue_auth_jobs_gen1(void *qp_data, uint8_t *drv_ctx,
 			(uint8_t *)tx_queue->base_addr + tail);
 		rte_mov128((uint8_t *)req, (const uint8_t *)&(ctx->fw_req));
 
-		data_len = qat_sym_build_req_set_data(req, user_data[i], cookie,
-			vec->src_sgl[i].vec, vec->src_sgl[i].num, NULL, 0);
+		if (vec->dest_sgl) {
+			data_len = qat_sym_build_req_set_data(req,
+				user_data[i], cookie,
+				vec->src_sgl[i].vec, vec->src_sgl[i].num,
+				vec->dest_sgl[i].vec, vec->dest_sgl[i].num);
+		} else {
+			data_len = qat_sym_build_req_set_data(req,
+				user_data[i], cookie,
+				vec->src_sgl[i].vec,
+				vec->src_sgl[i].num, NULL, 0);
+		}
+
 		if (unlikely(data_len < 0))
 			break;
 		enqueue_one_auth_job_gen1(ctx, req, &vec->digest[i],
@@ -725,8 +744,18 @@ qat_sym_dp_enqueue_chain_jobs_gen1(void *qp_data, uint8_t *drv_ctx,
 			(uint8_t *)tx_queue->base_addr + tail);
 		rte_mov128((uint8_t *)req, (const uint8_t *)&(ctx->fw_req));
 
-		data_len = qat_sym_build_req_set_data(req, user_data[i], cookie,
-			vec->src_sgl[i].vec, vec->src_sgl[i].num, NULL, 0);
+		if (vec->dest_sgl) {
+			data_len = qat_sym_build_req_set_data(req,
+				user_data[i], cookie,
+				vec->src_sgl[i].vec, vec->src_sgl[i].num,
+				vec->dest_sgl[i].vec, vec->dest_sgl[i].num);
+		} else {
+			data_len = qat_sym_build_req_set_data(req,
+				user_data[i], cookie,
+				vec->src_sgl[i].vec,
+				vec->src_sgl[i].num, NULL, 0);
+		}
+
 		if (unlikely(data_len < 0))
 			break;
 
@@ -830,8 +859,18 @@ qat_sym_dp_enqueue_aead_jobs_gen1(void *qp_data, uint8_t *drv_ctx,
 			(uint8_t *)tx_queue->base_addr + tail);
 		rte_mov128((uint8_t *)req, (const uint8_t *)&(ctx->fw_req));
 
-		data_len = qat_sym_build_req_set_data(req, user_data[i], cookie,
-			vec->src_sgl[i].vec, vec->src_sgl[i].num, NULL, 0);
+		if (vec->dest_sgl) {
+			data_len = qat_sym_build_req_set_data(req,
+				user_data[i], cookie,
+				vec->src_sgl[i].vec, vec->src_sgl[i].num,
+				vec->dest_sgl[i].vec, vec->dest_sgl[i].num);
+		} else {
+			data_len = qat_sym_build_req_set_data(req,
+				user_data[i], cookie,
+				vec->src_sgl[i].vec,
+				vec->src_sgl[i].num, NULL, 0);
+		}
+
 		if (unlikely(data_len < 0))
 			break;
 
