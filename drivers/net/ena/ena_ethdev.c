@@ -1953,6 +1953,13 @@ ena_set_queues_placement_policy(struct ena_adapter *adapter,
 		return 0;
 	}
 
+	if (adapter->dev_mem_base == NULL) {
+		PMD_DRV_LOG(ERR,
+			"LLQ is advertised as supported, but device doesn't expose mem bar\n");
+		ena_dev->tx_mem_queue_type = ENA_ADMIN_PLACEMENT_POLICY_HOST;
+		return 0;
+	}
+
 	rc = ena_com_config_dev_mode(ena_dev, llq, llq_default_configurations);
 	if (unlikely(rc)) {
 		PMD_INIT_LOG(WARNING,
@@ -1964,13 +1971,6 @@ ena_set_queues_placement_policy(struct ena_adapter *adapter,
 	/* Nothing to config, exit */
 	if (ena_dev->tx_mem_queue_type == ENA_ADMIN_PLACEMENT_POLICY_HOST)
 		return 0;
-
-	if (!adapter->dev_mem_base) {
-		PMD_DRV_LOG(ERR,
-			"Unable to access LLQ BAR resource. Fallback to host mode policy.\n");
-		ena_dev->tx_mem_queue_type = ENA_ADMIN_PLACEMENT_POLICY_HOST;
-		return 0;
-	}
 
 	ena_dev->mem_bar = adapter->dev_mem_base;
 
