@@ -4792,6 +4792,31 @@ port 0::
 	testpmd> flow indirect_action 0 create action_id \
 		ingress action rss queues 0 1 end / end
 
+Enqueueing creation of indirect actions
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+``flow queue indirect_action create`` adds creation operation of an indirect
+action to a queue. It is bound to ``rte_flow_async_action_handle_create()``::
+
+   flow queue {port_id} create {queue_id} [postpone {boolean}]
+       table {table_id} item_template {item_template_id}
+       action_template {action_template_id}
+       pattern {item} [/ {item} [...]] / end
+       actions {action} [/ {action} [...]] / end
+
+If successful, it will show::
+
+   Indirect action #[...] creation queued
+
+Otherwise it will show an error message of the form::
+
+   Caught error type [...] ([...]): [...]
+
+This command uses the same parameters as  ``flow indirect_action create``,
+described in `Creating indirect actions`_.
+
+``flow queue pull`` must be called to retrieve the operation status.
+
 Updating indirect actions
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -4821,6 +4846,25 @@ Update indirect rss action having id 100 on port 0 with rss to queues 0 and 3
 
    testpmd> flow indirect_action 0 update 100 action rss queues 0 3 end / end
 
+Enqueueing update of indirect actions
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+``flow queue indirect_action update`` adds update operation for an indirect
+action to a queue. It is bound to ``rte_flow_async_action_handle_update()``::
+
+   flow queue {port_id} indirect_action {queue_id} update
+      {indirect_action_id} [postpone {boolean}] action {action} / end
+
+If successful, it will show::
+
+   Indirect action #[...] update queued
+
+Otherwise it will show an error message of the form::
+
+   Caught error type [...] ([...]): [...]
+
+``flow queue pull`` must be called to retrieve the operation status.
+
 Destroying indirect actions
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -4843,6 +4887,27 @@ The usual error message is shown when a indirect action cannot be destroyed::
 Destroy indirect actions having id 100 & 101::
 
    testpmd> flow indirect_action 0 destroy action_id 100 action_id 101
+
+Enqueueing destruction of indirect actions
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+``flow queue indirect_action destroy`` adds destruction operation to destroy
+one or more indirect actions from their indirect action IDs (as returned by
+``flow queue {port_id} indirect_action {queue_id} create``) to a queue.
+It is bound to ``rte_flow_async_action_handle_destroy()``::
+
+   flow queue {port_id} indirect_action {queue_id} destroy
+      [postpone {boolean}] action_id {indirect_action_id} [...]
+
+If successful, it will show::
+
+   Indirect action #[...] destruction queued
+
+Otherwise it will show an error message of the form::
+
+   Caught error type [...] ([...]): [...]
+
+``flow queue pull`` must be called to retrieve the operation status.
 
 Query indirect actions
 ~~~~~~~~~~~~~~~~~~~~~~

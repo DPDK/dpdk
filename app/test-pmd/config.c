@@ -2598,6 +2598,137 @@ port_queue_flow_destroy(portid_t port_id, queueid_t queue_id,
 	return ret;
 }
 
+/** Enqueue indirect action create operation. */
+int
+port_queue_action_handle_create(portid_t port_id, uint32_t queue_id,
+				bool postpone, uint32_t id,
+				const struct rte_flow_indir_action_conf *conf,
+				const struct rte_flow_action *action)
+{
+	const struct rte_flow_op_attr attr = { .postpone = postpone};
+	struct rte_port *port;
+	struct port_indirect_action *pia;
+	int ret;
+	struct rte_flow_error error;
+
+	ret = action_alloc(port_id, id, &pia);
+	if (ret)
+		return ret;
+
+	port = &ports[port_id];
+	if (queue_id >= port->queue_nb) {
+		printf("Queue #%u is invalid\n", queue_id);
+		return -EINVAL;
+	}
+
+	if (action->type == RTE_FLOW_ACTION_TYPE_AGE) {
+		struct rte_flow_action_age *age =
+			(struct rte_flow_action_age *)(uintptr_t)(action->conf);
+
+		pia->age_type = ACTION_AGE_CONTEXT_TYPE_INDIRECT_ACTION;
+		age->context = &pia->age_type;
+	}
+	/* Poisoning to make sure PMDs update it in case of error. */
+	memset(&error, 0x88, sizeof(error));
+	pia->handle = rte_flow_async_action_handle_create(port_id, queue_id,
+					&attr, conf, action, NULL, &error);
+	if (!pia->handle) {
+		uint32_t destroy_id = pia->id;
+		port_queue_action_handle_destroy(port_id, queue_id,
+						 postpone, 1, &destroy_id);
+		return port_flow_complain(&error);
+	}
+	pia->type = action->type;
+	printf("Indirect action #%u creation queued\n", pia->id);
+	return 0;
+}
+
+/** Enqueue indirect action destroy operation. */
+int
+port_queue_action_handle_destroy(portid_t port_id,
+				 uint32_t queue_id, bool postpone,
+				 uint32_t n, const uint32_t *actions)
+{
+	const struct rte_flow_op_attr attr = { .postpone = postpone};
+	struct rte_port *port;
+	struct port_indirect_action **tmp;
+	uint32_t c = 0;
+	int ret = 0;
+
+	if (port_id_is_invalid(port_id, ENABLED_WARN) ||
+	    port_id == (portid_t)RTE_PORT_ALL)
+		return -EINVAL;
+	port = &ports[port_id];
+
+	if (queue_id >= port->queue_nb) {
+		printf("Queue #%u is invalid\n", queue_id);
+		return -EINVAL;
+	}
+
+	tmp = &port->actions_list;
+	while (*tmp) {
+		uint32_t i;
+
+		for (i = 0; i != n; ++i) {
+			struct rte_flow_error error;
+			struct port_indirect_action *pia = *tmp;
+
+			if (actions[i] != pia->id)
+				continue;
+			/*
+			 * Poisoning to make sure PMDs update it in case
+			 * of error.
+			 */
+			memset(&error, 0x99, sizeof(error));
+
+			if (pia->handle &&
+			    rte_flow_async_action_handle_destroy(port_id,
+				queue_id, &attr, pia->handle, NULL, &error)) {
+				ret = port_flow_complain(&error);
+				continue;
+			}
+			*tmp = pia->next;
+			printf("Indirect action #%u destruction queued\n",
+			       pia->id);
+			free(pia);
+			break;
+		}
+		if (i == n)
+			tmp = &(*tmp)->next;
+		++c;
+	}
+	return ret;
+}
+
+/** Enqueue indirect action update operation. */
+int
+port_queue_action_handle_update(portid_t port_id,
+				uint32_t queue_id, bool postpone, uint32_t id,
+				const struct rte_flow_action *action)
+{
+	const struct rte_flow_op_attr attr = { .postpone = postpone};
+	struct rte_port *port;
+	struct rte_flow_error error;
+	struct rte_flow_action_handle *action_handle;
+
+	action_handle = port_action_handle_get_by_id(port_id, id);
+	if (!action_handle)
+		return -EINVAL;
+
+	port = &ports[port_id];
+	if (queue_id >= port->queue_nb) {
+		printf("Queue #%u is invalid\n", queue_id);
+		return -EINVAL;
+	}
+
+	if (rte_flow_async_action_handle_update(port_id, queue_id, &attr,
+				    action_handle, action, NULL, &error)) {
+		return port_flow_complain(&error);
+	}
+	printf("Indirect action #%u update queued\n", id);
+	return 0;
+}
+
 /** Push all the queue operations in the queue to the NIC. */
 int
 port_queue_flow_push(portid_t port_id, queueid_t queue_id)

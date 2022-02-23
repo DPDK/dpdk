@@ -940,6 +940,16 @@ int port_queue_flow_create(portid_t port_id, queueid_t queue_id,
 			   const struct rte_flow_action *actions);
 int port_queue_flow_destroy(portid_t port_id, queueid_t queue_id,
 			    bool postpone, uint32_t n, const uint32_t *rule);
+int port_queue_action_handle_create(portid_t port_id, uint32_t queue_id,
+			bool postpone, uint32_t id,
+			const struct rte_flow_indir_action_conf *conf,
+			const struct rte_flow_action *action);
+int port_queue_action_handle_destroy(portid_t port_id,
+				     uint32_t queue_id, bool postpone,
+				     uint32_t n, const uint32_t *action);
+int port_queue_action_handle_update(portid_t port_id, uint32_t queue_id,
+				    bool postpone, uint32_t id,
+				    const struct rte_flow_action *action);
 int port_queue_flow_push(portid_t port_id, queueid_t queue_id);
 int port_queue_flow_pull(portid_t port_id, queueid_t queue_id);
 int port_flow_validate(portid_t port_id,
