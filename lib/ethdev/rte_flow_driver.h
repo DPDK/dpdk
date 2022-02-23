@@ -234,6 +234,32 @@ struct rte_flow_ops {
 		 struct rte_flow_op_result res[],
 		 uint16_t n_res,
 		 struct rte_flow_error *error);
+	/** See rte_flow_async_action_handle_create() */
+	struct rte_flow_action_handle *(*async_action_handle_create)
+		(struct rte_eth_dev *dev,
+		 uint32_t queue_id,
+		 const struct rte_flow_op_attr *op_attr,
+		 const struct rte_flow_indir_action_conf *indir_action_conf,
+		 const struct rte_flow_action *action,
+		 void *user_data,
+		 struct rte_flow_error *err);
+	/** See rte_flow_async_action_handle_destroy() */
+	int (*async_action_handle_destroy)
+		(struct rte_eth_dev *dev,
+		 uint32_t queue_id,
+		 const struct rte_flow_op_attr *op_attr,
+		 struct rte_flow_action_handle *action_handle,
+		 void *user_data,
+		 struct rte_flow_error *error);
+	/** See rte_flow_async_action_handle_update() */
+	int (*async_action_handle_update)
+		(struct rte_eth_dev *dev,
+		 uint32_t queue_id,
+		 const struct rte_flow_op_attr *op_attr,
+		 struct rte_flow_action_handle *action_handle,
+		 const void *update,
+		 void *user_data,
+		 struct rte_flow_error *error);
 };
 
 /**

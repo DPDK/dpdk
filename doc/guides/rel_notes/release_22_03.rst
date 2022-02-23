@@ -92,6 +92,11 @@ New Features
     ``rte_flow_pull`` to poll and retrieve results of these operations and
     ``rte_flow_push`` to push all the in-flight	operations to the NIC.
 
+  * Added asynchronous API for indirect actions management:
+    ``rte_flow_async_action_handle_create``,
+    ``rte_flow_async_action_handle_destroy`` and
+    ``rte_flow_async_action_handle_update``.
+
 * **Added rte_flow support for matching GRE optional fields.**
 
   Added ``gre_option`` item in rte_flow to support checksum/key/sequence

@@ -3861,6 +3861,56 @@ Enqueueing a flow rule destruction operation is similar to simple destruction.
                           void *user_data,
                           struct rte_flow_error *error);
 
+Enqueue indirect action creation operation
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Asynchronous version of indirect action creation API.
+
+.. code-block:: c
+
+   struct rte_flow_action_handle *
+   rte_flow_async_action_handle_create(uint16_t port_id,
+           uint32_t queue_id,
+           const struct rte_flow_op_attr *q_ops_attr,
+           const struct rte_flow_indir_action_conf *indir_action_conf,
+           const struct rte_flow_action *action,
+           void *user_data,
+           struct rte_flow_error *error);
+
+A valid handle in case of success is returned. It must be destroyed later by
+``rte_flow_async_action_handle_destroy()`` even if the rule was rejected.
+
+Enqueue indirect action destruction operation
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Asynchronous version of indirect action destruction API.
+
+.. code-block:: c
+
+   int
+   rte_flow_async_action_handle_destroy(uint16_t port_id,
+           uint32_t queue_id,
+           const struct rte_flow_op_attr *q_ops_attr,
+           struct rte_flow_action_handle *action_handle,
+           void *user_data,
+           struct rte_flow_error *error);
+
+Enqueue indirect action update operation
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Asynchronous version of indirect action update API.
+
+.. code-block:: c
+
+   int
+   rte_flow_async_action_handle_update(uint16_t port_id,
+           uint32_t queue_id,
+           const struct rte_flow_op_attr *q_ops_attr,
+           struct rte_flow_action_handle *action_handle,
+           const void *update,
+           void *user_data,
+           struct rte_flow_error *error);
+
 Push enqueued operations
 ~~~~~~~~~~~~~~~~~~~~~~~~
 

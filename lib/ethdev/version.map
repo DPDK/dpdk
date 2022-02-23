@@ -276,6 +276,9 @@ EXPERIMENTAL {
 	rte_flow_async_destroy;
 	rte_flow_push;
 	rte_flow_pull;
+	rte_flow_async_action_handle_create;
+	rte_flow_async_action_handle_destroy;
+	rte_flow_async_action_handle_update;
 };
 
 INTERNAL {
