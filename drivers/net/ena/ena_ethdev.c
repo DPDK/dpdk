@@ -62,6 +62,10 @@ struct ena_stats {
 
 /* Device arguments */
 #define ENA_DEVARG_LARGE_LLQ_HDR "large_llq_hdr"
+/* Timeout in seconds after which a single uncompleted Tx packet should be
+ * considered as a missing.
+ */
+#define ENA_DEVARG_MISS_TXC_TO "miss_txc_to"
 
 /*
  * Each rte_memzone should have unique name.
@@ -2132,6 +2136,8 @@ static int eth_ena_dev_init(struct rte_eth_dev *eth_dev)
 	snprintf(adapter->name, ENA_NAME_MAX_LEN, "ena_%d",
 		 adapter->id_number);
 
+	adapter->missing_tx_completion_to = ENA_TX_TIMEOUT;
+
 	rc = ena_parse_devargs(adapter, pci_dev->device.devargs);
 	if (rc != 0) {
 		PMD_INIT_LOG(CRIT, "Failed to parse devargs\n");
@@ -2307,7 +2313,6 @@ static int ena_dev_configure(struct rte_eth_dev *dev)
 	adapter->missing_tx_completion_budget =
 		RTE_MIN(ENA_MONITORED_TX_QUEUES, dev->data->nb_tx_queues);
 
-	adapter->missing_tx_completion_to = ENA_TX_TIMEOUT;
 	/* To avoid detection of the spurious Tx completion timeout due to
 	 * application not calling the Tx cleanup function, set timeout for the
 	 * Tx queue which should be half of the missing completion timeout for a
@@ -2829,20 +2834,6 @@ static void ena_update_hints(struct ena_adapter *adapter,
 		/* convert to usec */
 		adapter->ena_dev.mmio_read.reg_read_to =
 			hints->mmio_read_timeout * 1000;
-
-	if (hints->missing_tx_completion_timeout) {
-		if (hints->missing_tx_completion_timeout ==
-		    ENA_HW_HINTS_NO_TIMEOUT) {
-			adapter->missing_tx_completion_to =
-				ENA_HW_HINTS_NO_TIMEOUT;
-		} else {
-			/* Convert from msecs to ticks */
-			adapter->missing_tx_completion_to = rte_get_timer_hz() *
-				hints->missing_tx_completion_timeout / 1000;
-			adapter->tx_cleanup_stall_delay =
-				adapter->missing_tx_completion_to / 2;
-		}
-	}
 
 	if (hints->driver_watchdog_timeout) {
 		if (hints->driver_watchdog_timeout == ENA_HW_HINTS_NO_TIMEOUT)
@@ -3396,6 +3387,45 @@ static int ena_xstats_get_by_id(struct rte_eth_dev *dev,
 	return valid;
 }
 
+static int ena_process_uint_devarg(const char *key,
+				  const char *value,
+				  void *opaque)
+{
+	struct ena_adapter *adapter = opaque;
+	char *str_end;
+	uint64_t uint_value;
+
+	uint_value = strtoull(value, &str_end, 10);
+	if (value == str_end) {
+		PMD_INIT_LOG(ERR,
+			"Invalid value for key '%s'. Only uint values are accepted.\n",
+			key);
+		return -EINVAL;
+	}
+
+	if (strcmp(key, ENA_DEVARG_MISS_TXC_TO) == 0) {
+		if (uint_value > ENA_MAX_TX_TIMEOUT_SECONDS) {
+			PMD_INIT_LOG(ERR,
+				"Tx timeout too high: %" PRIu64 " sec. Maximum allowed: %d sec.\n",
+				uint_value, ENA_MAX_TX_TIMEOUT_SECONDS);
+			return -EINVAL;
+		} else if (uint_value == 0) {
+			PMD_INIT_LOG(INFO,
+				"Check for missing Tx completions has been disabled.\n");
+			adapter->missing_tx_completion_to =
+				ENA_HW_HINTS_NO_TIMEOUT;
+		} else {
+			PMD_INIT_LOG(INFO,
+				"Tx packet completion timeout set to %" PRIu64 " seconds.\n",
+				uint_value);
+			adapter->missing_tx_completion_to =
+				uint_value * rte_get_timer_hz();
+		}
+	}
+
+	return 0;
+}
+
 static int ena_process_bool_devarg(const char *key,
 				   const char *value,
 				   void *opaque)
@@ -3427,6 +3457,7 @@ static int ena_parse_devargs(struct ena_adapter *adapter,
 {
 	static const char * const allowed_args[] = {
 		ENA_DEVARG_LARGE_LLQ_HDR,
+		ENA_DEVARG_MISS_TXC_TO,
 		NULL,
 	};
 	struct rte_kvargs *kvlist;
@@ -3444,7 +3475,12 @@ static int ena_parse_devargs(struct ena_adapter *adapter,
 
 	rc = rte_kvargs_process(kvlist, ENA_DEVARG_LARGE_LLQ_HDR,
 		ena_process_bool_devarg, adapter);
+	if (rc != 0)
+		goto exit;
+	rc = rte_kvargs_process(kvlist, ENA_DEVARG_MISS_TXC_TO,
+		ena_process_uint_devarg, adapter);
 
+exit:
 	rte_kvargs_free(kvlist);
 
 	return rc;

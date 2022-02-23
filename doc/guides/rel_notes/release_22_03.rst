@@ -115,6 +115,7 @@ New Features
   * Added ENA admin queue support for the MP applications.
   * Added free Tx mbuf on demand feature support.
   * Added ``rte_eth_xstats_get_names_by_id`` API support.
+  * Added ``miss_txc_to`` device argument for setting the Tx completion timeout.
 
 * **Updated Cisco enic driver.**
 

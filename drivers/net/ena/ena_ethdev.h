@@ -40,6 +40,7 @@
 #define ENA_DEVICE_KALIVE_TIMEOUT (ENA_WD_TIMEOUT_SEC * rte_get_timer_hz())
 
 #define ENA_TX_TIMEOUT			(5 * rte_get_timer_hz())
+#define ENA_MAX_TX_TIMEOUT_SECONDS	60
 #define ENA_MONITORED_TX_QUEUES		3
 #define ENA_DEFAULT_MISSING_COMP	256U
 
