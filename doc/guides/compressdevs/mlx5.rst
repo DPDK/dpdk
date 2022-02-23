@@ -7,7 +7,7 @@ MLX5 compress driver
 ====================
 
 The MLX5 compress driver library
-(**librte_compress_mlx5**) provides support for **Mellanox BlueField 2**
+(**librte_compress_mlx5**) provides support for **Mellanox BlueField-2**
 families of 25/50/100/200 Gb/s adapters.
 
 Design
@@ -21,7 +21,7 @@ These engines are part of the ARM complex of the BlueField chip, and as
 such they do not use NIC related resources (e.g. RX/TX bandwidth).
 They do share the same PCI and memory bandwidth.
 
-So, using the BlueField device (starting from BlueField 2), the compress
+So, using the BlueField device (starting from BlueField-2), the compress
 class operations can be supported in parallel to the net, vDPA and
 RegEx class operations.
 
@@ -95,7 +95,7 @@ Driver options
 Supported NICs
 --------------
 
-* Mellanox\ |reg| BlueField 2 SmartNIC
+* Mellanox\ |reg| BlueField-2 SmartNIC
 
 Prerequisites
 -------------

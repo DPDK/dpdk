@@ -250,7 +250,7 @@ Limitations
 
 - Flex item:
 
-  - Hardware support: BlueField 2.
+  - Hardware support: BlueField-2.
   - Flex item is supported on PF only.
   - Hardware limits ``header_length_mask_width`` up to 6 bits.
   - Firmware supports 8 global sample fields.
