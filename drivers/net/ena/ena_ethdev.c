@@ -170,7 +170,7 @@ static void ena_tx_map_mbuf(struct ena_ring *tx_ring,
 	void **push_header,
 	uint16_t *header_len);
 static int ena_xmit_mbuf(struct ena_ring *tx_ring, struct rte_mbuf *mbuf);
-static void ena_tx_cleanup(struct ena_ring *tx_ring);
+static int ena_tx_cleanup(void *txp, uint32_t free_pkt_cnt);
 static uint16_t eth_ena_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 				  uint16_t nb_pkts);
 static uint16_t eth_ena_prep_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
@@ -276,6 +276,7 @@ static const struct eth_dev_ops ena_dev_ops = {
 	.rx_queue_intr_disable = ena_rx_queue_intr_disable,
 	.rss_hash_update      = ena_rss_hash_update,
 	.rss_hash_conf_get    = ena_rss_hash_conf_get,
+	.tx_done_cleanup      = ena_tx_cleanup,
 };
 
 /*********************************************************************
@@ -2990,16 +2991,22 @@ static int ena_xmit_mbuf(struct ena_ring *tx_ring, struct rte_mbuf *mbuf)
 	return 0;
 }
 
-static void ena_tx_cleanup(struct ena_ring *tx_ring)
+static int ena_tx_cleanup(void *txp, uint32_t free_pkt_cnt)
 {
+	struct ena_ring *tx_ring = (struct ena_ring *)txp;
 	unsigned int total_tx_descs = 0;
+	unsigned int total_tx_pkts = 0;
 	uint16_t cleanup_budget;
 	uint16_t next_to_clean = tx_ring->next_to_clean;
 
-	/* Attempt to release all Tx descriptors (ring_size - 1 -> size_mask) */
-	cleanup_budget = tx_ring->size_mask;
+	/*
+	 * If free_pkt_cnt is equal to 0, it means that the user requested
+	 * full cleanup, so attempt to release all Tx descriptors
+	 * (ring_size - 1 -> size_mask)
+	 */
+	cleanup_budget = (free_pkt_cnt == 0) ? tx_ring->size_mask : free_pkt_cnt;
 
-	while (likely(total_tx_descs < cleanup_budget)) {
+	while (likely(total_tx_pkts < cleanup_budget)) {
 		struct rte_mbuf *mbuf;
 		struct ena_tx_buffer *tx_info;
 		uint16_t req_id;
@@ -3021,6 +3028,7 @@ static void ena_tx_cleanup(struct ena_ring *tx_ring)
 		tx_ring->empty_tx_reqs[next_to_clean] = req_id;
 
 		total_tx_descs += tx_info->tx_descs;
+		total_tx_pkts++;
 
 		/* Put back descriptor to the ring for reuse */
 		next_to_clean = ENA_IDX_NEXT_MASKED(next_to_clean,
@@ -3034,8 +3042,11 @@ static void ena_tx_cleanup(struct ena_ring *tx_ring)
 		ena_com_update_dev_comp_head(tx_ring->ena_com_io_cq);
 	}
 
-	/* Notify completion handler that the cleanup was just called */
-	tx_ring->last_cleanup_ticks = rte_get_timer_cycles();
+	/* Notify completion handler that full cleanup was performed */
+	if (free_pkt_cnt == 0 || total_tx_pkts < cleanup_budget)
+		tx_ring->last_cleanup_ticks = rte_get_timer_cycles();
+
+	return total_tx_pkts;
 }
 
 static uint16_t eth_ena_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
@@ -3056,7 +3067,7 @@ static uint16_t eth_ena_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 
 	available_desc = ena_com_free_q_entries(tx_ring->ena_com_io_sq);
 	if (available_desc < tx_ring->tx_free_thresh)
-		ena_tx_cleanup(tx_ring);
+		ena_tx_cleanup((void *)tx_ring, 0);
 
 	for (sent_idx = 0; sent_idx < nb_pkts; sent_idx++) {
 		if (ena_xmit_mbuf(tx_ring, tx_pkts[sent_idx]))

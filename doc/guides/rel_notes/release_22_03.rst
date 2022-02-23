@@ -113,6 +113,7 @@ New Features
   * Added support for the link status configuration.
   * Added optimized memcpy support for the ARM platforms.
   * Added ENA admin queue support for the MP applications.
+  * Added free Tx mbuf on demand feature support.
 
 * **Updated Cisco enic driver.**
 
