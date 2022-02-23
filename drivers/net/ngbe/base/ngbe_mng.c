@@ -26,10 +26,8 @@ ngbe_hic_unlocked(struct ngbe_hw *hw, u32 *buffer, u32 length, u32 timeout)
 	u32 value, loop;
 	u16 i, dword_len;
 
-	DEBUGFUNC("ngbe_hic_unlocked");
-
 	if (!length || length > NGBE_PMMBX_BSIZE) {
-		DEBUGOUT("Buffer length failure buffersize=%d.\n", length);
+		DEBUGOUT("Buffer length failure buffersize=%d.", length);
 		return NGBE_ERR_HOST_INTERFACE_COMMAND;
 	}
 
@@ -59,7 +57,7 @@ ngbe_hic_unlocked(struct ngbe_hw *hw, u32 *buffer, u32 length, u32 timeout)
 		NGBE_MNGMBXCTL_FWRDY, NGBE_MNGMBXCTL_FWRDY,
 		&value, timeout, 1000);
 	if (!loop || !(value & NGBE_MNGMBXCTL_FWACK)) {
-		DEBUGOUT("Command has failed with no status valid.\n");
+		DEBUGOUT("Command has failed with no status valid.");
 		return NGBE_ERR_HOST_INTERFACE_COMMAND;
 	}
 
@@ -95,10 +93,8 @@ ngbe_host_interface_command(struct ngbe_hw *hw, u32 *buffer,
 	u32 bi;
 	u32 dword_len;
 
-	DEBUGFUNC("ngbe_host_interface_command");
-
 	if (length == 0 || length > NGBE_PMMBX_BSIZE) {
-		DEBUGOUT("Buffer length failure buffersize=%d.\n", length);
+		DEBUGOUT("Buffer length failure buffersize=%d.", length);
 		return NGBE_ERR_HOST_INTERFACE_COMMAND;
 	}
 
@@ -140,7 +136,7 @@ ngbe_host_interface_command(struct ngbe_hw *hw, u32 *buffer,
 		goto rel_out;
 
 	if (length < buf_len + hdr_size) {
-		DEBUGOUT("Buffer not large enough for reply message.\n");
+		DEBUGOUT("Buffer not large enough for reply message.");
 		err = NGBE_ERR_HOST_INTERFACE_COMMAND;
 		goto rel_out;
 	}
@@ -305,8 +301,6 @@ s32 ngbe_hic_check_cap(struct ngbe_hw *hw)
 	struct ngbe_hic_read_shadow_ram command;
 	s32 err;
 	int i;
-
-	DEBUGFUNC("\n");
 
 	command.hdr.req.cmd = FW_EEPROM_CHECK_STATUS;
 	command.hdr.req.buf_lenh = 0;

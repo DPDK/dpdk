@@ -54,8 +54,6 @@ s32 ngbe_init_phy_mvl(struct ngbe_hw *hw)
 	u16 value = 0;
 	int i;
 
-	DEBUGFUNC("ngbe_init_phy_mvl");
-
 	/* enable interrupts, only link status change and an done is allowed */
 	ngbe_write_phy_reg_mdi(hw, MVL_PAGE_SEL, 0, 2);
 	ngbe_read_phy_reg_mdi(hw, MVL_RGM_CTL2, 0, &value);
@@ -73,7 +71,7 @@ s32 ngbe_init_phy_mvl(struct ngbe_hw *hw)
 	}
 
 	if (i == 15) {
-		DEBUGOUT("phy reset exceeds maximum waiting period.\n");
+		DEBUGOUT("phy reset exceeds maximum waiting period.");
 		return NGBE_ERR_TIMEOUT;
 	}
 
@@ -119,7 +117,6 @@ s32 ngbe_setup_phy_link_mvl(struct ngbe_hw *hw, u32 speed,
 	u16 value_r9 = 0;
 	u16 value;
 
-	DEBUGFUNC("ngbe_setup_phy_link_mvl");
 	UNREFERENCED_PARAMETER(autoneg_wait_to_complete);
 
 	hw->phy.autoneg_advertised = 0;
@@ -176,8 +173,6 @@ s32 ngbe_reset_phy_mvl(struct ngbe_hw *hw)
 	u16 ctrl = 0;
 	s32 status = 0;
 
-	DEBUGFUNC("ngbe_reset_phy_mvl");
-
 	if (hw->phy.type != ngbe_phy_mvl && hw->phy.type != ngbe_phy_mvl_sfi)
 		return NGBE_ERR_PHY_TYPE;
 
@@ -202,7 +197,7 @@ s32 ngbe_reset_phy_mvl(struct ngbe_hw *hw)
 	}
 
 	if (i == MVL_PHY_RST_WAIT_PERIOD) {
-		DEBUGOUT("PHY reset polling failed to complete.\n");
+		DEBUGOUT("PHY reset polling failed to complete.");
 		return NGBE_ERR_RESET_FAILED;
 	}
 
@@ -250,8 +245,6 @@ s32 ngbe_set_phy_pause_adv_mvl(struct ngbe_hw *hw, u16 pause_bit)
 	u16 value;
 	s32 status = 0;
 
-	DEBUGFUNC("ngbe_set_phy_pause_adv_mvl");
-
 	if (hw->phy.type == ngbe_phy_mvl) {
 		status = hw->phy.read_reg(hw, MVL_ANA, 0, &value);
 		value &= ~(MVL_CANA_ASM_PAUSE | MVL_CANA_PAUSE);
@@ -274,8 +267,6 @@ s32 ngbe_check_phy_link_mvl(struct ngbe_hw *hw,
 	u16 phy_speed = 0;
 	u16 phy_data = 0;
 	u16 insr = 0;
-
-	DEBUGFUNC("ngbe_check_phy_link_mvl");
 
 	/* Initialize speed and link to default case */
 	*link_up = false;

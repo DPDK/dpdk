@@ -102,8 +102,6 @@ s32 ngbe_init_phy_yt(struct ngbe_hw *hw)
 {
 	u16 value = 0;
 
-	DEBUGFUNC("ngbe_init_phy_yt");
-
 	if (hw->phy.type != ngbe_phy_yt8521s_sfi)
 		return 0;
 
@@ -131,7 +129,6 @@ s32 ngbe_setup_phy_link_yt(struct ngbe_hw *hw, u32 speed,
 	u16 value_r9 = 0;
 	u16 value;
 
-	DEBUGFUNC("ngbe_setup_phy_link_yt");
 	UNREFERENCED_PARAMETER(autoneg_wait_to_complete);
 
 	hw->phy.autoneg_advertised = 0;
@@ -208,8 +205,6 @@ s32 ngbe_reset_phy_yt(struct ngbe_hw *hw)
 	u16 ctrl = 0;
 	s32 status = 0;
 
-	DEBUGFUNC("ngbe_reset_phy_yt");
-
 	if (hw->phy.type != ngbe_phy_yt8521s &&
 		hw->phy.type != ngbe_phy_yt8521s_sfi)
 		return NGBE_ERR_PHY_TYPE;
@@ -227,7 +222,7 @@ s32 ngbe_reset_phy_yt(struct ngbe_hw *hw)
 	}
 
 	if (i == YT_PHY_RST_WAIT_PERIOD) {
-		DEBUGOUT("PHY reset polling failed to complete.\n");
+		DEBUGOUT("PHY reset polling failed to complete.");
 		return NGBE_ERR_RESET_FAILED;
 	}
 
@@ -238,8 +233,6 @@ s32 ngbe_get_phy_advertised_pause_yt(struct ngbe_hw *hw, u8 *pause_bit)
 {
 	u16 value;
 	s32 status = 0;
-
-	DEBUGFUNC("ngbe_get_phy_advertised_pause_yt");
 
 	status = hw->phy.read_reg(hw, YT_ANA, 0, &value);
 	value &= YT_FANA_PAUSE_MASK;
@@ -253,8 +246,6 @@ s32 ngbe_get_phy_lp_advertised_pause_yt(struct ngbe_hw *hw, u8 *pause_bit)
 	u16 value;
 	s32 status = 0;
 
-	DEBUGFUNC("ngbe_get_phy_lp_advertised_pause_yt");
-
 	status = hw->phy.read_reg(hw, YT_LPAR, 0, &value);
 	value &= YT_FLPAR_PAUSE_MASK;
 	*pause_bit = (u8)(value >> 7);
@@ -266,9 +257,6 @@ s32 ngbe_set_phy_pause_adv_yt(struct ngbe_hw *hw, u16 pause_bit)
 {
 	u16 value;
 	s32 status = 0;
-
-	DEBUGFUNC("ngbe_set_phy_pause_adv_yt");
-
 
 	status = hw->phy.read_reg(hw, YT_ANA, 0, &value);
 	value &= ~YT_FANA_PAUSE_MASK;
@@ -286,8 +274,6 @@ s32 ngbe_check_phy_link_yt(struct ngbe_hw *hw,
 	u16 phy_speed = 0;
 	u16 phy_data = 0;
 	u16 insr = 0;
-
-	DEBUGFUNC("ngbe_check_phy_link_yt");
 
 	/* Initialize speed and link to default case */
 	*link_up = false;

@@ -46,7 +46,7 @@ s32 ngbe_mdi_map_register(mdi_reg_t *reg, mdi_reg_22_t *reg22)
 static bool ngbe_probe_phy(struct ngbe_hw *hw, u16 phy_addr)
 {
 	if (!ngbe_validate_phy_addr(hw, phy_addr)) {
-		DEBUGOUT("Unable to validate PHY address 0x%04X\n",
+		DEBUGOUT("Unable to validate PHY address 0x%04X",
 			phy_addr);
 		return false;
 	}
@@ -71,8 +71,6 @@ s32 ngbe_identify_phy(struct ngbe_hw *hw)
 {
 	s32 err = NGBE_ERR_PHY_ADDR_INVALID;
 	u16 phy_addr;
-
-	DEBUGFUNC("ngbe_identify_phy");
 
 	if (hw->phy.type != ngbe_phy_unknown)
 		return 0;
@@ -103,11 +101,9 @@ s32 ngbe_check_reset_blocked(struct ngbe_hw *hw)
 {
 	u32 mmngc;
 
-	DEBUGFUNC("ngbe_check_reset_blocked");
-
 	mmngc = rd32(hw, NGBE_STAT);
 	if (mmngc & NGBE_STAT_MNGVETO) {
-		DEBUGOUT("MNG_VETO bit detected.\n");
+		DEBUGOUT("MNG_VETO bit detected.");
 		return true;
 	}
 
@@ -125,8 +121,6 @@ bool ngbe_validate_phy_addr(struct ngbe_hw *hw, u32 phy_addr)
 	u16 phy_id = 0;
 	bool valid = false;
 
-	DEBUGFUNC("ngbe_validate_phy_addr");
-
 	if (hw->sub_device_id == NGBE_SUB_DEV_ID_EM_YT8521S_SFP)
 		return true;
 
@@ -137,7 +131,7 @@ bool ngbe_validate_phy_addr(struct ngbe_hw *hw, u32 phy_addr)
 	if (phy_id != 0xFFFF && phy_id != 0x0)
 		valid = true;
 
-	DEBUGOUT("PHY ID HIGH is 0x%04X\n", phy_id);
+	DEBUGOUT("PHY ID HIGH is 0x%04X", phy_id);
 
 	return valid;
 }
@@ -153,8 +147,6 @@ s32 ngbe_get_phy_id(struct ngbe_hw *hw)
 	u16 phy_id_high = 0;
 	u16 phy_id_low = 0;
 
-	DEBUGFUNC("ngbe_get_phy_id");
-
 	err = hw->phy.read_reg(hw, NGBE_MD_PHY_ID_HIGH,
 				      NGBE_MD_DEV_PMA_PMD,
 				      &phy_id_high);
@@ -166,7 +158,7 @@ s32 ngbe_get_phy_id(struct ngbe_hw *hw)
 	hw->phy.id |= (u32)(phy_id_low & NGBE_PHY_REVISION_MASK);
 	hw->phy.revision = (u32)(phy_id_low & ~NGBE_PHY_REVISION_MASK);
 
-	DEBUGOUT("PHY_ID_HIGH 0x%04X, PHY_ID_LOW 0x%04X\n",
+	DEBUGOUT("PHY_ID_HIGH 0x%04X, PHY_ID_LOW 0x%04X",
 		  phy_id_high, phy_id_low);
 
 	return err;
@@ -180,8 +172,6 @@ s32 ngbe_get_phy_id(struct ngbe_hw *hw)
 enum ngbe_phy_type ngbe_get_phy_type_from_id(struct ngbe_hw *hw)
 {
 	enum ngbe_phy_type phy_type;
-
-	DEBUGFUNC("ngbe_get_phy_type_from_id");
 
 	switch (hw->phy.id) {
 	case NGBE_PHYID_RTL:
@@ -214,8 +204,6 @@ enum ngbe_phy_type ngbe_get_phy_type_from_id(struct ngbe_hw *hw)
 s32 ngbe_reset_phy(struct ngbe_hw *hw)
 {
 	s32 err = 0;
-
-	DEBUGFUNC("ngbe_reset_phy");
 
 	if (hw->phy.type == ngbe_phy_unknown)
 		err = ngbe_identify_phy(hw);
@@ -281,7 +269,7 @@ s32 ngbe_read_phy_reg_mdi(struct ngbe_hw *hw, u32 reg_addr, u32 device_type,
 	 */
 	if (!po32m(hw, NGBE_MDIOSCD, NGBE_MDIOSCD_BUSY,
 		0, NULL, 100, 100)) {
-		DEBUGOUT("PHY address command did not complete\n");
+		DEBUGOUT("PHY address command did not complete");
 		return NGBE_ERR_PHY;
 	}
 
@@ -304,8 +292,6 @@ s32 ngbe_read_phy_reg(struct ngbe_hw *hw, u32 reg_addr,
 {
 	s32 err;
 	u32 gssr = hw->phy.phy_semaphore_mask;
-
-	DEBUGFUNC("ngbe_read_phy_reg");
 
 	if (hw->mac.acquire_swfw_sync(hw, gssr))
 		return NGBE_ERR_SWFW_SYNC;
@@ -346,7 +332,7 @@ s32 ngbe_write_phy_reg_mdi(struct ngbe_hw *hw, u32 reg_addr,
 	/* wait for completion */
 	if (!po32m(hw, NGBE_MDIOSCD, NGBE_MDIOSCD_BUSY,
 		0, NULL, 100, 100)) {
-		TLOG_DEBUG("PHY write cmd didn't complete\n");
+		DEBUGOUT("PHY write cmd didn't complete");
 		return NGBE_ERR_PHY;
 	}
 
@@ -366,8 +352,6 @@ s32 ngbe_write_phy_reg(struct ngbe_hw *hw, u32 reg_addr,
 {
 	s32 err;
 	u32 gssr = hw->phy.phy_semaphore_mask;
-
-	DEBUGFUNC("ngbe_write_phy_reg");
 
 	if (hw->mac.acquire_swfw_sync(hw, gssr))
 		err = NGBE_ERR_SWFW_SYNC;
@@ -393,8 +377,6 @@ s32 ngbe_init_phy(struct ngbe_hw *hw)
 {
 	struct ngbe_phy_info *phy = &hw->phy;
 	s32 err = 0;
-
-	DEBUGFUNC("ngbe_init_phy");
 
 	hw->phy.addr = 0;
 

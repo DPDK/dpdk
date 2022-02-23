@@ -37,10 +37,7 @@ extern int ngbe_logtype_tx;
 #define PMD_TX_LOG(level, fmt, args...) do { } while (0)
 #endif
 
-#define TLOG_DEBUG(fmt, args...)  PMD_DRV_LOG(DEBUG, fmt, ##args)
-
-#define DEBUGOUT(fmt, args...)    TLOG_DEBUG(fmt, ##args)
-#define PMD_INIT_FUNC_TRACE()     TLOG_DEBUG(" >>")
-#define DEBUGFUNC(fmt)            TLOG_DEBUG(fmt)
+#define DEBUGOUT(fmt, args...)    PMD_DRV_LOG(DEBUG, fmt, ##args)
+#define PMD_INIT_FUNC_TRACE()     PMD_DRV_LOG(DEBUG, ">>")
 
 #endif /* _NGBE_LOGS_H_ */

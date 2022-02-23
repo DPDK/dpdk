@@ -57,7 +57,7 @@ s32 ngbe_init_phy_rtl(struct ngbe_hw *hw)
 		msec_delay(10);
 	}
 	if (i == 15) {
-		DEBUGOUT("GPhy reset exceeds maximum times.\n");
+		DEBUGOUT("GPhy reset exceeds maximum times.");
 		return NGBE_ERR_PHY_TIMEOUT;
 	}
 
@@ -108,8 +108,6 @@ s32 ngbe_setup_phy_link_rtl(struct ngbe_hw *hw,
 	u16 autoneg_reg = NGBE_MII_AUTONEG_REG;
 	u16 value = 0;
 
-	DEBUGFUNC("ngbe_setup_phy_link_rtl");
-
 	UNREFERENCED_PARAMETER(autoneg_wait_to_complete);
 
 	hw->phy.read_reg(hw, RTL_INSR, 0xa43, &autoneg_reg);
@@ -129,7 +127,7 @@ s32 ngbe_setup_phy_link_rtl(struct ngbe_hw *hw,
 			break;
 		default:
 			value = RTL_BMCR_SPEED_SELECT1 | RTL_BMCR_SPEED_SELECT0;
-			DEBUGOUT("unknown speed = 0x%x.\n", speed);
+			DEBUGOUT("unknown speed = 0x%x.", speed);
 			break;
 		}
 		/* duplex full */
@@ -229,8 +227,6 @@ s32 ngbe_reset_phy_rtl(struct ngbe_hw *hw)
 	u16 value = 0, i;
 	s32 status = 0;
 
-	DEBUGFUNC("ngbe_reset_phy_rtl");
-
 	value |= RTL_BMCR_RESET;
 	status = hw->phy.write_reg(hw, RTL_BMCR, RTL_DEV_ZERO, value);
 
@@ -298,8 +294,6 @@ s32 ngbe_check_phy_link_rtl(struct ngbe_hw *hw, u32 *speed, bool *link_up)
 	u16 phy_speed = 0;
 	u16 phy_data = 0;
 	u16 insr = 0;
-
-	DEBUGFUNC("ngbe_check_phy_link_rtl");
 
 	hw->phy.read_reg(hw, RTL_INSR, 0xa43, &insr);
 

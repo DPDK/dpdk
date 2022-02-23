@@ -20,8 +20,6 @@ s32 ngbe_init_eeprom_params(struct ngbe_hw *hw)
 	u32 eec;
 	u16 eeprom_size;
 
-	DEBUGFUNC("ngbe_init_eeprom_params");
-
 	if (eeprom->type != ngbe_eeprom_unknown)
 		return 0;
 
@@ -52,8 +50,8 @@ s32 ngbe_init_eeprom_params(struct ngbe_hw *hw)
 	eeprom->address_bits = 16;
 	eeprom->sw_addr = 0x80;
 
-	DEBUGOUT("eeprom params: type = %d, size = %d, address bits: "
-		  "%d %d\n", eeprom->type, eeprom->word_size,
+	DEBUGOUT("eeprom params: type = %d, size = %d, address bits: %d %d",
+		  eeprom->type, eeprom->word_size,
 		  eeprom->address_bits, eeprom->sw_addr);
 
 	return 0;
@@ -72,9 +70,6 @@ s32 ngbe_get_eeprom_semaphore(struct ngbe_hw *hw)
 	u32 i;
 	u32 swsm;
 
-	DEBUGFUNC("ngbe_get_eeprom_semaphore");
-
-
 	/* Get SMBI software semaphore between device drivers first */
 	for (i = 0; i < timeout; i++) {
 		/*
@@ -90,8 +85,7 @@ s32 ngbe_get_eeprom_semaphore(struct ngbe_hw *hw)
 	}
 
 	if (i == timeout) {
-		DEBUGOUT("Driver can't access the eeprom - SMBI Semaphore "
-			 "not granted.\n");
+		DEBUGOUT("Driver can't access the eeprom - SMBI Semaphore not granted.");
 		/*
 		 * this release is particularly important because our attempts
 		 * above to get the semaphore may have succeeded, and if there
@@ -134,13 +128,12 @@ s32 ngbe_get_eeprom_semaphore(struct ngbe_hw *hw)
 		 * was not granted because we don't have access to the EEPROM
 		 */
 		if (i >= timeout) {
-			DEBUGOUT("SWESMBI Software EEPROM semaphore not granted.\n");
+			DEBUGOUT("SWESMBI Software EEPROM semaphore not granted.");
 			ngbe_release_eeprom_semaphore(hw);
 			status = NGBE_ERR_EEPROM;
 		}
 	} else {
-		DEBUGOUT("Software semaphore SMBI between device drivers "
-			 "not granted.\n");
+		DEBUGOUT("Software semaphore SMBI between device drivers not granted.");
 	}
 
 	return status;
@@ -154,8 +147,6 @@ s32 ngbe_get_eeprom_semaphore(struct ngbe_hw *hw)
  **/
 void ngbe_release_eeprom_semaphore(struct ngbe_hw *hw)
 {
-	DEBUGFUNC("ngbe_release_eeprom_semaphore");
-
 	wr32m(hw, NGBE_MNGSWSYNC, NGBE_MNGSWSYNC_REQ, 0);
 	wr32m(hw, NGBE_SWSEM, NGBE_SWSEM_PF, 0);
 	ngbe_flush(hw);
@@ -276,7 +267,6 @@ s32 ngbe_validate_eeprom_checksum_em(struct ngbe_hw *hw,
 	u32 eeprom_cksum_devcap = 0;
 	int err = 0;
 
-	DEBUGFUNC("ngbe_validate_eeprom_checksum_em");
 	UNREFERENCED_PARAMETER(checksum_val);
 
 	/* Check EEPROM only once */
@@ -314,8 +304,6 @@ s32 ngbe_save_eeprom_version(struct ngbe_hw *hw)
 	u32 eeprom_verl = 0;
 	u32 etrack_id = 0;
 	u32 offset = (hw->rom.sw_addr + NGBE_EEPROM_VERSION_L) << 1;
-
-	DEBUGFUNC("ngbe_save_eeprom_version");
 
 	if (hw->bus.lan_id == 0) {
 		hw->rom.read32(hw, offset, &eeprom_verl);
