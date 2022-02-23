@@ -368,6 +368,8 @@ print_usage(const char *prgname)
 		" [-P]"
 		" [--lookup]"
 		" --config (port,queue,lcore)[,(port,queue,lcore)]"
+		" [--rx-queue-size NPKTS]"
+		" [--tx-queue-size NPKTS]"
 		" [--eth-dest=X,MM:MM:MM:MM:MM:MM]"
 		" [--max-pkt-len PKTLEN]"
 		" [--no-numa]"
@@ -387,6 +389,10 @@ print_usage(const char *prgname)
 		"            Default: lpm\n"
 		"            Accepted: em (Exact Match), lpm (Longest Prefix Match), fib (Forwarding Information Base)\n"
 		"  --config (port,queue,lcore): Rx queue configuration\n"
+		"  --rx-queue-size NPKTS: Rx queue size in decimal\n"
+		"            Default: %d\n"
+		"  --tx-queue-size NPKTS: Tx queue size in decimal\n"
+		"            Default: %d\n"
 		"  --eth-dest=X,MM:MM:MM:MM:MM:MM: Ethernet destination for port X\n"
 		"  --max-pkt-len PKTLEN: maximum packet length in decimal (64-9600)\n"
 		"  --no-numa: Disable numa awareness\n"
@@ -411,7 +417,7 @@ print_usage(const char *prgname)
 		"  --rule_ipv4=FILE: Specify the ipv4 rules entries file.\n"
 		"                    Each rule occupies one line.\n"
 		"  --rule_ipv6=FILE: Specify the ipv6 rules entries file.\n\n",
-		prgname);
+		prgname, RTE_TEST_RX_DESC_DEFAULT, RTE_TEST_TX_DESC_DEFAULT);
 }
 
 static int
@@ -555,6 +561,38 @@ parse_mode(const char *optarg)
 }
 
 static void
+parse_queue_size(const char *queue_size_arg, uint16_t *queue_size, int rx)
+{
+	char *end = NULL;
+	unsigned long value;
+
+	/* parse decimal string */
+	value = strtoul(queue_size_arg, &end, 10);
+	if ((queue_size_arg[0] == '\0') || (end == NULL) ||
+		(*end != '\0') || (value == 0)) {
+		if (rx == 1)
+			rte_exit(EXIT_FAILURE, "Invalid rx-queue-size\n");
+		else
+			rte_exit(EXIT_FAILURE, "Invalid tx-queue-size\n");
+
+		return;
+	}
+
+	if (value > UINT16_MAX) {
+		if (rx == 1)
+			rte_exit(EXIT_FAILURE, "rx-queue-size %lu > %d\n",
+				value, UINT16_MAX);
+		else
+			rte_exit(EXIT_FAILURE, "tx-queue-size %lu > %d\n",
+				value, UINT16_MAX);
+
+		return;
+	}
+
+	*queue_size = value;
+}
+
+static void
 parse_eventq_sched(const char *optarg)
 {
 	struct l3fwd_event_resources *evt_rsrc = l3fwd_get_eventdev_rsrc();
@@ -611,6 +649,8 @@ static const char short_options[] =
 	;
 
 #define CMD_LINE_OPT_CONFIG "config"
+#define CMD_LINE_OPT_RX_QUEUE_SIZE "rx-queue-size"
+#define CMD_LINE_OPT_TX_QUEUE_SIZE "tx-queue-size"
 #define CMD_LINE_OPT_ETH_DEST "eth-dest"
 #define CMD_LINE_OPT_NO_NUMA "no-numa"
 #define CMD_LINE_OPT_IPV6 "ipv6"
@@ -635,6 +675,8 @@ enum {
 	 * conflict with short options */
 	CMD_LINE_OPT_MIN_NUM = 256,
 	CMD_LINE_OPT_CONFIG_NUM,
+	CMD_LINE_OPT_RX_QUEUE_SIZE_NUM,
+	CMD_LINE_OPT_TX_QUEUE_SIZE_NUM,
 	CMD_LINE_OPT_ETH_DEST_NUM,
 	CMD_LINE_OPT_NO_NUMA_NUM,
 	CMD_LINE_OPT_IPV6_NUM,
@@ -655,6 +697,8 @@ enum {
 
 static const struct option lgopts[] = {
 	{CMD_LINE_OPT_CONFIG, 1, 0, CMD_LINE_OPT_CONFIG_NUM},
+	{CMD_LINE_OPT_RX_QUEUE_SIZE, 1, 0, CMD_LINE_OPT_RX_QUEUE_SIZE_NUM},
+	{CMD_LINE_OPT_TX_QUEUE_SIZE, 1, 0, CMD_LINE_OPT_TX_QUEUE_SIZE_NUM},
 	{CMD_LINE_OPT_ETH_DEST, 1, 0, CMD_LINE_OPT_ETH_DEST_NUM},
 	{CMD_LINE_OPT_NO_NUMA, 0, 0, CMD_LINE_OPT_NO_NUMA_NUM},
 	{CMD_LINE_OPT_IPV6, 0, 0, CMD_LINE_OPT_IPV6_NUM},
@@ -748,6 +792,14 @@ parse_args(int argc, char **argv)
 				return -1;
 			}
 			lcore_params = 1;
+			break;
+
+		case CMD_LINE_OPT_RX_QUEUE_SIZE_NUM:
+			parse_queue_size(optarg, &nb_rxd, 1);
+			break;
+
+		case CMD_LINE_OPT_TX_QUEUE_SIZE_NUM:
+			parse_queue_size(optarg, &nb_txd, 0);
 			break;
 
 		case CMD_LINE_OPT_ETH_DEST_NUM:
