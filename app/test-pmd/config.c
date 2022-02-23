@@ -2626,6 +2626,34 @@ port_queue_flow_destroy(portid_t port_id, queueid_t queue_id,
 	return ret;
 }
 
+/** Push all the queue operations in the queue to the NIC. */
+int
+port_queue_flow_push(portid_t port_id, queueid_t queue_id)
+{
+	struct rte_port *port;
+	struct rte_flow_error error;
+	int ret = 0;
+
+	if (port_id_is_invalid(port_id, ENABLED_WARN) ||
+	    port_id == (portid_t)RTE_PORT_ALL)
+		return -EINVAL;
+	port = &ports[port_id];
+
+	if (queue_id >= port->queue_nb) {
+		printf("Queue #%u is invalid\n", queue_id);
+		return -EINVAL;
+	}
+
+	memset(&error, 0x55, sizeof(error));
+	ret = rte_flow_push(port_id, queue_id, &error);
+	if (ret < 0) {
+		printf("Failed to push operations in the queue\n");
+		return -EINVAL;
+	}
+	printf("Queue #%u operations pushed\n", queue_id);
+	return ret;
+}
+
 /** Create flow rule. */
 int
 port_flow_create(portid_t port_id,

@@ -94,6 +94,7 @@ enum index {
 	TUNNEL,
 	FLEX,
 	QUEUE,
+	PUSH,
 
 	/* Flex arguments */
 	FLEX_ITEM_INIT,
@@ -137,6 +138,9 @@ enum index {
 	/* Queue destroy arguments. */
 	QUEUE_DESTROY_ID,
 	QUEUE_DESTROY_POSTPONE,
+
+	/* Push arguments. */
+	PUSH_QUEUE,
 
 	/* Table arguments. */
 	TABLE_CREATE,
@@ -2252,6 +2256,9 @@ static int parse_qo(struct context *, const struct token *,
 static int parse_qo_destroy(struct context *, const struct token *,
 			    const char *, unsigned int,
 			    void *, unsigned int);
+static int parse_push(struct context *, const struct token *,
+		      const char *, unsigned int,
+		      void *, unsigned int);
 static int parse_tunnel(struct context *, const struct token *,
 			const char *, unsigned int,
 			void *, unsigned int);
@@ -2530,7 +2537,8 @@ static const struct token token_list[] = {
 			      ISOLATE,
 			      TUNNEL,
 			      FLEX,
-			      QUEUE)),
+			      QUEUE,
+			      PUSH)),
 		.call = parse_init,
 	},
 	/* Top-level command. */
@@ -2909,6 +2917,21 @@ static const struct token token_list[] = {
 		.args = ARGS(ARGS_ENTRY_PTR(struct buffer,
 					    args.destroy.rule)),
 		.call = parse_qo_destroy,
+	},
+	/* Top-level command. */
+	[PUSH] = {
+		.name = "push",
+		.help = "push enqueued operations",
+		.next = NEXT(NEXT_ENTRY(PUSH_QUEUE), NEXT_ENTRY(COMMON_PORT_ID)),
+		.args = ARGS(ARGS_ENTRY(struct buffer, port)),
+		.call = parse_push,
+	},
+	/* Sub-level commands. */
+	[PUSH_QUEUE] = {
+		.name = "queue",
+		.help = "specify queue id",
+		.next = NEXT(NEXT_ENTRY(END), NEXT_ENTRY(COMMON_QUEUE_ID)),
+		.args = ARGS(ARGS_ENTRY(struct buffer, queue)),
 	},
 	/* Top-level command. */
 	[INDIRECT_ACTION] = {
@@ -8735,6 +8758,34 @@ parse_qo_destroy(struct context *ctx, const struct token *token,
 	}
 }
 
+/** Parse tokens for push queue command. */
+static int
+parse_push(struct context *ctx, const struct token *token,
+	   const char *str, unsigned int len,
+	   void *buf, unsigned int size)
+{
+	struct buffer *out = buf;
+
+	/* Token name must match. */
+	if (parse_default(ctx, token, str, len, NULL, 0) < 0)
+		return -1;
+	/* Nothing else to do if there is no buffer. */
+	if (!out)
+		return len;
+	if (!out->command) {
+		if (ctx->curr != PUSH)
+			return -1;
+		if (sizeof(*out) > size)
+			return -1;
+		out->command = ctx->curr;
+		ctx->objdata = 0;
+		ctx->object = out;
+		ctx->objmask = NULL;
+		out->args.vc.data = (uint8_t *)out + size;
+	}
+	return len;
+}
+
 static int
 parse_flex(struct context *ctx, const struct token *token,
 	     const char *str, unsigned int len,
@@ -10119,6 +10170,9 @@ cmd_flow_parsed(const struct buffer *in)
 		port_queue_flow_destroy(in->port, in->queue, in->postpone,
 					in->args.destroy.rule_n,
 					in->args.destroy.rule);
+		break;
+	case PUSH:
+		port_queue_flow_push(in->port, in->queue);
 		break;
 	case INDIRECT_ACTION_CREATE:
 		port_action_handle_create(

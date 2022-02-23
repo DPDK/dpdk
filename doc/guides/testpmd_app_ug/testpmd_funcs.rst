@@ -3398,6 +3398,10 @@ following sections.
    flow queue {port_id} destroy {queue_id}
        [postpone {boolean}] rule {rule_id} [...]
 
+- Push enqueued operations::
+
+   flow push {port_id} queue {queue_id}
+
 - Create a flow rule::
 
    flow create {port_id}
@@ -3613,6 +3617,23 @@ If successful, it will show::
 
 It does not report anything for table IDs that do not exist.
 The usual error message is shown when a table cannot be destroyed::
+
+   Caught error type [...] ([...]): [...]
+
+Pushing enqueued operations
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+``flow push`` pushes all the outstanding enqueued operations
+to the underlying device immediately.
+It is bound to ``rte_flow_push()``::
+
+   flow push {port_id} queue {queue_id}
+
+If successful, it will show::
+
+   Queue #[...] operations pushed
+
+The usual error message is shown when operations cannot be pushed::
 
    Caught error type [...] ([...]): [...]
 
