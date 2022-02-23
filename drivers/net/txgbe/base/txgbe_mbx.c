@@ -21,8 +21,6 @@ s32 txgbe_read_mbx(struct txgbe_hw *hw, u32 *msg, u16 size, u16 mbx_id)
 	struct txgbe_mbx_info *mbx = &hw->mbx;
 	s32 ret_val = TXGBE_ERR_MBX;
 
-	DEBUGFUNC("txgbe_read_mbx");
-
 	/* limit read to size of mailbox */
 	if (size > mbx->size)
 		size = mbx->size;
@@ -47,8 +45,6 @@ s32 txgbe_write_mbx(struct txgbe_hw *hw, u32 *msg, u16 size, u16 mbx_id)
 	struct txgbe_mbx_info *mbx = &hw->mbx;
 	s32 ret_val = 0;
 
-	DEBUGFUNC("txgbe_write_mbx");
-
 	if (size > mbx->size) {
 		ret_val = TXGBE_ERR_MBX;
 		DEBUGOUT("Invalid mailbox message size %d", size);
@@ -71,8 +67,6 @@ s32 txgbe_check_for_msg(struct txgbe_hw *hw, u16 mbx_id)
 	struct txgbe_mbx_info *mbx = &hw->mbx;
 	s32 ret_val = TXGBE_ERR_MBX;
 
-	DEBUGFUNC("txgbe_check_for_msg");
-
 	if (mbx->check_for_msg)
 		ret_val = mbx->check_for_msg(hw, mbx_id);
 
@@ -90,8 +84,6 @@ s32 txgbe_check_for_ack(struct txgbe_hw *hw, u16 mbx_id)
 {
 	struct txgbe_mbx_info *mbx = &hw->mbx;
 	s32 ret_val = TXGBE_ERR_MBX;
-
-	DEBUGFUNC("txgbe_check_for_ack");
 
 	if (mbx->check_for_ack)
 		ret_val = mbx->check_for_ack(hw, mbx_id);
@@ -111,8 +103,6 @@ s32 txgbe_check_for_rst(struct txgbe_hw *hw, u16 mbx_id)
 	struct txgbe_mbx_info *mbx = &hw->mbx;
 	s32 ret_val = TXGBE_ERR_MBX;
 
-	DEBUGFUNC("txgbe_check_for_rst");
-
 	if (mbx->check_for_rst)
 		ret_val = mbx->check_for_rst(hw, mbx_id);
 
@@ -130,8 +120,6 @@ STATIC s32 txgbe_poll_for_msg(struct txgbe_hw *hw, u16 mbx_id)
 {
 	struct txgbe_mbx_info *mbx = &hw->mbx;
 	int countdown = mbx->timeout;
-
-	DEBUGFUNC("txgbe_poll_for_msg");
 
 	if (!countdown || !mbx->check_for_msg)
 		goto out;
@@ -161,8 +149,6 @@ STATIC s32 txgbe_poll_for_ack(struct txgbe_hw *hw, u16 mbx_id)
 {
 	struct txgbe_mbx_info *mbx = &hw->mbx;
 	int countdown = mbx->timeout;
-
-	DEBUGFUNC("txgbe_poll_for_ack");
 
 	if (!countdown || !mbx->check_for_ack)
 		goto out;
@@ -196,8 +182,6 @@ s32 txgbe_read_posted_mbx(struct txgbe_hw *hw, u32 *msg, u16 size, u16 mbx_id)
 	struct txgbe_mbx_info *mbx = &hw->mbx;
 	s32 ret_val = TXGBE_ERR_MBX;
 
-	DEBUGFUNC("txgbe_read_posted_mbx");
-
 	if (!mbx->read)
 		goto out;
 
@@ -225,8 +209,6 @@ s32 txgbe_write_posted_mbx(struct txgbe_hw *hw, u32 *msg, u16 size,
 {
 	struct txgbe_mbx_info *mbx = &hw->mbx;
 	s32 ret_val = TXGBE_ERR_MBX;
-
-	DEBUGFUNC("txgbe_write_posted_mbx");
 
 	/* exit if either we can't write or there isn't a defined timeout */
 	if (!mbx->write || !mbx->timeout)
@@ -292,7 +274,6 @@ s32 txgbe_check_for_msg_vf(struct txgbe_hw *hw, u16 mbx_id)
 	s32 ret_val = TXGBE_ERR_MBX;
 
 	UNREFERENCED_PARAMETER(mbx_id);
-	DEBUGFUNC("txgbe_check_for_msg_vf");
 
 	if (!txgbe_check_for_bit_vf(hw, TXGBE_VFMBCTL_PFSTS)) {
 		ret_val = 0;
@@ -314,7 +295,6 @@ s32 txgbe_check_for_ack_vf(struct txgbe_hw *hw, u16 mbx_id)
 	s32 ret_val = TXGBE_ERR_MBX;
 
 	UNREFERENCED_PARAMETER(mbx_id);
-	DEBUGFUNC("txgbe_check_for_ack_vf");
 
 	if (!txgbe_check_for_bit_vf(hw, TXGBE_VFMBCTL_PFACK)) {
 		ret_val = 0;
@@ -336,7 +316,6 @@ s32 txgbe_check_for_rst_vf(struct txgbe_hw *hw, u16 mbx_id)
 	s32 ret_val = TXGBE_ERR_MBX;
 
 	UNREFERENCED_PARAMETER(mbx_id);
-	DEBUGFUNC("txgbe_check_for_rst_vf");
 
 	if (!txgbe_check_for_bit_vf(hw, (TXGBE_VFMBCTL_RSTD |
 	    TXGBE_VFMBCTL_RSTI))) {
@@ -356,8 +335,6 @@ s32 txgbe_check_for_rst_vf(struct txgbe_hw *hw, u16 mbx_id)
 STATIC s32 txgbe_obtain_mbx_lock_vf(struct txgbe_hw *hw)
 {
 	s32 ret_val = TXGBE_ERR_MBX;
-
-	DEBUGFUNC("txgbe_obtain_mbx_lock_vf");
 
 	/* Take ownership of the buffer */
 	wr32(hw, TXGBE_VFMBCTL, TXGBE_VFMBCTL_VFU);
@@ -385,8 +362,6 @@ s32 txgbe_write_mbx_vf(struct txgbe_hw *hw, u32 *msg, u16 size,
 	u16 i;
 
 	UNREFERENCED_PARAMETER(mbx_id);
-
-	DEBUGFUNC("txgbe_write_mbx_vf");
 
 	/* lock the mailbox to prevent pf/vf race condition */
 	ret_val = txgbe_obtain_mbx_lock_vf(hw);
@@ -426,7 +401,6 @@ s32 txgbe_read_mbx_vf(struct txgbe_hw *hw, u32 *msg, u16 size,
 	s32 ret_val = 0;
 	u16 i;
 
-	DEBUGFUNC("txgbe_read_mbx_vf");
 	UNREFERENCED_PARAMETER(mbx_id);
 
 	/* lock the mailbox to prevent pf/vf race condition */
@@ -499,8 +473,6 @@ s32 txgbe_check_for_msg_pf(struct txgbe_hw *hw, u16 vf_number)
 	s32 index = TXGBE_MBVFICR_INDEX(vf_number);
 	u32 vf_bit = vf_number % 16;
 
-	DEBUGFUNC("txgbe_check_for_msg_pf");
-
 	if (!txgbe_check_for_bit_pf(hw, TXGBE_MBVFICR_VFREQ_VF1 << vf_bit,
 				    index)) {
 		ret_val = 0;
@@ -522,8 +494,6 @@ s32 txgbe_check_for_ack_pf(struct txgbe_hw *hw, u16 vf_number)
 	s32 ret_val = TXGBE_ERR_MBX;
 	s32 index = TXGBE_MBVFICR_INDEX(vf_number);
 	u32 vf_bit = vf_number % 16;
-
-	DEBUGFUNC("txgbe_check_for_ack_pf");
 
 	if (!txgbe_check_for_bit_pf(hw, TXGBE_MBVFICR_VFACK_VF1 << vf_bit,
 				    index)) {
@@ -548,8 +518,6 @@ s32 txgbe_check_for_rst_pf(struct txgbe_hw *hw, u16 vf_number)
 	u32 vflre = 0;
 	s32 ret_val = TXGBE_ERR_MBX;
 
-	DEBUGFUNC("txgbe_check_for_rst_pf");
-
 	vflre = rd32(hw, TXGBE_FLRVFE(reg_offset));
 	if (vflre & (1 << vf_shift)) {
 		ret_val = 0;
@@ -571,8 +539,6 @@ STATIC s32 txgbe_obtain_mbx_lock_pf(struct txgbe_hw *hw, u16 vf_number)
 {
 	s32 ret_val = TXGBE_ERR_MBX;
 	u32 p2v_mailbox;
-
-	DEBUGFUNC("txgbe_obtain_mbx_lock_pf");
 
 	/* Take ownership of the buffer */
 	wr32(hw, TXGBE_MBCTL(vf_number), TXGBE_MBCTL_PFU);
@@ -601,8 +567,6 @@ s32 txgbe_write_mbx_pf(struct txgbe_hw *hw, u32 *msg, u16 size, u16 vf_number)
 {
 	s32 ret_val;
 	u16 i;
-
-	DEBUGFUNC("txgbe_write_mbx_pf");
 
 	/* lock the mailbox to prevent pf/vf race condition */
 	ret_val = txgbe_obtain_mbx_lock_pf(hw, vf_number);
@@ -642,8 +606,6 @@ s32 txgbe_read_mbx_pf(struct txgbe_hw *hw, u32 *msg, u16 size, u16 vf_number)
 {
 	s32 ret_val;
 	u16 i;
-
-	DEBUGFUNC("txgbe_read_mbx_pf");
 
 	/* lock the mailbox to prevent pf/vf race condition */
 	ret_val = txgbe_obtain_mbx_lock_pf(hw, vf_number);

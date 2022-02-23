@@ -35,7 +35,7 @@ static bool txgbe_identify_extphy(struct txgbe_hw *hw)
 	u16 phy_addr = 0;
 
 	if (!txgbe_validate_phy_addr(hw, phy_addr)) {
-		DEBUGOUT("Unable to validate PHY address 0x%04X\n",
+		DEBUGOUT("Unable to validate PHY address 0x%04X",
 			phy_addr);
 		return false;
 	}
@@ -100,8 +100,6 @@ s32 txgbe_identify_phy(struct txgbe_hw *hw)
 {
 	s32 err = TXGBE_ERR_PHY_ADDR_INVALID;
 
-	DEBUGFUNC("txgbe_identify_phy");
-
 	txgbe_read_phy_if(hw);
 
 	if (hw->phy.type != txgbe_phy_unknown)
@@ -137,11 +135,9 @@ s32 txgbe_check_reset_blocked(struct txgbe_hw *hw)
 {
 	u32 mmngc;
 
-	DEBUGFUNC("txgbe_check_reset_blocked");
-
 	mmngc = rd32(hw, TXGBE_STAT);
 	if (mmngc & TXGBE_STAT_MNGVETO) {
-		DEBUGOUT("MNG_VETO bit detected.\n");
+		DEBUGOUT("MNG_VETO bit detected.");
 		return true;
 	}
 
@@ -159,8 +155,6 @@ bool txgbe_validate_phy_addr(struct txgbe_hw *hw, u32 phy_addr)
 	u16 phy_id = 0;
 	bool valid = false;
 
-	DEBUGFUNC("txgbe_validate_phy_addr");
-
 	hw->phy.addr = phy_addr;
 	hw->phy.read_reg(hw, TXGBE_MD_PHY_ID_HIGH,
 			     TXGBE_MD_DEV_PMA_PMD, &phy_id);
@@ -168,7 +162,7 @@ bool txgbe_validate_phy_addr(struct txgbe_hw *hw, u32 phy_addr)
 	if (phy_id != 0xFFFF && phy_id != 0x0)
 		valid = true;
 
-	DEBUGOUT("PHY ID HIGH is 0x%04X\n", phy_id);
+	DEBUGOUT("PHY ID HIGH is 0x%04X", phy_id);
 
 	return valid;
 }
@@ -184,8 +178,6 @@ s32 txgbe_get_phy_id(struct txgbe_hw *hw)
 	u16 phy_id_high = 0;
 	u16 phy_id_low = 0;
 
-	DEBUGFUNC("txgbe_get_phy_id");
-
 	err = hw->phy.read_reg(hw, TXGBE_MD_PHY_ID_HIGH,
 				      TXGBE_MD_DEV_PMA_PMD,
 				      &phy_id_high);
@@ -198,7 +190,7 @@ s32 txgbe_get_phy_id(struct txgbe_hw *hw)
 		hw->phy.id |= (u32)(phy_id_low & TXGBE_PHY_REVISION_MASK);
 		hw->phy.revision = (u32)(phy_id_low & ~TXGBE_PHY_REVISION_MASK);
 	}
-	DEBUGOUT("PHY_ID_HIGH 0x%04X, PHY_ID_LOW 0x%04X\n",
+	DEBUGOUT("PHY_ID_HIGH 0x%04X, PHY_ID_LOW 0x%04X",
 		  phy_id_high, phy_id_low);
 
 	return err;
@@ -212,8 +204,6 @@ s32 txgbe_get_phy_id(struct txgbe_hw *hw)
 enum txgbe_phy_type txgbe_get_phy_type_from_id(u32 phy_id)
 {
 	enum txgbe_phy_type phy_type;
-
-	DEBUGFUNC("txgbe_get_phy_type_from_id");
 
 	switch (phy_id) {
 	case TXGBE_PHYID_TN1010:
@@ -272,7 +262,7 @@ txgbe_reset_extphy(struct txgbe_hw *hw)
 
 	if (ctrl & TXGBE_MD_PORT_CTRL_RESET) {
 		err = TXGBE_ERR_RESET_FAILED;
-		DEBUGOUT("PHY reset polling failed to complete.\n");
+		DEBUGOUT("PHY reset polling failed to complete.");
 	}
 
 	return err;
@@ -285,8 +275,6 @@ txgbe_reset_extphy(struct txgbe_hw *hw)
 s32 txgbe_reset_phy(struct txgbe_hw *hw)
 {
 	s32 err = 0;
-
-	DEBUGFUNC("txgbe_reset_phy");
 
 	if (hw->phy.type == txgbe_phy_unknown)
 		err = txgbe_identify_phy(hw);
@@ -343,7 +331,7 @@ s32 txgbe_read_phy_reg_mdi(struct txgbe_hw *hw, u32 reg_addr, u32 device_type,
 	 */
 	if (!po32m(hw, TXGBE_MDIOSCD, TXGBE_MDIOSCD_BUSY,
 		0, NULL, 100, 100)) {
-		DEBUGOUT("PHY address command did not complete\n");
+		DEBUGOUT("PHY address command did not complete");
 		return TXGBE_ERR_PHY;
 	}
 
@@ -366,8 +354,6 @@ s32 txgbe_read_phy_reg(struct txgbe_hw *hw, u32 reg_addr,
 {
 	s32 err;
 	u32 gssr = hw->phy.phy_semaphore_mask;
-
-	DEBUGFUNC("txgbe_read_phy_reg");
 
 	if (hw->mac.acquire_swfw_sync(hw, gssr))
 		return TXGBE_ERR_SWFW_SYNC;
@@ -406,7 +392,7 @@ s32 txgbe_write_phy_reg_mdi(struct txgbe_hw *hw, u32 reg_addr,
 	/* wait for completion */
 	if (!po32m(hw, TXGBE_MDIOSCD, TXGBE_MDIOSCD_BUSY,
 		0, NULL, 100, 100)) {
-		TLOG_DEBUG("PHY write cmd didn't complete\n");
+		DEBUGOUT("PHY write cmd didn't complete");
 		return -TERR_PHY;
 	}
 
@@ -426,8 +412,6 @@ s32 txgbe_write_phy_reg(struct txgbe_hw *hw, u32 reg_addr,
 {
 	s32 err;
 	u32 gssr = hw->phy.phy_semaphore_mask;
-
-	DEBUGFUNC("txgbe_write_phy_reg");
 
 	if (hw->mac.acquire_swfw_sync(hw, gssr))
 		err = TXGBE_ERR_SWFW_SYNC;
@@ -451,8 +435,6 @@ s32 txgbe_setup_phy_link(struct txgbe_hw *hw)
 	u16 autoneg_reg = TXGBE_MII_AUTONEG_REG;
 	bool autoneg = false;
 	u32 speed;
-
-	DEBUGFUNC("txgbe_setup_phy_link");
 
 	txgbe_get_copper_link_capabilities(hw, &speed, &autoneg);
 
@@ -539,8 +521,6 @@ s32 txgbe_setup_phy_link_speed(struct txgbe_hw *hw,
 {
 	UNREFERENCED_PARAMETER(autoneg_wait_to_complete);
 
-	DEBUGFUNC("txgbe_setup_phy_link_speed");
-
 	/*
 	 * Clear autoneg_advertised and set new values based on input link
 	 * speed.
@@ -623,8 +603,6 @@ s32 txgbe_get_copper_link_capabilities(struct txgbe_hw *hw,
 {
 	s32 err = 0;
 
-	DEBUGFUNC("txgbe_get_copper_link_capabilities");
-
 	*autoneg = true;
 	if (!hw->phy.speeds_supported)
 		err = txgbe_get_copper_speeds_supported(hw);
@@ -651,8 +629,6 @@ s32 txgbe_check_phy_link_tnx(struct txgbe_hw *hw, u32 *speed,
 	u16 phy_link = 0;
 	u16 phy_speed = 0;
 	u16 phy_data = 0;
-
-	DEBUGFUNC("txgbe_check_phy_link_tnx");
 
 	/* Initialize speed and link to default case */
 	*link_up = false;
@@ -696,8 +672,6 @@ s32 txgbe_setup_phy_link_tnx(struct txgbe_hw *hw)
 	u16 autoneg_reg = TXGBE_MII_AUTONEG_REG;
 	bool autoneg = false;
 	u32 speed;
-
-	DEBUGFUNC("txgbe_setup_phy_link_tnx");
 
 	txgbe_get_copper_link_capabilities(hw, &speed, &autoneg);
 
@@ -772,8 +746,6 @@ s32 txgbe_identify_module(struct txgbe_hw *hw)
 {
 	s32 err = TXGBE_ERR_SFP_NOT_PRESENT;
 
-	DEBUGFUNC("txgbe_identify_module");
-
 	switch (hw->phy.media_type) {
 	case txgbe_media_type_fiber:
 		err = txgbe_identify_sfp_module(hw);
@@ -810,8 +782,6 @@ s32 txgbe_identify_sfp_module(struct txgbe_hw *hw)
 	u8 cable_tech = 0;
 	u8 cable_spec = 0;
 	u16 enforce_sfp = 0;
-
-	DEBUGFUNC("txgbe_identify_sfp_module");
 
 	if (hw->phy.media_type != txgbe_media_type_fiber) {
 		hw->phy.sfp_type = txgbe_sfp_type_not_present;
@@ -992,7 +962,7 @@ ERR_I2C:
 	      hw->phy.sfp_type == txgbe_sfp_type_1g_lx_core1 ||
 	      hw->phy.sfp_type == txgbe_sfp_type_1g_sx_core0 ||
 	      hw->phy.sfp_type == txgbe_sfp_type_1g_sx_core1)) {
-		DEBUGOUT("SFP+ module not supported\n");
+		DEBUGOUT("SFP+ module not supported");
 		hw->phy.type = txgbe_phy_sfp_unsupported;
 		return TXGBE_ERR_SFP_NOT_SUPPORTED;
 	}
@@ -1020,8 +990,6 @@ s32 txgbe_identify_qsfp_module(struct txgbe_hw *hw)
 	u8 cable_length = 0;
 	u8 device_tech = 0;
 	bool active_cable = false;
-
-	DEBUGFUNC("txgbe_identify_qsfp_module");
 
 	if (hw->phy.media_type != txgbe_media_type_fiber_qsfp) {
 		hw->phy.sfp_type = txgbe_sfp_type_not_present;
@@ -1165,10 +1133,10 @@ ERR_I2C:
 				if (hw->allow_unsupported_sfp) {
 					DEBUGOUT("WARNING: Wangxun (R) Network Connections are quality tested using Wangxun (R) Ethernet Optics. "
 						"Using untested modules is not supported and may cause unstable operation or damage to the module or the adapter. "
-						"Wangxun Corporation is not responsible for any harm caused by using untested modules.\n");
+						"Wangxun Corporation is not responsible for any harm caused by using untested modules.");
 					err = 0;
 				} else {
-					DEBUGOUT("QSFP module not supported\n");
+					DEBUGOUT("QSFP module not supported");
 					hw->phy.type =
 						txgbe_phy_sfp_unsupported;
 					err = TXGBE_ERR_SFP_NOT_SUPPORTED;
@@ -1194,8 +1162,6 @@ out:
 s32 txgbe_read_i2c_eeprom(struct txgbe_hw *hw, u8 byte_offset,
 				  u8 *eeprom_data)
 {
-	DEBUGFUNC("txgbe_read_i2c_eeprom");
-
 	return hw->phy.read_i2c_byte(hw, byte_offset,
 					 TXGBE_I2C_EEPROM_DEV_ADDR,
 					 eeprom_data);
@@ -1228,8 +1194,6 @@ s32 txgbe_read_i2c_sff8472(struct txgbe_hw *hw, u8 byte_offset,
 s32 txgbe_write_i2c_eeprom(struct txgbe_hw *hw, u8 byte_offset,
 				   u8 eeprom_data)
 {
-	DEBUGFUNC("txgbe_write_i2c_eeprom");
-
 	return hw->phy.write_i2c_byte(hw, byte_offset,
 					  TXGBE_I2C_EEPROM_DEV_ADDR,
 					  eeprom_data);
@@ -1248,8 +1212,6 @@ s32 txgbe_write_i2c_eeprom(struct txgbe_hw *hw, u8 byte_offset,
 s32 txgbe_read_i2c_byte_unlocked(struct txgbe_hw *hw, u8 byte_offset,
 					   u8 dev_addr, u8 *data)
 {
-	DEBUGFUNC("txgbe_read_i2c_byte");
-
 	txgbe_i2c_start(hw, dev_addr);
 
 	/* wait tx empty */
@@ -1312,8 +1274,6 @@ s32 txgbe_read_i2c_byte(struct txgbe_hw *hw, u8 byte_offset,
 s32 txgbe_write_i2c_byte_unlocked(struct txgbe_hw *hw, u8 byte_offset,
 					    u8 dev_addr, u8 data)
 {
-	DEBUGFUNC("txgbe_write_i2c_byte");
-
 	txgbe_i2c_start(hw, dev_addr);
 
 	/* wait tx empty */
@@ -1367,8 +1327,6 @@ s32 txgbe_write_i2c_byte(struct txgbe_hw *hw, u8 byte_offset,
  **/
 static void txgbe_i2c_start(struct txgbe_hw *hw, u8 dev_addr)
 {
-	DEBUGFUNC("txgbe_i2c_start");
-
 	wr32(hw, TXGBE_I2CENA, 0);
 
 	wr32(hw, TXGBE_I2CCON,
@@ -1396,12 +1354,10 @@ static void txgbe_i2c_start(struct txgbe_hw *hw, u8 dev_addr)
  **/
 static void txgbe_i2c_stop(struct txgbe_hw *hw)
 {
-	DEBUGFUNC("txgbe_i2c_stop");
-
 	/* wait for completion */
 	if (!po32m(hw, TXGBE_I2CSTAT, TXGBE_I2CSTAT_MST,
 		0, NULL, 100, 100)) {
-		DEBUGFUNC("i2c stop timeout.");
+		DEBUGOUT("i2c stop timeout.");
 	}
 
 	wr32(hw, TXGBE_I2CENA, 0);
@@ -2420,8 +2376,6 @@ s32 txgbe_kr_handle(struct txgbe_hw *hw)
 	u32 value;
 	s32 status = 0;
 
-	DEBUGFUNC("txgbe_kr_handle");
-
 	value = rd32_epcs(hw, VR_AN_INTR);
 	BP_LOG("AN INTERRUPT!! value: 0x%x\n", value);
 	if (!(value & VR_AN_INTR_PG_RCV)) {
@@ -2444,8 +2398,6 @@ static s32 txgbe_handle_bp_flow(u32 link_mode, struct txgbe_hw *hw)
 	u32 value, i, lp_reg, ld_reg;
 	s32 status = 0;
 	struct txgbe_backplane_ability local_ability, lp_ability;
-
-	DEBUGFUNC("txgbe_handle_bp_flow");
 
 	local_ability.current_link_mode = link_mode;
 
@@ -2548,8 +2500,6 @@ static void txgbe_get_bp_ability(struct txgbe_backplane_ability *ability,
 {
 	u32 value = 0;
 
-	DEBUGFUNC("txgbe_get_bp_ability");
-
 	/* Link Partner Base Page */
 	if (link_partner == 1) {
 		/* Read the link partner AN73 Base Page Ability Registers */
@@ -2621,8 +2571,6 @@ static s32 txgbe_check_bp_ability(struct txgbe_backplane_ability *local_ability,
 	u32 com_link_abi;
 	s32 ret = 0;
 
-	DEBUGFUNC("txgbe_check_bp_ability");
-
 	com_link_abi = local_ability->link_ability & lp_ability->link_ability;
 	BP_LOG("com_link_abi = 0x%x, local_ability = 0x%x, lp_ability = 0x%x\n",
 		com_link_abi, local_ability->link_ability,
@@ -2678,8 +2626,6 @@ static void txgbe_clear_bp_intr(u32 bit, u32 bit_high, struct txgbe_hw *hw)
 {
 	u32 rdata = 0, wdata, i;
 
-	DEBUGFUNC("txgbe_clear_bp_intr");
-
 	rdata = rd32_epcs(hw, VR_AN_INTR);
 	BP_LOG("[Before clear]Read VR AN MMD Interrupt Register: 0x%x\n",
 			rdata);
@@ -2703,8 +2649,6 @@ static s32 txgbe_enable_kr_training(struct txgbe_hw *hw)
 {
 	s32 status = 0;
 	u32 value = 0;
-
-	DEBUGFUNC("txgbe_enable_kr_training");
 
 	BP_LOG("Enable Clause 72 KR Training ...\n");
 
@@ -2749,8 +2693,6 @@ static s32 txgbe_disable_kr_training(struct txgbe_hw *hw, s32 post, s32 mode)
 {
 	s32 status = 0;
 
-	DEBUGFUNC("txgbe_disable_kr_training");
-
 	BP_LOG("Disable Clause 72 KR Training ...\n");
 	/* Read PHY Lane0 TX EQ before Clause 72 KR Training. */
 	txgbe_read_phy_lane_tx_eq(0, hw, post, mode);
@@ -2766,8 +2708,6 @@ static s32 txgbe_check_kr_training(struct txgbe_hw *hw)
 	u32 value, test;
 	int i;
 	int times = hw->devarg.poll ? 35 : 20;
-
-	DEBUGFUNC("txgbe_check_kr_training");
 
 	for (i = 0; i < times; i++) {
 		value = rd32_epcs(hw, SR_PMA_KR_LP_CEU);
@@ -2825,8 +2765,6 @@ static void txgbe_read_phy_lane_tx_eq(u16 lane, struct txgbe_hw *hw,
 	u32 value = 0;
 	u32 addr;
 	u32 tx_main_cursor, tx_pre_cursor, tx_post_cursor, lmain;
-
-	DEBUGFUNC("txgbe_read_phy_lane_tx_eq");
 
 	addr = TXGBE_PHY_LANE0_TX_EQ_CTL1 | (lane << 8);
 	value = rd32_ephy(hw, addr);
