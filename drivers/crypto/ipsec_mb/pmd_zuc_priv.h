@@ -75,7 +75,7 @@ struct zuc_session {
 
 struct zuc_qp_data {
 
-	uint8_t temp_digest[ZUC_DIGEST_LENGTH];
+	uint8_t temp_digest[ZUC_MAX_BURST][ZUC_DIGEST_LENGTH];
 	/* *< Buffers used to store the digest generated
 	 * by the driver when verifying a digest provided
 	 * by the user (using authentication verify operation)
