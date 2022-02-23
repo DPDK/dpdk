@@ -53,9 +53,8 @@
 
 #define MAX_LCORE_PARAMS 1024
 
-/* Static global variables used within this file. */
-static uint16_t nb_rxd = RTE_TEST_RX_DESC_DEFAULT;
-static uint16_t nb_txd = RTE_TEST_TX_DESC_DEFAULT;
+uint16_t nb_rxd = RTE_TEST_RX_DESC_DEFAULT;
+uint16_t nb_txd = RTE_TEST_TX_DESC_DEFAULT;
 
 /**< Ports set in promiscuous mode off by default. */
 static int promiscuous_on;
