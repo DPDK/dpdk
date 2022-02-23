@@ -79,6 +79,10 @@ struct lcore_conf {
 
 extern volatile bool force_quit;
 
+/* RX and TX queue depths */
+extern uint16_t nb_rxd;
+extern uint16_t nb_txd;
+
 /* ethernet addresses of ports */
 extern uint64_t dest_eth_addr[RTE_MAX_ETHPORTS];
 extern struct rte_ether_addr ports_eth_addr[RTE_MAX_ETHPORTS];

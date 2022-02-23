@@ -43,8 +43,6 @@ l3fwd_eth_dev_port_setup(struct rte_eth_conf *port_conf)
 {
 	struct l3fwd_event_resources *evt_rsrc = l3fwd_get_eventdev_rsrc();
 	uint16_t nb_ports = rte_eth_dev_count_avail();
-	uint16_t nb_rxd = RTE_TEST_RX_DESC_DEFAULT;
-	uint16_t nb_txd = RTE_TEST_TX_DESC_DEFAULT;
 	unsigned int nb_lcores = rte_lcore_count();
 	struct rte_eth_conf local_port_conf;
 	struct rte_eth_dev_info dev_info;
