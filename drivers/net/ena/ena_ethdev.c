@@ -1624,6 +1624,9 @@ static void ena_timer_wd_callback(__rte_unused struct rte_timer *timer,
 	struct rte_eth_dev *dev = arg;
 	struct ena_adapter *adapter = dev->data->dev_private;
 
+	if (unlikely(adapter->trigger_reset))
+		return;
+
 	check_for_missing_keep_alive(adapter);
 	check_for_admin_com_state(adapter);
 	check_for_tx_completions(adapter);
