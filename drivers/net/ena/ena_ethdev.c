@@ -2661,6 +2661,7 @@ static int ena_xmit_mbuf(struct ena_ring *tx_ring, struct rte_mbuf *mbuf)
 	req_id = tx_ring->empty_tx_reqs[next_to_use];
 	tx_info = &tx_ring->tx_buffer_info[req_id];
 	tx_info->num_of_bufs = 0;
+	RTE_ASSERT(tx_info->mbuf == NULL);
 
 	ena_tx_map_mbuf(tx_ring, tx_info, mbuf, &push_header, &header_len);
 
