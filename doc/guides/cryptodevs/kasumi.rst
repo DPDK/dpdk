@@ -36,8 +36,8 @@ Installation
 To build DPDK with the KASUMI_PMD the user is required to download the multi-buffer
 library from `here <https://github.com/01org/intel-ipsec-mb>`_
 and compile it on their user system before building DPDK.
-The latest version of the library supported by this PMD is v1.1, which
-can be downloaded from `<https://github.com/01org/intel-ipsec-mb/archive/v1.1.zip>`_.
+The latest version of the library supported by this PMD is v1.2, which
+can be downloaded from `<https://github.com/01org/intel-ipsec-mb/archive/v1.2.zip>`_.
 
 After downloading the library, the user needs to unpack and compile it
 on their system before building DPDK:
@@ -78,8 +78,8 @@ and the external crypto libraries supported by them:
    DPDK version   Crypto library version
    =============  ================================
    16.11 - 19.11  LibSSO KASUMI
-   20.02 - 21.08  Multi-buffer library 0.53 - 1.1*
-   21.11+         Multi-buffer library 1.0  - 1.1*
+   20.02 - 21.08  Multi-buffer library 0.53 - 1.2*
+   21.11+         Multi-buffer library 1.0  - 1.2*
    =============  ================================
 
 \* Multi-buffer library 1.0 or newer only works for Meson but not Make build system.
