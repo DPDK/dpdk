@@ -353,6 +353,13 @@ roc_nix_xstats_get(struct roc_nix *roc_nix, struct roc_nix_xstat *xstats,
 			xstats[count].id = count;
 			count++;
 		}
+
+		for (i = 0; i < CNXK_NIX_NUM_CN10K_RX_XSTATS; i++) {
+			xstats[count].value =
+				NIX_RX_STATS(nix_cn10k_rx_xstats[i].offset);
+			xstats[count].id = count;
+			count++;
+		}
 	}
 
 	return count;
@@ -420,6 +427,13 @@ roc_nix_xstats_names_get(struct roc_nix *roc_nix,
 				snprintf(xstats_names[count].name,
 					 sizeof(xstats_names[count].name), "%s",
 					 nix_tx_xstats_rpm[i].name);
+				count++;
+			}
+
+			for (i = 0; i < CNXK_NIX_NUM_CN10K_RX_XSTATS; i++) {
+				snprintf(xstats_names[count].name,
+					 sizeof(xstats_names[count].name), "%s",
+					 nix_cn10k_rx_xstats[i].name);
 				count++;
 			}
 		}

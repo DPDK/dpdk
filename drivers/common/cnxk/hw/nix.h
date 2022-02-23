@@ -419,6 +419,7 @@
 #define NIX_STAT_LF_RX_RX_RC_OCTS_DROP	 (0x16ull) /* [CN10K, .) */
 #define NIX_STAT_LF_RX_RX_RC_PKTS_DROP	 (0x17ull) /* [CN10K, .) */
 #define NIX_STAT_LF_RX_RX_CPT_DROP_PKTS	 (0x18ull) /* [CN10K, .) */
+#define NIX_STAT_LF_RX_RX_IPSECD_DROP_PKTS (0x19ull) /* [CN10K, .) */
 
 #define CGX_RX_PKT_CNT		 (0x0ull) /* [CN9K, CN10K) */
 #define CGX_RX_OCT_CNT		 (0x1ull) /* [CN9K, CN10K) */
