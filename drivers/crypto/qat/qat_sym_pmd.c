@@ -20,9 +20,9 @@
 
 #define MIXED_CRYPTO_MIN_FW_VER 0x04090000
 
-uint8_t qat_sym_driver_id;
+extern uint8_t qat_sym_driver_id;
 
-struct qat_crypto_gen_dev_ops qat_sym_gen_dev_ops[QAT_N_GENS];
+extern struct qat_crypto_gen_dev_ops qat_sym_gen_dev_ops[QAT_N_GENS];
 
 void
 qat_sym_init_op_cookie(void *op_cookie)

@@ -105,7 +105,7 @@ struct qat_sym_session {
 	uint16_t auth_key_length;
 	uint16_t digest_length;
 	rte_spinlock_t lock;	/* protects this struct */
-	enum qat_device_gen min_qat_dev_gen;
+	uint16_t dev_id;
 	uint8_t aes_cmac;
 	uint8_t is_single_pass;
 	uint8_t is_single_pass_gmac;

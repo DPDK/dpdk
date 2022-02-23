@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: (BSD-3-Clause OR GPL-2.0)
- * Copyright(c) 2015-2019 Intel Corporation
+ * Copyright(c) 2015-2022 Intel Corporation
  */
 
 #include <openssl/sha.h>	/* Needed to calculate pre-compute values */
@@ -486,80 +486,6 @@ qat_sym_session_configure(struct rte_cryptodev *dev,
 	return 0;
 }
 
-static void
-qat_sym_session_set_ext_hash_flags(struct qat_sym_session *session,
-		uint8_t hash_flag)
-{
-	struct icp_qat_fw_comn_req_hdr *header = &session->fw_req.comn_hdr;
-	struct icp_qat_fw_cipher_auth_cd_ctrl_hdr *cd_ctrl =
-			(struct icp_qat_fw_cipher_auth_cd_ctrl_hdr *)
-			session->fw_req.cd_ctrl.content_desc_ctrl_lw;
-
-	/* Set the Use Extended Protocol Flags bit in LW 1 */
-	QAT_FIELD_SET(header->comn_req_flags,
-			QAT_COMN_EXT_FLAGS_USED,
-			QAT_COMN_EXT_FLAGS_BITPOS,
-			QAT_COMN_EXT_FLAGS_MASK);
-
-	/* Set Hash Flags in LW 28 */
-	cd_ctrl->hash_flags |= hash_flag;
-
-	/* Set proto flags in LW 1 */
-	switch (session->qat_cipher_alg) {
-	case ICP_QAT_HW_CIPHER_ALGO_SNOW_3G_UEA2:
-		ICP_QAT_FW_LA_PROTO_SET(header->serv_specif_flags,
-				ICP_QAT_FW_LA_SNOW_3G_PROTO);
-		ICP_QAT_FW_LA_ZUC_3G_PROTO_FLAG_SET(
-				header->serv_specif_flags, 0);
-		break;
-	case ICP_QAT_HW_CIPHER_ALGO_ZUC_3G_128_EEA3:
-		ICP_QAT_FW_LA_PROTO_SET(header->serv_specif_flags,
-				ICP_QAT_FW_LA_NO_PROTO);
-		ICP_QAT_FW_LA_ZUC_3G_PROTO_FLAG_SET(
-				header->serv_specif_flags,
-				ICP_QAT_FW_LA_ZUC_3G_PROTO);
-		break;
-	default:
-		ICP_QAT_FW_LA_PROTO_SET(header->serv_specif_flags,
-				ICP_QAT_FW_LA_NO_PROTO);
-		ICP_QAT_FW_LA_ZUC_3G_PROTO_FLAG_SET(
-				header->serv_specif_flags, 0);
-		break;
-	}
-}
-
-static void
-qat_sym_session_handle_mixed(const struct rte_cryptodev *dev,
-		struct qat_sym_session *session)
-{
-	const struct qat_cryptodev_private *qat_private =
-			dev->data->dev_private;
-	enum qat_device_gen min_dev_gen = (qat_private->internal_capabilities &
-			QAT_SYM_CAP_MIXED_CRYPTO) ? QAT_GEN2 : QAT_GEN3;
-
-	if (session->qat_hash_alg == ICP_QAT_HW_AUTH_ALGO_ZUC_3G_128_EIA3 &&
-			session->qat_cipher_alg !=
-			ICP_QAT_HW_CIPHER_ALGO_ZUC_3G_128_EEA3) {
-		session->min_qat_dev_gen = min_dev_gen;
-		qat_sym_session_set_ext_hash_flags(session,
-			1 << ICP_QAT_FW_AUTH_HDR_FLAG_ZUC_EIA3_BITPOS);
-	} else if (session->qat_hash_alg == ICP_QAT_HW_AUTH_ALGO_SNOW_3G_UIA2 &&
-			session->qat_cipher_alg !=
-			ICP_QAT_HW_CIPHER_ALGO_SNOW_3G_UEA2) {
-		session->min_qat_dev_gen = min_dev_gen;
-		qat_sym_session_set_ext_hash_flags(session,
-			1 << ICP_QAT_FW_AUTH_HDR_FLAG_SNOW3G_UIA2_BITPOS);
-	} else if ((session->aes_cmac ||
-			session->qat_hash_alg == ICP_QAT_HW_AUTH_ALGO_NULL) &&
-			(session->qat_cipher_alg ==
-			ICP_QAT_HW_CIPHER_ALGO_SNOW_3G_UEA2 ||
-			session->qat_cipher_alg ==
-			ICP_QAT_HW_CIPHER_ALGO_ZUC_3G_128_EEA3)) {
-		session->min_qat_dev_gen = min_dev_gen;
-		qat_sym_session_set_ext_hash_flags(session, 0);
-	}
-}
-
 int
 qat_sym_session_set_parameters(struct rte_cryptodev *dev,
 		struct rte_crypto_sym_xform *xform, void *session_private)
@@ -569,7 +495,6 @@ qat_sym_session_set_parameters(struct rte_cryptodev *dev,
 	enum qat_device_gen qat_dev_gen = internals->qat_dev->qat_dev_gen;
 	int ret;
 	int qat_cmd_id;
-	int handle_mixed = 0;
 
 	/* Verify the session physical address is known */
 	rte_iova_t session_paddr = rte_mempool_virt2iova(session);
@@ -584,7 +509,7 @@ qat_sym_session_set_parameters(struct rte_cryptodev *dev,
 	session->cd_paddr = session_paddr +
 			offsetof(struct qat_sym_session, cd);
 
-	session->min_qat_dev_gen = QAT_GEN1;
+	session->dev_id = internals->dev_id;
 	session->qat_proto_flag = QAT_CRYPTO_PROTO_FLAG_NONE;
 	session->is_ucs = 0;
 
@@ -625,7 +550,6 @@ qat_sym_session_set_parameters(struct rte_cryptodev *dev,
 					xform, session);
 			if (ret < 0)
 				return ret;
-			handle_mixed = 1;
 		}
 		break;
 	case ICP_QAT_FW_LA_CMD_HASH_CIPHER:
@@ -643,7 +567,6 @@ qat_sym_session_set_parameters(struct rte_cryptodev *dev,
 					xform, session);
 			if (ret < 0)
 				return ret;
-			handle_mixed = 1;
 		}
 		break;
 	case ICP_QAT_FW_LA_CMD_TRNG_GET_RANDOM:
@@ -664,12 +587,9 @@ qat_sym_session_set_parameters(struct rte_cryptodev *dev,
 		return -ENOTSUP;
 	}
 	qat_sym_session_finalize(session);
-	if (handle_mixed) {
-		/* Special handling of mixed hash+cipher algorithms */
-		qat_sym_session_handle_mixed(dev, session);
-	}
 
-	return 0;
+	return qat_sym_gen_dev_ops[qat_dev_gen].set_session((void *)dev,
+			(void *)session);
 }
 
 static int
@@ -678,14 +598,13 @@ qat_sym_session_handle_single_pass(struct qat_sym_session *session,
 {
 	session->is_single_pass = 1;
 	session->is_auth = 1;
-	session->min_qat_dev_gen = QAT_GEN3;
 	session->qat_cmd = ICP_QAT_FW_LA_CMD_CIPHER;
 	/* Chacha-Poly is special case that use QAT CTR mode */
-	if (aead_xform->algo == RTE_CRYPTO_AEAD_AES_GCM) {
+	if (aead_xform->algo == RTE_CRYPTO_AEAD_AES_GCM)
 		session->qat_mode = ICP_QAT_HW_CIPHER_AEAD_MODE;
-	} else {
+	else
 		session->qat_mode = ICP_QAT_HW_CIPHER_CTR_MODE;
-	}
+
 	session->cipher_iv.offset = aead_xform->iv.offset;
 	session->cipher_iv.length = aead_xform->iv.length;
 	session->aad_len = aead_xform->aad_length;
@@ -1205,9 +1124,9 @@ static int partial_hash_md5(uint8_t *data_in, uint8_t *data_out)
 	return 0;
 }
 
-static int partial_hash_compute(enum icp_qat_hw_auth_algo hash_alg,
-			uint8_t *data_in,
-			uint8_t *data_out)
+static int
+partial_hash_compute(enum icp_qat_hw_auth_algo hash_alg,
+		uint8_t *data_in, uint8_t *data_out)
 {
 	int digest_size;
 	uint8_t digest[qat_hash_get_digest_size(
@@ -1654,7 +1573,6 @@ int qat_sym_cd_cipher_set(struct qat_sym_session *cdesc,
 		cipher_cd_ctrl->cipher_state_sz =
 			ICP_QAT_HW_ZUC_3G_EEA3_IV_SZ >> 3;
 		cdesc->qat_proto_flag = QAT_CRYPTO_PROTO_FLAG_ZUC;
-		cdesc->min_qat_dev_gen = QAT_GEN2;
 	} else {
 		total_key_size = cipherkeylen;
 		cipher_cd_ctrl->cipher_state_sz = ICP_QAT_HW_AES_BLK_SZ >> 3;
@@ -2002,7 +1920,6 @@ int qat_sym_cd_auth_set(struct qat_sym_session *cdesc,
 		memcpy(cdesc->cd_cur_ptr + state1_size, authkey, authkeylen);
 		cd_extra_size += ICP_QAT_HW_ZUC_3G_EEA3_IV_SZ;
 		auth_param->hash_state_sz = ICP_QAT_HW_ZUC_3G_EEA3_IV_SZ >> 3;
-		cdesc->min_qat_dev_gen = QAT_GEN2;
 
 		break;
 	case ICP_QAT_HW_AUTH_ALGO_MD5:
@@ -2263,8 +2180,6 @@ qat_sec_session_set_docsis_parameters(struct rte_cryptodev *dev,
 	session->cd_paddr = session_paddr +
 			offsetof(struct qat_sym_session, cd);
 
-	session->min_qat_dev_gen = QAT_GEN1;
-
 	/* Get requested QAT command id - should be cipher */
 	qat_cmd_id = qat_get_cmd_id(xform);
 	if (qat_cmd_id != ICP_QAT_FW_LA_CMD_CIPHER) {
@@ -2289,6 +2204,9 @@ qat_security_session_create(void *dev,
 {
 	void *sess_private_data;
 	struct rte_cryptodev *cdev = (struct rte_cryptodev *)dev;
+	struct qat_cryptodev_private *internals = cdev->data->dev_private;
+	enum qat_device_gen qat_dev_gen = internals->qat_dev->qat_dev_gen;
+	struct qat_sym_session *sym_session = NULL;
 	int ret;
 
 	if (conf->action_type != RTE_SECURITY_ACTION_TYPE_LOOKASIDE_PROTOCOL ||
@@ -2312,8 +2230,11 @@ qat_security_session_create(void *dev,
 	}
 
 	set_sec_session_private_data(sess, sess_private_data);
+	sym_session = (struct qat_sym_session *)sess_private_data;
+	sym_session->dev_id = internals->dev_id;
 
-	return ret;
+	return qat_sym_gen_dev_ops[qat_dev_gen].set_session((void *)cdev,
+			sess_private_data);
 }
 
 int

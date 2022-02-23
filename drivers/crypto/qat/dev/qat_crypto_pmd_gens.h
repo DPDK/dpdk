@@ -856,6 +856,9 @@ qat_asym_crypto_cap_get_gen1(struct qat_pci_device *qat_dev);
 uint64_t
 qat_asym_crypto_feature_flags_get_gen1(struct qat_pci_device *qat_dev);
 
+int
+qat_asym_crypto_set_session_gen1(void *cryptodev, void *session);
+
 #ifdef RTE_LIB_SECURITY
 extern struct rte_security_ops security_qat_ops_gen1;
 

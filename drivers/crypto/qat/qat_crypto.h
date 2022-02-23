@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2021 Intel Corporation
+ * Copyright(c) 2022 Intel Corporation
  */
 
  #ifndef _QAT_CRYPTO_H_
@@ -48,14 +48,20 @@ typedef uint64_t (*get_feature_flags_t)(struct qat_pci_device *qat_dev);
 
 typedef void * (*create_security_ctx_t)(void *cryptodev);
 
+typedef int (*set_session_t)(void *cryptodev, void *session);
+
 struct qat_crypto_gen_dev_ops {
 	get_feature_flags_t get_feature_flags;
 	get_capabilities_info_t get_capabilities;
 	struct rte_cryptodev_ops *cryptodev_ops;
+	set_session_t set_session;
 #ifdef RTE_LIB_SECURITY
 	create_security_ctx_t create_security_ctx;
 #endif
 };
+
+extern struct qat_crypto_gen_dev_ops qat_sym_gen_dev_ops[];
+extern struct qat_crypto_gen_dev_ops qat_asym_gen_dev_ops[];
 
 int
 qat_cryptodev_config(struct rte_cryptodev *dev,

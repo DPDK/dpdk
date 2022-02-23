@@ -13,6 +13,10 @@
 #include "qat_sym.h"
 #include "dev/qat_crypto_pmd_gens.h"
 
+uint8_t qat_sym_driver_id;
+
+struct qat_crypto_gen_dev_ops qat_sym_gen_dev_ops[QAT_N_GENS];
+
 static inline void
 set_cipher_iv(uint16_t iv_length, uint16_t iv_offset,
 		struct icp_qat_fw_la_cipher_req_params *cipher_param,
@@ -126,7 +130,7 @@ handle_spc_gmac(struct qat_sym_session *ctx, struct rte_crypto_op *op,
 
 int
 qat_sym_build_request(void *in_op, uint8_t *out_msg,
-		void *op_cookie, enum qat_device_gen qat_dev_gen)
+		void *op_cookie, __rte_unused enum qat_device_gen qat_dev_gen)
 {
 	int ret = 0;
 	struct qat_sym_session *ctx = NULL;
@@ -188,12 +192,6 @@ qat_sym_build_request(void *in_op, uint8_t *out_msg,
 
 	if (unlikely(ctx == NULL)) {
 		QAT_DP_LOG(ERR, "Session was not created for this device");
-		return -EINVAL;
-	}
-
-	if (unlikely(ctx->min_qat_dev_gen > qat_dev_gen)) {
-		QAT_DP_LOG(ERR, "Session alg not supported on this device gen");
-		op->status = RTE_CRYPTO_OP_STATUS_INVALID_SESSION;
 		return -EINVAL;
 	}
 

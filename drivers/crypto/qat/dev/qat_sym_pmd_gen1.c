@@ -452,12 +452,76 @@ qat_sym_create_security_gen1(void *cryptodev)
 }
 
 #endif
+int
+qat_sym_crypto_set_session_gen1(void *cryptodev __rte_unused, void *session)
+{
+	struct qat_sym_session *ctx = session;
+	qat_sym_build_request_t build_request = NULL;
+	enum rte_proc_type_t proc_type = rte_eal_process_type();
+	int handle_mixed = 0;
+
+	if ((ctx->qat_cmd == ICP_QAT_FW_LA_CMD_HASH_CIPHER ||
+			ctx->qat_cmd == ICP_QAT_FW_LA_CMD_CIPHER_HASH) &&
+			!ctx->is_gmac) {
+		/* AES-GCM or AES-CCM */
+		if (ctx->qat_hash_alg == ICP_QAT_HW_AUTH_ALGO_GALOIS_128 ||
+			ctx->qat_hash_alg == ICP_QAT_HW_AUTH_ALGO_GALOIS_64 ||
+			(ctx->qat_cipher_alg == ICP_QAT_HW_CIPHER_ALGO_AES128
+			&& ctx->qat_mode == ICP_QAT_HW_CIPHER_CTR_MODE
+			&& ctx->qat_hash_alg ==
+					ICP_QAT_HW_AUTH_ALGO_AES_CBC_MAC)) {
+			/* do_aead = 1; */
+			build_request = qat_sym_build_op_aead_gen1;
+		} else {
+			/* do_auth = 1; do_cipher = 1; */
+			build_request = qat_sym_build_op_chain_gen1;
+			handle_mixed = 1;
+		}
+	} else if (ctx->qat_cmd == ICP_QAT_FW_LA_CMD_AUTH || ctx->is_gmac) {
+		/* do_auth = 1; do_cipher = 0;*/
+		build_request = qat_sym_build_op_auth_gen1;
+	} else if (ctx->qat_cmd == ICP_QAT_FW_LA_CMD_CIPHER) {
+		/* do_auth = 0; do_cipher = 1; */
+		build_request = qat_sym_build_op_cipher_gen1;
+	}
+
+	if (build_request)
+		ctx->build_request[proc_type] = build_request;
+	else
+		return -EINVAL;
+
+	/* no more work if not mixed op */
+	if (!handle_mixed)
+		return 0;
+
+	/* Check none supported algs if mixed */
+	if (ctx->qat_hash_alg == ICP_QAT_HW_AUTH_ALGO_ZUC_3G_128_EIA3 &&
+			ctx->qat_cipher_alg !=
+			ICP_QAT_HW_CIPHER_ALGO_ZUC_3G_128_EEA3) {
+		return -ENOTSUP;
+	} else if (ctx->qat_hash_alg == ICP_QAT_HW_AUTH_ALGO_SNOW_3G_UIA2 &&
+			ctx->qat_cipher_alg !=
+			ICP_QAT_HW_CIPHER_ALGO_SNOW_3G_UEA2) {
+		return -ENOTSUP;
+	} else if ((ctx->aes_cmac ||
+			ctx->qat_hash_alg == ICP_QAT_HW_AUTH_ALGO_NULL) &&
+			(ctx->qat_cipher_alg ==
+			ICP_QAT_HW_CIPHER_ALGO_SNOW_3G_UEA2 ||
+			ctx->qat_cipher_alg ==
+			ICP_QAT_HW_CIPHER_ALGO_ZUC_3G_128_EEA3)) {
+		return -ENOTSUP;
+	}
+
+	return 0;
+}
 
 RTE_INIT(qat_sym_crypto_gen1_init)
 {
 	qat_sym_gen_dev_ops[QAT_GEN1].cryptodev_ops = &qat_sym_crypto_ops_gen1;
 	qat_sym_gen_dev_ops[QAT_GEN1].get_capabilities =
 			qat_sym_crypto_cap_get_gen1;
+	qat_sym_gen_dev_ops[QAT_GEN1].set_session =
+			qat_sym_crypto_set_session_gen1;
 	qat_sym_gen_dev_ops[QAT_GEN1].get_feature_flags =
 			qat_sym_crypto_feature_flags_get_gen1;
 #ifdef RTE_LIB_SECURITY

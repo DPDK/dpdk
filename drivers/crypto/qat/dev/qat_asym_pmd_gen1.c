@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2017-2021 Intel Corporation
+ * Copyright(c) 2017-2022 Intel Corporation
  */
 
 #include <rte_cryptodev.h>
@@ -63,6 +63,13 @@ qat_asym_crypto_feature_flags_get_gen1(
 			RTE_CRYPTODEV_FF_RSA_PRIV_OP_KEY_QT;
 
 	return feature_flags;
+}
+
+int
+qat_asym_crypto_set_session_gen1(void *cdev __rte_unused,
+		void *session __rte_unused)
+{
+	return 0;
 }
 
 RTE_INIT(qat_asym_crypto_gen1_init)
