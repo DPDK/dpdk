@@ -232,6 +232,10 @@ struct mlx5_dev_config {
 		unsigned int log_stride_size; /* Log size of a stride. */
 		unsigned int log_min_stride_size; /* Log min size of a stride.*/
 		unsigned int log_max_stride_size; /* Log max size of a stride.*/
+		unsigned int log_min_stride_num; /* Log min num of strides. */
+		unsigned int log_max_stride_num; /* Log max num of strides. */
+		unsigned int log_min_stride_wqe_size;
+		/* Log min WQE size, (size of single stride)*(num of strides).*/
 		unsigned int max_memcpy_len;
 		/* Maximum packet size to memcpy Rx packets. */
 		unsigned int min_rxqs_num;
