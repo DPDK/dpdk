@@ -242,13 +242,16 @@ static int ena_process_bool_devarg(const char *key,
 				   void *opaque);
 static int ena_parse_devargs(struct ena_adapter *adapter,
 			     struct rte_devargs *devargs);
-static int ena_copy_eni_stats(struct ena_adapter *adapter);
+static int ena_copy_eni_stats(struct ena_adapter *adapter,
+			      struct ena_stats_eni *stats);
 static int ena_setup_rx_intr(struct rte_eth_dev *dev);
 static int ena_rx_queue_intr_enable(struct rte_eth_dev *dev,
 				    uint16_t queue_id);
 static int ena_rx_queue_intr_disable(struct rte_eth_dev *dev,
 				     uint16_t queue_id);
 static int ena_configure_aenq(struct ena_adapter *adapter);
+static int ena_mp_primary_handle(const struct rte_mp_msg *mp_msg,
+				 const void *peer);
 
 static const struct eth_dev_ops ena_dev_ops = {
 	.dev_configure        = ena_dev_configure,
@@ -274,6 +277,261 @@ static const struct eth_dev_ops ena_dev_ops = {
 	.rss_hash_update      = ena_rss_hash_update,
 	.rss_hash_conf_get    = ena_rss_hash_conf_get,
 };
+
+/*********************************************************************
+ *  Multi-Process communication bits
+ *********************************************************************/
+/* rte_mp IPC message name */
+#define ENA_MP_NAME	"net_ena_mp"
+/* Request timeout in seconds */
+#define ENA_MP_REQ_TMO	5
+
+/** Proxy request type */
+enum ena_mp_req {
+	ENA_MP_DEV_STATS_GET,
+	ENA_MP_ENI_STATS_GET,
+	ENA_MP_MTU_SET,
+	ENA_MP_IND_TBL_GET,
+	ENA_MP_IND_TBL_SET
+};
+
+/** Proxy message body. Shared between requests and responses. */
+struct ena_mp_body {
+	/* Message type */
+	enum ena_mp_req type;
+	int port_id;
+	/* Processing result. Set in replies. 0 if message succeeded, negative
+	 * error code otherwise.
+	 */
+	int result;
+	union {
+		int mtu; /* For ENA_MP_MTU_SET */
+	} args;
+};
+
+/**
+ * Initialize IPC message.
+ *
+ * @param[out] msg
+ *   Pointer to the message to initialize.
+ * @param[in] type
+ *   Message type.
+ * @param[in] port_id
+ *   Port ID of target device.
+ *
+ */
+static void
+mp_msg_init(struct rte_mp_msg *msg, enum ena_mp_req type, int port_id)
+{
+	struct ena_mp_body *body = (struct ena_mp_body *)&msg->param;
+
+	memset(msg, 0, sizeof(*msg));
+	strlcpy(msg->name, ENA_MP_NAME, sizeof(msg->name));
+	msg->len_param = sizeof(*body);
+	body->type = type;
+	body->port_id = port_id;
+}
+
+/*********************************************************************
+ *  Multi-Process communication PMD API
+ *********************************************************************/
+/**
+ * Define proxy request descriptor
+ *
+ * Used to define all structures and functions required for proxying a given
+ * function to the primary process including the code to perform to prepare the
+ * request and process the response.
+ *
+ * @param[in] f
+ *   Name of the function to proxy
+ * @param[in] t
+ *   Message type to use
+ * @param[in] prep
+ *   Body of a function to prepare the request in form of a statement
+ *   expression. It is passed all the original function arguments along with two
+ *   extra ones:
+ *   - struct ena_adapter *adapter - PMD data of the device calling the proxy.
+ *   - struct ena_mp_body *req - body of a request to prepare.
+ * @param[in] proc
+ *   Body of a function to process the response in form of a statement
+ *   expression. It is passed all the original function arguments along with two
+ *   extra ones:
+ *   - struct ena_adapter *adapter - PMD data of the device calling the proxy.
+ *   - struct ena_mp_body *rsp - body of a response to process.
+ * @param ...
+ *   Proxied function's arguments
+ *
+ * @note Inside prep and proc any parameters which aren't used should be marked
+ *       as such (with ENA_TOUCH or __rte_unused).
+ */
+#define ENA_PROXY_DESC(f, t, prep, proc, ...)			\
+	static const enum ena_mp_req mp_type_ ## f =  t;	\
+	static const char *mp_name_ ## f = #t;			\
+	static void mp_prep_ ## f(struct ena_adapter *adapter,	\
+				  struct ena_mp_body *req,	\
+				  __VA_ARGS__)			\
+	{							\
+		prep;						\
+	}							\
+	static void mp_proc_ ## f(struct ena_adapter *adapter,	\
+				  struct ena_mp_body *rsp,	\
+				  __VA_ARGS__)			\
+	{							\
+		proc;						\
+	}
+
+/**
+ * Proxy wrapper for calling primary functions in a secondary process.
+ *
+ * Depending on whether called in primary or secondary process, calls the
+ * @p func directly or proxies the call to the primary process via rte_mp IPC.
+ * This macro requires a proxy request descriptor to be defined for @p func
+ * using ENA_PROXY_DESC() macro.
+ *
+ * @param[in/out] a
+ *   Device PMD data. Used for sending the message and sharing message results
+ *   between primary and secondary.
+ * @param[in] f
+ *   Function to proxy.
+ * @param ...
+ *   Arguments of @p func.
+ *
+ * @return
+ *   - 0: Processing succeeded and response handler was called.
+ *   - -EPERM: IPC is unavailable on this platform. This means only primary
+ *             process may call the proxied function.
+ *   - -EIO:   IPC returned error on request send. Inspect rte_errno detailed
+ *             error code.
+ *   - Negative error code from the proxied function.
+ *
+ * @note This mechanism is geared towards control-path tasks. Avoid calling it
+ *       in fast-path unless unbound delays are allowed. This is due to the IPC
+ *       mechanism itself (socket based).
+ * @note Due to IPC parameter size limitations the proxy logic shares call
+ *       results through the struct ena_adapter shared memory. This makes the
+ *       proxy mechanism strictly single-threaded. Therefore be sure to make all
+ *       calls to the same proxied function under the same lock.
+ */
+#define ENA_PROXY(a, f, ...)						\
+({									\
+	struct ena_adapter *_a = (a);					\
+	struct timespec ts = { .tv_sec = ENA_MP_REQ_TMO };		\
+	struct ena_mp_body *req, *rsp;					\
+	struct rte_mp_reply mp_rep;					\
+	struct rte_mp_msg mp_req;					\
+	int ret;							\
+									\
+	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {		\
+		ret = f(__VA_ARGS__);					\
+	} else {							\
+		/* Prepare and send request */				\
+		req = (struct ena_mp_body *)&mp_req.param;		\
+		mp_msg_init(&mp_req, mp_type_ ## f, _a->edev_data->port_id); \
+		mp_prep_ ## f(_a, req, ## __VA_ARGS__);			\
+									\
+		ret = rte_mp_request_sync(&mp_req, &mp_rep, &ts);	\
+		if (likely(!ret)) {					\
+			RTE_ASSERT(mp_rep.nb_received == 1);		\
+			rsp = (struct ena_mp_body *)&mp_rep.msgs[0].param; \
+			ret = rsp->result;				\
+			if (ret == 0) {					\
+				mp_proc_##f(_a, rsp, ## __VA_ARGS__);	\
+			} else {					\
+				PMD_DRV_LOG(ERR,			\
+					    "%s returned error: %d\n",	\
+					    mp_name_ ## f, rsp->result);\
+			}						\
+			free(mp_rep.msgs);				\
+		} else if (rte_errno == ENOTSUP) {			\
+			PMD_DRV_LOG(ERR,				\
+				    "No IPC, can't proxy to primary\n");\
+			ret = -rte_errno;				\
+		} else {						\
+			PMD_DRV_LOG(ERR, "Request %s failed: %s\n",	\
+				    mp_name_ ## f,			\
+				    rte_strerror(rte_errno));		\
+			ret = -EIO;					\
+		}							\
+	}								\
+	ret;								\
+})
+
+/*********************************************************************
+ *  Multi-Process communication request descriptors
+ *********************************************************************/
+
+ENA_PROXY_DESC(ena_com_get_dev_basic_stats, ENA_MP_DEV_STATS_GET,
+({
+	ENA_TOUCH(adapter);
+	ENA_TOUCH(req);
+	ENA_TOUCH(ena_dev);
+	ENA_TOUCH(stats);
+}),
+({
+	ENA_TOUCH(rsp);
+	ENA_TOUCH(ena_dev);
+	if (stats != &adapter->basic_stats)
+		rte_memcpy(stats, &adapter->basic_stats, sizeof(*stats));
+}),
+	struct ena_com_dev *ena_dev, struct ena_admin_basic_stats *stats);
+
+ENA_PROXY_DESC(ena_com_get_eni_stats, ENA_MP_ENI_STATS_GET,
+({
+	ENA_TOUCH(adapter);
+	ENA_TOUCH(req);
+	ENA_TOUCH(ena_dev);
+	ENA_TOUCH(stats);
+}),
+({
+	ENA_TOUCH(rsp);
+	ENA_TOUCH(ena_dev);
+	if (stats != (struct ena_admin_eni_stats *)&adapter->eni_stats)
+		rte_memcpy(stats, &adapter->eni_stats, sizeof(*stats));
+}),
+	struct ena_com_dev *ena_dev, struct ena_admin_eni_stats *stats);
+
+ENA_PROXY_DESC(ena_com_set_dev_mtu, ENA_MP_MTU_SET,
+({
+	ENA_TOUCH(adapter);
+	ENA_TOUCH(ena_dev);
+	req->args.mtu = mtu;
+}),
+({
+	ENA_TOUCH(adapter);
+	ENA_TOUCH(rsp);
+	ENA_TOUCH(ena_dev);
+	ENA_TOUCH(mtu);
+}),
+	struct ena_com_dev *ena_dev, int mtu);
+
+ENA_PROXY_DESC(ena_com_indirect_table_set, ENA_MP_IND_TBL_SET,
+({
+	ENA_TOUCH(adapter);
+	ENA_TOUCH(req);
+	ENA_TOUCH(ena_dev);
+}),
+({
+	ENA_TOUCH(adapter);
+	ENA_TOUCH(rsp);
+	ENA_TOUCH(ena_dev);
+}),
+	struct ena_com_dev *ena_dev);
+
+ENA_PROXY_DESC(ena_com_indirect_table_get, ENA_MP_IND_TBL_GET,
+({
+	ENA_TOUCH(adapter);
+	ENA_TOUCH(req);
+	ENA_TOUCH(ena_dev);
+	ENA_TOUCH(ind_tbl);
+}),
+({
+	ENA_TOUCH(rsp);
+	ENA_TOUCH(ena_dev);
+	if (ind_tbl != adapter->indirect_table)
+		rte_memcpy(ind_tbl, adapter->indirect_table,
+			   sizeof(adapter->indirect_table));
+}),
+	struct ena_com_dev *ena_dev, u32 *ind_tbl);
 
 static inline void ena_rx_mbuf_prepare(struct ena_ring *rx_ring,
 				       struct rte_mbuf *mbuf,
@@ -816,7 +1074,8 @@ static int ena_stats_get(struct rte_eth_dev *dev,
 	memset(&ena_stats, 0, sizeof(ena_stats));
 
 	rte_spinlock_lock(&adapter->admin_lock);
-	rc = ena_com_get_dev_basic_stats(ena_dev, &ena_stats);
+	rc = ENA_PROXY(adapter, ena_com_get_dev_basic_stats, ena_dev,
+		       &ena_stats);
 	rte_spinlock_unlock(&adapter->admin_lock);
 	if (unlikely(rc)) {
 		PMD_DRV_LOG(ERR, "Could not retrieve statistics from ENA\n");
@@ -882,7 +1141,7 @@ static int ena_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 		return -EINVAL;
 	}
 
-	rc = ena_com_set_dev_mtu(ena_dev, mtu);
+	rc = ENA_PROXY(adapter, ena_com_set_dev_mtu, ena_dev, mtu);
 	if (rc)
 		PMD_DRV_LOG(ERR, "Could not set MTU: %d\n", mtu);
 	else
@@ -1782,6 +2041,24 @@ ena_set_offloads(struct ena_offloads *offloads,
 		offloads->rx_offloads |= ENA_RX_RSS_HASH;
 }
 
+static int ena_init_once(void)
+{
+	static bool init_done;
+
+	if (init_done)
+		return 0;
+
+	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
+		/* Init timer subsystem for the ENA timer service. */
+		rte_timer_subsystem_init();
+		/* Register handler for requests from secondary processes. */
+		rte_mp_action_register(ENA_MP_NAME, ena_mp_primary_handle);
+	}
+
+	init_done = true;
+	return 0;
+}
+
 static int eth_ena_dev_init(struct rte_eth_dev *eth_dev)
 {
 	struct ena_calc_queue_size_ctx calc_queue_ctx = { 0 };
@@ -1801,6 +2078,10 @@ static int eth_ena_dev_init(struct rte_eth_dev *eth_dev)
 	eth_dev->rx_pkt_burst = &eth_ena_recv_pkts;
 	eth_dev->tx_pkt_burst = &eth_ena_xmit_pkts;
 	eth_dev->tx_pkt_prepare = &eth_ena_prep_pkts;
+
+	rc = ena_init_once();
+	if (rc != 0)
+		return rc;
 
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return 0;
@@ -1938,8 +2219,6 @@ static int eth_ena_dev_init(struct rte_eth_dev *eth_dev)
 	ena_com_set_admin_polling_mode(ena_dev, false);
 	ena_com_admin_aenq_enable(ena_dev);
 
-	if (adapters_found == 0)
-		rte_timer_subsystem_init();
 	rte_timer_init(&adapter->timer_wd);
 
 	adapters_found++;
@@ -2803,13 +3082,16 @@ static uint16_t eth_ena_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 	return sent_idx;
 }
 
-int ena_copy_eni_stats(struct ena_adapter *adapter)
+int ena_copy_eni_stats(struct ena_adapter *adapter, struct ena_stats_eni *stats)
 {
-	struct ena_admin_eni_stats admin_eni_stats;
 	int rc;
 
 	rte_spinlock_lock(&adapter->admin_lock);
-	rc = ena_com_get_eni_stats(&adapter->ena_dev, &admin_eni_stats);
+	/* Retrieve and store the latest statistics from the AQ. This ensures
+	 * that previous value is returned in case of a com error.
+	 */
+	rc = ENA_PROXY(adapter, ena_com_get_eni_stats, &adapter->ena_dev,
+		(struct ena_admin_eni_stats *)stats);
 	rte_spinlock_unlock(&adapter->admin_lock);
 	if (rc != 0) {
 		if (rc == ENA_COM_UNSUPPORTED) {
@@ -2821,9 +3103,6 @@ int ena_copy_eni_stats(struct ena_adapter *adapter)
 		}
 		return rc;
 	}
-
-	rte_memcpy(&adapter->eni_stats, &admin_eni_stats,
-		sizeof(struct ena_stats_eni));
 
 	return 0;
 }
@@ -2895,6 +3174,7 @@ static int ena_xstats_get(struct rte_eth_dev *dev,
 {
 	struct ena_adapter *adapter = dev->data->dev_private;
 	unsigned int xstats_count = ena_xstats_calc_num(dev->data);
+	struct ena_stats_eni eni_stats;
 	unsigned int stat, i, count = 0;
 	int stat_offset;
 	void *stats_begin;
@@ -2917,10 +3197,10 @@ static int ena_xstats_get(struct rte_eth_dev *dev,
 	/* Even if the function below fails, we should copy previous (or initial
 	 * values) to keep structure of rte_eth_xstat consistent.
 	 */
-	ena_copy_eni_stats(adapter);
+	ena_copy_eni_stats(adapter, &eni_stats);
 	for (stat = 0; stat < ENA_STATS_ARRAY_ENI; stat++, count++) {
 		stat_offset = ena_stats_eni_strings[stat].stat_offset;
-		stats_begin = &adapter->eni_stats;
+		stats_begin = &eni_stats;
 
 		xstats[count].id = count;
 		xstats[count].value = *((uint64_t *)
@@ -2958,6 +3238,7 @@ static int ena_xstats_get_by_id(struct rte_eth_dev *dev,
 				unsigned int n)
 {
 	struct ena_adapter *adapter = dev->data->dev_private;
+	struct ena_stats_eni eni_stats;
 	uint64_t id;
 	uint64_t rx_entries, tx_entries;
 	unsigned int i;
@@ -2983,9 +3264,9 @@ static int ena_xstats_get_by_id(struct rte_eth_dev *dev,
 			 */
 			if (!was_eni_copied) {
 				was_eni_copied = true;
-				ena_copy_eni_stats(adapter);
+				ena_copy_eni_stats(adapter, &eni_stats);
 			}
-			values[i] = *((uint64_t *)&adapter->eni_stats + id);
+			values[i] = *((uint64_t *)&eni_stats + id);
 			++valid;
 			continue;
 		}
@@ -3198,6 +3479,18 @@ static int ena_configure_aenq(struct ena_adapter *adapter)
 	return 0;
 }
 
+int ena_mp_indirect_table_set(struct ena_adapter *adapter)
+{
+	return ENA_PROXY(adapter, ena_com_indirect_table_set, &adapter->ena_dev);
+}
+
+int ena_mp_indirect_table_get(struct ena_adapter *adapter,
+			      uint32_t *indirect_table)
+{
+	return ENA_PROXY(adapter, ena_com_indirect_table_get, &adapter->ena_dev,
+		indirect_table);
+}
+
 /*********************************************************************
  *  PMD configuration
  *********************************************************************/
@@ -3316,3 +3609,64 @@ static struct ena_aenq_handlers aenq_handlers = {
 	},
 	.unimplemented_handler = unimplemented_aenq_handler
 };
+
+/*********************************************************************
+ *  Multi-Process communication request handling (in primary)
+ *********************************************************************/
+static int
+ena_mp_primary_handle(const struct rte_mp_msg *mp_msg, const void *peer)
+{
+	const struct ena_mp_body *req =
+		(const struct ena_mp_body *)mp_msg->param;
+	struct ena_adapter *adapter;
+	struct ena_com_dev *ena_dev;
+	struct ena_mp_body *rsp;
+	struct rte_mp_msg mp_rsp;
+	struct rte_eth_dev *dev;
+	int res = 0;
+
+	rsp = (struct ena_mp_body *)&mp_rsp.param;
+	mp_msg_init(&mp_rsp, req->type, req->port_id);
+
+	if (!rte_eth_dev_is_valid_port(req->port_id)) {
+		rte_errno = ENODEV;
+		res = -rte_errno;
+		PMD_DRV_LOG(ERR, "Unknown port %d in request %d\n",
+			    req->port_id, req->type);
+		goto end;
+	}
+	dev = &rte_eth_devices[req->port_id];
+	adapter = dev->data->dev_private;
+	ena_dev = &adapter->ena_dev;
+
+	switch (req->type) {
+	case ENA_MP_DEV_STATS_GET:
+		res = ena_com_get_dev_basic_stats(ena_dev,
+						  &adapter->basic_stats);
+		break;
+	case ENA_MP_ENI_STATS_GET:
+		res = ena_com_get_eni_stats(ena_dev,
+			(struct ena_admin_eni_stats *)&adapter->eni_stats);
+		break;
+	case ENA_MP_MTU_SET:
+		res = ena_com_set_dev_mtu(ena_dev, req->args.mtu);
+		break;
+	case ENA_MP_IND_TBL_GET:
+		res = ena_com_indirect_table_get(ena_dev,
+						 adapter->indirect_table);
+		break;
+	case ENA_MP_IND_TBL_SET:
+		res = ena_com_indirect_table_set(ena_dev);
+		break;
+	default:
+		PMD_DRV_LOG(ERR, "Unknown request type %d\n", req->type);
+		res = -EINVAL;
+		break;
+	}
+
+end:
+	/* Save processing result in the reply */
+	rsp->result = res;
+	/* Return just IPC processing status */
+	return rte_mp_reply(&mp_rsp, peer);
+}

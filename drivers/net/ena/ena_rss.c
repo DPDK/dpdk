@@ -89,6 +89,8 @@ int ena_rss_reta_update(struct rte_eth_dev *dev,
 		return -EINVAL;
 	}
 
+	/* Prevent RETA table structure update races */
+	rte_spinlock_lock(&adapter->admin_lock);
 	for (i = 0 ; i < reta_size ; i++) {
 		/* Each reta_conf is for 64 entries.
 		 * To support 128 we use 2 conf of 64.
@@ -109,8 +111,7 @@ int ena_rss_reta_update(struct rte_eth_dev *dev,
 		}
 	}
 
-	rte_spinlock_lock(&adapter->admin_lock);
-	rc = ena_com_indirect_table_set(ena_dev);
+	rc = ena_mp_indirect_table_set(adapter);
 	rte_spinlock_unlock(&adapter->admin_lock);
 	if (unlikely(rc != 0)) {
 		PMD_DRV_LOG(ERR, "Cannot set the indirection table\n");
@@ -128,9 +129,8 @@ int ena_rss_reta_query(struct rte_eth_dev *dev,
 		       struct rte_eth_rss_reta_entry64 *reta_conf,
 		       uint16_t reta_size)
 {
-	uint32_t indirect_table[ENA_RX_RSS_TABLE_SIZE] = { 0 };
+	uint32_t indirect_table[ENA_RX_RSS_TABLE_SIZE];
 	struct ena_adapter *adapter = dev->data->dev_private;
-	struct ena_com_dev *ena_dev = &adapter->ena_dev;
 	int rc;
 	int i;
 	int reta_conf_idx;
@@ -146,7 +146,7 @@ int ena_rss_reta_query(struct rte_eth_dev *dev,
 	}
 
 	rte_spinlock_lock(&adapter->admin_lock);
-	rc = ena_com_indirect_table_get(ena_dev, indirect_table);
+	rc = ena_mp_indirect_table_get(adapter, indirect_table);
 	rte_spinlock_unlock(&adapter->admin_lock);
 	if (unlikely(rc != 0)) {
 		PMD_DRV_LOG(ERR, "Cannot get indirection table\n");

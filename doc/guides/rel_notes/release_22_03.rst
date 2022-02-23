@@ -112,6 +112,7 @@ New Features
     ``l4_csum_good``.
   * Added support for the link status configuration.
   * Added optimized memcpy support for the ARM platforms.
+  * Added ENA admin queue support for the MP applications.
 
 * **Updated Cisco enic driver.**
 

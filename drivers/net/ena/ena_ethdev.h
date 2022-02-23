@@ -29,6 +29,9 @@
 #define ENA_RX_BUF_MIN_SIZE	1400
 #define ENA_DEFAULT_RING_SIZE	1024
 
+#define ENA_RX_RSS_TABLE_LOG_SIZE	7
+#define ENA_RX_RSS_TABLE_SIZE		(1 << ENA_RX_RSS_TABLE_LOG_SIZE)
+
 #define ENA_MIN_MTU		128
 
 #define ENA_MMIO_DISABLE_REG_READ	BIT(0)
@@ -290,6 +293,9 @@ struct ena_adapter {
 
 	struct ena_stats_dev dev_stats;
 	struct ena_stats_eni eni_stats;
+	struct ena_admin_basic_stats basic_stats;
+
+	u32 indirect_table[ENA_RX_RSS_TABLE_SIZE];
 
 	uint32_t all_aenq_groups;
 	uint32_t active_aenq_groups;
@@ -304,6 +310,9 @@ struct ena_adapter {
 	uint64_t tx_cleanup_stall_delay;
 };
 
+int ena_mp_indirect_table_set(struct ena_adapter *adapter);
+int ena_mp_indirect_table_get(struct ena_adapter *adapter,
+			      uint32_t *indirect_table);
 int ena_rss_reta_update(struct rte_eth_dev *dev,
 			struct rte_eth_rss_reta_entry64 *reta_conf,
 			uint16_t reta_size);
