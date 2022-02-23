@@ -175,7 +175,8 @@ main_loop(struct cperf_cyclecount_ctx *ctx, enum rte_comp_xform_type type)
 
 	/* one array for both enqueue and dequeue */
 	ops = rte_zmalloc_socket(NULL,
-		2 * mem->total_bufs * sizeof(struct rte_comp_op *),
+		(test_data->burst_sz + mem->total_bufs) *
+		sizeof(struct rte_comp_op *),
 		0, rte_socket_id());
 
 	if (ops == NULL) {
@@ -184,7 +185,7 @@ main_loop(struct cperf_cyclecount_ctx *ctx, enum rte_comp_xform_type type)
 		return -1;
 	}
 
-	deq_ops = &ops[mem->total_bufs];
+	deq_ops = &ops[test_data->burst_sz];
 
 	if (type == RTE_COMP_COMPRESS) {
 		xform = (struct rte_comp_xform) {
