@@ -53,11 +53,6 @@
 
 #define ENA_PTYPE_HAS_HASH	(RTE_PTYPE_L4_TCP | RTE_PTYPE_L4_UDP)
 
-enum ethtool_stringset {
-	ETH_SS_TEST             = 0,
-	ETH_SS_STATS,
-};
-
 struct ena_stats {
 	char name[ETH_GSTRING_LEN];
 	int stat_offset;
