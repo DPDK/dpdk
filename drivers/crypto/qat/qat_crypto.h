@@ -53,11 +53,14 @@ typedef void * (*create_security_ctx_t)(void *cryptodev);
 
 typedef int (*set_session_t)(void *cryptodev, void *session);
 
+typedef int (*set_raw_dp_ctx_t)(void *raw_dp_ctx, void *ctx);
+
 struct qat_crypto_gen_dev_ops {
 	get_feature_flags_t get_feature_flags;
 	get_capabilities_info_t get_capabilities;
 	struct rte_cryptodev_ops *cryptodev_ops;
 	set_session_t set_session;
+	set_raw_dp_ctx_t set_raw_dp_ctx;
 #ifdef RTE_LIB_SECURITY
 	create_security_ctx_t create_security_ctx;
 #endif

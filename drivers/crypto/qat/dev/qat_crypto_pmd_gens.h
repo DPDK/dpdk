@@ -839,6 +839,84 @@ int
 qat_sym_build_op_chain_gen1(void *in_op, struct qat_sym_session *ctx,
 		uint8_t *out_msg, void *op_cookie);
 
+/* -----------------GEN 1 sym crypto raw data path APIs ---------------- */
+int
+qat_sym_dp_enqueue_single_cipher_gen1(void *qp_data, uint8_t *drv_ctx,
+	struct rte_crypto_vec *data, uint16_t n_data_vecs,
+	union rte_crypto_sym_ofs ofs,
+	struct rte_crypto_va_iova_ptr *iv,
+	struct rte_crypto_va_iova_ptr *digest __rte_unused,
+	struct rte_crypto_va_iova_ptr *aad __rte_unused,
+	void *user_data);
+
+uint32_t
+qat_sym_dp_enqueue_cipher_jobs_gen1(void *qp_data, uint8_t *drv_ctx,
+	struct rte_crypto_sym_vec *vec, union rte_crypto_sym_ofs ofs,
+	void *user_data[], int *status);
+
+int
+qat_sym_dp_enqueue_single_auth_gen1(void *qp_data, uint8_t *drv_ctx,
+	struct rte_crypto_vec *data, uint16_t n_data_vecs,
+	union rte_crypto_sym_ofs ofs,
+	struct rte_crypto_va_iova_ptr *iv __rte_unused,
+	struct rte_crypto_va_iova_ptr *digest,
+	struct rte_crypto_va_iova_ptr *auth_iv,
+	void *user_data);
+
+uint32_t
+qat_sym_dp_enqueue_auth_jobs_gen1(void *qp_data, uint8_t *drv_ctx,
+	struct rte_crypto_sym_vec *vec, union rte_crypto_sym_ofs ofs,
+	void *user_data[], int *status);
+
+int
+qat_sym_dp_enqueue_single_chain_gen1(void *qp_data, uint8_t *drv_ctx,
+	struct rte_crypto_vec *data, uint16_t n_data_vecs,
+	union rte_crypto_sym_ofs ofs,
+	struct rte_crypto_va_iova_ptr *cipher_iv,
+	struct rte_crypto_va_iova_ptr *digest,
+	struct rte_crypto_va_iova_ptr *auth_iv,
+	void *user_data);
+
+uint32_t
+qat_sym_dp_enqueue_chain_jobs_gen1(void *qp_data, uint8_t *drv_ctx,
+	struct rte_crypto_sym_vec *vec, union rte_crypto_sym_ofs ofs,
+	void *user_data[], int *status);
+
+int
+qat_sym_dp_enqueue_single_aead_gen1(void *qp_data, uint8_t *drv_ctx,
+	struct rte_crypto_vec *data, uint16_t n_data_vecs,
+	union rte_crypto_sym_ofs ofs,
+	struct rte_crypto_va_iova_ptr *iv,
+	struct rte_crypto_va_iova_ptr *digest,
+	struct rte_crypto_va_iova_ptr *aad,
+	void *user_data);
+
+uint32_t
+qat_sym_dp_enqueue_aead_jobs_gen1(void *qp_data, uint8_t *drv_ctx,
+	struct rte_crypto_sym_vec *vec, union rte_crypto_sym_ofs ofs,
+	void *user_data[], int *status);
+
+void *
+qat_sym_dp_dequeue_single_gen1(void *qp_data, uint8_t *drv_ctx,
+	int *dequeue_status, enum rte_crypto_op_status *op_status);
+
+uint32_t
+qat_sym_dp_dequeue_burst_gen1(void *qp_data, uint8_t *drv_ctx,
+	rte_cryptodev_raw_get_dequeue_count_t get_dequeue_count,
+	uint32_t max_nb_to_dequeue,
+	rte_cryptodev_raw_post_dequeue_t post_dequeue,
+	void **out_user_data, uint8_t is_user_data_array,
+	uint32_t *n_success_jobs, int *return_status);
+
+int
+qat_sym_dp_enqueue_done_gen1(void *qp_data, uint8_t *drv_ctx, uint32_t n);
+
+int
+qat_sym_dp_dequeue_done_gen1(void *qp_data, uint8_t *drv_ctx, uint32_t n);
+
+int
+qat_sym_configure_raw_dp_ctx_gen1(void *_raw_dp_ctx, void *_ctx);
+
 /* -----------------GENx control path APIs ---------------- */
 uint64_t
 qat_sym_crypto_feature_flags_get_gen1(struct qat_pci_device *qat_dev);

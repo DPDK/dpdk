@@ -617,10 +617,17 @@ static struct rte_compressdev_ops compress_qat_dummy_ops = {
 };
 
 static uint16_t
+qat_comp_dequeue_burst(void *qp, struct rte_comp_op **ops,  uint16_t nb_ops)
+{
+	return qat_dequeue_op_burst(qp, (void **)ops, qat_comp_process_response,
+				nb_ops);
+}
+
+static uint16_t
 qat_comp_pmd_dequeue_first_op_burst(void *qp, struct rte_comp_op **ops,
 				   uint16_t nb_ops)
 {
-	uint16_t ret = qat_dequeue_op_burst(qp, (void **)ops, NULL, nb_ops);
+	uint16_t ret = qat_comp_dequeue_burst(qp, ops, nb_ops);
 	struct qat_qp *tmp_qp = (struct qat_qp *)qp;
 
 	if (ret) {
@@ -638,8 +645,7 @@ qat_comp_pmd_dequeue_first_op_burst(void *qp, struct rte_comp_op **ops,
 
 		} else {
 			tmp_qp->qat_dev->comp_dev->compressdev->dequeue_burst =
-					(compressdev_dequeue_pkt_burst_t)
-					qat_comp_pmd_enq_deq_dummy_op_burst;
+					qat_comp_dequeue_burst;
 		}
 	}
 	return ret;

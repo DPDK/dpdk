@@ -89,7 +89,7 @@ qat_sym_build_request(void *in_op, uint8_t *out_msg,
 					(void *)cdev, (void *)sess);
 				if (ret < 0) {
 					op->status =
-					RTE_CRYPTO_OP_STATUS_INVALID_SESSION;
+						RTE_CRYPTO_OP_STATUS_INVALID_SESSION;
 					return -EINVAL;
 				}
 			}
@@ -144,7 +144,7 @@ qat_sym_build_request(void *in_op, uint8_t *out_msg,
 					(void *)cdev, (void *)sess);
 				if (ret < 0) {
 					op->status =
-					RTE_CRYPTO_OP_STATUS_INVALID_SESSION;
+						RTE_CRYPTO_OP_STATUS_INVALID_SESSION;
 					return -EINVAL;
 				}
 			}
@@ -292,8 +292,7 @@ qat_sym_dev_create(struct qat_pci_device *qat_pci_dev,
 		if (internals->capa_mz == NULL) {
 			QAT_LOG(DEBUG,
 				"Error allocating memzone for capabilities, "
-				"destroying PMD for %s",
-				name);
+				"destroying PMD for %s", name);
 			ret = -EFAULT;
 			goto error;
 		}
@@ -353,6 +352,55 @@ qat_sym_dev_destroy(struct qat_pci_device *qat_pci_dev)
 	qat_pci_dev->sym_dev = NULL;
 
 	return 0;
+}
+
+int
+qat_sym_configure_dp_ctx(struct rte_cryptodev *dev, uint16_t qp_id,
+	struct rte_crypto_raw_dp_ctx *raw_dp_ctx,
+	enum rte_crypto_op_sess_type sess_type,
+	union rte_cryptodev_session_ctx session_ctx, uint8_t is_update)
+{
+	struct qat_cryptodev_private *internals = dev->data->dev_private;
+	enum qat_device_gen qat_dev_gen = internals->qat_dev->qat_dev_gen;
+	struct qat_crypto_gen_dev_ops *gen_dev_ops =
+			&qat_sym_gen_dev_ops[qat_dev_gen];
+	struct qat_qp *qp;
+	struct qat_sym_session *ctx;
+	struct qat_sym_dp_ctx *dp_ctx;
+
+	if (!gen_dev_ops->set_raw_dp_ctx) {
+		QAT_LOG(ERR, "Device GEN %u does not support raw data path",
+				qat_dev_gen);
+		return -ENOTSUP;
+	}
+
+	qp = dev->data->queue_pairs[qp_id];
+	dp_ctx = (struct qat_sym_dp_ctx *)raw_dp_ctx->drv_ctx_data;
+
+	if (!is_update) {
+		memset(raw_dp_ctx, 0, sizeof(*raw_dp_ctx) +
+				sizeof(struct qat_sym_dp_ctx));
+		raw_dp_ctx->qp_data = dev->data->queue_pairs[qp_id];
+		dp_ctx->tail = qp->tx_q.tail;
+		dp_ctx->head = qp->rx_q.head;
+		dp_ctx->cached_enqueue = dp_ctx->cached_dequeue = 0;
+	}
+
+	if (sess_type != RTE_CRYPTO_OP_WITH_SESSION)
+		return -EINVAL;
+
+	ctx = (struct qat_sym_session *)get_sym_session_private_data(
+			session_ctx.crypto_sess, qat_sym_driver_id);
+
+	dp_ctx->session = ctx;
+
+	return gen_dev_ops->set_raw_dp_ctx(raw_dp_ctx, ctx);
+}
+
+int
+qat_sym_get_dp_ctx_size(struct rte_cryptodev *dev __rte_unused)
+{
+	return sizeof(struct qat_sym_dp_ctx);
 }
 
 static struct cryptodev_driver qat_crypto_drv;
