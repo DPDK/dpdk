@@ -134,6 +134,8 @@ extern volatile bool force_quit;
 
 extern uint32_t nb_bufs_in_pool;
 
+extern bool per_port_pool;
+
 static inline uint8_t
 is_unprotected_port(uint16_t port_id)
 {

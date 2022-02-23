@@ -183,6 +183,8 @@ struct eventmode_conf {
 		/**< 64 bit field to specify extended params */
 	uint64_t vector_tmo_ns;
 		/**< Max vector timeout in nanoseconds */
+	uint64_t vector_pool_sz;
+		/**< Vector pool size */
 };
 
 /**

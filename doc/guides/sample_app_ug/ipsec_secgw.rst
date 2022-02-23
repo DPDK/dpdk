@@ -249,6 +249,13 @@ Where:
     Should be lower for low number of reassembly buckets.
     Valid values: from 1 ns to 10 s. Default value: 10000000 (10 s).
 
+*   ``--per-port-pool``: Enable per ethdev port pktmbuf pool.
+     By default one packet mbuf pool per socket is created and configured
+     via Rx queue setup.
+
+*   ``--vector-pool-sz``: Number of buffers in vector pool.
+    By default, vector pool size depeneds on packet pool size
+    and size of each vector.
 
 The mapping of lcores to port/queues is similar to other l3fwd applications.
 

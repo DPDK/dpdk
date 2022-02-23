@@ -248,7 +248,7 @@ struct socket_ctx {
 	struct sp_ctx *sp_ip6_out;
 	struct rt_ctx *rt_ip4;
 	struct rt_ctx *rt_ip6;
-	struct rte_mempool *mbuf_pool;
+	struct rte_mempool *mbuf_pool[RTE_MAX_ETHPORTS];
 	struct rte_mempool *mbuf_pool_indir;
 	struct rte_mempool *session_pool;
 	struct rte_mempool *session_priv_pool;

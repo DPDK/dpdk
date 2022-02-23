@@ -792,8 +792,8 @@ eh_rx_adapter_configure(struct eventmode_conf *em_conf,
 	uint32_t service_id, socket_id, nb_elem;
 	struct rte_mempool *vector_pool = NULL;
 	uint32_t lcore_id = rte_lcore_id();
+	int ret, portid, nb_ports = 0;
 	uint8_t eventdev_id;
-	int ret;
 	int j;
 
 	/* Get event dev ID */
@@ -806,10 +806,21 @@ eh_rx_adapter_configure(struct eventmode_conf *em_conf,
 		return ret;
 	}
 
+	RTE_ETH_FOREACH_DEV(portid)
+		if ((em_conf->eth_portmask & (1 << portid)))
+			nb_ports++;
+
 	if (em_conf->ext_params.event_vector) {
 		socket_id = rte_lcore_to_socket_id(lcore_id);
-		nb_elem = (nb_bufs_in_pool / em_conf->ext_params.vector_size)
-			  + 1;
+
+		if (em_conf->vector_pool_sz) {
+			nb_elem = em_conf->vector_pool_sz;
+		} else {
+			nb_elem = (nb_bufs_in_pool /
+				   em_conf->ext_params.vector_size) + 1;
+			if (per_port_pool)
+				nb_elem = nb_ports * nb_elem;
+		}
 
 		vector_pool = rte_event_vector_pool_create(
 			"vector_pool", nb_elem, 0,

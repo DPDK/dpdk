@@ -118,6 +118,8 @@ struct flow_info flow_info_tbl[RTE_MAX_ETHPORTS];
 #define CMD_LINE_OPT_EVENT_VECTOR	"event-vector"
 #define CMD_LINE_OPT_VECTOR_SIZE	"vector-size"
 #define CMD_LINE_OPT_VECTOR_TIMEOUT	"vector-tmo"
+#define CMD_LINE_OPT_VECTOR_POOL_SZ	"vector-pool-sz"
+#define CMD_LINE_OPT_PER_PORT_POOL	"per-port-pool"
 
 #define CMD_LINE_ARG_EVENT	"event"
 #define CMD_LINE_ARG_POLL	"poll"
@@ -145,6 +147,8 @@ enum {
 	CMD_LINE_OPT_EVENT_VECTOR_NUM,
 	CMD_LINE_OPT_VECTOR_SIZE_NUM,
 	CMD_LINE_OPT_VECTOR_TIMEOUT_NUM,
+	CMD_LINE_OPT_VECTOR_POOL_SZ_NUM,
+	CMD_LINE_OPT_PER_PORT_POOL_NUM,
 };
 
 static const struct option lgopts[] = {
@@ -161,6 +165,8 @@ static const struct option lgopts[] = {
 	{CMD_LINE_OPT_EVENT_VECTOR, 0, 0, CMD_LINE_OPT_EVENT_VECTOR_NUM},
 	{CMD_LINE_OPT_VECTOR_SIZE, 1, 0, CMD_LINE_OPT_VECTOR_SIZE_NUM},
 	{CMD_LINE_OPT_VECTOR_TIMEOUT, 1, 0, CMD_LINE_OPT_VECTOR_TIMEOUT_NUM},
+	{CMD_LINE_OPT_VECTOR_POOL_SZ, 1, 0, CMD_LINE_OPT_VECTOR_POOL_SZ_NUM},
+	{CMD_LINE_OPT_PER_PORT_POOL, 0, 0, CMD_LINE_OPT_PER_PORT_POOL_NUM},
 	{NULL, 0, 0, 0}
 };
 
@@ -234,7 +240,6 @@ struct lcore_conf {
 	struct rt_ctx *rt6_ctx;
 	struct {
 		struct rte_ip_frag_tbl *tbl;
-		struct rte_mempool *pool_dir;
 		struct rte_mempool *pool_indir;
 		struct rte_ip_frag_death_row dr;
 	} frag;
@@ -261,6 +266,8 @@ static struct rte_eth_conf port_conf = {
 };
 
 struct socket_ctx socket_ctx[NB_SOCKETS];
+
+bool per_port_pool;
 
 /*
  * Determine is multi-segment support required:
@@ -630,12 +637,10 @@ send_fragment_packet(struct lcore_conf *qconf, struct rte_mbuf *m,
 
 	if (proto == IPPROTO_IP)
 		rc = rte_ipv4_fragment_packet(m, tbl->m_table + len,
-			n, mtu_size, qconf->frag.pool_dir,
-			qconf->frag.pool_indir);
+			n, mtu_size, m->pool, qconf->frag.pool_indir);
 	else
 		rc = rte_ipv6_fragment_packet(m, tbl->m_table + len,
-			n, mtu_size, qconf->frag.pool_dir,
-			qconf->frag.pool_indir);
+			n, mtu_size, m->pool, qconf->frag.pool_indir);
 
 	if (rc >= 0)
 		len += rc;
@@ -1256,7 +1261,6 @@ ipsec_poll_mode_worker(void)
 	qconf->outbound.session_pool = socket_ctx[socket_id].session_pool;
 	qconf->outbound.session_priv_pool =
 			socket_ctx[socket_id].session_priv_pool;
-	qconf->frag.pool_dir = socket_ctx[socket_id].mbuf_pool;
 	qconf->frag.pool_indir = socket_ctx[socket_id].mbuf_pool_indir;
 
 	rc = ipsec_sad_lcore_cache_init(app_sa_prm.cache_sz);
@@ -1511,6 +1515,9 @@ print_usage(const char *prgname)
 		"  --vector-size Max vector size (default value: 16)\n"
 		"  --vector-tmo Max vector timeout in nanoseconds"
 		"    (default value: 102400)\n"
+		"  --" CMD_LINE_OPT_PER_PORT_POOL " Enable per port mbuf pool\n"
+		"  --" CMD_LINE_OPT_VECTOR_POOL_SZ " Vector pool size\n"
+		"                    (default value is based on mbuf count)\n"
 		"\n",
 		prgname);
 }
@@ -1893,6 +1900,15 @@ parse_args(int32_t argc, char **argv, struct eh_conf *eh_conf)
 
 			em_conf = eh_conf->mode_params;
 			em_conf->vector_tmo_ns = ret;
+			break;
+		case CMD_LINE_OPT_VECTOR_POOL_SZ_NUM:
+			ret = parse_decimal(optarg);
+
+			em_conf = eh_conf->mode_params;
+			em_conf->vector_pool_sz = ret;
+			break;
+		case CMD_LINE_OPT_PER_PORT_POOL_NUM:
+			per_port_pool = 1;
 			break;
 		default:
 			print_usage(prgname);
@@ -2381,6 +2397,7 @@ port_init(uint16_t portid, uint64_t req_rx_offloads, uint64_t req_tx_offloads)
 		/* init RX queues */
 		for (queue = 0; queue < qconf->nb_rx_queue; ++queue) {
 			struct rte_eth_rxconf rxq_conf;
+			struct rte_mempool *pool;
 
 			if (portid != qconf->rx_queue_list[queue].port_id)
 				continue;
@@ -2392,9 +2409,14 @@ port_init(uint16_t portid, uint64_t req_rx_offloads, uint64_t req_tx_offloads)
 
 			rxq_conf = dev_info.default_rxconf;
 			rxq_conf.offloads = local_port_conf.rxmode.offloads;
+
+			if (per_port_pool)
+				pool = socket_ctx[socket_id].mbuf_pool[portid];
+			else
+				pool = socket_ctx[socket_id].mbuf_pool[0];
+
 			ret = rte_eth_rx_queue_setup(portid, rx_queueid,
-					nb_rxd,	socket_id, &rxq_conf,
-					socket_ctx[socket_id].mbuf_pool);
+					nb_rxd,	socket_id, &rxq_conf, pool);
 			if (ret < 0)
 				rte_exit(EXIT_FAILURE,
 					"rte_eth_rx_queue_setup: err=%d, "
@@ -2507,28 +2529,37 @@ session_priv_pool_init(struct socket_ctx *ctx, int32_t socket_id,
 }
 
 static void
-pool_init(struct socket_ctx *ctx, int32_t socket_id, uint32_t nb_mbuf)
+pool_init(struct socket_ctx *ctx, int32_t socket_id, int portid,
+	  uint32_t nb_mbuf)
 {
 	char s[64];
 	int32_t ms;
 
-	snprintf(s, sizeof(s), "mbuf_pool_%d", socket_id);
-	ctx->mbuf_pool = rte_pktmbuf_pool_create(s, nb_mbuf,
-			MEMPOOL_CACHE_SIZE, ipsec_metadata_size(),
-			frame_buf_size, socket_id);
+
+	/* mbuf_pool is initialised by the pool_init() function*/
+	if (socket_ctx[socket_id].mbuf_pool[portid])
+		return;
+
+	snprintf(s, sizeof(s), "mbuf_pool_%d_%d", socket_id, portid);
+	ctx->mbuf_pool[portid] = rte_pktmbuf_pool_create(s, nb_mbuf,
+							 MEMPOOL_CACHE_SIZE,
+							 ipsec_metadata_size(),
+							 frame_buf_size,
+							 socket_id);
 
 	/*
 	 * if multi-segment support is enabled, then create a pool
-	 * for indirect mbufs.
+	 * for indirect mbufs. This is not per-port but global.
 	 */
 	ms = multi_seg_required();
-	if (ms != 0) {
+	if (ms != 0 && !ctx->mbuf_pool_indir) {
 		snprintf(s, sizeof(s), "mbuf_pool_indir_%d", socket_id);
 		ctx->mbuf_pool_indir = rte_pktmbuf_pool_create(s, nb_mbuf,
 			MEMPOOL_CACHE_SIZE, 0, 0, socket_id);
 	}
 
-	if (ctx->mbuf_pool == NULL || (ms != 0 && ctx->mbuf_pool_indir == NULL))
+	if (ctx->mbuf_pool[portid] == NULL ||
+	    (ms != 0 && ctx->mbuf_pool_indir == NULL))
 		rte_exit(EXIT_FAILURE, "Cannot init mbuf pool on socket %d\n",
 				socket_id);
 	else
@@ -3344,11 +3375,22 @@ main(int32_t argc, char **argv)
 		else
 			socket_id = 0;
 
-		/* mbuf_pool is initialised by the pool_init() function*/
-		if (socket_ctx[socket_id].mbuf_pool)
+		if (per_port_pool) {
+			RTE_ETH_FOREACH_DEV(portid) {
+				if ((enabled_port_mask & (1 << portid)) == 0)
+					continue;
+
+				pool_init(&socket_ctx[socket_id], socket_id,
+					  portid, nb_bufs_in_pool);
+			}
+		} else {
+			pool_init(&socket_ctx[socket_id], socket_id, 0,
+				  nb_bufs_in_pool);
+		}
+
+		if (socket_ctx[socket_id].session_pool)
 			continue;
 
-		pool_init(&socket_ctx[socket_id], socket_id, nb_bufs_in_pool);
 		session_pool_init(&socket_ctx[socket_id], socket_id, sess_sz);
 		session_priv_pool_init(&socket_ctx[socket_id], socket_id,
 			sess_sz);
@@ -3421,7 +3463,7 @@ main(int32_t argc, char **argv)
 	/* Replicate each context per socket */
 	for (i = 0; i < NB_SOCKETS && i < rte_socket_count(); i++) {
 		socket_id = rte_socket_id_by_idx(i);
-		if ((socket_ctx[socket_id].mbuf_pool != NULL) &&
+		if ((socket_ctx[socket_id].session_pool != NULL) &&
 			(socket_ctx[socket_id].sa_in == NULL) &&
 			(socket_ctx[socket_id].sa_out == NULL)) {
 			sa_init(&socket_ctx[socket_id], socket_id);
