@@ -653,6 +653,7 @@ mlx5_devx_cmd_query_hca_attr(void *ctx,
 	uint32_t out[MLX5_ST_SZ_DW(query_hca_cap_out)] = {0};
 	void *hcattr;
 	int status, syndrome, rc, i;
+	bool hca_cap_2_sup;
 
 	MLX5_SET(query_hca_cap_in, in, opcode, MLX5_CMD_OP_QUERY_HCA_CAP);
 	MLX5_SET(query_hca_cap_in, in, op_mod,
@@ -672,6 +673,7 @@ mlx5_devx_cmd_query_hca_attr(void *ctx,
 		return -1;
 	}
 	hcattr = MLX5_ADDR_OF(query_hca_cap_out, out, capability);
+	hca_cap_2_sup = MLX5_GET(cmd_hca_cap, hcattr, hca_cap_2);
 	attr->flow_counter_bulk_alloc_bitmap =
 			MLX5_GET(cmd_hca_cap, hcattr, flow_counter_bulk_alloc);
 	attr->flow_counters_dump = MLX5_GET(cmd_hca_cap, hcattr,
@@ -733,6 +735,32 @@ mlx5_devx_cmd_query_hca_attr(void *ctx,
 						mini_cqe_resp_flow_tag);
 	attr->mini_cqe_resp_l3_l4_tag = MLX5_GET(cmd_hca_cap, hcattr,
 						 mini_cqe_resp_l3_l4_tag);
+	if (hca_cap_2_sup) {
+		memset(in, 0, sizeof(in));
+		memset(out, 0, sizeof(out));
+		MLX5_SET(query_hca_cap_in, in, opcode,
+			 MLX5_CMD_OP_QUERY_HCA_CAP);
+		MLX5_SET(query_hca_cap_in, in, op_mod,
+			 MLX5_GET_HCA_CAP_OP_MOD_GENERAL_DEVICE_2 |
+			 MLX5_HCA_CAP_OPMOD_GET_CUR);
+		rc = mlx5_glue->devx_general_cmd(ctx, in, sizeof(in),
+						 out, sizeof(out));
+		if (rc)
+			goto error;
+		status = MLX5_GET(query_hca_cap_out, out, status);
+		syndrome = MLX5_GET(query_hca_cap_out, out, syndrome);
+		if (status) {
+			DRV_LOG(DEBUG,
+				"Failed to query DevX HCA capabilities 2,"
+				" status %x, syndrome = %x", status, syndrome);
+			return -1;
+		}
+		hcattr = MLX5_ADDR_OF(query_hca_cap_out, out, capability);
+		attr->log_min_stride_wqe_sz = MLX5_GET(cmd_hca_cap_2, hcattr,
+						       log_min_stride_wqe_sz);
+	}
+	if (attr->log_min_stride_wqe_sz == 0)
+		attr->log_min_stride_wqe_sz = MLX5_MPRQ_LOG_MIN_STRIDE_WQE_SIZE;
 	if (attr->qos.sup) {
 		MLX5_SET(query_hca_cap_in, in, op_mod,
 			 MLX5_GET_HCA_CAP_OP_MOD_QOS_CAP |
