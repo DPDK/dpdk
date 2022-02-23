@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2015-2019 Intel Corporation
+ * Copyright(c) 2015-2022 Intel Corporation
  */
 
 #include <openssl/evp.h>
@@ -11,93 +11,7 @@
 #include <rte_byteorder.h>
 
 #include "qat_sym.h"
-
-
-/** Decrypt a single partial block
- *  Depends on openssl libcrypto
- *  Uses ECB+XOR to do CFB encryption, same result, more performant
- */
-static inline int
-bpi_cipher_decrypt(uint8_t *src, uint8_t *dst,
-		uint8_t *iv, int ivlen, int srclen,
-		void *bpi_ctx)
-{
-	EVP_CIPHER_CTX *ctx = (EVP_CIPHER_CTX *)bpi_ctx;
-	int encrypted_ivlen;
-	uint8_t encrypted_iv[BPI_MAX_ENCR_IV_LEN];
-	uint8_t *encr = encrypted_iv;
-
-	/* ECB method: encrypt (not decrypt!) the IV, then XOR with plaintext */
-	if (EVP_EncryptUpdate(ctx, encrypted_iv, &encrypted_ivlen, iv, ivlen)
-								<= 0)
-		goto cipher_decrypt_err;
-
-	for (; srclen != 0; --srclen, ++dst, ++src, ++encr)
-		*dst = *src ^ *encr;
-
-	return 0;
-
-cipher_decrypt_err:
-	QAT_DP_LOG(ERR, "libcrypto ECB cipher decrypt for BPI IV failed");
-	return -EINVAL;
-}
-
-
-static inline uint32_t
-qat_bpicipher_preprocess(struct qat_sym_session *ctx,
-				struct rte_crypto_op *op)
-{
-	int block_len = qat_cipher_get_block_size(ctx->qat_cipher_alg);
-	struct rte_crypto_sym_op *sym_op = op->sym;
-	uint8_t last_block_len = block_len > 0 ?
-			sym_op->cipher.data.length % block_len : 0;
-
-	if (last_block_len &&
-			ctx->qat_dir == ICP_QAT_HW_CIPHER_DECRYPT) {
-
-		/* Decrypt last block */
-		uint8_t *last_block, *dst, *iv;
-		uint32_t last_block_offset = sym_op->cipher.data.offset +
-				sym_op->cipher.data.length - last_block_len;
-		last_block = (uint8_t *) rte_pktmbuf_mtod_offset(sym_op->m_src,
-				uint8_t *, last_block_offset);
-
-		if (unlikely((sym_op->m_dst != NULL)
-				&& (sym_op->m_dst != sym_op->m_src)))
-			/* out-of-place operation (OOP) */
-			dst = (uint8_t *) rte_pktmbuf_mtod_offset(sym_op->m_dst,
-						uint8_t *, last_block_offset);
-		else
-			dst = last_block;
-
-		if (last_block_len < sym_op->cipher.data.length)
-			/* use previous block ciphertext as IV */
-			iv = last_block - block_len;
-		else
-			/* runt block, i.e. less than one full block */
-			iv = rte_crypto_op_ctod_offset(op, uint8_t *,
-					ctx->cipher_iv.offset);
-
-#if RTE_LOG_DP_LEVEL >= RTE_LOG_DEBUG
-		QAT_DP_HEXDUMP_LOG(DEBUG, "BPI: src before pre-process:",
-			last_block, last_block_len);
-		if (sym_op->m_dst != NULL)
-			QAT_DP_HEXDUMP_LOG(DEBUG, "BPI:dst before pre-process:",
-			dst, last_block_len);
-#endif
-		bpi_cipher_decrypt(last_block, dst, iv, block_len,
-				last_block_len, ctx->bpi_ctx);
-#if RTE_LOG_DP_LEVEL >= RTE_LOG_DEBUG
-		QAT_DP_HEXDUMP_LOG(DEBUG, "BPI: src after pre-process:",
-			last_block, last_block_len);
-		if (sym_op->m_dst != NULL)
-			QAT_DP_HEXDUMP_LOG(DEBUG, "BPI: dst after pre-process:",
-			dst, last_block_len);
-#endif
-	}
-
-	return sym_op->cipher.data.length - last_block_len;
-}
+#include "dev/qat_crypto_pmd_gens.h"
 
 static inline void
 set_cipher_iv(uint16_t iv_length, uint16_t iv_offset,
