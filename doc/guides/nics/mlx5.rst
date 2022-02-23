@@ -19,7 +19,7 @@ Information and documentation about these adapters can be found on the
 `Mellanox community <http://community.mellanox.com/welcome>`__.
 
 There is also a `section dedicated to this poll mode driver
-<http://www.mellanox.com/page/products_dyn?product_family=209&mtag=pmd_for_dpdk>`__.
+<https://developer.nvidia.com/networking/dpdk>`_.
 
 
 Design
@@ -1376,9 +1376,9 @@ managers on most distributions, this PMD requires Ethernet extensions that
 may not be supported at the moment (this is a work in progress).
 
 `Mellanox OFED
-<http://www.mellanox.com/page/products_dyn?product_family=26&mtag=linux>`__ and
+<https://network.nvidia.com/products/infiniband-drivers/linux/mlnx_ofed/>`__ and
 `Mellanox EN
-<http://www.mellanox.com/page/products_dyn?product_family=27&mtag=linux>`__
+<https://network.nvidia.com/products/ethernet-drivers/linux/mlnx_en/>`__
 include the necessary support and should be used in the meantime. For DPDK,
 only libibverbs, libmlx5, mlnx-ofed-kernel packages and firmware updates are
 required from that distribution.
