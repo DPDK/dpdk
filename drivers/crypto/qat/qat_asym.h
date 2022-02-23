@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2019 Intel Corporation
+ * Copyright(c) 2022 Intel Corporation
  */
 
 #ifndef _QAT_ASYM_H_
@@ -8,9 +8,12 @@
 #include <cryptodev_pmd.h>
 #include <rte_crypto_asym.h>
 #include "icp_qat_fw_pke.h"
-#include "qat_common.h"
-#include "qat_asym_pmd.h"
+#include "qat_device.h"
+#include "qat_crypto.h"
 #include "icp_qat_fw.h"
+
+/** Intel(R) QAT Asymmetric Crypto PMD driver name */
+#define CRYPTODEV_NAME_QAT_ASYM_PMD	crypto_qat_asym
 
 typedef uint64_t large_int_ptr;
 #define MAX_PKE_PARAMS	8
@@ -25,6 +28,28 @@ typedef uint64_t large_int_ptr;
 #define QAT_ASYM_RSA_NUM_IN_PARAMS		3
 #define QAT_ASYM_RSA_NUM_OUT_PARAMS		1
 #define QAT_ASYM_RSA_QT_NUM_IN_PARAMS		6
+
+/**
+ * helper function to add an asym capability
+ * <name> <op type> <modlen (min, max, increment)>
+ **/
+#define QAT_ASYM_CAP(n, o, l, r, i)					\
+	{								\
+		.op = RTE_CRYPTO_OP_TYPE_ASYMMETRIC,			\
+		{.asym = {						\
+			.xform_capa = {					\
+				.xform_type = RTE_CRYPTO_ASYM_XFORM_##n,\
+				.op_types = o,				\
+				{					\
+				.modlen = {				\
+				.min = l,				\
+				.max = r,				\
+				.increment = i				\
+				}, }					\
+			}						\
+		},							\
+		}							\
+	}
 
 struct qat_asym_op_cookie {
 	size_t alg_size;
@@ -44,6 +69,27 @@ struct qat_asym_session {
 	struct icp_qat_fw_pke_request req_tmpl;
 	struct rte_crypto_asym_xform *xform;
 };
+
+static inline void
+qat_fill_req_tmpl(struct icp_qat_fw_pke_request *qat_req)
+{
+	memset(qat_req, 0, sizeof(*qat_req));
+	qat_req->pke_hdr.service_type = ICP_QAT_FW_COMN_REQ_CPM_FW_PKE;
+
+	qat_req->pke_hdr.hdr_flags =
+			ICP_QAT_FW_COMN_HDR_FLAGS_BUILD
+			(ICP_QAT_FW_COMN_REQ_FLAG_SET);
+}
+
+static inline void
+qat_asym_build_req_tmpl(void *sess_private_data)
+{
+	struct icp_qat_fw_pke_request *qat_req;
+	struct qat_asym_session *session = sess_private_data;
+
+	qat_req = &session->req_tmpl;
+	qat_fill_req_tmpl(qat_req);
+}
 
 int
 qat_asym_session_configure(struct rte_cryptodev *dev __rte_unused,
@@ -75,7 +121,9 @@ qat_asym_session_clear(struct rte_cryptodev *dev,
  */
 int
 qat_asym_build_request(void *in_op, uint8_t *out_msg,
-		void *op_cookie, enum qat_device_gen qat_dev_gen);
+		void *op_cookie,
+		__rte_unused uint64_t *opaque,
+		enum qat_device_gen qat_dev_gen);
 
 /*
  * Process PKE response received from outgoing queue of QAT
@@ -87,8 +135,11 @@ qat_asym_build_request(void *in_op, uint8_t *out_msg,
  * @param	op_cookie	Cookie pointer that holds private metadata
  *
  */
+int
+qat_asym_process_response(void **op, uint8_t *resp,
+		void *op_cookie,  __rte_unused uint64_t *dequeue_err_count);
+
 void
-qat_asym_process_response(void __rte_unused **op, uint8_t *resp,
-		void *op_cookie);
+qat_asym_init_op_cookie(void *cookie);
 
 #endif /* _QAT_ASYM_H_ */

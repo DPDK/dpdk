@@ -10,8 +10,8 @@
 #include "qat_asym.h"
 #include "qat_asym_pmd.h"
 
-uint8_t qat_asym_driver_id;
-struct qat_crypto_gen_dev_ops qat_asym_gen_dev_ops[QAT_N_GENS];
+extern uint8_t qat_asym_driver_id;
+extern struct qat_crypto_gen_dev_ops qat_asym_gen_dev_ops[QAT_N_GENS];
 
 void
 qat_asym_init_op_cookie(void *op_cookie)

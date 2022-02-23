@@ -1,68 +1,36 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2019 Intel Corporation
+ * Copyright(c) 2019 - 2022 Intel Corporation
  */
 
 #include <stdarg.h>
 
-#include "qat_asym.h"
+#include <cryptodev_pmd.h>
+
 #include "icp_qat_fw_pke.h"
 #include "icp_qat_fw.h"
 #include "qat_pke_functionality_arrays.h"
 
-#define qat_asym_sz_2param(arg) (arg, sizeof(arg)/sizeof(*arg))
+#include "qat_device.h"
 
-static int qat_asym_get_sz_and_func_id(const uint32_t arr[][2],
-		size_t arr_sz, size_t *size, uint32_t *func_id)
-{
-	size_t i;
+#include "qat_logs.h"
+#include "qat_asym.h"
 
-	for (i = 0; i < arr_sz; i++) {
-		if (*size <= arr[i][0]) {
-			*size = arr[i][0];
-			*func_id = arr[i][1];
-			return 0;
-		}
-	}
-	return -1;
-}
+uint8_t qat_asym_driver_id;
 
-static inline void qat_fill_req_tmpl(struct icp_qat_fw_pke_request *qat_req)
-{
-	memset(qat_req, 0, sizeof(*qat_req));
-	qat_req->pke_hdr.service_type = ICP_QAT_FW_COMN_REQ_CPM_FW_PKE;
+struct qat_crypto_gen_dev_ops qat_asym_gen_dev_ops[QAT_N_GENS];
 
-	qat_req->pke_hdr.hdr_flags =
-			ICP_QAT_FW_COMN_HDR_FLAGS_BUILD
-			(ICP_QAT_FW_COMN_REQ_FLAG_SET);
-}
+/* An rte_driver is needed in the registration of both the device and the driver
+ * with cryptodev.
+ * The actual qat pci's rte_driver can't be used as its name represents
+ * the whole pci device with all services. Think of this as a holder for a name
+ * for the crypto part of the pci device.
+ */
+static const char qat_asym_drv_name[] = RTE_STR(CRYPTODEV_NAME_QAT_ASYM_PMD);
+static const struct rte_driver cryptodev_qat_asym_driver = {
+	.name = qat_asym_drv_name,
+	.alias = qat_asym_drv_name
+};
 
-static inline void qat_asym_build_req_tmpl(void *sess_private_data)
-{
-	struct icp_qat_fw_pke_request *qat_req;
-	struct qat_asym_session *session = sess_private_data;
-
-	qat_req = &session->req_tmpl;
-	qat_fill_req_tmpl(qat_req);
-}
-
-static size_t max_of(int n, ...)
-{
-	va_list args;
-	size_t len = 0, num;
-	int i;
-
-	va_start(args, n);
-	len = va_arg(args, size_t);
-
-	for (i = 0; i < n - 1; i++) {
-		num = va_arg(args, size_t);
-		if (num > len)
-			len = num;
-	}
-	va_end(args);
-
-	return len;
-}
 
 static void qat_clear_arrays(struct qat_asym_op_cookie *cookie,
 		int in_count, int out_count, int alg_size)
@@ -106,7 +74,46 @@ static void qat_clear_arrays_by_alg(struct qat_asym_op_cookie *cookie,
 	}
 }
 
-static int qat_asym_check_nonzero(rte_crypto_param n)
+#define qat_asym_sz_2param(arg) (arg, sizeof(arg)/sizeof(*arg))
+
+static int
+qat_asym_get_sz_and_func_id(const uint32_t arr[][2],
+		size_t arr_sz, size_t *size, uint32_t *func_id)
+{
+	size_t i;
+
+	for (i = 0; i < arr_sz; i++) {
+		if (*size <= arr[i][0]) {
+			*size = arr[i][0];
+			*func_id = arr[i][1];
+			return 0;
+		}
+	}
+	return -1;
+}
+
+static size_t
+max_of(int n, ...)
+{
+	va_list args;
+	size_t len = 0, num;
+	int i;
+
+	va_start(args, n);
+	len = va_arg(args, size_t);
+
+	for (i = 0; i < n - 1; i++) {
+		num = va_arg(args, size_t);
+		if (num > len)
+			len = num;
+	}
+	va_end(args);
+
+	return len;
+}
+
+static int
+qat_asym_check_nonzero(rte_crypto_param n)
 {
 	if (n.length < 8) {
 		/* Not a case for any cryptographic function except for DH
@@ -475,10 +482,9 @@ qat_asym_fill_arrays(struct rte_crypto_asym_op *asym_op,
 }
 
 int
-qat_asym_build_request(void *in_op,
-			uint8_t *out_msg,
-			void *op_cookie,
-			__rte_unused enum qat_device_gen qat_dev_gen)
+qat_asym_build_request(void *in_op, uint8_t *out_msg, void *op_cookie,
+		__rte_unused uint64_t *opaque,
+		__rte_unused enum qat_device_gen dev_gen)
 {
 	struct qat_asym_session *ctx;
 	struct rte_crypto_op *op = (struct rte_crypto_op *)in_op;
@@ -677,9 +683,9 @@ static void qat_asym_collect_response(struct rte_crypto_op *rx_op,
 	qat_clear_arrays_by_alg(cookie, xform, alg_size_in_bytes);
 }
 
-void
+int
 qat_asym_process_response(void **op, uint8_t *resp,
-		void *op_cookie)
+		void *op_cookie, __rte_unused uint64_t *dequeue_err_count)
 {
 	struct qat_asym_session *ctx;
 	struct icp_qat_fw_pke_resp *resp_msg =
@@ -722,6 +728,8 @@ qat_asym_process_response(void **op, uint8_t *resp,
 	QAT_DP_HEXDUMP_LOG(DEBUG, "resp_msg:", resp_msg,
 			sizeof(struct icp_qat_fw_pke_resp));
 #endif
+
+	return 1;
 }
 
 int
@@ -779,3 +787,8 @@ qat_asym_session_clear(struct rte_cryptodev *dev,
 	if (sess_priv)
 		memset(s, 0, qat_asym_session_get_private_size(dev));
 }
+
+static struct cryptodev_driver qat_crypto_drv;
+RTE_PMD_REGISTER_CRYPTO_DRIVER(qat_crypto_drv,
+		cryptodev_qat_asym_driver,
+		qat_asym_driver_id);

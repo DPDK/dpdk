@@ -619,7 +619,7 @@ qat_enqueue_op_burst(void *qp,
 #ifdef BUILD_QAT_ASYM
 			ret = qat_asym_build_request(*ops, base_addr + tail,
 				tmp_qp->op_cookies[tail >> queue->trailz],
-				tmp_qp->qat_dev_gen);
+				NULL, tmp_qp->qat_dev_gen);
 #endif
 		}
 		if (ret != 0) {
@@ -847,7 +847,8 @@ qat_dequeue_op_burst(void *qp, void **ops,
 #ifdef BUILD_QAT_ASYM
 		else if (tmp_qp->service_type == QAT_SERVICE_ASYMMETRIC)
 			qat_asym_process_response(ops, resp_msg,
-				tmp_qp->op_cookies[head >> rx_queue->trailz]);
+				tmp_qp->op_cookies[head >> rx_queue->trailz],
+				NULL);
 #endif
 
 		head = adf_modulo(head + rx_queue->msg_size,
