@@ -226,13 +226,13 @@ dev_uev_handler(__rte_unused void *param)
 {
 	struct rte_dev_event uevent;
 	int ret;
-	char buf[EAL_UEV_MSG_LEN];
+	char buf[EAL_UEV_MSG_LEN + 1];
 	struct rte_bus *bus;
 	struct rte_device *dev;
 	const char *busname = "";
 
 	memset(&uevent, 0, sizeof(struct rte_dev_event));
-	memset(buf, 0, EAL_UEV_MSG_LEN);
+	memset(buf, 0, EAL_UEV_MSG_LEN + 1);
 
 	ret = recv(intr_handle.fd, buf, EAL_UEV_MSG_LEN, MSG_DONTWAIT);
 	if (ret < 0 && errno == EAGAIN)
