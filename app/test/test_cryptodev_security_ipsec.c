@@ -443,6 +443,9 @@ test_ipsec_td_prepare(const struct crypto_param *param1,
 		if (flags->dscp == TEST_IPSEC_COPY_DSCP_INNER_0 ||
 		    flags->dscp == TEST_IPSEC_COPY_DSCP_INNER_1)
 			td->ipsec_xform.options.copy_dscp = 1;
+
+		if (flags->dec_ttl_or_hop_limit)
+			td->ipsec_xform.options.dec_ttl = 1;
 	}
 }
 
@@ -651,6 +654,32 @@ test_ipsec_l4_csum_verify(struct rte_mbuf *m)
 }
 
 static int
+test_ipsec_ttl_or_hop_decrement_verify(void *received, void *expected)
+{
+	struct rte_ipv4_hdr *iph4_ex, *iph4_re;
+	struct rte_ipv6_hdr *iph6_ex, *iph6_re;
+
+	if (is_ipv4(received) && is_ipv4(expected)) {
+		iph4_ex = expected;
+		iph4_re = received;
+		iph4_ex->time_to_live -= 1;
+		if (iph4_re->time_to_live != iph4_ex->time_to_live)
+			return TEST_FAILED;
+	} else if (!is_ipv4(received) && !is_ipv4(expected)) {
+		iph6_ex = expected;
+		iph6_re = received;
+		iph6_ex->hop_limits -= 1;
+		if (iph6_re->hop_limits != iph6_ex->hop_limits)
+			return TEST_FAILED;
+	} else {
+		printf("IP header version miss match\n");
+		return TEST_FAILED;
+	}
+
+	return TEST_SUCCESS;
+}
+
+static int
 test_ipsec_td_verify(struct rte_mbuf *m, const struct ipsec_test_data *td,
 		     bool silent, const struct ipsec_test_flags *flags)
 {
@@ -739,6 +768,14 @@ test_ipsec_td_verify(struct rte_mbuf *m, const struct ipsec_test_data *td,
 	}
 
 	memcpy(td_output_text, td->output_text.data + skip, len);
+
+	if ((td->ipsec_xform.direction == RTE_SECURITY_IPSEC_SA_DIR_INGRESS) &&
+				flags->dec_ttl_or_hop_limit) {
+		if (test_ipsec_ttl_or_hop_decrement_verify(output_text, td_output_text)) {
+			printf("Inner TTL/hop limit decrement test failed\n");
+			return TEST_FAILED;
+		}
+	}
 
 	if (test_ipsec_pkt_update(td_output_text, flags)) {
 		printf("Could not update expected vector");

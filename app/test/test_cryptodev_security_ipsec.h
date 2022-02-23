@@ -87,6 +87,7 @@ struct ipsec_test_flags {
 	bool antireplay;
 	enum df_flags df;
 	enum dscp_flags dscp;
+	bool dec_ttl_or_hop_limit;
 };
 
 struct crypto_param {
