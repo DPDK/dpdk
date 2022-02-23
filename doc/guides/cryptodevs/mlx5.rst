@@ -28,23 +28,12 @@ when the MKEY is configured to perform crypto operations.
 
 The encryption does not require text to be aligned to the AES block size (128b).
 
-For security reasons and to increase robustness, this driver only deals with virtual
-memory addresses. The way resources allocations are handled by the kernel,
-combined with hardware specifications that allow handling virtual memory
-addresses directly, ensure that DPDK applications cannot access random
-physical memory (or memory that does not belong to the current process).
+See :doc:`../../platform/mlx5` guide for more design details.
 
-The PMD uses ``libibverbs`` and ``libmlx5`` to access the device firmware
-or to access the hardware components directly.
-There are different levels of objects and bypassing abilities.
-To get the best performances:
+Configuration
+-------------
 
-- Verbs is a complete high-level generic API (Linux only).
-- Direct Verbs is a device-specific API (Linux only).
-- DevX allows to access firmware objects.
-
-Enabling ``librte_crypto_mlx5`` causes DPDK applications
-to be linked against libibverbs on Linux OS.
+See the :ref:`mlx5 common configuration <mlx5_common_env>`.
 
 In order to move the device to crypto operational mode, credential and KEK
 (Key Encrypting Key) should be set as the first step.
@@ -109,10 +98,8 @@ The mlxreg dedicated tool should be used as follows:
 Driver options
 --------------
 
-- ``class`` parameter [string]
-
-  Select the class of the driver that should probe the device.
-  `crypto` for the mlx5 crypto driver.
+Please refer to :ref:`mlx5 common options <mlx5_common_driver_options>`
+for an additional list of options shared with other mlx5 drivers.
 
 - ``wcs_file`` parameter [string] - mandatory
 
@@ -168,13 +155,12 @@ Linux Prerequisites
 ~~~~~~~~~~~~~~~~~~~
 
 - Mellanox OFED version: **5.3**.
-  see :doc:`../../nics/mlx5` guide for more Mellanox OFED details.
-
 - Compilation can be done also with rdma-core v15+.
-  see :doc:`../../nics/mlx5` guide for more rdma-core details.
+
+  See :ref:`mlx5 common prerequisites <mlx5_linux_prerequisites>` for more details.
 
 Windows Prerequisites
 ~~~~~~~~~~~~~~~~~~~~~
 
 - Mellanox WINOF-2 version: **2.60** or higher.
-  see :doc:`../../nics/mlx5` guide for more Mellanox WINOF-2 details.
+  See :ref:`mlx5 common prerequisites <mlx5_windows_prerequisites>` for more details.

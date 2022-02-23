@@ -3,10 +3,10 @@
 
 .. include:: <isonum.txt>
 
-MLX5 compress driver
+MLX5 Compress Driver
 ====================
 
-The MLX5 compress driver library
+The mlx5 compress driver library
 (**librte_compress_mlx5**) provides support for **Mellanox BlueField-2**
 families of 25/50/100/200 Gb/s adapters.
 
@@ -25,30 +25,7 @@ So, using the BlueField device (starting from BlueField-2), the compress
 class operations can be supported in parallel to the net, vDPA and
 RegEx class operations.
 
-For security reasons and robustness, this driver only deals with virtual
-memory addresses. The way resources allocations are handled by the kernel,
-combined with hardware specifications that allow to handle virtual memory
-addresses directly, ensure that DPDK applications cannot access random
-physical memory (or memory that does not belong to the current process).
-
-The PMD uses libibverbs and libmlx5 to access the device firmware
-or directly the hardware components.
-There are different levels of objects and bypassing abilities
-to get the best performances:
-
-- Verbs is a complete high-level generic API.
-- Direct Verbs is a device-specific API.
-- DevX allows to access firmware objects.
-
-Enabling librte_compress_mlx5 causes DPDK applications to be linked against
-libibverbs.
-
-Mellanox mlx5 PCI device can be probed by number of different PCI devices,
-for example net / vDPA / RegEx. To select the compress PMD ``class=compress``
-should be specified as device parameter. The compress device can be probed and
-used with other Mellanox classes, by adding more options in the class.
-For example: ``class=net:compress`` will probe both the net PMD and the compress
-PMD.
+See :doc:`../../platform/mlx5` guide for more design details.
 
 Features
 --------
@@ -85,6 +62,9 @@ Limitations
 Driver options
 --------------
 
+Please refer to :ref:`mlx5 common options <mlx5_common_driver_options>`
+for an additional list of options shared with other mlx5 drivers.
+
 - ``log-block-size`` parameter [int]
 
   Log of the Huffman block size in the Deflate algorithm.
@@ -101,4 +81,4 @@ Prerequisites
 -------------
 
 - Mellanox OFED version: **5.2**
-  see :doc:`../../nics/mlx5` guide for more Mellanox OFED details.
+  See :ref:`mlx5 common prerequisites <mlx5_linux_prerequisites>` for more details.

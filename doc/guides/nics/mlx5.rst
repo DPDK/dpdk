@@ -4,22 +4,15 @@
 
 .. include:: <isonum.txt>
 
-MLX5 poll mode driver
-=====================
+MLX5 Ethernet Poll Mode Driver
+==============================
 
-The MLX5 poll mode driver library (**librte_net_mlx5**) provides support
+The mlx5 Ethernet poll mode driver library (**librte_net_mlx5**) provides support
 for **Mellanox ConnectX-4**, **Mellanox ConnectX-4 Lx** , **Mellanox
 ConnectX-5**, **Mellanox ConnectX-6**, **Mellanox ConnectX-6 Dx**, **Mellanox
 ConnectX-6 Lx**, **Mellanox BlueField** and **Mellanox BlueField-2** families
 of 10/25/40/50/100/200 Gb/s adapters as well as their virtual functions (VF)
 in SR-IOV context.
-
-Information and documentation about these adapters can be found on the
-`Mellanox website <http://www.mellanox.com>`__. Help is also provided by the
-`Mellanox community <http://community.mellanox.com/welcome>`__.
-
-There is also a `section dedicated to this poll mode driver
-<https://developer.nvidia.com/networking/dpdk>`_.
 
 
 Design
@@ -29,12 +22,6 @@ Besides its dependency on libibverbs (that implies libmlx5 and associated
 kernel support), librte_net_mlx5 relies heavily on system calls for control
 operations such as querying/updating the MTU and flow control parameters.
 
-For security reasons and robustness, this driver only deals with virtual
-memory addresses. The way resources allocations are handled by the kernel,
-combined with hardware specifications that allow to handle virtual memory
-addresses directly, ensure that DPDK applications cannot access random
-physical memory (or memory that does not belong to the current process).
-
 This capability allows the PMD to coexist with kernel network interfaces
 which remain functional, although they stop receiving unicast packets as
 long as they share the same MAC address.
@@ -42,18 +29,7 @@ This means legacy linux control tools (for example: ethtool, ifconfig and
 more) can operate on the same network interfaces that owned by the DPDK
 application.
 
-The PMD can use libibverbs and libmlx5 to access the device firmware
-or directly the hardware components.
-There are different levels of objects and bypassing abilities
-to get the best performances:
-
-- Verbs is a complete high-level generic API
-- Direct Verbs is a device-specific API
-- DevX allows to access firmware objects
-- Direct Rules manages flow steering at low-level hardware layer
-
-Enabling librte_net_mlx5 causes DPDK applications to be linked against
-libibverbs.
+See :doc:`../../platform/mlx5` guide for more design details.
 
 Features
 --------
@@ -522,75 +498,31 @@ Extended statistics can be queried using ``rte_eth_xstats_get()``. The extended 
 
 Finally per-flow statistics can by queried using ``rte_flow_query`` when attaching a count action for specific flow. The flow counter counts the number of packets received successfully by the port and match the specific flow.
 
+
+Compilation
+-----------
+
+See :ref:`mlx5 common compilation <mlx5_common_compilation>`.
+
+
 Configuration
 -------------
 
-Compilation options
-~~~~~~~~~~~~~~~~~~~
+Environment Configuration
+~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The ibverbs libraries can be linked with this PMD in a number of ways,
-configured by the ``ibverbs_link`` build option:
+See :ref:`mlx5 common configuration <mlx5_common_env>`.
 
-- ``shared`` (default): the PMD depends on some .so files.
-
-- ``dlopen``: Split the dependencies glue in a separate library
-  loaded when needed by dlopen.
-  It make dependencies on libibverbs and libmlx4 optional,
-  and has no performance impact.
-
-- ``static``: Embed static flavor of the dependencies libibverbs and libmlx4
-  in the PMD shared library or the executable static binary.
-
-Environment variables
-~~~~~~~~~~~~~~~~~~~~~
-
-- ``MLX5_GLUE_PATH``
-
-  A list of directories in which to search for the rdma-core "glue" plug-in,
-  separated by colons or semi-colons.
-
-- ``MLX5_SHUT_UP_BF``
-
-  Configures HW Tx doorbell register as IO-mapped.
-
-  By default, the HW Tx doorbell is configured as a write-combining register.
-  The register would be flushed to HW usually when the write-combining buffer
-  becomes full, but it depends on CPU design.
-
-Run-time configuration
+Firmware configuration
 ~~~~~~~~~~~~~~~~~~~~~~
 
-- librte_net_mlx5 brings kernel network interfaces up during initialization
-  because it is affected by their state. Forcing them down prevents packets
-  reception.
-
-- **ethtool** operations on related kernel interfaces also affect the PMD.
-
-Run as non-root
-^^^^^^^^^^^^^^^
-
-In order to run as a non-root user,
-some capabilities must be granted to the application::
-
-   setcap cap_sys_admin,cap_net_admin,cap_net_raw,cap_ipc_lock+ep <dpdk-app>
-
-Below are the reasons of the need for each capability:
-
-``cap_sys_admin``
-   When using physical addresses (PA mode), with Linux >= 4.0,
-   for access to ``/proc/self/pagemap``.
-
-``cap_net_admin``
-   For device configuration.
-
-``cap_net_raw``
-   For raw ethernet queue allocation through kernel driver.
-
-``cap_ipc_lock``
-   For DMA memory pinning.
+See :ref:`mlx5_firmware_config` guide.
 
 Driver options
-^^^^^^^^^^^^^^
+~~~~~~~~~~~~~~
+
+Please refer to :ref:`mlx5 common options <mlx5_common_driver_options>`
+for an additional list of options shared with other mlx5 drivers.
 
 - ``rxq_cqe_comp_en`` parameter [int]
 
@@ -1054,30 +986,6 @@ Driver options
 
   Disabled by default (set to 0).
 
-- ``mr_ext_memseg_en`` parameter [int]
-
-  A nonzero value enables extending memseg when registering DMA memory. If
-  enabled, the number of entries in MR (Memory Region) lookup table on datapath
-  is minimized and it benefits performance. On the other hand, it worsens memory
-  utilization because registered memory is pinned by kernel driver. Even if a
-  page in the extended chunk is freed, that doesn't become reusable until the
-  entire memory is freed.
-
-  Enabled by default.
-
-- ``mr_mempool_reg_en`` parameter [int]
-
-  A nonzero value enables implicit registration of DMA memory of all mempools
-  except those having ``RTE_MEMPOOL_F_NON_IO``. This flag is set automatically
-  for mempools populated with non-contiguous objects or those without IOVA.
-  The effect is that when a packet from a mempool is transmitted,
-  its memory is already registered for DMA in the PMD and no registration
-  will happen on the data path. The tradeoff is extra work on the creation
-  of each mempool and increased HW resource use if some mempools
-  are not used with MLX5 devices.
-
-  Enabled by default.
-
 - ``representor`` parameter [list]
 
   This parameter can be used to instantiate DPDK Ethernet devices from
@@ -1148,13 +1056,6 @@ Driver options
 
   By default, the PMD will set this value to 0.
 
-- ``sys_mem_en`` parameter [int]
-
-  A non-zero value enables the PMD memory management allocating memory
-  from system by default, without explicit rte memory flag.
-
-  By default, the PMD will set this value to 0.
-
 - ``decap_en`` parameter [int]
 
   Some devices do not support FCS (frame checksum) scattering for
@@ -1178,253 +1079,6 @@ Driver options
 
   By default, the PMD will set this value to 1.
 
-.. _mlx5_firmware_config:
-
-Firmware configuration
-~~~~~~~~~~~~~~~~~~~~~~
-
-Firmware features can be configured as key/value pairs.
-
-The command to set a value is::
-
-  mlxconfig -d <device> set <key>=<value>
-
-The command to query a value is::
-
-  mlxconfig -d <device> query | grep <key>
-
-The device name for the command ``mlxconfig`` can be either the PCI address,
-or the mst device name found with::
-
-  mst status
-
-Below are some firmware configurations listed.
-
-- link type::
-
-    LINK_TYPE_P1
-    LINK_TYPE_P2
-    value: 1=Infiniband 2=Ethernet 3=VPI(auto-sense)
-
-- enable SR-IOV::
-
-    SRIOV_EN=1
-
-- maximum number of SR-IOV virtual functions::
-
-    NUM_OF_VFS=<max>
-
-- enable DevX (required by Direct Rules and other features)::
-
-    UCTX_EN=1
-
-- aggressive CQE zipping::
-
-    CQE_COMPRESSION=1
-
-- L3 VXLAN and VXLAN-GPE destination UDP port::
-
-    IP_OVER_VXLAN_EN=1
-    IP_OVER_VXLAN_PORT=<udp dport>
-
-- enable VXLAN-GPE tunnel flow matching::
-
-    FLEX_PARSER_PROFILE_ENABLE=0
-    or
-    FLEX_PARSER_PROFILE_ENABLE=2
-
-- enable IP-in-IP tunnel flow matching::
-
-    FLEX_PARSER_PROFILE_ENABLE=0
-
-- enable MPLS flow matching::
-
-    FLEX_PARSER_PROFILE_ENABLE=1
-
-- enable ICMP(code/type/identifier/sequence number) / ICMP6(code/type) fields matching::
-
-    FLEX_PARSER_PROFILE_ENABLE=2
-
-- enable Geneve flow matching::
-
-   FLEX_PARSER_PROFILE_ENABLE=0
-   or
-   FLEX_PARSER_PROFILE_ENABLE=1
-
-- enable Geneve TLV option flow matching::
-
-   FLEX_PARSER_PROFILE_ENABLE=0
-
-- enable GTP flow matching::
-
-   FLEX_PARSER_PROFILE_ENABLE=3
-
-- enable eCPRI flow matching::
-
-   FLEX_PARSER_PROFILE_ENABLE=4
-   PROG_PARSE_GRAPH=1
-
-- enable dynamic flex parser for flex item::
-
-   FLEX_PARSER_PROFILE_ENABLE=4
-   PROG_PARSE_GRAPH=1
-
-- enable realtime timestamp format::
-
-   REAL_TIME_CLOCK_ENABLE=1
-
-Linux Prerequisites
--------------------
-
-This driver relies on external libraries and kernel drivers for resources
-allocations and initialization. The following dependencies are not part of
-DPDK and must be installed separately:
-
-- **libibverbs**
-
-  User space Verbs framework used by librte_net_mlx5. This library provides
-  a generic interface between the kernel and low-level user space drivers
-  such as libmlx5.
-
-  It allows slow and privileged operations (context initialization, hardware
-  resources allocations) to be managed by the kernel and fast operations to
-  never leave user space.
-
-- **libmlx5**
-
-  Low-level user space driver library for Mellanox
-  ConnectX-4/ConnectX-5/ConnectX-6/BlueField devices, it is automatically loaded
-  by libibverbs.
-
-  This library basically implements send/receive calls to the hardware
-  queues.
-
-- **Kernel modules**
-
-  They provide the kernel-side Verbs API and low level device drivers that
-  manage actual hardware initialization and resources sharing with user
-  space processes.
-
-  Unlike most other PMDs, these modules must remain loaded and bound to
-  their devices:
-
-  - mlx5_core: hardware driver managing Mellanox
-    ConnectX-4/ConnectX-5/ConnectX-6/BlueField devices and related Ethernet kernel
-    network devices.
-  - mlx5_ib: InfiniBand device driver.
-  - ib_uverbs: user space driver for Verbs (entry point for libibverbs).
-
-- **Firmware update**
-
-  Mellanox OFED/EN releases include firmware updates for
-  ConnectX-4/ConnectX-5/ConnectX-6/BlueField adapters.
-
-  Because each release provides new features, these updates must be applied to
-  match the kernel modules and libraries they come with.
-
-.. note::
-
-   Both libraries are BSD and GPL licensed. Linux kernel modules are GPL
-   licensed.
-
-Installation
-~~~~~~~~~~~~
-
-Either RDMA Core library with a recent enough Linux kernel release
-(recommended) or Mellanox OFED/EN, which provides compatibility with older
-releases.
-
-RDMA Core with Linux Kernel
-^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-- Minimal kernel version : v4.14 or the most recent 4.14-rc (see `Linux installation documentation`_)
-- Minimal rdma-core version: v15+ commit 0c5f5765213a ("Merge pull request #227 from yishaih/tm")
-  (see `RDMA Core installation documentation`_)
-- When building for i686 use:
-
-  - rdma-core version 18.0 or above built with 32bit support.
-  - Kernel version 4.14.41 or above.
-
-- Starting with rdma-core v21, static libraries can be built::
-
-    cd build
-    CFLAGS=-fPIC cmake -DIN_PLACE=1 -DENABLE_STATIC=1 -GNinja ..
-    ninja
-
-.. _`Linux installation documentation`: https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux-stable.git/plain/Documentation/admin-guide/README.rst
-.. _`RDMA Core installation documentation`: https://raw.githubusercontent.com/linux-rdma/rdma-core/master/README.md
-
-
-Mellanox OFED/EN
-^^^^^^^^^^^^^^^^
-
-- Mellanox OFED version: **4.5** and above /
-  Mellanox EN version: **4.5** and above
-- firmware version:
-
-  - ConnectX-4: **12.21.1000** and above.
-  - ConnectX-4 Lx: **14.21.1000** and above.
-  - ConnectX-5: **16.21.1000** and above.
-  - ConnectX-5 Ex: **16.21.1000** and above.
-  - ConnectX-6: **20.27.0090** and above.
-  - ConnectX-6 Dx: **22.27.0090** and above.
-  - BlueField: **18.25.1010** and above.
-
-While these libraries and kernel modules are available on OpenFabrics
-Alliance's `website <https://www.openfabrics.org/>`__ and provided by package
-managers on most distributions, this PMD requires Ethernet extensions that
-may not be supported at the moment (this is a work in progress).
-
-`Mellanox OFED
-<https://network.nvidia.com/products/infiniband-drivers/linux/mlnx_ofed/>`__ and
-`Mellanox EN
-<https://network.nvidia.com/products/ethernet-drivers/linux/mlnx_en/>`__
-include the necessary support and should be used in the meantime. For DPDK,
-only libibverbs, libmlx5, mlnx-ofed-kernel packages and firmware updates are
-required from that distribution.
-
-.. note::
-
-   Several versions of Mellanox OFED/EN are available. Installing the version
-   this DPDK release was developed and tested against is strongly
-   recommended. Please check the `linux prerequisites`_.
-
-Windows Prerequisites
----------------------
-
-This driver relies on external libraries and kernel drivers for resources
-allocations and initialization. The dependencies in the following sub-sections
-are not part of DPDK, and must be installed separately.
-
-Compilation Prerequisites
-~~~~~~~~~~~~~~~~~~~~~~~~~
-
-DevX SDK installation
-^^^^^^^^^^^^^^^^^^^^^
-
-The DevX SDK must be installed on the machine building the Windows PMD.
-Additional information can be found at
-`How to Integrate Windows DevX in Your Development Environment
-<https://docs.mellanox.com/display/winof2v250/RShim+Drivers+and+Usage#RShimDriversandUsage-DevXInterface>`__.
-
-Runtime Prerequisites
-~~~~~~~~~~~~~~~~~~~~~
-
-WinOF2 version 2.60 or higher must be installed on the machine.
-
-WinOF2 installation
-^^^^^^^^^^^^^^^^^^^
-
-The driver can be downloaded from the following site:
-`WINOF2
-<https://www.mellanox.com/products/adapter-software/ethernet/windows/winof-2>`__
-
-DevX Enablement
-^^^^^^^^^^^^^^^
-
-DevX for Windows must be enabled in the Windows registry.
-The keys ``DevxEnabled`` and ``DevxFsRules`` must be set.
-Additional information can be found in the WinOF2 user manual.
 
 Supported NICs
 --------------
@@ -1470,149 +1124,21 @@ Below are detailed device names:
 * Mellanox\ |reg| ConnectX\ |reg|-6 Dx EN 200G MCX623105AN-VDAT (1x200G)
 * Mellanox\ |reg| ConnectX\ |reg|-6 Lx EN 25G MCX631102AN-ADAT (2x25G)
 
-Quick Start Guide on OFED/EN
-----------------------------
 
-1. Download latest Mellanox OFED/EN. For more info check the `linux prerequisites`_.
+Sub-Function
+------------
 
-
-2. Install the required libraries and kernel modules either by installing
-   only the required set, or by installing the entire Mellanox OFED/EN::
-
-        ./mlnxofedinstall --upstream-libs --dpdk
-
-3. Verify the firmware is the correct one::
-
-        ibv_devinfo
-
-4. Verify all ports links are set to Ethernet::
-
-        mlxconfig -d <mst device> query | grep LINK_TYPE
-        LINK_TYPE_P1                        ETH(2)
-        LINK_TYPE_P2                        ETH(2)
-
-   Link types may have to be configured to Ethernet::
-
-        mlxconfig -d <mst device> set LINK_TYPE_P1/2=1/2/3
-
-        * LINK_TYPE_P1=<1|2|3> , 1=Infiniband 2=Ethernet 3=VPI(auto-sense)
-
-   For hypervisors, verify SR-IOV is enabled on the NIC::
-
-        mlxconfig -d <mst device> query | grep SRIOV_EN
-        SRIOV_EN                            True(1)
-
-   If needed, configure SR-IOV::
-
-        mlxconfig -d <mst device> set SRIOV_EN=1 NUM_OF_VFS=16
-        mlxfwreset -d <mst device> reset
-
-5. Restart the driver::
-
-        /etc/init.d/openibd restart
-
-   or::
-
-        service openibd restart
-
-   If link type was changed, firmware must be reset as well::
-
-        mlxfwreset -d <mst device> reset
-
-   For hypervisors, after reset write the sysfs number of virtual functions
-   needed for the PF.
-
-   To dynamically instantiate a given number of virtual functions (VFs)::
-
-        echo [num_vfs] > /sys/class/infiniband/mlx5_0/device/sriov_numvfs
-
-6. Install DPDK and you are ready to go.
-   See :doc:`compilation instructions <../linux_gsg/build_dpdk>`.
-
-Enable switchdev mode
----------------------
-
-Switchdev mode is a mode in E-Switch, that binds between representor and VF or SF.
-Representor is a port in DPDK that is connected to a VF or SF in such a way
-that assuming there are no offload flows, each packet that is sent from the VF or SF
-will be received by the corresponding representor. While each packet that is or SF
-sent to a representor will be received by the VF or SF.
-This is very useful in case of SRIOV mode, where the first packet that is sent
-by the VF or SF will be received by the DPDK application which will decide if this
-flow should be offloaded to the E-Switch. After offloading the flow packet
-that the VF or SF that are matching the flow will not be received any more by
-the DPDK application.
-
-1. Enable SRIOV mode::
-
-        mlxconfig -d <mst device> set SRIOV_EN=true
-
-2. Configure the max number of VFs::
-
-        mlxconfig -d <mst device> set NUM_OF_VFS=<num of vfs>
-
-3. Reset the FW::
-
-        mlxfwreset -d <mst device> reset
-
-3. Configure the actual number of VFs::
-
-        echo <num of vfs > /sys/class/net/<net device>/device/sriov_numvfs
-
-4. Unbind the device (can be rebind after the switchdev mode)::
-
-        echo -n "<device pci address" > /sys/bus/pci/drivers/mlx5_core/unbind
-
-5. Enable switchdev mode::
-
-        echo switchdev > /sys/class/net/<net device>/compat/devlink/mode
-
-Sub-Function support
---------------------
-
-Sub-Function is a portion of the PCI device, a SF netdev has its own
-dedicated queues (txq, rxq).
-A SF shares PCI level resources with other SFs and/or with its parent PCI function.
-
-0. Requirement::
-
-        OFED version >= 5.4-0.3.3.0
-
-1. Configure SF feature::
-
-        # Run mlxconfig on both PFs on host and ECPFs on BlueField.
-        mlxconfig -d <mst device> set PER_PF_NUM_SF=1 PF_TOTAL_SF=252 PF_SF_BAR_SIZE=12
-
-2. Enable switchdev mode::
-
-        mlxdevm dev eswitch set pci/<DBDF> mode switchdev
-
-3. Add SF port::
-
-        mlxdevm port add pci/<DBDF> flavour pcisf pfnum 0 sfnum <sfnum>
-
-        Get SFID from output: pci/<DBDF>/<SFID>
-
-4. Modify MAC address::
-
-        mlxdevm port function set pci/<DBDF>/<SFID> hw_addr <MAC>
-
-5. Activate SF port::
-
-        mlxdevm port function set pci/<DBDF>/<ID> state active
-
-6. Devargs to probe SF device::
-
-        auxiliary:mlx5_core.sf.<num>,dv_flow_en=1
+See :ref:`mlx5_sub_function`.
 
 Sub-Function representor support
---------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 A SF netdev supports E-Switch representation offload
 similar to PF and VF representors.
 Use <sfnum> to probe SF representor::
 
-        testpmd> port attach <PCI_BDF>,representor=sf<sfnum>,dv_flow_en=1
+   testpmd> port attach <PCI_BDF>,representor=sf<sfnum>,dv_flow_en=1
+
 
 Performance tuning
 ------------------

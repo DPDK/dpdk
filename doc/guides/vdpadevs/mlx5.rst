@@ -3,10 +3,10 @@
 
 .. include:: <isonum.txt>
 
-MLX5 vDPA driver
+MLX5 vDPA Driver
 ================
 
-The MLX5 vDPA (vhost data path acceleration) driver library
+The mlx5 vDPA (vhost data path acceleration) driver library
 (**librte_vdpa_mlx5**) provides support for **Mellanox ConnectX-6**,
 **Mellanox ConnectX-6 Dx** and **Mellanox BlueField** families of
 10/25/40/50/100/200 Gb/s adapters as well as their virtual functions (VF) in
@@ -17,33 +17,8 @@ SR-IOV context.
    This driver is enabled automatically when using "meson" build system which
    will detect dependencies.
 
-
-Design
-------
-
-For security reasons and robustness, this driver only deals with virtual
-memory addresses. The way resources allocations are handled by the kernel,
-combined with hardware specifications that allow to handle virtual memory
-addresses directly, ensure that DPDK applications cannot access random
-physical memory (or memory that does not belong to the current process).
-
-The PMD can use libibverbs and libmlx5 to access the device firmware
-or directly the hardware components.
-There are different levels of objects and bypassing abilities
-to get the best performances:
-
-- Verbs is a complete high-level generic API
-- Direct Verbs is a device-specific API
-- DevX allows to access firmware objects
-- Direct Rules manages flow steering at low-level hardware layer
-
-Enabling librte_vdpa_mlx5 causes DPDK applications to be linked against
-libibverbs.
-
-A Mellanox mlx5 PCI device can be probed by either net/mlx5 driver or vdpa/mlx5
-driver but not in parallel. Hence, the user should decide the driver by the
-``class`` parameter in the device argument list.
-By default, the mlx5 device will be probed by the net/mlx5 driver.
+See :doc:`../../platform/mlx5` guide for design details,
+and which PMDs can be combined with vDPA PMD.
 
 Supported NICs
 --------------
@@ -58,52 +33,16 @@ Prerequisites
 -------------
 
 - Mellanox OFED version: **5.0**
-  see :doc:`../../nics/mlx5` guide for more Mellanox OFED details.
-
-Compilation option
-~~~~~~~~~~~~~~~~~~
-
-The meson option ``ibverbs_link`` is **shared** by default,
-but can be configured to have the following values:
-
-- ``dlopen``
-
-  Build PMD with additional code to make it loadable without hard
-  dependencies on **libibverbs** nor **libmlx5**, which may not be installed
-  on the target system.
-
-  In this mode, their presence is still required for it to run properly,
-  however their absence won't prevent a DPDK application from starting (with
-  DPDK shared build disabled) and they won't show up as missing with ``ldd(1)``.
-
-  It works by moving these dependencies to a purpose-built rdma-core "glue"
-  plug-in which must be installed in a directory whose name is based
-  on ``RTE_EAL_PMD_PATH`` suffixed with ``-glue``.
-
-  This option has no performance impact.
-
-- ``static``
-
-  Embed static flavor of the dependencies **libibverbs** and **libmlx5**
-  in the PMD shared library or the executable static binary.
-
-.. note::
-
-   Default armv8a configuration of meson build sets ``RTE_CACHE_LINE_SIZE``
-   to 128 then brings performance degradation.
+  See :ref:`mlx5 common prerequisites <mlx5_linux_prerequisites>` for more details.
 
 Run-time configuration
 ~~~~~~~~~~~~~~~~~~~~~~
 
-- **ethtool** operations on related kernel interfaces also affect the PMD.
-
 Driver options
 ^^^^^^^^^^^^^^
 
-- ``class`` parameter [string]
-
-  Select the class of the driver that should probe the device.
-  `vdpa` for the mlx5 vDPA driver.
+Please refer to :ref:`mlx5 common options <mlx5_common_driver_options>`
+for an additional list of options shared with other mlx5 drivers.
 
 - ``event_mode`` parameter [int]
 
@@ -161,18 +100,6 @@ Driver options
   - 1 - 65535, The maximum number of pending packets completions in an HW queue.
 
   - 0, HW default.
-
-
-Devargs example
-^^^^^^^^^^^^^^^
-
-- PCI devargs::
-
-  -a 0000:03:00.2,class=vdpa
-
-- Auxiliary devargs::
-
-  -a auxiliary:mlx5_core.sf.2,class=vdpa
 
 
 Error handling
