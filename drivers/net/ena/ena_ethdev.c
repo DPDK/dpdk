@@ -675,9 +675,11 @@ static int validate_tx_req_id(struct ena_ring *tx_ring, u16 req_id)
 	}
 
 	if (tx_info)
-		PMD_TX_LOG(ERR, "tx_info doesn't have valid mbuf\n");
+		PMD_TX_LOG(ERR, "tx_info doesn't have valid mbuf. queue %d:%d req_id %u\n",
+			tx_ring->port_id, tx_ring->id, req_id);
 	else
-		PMD_TX_LOG(ERR, "Invalid req_id: %hu\n", req_id);
+		PMD_TX_LOG(ERR, "Invalid req_id: %hu in queue %d:%d\n",
+			req_id, tx_ring->port_id, tx_ring->id);
 
 	/* Trigger device reset */
 	++tx_ring->tx_stats.bad_req_id;
