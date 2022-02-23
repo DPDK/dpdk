@@ -374,6 +374,8 @@ static inline void ena_tx_mbuf_prepare(struct rte_mbuf *mbuf,
 
 		if (mbuf->ol_flags & PKT_TX_IPV6) {
 			ena_tx_ctx->l3_proto = ENA_ETH_IO_L3_PROTO_IPV6;
+			/* For the IPv6 packets, DF always needs to be true. */
+			ena_tx_ctx->df = 1;
 		} else {
 			ena_tx_ctx->l3_proto = ENA_ETH_IO_L3_PROTO_IPV4;
 
@@ -381,7 +383,7 @@ static inline void ena_tx_mbuf_prepare(struct rte_mbuf *mbuf,
 			if (mbuf->packet_type &
 				(RTE_PTYPE_L4_NONFRAG
 				 | RTE_PTYPE_INNER_L4_NONFRAG))
-				ena_tx_ctx->df = true;
+				ena_tx_ctx->df = 1;
 		}
 
 		/* check if L4 checksum is needed */
