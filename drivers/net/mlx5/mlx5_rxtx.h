@@ -118,8 +118,8 @@ struct mlx5_rxq_data {
 	unsigned int elts_n:4; /* Log 2 of Mbufs. */
 	unsigned int rss_hash:1; /* RSS hash result is enabled. */
 	unsigned int mark:1; /* Marked flow available on the queue. */
-	unsigned int strd_num_n:5; /* Log 2 of the number of stride. */
-	unsigned int strd_sz_n:4; /* Log 2 of stride size. */
+	unsigned int log_strd_num:5; /* Log 2 of the number of stride. */
+	unsigned int log_strd_sz:4; /* Log 2 of stride size. */
 	unsigned int strd_shift_en:1; /* Enable 2bytes shift on a stride. */
 	unsigned int err_state:2; /* enum mlx5_rxq_err_state. */
 	unsigned int strd_scatter_en:1; /* Scattered packets from a stride. */
@@ -747,7 +747,7 @@ mlx5_timestamp_set(struct rte_mbuf *mbuf, int offset,
 static __rte_always_inline void
 mprq_buf_replace(struct mlx5_rxq_data *rxq, uint16_t rq_idx)
 {
-	const uint32_t strd_n = 1 << rxq->strd_num_n;
+	const uint32_t strd_n = RTE_BIT32(rxq->log_strd_num);
 	struct mlx5_mprq_buf *rep = rxq->mprq_repl;
 	volatile struct mlx5_wqe_data_seg *wqe =
 		&((volatile struct mlx5_wqe_mprq *)rxq->wqes)[rq_idx].dseg;
@@ -805,8 +805,8 @@ static __rte_always_inline enum mlx5_rqx_code
 mprq_buf_to_pkt(struct mlx5_rxq_data *rxq, struct rte_mbuf *pkt, uint32_t len,
 		struct mlx5_mprq_buf *buf, uint16_t strd_idx, uint16_t strd_cnt)
 {
-	const uint32_t strd_n = 1 << rxq->strd_num_n;
-	const uint16_t strd_sz = 1 << rxq->strd_sz_n;
+	const uint32_t strd_n = RTE_BIT32(rxq->log_strd_num);
+	const uint16_t strd_sz = RTE_BIT32(rxq->log_strd_sz);
 	const uint16_t strd_shift =
 		MLX5_MPRQ_STRIDE_SHIFT_BYTE * rxq->strd_shift_en;
 	const int32_t hdrm_overlap =

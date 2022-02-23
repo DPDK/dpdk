@@ -465,7 +465,7 @@ rx_queue_count(struct mlx5_rxq_data *rxq)
 	const unsigned int cqe_n = (1 << rxq->cqe_n);
 	const unsigned int sges_n = (1 << rxq->sges_n);
 	const unsigned int elts_n = (1 << rxq->elts_n);
-	const unsigned int strd_n = (1 << rxq->strd_num_n);
+	const unsigned int strd_n = RTE_BIT32(rxq->log_strd_num);
 	const unsigned int cqe_cnt = cqe_n - 1;
 	unsigned int cq_ci, used;
 
@@ -566,8 +566,8 @@ mlx5_rxq_info_get(struct rte_eth_dev *dev, uint16_t rx_queue_id,
 	qinfo->conf.offloads = dev->data->dev_conf.rxmode.offloads;
 	qinfo->scattered_rx = dev->data->scattered_rx;
 	qinfo->nb_desc = mlx5_rxq_mprq_enabled(rxq) ?
-		(1 << rxq->elts_n) * (1 << rxq->strd_num_n) :
-		(1 << rxq->elts_n);
+		RTE_BIT32(rxq->elts_n) * RTE_BIT32(rxq->log_strd_num) :
+		RTE_BIT32(rxq->elts_n);
 }
 
 /**
@@ -872,10 +872,10 @@ mlx5_rxq_initialize(struct mlx5_rxq_data *rxq)
 
 			scat = &((volatile struct mlx5_wqe_mprq *)
 				rxq->wqes)[i].dseg;
-			addr = (uintptr_t)mlx5_mprq_buf_addr(buf,
-							 1 << rxq->strd_num_n);
-			byte_count = (1 << rxq->strd_sz_n) *
-					(1 << rxq->strd_num_n);
+			addr = (uintptr_t)mlx5_mprq_buf_addr
+					(buf, RTE_BIT32(rxq->log_strd_num));
+			byte_count = RTE_BIT32(rxq->log_strd_sz) *
+				     RTE_BIT32(rxq->log_strd_num);
 		} else {
 			struct rte_mbuf *buf = (*rxq->elts)[i];
 
@@ -899,7 +899,7 @@ mlx5_rxq_initialize(struct mlx5_rxq_data *rxq)
 		.ai = 0,
 	};
 	rxq->elts_ci = mlx5_rxq_mprq_enabled(rxq) ?
-		(wqe_n >> rxq->sges_n) * (1 << rxq->strd_num_n) : 0;
+		(wqe_n >> rxq->sges_n) * RTE_BIT32(rxq->log_strd_num) : 0;
 	/* Update doorbell counter. */
 	rxq->rq_ci = wqe_n >> rxq->sges_n;
 	rte_io_wmb();
@@ -1004,7 +1004,7 @@ mlx5_rx_err_handle(struct mlx5_rxq_data *rxq, uint8_t vec)
 	const uint16_t cqe_n = 1 << rxq->cqe_n;
 	const uint16_t cqe_mask = cqe_n - 1;
 	const uint16_t wqe_n = 1 << rxq->elts_n;
-	const uint16_t strd_n = 1 << rxq->strd_num_n;
+	const uint16_t strd_n = RTE_BIT32(rxq->log_strd_num);
 	struct mlx5_rxq_ctrl *rxq_ctrl =
 			container_of(rxq, struct mlx5_rxq_ctrl, rxq);
 	union {
@@ -1651,8 +1651,8 @@ uint16_t
 mlx5_rx_burst_mprq(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 {
 	struct mlx5_rxq_data *rxq = dpdk_rxq;
-	const uint32_t strd_n = 1 << rxq->strd_num_n;
-	const uint32_t strd_sz = 1 << rxq->strd_sz_n;
+	const uint32_t strd_n = RTE_BIT32(rxq->log_strd_num);
+	const uint32_t strd_sz = RTE_BIT32(rxq->log_strd_sz);
 	const uint32_t cq_mask = (1 << rxq->cqe_n) - 1;
 	const uint32_t wq_mask = (1 << rxq->elts_n) - 1;
 	volatile struct mlx5_cqe *cqe = &(*rxq->cqes)[rxq->cq_ci & cq_mask];

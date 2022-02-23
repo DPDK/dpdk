@@ -1383,34 +1383,34 @@ err_secondary:
 	DRV_LOG(DEBUG, "FCS stripping configuration is %ssupported",
 		(config->hw_fcs_strip ? "" : "not "));
 	if (config->mprq.enabled && mprq) {
-		if (config->mprq.stride_num_n &&
-		    (config->mprq.stride_num_n > mprq_max_stride_num_n ||
-		     config->mprq.stride_num_n < mprq_min_stride_num_n)) {
-			config->mprq.stride_num_n =
-				RTE_MIN(RTE_MAX(MLX5_MPRQ_STRIDE_NUM_N,
-						mprq_min_stride_num_n),
-					mprq_max_stride_num_n);
+		if (config->mprq.log_stride_num &&
+		    (config->mprq.log_stride_num > mprq_max_stride_num_n ||
+		     config->mprq.log_stride_num < mprq_min_stride_num_n)) {
+			config->mprq.log_stride_num =
+			       RTE_MIN(RTE_MAX(MLX5_MPRQ_DEFAULT_LOG_STRIDE_NUM,
+					       mprq_min_stride_num_n),
+				       mprq_max_stride_num_n);
 			DRV_LOG(WARNING,
 				"the number of strides"
 				" for Multi-Packet RQ is out of range,"
 				" setting default value (%u)",
-				1 << config->mprq.stride_num_n);
+				1 << config->mprq.log_stride_num);
 		}
-		if (config->mprq.stride_size_n &&
-		    (config->mprq.stride_size_n > mprq_max_stride_size_n ||
-		     config->mprq.stride_size_n < mprq_min_stride_size_n)) {
-			config->mprq.stride_size_n =
-				RTE_MIN(RTE_MAX(MLX5_MPRQ_STRIDE_SIZE_N,
-						mprq_min_stride_size_n),
-					mprq_max_stride_size_n);
+		if (config->mprq.log_stride_size &&
+		    (config->mprq.log_stride_size > mprq_max_stride_size_n ||
+		     config->mprq.log_stride_size < mprq_min_stride_size_n)) {
+			config->mprq.log_stride_size =
+			      RTE_MIN(RTE_MAX(MLX5_MPRQ_DEFAULT_LOG_STRIDE_SIZE,
+					      mprq_min_stride_size_n),
+				      mprq_max_stride_size_n);
 			DRV_LOG(WARNING,
 				"the size of a stride"
 				" for Multi-Packet RQ is out of range,"
 				" setting default value (%u)",
-				1 << config->mprq.stride_size_n);
+				1 << config->mprq.log_stride_size);
 		}
-		config->mprq.min_stride_size_n = mprq_min_stride_size_n;
-		config->mprq.max_stride_size_n = mprq_max_stride_size_n;
+		config->mprq.log_min_stride_size = mprq_min_stride_size_n;
+		config->mprq.log_max_stride_size = mprq_max_stride_size_n;
 	} else if (config->mprq.enabled && !mprq) {
 		DRV_LOG(WARNING, "Multi-Packet RQ isn't supported");
 		config->mprq.enabled = 0;
