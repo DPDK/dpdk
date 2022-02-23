@@ -340,6 +340,8 @@ check_again:
 	/* Enqueue half of the index to global. */
 	ts_idx = mlx5_trunk_idx_offset_get(pool, trunk_idx) + 1;
 	fetch_size = trunk->free >> 1;
+	if (fetch_size > pool->cfg.per_core_cache)
+		fetch_size = trunk->free - pool->cfg.per_core_cache;
 	for (i = 0; i < fetch_size; i++)
 		lc->idx[i] = ts_idx + i;
 	lc->len = fetch_size;
