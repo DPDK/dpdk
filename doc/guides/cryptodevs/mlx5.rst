@@ -88,7 +88,7 @@ The mlxreg dedicated tool should be used as follows:
   should not be specified.
 
   All the device ports should set it in order to move to operational mode.
-  For BlueField 2, the internal ports in the ARM system should also be set.
+  For BlueField-2, the internal ports in the ARM system should also be set.
 
 - Query CRYPTO_OPERATIONAL register to make sure the device is in Operational
   mode.
@@ -142,7 +142,7 @@ Supported NICs
 --------------
 
 * Mellanox\ |reg| ConnectX\ |reg|-6 200G MCX654106A-HCAT (2x200G)
-* Mellanox\ |reg| BlueField 2 SmartNIC
+* Mellanox\ |reg| BlueField-2 SmartNIC
 * Mellanox\ |reg| ConnectX\ |reg|-6 Dx
 
 
@@ -162,7 +162,7 @@ FW Prerequisites
 ~~~~~~~~~~~~~~~~
 
 - xx.31.0328 for ConnectX-6.
-- xx.32.0108 for ConnectX-6 Dx and BlueField 2.
+- xx.32.0108 for ConnectX-6 Dx and BlueField-2.
 
 Linux Prerequisites
 ~~~~~~~~~~~~~~~~~~~
