@@ -427,13 +427,13 @@ app_parse_args(int argc, char **argv)
 
 	/* check main core index validity */
 	for (i = 0; i <= app_main_core; i++) {
-		if (app_used_core_mask & (1u << app_main_core)) {
+		if (app_used_core_mask & RTE_BIT64(app_main_core)) {
 			RTE_LOG(ERR, APP, "Main core index is not configured properly\n");
 			app_usage(prgname);
 			return -1;
 		}
 	}
-	app_used_core_mask |= 1u << app_main_core;
+	app_used_core_mask |= RTE_BIT64(app_main_core);
 
 	if ((app_used_core_mask != app_eal_core_mask()) ||
 			(app_main_core != rte_get_main_lcore())) {
