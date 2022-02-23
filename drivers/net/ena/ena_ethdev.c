@@ -1068,9 +1068,6 @@ static int ena_stats_get(struct rte_eth_dev *dev,
 	int i;
 	int max_rings_stats;
 
-	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
-		return -ENOTSUP;
-
 	memset(&ena_stats, 0, sizeof(ena_stats));
 
 	rte_spinlock_lock(&adapter->admin_lock);
