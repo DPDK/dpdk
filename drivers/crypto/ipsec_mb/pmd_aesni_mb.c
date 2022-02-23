@@ -918,7 +918,9 @@ error_exit:
 
 static inline uint64_t
 auth_start_offset(struct rte_crypto_op *op, struct aesni_mb_session *session,
-		uint32_t oop)
+		uint32_t oop, const uint32_t auth_offset,
+		const uint32_t cipher_offset, const uint32_t auth_length,
+		const uint32_t cipher_length)
 {
 	struct rte_mbuf *m_src, *m_dst;
 	uint8_t *p_src, *p_dst;
@@ -927,7 +929,7 @@ auth_start_offset(struct rte_crypto_op *op, struct aesni_mb_session *session,
 
 	/* Only cipher then hash needs special calculation. */
 	if (!oop || session->chain_order != IMB_ORDER_CIPHER_HASH)
-		return op->sym->auth.data.offset;
+		return auth_offset;
 
 	m_src = op->sym->m_src;
 	m_dst = op->sym->m_dst;
@@ -935,24 +937,24 @@ auth_start_offset(struct rte_crypto_op *op, struct aesni_mb_session *session,
 	p_src = rte_pktmbuf_mtod(m_src, uint8_t *);
 	p_dst = rte_pktmbuf_mtod(m_dst, uint8_t *);
 	u_src = (uintptr_t)p_src;
-	u_dst = (uintptr_t)p_dst + op->sym->auth.data.offset;
+	u_dst = (uintptr_t)p_dst + auth_offset;
 
 	/**
 	 * Copy the content between cipher offset and auth offset for generating
 	 * correct digest.
 	 */
-	if (op->sym->cipher.data.offset > op->sym->auth.data.offset)
-		memcpy(p_dst + op->sym->auth.data.offset,
-				p_src + op->sym->auth.data.offset,
-				op->sym->cipher.data.offset -
-				op->sym->auth.data.offset);
+	if (cipher_offset > auth_offset)
+		memcpy(p_dst + auth_offset,
+				p_src + auth_offset,
+				cipher_offset -
+				auth_offset);
 
 	/**
 	 * Copy the content between (cipher offset + length) and (auth offset +
 	 * length) for generating correct digest
 	 */
-	cipher_end = op->sym->cipher.data.offset + op->sym->cipher.data.length;
-	auth_end = op->sym->auth.data.offset + op->sym->auth.data.length;
+	cipher_end = cipher_offset + cipher_length;
+	auth_end = auth_offset + auth_length;
 	if (cipher_end < auth_end)
 		memcpy(p_dst + cipher_end, p_src + cipher_end,
 				auth_end - cipher_end);
@@ -1099,6 +1101,10 @@ set_mb_job_params(IMB_JOB *job, struct ipsec_mb_qp *qp,
 	struct aesni_mb_qp_data *qp_data = ipsec_mb_get_qp_private_data(qp);
 	struct aesni_mb_session *session;
 	uint32_t m_offset, oop;
+	uint32_t auth_off_in_bytes;
+	uint32_t ciph_off_in_bytes;
+	uint32_t auth_len_in_bytes;
+	uint32_t ciph_len_in_bytes;
 
 	session = ipsec_mb_get_session_private(qp, op);
 	if (session == NULL) {
@@ -1207,6 +1213,7 @@ set_mb_job_params(IMB_JOB *job, struct ipsec_mb_qp *qp,
 	if (job->cipher_mode == IMB_CIPHER_ZUC_EEA3) {
 		job->enc_keys = session->cipher.zuc_cipher_key;
 		job->dec_keys = session->cipher.zuc_cipher_key;
+		m_offset >>= 3;
 	} else if (job->cipher_mode == IMB_CIPHER_SNOW3G_UEA2_BITLEN) {
 		job->enc_keys = &session->cipher.pKeySched_snow3g_cipher;
 		m_offset = 0;
@@ -1264,9 +1271,6 @@ set_mb_job_params(IMB_JOB *job, struct ipsec_mb_qp *qp,
 
 	switch (job->hash_alg) {
 	case IMB_AUTH_AES_CCM:
-		job->cipher_start_src_offset_in_bytes =
-				op->sym->aead.data.offset;
-		job->msg_len_to_cipher_in_bytes = op->sym->aead.data.length;
 		job->hash_start_src_offset_in_bytes = op->sym->aead.data.offset;
 		job->msg_len_to_hash_in_bytes = op->sym->aead.data.length;
 
@@ -1276,19 +1280,11 @@ set_mb_job_params(IMB_JOB *job, struct ipsec_mb_qp *qp,
 
 	case IMB_AUTH_AES_GMAC:
 		if (session->cipher.mode == IMB_CIPHER_GCM) {
-			job->cipher_start_src_offset_in_bytes =
-					op->sym->aead.data.offset;
 			job->hash_start_src_offset_in_bytes =
 					op->sym->aead.data.offset;
-			job->msg_len_to_cipher_in_bytes =
-					op->sym->aead.data.length;
 			job->msg_len_to_hash_in_bytes =
 					op->sym->aead.data.length;
 		} else {
-			job->cipher_start_src_offset_in_bytes =
-					op->sym->auth.data.offset;
-			job->hash_start_src_offset_in_bytes =
-					op->sym->auth.data.offset;
 			job->msg_len_to_cipher_in_bytes = 0;
 			job->msg_len_to_hash_in_bytes = 0;
 		}
@@ -1298,36 +1294,61 @@ set_mb_job_params(IMB_JOB *job, struct ipsec_mb_qp *qp,
 		break;
 
 	case IMB_AUTH_CHACHA20_POLY1305:
-		job->cipher_start_src_offset_in_bytes =
-			op->sym->aead.data.offset;
 		job->hash_start_src_offset_in_bytes =
 			op->sym->aead.data.offset;
-		job->msg_len_to_cipher_in_bytes =
-				op->sym->aead.data.length;
 		job->msg_len_to_hash_in_bytes =
 					op->sym->aead.data.length;
 
 		job->iv = rte_crypto_op_ctod_offset(op, uint8_t *,
 				session->iv.offset);
 		break;
-	default:
-		/* For SNOW3G, length and offsets are already in bits */
-		job->cipher_start_src_offset_in_bytes =
-				op->sym->cipher.data.offset;
-		job->msg_len_to_cipher_in_bytes = op->sym->cipher.data.length;
+	/* ZUC and SNOW3G require length in bits and offset in bytes */
+	case IMB_AUTH_ZUC_EIA3_BITLEN:
+	case IMB_AUTH_ZUC256_EIA3_BITLEN:
+	case IMB_AUTH_SNOW3G_UIA2_BITLEN:
+		auth_off_in_bytes = op->sym->auth.data.offset >> 3;
+		ciph_off_in_bytes = op->sym->cipher.data.offset >> 3;
+		auth_len_in_bytes = op->sym->auth.data.length >> 3;
+		ciph_len_in_bytes = op->sym->cipher.data.length >> 3;
 
 		job->hash_start_src_offset_in_bytes = auth_start_offset(op,
-				session, oop);
+				session, oop, auth_off_in_bytes,
+				ciph_off_in_bytes, auth_len_in_bytes,
+				ciph_len_in_bytes);
+		job->msg_len_to_hash_in_bits = op->sym->auth.data.length;
+
+		job->iv = rte_crypto_op_ctod_offset(op, uint8_t *,
+			session->iv.offset);
+		break;
+
+	/* KASUMI requires lengths and offset in bytes */
+	case IMB_AUTH_KASUMI_UIA1:
+		auth_off_in_bytes = op->sym->auth.data.offset >> 3;
+		ciph_off_in_bytes = op->sym->cipher.data.offset >> 3;
+		auth_len_in_bytes = op->sym->auth.data.length >> 3;
+		ciph_len_in_bytes = op->sym->cipher.data.length >> 3;
+
+		job->hash_start_src_offset_in_bytes = auth_start_offset(op,
+				session, oop, auth_off_in_bytes,
+				ciph_off_in_bytes, auth_len_in_bytes,
+				ciph_len_in_bytes);
+		job->msg_len_to_hash_in_bytes = auth_len_in_bytes;
+
+		job->iv = rte_crypto_op_ctod_offset(op, uint8_t *,
+			session->iv.offset);
+		break;
+
+	default:
+		job->hash_start_src_offset_in_bytes = auth_start_offset(op,
+				session, oop, op->sym->auth.data.offset,
+				op->sym->cipher.data.offset,
+				op->sym->auth.data.length,
+				op->sym->cipher.data.length);
 		job->msg_len_to_hash_in_bytes = op->sym->auth.data.length;
 
 		job->iv = rte_crypto_op_ctod_offset(op, uint8_t *,
 			session->iv.offset);
 	}
-
-	if (job->cipher_mode == IMB_CIPHER_ZUC_EEA3)
-		job->msg_len_to_cipher_in_bytes >>= 3;
-	else if (job->hash_alg == IMB_AUTH_KASUMI_UIA1)
-		job->msg_len_to_hash_in_bytes >>= 3;
 
 	/* Set user data to be crypto operation data struct */
 	job->user_data = op;
