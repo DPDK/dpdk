@@ -9725,6 +9725,17 @@ test_ipsec_proto_transport_v4(const void *data __rte_unused)
 }
 
 static int
+test_ipsec_proto_transport_l4_csum(const void *data __rte_unused)
+{
+	struct ipsec_test_flags flags = {
+		.l4_csum = true,
+		.transport = true,
+	};
+
+	return test_ipsec_proto_all(&flags);
+}
+
+static int
 test_ipsec_proto_stats(const void *data __rte_unused)
 {
 	struct ipsec_test_flags flags;
@@ -15096,6 +15107,10 @@ static struct unit_test_suite ipsec_proto_testsuite  = {
 			"Transport IPv4",
 			ut_setup_security, ut_teardown,
 			test_ipsec_proto_transport_v4),
+		TEST_CASE_NAMED_ST(
+			"Transport l4 checksum",
+			ut_setup_security, ut_teardown,
+			test_ipsec_proto_transport_l4_csum),
 		TEST_CASE_NAMED_ST(
 			"Statistics: success",
 			ut_setup_security, ut_teardown,
