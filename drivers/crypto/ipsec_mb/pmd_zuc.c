@@ -198,7 +198,7 @@ process_ops(struct rte_crypto_op **ops, enum ipsec_mb_operation op_type,
 		struct ipsec_mb_qp *qp, uint8_t num_ops)
 {
 	unsigned int i;
-	unsigned int processed_ops;
+	unsigned int processed_ops = 0;
 
 	switch (op_type) {
 	case IPSEC_MB_OP_ENCRYPT_ONLY:
@@ -212,18 +212,21 @@ process_ops(struct rte_crypto_op **ops, enum ipsec_mb_operation op_type,
 				num_ops);
 		break;
 	case IPSEC_MB_OP_ENCRYPT_THEN_HASH_GEN:
+	case IPSEC_MB_OP_DECRYPT_THEN_HASH_VERIFY:
 		processed_ops = process_zuc_cipher_op(qp, ops, sessions,
 				num_ops);
 		process_zuc_hash_op(qp, ops, sessions, processed_ops);
 		break;
 	case IPSEC_MB_OP_HASH_VERIFY_THEN_DECRYPT:
+	case IPSEC_MB_OP_HASH_GEN_THEN_ENCRYPT:
 		processed_ops = process_zuc_hash_op(qp, ops, sessions,
 				num_ops);
 		process_zuc_cipher_op(qp, ops, sessions, processed_ops);
 		break;
 	default:
 		/* Operation not supported. */
-		processed_ops = 0;
+		for (i = 0; i < num_ops; i++)
+			ops[i]->status = RTE_CRYPTO_OP_STATUS_INVALID_SESSION;
 	}
 
 	for (i = 0; i < num_ops; i++) {
