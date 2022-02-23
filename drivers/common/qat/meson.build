@@ -74,7 +74,7 @@ endif
 
 if qat_crypto
     foreach f: ['qat_sym.c', 'qat_sym_session.c',
-            'qat_sym_hw_dp.c', 'qat_asym_pmd.c', 'qat_asym.c', 'qat_crypto.c',
+            'qat_sym_hw_dp.c', 'qat_asym.c', 'qat_crypto.c',
             'dev/qat_sym_pmd_gen1.c',
             'dev/qat_asym_pmd_gen1.c',
             'dev/qat_crypto_pmd_gen2.c',
