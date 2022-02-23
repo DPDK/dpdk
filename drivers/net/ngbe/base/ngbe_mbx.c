@@ -21,8 +21,6 @@ s32 ngbe_read_mbx(struct ngbe_hw *hw, u32 *msg, u16 size, u16 mbx_id)
 	struct ngbe_mbx_info *mbx = &hw->mbx;
 	s32 ret_val = NGBE_ERR_MBX;
 
-	DEBUGFUNC("ngbe_read_mbx");
-
 	/* limit read to size of mailbox */
 	if (size > mbx->size)
 		size = mbx->size;
@@ -47,8 +45,6 @@ s32 ngbe_write_mbx(struct ngbe_hw *hw, u32 *msg, u16 size, u16 mbx_id)
 	struct ngbe_mbx_info *mbx = &hw->mbx;
 	s32 ret_val = 0;
 
-	DEBUGFUNC("ngbe_write_mbx");
-
 	if (size > mbx->size) {
 		ret_val = NGBE_ERR_MBX;
 		DEBUGOUT("Invalid mailbox message size %d", size);
@@ -71,8 +67,6 @@ s32 ngbe_check_for_msg(struct ngbe_hw *hw, u16 mbx_id)
 	struct ngbe_mbx_info *mbx = &hw->mbx;
 	s32 ret_val = NGBE_ERR_MBX;
 
-	DEBUGFUNC("ngbe_check_for_msg");
-
 	if (mbx->check_for_msg)
 		ret_val = mbx->check_for_msg(hw, mbx_id);
 
@@ -91,8 +85,6 @@ s32 ngbe_check_for_ack(struct ngbe_hw *hw, u16 mbx_id)
 	struct ngbe_mbx_info *mbx = &hw->mbx;
 	s32 ret_val = NGBE_ERR_MBX;
 
-	DEBUGFUNC("ngbe_check_for_ack");
-
 	if (mbx->check_for_ack)
 		ret_val = mbx->check_for_ack(hw, mbx_id);
 
@@ -110,8 +102,6 @@ s32 ngbe_check_for_rst(struct ngbe_hw *hw, u16 mbx_id)
 {
 	struct ngbe_mbx_info *mbx = &hw->mbx;
 	s32 ret_val = NGBE_ERR_MBX;
-
-	DEBUGFUNC("ngbe_check_for_rst");
 
 	if (mbx->check_for_rst)
 		ret_val = mbx->check_for_rst(hw, mbx_id);
@@ -144,8 +134,6 @@ s32 ngbe_check_for_msg_pf(struct ngbe_hw *hw, u16 vf_number)
 	s32 ret_val = NGBE_ERR_MBX;
 	u32 vf_bit = vf_number;
 
-	DEBUGFUNC("ngbe_check_for_msg_pf");
-
 	if (!ngbe_check_for_bit_pf(hw, NGBE_MBVFICR_VFREQ_VF1 << vf_bit)) {
 		ret_val = 0;
 		hw->mbx.stats.reqs++;
@@ -166,8 +154,6 @@ s32 ngbe_check_for_ack_pf(struct ngbe_hw *hw, u16 vf_number)
 	s32 ret_val = NGBE_ERR_MBX;
 	u32 vf_bit = vf_number;
 
-	DEBUGFUNC("ngbe_check_for_ack_pf");
-
 	if (!ngbe_check_for_bit_pf(hw, NGBE_MBVFICR_VFACK_VF1 << vf_bit)) {
 		ret_val = 0;
 		hw->mbx.stats.acks++;
@@ -187,8 +173,6 @@ s32 ngbe_check_for_rst_pf(struct ngbe_hw *hw, u16 vf_number)
 {
 	u32 vflre = 0;
 	s32 ret_val = NGBE_ERR_MBX;
-
-	DEBUGFUNC("ngbe_check_for_rst_pf");
 
 	vflre = rd32(hw, NGBE_FLRVFE);
 	if (vflre & (1 << vf_number)) {
@@ -211,8 +195,6 @@ STATIC s32 ngbe_obtain_mbx_lock_pf(struct ngbe_hw *hw, u16 vf_number)
 {
 	s32 ret_val = NGBE_ERR_MBX;
 	u32 p2v_mailbox;
-
-	DEBUGFUNC("ngbe_obtain_mbx_lock_pf");
 
 	/* Take ownership of the buffer */
 	wr32(hw, NGBE_MBCTL(vf_number), NGBE_MBCTL_PFU);
@@ -241,8 +223,6 @@ s32 ngbe_write_mbx_pf(struct ngbe_hw *hw, u32 *msg, u16 size, u16 vf_number)
 {
 	s32 ret_val;
 	u16 i;
-
-	DEBUGFUNC("ngbe_write_mbx_pf");
 
 	/* lock the mailbox to prevent pf/vf race condition */
 	ret_val = ngbe_obtain_mbx_lock_pf(hw, vf_number);
@@ -282,8 +262,6 @@ s32 ngbe_read_mbx_pf(struct ngbe_hw *hw, u32 *msg, u16 size, u16 vf_number)
 {
 	s32 ret_val;
 	u16 i;
-
-	DEBUGFUNC("ngbe_read_mbx_pf");
 
 	/* lock the mailbox to prevent pf/vf race condition */
 	ret_val = ngbe_obtain_mbx_lock_pf(hw, vf_number);
