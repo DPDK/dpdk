@@ -38,8 +38,6 @@ mlx5_aso_cq_destroy(struct mlx5_aso_cq *cq)
  *   Pointer to CQ to create.
  * @param[in] log_desc_n
  *   Log of number of descriptors in queue.
- * @param[in] socket
- *   Socket to use for allocation.
  * @param[in] uar_page_id
  *   UAR page ID to use.
  * @param[in] eqn
@@ -50,7 +48,7 @@ mlx5_aso_cq_destroy(struct mlx5_aso_cq *cq)
  */
 static int
 mlx5_aso_cq_create(void *ctx, struct mlx5_aso_cq *cq, uint16_t log_desc_n,
-		   int socket, int uar_page_id, uint32_t eqn)
+		   int uar_page_id, uint32_t eqn)
 {
 	struct mlx5_devx_cq_attr attr = { 0 };
 	size_t pgsize = sysconf(_SC_PAGESIZE);
@@ -60,7 +58,7 @@ mlx5_aso_cq_create(void *ctx, struct mlx5_aso_cq *cq, uint16_t log_desc_n,
 	cq->log_desc_n = log_desc_n;
 	umem_size = sizeof(struct mlx5_cqe) * cq_size + sizeof(*cq->db_rec) * 2;
 	cq->umem_buf = mlx5_malloc(MLX5_MEM_RTE | MLX5_MEM_ZERO, umem_size,
-				   4096, socket);
+				   4096, SOCKET_ID_ANY);
 	if (!cq->umem_buf) {
 		DRV_LOG(ERR, "Failed to allocate memory for CQ.");
 		rte_errno = ENOMEM;
@@ -123,8 +121,6 @@ mlx5_aso_devx_dereg_mr(struct mlx5_aso_devx_mr *mr)
  *   Size of MR buffer.
  * @param[in/out] mr
  *   Pointer to MR to create.
- * @param[in] socket
- *   Socket to use for allocation.
  * @param[in] pdn
  *   Protection Domain number to use.
  *
@@ -133,12 +129,12 @@ mlx5_aso_devx_dereg_mr(struct mlx5_aso_devx_mr *mr)
  */
 static int
 mlx5_aso_devx_reg_mr(void *ctx, size_t length, struct mlx5_aso_devx_mr *mr,
-		     int socket, int pdn)
+		     int pdn)
 {
 	struct mlx5_devx_mkey_attr mkey_attr;
 
 	mr->buf = mlx5_malloc(MLX5_MEM_RTE | MLX5_MEM_ZERO, length, 4096,
-			      socket);
+			      SOCKET_ID_ANY);
 	if (!mr->buf) {
 		DRV_LOG(ERR, "Failed to create ASO bits mem for MR by Devx.");
 		return -1;
@@ -240,8 +236,6 @@ mlx5_aso_init_sq(struct mlx5_aso_sq *sq)
  *   Context returned from mlx5 open_device() glue function.
  * @param[in/out] sq
  *   Pointer to SQ to create.
- * @param[in] socket
- *   Socket to use for allocation.
  * @param[in] uar
  *   User Access Region object.
  * @param[in] pdn
@@ -255,7 +249,7 @@ mlx5_aso_init_sq(struct mlx5_aso_sq *sq)
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 static int
-mlx5_aso_sq_create(void *ctx, struct mlx5_aso_sq *sq, int socket,
+mlx5_aso_sq_create(void *ctx, struct mlx5_aso_sq *sq,
 		   struct mlx5dv_devx_uar *uar, uint32_t pdn,
 		   uint32_t eqn,  uint16_t log_desc_n, uint32_t ts_format)
 {
@@ -268,14 +262,15 @@ mlx5_aso_sq_create(void *ctx, struct mlx5_aso_sq *sq, int socket,
 	int ret;
 
 	if (mlx5_aso_devx_reg_mr(ctx, (MLX5_ASO_AGE_ACTIONS_PER_POOL / 8) *
-				 sq_desc_n, &sq->mr, socket, pdn))
+				 sq_desc_n, &sq->mr, pdn))
 		return -1;
-	if (mlx5_aso_cq_create(ctx, &sq->cq, log_desc_n, socket,
+	if (mlx5_aso_cq_create(ctx, &sq->cq, log_desc_n,
 				mlx5_os_get_devx_uar_page_id(uar), eqn))
 		goto error;
 	sq->log_desc_n = log_desc_n;
-	sq->umem_buf = mlx5_malloc(MLX5_MEM_RTE | MLX5_MEM_ZERO, wq_size +
-				   sizeof(*sq->db_rec) * 2, 4096, socket);
+	sq->umem_buf = mlx5_malloc(MLX5_MEM_RTE | MLX5_MEM_ZERO,
+				   wq_size + sizeof(*sq->db_rec) * 2,
+				   4096, SOCKET_ID_ANY);
 	if (!sq->umem_buf) {
 		DRV_LOG(ERR, "Can't allocate wqe buffer.");
 		rte_errno = ENOMEM;
@@ -347,7 +342,7 @@ error:
 int
 mlx5_aso_queue_init(struct mlx5_dev_ctx_shared *sh)
 {
-	return mlx5_aso_sq_create(sh->ctx, &sh->aso_age_mng->aso_sq, 0,
+	return mlx5_aso_sq_create(sh->ctx, &sh->aso_age_mng->aso_sq,
 				  sh->tx_uar, sh->pdn, sh->eqn,
 				  MLX5_ASO_QUEUE_LOG_DESC, sh->sq_ts_format);
 }
