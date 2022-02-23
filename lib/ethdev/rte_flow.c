@@ -1460,3 +1460,255 @@ rte_flow_configure(uint16_t port_id,
 				  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
 				  NULL, rte_strerror(ENOTSUP));
 }
+
+struct rte_flow_pattern_template *
+rte_flow_pattern_template_create(uint16_t port_id,
+		const struct rte_flow_pattern_template_attr *template_attr,
+		const struct rte_flow_item pattern[],
+		struct rte_flow_error *error)
+{
+	struct rte_eth_dev *dev = &rte_eth_devices[port_id];
+	const struct rte_flow_ops *ops = rte_flow_ops_get(port_id, error);
+	struct rte_flow_pattern_template *template;
+
+	if (unlikely(!ops))
+		return NULL;
+	if (dev->data->flow_configured == 0) {
+		RTE_FLOW_LOG(INFO,
+			"Flow engine on port_id=%"PRIu16" is not configured.\n",
+			port_id);
+		rte_flow_error_set(error, EINVAL,
+				RTE_FLOW_ERROR_TYPE_STATE,
+				NULL, rte_strerror(EINVAL));
+		return NULL;
+	}
+	if (template_attr == NULL) {
+		RTE_FLOW_LOG(ERR,
+			     "Port %"PRIu16" template attr is NULL.\n",
+			     port_id);
+		rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_ATTR,
+				   NULL, rte_strerror(EINVAL));
+		return NULL;
+	}
+	if (pattern == NULL) {
+		RTE_FLOW_LOG(ERR,
+			     "Port %"PRIu16" pattern is NULL.\n",
+			     port_id);
+		rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_ATTR,
+				   NULL, rte_strerror(EINVAL));
+		return NULL;
+	}
+	if (likely(!!ops->pattern_template_create)) {
+		template = ops->pattern_template_create(dev, template_attr,
+							pattern, error);
+		if (template == NULL)
+			flow_err(port_id, -rte_errno, error);
+		return template;
+	}
+	rte_flow_error_set(error, ENOTSUP,
+			   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+			   NULL, rte_strerror(ENOTSUP));
+	return NULL;
+}
+
+int
+rte_flow_pattern_template_destroy(uint16_t port_id,
+		struct rte_flow_pattern_template *pattern_template,
+		struct rte_flow_error *error)
+{
+	struct rte_eth_dev *dev = &rte_eth_devices[port_id];
+	const struct rte_flow_ops *ops = rte_flow_ops_get(port_id, error);
+
+	if (unlikely(!ops))
+		return -rte_errno;
+	if (unlikely(pattern_template == NULL))
+		return 0;
+	if (likely(!!ops->pattern_template_destroy)) {
+		return flow_err(port_id,
+				ops->pattern_template_destroy(dev,
+							      pattern_template,
+							      error),
+				error);
+	}
+	return rte_flow_error_set(error, ENOTSUP,
+				  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				  NULL, rte_strerror(ENOTSUP));
+}
+
+struct rte_flow_actions_template *
+rte_flow_actions_template_create(uint16_t port_id,
+			const struct rte_flow_actions_template_attr *template_attr,
+			const struct rte_flow_action actions[],
+			const struct rte_flow_action masks[],
+			struct rte_flow_error *error)
+{
+	struct rte_eth_dev *dev = &rte_eth_devices[port_id];
+	const struct rte_flow_ops *ops = rte_flow_ops_get(port_id, error);
+	struct rte_flow_actions_template *template;
+
+	if (unlikely(!ops))
+		return NULL;
+	if (dev->data->flow_configured == 0) {
+		RTE_FLOW_LOG(INFO,
+			"Flow engine on port_id=%"PRIu16" is not configured.\n",
+			port_id);
+		rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_STATE,
+				   NULL, rte_strerror(EINVAL));
+		return NULL;
+	}
+	if (template_attr == NULL) {
+		RTE_FLOW_LOG(ERR,
+			     "Port %"PRIu16" template attr is NULL.\n",
+			     port_id);
+		rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_ATTR,
+				   NULL, rte_strerror(EINVAL));
+		return NULL;
+	}
+	if (actions == NULL) {
+		RTE_FLOW_LOG(ERR,
+			     "Port %"PRIu16" actions is NULL.\n",
+			     port_id);
+		rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_ATTR,
+				   NULL, rte_strerror(EINVAL));
+		return NULL;
+	}
+	if (masks == NULL) {
+		RTE_FLOW_LOG(ERR,
+			     "Port %"PRIu16" masks is NULL.\n",
+			     port_id);
+		rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_ATTR,
+				   NULL, rte_strerror(EINVAL));
+
+	}
+	if (likely(!!ops->actions_template_create)) {
+		template = ops->actions_template_create(dev, template_attr,
+							actions, masks, error);
+		if (template == NULL)
+			flow_err(port_id, -rte_errno, error);
+		return template;
+	}
+	rte_flow_error_set(error, ENOTSUP,
+			   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+			   NULL, rte_strerror(ENOTSUP));
+	return NULL;
+}
+
+int
+rte_flow_actions_template_destroy(uint16_t port_id,
+			struct rte_flow_actions_template *actions_template,
+			struct rte_flow_error *error)
+{
+	struct rte_eth_dev *dev = &rte_eth_devices[port_id];
+	const struct rte_flow_ops *ops = rte_flow_ops_get(port_id, error);
+
+	if (unlikely(!ops))
+		return -rte_errno;
+	if (unlikely(actions_template == NULL))
+		return 0;
+	if (likely(!!ops->actions_template_destroy)) {
+		return flow_err(port_id,
+				ops->actions_template_destroy(dev,
+							      actions_template,
+							      error),
+				error);
+	}
+	return rte_flow_error_set(error, ENOTSUP,
+				  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				  NULL, rte_strerror(ENOTSUP));
+}
+
+struct rte_flow_template_table *
+rte_flow_template_table_create(uint16_t port_id,
+			const struct rte_flow_template_table_attr *table_attr,
+			struct rte_flow_pattern_template *pattern_templates[],
+			uint8_t nb_pattern_templates,
+			struct rte_flow_actions_template *actions_templates[],
+			uint8_t nb_actions_templates,
+			struct rte_flow_error *error)
+{
+	struct rte_eth_dev *dev = &rte_eth_devices[port_id];
+	const struct rte_flow_ops *ops = rte_flow_ops_get(port_id, error);
+	struct rte_flow_template_table *table;
+
+	if (unlikely(!ops))
+		return NULL;
+	if (dev->data->flow_configured == 0) {
+		RTE_FLOW_LOG(INFO,
+			"Flow engine on port_id=%"PRIu16" is not configured.\n",
+			port_id);
+		rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_STATE,
+				   NULL, rte_strerror(EINVAL));
+		return NULL;
+	}
+	if (table_attr == NULL) {
+		RTE_FLOW_LOG(ERR,
+			     "Port %"PRIu16" table attr is NULL.\n",
+			     port_id);
+		rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_ATTR,
+				   NULL, rte_strerror(EINVAL));
+		return NULL;
+	}
+	if (pattern_templates == NULL) {
+		RTE_FLOW_LOG(ERR,
+			     "Port %"PRIu16" pattern templates is NULL.\n",
+			     port_id);
+		rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_ATTR,
+				   NULL, rte_strerror(EINVAL));
+		return NULL;
+	}
+	if (actions_templates == NULL) {
+		RTE_FLOW_LOG(ERR,
+			     "Port %"PRIu16" actions templates is NULL.\n",
+			     port_id);
+		rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_ATTR,
+				   NULL, rte_strerror(EINVAL));
+		return NULL;
+	}
+	if (likely(!!ops->template_table_create)) {
+		table = ops->template_table_create(dev, table_attr,
+					pattern_templates, nb_pattern_templates,
+					actions_templates, nb_actions_templates,
+					error);
+		if (table == NULL)
+			flow_err(port_id, -rte_errno, error);
+		return table;
+	}
+	rte_flow_error_set(error, ENOTSUP,
+			   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+			   NULL, rte_strerror(ENOTSUP));
+	return NULL;
+}
+
+int
+rte_flow_template_table_destroy(uint16_t port_id,
+				struct rte_flow_template_table *template_table,
+				struct rte_flow_error *error)
+{
+	struct rte_eth_dev *dev = &rte_eth_devices[port_id];
+	const struct rte_flow_ops *ops = rte_flow_ops_get(port_id, error);
+
+	if (unlikely(!ops))
+		return -rte_errno;
+	if (unlikely(template_table == NULL))
+		return 0;
+	if (likely(!!ops->template_table_destroy)) {
+		return flow_err(port_id,
+				ops->template_table_destroy(dev,
+							    template_table,
+							    error),
+				error);
+	}
+	return rte_flow_error_set(error, ENOTSUP,
+				  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				  NULL, rte_strerror(ENOTSUP));
+}

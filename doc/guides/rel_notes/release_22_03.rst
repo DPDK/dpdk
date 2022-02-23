@@ -77,6 +77,14 @@ New Features
     engine, allowing to pre-allocate some resources for better performance.
     Added ``rte_flow_info_get`` API to retrieve available resources.
 
+  * Added ``rte_flow_template_table_create`` API to group flow rules
+    with the same flow attributes and common matching patterns and actions
+    defined by ``rte_flow_pattern_template_create`` and
+    ``rte_flow_actions_template_create`` respectively.
+    Corresponding functions to destroy these entities are:
+    ``rte_flow_template_table_destroy``, ``rte_flow_pattern_template_destroy``
+    and ``rte_flow_actions_template_destroy``.
+
 * **Added rte_flow support for matching GRE optional fields.**
 
   Added ``gre_option`` item in rte_flow to support checksum/key/sequence

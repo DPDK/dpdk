@@ -4983,6 +4983,286 @@ rte_flow_configure(uint16_t port_id,
 		   const struct rte_flow_port_attr *port_attr,
 		   struct rte_flow_error *error);
 
+/**
+ * Opaque type returned after successful creation of pattern template.
+ * This handle can be used to manage the created pattern template.
+ */
+struct rte_flow_pattern_template;
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Flow pattern template attributes.
+ */
+__extension__
+struct rte_flow_pattern_template_attr {
+	/**
+	 * Relaxed matching policy.
+	 * - If 1, matching is performed only on items with the mask member set
+	 * and matching on protocol layers specified without any masks is skipped.
+	 * - If 0, matching on protocol layers specified without any masks is done
+	 * as well. This is the standard behaviour of Flow API now.
+	 */
+	uint32_t relaxed_matching:1;
+	/**
+	 * Flow direction for the pattern template.
+	 * At least one direction must be specified.
+	 */
+	/** Pattern valid for rules applied to ingress traffic. */
+	uint32_t ingress:1;
+	/** Pattern valid for rules applied to egress traffic. */
+	uint32_t egress:1;
+	/** Pattern valid for rules applied to transfer traffic. */
+	uint32_t transfer:1;
+};
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Create flow pattern template.
+ *
+ * The pattern template defines common matching fields without values.
+ * For example, matching on 5 tuple TCP flow, the template will be
+ * eth(null) + IPv4(source + dest) + TCP(s_port + d_port),
+ * while values for each rule will be set during the flow rule creation.
+ * The number and order of items in the template must be the same
+ * at the rule creation.
+ *
+ * @param port_id
+ *   Port identifier of Ethernet device.
+ * @param[in] template_attr
+ *   Pattern template attributes.
+ * @param[in] pattern
+ *   Pattern specification (list terminated by the END pattern item).
+ *   The spec member of an item is not used unless the end member is used.
+ * @param[out] error
+ *   Perform verbose error reporting if not NULL.
+ *   PMDs initialize this structure in case of error only.
+ *
+ * @return
+ *   Handle on success, NULL otherwise and rte_errno is set.
+ */
+__rte_experimental
+struct rte_flow_pattern_template *
+rte_flow_pattern_template_create(uint16_t port_id,
+		const struct rte_flow_pattern_template_attr *template_attr,
+		const struct rte_flow_item pattern[],
+		struct rte_flow_error *error);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Destroy flow pattern template.
+ *
+ * This function may be called only when
+ * there are no more tables referencing this template.
+ *
+ * @param port_id
+ *   Port identifier of Ethernet device.
+ * @param[in] pattern_template
+ *   Handle of the template to be destroyed.
+ * @param[out] error
+ *   Perform verbose error reporting if not NULL.
+ *   PMDs initialize this structure in case of error only.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+__rte_experimental
+int
+rte_flow_pattern_template_destroy(uint16_t port_id,
+		struct rte_flow_pattern_template *pattern_template,
+		struct rte_flow_error *error);
+
+/**
+ * Opaque type returned after successful creation of actions template.
+ * This handle can be used to manage the created actions template.
+ */
+struct rte_flow_actions_template;
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Flow actions template attributes.
+ */
+__extension__
+struct rte_flow_actions_template_attr {
+	/**
+	 * Flow direction for the actions template.
+	 * At least one direction must be specified.
+	 */
+	/** Action valid for rules applied to ingress traffic. */
+	uint32_t ingress:1;
+	/** Action valid for rules applied to egress traffic. */
+	uint32_t egress:1;
+	/** Action valid for rules applied to transfer traffic. */
+	uint32_t transfer:1;
+};
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Create flow actions template.
+ *
+ * The actions template holds a list of action types without values.
+ * For example, the template to change TCP ports is TCP(s_port + d_port),
+ * while values for each rule will be set during the flow rule creation.
+ * The number and order of actions in the template must be the same
+ * at the rule creation.
+ *
+ * @param port_id
+ *   Port identifier of Ethernet device.
+ * @param[in] template_attr
+ *   Template attributes.
+ * @param[in] actions
+ *   Associated actions (list terminated by the END action).
+ *   The spec member is only used if @p masks spec is non-zero.
+ * @param[in] masks
+ *   List of actions that marks which of the action's member is constant.
+ *   A mask has the same format as the corresponding action.
+ *   If the action field in @p masks is not 0,
+ *   the corresponding value in an action from @p actions will be the part
+ *   of the template and used in all flow rules.
+ *   The order of actions in @p masks is the same as in @p actions.
+ *   In case of indirect actions present in @p actions,
+ *   the actual action type should be present in @p mask.
+ * @param[out] error
+ *   Perform verbose error reporting if not NULL.
+ *   PMDs initialize this structure in case of error only.
+ *
+ * @return
+ *   Handle on success, NULL otherwise and rte_errno is set.
+ */
+__rte_experimental
+struct rte_flow_actions_template *
+rte_flow_actions_template_create(uint16_t port_id,
+		const struct rte_flow_actions_template_attr *template_attr,
+		const struct rte_flow_action actions[],
+		const struct rte_flow_action masks[],
+		struct rte_flow_error *error);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Destroy flow actions template.
+ *
+ * This function may be called only when
+ * there are no more tables referencing this template.
+ *
+ * @param port_id
+ *   Port identifier of Ethernet device.
+ * @param[in] actions_template
+ *   Handle to the template to be destroyed.
+ * @param[out] error
+ *   Perform verbose error reporting if not NULL.
+ *   PMDs initialize this structure in case of error only.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+__rte_experimental
+int
+rte_flow_actions_template_destroy(uint16_t port_id,
+		struct rte_flow_actions_template *actions_template,
+		struct rte_flow_error *error);
+
+/**
+ * Opaque type returned after successful creation of a template table.
+ * This handle can be used to manage the created template table.
+ */
+struct rte_flow_template_table;
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Table attributes.
+ */
+struct rte_flow_template_table_attr {
+	/**
+	 * Flow attributes to be used in each rule generated from this table.
+	 */
+	struct rte_flow_attr flow_attr;
+	/**
+	 * Maximum number of flow rules that this table holds.
+	 */
+	uint32_t nb_flows;
+};
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Create flow template table.
+ *
+ * A template table consists of multiple pattern templates and actions
+ * templates associated with a single set of rule attributes (group ID,
+ * priority and traffic direction).
+ *
+ * Each rule is free to use any combination of pattern and actions templates
+ * and specify particular values for items and actions it would like to change.
+ *
+ * @param port_id
+ *   Port identifier of Ethernet device.
+ * @param[in] table_attr
+ *   Template table attributes.
+ * @param[in] pattern_templates
+ *   Array of pattern templates to be used in this table.
+ * @param[in] nb_pattern_templates
+ *   The number of pattern templates in the pattern_templates array.
+ * @param[in] actions_templates
+ *   Array of actions templates to be used in this table.
+ * @param[in] nb_actions_templates
+ *   The number of actions templates in the actions_templates array.
+ * @param[out] error
+ *   Perform verbose error reporting if not NULL.
+ *   PMDs initialize this structure in case of error only.
+ *
+ * @return
+ *   Handle on success, NULL otherwise and rte_errno is set.
+ */
+__rte_experimental
+struct rte_flow_template_table *
+rte_flow_template_table_create(uint16_t port_id,
+		const struct rte_flow_template_table_attr *table_attr,
+		struct rte_flow_pattern_template *pattern_templates[],
+		uint8_t nb_pattern_templates,
+		struct rte_flow_actions_template *actions_templates[],
+		uint8_t nb_actions_templates,
+		struct rte_flow_error *error);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Destroy flow template table.
+ *
+ * This function may be called only when
+ * there are no more flow rules referencing this table.
+ *
+ * @param port_id
+ *   Port identifier of Ethernet device.
+ * @param[in] template_table
+ *   Handle to the table to be destroyed.
+ * @param[out] error
+ *   Perform verbose error reporting if not NULL.
+ *   PMDs initialize this structure in case of error only.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+__rte_experimental
+int
+rte_flow_template_table_destroy(uint16_t port_id,
+		struct rte_flow_template_table *template_table,
+		struct rte_flow_error *error);
+
 #ifdef __cplusplus
 }
 #endif

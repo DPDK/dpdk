@@ -3642,6 +3642,141 @@ Information about the number of available resources can be retrieved via
                      struct rte_flow_port_info *port_info,
                      struct rte_flow_error *error);
 
+Flow templates
+~~~~~~~~~~~~~~
+
+Oftentimes in an application, many flow rules share a common structure
+(the same pattern and/or action list) so they can be grouped and classified
+together. This knowledge may be used as a source of optimization by a PMD/HW.
+The flow rule creation is done by selecting a table, a pattern template
+and an actions template (which are bound to the table), and setting unique
+values for the items and actions. This API is not thread-safe.
+
+Pattern templates
+^^^^^^^^^^^^^^^^^
+
+The pattern template defines a common pattern (the item mask) without values.
+The mask value is used to select a field to match on, spec/last are ignored.
+The pattern template may be used by multiple tables and must not be destroyed
+until all these tables are destroyed first.
+
+.. code-block:: c
+
+   struct rte_flow_pattern_template *
+   rte_flow_pattern_template_create(uint16_t port_id,
+       const struct rte_flow_pattern_template_attr *template_attr,
+       const struct rte_flow_item pattern[],
+       struct rte_flow_error *error);
+
+For example, to create a pattern template to match on the destination MAC:
+
+.. code-block:: c
+
+   const struct rte_flow_pattern_template_attr attr = {.ingress = 1};
+   struct rte_flow_item_eth eth_m = {
+       .dst.addr_bytes = "\xff\xff\xff\xff\xff\xff";
+   };
+   struct rte_flow_item pattern[] = {
+       [0] = {.type = RTE_FLOW_ITEM_TYPE_ETH,
+              .mask = &eth_m},
+       [1] = {.type = RTE_FLOW_ITEM_TYPE_END,},
+   };
+   struct rte_flow_error err;
+
+   struct rte_flow_pattern_template *pattern_template =
+           rte_flow_pattern_template_create(port, &attr, &pattern, &err);
+
+The concrete value to match on will be provided at the rule creation.
+
+Actions templates
+^^^^^^^^^^^^^^^^^
+
+The actions template holds a list of action types to be used in flow rules.
+The mask parameter allows specifying a shared constant value for every rule.
+The actions template may be used by multiple tables and must not be destroyed
+until all these tables are destroyed first.
+
+.. code-block:: c
+
+   struct rte_flow_actions_template *
+   rte_flow_actions_template_create(uint16_t port_id,
+       const struct rte_flow_actions_template_attr *template_attr,
+       const struct rte_flow_action actions[],
+       const struct rte_flow_action masks[],
+       struct rte_flow_error *error);
+
+For example, to create an actions template with the same Mark ID
+but different Queue Index for every rule:
+
+.. code-block:: c
+
+   rte_flow_actions_template_attr attr = {.ingress = 1};
+   struct rte_flow_action act[] = {
+   /* Mark ID is 4 for every rule, Queue Index is unique */
+       [0] = {.type = RTE_FLOW_ACTION_TYPE_MARK,
+              .conf = &(struct rte_flow_action_mark){.id = 4}},
+       [1] = {.type = RTE_FLOW_ACTION_TYPE_QUEUE},
+       [2] = {.type = RTE_FLOW_ACTION_TYPE_END,},
+   };
+   struct rte_flow_action msk[] = {
+   /* Assign to MARK mask any non-zero value to make it constant */
+       [0] = {.type = RTE_FLOW_ACTION_TYPE_MARK,
+              .conf = &(struct rte_flow_action_mark){.id = 1}},
+       [1] = {.type = RTE_FLOW_ACTION_TYPE_QUEUE},
+       [2] = {.type = RTE_FLOW_ACTION_TYPE_END,},
+   };
+   struct rte_flow_error err;
+
+   struct rte_flow_actions_template *actions_template =
+           rte_flow_actions_template_create(port, &attr, &act, &msk, &err);
+
+The concrete value for Queue Index will be provided at the rule creation.
+
+Template table
+^^^^^^^^^^^^^^
+
+A template table combines a number of pattern and actions templates along with
+shared flow rule attributes (group ID, priority and traffic direction).
+This way a PMD/HW can prepare all the resources needed for efficient flow rules
+creation in the datapath. To avoid any hiccups due to memory reallocation,
+the maximum number of flow rules is defined at table creation time.
+Any flow rule creation beyond the maximum table size is rejected.
+Application may create another table to accommodate more rules in this case.
+
+.. code-block:: c
+
+   struct rte_flow_template_table *
+   rte_flow_template_table_create(uint16_t port_id,
+       const struct rte_flow_template_table_attr *table_attr,
+       struct rte_flow_pattern_template *pattern_templates[],
+       uint8_t nb_pattern_templates,
+       struct rte_flow_actions_template *actions_templates[],
+       uint8_t nb_actions_templates,
+       struct rte_flow_error *error);
+
+A table can be created only after the Flow Rules management is configured
+and pattern and actions templates are created.
+
+.. code-block:: c
+
+   rte_flow_template_table_attr table_attr = {
+       .flow_attr.ingress = 1,
+       .nb_flows = 10000;
+   };
+   uint8_t nb_pattern_templ = 1;
+   struct rte_flow_pattern_template *pattern_templates[nb_pattern_templ];
+   pattern_templates[0] = pattern_template;
+   uint8_t nb_actions_templ = 1;
+   struct rte_flow_actions_template *actions_templates[nb_actions_templ];
+   actions_templates[0] = actions_template;
+   struct rte_flow_error error;
+
+   struct rte_flow_template_table *table =
+           rte_flow_template_table_create(port, &table_attr,
+                   &pattern_templates, nb_pattern_templ,
+                   &actions_templates, nb_actions_templ,
+                   &error);
+
 .. _flow_isolated_mode:
 
 Flow isolated mode
