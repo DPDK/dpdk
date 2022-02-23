@@ -103,8 +103,6 @@ struct ena_stats_tx {
 	u64 cnt;
 	u64 bytes;
 	u64 prepare_ctx_err;
-	u64 linearize;
-	u64 linearize_failed;
 	u64 tx_poll;
 	u64 doorbells;
 	u64 bad_req_id;

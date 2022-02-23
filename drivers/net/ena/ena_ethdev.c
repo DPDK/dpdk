@@ -93,8 +93,6 @@ static const struct ena_stats ena_stats_tx_strings[] = {
 	ENA_STAT_TX_ENTRY(cnt),
 	ENA_STAT_TX_ENTRY(bytes),
 	ENA_STAT_TX_ENTRY(prepare_ctx_err),
-	ENA_STAT_TX_ENTRY(linearize),
-	ENA_STAT_TX_ENTRY(linearize_failed),
 	ENA_STAT_TX_ENTRY(tx_poll),
 	ENA_STAT_TX_ENTRY(doorbells),
 	ENA_STAT_TX_ENTRY(bad_req_id),
@@ -2408,6 +2406,17 @@ eth_ena_prep_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 			return i;
 		}
 
+		if (unlikely(m->nb_segs >= tx_ring->sgl_size &&
+		    !(tx_ring->tx_mem_queue_type == ENA_ADMIN_PLACEMENT_POLICY_DEV &&
+		      m->nb_segs == tx_ring->sgl_size &&
+		      m->data_len < tx_ring->tx_max_header_size))) {
+			PMD_TX_LOG(DEBUG,
+				"mbuf[%" PRIu32 "] has too many segments: %" PRIu16 "\n",
+				i, m->nb_segs);
+			rte_errno = EINVAL;
+			return i;
+		}
+
 #ifdef RTE_LIBRTE_ETHDEV_DEBUG
 		/* Check if requested offload is also enabled for the queue */
 		if ((ol_flags & RTE_MBUF_F_TX_IP_CKSUM &&
@@ -2554,56 +2563,6 @@ static void ena_update_hints(struct ena_adapter *adapter,
 	}
 }
 
-static int ena_check_space_and_linearize_mbuf(struct ena_ring *tx_ring,
-					      struct rte_mbuf *mbuf)
-{
-	struct ena_com_dev *ena_dev;
-	int num_segments, header_len, rc;
-
-	ena_dev = &tx_ring->adapter->ena_dev;
-	num_segments = mbuf->nb_segs;
-	header_len = mbuf->data_len;
-
-	if (likely(num_segments < tx_ring->sgl_size))
-		goto checkspace;
-
-	if (ena_dev->tx_mem_queue_type == ENA_ADMIN_PLACEMENT_POLICY_DEV &&
-	    (num_segments == tx_ring->sgl_size) &&
-	    (header_len < tx_ring->tx_max_header_size))
-		goto checkspace;
-
-	/* Checking for space for 2 additional metadata descriptors due to
-	 * possible header split and metadata descriptor. Linearization will
-	 * be needed so we reduce the segments number from num_segments to 1
-	 */
-	if (!ena_com_sq_have_enough_space(tx_ring->ena_com_io_sq, 3)) {
-		PMD_TX_LOG(DEBUG, "Not enough space in the Tx queue\n");
-		return ENA_COM_NO_MEM;
-	}
-	++tx_ring->tx_stats.linearize;
-	rc = rte_pktmbuf_linearize(mbuf);
-	if (unlikely(rc)) {
-		PMD_TX_LOG(WARNING, "Mbuf linearize failed\n");
-		rte_atomic64_inc(&tx_ring->adapter->drv_stats->ierrors);
-		++tx_ring->tx_stats.linearize_failed;
-		return rc;
-	}
-
-	return 0;
-
-checkspace:
-	/* Checking for space for 2 additional metadata descriptors due to
-	 * possible header split and metadata descriptor
-	 */
-	if (!ena_com_sq_have_enough_space(tx_ring->ena_com_io_sq,
-					  num_segments + 2)) {
-		PMD_TX_LOG(DEBUG, "Not enough space in the Tx queue\n");
-		return ENA_COM_NO_MEM;
-	}
-
-	return 0;
-}
-
 static void ena_tx_map_mbuf(struct ena_ring *tx_ring,
 	struct ena_tx_buffer *tx_info,
 	struct rte_mbuf *mbuf,
@@ -2688,9 +2647,14 @@ static int ena_xmit_mbuf(struct ena_ring *tx_ring, struct rte_mbuf *mbuf)
 	int nb_hw_desc;
 	int rc;
 
-	rc = ena_check_space_and_linearize_mbuf(tx_ring, mbuf);
-	if (unlikely(rc))
-		return rc;
+	/* Checking for space for 2 additional metadata descriptors due to
+	 * possible header split and metadata descriptor
+	 */
+	if (!ena_com_sq_have_enough_space(tx_ring->ena_com_io_sq,
+					  mbuf->nb_segs + 2)) {
+		PMD_DRV_LOG(DEBUG, "Not enough space in the tx queue\n");
+		return ENA_COM_NO_MEM;
+	}
 
 	next_to_use = tx_ring->next_to_use;
 
