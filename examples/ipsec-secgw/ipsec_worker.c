@@ -332,7 +332,8 @@ process_ipsec_ev_inbound(struct ipsec_ctx *ctx, struct route_table *rt,
 		break;
 
 	default:
-		RTE_LOG(ERR, IPSEC, "Unsupported packet type = %d\n", type);
+		RTE_LOG_DP(DEBUG, IPSEC_ESP, "Unsupported packet type = %d\n",
+			   type);
 		goto drop_pkt_and_exit;
 	}
 
@@ -570,7 +571,8 @@ classify_pkt(struct rte_mbuf *pkt, struct ipsec_traffic *t)
 		t->ip6.pkts[(t->ip6.num)++] = pkt;
 		break;
 	default:
-		RTE_LOG(ERR, IPSEC, "Unsupported packet type = %d\n", type);
+		RTE_LOG_DP(DEBUG, IPSEC_ESP, "Unsupported packet type = %d\n",
+			   type);
 		free_pkts(&pkt, 1);
 		break;
 	}
