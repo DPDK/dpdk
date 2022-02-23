@@ -99,7 +99,9 @@ static const struct ena_stats ena_stats_rx_strings[] = {
 	ENA_STAT_RX_ENTRY(cnt),
 	ENA_STAT_RX_ENTRY(bytes),
 	ENA_STAT_RX_ENTRY(refill_partial),
-	ENA_STAT_RX_ENTRY(bad_csum),
+	ENA_STAT_RX_ENTRY(l3_csum_bad),
+	ENA_STAT_RX_ENTRY(l4_csum_bad),
+	ENA_STAT_RX_ENTRY(l4_csum_good),
 	ENA_STAT_RX_ENTRY(mbuf_alloc_fail),
 	ENA_STAT_RX_ENTRY(bad_desc_num),
 	ENA_STAT_RX_ENTRY(bad_req_id),
@@ -273,10 +275,12 @@ static const struct eth_dev_ops ena_dev_ops = {
 	.rss_hash_conf_get    = ena_rss_hash_conf_get,
 };
 
-static inline void ena_rx_mbuf_prepare(struct rte_mbuf *mbuf,
+static inline void ena_rx_mbuf_prepare(struct ena_ring *rx_ring,
+				       struct rte_mbuf *mbuf,
 				       struct ena_com_rx_ctx *ena_rx_ctx,
 				       bool fill_hash)
 {
+	struct ena_stats_rx *rx_stats = &rx_ring->rx_stats;
 	uint64_t ol_flags = 0;
 	uint32_t packet_type = 0;
 
@@ -287,21 +291,27 @@ static inline void ena_rx_mbuf_prepare(struct rte_mbuf *mbuf,
 
 	if (ena_rx_ctx->l3_proto == ENA_ETH_IO_L3_PROTO_IPV4) {
 		packet_type |= RTE_PTYPE_L3_IPV4;
-		if (unlikely(ena_rx_ctx->l3_csum_err))
+		if (unlikely(ena_rx_ctx->l3_csum_err)) {
+			++rx_stats->l3_csum_bad;
 			ol_flags |= RTE_MBUF_F_RX_IP_CKSUM_BAD;
-		else
+		} else {
 			ol_flags |= RTE_MBUF_F_RX_IP_CKSUM_GOOD;
+		}
 	} else if (ena_rx_ctx->l3_proto == ENA_ETH_IO_L3_PROTO_IPV6) {
 		packet_type |= RTE_PTYPE_L3_IPV6;
 	}
 
-	if (!ena_rx_ctx->l4_csum_checked || ena_rx_ctx->frag)
+	if (!ena_rx_ctx->l4_csum_checked || ena_rx_ctx->frag) {
 		ol_flags |= RTE_MBUF_F_RX_L4_CKSUM_UNKNOWN;
-	else
-		if (unlikely(ena_rx_ctx->l4_csum_err))
+	} else {
+		if (unlikely(ena_rx_ctx->l4_csum_err)) {
+			++rx_stats->l4_csum_bad;
 			ol_flags |= RTE_MBUF_F_RX_L4_CKSUM_BAD;
-		else
+		} else {
+			++rx_stats->l4_csum_good;
 			ol_flags |= RTE_MBUF_F_RX_L4_CKSUM_GOOD;
+		}
+	}
 
 	if (fill_hash &&
 	    likely((packet_type & ENA_PTYPE_HAS_HASH) && !ena_rx_ctx->frag)) {
@@ -2336,13 +2346,11 @@ static uint16_t eth_ena_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		}
 
 		/* fill mbuf attributes if any */
-		ena_rx_mbuf_prepare(mbuf, &ena_rx_ctx, fill_hash);
+		ena_rx_mbuf_prepare(rx_ring, mbuf, &ena_rx_ctx, fill_hash);
 
 		if (unlikely(mbuf->ol_flags &
-				(RTE_MBUF_F_RX_IP_CKSUM_BAD | RTE_MBUF_F_RX_L4_CKSUM_BAD))) {
+				(RTE_MBUF_F_RX_IP_CKSUM_BAD | RTE_MBUF_F_RX_L4_CKSUM_BAD)))
 			rte_atomic64_inc(&rx_ring->adapter->drv_stats->ierrors);
-			++rx_ring->rx_stats.bad_csum;
-		}
 
 		rx_pkts[completed] = mbuf;
 		rx_ring->rx_stats.bytes += mbuf->pkt_len;

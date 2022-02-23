@@ -104,6 +104,13 @@ New Features
   * Added support for libxdp >=v1.2.2.
   * Re-enabled secondary process support. RX/TX is not supported.
 
+* **Updated Amazon ENA PMD.**
+
+  The new driver version (v2.6.0) introduced bug fixes and improvements, including:
+
+  * Added new checksum related xstats: ``l3_csum_bad``, ``l4_csum_bad`` and
+    ``l4_csum_good``.
+
 * **Updated Cisco enic driver.**
 
   * Added rte_flow support for matching GENEVE packets.

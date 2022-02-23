@@ -114,7 +114,9 @@ struct ena_stats_rx {
 	u64 cnt;
 	u64 bytes;
 	u64 refill_partial;
-	u64 bad_csum;
+	u64 l3_csum_bad;
+	u64 l4_csum_bad;
+	u64 l4_csum_good;
 	u64 mbuf_alloc_fail;
 	u64 bad_desc_num;
 	u64 bad_req_id;
