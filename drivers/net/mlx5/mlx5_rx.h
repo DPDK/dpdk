@@ -18,6 +18,7 @@
 
 #include "mlx5.h"
 #include "mlx5_autoconf.h"
+#include "rte_pmd_mlx5.h"
 
 /* Support tunnel matching. */
 #define MLX5_FLOW_TUNNEL 10
@@ -217,8 +218,14 @@ uint32_t mlx5_rxq_deref(struct rte_eth_dev *dev, uint16_t idx);
 struct mlx5_rxq_priv *mlx5_rxq_get(struct rte_eth_dev *dev, uint16_t idx);
 struct mlx5_rxq_ctrl *mlx5_rxq_ctrl_get(struct rte_eth_dev *dev, uint16_t idx);
 struct mlx5_rxq_data *mlx5_rxq_data_get(struct rte_eth_dev *dev, uint16_t idx);
+struct mlx5_external_rxq *mlx5_ext_rxq_ref(struct rte_eth_dev *dev,
+					   uint16_t idx);
+uint32_t mlx5_ext_rxq_deref(struct rte_eth_dev *dev, uint16_t idx);
+struct mlx5_external_rxq *mlx5_ext_rxq_get(struct rte_eth_dev *dev,
+					   uint16_t idx);
 int mlx5_rxq_release(struct rte_eth_dev *dev, uint16_t idx);
 int mlx5_rxq_verify(struct rte_eth_dev *dev);
+int mlx5_ext_rxq_verify(struct rte_eth_dev *dev);
 int rxq_alloc_elts(struct mlx5_rxq_ctrl *rxq_ctrl);
 int mlx5_ind_table_obj_verify(struct rte_eth_dev *dev);
 struct mlx5_ind_table_obj *mlx5_ind_table_obj_get(struct rte_eth_dev *dev,
@@ -641,6 +648,29 @@ mlx5_mprq_enabled(struct rte_eth_dev *dev)
 	/* Multi-Packet RQ can't be partially configured. */
 	MLX5_ASSERT(n == 0 || n == n_ibv);
 	return n == n_ibv;
+}
+
+/**
+ * Check whether given RxQ is external.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ * @param queue_idx
+ *   Rx queue index.
+ *
+ * @return
+ *   True if is external RxQ, otherwise false.
+ */
+static __rte_always_inline bool
+mlx5_is_external_rxq(struct rte_eth_dev *dev, uint16_t queue_idx)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_external_rxq *rxq;
+
+	if (!priv->ext_rxqs || queue_idx < MLX5_EXTERNAL_RX_QUEUE_ID_MIN)
+		return false;
+	rxq = &priv->ext_rxqs[queue_idx - MLX5_EXTERNAL_RX_QUEUE_ID_MIN];
+	return !!__atomic_load_n(&rxq->refcnt, __ATOMIC_RELAXED);
 }
 
 #endif /* RTE_PMD_MLX5_RX_H_ */

@@ -2085,6 +2085,65 @@ mlx5_rxq_data_get(struct rte_eth_dev *dev, uint16_t idx)
 }
 
 /**
+ * Increase an external Rx queue reference count.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ * @param idx
+ *   External RX queue index.
+ *
+ * @return
+ *   A pointer to the queue if it exists, NULL otherwise.
+ */
+struct mlx5_external_rxq *
+mlx5_ext_rxq_ref(struct rte_eth_dev *dev, uint16_t idx)
+{
+	struct mlx5_external_rxq *rxq = mlx5_ext_rxq_get(dev, idx);
+
+	__atomic_fetch_add(&rxq->refcnt, 1, __ATOMIC_RELAXED);
+	return rxq;
+}
+
+/**
+ * Decrease an external Rx queue reference count.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ * @param idx
+ *   External RX queue index.
+ *
+ * @return
+ *   Updated reference count.
+ */
+uint32_t
+mlx5_ext_rxq_deref(struct rte_eth_dev *dev, uint16_t idx)
+{
+	struct mlx5_external_rxq *rxq = mlx5_ext_rxq_get(dev, idx);
+
+	return __atomic_sub_fetch(&rxq->refcnt, 1, __ATOMIC_RELAXED);
+}
+
+/**
+ * Get an external Rx queue.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ * @param idx
+ *   External Rx queue index.
+ *
+ * @return
+ *   A pointer to the queue if it exists, NULL otherwise.
+ */
+struct mlx5_external_rxq *
+mlx5_ext_rxq_get(struct rte_eth_dev *dev, uint16_t idx)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+
+	MLX5_ASSERT(mlx5_is_external_rxq(dev, idx));
+	return &priv->ext_rxqs[idx - MLX5_EXTERNAL_RX_QUEUE_ID_MIN];
+}
+
+/**
  * Release a Rx queue.
  *
  * @param dev
@@ -2168,6 +2227,37 @@ mlx5_rxq_verify(struct rte_eth_dev *dev)
 }
 
 /**
+ * Verify the external Rx Queue list is empty.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ *
+ * @return
+ *   The number of object not released.
+ */
+int
+mlx5_ext_rxq_verify(struct rte_eth_dev *dev)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_external_rxq *rxq;
+	uint32_t i;
+	int ret = 0;
+
+	if (priv->ext_rxqs == NULL)
+		return 0;
+
+	for (i = MLX5_EXTERNAL_RX_QUEUE_ID_MIN; i <= UINT16_MAX ; ++i) {
+		rxq = mlx5_ext_rxq_get(dev, i);
+		if (rxq->refcnt < 2)
+			continue;
+		DRV_LOG(DEBUG, "Port %u external RxQ %u still referenced.",
+			dev->data->port_id, i);
+		++ret;
+	}
+	return ret;
+}
+
+/**
  * Check whether RxQ type is Hairpin.
  *
  * @param dev
@@ -2182,8 +2272,11 @@ bool
 mlx5_rxq_is_hairpin(struct rte_eth_dev *dev, uint16_t idx)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5_rxq_ctrl *rxq_ctrl = mlx5_rxq_ctrl_get(dev, idx);
+	struct mlx5_rxq_ctrl *rxq_ctrl;
 
+	if (mlx5_is_external_rxq(dev, idx))
+		return false;
+	rxq_ctrl = mlx5_rxq_ctrl_get(dev, idx);
 	return (idx < priv->rxqs_n && rxq_ctrl != NULL && rxq_ctrl->is_hairpin);
 }
 
@@ -2358,9 +2451,16 @@ mlx5_ind_table_obj_setup(struct rte_eth_dev *dev,
 
 	if (ref_qs)
 		for (i = 0; i != queues_n; ++i) {
-			if (mlx5_rxq_ref(dev, queues[i]) == NULL) {
-				ret = -rte_errno;
-				goto error;
+			if (mlx5_is_external_rxq(dev, queues[i])) {
+				if (mlx5_ext_rxq_ref(dev, queues[i]) == NULL) {
+					ret = -rte_errno;
+					goto error;
+				}
+			} else {
+				if (mlx5_rxq_ref(dev, queues[i]) == NULL) {
+					ret = -rte_errno;
+					goto error;
+				}
 			}
 		}
 	ret = priv->obj_ops.ind_table_new(dev, n, ind_tbl);
@@ -2371,8 +2471,12 @@ mlx5_ind_table_obj_setup(struct rte_eth_dev *dev,
 error:
 	if (ref_qs) {
 		err = rte_errno;
-		for (j = 0; j < i; j++)
-			mlx5_rxq_deref(dev, queues[j]);
+		for (j = 0; j < i; j++) {
+			if (mlx5_is_external_rxq(dev, queues[j]))
+				mlx5_ext_rxq_deref(dev, queues[j]);
+			else
+				mlx5_rxq_deref(dev, queues[j]);
+		}
 		rte_errno = err;
 	}
 	DRV_LOG(DEBUG, "Port %u cannot setup indirection table.",

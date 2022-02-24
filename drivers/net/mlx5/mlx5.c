@@ -1912,6 +1912,10 @@ mlx5_dev_close(struct rte_eth_dev *dev)
 	if (ret)
 		DRV_LOG(WARNING, "port %u some Rx queue objects still remain",
 			dev->data->port_id);
+	ret = mlx5_ext_rxq_verify(dev);
+	if (ret)
+		DRV_LOG(WARNING, "Port %u some external RxQ still remain.",
+			dev->data->port_id);
 	ret = mlx5_rxq_verify(dev);
 	if (ret)
 		DRV_LOG(WARNING, "port %u some Rx queues still remain",

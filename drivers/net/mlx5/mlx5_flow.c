@@ -1743,6 +1743,12 @@ mlx5_flow_validate_action_queue(const struct rte_flow_action *action,
 					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
 					  "can't have 2 fate actions in"
 					  " same flow");
+	if (attr->egress)
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ATTR_EGRESS, NULL,
+					  "queue action not supported for egress.");
+	if (mlx5_is_external_rxq(dev, queue->index))
+		return 0;
 	if (!priv->rxqs_n)
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ACTION_CONF,
@@ -1757,11 +1763,6 @@ mlx5_flow_validate_action_queue(const struct rte_flow_action *action,
 					  RTE_FLOW_ERROR_TYPE_ACTION_CONF,
 					  &queue->index,
 					  "queue is not configured");
-	if (attr->egress)
-		return rte_flow_error_set(error, ENOTSUP,
-					  RTE_FLOW_ERROR_TYPE_ATTR_EGRESS, NULL,
-					  "queue action not supported for "
-					  "egress");
 	return 0;
 }
 
@@ -1776,7 +1777,7 @@ mlx5_flow_validate_action_queue(const struct rte_flow_action *action,
  *   Size of the @p queues array.
  * @param[out] error
  *   On error, filled with a textual error description.
- * @param[out] queue
+ * @param[out] queue_idx
  *   On error, filled with an offending queue index in @p queues array.
  *
  * @return
@@ -1789,17 +1790,27 @@ mlx5_validate_rss_queues(struct rte_eth_dev *dev,
 {
 	const struct mlx5_priv *priv = dev->data->dev_private;
 	bool is_hairpin = false;
+	bool is_ext_rss = false;
 	uint32_t i;
 
 	for (i = 0; i != queues_n; ++i) {
-		struct mlx5_rxq_ctrl *rxq_ctrl = mlx5_rxq_ctrl_get(dev,
-								   queues[i]);
+		struct mlx5_rxq_ctrl *rxq_ctrl;
 
+		if (mlx5_is_external_rxq(dev, queues[0])) {
+			is_ext_rss = true;
+			continue;
+		}
+		if (is_ext_rss) {
+			*error = "Combining external and regular RSS queues is not supported";
+			*queue_idx = i;
+			return -ENOTSUP;
+		}
 		if (queues[i] >= priv->rxqs_n) {
 			*error = "queue index out of range";
 			*queue_idx = i;
 			return -EINVAL;
 		}
+		rxq_ctrl = mlx5_rxq_ctrl_get(dev, queues[i]);
 		if (rxq_ctrl == NULL) {
 			*error =  "queue is not configured";
 			*queue_idx = i;
@@ -1894,7 +1905,7 @@ mlx5_validate_action_rss(struct rte_eth_dev *dev,
 					  RTE_FLOW_ERROR_TYPE_ACTION_CONF, NULL,
 					  "L4 partial RSS requested but L4 RSS"
 					  " type not specified");
-	if (!priv->rxqs_n)
+	if (!priv->rxqs_n && priv->ext_rxqs == NULL)
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ACTION_CONF,
 					  NULL, "No Rx queues configured");

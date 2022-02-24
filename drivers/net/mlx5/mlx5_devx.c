@@ -580,13 +580,21 @@ mlx5_devx_ind_table_create_rqt_attr(struct rte_eth_dev *dev,
 		return rqt_attr;
 	}
 	for (i = 0; i != queues_n; ++i) {
-		struct mlx5_rxq_priv *rxq = mlx5_rxq_get(dev, queues[i]);
+		if (mlx5_is_external_rxq(dev, queues[i])) {
+			struct mlx5_external_rxq *ext_rxq =
+					mlx5_ext_rxq_get(dev, queues[i]);
 
-		MLX5_ASSERT(rxq != NULL);
-		if (rxq->ctrl->is_hairpin)
-			rqt_attr->rq_list[i] = rxq->ctrl->obj->rq->id;
-		else
-			rqt_attr->rq_list[i] = rxq->devx_rq.rq->id;
+			rqt_attr->rq_list[i] = ext_rxq->hw_id;
+		} else {
+			struct mlx5_rxq_priv *rxq =
+					mlx5_rxq_get(dev, queues[i]);
+
+			MLX5_ASSERT(rxq != NULL);
+			if (rxq->ctrl->is_hairpin)
+				rqt_attr->rq_list[i] = rxq->ctrl->obj->rq->id;
+			else
+				rqt_attr->rq_list[i] = rxq->devx_rq.rq->id;
+		}
 	}
 	MLX5_ASSERT(i > 0);
 	for (j = 0; i != rqt_n; ++j, ++i)
@@ -711,7 +719,13 @@ mlx5_devx_tir_attr_set(struct rte_eth_dev *dev, const uint8_t *rss_key,
 	uint32_t i;
 
 	/* NULL queues designate drop queue. */
-	if (ind_tbl->queues != NULL) {
+	if (ind_tbl->queues == NULL) {
+		is_hairpin = priv->drop_queue.rxq->ctrl->is_hairpin;
+	} else if (mlx5_is_external_rxq(dev, ind_tbl->queues[0])) {
+		/* External RxQ supports neither Hairpin nor LRO. */
+		is_hairpin = false;
+		lro = false;
+	} else {
 		is_hairpin = mlx5_rxq_is_hairpin(dev, ind_tbl->queues[0]);
 		/* Enable TIR LRO only if all the queues were configured for. */
 		for (i = 0; i < ind_tbl->queues_n; ++i) {
@@ -723,8 +737,6 @@ mlx5_devx_tir_attr_set(struct rte_eth_dev *dev, const uint8_t *rss_key,
 				break;
 			}
 		}
-	} else {
-		is_hairpin = priv->drop_queue.rxq->ctrl->is_hairpin;
 	}
 	memset(tir_attr, 0, sizeof(*tir_attr));
 	tir_attr->disp_type = MLX5_TIRC_DISP_TYPE_INDIRECT;
