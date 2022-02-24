@@ -15,3 +15,7 @@
 ; Ignore section attribute fixes in experimental regexdev library
 [suppress_file]
         soname_regexp = ^librte_regexdev\.
+
+; Ignore changes in common mlx5 driver, should be all internal
+[suppress_file]
+        soname_regexp = ^librte_common_mlx5\.

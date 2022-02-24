@@ -79,6 +79,7 @@ INTERNAL {
 
 	mlx5_free;
 
+	mlx5_get_device_guid; # WINDOWS_NO_EXPORT
 	mlx5_get_ifname_sysfs; # WINDOWS_NO_EXPORT
 	mlx5_get_pci_addr; # WINDOWS_NO_EXPORT
 
@@ -148,4 +149,6 @@ INTERNAL {
 	mlx5_mp_req_mempool_reg;
 	mlx5_mr_mempool2mr_bh;
 	mlx5_mr_mempool_populate_cache;
+
+	local: *;
 };
