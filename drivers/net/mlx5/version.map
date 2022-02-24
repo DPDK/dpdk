@@ -9,4 +9,7 @@ EXPERIMENTAL {
 	rte_pmd_mlx5_get_dyn_flag_names;
 	# added in 20.11
 	rte_pmd_mlx5_sync_flow;
+	# added in 22.03
+	rte_pmd_mlx5_external_rx_queue_id_map;
+	rte_pmd_mlx5_external_rx_queue_id_unmap;
 };

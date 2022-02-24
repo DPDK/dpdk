@@ -27,6 +27,7 @@
 #include "mlx5_tx.h"
 #include "mlx5_autoconf.h"
 #include "mlx5_devx.h"
+#include "rte_pmd_mlx5.h"
 
 /**
  * Get the interface index from device name.
@@ -81,9 +82,10 @@ mlx5_dev_configure(struct rte_eth_dev *dev)
 		rte_errno = EINVAL;
 		return -rte_errno;
 	}
-	priv->rss_conf.rss_key =
-		mlx5_realloc(priv->rss_conf.rss_key, MLX5_MEM_RTE,
-			    MLX5_RSS_HASH_KEY_LEN, 0, SOCKET_ID_ANY);
+	priv->rss_conf.rss_key = mlx5_realloc(priv->rss_conf.rss_key,
+					      MLX5_MEM_RTE,
+					      MLX5_RSS_HASH_KEY_LEN, 0,
+					      SOCKET_ID_ANY);
 	if (!priv->rss_conf.rss_key) {
 		DRV_LOG(ERR, "port %u cannot allocate RSS hash key memory (%u)",
 			dev->data->port_id, rxqs_n);
@@ -124,6 +126,14 @@ mlx5_dev_configure(struct rte_eth_dev *dev)
 	if (rxqs_n > priv->sh->dev_cap.ind_table_max_size) {
 		DRV_LOG(ERR, "port %u cannot handle this many Rx queues (%u)",
 			dev->data->port_id, rxqs_n);
+		rte_errno = EINVAL;
+		return -rte_errno;
+	}
+	if (priv->ext_rxqs && rxqs_n >= MLX5_EXTERNAL_RX_QUEUE_ID_MIN) {
+		DRV_LOG(ERR, "port %u cannot handle this many Rx queues (%u), "
+			"the maximal number of internal Rx queues is %u",
+			dev->data->port_id, rxqs_n,
+			MLX5_EXTERNAL_RX_QUEUE_ID_MIN - 1);
 		rte_errno = EINVAL;
 		return -rte_errno;
 	}

@@ -175,6 +175,12 @@ struct mlx5_rxq_priv {
 	uint32_t hairpin_status; /* Hairpin binding status. */
 };
 
+/* External RX queue descriptor. */
+struct mlx5_external_rxq {
+	uint32_t hw_id; /* Queue index in the Hardware. */
+	uint32_t refcnt; /* Reference counter. */
+};
+
 /* mlx5_rxq.c */
 
 extern uint8_t rss_hash_default_key[];

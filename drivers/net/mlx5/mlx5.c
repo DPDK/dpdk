@@ -1930,6 +1930,7 @@ mlx5_dev_close(struct rte_eth_dev *dev)
 			dev->data->port_id);
 	if (priv->hrxqs)
 		mlx5_list_destroy(priv->hrxqs);
+	mlx5_free(priv->ext_rxqs);
 	/*
 	 * Free the shared context in last turn, because the cleanup
 	 * routines above may use some shared fields, like

@@ -1158,6 +1158,22 @@ err_secondary:
 		err = ENOMEM;
 		goto error;
 	}
+	/*
+	 * When user configures remote PD and CTX and device creates RxQ by
+	 * DevX, external RxQ is both supported and requested.
+	 */
+	if (mlx5_imported_pd_and_ctx(sh->cdev) && mlx5_devx_obj_ops_en(sh)) {
+		priv->ext_rxqs = mlx5_malloc(MLX5_MEM_ZERO | MLX5_MEM_RTE,
+					     sizeof(struct mlx5_external_rxq) *
+					     MLX5_MAX_EXT_RX_QUEUES, 0,
+					     SOCKET_ID_ANY);
+		if (priv->ext_rxqs == NULL) {
+			DRV_LOG(ERR, "Fail to allocate external RxQ array.");
+			err = ENOMEM;
+			goto error;
+		}
+		DRV_LOG(DEBUG, "External RxQ is supported.");
+	}
 	priv->sh = sh;
 	priv->dev_port = spawn->phys_port;
 	priv->pci_dev = spawn->pci_dev;
@@ -1619,6 +1635,7 @@ error:
 			mlx5_list_destroy(priv->hrxqs);
 		if (eth_dev && priv->flex_item_map)
 			mlx5_flex_item_port_cleanup(eth_dev);
+		mlx5_free(priv->ext_rxqs);
 		mlx5_free(priv);
 		if (eth_dev != NULL)
 			eth_dev->data->dev_private = NULL;

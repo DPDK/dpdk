@@ -175,6 +175,9 @@
 /* Maximum number of indirect actions supported by rte_flow */
 #define MLX5_MAX_INDIRECT_ACTIONS 3
 
+/* Maximum number of external Rx queues supported by rte_flow */
+#define MLX5_MAX_EXT_RX_QUEUES (UINT16_MAX - MLX5_EXTERNAL_RX_QUEUE_ID_MIN + 1)
+
 /*
  * Linux definition of static_assert is found in /usr/include/assert.h.
  * Windows does not require a redefinition.

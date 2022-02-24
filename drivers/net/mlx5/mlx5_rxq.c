@@ -30,6 +30,7 @@
 #include "mlx5_utils.h"
 #include "mlx5_autoconf.h"
 #include "mlx5_devx.h"
+#include "rte_pmd_mlx5.h"
 
 
 /* Default RSS hash key also used for ConnectX-3. */
@@ -3007,4 +3008,120 @@ mlx5_rxq_timestamp_set(struct rte_eth_dev *dev)
 		data->sh = sh;
 		data->rt_timestamp = sh->dev_cap.rt_timestamp;
 	}
+}
+
+/**
+ * Validate given external RxQ rte_plow index, and get pointer to concurrent
+ * external RxQ object to map/unmap.
+ *
+ * @param[in] port_id
+ *   The port identifier of the Ethernet device.
+ * @param[in] dpdk_idx
+ *   Queue index in rte_flow.
+ *
+ * @return
+ *   Pointer to concurrent external RxQ on success,
+ *   NULL otherwise and rte_errno is set.
+ */
+static struct mlx5_external_rxq *
+mlx5_external_rx_queue_get_validate(uint16_t port_id, uint16_t dpdk_idx)
+{
+	struct rte_eth_dev *dev;
+	struct mlx5_priv *priv;
+
+	if (dpdk_idx < MLX5_EXTERNAL_RX_QUEUE_ID_MIN) {
+		DRV_LOG(ERR, "Queue index %u should be in range: [%u, %u].",
+			dpdk_idx, MLX5_EXTERNAL_RX_QUEUE_ID_MIN, UINT16_MAX);
+		rte_errno = EINVAL;
+		return NULL;
+	}
+	if (rte_eth_dev_is_valid_port(port_id) < 0) {
+		DRV_LOG(ERR, "There is no Ethernet device for port %u.",
+			port_id);
+		rte_errno = ENODEV;
+		return NULL;
+	}
+	dev = &rte_eth_devices[port_id];
+	priv = dev->data->dev_private;
+	if (!mlx5_imported_pd_and_ctx(priv->sh->cdev)) {
+		DRV_LOG(ERR, "Port %u "
+			"external RxQ isn't supported on local PD and CTX.",
+			port_id);
+		rte_errno = ENOTSUP;
+		return NULL;
+	}
+	if (!mlx5_devx_obj_ops_en(priv->sh)) {
+		DRV_LOG(ERR,
+			"Port %u external RxQ isn't supported by Verbs API.",
+			port_id);
+		rte_errno = ENOTSUP;
+		return NULL;
+	}
+	/*
+	 * When user configures remote PD and CTX and device creates RxQ by
+	 * DevX, external RxQs array is allocated.
+	 */
+	MLX5_ASSERT(priv->ext_rxqs != NULL);
+	return &priv->ext_rxqs[dpdk_idx - MLX5_EXTERNAL_RX_QUEUE_ID_MIN];
+}
+
+int
+rte_pmd_mlx5_external_rx_queue_id_map(uint16_t port_id, uint16_t dpdk_idx,
+				      uint32_t hw_idx)
+{
+	struct mlx5_external_rxq *ext_rxq;
+	uint32_t unmapped = 0;
+
+	ext_rxq = mlx5_external_rx_queue_get_validate(port_id, dpdk_idx);
+	if (ext_rxq == NULL)
+		return -rte_errno;
+	if (!__atomic_compare_exchange_n(&ext_rxq->refcnt, &unmapped, 1, false,
+					 __ATOMIC_RELAXED, __ATOMIC_RELAXED)) {
+		if (ext_rxq->hw_id != hw_idx) {
+			DRV_LOG(ERR, "Port %u external RxQ index %u "
+				"is already mapped to HW index (requesting is "
+				"%u, existing is %u).",
+				port_id, dpdk_idx, hw_idx, ext_rxq->hw_id);
+			rte_errno = EEXIST;
+			return -rte_errno;
+		}
+		DRV_LOG(WARNING, "Port %u external RxQ index %u "
+			"is already mapped to the requested HW index (%u)",
+			port_id, dpdk_idx, hw_idx);
+
+	} else {
+		ext_rxq->hw_id = hw_idx;
+		DRV_LOG(DEBUG, "Port %u external RxQ index %u "
+			"is successfully mapped to the requested HW index (%u)",
+			port_id, dpdk_idx, hw_idx);
+	}
+	return 0;
+}
+
+int
+rte_pmd_mlx5_external_rx_queue_id_unmap(uint16_t port_id, uint16_t dpdk_idx)
+{
+	struct mlx5_external_rxq *ext_rxq;
+	uint32_t mapped = 1;
+
+	ext_rxq = mlx5_external_rx_queue_get_validate(port_id, dpdk_idx);
+	if (ext_rxq == NULL)
+		return -rte_errno;
+	if (ext_rxq->refcnt > 1) {
+		DRV_LOG(ERR, "Port %u external RxQ index %u still referenced.",
+			port_id, dpdk_idx);
+		rte_errno = EINVAL;
+		return -rte_errno;
+	}
+	if (!__atomic_compare_exchange_n(&ext_rxq->refcnt, &mapped, 0, false,
+					 __ATOMIC_RELAXED, __ATOMIC_RELAXED)) {
+		DRV_LOG(ERR, "Port %u external RxQ index %u doesn't exist.",
+			port_id, dpdk_idx);
+		rte_errno = EINVAL;
+		return -rte_errno;
+	}
+	DRV_LOG(DEBUG,
+		"Port %u external RxQ index %u is successfully unmapped.",
+		port_id, dpdk_idx);
+	return 0;
 }
