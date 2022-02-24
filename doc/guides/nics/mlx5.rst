@@ -410,6 +410,12 @@ Limitations
   - Modification of the 802.1Q Tag, VXLAN Network or GENEVE Network ID's is not supported.
   - Encapsulation levels are not supported, can modify outermost header fields only.
   - Offsets must be 32-bits aligned, cannot skip past the boundary of a field.
+  - If the field type is ``RTE_FLOW_FIELD_MAC_TYPE``
+    and packet contains one or more VLAN headers,
+    the meaningful type field following the last VLAN header
+    is used as modify field operation argument.
+    The modify field action is not intended to modify VLAN headers type field,
+    dedicated VLAN push and pop actions should be used instead.
 
 - IPv6 header item 'proto' field, indicating the next header protocol, should
   not be set as extension header.
