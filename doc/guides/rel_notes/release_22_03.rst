@@ -162,6 +162,7 @@ New Features
   * Added queue based priority flow control support for CN9K & CN10K.
   * Added support for IP reassembly for inline inbound IPsec packets.
   * Added support for packet marking in traffic manager.
+  * Added support for CNF95xx B0 variant SoC.
 
 * **Updated Mellanox mlx5 driver.**
 

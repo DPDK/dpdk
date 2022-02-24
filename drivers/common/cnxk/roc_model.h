@@ -19,6 +19,7 @@ struct roc_model {
 #define ROC_MODEL_CNF95xxN_A0  BIT_ULL(12)
 #define ROC_MODEL_CNF95xxO_A0  BIT_ULL(13)
 #define ROC_MODEL_CNF95xxN_A1  BIT_ULL(14)
+#define ROC_MODEL_CNF95xxN_B0  BIT_ULL(15)
 #define ROC_MODEL_CN98xx_A0    BIT_ULL(16)
 #define ROC_MODEL_CN106xx_A0   BIT_ULL(20)
 #define ROC_MODEL_CNF105xx_A0  BIT_ULL(21)
@@ -39,11 +40,12 @@ struct roc_model {
 	(ROC_MODEL_CN96xx_Ax | ROC_MODEL_CN96xx_C0 | ROC_MODEL_CNF95xx_A0 |    \
 	 ROC_MODEL_CNF95xx_B0 | ROC_MODEL_CNF95xxMM_A0 |                       \
 	 ROC_MODEL_CNF95xxO_A0 | ROC_MODEL_CNF95xxN_A0 | ROC_MODEL_CN98xx_A0 | \
-	 ROC_MODEL_CNF95xxN_A1)
+	 ROC_MODEL_CNF95xxN_A1 | ROC_MODEL_CNF95xxN_B0)
 #define ROC_MODEL_CNF9K                                                        \
 	(ROC_MODEL_CNF95xx_A0 | ROC_MODEL_CNF95xx_B0 |                         \
 	 ROC_MODEL_CNF95xxMM_A0 | ROC_MODEL_CNF95xxO_A0 |                      \
-	 ROC_MODEL_CNF95xxN_A0 | ROC_MODEL_CNF95xxN_A1)
+	 ROC_MODEL_CNF95xxN_A0 | ROC_MODEL_CNF95xxN_A1 |                       \
+	 ROC_MODEL_CNF95xxN_B0)
 
 #define ROC_MODEL_CN106xx   (ROC_MODEL_CN106xx_A0)
 #define ROC_MODEL_CNF105xx  (ROC_MODEL_CNF105xx_A0)

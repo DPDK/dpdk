@@ -56,6 +56,7 @@ static const struct model_db {
 	{VENDOR_CAVIUM, PART_95xx, 1, 0, ROC_MODEL_CNF95xx_B0, "cnf95xx_b0"},
 	{VENDOR_CAVIUM, PART_95xxN, 0, 0, ROC_MODEL_CNF95xxN_A0, "cnf95xxn_a0"},
 	{VENDOR_CAVIUM, PART_95xxN, 0, 1, ROC_MODEL_CNF95xxN_A0, "cnf95xxn_a1"},
+	{VENDOR_CAVIUM, PART_95xxN, 1, 0, ROC_MODEL_CNF95xxN_B0, "cnf95xxn_b0"},
 	{VENDOR_CAVIUM, PART_95O, 0, 0, ROC_MODEL_CNF95xxO_A0, "cnf95O_a0"},
 	{VENDOR_CAVIUM, PART_95xxMM, 0, 0, ROC_MODEL_CNF95xxMM_A0,
 	 "cnf95xxmm_a0"}};
