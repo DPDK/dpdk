@@ -5,6 +5,8 @@
 #include "roc_api.h"
 #include "roc_priv.h"
 
+uint32_t soft_exp_consumer_cnt;
+
 PLT_STATIC_ASSERT(ROC_NIX_INL_ONF_IPSEC_INB_SA_SZ ==
 		  1UL << ROC_NIX_INL_ONF_IPSEC_INB_SA_SZ_LOG2);
 PLT_STATIC_ASSERT(ROC_NIX_INL_ONF_IPSEC_INB_SA_SZ == 512);
@@ -430,6 +432,34 @@ skip_sa_alloc:
 	nix->nb_cpt_lf = nb_lf;
 	nix->outb_err_sso_pffunc = sso_pffunc;
 	nix->inl_outb_ena = true;
+	nix->outb_se_ring_cnt =
+		roc_nix->ipsec_out_max_sa / ROC_IPSEC_ERR_RING_MAX_ENTRY + 1;
+	nix->outb_se_ring_base =
+		roc_nix->port_id * ROC_NIX_SOFT_EXP_PER_PORT_MAX_RINGS;
+
+	if (inl_dev == NULL) {
+		nix->outb_se_ring_cnt = 0;
+		return 0;
+	}
+
+	/* Allocate memory to be used as a ring buffer to poll for
+	 * soft expiry event from ucode
+	 */
+	for (i = 0; i < nix->outb_se_ring_cnt; i++) {
+		inl_dev->sa_soft_exp_ring[nix->outb_se_ring_base + i] =
+			plt_zmalloc((ROC_IPSEC_ERR_RING_MAX_ENTRY + 1) *
+					    sizeof(uint64_t),
+				    0);
+		if (!inl_dev->sa_soft_exp_ring[i]) {
+			plt_err("Couldn't allocate memory for soft exp ring");
+			while (i--)
+				plt_free(inl_dev->sa_soft_exp_ring
+						 [nix->outb_se_ring_base + i]);
+			rc = -ENOMEM;
+			goto lf_fini;
+		}
+	}
+
 	return 0;
 
 lf_fini:
@@ -448,7 +478,9 @@ roc_nix_inl_outb_fini(struct roc_nix *roc_nix)
 {
 	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
 	struct roc_cpt_lf *lf_base = nix->cpt_lf_base;
+	struct idev_cfg *idev = idev_get_cfg();
 	struct dev *dev = &nix->dev;
+	struct nix_inl_dev *inl_dev;
 	int i, rc, ret = 0;
 
 	if (!nix->inl_outb_ena)
@@ -479,6 +511,15 @@ roc_nix_inl_outb_fini(struct roc_nix *roc_nix)
 	/* Free outbound SA base */
 	plt_free(nix->outb_sa_base);
 	nix->outb_sa_base = NULL;
+
+	if (idev && idev->nix_inl_dev) {
+		inl_dev = idev->nix_inl_dev;
+
+		for (i = 0; i < ROC_NIX_INL_MAX_SOFT_EXP_RNGS; i++) {
+			if (inl_dev->sa_soft_exp_ring[i])
+				plt_free(inl_dev->sa_soft_exp_ring[i]);
+		}
+	}
 
 	ret |= rc;
 	return ret;
@@ -693,6 +734,36 @@ roc_nix_inb_mode_set(struct roc_nix *roc_nix, bool use_inl_dev)
 
 	/* Info used by NPC flow rule add */
 	nix->inb_inl_dev = use_inl_dev;
+}
+
+int
+roc_nix_inl_outb_soft_exp_poll_switch(struct roc_nix *roc_nix, bool poll)
+{
+	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
+	struct idev_cfg *idev = idev_get_cfg();
+	struct nix_inl_dev *inl_dev;
+	uint16_t ring_idx, i;
+
+	if (!idev || !idev->nix_inl_dev)
+		return 0;
+
+	inl_dev = idev->nix_inl_dev;
+
+	for (i = 0; i < nix->outb_se_ring_cnt; i++) {
+		ring_idx = nix->outb_se_ring_base + i;
+
+		if (poll)
+			plt_bitmap_set(inl_dev->soft_exp_ring_bmap, ring_idx);
+		else
+			plt_bitmap_clear(inl_dev->soft_exp_ring_bmap, ring_idx);
+	}
+
+	if (poll)
+		soft_exp_consumer_cnt++;
+	else
+		soft_exp_consumer_cnt--;
+
+	return 0;
 }
 
 bool

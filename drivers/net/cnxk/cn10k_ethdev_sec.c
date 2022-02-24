@@ -9,6 +9,7 @@
 
 #include <cn10k_ethdev.h>
 #include <cnxk_security.h>
+#include <roc_priv.h>
 
 static struct rte_cryptodev_capabilities cn10k_eth_sec_crypto_caps[] = {
 	{	/* AES GCM */
@@ -153,7 +154,7 @@ cnxk_pktmbuf_free_no_cache(struct rte_mbuf *mbuf)
 }
 
 void
-cn10k_eth_sec_sso_work_cb(uint64_t *gw, void *args)
+cn10k_eth_sec_sso_work_cb(uint64_t *gw, void *args, uint32_t soft_exp_event)
 {
 	struct rte_eth_event_ipsec_desc desc;
 	struct cn10k_sec_sess_priv sess_priv;
@@ -187,8 +188,18 @@ cn10k_eth_sec_sso_work_cb(uint64_t *gw, void *args)
 		}
 		/* Fall through */
 	default:
-		plt_err("Unknown event gw[0] = 0x%016lx, gw[1] = 0x%016lx",
-			gw[0], gw[1]);
+		if (soft_exp_event & 0x1) {
+			sa = (struct roc_ot_ipsec_outb_sa *)args;
+			priv = roc_nix_inl_ot_ipsec_outb_sa_sw_rsvd(sa);
+			desc.metadata = (uint64_t)priv->userdata;
+			desc.subtype = RTE_ETH_EVENT_IPSEC_SA_TIME_EXPIRY;
+			eth_dev = &rte_eth_devices[soft_exp_event >> 8];
+			rte_eth_dev_callback_process(eth_dev,
+				RTE_ETH_EVENT_IPSEC, &desc);
+		} else {
+			plt_err("Unknown event gw[0] = 0x%016lx, gw[1] = 0x%016lx",
+				gw[0], gw[1]);
+		}
 		return;
 	}
 
@@ -307,6 +318,30 @@ outb_dbg_iv_update(struct roc_ot_ipsec_outb_sa *outb_sa, const char *__iv_str)
 	/* Update source of IV */
 	outb_sa->w2.s.iv_src = ROC_IE_OT_SA_IV_SRC_FROM_SA;
 	free(iv_str);
+}
+
+static int
+cn10k_eth_sec_outb_sa_misc_fill(struct roc_nix *roc_nix,
+				struct roc_ot_ipsec_outb_sa *sa, void *sa_cptr,
+				struct rte_security_ipsec_xform *ipsec_xfrm,
+				uint32_t sa_idx)
+{
+	uint64_t *ring_base, ring_addr;
+
+	if (ipsec_xfrm->life.bytes_soft_limit |
+	    ipsec_xfrm->life.packets_soft_limit) {
+		ring_base = roc_nix_inl_outb_ring_base_get(roc_nix);
+		if (ring_base == NULL)
+			return -ENOTSUP;
+
+		ring_addr = ring_base[sa_idx >>
+				      ROC_NIX_SOFT_EXP_ERR_RING_MAX_ENTRY_LOG2];
+		sa->ctx.err_ctl.s.mode = ROC_IE_OT_ERR_CTL_MODE_RING;
+		sa->ctx.err_ctl.s.address = ring_addr >> 3;
+		sa->w0.s.ctx_id = ((uintptr_t)sa_cptr >> 51) & 0x1ff;
+	}
+
+	return 0;
 }
 
 static int
@@ -477,6 +512,17 @@ cn10k_eth_sec_session_create(void *device,
 		iv_str = getenv("CN10K_ETH_SEC_IV_OVR");
 		if (iv_str)
 			outb_dbg_iv_update(outb_sa_dptr, iv_str);
+
+		/* Fill outbound sa misc params */
+		rc = cn10k_eth_sec_outb_sa_misc_fill(&dev->nix, outb_sa_dptr,
+						     outb_sa, ipsec, sa_idx);
+		if (rc) {
+			snprintf(tbuf, sizeof(tbuf),
+				 "Failed to init outb sa misc params, rc=%d",
+				 rc);
+			rc |= cnxk_eth_outb_sa_idx_put(dev, sa_idx);
+			goto mempool_put;
+		}
 
 		/* Save userdata */
 		outb_priv->userdata = conf->userdata;

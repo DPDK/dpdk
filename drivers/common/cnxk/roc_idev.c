@@ -185,6 +185,21 @@ roc_idev_cpt_get(void)
 	return NULL;
 }
 
+uint64_t *
+roc_nix_inl_outb_ring_base_get(struct roc_nix *roc_nix)
+{
+	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
+	struct idev_cfg *idev = idev_get_cfg();
+	struct nix_inl_dev *inl_dev;
+
+	if (!idev || !idev->nix_inl_dev)
+		return NULL;
+
+	inl_dev = idev->nix_inl_dev;
+
+	return (uint64_t *)&inl_dev->sa_soft_exp_ring[nix->outb_se_ring_base];
+}
+
 void
 roc_idev_cpt_set(struct roc_cpt *cpt)
 {

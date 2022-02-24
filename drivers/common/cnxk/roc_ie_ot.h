@@ -176,6 +176,28 @@ enum {
 	(PLT_ALIGN_CEIL(ROC_AR_WIN_SIZE_MAX, BITS_PER_LONG_LONG) /             \
 	 BITS_PER_LONG_LONG)
 
+#define ROC_IPSEC_ERR_RING_MAX_ENTRY 65536
+
+union roc_ot_ipsec_err_ring_head {
+	uint64_t u64;
+	struct {
+		uint16_t tail_pos;
+		uint16_t tail_gen;
+		uint16_t head_pos;
+		uint16_t head_gen;
+	} s;
+};
+
+union roc_ot_ipsec_err_ring_entry {
+	uint64_t u64;
+	struct {
+		uint64_t data0 : 44;
+		uint64_t data1 : 9;
+		uint64_t rsvd : 3;
+		uint64_t comp_code : 8;
+	} s;
+};
+
 /* Common bit fields between inbound and outbound SA */
 union roc_ot_ipsec_sa_word2 {
 	struct {
@@ -429,7 +451,8 @@ struct roc_ot_ipsec_outb_sa {
 			uint64_t count_mib_pkts : 1;
 			uint64_t hw_ctx_off : 7;
 
-			uint64_t rsvd1 : 32;
+			uint64_t ctx_id : 16;
+			uint64_t rsvd1 : 16;
 
 			uint64_t ctx_push_size : 7;
 			uint64_t rsvd2 : 1;

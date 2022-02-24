@@ -183,6 +183,8 @@ struct nix {
 	uint16_t outb_err_sso_pffunc;
 	struct roc_cpt_lf *cpt_lf_base;
 	uint16_t nb_cpt_lf;
+	uint16_t outb_se_ring_cnt;
+	uint16_t outb_se_ring_base;
 	/* Mode provided by driver */
 	bool inb_inl_dev;
 

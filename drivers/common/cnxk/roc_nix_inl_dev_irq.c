@@ -32,7 +32,7 @@ again:
 	/* Do we have any work? */
 	if (work) {
 		if (inl_dev->work_cb)
-			inl_dev->work_cb(gw.u64, inl_dev->cb_args);
+			inl_dev->work_cb(gw.u64, inl_dev->cb_args, false);
 		else
 			plt_warn("Undelivered inl dev work gw0: %p gw1: %p",
 				 (void *)gw.u64[0], (void *)gw.u64[1]);

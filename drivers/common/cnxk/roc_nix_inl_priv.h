@@ -3,6 +3,8 @@
  */
 #ifndef _ROC_NIX_INL_PRIV_H_
 #define _ROC_NIX_INL_PRIV_H_
+#include <pthread.h>
+#include <sys/types.h>
 
 struct nix_inl_dev {
 	/* Base device object */
@@ -52,6 +54,17 @@ struct nix_inl_dev {
 
 	/* CPT data */
 	struct roc_cpt_lf cpt_lf;
+
+	/* OUTB soft expiry poll thread */
+	pthread_t soft_exp_poll_thread;
+	uint32_t soft_exp_poll_freq;
+	void *sa_soft_exp_ring[ROC_NIX_INL_MAX_SOFT_EXP_RNGS];
+
+	/* Soft expiry ring bitmap */
+	struct plt_bitmap *soft_exp_ring_bmap;
+
+	/* bitmap memory */
+	void *soft_exp_ring_bmap_mem;
 
 	/* Device arguments */
 	uint8_t selftest;

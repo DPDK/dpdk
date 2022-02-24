@@ -1422,6 +1422,8 @@ cnxk_nix_dev_stop(struct rte_eth_dev *eth_dev)
 	/* Disable Rx via NPC */
 	roc_nix_npc_rx_ena_dis(&dev->nix, false);
 
+	roc_nix_inl_outb_soft_exp_poll_switch(&dev->nix, false);
+
 	/* Stop rx queues and free up pkts pending */
 	for (i = 0; i < eth_dev->data->nb_rx_queues; i++) {
 		rc = dev_ops->rx_queue_stop(eth_dev, i);
@@ -1525,6 +1527,8 @@ cnxk_nix_dev_start(struct rte_eth_dev *eth_dev)
 	}
 
 	cnxk_nix_toggle_flag_link_cfg(dev, false);
+
+	roc_nix_inl_outb_soft_exp_poll_switch(&dev->nix, true);
 
 	return 0;
 

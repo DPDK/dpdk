@@ -288,6 +288,7 @@ cnxk_nix_inl_dev_probe(struct rte_pci_driver *pci_drv,
 	inl_dev->attach_cptlf = true;
 	/* WQE skip is one for DPDK */
 	inl_dev->wqe_skip = true;
+	inl_dev->set_soft_exp_poll = true;
 	rc = roc_nix_inl_dev_init(inl_dev);
 	if (rc) {
 		plt_err("Failed to init nix inl device, rc=%d(%s)", rc,

@@ -82,7 +82,8 @@ void cn10k_eth_set_tx_function(struct rte_eth_dev *eth_dev);
 void cn10k_eth_sec_ops_override(void);
 
 /* SSO Work callback */
-void cn10k_eth_sec_sso_work_cb(uint64_t *gw, void *args);
+void cn10k_eth_sec_sso_work_cb(uint64_t *gw, void *args,
+			       uint32_t soft_exp_event);
 
 #define LMT_OFF(lmt_addr, lmt_num, offset)                                     \
 	(void *)((uintptr_t)(lmt_addr) +                                       \

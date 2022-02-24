@@ -5,6 +5,8 @@
 #include "roc_api.h"
 #include "roc_priv.h"
 
+#include <unistd.h>
+
 #define NIX_AURA_DROP_PC_DFLT 40
 
 /* Default Rx Config for Inline NIX LF */
@@ -14,6 +16,9 @@
 	 ROC_NIX_LF_RX_CFG_CSUM_IL4 | ROC_NIX_LF_RX_CFG_CSUM_OL4 |             \
 	 ROC_NIX_LF_RX_CFG_LEN_IL4 | ROC_NIX_LF_RX_CFG_LEN_IL3 |               \
 	 ROC_NIX_LF_RX_CFG_LEN_OL4 | ROC_NIX_LF_RX_CFG_LEN_OL3)
+
+extern uint32_t soft_exp_consumer_cnt;
+static bool soft_exp_poll_thread_exit = true;
 
 uint16_t
 nix_inl_dev_pffunc_get(void)
@@ -36,10 +41,11 @@ roc_nix_inl_dev_pffunc_get(void)
 }
 
 static void
-nix_inl_selftest_work_cb(uint64_t *gw, void *args)
+nix_inl_selftest_work_cb(uint64_t *gw, void *args, uint32_t soft_exp_event)
 {
 	uintptr_t work = gw[1];
 
+	(void)soft_exp_event;
 	*((uintptr_t *)args + (gw[0] & 0x1)) = work;
 
 	plt_atomic_thread_fence(__ATOMIC_ACQ_REL);
@@ -637,6 +643,133 @@ exit:
 	return rc;
 }
 
+static void
+inl_outb_soft_exp_poll(struct nix_inl_dev *inl_dev, uint32_t ring_idx)
+{
+	union roc_ot_ipsec_err_ring_head head;
+	struct roc_ot_ipsec_outb_sa *sa;
+	uint16_t head_l, tail_l;
+	uint64_t *ring_base;
+	uint32_t port_id;
+
+	port_id = ring_idx / ROC_NIX_SOFT_EXP_PER_PORT_MAX_RINGS;
+	ring_base = inl_dev->sa_soft_exp_ring[ring_idx];
+	if (!ring_base) {
+		plt_err("Invalid soft exp ring base");
+		return;
+	}
+
+	head.u64 = __atomic_load_n(ring_base, __ATOMIC_ACQUIRE);
+	head_l = head.s.head_pos;
+	tail_l = head.s.tail_pos;
+
+	while (tail_l != head_l) {
+		union roc_ot_ipsec_err_ring_entry entry;
+		int poll_counter = 0;
+
+		while (poll_counter++ <
+		       ROC_NIX_INL_SA_SOFT_EXP_ERR_MAX_POLL_COUNT) {
+			plt_delay_us(20);
+			entry.u64 = __atomic_load_n(ring_base + tail_l + 1,
+						    __ATOMIC_ACQUIRE);
+			if (likely(entry.u64))
+				break;
+		}
+
+		entry.u64 = plt_be_to_cpu_64(entry.u64);
+		sa = (struct roc_ot_ipsec_outb_sa *)(((uint64_t)entry.s.data1
+						      << 51) |
+						     (entry.s.data0 << 7));
+
+		if (sa != NULL) {
+			uint64_t tmp = ~(uint32_t)0x0;
+			inl_dev->work_cb(&tmp, sa, (port_id << 8) | 0x1);
+			__atomic_store_n(ring_base + tail_l + 1, 0ULL,
+					 __ATOMIC_RELAXED);
+			__atomic_add_fetch((uint32_t *)ring_base, 1,
+					   __ATOMIC_ACQ_REL);
+		} else
+			plt_err("Invalid SA");
+
+		tail_l++;
+	}
+}
+
+static void *
+nix_inl_outb_poll_thread(void *args)
+{
+	struct nix_inl_dev *inl_dev = args;
+	uint32_t poll_freq;
+	uint32_t i;
+	bool bit;
+
+	poll_freq = inl_dev->soft_exp_poll_freq;
+
+	while (!soft_exp_poll_thread_exit) {
+		if (soft_exp_consumer_cnt) {
+			for (i = 0; i < ROC_NIX_INL_MAX_SOFT_EXP_RNGS; i++) {
+				bit = plt_bitmap_get(
+					inl_dev->soft_exp_ring_bmap, i);
+				if (bit)
+					inl_outb_soft_exp_poll(inl_dev, i);
+			}
+		}
+		usleep(poll_freq);
+	}
+
+	return 0;
+}
+
+static int
+nix_inl_outb_poll_thread_setup(struct nix_inl_dev *inl_dev)
+{
+	struct plt_bitmap *bmap;
+	size_t bmap_sz;
+	uint32_t i;
+	void *mem;
+	int rc;
+
+	/* Allocate a bitmap that pool thread uses to get the port_id
+	 * that's corresponding to the inl_outb_soft_exp_ring
+	 */
+	bmap_sz =
+		plt_bitmap_get_memory_footprint(ROC_NIX_INL_MAX_SOFT_EXP_RNGS);
+	mem = plt_zmalloc(bmap_sz, PLT_CACHE_LINE_SIZE);
+	if (mem == NULL) {
+		plt_err("soft expiry ring bmap alloc failed");
+		rc = -ENOMEM;
+		goto exit;
+	}
+
+	bmap = plt_bitmap_init(ROC_NIX_INL_MAX_SOFT_EXP_RNGS, mem, bmap_sz);
+	if (!bmap) {
+		plt_err("soft expiry ring bmap init failed");
+		plt_free(mem);
+		rc = -ENOMEM;
+		goto exit;
+	}
+
+	inl_dev->soft_exp_ring_bmap_mem = mem;
+	inl_dev->soft_exp_ring_bmap = bmap;
+
+	for (i = 0; i < ROC_NIX_INL_MAX_SOFT_EXP_RNGS; i++)
+		plt_bitmap_clear(inl_dev->soft_exp_ring_bmap, i);
+
+	soft_exp_consumer_cnt = 0;
+	soft_exp_poll_thread_exit = false;
+	inl_dev->soft_exp_poll_freq = 100;
+	rc = plt_ctrl_thread_create(&inl_dev->soft_exp_poll_thread,
+				    "OUTB_SOFT_EXP_POLL_THREAD", NULL,
+				    nix_inl_outb_poll_thread, inl_dev);
+	if (rc) {
+		plt_bitmap_free(inl_dev->soft_exp_ring_bmap);
+		plt_free(inl_dev->soft_exp_ring_bmap_mem);
+	}
+
+exit:
+	return rc;
+}
+
 int
 roc_nix_inl_dev_init(struct roc_nix_inl_dev *roc_inl_dev)
 {
@@ -709,6 +842,12 @@ roc_nix_inl_dev_init(struct roc_nix_inl_dev *roc_inl_dev)
 	if (rc)
 		goto sso_release;
 
+	if (roc_inl_dev->set_soft_exp_poll) {
+		rc = nix_inl_outb_poll_thread_setup(inl_dev);
+		if (rc)
+			goto cpt_release;
+	}
+
 	/* Perform selftest if asked for */
 	if (inl_dev->selftest) {
 		rc = nix_inl_selftest();
@@ -751,6 +890,13 @@ roc_nix_inl_dev_fini(struct roc_nix_inl_dev *roc_inl_dev)
 
 	inl_dev = idev->nix_inl_dev;
 	pci_dev = inl_dev->pci_dev;
+
+	if (roc_inl_dev->set_soft_exp_poll) {
+		soft_exp_poll_thread_exit = true;
+		pthread_join(inl_dev->soft_exp_poll_thread, NULL);
+		plt_bitmap_free(inl_dev->soft_exp_ring_bmap);
+		plt_free(inl_dev->soft_exp_ring_bmap_mem);
+	}
 
 	/* Flush Inbound CTX cache entries */
 	nix_inl_cpt_ctx_cache_sync(inl_dev);

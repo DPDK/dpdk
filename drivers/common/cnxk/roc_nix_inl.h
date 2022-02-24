@@ -43,6 +43,18 @@
 /* Alignment of SA Base */
 #define ROC_NIX_INL_SA_BASE_ALIGN BIT_ULL(16)
 
+#define ROC_NIX_INL_SA_SOFT_EXP_ERR_MAX_POLL_COUNT 25
+
+#define ROC_NIX_SOFT_EXP_ERR_RING_MAX_ENTRY_LOG2 16
+
+#define ROC_NIX_SOFT_EXP_PER_PORT_MAX_RINGS 4
+
+#define ROC_NIX_MAX_TOTAL_OUTB_IPSEC_SA                                        \
+	(ROC_IPSEC_ERR_RING_MAX_ENTRY * ROC_NIX_SOFT_EXP_PER_PORT_MAX_RINGS)
+
+#define ROC_NIX_INL_MAX_SOFT_EXP_RNGS                                          \
+	(PLT_MAX_ETHPORTS * ROC_NIX_SOFT_EXP_PER_PORT_MAX_RINGS)
+
 static inline struct roc_onf_ipsec_inb_sa *
 roc_nix_inl_onf_ipsec_inb_sa(uintptr_t base, uint64_t idx)
 {
@@ -100,7 +112,8 @@ roc_nix_inl_ot_ipsec_outb_sa_sw_rsvd(void *sa)
 }
 
 /* Inline device SSO Work callback */
-typedef void (*roc_nix_inl_sso_work_cb_t)(uint64_t *gw, void *args);
+typedef void (*roc_nix_inl_sso_work_cb_t)(uint64_t *gw, void *args,
+					  uint32_t soft_exp_event);
 
 struct roc_nix_inl_dev {
 	/* Input parameters */
@@ -115,9 +128,10 @@ struct roc_nix_inl_dev {
 	bool wqe_skip;
 	uint8_t spb_drop_pc;
 	uint8_t lpb_drop_pc;
+	bool set_soft_exp_poll;
 	/* End of input parameters */
 
-#define ROC_NIX_INL_MEM_SZ (1280)
+#define ROC_NIX_INL_MEM_SZ (2304)
 	uint8_t reserved[ROC_NIX_INL_MEM_SZ] __plt_cache_aligned;
 } __plt_cache_aligned;
 
@@ -164,6 +178,8 @@ uint16_t __roc_api roc_nix_inl_outb_sso_pffunc_get(struct roc_nix *roc_nix);
 int __roc_api roc_nix_inl_cb_register(roc_nix_inl_sso_work_cb_t cb, void *args);
 int __roc_api roc_nix_inl_cb_unregister(roc_nix_inl_sso_work_cb_t cb,
 					void *args);
+int __roc_api roc_nix_inl_outb_soft_exp_poll_switch(struct roc_nix *roc_nix,
+						    bool poll);
 /* NIX Inline/Outbound API */
 enum roc_nix_inl_sa_sync_op {
 	ROC_NIX_INL_SA_OP_FLUSH,
