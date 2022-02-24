@@ -9439,14 +9439,10 @@ int
 mlx5_action_handle_attach(struct rte_eth_dev *dev)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5_indexed_pool *ipool =
-			priv->sh->ipool[MLX5_IPOOL_RSS_SHARED_ACTIONS];
-	struct mlx5_shared_action_rss *shared_rss, *shared_rss_last;
 	int ret = 0;
-	uint32_t idx;
+	struct mlx5_ind_table_obj *ind_tbl, *ind_tbl_last;
 
-	ILIST_FOREACH(ipool, priv->rss_shared_actions, idx, shared_rss, next) {
-		struct mlx5_ind_table_obj *ind_tbl = shared_rss->ind_tbl;
+	LIST_FOREACH(ind_tbl, &priv->standalone_ind_tbls, next) {
 		const char *message;
 		uint32_t queue_idx;
 
@@ -9462,9 +9458,7 @@ mlx5_action_handle_attach(struct rte_eth_dev *dev)
 	}
 	if (ret != 0)
 		return ret;
-	ILIST_FOREACH(ipool, priv->rss_shared_actions, idx, shared_rss, next) {
-		struct mlx5_ind_table_obj *ind_tbl = shared_rss->ind_tbl;
-
+	LIST_FOREACH(ind_tbl, &priv->standalone_ind_tbls, next) {
 		ret = mlx5_ind_table_obj_attach(dev, ind_tbl);
 		if (ret != 0) {
 			DRV_LOG(ERR, "Port %u could not attach "
@@ -9473,13 +9467,12 @@ mlx5_action_handle_attach(struct rte_eth_dev *dev)
 			goto error;
 		}
 	}
+
 	return 0;
 error:
-	shared_rss_last = shared_rss;
-	ILIST_FOREACH(ipool, priv->rss_shared_actions, idx, shared_rss, next) {
-		struct mlx5_ind_table_obj *ind_tbl = shared_rss->ind_tbl;
-
-		if (shared_rss == shared_rss_last)
+	ind_tbl_last = ind_tbl;
+	LIST_FOREACH(ind_tbl, &priv->standalone_ind_tbls, next) {
+		if (ind_tbl == ind_tbl_last)
 			break;
 		if (mlx5_ind_table_obj_detach(dev, ind_tbl) != 0)
 			DRV_LOG(CRIT, "Port %u could not detach "
@@ -9502,15 +9495,10 @@ int
 mlx5_action_handle_detach(struct rte_eth_dev *dev)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5_indexed_pool *ipool =
-			priv->sh->ipool[MLX5_IPOOL_RSS_SHARED_ACTIONS];
-	struct mlx5_shared_action_rss *shared_rss, *shared_rss_last;
 	int ret = 0;
-	uint32_t idx;
+	struct mlx5_ind_table_obj *ind_tbl, *ind_tbl_last;
 
-	ILIST_FOREACH(ipool, priv->rss_shared_actions, idx, shared_rss, next) {
-		struct mlx5_ind_table_obj *ind_tbl = shared_rss->ind_tbl;
-
+	LIST_FOREACH(ind_tbl, &priv->standalone_ind_tbls, next) {
 		ret = mlx5_ind_table_obj_detach(dev, ind_tbl);
 		if (ret != 0) {
 			DRV_LOG(ERR, "Port %u could not detach "
@@ -9521,11 +9509,9 @@ mlx5_action_handle_detach(struct rte_eth_dev *dev)
 	}
 	return 0;
 error:
-	shared_rss_last = shared_rss;
-	ILIST_FOREACH(ipool, priv->rss_shared_actions, idx, shared_rss, next) {
-		struct mlx5_ind_table_obj *ind_tbl = shared_rss->ind_tbl;
-
-		if (shared_rss == shared_rss_last)
+	ind_tbl_last = ind_tbl;
+	LIST_FOREACH(ind_tbl, &priv->standalone_ind_tbls, next) {
+		if (ind_tbl == ind_tbl_last)
 			break;
 		if (mlx5_ind_table_obj_attach(dev, ind_tbl) != 0)
 			DRV_LOG(CRIT, "Port %u could not attach "

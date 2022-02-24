@@ -7,6 +7,7 @@
 #include <mlx5_malloc.h>
 #include "mlx5_defs.h"
 #include "mlx5_flow.h"
+#include "mlx5_rx.h"
 
 #if defined(HAVE_IBV_FLOW_DV_SUPPORT) || !defined(HAVE_INFINIBAND_VERBS_H)
 
@@ -93,6 +94,56 @@ flow_hw_jump_release(struct rte_eth_dev *dev, struct mlx5_hw_jump_action *jump)
 	grp = container_of
 		(jump, struct mlx5_flow_group, jump);
 	mlx5_hlist_unregister(priv->sh->flow_tbls, &grp->entry);
+}
+
+/**
+ * Register queue/RSS action.
+ *
+ * @param[in] dev
+ *   Pointer to the rte_eth_dev structure.
+ * @param[in] hws_flags
+ *   DR action flags.
+ * @param[in] action
+ *   rte flow action.
+ *
+ * @return
+ *    Table on success, NULL otherwise and rte_errno is set.
+ */
+static inline struct mlx5_hrxq*
+flow_hw_tir_action_register(struct rte_eth_dev *dev,
+			    uint32_t hws_flags,
+			    const struct rte_flow_action *action)
+{
+	struct mlx5_flow_rss_desc rss_desc = {
+		.hws_flags = hws_flags,
+	};
+	struct mlx5_hrxq *hrxq;
+
+	if (action->type == RTE_FLOW_ACTION_TYPE_QUEUE) {
+		const struct rte_flow_action_queue *queue = action->conf;
+
+		rss_desc.const_q = &queue->index;
+		rss_desc.queue_num = 1;
+	} else {
+		const struct rte_flow_action_rss *rss = action->conf;
+
+		rss_desc.queue_num = rss->queue_num;
+		rss_desc.const_q = rss->queue;
+		memcpy(rss_desc.key,
+		       !rss->key ? rss_hash_default_key : rss->key,
+		       MLX5_RSS_HASH_KEY_LEN);
+		rss_desc.key_len = MLX5_RSS_HASH_KEY_LEN;
+		rss_desc.types = !rss->types ? RTE_ETH_RSS_IP : rss->types;
+		flow_dv_hashfields_set(0, &rss_desc, &rss_desc.hash_fields);
+		flow_dv_action_rss_l34_hash_adjust(rss->types,
+						   &rss_desc.hash_fields);
+		if (rss->level > 1) {
+			rss_desc.hash_fields |= IBV_RX_HASH_INNER;
+			rss_desc.tunnel = 1;
+		}
+	}
+	hrxq = mlx5_hrxq_get(dev, &rss_desc);
+	return hrxq;
 }
 
 /**
@@ -266,6 +317,40 @@ flow_hw_actions_translate(struct rte_eth_dev *dev,
 			}
 			i++;
 			break;
+		case RTE_FLOW_ACTION_TYPE_QUEUE:
+			if (masks->conf) {
+				acts->tir = flow_hw_tir_action_register
+				(dev,
+				 mlx5_hw_act_flag[!!attr->group][type],
+				 actions);
+				if (!acts->tir)
+					goto err;
+				acts->rule_acts[i].action =
+					acts->tir->action;
+			} else if (__flow_hw_act_data_general_append
+					(priv, acts, actions->type,
+					 actions - action_start, i)) {
+				goto err;
+			}
+			i++;
+			break;
+		case RTE_FLOW_ACTION_TYPE_RSS:
+			if (masks->conf) {
+				acts->tir = flow_hw_tir_action_register
+				(dev,
+				 mlx5_hw_act_flag[!!attr->group][type],
+				 actions);
+				if (!acts->tir)
+					goto err;
+				acts->rule_acts[i].action =
+					acts->tir->action;
+			} else if (__flow_hw_act_data_general_append
+					(priv, acts, actions->type,
+					 actions - action_start, i)) {
+				goto err;
+			}
+			i++;
+			break;
 		case RTE_FLOW_ACTION_TYPE_END:
 			actions_end = true;
 			break;
@@ -319,6 +404,7 @@ flow_hw_actions_construct(struct rte_eth_dev *dev,
 	struct rte_flow_attr attr = {
 			.ingress = 1,
 	};
+	uint32_t ft_flag;
 
 	memcpy(rule_acts, hw_acts->rule_acts,
 	       sizeof(*rule_acts) * hw_acts->acts_num);
@@ -326,6 +412,7 @@ flow_hw_actions_construct(struct rte_eth_dev *dev,
 	if (LIST_EMPTY(&hw_acts->act_list))
 		return 0;
 	attr.group = table->grp->group_id;
+	ft_flag = mlx5_hw_act_flag[!!table->grp->group_id][table->type];
 	if (table->type == MLX5DR_TABLE_TYPE_FDB) {
 		attr.transfer = 1;
 		attr.ingress = 1;
@@ -338,6 +425,7 @@ flow_hw_actions_construct(struct rte_eth_dev *dev,
 	LIST_FOREACH(act_data, &hw_acts->act_list, next) {
 		uint32_t jump_group;
 		struct mlx5_hw_jump_action *jump;
+		struct mlx5_hrxq *hrxq;
 
 		action = &actions[act_data->action_src];
 		MLX5_ASSERT(action->type == RTE_FLOW_ACTION_TYPE_INDIRECT ||
@@ -358,6 +446,17 @@ flow_hw_actions_construct(struct rte_eth_dev *dev,
 			(!!attr.group) ? jump->hws_action : jump->root_action;
 			job->flow->jump = jump;
 			job->flow->fate_type = MLX5_FLOW_FATE_JUMP;
+			break;
+		case RTE_FLOW_ACTION_TYPE_RSS:
+		case RTE_FLOW_ACTION_TYPE_QUEUE:
+			hrxq = flow_hw_tir_action_register(dev,
+					ft_flag,
+					action);
+			if (!hrxq)
+				return -1;
+			rule_acts[act_data->action_dst].action = hrxq->action;
+			job->flow->hrxq = hrxq;
+			job->flow->fate_type = MLX5_FLOW_FATE_QUEUE;
 			break;
 		default:
 			break;
@@ -565,6 +664,8 @@ flow_hw_pull(struct rte_eth_dev *dev,
 		if (job->type == MLX5_HW_Q_JOB_TYPE_DESTROY) {
 			if (job->flow->fate_type == MLX5_FLOW_FATE_JUMP)
 				flow_hw_jump_release(dev, job->flow->jump);
+			else if (job->flow->fate_type == MLX5_FLOW_FATE_QUEUE)
+				mlx5_hrxq_obj_release(dev, job->flow->hrxq);
 			mlx5_ipool_free(job->flow->table->flow, job->flow->idx);
 		}
 		priv->hw_q[queue].job[priv->hw_q[queue].job_idx++] = job;

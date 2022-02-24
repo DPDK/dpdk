@@ -1287,6 +1287,7 @@ struct mlx5_flow_rss_desc {
 	uint64_t hash_fields; /* Verbs Hash fields. */
 	uint8_t key[MLX5_RSS_HASH_KEY_LEN]; /**< RSS hash key. */
 	uint32_t key_len; /**< RSS hash key len. */
+	uint32_t hws_flags; /**< HW steering action. */
 	uint32_t tunnel; /**< Queue in tunnel. */
 	uint32_t shared_rss; /**< Shared RSS index. */
 	struct mlx5_ind_table_obj *ind_tbl;
@@ -1348,6 +1349,7 @@ struct mlx5_hrxq {
 #if defined(HAVE_IBV_FLOW_DV_SUPPORT) || !defined(HAVE_INFINIBAND_VERBS_H)
 	void *action; /* DV QP action pointer. */
 #endif
+	uint32_t hws_flags; /* Hw steering flags. */
 	uint64_t hash_fields; /* Verbs Hash fields. */
 	uint32_t rss_key_len; /* Hash key length in bytes. */
 	uint32_t idx; /* Hash Rx queue index. */
@@ -1478,6 +1480,8 @@ struct mlx5_priv {
 	LIST_HEAD(txqobj, mlx5_txq_obj) txqsobj; /* Verbs/DevX Tx queues. */
 	/* Indirection tables. */
 	LIST_HEAD(ind_tables, mlx5_ind_table_obj) ind_tbls;
+	/* Standalone indirect tables. */
+	LIST_HEAD(stdl_ind_tables, mlx5_ind_table_obj) standalone_ind_tbls;
 	/* Pointer to next element. */
 	rte_rwlock_t ind_tbls_lock;
 	uint32_t refcnt; /**< Reference counter. */

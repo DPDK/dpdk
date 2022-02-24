@@ -1943,7 +1943,6 @@ flow_verbs_apply(struct rte_eth_dev *dev, struct rte_flow *flow,
 			MLX5_ASSERT(priv->drop_queue.hrxq);
 			hrxq = priv->drop_queue.hrxq;
 		} else {
-			uint32_t hrxq_idx;
 			struct mlx5_flow_rss_desc *rss_desc = &wks->rss_desc;
 
 			MLX5_ASSERT(rss_desc->queue_num);
@@ -1952,9 +1951,7 @@ flow_verbs_apply(struct rte_eth_dev *dev, struct rte_flow *flow,
 			rss_desc->tunnel = !!(handle->layers &
 					      MLX5_FLOW_LAYER_TUNNEL);
 			rss_desc->shared_rss = 0;
-			hrxq_idx = mlx5_hrxq_get(dev, rss_desc);
-			hrxq = mlx5_ipool_get(priv->sh->ipool[MLX5_IPOOL_HRXQ],
-					      hrxq_idx);
+			hrxq = mlx5_hrxq_get(dev, rss_desc);
 			if (!hrxq) {
 				rte_flow_error_set
 					(error, rte_errno,
@@ -1962,7 +1959,7 @@ flow_verbs_apply(struct rte_eth_dev *dev, struct rte_flow *flow,
 					 "cannot get hash queue");
 				goto error;
 			}
-			handle->rix_hrxq = hrxq_idx;
+			handle->rix_hrxq = hrxq->idx;
 		}
 		MLX5_ASSERT(hrxq);
 		handle->drv_flow = mlx5_glue->create_flow

@@ -10975,78 +10975,83 @@ flow_dv_translate_item_tx_queue(struct rte_eth_dev *dev,
 /**
  * Set the hash fields according to the @p flow information.
  *
- * @param[in] dev_flow
- *   Pointer to the mlx5_flow.
+ * @param[in] item_flags
+ *   The match pattern item flags.
  * @param[in] rss_desc
  *   Pointer to the mlx5_flow_rss_desc.
+ * @param[out] hash_fields
+ *   Pointer to the RSS hash fields.
  */
-static void
-flow_dv_hashfields_set(struct mlx5_flow *dev_flow,
-		       struct mlx5_flow_rss_desc *rss_desc)
+void
+flow_dv_hashfields_set(uint64_t item_flags,
+		       struct mlx5_flow_rss_desc *rss_desc,
+		       uint64_t *hash_fields)
 {
-	uint64_t items = dev_flow->handle->layers;
+	uint64_t items = item_flags;
+	uint64_t fields = 0;
 	int rss_inner = 0;
 	uint64_t rss_types = rte_eth_rss_hf_refine(rss_desc->types);
 
-	dev_flow->hash_fields = 0;
+	*hash_fields = 0;
 #ifdef HAVE_IBV_DEVICE_TUNNEL_SUPPORT
 	if (rss_desc->level >= 2)
 		rss_inner = 1;
 #endif
 	if ((rss_inner && (items & MLX5_FLOW_LAYER_INNER_L3_IPV4)) ||
-	    (!rss_inner && (items & MLX5_FLOW_LAYER_OUTER_L3_IPV4))) {
+	    (!rss_inner && (items & MLX5_FLOW_LAYER_OUTER_L3_IPV4)) ||
+	     !items) {
 		if (rss_types & MLX5_IPV4_LAYER_TYPES) {
 			if (rss_types & RTE_ETH_RSS_L3_SRC_ONLY)
-				dev_flow->hash_fields |= IBV_RX_HASH_SRC_IPV4;
+				fields |= IBV_RX_HASH_SRC_IPV4;
 			else if (rss_types & RTE_ETH_RSS_L3_DST_ONLY)
-				dev_flow->hash_fields |= IBV_RX_HASH_DST_IPV4;
+				fields |= IBV_RX_HASH_DST_IPV4;
 			else
-				dev_flow->hash_fields |= MLX5_IPV4_IBV_RX_HASH;
+				fields |= MLX5_IPV4_IBV_RX_HASH;
 		}
 	} else if ((rss_inner && (items & MLX5_FLOW_LAYER_INNER_L3_IPV6)) ||
-		   (!rss_inner && (items & MLX5_FLOW_LAYER_OUTER_L3_IPV6))) {
+		   (!rss_inner && (items & MLX5_FLOW_LAYER_OUTER_L3_IPV6)) ||
+		   !items) {
 		if (rss_types & MLX5_IPV6_LAYER_TYPES) {
 			if (rss_types & RTE_ETH_RSS_L3_SRC_ONLY)
-				dev_flow->hash_fields |= IBV_RX_HASH_SRC_IPV6;
+				fields |= IBV_RX_HASH_SRC_IPV6;
 			else if (rss_types & RTE_ETH_RSS_L3_DST_ONLY)
-				dev_flow->hash_fields |= IBV_RX_HASH_DST_IPV6;
+				fields |= IBV_RX_HASH_DST_IPV6;
 			else
-				dev_flow->hash_fields |= MLX5_IPV6_IBV_RX_HASH;
+				fields |= MLX5_IPV6_IBV_RX_HASH;
 		}
 	}
-	if (dev_flow->hash_fields == 0)
+	if (fields == 0)
 		/*
 		 * There is no match between the RSS types and the
 		 * L3 protocol (IPv4/IPv6) defined in the flow rule.
 		 */
 		return;
 	if ((rss_inner && (items & MLX5_FLOW_LAYER_INNER_L4_UDP)) ||
-	    (!rss_inner && (items & MLX5_FLOW_LAYER_OUTER_L4_UDP))) {
+	    (!rss_inner && (items & MLX5_FLOW_LAYER_OUTER_L4_UDP)) ||
+	    !items) {
 		if (rss_types & RTE_ETH_RSS_UDP) {
 			if (rss_types & RTE_ETH_RSS_L4_SRC_ONLY)
-				dev_flow->hash_fields |=
-						IBV_RX_HASH_SRC_PORT_UDP;
+				fields |= IBV_RX_HASH_SRC_PORT_UDP;
 			else if (rss_types & RTE_ETH_RSS_L4_DST_ONLY)
-				dev_flow->hash_fields |=
-						IBV_RX_HASH_DST_PORT_UDP;
+				fields |= IBV_RX_HASH_DST_PORT_UDP;
 			else
-				dev_flow->hash_fields |= MLX5_UDP_IBV_RX_HASH;
+				fields |= MLX5_UDP_IBV_RX_HASH;
 		}
 	} else if ((rss_inner && (items & MLX5_FLOW_LAYER_INNER_L4_TCP)) ||
-		   (!rss_inner && (items & MLX5_FLOW_LAYER_OUTER_L4_TCP))) {
+		   (!rss_inner && (items & MLX5_FLOW_LAYER_OUTER_L4_TCP)) ||
+		   !items) {
 		if (rss_types & RTE_ETH_RSS_TCP) {
 			if (rss_types & RTE_ETH_RSS_L4_SRC_ONLY)
-				dev_flow->hash_fields |=
-						IBV_RX_HASH_SRC_PORT_TCP;
+				fields |= IBV_RX_HASH_SRC_PORT_TCP;
 			else if (rss_types & RTE_ETH_RSS_L4_DST_ONLY)
-				dev_flow->hash_fields |=
-						IBV_RX_HASH_DST_PORT_TCP;
+				fields |= IBV_RX_HASH_DST_PORT_TCP;
 			else
-				dev_flow->hash_fields |= MLX5_TCP_IBV_RX_HASH;
+				fields |= MLX5_TCP_IBV_RX_HASH;
 		}
 	}
 	if (rss_inner)
-		dev_flow->hash_fields |= IBV_RX_HASH_INNER;
+		fields |= IBV_RX_HASH_INNER;
+	*hash_fields = fields;
 }
 
 /**
@@ -11070,7 +11075,6 @@ flow_dv_hrxq_prepare(struct rte_eth_dev *dev,
 		     struct mlx5_flow_rss_desc *rss_desc,
 		     uint32_t *hrxq_idx)
 {
-	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_flow_handle *dh = dev_flow->handle;
 	struct mlx5_hrxq *hrxq;
 
@@ -11081,11 +11085,8 @@ flow_dv_hrxq_prepare(struct rte_eth_dev *dev,
 	rss_desc->shared_rss = 0;
 	if (rss_desc->hash_fields == 0)
 		rss_desc->queue_num = 1;
-	*hrxq_idx = mlx5_hrxq_get(dev, rss_desc);
-	if (!*hrxq_idx)
-		return NULL;
-	hrxq = mlx5_ipool_get(priv->sh->ipool[MLX5_IPOOL_HRXQ],
-			      *hrxq_idx);
+	hrxq = mlx5_hrxq_get(dev, rss_desc);
+	*hrxq_idx = hrxq ? hrxq->idx : 0;
 	return hrxq;
 }
 
@@ -11631,7 +11632,9 @@ flow_dv_translate_action_sample(struct rte_eth_dev *dev,
 			 * rss->level and rss.types should be set in advance
 			 * when expanding items for RSS.
 			 */
-			flow_dv_hashfields_set(dev_flow, rss_desc);
+			flow_dv_hashfields_set(dev_flow->handle->layers,
+					       rss_desc,
+					       &dev_flow->hash_fields);
 			hrxq = flow_dv_hrxq_prepare(dev, dev_flow,
 						    rss_desc, &hrxq_idx);
 			if (!hrxq)
@@ -13655,7 +13658,9 @@ flow_dv_translate(struct rte_eth_dev *dev,
 	 */
 	handle->layers |= item_flags;
 	if (action_flags & MLX5_FLOW_ACTION_RSS)
-		flow_dv_hashfields_set(dev_flow, rss_desc);
+		flow_dv_hashfields_set(dev_flow->handle->layers,
+				       rss_desc,
+				       &dev_flow->hash_fields);
 	/* If has RSS action in the sample action, the Sample/Mirror resource
 	 * should be registered after the hash filed be update.
 	 */
@@ -14604,20 +14609,18 @@ __flow_dv_action_rss_hrxqs_release(struct rte_eth_dev *dev,
  * MLX5_RSS_HASH_IPV4_DST_ONLY are mutually exclusive so they can share
  * same slot in mlx5_rss_hash_fields.
  *
- * @param[in] rss
- *   Pointer to the shared action RSS conf.
+ * @param[in] rss_types
+ *   RSS type.
  * @param[in, out] hash_field
  *   hash_field variable needed to be adjusted.
  *
  * @return
  *   void
  */
-static void
-__flow_dv_action_rss_l34_hash_adjust(struct mlx5_shared_action_rss *rss,
-				     uint64_t *hash_field)
+void
+flow_dv_action_rss_l34_hash_adjust(uint64_t rss_types,
+				   uint64_t *hash_field)
 {
-	uint64_t rss_types = rss->origin.types;
-
 	switch (*hash_field & ~IBV_RX_HASH_INNER) {
 	case MLX5_RSS_HASH_IPV4:
 		if (rss_types & MLX5_IPV4_LAYER_TYPES) {
@@ -14700,12 +14703,15 @@ __flow_dv_action_rss_setup(struct rte_eth_dev *dev,
 	size_t i;
 	int err;
 
-	if (mlx5_ind_table_obj_setup(dev, shared_rss->ind_tbl,
-				     !!dev->data->dev_started)) {
+	shared_rss->ind_tbl = mlx5_ind_table_obj_new
+			      (dev, shared_rss->origin.queue,
+			       shared_rss->origin.queue_num,
+			       true,
+			       !!dev->data->dev_started);
+	if (!shared_rss->ind_tbl)
 		return rte_flow_error_set(error, rte_errno,
 					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
 					  "cannot setup indirection table");
-	}
 	memcpy(rss_desc.key, shared_rss->origin.key, MLX5_RSS_HASH_KEY_LEN);
 	rss_desc.key_len = MLX5_RSS_HASH_KEY_LEN;
 	rss_desc.const_q = shared_rss->origin.queue;
@@ -14714,19 +14720,20 @@ __flow_dv_action_rss_setup(struct rte_eth_dev *dev,
 	rss_desc.shared_rss = action_idx;
 	rss_desc.ind_tbl = shared_rss->ind_tbl;
 	for (i = 0; i < MLX5_RSS_HASH_FIELDS_LEN; i++) {
-		uint32_t hrxq_idx;
+		struct mlx5_hrxq *hrxq;
 		uint64_t hash_fields = mlx5_rss_hash_fields[i];
 		int tunnel = 0;
 
-		__flow_dv_action_rss_l34_hash_adjust(shared_rss, &hash_fields);
+		flow_dv_action_rss_l34_hash_adjust(shared_rss->origin.types,
+						   &hash_fields);
 		if (shared_rss->origin.level > 1) {
 			hash_fields |= IBV_RX_HASH_INNER;
 			tunnel = 1;
 		}
 		rss_desc.tunnel = tunnel;
 		rss_desc.hash_fields = hash_fields;
-		hrxq_idx = mlx5_hrxq_get(dev, &rss_desc);
-		if (!hrxq_idx) {
+		hrxq = mlx5_hrxq_get(dev, &rss_desc);
+		if (!hrxq) {
 			rte_flow_error_set
 				(error, rte_errno,
 				 RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
@@ -14734,14 +14741,14 @@ __flow_dv_action_rss_setup(struct rte_eth_dev *dev,
 			goto error_hrxq_new;
 		}
 		err = __flow_dv_action_rss_hrxq_set
-			(shared_rss, hash_fields, hrxq_idx);
+			(shared_rss, hash_fields, hrxq->idx);
 		MLX5_ASSERT(!err);
 	}
 	return 0;
 error_hrxq_new:
 	err = rte_errno;
 	__flow_dv_action_rss_hrxqs_release(dev, shared_rss);
-	if (!mlx5_ind_table_obj_release(dev, shared_rss->ind_tbl, true, true))
+	if (!mlx5_ind_table_obj_release(dev, shared_rss->ind_tbl, true))
 		shared_rss->ind_tbl = NULL;
 	rte_errno = err;
 	return -rte_errno;
@@ -14772,18 +14779,14 @@ __flow_dv_action_rss_create(struct rte_eth_dev *dev,
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_shared_action_rss *shared_rss = NULL;
-	void *queue = NULL;
 	struct rte_flow_action_rss *origin;
 	const uint8_t *rss_key;
-	uint32_t queue_size = rss->queue_num * sizeof(uint16_t);
 	uint32_t idx;
 
 	RTE_SET_USED(conf);
-	queue = mlx5_malloc(0, RTE_ALIGN_CEIL(queue_size, sizeof(void *)),
-			    0, SOCKET_ID_ANY);
 	shared_rss = mlx5_ipool_zmalloc
 			 (priv->sh->ipool[MLX5_IPOOL_RSS_SHARED_ACTIONS], &idx);
-	if (!shared_rss || !queue) {
+	if (!shared_rss) {
 		rte_flow_error_set(error, ENOMEM,
 				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
 				   "cannot allocate resource memory");
@@ -14795,18 +14798,6 @@ __flow_dv_action_rss_create(struct rte_eth_dev *dev,
 				   "rss action number out of range");
 		goto error_rss_init;
 	}
-	shared_rss->ind_tbl = mlx5_malloc(MLX5_MEM_ZERO,
-					  sizeof(*shared_rss->ind_tbl),
-					  0, SOCKET_ID_ANY);
-	if (!shared_rss->ind_tbl) {
-		rte_flow_error_set(error, ENOMEM,
-				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
-				   "cannot allocate resource memory");
-		goto error_rss_init;
-	}
-	memcpy(queue, rss->queue, queue_size);
-	shared_rss->ind_tbl->queues = queue;
-	shared_rss->ind_tbl->queues_n = rss->queue_num;
 	origin = &shared_rss->origin;
 	origin->func = rss->func;
 	origin->level = rss->level;
@@ -14817,10 +14808,12 @@ __flow_dv_action_rss_create(struct rte_eth_dev *dev,
 	memcpy(shared_rss->key, rss_key, MLX5_RSS_HASH_KEY_LEN);
 	origin->key = &shared_rss->key[0];
 	origin->key_len = MLX5_RSS_HASH_KEY_LEN;
-	origin->queue = queue;
+	origin->queue = rss->queue;
 	origin->queue_num = rss->queue_num;
 	if (__flow_dv_action_rss_setup(dev, idx, shared_rss, error))
 		goto error_rss_init;
+	/* Update queue with indirect table queue memoyr. */
+	origin->queue = shared_rss->ind_tbl->queues;
 	rte_spinlock_init(&shared_rss->action_rss_sl);
 	__atomic_add_fetch(&shared_rss->refcnt, 1, __ATOMIC_RELAXED);
 	rte_spinlock_lock(&priv->shared_act_sl);
@@ -14831,12 +14824,11 @@ __flow_dv_action_rss_create(struct rte_eth_dev *dev,
 error_rss_init:
 	if (shared_rss) {
 		if (shared_rss->ind_tbl)
-			mlx5_free(shared_rss->ind_tbl);
+			mlx5_ind_table_obj_release(dev, shared_rss->ind_tbl,
+						   !!dev->data->dev_started);
 		mlx5_ipool_free(priv->sh->ipool[MLX5_IPOOL_RSS_SHARED_ACTIONS],
 				idx);
 	}
-	if (queue)
-		mlx5_free(queue);
 	return 0;
 }
 
@@ -14864,7 +14856,6 @@ __flow_dv_action_rss_release(struct rte_eth_dev *dev, uint32_t idx,
 	    mlx5_ipool_get(priv->sh->ipool[MLX5_IPOOL_RSS_SHARED_ACTIONS], idx);
 	uint32_t old_refcnt = 1;
 	int remaining;
-	uint16_t *queue = NULL;
 
 	if (!shared_rss)
 		return rte_flow_error_set(error, EINVAL,
@@ -14883,8 +14874,7 @@ __flow_dv_action_rss_release(struct rte_eth_dev *dev, uint32_t idx,
 					  RTE_FLOW_ERROR_TYPE_ACTION,
 					  NULL,
 					  "shared rss hrxq has references");
-	queue = shared_rss->ind_tbl->queues;
-	remaining = mlx5_ind_table_obj_release(dev, shared_rss->ind_tbl, true,
+	remaining = mlx5_ind_table_obj_release(dev, shared_rss->ind_tbl,
 					       !!dev->data->dev_started);
 	if (remaining)
 		return rte_flow_error_set(error, EBUSY,
@@ -14892,7 +14882,6 @@ __flow_dv_action_rss_release(struct rte_eth_dev *dev, uint32_t idx,
 					  NULL,
 					  "shared rss indirection table has"
 					  " references");
-	mlx5_free(queue);
 	rte_spinlock_lock(&priv->shared_act_sl);
 	ILIST_REMOVE(priv->sh->ipool[MLX5_IPOOL_RSS_SHARED_ACTIONS],
 		     &priv->rss_shared_actions, idx, shared_rss, next);
@@ -15071,7 +15060,7 @@ __flow_dv_action_rss_update(struct rte_eth_dev *dev, uint32_t idx,
 	    mlx5_ipool_get(priv->sh->ipool[MLX5_IPOOL_RSS_SHARED_ACTIONS], idx);
 	int ret = 0;
 	void *queue = NULL;
-	uint16_t *queue_old = NULL;
+	void *queue_i = NULL;
 	uint32_t queue_size = action_conf->queue_num * sizeof(uint16_t);
 	bool dev_started = !!dev->data->dev_started;
 
@@ -15094,22 +15083,23 @@ __flow_dv_action_rss_update(struct rte_eth_dev *dev, uint32_t idx,
 	memcpy(queue, action_conf->queue, queue_size);
 	MLX5_ASSERT(shared_rss->ind_tbl);
 	rte_spinlock_lock(&shared_rss->action_rss_sl);
-	queue_old = shared_rss->ind_tbl->queues;
+	queue_i = shared_rss->ind_tbl->queues;
 	ret = mlx5_ind_table_obj_modify(dev, shared_rss->ind_tbl,
 					queue, action_conf->queue_num,
 					true /* standalone */,
 					dev_started /* ref_new_qs */,
 					dev_started /* deref_old_qs */);
 	if (ret) {
-		mlx5_free(queue);
 		ret = rte_flow_error_set(error, rte_errno,
 					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
 					  "cannot update indirection table");
 	} else {
-		mlx5_free(queue_old);
-		shared_rss->origin.queue = queue;
+		/* Restore the queue to indirect table internal queue. */
+		memcpy(queue_i, queue, queue_size);
+		shared_rss->ind_tbl->queues = queue_i;
 		shared_rss->origin.queue_num = action_conf->queue_num;
 	}
+	mlx5_free(queue);
 	rte_spinlock_unlock(&shared_rss->action_rss_sl);
 	return ret;
 }
@@ -16845,11 +16835,12 @@ __flow_dv_meter_get_rss_sub_policy(struct rte_eth_dev *dev,
 	for (i = 0; i < MLX5_MTR_RTE_COLORS; i++) {
 		if (!rss_desc[i])
 			continue;
-		hrxq_idx[i] = mlx5_hrxq_get(dev, rss_desc[i]);
-		if (!hrxq_idx[i]) {
+		hrxq = mlx5_hrxq_get(dev, rss_desc[i]);
+		if (!hrxq) {
 			rte_spinlock_unlock(&mtr_policy->sl);
 			return NULL;
 		}
+		hrxq_idx[i] = hrxq->idx;
 	}
 	sub_policy_num = (mtr_policy->sub_policy_num >>
 			(MLX5_MTR_SUB_POLICY_NUM_SHIFT * domain)) &

@@ -807,6 +807,14 @@ mlx5_devx_hrxq_new(struct rte_eth_dev *dev, struct mlx5_hrxq *hrxq,
 		goto error;
 	}
 #if defined(HAVE_IBV_FLOW_DV_SUPPORT) || !defined(HAVE_INFINIBAND_VERBS_H)
+	if (hrxq->hws_flags) {
+		hrxq->action = mlx5dr_action_create_dest_tir
+			(priv->dr_ctx,
+			 (struct mlx5dr_devx_obj *)hrxq->tir, hrxq->hws_flags);
+		if (!hrxq->action)
+			goto error;
+		return 0;
+	}
 	if (mlx5_flow_os_create_flow_action_dest_devx_tir(hrxq->tir,
 							  &hrxq->action)) {
 		rte_errno = errno;
@@ -1042,6 +1050,8 @@ mlx5_devx_drop_action_create(struct rte_eth_dev *dev)
 		DRV_LOG(ERR, "Cannot create drop RX queue");
 		return ret;
 	}
+	if (priv->sh->config.dv_flow_en == 2)
+		return 0;
 	/* hrxq->ind_table queues are NULL, drop RX queue ID will be used */
 	ret = mlx5_devx_ind_table_new(dev, 0, hrxq->ind_table);
 	if (ret != 0) {

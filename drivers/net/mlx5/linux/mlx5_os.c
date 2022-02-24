@@ -1521,6 +1521,15 @@ err_secondary:
 	priv->drop_queue.hrxq = mlx5_drop_action_create(eth_dev);
 	if (!priv->drop_queue.hrxq)
 		goto error;
+	priv->hrxqs = mlx5_list_create("hrxq", eth_dev, true,
+				       mlx5_hrxq_create_cb,
+				       mlx5_hrxq_match_cb,
+				       mlx5_hrxq_remove_cb,
+				       mlx5_hrxq_clone_cb,
+				       mlx5_hrxq_clone_free_cb);
+	if (!priv->hrxqs)
+		goto error;
+	rte_rwlock_init(&priv->ind_tbls_lock);
 	if (priv->sh->config.dv_flow_en == 2)
 		return eth_dev;
 	/* Port representor shares the same max priority with pf port. */
@@ -1545,15 +1554,6 @@ err_secondary:
 			err = ENOTSUP;
 			goto error;
 	}
-	priv->hrxqs = mlx5_list_create("hrxq", eth_dev, true,
-				       mlx5_hrxq_create_cb,
-				       mlx5_hrxq_match_cb,
-				       mlx5_hrxq_remove_cb,
-				       mlx5_hrxq_clone_cb,
-				       mlx5_hrxq_clone_free_cb);
-	if (!priv->hrxqs)
-		goto error;
-	rte_rwlock_init(&priv->ind_tbls_lock);
 	/* Query availability of metadata reg_c's. */
 	if (!priv->sh->metadata_regc_check_flag) {
 		err = mlx5_flow_discover_mreg_c(eth_dev);

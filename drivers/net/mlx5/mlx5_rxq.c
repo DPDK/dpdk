@@ -2279,8 +2279,6 @@ mlx5_ind_table_obj_get(struct rte_eth_dev *dev, const uint16_t *queues,
  *   Pointer to Ethernet device.
  * @param ind_table
  *   Indirection table to release.
- * @param standalone
- *   Indirection table for Standalone queue.
  * @param deref_rxqs
  *   If true, then dereference RX queues related to indirection table.
  *   Otherwise, no additional action will be taken.
@@ -2291,7 +2289,6 @@ mlx5_ind_table_obj_get(struct rte_eth_dev *dev, const uint16_t *queues,
 int
 mlx5_ind_table_obj_release(struct rte_eth_dev *dev,
 			   struct mlx5_ind_table_obj *ind_tbl,
-			   bool standalone,
 			   bool deref_rxqs)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
@@ -2299,7 +2296,7 @@ mlx5_ind_table_obj_release(struct rte_eth_dev *dev,
 
 	rte_rwlock_write_lock(&priv->ind_tbls_lock);
 	ret = __atomic_sub_fetch(&ind_tbl->refcnt, 1, __ATOMIC_RELAXED);
-	if (!ret && !standalone)
+	if (!ret)
 		LIST_REMOVE(ind_tbl, next);
 	rte_rwlock_write_unlock(&priv->ind_tbls_lock);
 	if (ret)
@@ -2408,7 +2405,7 @@ error:
  * @return
  *   The Verbs/DevX object initialized, NULL otherwise and rte_errno is set.
  */
-static struct mlx5_ind_table_obj *
+struct mlx5_ind_table_obj *
 mlx5_ind_table_obj_new(struct rte_eth_dev *dev, const uint16_t *queues,
 		       uint32_t queues_n, bool standalone, bool ref_qs)
 {
@@ -2416,8 +2413,13 @@ mlx5_ind_table_obj_new(struct rte_eth_dev *dev, const uint16_t *queues,
 	struct mlx5_ind_table_obj *ind_tbl;
 	int ret;
 
+	/*
+	 * Allocate maximum queues for shared action as queue number
+	 * maybe modified later.
+	 */
 	ind_tbl = mlx5_malloc(MLX5_MEM_ZERO, sizeof(*ind_tbl) +
-			      queues_n * sizeof(uint16_t), 0, SOCKET_ID_ANY);
+			      (standalone ? priv->rxqs_n : queues_n) *
+			      sizeof(uint16_t), 0, SOCKET_ID_ANY);
 	if (!ind_tbl) {
 		rte_errno = ENOMEM;
 		return NULL;
@@ -2430,11 +2432,13 @@ mlx5_ind_table_obj_new(struct rte_eth_dev *dev, const uint16_t *queues,
 		mlx5_free(ind_tbl);
 		return NULL;
 	}
-	if (!standalone) {
-		rte_rwlock_write_lock(&priv->ind_tbls_lock);
+	rte_rwlock_write_lock(&priv->ind_tbls_lock);
+	if (!standalone)
 		LIST_INSERT_HEAD(&priv->ind_tbls, ind_tbl, next);
-		rte_rwlock_write_unlock(&priv->ind_tbls_lock);
-	}
+	else
+		LIST_INSERT_HEAD(&priv->standalone_ind_tbls, ind_tbl, next);
+	rte_rwlock_write_unlock(&priv->ind_tbls_lock);
+
 	return ind_tbl;
 }
 
@@ -2600,6 +2604,7 @@ mlx5_hrxq_match_cb(void *tool_ctx __rte_unused, struct mlx5_list_entry *entry,
 
 	return (hrxq->rss_key_len != rss_desc->key_len ||
 	    memcmp(hrxq->rss_key, rss_desc->key, rss_desc->key_len) ||
+	    hrxq->hws_flags != rss_desc->hws_flags ||
 	    hrxq->hash_fields != rss_desc->hash_fields ||
 	    hrxq->ind_table->queues_n != rss_desc->queue_num ||
 	    memcmp(hrxq->ind_table->queues, rss_desc->queue,
@@ -2684,8 +2689,7 @@ mlx5_hrxq_modify(struct rte_eth_dev *dev, uint32_t hrxq_idx,
 	}
 	if (ind_tbl != hrxq->ind_table) {
 		MLX5_ASSERT(!hrxq->standalone);
-		mlx5_ind_table_obj_release(dev, hrxq->ind_table,
-					   hrxq->standalone, true);
+		mlx5_ind_table_obj_release(dev, hrxq->ind_table, true);
 		hrxq->ind_table = ind_tbl;
 	}
 	hrxq->hash_fields = hash_fields;
@@ -2695,8 +2699,7 @@ error:
 	err = rte_errno;
 	if (ind_tbl != hrxq->ind_table) {
 		MLX5_ASSERT(!hrxq->standalone);
-		mlx5_ind_table_obj_release(dev, ind_tbl, hrxq->standalone,
-					   true);
+		mlx5_ind_table_obj_release(dev, ind_tbl, true);
 	}
 	rte_errno = err;
 	return -rte_errno;
@@ -2708,12 +2711,16 @@ __mlx5_hrxq_remove(struct rte_eth_dev *dev, struct mlx5_hrxq *hrxq)
 	struct mlx5_priv *priv = dev->data->dev_private;
 
 #ifdef HAVE_IBV_FLOW_DV_SUPPORT
-	mlx5_glue->destroy_flow_action(hrxq->action);
+	if (hrxq->hws_flags)
+		mlx5dr_action_destroy(hrxq->action);
+	else
+		mlx5_glue->destroy_flow_action(hrxq->action);
 #endif
 	priv->obj_ops.hrxq_destroy(hrxq);
 	if (!hrxq->standalone) {
 		mlx5_ind_table_obj_release(dev, hrxq->ind_table,
-					   hrxq->standalone, true);
+					   hrxq->hws_flags ?
+					   (!!dev->data->dev_started) : true);
 	}
 	mlx5_ipool_free(priv->sh->ipool[MLX5_IPOOL_HRXQ], hrxq->idx);
 }
@@ -2757,11 +2764,12 @@ __mlx5_hrxq_create(struct rte_eth_dev *dev,
 	int ret;
 
 	queues_n = rss_desc->hash_fields ? queues_n : 1;
-	if (!ind_tbl)
+	if (!ind_tbl && !rss_desc->hws_flags)
 		ind_tbl = mlx5_ind_table_obj_get(dev, queues, queues_n);
 	if (!ind_tbl)
 		ind_tbl = mlx5_ind_table_obj_new(dev, queues, queues_n,
-						 standalone,
+						 standalone ||
+						 rss_desc->hws_flags,
 						 !!dev->data->dev_started);
 	if (!ind_tbl)
 		return NULL;
@@ -2773,6 +2781,7 @@ __mlx5_hrxq_create(struct rte_eth_dev *dev,
 	hrxq->ind_table = ind_tbl;
 	hrxq->rss_key_len = rss_key_len;
 	hrxq->hash_fields = rss_desc->hash_fields;
+	hrxq->hws_flags = rss_desc->hws_flags;
 	memcpy(hrxq->rss_key, rss_key, rss_key_len);
 	ret = priv->obj_ops.hrxq_new(dev, hrxq, rss_desc->tunnel);
 	if (ret < 0)
@@ -2780,7 +2789,7 @@ __mlx5_hrxq_create(struct rte_eth_dev *dev,
 	return hrxq;
 error:
 	if (!rss_desc->ind_tbl)
-		mlx5_ind_table_obj_release(dev, ind_tbl, standalone, true);
+		mlx5_ind_table_obj_release(dev, ind_tbl, true);
 	if (hrxq)
 		mlx5_ipool_free(priv->sh->ipool[MLX5_IPOOL_HRXQ], hrxq_idx);
 	return NULL;
@@ -2834,13 +2843,13 @@ mlx5_hrxq_clone_free_cb(void *tool_ctx, struct mlx5_list_entry *entry)
  *   RSS configuration for the Rx hash queue.
  *
  * @return
- *   An hash Rx queue index on success.
+ *   An hash Rx queue on success.
  */
-uint32_t mlx5_hrxq_get(struct rte_eth_dev *dev,
+struct mlx5_hrxq *mlx5_hrxq_get(struct rte_eth_dev *dev,
 		       struct mlx5_flow_rss_desc *rss_desc)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5_hrxq *hrxq;
+	struct mlx5_hrxq *hrxq = NULL;
 	struct mlx5_list_entry *entry;
 	struct mlx5_flow_cb_ctx ctx = {
 		.data = rss_desc,
@@ -2851,16 +2860,37 @@ uint32_t mlx5_hrxq_get(struct rte_eth_dev *dev,
 	} else {
 		entry = mlx5_list_register(priv->hrxqs, &ctx);
 		if (!entry)
-			return 0;
+			return NULL;
 		hrxq = container_of(entry, typeof(*hrxq), entry);
 	}
-	if (hrxq)
-		return hrxq->idx;
-	return 0;
+	return hrxq;
 }
 
 /**
  * Release the hash Rx queue.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ * @param hrxq_idx
+ *   Hash Rx queue to release.
+ *
+ * @return
+ *   1 while a reference on it exists, 0 when freed.
+ */
+int mlx5_hrxq_obj_release(struct rte_eth_dev *dev, struct mlx5_hrxq *hrxq)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+
+	if (!hrxq)
+		return 0;
+	if (!hrxq->standalone)
+		return mlx5_list_unregister(priv->hrxqs, &hrxq->entry);
+	__mlx5_hrxq_remove(dev, hrxq);
+	return 0;
+}
+
+/**
+ * Release the hash Rx queue with index.
  *
  * @param dev
  *   Pointer to Ethernet device.
@@ -2876,12 +2906,7 @@ int mlx5_hrxq_release(struct rte_eth_dev *dev, uint32_t hrxq_idx)
 	struct mlx5_hrxq *hrxq;
 
 	hrxq = mlx5_ipool_get(priv->sh->ipool[MLX5_IPOOL_HRXQ], hrxq_idx);
-	if (!hrxq)
-		return 0;
-	if (!hrxq->standalone)
-		return mlx5_list_unregister(priv->hrxqs, &hrxq->entry);
-	__mlx5_hrxq_remove(dev, hrxq);
-	return 0;
+	return mlx5_hrxq_obj_release(dev, hrxq);
 }
 
 /**
