@@ -161,6 +161,10 @@ New Features
 
   * Added queue based priority flow control support for CN9K & CN10K.
 
+* **Updated Mellanox mlx5 driver.**
+
+  * Supported ConnectX-7 capability to schedule traffic sending on timestamp.
+
 * **Updated Wangxun ngbe driver.**
 
   * Added support for devices of custom PHY interfaces.

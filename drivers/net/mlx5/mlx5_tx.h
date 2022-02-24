@@ -780,7 +780,7 @@ mlx5_tx_cseg_init(struct mlx5_txq_data *__rte_restrict txq,
  *   compile time and may be used for optimization.
  */
 static __rte_always_inline void
-mlx5_tx_wseg_init(struct mlx5_txq_data *restrict txq,
+mlx5_tx_qseg_init(struct mlx5_txq_data *restrict txq,
 		  struct mlx5_txq_local *restrict loc __rte_unused,
 		  struct mlx5_wqe *restrict wqe,
 		  unsigned int wci,
@@ -793,6 +793,43 @@ mlx5_tx_wseg_init(struct mlx5_txq_data *restrict txq,
 	qs->qpn_cqn = rte_cpu_to_be_32(txq->sh->txpp.clock_queue.cq_obj.cq->id);
 	qs->reserved0 = RTE_BE32(0);
 	qs->reserved1 = RTE_BE32(0);
+}
+
+/**
+ * Build the Wait on Time Segment with specified timestamp value.
+ *
+ * @param txq
+ *   Pointer to TX queue structure.
+ * @param loc
+ *   Pointer to burst routine local context.
+ * @param wqe
+ *   Pointer to WQE to fill with built Control Segment.
+ * @param ts
+ *   Timesatmp value to wait.
+ * @param olx
+ *   Configured Tx offloads mask. It is fully defined at
+ *   compile time and may be used for optimization.
+ */
+static __rte_always_inline void
+mlx5_tx_wseg_init(struct mlx5_txq_data *restrict txq,
+		  struct mlx5_txq_local *restrict loc __rte_unused,
+		  struct mlx5_wqe *restrict wqe,
+		  uint64_t ts,
+		  unsigned int olx __rte_unused)
+{
+	struct mlx5_wqe_wseg *ws;
+
+	ws = RTE_PTR_ADD(wqe, MLX5_WSEG_SIZE);
+	ws->operation = rte_cpu_to_be_32(MLX5_WAIT_COND_CYCLIC_BIGGER);
+	ws->lkey = RTE_BE32(0);
+	ws->va_high = RTE_BE32(0);
+	ws->va_low = RTE_BE32(0);
+	if (txq->rt_timestamp) {
+		ts = ts % (uint64_t)NS_PER_S
+		   | (ts / (uint64_t)NS_PER_S) << 32;
+	}
+	ws->value = rte_cpu_to_be_64(ts);
+	ws->mask = txq->rt_timemask;
 }
 
 /**
@@ -1626,9 +1663,9 @@ mlx5_tx_schedule_send(struct mlx5_txq_data *restrict txq,
 {
 	if (MLX5_TXOFF_CONFIG(TXPP) &&
 	    loc->mbuf->ol_flags & txq->ts_mask) {
+		struct mlx5_dev_ctx_shared *sh;
 		struct mlx5_wqe *wqe;
 		uint64_t ts;
-		int32_t wci;
 
 		/*
 		 * Estimate the required space quickly and roughly.
@@ -1640,13 +1677,32 @@ mlx5_tx_schedule_send(struct mlx5_txq_data *restrict txq,
 			return MLX5_TXCMP_CODE_EXIT;
 		/* Convert the timestamp into completion to wait. */
 		ts = *RTE_MBUF_DYNFIELD(loc->mbuf, txq->ts_offset, uint64_t *);
-		wci = mlx5_txpp_convert_tx_ts(txq->sh, ts);
-		if (unlikely(wci < 0))
-			return MLX5_TXCMP_CODE_SINGLE;
-		/* Build the WAIT WQE with specified completion. */
 		wqe = txq->wqes + (txq->wqe_ci & txq->wqe_m);
-		mlx5_tx_cseg_init(txq, loc, wqe, 2, MLX5_OPCODE_WAIT, olx);
-		mlx5_tx_wseg_init(txq, loc, wqe, wci, olx);
+		sh = txq->sh;
+		if (txq->wait_on_time) {
+			/* The wait on time capability should be used. */
+			ts -= sh->txpp.skew;
+			mlx5_tx_cseg_init(txq, loc, wqe,
+					  1 + sizeof(struct mlx5_wqe_wseg) /
+					      MLX5_WSEG_SIZE,
+					  MLX5_OPCODE_WAIT |
+					  MLX5_OPC_MOD_WAIT_TIME << 24, olx);
+			mlx5_tx_wseg_init(txq, loc, wqe, ts, olx);
+		} else {
+			/* Legacy cross-channel operation should be used. */
+			int32_t wci;
+
+			wci = mlx5_txpp_convert_tx_ts(sh, ts);
+			if (unlikely(wci < 0))
+				return MLX5_TXCMP_CODE_SINGLE;
+			/* Build the WAIT WQE with specified completion. */
+			mlx5_tx_cseg_init(txq, loc, wqe,
+					  1 + sizeof(struct mlx5_wqe_qseg) /
+					      MLX5_WSEG_SIZE,
+					  MLX5_OPCODE_WAIT |
+					  MLX5_OPC_MOD_WAIT_CQ_PI << 24, olx);
+			mlx5_tx_qseg_init(txq, loc, wqe, wci, olx);
+		}
 		++txq->wqe_ci;
 		--loc->wqe_free;
 		return MLX5_TXCMP_CODE_MULTI;

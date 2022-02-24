@@ -829,6 +829,11 @@ for an additional list of options shared with other mlx5 drivers.
   By default (if the ``tx_pp`` is not specified) send scheduling on timestamps
   feature is disabled.
 
+  Starting with ConnectX-7 the capability to schedule traffic directly
+  on timestamp specified in descriptor is provided,
+  no extra objects are needed anymore and scheduling capability
+  is advertised and handled regardless ``tx_pp`` parameter presence.
+
 - ``tx_skew`` parameter [int]
 
   The parameter adjusts the send packet scheduling on timestamps and represents
