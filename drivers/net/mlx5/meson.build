@@ -16,6 +16,7 @@ sources = files(
         'mlx5_flow.c',
         'mlx5_flow_meter.c',
         'mlx5_flow_dv.c',
+        'mlx5_flow_hw.c',
         'mlx5_flow_aso.c',
         'mlx5_flow_flex.c',
         'mlx5_mac.c',

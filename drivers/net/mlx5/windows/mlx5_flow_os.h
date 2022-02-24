@@ -10,6 +10,7 @@
 
 #if defined(HAVE_IBV_FLOW_DV_SUPPORT) || !defined(HAVE_INFINIBAND_VERBS_H)
 extern const struct mlx5_flow_driver_ops mlx5_flow_dv_drv_ops;
+extern const struct mlx5_flow_driver_ops mlx5_flow_hw_drv_ops;
 #endif
 
 /**
