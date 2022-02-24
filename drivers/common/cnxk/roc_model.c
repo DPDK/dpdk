@@ -132,7 +132,8 @@ populate_model(struct roc_model *model, uint32_t midr)
 	if (!found) {
 		model->flag = 0;
 		strncpy(model->name, "unknown", ROC_MODEL_STR_LEN_MAX - 1);
-		plt_err("Invalid RoC model (impl=0x%x, part=0x%x)", impl, part);
+		plt_err("Invalid RoC model (impl=0x%x, part=0x%x, major=0x%x, minor=0x%x)",
+			impl, part, major, minor);
 	}
 
 	return found;
