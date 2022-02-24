@@ -13,6 +13,115 @@
 const struct mlx5_flow_driver_ops mlx5_flow_hw_drv_ops;
 
 /**
+ * Create flow action template.
+ *
+ * @param[in] dev
+ *   Pointer to the rte_eth_dev structure.
+ * @param[in] attr
+ *   Pointer to the action template attributes.
+ * @param[in] actions
+ *   Associated actions (list terminated by the END action).
+ * @param[in] masks
+ *   List of actions that marks which of the action's member is constant.
+ * @param[out] error
+ *   Pointer to error structure.
+ *
+ * @return
+ *   Action template pointer on success, NULL otherwise and rte_errno is set.
+ */
+static struct rte_flow_actions_template *
+flow_hw_actions_template_create(struct rte_eth_dev *dev,
+			const struct rte_flow_actions_template_attr *attr,
+			const struct rte_flow_action actions[],
+			const struct rte_flow_action masks[],
+			struct rte_flow_error *error)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	int len, act_len, mask_len, i;
+	struct rte_flow_actions_template *at;
+
+	act_len = rte_flow_conv(RTE_FLOW_CONV_OP_ACTIONS,
+				NULL, 0, actions, error);
+	if (act_len <= 0)
+		return NULL;
+	len = RTE_ALIGN(act_len, 16);
+	mask_len = rte_flow_conv(RTE_FLOW_CONV_OP_ACTIONS,
+				 NULL, 0, masks, error);
+	if (mask_len <= 0)
+		return NULL;
+	len += RTE_ALIGN(mask_len, 16);
+	at = mlx5_malloc(MLX5_MEM_ZERO, len + sizeof(*at), 64, rte_socket_id());
+	if (!at) {
+		rte_flow_error_set(error, ENOMEM,
+				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				   NULL,
+				   "cannot allocate action template");
+		return NULL;
+	}
+	at->attr = *attr;
+	at->actions = (struct rte_flow_action *)(at + 1);
+	act_len = rte_flow_conv(RTE_FLOW_CONV_OP_ACTIONS, at->actions, len,
+				actions, error);
+	if (act_len <= 0)
+		goto error;
+	at->masks = (struct rte_flow_action *)
+		    (((uint8_t *)at->actions) + act_len);
+	mask_len = rte_flow_conv(RTE_FLOW_CONV_OP_ACTIONS, at->masks,
+				 len - act_len, masks, error);
+	if (mask_len <= 0)
+		goto error;
+	/*
+	 * mlx5 PMD hacks indirect action index directly to the action conf.
+	 * The rte_flow_conv() function copies the content from conf pointer.
+	 * Need to restore the indirect action index from action conf here.
+	 */
+	for (i = 0; actions->type != RTE_FLOW_ACTION_TYPE_END;
+	     actions++, masks++, i++) {
+		if (actions->type == RTE_FLOW_ACTION_TYPE_INDIRECT) {
+			at->actions[i].conf = actions->conf;
+			at->masks[i].conf = masks->conf;
+		}
+	}
+	__atomic_fetch_add(&at->refcnt, 1, __ATOMIC_RELAXED);
+	LIST_INSERT_HEAD(&priv->flow_hw_at, at, next);
+	return at;
+error:
+	mlx5_free(at);
+	return NULL;
+}
+
+/**
+ * Destroy flow action template.
+ *
+ * @param[in] dev
+ *   Pointer to the rte_eth_dev structure.
+ * @param[in] template
+ *   Pointer to the action template to be destroyed.
+ * @param[out] error
+ *   Pointer to error structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+static int
+flow_hw_actions_template_destroy(struct rte_eth_dev *dev __rte_unused,
+				 struct rte_flow_actions_template *template,
+				 struct rte_flow_error *error __rte_unused)
+{
+	if (__atomic_load_n(&template->refcnt, __ATOMIC_RELAXED) > 1) {
+		DRV_LOG(WARNING, "Action template %p is still in use.",
+			(void *)template);
+		return rte_flow_error_set(error, EBUSY,
+				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				   NULL,
+				   "action template in using");
+	}
+	LIST_REMOVE(template, next);
+	mlx5_free(template);
+	return 0;
+}
+
+/**
  * Create flow item template.
  *
  * @param[in] dev
@@ -234,12 +343,17 @@ flow_hw_resource_release(struct rte_eth_dev *dev)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct rte_flow_pattern_template *it;
+	struct rte_flow_actions_template *at;
 
 	if (!priv->dr_ctx)
 		return;
 	while (!LIST_EMPTY(&priv->flow_hw_itt)) {
 		it = LIST_FIRST(&priv->flow_hw_itt);
 		flow_hw_pattern_template_destroy(dev, it, NULL);
+	}
+	while (!LIST_EMPTY(&priv->flow_hw_at)) {
+		at = LIST_FIRST(&priv->flow_hw_at);
+		flow_hw_actions_template_destroy(dev, at, NULL);
 	}
 	mlx5_free(priv->hw_q);
 	priv->hw_q = NULL;
@@ -253,6 +367,8 @@ const struct mlx5_flow_driver_ops mlx5_flow_hw_drv_ops = {
 	.configure = flow_hw_configure,
 	.pattern_template_create = flow_hw_pattern_template_create,
 	.pattern_template_destroy = flow_hw_pattern_template_destroy,
+	.actions_template_create = flow_hw_actions_template_create,
+	.actions_template_destroy = flow_hw_actions_template_destroy,
 };
 
 #endif

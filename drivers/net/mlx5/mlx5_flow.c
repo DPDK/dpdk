@@ -827,6 +827,16 @@ static int
 mlx5_flow_pattern_template_destroy(struct rte_eth_dev *dev,
 				   struct rte_flow_pattern_template *template,
 				   struct rte_flow_error *error);
+static struct rte_flow_actions_template *
+mlx5_flow_actions_template_create(struct rte_eth_dev *dev,
+			const struct rte_flow_actions_template_attr *attr,
+			const struct rte_flow_action actions[],
+			const struct rte_flow_action masks[],
+			struct rte_flow_error *error);
+static int
+mlx5_flow_actions_template_destroy(struct rte_eth_dev *dev,
+				   struct rte_flow_actions_template *template,
+				   struct rte_flow_error *error);
 
 static const struct rte_flow_ops mlx5_flow_ops = {
 	.validate = mlx5_flow_validate,
@@ -852,6 +862,8 @@ static const struct rte_flow_ops mlx5_flow_ops = {
 	.configure = mlx5_flow_port_configure,
 	.pattern_template_create = mlx5_flow_pattern_template_create,
 	.pattern_template_destroy = mlx5_flow_pattern_template_destroy,
+	.actions_template_create = mlx5_flow_actions_template_create,
+	.actions_template_destroy = mlx5_flow_actions_template_destroy,
 };
 
 /* Tunnel information. */
@@ -7998,6 +8010,72 @@ mlx5_flow_pattern_template_destroy(struct rte_eth_dev *dev,
 				"pattern destroy with incorrect steering mode");
 	fops = flow_get_drv_ops(MLX5_FLOW_TYPE_HW);
 	return fops->pattern_template_destroy(dev, template, error);
+}
+
+/**
+ * Create flow item template.
+ *
+ * @param[in] dev
+ *   Pointer to the rte_eth_dev structure.
+ * @param[in] attr
+ *   Pointer to the action template attributes.
+ * @param[in] actions
+ *   Associated actions (list terminated by the END action).
+ * @param[in] masks
+ *   List of actions that marks which of the action's member is constant.
+ * @param[out] error
+ *   Pointer to error structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+static struct rte_flow_actions_template *
+mlx5_flow_actions_template_create(struct rte_eth_dev *dev,
+			const struct rte_flow_actions_template_attr *attr,
+			const struct rte_flow_action actions[],
+			const struct rte_flow_action masks[],
+			struct rte_flow_error *error)
+{
+	const struct mlx5_flow_driver_ops *fops;
+
+	if (flow_get_drv_type(dev, NULL) != MLX5_FLOW_TYPE_HW) {
+		rte_flow_error_set(error, ENOTSUP,
+				RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				NULL,
+				"action create with incorrect steering mode");
+		return NULL;
+	}
+	fops = flow_get_drv_ops(MLX5_FLOW_TYPE_HW);
+	return fops->actions_template_create(dev, attr, actions, masks, error);
+}
+
+/**
+ * Destroy flow action template.
+ *
+ * @param[in] dev
+ *   Pointer to the rte_eth_dev structure.
+ * @param[in] template
+ *   Pointer to the action template to be destroyed.
+ * @param[out] error
+ *   Pointer to error structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+static int
+mlx5_flow_actions_template_destroy(struct rte_eth_dev *dev,
+				   struct rte_flow_actions_template *template,
+				   struct rte_flow_error *error)
+{
+	const struct mlx5_flow_driver_ops *fops;
+
+	if (flow_get_drv_type(dev, NULL) != MLX5_FLOW_TYPE_HW)
+		return rte_flow_error_set(error, ENOTSUP,
+				RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				NULL,
+				"action destroy with incorrect steering mode");
+	fops = flow_get_drv_ops(MLX5_FLOW_TYPE_HW);
+	return fops->actions_template_destroy(dev, template, error);
 }
 
 /**

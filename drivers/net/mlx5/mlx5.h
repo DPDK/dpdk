@@ -1504,6 +1504,8 @@ struct mlx5_priv {
 #if defined(HAVE_IBV_FLOW_DV_SUPPORT) || !defined(HAVE_INFINIBAND_VERBS_H)
 	/* Item template list. */
 	LIST_HEAD(flow_hw_itt, rte_flow_pattern_template) flow_hw_itt;
+	/* Action template list. */
+	LIST_HEAD(flow_hw_at, rte_flow_actions_template) flow_hw_at;
 	struct mlx5dr_context *dr_ctx; /**< HW steering DR context. */
 	uint32_t nb_queue; /* HW steering queue number. */
 	/* HW steering queue polling mechanism job descriptor LIFO. */
