@@ -49,6 +49,23 @@ perf_queue_worker(void *arg, const int enable_fwd_latency)
 			rte_pause();
 			continue;
 		}
+
+		if (prod_crypto_type &&
+		    (ev.event_type == RTE_EVENT_TYPE_CRYPTODEV)) {
+			struct rte_crypto_op *op = ev.event_ptr;
+
+			if (op->status == RTE_CRYPTO_OP_STATUS_SUCCESS) {
+				if (op->sym->m_dst == NULL)
+					ev.event_ptr = op->sym->m_src;
+				else
+					ev.event_ptr = op->sym->m_dst;
+				rte_crypto_op_free(op);
+			} else {
+				rte_crypto_op_free(op);
+				continue;
+			}
+		}
+
 		if (enable_fwd_latency && !prod_timer_type)
 		/* first q in pipeline, mark timestamp to compute fwd latency */
 			mark_fwd_latency(&ev, nb_stages);
@@ -88,6 +105,25 @@ perf_queue_worker_burst(void *arg, const int enable_fwd_latency)
 		}
 
 		for (i = 0; i < nb_rx; i++) {
+			if (prod_crypto_type &&
+			    (ev[i].event_type == RTE_EVENT_TYPE_CRYPTODEV)) {
+				struct rte_crypto_op *op = ev[i].event_ptr;
+
+				if (op->status ==
+				    RTE_CRYPTO_OP_STATUS_SUCCESS) {
+					if (op->sym->m_dst == NULL)
+						ev[i].event_ptr =
+							op->sym->m_src;
+					else
+						ev[i].event_ptr =
+							op->sym->m_dst;
+					rte_crypto_op_free(op);
+				} else {
+					rte_crypto_op_free(op);
+					continue;
+				}
+			}
+
 			if (enable_fwd_latency && !prod_timer_type) {
 				rte_prefetch0(ev[i+1].event_ptr);
 				/* first queue in pipeline.
@@ -269,6 +305,18 @@ perf_queue_eventdev_setup(struct evt_test *test, struct evt_options *opt)
 				return ret;
 			}
 		}
+	} else if (opt->prod_type == EVT_PROD_TYPE_EVENT_CRYPTO_ADPTR) {
+		uint8_t cdev_id, cdev_count;
+
+		cdev_count = rte_cryptodev_count();
+		for (cdev_id = 0; cdev_id < cdev_count; cdev_id++) {
+			ret = rte_cryptodev_start(cdev_id);
+			if (ret) {
+				evt_err("Failed to start cryptodev %u",
+					cdev_id);
+				return ret;
+			}
+		}
 	}
 
 	return 0;
@@ -311,11 +359,13 @@ static const struct evt_test_ops perf_queue =  {
 	.test_setup         = perf_test_setup,
 	.mempool_setup      = perf_mempool_setup,
 	.ethdev_setup	    = perf_ethdev_setup,
+	.cryptodev_setup    = perf_cryptodev_setup,
 	.eventdev_setup     = perf_queue_eventdev_setup,
 	.launch_lcores      = perf_queue_launch_lcores,
 	.eventdev_destroy   = perf_eventdev_destroy,
 	.mempool_destroy    = perf_mempool_destroy,
 	.ethdev_destroy	    = perf_ethdev_destroy,
+	.cryptodev_destroy  = perf_cryptodev_destroy,
 	.test_result        = perf_test_result,
 	.test_destroy       = perf_test_destroy,
 };

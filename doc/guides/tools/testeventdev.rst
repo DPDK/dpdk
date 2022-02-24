@@ -120,6 +120,10 @@ The following are the application command-line options:
 
        Use burst mode event timer adapter as producer.
 
+* ``--prod_type_cryptodev``
+
+        Use crypto device as producer.
+
 * ``--timer_tick_nsec``
 
        Used to dictate number of nano seconds between bucket traversal of the
@@ -147,6 +151,11 @@ The following are the application command-line options:
        Global dequeue timeout for all the event ports if the provided dequeue
        timeout is out of the supported range of event device it will be
        adjusted to the highest/lowest supported dequeue timeout supported.
+
+* ``--crypto_adptr_mode``
+
+        Set crypto adapter mode. Use 0 for OP_NEW (default) and 1 for
+        OP_FORWARD mode.
 
 * ``--mbuf_sz``
 
@@ -420,6 +429,7 @@ Supported application command line options are following::
         --prod_type_ethdev
         --prod_type_timerdev_burst
         --prod_type_timerdev
+        --prod_type_cryptodev
         --prod_enq_burst_sz
         --timer_tick_nsec
         --max_tmo_nsec
@@ -427,6 +437,7 @@ Supported application command line options are following::
         --nb_timers
         --nb_timer_adptrs
         --deq_tmo_nsec
+        --crypto_adptr_mode
 
 Example
 ^^^^^^^
@@ -529,12 +540,14 @@ Supported application command line options are following::
         --prod_type_ethdev
         --prod_type_timerdev_burst
         --prod_type_timerdev
+        --prod_type_cryptodev
         --timer_tick_nsec
         --max_tmo_nsec
         --expiry_nsec
         --nb_timers
         --nb_timer_adptrs
         --deq_tmo_nsec
+        --crypto_adptr_mode
 
 Example
 ^^^^^^^

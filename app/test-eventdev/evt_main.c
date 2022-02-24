@@ -35,6 +35,9 @@ signal_handler(int signum)
 			if (test->ops.ethdev_destroy)
 				test->ops.ethdev_destroy(test, &opt);
 
+			if (test->ops.cryptodev_destroy)
+				test->ops.cryptodev_destroy(test, &opt);
+
 			rte_eal_mp_wait_lcore();
 
 			if (test->ops.test_result)
@@ -162,11 +165,19 @@ main(int argc, char **argv)
 		}
 	}
 
+	/* Test specific cryptodev setup */
+	if (test->ops.cryptodev_setup) {
+		if (test->ops.cryptodev_setup(test, &opt)) {
+			evt_err("%s: cryptodev setup failed", opt.test_name);
+			goto ethdev_destroy;
+		}
+	}
+
 	/* Test specific eventdev setup */
 	if (test->ops.eventdev_setup) {
 		if (test->ops.eventdev_setup(test, &opt)) {
 			evt_err("%s: eventdev setup failed", opt.test_name);
-			goto ethdev_destroy;
+			goto cryptodev_destroy;
 		}
 	}
 
@@ -196,6 +207,10 @@ nocap:
 eventdev_destroy:
 	if (test->ops.eventdev_destroy)
 		test->ops.eventdev_destroy(test, &opt);
+
+cryptodev_destroy:
+	if (test->ops.cryptodev_destroy)
+		test->ops.cryptodev_destroy(test, &opt);
 
 ethdev_destroy:
 	if (test->ops.ethdev_destroy)

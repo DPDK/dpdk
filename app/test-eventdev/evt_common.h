@@ -7,6 +7,7 @@
 
 #include <rte_common.h>
 #include <rte_debug.h>
+#include <rte_event_crypto_adapter.h>
 #include <rte_eventdev.h>
 #include <rte_service.h>
 
@@ -39,6 +40,7 @@ enum evt_prod_type {
 	EVT_PROD_TYPE_SYNT,          /* Producer type Synthetic i.e. CPU. */
 	EVT_PROD_TYPE_ETH_RX_ADPTR,  /* Producer type Eth Rx Adapter. */
 	EVT_PROD_TYPE_EVENT_TIMER_ADPTR,  /* Producer type Timer Adapter. */
+	EVT_PROD_TYPE_EVENT_CRYPTO_ADPTR,  /* Producer type Crypto Adapter. */
 	EVT_PROD_TYPE_MAX,
 };
 
@@ -77,6 +79,7 @@ struct evt_options {
 	uint64_t timer_tick_nsec;
 	uint64_t optm_timer_tick_nsec;
 	enum evt_prod_type prod_type;
+	enum rte_event_crypto_adapter_mode crypto_adptr_mode;
 };
 
 static inline bool

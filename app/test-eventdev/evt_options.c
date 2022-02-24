@@ -123,6 +123,26 @@ evt_parse_timer_prod_type_burst(struct evt_options *opt,
 }
 
 static int
+evt_parse_crypto_prod_type(struct evt_options *opt,
+			   const char *arg __rte_unused)
+{
+	opt->prod_type = EVT_PROD_TYPE_EVENT_CRYPTO_ADPTR;
+	return 0;
+}
+
+static int
+evt_parse_crypto_adptr_mode(struct evt_options *opt, const char *arg)
+{
+	uint8_t mode;
+	int ret;
+
+	ret = parser_read_uint8(&mode, arg);
+	opt->crypto_adptr_mode = mode ? RTE_EVENT_CRYPTO_ADAPTER_OP_FORWARD :
+					RTE_EVENT_CRYPTO_ADAPTER_OP_NEW;
+	return ret;
+}
+
+static int
 evt_parse_test_name(struct evt_options *opt, const char *arg)
 {
 	strlcpy(opt->test_name, arg, EVT_TEST_NAME_MAX_LEN);
@@ -335,6 +355,7 @@ usage(char *program)
 		"\t--queue_priority   : enable queue priority\n"
 		"\t--deq_tmo_nsec     : global dequeue timeout\n"
 		"\t--prod_type_ethdev : use ethernet device as producer.\n"
+		"\t--prod_type_cryptodev : use crypto device as producer.\n"
 		"\t--prod_type_timerdev : use event timer device as producer.\n"
 		"\t                     expiry_nsec would be the timeout\n"
 		"\t                     in ns.\n"
@@ -345,6 +366,8 @@ usage(char *program)
 		"\t--timer_tick_nsec  : timer tick interval in ns.\n"
 		"\t--max_tmo_nsec     : max timeout interval in ns.\n"
 		"\t--expiry_nsec      : event timer expiry ns.\n"
+		"\t--crypto_adptr_mode : 0 for OP_NEW mode (default) and\n"
+		"\t                      1 for OP_FORWARD mode.\n"
 		"\t--mbuf_sz          : packet mbuf size.\n"
 		"\t--max_pkt_sz       : max packet size.\n"
 		"\t--prod_enq_burst_sz : producer enqueue burst size.\n"
@@ -415,8 +438,10 @@ static struct option lgopts[] = {
 	{ EVT_QUEUE_PRIORITY,      0, 0, 0 },
 	{ EVT_DEQ_TMO_NSEC,        1, 0, 0 },
 	{ EVT_PROD_ETHDEV,         0, 0, 0 },
+	{ EVT_PROD_CRYPTODEV,      0, 0, 0 },
 	{ EVT_PROD_TIMERDEV,       0, 0, 0 },
 	{ EVT_PROD_TIMERDEV_BURST, 0, 0, 0 },
+	{ EVT_CRYPTO_ADPTR_MODE,   1, 0, 0 },
 	{ EVT_NB_TIMERS,           1, 0, 0 },
 	{ EVT_NB_TIMER_ADPTRS,     1, 0, 0 },
 	{ EVT_TIMER_TICK_NSEC,     1, 0, 0 },
@@ -455,8 +480,10 @@ evt_opts_parse_long(int opt_idx, struct evt_options *opt)
 		{ EVT_QUEUE_PRIORITY, evt_parse_queue_priority},
 		{ EVT_DEQ_TMO_NSEC, evt_parse_deq_tmo_nsec},
 		{ EVT_PROD_ETHDEV, evt_parse_eth_prod_type},
+		{ EVT_PROD_CRYPTODEV, evt_parse_crypto_prod_type},
 		{ EVT_PROD_TIMERDEV, evt_parse_timer_prod_type},
 		{ EVT_PROD_TIMERDEV_BURST, evt_parse_timer_prod_type_burst},
+		{ EVT_CRYPTO_ADPTR_MODE, evt_parse_crypto_adptr_mode},
 		{ EVT_NB_TIMERS, evt_parse_nb_timers},
 		{ EVT_NB_TIMER_ADPTRS, evt_parse_nb_timer_adptrs},
 		{ EVT_TIMER_TICK_NSEC, evt_parse_timer_tick_nsec},

@@ -163,6 +163,11 @@ New Features
   * Called ``rte_ipv4/6_udptcp_cksum_mbuf()`` functions in testpmd csum mode
     to support software UDP/TCP checksum over multiple segments.
 
+* **Added crypto producer mode in test-eventdev.**
+
+  * Crypto producer mode helps to measure performance of OP_NEW and OP_FORWARD
+    modes of event crypto adapter.
+
 
 Removed Items
 -------------
