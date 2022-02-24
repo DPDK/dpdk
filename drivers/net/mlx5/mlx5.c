@@ -1199,7 +1199,12 @@ mlx5_dev_args_check_handler(const char *key, const char *val, void *opaque)
 	} else if (strcmp(MLX5_DV_ESW_EN, key) == 0) {
 		config->dv_esw_en = !!tmp;
 	} else if (strcmp(MLX5_DV_FLOW_EN, key) == 0) {
-		config->dv_flow_en = !!tmp;
+		if (tmp > 2) {
+			DRV_LOG(ERR, "Invalid %s parameter.", key);
+			rte_errno = EINVAL;
+			return -rte_errno;
+		}
+		config->dv_flow_en = tmp;
 	} else if (strcmp(MLX5_DV_XMETA_EN, key) == 0) {
 		if (tmp != MLX5_XMETA_MODE_LEGACY &&
 		    tmp != MLX5_XMETA_MODE_META16 &&

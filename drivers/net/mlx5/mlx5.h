@@ -287,7 +287,8 @@ struct mlx5_sh_config {
 	int tx_skew; /* Tx scheduling skew between WQE and data on wire. */
 	uint32_t reclaim_mode:2; /* Memory reclaim mode. */
 	uint32_t dv_esw_en:1; /* Enable E-Switch DV flow. */
-	uint32_t dv_flow_en:1; /* Enable DV flow. */
+	/* Enable DV flow. 1 means SW steering, 2 means HW steering. */
+	unsigned int dv_flow_en:2;
 	uint32_t dv_xmeta_en:2; /* Enable extensive flow metadata. */
 	uint32_t dv_miss_info:1; /* Restore packet after partial hw miss. */
 	uint32_t l3_vxlan_en:1; /* Enable L3 VXLAN flow creation. */

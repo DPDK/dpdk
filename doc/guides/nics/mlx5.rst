@@ -942,10 +942,16 @@ for an additional list of options shared with other mlx5 drivers.
 
 - ``dv_flow_en`` parameter [int]
 
-  A nonzero value enables the DV flow steering assuming it is supported
-  by the driver (RDMA Core library version is rdma-core-24.0 or higher).
+  Value 0 means legacy Verbs flow offloading.
 
-  Enabled by default if supported.
+  Value 1 enables the DV flow steering assuming it is supported by the
+  driver (requires rdma-core 24 or higher).
+
+  Value 2 enables the WQE based hardware steering.
+  In this mode, only queue-based flow management is supported.
+
+  It is configured by default to 1 (DV flow steering) if supported.
+  Otherwise, the value is 0 which indicates legacy Verbs flow offloading.
 
 - ``dv_esw_en`` parameter [int]
 

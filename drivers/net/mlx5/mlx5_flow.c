@@ -6840,6 +6840,15 @@ mlx5_flow_create(struct rte_eth_dev *dev,
 		 const struct rte_flow_action actions[],
 		 struct rte_flow_error *error)
 {
+	struct mlx5_priv *priv = dev->data->dev_private;
+
+	if (priv->sh->config.dv_flow_en == 2) {
+		rte_flow_error_set(error, ENOTSUP,
+			  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+			  NULL,
+			  "Flow non-Q creation not supported");
+		return NULL;
+	}
 	/*
 	 * If the device is not started yet, it is not allowed to created a
 	 * flow from application. PMD default flows and traffic control flows
@@ -7336,6 +7345,13 @@ mlx5_flow_destroy(struct rte_eth_dev *dev,
 		  struct rte_flow *flow,
 		  struct rte_flow_error *error __rte_unused)
 {
+	struct mlx5_priv *priv = dev->data->dev_private;
+
+	if (priv->sh->config.dv_flow_en == 2)
+		return rte_flow_error_set(error, ENOTSUP,
+			  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+			  NULL,
+			  "Flow non-Q destruction not supported");
 	flow_list_destroy(dev, MLX5_FLOW_TYPE_GEN,
 				(uintptr_t)(void *)flow);
 	return 0;
@@ -7433,7 +7449,13 @@ mlx5_flow_query(struct rte_eth_dev *dev,
 		struct rte_flow_error *error)
 {
 	int ret;
+	struct mlx5_priv *priv = dev->data->dev_private;
 
+	if (priv->sh->config.dv_flow_en == 2)
+		return rte_flow_error_set(error, ENOTSUP,
+			  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+			  NULL,
+			  "Flow non-Q query not supported");
 	ret = flow_drv_query(dev, (uintptr_t)(void *)flow, actions, data,
 			     error);
 	if (ret < 0)

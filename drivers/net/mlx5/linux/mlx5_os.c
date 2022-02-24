@@ -482,6 +482,8 @@ mlx5_alloc_shared_dr(struct mlx5_priv *priv)
 	err = mlx5_alloc_table_hash_list(priv);
 	if (err)
 		goto error;
+	if (priv->sh->config.dv_flow_en == 2)
+		return 0;
 	/* The resources below are only valid with DV support. */
 #ifdef HAVE_IBV_FLOW_DV_SUPPORT
 	/* Init port id action list. */
@@ -1519,6 +1521,8 @@ err_secondary:
 	priv->drop_queue.hrxq = mlx5_drop_action_create(eth_dev);
 	if (!priv->drop_queue.hrxq)
 		goto error;
+	if (priv->sh->config.dv_flow_en == 2)
+		return eth_dev;
 	/* Port representor shares the same max priority with pf port. */
 	if (!priv->sh->flow_priority_check_flag) {
 		/* Supported Verbs flow priority number detection. */
