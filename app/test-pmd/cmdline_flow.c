@@ -9155,7 +9155,8 @@ cmd_set_raw_parsed(const struct buffer *in)
 		case RTE_FLOW_ITEM_TYPE_GENEVE_OPT:
 			opt = (const struct rte_flow_item_geneve_opt *)
 								item->spec;
-			size = offsetof(struct rte_flow_item_geneve_opt, data);
+			size = offsetof(struct rte_flow_item_geneve_opt,
+					option_len) + sizeof(uint8_t);
 			if (opt->option_len && opt->data) {
 				*total_size += opt->option_len *
 					       sizeof(uint32_t);
