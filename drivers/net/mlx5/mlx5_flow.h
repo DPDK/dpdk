@@ -1036,6 +1036,55 @@ struct rte_flow_actions_template {
 	uint32_t refcnt; /* Reference counter. */
 };
 
+/* Jump action struct. */
+struct mlx5_hw_jump_action {
+	/* Action jump from root. */
+	struct mlx5dr_action *root_action;
+	/* HW steering jump action. */
+	struct mlx5dr_action *hws_action;
+};
+
+/* DR action set struct. */
+struct mlx5_hw_actions {
+	struct mlx5dr_action *drop; /* Drop action. */
+};
+
+/* mlx5 action template struct. */
+struct mlx5_hw_action_template {
+	/* Action template pointer. */
+	struct rte_flow_actions_template *action_template;
+	struct mlx5_hw_actions acts; /* Template actions. */
+};
+
+/* mlx5 flow group struct. */
+struct mlx5_flow_group {
+	struct mlx5_list_entry entry;
+	struct mlx5dr_table *tbl; /* HWS table object. */
+	struct mlx5_hw_jump_action jump; /* Jump action. */
+	enum mlx5dr_table_type type; /* Table type. */
+	uint32_t group_id; /* Group id. */
+	uint32_t idx; /* Group memory index. */
+};
+
+
+#define MLX5_HW_TBL_MAX_ITEM_TEMPLATE 2
+#define MLX5_HW_TBL_MAX_ACTION_TEMPLATE 32
+
+struct rte_flow_template_table {
+	LIST_ENTRY(rte_flow_template_table) next;
+	struct mlx5_flow_group *grp; /* The group rte_flow_template_table uses. */
+	struct mlx5dr_matcher *matcher; /* Template matcher. */
+	/* Item templates bind to the table. */
+	struct rte_flow_pattern_template *its[MLX5_HW_TBL_MAX_ITEM_TEMPLATE];
+	/* Action templates bind to the table. */
+	struct mlx5_hw_action_template ats[MLX5_HW_TBL_MAX_ACTION_TEMPLATE];
+	struct mlx5_indexed_pool *flow; /* The table's flow ipool. */
+	uint32_t type; /* Flow table type RX/TX/FDB. */
+	uint8_t nb_item_templates; /* Item template number. */
+	uint8_t nb_action_templates; /* Action template number. */
+	uint32_t refcnt; /* Table reference counter. */
+};
+
 #endif
 
 /*
@@ -1310,6 +1359,18 @@ typedef int (*mlx5_flow_actions_template_destroy_t)
 			(struct rte_eth_dev *dev,
 			 struct rte_flow_actions_template *template,
 			 struct rte_flow_error *error);
+typedef struct rte_flow_template_table *(*mlx5_flow_table_create_t)
+		(struct rte_eth_dev *dev,
+		 const struct rte_flow_template_table_attr *attr,
+		 struct rte_flow_pattern_template *item_templates[],
+		 uint8_t nb_item_templates,
+		 struct rte_flow_actions_template *action_templates[],
+		 uint8_t nb_action_templates,
+		 struct rte_flow_error *error);
+typedef int (*mlx5_flow_table_destroy_t)
+			(struct rte_eth_dev *dev,
+			 struct rte_flow_template_table *table,
+			 struct rte_flow_error *error);
 
 struct mlx5_flow_driver_ops {
 	mlx5_flow_validate_t validate;
@@ -1354,6 +1415,8 @@ struct mlx5_flow_driver_ops {
 	mlx5_flow_pattern_template_destroy_t pattern_template_destroy;
 	mlx5_flow_actions_template_create_t actions_template_create;
 	mlx5_flow_actions_template_destroy_t actions_template_destroy;
+	mlx5_flow_table_create_t template_table_create;
+	mlx5_flow_table_destroy_t template_table_destroy;
 };
 
 /* mlx5_flow.c */
@@ -1783,6 +1846,16 @@ struct mlx5_list_entry *flow_dv_dest_array_clone_cb(void *tool_ctx,
 				   struct mlx5_list_entry *entry, void *cb_ctx);
 void flow_dv_dest_array_clone_free_cb(void *tool_ctx,
 				      struct mlx5_list_entry *entry);
+
+struct mlx5_list_entry *flow_hw_grp_create_cb(void *tool_ctx, void *cb_ctx);
+void flow_hw_grp_remove_cb(void *tool_ctx, struct mlx5_list_entry *entry);
+int flow_hw_grp_match_cb(void *tool_ctx,
+			 struct mlx5_list_entry *entry,
+			 void *cb_ctx);
+struct mlx5_list_entry *flow_hw_grp_clone_cb(void *tool_ctx,
+					     struct mlx5_list_entry *oentry,
+					     void *cb_ctx);
+void flow_hw_grp_clone_free_cb(void *tool_ctx, struct mlx5_list_entry *entry);
 
 struct mlx5_aso_age_action *flow_aso_age_get_by_idx(struct rte_eth_dev *dev,
 						    uint32_t age_idx);

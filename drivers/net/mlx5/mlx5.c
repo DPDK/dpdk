@@ -1607,12 +1607,46 @@ void
 mlx5_free_table_hash_list(struct mlx5_priv *priv)
 {
 	struct mlx5_dev_ctx_shared *sh = priv->sh;
-
-	if (!sh->flow_tbls)
+	struct mlx5_hlist **tbls = (priv->sh->config.dv_flow_en == 2) ?
+				   &sh->groups : &sh->flow_tbls;
+	if (*tbls == NULL)
 		return;
-	mlx5_hlist_destroy(sh->flow_tbls);
-	sh->flow_tbls = NULL;
+	mlx5_hlist_destroy(*tbls);
+	*tbls = NULL;
 }
+
+#if defined(HAVE_IBV_FLOW_DV_SUPPORT) || !defined(HAVE_INFINIBAND_VERBS_H)
+/**
+ * Allocate HW steering group hash list.
+ *
+ * @param[in] priv
+ *   Pointer to the private device data structure.
+ */
+static int
+mlx5_alloc_hw_group_hash_list(struct mlx5_priv *priv)
+{
+	int err = 0;
+	struct mlx5_dev_ctx_shared *sh = priv->sh;
+	char s[MLX5_NAME_SIZE];
+
+	MLX5_ASSERT(sh);
+	snprintf(s, sizeof(s), "%s_flow_groups", priv->sh->ibdev_name);
+	sh->groups = mlx5_hlist_create
+			(s, MLX5_FLOW_TABLE_HLIST_ARRAY_SIZE,
+			 false, true, sh,
+			 flow_hw_grp_create_cb,
+			 flow_hw_grp_match_cb,
+			 flow_hw_grp_remove_cb,
+			 flow_hw_grp_clone_cb,
+			 flow_hw_grp_clone_free_cb);
+	if (!sh->groups) {
+		DRV_LOG(ERR, "flow groups with hash creation failed.");
+		err = ENOMEM;
+	}
+	return err;
+}
+#endif
+
 
 /**
  * Initialize flow table hash list and create the root tables entry
@@ -1628,11 +1662,14 @@ int
 mlx5_alloc_table_hash_list(struct mlx5_priv *priv __rte_unused)
 {
 	int err = 0;
+
 	/* Tables are only used in DV and DR modes. */
 #if defined(HAVE_IBV_FLOW_DV_SUPPORT) || !defined(HAVE_INFINIBAND_VERBS_H)
 	struct mlx5_dev_ctx_shared *sh = priv->sh;
 	char s[MLX5_NAME_SIZE];
 
+	if (priv->sh->config.dv_flow_en == 2)
+		return mlx5_alloc_hw_group_hash_list(priv);
 	MLX5_ASSERT(sh);
 	snprintf(s, sizeof(s), "%s_flow_table", priv->sh->ibdev_name);
 	sh->flow_tbls = mlx5_hlist_create(s, MLX5_FLOW_TABLE_HLIST_ARRAY_SIZE,

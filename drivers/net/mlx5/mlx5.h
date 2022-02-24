@@ -64,7 +64,9 @@ enum mlx5_ipool_index {
 	MLX5_IPOOL_PUSH_VLAN, /* Pool for push vlan resource. */
 	MLX5_IPOOL_TAG, /* Pool for tag resource. */
 	MLX5_IPOOL_PORT_ID, /* Pool for port id resource. */
-	MLX5_IPOOL_JUMP, /* Pool for jump resource. */
+	MLX5_IPOOL_JUMP, /* Pool for SWS jump resource. */
+	/* Pool for HWS group. Jump action will be created internally. */
+	MLX5_IPOOL_HW_GRP = MLX5_IPOOL_JUMP,
 	MLX5_IPOOL_SAMPLE, /* Pool for sample resource. */
 	MLX5_IPOOL_DEST_ARRAY, /* Pool for destination array resource. */
 	MLX5_IPOOL_TUNNEL_ID, /* Pool for tunnel offload context */
@@ -106,6 +108,13 @@ enum mlx5_delay_drop_mode {
 	MLX5_DELAY_DROP_NONE = 0, /* All disabled. */
 	MLX5_DELAY_DROP_STANDARD = RTE_BIT32(0), /* Standard queues enable. */
 	MLX5_DELAY_DROP_HAIRPIN = RTE_BIT32(1), /* Hairpin queues enable. */
+};
+
+/* The HWS action type root/non-root. */
+enum mlx5_hw_action_flag_type {
+	MLX5_HW_ACTION_FLAG_ROOT, /* Root action. */
+	MLX5_HW_ACTION_FLAG_NONE_ROOT, /* Non-root ation. */
+	MLX5_HW_ACTION_FLAG_MAX, /* Maximum action flag. */
 };
 
 /* Hlist and list callback context. */
@@ -1204,7 +1213,10 @@ struct mlx5_dev_ctx_shared {
 	rte_spinlock_t uar_lock[MLX5_UAR_PAGE_NUM_MAX];
 	/* UAR same-page access control required in 32bit implementations. */
 #endif
-	struct mlx5_hlist *flow_tbls;
+	union {
+		struct mlx5_hlist *flow_tbls; /* SWS flow table. */
+		struct mlx5_hlist *groups; /* HWS flow group. */
+	};
 	struct mlx5_flow_tunnel_hub *tunnel_hub;
 	/* Direct Rules tables for FDB, NIC TX+RX */
 	void *dr_drop_action; /* Pointer to DR drop action, any domain. */
@@ -1510,6 +1522,11 @@ struct mlx5_priv {
 	uint32_t nb_queue; /* HW steering queue number. */
 	/* HW steering queue polling mechanism job descriptor LIFO. */
 	struct mlx5_hw_q *hw_q;
+	/* HW steering rte flow table list header. */
+	LIST_HEAD(flow_hw_tbl, rte_flow_template_table) flow_hw_tbl;
+	/* HW steering global drop action. */
+	struct mlx5dr_action *hw_drop[MLX5_HW_ACTION_FLAG_MAX]
+				     [MLX5DR_TABLE_TYPE_MAX];
 #endif
 };
 

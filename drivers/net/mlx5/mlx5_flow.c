@@ -838,6 +838,19 @@ mlx5_flow_actions_template_destroy(struct rte_eth_dev *dev,
 				   struct rte_flow_actions_template *template,
 				   struct rte_flow_error *error);
 
+static struct rte_flow_template_table *
+mlx5_flow_table_create(struct rte_eth_dev *dev,
+		       const struct rte_flow_template_table_attr *attr,
+		       struct rte_flow_pattern_template *item_templates[],
+		       uint8_t nb_item_templates,
+		       struct rte_flow_actions_template *action_templates[],
+		       uint8_t nb_action_templates,
+		       struct rte_flow_error *error);
+static int
+mlx5_flow_table_destroy(struct rte_eth_dev *dev,
+			struct rte_flow_template_table *table,
+			struct rte_flow_error *error);
+
 static const struct rte_flow_ops mlx5_flow_ops = {
 	.validate = mlx5_flow_validate,
 	.create = mlx5_flow_create,
@@ -864,6 +877,8 @@ static const struct rte_flow_ops mlx5_flow_ops = {
 	.pattern_template_destroy = mlx5_flow_pattern_template_destroy,
 	.actions_template_create = mlx5_flow_actions_template_create,
 	.actions_template_destroy = mlx5_flow_actions_template_destroy,
+	.template_table_create = mlx5_flow_table_create,
+	.template_table_destroy = mlx5_flow_table_destroy,
 };
 
 /* Tunnel information. */
@@ -8076,6 +8091,84 @@ mlx5_flow_actions_template_destroy(struct rte_eth_dev *dev,
 				"action destroy with incorrect steering mode");
 	fops = flow_get_drv_ops(MLX5_FLOW_TYPE_HW);
 	return fops->actions_template_destroy(dev, template, error);
+}
+
+/**
+ * Create flow table.
+ *
+ * @param[in] dev
+ *   Pointer to the rte_eth_dev structure.
+ * @param[in] attr
+ *   Pointer to the table attributes.
+ * @param[in] item_templates
+ *   Item template array to be binded to the table.
+ * @param[in] nb_item_templates
+ *   Number of item template.
+ * @param[in] action_templates
+ *   Action template array to be binded to the table.
+ * @param[in] nb_action_templates
+ *   Number of action template.
+ * @param[out] error
+ *   Pointer to error structure.
+ *
+ * @return
+ *    Table on success, NULL otherwise and rte_errno is set.
+ */
+static struct rte_flow_template_table *
+mlx5_flow_table_create(struct rte_eth_dev *dev,
+		       const struct rte_flow_template_table_attr *attr,
+		       struct rte_flow_pattern_template *item_templates[],
+		       uint8_t nb_item_templates,
+		       struct rte_flow_actions_template *action_templates[],
+		       uint8_t nb_action_templates,
+		       struct rte_flow_error *error)
+{
+	const struct mlx5_flow_driver_ops *fops;
+
+	if (flow_get_drv_type(dev, NULL) != MLX5_FLOW_TYPE_HW) {
+		rte_flow_error_set(error, ENOTSUP,
+				RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				NULL,
+				"table create with incorrect steering mode");
+		return NULL;
+	}
+	fops = flow_get_drv_ops(MLX5_FLOW_TYPE_HW);
+	return fops->template_table_create(dev,
+					   attr,
+					   item_templates,
+					   nb_item_templates,
+					   action_templates,
+					   nb_action_templates,
+					   error);
+}
+
+/**
+ * PMD destroy flow table.
+ *
+ * @param[in] dev
+ *   Pointer to the rte_eth_dev structure.
+ * @param[in] table
+ *   Pointer to the table to be destroyed.
+ * @param[out] error
+ *   Pointer to error structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+static int
+mlx5_flow_table_destroy(struct rte_eth_dev *dev,
+			struct rte_flow_template_table *table,
+			struct rte_flow_error *error)
+{
+	const struct mlx5_flow_driver_ops *fops;
+
+	if (flow_get_drv_type(dev, NULL) != MLX5_FLOW_TYPE_HW)
+		return rte_flow_error_set(error, ENOTSUP,
+				RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				NULL,
+				"table destroy with incorrect steering mode");
+	fops = flow_get_drv_ops(MLX5_FLOW_TYPE_HW);
+	return fops->template_table_destroy(dev, table, error);
 }
 
 /**
