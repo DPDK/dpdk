@@ -201,6 +201,7 @@ struct mlx5_hca_attr {
 	uint32_t scatter_fcs_w_decap_disable:1;
 	uint32_t flow_hit_aso:1; /* General obj type FLOW_HIT_ASO supported. */
 	uint32_t roce:1;
+	uint32_t wait_on_time:1;
 	uint32_t rq_ts_format:2;
 	uint32_t sq_ts_format:2;
 	uint32_t steering_format_version:4;

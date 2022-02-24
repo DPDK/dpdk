@@ -962,6 +962,7 @@ mlx5_devx_cmd_query_hca_attr(void *ctx,
 		MLX5_GET(cmd_hca_cap, hcattr, umr_indirect_mkey_disabled);
 	attr->umr_modify_entity_size_disabled =
 		MLX5_GET(cmd_hca_cap, hcattr, umr_modify_entity_size_disabled);
+	attr->wait_on_time = MLX5_GET(cmd_hca_cap, hcattr, wait_on_time);
 	attr->crypto = MLX5_GET(cmd_hca_cap, hcattr, crypto);
 	if (attr->crypto)
 		attr->aes_xts = MLX5_GET(cmd_hca_cap, hcattr, aes_xts);
