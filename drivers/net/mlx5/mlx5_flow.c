@@ -7015,6 +7015,14 @@ mlx5_flow_list_flush(struct rte_eth_dev *dev, enum mlx5_flow_type type,
 	uint32_t num_flushed = 0, fidx = 1;
 	struct rte_flow *flow;
 
+#ifdef HAVE_IBV_FLOW_DV_SUPPORT
+	if (priv->sh->config.dv_flow_en == 2 &&
+	    type == MLX5_FLOW_TYPE_GEN) {
+		flow_hw_q_flow_flush(dev, NULL);
+		return;
+	}
+#endif
+
 	MLX5_IPOOL_FOREACH(priv->flows[type], fidx, flow) {
 		flow_list_destroy(dev, type, fidx);
 		num_flushed++;

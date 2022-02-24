@@ -13,6 +13,12 @@
 /* The maximum actions support in the flow. */
 #define MLX5_HW_MAX_ACTS 16
 
+/* Default push burst threshold. */
+#define BURST_THR 32u
+
+/* Default queue to flush the flows. */
+#define MLX5_DEFAULT_FLUSH_QUEUE 0
+
 const struct mlx5_flow_driver_ops mlx5_flow_hw_drv_ops;
 
 /* DR action flags with different table. */
@@ -388,6 +394,129 @@ flow_hw_push(struct rte_eth_dev *dev,
 				   "fail to push flows");
 		return ret;
 	}
+	return 0;
+}
+
+/**
+ * Drain the enqueued flows' completion.
+ *
+ * @param[in] dev
+ *   Pointer to the rte_eth_dev structure.
+ * @param[in] queue
+ *   The queue to pull the flow.
+ * @param[in] pending_rules
+ *   The pending flow number.
+ * @param[out] error
+ *   Pointer to error structure.
+ *
+ * @return
+ *    0 on success, negative value otherwise and rte_errno is set.
+ */
+static int
+__flow_hw_pull_comp(struct rte_eth_dev *dev,
+		    uint32_t queue,
+		    uint32_t pending_rules,
+		    struct rte_flow_error *error)
+{
+	struct rte_flow_op_result comp[BURST_THR];
+	int ret, i, empty_loop = 0;
+
+	flow_hw_push(dev, queue, error);
+	while (pending_rules) {
+		ret = flow_hw_pull(dev, queue, comp, BURST_THR, error);
+		if (ret < 0)
+			return -1;
+		if (!ret) {
+			rte_delay_us_sleep(20000);
+			if (++empty_loop > 5) {
+				DRV_LOG(WARNING, "No available dequeue, quit.");
+				break;
+			}
+			continue;
+		}
+		for (i = 0; i < ret; i++) {
+			if (comp[i].status == RTE_FLOW_OP_ERROR)
+				DRV_LOG(WARNING, "Flow flush get error CQE.");
+		}
+		if ((uint32_t)ret > pending_rules) {
+			DRV_LOG(WARNING, "Flow flush get extra CQE.");
+			return rte_flow_error_set(error, ERANGE,
+					RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+					"get extra CQE");
+		}
+		pending_rules -= ret;
+		empty_loop = 0;
+	}
+	return 0;
+}
+
+/**
+ * Flush created flows.
+ *
+ * @param[in] dev
+ *   Pointer to the rte_eth_dev structure.
+ * @param[out] error
+ *   Pointer to error structure.
+ *
+ * @return
+ *    0 on success, negative value otherwise and rte_errno is set.
+ */
+int
+flow_hw_q_flow_flush(struct rte_eth_dev *dev,
+		     struct rte_flow_error *error)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_hw_q *hw_q;
+	struct rte_flow_template_table *tbl;
+	struct rte_flow_hw *flow;
+	struct rte_flow_op_attr attr = {
+		.postpone = 0,
+	};
+	uint32_t pending_rules = 0;
+	uint32_t queue;
+	uint32_t fidx;
+
+	/*
+	 * Ensure to push and dequeue all the enqueued flow
+	 * creation/destruction jobs in case user forgot to
+	 * dequeue. Or the enqueued created flows will be
+	 * leaked. The forgotten dequeues would also cause
+	 * flow flush get extra CQEs as expected and pending_rules
+	 * be minus value.
+	 */
+	for (queue = 0; queue < priv->nb_queue; queue++) {
+		hw_q = &priv->hw_q[queue];
+		if (__flow_hw_pull_comp(dev, queue, hw_q->size - hw_q->job_idx,
+					error))
+			return -1;
+	}
+	/* Flush flow per-table from MLX5_DEFAULT_FLUSH_QUEUE. */
+	hw_q = &priv->hw_q[MLX5_DEFAULT_FLUSH_QUEUE];
+	LIST_FOREACH(tbl, &priv->flow_hw_tbl, next) {
+		MLX5_IPOOL_FOREACH(tbl->flow, fidx, flow) {
+			if (flow_hw_async_flow_destroy(dev,
+						MLX5_DEFAULT_FLUSH_QUEUE,
+						&attr,
+						(struct rte_flow *)flow,
+						NULL,
+						error))
+				return -1;
+			pending_rules++;
+			/* Drain completion with queue size. */
+			if (pending_rules >= hw_q->size) {
+				if (__flow_hw_pull_comp(dev,
+						MLX5_DEFAULT_FLUSH_QUEUE,
+						pending_rules, error))
+					return -1;
+				pending_rules = 0;
+			}
+		}
+	}
+	/* Drain left completion. */
+	if (pending_rules &&
+	    __flow_hw_pull_comp(dev, MLX5_DEFAULT_FLUSH_QUEUE, pending_rules,
+				error))
+		return -1;
 	return 0;
 }
 
