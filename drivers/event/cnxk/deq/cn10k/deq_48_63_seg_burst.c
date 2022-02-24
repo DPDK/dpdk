@@ -8,7 +8,9 @@
 
 #define R(name, flags)                                                         \
 	SSO_CMN_DEQ_SEG_BURST(cn10k_sso_hws_deq_seg_burst_##name,              \
-			      cn10k_sso_hws_deq_seg_##name, flags)
+			      cn10k_sso_hws_deq_seg_##name, flags)             \
+	SSO_CMN_DEQ_SEG_BURST(cn10k_sso_hws_reas_deq_seg_burst_##name,         \
+		cn10k_sso_hws_reas_deq_seg_##name, flags | NIX_RX_REAS_F)
 
 NIX_RX_FASTPATH_MODES_48_63
 #undef R

@@ -371,6 +371,13 @@ cn10k_eth_sec_session_create(void *device,
 	if (rte_security_dynfield_register() < 0)
 		return -ENOTSUP;
 
+	if (conf->ipsec.options.ip_reassembly_en &&
+			dev->reass_dynfield_off < 0) {
+		if (rte_eth_ip_reassembly_dynfield_register(&dev->reass_dynfield_off,
+					&dev->reass_dynflag_bit) < 0)
+			return -rte_errno;
+	}
+
 	ipsec = &conf->ipsec;
 	crypto = conf->crypto_xform;
 	inbound = !!(ipsec->direction == RTE_SECURITY_IPSEC_SA_DIR_INGRESS);
@@ -477,6 +484,12 @@ cn10k_eth_sec_session_create(void *device,
 					   sizeof(struct roc_ot_ipsec_inb_sa));
 		if (rc)
 			goto mempool_put;
+
+		if (conf->ipsec.options.ip_reassembly_en) {
+			inb_priv->reass_dynfield_off = dev->reass_dynfield_off;
+			inb_priv->reass_dynflag_bit = dev->reass_dynflag_bit;
+		}
+
 	} else {
 		struct roc_ot_ipsec_outb_sa *outb_sa, *outb_sa_dptr;
 		struct cn10k_outb_priv_data *outb_priv;

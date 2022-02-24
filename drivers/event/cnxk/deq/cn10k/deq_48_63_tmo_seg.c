@@ -6,7 +6,10 @@
 #include "cnxk_eventdev.h"
 #include "cnxk_worker.h"
 
-#define R(name, flags) SSO_DEQ_TMO_SEG(cn10k_sso_hws_deq_tmo_seg_##name, flags)
+#define R(name, flags)                                                         \
+	SSO_DEQ_TMO_SEG(cn10k_sso_hws_deq_tmo_seg_##name, flags)               \
+	SSO_DEQ_TMO_SEG(cn10k_sso_hws_reas_deq_tmo_seg_##name,                 \
+			flags | NIX_RX_REAS_F)
 
 NIX_RX_FASTPATH_MODES_48_63
 #undef R

@@ -41,6 +41,18 @@ cn10k_eth_set_rx_function(struct rte_eth_dev *eth_dev)
 #undef R
 	};
 
+	const eth_rx_burst_t nix_eth_rx_burst_reas[NIX_RX_OFFLOAD_MAX] = {
+#define R(name, flags)[flags] = cn10k_nix_recv_pkts_reas_##name,
+		NIX_RX_FASTPATH_MODES
+#undef R
+	};
+
+	const eth_rx_burst_t nix_eth_rx_burst_mseg_reas[NIX_RX_OFFLOAD_MAX] = {
+#define R(name, flags)[flags] = cn10k_nix_recv_pkts_reas_mseg_##name,
+		NIX_RX_FASTPATH_MODES
+#undef R
+	};
+
 	const eth_rx_burst_t nix_eth_rx_vec_burst[NIX_RX_OFFLOAD_MAX] = {
 #define R(name, flags)[flags] = cn10k_nix_recv_pkts_vec_##name,
 
@@ -55,17 +67,47 @@ cn10k_eth_set_rx_function(struct rte_eth_dev *eth_dev)
 #undef R
 	};
 
+	const eth_rx_burst_t nix_eth_rx_vec_burst_reas[NIX_RX_OFFLOAD_MAX] = {
+#define R(name, flags)[flags] = cn10k_nix_recv_pkts_reas_vec_##name,
+		NIX_RX_FASTPATH_MODES
+#undef R
+	};
+
+	const eth_rx_burst_t nix_eth_rx_vec_burst_mseg_reas[NIX_RX_OFFLOAD_MAX] = {
+#define R(name, flags)[flags] = cn10k_nix_recv_pkts_reas_vec_mseg_##name,
+		NIX_RX_FASTPATH_MODES
+#undef R
+	};
+
 	/* Copy multi seg version with no offload for tear down sequence */
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY)
 		dev->rx_pkt_burst_no_offload = nix_eth_rx_burst_mseg[0];
 
 	if (dev->scalar_ena) {
-		if (dev->rx_offloads & RTE_ETH_RX_OFFLOAD_SCATTER)
-			return pick_rx_func(eth_dev, nix_eth_rx_burst_mseg);
-		return pick_rx_func(eth_dev, nix_eth_rx_burst);
+		if (dev->rx_offloads & RTE_ETH_RX_OFFLOAD_SCATTER) {
+			if (dev->rx_offload_flags & NIX_RX_REAS_F)
+				return pick_rx_func(eth_dev,
+						nix_eth_rx_burst_mseg_reas);
+			else
+				return pick_rx_func(eth_dev,
+						nix_eth_rx_burst_mseg);
+		}
+		if (dev->rx_offload_flags & NIX_RX_REAS_F)
+			return pick_rx_func(eth_dev, nix_eth_rx_burst_reas);
+		else
+			return pick_rx_func(eth_dev, nix_eth_rx_burst);
 	}
 
-	if (dev->rx_offloads & RTE_ETH_RX_OFFLOAD_SCATTER)
-		return pick_rx_func(eth_dev, nix_eth_rx_vec_burst_mseg);
-	return pick_rx_func(eth_dev, nix_eth_rx_vec_burst);
+	if (dev->rx_offloads & RTE_ETH_RX_OFFLOAD_SCATTER) {
+		if (dev->rx_offload_flags & NIX_RX_REAS_F)
+			return pick_rx_func(eth_dev,
+					nix_eth_rx_vec_burst_mseg_reas);
+		else
+			return pick_rx_func(eth_dev, nix_eth_rx_vec_burst_mseg);
+	}
+
+	if (dev->rx_offload_flags & NIX_RX_REAS_F)
+		return pick_rx_func(eth_dev, nix_eth_rx_vec_burst_reas);
+	else
+		return pick_rx_func(eth_dev, nix_eth_rx_vec_burst);
 }

@@ -44,6 +44,8 @@ struct cn10k_eth_rxq {
 /* Private data in sw rsvd area of struct roc_ot_ipsec_inb_sa */
 struct cn10k_inb_priv_data {
 	void *userdata;
+	int reass_dynfield_off;
+	int reass_dynflag_bit;
 	struct cnxk_eth_sec_sess *eth_sec;
 };
 

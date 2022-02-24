@@ -304,6 +304,10 @@ cn10k_nix_configure(struct rte_eth_dev *eth_dev)
 	dev->rx_offload_flags = nix_rx_offload_flags(eth_dev);
 	dev->tx_offload_flags = nix_tx_offload_flags(eth_dev);
 
+	/* reset reassembly dynfield/flag offset */
+	dev->reass_dynfield_off = -1;
+	dev->reass_dynflag_bit = -1;
+
 	plt_nix_dbg("Configured port%d platform specific rx_offload_flags=%x"
 		    " tx_offload_flags=0x%x",
 		    eth_dev->data->port_id, dev->rx_offload_flags,
@@ -499,6 +503,49 @@ cn10k_nix_rx_metadata_negotiate(struct rte_eth_dev *eth_dev, uint64_t *features)
 	return 0;
 }
 
+static int
+cn10k_nix_reassembly_capability_get(struct rte_eth_dev *eth_dev,
+		struct rte_eth_ip_reassembly_params *reassembly_capa)
+{
+	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+	int rc = -ENOTSUP;
+	RTE_SET_USED(eth_dev);
+
+	if (dev->rx_offloads & RTE_ETH_RX_OFFLOAD_SECURITY) {
+		reassembly_capa->timeout_ms = 60 * 1000;
+		reassembly_capa->max_frags = 4;
+		reassembly_capa->flags = RTE_ETH_DEV_REASSEMBLY_F_IPV4 |
+					 RTE_ETH_DEV_REASSEMBLY_F_IPV6;
+		rc = 0;
+	}
+
+	return rc;
+}
+
+static int
+cn10k_nix_reassembly_conf_get(struct rte_eth_dev *eth_dev,
+		struct rte_eth_ip_reassembly_params *conf)
+{
+	RTE_SET_USED(eth_dev);
+	RTE_SET_USED(conf);
+	return -ENOTSUP;
+}
+
+static int
+cn10k_nix_reassembly_conf_set(struct rte_eth_dev *eth_dev,
+		const struct rte_eth_ip_reassembly_params *conf)
+{
+	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+	int rc = 0;
+
+	rc = roc_nix_reassembly_configure(conf->timeout_ms,
+				conf->max_frags);
+	if (!rc && dev->rx_offloads & RTE_ETH_RX_OFFLOAD_SECURITY)
+		dev->rx_offload_flags |= NIX_RX_REAS_F;
+
+	return rc;
+}
+
 /* Update platform specific eth dev ops */
 static void
 nix_eth_dev_ops_override(void)
@@ -522,6 +569,10 @@ nix_eth_dev_ops_override(void)
 		cn10k_nix_rx_metadata_negotiate;
 	cnxk_eth_dev_ops.timesync_read_tx_timestamp =
 		cn10k_nix_timesync_read_tx_timestamp;
+	cnxk_eth_dev_ops.ip_reassembly_capability_get =
+			cn10k_nix_reassembly_capability_get;
+	cnxk_eth_dev_ops.ip_reassembly_conf_get = cn10k_nix_reassembly_conf_get;
+	cnxk_eth_dev_ops.ip_reassembly_conf_set = cn10k_nix_reassembly_conf_set;
 }
 
 static void

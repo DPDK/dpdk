@@ -419,6 +419,10 @@ struct cnxk_eth_dev {
 	/* Security data */
 	struct cnxk_eth_dev_sec_inb inb;
 	struct cnxk_eth_dev_sec_outb outb;
+
+	/* Reassembly dynfield/flag offsets */
+	int reass_dynfield_off;
+	int reass_dynflag_bit;
 };
 
 struct cnxk_eth_rxq_sp {

@@ -160,6 +160,7 @@ New Features
 * **Updated Marvell cnxk ethdev PMD.**
 
   * Added queue based priority flow control support for CN9K & CN10K.
+  * Added support for IP reassembly for inline inbound IPsec packets.
 
 * **Updated Mellanox mlx5 driver.**
 

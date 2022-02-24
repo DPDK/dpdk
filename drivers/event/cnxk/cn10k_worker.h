@@ -169,9 +169,11 @@ cn10k_process_vwqe(uintptr_t vwqe, uint16_t port_id, const uint32_t flags,
 		/* Translate meta to mbuf */
 		if (flags & NIX_RX_OFFLOAD_SECURITY_F) {
 			const uint64_t cq_w1 = *((const uint64_t *)cqe + 1);
+			const uint64_t cq_w5 = *((const uint64_t *)cqe + 5);
 
-			mbuf = nix_sec_meta_to_mbuf_sc(cq_w1, sa_base, laddr,
-						       &loff, mbuf, d_off);
+			mbuf = nix_sec_meta_to_mbuf_sc(cq_w1, cq_w5, sa_base, laddr,
+						       &loff, mbuf, d_off,
+						       flags, mbuf_init);
 		}
 
 		cn10k_nix_cqe_to_mbuf(cqe, cqe->tag, mbuf, lookup_mem,
@@ -236,26 +238,32 @@ cn10k_sso_hws_get_work(struct cn10k_sso_hws *ws, struct rte_event *ev,
 			mbuf = gw.u64[1] - sizeof(struct rte_mbuf);
 			rte_prefetch0((void *)mbuf);
 			if (flags & NIX_RX_OFFLOAD_SECURITY_F) {
+				const uint64_t mbuf_init = 0x100010000ULL |
+					RTE_PKTMBUF_HEADROOM |
+					(flags & NIX_RX_OFFLOAD_TSTAMP_F ? 8 : 0);
 				struct rte_mbuf *m;
 				uintptr_t sa_base;
 				uint64_t iova = 0;
 				uint8_t loff = 0;
 				uint16_t d_off;
 				uint64_t cq_w1;
+				uint64_t cq_w5;
 
 				m = (struct rte_mbuf *)mbuf;
 				d_off = (uintptr_t)(m->buf_addr) - (uintptr_t)m;
 				d_off += RTE_PKTMBUF_HEADROOM;
 
 				cq_w1 = *(uint64_t *)(gw.u64[1] + 8);
+				cq_w5 = *(uint64_t *)(gw.u64[1] + 40);
 
 				sa_base =
 					cnxk_nix_sa_base_get(port, lookup_mem);
 				sa_base &= ~(ROC_NIX_INL_SA_BASE_ALIGN - 1);
 
 				mbuf = (uint64_t)nix_sec_meta_to_mbuf_sc(
-					cq_w1, sa_base, (uintptr_t)&iova, &loff,
-					(struct rte_mbuf *)mbuf, d_off);
+					cq_w1, cq_w5, sa_base, (uintptr_t)&iova, &loff,
+					(struct rte_mbuf *)mbuf, d_off, flags,
+					mbuf_init | ((uint64_t)port) << 48);
 				if (loff)
 					roc_npa_aura_op_free(m->pool->pool_id,
 							     0, iova);
@@ -405,6 +413,46 @@ uint16_t __rte_hot cn10k_sso_hws_ca_enq(void *port, struct rte_event ev[],
 	uint16_t __rte_hot cn10k_sso_hws_deq_tmo_ca_seg_##name(                \
 		void *port, struct rte_event *ev, uint64_t timeout_ticks);     \
 	uint16_t __rte_hot cn10k_sso_hws_deq_tmo_ca_seg_burst_##name(          \
+		void *port, struct rte_event ev[], uint16_t nb_events,         \
+		uint64_t timeout_ticks);                                       \
+	uint16_t __rte_hot cn10k_sso_hws_reas_deq_##name(                      \
+		void *port, struct rte_event *ev, uint64_t timeout_ticks);     \
+	uint16_t __rte_hot cn10k_sso_hws_reas_deq_burst_##name(                \
+		void *port, struct rte_event ev[], uint16_t nb_events,         \
+		uint64_t timeout_ticks);                                       \
+	uint16_t __rte_hot cn10k_sso_hws_reas_deq_tmo_##name(                  \
+		void *port, struct rte_event *ev, uint64_t timeout_ticks);     \
+	uint16_t __rte_hot cn10k_sso_hws_reas_deq_tmo_burst_##name(            \
+		void *port, struct rte_event ev[], uint16_t nb_events,         \
+		uint64_t timeout_ticks);                                       \
+	uint16_t __rte_hot cn10k_sso_hws_reas_deq_ca_##name(                   \
+		void *port, struct rte_event *ev, uint64_t timeout_ticks);     \
+	uint16_t __rte_hot cn10k_sso_hws_reas_deq_ca_burst_##name(             \
+		void *port, struct rte_event ev[], uint16_t nb_events,         \
+		uint64_t timeout_ticks);                                       \
+	uint16_t __rte_hot cn10k_sso_hws_reas_deq_tmo_ca_##name(               \
+		void *port, struct rte_event *ev, uint64_t timeout_ticks);     \
+	uint16_t __rte_hot cn10k_sso_hws_reas_deq_tmo_ca_burst_##name(         \
+		void *port, struct rte_event ev[], uint16_t nb_events,         \
+		uint64_t timeout_ticks);                                       \
+	uint16_t __rte_hot cn10k_sso_hws_reas_deq_seg_##name(                  \
+		void *port, struct rte_event *ev, uint64_t timeout_ticks);     \
+	uint16_t __rte_hot cn10k_sso_hws_reas_deq_seg_burst_##name(            \
+		void *port, struct rte_event ev[], uint16_t nb_events,         \
+		uint64_t timeout_ticks);                                       \
+	uint16_t __rte_hot cn10k_sso_hws_reas_deq_tmo_seg_##name(              \
+		void *port, struct rte_event *ev, uint64_t timeout_ticks);     \
+	uint16_t __rte_hot cn10k_sso_hws_reas_deq_tmo_seg_burst_##name(        \
+		void *port, struct rte_event ev[], uint16_t nb_events,         \
+		uint64_t timeout_ticks);                                       \
+	uint16_t __rte_hot cn10k_sso_hws_reas_deq_ca_seg_##name(               \
+		void *port, struct rte_event *ev, uint64_t timeout_ticks);     \
+	uint16_t __rte_hot cn10k_sso_hws_reas_deq_ca_seg_burst_##name(         \
+		void *port, struct rte_event ev[], uint16_t nb_events,         \
+		uint64_t timeout_ticks);                                       \
+	uint16_t __rte_hot cn10k_sso_hws_reas_deq_tmo_ca_seg_##name(           \
+		void *port, struct rte_event *ev, uint64_t timeout_ticks);     \
+	uint16_t __rte_hot cn10k_sso_hws_reas_deq_tmo_ca_seg_burst_##name(     \
 		void *port, struct rte_event ev[], uint16_t nb_events,         \
 		uint64_t timeout_ticks);
 
