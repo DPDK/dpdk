@@ -63,6 +63,72 @@ flow_hw_rxq_flag_set(struct rte_eth_dev *dev, bool enable)
 }
 
 /**
+ * Generate the pattern item flags.
+ * Will be used for shared RSS action.
+ *
+ * @param[in] items
+ *   Pointer to the list of items.
+ *
+ * @return
+ *   Item flags.
+ */
+static uint64_t
+flow_hw_rss_item_flags_get(const struct rte_flow_item items[])
+{
+	uint64_t item_flags = 0;
+	uint64_t last_item = 0;
+
+	for (; items->type != RTE_FLOW_ITEM_TYPE_END; items++) {
+		int tunnel = !!(item_flags & MLX5_FLOW_LAYER_TUNNEL);
+		int item_type = items->type;
+
+		switch (item_type) {
+		case RTE_FLOW_ITEM_TYPE_IPV4:
+			last_item = tunnel ? MLX5_FLOW_LAYER_INNER_L3_IPV4 :
+					     MLX5_FLOW_LAYER_OUTER_L3_IPV4;
+			break;
+		case RTE_FLOW_ITEM_TYPE_IPV6:
+			last_item = tunnel ? MLX5_FLOW_LAYER_INNER_L3_IPV6 :
+					     MLX5_FLOW_LAYER_OUTER_L3_IPV6;
+			break;
+		case RTE_FLOW_ITEM_TYPE_TCP:
+			last_item = tunnel ? MLX5_FLOW_LAYER_INNER_L4_TCP :
+					     MLX5_FLOW_LAYER_OUTER_L4_TCP;
+			break;
+		case RTE_FLOW_ITEM_TYPE_UDP:
+			last_item = tunnel ? MLX5_FLOW_LAYER_INNER_L4_UDP :
+					     MLX5_FLOW_LAYER_OUTER_L4_UDP;
+			break;
+		case RTE_FLOW_ITEM_TYPE_GRE:
+			last_item = MLX5_FLOW_LAYER_GRE;
+			break;
+		case RTE_FLOW_ITEM_TYPE_NVGRE:
+			last_item = MLX5_FLOW_LAYER_GRE;
+			break;
+		case RTE_FLOW_ITEM_TYPE_VXLAN:
+			last_item = MLX5_FLOW_LAYER_VXLAN;
+			break;
+		case RTE_FLOW_ITEM_TYPE_VXLAN_GPE:
+			last_item = MLX5_FLOW_LAYER_VXLAN_GPE;
+			break;
+		case RTE_FLOW_ITEM_TYPE_GENEVE:
+			last_item = MLX5_FLOW_LAYER_GENEVE;
+			break;
+		case RTE_FLOW_ITEM_TYPE_MPLS:
+			last_item = MLX5_FLOW_LAYER_MPLS;
+			break;
+		case RTE_FLOW_ITEM_TYPE_GTP:
+			last_item = MLX5_FLOW_LAYER_GTP;
+			break;
+		default:
+			break;
+		}
+		item_flags |= last_item;
+	}
+	return item_flags;
+}
+
+/**
  * Register destination table DR jump action.
  *
  * @param[in] dev
@@ -267,6 +333,96 @@ __flow_hw_act_data_general_append(struct mlx5_priv *priv,
 }
 
 /**
+ * Append shared RSS action to the dynamic action list.
+ *
+ * @param[in] priv
+ *   Pointer to the port private data structure.
+ * @param[in] acts
+ *   Pointer to the template HW steering DR actions.
+ * @param[in] type
+ *   Action type.
+ * @param[in] action_src
+ *   Offset of source rte flow action.
+ * @param[in] action_dst
+ *   Offset of destination DR action.
+ * @param[in] idx
+ *   Shared RSS index.
+ * @param[in] rss
+ *   Pointer to the shared RSS info.
+ *
+ * @return
+ *    0 on success, negative value otherwise and rte_errno is set.
+ */
+static __rte_always_inline int
+__flow_hw_act_data_shared_rss_append(struct mlx5_priv *priv,
+				     struct mlx5_hw_actions *acts,
+				     enum rte_flow_action_type type,
+				     uint16_t action_src,
+				     uint16_t action_dst,
+				     uint32_t idx,
+				     struct mlx5_shared_action_rss *rss)
+{	struct mlx5_action_construct_data *act_data;
+
+	act_data = __flow_hw_act_data_alloc(priv, type, action_src, action_dst);
+	if (!act_data)
+		return -1;
+	act_data->shared_rss.level = rss->origin.level;
+	act_data->shared_rss.types = !rss->origin.types ? RTE_ETH_RSS_IP :
+				     rss->origin.types;
+	act_data->shared_rss.idx = idx;
+	LIST_INSERT_HEAD(&acts->act_list, act_data, next);
+	return 0;
+}
+
+/**
+ * Translate shared indirect action.
+ *
+ * @param[in] dev
+ *   Pointer to the rte_eth_dev data structure.
+ * @param[in] action
+ *   Pointer to the shared indirect rte_flow action.
+ * @param[in] acts
+ *   Pointer to the template HW steering DR actions.
+ * @param[in] action_src
+ *   Offset of source rte flow action.
+ * @param[in] action_dst
+ *   Offset of destination DR action.
+ *
+ * @return
+ *    0 on success, negative value otherwise and rte_errno is set.
+ */
+static __rte_always_inline int
+flow_hw_shared_action_translate(struct rte_eth_dev *dev,
+				const struct rte_flow_action *action,
+				struct mlx5_hw_actions *acts,
+				uint16_t action_src,
+				uint16_t action_dst)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_shared_action_rss *shared_rss;
+	uint32_t act_idx = (uint32_t)(uintptr_t)action->conf;
+	uint32_t type = act_idx >> MLX5_INDIRECT_ACTION_TYPE_OFFSET;
+	uint32_t idx = act_idx &
+		       ((1u << MLX5_INDIRECT_ACTION_TYPE_OFFSET) - 1);
+
+	switch (type) {
+	case MLX5_INDIRECT_ACTION_TYPE_RSS:
+		shared_rss = mlx5_ipool_get
+		  (priv->sh->ipool[MLX5_IPOOL_RSS_SHARED_ACTIONS], idx);
+		if (!shared_rss || __flow_hw_act_data_shared_rss_append
+		    (priv, acts,
+		    (enum rte_flow_action_type)MLX5_RTE_FLOW_ACTION_TYPE_RSS,
+		    action_src, action_dst, idx, shared_rss))
+			return -1;
+		break;
+	default:
+		DRV_LOG(WARNING, "Unsupported shared action type:%d", type);
+		break;
+	}
+	return 0;
+}
+
+/**
  * Translate rte_flow actions to DR action.
  *
  * As the action template has already indicated the actions. Translate
@@ -316,6 +472,20 @@ flow_hw_actions_translate(struct rte_eth_dev *dev,
 	for (i = 0; !actions_end; actions++, masks++) {
 		switch (actions->type) {
 		case RTE_FLOW_ACTION_TYPE_INDIRECT:
+			if (!attr->group) {
+				DRV_LOG(ERR, "Indirect action is not supported in root table.");
+				goto err;
+			}
+			if (actions->conf && masks->conf) {
+				if (flow_hw_shared_action_translate
+				(dev, actions, acts, actions - action_start, i))
+					goto err;
+			} else if (__flow_hw_act_data_general_append
+					(priv, acts, actions->type,
+					 actions - action_start, i)){
+				goto err;
+			}
+			i++;
 			break;
 		case RTE_FLOW_ACTION_TYPE_VOID:
 			break;
@@ -408,6 +578,115 @@ err:
 }
 
 /**
+ * Get shared indirect action.
+ *
+ * @param[in] dev
+ *   Pointer to the rte_eth_dev data structure.
+ * @param[in] act_data
+ *   Pointer to the recorded action construct data.
+ * @param[in] item_flags
+ *   The matcher itme_flags used for RSS lookup.
+ * @param[in] rule_act
+ *   Pointer to the shared action's destination rule DR action.
+ *
+ * @return
+ *    0 on success, negative value otherwise and rte_errno is set.
+ */
+static __rte_always_inline int
+flow_hw_shared_action_get(struct rte_eth_dev *dev,
+			  struct mlx5_action_construct_data *act_data,
+			  const uint64_t item_flags,
+			  struct mlx5dr_rule_action *rule_act)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_flow_rss_desc rss_desc = { 0 };
+	uint64_t hash_fields = 0;
+	uint32_t hrxq_idx = 0;
+	struct mlx5_hrxq *hrxq = NULL;
+	int act_type = act_data->type;
+
+	switch (act_type) {
+	case MLX5_RTE_FLOW_ACTION_TYPE_RSS:
+		rss_desc.level = act_data->shared_rss.level;
+		rss_desc.types = act_data->shared_rss.types;
+		flow_dv_hashfields_set(item_flags, &rss_desc, &hash_fields);
+		hrxq_idx = flow_dv_action_rss_hrxq_lookup
+			(dev, act_data->shared_rss.idx, hash_fields);
+		if (hrxq_idx)
+			hrxq = mlx5_ipool_get(priv->sh->ipool[MLX5_IPOOL_HRXQ],
+					      hrxq_idx);
+		if (hrxq) {
+			rule_act->action = hrxq->action;
+			return 0;
+		}
+		break;
+	default:
+		DRV_LOG(WARNING, "Unsupported shared action type:%d",
+			act_data->type);
+		break;
+	}
+	return -1;
+}
+
+/**
+ * Construct shared indirect action.
+ *
+ * @param[in] dev
+ *   Pointer to the rte_eth_dev data structure.
+ * @param[in] action
+ *   Pointer to the shared indirect rte_flow action.
+ * @param[in] table
+ *   Pointer to the flow table.
+ * @param[in] it_idx
+ *   Item template index the action template refer to.
+ * @param[in] rule_act
+ *   Pointer to the shared action's destination rule DR action.
+ *
+ * @return
+ *    0 on success, negative value otherwise and rte_errno is set.
+ */
+static __rte_always_inline int
+flow_hw_shared_action_construct(struct rte_eth_dev *dev,
+				const struct rte_flow_action *action,
+				struct rte_flow_template_table *table,
+				const uint8_t it_idx,
+				struct mlx5dr_rule_action *rule_act)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_action_construct_data act_data;
+	struct mlx5_shared_action_rss *shared_rss;
+	uint32_t act_idx = (uint32_t)(uintptr_t)action->conf;
+	uint32_t type = act_idx >> MLX5_INDIRECT_ACTION_TYPE_OFFSET;
+	uint32_t idx = act_idx &
+		       ((1u << MLX5_INDIRECT_ACTION_TYPE_OFFSET) - 1);
+	uint64_t item_flags;
+
+	memset(&act_data, 0, sizeof(act_data));
+	switch (type) {
+	case MLX5_INDIRECT_ACTION_TYPE_RSS:
+		act_data.type = MLX5_RTE_FLOW_ACTION_TYPE_RSS;
+		shared_rss = mlx5_ipool_get
+			(priv->sh->ipool[MLX5_IPOOL_RSS_SHARED_ACTIONS], idx);
+		if (!shared_rss)
+			return -1;
+		act_data.shared_rss.idx = idx;
+		act_data.shared_rss.level = shared_rss->origin.level;
+		act_data.shared_rss.types = !shared_rss->origin.types ?
+					    RTE_ETH_RSS_IP :
+					    shared_rss->origin.types;
+		item_flags = table->its[it_idx]->item_flags;
+		if (flow_hw_shared_action_get
+				(dev, &act_data, item_flags, rule_act))
+			return -1;
+		break;
+	default:
+		DRV_LOG(WARNING, "Unsupported shared action type:%d", type);
+		break;
+	}
+	return 0;
+}
+
+/**
  * Construct flow action array.
  *
  * For action template contains dynamic actions, these actions need to
@@ -419,6 +698,8 @@ err:
  *   Pointer to job descriptor.
  * @param[in] hw_acts
  *   Pointer to translated actions from template.
+ * @param[in] it_idx
+ *   Item template index the action template refer to.
  * @param[in] actions
  *   Array of rte_flow action need to be checked.
  * @param[in] rule_acts
@@ -432,7 +713,8 @@ err:
 static __rte_always_inline int
 flow_hw_actions_construct(struct rte_eth_dev *dev,
 			  struct mlx5_hw_q_job *job,
-			  struct mlx5_hw_actions *hw_acts,
+			  const struct mlx5_hw_actions *hw_acts,
+			  const uint8_t it_idx,
 			  const struct rte_flow_action actions[],
 			  struct mlx5dr_rule_action *rule_acts,
 			  uint32_t *acts_num)
@@ -464,14 +746,19 @@ flow_hw_actions_construct(struct rte_eth_dev *dev,
 	LIST_FOREACH(act_data, &hw_acts->act_list, next) {
 		uint32_t jump_group;
 		uint32_t tag;
+		uint64_t item_flags;
 		struct mlx5_hw_jump_action *jump;
 		struct mlx5_hrxq *hrxq;
 
 		action = &actions[act_data->action_src];
 		MLX5_ASSERT(action->type == RTE_FLOW_ACTION_TYPE_INDIRECT ||
 			    (int)action->type == act_data->type);
-		switch (action->type) {
+		switch (act_data->type) {
 		case RTE_FLOW_ACTION_TYPE_INDIRECT:
+			if (flow_hw_shared_action_construct
+					(dev, action, table, it_idx,
+					 &rule_acts[act_data->action_dst]))
+				return -1;
 			break;
 		case RTE_FLOW_ACTION_TYPE_VOID:
 			break;
@@ -503,6 +790,13 @@ flow_hw_actions_construct(struct rte_eth_dev *dev,
 			rule_acts[act_data->action_dst].action = hrxq->action;
 			job->flow->hrxq = hrxq;
 			job->flow->fate_type = MLX5_FLOW_FATE_QUEUE;
+			break;
+		case MLX5_RTE_FLOW_ACTION_TYPE_RSS:
+			item_flags = table->its[it_idx]->item_flags;
+			if (flow_hw_shared_action_get
+				(dev, act_data, item_flags,
+				 &rule_acts[act_data->action_dst]))
+				return -1;
 			break;
 		default:
 			break;
@@ -589,8 +883,8 @@ flow_hw_async_flow_create(struct rte_eth_dev *dev,
 	rule_attr.user_data = job;
 	hw_acts = &table->ats[action_template_index].acts;
 	/* Construct the flow action array based on the input actions.*/
-	flow_hw_actions_construct(dev, job, hw_acts, actions,
-				  rule_acts, &acts_num);
+	flow_hw_actions_construct(dev, job, hw_acts, pattern_template_index,
+				  actions, rule_acts, &acts_num);
 	ret = mlx5dr_rule_create(table->matcher,
 				 pattern_template_index, items,
 				 rule_acts, acts_num,
@@ -1239,6 +1533,7 @@ flow_hw_pattern_template_create(struct rte_eth_dev *dev,
 				   "cannot create match template");
 		return NULL;
 	}
+	it->item_flags = flow_hw_rss_item_flags_get(items);
 	__atomic_fetch_add(&it->refcnt, 1, __ATOMIC_RELAXED);
 	LIST_INSERT_HEAD(&priv->flow_hw_itt, it, next);
 	return it;
@@ -1687,6 +1982,109 @@ flow_hw_resource_release(struct rte_eth_dev *dev)
 	priv->nb_queue = 0;
 }
 
+/**
+ * Create shared action.
+ *
+ * @param[in] dev
+ *   Pointer to the rte_eth_dev structure.
+ * @param[in] queue
+ *   Which queue to be used..
+ * @param[in] attr
+ *   Operation attribute.
+ * @param[in] conf
+ *   Indirect action configuration.
+ * @param[in] action
+ *   rte_flow action detail.
+ * @param[in] user_data
+ *   Pointer to the user_data.
+ * @param[out] error
+ *   Pointer to error structure.
+ *
+ * @return
+ *   Action handle on success, NULL otherwise and rte_errno is set.
+ */
+static struct rte_flow_action_handle *
+flow_hw_action_handle_create(struct rte_eth_dev *dev, uint32_t queue,
+			     const struct rte_flow_op_attr *attr,
+			     const struct rte_flow_indir_action_conf *conf,
+			     const struct rte_flow_action *action,
+			     void *user_data,
+			     struct rte_flow_error *error)
+{
+	RTE_SET_USED(queue);
+	RTE_SET_USED(attr);
+	RTE_SET_USED(user_data);
+	return flow_dv_action_create(dev, conf, action, error);
+}
+
+/**
+ * Update shared action.
+ *
+ * @param[in] dev
+ *   Pointer to the rte_eth_dev structure.
+ * @param[in] queue
+ *   Which queue to be used..
+ * @param[in] attr
+ *   Operation attribute.
+ * @param[in] handle
+ *   Action handle to be updated.
+ * @param[in] update
+ *   Update value.
+ * @param[in] user_data
+ *   Pointer to the user_data.
+ * @param[out] error
+ *   Pointer to error structure.
+ *
+ * @return
+ *   0 on success, negative value otherwise and rte_errno is set.
+ */
+static int
+flow_hw_action_handle_update(struct rte_eth_dev *dev, uint32_t queue,
+			     const struct rte_flow_op_attr *attr,
+			     struct rte_flow_action_handle *handle,
+			     const void *update,
+			     void *user_data,
+			     struct rte_flow_error *error)
+{
+	RTE_SET_USED(queue);
+	RTE_SET_USED(attr);
+	RTE_SET_USED(user_data);
+	return flow_dv_action_update(dev, handle, update, error);
+}
+
+/**
+ * Destroy shared action.
+ *
+ * @param[in] dev
+ *   Pointer to the rte_eth_dev structure.
+ * @param[in] queue
+ *   Which queue to be used..
+ * @param[in] attr
+ *   Operation attribute.
+ * @param[in] handle
+ *   Action handle to be destroyed.
+ * @param[in] user_data
+ *   Pointer to the user_data.
+ * @param[out] error
+ *   Pointer to error structure.
+ *
+ * @return
+ *   0 on success, negative value otherwise and rte_errno is set.
+ */
+static int
+flow_hw_action_handle_destroy(struct rte_eth_dev *dev, uint32_t queue,
+			      const struct rte_flow_op_attr *attr,
+			      struct rte_flow_action_handle *handle,
+			      void *user_data,
+			      struct rte_flow_error *error)
+{
+	RTE_SET_USED(queue);
+	RTE_SET_USED(attr);
+	RTE_SET_USED(user_data);
+	return flow_dv_action_destroy(dev, handle, error);
+}
+
+
 const struct mlx5_flow_driver_ops mlx5_flow_hw_drv_ops = {
 	.info_get = flow_hw_info_get,
 	.configure = flow_hw_configure,
@@ -1700,6 +2098,14 @@ const struct mlx5_flow_driver_ops mlx5_flow_hw_drv_ops = {
 	.async_flow_destroy = flow_hw_async_flow_destroy,
 	.pull = flow_hw_pull,
 	.push = flow_hw_push,
+	.async_action_create = flow_hw_action_handle_create,
+	.async_action_destroy = flow_hw_action_handle_destroy,
+	.async_action_update = flow_hw_action_handle_update,
+	.action_validate = flow_dv_action_validate,
+	.action_create = flow_dv_action_create,
+	.action_destroy = flow_dv_action_destroy,
+	.action_update = flow_dv_action_update,
+	.action_query = flow_dv_action_query,
 };
 
 #endif

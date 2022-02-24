@@ -879,6 +879,29 @@ mlx5_flow_push(struct rte_eth_dev *dev,
 	       uint32_t queue,
 	       struct rte_flow_error *error);
 
+static struct rte_flow_action_handle *
+mlx5_flow_async_action_handle_create(struct rte_eth_dev *dev, uint32_t queue,
+				 const struct rte_flow_op_attr *attr,
+				 const struct rte_flow_indir_action_conf *conf,
+				 const struct rte_flow_action *action,
+				 void *user_data,
+				 struct rte_flow_error *error);
+
+static int
+mlx5_flow_async_action_handle_update(struct rte_eth_dev *dev, uint32_t queue,
+				 const struct rte_flow_op_attr *attr,
+				 struct rte_flow_action_handle *handle,
+				 const void *update,
+				 void *user_data,
+				 struct rte_flow_error *error);
+
+static int
+mlx5_flow_async_action_handle_destroy(struct rte_eth_dev *dev, uint32_t queue,
+				  const struct rte_flow_op_attr *attr,
+				  struct rte_flow_action_handle *handle,
+				  void *user_data,
+				  struct rte_flow_error *error);
+
 static const struct rte_flow_ops mlx5_flow_ops = {
 	.validate = mlx5_flow_validate,
 	.create = mlx5_flow_create,
@@ -911,6 +934,9 @@ static const struct rte_flow_ops mlx5_flow_ops = {
 	.async_destroy = mlx5_flow_async_flow_destroy,
 	.pull = mlx5_flow_pull,
 	.push = mlx5_flow_push,
+	.async_action_handle_create = mlx5_flow_async_action_handle_create,
+	.async_action_handle_update = mlx5_flow_async_action_handle_update,
+	.async_action_handle_destroy = mlx5_flow_async_action_handle_destroy,
 };
 
 /* Tunnel information. */
@@ -8365,6 +8391,111 @@ mlx5_flow_push(struct rte_eth_dev *dev,
 				"flow_q push with incorrect steering mode");
 	fops = flow_get_drv_ops(MLX5_FLOW_TYPE_HW);
 	return fops->push(dev, queue, error);
+}
+
+/**
+ * Create shared action.
+ *
+ * @param[in] dev
+ *   Pointer to the rte_eth_dev structure.
+ * @param[in] queue
+ *   Which queue to be used..
+ * @param[in] attr
+ *   Operation attribute.
+ * @param[in] conf
+ *   Indirect action configuration.
+ * @param[in] action
+ *   rte_flow action detail.
+ * @param[in] user_data
+ *   Pointer to the user_data.
+ * @param[out] error
+ *   Pointer to error structure.
+ *
+ * @return
+ *   Action handle on success, NULL otherwise and rte_errno is set.
+ */
+static struct rte_flow_action_handle *
+mlx5_flow_async_action_handle_create(struct rte_eth_dev *dev, uint32_t queue,
+				 const struct rte_flow_op_attr *attr,
+				 const struct rte_flow_indir_action_conf *conf,
+				 const struct rte_flow_action *action,
+				 void *user_data,
+				 struct rte_flow_error *error)
+{
+	const struct mlx5_flow_driver_ops *fops =
+			flow_get_drv_ops(MLX5_FLOW_TYPE_HW);
+
+	return fops->async_action_create(dev, queue, attr, conf, action,
+					 user_data, error);
+}
+
+/**
+ * Update shared action.
+ *
+ * @param[in] dev
+ *   Pointer to the rte_eth_dev structure.
+ * @param[in] queue
+ *   Which queue to be used..
+ * @param[in] attr
+ *   Operation attribute.
+ * @param[in] handle
+ *   Action handle to be updated.
+ * @param[in] update
+ *   Update value.
+ * @param[in] user_data
+ *   Pointer to the user_data.
+ * @param[out] error
+ *   Pointer to error structure.
+ *
+ * @return
+ *   0 on success, negative value otherwise and rte_errno is set.
+ */
+static int
+mlx5_flow_async_action_handle_update(struct rte_eth_dev *dev, uint32_t queue,
+				     const struct rte_flow_op_attr *attr,
+				     struct rte_flow_action_handle *handle,
+				     const void *update,
+				     void *user_data,
+				     struct rte_flow_error *error)
+{
+	const struct mlx5_flow_driver_ops *fops =
+			flow_get_drv_ops(MLX5_FLOW_TYPE_HW);
+
+	return fops->async_action_update(dev, queue, attr, handle,
+					 update, user_data, error);
+}
+
+/**
+ * Destroy shared action.
+ *
+ * @param[in] dev
+ *   Pointer to the rte_eth_dev structure.
+ * @param[in] queue
+ *   Which queue to be used..
+ * @param[in] attr
+ *   Operation attribute.
+ * @param[in] handle
+ *   Action handle to be destroyed.
+ * @param[in] user_data
+ *   Pointer to the user_data.
+ * @param[out] error
+ *   Pointer to error structure.
+ *
+ * @return
+ *   0 on success, negative value otherwise and rte_errno is set.
+ */
+static int
+mlx5_flow_async_action_handle_destroy(struct rte_eth_dev *dev, uint32_t queue,
+				      const struct rte_flow_op_attr *attr,
+				      struct rte_flow_action_handle *handle,
+				      void *user_data,
+				      struct rte_flow_error *error)
+{
+	const struct mlx5_flow_driver_ops *fops =
+			flow_get_drv_ops(MLX5_FLOW_TYPE_HW);
+
+	return fops->async_action_destroy(dev, queue, attr, handle,
+					  user_data, error);
 }
 
 /**
