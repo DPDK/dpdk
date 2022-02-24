@@ -487,6 +487,12 @@ Limitations
     from the reference "Clock Queue" completions,
     the scheduled send timestamps should not be specified with non-zero MSB.
 
+  - HW steering:
+
+    - WQE based high scaling and safer flow insertion/destruction.
+    - Set ``dv_flow_en`` to 2 in order to enable HW steering.
+    - Async queue-based ``rte_flow_q`` APIs supported only.
+
 Statistics
 ----------
 

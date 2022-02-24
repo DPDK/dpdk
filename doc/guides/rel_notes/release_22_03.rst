@@ -164,6 +164,7 @@ New Features
 * **Updated Mellanox mlx5 driver.**
 
   * Supported ConnectX-7 capability to schedule traffic sending on timestamp.
+  * Added WQE based hardware steering support with ``rte_flow_async`` API.
 
 * **Updated Wangxun ngbe driver.**
 

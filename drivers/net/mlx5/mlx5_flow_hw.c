@@ -10,6 +10,9 @@
 
 #if defined(HAVE_IBV_FLOW_DV_SUPPORT) || !defined(HAVE_INFINIBAND_VERBS_H)
 
+/* The maximum actions support in the flow. */
+#define MLX5_HW_MAX_ACTS 16
+
 const struct mlx5_flow_driver_ops mlx5_flow_hw_drv_ops;
 
 /* DR action flags with different table. */
@@ -106,6 +109,289 @@ flow_hw_actions_translate(struct rte_eth_dev *dev,
 }
 
 /**
+ * Construct flow action array.
+ *
+ * For action template contains dynamic actions, these actions need to
+ * be updated according to the rte_flow action during flow creation.
+ *
+ * @param[in] hw_acts
+ *   Pointer to translated actions from template.
+ * @param[in] actions
+ *   Array of rte_flow action need to be checked.
+ * @param[in] rule_acts
+ *   Array of DR rule actions to be used during flow creation..
+ * @param[in] acts_num
+ *   Pointer to the real acts_num flow has.
+ *
+ * @return
+ *    0 on success, negative value otherwise and rte_errno is set.
+ */
+static __rte_always_inline int
+flow_hw_actions_construct(struct mlx5_hw_actions *hw_acts,
+			  const struct rte_flow_action actions[],
+			  struct mlx5dr_rule_action *rule_acts,
+			  uint32_t *acts_num)
+{
+	bool actions_end = false;
+	uint32_t i;
+
+	for (i = 0; !actions_end || (i >= MLX5_HW_MAX_ACTS); actions++) {
+		switch (actions->type) {
+		case RTE_FLOW_ACTION_TYPE_INDIRECT:
+			break;
+		case RTE_FLOW_ACTION_TYPE_VOID:
+			break;
+		case RTE_FLOW_ACTION_TYPE_DROP:
+			rule_acts[i++].action = hw_acts->drop;
+			break;
+		case RTE_FLOW_ACTION_TYPE_END:
+			actions_end = true;
+			break;
+		default:
+			break;
+		}
+	}
+	*acts_num = i;
+	return 0;
+}
+
+/**
+ * Enqueue HW steering flow creation.
+ *
+ * The flow will be applied to the HW only if the postpone bit is not set or
+ * the extra push function is called.
+ * The flow creation status should be checked from dequeue result.
+ *
+ * @param[in] dev
+ *   Pointer to the rte_eth_dev structure.
+ * @param[in] queue
+ *   The queue to create the flow.
+ * @param[in] attr
+ *   Pointer to the flow operation attributes.
+ * @param[in] items
+ *   Items with flow spec value.
+ * @param[in] pattern_template_index
+ *   The item pattern flow follows from the table.
+ * @param[in] actions
+ *   Action with flow spec value.
+ * @param[in] action_template_index
+ *   The action pattern flow follows from the table.
+ * @param[in] user_data
+ *   Pointer to the user_data.
+ * @param[out] error
+ *   Pointer to error structure.
+ *
+ * @return
+ *    Flow pointer on success, NULL otherwise and rte_errno is set.
+ */
+static struct rte_flow *
+flow_hw_async_flow_create(struct rte_eth_dev *dev,
+			  uint32_t queue,
+			  const struct rte_flow_op_attr *attr,
+			  struct rte_flow_template_table *table,
+			  const struct rte_flow_item items[],
+			  uint8_t pattern_template_index,
+			  const struct rte_flow_action actions[],
+			  uint8_t action_template_index,
+			  void *user_data,
+			  struct rte_flow_error *error)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5dr_rule_attr rule_attr = {
+		.queue_id = queue,
+		.user_data = user_data,
+		.burst = attr->postpone,
+	};
+	struct mlx5dr_rule_action rule_acts[MLX5_HW_MAX_ACTS];
+	struct mlx5_hw_actions *hw_acts;
+	struct rte_flow_hw *flow;
+	struct mlx5_hw_q_job *job;
+	uint32_t acts_num, flow_idx;
+	int ret;
+
+	if (unlikely(!priv->hw_q[queue].job_idx)) {
+		rte_errno = ENOMEM;
+		goto error;
+	}
+	flow = mlx5_ipool_zmalloc(table->flow, &flow_idx);
+	if (!flow)
+		goto error;
+	/*
+	 * Set the table here in order to know the destination table
+	 * when free the flow afterwards.
+	 */
+	flow->table = table;
+	flow->idx = flow_idx;
+	job = priv->hw_q[queue].job[--priv->hw_q[queue].job_idx];
+	/*
+	 * Set the job type here in order to know if the flow memory
+	 * should be freed or not when get the result from dequeue.
+	 */
+	job->type = MLX5_HW_Q_JOB_TYPE_CREATE;
+	job->flow = flow;
+	job->user_data = user_data;
+	rule_attr.user_data = job;
+	hw_acts = &table->ats[action_template_index].acts;
+	/* Construct the flow action array based on the input actions.*/
+	flow_hw_actions_construct(hw_acts, actions, rule_acts, &acts_num);
+	ret = mlx5dr_rule_create(table->matcher,
+				 pattern_template_index, items,
+				 rule_acts, acts_num,
+				 &rule_attr, &flow->rule);
+	if (likely(!ret))
+		return (struct rte_flow *)flow;
+	/* Flow created fail, return the descriptor and flow memory. */
+	mlx5_ipool_free(table->flow, flow_idx);
+	priv->hw_q[queue].job_idx++;
+error:
+	rte_flow_error_set(error, rte_errno,
+			   RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+			   "fail to create rte flow");
+	return NULL;
+}
+
+/**
+ * Enqueue HW steering flow destruction.
+ *
+ * The flow will be applied to the HW only if the postpone bit is not set or
+ * the extra push function is called.
+ * The flow destruction status should be checked from dequeue result.
+ *
+ * @param[in] dev
+ *   Pointer to the rte_eth_dev structure.
+ * @param[in] queue
+ *   The queue to destroy the flow.
+ * @param[in] attr
+ *   Pointer to the flow operation attributes.
+ * @param[in] flow
+ *   Pointer to the flow to be destroyed.
+ * @param[in] user_data
+ *   Pointer to the user_data.
+ * @param[out] error
+ *   Pointer to error structure.
+ *
+ * @return
+ *    0 on success, negative value otherwise and rte_errno is set.
+ */
+static int
+flow_hw_async_flow_destroy(struct rte_eth_dev *dev,
+			   uint32_t queue,
+			   const struct rte_flow_op_attr *attr,
+			   struct rte_flow *flow,
+			   void *user_data,
+			   struct rte_flow_error *error)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5dr_rule_attr rule_attr = {
+		.queue_id = queue,
+		.user_data = user_data,
+		.burst = attr->postpone,
+	};
+	struct rte_flow_hw *fh = (struct rte_flow_hw *)flow;
+	struct mlx5_hw_q_job *job;
+	int ret;
+
+	if (unlikely(!priv->hw_q[queue].job_idx)) {
+		rte_errno = ENOMEM;
+		goto error;
+	}
+	job = priv->hw_q[queue].job[--priv->hw_q[queue].job_idx];
+	job->type = MLX5_HW_Q_JOB_TYPE_DESTROY;
+	job->user_data = user_data;
+	job->flow = fh;
+	rule_attr.user_data = job;
+	ret = mlx5dr_rule_destroy(&fh->rule, &rule_attr);
+	if (likely(!ret))
+		return 0;
+	priv->hw_q[queue].job_idx++;
+error:
+	return rte_flow_error_set(error, rte_errno,
+			RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+			"fail to create rte flow");
+}
+
+/**
+ * Pull the enqueued flows.
+ *
+ * For flows enqueued from creation/destruction, the status should be
+ * checked from the dequeue result.
+ *
+ * @param[in] dev
+ *   Pointer to the rte_eth_dev structure.
+ * @param[in] queue
+ *   The queue to pull the result.
+ * @param[in/out] res
+ *   Array to save the results.
+ * @param[in] n_res
+ *   Available result with the array.
+ * @param[out] error
+ *   Pointer to error structure.
+ *
+ * @return
+ *    Result number on success, negative value otherwise and rte_errno is set.
+ */
+static int
+flow_hw_pull(struct rte_eth_dev *dev,
+	     uint32_t queue,
+	     struct rte_flow_op_result res[],
+	     uint16_t n_res,
+	     struct rte_flow_error *error)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_hw_q_job *job;
+	int ret, i;
+
+	ret = mlx5dr_send_queue_poll(priv->dr_ctx, queue, res, n_res);
+	if (ret < 0)
+		return rte_flow_error_set(error, rte_errno,
+				RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+				"fail to query flow queue");
+	for (i = 0; i <  ret; i++) {
+		job = (struct mlx5_hw_q_job *)res[i].user_data;
+		/* Restore user data. */
+		res[i].user_data = job->user_data;
+		if (job->type == MLX5_HW_Q_JOB_TYPE_DESTROY)
+			mlx5_ipool_free(job->flow->table->flow, job->flow->idx);
+		priv->hw_q[queue].job[priv->hw_q[queue].job_idx++] = job;
+	}
+	return ret;
+}
+
+/**
+ * Push the enqueued flows to HW.
+ *
+ * Force apply all the enqueued flows to the HW.
+ *
+ * @param[in] dev
+ *   Pointer to the rte_eth_dev structure.
+ * @param[in] queue
+ *   The queue to push the flow.
+ * @param[out] error
+ *   Pointer to error structure.
+ *
+ * @return
+ *    0 on success, negative value otherwise and rte_errno is set.
+ */
+static int
+flow_hw_push(struct rte_eth_dev *dev,
+	     uint32_t queue,
+	     struct rte_flow_error *error)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	int ret;
+
+	ret = mlx5dr_send_queue_action(priv->dr_ctx, queue,
+				       MLX5DR_SEND_QUEUE_ACTION_DRAIN);
+	if (ret) {
+		rte_flow_error_set(error, rte_errno,
+				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+				   "fail to push flows");
+		return ret;
+	}
+	return 0;
+}
+
+/**
  * Create flow table.
  *
  * The input item and action templates will be binded to the table.
@@ -152,7 +438,7 @@ flow_hw_table_create(struct rte_eth_dev *dev,
 		.data = &flow_attr,
 	};
 	struct mlx5_indexed_pool_config cfg = {
-		.size = sizeof(struct rte_flow),
+		.size = sizeof(struct rte_flow_hw),
 		.trunk_size = 1 << 12,
 		.per_core_cache = 1 << 13,
 		.need_lock = 1,
@@ -896,6 +1182,10 @@ const struct mlx5_flow_driver_ops mlx5_flow_hw_drv_ops = {
 	.actions_template_destroy = flow_hw_actions_template_destroy,
 	.template_table_create = flow_hw_table_create,
 	.template_table_destroy = flow_hw_table_destroy,
+	.async_flow_create = flow_hw_async_flow_create,
+	.async_flow_destroy = flow_hw_async_flow_destroy,
+	.pull = flow_hw_pull,
+	.push = flow_hw_push,
 };
 
 #endif
