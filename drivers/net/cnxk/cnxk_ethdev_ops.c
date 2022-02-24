@@ -747,6 +747,8 @@ cnxk_nix_reta_update(struct rte_eth_dev *eth_dev,
 		goto fail;
 	}
 
+	roc_nix_rss_reta_get(nix, 0, reta);
+
 	/* Copy RETA table */
 	for (i = 0; i < (int)(dev->nix.reta_sz / RTE_ETH_RETA_GROUP_SIZE); i++) {
 		for (j = 0; j < RTE_ETH_RETA_GROUP_SIZE; j++) {
