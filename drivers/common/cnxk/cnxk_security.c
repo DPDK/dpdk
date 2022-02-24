@@ -339,6 +339,16 @@ cnxk_ot_ipsec_inb_sa_fill(struct roc_ot_ipsec_inb_sa *sa,
 	if (rc)
 		return rc;
 
+	/* Default options for pkt_out and pkt_fmt are with
+	 * second pass meta and no defrag.
+	 */
+	sa->w0.s.pkt_format = ROC_IE_OT_SA_PKT_FMT_META;
+	sa->w0.s.pkt_output = ROC_IE_OT_SA_PKT_OUTPUT_NO_FRAG;
+	sa->w0.s.pkind = ROC_IE_OT_CPT_PKIND;
+
+	if (ipsec_xfrm->options.ip_reassembly_en)
+		sa->w0.s.pkt_output = ROC_IE_OT_SA_PKT_OUTPUT_HW_BASED_DEFRAG;
+
 	/* ESN */
 	sa->w2.s.esn_en = !!ipsec_xfrm->options.esn;
 	if (ipsec_xfrm->options.udp_encap) {

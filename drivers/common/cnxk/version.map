@@ -211,6 +211,7 @@ INTERNAL {
 	roc_nix_ptp_tx_ena_dis;
 	roc_nix_queues_ctx_dump;
 	roc_nix_ras_intr_ena_dis;
+	roc_nix_reassembly_configure;
 	roc_nix_register_cq_irqs;
 	roc_nix_register_queue_irqs;
 	roc_nix_rq_dump;

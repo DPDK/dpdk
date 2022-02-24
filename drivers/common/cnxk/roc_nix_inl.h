@@ -55,6 +55,12 @@
 #define ROC_NIX_INL_MAX_SOFT_EXP_RNGS                                          \
 	(PLT_MAX_ETHPORTS * ROC_NIX_SOFT_EXP_PER_PORT_MAX_RINGS)
 
+/* Reassembly configuration */
+#define ROC_NIX_INL_REAS_ACTIVE_LIMIT	  0xFFF
+#define ROC_NIX_INL_REAS_ACTIVE_THRESHOLD 10
+#define ROC_NIX_INL_REAS_ZOMBIE_LIMIT	  0xFFF
+#define ROC_NIX_INL_REAS_ZOMBIE_THRESHOLD 10
+
 static inline struct roc_onf_ipsec_inb_sa *
 roc_nix_inl_onf_ipsec_inb_sa(uintptr_t base, uint64_t idx)
 {
@@ -166,6 +172,8 @@ struct roc_nix_rq *__roc_api roc_nix_inl_dev_rq(void);
 int __roc_api roc_nix_inl_inb_tag_update(struct roc_nix *roc_nix,
 					 uint32_t tag_const, uint8_t tt);
 uint64_t __roc_api roc_nix_inl_dev_rq_limit_get(void);
+int __roc_api roc_nix_reassembly_configure(uint32_t max_wait_time,
+					uint16_t max_frags);
 
 /* NIX Inline Outbound API */
 int __roc_api roc_nix_inl_outb_init(struct roc_nix *roc_nix);
