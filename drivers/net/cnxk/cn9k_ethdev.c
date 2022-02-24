@@ -451,6 +451,25 @@ cn9k_nix_dev_start(struct rte_eth_dev *eth_dev)
 }
 
 static int
+cn9k_nix_timesync_read_tx_timestamp(struct rte_eth_dev *eth_dev,
+				    struct timespec *timestamp)
+{
+	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+	struct cnxk_timesync_info *tstamp = &dev->tstamp;
+	uint64_t ns;
+
+	if (*tstamp->tx_tstamp == 0)
+		return -EINVAL;
+
+	ns = rte_timecounter_update(&dev->tx_tstamp_tc, *tstamp->tx_tstamp);
+	*timestamp = rte_ns_to_timespec(ns);
+	*tstamp->tx_tstamp = 0;
+	rte_wmb();
+
+	return 0;
+}
+
+static int
 cn9k_nix_rx_metadata_negotiate(struct rte_eth_dev *eth_dev, uint64_t *features)
 {
 	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
@@ -492,6 +511,8 @@ nix_eth_dev_ops_override(void)
 	cnxk_eth_dev_ops.timesync_disable = cn9k_nix_timesync_disable;
 	cnxk_eth_dev_ops.mtr_ops_get = NULL;
 	cnxk_eth_dev_ops.rx_metadata_negotiate = cn9k_nix_rx_metadata_negotiate;
+	cnxk_eth_dev_ops.timesync_read_tx_timestamp =
+		cn9k_nix_timesync_read_tx_timestamp;
 }
 
 static void

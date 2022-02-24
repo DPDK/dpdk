@@ -432,6 +432,36 @@ nix_rx_nb_pkts(struct cn10k_eth_rxq *rxq, const uint64_t wdata,
 	return RTE_MIN(pkts, available);
 }
 
+static __rte_always_inline void
+cn10k_nix_mbuf_to_tstamp(struct rte_mbuf *mbuf,
+			struct cnxk_timesync_info *tstamp,
+			const uint8_t ts_enable, uint64_t *tstamp_ptr)
+{
+	if (ts_enable) {
+		mbuf->pkt_len -= CNXK_NIX_TIMESYNC_RX_OFFSET;
+		mbuf->data_len -= CNXK_NIX_TIMESYNC_RX_OFFSET;
+
+		/* Reading the rx timestamp inserted by CGX, viz at
+		 * starting of the packet data.
+		 */
+		*tstamp_ptr = ((*tstamp_ptr >> 32) * NSEC_PER_SEC) +
+			(*tstamp_ptr & 0xFFFFFFFFUL);
+		*cnxk_nix_timestamp_dynfield(mbuf, tstamp) =
+			rte_be_to_cpu_64(*tstamp_ptr);
+		/* RTE_MBUF_F_RX_IEEE1588_TMST flag needs to be set only in case
+		 * PTP packets are received.
+		 */
+		if (mbuf->packet_type == RTE_PTYPE_L2_ETHER_TIMESYNC) {
+			tstamp->rx_tstamp =
+				*cnxk_nix_timestamp_dynfield(mbuf, tstamp);
+			tstamp->rx_ready = 1;
+			mbuf->ol_flags |= RTE_MBUF_F_RX_IEEE1588_PTP |
+				RTE_MBUF_F_RX_IEEE1588_TMST |
+				tstamp->rx_tstamp_dynflag;
+		}
+	}
+}
+
 static __rte_always_inline uint16_t
 cn10k_nix_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t pkts,
 		    const uint16_t flags)
@@ -486,7 +516,7 @@ cn10k_nix_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t pkts,
 
 		cn10k_nix_cqe_to_mbuf(cq, cq->tag, mbuf, lookup_mem, mbuf_init,
 				      flags);
-		cnxk_nix_mbuf_to_tstamp(mbuf, rxq->tstamp,
+		cn10k_nix_mbuf_to_tstamp(mbuf, rxq->tstamp,
 					(flags & NIX_RX_OFFLOAD_TSTAMP_F),
 					(uint64_t *)((uint8_t *)mbuf
 								+ data_off));

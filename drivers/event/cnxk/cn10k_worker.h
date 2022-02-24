@@ -179,7 +179,7 @@ cn10k_process_vwqe(uintptr_t vwqe, uint16_t port_id, const uint32_t flags,
 		/* Extracting tstamp, if PTP enabled*/
 		tstamp_ptr = *(uint64_t *)(((struct nix_wqe_hdr_s *)cqe) +
 					   CNXK_SSO_WQE_SG_PTR);
-		cnxk_nix_mbuf_to_tstamp((struct rte_mbuf *)mbuf, tstamp,
+		cn10k_nix_mbuf_to_tstamp((struct rte_mbuf *)mbuf, tstamp,
 					flags & NIX_RX_OFFLOAD_TSTAMP_F,
 					(uint64_t *)tstamp_ptr);
 		wqe[0] = (uint64_t *)mbuf;
@@ -269,7 +269,7 @@ cn10k_sso_hws_get_work(struct cn10k_sso_hws *ws, struct rte_event *ev,
 			tstamp_ptr = *(uint64_t *)(((struct nix_wqe_hdr_s *)
 							    gw.u64[1]) +
 						   CNXK_SSO_WQE_SG_PTR);
-			cnxk_nix_mbuf_to_tstamp((struct rte_mbuf *)mbuf,
+			cn10k_nix_mbuf_to_tstamp((struct rte_mbuf *)mbuf,
 						ws->tstamp,
 						flags & NIX_RX_OFFLOAD_TSTAMP_F,
 						(uint64_t *)tstamp_ptr);

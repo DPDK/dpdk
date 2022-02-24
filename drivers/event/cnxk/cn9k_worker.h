@@ -228,7 +228,7 @@ cn9k_sso_hws_dual_get_work(uint64_t base, uint64_t pair_base,
 			tstamp_ptr = *(uint64_t *)(((struct nix_wqe_hdr_s *)
 							    gw.u64[1]) +
 						   CNXK_SSO_WQE_SG_PTR);
-			cnxk_nix_mbuf_to_tstamp((struct rte_mbuf *)mbuf,
+			cn9k_nix_mbuf_to_tstamp((struct rte_mbuf *)mbuf,
 						dws->tstamp,
 						flags & NIX_RX_OFFLOAD_TSTAMP_F,
 						(uint64_t *)tstamp_ptr);
@@ -304,7 +304,7 @@ cn9k_sso_hws_get_work(struct cn9k_sso_hws *ws, struct rte_event *ev,
 			tstamp_ptr = *(uint64_t *)(((struct nix_wqe_hdr_s *)
 							    gw.u64[1]) +
 						   CNXK_SSO_WQE_SG_PTR);
-			cnxk_nix_mbuf_to_tstamp((struct rte_mbuf *)mbuf,
+			cn9k_nix_mbuf_to_tstamp((struct rte_mbuf *)mbuf,
 						ws->tstamp,
 						flags & NIX_RX_OFFLOAD_TSTAMP_F,
 						(uint64_t *)tstamp_ptr);
