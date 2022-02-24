@@ -230,10 +230,12 @@ tf_session_create(struct tf *tfp,
 			    "FW Session close failed, rc:%s\n",
 			    strerror(-rc));
 	}
+	if (tfp->session) {
+		tfp_free(tfp->session->core_data);
+		tfp_free(tfp->session);
+		tfp->session = NULL;
+	}
 
-	tfp_free(tfp->session->core_data);
-	tfp_free(tfp->session);
-	tfp->session = NULL;
 	return rc;
 }
 
