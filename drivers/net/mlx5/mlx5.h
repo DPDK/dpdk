@@ -337,6 +337,9 @@ struct mlx5_lb_ctx {
 #define MLX5_CNT_ARRAY_IDX(pool, cnt) \
 	((int)(((uint8_t *)(cnt) - (uint8_t *)((pool) + 1)) / \
 	MLX5_CNT_LEN(pool)))
+#define MLX5_TS_MASK_SECS 8ull
+/* timestamp wrapping in seconds, must be  power of 2. */
+
 /*
  * The pool index and offset of counter in the pool array makes up the
  * counter index. In case the counter is from pool 0 and offset 0, it

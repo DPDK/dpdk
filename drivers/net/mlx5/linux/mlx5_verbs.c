@@ -1035,6 +1035,10 @@ mlx5_txq_ibv_obj_new(struct rte_eth_dev *dev, uint16_t idx)
 	txq_data->wqe_pi = 0;
 	txq_data->wqe_comp = 0;
 	txq_data->wqe_thres = txq_data->wqe_s / MLX5_TX_COMP_THRESH_INLINE_DIV;
+	txq_data->wait_on_time = !!(!priv->sh->config.tx_pp &&
+				 priv->sh->cdev->config.hca_attr.wait_on_time &&
+				 txq_data->offloads &
+				 RTE_ETH_TX_OFFLOAD_SEND_ON_TIMESTAMP);
 #ifdef HAVE_IBV_FLOW_DV_SUPPORT
 	/*
 	 * If using DevX need to query and store TIS transport domain value.

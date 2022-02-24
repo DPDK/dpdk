@@ -138,6 +138,8 @@ struct mlx5_txq_data {
 	uint16_t vlan_en:1; /* VLAN insertion in WQE is supported. */
 	uint16_t db_nc:1; /* Doorbell mapped to non-cached region. */
 	uint16_t db_heu:1; /* Doorbell heuristic write barrier. */
+	uint16_t rt_timestamp:1; /* Realtime timestamp format. */
+	uint16_t wait_on_time:1; /* WQE with timestamp is supported. */
 	uint16_t fast_free:1; /* mbuf fast free on Tx is enabled. */
 	uint16_t inlen_send; /* Ordinary send data inline size. */
 	uint16_t inlen_empw; /* eMPW max packet size to inline. */
@@ -157,6 +159,7 @@ struct mlx5_txq_data {
 	volatile uint32_t *cq_db; /* Completion queue doorbell. */
 	uint16_t port_id; /* Port ID of device. */
 	uint16_t idx; /* Queue index. */
+	uint64_t rt_timemask; /* Scheduling timestamp mask. */
 	uint64_t ts_mask; /* Timestamp flag dynamic mask. */
 	int32_t ts_offset; /* Timestamp field dynamic offset. */
 	struct mlx5_dev_ctx_shared *sh; /* Shared context. */

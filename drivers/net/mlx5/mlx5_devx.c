@@ -1328,6 +1328,8 @@ mlx5_txq_devx_obj_new(struct rte_eth_dev *dev, uint16_t idx)
 	txq_data->qp_num_8s = txq_obj->sq_obj.sq->id << 8;
 	txq_data->db_heu = sh->cdev->config.dbnc == MLX5_SQ_DB_HEURISTIC;
 	txq_data->db_nc = sh->tx_uar.dbnc;
+	txq_data->wait_on_time = !!(!sh->config.tx_pp &&
+				    sh->cdev->config.hca_attr.wait_on_time);
 	/* Change Send Queue state to Ready-to-Send. */
 	ret = mlx5_txq_devx_modify(txq_obj, MLX5_TXQ_MOD_RST2RDY, 0);
 	if (ret) {
