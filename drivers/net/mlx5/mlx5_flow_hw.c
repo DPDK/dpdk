@@ -4,10 +4,169 @@
 
 #include <rte_flow.h>
 
+#include <mlx5_malloc.h>
+#include "mlx5_defs.h"
 #include "mlx5_flow.h"
 
 #if defined(HAVE_IBV_FLOW_DV_SUPPORT) || !defined(HAVE_INFINIBAND_VERBS_H)
 
 const struct mlx5_flow_driver_ops mlx5_flow_hw_drv_ops;
+
+/**
+ * Get information about HWS pre-configurable resources.
+ *
+ * @param[in] dev
+ *   Pointer to the rte_eth_dev structure.
+ * @param[out] port_info
+ *   Pointer to port information.
+ * @param[out] queue_info
+ *   Pointer to queue information.
+ * @param[out] error
+ *   Pointer to error structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+static int
+flow_hw_info_get(struct rte_eth_dev *dev __rte_unused,
+		 struct rte_flow_port_info *port_info __rte_unused,
+		 struct rte_flow_queue_info *queue_info __rte_unused,
+		 struct rte_flow_error *error __rte_unused)
+{
+	/* Nothing to be updated currently. */
+	memset(port_info, 0, sizeof(*port_info));
+	/* Queue size is unlimited from low-level. */
+	queue_info->max_size = UINT32_MAX;
+	return 0;
+}
+
+/**
+ * Configure port HWS resources.
+ *
+ * @param[in] dev
+ *   Pointer to the rte_eth_dev structure.
+ * @param[in] port_attr
+ *   Port configuration attributes.
+ * @param[in] nb_queue
+ *   Number of queue.
+ * @param[in] queue_attr
+ *   Array that holds attributes for each flow queue.
+ * @param[out] error
+ *   Pointer to error structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+static int
+flow_hw_configure(struct rte_eth_dev *dev,
+		  const struct rte_flow_port_attr *port_attr,
+		  uint16_t nb_queue,
+		  const struct rte_flow_queue_attr *queue_attr[],
+		  struct rte_flow_error *error)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5dr_context *dr_ctx = NULL;
+	struct mlx5dr_context_attr dr_ctx_attr = {0};
+	struct mlx5_hw_q *hw_q;
+	struct mlx5_hw_q_job *job = NULL;
+	uint32_t mem_size, i, j;
+
+	if (!port_attr || !nb_queue || !queue_attr) {
+		rte_errno = EINVAL;
+		goto err;
+	}
+	/* In case re-configuring, release existing context at first. */
+	if (priv->dr_ctx) {
+		/* */
+		for (i = 0; i < nb_queue; i++) {
+			hw_q = &priv->hw_q[i];
+			/* Make sure all queues are empty. */
+			if (hw_q->size != hw_q->job_idx) {
+				rte_errno = EBUSY;
+				goto err;
+			}
+		}
+		flow_hw_resource_release(dev);
+	}
+	/* Allocate the queue job descriptor LIFO. */
+	mem_size = sizeof(priv->hw_q[0]) * nb_queue;
+	for (i = 0; i < nb_queue; i++) {
+		/*
+		 * Check if the queues' size are all the same as the
+		 * limitation from HWS layer.
+		 */
+		if (queue_attr[i]->size != queue_attr[0]->size) {
+			rte_errno = EINVAL;
+			goto err;
+		}
+		mem_size += (sizeof(struct mlx5_hw_q_job *) +
+			    sizeof(struct mlx5_hw_q_job)) *
+			    queue_attr[0]->size;
+	}
+	priv->hw_q = mlx5_malloc(MLX5_MEM_ZERO, mem_size,
+				 64, SOCKET_ID_ANY);
+	if (!priv->hw_q) {
+		rte_errno = ENOMEM;
+		goto err;
+	}
+	for (i = 0; i < nb_queue; i++) {
+		priv->hw_q[i].job_idx = queue_attr[i]->size;
+		priv->hw_q[i].size = queue_attr[i]->size;
+		if (i == 0)
+			priv->hw_q[i].job = (struct mlx5_hw_q_job **)
+					    &priv->hw_q[nb_queue];
+		else
+			priv->hw_q[i].job = (struct mlx5_hw_q_job **)
+					    &job[queue_attr[i - 1]->size];
+		job = (struct mlx5_hw_q_job *)
+		      &priv->hw_q[i].job[queue_attr[i]->size];
+		for (j = 0; j < queue_attr[i]->size; j++)
+			priv->hw_q[i].job[j] = &job[j];
+	}
+	dr_ctx_attr.pd = priv->sh->cdev->pd;
+	dr_ctx_attr.queues = nb_queue;
+	/* Queue size should all be the same. Take the first one. */
+	dr_ctx_attr.queue_size = queue_attr[0]->size;
+	dr_ctx = mlx5dr_context_open(priv->sh->cdev->ctx, &dr_ctx_attr);
+	/* rte_errno has been updated by HWS layer. */
+	if (!dr_ctx)
+		goto err;
+	priv->dr_ctx = dr_ctx;
+	priv->nb_queue = nb_queue;
+	return 0;
+err:
+	if (dr_ctx)
+		claim_zero(mlx5dr_context_close(dr_ctx));
+	mlx5_free(priv->hw_q);
+	priv->hw_q = NULL;
+	return rte_flow_error_set(error, rte_errno,
+				  RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+				  "fail to configure port");
+}
+
+/**
+ * Release HWS resources.
+ *
+ * @param[in] dev
+ *   Pointer to the rte_eth_dev structure.
+ */
+void
+flow_hw_resource_release(struct rte_eth_dev *dev)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+
+	if (!priv->dr_ctx)
+		return;
+	mlx5_free(priv->hw_q);
+	priv->hw_q = NULL;
+	claim_zero(mlx5dr_context_close(priv->dr_ctx));
+	priv->dr_ctx = NULL;
+	priv->nb_queue = 0;
+}
+
+const struct mlx5_flow_driver_ops mlx5_flow_hw_drv_ops = {
+	.info_get = flow_hw_info_get,
+	.configure = flow_hw_configure,
+};
 
 #endif

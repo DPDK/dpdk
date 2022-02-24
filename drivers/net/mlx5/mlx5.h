@@ -33,7 +33,9 @@
 #include "mlx5_utils.h"
 #include "mlx5_os.h"
 #include "mlx5_autoconf.h"
-
+#if defined(HAVE_IBV_FLOW_DV_SUPPORT) || !defined(HAVE_INFINIBAND_VERBS_H)
+#include "mlx5_dr.h"
+#endif
 
 #define MLX5_SH(dev) (((struct mlx5_priv *)(dev)->data->dev_private)->sh)
 
@@ -319,6 +321,26 @@ struct mlx5_lb_ctx {
 	void *ibv_cq; /* Completion queue. */
 	uint16_t refcnt; /* Reference count for representors. */
 };
+
+/* HW steering queue job descriptor type. */
+enum {
+	MLX5_HW_Q_JOB_TYPE_CREATE, /* Flow create job type. */
+	MLX5_HW_Q_JOB_TYPE_DESTROY, /* Flow destroy job type. */
+};
+
+/* HW steering flow management job descriptor. */
+struct mlx5_hw_q_job {
+	uint32_t type; /* Job type. */
+	struct rte_flow *flow; /* Flow attached to the job. */
+	void *user_data; /* Job user data. */
+};
+
+/* HW steering job descriptor LIFO pool. */
+struct mlx5_hw_q {
+	uint32_t job_idx; /* Free job index. */
+	uint32_t size; /* LIFO size. */
+	struct mlx5_hw_q_job **job; /* LIFO header. */
+} __rte_cache_aligned;
 
 #define MLX5_COUNTERS_PER_POOL 512
 #define MLX5_MAX_PENDING_QUERIES 4
@@ -1479,6 +1501,12 @@ struct mlx5_priv {
 	struct mlx5_flex_item flex_item[MLX5_PORT_FLEX_ITEM_NUM];
 	/* Flex items have been created on the port. */
 	uint32_t flex_item_map; /* Map of allocated flex item elements. */
+#if defined(HAVE_IBV_FLOW_DV_SUPPORT) || !defined(HAVE_INFINIBAND_VERBS_H)
+	struct mlx5dr_context *dr_ctx; /**< HW steering DR context. */
+	uint32_t nb_queue; /* HW steering queue number. */
+	/* HW steering queue polling mechanism job descriptor LIFO. */
+	struct mlx5_hw_q *hw_q;
+#endif
 };
 
 #define PORT_ID(priv) ((priv)->dev_data->port_id)

@@ -805,6 +805,17 @@ static int
 mlx5_flow_flex_item_release(struct rte_eth_dev *dev,
 			    const struct rte_flow_item_flex_handle *handle,
 			    struct rte_flow_error *error);
+static int
+mlx5_flow_info_get(struct rte_eth_dev *dev,
+		   struct rte_flow_port_info *port_info,
+		   struct rte_flow_queue_info *queue_info,
+		   struct rte_flow_error *error);
+static int
+mlx5_flow_port_configure(struct rte_eth_dev *dev,
+			 const struct rte_flow_port_attr *port_attr,
+			 uint16_t nb_queue,
+			 const struct rte_flow_queue_attr *queue_attr[],
+			 struct rte_flow_error *err);
 
 static const struct rte_flow_ops mlx5_flow_ops = {
 	.validate = mlx5_flow_validate,
@@ -826,6 +837,8 @@ static const struct rte_flow_ops mlx5_flow_ops = {
 	.get_restore_info = mlx5_flow_tunnel_get_restore_info,
 	.flex_item_create = mlx5_flow_flex_item_create,
 	.flex_item_release = mlx5_flow_flex_item_release,
+	.info_get = mlx5_flow_info_get,
+	.configure = mlx5_flow_port_configure,
 };
 
 /* Tunnel information. */
@@ -3429,6 +3442,12 @@ flow_get_drv_type(struct rte_eth_dev *dev, const struct rte_flow_attr *attr)
 
 	if (type != MLX5_FLOW_TYPE_MAX)
 		return type;
+	/*
+	 * Currently when dv_flow_en == 2, only HW steering engine is
+	 * supported. New engines can also be chosen here if ready.
+	 */
+	if (priv->sh->config.dv_flow_en == 2)
+		return MLX5_FLOW_TYPE_HW;
 	/* If no OS specific type - continue with DV/VERBS selection */
 	if (attr->transfer && priv->sh->config.dv_esw_en)
 		type = MLX5_FLOW_TYPE_DV;
@@ -7836,6 +7855,73 @@ mlx5_counter_query(struct rte_eth_dev *dev, uint32_t cnt,
 		"port %u counter query is not supported.",
 		 dev->data->port_id);
 	return -ENOTSUP;
+}
+
+/**
+ * Get information about HWS pre-configurable resources.
+ *
+ * @param[in] dev
+ *   Pointer to the rte_eth_dev structure.
+ * @param[out] port_info
+ *   Pointer to port information.
+ * @param[out] queue_info
+ *   Pointer to queue information.
+ * @param[out] error
+ *   Pointer to error structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+static int
+mlx5_flow_info_get(struct rte_eth_dev *dev,
+		   struct rte_flow_port_info *port_info,
+		   struct rte_flow_queue_info *queue_info,
+		   struct rte_flow_error *error)
+{
+	const struct mlx5_flow_driver_ops *fops;
+
+	if (flow_get_drv_type(dev, NULL) != MLX5_FLOW_TYPE_HW)
+		return rte_flow_error_set(error, ENOTSUP,
+				RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				NULL,
+				"info get with incorrect steering mode");
+	fops = flow_get_drv_ops(MLX5_FLOW_TYPE_HW);
+	return fops->info_get(dev, port_info, queue_info, error);
+}
+
+/**
+ * Configure port HWS resources.
+ *
+ * @param[in] dev
+ *   Pointer to the rte_eth_dev structure.
+ * @param[in] port_attr
+ *   Port configuration attributes.
+ * @param[in] nb_queue
+ *   Number of queue.
+ * @param[in] queue_attr
+ *   Array that holds attributes for each flow queue.
+ * @param[out] error
+ *   Pointer to error structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+static int
+mlx5_flow_port_configure(struct rte_eth_dev *dev,
+			 const struct rte_flow_port_attr *port_attr,
+			 uint16_t nb_queue,
+			 const struct rte_flow_queue_attr *queue_attr[],
+			 struct rte_flow_error *error)
+{
+	const struct mlx5_flow_driver_ops *fops;
+
+	if (flow_get_drv_type(dev, NULL) != MLX5_FLOW_TYPE_HW)
+		return rte_flow_error_set(error, ENOTSUP,
+				RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				NULL,
+				"port configure with incorrect steering mode");
+	fops = flow_get_drv_ops(MLX5_FLOW_TYPE_HW);
+	return fops->configure(dev, port_attr, nb_queue, queue_attr, error);
 }
 
 /**
