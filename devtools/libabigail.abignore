@@ -20,3 +20,7 @@
 ; Ignore changes to rte_crypto_asym_op, asymmetric crypto API is experimental
 [suppress_type]
         name = rte_crypto_asym_op
+
+; Ignore changes in common mlx5 driver, should be all internal
+[suppress_file]
+        soname_regexp = ^librte_common_mlx5\.

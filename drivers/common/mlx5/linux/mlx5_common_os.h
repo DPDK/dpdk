@@ -300,6 +300,7 @@ mlx5_set_context_attr(struct rte_device *dev, struct ibv_context *ctx);
  *  0 if OFED doesn't support.
  *  >0 if success.
  */
+__rte_internal
 int
 mlx5_get_device_guid(const struct rte_pci_addr *dev, uint8_t *guid, size_t len);
 
