@@ -1020,9 +1020,24 @@ struct rte_flow {
 /* HWS flow struct. */
 struct rte_flow_hw {
 	uint32_t idx; /* Flow index from indexed pool. */
+	uint32_t fate_type; /* Fate action type. */
+	union {
+		/* Jump action. */
+		struct mlx5_hw_jump_action *jump;
+	};
 	struct rte_flow_template_table *table; /* The table flow allcated from. */
 	struct mlx5dr_rule rule; /* HWS layer data struct. */
 } __rte_packed;
+
+/* rte flow action translate to DR action struct. */
+struct mlx5_action_construct_data {
+	LIST_ENTRY(mlx5_action_construct_data) next;
+	/* Ensure the action types are matched. */
+	int type;
+	uint32_t idx;  /* Data index. */
+	uint16_t action_src; /* rte_flow_action src offset. */
+	uint16_t action_dst; /* mlx5dr_rule_action dst offset. */
+};
 
 /* Flow item template struct. */
 struct rte_flow_pattern_template {
@@ -1051,9 +1066,17 @@ struct mlx5_hw_jump_action {
 	struct mlx5dr_action *hws_action;
 };
 
+/* The maximum actions support in the flow. */
+#define MLX5_HW_MAX_ACTS 16
+
 /* DR action set struct. */
 struct mlx5_hw_actions {
-	struct mlx5dr_action *drop; /* Drop action. */
+	/* Dynamic action list. */
+	LIST_HEAD(act_list, mlx5_action_construct_data) act_list;
+	struct mlx5_hw_jump_action *jump; /* Jump action. */
+	uint32_t acts_num:4; /* Total action number. */
+	/* Translated DR action array from action template. */
+	struct mlx5dr_rule_action rule_acts[MLX5_HW_MAX_ACTS];
 };
 
 /* mlx5 action template struct. */

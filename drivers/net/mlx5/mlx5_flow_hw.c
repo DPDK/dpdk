@@ -37,17 +37,157 @@ static uint32_t mlx5_hw_act_flag[MLX5_HW_ACTION_FLAG_MAX]
 };
 
 /**
+ * Register destination table DR jump action.
+ *
+ * @param[in] dev
+ *   Pointer to the rte_eth_dev structure.
+ * @param[in] table_attr
+ *   Pointer to the flow attributes.
+ * @param[in] dest_group
+ *   The destination group ID.
+ * @param[out] error
+ *   Pointer to error structure.
+ *
+ * @return
+ *    Table on success, NULL otherwise and rte_errno is set.
+ */
+static struct mlx5_hw_jump_action *
+flow_hw_jump_action_register(struct rte_eth_dev *dev,
+			     const struct rte_flow_attr *attr,
+			     uint32_t dest_group,
+			     struct rte_flow_error *error)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct rte_flow_attr jattr = *attr;
+	struct mlx5_flow_group *grp;
+	struct mlx5_flow_cb_ctx ctx = {
+		.dev = dev,
+		.error = error,
+		.data = &jattr,
+	};
+	struct mlx5_list_entry *ge;
+
+	jattr.group = dest_group;
+	ge = mlx5_hlist_register(priv->sh->flow_tbls, dest_group, &ctx);
+	if (!ge)
+		return NULL;
+	grp = container_of(ge, struct mlx5_flow_group, entry);
+	return &grp->jump;
+}
+
+/**
+ * Release jump action.
+ *
+ * @param[in] dev
+ *   Pointer to the rte_eth_dev structure.
+ * @param[in] jump
+ *   Pointer to the jump action.
+ */
+
+static void
+flow_hw_jump_release(struct rte_eth_dev *dev, struct mlx5_hw_jump_action *jump)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_flow_group *grp;
+
+	grp = container_of
+		(jump, struct mlx5_flow_group, jump);
+	mlx5_hlist_unregister(priv->sh->flow_tbls, &grp->entry);
+}
+
+/**
  * Destroy DR actions created by action template.
  *
  * For DR actions created during table creation's action translate.
  * Need to destroy the DR action when destroying the table.
  *
+ * @param[in] dev
+ *   Pointer to the rte_eth_dev structure.
  * @param[in] acts
  *   Pointer to the template HW steering DR actions.
  */
 static void
-__flow_hw_action_template_destroy(struct mlx5_hw_actions *acts __rte_unused)
+__flow_hw_action_template_destroy(struct rte_eth_dev *dev,
+				 struct mlx5_hw_actions *acts)
 {
+	struct mlx5_priv *priv = dev->data->dev_private;
+
+	if (acts->jump) {
+		struct mlx5_flow_group *grp;
+
+		grp = container_of
+			(acts->jump, struct mlx5_flow_group, jump);
+		mlx5_hlist_unregister(priv->sh->flow_tbls, &grp->entry);
+		acts->jump = NULL;
+	}
+}
+
+/**
+ * Append dynamic action to the dynamic action list.
+ *
+ * @param[in] priv
+ *   Pointer to the port private data structure.
+ * @param[in] acts
+ *   Pointer to the template HW steering DR actions.
+ * @param[in] type
+ *   Action type.
+ * @param[in] action_src
+ *   Offset of source rte flow action.
+ * @param[in] action_dst
+ *   Offset of destination DR action.
+ *
+ * @return
+ *    0 on success, negative value otherwise and rte_errno is set.
+ */
+static __rte_always_inline struct mlx5_action_construct_data *
+__flow_hw_act_data_alloc(struct mlx5_priv *priv,
+			 enum rte_flow_action_type type,
+			 uint16_t action_src,
+			 uint16_t action_dst)
+{
+	struct mlx5_action_construct_data *act_data;
+	uint32_t idx = 0;
+
+	act_data = mlx5_ipool_zmalloc(priv->acts_ipool, &idx);
+	if (!act_data)
+		return NULL;
+	act_data->idx = idx;
+	act_data->type = type;
+	act_data->action_src = action_src;
+	act_data->action_dst = action_dst;
+	return act_data;
+}
+
+/**
+ * Append dynamic action to the dynamic action list.
+ *
+ * @param[in] priv
+ *   Pointer to the port private data structure.
+ * @param[in] acts
+ *   Pointer to the template HW steering DR actions.
+ * @param[in] type
+ *   Action type.
+ * @param[in] action_src
+ *   Offset of source rte flow action.
+ * @param[in] action_dst
+ *   Offset of destination DR action.
+ *
+ * @return
+ *    0 on success, negative value otherwise and rte_errno is set.
+ */
+static __rte_always_inline int
+__flow_hw_act_data_general_append(struct mlx5_priv *priv,
+				  struct mlx5_hw_actions *acts,
+				  enum rte_flow_action_type type,
+				  uint16_t action_src,
+				  uint16_t action_dst)
+{	struct mlx5_action_construct_data *act_data;
+
+	act_data = __flow_hw_act_data_alloc(priv, type, action_src, action_dst);
+	if (!act_data)
+		return -1;
+	LIST_INSERT_HEAD(&acts->act_list, act_data, next);
+	return 0;
 }
 
 /**
@@ -80,14 +220,16 @@ flow_hw_actions_translate(struct rte_eth_dev *dev,
 			  const struct rte_flow_template_table_attr *table_attr,
 			  struct mlx5_hw_actions *acts,
 			  struct rte_flow_actions_template *at,
-			  struct rte_flow_error *error __rte_unused)
+			  struct rte_flow_error *error)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	const struct rte_flow_attr *attr = &table_attr->flow_attr;
 	struct rte_flow_action *actions = at->actions;
+	struct rte_flow_action *action_start = actions;
 	struct rte_flow_action *masks = at->masks;
 	bool actions_end = false;
-	uint32_t type;
+	uint32_t type, i;
+	int err;
 
 	if (attr->transfer)
 		type = MLX5DR_TABLE_TYPE_FDB;
@@ -95,14 +237,34 @@ flow_hw_actions_translate(struct rte_eth_dev *dev,
 		type = MLX5DR_TABLE_TYPE_NIC_TX;
 	else
 		type = MLX5DR_TABLE_TYPE_NIC_RX;
-	for (; !actions_end; actions++, masks++) {
+	for (i = 0; !actions_end; actions++, masks++) {
 		switch (actions->type) {
 		case RTE_FLOW_ACTION_TYPE_INDIRECT:
 			break;
 		case RTE_FLOW_ACTION_TYPE_VOID:
 			break;
 		case RTE_FLOW_ACTION_TYPE_DROP:
-			acts->drop = priv->hw_drop[!!attr->group][type];
+			acts->rule_acts[i++].action =
+				priv->hw_drop[!!attr->group][type];
+			break;
+		case RTE_FLOW_ACTION_TYPE_JUMP:
+			if (masks->conf) {
+				uint32_t jump_group =
+					((const struct rte_flow_action_jump *)
+					actions->conf)->group;
+				acts->jump = flow_hw_jump_action_register
+						(dev, attr, jump_group, error);
+				if (!acts->jump)
+					goto err;
+				acts->rule_acts[i].action = (!!attr->group) ?
+						acts->jump->hws_action :
+						acts->jump->root_action;
+			} else if (__flow_hw_act_data_general_append
+					(priv, acts, actions->type,
+					 actions - action_start, i)){
+				goto err;
+			}
+			i++;
 			break;
 		case RTE_FLOW_ACTION_TYPE_END:
 			actions_end = true;
@@ -111,7 +273,14 @@ flow_hw_actions_translate(struct rte_eth_dev *dev,
 			break;
 		}
 	}
+	acts->acts_num = i;
 	return 0;
+err:
+	err = rte_errno;
+	__flow_hw_action_template_destroy(dev, acts);
+	return rte_flow_error_set(error, err,
+				  RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+				  "fail to create rte table");
 }
 
 /**
@@ -120,6 +289,10 @@ flow_hw_actions_translate(struct rte_eth_dev *dev,
  * For action template contains dynamic actions, these actions need to
  * be updated according to the rte_flow action during flow creation.
  *
+ * @param[in] dev
+ *   Pointer to the rte_eth_dev structure.
+ * @param[in] job
+ *   Pointer to job descriptor.
  * @param[in] hw_acts
  *   Pointer to translated actions from template.
  * @param[in] actions
@@ -133,31 +306,63 @@ flow_hw_actions_translate(struct rte_eth_dev *dev,
  *    0 on success, negative value otherwise and rte_errno is set.
  */
 static __rte_always_inline int
-flow_hw_actions_construct(struct mlx5_hw_actions *hw_acts,
+flow_hw_actions_construct(struct rte_eth_dev *dev,
+			  struct mlx5_hw_q_job *job,
+			  struct mlx5_hw_actions *hw_acts,
 			  const struct rte_flow_action actions[],
 			  struct mlx5dr_rule_action *rule_acts,
 			  uint32_t *acts_num)
 {
-	bool actions_end = false;
-	uint32_t i;
+	struct rte_flow_template_table *table = job->flow->table;
+	struct mlx5_action_construct_data *act_data;
+	const struct rte_flow_action *action;
+	struct rte_flow_attr attr = {
+			.ingress = 1,
+	};
 
-	for (i = 0; !actions_end || (i >= MLX5_HW_MAX_ACTS); actions++) {
-		switch (actions->type) {
+	memcpy(rule_acts, hw_acts->rule_acts,
+	       sizeof(*rule_acts) * hw_acts->acts_num);
+	*acts_num = hw_acts->acts_num;
+	if (LIST_EMPTY(&hw_acts->act_list))
+		return 0;
+	attr.group = table->grp->group_id;
+	if (table->type == MLX5DR_TABLE_TYPE_FDB) {
+		attr.transfer = 1;
+		attr.ingress = 1;
+	} else if (table->type == MLX5DR_TABLE_TYPE_NIC_TX) {
+		attr.egress = 1;
+		attr.ingress = 0;
+	} else {
+		attr.ingress = 1;
+	}
+	LIST_FOREACH(act_data, &hw_acts->act_list, next) {
+		uint32_t jump_group;
+		struct mlx5_hw_jump_action *jump;
+
+		action = &actions[act_data->action_src];
+		MLX5_ASSERT(action->type == RTE_FLOW_ACTION_TYPE_INDIRECT ||
+			    (int)action->type == act_data->type);
+		switch (action->type) {
 		case RTE_FLOW_ACTION_TYPE_INDIRECT:
 			break;
 		case RTE_FLOW_ACTION_TYPE_VOID:
 			break;
-		case RTE_FLOW_ACTION_TYPE_DROP:
-			rule_acts[i++].action = hw_acts->drop;
-			break;
-		case RTE_FLOW_ACTION_TYPE_END:
-			actions_end = true;
+		case RTE_FLOW_ACTION_TYPE_JUMP:
+			jump_group = ((const struct rte_flow_action_jump *)
+						action->conf)->group;
+			jump = flow_hw_jump_action_register
+				(dev, &attr, jump_group, NULL);
+			if (!jump)
+				return -1;
+			rule_acts[act_data->action_dst].action =
+			(!!attr.group) ? jump->hws_action : jump->root_action;
+			job->flow->jump = jump;
+			job->flow->fate_type = MLX5_FLOW_FATE_JUMP;
 			break;
 		default:
 			break;
 		}
 	}
-	*acts_num = i;
 	return 0;
 }
 
@@ -239,7 +444,8 @@ flow_hw_async_flow_create(struct rte_eth_dev *dev,
 	rule_attr.user_data = job;
 	hw_acts = &table->ats[action_template_index].acts;
 	/* Construct the flow action array based on the input actions.*/
-	flow_hw_actions_construct(hw_acts, actions, rule_acts, &acts_num);
+	flow_hw_actions_construct(dev, job, hw_acts, actions,
+				  rule_acts, &acts_num);
 	ret = mlx5dr_rule_create(table->matcher,
 				 pattern_template_index, items,
 				 rule_acts, acts_num,
@@ -356,8 +562,11 @@ flow_hw_pull(struct rte_eth_dev *dev,
 		job = (struct mlx5_hw_q_job *)res[i].user_data;
 		/* Restore user data. */
 		res[i].user_data = job->user_data;
-		if (job->type == MLX5_HW_Q_JOB_TYPE_DESTROY)
+		if (job->type == MLX5_HW_Q_JOB_TYPE_DESTROY) {
+			if (job->flow->fate_type == MLX5_FLOW_FATE_JUMP)
+				flow_hw_jump_release(dev, job->flow->jump);
 			mlx5_ipool_free(job->flow->table->flow, job->flow->idx);
+		}
 		priv->hw_q[queue].job[priv->hw_q[queue].job_idx++] = job;
 	}
 	return ret;
@@ -642,6 +851,7 @@ flow_hw_table_create(struct rte_eth_dev *dev,
 			rte_errno = EINVAL;
 			goto at_error;
 		}
+		LIST_INIT(&tbl->ats[i].acts.act_list);
 		err = flow_hw_actions_translate(dev, attr,
 						&tbl->ats[i].acts,
 						action_templates[i], error);
@@ -659,7 +869,7 @@ flow_hw_table_create(struct rte_eth_dev *dev,
 	return tbl;
 at_error:
 	while (i--) {
-		__flow_hw_action_template_destroy(&tbl->ats[i].acts);
+		__flow_hw_action_template_destroy(dev, &tbl->ats[i].acts);
 		__atomic_sub_fetch(&action_templates[i]->refcnt,
 				   1, __ATOMIC_RELAXED);
 	}
@@ -718,7 +928,7 @@ flow_hw_table_destroy(struct rte_eth_dev *dev,
 		__atomic_sub_fetch(&table->its[i]->refcnt,
 				   1, __ATOMIC_RELAXED);
 	for (i = 0; i < table->nb_action_templates; i++) {
-		__flow_hw_action_template_destroy(&table->ats[i].acts);
+		__flow_hw_action_template_destroy(dev, &table->ats[i].acts);
 		__atomic_sub_fetch(&table->ats[i].action_template->refcnt,
 				   1, __ATOMIC_RELAXED);
 	}
@@ -1169,6 +1379,15 @@ flow_hw_configure(struct rte_eth_dev *dev,
 	struct mlx5_hw_q *hw_q;
 	struct mlx5_hw_q_job *job = NULL;
 	uint32_t mem_size, i, j;
+	struct mlx5_indexed_pool_config cfg = {
+		.size = sizeof(struct rte_flow_hw),
+		.trunk_size = 4096,
+		.need_lock = 1,
+		.release_mem_en = !!priv->sh->config.reclaim_mode,
+		.malloc = mlx5_malloc,
+		.free = mlx5_free,
+		.type = "mlx5_hw_action_construct_data",
+	};
 
 	if (!port_attr || !nb_queue || !queue_attr) {
 		rte_errno = EINVAL;
@@ -1187,6 +1406,9 @@ flow_hw_configure(struct rte_eth_dev *dev,
 		}
 		flow_hw_resource_release(dev);
 	}
+	priv->acts_ipool = mlx5_ipool_create(&cfg);
+	if (!priv->acts_ipool)
+		goto err;
 	/* Allocate the queue job descriptor LIFO. */
 	mem_size = sizeof(priv->hw_q[0]) * nb_queue;
 	for (i = 0; i < nb_queue; i++) {
@@ -1254,6 +1476,10 @@ err:
 		claim_zero(mlx5dr_context_close(dr_ctx));
 	mlx5_free(priv->hw_q);
 	priv->hw_q = NULL;
+	if (priv->acts_ipool) {
+		mlx5_ipool_destroy(priv->acts_ipool);
+		priv->acts_ipool = NULL;
+	}
 	return rte_flow_error_set(error, rte_errno,
 				  RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
 				  "fail to configure port");
@@ -1294,6 +1520,10 @@ flow_hw_resource_release(struct rte_eth_dev *dev)
 				continue;
 			mlx5dr_action_destroy(priv->hw_drop[i][j]);
 		}
+	}
+	if (priv->acts_ipool) {
+		mlx5_ipool_destroy(priv->acts_ipool);
+		priv->acts_ipool = NULL;
 	}
 	mlx5_free(priv->hw_q);
 	priv->hw_q = NULL;
