@@ -59,7 +59,7 @@ mlx5_txq_start(struct rte_eth_dev *dev)
 
 		if (!txq_ctrl)
 			continue;
-		if (txq_ctrl->type == MLX5_TXQ_TYPE_STANDARD)
+		if (!txq_ctrl->is_hairpin)
 			txq_alloc_elts(txq_ctrl);
 		MLX5_ASSERT(!txq_ctrl->obj);
 		txq_ctrl->obj = mlx5_malloc(flags, sizeof(struct mlx5_txq_obj),
@@ -77,7 +77,7 @@ mlx5_txq_start(struct rte_eth_dev *dev)
 			txq_ctrl->obj = NULL;
 			goto error;
 		}
-		if (txq_ctrl->type == MLX5_TXQ_TYPE_STANDARD) {
+		if (!txq_ctrl->is_hairpin) {
 			size_t size = txq_data->cqe_s * sizeof(*txq_data->fcqs);
 
 			txq_data->fcqs = mlx5_malloc(flags, size,
@@ -167,7 +167,7 @@ mlx5_rxq_ctrl_prepare(struct rte_eth_dev *dev, struct mlx5_rxq_ctrl *rxq_ctrl,
 {
 	int ret = 0;
 
-	if (rxq_ctrl->type == MLX5_RXQ_TYPE_STANDARD) {
+	if (!rxq_ctrl->is_hairpin) {
 		/*
 		 * Pre-register the mempools. Regardless of whether
 		 * the implicit registration is enabled or not,
@@ -280,7 +280,7 @@ mlx5_hairpin_auto_bind(struct rte_eth_dev *dev)
 		txq_ctrl = mlx5_txq_get(dev, i);
 		if (!txq_ctrl)
 			continue;
-		if (txq_ctrl->type != MLX5_TXQ_TYPE_HAIRPIN ||
+		if (!txq_ctrl->is_hairpin ||
 		    txq_ctrl->hairpin_conf.peers[0].port != self_port) {
 			mlx5_txq_release(dev, i);
 			continue;
@@ -299,7 +299,7 @@ mlx5_hairpin_auto_bind(struct rte_eth_dev *dev)
 		if (!txq_ctrl)
 			continue;
 		/* Skip hairpin queues with other peer ports. */
-		if (txq_ctrl->type != MLX5_TXQ_TYPE_HAIRPIN ||
+		if (!txq_ctrl->is_hairpin ||
 		    txq_ctrl->hairpin_conf.peers[0].port != self_port) {
 			mlx5_txq_release(dev, i);
 			continue;
@@ -322,7 +322,7 @@ mlx5_hairpin_auto_bind(struct rte_eth_dev *dev)
 			return -rte_errno;
 		}
 		rxq_ctrl = rxq->ctrl;
-		if (rxq_ctrl->type != MLX5_RXQ_TYPE_HAIRPIN ||
+		if (!rxq_ctrl->is_hairpin ||
 		    rxq->hairpin_conf.peers[0].queue != i) {
 			rte_errno = ENOMEM;
 			DRV_LOG(ERR, "port %u Tx queue %d can't be binded to "
@@ -412,7 +412,7 @@ mlx5_hairpin_queue_peer_update(struct rte_eth_dev *dev, uint16_t peer_queue,
 				dev->data->port_id, peer_queue);
 			return -rte_errno;
 		}
-		if (txq_ctrl->type != MLX5_TXQ_TYPE_HAIRPIN) {
+		if (!txq_ctrl->is_hairpin) {
 			rte_errno = EINVAL;
 			DRV_LOG(ERR, "port %u queue %d is not a hairpin Txq",
 				dev->data->port_id, peer_queue);
@@ -444,7 +444,7 @@ mlx5_hairpin_queue_peer_update(struct rte_eth_dev *dev, uint16_t peer_queue,
 			return -rte_errno;
 		}
 		rxq_ctrl = rxq->ctrl;
-		if (rxq_ctrl->type != MLX5_RXQ_TYPE_HAIRPIN) {
+		if (!rxq_ctrl->is_hairpin) {
 			rte_errno = EINVAL;
 			DRV_LOG(ERR, "port %u queue %d is not a hairpin Rxq",
 				dev->data->port_id, peer_queue);
@@ -510,7 +510,7 @@ mlx5_hairpin_queue_peer_bind(struct rte_eth_dev *dev, uint16_t cur_queue,
 				dev->data->port_id, cur_queue);
 			return -rte_errno;
 		}
-		if (txq_ctrl->type != MLX5_TXQ_TYPE_HAIRPIN) {
+		if (!txq_ctrl->is_hairpin) {
 			rte_errno = EINVAL;
 			DRV_LOG(ERR, "port %u queue %d not a hairpin Txq",
 				dev->data->port_id, cur_queue);
@@ -570,7 +570,7 @@ mlx5_hairpin_queue_peer_bind(struct rte_eth_dev *dev, uint16_t cur_queue,
 			return -rte_errno;
 		}
 		rxq_ctrl = rxq->ctrl;
-		if (rxq_ctrl->type != MLX5_RXQ_TYPE_HAIRPIN) {
+		if (!rxq_ctrl->is_hairpin) {
 			rte_errno = EINVAL;
 			DRV_LOG(ERR, "port %u queue %d not a hairpin Rxq",
 				dev->data->port_id, cur_queue);
@@ -644,7 +644,7 @@ mlx5_hairpin_queue_peer_unbind(struct rte_eth_dev *dev, uint16_t cur_queue,
 				dev->data->port_id, cur_queue);
 			return -rte_errno;
 		}
-		if (txq_ctrl->type != MLX5_TXQ_TYPE_HAIRPIN) {
+		if (!txq_ctrl->is_hairpin) {
 			rte_errno = EINVAL;
 			DRV_LOG(ERR, "port %u queue %d not a hairpin Txq",
 				dev->data->port_id, cur_queue);
@@ -683,7 +683,7 @@ mlx5_hairpin_queue_peer_unbind(struct rte_eth_dev *dev, uint16_t cur_queue,
 			return -rte_errno;
 		}
 		rxq_ctrl = rxq->ctrl;
-		if (rxq_ctrl->type != MLX5_RXQ_TYPE_HAIRPIN) {
+		if (!rxq_ctrl->is_hairpin) {
 			rte_errno = EINVAL;
 			DRV_LOG(ERR, "port %u queue %d not a hairpin Rxq",
 				dev->data->port_id, cur_queue);
@@ -751,7 +751,7 @@ mlx5_hairpin_bind_single_port(struct rte_eth_dev *dev, uint16_t rx_port)
 		txq_ctrl = mlx5_txq_get(dev, i);
 		if (txq_ctrl == NULL)
 			continue;
-		if (txq_ctrl->type != MLX5_TXQ_TYPE_HAIRPIN) {
+		if (!txq_ctrl->is_hairpin) {
 			mlx5_txq_release(dev, i);
 			continue;
 		}
@@ -791,7 +791,7 @@ mlx5_hairpin_bind_single_port(struct rte_eth_dev *dev, uint16_t rx_port)
 		txq_ctrl = mlx5_txq_get(dev, i);
 		if (txq_ctrl == NULL)
 			continue;
-		if (txq_ctrl->type != MLX5_TXQ_TYPE_HAIRPIN) {
+		if (!txq_ctrl->is_hairpin) {
 			mlx5_txq_release(dev, i);
 			continue;
 		}
@@ -886,7 +886,7 @@ mlx5_hairpin_unbind_single_port(struct rte_eth_dev *dev, uint16_t rx_port)
 		txq_ctrl = mlx5_txq_get(dev, i);
 		if (txq_ctrl == NULL)
 			continue;
-		if (txq_ctrl->type != MLX5_TXQ_TYPE_HAIRPIN) {
+		if (!txq_ctrl->is_hairpin) {
 			mlx5_txq_release(dev, i);
 			continue;
 		}
@@ -1016,7 +1016,7 @@ mlx5_hairpin_get_peer_ports(struct rte_eth_dev *dev, uint16_t *peer_ports,
 			txq_ctrl = mlx5_txq_get(dev, i);
 			if (!txq_ctrl)
 				continue;
-			if (txq_ctrl->type != MLX5_TXQ_TYPE_HAIRPIN) {
+			if (!txq_ctrl->is_hairpin) {
 				mlx5_txq_release(dev, i);
 				continue;
 			}
@@ -1040,7 +1040,7 @@ mlx5_hairpin_get_peer_ports(struct rte_eth_dev *dev, uint16_t *peer_ports,
 			if (rxq == NULL)
 				continue;
 			rxq_ctrl = rxq->ctrl;
-			if (rxq_ctrl->type != MLX5_RXQ_TYPE_HAIRPIN)
+			if (!rxq_ctrl->is_hairpin)
 				continue;
 			pp = rxq->hairpin_conf.peers[0].port;
 			if (pp >= RTE_MAX_ETHPORTS) {
@@ -1318,7 +1318,7 @@ mlx5_traffic_enable(struct rte_eth_dev *dev)
 		if (!txq_ctrl)
 			continue;
 		/* Only Tx implicit mode requires the default Tx flow. */
-		if (txq_ctrl->type == MLX5_TXQ_TYPE_HAIRPIN &&
+		if (txq_ctrl->is_hairpin &&
 		    txq_ctrl->hairpin_conf.tx_explicit == 0 &&
 		    txq_ctrl->hairpin_conf.peers[0].port ==
 		    priv->dev_data->port_id) {

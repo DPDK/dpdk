@@ -173,7 +173,7 @@ mlx5_dev_configure_rss_reta(struct rte_eth_dev *dev)
 	for (i = 0, j = 0; i < rxqs_n; i++) {
 		struct mlx5_rxq_ctrl *rxq_ctrl = mlx5_rxq_ctrl_get(dev, i);
 
-		if (rxq_ctrl && rxq_ctrl->type == MLX5_RXQ_TYPE_STANDARD)
+		if (rxq_ctrl && !rxq_ctrl->is_hairpin)
 			rss_queue_arr[j++] = i;
 	}
 	rss_queue_n = j;

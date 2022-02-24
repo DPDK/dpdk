@@ -88,7 +88,7 @@ mlx5_devx_modify_rq(struct mlx5_rxq_priv *rxq, uint8_t type)
 	default:
 		break;
 	}
-	if (rxq->ctrl->type == MLX5_RXQ_TYPE_HAIRPIN)
+	if (rxq->ctrl->is_hairpin)
 		return mlx5_devx_cmd_modify_rq(rxq->ctrl->obj->rq, &rq_attr);
 	return mlx5_devx_cmd_modify_rq(rxq->devx_rq.rq, &rq_attr);
 }
@@ -162,7 +162,7 @@ mlx5_rxq_devx_obj_release(struct mlx5_rxq_priv *rxq)
 
 	if (rxq_obj == NULL)
 		return;
-	if (rxq_obj->rxq_ctrl->type == MLX5_RXQ_TYPE_HAIRPIN) {
+	if (rxq_obj->rxq_ctrl->is_hairpin) {
 		if (rxq_obj->rq == NULL)
 			return;
 		mlx5_devx_modify_rq(rxq, MLX5_RXQ_MOD_RDY2RST);
@@ -476,7 +476,7 @@ mlx5_rxq_devx_obj_new(struct mlx5_rxq_priv *rxq)
 
 	MLX5_ASSERT(rxq_data);
 	MLX5_ASSERT(tmpl);
-	if (rxq_ctrl->type == MLX5_RXQ_TYPE_HAIRPIN)
+	if (rxq_ctrl->is_hairpin)
 		return mlx5_rxq_obj_hairpin_new(rxq);
 	tmpl->rxq_ctrl = rxq_ctrl;
 	if (rxq_ctrl->irq && !rxq_ctrl->started) {
@@ -583,7 +583,7 @@ mlx5_devx_ind_table_create_rqt_attr(struct rte_eth_dev *dev,
 		struct mlx5_rxq_priv *rxq = mlx5_rxq_get(dev, queues[i]);
 
 		MLX5_ASSERT(rxq != NULL);
-		if (rxq->ctrl->type == MLX5_RXQ_TYPE_HAIRPIN)
+		if (rxq->ctrl->is_hairpin)
 			rqt_attr->rq_list[i] = rxq->ctrl->obj->rq->id;
 		else
 			rqt_attr->rq_list[i] = rxq->devx_rq.rq->id;
@@ -706,17 +706,13 @@ mlx5_devx_tir_attr_set(struct rte_eth_dev *dev, const uint8_t *rss_key,
 		       int tunnel, struct mlx5_devx_tir_attr *tir_attr)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	enum mlx5_rxq_type rxq_obj_type;
+	bool is_hairpin;
 	bool lro = true;
 	uint32_t i;
 
 	/* NULL queues designate drop queue. */
 	if (ind_tbl->queues != NULL) {
-		struct mlx5_rxq_ctrl *rxq_ctrl =
-				mlx5_rxq_ctrl_get(dev, ind_tbl->queues[0]);
-		rxq_obj_type = rxq_ctrl != NULL ? rxq_ctrl->type :
-						  MLX5_RXQ_TYPE_STANDARD;
-
+		is_hairpin = mlx5_rxq_is_hairpin(dev, ind_tbl->queues[0]);
 		/* Enable TIR LRO only if all the queues were configured for. */
 		for (i = 0; i < ind_tbl->queues_n; ++i) {
 			struct mlx5_rxq_data *rxq_i =
@@ -728,7 +724,7 @@ mlx5_devx_tir_attr_set(struct rte_eth_dev *dev, const uint8_t *rss_key,
 			}
 		}
 	} else {
-		rxq_obj_type = priv->drop_queue.rxq->ctrl->type;
+		is_hairpin = priv->drop_queue.rxq->ctrl->is_hairpin;
 	}
 	memset(tir_attr, 0, sizeof(*tir_attr));
 	tir_attr->disp_type = MLX5_TIRC_DISP_TYPE_INDIRECT;
@@ -759,7 +755,7 @@ mlx5_devx_tir_attr_set(struct rte_eth_dev *dev, const uint8_t *rss_key,
 			(!!(hash_fields & MLX5_L4_DST_IBV_RX_HASH)) <<
 			 MLX5_RX_HASH_FIELD_SELECT_SELECTED_FIELDS_L4_DPORT;
 	}
-	if (rxq_obj_type == MLX5_RXQ_TYPE_HAIRPIN)
+	if (is_hairpin)
 		tir_attr->transport_domain = priv->sh->td->id;
 	else
 		tir_attr->transport_domain = priv->sh->tdn;
@@ -940,7 +936,7 @@ mlx5_rxq_devx_obj_drop_create(struct rte_eth_dev *dev)
 		goto error;
 	}
 	rxq_obj->rxq_ctrl = rxq_ctrl;
-	rxq_ctrl->type = MLX5_RXQ_TYPE_STANDARD;
+	rxq_ctrl->is_hairpin = false;
 	rxq_ctrl->sh = priv->sh;
 	rxq_ctrl->obj = rxq_obj;
 	rxq->ctrl = rxq_ctrl;
@@ -1242,7 +1238,7 @@ mlx5_txq_devx_obj_new(struct rte_eth_dev *dev, uint16_t idx)
 	struct mlx5_txq_ctrl *txq_ctrl =
 			container_of(txq_data, struct mlx5_txq_ctrl, txq);
 
-	if (txq_ctrl->type == MLX5_TXQ_TYPE_HAIRPIN)
+	if (txq_ctrl->is_hairpin)
 		return mlx5_txq_obj_hairpin_new(dev, idx);
 #if !defined(HAVE_MLX5DV_DEVX_UAR_OFFSET) && defined(HAVE_INFINIBAND_VERBS_H)
 	DRV_LOG(ERR, "Port %u Tx queue %u cannot create with DevX, no UAR.",
@@ -1381,7 +1377,7 @@ void
 mlx5_txq_devx_obj_release(struct mlx5_txq_obj *txq_obj)
 {
 	MLX5_ASSERT(txq_obj);
-	if (txq_obj->txq_ctrl->type == MLX5_TXQ_TYPE_HAIRPIN) {
+	if (txq_obj->txq_ctrl->is_hairpin) {
 		if (txq_obj->tis)
 			claim_zero(mlx5_devx_cmd_destroy(txq_obj->tis));
 #if defined(HAVE_MLX5DV_DEVX_UAR_OFFSET) || !defined(HAVE_INFINIBAND_VERBS_H)

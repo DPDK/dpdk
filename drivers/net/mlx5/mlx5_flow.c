@@ -1788,7 +1788,7 @@ mlx5_validate_rss_queues(struct rte_eth_dev *dev,
 			 const char **error, uint32_t *queue_idx)
 {
 	const struct mlx5_priv *priv = dev->data->dev_private;
-	enum mlx5_rxq_type rxq_type = MLX5_RXQ_TYPE_UNDEFINED;
+	bool is_hairpin = false;
 	uint32_t i;
 
 	for (i = 0; i != queues_n; ++i) {
@@ -1805,9 +1805,9 @@ mlx5_validate_rss_queues(struct rte_eth_dev *dev,
 			*queue_idx = i;
 			return -EINVAL;
 		}
-		if (i == 0)
-			rxq_type = rxq_ctrl->type;
-		if (rxq_type != rxq_ctrl->type) {
+		if (i == 0 && rxq_ctrl->is_hairpin)
+			is_hairpin = true;
+		if (is_hairpin != rxq_ctrl->is_hairpin) {
 			*error = "combining hairpin and regular RSS queues is not supported";
 			*queue_idx = i;
 			return -ENOTSUP;
@@ -5986,15 +5986,13 @@ flow_create_split_metadata(struct rte_eth_dev *dev,
 			const struct rte_flow_action_queue *queue;
 
 			queue = qrss->conf;
-			if (mlx5_rxq_get_type(dev, queue->index) ==
-			    MLX5_RXQ_TYPE_HAIRPIN)
+			if (mlx5_rxq_is_hairpin(dev, queue->index))
 				qrss = NULL;
 		} else if (qrss->type == RTE_FLOW_ACTION_TYPE_RSS) {
 			const struct rte_flow_action_rss *rss;
 
 			rss = qrss->conf;
-			if (mlx5_rxq_get_type(dev, rss->queue[0]) ==
-			    MLX5_RXQ_TYPE_HAIRPIN)
+			if (mlx5_rxq_is_hairpin(dev, rss->queue[0]))
 				qrss = NULL;
 		}
 	}

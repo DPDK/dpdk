@@ -141,12 +141,6 @@ struct mlx5_rxq_data {
 	/* Buffer split segment descriptions - sizes, offsets, pools. */
 } __rte_cache_aligned;
 
-enum mlx5_rxq_type {
-	MLX5_RXQ_TYPE_STANDARD, /* Standard Rx queue. */
-	MLX5_RXQ_TYPE_HAIRPIN, /* Hairpin Rx queue. */
-	MLX5_RXQ_TYPE_UNDEFINED,
-};
-
 /* RX queue control descriptor. */
 struct mlx5_rxq_ctrl {
 	struct mlx5_rxq_data rxq; /* Data path structure. */
@@ -154,7 +148,7 @@ struct mlx5_rxq_ctrl {
 	LIST_HEAD(priv, mlx5_rxq_priv) owners; /* Owner rxq list. */
 	struct mlx5_rxq_obj *obj; /* Verbs/DevX elements. */
 	struct mlx5_dev_ctx_shared *sh; /* Shared context. */
-	enum mlx5_rxq_type type; /* Rxq type. */
+	bool is_hairpin; /* Whether RxQ type is Hairpin. */
 	unsigned int socket; /* CPU socket ID for allocations. */
 	LIST_ENTRY(mlx5_rxq_ctrl) share_entry; /* Entry in shared RXQ list. */
 	uint32_t share_group; /* Group ID of shared RXQ. */
@@ -258,7 +252,7 @@ struct mlx5_hrxq *mlx5_hrxq_get(struct rte_eth_dev *dev,
 int mlx5_hrxq_obj_release(struct rte_eth_dev *dev, struct mlx5_hrxq *hrxq);
 int mlx5_hrxq_release(struct rte_eth_dev *dev, uint32_t hxrq_idx);
 uint32_t mlx5_hrxq_verify(struct rte_eth_dev *dev);
-enum mlx5_rxq_type mlx5_rxq_get_type(struct rte_eth_dev *dev, uint16_t idx);
+bool mlx5_rxq_is_hairpin(struct rte_eth_dev *dev, uint16_t idx);
 const struct rte_eth_hairpin_conf *mlx5_rxq_get_hairpin_conf
 	(struct rte_eth_dev *dev, uint16_t idx);
 struct mlx5_hrxq *mlx5_drop_action_create(struct rte_eth_dev *dev);
@@ -632,8 +626,7 @@ mlx5_mprq_enabled(struct rte_eth_dev *dev)
 	for (i = 0; i < priv->rxqs_n; ++i) {
 		struct mlx5_rxq_ctrl *rxq_ctrl = mlx5_rxq_ctrl_get(dev, i);
 
-		if (rxq_ctrl == NULL ||
-		    rxq_ctrl->type != MLX5_RXQ_TYPE_STANDARD)
+		if (rxq_ctrl == NULL || rxq_ctrl->is_hairpin)
 			continue;
 		n_ibv++;
 		if (mlx5_rxq_mprq_enabled(&rxq_ctrl->rxq))

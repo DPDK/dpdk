@@ -5771,8 +5771,7 @@ flow_dv_validate_action_sample(uint64_t *action_flags,
 	}
 	/* Continue validation for Xcap actions.*/
 	if ((sub_action_flags & MLX5_FLOW_XCAP_ACTIONS) &&
-	    (queue_index == 0xFFFF ||
-	     mlx5_rxq_get_type(dev, queue_index) != MLX5_RXQ_TYPE_HAIRPIN)) {
+	    (queue_index == 0xFFFF || !mlx5_rxq_is_hairpin(dev, queue_index))) {
 		if ((sub_action_flags & MLX5_FLOW_XCAP_ACTIONS) ==
 		     MLX5_FLOW_XCAP_ACTIONS)
 			return rte_flow_error_set(error, ENOTSUP,
@@ -7964,8 +7963,7 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 	 */
 	if ((action_flags & (MLX5_FLOW_XCAP_ACTIONS |
 			     MLX5_FLOW_VLAN_ACTIONS)) &&
-	    (queue_index == 0xFFFF ||
-	     mlx5_rxq_get_type(dev, queue_index) != MLX5_RXQ_TYPE_HAIRPIN ||
+	    (queue_index == 0xFFFF || !mlx5_rxq_is_hairpin(dev, queue_index) ||
 	     ((conf = mlx5_rxq_get_hairpin_conf(dev, queue_index)) != NULL &&
 	     conf->tx_explicit != 0))) {
 		if ((action_flags & MLX5_FLOW_XCAP_ACTIONS) ==
@@ -11059,10 +11057,8 @@ flow_dv_translate_item_tx_queue(struct rte_eth_dev *dev,
 {
 	const struct mlx5_rte_flow_item_tx_queue *queue_m;
 	const struct mlx5_rte_flow_item_tx_queue *queue_v;
-	void *misc_m =
-		MLX5_ADDR_OF(fte_match_param, matcher, misc_parameters);
-	void *misc_v =
-		MLX5_ADDR_OF(fte_match_param, key, misc_parameters);
+	void *misc_m = MLX5_ADDR_OF(fte_match_param, matcher, misc_parameters);
+	void *misc_v = MLX5_ADDR_OF(fte_match_param, key, misc_parameters);
 	struct mlx5_txq_ctrl *txq;
 	uint32_t queue, mask;
 
@@ -11073,7 +11069,7 @@ flow_dv_translate_item_tx_queue(struct rte_eth_dev *dev,
 	txq = mlx5_txq_get(dev, queue_v->queue);
 	if (!txq)
 		return;
-	if (txq->type == MLX5_TXQ_TYPE_HAIRPIN)
+	if (txq->is_hairpin)
 		queue = txq->obj->sq->id;
 	else
 		queue = txq->obj->sq_obj.sq->id;

@@ -169,17 +169,12 @@ struct mlx5_txq_data {
 	/* Storage for queued packets, must be the last field. */
 } __rte_cache_aligned;
 
-enum mlx5_txq_type {
-	MLX5_TXQ_TYPE_STANDARD, /* Standard Tx queue. */
-	MLX5_TXQ_TYPE_HAIRPIN, /* Hairpin Tx queue. */
-};
-
 /* TX queue control descriptor. */
 struct mlx5_txq_ctrl {
 	LIST_ENTRY(mlx5_txq_ctrl) next; /* Pointer to the next element. */
 	uint32_t refcnt; /* Reference counter. */
 	unsigned int socket; /* CPU socket ID for allocations. */
-	enum mlx5_txq_type type; /* The txq ctrl type. */
+	bool is_hairpin; /* Whether TxQ type is Hairpin. */
 	unsigned int max_inline_data; /* Max inline data. */
 	unsigned int max_tso_header; /* Max TSO header size. */
 	struct mlx5_txq_obj *obj; /* Verbs/DevX queue object. */
