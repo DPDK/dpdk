@@ -2569,6 +2569,13 @@ again:
 			lnum += 1;
 		}
 
+		if (flags & NIX_TX_MULTI_SEG_F) {
+			tx_pkts[0]->next = NULL;
+			tx_pkts[1]->next = NULL;
+			tx_pkts[2]->next = NULL;
+			tx_pkts[3]->next = NULL;
+		}
+
 		tx_pkts = tx_pkts + NIX_DESCS_PER_LOOP;
 	}
 

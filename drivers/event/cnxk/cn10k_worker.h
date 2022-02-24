@@ -118,23 +118,23 @@ cn10k_process_vwqe(uintptr_t vwqe, uint16_t port_id, const uint32_t flags,
 	uint64_t aura_handle, laddr;
 	uint16_t nb_mbufs, non_vec;
 	uint16_t lmt_id, d_off;
+	struct rte_mbuf **wqe;
 	struct rte_mbuf *mbuf;
 	uint8_t loff = 0;
 	uint64_t sa_base;
-	uint64_t **wqe;
 	int i;
 
 	mbuf_init |= ((uint64_t)port_id) << 48;
 	vec = (struct rte_event_vector *)vwqe;
-	wqe = vec->u64s;
+	wqe = vec->mbufs;
 
-	rte_prefetch_non_temporal(&vec->ptrs[0]);
+	rte_prefetch0(&vec->ptrs[0]);
 #define OBJS_PER_CLINE (RTE_CACHE_LINE_SIZE / sizeof(void *))
 	for (i = OBJS_PER_CLINE; i < vec->nb_elem; i += OBJS_PER_CLINE)
-		rte_prefetch_non_temporal(&vec->ptrs[i]);
+		rte_prefetch0(&vec->ptrs[i]);
 
 	nb_mbufs = RTE_ALIGN_FLOOR(vec->nb_elem, NIX_DESCS_PER_LOOP);
-	nb_mbufs = cn10k_nix_recv_pkts_vector(&mbuf_init, vec->mbufs, nb_mbufs,
+	nb_mbufs = cn10k_nix_recv_pkts_vector(&mbuf_init, wqe, nb_mbufs,
 					      flags | NIX_RX_VWQE_F, lookup_mem,
 					      tstamp, lbase);
 	wqe += nb_mbufs;
@@ -182,7 +182,7 @@ cn10k_process_vwqe(uintptr_t vwqe, uint16_t port_id, const uint32_t flags,
 		cn10k_nix_mbuf_to_tstamp((struct rte_mbuf *)mbuf, tstamp,
 					flags & NIX_RX_OFFLOAD_TSTAMP_F,
 					(uint64_t *)tstamp_ptr);
-		wqe[0] = (uint64_t *)mbuf;
+		wqe[0] = (struct rte_mbuf *)mbuf;
 		non_vec--;
 		wqe++;
 	}
@@ -620,6 +620,7 @@ cn10k_sso_hws_event_tx(struct cn10k_sso_hws *ws, struct rte_event *ev,
 				ev->sched_type, txq_data, flags);
 		}
 		rte_mempool_put(rte_mempool_from_obj(ev->vec), ev->vec);
+		rte_prefetch0(ws);
 		return (meta & 0xFFFF);
 	}
 

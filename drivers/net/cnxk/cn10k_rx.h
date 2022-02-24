@@ -36,6 +36,27 @@
 	(((f) & NIX_RX_VWQE_F) ?                                               \
 		       (uint64_t *)(((uintptr_t)((uint64_t *)(b))[i]) + (o)) : \
 		       (uint64_t *)(((uintptr_t)(b)) + CQE_SZ(i) + (o)))
+#define CQE_PTR_DIFF(b, i, o, f)                                               \
+	(((f) & NIX_RX_VWQE_F) ?                                               \
+		 (uint64_t *)(((uintptr_t)((uint64_t *)(b))[i]) - (o)) :       \
+		       (uint64_t *)(((uintptr_t)(b)) + CQE_SZ(i) - (o)))
+
+#ifdef RTE_LIBRTE_MEMPOOL_DEBUG
+static inline void
+nix_mbuf_validate_next(struct rte_mbuf *m)
+{
+	if (m->nb_segs == 1 && m->next) {
+		rte_panic("mbuf->next[%p] valid when mbuf->nb_segs is %d",
+			m->next, m->nb_segs);
+	}
+}
+#else
+static inline void
+nix_mbuf_validate_next(struct rte_mbuf *m)
+{
+	RTE_SET_USED(m);
+}
+#endif
 
 union mbuf_initializer {
 	struct {
@@ -674,17 +695,66 @@ cn10k_nix_recv_pkts_vector(void *args, struct rte_mbuf **mbufs, uint16_t pkts,
 			cq0 = (uintptr_t)&mbufs[packets];
 		}
 
-		/* Prefetch N desc ahead */
-		rte_prefetch_non_temporal(CQE_PTR_OFF(cq0, 4, 64, flags));
-		rte_prefetch_non_temporal(CQE_PTR_OFF(cq0, 5, 64, flags));
-		rte_prefetch_non_temporal(CQE_PTR_OFF(cq0, 6, 64, flags));
-		rte_prefetch_non_temporal(CQE_PTR_OFF(cq0, 7, 64, flags));
+		if (flags & NIX_RX_VWQE_F) {
+			if (pkts - packets > 4) {
+				rte_prefetch_non_temporal(CQE_PTR_OFF(cq0,
+					4, 0, flags));
+				rte_prefetch_non_temporal(CQE_PTR_OFF(cq0,
+					5, 0, flags));
+				rte_prefetch_non_temporal(CQE_PTR_OFF(cq0,
+					6, 0, flags));
+				rte_prefetch_non_temporal(CQE_PTR_OFF(cq0,
+					7, 0, flags));
 
-		/* Get NIX_RX_SG_S for size and buffer pointer */
-		cq0_w8 = vld1q_u64(CQE_PTR_OFF(cq0, 0, 64, flags));
-		cq1_w8 = vld1q_u64(CQE_PTR_OFF(cq0, 1, 64, flags));
-		cq2_w8 = vld1q_u64(CQE_PTR_OFF(cq0, 2, 64, flags));
-		cq3_w8 = vld1q_u64(CQE_PTR_OFF(cq0, 3, 64, flags));
+				if (likely(pkts - packets > 8)) {
+					rte_prefetch1(CQE_PTR_OFF(cq0,
+						8, 0, flags));
+					rte_prefetch1(CQE_PTR_OFF(cq0,
+						9, 0, flags));
+					rte_prefetch1(CQE_PTR_OFF(cq0,
+						10, 0, flags));
+					rte_prefetch1(CQE_PTR_OFF(cq0,
+						11, 0, flags));
+					if (pkts - packets > 12) {
+						rte_prefetch1(CQE_PTR_OFF(cq0,
+							12, 0, flags));
+						rte_prefetch1(CQE_PTR_OFF(cq0,
+							13, 0, flags));
+						rte_prefetch1(CQE_PTR_OFF(cq0,
+							14, 0, flags));
+						rte_prefetch1(CQE_PTR_OFF(cq0,
+							15, 0, flags));
+					}
+				}
+
+				rte_prefetch0(CQE_PTR_DIFF(cq0,
+					4, RTE_PKTMBUF_HEADROOM, flags));
+				rte_prefetch0(CQE_PTR_DIFF(cq0,
+					5, RTE_PKTMBUF_HEADROOM, flags));
+				rte_prefetch0(CQE_PTR_DIFF(cq0,
+					6, RTE_PKTMBUF_HEADROOM, flags));
+				rte_prefetch0(CQE_PTR_DIFF(cq0,
+					7, RTE_PKTMBUF_HEADROOM, flags));
+
+				if (likely(pkts - packets > 8)) {
+					rte_prefetch0(CQE_PTR_DIFF(cq0,
+						8, RTE_PKTMBUF_HEADROOM, flags));
+					rte_prefetch0(CQE_PTR_DIFF(cq0,
+						9, RTE_PKTMBUF_HEADROOM, flags));
+					rte_prefetch0(CQE_PTR_DIFF(cq0,
+						10, RTE_PKTMBUF_HEADROOM, flags));
+					rte_prefetch0(CQE_PTR_DIFF(cq0,
+						11, RTE_PKTMBUF_HEADROOM, flags));
+				}
+			}
+		} else {
+			if (pkts - packets > 4) {
+				rte_prefetch_non_temporal(CQE_PTR_OFF(cq0, 4, 64, flags));
+				rte_prefetch_non_temporal(CQE_PTR_OFF(cq0, 5, 64, flags));
+				rte_prefetch_non_temporal(CQE_PTR_OFF(cq0, 6, 64, flags));
+				rte_prefetch_non_temporal(CQE_PTR_OFF(cq0, 7, 64, flags));
+			}
+		}
 
 		if (!(flags & NIX_RX_VWQE_F)) {
 			/* Get NIX_RX_SG_S for size and buffer pointer */
@@ -995,19 +1065,18 @@ cn10k_nix_recv_pkts_vector(void *args, struct rte_mbuf **mbufs, uint16_t pkts,
 			nix_cqe_xtract_mseg((union nix_rx_parse_u *)
 					    (CQE_PTR_OFF(cq0, 3, 8, flags)),
 					    mbuf3, mbuf_initializer, flags);
-		} else {
-			/* Update that no more segments */
-			mbuf0->next = NULL;
-			mbuf1->next = NULL;
-			mbuf2->next = NULL;
-			mbuf3->next = NULL;
 		}
 
-		/* Prefetch mbufs */
-		roc_prefetch_store_keep(mbuf0);
-		roc_prefetch_store_keep(mbuf1);
-		roc_prefetch_store_keep(mbuf2);
-		roc_prefetch_store_keep(mbuf3);
+		/* Mark mempool obj as "get" as it is alloc'ed by NIX */
+		RTE_MEMPOOL_CHECK_COOKIES(mbuf0->pool, (void **)&mbuf0, 1, 1);
+		RTE_MEMPOOL_CHECK_COOKIES(mbuf1->pool, (void **)&mbuf1, 1, 1);
+		RTE_MEMPOOL_CHECK_COOKIES(mbuf2->pool, (void **)&mbuf2, 1, 1);
+		RTE_MEMPOOL_CHECK_COOKIES(mbuf3->pool, (void **)&mbuf3, 1, 1);
+
+		nix_mbuf_validate_next(mbuf0);
+		nix_mbuf_validate_next(mbuf1);
+		nix_mbuf_validate_next(mbuf2);
+		nix_mbuf_validate_next(mbuf3);
 
 		packets += NIX_DESCS_PER_LOOP;
 
