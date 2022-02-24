@@ -38,6 +38,31 @@ static uint32_t mlx5_hw_act_flag[MLX5_HW_ACTION_FLAG_MAX]
 };
 
 /**
+ * Set rxq flag.
+ *
+ * @param[in] dev
+ *   Pointer to the rte_eth_dev structure.
+ * @param[in] enable
+ *   Flag to enable or not.
+ */
+static void
+flow_hw_rxq_flag_set(struct rte_eth_dev *dev, bool enable)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	unsigned int i;
+
+	if ((!priv->mark_enabled && !enable) ||
+	    (priv->mark_enabled && enable))
+		return;
+	for (i = 0; i < priv->rxqs_n; ++i) {
+		struct mlx5_rxq_ctrl *rxq_ctrl = mlx5_rxq_ctrl_get(dev, i);
+
+		rxq_ctrl->rxq.mark = enable;
+	}
+	priv->mark_enabled = enable;
+}
+
+/**
  * Register destination table DR jump action.
  *
  * @param[in] dev
@@ -298,6 +323,20 @@ flow_hw_actions_translate(struct rte_eth_dev *dev,
 			acts->rule_acts[i++].action =
 				priv->hw_drop[!!attr->group][type];
 			break;
+		case RTE_FLOW_ACTION_TYPE_MARK:
+			acts->mark = true;
+			if (masks->conf)
+				acts->rule_acts[i].tag.value =
+					mlx5_flow_mark_set
+					(((const struct rte_flow_action_mark *)
+					(masks->conf))->id);
+			else if (__flow_hw_act_data_general_append(priv, acts,
+				actions->type, actions - action_start, i))
+				goto err;
+			acts->rule_acts[i++].action =
+				priv->hw_tag[!!attr->group];
+			flow_hw_rxq_flag_set(dev, true);
+			break;
 		case RTE_FLOW_ACTION_TYPE_JUMP:
 			if (masks->conf) {
 				uint32_t jump_group =
@@ -424,6 +463,7 @@ flow_hw_actions_construct(struct rte_eth_dev *dev,
 	}
 	LIST_FOREACH(act_data, &hw_acts->act_list, next) {
 		uint32_t jump_group;
+		uint32_t tag;
 		struct mlx5_hw_jump_action *jump;
 		struct mlx5_hrxq *hrxq;
 
@@ -434,6 +474,12 @@ flow_hw_actions_construct(struct rte_eth_dev *dev,
 		case RTE_FLOW_ACTION_TYPE_INDIRECT:
 			break;
 		case RTE_FLOW_ACTION_TYPE_VOID:
+			break;
+		case RTE_FLOW_ACTION_TYPE_MARK:
+			tag = mlx5_flow_mark_set
+			      (((const struct rte_flow_action_mark *)
+			      (action->conf))->id);
+			rule_acts[act_data->action_dst].tag.value = tag;
 			break;
 		case RTE_FLOW_ACTION_TYPE_JUMP:
 			jump_group = ((const struct rte_flow_action_jump *)
@@ -1029,6 +1075,8 @@ flow_hw_table_destroy(struct rte_eth_dev *dev,
 		__atomic_sub_fetch(&table->its[i]->refcnt,
 				   1, __ATOMIC_RELAXED);
 	for (i = 0; i < table->nb_action_templates; i++) {
+		if (table->ats[i].acts.mark)
+			flow_hw_rxq_flag_set(dev, false);
 		__flow_hw_action_template_destroy(dev, &table->ats[i].acts);
 		__atomic_sub_fetch(&table->ats[i].action_template->refcnt,
 				   1, __ATOMIC_RELAXED);
@@ -1563,15 +1611,20 @@ flow_hw_configure(struct rte_eth_dev *dev,
 			if (!priv->hw_drop[i][j])
 				goto err;
 		}
+		priv->hw_tag[i] = mlx5dr_action_create_tag
+			(priv->dr_ctx, mlx5_hw_act_flag[i][0]);
+		if (!priv->hw_tag[i])
+			goto err;
 	}
 	return 0;
 err:
 	for (i = 0; i < MLX5_HW_ACTION_FLAG_MAX; i++) {
 		for (j = 0; j < MLX5DR_TABLE_TYPE_MAX; j++) {
-			if (!priv->hw_drop[i][j])
-				continue;
-			mlx5dr_action_destroy(priv->hw_drop[i][j]);
+			if (priv->hw_drop[i][j])
+				mlx5dr_action_destroy(priv->hw_drop[i][j]);
 		}
+		if (priv->hw_tag[i])
+			mlx5dr_action_destroy(priv->hw_tag[i]);
 	}
 	if (dr_ctx)
 		claim_zero(mlx5dr_context_close(dr_ctx));
@@ -1617,10 +1670,11 @@ flow_hw_resource_release(struct rte_eth_dev *dev)
 	}
 	for (i = 0; i < MLX5_HW_ACTION_FLAG_MAX; i++) {
 		for (j = 0; j < MLX5DR_TABLE_TYPE_MAX; j++) {
-			if (!priv->hw_drop[i][j])
-				continue;
-			mlx5dr_action_destroy(priv->hw_drop[i][j]);
+			if (priv->hw_drop[i][j])
+				mlx5dr_action_destroy(priv->hw_drop[i][j]);
 		}
+		if (priv->hw_tag[i])
+			mlx5dr_action_destroy(priv->hw_tag[i]);
 	}
 	if (priv->acts_ipool) {
 		mlx5_ipool_destroy(priv->acts_ipool);

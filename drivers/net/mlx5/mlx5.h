@@ -1531,6 +1531,8 @@ struct mlx5_priv {
 	/* HW steering global drop action. */
 	struct mlx5dr_action *hw_drop[MLX5_HW_ACTION_FLAG_MAX]
 				     [MLX5DR_TABLE_TYPE_MAX];
+	/* HW steering global drop action. */
+	struct mlx5dr_action *hw_tag[MLX5_HW_ACTION_FLAG_MAX];
 	struct mlx5_indexed_pool *acts_ipool; /* Action data indexed pool. */
 #endif
 };

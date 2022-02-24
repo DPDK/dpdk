@@ -1077,6 +1077,7 @@ struct mlx5_hw_actions {
 	struct mlx5_hw_jump_action *jump; /* Jump action. */
 	struct mlx5_hrxq *tir; /* TIR action. */
 	uint32_t acts_num:4; /* Total action number. */
+	uint32_t mark:1; /* Indicate the mark action. */
 	/* Translated DR action array from action template. */
 	struct mlx5dr_rule_action rule_acts[MLX5_HW_MAX_ACTS];
 };
