@@ -446,6 +446,8 @@ void mlx5_common_init(void);
 struct mlx5_common_dev_config {
 	struct mlx5_hca_attr hca_attr; /* HCA attributes. */
 	int dbnc; /* Skip doorbell register write barrier. */
+	int device_fd; /* Device file descriptor for importation. */
+	int pd_handle; /* Protection Domain handle for importation.  */
 	unsigned int devx:1; /* Whether devx interface is available or not. */
 	unsigned int sys_mem_en:1; /* The default memory allocator. */
 	unsigned int mr_mempool_reg_en:1;
@@ -464,6 +466,23 @@ struct mlx5_common_device {
 	struct mlx5_mr_share_cache mr_scache; /* Global shared MR cache. */
 	struct mlx5_common_dev_config config; /* Device configuration. */
 };
+
+/**
+ * Indicates whether PD and CTX are imported from another process,
+ * or created by this process.
+ *
+ * @param cdev
+ *   Pointer to common device.
+ *
+ * @return
+ *   True if PD and CTX are imported from another process, False otherwise.
+ */
+static inline bool
+mlx5_imported_pd_and_ctx(struct mlx5_common_device *cdev)
+{
+	return cdev->config.device_fd != MLX5_ARG_UNSET &&
+	       cdev->config.pd_handle != MLX5_ARG_UNSET;
+}
 
 /**
  * Initialization function for the driver called during device probing.
@@ -554,7 +573,9 @@ mlx5_devx_uar_release(struct mlx5_uar *uar);
 /* mlx5_common_os.c */
 
 int mlx5_os_open_device(struct mlx5_common_device *cdev, uint32_t classes);
-int mlx5_os_pd_create(struct mlx5_common_device *cdev);
+int mlx5_os_pd_prepare(struct mlx5_common_device *cdev);
+int mlx5_os_pd_release(struct mlx5_common_device *cdev);
+int mlx5_os_remote_pd_and_ctx_validate(struct mlx5_common_dev_config *config);
 
 /* mlx5 PMD wrapped MR struct. */
 struct mlx5_pmd_wrapped_mr {

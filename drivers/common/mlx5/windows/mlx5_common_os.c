@@ -26,20 +26,45 @@ mlx5_glue_constructor(void)
 }
 
 /**
+ * Validate user arguments for remote PD and CTX.
+ *
+ * @param config
+ *   Pointer to device configuration structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+int
+mlx5_os_remote_pd_and_ctx_validate(struct mlx5_common_dev_config *config)
+{
+	int device_fd = config->device_fd;
+	int pd_handle = config->pd_handle;
+
+	if (pd_handle != MLX5_ARG_UNSET || device_fd != MLX5_ARG_UNSET) {
+		DRV_LOG(ERR, "Remote PD and CTX is not supported on Windows.");
+		rte_errno = ENOTSUP;
+		return -rte_errno;
+	}
+	return 0;
+}
+
+/**
  * Release PD. Releases a given mlx5_pd object
  *
- * @param[in] pd
- *   Pointer to mlx5_pd.
+ * @param[in] cdev
+ *   Pointer to the mlx5 device.
  *
  * @return
  *   Zero if pd is released successfully, negative number otherwise.
  */
 int
-mlx5_os_dealloc_pd(void *pd)
+mlx5_os_pd_release(struct mlx5_common_device *cdev)
 {
+	struct mlx5_pd *pd = cdev->pd;
+
 	if (!pd)
 		return -EINVAL;
-	mlx5_devx_cmd_destroy(((struct mlx5_pd *)pd)->obj);
+	mlx5_devx_cmd_destroy(pd->obj);
 	mlx5_free(pd);
 	return 0;
 }
@@ -47,14 +72,14 @@ mlx5_os_dealloc_pd(void *pd)
 /**
  * Allocate Protection Domain object and extract its pdn using DV API.
  *
- * @param[out] dev
+ * @param[out] cdev
  *   Pointer to the mlx5 device.
  *
  * @return
  *   0 on success, a negative value otherwise.
  */
 int
-mlx5_os_pd_create(struct mlx5_common_device *cdev)
+mlx5_os_pd_prepare(struct mlx5_common_device *cdev)
 {
 	struct mlx5_pd *pd;
 

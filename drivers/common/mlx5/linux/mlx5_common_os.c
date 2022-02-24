@@ -408,7 +408,105 @@ glue_error:
 }
 
 /**
- * Allocate Protection Domain object and extract its pdn using DV API.
+ * Validate user arguments for remote PD and CTX.
+ *
+ * @param config
+ *   Pointer to device configuration structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+int
+mlx5_os_remote_pd_and_ctx_validate(struct mlx5_common_dev_config *config)
+{
+	int device_fd = config->device_fd;
+	int pd_handle = config->pd_handle;
+
+#ifdef HAVE_MLX5_IBV_IMPORT_CTX_PD_AND_MR
+	if (device_fd == MLX5_ARG_UNSET && pd_handle != MLX5_ARG_UNSET) {
+		DRV_LOG(ERR, "Remote PD without CTX is not supported.");
+		rte_errno = EINVAL;
+		return -rte_errno;
+	}
+	if (device_fd != MLX5_ARG_UNSET && pd_handle == MLX5_ARG_UNSET) {
+		DRV_LOG(ERR, "Remote CTX without PD is not supported.");
+		rte_errno = EINVAL;
+		return -rte_errno;
+	}
+	DRV_LOG(DEBUG, "Remote PD and CTX is supported: (cmd_fd=%d, "
+		"pd_handle=%d).", device_fd, pd_handle);
+#else
+	if (pd_handle != MLX5_ARG_UNSET || device_fd != MLX5_ARG_UNSET) {
+		DRV_LOG(ERR,
+			"Remote PD and CTX is not supported - maybe old rdma-core version?");
+		rte_errno = ENOTSUP;
+		return -rte_errno;
+	}
+#endif
+	return 0;
+}
+
+/**
+ * Release Protection Domain object.
+ *
+ * @param[out] cdev
+ *   Pointer to the mlx5 device.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise.
+ */
+int
+mlx5_os_pd_release(struct mlx5_common_device *cdev)
+{
+	if (cdev->config.pd_handle == MLX5_ARG_UNSET)
+		return mlx5_glue->dealloc_pd(cdev->pd);
+	else
+		return mlx5_glue->unimport_pd(cdev->pd);
+}
+
+/**
+ * Allocate Protection Domain object.
+ *
+ * @param[out] cdev
+ *   Pointer to the mlx5 device.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise.
+ */
+static int
+mlx5_os_pd_create(struct mlx5_common_device *cdev)
+{
+	cdev->pd = mlx5_glue->alloc_pd(cdev->ctx);
+	if (cdev->pd == NULL) {
+		DRV_LOG(ERR, "Failed to allocate PD: %s", rte_strerror(errno));
+		return errno ? -errno : -ENOMEM;
+	}
+	return 0;
+}
+
+/**
+ * Import Protection Domain object according to given PD handle.
+ *
+ * @param[out] cdev
+ *   Pointer to the mlx5 device.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise.
+ */
+static int
+mlx5_os_pd_import(struct mlx5_common_device *cdev)
+{
+	cdev->pd = mlx5_glue->import_pd(cdev->ctx, cdev->config.pd_handle);
+	if (cdev->pd == NULL) {
+		DRV_LOG(ERR, "Failed to import PD using handle=%d: %s",
+			cdev->config.pd_handle, rte_strerror(errno));
+		return errno ? -errno : -ENOMEM;
+	}
+	return 0;
+}
+
+/**
+ * Prepare Protection Domain object and extract its pdn using DV API.
  *
  * @param[out] cdev
  *   Pointer to the mlx5 device.
@@ -417,18 +515,21 @@ glue_error:
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 int
-mlx5_os_pd_create(struct mlx5_common_device *cdev)
+mlx5_os_pd_prepare(struct mlx5_common_device *cdev)
 {
 #ifdef HAVE_IBV_FLOW_DV_SUPPORT
 	struct mlx5dv_obj obj;
 	struct mlx5dv_pd pd_info;
-	int ret;
 #endif
+	int ret;
 
-	cdev->pd = mlx5_glue->alloc_pd(cdev->ctx);
-	if (cdev->pd == NULL) {
-		DRV_LOG(ERR, "Failed to allocate PD.");
-		return errno ? -errno : -ENOMEM;
+	if (cdev->config.pd_handle == MLX5_ARG_UNSET)
+		ret = mlx5_os_pd_create(cdev);
+	else
+		ret = mlx5_os_pd_import(cdev);
+	if (ret) {
+		rte_errno = -ret;
+		return ret;
 	}
 	if (cdev->config.devx == 0)
 		return 0;
@@ -438,15 +539,17 @@ mlx5_os_pd_create(struct mlx5_common_device *cdev)
 	ret = mlx5_glue->dv_init_obj(&obj, MLX5DV_OBJ_PD);
 	if (ret != 0) {
 		DRV_LOG(ERR, "Fail to get PD object info.");
-		mlx5_glue->dealloc_pd(cdev->pd);
+		rte_errno = errno;
+		claim_zero(mlx5_os_pd_release(cdev));
 		cdev->pd = NULL;
-		return -errno;
+		return -rte_errno;
 	}
 	cdev->pdn = pd_info.pdn;
 	return 0;
 #else
 	DRV_LOG(ERR, "Cannot get pdn - no DV support.");
-	return -ENOTSUP;
+	rte_errno = ENOTSUP;
+	return -rte_errno;
 #endif /* HAVE_IBV_FLOW_DV_SUPPORT */
 }
 
@@ -648,28 +751,28 @@ mlx5_restore_doorbell_mapping_env(int value)
 /**
  * Function API to open IB device.
  *
- *
  * @param cdev
  *   Pointer to the mlx5 device.
  * @param classes
  *   Chosen classes come from device arguments.
  *
  * @return
- *   0 on success, a negative errno value otherwise and rte_errno is set.
+ *   Pointer to ibv_context on success, NULL otherwise and rte_errno is set.
  */
-int
-mlx5_os_open_device(struct mlx5_common_device *cdev, uint32_t classes)
+static struct ibv_context *
+mlx5_open_device(struct mlx5_common_device *cdev, uint32_t classes)
 {
 	struct ibv_device *ibv;
 	struct ibv_context *ctx = NULL;
 	int dbmap_env;
 
+	MLX5_ASSERT(cdev->config.device_fd == MLX5_ARG_UNSET);
 	if (classes & MLX5_CLASS_VDPA)
 		ibv = mlx5_vdpa_get_ibv_dev(cdev->dev);
 	else
 		ibv = mlx5_os_get_ibv_dev(cdev->dev);
 	if (!ibv)
-		return -rte_errno;
+		return NULL;
 	DRV_LOG(INFO, "Dev information matches for device \"%s\".", ibv->name);
 	/*
 	 * Configure environment variable "MLX5_BF_SHUT_UP" before the device
@@ -682,29 +785,78 @@ mlx5_os_open_device(struct mlx5_common_device *cdev, uint32_t classes)
 	ctx = mlx5_glue->dv_open_device(ibv);
 	if (ctx) {
 		cdev->config.devx = 1;
-		DRV_LOG(DEBUG, "DevX is supported.");
 	} else if (classes == MLX5_CLASS_ETH) {
 		/* The environment variable is still configured. */
 		ctx = mlx5_glue->open_device(ibv);
 		if (ctx == NULL)
 			goto error;
-		DRV_LOG(DEBUG, "DevX is NOT supported.");
 	} else {
 		goto error;
 	}
 	/* The device is created, no need for environment. */
 	mlx5_restore_doorbell_mapping_env(dbmap_env);
-	/* Hint libmlx5 to use PMD allocator for data plane resources */
-	mlx5_set_context_attr(cdev->dev, ctx);
-	cdev->ctx = ctx;
-	return 0;
+	return ctx;
 error:
 	rte_errno = errno ? errno : ENODEV;
 	/* The device creation is failed, no need for environment. */
 	mlx5_restore_doorbell_mapping_env(dbmap_env);
 	DRV_LOG(ERR, "Failed to open IB device \"%s\".", ibv->name);
-	return -rte_errno;
+	return NULL;
 }
+
+/**
+ * Function API to import IB device.
+ *
+ * @param cdev
+ *   Pointer to the mlx5 device.
+ *
+ * @return
+ *   Pointer to ibv_context on success, NULL otherwise and rte_errno is set.
+ */
+static struct ibv_context *
+mlx5_import_device(struct mlx5_common_device *cdev)
+{
+	struct ibv_context *ctx = NULL;
+
+	MLX5_ASSERT(cdev->config.device_fd != MLX5_ARG_UNSET);
+	ctx = mlx5_glue->import_device(cdev->config.device_fd);
+	if (!ctx) {
+		DRV_LOG(ERR, "Failed to import device for fd=%d: %s",
+			cdev->config.device_fd, rte_strerror(errno));
+		rte_errno = errno;
+	}
+	return ctx;
+}
+
+/**
+ * Function API to prepare IB device.
+ *
+ * @param cdev
+ *   Pointer to the mlx5 device.
+ * @param classes
+ *   Chosen classes come from device arguments.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+int
+mlx5_os_open_device(struct mlx5_common_device *cdev, uint32_t classes)
+{
+
+	struct ibv_context *ctx = NULL;
+
+	if (cdev->config.device_fd == MLX5_ARG_UNSET)
+		ctx = mlx5_open_device(cdev, classes);
+	else
+		ctx = mlx5_import_device(cdev);
+	if (ctx == NULL)
+		return -rte_errno;
+	/* Hint libmlx5 to use PMD allocator for data plane resources */
+	mlx5_set_context_attr(cdev->dev, ctx);
+	cdev->ctx = ctx;
+	return 0;
+}
+
 int
 mlx5_get_device_guid(const struct rte_pci_addr *dev, uint8_t *guid, size_t len)
 {

@@ -639,3 +639,32 @@ and below are the arguments supported by the common mlx5 layer.
   If ``sq_db_nc`` is omitted, the preset (if any) environment variable
   "MLX5_SHUT_UP_BF" value is used. If there is no "MLX5_SHUT_UP_BF", the
   default ``sq_db_nc`` value is zero for ARM64 hosts and one for others.
+
+- ``cmd_fd`` parameter [int]
+
+  File descriptor of ``ibv_context`` created outside the PMD.
+  PMD will use this FD to import remote CTX. The ``cmd_fd`` is obtained from
+  the ``ibv_context->cmd_fd`` member, which must be dup'd before being passed.
+  This parameter is valid only if ``pd_handle`` parameter is specified.
+
+  By default, the PMD will create a new ``ibv_context``.
+
+  .. note::
+
+     When FD comes from another process, it is the user responsibility to
+     share the FD between the processes (e.g. by SCM_RIGHTS).
+
+- ``pd_handle`` parameter [int]
+
+  Protection domain handle of ``ibv_pd`` created outside the PMD.
+  PMD will use this handle to import remote PD. The ``pd_handle`` can be
+  achieved from the original PD by getting its ``ibv_pd->handle`` member value.
+  This parameter is valid only if ``cmd_fd`` parameter is specified,
+  and its value must be a valid kernel handle for a PD object
+  in the context represented by given ``cmd_fd``.
+
+  By default, the PMD will allocate a new PD.
+
+  .. note::
+
+     The ``ibv_pd->handle`` member is different than ``mlx5dv_pd->pdn`` member.

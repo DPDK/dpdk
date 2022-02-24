@@ -24,6 +24,12 @@ uint8_t haswell_broadwell_cpu;
 /* Driver type key for new device global syntax. */
 #define MLX5_DRIVER_KEY "driver"
 
+/* Device parameter to get file descriptor for import device. */
+#define MLX5_DEVICE_FD "cmd_fd"
+
+/* Device parameter to get PD number for import Protection Domain. */
+#define MLX5_PD_HANDLE "pd_handle"
+
 /* Enable extending memsegs when creating a MR. */
 #define MLX5_MR_EXT_MEMSEG_EN "mr_ext_memseg_en"
 
@@ -283,6 +289,10 @@ mlx5_common_args_check_handler(const char *key, const char *val, void *opaque)
 		config->mr_mempool_reg_en = !!tmp;
 	} else if (strcmp(key, MLX5_SYS_MEM_EN) == 0) {
 		config->sys_mem_en = !!tmp;
+	} else if (strcmp(key, MLX5_DEVICE_FD) == 0) {
+		config->device_fd = tmp;
+	} else if (strcmp(key, MLX5_PD_HANDLE) == 0) {
+		config->pd_handle = tmp;
 	}
 	return 0;
 }
@@ -310,6 +320,8 @@ mlx5_common_config_get(struct mlx5_kvargs_ctrl *mkvlist,
 		MLX5_MR_EXT_MEMSEG_EN,
 		MLX5_SYS_MEM_EN,
 		MLX5_MR_MEMPOOL_REG_EN,
+		MLX5_DEVICE_FD,
+		MLX5_PD_HANDLE,
 		NULL,
 	};
 	int ret = 0;
@@ -321,13 +333,19 @@ mlx5_common_config_get(struct mlx5_kvargs_ctrl *mkvlist,
 	config->mr_mempool_reg_en = 1;
 	config->sys_mem_en = 0;
 	config->dbnc = MLX5_ARG_UNSET;
+	config->device_fd = MLX5_ARG_UNSET;
+	config->pd_handle = MLX5_ARG_UNSET;
 	/* Process common parameters. */
 	ret = mlx5_kvargs_process(mkvlist, params,
 				  mlx5_common_args_check_handler, config);
 	if (ret) {
 		rte_errno = EINVAL;
-		ret = -rte_errno;
+		return -rte_errno;
 	}
+	/* Validate user arguments for remote PD and CTX if it is given. */
+	ret = mlx5_os_remote_pd_and_ctx_validate(config);
+	if (ret)
+		return ret;
 	DRV_LOG(DEBUG, "mr_ext_memseg_en is %u.", config->mr_ext_memseg_en);
 	DRV_LOG(DEBUG, "mr_mempool_reg_en is %u.", config->mr_mempool_reg_en);
 	DRV_LOG(DEBUG, "sys_mem_en is %u.", config->sys_mem_en);
@@ -645,7 +663,7 @@ static void
 mlx5_dev_hw_global_release(struct mlx5_common_device *cdev)
 {
 	if (cdev->pd != NULL) {
-		claim_zero(mlx5_os_dealloc_pd(cdev->pd));
+		claim_zero(mlx5_os_pd_release(cdev));
 		cdev->pd = NULL;
 	}
 	if (cdev->ctx != NULL) {
@@ -674,20 +692,27 @@ mlx5_dev_hw_global_prepare(struct mlx5_common_device *cdev, uint32_t classes)
 	ret = mlx5_os_open_device(cdev, classes);
 	if (ret < 0)
 		return ret;
-	/* Allocate Protection Domain object and extract its pdn. */
-	ret = mlx5_os_pd_create(cdev);
+	/*
+	 * When CTX is created by Verbs, query HCA attribute is unsupported.
+	 * When CTX is imported, we cannot know if it is created by DevX or
+	 * Verbs. So, we use query HCA attribute function to check it.
+	 */
+	if (cdev->config.devx || cdev->config.device_fd != MLX5_ARG_UNSET) {
+		/* Query HCA attributes. */
+		ret = mlx5_devx_cmd_query_hca_attr(cdev->ctx,
+						   &cdev->config.hca_attr);
+		if (ret) {
+			DRV_LOG(ERR, "Unable to read HCA caps in DevX mode.");
+			rte_errno = ENOTSUP;
+			goto error;
+		}
+		cdev->config.devx = 1;
+	}
+	DRV_LOG(DEBUG, "DevX is %ssupported.", cdev->config.devx ? "" : "NOT ");
+	/* Prepare Protection Domain object and extract its pdn. */
+	ret = mlx5_os_pd_prepare(cdev);
 	if (ret)
 		goto error;
-	/* All actions taken below are relevant only when DevX is supported */
-	if (cdev->config.devx == 0)
-		return 0;
-	/* Query HCA attributes. */
-	ret = mlx5_devx_cmd_query_hca_attr(cdev->ctx, &cdev->config.hca_attr);
-	if (ret) {
-		DRV_LOG(ERR, "Unable to read HCA capabilities.");
-		rte_errno = ENOTSUP;
-		goto error;
-	}
 	return 0;
 error:
 	mlx5_dev_hw_global_release(cdev);
@@ -814,26 +839,39 @@ mlx5_common_probe_again_args_validate(struct mlx5_common_device *cdev,
 	 * Checks the match between the temporary structure and the existing
 	 * common device structure.
 	 */
-	if (cdev->config.mr_ext_memseg_en ^ config->mr_ext_memseg_en) {
-		DRV_LOG(ERR, "\"mr_ext_memseg_en\" "
+	if (cdev->config.mr_ext_memseg_en != config->mr_ext_memseg_en) {
+		DRV_LOG(ERR, "\"" MLX5_MR_EXT_MEMSEG_EN "\" "
 			"configuration mismatch for device %s.",
 			cdev->dev->name);
 		goto error;
 	}
-	if (cdev->config.mr_mempool_reg_en ^ config->mr_mempool_reg_en) {
-		DRV_LOG(ERR, "\"mr_mempool_reg_en\" "
+	if (cdev->config.mr_mempool_reg_en != config->mr_mempool_reg_en) {
+		DRV_LOG(ERR, "\"" MLX5_MR_MEMPOOL_REG_EN "\" "
 			"configuration mismatch for device %s.",
 			cdev->dev->name);
 		goto error;
 	}
-	if (cdev->config.sys_mem_en ^ config->sys_mem_en) {
-		DRV_LOG(ERR,
-			"\"sys_mem_en\" configuration mismatch for device %s.",
+	if (cdev->config.device_fd != config->device_fd) {
+		DRV_LOG(ERR, "\"" MLX5_DEVICE_FD "\" "
+			"configuration mismatch for device %s.",
 			cdev->dev->name);
 		goto error;
 	}
-	if (cdev->config.dbnc ^ config->dbnc) {
-		DRV_LOG(ERR, "\"dbnc\" configuration mismatch for device %s.",
+	if (cdev->config.pd_handle != config->pd_handle) {
+		DRV_LOG(ERR, "\"" MLX5_PD_HANDLE "\" "
+			"configuration mismatch for device %s.",
+			cdev->dev->name);
+		goto error;
+	}
+	if (cdev->config.sys_mem_en != config->sys_mem_en) {
+		DRV_LOG(ERR, "\"" MLX5_SYS_MEM_EN "\" "
+			"configuration mismatch for device %s.",
+			cdev->dev->name);
+		goto error;
+	}
+	if (cdev->config.dbnc != config->dbnc) {
+		DRV_LOG(ERR, "\"" MLX5_SQ_DB_NC "\" "
+			"configuration mismatch for device %s.",
 			cdev->dev->name);
 		goto error;
 	}
