@@ -34,6 +34,32 @@ mlx5_glue_dealloc_pd(struct ibv_pd *pd)
 	return ibv_dealloc_pd(pd);
 }
 
+static struct ibv_pd *
+mlx5_glue_import_pd(struct ibv_context *context, uint32_t pd_handle)
+{
+#ifdef HAVE_MLX5_IBV_IMPORT_CTX_PD_AND_MR
+	return ibv_import_pd(context, pd_handle);
+#else
+	(void)context;
+	(void)pd_handle;
+	errno = ENOTSUP;
+	return NULL;
+#endif
+}
+
+static int
+mlx5_glue_unimport_pd(struct ibv_pd *pd)
+{
+#ifdef HAVE_MLX5_IBV_IMPORT_CTX_PD_AND_MR
+	ibv_unimport_pd(pd);
+	return 0;
+#else
+	(void)pd;
+	errno = ENOTSUP;
+	return -errno;
+#endif
+}
+
 static struct ibv_device **
 mlx5_glue_get_device_list(int *num_devices)
 {
@@ -50,6 +76,18 @@ static struct ibv_context *
 mlx5_glue_open_device(struct ibv_device *device)
 {
 	return ibv_open_device(device);
+}
+
+static struct ibv_context *
+mlx5_glue_import_device(int cmd_fd)
+{
+#ifdef HAVE_MLX5_IBV_IMPORT_CTX_PD_AND_MR
+	return ibv_import_device(cmd_fd);
+#else
+	(void)cmd_fd;
+	errno = ENOTSUP;
+	return NULL;
+#endif
 }
 
 static int
@@ -1402,9 +1440,12 @@ const struct mlx5_glue *mlx5_glue = &(const struct mlx5_glue) {
 	.fork_init = mlx5_glue_fork_init,
 	.alloc_pd = mlx5_glue_alloc_pd,
 	.dealloc_pd = mlx5_glue_dealloc_pd,
+	.import_pd = mlx5_glue_import_pd,
+	.unimport_pd = mlx5_glue_unimport_pd,
 	.get_device_list = mlx5_glue_get_device_list,
 	.free_device_list = mlx5_glue_free_device_list,
 	.open_device = mlx5_glue_open_device,
+	.import_device = mlx5_glue_import_device,
 	.close_device = mlx5_glue_close_device,
 	.query_device = mlx5_glue_query_device,
 	.query_device_ex = mlx5_glue_query_device_ex,

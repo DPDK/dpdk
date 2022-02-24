@@ -151,9 +151,13 @@ struct mlx5_glue {
 	int (*fork_init)(void);
 	struct ibv_pd *(*alloc_pd)(struct ibv_context *context);
 	int (*dealloc_pd)(struct ibv_pd *pd);
+	struct ibv_pd *(*import_pd)(struct ibv_context *context,
+				    uint32_t pd_handle);
+	int (*unimport_pd)(struct ibv_pd *pd);
 	struct ibv_device **(*get_device_list)(int *num_devices);
 	void (*free_device_list)(struct ibv_device **list);
 	struct ibv_context *(*open_device)(struct ibv_device *device);
+	struct ibv_context *(*import_device)(int cmd_fd);
 	int (*close_device)(struct ibv_context *context);
 	int (*query_device)(struct ibv_context *context,
 			    struct ibv_device_attr *device_attr);
