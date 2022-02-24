@@ -342,6 +342,7 @@ struct mlx5_hw_q_job {
 	uint32_t type; /* Job type. */
 	struct rte_flow_hw *flow; /* Flow attached to the job. */
 	void *user_data; /* Job user data. */
+	uint8_t *encap_data; /* Encap data. */
 };
 
 /* HW steering job descriptor LIFO pool. */

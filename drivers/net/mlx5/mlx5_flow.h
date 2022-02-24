@@ -1041,6 +1041,14 @@ struct mlx5_action_construct_data {
 	uint16_t action_dst; /* mlx5dr_rule_action dst offset. */
 	union {
 		struct {
+			/* encap src(item) offset. */
+			uint16_t src;
+			/* encap dst data offset. */
+			uint16_t dst;
+			/* encap data len. */
+			uint16_t len;
+		} encap;
+		struct {
 			uint64_t types; /* RSS hash types. */
 			uint32_t level; /* RSS level. */
 			uint32_t idx; /* Shared action index. */
@@ -1076,6 +1084,13 @@ struct mlx5_hw_jump_action {
 	struct mlx5dr_action *hws_action;
 };
 
+/* Encap decap action struct. */
+struct mlx5_hw_encap_decap_action {
+	struct mlx5dr_action *action; /* Action object. */
+	size_t data_size; /* Action metadata size. */
+	uint8_t data[]; /* Action data. */
+};
+
 /* The maximum actions support in the flow. */
 #define MLX5_HW_MAX_ACTS 16
 
@@ -1085,6 +1100,9 @@ struct mlx5_hw_actions {
 	LIST_HEAD(act_list, mlx5_action_construct_data) act_list;
 	struct mlx5_hw_jump_action *jump; /* Jump action. */
 	struct mlx5_hrxq *tir; /* TIR action. */
+	/* Encap/Decap action. */
+	struct mlx5_hw_encap_decap_action *encap_decap;
+	uint16_t encap_decap_pos; /* Encap/Decap action position. */
 	uint32_t acts_num:4; /* Total action number. */
 	uint32_t mark:1; /* Indicate the mark action. */
 	/* Translated DR action array from action template. */
@@ -2027,4 +2045,7 @@ int flow_dv_action_query(struct rte_eth_dev *dev,
 			 const struct rte_flow_action_handle *handle,
 			 void *data,
 			 struct rte_flow_error *error);
+size_t flow_dv_get_item_hdr_len(const enum rte_flow_item_type item_type);
+int flow_dv_convert_encap_data(const struct rte_flow_item *items, uint8_t *buf,
+			   size_t *size, struct rte_flow_error *error);
 #endif /* RTE_PMD_MLX5_FLOW_H_ */

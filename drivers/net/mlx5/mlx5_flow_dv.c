@@ -4034,7 +4034,7 @@ flow_dv_push_vlan_action_resource_register
  * @return
  *   sizeof struct item_type, 0 if void or irrelevant.
  */
-static size_t
+size_t
 flow_dv_get_item_hdr_len(const enum rte_flow_item_type item_type)
 {
 	size_t retval;
@@ -4100,7 +4100,7 @@ flow_dv_get_item_hdr_len(const enum rte_flow_item_type item_type)
  * @return
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
-static int
+int
 flow_dv_convert_encap_data(const struct rte_flow_item *items, uint8_t *buf,
 			   size_t *size, struct rte_flow_error *error)
 {
