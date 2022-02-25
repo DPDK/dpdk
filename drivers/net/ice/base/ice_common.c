@@ -167,6 +167,12 @@ static enum ice_status ice_set_mac_type(struct ice_hw *hw)
 	case ICE_DEV_ID_E823C_QSFP:
 	case ICE_DEV_ID_E823C_SFP:
 	case ICE_DEV_ID_E823C_SGMII:
+	case ICE_DEV_ID_E824S:
+	case ICE_DEV_ID_E825C_BACKPLANE:
+	case ICE_DEV_ID_E825C_QSFP:
+	case ICE_DEV_ID_E825C_SFP:
+	case ICE_DEV_ID_E825C_1GBE:
+	case ICE_DEV_ID_E825X:
 		hw->mac_type = ICE_MAC_GENERIC;
 		break;
 	default:
