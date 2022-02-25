@@ -390,6 +390,7 @@ release:
 
 out:
 	close(fd);
+	rte_rawdev_stop(dev_id);
 
 	return ret;
 }
