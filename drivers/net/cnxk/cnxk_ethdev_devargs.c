@@ -241,7 +241,7 @@ parse_sdp_channel_mask(const char *key, const char *value, void *extra_args)
 #define CNXK_IPSEC_IN_MAX_SPI	"ipsec_in_max_spi"
 #define CNXK_IPSEC_OUT_MAX_SA	"ipsec_out_max_sa"
 #define CNXK_OUTB_NB_DESC	"outb_nb_desc"
-#define CNXK_FORCE_INB_INL_DEV	"force_inb_inl_dev"
+#define CNXK_NO_INL_DEV		"no_inl_dev"
 #define CNXK_OUTB_NB_CRYPTO_QS	"outb_nb_crypto_qs"
 #define CNXK_SDP_CHANNEL_MASK	"sdp_channel_mask"
 #define CNXK_FLOW_PRE_L2_INFO	"flow_pre_l2_info"
@@ -257,7 +257,6 @@ cnxk_ethdev_parse_devargs(struct rte_devargs *devargs, struct cnxk_eth_dev *dev)
 	uint16_t flow_prealloc_size = 1;
 	uint16_t switch_header_type = 0;
 	uint16_t flow_max_priority = 3;
-	uint16_t force_inb_inl_dev = 0;
 	uint16_t outb_nb_crypto_qs = 1;
 	uint32_t ipsec_in_min_spi = 0;
 	uint16_t outb_nb_desc = 8200;
@@ -266,6 +265,7 @@ cnxk_ethdev_parse_devargs(struct rte_devargs *devargs, struct cnxk_eth_dev *dev)
 	uint16_t scalar_enable = 0;
 	uint8_t lock_rx_ctx = 0;
 	struct rte_kvargs *kvlist;
+	uint16_t no_inl_dev = 0;
 
 	memset(&sdp_chan, 0, sizeof(sdp_chan));
 	memset(&pre_l2_info, 0, sizeof(struct flow_pre_l2_size_info));
@@ -302,8 +302,7 @@ cnxk_ethdev_parse_devargs(struct rte_devargs *devargs, struct cnxk_eth_dev *dev)
 			   &outb_nb_desc);
 	rte_kvargs_process(kvlist, CNXK_OUTB_NB_CRYPTO_QS,
 			   &parse_outb_nb_crypto_qs, &outb_nb_crypto_qs);
-	rte_kvargs_process(kvlist, CNXK_FORCE_INB_INL_DEV, &parse_flag,
-			   &force_inb_inl_dev);
+	rte_kvargs_process(kvlist, CNXK_NO_INL_DEV, &parse_flag, &no_inl_dev);
 	rte_kvargs_process(kvlist, CNXK_SDP_CHANNEL_MASK,
 			   &parse_sdp_channel_mask, &sdp_chan);
 	rte_kvargs_process(kvlist, CNXK_FLOW_PRE_L2_INFO,
@@ -312,7 +311,7 @@ cnxk_ethdev_parse_devargs(struct rte_devargs *devargs, struct cnxk_eth_dev *dev)
 
 null_devargs:
 	dev->scalar_ena = !!scalar_enable;
-	dev->inb.force_inl_dev = !!force_inb_inl_dev;
+	dev->inb.no_inl_dev = !!no_inl_dev;
 	dev->inb.max_spi = ipsec_in_max_spi;
 	dev->outb.max_sa = ipsec_out_max_sa;
 	dev->outb.nb_desc = outb_nb_desc;
@@ -350,5 +349,5 @@ RTE_PMD_REGISTER_PARAM_STRING(net_cnxk,
 			      CNXK_OUTB_NB_DESC "=<1-65535>"
 			      CNXK_FLOW_PRE_L2_INFO "=<0-255>/<1-255>/<0-1>"
 			      CNXK_OUTB_NB_CRYPTO_QS "=<1-64>"
-			      CNXK_FORCE_INB_INL_DEV "=1"
+			      CNXK_NO_INL_DEV "=0"
 			      CNXK_SDP_CHANNEL_MASK "=<1-4095>/<1-4095>");

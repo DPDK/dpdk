@@ -263,9 +263,9 @@ cnxk_sso_rx_adapter_queue_add(
 
 	/* Switch to use PF/VF's NIX LF instead of inline device for inbound
 	 * when all the RQ's are switched to event dev mode. We do this only
-	 * when using inline device is not forced by dev args.
+	 * when dev arg no_inl_dev=1 is selected.
 	 */
-	if (!cnxk_eth_dev->inb.force_inl_dev &&
+	if (cnxk_eth_dev->inb.no_inl_dev &&
 	    cnxk_eth_dev->nb_rxq_sso == cnxk_eth_dev->nb_rxq)
 		cnxk_nix_inb_mode_set(cnxk_eth_dev, false);
 

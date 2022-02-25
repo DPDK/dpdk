@@ -275,7 +275,7 @@ Runtime Config Options
    With the above configuration, two CPT LF's are setup and distributed among
    all the Tx queues for outbound processing.
 
-- ``Force using inline ipsec device for inbound`` (default ``0``)
+- ``Disable using inline ipsec device for inbound`` (default ``0``)
 
    In CN10K, in event mode, driver can work in two modes,
 
@@ -285,13 +285,13 @@ Runtime Config Options
    2. Both Inbound encrypted traffic and plain traffic post decryption are
       received by ethdev.
 
-   By default event mode works without using inline device i.e mode ``2``.
-   This behaviour can be changed to pick mode ``1`` by using
-   ``force_inb_inl_dev`` ``devargs`` parameter.
+   By default event mode works using inline device i.e mode ``1``.
+   This behaviour can be changed to pick mode ``2`` by using
+   ``no_inl_dev`` ``devargs`` parameter.
 
    For example::
 
-      -a 0002:02:00.0,force_inb_inl_dev=1 -a 0002:03:00.0,force_inb_inl_dev=1
+      -a 0002:02:00.0,no_inl_dev=1 -a 0002:03:00.0,no_inl_dev=1
 
    With the above configuration, inbound encrypted traffic from both the ports
    is received by ipsec inline device.

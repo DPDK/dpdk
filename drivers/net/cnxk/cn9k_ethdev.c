@@ -731,6 +731,7 @@ cn9k_nix_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 	}
 
 	dev->hwcap = 0;
+	dev->inb.no_inl_dev = 1;
 
 	/* Register up msg callbacks for PTP information */
 	roc_nix_ptp_info_cb_register(&dev->nix, cn9k_nix_ptp_info_update_cb);

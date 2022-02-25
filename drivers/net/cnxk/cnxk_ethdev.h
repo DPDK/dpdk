@@ -282,8 +282,8 @@ struct cnxk_eth_dev_sec_inb {
 	/* Using inbound with inline device */
 	bool inl_dev;
 
-	/* Device argument to force inline device for inb */
-	bool force_inl_dev;
+	/* Device argument to disable inline device usage for inb */
+	bool no_inl_dev;
 
 	/* Active sessions */
 	uint16_t nb_sess;
