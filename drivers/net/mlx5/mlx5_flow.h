@@ -1783,6 +1783,12 @@ int mlx5_flow_validate_item_gre_key(const struct rte_flow_item *item,
 				    uint64_t item_flags,
 				    const struct rte_flow_item *gre_item,
 				    struct rte_flow_error *error);
+int mlx5_flow_validate_item_gre_option(struct rte_eth_dev *dev,
+				       const struct rte_flow_item *item,
+				       uint64_t item_flags,
+				       const struct rte_flow_attr *attr,
+				       const struct rte_flow_item *gre_item,
+				       struct rte_flow_error *error);
 int mlx5_flow_validate_item_ipv4(const struct rte_flow_item *item,
 				 uint64_t item_flags,
 				 uint64_t last_item,

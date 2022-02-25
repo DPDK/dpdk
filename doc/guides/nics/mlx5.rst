@@ -493,6 +493,17 @@ Limitations
     - Set ``dv_flow_en`` to 2 in order to enable HW steering.
     - Async queue-based ``rte_flow_q`` APIs supported only.
 
+- Match on GRE header supports the following fields:
+
+  - c_rsvd0_v: C bit, K bit, S bit
+  - protocol type
+  - checksum
+  - key
+  - sequence
+
+  Matching on checksum and sequence needs OFED 5.6+.
+
+
 Statistics
 ----------
 

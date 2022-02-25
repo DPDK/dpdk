@@ -2927,6 +2927,107 @@ mlx5_flow_validate_item_gre_key(const struct rte_flow_item *item,
 }
 
 /**
+ * Validate GRE optional item.
+ *
+ * @param[in] dev
+ *   Pointer to the Ethernet device structure.
+ * @param[in] item
+ *   Item specification.
+ * @param[in] item_flags
+ *   Bit flags to mark detected items.
+ * @param[in] attr
+ *   Flow rule attributes.
+ * @param[in] gre_item
+ *   Pointer to gre_item
+ * @param[out] error
+ *   Pointer to error structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+int
+mlx5_flow_validate_item_gre_option(struct rte_eth_dev *dev,
+				   const struct rte_flow_item *item,
+				   uint64_t item_flags,
+				   const struct rte_flow_attr *attr,
+				   const struct rte_flow_item *gre_item,
+				   struct rte_flow_error *error)
+{
+	const struct rte_flow_item_gre *gre_spec = gre_item->spec;
+	const struct rte_flow_item_gre *gre_mask = gre_item->mask;
+	const struct rte_flow_item_gre_opt *spec = item->spec;
+	const struct rte_flow_item_gre_opt *mask = item->mask;
+	struct mlx5_priv *priv = dev->data->dev_private;
+	int ret = 0;
+	struct rte_flow_item_gre_opt nic_mask = {
+		.checksum_rsvd = {
+			.checksum = RTE_BE16(UINT16_MAX),
+			.reserved1 = 0x0,
+		},
+		.key = {
+			.key = RTE_BE32(UINT32_MAX),
+		},
+		.sequence = {
+			.sequence = RTE_BE32(UINT32_MAX),
+		},
+	};
+
+	if (!(item_flags & MLX5_FLOW_LAYER_GRE))
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ITEM, item,
+					  "No preceding GRE header");
+	if (item_flags & MLX5_FLOW_LAYER_INNER)
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ITEM, item,
+					  "GRE option following a wrong item");
+	if (!spec || !mask)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ITEM, item,
+					  "At least one field gre_option(checksum/key/sequence) must be specified");
+	if (!gre_mask)
+		gre_mask = &rte_flow_item_gre_mask;
+	if (mask->checksum_rsvd.checksum)
+		if (gre_spec && (gre_mask->c_rsvd0_ver & RTE_BE16(0x8000)) &&
+				 !(gre_spec->c_rsvd0_ver & RTE_BE16(0x8000)))
+			return rte_flow_error_set(error, EINVAL,
+						  RTE_FLOW_ERROR_TYPE_ITEM,
+						  item,
+						  "Checksum bit must be on");
+	if (mask->key.key)
+		if (gre_spec && (gre_mask->c_rsvd0_ver & RTE_BE16(0x2000)) &&
+				 !(gre_spec->c_rsvd0_ver & RTE_BE16(0x2000)))
+			return rte_flow_error_set(error, EINVAL,
+						  RTE_FLOW_ERROR_TYPE_ITEM,
+						  item, "Key bit must be on");
+	if (mask->sequence.sequence)
+		if (gre_spec && (gre_mask->c_rsvd0_ver & RTE_BE16(0x1000)) &&
+				 !(gre_spec->c_rsvd0_ver & RTE_BE16(0x1000)))
+			return rte_flow_error_set(error, EINVAL,
+						  RTE_FLOW_ERROR_TYPE_ITEM,
+						  item,
+						  "Sequence bit must be on");
+	if (mask->checksum_rsvd.checksum || mask->sequence.sequence) {
+		if (priv->sh->steering_format_version ==
+		    MLX5_STEERING_LOGIC_FORMAT_CONNECTX_5 ||
+		    ((attr->group || attr->transfer) &&
+		     !priv->sh->misc5_cap) ||
+		    (!(priv->sh->tunnel_header_0_1 &&
+		       priv->sh->tunnel_header_2_3) &&
+		    !attr->group && !attr->transfer))
+			return rte_flow_error_set(error, EINVAL,
+						  RTE_FLOW_ERROR_TYPE_ITEM,
+						  item,
+						  "Checksum/Sequence not supported");
+	}
+	ret = mlx5_flow_item_acceptable
+		(item, (const uint8_t *)mask,
+		 (const uint8_t *)&nic_mask,
+		 sizeof(struct rte_flow_item_gre_opt),
+		 MLX5_ITEM_RANGE_NOT_ACCEPTED, error);
+	return ret;
+}
+
+/**
  * Validate GRE item.
  *
  * @param[in] item

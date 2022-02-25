@@ -7109,6 +7109,13 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 			gre_item = items;
 			last_item = MLX5_FLOW_LAYER_GRE;
 			break;
+		case RTE_FLOW_ITEM_TYPE_GRE_OPTION:
+			ret = mlx5_flow_validate_item_gre_option(dev, items, item_flags,
+							  attr, gre_item, error);
+			if (ret < 0)
+				return ret;
+			last_item = MLX5_FLOW_LAYER_GRE;
+			break;
 		case RTE_FLOW_ITEM_TYPE_NVGRE:
 			ret = mlx5_flow_validate_item_nvgre(items, item_flags,
 							    next_protocol,
@@ -8827,6 +8834,110 @@ flow_dv_translate_item_gre(void *matcher, void *key,
 	MLX5_SET(fte_match_set_misc, misc_m, gre_protocol, protocol_m);
 	MLX5_SET(fte_match_set_misc, misc_v, gre_protocol,
 		 protocol_m & protocol_v);
+}
+
+/**
+ * Add GRE optional items to matcher and to the value.
+ *
+ * @param[in, out] matcher
+ *   Flow matcher.
+ * @param[in, out] key
+ *   Flow matcher value.
+ * @param[in] item
+ *   Flow pattern to translate.
+ * @param[in] gre_item
+ *   Pointer to gre_item.
+ * @param[in] pattern_flags
+ *   Accumulated pattern flags.
+ */
+static void
+flow_dv_translate_item_gre_option(void *matcher, void *key,
+				  const struct rte_flow_item *item,
+				  const struct rte_flow_item *gre_item,
+				  uint64_t pattern_flags)
+{
+	const struct rte_flow_item_gre_opt *option_m = item->mask;
+	const struct rte_flow_item_gre_opt *option_v = item->spec;
+	const struct rte_flow_item_gre *gre_m = gre_item->mask;
+	const struct rte_flow_item_gre *gre_v = gre_item->spec;
+	static const struct rte_flow_item_gre empty_gre = {0};
+	struct rte_flow_item gre_key_item;
+	uint16_t c_rsvd0_ver_m, c_rsvd0_ver_v;
+	uint16_t protocol_m, protocol_v;
+	void *misc5_m;
+	void *misc5_v;
+
+	/*
+	 * If only match key field, keep using misc for matching.
+	 * If need to match checksum or sequence, using misc5 and do
+	 * not need using misc.
+	 */
+	if (!(option_m->sequence.sequence ||
+	      option_m->checksum_rsvd.checksum)) {
+		flow_dv_translate_item_gre(matcher, key, gre_item,
+					   pattern_flags);
+		gre_key_item.spec = &option_v->key.key;
+		gre_key_item.mask = &option_m->key.key;
+		flow_dv_translate_item_gre_key(matcher, key, &gre_key_item);
+		return;
+	}
+	if (!gre_v) {
+		gre_v = &empty_gre;
+		gre_m = &empty_gre;
+	} else {
+		if (!gre_m)
+			gre_m = &rte_flow_item_gre_mask;
+	}
+	protocol_v = gre_v->protocol;
+	protocol_m = gre_m->protocol;
+	if (!protocol_m) {
+		/* Force next protocol to prevent matchers duplication */
+		uint16_t ether_type =
+			mlx5_translate_tunnel_etypes(pattern_flags);
+		if (ether_type) {
+			protocol_v = rte_be_to_cpu_16(ether_type);
+			protocol_m = UINT16_MAX;
+		}
+	}
+	c_rsvd0_ver_v = gre_v->c_rsvd0_ver;
+	c_rsvd0_ver_m = gre_m->c_rsvd0_ver;
+	if (option_m->sequence.sequence) {
+		c_rsvd0_ver_v |= RTE_BE16(0x1000);
+		c_rsvd0_ver_m |= RTE_BE16(0x1000);
+	}
+	if (option_m->key.key) {
+		c_rsvd0_ver_v |= RTE_BE16(0x2000);
+		c_rsvd0_ver_m |= RTE_BE16(0x2000);
+	}
+	if (option_m->checksum_rsvd.checksum) {
+		c_rsvd0_ver_v |= RTE_BE16(0x8000);
+		c_rsvd0_ver_m |= RTE_BE16(0x8000);
+	}
+	/*
+	 * Hardware parses GRE optional field into the fixed location,
+	 * do not need to adjust the tunnel dword indices.
+	 */
+	misc5_v = MLX5_ADDR_OF(fte_match_param, key, misc_parameters_5);
+	misc5_m = MLX5_ADDR_OF(fte_match_param, matcher, misc_parameters_5);
+	MLX5_SET(fte_match_set_misc5, misc5_v, tunnel_header_0,
+		 rte_be_to_cpu_32((c_rsvd0_ver_v | protocol_v << 16) &
+				  (c_rsvd0_ver_m | protocol_m << 16)));
+	MLX5_SET(fte_match_set_misc5, misc5_m, tunnel_header_0,
+		 rte_be_to_cpu_32(c_rsvd0_ver_m | protocol_m << 16));
+	MLX5_SET(fte_match_set_misc5, misc5_v, tunnel_header_1,
+		 rte_be_to_cpu_32(option_v->checksum_rsvd.checksum &
+				  option_m->checksum_rsvd.checksum));
+	MLX5_SET(fte_match_set_misc5, misc5_m, tunnel_header_1,
+		 rte_be_to_cpu_32(option_m->checksum_rsvd.checksum));
+	MLX5_SET(fte_match_set_misc5, misc5_v, tunnel_header_2,
+		 rte_be_to_cpu_32(option_v->key.key & option_m->key.key));
+	MLX5_SET(fte_match_set_misc5, misc5_m, tunnel_header_2,
+		 rte_be_to_cpu_32(option_m->key.key));
+	MLX5_SET(fte_match_set_misc5, misc5_v, tunnel_header_3,
+		 rte_be_to_cpu_32(option_v->sequence.sequence &
+				  option_m->sequence.sequence));
+	MLX5_SET(fte_match_set_misc5, misc5_m, tunnel_header_3,
+		 rte_be_to_cpu_32(option_m->sequence.sequence));
 }
 
 /**
@@ -12709,6 +12820,7 @@ flow_dv_translate(struct rte_eth_dev *dev,
 	};
 	const struct rte_flow_item *integrity_items[2] = {NULL, NULL};
 	const struct rte_flow_item *tunnel_item = NULL;
+	const struct rte_flow_item *gre_item = NULL;
 
 	if (!wks)
 		return rte_flow_error_set(error, ENOMEM,
@@ -13481,11 +13593,17 @@ flow_dv_translate(struct rte_eth_dev *dev,
 			matcher.priority = MLX5_TUNNEL_PRIO_GET(rss_desc);
 			last_item = MLX5_FLOW_LAYER_GRE;
 			tunnel_item = items;
+			gre_item = items;
 			break;
 		case RTE_FLOW_ITEM_TYPE_GRE_KEY:
 			flow_dv_translate_item_gre_key(match_mask,
 						       match_value, items);
 			last_item = MLX5_FLOW_LAYER_GRE_KEY;
+			break;
+		case RTE_FLOW_ITEM_TYPE_GRE_OPTION:
+			matcher.priority = MLX5_TUNNEL_PRIO_GET(rss_desc);
+			last_item = MLX5_FLOW_LAYER_GRE;
+			tunnel_item = items;
 			break;
 		case RTE_FLOW_ITEM_TYPE_NVGRE:
 			matcher.priority = MLX5_TUNNEL_PRIO_GET(rss_desc);
@@ -13645,6 +13763,9 @@ flow_dv_translate(struct rte_eth_dev *dev,
 		else if (tunnel_item->type == RTE_FLOW_ITEM_TYPE_NVGRE)
 			flow_dv_translate_item_nvgre(match_mask, match_value,
 						     tunnel_item, item_flags);
+		else if (tunnel_item->type == RTE_FLOW_ITEM_TYPE_GRE_OPTION)
+			flow_dv_translate_item_gre_option(match_mask, match_value,
+					tunnel_item, gre_item, item_flags);
 		else
 			MLX5_ASSERT(false);
 	}

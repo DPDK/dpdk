@@ -168,6 +168,7 @@ New Features
 
   * Supported ConnectX-7 capability to schedule traffic sending on timestamp.
   * Added WQE based hardware steering support with ``rte_flow_async`` API.
+  * Added GRE optional fields matching.
 
 * **Updated Wangxun ngbe driver.**
 

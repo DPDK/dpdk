@@ -1186,6 +1186,7 @@ struct mlx5_dev_ctx_shared {
 	uint32_t meter_aso_en:1; /* Flow Meter ASO is supported. */
 	uint32_t ct_aso_en:1; /* Connection Tracking ASO is supported. */
 	uint32_t tunnel_header_0_1:1; /* tunnel_header_0_1 is supported. */
+	uint32_t tunnel_header_2_3:1; /* tunnel_header_2_3 is supported. */
 	uint32_t misc5_cap:1; /* misc5 matcher parameter is supported. */
 	uint32_t dr_drop_action_en:1; /* Use DR drop action. */
 	uint32_t drop_action_check_flag:1; /* Check Flag for drop action. */
