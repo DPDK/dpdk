@@ -98,7 +98,7 @@ static inline uint8_t efd_get_all_sockets_bitmask(void)
 	unsigned int next_lcore = rte_get_main_lcore();
 	const int val_true = 1, val_false = 0;
 	for (i = 0; i < rte_lcore_count(); i++) {
-		all_cpu_sockets_bitmask |= 1 << rte_lcore_to_socket_id(next_lcore);
+		all_cpu_sockets_bitmask |= 1ULL << rte_lcore_to_socket_id(next_lcore);
 		next_lcore = rte_get_next_lcore(next_lcore, val_false, val_true);
 	}
 
