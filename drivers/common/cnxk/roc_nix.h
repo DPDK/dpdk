@@ -570,6 +570,22 @@ struct roc_nix_tm_node_stats {
 	uint64_t stats[ROC_NIX_TM_NODE_STATS_MAX];
 };
 
+enum roc_nix_tm_mark {
+	ROC_NIX_TM_MARK_VLAN_DEI,
+	ROC_NIX_TM_MARK_IPV4_DSCP,
+	ROC_NIX_TM_MARK_IPV4_ECN,
+	ROC_NIX_TM_MARK_IPV6_DSCP,
+	ROC_NIX_TM_MARK_IPV6_ECN,
+	ROC_NIX_TM_MARK_MAX
+};
+
+enum roc_nix_tm_mark_color {
+	ROC_NIX_TM_MARK_COLOR_Y,
+	ROC_NIX_TM_MARK_COLOR_R,
+	ROC_NIX_TM_MARK_COLOR_Y_R,
+	ROC_NIX_TM_MARK_COLOR_MAX
+};
+
 int __roc_api roc_nix_tm_node_add(struct roc_nix *roc_nix,
 				  struct roc_nix_tm_node *roc_node);
 int __roc_api roc_nix_tm_node_delete(struct roc_nix *roc_nix, uint32_t node_id,
@@ -646,6 +662,11 @@ int __roc_api roc_nix_tm_prepare_rate_limited_tree(struct roc_nix *roc_nix);
 int __roc_api roc_nix_tm_pfc_prepare_tree(struct roc_nix *roc_nix);
 bool __roc_api roc_nix_tm_is_user_hierarchy_enabled(struct roc_nix *nix);
 int __roc_api roc_nix_tm_tree_type_get(struct roc_nix *nix);
+int __roc_api roc_nix_tm_mark_config(struct roc_nix *roc_nix,
+				     enum roc_nix_tm_mark type, int mark_yellow,
+				     int mark_red);
+uint64_t __roc_api roc_nix_tm_mark_format_get(struct roc_nix *roc_nix,
+					      uint64_t *flags);
 
 /* Ingress Policer API */
 int __roc_api roc_nix_bpf_timeunit_get(struct roc_nix *roc_nix,

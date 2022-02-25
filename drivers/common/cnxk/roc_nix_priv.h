@@ -36,9 +36,22 @@ struct nix_qint {
 #define NIX_TM_CHAN_INVALID UINT16_MAX
 
 /* TM flags */
-#define NIX_TM_HIERARCHY_ENA BIT_ULL(0)
-#define NIX_TM_TL1_NO_SP     BIT_ULL(1)
-#define NIX_TM_TL1_ACCESS    BIT_ULL(2)
+#define NIX_TM_HIERARCHY_ENA	BIT_ULL(0)
+#define NIX_TM_TL1_NO_SP	BIT_ULL(1)
+#define NIX_TM_TL1_ACCESS	BIT_ULL(2)
+#define NIX_TM_MARK_VLAN_DEI_EN BIT_ULL(3)
+#define NIX_TM_MARK_IP_DSCP_EN	BIT_ULL(4)
+#define NIX_TM_MARK_IP_ECN_EN	BIT_ULL(5)
+
+#define NIX_TM_MARK_EN_MASK                                                    \
+	(NIX_TM_MARK_IP_DSCP_EN | NIX_TM_MARK_IP_ECN_EN |                      \
+	 NIX_TM_MARK_VLAN_DEI_EN)
+
+#define NIX_TM_MARK_VLAN_DEI_SHIFT  0 /* Leave 16b for VLAN for FP logic */
+#define NIX_TM_MARK_IPV4_DSCP_SHIFT 16
+#define NIX_TM_MARK_IPV6_DSCP_SHIFT 24
+#define NIX_TM_MARK_IPV4_ECN_SHIFT  32
+#define NIX_TM_MARK_IPV6_ECN_SHIFT  40
 
 struct nix_tm_tb {
 	/** Token bucket rate (bytes per second) */
@@ -170,6 +183,9 @@ struct nix {
 	uint16_t tm_link_cfg_lvl;
 	uint16_t contig_rsvd[NIX_TXSCH_LVL_CNT];
 	uint16_t discontig_rsvd[NIX_TXSCH_LVL_CNT];
+	uint64_t tm_markfmt_en;
+	uint8_t tm_markfmt_null;
+	uint8_t tm_markfmt[ROC_NIX_TM_MARK_MAX][ROC_NIX_TM_MARK_COLOR_MAX];
 
 	/* Ipsec info */
 	uint16_t cpt_msixoff[MAX_RVU_BLKLF_CNT];
@@ -386,6 +402,7 @@ int nix_tm_bp_config_get(struct roc_nix *roc_nix, bool *is_enabled);
 int nix_tm_bp_config_set(struct roc_nix *roc_nix, uint16_t sq, uint16_t tc,
 			 bool enable);
 void nix_rq_vwqe_flush(struct roc_nix_rq *rq, uint16_t vwqe_interval);
+int nix_tm_mark_init(struct nix *nix);
 
 /*
  * TM priv utils.

@@ -256,6 +256,8 @@ INTERNAL {
 	roc_nix_tm_leaf_cnt;
 	roc_nix_tm_lvl_have_link_access;
 	roc_nix_tm_lvl_is_leaf;
+	roc_nix_tm_mark_config;
+	roc_nix_tm_mark_format_get;
 	roc_nix_tm_max_prio;
 	roc_nix_tm_node_add;
 	roc_nix_tm_node_delete;

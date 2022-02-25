@@ -1692,6 +1692,10 @@ nix_tm_conf_init(struct roc_nix *roc_nix)
 		bmp_mem = PLT_PTR_ADD(bmp_mem, bmp_sz);
 	}
 
+	rc = nix_tm_mark_init(nix);
+	if (rc)
+		goto exit;
+
 	/* Disable TL1 Static Priority when VF's are enabled
 	 * as otherwise VF's TL2 reallocation will be needed
 	 * runtime to support a specific topology of PF.
