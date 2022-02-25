@@ -17,6 +17,7 @@
 #include <rte_ethdev_driver.h>
 #include <rte_malloc.h>
 #include <rte_memcpy.h>
+#include <rte_bitops.h>
 
 #include "i40e_logs.h"
 #include "base/i40e_prototype.h"
@@ -597,14 +598,14 @@ i40e_pf_config_irq_link_list(struct i40e_pf_vf *vf,
 	tempmap = vvm->rxq_map;
 	for (i = 0; i < sizeof(vvm->rxq_map) * BITS_PER_CHAR; i++) {
 		if (tempmap & 0x1)
-			linklistmap |= (1 << (2 * i));
+			linklistmap |= RTE_BIT64(2 * i);
 		tempmap >>= 1;
 	}
 
 	tempmap = vvm->txq_map;
 	for (i = 0; i < sizeof(vvm->txq_map) * BITS_PER_CHAR; i++) {
 		if (tempmap & 0x1)
-			linklistmap |= (1 << (2 * i + 1));
+			linklistmap |= RTE_BIT64(2 * i + 1);
 		tempmap >>= 1;
 	}
 
