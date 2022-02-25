@@ -1162,7 +1162,7 @@ rte_efd_update(struct rte_efd_table * const table, const unsigned int socket_id,
 {
 	uint32_t chunk_id = 0, group_id = 0, bin_id = 0;
 	uint8_t new_bin_choice = 0;
-	struct efd_online_group_entry entry;
+	struct efd_online_group_entry entry = {{0}};
 
 	int status = efd_compute_update(table, socket_id, key, value,
 			&chunk_id, &group_id, &bin_id,
