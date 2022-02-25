@@ -299,4 +299,3 @@ uint16_t nfp_net_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
  * indent-tabs-mode: t
  * End:
  */
-

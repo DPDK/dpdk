@@ -3311,4 +3311,3 @@ const struct rte_flow_ops hinic_flow_ops = {
 	.destroy = hinic_flow_destroy,
 	.flush = hinic_flow_flush,
 };
-

@@ -18,4 +18,3 @@ extern int mlx5_common_logtype;
 		PMD_DRV_LOG_CPAREN)
 
 #endif /* RTE_PMD_MLX5_COMMON_LOG_H_ */
-

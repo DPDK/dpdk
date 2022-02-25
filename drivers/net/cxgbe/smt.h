@@ -42,4 +42,3 @@ struct smt_entry *cxgbe_smt_alloc_switching(struct rte_eth_dev *dev, u8 *smac);
 void cxgbe_smt_release(struct smt_entry *e);
 
 #endif  /* __CXGBE_SMT_H_ */
-

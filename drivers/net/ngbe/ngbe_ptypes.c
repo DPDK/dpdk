@@ -297,4 +297,3 @@ u8 ngbe_encode_ptype(u32 ptype)
 
 	return ptid;
 }
-

@@ -3150,4 +3150,3 @@ const struct rte_flow_ops txgbe_flow_ops = {
 	.destroy = txgbe_flow_destroy,
 	.flush = txgbe_flow_flush,
 };
-

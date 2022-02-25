@@ -139,4 +139,3 @@ struct otx2_ep_instr_64B {
 };
 
 #endif /*_OTX2_EP_VF_H_ */
-

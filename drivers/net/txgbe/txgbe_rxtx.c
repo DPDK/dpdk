@@ -5108,4 +5108,3 @@ txgbe_config_rss_filter(struct rte_eth_dev *dev,
 
 	return 0;
 }
-

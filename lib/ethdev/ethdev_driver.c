@@ -767,4 +767,3 @@ rte_eth_switch_domain_free(uint16_t domain_id)
 
 	return 0;
 }
-

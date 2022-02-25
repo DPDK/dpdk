@@ -23,4 +23,3 @@
 int ionic_dev_link_update(struct rte_eth_dev *eth_dev, int wait_to_complete);
 
 #endif /* _IONIC_ETHDEV_H_ */
-

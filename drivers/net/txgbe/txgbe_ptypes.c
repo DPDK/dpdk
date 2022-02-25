@@ -672,4 +672,3 @@ txgbe_ptype_table_tn[TXGBE_PTID_MAX] __rte_cache_aligned = {
 		RTE_PTYPE_TUNNEL_VXLAN | RTE_PTYPE_INNER_L2_ETHER |
 		RTE_PTYPE_INNER_L3_IPV4_EXT | RTE_PTYPE_INNER_L4_UDP,
 };
-

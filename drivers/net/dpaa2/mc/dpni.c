@@ -3118,4 +3118,3 @@ int dpni_set_port_cfg(struct fsl_mc_io *mc_io, uint32_t cmd_flags,
 	/* send command to MC */
 	return mc_send_command(mc_io, &cmd);
 }
-

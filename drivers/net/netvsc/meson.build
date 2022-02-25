@@ -15,4 +15,3 @@ sources = files(
         'hn_rxtx.c',
         'hn_vf.c',
 )
-

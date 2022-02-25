@@ -1187,4 +1187,3 @@ mlx5_check_vec_rx_support(struct rte_eth_dev *dev __rte_unused)
 {
 	return -ENOTSUP;
 }
-

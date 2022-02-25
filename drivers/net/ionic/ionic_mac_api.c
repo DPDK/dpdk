@@ -60,4 +60,3 @@ ionic_set_mac_type(struct ionic_hw *hw)
 
 	return err;
 }
-

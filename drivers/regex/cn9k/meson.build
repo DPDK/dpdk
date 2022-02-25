@@ -22,4 +22,3 @@ sources = files(
 
 deps += ['bus_pci', 'regexdev']
 deps += ['common_cnxk', 'mempool_cnxk']
-
