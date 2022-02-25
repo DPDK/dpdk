@@ -325,14 +325,17 @@ nix_tm_bp_config_set(struct roc_nix *roc_nix, uint16_t sq, uint16_t tc,
 	struct mbox *mbox = (&nix->dev)->mbox;
 	struct nix_txschq_config *req = NULL;
 	struct nix_tm_node_list *list;
+	uint16_t link = nix->tx_link;
 	struct nix_tm_node *sq_node;
 	struct nix_tm_node *parent;
 	struct nix_tm_node *node;
 	uint8_t k = 0;
-	uint16_t link;
 	int rc = 0;
 
 	sq_node = nix_tm_node_search(nix, sq, nix->tm_tree);
+	if (!sq_node)
+		return -ENOENT;
+
 	parent = sq_node->parent;
 	while (parent) {
 		if (parent->lvl == ROC_TM_LVL_SCH2)
@@ -340,9 +343,10 @@ nix_tm_bp_config_set(struct roc_nix *roc_nix, uint16_t sq, uint16_t tc,
 
 		parent = parent->parent;
 	}
+	if (!parent)
+		return -ENOENT;
 
 	list = nix_tm_node_list(nix, tree);
-	link = nix->tx_link;
 
 	if (parent->rel_chan != NIX_TM_CHAN_INVALID && parent->rel_chan != tc) {
 		rc = -EINVAL;
