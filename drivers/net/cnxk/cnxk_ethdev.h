@@ -18,6 +18,7 @@
 #include <rte_security_driver.h>
 #include <rte_tailq.h>
 #include <rte_time.h>
+#include <rte_tm_driver.h>
 
 #include "roc_api.h"
 
@@ -138,6 +139,15 @@
 #define CNXK_ETHDEV_SPI_TAG_MASK 0xFFFFFUL
 
 #define CNXK_NIX_PFC_CHAN_COUNT 16
+
+#define CNXK_TM_MARK_VLAN_DEI BIT_ULL(0)
+#define CNXK_TM_MARK_IP_DSCP  BIT_ULL(1)
+#define CNXK_TM_MARK_IP_ECN   BIT_ULL(2)
+
+#define CNXK_TM_MARK_MASK                                                      \
+	(CNXK_TM_MARK_VLAN_DEI | CNXK_TM_MARK_IP_DSCP | CNXK_TM_MARK_IP_ECN)
+
+#define CNXK_TX_MARK_FMT_MASK (0xFFFFFFFFFFFFull)
 
 struct cnxk_fc_cfg {
 	enum rte_eth_fc_mode mode;
@@ -350,6 +360,7 @@ struct cnxk_eth_dev {
 	uint16_t flags;
 	uint8_t ptype_disable;
 	bool scalar_ena;
+	bool tx_mark;
 	bool ptp_en;
 	bool rx_mark_update; /* Enable/Disable mark update to mbuf */
 
@@ -464,6 +475,9 @@ extern struct rte_flow_ops cnxk_flow_ops;
 /* Common security ops */
 extern struct rte_security_ops cnxk_eth_sec_ops;
 
+/* Common tm ops */
+extern struct rte_tm_ops cnxk_tm_ops;
+
 /* Ops */
 int cnxk_nix_probe(struct rte_pci_driver *pci_drv,
 		   struct rte_pci_device *pci_dev);
@@ -540,6 +554,15 @@ uint64_t cnxk_nix_rxq_mbuf_setup(struct cnxk_eth_dev *dev);
 int cnxk_nix_tm_ops_get(struct rte_eth_dev *eth_dev, void *ops);
 int cnxk_nix_tm_set_queue_rate_limit(struct rte_eth_dev *eth_dev,
 				     uint16_t queue_idx, uint16_t tx_rate);
+int cnxk_nix_tm_mark_vlan_dei(struct rte_eth_dev *eth_dev, int mark_green,
+			      int mark_yellow, int mark_red,
+			      struct rte_tm_error *error);
+int cnxk_nix_tm_mark_ip_ecn(struct rte_eth_dev *eth_dev, int mark_green,
+			    int mark_yellow, int mark_red,
+			    struct rte_tm_error *error);
+int cnxk_nix_tm_mark_ip_dscp(struct rte_eth_dev *eth_dev, int mark_green,
+			     int mark_yellow, int mark_red,
+			     struct rte_tm_error *error);
 
 /* MTR */
 int cnxk_nix_mtr_ops_get(struct rte_eth_dev *dev, void *ops);

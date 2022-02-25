@@ -511,13 +511,16 @@ cn10k_nix_xmit_prepare_tso(struct rte_mbuf *m, const uint64_t flags)
 
 static __rte_always_inline void
 cn10k_nix_xmit_prepare(struct rte_mbuf *m, uint64_t *cmd, const uint16_t flags,
-		       const uint64_t lso_tun_fmt, bool *sec)
+		       const uint64_t lso_tun_fmt, bool *sec, uint8_t mark_flag,
+		       uint64_t mark_fmt)
 {
+	uint8_t mark_off = 0, mark_vlan = 0, markptr = 0;
 	struct nix_send_ext_s *send_hdr_ext;
 	struct nix_send_hdr_s *send_hdr;
 	uint64_t ol_flags = 0, mask;
 	union nix_send_hdr_w1_u w1;
 	union nix_send_sg_s *sg;
+	uint16_t mark_form = 0;
 
 	send_hdr = (struct nix_send_hdr_s *)cmd;
 	if (flags & NIX_TX_NEED_EXT_HDR) {
@@ -525,7 +528,9 @@ cn10k_nix_xmit_prepare(struct rte_mbuf *m, uint64_t *cmd, const uint16_t flags,
 		sg = (union nix_send_sg_s *)(cmd + 4);
 		/* Clear previous markings */
 		send_hdr_ext->w0.lso = 0;
+		send_hdr_ext->w0.mark_en = 0;
 		send_hdr_ext->w1.u = 0;
+		ol_flags = m->ol_flags;
 	} else {
 		sg = (union nix_send_sg_s *)(cmd + 2);
 	}
@@ -621,6 +626,10 @@ cn10k_nix_xmit_prepare(struct rte_mbuf *m, uint64_t *cmd, const uint16_t flags,
 	}
 
 	if (flags & NIX_TX_NEED_EXT_HDR && flags & NIX_TX_OFFLOAD_VLAN_QINQ_F) {
+		const uint8_t ipv6 = !!(ol_flags & RTE_MBUF_F_TX_IPV6);
+		const uint8_t ip = !!(ol_flags & (RTE_MBUF_F_TX_IPV4 |
+						  RTE_MBUF_F_TX_IPV6));
+
 		send_hdr_ext->w1.vlan1_ins_ena = !!(ol_flags & RTE_MBUF_F_TX_VLAN);
 		/* HW will update ptr after vlan0 update */
 		send_hdr_ext->w1.vlan1_ins_ptr = 12;
@@ -630,6 +639,22 @@ cn10k_nix_xmit_prepare(struct rte_mbuf *m, uint64_t *cmd, const uint16_t flags,
 		/* 2B before end of l2 header */
 		send_hdr_ext->w1.vlan0_ins_ptr = 12;
 		send_hdr_ext->w1.vlan0_ins_tci = m->vlan_tci_outer;
+		/* Fill for VLAN marking only when VLAN insertion enabled */
+		mark_vlan = ((mark_flag & CNXK_TM_MARK_VLAN_DEI) &
+			     (send_hdr_ext->w1.vlan1_ins_ena ||
+			      send_hdr_ext->w1.vlan0_ins_ena));
+
+		/* Mask requested flags with packet data information */
+		mark_off = mark_flag & ((ip << 2) | (ip << 1) | mark_vlan);
+		mark_off = ffs(mark_off & CNXK_TM_MARK_MASK);
+
+		mark_form = (mark_fmt >> ((mark_off - !!mark_off) << 4));
+		mark_form = (mark_form >> (ipv6 << 3)) & 0xFF;
+		markptr = m->l2_len + (mark_form >> 7) - (mark_vlan << 2);
+
+		send_hdr_ext->w0.mark_en = !!mark_off;
+		send_hdr_ext->w0.markform = mark_form & 0x7F;
+		send_hdr_ext->w0.markptr = markptr;
 	}
 
 	if (flags & NIX_TX_OFFLOAD_TSO_F && (ol_flags & RTE_MBUF_F_TX_TCP_SEG)) {
@@ -841,6 +866,8 @@ cn10k_nix_xmit_pkts(void *tx_queue, uint64_t *ws, struct rte_mbuf **tx_pkts,
 	uintptr_t pa, lbase = txq->lmt_base;
 	uint16_t lmt_id, burst, left, i;
 	uintptr_t c_lbase = lbase;
+	uint64_t mark_fmt = 0;
+	uint8_t mark_flag = 0;
 	rte_iova_t c_io_addr;
 	uint64_t lso_tun_fmt;
 	uint16_t c_lmt_id;
@@ -859,6 +886,11 @@ cn10k_nix_xmit_pkts(void *tx_queue, uint64_t *ws, struct rte_mbuf **tx_pkts,
 
 	if (flags & NIX_TX_OFFLOAD_TSO_F)
 		lso_tun_fmt = txq->lso_tun_fmt;
+
+	if (flags & NIX_TX_OFFLOAD_VLAN_QINQ_F) {
+		mark_fmt = txq->mark_fmt;
+		mark_flag = txq->mark_flag;
+	}
 
 	/* Get LMT base address and LMT ID as lcore id */
 	ROC_LMT_BASE_ID_GET(lbase, lmt_id);
@@ -887,7 +919,7 @@ again:
 			cn10k_nix_xmit_prepare_tso(tx_pkts[i], flags);
 
 		cn10k_nix_xmit_prepare(tx_pkts[i], cmd, flags, lso_tun_fmt,
-				       &sec);
+				       &sec, mark_flag, mark_fmt);
 
 		laddr = (uintptr_t)LMT_OFF(lbase, lnum, 0);
 
@@ -967,6 +999,8 @@ cn10k_nix_xmit_pkts_mseg(void *tx_queue, uint64_t *ws,
 	uint16_t segdw, lmt_id, burst, left, i;
 	uint8_t lnum, c_lnum, c_loff;
 	uintptr_t c_lbase = lbase;
+	uint64_t mark_fmt = 0;
+	uint8_t mark_flag = 0;
 	uint64_t data0, data1;
 	rte_iova_t c_io_addr;
 	uint64_t lso_tun_fmt;
@@ -987,6 +1021,11 @@ cn10k_nix_xmit_pkts_mseg(void *tx_queue, uint64_t *ws,
 
 	if (flags & NIX_TX_OFFLOAD_TSO_F)
 		lso_tun_fmt = txq->lso_tun_fmt;
+
+	if (flags & NIX_TX_OFFLOAD_VLAN_QINQ_F) {
+		mark_fmt = txq->mark_fmt;
+		mark_flag = txq->mark_flag;
+	}
 
 	/* Get LMT base address and LMT ID as lcore id */
 	ROC_LMT_BASE_ID_GET(lbase, lmt_id);
@@ -1017,7 +1056,7 @@ again:
 			cn10k_nix_xmit_prepare_tso(tx_pkts[i], flags);
 
 		cn10k_nix_xmit_prepare(tx_pkts[i], cmd, flags, lso_tun_fmt,
-				       &sec);
+				       &sec, mark_flag, mark_fmt);
 
 		laddr = (uintptr_t)LMT_OFF(lbase, lnum, 0);
 

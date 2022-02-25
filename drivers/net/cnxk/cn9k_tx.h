@@ -135,13 +135,16 @@ cn9k_nix_xmit_prepare_tso(struct rte_mbuf *m, const uint64_t flags)
 
 static __rte_always_inline void
 cn9k_nix_xmit_prepare(struct rte_mbuf *m, uint64_t *cmd, const uint16_t flags,
-		      const uint64_t lso_tun_fmt)
+		      const uint64_t lso_tun_fmt, uint8_t mark_flag,
+		      uint64_t mark_fmt)
 {
+	uint8_t mark_off = 0, mark_vlan = 0, markptr = 0;
 	struct nix_send_ext_s *send_hdr_ext;
 	struct nix_send_hdr_s *send_hdr;
 	uint64_t ol_flags = 0, mask;
 	union nix_send_hdr_w1_u w1;
 	union nix_send_sg_s *sg;
+	uint16_t mark_form = 0;
 
 	send_hdr = (struct nix_send_hdr_s *)cmd;
 	if (flags & NIX_TX_NEED_EXT_HDR) {
@@ -149,7 +152,9 @@ cn9k_nix_xmit_prepare(struct rte_mbuf *m, uint64_t *cmd, const uint16_t flags,
 		sg = (union nix_send_sg_s *)(cmd + 4);
 		/* Clear previous markings */
 		send_hdr_ext->w0.lso = 0;
+		send_hdr_ext->w0.mark_en = 0;
 		send_hdr_ext->w1.u = 0;
+		ol_flags = m->ol_flags;
 	} else {
 		sg = (union nix_send_sg_s *)(cmd + 2);
 	}
@@ -245,6 +250,10 @@ cn9k_nix_xmit_prepare(struct rte_mbuf *m, uint64_t *cmd, const uint16_t flags,
 	}
 
 	if (flags & NIX_TX_NEED_EXT_HDR && flags & NIX_TX_OFFLOAD_VLAN_QINQ_F) {
+		const uint8_t ipv6 = !!(ol_flags & RTE_MBUF_F_TX_IPV6);
+		const uint8_t ip = !!(ol_flags & (RTE_MBUF_F_TX_IPV4 |
+						  RTE_MBUF_F_TX_IPV6));
+
 		send_hdr_ext->w1.vlan1_ins_ena = !!(ol_flags & RTE_MBUF_F_TX_VLAN);
 		/* HW will update ptr after vlan0 update */
 		send_hdr_ext->w1.vlan1_ins_ptr = 12;
@@ -254,6 +263,21 @@ cn9k_nix_xmit_prepare(struct rte_mbuf *m, uint64_t *cmd, const uint16_t flags,
 		/* 2B before end of l2 header */
 		send_hdr_ext->w1.vlan0_ins_ptr = 12;
 		send_hdr_ext->w1.vlan0_ins_tci = m->vlan_tci_outer;
+		/* Fill for VLAN marking only when VLAN insertion enabled */
+		mark_vlan = ((mark_flag & CNXK_TM_MARK_VLAN_DEI) &
+			     (send_hdr_ext->w1.vlan1_ins_ena ||
+			      send_hdr_ext->w1.vlan0_ins_ena));
+		/* Mask requested flags with packet data information */
+		mark_off = mark_flag & ((ip << 2) | (ip << 1) | mark_vlan);
+		mark_off = ffs(mark_off & CNXK_TM_MARK_MASK);
+
+		mark_form = (mark_fmt >> ((mark_off - !!mark_off) << 4));
+		mark_form = (mark_form >> (ipv6 << 3)) & 0xFF;
+		markptr = m->l2_len + (mark_form >> 7) - (mark_vlan << 2);
+
+		send_hdr_ext->w0.mark_en = !!mark_off;
+		send_hdr_ext->w0.markform = mark_form & 0x7F;
+		send_hdr_ext->w0.markptr = markptr;
 	}
 
 	if (flags & NIX_TX_OFFLOAD_TSO_F && (ol_flags & RTE_MBUF_F_TX_TCP_SEG)) {
@@ -502,8 +526,9 @@ cn9k_nix_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t pkts,
 {
 	struct cn9k_eth_txq *txq = tx_queue;
 	const rte_iova_t io_addr = txq->io_addr;
+	uint64_t lso_tun_fmt, mark_fmt = 0;
 	void *lmt_addr = txq->lmt_addr;
-	uint64_t lso_tun_fmt;
+	uint8_t mark_flag = 0;
 	uint16_t i;
 
 	NIX_XMIT_FC_OR_RETURN(txq, pkts);
@@ -518,6 +543,11 @@ cn9k_nix_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t pkts,
 			cn9k_nix_xmit_prepare_tso(tx_pkts[i], flags);
 	}
 
+	if (flags & NIX_TX_OFFLOAD_VLAN_QINQ_F) {
+		mark_fmt = txq->mark_fmt;
+		mark_flag = txq->mark_flag;
+	}
+
 	/* Lets commit any changes in the packet here as no further changes
 	 * to the packet will be done unless no fast free is enabled.
 	 */
@@ -525,7 +555,8 @@ cn9k_nix_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t pkts,
 		rte_io_wmb();
 
 	for (i = 0; i < pkts; i++) {
-		cn9k_nix_xmit_prepare(tx_pkts[i], cmd, flags, lso_tun_fmt);
+		cn9k_nix_xmit_prepare(tx_pkts[i], cmd, flags, lso_tun_fmt,
+				      mark_flag, mark_fmt);
 		cn9k_nix_xmit_prepare_tstamp(txq, cmd, tx_pkts[i]->ol_flags, 4,
 					     flags);
 		cn9k_nix_xmit_one(cmd, lmt_addr, io_addr, flags);
@@ -543,8 +574,9 @@ cn9k_nix_xmit_pkts_mseg(void *tx_queue, struct rte_mbuf **tx_pkts,
 {
 	struct cn9k_eth_txq *txq = tx_queue;
 	const rte_iova_t io_addr = txq->io_addr;
+	uint64_t lso_tun_fmt, mark_fmt = 0;
 	void *lmt_addr = txq->lmt_addr;
-	uint64_t lso_tun_fmt;
+	uint8_t mark_flag = 0;
 	uint16_t segdw;
 	uint64_t i;
 
@@ -560,6 +592,11 @@ cn9k_nix_xmit_pkts_mseg(void *tx_queue, struct rte_mbuf **tx_pkts,
 			cn9k_nix_xmit_prepare_tso(tx_pkts[i], flags);
 	}
 
+	if (flags & NIX_TX_OFFLOAD_VLAN_QINQ_F) {
+		mark_fmt = txq->mark_fmt;
+		mark_flag = txq->mark_flag;
+	}
+
 	/* Lets commit any changes in the packet here as no further changes
 	 * to the packet will be done unless no fast free is enabled.
 	 */
@@ -567,7 +604,8 @@ cn9k_nix_xmit_pkts_mseg(void *tx_queue, struct rte_mbuf **tx_pkts,
 		rte_io_wmb();
 
 	for (i = 0; i < pkts; i++) {
-		cn9k_nix_xmit_prepare(tx_pkts[i], cmd, flags, lso_tun_fmt);
+		cn9k_nix_xmit_prepare(tx_pkts[i], cmd, flags, lso_tun_fmt,
+				      mark_flag, mark_fmt);
 		segdw = cn9k_nix_prepare_mseg(tx_pkts[i], cmd, flags);
 		cn9k_nix_xmit_prepare_tstamp(txq, cmd, tx_pkts[i]->ol_flags,
 					     segdw, flags);

@@ -555,7 +555,8 @@ cn10k_sso_tx_one(struct cn10k_sso_hws *ws, struct rte_mbuf *m, uint64_t *cmd,
 	if (flags & NIX_TX_OFFLOAD_TSO_F)
 		cn10k_nix_xmit_prepare_tso(m, flags);
 
-	cn10k_nix_xmit_prepare(m, cmd, flags, txq->lso_tun_fmt, &sec);
+	cn10k_nix_xmit_prepare(m, cmd, flags, txq->lso_tun_fmt, &sec,
+			       txq->mark_flag, txq->mark_fmt);
 
 	laddr = lmt_addr;
 	/* Prepare CPT instruction and get nixtx addr if

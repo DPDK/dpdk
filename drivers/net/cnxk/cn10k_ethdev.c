@@ -110,6 +110,9 @@ nix_tx_offload_flags(struct rte_eth_dev *eth_dev)
 	if (conf & RTE_ETH_TX_OFFLOAD_SECURITY)
 		flags |= NIX_TX_OFFLOAD_SECURITY_F;
 
+	if (dev->tx_mark)
+		flags |= NIX_TX_OFFLOAD_VLAN_QINQ_F;
+
 	return flags;
 }
 
@@ -169,6 +172,7 @@ cn10k_nix_tx_queue_setup(struct rte_eth_dev *eth_dev, uint16_t qid,
 {
 	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
 	struct roc_nix *nix = &dev->nix;
+	uint64_t mark_fmt, mark_flag;
 	struct roc_cpt_lf *inl_lf;
 	struct cn10k_eth_txq *txq;
 	struct roc_nix_sq *sq;
@@ -205,6 +209,11 @@ cn10k_nix_tx_queue_setup(struct rte_eth_dev *eth_dev, uint16_t qid,
 		txq->sa_base |= eth_dev->data->port_id;
 		PLT_STATIC_ASSERT(ROC_NIX_INL_SA_BASE_ALIGN == BIT_ULL(16));
 	}
+
+	/* Restore marking flag from roc */
+	mark_fmt = roc_nix_tm_mark_format_get(nix, &mark_flag);
+	txq->mark_flag = mark_flag & CNXK_TM_MARK_MASK;
+	txq->mark_fmt = mark_fmt & CNXK_TX_MARK_FMT_MASK;
 
 	nix_form_default_desc(dev, txq, qid);
 	txq->lso_tun_fmt = dev->lso_tun_fmt;
@@ -546,6 +555,118 @@ cn10k_nix_reassembly_conf_set(struct rte_eth_dev *eth_dev,
 	return rc;
 }
 
+static int
+cn10k_nix_tm_mark_vlan_dei(struct rte_eth_dev *eth_dev, int mark_green,
+			   int mark_yellow, int mark_red,
+			   struct rte_tm_error *error)
+{
+	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+	struct roc_nix *roc_nix = &dev->nix;
+	uint64_t mark_fmt, mark_flag;
+	int rc, i;
+
+	rc = cnxk_nix_tm_mark_vlan_dei(eth_dev, mark_green, mark_yellow,
+				       mark_red, error);
+
+	if (rc)
+		goto exit;
+
+	mark_fmt = roc_nix_tm_mark_format_get(roc_nix, &mark_flag);
+	if (mark_flag) {
+		dev->tx_offload_flags |= NIX_TX_OFFLOAD_VLAN_QINQ_F;
+		dev->tx_mark = true;
+	} else {
+		dev->tx_mark = false;
+		if (!(dev->tx_offloads & RTE_ETH_TX_OFFLOAD_VLAN_INSERT ||
+		      dev->tx_offloads & RTE_ETH_TX_OFFLOAD_QINQ_INSERT))
+			dev->tx_offload_flags &= ~NIX_TX_OFFLOAD_VLAN_QINQ_F;
+	}
+
+	for (i = 0; i < eth_dev->data->nb_tx_queues; i++) {
+		struct cn10k_eth_txq *txq = eth_dev->data->tx_queues[i];
+
+		txq->mark_flag = mark_flag & CNXK_TM_MARK_MASK;
+		txq->mark_fmt = mark_fmt & CNXK_TX_MARK_FMT_MASK;
+	}
+	cn10k_eth_set_tx_function(eth_dev);
+exit:
+	return rc;
+}
+
+static int
+cn10k_nix_tm_mark_ip_ecn(struct rte_eth_dev *eth_dev, int mark_green,
+			 int mark_yellow, int mark_red,
+			 struct rte_tm_error *error)
+{
+	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+	struct roc_nix *roc_nix = &dev->nix;
+	uint64_t mark_fmt, mark_flag;
+	int rc, i;
+
+	rc = cnxk_nix_tm_mark_ip_ecn(eth_dev, mark_green, mark_yellow, mark_red,
+				     error);
+	if (rc)
+		goto exit;
+
+	mark_fmt = roc_nix_tm_mark_format_get(roc_nix, &mark_flag);
+	if (mark_flag) {
+		dev->tx_offload_flags |= NIX_TX_OFFLOAD_VLAN_QINQ_F;
+		dev->tx_mark = true;
+	} else {
+		dev->tx_mark = false;
+		if (!(dev->tx_offloads & RTE_ETH_TX_OFFLOAD_VLAN_INSERT ||
+		      dev->tx_offloads & RTE_ETH_TX_OFFLOAD_QINQ_INSERT))
+			dev->tx_offload_flags &= ~NIX_TX_OFFLOAD_VLAN_QINQ_F;
+	}
+
+	for (i = 0; i < eth_dev->data->nb_tx_queues; i++) {
+		struct cn10k_eth_txq *txq = eth_dev->data->tx_queues[i];
+
+		txq->mark_flag = mark_flag & CNXK_TM_MARK_MASK;
+		txq->mark_fmt = mark_fmt & CNXK_TX_MARK_FMT_MASK;
+	}
+	cn10k_eth_set_tx_function(eth_dev);
+exit:
+	return rc;
+}
+
+static int
+cn10k_nix_tm_mark_ip_dscp(struct rte_eth_dev *eth_dev, int mark_green,
+			  int mark_yellow, int mark_red,
+			  struct rte_tm_error *error)
+{
+	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+	struct roc_nix *roc_nix = &dev->nix;
+	uint64_t mark_fmt, mark_flag;
+	int rc, i;
+
+	rc = cnxk_nix_tm_mark_ip_dscp(eth_dev, mark_green, mark_yellow,
+				      mark_red, error);
+	if (rc)
+		goto exit;
+
+	mark_fmt = roc_nix_tm_mark_format_get(roc_nix, &mark_flag);
+	if (mark_flag) {
+		dev->tx_offload_flags |= NIX_TX_OFFLOAD_VLAN_QINQ_F;
+		dev->tx_mark = true;
+	} else {
+		dev->tx_mark = false;
+		if (!(dev->tx_offloads & RTE_ETH_TX_OFFLOAD_VLAN_INSERT ||
+		      dev->tx_offloads & RTE_ETH_TX_OFFLOAD_QINQ_INSERT))
+			dev->tx_offload_flags &= ~NIX_TX_OFFLOAD_VLAN_QINQ_F;
+	}
+
+	for (i = 0; i < eth_dev->data->nb_tx_queues; i++) {
+		struct cn10k_eth_txq *txq = eth_dev->data->tx_queues[i];
+
+		txq->mark_flag = mark_flag & CNXK_TM_MARK_MASK;
+		txq->mark_fmt = mark_fmt & CNXK_TX_MARK_FMT_MASK;
+	}
+	cn10k_eth_set_tx_function(eth_dev);
+exit:
+	return rc;
+}
+
 /* Update platform specific eth dev ops */
 static void
 nix_eth_dev_ops_override(void)
@@ -573,6 +694,22 @@ nix_eth_dev_ops_override(void)
 			cn10k_nix_reassembly_capability_get;
 	cnxk_eth_dev_ops.ip_reassembly_conf_get = cn10k_nix_reassembly_conf_get;
 	cnxk_eth_dev_ops.ip_reassembly_conf_set = cn10k_nix_reassembly_conf_set;
+}
+
+/* Update platform specific tm ops */
+static void
+nix_tm_ops_override(void)
+{
+	static int init_once;
+
+	if (init_once)
+		return;
+	init_once = 1;
+
+	/* Update platform specific ops */
+	cnxk_tm_ops.mark_vlan_dei = cn10k_nix_tm_mark_vlan_dei;
+	cnxk_tm_ops.mark_ip_ecn = cn10k_nix_tm_mark_ip_ecn;
+	cnxk_tm_ops.mark_ip_dscp = cn10k_nix_tm_mark_ip_dscp;
 }
 
 static void
@@ -614,6 +751,7 @@ cn10k_nix_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 	}
 
 	nix_eth_dev_ops_override();
+	nix_tm_ops_override();
 	npc_flow_ops_override();
 
 	cn10k_eth_sec_ops_override();

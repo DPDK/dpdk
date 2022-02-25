@@ -88,10 +88,16 @@ cnxk_nix_tm_capa_get(struct rte_eth_dev *eth_dev,
 			  RTE_TM_STATS_N_PKTS_RED_DROPPED |
 			  RTE_TM_STATS_N_BYTES_RED_DROPPED;
 
-	for (i = 0; i < RTE_COLORS; i++) {
-		cap->mark_vlan_dei_supported[i] = false;
-		cap->mark_ip_ecn_tcp_supported[i] = false;
-		cap->mark_ip_dscp_supported[i] = false;
+	cap->mark_vlan_dei_supported[RTE_COLOR_GREEN] = false;
+	cap->mark_ip_ecn_tcp_supported[RTE_COLOR_GREEN] = false;
+	cap->mark_ip_ecn_sctp_supported[RTE_COLOR_GREEN] = false;
+	cap->mark_ip_dscp_supported[RTE_COLOR_GREEN] = false;
+
+	for (i = RTE_COLOR_YELLOW; i < RTE_COLORS; i++) {
+		cap->mark_vlan_dei_supported[i] = true;
+		cap->mark_ip_ecn_tcp_supported[i] = true;
+		cap->mark_ip_ecn_sctp_supported[i] = true;
+		cap->mark_ip_dscp_supported[i] = true;
 	}
 
 	return 0;
@@ -599,7 +605,112 @@ exit:
 	return rc;
 }
 
-const struct rte_tm_ops cnxk_tm_ops = {
+int
+cnxk_nix_tm_mark_vlan_dei(struct rte_eth_dev *eth_dev, int mark_green,
+			  int mark_yellow, int mark_red,
+			  struct rte_tm_error *error)
+{
+	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+	struct roc_nix *roc_nix = &dev->nix;
+	int rc;
+
+	if (mark_green) {
+		error->type = RTE_TM_ERROR_TYPE_CAPABILITIES;
+		error->message = "Green VLAN marking not supported";
+		return -EINVAL;
+	}
+
+	if (eth_dev->data->dev_started) {
+		error->type = RTE_TM_ERROR_TYPE_CAPABILITIES;
+		error->message = "VLAN DEI mark for running ports not "
+				 "supported";
+		return -EBUSY;
+	}
+
+	rc = roc_nix_tm_mark_config(roc_nix, ROC_NIX_TM_MARK_VLAN_DEI,
+				    mark_yellow, mark_red);
+	if (rc) {
+		error->type = roc_nix_tm_err_to_rte_err(rc);
+		error->message = roc_error_msg_get(rc);
+	}
+	return rc;
+}
+
+int
+cnxk_nix_tm_mark_ip_ecn(struct rte_eth_dev *eth_dev, int mark_green,
+			int mark_yellow, int mark_red,
+			struct rte_tm_error *error)
+{
+	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+	struct roc_nix *roc_nix = &dev->nix;
+	int rc;
+
+	if (mark_green) {
+		error->type = RTE_TM_ERROR_TYPE_CAPABILITIES;
+		error->message = "Green IP ECN marking not supported";
+		return -EINVAL;
+	}
+
+	if (eth_dev->data->dev_started) {
+		error->type = RTE_TM_ERROR_TYPE_CAPABILITIES;
+		error->message = "IP ECN mark for running ports not "
+				 "supported";
+		return -EBUSY;
+	}
+
+	rc = roc_nix_tm_mark_config(roc_nix, ROC_NIX_TM_MARK_IPV4_ECN,
+				    mark_yellow, mark_red);
+	if (rc < 0)
+		goto exit;
+
+	rc = roc_nix_tm_mark_config(roc_nix, ROC_NIX_TM_MARK_IPV6_ECN,
+				    mark_yellow, mark_red);
+exit:
+	if (rc < 0) {
+		error->type = roc_nix_tm_err_to_rte_err(rc);
+		error->message = roc_error_msg_get(rc);
+	}
+	return rc;
+}
+
+int
+cnxk_nix_tm_mark_ip_dscp(struct rte_eth_dev *eth_dev, int mark_green,
+			 int mark_yellow, int mark_red,
+			 struct rte_tm_error *error)
+{
+	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+	struct roc_nix *roc_nix = &dev->nix;
+	int rc;
+
+	if (mark_green) {
+		error->type = RTE_TM_ERROR_TYPE_CAPABILITIES;
+		error->message = "Green IP DSCP marking not supported";
+		return -EINVAL;
+	}
+
+	if (eth_dev->data->dev_started) {
+		error->type = RTE_TM_ERROR_TYPE_CAPABILITIES;
+		error->message = "IP DSCP mark for running ports not "
+				 "supported";
+		return -EBUSY;
+	}
+
+	rc = roc_nix_tm_mark_config(roc_nix, ROC_NIX_TM_MARK_IPV4_DSCP,
+				    mark_yellow, mark_red);
+	if (rc < 0)
+		goto exit;
+
+	rc = roc_nix_tm_mark_config(roc_nix, ROC_NIX_TM_MARK_IPV6_DSCP,
+				    mark_yellow, mark_red);
+exit:
+	if (rc < 0) {
+		error->type = roc_nix_tm_err_to_rte_err(rc);
+		error->message = roc_error_msg_get(rc);
+	}
+	return rc;
+}
+
+struct rte_tm_ops cnxk_tm_ops = {
 	.node_type_get = cnxk_nix_tm_node_type_get,
 	.capabilities_get = cnxk_nix_tm_capa_get,
 	.level_capabilities_get = cnxk_nix_tm_level_capa_get,
@@ -617,6 +728,10 @@ const struct rte_tm_ops cnxk_tm_ops = {
 	.node_shaper_update = cnxk_nix_tm_node_shaper_update,
 	.node_parent_update = cnxk_nix_tm_node_parent_update,
 	.node_stats_read = cnxk_nix_tm_node_stats_read,
+
+	.mark_vlan_dei = cnxk_nix_tm_mark_vlan_dei,
+	.mark_ip_ecn = cnxk_nix_tm_mark_ip_ecn,
+	.mark_ip_dscp = cnxk_nix_tm_mark_ip_dscp,
 };
 
 int
