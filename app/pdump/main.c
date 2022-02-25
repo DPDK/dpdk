@@ -507,6 +507,7 @@ cleanup_rings(void)
 		/* free the rings */
 		rte_ring_free(pt->rx_ring);
 		rte_ring_free(pt->tx_ring);
+		rte_mempool_free(pt->mp);
 	}
 }
 
