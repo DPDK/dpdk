@@ -89,7 +89,7 @@ OPTS="$OPTS --default-library=$DEF_LIB"
 OPTS="$OPTS --buildtype=debugoptimized"
 OPTS="$OPTS -Dcheck_includes=true"
 if [ "$MINI" = "true" ]; then
-    OPTS="$OPTS -Denable_drivers=bus/vdev,mempool/ring,net/null"
+    OPTS="$OPTS -Denable_drivers=net/null"
     OPTS="$OPTS -Ddisable_libs=*"
 fi
 meson build --werror $OPTS
