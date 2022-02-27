@@ -249,6 +249,9 @@
 /* Maximum number of DS in WQE. Limited by 6-bit field. */
 #define MLX5_DSEG_MAX 63
 
+/* The 32 bit syndrome offset in struct mlx5_err_cqe. */
+#define MLX5_ERROR_CQE_SYNDROME_OFFSET 52
+
 /* The completion mode offset in the WQE control segment line 2. */
 #define MLX5_COMP_MODE_OFFSET 2
 
@@ -559,6 +562,8 @@ struct mlx5_rdma_write_wqe {
 #define MLX5_GGA_COMP_LOG_BLOCK_SIZE_MAX 15u
 #define MLX5_GGA_COMP_LOG_DYNAMIC_SIZE_MAX 15u
 #define MLX5_GGA_COMP_LOG_DYNAMIC_SIZE_MIN 0u
+#define MLX5_GGA_COMP_OUT_OF_SPACE_SYNDROME_BE 0x29D0084
+#define MLX5_GGA_COMP_MISSING_BFINAL_SYNDROME_BE 0x29D0011
 
 struct mlx5_wqe_metadata_seg {
 	uint32_t mmo_control_31_0; /* mmo_control_63_32 is in ctrl_seg.imm */
