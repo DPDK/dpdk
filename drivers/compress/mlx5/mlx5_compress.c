@@ -562,7 +562,18 @@ mlx5_compress_cqe_err_handle(struct mlx5_compress_qp *qp,
 								    qp->qp.wqes;
 	volatile struct mlx5_gga_compress_opaque *opaq = qp->opaque_mr.addr;
 
-	op->status = RTE_COMP_OP_STATUS_ERROR;
+	volatile uint32_t *synd_word = RTE_PTR_ADD(cqe, MLX5_ERROR_CQE_SYNDROME_OFFSET);
+	switch (*synd_word) {
+	case MLX5_GGA_COMP_OUT_OF_SPACE_SYNDROME_BE:
+		op->status = RTE_COMP_OP_STATUS_OUT_OF_SPACE_TERMINATED;
+		DRV_LOG(DEBUG, "OUT OF SPACE error, output is bigger than dst buffer.");
+		break;
+	case MLX5_GGA_COMP_MISSING_BFINAL_SYNDROME_BE:
+		DRV_LOG(DEBUG, "The last compressed block missed the B-final flag; maybe the compressed data is not complete or garbaged?");
+		/* fallthrough */
+	default:
+		op->status = RTE_COMP_OP_STATUS_ERROR;
+	}
 	op->consumed = 0;
 	op->produced = 0;
 	op->output_chksum = 0;
