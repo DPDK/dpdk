@@ -1183,7 +1183,6 @@ session_clear_modinv(struct rte_crypto_modinv_xform *modinv)
 static void
 session_clear_rsa(struct rte_crypto_rsa_xform *rsa)
 {
-	return;
 	memset(rsa->n.data, 0, rsa->n.length);
 	rte_free(rsa->n.data);
 	memset(rsa->e.data, 0, rsa->e.length);
