@@ -1574,9 +1574,10 @@ ice_rx_scan_hw_ring(struct ice_rx_queue *rxq)
 	uint64_t pkt_flags = 0;
 	uint32_t *ptype_tbl = rxq->vsi->adapter->ptype_tbl;
 #ifndef RTE_LIBRTE_ICE_16BYTE_RX_DESC
+	bool is_tsinit = false;
+	uint64_t ts_ns;
 	struct ice_vsi *vsi = rxq->vsi;
 	struct ice_hw *hw = ICE_VSI_TO_HW(vsi);
-	uint64_t ts_ns;
 	struct ice_adapter *ad = rxq->vsi->adapter;
 #endif
 	rxdp = &rxq->rx_ring[rxq->rx_tail];
@@ -1588,8 +1589,14 @@ ice_rx_scan_hw_ring(struct ice_rx_queue *rxq)
 	if (!(stat_err0 & (1 << ICE_RX_FLEX_DESC_STATUS0_DD_S)))
 		return 0;
 
-	if (rxq->offloads & RTE_ETH_RX_OFFLOAD_TIMESTAMP)
-		rxq->hw_register_set = 1;
+#ifndef RTE_LIBRTE_ICE_16BYTE_RX_DESC
+	if (rxq->offloads & RTE_ETH_RX_OFFLOAD_TIMESTAMP) {
+		uint64_t sw_cur_time = rte_get_timer_cycles() / (rte_get_timer_hz() / 1000);
+
+		if (unlikely(sw_cur_time - ad->hw_time_update > 4))
+			is_tsinit = 1;
+	}
+#endif
 
 	/**
 	 * Scan LOOK_AHEAD descriptors at a time to determine which
@@ -1625,14 +1632,26 @@ ice_rx_scan_hw_ring(struct ice_rx_queue *rxq)
 			rxd_to_pkt_fields_ops[rxq->rxdid](rxq, mb, &rxdp[j]);
 #ifndef RTE_LIBRTE_ICE_16BYTE_RX_DESC
 			if (ice_timestamp_dynflag > 0) {
-				ts_ns = ice_tstamp_convert_32b_64b(hw, ad,
-					rxq->hw_register_set,
-					rte_le_to_cpu_32(rxdp[j].wb.flex_ts.ts_high));
-				rxq->hw_register_set = 0;
+				rxq->time_high =
+				rte_le_to_cpu_32(rxdp[j].wb.flex_ts.ts_high);
+				if (unlikely(is_tsinit)) {
+					ts_ns = ice_tstamp_convert_32b_64b(hw, ad, 1,
+									   rxq->time_high);
+					ad->hw_time_low = (uint32_t)ts_ns;
+					ad->hw_time_high = (uint32_t)(ts_ns >> 32);
+					is_tsinit = false;
+				} else {
+					if (rxq->time_high < ad->hw_time_low)
+						ad->hw_time_high += 1;
+					ts_ns = (uint64_t)ad->hw_time_high << 32 | rxq->time_high;
+					ad->hw_time_low = rxq->time_high;
+				}
+				ad->hw_time_update = rte_get_timer_cycles() /
+						     (rte_get_timer_hz() / 1000);
 				*RTE_MBUF_DYNFIELD(mb,
-					ice_timestamp_dynfield_offset,
-					rte_mbuf_timestamp_t *) = ts_ns;
-				mb->ol_flags |= ice_timestamp_dynflag;
+						   ice_timestamp_dynfield_offset,
+						   rte_mbuf_timestamp_t *) = ts_ns;
+				pkt_flags |= ice_timestamp_dynflag;
 			}
 
 			if (ad->ptp_ena && ((mb->packet_type &
@@ -1831,14 +1850,19 @@ ice_recv_scattered_pkts(void *rx_queue,
 	uint64_t pkt_flags;
 	uint32_t *ptype_tbl = rxq->vsi->adapter->ptype_tbl;
 #ifndef RTE_LIBRTE_ICE_16BYTE_RX_DESC
+	bool is_tsinit = false;
+	uint64_t ts_ns;
 	struct ice_vsi *vsi = rxq->vsi;
 	struct ice_hw *hw = ICE_VSI_TO_HW(vsi);
-	uint64_t ts_ns;
 	struct ice_adapter *ad = rxq->vsi->adapter;
-#endif
 
-	if (rxq->offloads & RTE_ETH_RX_OFFLOAD_TIMESTAMP)
-		rxq->hw_register_set = 1;
+	if (rxq->offloads & RTE_ETH_RX_OFFLOAD_TIMESTAMP) {
+		uint64_t sw_cur_time = rte_get_timer_cycles() / (rte_get_timer_hz() / 1000);
+
+		if (unlikely(sw_cur_time - ad->hw_time_update > 4))
+			is_tsinit = true;
+	}
+#endif
 
 	while (nb_rx < nb_pkts) {
 		rxdp = &rx_ring[rx_id];
@@ -1951,14 +1975,25 @@ ice_recv_scattered_pkts(void *rx_queue,
 		pkt_flags = ice_rxd_error_to_pkt_flags(rx_stat_err0);
 #ifndef RTE_LIBRTE_ICE_16BYTE_RX_DESC
 		if (ice_timestamp_dynflag > 0) {
-			ts_ns = ice_tstamp_convert_32b_64b(hw, ad,
-				rxq->hw_register_set,
-				rte_le_to_cpu_32(rxd.wb.flex_ts.ts_high));
-			rxq->hw_register_set = 0;
-			*RTE_MBUF_DYNFIELD(first_seg,
-				ice_timestamp_dynfield_offset,
-				rte_mbuf_timestamp_t *) = ts_ns;
-			first_seg->ol_flags |= ice_timestamp_dynflag;
+			rxq->time_high =
+			   rte_le_to_cpu_32(rxd.wb.flex_ts.ts_high);
+			if (unlikely(is_tsinit)) {
+				ts_ns = ice_tstamp_convert_32b_64b(hw, ad, 1, rxq->time_high);
+				ad->hw_time_low = (uint32_t)ts_ns;
+				ad->hw_time_high = (uint32_t)(ts_ns >> 32);
+				is_tsinit = false;
+			} else {
+				if (rxq->time_high < ad->hw_time_low)
+					ad->hw_time_high += 1;
+				ts_ns = (uint64_t)ad->hw_time_high << 32 | rxq->time_high;
+				ad->hw_time_low = rxq->time_high;
+			}
+			ad->hw_time_update = rte_get_timer_cycles() /
+					     (rte_get_timer_hz() / 1000);
+			*RTE_MBUF_DYNFIELD(rxm,
+					   (ice_timestamp_dynfield_offset),
+					   rte_mbuf_timestamp_t *) = ts_ns;
+			pkt_flags |= ice_timestamp_dynflag;
 		}
 
 		if (ad->ptp_ena && ((first_seg->packet_type & RTE_PTYPE_L2_MASK)
@@ -2325,14 +2360,19 @@ ice_recv_pkts(void *rx_queue,
 	uint64_t pkt_flags;
 	uint32_t *ptype_tbl = rxq->vsi->adapter->ptype_tbl;
 #ifndef RTE_LIBRTE_ICE_16BYTE_RX_DESC
+	bool is_tsinit = false;
+	uint64_t ts_ns;
 	struct ice_vsi *vsi = rxq->vsi;
 	struct ice_hw *hw = ICE_VSI_TO_HW(vsi);
-	uint64_t ts_ns;
 	struct ice_adapter *ad = rxq->vsi->adapter;
-#endif
 
-	if (rxq->offloads & RTE_ETH_RX_OFFLOAD_TIMESTAMP)
-		rxq->hw_register_set = 1;
+	if (rxq->offloads & RTE_ETH_RX_OFFLOAD_TIMESTAMP) {
+		uint64_t sw_cur_time = rte_get_timer_cycles() / (rte_get_timer_hz() / 1000);
+
+		if (unlikely(sw_cur_time - ad->hw_time_update > 4))
+			is_tsinit = 1;
+	}
+#endif
 
 	while (nb_rx < nb_pkts) {
 		rxdp = &rx_ring[rx_id];
@@ -2386,14 +2426,25 @@ ice_recv_pkts(void *rx_queue,
 		pkt_flags = ice_rxd_error_to_pkt_flags(rx_stat_err0);
 #ifndef RTE_LIBRTE_ICE_16BYTE_RX_DESC
 		if (ice_timestamp_dynflag > 0) {
-			ts_ns = ice_tstamp_convert_32b_64b(hw, ad,
-				rxq->hw_register_set,
-				rte_le_to_cpu_32(rxd.wb.flex_ts.ts_high));
-			rxq->hw_register_set = 0;
+			rxq->time_high =
+			   rte_le_to_cpu_32(rxd.wb.flex_ts.ts_high);
+			if (unlikely(is_tsinit)) {
+				ts_ns = ice_tstamp_convert_32b_64b(hw, ad, 1, rxq->time_high);
+				ad->hw_time_low = (uint32_t)ts_ns;
+				ad->hw_time_high = (uint32_t)(ts_ns >> 32);
+				is_tsinit = false;
+			} else {
+				if (rxq->time_high < ad->hw_time_low)
+					ad->hw_time_high += 1;
+				ts_ns = (uint64_t)ad->hw_time_high << 32 | rxq->time_high;
+				ad->hw_time_low = rxq->time_high;
+			}
+			ad->hw_time_update = rte_get_timer_cycles() /
+					     (rte_get_timer_hz() / 1000);
 			*RTE_MBUF_DYNFIELD(rxm,
-				ice_timestamp_dynfield_offset,
-				rte_mbuf_timestamp_t *) = ts_ns;
-			rxm->ol_flags |= ice_timestamp_dynflag;
+					   (ice_timestamp_dynfield_offset),
+					   rte_mbuf_timestamp_t *) = ts_ns;
+			pkt_flags |= ice_timestamp_dynflag;
 		}
 
 		if (ad->ptp_ena && ((rxm->packet_type & RTE_PTYPE_L2_MASK) ==
@@ -2408,6 +2459,7 @@ ice_recv_pkts(void *rx_queue,
 		/* copy old mbuf to rx_pkts */
 		rx_pkts[nb_rx++] = rxm;
 	}
+
 	rxq->rx_tail = rx_id;
 	/**
 	 * If the number of free RX descriptors is greater than the RX free
