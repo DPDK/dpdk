@@ -698,7 +698,6 @@ struct mlx5_flow_handle {
 	uint32_t split_flow_id:27; /**< Sub flow unique match flow id. */
 	uint32_t is_meter_flow_id:1; /**< Indicate if flow_id is for meter. */
 	uint32_t fate_action:3; /**< Fate action type. */
-	uint32_t flex_item; /**< referenced Flex Item bitmask. */
 	union {
 		uint32_t rix_hrxq; /**< Hash Rx queue object index. */
 		uint32_t rix_jump; /**< Index to the jump action resource. */
@@ -714,6 +713,7 @@ struct mlx5_flow_handle {
 #if defined(HAVE_IBV_FLOW_DV_SUPPORT) || !defined(HAVE_INFINIBAND_VERBS_H)
 	struct mlx5_flow_handle_dv dvh;
 #endif
+	uint8_t flex_item; /**< referenced Flex Item bitmask. */
 } __rte_packed;
 
 /*
