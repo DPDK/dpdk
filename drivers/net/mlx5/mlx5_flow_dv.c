@@ -6915,6 +6915,7 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 	const struct rte_flow_item *integrity_items[2] = {NULL, NULL};
 	const struct rte_flow_item *port_id_item = NULL;
 	bool def_policy = false;
+	bool shared_count = false;
 	uint16_t udp_dport = 0;
 
 	if (items == NULL)
@@ -7285,7 +7286,6 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 	}
 	for (; actions->type != RTE_FLOW_ACTION_TYPE_END; actions++) {
 		int type = actions->type;
-		bool shared_count = false;
 
 		if (!mlx5_flow_os_action_supported(type))
 			return rte_flow_error_set(error, ENOTSUP,
