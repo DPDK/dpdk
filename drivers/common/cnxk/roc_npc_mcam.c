@@ -497,6 +497,38 @@ done:
 	return rc;
 }
 
+static void
+npc_mcam_set_channel(struct roc_npc_flow *flow,
+		     struct npc_mcam_write_entry_req *req, uint16_t channel,
+		     uint16_t chan_mask, bool is_second_pass)
+{
+	uint16_t chan = 0, mask = 0;
+
+	req->entry_data.kw[0] &= ~(GENMASK(11, 0));
+	req->entry_data.kw_mask[0] &= ~(GENMASK(11, 0));
+	flow->mcam_data[0] &= ~(GENMASK(11, 0));
+	flow->mcam_mask[0] &= ~(GENMASK(11, 0));
+
+	if (is_second_pass) {
+		chan = (channel | NIX_CHAN_CPT_CH_START);
+		mask = (chan_mask | NIX_CHAN_CPT_CH_START);
+	} else {
+		/*
+		 * Clear bits 10 & 11 corresponding to CPT
+		 * channel. By default, rules should match
+		 * both first pass packets and second pass
+		 * packets from CPT.
+		 */
+		chan = (channel & NIX_CHAN_CPT_X2P_MASK);
+		mask = (chan_mask & NIX_CHAN_CPT_X2P_MASK);
+	}
+
+	req->entry_data.kw[0] |= (uint64_t)chan;
+	req->entry_data.kw_mask[0] |= (uint64_t)mask;
+	flow->mcam_data[0] |= (uint64_t)chan;
+	flow->mcam_mask[0] |= (uint64_t)mask;
+}
+
 int
 npc_mcam_alloc_and_write(struct npc *npc, struct roc_npc_flow *flow,
 			 struct npc_parse_state *pst)
@@ -564,32 +596,22 @@ npc_mcam_alloc_and_write(struct npc *npc, struct roc_npc_flow *flow,
 	if (flow->nix_intf == NIX_INTF_RX) {
 		if (inl_dev && inl_dev->is_multi_channel &&
 		    (flow->npc_action & NIX_RX_ACTIONOP_UCAST_IPSEC)) {
-			req->entry_data.kw[0] |= (uint64_t)inl_dev->channel;
-			req->entry_data.kw_mask[0] |=
-				(uint64_t)inl_dev->chan_mask;
 			pf_func = nix_inl_dev_pffunc_get();
 			req->entry_data.action &= ~(GENMASK(19, 4));
 			req->entry_data.action |= (uint64_t)pf_func << 4;
-
 			flow->npc_action &= ~(GENMASK(19, 4));
 			flow->npc_action |= (uint64_t)pf_func << 4;
-			flow->mcam_data[0] |= (uint64_t)inl_dev->channel;
-			flow->mcam_mask[0] |= (uint64_t)inl_dev->chan_mask;
+
+			npc_mcam_set_channel(flow, req, inl_dev->channel,
+					     inl_dev->chan_mask, false);
 		} else if (npc->is_sdp_link) {
-			req->entry_data.kw[0] &= ~(GENMASK(11, 0));
-			req->entry_data.kw_mask[0] &= ~(GENMASK(11, 0));
-			req->entry_data.kw[0] |= (uint64_t)npc->sdp_channel;
-			req->entry_data.kw_mask[0] |=
-				(uint64_t)npc->sdp_channel_mask;
-			flow->mcam_data[0] &= ~(GENMASK(11, 0));
-			flow->mcam_mask[0] &= ~(GENMASK(11, 0));
-			flow->mcam_data[0] |= (uint64_t)npc->sdp_channel;
-			flow->mcam_mask[0] |= (uint64_t)npc->sdp_channel_mask;
+			npc_mcam_set_channel(flow, req, npc->sdp_channel,
+					     npc->sdp_channel_mask,
+					     pst->is_second_pass_rule);
 		} else {
-			req->entry_data.kw[0] |= (uint64_t)npc->channel;
-			req->entry_data.kw_mask[0] |= (BIT_ULL(12) - 1);
-			flow->mcam_data[0] |= (uint64_t)npc->channel;
-			flow->mcam_mask[0] |= (BIT_ULL(12) - 1);
+			npc_mcam_set_channel(flow, req, npc->channel,
+					     (BIT_ULL(12) - 1),
+					     pst->is_second_pass_rule);
 		}
 	} else {
 		uint16_t pf_func = (flow->npc_action >> 4) & 0xffff;

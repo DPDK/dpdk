@@ -570,10 +570,11 @@ npc_parse_pattern(struct npc *npc, const struct roc_npc_item_info pattern[],
 		  struct roc_npc_flow *flow, struct npc_parse_state *pst)
 {
 	npc_parse_stage_func_t parse_stage_funcs[] = {
-		npc_parse_meta_items, npc_parse_pre_l2, npc_parse_cpt_hdr,
-		npc_parse_higig2_hdr, npc_parse_la,	npc_parse_lb,
-		npc_parse_lc,	      npc_parse_ld,	npc_parse_le,
-		npc_parse_lf,	      npc_parse_lg,	npc_parse_lh,
+		npc_parse_meta_items, npc_parse_mark_item,  npc_parse_pre_l2,
+		npc_parse_cpt_hdr,    npc_parse_higig2_hdr, npc_parse_la,
+		npc_parse_lb,	      npc_parse_lc,	    npc_parse_ld,
+		npc_parse_le,	      npc_parse_lf,	    npc_parse_lg,
+		npc_parse_lh,
 	};
 	uint8_t layer = 0;
 	int key_offset;

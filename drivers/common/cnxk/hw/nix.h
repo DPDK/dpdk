@@ -830,7 +830,7 @@
 #define NIX_CHAN_LBKX_CHX(a, b)                                                \
 	(0x000ull | ((uint64_t)(a) << 8) | (uint64_t)(b))
 #define NIX_CHAN_CPT_CH_END   (0x4ffull) /* [CN10K, .) */
-#define NIX_CHAN_CPT_CH_START (0x400ull) /* [CN10K, .) */
+#define NIX_CHAN_CPT_CH_START (0x800ull) /* [CN10K, .) */
 #define NIX_CHAN_R4	      (0x400ull) /* [CN9K, CN10K) */
 #define NIX_CHAN_R5	      (0x500ull)
 #define NIX_CHAN_R6	      (0x600ull)
@@ -842,6 +842,11 @@
 /* [CN10K, .) */
 #define NIX_CHAN_RPMX_LMACX_CHX(a, b, c)                                       \
 	(0x800ull | ((uint64_t)(a) << 8) | ((uint64_t)(b) << 4) | (uint64_t)(c))
+
+/* The mask is to extract lower 10-bits of channel number
+ * which CPT will pass to X2P.
+ */
+#define NIX_CHAN_CPT_X2P_MASK (0x3ffull)
 
 #define NIX_INTF_SDP  (0x4ull)
 #define NIX_INTF_CGX0 (0x0ull) /* [CN9K, CN10K) */

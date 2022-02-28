@@ -189,6 +189,7 @@ struct npc_parse_state {
 	/* adjust ltype in MCAM to match at least one vlan */
 	bool set_vlan_ltype_mask;
 	bool set_ipv6ext_ltype_mask;
+	bool is_second_pass_rule;
 };
 
 enum npc_kpu_parser_flag {
@@ -421,6 +422,7 @@ void npc_get_hw_supp_mask(struct npc_parse_state *pst,
 int npc_parse_item_basic(const struct roc_npc_item_info *item,
 			 struct npc_parse_item_info *info);
 int npc_parse_meta_items(struct npc_parse_state *pst);
+int npc_parse_mark_item(struct npc_parse_state *pst);
 int npc_parse_pre_l2(struct npc_parse_state *pst);
 int npc_parse_higig2_hdr(struct npc_parse_state *pst);
 int npc_parse_cpt_hdr(struct npc_parse_state *pst);

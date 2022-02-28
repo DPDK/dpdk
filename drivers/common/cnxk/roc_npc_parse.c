@@ -21,6 +21,20 @@ npc_parse_meta_items(struct npc_parse_state *pst)
 	return 0;
 }
 
+int
+npc_parse_mark_item(struct npc_parse_state *pst)
+{
+	if (pst->pattern->type == ROC_NPC_ITEM_TYPE_MARK) {
+		if (pst->flow->nix_intf != NIX_INTF_RX)
+			return -EINVAL;
+
+		pst->is_second_pass_rule = true;
+		pst->pattern++;
+	}
+
+	return 0;
+}
+
 static int
 npc_flow_raw_item_prepare(const struct roc_npc_flow_item_raw *raw_spec,
 			  const struct roc_npc_flow_item_raw *raw_mask,
