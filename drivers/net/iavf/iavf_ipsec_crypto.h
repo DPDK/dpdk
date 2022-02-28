@@ -145,7 +145,9 @@ iavf_ipsec_crypto_inbound_security_policy_add(struct iavf_adapter *adapter,
 	uint8_t is_v4,
 	rte_be32_t v4_dst_addr,
 	uint8_t *v6_dst_addr,
-	uint8_t drop);
+	uint8_t drop,
+	bool is_udp,
+	uint16_t udp_port);
 
 /**
  * Delete inbound security policy rule from hardware

@@ -446,6 +446,15 @@ struct virtchnl_ipsec_sp_cfg {
 
 	/* Set TC (congestion domain) if true. For future use. */
 	u8 set_tc;
+
+	/* 0 for NAT-T unsupported, 1 for NAT-T supported */
+	u8 is_udp;
+
+	/* reserved */
+	u8 reserved;
+
+	/* NAT-T UDP port number. Only valid in case NAT-T supported */
+	u16 udp_port;
 } __rte_packed;
 
 
