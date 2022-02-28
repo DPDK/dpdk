@@ -601,8 +601,8 @@ hns3_set_rss_tc_mode(struct hns3_hw *hw)
 
 	for (i = 0; i < HNS3_MAX_TC_NUM; i++) {
 		tc_valid[i] = !!(hw->hw_tc_map & BIT(i));
-		tc_size[i] = roundup_size;
-		tc_offset[i] = rss_size * i;
+		tc_size[i] = tc_valid[i] ? roundup_size : 0;
+		tc_offset[i] = tc_valid[i] ? rss_size * i : 0;
 	}
 
 	hns3_cmd_setup_basic_desc(&desc, HNS3_OPC_RSS_TC_MODE, false);
