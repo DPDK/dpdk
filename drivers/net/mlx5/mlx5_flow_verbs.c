@@ -1722,6 +1722,7 @@ flow_verbs_translate(struct rte_eth_dev *dev,
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_flow_workspace *wks = mlx5_flow_get_thread_workspace();
 	struct mlx5_flow_rss_desc *rss_desc;
+	const struct rte_flow_item *tunnel_item = NULL;
 
 	MLX5_ASSERT(wks);
 	rss_desc = &wks->rss_desc;
@@ -1861,6 +1862,7 @@ flow_verbs_translate(struct rte_eth_dev *dev,
 		case RTE_FLOW_ITEM_TYPE_GRE:
 			subpriority = MLX5_TUNNEL_PRIO_GET(rss_desc);
 			item_flags |= MLX5_FLOW_LAYER_GRE;
+			tunnel_item = items;
 			break;
 		case RTE_FLOW_ITEM_TYPE_MPLS:
 			flow_verbs_translate_item_mpls(dev_flow, items,
@@ -1875,7 +1877,8 @@ flow_verbs_translate(struct rte_eth_dev *dev,
 		}
 	}
 	if (item_flags & MLX5_FLOW_LAYER_GRE)
-		flow_verbs_translate_item_gre(dev_flow, items, item_flags);
+		flow_verbs_translate_item_gre(dev_flow, tunnel_item,
+					      item_flags);
 	dev_flow->handle->layers = item_flags;
 	/* Other members of attr will be ignored. */
 	dev_flow->verbs.attr.priority =
