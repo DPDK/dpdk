@@ -439,48 +439,50 @@ iavf_rxd_to_pkt_fields_by_comms_aux_v2(struct iavf_rx_queue *rxq,
 #endif
 }
 
+static const
+iavf_rxd_to_pkt_fields_t rxd_to_pkt_fields_ops[] = {
+	[IAVF_RXDID_COMMS_AUX_VLAN] = iavf_rxd_to_pkt_fields_by_comms_aux_v1,
+	[IAVF_RXDID_COMMS_AUX_IPV4] = iavf_rxd_to_pkt_fields_by_comms_aux_v1,
+	[IAVF_RXDID_COMMS_AUX_IPV6] = iavf_rxd_to_pkt_fields_by_comms_aux_v1,
+	[IAVF_RXDID_COMMS_AUX_IPV6_FLOW] =
+		iavf_rxd_to_pkt_fields_by_comms_aux_v1,
+	[IAVF_RXDID_COMMS_AUX_TCP] = iavf_rxd_to_pkt_fields_by_comms_aux_v1,
+	[IAVF_RXDID_COMMS_AUX_IP_OFFSET] =
+		iavf_rxd_to_pkt_fields_by_comms_aux_v2,
+	[IAVF_RXDID_COMMS_OVS_1] = iavf_rxd_to_pkt_fields_by_comms_ovs,
+};
+
 static void
 iavf_select_rxd_to_pkt_fields_handler(struct iavf_rx_queue *rxq, uint32_t rxdid)
 {
+	rxq->rxdid = rxdid;
+
 	switch (rxdid) {
 	case IAVF_RXDID_COMMS_AUX_VLAN:
 		rxq->xtr_ol_flag = rte_pmd_ifd_dynflag_proto_xtr_vlan_mask;
-		rxq->rxd_to_pkt_fields =
-			iavf_rxd_to_pkt_fields_by_comms_aux_v1;
 		break;
 	case IAVF_RXDID_COMMS_AUX_IPV4:
 		rxq->xtr_ol_flag = rte_pmd_ifd_dynflag_proto_xtr_ipv4_mask;
-		rxq->rxd_to_pkt_fields =
-			iavf_rxd_to_pkt_fields_by_comms_aux_v1;
 		break;
 	case IAVF_RXDID_COMMS_AUX_IPV6:
 		rxq->xtr_ol_flag = rte_pmd_ifd_dynflag_proto_xtr_ipv6_mask;
-		rxq->rxd_to_pkt_fields =
-			iavf_rxd_to_pkt_fields_by_comms_aux_v1;
 		break;
 	case IAVF_RXDID_COMMS_AUX_IPV6_FLOW:
 		rxq->xtr_ol_flag =
 			rte_pmd_ifd_dynflag_proto_xtr_ipv6_flow_mask;
-		rxq->rxd_to_pkt_fields =
-			iavf_rxd_to_pkt_fields_by_comms_aux_v1;
 		break;
 	case IAVF_RXDID_COMMS_AUX_TCP:
 		rxq->xtr_ol_flag = rte_pmd_ifd_dynflag_proto_xtr_tcp_mask;
-		rxq->rxd_to_pkt_fields =
-			iavf_rxd_to_pkt_fields_by_comms_aux_v1;
 		break;
 	case IAVF_RXDID_COMMS_AUX_IP_OFFSET:
 		rxq->xtr_ol_flag =
 			rte_pmd_ifd_dynflag_proto_xtr_ip_offset_mask;
-		rxq->rxd_to_pkt_fields =
-			iavf_rxd_to_pkt_fields_by_comms_aux_v2;
 		break;
 	case IAVF_RXDID_COMMS_OVS_1:
-		rxq->rxd_to_pkt_fields = iavf_rxd_to_pkt_fields_by_comms_ovs;
 		break;
 	default:
 		/* update this according to the RXDID for FLEX_DESC_NONE */
-		rxq->rxd_to_pkt_fields = iavf_rxd_to_pkt_fields_by_comms_ovs;
+		rxq->rxdid = IAVF_RXDID_COMMS_OVS_1;
 		break;
 	}
 
@@ -1304,7 +1306,7 @@ iavf_recv_pkts_flex_rxd(void *rx_queue,
 		rxm->packet_type = ptype_tbl[IAVF_RX_FLEX_DESC_PTYPE_M &
 			rte_le_to_cpu_16(rxd.wb.ptype_flex_flags0)];
 		iavf_flex_rxd_to_vlan_tci(rxm, &rxd);
-		rxq->rxd_to_pkt_fields(rxq, rxm, &rxd);
+		rxd_to_pkt_fields_ops[rxq->rxdid](rxq, rxm, &rxd);
 		pkt_flags = iavf_flex_rxd_error_to_pkt_flags(rx_stat_err0);
 		rxm->ol_flags |= pkt_flags;
 
@@ -1446,7 +1448,7 @@ iavf_recv_scattered_pkts_flex_rxd(void *rx_queue, struct rte_mbuf **rx_pkts,
 		first_seg->packet_type = ptype_tbl[IAVF_RX_FLEX_DESC_PTYPE_M &
 			rte_le_to_cpu_16(rxd.wb.ptype_flex_flags0)];
 		iavf_flex_rxd_to_vlan_tci(first_seg, &rxd);
-		rxq->rxd_to_pkt_fields(rxq, first_seg, &rxd);
+		rxd_to_pkt_fields_ops[rxq->rxdid](rxq, first_seg, &rxd);
 		pkt_flags = iavf_flex_rxd_error_to_pkt_flags(rx_stat_err0);
 
 		first_seg->ol_flags |= pkt_flags;
@@ -1702,7 +1704,7 @@ iavf_rx_scan_hw_ring_flex_rxd(struct iavf_rx_queue *rxq)
 			mb->packet_type = ptype_tbl[IAVF_RX_FLEX_DESC_PTYPE_M &
 				rte_le_to_cpu_16(rxdp[j].wb.ptype_flex_flags0)];
 			iavf_flex_rxd_to_vlan_tci(mb, &rxdp[j]);
-			rxq->rxd_to_pkt_fields(rxq, mb, &rxdp[j]);
+			rxd_to_pkt_fields_ops[rxq->rxdid](rxq, mb, &rxdp[j]);
 			stat_err0 = rte_le_to_cpu_16(rxdp[j].wb.status_error0);
 			pkt_flags = iavf_flex_rxd_error_to_pkt_flags(stat_err0);
 
