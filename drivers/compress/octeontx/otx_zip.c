@@ -58,7 +58,11 @@ zipvf_q_init(struct zipvf_qp *qp)
 	cmdq->iova = iova;
 
 	que_sbuf_addr.u = 0ull;
-	que_sbuf_addr.s.ptr = (cmdq->iova >> 7);
+	if (vf->pdev->id.device_id == PCI_DEVICE_ID_OCTEONTX2_ZIPVF)
+		que_sbuf_addr.s9x.ptr = (cmdq->iova >> 7);
+	else
+		que_sbuf_addr.s.ptr = (cmdq->iova >> 7);
+
 	zip_reg_write64(vf->vbar0, ZIP_VQ_SBUF_ADDR, que_sbuf_addr.u);
 
 	zip_q_enable(qp);

@@ -63,6 +63,18 @@ typedef union {
 		uint64_t reserved_49_63        : 15;
 #endif /* Word 0 - End */
 	} s;
+
+	struct zip_vqx_sbuf_addr_s9x {
+#if defined(__BIG_ENDIAN_BITFIELD) /* Word 0 - Big Endian */
+		uint64_t reserved_53_63        : 11;
+		uint64_t ptr                   : 46;
+		uint64_t off                   : 7;
+#else /* Word 0 - Little Endian */
+		uint64_t off                   : 7;
+		uint64_t ptr                   : 46;
+		uint64_t reserved_53_63        : 11;
+#endif /* Word 0 - End */
+	} s9x;
 } zip_vqx_sbuf_addr_t;
 
 /**

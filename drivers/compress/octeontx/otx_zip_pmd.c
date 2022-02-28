@@ -85,7 +85,9 @@ zip_process_op(struct rte_comp_op *op,
 			op->status = RTE_COMP_OP_STATUS_ERROR;
 	}
 
+#ifdef ZIP_DBG
 	ZIP_PMD_INFO("written %d\n", zresult->s.totalbyteswritten);
+#endif
 
 	/* Update op stats */
 	switch (op->status) {
@@ -629,6 +631,10 @@ static struct rte_pci_id pci_id_octtx_zipvf_table[] = {
 	{
 		RTE_PCI_DEVICE(PCI_VENDOR_ID_CAVIUM,
 			PCI_DEVICE_ID_OCTEONTX_ZIPVF),
+	},
+	{
+		RTE_PCI_DEVICE(PCI_VENDOR_ID_CAVIUM,
+			PCI_DEVICE_ID_OCTEONTX2_ZIPVF),
 	},
 	{
 		.device_id = 0
