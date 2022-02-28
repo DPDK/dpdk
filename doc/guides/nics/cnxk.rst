@@ -406,6 +406,13 @@ Example usage in testpmd::
    testpmd> flow create 0 ingress pattern eth / raw relative is 0 pattern \
           spec ab pattern mask ab offset is 4 / end actions queue index 1 / end
 
+RTE Flow mark item support
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+- ``RTE_FLOW_ITEM_TYPE_MARK`` can be used to create ingress flow rules to match
+  packets from CPT(second pass packets). When mark item type is used, it should
+  be the first item in the patterns specification.
+
 Inline device support for CN10K
 -------------------------------
 
