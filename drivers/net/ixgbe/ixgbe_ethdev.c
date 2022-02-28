@@ -781,6 +781,20 @@ ixgbe_is_sfp(struct ixgbe_hw *hw)
 	case ixgbe_phy_sfp_passive_unknown:
 		return 1;
 	default:
+		/* x550em devices may be SFP, check media type */
+		switch (hw->mac.type) {
+		case ixgbe_mac_X550EM_x:
+		case ixgbe_mac_X550EM_a:
+			switch (ixgbe_get_media_type(hw)) {
+			case ixgbe_media_type_fiber:
+			case ixgbe_media_type_fiber_qsfp:
+				return 1;
+			default:
+				break;
+			}
+		default:
+			break;
+		}
 		return 0;
 	}
 }
