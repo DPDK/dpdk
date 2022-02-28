@@ -217,8 +217,6 @@ struct iavf_rx_queue {
 	uint8_t proto_xtr; /* protocol extraction type */
 	uint64_t xtr_ol_flag;
 		/* flexible descriptor metadata extraction offload flag */
-	iavf_rxd_to_pkt_fields_t rxd_to_pkt_fields;
-				/* handle flexible descriptor by RXDID */
 	struct iavf_rx_queue_stats stats;
 	uint64_t offloads;
 };
