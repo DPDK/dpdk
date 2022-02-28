@@ -736,7 +736,9 @@ iavf_ipsec_crypto_inbound_security_policy_add(struct iavf_adapter *adapter,
 	uint8_t is_v4,
 	rte_be32_t v4_dst_addr,
 	uint8_t *v6_dst_addr,
-	uint8_t drop)
+	uint8_t drop,
+	bool is_udp,
+	uint16_t udp_port)
 {
 	struct inline_ipsec_msg *request = NULL, *response = NULL;
 	size_t request_len, response_len;
@@ -781,6 +783,8 @@ iavf_ipsec_crypto_inbound_security_policy_add(struct iavf_adapter *adapter,
 	/** Traffic Class/Congestion Domain currently not support */
 	request->ipsec_data.sp_cfg->set_tc = 0;
 	request->ipsec_data.sp_cfg->cgd = 0;
+	request->ipsec_data.sp_cfg->is_udp = is_udp;
+	request->ipsec_data.sp_cfg->udp_port = htons(udp_port);
 
 	response_len = sizeof(struct inline_ipsec_msg) +
 			sizeof(struct virtchnl_ipsec_sp_cfg_resp);
@@ -1625,6 +1629,7 @@ struct iavf_ipsec_flow_item {
 		struct rte_ipv6_hdr ipv6_hdr;
 	};
 	struct rte_udp_hdr udp_hdr;
+	uint8_t is_udp;
 };
 
 static void
@@ -1737,6 +1742,7 @@ iavf_ipsec_flow_item_parse(struct rte_eth_dev *ethdev,
 		parse_udp_item((const struct rte_flow_item_udp *)
 				pattern[2].spec,
 			&ipsec_flow->udp_hdr);
+		ipsec_flow->is_udp = true;
 		ipsec_flow->spi =
 			((const struct rte_flow_item_esp *)
 					pattern[3].spec)->hdr.spi;
@@ -1806,7 +1812,9 @@ iavf_ipsec_flow_create(struct iavf_adapter *ad,
 			1,
 			ipsec_flow->ipv4_hdr.dst_addr,
 			NULL,
-			0);
+			0,
+			ipsec_flow->is_udp,
+			ipsec_flow->udp_hdr.dst_port);
 	} else {
 		ipsec_flow->id =
 			iavf_ipsec_crypto_inbound_security_policy_add(ad,
@@ -1814,7 +1822,9 @@ iavf_ipsec_flow_create(struct iavf_adapter *ad,
 			0,
 			0,
 			ipsec_flow->ipv6_hdr.dst_addr,
-			0);
+			0,
+			ipsec_flow->is_udp,
+			ipsec_flow->udp_hdr.dst_port);
 	}
 
 	if (ipsec_flow->id < 1) {
