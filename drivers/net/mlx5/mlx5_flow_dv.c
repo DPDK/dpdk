@@ -3282,6 +3282,25 @@ flow_dv_validate_action_set_tag(struct rte_eth_dev *dev,
 }
 
 /**
+ * Indicates whether ASO aging is supported.
+ *
+ * @param[in] sh
+ *   Pointer to shared device context structure.
+ * @param[in] attr
+ *   Attributes of flow that includes AGE action.
+ *
+ * @return
+ *   True when ASO aging is supported, false otherwise.
+ */
+static inline bool
+flow_hit_aso_supported(const struct mlx5_dev_ctx_shared *sh,
+		const struct rte_flow_attr *attr)
+{
+	MLX5_ASSERT(sh && attr);
+	return (sh->flow_hit_aso_en && (attr->transfer || attr->group));
+}
+
+/**
  * Validate count action.
  *
  * @param[in] dev
@@ -3290,6 +3309,8 @@ flow_dv_validate_action_set_tag(struct rte_eth_dev *dev,
  *   Indicator if action is shared.
  * @param[in] action_flags
  *   Holds the actions detected until now.
+ * @param[in] attr
+ *   Attributes of flow that includes this action.
  * @param[out] error
  *   Pointer to error structure.
  *
@@ -3299,6 +3320,7 @@ flow_dv_validate_action_set_tag(struct rte_eth_dev *dev,
 static int
 flow_dv_validate_action_count(struct rte_eth_dev *dev, bool shared,
 			      uint64_t action_flags,
+			      const struct rte_flow_attr *attr,
 			      struct rte_flow_error *error)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
@@ -3310,10 +3332,10 @@ flow_dv_validate_action_count(struct rte_eth_dev *dev, bool shared,
 					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
 					  "duplicate count actions set");
 	if (shared && (action_flags & MLX5_FLOW_ACTION_AGE) &&
-	    !priv->sh->flow_hit_aso_en)
+	    !flow_hit_aso_supported(priv->sh, attr))
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
-					  "old age and shared count combination is not supported");
+					  "old age and indirect count combination is not supported");
 #ifdef HAVE_IBV_FLOW_DEVX_COUNTERS
 	return 0;
 #endif
@@ -5681,7 +5703,7 @@ flow_dv_validate_action_sample(uint64_t *action_flags,
 		case RTE_FLOW_ACTION_TYPE_COUNT:
 			ret = flow_dv_validate_action_count
 				(dev, false, *action_flags | sub_action_flags,
-				 error);
+				 attr, error);
 			if (ret < 0)
 				return ret;
 			*count = act->conf;
@@ -7442,7 +7464,7 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 		case RTE_FLOW_ACTION_TYPE_COUNT:
 			ret = flow_dv_validate_action_count(dev, shared_count,
 							    action_flags,
-							    error);
+							    attr, error);
 			if (ret < 0)
 				return ret;
 			action_flags |= MLX5_FLOW_ACTION_COUNT;
@@ -7757,15 +7779,15 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 				return ret;
 			/*
 			 * Validate the regular AGE action (using counter)
-			 * mutual exclusion with share counter actions.
+			 * mutual exclusion with indirect counter actions.
 			 */
-			if (!priv->sh->flow_hit_aso_en) {
+			if (!flow_hit_aso_supported(priv->sh, attr)) {
 				if (shared_count)
 					return rte_flow_error_set
 						(error, EINVAL,
 						RTE_FLOW_ERROR_TYPE_ACTION,
 						NULL,
-						"old age and shared count combination is not supported");
+						"old age and indirect count combination is not supported");
 				if (sample_count)
 					return rte_flow_error_set
 						(error, EINVAL,
@@ -13312,8 +13334,7 @@ flow_dv_translate(struct rte_eth_dev *dev,
 			 */
 			if (action_flags & MLX5_FLOW_ACTION_AGE) {
 				if ((non_shared_age && count) ||
-				    !(priv->sh->flow_hit_aso_en &&
-				      (attr->group || attr->transfer))) {
+				    !flow_hit_aso_supported(priv->sh, attr)) {
 					/* Creates age by counters. */
 					cnt_act = flow_dv_prepare_counter
 								(dev, dev_flow,
@@ -17645,7 +17666,7 @@ flow_dv_action_validate(struct rte_eth_dev *dev,
 						"Indirect age action not supported");
 		return flow_dv_validate_action_age(0, action, dev, err);
 	case RTE_FLOW_ACTION_TYPE_COUNT:
-		return flow_dv_validate_action_count(dev, true, 0, err);
+		return flow_dv_validate_action_count(dev, true, 0, NULL, err);
 	case RTE_FLOW_ACTION_TYPE_CONNTRACK:
 		if (!priv->sh->ct_aso_en)
 			return rte_flow_error_set(err, ENOTSUP,
