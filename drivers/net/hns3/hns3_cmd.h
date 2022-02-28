@@ -603,7 +603,6 @@ struct hns3_cfg_gro_status_cmd {
 
 #define HNS3_RSS_HASH_KEY_OFFSET_B	4
 
-#define HNS3_RSS_CFG_TBL_SIZE	16
 #define HNS3_RSS_HASH_KEY_NUM	16
 /* Configure the algorithm mode and Hash Key, opcode:0x0D01 */
 struct hns3_rss_generic_config_cmd {
