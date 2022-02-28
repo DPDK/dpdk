@@ -10298,7 +10298,7 @@ flow_dv_translate_item_flex(struct rte_eth_dev *dev, void *matcher, void *key,
 		/* Don't count both inner and outer flex items in one rule. */
 		if (mlx5_flex_acquire_index(dev, spec->handle, true) != index)
 			MLX5_ASSERT(false);
-		dev_flow->handle->flex_item |= RTE_BIT32(index);
+		dev_flow->handle->flex_item |= (uint8_t)RTE_BIT32(index);
 	}
 	mlx5_flex_flow_translate_item(dev, matcher, key, item, is_inner);
 }
@@ -14649,7 +14649,7 @@ flow_dv_destroy(struct rte_eth_dev *dev, struct rte_flow *flow)
 			int index = rte_bsf32(dev_handle->flex_item);
 
 			mlx5_flex_release_index(dev, index);
-			dev_handle->flex_item &= ~RTE_BIT32(index);
+			dev_handle->flex_item &= ~(uint8_t)RTE_BIT32(index);
 		}
 		if (dev_handle->dvh.matcher)
 			flow_dv_matcher_release(dev, dev_handle);
