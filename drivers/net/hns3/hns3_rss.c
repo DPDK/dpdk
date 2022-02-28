@@ -578,33 +578,59 @@ hns3_dev_rss_reta_query(struct rte_eth_dev *dev,
 	return 0;
 }
 
-/*
- * Used to configure the tc_size and tc_offset.
- */
+static void
+hns3_set_rss_tc_mode_entry(struct hns3_hw *hw, uint8_t *tc_valid,
+			   uint16_t *tc_size, uint16_t *tc_offset,
+			   uint8_t tc_num)
+{
+	struct hns3_adapter *hns = HNS3_DEV_HW_TO_ADAPTER(hw);
+	uint16_t rss_size = hw->alloc_rss_size;
+	uint16_t roundup_size;
+	uint16_t i;
+
+	roundup_size = roundup_pow_of_two(rss_size);
+	roundup_size = ilog2(roundup_size);
+
+	for (i = 0; i < tc_num; i++) {
+		if (hns->is_vf) {
+			/*
+			 * For packets with VLAN priorities destined for the VF,
+			 * hardware still assign Rx queue based on the Up-to-TC
+			 * mapping PF configured. But VF has only one TC. If
+			 * other TC don't enable, it causes that the priority
+			 * packets that aren't destined for TC0 aren't received
+			 * by RSS hash but is destined for queue 0. So driver
+			 * has to enable the unused TC by using TC0 queue
+			 * mapping configuration.
+			 */
+			tc_valid[i] = (hw->hw_tc_map & BIT(i)) ?
+					!!(hw->hw_tc_map & BIT(i)) : 1;
+			tc_size[i] = roundup_size;
+			tc_offset[i] = (hw->hw_tc_map & BIT(i)) ?
+					rss_size * i : 0;
+		} else {
+			tc_valid[i] = !!(hw->hw_tc_map & BIT(i));
+			tc_size[i] = tc_valid[i] ? roundup_size : 0;
+			tc_offset[i] = tc_valid[i] ? rss_size * i : 0;
+		}
+	}
+}
+
 static int
 hns3_set_rss_tc_mode(struct hns3_hw *hw)
 {
-	uint16_t rss_size = hw->alloc_rss_size;
 	struct hns3_rss_tc_mode_cmd *req;
 	uint16_t tc_offset[HNS3_MAX_TC_NUM];
 	uint8_t tc_valid[HNS3_MAX_TC_NUM];
 	uint16_t tc_size[HNS3_MAX_TC_NUM];
 	struct hns3_cmd_desc desc;
-	uint16_t roundup_size;
 	uint16_t i;
 	int ret;
 
+	hns3_set_rss_tc_mode_entry(hw, tc_valid, tc_size,
+				   tc_offset, HNS3_MAX_TC_NUM);
+
 	req = (struct hns3_rss_tc_mode_cmd *)desc.data;
-
-	roundup_size = roundup_pow_of_two(rss_size);
-	roundup_size = ilog2(roundup_size);
-
-	for (i = 0; i < HNS3_MAX_TC_NUM; i++) {
-		tc_valid[i] = !!(hw->hw_tc_map & BIT(i));
-		tc_size[i] = tc_valid[i] ? roundup_size : 0;
-		tc_offset[i] = tc_valid[i] ? rss_size * i : 0;
-	}
-
 	hns3_cmd_setup_basic_desc(&desc, HNS3_OPC_RSS_TC_MODE, false);
 	for (i = 0; i < HNS3_MAX_TC_NUM; i++) {
 		uint16_t mode = 0;
