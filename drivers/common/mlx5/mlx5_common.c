@@ -326,8 +326,6 @@ mlx5_common_config_get(struct mlx5_kvargs_ctrl *mkvlist,
 	};
 	int ret = 0;
 
-	if (mkvlist == NULL)
-		return 0;
 	/* Set defaults. */
 	config->mr_ext_memseg_en = 1;
 	config->mr_mempool_reg_en = 1;
@@ -335,6 +333,8 @@ mlx5_common_config_get(struct mlx5_kvargs_ctrl *mkvlist,
 	config->dbnc = MLX5_ARG_UNSET;
 	config->device_fd = MLX5_ARG_UNSET;
 	config->pd_handle = MLX5_ARG_UNSET;
+	if (mkvlist == NULL)
+		return 0;
 	/* Process common parameters. */
 	ret = mlx5_kvargs_process(mkvlist, params,
 				  mlx5_common_args_check_handler, config);
