@@ -175,6 +175,9 @@ mlx5_nsh_proto_to_item_type(uint8_t proto_spec, uint8_t proto_mask)
 	enum rte_flow_item_type type;
 
 	switch (proto_mask & proto_spec) {
+	case 0:
+		type = RTE_FLOW_ITEM_TYPE_VOID;
+		break;
 	case RTE_VXLAN_GPE_TYPE_IPV4:
 		type = RTE_FLOW_ITEM_TYPE_IPV4;
 		break;
@@ -196,6 +199,9 @@ mlx5_inet_proto_to_item_type(uint8_t proto_spec, uint8_t proto_mask)
 	enum rte_flow_item_type type;
 
 	switch (proto_mask & proto_spec) {
+	case 0:
+		type = RTE_FLOW_ITEM_TYPE_VOID;
+		break;
 	case IPPROTO_UDP:
 		type = RTE_FLOW_ITEM_TYPE_UDP;
 		break;
@@ -221,6 +227,9 @@ mlx5_ethertype_to_item_type(rte_be16_t type_spec,
 	enum rte_flow_item_type type;
 
 	switch (rte_be_to_cpu_16(type_spec & type_mask)) {
+	case 0:
+		type = RTE_FLOW_ITEM_TYPE_VOID;
+		break;
 	case RTE_ETHER_TYPE_TEB:
 		type = is_tunnel ?
 		       RTE_FLOW_ITEM_TYPE_ETH : RTE_FLOW_ITEM_TYPE_END;
