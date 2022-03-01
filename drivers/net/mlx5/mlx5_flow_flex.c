@@ -382,15 +382,11 @@ mlx5_flex_translate_length(struct mlx5_hca_flex_attr *attr,
 			return rte_flow_error_set
 				(error, EINVAL, RTE_FLOW_ERROR_TYPE_ITEM, NULL,
 				 "unsupported header length field mode (FIXED)");
-		if (attr->header_length_mask_width < field->field_size)
+		if (field->field_size ||
+		    field->offset_mask || field->offset_shift)
 			return rte_flow_error_set
 				(error, EINVAL, RTE_FLOW_ERROR_TYPE_ITEM, NULL,
-				 "header length field width exceeds limit");
-		if (field->offset_shift < 0 ||
-		    field->offset_shift > attr->header_length_mask_width)
-			return rte_flow_error_set
-				(error, EINVAL, RTE_FLOW_ERROR_TYPE_ITEM, NULL,
-				 "invalid header length field shift (FIXED");
+				 "invalid fields for fixed mode");
 		if (field->field_base < 0)
 			return rte_flow_error_set
 				(error, EINVAL, RTE_FLOW_ERROR_TYPE_ITEM, NULL,
