@@ -68,7 +68,7 @@ static const struct rte_pci_id pci_ifpga_map[] = {
 
 static struct ifpga_rawdev ifpga_rawdevices[IFPGA_RAWDEV_NUM];
 
-static int ifpga_monitor_start;
+static int ifpga_monitor_refcnt;
 static pthread_t ifpga_monitor_start_thread;
 
 #define IFPGA_MAX_IRQ 12
@@ -134,6 +134,7 @@ ifpga_rawdev_allocate(struct rte_rawdev *rawdev)
 	dev = &ifpga_rawdevices[dev_id];
 	dev->rawdev = rawdev;
 	dev->dev_id = dev_id;
+	dev->poll_enabled = 0;
 
 	return dev;
 }
@@ -208,10 +209,11 @@ static int ifpga_get_dev_vendor_id(const char *bdf,
 
 	return 0;
 }
-static int ifpga_rawdev_fill_info(struct ifpga_rawdev *ifpga_dev,
-	const char *bdf)
+
+static int ifpga_rawdev_fill_info(struct ifpga_rawdev *ifpga_dev)
 {
-	char path[1024] = "/sys/bus/pci/devices/0000:";
+	struct opae_adapter *adapter = NULL;
+	char path[1024] = "/sys/bus/pci/devices/";
 	char link[1024], link1[1024];
 	char dir[1024] = "/sys/devices/";
 	char *c;
@@ -226,7 +228,11 @@ static int ifpga_rawdev_fill_info(struct ifpga_rawdev *ifpga_dev,
 	int func;
 	uint32_t dev_id, vendor_id;
 
-	strlcat(path, bdf, sizeof(path));
+	adapter = ifpga_dev ? ifpga_rawdev_get_priv(ifpga_dev->rawdev) : NULL;
+	if (!adapter)
+		return -ENODEV;
+
+	strlcat(path, adapter->name, sizeof(path));
 	memset(link, 0, sizeof(link));
 	memset(link1, 0, sizeof(link1));
 	ret = readlink(path, link, (sizeof(link)-1));
@@ -376,7 +382,7 @@ ifpga_monitor_sensor(struct rte_rawdev *raw_dev,
 		/* monitor temperature sensors */
 		if (!strcmp(sensor->name, "Board Temperature") ||
 				!strcmp(sensor->name, "FPGA Die Temperature")) {
-			IFPGA_RAWDEV_PMD_INFO("read sensor %s %d %d %d\n",
+			IFPGA_RAWDEV_PMD_DEBUG("read sensor %s %d %d %d\n",
 					sensor->name, value, sensor->high_warn,
 					sensor->high_fatal);
 
@@ -418,7 +424,7 @@ static int set_surprise_link_check_aer(
 	bool enable = 0;
 	uint32_t aer_new0, aer_new1;
 
-	if (!ifpga_rdev) {
+	if (!ifpga_rdev || !ifpga_rdev->rawdev) {
 		printf("\n device does not exist\n");
 		return -EFAULT;
 	}
@@ -497,11 +503,11 @@ ifpga_rawdev_gsd_handle(__rte_unused void *param)
 	int gsd_enable, ret;
 #define MS 1000
 
-	while (__atomic_load_n(&ifpga_monitor_start, __ATOMIC_RELAXED)) {
+	while (__atomic_load_n(&ifpga_monitor_refcnt, __ATOMIC_RELAXED)) {
 		gsd_enable = 0;
 		for (i = 0; i < IFPGA_RAWDEV_NUM; i++) {
 			ifpga_rdev = &ifpga_rawdevices[i];
-			if (ifpga_rdev->rawdev) {
+			if (ifpga_rdev->poll_enabled) {
 				ret = set_surprise_link_check_aer(ifpga_rdev,
 					gsd_enable);
 				if (ret == 1 && !gsd_enable) {
@@ -521,32 +527,46 @@ ifpga_rawdev_gsd_handle(__rte_unused void *param)
 }
 
 static int
-ifpga_monitor_start_func(void)
+ifpga_monitor_start_func(struct ifpga_rawdev *dev)
 {
 	int ret;
 
-	if (!__atomic_load_n(&ifpga_monitor_start, __ATOMIC_RELAXED)) {
+	if (!dev)
+		return -ENODEV;
+
+	ret = ifpga_rawdev_fill_info(dev);
+	if (ret)
+		return ret;
+
+	dev->poll_enabled = 1;
+
+	if (!__atomic_fetch_add(&ifpga_monitor_refcnt, 1, __ATOMIC_RELAXED)) {
 		ret = pthread_create(&ifpga_monitor_start_thread,
 			NULL,
 			ifpga_rawdev_gsd_handle, NULL);
 		if (ret) {
+			ifpga_monitor_start_thread = 0;
 			IFPGA_RAWDEV_PMD_ERR(
 				"Fail to create ifpga monitor thread");
 			return -1;
 		}
-		__atomic_store_n(&ifpga_monitor_start, 1, __ATOMIC_RELAXED);
 	}
 
 	return 0;
 }
+
 static int
-ifpga_monitor_stop_func(void)
+ifpga_monitor_stop_func(struct ifpga_rawdev *dev)
 {
 	int ret;
 
-	if (__atomic_load_n(&ifpga_monitor_start, __ATOMIC_RELAXED)) {
-		__atomic_store_n(&ifpga_monitor_start, 0, __ATOMIC_RELAXED);
+	if (!dev || !dev->poll_enabled)
+		return 0;
 
+	dev->poll_enabled = 0;
+
+	if (!__atomic_sub_fetch(&ifpga_monitor_refcnt, 1, __ATOMIC_RELAXED) &&
+		ifpga_monitor_start_thread) {
 		ret = pthread_cancel(ifpga_monitor_start_thread);
 		if (ret)
 			IFPGA_RAWDEV_PMD_ERR("Can't cancel the thread");
@@ -719,6 +739,7 @@ ifpga_rawdev_close(struct rte_rawdev *dev)
 	struct opae_adapter *adapter;
 
 	if (dev) {
+		ifpga_monitor_stop_func(ifpga_rawdev_get(dev));
 		adapter = ifpga_rawdev_get_priv(dev);
 		if (adapter) {
 			opae_adapter_destroy(adapter);
@@ -1522,6 +1543,10 @@ ifpga_rawdev_create(struct rte_pci_device *pci_dev,
 	if (ret)
 		goto free_adapter_data;
 
+	ret = ifpga_monitor_start_func(dev);
+	if (ret)
+		goto free_adapter_data;
+
 	return ret;
 
 free_adapter_data:
@@ -1597,7 +1622,7 @@ ifpga_rawdev_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 static int
 ifpga_rawdev_pci_remove(struct rte_pci_device *pci_dev)
 {
-	ifpga_monitor_stop_func();
+	IFPGA_RAWDEV_PMD_INFO("remove pci_dev %s", pci_dev->device.name);
 	return ifpga_rawdev_destroy(pci_dev);
 }
 
@@ -1648,7 +1673,6 @@ ifpga_cfg_probe(struct rte_vdev_device *dev)
 	struct ifpga_rawdev *ifpga_dev;
 	int port;
 	char *name = NULL;
-	const char *bdf;
 	char dev_name[RTE_RAWDEV_NAME_MAX_LEN];
 	int ret = -1;
 
@@ -1697,10 +1721,6 @@ ifpga_cfg_probe(struct rte_vdev_device *dev)
 	ifpga_dev = ifpga_rawdev_get(rawdev);
 	if (!ifpga_dev)
 		goto end;
-	bdf = name;
-	ifpga_rawdev_fill_info(ifpga_dev, bdf);
-
-	ifpga_monitor_start_func();
 
 	memset(dev_name, 0, sizeof(dev_name));
 	snprintf(dev_name, RTE_RAWDEV_NAME_MAX_LEN, "%d|%s",

@@ -59,6 +59,8 @@ struct ifpga_rawdev {
 	uint32_t aer_old[2];
 	char fvl_bdf[8][16];
 	char parent_bdf[16];
+	/* enable monitor thread poll device's sensors or not */
+	int poll_enabled;
 };
 
 struct ifpga_rawdev *
