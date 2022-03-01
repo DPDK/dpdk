@@ -6864,6 +6864,14 @@ parse_vc(struct context *ctx, const struct token *token,
 		ctx->object = out->args.vc.pattern;
 		ctx->objmask = NULL;
 		return len;
+	case ITEM_END:
+		if ((out->command == VALIDATE || out->command == CREATE) &&
+		    ctx->last)
+			return -1;
+		if (out->command == PATTERN_TEMPLATE_CREATE &&
+		    !ctx->last)
+			return -1;
+		break;
 	case ACTIONS:
 		out->args.vc.actions =
 			(void *)RTE_ALIGN_CEIL((uintptr_t)
