@@ -614,7 +614,7 @@ set_session_parameter(struct iavf_security_ctx *iavf_sctx,
 		if (conf->crypto_xform->auth.algo == RTE_CRYPTO_AUTH_AES_GMAC) {
 			sess->block_sz = get_auth_blocksize(iavf_sctx,
 				conf->crypto_xform->auth.algo);
-			sess->iv_sz = conf->crypto_xform->auth.iv.length;
+			sess->iv_sz = sizeof(uint64_t); /* iv len inc. salt */
 			sess->icv_sz = conf->crypto_xform->auth.digest_length;
 		} else {
 			sess->block_sz = get_cipher_blocksize(iavf_sctx,
