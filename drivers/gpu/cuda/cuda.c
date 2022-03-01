@@ -163,7 +163,7 @@ cuda_loader(void)
 	if (getenv("CUDA_PATH_L") == NULL)
 		snprintf(cuda_path, 1024, "%s", "libcuda.so");
 	else
-		snprintf(cuda_path, 1024, "%s%s", getenv("CUDA_PATH_L"), "libcuda.so");
+		snprintf(cuda_path, 1024, "%s/%s", getenv("CUDA_PATH_L"), "libcuda.so");
 
 	cudalib = dlopen(cuda_path, RTLD_LAZY);
 	if (cudalib == NULL) {
