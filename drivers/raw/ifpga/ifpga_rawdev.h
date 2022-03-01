@@ -62,6 +62,8 @@ struct ifpga_rawdev {
 	char parent_bdf[16];
 	/* 0 for FME interrupt, others are reserved for AFU irq */
 	void *intr_handle[IFPGA_MAX_IRQ];
+	/* enable monitor thread poll device's sensors or not */
+	int poll_enabled;
 };
 
 struct ifpga_rawdev *
