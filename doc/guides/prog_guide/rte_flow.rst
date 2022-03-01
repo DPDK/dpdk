@@ -65,12 +65,12 @@ Flow rules can also be grouped, the flow rule priority is specific to the
 group they belong to. All flow rules in a given group are thus processed within
 the context of that group. Groups are not linked by default, so the logical
 hierarchy of groups must be explicitly defined by flow rules themselves in each
-group using the JUMP action to define the next group to redirect too. Only flow
-rules defined in the default group 0 are guarantee to be matched against, this
+group using the JUMP action to define the next group to redirect to. Only flow
+rules defined in the default group 0 are guaranteed to be matched against. This
 makes group 0 the origin of any group hierarchy defined by an application.
 
 Support for multiple actions per rule may be implemented internally on top
-of non-default hardware priorities, as a result both features may not be
+of non-default hardware priorities. As a result, both features may not be
 simultaneously available to applications.
 
 Considering that allowed pattern/actions combinations cannot be known in
