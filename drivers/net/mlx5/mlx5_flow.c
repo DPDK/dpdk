@@ -201,7 +201,7 @@ mlx5_inet_proto_to_item_type(uint8_t proto_spec, uint8_t proto_mask)
 	case IPPROTO_TCP:
 		type = RTE_FLOW_ITEM_TYPE_TCP;
 		break;
-	case IPPROTO_IP:
+	case IPPROTO_IPIP:
 		type = RTE_FLOW_ITEM_TYPE_IPV4;
 		break;
 	case IPPROTO_IPV6:
