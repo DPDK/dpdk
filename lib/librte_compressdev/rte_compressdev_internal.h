@@ -98,7 +98,7 @@ struct rte_compressdev {
 struct rte_compressdev_data {
 	uint8_t dev_id;
 	/**< Compress device identifier */
-	uint8_t socket_id;
+	int socket_id;
 	/**< Socket identifier where memory is allocated */
 	char name[RTE_COMPRESSDEV_NAME_MAX_LEN];
 	/**< Unique identifier name */
