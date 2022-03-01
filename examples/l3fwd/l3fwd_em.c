@@ -43,14 +43,6 @@
 
 #define IPV6_ADDR_LEN 16
 
-struct ipv4_5tuple {
-	uint32_t ip_dst;
-	uint32_t ip_src;
-	uint16_t port_dst;
-	uint16_t port_src;
-	uint8_t  proto;
-} __rte_packed;
-
 union ipv4_5tuple_host {
 	struct {
 		uint8_t  pad0;
@@ -66,14 +58,6 @@ union ipv4_5tuple_host {
 
 #define XMM_NUM_IN_IPV6_5TUPLE 3
 
-struct ipv6_5tuple {
-	uint8_t  ip_dst[IPV6_ADDR_LEN];
-	uint8_t  ip_src[IPV6_ADDR_LEN];
-	uint16_t port_dst;
-	uint16_t port_src;
-	uint8_t  proto;
-} __rte_packed;
-
 union ipv6_5tuple_host {
 	struct {
 		uint16_t pad0;
@@ -88,22 +72,10 @@ union ipv6_5tuple_host {
 	xmm_t xmm[XMM_NUM_IN_IPV6_5TUPLE];
 };
 
-
-
-struct ipv4_l3fwd_em_route {
-	struct ipv4_5tuple key;
-	uint8_t if_out;
-};
-
-struct ipv6_l3fwd_em_route {
-	struct ipv6_5tuple key;
-	uint8_t if_out;
-};
-
 /* 198.18.0.0/16 are set aside for RFC2544 benchmarking (RFC5735).
  * Use RFC863 Discard Protocol.
  */
-static const struct ipv4_l3fwd_em_route ipv4_l3fwd_em_route_array[] = {
+const struct ipv4_l3fwd_em_route ipv4_l3fwd_em_route_array[] = {
 	{{RTE_IPV4(198, 18, 0, 0), RTE_IPV4(198, 18, 0, 1),  9, 9, IPPROTO_UDP}, 0},
 	{{RTE_IPV4(198, 18, 1, 0), RTE_IPV4(198, 18, 1, 1),  9, 9, IPPROTO_UDP}, 1},
 	{{RTE_IPV4(198, 18, 2, 0), RTE_IPV4(198, 18, 2, 1),  9, 9, IPPROTO_UDP}, 2},
@@ -125,7 +97,7 @@ static const struct ipv4_l3fwd_em_route ipv4_l3fwd_em_route_array[] = {
 /* 2001:0200::/48 is IANA reserved range for IPv6 benchmarking (RFC5180).
  * Use RFC863 Discard Protocol.
  */
-static const struct ipv6_l3fwd_em_route ipv6_l3fwd_em_route_array[] = {
+const struct ipv6_l3fwd_em_route ipv6_l3fwd_em_route_array[] = {
 	{{{32, 1, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
 	  {32, 1, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1}, 9, 9, IPPROTO_UDP}, 0},
 	{{{32, 1, 2, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0},
@@ -235,10 +207,6 @@ ipv6_hash_crc(const void *data, __rte_unused uint32_t data_len,
 #endif
 	return init_val;
 }
-
-#define IPV4_L3FWD_EM_NUM_ROUTES RTE_DIM(ipv4_l3fwd_em_route_array)
-
-#define IPV6_L3FWD_EM_NUM_ROUTES RTE_DIM(ipv6_l3fwd_em_route_array)
 
 static uint8_t ipv4_l3fwd_out_if[L3FWD_HASH_ENTRIES] __rte_cache_aligned;
 static uint8_t ipv6_l3fwd_out_if[L3FWD_HASH_ENTRIES] __rte_cache_aligned;
@@ -383,122 +351,106 @@ convert_ipv6_5tuple(struct ipv6_5tuple *key1,
 #define BIT_8_TO_15 0x0000ff00
 
 static inline void
-populate_ipv4_few_flow_into_table(const struct rte_hash *h)
+populate_ipv4_flow_into_table(const struct rte_hash *h)
 {
-	uint32_t i;
+	int i;
 	int32_t ret;
+	struct rte_eth_dev_info dev_info;
+	char srcbuf[INET6_ADDRSTRLEN];
+	char dstbuf[INET6_ADDRSTRLEN];
 
 	mask0 = (rte_xmm_t){.u32 = {BIT_8_TO_15, ALL_32_BITS,
 				ALL_32_BITS, ALL_32_BITS} };
 
-	for (i = 0; i < IPV4_L3FWD_EM_NUM_ROUTES; i++) {
-		struct ipv4_l3fwd_em_route  entry;
+	for (i = 0; i < route_num_v4; i++) {
+		struct em_rule *entry;
 		union ipv4_5tuple_host newkey;
+		struct in_addr src;
+		struct in_addr dst;
 
-		entry = ipv4_l3fwd_em_route_array[i];
-		convert_ipv4_5tuple(&entry.key, &newkey);
+		if ((1 << em_route_base_v4[i].if_out &
+				enabled_port_mask) == 0)
+			continue;
+
+		entry = &em_route_base_v4[i];
+		convert_ipv4_5tuple(&(entry->v4_key), &newkey);
 		ret = rte_hash_add_key(h, (void *) &newkey);
 		if (ret < 0) {
 			rte_exit(EXIT_FAILURE, "Unable to add entry %" PRIu32
 				" to the l3fwd hash.\n", i);
 		}
-		ipv4_l3fwd_out_if[ret] = entry.if_out;
+		ipv4_l3fwd_out_if[ret] = entry->if_out;
+		ret = rte_eth_dev_info_get(em_route_base_v4[i].if_out,
+				     &dev_info);
+		if (ret != 0)
+			rte_exit(EXIT_FAILURE,
+				"Error during getting device (port %u) info: %s\n",
+				em_route_base_v4[i].if_out, strerror(-ret));
+
+		src.s_addr = htonl(em_route_base_v4[i].v4_key.ip_src);
+		dst.s_addr = htonl(em_route_base_v4[i].v4_key.ip_dst);
+		printf("EM: Adding route %s, %s, %d, %d, %d (%d) [%s]\n",
+			   inet_ntop(AF_INET, &dst, dstbuf, sizeof(dstbuf)),
+		       inet_ntop(AF_INET, &src, srcbuf, sizeof(srcbuf)),
+			   em_route_base_v4[i].v4_key.port_dst,
+			   em_route_base_v4[i].v4_key.port_src,
+			   em_route_base_v4[i].v4_key.proto,
+		       em_route_base_v4[i].if_out, dev_info.device->name);
 	}
 	printf("Hash: Adding 0x%" PRIx64 " keys\n",
-		(uint64_t)IPV4_L3FWD_EM_NUM_ROUTES);
+		(uint64_t)route_num_v4);
 }
 
 #define BIT_16_TO_23 0x00ff0000
 static inline void
-populate_ipv6_few_flow_into_table(const struct rte_hash *h)
+populate_ipv6_flow_into_table(const struct rte_hash *h)
 {
-	uint32_t i;
+	int i;
 	int32_t ret;
+	struct rte_eth_dev_info dev_info;
+	char srcbuf[INET6_ADDRSTRLEN];
+	char dstbuf[INET6_ADDRSTRLEN];
 
 	mask1 = (rte_xmm_t){.u32 = {BIT_16_TO_23, ALL_32_BITS,
 				ALL_32_BITS, ALL_32_BITS} };
 
 	mask2 = (rte_xmm_t){.u32 = {ALL_32_BITS, ALL_32_BITS, 0, 0} };
 
-	for (i = 0; i < IPV6_L3FWD_EM_NUM_ROUTES; i++) {
-		struct ipv6_l3fwd_em_route entry;
+	for (i = 0; i < route_num_v6; i++) {
+		struct em_rule *entry;
 		union ipv6_5tuple_host newkey;
 
-		entry = ipv6_l3fwd_em_route_array[i];
-		convert_ipv6_5tuple(&entry.key, &newkey);
+		if ((1 << em_route_base_v6[i].if_out &
+				enabled_port_mask) == 0)
+			continue;
+
+		entry = &em_route_base_v6[i];
+		convert_ipv6_5tuple(&(entry->v6_key), &newkey);
 		ret = rte_hash_add_key(h, (void *) &newkey);
 		if (ret < 0) {
 			rte_exit(EXIT_FAILURE, "Unable to add entry %" PRIu32
 				" to the l3fwd hash.\n", i);
 		}
-		ipv6_l3fwd_out_if[ret] = entry.if_out;
+		ipv6_l3fwd_out_if[ret] = entry->if_out;
+		ret = rte_eth_dev_info_get(em_route_base_v6[i].if_out,
+				     &dev_info);
+		if (ret != 0)
+			rte_exit(EXIT_FAILURE,
+				"Error during getting device (port %u) info: %s\n",
+				em_route_base_v6[i].if_out, strerror(-ret));
+
+		printf("EM: Adding route %s, %s, %d, %d, %d (%d) [%s]\n",
+			   inet_ntop(AF_INET6, em_route_base_v6[i].v6_key.ip_dst,
+			   dstbuf, sizeof(dstbuf)),
+		       inet_ntop(AF_INET6, em_route_base_v6[i].v6_key.ip_src,
+			   srcbuf, sizeof(srcbuf)),
+			   em_route_base_v6[i].v6_key.port_dst,
+			   em_route_base_v6[i].v6_key.port_src,
+			   em_route_base_v6[i].v6_key.proto,
+		       em_route_base_v6[i].if_out, dev_info.device->name);
 	}
 	printf("Hash: Adding 0x%" PRIx64 "keys\n",
-		(uint64_t)IPV6_L3FWD_EM_NUM_ROUTES);
-}
-
-#define NUMBER_PORT_USED 16
-static inline void
-populate_ipv4_many_flow_into_table(const struct rte_hash *h,
-		unsigned int nr_flow)
-{
-	unsigned i;
-
-	mask0 = (rte_xmm_t){.u32 = {BIT_8_TO_15, ALL_32_BITS,
-				ALL_32_BITS, ALL_32_BITS} };
-
-	for (i = 0; i < nr_flow; i++) {
-		uint8_t port = i % NUMBER_PORT_USED;
-		struct ipv4_l3fwd_em_route entry;
-		union ipv4_5tuple_host newkey;
-
-		uint8_t a = (uint8_t)((port + 1) % BYTE_VALUE_MAX);
-
-		/* Create the ipv4 exact match flow */
-		memset(&entry, 0, sizeof(entry));
-		entry = ipv4_l3fwd_em_route_array[port];
-		entry.key.ip_dst = RTE_IPV4(198, 18, port, a);
-		convert_ipv4_5tuple(&entry.key, &newkey);
-		int32_t ret = rte_hash_add_key(h, (void *) &newkey);
-
-		if (ret < 0)
-			rte_exit(EXIT_FAILURE, "Unable to add entry %u\n", i);
-
-		ipv4_l3fwd_out_if[ret] = (uint8_t) entry.if_out;
-
-	}
-	printf("Hash: Adding 0x%x keys\n", nr_flow);
-}
-
-static inline void
-populate_ipv6_many_flow_into_table(const struct rte_hash *h,
-		unsigned int nr_flow)
-{
-	unsigned i;
-
-	mask1 = (rte_xmm_t){.u32 = {BIT_16_TO_23, ALL_32_BITS,
-				ALL_32_BITS, ALL_32_BITS} };
-	mask2 = (rte_xmm_t){.u32 = {ALL_32_BITS, ALL_32_BITS, 0, 0} };
-
-	for (i = 0; i < nr_flow; i++) {
-		uint8_t port = i % NUMBER_PORT_USED;
-		struct ipv6_l3fwd_em_route entry;
-		union ipv6_5tuple_host newkey;
-
-		/* Create the ipv6 exact match flow */
-		memset(&entry, 0, sizeof(entry));
-		entry = ipv6_l3fwd_em_route_array[port];
-		entry.key.ip_dst[15] = (port + 1) % BYTE_VALUE_MAX;
-		convert_ipv6_5tuple(&entry.key, &newkey);
-		int32_t ret = rte_hash_add_key(h, (void *) &newkey);
-
-		if (ret < 0)
-			rte_exit(EXIT_FAILURE, "Unable to add entry %u\n", i);
-
-		ipv6_l3fwd_out_if[ret] = (uint8_t) entry.if_out;
-
-	}
-	printf("Hash: Adding 0x%x keys\n", nr_flow);
+		(uint64_t)route_num_v6);
 }
 
 /* Requirements:
@@ -1017,35 +969,18 @@ setup_hash(const int socketid)
 			"Unable to create the l3fwd hash on socket %d\n",
 			socketid);
 
-	if (hash_entry_number != HASH_ENTRY_NUMBER_DEFAULT) {
-		/* For testing hash matching with a large number of flows we
-		 * generate millions of IP 5-tuples with an incremented dst
-		 * address to initialize the hash table. */
-		if (ipv6 == 0) {
-			/* populate the ipv4 hash */
-			populate_ipv4_many_flow_into_table(
-				ipv4_l3fwd_em_lookup_struct[socketid],
-				hash_entry_number);
-		} else {
-			/* populate the ipv6 hash */
-			populate_ipv6_many_flow_into_table(
-				ipv6_l3fwd_em_lookup_struct[socketid],
-				hash_entry_number);
-		}
+	/*
+	 * Use data from ipv4/ipv6 l3fwd config file
+	 * directly to initialize the hash table.
+	 */
+	if (ipv6 == 0) {
+		/* populate the ipv4 hash */
+		populate_ipv4_flow_into_table(
+			ipv4_l3fwd_em_lookup_struct[socketid]);
 	} else {
-		/*
-		 * Use data in ipv4/ipv6 l3fwd lookup table
-		 * directly to initialize the hash table.
-		 */
-		if (ipv6 == 0) {
-			/* populate the ipv4 hash */
-			populate_ipv4_few_flow_into_table(
-				ipv4_l3fwd_em_lookup_struct[socketid]);
-		} else {
-			/* populate the ipv6 hash */
-			populate_ipv6_few_flow_into_table(
-				ipv6_l3fwd_em_lookup_struct[socketid]);
-		}
+		/* populate the ipv6 hash */
+		populate_ipv6_flow_into_table(
+			ipv6_l3fwd_em_lookup_struct[socketid]);
 	}
 }
 /* >8 End of initialization of hash parameters. */

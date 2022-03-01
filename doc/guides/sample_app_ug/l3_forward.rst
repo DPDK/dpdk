@@ -47,6 +47,7 @@ and loaded into the LPM or FIB object at initialization time.
 In the sample application, hash-based and FIB-based forwarding supports
 both IPv4 and IPv6.
 LPM-based forwarding supports IPv4 only.
+During the initialization phase route rules for IPv4 and IPv6 are read from rule files.
 
 Compiling the Application
 -------------------------
@@ -61,6 +62,8 @@ Running the Application
 The application has a number of command line options::
 
     ./dpdk-l3fwd [EAL options] -- -p PORTMASK
+                             --rule_ipv4=FILE
+                             --rule_ipv6=FILE
                              [-P]
                              [--lookup LOOKUP_METHOD]
                              --config(port,queue,lcore)[,(port,queue,lcore)]
@@ -81,6 +84,11 @@ The application has a number of command line options::
 Where,
 
 * ``-p PORTMASK:`` Hexadecimal bitmask of ports to configure
+
+* ``--rule_ipv4=FILE:`` specify the ipv4 rules entries file.
+  Each rule occupies one line.
+
+* ``--rule_ipv6=FILE:`` specify the ipv6 rules entries file.
 
 * ``-P:`` Optional, sets all ports to promiscuous mode so that packets are accepted regardless of the packet's Ethernet MAC destination address.
   Without this option, only packets with the Ethernet MAC destination address set to the Ethernet address of the port are accepted.
@@ -135,7 +143,7 @@ To enable L3 forwarding between two ports, assuming that both ports are in the s
 
 .. code-block:: console
 
-    ./<build_dir>/examples/dpdk-l3fwd -l 1,2 -n 4 -- -p 0x3 --config="(0,0,1),(1,0,2)"
+    ./<build_dir>/examples/dpdk-l3fwd -l 1,2 -n 4 -- -p 0x3 --config="(0,0,1),(1,0,2)" --rule_ipv4="rule_ipv4.cfg" --rule_ipv6="rule_ipv6.cfg"
 
 In this command:
 
@@ -157,19 +165,23 @@ In this command:
 |          |           |           |                                     |
 +----------+-----------+-----------+-------------------------------------+
 
+*   The -rule_ipv4 option specifies the reading of IPv4 rules sets from the rule_ipv4.cfg file
+
+*   The -rule_ipv6 option specifies the reading of IPv6 rules sets from the rule_ipv6.cfg file.
+
 To use eventdev mode with sync method **ordered** on above mentioned environment,
 Following is the sample command:
 
 .. code-block:: console
 
-    ./<build_dir>/examples/dpdk-l3fwd -l 0-3 -n 4 -a <event device> -- -p 0x3 --eventq-sched=ordered
+    ./<build_dir>/examples/dpdk-l3fwd -l 0-3 -n 4 -a <event device> -- -p 0x3 --eventq-sched=ordered --rule_ipv4="rule_ipv4.cfg" --rule_ipv6="rule_ipv6.cfg"
 
 or
 
 .. code-block:: console
 
     ./<build_dir>/examples/dpdk-l3fwd -l 0-3 -n 4 -a <event device> \
-		-- -p 0x03 --mode=eventdev --eventq-sched=ordered
+		-- -p 0x03 --mode=eventdev --eventq-sched=ordered --rule_ipv4="rule_ipv4.cfg" --rule_ipv6="rule_ipv6.cfg"
 
 In this command:
 
@@ -192,7 +204,7 @@ scheduler. Following is the sample command:
 
 .. code-block:: console
 
-    ./<build_dir>/examples/dpdk-l3fwd -l 0-7 -s 0xf0000 -n 4 --vdev event_sw0 -- -p 0x3 --mode=eventdev --eventq-sched=ordered
+    ./<build_dir>/examples/dpdk-l3fwd -l 0-7 -s 0xf0000 -n 4 --vdev event_sw0 -- -p 0x3 --mode=eventdev --eventq-sched=ordered --rule_ipv4="rule_ipv4.cfg" --rule_ipv6="rule_ipv6.cfg"
 
 In case of eventdev mode, *--config* option is not used for ethernet port
 configuration. Instead each ethernet port will be configured with mentioned
@@ -216,6 +228,49 @@ The following sections provide some explanation of the sample application code. 
 the initialization and run-time paths are very similar to those of the :doc:`l2_forward_real_virtual` and :doc:`l2_forward_event`.
 The following sections describe aspects that are specific to the L3 Forwarding sample application.
 
+Parse Rules from File
+~~~~~~~~~~~~~~~~~~~~~
+
+The application parses the rules from the file and adds them to the appropriate route table by calling the appropriate function.
+It ignores empty and comment lines, and parses and validates the rules it reads.
+If errors are detected, the application exits with messages to identify the errors encountered.
+
+The format of the route rules differs based on which lookup method is being used.
+Therefore, the code only decreases the priority number with each rule it parses.
+Route rules are mandatory.
+To read data from the specified file successfully, the application assumes the following:
+
+*   Each rule occupies a single line.
+
+*   Only the following four rule line types are valid in this application:
+
+*   Route rule line, which starts with a leading character 'R'
+
+*   Comment line, which starts with a leading character '#'
+
+*   Empty line, which consists of a space, form-feed ('\f'), newline ('\n'),
+    carriage return ('\r'), horizontal tab ('\t'), or vertical tab ('\v').
+
+Other lines types are considered invalid.
+
+*   Rules are organized in descending order of priority,
+    which means rules at the head of the file always have a higher priority than those further down in the file.
+
+*   A typical IPv4 LPM/FIB rule line should have a format as shown below:
+
+R<destination_ip>/<ip_mask_length><output_port_number>
+
+*   A typical IPv4 EM rule line should have a format as shown below:
+
+R<destination_ip><source_ip><destination_port><source_port><protocol><output_port_number>
+
+IPv4 addresses are specified in CIDR format as specified in RFC 4632.
+For LPM/FIB they consist of the dot notation for the address and a prefix length separated by '/'.
+For example, 192.168.0.34/32, where the address is 192.168.0.34 and the prefix length is 32.
+For EM they consist of just the dot notation for the address and no prefix length.
+For example, 192.168.0.34, where the Address is 192.168.0.34.
+EM also includes ports which are specified as a single number which represents a single port.
+
 Hash Initialization
 ~~~~~~~~~~~~~~~~~~~
 
@@ -227,8 +282,6 @@ for the convenience to execute hash performance test on 4M/8M/16M flows.
 
     The Hash initialization will setup both ipv4 and ipv6 hash table,
     and populate the either table depending on the value of variable ipv6.
-    To support the hash performance test with up to 8M single direction flows/16M bi-direction flows,
-    populate_ipv4_many_flow_into_table() function will populate the hash table with specified hash table entry number(default 4M).
 
 .. note::
 
@@ -246,22 +299,14 @@ for the convenience to execute hash performance test on 4M/8M/16M flows.
         {
             // ...
 
-            if (hash_entry_number != HASH_ENTRY_NUMBER_DEFAULT) {
-                if (ipv6 == 0) {
-                    /* populate the ipv4 hash */
-                    populate_ipv4_many_flow_into_table(ipv4_l3fwd_lookup_struct[socketid], hash_entry_number);
-                } else {
-                    /* populate the ipv6 hash */
-                    populate_ipv6_many_flow_into_table( ipv6_l3fwd_lookup_struct[socketid], hash_entry_number);
-                }
-            } else
-                if (ipv6 == 0) {
-                    /* populate the ipv4 hash */
-                    populate_ipv4_few_flow_into_table(ipv4_l3fwd_lookup_struct[socketid]);
-                } else {
-                    /* populate the ipv6 hash */
-                    populate_ipv6_few_flow_into_table(ipv6_l3fwd_lookup_struct[socketid]);
-                }
+            if (ipv6 == 0) {
+                /* populate the ipv4 hash */
+                populate_ipv4_flow_into_table(
+                    ipv4_l3fwd_em_lookup_struct[socketid]);
+            } else {
+                /* populate the ipv6 hash */
+                populate_ipv6_flow_into_table(
+                    ipv6_l3fwd_em_lookup_struct[socketid]);
             }
         }
     #endif
