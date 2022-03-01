@@ -1483,13 +1483,12 @@ err_secondary:
 	/* Bring Ethernet device up. */
 	DRV_LOG(DEBUG, "port %u forcing Ethernet interface up",
 		eth_dev->data->port_id);
-	mlx5_set_link_up(eth_dev);
-	/*
-	 * Even though the interrupt handler is not installed yet,
-	 * interrupts will still trigger on the async_fd from
-	 * Verbs context returned by ibv_open_device().
-	 */
+	/* Read link status in case it is up and there will be no event. */
 	mlx5_link_update(eth_dev, 0);
+	/* Watch LSC interrupts between port probe and port start. */
+	priv->sh->port[priv->dev_port - 1].nl_ih_port_id =
+							eth_dev->data->port_id;
+	mlx5_set_link_up(eth_dev);
 	for (i = 0; i < MLX5_FLOW_TYPE_MAXI; i++) {
 		icfg[i].release_mem_en = !!sh->config.reclaim_mode;
 		if (sh->config.reclaim_mode)
