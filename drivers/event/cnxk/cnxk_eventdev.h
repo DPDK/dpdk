@@ -43,7 +43,7 @@
 #define CNXK_TT_FROM_EVENT(x)	    (((x) >> 38) & SSO_TT_EMPTY)
 #define CNXK_EVENT_TYPE_FROM_TAG(x) (((x) >> 28) & 0xf)
 #define CNXK_SUB_EVENT_FROM_TAG(x)  (((x) >> 20) & 0xff)
-#define CNXK_CLR_SUB_EVENT(x)	    (~(0xffu << 20) & x)
+#define CNXK_CLR_SUB_EVENT(x)	    (~(0xffull << 20) & x)
 #define CNXK_GRP_FROM_TAG(x)	    (((x) >> 36) & 0x3ff)
 #define CNXK_SWTAG_PEND(x)	    (BIT_ULL(62) & x)
 #define CNXK_TAG_IS_HEAD(x)	    (BIT_ULL(35) & x)
