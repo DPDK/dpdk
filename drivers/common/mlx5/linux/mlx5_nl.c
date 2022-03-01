@@ -185,19 +185,22 @@ uint32_t atomic_sn;
  *
  * @param protocol
  *   Netlink protocol (e.g. NETLINK_ROUTE, NETLINK_RDMA).
+ * @param groups
+ *   Groups to listen (e.g. RTMGRP_LINK), can be 0.
  *
  * @return
  *   A file descriptor on success, a negative errno value otherwise and
  *   rte_errno is set.
  */
 int
-mlx5_nl_init(int protocol)
+mlx5_nl_init(int protocol, int groups)
 {
 	int fd;
 	int buf_size;
 	socklen_t opt_size;
 	struct sockaddr_nl local = {
 		.nl_family = AF_NETLINK,
+		.nl_groups = groups,
 	};
 	int ret;
 
@@ -1861,4 +1864,101 @@ mlx5_nl_enable_roce_set(int nlsk_fd, int family_id, const char *pci_addr,
 		pci_addr, enable ? "en" : "dis");
 	/* Now, need to reload the driver. */
 	return mlx5_nl_driver_reload(nlsk_fd, family_id, pci_addr);
+}
+
+/**
+ * Try to parse a Netlink message as a link status update.
+ *
+ * @param hdr
+ *  Netlink message header.
+ * @param[out] ifindex
+ *  Index of the updated interface.
+ *
+ * @return
+ *  0 on success, negative on failure.
+ */
+int
+mlx5_nl_parse_link_status_update(struct nlmsghdr *hdr, uint32_t *ifindex)
+{
+	struct ifinfomsg *info;
+
+	switch (hdr->nlmsg_type) {
+	case RTM_NEWLINK:
+	case RTM_DELLINK:
+	case RTM_GETLINK:
+	case RTM_SETLINK:
+		info = NLMSG_DATA(hdr);
+		*ifindex = info->ifi_index;
+		return 0;
+	}
+	return -1;
+}
+
+/**
+ * Read pending events from a Netlink socket.
+ *
+ * @param nlsk_fd
+ *  Netlink socket.
+ * @param cb
+ *  Callback invoked for each of the events.
+ * @param cb_arg
+ *  User data for the callback.
+ *
+ * @return
+ *  0 on success, including the case when there are no events.
+ *  Negative on failure and rte_errno is set.
+ */
+int
+mlx5_nl_read_events(int nlsk_fd, mlx5_nl_event_cb *cb, void *cb_arg)
+{
+	char buf[8192];
+	struct sockaddr_nl addr;
+	struct iovec iov = {
+		.iov_base = buf,
+		.iov_len = sizeof(buf),
+	};
+	struct msghdr msg = {
+		.msg_name = &addr,
+		.msg_namelen = sizeof(addr),
+		.msg_iov = &iov,
+		.msg_iovlen = 1,
+	};
+	struct nlmsghdr *hdr;
+	ssize_t size;
+
+	while (1) {
+		size = recvmsg(nlsk_fd, &msg, MSG_DONTWAIT);
+		if (size < 0) {
+			if (errno == EAGAIN)
+				return 0;
+			if (errno == EINTR)
+				continue;
+			DRV_LOG(DEBUG, "Failed to receive netlink message: %s",
+				strerror(errno));
+			rte_errno = errno;
+			return -rte_errno;
+		}
+		hdr = (struct nlmsghdr *)buf;
+		while (size >= (ssize_t)sizeof(*hdr)) {
+			ssize_t msg_len = hdr->nlmsg_len;
+			ssize_t data_len = msg_len - sizeof(*hdr);
+			ssize_t aligned_len;
+
+			if (data_len < 0) {
+				DRV_LOG(DEBUG, "Netlink message too short");
+				rte_errno = EINVAL;
+				return -rte_errno;
+			}
+			aligned_len = NLMSG_ALIGN(msg_len);
+			if (aligned_len > size) {
+				DRV_LOG(DEBUG, "Netlink message too long");
+				rte_errno = EINVAL;
+				return -rte_errno;
+			}
+			cb(hdr, cb_arg);
+			hdr = RTE_PTR_ADD(hdr, aligned_len);
+			size -= aligned_len;
+		}
+	}
+	return 0;
 }
