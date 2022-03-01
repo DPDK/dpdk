@@ -376,7 +376,7 @@ txgbe_dev_queue_stats_mapping_set(struct rte_eth_dev *eth_dev,
 	if (hw->mac.type != txgbe_mac_raptor)
 		return -ENOSYS;
 
-	if (stat_idx & !QMAP_FIELD_RESERVED_BITS_MASK)
+	if (stat_idx & ~QMAP_FIELD_RESERVED_BITS_MASK)
 		return -EIO;
 
 	PMD_INIT_LOG(DEBUG, "Setting port %d, %s queue_id %d to stat index %d",
