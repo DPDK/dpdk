@@ -230,7 +230,7 @@ cnxk_sso_rx_adapter_queue_add(
 			cnxk_eth_dev, (uint16_t)rx_queue_id, port,
 			&queue_conf->ev,
 			!!(queue_conf->rx_queue_flags &
-			   RTE_EVENT_ETH_RX_ADAPTER_CAP_OVERRIDE_FLOW_ID));
+			   RTE_EVENT_ETH_RX_ADAPTER_QUEUE_FLOW_ID_VALID));
 		if (queue_conf->rx_queue_flags &
 		    RTE_EVENT_ETH_RX_ADAPTER_QUEUE_EVENT_VECTOR) {
 			cnxk_sso_updt_xae_cnt(dev, queue_conf->vector_mp,
