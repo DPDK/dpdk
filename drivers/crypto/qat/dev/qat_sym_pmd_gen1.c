@@ -1149,6 +1149,9 @@ qat_sym_crypto_set_session_gen1(void *cryptodev __rte_unused, void *session)
 	enum rte_proc_type_t proc_type = rte_eal_process_type();
 	int handle_mixed = 0;
 
+	if (proc_type == RTE_PROC_AUTO || proc_type == RTE_PROC_INVALID)
+		return -EINVAL;
+
 	if ((ctx->qat_cmd == ICP_QAT_FW_LA_CMD_HASH_CIPHER ||
 			ctx->qat_cmd == ICP_QAT_FW_LA_CMD_CIPHER_HASH) &&
 			!ctx->is_gmac) {

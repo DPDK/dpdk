@@ -60,6 +60,10 @@ qat_sym_build_request(void *in_op, uint8_t *out_msg,
 	uintptr_t build_request_p = (uintptr_t)opaque[1];
 	qat_sym_build_request_t build_request = (void *)build_request_p;
 	struct qat_sym_session *ctx = NULL;
+	enum rte_proc_type_t proc_type = rte_eal_process_type();
+
+	if (proc_type == RTE_PROC_AUTO || proc_type == RTE_PROC_INVALID)
+		return -EINVAL;
 
 	if (likely(op->sess_type == RTE_CRYPTO_OP_WITH_SESSION)) {
 		ctx = get_sym_session_private_data(op->sym->session,
@@ -71,11 +75,9 @@ qat_sym_build_request(void *in_op, uint8_t *out_msg,
 		if (sess != (uintptr_t)ctx) {
 			struct rte_cryptodev *cdev;
 			struct qat_cryptodev_private *internals;
-			enum rte_proc_type_t proc_type;
 
 			cdev = rte_cryptodev_pmd_get_dev(ctx->dev_id);
 			internals = cdev->data->dev_private;
-			proc_type = rte_eal_process_type();
 
 			if (internals->qat_dev->qat_dev_gen != dev_gen) {
 				op->status =
@@ -105,7 +107,6 @@ qat_sym_build_request(void *in_op, uint8_t *out_msg,
 		if ((void *)sess != (void *)op->sym->sec_session) {
 			struct rte_cryptodev *cdev;
 			struct qat_cryptodev_private *internals;
-			enum rte_proc_type_t proc_type;
 
 			ctx = get_sec_session_private_data(
 					op->sym->sec_session);
@@ -130,7 +131,6 @@ qat_sym_build_request(void *in_op, uint8_t *out_msg,
 			}
 			cdev = rte_cryptodev_pmd_get_dev(ctx->dev_id);
 			internals = cdev->data->dev_private;
-			proc_type = rte_eal_process_type();
 
 			if (internals->qat_dev->qat_dev_gen != dev_gen) {
 				op->status =

@@ -189,6 +189,9 @@ qat_sym_crypto_set_session_gen4(void *cdev, void *session)
 	enum rte_proc_type_t proc_type = rte_eal_process_type();
 	int ret;
 
+	if (proc_type == RTE_PROC_AUTO || proc_type == RTE_PROC_INVALID)
+		return -EINVAL;
+
 	ret = qat_sym_crypto_set_session_gen1(cdev, session);
 	/* special single pass build request for GEN4 */
 	if (ctx->is_single_pass && ctx->is_ucs)
