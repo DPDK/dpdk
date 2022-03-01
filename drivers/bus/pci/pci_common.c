@@ -207,11 +207,6 @@ rte_pci_probe_one_driver(struct rte_pci_driver *dr,
 	RTE_LOG(DEBUG, EAL, "  probe driver: %x:%x %s\n", dev->id.vendor_id,
 		dev->id.device_id, dr->driver.name);
 
-	/*
-	 * reference driver structure
-	 * This needs to be before rte_pci_map_device(), as it enables to use
-	 * driver flags for adjusting configuration.
-	 */
 	if (!already_probed) {
 		enum rte_iova_mode dev_iova_mode;
 		enum rte_iova_mode iova_mode;
@@ -247,9 +242,13 @@ rte_pci_probe_one_driver(struct rte_pci_driver *dr,
 			return -ENOMEM;
 		}
 
+		/*
+		 * Reference driver structure.
+		 * This needs to be before rte_pci_map_device(), as it enables
+		 * to use driver flags for adjusting configuration.
+		 */
 		dev->driver = dr;
-
-		if (dr->drv_flags & RTE_PCI_DRV_NEED_MAPPING) {
+		if (dev->driver->drv_flags & RTE_PCI_DRV_NEED_MAPPING) {
 			ret = rte_pci_map_device(dev);
 			if (ret != 0) {
 				dev->driver = NULL;
