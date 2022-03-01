@@ -583,7 +583,7 @@ setup_fib(const int socketid)
 	struct rte_eth_dev_info dev_info;
 	struct rte_fib6_conf config;
 	struct rte_fib_conf config_ipv4;
-	unsigned int i;
+	int i;
 	int ret;
 	char s[64];
 	char abuf[INET6_ADDRSTRLEN];
@@ -603,37 +603,39 @@ setup_fib(const int socketid)
 			"Unable to create the l3fwd FIB table on socket %d\n",
 			socketid);
 
+
 	/* Populate the fib ipv4 table. */
-	for (i = 0; i < RTE_DIM(ipv4_l3fwd_route_array); i++) {
+	for (i = 0; i < route_num_v4; i++) {
 		struct in_addr in;
 
 		/* Skip unused ports. */
-		if ((1 << ipv4_l3fwd_route_array[i].if_out &
+		if ((1 << route_base_v4[i].if_out &
 				enabled_port_mask) == 0)
 			continue;
 
-		rte_eth_dev_info_get(ipv4_l3fwd_route_array[i].if_out,
+		rte_eth_dev_info_get(route_base_v4[i].if_out,
 				     &dev_info);
 		ret = rte_fib_add(ipv4_l3fwd_fib_lookup_struct[socketid],
-			ipv4_l3fwd_route_array[i].ip,
-			ipv4_l3fwd_route_array[i].depth,
-			ipv4_l3fwd_route_array[i].if_out);
+			route_base_v4[i].ip,
+			route_base_v4[i].depth,
+			route_base_v4[i].if_out);
 
 		if (ret < 0) {
+			free(route_base_v4);
 			rte_exit(EXIT_FAILURE,
 					"Unable to add entry %u to the l3fwd FIB table on socket %d\n",
 					i, socketid);
 		}
 
-		in.s_addr = htonl(ipv4_l3fwd_route_array[i].ip);
+		in.s_addr = htonl(route_base_v4[i].ip);
 		if (inet_ntop(AF_INET, &in, abuf, sizeof(abuf)) != NULL) {
 			printf("FIB: Adding route %s / %d (%d) [%s]\n", abuf,
-			       ipv4_l3fwd_route_array[i].depth,
-			       ipv4_l3fwd_route_array[i].if_out,
+			       route_base_v4[i].depth,
+			       route_base_v4[i].if_out,
 			       dev_info.device->name);
 		} else {
 			printf("FIB: IPv4 route added to port %d [%s]\n",
-			       ipv4_l3fwd_route_array[i].if_out,
+			       route_base_v4[i].if_out,
 			       dev_info.device->name);
 		}
 	}
@@ -650,41 +652,45 @@ setup_fib(const int socketid)
 	config.trie.num_tbl8 = (1 << 15);
 	ipv6_l3fwd_fib_lookup_struct[socketid] = rte_fib6_create(s, socketid,
 			&config);
-	if (ipv6_l3fwd_fib_lookup_struct[socketid] == NULL)
+	if (ipv6_l3fwd_fib_lookup_struct[socketid] == NULL) {
+		free(route_base_v4);
 		rte_exit(EXIT_FAILURE,
 				"Unable to create the l3fwd FIB table on socket %d\n",
 				socketid);
+	}
 
 	/* Populate the fib IPv6 table. */
-	for (i = 0; i < RTE_DIM(ipv6_l3fwd_route_array); i++) {
+	for (i = 0; i < route_num_v6; i++) {
 
 		/* Skip unused ports. */
-		if ((1 << ipv6_l3fwd_route_array[i].if_out &
+		if ((1 << route_base_v6[i].if_out &
 				enabled_port_mask) == 0)
 			continue;
 
-		rte_eth_dev_info_get(ipv6_l3fwd_route_array[i].if_out,
+		rte_eth_dev_info_get(route_base_v6[i].if_out,
 				     &dev_info);
 		ret = rte_fib6_add(ipv6_l3fwd_fib_lookup_struct[socketid],
-			ipv6_l3fwd_route_array[i].ip,
-			ipv6_l3fwd_route_array[i].depth,
-			ipv6_l3fwd_route_array[i].if_out);
+			route_base_v6[i].ip_8,
+			route_base_v6[i].depth,
+			route_base_v6[i].if_out);
 
 		if (ret < 0) {
+			free(route_base_v4);
+			free(route_base_v6);
 			rte_exit(EXIT_FAILURE,
 					"Unable to add entry %u to the l3fwd FIB table on socket %d\n",
 					i, socketid);
 		}
 
-		if (inet_ntop(AF_INET6, ipv6_l3fwd_route_array[i].ip,
+		if (inet_ntop(AF_INET6, route_base_v6[i].ip_8,
 				abuf, sizeof(abuf)) != NULL) {
 			printf("FIB: Adding route %s / %d (%d) [%s]\n", abuf,
-			       ipv6_l3fwd_route_array[i].depth,
-			       ipv6_l3fwd_route_array[i].if_out,
+			       route_base_v6[i].depth,
+			       route_base_v6[i].if_out,
 			       dev_info.device->name);
 		} else {
 			printf("FIB: IPv6 route added to port %d [%s]\n",
-			       ipv6_l3fwd_route_array[i].if_out,
+			       route_base_v6[i].if_out,
 			       dev_info.device->name);
 		}
 	}

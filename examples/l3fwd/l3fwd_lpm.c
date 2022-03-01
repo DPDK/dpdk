@@ -30,7 +30,7 @@
 #include "l3fwd.h"
 #include "l3fwd_event.h"
 
-#include "l3fwd_route.h"
+#include "lpm_route_parse.c"
 
 #define IPV4_L3FWD_LPM_MAX_RULES         1024
 #define IPV4_L3FWD_LPM_NUMBER_TBL8S (1 << 8)
@@ -554,7 +554,7 @@ setup_lpm(const int socketid)
 	struct rte_eth_dev_info dev_info;
 	struct rte_lpm6_config config;
 	struct rte_lpm_config config_ipv4;
-	unsigned i;
+	int i;
 	int ret;
 	char s[64];
 	char abuf[INET6_ADDRSTRLEN];
@@ -572,32 +572,33 @@ setup_lpm(const int socketid)
 			socketid);
 
 	/* populate the LPM table */
-	for (i = 0; i < RTE_DIM(ipv4_l3fwd_route_array); i++) {
+	for (i = 0; i < route_num_v4; i++) {
 		struct in_addr in;
 
 		/* skip unused ports */
-		if ((1 << ipv4_l3fwd_route_array[i].if_out &
+		if ((1 << route_base_v4[i].if_out &
 				enabled_port_mask) == 0)
 			continue;
 
-		rte_eth_dev_info_get(ipv4_l3fwd_route_array[i].if_out,
+		rte_eth_dev_info_get(route_base_v4[i].if_out,
 				     &dev_info);
 		ret = rte_lpm_add(ipv4_l3fwd_lpm_lookup_struct[socketid],
-			ipv4_l3fwd_route_array[i].ip,
-			ipv4_l3fwd_route_array[i].depth,
-			ipv4_l3fwd_route_array[i].if_out);
+			route_base_v4[i].ip,
+			route_base_v4[i].depth,
+			route_base_v4[i].if_out);
 
 		if (ret < 0) {
+			lpm_free_routes();
 			rte_exit(EXIT_FAILURE,
 				"Unable to add entry %u to the l3fwd LPM table on socket %d\n",
 				i, socketid);
 		}
 
-		in.s_addr = htonl(ipv4_l3fwd_route_array[i].ip);
+		in.s_addr = htonl(route_base_v4[i].ip);
 		printf("LPM: Adding route %s / %d (%d) [%s]\n",
 		       inet_ntop(AF_INET, &in, abuf, sizeof(abuf)),
-		       ipv4_l3fwd_route_array[i].depth,
-		       ipv4_l3fwd_route_array[i].if_out, dev_info.device->name);
+		       route_base_v4[i].depth,
+		       route_base_v4[i].if_out, dev_info.device->name);
 	}
 
 	/* create the LPM6 table */
@@ -608,37 +609,40 @@ setup_lpm(const int socketid)
 	config.flags = 0;
 	ipv6_l3fwd_lpm_lookup_struct[socketid] = rte_lpm6_create(s, socketid,
 				&config);
-	if (ipv6_l3fwd_lpm_lookup_struct[socketid] == NULL)
+	if (ipv6_l3fwd_lpm_lookup_struct[socketid] == NULL) {
+		lpm_free_routes();
 		rte_exit(EXIT_FAILURE,
 			"Unable to create the l3fwd LPM table on socket %d\n",
 			socketid);
+	}
 
 	/* populate the LPM table */
-	for (i = 0; i < RTE_DIM(ipv6_l3fwd_route_array); i++) {
+	for (i = 0; i < route_num_v6; i++) {
 
 		/* skip unused ports */
-		if ((1 << ipv6_l3fwd_route_array[i].if_out &
+		if ((1 << route_base_v6[i].if_out &
 				enabled_port_mask) == 0)
 			continue;
 
-		rte_eth_dev_info_get(ipv4_l3fwd_route_array[i].if_out,
+		rte_eth_dev_info_get(route_base_v6[i].if_out,
 				     &dev_info);
 		ret = rte_lpm6_add(ipv6_l3fwd_lpm_lookup_struct[socketid],
-			ipv6_l3fwd_route_array[i].ip,
-			ipv6_l3fwd_route_array[i].depth,
-			ipv6_l3fwd_route_array[i].if_out);
+			route_base_v6[i].ip_8,
+			route_base_v6[i].depth,
+			route_base_v6[i].if_out);
 
 		if (ret < 0) {
+			lpm_free_routes();
 			rte_exit(EXIT_FAILURE,
 				"Unable to add entry %u to the l3fwd LPM table on socket %d\n",
 				i, socketid);
 		}
 
 		printf("LPM: Adding route %s / %d (%d) [%s]\n",
-		       inet_ntop(AF_INET6, ipv6_l3fwd_route_array[i].ip, abuf,
+		       inet_ntop(AF_INET6, route_base_v6[i].ip_8, abuf,
 				 sizeof(abuf)),
-		       ipv6_l3fwd_route_array[i].depth,
-		       ipv6_l3fwd_route_array[i].if_out, dev_info.device->name);
+		       route_base_v6[i].depth,
+		       route_base_v6[i].if_out, dev_info.device->name);
 	}
 }
 

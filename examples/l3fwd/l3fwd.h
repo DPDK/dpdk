@@ -58,6 +58,11 @@
 #endif
 #define HASH_ENTRY_NUMBER_DEFAULT	16
 
+struct parm_cfg {
+	const char *rule_ipv4_name;
+	const char *rule_ipv6_name;
+};
+
 struct mbuf_table {
 	uint16_t len;
 	struct rte_mbuf *m_table[MAX_PKT_BURST];
@@ -95,6 +100,8 @@ extern uint32_t hash_entry_number;
 extern xmm_t val_eth[RTE_MAX_ETHPORTS];
 
 extern struct lcore_conf lcore_conf[RTE_MAX_LCORE];
+
+extern struct parm_cfg parm_config;
 
 /* Send burst of packets on an output interface */
 static inline int
