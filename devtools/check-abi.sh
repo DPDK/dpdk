@@ -44,10 +44,6 @@ for dump in $(find $refdir -name "*.dump"); do
 		echo "Skipped glue library $name."
 		continue
 	fi
-	if grep -qE "\<soname='librte_event_dlb\.so" $dump; then
-		echo "Skipped removed driver $name."
-		continue
-	fi
 	if grep -qE "\<librte_*.*_octeontx2" $dump; then
 		echo "Skipped removed driver $name."
 		continue
