@@ -17,36 +17,42 @@ struct qat_asym_function {
 };
 
 static struct qat_asym_function
-get_modexp_function(struct rte_crypto_asym_xform *xform)
+get_modexp_function2(uint32_t bytesize)
 {
 	struct qat_asym_function qat_function = { };
 
-	if (xform->modex.modulus.length <= 64) {
+	if (bytesize <= 64) {
 		qat_function.func_id = MATHS_MODEXP_L512;
 		qat_function.bytesize = 64;
-	} else if (xform->modex.modulus.length <= 128) {
+	} else if (bytesize <= 128) {
 		qat_function.func_id = MATHS_MODEXP_L1024;
 		qat_function.bytesize = 128;
-	} else if (xform->modex.modulus.length <= 192) {
+	} else if (bytesize <= 192) {
 		qat_function.func_id = MATHS_MODEXP_L1536;
 		qat_function.bytesize = 192;
-	} else if (xform->modex.modulus.length <= 256) {
+	} else if (bytesize <= 256) {
 		qat_function.func_id = MATHS_MODEXP_L2048;
 		qat_function.bytesize = 256;
-	} else if (xform->modex.modulus.length <= 320) {
+	} else if (bytesize <= 320) {
 		qat_function.func_id = MATHS_MODEXP_L2560;
 		qat_function.bytesize = 320;
-	} else if (xform->modex.modulus.length <= 384) {
+	} else if (bytesize <= 384) {
 		qat_function.func_id = MATHS_MODEXP_L3072;
 		qat_function.bytesize = 384;
-	} else if (xform->modex.modulus.length <= 448) {
+	} else if (bytesize <= 448) {
 		qat_function.func_id = MATHS_MODEXP_L3584;
 		qat_function.bytesize = 448;
-	} else if (xform->modex.modulus.length <= 512) {
+	} else if (bytesize <= 512) {
 		qat_function.func_id = MATHS_MODEXP_L4096;
 		qat_function.bytesize = 512;
 	}
 	return qat_function;
+}
+
+static struct qat_asym_function
+get_modexp_function(struct rte_crypto_asym_xform *xform)
+{
+	return get_modexp_function2(xform->modex.modulus.length);
 }
 
 static struct qat_asym_function

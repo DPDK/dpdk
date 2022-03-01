@@ -205,7 +205,7 @@ modexp_set_input(struct rte_crypto_asym_op *asym_op,
 		struct rte_crypto_asym_xform *xform)
 {
 	struct qat_asym_function qat_function;
-	uint32_t alg_bytesize, func_id;
+	uint32_t alg_bytesize, func_id, in_bytesize;
 	int status = 0;
 
 	CHECK_IF_NOT_EMPTY(xform->modex.modulus, "mod exp",
@@ -215,7 +215,15 @@ modexp_set_input(struct rte_crypto_asym_op *asym_op,
 	if (status)
 		return status;
 
-	qat_function = get_asym_function(xform);
+	if (asym_op->modex.base.length > xform->modex.exponent.length &&
+		asym_op->modex.base.length > xform->modex.modulus.length) {
+		in_bytesize = asym_op->modex.base.length;
+	} else if (xform->modex.exponent.length > xform->modex.modulus.length)
+		in_bytesize = xform->modex.exponent.length;
+	else
+		in_bytesize = xform->modex.modulus.length;
+
+	qat_function = get_modexp_function2(in_bytesize);
 	func_id = qat_function.func_id;
 	if (qat_function.func_id == 0) {
 		QAT_LOG(ERR, "Cannot obtain functionality id");
