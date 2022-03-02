@@ -352,6 +352,8 @@ Limitations
     from the reference "Clock Queue" completions,
     the scheduled send timestamps should not be specified with non-zero MSB.
 
+- The NIC egress flow rules on representor port are not supported.
+
 Statistics
 ----------
 
