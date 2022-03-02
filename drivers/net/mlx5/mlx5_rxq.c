@@ -2144,6 +2144,30 @@ mlx5_ext_rxq_get(struct rte_eth_dev *dev, uint16_t idx)
 }
 
 /**
+ * Dereference a list of Rx queues.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ * @param queues
+ *   List of Rx queues to deref.
+ * @param queues_n
+ *   Number of queues in the array.
+ */
+static void
+mlx5_rxqs_deref(struct rte_eth_dev *dev, uint16_t *queues,
+		const uint32_t queues_n)
+{
+	uint32_t i;
+
+	for (i = 0; i < queues_n; i++) {
+		if (mlx5_is_external_rxq(dev, queues[i]))
+			claim_nonzero(mlx5_ext_rxq_deref(dev, queues[i]));
+		else
+			claim_nonzero(mlx5_rxq_deref(dev, queues[i]));
+	}
+}
+
+/**
  * Release a Rx queue.
  *
  * @param dev
@@ -2377,7 +2401,7 @@ mlx5_ind_table_obj_release(struct rte_eth_dev *dev,
 			   bool deref_rxqs)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	unsigned int i, ret;
+	unsigned int ret;
 
 	rte_rwlock_write_lock(&priv->ind_tbls_lock);
 	ret = __atomic_sub_fetch(&ind_tbl->refcnt, 1, __ATOMIC_RELAXED);
@@ -2387,10 +2411,8 @@ mlx5_ind_table_obj_release(struct rte_eth_dev *dev,
 	if (ret)
 		return 1;
 	priv->obj_ops.ind_table_destroy(ind_tbl);
-	if (deref_rxqs) {
-		for (i = 0; i != ind_tbl->queues_n; ++i)
-			claim_nonzero(mlx5_rxq_deref(dev, ind_tbl->queues[i]));
-	}
+	if (deref_rxqs)
+		mlx5_rxqs_deref(dev, ind_tbl->queues, ind_tbl->queues_n);
 	mlx5_free(ind_tbl);
 	return 0;
 }
@@ -2443,7 +2465,7 @@ mlx5_ind_table_obj_setup(struct rte_eth_dev *dev,
 	struct mlx5_priv *priv = dev->data->dev_private;
 	uint32_t queues_n = ind_tbl->queues_n;
 	uint16_t *queues = ind_tbl->queues;
-	unsigned int i = 0, j;
+	unsigned int i = 0;
 	int ret = 0, err;
 	const unsigned int n = rte_is_power_of_2(queues_n) ?
 			       log2above(queues_n) :
@@ -2471,12 +2493,7 @@ mlx5_ind_table_obj_setup(struct rte_eth_dev *dev,
 error:
 	if (ref_qs) {
 		err = rte_errno;
-		for (j = 0; j < i; j++) {
-			if (mlx5_is_external_rxq(dev, queues[j]))
-				mlx5_ext_rxq_deref(dev, queues[j]);
-			else
-				mlx5_rxq_deref(dev, queues[j]);
-		}
+		mlx5_rxqs_deref(dev, queues, i);
 		rte_errno = err;
 	}
 	DRV_LOG(DEBUG, "Port %u cannot setup indirection table.",
