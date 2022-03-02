@@ -426,7 +426,7 @@ enum mlx5_feature_name {
 #define MLX5_ACT_NUM_MDF_IPV6		4
 #define MLX5_ACT_NUM_MDF_MAC		2
 #define MLX5_ACT_NUM_MDF_VID		1
-#define MLX5_ACT_NUM_MDF_PORT		2
+#define MLX5_ACT_NUM_MDF_PORT		1
 #define MLX5_ACT_NUM_MDF_TTL		1
 #define MLX5_ACT_NUM_DEC_TTL		MLX5_ACT_NUM_MDF_TTL
 #define MLX5_ACT_NUM_MDF_TCPSEQ		1
