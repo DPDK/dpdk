@@ -42,7 +42,7 @@ tap_support_features(unsigned int *tap_features)
 }
 
 int
-tap_open(const char *ifname, bool multi_queue)
+tap_open(const char *ifname, unsigned int r_flags, bool multi_queue)
 {
 	struct ifreq ifr;
 	int tapfd;
@@ -61,7 +61,7 @@ tap_open(const char *ifname, bool multi_queue)
 retry_mono_q:
 	memset(&ifr, 0, sizeof(ifr));
 	strncpy(ifr.ifr_name, ifname, IFNAMSIZ - 1);
-	ifr.ifr_flags = IFF_TAP | IFF_NO_PI | IFF_VNET_HDR;
+	ifr.ifr_flags = r_flags;
 	if (multi_queue)
 		ifr.ifr_flags |= IFF_MULTI_QUEUE;
 	if (ioctl(tapfd, TUNSETIFF, (void *)&ifr) == -1) {

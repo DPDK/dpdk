@@ -22,6 +22,7 @@
 #define IFF_NO_PI        0x1000
 #define IFF_VNET_HDR     0x4000
 #define IFF_MULTI_QUEUE  0x0100
+#define IFF_NAPI         0x0010
 
 /* Features for GSO (TUNSETOFFLOAD). */
 #define TUN_F_CSUM	0x01	/* You can hand me unchecksummed packets. */
@@ -36,7 +37,7 @@
 int vhost_kernel_tap_setup(int tapfd, int hdr_size, uint64_t features);
 
 int tap_support_features(unsigned int *tap_features);
-int tap_open(const char *ifname, bool multi_queue);
+int tap_open(const char *ifname, unsigned int r_flags, bool multi_queue);
 int tap_get_name(int tapfd, char **ifname);
 int tap_get_flags(int tapfd, unsigned int *tap_flags);
 int tap_set_mac(int tapfd, uint8_t *mac);
