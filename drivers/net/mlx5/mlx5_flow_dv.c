@@ -8741,6 +8741,7 @@ flow_dv_hrxq_prepare(struct rte_eth_dev *dev,
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_flow_handle *dh = dev_flow->handle;
+	uint32_t shared_rss = rss_desc->shared_rss;
 	struct mlx5_hrxq *hrxq;
 
 	MLX5_ASSERT(rss_desc->queue_num);
@@ -8755,6 +8756,7 @@ flow_dv_hrxq_prepare(struct rte_eth_dev *dev,
 		return NULL;
 	hrxq = mlx5_ipool_get(priv->sh->ipool[MLX5_IPOOL_HRXQ],
 			      *hrxq_idx);
+	rss_desc->shared_rss = shared_rss;
 	return hrxq;
 }
 
