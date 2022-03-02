@@ -6296,6 +6296,8 @@ flow_create_split_meter(struct rte_eth_dev *dev,
 								  fm->policy_id,
 								  NULL);
 			MLX5_ASSERT(wks->policy);
+			if (wks->policy->mark)
+				wks->mark = 1;
 			if (wks->policy->is_hierarchy) {
 				wks->final_policy =
 				mlx5_flow_meter_hierarchy_get_final_policy(dev,

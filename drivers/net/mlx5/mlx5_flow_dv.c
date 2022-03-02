@@ -15566,9 +15566,7 @@ __flow_dv_create_domain_policy_acts(struct rte_eth_dev *dev,
 			    (MLX5_MAX_MODIFY_NUM + 1)];
 	} mhdr_dummy;
 	struct mlx5_flow_dv_modify_hdr_resource *mhdr_res = &mhdr_dummy.res;
-	struct mlx5_flow_workspace *wks = mlx5_flow_get_thread_workspace();
 
-	MLX5_ASSERT(wks);
 	egress = (domain == MLX5_MTR_DOMAIN_EGRESS) ? 1 : 0;
 	transfer = (domain == MLX5_MTR_DOMAIN_TRANSFER) ? 1 : 0;
 	memset(&dh, 0, sizeof(struct mlx5_flow_handle));
@@ -15606,7 +15604,6 @@ __flow_dv_create_domain_policy_acts(struct rte_eth_dev *dev,
 					  NULL,
 					  "cannot create policy "
 					  "mark action for this color");
-				wks->mark = 1;
 				if (flow_dv_tag_resource_register(dev, tag_be,
 						  &dev_flow, &flow_err))
 					return -rte_mtr_error_set(error,
@@ -15618,6 +15615,7 @@ __flow_dv_create_domain_policy_acts(struct rte_eth_dev *dev,
 				act_cnt->rix_mark =
 					dev_flow.handle->dvh.rix_tag;
 				action_flags |= MLX5_FLOW_ACTION_MARK;
+				mtr_policy->mark = 1;
 				break;
 			}
 			case RTE_FLOW_ACTION_TYPE_SET_TAG:
@@ -15901,6 +15899,8 @@ __flow_dv_create_domain_policy_acts(struct rte_eth_dev *dev,
 				act_cnt->next_sub_policy = NULL;
 				mtr_policy->is_hierarchy = 1;
 				mtr_policy->dev = next_policy->dev;
+				if (next_policy->mark)
+					mtr_policy->mark = 1;
 				action_flags |=
 				MLX5_FLOW_ACTION_METER_WITH_TERMINATED_POLICY;
 				break;

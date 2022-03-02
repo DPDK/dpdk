@@ -779,6 +779,8 @@ struct mlx5_flow_meter_policy {
 	/* If yellow color policy is skipped. */
 	uint32_t skip_g:1;
 	/* If green color policy is skipped. */
+	uint32_t mark:1;
+	/* If policy contains mark action. */
 	rte_spinlock_t sl;
 	uint32_t ref_cnt;
 	/* Use count. */
