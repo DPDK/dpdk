@@ -883,12 +883,47 @@ flow_verbs_item_gre_ip_protocol_update(struct ibv_flow_attr *attr,
 }
 
 /**
+ * Reserve space for GRE spec in spec buffer.
+ *
+ * @param[in,out] dev_flow
+ *   Pointer to dev_flow structure.
+ *
+ * @return
+ *   Pointer to reserved space in spec buffer.
+ */
+static uint8_t *
+flow_verbs_reserve_gre(struct mlx5_flow *dev_flow)
+{
+	uint8_t *buffer;
+	struct mlx5_flow_verbs_workspace *verbs = &dev_flow->verbs;
+#ifndef HAVE_IBV_DEVICE_MPLS_SUPPORT
+	unsigned int size = sizeof(struct ibv_flow_spec_tunnel);
+	struct ibv_flow_spec_tunnel tunnel = {
+		.type = IBV_FLOW_SPEC_VXLAN_TUNNEL,
+		.size = size,
+	};
+#else
+	unsigned int size = sizeof(struct ibv_flow_spec_gre);
+	struct ibv_flow_spec_gre tunnel = {
+		.type = IBV_FLOW_SPEC_GRE,
+		.size = size,
+	};
+#endif
+
+	buffer = verbs->specs + verbs->size;
+	flow_verbs_spec_add(verbs, &tunnel, size);
+	return buffer;
+}
+
+/**
  * Convert the @p item into a Verbs specification. This function assumes that
- * the input is valid and that there is space to insert the requested item
- * into the flow.
+ * the input is valid and that Verbs specification will be placed in
+ * the pre-reserved space.
  *
  * @param[in, out] dev_flow
  *   Pointer to dev_flow structure.
+ * @param[in, out] gre_spec
+ *   Pointer to space reserved for GRE spec.
  * @param[in] item
  *   Item specification.
  * @param[in] item_flags
@@ -896,6 +931,7 @@ flow_verbs_item_gre_ip_protocol_update(struct ibv_flow_attr *attr,
  */
 static void
 flow_verbs_translate_item_gre(struct mlx5_flow *dev_flow,
+			      uint8_t *gre_spec,
 			      const struct rte_flow_item *item __rte_unused,
 			      uint64_t item_flags)
 {
@@ -949,7 +985,8 @@ flow_verbs_translate_item_gre(struct mlx5_flow *dev_flow,
 		flow_verbs_item_gre_ip_protocol_update(&verbs->attr,
 						       IBV_FLOW_SPEC_IPV6,
 						       IPPROTO_GRE);
-	flow_verbs_spec_add(verbs, &tunnel, size);
+	MLX5_ASSERT(gre_spec);
+	memcpy(gre_spec, &tunnel, size);
 }
 
 /**
@@ -1680,6 +1717,7 @@ flow_verbs_translate(struct rte_eth_dev *dev,
 	struct mlx5_flow_workspace *wks = mlx5_flow_get_thread_workspace();
 	struct mlx5_flow_rss_desc *rss_desc;
 	const struct rte_flow_item *tunnel_item = NULL;
+	uint8_t *gre_spec = NULL;
 
 	MLX5_ASSERT(wks);
 	rss_desc = &wks->rss_desc;
@@ -1817,6 +1855,7 @@ flow_verbs_translate(struct rte_eth_dev *dev,
 			item_flags |= MLX5_FLOW_LAYER_VXLAN_GPE;
 			break;
 		case RTE_FLOW_ITEM_TYPE_GRE:
+			gre_spec = flow_verbs_reserve_gre(dev_flow);
 			subpriority = MLX5_TUNNEL_PRIO_GET(rss_desc);
 			item_flags |= MLX5_FLOW_LAYER_GRE;
 			tunnel_item = items;
@@ -1834,8 +1873,8 @@ flow_verbs_translate(struct rte_eth_dev *dev,
 		}
 	}
 	if (item_flags & MLX5_FLOW_LAYER_GRE)
-		flow_verbs_translate_item_gre(dev_flow, tunnel_item,
-					      item_flags);
+		flow_verbs_translate_item_gre(dev_flow, gre_spec,
+					      tunnel_item, item_flags);
 	dev_flow->handle->layers = item_flags;
 	/* Other members of attr will be ignored. */
 	dev_flow->verbs.attr.priority =
