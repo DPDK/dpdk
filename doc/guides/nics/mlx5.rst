@@ -504,6 +504,8 @@ Limitations
 
   Matching on checksum and sequence needs OFED 5.6+.
 
+- The NIC egress flow rules on representor port are not supported.
+
 
 Statistics
 ----------

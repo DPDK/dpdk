@@ -7235,8 +7235,10 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 				return ret;
 			last_item = MLX5_FLOW_ITEM_TAG;
 			break;
-		case MLX5_RTE_FLOW_ITEM_TYPE_TAG:
 		case MLX5_RTE_FLOW_ITEM_TYPE_TX_QUEUE:
+			last_item = MLX5_FLOW_ITEM_TX_QUEUE;
+			break;
+		case MLX5_RTE_FLOW_ITEM_TYPE_TAG:
 			break;
 		case RTE_FLOW_ITEM_TYPE_GTP:
 			ret = flow_dv_validate_item_gtp(dev, items, item_flags,
@@ -8069,6 +8071,18 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 		return rte_flow_error_set(error, EINVAL,
 				RTE_FLOW_ERROR_TYPE_ACTION, NULL,
 				"sample before modify action is not supported");
+	/*
+	 * Validation the NIC Egress flow on representor, except implicit
+	 * hairpin default egress flow with TX_QUEUE item, other flows not
+	 * work due to metadata regC0 mismatch.
+	 */
+	if ((!attr->transfer && attr->egress) && priv->representor &&
+	    !(item_flags & MLX5_FLOW_ITEM_TX_QUEUE))
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ITEM,
+					  NULL,
+					  "NIC egress rules on representors"
+					  " is not supported");
 	return 0;
 }
 
@@ -13758,11 +13772,13 @@ flow_dv_translate(struct rte_eth_dev *dev,
 	/*
 	 * When E-Switch mode is enabled, we have two cases where we need to
 	 * set the source port manually.
-	 * The first one, is in case of Nic steering rule, and the second is
-	 * E-Switch rule where no port_id item was found. In both cases
-	 * the source port is set according the current port in use.
+	 * The first one, is in case of NIC ingress steering rule, and the
+	 * second is E-Switch rule where no port_id item was found.
+	 * In both cases the source port is set according the current port
+	 * in use.
 	 */
-	if (!(item_flags & MLX5_FLOW_ITEM_PORT_ID) && priv->sh->esw_mode) {
+	if (!(item_flags & MLX5_FLOW_ITEM_PORT_ID) && priv->sh->esw_mode &&
+	    !(attr->egress && !attr->transfer)) {
 		if (flow_dv_translate_item_port_id(dev, match_mask,
 						   match_value, NULL, attr))
 			return -rte_errno;
