@@ -493,6 +493,7 @@ ark_config_device(struct rte_eth_dev *dev)
 	 * known state
 	 */
 	ark->start_pg = 0;
+	ark->pg_running = 0;
 	ark->pg = ark_pktgen_init(ark->pktgen.v, 0, 1);
 	if (ark->pg == NULL)
 		return -1;
@@ -607,18 +608,23 @@ eth_ark_dev_start(struct rte_eth_dev *dev)
 	if (ark->start_pg)
 		ark_pktchkr_run(ark->pc);
 
-	if (ark->start_pg && (dev->data->port_id == 0)) {
+	if (ark->start_pg && !ark->pg_running) {
 		pthread_t thread;
 
 		/* Delay packet generatpr start allow the hardware to be ready
 		 * This is only used for sanity checking with internal generator
 		 */
-		if (rte_ctrl_thread_create(&thread, "ark-delay-pg", NULL,
+		char tname[32];
+		snprintf(tname, sizeof(tname), "ark-delay-pg-%d",
+			 dev->data->port_id);
+
+		if (rte_ctrl_thread_create(&thread, tname, NULL,
 					   ark_pktgen_delay_start, ark->pg)) {
 			ARK_PMD_LOG(ERR, "Could not create pktgen "
 				    "starter thread\n");
 			return -1;
 		}
+		ark->pg_running = 1;
 	}
 
 	if (ark->user_ext.dev_start)
@@ -647,8 +653,10 @@ eth_ark_dev_stop(struct rte_eth_dev *dev)
 		       ark->user_data[dev->data->port_id]);
 
 	/* Stop the packet generator */
-	if (ark->start_pg)
+	if (ark->start_pg && ark->pg_running) {
 		ark_pktgen_pause(ark->pg);
+		ark->pg_running = 0;
+	}
 
 	dev->rx_pkt_burst = rte_eth_pkt_burst_dummy;
 	dev->tx_pkt_burst = rte_eth_pkt_burst_dummy;

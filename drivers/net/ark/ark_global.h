@@ -107,6 +107,7 @@ struct ark_adapter {
 
 	/* Pointers to packet generator and checker */
 	int start_pg;
+	uint16_t pg_running;
 	ark_pkt_gen_t pg;
 	ark_pkt_chkr_t pc;
 	ark_pkt_dir_t pd;
