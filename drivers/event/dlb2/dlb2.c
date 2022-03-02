@@ -3916,15 +3916,17 @@ dlb2_hw_dequeue_sparse(struct dlb2_eventdev *dlb2,
 								&events[num],
 								&qes[0],
 								num_avail);
-			num += n_iter;
-			/* update rolling_mask for vector code support */
-			m_rshift = qm_port->cq_rolling_mask >> n_iter;
-			m_lshift = qm_port->cq_rolling_mask << (64 - n_iter);
-			m2_rshift = qm_port->cq_rolling_mask_2 >> n_iter;
-			m2_lshift = qm_port->cq_rolling_mask_2 <<
+			if (n_iter != 0) {
+				num += n_iter;
+				/* update rolling_mask for vector code support */
+				m_rshift = qm_port->cq_rolling_mask >> n_iter;
+				m_lshift = qm_port->cq_rolling_mask << (64 - n_iter);
+				m2_rshift = qm_port->cq_rolling_mask_2 >> n_iter;
+				m2_lshift = qm_port->cq_rolling_mask_2 <<
 					(64 - n_iter);
-			qm_port->cq_rolling_mask = (m_rshift | m2_lshift);
-			qm_port->cq_rolling_mask_2 = (m2_rshift | m_lshift);
+				qm_port->cq_rolling_mask = (m_rshift | m2_lshift);
+				qm_port->cq_rolling_mask_2 = (m2_rshift | m_lshift);
+			}
 		} else { /* !use_scalar */
 			num_avail = dlb2_recv_qe_sparse_vec(qm_port,
 							    &events[num],
