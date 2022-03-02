@@ -1925,6 +1925,7 @@ hns3vf_is_reset_pending(struct hns3_adapter *hns)
 static int
 hns3vf_wait_hardware_ready(struct hns3_adapter *hns)
 {
+#define HNS3_WAIT_PF_RESET_READY_TIME 5
 	struct hns3_hw *hw = &hns->hw;
 	struct hns3_wait_data *wait_data = hw->reset.wait_data;
 	struct timeval tv;
@@ -1945,12 +1946,14 @@ hns3vf_wait_hardware_ready(struct hns3_adapter *hns)
 			return 0;
 
 		wait_data->check_completion = NULL;
-		wait_data->interval = 1 * MSEC_PER_SEC * USEC_PER_MSEC;
+		wait_data->interval = HNS3_WAIT_PF_RESET_READY_TIME *
+			MSEC_PER_SEC * USEC_PER_MSEC;
 		wait_data->count = 1;
 		wait_data->result = HNS3_WAIT_REQUEST;
 		rte_eal_alarm_set(wait_data->interval, hns3_wait_callback,
 				  wait_data);
-		hns3_warn(hw, "hardware is ready, delay 1 sec for PF reset complete");
+		hns3_warn(hw, "hardware is ready, delay %d sec for PF reset complete",
+				HNS3_WAIT_PF_RESET_READY_TIME);
 		return -EAGAIN;
 	} else if (wait_data->result == HNS3_WAIT_TIMEOUT) {
 		hns3_clock_gettime(&tv);
