@@ -993,7 +993,6 @@ union mlx5_flow_tbl_key {
 /* Table structure. */
 struct mlx5_flow_tbl_resource {
 	void *obj; /**< Pointer to DR table object. */
-	uint32_t refcnt; /**< Reference counter. */
 };
 
 #define MLX5_MAX_TABLES UINT16_MAX
