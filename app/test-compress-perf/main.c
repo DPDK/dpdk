@@ -194,6 +194,7 @@ comp_perf_initialize_compressdev(struct comp_test_data *test_data,
 			.max_nb_priv_xforms = NUM_MAX_XFORMS,
 			.max_nb_streams = 0
 		};
+		test_data->nb_qps = config.nb_queue_pairs;
 
 		if (rte_compressdev_configure(cdev_id, &config) < 0) {
 			RTE_LOG(ERR, USER1, "Device configuration failed\n");
