@@ -1298,6 +1298,11 @@ mlx5_shared_dev_ctx_args_config(struct mlx5_dev_ctx_shared *sh,
 		DRV_LOG(DEBUG, "E-Switch DV flow is not supported.");
 		config->dv_esw_en = 0;
 	}
+	if (config->dv_esw_en && !config->dv_flow_en) {
+		DRV_LOG(DEBUG,
+			"E-Switch DV flow is supported only when DV flow is enabled.");
+		config->dv_esw_en = 0;
+	}
 	if (config->dv_miss_info && config->dv_esw_en)
 		config->dv_xmeta_en = MLX5_XMETA_MODE_META16;
 	if (!config->dv_esw_en &&
