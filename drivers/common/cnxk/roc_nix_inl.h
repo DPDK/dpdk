@@ -137,7 +137,7 @@ struct roc_nix_inl_dev {
 	bool set_soft_exp_poll;
 	/* End of input parameters */
 
-#define ROC_NIX_INL_MEM_SZ (2304)
+#define ROC_NIX_INL_MEM_SZ (1280)
 	uint8_t reserved[ROC_NIX_INL_MEM_SZ] __plt_cache_aligned;
 } __plt_cache_aligned;
 

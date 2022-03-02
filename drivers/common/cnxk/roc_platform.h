@@ -63,6 +63,13 @@
 #ifndef PLT_ETHER_ADDR_LEN
 #define PLT_ETHER_ADDR_LEN RTE_ETHER_ADDR_LEN
 #endif
+
+/* Cast to specific datatypes */
+#define PLT_PTR_CAST(val) ((void *)(val))
+#define PLT_U64_CAST(val) ((uint64_t)(val))
+#define PLT_U32_CAST(val) ((uint32_t)(val))
+#define PLT_U16_CAST(val) ((uint16_t)(val))
+
 /** Divide ceil */
 #define PLT_DIV_CEIL(x, y)			\
 	({					\

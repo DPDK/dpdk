@@ -330,12 +330,13 @@ roc_nix_inl_outb_init(struct roc_nix *roc_nix)
 	struct dev *dev = &nix->dev;
 	struct msix_offset_rsp *rsp;
 	struct nix_inl_dev *inl_dev;
+	size_t sa_sz, ring_sz;
 	uint16_t sso_pffunc;
 	uint8_t eng_grpmask;
 	uint64_t blkaddr, i;
+	uint64_t *ring_base;
 	uint16_t nb_lf;
 	void *sa_base;
-	size_t sa_sz;
 	int j, rc;
 	void *sa;
 
@@ -468,16 +469,16 @@ skip_sa_alloc:
 	/* Allocate memory to be used as a ring buffer to poll for
 	 * soft expiry event from ucode
 	 */
+	ring_sz = (ROC_IPSEC_ERR_RING_MAX_ENTRY + 1) * sizeof(uint64_t);
+	ring_base = inl_dev->sa_soft_exp_ring;
 	for (i = 0; i < nix->outb_se_ring_cnt; i++) {
-		inl_dev->sa_soft_exp_ring[nix->outb_se_ring_base + i] =
-			plt_zmalloc((ROC_IPSEC_ERR_RING_MAX_ENTRY + 1) *
-					    sizeof(uint64_t),
-				    0);
-		if (!inl_dev->sa_soft_exp_ring[i]) {
+		ring_base[nix->outb_se_ring_base + i] =
+			PLT_U64_CAST(plt_zmalloc(ring_sz, 0));
+		if (!ring_base[nix->outb_se_ring_base + i]) {
 			plt_err("Couldn't allocate memory for soft exp ring");
 			while (i--)
-				plt_free(inl_dev->sa_soft_exp_ring
-						 [nix->outb_se_ring_base + i]);
+				plt_free(PLT_PTR_CAST(
+					ring_base[nix->outb_se_ring_base + i]));
 			rc = -ENOMEM;
 			goto lf_fini;
 		}
@@ -504,6 +505,7 @@ roc_nix_inl_outb_fini(struct roc_nix *roc_nix)
 	struct idev_cfg *idev = idev_get_cfg();
 	struct dev *dev = &nix->dev;
 	struct nix_inl_dev *inl_dev;
+	uint64_t *ring_base;
 	int i, rc, ret = 0;
 
 	if (!nix->inl_outb_ena)
@@ -537,10 +539,11 @@ roc_nix_inl_outb_fini(struct roc_nix *roc_nix)
 
 	if (idev && idev->nix_inl_dev) {
 		inl_dev = idev->nix_inl_dev;
+		ring_base = inl_dev->sa_soft_exp_ring;
 
 		for (i = 0; i < ROC_NIX_INL_MAX_SOFT_EXP_RNGS; i++) {
-			if (inl_dev->sa_soft_exp_ring[i])
-				plt_free(inl_dev->sa_soft_exp_ring[i]);
+			if (ring_base[i])
+				plt_free(PLT_PTR_CAST(ring_base[i]));
 		}
 	}
 

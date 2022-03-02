@@ -58,7 +58,7 @@ struct nix_inl_dev {
 	/* OUTB soft expiry poll thread */
 	pthread_t soft_exp_poll_thread;
 	uint32_t soft_exp_poll_freq;
-	void *sa_soft_exp_ring[ROC_NIX_INL_MAX_SOFT_EXP_RNGS];
+	uint64_t *sa_soft_exp_ring;
 
 	/* Soft expiry ring bitmap */
 	struct plt_bitmap *soft_exp_ring_bmap;

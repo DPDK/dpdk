@@ -653,7 +653,7 @@ inl_outb_soft_exp_poll(struct nix_inl_dev *inl_dev, uint32_t ring_idx)
 	uint32_t port_id;
 
 	port_id = ring_idx / ROC_NIX_SOFT_EXP_PER_PORT_MAX_RINGS;
-	ring_base = inl_dev->sa_soft_exp_ring[ring_idx];
+	ring_base = PLT_PTR_CAST(inl_dev->sa_soft_exp_ring[ring_idx]);
 	if (!ring_base) {
 		plt_err("Invalid soft exp ring base");
 		return;
@@ -751,6 +751,14 @@ nix_inl_outb_poll_thread_setup(struct nix_inl_dev *inl_dev)
 
 	inl_dev->soft_exp_ring_bmap_mem = mem;
 	inl_dev->soft_exp_ring_bmap = bmap;
+	inl_dev->sa_soft_exp_ring = plt_zmalloc(
+		ROC_NIX_INL_MAX_SOFT_EXP_RNGS * sizeof(uint64_t), 0);
+	if (!inl_dev->sa_soft_exp_ring) {
+		plt_err("soft expiry ring pointer array alloc failed");
+		plt_free(mem);
+		rc = -ENOMEM;
+		goto exit;
+	}
 
 	for (i = 0; i < ROC_NIX_INL_MAX_SOFT_EXP_RNGS; i++)
 		plt_bitmap_clear(inl_dev->soft_exp_ring_bmap, i);
@@ -896,6 +904,7 @@ roc_nix_inl_dev_fini(struct roc_nix_inl_dev *roc_inl_dev)
 		pthread_join(inl_dev->soft_exp_poll_thread, NULL);
 		plt_bitmap_free(inl_dev->soft_exp_ring_bmap);
 		plt_free(inl_dev->soft_exp_ring_bmap_mem);
+		plt_free(inl_dev->sa_soft_exp_ring);
 	}
 
 	/* Flush Inbound CTX cache entries */
