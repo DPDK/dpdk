@@ -168,7 +168,7 @@ comp_perf_initialize_compressdev(struct comp_test_data *test_data,
 		cdev_id = enabled_cdevs[i];
 
 		struct rte_compressdev_info cdev_info;
-		uint8_t socket_id = rte_compressdev_socket_id(cdev_id);
+		int socket_id = rte_compressdev_socket_id(cdev_id);
 
 		rte_compressdev_info_get(cdev_id, &cdev_info);
 		if (cdev_info.max_nb_queue_pairs &&
