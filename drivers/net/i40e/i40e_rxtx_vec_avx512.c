@@ -1060,9 +1060,6 @@ i40e_xmit_fixed_burst_vec_avx512(void *tx_queue, struct rte_mbuf **tx_pkts,
 	uint64_t flags = I40E_TD_CMD;
 	uint64_t rs = I40E_TX_DESC_CMD_RS | I40E_TD_CMD;
 
-	/* cross rx_thresh boundary is not allowed */
-	nb_pkts = RTE_MIN(nb_pkts, txq->tx_rs_thresh);
-
 	if (txq->nb_tx_free < txq->tx_free_thresh)
 		i40e_tx_free_bufs_avx512(txq);
 
@@ -1127,6 +1124,7 @@ i40e_xmit_pkts_vec_avx512(void *tx_queue, struct rte_mbuf **tx_pkts,
 	while (nb_pkts) {
 		uint16_t ret, num;
 
+		/* cross rs_thresh boundary is not allowed */
 		num = (uint16_t)RTE_MIN(nb_pkts, txq->tx_rs_thresh);
 		ret = i40e_xmit_fixed_burst_vec_avx512
 				(tx_queue, &tx_pkts[nb_tx], num);
