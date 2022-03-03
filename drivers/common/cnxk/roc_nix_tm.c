@@ -1042,10 +1042,8 @@ nix_tm_assign_hw_id(struct nix *nix, struct nix_tm_node *parent,
 			return -EFAULT;
 		}
 
-		if (!slab) {
-			if (!plt_bitmap_scan(bmp, &pos, &slab))
-				return -ENOENT;
-		}
+		if (!slab)
+			plt_bitmap_scan(bmp, &pos, &slab);
 
 		if (child->priority == parent->rr_prio && spare_schq != -1) {
 			/* Use spare schq first if present */
