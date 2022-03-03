@@ -90,7 +90,7 @@ struct mbox_msghdr {
 #define OTX2_MBOX_RSP_SIG (0xbeef)
 	/* Signature, for validating corrupted msgs */
 	uint16_t __otx2_io sig;
-#define OTX2_MBOX_VERSION (0x000a)
+#define OTX2_MBOX_VERSION (0x000b)
 	/* Version of msg's structure for this ID */
 	uint16_t __otx2_io ver;
 	/* Offset of next msg within mailbox region */
@@ -368,6 +368,15 @@ struct npc_set_pkind {
 #define PKIND_RX		BIT_ULL(1)
 	uint8_t __otx2_io dir;
 	uint8_t __otx2_io pkind; /* valid only in case custom flag */
+	uint8_t __otx2_io var_len_off;
+	/* Offset of custom header length field.
+	 * Valid only for pkind NPC_RX_CUSTOM_PRE_L2_PKIND
+	 */
+	uint8_t __otx2_io var_len_off_mask; /* Mask for length with in offset */
+	uint8_t __otx2_io shift_dir;
+	/* Shift direction to get length of the
+	 * header at var_len_off
+	 */
 };
 
 /* Structure for requesting resource provisioning.
