@@ -864,6 +864,7 @@ int __roc_api roc_nix_ptp_sync_time_adjust(struct roc_nix *roc_nix,
 int __roc_api roc_nix_ptp_info_cb_register(struct roc_nix *roc_nix,
 					   ptp_info_update_t ptp_update);
 void __roc_api roc_nix_ptp_info_cb_unregister(struct roc_nix *roc_nix);
+bool __roc_api roc_nix_ptp_is_enable(struct roc_nix *roc_nix);
 
 /* VLAN */
 int __roc_api

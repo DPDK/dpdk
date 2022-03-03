@@ -206,6 +206,7 @@ INTERNAL {
 	roc_nix_ptp_clock_read;
 	roc_nix_ptp_info_cb_register;
 	roc_nix_ptp_info_cb_unregister;
+	roc_nix_ptp_is_enable;
 	roc_nix_ptp_rx_ena_dis;
 	roc_nix_ptp_sync_time_adjust;
 	roc_nix_ptp_tx_ena_dis;
