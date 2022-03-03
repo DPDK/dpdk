@@ -12,14 +12,20 @@ cross_args = []
 if not meson.is_cross_build()
     # native build
     kernel_version = run_command('uname', '-r', check: true).stdout().strip()
+    if kernel_source_dir != ''
+        # Try kernel release from sources first
+        r = run_command('make', '-s', '-C', kernel_source_dir, 'kernelrelease', check: false)
+        if r.returncode() == 0
+            kernel_version = r.stdout().strip()
+        endif
+    else
+        # use default path for native builds
+        kernel_source_dir = '/lib/modules/' + kernel_version + '/source'
+    endif
     kernel_install_dir = '/lib/modules/' + kernel_version + '/extra/dpdk'
     if kernel_build_dir == ''
         # use default path for native builds
         kernel_build_dir = '/lib/modules/' + kernel_version + '/build'
-    endif
-    if kernel_source_dir == ''
-        # use default path for native builds
-        kernel_source_dir = '/lib/modules/' + kernel_version + '/source'
     endif
 
     # test running make in kernel directory, using "make kernelversion"
