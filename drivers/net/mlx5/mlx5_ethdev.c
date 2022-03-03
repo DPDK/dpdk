@@ -109,7 +109,7 @@ mlx5_dev_configure(struct rte_eth_dev *dev)
 				       MLX5_MEM_RTE | MLX5_MEM_ZERO,
 				       sizeof(void *) * rxqs_n, 0,
 				       SOCKET_ID_ANY);
-	if (priv->rxq_privs == NULL) {
+	if (rxqs_n && priv->rxq_privs == NULL) {
 		DRV_LOG(ERR, "port %u cannot allocate rxq private data",
 			dev->data->port_id);
 		rte_errno = ENOMEM;
