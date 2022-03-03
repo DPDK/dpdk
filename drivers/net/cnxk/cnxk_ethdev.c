@@ -1131,6 +1131,10 @@ cnxk_nix_configure(struct rte_eth_dev *eth_dev)
 		goto fail_configure;
 	}
 
+	/* Check if ptp is enable in PF owning this VF*/
+	if (!roc_nix_is_pf(nix) && (!roc_nix_is_sdp(nix)))
+		dev->ptp_en = roc_nix_ptp_is_enable(nix);
+
 	dev->npc.channel = roc_nix_get_base_chan(nix);
 
 	nb_rxq = data->nb_rx_queues;

@@ -120,3 +120,11 @@ roc_nix_ptp_info_cb_unregister(struct roc_nix *roc_nix)
 
 	dev->ops->ptp_info_update = NULL;
 }
+
+bool
+roc_nix_ptp_is_enable(struct roc_nix *roc_nix)
+{
+	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
+
+	return nix->ptp_en;
+}
