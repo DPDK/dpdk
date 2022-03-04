@@ -177,19 +177,23 @@ descs_to_fdir_16b(uint32x4_t fltstat, uint64x2_t descs[4], struct rte_mbuf **rx_
 	uint32x4_t v_zeros = {0, 0, 0, 0};
 	uint32x4_t v_desc3_shift = vextq_u32(v_fdir_id_mask, v_zeros, 2);
 	uint32x4_t v_desc3_mask = vandq_u32(v_desc_fdir_mask, v_desc3_shift);
-	descs[3] = vbslq_u32(v_desc3_mask, v_zeros, vreinterpretq_u32_u64(descs[3]));
+	descs[3] = vreinterpretq_u64_u32(vbslq_u32(v_desc3_mask, v_zeros,
+				vreinterpretq_u32_u64(descs[3])));
 
 	uint32x4_t v_desc2_shift = vextq_u32(v_fdir_id_mask, v_zeros, 1);
 	uint32x4_t v_desc2_mask = vandq_u32(v_desc_fdir_mask, v_desc2_shift);
-	descs[2] = vbslq_u32(v_desc2_mask, v_zeros, vreinterpretq_u32_u64(descs[2]));
+	descs[2] = vreinterpretq_u64_u32(vbslq_u32(v_desc2_mask, v_zeros,
+				vreinterpretq_u32_u64(descs[2])));
 
 	uint32x4_t v_desc1_shift = v_fdir_id_mask;
 	uint32x4_t v_desc1_mask = vandq_u32(v_desc_fdir_mask, v_desc1_shift);
-	descs[1] = vbslq_u32(v_desc1_mask, v_zeros, vreinterpretq_u32_u64(descs[1]));
+	descs[1] = vreinterpretq_u64_u32(vbslq_u32(v_desc1_mask, v_zeros,
+				vreinterpretq_u32_u64(descs[1])));
 
 	uint32x4_t v_desc0_shift = vextq_u32(v_zeros, v_fdir_id_mask, 3);
 	uint32x4_t v_desc0_mask = vandq_u32(v_desc_fdir_mask, v_desc0_shift);
-	descs[0] = vbslq_u32(v_desc0_mask, v_zeros, vreinterpretq_u32_u64(descs[0]));
+	descs[0] = vreinterpretq_u64_u32(vbslq_u32(v_desc0_mask, v_zeros,
+				vreinterpretq_u32_u64(descs[0])));
 
 	/* Shift to 1 or 0 bit per u32 lane, then to RTE_MBUF_F_RX_FDIR_ID offset */
 	RTE_BUILD_BUG_ON(RTE_MBUF_F_RX_FDIR_ID != (1 << 13));
