@@ -32,6 +32,8 @@
 #define MAX_QUEUES 128
 #endif
 
+#define NUM_MBUFS_DEFAULT 0x24000
+
 /* the maximum number of external ports supported */
 #define MAX_SUP_PORTS 1
 
@@ -56,6 +58,9 @@
 #define RTE_TEST_TX_DESC_DEFAULT 512
 
 #define INVALID_PORT_ID 0xFF
+
+/* number of mbufs in all pools - if specified on command-line. */
+static int total_num_mbufs = NUM_MBUFS_DEFAULT;
 
 /* mask of enabled ports */
 static uint32_t enabled_port_mask = 0;
@@ -473,7 +478,8 @@ us_vhost_usage(const char *prgname)
 	"		--tso [0|1] disable/enable TCP segment offload.\n"
 	"		--client register a vhost-user socket as client mode.\n"
 	"		--dma-type register dma type for your vhost async driver. For example \"ioat\" for now.\n"
-	"		--dmas register dma channel for specific vhost device.\n",
+	"		--dmas register dma channel for specific vhost device.\n"
+	"		--total-num-mbufs [0-N] set the number of mbufs to be allocated in mbuf pools, the default value is 147456.\n",
 	       prgname);
 }
 
@@ -504,6 +510,8 @@ enum {
 	OPT_DMA_TYPE_NUM,
 #define OPT_DMAS                "dmas"
 	OPT_DMAS_NUM,
+#define OPT_NUM_MBUFS           "total-num-mbufs"
+	OPT_NUM_MBUFS_NUM,
 };
 
 /*
@@ -543,6 +551,8 @@ us_vhost_parse_args(int argc, char **argv)
 				NULL, OPT_DMA_TYPE_NUM},
 		{OPT_DMAS, required_argument,
 				NULL, OPT_DMAS_NUM},
+		{OPT_NUM_MBUFS, required_argument,
+				NULL, OPT_NUM_MBUFS_NUM},
 		{NULL, 0, 0, 0},
 	};
 
@@ -673,6 +683,19 @@ us_vhost_parse_args(int argc, char **argv)
 				return -1;
 			}
 			async_vhost_driver = 1;
+			break;
+
+		case OPT_NUM_MBUFS_NUM:
+			ret = parse_num_opt(optarg, INT32_MAX);
+			if (ret == -1) {
+				RTE_LOG(INFO, VHOST_CONFIG,
+					"Invalid argument for total-num-mbufs [0..N]\n");
+				us_vhost_usage(prgname);
+				return -1;
+			}
+
+			if (total_num_mbufs < ret)
+				total_num_mbufs = ret;
 			break;
 
 		case OPT_CLIENT_NUM:
@@ -1607,57 +1630,6 @@ sigint_handler(__rte_unused int signum)
 }
 
 /*
- * While creating an mbuf pool, one key thing is to figure out how
- * many mbuf entries is enough for our use. FYI, here are some
- * guidelines:
- *
- * - Each rx queue would reserve @nr_rx_desc mbufs at queue setup stage
- *
- * - For each switch core (A CPU core does the packet switch), we need
- *   also make some reservation for receiving the packets from virtio
- *   Tx queue. How many is enough depends on the usage. It's normally
- *   a simple calculation like following:
- *
- *       MAX_PKT_BURST * max packet size / mbuf size
- *
- *   So, we definitely need allocate more mbufs when TSO is enabled.
- *
- * - Similarly, for each switching core, we should serve @nr_rx_desc
- *   mbufs for receiving the packets from physical NIC device.
- *
- * - We also need make sure, for each switch core, we have allocated
- *   enough mbufs to fill up the mbuf cache.
- */
-static void
-create_mbuf_pool(uint16_t nr_port, uint32_t nr_switch_core, uint32_t mbuf_size,
-	uint32_t nr_queues, uint32_t nr_rx_desc, uint32_t nr_mbuf_cache)
-{
-	uint32_t nr_mbufs;
-	uint32_t nr_mbufs_per_core;
-	uint32_t mtu = 1500;
-
-	if (mergeable)
-		mtu = 9000;
-	if (enable_tso)
-		mtu = 64 * 1024;
-
-	nr_mbufs_per_core  = (mtu + mbuf_size) * MAX_PKT_BURST /
-			(mbuf_size - RTE_PKTMBUF_HEADROOM);
-	nr_mbufs_per_core += nr_rx_desc;
-	nr_mbufs_per_core  = RTE_MAX(nr_mbufs_per_core, nr_mbuf_cache);
-
-	nr_mbufs  = nr_queues * nr_rx_desc;
-	nr_mbufs += nr_mbufs_per_core * nr_switch_core;
-	nr_mbufs *= nr_port;
-
-	mbuf_pool = rte_pktmbuf_pool_create("MBUF_POOL", nr_mbufs,
-					    nr_mbuf_cache, 0, mbuf_size,
-					    rte_socket_id());
-	if (mbuf_pool == NULL)
-		rte_exit(EXIT_FAILURE, "Cannot create mbuf pool\n");
-}
-
-/*
  * Main function, does initialisation and calls the per-lcore functions.
  */
 int
@@ -1715,8 +1687,11 @@ main(int argc, char *argv[])
 	 * many queues here. We probably should only do allocation for
 	 * those queues we are going to use.
 	 */
-	create_mbuf_pool(valid_num_ports, rte_lcore_count() - 1, MBUF_DATA_SIZE,
-			 MAX_QUEUES, RTE_TEST_RX_DESC_DEFAULT, MBUF_CACHE_SIZE);
+	mbuf_pool = rte_pktmbuf_pool_create("MBUF_POOL", total_num_mbufs,
+					    MBUF_CACHE_SIZE, 0, MBUF_DATA_SIZE,
+					    rte_socket_id());
+	if (mbuf_pool == NULL)
+		rte_exit(EXIT_FAILURE, "Cannot create mbuf pool\n");
 
 	if (vm2vm_mode == VM2VM_HARDWARE) {
 		/* Enable VT loop back to let L2 switch to do it. */
