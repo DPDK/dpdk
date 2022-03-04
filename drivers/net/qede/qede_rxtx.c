@@ -887,66 +887,53 @@ qede_tx_queue_start(struct rte_eth_dev *eth_dev, uint16_t tx_queue_id)
 }
 
 static inline void
+qede_free_tx_pkt(struct qede_tx_queue *txq)
+{
+	struct rte_mbuf *mbuf;
+	uint16_t nb_segs;
+	uint16_t idx;
+
+	idx = TX_CONS(txq);
+	mbuf = txq->sw_tx_ring[idx];
+	if (mbuf) {
+		nb_segs = mbuf->nb_segs;
+		PMD_TX_LOG(DEBUG, txq, "nb_segs to free %u\n", nb_segs);
+		while (nb_segs) {
+			/* It's like consuming rxbuf in recv() */
+			ecore_chain_consume(&txq->tx_pbl);
+			txq->nb_tx_avail++;
+			nb_segs--;
+		}
+		rte_pktmbuf_free(mbuf);
+		txq->sw_tx_ring[idx] = NULL;
+		txq->sw_tx_cons++;
+		PMD_TX_LOG(DEBUG, txq, "Freed tx packet\n");
+	} else {
+		ecore_chain_consume(&txq->tx_pbl);
+		txq->nb_tx_avail++;
+	}
+}
+
+static inline void
 qede_process_tx_compl(__rte_unused struct ecore_dev *edev,
 		      struct qede_tx_queue *txq)
 {
 	uint16_t hw_bd_cons;
-	uint16_t sw_tx_cons;
-	uint16_t remaining;
-	uint16_t mask;
-	struct rte_mbuf *mbuf;
-	uint16_t nb_segs;
-	uint16_t idx;
-	uint16_t first_idx;
-
-	rte_compiler_barrier();
-	rte_prefetch0(txq->hw_cons_ptr);
-	sw_tx_cons = ecore_chain_get_cons_idx(&txq->tx_pbl);
-	hw_bd_cons = rte_le_to_cpu_16(*txq->hw_cons_ptr);
 #ifdef RTE_LIBRTE_QEDE_DEBUG_TX
+	uint16_t sw_tx_cons;
+#endif
+
+	hw_bd_cons = rte_le_to_cpu_16(*txq->hw_cons_ptr);
+	/* read barrier prevents speculative execution on stale data */
+	rte_rmb();
+
+#ifdef RTE_LIBRTE_QEDE_DEBUG_TX
+	sw_tx_cons = ecore_chain_get_cons_idx(&txq->tx_pbl);
 	PMD_TX_LOG(DEBUG, txq, "Tx Completions = %u\n",
 		   abs(hw_bd_cons - sw_tx_cons));
 #endif
-
-	mask = NUM_TX_BDS(txq);
-	idx = txq->sw_tx_cons & mask;
-
-	remaining = hw_bd_cons - sw_tx_cons;
-	txq->nb_tx_avail += remaining;
-	first_idx = idx;
-
-	while (remaining) {
-		mbuf = txq->sw_tx_ring[idx];
-		RTE_ASSERT(mbuf);
-		nb_segs = mbuf->nb_segs;
-		remaining -= nb_segs;
-
-		/* Prefetch the next mbuf. Note that at least the last 4 mbufs
-		 * that are prefetched will not be used in the current call.
-		 */
-		rte_mbuf_prefetch_part1(txq->sw_tx_ring[(idx + 4) & mask]);
-		rte_mbuf_prefetch_part2(txq->sw_tx_ring[(idx + 4) & mask]);
-
-		PMD_TX_LOG(DEBUG, txq, "nb_segs to free %u\n", nb_segs);
-
-		while (nb_segs) {
-			ecore_chain_consume(&txq->tx_pbl);
-			nb_segs--;
-		}
-
-		idx = (idx + 1) & mask;
-		PMD_TX_LOG(DEBUG, txq, "Freed tx packet\n");
-	}
-	txq->sw_tx_cons = idx;
-
-	if (first_idx > idx) {
-		rte_pktmbuf_free_bulk(&txq->sw_tx_ring[first_idx],
-							  mask - first_idx + 1);
-		rte_pktmbuf_free_bulk(&txq->sw_tx_ring[0], idx);
-	} else {
-		rte_pktmbuf_free_bulk(&txq->sw_tx_ring[first_idx],
-							  idx - first_idx);
-	}
+	while (hw_bd_cons !=  ecore_chain_get_cons_idx(&txq->tx_pbl))
+		qede_free_tx_pkt(txq);
 }
 
 static int qede_drain_txq(struct qede_dev *qdev,
