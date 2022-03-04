@@ -38,48 +38,40 @@ static inline int qede_alloc_rx_buffer(struct qede_rx_queue *rxq)
 
 static inline int qede_alloc_rx_bulk_mbufs(struct qede_rx_queue *rxq, int count)
 {
+	void *obj_p[QEDE_MAX_BULK_ALLOC_COUNT] __rte_cache_aligned;
 	struct rte_mbuf *mbuf = NULL;
 	struct eth_rx_bd *rx_bd;
 	dma_addr_t mapping;
 	int i, ret = 0;
 	uint16_t idx;
-	uint16_t mask = NUM_RX_BDS(rxq);
-
-	if (count > QEDE_MAX_BULK_ALLOC_COUNT)
-		count = QEDE_MAX_BULK_ALLOC_COUNT;
 
 	idx = rxq->sw_rx_prod & NUM_RX_BDS(rxq);
 
-	if (count > mask - idx + 1)
-		count = mask - idx + 1;
-
-	ret = rte_mempool_get_bulk(rxq->mb_pool, (void **)&rxq->sw_rx_ring[idx],
-				   count);
-
+	ret = rte_mempool_get_bulk(rxq->mb_pool, obj_p, count);
 	if (unlikely(ret)) {
 		PMD_RX_LOG(ERR, rxq,
 			   "Failed to allocate %d rx buffers "
 			    "sw_rx_prod %u sw_rx_cons %u mp entries %u free %u",
-			    count,
-			    rxq->sw_rx_prod & NUM_RX_BDS(rxq),
-			    rxq->sw_rx_cons & NUM_RX_BDS(rxq),
+			    count, idx, rxq->sw_rx_cons & NUM_RX_BDS(rxq),
 			    rte_mempool_avail_count(rxq->mb_pool),
 			    rte_mempool_in_use_count(rxq->mb_pool));
 		return -ENOMEM;
 	}
 
 	for (i = 0; i < count; i++) {
-		rte_prefetch0(rxq->sw_rx_ring[(idx + 1) & NUM_RX_BDS(rxq)]);
-		mbuf = rxq->sw_rx_ring[idx & NUM_RX_BDS(rxq)];
+		mbuf = obj_p[i];
+		if (likely(i < count - 1))
+			rte_prefetch0(obj_p[i + 1]);
 
+		idx = rxq->sw_rx_prod & NUM_RX_BDS(rxq);
+		rxq->sw_rx_ring[idx] = mbuf;
 		mapping = rte_mbuf_data_iova_default(mbuf);
 		rx_bd = (struct eth_rx_bd *)
 			ecore_chain_produce(&rxq->rx_bd_ring);
 		rx_bd->addr.hi = rte_cpu_to_le_32(U64_HI(mapping));
 		rx_bd->addr.lo = rte_cpu_to_le_32(U64_LO(mapping));
-		idx++;
+		rxq->sw_rx_prod++;
 	}
-	rxq->sw_rx_prod = idx;
 
 	return 0;
 }
@@ -1546,25 +1538,26 @@ qede_recv_pkts_regular(void *p_rxq, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 	uint8_t bitfield_val;
 #endif
 	uint8_t offset, flags, bd_num;
-
+	uint16_t count = 0;
 
 	/* Allocate buffers that we used in previous loop */
 	if (rxq->rx_alloc_count) {
-		if (unlikely(qede_alloc_rx_bulk_mbufs(rxq,
-			     rxq->rx_alloc_count))) {
+		count = rxq->rx_alloc_count > QEDE_MAX_BULK_ALLOC_COUNT ?
+			QEDE_MAX_BULK_ALLOC_COUNT : rxq->rx_alloc_count;
+
+		if (unlikely(qede_alloc_rx_bulk_mbufs(rxq, count))) {
 			struct rte_eth_dev *dev;
 
 			PMD_RX_LOG(ERR, rxq,
-				   "New buffer allocation failed,"
-				   "dropping incoming packetn");
+				   "New buffers allocation failed,"
+				   "dropping incoming packets\n");
 			dev = &rte_eth_devices[rxq->port_id];
-			dev->data->rx_mbuf_alloc_failed +=
-							rxq->rx_alloc_count;
-			rxq->rx_alloc_errors += rxq->rx_alloc_count;
+			dev->data->rx_mbuf_alloc_failed += count;
+			rxq->rx_alloc_errors += count;
 			return 0;
 		}
 		qede_update_rx_prod(qdev, rxq);
-		rxq->rx_alloc_count = 0;
+		rxq->rx_alloc_count -= count;
 	}
 
 	hw_comp_cons = rte_le_to_cpu_16(*rxq->hw_cons_ptr);
@@ -1733,7 +1726,7 @@ next_cqe:
 	}
 
 	/* Request number of buffers to be allocated in next loop */
-	rxq->rx_alloc_count = rx_alloc_count;
+	rxq->rx_alloc_count += rx_alloc_count;
 
 	rxq->rcv_pkts += rx_pkt;
 	rxq->rx_segs += rx_pkt;
@@ -1773,25 +1766,26 @@ qede_recv_pkts(void *p_rxq, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 	struct qede_agg_info *tpa_info = NULL;
 	uint32_t rss_hash;
 	int rx_alloc_count = 0;
-
+	uint16_t count = 0;
 
 	/* Allocate buffers that we used in previous loop */
 	if (rxq->rx_alloc_count) {
-		if (unlikely(qede_alloc_rx_bulk_mbufs(rxq,
-			     rxq->rx_alloc_count))) {
+		count = rxq->rx_alloc_count > QEDE_MAX_BULK_ALLOC_COUNT ?
+			QEDE_MAX_BULK_ALLOC_COUNT : rxq->rx_alloc_count;
+
+		if (unlikely(qede_alloc_rx_bulk_mbufs(rxq, count))) {
 			struct rte_eth_dev *dev;
 
 			PMD_RX_LOG(ERR, rxq,
-				   "New buffer allocation failed,"
-				   "dropping incoming packetn");
+				   "New buffers allocation failed,"
+				   "dropping incoming packets\n");
 			dev = &rte_eth_devices[rxq->port_id];
-			dev->data->rx_mbuf_alloc_failed +=
-							rxq->rx_alloc_count;
-			rxq->rx_alloc_errors += rxq->rx_alloc_count;
+			dev->data->rx_mbuf_alloc_failed += count;
+			rxq->rx_alloc_errors += count;
 			return 0;
 		}
 		qede_update_rx_prod(qdev, rxq);
-		rxq->rx_alloc_count = 0;
+		rxq->rx_alloc_count -= count;
 	}
 
 	hw_comp_cons = rte_le_to_cpu_16(*rxq->hw_cons_ptr);
@@ -2030,7 +2024,7 @@ next_cqe:
 	}
 
 	/* Request number of buffers to be allocated in next loop */
-	rxq->rx_alloc_count = rx_alloc_count;
+	rxq->rx_alloc_count += rx_alloc_count;
 
 	rxq->rcv_pkts += rx_pkt;
 
