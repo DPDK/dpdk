@@ -45,7 +45,8 @@ test_ipsec_vec_populate(struct rte_mbuf *m, const struct cperf_options *options,
 
 	if ((options->aead_op == RTE_CRYPTO_AEAD_OP_ENCRYPT) ||
 		(options->cipher_op == RTE_CRYPTO_CIPHER_OP_ENCRYPT)) {
-		memcpy(ip, test_vector->plaintext.data, m->data_len);
+		memcpy(ip, test_vector->plaintext.data,
+		       sizeof(struct rte_ipv4_hdr));
 
 		ip->total_length = rte_cpu_to_be_16(m->data_len);
 	}
@@ -61,7 +62,6 @@ cperf_set_ops_security(struct rte_crypto_op **ops,
 		uint16_t iv_offset __rte_unused, uint32_t *imix_idx,
 		uint64_t *tsc_start)
 {
-	uint64_t tsc_start_temp, tsc_end_temp;
 	uint16_t i;
 
 	for (i = 0; i < nb_ops; i++) {
@@ -79,27 +79,10 @@ cperf_set_ops_security(struct rte_crypto_op **ops,
 		sym_op->m_src = (struct rte_mbuf *)((uint8_t *)ops[i] +
 							src_buf_offset);
 
-		if (options->op_type == CPERF_PDCP ||
-				options->op_type == CPERF_IPSEC) {
-			/* In case of IPsec, headroom is consumed by PMD,
-			 * hence resetting it.
-			 */
-			sym_op->m_src->data_off = options->headroom_sz;
-
+		if (options->op_type == CPERF_PDCP) {
 			sym_op->m_src->buf_len = options->segment_sz;
 			sym_op->m_src->data_len = options->test_buffer_size;
 			sym_op->m_src->pkt_len = sym_op->m_src->data_len;
-
-			if ((options->op_type == CPERF_IPSEC) &&
-			    (options->test_file == NULL) &&
-			    (options->test == CPERF_TEST_TYPE_THROUGHPUT)) {
-				tsc_start_temp = rte_rdtsc_precise();
-				test_ipsec_vec_populate(sym_op->m_src, options,
-							test_vector);
-				tsc_end_temp = rte_rdtsc_precise();
-
-				*tsc_start += (tsc_end_temp - tsc_start_temp);
-			}
 		}
 
 		if (options->op_type == CPERF_DOCSIS) {
@@ -135,8 +118,71 @@ cperf_set_ops_security(struct rte_crypto_op **ops,
 							dst_buf_offset);
 	}
 
+	RTE_SET_USED(tsc_start);
+	RTE_SET_USED(test_vector);
+
 	return 0;
 }
+
+static int
+cperf_set_ops_security_ipsec(struct rte_crypto_op **ops,
+		uint32_t src_buf_offset __rte_unused,
+		uint32_t dst_buf_offset __rte_unused,
+		uint16_t nb_ops, struct rte_cryptodev_sym_session *sess,
+		const struct cperf_options *options,
+		const struct cperf_test_vector *test_vector,
+		uint16_t iv_offset __rte_unused, uint32_t *imix_idx,
+		uint64_t *tsc_start)
+{
+	struct rte_security_session *sec_sess =
+			(struct rte_security_session *)sess;
+	const uint32_t test_buffer_size = options->test_buffer_size;
+	const uint32_t headroom_sz = options->headroom_sz;
+	const uint32_t segment_sz = options->segment_sz;
+	uint64_t tsc_start_temp, tsc_end_temp;
+	uint16_t i = 0;
+
+	RTE_SET_USED(imix_idx);
+
+	for (i = 0; i < nb_ops; i++) {
+		struct rte_crypto_sym_op *sym_op = ops[i]->sym;
+		struct rte_mbuf *m = sym_op->m_src;
+
+		ops[i]->status = RTE_CRYPTO_OP_STATUS_NOT_PROCESSED;
+		rte_security_attach_session(ops[i], sec_sess);
+		sym_op->m_src = (struct rte_mbuf *)((uint8_t *)ops[i] +
+							src_buf_offset);
+
+		/* In case of IPsec, headroom is consumed by PMD,
+		 * hence resetting it.
+		 */
+		m->data_off = headroom_sz;
+
+		m->buf_len = segment_sz;
+		m->data_len = test_buffer_size;
+		m->pkt_len = test_buffer_size;
+
+		sym_op->m_dst = NULL;
+	}
+
+	if (options->test_file != NULL)
+		return 0;
+
+	tsc_start_temp = rte_rdtsc_precise();
+
+	for (i = 0; i < nb_ops; i++) {
+		struct rte_crypto_sym_op *sym_op = ops[i]->sym;
+		struct rte_mbuf *m = sym_op->m_src;
+
+		test_ipsec_vec_populate(m, options, test_vector);
+	}
+
+	tsc_end_temp = rte_rdtsc_precise();
+	*tsc_start += tsc_end_temp - tsc_start_temp;
+
+	return 0;
+}
+
 #endif
 
 static int
@@ -1055,9 +1101,11 @@ cperf_get_op_functions(const struct cperf_options *options,
 		break;
 #ifdef RTE_LIB_SECURITY
 	case CPERF_PDCP:
-	case CPERF_IPSEC:
 	case CPERF_DOCSIS:
 		op_fns->populate_ops = cperf_set_ops_security;
+		break;
+	case CPERF_IPSEC:
+		op_fns->populate_ops = cperf_set_ops_security_ipsec;
 		break;
 #endif
 	default:
