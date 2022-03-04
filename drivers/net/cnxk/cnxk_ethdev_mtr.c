@@ -288,7 +288,7 @@ cnxk_nix_mtr_profile_delete(struct rte_eth_dev *eth_dev, uint32_t profile_id,
 static int
 update_mtr_err(uint32_t act_color, struct rte_mtr_error *error, bool action)
 {
-	const char *str;
+	const char *str = NULL;
 	switch (act_color) {
 	case RTE_COLOR_GREEN:
 		if (action) {

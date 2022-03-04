@@ -146,7 +146,8 @@ nix_sec_attach_frags(const struct cpt_parse_hdr_s *hdr,
 	uint32_t offset = hdr->w2.fi_offset;
 	union nix_rx_parse_u *frag_rx;
 	struct cpt_frag_info_s *finfo;
-	uint64_t *frag_ptr, ol_flags;
+	uint64_t *frag_ptr = NULL;
+	uint64_t ol_flags;
 	uint16_t frag_size;
 	uint16_t rlen;
 	uint64_t *wqe;
@@ -276,8 +277,8 @@ nix_sec_reassemble_frags(const struct cpt_parse_hdr_s *hdr, uint64_t cq_w1,
 	union nix_rx_parse_u *frag_rx;
 	struct cpt_frag_info_s *finfo;
 	struct rte_mbuf *head, *mbuf;
+	uint64_t *frag_ptr = NULL;
 	rte_iova_t *inner_iova;
-	uint64_t *frag_ptr;
 	uint16_t frag_size;
 	uint64_t *wqe;
 
