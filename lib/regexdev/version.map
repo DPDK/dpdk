@@ -26,6 +26,8 @@ EXPERIMENTAL {
 	rte_regexdev_xstats_get;
 	rte_regexdev_xstats_names_get;
 	rte_regexdev_xstats_reset;
+
+	local: *;
 };
 
 INTERNAL {

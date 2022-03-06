@@ -4,4 +4,6 @@ EXPERIMENTAL {
 	# added in 21.08
 	rte_auxiliary_register;
 	rte_auxiliary_unregister;
+
+	local: *;
 };

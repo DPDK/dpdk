@@ -19,3 +19,11 @@
 ; Ignore changes in common mlx5 driver, should be all internal
 [suppress_file]
         soname_regexp = ^librte_common_mlx5\.
+
+; Ignore visibility fix of local functions in experimental auxiliary driver
+[suppress_file]
+        soname_regexp = ^librte_bus_auxiliary\.
+
+; Ignore visibility fix of local functions in experimental gpudev library
+[suppress_file]
+        soname_regexp = ^librte_gpudev\.

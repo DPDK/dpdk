@@ -35,4 +35,6 @@ INTERNAL {
 	rte_gpu_get_by_name;
 	rte_gpu_notify;
 	rte_gpu_release;
+
+	local: *;
 };
