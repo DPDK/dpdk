@@ -433,7 +433,7 @@ sfc_flow_tunnel_get_restore_info(struct rte_eth_dev *dev,
 	ft = &sa->flow_tunnels[ft_id];
 
 	if (ft->refcnt == 0) {
-		sfc_err(sa, "tunnel offload: get_restore_info: tunnel=%u does not exist",
+		sfc_dbg(sa, "tunnel offload: get_restore_info: tunnel=%u does not exist",
 			ft_id);
 		rc = ENOENT;
 		goto fail;
