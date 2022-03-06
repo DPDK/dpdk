@@ -11,3 +11,7 @@
 ; Ignore generated PMD information strings
 [suppress_variable]
         name_regexp = _pmd_info$
+
+; Ignore section attribute fixes in experimental regexdev library
+[suppress_file]
+        soname_regexp = ^librte_regexdev\.
