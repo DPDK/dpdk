@@ -228,6 +228,9 @@ extern int rte_regexdev_logtype;
 } while (0)
 
 /**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
  * Check if dev_id is ready.
  *
  * @param dev_id
@@ -237,6 +240,7 @@ extern int rte_regexdev_logtype;
  *   - 0 if device state is not in ready state.
  *   - 1 if device state is ready state.
  */
+__rte_experimental
 int rte_regexdev_is_valid_dev(uint16_t dev_id);
 
 /**

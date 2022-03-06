@@ -7,3 +7,7 @@
         symbol_version = INTERNAL
 [suppress_variable]
         symbol_version = INTERNAL
+
+; Ignore section attribute fixes in experimental regexdev library
+[suppress_file]
+        soname_regexp = ^librte_regexdev\.
