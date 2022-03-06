@@ -32,6 +32,7 @@ extern "C" {
  *   A pointer to the RegEx device slot case of success,
  *   NULL otherwise.
  */
+__rte_internal
 struct rte_regexdev *rte_regexdev_register(const char *name);
 
 /**
@@ -41,6 +42,7 @@ struct rte_regexdev *rte_regexdev_register(const char *name);
  * @param dev
  *   Device to be released.
  */
+__rte_internal
 void rte_regexdev_unregister(struct rte_regexdev *dev);
 
 /**
@@ -50,6 +52,7 @@ void rte_regexdev_unregister(struct rte_regexdev *dev);
  * @param name
  *   The device name.
  */
+__rte_internal
 struct rte_regexdev *rte_regexdev_get_device_by_name(const char *name);
 
 #ifdef __cplusplus

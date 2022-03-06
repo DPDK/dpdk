@@ -1,6 +1,7 @@
 EXPERIMENTAL {
 	global:
 
+	rte_regex_devices;
 	rte_regexdev_attr_get;
 	rte_regexdev_attr_set;
 	rte_regexdev_close;
@@ -11,6 +12,8 @@ EXPERIMENTAL {
 	rte_regexdev_enqueue_burst;
 	rte_regexdev_get_dev_id;
 	rte_regexdev_info_get;
+	rte_regexdev_is_valid_dev;
+	rte_regexdev_logtype;
 	rte_regexdev_queue_pair_setup;
 	rte_regexdev_rule_db_compile_activate;
 	rte_regexdev_rule_db_export;
@@ -23,4 +26,10 @@ EXPERIMENTAL {
 	rte_regexdev_xstats_get;
 	rte_regexdev_xstats_names_get;
 	rte_regexdev_xstats_reset;
+};
+
+INTERNAL {
+	rte_regexdev_get_device_by_name;
+	rte_regexdev_register;
+	rte_regexdev_unregister;
 };
