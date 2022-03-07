@@ -1562,6 +1562,13 @@ struct rte_eth_dev_info {
 };
 
 /**
+ * RX/TX queue states
+ */
+#define RTE_ETH_QUEUE_STATE_STOPPED 0
+#define RTE_ETH_QUEUE_STATE_STARTED 1
+#define RTE_ETH_QUEUE_STATE_HAIRPIN 2
+
+/**
  * Ethernet device RX queue information structure.
  * Used to retrieve information about configured queue.
  */

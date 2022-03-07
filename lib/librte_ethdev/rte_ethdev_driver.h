@@ -924,13 +924,6 @@ struct eth_dev_ops {
 };
 
 /**
- * RX/TX queue states
- */
-#define RTE_ETH_QUEUE_STATE_STOPPED 0
-#define RTE_ETH_QUEUE_STATE_STARTED 1
-#define RTE_ETH_QUEUE_STATE_HAIRPIN 2
-
-/**
  * @internal
  * Check if the selected Rx queue is hairpin queue.
  *

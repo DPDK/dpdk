@@ -2557,8 +2557,10 @@ cmd_config_rxtx_queue_parsed(void *parsed_result,
 			__rte_unused void *data)
 {
 	struct cmd_config_rxtx_queue *res = parsed_result;
+	struct rte_port *port;
 	uint8_t isrx;
 	uint8_t isstart;
+	uint8_t *state;
 	int ret = 0;
 
 	if (test_done == 0) {
@@ -2606,8 +2608,15 @@ cmd_config_rxtx_queue_parsed(void *parsed_result,
 	else
 		ret = rte_eth_dev_tx_queue_stop(res->portid, res->qid);
 
-	if (ret == -ENOTSUP)
+	if (ret == -ENOTSUP) {
 		fprintf(stderr, "Function not supported in PMD\n");
+		return;
+	}
+
+	port = &ports[res->portid];
+	state = isrx ? &port->rxq[res->qid].state : &port->txq[res->qid].state;
+	*state = isstart ? RTE_ETH_QUEUE_STATE_STARTED :
+			   RTE_ETH_QUEUE_STATE_STOPPED;
 }
 
 cmdline_parse_token_string_t cmd_config_rxtx_queue_port =
@@ -2676,11 +2685,11 @@ cmd_config_deferred_start_rxtx_queue_parsed(void *parsed_result,
 
 	ison = !strcmp(res->state, "on");
 
-	if (isrx && port->rx_conf[res->qid].rx_deferred_start != ison) {
-		port->rx_conf[res->qid].rx_deferred_start = ison;
+	if (isrx && port->rxq[res->qid].conf.rx_deferred_start != ison) {
+		port->rxq[res->qid].conf.rx_deferred_start = ison;
 		needreconfig = 1;
-	} else if (!isrx && port->tx_conf[res->qid].tx_deferred_start != ison) {
-		port->tx_conf[res->qid].tx_deferred_start = ison;
+	} else if (!isrx && port->txq[res->qid].conf.tx_deferred_start != ison) {
+		port->txq[res->qid].conf.tx_deferred_start = ison;
 		needreconfig = 1;
 	}
 
@@ -2799,7 +2808,7 @@ cmd_setup_rxtx_queue_parsed(
 				     res->qid,
 				     port->nb_rx_desc[res->qid],
 				     socket_id,
-				     &port->rx_conf[res->qid],
+				     &port->rxq[res->qid].conf,
 				     mp);
 		if (ret)
 			printf("Failed to setup RX queue\n");
@@ -2816,7 +2825,7 @@ cmd_setup_rxtx_queue_parsed(
 					     res->qid,
 					     port->nb_tx_desc[res->qid],
 					     socket_id,
-					     &port->tx_conf[res->qid]);
+					     &port->txq[res->qid].conf);
 		if (ret)
 			printf("Failed to setup TX queue\n");
 	}
@@ -4569,7 +4578,7 @@ cmd_config_queue_tx_offloads(struct rte_port *port)
 
 	/* Apply queue tx offloads configuration */
 	for (k = 0; k < port->dev_info.max_tx_queues; k++)
-		port->tx_conf[k].offloads =
+		port->txq[k].conf.offloads =
 			port->dev_conf.txmode.offloads;
 }
 
@@ -15412,7 +15421,7 @@ cmd_rx_offload_get_configuration_parsed(
 
 	nb_rx_queues = dev_info.nb_rx_queues;
 	for (q = 0; q < nb_rx_queues; q++) {
-		queue_offloads = port->rx_conf[q].offloads;
+		queue_offloads = port->rxq[q].conf.offloads;
 		printf("  Queue[%2d] :", q);
 		print_rx_offloads(queue_offloads);
 		printf("\n");
@@ -15531,11 +15540,11 @@ cmd_config_per_port_rx_offload_parsed(void *parsed_result,
 	if (!strcmp(res->on_off, "on")) {
 		port->dev_conf.rxmode.offloads |= single_offload;
 		for (q = 0; q < nb_rx_queues; q++)
-			port->rx_conf[q].offloads |= single_offload;
+			port->rxq[q].conf.offloads |= single_offload;
 	} else {
 		port->dev_conf.rxmode.offloads &= ~single_offload;
 		for (q = 0; q < nb_rx_queues; q++)
-			port->rx_conf[q].offloads &= ~single_offload;
+			port->rxq[q].conf.offloads &= ~single_offload;
 	}
 
 	cmd_reconfig_device_queue(port_id, 1, 1);
@@ -15639,9 +15648,9 @@ cmd_config_per_queue_rx_offload_parsed(void *parsed_result,
 	}
 
 	if (!strcmp(res->on_off, "on"))
-		port->rx_conf[queue_id].offloads |= single_offload;
+		port->rxq[queue_id].conf.offloads |= single_offload;
 	else
-		port->rx_conf[queue_id].offloads &= ~single_offload;
+		port->rxq[queue_id].conf.offloads &= ~single_offload;
 
 	cmd_reconfig_device_queue(port_id, 1, 1);
 }
@@ -15823,7 +15832,7 @@ cmd_tx_offload_get_configuration_parsed(
 
 	nb_tx_queues = dev_info.nb_tx_queues;
 	for (q = 0; q < nb_tx_queues; q++) {
-		queue_offloads = port->tx_conf[q].offloads;
+		queue_offloads = port->txq[q].conf.offloads;
 		printf("  Queue[%2d] :", q);
 		print_tx_offloads(queue_offloads);
 		printf("\n");
@@ -15946,11 +15955,11 @@ cmd_config_per_port_tx_offload_parsed(void *parsed_result,
 	if (!strcmp(res->on_off, "on")) {
 		port->dev_conf.txmode.offloads |= single_offload;
 		for (q = 0; q < nb_tx_queues; q++)
-			port->tx_conf[q].offloads |= single_offload;
+			port->txq[q].conf.offloads |= single_offload;
 	} else {
 		port->dev_conf.txmode.offloads &= ~single_offload;
 		for (q = 0; q < nb_tx_queues; q++)
-			port->tx_conf[q].offloads &= ~single_offload;
+			port->txq[q].conf.offloads &= ~single_offload;
 	}
 
 	cmd_reconfig_device_queue(port_id, 1, 1);
@@ -16057,9 +16066,9 @@ cmd_config_per_queue_tx_offload_parsed(void *parsed_result,
 	}
 
 	if (!strcmp(res->on_off, "on"))
-		port->tx_conf[queue_id].offloads |= single_offload;
+		port->txq[queue_id].conf.offloads |= single_offload;
 	else
-		port->tx_conf[queue_id].offloads &= ~single_offload;
+		port->txq[queue_id].conf.offloads &= ~single_offload;
 
 	cmd_reconfig_device_queue(port_id, 1, 1);
 }

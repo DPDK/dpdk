@@ -2816,8 +2816,8 @@ rxtx_config_display(void)
 	       nb_fwd_lcores, nb_fwd_ports);
 
 	RTE_ETH_FOREACH_DEV(pid) {
-		struct rte_eth_rxconf *rx_conf = &ports[pid].rx_conf[0];
-		struct rte_eth_txconf *tx_conf = &ports[pid].tx_conf[0];
+		struct rte_eth_rxconf *rx_conf = &ports[pid].rxq[0].conf;
+		struct rte_eth_txconf *tx_conf = &ports[pid].txq[0].conf;
 		uint16_t *nb_rx_desc = &ports[pid].nb_rx_desc[0];
 		uint16_t *nb_tx_desc = &ports[pid].nb_tx_desc[0];
 		struct rte_eth_rxq_info rx_qinfo;
