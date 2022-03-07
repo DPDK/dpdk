@@ -1757,6 +1757,37 @@ port_action_handle_destroy(portid_t port_id,
 	return ret;
 }
 
+int
+port_action_handle_flush(portid_t port_id)
+{
+	struct rte_port *port;
+	struct port_indirect_action **tmp;
+	int ret = 0;
+
+	if (port_id_is_invalid(port_id, ENABLED_WARN) ||
+	    port_id == (portid_t)RTE_PORT_ALL)
+		return -EINVAL;
+	port = &ports[port_id];
+	tmp = &port->actions_list;
+	while (*tmp != NULL) {
+		struct rte_flow_error error;
+		struct port_indirect_action *pia = *tmp;
+
+		/* Poisoning to make sure PMDs update it in case of error. */
+		memset(&error, 0x44, sizeof(error));
+		if (pia->handle != NULL &&
+		    rte_flow_action_handle_destroy
+					(port_id, pia->handle, &error) != 0) {
+			printf("Indirect action #%u not destroyed\n", pia->id);
+			ret = port_flow_complain(&error);
+			tmp = &pia->next;
+		} else {
+			*tmp = pia->next;
+			free(pia);
+		}
+	}
+	return ret;
+}
 
 /** Get indirect action by port + id */
 struct rte_flow_action_handle *

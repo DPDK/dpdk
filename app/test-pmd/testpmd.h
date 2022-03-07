@@ -884,6 +884,7 @@ int port_action_handle_create(portid_t port_id, uint32_t id,
 			      const struct rte_flow_action *action);
 int port_action_handle_destroy(portid_t port_id,
 			       uint32_t n, const uint32_t *action);
+int port_action_handle_flush(portid_t port_id);
 struct rte_flow_action_handle *port_action_handle_get_by_id(portid_t port_id,
 							    uint32_t id);
 int port_action_handle_update(portid_t port_id, uint32_t id,

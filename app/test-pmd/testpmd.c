@@ -3217,6 +3217,7 @@ close_port(portid_t pid)
 		if (is_proc_primary()) {
 			port_flow_flush(pi);
 			port_flex_item_flush(pi);
+			port_action_handle_flush(pi);
 			rte_eth_dev_close(pi);
 		}
 
