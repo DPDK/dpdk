@@ -719,7 +719,7 @@ log_link_state(struct rte_kni *kni, int prev, struct rte_eth_link *link)
 
 	rte_eth_link_to_str(link_status_text, sizeof(link_status_text), link);
 	if (prev != link->link_status)
-		RTE_LOG(INFO, APP, "%s NIC %s",
+		RTE_LOG(INFO, APP, "%s NIC %s\n",
 			rte_kni_get_name(kni),
 			link_status_text);
 }
