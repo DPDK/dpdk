@@ -550,6 +550,12 @@ test_node_clone(void)
 	node_id = rte_node_from_name("test_node00");
 	tm->test_node[0].idx = node_id;
 
+	dummy_id = rte_node_clone(node_id, "test_node00");
+	if (rte_node_is_invalid(dummy_id)) {
+		printf("Got invalid id when clone, Expecting fail\n");
+		return -1;
+	}
+
 	/* Clone with same name, should fail */
 	dummy_id = rte_node_clone(node_id, "test_node00");
 	if (!rte_node_is_invalid(dummy_id)) {

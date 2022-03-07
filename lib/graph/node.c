@@ -150,10 +150,6 @@ node_clone(struct node *node, const char *name)
 		goto fail;
 	}
 
-	/* Check for duplicate name */
-	if (node_has_duplicate_entry(name))
-		goto fail;
-
 	reg = calloc(1, sizeof(*reg) + (sizeof(char *) * node->nb_edges));
 	if (reg == NULL) {
 		rte_errno = ENOMEM;
