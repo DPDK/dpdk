@@ -1710,7 +1710,8 @@ F: examples/ethtool/
 F: doc/guides/sample_app_ug/ethtool.rst
 
 FIPS validation example
-M: Marko Kovacevic <marko.kovacevic@intel.com>
+M: Fan Zhang <roy.fan.zhang@intel.com>
+M: Brian Dooley <brian.dooley@intel.com>
 F: examples/fips_validation/
 F: doc/guides/sample_app_ug/fips_validation.rst
 
