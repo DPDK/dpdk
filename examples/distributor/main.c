@@ -109,7 +109,7 @@ static inline int
 port_init(uint16_t port, struct rte_mempool *mbuf_pool)
 {
 	struct rte_eth_conf port_conf = port_conf_default;
-	const uint16_t rxRings = 1, txRings = rte_lcore_count() - 1;
+	const uint16_t rxRings = 1, txRings = 1;
 	int retval;
 	uint16_t q;
 	uint16_t nb_rxd = RX_RING_SIZE;
