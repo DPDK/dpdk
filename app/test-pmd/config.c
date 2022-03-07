@@ -2864,8 +2864,8 @@ rxtx_config_display(void)
 	       nb_fwd_lcores, nb_fwd_ports);
 
 	RTE_ETH_FOREACH_DEV(pid) {
-		struct rte_eth_rxconf *rx_conf = &ports[pid].rx_conf[0];
-		struct rte_eth_txconf *tx_conf = &ports[pid].tx_conf[0];
+		struct rte_eth_rxconf *rx_conf = &ports[pid].rxq[0].conf;
+		struct rte_eth_txconf *tx_conf = &ports[pid].txq[0].conf;
 		uint16_t *nb_rx_desc = &ports[pid].nb_rx_desc[0];
 		uint16_t *nb_tx_desc = &ports[pid].nb_tx_desc[0];
 		struct rte_eth_rxq_info rx_qinfo;
@@ -3123,7 +3123,7 @@ fwd_stream_on_other_lcores(uint16_t domain_id, lcoreid_t src_lc,
 			fs = fwd_streams[sm_id];
 			port = &ports[fs->rx_port];
 			dev_info = &port->dev_info;
-			rxq_conf = &port->rx_conf[fs->rx_queue];
+			rxq_conf = &port->rxq[fs->rx_queue].conf;
 			if ((dev_info->dev_capa & RTE_ETH_DEV_CAPA_RXQ_SHARE)
 			    == 0 || rxq_conf->share_group == 0)
 				/* Not shared rxq. */
@@ -3183,7 +3183,7 @@ pkt_fwd_shared_rxq_check(void)
 			fs->lcore = fwd_lcores[lc_id];
 			port = &ports[fs->rx_port];
 			dev_info = &port->dev_info;
-			rxq_conf = &port->rx_conf[fs->rx_queue];
+			rxq_conf = &port->rxq[fs->rx_queue].conf;
 			if ((dev_info->dev_capa & RTE_ETH_DEV_CAPA_RXQ_SHARE)
 			    == 0 || rxq_conf->share_group == 0)
 				/* Not shared rxq. */

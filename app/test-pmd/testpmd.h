@@ -136,6 +136,7 @@ struct fwd_stream {
 	portid_t   tx_port;   /**< forwarding port of received packets */
 	queueid_t  tx_queue;  /**< TX queue to send forwarded packets */
 	streamid_t peer_addr; /**< index of peer ethernet address of packets */
+	bool       disabled;  /**< the stream is disabled and should not run */
 
 	unsigned int retry_enabled;
 
@@ -219,6 +220,18 @@ struct xstat_display_info {
 	bool	 allocated;
 };
 
+/** RX queue configuration and state. */
+struct port_rxqueue {
+	struct rte_eth_rxconf conf;
+	uint8_t state; /**< RTE_ETH_QUEUE_STATE_* value. */
+};
+
+/** TX queue configuration and state. */
+struct port_txqueue {
+	struct rte_eth_txconf conf;
+	uint8_t state; /**< RTE_ETH_QUEUE_STATE_* value. */
+};
+
 /**
  * The data structure associated with each port.
  */
@@ -241,8 +254,8 @@ struct rte_port {
 	uint8_t                 dcb_flag;   /**< enable dcb */
 	uint16_t                nb_rx_desc[RTE_MAX_QUEUES_PER_PORT+1]; /**< per queue rx desc number */
 	uint16_t                nb_tx_desc[RTE_MAX_QUEUES_PER_PORT+1]; /**< per queue tx desc number */
-	struct rte_eth_rxconf   rx_conf[RTE_MAX_QUEUES_PER_PORT+1]; /**< per queue rx configuration */
-	struct rte_eth_txconf   tx_conf[RTE_MAX_QUEUES_PER_PORT+1]; /**< per queue tx configuration */
+	struct port_rxqueue     rxq[RTE_MAX_QUEUES_PER_PORT+1]; /**< per queue Rx config and state */
+	struct port_txqueue     txq[RTE_MAX_QUEUES_PER_PORT+1]; /**< per queue Tx config and state */
 	struct rte_ether_addr   *mc_addr_pool; /**< pool of multicast addrs */
 	uint32_t                mc_addr_nb; /**< nb. of addr. in mc_addr_pool */
 	uint8_t                 slave_flag : 1, /**< bonding slave port */
@@ -300,12 +313,14 @@ struct fwd_lcore {
  */
 typedef int (*port_fwd_begin_t)(portid_t pi);
 typedef void (*port_fwd_end_t)(portid_t pi);
+typedef void (*stream_init_t)(struct fwd_stream *fs);
 typedef void (*packet_fwd_t)(struct fwd_stream *fs);
 
 struct fwd_engine {
 	const char       *fwd_mode_name; /**< Forwarding mode name. */
 	port_fwd_begin_t port_fwd_begin; /**< NULL if nothing special to do. */
 	port_fwd_end_t   port_fwd_end;   /**< NULL if nothing special to do. */
+	stream_init_t    stream_init;    /**< NULL if nothing special to do. */
 	packet_fwd_t     packet_fwd;     /**< Mandatory. */
 };
 
