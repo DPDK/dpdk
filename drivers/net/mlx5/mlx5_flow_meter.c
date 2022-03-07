@@ -15,6 +15,9 @@
 #include "mlx5.h"
 #include "mlx5_flow.h"
 
+static int mlx5_flow_meter_disable(struct rte_eth_dev *dev,
+		uint32_t meter_id, struct rte_mtr_error *error);
+
 /**
  * Create the meter action.
  *
@@ -1288,7 +1291,7 @@ mlx5_flow_meter_create(struct rte_eth_dev *dev, uint32_t meter_id,
 	}
 	/* Add to the flow meter list. */
 	fm->active_state = 1; /* Config meter starts as active. */
-	fm->is_enable = 1;
+	fm->is_enable = params->meter_enable;
 	fm->shared = !!shared;
 	__atomic_add_fetch(&fm->profile->ref_cnt, 1, __ATOMIC_RELAXED);
 	if (params->meter_policy_id == priv->sh->mtrmng->def_policy_id) {
@@ -1313,7 +1316,10 @@ mlx5_flow_meter_create(struct rte_eth_dev *dev, uint32_t meter_id,
 		data.dword = mtr_idx;
 		if (mlx5_l3t_set_entry(priv->mtr_idx_tbl, meter_id, &data))
 			goto error;
+	} else if (!params->meter_enable && mlx5_flow_meter_disable(dev, meter_id, error)) {
+		goto error;
 	}
+	fm->active_state = params->meter_enable;
 	if (mtr_policy)
 		__atomic_add_fetch(&mtr_policy->ref_cnt, 1, __ATOMIC_RELAXED);
 	return 0;
