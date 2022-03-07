@@ -5554,7 +5554,7 @@ flow_check_match_action(const struct rte_flow_action actions[],
 	return flag ? actions_n + 1 : 0;
 }
 
-#define SAMPLE_SUFFIX_ITEM 2
+#define SAMPLE_SUFFIX_ITEM 3
 
 /**
  * Split the sample flow.
@@ -5595,6 +5595,7 @@ flow_check_match_action(const struct rte_flow_action actions[],
 static int
 flow_sample_split_prep(struct rte_eth_dev *dev,
 		       int add_tag,
+		       const struct rte_flow_item items[],
 		       struct rte_flow_item sfx_items[],
 		       const struct rte_flow_action actions[],
 		       struct rte_flow_action actions_sfx[],
@@ -5722,6 +5723,12 @@ flow_sample_split_prep(struct rte_eth_dev *dev,
 			.data = tag_id,
 		};
 		/* Prepare the suffix subflow items. */
+		for (; items->type != RTE_FLOW_ITEM_TYPE_END; items++) {
+			if (items->type == RTE_FLOW_ITEM_TYPE_PORT_ID) {
+				memcpy(sfx_items, items, sizeof(*sfx_items));
+				sfx_items++;
+			}
+		}
 		tag_spec = (void *)(sfx_items + SAMPLE_SUFFIX_ITEM);
 		tag_spec->data = tag_id;
 		tag_spec->id = set_tag->id;
@@ -6335,7 +6342,7 @@ flow_create_split_sample(struct rte_eth_dev *dev,
 			jump_table = attr->group * MLX5_FLOW_TABLE_FACTOR +
 				     next_ft_step;
 		pre_actions = sfx_actions + actions_n;
-		tag_id = flow_sample_split_prep(dev, add_tag, sfx_items,
+		tag_id = flow_sample_split_prep(dev, add_tag, items, sfx_items,
 						actions, sfx_actions,
 						pre_actions, actions_n,
 						sample_action_pos,
