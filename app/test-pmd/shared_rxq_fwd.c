@@ -107,9 +107,17 @@ shared_rxq_fwd(struct fwd_stream *fs)
 	get_end_cycles(fs, start_tsc);
 }
 
+static void
+shared_rxq_stream_init(struct fwd_stream *fs)
+{
+	fs->disabled = ports[fs->rx_port].rxq[fs->rx_queue].state ==
+						RTE_ETH_QUEUE_STATE_STOPPED;
+}
+
 struct fwd_engine shared_rxq_engine = {
 	.fwd_mode_name  = "shared_rxq",
 	.port_fwd_begin = NULL,
 	.port_fwd_end   = NULL,
+	.stream_init    = shared_rxq_stream_init,
 	.packet_fwd     = shared_rxq_fwd,
 };

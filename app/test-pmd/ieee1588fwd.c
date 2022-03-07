@@ -211,9 +211,22 @@ port_ieee1588_fwd_end(portid_t pi)
 	rte_eth_timesync_disable(pi);
 }
 
+static void
+port_ieee1588_stream_init(struct fwd_stream *fs)
+{
+	bool rx_stopped, tx_stopped;
+
+	rx_stopped = ports[fs->rx_port].rxq[fs->rx_queue].state ==
+						RTE_ETH_QUEUE_STATE_STOPPED;
+	tx_stopped = ports[fs->tx_port].txq[fs->tx_queue].state ==
+						RTE_ETH_QUEUE_STATE_STOPPED;
+	fs->disabled = rx_stopped || tx_stopped;
+}
+
 struct fwd_engine ieee1588_fwd_engine = {
 	.fwd_mode_name  = "ieee1588",
 	.port_fwd_begin = port_ieee1588_fwd_begin,
 	.port_fwd_end   = port_ieee1588_fwd_end,
+	.stream_init    = port_ieee1588_stream_init,
 	.packet_fwd     = ieee1588_packet_fwd,
 };
