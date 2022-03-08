@@ -11,6 +11,7 @@
 #include <limits.h>
 #include <getopt.h>
 
+#include <rte_bitops.h>
 #include <rte_log.h>
 #include <rte_eal.h>
 #include <rte_lcore.h>
