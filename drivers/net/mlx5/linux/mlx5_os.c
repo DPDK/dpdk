@@ -2714,6 +2714,40 @@ mlx5_os_net_cleanup(void)
 	mlx5_pmd_socket_uninit();
 }
 
+static int
+mlx5_os_dev_shared_handler_install_lsc(struct mlx5_dev_ctx_shared *sh)
+{
+	int nlsk_fd, flags, ret;
+
+	nlsk_fd = mlx5_nl_init(NETLINK_ROUTE, RTMGRP_LINK);
+	if (nlsk_fd < 0) {
+		DRV_LOG(ERR, "Failed to create a socket for Netlink events: %s",
+			rte_strerror(rte_errno));
+		return -1;
+	}
+	flags = fcntl(nlsk_fd, F_GETFL);
+	ret = fcntl(nlsk_fd, F_SETFL, flags | O_NONBLOCK);
+	if (ret != 0) {
+		DRV_LOG(ERR, "Failed to make Netlink event socket non-blocking: %s",
+			strerror(errno));
+		rte_errno = errno;
+		goto error;
+	}
+	rte_intr_type_set(sh->intr_handle_nl, RTE_INTR_HANDLE_EXT);
+	rte_intr_fd_set(sh->intr_handle_nl, nlsk_fd);
+	if (rte_intr_callback_register(sh->intr_handle_nl,
+				       mlx5_dev_interrupt_handler_nl,
+				       sh) != 0) {
+		DRV_LOG(ERR, "Failed to register Netlink events interrupt");
+		rte_intr_fd_set(sh->intr_handle_nl, -1);
+		goto error;
+	}
+	return 0;
+error:
+	close(nlsk_fd);
+	return -1;
+}
+
 /**
  * Install shared asynchronous device events handler.
  * This function is implemented to support event sharing
@@ -2750,6 +2784,18 @@ mlx5_os_dev_shared_handler_install(struct mlx5_dev_ctx_shared *sh)
 			DRV_LOG(INFO, "Fail to install the shared interrupt.");
 			rte_intr_fd_set(sh->intr_handle, -1);
 		}
+	}
+	sh->intr_handle_nl = rte_intr_instance_alloc
+						(RTE_INTR_INSTANCE_F_SHARED);
+	if (sh->intr_handle_nl == NULL) {
+		DRV_LOG(ERR, "Fail to allocate intr_handle");
+		rte_errno = ENOMEM;
+		return;
+	}
+	rte_intr_fd_set(sh->intr_handle_nl, -1);
+	if (mlx5_os_dev_shared_handler_install_lsc(sh) < 0) {
+		DRV_LOG(INFO, "Fail to install the shared Netlink event handler.");
+		rte_intr_fd_set(sh->intr_handle_nl, -1);
 	}
 	if (sh->devx) {
 #ifdef HAVE_IBV_DEVX_ASYNC
@@ -2798,10 +2844,19 @@ mlx5_os_dev_shared_handler_install(struct mlx5_dev_ctx_shared *sh)
 void
 mlx5_os_dev_shared_handler_uninstall(struct mlx5_dev_ctx_shared *sh)
 {
+	int nlsk_fd;
+
 	if (rte_intr_fd_get(sh->intr_handle) >= 0)
 		mlx5_intr_callback_unregister(sh->intr_handle,
 					      mlx5_dev_interrupt_handler, sh);
 	rte_intr_instance_free(sh->intr_handle);
+	nlsk_fd = rte_intr_fd_get(sh->intr_handle_nl);
+	if (nlsk_fd >= 0) {
+		mlx5_intr_callback_unregister
+			(sh->intr_handle_nl, mlx5_dev_interrupt_handler_nl, sh);
+		close(nlsk_fd);
+	}
+	rte_intr_instance_free(sh->intr_handle_nl);
 #ifdef HAVE_IBV_DEVX_ASYNC
 	if (rte_intr_fd_get(sh->intr_handle_devx) >= 0)
 		rte_intr_callback_unregister(sh->intr_handle_devx,
