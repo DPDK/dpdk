@@ -523,6 +523,8 @@ cuda_dev_info_get(struct rte_gpu *dev, struct rte_gpu_info *info)
 		}
 		dev->mpshared->info.total_memory = parent_info.total_memory;
 
+		dev->mpshared->info.page_size = parent_info.page_size;
+
 		/*
 		 * GPU Device private info
 		 */
@@ -1172,6 +1174,8 @@ cuda_gpu_probe(__rte_unused struct rte_pci_driver *pci_drv, struct rte_pci_devic
 		rte_errno = EPERM;
 		return -rte_errno;
 	}
+
+	dev->mpshared->info.page_size = (size_t)GPU_PAGE_SIZE;
 
 	/*
 	 * GPU Device private info

@@ -59,7 +59,9 @@ struct rte_gpu_info {
 	uint32_t processor_count;
 	/** Total memory available on device. */
 	size_t total_memory;
-	/* Local NUMA memory ID. -1 if unknown. */
+	/** GPU memory page size. */
+	size_t page_size;
+	/** Local NUMA memory ID. -1 if unknown. */
 	int16_t numa_node;
 };
 
