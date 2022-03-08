@@ -53,7 +53,7 @@ if [ -n "$duplicate_symbols" ] ; then
     ret=1
 fi
 
-local_miss_maps=$(grep -L 'local: \*;' $@)
+local_miss_maps=$(grep -L 'local: \*;' $@ || true)
 if [ -n "$local_miss_maps" ] ; then
     echo "Found maps without local catch-all:"
     echo "$local_miss_maps"
