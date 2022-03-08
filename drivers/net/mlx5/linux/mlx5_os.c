@@ -1086,7 +1086,7 @@ err_secondary:
 		" old OFED/rdma-core version or firmware configuration");
 #endif
 	config->mpls_en = mpls_en;
-	nl_rdma = mlx5_nl_init(NETLINK_RDMA);
+	nl_rdma = mlx5_nl_init(NETLINK_RDMA, 0);
 	/* Check port status. */
 	if (spawn->phys_port <= UINT8_MAX) {
 		/* Legacy Verbs api only support u8 port number. */
@@ -1133,7 +1133,7 @@ err_secondary:
 	priv->mtu = RTE_ETHER_MTU;
 	/* Some internal functions rely on Netlink sockets, open them now. */
 	priv->nl_socket_rdma = nl_rdma;
-	priv->nl_socket_route =	mlx5_nl_init(NETLINK_ROUTE);
+	priv->nl_socket_route =	mlx5_nl_init(NETLINK_ROUTE, 0);
 	priv->representor = !!switch_info->representor;
 	priv->master = !!switch_info->master;
 	priv->domain_id = RTE_ETH_DEV_SWITCH_DOMAIN_ID_INVALID;
@@ -2137,8 +2137,8 @@ mlx5_os_pci_probe_pf(struct mlx5_common_device *cdev,
 	 * matching ones, gathering into the list.
 	 */
 	struct ibv_device *ibv_match[ret + 1];
-	int nl_route = mlx5_nl_init(NETLINK_ROUTE);
-	int nl_rdma = mlx5_nl_init(NETLINK_RDMA);
+	int nl_route = mlx5_nl_init(NETLINK_ROUTE, 0);
+	int nl_rdma = mlx5_nl_init(NETLINK_RDMA, 0);
 	unsigned int i;
 
 	while (ret-- > 0) {
