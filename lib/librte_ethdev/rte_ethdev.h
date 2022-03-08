@@ -1502,7 +1502,7 @@ struct rte_eth_rxseg_capa {
  * device, etc...
  */
 struct rte_eth_dev_info {
-	struct rte_device *device; /** Generic device information */
+	struct rte_device *device; /**< Generic device information */
 	const char *driver_name; /**< Device Driver name. */
 	unsigned int if_index; /**< Index to bound host interface, or 0 if none.
 		Use if_indextoname() to translate into an interface name. */
@@ -1516,8 +1516,8 @@ struct rte_eth_dev_info {
 	uint16_t max_rx_queues; /**< Maximum number of RX queues. */
 	uint16_t max_tx_queues; /**< Maximum number of TX queues. */
 	uint32_t max_mac_addrs; /**< Maximum number of MAC addresses. */
-	uint32_t max_hash_mac_addrs;
 	/** Maximum number of hash MAC addresses for MTA and UTA. */
+	uint32_t max_hash_mac_addrs;
 	uint16_t max_vfs; /**< Maximum number of VFs. */
 	uint16_t max_vmdq_pools; /**< Maximum number of VMDq pools. */
 	struct rte_eth_rxseg_capa rx_seg_capa; /**< Segmentation capability.*/
