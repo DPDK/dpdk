@@ -152,10 +152,13 @@ typedef struct VhostUserMsg {
 	/* Nothing should be added after the payload */
 } __rte_packed VhostUserMsg;
 
-struct vhu_msg_context {
+/* Note: this structure and VhostUserMsg can't be changed carelessly as
+ * external message handlers rely on them.
+ */
+struct __rte_packed vhu_msg_context {
+	VhostUserMsg msg;
 	int fds[VHOST_MEMORY_MAX_NREGIONS];
 	int fd_num;
-	VhostUserMsg msg;
 };
 
 #define VHOST_USER_HDR_SIZE offsetof(VhostUserMsg, payload.u64)
