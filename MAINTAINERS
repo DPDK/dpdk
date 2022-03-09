@@ -318,7 +318,6 @@ F: lib/eal/linux/
 F: doc/guides/linux_gsg/
 
 Linux UIO
-M: Ferruh Yigit <ferruh.yigit@intel.com>
 F: drivers/bus/pci/linux/*uio*
 
 Linux VFIO
@@ -587,7 +586,6 @@ F: app/test/test_link_bonding*
 F: examples/bond/
 
 Linux KNI
-M: Ferruh Yigit <ferruh.yigit@intel.com>
 F: kernel/linux/kni/
 F: lib/kni/
 F: doc/guides/prog_guide/kernel_nic_interface.rst
@@ -964,7 +962,6 @@ F: doc/guides/nics/avp.rst
 F: doc/guides/nics/features/avp.ini
 
 PCAP PMD
-M: Ferruh Yigit <ferruh.yigit@intel.com>
 F: drivers/net/pcap/
 F: doc/guides/nics/pcap_ring.rst
 F: doc/guides/nics/features/pcap.ini
@@ -975,7 +972,6 @@ F: doc/guides/nics/tap.rst
 F: doc/guides/nics/features/tap.ini
 
 KNI PMD
-M: Ferruh Yigit <ferruh.yigit@intel.com>
 F: drivers/net/kni/
 F: doc/guides/nics/kni.rst
 
