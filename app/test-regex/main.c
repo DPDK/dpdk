@@ -385,10 +385,13 @@ run_regex(void *args)
 	char *data_buf = rgxc->data_buf;
 	long data_len = rgxc->data_len;
 	long job_len = rgxc->job_len;
-
+	long remainder;
+	long act_job_len = 0;
+	bool last_job = false;
 	char *buf = NULL;
 	uint32_t actual_jobs = 0;
 	uint32_t i;
+	uint32_t job_id;
 	uint16_t qp_id;
 	uint16_t dev_id = 0;
 	uint8_t nb_matches;
@@ -459,9 +462,16 @@ run_regex(void *args)
 		/* Assign each mbuf with the data to handle. */
 		actual_jobs = 0;
 		pos = 0;
+		remainder = data_len % nb_jobs;
+
 		/* Allocate the jobs and assign each job with an mbuf. */
 		for (i = 0; (pos < data_len) && (i < nb_jobs) ; i++) {
-			long act_job_len = RTE_MIN(job_len, data_len - pos);
+			act_job_len = RTE_MIN(job_len, data_len - pos);
+
+			if (i == (nb_jobs - 1)) {
+				last_job = true;
+				act_job_len += remainder;
+			}
 
 			ops[i] = rte_malloc(NULL, sizeof(*ops[0]) +
 					nb_max_matches *
@@ -481,7 +491,12 @@ run_regex(void *args)
 				if (ops[i]->mbuf) {
 					rte_pktmbuf_attach_extbuf(ops[i]->mbuf,
 					&buf[pos], 0, act_job_len, &shinfo);
-					ops[i]->mbuf->data_len = job_len;
+
+					if (!last_job)
+						ops[i]->mbuf->data_len = job_len;
+					else
+						ops[i]->mbuf->data_len = act_job_len;
+
 					ops[i]->mbuf->pkt_len = act_job_len;
 				}
 			}
@@ -509,6 +524,9 @@ run_regex(void *args)
 			qp = &qps[qp_id];
 			qp->total_enqueue = 0;
 			qp->total_dequeue = 0;
+			/* Re-set user id after dequeue to match data in mbuf. */
+			for (job_id = 0 ; job_id < nb_jobs; job_id++)
+				qp->ops[job_id]->user_id = job_id;
 		}
 		do {
 			update = false;
@@ -554,10 +572,10 @@ run_regex(void *args)
 	for (qp_id = 0; qp_id < nb_qps; qp_id++) {
 		qp = &qps[qp_id];
 		time = (long double)qp->cycles / rte_get_timer_hz();
-		printf("Core=%u QP=%u Job=%ld Bytes Time=%Lf sec Perf=%Lf "
+		printf("Core=%u QP=%u Job=%ld Bytes Last Job=%ld Bytes Time=%Lf sec Perf=%Lf "
 		       "Gbps\n", rte_lcore_id(), qp_id + qp_id_base,
-		       job_len, time,
-		       (((double)actual_jobs * job_len * nb_iterations * 8)
+		       job_len, act_job_len, time,
+		       (((double)data_len * nb_iterations * 8)
 		       / time) / 1000000000.0);
 	}
 
@@ -590,10 +608,10 @@ run_regex(void *args)
 			qp->total_matches += nb_matches;
 			match = qp->ops[d_ind % actual_jobs]->matches;
 			for (i = 0; i < nb_matches; i++) {
-				printf("start = %ld, len = %d, rule = %d\n",
-						match->start_offset +
-						d_ind * job_len,
-						match->len, match->rule_id);
+				printf("start = %d, len = %d, rule = %d\n",
+					match->start_offset +
+					(int)(qp->ops[d_ind % actual_jobs]->user_id * job_len),
+					match->len, match->rule_id);
 				match++;
 			}
 		}
