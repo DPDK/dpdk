@@ -6844,7 +6844,7 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 		 bool external, int hairpin, struct rte_flow_error *error)
 {
 	int ret;
-	uint64_t action_flags = 0;
+	uint64_t aso_mask, action_flags = 0;
 	uint64_t item_flags = 0;
 	uint64_t last_item = 0;
 	uint8_t next_protocol = 0xff;
@@ -6914,6 +6914,8 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 	bool shared_count = false;
 	uint16_t udp_dport = 0;
 	uint32_t tag_id = 0;
+	const struct rte_flow_action_age *non_shared_age = NULL;
+	const struct rte_flow_action_count *count = NULL;
 
 	if (items == NULL)
 		return -1;
@@ -7453,6 +7455,7 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 							    attr, error);
 			if (ret < 0)
 				return ret;
+			count = actions->conf;
 			action_flags |= MLX5_FLOW_ACTION_COUNT;
 			++actions_n;
 			break;
@@ -7758,6 +7761,7 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 			++actions_n;
 			break;
 		case RTE_FLOW_ACTION_TYPE_AGE:
+			non_shared_age = actions->conf;
 			ret = flow_dv_validate_action_age(action_flags,
 							  actions, dev,
 							  error);
@@ -8054,6 +8058,20 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 					"cannot be done before meter action");
 		}
 	}
+	/*
+	 * Only support one ASO action in a single flow rule.
+	 * non-shared AGE + counter will fallback to use HW counter, no ASO hit object.
+	 * Group 0 uses HW counter for AGE too even if no counter action.
+	 */
+	aso_mask = (action_flags & MLX5_FLOW_ACTION_METER && priv->sh->meter_aso_en) << 2 |
+		   (action_flags & MLX5_FLOW_ACTION_CT && priv->sh->ct_aso_en) << 1 |
+		   (action_flags & MLX5_FLOW_ACTION_AGE &&
+		    !(non_shared_age && count) &&
+		    (attr->group || (attr->transfer && priv->fdb_def_rule)) &&
+		    priv->sh->flow_hit_aso_en);
+	if (__builtin_popcountl(aso_mask) > 1)
+		return rte_flow_error_set(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_ACTION,
+					  NULL, "unsupported combining AGE, METER, CT ASO actions in a single rule");
 	/*
 	 * Hairpin flow will add one more TAG action in TX implicit mode.
 	 * In TX explicit mode, there will be no hairpin flow ID.
