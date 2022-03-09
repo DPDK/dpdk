@@ -479,14 +479,6 @@ struct mlx5_aso_cq {
 	uint64_t errors;
 };
 
-struct mlx5_aso_devx_mr {
-	void *buf;
-	uint64_t length;
-	struct mlx5dv_devx_umem *umem;
-	struct mlx5_devx_obj *mkey;
-	bool is_indirect;
-};
-
 struct mlx5_aso_sq_elem {
 	struct mlx5_aso_age_pool *pool;
 	uint16_t burst_size;
@@ -503,7 +495,7 @@ struct mlx5_aso_sq {
 	};
 	volatile uint32_t *db_rec;
 	volatile uint64_t *uar_addr;
-	struct mlx5_aso_devx_mr mr;
+	struct mlx5_pmd_mr mr;
 	uint16_t pi;
 	uint32_t head;
 	uint32_t tail;
