@@ -420,6 +420,8 @@ Limitations
     sample actions list.
   - For E-Switch mirroring flow, supports ``RAW ENCAP``, ``Port ID``,
     ``VXLAN ENCAP``, ``NVGRE ENCAP`` in the sample actions list.
+  - For ConnectX-5 trusted device, the application metadata with SET_TAG index 0
+    is not supported before ``RTE_FLOW_ACTION_TYPE_SAMPLE`` action.
 
 - Modify Field flow:
 

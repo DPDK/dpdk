@@ -6921,6 +6921,7 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 	bool def_policy = false;
 	bool shared_count = false;
 	uint16_t udp_dport = 0;
+	uint32_t tag_id = 0;
 
 	if (items == NULL)
 		return -1;
@@ -7390,6 +7391,8 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 				++actions_n;
 			if (action_flags & MLX5_FLOW_ACTION_SAMPLE)
 				modify_after_mirror = 1;
+			tag_id = ((const struct rte_flow_action_set_tag *)
+				  actions->conf)->index;
 			action_flags |= MLX5_FLOW_ACTION_SET_TAG;
 			rw_act_num += MLX5_ACT_NUM_SET_TAG;
 			break;
@@ -7824,6 +7827,11 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 							     error);
 			if (ret < 0)
 				return ret;
+			if ((action_flags & MLX5_FLOW_ACTION_SET_TAG) &&
+			    tag_id == 0 && priv->mtr_color_reg == REG_NON)
+				return rte_flow_error_set(error, EINVAL,
+					RTE_FLOW_ERROR_TYPE_ACTION, NULL,
+					"sample after tag action causes metadata tag index 0 corruption");
 			action_flags |= MLX5_FLOW_ACTION_SAMPLE;
 			++actions_n;
 			break;

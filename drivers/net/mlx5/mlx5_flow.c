@@ -5652,6 +5652,12 @@ flow_sample_split_prep(struct rte_eth_dev *dev,
 		append_index++;
 		set_tag = (void *)(actions_pre + actions_n + append_index);
 		ret = mlx5_flow_get_reg_id(dev, MLX5_SAMPLE_ID, 0, error);
+		/* Trust VF/SF on CX5 not supported meter so that the reserved
+		 * metadata regC is REG_NON, back to use application tag
+		 * index 0.
+		 */
+		if (unlikely(ret == REG_NON))
+			ret = mlx5_flow_get_reg_id(dev, MLX5_APP_TAG, 0, error);
 		if (ret < 0)
 			return ret;
 		mlx5_ipool_malloc(priv->sh->ipool
