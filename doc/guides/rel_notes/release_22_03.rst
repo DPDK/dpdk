@@ -313,6 +313,18 @@ Known Issues
    Also, make sure to start the actual text at the margin.
    =======================================================
 
+* **Possible reduced power saving with PMD Power Management.**
+
+  Users may see reduced power savings when using PMD Power Management.
+  This issue occurs when compiling DPDK applications with GCC-9
+  on platforms with TSX enabled.
+  The function ``rte_power_monitor_multi()`` may return
+  without successfully starting the RTM transaction (``_xbegin()`` fails).
+
+  There are three workarounds for this issue.
+  Either build DPDK with GCC-11 or newer, build with shared libraries,
+  or build DPDK with fewer drivers.
+
 
 Tested Platforms
 ----------------
