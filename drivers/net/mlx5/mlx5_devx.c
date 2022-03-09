@@ -931,6 +931,8 @@ mlx5_rxq_devx_obj_drop_create(struct rte_eth_dev *dev)
 		rte_errno = ENOMEM;
 		goto error;
 	}
+	/* set the CPU socket ID where the rxq_ctrl was allocated */
+	rxq_ctrl->socket = socket_id;
 	rxq_obj->rxq_ctrl = rxq_ctrl;
 	rxq_ctrl->type = MLX5_RXQ_TYPE_STANDARD;
 	rxq_ctrl->sh = priv->sh;
