@@ -325,6 +325,8 @@ Limitations
   - Supports ``RTE_FLOW_ACTION_TYPE_SAMPLE`` action only within NIC Rx and E-Switch steering domain.
   - The E-Switch Sample flow must have the eswitch_manager VPORT destination (PF or ECPF) and no additional actions.
   - For ConnectX-5, the ``RTE_FLOW_ACTION_TYPE_SAMPLE`` is typically used as first action in the E-Switch egress flow if with header modify or encapsulation actions.
+  - For ConnectX-5 trusted device, the application metadata with SET_TAG index 0
+    is not supported before ``RTE_FLOW_ACTION_TYPE_SAMPLE`` action.
 
 - IPv6 header item 'proto' field, indicating the next header protocol, should
   not be set as extension header.
