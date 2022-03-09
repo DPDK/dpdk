@@ -1307,18 +1307,19 @@ xsk_configure(struct pmd_internals *internals, struct pkt_rx_queue *rxq,
 	cfg.bind_flags |= XDP_USE_NEED_WAKEUP;
 #endif
 
-	if (strnlen(internals->prog_path, PATH_MAX) &&
-				!internals->custom_prog_configured) {
-		ret = load_custom_xdp_prog(internals->prog_path,
-					   internals->if_index,
-					   &internals->map);
-		if (ret) {
-			AF_XDP_LOG(ERR, "Failed to load custom XDP program %s\n",
-					internals->prog_path);
-			goto out_umem;
+	if (strnlen(internals->prog_path, PATH_MAX)) {
+		if (!internals->custom_prog_configured) {
+			ret = load_custom_xdp_prog(internals->prog_path,
+							internals->if_index,
+							&internals->map);
+			if (ret) {
+				AF_XDP_LOG(ERR, "Failed to load custom XDP program %s\n",
+						internals->prog_path);
+				goto out_umem;
+			}
+			internals->custom_prog_configured = 1;
 		}
-		internals->custom_prog_configured = 1;
-		cfg.libbpf_flags = XSK_LIBBPF_FLAGS__INHIBIT_PROG_LOAD;
+		cfg.libbpf_flags |= XSK_LIBBPF_FLAGS__INHIBIT_PROG_LOAD;
 	}
 
 	if (internals->shared_umem)
