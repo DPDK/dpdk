@@ -1309,6 +1309,7 @@ are shown below.
      "enqueue_err_count": 0, "dequeue_err_count": 0}}
 
 #. Get the capabilities of a particular Crypto device::
+
      --> /cryptodev/caps,0
      {"/cryptodev/caps": {"crypto_caps": [<array of serialized bytes of
      capabilities>], "crypto_caps_n": <number of capabilities>}}
