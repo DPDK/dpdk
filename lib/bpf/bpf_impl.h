@@ -2,8 +2,8 @@
  * Copyright(c) 2018 Intel Corporation
  */
 
-#ifndef _BPF_H_
-#define _BPF_H_
+#ifndef BPF_IMPL_H
+#define BPF_IMPL_H
 
 #include <rte_bpf.h>
 #include <sys/mman.h>
@@ -43,4 +43,4 @@ bpf_size(uint32_t bpf_op_sz)
 	return 0;
 }
 
-#endif /* _BPF_H_ */
+#endif /* BPF_IMPL_H */
