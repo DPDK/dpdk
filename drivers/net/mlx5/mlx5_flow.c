@@ -5611,8 +5611,9 @@ flow_sample_split_prep(struct rte_eth_dev *dev,
 	struct mlx5_rte_flow_item_tag *tag_mask;
 	struct rte_flow_action_jump *jump_action;
 	uint32_t tag_id = 0;
-	int index;
 	int append_index = 0;
+	int set_tag_idx = -1;
+	int index;
 	int ret;
 
 	if (sample_action_pos < 0)
@@ -5620,6 +5621,52 @@ flow_sample_split_prep(struct rte_eth_dev *dev,
 					  RTE_FLOW_ERROR_TYPE_ACTION,
 					  NULL, "invalid position of sample "
 					  "action in list");
+	/* Prepare the actions for prefix and suffix flow. */
+	if (add_tag) {
+		/* Update the new added tag action index preceding
+		 * the PUSH_VLAN or ENCAP action.
+		 */
+		const struct rte_flow_action_raw_encap *raw_encap;
+		const struct rte_flow_action *action = actions;
+		int encap_idx;
+		int action_idx = 0;
+		int raw_decap_idx = -1;
+		int push_vlan_idx = -1;
+		for (; action->type != RTE_FLOW_ACTION_TYPE_END; action++) {
+			switch (action->type) {
+			case RTE_FLOW_ACTION_TYPE_RAW_DECAP:
+				raw_decap_idx = action_idx;
+				break;
+			case RTE_FLOW_ACTION_TYPE_RAW_ENCAP:
+				raw_encap = action->conf;
+				if (raw_encap->size >
+					MLX5_ENCAPSULATION_DECISION_SIZE) {
+					encap_idx = raw_decap_idx != -1 ?
+						    raw_decap_idx : action_idx;
+					if (encap_idx < sample_action_pos &&
+					    push_vlan_idx == -1)
+						set_tag_idx = encap_idx;
+				}
+				break;
+			case RTE_FLOW_ACTION_TYPE_VXLAN_ENCAP:
+			case RTE_FLOW_ACTION_TYPE_NVGRE_ENCAP:
+				encap_idx = action_idx;
+				if (encap_idx < sample_action_pos &&
+				    push_vlan_idx == -1)
+					set_tag_idx = encap_idx;
+				break;
+			case RTE_FLOW_ACTION_TYPE_OF_PUSH_VLAN:
+			case RTE_FLOW_ACTION_TYPE_OF_SET_VLAN_VID:
+				push_vlan_idx = action_idx;
+				if (push_vlan_idx < sample_action_pos)
+					set_tag_idx = action_idx;
+				break;
+			default:
+				break;
+			}
+			action_idx++;
+		}
+	}
 	/* Prepare the actions for prefix and suffix flow. */
 	if (qrss_action_pos >= 0 && qrss_action_pos < sample_action_pos) {
 		index = qrss_action_pos;
@@ -5637,6 +5684,14 @@ flow_sample_split_prep(struct rte_eth_dev *dev,
 		memcpy(actions_sfx, actions + qrss_action_pos,
 		       sizeof(struct rte_flow_action));
 		actions_sfx++;
+	} else if (add_tag && set_tag_idx >= 0) {
+		if (set_tag_idx > 0)
+			memcpy(actions_pre, actions,
+			       sizeof(struct rte_flow_action) * set_tag_idx);
+		memcpy(actions_pre + set_tag_idx + 1, actions + set_tag_idx,
+		       sizeof(struct rte_flow_action) *
+		       (sample_action_pos - set_tag_idx));
+		index = sample_action_pos;
 	} else {
 		index = sample_action_pos;
 		if (index != 0)
@@ -5684,13 +5739,17 @@ flow_sample_split_prep(struct rte_eth_dev *dev,
 				RTE_FLOW_ITEM_TYPE_END,
 		};
 		/* Prepare the tag action in prefix subflow. */
-		actions_pre[index++] =
+		set_tag_idx = (set_tag_idx == -1) ? index : set_tag_idx;
+		actions_pre[set_tag_idx] =
 			(struct rte_flow_action){
 			.type = (enum rte_flow_action_type)
 				MLX5_RTE_FLOW_ACTION_TYPE_TAG,
 			.conf = set_tag,
 		};
+		/* Update next sample position due to add one tag action */
+		index += 1;
 	}
+	/* Copy the sample action into prefix flow. */
 	memcpy(actions_pre + index, actions + sample_action_pos,
 	       sizeof(struct rte_flow_action));
 	index += 1;
