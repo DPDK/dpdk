@@ -6,59 +6,6 @@
 Enabling Additional Functionality
 =================================
 
-.. _High_Precision_Event_Timer:
-
-High Precision Event Timer (HPET) Functionality
------------------------------------------------
-
-BIOS Support
-~~~~~~~~~~~~
-
-The High Precision Timer (HPET) must be enabled in the platform BIOS if the HPET is to be used.
-Otherwise, the Time Stamp Counter (TSC) is used by default.
-The BIOS is typically accessed by pressing F2 while the platform is starting up.
-The user can then navigate to the HPET option. On the Crystal Forest platform BIOS, the path is:
-**Advanced -> PCH-IO Configuration -> High Precision Timer ->** (Change from Disabled to Enabled if necessary).
-
-On a system that has already booted, the following command can be issued to check if HPET is enabled::
-
-   grep hpet /proc/timer_list
-
-If no entries are returned, HPET must be enabled in the BIOS (as per the instructions above) and the system rebooted.
-
-Linux Kernel Support
-~~~~~~~~~~~~~~~~~~~~
-
-The DPDK makes use of the platform HPET timer by mapping the timer counter into the process address space, and as such,
-requires that the ``HPET_MMAP`` kernel configuration option be enabled.
-
-.. warning::
-
-    On Fedora, and other common distributions such as Ubuntu, the ``HPET_MMAP`` kernel option is not enabled by default.
-    To recompile the Linux kernel with this option enabled, please consult the distributions documentation for the relevant instructions.
-
-Enabling HPET in the DPDK
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-By default, HPET support is disabled in the DPDK build configuration files.
-To use HPET, use the following meson build option which will enable the HPET settings at compile time::
-
-   meson configure -Duse_hpet=true
-
-For an application to use the ``rte_get_hpet_cycles()`` and ``rte_get_hpet_hz()`` API calls,
-and optionally to make the HPET the default time source for the rte_timer library,
-the new ``rte_eal_hpet_init()`` API call should be called at application initialization.
-This API call will ensure that the HPET is accessible, returning an error to the application if it is not,
-for example, if ``HPET_MMAP`` is not enabled in the kernel.
-The application can then determine what action to take, if any, if the HPET is not available at run-time.
-
-.. note::
-
-    For applications that require timing APIs, but not the HPET timer specifically,
-    it is recommended that the ``rte_get_timer_cycles()`` and ``rte_get_timer_hz()`` API calls be used instead of the HPET-specific APIs.
-    These generic APIs can work with either TSC or HPET time sources, depending on what is requested by an application call to ``rte_eal_hpet_init()``,
-    if any, and on what is available on the system at runtime.
-
 .. _Running_Without_Root_Privileges:
 
 Running DPDK Applications Without Root Privileges
@@ -151,6 +98,36 @@ the following should be added to the kernel parameter list:
 .. code-block:: console
 
     isolcpus=2,4,6
+
+.. _High_Precision_Event_Timer:
+
+High Precision Event Timer (HPET) Functionality
+-----------------------------------------------
+
+DPDK can support the system HPET as a timer source rather than the system default timers,
+such as the core Time-Stamp Counter (TSC) on x86 systems.
+To enable HPET support in DPDK:
+
+#. Ensure that HPET is enabled in BIOS settings.
+#. Enable ``HPET_MMAP`` support in kernel configuration.
+   Note that this my involve doing a kernel rebuild,
+   as many common linux distributions do *not* have this setting
+   enabled by default in their kernel builds.
+#. Enable DPDK support for HPET by using the build-time meson option ``use_hpet``,
+   for example, ``meson configure -Duse_hpet=true``
+
+For an application to use the ``rte_get_hpet_cycles()`` and ``rte_get_hpet_hz()`` API calls,
+and optionally to make the HPET the default time source for the rte_timer library,
+the ``rte_eal_hpet_init()`` API call should be called at application initialization.
+This API call will ensure that the HPET is accessible,
+returning an error to the application if it is not.
+
+For applications that require timing APIs, but not the HPET timer specifically,
+it is recommended that the ``rte_get_timer_cycles()`` and ``rte_get_timer_hz()``
+API calls be used instead of the HPET-specific APIs.
+These generic APIs can work with either TSC or HPET time sources,
+depending on what is requested by an application call to ``rte_eal_hpet_init()``,
+if any, and on what is available on the system at runtime.
 
 Loading the DPDK KNI Kernel Module
 ----------------------------------
