@@ -133,7 +133,8 @@ flex_link_item_parse(const char *src, struct rte_flow_item *item)
 	struct rte_flow_item *pattern;
 	struct rte_flow_action *actions;
 
-	sprintf(flow_rule, "flow create 0 pattern %s / end", src);
+	sprintf(flow_rule,
+		"flow create 0 pattern %s / end actions drop / end", src);
 	src = flow_rule;
 	ret = flow_parse(src, (void *)data, sizeof(data),
 			 &attr, &pattern, &actions);
