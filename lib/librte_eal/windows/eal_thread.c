@@ -132,12 +132,17 @@ eal_thread_create(pthread_t *thread)
 
 	th = CreateThread(NULL, 0,
 		(LPTHREAD_START_ROUTINE)(ULONG_PTR)eal_thread_loop,
-						NULL, 0, (LPDWORD)thread);
+						NULL, CREATE_SUSPENDED, (LPDWORD)thread);
 	if (!th)
 		return -1;
 
 	SetPriorityClass(GetCurrentProcess(), NORMAL_PRIORITY_CLASS);
 	SetThreadPriority(th, THREAD_PRIORITY_NORMAL);
+
+	if (ResumeThread(th) == (DWORD)-1) {
+		(void)CloseHandle(th);
+		return -1;
+	}
 
 	return 0;
 }
