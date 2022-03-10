@@ -6,11 +6,6 @@ System Requirements
 
 This chapter describes the packages required to compile the DPDK.
 
-.. note::
-
-    If the DPDK is being used on an Intel® Communications Chipset 89xx Series platform,
-    please consult the *Intel® Communications Chipset 89xx Series Software for Linux Getting Started Guide*.
-
 BIOS Setting Prerequisite on x86
 --------------------------------
 
