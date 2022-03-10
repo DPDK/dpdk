@@ -182,7 +182,7 @@ It can be loaded as shown below:
 
 .. note::
 
-   If the devices used for DPDK are bound to the ``uio_pci_generic`` kernel module,
+   If the devices used for DPDK are bound to a UIO-based kernel module,
    please make sure that the IOMMU is disabled or is in passthrough mode.
    One can add ``intel_iommu=off`` or ``amd_iommu=off`` or ``intel_iommu=on iommu=pt``
    in GRUB command line on x86_64 systems,

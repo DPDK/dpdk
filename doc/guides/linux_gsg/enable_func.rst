@@ -128,22 +128,3 @@ API calls be used instead of the HPET-specific APIs.
 These generic APIs can work with either TSC or HPET time sources,
 depending on what is requested by an application call to ``rte_eal_hpet_init()``,
 if any, and on what is available on the system at runtime.
-
-Using Linux IOMMU Pass-Through to Run DPDK with Intel® VT-d
------------------------------------------------------------
-
-To enable Intel® VT-d in a Linux kernel, a number of kernel configuration options must be set. These include:
-
-*   ``IOMMU_SUPPORT``
-
-*   ``IOMMU_API``
-
-*   ``INTEL_IOMMU``
-
-In addition, to run the DPDK with Intel® VT-d, the ``iommu=pt`` kernel parameter must be used when using ``igb_uio`` driver.
-This results in pass-through of the DMAR (DMA Remapping) lookup in the host.
-Also, if ``INTEL_IOMMU_DEFAULT_ON`` is not set in the kernel, the ``intel_iommu=on`` kernel parameter must be used too.
-This ensures that the Intel IOMMU is being initialized as expected.
-
-Please note that while using ``iommu=pt`` is compulsory for ``igb_uio`` driver,
-the ``vfio-pci`` driver can actually work with both ``iommu=pt`` and ``iommu=on``.
