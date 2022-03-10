@@ -129,19 +129,6 @@ These generic APIs can work with either TSC or HPET time sources,
 depending on what is requested by an application call to ``rte_eal_hpet_init()``,
 if any, and on what is available on the system at runtime.
 
-Loading the DPDK KNI Kernel Module
-----------------------------------
-
-To run the DPDK Kernel NIC Interface (KNI) sample application, an extra kernel module (the kni module) must be loaded into the running kernel.
-The module is found in the kernel/linux sub-directory of the DPDK build directory.
-It should be loaded using the insmod command::
-
-   insmod <build_dir>/kernel/linux/kni/rte_kni.ko
-
-.. note::
-
-   See the "Kernel NIC Interface Sample Application" chapter in the *DPDK Sample Applications User Guide* for more details.
-
 Using Linux IOMMU Pass-Through to Run DPDK with Intel® VT-d
 -----------------------------------------------------------
 
