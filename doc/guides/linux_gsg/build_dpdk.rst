@@ -16,7 +16,11 @@ First, uncompress the archive and move to the uncompressed DPDK source directory
     tar xJf dpdk-<version>.tar.xz
     cd dpdk-<version>
 
-The DPDK is composed of several directories:
+The DPDK is composed of several directories, including:
+
+*   doc: DPDK Documentation
+
+*   license: DPDK license information
 
 *   lib: Source code of DPDK libraries
 
@@ -27,6 +31,13 @@ The DPDK is composed of several directories:
 *   examples: Source code of DPDK application examples
 
 *   config, buildtools: Framework-related scripts and configuration
+
+*   usertools: Utility scripts for end-users of DPDK applications
+
+*   devtools: Scripts for use by DPDK developers
+
+*   kernel: Kernel modules needed for some operating systems
+
 
 Compiling and Installing DPDK System-wide
 -----------------------------------------
