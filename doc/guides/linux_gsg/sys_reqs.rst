@@ -25,11 +25,19 @@ Compilation of the DPDK
     The setup commands and installed packages needed on various systems may be different.
     For details on Linux distributions and the versions tested, please consult the DPDK Release Notes.
 
-*   General development tools including a supported C compiler such as gcc (version 4.9+) or clang (version 3.4+).
+*   General development tools including a supported C compiler such as gcc (version 4.9+) or clang (version 3.4+),
+    and ``pkg-config`` or ``pkgconf`` to be used when building end-user binaries against DPDK.
 
     * For RHEL/Fedora systems these can be installed using ``dnf groupinstall "Development Tools"``
     * For Ubuntu/Debian systems these can be installed using ``apt install build-essential``
-    * For Alpine Linux, ``apk add gcc libc-dev bsd-compat-headers libexecinfo-dev``
+    * For Alpine Linux, ``apk add alpine-sdk bsd-compat-headers libexecinfo-dev``
+
+.. note::
+
+   pkg-config 0.27, supplied with RHEL-7,
+   does not process the Libs.private section correctly,
+   resulting in statically linked applications not being linked properly.
+   Use an updated version of ``pkg-config`` or ``pkgconf`` instead when building applications
 
 *   Python 3.5 or later.
 
@@ -84,20 +92,6 @@ For libraries the additional dependencies include:
 For poll-mode drivers, the additional dependencies for each driver can be
 found in that driver's documentation in the relevant DPDK guide document,
 e.g. :doc:`../nics/index`
-
-
-Building DPDK Applications
---------------------------
-
-The tool pkg-config or pkgconf, integrated in most build systems,
-must be used to parse options and dependencies from libdpdk.pc.
-
-.. note::
-
-   pkg-config 0.27, supplied with RHEL-7,
-   does not process the Libs.private section correctly,
-   resulting in statically linked applications not being linked properly.
-
 
 Running DPDK Applications
 -------------------------
