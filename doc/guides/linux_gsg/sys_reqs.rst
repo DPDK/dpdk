@@ -15,13 +15,6 @@ and high performance of small packets, BIOS setting changes may be needed.
 Consult the section on :ref:`Enabling Additional Functionality <Enabling_Additional_Functionality>`
 for more information on the required changes.
 
-.. note::
-
-   If UEFI secure boot is enabled, the Linux kernel may disallow the use of
-   UIO on the system. Therefore, devices for use by DPDK should be bound to the
-   ``vfio-pci`` kernel module rather than ``igb_uio`` or ``uio_pci_generic``.
-   For more details see :ref:`linux_gsg_binding_kernel`.
-
 Compilation of the DPDK
 -----------------------
 
