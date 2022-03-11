@@ -1277,11 +1277,13 @@ xsk_configure(struct pmd_internals *internals, struct pkt_rx_queue *rxq,
 	int ret = 0;
 	int reserve_size = ETH_AF_XDP_DFLT_NUM_DESCS;
 	struct rte_mbuf *fq_bufs[reserve_size];
+	bool reserve_before;
 
 	rxq->umem = xdp_umem_configure(internals, rxq);
 	if (rxq->umem == NULL)
 		return -ENOMEM;
 	txq->umem = rxq->umem;
+	reserve_before = __atomic_load_n(&rxq->umem->refcnt, __ATOMIC_ACQUIRE) <= 1;
 
 #if defined(XDP_UMEM_UNALIGNED_CHUNK_FLAG)
 	ret = rte_pktmbuf_alloc_bulk(rxq->umem->mb_pool, fq_bufs, reserve_size);
@@ -1291,10 +1293,13 @@ xsk_configure(struct pmd_internals *internals, struct pkt_rx_queue *rxq,
 	}
 #endif
 
-	ret = reserve_fill_queue(rxq->umem, reserve_size, fq_bufs, &rxq->fq);
-	if (ret) {
-		AF_XDP_LOG(ERR, "Failed to reserve fill queue.\n");
-		goto out_umem;
+	/* reserve fill queue of queues not (yet) sharing UMEM */
+	if (reserve_before) {
+		ret = reserve_fill_queue(rxq->umem, reserve_size, fq_bufs, &rxq->fq);
+		if (ret) {
+			AF_XDP_LOG(ERR, "Failed to reserve fill queue.\n");
+			goto out_umem;
+		}
 	}
 
 	cfg.rx_size = ring_size;
@@ -1334,6 +1339,15 @@ xsk_configure(struct pmd_internals *internals, struct pkt_rx_queue *rxq,
 	if (ret) {
 		AF_XDP_LOG(ERR, "Failed to create xsk socket.\n");
 		goto out_umem;
+	}
+
+	if (!reserve_before) {
+		/* reserve fill queue of queues sharing UMEM */
+		ret = reserve_fill_queue(rxq->umem, reserve_size, fq_bufs, &rxq->fq);
+		if (ret) {
+			AF_XDP_LOG(ERR, "Failed to reserve fill queue.\n");
+			goto out_xsk;
+		}
 	}
 
 	/* insert the xsk into the xsks_map */
