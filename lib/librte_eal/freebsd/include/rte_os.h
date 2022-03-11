@@ -5,6 +5,10 @@
 #ifndef _RTE_OS_H_
 #define _RTE_OS_H_
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * This header should contain any definition
  * which is not supported natively or named differently in FreeBSD.
@@ -47,6 +51,10 @@ typedef cpuset_t rte_cpuset_t;
 	CPU_ANDNOT(&tmp, src); \
 	CPU_COPY(&tmp, dst); \
 } while (0)
+#endif
+
+#ifdef __cplusplus
+}
 #endif
 
 #endif /* _RTE_OS_H_ */
