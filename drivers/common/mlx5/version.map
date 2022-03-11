@@ -103,4 +103,7 @@ INTERNAL {
 	mlx5_free;
 
 	mlx5_pci_driver_register;
+
+	mlx5_nl_parse_link_status_update;
+	mlx5_nl_read_events;
 };

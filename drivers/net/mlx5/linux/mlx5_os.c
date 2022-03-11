@@ -1002,8 +1002,8 @@ err_secondary:
 	priv->pci_dev = spawn->pci_dev;
 	priv->mtu = RTE_ETHER_MTU;
 	/* Some internal functions rely on Netlink sockets, open them now. */
-	priv->nl_socket_rdma = mlx5_nl_init(NETLINK_RDMA);
-	priv->nl_socket_route =	mlx5_nl_init(NETLINK_ROUTE);
+	priv->nl_socket_rdma = mlx5_nl_init(NETLINK_RDMA, 0);
+	priv->nl_socket_route =	mlx5_nl_init(NETLINK_ROUTE, 0);
 	priv->representor = !!switch_info->representor;
 	priv->master = !!switch_info->master;
 	priv->domain_id = RTE_ETH_DEV_SWITCH_DOMAIN_ID_INVALID;
@@ -1877,8 +1877,8 @@ mlx5_os_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	 * matching ones, gathering into the list.
 	 */
 	struct ibv_device *ibv_match[ret + 1];
-	int nl_route = mlx5_nl_init(NETLINK_ROUTE);
-	int nl_rdma = mlx5_nl_init(NETLINK_RDMA);
+	int nl_route = mlx5_nl_init(NETLINK_ROUTE, 0);
+	int nl_rdma = mlx5_nl_init(NETLINK_RDMA, 0);
 	unsigned int i;
 
 	while (ret-- > 0) {

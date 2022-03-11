@@ -136,7 +136,7 @@ mlx5_vlan_vmwa_init(struct rte_eth_dev *dev, uint32_t ifindex)
 		return NULL;
 	}
 	rte_spinlock_init(&vmwa->sl);
-	vmwa->nl_socket = mlx5_nl_init(NETLINK_ROUTE);
+	vmwa->nl_socket = mlx5_nl_init(NETLINK_ROUTE, 0);
 	if (vmwa->nl_socket < 0) {
 		DRV_LOG(WARNING,
 			"Can not create Netlink socket"

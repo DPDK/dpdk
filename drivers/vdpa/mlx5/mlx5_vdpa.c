@@ -504,7 +504,7 @@ mlx5_vdpa_get_ib_device_match(struct rte_pci_addr *addr)
 static int
 mlx5_vdpa_nl_roce_disable(const char *addr)
 {
-	int nlsk_fd = mlx5_nl_init(NETLINK_GENERIC);
+	int nlsk_fd = mlx5_nl_init(NETLINK_GENERIC, 0);
 	int devlink_id;
 	int enable;
 	int ret;
