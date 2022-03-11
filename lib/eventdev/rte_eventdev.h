@@ -986,21 +986,31 @@ struct rte_event_vector {
 	};
 	/**< Union to hold common attributes of the vector array. */
 	uint64_t impl_opaque;
+
+/* empty structures do not have zero size in C++ leading to compilation errors
+ * with clang about structure having different sizes in C and C++.
+ * Since these are all zero-sized arrays, we can omit the "union" wrapper for
+ * C++ builds, removing the warning.
+ */
+#ifndef __cplusplus
 	/**< Implementation specific opaque value.
 	 * An implementation may use this field to hold implementation specific
 	 * value to share between dequeue and enqueue operation.
 	 * The application should not modify this field.
 	 */
 	union {
+#endif
 		struct rte_mbuf *mbufs[0];
 		void *ptrs[0];
 		uint64_t *u64s[0];
+#ifndef __cplusplus
 	} __rte_aligned(16);
+#endif
 	/**< Start of the vector array union. Depending upon the event type the
 	 * vector array can be an array of mbufs or pointers or opaque u64
 	 * values.
 	 */
-};
+} __rte_aligned(16);
 
 /* Scheduler type definitions */
 #define RTE_SCHED_TYPE_ORDERED          0
