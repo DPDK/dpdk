@@ -928,6 +928,7 @@ mlx5_alloc_shared_dev_ctx(const struct mlx5_dev_spawn_data *spawn,
 	for (i = 0; i < sh->max_port; i++) {
 		sh->port[i].ih_port_id = RTE_MAX_ETHPORTS;
 		sh->port[i].devx_ih_port_id = RTE_MAX_ETHPORTS;
+		sh->port[i].nl_ih_port_id = RTE_MAX_ETHPORTS;
 	}
 	sh->pd = mlx5_glue->alloc_pd(sh->ctx);
 	if (sh->pd == NULL) {

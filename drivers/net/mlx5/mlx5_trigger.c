@@ -1134,10 +1134,17 @@ mlx5_dev_start(struct rte_eth_dev *dev)
 		priv->sh->port[priv->dev_port - 1].ih_port_id =
 					(uint32_t)dev->data->port_id;
 	} else {
-		DRV_LOG(INFO, "port %u starts without LSC and RMV interrupts.",
+		DRV_LOG(INFO, "port %u starts without RMV interrupts.",
+			dev->data->port_id);
+		dev->data->dev_conf.intr_conf.rmv = 0;
+	}
+	if (priv->sh->intr_handle_nl.fd >= 0) {
+		priv->sh->port[priv->dev_port - 1].nl_ih_port_id =
+					(uint32_t)dev->data->port_id;
+	} else {
+		DRV_LOG(INFO, "port %u starts without LSC interrupts.",
 			dev->data->port_id);
 		dev->data->dev_conf.intr_conf.lsc = 0;
-		dev->data->dev_conf.intr_conf.rmv = 0;
 	}
 	if (priv->sh->intr_handle_devx.fd >= 0)
 		priv->sh->port[priv->dev_port - 1].devx_ih_port_id =
@@ -1188,6 +1195,7 @@ mlx5_dev_stop(struct rte_eth_dev *dev)
 	mlx5_rx_intr_vec_disable(dev);
 	priv->sh->port[priv->dev_port - 1].ih_port_id = RTE_MAX_ETHPORTS;
 	priv->sh->port[priv->dev_port - 1].devx_ih_port_id = RTE_MAX_ETHPORTS;
+	priv->sh->port[priv->dev_port - 1].nl_ih_port_id = RTE_MAX_ETHPORTS;
 	mlx5_txq_stop(dev);
 	mlx5_rxq_stop(dev);
 	if (priv->obj_ops.lb_dummy_queue_release)

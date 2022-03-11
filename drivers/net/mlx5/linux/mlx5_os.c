@@ -2438,6 +2438,40 @@ mlx5_os_net_cleanup(void)
 	mlx5_pmd_socket_uninit();
 }
 
+static int
+mlx5_os_dev_shared_handler_install_lsc(struct mlx5_dev_ctx_shared *sh)
+{
+	int nlsk_fd, flags, ret;
+
+	nlsk_fd = mlx5_nl_init(NETLINK_ROUTE, RTMGRP_LINK);
+	if (nlsk_fd < 0) {
+		DRV_LOG(ERR, "Failed to create a socket for Netlink events: %s",
+			rte_strerror(rte_errno));
+		return -1;
+	}
+	flags = fcntl(nlsk_fd, F_GETFL);
+	ret = fcntl(nlsk_fd, F_SETFL, flags | O_NONBLOCK);
+	if (ret != 0) {
+		DRV_LOG(ERR, "Failed to make Netlink event socket non-blocking: %s",
+			strerror(errno));
+		rte_errno = errno;
+		goto error;
+	}
+	sh->intr_handle_nl.type = RTE_INTR_HANDLE_EXT;
+	sh->intr_handle_nl.fd = nlsk_fd;
+	if (rte_intr_callback_register(&sh->intr_handle_nl,
+				       mlx5_dev_interrupt_handler_nl,
+				       sh) != 0) {
+		DRV_LOG(ERR, "Failed to register Netlink events interrupt");
+		sh->intr_handle_nl.fd = -1;
+		goto error;
+	}
+	return 0;
+error:
+	close(nlsk_fd);
+	return -1;
+}
+
 /**
  * Install shared asynchronous device events handler.
  * This function is implemented to support event sharing
@@ -2467,6 +2501,11 @@ mlx5_os_dev_shared_handler_install(struct mlx5_dev_ctx_shared *sh)
 			DRV_LOG(INFO, "Fail to install the shared interrupt.");
 			sh->intr_handle.fd = -1;
 		}
+	}
+	sh->intr_handle_nl.fd = -1;
+	if (mlx5_os_dev_shared_handler_install_lsc(sh) < 0) {
+		DRV_LOG(INFO, "Fail to install the shared Netlink event handler.");
+		sh->intr_handle_nl.fd = -1;
 	}
 	if (sh->devx) {
 #ifdef HAVE_IBV_DEVX_ASYNC
@@ -2508,9 +2547,18 @@ mlx5_os_dev_shared_handler_install(struct mlx5_dev_ctx_shared *sh)
 void
 mlx5_os_dev_shared_handler_uninstall(struct mlx5_dev_ctx_shared *sh)
 {
+	int nlsk_fd;
+
 	if (sh->intr_handle.fd >= 0)
 		mlx5_intr_callback_unregister(&sh->intr_handle,
 					      mlx5_dev_interrupt_handler, sh);
+	nlsk_fd = sh->intr_handle_nl.fd;
+	if (nlsk_fd >= 0) {
+		mlx5_intr_callback_unregister(&sh->intr_handle_nl,
+					      mlx5_dev_interrupt_handler_nl,
+					      sh);
+		close(nlsk_fd);
+	}
 #ifdef HAVE_IBV_DEVX_ASYNC
 	if (sh->intr_handle_devx.fd >= 0)
 		rte_intr_callback_unregister(&sh->intr_handle_devx,
