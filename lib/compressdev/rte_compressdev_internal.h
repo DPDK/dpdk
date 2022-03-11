@@ -22,7 +22,7 @@ extern "C" {
 /* Logging Macros */
 extern int compressdev_logtype;
 #define COMPRESSDEV_LOG(level, fmt, args...) \
-	rte_log(RTE_LOG_ ## level, compressdev_logtype, "%s(): "fmt "\n", \
+	rte_log(RTE_LOG_ ## level, compressdev_logtype, "%s(): " fmt "\n", \
 			__func__, ##args)
 
 /**
