@@ -1519,13 +1519,11 @@ err_secondary:
 	/* Bring Ethernet device up. */
 	DRV_LOG(DEBUG, "port %u forcing Ethernet interface up",
 		eth_dev->data->port_id);
-	mlx5_set_link_up(eth_dev);
-	/*
-	 * Even though the interrupt handler is not installed yet,
-	 * interrupts will still trigger on the async_fd from
-	 * Verbs context returned by ibv_open_device().
-	 */
 	mlx5_link_update(eth_dev, 0);
+	/* Watch LSC interrupts between port probe and port start. */
+	priv->sh->port[priv->dev_port - 1].nl_ih_port_id =
+							eth_dev->data->port_id;
+	mlx5_set_link_up(eth_dev);
 	/* Detect minimal data bytes to inline. */
 	mlx5_set_min_inline(spawn, config);
 	/* Store device configuration on private structure. */
