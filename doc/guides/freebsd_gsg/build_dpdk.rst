@@ -1,6 +1,8 @@
 ..  SPDX-License-Identifier: BSD-3-Clause
     Copyright(c) 2010-2014 Intel Corporation.
 
+.. include:: <isonum.txt>
+
 .. _building_from_source:
 
 Compiling the DPDK Target from Source
@@ -14,11 +16,16 @@ The following FreeBSD packages are required to build DPDK:
 * meson
 * ninja
 * pkgconf
-* py37-pyelftools
+* py38-pyelftools
+
+.. note:
+
+  The specific package for pyelftools is dependent on the version of python in use,
+  Python 3.8 being the version at type of writing, hence the ``py38`` prefix.
 
 These can be installed using (as root)::
 
-  pkg install meson pkgconf py37-pyelftools
+  pkg install meson pkgconf py38-pyelftools
 
 To compile the required kernel modules for memory management and working
 with physical NIC devices, the kernel sources for FreeBSD also
@@ -27,11 +34,6 @@ installed via commands like the following, for FreeBSD 12.1 on x86_64::
 
   fetch http://ftp.freebsd.org/pub/FreeBSD/releases/amd64/12.1-RELEASE/src.txz
   tar -C / -xJvf src.txz
-
-To enable the telemetry library in DPDK, the jansson library also needs to
-be installed, and can be installed via::
-
-  pkg install jansson
 
 Individual drivers may have additional requirements. Consult the relevant
 driver guide for any driver-specific requirements of interest.
@@ -176,7 +178,7 @@ Binding Network Ports to the nic_uio Module
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Device ownership can be viewed using the pciconf -l command. The example below shows
-four Intel® 82599 network ports under ``if_ixgbe`` module ownership.
+four Intel\ |reg| 82599 network ports under ``if_ixgbe`` module ownership.
 
 .. code-block:: none
 
