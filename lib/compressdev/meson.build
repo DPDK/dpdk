@@ -11,7 +11,9 @@ sources = files('rte_compressdev.c',
     'rte_compressdev_pmd.c',
     'rte_comp.c')
 headers = files('rte_compressdev.h',
-    'rte_compressdev_pmd.h',
-    'rte_compressdev_internal.h',
     'rte_comp.h')
+driver_sdk_headers = files(
+        'rte_compressdev_pmd.h',
+        'rte_compressdev_internal.h',
+    )
 deps += ['kvargs', 'mbuf']
