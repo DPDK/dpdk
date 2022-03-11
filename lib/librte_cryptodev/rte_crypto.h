@@ -113,15 +113,24 @@ struct rte_crypto_op {
 	rte_iova_t phys_addr;
 	/**< physical address of crypto operation */
 
+/* empty structures do not have zero size in C++ leading to compilation errors
+ * with clang about structure/union having different sizes in C and C++.
+ * While things are clearer with an explicit union, since each field is
+ * zero-sized it's not actually needed, so omit it for C++
+ */
+#ifndef __cplusplus
 	__extension__
 	union {
+#endif
 		struct rte_crypto_sym_op sym[0];
 		/**< Symmetric operation parameters */
 
 		struct rte_crypto_asym_op asym[0];
 		/**< Asymmetric operation parameters */
 
+#ifndef __cplusplus
 	}; /**< operation specific parameters */
+#endif
 };
 
 /**
