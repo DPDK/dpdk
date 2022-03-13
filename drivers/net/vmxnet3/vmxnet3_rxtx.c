@@ -1338,7 +1338,7 @@ vmxnet3_v4_rss_configure(struct rte_eth_dev *dev)
 		cmdInfo->setRSSFields |= VMXNET3_RSS_FIELDS_UDPIP6;
 
 	VMXNET3_WRITE_BAR1_REG(hw, VMXNET3_REG_CMD,
-			       VMXNET3_CMD_SET_RSS_FIELDS);
+			       cmdInfo->setRSSFields);
 	ret = VMXNET3_READ_BAR1_REG(hw, VMXNET3_REG_CMD);
 
 	if (ret != VMXNET3_SUCCESS) {
