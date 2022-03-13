@@ -3021,7 +3021,7 @@ showport_parse_reta_config(struct rte_eth_rss_reta_entry64 *conf,
 		return -1;
 	}
 	for (i = 0; i < ret; i++)
-		conf[i].mask = (uint64_t)strtoul(str_fld[i], &end, 0);
+		conf[i].mask = (uint64_t)strtoull(str_fld[i], &end, 0);
 
 	return 0;
 }
