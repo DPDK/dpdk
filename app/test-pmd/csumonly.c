@@ -223,15 +223,14 @@ parse_gtp(struct rte_udp_hdr *udp_hdr,
 
 	gtp_hdr = (struct rte_gtp_hdr *)((char *)udp_hdr +
 		  sizeof(struct rte_udp_hdr));
-
+	if (gtp_hdr->e || gtp_hdr->s || gtp_hdr->pn)
+		gtp_len += sizeof(struct rte_gtp_hdr_ext_word);
 	/*
 	 * Check message type. If message type is 0xff, it is
 	 * a GTP data packet. If not, it is a GTP control packet
 	 */
 	if (gtp_hdr->msg_type == 0xff) {
-		ip_ver = *(uint8_t *)((char *)udp_hdr +
-			 sizeof(struct rte_udp_hdr) +
-			 sizeof(struct rte_gtp_hdr));
+		ip_ver = *(uint8_t *)((char *)gtp_hdr + gtp_len);
 		ip_ver = (ip_ver) & 0xf0;
 
 		if (ip_ver == RTE_GTP_TYPE_IPV4) {
