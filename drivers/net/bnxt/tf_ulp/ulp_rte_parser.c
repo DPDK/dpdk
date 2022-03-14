@@ -1096,7 +1096,7 @@ ulp_rte_ipv4_hdr_handler(const struct rte_flow_item *item,
 						   hdr.fragment_offset),
 			      ulp_deference_struct(ipv4_mask,
 						   hdr.fragment_offset),
-			      ULP_PRSR_ACT_DEFAULT);
+			      ULP_PRSR_ACT_MASK_IGNORE);
 
 	size = sizeof(((struct rte_flow_item_ipv4 *)NULL)->hdr.time_to_live);
 	ulp_rte_prsr_fld_mask(params, &idx, size,
