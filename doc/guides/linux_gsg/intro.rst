@@ -34,3 +34,28 @@ The following is a list of DPDK documents in the suggested reading order:
 
 *   :doc:`../sample_app_ug/index`: Describes a set of sample applications.
     Each chapter describes a sample application that showcases specific functionality and provides instructions on how to compile, run and use the sample application.
+
+*   **Driver Reference Guides**: Provides details on each driver inside a particular category.
+    Separate guides exist for each of:
+
+    * :doc:`../bbdevs/index`
+
+    * :doc:`../compressdevs/index`
+
+    * :doc:`../cryptodevs/index`
+
+    * :doc:`../dmadevs/index`
+
+    * :doc:`../eventdevs/index`
+
+    * :doc:`../gpus/index`
+
+    * :doc:`../mempool/index`
+
+    * :doc:`../nics/index`
+
+    * :doc:`../rawdevs/index`
+
+    * :doc:`../regexdevs/index`
+
+    * :doc:`../vdpadevs/index`
