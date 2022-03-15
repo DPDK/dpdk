@@ -451,435 +451,455 @@ otx2_flow_keyx_compress(uint64_t *data, uint32_t nibble_mask)
 }
 
 static int
-flow_first_set_bit(uint64_t slab)
+otx2_initialise_mcam_entry(struct otx2_mbox *mbox,
+			   struct otx2_npc_flow_info *flow_info,
+			   struct rte_flow *flow, int mcam_id)
 {
-	int num = 0;
+	struct npc_mcam_write_entry_req *req;
+	struct npc_mcam_write_entry_rsq *rsp;
+	int rc = 0, idx;
 
-	if ((slab & 0xffffffff) == 0) {
-		num += 32;
-		slab >>= 32;
-	}
-	if ((slab & 0xffff) == 0) {
-		num += 16;
-		slab >>= 16;
-	}
-	if ((slab & 0xff) == 0) {
-		num += 8;
-		slab >>= 8;
-	}
-	if ((slab & 0xf) == 0) {
-		num += 4;
-		slab >>= 4;
-	}
-	if ((slab & 0x3) == 0) {
-		num += 2;
-		slab >>= 2;
-	}
-	if ((slab & 0x1) == 0)
-		num += 1;
+	req = otx2_mbox_alloc_msg_npc_mcam_write_entry(mbox);
+	if (req == NULL)
+		return -ENOSPC;
+	req->set_cntr = 0;
+	req->cntr = 0;
+	req->entry = mcam_id;
 
-	return num;
+	req->intf = (flow->nix_intf == NIX_INTF_RX) ? NPC_MCAM_RX : NPC_MCAM_TX;
+	req->enable_entry = 1;
+	req->entry_data.action = flow->npc_action;
+	req->entry_data.vtag_action = flow->vtag_action;
+
+	for (idx = 0; idx < OTX2_MAX_MCAM_WIDTH_DWORDS; idx++) {
+		req->entry_data.kw[idx] = 0x0;
+		req->entry_data.kw_mask[idx] = 0x0;
+	}
+
+	if (flow->nix_intf == NIX_INTF_RX) {
+		req->entry_data.kw[0] |= (uint64_t)flow_info->channel;
+		req->entry_data.kw_mask[0] |= (BIT_ULL(12) - 1);
+	} else {
+		uint16_t pf_func = (flow->npc_action >> 4) & 0xffff;
+
+		pf_func = rte_cpu_to_be_16(pf_func);
+		req->entry_data.kw[0] |= ((uint64_t)pf_func << 32);
+		req->entry_data.kw_mask[0] |= ((uint64_t)0xffff << 32);
+	}
+
+	rc = otx2_mbox_process_msg(mbox, (void *)&rsp);
+	if (rc != 0) {
+		otx2_err("npc: mcam initialisation write failed");
+		return rc;
+	}
+	return 0;
 }
 
 static int
-flow_shift_lv_ent(struct otx2_mbox *mbox, struct rte_flow *flow,
-		  struct otx2_npc_flow_info *flow_info,
-		  uint32_t old_ent, uint32_t new_ent)
+otx2_shift_mcam_entry(struct otx2_mbox *mbox, uint16_t old_ent,
+		      uint16_t new_ent)
 {
 	struct npc_mcam_shift_entry_req *req;
 	struct npc_mcam_shift_entry_rsp *rsp;
-	struct otx2_flow_list *list;
-	struct rte_flow *flow_iter;
-	int rc = 0;
-
-	otx2_npc_dbg("Old ent:%u new ent:%u priority:%u", old_ent, new_ent,
-		     flow->priority);
-
-	list = &flow_info->flow_list[flow->priority];
+	int rc = -ENOSPC;
 
 	/* Old entry is disabled & it's contents are moved to new_entry,
 	 * new entry is enabled finally.
 	 */
 	req = otx2_mbox_alloc_msg_npc_mcam_shift_entry(mbox);
+	if (req == NULL)
+		return rc;
 	req->curr_entry[0] = old_ent;
 	req->new_entry[0] = new_ent;
 	req->shift_count = 1;
 
-	otx2_mbox_msg_send(mbox, 0);
-	rc = otx2_mbox_get_rsp(mbox, 0, (void *)&rsp);
+	rc = otx2_mbox_process_msg(mbox, (void *)&rsp);
 	if (rc)
 		return rc;
 
-	/* Remove old node from list */
-	TAILQ_FOREACH(flow_iter, list, next) {
-		if (flow_iter->mcam_id == old_ent)
-			TAILQ_REMOVE(list, flow_iter, next);
-	}
-
-	/* Insert node with new mcam id at right place */
-	TAILQ_FOREACH(flow_iter, list, next) {
-		if (flow_iter->mcam_id > new_ent)
-			TAILQ_INSERT_BEFORE(flow_iter, flow, next);
-	}
-	return rc;
-}
-
-/* Exchange all required entries with a given priority level */
-static int
-flow_shift_ent(struct otx2_mbox *mbox, struct rte_flow *flow,
-	       struct otx2_npc_flow_info *flow_info,
-	       struct npc_mcam_alloc_entry_rsp *rsp, int dir, int prio_lvl)
-{
-	struct rte_bitmap *fr_bmp, *fr_bmp_rev, *lv_bmp, *lv_bmp_rev, *bmp;
-	uint32_t e_fr = 0, e_lv = 0, e, e_id = 0, mcam_entries;
-	uint64_t fr_bit_pos = 0, lv_bit_pos = 0, bit_pos = 0;
-	/* Bit position within the slab */
-	uint32_t sl_fr_bit_off = 0, sl_lv_bit_off = 0;
-	/* Overall bit position of the start of slab */
-	/* free & live entry index */
-	int rc_fr = 0, rc_lv = 0, rc = 0, idx = 0;
-	struct otx2_mcam_ents_info *ent_info;
-	/* free & live bitmap slab */
-	uint64_t sl_fr = 0, sl_lv = 0, *sl;
-
-	fr_bmp = flow_info->free_entries[prio_lvl];
-	fr_bmp_rev = flow_info->free_entries_rev[prio_lvl];
-	lv_bmp = flow_info->live_entries[prio_lvl];
-	lv_bmp_rev = flow_info->live_entries_rev[prio_lvl];
-	ent_info = &flow_info->flow_entry_info[prio_lvl];
-	mcam_entries = flow_info->mcam_entries;
-
-
-	/* New entries allocated are always contiguous, but older entries
-	 * already in free/live bitmap can be non-contiguous: so return
-	 * shifted entries should be in non-contiguous format.
-	 */
-	while (idx <= rsp->count) {
-		if (!sl_fr && !sl_lv) {
-			/* Lower index elements to be exchanged */
-			if (dir < 0) {
-				rc_fr = rte_bitmap_scan(fr_bmp, &e_fr, &sl_fr);
-				rc_lv = rte_bitmap_scan(lv_bmp, &e_lv, &sl_lv);
-				otx2_npc_dbg("Fwd slab rc fr %u rc lv %u "
-					     "e_fr %u e_lv %u", rc_fr, rc_lv,
-					      e_fr, e_lv);
-			} else {
-				rc_fr = rte_bitmap_scan(fr_bmp_rev,
-							&sl_fr_bit_off,
-							&sl_fr);
-				rc_lv = rte_bitmap_scan(lv_bmp_rev,
-							&sl_lv_bit_off,
-							&sl_lv);
-
-				otx2_npc_dbg("Rev slab rc fr %u rc lv %u "
-					     "e_fr %u e_lv %u", rc_fr, rc_lv,
-					      e_fr, e_lv);
-			}
-		}
-
-		if (rc_fr) {
-			fr_bit_pos = flow_first_set_bit(sl_fr);
-			e_fr = sl_fr_bit_off + fr_bit_pos;
-			otx2_npc_dbg("Fr_bit_pos 0x%" PRIx64, fr_bit_pos);
-		} else {
-			e_fr = ~(0);
-		}
-
-		if (rc_lv) {
-			lv_bit_pos = flow_first_set_bit(sl_lv);
-			e_lv = sl_lv_bit_off + lv_bit_pos;
-			otx2_npc_dbg("Lv_bit_pos 0x%" PRIx64, lv_bit_pos);
-		} else {
-			e_lv = ~(0);
-		}
-
-		/* First entry is from free_bmap */
-		if (e_fr < e_lv) {
-			bmp = fr_bmp;
-			e = e_fr;
-			sl = &sl_fr;
-			bit_pos = fr_bit_pos;
-			if (dir > 0)
-				e_id = mcam_entries - e - 1;
-			else
-				e_id = e;
-			otx2_npc_dbg("Fr e %u e_id %u", e, e_id);
-		} else {
-			bmp = lv_bmp;
-			e = e_lv;
-			sl = &sl_lv;
-			bit_pos = lv_bit_pos;
-			if (dir > 0)
-				e_id = mcam_entries - e - 1;
-			else
-				e_id = e;
-
-			otx2_npc_dbg("Lv e %u e_id %u", e, e_id);
-			if (idx < rsp->count)
-				rc =
-				  flow_shift_lv_ent(mbox, flow,
-						    flow_info, e_id,
-						    rsp->entry + idx);
-		}
-
-		rte_bitmap_clear(bmp, e);
-		rte_bitmap_set(bmp, rsp->entry + idx);
-		/* Update entry list, use non-contiguous
-		 * list now.
-		 */
-		rsp->entry_list[idx] = e_id;
-		*sl &= ~(1 << bit_pos);
-
-		/* Update min & max entry identifiers in current
-		 * priority level.
-		 */
-		if (dir < 0) {
-			ent_info->max_id = rsp->entry + idx;
-			ent_info->min_id = e_id;
-		} else {
-			ent_info->max_id = e_id;
-			ent_info->min_id = rsp->entry;
-		}
-
-		idx++;
-	}
-	return rc;
-}
-
-/* Validate if newly allocated entries lie in the correct priority zone
- * since NPC_MCAM_LOWER_PRIO & NPC_MCAM_HIGHER_PRIO don't ensure zone accuracy.
- * If not properly aligned, shift entries to do so
- */
-static int
-flow_validate_and_shift_prio_ent(struct otx2_mbox *mbox, struct rte_flow *flow,
-				 struct otx2_npc_flow_info *flow_info,
-				 struct npc_mcam_alloc_entry_rsp *rsp,
-				 int req_prio)
-{
-	int prio_idx = 0, rc = 0, needs_shift = 0, idx, prio = flow->priority;
-	struct otx2_mcam_ents_info *info = flow_info->flow_entry_info;
-	int dir = (req_prio == NPC_MCAM_HIGHER_PRIO) ? 1 : -1;
-	uint32_t tot_ent = 0;
-
-	otx2_npc_dbg("Dir %d, priority = %d", dir, prio);
-
-	if (dir < 0)
-		prio_idx = flow_info->flow_max_priority - 1;
-
-	/* Only live entries needs to be shifted, free entries can just be
-	 * moved by bits manipulation.
-	 */
-
-	/* For dir = -1(NPC_MCAM_LOWER_PRIO), when shifting,
-	 * NPC_MAX_PREALLOC_ENT are exchanged with adjoining higher priority
-	 * level entries(lower indexes).
-	 *
-	 * For dir = +1(NPC_MCAM_HIGHER_PRIO), during shift,
-	 * NPC_MAX_PREALLOC_ENT are exchanged with adjoining lower priority
-	 * level entries(higher indexes) with highest indexes.
-	 */
-	do {
-		tot_ent = info[prio_idx].free_ent + info[prio_idx].live_ent;
-
-		if (dir < 0 && prio_idx != prio &&
-		    rsp->entry > info[prio_idx].max_id && tot_ent) {
-			otx2_npc_dbg("Rsp entry %u prio idx %u "
-				     "max id %u", rsp->entry, prio_idx,
-				      info[prio_idx].max_id);
-
-			needs_shift = 1;
-		} else if ((dir > 0) && (prio_idx != prio) &&
-		     (rsp->entry < info[prio_idx].min_id) && tot_ent) {
-			otx2_npc_dbg("Rsp entry %u prio idx %u "
-				     "min id %u", rsp->entry, prio_idx,
-				      info[prio_idx].min_id);
-			needs_shift = 1;
-		}
-
-		otx2_npc_dbg("Needs_shift = %d", needs_shift);
-		if (needs_shift) {
-			needs_shift = 0;
-			rc = flow_shift_ent(mbox, flow, flow_info, rsp, dir,
-					    prio_idx);
-		} else {
-			for (idx = 0; idx < rsp->count; idx++)
-				rsp->entry_list[idx] = rsp->entry + idx;
-		}
-	} while ((prio_idx != prio) && (prio_idx += dir));
-
-	return rc;
-}
-
-static int
-flow_find_ref_entry(struct otx2_npc_flow_info *flow_info, int *prio,
-		    int prio_lvl)
-{
-	struct otx2_mcam_ents_info *info = flow_info->flow_entry_info;
-	int step = 1;
-
-	while (step < flow_info->flow_max_priority) {
-		if (((prio_lvl + step) < flow_info->flow_max_priority) &&
-		    info[prio_lvl + step].live_ent) {
-			*prio = NPC_MCAM_HIGHER_PRIO;
-			return info[prio_lvl + step].min_id;
-		}
-
-		if (((prio_lvl - step) >= 0) &&
-		    info[prio_lvl - step].live_ent) {
-			otx2_npc_dbg("Prio_lvl %u live %u", prio_lvl - step,
-				     info[prio_lvl - step].live_ent);
-			*prio = NPC_MCAM_LOWER_PRIO;
-			return info[prio_lvl - step].max_id;
-		}
-		step++;
-	}
-	*prio = NPC_MCAM_ANY_PRIO;
 	return 0;
 }
 
+enum SHIFT_DIR {
+	SLIDE_ENTRIES_TO_LOWER_INDEX,
+	SLIDE_ENTRIES_TO_HIGHER_INDEX,
+};
+
 static int
-flow_fill_entry_cache(struct otx2_mbox *mbox, struct rte_flow *flow,
-		      struct otx2_npc_flow_info *flow_info, uint32_t *free_ent)
+otx2_slide_mcam_entries(struct otx2_mbox *mbox,
+			struct otx2_npc_flow_info *flow_info, int prio,
+			uint16_t *free_mcam_id, int dir)
 {
-	struct rte_bitmap *free_bmp, *free_bmp_rev, *live_bmp, *live_bmp_rev;
-	struct npc_mcam_alloc_entry_rsp rsp_local;
+	uint16_t to_mcam_id = 0, from_mcam_id = 0;
+	struct otx2_prio_flow_list_head *list;
+	struct otx2_prio_flow_entry *curr = 0;
+	int rc = 0;
+
+	list = &flow_info->prio_flow_list[prio];
+
+	to_mcam_id = *free_mcam_id;
+	if (dir == SLIDE_ENTRIES_TO_HIGHER_INDEX)
+		curr = TAILQ_LAST(list, otx2_prio_flow_list_head);
+	else if (dir == SLIDE_ENTRIES_TO_LOWER_INDEX)
+		curr = TAILQ_FIRST(list);
+
+	while (curr) {
+		from_mcam_id = curr->flow->mcam_id;
+		if ((dir == SLIDE_ENTRIES_TO_HIGHER_INDEX &&
+		     from_mcam_id < to_mcam_id) ||
+		    (dir == SLIDE_ENTRIES_TO_LOWER_INDEX &&
+		     from_mcam_id > to_mcam_id)) {
+			/* Newly allocated entry and the source entry given to
+			 * npc_mcam_shift_entry_req will be in disabled state.
+			 * Initialise and enable before moving an entry into
+			 * this mcam.
+			 */
+			rc = otx2_initialise_mcam_entry(mbox, flow_info,
+							curr->flow, to_mcam_id);
+			if (rc)
+				return rc;
+			rc = otx2_shift_mcam_entry(mbox, from_mcam_id,
+						   to_mcam_id);
+			if (rc)
+				return rc;
+
+			curr->flow->mcam_id = to_mcam_id;
+			to_mcam_id = from_mcam_id;
+		}
+
+		if (dir == SLIDE_ENTRIES_TO_HIGHER_INDEX)
+			curr = TAILQ_PREV(curr, otx2_prio_flow_list_head, next);
+		else if (dir == SLIDE_ENTRIES_TO_LOWER_INDEX)
+			curr = TAILQ_NEXT(curr, next);
+	}
+
+	*free_mcam_id = from_mcam_id;
+
+	return 0;
+}
+
+/*
+ * The mcam_alloc request is first made with NPC_MCAM_LOWER_PRIO with the last
+ * entry in the requested priority level as the reference entry. If it fails,
+ * the alloc request is retried with NPC_MCAM_HIGHER_PRIO with the first entry
+ * in the next lower priority level as the reference entry. After obtaining
+ * the free MCAM from kernel, we check if it is at the right user requested
+ * priority level. If not, the flow rules are moved across MCAM entries till
+ * the user requested priority levels are met.
+ * The MCAM sorting algorithm works as below.
+ * For any given free MCAM obtained from the kernel, there are 3 possibilities.
+ * Case 1:
+ * There are entries belonging to higher user priority level(numerically
+ * lesser) in higher mcam indices. In this case, the entries with higher user
+ * priority are slided towards lower indices and a free entry is created in the
+ * higher indices.
+ * Example:
+ * Assume free entry = 1610, user requested priority = 2 and
+ * max user priority levels = 5 with below entries in respective priority
+ * levels.
+ * 0: 1630, 1635, 1641
+ * 1: 1646, 1650, 1651
+ * 2: 1652, 1655, 1660
+ * 3: 1661, 1662, 1663, 1664
+ * 4: 1665, 1667, 1670
+ *
+ * Entries (1630, 1635, 1641, 1646, 1650, 1651) have to be slided down towards
+ * lower indices.
+ * Shifting sequence will be as below:
+ *     1610 <- 1630 <- 1635 <- 1641 <- 1646 <- 1650 <- 1651
+ * Entry 1651 will be free-ed for writing the new flow. This entry will now
+ * become the head of priority level 2.
+ *
+ * Case 2:
+ * There are entries belonging to lower user priority level (numerically
+ * bigger) in lower mcam indices. In this case, the entries with lower user
+ * priority are slided towards higher indices and a free entry is created in the
+ * lower indices.
+ *
+ * Example:
+ * free entry = 1653, user requested priority = 0
+ * 0: 1630, 1635, 1641
+ * 1: 1646, 1650, 1651
+ * 2: 1652, 1655, 1660
+ * 3: 1661, 1662, 1663, 1664
+ * 4: 1665, 1667, 1670
+ *
+ * Entries (1646, 1650, 1651, 1652) have to be slided up towards higher
+ * indices.
+ * Shifting sequence will be as below:
+ *     1646 -> 1650 -> 1651 -> 1652 -> 1653
+ * Entry 1646 will be free-ed for writing the new flow. This entry will now
+ * become the last element in priority level 0.
+ *
+ * Case 3:
+ * Free mcam is at the right place, ie, all higher user priority level
+ * mcams lie in lower indices and all lower user priority level mcams lie in
+ * higher mcam indices.
+ *
+ * The priority level lists are scanned first for case (1) and if the
+ * condition is found true, case(2) is skipped because they are mutually
+ * exclusive. For example, consider below state.
+ * 0: 1630, 1635, 1641
+ * 1: 1646, 1650, 1651
+ * 2: 1652, 1655, 1660
+ * 3: 1661, 1662, 1663, 1664
+ * 4: 1665, 1667, 1670
+ * free entry = 1610, user requested priority = 2
+ *
+ * Case 1: Here the condition is;
+ * "if (requested_prio > prio_idx && free_mcam < tail->flow->mcam_id ){}"
+ * If this condition is true, it means at some higher priority level than
+ * requested priority level, there are entries at lower indices than the given
+ * free mcam. That is, we have found in levels 0,1 there is an mcam X which is
+ * greater than 1610.
+ * If, for any free entry and user req prio, the above condition is true, then
+ * the below case(2) condition will always be false since the lists are kept
+ * sorted. The case(2) condition is;
+ *  "if (requested_prio < prio_idx && free_mcam > head->flow->mcam_id){}"
+ * There can't be entries at lower indices at priority level higher
+ * than the requested priority level. That is, here, at levels 3 & 4 there
+ * cannot be any entry greater than 1610. Because all entries in 3 & 4 must be
+ * greater than X which was found to be greater than 1610 earlier.
+ */
+
+static int
+otx2_sort_mcams_by_user_prio_level(struct otx2_mbox *mbox,
+				   struct otx2_prio_flow_entry *flow_list_entry,
+				   struct otx2_npc_flow_info *flow_info,
+				   struct npc_mcam_alloc_entry_rsp *rsp)
+{
+	int requested_prio = flow_list_entry->flow->priority;
+	struct otx2_prio_flow_entry *head, *tail;
+	struct otx2_prio_flow_list_head *list;
+	uint16_t free_mcam = rsp->entry;
+	bool do_reverse_scan = true;
+	int prio_idx = 0, rc = 0;
+
+	while (prio_idx <= flow_info->flow_max_priority - 1) {
+		list = &flow_info->prio_flow_list[prio_idx];
+		tail = TAILQ_LAST(list, otx2_prio_flow_list_head);
+
+		/* requested priority is lower than current level
+		 * ie, numerically req prio is higher
+		 */
+		if (requested_prio > prio_idx && tail) {
+			/* but there are some mcams in current level
+			 * at higher indices, ie, at priority lower
+			 * than free_mcam.
+			 */
+			if (free_mcam < tail->flow->mcam_id) {
+				rc = otx2_slide_mcam_entries(mbox, flow_info,
+						prio_idx, &free_mcam,
+						SLIDE_ENTRIES_TO_LOWER_INDEX);
+				if (rc)
+					return rc;
+				do_reverse_scan = false;
+			}
+		}
+		prio_idx++;
+	}
+
+	prio_idx = flow_info->flow_max_priority - 1;
+	while (prio_idx && do_reverse_scan) {
+		list = &flow_info->prio_flow_list[prio_idx];
+		head = TAILQ_FIRST(list);
+
+		/* requested priority is higher than current level
+		 * ie, numerically req prio is lower
+		 */
+		if (requested_prio < prio_idx && head) {
+			/* but free mcam is higher than lowest priority
+			 * mcam in current level
+			 */
+			if (free_mcam > head->flow->mcam_id) {
+				rc = otx2_slide_mcam_entries(mbox, flow_info,
+						prio_idx, &free_mcam,
+						SLIDE_ENTRIES_TO_HIGHER_INDEX);
+				if (rc)
+					return rc;
+			}
+		}
+		prio_idx--;
+	}
+	rsp->entry = free_mcam;
+	return rc;
+}
+
+static void
+otx2_insert_into_flow_list(struct otx2_npc_flow_info *flow_info,
+			   struct otx2_prio_flow_entry *entry)
+{
+	struct otx2_prio_flow_list_head *list;
+	struct otx2_prio_flow_entry *curr;
+
+	list = &flow_info->prio_flow_list[entry->flow->priority];
+	curr = TAILQ_FIRST(list);
+
+	if (curr) {
+		while (curr) {
+			if (entry->flow->mcam_id > curr->flow->mcam_id)
+				curr = TAILQ_NEXT(curr, next);
+			else
+				break;
+		}
+		if (curr)
+			TAILQ_INSERT_BEFORE(curr, entry, next);
+		else
+			TAILQ_INSERT_TAIL(list, entry, next);
+	} else {
+		TAILQ_INSERT_HEAD(list, entry, next);
+	}
+}
+
+static int
+otx2_allocate_mcam_entry(struct otx2_mbox *mbox, int prio,
+			 struct npc_mcam_alloc_entry_rsp *rsp_local,
+			 int ref_entry)
+{
 	struct npc_mcam_alloc_entry_rsp *rsp_cmd;
 	struct npc_mcam_alloc_entry_req *req;
 	struct npc_mcam_alloc_entry_rsp *rsp;
-	struct otx2_mcam_ents_info *info;
-	uint16_t ref_ent, idx;
-	int rc, prio;
-
-	info = &flow_info->flow_entry_info[flow->priority];
-	free_bmp = flow_info->free_entries[flow->priority];
-	free_bmp_rev = flow_info->free_entries_rev[flow->priority];
-	live_bmp = flow_info->live_entries[flow->priority];
-	live_bmp_rev = flow_info->live_entries_rev[flow->priority];
-
-	ref_ent = flow_find_ref_entry(flow_info, &prio, flow->priority);
+	int rc = -ENOSPC;
 
 	req = otx2_mbox_alloc_msg_npc_mcam_alloc_entry(mbox);
+	if (req == NULL)
+		return rc;
 	req->contig = 1;
-	req->count = flow_info->flow_prealloc_size;
+	req->count = 1;
 	req->priority = prio;
-	req->ref_entry = ref_ent;
+	req->ref_entry = ref_entry;
 
-	otx2_npc_dbg("Fill cache ref entry %u prio %u", ref_ent, prio);
-
-	otx2_mbox_msg_send(mbox, 0);
-	rc = otx2_mbox_get_rsp(mbox, 0, (void *)&rsp_cmd);
+	rc = otx2_mbox_process_msg(mbox, (void *)&rsp_cmd);
 	if (rc)
 		return rc;
 
-	rsp = &rsp_local;
-	memcpy(rsp, rsp_cmd, sizeof(*rsp));
+	if (!rsp_cmd->count)
+		return -ENOSPC;
 
-	otx2_npc_dbg("Alloc entry %u count %u , prio = %d", rsp->entry,
-		     rsp->count, prio);
+	memcpy(rsp_local, rsp_cmd, sizeof(*rsp));
 
-	/* Non-first ent cache fill */
-	if (prio != NPC_MCAM_ANY_PRIO) {
-		flow_validate_and_shift_prio_ent(mbox, flow, flow_info, rsp,
-						 prio);
-	} else {
-		/* Copy into response entry list */
-		for (idx = 0; idx < rsp->count; idx++)
-			rsp->entry_list[idx] = rsp->entry + idx;
-	}
+	return 0;
+}
 
-	otx2_npc_dbg("Fill entry cache rsp count %u", rsp->count);
-	/* Update free entries, reverse free entries list,
-	 * min & max entry ids.
-	 */
-	for (idx = 0; idx < rsp->count; idx++) {
-		if (unlikely(rsp->entry_list[idx] < info->min_id))
-			info->min_id = rsp->entry_list[idx];
+static void
+otx2_find_mcam_ref_entry(struct rte_flow *flow,
+			 struct otx2_npc_flow_info *flow_info, int *prio,
+			 int *ref_entry, int dir)
+{
+	struct otx2_prio_flow_entry *head, *tail;
+	struct otx2_prio_flow_list_head *list;
+	int prio_idx = flow->priority;
 
-		if (unlikely(rsp->entry_list[idx] > info->max_id))
-			info->max_id = rsp->entry_list[idx];
-
-		/* Skip entry to be returned, not to be part of free
-		 * list.
-		 */
-		if (prio == NPC_MCAM_HIGHER_PRIO) {
-			if (unlikely(idx == (rsp->count - 1))) {
-				*free_ent = rsp->entry_list[idx];
-				continue;
+	if (dir == NPC_MCAM_LOWER_PRIO) {
+		while (prio_idx >= 0) {
+			list = &flow_info->prio_flow_list[prio_idx];
+			head = TAILQ_FIRST(list);
+			if (head) {
+				*prio = NPC_MCAM_LOWER_PRIO;
+				*ref_entry = head->flow->mcam_id;
+				return;
 			}
-		} else {
-			if (unlikely(!idx)) {
-				*free_ent = rsp->entry_list[idx];
-				continue;
-			}
+			prio_idx--;
 		}
-		info->free_ent++;
-		rte_bitmap_set(free_bmp, rsp->entry_list[idx]);
-		rte_bitmap_set(free_bmp_rev, flow_info->mcam_entries -
-			       rsp->entry_list[idx] - 1);
-
-		otx2_npc_dbg("Final rsp entry %u rsp entry rev %u",
-			     rsp->entry_list[idx],
-		flow_info->mcam_entries - rsp->entry_list[idx] - 1);
+	} else if (dir == NPC_MCAM_HIGHER_PRIO) {
+		prio_idx = flow->priority;
+		while (prio_idx <= flow_info->flow_max_priority - 1) {
+			list = &flow_info->prio_flow_list[prio_idx];
+			tail = TAILQ_LAST(list, otx2_prio_flow_list_head);
+			if (tail) {
+				*prio = NPC_MCAM_HIGHER_PRIO;
+				*ref_entry = tail->flow->mcam_id;
+				return;
+			}
+			prio_idx++;
+		}
 	}
+	*prio = NPC_MCAM_ANY_PRIO;
+	*ref_entry = 0;
+}
 
-	otx2_npc_dbg("Cache free entry %u, rev = %u", *free_ent,
-		     flow_info->mcam_entries - *free_ent - 1);
-	info->live_ent++;
-	rte_bitmap_set(live_bmp, *free_ent);
-	rte_bitmap_set(live_bmp_rev, flow_info->mcam_entries - *free_ent - 1);
+static int
+otx2_alloc_mcam_by_ref_entry(struct otx2_mbox *mbox, struct rte_flow *flow,
+			     struct otx2_npc_flow_info *flow_info,
+			     struct npc_mcam_alloc_entry_rsp *rsp_local)
+{
+	int prio, ref_entry = 0, rc = 0, dir = NPC_MCAM_LOWER_PRIO;
+	bool retry_done = false;
+
+retry:
+	otx2_find_mcam_ref_entry(flow, flow_info, &prio, &ref_entry, dir);
+	rc = otx2_allocate_mcam_entry(mbox, prio, rsp_local, ref_entry);
+	if (rc && !retry_done) {
+		otx2_info("npc: Lower priority entry not available. "
+			 "Retrying for higher priority");
+
+		dir = NPC_MCAM_HIGHER_PRIO;
+		retry_done = true;
+		goto retry;
+	} else if (rc && retry_done) {
+		return rc;
+	}
 
 	return 0;
 }
 
 static int
-flow_check_preallocated_entry_cache(struct otx2_mbox *mbox,
-				    struct rte_flow *flow,
-				    struct otx2_npc_flow_info *flow_info)
+otx2_get_free_mcam_entry(struct otx2_mbox *mbox, struct rte_flow *flow,
+			 struct otx2_npc_flow_info *flow_info)
 {
-	struct rte_bitmap *free, *free_rev, *live, *live_rev;
-	uint32_t pos = 0, free_ent = 0, mcam_entries;
-	struct otx2_mcam_ents_info *info;
-	uint64_t slab = 0;
-	int rc;
+	struct npc_mcam_alloc_entry_rsp rsp_local;
+	struct otx2_prio_flow_entry *new_entry;
+	int rc = 0;
 
-	otx2_npc_dbg("Flow priority %u", flow->priority);
+	rc = otx2_alloc_mcam_by_ref_entry(mbox, flow, flow_info, &rsp_local);
 
-	info = &flow_info->flow_entry_info[flow->priority];
-
-	free_rev = flow_info->free_entries_rev[flow->priority];
-	free = flow_info->free_entries[flow->priority];
-	live_rev = flow_info->live_entries_rev[flow->priority];
-	live = flow_info->live_entries[flow->priority];
-	mcam_entries = flow_info->mcam_entries;
-
-	if (info->free_ent) {
-		rc = rte_bitmap_scan(free, &pos, &slab);
-		if (rc) {
-			/* Get free_ent from free entry bitmap */
-			free_ent = pos + __builtin_ctzll(slab);
-			otx2_npc_dbg("Allocated from cache entry %u", free_ent);
-			/* Remove from free bitmaps and add to live ones */
-			rte_bitmap_clear(free, free_ent);
-			rte_bitmap_set(live, free_ent);
-			rte_bitmap_clear(free_rev,
-					 mcam_entries - free_ent - 1);
-			rte_bitmap_set(live_rev,
-				       mcam_entries - free_ent - 1);
-
-			info->free_ent--;
-			info->live_ent++;
-			return free_ent;
-		}
-
-		otx2_npc_dbg("No free entry:its a mess");
-		return -1;
-	}
-
-	rc = flow_fill_entry_cache(mbox, flow, flow_info, &free_ent);
 	if (rc)
 		return rc;
 
-	return free_ent;
+	new_entry = rte_zmalloc("otx2_rte_flow", sizeof(*new_entry), 0);
+	if (!new_entry)
+		return -ENOSPC;
+
+	new_entry->flow = flow;
+
+	otx2_npc_dbg("kernel allocated MCAM entry %d", rsp_local.entry);
+
+	rc = otx2_sort_mcams_by_user_prio_level(mbox, new_entry, flow_info,
+						&rsp_local);
+	if (rc)
+		goto err;
+
+	otx2_npc_dbg("allocated MCAM entry after sorting %d", rsp_local.entry);
+	flow->mcam_id = rsp_local.entry;
+	otx2_insert_into_flow_list(flow_info, new_entry);
+
+	return rsp_local.entry;
+err:
+	rte_free(new_entry);
+	return rc;
+}
+
+void
+otx2_delete_prio_list_entry(struct otx2_npc_flow_info *flow_info,
+			    struct rte_flow *flow)
+{
+	struct otx2_prio_flow_list_head *list;
+	struct otx2_prio_flow_entry *curr;
+
+	list = &flow_info->prio_flow_list[flow->priority];
+	curr = TAILQ_FIRST(list);
+
+	if (!curr)
+		return;
+
+	while (curr) {
+		if (flow->mcam_id == curr->flow->mcam_id) {
+			TAILQ_REMOVE(list, curr, next);
+			rte_free(curr);
+			break;
+		}
+		curr = TAILQ_NEXT(curr, next);
+	}
 }
 
 int
@@ -902,10 +922,11 @@ otx2_flow_mcam_alloc_and_write(struct rte_flow *flow, struct otx2_mbox *mbox,
 			return rc;
 	}
 
-	entry = flow_check_preallocated_entry_cache(mbox, flow, flow_info);
+	entry = otx2_get_free_mcam_entry(mbox, flow, flow_info);
 	if (entry < 0) {
-		otx2_err("Prealloc failed");
-		otx2_flow_mcam_free_counter(mbox, ctr);
+		otx2_err("MCAM allocation failed");
+		if (use_ctr)
+			otx2_flow_mcam_free_counter(mbox, ctr);
 		return NPC_MCAM_ALLOC_FAILED;
 	}
 

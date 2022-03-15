@@ -13,19 +13,8 @@ otx2_flow_free_all_resources(struct otx2_eth_dev *hw)
 {
 	struct otx2_npc_flow_info *npc = &hw->npc_flow;
 	struct otx2_mbox *mbox = hw->mbox;
-	struct otx2_mcam_ents_info *info;
-	struct rte_bitmap *bmap;
 	struct rte_flow *flow;
-	int entry_count = 0;
 	int rc, idx;
-
-	for (idx = 0; idx < npc->flow_max_priority; idx++) {
-		info = &npc->flow_entry_info[idx];
-		entry_count += info->live_ent;
-	}
-
-	if (entry_count == 0)
-		return 0;
 
 	/* Free all MCAM entries allocated */
 	rc = otx2_flow_mcam_free_all_entries(mbox);
@@ -33,18 +22,18 @@ otx2_flow_free_all_resources(struct otx2_eth_dev *hw)
 	/* Free any MCAM counters and delete flow list */
 	for (idx = 0; idx < npc->flow_max_priority; idx++) {
 		while ((flow = TAILQ_FIRST(&npc->flow_list[idx])) != NULL) {
-			if (flow->ctr_id != NPC_COUNTER_NONE)
+			if (flow->ctr_id != NPC_COUNTER_NONE) {
+				rc |= otx2_flow_mcam_clear_counter(mbox,
+							     flow->ctr_id);
 				rc |= otx2_flow_mcam_free_counter(mbox,
 							     flow->ctr_id);
+			}
+
+			otx2_delete_prio_list_entry(npc, flow);
 
 			TAILQ_REMOVE(&npc->flow_list[idx], flow, next);
 			rte_free(flow);
-			bmap = npc->live_entries[flow->priority];
-			rte_bitmap_clear(bmap, flow->mcam_id);
 		}
-		info = &npc->flow_entry_info[idx];
-		info->free_ent = 0;
-		info->live_ent = 0;
 	}
 	return rc;
 }
@@ -661,7 +650,6 @@ otx2_flow_destroy(struct rte_eth_dev *dev,
 	struct otx2_eth_dev *hw = dev->data->dev_private;
 	struct otx2_npc_flow_info *npc = &hw->npc_flow;
 	struct otx2_mbox *mbox = hw->mbox;
-	struct rte_bitmap *bmap;
 	uint16_t match_id;
 	int rc;
 
@@ -708,8 +696,7 @@ otx2_flow_destroy(struct rte_eth_dev *dev,
 
 	TAILQ_REMOVE(&npc->flow_list[flow->priority], flow, next);
 
-	bmap = npc->live_entries[flow->priority];
-	rte_bitmap_clear(bmap, flow->mcam_id);
+	otx2_delete_prio_list_entry(npc, flow);
 
 	rte_free(flow);
 	return 0;
@@ -977,9 +964,9 @@ static int otx2_mcam_tot_entries(struct otx2_eth_dev *dev)
 int
 otx2_flow_init(struct otx2_eth_dev *hw)
 {
-	uint8_t *mem = NULL, *nix_mem = NULL, *npc_mem = NULL;
 	struct otx2_npc_flow_info *npc = &hw->npc_flow;
-	uint32_t bmap_sz, tot_mcam_entries = 0;
+	uint32_t bmap_sz, tot_mcam_entries = 0, sz = 0;
+	uint8_t *nix_mem = NULL;
 	int rc = 0, idx;
 
 	rc = flow_fetch_kex_cfg(hw);
@@ -993,60 +980,6 @@ otx2_flow_init(struct otx2_eth_dev *hw)
 
 	tot_mcam_entries = otx2_mcam_tot_entries(hw);
 	npc->mcam_entries = tot_mcam_entries >> npc->keyw[NPC_MCAM_RX];
-	/* Free, free_rev, live and live_rev entries */
-	bmap_sz = rte_bitmap_get_memory_footprint(npc->mcam_entries);
-	mem = rte_zmalloc(NULL, 4 * bmap_sz * npc->flow_max_priority,
-			  RTE_CACHE_LINE_SIZE);
-	if (mem == NULL) {
-		otx2_err("Bmap alloc failed");
-		rc = -ENOMEM;
-		return rc;
-	}
-
-	npc->flow_entry_info = rte_zmalloc(NULL, npc->flow_max_priority
-					   * sizeof(struct otx2_mcam_ents_info),
-					   0);
-	if (npc->flow_entry_info == NULL) {
-		otx2_err("flow_entry_info alloc failed");
-		rc = -ENOMEM;
-		goto err;
-	}
-
-	npc->free_entries = rte_zmalloc(NULL, npc->flow_max_priority
-					* sizeof(struct rte_bitmap *),
-					0);
-	if (npc->free_entries == NULL) {
-		otx2_err("free_entries alloc failed");
-		rc = -ENOMEM;
-		goto err;
-	}
-
-	npc->free_entries_rev = rte_zmalloc(NULL, npc->flow_max_priority
-					* sizeof(struct rte_bitmap *),
-					0);
-	if (npc->free_entries_rev == NULL) {
-		otx2_err("free_entries_rev alloc failed");
-		rc = -ENOMEM;
-		goto err;
-	}
-
-	npc->live_entries = rte_zmalloc(NULL, npc->flow_max_priority
-					* sizeof(struct rte_bitmap *),
-					0);
-	if (npc->live_entries == NULL) {
-		otx2_err("live_entries alloc failed");
-		rc = -ENOMEM;
-		goto err;
-	}
-
-	npc->live_entries_rev = rte_zmalloc(NULL, npc->flow_max_priority
-					* sizeof(struct rte_bitmap *),
-					0);
-	if (npc->live_entries_rev == NULL) {
-		otx2_err("live_entries_rev alloc failed");
-		rc = -ENOMEM;
-		goto err;
-	}
 
 	npc->flow_list = rte_zmalloc(NULL, npc->flow_max_priority
 					* sizeof(struct otx2_flow_list),
@@ -1057,30 +990,17 @@ otx2_flow_init(struct otx2_eth_dev *hw)
 		goto err;
 	}
 
-	npc_mem = mem;
+	sz = npc->flow_max_priority * sizeof(struct otx2_prio_flow_list_head);
+	npc->prio_flow_list = rte_zmalloc(NULL, sz, 0);
+	if (npc->prio_flow_list == NULL) {
+		otx2_err("prio_flow_list alloc failed");
+		rc = -ENOMEM;
+		goto err;
+	}
+
 	for (idx = 0; idx < npc->flow_max_priority; idx++) {
 		TAILQ_INIT(&npc->flow_list[idx]);
-
-		npc->free_entries[idx] =
-			rte_bitmap_init(npc->mcam_entries, mem, bmap_sz);
-		mem += bmap_sz;
-
-		npc->free_entries_rev[idx] =
-			rte_bitmap_init(npc->mcam_entries, mem, bmap_sz);
-		mem += bmap_sz;
-
-		npc->live_entries[idx] =
-			rte_bitmap_init(npc->mcam_entries, mem, bmap_sz);
-		mem += bmap_sz;
-
-		npc->live_entries_rev[idx] =
-			rte_bitmap_init(npc->mcam_entries, mem, bmap_sz);
-		mem += bmap_sz;
-
-		npc->flow_entry_info[idx].free_ent = 0;
-		npc->flow_entry_info[idx].live_ent = 0;
-		npc->flow_entry_info[idx].max_id = 0;
-		npc->flow_entry_info[idx].min_id = ~(0);
+		TAILQ_INIT(&npc->prio_flow_list[idx]);
 	}
 
 	npc->rss_grps = NIX_RSS_GRPS;
@@ -1105,18 +1025,8 @@ otx2_flow_init(struct otx2_eth_dev *hw)
 err:
 	if (npc->flow_list)
 		rte_free(npc->flow_list);
-	if (npc->live_entries_rev)
-		rte_free(npc->live_entries_rev);
-	if (npc->live_entries)
-		rte_free(npc->live_entries);
-	if (npc->free_entries_rev)
-		rte_free(npc->free_entries_rev);
-	if (npc->free_entries)
-		rte_free(npc->free_entries);
-	if (npc->flow_entry_info)
-		rte_free(npc->flow_entry_info);
-	if (npc_mem)
-		rte_free(npc_mem);
+	if (npc->prio_flow_list)
+		rte_free(npc->prio_flow_list);
 	return rc;
 }
 
@@ -1134,16 +1044,11 @@ otx2_flow_fini(struct otx2_eth_dev *hw)
 
 	if (npc->flow_list)
 		rte_free(npc->flow_list);
-	if (npc->live_entries_rev)
-		rte_free(npc->live_entries_rev);
-	if (npc->live_entries)
-		rte_free(npc->live_entries);
-	if (npc->free_entries_rev)
-		rte_free(npc->free_entries_rev);
-	if (npc->free_entries)
-		rte_free(npc->free_entries);
-	if (npc->flow_entry_info)
-		rte_free(npc->flow_entry_info);
+
+	if (npc->prio_flow_list) {
+		rte_free(npc->prio_flow_list);
+		npc->prio_flow_list = NULL;
+	}
 
 	return 0;
 }

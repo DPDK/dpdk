@@ -140,14 +140,6 @@ struct npc_get_datax_cfg {
 	struct npc_xtract_info flag_xtract[NPC_MAX_LD][NPC_MAX_LT];
 };
 
-struct otx2_mcam_ents_info {
-	/* Current max & min values of mcam index */
-	uint32_t max_id;
-	uint32_t min_id;
-	uint32_t free_ent;
-	uint32_t live_ent;
-};
-
 struct rte_flow {
 	uint8_t  nix_intf;
 	uint32_t  mcam_id;
@@ -163,6 +155,13 @@ struct rte_flow {
 
 TAILQ_HEAD(otx2_flow_list, rte_flow);
 
+struct otx2_prio_flow_entry {
+	struct rte_flow *flow;
+	TAILQ_ENTRY(otx2_prio_flow_entry) next;
+};
+
+TAILQ_HEAD(otx2_prio_flow_list_head, otx2_prio_flow_entry);
+
 /* Accessed from ethdev private - otx2_eth_dev */
 struct otx2_npc_flow_info {
 	rte_atomic32_t mark_actions;
@@ -175,22 +174,9 @@ struct otx2_npc_flow_info {
 	otx2_dxcfg_t prx_dxcfg;			/* intf, lid, lt, extract */
 	otx2_fxcfg_t prx_fxcfg;			/* Flag extract */
 	otx2_ld_flags_t prx_lfcfg;		/* KEX LD_Flags CFG */
-	/* mcam entry info per priority level: both free & in-use */
-	struct otx2_mcam_ents_info *flow_entry_info;
-	/* Bitmap of free preallocated entries in ascending index &
-	 * descending priority
-	 */
-	struct rte_bitmap **free_entries;
-	/* Bitmap of free preallocated entries in descending index &
-	 * ascending priority
-	 */
-	struct rte_bitmap **free_entries_rev;
-	/* Bitmap of live entries in ascending index & descending priority */
-	struct rte_bitmap **live_entries;
-	/* Bitmap of live entries in descending index & ascending priority */
-	struct rte_bitmap **live_entries_rev;
 	/* Priority bucket wise tail queue of all rte_flow resources */
 	struct otx2_flow_list *flow_list;
+	struct otx2_prio_flow_list_head *prio_flow_list;
 	uint32_t rss_grps;  /* rss groups supported */
 	struct rte_bitmap *rss_grp_entries;
 	uint16_t channel; /*rx channel */
@@ -400,4 +386,7 @@ int otx2_flow_parse_actions(struct rte_eth_dev *dev,
 int otx2_flow_free_all_resources(struct otx2_eth_dev *hw);
 
 int otx2_flow_parse_mpls(struct otx2_parse_state *pst, int lid);
+
+void otx2_delete_prio_list_entry(struct otx2_npc_flow_info *flow_info,
+				 struct rte_flow *flow);
 #endif /* __OTX2_FLOW_H__ */
