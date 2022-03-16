@@ -153,6 +153,11 @@ After that, VFIO can be used with hardware devices as usual.
 UIO
 ---
 
+.. warning::
+
+   Using UIO drivers is inherently unsafe due to this method lacking IOMMU protection,
+   and can only be done by root user.
+
 In situations where using VFIO is not an option, there are alternative drivers one can use.
 In many cases, the standard ``uio_pci_generic`` module included in the Linux kernel
 can be used as a substitute for VFIO. This module can be loaded using the command:
@@ -194,11 +199,6 @@ It can be loaded as shown below:
    One can add ``intel_iommu=off`` or ``amd_iommu=off`` or ``intel_iommu=on iommu=pt``
    in GRUB command line on x86_64 systems,
    or add ``iommu.passthrough=1`` on aarch64 systems.
-
-.. note::
-
-   Using UIO drivers is inherently unsafe due to this method lacking IOMMU protection,
-   and can only be done by root user.
 
 .. _bifurcated_driver:
 
