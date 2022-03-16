@@ -176,6 +176,11 @@ It can be loaded as shown below:
 
 .. note::
 
+    For some devices which lack support for legacy interrupts, e.g. virtual function
+    (VF) devices, the ``igb_uio`` module may be needed in place of ``uio_pci_generic``.
+
+.. note::
+
    If UEFI secure boot is enabled,
    the Linux kernel may disallow the use of UIO on the system.
    Therefore, devices for use by DPDK should be bound to the ``vfio-pci`` kernel module
