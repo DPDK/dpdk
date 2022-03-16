@@ -122,6 +122,22 @@ To make use of VFIO, the ``vfio-pci`` module must be loaded:
 VFIO kernel is usually present by default in all distributions,
 however please consult your distributions documentation to make sure that is the case.
 
+To make use of full VFIO functionality,
+both kernel and BIOS must support and be configured
+to use IO virtualization (such as Intel\ |reg| VT-d).
+
+.. note::
+
+   In most cases, specifying "iommu=on" as kernel parameter should be enough to
+   configure the Linux kernel to use IOMMU.
+
+For proper operation of VFIO when running DPDK applications as a non-privileged user, correct permissions should also be set up.
+For more information, please refer to :ref:`Running_Without_Root_Privileges`.
+
+
+VFIO Memory Mapping Limits
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 For DMA mapping of either external memory or hugepages, VFIO interface is used.
 VFIO does not support partial unmap of once mapped memory. Hence DPDK's memory is
 mapped in hugepage granularity or system page granularity. Number of DMA
@@ -131,6 +147,9 @@ for external memory and system memory was added in kernel 5.1 defined by
 VFIO module parameter ``dma_entry_limit`` with a default value of 64K.
 When application is out of DMA entries, these limits need to be adjusted to
 increase the allowed limit.
+
+Creating Virtual Functions using vfio-pci
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Since Linux version 5.7,
 the ``vfio-pci`` module supports the creation of virtual functions.
@@ -194,26 +213,10 @@ The token will be used for all PF and VF ports within the application.
       <build_dir>/app/dpdk-testpmd -l 26-29 -n 4 -a 86:02.0 \
       --vfio-vf-token=14d63f20-8445-11ea-8900-1f9ce7d5650d --file-prefix=vf0 -- -i
 
-To make use of full VFIO functionality,
-both kernel and BIOS must support and be configured
-to use IO virtualization (such as Intel\ |reg| VT-d).
-
-.. note::
-
-   Linux versions earlier than version 3.6 do not support VFIO.
-
 .. note::
 
    Linux versions earlier than version 5.7 do not support the creation of
    virtual functions within the VFIO framework.
-
-.. note::
-
-   In most cases, specifying "iommu=on" as kernel parameter should be enough to
-   configure the Linux kernel to use IOMMU.
-
-For proper operation of VFIO when running DPDK applications as a non-privileged user, correct permissions should also be set up.
-For more information, please refer to :ref:`Running_Without_Root_Privileges`.
 
 .. _vfio_noiommu:
 
