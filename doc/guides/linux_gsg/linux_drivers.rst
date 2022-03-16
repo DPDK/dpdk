@@ -250,58 +250,6 @@ After that, VFIO can be used with hardware devices as usual.
    to keep the degree of device access and programming that VFIO has,
    in situations where IOMMU is not available.
 
-.. _uio:
-
-UIO
----
-
-.. warning::
-
-   Using UIO drivers is inherently unsafe due to this method lacking IOMMU protection,
-   and can only be done by root user.
-
-In situations where using VFIO is not an option, there are alternative drivers one can use.
-In many cases, the standard ``uio_pci_generic`` module included in the Linux kernel
-can be used as a substitute for VFIO. This module can be loaded using the command:
-
-.. code-block:: console
-
-   sudo modprobe uio_pci_generic
-
-.. note::
-
-   ``uio_pci_generic`` module doesn't support the creation of virtual functions.
-
-As an alternative to the ``uio_pci_generic``, there is the ``igb_uio`` module
-which can be found in the repository `dpdk-kmods <http://git.dpdk.org/dpdk-kmods>`_.
-It can be loaded as shown below:
-
-.. code-block:: console
-
-   sudo modprobe uio
-   sudo insmod igb_uio.ko
-
-.. note::
-
-    For some devices which lack support for legacy interrupts, e.g. virtual function
-    (VF) devices, the ``igb_uio`` module may be needed in place of ``uio_pci_generic``.
-
-.. note::
-
-   If UEFI secure boot is enabled,
-   the Linux kernel may disallow the use of UIO on the system.
-   Therefore, devices for use by DPDK should be bound to the ``vfio-pci`` kernel module
-   rather than any UIO-based module.
-   For more details see :ref:`linux_gsg_binding_kernel` below.
-
-.. note::
-
-   If the devices used for DPDK are bound to a UIO-based kernel module,
-   please make sure that the IOMMU is disabled or is in passthrough mode.
-   One can add ``intel_iommu=off`` or ``amd_iommu=off`` or ``intel_iommu=on iommu=pt``
-   in GRUB command line on x86_64 systems,
-   or add ``iommu.passthrough=1`` on aarch64 systems.
-
 .. _bifurcated_driver:
 
 Bifurcated Driver
@@ -372,3 +320,55 @@ This can be checked in the boot configuration of your system:
 If ``CONFIG_VFIO_NOIOMMU`` is not enabled in the kernel configuration,
 VFIO driver will not support the no-IOMMU mode,
 and other alternatives (such as UIO drivers) will have to be used.
+
+.. _uio:
+
+UIO
+---
+
+.. warning::
+
+   Using UIO drivers is inherently unsafe due to this method lacking IOMMU protection,
+   and can only be done by root user.
+
+In situations where using VFIO is not an option, there are alternative drivers one can use.
+In many cases, the standard ``uio_pci_generic`` module included in the Linux kernel
+can be used as a substitute for VFIO. This module can be loaded using the command:
+
+.. code-block:: console
+
+   sudo modprobe uio_pci_generic
+
+.. note::
+
+   ``uio_pci_generic`` module doesn't support the creation of virtual functions.
+
+As an alternative to the ``uio_pci_generic``, there is the ``igb_uio`` module
+which can be found in the repository `dpdk-kmods <http://git.dpdk.org/dpdk-kmods>`_.
+It can be loaded as shown below:
+
+.. code-block:: console
+
+   sudo modprobe uio
+   sudo insmod igb_uio.ko
+
+.. note::
+
+    For some devices which lack support for legacy interrupts, e.g. virtual function
+    (VF) devices, the ``igb_uio`` module may be needed in place of ``uio_pci_generic``.
+
+.. note::
+
+   If UEFI secure boot is enabled,
+   the Linux kernel may disallow the use of UIO on the system.
+   Therefore, devices for use by DPDK should be bound to the ``vfio-pci`` kernel module
+   rather than any UIO-based module.
+   For more details see :ref:`linux_gsg_binding_kernel` below.
+
+.. note::
+
+   If the devices used for DPDK are bound to a UIO-based kernel module,
+   please make sure that the IOMMU is disabled or is in passthrough mode.
+   One can add ``intel_iommu=off`` or ``amd_iommu=off`` or ``intel_iommu=on iommu=pt``
+   in GRUB command line on x86_64 systems,
+   or add ``iommu.passthrough=1`` on aarch64 systems.
