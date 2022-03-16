@@ -14,6 +14,96 @@ Different PMDs may require different kernel drivers in order to work properly.
 Depending on the PMD being used, a corresponding kernel driver should be loaded,
 and network ports should be bound to that driver.
 
+.. _linux_gsg_binding_kernel:
+
+Binding and Unbinding Network Ports to/from the Kernel Modules
+--------------------------------------------------------------
+
+.. note::
+
+   PMDs which use the bifurcated driver should not be unbound from their kernel drivers.
+   This section is for PMDs which use the UIO or VFIO drivers.
+   See :ref:`bifurcated_driver` section for more details.
+
+As of release 1.4, DPDK applications no longer automatically unbind all supported network ports from the kernel driver in use.
+Instead, in case the PMD being used use the VFIO or UIO drivers,
+all ports that are to be used by a DPDK application must be bound to
+the ``vfio-pci``, ``uio_pci_generic``, or ``igb_uio`` module
+before the application is run.
+For such PMDs, any network ports under Linux* control will be ignored and cannot be used by the application.
+
+To bind ports to the ``vfio-pci``, ``uio_pci_generic`` or ``igb_uio`` module
+for DPDK use, or to return ports to Linux control,
+a utility script called ``dpdk-devbind.py`` is provided in the ``usertools`` subdirectory.
+This utility can be used to provide a view of the current state of the network ports on the system,
+and to bind and unbind those ports from the different kernel modules,
+including the VFIO and UIO modules.
+The following are some examples of how the script can be used.
+A full description of the script and its parameters can be obtained
+by calling the script with the ``--help`` or ``--usage`` options.
+Note that the UIO or VFIO kernel modules to be used,
+should be loaded into the kernel before running the ``dpdk-devbind.py`` script.
+
+.. warning::
+
+   Due to the way VFIO works, there are certain limitations
+   to which devices can be used with VFIO.
+   Mainly it comes down to how IOMMU groups work.
+   Any Virtual Function device can usually be used with VFIO on its own,
+   but physical devices may require either all ports bound to VFIO,
+   or some of them bound to VFIO while others not being bound to anything at all.
+
+   If your device is behind a PCI-to-PCI bridge,
+   the bridge will then be part of the IOMMU group in which your device is in.
+   Therefore, the bridge driver should also be unbound from the bridge PCI device
+   for VFIO to work with devices behind the bridge.
+
+.. warning::
+
+   While any user can run the ``dpdk-devbind.py`` script
+   to view the status of the network ports,
+   binding or unbinding network ports requires root privileges.
+
+To see the status of all network ports on the system:
+
+.. code-block:: console
+
+    ./usertools/dpdk-devbind.py --status
+
+    Network devices using DPDK-compatible driver
+    ============================================
+    0000:82:00.0 '82599EB 10-GbE NIC' drv=uio_pci_generic unused=ixgbe
+    0000:82:00.1 '82599EB 10-GbE NIC' drv=uio_pci_generic unused=ixgbe
+
+    Network devices using kernel driver
+    ===================================
+    0000:04:00.0 'I350 1-GbE NIC' if=em0  drv=igb unused=uio_pci_generic *Active*
+    0000:04:00.1 'I350 1-GbE NIC' if=eth1 drv=igb unused=uio_pci_generic
+    0000:04:00.2 'I350 1-GbE NIC' if=eth2 drv=igb unused=uio_pci_generic
+    0000:04:00.3 'I350 1-GbE NIC' if=eth3 drv=igb unused=uio_pci_generic
+
+    Other network devices
+    =====================
+    <none>
+
+To bind device ``eth1``,``04:00.1``, to the ``uio_pci_generic`` driver:
+
+.. code-block:: console
+
+    ./usertools/dpdk-devbind.py --bind=uio_pci_generic 04:00.1
+
+or, alternatively,
+
+.. code-block:: console
+
+    ./usertools/dpdk-devbind.py --bind=uio_pci_generic eth1
+
+To restore device ``82:00.0`` to its original kernel binding:
+
+.. code-block:: console
+
+    ./usertools/dpdk-devbind.py --bind=ixgbe 82:00.0
+
 VFIO
 ----
 
@@ -224,95 +314,6 @@ Such model has the following benefits:
 More about the bifurcated driver can be found in
 `Mellanox Bifurcated DPDK PMD
 <https://www.dpdk.org/wp-content/uploads/sites/35/2016/10/Day02-Session04-RonyEfraim-Userspace2016.pdf>`__.
-
-.. _linux_gsg_binding_kernel:
-
-Binding and Unbinding Network Ports to/from the Kernel Modules
---------------------------------------------------------------
-
-.. note::
-
-   PMDs which use the bifurcated driver should not be unbound from their kernel drivers.
-   This section is for PMDs which use the UIO or VFIO drivers.
-
-As of release 1.4, DPDK applications no longer automatically unbind all supported network ports from the kernel driver in use.
-Instead, in case the PMD being used use the VFIO or UIO drivers,
-all ports that are to be used by a DPDK application must be bound to
-the ``vfio-pci``, ``uio_pci_generic``, or ``igb_uio`` module
-before the application is run.
-For such PMDs, any network ports under Linux* control will be ignored and cannot be used by the application.
-
-To bind ports to the ``vfio-pci``, ``uio_pci_generic`` or ``igb_uio`` module
-for DPDK use, or to return ports to Linux control,
-a utility script called ``dpdk-devbind.py`` is provided in the ``usertools`` subdirectory.
-This utility can be used to provide a view of the current state of the network ports on the system,
-and to bind and unbind those ports from the different kernel modules,
-including the VFIO and UIO modules.
-The following are some examples of how the script can be used.
-A full description of the script and its parameters can be obtained
-by calling the script with the ``--help`` or ``--usage`` options.
-Note that the UIO or VFIO kernel modules to be used,
-should be loaded into the kernel before running the ``dpdk-devbind.py`` script.
-
-.. warning::
-
-   Due to the way VFIO works, there are certain limitations
-   to which devices can be used with VFIO.
-   Mainly it comes down to how IOMMU groups work.
-   Any Virtual Function device can usually be used with VFIO on its own,
-   but physical devices may require either all ports bound to VFIO,
-   or some of them bound to VFIO while others not being bound to anything at all.
-
-   If your device is behind a PCI-to-PCI bridge,
-   the bridge will then be part of the IOMMU group in which your device is in.
-   Therefore, the bridge driver should also be unbound from the bridge PCI device
-   for VFIO to work with devices behind the bridge.
-
-.. warning::
-
-   While any user can run the ``dpdk-devbind.py`` script
-   to view the status of the network ports,
-   binding or unbinding network ports requires root privileges.
-
-To see the status of all network ports on the system:
-
-.. code-block:: console
-
-    ./usertools/dpdk-devbind.py --status
-
-    Network devices using DPDK-compatible driver
-    ============================================
-    0000:82:00.0 '82599EB 10-GbE NIC' drv=uio_pci_generic unused=ixgbe
-    0000:82:00.1 '82599EB 10-GbE NIC' drv=uio_pci_generic unused=ixgbe
-
-    Network devices using kernel driver
-    ===================================
-    0000:04:00.0 'I350 1-GbE NIC' if=em0  drv=igb unused=uio_pci_generic *Active*
-    0000:04:00.1 'I350 1-GbE NIC' if=eth1 drv=igb unused=uio_pci_generic
-    0000:04:00.2 'I350 1-GbE NIC' if=eth2 drv=igb unused=uio_pci_generic
-    0000:04:00.3 'I350 1-GbE NIC' if=eth3 drv=igb unused=uio_pci_generic
-
-    Other network devices
-    =====================
-    <none>
-
-To bind device ``eth1``,``04:00.1``, to the ``uio_pci_generic`` driver:
-
-.. code-block:: console
-
-    ./usertools/dpdk-devbind.py --bind=uio_pci_generic 04:00.1
-
-or, alternatively,
-
-.. code-block:: console
-
-    ./usertools/dpdk-devbind.py --bind=uio_pci_generic eth1
-
-To restore device ``82:00.0`` to its original kernel binding:
-
-.. code-block:: console
-
-    ./usertools/dpdk-devbind.py --bind=ixgbe 82:00.0
 
 Troubleshooting VFIO
 --------------------
