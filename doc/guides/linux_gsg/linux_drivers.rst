@@ -25,14 +25,18 @@ Binding and Unbinding Network Ports to/from the Kernel Modules
    This section is for PMDs which use the UIO or VFIO drivers.
    See :ref:`bifurcated_driver` section for more details.
 
-As of release 1.4, DPDK applications no longer automatically unbind all supported network ports from the kernel driver in use.
-Instead, in case the PMD being used use the VFIO or UIO drivers,
-all ports that are to be used by a DPDK application must be bound to
-the ``vfio-pci``, ``uio_pci_generic``, or ``igb_uio`` module
-before the application is run.
-For such PMDs, any network ports under Linux* control will be ignored and cannot be used by the application.
+.. note::
 
-To bind ports to the ``vfio-pci``, ``uio_pci_generic`` or ``igb_uio`` module
+   It is recommended that ``vfio-pci`` be used as the kernel module for DPDK-bound ports in all cases.
+   If an IOMMU is unavailable, the ``vfio-pci`` can be used in :ref:`no-iommu<vfio_noiommu>` mode.
+   If, for some reason, vfio is unavailable, then UIO-based modules, ``igb_uio`` and ``uio_pci_generic`` may be used.
+   See section :ref:`uio` for details.
+
+Most devices require that the hardware to be used by DPDK be unbound from the kernel driver it uses,
+and instead be bound to the ``vfio-pci`` kernel module before the application is run.
+For such PMDs, any network ports or other hardware under Linux* control will be ignored and cannot be used by the application.
+
+To bind ports to the ``vfio-pci`` module
 for DPDK use, or to return ports to Linux control,
 a utility script called ``dpdk-devbind.py`` is provided in the ``usertools`` subdirectory.
 This utility can be used to provide a view of the current state of the network ports on the system,
@@ -72,37 +76,38 @@ To see the status of all network ports on the system:
 
     Network devices using DPDK-compatible driver
     ============================================
-    0000:82:00.0 '82599EB 10-GbE NIC' drv=uio_pci_generic unused=ixgbe
-    0000:82:00.1 '82599EB 10-GbE NIC' drv=uio_pci_generic unused=ixgbe
+    0000:82:00.0 '82599EB 10-GbE NIC' drv=vfio-pci unused=ixgbe
+    0000:82:00.1 '82599EB 10-GbE NIC' drv=vfio-pci unused=ixgbe
 
     Network devices using kernel driver
     ===================================
-    0000:04:00.0 'I350 1-GbE NIC' if=em0  drv=igb unused=uio_pci_generic *Active*
-    0000:04:00.1 'I350 1-GbE NIC' if=eth1 drv=igb unused=uio_pci_generic
-    0000:04:00.2 'I350 1-GbE NIC' if=eth2 drv=igb unused=uio_pci_generic
-    0000:04:00.3 'I350 1-GbE NIC' if=eth3 drv=igb unused=uio_pci_generic
+    0000:04:00.0 'I350 1-GbE NIC' if=em0  drv=igb unused=vfio-pci *Active*
+    0000:04:00.1 'I350 1-GbE NIC' if=eth1 drv=igb unused=vfio-pci
+    0000:04:00.2 'I350 1-GbE NIC' if=eth2 drv=igb unused=vfio-pci
+    0000:04:00.3 'I350 1-GbE NIC' if=eth3 drv=igb unused=vfio-pci
 
     Other network devices
     =====================
     <none>
 
-To bind device ``eth1``,``04:00.1``, to the ``uio_pci_generic`` driver:
+To bind device ``eth1``,``04:00.1``, to the ``vfio-pci`` driver:
 
 .. code-block:: console
 
-    ./usertools/dpdk-devbind.py --bind=uio_pci_generic 04:00.1
+    ./usertools/dpdk-devbind.py --bind=vfio-pci 04:00.1
 
 or, alternatively,
 
 .. code-block:: console
 
-    ./usertools/dpdk-devbind.py --bind=uio_pci_generic eth1
+    ./usertools/dpdk-devbind.py --bind=vfio-pci eth1
 
-To restore device ``82:00.0`` to its original kernel binding:
+When specifying device ids, wildcards can be used for the final part of the address.
+To restore device ``82:00.0`` and ``82:00.1`` to their original kernel binding:
 
 .. code-block:: console
 
-    ./usertools/dpdk-devbind.py --bind=ixgbe 82:00.0
+    ./usertools/dpdk-devbind.py --bind=ixgbe 82:00.*
 
 VFIO
 ----
@@ -210,6 +215,8 @@ to use IO virtualization (such as Intel\ |reg| VT-d).
 For proper operation of VFIO when running DPDK applications as a non-privileged user, correct permissions should also be set up.
 For more information, please refer to :ref:`Running_Without_Root_Privileges`.
 
+.. _vfio_noiommu:
+
 VFIO no-IOMMU mode
 ------------------
 
@@ -239,6 +246,8 @@ After that, VFIO can be used with hardware devices as usual.
    That said, it does make it possible for the user
    to keep the degree of device access and programming that VFIO has,
    in situations where IOMMU is not available.
+
+.. _uio:
 
 UIO
 ---
