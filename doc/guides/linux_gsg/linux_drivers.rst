@@ -135,6 +135,38 @@ For proper operation of VFIO when running DPDK applications as a non-privileged 
 For more information, please refer to :ref:`Running_Without_Root_Privileges`.
 
 
+.. _vfio_noiommu:
+
+VFIO no-IOMMU mode
+~~~~~~~~~~~~~~~~~~
+
+If there is no IOMMU available on the system, VFIO can still be used,
+but it has to be loaded with an additional module parameter:
+
+.. code-block:: console
+
+   modprobe vfio enable_unsafe_noiommu_mode=1
+
+Alternatively, one can also enable this option in an already loaded kernel module:
+
+.. code-block:: console
+
+   echo 1 > /sys/module/vfio/parameters/enable_unsafe_noiommu_mode
+
+After that, VFIO can be used with hardware devices as usual.
+
+.. note::
+
+   It may be required to unload all VFIO related-modules before probing
+   the module again with ``enable_unsafe_noiommu_mode=1`` parameter.
+
+.. warning::
+
+   Since no-IOMMU mode forgoes IOMMU protection, it is inherently unsafe.
+   That said, it does make it possible for the user
+   to keep the degree of device access and programming that VFIO has,
+   in situations where IOMMU is not available.
+
 VFIO Memory Mapping Limits
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -218,65 +250,8 @@ The token will be used for all PF and VF ports within the application.
    Linux versions earlier than version 5.7 do not support the creation of
    virtual functions within the VFIO framework.
 
-.. _vfio_noiommu:
-
-VFIO no-IOMMU mode
-------------------
-
-If there is no IOMMU available on the system, VFIO can still be used,
-but it has to be loaded with an additional module parameter:
-
-.. code-block:: console
-
-   modprobe vfio enable_unsafe_noiommu_mode=1
-
-Alternatively, one can also enable this option in an already loaded kernel module:
-
-.. code-block:: console
-
-   echo 1 > /sys/module/vfio/parameters/enable_unsafe_noiommu_mode
-
-After that, VFIO can be used with hardware devices as usual.
-
-.. note::
-
-   It may be required to unload all VFIO related-modules before probing
-   the module again with ``enable_unsafe_noiommu_mode=1`` parameter.
-
-.. warning::
-
-   Since no-IOMMU mode forgoes IOMMU protection, it is inherently unsafe.
-   That said, it does make it possible for the user
-   to keep the degree of device access and programming that VFIO has,
-   in situations where IOMMU is not available.
-
-.. _bifurcated_driver:
-
-Bifurcated Driver
------------------
-
-PMDs which use the bifurcated driver co-exists with the device kernel driver.
-On such model the NIC is controlled by the kernel, while the data
-path is performed by the PMD directly on top of the device.
-
-Such model has the following benefits:
-
- - It is secure and robust, as the memory management and isolation
-   is done by the kernel.
- - It enables the user to use legacy linux tools such as ``ethtool`` or
-   ``ifconfig`` while running DPDK application on the same network ports.
- - It enables the DPDK application to filter only part of the traffic,
-   while the rest will be directed and handled by the kernel driver.
-   The flow bifurcation is performed by the NIC hardware.
-   As an example, using :ref:`flow_isolated_mode` allows to choose
-   strictly what is received in DPDK.
-
-More about the bifurcated driver can be found in
-`Mellanox Bifurcated DPDK PMD
-<https://www.dpdk.org/wp-content/uploads/sites/35/2016/10/Day02-Session04-RonyEfraim-Userspace2016.pdf>`__.
-
 Troubleshooting VFIO
---------------------
+~~~~~~~~~~~~~~~~~~~~
 
 In certain situations, using ``dpdk-devbind.py`` script
 to bind a device to VFIO driver may fail.
@@ -320,6 +295,31 @@ This can be checked in the boot configuration of your system:
 If ``CONFIG_VFIO_NOIOMMU`` is not enabled in the kernel configuration,
 VFIO driver will not support the no-IOMMU mode,
 and other alternatives (such as UIO drivers) will have to be used.
+
+.. _bifurcated_driver:
+
+Bifurcated Driver
+-----------------
+
+PMDs which use the bifurcated driver co-exists with the device kernel driver.
+On such model the NIC is controlled by the kernel, while the data
+path is performed by the PMD directly on top of the device.
+
+Such model has the following benefits:
+
+ - It is secure and robust, as the memory management and isolation
+   is done by the kernel.
+ - It enables the user to use legacy linux tools such as ``ethtool`` or
+   ``ifconfig`` while running DPDK application on the same network ports.
+ - It enables the DPDK application to filter only part of the traffic,
+   while the rest will be directed and handled by the kernel driver.
+   The flow bifurcation is performed by the NIC hardware.
+   As an example, using :ref:`flow_isolated_mode` allows to choose
+   strictly what is received in DPDK.
+
+More about the bifurcated driver can be found in
+`Mellanox Bifurcated DPDK PMD
+<https://www.dpdk.org/wp-content/uploads/sites/35/2016/10/Day02-Session04-RonyEfraim-Userspace2016.pdf>`__.
 
 .. _uio:
 
