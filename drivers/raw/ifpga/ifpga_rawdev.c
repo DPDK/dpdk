@@ -225,7 +225,8 @@ static int ifpga_rawdev_fill_info(struct ifpga_rawdev *ifpga_dev)
 
 	unsigned int dom, bus, dev;
 	int func;
-	uint32_t dev_id, vendor_id;
+	uint32_t dev_id = 0;
+	uint32_t vendor_id = 0;
 
 	adapter = ifpga_dev ? ifpga_rawdev_get_priv(ifpga_dev->rawdev) : NULL;
 	if (!adapter)
