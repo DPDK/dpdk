@@ -3,6 +3,8 @@
     Copyright 2017 Mellanox Technologies, Ltd
     All rights reserved.
 
+.. include:: <isonum.txt>
+
 .. _linux_gsg_linux_drivers:
 
 Linux Drivers
@@ -99,7 +101,7 @@ The token will be used for all PF and VF ports within the application.
 
 To make use of full VFIO functionality,
 both kernel and BIOS must support and be configured
-to use IO virtualization (such as Intel® VT-d).
+to use IO virtualization (such as Intel\ |reg| VT-d).
 
 .. note::
 
@@ -335,7 +337,7 @@ Please refer to earlier sections on how to configure kernel parameters
 correctly for your system.
 
 If the kernel is configured correctly, one also has to make sure that
-the BIOS configuration has virtualization features (such as Intel® VT-d).
+the BIOS configuration has virtualization features (such as Intel\ |reg| VT-d).
 There is no standard way to check if the platform is configured correctly,
 so please check with your platform documentation to see if it has such features,
 and how to enable them.
