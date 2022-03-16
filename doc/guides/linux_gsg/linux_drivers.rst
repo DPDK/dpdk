@@ -48,7 +48,7 @@ by calling the script with the ``--help`` or ``--usage`` options.
 Note that the UIO or VFIO kernel modules to be used,
 should be loaded into the kernel before running the ``dpdk-devbind.py`` script.
 
-.. warning::
+.. note::
 
    Due to the way VFIO works, there are certain limitations
    to which devices can be used with VFIO.
@@ -62,7 +62,7 @@ should be loaded into the kernel before running the ``dpdk-devbind.py`` script.
    Therefore, the bridge driver should also be unbound from the bridge PCI device
    for VFIO to work with devices behind the bridge.
 
-.. warning::
+.. note::
 
    While any user can run the ``dpdk-devbind.py`` script
    to view the status of the network ports,
