@@ -1386,15 +1386,16 @@ mlx5_os_read_dev_counters(struct rte_eth_dev *dev, uint64_t *stats)
 		}
 	} else {
 		ret = _mlx5_os_read_dev_counters(dev, -1, stats);
+		if (ret)
+			return ret;
 	}
 	/* Read IB counters. */
 	for (i = 0; i != xstats_ctrl->mlx5_stats_n; ++i) {
 		if (!xstats_ctrl->info[i].dev)
 			continue;
-		ret = mlx5_os_read_dev_stat(priv, xstats_ctrl->info[i].ctr_name,
-					    &stats[i]);
 		/* return last xstats counter if fail to read. */
-		if (ret != 0)
+		if (mlx5_os_read_dev_stat(priv, xstats_ctrl->info[i].ctr_name,
+			    &stats[i]) == 0)
 			xstats_ctrl->xstats[i] = stats[i];
 		else
 			stats[i] = xstats_ctrl->xstats[i];
