@@ -351,15 +351,10 @@ npc_parse_lb(struct npc_parse_state *pst)
 		}
 		info.len = pattern->size;
 	} else if (pst->pattern->type == ROC_NPC_ITEM_TYPE_QINQ) {
-		vlan_item[0] = pst->pattern->spec;
 		info.hw_mask = NULL;
-		info.len = sizeof(vlan_item[0]->hdr);
+		info.len = pattern->size;
 		lt = NPC_LT_LB_STAG_QINQ;
 		lflags = NPC_F_STAG_CTAG;
-		if (vlan_item[0] && vlan_item[0]->has_more_vlan) {
-			lflags = NPC_F_LB_L_WITH_QINQ_CTAG &
-				 NPC_F_LB_L_WITH_QINQ_QINQ;
-		}
 	} else if (pst->pattern->type == ROC_NPC_ITEM_TYPE_RAW) {
 		raw_spec = pst->pattern->spec;
 		if (raw_spec->relative)
