@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  *
- *   Copyright 2016-2020 NXP
+ *   Copyright 2016-2022 NXP
  *
  */
 
@@ -208,7 +208,7 @@ struct dpaa_sec_job {
 	struct qm_sg_entry sg[MAX_JOB_SG_ENTRIES];
 };
 
-#define DPAA_MAX_NB_MAX_DIGEST	32
+#define DPAA_MAX_NB_MAX_DIGEST	64
 struct dpaa_sec_op_ctx {
 	struct dpaa_sec_job job;
 	struct rte_crypto_op *op;
