@@ -61,7 +61,7 @@ struct roc_npc_flow_item_raw {
 
 struct roc_ether_addr {
 	uint8_t addr_bytes[PLT_ETHER_ADDR_LEN]; /**< Addr bytes in tx order */
-} plt_aligned(2);
+} __plt_aligned(2);
 
 struct roc_ether_hdr {
 	struct roc_ether_addr d_addr; /**< Destination address. */
@@ -73,7 +73,7 @@ struct roc_ether_hdr {
 		} S_un; /**< Do not use directly; use s_addr instead.*/
 	};
 	uint16_t ether_type; /**< Frame type. */
-} plt_aligned(2);
+} __plt_aligned(2);
 
 PLT_STD_C11
 struct roc_npc_flow_item_eth {
@@ -255,7 +255,7 @@ enum roc_npc_rss_hash_function {
 struct roc_npc_action_rss {
 	enum roc_npc_rss_hash_function func;
 	uint32_t level;
-	uint64_t types;	       /**< Specific RSS hash types (see RTE_ETH_RSS_*). */
+	uint64_t types;	       /**< Specific RSS hash types (see ETH_RSS_*). */
 	uint32_t key_len;      /**< Hash key length in bytes. */
 	uint32_t queue_num;    /**< Number of entries in @p queue. */
 	const uint8_t *key;    /**< Hash key. */

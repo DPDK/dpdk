@@ -268,8 +268,8 @@ npc_get_kex_capability(struct npc *npc)
 	kex_cap.bit.dip_addr = npc_is_kex_enabled(npc, NPC_LID_LC, NPC_LT_LC_IP,
 						  14 * 8, 4 * 8);
 	/* IP6 SIP: offset 8B, len 16B */
-	kex_cap.bit.sip6_addr = npc_is_kex_enabled(
-		npc, NPC_LID_LC, NPC_LT_LC_IP6, 8 * 8, 16 * 8);
+	kex_cap.bit.sip6_addr = npc_is_kex_enabled(npc, NPC_LID_LC, NPC_LT_LC_IP6,
+					8 * 8, 16 * 8);
 	/* IP6 DIP: offset 24B, len 16B */
 	kex_cap.bit.dip6_addr = npc_is_kex_enabled(
 		npc, NPC_LID_LC, NPC_LT_LC_IP6, 24 * 8, 16 * 8);
@@ -283,8 +283,8 @@ npc_get_kex_capability(struct npc *npc)
 	/* Custom L3 frame: varied offset and lengths */
 	kex_cap.bit.custom_l3 =
 		npc_is_kex_enabled(npc, NPC_LID_LC, NPC_LT_LC_CUSTOM0, 0, 0);
-	kex_cap.bit.custom_l3 |=
-		npc_is_kex_enabled(npc, NPC_LID_LC, NPC_LT_LC_CUSTOM1, 0, 0);
+	kex_cap.bit.custom_l3 |= (uint64_t)npc_is_kex_enabled(npc, NPC_LID_LC,
+					NPC_LT_LC_CUSTOM1, 0, 0);
 	/* SCTP sport : offset 0B, len 2B */
 	kex_cap.bit.sctp_sport = npc_is_kex_enabled(
 		npc, NPC_LID_LD, NPC_LT_LD_SCTP, 0 * 8, 2 * 8);

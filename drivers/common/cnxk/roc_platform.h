@@ -98,7 +98,7 @@
 #define plt_cpu_to_be_64 rte_cpu_to_be_64
 #define plt_be_to_cpu_64 rte_be_to_cpu_64
 
-#define plt_aligned	    __rte_aligned
+#define __plt_aligned	    __rte_aligned
 #define plt_align32pow2	    rte_align32pow2
 #define plt_align32prevpow2 rte_align32prevpow2
 
