@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright 2020-2021 NXP
+ * Copyright 2020-2022 NXP
  */
 
 #ifndef __DESC_SDAP_H__
@@ -29,52 +29,14 @@
 static inline int
 rta_inline_pdcp_sdap_query(enum auth_type_pdcp auth_alg,
 		      enum cipher_type_pdcp cipher_alg,
-		      enum pdcp_sn_size sn_size,
-		      int8_t hfn_ovd)
+		      __rte_unused enum pdcp_sn_size sn_size,
+		      __rte_unused int8_t hfn_ovd)
 {
-	int nb_key_to_inline = 0;
-
 	if ((cipher_alg != PDCP_CIPHER_TYPE_NULL) &&
 			(auth_alg != PDCP_AUTH_TYPE_NULL))
 		return 2;
 	else
 		return 0;
-
-	/**
-	 * Shared Descriptors for some of the cases does not fit in the
-	 * MAX_DESC_SIZE of the descriptor
-	 * The cases which exceed are for RTA_SEC_ERA=8 and HFN override
-	 * enabled and 12/18 bit uplane and either of following Algo combo.
-	 * - AES-SNOW
-	 * - AES-ZUC
-	 * - SNOW-SNOW
-	 * - SNOW-ZUC
-	 * - ZUC-SNOW
-	 * - ZUC-SNOW
-	 *
-	 * We cannot make inline for all cases, as this will impact performance
-	 * due to extra memory accesses for the keys.
-	 */
-
-	/* Inline only the cipher key */
-	if ((rta_sec_era == RTA_SEC_ERA_8) && hfn_ovd &&
-		((sn_size == PDCP_SN_SIZE_12) ||
-		 (sn_size == PDCP_SN_SIZE_18)) &&
-		(cipher_alg != PDCP_CIPHER_TYPE_NULL) &&
-		((auth_alg == PDCP_AUTH_TYPE_SNOW) ||
-		 (auth_alg == PDCP_AUTH_TYPE_ZUC))) {
-
-		nb_key_to_inline++;
-
-		/* Sub case where inlining another key is required */
-		if ((cipher_alg == PDCP_CIPHER_TYPE_AES) &&
-			(auth_alg == PDCP_AUTH_TYPE_SNOW))
-			nb_key_to_inline++;
-	}
-
-	/* Inline both keys */
-
-	return nb_key_to_inline;
 }
 
 static inline void key_loading_opti(struct program *p,

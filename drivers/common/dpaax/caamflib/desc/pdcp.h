@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: BSD-3-Clause or GPL-2.0+
  * Copyright 2008-2013 Freescale Semiconductor, Inc.
- * Copyright 2019-2021 NXP
+ * Copyright 2019-2022 NXP
  */
 
 #ifndef __DESC_PDCP_H__
@@ -776,21 +776,11 @@ pdcp_insert_uplane_snow_snow_op(struct program *p,
 
 		return 0;
 	}
-	/* Non-proto is supported only for 5bit cplane and 18bit uplane */
-	switch (sn_size) {
-	case PDCP_SN_SIZE_18:
-		offset = 5;
-		length = 3;
-		sn_mask = (swap == false) ? PDCP_U_PLANE_18BIT_SN_MASK :
-					PDCP_U_PLANE_18BIT_SN_MASK_BE;
-		break;
-	case PDCP_SN_SIZE_5:
-	case PDCP_SN_SIZE_7:
-	case PDCP_SN_SIZE_12:
-	case PDCP_SN_SIZE_15:
-		pr_err("Invalid sn_size for %s\n", __func__);
-		return -ENOTSUP;
-	}
+	/* sn_size is 18 */
+	offset = 5;
+	length = 3;
+	sn_mask = (swap == false) ? PDCP_U_PLANE_18BIT_SN_MASK :
+				PDCP_U_PLANE_18BIT_SN_MASK_BE;
 
 	if (dir == OP_TYPE_ENCAP_PROTOCOL)
 		MATHB(p, SEQINSZ, SUB, length, VSEQINSZ, 4, IMMED2);
@@ -901,21 +891,11 @@ pdcp_insert_uplane_zuc_zuc_op(struct program *p,
 
 		return 0;
 	}
-	/* Non-proto is supported only for 5bit cplane and 18bit uplane */
-	switch (sn_size) {
-	case PDCP_SN_SIZE_18:
-		offset = 5;
-		length = 3;
-		sn_mask = (swap == false) ? PDCP_U_PLANE_18BIT_SN_MASK :
-					PDCP_U_PLANE_18BIT_SN_MASK_BE;
-		break;
-	case PDCP_SN_SIZE_5:
-	case PDCP_SN_SIZE_7:
-	case PDCP_SN_SIZE_12:
-	case PDCP_SN_SIZE_15:
-		pr_err("Invalid sn_size for %s\n", __func__);
-		return -ENOTSUP;
-	}
+	/* sn_size is 18 */
+	offset = 5;
+	length = 3;
+	sn_mask = (swap == false) ? PDCP_U_PLANE_18BIT_SN_MASK :
+				PDCP_U_PLANE_18BIT_SN_MASK_BE;
 
 	SEQLOAD(p, MATH0, offset, length, 0);
 	JUMP(p, 1, LOCAL_JUMP, ALL_TRUE, CALM);
@@ -1190,27 +1170,11 @@ pdcp_insert_cplane_snow_aes_op(struct program *p,
 
 		return 0;
 	}
-	/* Non-proto is supported only for 5bit cplane and 18bit uplane */
-	switch (sn_size) {
-	case PDCP_SN_SIZE_5:
-		offset = 7;
-		length = 1;
-		sn_mask = (swap == false) ? PDCP_C_PLANE_SN_MASK :
-					PDCP_C_PLANE_SN_MASK_BE;
-		break;
-	case PDCP_SN_SIZE_18:
-		offset = 5;
-		length = 3;
-		sn_mask = (swap == false) ? PDCP_U_PLANE_18BIT_SN_MASK :
-					PDCP_U_PLANE_18BIT_SN_MASK_BE;
-		break;
-	case PDCP_SN_SIZE_7:
-	case PDCP_SN_SIZE_12:
-	case PDCP_SN_SIZE_15:
-		pr_err("Invalid sn_size for %s\n", __func__);
-		return -ENOTSUP;
-
-	}
+	/* sn_size is 18 */
+	offset = 5;
+	length = 3;
+	sn_mask = (swap == false) ? PDCP_U_PLANE_18BIT_SN_MASK :
+				PDCP_U_PLANE_18BIT_SN_MASK_BE;
 
 	SEQLOAD(p, MATH0, offset, length, 0);
 	JUMP(p, 1, LOCAL_JUMP, ALL_TRUE, CALM);
@@ -1421,27 +1385,11 @@ pdcp_insert_cplane_aes_snow_op(struct program *p,
 
 		return 0;
 	}
-	/* Non-proto is supported only for 5bit cplane and 18bit uplane */
-	switch (sn_size) {
-	case PDCP_SN_SIZE_5:
-		offset = 7;
-		length = 1;
-		sn_mask = (swap == false) ? PDCP_C_PLANE_SN_MASK :
-					PDCP_C_PLANE_SN_MASK_BE;
-		break;
-	case PDCP_SN_SIZE_18:
-		offset = 5;
-		length = 3;
-		sn_mask = (swap == false) ? PDCP_U_PLANE_18BIT_SN_MASK :
-					PDCP_U_PLANE_18BIT_SN_MASK_BE;
-		break;
-	case PDCP_SN_SIZE_7:
-	case PDCP_SN_SIZE_12:
-	case PDCP_SN_SIZE_15:
-		pr_err("Invalid sn_size for %s\n", __func__);
-		return -ENOTSUP;
-
-	}
+	/* sn_size is 18 */
+	offset = 5;
+	length = 3;
+	sn_mask = (swap == false) ? PDCP_U_PLANE_18BIT_SN_MASK :
+				PDCP_U_PLANE_18BIT_SN_MASK_BE;
 
 	if (dir == OP_TYPE_ENCAP_PROTOCOL)
 		MATHB(p, SEQINSZ, SUB, length, VSEQINSZ, 4, IMMED2);
@@ -1548,27 +1496,11 @@ pdcp_insert_cplane_snow_zuc_op(struct program *p,
 			 (uint16_t)authdata->algtype);
 		return 0;
 	}
-	/* Non-proto is supported only for 5bit cplane and 18bit uplane */
-	switch (sn_size) {
-	case PDCP_SN_SIZE_5:
-		offset = 7;
-		length = 1;
-		sn_mask = (swap == false) ? PDCP_C_PLANE_SN_MASK :
-					PDCP_C_PLANE_SN_MASK_BE;
-		break;
-	case PDCP_SN_SIZE_18:
-		offset = 5;
-		length = 3;
-		sn_mask = (swap == false) ? PDCP_U_PLANE_18BIT_SN_MASK :
-					PDCP_U_PLANE_18BIT_SN_MASK_BE;
-		break;
-	case PDCP_SN_SIZE_7:
-	case PDCP_SN_SIZE_12:
-	case PDCP_SN_SIZE_15:
-		pr_err("Invalid sn_size for %s\n", __func__);
-		return -ENOTSUP;
-
-	}
+	/* sn_size is 18 */
+	offset = 5;
+	length = 3;
+	sn_mask = (swap == false) ? PDCP_U_PLANE_18BIT_SN_MASK :
+				PDCP_U_PLANE_18BIT_SN_MASK_BE;
 
 	pkeyjump = JUMP(p, keyjump, LOCAL_JUMP, ALL_TRUE, SHRD | SELF | BOTH);
 	KEY(p, KEY1, cipherdata->key_enc_flags, cipherdata->key,
@@ -1667,27 +1599,12 @@ pdcp_insert_cplane_aes_zuc_op(struct program *p,
 
 		return 0;
 	}
-	/* Non-proto is supported only for 5bit cplane and 18bit uplane */
-	switch (sn_size) {
-	case PDCP_SN_SIZE_5:
-		offset = 7;
-		length = 1;
-		sn_mask = (swap == false) ? PDCP_C_PLANE_SN_MASK :
-					PDCP_C_PLANE_SN_MASK_BE;
-		break;
-	case PDCP_SN_SIZE_18:
-		offset = 5;
-		length = 3;
-		sn_mask = (swap == false) ? PDCP_U_PLANE_18BIT_SN_MASK :
-					PDCP_U_PLANE_18BIT_SN_MASK_BE;
-		break;
-	case PDCP_SN_SIZE_7:
-	case PDCP_SN_SIZE_12:
-	case PDCP_SN_SIZE_15:
-		pr_err("Invalid sn_size for %s\n", __func__);
-		return -ENOTSUP;
+	/* sn_size is 18 */
+	offset = 5;
+	length = 3;
+	sn_mask = (swap == false) ? PDCP_U_PLANE_18BIT_SN_MASK :
+				PDCP_U_PLANE_18BIT_SN_MASK_BE;
 
-	}
 	pkeyjump = JUMP(p, keyjump, LOCAL_JUMP, ALL_TRUE, SHRD | SELF | BOTH);
 	KEY(p, KEY1, cipherdata->key_enc_flags, cipherdata->key,
 	    cipherdata->keylen, INLINE_KEY(cipherdata));
@@ -1789,27 +1706,12 @@ pdcp_insert_cplane_zuc_snow_op(struct program *p,
 
 		return 0;
 	}
-	/* Non-proto is supported only for 5bit cplane and 18bit uplane */
-	switch (sn_size) {
-	case PDCP_SN_SIZE_5:
-		offset = 7;
-		length = 1;
-		sn_mask = (swap == false) ? PDCP_C_PLANE_SN_MASK :
-					PDCP_C_PLANE_SN_MASK_BE;
-		break;
-	case PDCP_SN_SIZE_18:
-		offset = 5;
-		length = 3;
-		sn_mask = (swap == false) ? PDCP_U_PLANE_18BIT_SN_MASK :
-					PDCP_U_PLANE_18BIT_SN_MASK_BE;
-		break;
-	case PDCP_SN_SIZE_7:
-	case PDCP_SN_SIZE_12:
-	case PDCP_SN_SIZE_15:
-		pr_err("Invalid sn_size for %s\n", __func__);
-		return -ENOTSUP;
+	/* sn_size is 18 */
+	offset = 5;
+	length = 3;
+	sn_mask = (swap == false) ? PDCP_U_PLANE_18BIT_SN_MASK :
+				PDCP_U_PLANE_18BIT_SN_MASK_BE;
 
-	}
 	pkeyjump = JUMP(p, keyjump, LOCAL_JUMP, ALL_TRUE, SHRD | SELF | BOTH);
 	KEY(p, KEY1, cipherdata->key_enc_flags, cipherdata->key,
 	    cipherdata->keylen, INLINE_KEY(cipherdata));
@@ -1929,26 +1831,12 @@ pdcp_insert_cplane_zuc_aes_op(struct program *p,
 			 (uint16_t)authdata->algtype);
 		return 0;
 	}
-	/* Non-proto is supported only for 5bit cplane and 18bit uplane */
-	switch (sn_size) {
-	case PDCP_SN_SIZE_5:
-		offset = 7;
-		length = 1;
-		sn_mask = (swap == false) ? PDCP_C_PLANE_SN_MASK :
-					PDCP_C_PLANE_SN_MASK_BE;
-		break;
-	case PDCP_SN_SIZE_18:
-		offset = 5;
-		length = 3;
-		sn_mask = (swap == false) ? PDCP_U_PLANE_18BIT_SN_MASK :
-					PDCP_U_PLANE_18BIT_SN_MASK_BE;
-		break;
-	case PDCP_SN_SIZE_7:
-	case PDCP_SN_SIZE_12:
-	case PDCP_SN_SIZE_15:
-		pr_err("Invalid sn_size for %s\n", __func__);
-		return -ENOTSUP;
-	}
+
+	/* sn_size is 18 */
+	offset = 5;
+	length = 3;
+	sn_mask = (swap == false) ? PDCP_U_PLANE_18BIT_SN_MASK :
+				PDCP_U_PLANE_18BIT_SN_MASK_BE;
 
 	SEQLOAD(p, MATH0, offset, length, 0);
 	JUMP(p, 1, LOCAL_JUMP, ALL_TRUE, CALM);
