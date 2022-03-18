@@ -42,7 +42,7 @@ script: ./.ci/${TRAVIS_OS_NAME}-build.sh
 env:
   global:
     - LIBABIGAIL_VERSION=libabigail-1.8
-    - REF_GIT_TAG=v21.11
+    - REF_GIT_TAG=v22.03
 
 jobs:
   include:
