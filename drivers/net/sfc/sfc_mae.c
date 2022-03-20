@@ -1209,18 +1209,12 @@ void
 sfc_mae_flow_cleanup(struct sfc_adapter *sa,
 		     struct rte_flow *flow)
 {
-	struct sfc_flow_spec *spec;
 	struct sfc_flow_spec_mae *spec_mae;
 
 	if (flow == NULL)
 		return;
 
-	spec = &flow->spec;
-
-	if (spec == NULL)
-		return;
-
-	spec_mae = &spec->mae;
+	spec_mae = &flow->spec.mae;
 
 	if (spec_mae->ft != NULL) {
 		if (spec_mae->ft_rule_type == SFC_FT_RULE_JUMP)
