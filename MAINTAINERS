@@ -421,8 +421,7 @@ M: Nicolas Chautru <nicolas.chautru@intel.com>
 T: git://dpdk.org/next/dpdk-next-crypto
 F: lib/bbdev/
 F: doc/guides/prog_guide/bbdev.rst
-F: drivers/baseband/
-F: doc/guides/bbdevs/
+F: doc/guides/bbdevs/features/default.ini
 F: app/test-bbdev/
 F: doc/guides/tools/testbbdev.rst
 F: examples/bbdev_app/
@@ -1299,11 +1298,36 @@ F: doc/guides/eventdevs/opdl.rst
 Baseband Drivers
 ----------------
 
+Intel baseband
+M: Nicolas Chautru <nicolas.chautru@intel.com>
+T: git://dpdk.org/next/dpdk-next-crypto
+F: drivers/baseband/turbo_sw/
+F: doc/guides/bbdevs/turbo_sw.rst
+F: doc/guides/bbdevs/features/turbo_sw.ini
+F: drivers/baseband/fpga_lte_fec/
+F: doc/guides/bbdevs/fpga_lte_fec.rst
+F: doc/guides/bbdevs/features/fpga_lte_fec.ini
+F: drivers/baseband/fpga_5gnr_fec/
+F: doc/guides/bbdevs/fpga_5gnr_fec.rst
+F: doc/guides/bbdevs/features/fpga_5gnr_fec.ini
+F: drivers/baseband/acc100/
+F: doc/guides/bbdevs/acc100.rst
+F: doc/guides/bbdevs/features/acc100.ini
+
+Null baseband
+M: Nicolas Chautru <nicolas.chautru@intel.com>
+T: git://dpdk.org/next/dpdk-next-crypto
+F: drivers/baseband/null/
+F: doc/guides/bbdevs/null.rst
+F: doc/guides/bbdevs/features/null.ini
+
 NXP LA12xx
 M: Nipun Gupta <nipun.gupta@nxp.com>
 M: Hemant Agrawal <hemant.agrawal@nxp.com>
+T: git://dpdk.org/next/dpdk-next-crypto
 F: drivers/baseband/la12xx/
 F: doc/guides/bbdevs/la12xx.rst
+F: doc/guides/bbdevs/features/la12xx.ini
 
 
 GPU Drivers
