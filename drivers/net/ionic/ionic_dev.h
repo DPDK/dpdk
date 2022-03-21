@@ -12,7 +12,8 @@
 #include "ionic_regs.h"
 
 #define IONIC_MIN_MTU			RTE_ETHER_MIN_MTU
-#define IONIC_MAX_MTU			9194
+#define IONIC_MAX_MTU			9750
+#define IONIC_ETH_OVERHEAD		(RTE_ETHER_HDR_LEN + VLAN_TAG_SIZE)
 
 #define IONIC_MAX_RING_DESC		32768
 #define IONIC_MIN_RING_DESC		16
