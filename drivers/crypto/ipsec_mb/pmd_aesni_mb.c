@@ -1284,9 +1284,9 @@ set_mb_job_params(IMB_JOB *job, struct ipsec_mb_qp *qp,
 					op->sym->aead.data.offset;
 			job->msg_len_to_hash_in_bytes =
 					op->sym->aead.data.length;
-		} else {
-			job->msg_len_to_cipher_in_bytes = 0;
+		} else { /* AES-GMAC only, only AAD used */
 			job->msg_len_to_hash_in_bytes = 0;
+			job->hash_start_src_offset_in_bytes = 0;
 		}
 
 		job->iv = rte_crypto_op_ctod_offset(op, uint8_t *,
@@ -1366,8 +1366,18 @@ set_mb_job_params(IMB_JOB *job, struct ipsec_mb_qp *qp,
 		job->msg_len_to_cipher_in_bits =
 					op->sym->cipher.data.length;
 		break;
-	case IMB_CIPHER_CCM:
 	case IMB_CIPHER_GCM:
+		if (session->cipher.mode == IMB_CIPHER_NULL) {
+			/* AES-GMAC only (only AAD used) */
+			job->msg_len_to_cipher_in_bytes = 0;
+			job->cipher_start_src_offset_in_bytes = 0;
+		} else {
+			job->cipher_start_src_offset_in_bytes =
+					op->sym->aead.data.offset;
+			job->msg_len_to_cipher_in_bytes = op->sym->aead.data.length;
+		}
+		break;
+	case IMB_CIPHER_CCM:
 	case IMB_CIPHER_CHACHA20_POLY1305:
 		job->cipher_start_src_offset_in_bytes =
 				op->sym->aead.data.offset;
