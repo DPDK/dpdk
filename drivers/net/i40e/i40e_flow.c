@@ -3142,8 +3142,11 @@ i40e_flow_parse_fdir_pattern(struct rte_eth_dev *dev,
 		/* Check if the input set is valid */
 		if (i40e_validate_input_set(pctype, RTE_ETH_FILTER_FDIR,
 						input_set) != 0) {
-			PMD_DRV_LOG(ERR, "Invalid input set");
-			return -EINVAL;
+			rte_flow_error_set(error, EINVAL,
+					   RTE_FLOW_ERROR_TYPE_ITEM,
+					   item,
+					   "Invalid input set");
+			return -rte_errno;
 		}
 
 		filter->input.flow_ext.input_set = input_set;
