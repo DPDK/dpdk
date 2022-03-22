@@ -3250,7 +3250,16 @@ test_bpf(void)
 
 REGISTER_TEST_COMMAND(bpf_autotest, test_bpf);
 
-#ifdef RTE_HAS_LIBPCAP
+#ifndef RTE_HAS_LIBPCAP
+
+static int
+test_bpf_convert(void)
+{
+	printf("BPF convert RTE_HAS_LIBPCAP is undefined, skipping test\n");
+	return TEST_SKIPPED;
+}
+
+#else
 #include <pcap/pcap.h>
 
 static void
@@ -3448,5 +3457,6 @@ test_bpf_convert(void)
 	return rc;
 }
 
-REGISTER_TEST_COMMAND(bpf_convert_autotest, test_bpf_convert);
 #endif /* RTE_HAS_LIBPCAP */
+
+REGISTER_TEST_COMMAND(bpf_convert_autotest, test_bpf_convert);
