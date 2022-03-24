@@ -126,6 +126,13 @@ struct hn_vf_ctx {
 	enum vf_device_state	vf_state;
 };
 
+struct hv_hotadd_context {
+	LIST_ENTRY(hv_hotadd_context) list;
+	struct hn_data *hv;
+	struct rte_devargs da;
+	int eal_hot_plug_retry;
+};
+
 struct hn_data {
 	struct rte_vmbus_device *vmbus;
 	struct hn_rx_queue *primary;
@@ -175,8 +182,9 @@ struct hn_data {
 
 	struct vmbus_channel *channels[HN_MAX_CHANNELS];
 
-	struct rte_devargs devargs;
-	int		eal_hot_plug_retry;
+	rte_spinlock_t	hotadd_lock;
+	LIST_HEAD(hotadd_list, hv_hotadd_context) hotadd_list;
+	char		*vf_devargs;
 };
 
 static inline struct vmbus_channel *

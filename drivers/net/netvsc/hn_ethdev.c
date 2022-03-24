@@ -554,9 +554,10 @@ static int hn_subchan_configure(struct hn_data *hv,
 static void netvsc_hotplug_retry(void *args)
 {
 	int ret;
-	struct hn_data *hv = args;
+	struct hv_hotadd_context *hot_ctx = args;
+	struct hn_data *hv = hot_ctx->hv;
 	struct rte_eth_dev *dev = &rte_eth_devices[hv->port_id];
-	struct rte_devargs *d = &hv->devargs;
+	struct rte_devargs *d = &hot_ctx->da;
 	char buf[256];
 
 	DIR *di;
@@ -566,10 +567,13 @@ static void netvsc_hotplug_retry(void *args)
 	int s;
 
 	PMD_DRV_LOG(DEBUG, "%s: retry count %d",
-		    __func__, hv->eal_hot_plug_retry);
+		    __func__, hot_ctx->eal_hot_plug_retry);
 
-	if (hv->eal_hot_plug_retry++ > NETVSC_MAX_HOTADD_RETRY)
-		return;
+	if (hot_ctx->eal_hot_plug_retry++ > NETVSC_MAX_HOTADD_RETRY) {
+		PMD_DRV_LOG(NOTICE, "Failed to parse PCI device retry=%d",
+			    hot_ctx->eal_hot_plug_retry);
+		goto free_hotadd_ctx;
+	}
 
 	snprintf(buf, sizeof(buf), "/sys/bus/pci/devices/%s/net", d->name);
 	di = opendir(buf);
@@ -602,7 +606,7 @@ static void netvsc_hotplug_retry(void *args)
 		}
 		if (req.ifr_hwaddr.sa_family != ARPHRD_ETHER) {
 			closedir(di);
-			return;
+			goto free_hotadd_ctx;
 		}
 		memcpy(eth_addr.addr_bytes, req.ifr_hwaddr.sa_data,
 		       RTE_DIM(eth_addr.addr_bytes));
@@ -611,8 +615,13 @@ static void netvsc_hotplug_retry(void *args)
 			PMD_DRV_LOG(NOTICE,
 				    "Found matching MAC address, adding device %s network name %s",
 				    d->name, dir->d_name);
+
+			/* If this device has been hot removed from this
+			 * parent device, restore its args.
+			 */
 			ret = rte_eal_hotplug_add(d->bus->name, d->name,
-						  d->args);
+						  hv->vf_devargs ?
+						  hv->vf_devargs : "");
 			if (ret) {
 				PMD_DRV_LOG(ERR,
 					    "Failed to add PCI device %s",
@@ -624,12 +633,20 @@ static void netvsc_hotplug_retry(void *args)
 		 * the device, or its MAC address did not match.
 		 */
 		closedir(di);
-		return;
+		goto free_hotadd_ctx;
 	}
 	closedir(di);
 retry:
 	/* The device is still being initialized, retry after 1 second */
-	rte_eal_alarm_set(1000000, netvsc_hotplug_retry, hv);
+	rte_eal_alarm_set(1000000, netvsc_hotplug_retry, hot_ctx);
+	return;
+
+free_hotadd_ctx:
+	rte_spinlock_lock(&hv->hotadd_lock);
+	LIST_REMOVE(hot_ctx, list);
+	rte_spinlock_unlock(&hv->hotadd_lock);
+
+	rte_free(hot_ctx);
 }
 
 static void
@@ -637,7 +654,8 @@ netvsc_hotadd_callback(const char *device_name, enum rte_dev_event_type type,
 		       void *arg)
 {
 	struct hn_data *hv = arg;
-	struct rte_devargs *d = &hv->devargs;
+	struct hv_hotadd_context *hot_ctx;
+	struct rte_devargs *d;
 	int ret;
 
 	PMD_DRV_LOG(INFO, "Device notification type=%d device_name=%s",
@@ -649,26 +667,42 @@ netvsc_hotadd_callback(const char *device_name, enum rte_dev_event_type type,
 		if (hv->vf_ctx.vf_state > vf_removed)
 			break;
 
+		hot_ctx = rte_zmalloc("NETVSC-HOTADD", sizeof(*hot_ctx),
+				      rte_mem_page_size());
+
+		if (!hot_ctx) {
+			PMD_DRV_LOG(ERR, "Failed to allocate hotadd context");
+			return;
+		}
+
+		hot_ctx->hv = hv;
+		d = &hot_ctx->da;
+
 		ret = rte_devargs_parse(d, device_name);
 		if (ret) {
 			PMD_DRV_LOG(ERR,
 				    "devargs parsing failed ret=%d", ret);
-			return;
+			goto free_ctx;
 		}
 
 		if (!strcmp(d->bus->name, "pci")) {
 			/* Start the process of figuring out if this
 			 * PCI device is a VF device
 			 */
-			hv->eal_hot_plug_retry = 0;
-			rte_eal_alarm_set(1000000, netvsc_hotplug_retry, hv);
+			rte_spinlock_lock(&hv->hotadd_lock);
+			LIST_INSERT_HEAD(&hv->hotadd_list, hot_ctx, list);
+			rte_spinlock_unlock(&hv->hotadd_lock);
+			rte_eal_alarm_set(1000000, netvsc_hotplug_retry, hot_ctx);
+			return;
 		}
 
 		/* We will switch to VF on RDNIS configure message
 		 * sent from VSP
 		 */
-
+free_ctx:
+		rte_free(hot_ctx);
 		break;
+
 	default:
 		break;
 	}
@@ -1003,12 +1037,20 @@ hn_dev_close(struct rte_eth_dev *dev)
 {
 	int ret;
 	struct hn_data *hv = dev->data->dev_private;
+	struct hv_hotadd_context *hot_ctx;
 
 	PMD_INIT_FUNC_TRACE();
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return 0;
 
-	rte_eal_alarm_cancel(netvsc_hotplug_retry, &hv->devargs);
+	rte_spinlock_lock(&hv->hotadd_lock);
+	while (!LIST_EMPTY(&hv->hotadd_list)) {
+		hot_ctx = LIST_FIRST(&hv->hotadd_list);
+		rte_eal_alarm_cancel(netvsc_hotplug_retry, hot_ctx);
+		LIST_REMOVE(hot_ctx, list);
+		rte_free(hot_ctx);
+	}
+	rte_spinlock_unlock(&hv->hotadd_lock);
 
 	ret = hn_vf_close(dev);
 	hn_dev_free_queues(dev);
@@ -1096,6 +1138,9 @@ eth_hn_dev_init(struct rte_eth_dev *eth_dev)
 	int err, max_chan;
 
 	PMD_INIT_FUNC_TRACE();
+
+	rte_spinlock_init(&hv->hotadd_lock);
+	LIST_INIT(&hv->hotadd_list);
 
 	vmbus = container_of(device, struct rte_vmbus_device, device);
 	eth_dev->dev_ops = &hn_eth_dev_ops;
@@ -1220,6 +1265,9 @@ eth_hn_dev_uninit(struct rte_eth_dev *eth_dev)
 
 	ret_stop = hn_dev_stop(eth_dev);
 	hn_dev_close(eth_dev);
+
+	free(hv->vf_devargs);
+	hv->vf_devargs = NULL;
 
 	hn_detach(hv);
 	hn_chim_uninit(eth_dev);
