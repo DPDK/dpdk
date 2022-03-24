@@ -1817,7 +1817,9 @@ iavf_recv_scattered_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 
 #define IAVF_LOOK_AHEAD 8
 static inline int
-iavf_rx_scan_hw_ring_flex_rxd(struct iavf_rx_queue *rxq)
+iavf_rx_scan_hw_ring_flex_rxd(struct iavf_rx_queue *rxq,
+			    struct rte_mbuf **rx_pkts,
+			    uint16_t nb_pkts)
 {
 	volatile union iavf_rx_flex_desc *rxdp;
 	struct rte_mbuf **rxep;
@@ -1826,6 +1828,7 @@ iavf_rx_scan_hw_ring_flex_rxd(struct iavf_rx_queue *rxq)
 	uint16_t pkt_len;
 	int32_t s[IAVF_LOOK_AHEAD], var, nb_dd;
 	int32_t i, j, nb_rx = 0;
+	int32_t nb_staged = 0;
 	uint64_t pkt_flags;
 	const uint32_t *ptype_tbl = rxq->vsi->adapter->ptype_tbl;
 
@@ -1872,8 +1875,6 @@ iavf_rx_scan_hw_ring_flex_rxd(struct iavf_rx_queue *rxq)
 #endif
 		}
 
-		nb_rx += nb_dd;
-
 		/* Translate descriptor info to mbuf parameters */
 		for (j = 0; j < nb_dd; j++) {
 			IAVF_DUMP_RX_DESC(rxq, &rxdp[j],
@@ -1897,24 +1898,34 @@ iavf_rx_scan_hw_ring_flex_rxd(struct iavf_rx_queue *rxq)
 			pkt_flags = iavf_flex_rxd_error_to_pkt_flags(stat_err0);
 
 			mb->ol_flags |= pkt_flags;
-		}
 
-		for (j = 0; j < IAVF_LOOK_AHEAD; j++)
-			rxq->rx_stage[i + j] = rxep[j];
+			/* Put up to nb_pkts directly into buffers */
+			if ((i + j) < nb_pkts) {
+				rx_pkts[i + j] = rxep[j];
+				nb_rx++;
+			} else {
+				/* Stage excess pkts received */
+				rxq->rx_stage[nb_staged] = rxep[j];
+				nb_staged++;
+			}
+		}
 
 		if (nb_dd != IAVF_LOOK_AHEAD)
 			break;
 	}
 
+	/* Update rxq->rx_nb_avail to reflect number of staged pkts */
+	rxq->rx_nb_avail = nb_staged;
+
 	/* Clear software ring entries */
-	for (i = 0; i < nb_rx; i++)
+	for (i = 0; i < (nb_rx + nb_staged); i++)
 		rxq->sw_ring[rxq->rx_tail + i] = NULL;
 
 	return nb_rx;
 }
 
 static inline int
-iavf_rx_scan_hw_ring(struct iavf_rx_queue *rxq)
+iavf_rx_scan_hw_ring(struct iavf_rx_queue *rxq, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 {
 	volatile union iavf_rx_desc *rxdp;
 	struct rte_mbuf **rxep;
@@ -1924,6 +1935,7 @@ iavf_rx_scan_hw_ring(struct iavf_rx_queue *rxq)
 	uint32_t rx_status;
 	int32_t s[IAVF_LOOK_AHEAD], var, nb_dd;
 	int32_t i, j, nb_rx = 0;
+	int32_t nb_staged = 0;
 	uint64_t pkt_flags;
 	const uint32_t *ptype_tbl = rxq->vsi->adapter->ptype_tbl;
 
@@ -1976,8 +1988,6 @@ iavf_rx_scan_hw_ring(struct iavf_rx_queue *rxq)
 #endif
 		}
 
-		nb_rx += nb_dd;
-
 		/* Translate descriptor info to mbuf parameters */
 		for (j = 0; j < nb_dd; j++) {
 			IAVF_DUMP_RX_DESC(rxq, &rxdp[j],
@@ -2006,17 +2016,26 @@ iavf_rx_scan_hw_ring(struct iavf_rx_queue *rxq)
 				pkt_flags |= iavf_rxd_build_fdir(&rxdp[j], mb);
 
 			mb->ol_flags |= pkt_flags;
-		}
 
-		for (j = 0; j < IAVF_LOOK_AHEAD; j++)
-			rxq->rx_stage[i + j] = rxep[j];
+			/* Put up to nb_pkts directly into buffers */
+			if ((i + j) < nb_pkts) {
+				rx_pkts[i + j] = rxep[j];
+				nb_rx++;
+			} else { /* Stage excess pkts received */
+				rxq->rx_stage[nb_staged] = rxep[j];
+				nb_staged++;
+			}
+		}
 
 		if (nb_dd != IAVF_LOOK_AHEAD)
 			break;
 	}
 
+	/* Update rxq->rx_nb_avail to reflect number of staged pkts */
+	rxq->rx_nb_avail = nb_staged;
+
 	/* Clear software ring entries */
-	for (i = 0; i < nb_rx; i++)
+	for (i = 0; i < (nb_rx + nb_staged); i++)
 		rxq->sw_ring[rxq->rx_tail + i] = NULL;
 
 	return nb_rx;
@@ -2104,23 +2123,31 @@ rx_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		return iavf_rx_fill_from_stage(rxq, rx_pkts, nb_pkts);
 
 	if (rxq->rxdid >= IAVF_RXDID_FLEX_NIC && rxq->rxdid <= IAVF_RXDID_LAST)
-		nb_rx = (uint16_t)iavf_rx_scan_hw_ring_flex_rxd(rxq);
+		nb_rx = (uint16_t)iavf_rx_scan_hw_ring_flex_rxd(rxq, rx_pkts, nb_pkts);
 	else
-		nb_rx = (uint16_t)iavf_rx_scan_hw_ring(rxq);
+		nb_rx = (uint16_t)iavf_rx_scan_hw_ring(rxq, rx_pkts, nb_pkts);
+
 	rxq->rx_next_avail = 0;
-	rxq->rx_nb_avail = nb_rx;
-	rxq->rx_tail = (uint16_t)(rxq->rx_tail + nb_rx);
+	rxq->rx_tail = (uint16_t)(rxq->rx_tail + nb_rx + rxq->rx_nb_avail);
 
 	if (rxq->rx_tail > rxq->rx_free_trigger) {
 		if (iavf_rx_alloc_bufs(rxq) != 0) {
-			uint16_t i, j;
+			uint16_t i, j, nb_staged;
 
 			/* TODO: count rx_mbuf_alloc_failed here */
 
+			nb_staged = rxq->rx_nb_avail;
 			rxq->rx_nb_avail = 0;
-			rxq->rx_tail = (uint16_t)(rxq->rx_tail - nb_rx);
-			for (i = 0, j = rxq->rx_tail; i < nb_rx; i++, j++)
+
+			rxq->rx_tail = (uint16_t)(rxq->rx_tail - (nb_rx + nb_staged));
+			for (i = 0, j = rxq->rx_tail; i < nb_rx; i++, j++) {
+				rxq->sw_ring[j] = rx_pkts[i];
+				rx_pkts[i] = NULL;
+			}
+			for (i = 0, j = rxq->rx_tail + nb_rx; i < nb_staged; i++, j++) {
 				rxq->sw_ring[j] = rxq->rx_stage[i];
+				rx_pkts[i] = NULL;
+			}
 
 			return 0;
 		}
@@ -2133,10 +2160,7 @@ rx_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		   rxq->port_id, rxq->queue_id,
 		   rxq->rx_tail, nb_rx);
 
-	if (rxq->rx_nb_avail)
-		return iavf_rx_fill_from_stage(rxq, rx_pkts, nb_pkts);
-
-	return 0;
+	return nb_rx;
 }
 
 static uint16_t
