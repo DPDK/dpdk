@@ -7705,11 +7705,7 @@ parse_hex_string(const char *src, uint8_t *dst, uint32_t *size)
 	const uint8_t *head = dst;
 	uint32_t left;
 
-	/* Check input parameters */
-	if ((src == NULL) ||
-		(dst == NULL) ||
-		(size == NULL) ||
-		(*size == 0))
+	if (*size == 0)
 		return -1;
 
 	left = *size;
