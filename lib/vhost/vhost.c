@@ -1291,10 +1291,14 @@ rte_vhost_vring_call(int vid, uint16_t vring_idx)
 	if (!vq)
 		return -1;
 
+	rte_spinlock_lock(&vq->access_lock);
+
 	if (vq_is_packed(dev))
 		vhost_vring_call_packed(dev, vq);
 	else
 		vhost_vring_call_split(dev, vq);
+
+	rte_spinlock_unlock(&vq->access_lock);
 
 	return 0;
 }
