@@ -1348,8 +1348,11 @@ static void hn_encap(struct rndis_packet_msg *pkt,
 			*pi_data = NDIS_LSO2_INFO_MAKEIPV4(hlen,
 							   m->tso_segsz);
 		}
-	} else if (m->ol_flags &
-		   (PKT_TX_TCP_CKSUM | PKT_TX_UDP_CKSUM | PKT_TX_IP_CKSUM)) {
+	} else if ((m->ol_flags & PKT_TX_L4_MASK) ==
+			PKT_TX_TCP_CKSUM ||
+		   (m->ol_flags & PKT_TX_L4_MASK) ==
+			PKT_TX_UDP_CKSUM ||
+		   (m->ol_flags & PKT_TX_IP_CKSUM)) {
 		pi_data = hn_rndis_pktinfo_append(pkt, NDIS_TXCSUM_INFO_SIZE,
 						  NDIS_PKTINFO_TYPE_CSUM);
 		*pi_data = 0;
@@ -1363,9 +1366,11 @@ static void hn_encap(struct rndis_packet_msg *pkt,
 				*pi_data |= NDIS_TXCSUM_INFO_IPCS;
 		}
 
-		if (m->ol_flags & PKT_TX_TCP_CKSUM)
+		if ((m->ol_flags & PKT_TX_L4_MASK) ==
+				PKT_TX_TCP_CKSUM)
 			*pi_data |= NDIS_TXCSUM_INFO_MKTCPCS(hlen);
-		else if (m->ol_flags & PKT_TX_UDP_CKSUM)
+		else if ((m->ol_flags & PKT_TX_L4_MASK) ==
+				PKT_TX_UDP_CKSUM)
 			*pi_data |= NDIS_TXCSUM_INFO_MKUDPCS(hlen);
 	}
 
