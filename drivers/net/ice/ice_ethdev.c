@@ -808,7 +808,7 @@ ice_vsi_config_tc_queue_mapping(struct ice_vsi *vsi,
 				struct ice_aqc_vsi_props *info,
 				uint8_t enabled_tcmap)
 {
-	uint16_t bsf, qp_idx;
+	uint16_t fls, qp_idx;
 
 	/* default tc 0 now. Multi-TC supporting need to be done later.
 	 * Configure TC and queue mapping parameters, for enabled TC,
@@ -820,15 +820,15 @@ ice_vsi_config_tc_queue_mapping(struct ice_vsi *vsi,
 	}
 
 	vsi->nb_qps = RTE_MIN(vsi->nb_qps, ICE_MAX_Q_PER_TC);
-	bsf = rte_bsf32(vsi->nb_qps);
+	fls = (vsi->nb_qps == 0) ? 0 : rte_fls_u32(vsi->nb_qps) - 1;
 	/* Adjust the queue number to actual queues that can be applied */
-	vsi->nb_qps = 0x1 << bsf;
+	vsi->nb_qps = (vsi->nb_qps == 0) ? 0 : 0x1 << fls;
 
 	qp_idx = 0;
 	/* Set tc and queue mapping with VSI */
 	info->tc_mapping[0] = rte_cpu_to_le_16((qp_idx <<
 						ICE_AQ_VSI_TC_Q_OFFSET_S) |
-					       (bsf << ICE_AQ_VSI_TC_Q_NUM_S));
+					       (fls << ICE_AQ_VSI_TC_Q_NUM_S));
 
 	/* Associate queue number with VSI */
 	info->mapping_flags |= rte_cpu_to_le_16(ICE_AQ_VSI_Q_MAP_CONTIG);

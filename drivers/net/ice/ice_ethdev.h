@@ -21,8 +21,8 @@
 #define ICE_ADMINQ_BUF_SZ            4096
 #define ICE_SBIOQ_BUF_SZ             4096
 #define ICE_MAILBOXQ_BUF_SZ          4096
-/* Number of queues per TC should be one of 1, 2, 4, 8, 16, 32, 64 */
-#define ICE_MAX_Q_PER_TC         64
+/* Number of queues per TC should be one of 1, 2, 4, 8, 16, 32, 64, 128, 256 */
+#define ICE_MAX_Q_PER_TC         256
 #define ICE_NUM_DESC_DEFAULT     512
 #define ICE_BUF_SIZE_MIN         1024
 #define ICE_FRAME_SIZE_MAX       9728
