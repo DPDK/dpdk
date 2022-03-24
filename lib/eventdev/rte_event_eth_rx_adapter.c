@@ -3314,7 +3314,7 @@ handle_rxa_stats_reset(const char *cmd __rte_unused,
 {
 	uint8_t rx_adapter_id;
 
-	if (params == NULL || strlen(params) == 0 || ~isdigit(*params))
+	if (params == NULL || strlen(params) == 0 || !isdigit(*params))
 		return -1;
 
 	/* Get Rx adapter ID from parameter string */
