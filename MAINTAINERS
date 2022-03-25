@@ -835,7 +835,7 @@ F: doc/guides/nics/nfb.rst
 F: doc/guides/nics/features/nfb.ini
 
 Netronome nfp
-M: Heinrich Kuhn <heinrich.kuhn@corigine.com>
+M: Niklas Soderlund <niklas.soderlund@corigine.com>
 F: drivers/net/nfp/
 F: doc/guides/nics/nfp.rst
 F: doc/guides/nics/features/nfp*.ini
