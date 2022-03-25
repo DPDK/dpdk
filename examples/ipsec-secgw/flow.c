@@ -214,7 +214,7 @@ flow_init_single(struct flow_rule_entry *rule)
 	struct rte_flow_item pattern[MAX_RTE_FLOW_PATTERN] = {};
 	struct rte_flow_action action[MAX_RTE_FLOW_ACTIONS] = {};
 	struct rte_flow_attr attr = {};
-	struct rte_flow_error err;
+	struct rte_flow_error err = {};
 	int ret;
 
 	attr.egress = 0;
