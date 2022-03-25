@@ -3237,6 +3237,7 @@ close_port(portid_t pid)
 		}
 
 		if (is_proc_primary()) {
+			mcast_addr_pool_destroy(pi);
 			port_flow_flush(pi);
 			port_flex_item_flush(pi);
 			port_action_handle_flush(pi);
