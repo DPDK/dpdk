@@ -496,7 +496,7 @@ int
 create_ipsec_esp_flow(struct ipsec_sa *sa)
 {
 	int ret = 0;
-	struct rte_flow_error err;
+	struct rte_flow_error err = {};
 	if (sa->direction == RTE_SECURITY_IPSEC_SA_DIR_EGRESS) {
 		RTE_LOG(ERR, IPSEC,
 			"No Flow director rule for Egress traffic\n");
