@@ -128,8 +128,7 @@ cn9k_sso_hws_ca_enq(void *port, struct rte_event ev[], uint16_t nb_events)
 
 	RTE_SET_USED(nb_events);
 
-	return cn9k_cpt_crypto_adapter_enqueue(ws->base + SSOW_LF_GWS_TAG,
-					       ev->event_ptr);
+	return cn9k_cpt_crypto_adapter_enqueue(ws->base, ev->event_ptr);
 }
 
 uint16_t __rte_hot
@@ -139,6 +138,6 @@ cn9k_sso_hws_dual_ca_enq(void *port, struct rte_event ev[], uint16_t nb_events)
 
 	RTE_SET_USED(nb_events);
 
-	return cn9k_cpt_crypto_adapter_enqueue(
-		dws->base[!dws->vws] + SSOW_LF_GWS_TAG, ev->event_ptr);
+	return cn9k_cpt_crypto_adapter_enqueue(dws->base[!dws->vws],
+					       ev->event_ptr);
 }

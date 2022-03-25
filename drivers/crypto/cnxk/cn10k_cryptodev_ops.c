@@ -265,7 +265,7 @@ pend_q_commit:
 }
 
 uint16_t
-cn10k_cpt_crypto_adapter_enqueue(uintptr_t tag_op, struct rte_crypto_op *op)
+cn10k_cpt_crypto_adapter_enqueue(uintptr_t base, struct rte_crypto_op *op)
 {
 	union rte_event_crypto_metadata *ec_mdata;
 	struct cpt_inflight_req *infl_req;
@@ -328,7 +328,7 @@ cn10k_cpt_crypto_adapter_enqueue(uintptr_t tag_op, struct rte_crypto_op *op)
 	}
 
 	if (!rsp_info->sched_type)
-		roc_sso_hws_head_wait(tag_op);
+		roc_sso_hws_head_wait(base);
 
 	lmt_arg = ROC_CN10K_CPT_LMT_ARG | (uint64_t)lmt_id;
 	roc_lmt_submit_steorl(lmt_arg, qp->lmtline.io_addr);

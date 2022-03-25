@@ -317,7 +317,7 @@ cn9k_cpt_enqueue_burst(void *qptr, struct rte_crypto_op **ops, uint16_t nb_ops)
 }
 
 uint16_t
-cn9k_cpt_crypto_adapter_enqueue(uintptr_t tag_op, struct rte_crypto_op *op)
+cn9k_cpt_crypto_adapter_enqueue(uintptr_t base, struct rte_crypto_op *op)
 {
 	union rte_event_crypto_metadata *ec_mdata;
 	struct cpt_inflight_req *infl_req;
@@ -374,7 +374,7 @@ cn9k_cpt_crypto_adapter_enqueue(uintptr_t tag_op, struct rte_crypto_op *op)
 	}
 
 	if (!rsp_info->sched_type)
-		roc_sso_hws_head_wait(tag_op);
+		roc_sso_hws_head_wait(base);
 
 	cn9k_cpt_inst_submit(&inst, qp->lmtline.lmt_base, qp->lmtline.io_addr);
 
