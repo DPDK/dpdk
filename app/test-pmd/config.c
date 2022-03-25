@@ -5088,6 +5088,25 @@ mcast_addr_pool_remove(struct rte_port *port, uint32_t addr_idx)
 		sizeof(struct rte_ether_addr) * (port->mc_addr_nb - addr_idx));
 }
 
+int
+mcast_addr_pool_destroy(portid_t port_id)
+{
+	struct rte_port *port;
+
+	if (port_id_is_invalid(port_id, ENABLED_WARN) ||
+	    port_id == (portid_t)RTE_PORT_ALL)
+		return -EINVAL;
+	port = &ports[port_id];
+
+	if (port->mc_addr_nb != 0) {
+		/* free the pool of multicast addresses. */
+		free(port->mc_addr_pool);
+		port->mc_addr_pool = NULL;
+		port->mc_addr_nb = 0;
+	}
+	return 0;
+}
+
 static int
 eth_port_multicast_addr_list_set(portid_t port_id)
 {

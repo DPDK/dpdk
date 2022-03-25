@@ -2834,6 +2834,7 @@ close_port(portid_t pid)
 			continue;
 		}
 
+		mcast_addr_pool_destroy(pi);
 		port_flow_flush(pi);
 		rte_eth_dev_close(pi);
 	}
