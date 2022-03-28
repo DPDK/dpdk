@@ -158,6 +158,8 @@ roc_nix_inl_inb_spi_range(struct roc_nix *roc_nix, bool inb_inl_dev,
 
 	inl_dev = idev->nix_inl_dev;
 	if (inb_inl_dev) {
+		if (inl_dev == NULL)
+			goto exit;
 		min = inl_dev->ipsec_in_min_spi;
 		max = inl_dev->ipsec_in_max_spi;
 		mask = inl_dev->inb_spi_mask;
