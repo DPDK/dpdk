@@ -124,31 +124,31 @@ create_lookaside_session(struct ipsec_ctx *ipsec_ctx, struct ipsec_sa *sa,
 				"SEC Session init failed: err: %d\n", ret);
 				return -1;
 			}
+			ips->security.ctx = ctx;
 		} else {
 			RTE_LOG(ERR, IPSEC, "Inline not supported\n");
 			return -1;
 		}
 	} else {
+		uint16_t cdev_id = ipsec_ctx->tbl[cdev_id_qp].id;
+
 		if (ips->type == RTE_SECURITY_ACTION_TYPE_CPU_CRYPTO) {
 			struct rte_cryptodev_info info;
-			uint16_t cdev_id;
 
-			cdev_id = ipsec_ctx->tbl[cdev_id_qp].id;
 			rte_cryptodev_info_get(cdev_id, &info);
 			if (!(info.feature_flags &
 				RTE_CRYPTODEV_FF_SYM_CPU_CRYPTO))
 				return -ENOTSUP;
 
-			ips->crypto.dev_id = cdev_id;
 		}
+		ips->crypto.dev_id = cdev_id;
 		ips->crypto.ses = rte_cryptodev_sym_session_create(
 				ipsec_ctx->session_pool);
-		rte_cryptodev_sym_session_init(ipsec_ctx->tbl[cdev_id_qp].id,
+		rte_cryptodev_sym_session_init(cdev_id,
 				ips->crypto.ses, sa->xforms,
 				ipsec_ctx->session_priv_pool);
 
-		rte_cryptodev_info_get(ipsec_ctx->tbl[cdev_id_qp].id,
-				&cdev_info);
+		rte_cryptodev_info_get(cdev_id, &cdev_info);
 	}
 
 	sa->cdev_id_qp = cdev_id_qp;

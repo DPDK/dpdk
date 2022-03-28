@@ -2485,8 +2485,37 @@ check_event_mode_params(struct eh_conf *eh_conf)
 	return 0;
 }
 
+static int
+one_session_free(struct rte_ipsec_session *ips)
+{
+	int32_t ret = 0;
+
+	if (ips->type == RTE_SECURITY_ACTION_TYPE_NONE ||
+		ips->type == RTE_SECURITY_ACTION_TYPE_CPU_CRYPTO) {
+		/* Session has not been created */
+		if (ips->crypto.ses == NULL)
+			return 0;
+
+		ret = rte_cryptodev_sym_session_clear(ips->crypto.dev_id,
+						      ips->crypto.ses);
+		if (ret)
+			return ret;
+
+		ret = rte_cryptodev_sym_session_free(ips->crypto.ses);
+	} else {
+		/* Session has not been created */
+		if (ips->security.ctx == NULL || ips->security.ses == NULL)
+			return 0;
+
+		ret = rte_security_session_destroy(ips->security.ctx,
+						   ips->security.ses);
+	}
+
+	return ret;
+}
+
 static void
-inline_sessions_free(struct sa_ctx *sa_ctx)
+sessions_free(struct sa_ctx *sa_ctx)
 {
 	struct rte_ipsec_session *ips;
 	struct ipsec_sa *sa;
@@ -2503,16 +2532,7 @@ inline_sessions_free(struct sa_ctx *sa_ctx)
 			continue;
 
 		ips = ipsec_get_primary_session(sa);
-		if (ips->type != RTE_SECURITY_ACTION_TYPE_INLINE_PROTOCOL &&
-		    ips->type != RTE_SECURITY_ACTION_TYPE_INLINE_CRYPTO)
-			continue;
-
-		if (!rte_eth_dev_is_valid_port(sa->portid))
-			continue;
-
-		ret = rte_security_session_destroy(
-				rte_eth_dev_get_sec_ctx(sa->portid),
-				ips->security.ses);
+		ret = one_session_free(ips);
 		if (ret)
 			RTE_LOG(ERR, IPSEC, "Failed to destroy security "
 					    "session type %d, spi %d\n",
@@ -3102,11 +3122,11 @@ skip_sec_ctx:
 	/* Free eventmode configuration memory */
 	eh_conf_uninit(eh_conf);
 
-	/* Destroy inline inbound and outbound sessions */
+	/* Destroy inbound and outbound sessions */
 	for (i = 0; i < NB_SOCKETS && i < rte_socket_count(); i++) {
 		socket_id = rte_socket_id_by_idx(i);
-		inline_sessions_free(socket_ctx[socket_id].sa_in);
-		inline_sessions_free(socket_ctx[socket_id].sa_out);
+		sessions_free(socket_ctx[socket_id].sa_in);
+		sessions_free(socket_ctx[socket_id].sa_out);
 	}
 
 	for (cdev_id = 0; cdev_id < rte_cryptodev_count(); cdev_id++) {
