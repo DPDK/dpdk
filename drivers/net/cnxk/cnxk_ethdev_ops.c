@@ -1069,6 +1069,11 @@ nix_priority_flow_ctrl_configure(struct rte_eth_dev *eth_dev,
 	rx_pause = (mode == RTE_ETH_FC_FULL) || (mode == RTE_ETH_FC_RX_PAUSE);
 	tx_pause = (mode == RTE_ETH_FC_FULL) || (mode == RTE_ETH_FC_TX_PAUSE);
 
+	if (data->rx_queues == NULL || data->tx_queues == NULL) {
+		rc = 0;
+		goto exit;
+	}
+
 	/* Configure CQs */
 	memset(&fc_cfg, 0, sizeof(struct roc_nix_fc_cfg));
 	rxq = ((struct cnxk_eth_rxq_sp *)data->rx_queues[conf->rx_qid]) - 1;
