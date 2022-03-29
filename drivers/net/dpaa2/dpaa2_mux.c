@@ -296,7 +296,7 @@ dpaa2_create_dpdmux_device(int vdev_fd __rte_unused,
 	}
 
 	ret = dpdmux_if_set_default(&dpdmux_dev->dpdmux, CMD_PRI_LOW,
-				    dpdmux_dev->token, 1);
+				    dpdmux_dev->token, attr.default_if);
 	if (ret) {
 		DPAA2_PMD_ERR("setting default interface failed in %s",
 			      __func__);
