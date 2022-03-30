@@ -47,6 +47,9 @@
 /* Model */
 #include "roc_model.h"
 
+/* HW Errata */
+#include "roc_errata.h"
+
 /* Mbox */
 #include "roc_mbox.h"
 

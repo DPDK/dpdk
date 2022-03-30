@@ -527,7 +527,7 @@ roc_nix_cq_init(struct roc_nix *roc_nix, struct roc_nix_cq *cq)
 	/* Map CQ0 [RQ0] to CINT0 and so on till max 64 irqs */
 	cq_ctx->cint_idx = cq->qid;
 
-	if (roc_model_is_cn96_a0() || roc_model_is_cn95_a0()) {
+	if (roc_errata_nix_has_cq_min_size_4k()) {
 		const float rx_cq_skid = NIX_CQ_FULL_ERRATA_SKID;
 		uint16_t min_rx_drop;
 
@@ -658,7 +658,7 @@ sqb_pool_populate(struct roc_nix *roc_nix, struct roc_nix_sq *sq)
 
 	memset(&aura, 0, sizeof(aura));
 	aura.fc_ena = 1;
-	if (roc_model_is_cn9k() || roc_model_is_cn10ka_a0())
+	if (roc_model_is_cn9k() || roc_errata_npa_has_no_fc_stype_ststp())
 		aura.fc_stype = 0x0; /* STF */
 	else
 		aura.fc_stype = 0x3; /* STSTP */

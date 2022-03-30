@@ -358,8 +358,7 @@ nix_inl_nix_setup(struct nix_inl_dev *inl_dev)
 	req->rx_cfg = NIX_INL_LF_RX_CFG;
 	req->flags = NIX_LF_RSS_TAG_LSB_AS_ADDER;
 
-	if (roc_model_is_cn10ka_a0() || roc_model_is_cnf10ka_a0() ||
-	    roc_model_is_cnf10kb_a0())
+	if (roc_errata_nix_has_no_drop_re())
 		req->rx_cfg &= ~ROC_NIX_LF_RX_CFG_DROP_RE;
 
 	rc = mbox_process_msg(mbox, (void *)&rsp);

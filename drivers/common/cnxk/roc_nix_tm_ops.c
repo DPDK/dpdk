@@ -38,7 +38,7 @@ roc_nix_tm_sq_aura_fc(struct roc_nix_sq *sq, bool enable)
 
 	req->aura.fc_ena = enable;
 	req->aura_mask.fc_ena = 1;
-	if (roc_model_is_cn9k() || roc_model_is_cn10ka_a0()) {
+	if (roc_model_is_cn9k() || roc_errata_npa_has_no_fc_stype_ststp()) {
 		req->aura.fc_stype = 0x0;      /* STF */
 		req->aura_mask.fc_stype = 0x0; /* STF */
 	} else {
