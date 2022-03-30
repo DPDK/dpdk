@@ -428,7 +428,7 @@ static void output_pmd_info_string(struct elf_info *info, char *outfile)
 
 int main(int argc, char **argv)
 {
-	struct elf_info info = {0};
+	struct elf_info info;
 	int rc = 1;
 
 	if (argc < 3) {
@@ -437,6 +437,7 @@ int main(int argc, char **argv)
 			basename(argv[0]));
 		exit(127);
 	}
+	memset(&info, 0, sizeof(struct elf_info));
 	use_stdin = !strcmp(argv[1], "-");
 	use_stdout = !strcmp(argv[2], "-");
 	parse_elf(&info, argv[1]);
