@@ -737,7 +737,7 @@ cn9k_nix_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 	roc_nix_ptp_info_cb_register(&dev->nix, cn9k_nix_ptp_info_update_cb);
 
 	/* Update HW erratas */
-	if (roc_model_is_cn96_a0() || roc_model_is_cn95_a0())
+	if (roc_errata_nix_has_cq_min_size_4k())
 		dev->cq_min_4k = 1;
 	return 0;
 }

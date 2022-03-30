@@ -778,9 +778,7 @@ cn10k_nix_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 	/* DROP_RE is not supported with inline IPSec for CN10K A0 and
 	 * when vector mode is enabled.
 	 */
-	if ((roc_model_is_cn10ka_a0() || roc_model_is_cnf10ka_a0() ||
-	     roc_model_is_cnf10kb_a0()) &&
-	    !roc_env_is_asim()) {
+	if (roc_errata_nix_has_no_drop_re() && !roc_env_is_asim()) {
 		dev->ipsecd_drop_re_dis = 1;
 		dev->vec_drop_re_dis = 1;
 	}
