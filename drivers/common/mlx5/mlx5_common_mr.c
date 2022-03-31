@@ -1289,11 +1289,12 @@ mlx5_range_from_mempool_chunk(struct rte_mempool *mp, void *opaque,
 			      unsigned int idx)
 {
 	struct mlx5_range *ranges = opaque, *range = &ranges[idx];
+	uintptr_t start = (uintptr_t)memhdr->addr;
 	uint64_t page_size = rte_mem_page_size();
 
 	RTE_SET_USED(mp);
-	range->start = RTE_ALIGN_FLOOR((uintptr_t)memhdr->addr, page_size);
-	range->end = RTE_ALIGN_CEIL(range->start + memhdr->len, page_size);
+	range->start = RTE_ALIGN_FLOOR(start, page_size);
+	range->end = RTE_ALIGN_CEIL(start + memhdr->len, page_size);
 }
 
 /**
