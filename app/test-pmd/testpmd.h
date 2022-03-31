@@ -72,6 +72,8 @@
 #define NUMA_NO_CONFIG 0xFF
 #define UMA_NO_CONFIG  0xFF
 
+#define MIN_TOTAL_NUM_MBUFS 1024
+
 typedef uint8_t  lcoreid_t;
 typedef uint16_t portid_t;
 typedef uint16_t queueid_t;
