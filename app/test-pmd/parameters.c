@@ -804,11 +804,12 @@ launch_args_parse(int argc, char** argv)
 			}
 			if (!strcmp(lgopts[opt_idx].name, "total-num-mbufs")) {
 				n = atoi(optarg);
-				if (n > 1024)
+				if (n > MIN_TOTAL_NUM_MBUFS)
 					param_total_num_mbufs = (unsigned)n;
 				else
 					rte_exit(EXIT_FAILURE,
-						 "total-num-mbufs should be > 1024\n");
+						 "total-num-mbufs should be > %d\n",
+						 MIN_TOTAL_NUM_MBUFS);
 			}
 			if (!strcmp(lgopts[opt_idx].name, "max-pkt-len")) {
 				n = atoi(optarg);
