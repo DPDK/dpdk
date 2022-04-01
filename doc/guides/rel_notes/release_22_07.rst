@@ -164,6 +164,11 @@ New Features
   * ``RTE_EVENT_QUEUE_ATTR_WEIGHT``
   * ``RTE_EVENT_QUEUE_ATTR_AFFINITY``
 
+* **Added telemetry to dmadev library.**
+
+  Added telemetry callback functions which allow for a list of DMA devices,
+  statistics and other DMA device information to be queried.
+
 * **Added scalar version of the LPM library.**
 
   Added scalar implementation of ``rte_lpm_lookupx4``.
