@@ -795,7 +795,8 @@ static const char *const modify_field_ids[] = {
 	"tcp_seq_num", "tcp_ack_num", "tcp_flags",
 	"udp_port_src", "udp_port_dst",
 	"vxlan_vni", "geneve_vni", "gtp_teid",
-	"tag", "mark", "meta", "pointer", "value", NULL
+	"tag", "mark", "meta", "pointer", "value",
+	"ipv4_ecn", "ipv6_ecn", NULL
 };
 
 /** Maximum number of subsequent tokens and arguments on the stack. */
