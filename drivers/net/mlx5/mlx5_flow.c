@@ -18,6 +18,7 @@
 #include <rte_flow_driver.h>
 #include <rte_malloc.h>
 #include <rte_ip.h>
+#include <rte_bus_pci.h>
 
 #include <mlx5_glue.h>
 #include <mlx5_devx_cmds.h>
@@ -9925,10 +9926,27 @@ mlx5_flow_flex_item_create(struct rte_eth_dev *dev,
 			   struct rte_flow_error *error)
 {
 	static const char err_msg[] = "flex item creation unsupported";
+	struct mlx5_priv *priv = dev->data->dev_private;
 	struct rte_flow_attr attr = { .transfer = 0 };
 	const struct mlx5_flow_driver_ops *fops =
 			flow_get_drv_ops(flow_get_drv_type(dev, &attr));
 
+	if (!priv->pci_dev) {
+		rte_flow_error_set(error, ENOTSUP,
+				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+				   "create flex item on PF only");
+		return NULL;
+	}
+	switch (priv->pci_dev->id.device_id) {
+	case PCI_DEVICE_ID_MELLANOX_CONNECTX6DXBF:
+	case PCI_DEVICE_ID_MELLANOX_CONNECTX7BF:
+		break;
+	default:
+		rte_flow_error_set(error, ENOTSUP,
+				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+				   "flex item available on BlueField ports only");
+		return NULL;
+	}
 	if (!fops->item_create) {
 		DRV_LOG(ERR, "port %u %s.", dev->data->port_id, err_msg);
 		rte_flow_error_set(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_ACTION,
