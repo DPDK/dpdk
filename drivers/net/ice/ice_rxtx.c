@@ -3604,8 +3604,9 @@ static const struct {
 	{ ice_xmit_pkts_vec_avx512, "Vector AVX512" },
 	{ ice_xmit_pkts_vec_avx512_offload, "Offload Vector AVX512" },
 #endif
-	{ ice_xmit_pkts_vec_avx2, "Vector AVX2" },
-	{ ice_xmit_pkts_vec,      "Vector SSE" },
+	{ ice_xmit_pkts_vec_avx2,         "Vector AVX2" },
+	{ ice_xmit_pkts_vec_avx2_offload, "Offload Vector AVX2" },
+	{ ice_xmit_pkts_vec,              "Vector SSE" },
 #endif
 };
 
