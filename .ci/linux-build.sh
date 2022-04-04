@@ -1,5 +1,8 @@
 #!/bin/sh -xe
 
+# Builds are run as root in containers, no need for sudo
+[ "$(id -u)" != '0' ] || alias sudo=
+
 on_error() {
     if [ $? = 0 ]; then
         exit

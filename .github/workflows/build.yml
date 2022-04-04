@@ -10,7 +10,7 @@ defaults:
     shell: bash --noprofile --norc -exo pipefail {0}
 
 jobs:
-  build:
+  ubuntu-vm-builds:
     name: ${{ join(matrix.config.*, '-') }}
     runs-on: ${{ matrix.config.os }}
     env:
@@ -145,7 +145,145 @@ jobs:
       with:
         name: meson-logs-${{ join(matrix.config.*, '-') }}
         path: |
+          build/.ninja_log
+          build/gdb.log
+          build/meson-logs/meson-log.txt
           build/meson-logs/testlog.txt
+
+  prepare-container-images:
+    name: ${{ join(matrix.config.*, '-') }}
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        config:
+          - image: fedora:35
+
+    steps:
+    - name: Generate various keys
+      id: get_keys
+      run: |
+        echo -n '::set-output name=image::'
+        echo 'image-${{ matrix.config.image }}-'$(date -u +%Y-%m-%d)
+    - name: Retrieve image cache
+      id: image_cache
+      uses: actions/cache@v2
+      with:
+        path: ~/.image
+        key: ${{ steps.get_keys.outputs.image }}
+    - name: Pull and prepare a fresh image
+      if: steps.image_cache.outputs.cache-hit != 'true'
+      run: |
+        docker pull registry.fedoraproject.org/${{ matrix.config.image }}
+        docker run -d -i --rm --name dpdk \
+          registry.fedoraproject.org/${{ matrix.config.image }} \
+          bash -li
+    - name: Update
+      if: steps.image_cache.outputs.cache-hit != 'true'
+      run: docker exec -i dpdk dnf update -y
+    - name: Install packages
+      if: steps.image_cache.outputs.cache-hit != 'true'
+      run: docker exec -i dpdk dnf install -y ccache numactl-devel
+        python3-setuptools python3-wheel python3-pip python3-pyelftools
+        ninja-build libatomic libbpf-devel libfdt-devel libpcap-devel
+        openssl-devel rdma-core-devel zlib-devel
+    - name: Save image in cache
+      if: steps.image_cache.outputs.cache-hit != 'true'
+      run: |
+        docker commit dpdk dpdk-local
+        mkdir -p ~/.image
+        docker save -o ~/.image/${{ matrix.config.image }}.tar dpdk-local
+    - name: Stop image
+      if: steps.image_cache.outputs.cache-hit != 'true'
+      run: docker kill dpdk
+
+  rpm-container-builds:
+    needs: prepare-container-images
+    name: ${{ join(matrix.config.*, '-') }}
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        config:
+          - image: fedora:35
+            compiler: gcc
+            library: static
+          - image: fedora:35
+            compiler: gcc
+            library: shared
+          - image: fedora:35
+            compiler: clang
+            library: static
+          - image: fedora:35
+            compiler: clang
+            library: shared
+
+    steps:
+    - name: Checkout sources
+      uses: actions/checkout@v2
+    - name: Generate various keys
+      id: get_keys
+      run: |
+        echo -n '::set-output name=ccache::'
+        echo 'ccache-${{ matrix.config.image }}-${{ matrix.config.compiler }}-'$(date -u +%Y-w%W)
+        echo -n '::set-output name=image::'
+        echo 'image-${{ matrix.config.image }}-'$(date -u +%Y-%m-%d)
+        echo -n '::set-output name=logs::'
+        echo 'meson-logs-${{ join(matrix.config.*, '-') }}' | tr -d ':'
+    - name: Retrieve image cache
+      id: image_cache
+      uses: actions/cache@v2
+      with:
+        path: ~/.image
+        key: ${{ steps.get_keys.outputs.image }}
+    - name: Fail if no image (not supposed to happen)
+      if: steps.image_cache.outputs.cache-hit != 'true'
+      run: |
+        echo 'Image ${{ matrix.config.image }} is not cached.'
+        false
+    - name: Retrieve ccache cache
+      uses: actions/cache@v2
+      with:
+        path: ~/.ccache
+        key: ${{ steps.get_keys.outputs.ccache }}-${{ github.ref }}
+        restore-keys: |
+          ${{ steps.get_keys.outputs.ccache }}-refs/heads/main
+    - name: Prepare working directory
+      run: |
+        mkdir -p ~/.ccache
+        > ~/env
+        echo CC=ccache ${{ matrix.config.compiler }} >> ~/env
+        echo DEF_LIB=${{ matrix.config.library }} >> ~/env
+    - name: Load the cached image
+      run: |
+        docker load -i ~/.image/${{ matrix.config.image }}.tar
+        docker run -d -i --rm --name dpdk \
+          --mount type=bind,src=$HOME/.ccache,dst=/root/.ccache \
+          --mount type=bind,src=$(pwd),dst=/root/dpdk \
+          --env-file ~/env \
+          -w /root/dpdk \
+          dpdk-local
+          bash -li
+    - name: Update
+      run: docker exec -i dpdk dnf update -y || true
+    - name: Install packages
+      run: docker exec -i dpdk dnf install -y ccache numactl-devel
+        python3-setuptools python3-wheel python3-pip python3-pyelftools
+        ninja-build libatomic libbpf-devel libfdt-devel libpcap-devel
+        openssl-devel rdma-core-devel zlib-devel ${{ matrix.config.compiler }}
+    - name: Run setup
+      run: docker exec -i dpdk .ci/linux-setup.sh
+    - name: Build
+      run: docker exec -i dpdk .ci/linux-build.sh
+    - name: Stop image
+      run: docker kill dpdk
+    - name: Upload logs on failure
+      if: failure()
+      uses: actions/upload-artifact@v2
+      with:
+        name: ${{ steps.get_keys.outputs.logs }}
+        path: |
           build/.ninja_log
           build/meson-logs/meson-log.txt
-          build/gdb.log
