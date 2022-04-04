@@ -685,6 +685,9 @@ rte_pktmbuf_dump(FILE *f, const struct rte_mbuf *m, unsigned dump_len)
 	fprintf(f, "  pkt_len=%u, ol_flags=%#"PRIx64", nb_segs=%u, port=%u",
 		m->pkt_len, m->ol_flags, m->nb_segs, m->port);
 
+	if (m->ol_flags & (RTE_MBUF_F_RX_QINQ | RTE_MBUF_F_TX_QINQ))
+		fprintf(f, ", vlan_tci_outer=%u", m->vlan_tci_outer);
+
 	if (m->ol_flags & (RTE_MBUF_F_RX_VLAN | RTE_MBUF_F_TX_VLAN))
 		fprintf(f, ", vlan_tci=%u", m->vlan_tci);
 
