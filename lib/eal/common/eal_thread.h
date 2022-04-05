@@ -8,10 +8,10 @@
 #include <rte_lcore.h>
 
 /**
- * basic loop of thread, called for each thread by eal_init().
+ * Basic loop of EAL thread, called for each worker thread by rte_eal_init().
  *
  * @param arg
- *   opaque pointer
+ *   The lcore_id (passed as an integer) of this worker thread.
  */
 __rte_noreturn void *eal_thread_loop(void *arg);
 

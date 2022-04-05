@@ -420,7 +420,7 @@ rte_eal_init(int argc, char **argv)
 		lcore_config[i].state = WAIT;
 
 		/* create a thread for each lcore */
-		if (eal_thread_create(&lcore_config[i].thread_id) != 0)
+		if (eal_thread_create(&lcore_config[i].thread_id, i) != 0)
 			rte_panic("Cannot create thread\n");
 		ret = pthread_setaffinity_np(lcore_config[i].thread_id,
 			sizeof(rte_cpuset_t), &lcore_config[i].cpuset);

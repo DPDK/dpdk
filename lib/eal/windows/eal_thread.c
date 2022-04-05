@@ -63,24 +63,13 @@ rte_eal_remote_launch(lcore_function_t *f, void *arg, unsigned int worker_id)
 
 /* main loop of threads */
 void *
-eal_thread_loop(void *arg __rte_unused)
+eal_thread_loop(void *arg)
 {
+	unsigned int lcore_id = (uintptr_t)arg;
 	char c;
 	int n, ret;
-	unsigned int lcore_id;
-	pthread_t thread_id;
 	int m2w, w2m;
 	char cpuset[RTE_CPU_AFFINITY_STR_LEN];
-
-	thread_id = pthread_self();
-
-	/* retrieve our lcore_id from the configuration structure */
-	RTE_LCORE_FOREACH_WORKER(lcore_id) {
-		if (thread_id == lcore_config[lcore_id].thread_id)
-			break;
-	}
-	if (lcore_id == RTE_MAX_LCORE)
-		rte_panic("cannot retrieve lcore id\n");
 
 	m2w = lcore_config[lcore_id].pipe_main2worker[0];
 	w2m = lcore_config[lcore_id].pipe_worker2main[1];
@@ -88,7 +77,7 @@ eal_thread_loop(void *arg __rte_unused)
 	__rte_thread_init(lcore_id, &lcore_config[lcore_id].cpuset);
 
 	RTE_LOG(DEBUG, EAL, "lcore %u is ready (tid=%zx;cpuset=[%s])\n",
-		lcore_id, (uintptr_t)thread_id, cpuset);
+		lcore_id, (uintptr_t)pthread_self(), cpuset);
 
 	/* read on our pipe to get commands */
 	while (1) {
@@ -144,13 +133,15 @@ eal_thread_loop(void *arg __rte_unused)
 
 /* function to create threads */
 int
-eal_thread_create(pthread_t *thread)
+eal_thread_create(pthread_t *thread, unsigned int lcore_id)
 {
 	HANDLE th;
 
 	th = CreateThread(NULL, 0,
 		(LPTHREAD_START_ROUTINE)(ULONG_PTR)eal_thread_loop,
-						NULL, CREATE_SUSPENDED, (LPDWORD)thread);
+						(LPVOID)(uintptr_t)lcore_id,
+						CREATE_SUSPENDED,
+						(LPDWORD)thread);
 	if (!th)
 		return -1;
 

@@ -76,24 +76,14 @@ finish:
 
 /* main loop of threads */
 __rte_noreturn void *
-eal_thread_loop(__rte_unused void *arg)
+eal_thread_loop(void *arg)
 {
+	unsigned int lcore_id = (uintptr_t)arg;
 	char c;
 	int n, ret;
 	unsigned lcore_id;
-	pthread_t thread_id;
 	int m2w, w2m;
 	char cpuset[RTE_CPU_AFFINITY_STR_LEN];
-
-	thread_id = pthread_self();
-
-	/* retrieve our lcore_id from the configuration structure */
-	RTE_LCORE_FOREACH_WORKER(lcore_id) {
-		if (thread_id == lcore_config[lcore_id].thread_id)
-			break;
-	}
-	if (lcore_id == RTE_MAX_LCORE)
-		rte_panic("cannot retrieve lcore id\n");
 
 	m2w = lcore_config[lcore_id].pipe_main2worker[0];
 	w2m = lcore_config[lcore_id].pipe_worker2main[1];
@@ -102,7 +92,7 @@ eal_thread_loop(__rte_unused void *arg)
 
 	ret = eal_thread_dump_current_affinity(cpuset, sizeof(cpuset));
 	RTE_LOG(DEBUG, EAL, "lcore %u is ready (tid=%p;cpuset=[%s%s])\n",
-		lcore_id, thread_id, cpuset, ret == 0 ? "" : "...");
+		lcore_id, pthread_self(), cpuset, ret == 0 ? "" : "...");
 
 	rte_eal_trace_thread_lcore_ready(lcore_id, cpuset);
 
