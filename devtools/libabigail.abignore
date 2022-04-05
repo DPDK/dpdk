@@ -52,3 +52,7 @@
 ; Ignore visibility fix of local functions in experimental gpudev library
 [suppress_file]
         soname_regexp = ^librte_gpudev\.
+
+; Ignore libabigail false-positive in clang builds, after moving code.
+[suppress_function]
+	name = rte_eal_remote_launch

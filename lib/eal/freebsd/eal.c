@@ -579,7 +579,6 @@ int
 rte_eal_init(int argc, char **argv)
 {
 	int i, fctret, ret;
-	pthread_t thread_id;
 	static uint32_t run_once;
 	uint32_t has_run = 0;
 	char cpuset[RTE_CPU_AFFINITY_STR_LEN];
@@ -603,8 +602,6 @@ rte_eal_init(int argc, char **argv)
 		rte_errno = EALREADY;
 		return -1;
 	}
-
-	thread_id = pthread_self();
 
 	eal_reset_internal_config(internal_conf);
 
@@ -794,8 +791,8 @@ rte_eal_init(int argc, char **argv)
 
 	ret = eal_thread_dump_current_affinity(cpuset, sizeof(cpuset));
 
-	RTE_LOG(DEBUG, EAL, "Main lcore %u is ready (tid=%p;cpuset=[%s%s])\n",
-		config->main_lcore, thread_id, cpuset,
+	RTE_LOG(DEBUG, EAL, "Main lcore %u is ready (tid=%zx;cpuset=[%s%s])\n",
+		config->main_lcore, (uintptr_t)pthread_self(), cpuset,
 		ret == 0 ? "" : "...");
 
 	RTE_LCORE_FOREACH_WORKER(i) {

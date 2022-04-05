@@ -58,4 +58,31 @@ eal_thread_dump_affinity(rte_cpuset_t *cpuset, char *str, unsigned int size);
 int
 eal_thread_dump_current_affinity(char *str, unsigned int size);
 
+/**
+ * Called by the main thread to wake up a worker in 'WAIT' state.
+ * This function blocks until the worker acknowledge it started processing a
+ * new command.
+ * This function is private to EAL.
+ *
+ * @param worker_id
+ *   The lcore_id of a worker thread.
+ */
+void
+eal_thread_wake_worker(unsigned int worker_id);
+
+/**
+ * Called by a worker thread to sleep after entering 'WAIT' state.
+ * This function is private to EAL.
+ */
+void
+eal_thread_wait_command(void);
+
+/**
+ * Called by a worker thread to acknowledge new command after leaving 'WAIT'
+ * state.
+ * This function is private to EAL.
+ */
+void
+eal_thread_ack_command(void);
+
 #endif /* EAL_THREAD_H */

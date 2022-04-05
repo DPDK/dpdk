@@ -5,11 +5,13 @@
 #include <errno.h>
 
 #include <rte_launch.h>
+#include <rte_eal_trace.h>
 #include <rte_atomic.h>
 #include <rte_pause.h>
 #include <rte_lcore.h>
 
 #include "eal_private.h"
+#include "eal_thread.h"
 
 /*
  * Wait until a lcore finished its job.
@@ -18,10 +20,42 @@ int
 rte_eal_wait_lcore(unsigned worker_id)
 {
 	while (__atomic_load_n(&lcore_config[worker_id].state,
-					__ATOMIC_ACQUIRE) != WAIT)
+			__ATOMIC_ACQUIRE) != WAIT)
 		rte_pause();
 
 	return lcore_config[worker_id].ret;
+}
+
+/*
+ * Send a message to a worker lcore identified by worker_id to call a
+ * function f with argument arg. Once the execution is done, the
+ * remote lcore switches to WAIT state.
+ */
+int
+rte_eal_remote_launch(lcore_function_t *f, void *arg, unsigned int worker_id)
+{
+	int rc = -EBUSY;
+
+	/* Check if the worker is in 'WAIT' state. Use acquire order
+	 * since 'state' variable is used as the guard variable.
+	 */
+	if (__atomic_load_n(&lcore_config[worker_id].state,
+			__ATOMIC_ACQUIRE) != WAIT)
+		goto finish;
+
+	lcore_config[worker_id].arg = arg;
+	/* Ensure that all the memory operations are completed
+	 * before the worker thread starts running the function.
+	 * Use worker thread function as the guard variable.
+	 */
+	__atomic_store_n(&lcore_config[worker_id].f, f, __ATOMIC_RELEASE);
+
+	eal_thread_wake_worker(worker_id);
+	rc = 0;
+
+finish:
+	rte_eal_trace_thread_remote_launch(f, arg, worker_id, rc);
+	return rc;
 }
 
 /*

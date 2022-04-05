@@ -9,6 +9,7 @@
 #include <assert.h>
 #include <string.h>
 
+#include <rte_eal_trace.h>
 #include <rte_errno.h>
 #include <rte_lcore.h>
 #include <rte_log.h>
@@ -161,6 +162,68 @@ __rte_thread_uninit(void)
 	trace_mem_per_thread_free();
 
 	RTE_PER_LCORE(_lcore_id) = LCORE_ID_ANY;
+}
+
+/* main loop of threads */
+__rte_noreturn void *
+eal_thread_loop(void *arg)
+{
+	unsigned int lcore_id = (uintptr_t)arg;
+	char cpuset[RTE_CPU_AFFINITY_STR_LEN];
+	int ret;
+
+	__rte_thread_init(lcore_id, &lcore_config[lcore_id].cpuset);
+
+	ret = eal_thread_dump_current_affinity(cpuset, sizeof(cpuset));
+	RTE_LOG(DEBUG, EAL, "lcore %u is ready (tid=%zx;cpuset=[%s%s])\n",
+		lcore_id, (uintptr_t)pthread_self(), cpuset,
+		ret == 0 ? "" : "...");
+
+	rte_eal_trace_thread_lcore_ready(lcore_id, cpuset);
+
+	/* read on our pipe to get commands */
+	while (1) {
+		lcore_function_t *f;
+		void *fct_arg;
+
+		eal_thread_wait_command();
+
+		/* Set the state to 'RUNNING'. Use release order
+		 * since 'state' variable is used as the guard variable.
+		 */
+		__atomic_store_n(&lcore_config[lcore_id].state, RUNNING,
+			__ATOMIC_RELEASE);
+
+		eal_thread_ack_command();
+
+		/* Load 'f' with acquire order to ensure that
+		 * the memory operations from the main thread
+		 * are accessed only after update to 'f' is visible.
+		 * Wait till the update to 'f' is visible to the worker.
+		 */
+		while ((f = __atomic_load_n(&lcore_config[lcore_id].f,
+				__ATOMIC_ACQUIRE)) == NULL)
+			rte_pause();
+
+		/* call the function and store the return value */
+		fct_arg = lcore_config[lcore_id].arg;
+		ret = f(fct_arg);
+		lcore_config[lcore_id].ret = ret;
+		lcore_config[lcore_id].f = NULL;
+		lcore_config[lcore_id].arg = NULL;
+
+		/* Store the state with release order to ensure that
+		 * the memory operations from the worker thread
+		 * are completed before the state is updated.
+		 * Use 'state' as the guard variable.
+		 */
+		__atomic_store_n(&lcore_config[lcore_id].state, WAIT,
+			__ATOMIC_RELEASE);
+	}
+
+	/* never reached */
+	/* pthread_exit(NULL); */
+	/* return NULL; */
 }
 
 enum __rte_ctrl_thread_status {
