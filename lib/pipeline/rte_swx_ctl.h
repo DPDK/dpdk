@@ -41,6 +41,12 @@ struct rte_swx_ctl_pipeline_info {
 	/** Number of input ports. */
 	uint32_t n_ports_out;
 
+	/** Number of packet mirroring slots. */
+	uint32_t n_mirroring_slots;
+
+	/** Number of packet mirroring sessions. */
+	uint32_t n_mirroring_sessions;
+
 	/** Number of actions. */
 	uint32_t n_actions;
 
@@ -654,6 +660,42 @@ int
 rte_swx_ctl_pipeline_learner_stats_read(struct rte_swx_pipeline *p,
 				      const char *learner_name,
 				      struct rte_swx_learner_stats *stats);
+
+/*
+ * Packet mirroring API.
+ */
+
+/** Packet mirroring session parameters. */
+struct rte_swx_pipeline_mirroring_session_params {
+	/** Output port ID. */
+	uint32_t port_id;
+
+	/** Fast clone flag. */
+	int fast_clone;
+
+	/** Truncation packet length (in bytes). Zero means no truncation. */
+	uint32_t truncation_length;
+};
+
+/**
+ * Packet mirroring session set
+ *
+ * @param[in] p
+ *   Pipeline handle.
+ * @param[in] session_id
+ *   Packet mirroring session ID.
+ * @param[in] params
+ *   Packet mirroring session parameters.
+ * @return
+ *   0 on success or the following error codes otherwise:
+ *   -EINVAL: Invalid argument;
+ *   -EEXIST: Pipeline was already built successfully.
+ */
+__rte_experimental
+int
+rte_swx_ctl_pipeline_mirroring_session_set(struct rte_swx_pipeline *p,
+	uint32_t session_id,
+	struct rte_swx_pipeline_mirroring_session_params *params);
 
 /*
  * Table Update API.

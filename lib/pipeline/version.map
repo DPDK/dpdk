@@ -67,6 +67,7 @@ EXPERIMENTAL {
 	rte_swx_ctl_pipeline_create;
 	rte_swx_ctl_pipeline_free;
 	rte_swx_ctl_pipeline_info_get;
+	rte_swx_ctl_pipeline_mirroring_session_set;
 	rte_swx_ctl_pipeline_numa_node_get;
 	rte_swx_ctl_pipeline_port_in_stats_read;
 	rte_swx_ctl_pipeline_port_out_stats_read;
@@ -90,6 +91,7 @@ EXPERIMENTAL {
 	rte_swx_pipeline_flush;
 	rte_swx_pipeline_free;
 	rte_swx_pipeline_instructions_config;
+	rte_swx_pipeline_mirroring_config;
 	rte_swx_pipeline_packet_header_register;
 	rte_swx_pipeline_packet_metadata_register;
 	rte_swx_pipeline_port_in_config;

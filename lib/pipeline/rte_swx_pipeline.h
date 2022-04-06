@@ -159,6 +159,36 @@ rte_swx_pipeline_port_out_config(struct rte_swx_pipeline *p,
 				 uint32_t port_id,
 				 const char *port_type_name,
 				 void *args);
+/*
+ * Packet mirroring
+ */
+
+/** Packet mirroring parameters. */
+struct rte_swx_pipeline_mirroring_params {
+	/** Number of packet mirroring slots. */
+	uint32_t n_slots;
+
+	/** Maximum number of packet mirroring sessions. */
+	uint32_t n_sessions;
+};
+
+/**
+ * Packet mirroring configure
+ *
+ * @param[in] p
+ *   Pipeline handle.
+ * @param[in] params
+ *   Packet mirroring parameters.
+ * @return
+ *   0 on success or the following error codes otherwise:
+ *   -EINVAL: Invalid argument;
+ *   -ENOMEM: Not enough memory;
+ *   -EEXIST: Pipeline was already built successfully.
+ */
+__rte_experimental
+int
+rte_swx_pipeline_mirroring_config(struct rte_swx_pipeline *p,
+				  struct rte_swx_pipeline_mirroring_params *params);
 
 /*
  * Extern objects and functions

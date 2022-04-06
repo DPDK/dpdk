@@ -423,6 +423,8 @@ rte_swx_pipeline_port_out_type_register(struct rte_swx_pipeline *p,
 	CHECK(ops->create, EINVAL);
 	CHECK(ops->free, EINVAL);
 	CHECK(ops->pkt_tx, EINVAL);
+	CHECK(ops->pkt_fast_clone_tx, EINVAL);
+	CHECK(ops->pkt_clone_tx, EINVAL);
 	CHECK(ops->stats_read, EINVAL);
 
 	CHECK(!port_out_type_find(p, name), EEXIST);
@@ -509,6 +511,8 @@ port_out_build(struct rte_swx_pipeline *p)
 		struct port_out_runtime *out = &p->out[port->id];
 
 		out->pkt_tx = port->type->ops.pkt_tx;
+		out->pkt_fast_clone_tx = port->type->ops.pkt_fast_clone_tx;
+		out->pkt_clone_tx = port->type->ops.pkt_clone_tx;
 		out->flush = port->type->ops.flush;
 		out->obj = port->obj;
 	}
@@ -552,6 +556,81 @@ port_out_free(struct rte_swx_pipeline *p)
 		TAILQ_REMOVE(&p->port_out_types, elem, node);
 		free(elem);
 	}
+}
+
+/*
+ * Packet mirroring.
+ */
+int
+rte_swx_pipeline_mirroring_config(struct rte_swx_pipeline *p,
+				  struct rte_swx_pipeline_mirroring_params *params)
+{
+	CHECK(p, EINVAL);
+	CHECK(params, EINVAL);
+	CHECK(params->n_slots, EINVAL);
+	CHECK(params->n_sessions, EINVAL);
+	CHECK(!p->build_done, EEXIST);
+
+	p->n_mirroring_slots = rte_align32pow2(params->n_slots);
+	if (p->n_mirroring_slots > 64)
+		p->n_mirroring_slots = 64;
+
+	p->n_mirroring_sessions = rte_align32pow2(params->n_sessions);
+
+	return 0;
+}
+
+static void
+mirroring_build_free(struct rte_swx_pipeline *p)
+{
+	uint32_t i;
+
+	for (i = 0; i < RTE_SWX_PIPELINE_THREADS_MAX; i++) {
+		struct thread *t = &p->threads[i];
+
+		/* mirroring_slots. */
+		free(t->mirroring_slots);
+		t->mirroring_slots = NULL;
+	}
+
+	/* mirroring_sessions. */
+	free(p->mirroring_sessions);
+	p->mirroring_sessions = NULL;
+}
+
+static void
+mirroring_free(struct rte_swx_pipeline *p)
+{
+	mirroring_build_free(p);
+}
+
+static int
+mirroring_build(struct rte_swx_pipeline *p)
+{
+	uint32_t i;
+
+	if (!p->n_mirroring_slots || !p->n_mirroring_sessions)
+		return 0;
+
+	for (i = 0; i < RTE_SWX_PIPELINE_THREADS_MAX; i++) {
+		struct thread *t = &p->threads[i];
+
+		/* mirroring_slots. */
+		t->mirroring_slots = calloc(p->n_mirroring_slots, sizeof(uint32_t));
+		if (!t->mirroring_slots)
+			goto error;
+	}
+
+	/* mirroring_sessions. */
+	p->mirroring_sessions = calloc(p->n_mirroring_sessions, sizeof(struct mirroring_session));
+	if (!p->mirroring_sessions)
+		goto error;
+
+	return 0;
+
+error:
+	mirroring_build_free(p);
+	return -ENOMEM;
 }
 
 /*
@@ -1651,6 +1730,56 @@ instr_drop_exec(struct rte_swx_pipeline *p)
 	/* Thread. */
 	thread_ip_reset(p, t);
 	instr_rx_exec(p);
+}
+
+/*
+ * mirror.
+ */
+static int
+instr_mirror_translate(struct rte_swx_pipeline *p,
+		       struct action *action,
+		       char **tokens,
+		       int n_tokens,
+		       struct instruction *instr,
+		       struct instruction_data *data __rte_unused)
+{
+	char *dst = tokens[1], *src = tokens[2];
+	struct field *fdst, *fsrc;
+	uint32_t dst_struct_id = 0, src_struct_id = 0;
+
+	CHECK(n_tokens == 3, EINVAL);
+
+	fdst = struct_field_parse(p, action, dst, &dst_struct_id);
+	CHECK(fdst, EINVAL);
+	CHECK(dst[0] != 'h', EINVAL);
+	CHECK(!fdst->var_size, EINVAL);
+
+	fsrc = struct_field_parse(p, action, src, &src_struct_id);
+	CHECK(fsrc, EINVAL);
+	CHECK(src[0] != 'h', EINVAL);
+	CHECK(!fsrc->var_size, EINVAL);
+
+	instr->type = INSTR_MIRROR;
+	instr->mirror.dst.struct_id = (uint8_t)dst_struct_id;
+	instr->mirror.dst.n_bits = fdst->n_bits;
+	instr->mirror.dst.offset = fdst->offset / 8;
+	instr->mirror.src.struct_id = (uint8_t)src_struct_id;
+	instr->mirror.src.n_bits = fsrc->n_bits;
+	instr->mirror.src.offset = fsrc->offset / 8;
+
+	return 0;
+}
+
+static inline void
+instr_mirror_exec(struct rte_swx_pipeline *p)
+{
+	struct thread *t = &p->threads[p->thread_id];
+	struct instruction *ip = t->ip;
+
+	__instr_mirror_exec(p, t, ip);
+
+	/* Thread. */
+	thread_ip_inc(p);
 }
 
 /*
@@ -5653,6 +5782,14 @@ instr_translate(struct rte_swx_pipeline *p,
 					    instr,
 					    data);
 
+	if (!strcmp(tokens[tpos], "mirror"))
+		return instr_mirror_translate(p,
+					      action,
+					      &tokens[tpos],
+					      n_tokens - tpos,
+					      instr,
+					      data);
+
 	if (!strcmp(tokens[tpos], "extract"))
 		return instr_hdr_extract_translate(p,
 						   action,
@@ -6677,6 +6814,7 @@ static instr_exec_t instruction_table[] = {
 	[INSTR_TX] = instr_tx_exec,
 	[INSTR_TX_I] = instr_tx_i_exec,
 	[INSTR_DROP] = instr_drop_exec,
+	[INSTR_MIRROR] = instr_mirror_exec,
 
 	[INSTR_HDR_EXTRACT] = instr_hdr_extract_exec,
 	[INSTR_HDR_EXTRACT2] = instr_hdr_extract2_exec,
@@ -9155,6 +9293,7 @@ rte_swx_pipeline_free(struct rte_swx_pipeline *p)
 	header_free(p);
 	extern_func_free(p);
 	extern_obj_free(p);
+	mirroring_free(p);
 	port_out_free(p);
 	port_in_free(p);
 	struct_free(p);
@@ -9363,6 +9502,10 @@ rte_swx_pipeline_build(struct rte_swx_pipeline *p)
 	if (status)
 		goto error;
 
+	status = mirroring_build(p);
+	if (status)
+		goto error;
+
 	status = struct_build(p);
 	if (status)
 		goto error;
@@ -9434,6 +9577,7 @@ error:
 	header_build_free(p);
 	extern_func_build_free(p);
 	extern_obj_build_free(p);
+	mirroring_build_free(p);
 	port_out_build_free(p);
 	port_in_build_free(p);
 	struct_build_free(p);
@@ -9485,6 +9629,8 @@ rte_swx_ctl_pipeline_info_get(struct rte_swx_pipeline *p,
 
 	pipeline->n_ports_in = p->n_ports_in;
 	pipeline->n_ports_out = p->n_ports_out;
+	pipeline->n_mirroring_slots = p->n_mirroring_slots;
+	pipeline->n_mirroring_sessions = p->n_mirroring_sessions;
 	pipeline->n_actions = n_actions;
 	pipeline->n_tables = n_tables;
 	pipeline->n_selectors = p->n_selectors;
@@ -10172,6 +10318,27 @@ rte_swx_ctl_meter_stats_read(struct rte_swx_pipeline *p,
 	return 0;
 }
 
+int
+rte_swx_ctl_pipeline_mirroring_session_set(struct rte_swx_pipeline *p,
+					   uint32_t session_id,
+					   struct rte_swx_pipeline_mirroring_session_params *params)
+{
+	struct mirroring_session *s;
+
+	CHECK(p, EINVAL);
+	CHECK(p->build_done, EEXIST);
+	CHECK(session_id < p->n_mirroring_sessions, EINVAL);
+	CHECK(params, EINVAL);
+	CHECK(params->port_id < p->n_ports_out, EINVAL);
+
+	s = &p->mirroring_sessions[session_id];
+	s->port_id = params->port_id;
+	s->fast_clone = params->fast_clone;
+	s->truncation_length = params->truncation_length ? params->truncation_length : UINT32_MAX;
+
+	return 0;
+}
+
 /*
  * Pipeline compilation.
  */
@@ -10184,6 +10351,7 @@ instr_type_to_name(struct instruction *instr)
 	case INSTR_TX: return "INSTR_TX";
 	case INSTR_TX_I: return "INSTR_TX_I";
 	case INSTR_DROP: return "INSTR_DROP";
+	case INSTR_MIRROR: return "INSTR_MIRROR";
 
 	case INSTR_HDR_EXTRACT: return "INSTR_HDR_EXTRACT";
 	case INSTR_HDR_EXTRACT2: return "INSTR_HDR_EXTRACT2";
@@ -10484,6 +10652,34 @@ instr_io_export(struct instruction *instr, FILE *f)
 	/* instr - closing curly brace. */
 	fprintf(f,
 		"\t},\n");
+}
+
+static void
+instr_mirror_export(struct instruction *instr, FILE *f)
+{
+	fprintf(f,
+		"\t{\n"
+		"\t\t.type = %s,\n"
+		"\t\t.mirror = {\n"
+		"\t\t\t.dst = {\n"
+		"\t\t\t\t.struct_id = %u,\n"
+		"\t\t\t\t.n_bits = %u,\n"
+		"\t\t\t\t.offset = %u,\n"
+		"\t\t\t}\n,"
+		"\t\t\t.src = {\n"
+		"\t\t\t\t.struct_id = %u,\n"
+		"\t\t\t\t.n_bits = %u,\n"
+		"\t\t\t\t.offset = %u,\n"
+		"\t\t\t}\n,"
+		"\t\t},\n"
+		"\t},\n",
+		instr_type_to_name(instr),
+		instr->mirror.dst.struct_id,
+		instr->mirror.dst.n_bits,
+		instr->mirror.dst.offset,
+		instr->mirror.src.struct_id,
+		instr->mirror.src.n_bits,
+		instr->mirror.src.offset);
 }
 
 static void
@@ -11053,6 +11249,7 @@ static instruction_export_t export_table[] = {
 	[INSTR_TX] = instr_io_export,
 	[INSTR_TX_I] = instr_io_export,
 	[INSTR_DROP] = instr_io_export,
+	[INSTR_MIRROR] = instr_mirror_export,
 
 	[INSTR_HDR_EXTRACT] = instr_io_export,
 	[INSTR_HDR_EXTRACT2] = instr_io_export,
@@ -11271,6 +11468,7 @@ instr_type_to_func(struct instruction *instr)
 	case INSTR_TX: return "__instr_tx_exec";
 	case INSTR_TX_I: return "__instr_tx_i_exec";
 	case INSTR_DROP: return "__instr_drop_exec";
+	case INSTR_MIRROR: return "__instr_mirror_exec";
 
 	case INSTR_HDR_EXTRACT: return "__instr_hdr_extract_exec";
 	case INSTR_HDR_EXTRACT2: return "__instr_hdr_extract2_exec";
