@@ -13,7 +13,6 @@ endif
 # script to run the CSS modification afterwards
 generate_doxygen = find_program('generate_doxygen.sh')
 generate_examples = find_program('generate_examples.sh')
-generate_css = find_program('doxy-html-custom.sh')
 
 htmldir = join_paths(get_option('datadir'), 'doc', 'dpdk')
 
@@ -52,7 +51,7 @@ doxy_build = custom_target('doxygen',
         input: doxy_conf,
         output: 'html',
         depfile: 'html.d',
-        command: [generate_doxygen, '@INPUT@', '@OUTPUT@', generate_css],
+        command: [generate_doxygen, '@INPUT@', '@OUTPUT@'],
         install: get_option('enable_docs'),
         install_dir: htmldir,
         build_by_default: get_option('enable_docs'))
