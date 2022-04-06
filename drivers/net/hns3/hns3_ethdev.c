@@ -2394,7 +2394,6 @@ hns3_dev_configure(struct rte_eth_dev *dev)
 	if ((uint32_t)mq_mode & ETH_MQ_RX_RSS_FLAG) {
 		conf->rxmode.offloads |= DEV_RX_OFFLOAD_RSS_HASH;
 		rss_conf = conf->rx_adv_conf.rss_conf;
-		hw->rss_dis_flag = false;
 		if (rss_conf.rss_key == NULL) {
 			rss_conf.rss_key = rss_cfg->key;
 			rss_conf.rss_key_len = HNS3_RSS_KEY_SIZE;
@@ -3160,7 +3159,6 @@ hns3_get_board_configuration(struct hns3_hw *hw)
 
 	hw->mac.media_type = cfg.media_type;
 	hw->rss_size_max = cfg.rss_size_max;
-	hw->rss_dis_flag = false;
 	memcpy(hw->mac.mac_addr, cfg.mac_addr, RTE_ETHER_ADDR_LEN);
 	hw->mac.phy_addr = cfg.phy_addr;
 	hw->num_tx_desc = cfg.tqp_desc_num;

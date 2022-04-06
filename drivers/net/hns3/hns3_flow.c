@@ -1416,7 +1416,6 @@ hns3_disable_rss(struct hns3_hw *hw)
 	ret = hns3_set_rss_tuple_by_rss_hf(hw, 0);
 	if (ret)
 		return ret;
-	hw->rss_dis_flag = true;
 
 	return 0;
 }

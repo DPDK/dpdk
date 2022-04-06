@@ -816,7 +816,6 @@ hns3vf_dev_configure(struct rte_eth_dev *dev)
 	/* When RSS is not configured, redirect the packet queue 0 */
 	if ((uint32_t)mq_mode & ETH_MQ_RX_RSS_FLAG) {
 		conf->rxmode.offloads |= DEV_RX_OFFLOAD_RSS_HASH;
-		hw->rss_dis_flag = false;
 		rss_conf = conf->rx_adv_conf.rss_conf;
 		if (rss_conf.rss_key == NULL) {
 			rss_conf.rss_key = rss_cfg->key;
@@ -1395,7 +1394,6 @@ hns3vf_get_configuration(struct hns3_hw *hw)
 	int ret;
 
 	hw->mac.media_type = HNS3_MEDIA_TYPE_NONE;
-	hw->rss_dis_flag = false;
 
 	/* Get device capability */
 	ret = hns3vf_get_capability(hw);
