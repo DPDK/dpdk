@@ -183,14 +183,20 @@ nic_stats_display(portid_t port_id)
 								diff_ns;
 	uint64_t mpps_rx, mpps_tx, mbps_rx, mbps_tx;
 	struct rte_eth_stats stats;
-
 	static const char *nic_stats_border = "########################";
+	int ret;
 
 	if (port_id_is_invalid(port_id, ENABLED_WARN)) {
 		print_valid_ports();
 		return;
 	}
-	rte_eth_stats_get(port_id, &stats);
+	ret = rte_eth_stats_get(port_id, &stats);
+	if (ret != 0) {
+		fprintf(stderr,
+			"%s: Error: failed to get stats (port %u): %d",
+			__func__, port_id, ret);
+		return;
+	}
 	printf("\n  %s NIC statistics for port %-2d %s\n",
 	       nic_stats_border, port_id, nic_stats_border);
 
