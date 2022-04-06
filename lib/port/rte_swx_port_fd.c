@@ -237,14 +237,75 @@ writer_pkt_tx(void *port, struct rte_swx_pkt *pkt)
 	if (TRACE_LEVEL)
 		rte_hexdump(stdout, NULL, &pkt->pkt[pkt->offset], pkt->length);
 
+	m->data_len = (uint16_t)(pkt->length + m->data_len - m->pkt_len);
 	m->pkt_len = pkt->length;
-	m->data_len = (uint16_t)pkt->length;
 	m->data_off = (uint16_t)pkt->offset;
 
 	p->stats.n_pkts++;
 	p->stats.n_bytes += pkt->length;
 
 	p->pkts[p->n_pkts++] = m;
+	if (p->n_pkts == p->params.burst_size)
+		__writer_flush(p);
+}
+
+static void
+writer_pkt_fast_clone_tx(void *port, struct rte_swx_pkt *pkt)
+{
+	struct writer *p = port;
+	struct rte_mbuf *m = pkt->handle;
+
+	TRACE("[FD %u] Pkt %u (%u bytes at offset %u) (fast clone)\n",
+		(uint32_t)p->params.fd,
+		p->n_pkts - 1,
+		pkt->length,
+		pkt->offset);
+	if (TRACE_LEVEL)
+		rte_hexdump(stdout, NULL, &pkt->pkt[pkt->offset], pkt->length);
+
+	m->data_len = (uint16_t)(pkt->length + m->data_len - m->pkt_len);
+	m->pkt_len = pkt->length;
+	m->data_off = (uint16_t)pkt->offset;
+	rte_pktmbuf_refcnt_update(m, 1);
+
+	p->stats.n_pkts++;
+	p->stats.n_bytes += pkt->length;
+	p->stats.n_pkts_clone++;
+
+	p->pkts[p->n_pkts++] = m;
+	if (p->n_pkts == p->params.burst_size)
+		__writer_flush(p);
+}
+
+static void
+writer_pkt_clone_tx(void *port, struct rte_swx_pkt *pkt, uint32_t truncation_length)
+{
+	struct writer *p = port;
+	struct rte_mbuf *m = pkt->handle, *m_clone;
+
+	TRACE("[FD %u] Pkt %u (%u bytes at offset %u) (clone)\n",
+		(uint32_t)p->params.fd,
+		p->n_pkts - 1,
+		pkt->length,
+		pkt->offset);
+	if (TRACE_LEVEL)
+		rte_hexdump(stdout, NULL, &pkt->pkt[pkt->offset], pkt->length);
+
+	m->data_len = (uint16_t)(pkt->length + m->data_len - m->pkt_len);
+	m->pkt_len = pkt->length;
+	m->data_off = (uint16_t)pkt->offset;
+
+	m_clone = rte_pktmbuf_copy(m, m->pool, 0, truncation_length);
+	if (!m_clone) {
+		p->stats.n_pkts_clone_err++;
+		return;
+	}
+
+	p->stats.n_pkts++;
+	p->stats.n_bytes += pkt->length;
+	p->stats.n_pkts_clone++;
+
+	p->pkts[p->n_pkts++] = m_clone;
 	if (p->n_pkts == p->params.burst_size)
 		__writer_flush(p);
 }
@@ -293,6 +354,8 @@ struct rte_swx_port_out_ops rte_swx_port_fd_writer_ops = {
 	.create = writer_create,
 	.free = writer_free,
 	.pkt_tx = writer_pkt_tx,
+	.pkt_fast_clone_tx = writer_pkt_fast_clone_tx,
+	.pkt_clone_tx = writer_pkt_clone_tx,
 	.flush = writer_flush,
 	.stats_read = writer_stats_read,
 };
