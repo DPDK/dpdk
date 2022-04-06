@@ -11,8 +11,8 @@ endif
 # is in a subdirectory that is created at build time and thus it cannot
 # be an individual custom_target, we need to wrap the doxygen call in a
 # script to run the CSS modification afterwards
-generate_doxygen = find_program('generate_doxygen.sh')
-generate_examples = find_program('generate_examples.sh')
+generate_doxygen = py3 + files('generate_doxygen.py')
+generate_examples = py3 + files('generate_examples.py')
 
 htmldir = join_paths(get_option('datadir'), 'doc', 'dpdk')
 
@@ -51,7 +51,7 @@ doxy_build = custom_target('doxygen',
         input: doxy_conf,
         output: 'html',
         depfile: 'html.d',
-        command: [generate_doxygen, '@INPUT@', '@OUTPUT@'],
+        command: [generate_doxygen, '@OUTPUT@', doxygen, '@INPUT@'],
         install: get_option('enable_docs'),
         install_dir: htmldir,
         build_by_default: get_option('enable_docs'))
