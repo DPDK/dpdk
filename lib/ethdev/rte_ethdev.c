@@ -4081,6 +4081,7 @@ rte_eth_dev_rss_reta_update(uint16_t port_id,
 			    struct rte_eth_rss_reta_entry64 *reta_conf,
 			    uint16_t reta_size)
 {
+	enum rte_eth_rx_mq_mode mq_mode;
 	struct rte_eth_dev *dev;
 	int ret;
 
@@ -4111,6 +4112,12 @@ rte_eth_dev_rss_reta_update(uint16_t port_id,
 				dev->data->nb_rx_queues);
 	if (ret < 0)
 		return ret;
+
+	mq_mode = dev->data->dev_conf.rxmode.mq_mode;
+	if (!(mq_mode & RTE_ETH_MQ_RX_RSS_FLAG)) {
+		RTE_ETHDEV_LOG(ERR, "Multi-queue RSS mode isn't enabled.\n");
+		return -ENOTSUP;
+	}
 
 	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->reta_update, -ENOTSUP);
 	return eth_err(port_id, (*dev->dev_ops->reta_update)(dev, reta_conf,
@@ -4151,6 +4158,7 @@ rte_eth_dev_rss_hash_update(uint16_t port_id,
 {
 	struct rte_eth_dev *dev;
 	struct rte_eth_dev_info dev_info = { .flow_type_rss_offloads = 0, };
+	enum rte_eth_rx_mq_mode mq_mode;
 	int ret;
 
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
@@ -4176,6 +4184,13 @@ rte_eth_dev_rss_hash_update(uint16_t port_id,
 			dev_info.flow_type_rss_offloads);
 		return -EINVAL;
 	}
+
+	mq_mode = dev->data->dev_conf.rxmode.mq_mode;
+	if (!(mq_mode & RTE_ETH_MQ_RX_RSS_FLAG)) {
+		RTE_ETHDEV_LOG(ERR, "Multi-queue RSS mode isn't enabled.\n");
+		return -ENOTSUP;
+	}
+
 	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->rss_hash_update, -ENOTSUP);
 	return eth_err(port_id, (*dev->dev_ops->rss_hash_update)(dev,
 								 rss_conf));
