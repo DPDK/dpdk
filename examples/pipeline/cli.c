@@ -2572,15 +2572,23 @@ cmd_pipeline_stats(char **tokens,
 		rte_swx_ctl_pipeline_port_out_stats_read(p->p, i, &stats);
 
 		if (i != info.n_ports_out - 1)
-			snprintf(out, out_size, "\tPort %u:"
-				" packets %" PRIu64
-				" bytes %" PRIu64 "\n",
-				i, stats.n_pkts, stats.n_bytes);
+			snprintf(out, out_size, "\tPort %u:", i);
 		else
-			snprintf(out, out_size, "\tDROP:"
-				" packets %" PRIu64
-				" bytes %" PRIu64 "\n",
-				stats.n_pkts, stats.n_bytes);
+			snprintf(out, out_size, "\tDROP:");
+
+		out_size -= strlen(out);
+		out += strlen(out);
+
+		snprintf(out,
+			out_size,
+			" packets %" PRIu64
+			" bytes %" PRIu64
+			" clone %" PRIu64
+			" clonerr %" PRIu64 "\n",
+			stats.n_pkts,
+			stats.n_bytes,
+			stats.n_pkts_clone,
+			stats.n_pkts_clone_err);
 
 		out_size -= strlen(out);
 		out += strlen(out);
@@ -2694,6 +2702,156 @@ cmd_pipeline_stats(char **tokens,
 			out_size -= strlen(out);
 			out += strlen(out);
 		}
+	}
+}
+
+static const char cmd_pipeline_mirror_help[] =
+"pipeline <pipeline_name> mirror slots <n_slots> sessions <n_sessions>\n";
+
+static void
+cmd_pipeline_mirror(char **tokens,
+	uint32_t n_tokens,
+	char *out,
+	size_t out_size,
+	void *obj)
+{
+	struct rte_swx_pipeline_mirroring_params params;
+	struct pipeline *p;
+	int status;
+
+	if (n_tokens != 7) {
+		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
+		return;
+	}
+
+	if (strcmp(tokens[0], "pipeline")) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "pipeline");
+		return;
+	}
+
+	p = pipeline_find(obj, tokens[1]);
+	if (!p) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "pipeline_name");
+		return;
+	}
+
+	if (strcmp(tokens[2], "mirror")) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "mirror");
+		return;
+	}
+
+	if (strcmp(tokens[3], "slots")) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "slots");
+		return;
+	}
+
+	if (parser_read_uint32(&params.n_slots, tokens[4])) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "n_slots");
+		return;
+	}
+
+	if (strcmp(tokens[5], "sessions")) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "sessions");
+		return;
+	}
+
+	if (parser_read_uint32(&params.n_sessions, tokens[6])) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "n_sessions");
+		return;
+	}
+
+	status = rte_swx_pipeline_mirroring_config(p->p, &params);
+	if (status) {
+		snprintf(out, out_size, "Command failed!\n");
+		return;
+	}
+}
+
+static const char cmd_pipeline_mirror_session_help[] =
+"pipeline <pipeline_name> mirror session <session_id> port <port_id> clone fast | slow "
+"truncate <truncation_length>\n";
+
+static void
+cmd_pipeline_mirror_session(char **tokens,
+	uint32_t n_tokens,
+	char *out,
+	size_t out_size,
+	void *obj)
+{
+	struct rte_swx_pipeline_mirroring_session_params params;
+	struct pipeline *p;
+	uint32_t session_id;
+	int status;
+
+	if (n_tokens != 11) {
+		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
+		return;
+	}
+
+	if (strcmp(tokens[0], "pipeline")) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "pipeline");
+		return;
+	}
+
+	p = pipeline_find(obj, tokens[1]);
+	if (!p || !p->ctl) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "pipeline_name");
+		return;
+	}
+
+	if (strcmp(tokens[2], "mirror")) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "mirror");
+		return;
+	}
+
+	if (strcmp(tokens[3], "session")) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "session");
+		return;
+	}
+
+	if (parser_read_uint32(&session_id, tokens[4])) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "session_id");
+		return;
+	}
+
+	if (strcmp(tokens[5], "port")) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "port");
+		return;
+	}
+
+	if (parser_read_uint32(&params.port_id, tokens[6])) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "port_id");
+		return;
+	}
+
+	if (strcmp(tokens[7], "clone")) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "clone");
+		return;
+	}
+
+	if (!strcmp(tokens[8], "fast"))
+		params.fast_clone = 1;
+	else if (!strcmp(tokens[8], "slow"))
+		params.fast_clone = 0;
+	else {
+		snprintf(out, out_size, MSG_ARG_INVALID, "clone");
+		return;
+	}
+
+	if (strcmp(tokens[9], "truncate")) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "truncate");
+		return;
+	}
+
+	if (parser_read_uint32(&params.truncation_length, tokens[10])) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "truncation_length");
+		return;
+	}
+
+	status = rte_swx_ctl_pipeline_mirroring_session_set(p->p, session_id, &params);
+	if (status) {
+		snprintf(out, out_size, "Command failed!\n");
+		return;
 	}
 }
 
@@ -2837,6 +2995,8 @@ cmd_help(char **tokens,
 			"\tpipeline meter set\n"
 			"\tpipeline meter stats\n"
 			"\tpipeline stats\n"
+			"\tpipeline mirror\n"
+			"\tpipeline mirror session\n"
 			"\tthread pipeline enable\n"
 			"\tthread pipeline disable\n\n");
 		return;
@@ -3053,6 +3213,19 @@ cmd_help(char **tokens,
 	if ((strcmp(tokens[0], "pipeline") == 0) &&
 		(n_tokens == 2) && (strcmp(tokens[1], "stats") == 0)) {
 		snprintf(out, out_size, "\n%s\n", cmd_pipeline_stats_help);
+		return;
+	}
+
+	if (!strcmp(tokens[0], "pipeline") &&
+		(n_tokens == 2) && !strcmp(tokens[1], "mirror")) {
+		snprintf(out, out_size, "\n%s\n", cmd_pipeline_mirror_help);
+		return;
+	}
+
+	if (!strcmp(tokens[0], "pipeline") &&
+		(n_tokens == 3) && !strcmp(tokens[1], "mirror")
+		&& !strcmp(tokens[2], "session")) {
+		snprintf(out, out_size, "\n%s\n", cmd_pipeline_mirror_session_help);
 		return;
 	}
 
@@ -3308,6 +3481,20 @@ cli_process(char *in, char *out, size_t out_size, void *obj)
 			(strcmp(tokens[2], "stats") == 0)) {
 			cmd_pipeline_stats(tokens, n_tokens, out, out_size,
 				obj);
+			return;
+		}
+
+		if ((n_tokens >= 4) &&
+			(strcmp(tokens[2], "mirror") == 0) &&
+			(strcmp(tokens[3], "slots") == 0)) {
+			cmd_pipeline_mirror(tokens, n_tokens, out, out_size, obj);
+			return;
+		}
+
+		if ((n_tokens >= 4) &&
+			(strcmp(tokens[2], "mirror") == 0) &&
+			(strcmp(tokens[3], "session") == 0)) {
+			cmd_pipeline_mirror_session(tokens, n_tokens, out, out_size, obj);
 			return;
 		}
 	}
