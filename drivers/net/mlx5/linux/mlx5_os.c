@@ -2189,9 +2189,9 @@ mlx5_os_pci_probe_pf(struct mlx5_common_device *cdev,
 	if (!nd) {
 		/* No device matches, just complain and bail out. */
 		DRV_LOG(WARNING,
-			"No Verbs device matches PCI device " PCI_PRI_FMT ","
+			"PF %u doesn't have Verbs device matches PCI device " PCI_PRI_FMT ","
 			" are kernel drivers loaded?",
-			owner_pci.domain, owner_pci.bus,
+			owner_id, owner_pci.domain, owner_pci.bus,
 			owner_pci.devid, owner_pci.function);
 		rte_errno = ENOENT;
 		ret = -rte_errno;
@@ -2612,16 +2612,16 @@ mlx5_os_pci_probe(struct mlx5_common_device *cdev)
 		for (p = 0; p < eth_da.nb_ports; p++) {
 			ret = mlx5_os_pci_probe_pf(cdev, &eth_da,
 						   eth_da.ports[p]);
-			if (ret)
-				break;
-		}
-		if (ret) {
-			DRV_LOG(ERR, "Probe of PCI device " PCI_PRI_FMT " "
-				"aborted due to prodding failure of PF %u",
-				pci_dev->addr.domain, pci_dev->addr.bus,
-				pci_dev->addr.devid, pci_dev->addr.function,
-				eth_da.ports[p]);
-			mlx5_net_remove(cdev);
+			if (ret) {
+				DRV_LOG(INFO, "Probe of PCI device " PCI_PRI_FMT " "
+					"aborted due to proding failure of PF %u",
+					pci_dev->addr.domain, pci_dev->addr.bus,
+					pci_dev->addr.devid, pci_dev->addr.function,
+					eth_da.ports[p]);
+				mlx5_net_remove(cdev);
+				if (p != 0)
+					break;
+			}
 		}
 	} else {
 		ret = mlx5_os_pci_probe_pf(cdev, &eth_da, 0);
