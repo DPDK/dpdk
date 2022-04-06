@@ -1983,6 +1983,7 @@ fwd_stats_display(void)
 	struct rte_port *port;
 	streamid_t sm_id;
 	portid_t pt_id;
+	int ret;
 	int i;
 
 	memset(ports_stats, 0, sizeof(ports_stats));
@@ -2014,7 +2015,13 @@ fwd_stats_display(void)
 		pt_id = fwd_ports_ids[i];
 		port = &ports[pt_id];
 
-		rte_eth_stats_get(pt_id, &stats);
+		ret = rte_eth_stats_get(pt_id, &stats);
+		if (ret != 0) {
+			fprintf(stderr,
+				"%s: Error: failed to get stats (port %u): %d",
+				__func__, pt_id, ret);
+			continue;
+		}
 		stats.ipackets -= port->stats.ipackets;
 		stats.opackets -= port->stats.opackets;
 		stats.ibytes -= port->stats.ibytes;
@@ -2109,11 +2116,16 @@ fwd_stats_reset(void)
 {
 	streamid_t sm_id;
 	portid_t pt_id;
+	int ret;
 	int i;
 
 	for (i = 0; i < cur_fwd_config.nb_fwd_ports; i++) {
 		pt_id = fwd_ports_ids[i];
-		rte_eth_stats_get(pt_id, &ports[pt_id].stats);
+		ret = rte_eth_stats_get(pt_id, &ports[pt_id].stats);
+		if (ret != 0)
+			fprintf(stderr,
+				"%s: Error: failed to clear stats (port %u):%d",
+				__func__, pt_id, ret);
 	}
 	for (sm_id = 0; sm_id < cur_fwd_config.nb_fwd_streams; sm_id++) {
 		struct fwd_stream *fs = fwd_streams[sm_id];
