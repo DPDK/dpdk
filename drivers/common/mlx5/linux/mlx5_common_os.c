@@ -559,21 +559,33 @@ mlx5_os_get_ibv_device(const struct rte_pci_addr *addr)
 	int n;
 	struct ibv_device **ibv_list = mlx5_glue->get_device_list(&n);
 	struct ibv_device *ibv_match = NULL;
+	uint8_t guid1[32] = {0};
+	uint8_t guid2[32] = {0};
+	int ret1, ret2 = -1;
+	struct rte_pci_addr paddr;
 
-	if (ibv_list == NULL) {
+	if (ibv_list == NULL || !n) {
 		rte_errno = ENOSYS;
+		if (ibv_list)
+			mlx5_glue->free_device_list(ibv_list);
 		return NULL;
 	}
+	ret1 = mlx5_get_device_guid(addr, guid1, sizeof(guid1));
 	while (n-- > 0) {
-		struct rte_pci_addr paddr;
-
 		DRV_LOG(DEBUG, "Checking device \"%s\"..", ibv_list[n]->name);
 		if (mlx5_get_pci_addr(ibv_list[n]->ibdev_path, &paddr) != 0)
 			continue;
-		if (rte_pci_addr_cmp(addr, &paddr) != 0)
-			continue;
-		ibv_match = ibv_list[n];
-		break;
+		if (ret1 > 0)
+			ret2 = mlx5_get_device_guid(&paddr, guid2, sizeof(guid2));
+		/* Bond device can bond secondary PCIe */
+		if ((strstr(ibv_list[n]->name, "bond") &&
+		    ((ret1 > 0 && ret2 > 0 && !memcmp(guid1, guid2, sizeof(guid1))) ||
+		    (addr->domain == paddr.domain && addr->bus == paddr.bus &&
+		     addr->devid == paddr.devid))) ||
+		     !rte_pci_addr_cmp(addr, &paddr)) {
+			ibv_match = ibv_list[n];
+			break;
+		}
 	}
 	if (ibv_match == NULL) {
 		DRV_LOG(WARNING,
