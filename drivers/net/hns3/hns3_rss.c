@@ -381,9 +381,6 @@ hns3_dev_rss_hash_update(struct rte_eth_dev *dev,
 	uint8_t *key = rss_conf->rss_key;
 	int ret;
 
-	if (hw->rss_dis_flag)
-		return -EINVAL;
-
 	if (key && key_len != HNS3_RSS_KEY_SIZE) {
 		hns3_err(hw, "the hash key len(%u) is invalid, must be %u",
 			 key_len, HNS3_RSS_KEY_SIZE);

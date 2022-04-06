@@ -530,7 +530,6 @@ struct hns3_hw {
 
 	/* The configuration info of RSS */
 	struct hns3_rss_conf rss_info;
-	bool rss_dis_flag; /* disable rss flag. true: disable, false: enable */
 	uint16_t rss_ind_tbl_size;
 	uint16_t rss_key_size;
 
