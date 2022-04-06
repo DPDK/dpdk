@@ -2045,10 +2045,6 @@ cmd_config_mtu_parsed(void *parsed_result,
 {
 	struct cmd_config_mtu_result *res = parsed_result;
 
-	if (res->value < RTE_ETHER_MIN_LEN) {
-		fprintf(stderr, "mtu cannot be less than %d\n", RTE_ETHER_MIN_LEN);
-		return;
-	}
 	port_mtu_set(res->port_id, res->value);
 }
 

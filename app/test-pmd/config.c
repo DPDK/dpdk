@@ -1253,6 +1253,57 @@ port_reg_set(portid_t port_id, uint32_t reg_off, uint32_t reg_v)
 	display_port_reg_value(port_id, reg_off, reg_v);
 }
 
+static uint32_t
+eth_dev_get_overhead_len(uint32_t max_rx_pktlen, uint16_t max_mtu)
+{
+	uint32_t overhead_len;
+
+	if (max_mtu != UINT16_MAX && max_rx_pktlen > max_mtu)
+		overhead_len = max_rx_pktlen - max_mtu;
+	else
+		overhead_len = RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN;
+
+	return overhead_len;
+}
+
+static int
+eth_dev_validate_mtu(uint16_t port_id, uint16_t mtu)
+{
+	struct rte_eth_dev_info dev_info;
+	uint32_t overhead_len;
+	uint32_t frame_size;
+	int ret;
+
+	ret = rte_eth_dev_info_get(port_id, &dev_info);
+	if (ret != 0)
+		return ret;
+
+	if (mtu < dev_info.min_mtu) {
+		fprintf(stderr,
+			"MTU (%u) < device min MTU (%u) for port_id %u\n",
+			mtu, dev_info.min_mtu, port_id);
+		return -EINVAL;
+	}
+	if (mtu > dev_info.max_mtu) {
+		fprintf(stderr,
+			"MTU (%u) > device max MTU (%u) for port_id %u\n",
+			mtu, dev_info.max_mtu, port_id);
+		return -EINVAL;
+	}
+
+	overhead_len = eth_dev_get_overhead_len(dev_info.max_rx_pktlen,
+			dev_info.max_mtu);
+	frame_size = mtu + overhead_len;
+	if (frame_size > dev_info.max_rx_pktlen) {
+		fprintf(stderr,
+			"Frame size (%u) > device max frame size (%u) for port_id %u\n",
+			frame_size, dev_info.max_rx_pktlen, port_id);
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
 void
 port_mtu_set(portid_t port_id, uint16_t mtu)
 {
@@ -1260,6 +1311,10 @@ port_mtu_set(portid_t port_id, uint16_t mtu)
 	int diag;
 
 	if (port_id_is_invalid(port_id, ENABLED_WARN))
+		return;
+
+	diag = eth_dev_validate_mtu(port_id, mtu);
+	if (diag != 0)
 		return;
 
 	if (port->need_reconfig == 0) {
