@@ -245,6 +245,15 @@ enum instruction_type {
 	 */
 	INSTR_MIRROR,
 
+	/* recirculate
+	 */
+	INSTR_RECIRCULATE,
+
+	/* recircid m.recirc_pass_id
+	 * Read the internal recirculation pass ID into the specified meta-data field.
+	 */
+	INSTR_RECIRCID,
+
 	/* extract h.header */
 	INSTR_HDR_EXTRACT,
 	INSTR_HDR_EXTRACT2,
@@ -923,6 +932,8 @@ struct thread {
 	uint8_t *ptr;
 	uint32_t *mirroring_slots;
 	uint64_t mirroring_slots_mask;
+	int recirculate;
+	uint32_t recirc_pass_id;
 
 	/* Structures. */
 	uint8_t **structs;
@@ -1525,6 +1536,28 @@ __instr_rx_exec(struct rte_swx_pipeline *p, struct thread *t, const struct instr
 	struct rte_swx_pkt *pkt = &t->pkt;
 	int pkt_received;
 
+	/* Recirculation: keep the current packet. */
+	if (t->recirculate) {
+		TRACE("[Thread %2u] rx - recirculate (pass %u)\n",
+		      p->thread_id,
+		      t->recirc_pass_id + 1);
+
+		/* Packet. */
+		t->ptr = &pkt->pkt[pkt->offset];
+		t->mirroring_slots_mask = 0;
+		t->recirculate = 0;
+		t->recirc_pass_id++;
+
+		/* Headers. */
+		t->valid_headers = 0;
+		t->n_headers_out = 0;
+
+		/* Tables. */
+		t->table_state = p->table_state;
+
+		return 1;
+	}
+
 	/* Packet. */
 	pkt_received = port->pkt_rx(port->obj, pkt);
 	t->ptr = &pkt->pkt[pkt->offset];
@@ -1536,6 +1569,7 @@ __instr_rx_exec(struct rte_swx_pipeline *p, struct thread *t, const struct instr
 	      p->port_id);
 
 	t->mirroring_slots_mask = 0;
+	t->recirc_pass_id = 0;
 
 	/* Headers. */
 	t->valid_headers = 0;
@@ -1656,6 +1690,20 @@ __instr_tx_exec(struct rte_swx_pipeline *p, struct thread *t, const struct instr
 	struct port_out_runtime *port = &p->out[port_id];
 	struct rte_swx_pkt *pkt = &t->pkt;
 
+	/* Recirculation: keep the current packet. */
+	if (t->recirculate) {
+		TRACE("[Thread %2u]: tx 1 pkt - recirculate\n",
+		      p->thread_id);
+
+		/* Headers. */
+		emit_handler(t);
+
+		/* Packet. */
+		mirroring_handler(p, t, pkt);
+
+		return;
+	}
+
 	TRACE("[Thread %2u]: tx 1 pkt to port %u\n",
 	      p->thread_id,
 	      (uint32_t)port_id);
@@ -1674,6 +1722,20 @@ __instr_tx_i_exec(struct rte_swx_pipeline *p, struct thread *t, const struct ins
 	uint64_t port_id = ip->io.io.val;
 	struct port_out_runtime *port = &p->out[port_id];
 	struct rte_swx_pkt *pkt = &t->pkt;
+
+	/* Recirculation: keep the current packet. */
+	if (t->recirculate) {
+		TRACE("[Thread %2u]: tx (i) 1 pkt - recirculate\n",
+		      p->thread_id);
+
+		/* Headers. */
+		emit_handler(t);
+
+		/* Packet. */
+		mirroring_handler(p, t, pkt);
+
+		return;
+	}
 
 	TRACE("[Thread %2u]: tx (i) 1 pkt to port %u\n",
 	      p->thread_id,
@@ -1725,6 +1787,30 @@ __instr_mirror_exec(struct rte_swx_pipeline *p,
 
 	t->mirroring_slots[slot_id] = session_id;
 	t->mirroring_slots_mask |= 1LLU << slot_id;
+}
+
+static inline void
+__instr_recirculate_exec(struct rte_swx_pipeline *p __rte_unused,
+			 struct thread *t,
+			 const struct instruction *ip __rte_unused)
+{
+	TRACE("[Thread %2u]: recirculate\n",
+	      p->thread_id);
+
+	t->recirculate = 1;
+}
+
+static inline void
+__instr_recircid_exec(struct rte_swx_pipeline *p __rte_unused,
+		      struct thread *t,
+		      const struct instruction *ip)
+{
+	TRACE("[Thread %2u]: recircid (pass %u)\n",
+	      p->thread_id,
+	      t->recirc_pass_id);
+
+	/* Meta-data. */
+	METADATA_WRITE(t, ip->io.io.offset, ip->io.io.n_bits, t->recirc_pass_id);
 }
 
 /*

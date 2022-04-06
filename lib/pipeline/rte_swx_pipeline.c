@@ -1783,6 +1783,68 @@ instr_mirror_exec(struct rte_swx_pipeline *p)
 }
 
 /*
+ * recirculate.
+ */
+static int
+instr_recirculate_translate(struct rte_swx_pipeline *p __rte_unused,
+			    struct action *action __rte_unused,
+			    char **tokens __rte_unused,
+			    int n_tokens,
+			    struct instruction *instr,
+			    struct instruction_data *data __rte_unused)
+{
+	CHECK(n_tokens == 1, EINVAL);
+
+	instr->type = INSTR_RECIRCULATE;
+	return 0;
+}
+
+static int
+instr_recircid_translate(struct rte_swx_pipeline *p,
+			 struct action *action __rte_unused,
+			 char **tokens,
+			 int n_tokens,
+			 struct instruction *instr,
+			 struct instruction_data *data __rte_unused)
+{
+	struct field *f;
+
+	CHECK(n_tokens == 2, EINVAL);
+
+	f = metadata_field_parse(p, tokens[1]);
+	CHECK(f, EINVAL);
+
+	instr->type = INSTR_RECIRCID;
+	instr->io.io.offset = f->offset / 8;
+	instr->io.io.n_bits = f->n_bits;
+	return 0;
+}
+
+static inline void
+instr_recirculate_exec(struct rte_swx_pipeline *p)
+{
+	struct thread *t = &p->threads[p->thread_id];
+	struct instruction *ip = t->ip;
+
+	__instr_recirculate_exec(p, t, ip);
+
+	/* Thread. */
+	thread_ip_inc(p);
+}
+
+static inline void
+instr_recircid_exec(struct rte_swx_pipeline *p)
+{
+	struct thread *t = &p->threads[p->thread_id];
+	struct instruction *ip = t->ip;
+
+	__instr_recircid_exec(p, t, ip);
+
+	/* Thread. */
+	thread_ip_inc(p);
+}
+
+/*
  * extract.
  */
 static int
@@ -5790,6 +5852,22 @@ instr_translate(struct rte_swx_pipeline *p,
 					      instr,
 					      data);
 
+	if (!strcmp(tokens[tpos], "recirculate"))
+		return instr_recirculate_translate(p,
+					      action,
+					      &tokens[tpos],
+					      n_tokens - tpos,
+					      instr,
+					      data);
+
+	if (!strcmp(tokens[tpos], "recircid"))
+		return instr_recircid_translate(p,
+					      action,
+					      &tokens[tpos],
+					      n_tokens - tpos,
+					      instr,
+					      data);
+
 	if (!strcmp(tokens[tpos], "extract"))
 		return instr_hdr_extract_translate(p,
 						   action,
@@ -6815,6 +6893,8 @@ static instr_exec_t instruction_table[] = {
 	[INSTR_TX_I] = instr_tx_i_exec,
 	[INSTR_DROP] = instr_drop_exec,
 	[INSTR_MIRROR] = instr_mirror_exec,
+	[INSTR_RECIRCULATE] = instr_recirculate_exec,
+	[INSTR_RECIRCID] = instr_recircid_exec,
 
 	[INSTR_HDR_EXTRACT] = instr_hdr_extract_exec,
 	[INSTR_HDR_EXTRACT2] = instr_hdr_extract2_exec,
@@ -10352,6 +10432,8 @@ instr_type_to_name(struct instruction *instr)
 	case INSTR_TX_I: return "INSTR_TX_I";
 	case INSTR_DROP: return "INSTR_DROP";
 	case INSTR_MIRROR: return "INSTR_MIRROR";
+	case INSTR_RECIRCULATE: return "INSTR_RECIRCULATE";
+	case INSTR_RECIRCID: return "INSTR_RECIRCID";
 
 	case INSTR_HDR_EXTRACT: return "INSTR_HDR_EXTRACT";
 	case INSTR_HDR_EXTRACT2: return "INSTR_HDR_EXTRACT2";
@@ -10680,6 +10762,32 @@ instr_mirror_export(struct instruction *instr, FILE *f)
 		instr->mirror.src.struct_id,
 		instr->mirror.src.n_bits,
 		instr->mirror.src.offset);
+}
+
+static void
+instr_recirculate_export(struct instruction *instr, FILE *f)
+{
+	fprintf(f,
+		"\t{\n"
+		"\t\t.type = %s,\n"
+		"\t},\n",
+		instr_type_to_name(instr));
+}
+
+static void
+instr_recircid_export(struct instruction *instr, FILE *f)
+{
+	fprintf(f,
+		"\t{\n"
+		"\t\t.type = %s,\n"
+		"\t\t.io = {\n"
+		"\t\t\t.offset = %u,\n"
+		"\t\t\t.n_bits = %u,\n"
+		"\t\t},\n"
+		"\t},\n",
+		instr_type_to_name(instr),
+		instr->io.io.offset,
+		instr->io.io.n_bits);
 }
 
 static void
@@ -11250,6 +11358,8 @@ static instruction_export_t export_table[] = {
 	[INSTR_TX_I] = instr_io_export,
 	[INSTR_DROP] = instr_io_export,
 	[INSTR_MIRROR] = instr_mirror_export,
+	[INSTR_RECIRCULATE] = instr_recirculate_export,
+	[INSTR_RECIRCID] = instr_recircid_export,
 
 	[INSTR_HDR_EXTRACT] = instr_io_export,
 	[INSTR_HDR_EXTRACT2] = instr_io_export,
@@ -11469,6 +11579,8 @@ instr_type_to_func(struct instruction *instr)
 	case INSTR_TX_I: return "__instr_tx_i_exec";
 	case INSTR_DROP: return "__instr_drop_exec";
 	case INSTR_MIRROR: return "__instr_mirror_exec";
+	case INSTR_RECIRCULATE: return "__instr_recirculate_exec";
+	case INSTR_RECIRCID: return "__instr_recircid_exec";
 
 	case INSTR_HDR_EXTRACT: return "__instr_hdr_extract_exec";
 	case INSTR_HDR_EXTRACT2: return "__instr_hdr_extract2_exec";
