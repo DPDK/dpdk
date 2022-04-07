@@ -5454,6 +5454,8 @@ ice_dev_udp_tunnel_port_add(struct rte_eth_dev *dev,
 {
 	int ret = 0;
 	struct ice_hw *hw = ICE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct ice_adapter *ad =
+		ICE_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
 
 	if (udp_tunnel == NULL)
 		return -EINVAL;
@@ -5461,6 +5463,9 @@ ice_dev_udp_tunnel_port_add(struct rte_eth_dev *dev,
 	switch (udp_tunnel->prot_type) {
 	case RTE_ETH_TUNNEL_TYPE_VXLAN:
 		ret = ice_create_tunnel(hw, TNL_VXLAN, udp_tunnel->udp_port);
+		if (!ret && ad->psr != NULL)
+			ice_parser_vxlan_tunnel_set(ad->psr,
+					udp_tunnel->udp_port, true);
 		break;
 	default:
 		PMD_DRV_LOG(ERR, "Invalid tunnel type");
@@ -5478,6 +5483,8 @@ ice_dev_udp_tunnel_port_del(struct rte_eth_dev *dev,
 {
 	int ret = 0;
 	struct ice_hw *hw = ICE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct ice_adapter *ad =
+		ICE_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
 
 	if (udp_tunnel == NULL)
 		return -EINVAL;
@@ -5485,6 +5492,9 @@ ice_dev_udp_tunnel_port_del(struct rte_eth_dev *dev,
 	switch (udp_tunnel->prot_type) {
 	case RTE_ETH_TUNNEL_TYPE_VXLAN:
 		ret = ice_destroy_tunnel(hw, udp_tunnel->udp_port, 0);
+		if (!ret && ad->psr != NULL)
+			ice_parser_vxlan_tunnel_set(ad->psr,
+					udp_tunnel->udp_port, false);
 		break;
 	default:
 		PMD_DRV_LOG(ERR, "Invalid tunnel type");

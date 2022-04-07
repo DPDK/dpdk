@@ -1826,6 +1826,9 @@ ice_flow_init(struct ice_adapter *ad)
 	TAILQ_INIT(&pf->dist_parser_list);
 	rte_spinlock_init(&pf->flow_ops_lock);
 
+	if (ice_parser_create(&ad->hw, &ad->psr) != ICE_SUCCESS)
+		PMD_INIT_LOG(WARNING, "Failed to initialize DDP parser, raw packet filter will not be supported");
+
 	RTE_TAILQ_FOREACH_SAFE(engine, &engine_list, node, temp) {
 		if (engine->init == NULL) {
 			PMD_INIT_LOG(ERR, "Invalid engine type (%d)",
@@ -1879,6 +1882,11 @@ ice_flow_uninit(struct ice_adapter *ad)
 	while ((p_parser = TAILQ_FIRST(&pf->dist_parser_list))) {
 		TAILQ_REMOVE(&pf->dist_parser_list, p_parser, node);
 		rte_free(p_parser);
+	}
+
+	if (ad->psr != NULL) {
+		ice_parser_destroy(ad->psr);
+		ad->psr = NULL;
 	}
 }
 

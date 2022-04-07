@@ -536,6 +536,7 @@ struct ice_adapter {
 	struct ice_rss_prof_info rss_prof_info[ICE_MAX_PTGS];
 	/* True if DCF state of the associated PF is on */
 	bool dcf_state_on;
+	struct ice_parser *psr;
 #ifdef RTE_ARCH_X86
 	bool rx_use_avx2;
 	bool rx_use_avx512;
