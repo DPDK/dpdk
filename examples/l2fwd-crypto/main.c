@@ -252,11 +252,9 @@ struct l2fwd_port_statistics port_statistics[RTE_MAX_ETHPORTS];
 struct l2fwd_crypto_statistics crypto_statistics[RTE_CRYPTO_MAX_DEVS];
 
 /* A tsc-based timer responsible for triggering statistics printout */
-#define TIMER_MILLISECOND 2000000ULL /* around 1ms at 2 Ghz */
+#define TIMER_MILLISECOND (rte_get_tsc_hz() / 1000)
 #define MAX_TIMER_PERIOD 86400UL /* 1 day max */
-
-/* default period is 10 seconds */
-static int64_t timer_period = 10 * TIMER_MILLISECOND * 1000;
+#define DEFAULT_TIMER_PERIOD 10UL
 
 /* Print out statistics on packets dropped */
 static void
@@ -879,18 +877,17 @@ l2fwd_main_loop(struct l2fwd_crypto_options *options)
 			}
 
 			/* if timer is enabled */
-			if (timer_period > 0) {
+			if (options->refresh_period > 0) {
 
 				/* advance the timer */
 				timer_tsc += diff_tsc;
 
 				/* if timer has reached its timeout */
 				if (unlikely(timer_tsc >=
-						(uint64_t)timer_period)) {
+						options->refresh_period)) {
 
 					/* do this only on main core */
-					if (lcore_id == rte_get_main_lcore()
-						&& options->refresh_period) {
+					if (lcore_id == rte_get_main_lcore()) {
 						print_stats();
 						timer_tsc = 0;
 					}
@@ -1451,7 +1448,8 @@ l2fwd_crypto_default_options(struct l2fwd_crypto_options *options)
 {
 	options->portmask = 0xffffffff;
 	options->nb_ports_per_lcore = 1;
-	options->refresh_period = 10000;
+	options->refresh_period = DEFAULT_TIMER_PERIOD *
+					TIMER_MILLISECOND * 1000;
 	options->single_lcore = 0;
 	options->sessionless = 0;
 
