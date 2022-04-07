@@ -1826,7 +1826,6 @@ ice_fdir_parse_pattern(__rte_unused struct ice_adapter *ad,
 	struct ice_fdir_v4 *p_v4 = NULL;
 	struct ice_fdir_v6 *p_v6 = NULL;
 	struct ice_parser_result rslt;
-	struct ice_parser *psr;
 	uint8_t item_num = 0;
 
 	for (item = pattern; item->type != RTE_FLOW_ITEM_TYPE_END; item++) {
@@ -1861,6 +1860,9 @@ ice_fdir_parse_pattern(__rte_unused struct ice_adapter *ad,
 
 		switch (item_type) {
 		case RTE_FLOW_ITEM_TYPE_RAW: {
+			if (ad->psr == NULL)
+				return -rte_errno;
+
 			raw_spec = item->spec;
 			raw_mask = item->mask;
 
@@ -1872,7 +1874,6 @@ ice_fdir_parse_pattern(__rte_unused struct ice_adapter *ad,
 				(uint8_t *)(uintptr_t)raw_spec->pattern;
 			unsigned char *tmp_mask =
 				(uint8_t *)(uintptr_t)raw_mask->pattern;
-			uint16_t udp_port = 0;
 			uint16_t tmp_val = 0;
 			uint8_t pkt_len = 0;
 			uint8_t tmp = 0;
@@ -1921,15 +1922,8 @@ ice_fdir_parse_pattern(__rte_unused struct ice_adapter *ad,
 
 			pkt_len /= 2;
 
-			if (ice_parser_create(&ad->hw, &psr))
+			if (ice_parser_run(ad->psr, tmp_spec, pkt_len, &rslt))
 				return -rte_errno;
-			if (ice_get_open_tunnel_port(&ad->hw, TNL_VXLAN,
-						     &udp_port))
-				ice_parser_vxlan_tunnel_set(psr, udp_port,
-							    true);
-			if (ice_parser_run(psr, tmp_spec, pkt_len, &rslt))
-				return -rte_errno;
-			ice_parser_destroy(psr);
 
 			if (!tmp_mask)
 				return -rte_errno;
