@@ -375,8 +375,12 @@ RTE_INIT(qat_sym_crypto_gen4_init)
 
 RTE_INIT(qat_asym_crypto_gen4_init)
 {
-	qat_asym_gen_dev_ops[QAT_GEN4].cryptodev_ops = NULL;
-	qat_asym_gen_dev_ops[QAT_GEN4].get_capabilities = NULL;
-	qat_asym_gen_dev_ops[QAT_GEN4].get_feature_flags = NULL;
-	qat_asym_gen_dev_ops[QAT_GEN4].set_session = NULL;
+	qat_asym_gen_dev_ops[QAT_GEN4].cryptodev_ops =
+			&qat_asym_crypto_ops_gen1;
+	qat_asym_gen_dev_ops[QAT_GEN4].get_capabilities =
+			qat_asym_crypto_cap_get_gen1;
+	qat_asym_gen_dev_ops[QAT_GEN4].get_feature_flags =
+			qat_asym_crypto_feature_flags_get_gen1;
+	qat_asym_gen_dev_ops[QAT_GEN4].set_session =
+			qat_asym_crypto_set_session_gen1;
 }
