@@ -111,8 +111,8 @@ struct rte_ring_hts_headtail {
  * An RTE ring structure.
  *
  * The producer and the consumer have a head and a tail index. The particularity
- * of these index is that they are not between 0 and size(ring). These indexes
- * are between 0 and 2^32, and we mask their value when we access the ring[]
+ * of these index is that they are not between 0 and size(ring)-1. These indexes
+ * are between 0 and 2^32 -1, and we mask their value when we access the ring[]
  * field. Thanks to this assumption, we can do subtractions between 2 index
  * values in a modulo-32bit base: that's why the overflow of the indexes is not
  * a problem.
