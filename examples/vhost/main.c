@@ -994,10 +994,8 @@ complete_async_pkts(struct vhost_dev *vdev)
 
 	complete_count = rte_vhost_poll_enqueue_completed(vdev->vid,
 					VIRTIO_RXQ, p_cpl, MAX_PKT_BURST, dma_id, 0);
-	if (complete_count) {
+	if (complete_count)
 		free_pkts(p_cpl, complete_count);
-		__atomic_sub_fetch(&vdev->pkts_inflight, complete_count, __ATOMIC_SEQ_CST);
-	}
 
 }
 
@@ -1039,7 +1037,6 @@ drain_vhost(struct vhost_dev *vdev)
 
 		complete_async_pkts(vdev);
 		ret = rte_vhost_submit_enqueue_burst(vdev->vid, VIRTIO_RXQ, m, nr_xmit, dma_id, 0);
-		__atomic_add_fetch(&vdev->pkts_inflight, ret, __ATOMIC_SEQ_CST);
 
 		enqueue_fail = nr_xmit - ret;
 		if (enqueue_fail)
@@ -1368,7 +1365,6 @@ drain_eth_rx(struct vhost_dev *vdev)
 		complete_async_pkts(vdev);
 		enqueue_count = rte_vhost_submit_enqueue_burst(vdev->vid,
 					VIRTIO_RXQ, pkts, rx_count, dma_id, 0);
-		__atomic_add_fetch(&vdev->pkts_inflight, enqueue_count, __ATOMIC_SEQ_CST);
 
 		enqueue_fail = rx_count - enqueue_count;
 		if (enqueue_fail)
@@ -1540,14 +1536,17 @@ destroy_device(int vid)
 
 	if (dma_bind[vid].dmas[VIRTIO_RXQ].async_enabled) {
 		uint16_t n_pkt = 0;
+		int pkts_inflight;
 		int16_t dma_id = dma_bind[vid].dmas[VIRTIO_RXQ].dev_id;
-		struct rte_mbuf *m_cpl[vdev->pkts_inflight];
+		pkts_inflight = rte_vhost_async_get_inflight_thread_unsafe(vid, VIRTIO_RXQ);
+		struct rte_mbuf *m_cpl[pkts_inflight];
 
-		while (vdev->pkts_inflight) {
+		while (pkts_inflight) {
 			n_pkt = rte_vhost_clear_queue_thread_unsafe(vid, VIRTIO_RXQ,
-						m_cpl, vdev->pkts_inflight, dma_id, 0);
+						m_cpl, pkts_inflight, dma_id, 0);
 			free_pkts(m_cpl, n_pkt);
-			__atomic_sub_fetch(&vdev->pkts_inflight, n_pkt, __ATOMIC_SEQ_CST);
+			pkts_inflight = rte_vhost_async_get_inflight_thread_unsafe(vid,
+										VIRTIO_RXQ);
 		}
 
 		rte_vhost_async_channel_unregister(vid, VIRTIO_RXQ);
@@ -1651,14 +1650,17 @@ vring_state_changed(int vid, uint16_t queue_id, int enable)
 	if (dma_bind[vid].dmas[queue_id].async_enabled) {
 		if (!enable) {
 			uint16_t n_pkt = 0;
+			int pkts_inflight;
+			pkts_inflight = rte_vhost_async_get_inflight_thread_unsafe(vid, queue_id);
 			int16_t dma_id = dma_bind[vid].dmas[VIRTIO_RXQ].dev_id;
-			struct rte_mbuf *m_cpl[vdev->pkts_inflight];
+			struct rte_mbuf *m_cpl[pkts_inflight];
 
-			while (vdev->pkts_inflight) {
+			while (pkts_inflight) {
 				n_pkt = rte_vhost_clear_queue_thread_unsafe(vid, queue_id,
-							m_cpl, vdev->pkts_inflight, dma_id, 0);
+							m_cpl, pkts_inflight, dma_id, 0);
 				free_pkts(m_cpl, n_pkt);
-				__atomic_sub_fetch(&vdev->pkts_inflight, n_pkt, __ATOMIC_SEQ_CST);
+				pkts_inflight = rte_vhost_async_get_inflight_thread_unsafe(vid,
+											queue_id);
 			}
 		}
 	}
