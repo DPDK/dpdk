@@ -41,6 +41,8 @@ struct ipsec_test_data {
 
 	bool aead;
 
+	bool aes_gmac;
+
 	bool auth_only;
 
 	/* Antireplay packet */
@@ -185,6 +187,13 @@ static const struct crypto_param auth_list[] = {
 		.alg.auth =  RTE_CRYPTO_AUTH_AES_XCBC_MAC,
 		.key_length = 16,
 		.digest_length = 12,
+	},
+	{
+		.type = RTE_CRYPTO_SYM_XFORM_AUTH,
+		.alg.auth =  RTE_CRYPTO_AUTH_AES_GMAC,
+		.key_length = 16,
+		.digest_length = 16,
+		.iv_length = 12,
 	},
 };
 

@@ -412,6 +412,12 @@ test_ipsec_td_prepare(const struct crypto_param *param1,
 				td->xform.chain.auth.auth.digest_length =
 						param1->digest_length;
 				td->auth_only = true;
+
+				if (td->xform.chain.auth.auth.algo == RTE_CRYPTO_AUTH_AES_GMAC) {
+					td->xform.chain.auth.auth.iv.length =
+						param1->iv_length;
+					td->aes_gmac = true;
+				}
 			} else {
 				td->xform.chain.cipher.cipher.algo =
 						param1->alg.cipher;
@@ -425,6 +431,12 @@ test_ipsec_td_prepare(const struct crypto_param *param1,
 						param2->key_length;
 				td->xform.chain.auth.auth.digest_length =
 						param2->digest_length;
+
+				if (td->xform.chain.auth.auth.algo == RTE_CRYPTO_AUTH_AES_GMAC) {
+					td->xform.chain.auth.auth.iv.length =
+						param2->iv_length;
+					td->aes_gmac = true;
+				}
 			}
 		}
 

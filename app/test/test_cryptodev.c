@@ -9294,9 +9294,12 @@ test_ipsec_proto_process(const struct ipsec_test_data td[],
 		.protocol = RTE_SECURITY_PROTOCOL_IPSEC,
 	};
 
-	if (td[0].aead) {
+	if (td[0].aead || td[0].aes_gmac) {
 		salt_len = RTE_MIN(sizeof(ipsec_xform.salt), td[0].salt.len);
 		memcpy(&ipsec_xform.salt, td[0].salt.data, salt_len);
+	}
+
+	if (td[0].aead) {
 		sess_conf.ipsec = ipsec_xform;
 		sess_conf.crypto_xform = &ut_params->aead_xform;
 	} else if (td[0].auth_only) {
@@ -9377,6 +9380,8 @@ test_ipsec_proto_process(const struct ipsec_test_data td[],
 
 			if (td[i].aead)
 				len = td[i].xform.aead.aead.iv.length;
+			else if (td[i].aes_gmac)
+				len = td[i].xform.chain.auth.auth.iv.length;
 			else
 				len = td[i].xform.chain.cipher.cipher.iv.length;
 
@@ -9435,9 +9440,9 @@ test_ipsec_proto_known_vec(const void *test_data)
 
 	memcpy(&td_outb, test_data, sizeof(td_outb));
 
-	if ((td_outb.ipsec_xform.proto != RTE_SECURITY_IPSEC_SA_PROTO_AH) &&
-	    (td_outb.aead || (td_outb.xform.chain.cipher.cipher.algo !=
-			RTE_CRYPTO_CIPHER_NULL))) {
+	if (td_outb.aes_gmac || td_outb.aead ||
+	    ((td_outb.ipsec_xform.proto != RTE_SECURITY_IPSEC_SA_PROTO_AH) &&
+	     (td_outb.xform.chain.cipher.cipher.algo != RTE_CRYPTO_CIPHER_NULL))) {
 		/* Disable IV gen to be able to test with known vectors */
 		td_outb.ipsec_xform.options.iv_gen_disable = 1;
 	}
@@ -9505,6 +9510,9 @@ test_ipsec_proto_all(const struct ipsec_test_flags *flags)
 
 			cipher_alg = td_outb->xform.chain.cipher.cipher.algo;
 			auth_alg = td_outb->xform.chain.auth.auth.algo;
+
+			if (td_outb->aes_gmac && cipher_alg != RTE_CRYPTO_CIPHER_NULL)
+				continue;
 
 			/* ICV is not applicable for NULL auth */
 			if (flags->icv_corrupt &&
@@ -15098,6 +15106,11 @@ static struct unit_test_suite ipsec_proto_testsuite  = {
 			test_ipsec_proto_known_vec,
 			&pkt_ah_transport_sha256),
 		TEST_CASE_NAMED_WITH_DATA(
+			"Outbound known vector (AH transport mode IPv4 AES-GMAC 128)",
+			ut_setup_security, ut_teardown,
+			test_ipsec_proto_known_vec,
+			&pkt_ah_ipv4_aes_gmac_128),
+		TEST_CASE_NAMED_WITH_DATA(
 			"Outbound fragmented packet",
 			ut_setup_security, ut_teardown,
 			test_ipsec_proto_known_vec_fragmented,
@@ -15157,6 +15170,11 @@ static struct unit_test_suite ipsec_proto_testsuite  = {
 			ut_setup_security, ut_teardown,
 			test_ipsec_proto_known_vec_inb,
 			&pkt_ah_transport_sha256),
+		TEST_CASE_NAMED_WITH_DATA(
+			"Inbound known vector (AH transport mode IPv4 AES-GMAC 128)",
+			ut_setup_security, ut_teardown,
+			test_ipsec_proto_known_vec_inb,
+			&pkt_ah_ipv4_aes_gmac_128),
 		TEST_CASE_NAMED_ST(
 			"Combined test alg list",
 			ut_setup_security, ut_teardown,
