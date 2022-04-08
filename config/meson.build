@@ -499,7 +499,7 @@ if get_option('b_lto')
     endif
 endif
 
-if get_option('b_sanitize') == 'address' or get_option('b_sanitize') == 'address,undefined'
+if get_option('b_sanitize').contains('address')
     if is_windows
         error('ASan is not supported on windows')
     endif
@@ -516,6 +516,22 @@ if get_option('b_sanitize') == 'address' or get_option('b_sanitize') == 'address
 
     if is_linux and dpdk_conf.get('RTE_ARCH_64')
         dpdk_conf.set10('RTE_MALLOC_ASAN', true)
+    endif
+endif
+
+if get_option('b_sanitize').contains('undefined')
+    if is_windows
+        error('UBSan is not supported on windows')
+    endif
+
+    if cc.get_id() == 'gcc'
+        ubsan_dep = cc.find_library('ubsan', required: true)
+        if (not cc.links('int main(int argc, char *argv[]) { return 0; }',
+                dependencies: ubsan_dep))
+            error('broken dependency, "libubsan"')
+        endif
+        add_project_link_arguments('-lubsan', language: 'c')
+        dpdk_extra_ldflags += '-lubsan'
     endif
 endif
 

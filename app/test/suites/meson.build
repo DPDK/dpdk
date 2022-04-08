@@ -72,8 +72,7 @@ foreach suite:test_suites
             elif not has_hugepage
                 continue  #skip this tests
             endif
-            if not asan and (get_option('b_sanitize') == 'address'
-                    or get_option('b_sanitize') == 'address,undefined')
+            if not asan and get_option('b_sanitize').contains('address')
                 continue  # skip this test
             endif
 

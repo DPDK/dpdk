@@ -105,6 +105,7 @@ TSO
 TTL
 Tx
 uAPI
+UBSan
 UDM
 UDP
 ULP
