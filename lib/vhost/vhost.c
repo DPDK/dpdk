@@ -1904,6 +1904,32 @@ rte_vhost_async_get_inflight(int vid, uint16_t queue_id)
 }
 
 int
+rte_vhost_async_get_inflight_thread_unsafe(int vid, uint16_t queue_id)
+{
+	struct vhost_virtqueue *vq;
+	struct virtio_net *dev = get_device(vid);
+	int ret = -1;
+
+	if (dev == NULL)
+		return ret;
+
+	if (queue_id >= VHOST_MAX_VRING)
+		return ret;
+
+	vq = dev->virtqueue[queue_id];
+
+	if (vq == NULL)
+		return ret;
+
+	if (!vq->async)
+		return ret;
+
+	ret = vq->async->pkts_inflight_n;
+
+	return ret;
+}
+
+int
 rte_vhost_get_monitor_addr(int vid, uint16_t queue_id,
 		struct rte_vhost_power_monitor_cond *pmc)
 {

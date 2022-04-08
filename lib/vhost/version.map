@@ -87,6 +87,10 @@ EXPERIMENTAL {
 
 	# added in 22.03
 	rte_vhost_async_dma_configure;
+
+	# added in 22.07
+	rte_vhost_async_get_inflight_thread_unsafe;
+
 };
 
 INTERNAL {

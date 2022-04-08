@@ -55,6 +55,11 @@ New Features
      Also, make sure to start the actual text at the margin.
      =======================================================
 
+* **Added vhost API to get the number of in-flight packets.**
+
+  Added an API which can get the number of in-flight packets in
+  vhost async data path without using lock.
+
 * **Updated Intel iavf driver.**
 
   * Added Tx QoS queue rate limitation support.

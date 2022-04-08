@@ -140,6 +140,23 @@ __rte_experimental
 int rte_vhost_async_get_inflight(int vid, uint16_t queue_id);
 
 /**
+ * This function is lock-free version to return the amount of in-flight
+ * packets for the vhost queue which uses async channel acceleration.
+ *
+ * @note This function does not perform any locking, it should only be
+ * used within the vhost ops, which already holds the lock.
+ *
+ * @param vid
+ * id of vhost device to enqueue data
+ * @param queue_id
+ * queue id to enqueue data
+ * @return
+ * the amount of in-flight packets on success; -1 on failure
+ */
+__rte_experimental
+int rte_vhost_async_get_inflight_thread_unsafe(int vid, uint16_t queue_id);
+
+/**
  * This function checks async completion status and clear packets for
  * a specific vhost device queue. Packets which are inflight will be
  * returned in an array.
