@@ -620,7 +620,8 @@ cperf_set_ops_aead(struct rte_crypto_op **ops,
 		}
 	}
 
-	if (options->test == CPERF_TEST_TYPE_VERIFY) {
+	if ((options->test == CPERF_TEST_TYPE_VERIFY) ||
+			(options->test == CPERF_TEST_TYPE_LATENCY)) {
 		for (i = 0; i < nb_ops; i++) {
 			uint8_t *iv_ptr = rte_crypto_op_ctod_offset(ops[i],
 					uint8_t *, iv_offset);

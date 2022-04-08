@@ -21,4 +21,9 @@ cperf_alloc_common_memory(const struct cperf_options *options,
 			uint32_t *dst_buf_offset,
 			struct rte_mempool **pool);
 
+void
+cperf_mbuf_set(struct rte_mbuf *mbuf,
+		const struct cperf_options *options,
+		const struct cperf_test_vector *test_vector);
+
 #endif /* _CPERF_TEST_COMMON_H_ */
