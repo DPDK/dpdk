@@ -9139,6 +9139,8 @@ test_ipsec_proto_process(const struct ipsec_test_data td[],
 				0x0000, 0x001a};
 	uint16_t v6_dst[8] = {0x2001, 0x0470, 0xe5bf, 0xdead, 0x4957, 0x2174,
 				0xe82c, 0x4887};
+	const struct rte_ipv4_hdr *ipv4 =
+			(const struct rte_ipv4_hdr *)td[0].output_text.data;
 	struct crypto_testsuite_params *ts_params = &testsuite_params;
 	struct crypto_unittest_params *ut_params = &unittest_params;
 	struct rte_security_capability_idx sec_cap_idx;
@@ -9147,11 +9149,10 @@ test_ipsec_proto_process(const struct ipsec_test_data td[],
 	uint8_t dev_id = ts_params->valid_devs[0];
 	enum rte_security_ipsec_sa_direction dir;
 	struct ipsec_test_data *res_d_tmp = NULL;
-	uint32_t src = RTE_IPV4(192, 168, 1, 0);
-	uint32_t dst = RTE_IPV4(192, 168, 1, 1);
 	int salt_len, i, ret = TEST_SUCCESS;
 	struct rte_security_ctx *ctx;
 	uint8_t *input_text;
+	uint32_t src, dst;
 	uint32_t verify;
 
 	ut_params->type = RTE_SECURITY_ACTION_TYPE_LOOKASIDE_PROTOCOL;
@@ -9164,6 +9165,9 @@ test_ipsec_proto_process(const struct ipsec_test_data td[],
 
 	dir = ipsec_xform.direction;
 	verify = flags->tunnel_hdr_verify;
+
+	memcpy(&src, &ipv4->src_addr, sizeof(ipv4->src_addr));
+	memcpy(&dst, &ipv4->dst_addr, sizeof(ipv4->dst_addr));
 
 	if ((dir == RTE_SECURITY_IPSEC_SA_DIR_INGRESS) && verify) {
 		if (verify == RTE_SECURITY_IPSEC_TUNNEL_VERIFY_SRC_DST_ADDR)
@@ -9431,8 +9435,9 @@ test_ipsec_proto_known_vec(const void *test_data)
 
 	memcpy(&td_outb, test_data, sizeof(td_outb));
 
-	if (td_outb.aead ||
-	    td_outb.xform.chain.cipher.cipher.algo != RTE_CRYPTO_CIPHER_NULL) {
+	if ((td_outb.ipsec_xform.proto != RTE_SECURITY_IPSEC_SA_PROTO_AH) &&
+	    (td_outb.aead || (td_outb.xform.chain.cipher.cipher.algo !=
+			RTE_CRYPTO_CIPHER_NULL))) {
 		/* Disable IV gen to be able to test with known vectors */
 		td_outb.ipsec_xform.options.iv_gen_disable = 1;
 	}
@@ -15083,6 +15088,16 @@ static struct unit_test_suite ipsec_proto_testsuite  = {
 			test_ipsec_proto_known_vec,
 			&pkt_null_aes_xcbc),
 		TEST_CASE_NAMED_WITH_DATA(
+			"Outbound known vector (AH tunnel mode IPv4 HMAC-SHA256)",
+			ut_setup_security, ut_teardown,
+			test_ipsec_proto_known_vec,
+			&pkt_ah_tunnel_sha256),
+		TEST_CASE_NAMED_WITH_DATA(
+			"Outbound known vector (AH transport mode IPv4 HMAC-SHA256)",
+			ut_setup_security, ut_teardown,
+			test_ipsec_proto_known_vec,
+			&pkt_ah_transport_sha256),
+		TEST_CASE_NAMED_WITH_DATA(
 			"Outbound fragmented packet",
 			ut_setup_security, ut_teardown,
 			test_ipsec_proto_known_vec_fragmented,
@@ -15132,6 +15147,16 @@ static struct unit_test_suite ipsec_proto_testsuite  = {
 			ut_setup_security, ut_teardown,
 			test_ipsec_proto_known_vec_inb,
 			&pkt_null_aes_xcbc),
+		TEST_CASE_NAMED_WITH_DATA(
+			"Inbound known vector (AH tunnel mode IPv4 HMAC-SHA256)",
+			ut_setup_security, ut_teardown,
+			test_ipsec_proto_known_vec_inb,
+			&pkt_ah_tunnel_sha256),
+		TEST_CASE_NAMED_WITH_DATA(
+			"Inbound known vector (AH transport mode IPv4 HMAC-SHA256)",
+			ut_setup_security, ut_teardown,
+			test_ipsec_proto_known_vec_inb,
+			&pkt_ah_transport_sha256),
 		TEST_CASE_NAMED_ST(
 			"Combined test alg list",
 			ut_setup_security, ut_teardown,
