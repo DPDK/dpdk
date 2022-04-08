@@ -819,10 +819,26 @@ ice_vsi_config_tc_queue_mapping(struct ice_vsi *vsi,
 		return -ENOTSUP;
 	}
 
-	vsi->nb_qps = RTE_MIN(vsi->nb_qps, ICE_MAX_Q_PER_TC);
-	fls = (vsi->nb_qps == 0) ? 0 : rte_fls_u32(vsi->nb_qps) - 1;
-	/* Adjust the queue number to actual queues that can be applied */
-	vsi->nb_qps = (vsi->nb_qps == 0) ? 0 : 0x1 << fls;
+	/* vector 0 is reserved and 1 vector for ctrl vsi */
+	if (vsi->adapter->hw.func_caps.common_cap.num_msix_vectors < 2)
+		vsi->nb_qps = 0;
+	else
+		vsi->nb_qps = RTE_MIN
+			((uint16_t)vsi->adapter->hw.func_caps.common_cap.num_msix_vectors - 2,
+			RTE_MIN(vsi->nb_qps, ICE_MAX_Q_PER_TC));
+
+	/* nb_qps(hex)  -> fls */
+	/* 0000		-> 0 */
+	/* 0001		-> 0 */
+	/* 0002		-> 1 */
+	/* 0003 ~ 0004	-> 2 */
+	/* 0005 ~ 0008	-> 3 */
+	/* 0009 ~ 0010	-> 4 */
+	/* 0011 ~ 0020	-> 5 */
+	/* 0021 ~ 0040	-> 6 */
+	/* 0041 ~ 0080	-> 7 */
+	/* 0081 ~ 0100	-> 8 */
+	fls = (vsi->nb_qps == 0) ? 0 : rte_fls_u32(vsi->nb_qps - 1);
 
 	qp_idx = 0;
 	/* Set tc and queue mapping with VSI */
