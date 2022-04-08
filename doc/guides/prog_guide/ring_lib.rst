@@ -172,7 +172,7 @@ If there are not enough objects in the ring (this is detected by checking prod_t
 
 .. figure:: img/ring-dequeue1.*
 
-   Dequeue last step
+   Dequeue first step
 
 
 Dequeue Second Step
