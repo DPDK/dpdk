@@ -21,6 +21,8 @@ struct crypto_param_comb alg_list[RTE_DIM(aead_list) +
 				  (RTE_DIM(cipher_list) *
 				   RTE_DIM(auth_list))];
 
+struct crypto_param_comb ah_alg_list[2 * (RTE_DIM(auth_list) - 1)];
+
 static bool
 is_valid_ipv4_pkt(const struct rte_ipv4_hdr *pkt)
 {
@@ -72,6 +74,26 @@ test_ipsec_alg_list_populate(void)
 			alg_list[index].param2 = &auth_list[j];
 			index++;
 		}
+	}
+}
+
+void
+test_ipsec_ah_alg_list_populate(void)
+{
+	unsigned long i, index = 0;
+
+	for (i = 1; i < RTE_DIM(auth_list); i++) {
+		ah_alg_list[index].param1 = &auth_list[i];
+		ah_alg_list[index].param2 = NULL;
+		index++;
+	}
+
+	for (i = 1; i < RTE_DIM(auth_list); i++) {
+		/* NULL cipher */
+		ah_alg_list[index].param1 = &cipher_list[0];
+
+		ah_alg_list[index].param2 = &auth_list[i];
+		index++;
 	}
 }
 
@@ -381,17 +403,34 @@ test_ipsec_td_prepare(const struct crypto_param *param1,
 					sizeof(*td));
 
 			td->aead = false;
-			td->xform.chain.cipher.cipher.algo = param1->alg.cipher;
-			td->xform.chain.cipher.cipher.key.length =
-					param1->key_length;
-			td->xform.chain.cipher.cipher.iv.length =
-					param1->iv_length;
-			td->xform.chain.auth.auth.algo = param2->alg.auth;
-			td->xform.chain.auth.auth.key.length =
-					param2->key_length;
-			td->xform.chain.auth.auth.digest_length =
-					param2->digest_length;
 
+			if (param1->type == RTE_CRYPTO_SYM_XFORM_AUTH) {
+				td->xform.chain.auth.auth.algo =
+						param1->alg.auth;
+				td->xform.chain.auth.auth.key.length =
+						param1->key_length;
+				td->xform.chain.auth.auth.digest_length =
+						param1->digest_length;
+				td->auth_only = true;
+			} else {
+				td->xform.chain.cipher.cipher.algo =
+						param1->alg.cipher;
+				td->xform.chain.cipher.cipher.key.length =
+						param1->key_length;
+				td->xform.chain.cipher.cipher.iv.length =
+						param1->iv_length;
+				td->xform.chain.auth.auth.algo =
+						param2->alg.auth;
+				td->xform.chain.auth.auth.key.length =
+						param2->key_length;
+				td->xform.chain.auth.auth.digest_length =
+						param2->digest_length;
+			}
+		}
+
+		if (flags->ah) {
+			td->ipsec_xform.proto =
+					RTE_SECURITY_IPSEC_SA_PROTO_AH;
 		}
 
 		if (flags->iv_gen)
@@ -499,6 +538,11 @@ test_ipsec_display_alg(const struct crypto_param *param1,
 		printf("\t%s [%d]",
 		       rte_crypto_aead_algorithm_strings[param1->alg.aead],
 		       param1->key_length * 8);
+	} else if (param1->type == RTE_CRYPTO_SYM_XFORM_AUTH) {
+		printf("\t%s",
+		       rte_crypto_auth_algorithm_strings[param1->alg.auth]);
+		if (param1->alg.auth != RTE_CRYPTO_AUTH_NULL)
+			printf(" [%dB ICV]", param1->digest_length);
 	} else {
 		printf("\t%s",
 		       rte_crypto_cipher_algorithm_strings[param1->alg.cipher]);
@@ -832,6 +876,11 @@ test_ipsec_iph4_hdr_validate(const struct rte_ipv4_hdr *iph4,
 		return -1;
 	}
 
+	if (flags->ah && iph4->next_proto_id != IPPROTO_AH) {
+		printf("Tunnel outer header proto is not AH\n");
+		return -1;
+	}
+
 	f_off = rte_be_to_cpu_16(iph4->fragment_offset);
 	if (flags->df == TEST_IPSEC_COPY_DF_INNER_1 ||
 	    flags->df == TEST_IPSEC_SET_DF_1_INNER_0) {
@@ -933,6 +982,11 @@ test_ipsec_post_process(struct rte_mbuf *m, const struct ipsec_test_data *td,
 				if (is_valid_ipv4_pkt(iph4) == false) {
 					printf("Transport packet is not IPv4\n");
 					return TEST_FAILED;
+				}
+
+				if (flags->ah && iph4->next_proto_id != IPPROTO_AH) {
+					printf("Transport IPv4 header proto is not AH\n");
+					return -1;
 				}
 			}
 		} else {

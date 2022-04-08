@@ -845,6 +845,7 @@ ipsec_proto_testsuite_setup(void)
 	}
 
 	test_ipsec_alg_list_populate();
+	test_ipsec_ah_alg_list_populate();
 
 	/*
 	 * Stop the device. Device would be started again by individual test
@@ -9238,6 +9239,19 @@ test_ipsec_proto_process(const struct ipsec_test_data td[],
 					"Crypto capabilities not supported\n");
 			return TEST_SKIPPED;
 		}
+	} else if (td[0].auth_only) {
+		memcpy(&ut_params->auth_xform, &td[0].xform.chain.auth,
+		       sizeof(ut_params->auth_xform));
+		ut_params->auth_xform.auth.key.data = td[0].auth_key.data;
+
+		if (test_ipsec_crypto_caps_auth_verify(
+				sec_cap,
+				&ut_params->auth_xform) != 0) {
+			if (!silent)
+				RTE_LOG(INFO, USER1,
+					"Auth crypto capabilities not supported\n");
+			return TEST_SKIPPED;
+		}
 	} else {
 		memcpy(&ut_params->cipher_xform, &td[0].xform.chain.cipher,
 		       sizeof(ut_params->cipher_xform));
@@ -9281,6 +9295,9 @@ test_ipsec_proto_process(const struct ipsec_test_data td[],
 		memcpy(&ipsec_xform.salt, td[0].salt.data, salt_len);
 		sess_conf.ipsec = ipsec_xform;
 		sess_conf.crypto_xform = &ut_params->aead_xform;
+	} else if (td[0].auth_only) {
+		sess_conf.ipsec = ipsec_xform;
+		sess_conf.crypto_xform = &ut_params->auth_xform;
 	} else {
 		sess_conf.ipsec = ipsec_xform;
 		if (dir == RTE_SECURITY_IPSEC_SA_DIR_EGRESS) {
@@ -9527,6 +9544,52 @@ test_ipsec_proto_all(const struct ipsec_test_flags *flags)
 }
 
 static int
+test_ipsec_ah_proto_all(const struct ipsec_test_flags *flags)
+{
+	struct ipsec_test_data td_outb[IPSEC_TEST_PACKETS_MAX];
+	struct ipsec_test_data td_inb[IPSEC_TEST_PACKETS_MAX];
+	unsigned int i, nb_pkts = 1, pass_cnt = 0;
+	int ret;
+
+	for (i = 0; i < RTE_DIM(ah_alg_list); i++) {
+		test_ipsec_td_prepare(ah_alg_list[i].param1,
+				      ah_alg_list[i].param2,
+				      flags,
+				      td_outb,
+				      nb_pkts);
+
+		ret = test_ipsec_proto_process(td_outb, td_inb, nb_pkts, true,
+					       flags);
+		if (ret == TEST_SKIPPED)
+			continue;
+
+		if (ret == TEST_FAILED)
+			return TEST_FAILED;
+
+		test_ipsec_td_update(td_inb, td_outb, nb_pkts, flags);
+
+		ret = test_ipsec_proto_process(td_inb, NULL, nb_pkts, true,
+					       flags);
+		if (ret == TEST_SKIPPED)
+			continue;
+
+		if (ret == TEST_FAILED)
+			return TEST_FAILED;
+
+		if (flags->display_alg)
+			test_ipsec_display_alg(ah_alg_list[i].param1,
+					       ah_alg_list[i].param2);
+
+		pass_cnt++;
+	}
+
+	if (pass_cnt > 0)
+		return TEST_SUCCESS;
+	else
+		return TEST_SKIPPED;
+}
+
+static int
 test_ipsec_proto_display_list(const void *data __rte_unused)
 {
 	struct ipsec_test_flags flags;
@@ -9536,6 +9599,32 @@ test_ipsec_proto_display_list(const void *data __rte_unused)
 	flags.display_alg = true;
 
 	return test_ipsec_proto_all(&flags);
+}
+
+static int
+test_ipsec_proto_ah_tunnel_ipv4(const void *data __rte_unused)
+{
+	struct ipsec_test_flags flags;
+
+	memset(&flags, 0, sizeof(flags));
+
+	flags.ah = true;
+	flags.display_alg = true;
+
+	return test_ipsec_ah_proto_all(&flags);
+}
+
+static int
+test_ipsec_proto_ah_transport_ipv4(const void *data __rte_unused)
+{
+	struct ipsec_test_flags flags;
+
+	memset(&flags, 0, sizeof(flags));
+
+	flags.ah = true;
+	flags.transport = true;
+
+	return test_ipsec_ah_proto_all(&flags);
 }
 
 static int
@@ -15048,6 +15137,10 @@ static struct unit_test_suite ipsec_proto_testsuite  = {
 			ut_setup_security, ut_teardown,
 			test_ipsec_proto_display_list),
 		TEST_CASE_NAMED_ST(
+			"Combined test alg list (AH)",
+			ut_setup_security, ut_teardown,
+			test_ipsec_proto_ah_tunnel_ipv4),
+		TEST_CASE_NAMED_ST(
 			"IV generation",
 			ut_setup_security, ut_teardown,
 			test_ipsec_proto_iv_gen),
@@ -15107,6 +15200,10 @@ static struct unit_test_suite ipsec_proto_testsuite  = {
 			"Transport IPv4",
 			ut_setup_security, ut_teardown,
 			test_ipsec_proto_transport_v4),
+		TEST_CASE_NAMED_ST(
+			"AH transport IPv4",
+			ut_setup_security, ut_teardown,
+			test_ipsec_proto_ah_transport_ipv4),
 		TEST_CASE_NAMED_ST(
 			"Transport l4 checksum",
 			ut_setup_security, ut_teardown,
