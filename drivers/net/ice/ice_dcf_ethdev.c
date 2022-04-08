@@ -664,6 +664,8 @@ ice_dcf_dev_info_get(struct rte_eth_dev *dev,
 	dev_info->reta_size = hw->vf_res->rss_lut_size;
 	dev_info->flow_type_rss_offloads = ICE_RSS_OFFLOAD_ALL;
 	dev_info->dev_capa &= ~RTE_ETH_DEV_CAPA_FLOW_RULE_KEEP;
+	dev_info->max_mtu = dev_info->max_rx_pktlen - ICE_ETH_OVERHEAD;
+	dev_info->min_mtu = RTE_ETHER_MIN_MTU;
 
 	dev_info->rx_offload_capa =
 		RTE_ETH_RX_OFFLOAD_VLAN_STRIP |
