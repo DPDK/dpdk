@@ -38,13 +38,13 @@ idxd_pci_dev_command(struct idxd_dmadev *idxd, enum rte_idxd_cmds command)
 			IDXD_PMD_ERR("Timeout waiting for command response from HW");
 			rte_spinlock_unlock(&idxd->u.pci->lk);
 			err_code &= CMDSTATUS_ERR_MASK;
-			return -err_code;
+			return err_code;
 		}
 	} while (err_code & CMDSTATUS_ACTIVE_MASK);
 	rte_spinlock_unlock(&idxd->u.pci->lk);
 
 	err_code &= CMDSTATUS_ERR_MASK;
-	return -err_code;
+	return err_code;
 }
 
 static uint32_t *
