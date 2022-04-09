@@ -619,7 +619,8 @@ dlb2_eventdev_pci_init(struct rte_eventdev *eventdev)
 		.poll_interval = DLB2_POLL_INTERVAL_DEFAULT,
 		.sw_credit_quanta = DLB2_SW_CREDIT_QUANTA_DEFAULT,
 		.hw_credit_quanta = DLB2_SW_CREDIT_BATCH_SZ,
-		.default_depth_thresh = DLB2_DEPTH_THRESH_DEFAULT
+		.default_depth_thresh = DLB2_DEPTH_THRESH_DEFAULT,
+		.max_cq_depth = DLB2_DEFAULT_CQ_DEPTH
 	};
 	struct dlb2_eventdev *dlb2;
 

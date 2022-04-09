@@ -55,7 +55,7 @@ static struct rte_event_dev_info evdev_dlb2_default_info = {
 	.max_event_queue_priority_levels = DLB2_QID_PRIORITIES,
 	.max_event_priority_levels = DLB2_QID_PRIORITIES,
 	.max_event_ports = DLB2_MAX_NUM_LDB_PORTS,
-	.max_event_port_dequeue_depth = DLB2_MAX_CQ_DEPTH,
+	.max_event_port_dequeue_depth = DLB2_DEFAULT_CQ_DEPTH,
 	.max_event_port_enqueue_depth = DLB2_MAX_ENQUEUE_DEPTH,
 	.max_event_port_links = DLB2_MAX_NUM_QIDS_PER_LDB_CQ,
 	.max_num_events = DLB2_MAX_NUM_LDB_CREDITS,
@@ -111,6 +111,7 @@ dlb2_hw_query_resources(struct dlb2_eventdev *dlb2)
 {
 	struct dlb2_hw_dev *handle = &dlb2->qm_instance;
 	struct dlb2_hw_resource_info *dlb2_info = &handle->info;
+	int num_ldb_ports;
 	int ret;
 
 	/* Query driver resources provisioned for this device */
@@ -127,11 +128,15 @@ dlb2_hw_query_resources(struct dlb2_eventdev *dlb2)
 	 * The capabilities (CAPs) were set at compile time.
 	 */
 
+	if (dlb2->max_cq_depth != DLB2_DEFAULT_CQ_DEPTH)
+		num_ldb_ports = DLB2_MAX_HL_ENTRIES / dlb2->max_cq_depth;
+	else
+		num_ldb_ports = dlb2->hw_rsrc_query_results.num_ldb_ports;
+
 	evdev_dlb2_default_info.max_event_queues =
 		dlb2->hw_rsrc_query_results.num_ldb_queues;
 
-	evdev_dlb2_default_info.max_event_ports =
-		dlb2->hw_rsrc_query_results.num_ldb_ports;
+	evdev_dlb2_default_info.max_event_ports = num_ldb_ports;
 
 	if (dlb2->version == DLB2_HW_V2_5) {
 		evdev_dlb2_default_info.max_num_events =
@@ -159,8 +164,7 @@ dlb2_hw_query_resources(struct dlb2_eventdev *dlb2)
 	handle->info.hw_rsrc_max.num_ldb_queues =
 		dlb2->hw_rsrc_query_results.num_ldb_queues;
 
-	handle->info.hw_rsrc_max.num_ldb_ports =
-		dlb2->hw_rsrc_query_results.num_ldb_ports;
+	handle->info.hw_rsrc_max.num_ldb_ports = num_ldb_ports;
 
 	handle->info.hw_rsrc_max.num_dir_ports =
 		dlb2->hw_rsrc_query_results.num_dir_ports;
@@ -209,6 +213,36 @@ set_numa_node(const char *key __rte_unused, const char *value, void *opaque)
 
 	if (*socket_id > RTE_MAX_NUMA_NODES)
 		return -EINVAL;
+	return 0;
+}
+
+
+static int
+set_max_cq_depth(const char *key __rte_unused,
+		 const char *value,
+		 void *opaque)
+{
+	int *max_cq_depth = opaque;
+	int ret;
+
+	if (value == NULL || opaque == NULL) {
+		DLB2_LOG_ERR("NULL pointer\n");
+		return -EINVAL;
+	}
+
+	ret = dlb2_string_to_int(max_cq_depth, value);
+	if (ret < 0)
+		return ret;
+
+	if (*max_cq_depth < DLB2_MIN_CQ_DEPTH_OVERRIDE ||
+	    *max_cq_depth > DLB2_MAX_CQ_DEPTH_OVERRIDE ||
+	    !rte_is_power_of_2(*max_cq_depth)) {
+		DLB2_LOG_ERR("dlb2: max_cq_depth %d and %d and a power of 2\n",
+			     DLB2_MIN_CQ_DEPTH_OVERRIDE,
+			     DLB2_MAX_CQ_DEPTH_OVERRIDE);
+		return -EINVAL;
+	}
+
 	return 0;
 }
 
@@ -4504,6 +4538,7 @@ dlb2_primary_eventdev_probe(struct rte_eventdev *dev,
 	dlb2->hw_credit_quanta = dlb2_args->hw_credit_quanta;
 	dlb2->default_depth_thresh = dlb2_args->default_depth_thresh;
 	dlb2->vector_opts_enabled = dlb2_args->vector_opts_enabled;
+	dlb2->max_cq_depth = dlb2_args->max_cq_depth;
 
 	err = dlb2_iface_open(&dlb2->qm_instance, name);
 	if (err < 0) {
@@ -4609,6 +4644,7 @@ dlb2_parse_params(const char *params,
 					     DLB2_HW_CREDIT_QUANTA_ARG,
 					     DLB2_DEPTH_THRESH_ARG,
 					     DLB2_VECTOR_OPTS_ENAB_ARG,
+					     DLB2_MAX_CQ_DEPTH,
 					     NULL };
 
 	if (params != NULL && params[0] != '\0') {
@@ -4737,6 +4773,17 @@ dlb2_parse_params(const char *params,
 					DLB2_VECTOR_OPTS_ENAB_ARG,
 					set_vector_opts_enab,
 					&dlb2_args->vector_opts_enabled);
+			if (ret != 0) {
+				DLB2_LOG_ERR("%s: Error parsing vector opts enabled",
+					     name);
+				rte_kvargs_free(kvlist);
+				return ret;
+			}
+
+			ret = rte_kvargs_process(kvlist,
+					DLB2_MAX_CQ_DEPTH,
+					set_max_cq_depth,
+					&dlb2_args->max_cq_depth);
 			if (ret != 0) {
 				DLB2_LOG_ERR("%s: Error parsing vector opts enabled",
 					     name);

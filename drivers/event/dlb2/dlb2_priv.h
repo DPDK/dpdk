@@ -28,6 +28,8 @@
 #define DLB2_SW_CREDIT_P_QUANTA_DEFAULT 256 /* Producer */
 #define DLB2_SW_CREDIT_C_QUANTA_DEFAULT 256 /* Consumer */
 #define DLB2_DEPTH_THRESH_DEFAULT 256
+#define DLB2_MIN_CQ_DEPTH_OVERRIDE 32
+#define DLB2_MAX_CQ_DEPTH_OVERRIDE 1024
 
 /*  command line arg strings */
 #define NUMA_NODE_ARG "numa_node"
@@ -41,6 +43,7 @@
 #define DLB2_HW_CREDIT_QUANTA_ARG "hw_credit_quanta"
 #define DLB2_DEPTH_THRESH_ARG "default_depth_thresh"
 #define DLB2_VECTOR_OPTS_ENAB_ARG "vector_opts_enable"
+#define DLB2_MAX_CQ_DEPTH "max_cq_depth"
 
 /* Begin HW related defines and structs */
 
@@ -87,11 +90,12 @@
  * depth must be a power of 2 and must also be >= HIST LIST entries.
  * As a result we just limit the maximum dequeue depth to 32.
  */
+#define DLB2_MAX_HL_ENTRIES 2048
 #define DLB2_MIN_CQ_DEPTH 1
-#define DLB2_MAX_CQ_DEPTH 32
+#define DLB2_DEFAULT_CQ_DEPTH 32
 #define DLB2_MIN_HARDWARE_CQ_DEPTH 8
 #define DLB2_NUM_HIST_LIST_ENTRIES_PER_LDB_PORT \
-	DLB2_MAX_CQ_DEPTH
+	DLB2_DEFAULT_CQ_DEPTH
 
 #define DLB2_HW_DEVICE_FROM_PCI_ID(_pdev) \
 	(((_pdev->id.device_id == PCI_DEVICE_ID_INTEL_DLB2_5_PF) ||        \
@@ -572,6 +576,7 @@ struct dlb2_eventdev {
 	int max_num_events_override;
 	int num_dir_credits_override;
 	bool vector_opts_enabled;
+	int max_cq_depth;
 	volatile enum dlb2_run_state run_state;
 	uint16_t num_dir_queues; /* total num of evdev dir queues requested */
 	union {
@@ -632,6 +637,7 @@ struct dlb2_devargs {
 	int hw_credit_quanta;
 	int default_depth_thresh;
 	bool vector_opts_enabled;
+	int max_cq_depth;
 };
 
 /* End Eventdev related defines and structs */
