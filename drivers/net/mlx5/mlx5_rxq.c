@@ -2049,6 +2049,8 @@ mlx5_rxq_get(struct rte_eth_dev *dev, uint16_t idx)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 
+	if (idx >= priv->rxqs_n)
+		return NULL;
 	MLX5_ASSERT(priv->rxq_privs != NULL);
 	return (*priv->rxq_privs)[idx];
 }
