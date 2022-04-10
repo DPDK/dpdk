@@ -328,6 +328,36 @@ mlx5_glue_devx_init_showdown_event(void *ctx)
 	return 0;
 }
 
+static int
+mlx5_glue_devx_set_promisc_vport(void *ctx, uint32_t promisc_type, uint8_t f_enable)
+{
+#ifdef HAVE_DEVX_SET_PROMISC_SUPPORT
+	int devx_promisc_type = MLX5_DEVX_SET_PROMISC_VPORT_PROMISC_MODE;
+	struct mlx5_context *mlx5_ctx;
+	int err;
+
+	if (!ctx) {
+		errno = EINVAL;
+		return errno;
+	}
+	mlx5_ctx = (struct mlx5_context *)ctx;
+	if (promisc_type == MC_PROMISC)
+		devx_promisc_type = MLX5_DEVX_SET_PROMISC_VPORT_ALL_MULTICAST;
+	err = devx_set_promisc_vport(mlx5_ctx->devx_ctx, devx_promisc_type, f_enable);
+	if (err) {
+		errno = err;
+		return errno;
+	}
+	return 0;
+#else
+	(void)promisc_type;
+	(void)f_enable;
+	(void)ctx;
+	DRV_LOG(WARNING, "%s: is not supported", __func__);
+	return -ENOTSUP;
+#endif
+}
+
 alignas(RTE_CACHE_LINE_SIZE)
 const struct mlx5_glue *mlx5_glue = &(const struct mlx5_glue){
 	.version = MLX5_GLUE_VERSION,
@@ -351,4 +381,5 @@ const struct mlx5_glue *mlx5_glue = &(const struct mlx5_glue){
 	.devx_query_eqn = mlx5_glue_devx_query_eqn,
 	.query_rt_values = mlx5_glue_query_rt_values,
 	.devx_init_showdown_event = mlx5_glue_devx_init_showdown_event,
+	.devx_set_promisc_vport = mlx5_glue_devx_set_promisc_vport,
 };

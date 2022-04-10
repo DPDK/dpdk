@@ -60,6 +60,10 @@ New Features
   * Added Tx QoS queue rate limitation support.
   * Added quanta size configuration support.
 
+* **Updated Mellanox mlx5 driver.**
+
+  * Added support for promiscuous mode on Windows.
+
 
 Removed Items
 -------------

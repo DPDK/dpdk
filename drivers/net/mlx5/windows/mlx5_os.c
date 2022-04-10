@@ -729,7 +729,6 @@ mlx5_os_vf_mac_addr_modify(struct mlx5_priv *priv,
 
 /**
  * Set device promiscuous mode
- * Currently it has no support under Windows.
  *
  * @param dev
  *   Pointer to Ethernet device structure.
@@ -742,10 +741,9 @@ mlx5_os_vf_mac_addr_modify(struct mlx5_priv *priv,
 int
 mlx5_os_set_promisc(struct rte_eth_dev *dev, int enable)
 {
-	(void)dev;
-	(void)enable;
-	DRV_LOG(WARNING, "%s: is not supported", __func__);
-	return -ENOTSUP;
+	struct mlx5_priv *priv = dev->data->dev_private;
+
+	return mlx5_glue->devx_set_promisc_vport(priv->sh->cdev->ctx, ALL_PROMISC, enable);
 }
 
 /**
@@ -762,10 +760,9 @@ mlx5_os_set_promisc(struct rte_eth_dev *dev, int enable)
 int
 mlx5_os_set_allmulti(struct rte_eth_dev *dev, int enable)
 {
-	(void)dev;
-	(void)enable;
-	DRV_LOG(WARNING, "%s: is not supported", __func__);
-	return -ENOTSUP;
+	struct mlx5_priv *priv = dev->data->dev_private;
+
+	return mlx5_glue->devx_set_promisc_vport(priv->sh->cdev->ctx, MC_PROMISC, enable);
 }
 
 /**

@@ -49,6 +49,11 @@ struct mlx5dv_dr_action_dest_attr {
 };
 #endif
 
+enum {
+	ALL_PROMISC,
+	MC_PROMISC,
+};
+
 /* LIB_GLUE_VERSION must be updated every time this structure is modified. */
 struct mlx5_glue {
 	const char *version;
@@ -87,6 +92,7 @@ struct mlx5_glue {
 	int (*devx_query_eqn)(void *context, uint32_t cpus, uint32_t *eqn);
 	int (*query_rt_values)(void *ctx, void *devx_clock);
 	int (*devx_init_showdown_event)(void *ctx);
+	int (*devx_set_promisc_vport)(void *ctx, uint32_t promisc_type, uint8_t f_enable);
 };
 
 extern const struct mlx5_glue *mlx5_glue;
