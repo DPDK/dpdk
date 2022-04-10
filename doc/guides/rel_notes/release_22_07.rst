@@ -63,6 +63,7 @@ New Features
 * **Updated Mellanox mlx5 driver.**
 
   * Added support for promiscuous mode on Windows.
+  * Added support for MTU on Windows.
 
 
 Removed Items

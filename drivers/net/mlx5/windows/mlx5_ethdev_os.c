@@ -85,6 +85,8 @@ mlx5_get_ifname(const struct rte_eth_dev *dev, char (*ifname)[MLX5_NAMESIZE])
 int
 mlx5_get_mtu(struct rte_eth_dev *dev, uint16_t *mtu)
 {
+	int err;
+	uint32_t curr_mtu;
 	struct mlx5_priv *priv;
 	mlx5_context_st *context_obj;
 
@@ -94,7 +96,14 @@ mlx5_get_mtu(struct rte_eth_dev *dev, uint16_t *mtu)
 	}
 	priv = dev->data->dev_private;
 	context_obj = (mlx5_context_st *)priv->sh->cdev->ctx;
-	*mtu = context_obj->mlx5_dev.mtu_bytes;
+
+	err = mlx5_glue->devx_get_mtu(context_obj, &curr_mtu);
+	if (err != 0) {
+		DRV_LOG(WARNING, "Could not get the MTU!");
+		return err;
+	}
+	*mtu = (uint16_t)curr_mtu;
+
 	return 0;
 }
 
@@ -112,9 +121,23 @@ mlx5_get_mtu(struct rte_eth_dev *dev, uint16_t *mtu)
 int
 mlx5_set_mtu(struct rte_eth_dev *dev, uint16_t mtu)
 {
-	RTE_SET_USED(dev);
-	RTE_SET_USED(mtu);
-	return -ENOTSUP;
+	int err;
+	struct mlx5_priv *priv;
+	mlx5_context_st *context_obj;
+
+	if (!dev) {
+		rte_errno = EINVAL;
+		return -rte_errno;
+	}
+	priv = dev->data->dev_private;
+	context_obj = (mlx5_context_st *)priv->sh->cdev->ctx;
+
+	err = mlx5_glue->devx_set_mtu(context_obj, mtu);
+	if (err != 0) {
+		DRV_LOG(WARNING, "Could not set the MTU!");
+		return err;
+	}
+	return 0;
 }
 
 /*

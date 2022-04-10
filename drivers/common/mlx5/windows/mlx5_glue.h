@@ -93,6 +93,8 @@ struct mlx5_glue {
 	int (*query_rt_values)(void *ctx, void *devx_clock);
 	int (*devx_init_showdown_event)(void *ctx);
 	int (*devx_set_promisc_vport)(void *ctx, uint32_t promisc_type, uint8_t f_enable);
+	int (*devx_get_mtu)(void *ctx, uint32_t *mtu);
+	int (*devx_set_mtu)(void *ctx, uint32_t mtu);
 };
 
 extern const struct mlx5_glue *mlx5_glue;

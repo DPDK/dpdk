@@ -358,6 +358,59 @@ mlx5_glue_devx_set_promisc_vport(void *ctx, uint32_t promisc_type, uint8_t f_ena
 #endif
 }
 
+static int
+mlx5_glue_devx_get_mtu(void *ctx, uint32_t *mtu)
+{
+	int err = 0;
+	struct mlx5_context *mlx5_ctx;
+
+	if (!ctx) {
+		errno = EINVAL;
+		return errno;
+	}
+	mlx5_ctx = (struct mlx5_context *)ctx;
+#ifdef HAVE_DEVX_SET_GET_MTU_SUPPORT
+	err = devx_get_mtu(mlx5_ctx->devx_ctx, mtu);
+	if (err) {
+		errno = err;
+		return errno;
+	}
+#else
+	*mtu = mlx5_ctx->mlx5_dev.mtu_bytes;
+#endif
+
+	return err;
+}
+
+static int
+mlx5_glue_devx_set_mtu(void *ctx, uint32_t mtu)
+{
+#ifdef HAVE_DEVX_SET_GET_MTU_SUPPORT
+	struct mlx5_context *mlx5_ctx;
+	int err;
+
+	if (!ctx) {
+		errno = EINVAL;
+		return errno;
+	}
+	mlx5_ctx = (struct mlx5_context *)ctx;
+	err = devx_set_mtu(mlx5_ctx->devx_ctx, mtu);
+	if (err) {
+		errno = err;
+		return errno;
+	}
+	return 0;
+#else
+		(void)mtu;
+		(void)ctx;
+		DRV_LOG(WARNING, "%s: is not supported", __func__);
+		return -ENOTSUP;
+#endif
+
+}
+
+
+
 alignas(RTE_CACHE_LINE_SIZE)
 const struct mlx5_glue *mlx5_glue = &(const struct mlx5_glue){
 	.version = MLX5_GLUE_VERSION,
@@ -382,4 +435,6 @@ const struct mlx5_glue *mlx5_glue = &(const struct mlx5_glue){
 	.query_rt_values = mlx5_glue_query_rt_values,
 	.devx_init_showdown_event = mlx5_glue_devx_init_showdown_event,
 	.devx_set_promisc_vport = mlx5_glue_devx_set_promisc_vport,
+	.devx_get_mtu = mlx5_glue_devx_get_mtu,
+	.devx_set_mtu = mlx5_glue_devx_set_mtu,
 };
