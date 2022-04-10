@@ -2339,13 +2339,12 @@ mlx5_ext_rxq_verify(struct rte_eth_dev *dev)
 bool
 mlx5_rxq_is_hairpin(struct rte_eth_dev *dev, uint16_t idx)
 {
-	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_rxq_ctrl *rxq_ctrl;
 
 	if (mlx5_is_external_rxq(dev, idx))
 		return false;
 	rxq_ctrl = mlx5_rxq_ctrl_get(dev, idx);
-	return (idx < priv->rxqs_n && rxq_ctrl != NULL && rxq_ctrl->is_hairpin);
+	return (rxq_ctrl != NULL && rxq_ctrl->is_hairpin);
 }
 
 /*
@@ -2362,9 +2361,12 @@ mlx5_rxq_is_hairpin(struct rte_eth_dev *dev, uint16_t idx)
 const struct rte_eth_hairpin_conf *
 mlx5_rxq_get_hairpin_conf(struct rte_eth_dev *dev, uint16_t idx)
 {
-	struct mlx5_rxq_priv *rxq = mlx5_rxq_get(dev, idx);
+	if (mlx5_rxq_is_hairpin(dev, idx)) {
+		struct mlx5_rxq_priv *rxq = mlx5_rxq_get(dev, idx);
 
-	return mlx5_rxq_is_hairpin(dev, idx) ? &rxq->hairpin_conf : NULL;
+		return rxq != NULL ? &rxq->hairpin_conf : NULL;
+	}
+	return NULL;
 }
 
 /**
@@ -2374,7 +2376,7 @@ mlx5_rxq_get_hairpin_conf(struct rte_eth_dev *dev, uint16_t idx)
  * @param ind_tbl
  *   Pointer to indirection table to match.
  * @param queues
- *   Queues to match to ques in indirection table.
+ *   Queues to match to queues in indirection table.
  * @param queues_n
  *   Number of queues in the array.
  *
@@ -2383,11 +2385,11 @@ mlx5_rxq_get_hairpin_conf(struct rte_eth_dev *dev, uint16_t idx)
  */
 static int
 mlx5_ind_table_obj_match_queues(const struct mlx5_ind_table_obj *ind_tbl,
-		       const uint16_t *queues, uint32_t queues_n)
+				const uint16_t *queues, uint32_t queues_n)
 {
-		return (ind_tbl->queues_n == queues_n) &&
-		    (!memcmp(ind_tbl->queues, queues,
-			    ind_tbl->queues_n * sizeof(ind_tbl->queues[0])));
+	return (ind_tbl->queues_n == queues_n) &&
+		(!memcmp(ind_tbl->queues, queues,
+			 ind_tbl->queues_n * sizeof(ind_tbl->queues[0])));
 }
 
 /**
