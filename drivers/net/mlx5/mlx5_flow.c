@@ -1379,8 +1379,11 @@ flow_drv_rxq_flags_set(struct rte_eth_dev *dev,
 		return;
 	for (i = 0; i != ind_tbl->queues_n; ++i) {
 		int idx = ind_tbl->queues[i];
-		struct mlx5_rxq_ctrl *rxq_ctrl = mlx5_rxq_ctrl_get(dev, idx);
+		struct mlx5_rxq_ctrl *rxq_ctrl;
 
+		if (mlx5_is_external_rxq(dev, idx))
+			continue;
+		rxq_ctrl = mlx5_rxq_ctrl_get(dev, idx);
 		MLX5_ASSERT(rxq_ctrl != NULL);
 		if (rxq_ctrl == NULL)
 			continue;
@@ -1483,8 +1486,11 @@ flow_drv_rxq_flags_trim(struct rte_eth_dev *dev,
 	MLX5_ASSERT(dev->data->dev_started);
 	for (i = 0; i != ind_tbl->queues_n; ++i) {
 		int idx = ind_tbl->queues[i];
-		struct mlx5_rxq_ctrl *rxq_ctrl = mlx5_rxq_ctrl_get(dev, idx);
+		struct mlx5_rxq_ctrl *rxq_ctrl;
 
+		if (mlx5_is_external_rxq(dev, idx))
+			continue;
+		rxq_ctrl = mlx5_rxq_ctrl_get(dev, idx);
 		MLX5_ASSERT(rxq_ctrl != NULL);
 		if (rxq_ctrl == NULL)
 			continue;
