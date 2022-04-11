@@ -1753,27 +1753,23 @@ rte_vhost_async_channel_unregister(int vid, uint16_t queue_id)
 	if (vq == NULL)
 		return ret;
 
-	ret = 0;
-
-	if (!vq->async)
-		return ret;
-
 	if (!rte_spinlock_trylock(&vq->access_lock)) {
 		VHOST_LOG_CONFIG(ERR, "(%s) failed to unregister async channel, virtqueue busy.\n",
 				dev->ifname);
-		return -1;
+		return ret;
 	}
 
-	if (vq->async->pkts_inflight_n) {
+	if (!vq->async) {
+		ret = 0;
+	} else if (vq->async->pkts_inflight_n) {
 		VHOST_LOG_CONFIG(ERR, "(%s) failed to unregister async channel.\n", dev->ifname);
 		VHOST_LOG_CONFIG(ERR, "(%s) inflight packets must be completed before unregistration.\n",
 			dev->ifname);
-		ret = -1;
-		goto out;
+	} else {
+		vhost_free_async_mem(vq);
+		ret = 0;
 	}
 
-	vhost_free_async_mem(vq);
-out:
 	rte_spinlock_unlock(&vq->access_lock);
 
 	return ret;
@@ -1891,9 +1887,6 @@ rte_vhost_async_get_inflight(int vid, uint16_t queue_id)
 	if (vq == NULL)
 		return ret;
 
-	if (!vq->async)
-		return ret;
-
 	if (!rte_spinlock_trylock(&vq->access_lock)) {
 		VHOST_LOG_CONFIG(DEBUG,
 			"(%s) failed to check in-flight packets. virtqueue busy.\n",
@@ -1901,7 +1894,9 @@ rte_vhost_async_get_inflight(int vid, uint16_t queue_id)
 		return ret;
 	}
 
-	ret = vq->async->pkts_inflight_n;
+	if (vq->async)
+		ret = vq->async->pkts_inflight_n;
+
 	rte_spinlock_unlock(&vq->access_lock);
 
 	return ret;
