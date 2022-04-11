@@ -97,6 +97,7 @@ rte_spinlock_unlock (rte_spinlock_t *sl)
  * @return
  *   1 if the lock is successfully taken; 0 otherwise.
  */
+__rte_warn_unused_result
 static inline int
 rte_spinlock_trylock (rte_spinlock_t *sl);
 
@@ -174,6 +175,7 @@ rte_spinlock_unlock_tm(rte_spinlock_t *sl);
  *   1 if the hardware memory transaction is successfully started
  *   or lock is successfully taken; 0 otherwise.
  */
+__rte_warn_unused_result
 static inline int
 rte_spinlock_trylock_tm(rte_spinlock_t *sl);
 
@@ -243,6 +245,7 @@ static inline void rte_spinlock_recursive_unlock(rte_spinlock_recursive_t *slr)
  * @return
  *   1 if the lock is successfully taken; 0 otherwise.
  */
+__rte_warn_unused_result
 static inline int rte_spinlock_recursive_trylock(rte_spinlock_recursive_t *slr)
 {
 	int id = rte_gettid();
@@ -299,6 +302,7 @@ static inline void rte_spinlock_recursive_unlock_tm(
  *   1 if the hardware memory transaction is successfully started
  *   or lock is successfully taken; 0 otherwise.
  */
+__rte_warn_unused_result
 static inline int rte_spinlock_recursive_trylock_tm(
 	rte_spinlock_recursive_t *slr);
 
