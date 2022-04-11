@@ -3617,13 +3617,18 @@ bond_ethdev_configure(struct rte_eth_dev *dev)
 			       internals->rss_key_len);
 		} else {
 			if (internals->rss_key_len > sizeof(default_rss_key)) {
-				RTE_BOND_LOG(ERR,
-				       "There is no suitable default hash key");
-				return -EINVAL;
+				/*
+				 * If the rss_key includes standard_rss_key and
+				 * extended_hash_key, the rss key length will be
+				 * larger than default rss key length, so it should
+				 * re-calculate the hash key.
+				 */
+				for (i = 0; i < internals->rss_key_len; i++)
+					internals->rss_key[i] = (uint8_t)rte_rand();
+			} else {
+				memcpy(internals->rss_key, default_rss_key,
+					internals->rss_key_len);
 			}
-
-			memcpy(internals->rss_key, default_rss_key,
-			       internals->rss_key_len);
 		}
 
 		for (i = 0; i < RTE_DIM(internals->reta_conf); i++) {
