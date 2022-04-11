@@ -589,11 +589,12 @@ struct rte_swx_pipeline_table_params {
 	 */
 	const char *default_action_name;
 
-	/** Default action data. The size of this array is the action data size
-	 * of the default action. Must be NULL if the default action data size
-	 * is zero.
+	/** Default action arguments. Specified as a string with the format
+	 * "ARG0_NAME ARG0_VALUE ...". The number of arguments in this string
+	 * must match exactly the number of arguments of the default action.
+	 * Must be NULL if the default action does not have any arguments.
 	 */
-	uint8_t *default_action_data;
+	const char *default_action_args;
 
 	/** If non-zero (true), then the default action of the current table
 	 * cannot be changed. If zero (false), then the default action can be
@@ -728,11 +729,12 @@ struct rte_swx_pipeline_learner_params {
 	 */
 	const char *default_action_name;
 
-	/** Default action data. The size of this array is the action data size
-	 * of the default action. Must be NULL if the default action data size
-	 * is zero.
+	/** Default action arguments. Specified as a string with the format
+	 * "ARG0_NAME ARG0_VALUE ...". The number of arguments in this string
+	 * must match exactly the number of arguments of the default action.
+	 * Must be NULL if the default action does not have any arguments.
 	 */
-	uint8_t *default_action_data;
+	const char *default_action_args;
 
 	/** If non-zero (true), then the default action of the current table
 	 * cannot be changed. If zero (false), then the default action can be

@@ -6991,8 +6991,8 @@ rte_swx_pipeline_action_config(struct rte_swx_pipeline *p,
 			       uint32_t n_instructions)
 {
 	struct struct_type *args_struct_type = NULL;
-	struct action *a;
-	int err;
+	struct action *a = NULL;
+	int status = 0;
 
 	CHECK(p, EINVAL);
 
@@ -7008,12 +7008,16 @@ rte_swx_pipeline_action_config(struct rte_swx_pipeline *p,
 
 	/* Node allocation. */
 	a = calloc(1, sizeof(struct action));
-	CHECK(a, ENOMEM);
+	if (!a) {
+		status = -ENOMEM;
+		goto error;
+	}
+
 	if (args_struct_type) {
 		a->args_endianness = calloc(args_struct_type->n_fields, sizeof(int));
 		if (!a->args_endianness) {
-			free(a);
-			CHECK(0, ENOMEM);
+			status = -ENOMEM;
+			goto error;
 		}
 	}
 
@@ -7023,18 +7027,26 @@ rte_swx_pipeline_action_config(struct rte_swx_pipeline *p,
 	a->id = p->n_actions;
 
 	/* Instruction translation. */
-	err = instruction_config(p, a, instructions, n_instructions);
-	if (err) {
-		free(a->args_endianness);
-		free(a);
-		return err;
-	}
+	status = instruction_config(p, a, instructions, n_instructions);
+	if (status)
+		goto error;
 
 	/* Node add to tailq. */
 	TAILQ_INSERT_TAIL(&p->actions, a, node);
 	p->n_actions++;
 
 	return 0;
+
+error:
+	if (!a)
+		return status;
+
+	free(a->args_endianness);
+	free(a->instructions);
+	free(a->instruction_data);
+	free(a);
+
+	return status;
 }
 
 static int
@@ -7079,8 +7091,9 @@ action_free(struct rte_swx_pipeline *p)
 			break;
 
 		TAILQ_REMOVE(&p->actions, action, node);
-		free(action->instruction_data);
+		free(action->args_endianness);
 		free(action->instructions);
+		free(action->instruction_data);
 		free(action);
 	}
 }
@@ -7117,6 +7130,91 @@ action_arg_src_mov_count(struct action *a,
 	}
 
 	return n_users;
+}
+
+#if RTE_BYTE_ORDER == RTE_LITTLE_ENDIAN
+#define field_ntoh(val, n_bits) (ntoh64((val) << (64 - n_bits)))
+#define field_hton(val, n_bits) (hton64((val) << (64 - n_bits)))
+#else
+#define field_ntoh(val, n_bits) (val)
+#define field_hton(val, n_bits) (val)
+#endif
+
+#define ACTION_ARGS_TOKENS_MAX 256
+
+static int
+action_args_parse(struct action *a, const char *args, uint8_t *data)
+{
+	char *tokens[ACTION_ARGS_TOKENS_MAX], *s0 = NULL, *s;
+	uint32_t n_tokens = 0, offset = 0, i;
+	int status = 0;
+
+	/* Checks. */
+	if (!a->st || !args || !args[0]) {
+		status = -EINVAL;
+		goto error;
+	}
+
+	/* Memory allocation. */
+	s0 = strdup(args);
+	if (!s0) {
+		status = -ENOMEM;
+		goto error;
+	}
+
+	/* Parse the string into tokens. */
+	for (s = s0; ; ) {
+		char *token;
+
+		token = strtok_r(s, " \f\n\r\t\v", &s);
+		if (!token)
+			break;
+
+		if (n_tokens >= RTE_DIM(tokens)) {
+			status = -EINVAL;
+			goto error;
+		}
+
+		tokens[n_tokens] = token;
+		n_tokens++;
+	}
+
+	/* More checks. */
+	if (n_tokens != a->st->n_fields * 2) {
+		status = -EINVAL;
+		goto error;
+	}
+
+	/* Process the action arguments. */
+	for (i = 0; i < a->st->n_fields; i++) {
+		struct field *f = &a->st->fields[i];
+		char *arg_name = tokens[i * 2];
+		char *arg_val = tokens[i * 2 + 1];
+		uint64_t val;
+
+		if (strcmp(arg_name, f->name)) {
+			status = -EINVAL;
+			goto error;
+		}
+
+		val = strtoull(arg_val, &arg_val, 0);
+		if (arg_val[0]) {
+			status = -EINVAL;
+			goto error;
+		}
+
+		/* Endianness conversion. */
+		if (a->args_endianness[i])
+			val = field_hton(val, f->n_bits);
+
+		/* Copy to entry. */
+		memcpy(&data[offset], (uint8_t *)&val, f->n_bits / 8);
+		offset += f->n_bits / 8;
+	}
+
+error:
+	free(s0);
+	return status;
 }
 
 /*
@@ -7391,8 +7489,8 @@ rte_swx_pipeline_table_config(struct rte_swx_pipeline *p,
 	      EINVAL);
 
 	default_action = action_find(p, params->default_action_name);
-	CHECK((default_action->st && params->default_action_data) ||
-	      !params->default_action_data, EINVAL);
+	CHECK((default_action->st && params->default_action_args) || !params->default_action_args,
+	      EINVAL);
 
 	/* Table type checks. */
 	if (recommended_table_type_name)
@@ -7413,30 +7511,42 @@ rte_swx_pipeline_table_config(struct rte_swx_pipeline *p,
 
 	/* Memory allocation. */
 	t = calloc(1, sizeof(struct table));
-	if (!t)
-		goto nomem;
+	if (!t) {
+		status = -ENOMEM;
+		goto error;
+	}
 
 	t->fields = calloc(params->n_fields, sizeof(struct match_field));
-	if (!t->fields)
-		goto nomem;
+	if (!t->fields) {
+		status = -ENOMEM;
+		goto error;
+	}
 
 	t->actions = calloc(params->n_actions, sizeof(struct action *));
-	if (!t->actions)
-		goto nomem;
+	if (!t->actions) {
+		status = -ENOMEM;
+		goto error;
+	}
 
 	if (action_data_size_max) {
 		t->default_action_data = calloc(1, action_data_size_max);
-		if (!t->default_action_data)
-			goto nomem;
+		if (!t->default_action_data) {
+			status = -ENOMEM;
+			goto error;
+		}
 	}
 
 	t->action_is_for_table_entries = calloc(params->n_actions, sizeof(int));
-	if (!t->action_is_for_table_entries)
-		goto nomem;
+	if (!t->action_is_for_table_entries) {
+		status = -ENOMEM;
+		goto error;
+	}
 
 	t->action_is_for_default_entry = calloc(params->n_actions, sizeof(int));
-	if (!t->action_is_for_default_entry)
-		goto nomem;
+	if (!t->action_is_for_default_entry) {
+		status = -ENOMEM;
+		goto error;
+	}
 
 	/* Node initialization. */
 	strcpy(t->name, name);
@@ -7469,10 +7579,14 @@ rte_swx_pipeline_table_config(struct rte_swx_pipeline *p,
 		t->action_is_for_default_entry[i] = action_is_for_default_entry;
 	}
 	t->default_action = default_action;
-	if (default_action->st)
-		memcpy(t->default_action_data,
-		       params->default_action_data,
-		       default_action->st->n_bits / 8);
+	if (default_action->st) {
+		status = action_args_parse(default_action,
+					   params->default_action_args,
+					   t->default_action_data);
+		if (status)
+			goto error;
+	}
+
 	t->n_actions = params->n_actions;
 	t->default_action_is_const = params->default_action_is_const;
 	t->action_data_size_max = action_data_size_max;
@@ -7486,9 +7600,9 @@ rte_swx_pipeline_table_config(struct rte_swx_pipeline *p,
 
 	return 0;
 
-nomem:
+error:
 	if (!t)
-		return -ENOMEM;
+		return status;
 
 	free(t->action_is_for_default_entry);
 	free(t->action_is_for_table_entries);
@@ -7497,7 +7611,7 @@ nomem:
 	free(t->fields);
 	free(t);
 
-	return -ENOMEM;
+	return status;
 }
 
 static struct rte_swx_table_params *
@@ -8278,8 +8392,8 @@ rte_swx_pipeline_learner_config(struct rte_swx_pipeline *p,
 	      EINVAL);
 
 	default_action = action_find(p, params->default_action_name);
-	CHECK((default_action->st && params->default_action_data) ||
-	      !params->default_action_data, EINVAL);
+	CHECK((default_action->st && params->default_action_args) || !params->default_action_args,
+	      EINVAL);
 
 	/* Any other checks. */
 	CHECK(size, EINVAL);
@@ -8287,30 +8401,42 @@ rte_swx_pipeline_learner_config(struct rte_swx_pipeline *p,
 
 	/* Memory allocation. */
 	l = calloc(1, sizeof(struct learner));
-	if (!l)
-		goto nomem;
+	if (!l) {
+		status = -ENOMEM;
+		goto error;
+	}
 
 	l->fields = calloc(params->n_fields, sizeof(struct field *));
-	if (!l->fields)
-		goto nomem;
+	if (!l->fields) {
+		status = -ENOMEM;
+		goto error;
+	}
 
 	l->actions = calloc(params->n_actions, sizeof(struct action *));
-	if (!l->actions)
-		goto nomem;
+	if (!l->actions) {
+		status = -ENOMEM;
+		goto error;
+	}
 
 	if (action_data_size_max) {
 		l->default_action_data = calloc(1, action_data_size_max);
-		if (!l->default_action_data)
-			goto nomem;
+		if (!l->default_action_data) {
+			status = -ENOMEM;
+			goto error;
+		}
 	}
 
 	l->action_is_for_table_entries = calloc(params->n_actions, sizeof(int));
-	if (!l->action_is_for_table_entries)
-		goto nomem;
+	if (!l->action_is_for_table_entries) {
+		status = -ENOMEM;
+		goto error;
+	}
 
 	l->action_is_for_default_entry = calloc(params->n_actions, sizeof(int));
-	if (!l->action_is_for_default_entry)
-		goto nomem;
+	if (!l->action_is_for_default_entry) {
+		status = -ENOMEM;
+		goto error;
+	}
 
 	/* Node initialization. */
 	strcpy(l->name, name);
@@ -8342,10 +8468,13 @@ rte_swx_pipeline_learner_config(struct rte_swx_pipeline *p,
 
 	l->default_action = default_action;
 
-	if (default_action->st)
-		memcpy(l->default_action_data,
-		       params->default_action_data,
-		       default_action->st->n_bits / 8);
+	if (default_action->st) {
+		status = action_args_parse(default_action,
+					   params->default_action_args,
+					   l->default_action_data);
+		if (status)
+			goto error;
+	}
 
 	l->n_actions = params->n_actions;
 
@@ -8365,9 +8494,9 @@ rte_swx_pipeline_learner_config(struct rte_swx_pipeline *p,
 
 	return 0;
 
-nomem:
+error:
 	if (!l)
-		return -ENOMEM;
+		return status;
 
 	free(l->action_is_for_default_entry);
 	free(l->action_is_for_table_entries);
@@ -8376,7 +8505,7 @@ nomem:
 	free(l->fields);
 	free(l);
 
-	return -ENOMEM;
+	return status;
 }
 
 static void
