@@ -223,6 +223,31 @@ static void __attribute__((destructor(RTE_PRIO(prio)), used)) func(void)
 #define __rte_noreturn __attribute__((noreturn))
 
 /**
+ * Issue a warning in case the function's return value is ignored.
+ *
+ * The use of this attribute should be restricted to cases where
+ * ignoring the marked function's return value is almost always a
+ * bug. With GCC, some effort is required to make clear that ignoring
+ * the return value is intentional. The usual void-casting method to
+ * mark something unused as used does not suppress the warning with
+ * this compiler.
+ *
+ * @code{.c}
+ * __rte_warn_unused_result int foo();
+ *
+ * void ignore_foo_result(void) {
+ *         foo(); // generates a warning with all compilers
+ *
+ *         (void)foo(); // still generates the warning with GCC (but not clang)
+ *
+ *         int unused __rte_unused;
+ *         unused = foo(); // does the trick with all compilers
+ *  }
+ * @endcode
+ */
+#define __rte_warn_unused_result __attribute__((warn_unused_result))
+
+/**
  * Force a function to be inlined
  */
 #define __rte_always_inline inline __attribute__((always_inline))
