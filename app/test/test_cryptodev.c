@@ -10547,9 +10547,11 @@ test_authenticated_encryption_oop(const struct aead_test_data *tdata)
 	rte_cryptodev_info_get(ts_params->valid_devs[0], &dev_info);
 	uint64_t feat_flags = dev_info.feature_flags;
 
-	if ((global_api_test_type == CRYPTODEV_RAW_API_TEST) &&
-			(!(feat_flags & RTE_CRYPTODEV_FF_SYM_RAW_DP)))
+	if ((global_api_test_type == CRYPTODEV_RAW_API_TEST) ||
+			(!(feat_flags & RTE_CRYPTODEV_FF_SYM_RAW_DP))) {
+		printf("Device does not support RAW data-path APIs.\n");
 		return TEST_SKIPPED;
+	}
 
 	/* not supported with CPU crypto */
 	if (gbl_action_type == RTE_SECURITY_ACTION_TYPE_CPU_CRYPTO)
