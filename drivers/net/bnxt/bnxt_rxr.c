@@ -1096,7 +1096,6 @@ uint16_t bnxt_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 			break;
 	}
 
-	cpr->cp_raw_cons = raw_cons;
 	if (!nb_rx_pkts && !nb_rep_rx_pkts && !evt) {
 		/*
 		 * For PMD, there is no need to keep on pushing to REARM
@@ -1105,6 +1104,7 @@ uint16_t bnxt_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		goto done;
 	}
 
+	cpr->cp_raw_cons = raw_cons;
 	/* Ring the completion queue doorbell. */
 	bnxt_db_cq(cpr);
 
