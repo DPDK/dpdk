@@ -225,25 +225,38 @@ recv_burst_vec_neon(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		}
 
 		/*
-		 * Load the four current descriptors into SSE registers in
-		 * reverse order to ensure consistent state.
+		 * Load the four current descriptors into NEON registers.
+		 * IO barriers are used to ensure consistent state.
 		 */
 		rxcmp1[3] = vld1q_u32((void *)&cpr->cp_desc_ring[cons + 7]);
 		rte_io_rmb();
+		/* Reload lower 64b of descriptors to make it ordered after info3_v. */
+		rxcmp1[3] = vreinterpretq_u32_u64(vld1q_lane_u64
+				((void *)&cpr->cp_desc_ring[cons + 7],
+				vreinterpretq_u64_u32(rxcmp1[3]), 0));
 		rxcmp[3] = vld1q_u32((void *)&cpr->cp_desc_ring[cons + 6]);
 
 		rxcmp1[2] = vld1q_u32((void *)&cpr->cp_desc_ring[cons + 5]);
 		rte_io_rmb();
+		rxcmp1[2] = vreinterpretq_u32_u64(vld1q_lane_u64
+				((void *)&cpr->cp_desc_ring[cons + 5],
+				vreinterpretq_u64_u32(rxcmp1[2]), 0));
 		rxcmp[2] = vld1q_u32((void *)&cpr->cp_desc_ring[cons + 4]);
 
 		t1 = vreinterpretq_u64_u32(vzip2q_u32(rxcmp1[2], rxcmp1[3]));
 
 		rxcmp1[1] = vld1q_u32((void *)&cpr->cp_desc_ring[cons + 3]);
 		rte_io_rmb();
+		rxcmp1[1] = vreinterpretq_u32_u64(vld1q_lane_u64
+				((void *)&cpr->cp_desc_ring[cons + 3],
+				vreinterpretq_u64_u32(rxcmp1[1]), 0));
 		rxcmp[1] = vld1q_u32((void *)&cpr->cp_desc_ring[cons + 2]);
 
 		rxcmp1[0] = vld1q_u32((void *)&cpr->cp_desc_ring[cons + 1]);
 		rte_io_rmb();
+		rxcmp1[0] = vreinterpretq_u32_u64(vld1q_lane_u64
+				((void *)&cpr->cp_desc_ring[cons + 1],
+				vreinterpretq_u64_u32(rxcmp1[0]), 0));
 		rxcmp[0] = vld1q_u32((void *)&cpr->cp_desc_ring[cons + 0]);
 
 		t0 = vreinterpretq_u64_u32(vzip2q_u32(rxcmp1[0], rxcmp1[1]));
