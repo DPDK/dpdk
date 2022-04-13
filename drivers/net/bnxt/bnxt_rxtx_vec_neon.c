@@ -220,13 +220,9 @@ recv_burst_vec_neon(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 
 		/* Copy four mbuf pointers to output array. */
 		t0 = vld1q_u64((void *)&rxr->rx_buf_ring[mbcons]);
-#ifdef RTE_ARCH_ARM64
 		t1 = vld1q_u64((void *)&rxr->rx_buf_ring[mbcons + 2]);
-#endif
 		vst1q_u64((void *)&rx_pkts[i], t0);
-#ifdef RTE_ARCH_ARM64
 		vst1q_u64((void *)&rx_pkts[i + 2], t1);
-#endif
 
 		/* Prefetch four descriptor pairs for next iteration. */
 		if (i + BNXT_RX_DESCS_PER_LOOP_VEC128 < nb_pkts) {
