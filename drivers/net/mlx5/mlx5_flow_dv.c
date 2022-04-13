@@ -132,6 +132,7 @@ flow_dv_attr_init(const struct rte_flow_item *item, union flow_dv_attr *attr,
 		case RTE_FLOW_ITEM_TYPE_VXLAN_GPE:
 		case RTE_FLOW_ITEM_TYPE_GENEVE:
 		case RTE_FLOW_ITEM_TYPE_MPLS:
+		case RTE_FLOW_ITEM_TYPE_GTP:
 			if (tunnel_decap)
 				attr->attr = 0;
 			break;
