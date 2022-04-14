@@ -13,26 +13,31 @@
 #include "hns3_rxtx.h"
 
 static const char *
-get_adapter_state_name(uint32_t state)
+get_adapter_state_name(enum hns3_adapter_state state)
 {
-	static const char * const state_name[] = {
-		"UNINITIALIZED",
-		"INITIALIZED",
-		"CONFIGURING",
-		"CONFIGURED",
-		"STARTING",
-		"STARTED",
-		"STOPPING",
-		"CLOSING",
-		"CLOSED",
-		"REMOVED",
-		"NSTATES"
+	const struct {
+		enum hns3_adapter_state state;
+		const char *name;
+	} adapter_state_name[] = {
+		{HNS3_NIC_UNINITIALIZED, "UNINITIALIZED"},
+		{HNS3_NIC_INITIALIZED, "INITIALIZED"},
+		{HNS3_NIC_CONFIGURING, "CONFIGURING"},
+		{HNS3_NIC_CONFIGURED, "CONFIGURED"},
+		{HNS3_NIC_STARTING, "STARTING"},
+		{HNS3_NIC_STARTED, "STARTED"},
+		{HNS3_NIC_STOPPING, "STOPPING"},
+		{HNS3_NIC_CLOSING, "CLOSING"},
+		{HNS3_NIC_CLOSED, "CLOSED"},
+		{HNS3_NIC_REMOVED, "REMOVED"},
+		{HNS3_NIC_NSTATES, "NSTATES"},
 	};
+	uint32_t i;
 
-	if (state < RTE_DIM(state_name))
-		return state_name[state];
-	else
-		return "unknown";
+	for (i = 0; i < RTE_DIM(adapter_state_name); i++)
+		if (state == adapter_state_name[i].state)
+			return adapter_state_name[i].name;
+
+	return "Unknown";
 }
 
 static const char *
