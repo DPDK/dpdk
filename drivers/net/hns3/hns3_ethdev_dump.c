@@ -709,7 +709,6 @@ get_tm_conf_queue_format_info(FILE *file, struct hns3_tm_node **queue_node,
 #define PERLINE_STRIDE	8
 #define LINE_BUF_SIZE	1024
 	uint32_t i, j, line_num, start_queue, end_queue;
-	char tmpbuf[LINE_BUF_SIZE] = {0};
 
 	line_num = (nb_tx_queues + PERLINE_QUEUES - 1) / PERLINE_QUEUES;
 	for (i = 0; i < line_num; i++) {
@@ -727,7 +726,7 @@ get_tm_conf_queue_format_info(FILE *file, struct hns3_tm_node **queue_node,
 				queue_node[j] ? queue_node_tc[j] :
 				HNS3_MAX_TC_NUM);
 		}
-		fprintf(file, "%s\n", tmpbuf);
+		fprintf(file, "\n");
 	}
 }
 
@@ -767,8 +766,12 @@ get_tm_conf_queue_node_info(FILE *file, struct hns3_tm_conf *conf,
 static void
 get_tm_conf_info(FILE *file, struct rte_eth_dev *dev)
 {
+	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct hns3_pf *pf = HNS3_DEV_PRIVATE_TO_PF(dev->data->dev_private);
 	struct hns3_tm_conf *conf = &pf->tm_conf;
+
+	if (!hns3_dev_get_support(hw, TM))
+		return;
 
 	fprintf(file, "  - TM config info:\n");
 	fprintf(file,
