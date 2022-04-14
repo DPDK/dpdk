@@ -224,99 +224,94 @@ get_device_basic_info(FILE *file, struct rte_eth_dev *dev)
 		dev->data->dev_conf.intr_conf.rxq);
 }
 
-/*
- * Note: caller must make sure queue_id < nb_queues
- *       nb_queues = RTE_MAX(eth_dev->data->nb_rx_queues,
- *                           eth_dev->data->nb_tx_queues)
- */
 static struct hns3_rx_queue *
-get_rx_queue(struct rte_eth_dev *dev, unsigned int queue_id)
+get_rx_queue(struct rte_eth_dev *dev)
 {
-	struct hns3_adapter *hns = dev->data->dev_private;
-	struct hns3_hw *hw = &hns->hw;
-	unsigned int offset;
+	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct hns3_rx_queue *rxq;
+	uint32_t queue_id;
 	void **rx_queues;
 
-	if (queue_id < dev->data->nb_rx_queues) {
+	for (queue_id = 0; queue_id < dev->data->nb_rx_queues; queue_id++) {
 		rx_queues = dev->data->rx_queues;
-		offset = queue_id;
-	} else {
-		/*
-		 * For kunpeng930, fake queue is not exist. But since the queues
-		 * are usually accessd in pairs, this branch may still exist.
-		 */
-		if (hns3_dev_get_support(hw, INDEP_TXRX))
+		if (rx_queues == NULL || rx_queues[queue_id] == NULL) {
+			hns3_err(hw, "detect rx_queues is NULL!\n");
 			return NULL;
+		}
 
-		rx_queues = hw->fkq_data.rx_queues;
-		offset = queue_id - dev->data->nb_rx_queues;
+		rxq = (struct hns3_rx_queue *)rx_queues[queue_id];
+		if (rxq->rx_deferred_start)
+			continue;
+
+		return rx_queues[queue_id];
 	}
 
-	if (rx_queues != NULL && rx_queues[offset] != NULL)
-		return rx_queues[offset];
-
-	hns3_err(hw, "Detect rx_queues is NULL!\n");
 	return NULL;
 }
 
-/*
- * Note: caller must make sure queue_id < nb_queues
- *       nb_queues = RTE_MAX(eth_dev->data->nb_rx_queues,
- *                           eth_dev->data->nb_tx_queues)
- */
 static struct hns3_tx_queue *
-get_tx_queue(struct rte_eth_dev *dev, unsigned int queue_id)
+get_tx_queue(struct rte_eth_dev *dev)
 {
-	struct hns3_adapter *hns = dev->data->dev_private;
-	struct hns3_hw *hw = &hns->hw;
-	unsigned int offset;
+	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct hns3_tx_queue *txq;
+	uint32_t queue_id;
 	void **tx_queues;
 
-	if (queue_id < dev->data->nb_tx_queues) {
+	for (queue_id = 0; queue_id < dev->data->nb_tx_queues; queue_id++) {
 		tx_queues = dev->data->tx_queues;
-		offset = queue_id;
-	} else {
-		/*
-		 * For kunpeng930, fake queue is not exist. But since the queues
-		 * are usually accessd in pairs, this branch may still exist.
-		 */
-		if (hns3_dev_get_support(hw, INDEP_TXRX))
+		if (tx_queues == NULL || tx_queues[queue_id] == NULL) {
+			hns3_err(hw, "detect tx_queues is NULL!\n");
 			return NULL;
-		tx_queues = hw->fkq_data.tx_queues;
-		offset = queue_id - dev->data->nb_tx_queues;
+		}
+
+		txq = (struct hns3_tx_queue *)tx_queues[queue_id];
+		if (txq->tx_deferred_start)
+			continue;
+
+		return tx_queues[queue_id];
 	}
 
-	if (tx_queues != NULL && tx_queues[offset] != NULL)
-		return tx_queues[offset];
-
-	hns3_err(hw, "Detect tx_queues is NULL!\n");
 	return NULL;
 }
 
 static void
 get_rxtx_fake_queue_info(FILE *file, struct rte_eth_dev *dev)
 {
-	struct hns3_adapter *hns = dev->data->dev_private;
-	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(hns);
+	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct hns3_rx_queue *rxq;
 	struct hns3_tx_queue *txq;
-	unsigned int queue_id;
+	uint32_t queue_id = 0;
+	void **rx_queues;
+	void **tx_queues;
 
-	if (dev->data->nb_rx_queues != dev->data->nb_tx_queues &&
-	    !hns3_dev_get_support(hw, INDEP_TXRX)) {
-		queue_id = RTE_MIN(dev->data->nb_rx_queues,
-				   dev->data->nb_tx_queues);
-		rxq = get_rx_queue(dev, queue_id);
-		if (rxq == NULL)
+	if (hns3_dev_get_support(hw, INDEP_TXRX))
+		return;
+
+	if (dev->data->nb_rx_queues < dev->data->nb_tx_queues) {
+		rx_queues = hw->fkq_data.rx_queues;
+		if (rx_queues == NULL || rx_queues[queue_id] == NULL) {
+			hns3_err(hw, "detect rx_queues is NULL!\n");
 			return;
-		txq = get_tx_queue(dev, queue_id);
-		if (txq == NULL)
-			return;
+		}
+		rxq = (struct hns3_rx_queue *)rx_queues[queue_id];
+
 		fprintf(file,
-			"\t  -- first fake_queue rxtx info:\n"
-			"\t       rx: port=%u nb_desc=%u free_thresh=%u\n"
-			"\t       tx: port=%u nb_desc=%u\n",
-			rxq->port_id, rxq->nb_rx_desc, rxq->rx_free_thresh,
+			"\t  -- first fake_queue info:\n"
+			"\t       Rx: port=%u nb_desc=%u free_thresh=%u\n",
+			rxq->port_id, rxq->nb_rx_desc, rxq->rx_free_thresh);
+	} else if (dev->data->nb_rx_queues > dev->data->nb_tx_queues) {
+		tx_queues = hw->fkq_data.tx_queues;
+		queue_id = 0;
+
+		if (tx_queues == NULL || tx_queues[queue_id] == NULL) {
+			hns3_err(hw, "detect tx_queues is NULL!\n");
+			return;
+		}
+		txq = (struct hns3_tx_queue *)tx_queues[queue_id];
+
+		fprintf(file,
+			"\t  -- first fake_queue info:\n"
+			"\t	  Tx: port=%u nb_desc=%u\n",
 			txq->port_id, txq->nb_tx_desc);
 	}
 }
@@ -422,23 +417,19 @@ get_rxtx_queue_info(FILE *file, struct rte_eth_dev *dev)
 {
 	struct hns3_rx_queue *rxq;
 	struct hns3_tx_queue *txq;
-	unsigned int queue_id = 0;
 
-	rxq = get_rx_queue(dev, queue_id);
+	rxq = get_rx_queue(dev);
 	if (rxq == NULL)
 		return;
-	txq = get_tx_queue(dev, queue_id);
+	txq = get_tx_queue(dev);
 	if (txq == NULL)
 		return;
 	fprintf(file, "  - Rx/Tx Queue Info:\n");
 	fprintf(file,
-		"\t  -- nb_rx_queues=%u nb_tx_queues=%u, "
-		"first queue rxtx info:\n"
-		"\t       rx: port=%u nb_desc=%u free_thresh=%u\n"
-		"\t       tx: port=%u nb_desc=%u\n"
+		"\t  -- first queue rxtx info:\n"
+		"\t       Rx: port=%u nb_desc=%u free_thresh=%u\n"
+		"\t       Tx: port=%u nb_desc=%u\n"
 		"\t  -- tx push: %s\n",
-		dev->data->nb_rx_queues,
-		dev->data->nb_tx_queues,
 		rxq->port_id, rxq->nb_rx_desc, rxq->rx_free_thresh,
 		txq->port_id, txq->nb_tx_desc,
 		txq->tx_push_enable ? "enabled" : "disabled");
