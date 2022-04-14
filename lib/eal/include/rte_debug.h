@@ -22,7 +22,7 @@ extern "C" {
 #endif
 
 /**
- * Dump the stack of the calling core to the console.
+ * Dump the stack of the calling core to the standard error.
  */
 void rte_dump_stack(void);
 

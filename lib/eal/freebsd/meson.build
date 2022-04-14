@@ -7,7 +7,6 @@ sources += files(
         'eal.c',
         'eal_alarm.c',
         'eal_cpuflags.c',
-        'eal_debug.c',
         'eal_dev.c',
         'eal_hugepage_info.c',
         'eal_interrupts.c',
