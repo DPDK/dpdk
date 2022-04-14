@@ -185,8 +185,10 @@ local_dev_probe(const char *devargs, struct rte_device **new_dev)
 	return ret;
 
 err_devarg:
-	if (rte_devargs_remove(da) != 0)
+	if (rte_devargs_remove(da) != 0) {
 		rte_devargs_reset(da);
+		free(da);
+	}
 	return ret;
 }
 
