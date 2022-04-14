@@ -16990,7 +16990,8 @@ __flow_dv_meter_get_rss_sub_policy(struct rte_eth_dev *dev,
 		}
 	}
 	/* Create sub policy. */
-	if (!mtr_policy->sub_policys[domain][0]->rix_hrxq[0]) {
+	if (!mtr_policy->sub_policys[domain][0]->rix_hrxq[RTE_COLOR_GREEN] &&
+	    !mtr_policy->sub_policys[domain][0]->rix_hrxq[RTE_COLOR_YELLOW]) {
 		/* Reuse the first pre-allocated sub_policy. */
 		sub_policy = mtr_policy->sub_policys[domain][0];
 		sub_policy_idx = sub_policy->idx;
