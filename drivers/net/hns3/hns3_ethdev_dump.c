@@ -2,15 +2,11 @@
  * Copyright(C) 2022 HiSilicon Limited
  */
 
-#include <rte_kvargs.h>
-#include <rte_bus_pci.h>
-#include <ethdev_pci.h>
-#include <rte_pci.h>
-
 #include "hns3_common.h"
 #include "hns3_logs.h"
 #include "hns3_regs.h"
 #include "hns3_rxtx.h"
+#include "hns3_ethdev.h"
 
 static const char *
 get_adapter_state_name(enum hns3_adapter_state state)
@@ -84,27 +80,29 @@ get_dev_mac_info(FILE *file, struct hns3_adapter *hns)
 static void
 get_dev_feature_capability(FILE *file, struct hns3_hw *hw)
 {
-	const char * const caps_name[] = {
-		"DCB",
-		"COPPER",
-		"FD QUEUE REGION",
-		"PTP",
-		"TX PUSH",
-		"INDEP TXRX",
-		"STASH",
-		"SIMPLE BD",
-		"RXD Advanced Layout",
-		"OUTER UDP CKSUM",
-		"RAS IMP",
-		"TM",
-		"VF VLAN FILTER MOD",
+	const struct {
+		enum hns3_dev_cap cap;
+		const char *name;
+	} caps_name[] = {
+		{HNS3_DEV_SUPPORT_DCB_B, "DCB"},
+		{HNS3_DEV_SUPPORT_COPPER_B, "COPPER"},
+		{HNS3_DEV_SUPPORT_FD_QUEUE_REGION_B, "FD QUEUE REGION"},
+		{HNS3_DEV_SUPPORT_PTP_B, "PTP"},
+		{HNS3_DEV_SUPPORT_TX_PUSH_B, "TX PUSH"},
+		{HNS3_DEV_SUPPORT_INDEP_TXRX_B, "INDEP TXRX"},
+		{HNS3_DEV_SUPPORT_STASH_B, "STASH"},
+		{HNS3_DEV_SUPPORT_RXD_ADV_LAYOUT_B, "RXD Advanced Layout"},
+		{HNS3_DEV_SUPPORT_OUTER_UDP_CKSUM_B, "OUTER UDP CKSUM"},
+		{HNS3_DEV_SUPPORT_RAS_IMP_B, "RAS IMP"},
+		{HNS3_DEV_SUPPORT_TM_B, "TM"},
 	};
 	uint32_t i;
 
 	fprintf(file, "  - Dev Capability:\n");
 	for (i = 0; i < RTE_DIM(caps_name); i++)
-		fprintf(file, "\t  -- support %s: %s\n", caps_name[i],
-			hw->capability & BIT(i) ? "yes" : "no");
+		fprintf(file, "\t  -- support %s: %s\n", caps_name[i].name,
+			hns3_get_bit(hw->capability, caps_name[i].cap) ? "Yes" :
+									 "No");
 }
 
 static const char *

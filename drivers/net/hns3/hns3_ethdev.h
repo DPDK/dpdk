@@ -874,7 +874,7 @@ struct hns3_adapter {
 
 #define HNS3_DEVARG_MBX_TIME_LIMIT_MS	"mbx_time_limit_ms"
 
-enum {
+enum hns3_dev_cap {
 	HNS3_DEV_SUPPORT_DCB_B,
 	HNS3_DEV_SUPPORT_COPPER_B,
 	HNS3_DEV_SUPPORT_FD_QUEUE_REGION_B,
