@@ -629,8 +629,6 @@ get_vlan_config_info(FILE *file, struct hns3_hw *hw)
 	ret = get_vlan_tx_offload_cfg(file, hw);
 	if (ret < 0)
 		return;
-
-	get_port_pvid_info(file, hw);
 }
 
 static void
@@ -898,13 +896,14 @@ hns3_eth_dev_priv_dump(struct rte_eth_dev *dev, FILE *file)
 
 	get_device_basic_info(file, dev);
 	get_dev_feature_capability(file, hw);
+	get_rxtx_queue_info(file, dev);
+	get_port_pvid_info(file, hw);
 
 	/* VF only supports dumping basic info and feaure capability */
 	if (hns->is_vf)
 		return 0;
 
 	get_dev_mac_info(file, hns);
-	get_rxtx_queue_info(file, dev);
 	get_vlan_config_info(file, hw);
 	get_fdir_basic_info(file, &hns->pf);
 	get_tm_conf_info(file, dev);
