@@ -73,6 +73,8 @@ is_covered(uint32_t ip1, uint32_t ip2, uint8_t depth)
 static inline struct rte_rib_node *
 get_nxt_node(struct rte_rib_node *node, uint32_t ip)
 {
+	if (node->depth == RIB_MAXDEPTH)
+		return NULL;
 	return (ip & (1 << (31 - node->depth))) ? node->right : node->left;
 }
 
