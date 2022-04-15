@@ -97,6 +97,12 @@ struct rte_ipv4_hdr {
 
 #define	RTE_IPV4_HDR_OFFSET_UNITS	8
 
+/* IPv4 options */
+#define RTE_IPV4_HDR_OPT_EOL       0
+#define RTE_IPV4_HDR_OPT_NOP       1
+#define RTE_IPV4_HDR_OPT_COPIED(v) ((v) & 0x80)
+#define RTE_IPV4_HDR_OPT_MAX_LEN   40
+
 /*
  * IPv4 address types
  */
