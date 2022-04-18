@@ -1870,10 +1870,11 @@ ice_fdir_parse_pattern(__rte_unused struct ice_adapter *ad,
 				break;
 
 			/* convert raw spec & mask from byte string to int */
-			unsigned char *tmp_spec =
+			unsigned char *spec_pattern =
 				(uint8_t *)(uintptr_t)raw_spec->pattern;
-			unsigned char *tmp_mask =
+			unsigned char *mask_pattern =
 				(uint8_t *)(uintptr_t)raw_mask->pattern;
+			uint8_t *tmp_spec, *tmp_mask;
 			uint16_t tmp_val = 0;
 			uint8_t pkt_len = 0;
 			uint8_t tmp = 0;
@@ -1884,8 +1885,18 @@ ice_fdir_parse_pattern(__rte_unused struct ice_adapter *ad,
 				pkt_len)
 				return -rte_errno;
 
+			tmp_spec = rte_zmalloc(NULL, pkt_len / 2, 0);
+			if (!tmp_spec)
+				return -rte_errno;
+
+			tmp_mask = rte_zmalloc(NULL, pkt_len / 2, 0);
+			if (!tmp_mask) {
+				rte_free(tmp_spec);
+				return -rte_errno;
+			}
+
 			for (i = 0, j = 0; i < pkt_len; i += 2, j++) {
-				tmp = tmp_spec[i];
+				tmp = spec_pattern[i];
 				if (tmp >= 'a' && tmp <= 'f')
 					tmp_val = tmp - 'a' + 10;
 				if (tmp >= 'A' && tmp <= 'F')
@@ -1894,7 +1905,7 @@ ice_fdir_parse_pattern(__rte_unused struct ice_adapter *ad,
 					tmp_val = tmp - '0';
 
 				tmp_val *= 16;
-				tmp = tmp_spec[i + 1];
+				tmp = spec_pattern[i + 1];
 				if (tmp >= 'a' && tmp <= 'f')
 					tmp_spec[j] = tmp_val + tmp - 'a' + 10;
 				if (tmp >= 'A' && tmp <= 'F')
@@ -1902,7 +1913,7 @@ ice_fdir_parse_pattern(__rte_unused struct ice_adapter *ad,
 				if (tmp >= '0' && tmp <= '9')
 					tmp_spec[j] = tmp_val + tmp - '0';
 
-				tmp = tmp_mask[i];
+				tmp = mask_pattern[i];
 				if (tmp >= 'a' && tmp <= 'f')
 					tmp_val = tmp - 'a' + 10;
 				if (tmp >= 'A' && tmp <= 'F')
@@ -1911,7 +1922,7 @@ ice_fdir_parse_pattern(__rte_unused struct ice_adapter *ad,
 					tmp_val = tmp - '0';
 
 				tmp_val *= 16;
-				tmp = tmp_mask[i + 1];
+				tmp = mask_pattern[i + 1];
 				if (tmp >= 'a' && tmp <= 'f')
 					tmp_mask[j] = tmp_val + tmp - 'a' + 10;
 				if (tmp >= 'A' && tmp <= 'F')
@@ -1947,6 +1958,8 @@ ice_fdir_parse_pattern(__rte_unused struct ice_adapter *ad,
 
 			filter->parser_ena = true;
 
+			rte_free(tmp_spec);
+			rte_free(tmp_mask);
 			break;
 		}
 
