@@ -947,6 +947,7 @@ mlx5_crypto_dev_probe(struct mlx5_common_device *cdev,
 	ret = mlx5_crypto_configure_wqe_size(priv,
 		cdev->config.hca_attr.max_wqe_sz_sq, devarg_prms.max_segs_num);
 	if (ret) {
+		claim_zero(mlx5_devx_cmd_destroy(priv->login_obj));
 		mlx5_devx_uar_release(&priv->uar);
 		rte_cryptodev_pmd_destroy(priv->crypto_dev);
 		return -1;
