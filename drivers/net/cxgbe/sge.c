@@ -1910,7 +1910,7 @@ int t4_sge_alloc_rxq(struct adapter *adap, struct sge_rspq *iq, bool fwevtq,
 	iq->stat = (void *)&iq->desc[iq->size * 8];
 	iq->eth_dev = eth_dev;
 	iq->handler = hnd;
-	iq->port_id = pi->pidx;
+	iq->port_id = eth_dev->data->port_id;
 	iq->mb_pool = mp;
 
 	/* set offset to -1 to distinguish ingress queues without FL */
