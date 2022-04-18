@@ -28,6 +28,7 @@ enum {
 enum {
 	SGE_NTIMERS = 6,          /* # of interrupt holdoff timer values */
 	SGE_NCOUNTERS = 4,        /* # of interrupt packet counter values */
+	SGE_FL_BUFFER_SIZE_NUM = 16, /* # of freelist buffser size regs */
 };
 
 /* PCI-e memory window access */

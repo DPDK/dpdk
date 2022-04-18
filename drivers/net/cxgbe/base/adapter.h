@@ -98,6 +98,7 @@ struct sge_fl {                     /* SGE free-buffer queue state */
 
 	unsigned long alloc_failed; /* # of times buffer allocation failed */
 	unsigned long low;          /* # of times momentarily starving */
+	u8 fl_buf_size_idx;         /* Selected SGE_FL_BUFFER_SIZE index */
 };
 
 #define MAX_MBUF_FRAGS (16384 / 512 + 2)
@@ -110,7 +111,6 @@ struct pkt_gl {
 	void *va;                         /* virtual address of first byte */
 	unsigned int nfrags;              /* # of fragments */
 	unsigned int tot_len;             /* total length of fragments */
-	bool usembufs;                    /* use mbufs for fragments */
 };
 
 typedef int (*rspq_handler_t)(struct sge_rspq *q, const __be64 *rsp,
@@ -160,7 +160,6 @@ struct sge_eth_rxq {                /* a SW Ethernet Rx queue */
 	struct sge_rspq rspq;
 	struct sge_fl fl;
 	struct sge_eth_rx_stats stats;
-	bool usembufs;               /* one ingress packet per mbuf FL buffer */
 } __rte_cache_aligned;
 
 /*
@@ -286,9 +285,8 @@ struct sge {
 	u16 timer_val[SGE_NTIMERS];
 	u8  counter_val[SGE_NCOUNTERS];
 
-	u32 fl_align;               /* response queue message alignment */
-	u32 fl_pg_order;            /* large page allocation size */
 	u32 fl_starve_thres;        /* Free List starvation threshold */
+	u32 fl_buffer_size[SGE_FL_BUFFER_SIZE_NUM]; /* Free List buffer sizes */
 };
 
 /*

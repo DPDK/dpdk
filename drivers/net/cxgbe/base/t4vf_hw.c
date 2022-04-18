@@ -468,46 +468,6 @@ int t4vf_set_params(struct adapter *adapter, unsigned int nparams,
 	return t4vf_wr_mbox(adapter, &cmd, sizeof(cmd), NULL);
 }
 
-/**
- * t4vf_fl_pkt_align - return the fl packet alignment
- * @adapter: the adapter
- *
- * T4 has a single field to specify the packing and padding boundary.
- * T5 onwards has separate fields for this and hence the alignment for
- * next packet offset is maximum of these two.
- */
-int t4vf_fl_pkt_align(struct adapter *adapter, u32 sge_control,
-		      u32 sge_control2)
-{
-	unsigned int ingpadboundary, ingpackboundary, fl_align, ingpad_shift;
-
-	/* T4 uses a single control field to specify both the PCIe Padding and
-	 * Packing Boundary.  T5 introduced the ability to specify these
-	 * separately.  The actual Ingress Packet Data alignment boundary
-	 * within Packed Buffer Mode is the maximum of these two
-	 * specifications.
-	 */
-	if (CHELSIO_CHIP_VERSION(adapter->params.chip) <= CHELSIO_T5)
-		ingpad_shift = X_INGPADBOUNDARY_SHIFT;
-	else
-		ingpad_shift = X_T6_INGPADBOUNDARY_SHIFT;
-
-	ingpadboundary = 1 << (G_INGPADBOUNDARY(sge_control) + ingpad_shift);
-
-	fl_align = ingpadboundary;
-	if (!is_t4(adapter->params.chip)) {
-		ingpackboundary = G_INGPACKBOUNDARY(sge_control2);
-		if (ingpackboundary == X_INGPACKBOUNDARY_16B)
-			ingpackboundary = 16;
-		else
-			ingpackboundary = 1 << (ingpackboundary +
-					X_INGPACKBOUNDARY_SHIFT);
-
-		fl_align = max(ingpadboundary, ingpackboundary);
-	}
-	return fl_align;
-}
-
 unsigned int t4vf_get_pf_from_vf(struct adapter *adapter)
 {
 	u32 whoami;

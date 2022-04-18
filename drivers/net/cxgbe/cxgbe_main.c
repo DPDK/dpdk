@@ -623,8 +623,7 @@ int cxgbe_cfg_queues(struct rte_eth_dev *eth_dev)
 			struct sge_eth_txq *t = &s->ethtxq[i];
 
 			init_rspq(adap, &r->rspq, 5, 32, 1024, 64);
-			r->usembufs = 1;
-			r->fl.size = (r->usembufs ? 1024 : 72);
+			r->fl.size = 1024;
 
 			t->q.size = 1024;
 		}

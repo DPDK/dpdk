@@ -59,27 +59,6 @@ static inline void ship_tx_pkt_coalesce_wr(struct adapter *adap,
 #define MAX_CTRL_WR_LEN SGE_MAX_WR_LEN
 
 /*
- * Rx buffer sizes for "usembufs" Free List buffers (one ingress packet
- * per mbuf buffer).  We currently only support two sizes for 1500- and
- * 9000-byte MTUs. We could easily support more but there doesn't seem to be
- * much need for that ...
- */
-#define FL_MTU_SMALL 1500
-#define FL_MTU_LARGE 9000
-
-static inline unsigned int fl_mtu_bufsize(struct adapter *adapter,
-					  unsigned int mtu)
-{
-	struct sge *s = &adapter->sge;
-
-	return CXGBE_ALIGN(s->pktshift + RTE_ETHER_HDR_LEN + RTE_VLAN_HLEN + mtu,
-			   s->fl_align);
-}
-
-#define FL_MTU_SMALL_BUFSIZE(adapter) fl_mtu_bufsize(adapter, FL_MTU_SMALL)
-#define FL_MTU_LARGE_BUFSIZE(adapter) fl_mtu_bufsize(adapter, FL_MTU_LARGE)
-
-/*
  * Bits 0..3 of rx_sw_desc.dma_addr have special meaning.  The hardware uses
  * these to specify the buffer size as an index into the SGE Free List Buffer
  * Size register array.  We also use bit 4, when the buffer has been unmapped
@@ -93,19 +72,6 @@ enum {
 	RX_BUF_FLAGS     = 0x1f,   /* bottom five bits are special */
 	RX_BUF_SIZE      = 0x0f,   /* bottom three bits are for buf sizes */
 	RX_UNMAPPED_BUF  = 0x10,   /* buffer is not mapped */
-
-	/*
-	 * XXX We shouldn't depend on being able to use these indices.
-	 * XXX Especially when some other Master PF has initialized the
-	 * XXX adapter or we use the Firmware Configuration File.  We
-	 * XXX should really search through the Host Buffer Size register
-	 * XXX array for the appropriately sized buffer indices.
-	 */
-	RX_SMALL_PG_BUF  = 0x0,   /* small (PAGE_SIZE) page buffer */
-	RX_LARGE_PG_BUF  = 0x1,   /* buffer large page buffer */
-
-	RX_SMALL_MTU_BUF = 0x2,   /* small MTU buffer */
-	RX_LARGE_MTU_BUF = 0x3,   /* large MTU buffer */
 };
 
 /**
@@ -225,24 +191,7 @@ static inline bool fl_starving(const struct adapter *adapter,
 static inline unsigned int get_buf_size(struct adapter *adapter,
 					const struct rx_sw_desc *d)
 {
-	unsigned int rx_buf_size_idx = d->dma_addr & RX_BUF_SIZE;
-	unsigned int buf_size = 0;
-
-	switch (rx_buf_size_idx) {
-	case RX_SMALL_MTU_BUF:
-		buf_size = FL_MTU_SMALL_BUFSIZE(adapter);
-		break;
-
-	case RX_LARGE_MTU_BUF:
-		buf_size = FL_MTU_LARGE_BUFSIZE(adapter);
-		break;
-
-	default:
-		BUG_ON(1);
-		/* NOT REACHED */
-	}
-
-	return buf_size;
+	return adapter->sge.fl_buffer_size[d->dma_addr & RX_BUF_SIZE];
 }
 
 /**
@@ -358,18 +307,11 @@ static unsigned int refill_fl_usembufs(struct adapter *adap, struct sge_fl *q,
 				       int n)
 {
 	struct sge_eth_rxq *rxq = container_of(q, struct sge_eth_rxq, fl);
-	unsigned int cred = q->avail;
-	__be64 *d = &q->desc[q->pidx];
 	struct rx_sw_desc *sd = &q->sdesc[q->pidx];
-	unsigned int buf_size_idx = RX_SMALL_MTU_BUF;
+	__be64 *d = &q->desc[q->pidx];
 	struct rte_mbuf *buf_bulk[n];
+	unsigned int cred = q->avail;
 	int ret, i;
-	struct rte_pktmbuf_pool_private *mbp_priv;
-
-	/* Use jumbo mtu buffers if mbuf data room size can fit jumbo data. */
-	mbp_priv = rte_mempool_get_priv(rxq->rspq.mb_pool);
-	if ((mbp_priv->mbuf_data_room_size - RTE_PKTMBUF_HEADROOM) >= 9000)
-		buf_size_idx = RX_LARGE_MTU_BUF;
 
 	ret = rte_mempool_get_bulk(rxq->rspq.mb_pool, (void *)buf_bulk, n);
 	if (unlikely(ret != 0)) {
@@ -392,20 +334,13 @@ static unsigned int refill_fl_usembufs(struct adapter *adap, struct sge_fl *q,
 		}
 
 		rte_mbuf_refcnt_set(mbuf, 1);
-		mbuf->data_off =
-			(uint16_t)((char *)
-				   RTE_PTR_ALIGN((char *)mbuf->buf_addr +
-						 RTE_PKTMBUF_HEADROOM,
-						 adap->sge.fl_align) -
-				   (char *)mbuf->buf_addr);
+		mbuf->data_off = RTE_PKTMBUF_HEADROOM;
 		mbuf->next = NULL;
 		mbuf->nb_segs = 1;
 		mbuf->port = rxq->rspq.port_id;
 
-		mapping = (dma_addr_t)RTE_ALIGN(mbuf->buf_iova +
-						mbuf->data_off,
-						adap->sge.fl_align);
-		mapping |= buf_size_idx;
+		mapping = (dma_addr_t)(mbuf->buf_iova + mbuf->data_off);
+		mapping |= q->fl_buf_size_idx;
 		*d++ = cpu_to_be64(mapping);
 		set_rx_sw_desc(sd, mbuf, mapping);
 		sd++;
@@ -1782,6 +1717,38 @@ int t4_sge_eth_rxq_stop(struct adapter *adap, struct sge_eth_rxq *rxq)
 				rxq->rspq.cntxt_id, fl_id, 0xffff);
 }
 
+static int cxgbe_sge_fl_buf_size_index(const struct adapter *adap,
+				       struct rte_mempool *mp)
+{
+	int fl_buf_size, size, delta, min_delta = INT_MAX;
+	unsigned int i, match = UINT_MAX;
+	const struct sge *s = &adap->sge;
+
+	size = rte_pktmbuf_data_room_size(mp) - RTE_PKTMBUF_HEADROOM;
+	for (i = 0; i < RTE_DIM(s->fl_buffer_size); i++) {
+		fl_buf_size = s->fl_buffer_size[i];
+		if (fl_buf_size > size || fl_buf_size == 0)
+			continue;
+
+		delta = size - fl_buf_size;
+		if (delta < 0)
+			delta = -delta;
+		if (delta < min_delta) {
+			min_delta = delta;
+			match = i;
+		}
+	}
+
+	if (match == UINT_MAX) {
+		dev_err(adap,
+			"Could not find valid buffer size for mbuf data room: %d\n",
+			size);
+		return -EINVAL;
+	}
+
+	return match;
+}
+
 /*
  * @intr_idx: MSI/MSI-X vector if >=0, -(absolute qid + 1) if < 0
  * @cong: < 0 -> no congestion feedback, >= 0 -> congestion channel map
@@ -1791,12 +1758,20 @@ int t4_sge_alloc_rxq(struct adapter *adap, struct sge_rspq *iq, bool fwevtq,
 		     struct sge_fl *fl, rspq_handler_t hnd, int cong,
 		     struct rte_mempool *mp, int queue_id, int socket_id)
 {
-	int ret, flsz = 0;
-	struct fw_iq_cmd c;
-	struct sge *s = &adap->sge;
 	struct port_info *pi = eth_dev->data->dev_private;
+	u8 pciechan, fl_buf_size_idx = 0;
+	struct sge *s = &adap->sge;
 	unsigned int nb_refill;
-	u8 pciechan;
+	struct fw_iq_cmd c;
+	int ret, flsz = 0;
+
+	if (fl != NULL) {
+		ret = cxgbe_sge_fl_buf_size_index(adap, mp);
+		if (ret < 0)
+			return ret;
+
+		fl_buf_size_idx = ret;
+	}
 
 	/* Size needs to be multiple of 16, including status entry. */
 	iq->size = cxgbe_roundup(iq->size, 16);
@@ -1845,8 +1820,6 @@ int t4_sge_alloc_rxq(struct adapter *adap, struct sge_rspq *iq, bool fwevtq,
 	c.iqaddr = cpu_to_be64(iq->phys_addr);
 
 	if (fl) {
-		struct sge_eth_rxq *rxq = container_of(fl, struct sge_eth_rxq,
-						       fl);
 		unsigned int chip_ver = CHELSIO_CHIP_VERSION(adap->params.chip);
 
 		/*
@@ -1873,10 +1846,7 @@ int t4_sge_alloc_rxq(struct adapter *adap, struct sge_rspq *iq, bool fwevtq,
 		flsz = fl->size / 8 + s->stat_len / sizeof(struct tx_desc);
 		c.iqns_to_fl0congen |=
 			htonl(V_FW_IQ_CMD_FL0HOSTFCMODE(X_HOSTFCMODE_NONE) |
-			      (unlikely(rxq->usembufs) ?
-			       0 : F_FW_IQ_CMD_FL0PACKEN) |
-			      F_FW_IQ_CMD_FL0FETCHRO | F_FW_IQ_CMD_FL0DATARO |
-			      F_FW_IQ_CMD_FL0PADEN);
+			      F_FW_IQ_CMD_FL0FETCHRO | F_FW_IQ_CMD_FL0DATARO);
 		if (is_pf4(adap) && cong >= 0)
 			c.iqns_to_fl0congen |=
 				htonl(V_FW_IQ_CMD_FL0CNGCHMAP(cong) |
@@ -1931,6 +1901,7 @@ int t4_sge_alloc_rxq(struct adapter *adap, struct sge_rspq *iq, bool fwevtq,
 		fl->pidx = 0;
 		fl->cidx = 0;
 		fl->alloc_failed = 0;
+		fl->fl_buf_size_idx = fl_buf_size_idx;
 
 		/*
 		 * Note, we must initialize the BAR2 Free List User Doorbell
@@ -2341,10 +2312,10 @@ void t4_free_sge_resources(struct adapter *adap)
  */
 static int t4_sge_init_soft(struct adapter *adap)
 {
-	struct sge *s = &adap->sge;
-	u32 fl_small_pg, fl_large_pg, fl_small_mtu, fl_large_mtu;
 	u32 timer_value_0_and_1, timer_value_2_and_3, timer_value_4_and_5;
+	struct sge *s = &adap->sge;
 	u32 ingress_rx_threshold;
+	u8 i;
 
 	/*
 	 * Verify that CPL messages are going to the Ingress Queue for
@@ -2358,59 +2329,13 @@ static int t4_sge_init_soft(struct adapter *adap)
 	}
 
 	/*
-	 * Validate the Host Buffer Register Array indices that we want to
+	 * Read the Host Buffer Register Array indices that we want to
 	 * use ...
-	 *
-	 * XXX Note that we should really read through the Host Buffer Size
-	 * XXX register array and find the indices of the Buffer Sizes which
-	 * XXX meet our needs!
 	 */
-#define READ_FL_BUF(x) \
-	t4_read_reg(adap, A_SGE_FL_BUFFER_SIZE0 + (x) * sizeof(u32))
-
-	fl_small_pg = READ_FL_BUF(RX_SMALL_PG_BUF);
-	fl_large_pg = READ_FL_BUF(RX_LARGE_PG_BUF);
-	fl_small_mtu = READ_FL_BUF(RX_SMALL_MTU_BUF);
-	fl_large_mtu = READ_FL_BUF(RX_LARGE_MTU_BUF);
-
-	/*
-	 * We only bother using the Large Page logic if the Large Page Buffer
-	 * is larger than our Page Size Buffer.
-	 */
-	if (fl_large_pg <= fl_small_pg)
-		fl_large_pg = 0;
-
-#undef READ_FL_BUF
-
-	/*
-	 * The Page Size Buffer must be exactly equal to our Page Size and the
-	 * Large Page Size Buffer should be 0 (per above) or a power of 2.
-	 */
-	if (fl_small_pg != CXGBE_PAGE_SIZE ||
-	    (fl_large_pg & (fl_large_pg - 1)) != 0) {
-		dev_err(adap, "bad SGE FL page buffer sizes [%d, %d]\n",
-			fl_small_pg, fl_large_pg);
-		return -EINVAL;
-	}
-	if (fl_large_pg)
-		s->fl_pg_order = ilog2(fl_large_pg) - PAGE_SHIFT;
-
-	if (adap->use_unpacked_mode) {
-		int err = 0;
-
-		if (fl_small_mtu < FL_MTU_SMALL_BUFSIZE(adap)) {
-			dev_err(adap, "bad SGE FL small MTU %d\n",
-				fl_small_mtu);
-			err = -EINVAL;
-		}
-		if (fl_large_mtu < FL_MTU_LARGE_BUFSIZE(adap)) {
-			dev_err(adap, "bad SGE FL large MTU %d\n",
-				fl_large_mtu);
-			err = -EINVAL;
-		}
-		if (err)
-			return err;
-	}
+	for (i = 0; i < RTE_DIM(s->fl_buffer_size); i++)
+		s->fl_buffer_size[i] = t4_read_reg(adap,
+						   A_SGE_FL_BUFFER_SIZE0 +
+						   i * sizeof(u32));
 
 	/*
 	 * Retrieve our RX interrupt holdoff timer values and counter
@@ -2454,7 +2379,6 @@ int t4_sge_init(struct adapter *adap)
 	sge_control = t4_read_reg(adap, A_SGE_CONTROL);
 	s->pktshift = G_PKTSHIFT(sge_control);
 	s->stat_len = (sge_control & F_EGRSTATUSPAGESIZE) ? 128 : 64;
-	s->fl_align = t4_fl_pkt_align(adap);
 	ret = t4_sge_init_soft(adap);
 	if (ret < 0) {
 		dev_err(adap, "%s: t4_sge_init_soft failed, error %d\n",
@@ -2489,8 +2413,6 @@ int t4vf_sge_init(struct adapter *adap)
 	struct sge_params *sge_params = &adap->params.sge;
 	u32 sge_ingress_queues_per_page;
 	u32 sge_egress_queues_per_page;
-	u32 sge_control, sge_control2;
-	u32 fl_small_pg, fl_large_pg;
 	u32 sge_ingress_rx_threshold;
 	u32 sge_timer_value_0_and_1;
 	u32 sge_timer_value_2_and_3;
@@ -2500,7 +2422,9 @@ int t4vf_sge_init(struct adapter *adap)
 	unsigned int s_hps, s_qpp;
 	u32 sge_host_page_size;
 	u32 params[7], vals[7];
+	u32 sge_control;
 	int v;
+	u8 i;
 
 	/* query basic params from fw */
 	params[0] = (V_FW_PARAMS_MNEM(FW_PARAMS_MNEM_REG) |
@@ -2508,14 +2432,10 @@ int t4vf_sge_init(struct adapter *adap)
 	params[1] = (V_FW_PARAMS_MNEM(FW_PARAMS_MNEM_REG) |
 		     V_FW_PARAMS_PARAM_XYZ(A_SGE_HOST_PAGE_SIZE));
 	params[2] = (V_FW_PARAMS_MNEM(FW_PARAMS_MNEM_REG) |
-		     V_FW_PARAMS_PARAM_XYZ(A_SGE_FL_BUFFER_SIZE0));
-	params[3] = (V_FW_PARAMS_MNEM(FW_PARAMS_MNEM_REG) |
-		     V_FW_PARAMS_PARAM_XYZ(A_SGE_FL_BUFFER_SIZE1));
-	params[4] = (V_FW_PARAMS_MNEM(FW_PARAMS_MNEM_REG) |
 		     V_FW_PARAMS_PARAM_XYZ(A_SGE_TIMER_VALUE_0_AND_1));
-	params[5] = (V_FW_PARAMS_MNEM(FW_PARAMS_MNEM_REG) |
+	params[3] = (V_FW_PARAMS_MNEM(FW_PARAMS_MNEM_REG) |
 		     V_FW_PARAMS_PARAM_XYZ(A_SGE_TIMER_VALUE_2_AND_3));
-	params[6] = (V_FW_PARAMS_MNEM(FW_PARAMS_MNEM_REG) |
+	params[4] = (V_FW_PARAMS_MNEM(FW_PARAMS_MNEM_REG) |
 		     V_FW_PARAMS_PARAM_XYZ(A_SGE_TIMER_VALUE_4_AND_5));
 	v = t4vf_query_params(adap, 7, params, vals);
 	if (v != FW_SUCCESS)
@@ -2523,50 +2443,31 @@ int t4vf_sge_init(struct adapter *adap)
 
 	sge_control = vals[0];
 	sge_host_page_size = vals[1];
-	fl_small_pg = vals[2];
-	fl_large_pg = vals[3];
-	sge_timer_value_0_and_1 = vals[4];
-	sge_timer_value_2_and_3 = vals[5];
-	sge_timer_value_4_and_5 = vals[6];
+	sge_timer_value_0_and_1 = vals[2];
+	sge_timer_value_2_and_3 = vals[3];
+	sge_timer_value_4_and_5 = vals[4];
+
+	for (i = 0; i < RTE_DIM(s->fl_buffer_size); i++) {
+		params[0] = (V_FW_PARAMS_MNEM(FW_PARAMS_MNEM_REG) |
+			     V_FW_PARAMS_PARAM_XYZ(A_SGE_FL_BUFFER_SIZE0 +
+						   i * sizeof(u32)));
+		v = t4vf_query_params(adap, 1, params, vals);
+		if (v != FW_SUCCESS)
+			return v;
+
+		s->fl_buffer_size[i] = vals[0];
+	}
 
 	/*
 	 * Start by vetting the basic SGE parameters which have been set up by
 	 * the Physical Function Driver.
 	 */
 
-	/* We only bother using the Large Page logic if the Large Page Buffer
-	 * is larger than our Page Size Buffer.
-	 */
-	if (fl_large_pg <= fl_small_pg)
-		fl_large_pg = 0;
-
-	/* The Page Size Buffer must be exactly equal to our Page Size and the
-	 * Large Page Size Buffer should be 0 (per above) or a power of 2.
-	 */
-	if (fl_small_pg != CXGBE_PAGE_SIZE ||
-	    (fl_large_pg & (fl_large_pg - 1)) != 0) {
-		dev_err(adapter->pdev_dev, "bad SGE FL buffer sizes [%d, %d]\n",
-			fl_small_pg, fl_large_pg);
-		return -EINVAL;
-	}
-
 	if ((sge_control & F_RXPKTCPLMODE) !=
 	    V_RXPKTCPLMODE(X_RXPKTCPLMODE_SPLIT)) {
 		dev_err(adapter->pdev_dev, "bad SGE CPL MODE\n");
 		return -EINVAL;
 	}
-
-
-	/* Grab ingress packing boundary from SGE_CONTROL2 for */
-	params[0] = (V_FW_PARAMS_MNEM(FW_PARAMS_MNEM_REG) |
-		     V_FW_PARAMS_PARAM_XYZ(A_SGE_CONTROL2));
-	v = t4vf_query_params(adap, 1, params, vals);
-	if (v != FW_SUCCESS) {
-		dev_err(adapter, "Unable to get SGE Control2; "
-			"probably old firmware.\n");
-		return v;
-	}
-	sge_control2 = vals[0];
 
 	params[0] = (V_FW_PARAMS_MNEM(FW_PARAMS_MNEM_REG) |
 		     V_FW_PARAMS_PARAM_XYZ(A_SGE_INGRESS_RX_THRESHOLD));
@@ -2612,12 +2513,9 @@ int t4vf_sge_init(struct adapter *adap)
 	/*
 	 * Now translate the queried parameters into our internal forms.
 	 */
-	if (fl_large_pg)
-		s->fl_pg_order = ilog2(fl_large_pg) - PAGE_SHIFT;
 	s->stat_len = ((sge_control & F_EGRSTATUSPAGESIZE)
 			? 128 : 64);
 	s->pktshift = G_PKTSHIFT(sge_control);
-	s->fl_align = t4vf_fl_pkt_align(adap, sge_control, sge_control2);
 
 	/*
 	 * A FL with <= fl_starve_thres buffers is starving and a periodic
