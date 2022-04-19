@@ -297,7 +297,14 @@ cnxk_flow_validate(struct rte_eth_dev *eth_dev,
 		return rc;
 	}
 
-	return roc_npc_flow_parse(npc, &in_attr, in_pattern, in_actions, &flow);
+	rc = roc_npc_flow_parse(npc, &in_attr, in_pattern, in_actions, &flow);
+
+	if (rc) {
+		rte_flow_error_set(error, 0, rc, NULL,
+				   "Flow validation failed");
+		return rc;
+	}
+	return 0;
 }
 
 struct roc_npc_flow *
