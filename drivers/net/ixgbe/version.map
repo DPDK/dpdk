@@ -16,6 +16,10 @@ DPDK_22 {
 	rte_pmd_ixgbe_macsec_enable;
 	rte_pmd_ixgbe_macsec_select_rxsa;
 	rte_pmd_ixgbe_macsec_select_txsa;
+	rte_pmd_ixgbe_mdio_lock;
+	rte_pmd_ixgbe_mdio_unlock;
+	rte_pmd_ixgbe_mdio_unlocked_read;
+	rte_pmd_ixgbe_mdio_unlocked_write;
 	rte_pmd_ixgbe_ping_vf;
 	rte_pmd_ixgbe_set_all_queues_drop_en;
 	rte_pmd_ixgbe_set_tc_bw_alloc;
@@ -31,6 +35,7 @@ DPDK_22 {
 	rte_pmd_ixgbe_set_vf_vlan_filter;
 	rte_pmd_ixgbe_set_vf_vlan_insert;
 	rte_pmd_ixgbe_set_vf_vlan_stripq;
+	rte_pmd_ixgbe_upd_fctrl_sbp;
 
 	local: *;
 };
@@ -40,9 +45,4 @@ EXPERIMENTAL {
 
 	rte_pmd_ixgbe_get_fdir_info;
 	rte_pmd_ixgbe_get_fdir_stats;
-	rte_pmd_ixgbe_mdio_lock;
-	rte_pmd_ixgbe_mdio_unlock;
-	rte_pmd_ixgbe_mdio_unlocked_read;
-	rte_pmd_ixgbe_mdio_unlocked_write;
-	rte_pmd_ixgbe_upd_fctrl_sbp;
 };
