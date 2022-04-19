@@ -167,7 +167,7 @@ The requirements for changing the ABI are:
    API becomes non-experimental, then the old one is marked with
    ``__rte_deprecated``.
 
-    - The depreciated API should follow the notification process to be removed,
+    - The deprecated API should follow the notification process to be removed,
       see  :ref:`deprecation_notices`.
 
     - At the declaration of the next major ABI version, those ABI changes then

@@ -65,8 +65,8 @@ struct rte_kni_conf {
 	uint32_t core_id;   /* Core ID to bind kernel thread on */
 	uint16_t group_id;  /* Group ID */
 	unsigned mbuf_size; /* mbuf size */
-	struct rte_pci_addr addr; /* depreciated */
-	struct rte_pci_id id; /* depreciated */
+	struct rte_pci_addr addr; /* deprecated */
+	struct rte_pci_id id; /* deprecated */
 
 	__extension__
 	uint8_t force_bind : 1; /* Flag to bind kernel thread */
