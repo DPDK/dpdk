@@ -94,7 +94,7 @@ that library.
  ...
 
 However when a new ABI version is declared, for example DPDK ``22``, old
-depreciated functions may be safely removed at this point and the entire old
+deprecated functions may be safely removed at this point and the entire old
 major ABI version removed, see the section :ref:`deprecating_entire_abi` on
 how this may be done.
 
