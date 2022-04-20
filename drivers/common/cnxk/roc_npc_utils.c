@@ -582,7 +582,7 @@ npc_allocate_mcam_entry(struct mbox *mbox, int prio,
 	if (!rsp_cmd->count)
 		return -ENOSPC;
 
-	memcpy(rsp_local, rsp_cmd, sizeof(*rsp));
+	mbox_memcpy(rsp_local, rsp_cmd, sizeof(*rsp));
 
 	return 0;
 }
