@@ -78,6 +78,7 @@ static uint16_t mlx5_tx_burst_##func(void *txq, \
 }
 
 #define MLX5_TXOFF_INFO(func, olx) {mlx5_tx_burst_##func, olx},
+	struct mlx5_txq_stats stats_reset; /* stats on last reset. */
 
 static __rte_always_inline uint32_t
 rxq_cq_to_pkt_type(struct mlx5_rxq_data *rxq, volatile struct mlx5_cqe *cqe,

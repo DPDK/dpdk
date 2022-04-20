@@ -153,6 +153,7 @@ struct mlx5_rxq_data {
 	struct mlx5_dev_ctx_shared *sh; /* Shared context. */
 	uint16_t idx; /* Queue index. */
 	struct mlx5_rxq_stats stats;
+	struct mlx5_rxq_stats stats_reset; /* stats on last reset. */
 	rte_xmm_t mbuf_initializer; /* Default rearm/flags for vectorized Rx. */
 	struct rte_mbuf fake_mbuf; /* elts padding for vectorized Rx. */
 	void *cq_uar; /* Verbs CQ user access region. */
@@ -271,6 +272,7 @@ struct mlx5_txq_data {
 	int32_t ts_offset; /* Timestamp field dynamic offset. */
 	struct mlx5_dev_ctx_shared *sh; /* Shared context. */
 	struct mlx5_txq_stats stats; /* TX queue counters. */
+	struct mlx5_txq_stats stats_reset; /* stats on last reset. */
 #ifndef RTE_ARCH_64
 	rte_spinlock_t *uar_lock;
 	/* UAR access lock required for 32bit implementations */
