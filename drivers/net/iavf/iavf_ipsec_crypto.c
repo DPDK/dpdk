@@ -1563,17 +1563,80 @@ iavf_security_ctx_destroy(struct iavf_adapter *adapter)
 	return 0;
 }
 
+static int
+iavf_ipsec_crypto_status_get(struct iavf_adapter *adapter,
+		struct virtchnl_ipsec_status *status)
+{
+	/* Perform pf-vf comms */
+	struct inline_ipsec_msg *request = NULL, *response = NULL;
+	size_t request_len, response_len;
+	int rc;
+
+	request_len = sizeof(struct inline_ipsec_msg);
+
+	request = rte_malloc("iavf-device-status-request", request_len, 0);
+	if (request == NULL) {
+		rc = -ENOMEM;
+		goto update_cleanup;
+	}
+
+	response_len = sizeof(struct inline_ipsec_msg) +
+			sizeof(struct virtchnl_ipsec_cap);
+	response = rte_malloc("iavf-device-status-response",
+			response_len, 0);
+	if (response == NULL) {
+		rc = -ENOMEM;
+		goto update_cleanup;
+	}
+
+	/* set msg header params */
+	request->ipsec_opcode = INLINE_IPSEC_OP_GET_STATUS;
+	request->req_id = (uint16_t)0xDEADBEEF;
+
+	/* send virtual channel request to add SA to hardware database */
+	rc = iavf_ipsec_crypto_request(adapter,
+			(uint8_t *)request, request_len,
+			(uint8_t *)response, response_len);
+	if (rc)
+		goto update_cleanup;
+
+	/* verify response id */
+	if (response->ipsec_opcode != request->ipsec_opcode ||
+		response->req_id != request->req_id){
+		rc = -EFAULT;
+		goto update_cleanup;
+	}
+	memcpy(status, response->ipsec_data.ipsec_status, sizeof(*status));
+
+update_cleanup:
+	rte_free(response);
+	rte_free(request);
+
+	return rc;
+}
+
+
 int
 iavf_ipsec_crypto_supported(struct iavf_adapter *adapter)
 {
 	struct virtchnl_vf_resource *resources = adapter->vf.vf_res;
+	int crypto_supported = false;
 
 	/** Capability check for IPsec Crypto */
 	if (resources && (resources->vf_cap_flags &
-		VIRTCHNL_VF_OFFLOAD_INLINE_IPSEC_CRYPTO))
-		return true;
+		VIRTCHNL_VF_OFFLOAD_INLINE_IPSEC_CRYPTO)) {
+		struct virtchnl_ipsec_status status;
+		int rc = iavf_ipsec_crypto_status_get(adapter, &status);
+		if (rc == 0 && status.status == INLINE_IPSEC_STATUS_AVAILABLE)
+			crypto_supported = true;
+	}
 
-	return false;
+	/* Clear the VF flag to return faster next call */
+	if (resources && !crypto_supported)
+		resources->vf_cap_flags &=
+				~(VIRTCHNL_VF_OFFLOAD_INLINE_IPSEC_CRYPTO);
+
+	return crypto_supported;
 }
 
 #define IAVF_IPSEC_INSET_ESP (\
