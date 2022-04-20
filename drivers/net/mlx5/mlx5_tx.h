@@ -164,6 +164,7 @@ struct mlx5_txq_data {
 	int32_t ts_offset; /* Timestamp field dynamic offset. */
 	struct mlx5_dev_ctx_shared *sh; /* Shared context. */
 	struct mlx5_txq_stats stats; /* TX queue counters. */
+	struct mlx5_txq_stats stats_reset; /* stats on last reset. */
 	struct mlx5_uar_data uar_data;
 	struct rte_mbuf *elts[0];
 	/* Storage for queued packets, must be the last field. */
