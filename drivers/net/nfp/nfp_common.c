@@ -692,7 +692,16 @@ nfp_net_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->max_rx_queues = (uint16_t)hw->max_rx_queues;
 	dev_info->max_tx_queues = (uint16_t)hw->max_tx_queues;
 	dev_info->min_rx_bufsize = RTE_ETHER_MIN_MTU;
-	dev_info->max_rx_pktlen = hw->max_mtu;
+	/*
+	 * The maximum rx packet length (max_rx_pktlen) is set to the
+	 * maximum supported frame size that the NFP can handle. This
+	 * includes layer 2 headers, CRC and other metadata that can
+	 * optionally be used.
+	 * The maximum layer 3 MTU (max_mtu) is read from hardware,
+	 * which was set by the firmware loaded onto the card.
+	 */
+	dev_info->max_rx_pktlen = NFP_FRAME_SIZE_MAX;
+	dev_info->max_mtu = hw->max_mtu;
 	/* Next should change when PF support is implemented */
 	dev_info->max_mac_addrs = 1;
 
