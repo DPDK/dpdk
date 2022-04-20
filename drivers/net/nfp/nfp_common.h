@@ -98,6 +98,9 @@ struct nfp_net_adapter;
 /* Number of supported physical ports */
 #define NFP_MAX_PHYPORTS	12
 
+/* Maximum supported NFP frame size (MTU + layer 2 headers) */
+#define NFP_FRAME_SIZE_MAX	10048
+
 #include <linux/types.h>
 #include <rte_io.h>
 
