@@ -298,7 +298,7 @@ F: examples/*/*_altivec.*
 
 Intel x86
 M: Bruce Richardson <bruce.richardson@intel.com>
-M: Konstantin Ananyev <konstantin.ananyev@intel.com>
+M: Konstantin Ananyev <konstantin.v.ananyev@yandex.ru>
 F: config/x86/
 F: doc/guides/linux_gsg/nic_perf_intel_platform.rst
 F: buildtools/binutils-avx512-check.py
@@ -368,7 +368,7 @@ F: app/test/test_func_reentrancy.c
 
 Ring queue
 M: Honnappa Nagarahalli <honnappa.nagarahalli@arm.com>
-M: Konstantin Ananyev <konstantin.ananyev@intel.com>
+M: Konstantin Ananyev <konstantin.v.ananyev@yandex.ru>
 F: lib/ring/
 F: doc/guides/prog_guide/ring_lib.rst
 F: app/test/test_ring*
@@ -1402,7 +1402,7 @@ F: lib/net/net_crc_sse.c
 F: app/test/test_crc.c
 
 IP fragmentation & reassembly
-M: Konstantin Ananyev <konstantin.ananyev@intel.com>
+M: Konstantin Ananyev <konstantin.v.ananyev@yandex.ru>
 F: lib/ip_frag/
 F: doc/guides/prog_guide/ip_fragment_reassembly_lib.rst
 F: app/test/test_ipfrag.c
@@ -1422,7 +1422,7 @@ F: lib/gso/
 F: doc/guides/prog_guide/generic_segmentation_offload_lib.rst
 
 IPsec
-M: Konstantin Ananyev <konstantin.ananyev@intel.com>
+M: Konstantin Ananyev <konstantin.v.ananyev@yandex.ru>
 T: git://dpdk.org/next/dpdk-next-crypto
 F: lib/ipsec/
 M: Bernard Iremonger <bernard.iremonger@intel.com>
@@ -1500,7 +1500,7 @@ Algorithms
 ----------
 
 ACL
-M: Konstantin Ananyev <konstantin.ananyev@intel.com>
+M: Konstantin Ananyev <konstantin.v.ananyev@yandex.ru>
 F: lib/acl/
 F: doc/guides/prog_guide/packet_classif_access_ctrl.rst
 F: app/test-acl/
@@ -1637,7 +1637,7 @@ F: usertools/dpdk-telemetry*
 F: doc/guides/howto/telemetry.rst
 
 BPF
-M: Konstantin Ananyev <konstantin.ananyev@intel.com>
+M: Konstantin Ananyev <konstantin.v.ananyev@yandex.ru>
 F: lib/bpf/
 F: examples/bpf/
 F: app/test/test_bpf.c
