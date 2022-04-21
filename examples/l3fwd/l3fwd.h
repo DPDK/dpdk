@@ -114,6 +114,8 @@ extern struct parm_cfg parm_config;
 
 extern struct acl_algorithms acl_alg[];
 
+extern uint32_t max_pkt_len;
+
 /* Send burst of packets on an output interface */
 static inline int
 send_burst(struct lcore_conf *qconf, uint16_t n, uint16_t port)
@@ -205,6 +207,9 @@ usage_acl_alg(char *buf, size_t sz);
 
 int
 init_mem(uint16_t portid, unsigned int nb_mbuf);
+
+int config_port_max_pkt_len(struct rte_eth_conf *conf,
+			    struct rte_eth_dev_info *dev_info);
 
 /* Function pointers for ACL, LPM, EM or FIB functionality. */
 void

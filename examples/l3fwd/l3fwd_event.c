@@ -73,6 +73,12 @@ l3fwd_eth_dev_port_setup(struct rte_eth_conf *port_conf)
 			rte_panic("Error during getting device (port %u) info:"
 				  "%s\n", port_id, strerror(-ret));
 
+		ret = config_port_max_pkt_len(&local_port_conf, &dev_info);
+		if (ret != 0)
+			rte_exit(EXIT_FAILURE,
+				"Invalid max packet length: %u (port %u)\n",
+				max_pkt_len, port_id);
+
 		if (dev_info.tx_offload_capa & RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE)
 			local_port_conf.txmode.offloads |=
 						RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE;
