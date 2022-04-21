@@ -133,7 +133,7 @@ static struct rte_eth_conf port_conf = {
 	},
 };
 
-static uint32_t max_pkt_len;
+uint32_t max_pkt_len;
 
 static struct rte_mempool *pktmbuf_pool[RTE_MAX_ETHPORTS][NB_SOCKETS];
 static struct rte_mempool *vector_pool[RTE_MAX_ETHPORTS];
@@ -1094,7 +1094,7 @@ eth_dev_get_overhead_len(uint32_t max_rx_pktlen, uint16_t max_mtu)
 	return overhead_len;
 }
 
-static int
+int
 config_port_max_pkt_len(struct rte_eth_conf *conf,
 		struct rte_eth_dev_info *dev_info)
 {

@@ -100,6 +100,8 @@ extern xmm_t val_eth[RTE_MAX_ETHPORTS];
 
 extern struct lcore_conf lcore_conf[RTE_MAX_LCORE];
 
+extern uint32_t max_pkt_len;
+
 /* Send burst of packets on an output interface */
 static inline int
 send_burst(struct lcore_conf *qconf, uint16_t n, uint16_t port)
@@ -185,6 +187,9 @@ is_valid_ipv4_pkt(struct rte_ipv4_hdr *pkt, uint32_t link_len)
 
 int
 init_mem(uint16_t portid, unsigned int nb_mbuf);
+
+int config_port_max_pkt_len(struct rte_eth_conf *conf,
+			    struct rte_eth_dev_info *dev_info);
 
 /* Function pointers for LPM, EM or FIB functionality. */
 void
