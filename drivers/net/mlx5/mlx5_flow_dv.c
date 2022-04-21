@@ -14793,8 +14793,8 @@ __flow_dv_action_rss_hrxqs_release(struct rte_eth_dev *dev,
  * MLX5_RSS_HASH_IPV4_DST_ONLY are mutually exclusive so they can share
  * same slot in mlx5_rss_hash_fields.
  *
- * @param[in] rss_types
- *   RSS type.
+ * @param[in] orig_rss_types
+ *   RSS type as provided in shared RSS action.
  * @param[in, out] hash_field
  *   hash_field variable needed to be adjusted.
  *
@@ -14802,9 +14802,11 @@ __flow_dv_action_rss_hrxqs_release(struct rte_eth_dev *dev,
  *   void
  */
 void
-flow_dv_action_rss_l34_hash_adjust(uint64_t rss_types,
+flow_dv_action_rss_l34_hash_adjust(uint64_t orig_rss_types,
 				   uint64_t *hash_field)
 {
+	uint64_t rss_types = rte_eth_rss_hf_refine(orig_rss_types);
+
 	switch (*hash_field & ~IBV_RX_HASH_INNER) {
 	case MLX5_RSS_HASH_IPV4:
 		if (rss_types & MLX5_IPV4_LAYER_TYPES) {
