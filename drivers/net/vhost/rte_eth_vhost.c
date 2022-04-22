@@ -1654,11 +1654,11 @@ rte_pmd_vhost_probe(struct rte_vdev_device *dev)
 				&open_int, &tso);
 		if (ret < 0)
 			goto out_free;
+	}
 
-		if (tso == 0) {
-			disable_flags |= (1ULL << VIRTIO_NET_F_HOST_TSO4);
-			disable_flags |= (1ULL << VIRTIO_NET_F_HOST_TSO6);
-		}
+	if (tso == 0) {
+		disable_flags |= (1ULL << VIRTIO_NET_F_HOST_TSO4);
+		disable_flags |= (1ULL << VIRTIO_NET_F_HOST_TSO6);
 	}
 
 	if (rte_kvargs_count(kvlist, ETH_VHOST_LINEAR_BUF) == 1) {
