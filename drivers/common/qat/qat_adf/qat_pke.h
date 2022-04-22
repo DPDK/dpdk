@@ -228,6 +228,10 @@ get_ecdsa_verify_function(struct rte_crypto_asym_xform *xform)
 		qat_function.func_id = PKE_ECDSA_VERIFY_GFP_L256;
 		qat_function.bytesize = 32;
 		break;
+	case RTE_CRYPTO_EC_GROUP_SECP384R1:
+		qat_function.func_id = PKE_ECDSA_VERIFY_GFP_L512;
+		qat_function.bytesize = 64;
+		break;
 	case RTE_CRYPTO_EC_GROUP_SECP521R1:
 		qat_function.func_id = PKE_ECDSA_VERIFY_GFP_521;
 		qat_function.bytesize = 66;
@@ -248,6 +252,10 @@ get_ecdsa_function(struct rte_crypto_asym_xform *xform)
 		qat_function.func_id = PKE_ECDSA_SIGN_RS_GFP_L256;
 		qat_function.bytesize = 32;
 		break;
+	case RTE_CRYPTO_EC_GROUP_SECP384R1:
+		qat_function.func_id = PKE_ECDSA_SIGN_RS_GFP_L512;
+		qat_function.bytesize = 64;
+		break;
 	case RTE_CRYPTO_EC_GROUP_SECP521R1:
 		qat_function.func_id = PKE_ECDSA_SIGN_RS_GFP_521;
 		qat_function.bytesize = 66;
@@ -267,6 +275,10 @@ get_ecpm_function(struct rte_crypto_asym_xform *xform)
 	case RTE_CRYPTO_EC_GROUP_SECP256R1:
 		qat_function.func_id = MATHS_POINT_MULTIPLICATION_GFP_L256;
 		qat_function.bytesize = 32;
+		break;
+	case RTE_CRYPTO_EC_GROUP_SECP384R1:
+		qat_function.func_id = MATHS_POINT_MULTIPLICATION_GFP_L512;
+		qat_function.bytesize = 64;
 		break;
 	case RTE_CRYPTO_EC_GROUP_SECP521R1:
 		qat_function.func_id = MATHS_POINT_MULTIPLICATION_GFP_521;

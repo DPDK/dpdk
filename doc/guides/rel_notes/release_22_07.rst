@@ -86,6 +86,10 @@ New Features
   * Added AH mode support in lookaside protocol (IPsec) for CN9K & CN10K.
   * Added AES-GMAC support in lookaside protocol (IPsec) for CN9K & CN10K.
 
+* **Updated Intel QuickAssist Technology (QAT) crypto PMD.**
+
+  * Added support for secp384r1 elliptic curve.
+
 * **Added eventdev API to quiesce an event port.**
 
   Added the function ``rte_event_port_quiesce()``
