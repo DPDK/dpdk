@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: (BSD-3-Clause OR GPL-2.0)
  *
  * Copyright 2013-2016 Freescale Semiconductor Inc.
- * Copyright 2016-2021 NXP
+ * Copyright 2016-2022 NXP
  *
  */
 #ifndef _FSL_DPNI_CMD_H
@@ -9,7 +9,7 @@
 
 /* DPNI Version */
 #define DPNI_VER_MAJOR				8
-#define DPNI_VER_MINOR				0
+#define DPNI_VER_MINOR				2
 
 #define DPNI_CMD_BASE_VERSION			1
 #define DPNI_CMD_VERSION_2			2
@@ -17,6 +17,7 @@
 #define DPNI_CMD_VERSION_4			4
 #define DPNI_CMD_VERSION_5			5
 #define DPNI_CMD_VERSION_6			6
+#define DPNI_CMD_VERSION_7			7
 #define DPNI_CMD_ID_OFFSET			4
 
 #define DPNI_CMD(id)	(((id) << DPNI_CMD_ID_OFFSET) | DPNI_CMD_BASE_VERSION)
@@ -25,17 +26,18 @@
 #define DPNI_CMD_V4(id)	(((id) << DPNI_CMD_ID_OFFSET) | DPNI_CMD_VERSION_4)
 #define DPNI_CMD_V5(id)	(((id) << DPNI_CMD_ID_OFFSET) | DPNI_CMD_VERSION_5)
 #define DPNI_CMD_V6(id)	(((id) << DPNI_CMD_ID_OFFSET) | DPNI_CMD_VERSION_6)
+#define DPNI_CMD_V7(id)	(((id) << DPNI_CMD_ID_OFFSET) | DPNI_CMD_VERSION_7)
 
 /* Command IDs */
 #define DPNI_CMDID_OPEN				DPNI_CMD(0x801)
 #define DPNI_CMDID_CLOSE			DPNI_CMD(0x800)
-#define DPNI_CMDID_CREATE			DPNI_CMD_V6(0x901)
+#define DPNI_CMDID_CREATE			DPNI_CMD_V7(0x901)
 #define DPNI_CMDID_DESTROY			DPNI_CMD(0x981)
 #define DPNI_CMDID_GET_API_VERSION		DPNI_CMD(0xa01)
 
 #define DPNI_CMDID_ENABLE			DPNI_CMD(0x002)
 #define DPNI_CMDID_DISABLE			DPNI_CMD(0x003)
-#define DPNI_CMDID_GET_ATTR			DPNI_CMD_V4(0x004)
+#define DPNI_CMDID_GET_ATTR			DPNI_CMD_V6(0x004)
 #define DPNI_CMDID_RESET			DPNI_CMD(0x005)
 #define DPNI_CMDID_IS_ENABLED			DPNI_CMD(0x006)
 
@@ -104,17 +106,17 @@
 #define DPNI_CMDID_GET_CONGESTION_NOTIFICATION	DPNI_CMD_V3(0x268)
 #define DPNI_CMDID_SET_EARLY_DROP		DPNI_CMD_V3(0x269)
 #define DPNI_CMDID_GET_EARLY_DROP		DPNI_CMD_V3(0x26A)
-#define DPNI_CMDID_GET_OFFLOAD			DPNI_CMD(0x26B)
-#define DPNI_CMDID_SET_OFFLOAD			DPNI_CMD(0x26C)
+#define DPNI_CMDID_GET_OFFLOAD			DPNI_CMD_V2(0x26B)
+#define DPNI_CMDID_SET_OFFLOAD			DPNI_CMD_V2(0x26C)
 #define DPNI_CMDID_SET_TX_CONFIRMATION_MODE	DPNI_CMD(0x266)
 #define DPNI_CMDID_GET_TX_CONFIRMATION_MODE	DPNI_CMD(0x26D)
-#define DPNI_CMDID_SET_OPR			DPNI_CMD(0x26e)
-#define DPNI_CMDID_GET_OPR			DPNI_CMD(0x26f)
+#define DPNI_CMDID_SET_OPR			DPNI_CMD_V2(0x26e)
+#define DPNI_CMDID_GET_OPR			DPNI_CMD_V2(0x26f)
 #define DPNI_CMDID_LOAD_SW_SEQUENCE		DPNI_CMD(0x270)
 #define DPNI_CMDID_ENABLE_SW_SEQUENCE		DPNI_CMD(0x271)
 #define DPNI_CMDID_GET_SW_SEQUENCE_LAYOUT	DPNI_CMD(0x272)
-#define DPNI_CMDID_SET_RX_FS_DIST		DPNI_CMD(0x273)
-#define DPNI_CMDID_SET_RX_HASH_DIST		DPNI_CMD(0x274)
+#define DPNI_CMDID_SET_RX_FS_DIST		DPNI_CMD_V2(0x273)
+#define DPNI_CMDID_SET_RX_HASH_DIST		DPNI_CMD_V2(0x274)
 #define DPNI_CMDID_ADD_CUSTOM_TPID		DPNI_CMD(0x275)
 #define DPNI_CMDID_REMOVE_CUSTOM_TPID		DPNI_CMD(0x276)
 #define DPNI_CMDID_GET_CUSTOM_TPID		DPNI_CMD(0x277)
@@ -238,7 +240,7 @@ struct dpni_rsp_get_attr {
 	uint8_t qos_entries;
 	uint8_t pad2;
 	uint16_t fs_entries;
-	uint16_t pad3;
+	uint16_t num_opr;
 	/* response word 2 */
 	uint8_t qos_key_size;
 	uint8_t fs_key_size;
@@ -906,6 +908,8 @@ struct dpni_rsp_single_step_cfg {
 	uint16_t	flags;
 	uint16_t	offset;
 	uint32_t	peer_delay;
+	uint32_t	ptp_onestep_reg_base;
+	uint32_t	pad0;
 };
 
 #define DPNI_PORT_LOOPBACK_EN_SHIFT	0

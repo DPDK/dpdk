@@ -372,6 +372,7 @@ struct dpni_attr {
 	uint8_t  vlan_filter_entries;
 	uint8_t  qos_entries;
 	uint16_t fs_entries;
+	uint16_t num_opr;
 	uint8_t  qos_key_size;
 	uint8_t  fs_key_size;
 	uint16_t wriop_version;
