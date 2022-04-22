@@ -179,6 +179,9 @@ dpaa2_dev_rx_parse_slow(struct rte_mbuf *mbuf,
 		if (BIT_ISSET_AT_POS(annotation->word4, L3_IP_1_OPT_PRESENT |
 			L3_IP_N_OPT_PRESENT))
 			pkt_type |= RTE_PTYPE_L3_IPV4_EXT;
+		if (BIT_ISSET_AT_POS(annotation->word4, L3_PROTO_IPSEC_ESP_PRESENT |
+					L3_PROTO_ESP_PRESENT))
+			pkt_type |= RTE_PTYPE_TUNNEL_ESP;
 
 	} else if (BIT_ISSET_AT_POS(annotation->word4, L3_IPV6_1_PRESENT |
 		  L3_IPV6_N_PRESENT)) {
@@ -186,6 +189,9 @@ dpaa2_dev_rx_parse_slow(struct rte_mbuf *mbuf,
 		if (BIT_ISSET_AT_POS(annotation->word4, L3_IP_1_OPT_PRESENT |
 		    L3_IP_N_OPT_PRESENT))
 			pkt_type |= RTE_PTYPE_L3_IPV6_EXT;
+		if (BIT_ISSET_AT_POS(annotation->word4, L3_PROTO_IPSEC_ESP_PRESENT |
+					L3_PROTO_ESP_PRESENT))
+			pkt_type |= RTE_PTYPE_TUNNEL_ESP;
 	} else {
 		goto parse_done;
 	}
