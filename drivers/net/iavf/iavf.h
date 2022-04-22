@@ -170,10 +170,20 @@ struct iavf_tm_node {
 	uint32_t weight;
 	uint32_t reference_count;
 	struct iavf_tm_node *parent;
+	struct iavf_tm_shaper_profile *shaper_profile;
 	struct rte_tm_node_params params;
 };
 
 TAILQ_HEAD(iavf_tm_node_list, iavf_tm_node);
+
+struct iavf_tm_shaper_profile {
+	TAILQ_ENTRY(iavf_tm_shaper_profile) node;
+	uint32_t shaper_profile_id;
+	uint32_t reference_count;
+	struct rte_tm_shaper_params profile;
+};
+
+TAILQ_HEAD(iavf_shaper_profile_list, iavf_tm_shaper_profile);
 
 /* node type of Traffic Manager */
 enum iavf_tm_node_type {
@@ -188,6 +198,7 @@ struct iavf_tm_conf {
 	struct iavf_tm_node *root; /* root node - vf vsi */
 	struct iavf_tm_node_list tc_list; /* node list for all the TCs */
 	struct iavf_tm_node_list queue_list; /* node list for all the queues */
+	struct iavf_shaper_profile_list shaper_profile_list;
 	uint32_t nb_tc_node;
 	uint32_t nb_queue_node;
 	bool committed;
@@ -451,6 +462,8 @@ int iavf_add_del_mc_addr_list(struct iavf_adapter *adapter,
 int iavf_request_queues(struct rte_eth_dev *dev, uint16_t num);
 int iavf_get_max_rss_queue_region(struct iavf_adapter *adapter);
 int iavf_get_qos_cap(struct iavf_adapter *adapter);
+int iavf_set_q_bw(struct rte_eth_dev *dev,
+		  struct virtchnl_queues_bw_cfg *q_bw, uint16_t size);
 int iavf_set_q_tc_map(struct rte_eth_dev *dev,
 			struct virtchnl_queue_tc_mapping *q_tc_mapping,
 			uint16_t size);

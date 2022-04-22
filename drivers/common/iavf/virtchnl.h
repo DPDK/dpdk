@@ -164,6 +164,7 @@ enum virtchnl_ops {
 	VIRTCHNL_OP_ENABLE_QUEUES_V2 = 107,
 	VIRTCHNL_OP_DISABLE_QUEUES_V2 = 108,
 	VIRTCHNL_OP_MAP_QUEUE_VECTOR = 111,
+	VIRTCHNL_OP_CONFIG_QUEUE_BW = 112,
 	VIRTCHNL_OP_MAX,
 };
 
@@ -1872,6 +1873,23 @@ struct virtchnl_queue_tc_mapping {
 
 VIRTCHNL_CHECK_STRUCT_LEN(12, virtchnl_queue_tc_mapping);
 
+/* VIRTCHNL_OP_CONFIG_QUEUE_BW */
+struct virtchnl_queue_bw {
+	u16 queue_id;
+	u8 tc;
+	u8 pad;
+	struct virtchnl_shaper_bw shaper;
+};
+
+VIRTCHNL_CHECK_STRUCT_LEN(12, virtchnl_queue_bw);
+
+struct virtchnl_queues_bw_cfg {
+	u16 vsi_id;
+	u16 num_queues;
+	struct virtchnl_queue_bw cfg[1];
+};
+
+VIRTCHNL_CHECK_STRUCT_LEN(16, virtchnl_queues_bw_cfg);
 
 /* TX and RX queue types are valid in legacy as well as split queue models.
  * With Split Queue model, 2 additional types are introduced - TX_COMPLETION
@@ -2242,6 +2260,19 @@ virtchnl_vc_validate_vf_msg(struct virtchnl_version_info *ver, u32 v_opcode,
 			}
 			valid_len += (q_tc->num_tc - 1) *
 					 sizeof(q_tc->tc[0]);
+		}
+		break;
+	case VIRTCHNL_OP_CONFIG_QUEUE_BW:
+		valid_len = sizeof(struct virtchnl_queues_bw_cfg);
+		if (msglen >= valid_len) {
+			struct virtchnl_queues_bw_cfg *q_bw =
+				(struct virtchnl_queues_bw_cfg *)msg;
+			if (q_bw->num_queues == 0) {
+				err_msg_format = true;
+				break;
+			}
+			valid_len += (q_bw->num_queues - 1) *
+					 sizeof(q_bw->cfg[0]);
 		}
 		break;
 	case VIRTCHNL_OP_GET_OFFLOAD_VLAN_V2_CAPS:

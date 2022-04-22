@@ -1636,6 +1636,29 @@ int iavf_set_q_tc_map(struct rte_eth_dev *dev,
 	return err;
 }
 
+int iavf_set_q_bw(struct rte_eth_dev *dev,
+		struct virtchnl_queues_bw_cfg *q_bw, uint16_t size)
+{
+	struct iavf_adapter *adapter =
+			IAVF_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
+	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
+	struct iavf_cmd_info args;
+	int err;
+
+	memset(&args, 0, sizeof(args));
+	args.ops = VIRTCHNL_OP_CONFIG_QUEUE_BW;
+	args.in_args = (uint8_t *)q_bw;
+	args.in_args_size = size;
+	args.out_buffer = vf->aq_resp;
+	args.out_size = IAVF_AQ_BUF_SZ;
+
+	err = iavf_execute_vf_cmd(adapter, &args, 0);
+	if (err)
+		PMD_DRV_LOG(ERR, "Failed to execute command of"
+			    " VIRTCHNL_OP_CONFIG_QUEUE_BW");
+	return err;
+}
+
 int
 iavf_add_del_mc_addr_list(struct iavf_adapter *adapter,
 			struct rte_ether_addr *mc_addrs,

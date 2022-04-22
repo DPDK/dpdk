@@ -8,6 +8,13 @@
 static int iavf_hierarchy_commit(struct rte_eth_dev *dev,
 				 __rte_unused int clear_on_fail,
 				 __rte_unused struct rte_tm_error *error);
+static int iavf_shaper_profile_add(struct rte_eth_dev *dev,
+				   uint32_t shaper_profile_id,
+				   struct rte_tm_shaper_params *profile,
+				   struct rte_tm_error *error);
+static int iavf_shaper_profile_del(struct rte_eth_dev *dev,
+				   uint32_t shaper_profile_id,
+				   struct rte_tm_error *error);
 static int iavf_tm_node_add(struct rte_eth_dev *dev, uint32_t node_id,
 	      uint32_t parent_node_id, uint32_t priority,
 	      uint32_t weight, uint32_t level_id,
@@ -30,6 +37,8 @@ static int iavf_node_type_get(struct rte_eth_dev *dev, uint32_t node_id,
 		   int *is_leaf, struct rte_tm_error *error);
 
 const struct rte_tm_ops iavf_tm_ops = {
+	.shaper_profile_add = iavf_shaper_profile_add,
+	.shaper_profile_delete = iavf_shaper_profile_del,
 	.node_add = iavf_tm_node_add,
 	.node_delete = iavf_tm_node_delete,
 	.capabilities_get = iavf_tm_capabilities_get,
@@ -44,6 +53,9 @@ iavf_tm_conf_init(struct rte_eth_dev *dev)
 {
 	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
 
+	/* initialize shaper profile list */
+	TAILQ_INIT(&vf->tm_conf.shaper_profile_list);
+
 	/* initialize node configuration */
 	vf->tm_conf.root = NULL;
 	TAILQ_INIT(&vf->tm_conf.tc_list);
@@ -57,6 +69,7 @@ void
 iavf_tm_conf_uninit(struct rte_eth_dev *dev)
 {
 	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
+	struct iavf_tm_shaper_profile *shaper_profile;
 	struct iavf_tm_node *tm_node;
 
 	/* clear node configuration */
@@ -73,6 +86,14 @@ iavf_tm_conf_uninit(struct rte_eth_dev *dev)
 	if (vf->tm_conf.root) {
 		rte_free(vf->tm_conf.root);
 		vf->tm_conf.root = NULL;
+	}
+
+	/* Remove all shaper profiles */
+	while ((shaper_profile =
+	       TAILQ_FIRST(&vf->tm_conf.shaper_profile_list))) {
+		TAILQ_REMOVE(&vf->tm_conf.shaper_profile_list,
+			     shaper_profile, node);
+		rte_free(shaper_profile);
 	}
 }
 
@@ -129,13 +150,6 @@ iavf_node_param_check(struct iavf_info *vf, uint32_t node_id,
 	if (weight != 1) {
 		error->type = RTE_TM_ERROR_TYPE_NODE_WEIGHT;
 		error->message = "weight must be 1";
-		return -EINVAL;
-	}
-
-	/* not support shaper profile */
-	if (params->shaper_profile_id) {
-		error->type = RTE_TM_ERROR_TYPE_NODE_PARAMS_SHAPER_PROFILE_ID;
-		error->message = "shaper profile not supported";
 		return -EINVAL;
 	}
 
@@ -236,6 +250,23 @@ iavf_node_type_get(struct rte_eth_dev *dev, uint32_t node_id,
 	return 0;
 }
 
+static inline struct iavf_tm_shaper_profile *
+iavf_shaper_profile_search(struct rte_eth_dev *dev,
+			   uint32_t shaper_profile_id)
+{
+	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
+	struct iavf_shaper_profile_list *shaper_profile_list =
+		&vf->tm_conf.shaper_profile_list;
+	struct iavf_tm_shaper_profile *shaper_profile;
+
+	TAILQ_FOREACH(shaper_profile, shaper_profile_list, node) {
+		if (shaper_profile_id == shaper_profile->shaper_profile_id)
+			return shaper_profile;
+	}
+
+	return NULL;
+}
+
 static int
 iavf_tm_node_add(struct rte_eth_dev *dev, uint32_t node_id,
 	      uint32_t parent_node_id, uint32_t priority,
@@ -246,6 +277,7 @@ iavf_tm_node_add(struct rte_eth_dev *dev, uint32_t node_id,
 	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
 	enum iavf_tm_node_type node_type = IAVF_TM_NODE_TYPE_MAX;
 	enum iavf_tm_node_type parent_node_type = IAVF_TM_NODE_TYPE_MAX;
+	struct iavf_tm_shaper_profile *shaper_profile = NULL;
 	struct iavf_tm_node *tm_node;
 	struct iavf_tm_node *parent_node;
 	uint16_t tc_nb = vf->qos_cap->num_elem;
@@ -271,6 +303,18 @@ iavf_tm_node_add(struct rte_eth_dev *dev, uint32_t node_id,
 		error->type = RTE_TM_ERROR_TYPE_NODE_ID;
 		error->message = "node id already used";
 		return -EINVAL;
+	}
+
+	/* check the shaper profile id */
+	if (params->shaper_profile_id != RTE_TM_SHAPER_PROFILE_ID_NONE) {
+		shaper_profile = iavf_shaper_profile_search(dev,
+			params->shaper_profile_id);
+		if (!shaper_profile) {
+			error->type =
+				RTE_TM_ERROR_TYPE_NODE_PARAMS_SHAPER_PROFILE_ID;
+			error->message = "shaper profile not exist";
+			return -EINVAL;
+		}
 	}
 
 	/* root node if not have a parent */
@@ -358,6 +402,7 @@ iavf_tm_node_add(struct rte_eth_dev *dev, uint32_t node_id,
 	tm_node->id = node_id;
 	tm_node->reference_count = 0;
 	tm_node->parent = parent_node;
+	tm_node->shaper_profile = shaper_profile;
 	rte_memcpy(&tm_node->params, params,
 			 sizeof(struct rte_tm_node_params));
 	if (parent_node_type == IAVF_TM_NODE_TYPE_PORT) {
@@ -372,6 +417,10 @@ iavf_tm_node_add(struct rte_eth_dev *dev, uint32_t node_id,
 		vf->tm_conf.nb_queue_node++;
 	}
 	tm_node->parent->reference_count++;
+
+	/* increase the reference counter of the shaper profile */
+	if (shaper_profile)
+		shaper_profile->reference_count++;
 
 	return 0;
 }
@@ -433,6 +482,103 @@ iavf_tm_node_delete(struct rte_eth_dev *dev, uint32_t node_id,
 		vf->tm_conf.nb_queue_node--;
 	}
 	rte_free(tm_node);
+
+	return 0;
+}
+
+static int
+iavf_shaper_profile_param_check(struct rte_tm_shaper_params *profile,
+				struct rte_tm_error *error)
+{
+	/* min bucket size not supported */
+	if (profile->committed.size) {
+		error->type = RTE_TM_ERROR_TYPE_SHAPER_PROFILE_COMMITTED_SIZE;
+		error->message = "committed bucket size not supported";
+		return -EINVAL;
+	}
+	/* max bucket size not supported */
+	if (profile->peak.size) {
+		error->type = RTE_TM_ERROR_TYPE_SHAPER_PROFILE_PEAK_SIZE;
+		error->message = "peak bucket size not supported";
+		return -EINVAL;
+	}
+	/* length adjustment not supported */
+	if (profile->pkt_length_adjust) {
+		error->type = RTE_TM_ERROR_TYPE_SHAPER_PROFILE_PKT_ADJUST_LEN;
+		error->message = "packet length adjustment not supported";
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+static int
+iavf_shaper_profile_add(struct rte_eth_dev *dev,
+			uint32_t shaper_profile_id,
+			struct rte_tm_shaper_params *profile,
+			struct rte_tm_error *error)
+{
+	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
+	struct iavf_tm_shaper_profile *shaper_profile;
+	int ret;
+
+	if (!profile || !error)
+		return -EINVAL;
+
+	ret = iavf_shaper_profile_param_check(profile, error);
+	if (ret)
+		return ret;
+
+	shaper_profile = iavf_shaper_profile_search(dev, shaper_profile_id);
+
+	if (shaper_profile) {
+		error->type = RTE_TM_ERROR_TYPE_SHAPER_PROFILE_ID;
+		error->message = "profile ID exist";
+		return -EINVAL;
+	}
+
+	shaper_profile = rte_zmalloc("iavf_tm_shaper_profile",
+				     sizeof(struct iavf_tm_shaper_profile),
+				     0);
+	if (!shaper_profile)
+		return -ENOMEM;
+	shaper_profile->shaper_profile_id = shaper_profile_id;
+	rte_memcpy(&shaper_profile->profile, profile,
+			 sizeof(struct rte_tm_shaper_params));
+	TAILQ_INSERT_TAIL(&vf->tm_conf.shaper_profile_list,
+			  shaper_profile, node);
+
+	return 0;
+}
+
+static int
+iavf_shaper_profile_del(struct rte_eth_dev *dev,
+			uint32_t shaper_profile_id,
+			struct rte_tm_error *error)
+{
+	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
+	struct iavf_tm_shaper_profile *shaper_profile;
+
+	if (!error)
+		return -EINVAL;
+
+	shaper_profile = iavf_shaper_profile_search(dev, shaper_profile_id);
+
+	if (!shaper_profile) {
+		error->type = RTE_TM_ERROR_TYPE_SHAPER_PROFILE_ID;
+		error->message = "profile ID not exist";
+		return -EINVAL;
+	}
+
+	/* don't delete a profile if it's used by one or several nodes */
+	if (shaper_profile->reference_count) {
+		error->type = RTE_TM_ERROR_TYPE_SHAPER_PROFILE;
+		error->message = "profile in use";
+		return -EINVAL;
+	}
+
+	TAILQ_REMOVE(&vf->tm_conf.shaper_profile_list, shaper_profile, node);
+	rte_free(shaper_profile);
 
 	return 0;
 }
@@ -656,10 +802,11 @@ static int iavf_hierarchy_commit(struct rte_eth_dev *dev,
 	struct iavf_adapter *adapter =
 		IAVF_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
 	struct virtchnl_queue_tc_mapping *q_tc_mapping;
+	struct virtchnl_queues_bw_cfg *q_bw;
 	struct iavf_tm_node_list *queue_list = &vf->tm_conf.queue_list;
 	struct iavf_tm_node *tm_node;
 	struct iavf_qtc_map *qtc_map;
-	uint16_t size;
+	uint16_t size, size_q;
 	int index = 0, node_committed = 0;
 	int i, ret_val = IAVF_SUCCESS;
 
@@ -691,9 +838,20 @@ static int iavf_hierarchy_commit(struct rte_eth_dev *dev,
 		goto fail_clear;
 	}
 
+	size_q = sizeof(*q_bw) + sizeof(q_bw->cfg[0]) *
+		(vf->num_queue_pairs - 1);
+	q_bw = rte_zmalloc("q_bw", size_q, 0);
+	if (!q_bw) {
+		ret_val = IAVF_ERR_NO_MEMORY;
+		goto fail_clear;
+	}
+
 	q_tc_mapping->vsi_id = vf->vsi.vsi_id;
 	q_tc_mapping->num_tc = vf->qos_cap->num_elem;
 	q_tc_mapping->num_queue_pairs = vf->num_queue_pairs;
+
+	q_bw->vsi_id = vf->vsi.vsi_id;
+	q_bw->num_queues = vf->num_queue_pairs;
 
 	TAILQ_FOREACH(tm_node, queue_list, node) {
 		if (tm_node->tc >= q_tc_mapping->num_tc) {
@@ -702,6 +860,18 @@ static int iavf_hierarchy_commit(struct rte_eth_dev *dev,
 			goto fail_clear;
 		}
 		q_tc_mapping->tc[tm_node->tc].req.queue_count++;
+
+		if (tm_node->shaper_profile) {
+			q_bw->cfg[node_committed].queue_id = node_committed;
+			q_bw->cfg[node_committed].shaper.peak =
+			tm_node->shaper_profile->profile.peak.rate /
+			1000 * IAVF_BITS_PER_BYTE;
+			q_bw->cfg[node_committed].shaper.committed =
+			tm_node->shaper_profile->profile.committed.rate /
+			1000 * IAVF_BITS_PER_BYTE;
+			q_bw->cfg[node_committed].tc = tm_node->tc;
+		}
+
 		node_committed++;
 	}
 
@@ -711,6 +881,10 @@ static int iavf_hierarchy_commit(struct rte_eth_dev *dev,
 		ret_val = IAVF_ERR_PARAM;
 		goto fail_clear;
 	}
+
+	ret_val = iavf_set_q_bw(dev, q_bw, size_q);
+	if (ret_val)
+		goto fail_clear;
 
 	/* store the queue TC mapping info */
 	qtc_map = rte_zmalloc("qtc_map",

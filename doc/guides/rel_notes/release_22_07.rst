@@ -55,6 +55,10 @@ New Features
      Also, make sure to start the actual text at the margin.
      =======================================================
 
+* **Updated Intel iavf driver.**
+
+  * Added Tx QoS queue rate limitation support.
+
 
 Removed Items
 -------------
