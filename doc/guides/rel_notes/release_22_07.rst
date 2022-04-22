@@ -190,6 +190,11 @@ New Features
   This is a fall-back implementation for platforms that
   don't support vector operations.
 
+* **Merged l3fwd-acl into l3fwd example.**
+
+  Merged l3fwd-acl code into l3fwd as l3fwd-acl contains duplicate
+  and common functions to l3fwd.
+
 
 Removed Items
 -------------

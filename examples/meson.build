@@ -32,7 +32,6 @@ all_examples = [
         'l2fwd-jobstats',
         'l2fwd-keepalive',
         'l3fwd',
-        'l3fwd-acl',
         'l3fwd-graph',
         'l3fwd-power',
         'link_status_interrupt',

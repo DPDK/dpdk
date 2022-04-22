@@ -11,7 +11,7 @@ The application performs L3 forwarding.
 Overview
 --------
 
-The application demonstrates the use of the hash, LPM and FIB libraries in DPDK
+The application demonstrates the use of the hash, LPM, FIB and ACL libraries in DPDK
 to implement packet forwarding using poll or event mode PMDs for packet I/O.
 The initialization and run-time paths are very similar to those of the
 :doc:`l2_forward_real_virtual` and :doc:`l2_forward_event`.
@@ -22,7 +22,7 @@ decision is made based on information read from the input packet.
 Eventdev can optionally use S/W or H/W (if supported by platform) scheduler
 implementation for packet I/O based on run time parameters.
 
-The lookup method is hash-based, LPM-based or FIB-based
+The lookup method is hash-based, LPM-based, FIB-based or ACL-based
 and is selected at run time.
 When the selected lookup method is hash-based,
 a hash object is used to emulate the flow classification stage.
@@ -44,7 +44,19 @@ returned by the LPM or FIB lookup.
 The set of LPM and FIB rules used by the application is statically configured
 and loaded into the LPM or FIB object at initialization time.
 
-In the sample application, hash-based and FIB-based forwarding supports
+For ACL, the ACL library is used to perform both ACL and route entry lookup.
+When packets are received from a port,
+the application extracts the necessary information
+from the TCP/IP header of the received packet
+and performs a lookup in the rule database to figure out
+whether the packets should be dropped (in the ACL range)
+or forwarded to desired ports.
+For ACL, the application implements packet classification
+for the IPv4/IPv6 5-tuple syntax specifically.
+The 5-tuple syntax consists of a source IP address, a destination IP address,
+a source port, a destination port and a protocol identifier.
+
+In the sample application, hash-based, FIB-based and ACL-based forwarding supports
 both IPv4 and IPv6.
 LPM-based forwarding supports IPv4 only.
 During the initialization phase route rules for IPv4 and IPv6 are read from rule files.
@@ -97,7 +109,8 @@ Where,
   Accepted options:
   ``em`` (Exact Match),
   ``lpm`` (Longest Prefix Match),
-  ``fib`` (Forwarding Information Base).
+  ``fib`` (Forwarding Information Base),
+  ``acl`` (Access Control List).
   Default is ``lpm``.
 
 * ``--config (port,queue,lcore)[,(port,queue,lcore)]:`` Determines which queues from which ports are mapped to which cores.
@@ -127,6 +140,9 @@ Where,
 * ``--event-vector-size:`` Optional, Max vector size if event vectorization is enabled.
 
 * ``--event-vector-tmo:`` Optional, Max timeout to form vector in nanoseconds if event vectorization is enabled.
+
+* ``--alg=<val>:`` optional, ACL classify method to use, one of:
+  ``scalar|sse|avx2|neon|altivec|avx512x16|avx512x32``
 
 * ``-E:`` Optional, enable exact match,
   legacy flag, please use ``--lookup=em`` instead.
@@ -248,6 +264,8 @@ To read data from the specified file successfully, the application assumes the f
 
 *   Comment line, which starts with a leading character '#'
 
+*   ACL rule line, which starts with a leading character ‘@’
+
 *   Empty line, which consists of a space, form-feed ('\f'), newline ('\n'),
     carriage return ('\r'), horizontal tab ('\t'), or vertical tab ('\v').
 
@@ -264,12 +282,29 @@ R<destination_ip>/<ip_mask_length><output_port_number>
 
 R<destination_ip><source_ip><destination_port><source_port><protocol><output_port_number>
 
+*   A typical IPv4 ACL rule line should have a format as shown below:
+
+.. _figure_ipv4_acl_rule:
+
+.. figure:: img/ipv4_acl_rule.*
+
+   A typical IPv4 ACL rule
+
 IPv4 addresses are specified in CIDR format as specified in RFC 4632.
-For LPM/FIB they consist of the dot notation for the address and a prefix length separated by '/'.
+For LPM/FIB/ACL they consist of the dot notation for the address
+and a prefix length separated by '/'.
 For example, 192.168.0.34/32, where the address is 192.168.0.34 and the prefix length is 32.
 For EM they consist of just the dot notation for the address and no prefix length.
 For example, 192.168.0.34, where the Address is 192.168.0.34.
 EM also includes ports which are specified as a single number which represents a single port.
+
+The application parses the rules from the file,
+it ignores empty and comment lines,
+and parses and validates the rules it reads.
+If errors are detected, the application exits
+with messages to identify the errors encountered.
+The ACL rules save the index to the specific rules in the userdata field,
+while route rules save the forwarding port number.
 
 Hash Initialization
 ~~~~~~~~~~~~~~~~~~~
@@ -333,6 +368,35 @@ the full setup function including the IPv6 setup can be seen in the app code.
    :language: c
    :start-after: Function to setup fib. 8<
    :end-before: >8 End of setup fib.
+
+ACL Initialization
+~~~~~~~~~~~~~~~~~~
+
+For each supported ACL rule format (IPv4 5-tuple, IPv6 6-tuple),
+the application creates a separate context handler
+from the ACL library for each CPU socket on the board
+and adds parsed rules into that context.
+
+Note, that for each supported rule type,
+the application needs to calculate the expected offset of the fields
+from the start of the packet.
+That's why only packets with fixed IPv4/ IPv6 header are supported.
+That allows to perform ACL classify straight over incoming packet buffer -
+no extra protocol field retrieval need to be performed.
+
+Subsequently, the application checks whether NUMA is enabled.
+If it is, the application records the socket IDs of the CPU cores involved in the task.
+
+Finally, the application creates contexts handler from the ACL library,
+adds rules parsed from the file into the database and build an ACL trie.
+It is important to note that the application creates an independent copy
+of each database for each socket CPU involved in the task
+to reduce the time for remote memory access.
+
+.. literalinclude:: ../../../examples/l3fwd/l3fwd_acl.c
+   :language: c
+   :start-after: Setup ACL context. 8<
+   :end-before: >8 End of ACL context setup.
 
 Packet Forwarding for Hash-based Lookups
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

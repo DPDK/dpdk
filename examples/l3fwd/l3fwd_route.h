@@ -5,6 +5,7 @@
 /* Log file related character defs. */
 #define COMMENT_LEAD_CHAR	('#')
 #define ROUTE_LEAD_CHAR		('R')
+#define ACL_LEAD_CHAR		('@')
 
 #define	IPV6_ADDR_LEN	16
 #define	IPV6_ADDR_U16	(IPV6_ADDR_LEN / sizeof(uint16_t))
@@ -97,10 +98,25 @@ void
 read_config_files_em(void);
 
 void
+read_config_files_acl(void);
+
+void
 em_free_routes(void);
 
 void
 lpm_free_routes(void);
+
+void
+acl_free_routes(void);
+
+void
+l3fwd_set_alg(const char *optarg);
+
+void
+l3fwd_set_rule_ipv6_name(const char *optarg);
+
+void
+l3fwd_set_rule_ipv4_name(const char *optarg);
 
 int
 is_bypass_line(const char *buff);
