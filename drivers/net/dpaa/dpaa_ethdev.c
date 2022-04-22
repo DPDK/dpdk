@@ -1211,23 +1211,17 @@ int
 dpaa_eth_eventq_detach(const struct rte_eth_dev *dev,
 		int eth_rx_queue_id)
 {
-	struct qm_mcc_initfq opts;
+	struct qm_mcc_initfq opts = {0};
 	int ret;
 	u32 flags = 0;
 	struct dpaa_if *dpaa_intf = dev->data->dev_private;
 	struct qman_fq *rxq = &dpaa_intf->rx_queues[eth_rx_queue_id];
 
-	dpaa_poll_queue_default_config(&opts);
-
-	if (dpaa_intf->cgr_rx) {
-		opts.we_mask |= QM_INITFQ_WE_CGID;
-		opts.fqd.cgid = dpaa_intf->cgr_rx[eth_rx_queue_id].cgrid;
-		opts.fqd.fq_ctrl |= QM_FQCTRL_CGE;
-	}
-
+	qman_retire_fq(rxq, NULL);
+	qman_oos_fq(rxq);
 	ret = qman_init_fq(rxq, flags, &opts);
 	if (ret) {
-		DPAA_PMD_ERR("init rx fqid %d failed with ret: %d",
+		DPAA_PMD_ERR("detach rx fqid %d failed with ret: %d",
 			     rxq->fqid, ret);
 	}
 
