@@ -292,6 +292,7 @@ enum iavf_proto_xtr_type {
 struct iavf_devargs {
 	uint8_t proto_xtr_dflt;
 	uint8_t proto_xtr[IAVF_MAX_QUEUE_NUM];
+	uint16_t quanta_size;
 };
 
 struct iavf_security_ctx;
@@ -467,6 +468,8 @@ int iavf_set_q_bw(struct rte_eth_dev *dev,
 int iavf_set_q_tc_map(struct rte_eth_dev *dev,
 			struct virtchnl_queue_tc_mapping *q_tc_mapping,
 			uint16_t size);
+int iavf_set_vf_quanta_size(struct iavf_adapter *adapter, u16 start_queue_id,
+			    u16 num_queues);
 void iavf_tm_conf_init(struct rte_eth_dev *dev);
 void iavf_tm_conf_uninit(struct rte_eth_dev *dev);
 int iavf_ipsec_crypto_request(struct iavf_adapter *adapter,

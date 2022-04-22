@@ -1828,3 +1828,34 @@ iavf_ipsec_crypto_request(struct iavf_adapter *adapter,
 
 	return 0;
 }
+
+int
+iavf_set_vf_quanta_size(struct iavf_adapter *adapter, u16 start_queue_id, u16 num_queues)
+{
+	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(adapter);
+	struct iavf_cmd_info args;
+	struct virtchnl_quanta_cfg q_quanta;
+	int err;
+
+	if (adapter->devargs.quanta_size == 0)
+		return 0;
+
+	q_quanta.quanta_size = adapter->devargs.quanta_size;
+	q_quanta.queue_select.type = VIRTCHNL_QUEUE_TYPE_TX;
+	q_quanta.queue_select.start_queue_id = start_queue_id;
+	q_quanta.queue_select.num_queues = num_queues;
+
+	args.ops = VIRTCHNL_OP_CONFIG_QUANTA;
+	args.in_args = (uint8_t *)&q_quanta;
+	args.in_args_size = sizeof(q_quanta);
+	args.out_buffer = vf->aq_resp;
+	args.out_size = IAVF_AQ_BUF_SZ;
+
+	err = iavf_execute_vf_cmd(adapter, &args, 0);
+	if (err) {
+		PMD_DRV_LOG(ERR, "Failed to execute command VIRTCHNL_OP_CONFIG_QUANTA");
+		return err;
+	}
+
+	return 0;
+}

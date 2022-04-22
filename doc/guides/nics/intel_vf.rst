@@ -92,6 +92,10 @@ For more detail on SR-IOV, please refer to the following documents:
     available for IAVF PMD. The same devargs with the same parameters can be applied to IAVF PMD, for detail please reference
     the section ``Protocol extraction for per queue`` of ice.rst.
 
+    Quanta size configuration is also supported when IAVF is backed by an Intel® E810 device by setting ``devargs``
+    parameter ``quanta_size`` like ``-a 18:00.0,quanta_size=2048``. The default value is 1024, and quanta size should be
+    set as the product of 64 in legacy host interface mode.
+
 The PCIE host-interface of Intel Ethernet Switch FM10000 Series VF infrastructure
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 

@@ -165,6 +165,7 @@ enum virtchnl_ops {
 	VIRTCHNL_OP_DISABLE_QUEUES_V2 = 108,
 	VIRTCHNL_OP_MAP_QUEUE_VECTOR = 111,
 	VIRTCHNL_OP_CONFIG_QUEUE_BW = 112,
+	VIRTCHNL_OP_CONFIG_QUANTA = 113,
 	VIRTCHNL_OP_MAX,
 };
 
@@ -1996,6 +1997,12 @@ struct virtchnl_queue_vector_maps {
 
 VIRTCHNL_CHECK_STRUCT_LEN(24, virtchnl_queue_vector_maps);
 
+struct virtchnl_quanta_cfg {
+	u16 quanta_size;
+	struct virtchnl_queue_chunk queue_select;
+};
+
+VIRTCHNL_CHECK_STRUCT_LEN(12, virtchnl_quanta_cfg);
 
 /* Since VF messages are limited by u16 size, precalculate the maximum possible
  * values of nested elements in virtchnl structures that virtual channel can
@@ -2273,6 +2280,18 @@ virtchnl_vc_validate_vf_msg(struct virtchnl_version_info *ver, u32 v_opcode,
 			}
 			valid_len += (q_bw->num_queues - 1) *
 					 sizeof(q_bw->cfg[0]);
+		}
+		break;
+	case VIRTCHNL_OP_CONFIG_QUANTA:
+		valid_len = sizeof(struct virtchnl_quanta_cfg);
+		if (msglen >= valid_len) {
+			struct virtchnl_quanta_cfg *q_quanta =
+				(struct virtchnl_quanta_cfg *)msg;
+			if (q_quanta->quanta_size == 0 ||
+			    q_quanta->queue_select.num_queues == 0) {
+				err_msg_format = true;
+				break;
+			}
 		}
 		break;
 	case VIRTCHNL_OP_GET_OFFLOAD_VLAN_V2_CAPS:

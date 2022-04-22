@@ -58,6 +58,7 @@ New Features
 * **Updated Intel iavf driver.**
 
   * Added Tx QoS queue rate limitation support.
+  * Added quanta size configuration support.
 
 
 Removed Items

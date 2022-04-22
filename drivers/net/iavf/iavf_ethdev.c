@@ -34,9 +34,11 @@
 
 /* devargs */
 #define IAVF_PROTO_XTR_ARG         "proto_xtr"
+#define IAVF_QUANTA_SIZE_ARG       "quanta_size"
 
 static const char * const iavf_valid_args[] = {
 	IAVF_PROTO_XTR_ARG,
+	IAVF_QUANTA_SIZE_ARG,
 	NULL
 };
 
@@ -949,6 +951,9 @@ iavf_dev_start(struct rte_eth_dev *dev)
 		PMD_DRV_LOG(ERR, "failed to do Queue init");
 		return -1;
 	}
+
+	if (iavf_set_vf_quanta_size(adapter, index, num_queue_pairs) != 0)
+		PMD_DRV_LOG(WARNING, "configure quanta size failed");
 
 	/* If needed, send configure queues msg multiple times to make the
 	 * adminq buffer length smaller than the 4K limitation.
@@ -2092,6 +2097,25 @@ iavf_handle_proto_xtr_arg(__rte_unused const char *key, const char *value,
 	return 0;
 }
 
+static int
+parse_u16(__rte_unused const char *key, const char *value, void *args)
+{
+	u16 *num = (u16 *)args;
+	u16 tmp;
+
+	errno = 0;
+	tmp = strtoull(value, NULL, 10);
+	if (errno || !tmp) {
+		PMD_DRV_LOG(WARNING, "%s: \"%s\" is not a valid u16",
+			    key, value);
+		return -1;
+	}
+
+	*num = tmp;
+
+	return 0;
+}
+
 static int iavf_parse_devargs(struct rte_eth_dev *dev)
 {
 	struct iavf_adapter *ad =
@@ -2117,6 +2141,20 @@ static int iavf_parse_devargs(struct rte_eth_dev *dev)
 				 &iavf_handle_proto_xtr_arg, &ad->devargs);
 	if (ret)
 		goto bail;
+
+	ret = rte_kvargs_process(kvlist, IAVF_QUANTA_SIZE_ARG,
+				 &parse_u16, &ad->devargs.quanta_size);
+	if (ret)
+		goto bail;
+
+	if (ad->devargs.quanta_size == 0)
+		ad->devargs.quanta_size = 1024;
+
+	if (ad->devargs.quanta_size < 256 || ad->devargs.quanta_size > 4096 ||
+	    ad->devargs.quanta_size & 0x40) {
+		PMD_INIT_LOG(ERR, "invalid quanta size\n");
+		return -EINVAL;
+	}
 
 bail:
 	rte_kvargs_free(kvlist);
