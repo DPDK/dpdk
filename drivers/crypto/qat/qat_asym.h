@@ -58,8 +58,9 @@ typedef uint64_t large_int_ptr;
 	}
 
 struct qat_asym_op_cookie {
-	size_t alg_bytesize;
 	uint64_t error;
+	uint32_t alg_bytesize; /*< Bytesize of algorithm */
+	uint32_t qat_func_alignsize; /*< Aligned bytesize of qat function */
 	rte_iova_t input_addr;
 	rte_iova_t output_addr;
 	large_int_ptr input_params_ptrs[MAX_PKE_PARAMS] _PKE_ALIGN_;

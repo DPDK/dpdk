@@ -92,7 +92,6 @@ static struct elliptic_curve curve[] = {
 				},
 		},
 	},
-
 	[SECP521R1] = {
 		.name = "secp521r1",
 		.bytesize = 66,
