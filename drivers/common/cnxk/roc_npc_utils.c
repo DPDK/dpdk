@@ -145,6 +145,9 @@ npc_parse_item_basic(const struct roc_npc_item_info *item,
 			info->mask = item->mask;
 	}
 
+	if (info->mask == NULL)
+		return NPC_ERR_INVALID_MASK;
+
 	/* mask specified must be subset of hw supported mask
 	 * mask | hw_mask == hw_mask
 	 */
