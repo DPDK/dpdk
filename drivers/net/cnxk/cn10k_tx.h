@@ -2728,18 +2728,18 @@ cn10k_nix_xmit_pkts_vector(void *tx_queue, uint64_t *ws,
 
 /* [T_SEC_F] [TSP] [TSO] [NOFF] [VLAN] [OL3OL4CSUM] [L3L4CSUM] */
 #define NIX_TX_FASTPATH_MODES_0_15                                             \
-	T(no_offload, 4, NIX_TX_OFFLOAD_NONE)                                  \
-	T(l3l4csum, 4, L3L4CSUM_F)                                             \
-	T(ol3ol4csum, 4, OL3OL4CSUM_F)                                         \
-	T(ol3ol4csum_l3l4csum, 4, OL3OL4CSUM_F | L3L4CSUM_F)                   \
+	T(no_offload, 6, NIX_TX_OFFLOAD_NONE)                                  \
+	T(l3l4csum, 6, L3L4CSUM_F)                                             \
+	T(ol3ol4csum, 6, OL3OL4CSUM_F)                                         \
+	T(ol3ol4csum_l3l4csum, 6, OL3OL4CSUM_F | L3L4CSUM_F)                   \
 	T(vlan, 6, VLAN_F)                                                     \
 	T(vlan_l3l4csum, 6, VLAN_F | L3L4CSUM_F)                               \
 	T(vlan_ol3ol4csum, 6, VLAN_F | OL3OL4CSUM_F)                           \
 	T(vlan_ol3ol4csum_l3l4csum, 6, VLAN_F | OL3OL4CSUM_F | L3L4CSUM_F)     \
-	T(noff, 4, NOFF_F)                                                     \
-	T(noff_l3l4csum, 4, NOFF_F | L3L4CSUM_F)                               \
-	T(noff_ol3ol4csum, 4, NOFF_F | OL3OL4CSUM_F)                           \
-	T(noff_ol3ol4csum_l3l4csum, 4, NOFF_F | OL3OL4CSUM_F | L3L4CSUM_F)     \
+	T(noff, 6, NOFF_F)                                                     \
+	T(noff_l3l4csum, 6, NOFF_F | L3L4CSUM_F)                               \
+	T(noff_ol3ol4csum, 6, NOFF_F | OL3OL4CSUM_F)                           \
+	T(noff_ol3ol4csum_l3l4csum, 6, NOFF_F | OL3OL4CSUM_F | L3L4CSUM_F)     \
 	T(noff_vlan, 6, NOFF_F | VLAN_F)                                       \
 	T(noff_vlan_l3l4csum, 6, NOFF_F | VLAN_F | L3L4CSUM_F)                 \
 	T(noff_vlan_ol3ol4csum, 6, NOFF_F | VLAN_F | OL3OL4CSUM_F)             \
@@ -2813,19 +2813,19 @@ cn10k_nix_xmit_pkts_vector(void *tx_queue, uint64_t *ws,
 	  TSP_F | TSO_F | NOFF_F | VLAN_F | OL3OL4CSUM_F | L3L4CSUM_F)
 
 #define NIX_TX_FASTPATH_MODES_64_79                                            \
-	T(sec, 4, T_SEC_F)                                                     \
-	T(sec_l3l4csum, 4, T_SEC_F | L3L4CSUM_F)                               \
-	T(sec_ol3ol4csum, 4, T_SEC_F | OL3OL4CSUM_F)                           \
-	T(sec_ol3ol4csum_l3l4csum, 4, T_SEC_F | OL3OL4CSUM_F | L3L4CSUM_F)     \
+	T(sec, 6, T_SEC_F)                                                     \
+	T(sec_l3l4csum, 6, T_SEC_F | L3L4CSUM_F)                               \
+	T(sec_ol3ol4csum, 6, T_SEC_F | OL3OL4CSUM_F)                           \
+	T(sec_ol3ol4csum_l3l4csum, 6, T_SEC_F | OL3OL4CSUM_F | L3L4CSUM_F)     \
 	T(sec_vlan, 6, T_SEC_F | VLAN_F)                                       \
 	T(sec_vlan_l3l4csum, 6, T_SEC_F | VLAN_F | L3L4CSUM_F)                 \
 	T(sec_vlan_ol3ol4csum, 6, T_SEC_F | VLAN_F | OL3OL4CSUM_F)             \
 	T(sec_vlan_ol3ol4csum_l3l4csum, 6,                                     \
 	  T_SEC_F | VLAN_F | OL3OL4CSUM_F | L3L4CSUM_F)                        \
-	T(sec_noff, 4, T_SEC_F | NOFF_F)                                       \
-	T(sec_noff_l3l4csum, 4, T_SEC_F | NOFF_F | L3L4CSUM_F)                 \
-	T(sec_noff_ol3ol4csum, 4, T_SEC_F | NOFF_F | OL3OL4CSUM_F)             \
-	T(sec_noff_ol3ol4csum_l3l4csum, 4,                                     \
+	T(sec_noff, 6, T_SEC_F | NOFF_F)                                       \
+	T(sec_noff_l3l4csum, 6, T_SEC_F | NOFF_F | L3L4CSUM_F)                 \
+	T(sec_noff_ol3ol4csum, 6, T_SEC_F | NOFF_F | OL3OL4CSUM_F)             \
+	T(sec_noff_ol3ol4csum_l3l4csum, 6,                                     \
 	  T_SEC_F | NOFF_F | OL3OL4CSUM_F | L3L4CSUM_F)                        \
 	T(sec_noff_vlan, 6, T_SEC_F | NOFF_F | VLAN_F)                         \
 	T(sec_noff_vlan_l3l4csum, 6, T_SEC_F | NOFF_F | VLAN_F | L3L4CSUM_F)   \
