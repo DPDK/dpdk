@@ -526,7 +526,7 @@ cn9k_nix_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t pkts,
 {
 	struct cn9k_eth_txq *txq = tx_queue;
 	const rte_iova_t io_addr = txq->io_addr;
-	uint64_t lso_tun_fmt, mark_fmt = 0;
+	uint64_t lso_tun_fmt = 0, mark_fmt = 0;
 	void *lmt_addr = txq->lmt_addr;
 	uint8_t mark_flag = 0;
 	uint16_t i;
@@ -574,7 +574,7 @@ cn9k_nix_xmit_pkts_mseg(void *tx_queue, struct rte_mbuf **tx_pkts,
 {
 	struct cn9k_eth_txq *txq = tx_queue;
 	const rte_iova_t io_addr = txq->io_addr;
-	uint64_t lso_tun_fmt, mark_fmt = 0;
+	uint64_t lso_tun_fmt = 0, mark_fmt = 0;
 	void *lmt_addr = txq->lmt_addr;
 	uint8_t mark_flag = 0;
 	uint16_t segdw;
