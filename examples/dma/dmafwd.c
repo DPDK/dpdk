@@ -25,6 +25,7 @@
 #define CMD_LINE_OPT_RING_SIZE "ring-size"
 #define CMD_LINE_OPT_BATCH_SIZE "dma-batch-size"
 #define CMD_LINE_OPT_FRAME_SIZE "max-frame-size"
+#define CMD_LINE_OPT_FORCE_COPY_SIZE "force-min-copy-size"
 #define CMD_LINE_OPT_STATS_INTERVAL "stats-interval"
 
 /* configurable number of RX/TX ring descriptors */
@@ -118,6 +119,7 @@ static volatile bool force_quit;
 
 static uint32_t dma_batch_sz = MAX_PKT_BURST;
 static uint32_t max_frame_size;
+static uint32_t force_min_copy_size;
 
 /* ethernet addresses of ports */
 static struct rte_ether_addr dma_ports_eth_addr[RTE_MAX_ETHPORTS];
@@ -205,7 +207,13 @@ print_stats(char *prgname)
 		"Rx Queues = %d, ", nb_queues);
 	status_strlen += snprintf(status_string + status_strlen,
 		sizeof(status_string) - status_strlen,
-		"Ring Size = %d", ring_size);
+		"Ring Size = %d\n", ring_size);
+	status_strlen += snprintf(status_string + status_strlen,
+		sizeof(status_string) - status_strlen,
+		"Force Min Copy Size = %u Packet Data Room Size = %u",
+		force_min_copy_size,
+		rte_pktmbuf_data_room_size(dma_pktmbuf_pool) -
+		RTE_PKTMBUF_HEADROOM);
 
 	memset(&ts, 0, sizeof(struct total_statistics));
 
@@ -303,7 +311,8 @@ static inline void
 pktmbuf_sw_copy(struct rte_mbuf *src, struct rte_mbuf *dst)
 {
 	rte_memcpy(rte_pktmbuf_mtod(dst, char *),
-		rte_pktmbuf_mtod(src, char *), src->data_len);
+		rte_pktmbuf_mtod(src, char *),
+		RTE_MAX(src->data_len, force_min_copy_size));
 }
 /* >8 End of perform packet copy there is a user-defined function. */
 
@@ -320,7 +329,9 @@ dma_enqueue_packets(struct rte_mbuf *pkts[], struct rte_mbuf *pkts_copy[],
 		ret = rte_dma_copy(dev_id, 0,
 			rte_pktmbuf_iova(pkts[i]),
 			rte_pktmbuf_iova(pkts_copy[i]),
-			rte_pktmbuf_data_len(pkts[i]), 0);
+			RTE_MAX(rte_pktmbuf_data_len(pkts[i]),
+				force_min_copy_size),
+			0);
 
 		if (ret < 0)
 			break;
@@ -572,6 +583,7 @@ dma_usage(const char *prgname)
 	printf("%s [EAL options] -- -p PORTMASK [-q NQ]\n"
 		"  -b --dma-batch-size: number of requests per DMA batch\n"
 		"  -f --max-frame-size: max frame size\n"
+		"  -m --force-min-copy-size: force a minimum copy length, even for smaller packets\n"
 		"  -p --portmask: hexadecimal bitmask of ports to configure\n"
 		"  -q NQ: number of RX queues per port (default is 1)\n"
 		"  --[no-]mac-updating: Enable or disable MAC addresses updating (enabled by default)\n"
@@ -617,6 +629,7 @@ dma_parse_args(int argc, char **argv, unsigned int nb_ports)
 		"b:"  /* dma batch size */
 		"c:"  /* copy type (sw|hw) */
 		"f:"  /* max frame size */
+		"m:"  /* force min copy size */
 		"p:"  /* portmask */
 		"q:"  /* number of RX queues per port */
 		"s:"  /* ring size */
@@ -632,6 +645,7 @@ dma_parse_args(int argc, char **argv, unsigned int nb_ports)
 		{CMD_LINE_OPT_RING_SIZE, required_argument, NULL, 's'},
 		{CMD_LINE_OPT_BATCH_SIZE, required_argument, NULL, 'b'},
 		{CMD_LINE_OPT_FRAME_SIZE, required_argument, NULL, 'f'},
+		{CMD_LINE_OPT_FORCE_COPY_SIZE, required_argument, NULL, 'm'},
 		{CMD_LINE_OPT_STATS_INTERVAL, required_argument, NULL, 'i'},
 		{NULL, 0, 0, 0}
 	};
@@ -664,6 +678,10 @@ dma_parse_args(int argc, char **argv, unsigned int nb_ports)
 				dma_usage(prgname);
 				return -1;
 			}
+			break;
+
+		case 'm':
+			force_min_copy_size = atoi(optarg);
 			break;
 
 		/* portmask */
@@ -1063,6 +1081,12 @@ main(int argc, char **argv)
 	if (dma_pktmbuf_pool == NULL)
 		rte_exit(EXIT_FAILURE, "Cannot init mbuf pool\n");
 	/* >8 End of allocates mempool to hold the mbufs. */
+
+	if (force_min_copy_size >
+		(uint32_t)(rte_pktmbuf_data_room_size(dma_pktmbuf_pool) -
+			   RTE_PKTMBUF_HEADROOM))
+		rte_exit(EXIT_FAILURE,
+			 "Force min copy size > packet mbuf size\n");
 
 	/* Initialize each port. 8< */
 	cfg.nb_ports = 0;
