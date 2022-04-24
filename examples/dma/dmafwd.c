@@ -117,7 +117,7 @@ static uint16_t nb_txd = TX_DEFAULT_RINGSIZE;
 static volatile bool force_quit;
 
 static uint32_t dma_batch_sz = MAX_PKT_BURST;
-static uint32_t max_frame_size = RTE_ETHER_MAX_LEN;
+static uint32_t max_frame_size;
 
 /* ethernet addresses of ports */
 static struct rte_ether_addr dma_ports_eth_addr[RTE_MAX_ETHPORTS];
@@ -851,6 +851,38 @@ assign_rings(void)
 }
 /* >8 End of assigning ring structures for packet exchanging. */
 
+static uint32_t
+eth_dev_get_overhead_len(uint32_t max_rx_pktlen, uint16_t max_mtu)
+{
+	uint32_t overhead_len;
+
+	if (max_mtu != UINT16_MAX && max_rx_pktlen > max_mtu)
+		overhead_len = max_rx_pktlen - max_mtu;
+	else
+		overhead_len = RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN;
+
+	return overhead_len;
+}
+
+static int
+config_port_max_pkt_len(struct rte_eth_conf *conf,
+		struct rte_eth_dev_info *dev_info)
+{
+	uint32_t overhead_len;
+
+	if (max_frame_size == 0)
+		return 0;
+
+	if (max_frame_size < RTE_ETHER_MIN_LEN)
+		return -1;
+
+	overhead_len = eth_dev_get_overhead_len(dev_info->max_rx_pktlen,
+			dev_info->max_mtu);
+	conf->rxmode.mtu = max_frame_size - overhead_len;
+
+	return 0;
+}
+
 /*
  * Initializes a given port using global settings and with the RX buffers
  * coming from the mbuf_pool passed as a parameter.
@@ -878,9 +910,6 @@ port_init(uint16_t portid, struct rte_mempool *mbuf_pool, uint16_t nb_queues)
 	struct rte_eth_dev_info dev_info;
 	int ret, i;
 
-	if (max_frame_size > local_port_conf.rxmode.mtu)
-		local_port_conf.rxmode.mtu = max_frame_size;
-
 	/* Skip ports that are not enabled */
 	if ((dma_enabled_port_mask & (1 << portid)) == 0) {
 		printf("Skipping disabled port %u\n", portid);
@@ -894,6 +923,12 @@ port_init(uint16_t portid, struct rte_mempool *mbuf_pool, uint16_t nb_queues)
 	if (ret < 0)
 		rte_exit(EXIT_FAILURE, "Cannot get device info: %s, port=%u\n",
 			rte_strerror(-ret), portid);
+
+	ret = config_port_max_pkt_len(&local_port_conf, &dev_info);
+	if (ret != 0)
+		rte_exit(EXIT_FAILURE,
+			"Invalid max frame size: %u (port %u)\n",
+			max_frame_size, portid);
 
 	local_port_conf.rx_adv_conf.rss_conf.rss_hf &=
 		dev_info.flow_type_rss_offloads;
