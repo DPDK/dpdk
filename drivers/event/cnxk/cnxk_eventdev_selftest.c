@@ -626,6 +626,12 @@ launch_workers_and_wait(int (*main_thread)(void *),
 		/* start core */ -1,
 		/* skip main */ 1,
 		/* wrap */ 0);
+	if (w_lcore == RTE_MAX_LCORE) {
+		plt_err("Failed to get next available lcore");
+		free(param);
+		return -1;
+	}
+
 	rte_eal_remote_launch(main_thread, &param[0], w_lcore);
 
 	for (port = 1; port < nb_workers; port++) {
@@ -635,6 +641,12 @@ launch_workers_and_wait(int (*main_thread)(void *),
 		param[port].dequeue_tmo_ticks = dequeue_tmo_ticks;
 		rte_atomic_thread_fence(__ATOMIC_RELEASE);
 		w_lcore = rte_get_next_lcore(w_lcore, 1, 0);
+		if (w_lcore == RTE_MAX_LCORE) {
+			plt_err("Failed to get next available lcore");
+			free(param);
+			return -1;
+		}
+
 		rte_eal_remote_launch(worker_thread, &param[port], w_lcore);
 	}
 
