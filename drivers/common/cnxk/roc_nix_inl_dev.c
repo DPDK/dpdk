@@ -605,7 +605,7 @@ no_pool:
 	inl_dev->pkt_pools_cnt++;
 	inl_dev->pkt_pools =
 		plt_realloc(inl_dev->pkt_pools,
-			    sizeof(uint64_t *) * inl_dev->pkt_pools_cnt, 0);
+			    sizeof(uint64_t) * inl_dev->pkt_pools_cnt, 0);
 	if (!inl_dev->pkt_pools)
 		inl_dev->pkt_pools_cnt = 0;
 	else
