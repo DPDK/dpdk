@@ -103,7 +103,6 @@ static volatile bool force_quit;
 /* ethernet addresses of ports */
 static struct rte_ether_addr ioat_ports_eth_addr[RTE_MAX_ETHPORTS];
 
-static struct rte_eth_dev_tx_buffer *tx_buffer[RTE_MAX_ETHPORTS];
 struct rte_mempool *ioat_pktmbuf_pool;
 
 /* Print out statistics for one port. */
@@ -478,11 +477,14 @@ ioat_tx_port(struct rxtx_port_config *tx_config)
 
 		port_statistics.tx[tx_config->rxtx_port] += nb_tx;
 
-		/* Free any unsent packets. */
-		if (unlikely(nb_tx < nb_dq))
+		if (unlikely(nb_tx < nb_dq)) {
+			port_statistics.tx_dropped[tx_config->rxtx_port] +=
+				(nb_dq - nb_tx);
+			/* Free any unsent packets. */
 			rte_mempool_put_bulk(ioat_pktmbuf_pool,
 			(void *)&mbufs_dst[nb_tx],
 				nb_dq - nb_tx);
+		}
 	}
 }
 
@@ -872,25 +874,6 @@ port_init(uint16_t portid, struct rte_mempool *mbuf_pool, uint16_t nb_queues)
 		rte_exit(EXIT_FAILURE,
 			"rte_eth_tx_queue_setup:err=%d,port=%u\n",
 			ret, portid);
-
-	/* Initialize TX buffers */
-	tx_buffer[portid] = rte_zmalloc_socket("tx_buffer",
-			RTE_ETH_TX_BUFFER_SIZE(MAX_PKT_BURST), 0,
-			rte_eth_dev_socket_id(portid));
-	if (tx_buffer[portid] == NULL)
-		rte_exit(EXIT_FAILURE,
-			"Cannot allocate buffer for tx on port %u\n",
-			portid);
-
-	rte_eth_tx_buffer_init(tx_buffer[portid], MAX_PKT_BURST);
-
-	ret = rte_eth_tx_buffer_set_err_callback(tx_buffer[portid],
-		rte_eth_tx_buffer_count_callback,
-		&port_statistics.tx_dropped[portid]);
-	if (ret < 0)
-		rte_exit(EXIT_FAILURE,
-			"Cannot set error callback for tx buffer on port %u\n",
-			portid);
 
 	/* Start device */
 	ret = rte_eth_dev_start(portid);
