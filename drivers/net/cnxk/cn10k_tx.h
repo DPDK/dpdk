@@ -849,8 +849,8 @@ cn10k_nix_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t pkts,
 	uintptr_t pa, lbase = txq->lmt_base;
 	uint16_t lmt_id, burst, left, i;
 	uintptr_t c_lbase = lbase;
+	uint64_t lso_tun_fmt = 0;
 	rte_iova_t c_io_addr;
-	uint64_t lso_tun_fmt;
 	uint16_t c_lmt_id;
 	uint64_t sa_base;
 	uintptr_t laddr;
@@ -976,9 +976,9 @@ cn10k_nix_xmit_pkts_mseg(void *tx_queue, struct rte_mbuf **tx_pkts,
 	uint16_t segdw, lmt_id, burst, left, i;
 	uint8_t lnum, c_lnum, c_loff;
 	uintptr_t c_lbase = lbase;
+	uint64_t lso_tun_fmt = 0;
 	uint64_t data0, data1;
 	rte_iova_t c_io_addr;
-	uint64_t lso_tun_fmt;
 	uint8_t shft, c_shft;
 	__uint128_t data128;
 	uint16_t c_lmt_id;
