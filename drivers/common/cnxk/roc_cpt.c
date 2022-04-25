@@ -915,9 +915,9 @@ roc_cpt_ctx_write(struct roc_cpt_lf *lf, void *sa_dptr, void *sa_cptr,
 		  uint16_t sa_len)
 {
 	uintptr_t lmt_base = lf->lmt_base;
+	union cpt_res_s res, *hw_res;
 	uint64_t lmt_arg, io_addr;
 	struct cpt_inst_s *inst;
-	union cpt_res_s *res;
 	uint16_t lmt_id;
 	uint64_t *dptr;
 	int i;
@@ -927,8 +927,8 @@ roc_cpt_ctx_write(struct roc_cpt_lf *lf, void *sa_dptr, void *sa_cptr,
 
 	memset(inst, 0, sizeof(struct cpt_inst_s));
 
-	res = plt_zmalloc(sizeof(*res), ROC_CPT_RES_ALIGN);
-	if (res == NULL) {
+	hw_res = plt_zmalloc(sizeof(*hw_res), ROC_CPT_RES_ALIGN);
+	if (hw_res == NULL) {
 		plt_err("Couldn't allocate memory for result address");
 		return -ENOMEM;
 	}
@@ -936,7 +936,7 @@ roc_cpt_ctx_write(struct roc_cpt_lf *lf, void *sa_dptr, void *sa_cptr,
 	dptr = plt_zmalloc(sa_len, 8);
 	if (dptr == NULL) {
 		plt_err("Couldn't allocate memory for SA dptr");
-		plt_free(res);
+		plt_free(hw_res);
 		return -ENOMEM;
 	}
 
@@ -944,8 +944,8 @@ roc_cpt_ctx_write(struct roc_cpt_lf *lf, void *sa_dptr, void *sa_cptr,
 		dptr[i] = plt_cpu_to_be_64(((uint64_t *)sa_dptr)[i]);
 
 	/* Fill CPT_INST_S for WRITE_SA microcode op */
-	res->cn10k.compcode = CPT_COMP_NOT_DONE;
-	inst->res_addr = (uint64_t)res;
+	hw_res->cn10k.compcode = CPT_COMP_NOT_DONE;
+	inst->res_addr = (uint64_t)hw_res;
 	inst->dptr = (uint64_t)dptr;
 	inst->w4.s.param2 = sa_len >> 3;
 	inst->w4.s.dlen = sa_len;
@@ -959,14 +959,25 @@ roc_cpt_ctx_write(struct roc_cpt_lf *lf, void *sa_dptr, void *sa_cptr,
 	io_addr = lf->io_addr | ROC_CN10K_CPT_INST_DW_M1 << 4;
 
 	roc_lmt_submit_steorl(lmt_arg, io_addr);
-	plt_wmb();
+	plt_io_wmb();
+
+	/* Use 1 min timeout for the poll */
+	const uint64_t timeout = plt_tsc_cycles() + 60 * plt_tsc_hz();
 
 	/* Wait until CPT instruction completes */
-	while (res->cn10k.compcode == CPT_COMP_NOT_DONE)
-		plt_delay_ms(1);
+	do {
+		res.u64[0] = __atomic_load_n(&hw_res->u64[0], __ATOMIC_RELAXED);
+		if (unlikely(plt_tsc_cycles() > timeout))
+			break;
+	} while (res.cn10k.compcode == CPT_COMP_NOT_DONE);
 
-	plt_free(res);
 	plt_free(dptr);
+	plt_free(hw_res);
+
+	if (res.cn10k.compcode != CPT_COMP_WARN) {
+		plt_err("Write SA operation timed out");
+		return -ETIMEDOUT;
+	}
 
 	return 0;
 }

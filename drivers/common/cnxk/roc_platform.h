@@ -184,9 +184,10 @@
 #define plt_memzone_reserve_aligned(name, len, flags, align)                   \
 	rte_memzone_reserve_aligned((name), (len), 0, (flags), (align))
 
-#define plt_tsc_hz   rte_get_tsc_hz
-#define plt_delay_ms rte_delay_ms
-#define plt_delay_us rte_delay_us
+#define plt_tsc_hz     rte_get_tsc_hz
+#define plt_tsc_cycles rte_get_tsc_cycles
+#define plt_delay_ms   rte_delay_ms
+#define plt_delay_us   rte_delay_us
 
 #define plt_lcore_id rte_lcore_id
 
