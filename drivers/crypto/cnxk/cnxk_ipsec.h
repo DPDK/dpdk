@@ -59,6 +59,9 @@ ipsec_xform_auth_verify(struct rte_crypto_sym_xform *crypto_xform)
 	} else if (crypto_xform->auth.algo == RTE_CRYPTO_AUTH_SHA512_HMAC) {
 		if (keylen == 64)
 			return 0;
+	} else if (crypto_xform->auth.algo == RTE_CRYPTO_AUTH_AES_GMAC) {
+		if (keylen >= 16 && keylen <= 32)
+			return 0;
 	}
 
 	if (crypto_xform->auth.algo == RTE_CRYPTO_AUTH_AES_XCBC_MAC &&

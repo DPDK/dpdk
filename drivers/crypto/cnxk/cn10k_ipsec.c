@@ -77,6 +77,9 @@ cn10k_ipsec_outb_sa_create(struct roc_cpt *roc_cpt, struct roc_cpt_lf *lf,
 		} else if (crypto_xfrm->type == RTE_CRYPTO_SYM_XFORM_CIPHER) {
 			sa->iv_offset = crypto_xfrm->cipher.iv.offset;
 			sa->iv_length = crypto_xfrm->cipher.iv.length;
+		} else {
+			sa->iv_offset = crypto_xfrm->auth.iv.offset;
+			sa->iv_length = crypto_xfrm->auth.iv.length;
 		}
 	}
 #else

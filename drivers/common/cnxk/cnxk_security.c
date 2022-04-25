@@ -155,6 +155,14 @@ ot_ipsec_sa_common_param_fill(union roc_ot_ipsec_sa_word2 *w2,
 		case RTE_CRYPTO_AUTH_AES_XCBC_MAC:
 			w2->s.auth_type = ROC_IE_OT_SA_AUTH_AES_XCBC_128;
 			break;
+		case RTE_CRYPTO_AUTH_AES_GMAC:
+			w2->s.auth_type = ROC_IE_OT_SA_AUTH_AES_GMAC;
+			key = auth_xfrm->auth.key.data;
+			length = auth_xfrm->auth.key.length;
+			memcpy(salt_key, &ipsec_xfrm->salt, 4);
+			tmp_salt = (uint32_t *)salt_key;
+			*tmp_salt = rte_be_to_cpu_32(*tmp_salt);
+			break;
 		default:
 			return -ENOTSUP;
 		}

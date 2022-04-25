@@ -274,6 +274,7 @@ Auth algorithms
 * SHA384-192-HMAC
 * SHA512-256-HMAC
 * AES-XCBC-96
+* AES-GMAC
 
 CN10XX Features supported
 ~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -308,3 +309,4 @@ Auth algorithms
 * SHA384-192-HMAC
 * SHA512-256-HMAC
 * AES-XCBC-96
+* AES-GMAC
