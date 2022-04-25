@@ -2047,7 +2047,7 @@ prepare_iov_from_pkt(struct rte_mbuf *pkt, struct roc_se_iov_ptr *iovec,
 	return 0;
 }
 
-static __rte_always_inline uint32_t
+static __rte_always_inline void
 prepare_iov_from_pkt_inplace(struct rte_mbuf *pkt,
 			     struct roc_se_fc_params *param, uint32_t *flags)
 {
@@ -2070,7 +2070,7 @@ prepare_iov_from_pkt_inplace(struct rte_mbuf *pkt,
 
 		param->bufs[0].vaddr = seg_data;
 		param->bufs[0].size = seg_size;
-		return 0;
+		return;
 	}
 	iovec = param->src_iov;
 	iovec->bufs[index].vaddr = seg_data;
@@ -2094,7 +2094,7 @@ prepare_iov_from_pkt_inplace(struct rte_mbuf *pkt,
 	}
 
 	iovec->buf_cnt = index;
-	return 0;
+	return;
 }
 
 static __rte_always_inline int
@@ -2254,12 +2254,7 @@ fill_fc_params(struct rte_crypto_op *cop, struct cnxk_se_sess *sess,
 		 */
 		fc_params.dst_iov = fc_params.src_iov = (void *)src;
 
-		if (unlikely(prepare_iov_from_pkt_inplace(m_src, &fc_params,
-							  &flags))) {
-			plt_dp_err("Prepare inplace src iov failed");
-			ret = -EINVAL;
-			goto err_exit;
-		}
+		prepare_iov_from_pkt_inplace(m_src, &fc_params, &flags);
 
 	} else {
 		/* Out of place processing */
