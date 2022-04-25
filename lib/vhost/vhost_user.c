@@ -56,40 +56,12 @@
 #define INFLIGHT_ALIGNMENT	64
 #define INFLIGHT_VERSION	0x1
 
-static const char *vhost_message_str[VHOST_USER_MAX] = {
-	[VHOST_USER_NONE] = "VHOST_USER_NONE",
-	[VHOST_USER_GET_FEATURES] = "VHOST_USER_GET_FEATURES",
-	[VHOST_USER_SET_FEATURES] = "VHOST_USER_SET_FEATURES",
-	[VHOST_USER_SET_OWNER] = "VHOST_USER_SET_OWNER",
-	[VHOST_USER_RESET_OWNER] = "VHOST_USER_RESET_OWNER",
-	[VHOST_USER_SET_MEM_TABLE] = "VHOST_USER_SET_MEM_TABLE",
-	[VHOST_USER_SET_LOG_BASE] = "VHOST_USER_SET_LOG_BASE",
-	[VHOST_USER_SET_LOG_FD] = "VHOST_USER_SET_LOG_FD",
-	[VHOST_USER_SET_VRING_NUM] = "VHOST_USER_SET_VRING_NUM",
-	[VHOST_USER_SET_VRING_ADDR] = "VHOST_USER_SET_VRING_ADDR",
-	[VHOST_USER_SET_VRING_BASE] = "VHOST_USER_SET_VRING_BASE",
-	[VHOST_USER_GET_VRING_BASE] = "VHOST_USER_GET_VRING_BASE",
-	[VHOST_USER_SET_VRING_KICK] = "VHOST_USER_SET_VRING_KICK",
-	[VHOST_USER_SET_VRING_CALL] = "VHOST_USER_SET_VRING_CALL",
-	[VHOST_USER_SET_VRING_ERR]  = "VHOST_USER_SET_VRING_ERR",
-	[VHOST_USER_GET_PROTOCOL_FEATURES]  = "VHOST_USER_GET_PROTOCOL_FEATURES",
-	[VHOST_USER_SET_PROTOCOL_FEATURES]  = "VHOST_USER_SET_PROTOCOL_FEATURES",
-	[VHOST_USER_GET_QUEUE_NUM]  = "VHOST_USER_GET_QUEUE_NUM",
-	[VHOST_USER_SET_VRING_ENABLE]  = "VHOST_USER_SET_VRING_ENABLE",
-	[VHOST_USER_SEND_RARP]  = "VHOST_USER_SEND_RARP",
-	[VHOST_USER_NET_SET_MTU]  = "VHOST_USER_NET_SET_MTU",
-	[VHOST_USER_SET_SLAVE_REQ_FD]  = "VHOST_USER_SET_SLAVE_REQ_FD",
-	[VHOST_USER_IOTLB_MSG]  = "VHOST_USER_IOTLB_MSG",
-	[VHOST_USER_CRYPTO_CREATE_SESS] = "VHOST_USER_CRYPTO_CREATE_SESS",
-	[VHOST_USER_CRYPTO_CLOSE_SESS] = "VHOST_USER_CRYPTO_CLOSE_SESS",
-	[VHOST_USER_POSTCOPY_ADVISE]  = "VHOST_USER_POSTCOPY_ADVISE",
-	[VHOST_USER_POSTCOPY_LISTEN]  = "VHOST_USER_POSTCOPY_LISTEN",
-	[VHOST_USER_POSTCOPY_END]  = "VHOST_USER_POSTCOPY_END",
-	[VHOST_USER_GET_INFLIGHT_FD] = "VHOST_USER_GET_INFLIGHT_FD",
-	[VHOST_USER_SET_INFLIGHT_FD] = "VHOST_USER_SET_INFLIGHT_FD",
-	[VHOST_USER_SET_STATUS] = "VHOST_USER_SET_STATUS",
-	[VHOST_USER_GET_STATUS] = "VHOST_USER_GET_STATUS",
-};
+typedef struct vhost_message_handler {
+	const char *description;
+	int (*callback)(struct virtio_net **pdev, struct vhu_msg_context *ctx,
+		int main_fd);
+} vhost_message_handler_t;
+static vhost_message_handler_t vhost_message_handlers[];
 
 static int send_vhost_reply(struct virtio_net *dev, int sockfd, struct vhu_msg_context *ctx);
 static int read_vhost_message(struct virtio_net *dev, int sockfd, struct vhu_msg_context *ctx);
@@ -122,7 +94,7 @@ validate_msg_fds(struct virtio_net *dev, struct vhu_msg_context *ctx, int expect
 
 	VHOST_LOG_CONFIG(ERR, "(%s) expect %d FDs for request %s, received %d\n",
 		dev->ifname, expected_fds,
-		vhost_message_str[ctx->msg.request.master],
+		vhost_message_handlers[ctx->msg.request.master].description,
 		ctx->fd_num);
 
 	close_msg_fds(ctx);
@@ -2754,42 +2726,44 @@ vhost_user_set_status(struct virtio_net **pdev,
 	return RTE_VHOST_MSG_RESULT_OK;
 }
 
-typedef int (*vhost_message_handler_t)(struct virtio_net **pdev,
-					struct vhu_msg_context *ctx,
-					int main_fd);
+#define VHOST_MESSAGE_HANDLERS \
+VHOST_MESSAGE_HANDLER(VHOST_USER_NONE, NULL) \
+VHOST_MESSAGE_HANDLER(VHOST_USER_GET_FEATURES, vhost_user_get_features) \
+VHOST_MESSAGE_HANDLER(VHOST_USER_SET_FEATURES, vhost_user_set_features) \
+VHOST_MESSAGE_HANDLER(VHOST_USER_SET_OWNER, vhost_user_set_owner) \
+VHOST_MESSAGE_HANDLER(VHOST_USER_RESET_OWNER, vhost_user_reset_owner) \
+VHOST_MESSAGE_HANDLER(VHOST_USER_SET_MEM_TABLE, vhost_user_set_mem_table) \
+VHOST_MESSAGE_HANDLER(VHOST_USER_SET_LOG_BASE, vhost_user_set_log_base) \
+VHOST_MESSAGE_HANDLER(VHOST_USER_SET_LOG_FD, vhost_user_set_log_fd) \
+VHOST_MESSAGE_HANDLER(VHOST_USER_SET_VRING_NUM, vhost_user_set_vring_num) \
+VHOST_MESSAGE_HANDLER(VHOST_USER_SET_VRING_ADDR, vhost_user_set_vring_addr) \
+VHOST_MESSAGE_HANDLER(VHOST_USER_SET_VRING_BASE, vhost_user_set_vring_base) \
+VHOST_MESSAGE_HANDLER(VHOST_USER_GET_VRING_BASE, vhost_user_get_vring_base) \
+VHOST_MESSAGE_HANDLER(VHOST_USER_SET_VRING_KICK, vhost_user_set_vring_kick) \
+VHOST_MESSAGE_HANDLER(VHOST_USER_SET_VRING_CALL, vhost_user_set_vring_call) \
+VHOST_MESSAGE_HANDLER(VHOST_USER_SET_VRING_ERR, vhost_user_set_vring_err) \
+VHOST_MESSAGE_HANDLER(VHOST_USER_GET_PROTOCOL_FEATURES, vhost_user_get_protocol_features) \
+VHOST_MESSAGE_HANDLER(VHOST_USER_SET_PROTOCOL_FEATURES, vhost_user_set_protocol_features) \
+VHOST_MESSAGE_HANDLER(VHOST_USER_GET_QUEUE_NUM, vhost_user_get_queue_num) \
+VHOST_MESSAGE_HANDLER(VHOST_USER_SET_VRING_ENABLE, vhost_user_set_vring_enable) \
+VHOST_MESSAGE_HANDLER(VHOST_USER_SEND_RARP, vhost_user_send_rarp) \
+VHOST_MESSAGE_HANDLER(VHOST_USER_NET_SET_MTU, vhost_user_net_set_mtu) \
+VHOST_MESSAGE_HANDLER(VHOST_USER_SET_SLAVE_REQ_FD, vhost_user_set_req_fd) \
+VHOST_MESSAGE_HANDLER(VHOST_USER_IOTLB_MSG, vhost_user_iotlb_msg) \
+VHOST_MESSAGE_HANDLER(VHOST_USER_POSTCOPY_ADVISE, vhost_user_set_postcopy_advise) \
+VHOST_MESSAGE_HANDLER(VHOST_USER_POSTCOPY_LISTEN, vhost_user_set_postcopy_listen) \
+VHOST_MESSAGE_HANDLER(VHOST_USER_POSTCOPY_END, vhost_user_postcopy_end) \
+VHOST_MESSAGE_HANDLER(VHOST_USER_GET_INFLIGHT_FD, vhost_user_get_inflight_fd) \
+VHOST_MESSAGE_HANDLER(VHOST_USER_SET_INFLIGHT_FD, vhost_user_set_inflight_fd) \
+VHOST_MESSAGE_HANDLER(VHOST_USER_SET_STATUS, vhost_user_set_status) \
+VHOST_MESSAGE_HANDLER(VHOST_USER_GET_STATUS, vhost_user_get_status)
 
-static vhost_message_handler_t vhost_message_handlers[VHOST_USER_MAX] = {
-	[VHOST_USER_NONE] = NULL,
-	[VHOST_USER_GET_FEATURES] = vhost_user_get_features,
-	[VHOST_USER_SET_FEATURES] = vhost_user_set_features,
-	[VHOST_USER_SET_OWNER] = vhost_user_set_owner,
-	[VHOST_USER_RESET_OWNER] = vhost_user_reset_owner,
-	[VHOST_USER_SET_MEM_TABLE] = vhost_user_set_mem_table,
-	[VHOST_USER_SET_LOG_BASE] = vhost_user_set_log_base,
-	[VHOST_USER_SET_LOG_FD] = vhost_user_set_log_fd,
-	[VHOST_USER_SET_VRING_NUM] = vhost_user_set_vring_num,
-	[VHOST_USER_SET_VRING_ADDR] = vhost_user_set_vring_addr,
-	[VHOST_USER_SET_VRING_BASE] = vhost_user_set_vring_base,
-	[VHOST_USER_GET_VRING_BASE] = vhost_user_get_vring_base,
-	[VHOST_USER_SET_VRING_KICK] = vhost_user_set_vring_kick,
-	[VHOST_USER_SET_VRING_CALL] = vhost_user_set_vring_call,
-	[VHOST_USER_SET_VRING_ERR] = vhost_user_set_vring_err,
-	[VHOST_USER_GET_PROTOCOL_FEATURES] = vhost_user_get_protocol_features,
-	[VHOST_USER_SET_PROTOCOL_FEATURES] = vhost_user_set_protocol_features,
-	[VHOST_USER_GET_QUEUE_NUM] = vhost_user_get_queue_num,
-	[VHOST_USER_SET_VRING_ENABLE] = vhost_user_set_vring_enable,
-	[VHOST_USER_SEND_RARP] = vhost_user_send_rarp,
-	[VHOST_USER_NET_SET_MTU] = vhost_user_net_set_mtu,
-	[VHOST_USER_SET_SLAVE_REQ_FD] = vhost_user_set_req_fd,
-	[VHOST_USER_IOTLB_MSG] = vhost_user_iotlb_msg,
-	[VHOST_USER_POSTCOPY_ADVISE] = vhost_user_set_postcopy_advise,
-	[VHOST_USER_POSTCOPY_LISTEN] = vhost_user_set_postcopy_listen,
-	[VHOST_USER_POSTCOPY_END] = vhost_user_postcopy_end,
-	[VHOST_USER_GET_INFLIGHT_FD] = vhost_user_get_inflight_fd,
-	[VHOST_USER_SET_INFLIGHT_FD] = vhost_user_set_inflight_fd,
-	[VHOST_USER_SET_STATUS] = vhost_user_set_status,
-	[VHOST_USER_GET_STATUS] = vhost_user_get_status,
+#define VHOST_MESSAGE_HANDLER(id, handler) \
+	[id] = { #id, handler },
+static vhost_message_handler_t vhost_message_handlers[] = {
+	VHOST_MESSAGE_HANDLERS
 };
+#undef VHOST_MESSAGE_HANDLER
 
 /* return bytes# of read on success or negative val on failure. */
 static int
@@ -2946,11 +2920,12 @@ vhost_user_msg_handler(int vid, int fd)
 {
 	struct virtio_net *dev;
 	struct vhu_msg_context ctx;
+	vhost_message_handler_t *msg_handler;
 	struct rte_vdpa_device *vdpa_dev;
 	int ret;
 	int unlock_required = 0;
 	bool handled;
-	int request;
+	uint32_t request;
 	uint32_t i;
 
 	dev = get_device(vid);
@@ -2978,14 +2953,18 @@ vhost_user_msg_handler(int vid, int fd)
 
 	ret = 0;
 	request = ctx.msg.request.master;
-	if (request > VHOST_USER_NONE && request < VHOST_USER_MAX &&
-			vhost_message_str[request]) {
+	if (request > VHOST_USER_NONE && request < RTE_DIM(vhost_message_handlers))
+		msg_handler = &vhost_message_handlers[request];
+	else
+		msg_handler = NULL;
+
+	if (msg_handler != NULL && msg_handler->description != NULL) {
 		if (request != VHOST_USER_IOTLB_MSG)
 			VHOST_LOG_CONFIG(INFO, "(%s) read message %s\n",
-				dev->ifname, vhost_message_str[request]);
+				dev->ifname, msg_handler->description);
 		else
 			VHOST_LOG_CONFIG(DEBUG, "(%s) read message %s\n",
-				dev->ifname, vhost_message_str[request]);
+				dev->ifname, msg_handler->description);
 	} else {
 		VHOST_LOG_CONFIG(DEBUG, "(%s) external request %d\n", dev->ifname, request);
 	}
@@ -3048,31 +3027,29 @@ vhost_user_msg_handler(int vid, int fd)
 		}
 	}
 
-	if (request > VHOST_USER_NONE && request < VHOST_USER_MAX) {
-		if (!vhost_message_handlers[request])
-			goto skip_to_post_handle;
-		ret = vhost_message_handlers[request](&dev, &ctx, fd);
+	if (msg_handler == NULL || msg_handler->callback == NULL)
+		goto skip_to_post_handle;
 
-		switch (ret) {
-		case RTE_VHOST_MSG_RESULT_ERR:
-			VHOST_LOG_CONFIG(ERR, "(%s) processing %s failed.\n",
-					dev->ifname, vhost_message_str[request]);
-			handled = true;
-			break;
-		case RTE_VHOST_MSG_RESULT_OK:
-			VHOST_LOG_CONFIG(DEBUG, "(%s) processing %s succeeded.\n",
-					dev->ifname, vhost_message_str[request]);
-			handled = true;
-			break;
-		case RTE_VHOST_MSG_RESULT_REPLY:
-			VHOST_LOG_CONFIG(DEBUG, "(%s) processing %s succeeded and needs reply.\n",
-					dev->ifname, vhost_message_str[request]);
-			send_vhost_reply(dev, fd, &ctx);
-			handled = true;
-			break;
-		default:
-			break;
-		}
+	ret = msg_handler->callback(&dev, &ctx, fd);
+	switch (ret) {
+	case RTE_VHOST_MSG_RESULT_ERR:
+		VHOST_LOG_CONFIG(ERR, "(%s) processing %s failed.\n",
+			dev->ifname, msg_handler->description);
+		handled = true;
+		break;
+	case RTE_VHOST_MSG_RESULT_OK:
+		VHOST_LOG_CONFIG(DEBUG, "(%s) processing %s succeeded.\n",
+			dev->ifname, msg_handler->description);
+		handled = true;
+		break;
+	case RTE_VHOST_MSG_RESULT_REPLY:
+		VHOST_LOG_CONFIG(DEBUG, "(%s) processing %s succeeded and needs reply.\n",
+			dev->ifname, msg_handler->description);
+		send_vhost_reply(dev, fd, &ctx);
+		handled = true;
+		break;
+	default:
+		break;
 	}
 
 skip_to_post_handle:

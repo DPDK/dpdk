@@ -78,7 +78,6 @@ enum vhost_user_request {
 	VHOST_USER_SET_VRING_ENABLE = 18,
 	VHOST_USER_SET_STATUS = 39,
 	VHOST_USER_GET_STATUS = 40,
-	VHOST_USER_MAX
 };
 
 struct vhost_user_msg {

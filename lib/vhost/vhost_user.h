@@ -59,7 +59,6 @@ typedef enum VhostUserRequest {
 	VHOST_USER_SET_INFLIGHT_FD = 32,
 	VHOST_USER_SET_STATUS = 39,
 	VHOST_USER_GET_STATUS = 40,
-	VHOST_USER_MAX = 41
 } VhostUserRequest;
 
 typedef enum VhostUserSlaveRequest {
@@ -67,7 +66,6 @@ typedef enum VhostUserSlaveRequest {
 	VHOST_USER_SLAVE_IOTLB_MSG = 1,
 	VHOST_USER_SLAVE_CONFIG_CHANGE_MSG = 2,
 	VHOST_USER_SLAVE_VRING_HOST_NOTIFIER_MSG = 3,
-	VHOST_USER_SLAVE_MAX
 } VhostUserSlaveRequest;
 
 typedef struct VhostUserMemoryRegion {

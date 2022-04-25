@@ -56,7 +56,6 @@ enum vhost_user_request {
 	VHOST_USER_SET_PROTOCOL_FEATURES = 16,
 	VHOST_USER_GET_QUEUE_NUM = 17,
 	VHOST_USER_SET_VRING_ENABLE = 18,
-	VHOST_USER_MAX
 };
 
 /** Get/set config msg payload */
