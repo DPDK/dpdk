@@ -842,6 +842,14 @@ mlx5_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 			    dev->data->dev_conf.rxmode.offloads;
 	bool is_extmem = false;
 
+	if ((offloads & RTE_ETH_RX_OFFLOAD_TCP_LRO) &&
+	    !priv->sh->dev_cap.lro_supported) {
+		DRV_LOG(ERR,
+			"Port %u queue %u LRO is configured but not supported.",
+			dev->data->port_id, idx);
+		rte_errno = EINVAL;
+		return -rte_errno;
+	}
 	if (mp) {
 		/*
 		 * The parameters should be checked on rte_eth_dev layer.
