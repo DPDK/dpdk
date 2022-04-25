@@ -715,7 +715,7 @@ mlx5_devx_tir_attr_set(struct rte_eth_dev *dev, const uint8_t *rss_key,
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	bool is_hairpin;
-	bool lro = true;
+	bool lro = false;
 	uint32_t i;
 
 	/* NULL queues designate drop queue. */
@@ -724,9 +724,9 @@ mlx5_devx_tir_attr_set(struct rte_eth_dev *dev, const uint8_t *rss_key,
 	} else if (mlx5_is_external_rxq(dev, ind_tbl->queues[0])) {
 		/* External RxQ supports neither Hairpin nor LRO. */
 		is_hairpin = false;
-		lro = false;
 	} else {
 		is_hairpin = mlx5_rxq_is_hairpin(dev, ind_tbl->queues[0]);
+		lro = true;
 		/* Enable TIR LRO only if all the queues were configured for. */
 		for (i = 0; i < ind_tbl->queues_n; ++i) {
 			struct mlx5_rxq_data *rxq_i =
@@ -776,6 +776,7 @@ mlx5_devx_tir_attr_set(struct rte_eth_dev *dev, const uint8_t *rss_key,
 	if (dev->data->dev_conf.lpbk_mode)
 		tir_attr->self_lb_block = MLX5_TIRC_SELF_LB_BLOCK_BLOCK_UNICAST;
 	if (lro) {
+		MLX5_ASSERT(priv->sh->dev_cap.lro_supported);
 		tir_attr->lro_timeout_period_usecs = priv->config.lro_timeout;
 		tir_attr->lro_max_msg_sz = priv->max_lro_msg_size;
 		tir_attr->lro_enable_mask =
