@@ -333,6 +333,8 @@ cn10k_sec_session_destroy(void *dev, struct rte_security_session *sec_sess)
 	struct cn10k_ipsec_sa *sa;
 	struct cnxk_cpt_qp *qp;
 	struct roc_cpt_lf *lf;
+	void *sa_dptr = NULL;
+	int ret;
 
 	sess = get_sec_session_private_data(sec_sess);
 	if (sess == NULL)
@@ -349,16 +351,44 @@ cn10k_sec_session_destroy(void *dev, struct rte_security_session *sec_sess)
 	/* Trigger CTX flush to write dirty data back to DRAM */
 	roc_cpt_lf_ctx_flush(lf, &sa->in_sa, false);
 
-	/* Wait for 1 ms so that flush is complete */
-	rte_delay_ms(1);
+	ret = -1;
 
-	w2 = (union roc_ot_ipsec_sa_word2 *)&sa->in_sa.w2;
-	w2->s.valid = 0;
+	if (sa->is_outbound) {
+		sa_dptr = plt_zmalloc(sizeof(struct roc_ot_ipsec_outb_sa), 8);
+		if (sa_dptr != NULL) {
+			roc_ot_ipsec_outb_sa_init(sa_dptr);
 
-	plt_atomic_thread_fence(__ATOMIC_SEQ_CST);
+			ret = roc_cpt_ctx_write(
+				lf, sa_dptr, &sa->out_sa,
+				sizeof(struct roc_ot_ipsec_outb_sa));
+		}
+	} else {
+		sa_dptr = plt_zmalloc(sizeof(struct roc_ot_ipsec_inb_sa), 8);
+		if (sa_dptr != NULL) {
+			roc_ot_ipsec_inb_sa_init(sa_dptr, false);
 
-	/* Trigger CTX reload to fetch new data from DRAM */
-	roc_cpt_lf_ctx_reload(lf, &sa->in_sa);
+			ret = roc_cpt_ctx_write(
+				lf, sa_dptr, &sa->in_sa,
+				sizeof(struct roc_ot_ipsec_inb_sa));
+		}
+	}
+
+	plt_free(sa_dptr);
+
+	if (ret) {
+		/* MC write_ctx failed. Attempt reload of CTX */
+
+		/* Wait for 1 ms so that flush is complete */
+		rte_delay_ms(1);
+
+		w2 = (union roc_ot_ipsec_sa_word2 *)&sa->in_sa.w2;
+		w2->s.valid = 0;
+
+		plt_atomic_thread_fence(__ATOMIC_SEQ_CST);
+
+		/* Trigger CTX reload to fetch new data from DRAM */
+		roc_cpt_lf_ctx_reload(lf, &sa->in_sa);
+	}
 
 	sess_mp = rte_mempool_from_obj(sess);
 
