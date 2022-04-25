@@ -252,6 +252,7 @@ CN9XX Features supported
 * Tunnel mode
 * Transport mode(IPv4)
 * UDP Encapsulation
+* AH
 
 AEAD algorithms
 +++++++++++++++
@@ -284,6 +285,7 @@ CN10XX Features supported
 * Tunnel mode
 * Transport mode
 * UDP Encapsulation
+* AH
 
 AEAD algorithms
 +++++++++++++++

@@ -57,25 +57,23 @@ ot_ipsec_sa_common_param_fill(union roc_ot_ipsec_sa_word2 *w2,
 			      struct rte_crypto_sym_xform *crypto_xfrm)
 {
 	struct rte_crypto_sym_xform *auth_xfrm, *cipher_xfrm;
-	const uint8_t *key;
+	const uint8_t *key = NULL;
 	uint32_t *tmp_salt;
 	uint64_t *tmp_key;
-	int length, i;
+	int i, length = 0;
 
 	/* Set direction */
-	switch (ipsec_xfrm->direction) {
-	case RTE_SECURITY_IPSEC_SA_DIR_INGRESS:
+	if (ipsec_xfrm->direction == RTE_SECURITY_IPSEC_SA_DIR_EGRESS)
+		w2->s.dir = ROC_IE_SA_DIR_OUTBOUND;
+	else
 		w2->s.dir = ROC_IE_SA_DIR_INBOUND;
+
+	if (crypto_xfrm->type == RTE_CRYPTO_SYM_XFORM_AUTH) {
 		auth_xfrm = crypto_xfrm;
 		cipher_xfrm = crypto_xfrm->next;
-		break;
-	case RTE_SECURITY_IPSEC_SA_DIR_EGRESS:
-		w2->s.dir = ROC_IE_SA_DIR_OUTBOUND;
+	} else {
 		cipher_xfrm = crypto_xfrm;
 		auth_xfrm = crypto_xfrm->next;
-		break;
-	default:
-		return -EINVAL;
 	}
 
 	/* Set protocol - ESP vs AH */
@@ -119,18 +117,23 @@ ot_ipsec_sa_common_param_fill(union roc_ot_ipsec_sa_word2 *w2,
 			return -ENOTSUP;
 		}
 	} else {
-		switch (cipher_xfrm->cipher.algo) {
-		case RTE_CRYPTO_CIPHER_NULL:
-			w2->s.enc_type = ROC_IE_OT_SA_ENC_NULL;
-			break;
-		case RTE_CRYPTO_CIPHER_AES_CBC:
-			w2->s.enc_type = ROC_IE_OT_SA_ENC_AES_CBC;
-			break;
-		case RTE_CRYPTO_CIPHER_AES_CTR:
-			w2->s.enc_type = ROC_IE_OT_SA_ENC_AES_CTR;
-			break;
-		default:
-			return -ENOTSUP;
+		if (cipher_xfrm != NULL) {
+			switch (cipher_xfrm->cipher.algo) {
+			case RTE_CRYPTO_CIPHER_NULL:
+				w2->s.enc_type = ROC_IE_OT_SA_ENC_NULL;
+				break;
+			case RTE_CRYPTO_CIPHER_AES_CBC:
+				w2->s.enc_type = ROC_IE_OT_SA_ENC_AES_CBC;
+				break;
+			case RTE_CRYPTO_CIPHER_AES_CTR:
+				w2->s.enc_type = ROC_IE_OT_SA_ENC_AES_CTR;
+				break;
+			default:
+				return -ENOTSUP;
+			}
+
+			key = cipher_xfrm->cipher.key.data;
+			length = cipher_xfrm->cipher.key.length;
 		}
 
 		switch (auth_xfrm->auth.algo) {
@@ -169,8 +172,6 @@ ot_ipsec_sa_common_param_fill(union roc_ot_ipsec_sa_word2 *w2,
 		     i++)
 			tmp_key[i] = rte_be_to_cpu_64(tmp_key[i]);
 
-		key = cipher_xfrm->cipher.key.data;
-		length = cipher_xfrm->cipher.key.length;
 	}
 
 	/* Set encapsulation type */
@@ -179,11 +180,13 @@ ot_ipsec_sa_common_param_fill(union roc_ot_ipsec_sa_word2 *w2,
 
 	w2->s.spi = ipsec_xfrm->spi;
 
-	/* Copy encryption key */
-	memcpy(cipher_key, key, length);
-	tmp_key = (uint64_t *)cipher_key;
-	for (i = 0; i < (int)(ROC_CTX_MAX_CKEY_LEN / sizeof(uint64_t)); i++)
-		tmp_key[i] = rte_be_to_cpu_64(tmp_key[i]);
+	if (key != NULL && length != 0) {
+		/* Copy encryption key */
+		memcpy(cipher_key, key, length);
+		tmp_key = (uint64_t *)cipher_key;
+		for (i = 0; i < (int)(ROC_CTX_MAX_CKEY_LEN / sizeof(uint64_t)); i++)
+			tmp_key[i] = rte_be_to_cpu_64(tmp_key[i]);
+	}
 
 	/* Set AES key length */
 	if (w2->s.enc_type == ROC_IE_OT_SA_ENC_AES_CBC ||

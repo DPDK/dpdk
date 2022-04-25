@@ -65,6 +65,10 @@ New Features
   * Added support for promiscuous mode on Windows.
   * Added support for MTU on Windows.
 
+* **Updated Marvell cnxk crypto driver.**
+
+  * Added AH mode support in lookaside protocol (IPsec) for CN9K & CN10K.
+
 
 Removed Items
 -------------
