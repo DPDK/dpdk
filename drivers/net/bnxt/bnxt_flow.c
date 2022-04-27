@@ -1115,7 +1115,7 @@ bnxt_vnic_rss_cfg_update(struct bnxt *bp,
 			 struct rte_flow_error *error)
 {
 	const struct rte_flow_action_rss *rss;
-	unsigned int rss_idx, i;
+	unsigned int rss_idx, i, j;
 	uint16_t hash_type;
 	uint64_t types;
 	int rc;
@@ -1131,6 +1131,37 @@ bnxt_vnic_rss_cfg_update(struct bnxt *bp,
 				   "Incorrect RXQ count");
 		rc = -rte_errno;
 		goto ret;
+	}
+
+	/* Validate Rx queues */
+	for (i = 0; i < rss->queue_num; i++) {
+		PMD_DRV_LOG(DEBUG, "RSS action Queue %d\n", rss->queue[i]);
+
+		if (rss->queue[i] >= bp->rx_nr_rings ||
+		    !bp->rx_queues[rss->queue[i]]) {
+			rte_flow_error_set(error,
+					   EINVAL,
+					   RTE_FLOW_ERROR_TYPE_ACTION,
+					   act,
+					   "Invalid queue ID for RSS");
+			rc = -rte_errno;
+			goto ret;
+		}
+	}
+
+	/* Duplicate queue ids are not supported. */
+	for (i = 0; i < rss->queue_num; i++) {
+		for (j = i + 1; j < rss->queue_num; j++) {
+			if (rss->queue[i] == rss->queue[j]) {
+				rte_flow_error_set(error,
+						   EINVAL,
+						   RTE_FLOW_ERROR_TYPE_ACTION,
+						   act,
+						   "Duplicate queue ID for RSS");
+				rc = -rte_errno;
+				goto ret;
+			}
+		}
 	}
 
 	/* Currently only Toeplitz hash is supported. */
@@ -1199,22 +1230,6 @@ bnxt_vnic_rss_cfg_update(struct bnxt *bp,
 
 	if (rss->queue_num == 0)
 		goto skip_rss_table;
-
-	/* Validate Rx queues */
-	for (i = 0; i < rss->queue_num; i++) {
-		PMD_DRV_LOG(DEBUG, "RSS action Queue %d\n", rss->queue[i]);
-
-		if (rss->queue[i] >= bp->rx_nr_rings ||
-		    !bp->rx_queues[rss->queue[i]]) {
-			rte_flow_error_set(error,
-					   EINVAL,
-					   RTE_FLOW_ERROR_TYPE_ACTION,
-					   act,
-					   "Invalid queue ID for RSS");
-			rc = -rte_errno;
-			goto ret;
-		}
-	}
 
 	/* Prepare the indirection table */
 	for (rss_idx = 0; rss_idx < HW_HASH_INDEX_SIZE; rss_idx++) {
