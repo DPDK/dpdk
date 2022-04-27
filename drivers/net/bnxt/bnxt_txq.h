@@ -43,4 +43,5 @@ int bnxt_tx_queue_setup_op(struct rte_eth_dev *eth_dev,
 			       uint16_t nb_desc,
 			       unsigned int socket_id,
 			       const struct rte_eth_txconf *tx_conf);
+uint64_t bnxt_get_tx_port_offloads(struct bnxt *bp);
 #endif

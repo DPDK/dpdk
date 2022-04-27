@@ -17,6 +17,29 @@
  * TX Queues
  */
 
+uint64_t bnxt_get_tx_port_offloads(struct bnxt *bp)
+{
+	uint64_t tx_offload_capa;
+
+	tx_offload_capa = RTE_ETH_TX_OFFLOAD_IPV4_CKSUM  |
+			  RTE_ETH_TX_OFFLOAD_UDP_CKSUM   |
+			  RTE_ETH_TX_OFFLOAD_TCP_CKSUM   |
+			  RTE_ETH_TX_OFFLOAD_TCP_TSO     |
+			  RTE_ETH_TX_OFFLOAD_QINQ_INSERT |
+			  RTE_ETH_TX_OFFLOAD_MULTI_SEGS;
+
+	tx_offload_capa |= RTE_ETH_TX_OFFLOAD_OUTER_IPV4_CKSUM |
+			   RTE_ETH_TX_OFFLOAD_VXLAN_TNL_TSO |
+			   RTE_ETH_TX_OFFLOAD_GRE_TNL_TSO |
+			   RTE_ETH_TX_OFFLOAD_IPIP_TNL_TSO |
+			   RTE_ETH_TX_OFFLOAD_GENEVE_TNL_TSO;
+
+	if (bp->fw_cap & BNXT_FW_CAP_VLAN_TX_INSERT)
+		tx_offload_capa |= RTE_ETH_TX_OFFLOAD_VLAN_INSERT;
+
+	return tx_offload_capa;
+}
+
 void bnxt_free_txq_stats(struct bnxt_tx_queue *txq)
 {
 	if (txq && txq->cp_ring && txq->cp_ring->hw_stats)
