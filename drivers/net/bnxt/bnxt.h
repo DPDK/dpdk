@@ -72,8 +72,7 @@
 #define BROADCOM_DEV_ID_58818_VF	0xd82e
 
 #define BROADCOM_DEV_957508_N2100	0x5208
-#define IS_BNXT_DEV_957508_N2100(bp)	\
-	((bp)->pdev->id.subsystem_device_id == BROADCOM_DEV_957508_N2100)
+#define BROADCOM_DEV_957414_N225	0x4145
 
 #define BNXT_MAX_MTU		9574
 #define BNXT_NUM_VLANS		2
