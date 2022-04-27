@@ -841,8 +841,7 @@ done:
 			return 1;
 	}
 
-	cnxk_sso_hws_swtag_flush(base + SSOW_LF_GWS_TAG,
-				 base + SSOW_LF_GWS_OP_SWTAG_FLUSH);
+	cnxk_sso_hws_swtag_flush(base);
 
 	return 1;
 }

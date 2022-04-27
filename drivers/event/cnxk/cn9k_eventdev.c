@@ -156,9 +156,7 @@ cn9k_sso_hws_flush_events(void *hws, uint8_t queue_id, uintptr_t base,
 		if (fn != NULL && ev.u64 != 0)
 			fn(arg, ev);
 		if (ev.sched_type != SSO_TT_EMPTY)
-			cnxk_sso_hws_swtag_flush(
-				ws_base + SSOW_LF_GWS_TAG,
-				ws_base + SSOW_LF_GWS_OP_SWTAG_FLUSH);
+			cnxk_sso_hws_swtag_flush(ws_base);
 		do {
 			val = plt_read64(ws_base + SSOW_LF_GWS_PENDSTATE);
 		} while (val & BIT_ULL(56));

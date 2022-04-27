@@ -18,8 +18,12 @@ cn10k_sso_hws_enq(void *port, const struct rte_event *ev)
 		cn10k_sso_hws_forward_event(ws, ev);
 		break;
 	case RTE_EVENT_OP_RELEASE:
-		cnxk_sso_hws_swtag_flush(ws->base + SSOW_LF_GWS_WQE0,
-					 ws->base + SSOW_LF_GWS_OP_SWTAG_FLUSH);
+		if (ws->swtag_req) {
+			cnxk_sso_hws_desched(ev->u64, ws->base);
+			ws->swtag_req = 0;
+			break;
+		}
+		cnxk_sso_hws_swtag_flush(ws->base);
 		break;
 	default:
 		return 0;
