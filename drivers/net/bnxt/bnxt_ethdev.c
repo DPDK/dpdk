@@ -2079,8 +2079,6 @@ static int bnxt_rss_hash_update_op(struct rte_eth_dev *eth_dev,
 			return -EINVAL;
 	}
 
-	bp->flags |= BNXT_FLAG_UPDATE_HASH;
-
 	/* Update the default RSS VNIC(s) */
 	vnic = BNXT_GET_DEFAULT_VNIC(bp);
 	vnic->hash_type = bnxt_rte_to_hwrm_hash_types(rss_conf->rss_hf);

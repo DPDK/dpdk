@@ -139,9 +139,6 @@ skip_filter_allocation:
 	if (dev_conf->rxmode.mq_mode & ETH_MQ_RX_RSS_FLAG) {
 		struct rte_eth_rss_conf *rss = &bp->rss_conf;
 
-		if (bp->flags & BNXT_FLAG_UPDATE_HASH)
-			bp->flags &= ~BNXT_FLAG_UPDATE_HASH;
-
 		for (i = 0; i < bp->nr_vnics; i++) {
 			uint32_t lvl = ETH_RSS_LEVEL(rss->rss_hf);
 
