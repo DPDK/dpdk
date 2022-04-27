@@ -1405,23 +1405,6 @@ use_vnic:
 
 		bnxt_update_filter_flags_en(filter, filter1, use_ntuple);
 		break;
-	case RTE_FLOW_ACTION_TYPE_COUNT:
-		vnic0 = &bp->vnic_info[0];
-		filter1 = bnxt_get_l2_filter(bp, filter, vnic0);
-		if (filter1 == NULL) {
-			rte_flow_error_set(error,
-					   ENOSPC,
-					   RTE_FLOW_ERROR_TYPE_ACTION,
-					   act,
-					   "New filter not available");
-			rc = -rte_errno;
-			goto ret;
-		}
-
-		filter->fw_l2_filter_id = filter1->fw_l2_filter_id;
-		filter->flow_id = filter1->flow_id;
-		filter->flags = HWRM_CFA_NTUPLE_FILTER_ALLOC_INPUT_FLAGS_METER;
-		break;
 	case RTE_FLOW_ACTION_TYPE_VF:
 		act_vf = (const struct rte_flow_action_vf *)act->conf;
 		vf = act_vf->id;
