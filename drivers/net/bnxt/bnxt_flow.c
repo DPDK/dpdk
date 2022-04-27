@@ -1115,7 +1115,7 @@ bnxt_vnic_rss_cfg_update(struct bnxt *bp,
 			 struct rte_flow_error *error)
 {
 	const struct rte_flow_action_rss *rss;
-	unsigned int rss_idx, i, j;
+	unsigned int rss_idx, i, j, fw_idx;
 	uint16_t hash_type;
 	uint64_t types;
 	int rc;
@@ -1232,11 +1232,21 @@ bnxt_vnic_rss_cfg_update(struct bnxt *bp,
 		goto skip_rss_table;
 
 	/* Prepare the indirection table */
-	for (rss_idx = 0; rss_idx < HW_HASH_INDEX_SIZE; rss_idx++) {
+	for (rss_idx = 0, fw_idx = 0; rss_idx < HW_HASH_INDEX_SIZE;
+	     rss_idx++, fw_idx++) {
+		uint8_t *rxq_state = bp->eth_dev->data->rx_queue_state;
 		struct bnxt_rx_queue *rxq;
 		uint32_t idx;
 
-		idx = rss->queue[rss_idx % rss->queue_num];
+		for (i = 0; i < bp->rx_cp_nr_rings; i++) {
+			idx = rss->queue[fw_idx % rss->queue_num];
+			if (rxq_state[idx] != RTE_ETH_QUEUE_STATE_STOPPED)
+				break;
+			fw_idx++;
+		}
+
+		if (i == bp->rx_cp_nr_rings)
+			return 0;
 
 		if (BNXT_CHIP_P5(bp)) {
 			rxq = bp->rx_queues[idx];
