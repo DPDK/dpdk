@@ -169,6 +169,34 @@ cn9k_wqe_to_mbuf(uint64_t wqe, const uint64_t mbuf, uint8_t port_id,
 			     mbuf_init | ((uint64_t)port_id) << 48, flags);
 }
 
+static __rte_always_inline void
+cn9k_sso_hws_post_process(uint64_t *u64, uint64_t mbuf, const uint32_t flags,
+			  const void *const lookup_mem,
+			  struct cnxk_timesync_info *tstamp)
+{
+	uint64_t tstamp_ptr;
+
+	u64[0] = (u64[0] & (0x3ull << 32)) << 6 |
+		 (u64[0] & (0x3FFull << 36)) << 4 | (u64[0] & 0xffffffff);
+	if ((flags & CPT_RX_WQE_F) &&
+	    (CNXK_EVENT_TYPE_FROM_TAG(u64[0]) == RTE_EVENT_TYPE_CRYPTODEV)) {
+		u64[1] = cn9k_cpt_crypto_adapter_dequeue(u64[1]);
+	} else if (CNXK_EVENT_TYPE_FROM_TAG(u64[0]) == RTE_EVENT_TYPE_ETHDEV) {
+		uint8_t port = CNXK_SUB_EVENT_FROM_TAG(u64[0]);
+
+		u64[0] = CNXK_CLR_SUB_EVENT(u64[0]);
+		cn9k_wqe_to_mbuf(u64[1], mbuf, port, u64[0] & 0xFFFFF, flags,
+				 lookup_mem);
+		/* Extracting tstamp, if PTP enabled*/
+		tstamp_ptr = *(uint64_t *)(((struct nix_wqe_hdr_s *)u64[1]) +
+					   CNXK_SSO_WQE_SG_PTR);
+		cn9k_nix_mbuf_to_tstamp((struct rte_mbuf *)mbuf, tstamp,
+					flags & NIX_RX_OFFLOAD_TSTAMP_F,
+					(uint64_t *)tstamp_ptr);
+		u64[1] = mbuf;
+	}
+}
+
 static __rte_always_inline uint16_t
 cn9k_sso_hws_dual_get_work(uint64_t base, uint64_t pair_base,
 			   struct rte_event *ev, const uint32_t flags,
@@ -178,7 +206,6 @@ cn9k_sso_hws_dual_get_work(uint64_t base, uint64_t pair_base,
 		__uint128_t get_work;
 		uint64_t u64[2];
 	} gw;
-	uint64_t tstamp_ptr;
 	uint64_t mbuf;
 
 	if (flags & NIX_RX_OFFLOAD_PTYPE_F)
@@ -207,34 +234,9 @@ cn9k_sso_hws_dual_get_work(uint64_t base, uint64_t pair_base,
 	mbuf = (uint64_t)((char *)gw.u64[1] - sizeof(struct rte_mbuf));
 #endif
 
-	gw.u64[0] = (gw.u64[0] & (0x3ull << 32)) << 6 |
-		    (gw.u64[0] & (0x3FFull << 36)) << 4 |
-		    (gw.u64[0] & 0xffffffff);
-
-	if (CNXK_TT_FROM_EVENT(gw.u64[0]) != SSO_TT_EMPTY) {
-		if ((flags & CPT_RX_WQE_F) &&
-		    (CNXK_EVENT_TYPE_FROM_TAG(gw.u64[0]) ==
-		     RTE_EVENT_TYPE_CRYPTODEV)) {
-			gw.u64[1] = cn9k_cpt_crypto_adapter_dequeue(gw.u64[1]);
-		} else if (CNXK_EVENT_TYPE_FROM_TAG(gw.u64[0]) ==
-			   RTE_EVENT_TYPE_ETHDEV) {
-			uint8_t port = CNXK_SUB_EVENT_FROM_TAG(gw.u64[0]);
-
-			gw.u64[0] = CNXK_CLR_SUB_EVENT(gw.u64[0]);
-			cn9k_wqe_to_mbuf(gw.u64[1], mbuf, port,
-					 gw.u64[0] & 0xFFFFF, flags,
-					 dws->lookup_mem);
-			/* Extracting tstamp, if PTP enabled*/
-			tstamp_ptr = *(uint64_t *)(((struct nix_wqe_hdr_s *)
-							    gw.u64[1]) +
-						   CNXK_SSO_WQE_SG_PTR);
-			cn9k_nix_mbuf_to_tstamp((struct rte_mbuf *)mbuf,
-						dws->tstamp,
-						flags & NIX_RX_OFFLOAD_TSTAMP_F,
-						(uint64_t *)tstamp_ptr);
-			gw.u64[1] = mbuf;
-		}
-	}
+	if (gw.u64[1])
+		cn9k_sso_hws_post_process(gw.u64, mbuf, flags, dws->lookup_mem,
+					  dws->tstamp);
 
 	ev->event = gw.u64[0];
 	ev->u64 = gw.u64[1];
@@ -250,7 +252,6 @@ cn9k_sso_hws_get_work(struct cn9k_sso_hws *ws, struct rte_event *ev,
 		__uint128_t get_work;
 		uint64_t u64[2];
 	} gw;
-	uint64_t tstamp_ptr;
 	uint64_t mbuf;
 
 	plt_write64(ws->gw_wdata, ws->base + SSOW_LF_GWS_OP_GET_WORK0);
@@ -283,34 +284,9 @@ cn9k_sso_hws_get_work(struct cn9k_sso_hws *ws, struct rte_event *ev,
 	mbuf = (uint64_t)((char *)gw.u64[1] - sizeof(struct rte_mbuf));
 #endif
 
-	gw.u64[0] = (gw.u64[0] & (0x3ull << 32)) << 6 |
-		    (gw.u64[0] & (0x3FFull << 36)) << 4 |
-		    (gw.u64[0] & 0xffffffff);
-
-	if (CNXK_TT_FROM_EVENT(gw.u64[0]) != SSO_TT_EMPTY) {
-		if ((flags & CPT_RX_WQE_F) &&
-		    (CNXK_EVENT_TYPE_FROM_TAG(gw.u64[0]) ==
-		     RTE_EVENT_TYPE_CRYPTODEV)) {
-			gw.u64[1] = cn9k_cpt_crypto_adapter_dequeue(gw.u64[1]);
-		} else if (CNXK_EVENT_TYPE_FROM_TAG(gw.u64[0]) ==
-			   RTE_EVENT_TYPE_ETHDEV) {
-			uint8_t port = CNXK_SUB_EVENT_FROM_TAG(gw.u64[0]);
-
-			gw.u64[0] = CNXK_CLR_SUB_EVENT(gw.u64[0]);
-			cn9k_wqe_to_mbuf(gw.u64[1], mbuf, port,
-					 gw.u64[0] & 0xFFFFF, flags,
-					 lookup_mem);
-			/* Extracting tstamp, if PTP enabled*/
-			tstamp_ptr = *(uint64_t *)(((struct nix_wqe_hdr_s *)
-							    gw.u64[1]) +
-						   CNXK_SSO_WQE_SG_PTR);
-			cn9k_nix_mbuf_to_tstamp((struct rte_mbuf *)mbuf,
-						ws->tstamp,
-						flags & NIX_RX_OFFLOAD_TSTAMP_F,
-						(uint64_t *)tstamp_ptr);
-			gw.u64[1] = mbuf;
-		}
-	}
+	if (gw.u64[1])
+		cn9k_sso_hws_post_process(gw.u64, mbuf, flags, lookup_mem,
+					  ws->tstamp);
 
 	ev->event = gw.u64[0];
 	ev->u64 = gw.u64[1];
@@ -320,7 +296,9 @@ cn9k_sso_hws_get_work(struct cn9k_sso_hws *ws, struct rte_event *ev,
 
 /* Used in cleaning up workslot. */
 static __rte_always_inline uint16_t
-cn9k_sso_hws_get_work_empty(uint64_t base, struct rte_event *ev)
+cn9k_sso_hws_get_work_empty(uint64_t base, struct rte_event *ev,
+			    const uint32_t flags, void *lookup_mem,
+			    struct cnxk_timesync_info *tstamp)
 {
 	union {
 		__uint128_t get_work;
@@ -353,21 +331,9 @@ cn9k_sso_hws_get_work_empty(uint64_t base, struct rte_event *ev)
 	mbuf = (uint64_t)((char *)gw.u64[1] - sizeof(struct rte_mbuf));
 #endif
 
-	gw.u64[0] = (gw.u64[0] & (0x3ull << 32)) << 6 |
-		    (gw.u64[0] & (0x3FFull << 36)) << 4 |
-		    (gw.u64[0] & 0xffffffff);
-
-	if (CNXK_TT_FROM_EVENT(gw.u64[0]) != SSO_TT_EMPTY) {
-		if (CNXK_EVENT_TYPE_FROM_TAG(gw.u64[0]) ==
-		    RTE_EVENT_TYPE_ETHDEV) {
-			uint8_t port = CNXK_SUB_EVENT_FROM_TAG(gw.u64[0]);
-
-			gw.u64[0] = CNXK_CLR_SUB_EVENT(gw.u64[0]);
-			cn9k_wqe_to_mbuf(gw.u64[1], mbuf, port,
-					 gw.u64[0] & 0xFFFFF, 0, NULL);
-			gw.u64[1] = mbuf;
-		}
-	}
+	if (gw.u64[1])
+		cn9k_sso_hws_post_process(gw.u64, mbuf, flags, lookup_mem,
+					  tstamp);
 
 	ev->event = gw.u64[0];
 	ev->u64 = gw.u64[1];
