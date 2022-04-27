@@ -65,6 +65,7 @@ void bnxt_free_rxq_stats(struct bnxt_rx_queue *rxq)
 int bnxt_mq_rx_configure(struct bnxt *bp)
 {
 	struct rte_eth_conf *dev_conf = &bp->eth_dev->data->dev_conf;
+	struct rte_eth_rss_conf *rss = &bp->rss_conf;
 	const struct rte_eth_vmdq_rx_conf *conf =
 		    &dev_conf->rx_adv_conf.vmdq_rx_conf;
 	unsigned int i, j, nb_q_per_grp = 1, ring_idx = 0;
@@ -172,29 +173,19 @@ skip_filter_allocation:
 
 	bp->rx_num_qs_per_vnic = nb_q_per_grp;
 
-	if (dev_conf->rxmode.mq_mode & RTE_ETH_MQ_RX_RSS_FLAG) {
-		struct rte_eth_rss_conf *rss = &bp->rss_conf;
+	for (i = 0; i < bp->nr_vnics; i++) {
+		uint32_t lvl = RTE_ETH_RSS_LEVEL(rss->rss_hf);
 
-		for (i = 0; i < bp->nr_vnics; i++) {
-			uint32_t lvl = RTE_ETH_RSS_LEVEL(rss->rss_hf);
+		vnic = &bp->vnic_info[i];
+		vnic->hash_type = bnxt_rte_to_hwrm_hash_types(rss->rss_hf);
+		vnic->hash_mode = bnxt_rte_to_hwrm_hash_level(bp, rss->rss_hf, lvl);
 
-			vnic = &bp->vnic_info[i];
-			vnic->hash_type =
-				bnxt_rte_to_hwrm_hash_types(rss->rss_hf);
-			vnic->hash_mode =
-				bnxt_rte_to_hwrm_hash_level(bp,
-							    rss->rss_hf,
-							    lvl);
-
-			/*
-			 * Use the supplied key if the key length is
-			 * acceptable and the rss_key is not NULL
-			 */
-			if (rss->rss_key &&
-			    rss->rss_key_len <= HW_HASH_KEY_SIZE)
-				memcpy(vnic->rss_hash_key,
-				       rss->rss_key, rss->rss_key_len);
-		}
+		/*
+		 * Use the supplied key if the key length is
+		 * acceptable and the rss_key is not NULL
+		 */
+		if (rss->rss_key && rss->rss_key_len <= HW_HASH_KEY_SIZE)
+			memcpy(vnic->rss_hash_key, rss->rss_key, rss->rss_key_len);
 	}
 
 	return rc;
