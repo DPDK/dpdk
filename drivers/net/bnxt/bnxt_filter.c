@@ -99,6 +99,8 @@ void bnxt_free_all_filters(struct bnxt *bp)
 					bnxt_filter_info, next);
 			STAILQ_INSERT_TAIL(&bp->free_filter_list,
 					filter, next);
+			if (filter->vnic)
+				filter->vnic = NULL;
 			filter = temp_filter;
 		}
 		STAILQ_INIT(&vnic->filter);
