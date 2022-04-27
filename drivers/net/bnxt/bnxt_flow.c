@@ -1074,7 +1074,6 @@ bnxt_update_filter_flags_en(struct bnxt_filter_info *filter,
 		filter1, filter->fw_l2_filter_id, filter->l2_ref_cnt);
 }
 
-/* Valid actions supported along with RSS are count and mark. */
 static int
 bnxt_validate_rss_action(const struct rte_flow_action actions[])
 {
@@ -1122,6 +1121,17 @@ bnxt_vnic_rss_cfg_update(struct bnxt *bp,
 	int rc;
 
 	rss = (const struct rte_flow_action_rss *)act->conf;
+
+	/* must specify either all the Rx queues created by application or zero queues */
+	if (rss->queue_num && vnic->rx_queue_cnt != rss->queue_num) {
+		rte_flow_error_set(error,
+				   EINVAL,
+				   RTE_FLOW_ERROR_TYPE_ACTION,
+				   act,
+				   "Incorrect RXQ count");
+		rc = -rte_errno;
+		goto ret;
+	}
 
 	/* Currently only Toeplitz hash is supported. */
 	if (rss->func != RTE_ETH_HASH_FUNCTION_DEFAULT &&
