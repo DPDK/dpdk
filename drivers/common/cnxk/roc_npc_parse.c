@@ -594,6 +594,13 @@ npc_parse_lc(struct npc_parse_state *pst)
 		info.len = pst->pattern->size;
 		info.hw_hdr_len = 40;
 		break;
+	case ROC_NPC_ITEM_TYPE_IPV6_FRAG_EXT:
+		lid = NPC_LID_LC;
+		lt = NPC_LT_LC_IP6_EXT;
+		flags = NPC_F_LC_U_IP6_FRAG;
+		info.len = pst->pattern->size;
+		info.hw_hdr_len = 40;
+		break;
 	case ROC_NPC_ITEM_TYPE_L3_CUSTOM:
 		lt = NPC_LT_LC_CUSTOM0;
 		info.len = pst->pattern->size;

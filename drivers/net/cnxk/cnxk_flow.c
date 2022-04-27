@@ -14,6 +14,9 @@ const struct cnxk_rte_flow_term_info term[] = {
 				     sizeof(struct rte_flow_item_ipv4)},
 	[RTE_FLOW_ITEM_TYPE_IPV6] = {ROC_NPC_ITEM_TYPE_IPV6,
 				     sizeof(struct rte_flow_item_ipv6)},
+	[RTE_FLOW_ITEM_TYPE_IPV6_FRAG_EXT] = {
+			ROC_NPC_ITEM_TYPE_IPV6_FRAG_EXT,
+			sizeof(struct rte_flow_item_ipv6_frag_ext)},
 	[RTE_FLOW_ITEM_TYPE_ARP_ETH_IPV4] = {
 			ROC_NPC_ITEM_TYPE_ARP_ETH_IPV4,
 			sizeof(struct rte_flow_item_arp_eth_ipv4)},
