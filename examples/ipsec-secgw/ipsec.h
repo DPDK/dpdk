@@ -112,7 +112,7 @@ ipsec_mask_saptr(void *ptr)
 struct ipsec_sa {
 	struct rte_ipsec_session sessions[IPSEC_SESSION_MAX];
 	uint32_t spi;
-	uint32_t cdev_id_qp;
+	struct cdev_qp *cqp[RTE_MAX_LCORE];
 	uint64_t seq;
 	uint32_t salt;
 	uint32_t fallback_sessions;
@@ -230,12 +230,11 @@ struct ipsec_ctx {
 	uint16_t nb_qps;
 	uint16_t last_qp;
 	struct cdev_qp tbl[MAX_QP_PER_LCORE];
-	struct rte_mempool *session_pool;
-	struct rte_mempool *session_priv_pool;
 	struct rte_mbuf *ol_pkts[MAX_PKT_BURST] __rte_aligned(sizeof(void *));
 	uint16_t ol_pkts_cnt;
 	uint64_t ipv4_offloads;
 	uint64_t ipv6_offloads;
+	uint32_t lcore_id;
 };
 
 struct cdev_key {
@@ -424,7 +423,8 @@ int
 sa_spi_present(struct sa_ctx *sa_ctx, uint32_t spi, int inbound);
 
 void
-sa_init(struct socket_ctx *ctx, int32_t socket_id);
+sa_init(struct socket_ctx *ctx, int32_t socket_id,
+		struct lcore_conf *lcore_conf);
 
 void
 rt_init(struct socket_ctx *ctx, int32_t socket_id);
@@ -440,8 +440,9 @@ void
 enqueue_cop_burst(struct cdev_qp *cqp);
 
 int
-create_lookaside_session(struct ipsec_ctx *ipsec_ctx, struct ipsec_sa *sa,
-		struct rte_ipsec_session *ips);
+create_lookaside_session(struct ipsec_ctx *ipsec_ctx[],
+	struct socket_ctx *skt_ctx, struct ipsec_sa *sa,
+	struct rte_ipsec_session *ips);
 
 int
 create_inline_session(struct socket_ctx *skt_ctx, struct ipsec_sa *sa,

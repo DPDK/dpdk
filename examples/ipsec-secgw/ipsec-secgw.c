@@ -684,16 +684,12 @@ ipsec_poll_mode_worker(void)
 	qconf->inbound.sp6_ctx = socket_ctx[socket_id].sp_ip6_in;
 	qconf->inbound.sa_ctx = socket_ctx[socket_id].sa_in;
 	qconf->inbound.cdev_map = cdev_map_in;
-	qconf->inbound.session_pool = socket_ctx[socket_id].session_pool;
-	qconf->inbound.session_priv_pool =
-			socket_ctx[socket_id].session_priv_pool;
+	qconf->inbound.lcore_id = lcore_id;
 	qconf->outbound.sp4_ctx = socket_ctx[socket_id].sp_ip4_out;
 	qconf->outbound.sp6_ctx = socket_ctx[socket_id].sp_ip6_out;
 	qconf->outbound.sa_ctx = socket_ctx[socket_id].sa_out;
 	qconf->outbound.cdev_map = cdev_map_out;
-	qconf->outbound.session_pool = socket_ctx[socket_id].session_pool;
-	qconf->outbound.session_priv_pool =
-			socket_ctx[socket_id].session_priv_pool;
+	qconf->outbound.lcore_id = lcore_id;
 	qconf->frag.pool_indir = socket_ctx[socket_id].mbuf_pool_indir;
 
 	rc = ipsec_sad_lcore_cache_init(app_sa_prm.cache_sz);
@@ -1458,7 +1454,7 @@ check_all_ports_link_status(uint32_t port_mask)
 }
 
 static int32_t
-add_mapping(struct rte_hash *map, const char *str, uint16_t cdev_id,
+add_mapping(const char *str, uint16_t cdev_id,
 		uint16_t qp, struct lcore_params *params,
 		struct ipsec_ctx *ipsec_ctx,
 		const struct rte_cryptodev_capabilities *cipher,
@@ -1477,7 +1473,7 @@ add_mapping(struct rte_hash *map, const char *str, uint16_t cdev_id,
 	if (aead)
 		key.aead_algo = aead->sym.aead.algo;
 
-	ret = rte_hash_lookup(map, &key);
+	ret = rte_hash_lookup(ipsec_ctx->cdev_map, &key);
 	if (ret != -ENOENT)
 		return 0;
 
@@ -1499,7 +1495,7 @@ add_mapping(struct rte_hash *map, const char *str, uint16_t cdev_id,
 				cdev_id, qp, i);
 	}
 
-	ret = rte_hash_add_key_data(map, &key, (void *)i);
+	ret = rte_hash_add_key_data(ipsec_ctx->cdev_map, &key, (void *)i);
 	if (ret < 0) {
 		printf("Failed to insert cdev mapping for (lcore %u, "
 				"cdev %u, qp %u), errno %d\n",
@@ -1517,20 +1513,19 @@ add_cdev_mapping(struct rte_cryptodev_info *dev_info, uint16_t cdev_id,
 {
 	int32_t ret = 0;
 	const struct rte_cryptodev_capabilities *i, *j;
-	struct rte_hash *map;
 	struct lcore_conf *qconf;
 	struct ipsec_ctx *ipsec_ctx;
 	const char *str;
 
 	qconf = &lcore_conf[params->lcore_id];
 
-	if ((unprotected_port_mask & (1 << params->port_id)) == 0) {
-		map = cdev_map_out;
+	if (!is_unprotected_port(params->port_id)) {
 		ipsec_ctx = &qconf->outbound;
+		ipsec_ctx->cdev_map = cdev_map_out;
 		str = "Outbound";
 	} else {
-		map = cdev_map_in;
 		ipsec_ctx = &qconf->inbound;
+		ipsec_ctx->cdev_map = cdev_map_in;
 		str = "Inbound";
 	}
 
@@ -1545,7 +1540,7 @@ add_cdev_mapping(struct rte_cryptodev_info *dev_info, uint16_t cdev_id,
 			continue;
 
 		if (i->sym.xform_type == RTE_CRYPTO_SYM_XFORM_AEAD) {
-			ret |= add_mapping(map, str, cdev_id, qp, params,
+			ret |= add_mapping(str, cdev_id, qp, params,
 					ipsec_ctx, NULL, NULL, i);
 			continue;
 		}
@@ -1561,7 +1556,7 @@ add_cdev_mapping(struct rte_cryptodev_info *dev_info, uint16_t cdev_id,
 			if (j->sym.xform_type != RTE_CRYPTO_SYM_XFORM_AUTH)
 				continue;
 
-			ret |= add_mapping(map, str, cdev_id, qp, params,
+			ret |= add_mapping(str, cdev_id, qp, params,
 						ipsec_ctx, i, j, NULL);
 		}
 	}
@@ -3075,7 +3070,7 @@ main(int32_t argc, char **argv)
 		if ((socket_ctx[socket_id].session_pool != NULL) &&
 			(socket_ctx[socket_id].sa_in == NULL) &&
 			(socket_ctx[socket_id].sa_out == NULL)) {
-			sa_init(&socket_ctx[socket_id], socket_id);
+			sa_init(&socket_ctx[socket_id], socket_id, lcore_conf);
 			sp4_init(&socket_ctx[socket_id], socket_id);
 			sp6_init(&socket_ctx[socket_id], socket_id);
 			rt_init(&socket_ctx[socket_id], socket_id);

@@ -73,32 +73,18 @@ enqueue_cop_bulk(struct cdev_qp *cqp, struct rte_crypto_op *cop[], uint32_t num)
 }
 
 static inline int
-fill_ipsec_session(struct rte_ipsec_session *ss, struct ipsec_ctx *ctx,
-	struct ipsec_sa *sa)
+check_ipsec_session(const struct rte_ipsec_session *ss)
 {
-	int32_t rc;
-
-	/* setup crypto section */
 	if (ss->type == RTE_SECURITY_ACTION_TYPE_NONE ||
 			ss->type == RTE_SECURITY_ACTION_TYPE_CPU_CRYPTO) {
-		RTE_ASSERT(ss->crypto.ses == NULL);
-		rc = create_lookaside_session(ctx, sa, ss);
-		if (rc != 0)
-			return rc;
-	/* setup session action type */
+		if (ss->crypto.ses == NULL)
+			return -ENOENT;
 	} else if (ss->type == RTE_SECURITY_ACTION_TYPE_LOOKASIDE_PROTOCOL) {
-		RTE_ASSERT(ss->security.ses == NULL);
-		rc = create_lookaside_session(ctx, sa, ss);
-		if (rc != 0)
-			return rc;
+		if (ss->security.ses == NULL)
+			return -ENOENT;
 	} else
 		RTE_ASSERT(0);
-
-	rc = rte_ipsec_session_prepare(ss);
-	if (rc != 0)
-		memset(ss, 0, sizeof(*ss));
-
-	return rc;
+	return 0;
 }
 
 /*
@@ -183,7 +169,7 @@ ipsec_prepare_crypto_group(struct ipsec_ctx *ctx, struct ipsec_sa *sa,
 	uint32_t j, k;
 	struct ipsec_mbuf_metadata *priv;
 
-	cqp = &ctx->tbl[sa->cdev_id_qp];
+	cqp = sa->cqp[ctx->lcore_id];
 
 	/* for that app each mbuf has it's own crypto op */
 	for (j = 0; j != cnt; j++) {
@@ -274,9 +260,8 @@ ipsec_process(struct ipsec_ctx *ctx, struct ipsec_traffic *trf)
 				ipsec_get_fallback_session(sa) :
 				ipsec_get_primary_session(sa);
 
-		/* no valid HW session for that SA, try to create one */
-		if (sa == NULL || (ips->crypto.ses == NULL &&
-				fill_ipsec_session(ips, ctx, sa) != 0))
+		/* no valid HW session for that SA */
+		if (sa == NULL || unlikely(check_ipsec_session(ips) != 0))
 			k = 0;
 
 		/* process packets inline */

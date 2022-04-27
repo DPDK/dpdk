@@ -910,15 +910,11 @@ ipsec_wrkr_non_burst_int_port_app_mode(struct eh_event_link_info *links,
 	lconf.inbound.sp4_ctx = socket_ctx[socket_id].sp_ip4_in;
 	lconf.inbound.sp6_ctx = socket_ctx[socket_id].sp_ip6_in;
 	lconf.inbound.sa_ctx = socket_ctx[socket_id].sa_in;
-	lconf.inbound.session_pool = socket_ctx[socket_id].session_pool;
-	lconf.inbound.session_priv_pool =
-			socket_ctx[socket_id].session_priv_pool;
+	lconf.inbound.lcore_id = lcore_id;
 	lconf.outbound.sp4_ctx = socket_ctx[socket_id].sp_ip4_out;
 	lconf.outbound.sp6_ctx = socket_ctx[socket_id].sp_ip6_out;
 	lconf.outbound.sa_ctx = socket_ctx[socket_id].sa_out;
-	lconf.outbound.session_pool = socket_ctx[socket_id].session_pool;
-	lconf.outbound.session_priv_pool =
-			socket_ctx[socket_id].session_priv_pool;
+	lconf.outbound.lcore_id = lcore_id;
 
 	RTE_LOG(INFO, IPSEC,
 		"Launching event mode worker (non-burst - Tx internal port - "

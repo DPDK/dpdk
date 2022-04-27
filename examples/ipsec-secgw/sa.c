@@ -1227,7 +1227,8 @@ sa_add_address_inline_crypto(struct ipsec_sa *sa)
 static int
 sa_add_rules(struct sa_ctx *sa_ctx, const struct ipsec_sa entries[],
 		uint32_t nb_entries, uint32_t inbound,
-		struct socket_ctx *skt_ctx)
+		struct socket_ctx *skt_ctx,
+		struct ipsec_ctx *ips_ctx[])
 {
 	struct ipsec_sa *sa;
 	uint32_t i, idx;
@@ -1398,6 +1399,13 @@ sa_add_rules(struct sa_ctx *sa_ctx, const struct ipsec_sa entries[],
 					"create_inline_session() failed\n");
 				return -EINVAL;
 			}
+		} else {
+			rc = create_lookaside_session(ips_ctx, skt_ctx, sa, ips);
+			if (rc != 0) {
+				RTE_LOG(ERR, IPSEC_ESP,
+					"create_lookaside_session() failed\n");
+				return -EINVAL;
+			}
 		}
 
 		if (sa->fdir_flag && inbound) {
@@ -1414,16 +1422,18 @@ sa_add_rules(struct sa_ctx *sa_ctx, const struct ipsec_sa entries[],
 
 static inline int
 sa_out_add_rules(struct sa_ctx *sa_ctx, const struct ipsec_sa entries[],
-		uint32_t nb_entries, struct socket_ctx *skt_ctx)
+		uint32_t nb_entries, struct socket_ctx *skt_ctx,
+		struct ipsec_ctx *ips_ctx[])
 {
-	return sa_add_rules(sa_ctx, entries, nb_entries, 0, skt_ctx);
+	return sa_add_rules(sa_ctx, entries, nb_entries, 0, skt_ctx, ips_ctx);
 }
 
 static inline int
 sa_in_add_rules(struct sa_ctx *sa_ctx, const struct ipsec_sa entries[],
-		uint32_t nb_entries, struct socket_ctx *skt_ctx)
+		uint32_t nb_entries, struct socket_ctx *skt_ctx,
+		struct ipsec_ctx *ips_ctx[])
 {
-	return sa_add_rules(sa_ctx, entries, nb_entries, 1, skt_ctx);
+	return sa_add_rules(sa_ctx, entries, nb_entries, 1, skt_ctx, ips_ctx);
 }
 
 /*
@@ -1497,14 +1507,9 @@ fill_ipsec_session(struct rte_ipsec_session *ss, struct rte_ipsec_sa *sa)
 
 	ss->sa = sa;
 
-	if (ss->type == RTE_SECURITY_ACTION_TYPE_INLINE_CRYPTO ||
-		ss->type == RTE_SECURITY_ACTION_TYPE_INLINE_PROTOCOL) {
-		if (ss->security.ses != NULL) {
-			rc = rte_ipsec_session_prepare(ss);
-			if (rc != 0)
-				memset(ss, 0, sizeof(*ss));
-		}
-	}
+	rc = rte_ipsec_session_prepare(ss);
+	if (rc != 0)
+		memset(ss, 0, sizeof(*ss));
 
 	return rc;
 }
@@ -1643,10 +1648,13 @@ sa_spi_present(struct sa_ctx *sa_ctx, uint32_t spi, int inbound)
 }
 
 void
-sa_init(struct socket_ctx *ctx, int32_t socket_id)
+sa_init(struct socket_ctx *ctx, int32_t socket_id,
+		struct lcore_conf *lcore_conf)
 {
 	int32_t rc;
 	const char *name;
+	uint32_t lcore_id;
+	struct ipsec_ctx *ipsec_ctx[RTE_MAX_LCORE];
 
 	if (ctx == NULL)
 		rte_exit(EXIT_FAILURE, "NULL context.\n");
@@ -1671,8 +1679,9 @@ sa_init(struct socket_ctx *ctx, int32_t socket_id)
 				&sa_in_cnt);
 		if (rc != 0)
 			rte_exit(EXIT_FAILURE, "failed to init SAD\n");
-
-		sa_in_add_rules(ctx->sa_in, sa_in, nb_sa_in, ctx);
+		RTE_LCORE_FOREACH(lcore_id)
+			ipsec_ctx[lcore_id] = &lcore_conf[lcore_id].inbound;
+		sa_in_add_rules(ctx->sa_in, sa_in, nb_sa_in, ctx, ipsec_ctx);
 
 		if (app_sa_prm.enable != 0) {
 			rc = ipsec_satbl_init(ctx->sa_in, nb_sa_in,
@@ -1692,7 +1701,9 @@ sa_init(struct socket_ctx *ctx, int32_t socket_id)
 				"context %s in socket %d\n", rte_errno,
 				name, socket_id);
 
-		sa_out_add_rules(ctx->sa_out, sa_out, nb_sa_out, ctx);
+		RTE_LCORE_FOREACH(lcore_id)
+			ipsec_ctx[lcore_id] = &lcore_conf[lcore_id].outbound;
+		sa_out_add_rules(ctx->sa_out, sa_out, nb_sa_out, ctx, ipsec_ctx);
 
 		if (app_sa_prm.enable != 0) {
 			rc = ipsec_satbl_init(ctx->sa_out, nb_sa_out,
