@@ -659,6 +659,19 @@ static int bnxt_init_ctx_mem(struct bnxt *bp)
 	return rc;
 }
 
+static inline bool bnxt_force_link_config(struct bnxt *bp)
+{
+	uint16_t subsystem_device_id = bp->pdev->id.subsystem_device_id;
+
+	switch (subsystem_device_id) {
+	case BROADCOM_DEV_957508_N2100:
+	case BROADCOM_DEV_957414_N225:
+		return true;
+	default:
+		return false;
+	}
+}
+
 static int bnxt_update_phy_setting(struct bnxt *bp)
 {
 	struct rte_eth_link new;
@@ -671,11 +684,12 @@ static int bnxt_update_phy_setting(struct bnxt *bp)
 	}
 
 	/*
-	 * On BCM957508-N2100 adapters, FW will not allow any user other
-	 * than BMC to shutdown the port. bnxt_get_hwrm_link_config() call
-	 * always returns link up. Force phy update always in that case.
+	 * Device is not obliged link down in certain scenarios, even
+	 * when forced. When FW does not allow any user other than BMC
+	 * to shutdown the port, bnxt_get_hwrm_link_config() call always
+	 * returns link up. Force phy update always in that case.
 	 */
-	if (!new.link_status || IS_BNXT_DEV_957508_N2100(bp)) {
+	if (!new.link_status || bnxt_force_link_config(bp)) {
 		rc = bnxt_set_hwrm_link_config(bp, true);
 		if (rc) {
 			PMD_DRV_LOG(ERR, "Failed to update PHY settings\n");
