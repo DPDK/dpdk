@@ -987,16 +987,10 @@ static int bnxt_dev_info_get_op(struct rte_eth_dev *eth_dev,
 	dev_info->min_rx_bufsize = 1;
 	dev_info->max_rx_pktlen = BNXT_MAX_PKT_LEN;
 
-	dev_info->rx_offload_capa = BNXT_DEV_RX_OFFLOAD_SUPPORT;
-	if (bp->flags & BNXT_FLAG_PTP_SUPPORTED)
-		dev_info->rx_offload_capa |= DEV_RX_OFFLOAD_TIMESTAMP;
-	if (bp->vnic_cap_flags & BNXT_VNIC_CAP_VLAN_RX_STRIP)
-		dev_info->rx_offload_capa |= DEV_RX_OFFLOAD_VLAN_STRIP;
+	dev_info->rx_offload_capa = bnxt_get_rx_port_offloads(bp);
 	dev_info->tx_queue_offload_capa = DEV_TX_OFFLOAD_MBUF_FAST_FREE;
-	dev_info->tx_offload_capa = BNXT_DEV_TX_OFFLOAD_SUPPORT |
+	dev_info->tx_offload_capa = bnxt_get_tx_port_offloads(bp) |
 				    dev_info->tx_queue_offload_capa;
-	if (bp->fw_cap & BNXT_FW_CAP_VLAN_TX_INSERT)
-		dev_info->tx_offload_capa |= DEV_TX_OFFLOAD_VLAN_INSERT;
 	dev_info->flow_type_rss_offloads = BNXT_ETH_RSS_SUPPORT;
 
 	dev_info->speed_capa = bnxt_get_speed_capabilities(bp);

@@ -63,4 +63,5 @@ int bnxt_rx_queue_start(struct rte_eth_dev *dev,
 int bnxt_rx_queue_stop(struct rte_eth_dev *dev,
 		       uint16_t rx_queue_id);
 void bnxt_rx_queue_release_mbufs(struct bnxt_rx_queue *rxq);
+uint64_t bnxt_get_rx_port_offloads(struct bnxt *bp);
 #endif

@@ -20,6 +20,31 @@
  * RX Queues
  */
 
+uint64_t bnxt_get_rx_port_offloads(struct bnxt *bp)
+{
+	uint64_t rx_offload_capa;
+
+	rx_offload_capa = DEV_RX_OFFLOAD_IPV4_CKSUM  |
+			  DEV_RX_OFFLOAD_UDP_CKSUM   |
+			  DEV_RX_OFFLOAD_TCP_CKSUM   |
+			  DEV_RX_OFFLOAD_KEEP_CRC    |
+			  DEV_RX_OFFLOAD_VLAN_FILTER |
+			  DEV_RX_OFFLOAD_VLAN_EXTEND |
+			  DEV_RX_OFFLOAD_TCP_LRO |
+			  DEV_RX_OFFLOAD_SCATTER |
+			  DEV_RX_OFFLOAD_RSS_HASH;
+
+	rx_offload_capa |= DEV_RX_OFFLOAD_OUTER_IPV4_CKSUM |
+			   DEV_RX_OFFLOAD_OUTER_UDP_CKSUM;
+
+	if (bp->flags & BNXT_FLAG_PTP_SUPPORTED)
+		rx_offload_capa |= DEV_RX_OFFLOAD_TIMESTAMP;
+	if (bp->vnic_cap_flags & BNXT_VNIC_CAP_VLAN_RX_STRIP)
+		rx_offload_capa |= DEV_RX_OFFLOAD_VLAN_STRIP;
+
+	return rx_offload_capa;
+}
+
 void bnxt_free_rxq_stats(struct bnxt_rx_queue *rxq)
 {
 	if (rxq && rxq->cp_ring && rxq->cp_ring->hw_stats)
