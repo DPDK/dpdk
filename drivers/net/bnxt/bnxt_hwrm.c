@@ -1291,17 +1291,17 @@ static int bnxt_hwrm_port_phy_cfg(struct bnxt *bp, struct bnxt_link_info *conf)
 			}
 		}
 		/* AutoNeg - Advertise speeds specified. */
-		if (conf->auto_link_speed_mask &&
+		if ((conf->auto_link_speed_mask || conf->auto_pam4_link_speed_mask) &&
 		    !(conf->phy_flags & HWRM_PORT_PHY_CFG_INPUT_FLAGS_FORCE)) {
 			req.auto_mode =
 				HWRM_PORT_PHY_CFG_INPUT_AUTO_MODE_SPEED_MASK;
-			if (conf->auto_pam4_link_speed_mask &&
-			    bp->link_info->link_signal_mode) {
+			if (conf->auto_pam4_link_speed_mask) {
 				enables |=
 				HWRM_PORT_PHY_CFG_IN_EN_AUTO_PAM4_LINK_SPD_MASK;
 				req.auto_link_pam4_speed_mask =
 				rte_cpu_to_le_16(conf->auto_pam4_link_speed_mask);
-			} else {
+			}
+			if (conf->auto_link_speed_mask) {
 				enables |=
 				HWRM_PORT_PHY_CFG_IN_EN_AUTO_LINK_SPEED_MASK;
 				req.auto_link_speed_mask =
