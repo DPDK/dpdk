@@ -301,9 +301,9 @@ struct rte_security_ipsec_lifetime {
 	uint64_t bytes_soft_limit;
 	/**< Soft expiry limit in bytes */
 	uint64_t packets_hard_limit;
-	/**< Soft expiry limit in number of packets */
+	/**< Hard expiry limit in number of packets */
 	uint64_t bytes_hard_limit;
-	/**< Soft expiry limit in bytes */
+	/**< Hard expiry limit in bytes */
 };
 
 /**
