@@ -1608,7 +1608,7 @@ int bnxt_dev_start_op(struct rte_eth_dev *eth_dev)
 
 	eth_dev->data->dev_started = 1;
 
-	bnxt_link_update_op(eth_dev, 1);
+	bnxt_link_update_op(eth_dev, 0);
 
 	if (rx_offloads & RTE_ETH_RX_OFFLOAD_VLAN_FILTER)
 		vlan_mask |= RTE_ETH_VLAN_FILTER_MASK;
