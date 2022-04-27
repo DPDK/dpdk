@@ -1774,6 +1774,14 @@ int bnxt_link_update_op(struct rte_eth_dev *eth_dev, int wait_to_complete)
 	if (bp->link_info == NULL)
 		goto out;
 
+	/* Only single function PF can bring the phy down.
+	 * In certain scenarios, device is not obliged link down even when forced.
+	 * When port is stopped, report link down in those cases.
+	 */
+	if (!eth_dev->data->dev_started &&
+	    (!BNXT_SINGLE_PF(bp) || bnxt_force_link_config(bp)))
+		goto out;
+
 	do {
 		/* Retrieve link info from hardware */
 		rc = bnxt_get_hwrm_link_config(bp, &new);
@@ -1790,12 +1798,6 @@ int bnxt_link_update_op(struct rte_eth_dev *eth_dev, int wait_to_complete)
 
 		rte_delay_ms(BNXT_LINK_WAIT_INTERVAL);
 	} while (cnt--);
-
-	/* Only single function PF can bring phy down.
-	 * When port is stopped, report link down for VF/MH/NPAR functions.
-	 */
-	if (!BNXT_SINGLE_PF(bp) && !eth_dev->data->dev_started)
-		memset(&new, 0, sizeof(new));
 
 out:
 	/* Timed out or success */
