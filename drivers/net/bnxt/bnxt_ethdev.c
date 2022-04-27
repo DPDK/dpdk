@@ -177,6 +177,7 @@ static int bnxt_restore_vlan_filters(struct bnxt *bp);
 static void bnxt_dev_recover(void *arg);
 static void bnxt_free_error_recovery_info(struct bnxt *bp);
 static void bnxt_free_rep_info(struct bnxt *bp);
+static int bnxt_check_fw_ready(struct bnxt *bp);
 
 int is_bnxt_in_error(struct bnxt *bp)
 {
@@ -1350,6 +1351,11 @@ static int bnxt_handle_if_change_status(struct bnxt *bp)
 
 	/* clear fatal flag so that re-init happens */
 	bp->flags &= ~BNXT_FLAG_FATAL_ERROR;
+
+	rc = bnxt_check_fw_ready(bp);
+	if (rc)
+		return rc;
+
 	rc = bnxt_init_resources(bp, true);
 
 	bp->flags &= ~BNXT_FLAG_IF_CHANGE_HOT_FW_RESET_DONE;
@@ -4325,7 +4331,7 @@ static int bnxt_restore_filters(struct bnxt *bp)
 
 static int bnxt_check_fw_ready(struct bnxt *bp)
 {
-	int timeout = bp->fw_reset_max_msecs;
+	int timeout = bp->fw_reset_max_msecs ? : BNXT_MAX_FW_RESET_TIMEOUT;
 	int rc = 0;
 
 	do {
