@@ -1820,9 +1820,9 @@ __instr_hdr_emit_many_exec(struct rte_swx_pipeline *p __rte_unused,
 {
 	uint64_t valid_headers = t->valid_headers;
 	uint32_t n_headers_out = t->n_headers_out;
-	struct header_out_runtime *ho = &t->headers_out[n_headers_out - 1];
+	struct header_out_runtime *ho = NULL;
 	uint8_t *ho_ptr = NULL;
-	uint32_t ho_nbytes = 0, first = 1, i;
+	uint32_t ho_nbytes = 0, i;
 
 	for (i = 0; i < n_emit; i++) {
 		uint32_t header_id = ip->io.hdr.header_id[i];
@@ -1834,18 +1834,21 @@ __instr_hdr_emit_many_exec(struct rte_swx_pipeline *p __rte_unused,
 
 		uint8_t *hi_ptr = t->structs[struct_id];
 
-		if (!MASK64_BIT_GET(valid_headers, header_id))
-			continue;
+		if (!MASK64_BIT_GET(valid_headers, header_id)) {
+			TRACE("[Thread %2u]: emit header %u (invalid)\n",
+			      p->thread_id,
+			      header_id);
 
-		TRACE("[Thread %2u]: emit header %u\n",
+			continue;
+		}
+
+		TRACE("[Thread %2u]: emit header %u (valid)\n",
 		      p->thread_id,
 		      header_id);
 
 		/* Headers. */
-		if (first) {
-			first = 0;
-
-			if (!t->n_headers_out) {
+		if (!ho) {
+			if (!n_headers_out) {
 				ho = &t->headers_out[0];
 
 				ho->ptr0 = hi_ptr0;
@@ -1858,6 +1861,8 @@ __instr_hdr_emit_many_exec(struct rte_swx_pipeline *p __rte_unused,
 
 				continue;
 			} else {
+				ho = &t->headers_out[n_headers_out - 1];
+
 				ho_ptr = ho->ptr;
 				ho_nbytes = ho->n_bytes;
 			}
@@ -1879,7 +1884,8 @@ __instr_hdr_emit_many_exec(struct rte_swx_pipeline *p __rte_unused,
 		}
 	}
 
-	ho->n_bytes = ho_nbytes;
+	if (ho)
+		ho->n_bytes = ho_nbytes;
 	t->n_headers_out = n_headers_out;
 }
 
