@@ -457,10 +457,11 @@ int bnxt_rx_queue_start(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 	if (rc)
 		return rc;
 
-	if (BNXT_CHIP_THOR(bp)) {
-		/* Reconfigure default receive ring and MRU. */
-		bnxt_hwrm_vnic_cfg(bp, rxq->vnic);
-	}
+	if (BNXT_HAS_RING_GRPS(bp))
+		rxq->vnic->dflt_ring_grp = bp->grp_info[rx_queue_id].fw_grp_id;
+	/* Reconfigure default receive ring and MRU. */
+	bnxt_hwrm_vnic_cfg(bp, rxq->vnic);
+
 	PMD_DRV_LOG(INFO, "Rx queue started %d\n", rx_queue_id);
 
 	if (dev_conf->rxmode.mq_mode & ETH_MQ_RX_RSS_FLAG) {
