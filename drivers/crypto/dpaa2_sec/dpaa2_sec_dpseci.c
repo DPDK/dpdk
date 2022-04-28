@@ -4019,7 +4019,7 @@ dpaa2_sec_process_atomic_event(struct qbman_swp *swp __rte_unused,
 {
 	uint8_t dqrr_index;
 	struct dpaa2_sec_qp *qp;
-	struct rte_crypto_op *crypto_op = (struct rte_crypto_op *)ev->event_ptr;
+	struct rte_crypto_op *crypto_op;
 	/* Prefetching mbuf */
 	rte_prefetch0((void *)(size_t)(DPAA2_GET_FD_ADDR(fd)-
 		rte_dpaa2_bpid_info[DPAA2_GET_FD_BPID(fd)].meta_data_size));
@@ -4036,12 +4036,13 @@ dpaa2_sec_process_atomic_event(struct qbman_swp *swp __rte_unused,
 	ev->queue_id = rxq->ev.queue_id;
 	ev->priority = rxq->ev.priority;
 
-	ev->event_ptr = sec_fd_to_mbuf(fd, qp);
+	crypto_op = sec_fd_to_mbuf(fd, qp);
 	dqrr_index = qbman_get_dqrr_idx(dq);
 	*dpaa2_seqn(crypto_op->sym->m_src) = QBMAN_ENQUEUE_FLAG_DCA | dqrr_index;
 	DPAA2_PER_LCORE_DQRR_SIZE++;
 	DPAA2_PER_LCORE_DQRR_HELD |= 1 << dqrr_index;
 	DPAA2_PER_LCORE_DQRR_MBUF(dqrr_index) = crypto_op->sym->m_src;
+	ev->event_ptr = crypto_op;
 }
 
 static void __rte_hot
@@ -4051,7 +4052,7 @@ dpaa2_sec_process_ordered_event(struct qbman_swp *swp,
 				struct dpaa2_queue *rxq,
 				struct rte_event *ev)
 {
-	struct rte_crypto_op *crypto_op = (struct rte_crypto_op *)ev->event_ptr;
+	struct rte_crypto_op *crypto_op;
 	struct dpaa2_sec_qp *qp;
 
 	/* Prefetching mbuf */
@@ -4069,7 +4070,7 @@ dpaa2_sec_process_ordered_event(struct qbman_swp *swp,
 	ev->sched_type = rxq->ev.sched_type;
 	ev->queue_id = rxq->ev.queue_id;
 	ev->priority = rxq->ev.priority;
-	ev->event_ptr = sec_fd_to_mbuf(fd, qp);
+	crypto_op = sec_fd_to_mbuf(fd, qp);
 
 	*dpaa2_seqn(crypto_op->sym->m_src) = DPAA2_ENQUEUE_FLAG_ORP;
 	*dpaa2_seqn(crypto_op->sym->m_src) |= qbman_result_DQ_odpid(dq) <<
@@ -4078,6 +4079,7 @@ dpaa2_sec_process_ordered_event(struct qbman_swp *swp,
 		DPAA2_EQCR_SEQNUM_SHIFT;
 
 	qbman_swp_dqrr_consume(swp, dq);
+	ev->event_ptr = crypto_op;
 }
 
 int
