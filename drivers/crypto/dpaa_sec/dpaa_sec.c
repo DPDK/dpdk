@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  *
  *   Copyright (c) 2016 Freescale Semiconductor, Inc. All rights reserved.
- *   Copyright 2017-2021 NXP
+ *   Copyright 2017-2022 NXP
  *
  */
 
@@ -20,6 +20,7 @@
 #endif
 #include <rte_cycles.h>
 #include <rte_dev.h>
+#include <rte_io.h>
 #include <rte_ip.h>
 #include <rte_kvargs.h>
 #include <rte_malloc.h>
@@ -3654,9 +3655,35 @@ dpaa_sec_dev_init(struct rte_cryptodev *cryptodev)
 	struct dpaa_sec_qp *qp;
 	uint32_t i, flags;
 	int ret;
+	void *cmd_map;
+	int map_fd = -1;
 
 	PMD_INIT_FUNC_TRACE();
 
+	internals = cryptodev->data->dev_private;
+	map_fd = open("/dev/mem", O_RDWR);
+	if (unlikely(map_fd < 0)) {
+		DPAA_SEC_ERR("Unable to open (/dev/mem)");
+		return map_fd;
+	}
+	internals->sec_hw = mmap(NULL, MAP_SIZE, PROT_READ | PROT_WRITE,
+			    MAP_SHARED, map_fd, SEC_BASE_ADDR);
+	if (internals->sec_hw == MAP_FAILED) {
+		DPAA_SEC_ERR("Memory map failed");
+		close(map_fd);
+		return -EINVAL;
+	}
+	cmd_map = (uint8_t *)internals->sec_hw +
+		  (BLOCK_OFFSET * QI_BLOCK_NUMBER) + CMD_REG;
+	if (!(be32_to_cpu(rte_read32(cmd_map)) & QICTL_DQEN))
+		/* enable QI interface */
+		rte_write32(cpu_to_be32(QICTL_DQEN), cmd_map);
+
+	ret = munmap(internals->sec_hw, MAP_SIZE);
+	if (ret)
+		DPAA_SEC_WARN("munmap failed\n");
+
+	close(map_fd);
 	cryptodev->driver_id = dpaa_cryptodev_driver_id;
 	cryptodev->dev_ops = &crypto_ops;
 
@@ -3673,7 +3700,6 @@ dpaa_sec_dev_init(struct rte_cryptodev *cryptodev)
 			RTE_CRYPTODEV_FF_OOP_LB_IN_SGL_OUT |
 			RTE_CRYPTODEV_FF_OOP_LB_IN_LB_OUT;
 
-	internals = cryptodev->data->dev_private;
 	internals->max_nb_queue_pairs = RTE_DPAA_MAX_NB_SEC_QPS;
 	internals->max_nb_sessions = RTE_DPAA_SEC_PMD_MAX_NB_SESSIONS;
 
