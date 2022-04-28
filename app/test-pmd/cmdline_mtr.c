@@ -817,8 +817,8 @@ static void cmd_create_port_meter_parsed(void *parsed_result,
 cmdline_parse_inst_t cmd_create_port_meter = {
 	.f = cmd_create_port_meter_parsed,
 	.data = NULL,
-	.help_str = "create port meter <port_id> <mtr_id> <profile_id> <meter_enable>(yes|no) "
-		"<stats_mask> <shared> <use_pre_meter_color> "
+	.help_str = "create port meter <port_id> <mtr_id> <profile_id> <policy_id> "
+		"<meter_enable>(yes|no) <stats_mask> <shared> <use_pre_meter_color> "
 		"[<dscp_tbl_entry0> <dscp_tbl_entry1> ...<dscp_tbl_entry63>]",
 	.tokens = {
 		(void *)&cmd_create_port_meter_create,
