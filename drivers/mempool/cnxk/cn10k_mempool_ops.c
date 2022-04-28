@@ -109,6 +109,12 @@ batch_op_fini(struct rte_mempool *mp)
 	int i;
 
 	op_data = batch_op_data_get(mp->pool_id);
+	if (!op_data) {
+		/* Batch op data can be uninitialized in case of empty
+		 * mempools.
+		 */
+		return;
+	}
 
 	rte_wmb();
 	for (i = 0; i < RTE_MAX_LCORE; i++) {
