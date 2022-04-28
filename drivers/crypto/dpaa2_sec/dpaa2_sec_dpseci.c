@@ -1583,6 +1583,14 @@ sec_simple_fd_to_mbuf(const struct qbman_fd *fd)
 	else
 		mbuf->data_off += SEC_FLC_DHR_INBOUND;
 
+	if (unlikely(fd->simple.frc)) {
+		DPAA2_SEC_ERR("SEC returned Error - %x",
+				fd->simple.frc);
+		op->status = RTE_CRYPTO_OP_STATUS_ERROR;
+	} else {
+		op->status = RTE_CRYPTO_OP_STATUS_SUCCESS;
+	}
+
 	return op;
 }
 #endif
