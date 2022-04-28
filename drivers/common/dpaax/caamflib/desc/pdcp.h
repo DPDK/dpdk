@@ -3790,7 +3790,7 @@ cnstr_shdsc_pdcp_short_mac(uint32_t *descbuf,
 			return -ENOTSUP;
 		}
 		iv[0] = 0xFFFFFFFF;
-		iv[1] = swap ? swab32(0xFC000000) : 0xFC000000;
+		iv[1] = swab32(0xFC000000);
 		iv[2] = 0x00000000; /* unused */
 
 		KEY(p, KEY2, authdata->key_enc_flags, authdata->key,
