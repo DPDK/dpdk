@@ -68,11 +68,6 @@ rta_fifo_load(struct program *program, uint32_t src,
 			pr_err("SEQ FIFO LOAD: Invalid command\n");
 			goto err;
 		}
-		if ((rta_sec_era <= RTA_SEC_ERA_5) && (flags & AIDF)) {
-			pr_err("SEQ FIFO LOAD: Flag(s) not supported by SEC Era %d\n",
-			       USER_SEC_ERA(rta_sec_era));
-			goto err;
-		}
 		if ((flags & VLF) && ((flags & EXT) || (length >> 16))) {
 			pr_err("SEQ FIFO LOAD: Invalid usage of VLF\n");
 			goto err;
@@ -244,11 +239,6 @@ rta_fifo_store(struct program *program, uint32_t src,
 			goto err;
 		}
 	}
-	if ((rta_sec_era == RTA_SEC_ERA_7) && (src == AFHA_SBOX)) {
-		pr_err("FIFO STORE: AFHA S-box not supported by SEC Era %d\n",
-		       USER_SEC_ERA(rta_sec_era));
-		goto err;
-	}
 
 	/* write output data type field */
 	ret = __rta_map_opcode(src, fifo_store_table,
@@ -263,11 +253,6 @@ rta_fifo_store(struct program *program, uint32_t src,
 	if (encrypt_flags & TK)
 		opcode |= (0x1 << FIFOST_TYPE_SHIFT);
 	if (encrypt_flags & EKT) {
-		if (rta_sec_era == RTA_SEC_ERA_1) {
-			pr_err("FIFO STORE: AES-CCM source types not supported\n");
-			ret = -EINVAL;
-			goto err;
-		}
 		opcode |= (0x10 << FIFOST_TYPE_SHIFT);
 		opcode &= (uint32_t)~(0x20 << FIFOST_TYPE_SHIFT);
 	}

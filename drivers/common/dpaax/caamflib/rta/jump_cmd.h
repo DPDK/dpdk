@@ -7,8 +7,6 @@
 #ifndef __RTA_JUMP_CMD_H__
 #define __RTA_JUMP_CMD_H__
 
-extern enum rta_sec_era rta_sec_era;
-
 static const uint32_t jump_test_cond[][2] = {
 	{ NIFP,     JUMP_COND_NIFP },
 	{ NIP,      JUMP_COND_NIP },
@@ -58,20 +56,6 @@ rta_jump(struct program *program, uint64_t address,
 	uint32_t opcode = CMD_JUMP;
 	unsigned int start_pc = program->current_pc;
 	int ret = -EINVAL;
-
-	if (((jump_type == GOSUB) || (jump_type == RETURN)) &&
-	    (rta_sec_era < RTA_SEC_ERA_4)) {
-		pr_err("JUMP: Jump type not supported by SEC Era %d\n",
-		       USER_SEC_ERA(rta_sec_era));
-		goto err;
-	}
-
-	if (((jump_type == LOCAL_JUMP_INC) || (jump_type == LOCAL_JUMP_DEC)) &&
-	    (rta_sec_era <= RTA_SEC_ERA_5)) {
-		pr_err("JUMP_INCDEC: Jump type not supported by SEC Era %d\n",
-		       USER_SEC_ERA(rta_sec_era));
-		goto err;
-	}
 
 	switch (jump_type) {
 	case (LOCAL_JUMP):

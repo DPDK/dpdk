@@ -95,26 +95,12 @@ rta_move(struct program *program, int cmd_type, uint64_t src,
 	bool is_move_len_cmd = false;
 	unsigned int start_pc = program->current_pc;
 
-	if ((rta_sec_era < RTA_SEC_ERA_7) && (cmd_type != __MOVE)) {
-		pr_err("MOVE: MOVEB / MOVEDW not supported by SEC Era %d. SEC PC: %d; Instr: %d\n",
-		       USER_SEC_ERA(rta_sec_era), program->current_pc,
-		       program->current_instruction);
-		goto err;
-	}
-
 	/* write command type */
 	if (cmd_type == __MOVEB) {
 		opcode = CMD_MOVEB;
 	} else if (cmd_type == __MOVEDW) {
 		opcode = CMD_MOVEDW;
 	} else if (!(flags & IMMED)) {
-		if (rta_sec_era < RTA_SEC_ERA_3) {
-			pr_err("MOVE: MOVE_LEN not supported by SEC Era %d. SEC PC: %d; Instr: %d\n",
-			       USER_SEC_ERA(rta_sec_era), program->current_pc,
-			       program->current_instruction);
-			goto err;
-		}
-
 		if ((length != MATH0) && (length != MATH1) &&
 		    (length != MATH2) && (length != MATH3)) {
 			pr_err("MOVE: MOVE_LEN length must be MATH[0-3]. SEC PC: %d; Instr: %d\n",
@@ -153,24 +139,15 @@ rta_move(struct program *program, int cmd_type, uint64_t src,
 		else
 			offset = dst_offset;
 
-		if (rta_sec_era < RTA_SEC_ERA_6) {
-			if (offset)
-				pr_debug("MOVE: Offset not supported by SEC Era %d. SEC PC: %d; Instr: %d\n",
-					 USER_SEC_ERA(rta_sec_era),
-					 program->current_pc,
-					 program->current_instruction);
-			/* nothing to do for offset = 0 */
-		} else {
-			ret = math_offset(offset);
-			if (ret < 0) {
-				pr_err("MOVE: Invalid offset in MATH register. SEC PC: %d; Instr: %d\n",
-				       program->current_pc,
-				       program->current_instruction);
-				goto err;
-			}
-
-			opcode |= (uint32_t)ret;
+		ret = math_offset(offset);
+		if (ret < 0) {
+			pr_err("MOVE: Invalid offset in MATH register. SEC PC: %d; Instr: %d\n",
+			       program->current_pc,
+			       program->current_instruction);
+			goto err;
 		}
+
+		opcode |= (uint32_t)ret;
 	}
 
 	/* write source field */

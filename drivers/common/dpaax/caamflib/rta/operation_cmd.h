@@ -19,8 +19,6 @@ __rta_alg_aai_aes(uint16_t aai)
 	uint16_t aes_mode = aai & OP_ALG_AESA_MODE_MASK;
 
 	if (aai & OP_ALG_AAI_C2K) {
-		if (rta_sec_era < RTA_SEC_ERA_5)
-			return -1;
 		if ((aes_mode != OP_ALG_AAI_CCM) &&
 		    (aes_mode != OP_ALG_AAI_GCM))
 			return -EINVAL;
@@ -30,9 +28,6 @@ __rta_alg_aai_aes(uint16_t aai)
 	case OP_ALG_AAI_CBC_CMAC:
 	case OP_ALG_AAI_CTR_CMAC_LTE:
 	case OP_ALG_AAI_CTR_CMAC:
-		if (rta_sec_era < RTA_SEC_ERA_2)
-			return -EINVAL;
-		/* no break */
 	case OP_ALG_AAI_CTR:
 	case OP_ALG_AAI_CBC:
 	case OP_ALG_AAI_ECB:
@@ -72,9 +67,6 @@ __rta_alg_aai_md5(uint16_t aai)
 {
 	switch (aai) {
 	case OP_ALG_AAI_HMAC:
-		if (rta_sec_era < RTA_SEC_ERA_2)
-			return -EINVAL;
-		/* no break */
 	case OP_ALG_AAI_SMAC:
 	case OP_ALG_AAI_HASH:
 	case OP_ALG_AAI_HMAC_PRECOMP:
@@ -89,9 +81,6 @@ __rta_alg_aai_sha(uint16_t aai)
 {
 	switch (aai) {
 	case OP_ALG_AAI_HMAC:
-		if (rta_sec_era < RTA_SEC_ERA_2)
-			return -EINVAL;
-		/* no break */
 	case OP_ALG_AAI_HASH:
 	case OP_ALG_AAI_HMAC_PRECOMP:
 		return 0;
@@ -114,15 +103,6 @@ __rta_alg_aai_rng(uint16_t aai)
 	default:
 		return -EINVAL;
 	}
-
-	/* State Handle bits are valid only for SEC Era >= 5 */
-	if ((rta_sec_era < RTA_SEC_ERA_5) && rng_sh)
-		return -EINVAL;
-
-	/* PS, AI, SK bits are also valid only for SEC Era >= 5 */
-	if ((rta_sec_era < RTA_SEC_ERA_5) && (aai &
-	     (OP_ALG_AAI_RNG4_PS | OP_ALG_AAI_RNG4_AI | OP_ALG_AAI_RNG4_SK)))
-		return -EINVAL;
 
 	switch (rng_sh) {
 	case OP_ALG_AAI_RNG4_SH_0:

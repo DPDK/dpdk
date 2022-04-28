@@ -155,12 +155,6 @@ rta_job_header(struct program *program,
 		goto err;
 	}
 
-	if ((rta_sec_era < RTA_SEC_ERA_7) && (flags & MTD) && !(flags & TD)) {
-		pr_err("JOB_DESC: Trying to MTD a descriptor that is not a TD. SEC Program Line: %d\n",
-		       program->current_pc);
-		goto err;
-	}
-
 	if ((flags & EXT) && !(flags & SHR) && (start_idx < 2)) {
 		pr_err("JOB_DESC: Start index must be >= 2 in case of no SHR and EXT. SEC Program Line: %d\n",
 		       program->current_pc);
@@ -183,15 +177,8 @@ rta_job_header(struct program *program,
 			hdr_ext |= ext_flags & DSEL_MASK;
 		}
 
-		if (ext_flags & FTD) {
-			if (rta_sec_era <= RTA_SEC_ERA_5) {
-				pr_err("JOB_DESC: Fake trusted descriptor not supported by SEC Era %d\n",
-				       USER_SEC_ERA(rta_sec_era));
-				goto err;
-			}
-
+		if (ext_flags & FTD)
 			hdr_ext |= HDR_EXT_FTD;
-		}
 	}
 	if (flags & RSMS)
 		opcode |= HDR_RSLS;

@@ -774,14 +774,9 @@ cnstr_shdsc_ipsec_encap(uint32_t *descbuf, bool ps, bool swap,
 	COPY_DATA(p, pdb->ip_hdr, pdb->ip_hdr_len);
 	SET_LABEL(p, hdr);
 	pkeyjmp = JUMP(p, keyjmp, LOCAL_JUMP, ALL_TRUE, BOTH|SHRD);
-	if (authdata->keylen) {
-		if (rta_sec_era < RTA_SEC_ERA_6)
-			KEY(p, MDHA_SPLIT_KEY, authdata->key_enc_flags,
-			    authdata->key, authdata->keylen,
-			    INLINE_KEY(authdata));
-		else
-			__gen_auth_key(p, authdata);
-	}
+	if (authdata->keylen)
+		__gen_auth_key(p, authdata);
+
 	if (cipherdata->keylen)
 		KEY(p, KEY1, cipherdata->key_enc_flags, cipherdata->key,
 		    cipherdata->keylen, INLINE_KEY(cipherdata));
@@ -841,14 +836,9 @@ cnstr_shdsc_ipsec_decap(uint32_t *descbuf, bool ps, bool swap,
 	__rta_copy_ipsec_decap_pdb(p, pdb, cipherdata->algtype);
 	SET_LABEL(p, hdr);
 	pkeyjmp = JUMP(p, keyjmp, LOCAL_JUMP, ALL_TRUE, BOTH|SHRD);
-	if (authdata->keylen) {
-		if (rta_sec_era < RTA_SEC_ERA_6)
-			KEY(p, MDHA_SPLIT_KEY, authdata->key_enc_flags,
-			    authdata->key, authdata->keylen,
-			    INLINE_KEY(authdata));
-		else
-			__gen_auth_key(p, authdata);
-	}
+	if (authdata->keylen)
+		__gen_auth_key(p, authdata);
+
 	if (cipherdata->keylen)
 		KEY(p, KEY1, cipherdata->key_enc_flags, cipherdata->key,
 		    cipherdata->keylen, INLINE_KEY(cipherdata));
@@ -1248,12 +1238,6 @@ cnstr_shdsc_ipsec_new_encap(uint32_t *descbuf, bool ps,
 	LABEL(l2copy);
 	REFERENCE(pl2copy);
 
-	if (rta_sec_era < RTA_SEC_ERA_8) {
-		pr_err("IPsec new mode encap: available only for Era %d or above\n",
-		       USER_SEC_ERA(RTA_SEC_ERA_8));
-		return -ENOTSUP;
-	}
-
 	PROGRAM_CNTXT_INIT(p, descbuf, 0);
 	if (swap)
 		PROGRAM_SET_BSWAP(p);
@@ -1362,12 +1346,6 @@ cnstr_shdsc_ipsec_new_decap(uint32_t *descbuf, bool ps,
 	REFERENCE(pkeyjmp);
 	LABEL(hdr);
 	REFERENCE(phdr);
-
-	if (rta_sec_era < RTA_SEC_ERA_8) {
-		pr_err("IPsec new mode decap: available only for Era %d or above\n",
-		       USER_SEC_ERA(RTA_SEC_ERA_8));
-		return -ENOTSUP;
-	}
 
 	PROGRAM_CNTXT_INIT(p, descbuf, 0);
 	if (swap)

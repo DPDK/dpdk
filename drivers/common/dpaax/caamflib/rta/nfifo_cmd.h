@@ -102,12 +102,6 @@ rta_nfifo_load(struct program *program, uint32_t src,
 			    LDST_SRCDST_WORD_INFO_FIFO;
 	unsigned int start_pc = program->current_pc;
 
-	if ((data == AFHA_SBOX) && (rta_sec_era == RTA_SEC_ERA_7)) {
-		pr_err("NFIFO: AFHA S-box not supported by SEC Era %d\n",
-		       USER_SEC_ERA(rta_sec_era));
-		goto err;
-	}
-
 	/* write source field */
 	ret = __rta_map_opcode(src, nfifo_src, nfifo_src_sz[rta_sec_era], &val);
 	if (ret < 0) {

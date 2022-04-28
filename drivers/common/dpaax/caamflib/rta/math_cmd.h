@@ -85,22 +85,7 @@ rta_math(struct program *program, uint64_t operand1,
 	int ret = -EINVAL;
 	unsigned int start_pc = program->current_pc;
 
-	if (((op == MATH_FUN_BSWAP) && (rta_sec_era < RTA_SEC_ERA_4)) ||
-	    ((op == MATH_FUN_ZBYT) && (rta_sec_era < RTA_SEC_ERA_2))) {
-		pr_err("MATH: operation not supported by SEC Era %d. SEC PC: %d; Instr: %d\n",
-		       USER_SEC_ERA(rta_sec_era), program->current_pc,
-		       program->current_instruction);
-		goto err;
-	}
-
 	if (options & SWP) {
-		if (rta_sec_era < RTA_SEC_ERA_7) {
-			pr_err("MATH: operation not supported by SEC Era %d. SEC PC: %d; Instr: %d\n",
-			       USER_SEC_ERA(rta_sec_era), program->current_pc,
-			       program->current_instruction);
-			goto err;
-		}
-
 		if ((options & IFB) ||
 		    (!(options & IMMED) && !(options & IMMED2)) ||
 		    ((options & IMMED) && (options & IMMED2))) {
@@ -258,23 +243,9 @@ rta_mathi(struct program *program, uint64_t operand,
 	int ret = -EINVAL;
 	unsigned int start_pc = program->current_pc;
 
-	if (rta_sec_era < RTA_SEC_ERA_6) {
-		pr_err("MATHI: Command not supported by SEC Era %d. SEC PC: %d; Instr: %d\n",
-		       USER_SEC_ERA(rta_sec_era), program->current_pc,
-		       program->current_instruction);
-		goto err;
-	}
-
 	if (((op == MATH_FUN_FBYT) && (options & SSEL))) {
 		pr_err("MATHI: Illegal combination - FBYT and SSEL. SEC PC: %d; Instr: %d\n",
 		       program->current_pc, program->current_instruction);
-		goto err;
-	}
-
-	if ((options & SWP) && (rta_sec_era < RTA_SEC_ERA_7)) {
-		pr_err("MATHI: SWP not supported by SEC Era %d. SEC PC: %d; Instr: %d\n",
-		       USER_SEC_ERA(rta_sec_era), program->current_pc,
-		       program->current_instruction);
 		goto err;
 	}
 
