@@ -645,7 +645,7 @@ build_dpaa_raw_dp_cipher_fd(uint8_t *drv_ctx,
 	return cf;
 }
 
-#ifdef RTE_LIBRTE_SECURITY
+#ifdef RTE_LIB_SECURITY
 static inline struct dpaa_sec_job *
 build_dpaa_raw_proto_sg(uint8_t *drv_ctx,
 			struct rte_crypto_sgl *sgl,
@@ -1036,7 +1036,7 @@ dpaa_sec_configure_raw_dp_ctx(struct rte_cryptodev *dev, uint16_t qp_id,
 		sess->build_raw_dp_fd = build_dpaa_raw_dp_chain_fd;
 	else if (sess->ctxt == DPAA_SEC_AEAD)
 		sess->build_raw_dp_fd = build_raw_cipher_auth_gcm_sg;
-#ifdef RTE_LIBRTE_SECURITY
+#ifdef RTE_LIB_SECURITY
 	else if (sess->ctxt == DPAA_SEC_IPSEC ||
 			sess->ctxt == DPAA_SEC_PDCP)
 		sess->build_raw_dp_fd = build_dpaa_raw_proto_sg;
