@@ -1561,6 +1561,10 @@ sec_simple_fd_to_mbuf(const struct qbman_fd *fd)
 	int16_t diff = 0;
 	dpaa2_sec_session *sess_priv __rte_unused;
 
+	if (unlikely(DPAA2_GET_FD_IVP(fd))) {
+		DPAA2_SEC_ERR("error: non inline buffer");
+		return NULL;
+	}
 	struct rte_mbuf *mbuf = DPAA2_INLINE_MBUF_FROM_BUF(
 		DPAA2_IOVA_TO_VADDR(DPAA2_GET_FD_ADDR(fd)),
 		rte_dpaa2_bpid_info[DPAA2_GET_FD_BPID(fd)].meta_data_size);
@@ -1607,11 +1611,6 @@ sec_fd_to_mbuf(const struct qbman_fd *fd)
 	 * We can have a better approach to use the inline Mbuf
 	 */
 
-	if (unlikely(DPAA2_GET_FD_IVP(fd))) {
-		/* TODO complete it. */
-		DPAA2_SEC_ERR("error: non inline buffer");
-		return NULL;
-	}
 	op = (struct rte_crypto_op *)DPAA2_GET_FLE_ADDR((fle - 1));
 
 	/* Prefeth op */
