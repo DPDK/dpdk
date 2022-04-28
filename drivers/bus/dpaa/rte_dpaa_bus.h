@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  *
- *   Copyright 2017-2020 NXP
+ *   Copyright 2017-2022 NXP
  *
  */
 #ifndef __RTE_DPAA_BUS_H__
@@ -138,8 +138,6 @@ struct dpaa_portal {
 	uint32_t bman_idx; /**< BMAN Portal ID*/
 	uint32_t qman_idx; /**< QMAN Portal ID*/
 	struct dpaa_portal_dqrr dpaa_held_bufs;
-	struct rte_crypto_op **dpaa_sec_ops;
-	int dpaa_sec_op_nb;
 	uint64_t tid;/**< Parent Thread id for this portal */
 };
 
@@ -153,10 +151,6 @@ RTE_DECLARE_PER_LCORE(struct dpaa_portal *, dpaa_io);
 	RTE_PER_LCORE(dpaa_io)->dpaa_held_bufs.dqrr_held
 #define DPAA_PER_LCORE_DQRR_MBUF(i) \
 	RTE_PER_LCORE(dpaa_io)->dpaa_held_bufs.mbuf[i]
-#define DPAA_PER_LCORE_RTE_CRYPTO_OP \
-	RTE_PER_LCORE(dpaa_io)->dpaa_sec_ops
-#define DPAA_PER_LCORE_DPAA_SEC_OP_NB \
-	RTE_PER_LCORE(dpaa_io)->dpaa_sec_op_nb
 
 /* Various structures representing contiguous memory maps */
 struct dpaa_memseg {
