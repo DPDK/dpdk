@@ -315,6 +315,7 @@ struct iavf_adapter {
 	uint16_t fdir_ref_cnt;
 	struct iavf_devargs devargs;
 	uint64_t phc_time;
+	uint64_t hw_time_update;
 };
 
 /* IAVF_DEV_PRIVATE_TO */

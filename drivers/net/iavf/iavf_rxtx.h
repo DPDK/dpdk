@@ -222,7 +222,6 @@ struct iavf_rx_queue {
 		/* flexible descriptor metadata extraction offload flag */
 	struct iavf_rx_queue_stats stats;
 	uint64_t offloads;
-	uint32_t hw_register_set;
 };
 
 struct iavf_tx_entry {

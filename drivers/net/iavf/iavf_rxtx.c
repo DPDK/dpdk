@@ -1433,8 +1433,14 @@ iavf_recv_pkts_flex_rxd(void *rx_queue,
 	struct iavf_adapter *ad = rxq->vsi->adapter;
 	uint64_t ts_ns;
 
-	if (rxq->offloads & RTE_ETH_RX_OFFLOAD_TIMESTAMP)
-		rxq->hw_register_set = 1;
+	if (rxq->offloads & RTE_ETH_RX_OFFLOAD_TIMESTAMP) {
+		uint64_t sw_cur_time = rte_get_timer_cycles() / (rte_get_timer_hz() / 1000);
+		if (sw_cur_time - ad->hw_time_update > 4) {
+			if (iavf_get_phc_time(ad))
+				PMD_DRV_LOG(ERR, "get physical time failed");
+			ad->hw_time_update = sw_cur_time;
+		}
+	}
 
 	while (nb_rx < nb_pkts) {
 		rxdp = (volatile union iavf_rx_flex_desc *)&rx_ring[rx_id];
@@ -1499,12 +1505,11 @@ iavf_recv_pkts_flex_rxd(void *rx_queue,
 		pkt_flags = iavf_flex_rxd_error_to_pkt_flags(rx_stat_err0);
 
 		if (iavf_timestamp_dynflag > 0) {
-			if (rxq->hw_register_set)
-				iavf_get_phc_time(ad);
-
-			rxq->hw_register_set = 0;
 			ts_ns = iavf_tstamp_convert_32b_64b(ad->phc_time,
 				rte_le_to_cpu_32(rxd.wb.flex_ts.ts_high));
+
+			ad->phc_time = ts_ns;
+			ad->hw_time_update = rte_get_timer_cycles() / (rte_get_timer_hz() / 1000);
 
 			*RTE_MBUF_DYNFIELD(rxm,
 				iavf_timestamp_dynfield_offset,
@@ -1547,8 +1552,14 @@ iavf_recv_scattered_pkts_flex_rxd(void *rx_queue, struct rte_mbuf **rx_pkts,
 	volatile union iavf_rx_flex_desc *rxdp;
 	const uint32_t *ptype_tbl = rxq->vsi->adapter->ptype_tbl;
 
-	if (rxq->offloads & RTE_ETH_RX_OFFLOAD_TIMESTAMP)
-		rxq->hw_register_set = 1;
+	if (rxq->offloads & RTE_ETH_RX_OFFLOAD_TIMESTAMP) {
+		uint64_t sw_cur_time = rte_get_timer_cycles() / (rte_get_timer_hz() / 1000);
+		if (sw_cur_time - ad->hw_time_update > 4) {
+			if (iavf_get_phc_time(ad))
+				PMD_DRV_LOG(ERR, "get physical time failed");
+			ad->hw_time_update = sw_cur_time;
+		}
+	}
 
 	while (nb_rx < nb_pkts) {
 		rxdp = (volatile union iavf_rx_flex_desc *)&rx_ring[rx_id];
@@ -1663,12 +1674,11 @@ iavf_recv_scattered_pkts_flex_rxd(void *rx_queue, struct rte_mbuf **rx_pkts,
 		pkt_flags = iavf_flex_rxd_error_to_pkt_flags(rx_stat_err0);
 
 		if (iavf_timestamp_dynflag > 0) {
-			if (rxq->hw_register_set)
-				iavf_get_phc_time(ad);
-
-			rxq->hw_register_set = 0;
 			ts_ns = iavf_tstamp_convert_32b_64b(ad->phc_time,
 				rte_le_to_cpu_32(rxd.wb.flex_ts.ts_high));
+
+			ad->phc_time = ts_ns;
+			ad->hw_time_update = rte_get_timer_cycles() / (rte_get_timer_hz() / 1000);
 
 			*RTE_MBUF_DYNFIELD(first_seg,
 				iavf_timestamp_dynfield_offset,
@@ -1883,8 +1893,14 @@ iavf_rx_scan_hw_ring_flex_rxd(struct iavf_rx_queue *rxq,
 	if (!(stat_err0 & (1 << IAVF_RX_FLEX_DESC_STATUS0_DD_S)))
 		return 0;
 
-	if (rxq->offloads & RTE_ETH_RX_OFFLOAD_TIMESTAMP)
-		rxq->hw_register_set = 1;
+	if (rxq->offloads & RTE_ETH_RX_OFFLOAD_TIMESTAMP) {
+		uint64_t sw_cur_time = rte_get_timer_cycles() / (rte_get_timer_hz() / 1000);
+		if (sw_cur_time - ad->hw_time_update > 4) {
+			if (iavf_get_phc_time(ad))
+				PMD_DRV_LOG(ERR, "get physical time failed");
+			ad->hw_time_update = sw_cur_time;
+		}
+	}
 
 	/* Scan LOOK_AHEAD descriptors at a time to determine which
 	 * descriptors reference packets that are ready to be received.
@@ -1943,12 +1959,11 @@ iavf_rx_scan_hw_ring_flex_rxd(struct iavf_rx_queue *rxq,
 			pkt_flags = iavf_flex_rxd_error_to_pkt_flags(stat_err0);
 
 			if (iavf_timestamp_dynflag > 0) {
-				if (rxq->hw_register_set)
-					iavf_get_phc_time(ad);
-
-				rxq->hw_register_set = 0;
 				ts_ns = iavf_tstamp_convert_32b_64b(ad->phc_time,
 					rte_le_to_cpu_32(rxdp[j].wb.flex_ts.ts_high));
+
+				ad->phc_time = ts_ns;
+				ad->hw_time_update = rte_get_timer_cycles() / (rte_get_timer_hz() / 1000);
 
 				*RTE_MBUF_DYNFIELD(mb,
 					iavf_timestamp_dynfield_offset,
