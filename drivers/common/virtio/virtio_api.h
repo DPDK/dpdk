@@ -1,0 +1,75 @@
+/* SPDX-License-Identifier: BSD-3-Clause
+ * Copyright (c) 2022 NVIDIA Corporation & Affiliates
+ */
+
+#ifndef _VIRTIO_API_H_
+#define _VIRTIO_API_H_
+
+#define VIRTIO_API_FLAG
+#include "virtio_pci.h"
+#undef VIRTIO_API_FLAG
+
+/* Status byte for guest to report progress. */
+#define VIRTIO_CONFIG_STATUS_RESET		0x00
+#define VIRTIO_CONFIG_STATUS_ACK		0x01
+#define VIRTIO_CONFIG_STATUS_DRIVER		0x02
+#define VIRTIO_CONFIG_STATUS_DRIVER_OK		0x04
+#define VIRTIO_CONFIG_STATUS_FEATURES_OK	0x08
+#define VIRTIO_CONFIG_STATUS_DEV_NEED_RESET	0x40
+#define VIRTIO_CONFIG_STATUS_FAILED		0x80
+
+struct virtio_pci_dev_vring_info {
+	uint64_t desc;
+	uint64_t avail;
+	uint64_t used;
+	uint16_t size;
+};
+
+static inline void
+virtio_pci_dev_queue_notify(struct virtio_pci_dev *vpdev, uint16_t qid)
+{
+	VIRTIO_OPS(&vpdev->hw)->notify_queue(&vpdev->hw, vpdev->hw.vqs[qid]);
+}
+
+__rte_internal
+struct virtio_pci_dev *virtio_pci_dev_alloc(struct rte_pci_device *pci_dev);
+__rte_internal
+uint16_t virtio_pci_dev_nr_vq_get(struct virtio_pci_dev *vpdev);
+__rte_internal
+int virtio_pci_dev_queues_alloc(struct virtio_pci_dev *vpdev, uint16_t nr_vq);
+__rte_internal
+void virtio_pci_dev_queues_free(struct virtio_pci_dev *vpdev, uint16_t nr_vq);
+__rte_internal
+void virtio_pci_dev_free(struct virtio_pci_dev *vpdev);
+__rte_internal
+void virtio_pci_dev_features_get(struct virtio_pci_dev *vpdev, uint64_t *features);
+__rte_internal
+uint64_t virtio_pci_dev_features_set(struct virtio_pci_dev *vpdev, uint64_t features);
+__rte_internal
+int virtio_pci_dev_queue_set(struct virtio_pci_dev *vpdev, uint16_t qid, const struct virtio_pci_dev_vring_info *vring_info);
+__rte_internal
+void virtio_pci_dev_queue_del(struct virtio_pci_dev *vpdev, uint16_t qid);
+__rte_internal
+int virtio_pci_dev_interrupt_enable(struct virtio_pci_dev *vpdev, int fd, int vec);
+__rte_internal
+int virtio_pci_dev_interrupt_disable(struct virtio_pci_dev *vpdev, int vec);
+__rte_internal
+int virtio_pci_dev_interrupts_num_get(struct virtio_pci_dev *vpdev);
+__rte_internal
+int virtio_pci_dev_interrupts_alloc(struct virtio_pci_dev *vpdev, int nvec);
+__rte_internal
+int virtio_pci_dev_interrupts_free(struct virtio_pci_dev *vpdev);
+__rte_internal
+void virtio_pci_dev_set_status(struct virtio_pci_dev *vpdev, uint8_t status);
+__rte_internal
+uint8_t virtio_pci_dev_get_status(struct virtio_pci_dev *vpdev);
+__rte_internal
+void virtio_pci_dev_reset(struct virtio_pci_dev *vpdev);
+__rte_internal
+int virtio_pci_dev_notify_area_get(struct virtio_pci_dev *vpdev, uint16_t qid, uint64_t *offset, uint64_t *size);
+__rte_internal
+void virtio_pci_dev_config_read(struct virtio_pci_dev *vpdev, size_t offset, void *dst, int length);
+__rte_internal
+void virtio_pci_dev_config_write(struct virtio_pci_dev *vpdev, size_t offset, const void *src, int length);
+
+#endif /* _VIRTIO_API_H_ */

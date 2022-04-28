@@ -1,0 +1,26 @@
+INTERNAL {
+	global:
+
+	virtio_pci_dev_alloc;
+	virtio_pci_dev_nr_vq_get;
+	virtio_pci_dev_queues_alloc;
+	virtio_pci_dev_queues_free;
+	virtio_pci_dev_free;
+	virtio_pci_dev_features_get;
+	virtio_pci_dev_features_set;
+	virtio_pci_dev_queue_set;
+	virtio_pci_dev_queue_del;
+	virtio_pci_dev_interrupt_enable;
+	virtio_pci_dev_interrupt_disable;
+	virtio_pci_dev_interrupts_num_get;
+	virtio_pci_dev_interrupts_alloc;
+	virtio_pci_dev_interrupts_free;
+	virtio_pci_dev_set_status;
+	virtio_pci_dev_get_status;
+	virtio_pci_dev_reset;
+	virtio_pci_dev_notify_area_get;
+	virtio_pci_dev_config_read;
+	virtio_pci_dev_config_write;
+
+	local: *;
+};
