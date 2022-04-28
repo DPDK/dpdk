@@ -3445,23 +3445,24 @@ cryptodev_dpaa_sec_probe(struct rte_dpaa_driver *dpaa_drv __rte_unused,
 
 	int retval;
 
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return 0;
+
 	snprintf(cryptodev_name, sizeof(cryptodev_name), "%s", dpaa_dev->name);
 
 	cryptodev = rte_cryptodev_pmd_allocate(cryptodev_name, rte_socket_id());
 	if (cryptodev == NULL)
 		return -ENOMEM;
 
-	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
-		cryptodev->data->dev_private = rte_zmalloc_socket(
-					"cryptodev private structure",
-					sizeof(struct dpaa_sec_dev_private),
-					RTE_CACHE_LINE_SIZE,
-					rte_socket_id());
+	cryptodev->data->dev_private = rte_zmalloc_socket(
+				"cryptodev private structure",
+				sizeof(struct dpaa_sec_dev_private),
+				RTE_CACHE_LINE_SIZE,
+				rte_socket_id());
 
-		if (cryptodev->data->dev_private == NULL)
-			rte_panic("Cannot allocate memzone for private "
-					"device data");
-	}
+	if (cryptodev->data->dev_private == NULL)
+		rte_panic("Cannot allocate memzone for private "
+				"device data");
 
 	dpaa_dev->crypto_dev = cryptodev;
 	cryptodev->device = &dpaa_dev->device;
@@ -3501,8 +3502,7 @@ cryptodev_dpaa_sec_probe(struct rte_dpaa_driver *dpaa_drv __rte_unused,
 	retval = -ENXIO;
 out:
 	/* In case of error, cleanup is done */
-	if (rte_eal_process_type() == RTE_PROC_PRIMARY)
-		rte_free(cryptodev->data->dev_private);
+	rte_free(cryptodev->data->dev_private);
 
 	rte_cryptodev_pmd_release_device(cryptodev);
 
