@@ -36,6 +36,9 @@
 #define IAVF_PROTO_XTR_ARG         "proto_xtr"
 #define IAVF_QUANTA_SIZE_ARG       "quanta_size"
 
+uint64_t iavf_timestamp_dynflag;
+int iavf_timestamp_dynfield_offset = -1;
+
 static const char * const iavf_valid_args[] = {
 	IAVF_PROTO_XTR_ARG,
 	IAVF_QUANTA_SIZE_ARG,
@@ -687,6 +690,7 @@ iavf_init_rxq(struct rte_eth_dev *dev, struct iavf_rx_queue *rxq)
 	struct rte_eth_dev_data *dev_data = dev->data;
 	uint16_t buf_size, max_pkt_len;
 	uint32_t frame_size = dev->data->mtu + IAVF_ETH_OVERHEAD;
+	enum iavf_status err;
 
 	buf_size = rte_pktmbuf_data_room_size(rxq->mp) - RTE_PKTMBUF_HEADROOM;
 
@@ -703,6 +707,18 @@ iavf_init_rxq(struct rte_eth_dev *dev, struct iavf_rx_queue *rxq)
 			    (uint32_t)IAVF_ETH_MAX_LEN,
 			    (uint32_t)IAVF_FRAME_SIZE_MAX);
 		return -EINVAL;
+	}
+
+	if (rxq->offloads & RTE_ETH_RX_OFFLOAD_TIMESTAMP) {
+		/* Register mbuf field and flag for Rx timestamp */
+		err = rte_mbuf_dyn_rx_timestamp_register(
+			&iavf_timestamp_dynfield_offset,
+			&iavf_timestamp_dynflag);
+		if (err) {
+			PMD_DRV_LOG(ERR,
+				    "Cannot register mbuf field/flag for timestamp");
+			return -EINVAL;
+		}
 	}
 
 	rxq->max_pkt_len = max_pkt_len;
@@ -947,6 +963,13 @@ iavf_dev_start(struct rte_eth_dev *dev)
 			return -1;
 		}
 
+	if (vf->vf_res->vf_cap_flags & VIRTCHNL_VF_CAP_PTP) {
+		if (iavf_get_ptp_cap(adapter)) {
+			PMD_INIT_LOG(ERR, "Failed to get ptp capability");
+			return -1;
+		}
+	}
+
 	if (iavf_init_queues(dev) != 0) {
 		PMD_DRV_LOG(ERR, "failed to do Queue init");
 		return -1;
@@ -1091,6 +1114,9 @@ iavf_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 
 	if (vf->vf_res->vf_cap_flags & VIRTCHNL_VF_OFFLOAD_CRC)
 		dev_info->rx_offload_capa |= RTE_ETH_RX_OFFLOAD_KEEP_CRC;
+
+	if (vf->vf_res->vf_cap_flags & VIRTCHNL_VF_CAP_PTP)
+		dev_info->rx_offload_capa |= RTE_ETH_RX_OFFLOAD_TIMESTAMP;
 
 	if (iavf_ipsec_crypto_supported(adapter)) {
 		dev_info->rx_offload_capa |= RTE_ETH_RX_OFFLOAD_SECURITY;

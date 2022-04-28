@@ -502,7 +502,8 @@ iavf_get_vf_resource(struct iavf_adapter *adapter)
 		VIRTCHNL_VF_OFFLOAD_VLAN_V2 |
 		VIRTCHNL_VF_LARGE_NUM_QPAIRS |
 		VIRTCHNL_VF_OFFLOAD_QOS |
-		VIRTCHNL_VF_OFFLOAD_INLINE_IPSEC_CRYPTO;
+		VIRTCHNL_VF_OFFLOAD_INLINE_IPSEC_CRYPTO |
+		VIRTCHNL_VF_CAP_PTP;
 
 	args.in_args = (uint8_t *)&caps;
 	args.in_args_size = sizeof(caps);
@@ -1047,16 +1048,21 @@ iavf_configure_queues(struct iavf_adapter *adapter,
 		vc_qp->rxq.crc_disable = rxq[i]->crc_len != 0 ? 1 : 0;
 #ifndef RTE_LIBRTE_IAVF_16BYTE_RX_DESC
 		if (vf->vf_res->vf_cap_flags &
-		    VIRTCHNL_VF_OFFLOAD_RX_FLEX_DESC &&
-		    vf->supported_rxdid & BIT(rxq[i]->rxdid)) {
-			vc_qp->rxq.rxdid = rxq[i]->rxdid;
-			PMD_DRV_LOG(NOTICE, "request RXDID[%d] in Queue[%d]",
-				    vc_qp->rxq.rxdid, i);
-		} else {
-			PMD_DRV_LOG(NOTICE, "RXDID[%d] is not supported, "
-				    "request default RXDID[%d] in Queue[%d]",
-				    rxq[i]->rxdid, IAVF_RXDID_LEGACY_1, i);
-			vc_qp->rxq.rxdid = IAVF_RXDID_LEGACY_1;
+		    VIRTCHNL_VF_OFFLOAD_RX_FLEX_DESC) {
+			if (vf->supported_rxdid & BIT(rxq[i]->rxdid)) {
+				vc_qp->rxq.rxdid = rxq[i]->rxdid;
+				PMD_DRV_LOG(NOTICE, "request RXDID[%d] in Queue[%d]",
+					    vc_qp->rxq.rxdid, i);
+			} else {
+				PMD_DRV_LOG(NOTICE, "RXDID[%d] is not supported, "
+					    "request default RXDID[%d] in Queue[%d]",
+					    rxq[i]->rxdid, IAVF_RXDID_LEGACY_1, i);
+				vc_qp->rxq.rxdid = IAVF_RXDID_LEGACY_1;
+			}
+
+			if (vf->vf_res->vf_cap_flags & VIRTCHNL_VF_CAP_PTP &&
+			    vf->ptp_caps & VIRTCHNL_1588_PTP_CAP_RX_TSTAMP)
+				vc_qp->rxq.flags |= VIRTCHNL_PTP_RX_TSTAMP;
 		}
 #else
 		if (vf->vf_res->vf_cap_flags &
@@ -1856,6 +1862,61 @@ iavf_set_vf_quanta_size(struct iavf_adapter *adapter, u16 start_queue_id, u16 nu
 		PMD_DRV_LOG(ERR, "Failed to execute command VIRTCHNL_OP_CONFIG_QUANTA");
 		return err;
 	}
+
+	return 0;
+}
+
+int
+iavf_get_ptp_cap(struct iavf_adapter *adapter)
+{
+	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(adapter);
+	struct virtchnl_ptp_caps ptp_caps;
+	struct iavf_cmd_info args;
+	int err;
+
+	ptp_caps.caps = VIRTCHNL_1588_PTP_CAP_RX_TSTAMP |
+			VIRTCHNL_1588_PTP_CAP_READ_PHC;
+
+	args.ops = VIRTCHNL_OP_1588_PTP_GET_CAPS;
+	args.in_args = (uint8_t *)&ptp_caps;
+	args.in_args_size = sizeof(ptp_caps);
+	args.out_buffer = vf->aq_resp;
+	args.out_size = IAVF_AQ_BUF_SZ;
+
+	err = iavf_execute_vf_cmd(adapter, &args, 0);
+	if (err) {
+		PMD_DRV_LOG(ERR,
+			    "Failed to execute command of OP_1588_PTP_GET_CAPS");
+		return err;
+	}
+
+	vf->ptp_caps = ((struct virtchnl_ptp_caps *)args.out_buffer)->caps;
+
+	return 0;
+}
+
+int
+iavf_get_phc_time(struct iavf_adapter *adapter)
+{
+	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(adapter);
+	struct virtchnl_phc_time phc_time;
+	struct iavf_cmd_info args;
+	int err;
+
+	args.ops = VIRTCHNL_OP_1588_PTP_GET_TIME;
+	args.in_args = (uint8_t *)&phc_time;
+	args.in_args_size = sizeof(phc_time);
+	args.out_buffer = vf->aq_resp;
+	args.out_size = IAVF_AQ_BUF_SZ;
+
+	err = iavf_execute_vf_cmd(adapter, &args, 0);
+	if (err) {
+		PMD_DRV_LOG(ERR,
+			    "Failed to execute command of VIRTCHNL_OP_1588_PTP_GET_TIME");
+		return err;
+	}
+
+	adapter->phc_time = ((struct virtchnl_phc_time *)args.out_buffer)->time;
 
 	return 0;
 }

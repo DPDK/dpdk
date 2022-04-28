@@ -1430,6 +1430,12 @@ iavf_recv_pkts_flex_rxd(void *rx_queue,
 	rx_ring = rxq->rx_ring;
 	ptype_tbl = rxq->vsi->adapter->ptype_tbl;
 
+	struct iavf_adapter *ad = rxq->vsi->adapter;
+	uint64_t ts_ns;
+
+	if (rxq->offloads & RTE_ETH_RX_OFFLOAD_TIMESTAMP)
+		rxq->hw_register_set = 1;
+
 	while (nb_rx < nb_pkts) {
 		rxdp = (volatile union iavf_rx_flex_desc *)&rx_ring[rx_id];
 		rx_stat_err0 = rte_le_to_cpu_16(rxdp->wb.status_error0);
@@ -1491,6 +1497,21 @@ iavf_recv_pkts_flex_rxd(void *rx_queue,
 				&rxq->stats.ipsec_crypto);
 		rxd_to_pkt_fields_ops[rxq->rxdid](rxq, rxm, &rxd);
 		pkt_flags = iavf_flex_rxd_error_to_pkt_flags(rx_stat_err0);
+
+		if (iavf_timestamp_dynflag > 0) {
+			if (rxq->hw_register_set)
+				iavf_get_phc_time(ad);
+
+			rxq->hw_register_set = 0;
+			ts_ns = iavf_tstamp_convert_32b_64b(ad->phc_time,
+				rte_le_to_cpu_32(rxd.wb.flex_ts.ts_high));
+
+			*RTE_MBUF_DYNFIELD(rxm,
+				iavf_timestamp_dynfield_offset,
+				rte_mbuf_timestamp_t *) = ts_ns;
+			rxm->ol_flags |= iavf_timestamp_dynflag;
+		}
+
 		rxm->ol_flags |= pkt_flags;
 
 		rx_pkts[nb_rx++] = rxm;
@@ -1519,10 +1540,15 @@ iavf_recv_scattered_pkts_flex_rxd(void *rx_queue, struct rte_mbuf **rx_pkts,
 	uint16_t rx_stat_err0;
 	uint64_t dma_addr;
 	uint64_t pkt_flags;
+	struct iavf_adapter *ad = rxq->vsi->adapter;
+	uint64_t ts_ns;
 
 	volatile union iavf_rx_desc *rx_ring = rxq->rx_ring;
 	volatile union iavf_rx_flex_desc *rxdp;
 	const uint32_t *ptype_tbl = rxq->vsi->adapter->ptype_tbl;
+
+	if (rxq->offloads & RTE_ETH_RX_OFFLOAD_TIMESTAMP)
+		rxq->hw_register_set = 1;
 
 	while (nb_rx < nb_pkts) {
 		rxdp = (volatile union iavf_rx_flex_desc *)&rx_ring[rx_id];
@@ -1635,6 +1661,20 @@ iavf_recv_scattered_pkts_flex_rxd(void *rx_queue, struct rte_mbuf **rx_pkts,
 				&rxq->stats.ipsec_crypto);
 		rxd_to_pkt_fields_ops[rxq->rxdid](rxq, first_seg, &rxd);
 		pkt_flags = iavf_flex_rxd_error_to_pkt_flags(rx_stat_err0);
+
+		if (iavf_timestamp_dynflag > 0) {
+			if (rxq->hw_register_set)
+				iavf_get_phc_time(ad);
+
+			rxq->hw_register_set = 0;
+			ts_ns = iavf_tstamp_convert_32b_64b(ad->phc_time,
+				rte_le_to_cpu_32(rxd.wb.flex_ts.ts_high));
+
+			*RTE_MBUF_DYNFIELD(first_seg,
+				iavf_timestamp_dynfield_offset,
+				rte_mbuf_timestamp_t *) = ts_ns;
+			first_seg->ol_flags |= iavf_timestamp_dynflag;
+		}
 
 		first_seg->ol_flags |= pkt_flags;
 
@@ -1831,6 +1871,8 @@ iavf_rx_scan_hw_ring_flex_rxd(struct iavf_rx_queue *rxq,
 	int32_t nb_staged = 0;
 	uint64_t pkt_flags;
 	const uint32_t *ptype_tbl = rxq->vsi->adapter->ptype_tbl;
+	struct iavf_adapter *ad = rxq->vsi->adapter;
+	uint64_t ts_ns;
 
 	rxdp = (volatile union iavf_rx_flex_desc *)&rxq->rx_ring[rxq->rx_tail];
 	rxep = &rxq->sw_ring[rxq->rx_tail];
@@ -1840,6 +1882,9 @@ iavf_rx_scan_hw_ring_flex_rxd(struct iavf_rx_queue *rxq,
 	/* Make sure there is at least 1 packet to receive */
 	if (!(stat_err0 & (1 << IAVF_RX_FLEX_DESC_STATUS0_DD_S)))
 		return 0;
+
+	if (rxq->offloads & RTE_ETH_RX_OFFLOAD_TIMESTAMP)
+		rxq->hw_register_set = 1;
 
 	/* Scan LOOK_AHEAD descriptors at a time to determine which
 	 * descriptors reference packets that are ready to be received.
@@ -1896,6 +1941,20 @@ iavf_rx_scan_hw_ring_flex_rxd(struct iavf_rx_queue *rxq,
 			rxd_to_pkt_fields_ops[rxq->rxdid](rxq, mb, &rxdp[j]);
 			stat_err0 = rte_le_to_cpu_16(rxdp[j].wb.status_error0);
 			pkt_flags = iavf_flex_rxd_error_to_pkt_flags(stat_err0);
+
+			if (iavf_timestamp_dynflag > 0) {
+				if (rxq->hw_register_set)
+					iavf_get_phc_time(ad);
+
+				rxq->hw_register_set = 0;
+				ts_ns = iavf_tstamp_convert_32b_64b(ad->phc_time,
+					rte_le_to_cpu_32(rxdp[j].wb.flex_ts.ts_high));
+
+				*RTE_MBUF_DYNFIELD(mb,
+					iavf_timestamp_dynfield_offset,
+					rte_mbuf_timestamp_t *) = ts_ns;
+				mb->ol_flags |= iavf_timestamp_dynflag;
+			}
 
 			mb->ol_flags |= pkt_flags;
 

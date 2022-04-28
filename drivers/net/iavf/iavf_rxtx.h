@@ -72,6 +72,9 @@
 #define IAVF_TX_OFFLOAD_NOTSUP_MASK \
 		(RTE_MBUF_F_TX_OFFLOAD_MASK ^ IAVF_TX_OFFLOAD_MASK)
 
+extern uint64_t iavf_timestamp_dynflag;
+extern int iavf_timestamp_dynfield_offset;
+
 /**
  * Rx Flex Descriptors
  * These descriptors are used instead of the legacy version descriptors
@@ -219,6 +222,7 @@ struct iavf_rx_queue {
 		/* flexible descriptor metadata extraction offload flag */
 	struct iavf_rx_queue_stats stats;
 	uint64_t offloads;
+	uint32_t hw_register_set;
 };
 
 struct iavf_tx_entry {
@@ -776,6 +780,24 @@ void iavf_fdir_rx_proc_enable(struct iavf_adapter *ad, bool on)
 				FDIR_PROC_ENABLE_PER_QUEUE(ad, on);
 		}
 	}
+}
+
+static inline
+uint64_t iavf_tstamp_convert_32b_64b(uint64_t time, uint32_t in_timestamp)
+{
+	const uint64_t mask = 0xFFFFFFFF;
+	uint32_t delta;
+	uint64_t ns;
+
+	delta = (in_timestamp - (uint32_t)(time & mask));
+	if (delta > (mask / 2)) {
+		delta = ((uint32_t)(time & mask) - in_timestamp);
+		ns = time - delta;
+	} else {
+		ns = time + delta;
+	}
+
+	return ns;
 }
 
 #ifdef RTE_LIBRTE_IAVF_DEBUG_DUMP_DESC

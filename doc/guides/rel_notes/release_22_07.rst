@@ -64,6 +64,7 @@ New Features
 
   * Added Tx QoS queue rate limitation support.
   * Added quanta size configuration support.
+  * Added ``DEV_RX_OFFLOAD_TIMESTAMP`` support.
 
 * **Updated Mellanox mlx5 driver.**
 
