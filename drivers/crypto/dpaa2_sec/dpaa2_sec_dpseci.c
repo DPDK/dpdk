@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  *
  *   Copyright (c) 2016 Freescale Semiconductor, Inc. All rights reserved.
- *   Copyright 2016-2020 NXP
+ *   Copyright 2016-2022 NXP
  *
  */
 
@@ -58,6 +58,27 @@
 #define SEC_FLC_DHR_INBOUND	0
 
 static uint8_t cryptodev_driver_id;
+
+static inline void
+free_fle(const struct qbman_fd *fd)
+{
+	struct qbman_fle *fle;
+	struct rte_crypto_op *op;
+	struct ctxt_priv *priv;
+
+#ifdef RTE_LIB_SECURITY
+	if (DPAA2_FD_GET_FORMAT(fd) == qbman_fd_single)
+		return;
+#endif
+	fle = (struct qbman_fle *)DPAA2_IOVA_TO_VADDR(DPAA2_GET_FD_ADDR(fd));
+	op = (struct rte_crypto_op *)DPAA2_GET_FLE_ADDR((fle - 1));
+	/* free the fle memory */
+	if (likely(rte_pktmbuf_is_contiguous(op->sym->m_src))) {
+		priv = (struct ctxt_priv *)(size_t)DPAA2_GET_FLE_CTXT(fle - 1);
+		rte_mempool_put(priv->fle_pool, (void *)(fle-1));
+	} else
+		rte_free((void *)(fle-1));
+}
 
 #ifdef RTE_LIB_SECURITY
 static inline int
@@ -1508,6 +1529,12 @@ dpaa2_sec_enqueue_burst(void *qp, struct rte_crypto_op **ops,
 				if (retry_count > DPAA2_MAX_TX_RETRY_COUNT) {
 					num_tx += loop;
 					nb_ops -= loop;
+					DPAA2_SEC_DP_DEBUG("Enqueue fail\n");
+					/* freeing the fle buffers */
+					while (loop < frames_to_send) {
+						free_fle(&fd_arr[loop]);
+						loop++;
+					}
 					goto skip_tx;
 				}
 			} else {
