@@ -169,7 +169,7 @@ uint32_t single_sa_idx;
 /* mask of enabled ports */
 static uint32_t enabled_port_mask;
 static uint64_t enabled_cryptodev_mask = UINT64_MAX;
-static int32_t promiscuous_on = 1;
+static int32_t promiscuous_on;
 static int32_t numa_on = 1; /**< NUMA is enabled by default. */
 static uint32_t nb_lcores;
 static uint32_t single_sa;
