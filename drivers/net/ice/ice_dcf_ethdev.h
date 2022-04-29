@@ -15,6 +15,12 @@
 
 #define ICE_DCF_MAX_RINGS  1
 
+#define ICE_DCF_FRAME_SIZE_MAX       9728
+#define ICE_DCF_VLAN_TAG_SIZE               4
+#define ICE_DCF_ETH_OVERHEAD \
+	(RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN + ICE_DCF_VLAN_TAG_SIZE * 2)
+#define ICE_DCF_ETH_MAX_LEN (RTE_ETHER_MTU + ICE_DCF_ETH_OVERHEAD)
+
 struct ice_dcf_queue {
 	uint64_t dummy;
 };

@@ -70,6 +70,7 @@ New Features
 
  * Added support for RSS RETA configure in DCF mode.
  * Added support for RSS HASH configure in DCF mode.
+ * Added support for MTU configure in DCF mode.
 
 * **Updated Mellanox mlx5 driver.**
 

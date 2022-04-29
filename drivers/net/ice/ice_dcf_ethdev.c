@@ -1081,6 +1081,19 @@ ice_dcf_link_update(struct rte_eth_dev *dev,
 	return rte_eth_linkstatus_set(dev, &new_link);
 }
 
+static int
+ice_dcf_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu __rte_unused)
+{
+	/* mtu setting is forbidden if port is start */
+	if (dev->data->dev_started != 0) {
+		PMD_DRV_LOG(ERR, "port %d must be stopped before configuration",
+			    dev->data->port_id);
+		return -EBUSY;
+	}
+
+	return 0;
+}
+
 bool
 ice_dcf_adminq_need_retry(struct ice_adapter *ad)
 {
@@ -1236,6 +1249,7 @@ static const struct eth_dev_ops ice_dcf_eth_dev_ops = {
 	.rss_hash_update         = ice_dcf_dev_rss_hash_update,
 	.rss_hash_conf_get       = ice_dcf_dev_rss_hash_conf_get,
 	.tx_done_cleanup         = ice_tx_done_cleanup,
+	.mtu_set                 = ice_dcf_dev_mtu_set,
 };
 
 static int
