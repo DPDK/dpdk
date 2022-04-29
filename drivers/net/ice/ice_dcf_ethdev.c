@@ -727,27 +727,95 @@ ice_dcf_dev_info_get(struct rte_eth_dev *dev,
 }
 
 static int
+dcf_config_promisc(struct ice_dcf_adapter *adapter,
+		   bool enable_unicast,
+		   bool enable_multicast)
+{
+	struct ice_dcf_hw *hw = &adapter->real_hw;
+	struct virtchnl_promisc_info promisc;
+	struct dcf_virtchnl_cmd args;
+	int err;
+
+	promisc.flags = 0;
+	promisc.vsi_id = hw->vsi_res->vsi_id;
+
+	if (enable_unicast)
+		promisc.flags |= FLAG_VF_UNICAST_PROMISC;
+
+	if (enable_multicast)
+		promisc.flags |= FLAG_VF_MULTICAST_PROMISC;
+
+	memset(&args, 0, sizeof(args));
+	args.v_op = VIRTCHNL_OP_CONFIG_PROMISCUOUS_MODE;
+	args.req_msg = (uint8_t *)&promisc;
+	args.req_msglen = sizeof(promisc);
+
+	err = ice_dcf_execute_virtchnl_cmd(hw, &args);
+	if (err) {
+		PMD_DRV_LOG(ERR,
+			    "fail to execute command VIRTCHNL_OP_CONFIG_PROMISCUOUS_MODE");
+		return err;
+	}
+
+	adapter->promisc_unicast_enabled = enable_unicast;
+	adapter->promisc_multicast_enabled = enable_multicast;
+	return 0;
+}
+
+static int
 ice_dcf_dev_promiscuous_enable(__rte_unused struct rte_eth_dev *dev)
 {
-	return 0;
+	struct ice_dcf_adapter *adapter = dev->data->dev_private;
+
+	if (adapter->promisc_unicast_enabled) {
+		PMD_DRV_LOG(INFO, "promiscuous has been enabled");
+		return 0;
+	}
+
+	return dcf_config_promisc(adapter, true,
+				  adapter->promisc_multicast_enabled);
 }
 
 static int
 ice_dcf_dev_promiscuous_disable(__rte_unused struct rte_eth_dev *dev)
 {
-	return 0;
+	struct ice_dcf_adapter *adapter = dev->data->dev_private;
+
+	if (!adapter->promisc_unicast_enabled) {
+		PMD_DRV_LOG(INFO, "promiscuous has been disabled");
+		return 0;
+	}
+
+	return dcf_config_promisc(adapter, false,
+				  adapter->promisc_multicast_enabled);
 }
 
 static int
 ice_dcf_dev_allmulticast_enable(__rte_unused struct rte_eth_dev *dev)
 {
-	return 0;
+	struct ice_dcf_adapter *adapter = dev->data->dev_private;
+
+	if (adapter->promisc_multicast_enabled) {
+		PMD_DRV_LOG(INFO, "allmulticast has been enabled");
+		return 0;
+	}
+
+	return dcf_config_promisc(adapter, adapter->promisc_unicast_enabled,
+				  true);
 }
 
 static int
 ice_dcf_dev_allmulticast_disable(__rte_unused struct rte_eth_dev *dev)
 {
-	return 0;
+	struct ice_dcf_adapter *adapter = dev->data->dev_private;
+
+	if (!adapter->promisc_multicast_enabled) {
+		PMD_DRV_LOG(INFO, "allmulticast has been disabled");
+		return 0;
+	}
+
+	return dcf_config_promisc(adapter, adapter->promisc_unicast_enabled,
+				  false);
 }
 
 static int
@@ -1299,6 +1367,7 @@ ice_dcf_dev_init(struct rte_eth_dev *eth_dev)
 		return -1;
 	}
 
+	dcf_config_promisc(adapter, false, false);
 	return 0;
 }
 

@@ -33,6 +33,9 @@ struct ice_dcf_adapter {
 	struct ice_adapter parent; /* Must be first */
 	struct ice_dcf_hw real_hw;
 
+	bool promisc_unicast_enabled;
+	bool promisc_multicast_enabled;
+
 	int num_reprs;
 	struct ice_dcf_repr_info *repr_infos;
 };
