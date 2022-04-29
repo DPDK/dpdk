@@ -73,6 +73,7 @@ New Features
  * Added support for MTU configure in DCF mode.
  * Added support for promisc configuration in DCF mode.
  * Added support for MAC configuration in DCF mode.
+ * Added support for VLAN filter and offload configuration in DCF mode.
 
 * **Updated Mellanox mlx5 driver.**
 

@@ -1027,6 +1027,105 @@ dcf_dev_set_default_mac_addr(struct rte_eth_dev *dev,
 }
 
 static int
+dcf_add_del_vlan(struct ice_dcf_hw *hw, uint16_t vlanid, bool add)
+{
+	struct virtchnl_vlan_filter_list *vlan_list;
+	uint8_t cmd_buffer[sizeof(struct virtchnl_vlan_filter_list) +
+							sizeof(uint16_t)];
+	struct dcf_virtchnl_cmd args;
+	int err;
+
+	vlan_list = (struct virtchnl_vlan_filter_list *)cmd_buffer;
+	vlan_list->vsi_id = hw->vsi_res->vsi_id;
+	vlan_list->num_elements = 1;
+	vlan_list->vlan_id[0] = vlanid;
+
+	memset(&args, 0, sizeof(args));
+	args.v_op = add ? VIRTCHNL_OP_ADD_VLAN : VIRTCHNL_OP_DEL_VLAN;
+	args.req_msg = cmd_buffer;
+	args.req_msglen = sizeof(cmd_buffer);
+	err = ice_dcf_execute_virtchnl_cmd(hw, &args);
+	if (err)
+		PMD_DRV_LOG(ERR, "fail to execute command %s",
+			    add ? "OP_ADD_VLAN" :  "OP_DEL_VLAN");
+
+	return err;
+}
+
+static int
+dcf_enable_vlan_strip(struct ice_dcf_hw *hw)
+{
+	struct dcf_virtchnl_cmd args;
+	int ret;
+
+	memset(&args, 0, sizeof(args));
+	args.v_op = VIRTCHNL_OP_ENABLE_VLAN_STRIPPING;
+	ret = ice_dcf_execute_virtchnl_cmd(hw, &args);
+	if (ret)
+		PMD_DRV_LOG(ERR,
+			    "Failed to execute command of OP_ENABLE_VLAN_STRIPPING");
+
+	return ret;
+}
+
+static int
+dcf_disable_vlan_strip(struct ice_dcf_hw *hw)
+{
+	struct dcf_virtchnl_cmd args;
+	int ret;
+
+	memset(&args, 0, sizeof(args));
+	args.v_op = VIRTCHNL_OP_DISABLE_VLAN_STRIPPING;
+	ret = ice_dcf_execute_virtchnl_cmd(hw, &args);
+	if (ret)
+		PMD_DRV_LOG(ERR,
+			    "Failed to execute command of OP_DISABLE_VLAN_STRIPPING");
+
+	return ret;
+}
+
+static int
+dcf_dev_vlan_filter_set(struct rte_eth_dev *dev, uint16_t vlan_id, int on)
+{
+	struct ice_dcf_adapter *adapter = dev->data->dev_private;
+	struct ice_dcf_hw *hw = &adapter->real_hw;
+	int err;
+
+	if (!(hw->vf_res->vf_cap_flags & VIRTCHNL_VF_OFFLOAD_VLAN))
+		return -ENOTSUP;
+
+	err = dcf_add_del_vlan(hw, vlan_id, on);
+	if (err)
+		return -EIO;
+	return 0;
+}
+
+static int
+dcf_dev_vlan_offload_set(struct rte_eth_dev *dev, int mask)
+{
+	struct ice_dcf_adapter *adapter = dev->data->dev_private;
+	struct ice_dcf_hw *hw = &adapter->real_hw;
+	struct rte_eth_conf *dev_conf = &dev->data->dev_conf;
+	int err;
+
+	if (!(hw->vf_res->vf_cap_flags & VIRTCHNL_VF_OFFLOAD_VLAN))
+		return -ENOTSUP;
+
+	/* Vlan stripping setting */
+	if (mask & RTE_ETH_VLAN_STRIP_MASK) {
+		/* Enable or disable VLAN stripping */
+		if (dev_conf->rxmode.offloads & RTE_ETH_RX_OFFLOAD_VLAN_STRIP)
+			err = dcf_enable_vlan_strip(hw);
+		else
+			err = dcf_disable_vlan_strip(hw);
+
+		if (err)
+			return -EIO;
+	}
+	return 0;
+}
+
+static int
 ice_dcf_dev_flow_ops_get(struct rte_eth_dev *dev,
 			 const struct rte_flow_ops **ops)
 {
@@ -1538,6 +1637,8 @@ static const struct eth_dev_ops ice_dcf_eth_dev_ops = {
 	.mac_addr_remove          = dcf_dev_del_mac_addr,
 	.set_mc_addr_list         = dcf_set_mc_addr_list,
 	.mac_addr_set             = dcf_dev_set_default_mac_addr,
+	.vlan_filter_set          = dcf_dev_vlan_filter_set,
+	.vlan_offload_set         = dcf_dev_vlan_offload_set,
 	.flow_ops_get             = ice_dcf_dev_flow_ops_get,
 	.udp_tunnel_port_add	  = ice_dcf_dev_udp_tunnel_port_add,
 	.udp_tunnel_port_del	  = ice_dcf_dev_udp_tunnel_port_del,
