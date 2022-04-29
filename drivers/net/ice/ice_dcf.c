@@ -587,6 +587,29 @@ ice_dcf_get_supported_rxdid(struct ice_dcf_hw *hw)
 	return 0;
 }
 
+static int
+dcf_get_vlan_offload_caps_v2(struct ice_dcf_hw *hw)
+{
+	struct virtchnl_vlan_caps vlan_v2_caps;
+	struct dcf_virtchnl_cmd args;
+	int ret;
+
+	memset(&args, 0, sizeof(args));
+	args.v_op = VIRTCHNL_OP_GET_OFFLOAD_VLAN_V2_CAPS;
+	args.rsp_msgbuf = (uint8_t *)&vlan_v2_caps;
+	args.rsp_buflen = sizeof(vlan_v2_caps);
+
+	ret = ice_dcf_execute_virtchnl_cmd(hw, &args);
+	if (ret) {
+		PMD_DRV_LOG(ERR,
+			    "Failed to execute command of VIRTCHNL_OP_GET_OFFLOAD_VLAN_V2_CAPS");
+		return ret;
+	}
+
+	rte_memcpy(&hw->vlan_v2_caps, &vlan_v2_caps, sizeof(vlan_v2_caps));
+	return 0;
+}
+
 int
 ice_dcf_init_hw(struct rte_eth_dev *eth_dev, struct ice_dcf_hw *hw)
 {
@@ -700,6 +723,10 @@ ice_dcf_init_hw(struct rte_eth_dev *eth_dev, struct ice_dcf_hw *hw)
 				   ice_dcf_dev_interrupt_handler, hw);
 	rte_intr_enable(pci_dev->intr_handle);
 	ice_dcf_enable_irq0(hw);
+
+	if ((hw->vf_res->vf_cap_flags & VIRTCHNL_VF_OFFLOAD_VLAN_V2) &&
+	    dcf_get_vlan_offload_caps_v2(hw))
+		goto err_rss;
 
 	return 0;
 

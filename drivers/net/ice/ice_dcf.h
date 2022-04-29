@@ -129,6 +129,7 @@ struct ice_dcf_hw {
 	uint16_t nb_msix;
 	uint16_t rxq_map[16];
 	struct virtchnl_eth_stats eth_stats_offset;
+	struct virtchnl_vlan_caps vlan_v2_caps;
 
 	/* Link status */
 	bool link_up;
