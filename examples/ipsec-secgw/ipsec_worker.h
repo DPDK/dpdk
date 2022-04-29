@@ -117,55 +117,33 @@ adjust_ipv6_pktlen(struct rte_mbuf *m, const struct rte_ipv6_hdr *iph,
 static inline void
 prepare_one_packet(struct rte_mbuf *pkt, struct ipsec_traffic *t)
 {
+	uint32_t ptype = pkt->packet_type;
 	const struct rte_ether_hdr *eth;
 	const struct rte_ipv4_hdr *iph4;
 	const struct rte_ipv6_hdr *iph6;
-	const struct rte_udp_hdr *udp;
-	uint16_t ip4_hdr_len;
-	uint16_t nat_port;
+	uint32_t tun_type, l3_type;
+	uint64_t tx_offload;
+	uint16_t l3len;
+
+	tun_type = ptype & RTE_PTYPE_TUNNEL_MASK;
+	l3_type = ptype & RTE_PTYPE_L3_MASK;
 
 	eth = rte_pktmbuf_mtod(pkt, const struct rte_ether_hdr *);
-	if (eth->ether_type == rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV4)) {
-
+	if (RTE_ETH_IS_IPV4_HDR(l3_type)) {
 		iph4 = (const struct rte_ipv4_hdr *)rte_pktmbuf_adj(pkt,
 			RTE_ETHER_HDR_LEN);
 		adjust_ipv4_pktlen(pkt, iph4, 0);
 
-		switch (iph4->next_proto_id) {
-		case IPPROTO_ESP:
+		if (tun_type == RTE_PTYPE_TUNNEL_ESP) {
 			t->ipsec.pkts[(t->ipsec.num)++] = pkt;
-			break;
-		case IPPROTO_UDP:
-			if (app_sa_prm.udp_encap == 1) {
-				ip4_hdr_len = ((iph4->version_ihl &
-					RTE_IPV4_HDR_IHL_MASK) *
-					RTE_IPV4_IHL_MULTIPLIER);
-				udp = rte_pktmbuf_mtod_offset(pkt,
-					struct rte_udp_hdr *, ip4_hdr_len);
-				nat_port = rte_cpu_to_be_16(IPSEC_NAT_T_PORT);
-				if (udp->src_port == nat_port ||
-					udp->dst_port == nat_port){
-					t->ipsec.pkts[(t->ipsec.num)++] = pkt;
-					pkt->packet_type |=
-						MBUF_PTYPE_TUNNEL_ESP_IN_UDP;
-					break;
-				}
-			}
-		/* Fall through */
-		default:
+		} else {
 			t->ip4.data[t->ip4.num] = &iph4->next_proto_id;
 			t->ip4.pkts[(t->ip4.num)++] = pkt;
 		}
-		pkt->l2_len = 0;
-		pkt->l3_len = sizeof(*iph4);
-		pkt->packet_type |= RTE_PTYPE_L3_IPV4;
-		if  (pkt->packet_type & RTE_PTYPE_L4_TCP)
-			pkt->l4_len = sizeof(struct rte_tcp_hdr);
-		else if (pkt->packet_type & RTE_PTYPE_L4_UDP)
-			pkt->l4_len = sizeof(struct rte_udp_hdr);
-	} else if (eth->ether_type == rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV6)) {
+		tx_offload = sizeof(*iph4) << RTE_MBUF_L2_LEN_BITS;
+	} else if (RTE_ETH_IS_IPV6_HDR(l3_type)) {
 		int next_proto;
-		size_t l3len, ext_len;
+		size_t ext_len;
 		uint8_t *p;
 
 		/* get protocol type */
@@ -173,47 +151,35 @@ prepare_one_packet(struct rte_mbuf *pkt, struct ipsec_traffic *t)
 			RTE_ETHER_HDR_LEN);
 		adjust_ipv6_pktlen(pkt, iph6, 0);
 
-		next_proto = iph6->proto;
-
-		/* determine l3 header size up to ESP extension */
 		l3len = sizeof(struct ip6_hdr);
-		p = rte_pktmbuf_mtod(pkt, uint8_t *);
-		while (next_proto != IPPROTO_ESP && l3len < pkt->data_len &&
-			(next_proto = rte_ipv6_get_next_ext(p + l3len,
-						next_proto, &ext_len)) >= 0)
-			l3len += ext_len;
 
-		/* drop packet when IPv6 header exceeds first segment length */
-		if (unlikely(l3len > pkt->data_len)) {
-			free_pkts(&pkt, 1);
-			return;
-		}
-
-		switch (next_proto) {
-		case IPPROTO_ESP:
+		if (tun_type == RTE_PTYPE_TUNNEL_ESP) {
 			t->ipsec.pkts[(t->ipsec.num)++] = pkt;
-			break;
-		case IPPROTO_UDP:
-			if (app_sa_prm.udp_encap == 1) {
-				udp = rte_pktmbuf_mtod_offset(pkt,
-					struct rte_udp_hdr *, l3len);
-				nat_port = rte_cpu_to_be_16(IPSEC_NAT_T_PORT);
-				if (udp->src_port == nat_port ||
-					udp->dst_port == nat_port){
-					t->ipsec.pkts[(t->ipsec.num)++] = pkt;
-					pkt->packet_type |=
-						MBUF_PTYPE_TUNNEL_ESP_IN_UDP;
-					break;
-				}
-			}
-		/* Fall through */
-		default:
+		} else {
 			t->ip6.data[t->ip6.num] = &iph6->proto;
 			t->ip6.pkts[(t->ip6.num)++] = pkt;
 		}
-		pkt->l2_len = 0;
-		pkt->l3_len = l3len;
-		pkt->packet_type |= RTE_PTYPE_L3_IPV6;
+
+		/* Determine l3 header size up to ESP extension by walking
+		 * through extension headers.
+		 */
+		if (l3_type == RTE_PTYPE_L3_IPV6_EXT ||
+		     l3_type == RTE_PTYPE_L3_IPV6_EXT_UNKNOWN) {
+			p = rte_pktmbuf_mtod(pkt, uint8_t *);
+			next_proto = iph6->proto;
+			while (next_proto != IPPROTO_ESP &&
+			       l3len < pkt->data_len &&
+			       (next_proto = rte_ipv6_get_next_ext(p + l3len,
+						next_proto, &ext_len)) >= 0)
+				l3len += ext_len;
+
+			/* Drop pkt when IPv6 header exceeds first seg size */
+			if (unlikely(l3len > pkt->data_len)) {
+				free_pkts(&pkt, 1);
+				return;
+			}
+		}
+		tx_offload = l3len << RTE_MBUF_L2_LEN_BITS;
 	} else {
 		/* Unknown/Unsupported type, drop the packet */
 		RTE_LOG(ERR, IPSEC, "Unsupported packet type 0x%x\n",
@@ -221,6 +187,14 @@ prepare_one_packet(struct rte_mbuf *pkt, struct ipsec_traffic *t)
 		free_pkts(&pkt, 1);
 		return;
 	}
+
+	if  ((ptype & RTE_PTYPE_L4_MASK) == RTE_PTYPE_L4_TCP)
+		tx_offload |= (sizeof(struct rte_tcp_hdr) <<
+			       (RTE_MBUF_L2_LEN_BITS + RTE_MBUF_L3_LEN_BITS));
+	else if ((ptype & RTE_PTYPE_L4_MASK) == RTE_PTYPE_L4_UDP)
+		tx_offload |= (sizeof(struct rte_udp_hdr) <<
+			       (RTE_MBUF_L2_LEN_BITS + RTE_MBUF_L3_LEN_BITS));
+	pkt->tx_offload = tx_offload;
 
 	/* Check if the packet has been processed inline. For inline protocol
 	 * processed packets, the metadata in the mbuf can be used to identify
