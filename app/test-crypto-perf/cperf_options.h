@@ -12,6 +12,7 @@
 #endif
 
 #define CPERF_PTEST_TYPE	("ptest")
+#define CPERF_MODEX_LEN		("modex-len")
 #define CPERF_SILENT		("silent")
 
 #define CPERF_POOL_SIZE		("pool-sz")
@@ -153,6 +154,8 @@ struct cperf_options {
 	uint32_t pmdcc_delay;
 	uint32_t imix_distribution_list[MAX_LIST];
 	uint8_t imix_distribution_count;
+	struct cperf_modex_test_data *modex_data;
+	uint16_t modex_len;
 };
 
 void

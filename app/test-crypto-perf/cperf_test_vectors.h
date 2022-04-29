@@ -77,6 +77,26 @@ struct cperf_test_vector {
 	} modex;
 };
 
+struct cperf_modex_test_data {
+#define DATA_SIZE  512
+	struct {
+		uint8_t data[DATA_SIZE];
+		uint16_t len;
+	} base;
+	struct {
+		uint8_t data[DATA_SIZE];
+		uint16_t len;
+	} exponent;
+	struct {
+		uint8_t data[DATA_SIZE];
+		uint16_t len;
+	} modulus;
+	struct {
+		uint8_t data[DATA_SIZE];
+		uint16_t len;
+	} result;
+};
+
 struct cperf_test_vector*
 cperf_test_vector_get_dummy(struct cperf_options *options);
 
@@ -90,9 +110,6 @@ extern uint8_t aad[];
 
 extern uint8_t digest[2048];
 
-extern uint8_t perf_base[20];
-extern uint8_t perf_mod_p[129];
-extern uint8_t perf_mod_e[3];
-extern uint8_t perf_mod_result[sizeof(perf_mod_p)];
+extern struct cperf_modex_test_data modex_perf_data[4];
 
 #endif

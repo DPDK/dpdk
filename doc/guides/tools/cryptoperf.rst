@@ -332,6 +332,11 @@ The following are the application command-line options:
 
         Enable fixed session based HFN instead of per packet HFN.
 
+* ``--modex-len <n>``
+
+        Set modex length for asymmetric crypto perf test.
+        Supported lengths are 60, 128, 255, 448. Default length is 128.
+
 Test Vector File
 ~~~~~~~~~~~~~~~~
 

@@ -10,6 +10,7 @@
 #include <rte_ether.h>
 
 #include "cperf_options.h"
+#include "cperf_test_vectors.h"
 
 #define AES_BLOCK_SIZE 16
 #define DES_BLOCK_SIZE 8
@@ -57,6 +58,8 @@ usage(char *progname)
 		" --pmd-cyclecount-delay-ms N: set delay between enqueue\n"
 		"           and dequeue in pmd-cyclecount benchmarking mode\n"
 		" --csv-friendly: enable test result output CSV friendly\n"
+		" --modex-len N: modex length, supported lengths are "
+		"60, 128, 255, 448. Default: 128\n"
 #ifdef RTE_LIB_SECURITY
 		" --pdcp-sn-sz N: set PDCP SN size N <5/7/12/15/18>\n"
 		" --pdcp-domain DOMAIN: set PDCP domain <control/user>\n"
@@ -310,6 +313,16 @@ parse_pool_sz(struct cperf_options *opts, const char *arg)
 
 	if (ret)
 		RTE_LOG(ERR, USER1, "failed to parse pool size");
+	return ret;
+}
+
+static int
+parse_modex_len(struct cperf_options *opts, const char *arg)
+{
+	int ret =  parse_uint16_t(&opts->modex_len, arg);
+
+	if (ret)
+		RTE_LOG(ERR, USER1, "failed to parse modex len");
 	return ret;
 }
 
@@ -822,6 +835,7 @@ struct long_opt_parser {
 static struct option lgopts[] = {
 
 	{ CPERF_PTEST_TYPE, required_argument, 0, 0 },
+	{ CPERF_MODEX_LEN, required_argument, 0, 0 },
 
 	{ CPERF_POOL_SIZE, required_argument, 0, 0 },
 	{ CPERF_TOTAL_OPS, required_argument, 0, 0 },
@@ -939,6 +953,7 @@ cperf_options_default(struct cperf_options *opts)
 	opts->pdcp_ses_hfn_en = 0;
 	opts->docsis_hdr_sz = 17;
 #endif
+	opts->modex_data = (struct cperf_modex_test_data *)&modex_perf_data[0];
 }
 
 static int
@@ -946,6 +961,7 @@ cperf_opts_parse_long(int opt_idx, struct cperf_options *opts)
 {
 	struct long_opt_parser parsermap[] = {
 		{ CPERF_PTEST_TYPE,	parse_cperf_test_type },
+		{ CPERF_MODEX_LEN,	parse_modex_len },
 		{ CPERF_SILENT,		parse_silent },
 		{ CPERF_POOL_SIZE,	parse_pool_sz },
 		{ CPERF_TOTAL_OPS,	parse_total_ops },
@@ -1117,6 +1133,8 @@ check_docsis_buffer_length(struct cperf_options *options)
 int
 cperf_options_check(struct cperf_options *options)
 {
+	int i;
+
 	if (options->op_type == CPERF_CIPHER_ONLY ||
 			options->op_type == CPERF_DOCSIS)
 		options->digest_sz = 0;
@@ -1241,6 +1259,30 @@ cperf_options_check(struct cperf_options *options)
 			options->op_type == CPERF_AUTH_THEN_CIPHER) {
 		if (check_cipher_buffer_length(options) < 0)
 			return -EINVAL;
+	}
+
+	if (options->modex_len) {
+		if (options->op_type != CPERF_ASYM_MODEX) {
+			RTE_LOG(ERR, USER1, "Option modex len should be used only with "
+					" optype: modex.\n");
+			return -EINVAL;
+		}
+
+		for (i = 0; i < (int)RTE_DIM(modex_perf_data); i++) {
+			if (modex_perf_data[i].modulus.len ==
+			    options->modex_len) {
+				options->modex_data =
+					(struct cperf_modex_test_data
+						 *)&modex_perf_data[i];
+				break;
+			}
+		}
+		if (i == (int)RTE_DIM(modex_perf_data)) {
+			RTE_LOG(ERR, USER1,
+				"Option modex len: %d is not supported\n",
+				options->modex_len);
+			return -EINVAL;
+		}
 	}
 
 #ifdef RTE_LIB_SECURITY

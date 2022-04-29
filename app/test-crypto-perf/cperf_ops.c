@@ -14,7 +14,7 @@ cperf_set_ops_asym(struct rte_crypto_op **ops,
 		   uint32_t src_buf_offset __rte_unused,
 		   uint32_t dst_buf_offset __rte_unused, uint16_t nb_ops,
 		   struct rte_cryptodev_sym_session *sess,
-		   const struct cperf_options *options __rte_unused,
+		   const struct cperf_options *options,
 		   const struct cperf_test_vector *test_vector __rte_unused,
 		   uint16_t iv_offset __rte_unused,
 		   uint32_t *imix_idx __rte_unused,
@@ -27,10 +27,10 @@ cperf_set_ops_asym(struct rte_crypto_op **ops,
 		struct rte_crypto_asym_op *asym_op = ops[i]->asym;
 
 		ops[i]->status = RTE_CRYPTO_OP_STATUS_NOT_PROCESSED;
-		asym_op->modex.base.data = perf_base;
-		asym_op->modex.base.length = sizeof(perf_base);
-		asym_op->modex.result.data = perf_mod_result;
-		asym_op->modex.result.length = sizeof(perf_mod_result);
+		asym_op->modex.base.data = options->modex_data->base.data;
+		asym_op->modex.base.length = options->modex_data->base.len;
+		asym_op->modex.result.data = options->modex_data->result.data;
+		asym_op->modex.result.length = options->modex_data->result.len;
 		rte_crypto_op_attach_asym_session(ops[i], asym_sess);
 	}
 	return 0;
@@ -787,10 +787,10 @@ cperf_create_session(struct rte_mempool *sess_mp,
 	if (options->op_type == CPERF_ASYM_MODEX) {
 		xform.next = NULL;
 		xform.xform_type = RTE_CRYPTO_ASYM_XFORM_MODEX;
-		xform.modex.modulus.data = perf_mod_p;
-		xform.modex.modulus.length = sizeof(perf_mod_p);
-		xform.modex.exponent.data = perf_mod_e;
-		xform.modex.exponent.length = sizeof(perf_mod_e);
+		xform.modex.modulus.data = options->modex_data->modulus.data;
+		xform.modex.modulus.length = options->modex_data->modulus.len;
+		xform.modex.exponent.data = options->modex_data->exponent.data;
+		xform.modex.exponent.length = options->modex_data->exponent.len;
 
 		ret = rte_cryptodev_asym_session_create(dev_id, &xform,
 				sess_mp, &asym_sess);
