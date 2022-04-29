@@ -66,6 +66,10 @@ New Features
   * Added quanta size configuration support.
   * Added ``DEV_RX_OFFLOAD_TIMESTAMP`` support.
 
+* **Updated Intel ice driver.**
+
+ * Added support for RSS RETA configure in DCF mode.
+
 * **Updated Mellanox mlx5 driver.**
 
   * Added support for promiscuous mode on Windows.

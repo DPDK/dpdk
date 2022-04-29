@@ -761,6 +761,81 @@ ice_dcf_dev_flow_ops_get(struct rte_eth_dev *dev,
 	return 0;
 }
 
+static int
+ice_dcf_dev_rss_reta_update(struct rte_eth_dev *dev,
+			struct rte_eth_rss_reta_entry64 *reta_conf,
+			uint16_t reta_size)
+{
+	struct ice_dcf_adapter *adapter = dev->data->dev_private;
+	struct ice_dcf_hw *hw = &adapter->real_hw;
+	uint8_t *lut;
+	uint16_t i, idx, shift;
+	int ret;
+
+	if (!(hw->vf_res->vf_cap_flags & VIRTCHNL_VF_OFFLOAD_RSS_PF))
+		return -ENOTSUP;
+
+	if (reta_size != hw->vf_res->rss_lut_size) {
+		PMD_DRV_LOG(ERR, "The size of hash lookup table configured "
+			"(%d) doesn't match the number of hardware can "
+			"support (%d)", reta_size, hw->vf_res->rss_lut_size);
+		return -EINVAL;
+	}
+
+	lut = rte_zmalloc("rss_lut", reta_size, 0);
+	if (!lut) {
+		PMD_DRV_LOG(ERR, "No memory can be allocated");
+		return -ENOMEM;
+	}
+	/* store the old lut table temporarily */
+	rte_memcpy(lut, hw->rss_lut, reta_size);
+
+	for (i = 0; i < reta_size; i++) {
+		idx = i / RTE_ETH_RETA_GROUP_SIZE;
+		shift = i % RTE_ETH_RETA_GROUP_SIZE;
+		if (reta_conf[idx].mask & (1ULL << shift))
+			lut[i] = reta_conf[idx].reta[shift];
+	}
+
+	rte_memcpy(hw->rss_lut, lut, reta_size);
+	/* send virtchnnl ops to configure rss*/
+	ret = ice_dcf_configure_rss_lut(hw);
+	if (ret) /* revert back */
+		rte_memcpy(hw->rss_lut, lut, reta_size);
+	rte_free(lut);
+
+	return ret;
+}
+
+static int
+ice_dcf_dev_rss_reta_query(struct rte_eth_dev *dev,
+		       struct rte_eth_rss_reta_entry64 *reta_conf,
+		       uint16_t reta_size)
+{
+	struct ice_dcf_adapter *adapter = dev->data->dev_private;
+	struct ice_dcf_hw *hw = &adapter->real_hw;
+	uint16_t i, idx, shift;
+
+	if (!(hw->vf_res->vf_cap_flags & VIRTCHNL_VF_OFFLOAD_RSS_PF))
+		return -ENOTSUP;
+
+	if (reta_size != hw->vf_res->rss_lut_size) {
+		PMD_DRV_LOG(ERR, "The size of hash lookup table configured "
+			"(%d) doesn't match the number of hardware can "
+			"support (%d)", reta_size, hw->vf_res->rss_lut_size);
+		return -EINVAL;
+	}
+
+	for (i = 0; i < reta_size; i++) {
+		idx = i / RTE_ETH_RETA_GROUP_SIZE;
+		shift = i % RTE_ETH_RETA_GROUP_SIZE;
+		if (reta_conf[idx].mask & (1ULL << shift))
+			reta_conf[idx].reta[shift] = hw->rss_lut[i];
+	}
+
+	return 0;
+}
+
 #define ICE_DCF_32_BIT_WIDTH (CHAR_BIT * 4)
 #define ICE_DCF_48_BIT_WIDTH (CHAR_BIT * 6)
 #define ICE_DCF_48_BIT_MASK  RTE_LEN2MASK(ICE_DCF_48_BIT_WIDTH, uint64_t)
@@ -1107,6 +1182,8 @@ static const struct eth_dev_ops ice_dcf_eth_dev_ops = {
 	.udp_tunnel_port_add	 = ice_dcf_dev_udp_tunnel_port_add,
 	.udp_tunnel_port_del	 = ice_dcf_dev_udp_tunnel_port_del,
 	.tm_ops_get              = ice_dcf_tm_ops_get,
+	.reta_update             = ice_dcf_dev_rss_reta_update,
+	.reta_query              = ice_dcf_dev_rss_reta_query,
 };
 
 static int

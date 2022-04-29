@@ -790,7 +790,7 @@ ice_dcf_configure_rss_key(struct ice_dcf_hw *hw)
 	return err;
 }
 
-static int
+int
 ice_dcf_configure_rss_lut(struct ice_dcf_hw *hw)
 {
 	struct virtchnl_rss_lut *rss_lut;
