@@ -247,60 +247,6 @@ prepare_traffic(struct rte_security_ctx *ctx, struct rte_mbuf **pkts,
 		prepare_one_packet(ctx, pkts[i], t);
 }
 
-static inline void
-prepare_tx_pkt(struct rte_mbuf *pkt, uint16_t port,
-		const struct lcore_conf *qconf)
-{
-	struct ip *ip;
-	struct rte_ether_hdr *ethhdr;
-
-	ip = rte_pktmbuf_mtod(pkt, struct ip *);
-
-	ethhdr = (struct rte_ether_hdr *)
-		rte_pktmbuf_prepend(pkt, RTE_ETHER_HDR_LEN);
-
-	if (ip->ip_v == IPVERSION) {
-		pkt->ol_flags |= qconf->outbound.ipv4_offloads;
-		pkt->l3_len = sizeof(struct ip);
-		pkt->l2_len = RTE_ETHER_HDR_LEN;
-
-		ip->ip_sum = 0;
-
-		/* calculate IPv4 cksum in SW */
-		if ((pkt->ol_flags & RTE_MBUF_F_TX_IP_CKSUM) == 0)
-			ip->ip_sum = rte_ipv4_cksum((struct rte_ipv4_hdr *)ip);
-
-		ethhdr->ether_type = rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV4);
-	} else {
-		pkt->ol_flags |= qconf->outbound.ipv6_offloads;
-		pkt->l3_len = sizeof(struct ip6_hdr);
-		pkt->l2_len = RTE_ETHER_HDR_LEN;
-
-		ethhdr->ether_type = rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV6);
-	}
-
-	memcpy(&ethhdr->src_addr, &ethaddr_tbl[port].src,
-			sizeof(struct rte_ether_addr));
-	memcpy(&ethhdr->dst_addr, &ethaddr_tbl[port].dst,
-			sizeof(struct rte_ether_addr));
-}
-
-static inline void
-prepare_tx_burst(struct rte_mbuf *pkts[], uint16_t nb_pkts, uint16_t port,
-		const struct lcore_conf *qconf)
-{
-	int32_t i;
-	const int32_t prefetch_offset = 2;
-
-	for (i = 0; i < (nb_pkts - prefetch_offset); i++) {
-		rte_mbuf_prefetch_part2(pkts[i + prefetch_offset]);
-		prepare_tx_pkt(pkts[i], port, qconf);
-	}
-	/* Process left packets */
-	for (; i < nb_pkts; i++)
-		prepare_tx_pkt(pkts[i], port, qconf);
-}
-
 /* Send burst of packets on an output interface */
 static __rte_always_inline int32_t
 send_burst(struct lcore_conf *qconf, uint16_t n, uint16_t port)
@@ -311,8 +257,6 @@ send_burst(struct lcore_conf *qconf, uint16_t n, uint16_t port)
 
 	queueid = qconf->tx_queue_id[port];
 	m_table = (struct rte_mbuf **)qconf->tx_mbufs[port].m_table;
-
-	prepare_tx_burst(m_table, n, port, qconf);
 
 	ret = rte_eth_tx_burst(port, queueid, m_table, n);
 
@@ -334,8 +278,11 @@ static __rte_always_inline uint32_t
 send_fragment_packet(struct lcore_conf *qconf, struct rte_mbuf *m,
 	uint16_t port, uint8_t proto)
 {
+	struct rte_ether_hdr *ethhdr;
+	struct rte_ipv4_hdr *ip;
+	struct rte_mbuf *pkt;
 	struct buffer *tbl;
-	uint32_t len, n;
+	uint32_t len, n, i;
 	int32_t rc;
 
 	tbl =  qconf->tx_mbufs + port;
@@ -349,6 +296,9 @@ send_fragment_packet(struct lcore_conf *qconf, struct rte_mbuf *m,
 
 	n = RTE_DIM(tbl->m_table) - len;
 
+	/* Strip the ethernet header that was prepended earlier */
+	rte_pktmbuf_adj(m, RTE_ETHER_HDR_LEN);
+
 	if (proto == IPPROTO_IP)
 		rc = rte_ipv4_fragment_packet(m, tbl->m_table + len,
 			n, mtu_size, m->pool, qconf->frag.pool_indir);
@@ -356,13 +306,51 @@ send_fragment_packet(struct lcore_conf *qconf, struct rte_mbuf *m,
 		rc = rte_ipv6_fragment_packet(m, tbl->m_table + len,
 			n, mtu_size, m->pool, qconf->frag.pool_indir);
 
-	if (rc >= 0)
-		len += rc;
-	else
+	if (rc < 0) {
 		RTE_LOG(ERR, IPSEC,
 			"%s: failed to fragment packet with size %u, "
 			"error code: %d\n",
 			__func__, m->pkt_len, rte_errno);
+		rc = 0;
+	}
+
+	i = len;
+	len += rc;
+	for (; i < len; i++) {
+		pkt = tbl->m_table[i];
+
+		/* Update Ethernet header */
+		ethhdr = (struct rte_ether_hdr *)
+			rte_pktmbuf_prepend(pkt, RTE_ETHER_HDR_LEN);
+		pkt->l2_len = RTE_ETHER_HDR_LEN;
+
+		if (proto == IPPROTO_IP) {
+			ethhdr->ether_type =
+				rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV4);
+			/* Update minimum offload data */
+			pkt->l3_len = sizeof(struct rte_ipv4_hdr);
+			pkt->ol_flags |= qconf->outbound.ipv4_offloads;
+
+			ip = (struct rte_ipv4_hdr *)(ethhdr + 1);
+			ip->hdr_checksum = 0;
+
+			/* calculate IPv4 cksum in SW */
+			if ((pkt->ol_flags & RTE_MBUF_F_TX_IP_CKSUM) == 0)
+				ip->hdr_checksum = rte_ipv4_cksum(ip);
+		} else {
+			ethhdr->ether_type =
+				rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV6);
+
+			/* Update minimum offload data */
+			pkt->l3_len = sizeof(struct rte_ipv6_hdr);
+			pkt->ol_flags |= qconf->outbound.ipv6_offloads;
+		}
+
+		memcpy(&ethhdr->src_addr, &ethaddr_tbl[port].src,
+		       sizeof(struct rte_ether_addr));
+		memcpy(&ethhdr->dst_addr, &ethaddr_tbl[port].dst,
+		       sizeof(struct rte_ether_addr));
+	}
 
 	free_pkts(&m, 1);
 	return len;
@@ -381,7 +369,8 @@ send_single_packet(struct rte_mbuf *m, uint16_t port, uint8_t proto)
 	qconf = &lcore_conf[lcore_id];
 	len = qconf->tx_mbufs[port].len;
 
-	if (m->pkt_len <= mtu_size) {
+	/* L2 header is already part of packet */
+	if (m->pkt_len - RTE_ETHER_HDR_LEN <= mtu_size) {
 		qconf->tx_mbufs[port].m_table[len] = m;
 		len++;
 
@@ -476,15 +465,19 @@ fail:
 	return 0;
 }
 
-static inline void
-route4_pkts(struct rt_ctx *rt_ctx, struct rte_mbuf *pkts[], uint8_t nb_pkts)
+static __rte_always_inline void
+route4_pkts(struct rt_ctx *rt_ctx, struct rte_mbuf *pkts[],
+	    uint8_t nb_pkts, uint64_t tx_offloads, bool ip_cksum)
 {
 	uint32_t hop[MAX_PKT_BURST * 2];
 	uint32_t dst_ip[MAX_PKT_BURST * 2];
+	struct rte_ether_hdr *ethhdr;
 	int32_t pkt_hop = 0;
 	uint16_t i, offset;
 	uint16_t lpm_pkts = 0;
 	unsigned int lcoreid = rte_lcore_id();
+	struct rte_mbuf *pkt;
+	uint16_t port;
 
 	if (nb_pkts == 0)
 		return;
@@ -494,12 +487,13 @@ route4_pkts(struct rt_ctx *rt_ctx, struct rte_mbuf *pkts[], uint8_t nb_pkts)
 	 */
 
 	for (i = 0; i < nb_pkts; i++) {
-		if (!(pkts[i]->ol_flags & RTE_MBUF_F_TX_SEC_OFFLOAD)) {
+		pkt = pkts[i];
+		if (!(pkt->ol_flags & RTE_MBUF_F_TX_SEC_OFFLOAD)) {
 			/* Security offload not enabled. So an LPM lookup is
 			 * required to get the hop
 			 */
 			offset = offsetof(struct ip, ip_dst);
-			dst_ip[lpm_pkts] = *rte_pktmbuf_mtod_offset(pkts[i],
+			dst_ip[lpm_pkts] = *rte_pktmbuf_mtod_offset(pkt,
 					uint32_t *, offset);
 			dst_ip[lpm_pkts] = rte_be_to_cpu_32(dst_ip[lpm_pkts]);
 			lpm_pkts++;
@@ -511,9 +505,10 @@ route4_pkts(struct rt_ctx *rt_ctx, struct rte_mbuf *pkts[], uint8_t nb_pkts)
 	lpm_pkts = 0;
 
 	for (i = 0; i < nb_pkts; i++) {
-		if (pkts[i]->ol_flags & RTE_MBUF_F_TX_SEC_OFFLOAD) {
+		pkt = pkts[i];
+		if (pkt->ol_flags & RTE_MBUF_F_TX_SEC_OFFLOAD) {
 			/* Read hop from the SA */
-			pkt_hop = get_hop_for_offload_pkt(pkts[i], 0);
+			pkt_hop = get_hop_for_offload_pkt(pkt, 0);
 		} else {
 			/* Need to use hop returned by lookup */
 			pkt_hop = hop[lpm_pkts++];
@@ -521,10 +516,41 @@ route4_pkts(struct rt_ctx *rt_ctx, struct rte_mbuf *pkts[], uint8_t nb_pkts)
 
 		if ((pkt_hop & RTE_LPM_LOOKUP_SUCCESS) == 0) {
 			core_statistics[lcoreid].lpm4.miss++;
-			free_pkts(&pkts[i], 1);
+			free_pkts(&pkt, 1);
 			continue;
 		}
-		send_single_packet(pkts[i], pkt_hop & 0xff, IPPROTO_IP);
+
+		port = pkt_hop & 0xff;
+
+		/* Update minimum offload data */
+		pkt->l3_len = sizeof(struct rte_ipv4_hdr);
+		pkt->l2_len = RTE_ETHER_HDR_LEN;
+		pkt->ol_flags |= RTE_MBUF_F_TX_IPV4;
+
+		/* Update Ethernet header */
+		ethhdr = (struct rte_ether_hdr *)
+			rte_pktmbuf_prepend(pkt, RTE_ETHER_HDR_LEN);
+
+		if (ip_cksum) {
+			struct rte_ipv4_hdr *ip;
+
+			pkt->ol_flags |= tx_offloads;
+
+			ip = (struct rte_ipv4_hdr *)(ethhdr + 1);
+			ip->hdr_checksum = 0;
+
+			/* calculate IPv4 cksum in SW */
+			if ((pkt->ol_flags & RTE_MBUF_F_TX_IP_CKSUM) == 0)
+				ip->hdr_checksum = rte_ipv4_cksum(ip);
+		}
+
+		ethhdr->ether_type = rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV4);
+		memcpy(&ethhdr->src_addr, &ethaddr_tbl[port].src,
+		       sizeof(struct rte_ether_addr));
+		memcpy(&ethhdr->dst_addr, &ethaddr_tbl[port].dst,
+		       sizeof(struct rte_ether_addr));
+
+		send_single_packet(pkt, port, IPPROTO_IP);
 	}
 }
 
@@ -533,11 +559,14 @@ route6_pkts(struct rt_ctx *rt_ctx, struct rte_mbuf *pkts[], uint8_t nb_pkts)
 {
 	int32_t hop[MAX_PKT_BURST * 2];
 	uint8_t dst_ip[MAX_PKT_BURST * 2][16];
+	struct rte_ether_hdr *ethhdr;
 	uint8_t *ip6_dst;
 	int32_t pkt_hop = 0;
 	uint16_t i, offset;
 	uint16_t lpm_pkts = 0;
 	unsigned int lcoreid = rte_lcore_id();
+	struct rte_mbuf *pkt;
+	uint16_t port;
 
 	if (nb_pkts == 0)
 		return;
@@ -547,12 +576,13 @@ route6_pkts(struct rt_ctx *rt_ctx, struct rte_mbuf *pkts[], uint8_t nb_pkts)
 	 */
 
 	for (i = 0; i < nb_pkts; i++) {
-		if (!(pkts[i]->ol_flags & RTE_MBUF_F_TX_SEC_OFFLOAD)) {
+		pkt = pkts[i];
+		if (!(pkt->ol_flags & RTE_MBUF_F_TX_SEC_OFFLOAD)) {
 			/* Security offload not enabled. So an LPM lookup is
 			 * required to get the hop
 			 */
 			offset = offsetof(struct ip6_hdr, ip6_dst);
-			ip6_dst = rte_pktmbuf_mtod_offset(pkts[i], uint8_t *,
+			ip6_dst = rte_pktmbuf_mtod_offset(pkt, uint8_t *,
 					offset);
 			memcpy(&dst_ip[lpm_pkts][0], ip6_dst, 16);
 			lpm_pkts++;
@@ -565,9 +595,10 @@ route6_pkts(struct rt_ctx *rt_ctx, struct rte_mbuf *pkts[], uint8_t nb_pkts)
 	lpm_pkts = 0;
 
 	for (i = 0; i < nb_pkts; i++) {
-		if (pkts[i]->ol_flags & RTE_MBUF_F_TX_SEC_OFFLOAD) {
+		pkt = pkts[i];
+		if (pkt->ol_flags & RTE_MBUF_F_TX_SEC_OFFLOAD) {
 			/* Read hop from the SA */
-			pkt_hop = get_hop_for_offload_pkt(pkts[i], 1);
+			pkt_hop = get_hop_for_offload_pkt(pkt, 1);
 		} else {
 			/* Need to use hop returned by lookup */
 			pkt_hop = hop[lpm_pkts++];
@@ -575,10 +606,28 @@ route6_pkts(struct rt_ctx *rt_ctx, struct rte_mbuf *pkts[], uint8_t nb_pkts)
 
 		if (pkt_hop == -1) {
 			core_statistics[lcoreid].lpm6.miss++;
-			free_pkts(&pkts[i], 1);
+			free_pkts(&pkt, 1);
 			continue;
 		}
-		send_single_packet(pkts[i], pkt_hop & 0xff, IPPROTO_IPV6);
+
+		port = pkt_hop & 0xff;
+
+		/* Update minimum offload data */
+		pkt->ol_flags |= RTE_MBUF_F_TX_IPV6;
+		pkt->l3_len = sizeof(struct ip6_hdr);
+		pkt->l2_len = RTE_ETHER_HDR_LEN;
+
+		/* Update Ethernet header */
+		ethhdr = (struct rte_ether_hdr *)
+			rte_pktmbuf_prepend(pkt, RTE_ETHER_HDR_LEN);
+
+		ethhdr->ether_type = rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV6);
+		memcpy(&ethhdr->src_addr, &ethaddr_tbl[port].src,
+		       sizeof(struct rte_ether_addr));
+		memcpy(&ethhdr->dst_addr, &ethaddr_tbl[port].dst,
+		       sizeof(struct rte_ether_addr));
+
+		send_single_packet(pkt, port, IPPROTO_IPV6);
 	}
 }
 

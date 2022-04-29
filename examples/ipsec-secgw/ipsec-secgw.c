@@ -562,7 +562,8 @@ process_pkts(struct lcore_conf *qconf, struct rte_mbuf **pkts,
 			process_pkts_outbound(&qconf->outbound, &traffic);
 	}
 
-	route4_pkts(qconf->rt4_ctx, traffic.ip4.pkts, traffic.ip4.num);
+	route4_pkts(qconf->rt4_ctx, traffic.ip4.pkts, traffic.ip4.num,
+		    qconf->outbound.ipv4_offloads, true);
 	route6_pkts(qconf->rt6_ctx, traffic.ip6.pkts, traffic.ip6.num);
 }
 
@@ -613,7 +614,8 @@ drain_inbound_crypto_queues(const struct lcore_conf *qconf,
 	if (trf.ip4.num != 0) {
 		inbound_sp_sa(ctx->sp4_ctx, ctx->sa_ctx, &trf.ip4, 0,
 			&core_statistics[lcoreid].inbound.spd4);
-		route4_pkts(qconf->rt4_ctx, trf.ip4.pkts, trf.ip4.num);
+		route4_pkts(qconf->rt4_ctx, trf.ip4.pkts, trf.ip4.num,
+			    qconf->outbound.ipv4_offloads, true);
 	}
 
 	/* process ipv6 packets */
@@ -647,7 +649,8 @@ drain_outbound_crypto_queues(const struct lcore_conf *qconf,
 
 	/* process ipv4 packets */
 	if (trf.ip4.num != 0)
-		route4_pkts(qconf->rt4_ctx, trf.ip4.pkts, trf.ip4.num);
+		route4_pkts(qconf->rt4_ctx, trf.ip4.pkts, trf.ip4.num,
+			    qconf->outbound.ipv4_offloads, true);
 
 	/* process ipv6 packets */
 	if (trf.ip6.num != 0)
