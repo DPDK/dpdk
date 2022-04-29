@@ -135,6 +135,7 @@ extern uint32_t unprotected_port_mask;
 
 /* Index of SA in single mode */
 extern uint32_t single_sa_idx;
+extern uint32_t single_sa;
 
 extern volatile bool force_quit;
 
@@ -144,6 +145,15 @@ extern bool per_port_pool;
 
 extern uint32_t mtu_size;
 extern uint32_t frag_tbl_sz;
+
+#define SS_F		(1U << 0)	/* Single SA mode */
+#define INL_PR_F	(1U << 1)	/* Inline Protocol */
+#define INL_CR_F	(1U << 2)	/* Inline Crypto */
+#define LA_PR_F		(1U << 3)	/* Lookaside Protocol */
+#define LA_ANY_F	(1U << 4)	/* Lookaside Any */
+#define MAX_F		(LA_ANY_F << 1)
+
+extern uint16_t wrkr_flags;
 
 static inline uint8_t
 is_unprotected_port(uint16_t port_id)

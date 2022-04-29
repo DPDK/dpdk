@@ -13,6 +13,8 @@
 
 /* Configure how many packets ahead to prefetch, when reading packets */
 #define PREFETCH_OFFSET	3
+#define BURST_TX_DRAIN_US 100 /* TX drain every ~100us */
+
 enum pkt_type {
 	PKT_TYPE_PLAIN_IPV4 = 1,
 	PKT_TYPE_IPSEC_IPV4,
@@ -42,6 +44,8 @@ struct lcore_conf_ev_tx_int_port_wrkr {
 } __rte_cache_aligned;
 
 void ipsec_poll_mode_worker(void);
+void ipsec_poll_mode_wrkr_inl_pr(void);
+void ipsec_poll_mode_wrkr_inl_pr_ss(void);
 
 int ipsec_launch_one_lcore(void *args);
 

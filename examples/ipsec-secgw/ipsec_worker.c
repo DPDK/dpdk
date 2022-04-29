@@ -17,6 +17,8 @@ struct port_drv_mode_data {
 	struct rte_security_ctx *ctx;
 };
 
+typedef void (*ipsec_worker_fn_t)(void);
+
 static inline enum pkt_type
 process_ipsec_get_pkt_type(struct rte_mbuf *pkt, uint8_t **nlp)
 {
@@ -1033,6 +1035,374 @@ ipsec_eventmode_worker(struct eh_conf *conf)
 	eh_launch_worker(conf, ipsec_wrkr, nb_wrkr_param);
 }
 
+static __rte_always_inline void
+outb_inl_pro_spd_process(struct sp_ctx *sp,
+			 struct sa_ctx *sa_ctx,
+			 struct traffic_type *ip,
+			 struct traffic_type *match,
+			 struct traffic_type *mismatch,
+			 bool match_flag,
+			 struct ipsec_spd_stats *stats)
+{
+	uint32_t prev_sa_idx = UINT32_MAX;
+	struct rte_mbuf *ipsec[MAX_PKT_BURST];
+	struct rte_ipsec_session *ips;
+	uint32_t i, j, j_mis, sa_idx;
+	struct ipsec_sa *sa = NULL;
+	uint32_t ipsec_num = 0;
+	struct rte_mbuf *m;
+	uint64_t satp;
+
+	if (ip->num == 0 || sp == NULL)
+		return;
+
+	rte_acl_classify((struct rte_acl_ctx *)sp, ip->data, ip->res,
+			ip->num, DEFAULT_MAX_CATEGORIES);
+
+	j = match->num;
+	j_mis = mismatch->num;
+
+	for (i = 0; i < ip->num; i++) {
+		m = ip->pkts[i];
+		sa_idx = ip->res[i] - 1;
+
+		if (unlikely(ip->res[i] == DISCARD)) {
+			free_pkts(&m, 1);
+
+			stats->discard++;
+		} else if (unlikely(ip->res[i] == BYPASS)) {
+			match->pkts[j++] = m;
+
+			stats->bypass++;
+		} else {
+			if (prev_sa_idx == UINT32_MAX) {
+				prev_sa_idx = sa_idx;
+				sa = &sa_ctx->sa[sa_idx];
+				ips = ipsec_get_primary_session(sa);
+				satp = rte_ipsec_sa_type(ips->sa);
+			}
+
+			if (sa_idx != prev_sa_idx) {
+				prep_process_group(sa, ipsec, ipsec_num);
+
+				/* Prepare packets for outbound */
+				rte_ipsec_pkt_process(ips, ipsec, ipsec_num);
+
+				/* Copy to current tr or a different tr */
+				if (SATP_OUT_IPV4(satp) == match_flag) {
+					memcpy(&match->pkts[j], ipsec,
+					       ipsec_num * sizeof(void *));
+					j += ipsec_num;
+				} else {
+					memcpy(&mismatch->pkts[j_mis], ipsec,
+					       ipsec_num * sizeof(void *));
+					j_mis += ipsec_num;
+				}
+
+				/* Update to new SA */
+				sa = &sa_ctx->sa[sa_idx];
+				ips = ipsec_get_primary_session(sa);
+				satp = rte_ipsec_sa_type(ips->sa);
+				ipsec_num = 0;
+			}
+
+			ipsec[ipsec_num++] = m;
+			stats->protect++;
+		}
+	}
+
+	if (ipsec_num) {
+		prep_process_group(sa, ipsec, ipsec_num);
+
+		/* Prepare pacekts for outbound */
+		rte_ipsec_pkt_process(ips, ipsec, ipsec_num);
+
+		/* Copy to current tr or a different tr */
+		if (SATP_OUT_IPV4(satp) == match_flag) {
+			memcpy(&match->pkts[j], ipsec,
+			       ipsec_num * sizeof(void *));
+			j += ipsec_num;
+		} else {
+			memcpy(&mismatch->pkts[j_mis], ipsec,
+			       ipsec_num * sizeof(void *));
+			j_mis += ipsec_num;
+		}
+	}
+	match->num = j;
+	mismatch->num = j_mis;
+}
+
+/* Poll mode worker when all SA's are of type inline protocol */
+void
+ipsec_poll_mode_wrkr_inl_pr(void)
+{
+	const uint64_t drain_tsc = (rte_get_tsc_hz() + US_PER_S - 1)
+			/ US_PER_S * BURST_TX_DRAIN_US;
+	struct sp_ctx *sp4_in, *sp6_in, *sp4_out, *sp6_out;
+	struct rte_mbuf *pkts[MAX_PKT_BURST];
+	uint64_t prev_tsc, diff_tsc, cur_tsc;
+	struct ipsec_core_statistics *stats;
+	struct rt_ctx *rt4_ctx, *rt6_ctx;
+	struct sa_ctx *sa_in, *sa_out;
+	struct traffic_type ip4, ip6;
+	struct lcore_rx_queue *rxql;
+	struct rte_mbuf **v4, **v6;
+	struct ipsec_traffic trf;
+	struct lcore_conf *qconf;
+	uint16_t v4_num, v6_num;
+	int32_t socket_id;
+	uint32_t lcore_id;
+	int32_t i, nb_rx;
+	uint16_t portid;
+	uint8_t queueid;
+
+	prev_tsc = 0;
+	lcore_id = rte_lcore_id();
+	qconf = &lcore_conf[lcore_id];
+	rxql = qconf->rx_queue_list;
+	socket_id = rte_lcore_to_socket_id(lcore_id);
+	stats = &core_statistics[lcore_id];
+
+	rt4_ctx = socket_ctx[socket_id].rt_ip4;
+	rt6_ctx = socket_ctx[socket_id].rt_ip6;
+
+	sp4_in = socket_ctx[socket_id].sp_ip4_in;
+	sp6_in = socket_ctx[socket_id].sp_ip6_in;
+	sa_in = socket_ctx[socket_id].sa_in;
+
+	sp4_out = socket_ctx[socket_id].sp_ip4_out;
+	sp6_out = socket_ctx[socket_id].sp_ip6_out;
+	sa_out = socket_ctx[socket_id].sa_out;
+
+	qconf->frag.pool_indir = socket_ctx[socket_id].mbuf_pool_indir;
+
+	if (qconf->nb_rx_queue == 0) {
+		RTE_LOG(DEBUG, IPSEC, "lcore %u has nothing to do\n",
+			lcore_id);
+		return;
+	}
+
+	RTE_LOG(INFO, IPSEC, "entering main loop on lcore %u\n", lcore_id);
+
+	for (i = 0; i < qconf->nb_rx_queue; i++) {
+		portid = rxql[i].port_id;
+		queueid = rxql[i].queue_id;
+		RTE_LOG(INFO, IPSEC,
+			" -- lcoreid=%u portid=%u rxqueueid=%hhu\n",
+			lcore_id, portid, queueid);
+	}
+
+	while (!force_quit) {
+		cur_tsc = rte_rdtsc();
+
+		/* TX queue buffer drain */
+		diff_tsc = cur_tsc - prev_tsc;
+
+		if (unlikely(diff_tsc > drain_tsc)) {
+			drain_tx_buffers(qconf);
+			prev_tsc = cur_tsc;
+		}
+
+		for (i = 0; i < qconf->nb_rx_queue; ++i) {
+			/* Read packets from RX queues */
+			portid = rxql[i].port_id;
+			queueid = rxql[i].queue_id;
+			nb_rx = rte_eth_rx_burst(portid, queueid,
+					pkts, MAX_PKT_BURST);
+
+			if (nb_rx <= 0)
+				continue;
+
+			core_stats_update_rx(nb_rx);
+
+			prepare_traffic(rxql[i].sec_ctx, pkts, &trf, nb_rx);
+
+			/* Drop any IPsec traffic */
+			free_pkts(trf.ipsec.pkts, trf.ipsec.num);
+
+			if (is_unprotected_port(portid)) {
+				inbound_sp_sa(sp4_in, sa_in, &trf.ip4,
+					      trf.ip4.num,
+					      &stats->inbound.spd4);
+
+				inbound_sp_sa(sp6_in, sa_in, &trf.ip6,
+					      trf.ip6.num,
+					      &stats->inbound.spd6);
+
+				v4 = trf.ip4.pkts;
+				v4_num = trf.ip4.num;
+				v6 = trf.ip6.pkts;
+				v6_num = trf.ip6.num;
+			} else {
+				ip4.num = 0;
+				ip6.num = 0;
+
+				outb_inl_pro_spd_process(sp4_out, sa_out,
+							 &trf.ip4, &ip4, &ip6,
+							 true,
+							 &stats->outbound.spd4);
+
+				outb_inl_pro_spd_process(sp6_out, sa_out,
+							 &trf.ip6, &ip6, &ip4,
+							 false,
+							 &stats->outbound.spd6);
+				v4 = ip4.pkts;
+				v4_num = ip4.num;
+				v6 = ip6.pkts;
+				v6_num = ip6.num;
+			}
+
+			route4_pkts(rt4_ctx, v4, v4_num, 0, false);
+			route6_pkts(rt6_ctx, v6, v6_num);
+		}
+	}
+}
+
+/* Poll mode worker when all SA's are of type inline protocol
+ * and single sa mode is enabled.
+ */
+void
+ipsec_poll_mode_wrkr_inl_pr_ss(void)
+{
+	const uint64_t drain_tsc = (rte_get_tsc_hz() + US_PER_S - 1)
+			/ US_PER_S * BURST_TX_DRAIN_US;
+	uint16_t sa_out_portid = 0, sa_out_proto = 0;
+	struct rte_mbuf *pkts[MAX_PKT_BURST], *pkt;
+	uint64_t prev_tsc, diff_tsc, cur_tsc;
+	struct rte_ipsec_session *ips = NULL;
+	struct lcore_rx_queue *rxql;
+	struct ipsec_sa *sa = NULL;
+	struct lcore_conf *qconf;
+	struct sa_ctx *sa_out;
+	uint32_t i, nb_rx, j;
+	int32_t socket_id;
+	uint32_t lcore_id;
+	uint16_t portid;
+	uint8_t queueid;
+
+	prev_tsc = 0;
+	lcore_id = rte_lcore_id();
+	qconf = &lcore_conf[lcore_id];
+	rxql = qconf->rx_queue_list;
+	socket_id = rte_lcore_to_socket_id(lcore_id);
+
+	/* Get SA info */
+	sa_out = socket_ctx[socket_id].sa_out;
+	if (sa_out && single_sa_idx < sa_out->nb_sa) {
+		sa = &sa_out->sa[single_sa_idx];
+		ips = ipsec_get_primary_session(sa);
+		sa_out_portid = sa->portid;
+		if (sa->flags & IP6_TUNNEL)
+			sa_out_proto = IPPROTO_IPV6;
+		else
+			sa_out_proto = IPPROTO_IP;
+	}
+
+	qconf->frag.pool_indir = socket_ctx[socket_id].mbuf_pool_indir;
+
+	if (qconf->nb_rx_queue == 0) {
+		RTE_LOG(DEBUG, IPSEC, "lcore %u has nothing to do\n",
+			lcore_id);
+		return;
+	}
+
+	RTE_LOG(INFO, IPSEC, "entering main loop on lcore %u\n", lcore_id);
+
+	for (i = 0; i < qconf->nb_rx_queue; i++) {
+		portid = rxql[i].port_id;
+		queueid = rxql[i].queue_id;
+		RTE_LOG(INFO, IPSEC,
+			" -- lcoreid=%u portid=%u rxqueueid=%hhu\n",
+			lcore_id, portid, queueid);
+	}
+
+	while (!force_quit) {
+		cur_tsc = rte_rdtsc();
+
+		/* TX queue buffer drain */
+		diff_tsc = cur_tsc - prev_tsc;
+
+		if (unlikely(diff_tsc > drain_tsc)) {
+			drain_tx_buffers(qconf);
+			prev_tsc = cur_tsc;
+		}
+
+		for (i = 0; i < qconf->nb_rx_queue; ++i) {
+			/* Read packets from RX queues */
+			portid = rxql[i].port_id;
+			queueid = rxql[i].queue_id;
+			nb_rx = rte_eth_rx_burst(portid, queueid,
+						 pkts, MAX_PKT_BURST);
+
+			if (nb_rx <= 0)
+				continue;
+
+			core_stats_update_rx(nb_rx);
+
+			if (is_unprotected_port(portid)) {
+				/* Nothing much to do for inbound inline
+				 * decrypted traffic.
+				 */
+				for (j = 0; j < nb_rx; j++) {
+					uint32_t ptype, proto;
+
+					pkt = pkts[j];
+					ptype = pkt->packet_type &
+						RTE_PTYPE_L3_MASK;
+					if (ptype == RTE_PTYPE_L3_IPV4)
+						proto = IPPROTO_IP;
+					else
+						proto = IPPROTO_IPV6;
+
+					send_single_packet(pkt, portid, proto);
+				}
+
+				continue;
+			}
+
+			/* Free packets if there are no outbound sessions */
+			if (unlikely(!ips)) {
+				rte_pktmbuf_free_bulk(pkts, nb_rx);
+				continue;
+			}
+
+			rte_ipsec_pkt_process(ips, pkts, nb_rx);
+
+			/* Send pkts out */
+			for (j = 0; j < nb_rx; j++) {
+				pkt = pkts[j];
+
+				pkt->l2_len = RTE_ETHER_HDR_LEN;
+				send_single_packet(pkt, sa_out_portid,
+						   sa_out_proto);
+			}
+		}
+	}
+}
+
+static void
+ipsec_poll_mode_wrkr_launch(void)
+{
+	static ipsec_worker_fn_t poll_mode_wrkrs[MAX_F] = {
+		[INL_PR_F]        = ipsec_poll_mode_wrkr_inl_pr,
+		[INL_PR_F | SS_F] = ipsec_poll_mode_wrkr_inl_pr_ss,
+	};
+	ipsec_worker_fn_t fn;
+
+	if (!app_sa_prm.enable) {
+		fn = ipsec_poll_mode_worker;
+	} else {
+		fn = poll_mode_wrkrs[wrkr_flags];
+
+		/* Always default to all mode worker */
+		if (!fn)
+			fn = ipsec_poll_mode_worker;
+	}
+
+	/* Launch worker */
+	(*fn)();
+}
+
 int ipsec_launch_one_lcore(void *args)
 {
 	struct eh_conf *conf;
@@ -1041,7 +1411,7 @@ int ipsec_launch_one_lcore(void *args)
 
 	if (conf->mode == EH_PKT_TRANSFER_MODE_POLL) {
 		/* Run in poll mode */
-		ipsec_poll_mode_worker();
+		ipsec_poll_mode_wrkr_launch();
 	} else if (conf->mode == EH_PKT_TRANSFER_MODE_EVENT) {
 		/* Run in event mode */
 		ipsec_eventmode_worker(conf);

@@ -936,6 +936,15 @@ parse_sa_tokens(char **tokens, uint32_t n_tokens,
 		ips->type = RTE_SECURITY_ACTION_TYPE_NONE;
 	}
 
+	if (ips->type == RTE_SECURITY_ACTION_TYPE_INLINE_CRYPTO)
+		wrkr_flags |= INL_CR_F;
+	else if (ips->type == RTE_SECURITY_ACTION_TYPE_INLINE_PROTOCOL)
+		wrkr_flags |= INL_PR_F;
+	else if (ips->type == RTE_SECURITY_ACTION_TYPE_LOOKASIDE_PROTOCOL)
+		wrkr_flags |= LA_PR_F;
+	else
+		wrkr_flags |= LA_ANY_F;
+
 	nb_crypto_sessions++;
 	*ri = *ri + 1;
 }

@@ -68,8 +68,6 @@ volatile bool force_quit;
 #define CDEV_MP_CACHE_MULTIPLIER 1.5 /* from rte_mempool.c */
 #define MAX_QUEUE_PAIRS 1
 
-#define BURST_TX_DRAIN_US 100 /* TX drain every ~100us */
-
 #define MAX_LCORE_PARAMS 1024
 
 /*
@@ -173,7 +171,7 @@ static uint64_t enabled_cryptodev_mask = UINT64_MAX;
 static int32_t promiscuous_on = 1;
 static int32_t numa_on = 1; /**< NUMA is enabled by default. */
 static uint32_t nb_lcores;
-static uint32_t single_sa;
+uint32_t single_sa;
 uint32_t nb_bufs_in_pool;
 
 /*
@@ -238,6 +236,7 @@ struct socket_ctx socket_ctx[NB_SOCKETS];
 
 bool per_port_pool;
 
+uint16_t wrkr_flags;
 /*
  * Determine is multi-segment support required:
  *  - either frame buffer size is smaller then mtu
@@ -1233,6 +1232,7 @@ parse_args(int32_t argc, char **argv, struct eh_conf *eh_conf)
 			single_sa = 1;
 			single_sa_idx = ret;
 			eh_conf->ipsec_mode = EH_IPSEC_MODE_TYPE_DRIVER;
+			wrkr_flags |= SS_F;
 			printf("Configured with single SA index %u\n",
 					single_sa_idx);
 			break;
