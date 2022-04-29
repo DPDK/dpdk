@@ -14,7 +14,7 @@
 #include "ice_dcf.h"
 
 #define ICE_DCF_MAX_RINGS  1
-
+#define DCF_NUM_MACADDR_MAX	64
 #define ICE_DCF_FRAME_SIZE_MAX       9728
 #define ICE_DCF_VLAN_TAG_SIZE               4
 #define ICE_DCF_ETH_OVERHEAD \
@@ -35,7 +35,8 @@ struct ice_dcf_adapter {
 
 	bool promisc_unicast_enabled;
 	bool promisc_multicast_enabled;
-
+	uint32_t mc_addrs_num;
+	struct rte_ether_addr mc_addrs[DCF_NUM_MACADDR_MAX];
 	int num_reprs;
 	struct ice_dcf_repr_info *repr_infos;
 };

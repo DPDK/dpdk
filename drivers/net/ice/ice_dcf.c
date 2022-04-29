@@ -1089,10 +1089,11 @@ ice_dcf_query_stats(struct ice_dcf_hw *hw,
 }
 
 int
-ice_dcf_add_del_all_mac_addr(struct ice_dcf_hw *hw, bool add)
+ice_dcf_add_del_all_mac_addr(struct ice_dcf_hw *hw,
+			     struct rte_ether_addr *addr,
+			     bool add, uint8_t type)
 {
 	struct virtchnl_ether_addr_list *list;
-	struct rte_ether_addr *addr;
 	struct dcf_virtchnl_cmd args;
 	int len, err = 0;
 
@@ -1105,7 +1106,6 @@ ice_dcf_add_del_all_mac_addr(struct ice_dcf_hw *hw, bool add)
 	}
 
 	len = sizeof(struct virtchnl_ether_addr_list);
-	addr = hw->eth_dev->data->mac_addrs;
 	len += sizeof(struct virtchnl_ether_addr);
 
 	list = rte_zmalloc(NULL, len, 0);
@@ -1116,9 +1116,10 @@ ice_dcf_add_del_all_mac_addr(struct ice_dcf_hw *hw, bool add)
 
 	rte_memcpy(list->list[0].addr, addr->addr_bytes,
 			sizeof(addr->addr_bytes));
+
 	PMD_DRV_LOG(DEBUG, "add/rm mac:" RTE_ETHER_ADDR_PRT_FMT,
 			    RTE_ETHER_ADDR_BYTES(addr));
-
+	list->list[0].type = type;
 	list->vsi_id = hw->vsi_res->vsi_id;
 	list->num_elements = 1;
 

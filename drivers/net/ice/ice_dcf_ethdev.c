@@ -26,6 +26,12 @@
 #include "ice_dcf_ethdev.h"
 #include "ice_rxtx.h"
 
+#define DCF_NUM_MACADDR_MAX      64
+
+static int dcf_add_del_mc_addr_list(struct ice_dcf_hw *hw,
+						struct rte_ether_addr *mc_addrs,
+						uint32_t mc_addrs_num, bool add);
+
 static int
 ice_dcf_dev_udp_tunnel_port_add(struct rte_eth_dev *dev,
 				struct rte_eth_udp_tunnel *udp_tunnel);
@@ -561,11 +567,21 @@ ice_dcf_dev_start(struct rte_eth_dev *dev)
 		return ret;
 	}
 
-	ret = ice_dcf_add_del_all_mac_addr(hw, true);
+	ret = ice_dcf_add_del_all_mac_addr(hw, hw->eth_dev->data->mac_addrs,
+					   true, VIRTCHNL_ETHER_ADDR_PRIMARY);
 	if (ret) {
 		PMD_DRV_LOG(ERR, "Failed to add mac addr");
 		return ret;
 	}
+
+	if (dcf_ad->mc_addrs_num) {
+		/* flush previous addresses */
+		ret = dcf_add_del_mc_addr_list(hw, dcf_ad->mc_addrs,
+						dcf_ad->mc_addrs_num, true);
+		if (ret)
+			return ret;
+	}
+
 
 	dev->data->dev_link.link_status = RTE_ETH_LINK_UP;
 
@@ -625,7 +641,16 @@ ice_dcf_dev_stop(struct rte_eth_dev *dev)
 	rte_intr_efd_disable(intr_handle);
 	rte_intr_vec_list_free(intr_handle);
 
-	ice_dcf_add_del_all_mac_addr(&dcf_ad->real_hw, false);
+	ice_dcf_add_del_all_mac_addr(&dcf_ad->real_hw,
+				     dcf_ad->real_hw.eth_dev->data->mac_addrs,
+				     false, VIRTCHNL_ETHER_ADDR_PRIMARY);
+
+	if (dcf_ad->mc_addrs_num)
+		/* flush previous addresses */
+		(void)dcf_add_del_mc_addr_list(&dcf_ad->real_hw,
+										dcf_ad->mc_addrs,
+							dcf_ad->mc_addrs_num, false);
+
 	dev->data->dev_link.link_status = RTE_ETH_LINK_DOWN;
 	ad->pf.adapter_stopped = 1;
 	hw->tm_conf.committed = false;
@@ -655,7 +680,7 @@ ice_dcf_dev_info_get(struct rte_eth_dev *dev,
 	struct ice_dcf_adapter *adapter = dev->data->dev_private;
 	struct ice_dcf_hw *hw = &adapter->real_hw;
 
-	dev_info->max_mac_addrs = 1;
+	dev_info->max_mac_addrs = DCF_NUM_MACADDR_MAX;
 	dev_info->max_rx_queues = hw->vsi_res->num_queue_pairs;
 	dev_info->max_tx_queues = hw->vsi_res->num_queue_pairs;
 	dev_info->min_rx_bufsize = ICE_BUF_SIZE_MIN;
@@ -816,6 +841,189 @@ ice_dcf_dev_allmulticast_disable(__rte_unused struct rte_eth_dev *dev)
 
 	return dcf_config_promisc(adapter, adapter->promisc_unicast_enabled,
 				  false);
+}
+
+static int
+dcf_dev_add_mac_addr(struct rte_eth_dev *dev, struct rte_ether_addr *addr,
+		     __rte_unused uint32_t index,
+		     __rte_unused uint32_t pool)
+{
+	struct ice_dcf_adapter *adapter = dev->data->dev_private;
+	int err;
+
+	if (rte_is_zero_ether_addr(addr)) {
+		PMD_DRV_LOG(ERR, "Invalid Ethernet Address");
+		return -EINVAL;
+	}
+
+	err = ice_dcf_add_del_all_mac_addr(&adapter->real_hw, addr, true,
+					   VIRTCHNL_ETHER_ADDR_EXTRA);
+	if (err) {
+		PMD_DRV_LOG(ERR, "fail to add MAC address");
+		return err;
+	}
+
+	return 0;
+}
+
+static void
+dcf_dev_del_mac_addr(struct rte_eth_dev *dev, uint32_t index)
+{
+	struct ice_dcf_adapter *adapter = dev->data->dev_private;
+	struct rte_ether_addr *addr = &dev->data->mac_addrs[index];
+	int err;
+
+	err = ice_dcf_add_del_all_mac_addr(&adapter->real_hw, addr, false,
+					   VIRTCHNL_ETHER_ADDR_EXTRA);
+	if (err)
+		PMD_DRV_LOG(ERR, "fail to remove MAC address");
+}
+
+static int
+dcf_add_del_mc_addr_list(struct ice_dcf_hw *hw,
+			 struct rte_ether_addr *mc_addrs,
+			 uint32_t mc_addrs_num, bool add)
+{
+	struct virtchnl_ether_addr_list *list;
+	struct dcf_virtchnl_cmd args;
+	uint32_t i;
+	int len, err = 0;
+
+	len = sizeof(struct virtchnl_ether_addr_list);
+	len += sizeof(struct virtchnl_ether_addr) * mc_addrs_num;
+
+	list = rte_zmalloc(NULL, len, 0);
+	if (!list) {
+		PMD_DRV_LOG(ERR, "fail to allocate memory");
+		return -ENOMEM;
+	}
+
+	for (i = 0; i < mc_addrs_num; i++) {
+		memcpy(list->list[i].addr, mc_addrs[i].addr_bytes,
+		       sizeof(list->list[i].addr));
+		list->list[i].type = VIRTCHNL_ETHER_ADDR_EXTRA;
+	}
+
+	list->vsi_id = hw->vsi_res->vsi_id;
+	list->num_elements = mc_addrs_num;
+
+	memset(&args, 0, sizeof(args));
+	args.v_op = add ? VIRTCHNL_OP_ADD_ETH_ADDR :
+			VIRTCHNL_OP_DEL_ETH_ADDR;
+	args.req_msg = (uint8_t *)list;
+	args.req_msglen  = len;
+	err = ice_dcf_execute_virtchnl_cmd(hw, &args);
+	if (err)
+		PMD_DRV_LOG(ERR, "fail to execute command %s",
+			    add ? "OP_ADD_ETHER_ADDRESS" :
+			    "OP_DEL_ETHER_ADDRESS");
+	rte_free(list);
+	return err;
+}
+
+static int
+dcf_set_mc_addr_list(struct rte_eth_dev *dev,
+		     struct rte_ether_addr *mc_addrs,
+		     uint32_t mc_addrs_num)
+{
+	struct ice_dcf_adapter *adapter = dev->data->dev_private;
+	struct ice_dcf_hw *hw = &adapter->real_hw;
+	uint32_t i;
+	int ret;
+
+
+	if (mc_addrs_num > DCF_NUM_MACADDR_MAX) {
+		PMD_DRV_LOG(ERR,
+			    "can't add more than a limited number (%u) of addresses.",
+			    (uint32_t)DCF_NUM_MACADDR_MAX);
+		return -EINVAL;
+	}
+
+	for (i = 0; i < mc_addrs_num; i++) {
+		if (!rte_is_multicast_ether_addr(&mc_addrs[i])) {
+			const uint8_t *mac = mc_addrs[i].addr_bytes;
+
+			PMD_DRV_LOG(ERR,
+				    "Invalid mac: %02x:%02x:%02x:%02x:%02x:%02x",
+				    mac[0], mac[1], mac[2], mac[3], mac[4],
+				    mac[5]);
+			return -EINVAL;
+		}
+	}
+
+	if (adapter->mc_addrs_num) {
+		/* flush previous addresses */
+		ret = dcf_add_del_mc_addr_list(hw, adapter->mc_addrs,
+							adapter->mc_addrs_num, false);
+		if (ret)
+			return ret;
+	}
+	if (!mc_addrs_num) {
+		adapter->mc_addrs_num = 0;
+		return 0;
+	}
+
+    /* add new ones */
+	ret = dcf_add_del_mc_addr_list(hw, mc_addrs, mc_addrs_num, true);
+	if (ret) {
+		/* if adding mac address list fails, should add the
+		 * previous addresses back.
+		 */
+		if (adapter->mc_addrs_num)
+			(void)dcf_add_del_mc_addr_list(hw, adapter->mc_addrs,
+						       adapter->mc_addrs_num,
+						       true);
+		return ret;
+	}
+	adapter->mc_addrs_num = mc_addrs_num;
+	memcpy(adapter->mc_addrs,
+		    mc_addrs, mc_addrs_num * sizeof(*mc_addrs));
+
+	return 0;
+}
+
+static int
+dcf_dev_set_default_mac_addr(struct rte_eth_dev *dev,
+			     struct rte_ether_addr *mac_addr)
+{
+	struct ice_dcf_adapter *adapter = dev->data->dev_private;
+	struct ice_dcf_hw *hw = &adapter->real_hw;
+	struct rte_ether_addr *old_addr;
+	int ret;
+
+	old_addr = hw->eth_dev->data->mac_addrs;
+	if (rte_is_same_ether_addr(old_addr, mac_addr))
+		return 0;
+
+	ret = ice_dcf_add_del_all_mac_addr(&adapter->real_hw, old_addr, false,
+					   VIRTCHNL_ETHER_ADDR_PRIMARY);
+	if (ret)
+		PMD_DRV_LOG(ERR, "Fail to delete old MAC:"
+			    " %02X:%02X:%02X:%02X:%02X:%02X",
+			    old_addr->addr_bytes[0],
+			    old_addr->addr_bytes[1],
+			    old_addr->addr_bytes[2],
+			    old_addr->addr_bytes[3],
+			    old_addr->addr_bytes[4],
+			    old_addr->addr_bytes[5]);
+
+	ret = ice_dcf_add_del_all_mac_addr(&adapter->real_hw, mac_addr, true,
+					   VIRTCHNL_ETHER_ADDR_PRIMARY);
+	if (ret)
+		PMD_DRV_LOG(ERR, "Fail to add new MAC:"
+			    " %02X:%02X:%02X:%02X:%02X:%02X",
+			    mac_addr->addr_bytes[0],
+			    mac_addr->addr_bytes[1],
+			    mac_addr->addr_bytes[2],
+			    mac_addr->addr_bytes[3],
+			    mac_addr->addr_bytes[4],
+			    mac_addr->addr_bytes[5]);
+
+	if (ret)
+		return -EIO;
+
+	rte_ether_addr_copy(mac_addr, hw->eth_dev->data->mac_addrs);
+	return 0;
 }
 
 static int
@@ -1326,6 +1534,10 @@ static const struct eth_dev_ops ice_dcf_eth_dev_ops = {
 	.promiscuous_disable      = ice_dcf_dev_promiscuous_disable,
 	.allmulticast_enable      = ice_dcf_dev_allmulticast_enable,
 	.allmulticast_disable     = ice_dcf_dev_allmulticast_disable,
+	.mac_addr_add             = dcf_dev_add_mac_addr,
+	.mac_addr_remove          = dcf_dev_del_mac_addr,
+	.set_mc_addr_list         = dcf_set_mc_addr_list,
+	.mac_addr_set             = dcf_dev_set_default_mac_addr,
 	.flow_ops_get             = ice_dcf_dev_flow_ops_get,
 	.udp_tunnel_port_add	  = ice_dcf_dev_udp_tunnel_port_add,
 	.udp_tunnel_port_del	  = ice_dcf_dev_udp_tunnel_port_del,

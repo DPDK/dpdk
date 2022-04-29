@@ -131,7 +131,9 @@ int ice_dcf_switch_queue(struct ice_dcf_hw *hw, uint16_t qid, bool rx, bool on);
 int ice_dcf_disable_queues(struct ice_dcf_hw *hw);
 int ice_dcf_query_stats(struct ice_dcf_hw *hw,
 			struct virtchnl_eth_stats *pstats);
-int ice_dcf_add_del_all_mac_addr(struct ice_dcf_hw *hw, bool add);
+int ice_dcf_add_del_all_mac_addr(struct ice_dcf_hw *hw,
+				 struct rte_ether_addr *addr, bool add,
+				 uint8_t type);
 int ice_dcf_link_update(struct rte_eth_dev *dev,
 		    __rte_unused int wait_to_complete);
 void ice_dcf_tm_conf_init(struct rte_eth_dev *dev);
