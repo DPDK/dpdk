@@ -15,6 +15,12 @@
 #include "base/ice_type.h"
 #include "ice_logs.h"
 
+/* ICE_DCF_DEV_PRIVATE_TO */
+#define ICE_DCF_DEV_PRIVATE_TO_ADAPTER(adapter) \
+	((struct ice_dcf_adapter *)adapter)
+#define ICE_DCF_DEV_PRIVATE_TO_VF(adapter) \
+	(&((struct ice_dcf_adapter *)adapter)->vf)
+
 struct dcf_virtchnl_cmd {
 	TAILQ_ENTRY(dcf_virtchnl_cmd) next;
 
@@ -74,6 +80,22 @@ struct ice_dcf_tm_conf {
 	bool committed;
 };
 
+struct ice_dcf_eth_stats {
+	u64 rx_bytes;			/* gorc */
+	u64 rx_unicast;			/* uprc */
+	u64 rx_multicast;		/* mprc */
+	u64 rx_broadcast;		/* bprc */
+	u64 rx_discards;		/* rdpc */
+	u64 rx_unknown_protocol;	/* rupp */
+	u64 tx_bytes;			/* gotc */
+	u64 tx_unicast;			/* uptc */
+	u64 tx_multicast;		/* mptc */
+	u64 tx_broadcast;		/* bptc */
+	u64 tx_discards;		/* tdpc */
+	u64 tx_errors;			/* tepc */
+	u64 rx_no_desc;			/* repc */
+	u64 rx_errors;			/* repc */
+};
 struct ice_dcf_hw {
 	struct iavf_hw avf;
 

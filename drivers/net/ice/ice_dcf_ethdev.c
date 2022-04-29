@@ -45,6 +45,30 @@ ice_dcf_dev_init(struct rte_eth_dev *eth_dev);
 static int
 ice_dcf_dev_uninit(struct rte_eth_dev *eth_dev);
 
+struct rte_ice_dcf_xstats_name_off {
+	char name[RTE_ETH_XSTATS_NAME_SIZE];
+	unsigned int offset;
+};
+
+static const struct rte_ice_dcf_xstats_name_off rte_ice_dcf_stats_strings[] = {
+	{"rx_bytes", offsetof(struct ice_dcf_eth_stats, rx_bytes)},
+	{"rx_unicast_packets", offsetof(struct ice_dcf_eth_stats, rx_unicast)},
+	{"rx_multicast_packets", offsetof(struct ice_dcf_eth_stats, rx_multicast)},
+	{"rx_broadcast_packets", offsetof(struct ice_dcf_eth_stats, rx_broadcast)},
+	{"rx_dropped_packets", offsetof(struct ice_dcf_eth_stats, rx_discards)},
+	{"rx_unknown_protocol_packets", offsetof(struct ice_dcf_eth_stats,
+		rx_unknown_protocol)},
+	{"tx_bytes", offsetof(struct ice_dcf_eth_stats, tx_bytes)},
+	{"tx_unicast_packets", offsetof(struct ice_dcf_eth_stats, tx_unicast)},
+	{"tx_multicast_packets", offsetof(struct ice_dcf_eth_stats, tx_multicast)},
+	{"tx_broadcast_packets", offsetof(struct ice_dcf_eth_stats, tx_broadcast)},
+	{"tx_dropped_packets", offsetof(struct ice_dcf_eth_stats, tx_discards)},
+	{"tx_error_packets", offsetof(struct ice_dcf_eth_stats, tx_errors)},
+};
+
+#define ICE_DCF_NB_XSTATS (sizeof(rte_ice_dcf_stats_strings) / \
+		sizeof(rte_ice_dcf_stats_strings[0]))
+
 static uint16_t
 ice_dcf_recv_pkts(__rte_unused void *rx_queue,
 		  __rte_unused struct rte_mbuf **bufs,
@@ -1358,6 +1382,54 @@ ice_dcf_stats_reset(struct rte_eth_dev *dev)
 	return 0;
 }
 
+static int ice_dcf_xstats_get_names(__rte_unused struct rte_eth_dev *dev,
+				      struct rte_eth_xstat_name *xstats_names,
+				      __rte_unused unsigned int limit)
+{
+	unsigned int i;
+
+	if (xstats_names != NULL)
+		for (i = 0; i < ICE_DCF_NB_XSTATS; i++) {
+			snprintf(xstats_names[i].name,
+				sizeof(xstats_names[i].name),
+				"%s", rte_ice_dcf_stats_strings[i].name);
+		}
+	return ICE_DCF_NB_XSTATS;
+}
+
+static int ice_dcf_xstats_get(struct rte_eth_dev *dev,
+				 struct rte_eth_xstat *xstats, unsigned int n)
+{
+	int ret;
+	unsigned int i;
+	struct ice_dcf_adapter *adapter =
+		ICE_DCF_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
+	struct ice_dcf_hw *hw = &adapter->real_hw;
+	struct virtchnl_eth_stats *postats = &hw->eth_stats_offset;
+	struct virtchnl_eth_stats pnstats;
+
+	if (n < ICE_DCF_NB_XSTATS)
+		return ICE_DCF_NB_XSTATS;
+
+	ret = ice_dcf_query_stats(hw, &pnstats);
+	if (ret != 0)
+		return 0;
+
+	if (!xstats)
+		return 0;
+
+	ice_dcf_update_stats(postats, &pnstats);
+
+	/* loop over xstats array and values from pstats */
+	for (i = 0; i < ICE_DCF_NB_XSTATS; i++) {
+		xstats[i].id = i;
+		xstats[i].value = *(uint64_t *)(((char *)&pnstats) +
+			rte_ice_dcf_stats_strings[i].offset);
+	}
+
+	return ICE_DCF_NB_XSTATS;
+}
+
 static void
 ice_dcf_free_repr_info(struct ice_dcf_adapter *dcf_adapter)
 {
@@ -1629,6 +1701,9 @@ static const struct eth_dev_ops ice_dcf_eth_dev_ops = {
 	.link_update              = ice_dcf_link_update,
 	.stats_get                = ice_dcf_stats_get,
 	.stats_reset              = ice_dcf_stats_reset,
+	.xstats_get               = ice_dcf_xstats_get,
+	.xstats_get_names         = ice_dcf_xstats_get_names,
+	.xstats_reset             = ice_dcf_stats_reset,
 	.promiscuous_enable       = ice_dcf_dev_promiscuous_enable,
 	.promiscuous_disable      = ice_dcf_dev_promiscuous_disable,
 	.allmulticast_enable      = ice_dcf_dev_allmulticast_enable,
