@@ -1235,6 +1235,7 @@ static const struct eth_dev_ops ice_dcf_eth_dev_ops = {
 	.reta_query              = ice_dcf_dev_rss_reta_query,
 	.rss_hash_update         = ice_dcf_dev_rss_hash_update,
 	.rss_hash_conf_get       = ice_dcf_dev_rss_hash_conf_get,
+	.tx_done_cleanup         = ice_tx_done_cleanup,
 };
 
 static int
