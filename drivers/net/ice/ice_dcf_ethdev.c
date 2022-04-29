@@ -1218,38 +1218,56 @@ ice_dcf_dev_reset(struct rte_eth_dev *dev)
 	return ret;
 }
 
+static const uint32_t *
+ice_dcf_dev_supported_ptypes_get(struct rte_eth_dev *dev __rte_unused)
+{
+	static const uint32_t ptypes[] = {
+		RTE_PTYPE_L2_ETHER,
+		RTE_PTYPE_L3_IPV4_EXT_UNKNOWN,
+		RTE_PTYPE_L4_FRAG,
+		RTE_PTYPE_L4_ICMP,
+		RTE_PTYPE_L4_NONFRAG,
+		RTE_PTYPE_L4_SCTP,
+		RTE_PTYPE_L4_TCP,
+		RTE_PTYPE_L4_UDP,
+		RTE_PTYPE_UNKNOWN
+	};
+	return ptypes;
+}
+
 static const struct eth_dev_ops ice_dcf_eth_dev_ops = {
-	.dev_start               = ice_dcf_dev_start,
-	.dev_stop                = ice_dcf_dev_stop,
-	.dev_close               = ice_dcf_dev_close,
-	.dev_reset               = ice_dcf_dev_reset,
-	.dev_configure           = ice_dcf_dev_configure,
-	.dev_infos_get           = ice_dcf_dev_info_get,
-	.rx_queue_setup          = ice_rx_queue_setup,
-	.tx_queue_setup          = ice_tx_queue_setup,
-	.rx_queue_release        = ice_dev_rx_queue_release,
-	.tx_queue_release        = ice_dev_tx_queue_release,
-	.rx_queue_start          = ice_dcf_rx_queue_start,
-	.tx_queue_start          = ice_dcf_tx_queue_start,
-	.rx_queue_stop           = ice_dcf_rx_queue_stop,
-	.tx_queue_stop           = ice_dcf_tx_queue_stop,
-	.link_update             = ice_dcf_link_update,
-	.stats_get               = ice_dcf_stats_get,
-	.stats_reset             = ice_dcf_stats_reset,
-	.promiscuous_enable      = ice_dcf_dev_promiscuous_enable,
-	.promiscuous_disable     = ice_dcf_dev_promiscuous_disable,
-	.allmulticast_enable     = ice_dcf_dev_allmulticast_enable,
-	.allmulticast_disable    = ice_dcf_dev_allmulticast_disable,
-	.flow_ops_get            = ice_dcf_dev_flow_ops_get,
-	.udp_tunnel_port_add	 = ice_dcf_dev_udp_tunnel_port_add,
-	.udp_tunnel_port_del	 = ice_dcf_dev_udp_tunnel_port_del,
-	.tm_ops_get              = ice_dcf_tm_ops_get,
-	.reta_update             = ice_dcf_dev_rss_reta_update,
-	.reta_query              = ice_dcf_dev_rss_reta_query,
-	.rss_hash_update         = ice_dcf_dev_rss_hash_update,
-	.rss_hash_conf_get       = ice_dcf_dev_rss_hash_conf_get,
-	.tx_done_cleanup         = ice_tx_done_cleanup,
-	.mtu_set                 = ice_dcf_dev_mtu_set,
+	.dev_start                = ice_dcf_dev_start,
+	.dev_stop                 = ice_dcf_dev_stop,
+	.dev_close                = ice_dcf_dev_close,
+	.dev_reset                = ice_dcf_dev_reset,
+	.dev_configure            = ice_dcf_dev_configure,
+	.dev_infos_get            = ice_dcf_dev_info_get,
+	.dev_supported_ptypes_get = ice_dcf_dev_supported_ptypes_get,
+	.rx_queue_setup           = ice_rx_queue_setup,
+	.tx_queue_setup           = ice_tx_queue_setup,
+	.rx_queue_release         = ice_dev_rx_queue_release,
+	.tx_queue_release         = ice_dev_tx_queue_release,
+	.rx_queue_start           = ice_dcf_rx_queue_start,
+	.tx_queue_start           = ice_dcf_tx_queue_start,
+	.rx_queue_stop            = ice_dcf_rx_queue_stop,
+	.tx_queue_stop            = ice_dcf_tx_queue_stop,
+	.link_update              = ice_dcf_link_update,
+	.stats_get                = ice_dcf_stats_get,
+	.stats_reset              = ice_dcf_stats_reset,
+	.promiscuous_enable       = ice_dcf_dev_promiscuous_enable,
+	.promiscuous_disable      = ice_dcf_dev_promiscuous_disable,
+	.allmulticast_enable      = ice_dcf_dev_allmulticast_enable,
+	.allmulticast_disable     = ice_dcf_dev_allmulticast_disable,
+	.flow_ops_get             = ice_dcf_dev_flow_ops_get,
+	.udp_tunnel_port_add	  = ice_dcf_dev_udp_tunnel_port_add,
+	.udp_tunnel_port_del	  = ice_dcf_dev_udp_tunnel_port_del,
+	.tm_ops_get               = ice_dcf_tm_ops_get,
+	.reta_update              = ice_dcf_dev_rss_reta_update,
+	.reta_query               = ice_dcf_dev_rss_reta_query,
+	.rss_hash_update          = ice_dcf_dev_rss_hash_update,
+	.rss_hash_conf_get        = ice_dcf_dev_rss_hash_conf_get,
+	.tx_done_cleanup          = ice_tx_done_cleanup,
+	.mtu_set                  = ice_dcf_dev_mtu_set,
 };
 
 static int
