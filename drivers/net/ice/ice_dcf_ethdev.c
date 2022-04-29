@@ -1700,6 +1700,7 @@ static const struct eth_dev_ops ice_dcf_eth_dev_ops = {
 	.tx_queue_stop            = ice_dcf_tx_queue_stop,
 	.rxq_info_get             = ice_rxq_info_get,
 	.txq_info_get             = ice_txq_info_get,
+	.get_monitor_addr         = ice_get_monitor_addr,
 	.link_update              = ice_dcf_link_update,
 	.stats_get                = ice_dcf_stats_get,
 	.stats_reset              = ice_dcf_stats_reset,
