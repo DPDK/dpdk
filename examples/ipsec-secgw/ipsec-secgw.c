@@ -1761,9 +1761,6 @@ port_init(uint16_t portid, uint64_t req_rx_offloads, uint64_t req_tx_offloads)
 		local_port_conf.txmode.offloads |=
 			RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE;
 
-	if (dev_info.tx_offload_capa & RTE_ETH_TX_OFFLOAD_IPV4_CKSUM)
-		local_port_conf.txmode.offloads |= RTE_ETH_TX_OFFLOAD_IPV4_CKSUM;
-
 	printf("port %u configuring rx_offloads=0x%" PRIx64
 		", tx_offloads=0x%" PRIx64 "\n",
 		portid, local_port_conf.rxmode.offloads,
