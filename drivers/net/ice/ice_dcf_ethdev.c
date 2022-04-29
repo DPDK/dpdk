@@ -836,6 +836,55 @@ ice_dcf_dev_rss_reta_query(struct rte_eth_dev *dev,
 	return 0;
 }
 
+static int
+ice_dcf_dev_rss_hash_update(struct rte_eth_dev *dev,
+			struct rte_eth_rss_conf *rss_conf)
+{
+	struct ice_dcf_adapter *adapter = dev->data->dev_private;
+	struct ice_dcf_hw *hw = &adapter->real_hw;
+
+	if (!(hw->vf_res->vf_cap_flags & VIRTCHNL_VF_OFFLOAD_RSS_PF))
+		return -ENOTSUP;
+
+	/* HENA setting, it is enabled by default, no change */
+	if (!rss_conf->rss_key || rss_conf->rss_key_len == 0) {
+		PMD_DRV_LOG(DEBUG, "No key to be configured");
+		return 0;
+	} else if (rss_conf->rss_key_len != hw->vf_res->rss_key_size) {
+		PMD_DRV_LOG(ERR, "The size of hash key configured "
+			"(%d) doesn't match the size of hardware can "
+			"support (%d)", rss_conf->rss_key_len,
+			hw->vf_res->rss_key_size);
+		return -EINVAL;
+	}
+
+	rte_memcpy(hw->rss_key, rss_conf->rss_key, rss_conf->rss_key_len);
+
+	return ice_dcf_configure_rss_key(hw);
+}
+
+static int
+ice_dcf_dev_rss_hash_conf_get(struct rte_eth_dev *dev,
+			  struct rte_eth_rss_conf *rss_conf)
+{
+	struct ice_dcf_adapter *adapter = dev->data->dev_private;
+	struct ice_dcf_hw *hw = &adapter->real_hw;
+
+	if (!(hw->vf_res->vf_cap_flags & VIRTCHNL_VF_OFFLOAD_RSS_PF))
+		return -ENOTSUP;
+
+	/* Just set it to default value now. */
+	rss_conf->rss_hf = ICE_RSS_OFFLOAD_ALL;
+
+	if (!rss_conf->rss_key)
+		return 0;
+
+	rss_conf->rss_key_len = hw->vf_res->rss_key_size;
+	rte_memcpy(rss_conf->rss_key, hw->rss_key, rss_conf->rss_key_len);
+
+	return 0;
+}
+
 #define ICE_DCF_32_BIT_WIDTH (CHAR_BIT * 4)
 #define ICE_DCF_48_BIT_WIDTH (CHAR_BIT * 6)
 #define ICE_DCF_48_BIT_MASK  RTE_LEN2MASK(ICE_DCF_48_BIT_WIDTH, uint64_t)
@@ -1184,6 +1233,8 @@ static const struct eth_dev_ops ice_dcf_eth_dev_ops = {
 	.tm_ops_get              = ice_dcf_tm_ops_get,
 	.reta_update             = ice_dcf_dev_rss_reta_update,
 	.reta_query              = ice_dcf_dev_rss_reta_query,
+	.rss_hash_update         = ice_dcf_dev_rss_hash_update,
+	.rss_hash_conf_get       = ice_dcf_dev_rss_hash_conf_get,
 };
 
 static int

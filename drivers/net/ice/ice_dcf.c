@@ -758,7 +758,7 @@ ice_dcf_uninit_hw(struct rte_eth_dev *eth_dev, struct ice_dcf_hw *hw)
 	hw->ets_config = NULL;
 }
 
-static int
+int
 ice_dcf_configure_rss_key(struct ice_dcf_hw *hw)
 {
 	struct virtchnl_rss_key *rss_key;

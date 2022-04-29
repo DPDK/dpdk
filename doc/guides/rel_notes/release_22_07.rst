@@ -69,6 +69,7 @@ New Features
 * **Updated Intel ice driver.**
 
  * Added support for RSS RETA configure in DCF mode.
+ * Added support for RSS HASH configure in DCF mode.
 
 * **Updated Mellanox mlx5 driver.**
 
