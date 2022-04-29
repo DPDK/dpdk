@@ -6,6 +6,7 @@
 
 #include <stdbool.h>
 
+#define MAX_RX_QUEUE_PER_LCORE 16
 
 #define NB_SOCKETS 4
 
@@ -135,6 +136,9 @@ extern volatile bool force_quit;
 extern uint32_t nb_bufs_in_pool;
 
 extern bool per_port_pool;
+
+extern uint32_t mtu_size;
+extern uint32_t frag_tbl_sz;
 
 static inline uint8_t
 is_unprotected_port(uint16_t port_id)

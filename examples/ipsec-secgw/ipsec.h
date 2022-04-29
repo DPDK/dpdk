@@ -9,6 +9,7 @@
 
 #include <rte_byteorder.h>
 #include <rte_crypto.h>
+#include <rte_ip_frag.h>
 #include <rte_security.h>
 #include <rte_flow.h>
 #include <rte_ipsec.h>
@@ -36,6 +37,11 @@
 #define IPSEC_XFORM_MAX 2
 
 #define IP6_VERSION (6)
+
+#define SATP_OUT_IPV4(t)	\
+	((((t) & RTE_IPSEC_SATP_MODE_MASK) == RTE_IPSEC_SATP_MODE_TRANS && \
+	(((t) & RTE_IPSEC_SATP_IPV_MASK) == RTE_IPSEC_SATP_IPV4)) || \
+	((t) & RTE_IPSEC_SATP_MODE_MASK) == RTE_IPSEC_SATP_MODE_TUNLV4)
 
 struct rte_crypto_xform;
 struct ipsec_xform;
@@ -259,6 +265,34 @@ struct cnt_blk {
 	uint64_t iv;
 	uint32_t cnt;
 } __rte_packed;
+
+struct lcore_rx_queue {
+	uint16_t port_id;
+	uint8_t queue_id;
+} __rte_cache_aligned;
+
+struct buffer {
+	uint16_t len;
+	struct rte_mbuf *m_table[MAX_PKT_BURST] __rte_aligned(sizeof(void *));
+};
+
+struct lcore_conf {
+	uint16_t nb_rx_queue;
+	struct lcore_rx_queue rx_queue_list[MAX_RX_QUEUE_PER_LCORE];
+	uint16_t tx_queue_id[RTE_MAX_ETHPORTS];
+	struct buffer tx_mbufs[RTE_MAX_ETHPORTS];
+	struct ipsec_ctx inbound;
+	struct ipsec_ctx outbound;
+	struct rt_ctx *rt4_ctx;
+	struct rt_ctx *rt6_ctx;
+	struct {
+		struct rte_ip_frag_tbl *tbl;
+		struct rte_mempool *pool_indir;
+		struct rte_ip_frag_death_row dr;
+	} frag;
+} __rte_cache_aligned;
+
+extern struct lcore_conf lcore_conf[RTE_MAX_LCORE];
 
 /* Socket ctx */
 extern struct socket_ctx socket_ctx[NB_SOCKETS];

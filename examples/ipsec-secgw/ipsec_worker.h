@@ -4,8 +4,15 @@
 #ifndef _IPSEC_WORKER_H_
 #define _IPSEC_WORKER_H_
 
+#include <rte_acl.h>
+#include <rte_ethdev.h>
+#include <rte_lpm.h>
+#include <rte_lpm6.h>
+
 #include "ipsec.h"
 
+/* Configure how many packets ahead to prefetch, when reading packets */
+#define PREFETCH_OFFSET	3
 enum pkt_type {
 	PKT_TYPE_PLAIN_IPV4 = 1,
 	PKT_TYPE_IPSEC_IPV4,
@@ -37,5 +44,586 @@ struct lcore_conf_ev_tx_int_port_wrkr {
 void ipsec_poll_mode_worker(void);
 
 int ipsec_launch_one_lcore(void *args);
+
+/*
+ * helper routine for inline and cpu(synchronous) processing
+ * this is just to satisfy inbound_sa_check() and get_hop_for_offload_pkt().
+ * Should be removed in future.
+ */
+static inline void
+prep_process_group(void *sa, struct rte_mbuf *mb[], uint32_t cnt)
+{
+	uint32_t j;
+	struct ipsec_mbuf_metadata *priv;
+
+	for (j = 0; j != cnt; j++) {
+		priv = get_priv(mb[j]);
+		priv->sa = sa;
+		/* setup TSO related fields if TSO enabled*/
+		if (priv->sa->mss) {
+			uint32_t ptype = mb[j]->packet_type;
+			/* only TCP is supported */
+			if ((ptype & RTE_PTYPE_L4_MASK) == RTE_PTYPE_L4_TCP) {
+				mb[j]->tso_segsz = priv->sa->mss;
+				if ((IS_TUNNEL(priv->sa->flags))) {
+					mb[j]->outer_l3_len = mb[j]->l3_len;
+					mb[j]->outer_l2_len = mb[j]->l2_len;
+					mb[j]->ol_flags |=
+						RTE_MBUF_F_TX_TUNNEL_ESP;
+					if (RTE_ETH_IS_IPV4_HDR(ptype))
+						mb[j]->ol_flags |=
+						RTE_MBUF_F_TX_OUTER_IP_CKSUM;
+				}
+				mb[j]->l4_len = sizeof(struct rte_tcp_hdr);
+				mb[j]->ol_flags |= (RTE_MBUF_F_TX_TCP_SEG |
+						RTE_MBUF_F_TX_TCP_CKSUM);
+				if (RTE_ETH_IS_IPV4_HDR(ptype))
+					mb[j]->ol_flags |=
+						RTE_MBUF_F_TX_OUTER_IPV4;
+				else
+					mb[j]->ol_flags |=
+						RTE_MBUF_F_TX_OUTER_IPV6;
+			}
+		}
+	}
+}
+
+static inline void
+adjust_ipv4_pktlen(struct rte_mbuf *m, const struct rte_ipv4_hdr *iph,
+	uint32_t l2_len)
+{
+	uint32_t plen, trim;
+
+	plen = rte_be_to_cpu_16(iph->total_length) + l2_len;
+	if (plen < m->pkt_len) {
+		trim = m->pkt_len - plen;
+		rte_pktmbuf_trim(m, trim);
+	}
+}
+
+static inline void
+adjust_ipv6_pktlen(struct rte_mbuf *m, const struct rte_ipv6_hdr *iph,
+	uint32_t l2_len)
+{
+	uint32_t plen, trim;
+
+	plen = rte_be_to_cpu_16(iph->payload_len) + sizeof(*iph) + l2_len;
+	if (plen < m->pkt_len) {
+		trim = m->pkt_len - plen;
+		rte_pktmbuf_trim(m, trim);
+	}
+}
+
+static inline void
+prepare_one_packet(struct rte_mbuf *pkt, struct ipsec_traffic *t)
+{
+	const struct rte_ether_hdr *eth;
+	const struct rte_ipv4_hdr *iph4;
+	const struct rte_ipv6_hdr *iph6;
+	const struct rte_udp_hdr *udp;
+	uint16_t ip4_hdr_len;
+	uint16_t nat_port;
+
+	eth = rte_pktmbuf_mtod(pkt, const struct rte_ether_hdr *);
+	if (eth->ether_type == rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV4)) {
+
+		iph4 = (const struct rte_ipv4_hdr *)rte_pktmbuf_adj(pkt,
+			RTE_ETHER_HDR_LEN);
+		adjust_ipv4_pktlen(pkt, iph4, 0);
+
+		switch (iph4->next_proto_id) {
+		case IPPROTO_ESP:
+			t->ipsec.pkts[(t->ipsec.num)++] = pkt;
+			break;
+		case IPPROTO_UDP:
+			if (app_sa_prm.udp_encap == 1) {
+				ip4_hdr_len = ((iph4->version_ihl &
+					RTE_IPV4_HDR_IHL_MASK) *
+					RTE_IPV4_IHL_MULTIPLIER);
+				udp = rte_pktmbuf_mtod_offset(pkt,
+					struct rte_udp_hdr *, ip4_hdr_len);
+				nat_port = rte_cpu_to_be_16(IPSEC_NAT_T_PORT);
+				if (udp->src_port == nat_port ||
+					udp->dst_port == nat_port){
+					t->ipsec.pkts[(t->ipsec.num)++] = pkt;
+					pkt->packet_type |=
+						MBUF_PTYPE_TUNNEL_ESP_IN_UDP;
+					break;
+				}
+			}
+		/* Fall through */
+		default:
+			t->ip4.data[t->ip4.num] = &iph4->next_proto_id;
+			t->ip4.pkts[(t->ip4.num)++] = pkt;
+		}
+		pkt->l2_len = 0;
+		pkt->l3_len = sizeof(*iph4);
+		pkt->packet_type |= RTE_PTYPE_L3_IPV4;
+		if  (pkt->packet_type & RTE_PTYPE_L4_TCP)
+			pkt->l4_len = sizeof(struct rte_tcp_hdr);
+		else if (pkt->packet_type & RTE_PTYPE_L4_UDP)
+			pkt->l4_len = sizeof(struct rte_udp_hdr);
+	} else if (eth->ether_type == rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV6)) {
+		int next_proto;
+		size_t l3len, ext_len;
+		uint8_t *p;
+
+		/* get protocol type */
+		iph6 = (const struct rte_ipv6_hdr *)rte_pktmbuf_adj(pkt,
+			RTE_ETHER_HDR_LEN);
+		adjust_ipv6_pktlen(pkt, iph6, 0);
+
+		next_proto = iph6->proto;
+
+		/* determine l3 header size up to ESP extension */
+		l3len = sizeof(struct ip6_hdr);
+		p = rte_pktmbuf_mtod(pkt, uint8_t *);
+		while (next_proto != IPPROTO_ESP && l3len < pkt->data_len &&
+			(next_proto = rte_ipv6_get_next_ext(p + l3len,
+						next_proto, &ext_len)) >= 0)
+			l3len += ext_len;
+
+		/* drop packet when IPv6 header exceeds first segment length */
+		if (unlikely(l3len > pkt->data_len)) {
+			free_pkts(&pkt, 1);
+			return;
+		}
+
+		switch (next_proto) {
+		case IPPROTO_ESP:
+			t->ipsec.pkts[(t->ipsec.num)++] = pkt;
+			break;
+		case IPPROTO_UDP:
+			if (app_sa_prm.udp_encap == 1) {
+				udp = rte_pktmbuf_mtod_offset(pkt,
+					struct rte_udp_hdr *, l3len);
+				nat_port = rte_cpu_to_be_16(IPSEC_NAT_T_PORT);
+				if (udp->src_port == nat_port ||
+					udp->dst_port == nat_port){
+					t->ipsec.pkts[(t->ipsec.num)++] = pkt;
+					pkt->packet_type |=
+						MBUF_PTYPE_TUNNEL_ESP_IN_UDP;
+					break;
+				}
+			}
+		/* Fall through */
+		default:
+			t->ip6.data[t->ip6.num] = &iph6->proto;
+			t->ip6.pkts[(t->ip6.num)++] = pkt;
+		}
+		pkt->l2_len = 0;
+		pkt->l3_len = l3len;
+		pkt->packet_type |= RTE_PTYPE_L3_IPV6;
+	} else {
+		/* Unknown/Unsupported type, drop the packet */
+		RTE_LOG(ERR, IPSEC, "Unsupported packet type 0x%x\n",
+			rte_be_to_cpu_16(eth->ether_type));
+		free_pkts(&pkt, 1);
+		return;
+	}
+
+	/* Check if the packet has been processed inline. For inline protocol
+	 * processed packets, the metadata in the mbuf can be used to identify
+	 * the security processing done on the packet. The metadata will be
+	 * used to retrieve the application registered userdata associated
+	 * with the security session.
+	 */
+
+	if (pkt->ol_flags & RTE_MBUF_F_RX_SEC_OFFLOAD &&
+			rte_security_dynfield_is_registered()) {
+		struct ipsec_sa *sa;
+		struct ipsec_mbuf_metadata *priv;
+		struct rte_security_ctx *ctx = (struct rte_security_ctx *)
+						rte_eth_dev_get_sec_ctx(
+						pkt->port);
+
+		/* Retrieve the userdata registered. Here, the userdata
+		 * registered is the SA pointer.
+		 */
+		sa = (struct ipsec_sa *)rte_security_get_userdata(ctx,
+				*rte_security_dynfield(pkt));
+		if (sa == NULL) {
+			/* userdata could not be retrieved */
+			return;
+		}
+
+		/* Save SA as priv member in mbuf. This will be used in the
+		 * IPsec selector(SP-SA) check.
+		 */
+
+		priv = get_priv(pkt);
+		priv->sa = sa;
+	}
+}
+
+static inline void
+prepare_traffic(struct rte_mbuf **pkts, struct ipsec_traffic *t,
+		uint16_t nb_pkts)
+{
+	int32_t i;
+
+	t->ipsec.num = 0;
+	t->ip4.num = 0;
+	t->ip6.num = 0;
+
+	for (i = 0; i < (nb_pkts - PREFETCH_OFFSET); i++) {
+		rte_prefetch0(rte_pktmbuf_mtod(pkts[i + PREFETCH_OFFSET],
+					void *));
+		prepare_one_packet(pkts[i], t);
+	}
+	/* Process left packets */
+	for (; i < nb_pkts; i++)
+		prepare_one_packet(pkts[i], t);
+}
+
+static inline void
+prepare_tx_pkt(struct rte_mbuf *pkt, uint16_t port,
+		const struct lcore_conf *qconf)
+{
+	struct ip *ip;
+	struct rte_ether_hdr *ethhdr;
+
+	ip = rte_pktmbuf_mtod(pkt, struct ip *);
+
+	ethhdr = (struct rte_ether_hdr *)
+		rte_pktmbuf_prepend(pkt, RTE_ETHER_HDR_LEN);
+
+	if (ip->ip_v == IPVERSION) {
+		pkt->ol_flags |= qconf->outbound.ipv4_offloads;
+		pkt->l3_len = sizeof(struct ip);
+		pkt->l2_len = RTE_ETHER_HDR_LEN;
+
+		ip->ip_sum = 0;
+
+		/* calculate IPv4 cksum in SW */
+		if ((pkt->ol_flags & RTE_MBUF_F_TX_IP_CKSUM) == 0)
+			ip->ip_sum = rte_ipv4_cksum((struct rte_ipv4_hdr *)ip);
+
+		ethhdr->ether_type = rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV4);
+	} else {
+		pkt->ol_flags |= qconf->outbound.ipv6_offloads;
+		pkt->l3_len = sizeof(struct ip6_hdr);
+		pkt->l2_len = RTE_ETHER_HDR_LEN;
+
+		ethhdr->ether_type = rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV6);
+	}
+
+	memcpy(&ethhdr->src_addr, &ethaddr_tbl[port].src,
+			sizeof(struct rte_ether_addr));
+	memcpy(&ethhdr->dst_addr, &ethaddr_tbl[port].dst,
+			sizeof(struct rte_ether_addr));
+}
+
+static inline void
+prepare_tx_burst(struct rte_mbuf *pkts[], uint16_t nb_pkts, uint16_t port,
+		const struct lcore_conf *qconf)
+{
+	int32_t i;
+	const int32_t prefetch_offset = 2;
+
+	for (i = 0; i < (nb_pkts - prefetch_offset); i++) {
+		rte_mbuf_prefetch_part2(pkts[i + prefetch_offset]);
+		prepare_tx_pkt(pkts[i], port, qconf);
+	}
+	/* Process left packets */
+	for (; i < nb_pkts; i++)
+		prepare_tx_pkt(pkts[i], port, qconf);
+}
+
+/* Send burst of packets on an output interface */
+static inline int32_t
+send_burst(struct lcore_conf *qconf, uint16_t n, uint16_t port)
+{
+	struct rte_mbuf **m_table;
+	int32_t ret;
+	uint16_t queueid;
+
+	queueid = qconf->tx_queue_id[port];
+	m_table = (struct rte_mbuf **)qconf->tx_mbufs[port].m_table;
+
+	prepare_tx_burst(m_table, n, port, qconf);
+
+	ret = rte_eth_tx_burst(port, queueid, m_table, n);
+
+	core_stats_update_tx(ret);
+
+	if (unlikely(ret < n)) {
+		do {
+			free_pkts(&m_table[ret], 1);
+		} while (++ret < n);
+	}
+
+	return 0;
+}
+
+/*
+ * Helper function to fragment and queue for TX one packet.
+ */
+static inline uint32_t
+send_fragment_packet(struct lcore_conf *qconf, struct rte_mbuf *m,
+	uint16_t port, uint8_t proto)
+{
+	struct buffer *tbl;
+	uint32_t len, n;
+	int32_t rc;
+
+	tbl =  qconf->tx_mbufs + port;
+	len = tbl->len;
+
+	/* free space for new fragments */
+	if (len + RTE_LIBRTE_IP_FRAG_MAX_FRAG >=  RTE_DIM(tbl->m_table)) {
+		send_burst(qconf, len, port);
+		len = 0;
+	}
+
+	n = RTE_DIM(tbl->m_table) - len;
+
+	if (proto == IPPROTO_IP)
+		rc = rte_ipv4_fragment_packet(m, tbl->m_table + len,
+			n, mtu_size, m->pool, qconf->frag.pool_indir);
+	else
+		rc = rte_ipv6_fragment_packet(m, tbl->m_table + len,
+			n, mtu_size, m->pool, qconf->frag.pool_indir);
+
+	if (rc >= 0)
+		len += rc;
+	else
+		RTE_LOG(ERR, IPSEC,
+			"%s: failed to fragment packet with size %u, "
+			"error code: %d\n",
+			__func__, m->pkt_len, rte_errno);
+
+	free_pkts(&m, 1);
+	return len;
+}
+
+/* Enqueue a single packet, and send burst if queue is filled */
+static inline int32_t
+send_single_packet(struct rte_mbuf *m, uint16_t port, uint8_t proto)
+{
+	uint32_t lcore_id;
+	uint16_t len;
+	struct lcore_conf *qconf;
+
+	lcore_id = rte_lcore_id();
+
+	qconf = &lcore_conf[lcore_id];
+	len = qconf->tx_mbufs[port].len;
+
+	if (m->pkt_len <= mtu_size) {
+		qconf->tx_mbufs[port].m_table[len] = m;
+		len++;
+
+	/* need to fragment the packet */
+	} else if (frag_tbl_sz > 0)
+		len = send_fragment_packet(qconf, m, port, proto);
+	else
+		free_pkts(&m, 1);
+
+	/* enough pkts to be sent */
+	if (unlikely(len == MAX_PKT_BURST)) {
+		send_burst(qconf, MAX_PKT_BURST, port);
+		len = 0;
+	}
+
+	qconf->tx_mbufs[port].len = len;
+	return 0;
+}
+
+static inline void
+inbound_sp_sa(struct sp_ctx *sp, struct sa_ctx *sa, struct traffic_type *ip,
+		uint16_t lim, struct ipsec_spd_stats *stats)
+{
+	struct rte_mbuf *m;
+	uint32_t i, j, res, sa_idx;
+
+	if (ip->num == 0 || sp == NULL)
+		return;
+
+	rte_acl_classify((struct rte_acl_ctx *)sp, ip->data, ip->res,
+			ip->num, DEFAULT_MAX_CATEGORIES);
+
+	j = 0;
+	for (i = 0; i < ip->num; i++) {
+		m = ip->pkts[i];
+		res = ip->res[i];
+		if (res == BYPASS) {
+			ip->pkts[j++] = m;
+			stats->bypass++;
+			continue;
+		}
+		if (res == DISCARD) {
+			free_pkts(&m, 1);
+			stats->discard++;
+			continue;
+		}
+
+		/* Only check SPI match for processed IPSec packets */
+		if (i < lim && ((m->ol_flags & RTE_MBUF_F_RX_SEC_OFFLOAD) == 0)) {
+			stats->discard++;
+			free_pkts(&m, 1);
+			continue;
+		}
+
+		sa_idx = res - 1;
+		if (!inbound_sa_check(sa, m, sa_idx)) {
+			stats->discard++;
+			free_pkts(&m, 1);
+			continue;
+		}
+		ip->pkts[j++] = m;
+		stats->protect++;
+	}
+	ip->num = j;
+}
+
+static inline int32_t
+get_hop_for_offload_pkt(struct rte_mbuf *pkt, int is_ipv6)
+{
+	struct ipsec_mbuf_metadata *priv;
+	struct ipsec_sa *sa;
+
+	priv = get_priv(pkt);
+
+	sa = priv->sa;
+	if (unlikely(sa == NULL)) {
+		RTE_LOG(ERR, IPSEC, "SA not saved in private data\n");
+		goto fail;
+	}
+
+	if (is_ipv6)
+		return sa->portid;
+
+	/* else */
+	return (sa->portid | RTE_LPM_LOOKUP_SUCCESS);
+
+fail:
+	if (is_ipv6)
+		return -1;
+
+	/* else */
+	return 0;
+}
+
+static inline void
+route4_pkts(struct rt_ctx *rt_ctx, struct rte_mbuf *pkts[], uint8_t nb_pkts)
+{
+	uint32_t hop[MAX_PKT_BURST * 2];
+	uint32_t dst_ip[MAX_PKT_BURST * 2];
+	int32_t pkt_hop = 0;
+	uint16_t i, offset;
+	uint16_t lpm_pkts = 0;
+	unsigned int lcoreid = rte_lcore_id();
+
+	if (nb_pkts == 0)
+		return;
+
+	/* Need to do an LPM lookup for non-inline packets. Inline packets will
+	 * have port ID in the SA
+	 */
+
+	for (i = 0; i < nb_pkts; i++) {
+		if (!(pkts[i]->ol_flags & RTE_MBUF_F_TX_SEC_OFFLOAD)) {
+			/* Security offload not enabled. So an LPM lookup is
+			 * required to get the hop
+			 */
+			offset = offsetof(struct ip, ip_dst);
+			dst_ip[lpm_pkts] = *rte_pktmbuf_mtod_offset(pkts[i],
+					uint32_t *, offset);
+			dst_ip[lpm_pkts] = rte_be_to_cpu_32(dst_ip[lpm_pkts]);
+			lpm_pkts++;
+		}
+	}
+
+	rte_lpm_lookup_bulk((struct rte_lpm *)rt_ctx, dst_ip, hop, lpm_pkts);
+
+	lpm_pkts = 0;
+
+	for (i = 0; i < nb_pkts; i++) {
+		if (pkts[i]->ol_flags & RTE_MBUF_F_TX_SEC_OFFLOAD) {
+			/* Read hop from the SA */
+			pkt_hop = get_hop_for_offload_pkt(pkts[i], 0);
+		} else {
+			/* Need to use hop returned by lookup */
+			pkt_hop = hop[lpm_pkts++];
+		}
+
+		if ((pkt_hop & RTE_LPM_LOOKUP_SUCCESS) == 0) {
+			core_statistics[lcoreid].lpm4.miss++;
+			free_pkts(&pkts[i], 1);
+			continue;
+		}
+		send_single_packet(pkts[i], pkt_hop & 0xff, IPPROTO_IP);
+	}
+}
+
+static inline void
+route6_pkts(struct rt_ctx *rt_ctx, struct rte_mbuf *pkts[], uint8_t nb_pkts)
+{
+	int32_t hop[MAX_PKT_BURST * 2];
+	uint8_t dst_ip[MAX_PKT_BURST * 2][16];
+	uint8_t *ip6_dst;
+	int32_t pkt_hop = 0;
+	uint16_t i, offset;
+	uint16_t lpm_pkts = 0;
+	unsigned int lcoreid = rte_lcore_id();
+
+	if (nb_pkts == 0)
+		return;
+
+	/* Need to do an LPM lookup for non-inline packets. Inline packets will
+	 * have port ID in the SA
+	 */
+
+	for (i = 0; i < nb_pkts; i++) {
+		if (!(pkts[i]->ol_flags & RTE_MBUF_F_TX_SEC_OFFLOAD)) {
+			/* Security offload not enabled. So an LPM lookup is
+			 * required to get the hop
+			 */
+			offset = offsetof(struct ip6_hdr, ip6_dst);
+			ip6_dst = rte_pktmbuf_mtod_offset(pkts[i], uint8_t *,
+					offset);
+			memcpy(&dst_ip[lpm_pkts][0], ip6_dst, 16);
+			lpm_pkts++;
+		}
+	}
+
+	rte_lpm6_lookup_bulk_func((struct rte_lpm6 *)rt_ctx, dst_ip, hop,
+			lpm_pkts);
+
+	lpm_pkts = 0;
+
+	for (i = 0; i < nb_pkts; i++) {
+		if (pkts[i]->ol_flags & RTE_MBUF_F_TX_SEC_OFFLOAD) {
+			/* Read hop from the SA */
+			pkt_hop = get_hop_for_offload_pkt(pkts[i], 1);
+		} else {
+			/* Need to use hop returned by lookup */
+			pkt_hop = hop[lpm_pkts++];
+		}
+
+		if (pkt_hop == -1) {
+			core_statistics[lcoreid].lpm6.miss++;
+			free_pkts(&pkts[i], 1);
+			continue;
+		}
+		send_single_packet(pkts[i], pkt_hop & 0xff, IPPROTO_IPV6);
+	}
+}
+
+static inline void
+drain_tx_buffers(struct lcore_conf *qconf)
+{
+	struct buffer *buf;
+	uint32_t portid;
+
+	for (portid = 0; portid < RTE_MAX_ETHPORTS; portid++) {
+		buf = &qconf->tx_mbufs[portid];
+		if (buf->len == 0)
+			continue;
+		send_burst(qconf, buf->len, portid);
+		buf->len = 0;
+	}
+}
 
 #endif /* _IPSEC_WORKER_H_ */

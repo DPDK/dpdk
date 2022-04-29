@@ -13,11 +13,7 @@
 
 #include "ipsec.h"
 #include "ipsec-secgw.h"
-
-#define SATP_OUT_IPV4(t)	\
-	((((t) & RTE_IPSEC_SATP_MODE_MASK) == RTE_IPSEC_SATP_MODE_TRANS && \
-	(((t) & RTE_IPSEC_SATP_IPV_MASK) == RTE_IPSEC_SATP_IPV4)) || \
-	((t) & RTE_IPSEC_SATP_MODE_MASK) == RTE_IPSEC_SATP_MODE_TUNLV4)
+#include "ipsec_worker.h"
 
 /* helper routine to free bulk of crypto-ops and related packets */
 static inline void
@@ -206,49 +202,6 @@ ipsec_prepare_crypto_group(struct ipsec_ctx *ctx, struct ipsec_sa *sa,
 		enqueue_cop_bulk(cqp, cop, k);
 
 	return k;
-}
-
-/*
- * helper routine for inline and cpu(synchronous) processing
- * this is just to satisfy inbound_sa_check() and get_hop_for_offload_pkt().
- * Should be removed in future.
- */
-static inline void
-prep_process_group(void *sa, struct rte_mbuf *mb[], uint32_t cnt)
-{
-	uint32_t j;
-	struct ipsec_mbuf_metadata *priv;
-
-	for (j = 0; j != cnt; j++) {
-		priv = get_priv(mb[j]);
-		priv->sa = sa;
-		/* setup TSO related fields if TSO enabled*/
-		if (priv->sa->mss) {
-			uint32_t ptype = mb[j]->packet_type;
-			/* only TCP is supported */
-			if ((ptype & RTE_PTYPE_L4_MASK) == RTE_PTYPE_L4_TCP) {
-				mb[j]->tso_segsz = priv->sa->mss;
-				if ((IS_TUNNEL(priv->sa->flags))) {
-					mb[j]->outer_l3_len = mb[j]->l3_len;
-					mb[j]->outer_l2_len = mb[j]->l2_len;
-					mb[j]->ol_flags |=
-						RTE_MBUF_F_TX_TUNNEL_ESP;
-					if (RTE_ETH_IS_IPV4_HDR(ptype))
-						mb[j]->ol_flags |=
-						RTE_MBUF_F_TX_OUTER_IP_CKSUM;
-				}
-				mb[j]->l4_len = sizeof(struct rte_tcp_hdr);
-				mb[j]->ol_flags |= (RTE_MBUF_F_TX_TCP_SEG |
-						RTE_MBUF_F_TX_TCP_CKSUM);
-				if (RTE_ETH_IS_IPV4_HDR(ptype))
-					mb[j]->ol_flags |=
-						RTE_MBUF_F_TX_OUTER_IPV4;
-				else
-					mb[j]->ol_flags |=
-						RTE_MBUF_F_TX_OUTER_IPV6;
-			}
-		}
-	}
 }
 
 /*
