@@ -88,7 +88,7 @@ prep_process_group(void *sa, struct rte_mbuf *mb[], uint32_t cnt)
 	}
 }
 
-static inline void
+static __rte_always_inline void
 adjust_ipv4_pktlen(struct rte_mbuf *m, const struct rte_ipv4_hdr *iph,
 	uint32_t l2_len)
 {
@@ -101,7 +101,7 @@ adjust_ipv4_pktlen(struct rte_mbuf *m, const struct rte_ipv4_hdr *iph,
 	}
 }
 
-static inline void
+static __rte_always_inline void
 adjust_ipv6_pktlen(struct rte_mbuf *m, const struct rte_ipv6_hdr *iph,
 	uint32_t l2_len)
 {
@@ -114,8 +114,9 @@ adjust_ipv6_pktlen(struct rte_mbuf *m, const struct rte_ipv6_hdr *iph,
 	}
 }
 
-static inline void
-prepare_one_packet(struct rte_mbuf *pkt, struct ipsec_traffic *t)
+static __rte_always_inline void
+prepare_one_packet(struct rte_security_ctx *ctx, struct rte_mbuf *pkt,
+		   struct ipsec_traffic *t)
 {
 	uint32_t ptype = pkt->packet_type;
 	const struct rte_ether_hdr *eth;
@@ -203,13 +204,9 @@ prepare_one_packet(struct rte_mbuf *pkt, struct ipsec_traffic *t)
 	 * with the security session.
 	 */
 
-	if (pkt->ol_flags & RTE_MBUF_F_RX_SEC_OFFLOAD &&
-			rte_security_dynfield_is_registered()) {
+	if (ctx && pkt->ol_flags & RTE_MBUF_F_RX_SEC_OFFLOAD) {
 		struct ipsec_sa *sa;
 		struct ipsec_mbuf_metadata *priv;
-		struct rte_security_ctx *ctx = (struct rte_security_ctx *)
-						rte_eth_dev_get_sec_ctx(
-						pkt->port);
 
 		/* Retrieve the userdata registered. Here, the userdata
 		 * registered is the SA pointer.
@@ -230,9 +227,9 @@ prepare_one_packet(struct rte_mbuf *pkt, struct ipsec_traffic *t)
 	}
 }
 
-static inline void
-prepare_traffic(struct rte_mbuf **pkts, struct ipsec_traffic *t,
-		uint16_t nb_pkts)
+static __rte_always_inline void
+prepare_traffic(struct rte_security_ctx *ctx, struct rte_mbuf **pkts,
+		struct ipsec_traffic *t, uint16_t nb_pkts)
 {
 	int32_t i;
 
@@ -243,11 +240,11 @@ prepare_traffic(struct rte_mbuf **pkts, struct ipsec_traffic *t,
 	for (i = 0; i < (nb_pkts - PREFETCH_OFFSET); i++) {
 		rte_prefetch0(rte_pktmbuf_mtod(pkts[i + PREFETCH_OFFSET],
 					void *));
-		prepare_one_packet(pkts[i], t);
+		prepare_one_packet(ctx, pkts[i], t);
 	}
 	/* Process left packets */
 	for (; i < nb_pkts; i++)
-		prepare_one_packet(pkts[i], t);
+		prepare_one_packet(ctx, pkts[i], t);
 }
 
 static inline void
@@ -305,7 +302,7 @@ prepare_tx_burst(struct rte_mbuf *pkts[], uint16_t nb_pkts, uint16_t port,
 }
 
 /* Send burst of packets on an output interface */
-static inline int32_t
+static __rte_always_inline int32_t
 send_burst(struct lcore_conf *qconf, uint16_t n, uint16_t port)
 {
 	struct rte_mbuf **m_table;
@@ -333,7 +330,7 @@ send_burst(struct lcore_conf *qconf, uint16_t n, uint16_t port)
 /*
  * Helper function to fragment and queue for TX one packet.
  */
-static inline uint32_t
+static __rte_always_inline uint32_t
 send_fragment_packet(struct lcore_conf *qconf, struct rte_mbuf *m,
 	uint16_t port, uint8_t proto)
 {
@@ -372,7 +369,7 @@ send_fragment_packet(struct lcore_conf *qconf, struct rte_mbuf *m,
 }
 
 /* Enqueue a single packet, and send burst if queue is filled */
-static inline int32_t
+static __rte_always_inline int32_t
 send_single_packet(struct rte_mbuf *m, uint16_t port, uint8_t proto)
 {
 	uint32_t lcore_id;
@@ -404,7 +401,7 @@ send_single_packet(struct rte_mbuf *m, uint16_t port, uint8_t proto)
 	return 0;
 }
 
-static inline void
+static __rte_always_inline void
 inbound_sp_sa(struct sp_ctx *sp, struct sa_ctx *sa, struct traffic_type *ip,
 		uint16_t lim, struct ipsec_spd_stats *stats)
 {
@@ -451,7 +448,7 @@ inbound_sp_sa(struct sp_ctx *sp, struct sa_ctx *sa, struct traffic_type *ip,
 	ip->num = j;
 }
 
-static inline int32_t
+static __rte_always_inline int32_t
 get_hop_for_offload_pkt(struct rte_mbuf *pkt, int is_ipv6)
 {
 	struct ipsec_mbuf_metadata *priv;
@@ -531,7 +528,7 @@ route4_pkts(struct rt_ctx *rt_ctx, struct rte_mbuf *pkts[], uint8_t nb_pkts)
 	}
 }
 
-static inline void
+static __rte_always_inline void
 route6_pkts(struct rt_ctx *rt_ctx, struct rte_mbuf *pkts[], uint8_t nb_pkts)
 {
 	int32_t hop[MAX_PKT_BURST * 2];
@@ -585,7 +582,7 @@ route6_pkts(struct rt_ctx *rt_ctx, struct rte_mbuf *pkts[], uint8_t nb_pkts)
 	}
 }
 
-static inline void
+static __rte_always_inline void
 drain_tx_buffers(struct lcore_conf *qconf)
 {
 	struct buffer *buf;

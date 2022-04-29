@@ -544,11 +544,11 @@ process_pkts_outbound_nosp(struct ipsec_ctx *ipsec_ctx,
 
 static inline void
 process_pkts(struct lcore_conf *qconf, struct rte_mbuf **pkts,
-		uint8_t nb_pkts, uint16_t portid)
+	     uint8_t nb_pkts, uint16_t portid, struct rte_security_ctx *ctx)
 {
 	struct ipsec_traffic traffic;
 
-	prepare_traffic(pkts, &traffic, nb_pkts);
+	prepare_traffic(ctx, pkts, &traffic, nb_pkts);
 
 	if (unlikely(single_sa)) {
 		if (is_unprotected_port(portid))
@@ -740,7 +740,8 @@ ipsec_poll_mode_worker(void)
 
 			if (nb_rx > 0) {
 				core_stats_update_rx(nb_rx);
-				process_pkts(qconf, pkts, nb_rx, portid);
+				process_pkts(qconf, pkts, nb_rx, portid,
+					     rxql->sec_ctx);
 			}
 
 			/* dequeue and process completed crypto-ops */
@@ -3059,6 +3060,21 @@ main(int32_t argc, char **argv)
 	}
 
 	flow_init();
+
+	/* Get security context if available and only if dynamic field is
+	 * registered for fast path access.
+	 */
+	if (!rte_security_dynfield_is_registered())
+		goto skip_sec_ctx;
+
+	for (lcore_id = 0; lcore_id < RTE_MAX_LCORE; lcore_id++) {
+		for (i = 0; i < lcore_conf[lcore_id].nb_rx_queue; i++) {
+			portid = lcore_conf[lcore_id].rx_queue_list[i].port_id;
+			lcore_conf[lcore_id].rx_queue_list[i].sec_ctx =
+				rte_eth_dev_get_sec_ctx(portid);
+		}
+	}
+skip_sec_ctx:
 
 	check_all_ports_link_status(enabled_port_mask);
 
