@@ -1317,7 +1317,7 @@ parse_args(int32_t argc, char **argv, struct eh_conf *eh_conf)
 		case CMD_LINE_OPT_VECTOR_SIZE_NUM:
 			ret = parse_decimal(optarg);
 
-			if (ret > MAX_PKT_BURST) {
+			if (ret > MAX_PKT_BURST_VEC) {
 				printf("Invalid argument for \'%s\': %s\n",
 					CMD_LINE_OPT_VECTOR_SIZE, optarg);
 				print_usage(prgname);

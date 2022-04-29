@@ -11,6 +11,11 @@
 #define NB_SOCKETS 4
 
 #define MAX_PKT_BURST 32
+#define MAX_PKT_BURST_VEC 256
+
+#define MAX_PKTS                                  \
+	((MAX_PKT_BURST_VEC > MAX_PKT_BURST ?     \
+	  MAX_PKT_BURST_VEC : MAX_PKT_BURST) * 2)
 
 #define RTE_LOGTYPE_IPSEC RTE_LOGTYPE_USER1
 
@@ -49,12 +54,12 @@
 #define MBUF_PTYPE_TUNNEL_ESP_IN_UDP (RTE_PTYPE_TUNNEL_ESP | RTE_PTYPE_L4_UDP)
 
 struct traffic_type {
-	const uint8_t *data[MAX_PKT_BURST * 2];
-	struct rte_mbuf *pkts[MAX_PKT_BURST * 2];
-	void *saptr[MAX_PKT_BURST * 2];
-	uint32_t res[MAX_PKT_BURST * 2];
 	uint32_t num;
-};
+	struct rte_mbuf *pkts[MAX_PKTS];
+	const uint8_t *data[MAX_PKTS];
+	void *saptr[MAX_PKTS];
+	uint32_t res[MAX_PKTS];
+} __rte_cache_aligned;
 
 struct ipsec_traffic {
 	struct traffic_type ipsec;
