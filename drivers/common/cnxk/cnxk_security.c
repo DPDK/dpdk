@@ -128,6 +128,9 @@ ot_ipsec_sa_common_param_fill(union roc_ot_ipsec_sa_word2 *w2,
 			case RTE_CRYPTO_CIPHER_AES_CTR:
 				w2->s.enc_type = ROC_IE_OT_SA_ENC_AES_CTR;
 				break;
+			case RTE_CRYPTO_CIPHER_3DES_CBC:
+				w2->s.enc_type = ROC_IE_OT_SA_ENC_3DES_CBC;
+				break;
 			default:
 				return -ENOTSUP;
 			}
