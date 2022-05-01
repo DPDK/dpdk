@@ -257,8 +257,8 @@ A loop processing ``rte_event_vector`` containing mbufs is shown below.
                         /* Process each mbuf. */
                 }
         break;
-        case ...
-        ...
+        case default:
+                /* Handle other event_types. */
         }
 
 Rx event vectorization for SW Rx adapter
