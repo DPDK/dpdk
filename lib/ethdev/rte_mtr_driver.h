@@ -97,6 +97,32 @@ typedef int (*rte_mtr_meter_dscp_table_update_t)(struct rte_eth_dev *dev,
 	enum rte_color *dscp_table,
 	struct rte_mtr_error *error);
 
+/** @internal mtr object meter vlan table update. */
+typedef int (*rte_mtr_meter_vlan_table_update_t)(struct rte_eth_dev *dev,
+	uint32_t mtr_id,
+	enum rte_color *vlan_table,
+	struct rte_mtr_error *error);
+
+/** @internal Set the input color protocol on MTR object. */
+typedef int (*rte_mtr_meter_color_in_proto_set_t)(struct rte_eth_dev *dev,
+	uint32_t mtr_id,
+	enum rte_mtr_color_in_protocol proto,
+	uint32_t priority,
+	struct rte_mtr_error *error);
+
+/** @internal Get the input color protocols of MTR object. */
+typedef int (*rte_mtr_meter_color_in_proto_get_t)(struct rte_eth_dev *dev,
+	uint32_t mtr_id,
+	uint64_t *proto_mask,
+	struct rte_mtr_error *error);
+
+/** @internal Get the input color protocol priority of MTR object. */
+typedef int (*rte_mtr_meter_color_in_proto_prio_get_t)(struct rte_eth_dev *dev,
+	uint32_t mtr_id,
+	enum rte_mtr_color_in_protocol proto,
+	uint32_t *priority,
+	struct rte_mtr_error *error);
+
 /** @internal MTR object enabled stats update. */
 typedef int (*rte_mtr_stats_update_t)(struct rte_eth_dev *dev,
 	uint32_t mtr_id,
@@ -138,6 +164,18 @@ struct rte_mtr_ops {
 
 	/** MTR object meter DSCP table update */
 	rte_mtr_meter_dscp_table_update_t meter_dscp_table_update;
+
+	/** MTR object meter VLAN table update */
+	rte_mtr_meter_vlan_table_update_t meter_vlan_table_update;
+
+	/** Set the input color protocol on MTR object. */
+	rte_mtr_meter_color_in_proto_set_t in_proto_set;
+
+	/** Get the input color protocol of MTR object. */
+	rte_mtr_meter_color_in_proto_get_t in_proto_get;
+
+	/** Get the input color protocol priority of MTR object. */
+	rte_mtr_meter_color_in_proto_prio_get_t in_proto_prio_get;
 
 	/** MTR object enabled stats update */
 	rte_mtr_stats_update_t stats_update;

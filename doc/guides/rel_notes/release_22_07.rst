@@ -55,6 +55,15 @@ New Features
      Also, make sure to start the actual text at the margin.
      =======================================================
 
+* **Added protocol based input color selection for meter.**
+
+  Added new functions ``rte_mtr_color_in_protocol_set()``,
+  ``rte_mtr_color_in_protocol_get()``,
+  ``rte_mtr_color_in_protocol_priority_get()``,
+  ``rte_mtr_meter_vlan_table_update()``
+  and updated ``struct rte_mtr_params`` and ``struct rte_mtr_capabilities`` to
+  support protocol based input color selection for meter.
+
 * **Added vhost API to get the number of in-flight packets.**
 
   Added an API which can get the number of in-flight packets in
@@ -152,6 +161,10 @@ API Changes
   which is a wrapper for the PPC header file ``altivec.h``,
   undefines the AltiVec keyword ``vector``.
   The alternative keyword ``__vector`` should be used instead.
+
+* Experimental structures ``struct rte_mtr_params``
+  and ``struct rte_mtr_capabilities`` updated to support
+  protocol based input color for meter.
 
 
 ABI Changes

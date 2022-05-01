@@ -279,6 +279,12 @@ EXPERIMENTAL {
 	rte_flow_async_action_handle_create;
 	rte_flow_async_action_handle_destroy;
 	rte_flow_async_action_handle_update;
+
+	# added in 22.07
+	rte_mtr_color_in_protocol_get;
+	rte_mtr_color_in_protocol_priority_get;
+	rte_mtr_color_in_protocol_set;
+	rte_mtr_meter_vlan_table_update;
 };
 
 INTERNAL {
