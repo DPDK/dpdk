@@ -1296,6 +1296,7 @@ enum {
 	MLX5_GET_HCA_CAP_OP_MOD_NIC_FLOW_TABLE = 0x7 << 1,
 	MLX5_SET_HCA_CAP_OP_MOD_ESW = 0x9 << 1,
 	MLX5_GET_HCA_CAP_OP_MOD_VDPA_EMULATION = 0x13 << 1,
+	MLX5_GET_HCA_CAP_OP_MOD_CRYPTO = 0x1A << 1,
 	MLX5_GET_HCA_CAP_OP_MOD_PARSE_GRAPH_NODE_CAP = 0x1C << 1,
 	MLX5_GET_HCA_CAP_OP_MOD_GENERAL_DEVICE_2 = 0x20 << 1,
 };
@@ -3795,6 +3796,34 @@ struct mlx5_ifc_crypto_operational_register_bits {
 	u8 credential[0x140];
 	u8 kek[0x100];
 	u8 reserved_at_280[0x180];
+};
+
+struct mlx5_ifc_crypto_caps_bits {
+	u8 wrapped_crypto_operational[0x1];
+	u8 wrapped_crypto_going_to_commissioning[0x1];
+	u8 sw_wrapped_dek[0x1];
+	u8 synchronize_dek[0x1];
+	u8 int_kek_manual[0x1];
+	u8 int_kek_auto[0x1];
+	u8 reserved_at_6[0x12];
+	u8 wrapped_import_method[0x8];
+	u8 reserved_at_20[0x3];
+	u8 log_dek_max_alloc[0x5];
+	u8 reserved_at_28[0x3];
+	u8 log_max_num_deks[0x5];
+	u8 reserved_at_30[0x3];
+	u8 log_max_num_import_keks[0x5];
+	u8 reserved_at_38[0x3];
+	u8 log_max_num_creds[0x5];
+	u8 failed_selftests[0x10];
+	u8 num_nv_import_keks[0x8];
+	u8 num_nv_credentials[0x8];
+	u8 reserved_at_60[0x3];
+	u8 log_dek_granularity[0x5];
+	u8 reserved_at_68[0x3];
+	u8 log_max_num_int_kek[0x5];
+	u8 reserved_at_70[0x10];
+	u8 reserved_at_80[0x780];
 };
 
 struct mlx5_ifc_crypto_commissioning_register_bits {

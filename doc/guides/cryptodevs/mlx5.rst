@@ -35,6 +35,10 @@ Configuration
 
 See the :ref:`mlx5 common configuration <mlx5_common_env>`.
 
+A device comes out of Mellanox factory with pre-defined import methods.
+There are two possible import methods: wrapped or plaintext.
+
+In case the device is in wrapped mode, it needs to be moved to crypto operational mode.
 In order to move the device to crypto operational mode, credential and KEK
 (Key Encrypting Key) should be set as the first step.
 The credential will be used by the software in order to perform crypto login, and the KEK is
@@ -89,10 +93,17 @@ The mlxreg dedicated tool should be used as follows:
   The "wrapped_crypto_operational" value will be "0x00000001" if the mode was
   successfully changed to operational mode.
 
-  The mlx5 crypto PMD can be verified by running the test application::
+On the other hand, in case of plaintext mode, there is no need for all the above,
+DEK is passed in plaintext without keytag.
 
-     dpdk-test -c 1 -n 1 -w <dev>,class=crypto,wcs_file=<file_path>
-     RTE>>cryptodev_mlx5_autotest
+  The mlx5 crypto PMD can be verified by running the test application::
+    Wrapped mode:
+      dpdk-test -c 1 -n 1 -w <dev>,class=crypto,wcs_file=<file_path>
+      RTE>>cryptodev_mlx5_autotest
+
+    Plaintext mode:
+      dpdk-test -c 1 -n 1 -w <dev>,class=crypto
+      RTE>>cryptodev_mlx5_autotest
 
 
 Driver options
@@ -101,7 +112,7 @@ Driver options
 Please refer to :ref:`mlx5 common options <mlx5_common_driver_options>`
 for an additional list of options shared with other mlx5 drivers.
 
-- ``wcs_file`` parameter [string] - mandatory
+- ``wcs_file`` parameter [string] - mandatory in wrapped mode
 
   File path including only the wrapped credential in string format of hexadecimal
   numbers, represent 48 bytes (8 bytes IV added by the AES key wrap algorithm).

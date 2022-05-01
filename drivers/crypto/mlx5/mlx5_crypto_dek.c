@@ -79,11 +79,11 @@ mlx5_crypto_dek_match_cb(void *tool_ctx __rte_unused,
 	struct rte_crypto_cipher_xform *cipher_ctx = ctx->cipher;
 	struct mlx5_crypto_dek *dek =
 			container_of(entry, typeof(*dek), entry);
-	uint32_t key_len = dek->size_is_48 ? 48 : 80;
+	uint32_t key_len = dek->size;
 
 	if (key_len != cipher_ctx->key.length)
 		return -1;
-	return memcmp(cipher_ctx->key.data, dek->data, key_len);
+	return memcmp(cipher_ctx->key.data, dek->data, cipher_ctx->key.length);
 }
 
 static struct mlx5_list_entry *
@@ -98,23 +98,42 @@ mlx5_crypto_dek_create_cb(void *tool_ctx __rte_unused, void *cb_ctx)
 		.key_purpose = MLX5_CRYPTO_KEY_PURPOSE_AES_XTS,
 		.has_keytag = 1,
 	};
+	bool is_wrapped = ctx->priv->is_wrapped_mode;
 
 	if (dek == NULL) {
 		DRV_LOG(ERR, "Failed to allocate dek memory.");
 		return NULL;
 	}
-	switch (cipher_ctx->key.length) {
-	case 48:
-		dek->size_is_48 = true;
-		dek_attr.key_size = MLX5_CRYPTO_KEY_SIZE_128b;
-		break;
-	case 80:
-		dek->size_is_48 = false;
-		dek_attr.key_size = MLX5_CRYPTO_KEY_SIZE_256b;
-		break;
-	default:
-		DRV_LOG(ERR, "Key size not supported.");
-		return NULL;
+	if (is_wrapped) {
+		switch (cipher_ctx->key.length) {
+		case 48:
+			dek->size = 48;
+			dek_attr.key_size = MLX5_CRYPTO_KEY_SIZE_128b;
+			break;
+		case 80:
+			dek->size = 80;
+			dek_attr.key_size = MLX5_CRYPTO_KEY_SIZE_256b;
+			break;
+		default:
+			DRV_LOG(ERR, "Wrapped key size not supported.");
+			return NULL;
+		}
+	} else {
+		switch (cipher_ctx->key.length) {
+		case 32:
+			dek->size = 40;
+			dek_attr.key_size = MLX5_CRYPTO_KEY_SIZE_128b;
+			break;
+		case 64:
+			dek->size = 72;
+			dek_attr.key_size = MLX5_CRYPTO_KEY_SIZE_256b;
+			break;
+		default:
+			DRV_LOG(ERR, "Key size not supported.");
+			return NULL;
+		}
+		memcpy(&dek_attr.key[cipher_ctx->key.length],
+						&ctx->priv->keytag, 8);
 	}
 	memcpy(&dek_attr.key, cipher_ctx->key.data, cipher_ctx->key.length);
 	dek->obj = mlx5_devx_cmd_create_dek_obj(ctx->priv->cdev->ctx,

@@ -23,13 +23,13 @@
 #define MLX5_CRYPTO_MAX_QPS 128
 #define MLX5_CRYPTO_MAX_SEGS 56
 
-#define MLX5_CRYPTO_FEATURE_FLAGS \
+#define MLX5_CRYPTO_FEATURE_FLAGS(wrapped_mode) \
 	(RTE_CRYPTODEV_FF_SYMMETRIC_CRYPTO | RTE_CRYPTODEV_FF_HW_ACCELERATED | \
 	 RTE_CRYPTODEV_FF_IN_PLACE_SGL | RTE_CRYPTODEV_FF_OOP_SGL_IN_SGL_OUT | \
 	 RTE_CRYPTODEV_FF_OOP_SGL_IN_LB_OUT | \
 	 RTE_CRYPTODEV_FF_OOP_LB_IN_SGL_OUT | \
 	 RTE_CRYPTODEV_FF_OOP_LB_IN_LB_OUT | \
-	 RTE_CRYPTODEV_FF_CIPHER_WRAPPED_KEY | \
+	 (wrapped_mode ? RTE_CRYPTODEV_FF_CIPHER_WRAPPED_KEY : 0) | \
 	 RTE_CRYPTODEV_FF_CIPHER_MULTIPLE_DATA_UNITS)
 
 TAILQ_HEAD(mlx5_crypto_privs, mlx5_crypto_priv) mlx5_crypto_priv_list =
@@ -95,10 +95,13 @@ static void
 mlx5_crypto_dev_infos_get(struct rte_cryptodev *dev,
 			  struct rte_cryptodev_info *dev_info)
 {
+	struct mlx5_crypto_priv *priv = dev->data->dev_private;
+
 	RTE_SET_USED(dev);
 	if (dev_info != NULL) {
 		dev_info->driver_id = mlx5_crypto_driver_id;
-		dev_info->feature_flags = MLX5_CRYPTO_FEATURE_FLAGS;
+		dev_info->feature_flags =
+			MLX5_CRYPTO_FEATURE_FLAGS(priv->is_wrapped_mode);
 		dev_info->capabilities = mlx5_crypto_caps;
 		dev_info->max_nb_queue_pairs = MLX5_CRYPTO_MAX_QPS;
 		dev_info->min_mbuf_headroom_req = 0;
@@ -767,7 +770,8 @@ mlx5_crypto_args_check_handler(const char *key, const char *val, void *opaque)
 
 static int
 mlx5_crypto_parse_devargs(struct mlx5_kvargs_ctrl *mkvlist,
-			  struct mlx5_crypto_devarg_params *devarg_prms)
+			  struct mlx5_crypto_devarg_params *devarg_prms,
+			  bool wrapped_mode)
 {
 	struct mlx5_devx_crypto_login_attr *attr = &devarg_prms->login_attr;
 	const char **params = (const char *[]){
@@ -785,6 +789,8 @@ mlx5_crypto_parse_devargs(struct mlx5_kvargs_ctrl *mkvlist,
 	devarg_prms->keytag = 0;
 	devarg_prms->max_segs_num = 8;
 	if (mkvlist == NULL) {
+		if (!wrapped_mode)
+			return 0;
 		DRV_LOG(ERR,
 			"No login devargs in order to enable crypto operations in the device.");
 		rte_errno = EINVAL;
@@ -796,9 +802,9 @@ mlx5_crypto_parse_devargs(struct mlx5_kvargs_ctrl *mkvlist,
 		rte_errno = EINVAL;
 		return -1;
 	}
-	if (devarg_prms->login_devarg == false) {
+	if (devarg_prms->login_devarg == false && wrapped_mode) {
 		DRV_LOG(ERR,
-			"No login credential devarg in order to enable crypto operations in the device.");
+			"No login credential devarg in order to enable crypto operations in the device while in wrapped import method.");
 		rte_errno = EINVAL;
 		return -1;
 	}
@@ -897,6 +903,7 @@ mlx5_crypto_dev_probe(struct mlx5_common_device *cdev,
 	};
 	const char *ibdev_name = mlx5_os_get_ctx_device_name(cdev->ctx);
 	int ret;
+	bool wrapped_mode;
 
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY) {
 		DRV_LOG(ERR, "Non-primary process type is not supported.");
@@ -909,7 +916,8 @@ mlx5_crypto_dev_probe(struct mlx5_common_device *cdev,
 		rte_errno = ENOTSUP;
 		return -ENOTSUP;
 	}
-	ret = mlx5_crypto_parse_devargs(mkvlist, &devarg_prms);
+	wrapped_mode = !!cdev->config.hca_attr.crypto_wrapped_import_method;
+	ret = mlx5_crypto_parse_devargs(mkvlist, &devarg_prms, wrapped_mode);
 	if (ret) {
 		DRV_LOG(ERR, "Failed to parse devargs.");
 		return -rte_errno;
@@ -925,25 +933,27 @@ mlx5_crypto_dev_probe(struct mlx5_common_device *cdev,
 	crypto_dev->dev_ops = &mlx5_crypto_ops;
 	crypto_dev->dequeue_burst = mlx5_crypto_dequeue_burst;
 	crypto_dev->enqueue_burst = mlx5_crypto_enqueue_burst;
-	crypto_dev->feature_flags = MLX5_CRYPTO_FEATURE_FLAGS;
+	crypto_dev->feature_flags = MLX5_CRYPTO_FEATURE_FLAGS(wrapped_mode);
 	crypto_dev->driver_id = mlx5_crypto_driver_id;
 	priv = crypto_dev->data->dev_private;
 	priv->cdev = cdev;
 	priv->crypto_dev = crypto_dev;
+	priv->is_wrapped_mode = wrapped_mode;
 	if (mlx5_devx_uar_prepare(cdev, &priv->uar) != 0) {
 		rte_cryptodev_pmd_destroy(priv->crypto_dev);
 		return -1;
 	}
-	login = mlx5_devx_cmd_create_crypto_login_obj(cdev->ctx,
+	if (wrapped_mode) {
+		login = mlx5_devx_cmd_create_crypto_login_obj(cdev->ctx,
 						      &devarg_prms.login_attr);
-	if (login == NULL) {
-		DRV_LOG(ERR, "Failed to configure login.");
-		mlx5_devx_uar_release(&priv->uar);
-		rte_cryptodev_pmd_destroy(priv->crypto_dev);
-		return -rte_errno;
+		if (login == NULL) {
+			DRV_LOG(ERR, "Failed to configure login.");
+			mlx5_devx_uar_release(&priv->uar);
+			rte_cryptodev_pmd_destroy(priv->crypto_dev);
+			return -rte_errno;
+		}
+		priv->login_obj = login;
 	}
-	priv->login_obj = login;
-	priv->keytag = rte_cpu_to_be_64(devarg_prms.keytag);
 	ret = mlx5_crypto_configure_wqe_size(priv,
 		cdev->config.hca_attr.max_wqe_sz_sq, devarg_prms.max_segs_num);
 	if (ret) {
@@ -952,6 +962,7 @@ mlx5_crypto_dev_probe(struct mlx5_common_device *cdev,
 		rte_cryptodev_pmd_destroy(priv->crypto_dev);
 		return -1;
 	}
+	priv->keytag = rte_cpu_to_be_64(devarg_prms.keytag);
 	DRV_LOG(INFO, "Max number of segments: %u.",
 		(unsigned int)RTE_MIN(
 			MLX5_CRYPTO_KLM_SEGS_NUM(priv->umr_wqe_size),

@@ -38,6 +38,7 @@ struct mlx5_crypto_priv {
 	uint16_t umr_wqe_size;
 	uint16_t umr_wqe_stride;
 	uint16_t max_rdmar_ds;
+	uint32_t is_wrapped_mode:1;
 };
 
 struct mlx5_crypto_qp {
@@ -59,7 +60,7 @@ struct mlx5_crypto_dek {
 	struct mlx5_list_entry entry; /* Pointer to DEK hash list entry. */
 	struct mlx5_devx_obj *obj; /* Pointer to DEK DevX object. */
 	uint8_t data[MLX5_CRYPTO_KEY_LENGTH]; /* DEK key data. */
-	bool size_is_48; /* Whether the key\data size is 48 bytes or not. */
+	uint32_t size; /* key+keytag size. */
 } __rte_cache_aligned;
 
 struct mlx5_crypto_devarg_params {

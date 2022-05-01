@@ -964,12 +964,21 @@ mlx5_devx_cmd_query_hca_attr(void *ctx,
 		MLX5_GET(cmd_hca_cap, hcattr, umr_modify_entity_size_disabled);
 	attr->wait_on_time = MLX5_GET(cmd_hca_cap, hcattr, wait_on_time);
 	attr->crypto = MLX5_GET(cmd_hca_cap, hcattr, crypto);
-	if (attr->crypto)
-		attr->aes_xts = MLX5_GET(cmd_hca_cap, hcattr, aes_xts);
 	attr->ct_offload = !!(MLX5_GET64(cmd_hca_cap, hcattr,
 					 general_obj_types) &
 			      MLX5_GENERAL_OBJ_TYPES_CAP_CONN_TRACK_OFFLOAD);
 	attr->rq_delay_drop = MLX5_GET(cmd_hca_cap, hcattr, rq_delay_drop);
+	if (attr->crypto) {
+		attr->aes_xts = MLX5_GET(cmd_hca_cap, hcattr, aes_xts);
+		hcattr = mlx5_devx_get_hca_cap(ctx, in, out, &rc,
+				MLX5_GET_HCA_CAP_OP_MOD_CRYPTO |
+				MLX5_HCA_CAP_OPMOD_GET_CUR);
+		if (!hcattr)
+			return -1;
+		attr->crypto_wrapped_import_method = !!(MLX5_GET(crypto_caps,
+						hcattr, wrapped_import_method)
+						& 1 << 2);
+	}
 	if (hca_cap_2_sup) {
 		hcattr = mlx5_devx_get_hca_cap(ctx, in, out, &rc,
 				MLX5_GET_HCA_CAP_OP_MOD_GENERAL_DEVICE_2 |
