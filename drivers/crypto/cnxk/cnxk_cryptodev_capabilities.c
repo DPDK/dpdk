@@ -862,6 +862,29 @@ static const struct rte_cryptodev_capabilities sec_caps_aes[] = {
 	},
 };
 
+static const struct rte_cryptodev_capabilities sec_caps_des[] = {
+	{	/* 3DES CBC */
+		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
+		{.sym = {
+			.xform_type = RTE_CRYPTO_SYM_XFORM_CIPHER,
+			{.cipher = {
+				.algo = RTE_CRYPTO_CIPHER_3DES_CBC,
+				.block_size = 8,
+				.key_size = {
+					.min = 24,
+					.max = 24,
+					.increment = 0
+				},
+				.iv_size = {
+					.min = 8,
+					.max = 16,
+					.increment = 8
+				}
+			}, }
+		}, }
+	}
+};
+
 static const struct rte_cryptodev_capabilities sec_caps_sha1_sha2[] = {
 	{	/* SHA1 HMAC */
 		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
@@ -1195,6 +1218,7 @@ sec_crypto_caps_populate(struct rte_cryptodev_capabilities cnxk_caps[],
 	int cur_pos = 0;
 
 	SEC_CAPS_ADD(cnxk_caps, &cur_pos, hw_caps, aes);
+	SEC_CAPS_ADD(cnxk_caps, &cur_pos, hw_caps, des);
 	SEC_CAPS_ADD(cnxk_caps, &cur_pos, hw_caps, sha1_sha2);
 
 	if (roc_model_is_cn10k())

@@ -36,6 +36,10 @@ ipsec_xform_cipher_verify(struct rte_crypto_sym_xform *crypto_xform)
 		return 0;
 	}
 
+	if (crypto_xform->cipher.algo == RTE_CRYPTO_CIPHER_3DES_CBC &&
+	    crypto_xform->cipher.key.length == 24)
+		return 0;
+
 	return -ENOTSUP;
 }
 
