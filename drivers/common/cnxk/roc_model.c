@@ -19,6 +19,7 @@ struct roc_model *roc_model;
 #define PART_106xx  0xB9
 #define PART_105xx  0xBA
 #define PART_105xxN 0xBC
+#define PART_103xx  0xBE
 #define PART_98xx   0xB1
 #define PART_96xx   0xB2
 #define PART_95xx   0xB3
@@ -49,6 +50,7 @@ static const struct model_db {
 } model_db[] = {
 	{VENDOR_ARM, PART_106xx, 0, 0, ROC_MODEL_CN106xx_A0, "cn10ka_a0"},
 	{VENDOR_ARM, PART_105xx, 0, 0, ROC_MODEL_CNF105xx_A0, "cnf10ka_a0"},
+	{VENDOR_ARM, PART_103xx, 0, 0, ROC_MODEL_CN103xx_A0, "cn10kb_a0"},
 	{VENDOR_ARM, PART_105xxN, 0, 0, ROC_MODEL_CNF105xxN_A0, "cnf10kb_a0"},
 	{VENDOR_CAVIUM, PART_98xx, 0, 0, ROC_MODEL_CN98xx_A0, "cn98xx_a0"},
 	{VENDOR_CAVIUM, PART_96xx, 0, 0, ROC_MODEL_CN96xx_A0, "cn96xx_a0"},
@@ -95,6 +97,8 @@ cn10k_part_get(void)
 		soc = PART_105xx;
 	} else if (strcmp("cnf10kb", ptr) == 0) {
 		soc = PART_105xxN;
+	} else if (strcmp("cn10kb", ptr) == 0) {
+		soc = PART_103xx;
 	} else {
 		plt_err("Unidentified 'CPU compatible': <%s>", ptr);
 		goto fclose;

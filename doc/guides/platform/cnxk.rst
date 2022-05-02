@@ -18,6 +18,7 @@ Supported OCTEON cnxk SoCs
 - CN98xx
 - CN106xx
 - CNF105xx
+- CN103XX
 
 Resource Virtualization Unit architecture
 -----------------------------------------
