@@ -508,19 +508,25 @@ npc_mcam_set_channel(struct roc_npc_flow *flow,
 	req->entry_data.kw_mask[0] &= ~(GENMASK(11, 0));
 	flow->mcam_data[0] &= ~(GENMASK(11, 0));
 	flow->mcam_mask[0] &= ~(GENMASK(11, 0));
+	chan = channel;
+	mask = chan_mask;
 
-	if (is_second_pass) {
-		chan = (channel | NIX_CHAN_CPT_CH_START);
-		mask = (chan_mask | NIX_CHAN_CPT_CH_START);
-	} else {
-		/*
-		 * Clear bits 10 & 11 corresponding to CPT
-		 * channel. By default, rules should match
-		 * both first pass packets and second pass
-		 * packets from CPT.
-		 */
-		chan = (channel & NIX_CHAN_CPT_X2P_MASK);
-		mask = (chan_mask & NIX_CHAN_CPT_X2P_MASK);
+	if (roc_model_runtime_is_cn10k()) {
+		if (is_second_pass) {
+			chan = (channel | NIX_CHAN_CPT_CH_START);
+			mask = (chan_mask | NIX_CHAN_CPT_CH_START);
+		} else {
+			if (!(flow->npc_action & NIX_RX_ACTIONOP_UCAST_IPSEC)) {
+				/*
+				 * Clear bits 10 & 11 corresponding to CPT
+				 * channel. By default, rules should match
+				 * both first pass packets and second pass
+				 * packets from CPT.
+				 */
+				chan = (channel & NIX_CHAN_CPT_X2P_MASK);
+				mask = (chan_mask & NIX_CHAN_CPT_X2P_MASK);
+			}
+		}
 	}
 
 	req->entry_data.kw[0] |= (uint64_t)chan;
