@@ -17,7 +17,7 @@ extern "C" {
 
 #define RTE_VECT_DEFAULT_SIMD_BITWIDTH RTE_VECT_SIMD_256
 
-typedef vector signed int xmm_t;
+typedef __vector signed int xmm_t;
 
 #define	XMM_SIZE	(sizeof(xmm_t))
 #define	XMM_MASK	(XMM_SIZE - 1)

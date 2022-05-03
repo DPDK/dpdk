@@ -17,50 +17,50 @@
 static inline void
 processx4_step3(struct rte_mbuf *pkt[FWDSTEP], uint16_t dst_port[FWDSTEP])
 {
-	vector unsigned int te[FWDSTEP];
-	vector unsigned int ve[FWDSTEP];
-	vector unsigned int *p[FWDSTEP];
+	__vector unsigned int te[FWDSTEP];
+	__vector unsigned int ve[FWDSTEP];
+	__vector unsigned int *p[FWDSTEP];
 
-	p[0] = rte_pktmbuf_mtod(pkt[0], vector unsigned int *);
-	p[1] = rte_pktmbuf_mtod(pkt[1], vector unsigned int *);
-	p[2] = rte_pktmbuf_mtod(pkt[2], vector unsigned int *);
-	p[3] = rte_pktmbuf_mtod(pkt[3], vector unsigned int *);
+	p[0] = rte_pktmbuf_mtod(pkt[0], __vector unsigned int *);
+	p[1] = rte_pktmbuf_mtod(pkt[1], __vector unsigned int *);
+	p[2] = rte_pktmbuf_mtod(pkt[2], __vector unsigned int *);
+	p[3] = rte_pktmbuf_mtod(pkt[3], __vector unsigned int *);
 
-	ve[0] = (vector unsigned int)val_eth[dst_port[0]];
+	ve[0] = (__vector unsigned int)val_eth[dst_port[0]];
 	te[0] = *p[0];
 
-	ve[1] = (vector unsigned int)val_eth[dst_port[1]];
+	ve[1] = (__vector unsigned int)val_eth[dst_port[1]];
 	te[1] = *p[1];
 
-	ve[2] = (vector unsigned int)val_eth[dst_port[2]];
+	ve[2] = (__vector unsigned int)val_eth[dst_port[2]];
 	te[2] = *p[2];
 
-	ve[3] = (vector unsigned int)val_eth[dst_port[3]];
+	ve[3] = (__vector unsigned int)val_eth[dst_port[3]];
 	te[3] = *p[3];
 
 	/* Update first 12 bytes, keep rest bytes intact. */
-	te[0] = (vector unsigned int)vec_sel(
-			(vector unsigned short)ve[0],
-			(vector unsigned short)te[0],
-			(vector unsigned short) {0, 0, 0, 0,
+	te[0] = (__vector unsigned int)vec_sel(
+			(__vector unsigned short)ve[0],
+			(__vector unsigned short)te[0],
+			(__vector unsigned short) {0, 0, 0, 0,
 						0, 0, 0xffff, 0xffff});
 
-	te[1] = (vector unsigned int)vec_sel(
-			(vector unsigned short)ve[1],
-			(vector unsigned short)te[1],
-			(vector unsigned short) {0, 0, 0, 0,
+	te[1] = (__vector unsigned int)vec_sel(
+			(__vector unsigned short)ve[1],
+			(__vector unsigned short)te[1],
+			(__vector unsigned short) {0, 0, 0, 0,
 						0, 0, 0xffff, 0xffff});
 
-	te[2] = (vector unsigned int)vec_sel(
-			(vector unsigned short)ve[2],
-			(vector unsigned short)te[2],
-			(vector unsigned short) {0, 0, 0, 0, 0,
+	te[2] = (__vector unsigned int)vec_sel(
+			(__vector unsigned short)ve[2],
+			(__vector unsigned short)te[2],
+			(__vector unsigned short) {0, 0, 0, 0, 0,
 						0, 0xffff, 0xffff});
 
-	te[3] = (vector unsigned int)vec_sel(
-			(vector unsigned short)ve[3],
-			(vector unsigned short)te[3],
-			(vector unsigned short) {0, 0, 0, 0,
+	te[3] = (__vector unsigned int)vec_sel(
+			(__vector unsigned short)ve[3],
+			(__vector unsigned short)te[3],
+			(__vector unsigned short) {0, 0, 0, 0,
 						0, 0, 0xffff, 0xffff});
 
 	*p[0] = te[0];
@@ -91,8 +91,9 @@ processx4_step3(struct rte_mbuf *pkt[FWDSTEP], uint16_t dst_port[FWDSTEP])
  * This mask is used as an index into prebuild array of pnum values.
  */
 static inline uint16_t *
-port_groupx4(uint16_t pn[FWDSTEP + 1], uint16_t *lp, vector unsigned short dp1,
-	vector unsigned short dp2)
+port_groupx4(uint16_t pn[FWDSTEP + 1], uint16_t *lp,
+		__vector unsigned short dp1,
+		__vector unsigned short dp2)
 {
 	union {
 		uint16_t u16[FWDSTEP + 1];
@@ -126,24 +127,24 @@ static inline void
 process_packet(struct rte_mbuf *pkt, uint16_t *dst_port)
 {
 	struct rte_ether_hdr *eth_hdr;
-	vector unsigned int te, ve;
+	__vector unsigned int te, ve;
 
 	eth_hdr = rte_pktmbuf_mtod(pkt, struct rte_ether_hdr *);
 
-	te = *(vector unsigned int *)eth_hdr;
-	ve = (vector unsigned int)val_eth[dst_port[0]];
+	te = *(__vector unsigned int *)eth_hdr;
+	ve = (__vector unsigned int)val_eth[dst_port[0]];
 
 	rfc1812_process((struct rte_ipv4_hdr *)(eth_hdr + 1), dst_port,
 			pkt->packet_type);
 
 	/* dynamically vec_sel te and ve for MASK_ETH (0x3f) */
-	te = (vector unsigned int)vec_sel(
-		(vector unsigned short)ve,
-		(vector unsigned short)te,
-		(vector unsigned short){0, 0, 0, 0,
+	te = (__vector unsigned int)vec_sel(
+		(__vector unsigned short)ve,
+		(__vector unsigned short)te,
+		(__vector unsigned short){0, 0, 0, 0,
 					0, 0, 0xffff, 0xffff});
 
-	*(vector unsigned int *)eth_hdr = te;
+	*(__vector unsigned int *)eth_hdr = te;
 }
 
 /**
@@ -165,7 +166,7 @@ send_packets_multi(struct lcore_conf *qconf, struct rte_mbuf **pkts_burst,
 	 */
 	k = RTE_ALIGN_FLOOR(nb_rx, FWDSTEP);
 	if (k != 0) {
-		vector unsigned short dp1, dp2;
+		__vector unsigned short dp1, dp2;
 
 		lp = pnum;
 		lp[0] = 1;
@@ -173,7 +174,7 @@ send_packets_multi(struct lcore_conf *qconf, struct rte_mbuf **pkts_burst,
 		processx4_step3(pkts_burst, dst_port);
 
 		/* dp1: <d[0], d[1], d[2], d[3], ... > */
-		dp1 = *(vector unsigned short *)dst_port;
+		dp1 = *(__vector unsigned short *)dst_port;
 
 		for (j = FWDSTEP; j != k; j += FWDSTEP) {
 			processx4_step3(&pkts_burst[j], &dst_port[j]);
@@ -182,7 +183,7 @@ send_packets_multi(struct lcore_conf *qconf, struct rte_mbuf **pkts_burst,
 			 * dp2:
 			 * <d[j-3], d[j-2], d[j-1], d[j], ... >
 			 */
-			dp2 = *((vector unsigned short *)
+			dp2 = *((__vector unsigned short *)
 					&dst_port[j - FWDSTEP + 1]);
 			lp  = port_groupx4(&pnum[j - FWDSTEP], lp, dp1, dp2);
 
@@ -190,7 +191,7 @@ send_packets_multi(struct lcore_conf *qconf, struct rte_mbuf **pkts_burst,
 			 * dp1:
 			 * <d[j], d[j+1], d[j+2], d[j+3], ... >
 			 */
-			dp1 = vec_sro(dp2, (vector unsigned char) {
+			dp1 = vec_sro(dp2, (__vector unsigned char) {
 				0, 0, 0, 0, 0, 0, 0, 0,
 				0, 0, 0, (FWDSTEP - 1) * sizeof(dst_port[0])});
 		}
@@ -198,8 +199,8 @@ send_packets_multi(struct lcore_conf *qconf, struct rte_mbuf **pkts_burst,
 		/*
 		 * dp2: <d[j-3], d[j-2], d[j-1], d[j-1], ... >
 		 */
-		dp2 = vec_perm(dp1, (vector unsigned short){},
-				(vector unsigned char){0xf9});
+		dp2 = vec_perm(dp1, (__vector unsigned short){},
+				(__vector unsigned char){0xf9});
 		lp  = port_groupx4(&pnum[j - FWDSTEP], lp, dp1, dp2);
 
 		/*

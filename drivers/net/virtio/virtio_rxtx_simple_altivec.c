@@ -50,9 +50,9 @@ virtio_recv_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
 	struct rte_mbuf **sw_ring_end;
 	struct rte_mbuf **ref_rx_pkts;
 	uint16_t nb_pkts_received = 0;
-	const vector unsigned char zero = {0};
+	const __vector unsigned char zero = {0};
 
-	const vector unsigned char shuf_msk1 = {
+	const __vector unsigned char shuf_msk1 = {
 		0xFF, 0xFF, 0xFF, 0xFF,	/* packet type */
 		4, 5, 0xFF, 0xFF, /* vlan tci */
 		4, 5,			/* dat len */
@@ -60,7 +60,7 @@ virtio_recv_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
 		0xFF, 0xFF, 0xFF, 0xFF
 	};
 
-	const vector unsigned char shuf_msk2 = {
+	const __vector unsigned char shuf_msk2 = {
 		0xFF, 0xFF, 0xFF, 0xFF,	/* packet type */
 		12, 13, 0xFF, 0xFF,	/* pkt len */
 		12, 13,			/* dat len */
@@ -72,7 +72,7 @@ virtio_recv_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
 	 * Subtract the header length.
 	 *  In which case do we need the header length in used->len ?
 	 */
-	const vector unsigned short len_adjust = {
+	const __vector unsigned short len_adjust = {
 		0, 0,
 		(uint16_t)-vq->hw->vtnet_hdr_size, 0,
 		(uint16_t)-vq->hw->vtnet_hdr_size, 0,
@@ -112,68 +112,68 @@ virtio_recv_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
 	ref_rx_pkts = rx_pkts;
 	for (nb_pkts_received = 0;
 		nb_pkts_received < nb_total;) {
-		vector unsigned char desc[RTE_VIRTIO_DESC_PER_LOOP / 2];
-		vector unsigned char mbp[RTE_VIRTIO_DESC_PER_LOOP / 2];
-		vector unsigned char pkt_mb[RTE_VIRTIO_DESC_PER_LOOP];
+		__vector unsigned char desc[RTE_VIRTIO_DESC_PER_LOOP / 2];
+		__vector unsigned char mbp[RTE_VIRTIO_DESC_PER_LOOP / 2];
+		__vector unsigned char pkt_mb[RTE_VIRTIO_DESC_PER_LOOP];
 
 		mbp[0] = vec_vsx_ld(0, (unsigned char const *)(sw_ring + 0));
 		desc[0] = vec_vsx_ld(0, (unsigned char const *)(rused + 0));
-		*(vector unsigned char *)&rx_pkts[0] = mbp[0];
+		*(__vector unsigned char *)&rx_pkts[0] = mbp[0];
 
 		mbp[1] = vec_vsx_ld(0, (unsigned char const *)(sw_ring + 2));
 		desc[1] = vec_vsx_ld(0, (unsigned char const *)(rused + 2));
-		*(vector unsigned char *)&rx_pkts[2] = mbp[1];
+		*(__vector unsigned char *)&rx_pkts[2] = mbp[1];
 
 		mbp[2] = vec_vsx_ld(0, (unsigned char const *)(sw_ring + 4));
 		desc[2] = vec_vsx_ld(0, (unsigned char const *)(rused + 4));
-		*(vector unsigned char *)&rx_pkts[4] = mbp[2];
+		*(__vector unsigned char *)&rx_pkts[4] = mbp[2];
 
 		mbp[3] = vec_vsx_ld(0, (unsigned char const *)(sw_ring + 6));
 		desc[3] = vec_vsx_ld(0, (unsigned char const *)(rused + 6));
-		*(vector unsigned char *)&rx_pkts[6] = mbp[3];
+		*(__vector unsigned char *)&rx_pkts[6] = mbp[3];
 
 		pkt_mb[0] = vec_perm(desc[0], zero, shuf_msk1);
 		pkt_mb[1] = vec_perm(desc[0], zero, shuf_msk2);
-		pkt_mb[0] = (vector unsigned char)
-			((vector unsigned short)pkt_mb[0] + len_adjust);
-		pkt_mb[1] = (vector unsigned char)
-			((vector unsigned short)pkt_mb[1] + len_adjust);
-		*(vector unsigned char *)&rx_pkts[0]->rx_descriptor_fields1 =
+		pkt_mb[0] = (__vector unsigned char)
+			((__vector unsigned short)pkt_mb[0] + len_adjust);
+		pkt_mb[1] = (__vector unsigned char)
+			((__vector unsigned short)pkt_mb[1] + len_adjust);
+		*(__vector unsigned char *)&rx_pkts[0]->rx_descriptor_fields1 =
 			pkt_mb[0];
-		*(vector unsigned char *)&rx_pkts[1]->rx_descriptor_fields1 =
+		*(__vector unsigned char *)&rx_pkts[1]->rx_descriptor_fields1 =
 			pkt_mb[1];
 
 		pkt_mb[2] = vec_perm(desc[1], zero, shuf_msk1);
 		pkt_mb[3] = vec_perm(desc[1], zero, shuf_msk2);
-		pkt_mb[2] = (vector unsigned char)
-			((vector unsigned short)pkt_mb[2] + len_adjust);
-		pkt_mb[3] = (vector unsigned char)
-			((vector unsigned short)pkt_mb[3] + len_adjust);
-		*(vector unsigned char *)&rx_pkts[2]->rx_descriptor_fields1 =
+		pkt_mb[2] = (__vector unsigned char)
+			((__vector unsigned short)pkt_mb[2] + len_adjust);
+		pkt_mb[3] = (__vector unsigned char)
+			((__vector unsigned short)pkt_mb[3] + len_adjust);
+		*(__vector unsigned char *)&rx_pkts[2]->rx_descriptor_fields1 =
 			pkt_mb[2];
-		*(vector unsigned char *)&rx_pkts[3]->rx_descriptor_fields1 =
+		*(__vector unsigned char *)&rx_pkts[3]->rx_descriptor_fields1 =
 			pkt_mb[3];
 
 		pkt_mb[4] = vec_perm(desc[2], zero, shuf_msk1);
 		pkt_mb[5] = vec_perm(desc[2], zero, shuf_msk2);
-		pkt_mb[4] = (vector unsigned char)
-			((vector unsigned short)pkt_mb[4] + len_adjust);
-		pkt_mb[5] = (vector unsigned char)
-			((vector unsigned short)pkt_mb[5] + len_adjust);
-		*(vector unsigned char *)&rx_pkts[4]->rx_descriptor_fields1 =
+		pkt_mb[4] = (__vector unsigned char)
+			((__vector unsigned short)pkt_mb[4] + len_adjust);
+		pkt_mb[5] = (__vector unsigned char)
+			((__vector unsigned short)pkt_mb[5] + len_adjust);
+		*(__vector unsigned char *)&rx_pkts[4]->rx_descriptor_fields1 =
 			pkt_mb[4];
-		*(vector unsigned char *)&rx_pkts[5]->rx_descriptor_fields1 =
+		*(__vector unsigned char *)&rx_pkts[5]->rx_descriptor_fields1 =
 			pkt_mb[5];
 
 		pkt_mb[6] = vec_perm(desc[3], zero, shuf_msk1);
 		pkt_mb[7] = vec_perm(desc[3], zero, shuf_msk2);
-		pkt_mb[6] = (vector unsigned char)
-			((vector unsigned short)pkt_mb[6] + len_adjust);
-		pkt_mb[7] = (vector unsigned char)
-			((vector unsigned short)pkt_mb[7] + len_adjust);
-		*(vector unsigned char *)&rx_pkts[6]->rx_descriptor_fields1 =
+		pkt_mb[6] = (__vector unsigned char)
+			((__vector unsigned short)pkt_mb[6] + len_adjust);
+		pkt_mb[7] = (__vector unsigned char)
+			((__vector unsigned short)pkt_mb[7] + len_adjust);
+		*(__vector unsigned char *)&rx_pkts[6]->rx_descriptor_fields1 =
 			pkt_mb[6];
-		*(vector unsigned char *)&rx_pkts[7]->rx_descriptor_fields1 =
+		*(__vector unsigned char *)&rx_pkts[7]->rx_descriptor_fields1 =
 			pkt_mb[7];
 
 		if (unlikely(nb_used <= RTE_VIRTIO_DESC_PER_LOOP)) {

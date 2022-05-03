@@ -19,14 +19,14 @@ static inline void
 rte_lpm_lookupx4(const struct rte_lpm *lpm, xmm_t ip, uint32_t hop[4],
 	uint32_t defv)
 {
-	vector signed int i24;
+	xmm_t i24;
 	rte_xmm_t i8;
 	uint32_t tbl[4];
 	uint64_t idx, pt, pt2;
 	const uint32_t *ptbl;
 
 	const uint32_t mask = UINT8_MAX;
-	const vector signed int mask8 = (xmm_t){mask, mask, mask, mask};
+	const xmm_t mask8 = (xmm_t){mask, mask, mask, mask};
 
 	/*
 	 * RTE_LPM_VALID_EXT_ENTRY_BITMASK for 2 LPM entries
@@ -46,7 +46,7 @@ rte_lpm_lookupx4(const struct rte_lpm *lpm, xmm_t ip, uint32_t hop[4],
 
 	/* get 4 indexes for tbl24[]. */
 	i24 = vec_sr((xmm_t) ip,
-		(vector unsigned int){CHAR_BIT, CHAR_BIT, CHAR_BIT, CHAR_BIT});
+		(__vector unsigned int){CHAR_BIT, CHAR_BIT, CHAR_BIT, CHAR_BIT});
 
 	/* extract values from tbl24[] */
 	idx = (uint32_t)i24[0];
