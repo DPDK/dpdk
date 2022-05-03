@@ -2156,6 +2156,7 @@ bond_ethdev_close(struct rte_eth_dev *dev)
 			RTE_BOND_LOG(ERR, "Failed to stop device on port %u",
 				     port_id);
 			skipped++;
+			continue;
 		}
 
 		if (rte_eth_bond_slave_remove(bond_port_id, port_id) != 0) {
