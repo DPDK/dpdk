@@ -1205,6 +1205,8 @@ tap_dev_close(struct rte_eth_dev *dev)
 	TAP_LOG(DEBUG, "Closing %s Ethernet device on numa %u",
 		tuntap_types[internals->type], rte_socket_id());
 
+	rte_intr_instance_free(internals->intr_handle);
+
 	if (internals->ioctl_sock != -1) {
 		close(internals->ioctl_sock);
 		internals->ioctl_sock = -1;

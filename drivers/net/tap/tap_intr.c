@@ -34,8 +34,6 @@ tap_rx_intr_vec_uninstall(struct rte_eth_dev *dev)
 	rte_intr_free_epoll_fd(intr_handle);
 	rte_intr_vec_list_free(intr_handle);
 	rte_intr_nb_efd_set(intr_handle, 0);
-
-	rte_intr_instance_free(intr_handle);
 }
 
 /**
