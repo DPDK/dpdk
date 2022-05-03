@@ -41,7 +41,7 @@ resolve_priority_altivec(uint64_t transition, int n,
 {
 	uint32_t x;
 	xmm_t results, priority, results1, priority1;
-	vector bool int selector;
+	__vector bool int selector;
 	xmm_t *saved_results, *saved_priority;
 
 	for (x = 0; x < categories; x += RTE_ACL_RESULTS_MULTIPLIER) {
@@ -110,8 +110,8 @@ transition4(xmm_t next_input, const uint64_t *trans,
 	xmm_t in, node_type, r, t;
 	xmm_t dfa_ofs, quad_ofs;
 	xmm_t *index_mask, *tp;
-	vector bool int dfa_msk;
-	vector signed char zeroes = {};
+	__vector bool int dfa_msk;
+	__vector signed char zeroes = {};
 	union {
 		uint64_t d64[2];
 		uint32_t d32[4];
@@ -127,7 +127,7 @@ transition4(xmm_t next_input, const uint64_t *trans,
 	index_mask = (xmm_t *)&altivec_acl_const.xmm_index_mask.u32;
 	t = vec_xor(*index_mask, *index_mask);
 	in = vec_perm(next_input, (xmm_t){},
-		*(vector unsigned char *)&altivec_acl_const.xmm_shuffle_input);
+		*(__vector unsigned char *)&altivec_acl_const.xmm_shuffle_input);
 
 	/* Calc node type and node addr */
 	node_type = vec_and(vec_nor(*index_mask, *index_mask), tr_lo);
@@ -137,30 +137,30 @@ transition4(xmm_t next_input, const uint64_t *trans,
 	dfa_msk = vec_cmpeq(node_type, t);
 
 	/* DFA calculations. */
-	r = vec_sr(in, (vector unsigned int){30, 30, 30, 30});
+	r = vec_sr(in, (__vector unsigned int){30, 30, 30, 30});
 	tp = (xmm_t *)&altivec_acl_const.range_base.u32;
 	r = vec_add(r, *tp);
-	t = vec_sr(in, (vector unsigned int){24, 24, 24, 24});
+	t = vec_sr(in, (__vector unsigned int){24, 24, 24, 24});
 	r = vec_perm(tr_hi, (xmm_t){(uint16_t)0 << 16},
-		(vector unsigned char)r);
+		(__vector unsigned char)r);
 
 	dfa_ofs = vec_sub(t, r);
 
 	/* QUAD/SINGLE calculations. */
-	t = (xmm_t)vec_cmpgt((vector signed char)in, (vector signed char)tr_hi);
+	t = (xmm_t)vec_cmpgt((__vector signed char)in, (__vector signed char)tr_hi);
 	t = (xmm_t)vec_sel(
 		vec_sel(
-			(vector signed char)vec_sub(
-				zeroes, (vector signed char)t),
-			(vector signed char)t,
-			vec_cmpgt((vector signed char)t, zeroes)),
+			(__vector signed char)vec_sub(
+				zeroes, (__vector signed char)t),
+			(__vector signed char)t,
+			vec_cmpgt((__vector signed char)t, zeroes)),
 		zeroes,
-		vec_cmpeq((vector signed char)t, zeroes));
+		vec_cmpeq((__vector signed char)t, zeroes));
 
-	t = (xmm_t)vec_msum((vector signed char)t,
-		(vector unsigned char)t, (xmm_t){});
-	quad_ofs = (xmm_t)vec_msum((vector signed short)t,
-		*(vector signed short *)&altivec_acl_const.xmm_ones_16.u16,
+	t = (xmm_t)vec_msum((__vector signed char)t,
+		(__vector unsigned char)t, (xmm_t){});
+	quad_ofs = (xmm_t)vec_msum((__vector signed short)t,
+		*(__vector signed short *)&altivec_acl_const.xmm_ones_16.u16,
 		(xmm_t){});
 
 	/* blend DFA and QUAD/SINGLE. */
@@ -177,7 +177,7 @@ transition4(xmm_t next_input, const uint64_t *trans,
 	*indices2 = (xmm_t){v.d32[0], v.d32[1], v.d32[2], v.d32[3]};
 
 	return vec_sr(next_input,
-		(vector unsigned int){CHAR_BIT, CHAR_BIT, CHAR_BIT, CHAR_BIT});
+		(__vector unsigned int){CHAR_BIT, CHAR_BIT, CHAR_BIT, CHAR_BIT});
 }
 
 /*
