@@ -1890,8 +1890,9 @@ rte_eth_dev_stop(uint16_t port_id)
 	/* point fast-path functions to dummy ones */
 	eth_dev_fp_ops_reset(rte_eth_fp_ops + port_id);
 
-	dev->data->dev_started = 0;
 	ret = (*dev->dev_ops->dev_stop)(dev);
+	if (ret == 0)
+		dev->data->dev_started = 0;
 	rte_ethdev_trace_stop(port_id, ret);
 
 	return ret;
