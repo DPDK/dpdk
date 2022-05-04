@@ -860,6 +860,7 @@ malloc_heap_free(struct malloc_elem *elem)
 	struct rte_memseg_list *msl;
 	unsigned int i, n_segs, before_space, after_space;
 	int ret;
+	bool unmapped = false;
 	const struct internal_config *internal_conf =
 		eal_get_internal_configuration();
 
@@ -1026,12 +1027,46 @@ malloc_heap_free(struct malloc_elem *elem)
 		request_to_primary(&req);
 	}
 
+	/* we didn't exit early, meaning we have unmapped some pages */
+	unmapped = true;
+
 	RTE_LOG(DEBUG, EAL, "Heap on socket %d was shrunk by %zdMB\n",
 		msl->socket_id, aligned_len >> 20ULL);
 
 	rte_mcfg_mem_write_unlock();
 free_unlock:
 	asan_set_freezone(asan_ptr, asan_data_len);
+
+	/* if we unmapped some memory, we need to do additional work for ASan */
+	if (unmapped) {
+		void *asan_end = RTE_PTR_ADD(asan_ptr, asan_data_len);
+		void *aligned_end = RTE_PTR_ADD(aligned_start, aligned_len);
+		void *aligned_trailer = RTE_PTR_SUB(aligned_start,
+				MALLOC_ELEM_TRAILER_LEN);
+
+		/*
+		 * There was a memory area that was unmapped. This memory area
+		 * will have to be marked as available for ASan, because we will
+		 * want to use it next time it gets mapped again. The OS memory
+		 * protection should trigger a fault on access to these areas
+		 * anyway, so we are not giving up any protection.
+		 */
+		asan_set_zone(aligned_start, aligned_len, 0x00);
+
+		/*
+		 * ...however, when we unmap pages, we create new free elements
+		 * which might have been marked as "freed" with an earlier
+		 * `asan_set_freezone` call. So, if there is an area past the
+		 * unmapped space that was marked as freezone for ASan, we need
+		 * to mark the malloc header as available.
+		 */
+		if (asan_end > aligned_end)
+			asan_set_zone(aligned_end, MALLOC_ELEM_HEADER_LEN, 0x00);
+
+		/* if there's space before unmapped memory, mark as available */
+		if (asan_ptr < aligned_start)
+			asan_set_zone(aligned_trailer, MALLOC_ELEM_TRAILER_LEN, 0x00);
+	}
 
 	rte_spinlock_unlock(&(heap->lock));
 	return ret;
