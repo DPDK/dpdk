@@ -628,7 +628,8 @@ int cnxk_ethdev_parse_devargs(struct rte_devargs *devargs,
 int cnxk_nix_dev_get_reg(struct rte_eth_dev *eth_dev,
 			 struct rte_dev_reg_info *regs);
 /* Security */
-int cnxk_eth_outb_sa_idx_get(struct cnxk_eth_dev *dev, uint32_t *idx_p);
+int cnxk_eth_outb_sa_idx_get(struct cnxk_eth_dev *dev, uint32_t *idx_p,
+			     uint32_t spi);
 int cnxk_eth_outb_sa_idx_put(struct cnxk_eth_dev *dev, uint32_t idx);
 int cnxk_nix_lookup_mem_sa_base_set(struct cnxk_eth_dev *dev);
 int cnxk_nix_lookup_mem_sa_base_clear(struct cnxk_eth_dev *dev);

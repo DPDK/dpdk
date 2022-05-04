@@ -12,6 +12,7 @@ INPUT                   = @TOPDIR@/doc/api/doxy-api-index.md \
                           @TOPDIR@/drivers/net/ark \
                           @TOPDIR@/drivers/net/bnxt \
                           @TOPDIR@/drivers/net/bonding \
+                          @TOPDIR@/drivers/net/cnxk \
                           @TOPDIR@/drivers/net/dpaa \
                           @TOPDIR@/drivers/net/dpaa2 \
                           @TOPDIR@/drivers/net/i40e \

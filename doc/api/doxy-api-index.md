@@ -48,6 +48,7 @@ The public API headers are grouped by topics:
   [iavf]               (@ref rte_pmd_iavf.h),
   [ioat]               (@ref rte_ioat_rawdev.h),
   [bnxt]               (@ref rte_pmd_bnxt.h),
+  [cnxk]               (@ref rte_pmd_cnxk.h),
   [dpaa]               (@ref rte_pmd_dpaa.h),
   [dpaa2]              (@ref rte_pmd_dpaa2.h),
   [mlx5]               (@ref rte_pmd_mlx5.h),

@@ -739,6 +739,12 @@ cn9k_nix_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 	/* Update HW erratas */
 	if (roc_errata_nix_has_cq_min_size_4k())
 		dev->cq_min_4k = 1;
+
+	if (dev->nix.custom_sa_action) {
+		dev->nix.custom_sa_action = 0;
+		plt_info("WARNING: Custom SA action is enabled. It's not supported"
+			 " on cn9k device. Disabling it");
+	}
 	return 0;
 }
 

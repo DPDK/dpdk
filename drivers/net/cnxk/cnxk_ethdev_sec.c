@@ -29,7 +29,8 @@ bitmap_ctzll(uint64_t slab)
 }
 
 int
-cnxk_eth_outb_sa_idx_get(struct cnxk_eth_dev *dev, uint32_t *idx_p)
+cnxk_eth_outb_sa_idx_get(struct cnxk_eth_dev *dev, uint32_t *idx_p,
+			 uint32_t spi)
 {
 	uint32_t pos, idx;
 	uint64_t slab;
@@ -42,17 +43,24 @@ cnxk_eth_outb_sa_idx_get(struct cnxk_eth_dev *dev, uint32_t *idx_p)
 	slab = 0;
 	/* Scan from the beginning */
 	plt_bitmap_scan_init(dev->outb.sa_bmap);
-	/* Scan bitmap to get the free sa index */
-	rc = plt_bitmap_scan(dev->outb.sa_bmap, &pos, &slab);
-	/* Empty bitmap */
-	if (rc == 0) {
-		plt_err("Outbound SA' exhausted, use 'ipsec_out_max_sa' "
-			"devargs to increase");
-		return -ERANGE;
-	}
 
-	/* Get free SA index */
-	idx = pos + bitmap_ctzll(slab);
+	if (dev->nix.custom_sa_action) {
+		if (spi > dev->outb.max_sa)
+			return -ENOTSUP;
+		idx = spi;
+	} else {
+		/* Scan bitmap to get the free sa index */
+		rc = plt_bitmap_scan(dev->outb.sa_bmap, &pos, &slab);
+		/* Empty bitmap */
+		if (rc == 0) {
+			plt_err("Outbound SA' exhausted, use 'ipsec_out_max_sa' "
+				"devargs to increase");
+			return -ERANGE;
+		}
+
+		/* Get free SA index */
+		idx = pos + bitmap_ctzll(slab);
+	}
 	plt_bitmap_clear(dev->outb.sa_bmap, idx);
 	*idx_p = idx;
 	return 0;

@@ -262,7 +262,7 @@ cn9k_eth_sec_session_create(void *device,
 				  ROC_NIX_INL_ONF_IPSEC_OUTB_SW_RSVD);
 
 		/* Alloc an sa index */
-		rc = cnxk_eth_outb_sa_idx_get(dev, &sa_idx);
+		rc = cnxk_eth_outb_sa_idx_get(dev, &sa_idx, 0);
 		if (rc)
 			goto mempool_put;
 
