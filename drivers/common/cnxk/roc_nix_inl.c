@@ -219,17 +219,20 @@ roc_nix_inl_inb_sa_get(struct roc_nix *roc_nix, bool inb_inl_dev, uint32_t spi)
 	if (!sa_base)
 		return 0;
 
+	/* Get SA size */
+	sz = roc_nix_inl_inb_sa_sz(roc_nix, inb_inl_dev);
+	if (!sz)
+		return 0;
+
+	if (roc_nix->custom_sa_action)
+		return (sa_base + (spi * sz));
+
 	/* Check if SPI is in range */
 	mask = roc_nix_inl_inb_spi_range(roc_nix, inb_inl_dev, &min_spi,
 					 &max_spi);
 	if (spi > max_spi || spi < min_spi)
 		plt_warn("Inbound SA SPI %u not in range (%u..%u)", spi,
 			 min_spi, max_spi);
-
-	/* Get SA size */
-	sz = roc_nix_inl_inb_sa_sz(roc_nix, inb_inl_dev);
-	if (!sz)
-		return 0;
 
 	/* Basic logic of SPI->SA for now */
 	return (sa_base + ((spi & mask) * sz));

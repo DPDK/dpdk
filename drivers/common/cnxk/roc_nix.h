@@ -405,6 +405,7 @@ struct roc_nix {
 	bool io_enabled;
 	bool rx_ptp_ena;
 	uint16_t cints;
+	bool custom_sa_action;
 
 #define ROC_NIX_MEM_SZ (6 * 1024)
 	uint8_t reserved[ROC_NIX_MEM_SZ] __plt_cache_aligned;

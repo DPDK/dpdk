@@ -210,6 +210,25 @@ struct roc_npc_action_meter {
 	uint32_t mtr_id; /**< Meter id to be applied. > */
 };
 
+enum roc_npc_sec_action_alg {
+	ROC_NPC_SEC_ACTION_ALG0,
+	ROC_NPC_SEC_ACTION_ALG1,
+	ROC_NPC_SEC_ACTION_ALG2,
+	ROC_NPC_SEC_ACTION_ALG3,
+};
+
+struct roc_npc_sec_action {
+	/* Used as lookup result for ALG3 */
+	uint32_t sa_index;
+	/* When true XOR initial SA_INDEX with SA_HI/SA_LO to get SA_MCAM */
+	bool sa_xor;
+	uint16_t sa_hi, sa_lo;
+	/* Determines alg to be applied post SA_MCAM computation with/without
+	 * XOR
+	 */
+	enum roc_npc_sec_action_alg alg;
+};
+
 struct roc_npc_attr {
 	uint32_t priority;	/**< Rule priority level within group. */
 	uint32_t ingress : 1;	/**< Rule applies to ingress traffic. */

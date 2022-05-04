@@ -294,6 +294,48 @@ roc_npc_validate_portid_action(struct roc_npc *roc_npc_src,
 }
 
 static int
+npc_parse_msns_action(struct roc_npc *roc_npc, const struct roc_npc_action *act,
+		      struct roc_npc_flow *flow, uint8_t *has_msns_action)
+{
+	const struct roc_npc_sec_action *sec_action;
+	union {
+		uint64_t reg;
+		union nix_rx_vtag_action_u act;
+	} vtag_act;
+
+	if (roc_npc->roc_nix->custom_sa_action == 0 ||
+	    roc_model_is_cn9k() == 1 || act->conf == NULL)
+		return 0;
+
+	*has_msns_action = true;
+	sec_action = act->conf;
+
+	vtag_act.reg = 0;
+	vtag_act.act.sa_xor = sec_action->sa_xor;
+	vtag_act.act.sa_hi = sec_action->sa_hi;
+	vtag_act.act.sa_lo = sec_action->sa_lo;
+
+	switch (sec_action->alg) {
+	case ROC_NPC_SEC_ACTION_ALG0:
+		break;
+	case ROC_NPC_SEC_ACTION_ALG1:
+		vtag_act.act.vtag1_valid = false;
+		vtag_act.act.vtag1_lid = ROC_NPC_SEC_ACTION_ALG1;
+		break;
+	case ROC_NPC_SEC_ACTION_ALG2:
+		vtag_act.act.vtag1_valid = false;
+		vtag_act.act.vtag1_lid = ROC_NPC_SEC_ACTION_ALG2;
+		break;
+	default:
+		return -1;
+	}
+
+	flow->vtag_action = vtag_act.reg;
+
+	return 0;
+}
+
+static int
 npc_parse_actions(struct roc_npc *roc_npc, const struct roc_npc_attr *attr,
 		  const struct roc_npc_action actions[],
 		  struct roc_npc_flow *flow)
@@ -305,11 +347,13 @@ npc_parse_actions(struct roc_npc *roc_npc, const struct roc_npc_attr *attr,
 	const struct roc_npc_action_queue *act_q;
 	const struct roc_npc_action_vf *vf_act;
 	bool vlan_insert_action = false;
+	uint8_t has_msns_act = 0;
 	int sel_act, req_act = 0;
 	uint16_t pf_func, vf_id;
 	int errcode = 0;
 	int mark = 0;
 	int rq = 0;
+	int rc = 0;
 
 	/* Initialize actions */
 	flow->ctr_id = NPC_COUNTER_NONE;
@@ -399,6 +443,12 @@ npc_parse_actions(struct roc_npc *roc_npc, const struct roc_npc_attr *attr,
 				rq = 0;
 				pf_func = nix_inl_dev_pffunc_get();
 			}
+			rc = npc_parse_msns_action(roc_npc, actions, flow,
+						   &has_msns_act);
+			if (rc) {
+				errcode = NPC_ERR_ACTION_NOTSUP;
+				goto err_exit;
+			}
 			break;
 		case ROC_NPC_ACTION_TYPE_VLAN_STRIP:
 			req_act |= ROC_NPC_ACTION_TYPE_VLAN_STRIP;
@@ -434,6 +484,14 @@ npc_parse_actions(struct roc_npc *roc_npc, const struct roc_npc_attr *attr,
 			ROC_NPC_ACTION_TYPE_VLAN_PCP_INSERT)) ==
 	    ROC_NPC_ACTION_TYPE_VLAN_PCP_INSERT) {
 		plt_err("PCP insert action can't be supported alone");
+		errcode = NPC_ERR_ACTION_NOTSUP;
+		goto err_exit;
+	}
+
+	if (has_msns_act && (vlan_insert_action ||
+			     (req_act & ROC_NPC_ACTION_TYPE_VLAN_STRIP))) {
+		plt_err("Both MSNS and VLAN insert/strip action can't be supported"
+			" together");
 		errcode = NPC_ERR_ACTION_NOTSUP;
 		goto err_exit;
 	}
