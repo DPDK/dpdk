@@ -279,6 +279,10 @@ old_malloc_size(struct malloc_elem *elem)
 #define __rte_no_asan
 
 static inline void
+asan_set_zone(void *ptr __rte_unused, size_t len __rte_unused,
+		uint32_t val __rte_unused) { }
+
+static inline void
 asan_set_freezone(void *ptr __rte_unused, size_t size __rte_unused) { }
 
 static inline void
