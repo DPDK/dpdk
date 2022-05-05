@@ -13,6 +13,7 @@ an application through DMA API.
 
    cnxk
    dpaa
+   dpaa2
    hisilicon
    idxd
    ioat

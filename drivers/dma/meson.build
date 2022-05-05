@@ -4,6 +4,7 @@
 drivers = [
         'cnxk',
         'dpaa',
+        'dpaa2',
         'hisilicon',
         'idxd',
         'ioat',
