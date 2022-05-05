@@ -43,7 +43,6 @@ struct hns3_rss_conf {
 	struct rte_flow_action_rss conf;
 	uint8_t hash_algo; /* hash function type defined by hardware */
 	uint8_t key[HNS3_RSS_KEY_SIZE];  /* Hash key */
-	struct hns3_rss_tuple_cfg rss_tuple_sets;
 	uint16_t rss_indirection_tbl[HNS3_RSS_IND_TBL_SIZE_MAX];
 	uint16_t queue[HNS3_RSS_QUEUES_BUFFER_NUM]; /* Queues indices to use */
 	bool valid; /* check if RSS rule is valid */
@@ -107,9 +106,7 @@ int hns3_set_rss_indir_table(struct hns3_hw *hw, uint16_t *indir,
 int hns3_rss_reset_indir_table(struct hns3_hw *hw);
 int hns3_config_rss(struct hns3_adapter *hns);
 void hns3_rss_uninit(struct hns3_adapter *hns);
-int hns3_set_rss_tuple_by_rss_hf(struct hns3_hw *hw,
-				 struct hns3_rss_tuple_cfg *tuple,
-				 uint64_t rss_hf);
+int hns3_set_rss_tuple_by_rss_hf(struct hns3_hw *hw, uint64_t rss_hf);
 int hns3_set_rss_algo_key(struct hns3_hw *hw, const uint8_t *key);
 int hns3_restore_rss_filter(struct rte_eth_dev *dev);
 
