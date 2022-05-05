@@ -310,8 +310,7 @@ hns3_rss_reset_indir_table(struct hns3_hw *hw)
 }
 
 int
-hns3_set_rss_tuple_by_rss_hf(struct hns3_hw *hw,
-			     struct hns3_rss_tuple_cfg *tuple, uint64_t rss_hf)
+hns3_set_rss_tuple_by_rss_hf(struct hns3_hw *hw, uint64_t rss_hf)
 {
 	struct hns3_rss_input_tuple_cmd *req;
 	struct hns3_cmd_desc desc;
@@ -356,7 +355,6 @@ hns3_set_rss_tuple_by_rss_hf(struct hns3_hw *hw,
 		return ret;
 	}
 
-	tuple->rss_tuple_fields = rte_le_to_cpu_64(req->tuple_field);
 	/* Update supported flow types when set tuple success */
 	hw->rss_info.conf.types = rss_hf;
 
@@ -377,7 +375,6 @@ hns3_dev_rss_hash_update(struct rte_eth_dev *dev,
 			 struct rte_eth_rss_conf *rss_conf)
 {
 	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	struct hns3_rss_tuple_cfg *tuple = &hw->rss_info.rss_tuple_sets;
 	uint64_t rss_hf_bk = hw->rss_info.conf.types;
 	uint8_t key_len = rss_conf->rss_key_len;
 	uint64_t rss_hf = rss_conf->rss_hf;
@@ -394,7 +391,7 @@ hns3_dev_rss_hash_update(struct rte_eth_dev *dev,
 	}
 
 	rte_spinlock_lock(&hw->lock);
-	ret = hns3_set_rss_tuple_by_rss_hf(hw, tuple, rss_hf);
+	ret = hns3_set_rss_tuple_by_rss_hf(hw, rss_hf);
 	if (ret)
 		goto set_tuple_fail;
 
@@ -408,7 +405,7 @@ hns3_dev_rss_hash_update(struct rte_eth_dev *dev,
 	return 0;
 
 set_algo_key_fail:
-	(void)hns3_set_rss_tuple_by_rss_hf(hw, tuple, rss_hf_bk);
+	(void)hns3_set_rss_tuple_by_rss_hf(hw, rss_hf_bk);
 set_tuple_fail:
 	rte_spinlock_unlock(&hw->lock);
 	return ret;
@@ -699,8 +696,7 @@ hns3_config_rss(struct hns3_adapter *hns)
 	    !(rss_hf & HNS3_ETH_RSS_SUPPORT))
 		rss_hf = 0;
 
-	return hns3_set_rss_tuple_by_rss_hf(hw, &hw->rss_info.rss_tuple_sets,
-					    rss_hf);
+	return hns3_set_rss_tuple_by_rss_hf(hw, rss_hf);
 }
 
 /*
