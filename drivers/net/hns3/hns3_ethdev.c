@@ -4622,13 +4622,6 @@ hns3_init_pf(struct rte_eth_dev *eth_dev)
 		goto err_cmd_init;
 	}
 
-	/* Hardware statistics of imissed registers cleared. */
-	ret = hns3_update_imissed_stats(hw, true);
-	if (ret) {
-		hns3_err(hw, "clear imissed stats failed, ret = %d", ret);
-		goto err_cmd_init;
-	}
-
 	hns3_config_all_msix_error(hw, true);
 
 	ret = rte_intr_callback_register(pci_dev->intr_handle,
@@ -4654,7 +4647,7 @@ hns3_init_pf(struct rte_eth_dev *eth_dev)
 		goto err_get_config;
 	}
 
-	ret = hns3_tqp_stats_init(hw);
+	ret = hns3_stats_init(hw);
 	if (ret)
 		goto err_get_config;
 
@@ -4700,7 +4693,7 @@ err_enable_intr:
 err_fdir:
 	hns3_uninit_umv_space(hw);
 err_init_hw:
-	hns3_tqp_stats_uninit(hw);
+	hns3_stats_uninit(hw);
 err_get_config:
 	hns3_pf_disable_irq0(hw);
 	rte_intr_disable(pci_dev->intr_handle);
@@ -4734,7 +4727,7 @@ hns3_uninit_pf(struct rte_eth_dev *eth_dev)
 	hns3_flow_uninit(eth_dev);
 	hns3_fdir_filter_uninit(hns);
 	hns3_uninit_umv_space(hw);
-	hns3_tqp_stats_uninit(hw);
+	hns3_stats_uninit(hw);
 	hns3_config_mac_tnl_int(hw, false);
 	hns3_pf_disable_irq0(hw);
 	rte_intr_disable(pci_dev->intr_handle);
