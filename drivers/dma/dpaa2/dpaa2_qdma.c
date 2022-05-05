@@ -6,6 +6,7 @@
 #include <rte_fslmc.h>
 #include <rte_dmadev.h>
 #include <rte_dmadev_pmd.h>
+#include <rte_kvargs.h>
 #include <mc/fsl_dpdmai.h>
 #include "dpaa2_qdma.h"
 #include "dpaa2_qdma_logs.h"
@@ -14,6 +15,171 @@ int dpaa2_qdma_logtype;
 
 uint32_t dpaa2_coherent_no_alloc_cache;
 uint32_t dpaa2_coherent_alloc_cache;
+
+static int
+dpaa2_qdma_info_get(const struct rte_dma_dev *dev,
+		    struct rte_dma_info *dev_info,
+		    uint32_t info_sz)
+{
+	RTE_SET_USED(dev);
+	RTE_SET_USED(info_sz);
+
+	dev_info->dev_capa = RTE_DMA_CAPA_MEM_TO_MEM |
+			     RTE_DMA_CAPA_MEM_TO_DEV |
+			     RTE_DMA_CAPA_DEV_TO_DEV |
+			     RTE_DMA_CAPA_DEV_TO_MEM |
+			     RTE_DMA_CAPA_SILENT |
+			     RTE_DMA_CAPA_OPS_COPY;
+	dev_info->max_vchans = DPAA2_QDMA_MAX_VHANS;
+	dev_info->max_desc = DPAA2_QDMA_MAX_DESC;
+	dev_info->min_desc = DPAA2_QDMA_MIN_DESC;
+
+	return 0;
+}
+
+static int
+dpaa2_qdma_configure(struct rte_dma_dev *dev,
+		     const struct rte_dma_conf *dev_conf,
+		     uint32_t conf_sz)
+{
+	char name[32]; /* RTE_MEMZONE_NAMESIZE = 32 */
+	struct dpaa2_dpdmai_dev *dpdmai_dev = dev->data->dev_private;
+	struct qdma_device *qdma_dev = dpdmai_dev->qdma_dev;
+
+	DPAA2_QDMA_FUNC_TRACE();
+
+	RTE_SET_USED(conf_sz);
+
+	/* In case QDMA device is not in stopped state, return -EBUSY */
+	if (qdma_dev->state == 1) {
+		DPAA2_QDMA_ERR(
+			"Device is in running state. Stop before config.");
+		return -1;
+	}
+
+	/* Allocate Virtual Queues */
+	sprintf(name, "qdma_%d_vq", dev->data->dev_id);
+	qdma_dev->vqs = rte_malloc(name,
+			(sizeof(struct qdma_virt_queue) * dev_conf->nb_vchans),
+			RTE_CACHE_LINE_SIZE);
+	if (!qdma_dev->vqs) {
+		DPAA2_QDMA_ERR("qdma_virtual_queues allocation failed");
+		return -ENOMEM;
+	}
+	qdma_dev->num_vqs = dev_conf->nb_vchans;
+
+	return 0;
+}
+
+static int
+dpaa2_qdma_vchan_setup(struct rte_dma_dev *dev, uint16_t vchan,
+		       const struct rte_dma_vchan_conf *conf,
+		       uint32_t conf_sz)
+{
+	struct dpaa2_dpdmai_dev *dpdmai_dev = dev->data->dev_private;
+	struct qdma_device *qdma_dev = dpdmai_dev->qdma_dev;
+	uint32_t pool_size;
+	char ring_name[32];
+	char pool_name[64];
+	int fd_long_format = 1;
+	int sg_enable = 0;
+
+	DPAA2_QDMA_FUNC_TRACE();
+
+	RTE_SET_USED(conf_sz);
+
+	if (qdma_dev->vqs[vchan].flags & DPAA2_QDMA_VQ_FD_SG_FORMAT)
+		sg_enable = 1;
+
+	if (qdma_dev->vqs[vchan].flags & DPAA2_QDMA_VQ_FD_SHORT_FORMAT)
+		fd_long_format = 0;
+
+	if (dev->data->dev_conf.enable_silent)
+		qdma_dev->vqs[vchan].flags |= DPAA2_QDMA_VQ_NO_RESPONSE;
+
+	if (sg_enable) {
+		if (qdma_dev->num_vqs != 1) {
+			DPAA2_QDMA_ERR(
+				"qDMA SG format only supports physical queue!");
+			return -ENODEV;
+		}
+		if (!fd_long_format) {
+			DPAA2_QDMA_ERR(
+				"qDMA SG format only supports long FD format!");
+			return -ENODEV;
+		}
+		pool_size = QDMA_FLE_SG_POOL_SIZE;
+	} else {
+		pool_size = QDMA_FLE_SINGLE_POOL_SIZE;
+	}
+
+	if (qdma_dev->num_vqs == 1)
+		qdma_dev->vqs[vchan].exclusive_hw_queue = 1;
+	else {
+		/* Allocate a Ring for Virtual Queue in VQ mode */
+		snprintf(ring_name, sizeof(ring_name), "status ring %d %d",
+			 dev->data->dev_id, vchan);
+		qdma_dev->vqs[vchan].status_ring = rte_ring_create(ring_name,
+			conf->nb_desc, rte_socket_id(), 0);
+		if (!qdma_dev->vqs[vchan].status_ring) {
+			DPAA2_QDMA_ERR("Status ring creation failed for vq");
+			return rte_errno;
+		}
+	}
+
+	snprintf(pool_name, sizeof(pool_name),
+		"qdma_fle_pool_dev%d_qid%d", dpdmai_dev->dpdmai_id, vchan);
+	qdma_dev->vqs[vchan].fle_pool = rte_mempool_create(pool_name,
+			conf->nb_desc, pool_size,
+			QDMA_FLE_CACHE_SIZE(conf->nb_desc), 0,
+			NULL, NULL, NULL, NULL, SOCKET_ID_ANY, 0);
+	if (!qdma_dev->vqs[vchan].fle_pool) {
+		DPAA2_QDMA_ERR("qdma_fle_pool create failed");
+		return -ENOMEM;
+	}
+
+	snprintf(pool_name, sizeof(pool_name),
+		"qdma_job_pool_dev%d_qid%d", dpdmai_dev->dpdmai_id, vchan);
+	qdma_dev->vqs[vchan].job_pool = rte_mempool_create(pool_name,
+			conf->nb_desc, pool_size,
+			QDMA_FLE_CACHE_SIZE(conf->nb_desc), 0,
+			NULL, NULL, NULL, NULL, SOCKET_ID_ANY, 0);
+	if (!qdma_dev->vqs[vchan].job_pool) {
+		DPAA2_QDMA_ERR("qdma_job_pool create failed");
+		return -ENOMEM;
+	}
+
+	qdma_dev->vqs[vchan].dpdmai_dev = dpdmai_dev;
+	qdma_dev->vqs[vchan].nb_desc = conf->nb_desc;
+
+	return 0;
+}
+
+static int
+dpaa2_qdma_start(struct rte_dma_dev *dev)
+{
+	struct dpaa2_dpdmai_dev *dpdmai_dev = dev->data->dev_private;
+	struct qdma_device *qdma_dev = dpdmai_dev->qdma_dev;
+
+	DPAA2_QDMA_FUNC_TRACE();
+
+	qdma_dev->state = 1;
+
+	return 0;
+}
+
+static int
+dpaa2_qdma_stop(struct rte_dma_dev *dev)
+{
+	struct dpaa2_dpdmai_dev *dpdmai_dev = dev->data->dev_private;
+	struct qdma_device *qdma_dev = dpdmai_dev->qdma_dev;
+
+	DPAA2_QDMA_FUNC_TRACE();
+
+	qdma_dev->state = 0;
+
+	return 0;
+}
 
 static int
 dpaa2_qdma_reset(struct rte_dma_dev *dev)
@@ -55,7 +221,23 @@ dpaa2_qdma_reset(struct rte_dma_dev *dev)
 	return 0;
 }
 
+static int
+dpaa2_qdma_close(__rte_unused struct rte_dma_dev *dev)
+{
+	DPAA2_QDMA_FUNC_TRACE();
+
+	dpaa2_qdma_reset(dev);
+
+	return 0;
+}
+
 static struct rte_dma_dev_ops dpaa2_qdma_ops = {
+	.dev_info_get     = dpaa2_qdma_info_get,
+	.dev_configure    = dpaa2_qdma_configure,
+	.dev_start        = dpaa2_qdma_start,
+	.dev_stop         = dpaa2_qdma_stop,
+	.dev_close        = dpaa2_qdma_close,
+	.vchan_setup      = dpaa2_qdma_vchan_setup,
 };
 
 static int
