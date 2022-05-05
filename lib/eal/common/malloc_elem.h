@@ -7,6 +7,8 @@
 
 #include <stdbool.h>
 
+#include <rte_common.h>
+
 #define MIN_DATA_SIZE (RTE_CACHE_LINE_SIZE)
 
 /* dummy definition of struct so we can use pointers to it in malloc_elem struct */
@@ -124,12 +126,6 @@ malloc_elem_cookies_ok(const struct malloc_elem *elem)
 #define ASAN_MEM_SHIFT(mem) ((void *)((uintptr_t)(mem) >> ASAN_SHADOW_SCALE))
 #define ASAN_MEM_TO_SHADOW(mem) \
 	RTE_PTR_ADD(ASAN_MEM_SHIFT(mem), ASAN_SHADOW_OFFSET)
-
-#if defined(__clang__)
-#define __rte_no_asan __attribute__((no_sanitize("address", "hwaddress")))
-#else
-#define __rte_no_asan __attribute__((no_sanitize_address))
-#endif
 
 __rte_no_asan
 static inline void
@@ -269,8 +265,6 @@ old_malloc_size(struct malloc_elem *elem)
 }
 
 #else /* !RTE_MALLOC_ASAN */
-
-#define __rte_no_asan
 
 static inline void
 asan_set_zone(void *ptr __rte_unused, size_t len __rte_unused,

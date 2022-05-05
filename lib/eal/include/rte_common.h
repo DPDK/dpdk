@@ -242,6 +242,19 @@ static void __attribute__((destructor(RTE_PRIO(prio)), used)) func(void)
  */
 #define __rte_cold __attribute__((cold))
 
+/**
+ * Disable AddressSanitizer on some code
+ */
+#ifdef RTE_MALLOC_ASAN
+#ifdef RTE_CC_CLANG
+#define __rte_no_asan __attribute__((no_sanitize("address", "hwaddress")))
+#else
+#define __rte_no_asan __attribute__((no_sanitize_address))
+#endif
+#else /* ! RTE_MALLOC_ASAN */
+#define __rte_no_asan
+#endif
+
 /*********** Macros for pointer arithmetic ********/
 
 /**
