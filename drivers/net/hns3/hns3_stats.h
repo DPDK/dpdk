@@ -164,5 +164,6 @@ int hns3_stats_reset(struct rte_eth_dev *dev);
 int hns3_stats_init(struct hns3_hw *hw);
 void hns3_stats_uninit(struct hns3_hw *hw);
 int hns3_query_mac_stats_reg_num(struct hns3_hw *hw);
+void hns3_update_hw_stats(struct hns3_hw *hw);
 
 #endif /* _HNS3_STATS_H_ */

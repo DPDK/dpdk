@@ -1385,10 +1385,12 @@ hns3vf_service_handler(void *param)
 	 * Before querying the link status, check whether there is a reset
 	 * pending, and if so, abandon the query.
 	 */
-	if (!hns3vf_is_reset_pending(hns))
+	if (!hns3vf_is_reset_pending(hns)) {
 		hns3vf_request_link_info(hw);
-	else
+		hns3_update_hw_stats(hw);
+	} else {
 		hns3_warn(hw, "Cancel the query when reset is pending");
+	}
 
 	rte_eal_alarm_set(HNS3VF_SERVICE_INTERVAL, hns3vf_service_handler,
 			  eth_dev);
