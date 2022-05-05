@@ -6,6 +6,7 @@
 #define _RTE_ETHDEV_PROFILE_H_
 
 #include "rte_ethdev.h"
+#include "ethdev_driver.h"
 
 /**
  * Initialization of the Ethernet device profiling.
