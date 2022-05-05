@@ -376,9 +376,9 @@ int
 hns3_dev_rss_hash_update(struct rte_eth_dev *dev,
 			 struct rte_eth_rss_conf *rss_conf)
 {
-	struct hns3_adapter *hns = dev->data->dev_private;
-	struct hns3_hw *hw = &hns->hw;
+	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct hns3_rss_tuple_cfg *tuple = &hw->rss_info.rss_tuple_sets;
+	uint64_t rss_hf_bk = hw->rss_info.conf.types;
 	uint8_t key_len = rss_conf->rss_key_len;
 	uint64_t rss_hf = rss_conf->rss_hf;
 	uint8_t *key = rss_conf->rss_key;
@@ -387,27 +387,29 @@ hns3_dev_rss_hash_update(struct rte_eth_dev *dev,
 	if (hw->rss_dis_flag)
 		return -EINVAL;
 
+	if (key && key_len != HNS3_RSS_KEY_SIZE) {
+		hns3_err(hw, "the hash key len(%u) is invalid, must be %u",
+			 key_len, HNS3_RSS_KEY_SIZE);
+		return -EINVAL;
+	}
+
 	rte_spinlock_lock(&hw->lock);
 	ret = hns3_set_rss_tuple_by_rss_hf(hw, tuple, rss_hf);
 	if (ret)
-		goto conf_err;
+		goto set_tuple_fail;
 
 	if (key) {
-		if (key_len != HNS3_RSS_KEY_SIZE) {
-			hns3_err(hw, "The hash key len(%u) is invalid",
-				 key_len);
-			ret = -EINVAL;
-			goto conf_err;
-		}
 		ret = hns3_set_rss_algo_key(hw, key);
 		if (ret)
-			goto conf_err;
+			goto set_algo_key_fail;
 	}
 	rte_spinlock_unlock(&hw->lock);
 
 	return 0;
 
-conf_err:
+set_algo_key_fail:
+	(void)hns3_set_rss_tuple_by_rss_hf(hw, tuple, rss_hf_bk);
+set_tuple_fail:
 	rte_spinlock_unlock(&hw->lock);
 	return ret;
 }
