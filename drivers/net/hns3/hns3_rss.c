@@ -238,31 +238,6 @@ hns3_set_rss_algo_key(struct hns3_hw *hw, const uint8_t *key)
 }
 
 /*
- * Used to configure the tuple selection for RSS hash input.
- */
-static int
-hns3_set_rss_input_tuple(struct hns3_hw *hw)
-{
-	struct hns3_rss_conf *rss_config = &hw->rss_info;
-	struct hns3_rss_input_tuple_cmd *req;
-	struct hns3_cmd_desc desc_tuple;
-	int ret;
-
-	hns3_cmd_setup_basic_desc(&desc_tuple, HNS3_OPC_RSS_INPUT_TUPLE, false);
-
-	req = (struct hns3_rss_input_tuple_cmd *)desc_tuple.data;
-
-	req->tuple_field =
-		rte_cpu_to_le_64(rss_config->rss_tuple_sets.rss_tuple_fields);
-
-	ret = hns3_cmd_send(hw, &desc_tuple, 1);
-	if (ret)
-		hns3_err(hw, "Configure RSS input tuple mode failed %d", ret);
-
-	return ret;
-}
-
-/*
  * rss_indirection_table command function, opcode:0x0D07.
  * Used to configure the indirection table of rss.
  */
@@ -382,6 +357,8 @@ hns3_set_rss_tuple_by_rss_hf(struct hns3_hw *hw,
 	}
 
 	tuple->rss_tuple_fields = rte_le_to_cpu_64(req->tuple_field);
+	/* Update supported flow types when set tuple success */
+	hw->rss_info.conf.types = rss_hf;
 
 	return 0;
 }
@@ -402,7 +379,6 @@ hns3_dev_rss_hash_update(struct rte_eth_dev *dev,
 	struct hns3_adapter *hns = dev->data->dev_private;
 	struct hns3_hw *hw = &hns->hw;
 	struct hns3_rss_tuple_cfg *tuple = &hw->rss_info.rss_tuple_sets;
-	struct hns3_rss_conf *rss_cfg = &hw->rss_info;
 	uint8_t key_len = rss_conf->rss_key_len;
 	uint64_t rss_hf = rss_conf->rss_hf;
 	uint8_t *key = rss_conf->rss_key;
@@ -415,22 +391,6 @@ hns3_dev_rss_hash_update(struct rte_eth_dev *dev,
 	ret = hns3_set_rss_tuple_by_rss_hf(hw, tuple, rss_hf);
 	if (ret)
 		goto conf_err;
-
-	if (rss_cfg->conf.types && rss_hf == 0) {
-		/* Disable RSS, reset indirection table by local variable */
-		ret = hns3_rss_reset_indir_table(hw);
-		if (ret)
-			goto conf_err;
-	} else if (rss_hf && rss_cfg->conf.types == 0) {
-		/* Enable RSS, restore indirection table by hw's config */
-		ret = hns3_set_rss_indir_table(hw, rss_cfg->rss_indirection_tbl,
-					       hw->rss_ind_tbl_size);
-		if (ret)
-			goto conf_err;
-	}
-
-	/* Update supported flow types when set tuple success */
-	rss_cfg->conf.types = rss_hf;
 
 	if (key) {
 		if (key_len != HNS3_RSS_KEY_SIZE) {
@@ -702,7 +662,8 @@ hns3_config_rss(struct hns3_adapter *hns)
 	struct hns3_hw *hw = &hns->hw;
 	struct hns3_rss_conf *rss_cfg = &hw->rss_info;
 	uint8_t *hash_key = rss_cfg->key;
-	int ret, ret1;
+	uint64_t rss_hf;
+	int ret;
 
 	enum rte_eth_rx_mq_mode mq_mode = hw->data->dev_conf.rxmode.mq_mode;
 
@@ -718,51 +679,31 @@ hns3_config_rss(struct hns3_adapter *hns)
 		break;
 	}
 
-	/* When RSS is off, redirect the packet queue 0 */
-	if (((uint32_t)mq_mode & ETH_MQ_RX_RSS_FLAG) == 0)
-		hns3_rss_uninit(hns);
-
 	/* Configure RSS hash algorithm and hash key offset */
 	ret = hns3_set_rss_algo_key(hw, hash_key);
 	if (ret)
 		return ret;
 
-	/* Configure the tuple selection for RSS hash input */
-	ret = hns3_set_rss_input_tuple(hw);
+	ret = hns3_set_rss_indir_table(hw, rss_cfg->rss_indirection_tbl,
+				       hw->rss_ind_tbl_size);
+	if (ret)
+		return ret;
+
+	ret = hns3_set_rss_tc_mode(hw);
 	if (ret)
 		return ret;
 
 	/*
-	 * When RSS is off, it doesn't need to configure rss redirection table
-	 * to hardware.
+	 * When muli-queue RSS mode flag is not set or unsupported tuples are
+	 * set, disable all tuples.
 	 */
-	if (((uint32_t)mq_mode & ETH_MQ_RX_RSS_FLAG)) {
-		ret = hns3_set_rss_indir_table(hw, rss_cfg->rss_indirection_tbl,
-					       hw->rss_ind_tbl_size);
-		if (ret)
-			goto rss_tuple_uninit;
-	}
+	rss_hf = hw->rss_info.conf.types;
+	if (!((uint32_t)mq_mode & ETH_MQ_RX_RSS_FLAG) ||
+	    !(rss_hf & HNS3_ETH_RSS_SUPPORT))
+		rss_hf = 0;
 
-	ret = hns3_set_rss_tc_mode(hw);
-	if (ret)
-		goto rss_indir_table_uninit;
-
-	return ret;
-
-rss_indir_table_uninit:
-	if (((uint32_t)mq_mode & ETH_MQ_RX_RSS_FLAG)) {
-		ret1 = hns3_rss_reset_indir_table(hw);
-		if (ret1 != 0)
-			return ret;
-	}
-
-rss_tuple_uninit:
-	hns3_rss_tuple_uninit(hw);
-
-	/* Disable RSS */
-	hw->rss_info.conf.types = 0;
-
-	return ret;
+	return hns3_set_rss_tuple_by_rss_hf(hw, &hw->rss_info.rss_tuple_sets,
+					    rss_hf);
 }
 
 /*
