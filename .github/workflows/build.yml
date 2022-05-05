@@ -16,6 +16,7 @@ jobs:
     env:
       AARCH64: ${{ matrix.config.cross == 'aarch64' }}
       ABI_CHECKS: ${{ contains(matrix.config.checks, 'abi') }}
+      ASAN: ${{ contains(matrix.config.checks, 'asan') }}
       BUILD_32BIT: ${{ matrix.config.cross == 'i386' }}
       BUILD_DOCS: ${{ contains(matrix.config.checks, 'doc') }}
       CC: ccache ${{ matrix.config.compiler }}
@@ -48,7 +49,7 @@ jobs:
           - os: ubuntu-20.04
             compiler: clang
             library: shared
-            checks: doc+tests
+            checks: asan+doc+tests
           - os: ubuntu-20.04
             compiler: gcc
             library: static
