@@ -1398,13 +1398,9 @@ hns3_disable_rss(struct hns3_hw *hw)
 {
 	int ret;
 
-	/* Redirected the redirection table to queue 0 */
-	ret = hns3_rss_reset_indir_table(hw);
+	ret = hns3_set_rss_tuple_by_rss_hf(hw, &hw->rss_info.rss_tuple_sets, 0);
 	if (ret)
 		return ret;
-
-	/* Disable RSS */
-	hw->rss_info.conf.types = 0;
 	hw->rss_dis_flag = true;
 
 	return 0;
