@@ -1427,6 +1427,38 @@ dpaa2_qdma_close(__rte_unused struct rte_dma_dev *dev)
 	return 0;
 }
 
+static int
+dpaa2_qdma_stats_get(const struct rte_dma_dev *dmadev, uint16_t vchan,
+		    struct rte_dma_stats *rte_stats, uint32_t size)
+{
+	struct dpaa2_dpdmai_dev *dpdmai_dev = dmadev->data->dev_private;
+	struct qdma_device *qdma_dev = dpdmai_dev->qdma_dev;
+	struct qdma_virt_queue *qdma_vq = &qdma_dev->vqs[vchan];
+	struct rte_dma_stats *stats = &qdma_vq->stats;
+
+	RTE_SET_USED(size);
+
+	/* TODO - directly use stats */
+	stats->submitted = qdma_vq->num_enqueues;
+	stats->completed = qdma_vq->num_dequeues;
+	*rte_stats = *stats;
+
+	return 0;
+}
+
+static int
+dpaa2_qdma_stats_reset(struct rte_dma_dev *dmadev, uint16_t vchan)
+{
+	struct dpaa2_dpdmai_dev *dpdmai_dev = dmadev->data->dev_private;
+	struct qdma_device *qdma_dev = dpdmai_dev->qdma_dev;
+	struct qdma_virt_queue *qdma_vq = &qdma_dev->vqs[vchan];
+
+	qdma_vq->num_enqueues = 0;
+	qdma_vq->num_dequeues = 0;
+
+	return 0;
+}
+
 static uint16_t
 dpaa2_qdma_burst_capacity(const void *dev_private, uint16_t vchan)
 {
@@ -1444,6 +1476,8 @@ static struct rte_dma_dev_ops dpaa2_qdma_ops = {
 	.dev_stop         = dpaa2_qdma_stop,
 	.dev_close        = dpaa2_qdma_close,
 	.vchan_setup      = dpaa2_qdma_vchan_setup,
+	.stats_get        = dpaa2_qdma_stats_get,
+	.stats_reset      = dpaa2_qdma_stats_reset,
 };
 
 static int

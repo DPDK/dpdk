@@ -21,6 +21,7 @@ The DPAA2 QDMA implements following features in the dmadev API;
   performing DMA operation.
 - Supports configuring to optionally get status of the DMA translation on
   per DMA operation basis.
+- Supports statistics.
 
 Supported DPAA2 SoCs
 --------------------
