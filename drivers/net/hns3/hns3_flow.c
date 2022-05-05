@@ -1398,7 +1398,7 @@ hns3_disable_rss(struct hns3_hw *hw)
 {
 	int ret;
 
-	ret = hns3_set_rss_tuple_by_rss_hf(hw, &hw->rss_info.rss_tuple_sets, 0);
+	ret = hns3_set_rss_tuple_by_rss_hf(hw, 0);
 	if (ret)
 		return ret;
 	hw->rss_dis_flag = true;
@@ -1448,7 +1448,6 @@ hns3_parse_rss_algorithm(struct hns3_hw *hw, enum rte_eth_hash_function *func,
 static int
 hns3_hw_rss_hash_set(struct hns3_hw *hw, struct rte_flow_action_rss *rss_config)
 {
-	struct hns3_rss_tuple_cfg *tuple;
 	int ret;
 
 	hns3_parse_rss_key(hw, rss_config);
@@ -1464,8 +1463,7 @@ hns3_hw_rss_hash_set(struct hns3_hw *hw, struct rte_flow_action_rss *rss_config)
 
 	hw->rss_info.conf.func = rss_config->func;
 
-	tuple = &hw->rss_info.rss_tuple_sets;
-	ret = hns3_set_rss_tuple_by_rss_hf(hw, tuple, rss_config->types);
+	ret = hns3_set_rss_tuple_by_rss_hf(hw, rss_config->types);
 	if (ret)
 		hns3_err(hw, "Update RSS tuples by rss hf failed %d", ret);
 
