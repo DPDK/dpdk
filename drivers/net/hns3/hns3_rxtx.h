@@ -349,7 +349,7 @@ struct hns3_rx_queue {
 	 * The following fields are not accessed in the I/O path, so they are
 	 * placed at the end.
 	 */
-	void *io_base;
+	void *io_base __rte_cache_aligned;
 	struct hns3_adapter *hns;
 	uint64_t rx_ring_phys_addr; /* RX ring DMA address */
 	const struct rte_memzone *mz;
@@ -523,7 +523,7 @@ struct hns3_tx_queue {
 	 * The following fields are not accessed in the I/O path, so they are
 	 * placed at the end.
 	 */
-	void *io_base;
+	void *io_base __rte_cache_aligned;
 	struct hns3_adapter *hns;
 	uint64_t tx_ring_phys_addr; /* TX ring DMA address */
 	const struct rte_memzone *mz;
