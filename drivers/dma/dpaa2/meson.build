@@ -14,3 +14,5 @@ sources = files('dpaa2_qdma.c')
 if cc.has_argument('-Wno-pointer-arith')
     cflags += '-Wno-pointer-arith'
 endif
+
+headers = files('rte_pmd_dpaa2_qdma.h')

@@ -7,7 +7,10 @@
 #include <rte_dmadev.h>
 #include <rte_dmadev_pmd.h>
 #include <rte_kvargs.h>
+
 #include <mc/fsl_dpdmai.h>
+
+#include "rte_pmd_dpaa2_qdma.h"
 #include "dpaa2_qdma.h"
 #include "dpaa2_qdma_logs.h"
 /* Dynamic log type identifier */
@@ -69,6 +72,41 @@ dpaa2_qdma_configure(struct rte_dma_dev *dev,
 	qdma_dev->num_vqs = dev_conf->nb_vchans;
 
 	return 0;
+}
+
+/* Enable FD in Ultra Short format */
+void
+rte_dpaa2_qdma_vchan_fd_us_enable(int16_t dev_id, uint16_t vchan)
+{
+	struct rte_dma_fp_object *obj = &rte_dma_fp_objs[dev_id];
+	struct dpaa2_dpdmai_dev *dpdmai_dev = obj->dev_private;
+	struct qdma_device *qdma_dev = dpdmai_dev->qdma_dev;
+
+	qdma_dev->vqs[vchan].flags |= DPAA2_QDMA_VQ_FD_SHORT_FORMAT;
+}
+
+/* Enable internal SG processing */
+void
+rte_dpaa2_qdma_vchan_internal_sg_enable(int16_t dev_id, uint16_t vchan)
+{
+	struct rte_dma_fp_object *obj = &rte_dma_fp_objs[dev_id];
+	struct dpaa2_dpdmai_dev *dpdmai_dev = obj->dev_private;
+	struct qdma_device *qdma_dev = dpdmai_dev->qdma_dev;
+
+	qdma_dev->vqs[vchan].flags |= DPAA2_QDMA_VQ_FD_SG_FORMAT;
+}
+
+/* Enable RBP */
+void
+rte_dpaa2_qdma_vchan_rbp_enable(int16_t dev_id, uint16_t vchan,
+				struct rte_dpaa2_qdma_rbp *rbp_config)
+{
+	struct rte_dma_fp_object *obj = &rte_dma_fp_objs[dev_id];
+	struct dpaa2_dpdmai_dev *dpdmai_dev = obj->dev_private;
+	struct qdma_device *qdma_dev = dpdmai_dev->qdma_dev;
+
+	memcpy(&qdma_dev->vqs[vchan].rbp, rbp_config,
+			sizeof(struct rte_dpaa2_qdma_rbp));
 }
 
 static int
