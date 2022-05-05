@@ -253,7 +253,7 @@ New Features
   of initiating a DMA transaction from CPU. The initiated DMA is performed
   without the CPU being involved in the actual DMA transaction.
 
-  See the :doc:`../rawdevs/dpaa2_qdma` guide for more details.
+  See the ``rawdevs/dpaa2_qdma`` guide for more details.
 
 * **Added DPAA2 Command Interface Driver (in rawdev).**
 

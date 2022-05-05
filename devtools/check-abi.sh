@@ -37,7 +37,7 @@ fi
 error=
 for dump in $(find $refdir -name "*.dump"); do
 	name=$(basename $dump)
-	if grep -qE "\<librte_*.*_octeontx2" $dump; then
+	if grep -qE '\<librte_*(.*_octeontx2|raw_dpaa2_qdma)' $dump; then
 		echo "Skipped removed driver $name."
 		continue
 	fi

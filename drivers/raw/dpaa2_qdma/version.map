@@ -1,7 +1,0 @@
-DPDK_22 {
-	global:
-
-	rte_qdma_vq_stats;
-
-	local: *;
-};
