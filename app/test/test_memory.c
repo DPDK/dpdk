@@ -25,6 +25,11 @@
  * - Try to read all memory; it should not segfault.
  */
 
+/*
+ * ASan complains about accessing unallocated memory.
+ * See: https://bugs.dpdk.org/show_bug.cgi?id=880
+ */
+__rte_no_asan
 static int
 check_mem(const struct rte_memseg_list *msl __rte_unused,
 		const struct rte_memseg *ms, void *arg __rte_unused)
