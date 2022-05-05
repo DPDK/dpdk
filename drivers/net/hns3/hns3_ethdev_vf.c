@@ -1558,16 +1558,9 @@ hns3vf_init_vf(struct rte_eth_dev *eth_dev)
 		goto err_get_config;
 	}
 
-	ret = hns3_tqp_stats_init(hw);
+	ret = hns3_stats_init(hw);
 	if (ret)
 		goto err_get_config;
-
-	/* Hardware statistics of imissed registers cleared. */
-	ret = hns3_update_imissed_stats(hw, true);
-	if (ret) {
-		hns3_err(hw, "clear imissed stats failed, ret = %d", ret);
-		goto err_set_tc_queue;
-	}
 
 	ret = hns3vf_set_tc_queue_mapping(hns, hw->tqps_num, hw->tqps_num);
 	if (ret) {
@@ -1596,7 +1589,7 @@ hns3vf_init_vf(struct rte_eth_dev *eth_dev)
 	return 0;
 
 err_set_tc_queue:
-	hns3_tqp_stats_uninit(hw);
+	hns3_stats_uninit(hw);
 
 err_get_config:
 	hns3vf_disable_irq0(hw);
@@ -1627,7 +1620,7 @@ hns3vf_uninit_vf(struct rte_eth_dev *eth_dev)
 	(void)hns3vf_set_alive(hw, false);
 	(void)hns3vf_set_promisc_mode(hw, false, false, false);
 	hns3_flow_uninit(eth_dev);
-	hns3_tqp_stats_uninit(hw);
+	hns3_stats_uninit(hw);
 	hns3vf_disable_irq0(hw);
 	rte_intr_disable(pci_dev->intr_handle);
 	hns3_intr_unregister(pci_dev->intr_handle, hns3vf_interrupt_handler,
