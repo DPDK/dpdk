@@ -45,6 +45,31 @@ struct rte_dpaa2_qdma_rbp {
 	uint32_t rsv:4;
 };
 
+/** Determines a QDMA job */
+struct rte_dpaa2_qdma_job {
+	/** Source Address from where DMA is (to be) performed */
+	uint64_t src;
+	/** Destination Address where DMA is (to be) done */
+	uint64_t dest;
+	/** Length of the DMA operation in bytes. */
+	uint32_t len;
+	/** See RTE_QDMA_JOB_ flags */
+	uint32_t flags;
+	/**
+	 * Status of the transaction.
+	 * This is filled in the dequeue operation by the driver.
+	 * upper 8bits acc_err for route by port.
+	 * lower 8bits fd error
+	 */
+	uint16_t status;
+	uint16_t vq_id;
+	/**
+	 * FLE pool element maintained by user, in case no qDMA response.
+	 * Note: the address must be allocated from DPDK memory pool.
+	 */
+	void *usr_elem;
+};
+
 /**
  * @warning
  * @b EXPERIMENTAL: this API may change without prior notice.
@@ -92,5 +117,57 @@ void rte_dpaa2_qdma_vchan_internal_sg_enable(int16_t dev_id, uint16_t vchan);
 __rte_experimental
 void rte_dpaa2_qdma_vchan_rbp_enable(int16_t dev_id, uint16_t vchan,
 		struct rte_dpaa2_qdma_rbp *rbp_config);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Enqueue a copy operation onto the virtual DMA channel for silent mode,
+ * when dequeue is not required.
+ *
+ * This queues up a copy operation to be performed by hardware, if the 'flags'
+ * parameter contains RTE_DMA_OP_FLAG_SUBMIT then trigger doorbell to begin
+ * this operation, otherwise do not trigger doorbell.
+ *
+ * @param dev_id
+ *   The identifier of the device.
+ * @param vchan
+ *   The identifier of virtual DMA channel.
+ * @param jobs
+ *   Jobs to be submitted to QDMA.
+ * @param nb_cpls
+ *   Number of DMA jobs.
+ *
+ * @return
+ *   - >= 0..Number of enqueued job.
+ *   - -ENOSPC: if no space left to enqueue.
+ *   - other values < 0 on failure.
+ */
+__rte_experimental
+int rte_dpaa2_qdma_copy_multi(int16_t dev_id, uint16_t vchan,
+		struct rte_dpaa2_qdma_job **jobs, uint16_t nb_cpls);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Return the number of operations that have been successfully completed.
+ *
+ * @param dev_id
+ *   The identifier of the device.
+ * @param vchan
+ *   The identifier of virtual DMA channel.
+ * @param jobs
+ *   Jobs completed by QDMA.
+ * @param nb_cpls
+ *   Number of completed DMA jobs.
+ *
+ * @return
+ *   The number of operations that successfully completed. This return value
+ *   must be less than or equal to the value of nb_cpls.
+ */
+__rte_experimental
+uint16_t rte_dpaa2_qdma_completed_multi(int16_t dev_id, uint16_t vchan,
+		struct rte_dpaa2_qdma_job **jobs, uint16_t nb_cpls);
 
 #endif /* _RTE_PMD_DPAA2_QDMA_H_ */

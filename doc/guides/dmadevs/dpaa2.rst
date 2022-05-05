@@ -12,6 +12,16 @@ via using the DPDMAI device exposed by MC.
 More information can be found at `NXP Official Website
 <http://www.nxp.com/products/microcontrollers-and-processors/arm-processors/qoriq-arm-processors:QORIQ-ARM>`_.
 
+Features
+--------
+
+The DPAA2 QDMA implements following features in the dmadev API;
+
+- Supports issuing DMA of data within memory without hogging CPU while
+  performing DMA operation.
+- Supports configuring to optionally get status of the DMA translation on
+  per DMA operation basis.
+
 Supported DPAA2 SoCs
 --------------------
 

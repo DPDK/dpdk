@@ -80,65 +80,6 @@
 
 #define QDMA_RBP_UPPER_ADDRESS_MASK (0xfff0000000000)
 
-/** Determines a QDMA job */
-struct dpaa2_qdma_job {
-	/** Source Address from where DMA is (to be) performed */
-	uint64_t src;
-	/** Destination Address where DMA is (to be) done */
-	uint64_t dest;
-	/** Length of the DMA operation in bytes. */
-	uint32_t len;
-	/** See RTE_QDMA_JOB_ flags */
-	uint32_t flags;
-	/**
-	 * Status of the transaction.
-	 * This is filled in the dequeue operation by the driver.
-	 * upper 8bits acc_err for route by port.
-	 * lower 8bits fd error
-	 */
-	uint16_t status;
-	uint16_t vq_id;
-	/**
-	 * FLE pool element maintained by user, in case no qDMA response.
-	 * Note: the address must be allocated from DPDK memory pool.
-	 */
-	void *usr_elem;
-};
-
-struct dpaa2_qdma_rbp {
-	uint32_t use_ultrashort:1;
-	uint32_t enable:1;
-	/**
-	 * dportid:
-	 * 0000 PCI-Express 1
-	 * 0001 PCI-Express 2
-	 * 0010 PCI-Express 3
-	 * 0011 PCI-Express 4
-	 * 0100 PCI-Express 5
-	 * 0101 PCI-Express 6
-	 */
-	uint32_t dportid:4;
-	uint32_t dpfid:2;
-	uint32_t dvfid:6;
-	/*using route by port for destination */
-	uint32_t drbp:1;
-	/**
-	 * sportid:
-	 * 0000 PCI-Express 1
-	 * 0001 PCI-Express 2
-	 * 0010 PCI-Express 3
-	 * 0011 PCI-Express 4
-	 * 0100 PCI-Express 5
-	 * 0101 PCI-Express 6
-	 */
-	uint32_t sportid:4;
-	uint32_t spfid:2;
-	uint32_t svfid:6;
-	/* using route by port for source */
-	uint32_t srbp:1;
-	uint32_t rsv:4;
-};
-
 /** Source/Destination Descriptor */
 struct qdma_sdd {
 	uint32_t rsv;
@@ -248,22 +189,22 @@ struct qdma_virt_queue;
 
 typedef uint16_t (qdma_get_job_t)(struct qdma_virt_queue *qdma_vq,
 					const struct qbman_fd *fd,
-					struct dpaa2_qdma_job **job,
+					struct rte_dpaa2_qdma_job **job,
 					uint16_t *nb_jobs);
 typedef int (qdma_set_fd_t)(struct qdma_virt_queue *qdma_vq,
 					struct qbman_fd *fd,
-					struct dpaa2_qdma_job **job,
+					struct rte_dpaa2_qdma_job **job,
 					uint16_t nb_jobs);
 
 typedef int (qdma_dequeue_multijob_t)(
 				struct qdma_virt_queue *qdma_vq,
 				uint16_t *vq_id,
-				struct dpaa2_qdma_job **job,
+				struct rte_dpaa2_qdma_job **job,
 				uint16_t nb_jobs);
 
 typedef int (qdma_enqueue_multijob_t)(
 			struct qdma_virt_queue *qdma_vq,
-			struct dpaa2_qdma_job **job,
+			struct rte_dpaa2_qdma_job **job,
 			uint16_t nb_jobs);
 
 /** Represents a QDMA virtual queue */
@@ -275,7 +216,7 @@ struct qdma_virt_queue {
 	/** FLE pool for the queue */
 	struct rte_mempool *fle_pool;
 	/** Route by port */
-	struct dpaa2_qdma_rbp rbp;
+	struct rte_dpaa2_qdma_rbp rbp;
 	/** States if this vq is in use or not */
 	uint8_t in_use;
 	/** States if this vq has exclusively associated hw queue */
@@ -290,7 +231,7 @@ struct qdma_virt_queue {
 	uint16_t vq_id;
 	uint32_t flags;
 
-	struct dpaa2_qdma_job *job_list[DPAA2_QDMA_MAX_DESC];
+	struct rte_dpaa2_qdma_job *job_list[DPAA2_QDMA_MAX_DESC];
 	struct rte_mempool *job_pool;
 	int num_valid_jobs;
 

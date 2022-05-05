@@ -3,6 +3,8 @@ DPDK_22 {
 };
 
 EXPERIMENTAL {
+	rte_dpaa2_qdma_completed_multi;
+	rte_dpaa2_qdma_copy_multi;
 	rte_dpaa2_qdma_vchan_fd_us_enable;
 	rte_dpaa2_qdma_vchan_internal_sg_enable;
 	rte_dpaa2_qdma_vchan_rbp_enable;
