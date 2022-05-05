@@ -4612,7 +4612,7 @@ hns3_dev_tx_queue_stop(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 static int
 hns3_tx_done_cleanup_full(struct hns3_tx_queue *txq, uint32_t free_cnt)
 {
-	uint16_t round_free_cnt;
+	uint16_t round_cnt;
 	uint32_t idx;
 
 	if (free_cnt == 0 || free_cnt > txq->nb_tx_desc)
@@ -4621,13 +4621,13 @@ hns3_tx_done_cleanup_full(struct hns3_tx_queue *txq, uint32_t free_cnt)
 	if (txq->tx_rs_thresh == 0)
 		return 0;
 
-	round_free_cnt = roundup(free_cnt, txq->tx_rs_thresh);
-	for (idx = 0; idx < round_free_cnt; idx += txq->tx_rs_thresh) {
+	round_cnt = rounddown(free_cnt, txq->tx_rs_thresh);
+	for (idx = 0; idx < round_cnt; idx += txq->tx_rs_thresh) {
 		if (hns3_tx_free_useless_buffer(txq) != 0)
 			break;
 	}
 
-	return RTE_MIN(idx, free_cnt);
+	return idx;
 }
 
 int
