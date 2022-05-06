@@ -1,0 +1,19 @@
+[binaries]
+c = 'clang'
+cpp = 'clang++'
+ar = 'llvm-ar'
+strip = 'llvm-strip'
+llvm-config = 'llvm-config'
+pcap-config = 'llvm-config'
+pkgconfig = 'aarch64-linux-gnu-pkg-config'
+
+[host_machine]
+system = 'linux'
+cpu_family = 'aarch64'
+cpu = 'armv8-a'
+endian = 'little'
+
+[properties]
+platform = 'generic'
+c_args = ['-target', 'aarch64-linux-gnu', '--sysroot', '/usr/aarch64-linux-gnu']
+c_link_args = ['-target', 'aarch64-linux-gnu', '-fuse-ld=lld', '--gcc-toolchain=/usr']
