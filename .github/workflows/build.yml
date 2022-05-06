@@ -21,6 +21,7 @@ jobs:
       CC: ccache ${{ matrix.config.compiler }}
       DEF_LIB: ${{ matrix.config.library }}
       LIBABIGAIL_VERSION: libabigail-1.8
+      MINGW: ${{ matrix.config.cross == 'mingw' }}
       MINI: ${{ matrix.config.mini != '' }}
       PPC64LE: ${{ matrix.config.cross == 'ppc64le' }}
       REF_GIT_TAG: v22.03
@@ -52,6 +53,10 @@ jobs:
             compiler: gcc
             library: static
             cross: i386
+          - os: ubuntu-20.04
+            compiler: gcc
+            library: static
+            cross: mingw
           - os: ubuntu-20.04
             compiler: gcc
             library: static
@@ -119,6 +124,9 @@ jobs:
       if: env.AARCH64 == 'true'
       run: sudo apt install -y gcc-aarch64-linux-gnu libc6-dev-arm64-cross
         pkg-config-aarch64-linux-gnu
+    - name: Install mingw cross compiling packages
+      if: env.MINGW == 'true'
+      run: sudo apt install -y mingw-w64 mingw-w64-tools
     - name: Install ppc64le cross compiling packages
       if: env.PPC64LE == 'true'
       run: sudo apt install -y gcc-powerpc64le-linux-gnu libc6-dev-ppc64el-cross

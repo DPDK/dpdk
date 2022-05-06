@@ -56,16 +56,26 @@ catch_coredump() {
     return 1
 }
 
+cross_file=
+
 if [ "$AARCH64" = "true" ]; then
     if [ "${CC%%clang}" != "$CC" ]; then
-        OPTS="$OPTS --cross-file config/arm/arm64_armv8_linux_clang_ubuntu"
+        cross_file=config/arm/arm64_armv8_linux_clang_ubuntu
     else
-        OPTS="$OPTS --cross-file config/arm/arm64_armv8_linux_gcc"
+        cross_file=config/arm/arm64_armv8_linux_gcc
     fi
 fi
 
+if [ "$MINGW" = "true" ]; then
+    cross_file=config/x86/cross-mingw
+fi
+
 if [ "$PPC64LE" = "true" ]; then
-    OPTS="$OPTS --cross-file config/ppc/ppc64le-power8-linux-gcc-ubuntu"
+    cross_file=config/ppc/ppc64le-power8-linux-gcc-ubuntu
+fi
+
+if [ -n "$cross_file" ]; then
+    OPTS="$OPTS --cross-file $cross_file"
 fi
 
 if [ "$BUILD_DOCS" = "true" ]; then
@@ -78,7 +88,9 @@ if [ "$BUILD_32BIT" = "true" ]; then
     export PKG_CONFIG_LIBDIR="/usr/lib32/pkgconfig"
 fi
 
-if [ "$DEF_LIB" = "static" ]; then
+if [ "$MINGW" = "true" ]; then
+    OPTS="$OPTS -Dexamples=helloworld"
+elif [ "$DEF_LIB" = "static" ]; then
     OPTS="$OPTS -Dexamples=l2fwd,l3fwd"
 else
     OPTS="$OPTS -Dexamples=all"
@@ -95,7 +107,7 @@ fi
 meson build --werror $OPTS
 ninja -C build
 
-if [ "$AARCH64" != "true" ] && [ "$PPC64LE" != "true" ]; then
+if [ -z "$cross_file" ]; then
     failed=
     configure_coredump
     devtools/test-null.sh || failed="true"
