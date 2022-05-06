@@ -101,6 +101,8 @@ struct port_stats {
 	u64 rx_trunc1;            /* buffer-group 1 truncated packets */
 	u64 rx_trunc2;            /* buffer-group 2 truncated packets */
 	u64 rx_trunc3;            /* buffer-group 3 truncated packets */
+
+	u64 rx_tp_tnl_cong_drops[NCHAN]; /* TP frame drops due to congestion */
 };
 
 struct sge_params {

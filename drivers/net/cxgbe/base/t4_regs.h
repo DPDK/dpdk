@@ -525,6 +525,8 @@
 
 #define A_TP_PIO_ADDR 0x7e40
 #define A_TP_PIO_DATA 0x7e44
+#define A_TP_MIB_INDEX 0x7e50
+#define A_TP_MIB_DATA 0x7e54
 
 #define A_TP_RSS_SECRET_KEY0 0x40
 
@@ -586,6 +588,8 @@
 
 #define S_RM_OVLAN	9
 #define V_RM_OVLAN(x)	((x) << S_RM_OVLAN)
+
+#define A_TP_MIB_TNL_CNG_DROP_0 0x18
 
 /* registers for module MA */
 #define A_MA_EDRAM0_BAR 0x77c0
