@@ -918,7 +918,7 @@ F: doc/guides/nics/txgbe.rst
 F: doc/guides/nics/features/txgbe.ini
 
 VMware vmxnet3
-M: Yong Wang <yongwang@vmware.com>
+M: Jochen Behrens <jbehrens@vmware.com>
 F: drivers/net/vmxnet3/
 F: doc/guides/nics/vmxnet3.rst
 F: doc/guides/nics/features/vmxnet3.ini
