@@ -28,29 +28,29 @@ jobs:
       fail-fast: false
       matrix:
         config:
-          - os: ubuntu-18.04
+          - os: ubuntu-20.04
             compiler: gcc
             library: static
-          - os: ubuntu-18.04
+          - os: ubuntu-20.04
             compiler: gcc
             library: shared
             checks: abi+doc+tests
-          - os: ubuntu-18.04
+          - os: ubuntu-20.04
             compiler: clang
             library: static
-          - os: ubuntu-18.04
+          - os: ubuntu-20.04
             compiler: clang
             library: shared
             checks: doc+tests
-          - os: ubuntu-18.04
+          - os: ubuntu-20.04
             compiler: gcc
             library: static
             cross: i386
-          - os: ubuntu-18.04
+          - os: ubuntu-20.04
             compiler: gcc
             library: static
             cross: aarch64
-          - os: ubuntu-18.04
+          - os: ubuntu-20.04
             compiler: gcc
             library: shared
             cross: aarch64
