@@ -30,43 +30,41 @@ jobs:
       fail-fast: false
       matrix:
         config:
-          - os: ubuntu-18.04
+          - os: ubuntu-20.04
             compiler: gcc
             library: static
-          - os: ubuntu-18.04
+          - os: ubuntu-20.04
             compiler: gcc
             library: shared
             mini: mini
-          - os: ubuntu-18.04
+          - os: ubuntu-20.04
             compiler: gcc
             library: shared
             checks: abi+doc+tests
-          - os: ubuntu-18.04
+          - os: ubuntu-20.04
             compiler: clang
             library: static
-          - os: ubuntu-18.04
+          - os: ubuntu-20.04
             compiler: clang
             library: shared
             checks: doc+tests
-          - os: ubuntu-18.04
+          - os: ubuntu-20.04
             compiler: gcc
             library: static
             cross: i386
-          # Note: common/cnxk is disabled for Ubuntu 18.04
-          # https://bugs.dpdk.org/show_bug.cgi?id=697
-          - os: ubuntu-18.04
+          - os: ubuntu-20.04
             compiler: gcc
             library: static
             cross: aarch64
-          - os: ubuntu-18.04
+          - os: ubuntu-20.04
             compiler: gcc
             library: shared
             cross: aarch64
-          - os: ubuntu-18.04
+          - os: ubuntu-20.04
             compiler: gcc
             library: static
             cross: ppc64le
-          - os: ubuntu-18.04
+          - os: ubuntu-20.04
             compiler: gcc
             library: shared
             cross: ppc64le

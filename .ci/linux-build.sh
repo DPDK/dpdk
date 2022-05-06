@@ -54,18 +54,15 @@ catch_coredump() {
 }
 
 if [ "$AARCH64" = "true" ]; then
-    # Note: common/cnxk is disabled for Ubuntu 18.04
-    # https://bugs.dpdk.org/show_bug.cgi?id=697
-    OPTS="$OPTS -Ddisable_drivers=common/cnxk"
     if [ "${CC%%clang}" != "$CC" ]; then
-        OPTS="$OPTS --cross-file config/arm/arm64_armv8_linux_clang_ubuntu1804"
+        OPTS="$OPTS --cross-file config/arm/arm64_armv8_linux_clang_ubuntu"
     else
         OPTS="$OPTS --cross-file config/arm/arm64_armv8_linux_gcc"
     fi
 fi
 
 if [ "$PPC64LE" = "true" ]; then
-    OPTS="$OPTS --cross-file config/ppc/ppc64le-power8-linux-gcc-ubuntu1804"
+    OPTS="$OPTS --cross-file config/ppc/ppc64le-power8-linux-gcc-ubuntu"
 fi
 
 if [ "$BUILD_DOCS" = "true" ]; then
