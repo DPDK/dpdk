@@ -266,6 +266,8 @@ foreach l:libraries
 
     set_variable('shared_rte_' + name, shared_dep)
     set_variable('static_rte_' + name, static_dep)
+    dpdk_shared_lib_deps += shared_dep
+    dpdk_static_lib_deps += static_dep
     if developer_mode
         message('lib/@0@: Defining dependency "@1@"'.format(l, name))
     endif

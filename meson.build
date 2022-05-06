@@ -36,6 +36,8 @@ dpdk_build_root = meson.current_build_dir()
 dpdk_conf = configuration_data()
 dpdk_libraries = []
 dpdk_static_libraries = []
+dpdk_shared_lib_deps = []
+dpdk_static_lib_deps = []
 dpdk_chkinc_headers = []
 dpdk_driver_classes = []
 dpdk_drivers = []
@@ -104,6 +106,10 @@ configure_file(output: build_cfg,
 
 # build pkg-config files for dpdk
 subdir('buildtools/pkg-config')
+
+if meson.is_subproject()
+    subdir('buildtools/subproject')
+endif
 
 # final output, list all the libs and drivers to be built
 # this does not affect any part of the build, for information only.
