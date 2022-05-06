@@ -1395,4 +1395,4 @@ Tested Platforms
 ~~~~~~~~~~~~~~~~~~~~
 
 * DPDK 21.11.1 contains fixes up to DPDK 22.03
-* Issues identified/fixed in DPDK main branch after DPDK 22.03 may be present in DPDK 20.11.1
+* Issues identified/fixed in DPDK main branch after DPDK 22.03 may be present in DPDK 21.11.1
