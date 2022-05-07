@@ -2370,10 +2370,24 @@ iavf_set_rx_function(struct rte_eth_dev *dev)
 	struct iavf_adapter *adapter =
 		IAVF_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
 	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
+	int i;
+	struct iavf_rx_queue *rxq;
+	bool use_flex = true;
+
+	for (i = 0; i < dev->data->nb_rx_queues; i++) {
+		rxq = dev->data->rx_queues[i];
+		if (rxq->rxdid <= IAVF_RXDID_LEGACY_1) {
+			PMD_DRV_LOG(NOTICE, "request RXDID[%d] in Queue[%d] is legacy, "
+				"set rx_pkt_burst as legacy for all queues", rxq->rxdid, i);
+			use_flex = false;
+		} else if (!(vf->supported_rxdid & BIT(rxq->rxdid))) {
+			PMD_DRV_LOG(NOTICE, "request RXDID[%d] in Queue[%d] is not supported, "
+				"set rx_pkt_burst as legacy for all queues", rxq->rxdid, i);
+			use_flex = false;
+		}
+	}
 
 #ifdef RTE_ARCH_X86
-	struct iavf_rx_queue *rxq;
-	int i;
 	bool use_avx2 = false;
 #ifdef CC_AVX512_SUPPORT
 	bool use_avx512 = false;
@@ -2455,7 +2469,7 @@ iavf_set_rx_function(struct rte_eth_dev *dev)
 	if (dev->data->scattered_rx) {
 		PMD_DRV_LOG(DEBUG, "Using a Scattered Rx callback (port=%d).",
 			    dev->data->port_id);
-		if (vf->vf_res->vf_cap_flags & VIRTCHNL_VF_OFFLOAD_RX_FLEX_DESC)
+		if (use_flex)
 			dev->rx_pkt_burst = iavf_recv_scattered_pkts_flex_rxd;
 		else
 			dev->rx_pkt_burst = iavf_recv_scattered_pkts;
@@ -2466,7 +2480,7 @@ iavf_set_rx_function(struct rte_eth_dev *dev)
 	} else {
 		PMD_DRV_LOG(DEBUG, "Using Basic Rx callback (port=%d).",
 			    dev->data->port_id);
-		if (vf->vf_res->vf_cap_flags & VIRTCHNL_VF_OFFLOAD_RX_FLEX_DESC)
+		if (use_flex)
 			dev->rx_pkt_burst = iavf_recv_pkts_flex_rxd;
 		else
 			dev->rx_pkt_burst = iavf_recv_pkts;
