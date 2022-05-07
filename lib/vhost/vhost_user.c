@@ -2973,7 +2973,6 @@ vhost_user_msg_handler(int vid, int fd)
 		return -1;
 	}
 
-	ret = 0;
 	request = msg.request.master;
 	if (request > VHOST_USER_NONE && request < VHOST_USER_MAX &&
 			vhost_message_str[request]) {
@@ -3115,9 +3114,11 @@ skip_to_post_handle:
 	} else if (ret == RTE_VHOST_MSG_RESULT_ERR) {
 		VHOST_LOG_CONFIG(ERR,
 			"vhost message handling failed.\n");
-		return -1;
+		ret = -1;
+		goto unlock;
 	}
 
+	ret = 0;
 	for (i = 0; i < dev->nr_vring; i++) {
 		struct vhost_virtqueue *vq = dev->virtqueue[i];
 		bool cur_ready = vq_is_ready(dev, vq);
@@ -3128,10 +3129,11 @@ skip_to_post_handle:
 		}
 	}
 
+unlock:
 	if (unlock_required)
 		vhost_user_unlock_all_queue_pairs(dev);
 
-	if (!virtio_is_ready(dev))
+	if (ret != 0 || !virtio_is_ready(dev))
 		goto out;
 
 	/*
@@ -3158,7 +3160,7 @@ skip_to_post_handle:
 	}
 
 out:
-	return 0;
+	return ret;
 }
 
 static int process_slave_message_reply(struct virtio_net *dev,
