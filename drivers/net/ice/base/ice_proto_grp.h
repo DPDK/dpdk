@@ -6,6 +6,7 @@
 #define _ICE_PROTO_GRP_H_
 
 #define ICE_PROTO_COUNT_PER_GRP 8
+#define ICE_PROTO_GRP_TABLE_SIZE 192
 
 struct ice_proto_off {
 	bool polarity; /* true: positive, false: nagtive */

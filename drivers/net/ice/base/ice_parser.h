@@ -110,4 +110,6 @@ enum ice_status ice_parser_profile_init(struct ice_parser_result *rslt,
 					struct ice_parser_profile *prof);
 void ice_parser_profile_dump(struct ice_hw *hw,
 			     struct ice_parser_profile *prof);
+bool ice_check_ddp_support_proto_id(struct ice_hw *hw,
+				    enum ice_prot_id proto_id);
 #endif /* _ICE_PARSER_H_ */

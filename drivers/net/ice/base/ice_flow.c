@@ -1370,6 +1370,7 @@ ice_flow_xtract_fld(struct ice_hw *hw, struct ice_flow_prof_params *params,
 	u16 sib_mask = 0;
 	u16 mask;
 	u16 off;
+	bool exist;
 
 	flds = params->prof->segs[seg].fields;
 
@@ -1410,7 +1411,16 @@ ice_flow_xtract_fld(struct ice_hw *hw, struct ice_flow_prof_params *params,
 		break;
 	case ICE_FLOW_FIELD_IDX_IPV6_TTL:
 	case ICE_FLOW_FIELD_IDX_IPV6_PROT:
-		prot_id = seg == 0 ? ICE_PROT_IPV6_OF_OR_S : ICE_PROT_IPV6_IL;
+		prot_id = ICE_PROT_IPV6_NEXT_PROTO;
+		exist = ice_check_ddp_support_proto_id(hw, prot_id);
+		if (!exist)
+			prot_id = seg == 0 ?
+				  ICE_PROT_IPV6_OF_OR_S :
+				  ICE_PROT_IPV6_IL;
+		else
+			prot_id = seg == 0 ?
+				  ICE_PROT_IPV6_NEXT_PROTO :
+				  ICE_PROT_IPV6_IL;
 
 		/* TTL and PROT share the same extraction seq. entry.
 		 * Each is considered a sibling to the other in terms of sharing
@@ -1543,6 +1553,10 @@ ice_flow_xtract_fld(struct ice_hw *hw, struct ice_flow_prof_params *params,
 	flds[fld].xtrct.disp = (u8)(ice_flds_info[fld].off % ese_bits);
 	flds[fld].xtrct.idx = params->es_cnt;
 	flds[fld].xtrct.mask = ice_flds_info[fld].mask;
+	if (prot_id == ICE_PROT_IPV6_NEXT_PROTO) {
+		flds[fld].xtrct.off = 0;
+		flds[fld].xtrct.disp = 0;
+	}
 
 	/* Adjust the next field-entry index after accommodating the number of
 	 * entries this field consumes

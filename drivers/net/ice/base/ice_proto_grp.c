@@ -5,7 +5,6 @@
 #include "ice_common.h"
 #include "ice_parser_util.h"
 
-#define ICE_PROTO_GRP_TABLE_SIZE 192
 
 static void _proto_off_dump(struct ice_hw *hw, struct ice_proto_off *po,
 			    int idx)

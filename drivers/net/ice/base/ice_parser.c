@@ -552,3 +552,38 @@ void ice_parser_profile_dump(struct ice_hw *hw, struct ice_parser_profile *prof)
 	ice_info(hw, "flags = 0x%04x\n", prof->flags);
 	ice_info(hw, "flags_msk = 0x%04x\n", prof->flags_msk);
 }
+
+/**
+ * ice_check_ddp_support_proto_id - check DDP package file support protocol ID
+ * @hw: pointer to the HW struct
+ * @proto_id: protocol ID value
+ *
+ * This function maintains the compatibility of the program process by checking
+ * whether the current DDP file supports the required protocol ID.
+ */
+bool ice_check_ddp_support_proto_id(struct ice_hw *hw,
+				    enum ice_prot_id proto_id)
+{
+	struct ice_proto_grp_item *proto_grp_table;
+	struct ice_proto_grp_item *proto_grp;
+	bool exist = false;
+	u16 idx, i;
+
+	proto_grp_table = ice_proto_grp_table_get(hw);
+	if (!proto_grp_table)
+		return false;
+
+	for (idx = 0; idx < ICE_PROTO_GRP_TABLE_SIZE; idx++) {
+		proto_grp = &proto_grp_table[idx];
+		for (i = 0; i < ICE_PROTO_COUNT_PER_GRP; i++) {
+			if (proto_grp->po[i].proto_id == proto_id) {
+				exist = true;
+				goto exit;
+			}
+		}
+	}
+
+exit:
+	ice_free(hw, proto_grp_table);
+	return exist;
+}
