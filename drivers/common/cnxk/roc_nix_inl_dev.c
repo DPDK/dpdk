@@ -814,6 +814,7 @@ roc_nix_inl_dev_init(struct roc_nix_inl_dev *roc_inl_dev)
 	inl_dev->wqe_skip = roc_inl_dev->wqe_skip;
 	inl_dev->spb_drop_pc = NIX_AURA_DROP_PC_DFLT;
 	inl_dev->lpb_drop_pc = NIX_AURA_DROP_PC_DFLT;
+	inl_dev->set_soft_exp_poll = roc_inl_dev->set_soft_exp_poll;
 
 	if (roc_inl_dev->spb_drop_pc)
 		inl_dev->spb_drop_pc = roc_inl_dev->spb_drop_pc;
@@ -849,7 +850,7 @@ roc_nix_inl_dev_init(struct roc_nix_inl_dev *roc_inl_dev)
 	if (rc)
 		goto sso_release;
 
-	if (roc_inl_dev->set_soft_exp_poll) {
+	if (inl_dev->set_soft_exp_poll) {
 		rc = nix_inl_outb_poll_thread_setup(inl_dev);
 		if (rc)
 			goto cpt_release;
@@ -898,7 +899,7 @@ roc_nix_inl_dev_fini(struct roc_nix_inl_dev *roc_inl_dev)
 	inl_dev = idev->nix_inl_dev;
 	pci_dev = inl_dev->pci_dev;
 
-	if (roc_inl_dev->set_soft_exp_poll) {
+	if (inl_dev->set_soft_exp_poll) {
 		soft_exp_poll_thread_exit = true;
 		pthread_join(inl_dev->soft_exp_poll_thread, NULL);
 		plt_bitmap_free(inl_dev->soft_exp_ring_bmap);

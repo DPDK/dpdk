@@ -59,6 +59,7 @@ struct nix_inl_dev {
 	pthread_t soft_exp_poll_thread;
 	uint32_t soft_exp_poll_freq;
 	uint64_t *sa_soft_exp_ring;
+	bool set_soft_exp_poll;
 
 	/* Soft expiry ring bitmap */
 	struct plt_bitmap *soft_exp_ring_bmap;

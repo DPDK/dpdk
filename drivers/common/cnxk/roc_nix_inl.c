@@ -210,7 +210,7 @@ roc_nix_inl_inb_sa_sz(struct roc_nix *roc_nix, bool inl_dev_sa)
 uintptr_t
 roc_nix_inl_inb_sa_get(struct roc_nix *roc_nix, bool inb_inl_dev, uint32_t spi)
 {
-	uint32_t max_spi, min_spi, mask;
+	uint32_t max_spi = 0, min_spi = 0, mask;
 	uintptr_t sa_base;
 	uint64_t sz;
 
@@ -224,7 +224,7 @@ roc_nix_inl_inb_sa_get(struct roc_nix *roc_nix, bool inb_inl_dev, uint32_t spi)
 	if (!sz)
 		return 0;
 
-	if (roc_nix->custom_sa_action)
+	if (roc_nix && roc_nix->custom_sa_action)
 		return (sa_base + (spi * sz));
 
 	/* Check if SPI is in range */
@@ -466,7 +466,7 @@ skip_sa_alloc:
 	nix->outb_se_ring_base =
 		roc_nix->port_id * ROC_NIX_SOFT_EXP_PER_PORT_MAX_RINGS;
 
-	if (inl_dev == NULL) {
+	if (inl_dev == NULL || !inl_dev->set_soft_exp_poll) {
 		nix->outb_se_ring_cnt = 0;
 		return 0;
 	}
@@ -542,11 +542,12 @@ roc_nix_inl_outb_fini(struct roc_nix *roc_nix)
 	plt_free(nix->outb_sa_base);
 	nix->outb_sa_base = NULL;
 
-	if (idev && idev->nix_inl_dev) {
+	if (idev && idev->nix_inl_dev && nix->outb_se_ring_cnt) {
 		inl_dev = idev->nix_inl_dev;
 		ring_base = inl_dev->sa_soft_exp_ring;
+		ring_base += nix->outb_se_ring_base;
 
-		for (i = 0; i < ROC_NIX_INL_MAX_SOFT_EXP_RNGS; i++) {
+		for (i = 0; i < nix->outb_se_ring_cnt; i++) {
 			if (ring_base[i])
 				plt_free(PLT_PTR_CAST(ring_base[i]));
 		}
