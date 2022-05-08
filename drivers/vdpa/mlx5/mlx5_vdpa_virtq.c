@@ -23,11 +23,11 @@ mlx5_vdpa_virtq_kick_handler(void *cb_arg)
 	struct mlx5_vdpa_priv *priv = virtq->priv;
 	uint64_t buf;
 	int nbytes;
+	int retry;
 
 	if (rte_intr_fd_get(virtq->intr_handle) < 0)
 		return;
-
-	do {
+	for (retry = 0; retry < 3; ++retry) {
 		nbytes = read(rte_intr_fd_get(virtq->intr_handle), &buf,
 			      8);
 		if (nbytes < 0) {
@@ -39,7 +39,9 @@ mlx5_vdpa_virtq_kick_handler(void *cb_arg)
 				virtq->index, strerror(errno));
 		}
 		break;
-	} while (1);
+	}
+	if (nbytes < 0)
+		return;
 	rte_write32(virtq->index, priv->virtq_db_addr);
 	if (virtq->notifier_state == MLX5_VDPA_NOTIFIER_STATE_DISABLED) {
 		if (rte_vhost_host_notifier_ctrl(priv->vid, virtq->index, true))
