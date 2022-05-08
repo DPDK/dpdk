@@ -341,6 +341,9 @@ nix_sec_reassemble_frags(const struct cpt_parse_hdr_s *hdr, uint64_t cq_w1,
 	mbuf->data_len = frag_size;
 	fragx_sum += frag_size;
 
+	/* Mark frag as get */
+	RTE_MEMPOOL_CHECK_COOKIES(mbuf->pool, (void **)&mbuf, 1, 1);
+
 	/* Frag-2: */
 	if (hdr->w0.num_frags > 2) {
 		frag_ptr = (uint64_t *)(finfo + 1);
@@ -354,6 +357,9 @@ nix_sec_reassemble_frags(const struct cpt_parse_hdr_s *hdr, uint64_t cq_w1,
 		*(uint64_t *)(&mbuf->rearm_data) = mbuf_init | data_off;
 		mbuf->data_len = frag_size;
 		fragx_sum += frag_size;
+
+		/* Mark frag as get */
+		RTE_MEMPOOL_CHECK_COOKIES(mbuf->pool, (void **)&mbuf, 1, 1);
 	}
 
 	/* Frag-3: */
@@ -368,6 +374,9 @@ nix_sec_reassemble_frags(const struct cpt_parse_hdr_s *hdr, uint64_t cq_w1,
 		*(uint64_t *)(&mbuf->rearm_data) = mbuf_init | data_off;
 		mbuf->data_len = frag_size;
 		fragx_sum += frag_size;
+
+		/* Mark frag as get */
+		RTE_MEMPOOL_CHECK_COOKIES(mbuf->pool, (void **)&mbuf, 1, 1);
 	}
 
 	if (inner_rx->lctype == NPC_LT_LC_IP) {
@@ -413,10 +422,10 @@ nix_sec_meta_to_mbuf_sc(uint64_t cq_w1, uint64_t cq_w5, const uint64_t sa_base,
 	const struct cpt_parse_hdr_s *hdr = (const struct cpt_parse_hdr_s *)__p;
 	struct cn10k_inb_priv_data *inb_priv;
 	struct rte_mbuf *inner = NULL;
-	uint64_t res_w1;
 	uint32_t sa_idx;
-	uint16_t uc_cc;
+	uint16_t ucc;
 	uint32_t len;
+	uintptr_t ip;
 	void *inb_sa;
 	uint64_t w0;
 
@@ -438,20 +447,23 @@ nix_sec_meta_to_mbuf_sc(uint64_t cq_w1, uint64_t cq_w5, const uint64_t sa_base,
 			*rte_security_dynfield(inner) =
 				(uint64_t)inb_priv->userdata;
 
-			/* CPT result(struct cpt_cn10k_res_s) is at
-			 * after first IOVA in meta
-			 */
-			res_w1 = *((uint64_t *)(&inner[1]) + 10);
-			uc_cc = res_w1 & 0xFF;
+			/* Get ucc from cpt parse header */
+			ucc = hdr->w3.hw_ccode;
 
-			/* Calculate inner packet length */
-			len = ((res_w1 >> 16) & 0xFFFF) + hdr->w2.il3_off -
-				sizeof(struct cpt_parse_hdr_s) - (w0 & 0x7);
+			/* Calculate inner packet length as
+			 * IP total len + l2 len
+			 */
+			ip = (uintptr_t)hdr + ((cq_w5 >> 16) & 0xFF);
+			ip += ((cq_w1 >> 40) & 0x6);
+			len = rte_be_to_cpu_16(*(uint16_t *)ip);
+			len += ((cq_w5 >> 16) & 0xFF) - (cq_w5 & 0xFF);
+			len += (cq_w1 & BIT(42)) ? 40 : 0;
+
 			inner->pkt_len = len;
 			inner->data_len = len;
 			*(uint64_t *)(&inner->rearm_data) = mbuf_init;
 
-			inner->ol_flags = ((uc_cc == CPT_COMP_WARN) ?
+			inner->ol_flags = ((ucc == CPT_COMP_WARN) ?
 					   RTE_MBUF_F_RX_SEC_OFFLOAD :
 					   (RTE_MBUF_F_RX_SEC_OFFLOAD |
 					    RTE_MBUF_F_RX_SEC_OFFLOAD_FAILED));
@@ -477,6 +489,12 @@ nix_sec_meta_to_mbuf_sc(uint64_t cq_w1, uint64_t cq_w5, const uint64_t sa_base,
 		*(uint64_t *)(laddr + (*loff << 3)) = (uint64_t)mbuf;
 		*loff = *loff + 1;
 
+		/* Mark meta mbuf as put */
+		RTE_MEMPOOL_CHECK_COOKIES(mbuf->pool, (void **)&mbuf, 1, 0);
+
+		/* Mark inner mbuf as get */
+		RTE_MEMPOOL_CHECK_COOKIES(inner->pool, (void **)&inner, 1, 1);
+
 		return inner;
 	} else if (cq_w1 & BIT(11)) {
 		inner = (struct rte_mbuf *)(rte_be_to_cpu_64(hdr->wqe_ptr) -
@@ -492,22 +510,21 @@ nix_sec_meta_to_mbuf_sc(uint64_t cq_w1, uint64_t cq_w5, const uint64_t sa_base,
 		/* Update dynamic field with userdata */
 		*rte_security_dynfield(inner) = (uint64_t)inb_priv->userdata;
 
-		/* Update l2 hdr length first */
+		/* Get ucc from cpt parse header */
+		ucc = hdr->w3.hw_ccode;
 
-		/* CPT result(struct cpt_cn10k_res_s) is at
-		 * after first IOVA in meta
-		 */
-		res_w1 = *((uint64_t *)(&inner[1]) + 10);
-		uc_cc = res_w1 & 0xFF;
+		/* Calculate inner packet length as IP total len + l2 len */
+		ip = (uintptr_t)hdr + ((cq_w5 >> 16) & 0xFF);
+		ip += ((cq_w1 >> 40) & 0x6);
+		len = rte_be_to_cpu_16(*(uint16_t *)ip);
+		len += ((cq_w5 >> 16) & 0xFF) - (cq_w5 & 0xFF);
+		len += (cq_w1 & BIT(42)) ? 40 : 0;
 
-		/* Calculate inner packet length */
-		len = ((res_w1 >> 16) & 0xFFFF) + hdr->w2.il3_off -
-			sizeof(struct cpt_parse_hdr_s) - (w0 & 0x7);
 		inner->pkt_len = len;
 		inner->data_len = len;
 		*(uint64_t *)(&inner->rearm_data) = mbuf_init;
 
-		inner->ol_flags = ((uc_cc == CPT_COMP_WARN) ?
+		inner->ol_flags = ((ucc == CPT_COMP_WARN) ?
 				   RTE_MBUF_F_RX_SEC_OFFLOAD :
 				   (RTE_MBUF_F_RX_SEC_OFFLOAD |
 				    RTE_MBUF_F_RX_SEC_OFFLOAD_FAILED));
@@ -532,83 +549,34 @@ nix_sec_meta_to_mbuf_sc(uint64_t cq_w1, uint64_t cq_w5, const uint64_t sa_base,
 
 #if defined(RTE_ARCH_ARM64)
 
-static __rte_always_inline struct rte_mbuf *
-nix_sec_meta_to_mbuf(uint64_t cq_w1, uint64_t cq_w5, uintptr_t sa_base,
-		     uintptr_t laddr, uint8_t *loff, struct rte_mbuf *mbuf,
-		     uint16_t data_off, uint8x16_t *rx_desc_field1,
-		     uint64_t *ol_flags, const uint16_t flags,
-		     uint64x2_t *rearm)
+static __rte_always_inline void
+nix_sec_meta_to_mbuf(uint64_t cq_w1, uint64_t cq_w5, uintptr_t inb_sa,
+		     uintptr_t cpth, struct rte_mbuf *inner,
+		     uint8x16_t *rx_desc_field1, uint64_t *ol_flags,
+		     const uint16_t flags, uint64x2_t *rearm)
 {
-	const void *__p = (void *)((uintptr_t)mbuf + (uint16_t)data_off);
-	const struct cpt_parse_hdr_s *hdr = (const struct cpt_parse_hdr_s *)__p;
+	const struct cpt_parse_hdr_s *hdr =
+		(const struct cpt_parse_hdr_s *)cpth;
 	uint64_t mbuf_init = vgetq_lane_u64(*rearm, 0);
 	struct cn10k_inb_priv_data *inb_priv;
-	struct rte_mbuf *inner;
-	uint64_t *sg, res_w1;
-	uint32_t sa_idx;
-	void *inb_sa;
-	uint16_t len;
-	uint64_t w0;
 
-	if ((flags & NIX_RX_REAS_F) && (cq_w1 & BIT(11))) {
-		w0 = hdr->w0.u64;
-		sa_idx = w0 >> 32;
+	/* Clear checksum flags */
+	*ol_flags &= ~(RTE_MBUF_F_RX_L4_CKSUM_MASK |
+		       RTE_MBUF_F_RX_IP_CKSUM_MASK);
 
-		/* Get SPI from CPT_PARSE_S's cookie(already swapped) */
-		w0 = hdr->w0.u64;
-		sa_idx = w0 >> 32;
+	/* Get SPI from CPT_PARSE_S's cookie(already swapped) */
+	inb_priv = roc_nix_inl_ot_ipsec_inb_sa_sw_rsvd((void *)inb_sa);
 
-		inb_sa = roc_nix_inl_ot_ipsec_inb_sa(sa_base, sa_idx);
-		inb_priv = roc_nix_inl_ot_ipsec_inb_sa_sw_rsvd(inb_sa);
+	/* Update dynamic field with userdata */
+	*rte_security_dynfield(inner) = (uint64_t)inb_priv->userdata;
 
-		/* Clear checksum flags */
-		*ol_flags &= ~(RTE_MBUF_F_RX_L4_CKSUM_MASK |
-			       RTE_MBUF_F_RX_IP_CKSUM_MASK);
+	/* Mark inner mbuf as get */
+	RTE_MEMPOOL_CHECK_COOKIES(inner->pool, (void **)&inner, 1, 1);
 
-		if (!hdr->w0.num_frags) {
-			/* No Reassembly or inbound error */
-			inner = (struct rte_mbuf *)
-				(rte_be_to_cpu_64(hdr->wqe_ptr) -
-				 sizeof(struct rte_mbuf));
-			/* Update dynamic field with userdata */
-			*rte_security_dynfield(inner) =
-				(uint64_t)inb_priv->userdata;
-
-			/* CPT result(struct cpt_cn10k_res_s) is at
-			 * after first IOVA in meta
-			 */
-			sg = (uint64_t *)(inner + 1);
-			res_w1 = sg[10];
-
-			/* Clear checksum flags and update security flag */
-			*ol_flags &= ~(RTE_MBUF_F_RX_L4_CKSUM_MASK |
-				       RTE_MBUF_F_RX_IP_CKSUM_MASK);
-			*ol_flags |=
-				(((res_w1 & 0xFF) == CPT_COMP_WARN) ?
-				 RTE_MBUF_F_RX_SEC_OFFLOAD :
-				 (RTE_MBUF_F_RX_SEC_OFFLOAD |
-				  RTE_MBUF_F_RX_SEC_OFFLOAD_FAILED));
-			/* Calculate inner packet length */
-			len = ((res_w1 >> 16) & 0xFFFF) +
-				hdr->w2.il3_off -
-				sizeof(struct cpt_parse_hdr_s) -
-				(w0 & 0x7);
-			/* Update pkt_len and data_len */
-			*rx_desc_field1 =
-				vsetq_lane_u16(len, *rx_desc_field1, 2);
-			*rx_desc_field1 =
-				vsetq_lane_u16(len, *rx_desc_field1, 4);
-
-		} else if (!(hdr->w0.err_sum) && !(hdr->w0.reas_sts)) {
+	if (flags & NIX_RX_REAS_F && hdr->w0.num_frags) {
+		if (!(hdr->w0.err_sum) && !(hdr->w0.reas_sts)) {
 			/* Reassembly success */
-			inner = nix_sec_reassemble_frags(hdr, cq_w1, cq_w5,
-							 mbuf_init);
-			sg = (uint64_t *)(inner + 1);
-			res_w1 = sg[10];
-
-			/* Update dynamic field with userdata */
-			*rte_security_dynfield(inner) =
-				(uint64_t)inb_priv->userdata;
+			nix_sec_reassemble_frags(hdr, cq_w1, cq_w5, mbuf_init);
 
 			/* Assume success */
 			*ol_flags |= RTE_MBUF_F_RX_SEC_OFFLOAD;
@@ -624,7 +592,7 @@ nix_sec_meta_to_mbuf(uint64_t cq_w1, uint64_t cq_w5, uintptr_t sa_base,
 			*rearm = vsetq_lane_u64(mbuf_init, *rearm, 0);
 		} else {
 			/* Reassembly failure */
-			inner = nix_sec_attach_frags(hdr, inb_priv, mbuf_init);
+			nix_sec_attach_frags(hdr, inb_priv, mbuf_init);
 			*ol_flags |= inner->ol_flags;
 
 			/* Update pkt_len and data_len */
@@ -633,65 +601,7 @@ nix_sec_meta_to_mbuf(uint64_t cq_w1, uint64_t cq_w5, uintptr_t sa_base,
 			*rx_desc_field1 = vsetq_lane_u16(inner->data_len,
 							 *rx_desc_field1, 4);
 		}
-
-		/* Store meta in lmtline to free
-		 * Assume all meta's from same aura.
-		 */
-		*(uint64_t *)(laddr + (*loff << 3)) = (uint64_t)mbuf;
-		*loff = *loff + 1;
-
-		/* Return inner mbuf */
-		return inner;
-
-	} else if (cq_w1 & BIT(11)) {
-		inner = (struct rte_mbuf *)(rte_be_to_cpu_64(hdr->wqe_ptr) -
-					    sizeof(struct rte_mbuf));
-		/* Get SPI from CPT_PARSE_S's cookie(already swapped) */
-		w0 = hdr->w0.u64;
-		sa_idx = w0 >> 32;
-
-		inb_sa = roc_nix_inl_ot_ipsec_inb_sa(sa_base, sa_idx);
-		inb_priv = roc_nix_inl_ot_ipsec_inb_sa_sw_rsvd(inb_sa);
-
-		/* Update dynamic field with userdata */
-		*rte_security_dynfield(inner) = (uint64_t)inb_priv->userdata;
-
-		/* CPT result(struct cpt_cn10k_res_s) is at
-		 * after first IOVA in meta
-		 */
-		sg = (uint64_t *)(inner + 1);
-		res_w1 = sg[10];
-
-		/* Clear checksum flags and update security flag */
-		*ol_flags &= ~(RTE_MBUF_F_RX_L4_CKSUM_MASK | RTE_MBUF_F_RX_IP_CKSUM_MASK);
-		*ol_flags |= (((res_w1 & 0xFF) == CPT_COMP_WARN) ?
-			      RTE_MBUF_F_RX_SEC_OFFLOAD :
-			      (RTE_MBUF_F_RX_SEC_OFFLOAD | RTE_MBUF_F_RX_SEC_OFFLOAD_FAILED));
-		/* Calculate inner packet length */
-		len = ((res_w1 >> 16) & 0xFFFF) + hdr->w2.il3_off -
-			sizeof(struct cpt_parse_hdr_s) - (w0 & 0x7);
-		/* Update pkt_len and data_len */
-		*rx_desc_field1 = vsetq_lane_u16(len, *rx_desc_field1, 2);
-		*rx_desc_field1 = vsetq_lane_u16(len, *rx_desc_field1, 4);
-
-		/* Store meta in lmtline to free
-		 * Assume all meta's from same aura.
-		 */
-		*(uint64_t *)(laddr + (*loff << 3)) = (uint64_t)mbuf;
-		*loff = *loff + 1;
-
-		/* Mark meta mbuf as put */
-		RTE_MEMPOOL_CHECK_COOKIES(mbuf->pool, (void **)&mbuf, 1, 0);
-
-		/* Mark inner mbuf as get */
-		RTE_MEMPOOL_CHECK_COOKIES(inner->pool, (void **)&inner, 1, 1);
-
-		/* Return inner mbuf */
-		return inner;
 	}
-
-	/* Return same mbuf as it is not a decrypted pkt */
-	return mbuf;
 }
 #endif
 
@@ -1040,6 +950,14 @@ nix_qinq_update(const uint64_t w2, uint64_t ol_flags, struct rte_mbuf *mbuf)
 	return ol_flags;
 }
 
+#define NIX_PUSH_META_TO_FREE(_mbuf, _laddr, _loff_p)                          \
+	do {                                                                   \
+		*(uint64_t *)((_laddr) + (*(_loff_p) << 3)) = (uint64_t)_mbuf; \
+		*(_loff_p) = *(_loff_p) + 1;                                   \
+		/* Mark meta mbuf as put */                                    \
+		RTE_MEMPOOL_CHECK_COOKIES(_mbuf->pool, (void **)&_mbuf, 1, 0); \
+	} while (0)
+
 static __rte_always_inline uint16_t
 cn10k_nix_recv_pkts_vector(void *args, struct rte_mbuf **mbufs, uint16_t pkts,
 			   const uint16_t flags, void *lookup_mem,
@@ -1083,6 +1001,12 @@ cn10k_nix_recv_pkts_vector(void *args, struct rte_mbuf **mbufs, uint16_t pkts,
 		pkts = RTE_ALIGN_FLOOR(pkts, NIX_DESCS_PER_LOOP);
 		if (flags & NIX_RX_OFFLOAD_TSTAMP_F)
 			tstamp = rxq->tstamp;
+
+		cq0 = desc + CQE_SZ(head);
+		rte_prefetch0(CQE_PTR_OFF(cq0, 0, 64, flags));
+		rte_prefetch0(CQE_PTR_OFF(cq0, 1, 64, flags));
+		rte_prefetch0(CQE_PTR_OFF(cq0, 2, 64, flags));
+		rte_prefetch0(CQE_PTR_OFF(cq0, 3, 64, flags));
 	} else {
 		RTE_SET_USED(head);
 	}
@@ -1188,11 +1112,34 @@ cn10k_nix_recv_pkts_vector(void *args, struct rte_mbuf **mbufs, uint16_t pkts,
 				}
 			}
 		} else {
-			if (pkts - packets > 4) {
-				rte_prefetch_non_temporal(CQE_PTR_OFF(cq0, 4, 64, flags));
-				rte_prefetch_non_temporal(CQE_PTR_OFF(cq0, 5, 64, flags));
-				rte_prefetch_non_temporal(CQE_PTR_OFF(cq0, 6, 64, flags));
-				rte_prefetch_non_temporal(CQE_PTR_OFF(cq0, 7, 64, flags));
+			if (flags & NIX_RX_OFFLOAD_SECURITY_F &&
+			    pkts - packets > 4) {
+				/* Fetch cpt parse header */
+				void *p0 =
+					(void *)*CQE_PTR_OFF(cq0, 4, 72, flags);
+				void *p1 =
+					(void *)*CQE_PTR_OFF(cq0, 5, 72, flags);
+				void *p2 =
+					(void *)*CQE_PTR_OFF(cq0, 6, 72, flags);
+				void *p3 =
+					(void *)*CQE_PTR_OFF(cq0, 7, 72, flags);
+				rte_prefetch0(p0);
+				rte_prefetch0(p1);
+				rte_prefetch0(p2);
+				rte_prefetch0(p3);
+			}
+
+			if (pkts - packets > 8) {
+				if (flags) {
+					rte_prefetch0(CQE_PTR_OFF(cq0, 8, 0, flags));
+					rte_prefetch0(CQE_PTR_OFF(cq0, 9, 0, flags));
+					rte_prefetch0(CQE_PTR_OFF(cq0, 10, 0, flags));
+					rte_prefetch0(CQE_PTR_OFF(cq0, 11, 0, flags));
+				}
+				rte_prefetch0(CQE_PTR_OFF(cq0, 8, 64, flags));
+				rte_prefetch0(CQE_PTR_OFF(cq0, 9, 64, flags));
+				rte_prefetch0(CQE_PTR_OFF(cq0, 10, 64, flags));
+				rte_prefetch0(CQE_PTR_OFF(cq0, 11, 64, flags));
 			}
 		}
 
@@ -1236,13 +1183,6 @@ cn10k_nix_recv_pkts_vector(void *args, struct rte_mbuf **mbufs, uint16_t pkts,
 			f1 = vqtbl1q_u8(cq1_w8, shuf_msk);
 			f2 = vqtbl1q_u8(cq2_w8, shuf_msk);
 			f3 = vqtbl1q_u8(cq3_w8, shuf_msk);
-		}
-		if (flags & NIX_RX_OFFLOAD_SECURITY_F) {
-			/* Prefetch probable CPT parse header area */
-			rte_prefetch_non_temporal(RTE_PTR_ADD(mbuf0, d_off));
-			rte_prefetch_non_temporal(RTE_PTR_ADD(mbuf1, d_off));
-			rte_prefetch_non_temporal(RTE_PTR_ADD(mbuf2, d_off));
-			rte_prefetch_non_temporal(RTE_PTR_ADD(mbuf3, d_off));
 		}
 
 		/* Load CQE word0 and word 1 */
@@ -1329,10 +1269,126 @@ cn10k_nix_recv_pkts_vector(void *args, struct rte_mbuf **mbufs, uint16_t pkts,
 
 		/* Translate meta to mbuf */
 		if (flags & NIX_RX_OFFLOAD_SECURITY_F) {
-			uint64_t cq0_w5 = *(uint64_t *)(cq0 + CQE_SZ(0) + 40);
-			uint64_t cq1_w5 = *(uint64_t *)(cq0 + CQE_SZ(1) + 40);
-			uint64_t cq2_w5 = *(uint64_t *)(cq0 + CQE_SZ(2) + 40);
-			uint64_t cq3_w5 = *(uint64_t *)(cq0 + CQE_SZ(3) + 40);
+			uint64_t cq0_w5 = *CQE_PTR_OFF(cq0, 0, 40, flags);
+			uint64_t cq1_w5 = *CQE_PTR_OFF(cq0, 1, 40, flags);
+			uint64_t cq2_w5 = *CQE_PTR_OFF(cq0, 2, 40, flags);
+			uint64_t cq3_w5 = *CQE_PTR_OFF(cq0, 3, 40, flags);
+			uintptr_t cpth0 = (uintptr_t)mbuf0 + d_off;
+			uintptr_t cpth1 = (uintptr_t)mbuf1 + d_off;
+			uintptr_t cpth2 = (uintptr_t)mbuf2 + d_off;
+			uintptr_t cpth3 = (uintptr_t)mbuf3 + d_off;
+
+			uint64x2_t inner0, inner1, inner2, inner3;
+			uint64x2_t wqe01, wqe23, sa01, sa23;
+			uint16x4_t lens, l2lens, ltypes;
+			uint8x8_t ucc;
+
+			inner0 = vld1q_u64((const uint64_t *)cpth0);
+			inner1 = vld1q_u64((const uint64_t *)cpth1);
+			inner2 = vld1q_u64((const uint64_t *)cpth2);
+			inner3 = vld1q_u64((const uint64_t *)cpth3);
+
+			/* Extract and reverse wqe pointers */
+			wqe01 = vzip2q_u64(inner0, inner1);
+			wqe23 = vzip2q_u64(inner2, inner3);
+			wqe01 = vrev64q_u8(wqe01);
+			wqe23 = vrev64q_u8(wqe23);
+			/* Adjust wqe pointers to point to mbuf */
+			wqe01 = vsubq_u64(wqe01,
+					  vdupq_n_u64(sizeof(struct rte_mbuf)));
+			wqe23 = vsubq_u64(wqe23,
+					  vdupq_n_u64(sizeof(struct rte_mbuf)));
+
+			/* Extract sa idx from cookie area and add to sa_base */
+			sa01 = vzip1q_u64(inner0, inner1);
+			sa23 = vzip1q_u64(inner2, inner3);
+
+			sa01 = vshrq_n_u64(sa01, 32);
+			sa23 = vshrq_n_u64(sa23, 32);
+			sa01 = vshlq_n_u64(sa01,
+					   ROC_NIX_INL_OT_IPSEC_INB_SA_SZ_LOG2);
+			sa23 = vshlq_n_u64(sa23,
+					   ROC_NIX_INL_OT_IPSEC_INB_SA_SZ_LOG2);
+			sa01 = vaddq_u64(sa01, vdupq_n_u64(sa_base));
+			sa23 = vaddq_u64(sa23, vdupq_n_u64(sa_base));
+
+			const uint8x16_t tbl = {
+				0, 0, 0, 0, 0, 0, 0, 0,
+				/* HW_CCODE -> RTE_MBUF_F_RX_SEC_OFFLOAD_FAILED */
+				1, 0, 1, 1, 1, 1, 0, 1,
+			};
+
+			const int8x8_t err_off = {
+				/* UCC of significance starts from 0xF0 */
+				0xF0,
+				/* Move HW_CCODE from 0:6 -> 8:14 */
+				-8,
+				0xF0,
+				-8,
+				0xF0,
+				-8,
+				0xF0,
+				-8,
+			};
+
+			ucc = vdup_n_u8(0);
+			ucc = vset_lane_u16(*(uint16_t *)(cpth0 + 30), ucc, 0);
+			ucc = vset_lane_u16(*(uint16_t *)(cpth1 + 30), ucc, 1);
+			ucc = vset_lane_u16(*(uint16_t *)(cpth2 + 30), ucc, 2);
+			ucc = vset_lane_u16(*(uint16_t *)(cpth3 + 30), ucc, 3);
+			ucc = vsub_s8(ucc, err_off);
+			ucc = vqtbl1_u8(tbl, ucc);
+
+			RTE_BUILD_BUG_ON(NPC_LT_LC_IP != 2);
+			RTE_BUILD_BUG_ON(NPC_LT_LC_IP_OPT != 3);
+			RTE_BUILD_BUG_ON(NPC_LT_LC_IP6 != 4);
+			RTE_BUILD_BUG_ON(NPC_LT_LC_IP6_EXT != 5);
+
+			ltypes = vdup_n_u16(0);
+			ltypes = vset_lane_u16((cq0_w1 >> 40) & 0x6, ltypes, 0);
+			ltypes = vset_lane_u16((cq1_w1 >> 40) & 0x6, ltypes, 1);
+			ltypes = vset_lane_u16((cq2_w1 >> 40) & 0x6, ltypes, 2);
+			ltypes = vset_lane_u16((cq3_w1 >> 40) & 0x6, ltypes, 3);
+
+			/* Extract and reverse l3 length from IPv4/IPv6 hdr
+			 * that is in same cacheline most probably as cpth.
+			 */
+			cpth0 += ((cq0_w5 >> 16) & 0xFF) +
+				 vget_lane_u16(ltypes, 0);
+			cpth1 += ((cq1_w5 >> 16) & 0xFF) +
+				 vget_lane_u16(ltypes, 1);
+			cpth2 += ((cq2_w5 >> 16) & 0xFF) +
+				 vget_lane_u16(ltypes, 2);
+			cpth3 += ((cq3_w5 >> 16) & 0xFF) +
+				 vget_lane_u16(ltypes, 3);
+			lens = vdup_n_u16(0);
+			lens = vset_lane_u16(*(uint16_t *)cpth0, lens, 0);
+			lens = vset_lane_u16(*(uint16_t *)cpth1, lens, 1);
+			lens = vset_lane_u16(*(uint16_t *)cpth2, lens, 2);
+			lens = vset_lane_u16(*(uint16_t *)cpth3, lens, 3);
+			lens = vrev16_u8(lens);
+
+			/* Add l2 length to l3 lengths */
+			l2lens = vdup_n_u16(0);
+			l2lens = vset_lane_u16(((cq0_w5 >> 16) & 0xFF) -
+						       (cq0_w5 & 0xFF),
+					       l2lens, 0);
+			l2lens = vset_lane_u16(((cq1_w5 >> 16) & 0xFF) -
+						       (cq1_w5 & 0xFF),
+					       l2lens, 1);
+			l2lens = vset_lane_u16(((cq2_w5 >> 16) & 0xFF) -
+						       (cq2_w5 & 0xFF),
+					       l2lens, 2);
+			l2lens = vset_lane_u16(((cq3_w5 >> 16) & 0xFF) -
+						       (cq3_w5 & 0xFF),
+					       l2lens, 3);
+			lens = vadd_u16(lens, l2lens);
+
+			/* L3 header adjust */
+			const int8x8_t l3adj = {
+				0, 0, 0, 0, 40, 0, 0, 0,
+			};
+			lens = vadd_u16(lens, vtbl1_u8(l3adj, ltypes));
 
 			/* Initialize rearm data when reassembly is enabled as
 			 * data offset might change.
@@ -1345,25 +1401,93 @@ cn10k_nix_recv_pkts_vector(void *args, struct rte_mbuf **mbufs, uint16_t pkts,
 			}
 
 			/* Checksum ol_flags will be cleared if mbuf is meta */
-			mbuf0 = nix_sec_meta_to_mbuf(cq0_w1, cq0_w5, sa_base, laddr,
-						     &loff, mbuf0, d_off, &f0,
-						     &ol_flags0, flags, &rearm0);
-			mbuf01 = vsetq_lane_u64((uint64_t)mbuf0, mbuf01, 0);
+			if (cq0_w1 & BIT(11)) {
+				uintptr_t wqe = vgetq_lane_u64(wqe01, 0);
+				uintptr_t sa = vgetq_lane_u64(sa01, 0);
+				uint16_t len = vget_lane_u16(lens, 0);
 
-			mbuf1 = nix_sec_meta_to_mbuf(cq1_w1, cq1_w5, sa_base, laddr,
-						     &loff, mbuf1, d_off, &f1,
-						     &ol_flags1, flags, &rearm1);
-			mbuf01 = vsetq_lane_u64((uint64_t)mbuf1, mbuf01, 1);
+				cpth0 = (uintptr_t)mbuf0 + d_off;
+				/* Free meta to aura */
+				NIX_PUSH_META_TO_FREE(mbuf0, laddr, &loff);
+				mbuf01 = vsetq_lane_u64(wqe, mbuf01, 0);
+				mbuf0 = (struct rte_mbuf *)wqe;
 
-			mbuf2 = nix_sec_meta_to_mbuf(cq2_w1, cq2_w5, sa_base, laddr,
-						     &loff, mbuf2, d_off, &f2,
-						     &ol_flags2, flags, &rearm2);
-			mbuf23 = vsetq_lane_u64((uint64_t)mbuf2, mbuf23, 0);
+				/* Update pkt_len and data_len */
+				f0 = vsetq_lane_u16(len, f0, 2);
+				f0 = vsetq_lane_u16(len, f0, 4);
 
-			mbuf3 = nix_sec_meta_to_mbuf(cq3_w1, cq3_w5, sa_base, laddr,
-						     &loff, mbuf3, d_off, &f3,
-						     &ol_flags3, flags, &rearm3);
-			mbuf23 = vsetq_lane_u64((uint64_t)mbuf3, mbuf23, 1);
+				nix_sec_meta_to_mbuf(cq0_w1, cq0_w5, sa, cpth0,
+						     mbuf0, &f0, &ol_flags0,
+						     flags, &rearm0);
+				ol_flags0 |= (RTE_MBUF_F_RX_SEC_OFFLOAD |
+					(uint64_t)vget_lane_u8(ucc, 1) << 19);
+			}
+
+			if (cq1_w1 & BIT(11)) {
+				uintptr_t wqe = vgetq_lane_u64(wqe01, 1);
+				uintptr_t sa = vgetq_lane_u64(sa01, 1);
+				uint16_t len = vget_lane_u16(lens, 1);
+
+				cpth1 = (uintptr_t)mbuf1 + d_off;
+				/* Free meta to aura */
+				NIX_PUSH_META_TO_FREE(mbuf1, laddr, &loff);
+				mbuf01 = vsetq_lane_u64(wqe, mbuf01, 1);
+				mbuf1 = (struct rte_mbuf *)wqe;
+
+				/* Update pkt_len and data_len */
+				f1 = vsetq_lane_u16(len, f1, 2);
+				f1 = vsetq_lane_u16(len, f1, 4);
+
+				nix_sec_meta_to_mbuf(cq1_w1, cq1_w5, sa, cpth1,
+						     mbuf1, &f1, &ol_flags1,
+						     flags, &rearm1);
+				ol_flags1 |= (RTE_MBUF_F_RX_SEC_OFFLOAD |
+					(uint64_t)vget_lane_u8(ucc, 3) << 19);
+			}
+
+			if (cq2_w1 & BIT(11)) {
+				uintptr_t wqe = vgetq_lane_u64(wqe23, 0);
+				uintptr_t sa = vgetq_lane_u64(sa23, 0);
+				uint16_t len = vget_lane_u16(lens, 2);
+
+				cpth2 = (uintptr_t)mbuf2 + d_off;
+				/* Free meta to aura */
+				NIX_PUSH_META_TO_FREE(mbuf2, laddr, &loff);
+				mbuf23 = vsetq_lane_u64(wqe, mbuf23, 0);
+				mbuf2 = (struct rte_mbuf *)wqe;
+
+				/* Update pkt_len and data_len */
+				f2 = vsetq_lane_u16(len, f2, 2);
+				f2 = vsetq_lane_u16(len, f2, 4);
+
+				nix_sec_meta_to_mbuf(cq2_w1, cq2_w5, sa, cpth2,
+						     mbuf2, &f2, &ol_flags2,
+						     flags, &rearm2);
+				ol_flags2 |= (RTE_MBUF_F_RX_SEC_OFFLOAD |
+					(uint64_t)vget_lane_u8(ucc, 5) << 19);
+			}
+
+			if (cq3_w1 & BIT(11)) {
+				uintptr_t wqe = vgetq_lane_u64(wqe23, 1);
+				uintptr_t sa = vgetq_lane_u64(sa23, 1);
+				uint16_t len = vget_lane_u16(lens, 3);
+
+				cpth3 = (uintptr_t)mbuf3 + d_off;
+				/* Free meta to aura */
+				NIX_PUSH_META_TO_FREE(mbuf3, laddr, &loff);
+				mbuf23 = vsetq_lane_u64(wqe, mbuf23, 1);
+				mbuf3 = (struct rte_mbuf *)wqe;
+
+				/* Update pkt_len and data_len */
+				f3 = vsetq_lane_u16(len, f3, 2);
+				f3 = vsetq_lane_u16(len, f3, 4);
+
+				nix_sec_meta_to_mbuf(cq3_w1, cq3_w5, sa, cpth3,
+						     mbuf3, &f3, &ol_flags3,
+						     flags, &rearm3);
+				ol_flags3 |= (RTE_MBUF_F_RX_SEC_OFFLOAD |
+					(uint64_t)vget_lane_u8(ucc, 7) << 19);
+			}
 		}
 
 		if (flags & NIX_RX_OFFLOAD_VLAN_STRIP_F) {
