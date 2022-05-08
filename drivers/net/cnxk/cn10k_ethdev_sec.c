@@ -291,7 +291,7 @@ static const struct rte_security_capability cn10k_eth_sec_capabilities[] = {
 				.dec_ttl = 1,
 				.ip_csum_enable = 1,
 				.l4_csum_enable = 1,
-				.stats = 0,
+				.stats = 1,
 				.esn = 1,
 			},
 		},
@@ -316,7 +316,7 @@ static const struct rte_security_capability cn10k_eth_sec_capabilities[] = {
 				.dec_ttl = 1,
 				.ip_csum_enable = 1,
 				.l4_csum_enable = 1,
-				.stats = 0,
+				.stats = 1,
 				.esn = 1,
 			},
 		},
@@ -340,7 +340,7 @@ static const struct rte_security_capability cn10k_eth_sec_capabilities[] = {
 				.dec_ttl = 1,
 				.ip_csum_enable = 1,
 				.l4_csum_enable = 1,
-				.stats = 0,
+				.stats = 1,
 				.esn = 1,
 			},
 		},
@@ -363,7 +363,7 @@ static const struct rte_security_capability cn10k_eth_sec_capabilities[] = {
 				.dec_ttl = 1,
 				.ip_csum_enable = 1,
 				.l4_csum_enable = 1,
-				.stats = 0,
+				.stats = 1,
 				.esn = 1,
 			},
 		},
@@ -700,6 +700,11 @@ cn10k_eth_sec_session_create(void *device,
 		inb_sa_dptr->w1.s.cookie =
 			rte_cpu_to_be_32(ipsec->spi & spi_mask);
 
+		if (ipsec->options.stats == 1) {
+			/* Enable mib counters */
+			inb_sa_dptr->w0.s.count_mib_bytes = 1;
+			inb_sa_dptr->w0.s.count_mib_pkts = 1;
+		}
 		/* Prepare session priv */
 		sess_priv.inb_sa = 1;
 		sess_priv.sa_idx = ipsec->spi & spi_mask;
@@ -781,6 +786,12 @@ cn10k_eth_sec_session_create(void *device,
 
 		/* Save rlen info */
 		cnxk_ipsec_outb_rlens_get(rlens, ipsec, crypto);
+
+		if (ipsec->options.stats == 1) {
+			/* Enable mib counters */
+			outb_sa_dptr->w0.s.count_mib_bytes = 1;
+			outb_sa_dptr->w0.s.count_mib_pkts = 1;
+		}
 
 		/* Prepare session priv */
 		sess_priv.sa_idx = outb_priv->sa_idx;
@@ -1001,6 +1012,42 @@ rte_pmd_cnxk_hw_sa_write(void *device, struct rte_security_session *sess,
 	return 0;
 }
 
+static int
+cn10k_eth_sec_session_stats_get(void *device, struct rte_security_session *sess,
+			    struct rte_security_stats *stats)
+{
+	struct rte_eth_dev *eth_dev = (struct rte_eth_dev *)device;
+	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+	struct cnxk_eth_sec_sess *eth_sec;
+	int rc;
+
+	eth_sec = cnxk_eth_sec_sess_get_by_sess(dev, sess);
+	if (eth_sec == NULL)
+		return -EINVAL;
+
+	rc = roc_nix_inl_sa_sync(&dev->nix, eth_sec->sa, eth_sec->inb,
+			    ROC_NIX_INL_SA_OP_FLUSH);
+	if (rc)
+		return -EINVAL;
+	rte_delay_ms(1);
+
+	stats->protocol = RTE_SECURITY_PROTOCOL_IPSEC;
+
+	if (eth_sec->inb) {
+		stats->ipsec.ipackets =
+			((struct roc_ot_ipsec_inb_sa *)eth_sec->sa)->ctx.mib_pkts;
+		stats->ipsec.ibytes =
+			((struct roc_ot_ipsec_inb_sa *)eth_sec->sa)->ctx.mib_octs;
+	} else {
+		stats->ipsec.opackets =
+			((struct roc_ot_ipsec_outb_sa *)eth_sec->sa)->ctx.mib_pkts;
+		stats->ipsec.obytes =
+			((struct roc_ot_ipsec_outb_sa *)eth_sec->sa)->ctx.mib_octs;
+	}
+
+	return 0;
+}
+
 void
 cn10k_eth_sec_ops_override(void)
 {
@@ -1015,4 +1062,5 @@ cn10k_eth_sec_ops_override(void)
 	cnxk_eth_sec_ops.session_destroy = cn10k_eth_sec_session_destroy;
 	cnxk_eth_sec_ops.capabilities_get = cn10k_eth_sec_capabilities_get;
 	cnxk_eth_sec_ops.session_update = cn10k_eth_sec_session_update;
+	cnxk_eth_sec_ops.session_stats_get = cn10k_eth_sec_session_stats_get;
 }
