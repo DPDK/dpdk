@@ -17,7 +17,7 @@
 
 
 static void
-mlx5_vdpa_virtq_handler(void *cb_arg)
+mlx5_vdpa_virtq_kick_handler(void *cb_arg)
 {
 	struct mlx5_vdpa_virtq *virtq = cb_arg;
 	struct mlx5_vdpa_priv *priv = virtq->priv;
@@ -59,20 +59,16 @@ static int
 mlx5_vdpa_virtq_unset(struct mlx5_vdpa_virtq *virtq)
 {
 	unsigned int i;
-	int retries = MLX5_VDPA_INTR_RETRIES;
 	int ret = -EAGAIN;
 
-	if (rte_intr_fd_get(virtq->intr_handle) != -1) {
-		while (retries-- && ret == -EAGAIN) {
+	if (rte_intr_fd_get(virtq->intr_handle) >= 0) {
+		while (ret == -EAGAIN) {
 			ret = rte_intr_callback_unregister(virtq->intr_handle,
-							mlx5_vdpa_virtq_handler,
-							virtq);
+					mlx5_vdpa_virtq_kick_handler, virtq);
 			if (ret == -EAGAIN) {
-				DRV_LOG(DEBUG, "Try again to unregister fd %d "
-				"of virtq %d interrupt, retries = %d.",
-				rte_intr_fd_get(virtq->intr_handle),
-				(int)virtq->index, retries);
-
+				DRV_LOG(DEBUG, "Try again to unregister fd %d of virtq %hu interrupt",
+					rte_intr_fd_get(virtq->intr_handle),
+					virtq->index);
 				usleep(MLX5_VDPA_INTR_RETRIES_USEC);
 			}
 		}
@@ -359,7 +355,7 @@ mlx5_vdpa_virtq_setup(struct mlx5_vdpa_priv *priv, int index)
 			goto error;
 
 		if (rte_intr_callback_register(virtq->intr_handle,
-					       mlx5_vdpa_virtq_handler,
+					       mlx5_vdpa_virtq_kick_handler,
 					       virtq)) {
 			rte_intr_fd_set(virtq->intr_handle, -1);
 			DRV_LOG(ERR, "Failed to register virtq %d interrupt.",
