@@ -110,6 +110,9 @@ nix_tm_update_red_algo(struct nix *nix, bool red_send)
 
 		/* Update txschq config  */
 		req = mbox_alloc_msg_nix_txschq_cfg(mbox);
+		if (req == NULL)
+			return -ENOSPC;
+
 		req->lvl = tm_node->hw_lvl;
 		k = prepare_tm_shaper_red_algo(tm_node, req->reg, req->regval,
 					       req->regval_mask);
@@ -208,6 +211,9 @@ nix_tm_mark_init(struct nix *nix)
 
 	/* Null mark format */
 	req = mbox_alloc_msg_nix_mark_format_cfg(mbox);
+	if (req == NULL)
+		return -ENOSPC;
+
 	rc = mbox_process_msg(mbox, (void *)&rsp);
 	if (rc) {
 		plt_err("TM failed to alloc null mark format, rc=%d", rc);
@@ -220,6 +226,9 @@ nix_tm_mark_init(struct nix *nix)
 	for (i = 0; i < ROC_NIX_TM_MARK_MAX; i++) {
 		for (j = 0; j < ROC_NIX_TM_MARK_COLOR_MAX; j++) {
 			req = mbox_alloc_msg_nix_mark_format_cfg(mbox);
+			if (req == NULL)
+				return -ENOSPC;
+
 			req->offset = mark_off[i];
 
 			switch (j) {
