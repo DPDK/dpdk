@@ -23,6 +23,7 @@ ethdev_tel_handle_info(const char *cmd __rte_unused,
 		struct eth_info_s {
 			/** PF/VF information */
 			uint16_t pf_func;
+			uint16_t inl_dev_pf_func;
 			uint8_t max_mac_entries;
 			bool dmac_filter_ena;
 			uint8_t dmac_filter_count;
@@ -62,6 +63,8 @@ ethdev_tel_handle_info(const char *cmd __rte_unused,
 			info = &eth_info.info;
 			dev = cnxk_eth_pmd_priv(eth_dev);
 			if (dev) {
+				info->inl_dev_pf_func =
+					roc_nix_inl_dev_pffunc_get();
 				info->pf_func = roc_nix_get_pf_func(&dev->nix);
 				info->max_mac_entries = dev->max_mac_entries;
 				info->dmac_filter_ena = dev->dmac_filter_enable;
