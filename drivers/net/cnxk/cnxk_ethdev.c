@@ -310,6 +310,9 @@ nix_init_flow_ctrl_config(struct rte_eth_dev *eth_dev)
 	struct cnxk_fc_cfg *fc = &dev->fc_cfg;
 	int rc;
 
+	if (roc_nix_is_sdp(&dev->nix))
+		return 0;
+
 	/* To avoid Link credit deadlock on Ax, disable Tx FC if it's enabled */
 	if (roc_model_is_cn96_ax() &&
 	    dev->npc.switch_header_type != ROC_PRIV_FLAGS_HIGIG)

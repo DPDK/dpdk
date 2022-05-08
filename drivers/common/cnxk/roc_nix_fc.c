@@ -38,16 +38,13 @@ nix_fc_rxchan_bpid_set(struct roc_nix *roc_nix, bool enable)
 	struct nix_bp_cfg_rsp *rsp;
 	int rc = -ENOSPC, i;
 
-	if (roc_nix_is_sdp(roc_nix))
-		return 0;
-
 	if (enable) {
 		req = mbox_alloc_msg_nix_bp_enable(mbox);
 		if (req == NULL)
 			return rc;
 
 		req->chan_base = 0;
-		if (roc_nix_is_lbk(roc_nix))
+		if (roc_nix_is_lbk(roc_nix) || roc_nix_is_sdp(roc_nix))
 			req->chan_cnt = NIX_LBK_MAX_CHAN;
 		else
 			req->chan_cnt = NIX_CGX_MAX_CHAN;
@@ -203,7 +200,8 @@ nix_fc_cq_config_set(struct roc_nix *roc_nix, struct roc_nix_fc_cfg *fc_cfg)
 int
 roc_nix_fc_config_get(struct roc_nix *roc_nix, struct roc_nix_fc_cfg *fc_cfg)
 {
-	if (roc_nix_is_vf_or_sdp(roc_nix) && !roc_nix_is_lbk(roc_nix))
+	if (!roc_nix_is_pf(roc_nix) && !roc_nix_is_lbk(roc_nix) &&
+	    !roc_nix_is_sdp(roc_nix))
 		return 0;
 
 	if (fc_cfg->type == ROC_NIX_FC_CQ_CFG)
@@ -219,7 +217,8 @@ roc_nix_fc_config_get(struct roc_nix *roc_nix, struct roc_nix_fc_cfg *fc_cfg)
 int
 roc_nix_fc_config_set(struct roc_nix *roc_nix, struct roc_nix_fc_cfg *fc_cfg)
 {
-	if (roc_nix_is_vf_or_sdp(roc_nix) && !roc_nix_is_lbk(roc_nix))
+	if (!roc_nix_is_pf(roc_nix) && !roc_nix_is_lbk(roc_nix) &&
+	    !roc_nix_is_sdp(roc_nix))
 		return 0;
 
 	if (fc_cfg->type == ROC_NIX_FC_CQ_CFG)
