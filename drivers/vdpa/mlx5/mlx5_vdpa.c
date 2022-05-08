@@ -252,13 +252,15 @@ mlx5_vdpa_dev_close(int vid)
 	}
 	mlx5_vdpa_err_event_unset(priv);
 	mlx5_vdpa_cqe_event_unset(priv);
-	if (priv->configured)
+	if (priv->state == MLX5_VDPA_STATE_CONFIGURED) {
 		ret |= mlx5_vdpa_lm_log(priv);
+		priv->state = MLX5_VDPA_STATE_IN_PROGRESS;
+	}
 	mlx5_vdpa_steer_unset(priv);
 	mlx5_vdpa_virtqs_release(priv);
 	mlx5_vdpa_event_qp_global_release(priv);
 	mlx5_vdpa_mem_dereg(priv);
-	priv->configured = 0;
+	priv->state = MLX5_VDPA_STATE_PROBED;
 	priv->vid = 0;
 	/* The mutex may stay locked after event thread cancel - initiate it. */
 	pthread_mutex_init(&priv->vq_config_lock, NULL);
@@ -277,7 +279,8 @@ mlx5_vdpa_dev_config(int vid)
 		DRV_LOG(ERR, "Invalid vDPA device: %s.", vdev->device->name);
 		return -EINVAL;
 	}
-	if (priv->configured && mlx5_vdpa_dev_close(vid)) {
+	if (priv->state == MLX5_VDPA_STATE_CONFIGURED &&
+	    mlx5_vdpa_dev_close(vid)) {
 		DRV_LOG(ERR, "Failed to reconfigure vid %d.", vid);
 		return -1;
 	}
@@ -291,7 +294,7 @@ mlx5_vdpa_dev_config(int vid)
 		mlx5_vdpa_dev_close(vid);
 		return -1;
 	}
-	priv->configured = 1;
+	priv->state = MLX5_VDPA_STATE_CONFIGURED;
 	DRV_LOG(INFO, "vDPA device %d was configured.", vid);
 	return 0;
 }
@@ -373,7 +376,7 @@ mlx5_vdpa_get_stats(struct rte_vdpa_device *vdev, int qid,
 		DRV_LOG(ERR, "Invalid device: %s.", vdev->device->name);
 		return -ENODEV;
 	}
-	if (!priv->configured) {
+	if (priv->state == MLX5_VDPA_STATE_PROBED) {
 		DRV_LOG(ERR, "Device %s was not configured.",
 				vdev->device->name);
 		return -ENODATA;
@@ -401,7 +404,7 @@ mlx5_vdpa_reset_stats(struct rte_vdpa_device *vdev, int qid)
 		DRV_LOG(ERR, "Invalid device: %s.", vdev->device->name);
 		return -ENODEV;
 	}
-	if (!priv->configured) {
+	if (priv->state == MLX5_VDPA_STATE_PROBED) {
 		DRV_LOG(ERR, "Device %s was not configured.",
 				vdev->device->name);
 		return -ENODATA;
@@ -594,7 +597,7 @@ mlx5_vdpa_dev_remove(struct mlx5_common_device *cdev)
 		TAILQ_REMOVE(&priv_list, priv, next);
 	pthread_mutex_unlock(&priv_list_lock);
 	if (found) {
-		if (priv->configured)
+		if (priv->state == MLX5_VDPA_STATE_CONFIGURED)
 			mlx5_vdpa_dev_close(priv->vid);
 		if (priv->var) {
 			mlx5_glue->dv_free_var(priv->var);

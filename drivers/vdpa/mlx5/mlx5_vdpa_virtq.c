@@ -25,6 +25,11 @@ mlx5_vdpa_virtq_kick_handler(void *cb_arg)
 	int nbytes;
 	int retry;
 
+	if (priv->state != MLX5_VDPA_STATE_CONFIGURED && !virtq->enable) {
+		DRV_LOG(ERR,  "device %d queue %d down, skip kick handling",
+			priv->vid, virtq->index);
+		return;
+	}
 	if (rte_intr_fd_get(virtq->intr_handle) < 0)
 		return;
 	for (retry = 0; retry < 3; ++retry) {
@@ -43,6 +48,11 @@ mlx5_vdpa_virtq_kick_handler(void *cb_arg)
 	if (nbytes < 0)
 		return;
 	rte_write32(virtq->index, priv->virtq_db_addr);
+	if (priv->state != MLX5_VDPA_STATE_CONFIGURED && !virtq->enable) {
+		DRV_LOG(ERR,  "device %d queue %d down, skip kick handling",
+			priv->vid, virtq->index);
+		return;
+	}
 	if (virtq->notifier_state == MLX5_VDPA_NOTIFIER_STATE_DISABLED) {
 		if (rte_vhost_host_notifier_ctrl(priv->vid, virtq->index, true))
 			virtq->notifier_state = MLX5_VDPA_NOTIFIER_STATE_ERR;
@@ -541,7 +551,7 @@ mlx5_vdpa_virtq_enable(struct mlx5_vdpa_priv *priv, int index, int enable)
 
 	DRV_LOG(INFO, "Update virtq %d status %sable -> %sable.", index,
 		virtq->enable ? "en" : "dis", enable ? "en" : "dis");
-	if (!priv->configured) {
+	if (priv->state == MLX5_VDPA_STATE_PROBED) {
 		virtq->enable = !!enable;
 		return 0;
 	}

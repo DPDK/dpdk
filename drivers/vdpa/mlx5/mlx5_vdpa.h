@@ -113,9 +113,15 @@ enum {
 	MLX5_VDPA_EVENT_MODE_ONLY_INTERRUPT
 };
 
+enum mlx5_dev_state {
+	MLX5_VDPA_STATE_PROBED = 0,
+	MLX5_VDPA_STATE_CONFIGURED,
+	MLX5_VDPA_STATE_IN_PROGRESS /* Shutting down. */
+};
+
 struct mlx5_vdpa_priv {
 	TAILQ_ENTRY(mlx5_vdpa_priv) next;
-	uint8_t configured;
+	enum mlx5_dev_state state;
 	pthread_mutex_t vq_config_lock;
 	uint64_t no_traffic_counter;
 	pthread_t timer_tid;
