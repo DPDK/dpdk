@@ -246,6 +246,7 @@ cn10k_nix_prep_sec_vec(struct rte_mbuf *m, uint64x2_t *cmd0, uint64x2_t *cmd1,
 {
 	struct cn10k_sec_sess_priv sess_priv;
 	uint32_t pkt_len, dlen_adj, rlen;
+	uint8_t l3l4type, chksum;
 	uint64x2_t cmd01, cmd23;
 	uintptr_t dptr, nixtx;
 	uint64_t ucode_cmd[4];
@@ -256,10 +257,23 @@ cn10k_nix_prep_sec_vec(struct rte_mbuf *m, uint64x2_t *cmd0, uint64x2_t *cmd1,
 
 	sess_priv.u64 = *rte_security_dynfield(m);
 
-	if (flags & NIX_TX_NEED_SEND_HDR_W1)
+	if (flags & NIX_TX_NEED_SEND_HDR_W1) {
 		l2_len = vgetq_lane_u8(*cmd0, 8);
-	else
+		/* Extract l3l4type either from il3il4type or ol3ol4type */
+		if (flags & NIX_TX_OFFLOAD_L3_L4_CSUM_F &&
+		    flags & NIX_TX_OFFLOAD_OL3_OL4_CSUM_F)
+			l3l4type = vgetq_lane_u8(*cmd0, 13);
+		else
+			l3l4type = vgetq_lane_u8(*cmd0, 12);
+
+		chksum = (l3l4type & 0x1) << 1 | !!(l3l4type & 0x30);
+		chksum = ~chksum;
+		sess_priv.chksum = sess_priv.chksum & chksum;
+		/* Clear SEND header flags */
+		*cmd0 = vsetq_lane_u16(0, *cmd0, 6);
+	} else {
 		l2_len = m->l2_len;
+	}
 
 	/* Retrieve DPTR */
 	dptr = vgetq_lane_u64(*cmd1, 1);
@@ -291,8 +305,8 @@ cn10k_nix_prep_sec_vec(struct rte_mbuf *m, uint64x2_t *cmd0, uint64x2_t *cmd1,
 	sa_base &= ~0xFFFFUL;
 	sa = (uintptr_t)roc_nix_inl_ot_ipsec_outb_sa(sa_base, sess_priv.sa_idx);
 	ucode_cmd[3] = (ROC_CPT_DFLT_ENG_GRP_SE_IE << 61 | 1UL << 60 | sa);
-	ucode_cmd[0] =
-		(ROC_IE_OT_MAJOR_OP_PROCESS_OUTBOUND_IPSEC << 48 | pkt_len);
+	ucode_cmd[0] = (ROC_IE_OT_MAJOR_OP_PROCESS_OUTBOUND_IPSEC << 48 |
+			((uint64_t)sess_priv.chksum) << 32 | pkt_len);
 
 	/* CPT Word 0 and Word 1 */
 	cmd01 = vdupq_n_u64((nixtx + 16) | (cn10k_nix_tx_ext_subs(flags) + 1));
@@ -343,6 +357,7 @@ cn10k_nix_prep_sec(struct rte_mbuf *m, uint64_t *cmd, uintptr_t *nixtx_addr,
 	struct cn10k_sec_sess_priv sess_priv;
 	uint32_t pkt_len, dlen_adj, rlen;
 	struct nix_send_hdr_s *send_hdr;
+	uint8_t l3l4type, chksum;
 	uint64x2_t cmd01, cmd23;
 	union nix_send_sg_s *sg;
 	uintptr_t dptr, nixtx;
@@ -360,10 +375,23 @@ cn10k_nix_prep_sec(struct rte_mbuf *m, uint64_t *cmd, uintptr_t *nixtx_addr,
 	else
 		sg = (union nix_send_sg_s *)&cmd[2];
 
-	if (flags & NIX_TX_NEED_SEND_HDR_W1)
+	if (flags & NIX_TX_NEED_SEND_HDR_W1) {
 		l2_len = cmd[1] & 0xFF;
-	else
+		/* Extract l3l4type either from il3il4type or ol3ol4type */
+		if (flags & NIX_TX_OFFLOAD_L3_L4_CSUM_F &&
+		    flags & NIX_TX_OFFLOAD_OL3_OL4_CSUM_F)
+			l3l4type = (cmd[1] >> 40) & 0xFF;
+		else
+			l3l4type = (cmd[1] >> 32) & 0xFF;
+
+		chksum = (l3l4type & 0x1) << 1 | !!(l3l4type & 0x30);
+		chksum = ~chksum;
+		sess_priv.chksum = sess_priv.chksum & chksum;
+		/* Clear SEND header flags */
+		cmd[1] &= ~(0xFFFFUL << 32);
+	} else {
 		l2_len = m->l2_len;
+	}
 
 	/* Retrieve DPTR */
 	dptr = *(uint64_t *)(sg + 1);
@@ -395,8 +423,8 @@ cn10k_nix_prep_sec(struct rte_mbuf *m, uint64_t *cmd, uintptr_t *nixtx_addr,
 	sa_base &= ~0xFFFFUL;
 	sa = (uintptr_t)roc_nix_inl_ot_ipsec_outb_sa(sa_base, sess_priv.sa_idx);
 	ucode_cmd[3] = (ROC_CPT_DFLT_ENG_GRP_SE_IE << 61 | 1UL << 60 | sa);
-	ucode_cmd[0] =
-		(ROC_IE_OT_MAJOR_OP_PROCESS_OUTBOUND_IPSEC << 48 | pkt_len);
+	ucode_cmd[0] = (ROC_IE_OT_MAJOR_OP_PROCESS_OUTBOUND_IPSEC << 48 |
+			((uint64_t)sess_priv.chksum) << 32 | pkt_len);
 
 	/* CPT Word 0 and Word 1. Assume no multi-seg support */
 	cmd01 = vdupq_n_u64((nixtx + 16) | (cn10k_nix_tx_ext_subs(flags) + 1));

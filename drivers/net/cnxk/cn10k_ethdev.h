@@ -71,7 +71,9 @@ struct cn10k_sec_sess_priv {
 			uint8_t mode : 1;
 			uint8_t roundup_byte : 5;
 			uint8_t roundup_len;
-			uint16_t partial_len;
+			uint16_t partial_len : 10;
+			uint16_t chksum : 2;
+			uint16_t rsvd : 4;
 		};
 
 		uint64_t u64;
