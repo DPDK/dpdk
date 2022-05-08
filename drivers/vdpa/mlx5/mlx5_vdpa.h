@@ -234,6 +234,15 @@ int mlx5_vdpa_event_qp_create(struct mlx5_vdpa_priv *priv, uint16_t desc_n,
 void mlx5_vdpa_event_qp_destroy(struct mlx5_vdpa_event_qp *eqp);
 
 /**
+ * Create all the event global resources.
+ *
+ * @param[in] priv
+ *   The vdpa driver private structure.
+ */
+int
+mlx5_vdpa_event_qp_global_prepare(struct mlx5_vdpa_priv *priv);
+
+/**
  * Release all the event global resources.
  *
  * @param[in] priv

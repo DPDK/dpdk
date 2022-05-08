@@ -40,11 +40,9 @@ mlx5_vdpa_event_qp_global_release(struct mlx5_vdpa_priv *priv)
 }
 
 /* Prepare all the global resources for all the event objects.*/
-static int
+int
 mlx5_vdpa_event_qp_global_prepare(struct mlx5_vdpa_priv *priv)
 {
-	if (priv->eventc)
-		return 0;
 	priv->eventc = mlx5_os_devx_create_event_channel(priv->cdev->ctx,
 			   MLX5DV_DEVX_CREATE_EVENT_CHANNEL_FLAGS_OMIT_EV_DATA);
 	if (!priv->eventc) {
@@ -389,22 +387,30 @@ mlx5_vdpa_err_event_setup(struct mlx5_vdpa_priv *priv)
 	flags = fcntl(priv->err_chnl->fd, F_GETFL);
 	ret = fcntl(priv->err_chnl->fd, F_SETFL, flags | O_NONBLOCK);
 	if (ret) {
+		rte_errno = errno;
 		DRV_LOG(ERR, "Failed to change device event channel FD.");
 		goto error;
 	}
-
+	priv->err_intr_handle =
+		rte_intr_instance_alloc(RTE_INTR_INSTANCE_F_SHARED);
+	if (priv->err_intr_handle == NULL) {
+		DRV_LOG(ERR, "Fail to allocate intr_handle");
+		goto error;
+	}
 	if (rte_intr_fd_set(priv->err_intr_handle, priv->err_chnl->fd))
 		goto error;
 
 	if (rte_intr_type_set(priv->err_intr_handle, RTE_INTR_HANDLE_EXT))
 		goto error;
 
-	if (rte_intr_callback_register(priv->err_intr_handle,
-				       mlx5_vdpa_err_interrupt_handler,
-				       priv)) {
+	ret = rte_intr_callback_register(priv->err_intr_handle,
+					 mlx5_vdpa_err_interrupt_handler,
+					 priv);
+	if (ret != 0) {
 		rte_intr_fd_set(priv->err_intr_handle, 0);
 		DRV_LOG(ERR, "Failed to register error interrupt for device %d.",
 			priv->vid);
+		rte_errno = -ret;
 		goto error;
 	} else {
 		DRV_LOG(DEBUG, "Registered error interrupt for device%d.",
@@ -453,6 +459,7 @@ mlx5_vdpa_err_event_unset(struct mlx5_vdpa_priv *priv)
 		mlx5_glue->devx_destroy_event_channel(priv->err_chnl);
 		priv->err_chnl = NULL;
 	}
+	rte_intr_instance_free(priv->err_intr_handle);
 }
 
 int
@@ -575,8 +582,6 @@ mlx5_vdpa_event_qp_create(struct mlx5_vdpa_priv *priv, uint16_t desc_n,
 	uint16_t log_desc_n = rte_log2_u32(desc_n);
 	uint32_t ret;
 
-	if (mlx5_vdpa_event_qp_global_prepare(priv))
-		return -1;
 	if (mlx5_vdpa_cq_create(priv, log_desc_n, callfd, &eqp->cq))
 		return -1;
 	attr.pd = priv->cdev->pdn;

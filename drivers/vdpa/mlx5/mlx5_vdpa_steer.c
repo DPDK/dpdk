@@ -45,14 +45,6 @@ void
 mlx5_vdpa_steer_unset(struct mlx5_vdpa_priv *priv)
 {
 	mlx5_vdpa_rss_flows_destroy(priv);
-	if (priv->steer.tbl) {
-		claim_zero(mlx5_glue->dr_destroy_flow_tbl(priv->steer.tbl));
-		priv->steer.tbl = NULL;
-	}
-	if (priv->steer.domain) {
-		claim_zero(mlx5_glue->dr_destroy_domain(priv->steer.domain));
-		priv->steer.domain = NULL;
-	}
 	if (priv->steer.rqt) {
 		claim_zero(mlx5_devx_cmd_destroy(priv->steer.rqt));
 		priv->steer.rqt = NULL;
@@ -248,11 +240,7 @@ mlx5_vdpa_steer_update(struct mlx5_vdpa_priv *priv)
 	int ret = mlx5_vdpa_rqt_prepare(priv);
 
 	if (ret == 0) {
-		mlx5_vdpa_rss_flows_destroy(priv);
-		if (priv->steer.rqt) {
-			claim_zero(mlx5_devx_cmd_destroy(priv->steer.rqt));
-			priv->steer.rqt = NULL;
-		}
+		mlx5_vdpa_steer_unset(priv);
 	} else if (ret < 0) {
 		return ret;
 	} else if (!priv->steer.rss[0].flow) {
@@ -268,26 +256,10 @@ mlx5_vdpa_steer_update(struct mlx5_vdpa_priv *priv)
 int
 mlx5_vdpa_steer_setup(struct mlx5_vdpa_priv *priv)
 {
-#ifdef HAVE_MLX5DV_DR
-	priv->steer.domain = mlx5_glue->dr_create_domain(priv->cdev->ctx,
-						  MLX5DV_DR_DOMAIN_TYPE_NIC_RX);
-	if (!priv->steer.domain) {
-		DRV_LOG(ERR, "Failed to create Rx domain.");
-		goto error;
-	}
-	priv->steer.tbl = mlx5_glue->dr_create_flow_tbl(priv->steer.domain, 0);
-	if (!priv->steer.tbl) {
-		DRV_LOG(ERR, "Failed to create table 0 with Rx domain.");
-		goto error;
-	}
 	if (mlx5_vdpa_steer_update(priv))
 		goto error;
 	return 0;
 error:
 	mlx5_vdpa_steer_unset(priv);
 	return -1;
-#else
-	(void)priv;
-	return -ENOTSUP;
-#endif /* HAVE_MLX5DV_DR */
 }

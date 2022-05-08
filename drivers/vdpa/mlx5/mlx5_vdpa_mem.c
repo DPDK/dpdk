@@ -34,10 +34,6 @@ mlx5_vdpa_mem_dereg(struct mlx5_vdpa_priv *priv)
 	SLIST_INIT(&priv->mr_list);
 	if (priv->lm_mr.addr)
 		mlx5_os_wrapped_mkey_destroy(&priv->lm_mr);
-	if (priv->null_mr) {
-		claim_zero(mlx5_glue->dereg_mr(priv->null_mr));
-		priv->null_mr = NULL;
-	}
 	if (priv->vmem) {
 		free(priv->vmem);
 		priv->vmem = NULL;
@@ -196,13 +192,6 @@ mlx5_vdpa_mem_register(struct mlx5_vdpa_priv *priv)
 	if (!mem)
 		return -rte_errno;
 	priv->vmem = mem;
-	priv->null_mr = mlx5_glue->alloc_null_mr(priv->cdev->pd);
-	if (!priv->null_mr) {
-		DRV_LOG(ERR, "Failed to allocate null MR.");
-		ret = -errno;
-		goto error;
-	}
-	DRV_LOG(DEBUG, "Dump fill Mkey = %u.", priv->null_mr->lkey);
 	for (i = 0; i < mem->nregions; i++) {
 		reg = &mem->regions[i];
 		entry = rte_zmalloc(__func__, sizeof(*entry), 0);

@@ -3,7 +3,6 @@
  */
 #include <string.h>
 #include <unistd.h>
-#include <sys/mman.h>
 #include <sys/eventfd.h>
 
 #include <rte_malloc.h>
@@ -119,20 +118,6 @@ mlx5_vdpa_virtqs_release(struct mlx5_vdpa_priv *priv)
 		mlx5_vdpa_virtq_unset(virtq);
 		if (virtq->counters)
 			claim_zero(mlx5_devx_cmd_destroy(virtq->counters));
-	}
-	for (i = 0; i < priv->num_lag_ports; i++) {
-		if (priv->tiss[i]) {
-			claim_zero(mlx5_devx_cmd_destroy(priv->tiss[i]));
-			priv->tiss[i] = NULL;
-		}
-	}
-	if (priv->td) {
-		claim_zero(mlx5_devx_cmd_destroy(priv->td));
-		priv->td = NULL;
-	}
-	if (priv->virtq_db_addr) {
-		claim_zero(munmap(priv->virtq_db_addr, priv->var->length));
-		priv->virtq_db_addr = NULL;
 	}
 	priv->features = 0;
 	memset(priv->virtqs, 0, sizeof(*virtq) * priv->nr_virtqs);
@@ -462,8 +447,6 @@ mlx5_vdpa_features_validate(struct mlx5_vdpa_priv *priv)
 int
 mlx5_vdpa_virtqs_prepare(struct mlx5_vdpa_priv *priv)
 {
-	struct mlx5_devx_tis_attr tis_attr = {0};
-	struct ibv_context *ctx = priv->cdev->ctx;
 	uint32_t i;
 	uint16_t nr_vring = rte_vhost_get_vring_num(priv->vid);
 	int ret = rte_vhost_get_negotiated_features(priv->vid, &priv->features);
@@ -484,33 +467,6 @@ mlx5_vdpa_virtqs_prepare(struct mlx5_vdpa_priv *priv)
 			(int)priv->caps.max_num_virtio_queues * 2,
 			(int)nr_vring);
 		return -1;
-	}
-	/* Always map the entire page. */
-	priv->virtq_db_addr = mmap(NULL, priv->var->length, PROT_READ |
-				   PROT_WRITE, MAP_SHARED, ctx->cmd_fd,
-				   priv->var->mmap_off);
-	if (priv->virtq_db_addr == MAP_FAILED) {
-		DRV_LOG(ERR, "Failed to map doorbell page %u.", errno);
-		priv->virtq_db_addr = NULL;
-		goto error;
-	} else {
-		DRV_LOG(DEBUG, "VAR address of doorbell mapping is %p.",
-			priv->virtq_db_addr);
-	}
-	priv->td = mlx5_devx_cmd_create_td(ctx);
-	if (!priv->td) {
-		DRV_LOG(ERR, "Failed to create transport domain.");
-		return -rte_errno;
-	}
-	tis_attr.transport_domain = priv->td->id;
-	for (i = 0; i < priv->num_lag_ports; i++) {
-		/* 0 is auto affinity, non-zero value to propose port. */
-		tis_attr.lag_tx_port_affinity = i + 1;
-		priv->tiss[i] = mlx5_devx_cmd_create_tis(ctx, &tis_attr);
-		if (!priv->tiss[i]) {
-			DRV_LOG(ERR, "Failed to create TIS %u.", i);
-			goto error;
-		}
 	}
 	priv->nr_virtqs = nr_vring;
 	for (i = 0; i < nr_vring; i++)
