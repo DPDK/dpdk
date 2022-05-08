@@ -1119,6 +1119,9 @@ cnxk_nix_configure(struct rte_eth_dev *eth_dev)
 	nb_rxq = RTE_MAX(data->nb_rx_queues, 1);
 	nb_txq = RTE_MAX(data->nb_tx_queues, 1);
 
+	if (roc_nix_is_lbk(nix))
+		nix->enable_loop = eth_dev->data->dev_conf.lpbk_mode;
+
 	/* Alloc a nix lf */
 	rc = roc_nix_lf_alloc(nix, nb_rxq, nb_txq, rx_cfg);
 	if (rc) {
@@ -1242,6 +1245,9 @@ cnxk_nix_configure(struct rte_eth_dev *eth_dev)
 		}
 	}
 
+	if (roc_nix_is_lbk(nix))
+		goto skip_lbk_setup;
+
 	/* Configure loop back mode */
 	rc = roc_nix_mac_loopback_enable(nix,
 					 eth_dev->data->dev_conf.lpbk_mode);
@@ -1250,6 +1256,7 @@ cnxk_nix_configure(struct rte_eth_dev *eth_dev)
 		goto cq_fini;
 	}
 
+skip_lbk_setup:
 	/* Setup Inline security support */
 	rc = nix_security_setup(dev);
 	if (rc)
