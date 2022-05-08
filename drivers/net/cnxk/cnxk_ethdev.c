@@ -1781,15 +1781,15 @@ cnxk_eth_dev_uninit(struct rte_eth_dev *eth_dev, bool reset)
 	struct rte_eth_fc_conf fc_conf;
 	int rc, i;
 
-	/* Disable switch hdr pkind */
-	roc_nix_switch_hdr_set(&dev->nix, 0, 0, 0, 0);
-
 	plt_free(eth_dev->security_ctx);
 	eth_dev->security_ctx = NULL;
 
 	/* Nothing to be done for secondary processes */
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return 0;
+
+	/* Disable switch hdr pkind */
+	roc_nix_switch_hdr_set(&dev->nix, 0, 0, 0, 0);
 
 	/* Clear the flag since we are closing down */
 	dev->configured = 0;
@@ -1927,7 +1927,7 @@ cnxk_nix_remove(struct rte_pci_device *pci_dev)
 
 	/* Check if this device is hosting common resource */
 	nix = roc_idev_npa_nix_get();
-	if (nix->pci_dev != pci_dev)
+	if (!nix || nix->pci_dev != pci_dev)
 		return 0;
 
 	/* Try nix fini now */
