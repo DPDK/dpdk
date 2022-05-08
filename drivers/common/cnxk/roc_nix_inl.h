@@ -168,12 +168,11 @@ void __roc_api roc_nix_inb_mode_set(struct roc_nix *roc_nix, bool use_inl_dev);
 int __roc_api roc_nix_inl_dev_rq_get(struct roc_nix_rq *rq);
 int __roc_api roc_nix_inl_dev_rq_put(struct roc_nix_rq *rq);
 bool __roc_api roc_nix_inb_is_with_inl_dev(struct roc_nix *roc_nix);
-struct roc_nix_rq *__roc_api roc_nix_inl_dev_rq(void);
+struct roc_nix_rq *__roc_api roc_nix_inl_dev_rq(struct roc_nix *roc_nix);
 int __roc_api roc_nix_inl_inb_tag_update(struct roc_nix *roc_nix,
 					 uint32_t tag_const, uint8_t tt);
-uint64_t __roc_api roc_nix_inl_dev_rq_limit_get(void);
 int __roc_api roc_nix_reassembly_configure(uint32_t max_wait_time,
-					uint16_t max_frags);
+					   uint16_t max_frags);
 int __roc_api roc_nix_inl_ts_pkind_set(struct roc_nix *roc_nix, bool ts_ena,
 				       bool inb_inl_dev);
 

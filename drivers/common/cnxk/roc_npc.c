@@ -350,6 +350,7 @@ npc_parse_actions(struct roc_npc *roc_npc, const struct roc_npc_attr *attr,
 	uint8_t has_msns_act = 0;
 	int sel_act, req_act = 0;
 	uint16_t pf_func, vf_id;
+	struct roc_nix *roc_nix;
 	int errcode = 0;
 	int mark = 0;
 	int rq = 0;
@@ -436,11 +437,19 @@ npc_parse_actions(struct roc_npc *roc_npc, const struct roc_npc_attr *attr,
 			 */
 			req_act |= ROC_NPC_ACTION_TYPE_SEC;
 			rq = 0;
+			roc_nix = roc_npc->roc_nix;
 
 			/* Special processing when with inline device */
-			if (roc_nix_inb_is_with_inl_dev(roc_npc->roc_nix) &&
+			if (roc_nix_inb_is_with_inl_dev(roc_nix) &&
 			    roc_nix_inl_dev_is_probed()) {
-				rq = 0;
+				struct roc_nix_rq *inl_rq;
+
+				inl_rq = roc_nix_inl_dev_rq(roc_nix);
+				if (!inl_rq) {
+					errcode = NPC_ERR_INTERNAL;
+					goto err_exit;
+				}
+				rq = inl_rq->qid;
 				pf_func = nix_inl_dev_pffunc_get();
 			}
 			rc = npc_parse_msns_action(roc_npc, actions, flow,

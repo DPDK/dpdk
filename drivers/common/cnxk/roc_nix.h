@@ -303,7 +303,7 @@ struct roc_nix_rq {
 	bool spb_drop_ena;
 	/* End of Input parameters */
 	struct roc_nix *roc_nix;
-	bool inl_dev_ref;
+	uint16_t inl_dev_refs;
 };
 
 struct roc_nix_cq {

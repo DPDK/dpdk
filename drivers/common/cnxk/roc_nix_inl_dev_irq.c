@@ -179,50 +179,59 @@ nix_inl_sso_unregister_irqs(struct nix_inl_dev *inl_dev)
 static void
 nix_inl_nix_q_irq(void *param)
 {
-	struct nix_inl_dev *inl_dev = (struct nix_inl_dev *)param;
+	struct nix_inl_qint *qints_mem = (struct nix_inl_qint *)param;
+	struct nix_inl_dev *inl_dev = qints_mem->inl_dev;
 	uintptr_t nix_base = inl_dev->nix_base;
 	struct dev *dev = &inl_dev->dev;
+	uint16_t qint = qints_mem->qint;
 	volatile void *ctx;
 	uint64_t reg, intr;
+	uint64_t wdata;
 	uint8_t irq;
-	int rc;
+	int rc, q;
 
-	intr = plt_read64(nix_base + NIX_LF_QINTX_INT(0));
+	intr = plt_read64(nix_base + NIX_LF_QINTX_INT(qint));
 	if (intr == 0)
 		return;
 
 	plt_err("Queue_intr=0x%" PRIx64 " qintx 0 pf=%d, vf=%d", intr, dev->pf,
 		dev->vf);
 
-	/* Get and clear RQ0 interrupt */
-	reg = roc_atomic64_add_nosync(0,
-				      (int64_t *)(nix_base + NIX_LF_RQ_OP_INT));
-	if (reg & BIT_ULL(42) /* OP_ERR */) {
-		plt_err("Failed to get rq_int");
-		return;
+	/* Handle RQ interrupts */
+	for (q = 0; q < inl_dev->nb_rqs; q++) {
+		/* Get and clear RQ interrupts */
+		wdata = (uint64_t)q << 44;
+		reg = roc_atomic64_add_nosync(wdata,
+					      (int64_t *)(nix_base + NIX_LF_RQ_OP_INT));
+		if (reg & BIT_ULL(42) /* OP_ERR */) {
+			plt_err("Failed to get rq_int");
+			return;
+		}
+		irq = reg & 0xff;
+		plt_write64(wdata | irq, nix_base + NIX_LF_RQ_OP_INT);
+
+		if (irq & BIT_ULL(NIX_RQINT_DROP))
+			plt_err("RQ=0 NIX_RQINT_DROP");
+
+		if (irq & BIT_ULL(NIX_RQINT_RED))
+			plt_err("RQ=0 NIX_RQINT_RED");
 	}
-	irq = reg & 0xff;
-	plt_write64(0 | irq, nix_base + NIX_LF_RQ_OP_INT);
-
-	if (irq & BIT_ULL(NIX_RQINT_DROP))
-		plt_err("RQ=0 NIX_RQINT_DROP");
-
-	if (irq & BIT_ULL(NIX_RQINT_RED))
-		plt_err("RQ=0 NIX_RQINT_RED");
 
 	/* Clear interrupt */
-	plt_write64(intr, nix_base + NIX_LF_QINTX_INT(0));
+	plt_write64(intr, nix_base + NIX_LF_QINTX_INT(qint));
 
 	/* Dump registers to std out */
 	nix_inl_nix_reg_dump(inl_dev);
 
-	/* Dump RQ 0 */
-	rc = nix_q_ctx_get(dev, NIX_AQ_CTYPE_RQ, 0, &ctx);
-	if (rc) {
-		plt_err("Failed to get rq context");
-		return;
+	/* Dump RQs */
+	for (q = 0; q < inl_dev->nb_rqs; q++) {
+		rc = nix_q_ctx_get(dev, NIX_AQ_CTYPE_RQ, q, &ctx);
+		if (rc) {
+			plt_err("Failed to get rq %d context, rc=%d", q, rc);
+			continue;
+		}
+		nix_lf_rq_dump(ctx);
 	}
-	nix_lf_rq_dump(ctx);
 }
 
 static void
@@ -233,7 +242,7 @@ nix_inl_nix_ras_irq(void *param)
 	struct dev *dev = &inl_dev->dev;
 	volatile void *ctx;
 	uint64_t intr;
-	int rc;
+	int rc, q;
 
 	intr = plt_read64(nix_base + NIX_LF_RAS);
 	if (intr == 0)
@@ -246,13 +255,15 @@ nix_inl_nix_ras_irq(void *param)
 	/* Dump registers to std out */
 	nix_inl_nix_reg_dump(inl_dev);
 
-	/* Dump RQ 0 */
-	rc = nix_q_ctx_get(dev, NIX_AQ_CTYPE_RQ, 0, &ctx);
-	if (rc) {
-		plt_err("Failed to get rq context");
-		return;
+	/* Dump RQs */
+	for (q = 0; q < inl_dev->nb_rqs; q++) {
+		rc = nix_q_ctx_get(dev, NIX_AQ_CTYPE_RQ, q, &ctx);
+		if (rc) {
+			plt_err("Failed to get rq %d context, rc=%d", q, rc);
+			continue;
+		}
+		nix_lf_rq_dump(ctx);
 	}
-	nix_lf_rq_dump(ctx);
 }
 
 static void
@@ -263,7 +274,7 @@ nix_inl_nix_err_irq(void *param)
 	struct dev *dev = &inl_dev->dev;
 	volatile void *ctx;
 	uint64_t intr;
-	int rc;
+	int rc, q;
 
 	intr = plt_read64(nix_base + NIX_LF_ERR_INT);
 	if (intr == 0)
@@ -277,13 +288,15 @@ nix_inl_nix_err_irq(void *param)
 	/* Dump registers to std out */
 	nix_inl_nix_reg_dump(inl_dev);
 
-	/* Dump RQ 0 */
-	rc = nix_q_ctx_get(dev, NIX_AQ_CTYPE_RQ, 0, &ctx);
-	if (rc) {
-		plt_err("Failed to get rq context");
-		return;
+	/* Dump RQs */
+	for (q = 0; q < inl_dev->nb_rqs; q++) {
+		rc = nix_q_ctx_get(dev, NIX_AQ_CTYPE_RQ, q, &ctx);
+		if (rc) {
+			plt_err("Failed to get rq %d context, rc=%d", q, rc);
+			continue;
+		}
+		nix_lf_rq_dump(ctx);
 	}
-	nix_lf_rq_dump(ctx);
 }
 
 int
@@ -291,8 +304,10 @@ nix_inl_nix_register_irqs(struct nix_inl_dev *inl_dev)
 {
 	struct plt_intr_handle *handle = inl_dev->pci_dev->intr_handle;
 	uintptr_t nix_base = inl_dev->nix_base;
+	struct nix_inl_qint *qints_mem;
+	int rc, q, ret = 0;
 	uint16_t msixoff;
-	int rc;
+	int qints;
 
 	msixoff = inl_dev->nix_msixoff;
 	if (msixoff == MSIX_VECTOR_INVALID) {
@@ -317,21 +332,38 @@ nix_inl_nix_register_irqs(struct nix_inl_dev *inl_dev)
 	/* Enable RAS interrupts */
 	plt_write64(~0ull, nix_base + NIX_LF_RAS_ENA_W1S);
 
-	/* Setup queue irq for RQ 0 */
+	/* Setup queue irq for RQ's */
+	qints = PLT_MIN(inl_dev->nb_rqs, inl_dev->qints);
+	qints_mem = plt_zmalloc(sizeof(struct nix_inl_qint) * qints, 0);
+	if (!qints_mem) {
+		plt_err("Failed to allocate memory for %u qints", qints);
+		return -ENOMEM;
+	}
 
-	/* Clear QINT CNT, interrupt */
-	plt_write64(0, nix_base + NIX_LF_QINTX_CNT(0));
-	plt_write64(~0ull, nix_base + NIX_LF_QINTX_ENA_W1C(0));
+	inl_dev->configured_qints = qints;
+	inl_dev->qints_mem = qints_mem;
 
-	/* Register queue irq vector */
-	rc |= dev_irq_register(handle, nix_inl_nix_q_irq, inl_dev,
-			       msixoff + NIX_LF_INT_VEC_QINT_START);
+	for (q = 0; q < qints; q++) {
+		/* Clear QINT CNT, interrupt */
+		plt_write64(0, nix_base + NIX_LF_QINTX_CNT(q));
+		plt_write64(~0ull, nix_base + NIX_LF_QINTX_ENA_W1C(q));
 
-	plt_write64(0, nix_base + NIX_LF_QINTX_CNT(0));
-	plt_write64(0, nix_base + NIX_LF_QINTX_INT(0));
-	/* Enable QINT interrupt */
-	plt_write64(~0ull, nix_base + NIX_LF_QINTX_ENA_W1S(0));
+		/* Register queue irq vector */
+		ret = dev_irq_register(handle, nix_inl_nix_q_irq, &qints_mem[q],
+				       msixoff + NIX_LF_INT_VEC_QINT_START + q);
+		if (ret)
+			break;
 
+		plt_write64(0, nix_base + NIX_LF_QINTX_CNT(q));
+		plt_write64(0, nix_base + NIX_LF_QINTX_INT(q));
+		/* Enable QINT interrupt */
+		plt_write64(~0ull, nix_base + NIX_LF_QINTX_ENA_W1S(q));
+
+		qints_mem[q].inl_dev = inl_dev;
+		qints_mem[q].qint = q;
+	}
+
+	rc |= ret;
 	return rc;
 }
 
@@ -339,8 +371,10 @@ void
 nix_inl_nix_unregister_irqs(struct nix_inl_dev *inl_dev)
 {
 	struct plt_intr_handle *handle = inl_dev->pci_dev->intr_handle;
+	struct nix_inl_qint *qints_mem = inl_dev->qints_mem;
 	uintptr_t nix_base = inl_dev->nix_base;
 	uint16_t msixoff;
+	int q;
 
 	msixoff = inl_dev->nix_msixoff;
 	/* Disable err interrupts */
@@ -353,14 +387,19 @@ nix_inl_nix_unregister_irqs(struct nix_inl_dev *inl_dev)
 	dev_irq_unregister(handle, nix_inl_nix_ras_irq, inl_dev,
 			   msixoff + NIX_LF_INT_VEC_POISON);
 
-	/* Clear QINT CNT */
-	plt_write64(0, nix_base + NIX_LF_QINTX_CNT(0));
-	plt_write64(0, nix_base + NIX_LF_QINTX_INT(0));
+	for (q = 0; q < inl_dev->configured_qints; q++) {
+		/* Clear QINT CNT */
+		plt_write64(0, nix_base + NIX_LF_QINTX_CNT(q));
+		plt_write64(0, nix_base + NIX_LF_QINTX_INT(q));
 
-	/* Disable QINT interrupt */
-	plt_write64(~0ull, nix_base + NIX_LF_QINTX_ENA_W1C(0));
+		/* Disable QINT interrupt */
+		plt_write64(~0ull, nix_base + NIX_LF_QINTX_ENA_W1C(q));
 
-	/* Unregister queue irq vector */
-	dev_irq_unregister(handle, nix_inl_nix_q_irq, inl_dev,
-			   msixoff + NIX_LF_INT_VEC_QINT_START);
+		/* Unregister queue irq vector */
+		dev_irq_unregister(handle, nix_inl_nix_q_irq, &qints_mem[q],
+				   msixoff + NIX_LF_INT_VEC_QINT_START + q);
+	}
+
+	plt_free(inl_dev->qints_mem);
+	inl_dev->qints_mem = NULL;
 }

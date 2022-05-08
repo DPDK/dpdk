@@ -546,19 +546,6 @@ cnxk_nix_rx_queue_setup(struct rte_eth_dev *eth_dev, uint16_t qid,
 		eth_dev->data->rx_queues[qid] = NULL;
 	}
 
-	/* Clam up cq limit to size of packet pool aura for LBK
-	 * to avoid meta packet drop as LBK does not currently support
-	 * backpressure.
-	 */
-	if (dev->rx_offloads & RTE_ETH_RX_OFFLOAD_SECURITY && roc_nix_is_lbk(nix)) {
-		uint64_t pkt_pool_limit = roc_nix_inl_dev_rq_limit_get();
-
-		/* Use current RQ's aura limit if inl rq is not available */
-		if (!pkt_pool_limit)
-			pkt_pool_limit = roc_npa_aura_op_limit_get(mp->pool_id);
-		nb_desc = RTE_MAX(nb_desc, pkt_pool_limit);
-	}
-
 	/* Its a no-op when inline device is not used */
 	if (dev->rx_offloads & RTE_ETH_RX_OFFLOAD_SECURITY ||
 	    dev->tx_offloads & RTE_ETH_TX_OFFLOAD_SECURITY)
@@ -1675,6 +1662,7 @@ cnxk_eth_dev_init(struct rte_eth_dev *eth_dev)
 	/* Initialize base roc nix */
 	nix->pci_dev = pci_dev;
 	nix->hw_vlan_ins = true;
+	nix->port_id = eth_dev->data->port_id;
 	rc = roc_nix_dev_init(nix);
 	if (rc) {
 		plt_err("Failed to initialize roc nix rc=%d", rc);

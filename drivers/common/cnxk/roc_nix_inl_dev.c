@@ -334,6 +334,7 @@ nix_inl_nix_setup(struct nix_inl_dev *inl_dev)
 	struct nix_lf_alloc_rsp *rsp;
 	struct nix_lf_alloc_req *req;
 	struct nix_hw_info *hw_info;
+	struct roc_nix_rq *rqs;
 	uint64_t max_sa, i;
 	size_t inb_sa_sz;
 	int rc = -ENOSPC;
@@ -345,7 +346,8 @@ nix_inl_nix_setup(struct nix_inl_dev *inl_dev)
 	req = mbox_alloc_msg_nix_lf_alloc(mbox);
 	if (req == NULL)
 		return rc;
-	req->rq_cnt = 1;
+	/* We will have per-port RQ if it is not with channel masking */
+	req->rq_cnt = inl_dev->nb_rqs;
 	req->sq_cnt = 1;
 	req->cq_cnt = 1;
 	/* XQESZ is W16 */
@@ -421,6 +423,14 @@ nix_inl_nix_setup(struct nix_inl_dev *inl_dev)
 		goto free_mem;
 	}
 
+	/* Allocate memory for RQ's */
+	rqs = plt_zmalloc(sizeof(struct roc_nix_rq) * PLT_MAX_ETHPORTS, 0);
+	if (!rqs) {
+		plt_err("Failed to allocate memory for RQ's");
+		goto free_mem;
+	}
+	inl_dev->rqs = rqs;
+
 	return 0;
 free_mem:
 	plt_free(inl_dev->inb_sa_base);
@@ -464,7 +474,15 @@ nix_inl_nix_release(struct nix_inl_dev *inl_dev)
 	if (req == NULL)
 		return -ENOSPC;
 
-	return mbox_process(mbox);
+	rc = mbox_process(mbox);
+	if (rc)
+		return rc;
+
+	plt_free(inl_dev->rqs);
+	plt_free(inl_dev->inb_sa_base);
+	inl_dev->rqs = NULL;
+	inl_dev->inb_sa_base = NULL;
+	return 0;
 }
 
 static int
@@ -584,10 +602,13 @@ roc_nix_inl_dev_xaq_realloc(uint64_t aura_handle)
 
 no_pool:
 	/* Disable RQ if enabled */
-	if (inl_dev->rq_refs) {
-		rc = nix_rq_ena_dis(&inl_dev->dev, &inl_dev->rq, false);
+	for (i = 0; i < inl_dev->nb_rqs; i++) {
+		if (!inl_dev->rqs[i].inl_dev_refs)
+			continue;
+		rc = nix_rq_ena_dis(&inl_dev->dev, &inl_dev->rqs[i], false);
 		if (rc) {
-			plt_err("Failed to disable inline dev RQ, rc=%d", rc);
+			plt_err("Failed to disable inline dev RQ %d, rc=%d", i,
+				rc);
 			return rc;
 		}
 	}
@@ -633,10 +654,14 @@ no_pool:
 
 exit:
 	/* Renable RQ */
-	if (inl_dev->rq_refs) {
-		rc = nix_rq_ena_dis(&inl_dev->dev, &inl_dev->rq, true);
+	for (i = 0; i < inl_dev->nb_rqs; i++) {
+		if (!inl_dev->rqs[i].inl_dev_refs)
+			continue;
+
+		rc = nix_rq_ena_dis(&inl_dev->dev, &inl_dev->rqs[i], true);
 		if (rc)
-			plt_err("Failed to enable inline dev RQ, rc=%d", rc);
+			plt_err("Failed to enable inline dev RQ %d, rc=%d", i,
+				rc);
 	}
 
 	return rc;
@@ -815,6 +840,7 @@ roc_nix_inl_dev_init(struct roc_nix_inl_dev *roc_inl_dev)
 	inl_dev->spb_drop_pc = NIX_AURA_DROP_PC_DFLT;
 	inl_dev->lpb_drop_pc = NIX_AURA_DROP_PC_DFLT;
 	inl_dev->set_soft_exp_poll = roc_inl_dev->set_soft_exp_poll;
+	inl_dev->nb_rqs = inl_dev->is_multi_channel ? 1 : PLT_MAX_ETHPORTS;
 
 	if (roc_inl_dev->spb_drop_pc)
 		inl_dev->spb_drop_pc = roc_inl_dev->spb_drop_pc;

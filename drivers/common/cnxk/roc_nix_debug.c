@@ -826,7 +826,7 @@ roc_nix_rq_dump(struct roc_nix_rq *rq)
 	nix_dump("  vwqe_wait_tmo = %ld", rq->vwqe_wait_tmo);
 	nix_dump("  vwqe_aura_handle = %ld", rq->vwqe_aura_handle);
 	nix_dump("  roc_nix = %p", rq->roc_nix);
-	nix_dump("  inl_dev_ref = %d", rq->inl_dev_ref);
+	nix_dump("  inl_dev_refs = %d", rq->inl_dev_refs);
 }
 
 void
@@ -1243,6 +1243,7 @@ roc_nix_inl_dev_dump(struct roc_nix_inl_dev *roc_inl_dev)
 	struct nix_inl_dev *inl_dev =
 		(struct nix_inl_dev *)&roc_inl_dev->reserved;
 	struct dev *dev = &inl_dev->dev;
+	int i;
 
 	nix_dump("nix_inl_dev@%p", inl_dev);
 	nix_dump("  pf = %d", dev_get_pf(dev->pf_func));
@@ -1259,7 +1260,6 @@ roc_nix_inl_dev_dump(struct roc_nix_inl_dev *roc_inl_dev)
 	nix_dump("  \tssow_msixoff = %d", inl_dev->ssow_msixoff);
 	nix_dump("  \tnix_cints = %d", inl_dev->cints);
 	nix_dump("  \tnix_qints = %d", inl_dev->qints);
-	nix_dump("  \trq_refs = %d", inl_dev->rq_refs);
 	nix_dump("  \tinb_sa_base = 0x%p", inl_dev->inb_sa_base);
 	nix_dump("  \tinb_sa_sz = %d", inl_dev->inb_sa_sz);
 	nix_dump("  \txaq_buf_size = %u", inl_dev->xaq_buf_size);
@@ -1269,5 +1269,6 @@ roc_nix_inl_dev_dump(struct roc_nix_inl_dev *roc_inl_dev)
 	nix_dump("  \txaq_mem = 0x%p", inl_dev->xaq.mem);
 
 	nix_dump("  \tinl_dev_rq:");
-	roc_nix_rq_dump(&inl_dev->rq);
+	for (i = 0; i < inl_dev->nb_rqs; i++)
+		roc_nix_rq_dump(&inl_dev->rqs[i]);
 }
