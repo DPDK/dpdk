@@ -270,6 +270,8 @@ mlx5_vdpa_dev_close(int vid)
 	if (priv->lm_mr.addr)
 		mlx5_os_wrapped_mkey_destroy(&priv->lm_mr);
 	priv->state = MLX5_VDPA_STATE_PROBED;
+	if (!priv->connected)
+		mlx5_vdpa_dev_cache_clean(priv);
 	priv->vid = 0;
 	/* The mutex may stay locked after event thread cancel - initiate it. */
 	pthread_mutex_init(&priv->vq_config_lock, NULL);
@@ -294,6 +296,7 @@ mlx5_vdpa_dev_config(int vid)
 		return -1;
 	}
 	priv->vid = vid;
+	priv->connected = true;
 	if (mlx5_vdpa_mtu_set(priv))
 		DRV_LOG(WARNING, "MTU cannot be set on device %s.",
 				vdev->device->name);
@@ -431,12 +434,32 @@ mlx5_vdpa_reset_stats(struct rte_vdpa_device *vdev, int qid)
 	return mlx5_vdpa_virtq_stats_reset(priv, qid);
 }
 
+static int
+mlx5_vdpa_dev_cleanup(int vid)
+{
+	struct rte_vdpa_device *vdev = rte_vhost_get_vdpa_device(vid);
+	struct mlx5_vdpa_priv *priv;
+
+	if (vdev == NULL)
+		return -1;
+	priv = mlx5_vdpa_find_priv_resource_by_vdev(vdev);
+	if (priv == NULL) {
+		DRV_LOG(ERR, "Invalid vDPA device: %s.", vdev->device->name);
+		return -1;
+	}
+	if (priv->state == MLX5_VDPA_STATE_PROBED)
+		mlx5_vdpa_dev_cache_clean(priv);
+	priv->connected = false;
+	return 0;
+}
+
 static struct rte_vdpa_dev_ops mlx5_vdpa_ops = {
 	.get_queue_num = mlx5_vdpa_get_queue_num,
 	.get_features = mlx5_vdpa_get_vdpa_features,
 	.get_protocol_features = mlx5_vdpa_get_protocol_features,
 	.dev_conf = mlx5_vdpa_dev_config,
 	.dev_close = mlx5_vdpa_dev_close,
+	.dev_cleanup = mlx5_vdpa_dev_cleanup,
 	.set_vring_state = mlx5_vdpa_set_vring_state,
 	.set_features = mlx5_vdpa_features_set,
 	.migration_done = NULL,

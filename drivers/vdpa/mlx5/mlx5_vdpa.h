@@ -121,6 +121,7 @@ enum mlx5_dev_state {
 
 struct mlx5_vdpa_priv {
 	TAILQ_ENTRY(mlx5_vdpa_priv) next;
+	bool connected;
 	enum mlx5_dev_state state;
 	pthread_mutex_t vq_config_lock;
 	uint64_t no_traffic_counter;
