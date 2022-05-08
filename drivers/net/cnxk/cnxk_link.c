@@ -12,6 +12,17 @@ cnxk_nix_toggle_flag_link_cfg(struct cnxk_eth_dev *dev, bool set)
 	else
 		dev->flags &= ~CNXK_LINK_CFG_IN_PROGRESS_F;
 
+	/* Update link info for LBK */
+	if (!set && roc_nix_is_lbk(&dev->nix)) {
+		struct rte_eth_link link;
+
+		link.link_status = RTE_ETH_LINK_UP;
+		link.link_speed = RTE_ETH_SPEED_NUM_100G;
+		link.link_autoneg = RTE_ETH_LINK_FIXED;
+		link.link_duplex = RTE_ETH_LINK_FULL_DUPLEX;
+		rte_eth_linkstatus_set(dev->eth_dev, &link);
+	}
+
 	rte_wmb();
 }
 
