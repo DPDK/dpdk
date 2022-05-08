@@ -388,12 +388,7 @@ mlx5_vdpa_get_stats(struct rte_vdpa_device *vdev, int qid,
 		DRV_LOG(ERR, "Invalid device: %s.", vdev->device->name);
 		return -ENODEV;
 	}
-	if (priv->state == MLX5_VDPA_STATE_PROBED) {
-		DRV_LOG(ERR, "Device %s was not configured.",
-				vdev->device->name);
-		return -ENODATA;
-	}
-	if (qid >= (int)priv->nr_virtqs) {
+	if (qid >= (int)priv->caps.max_num_virtio_queues * 2) {
 		DRV_LOG(ERR, "Too big vring id: %d for device %s.", qid,
 				vdev->device->name);
 		return -E2BIG;
@@ -416,12 +411,7 @@ mlx5_vdpa_reset_stats(struct rte_vdpa_device *vdev, int qid)
 		DRV_LOG(ERR, "Invalid device: %s.", vdev->device->name);
 		return -ENODEV;
 	}
-	if (priv->state == MLX5_VDPA_STATE_PROBED) {
-		DRV_LOG(ERR, "Device %s was not configured.",
-				vdev->device->name);
-		return -ENODATA;
-	}
-	if (qid >= (int)priv->nr_virtqs) {
+	if (qid >= (int)priv->caps.max_num_virtio_queues * 2) {
 		DRV_LOG(ERR, "Too big vring id: %d for device %s.", qid,
 				vdev->device->name);
 		return -E2BIG;
@@ -695,6 +685,11 @@ mlx5_vdpa_release_dev_resources(struct mlx5_vdpa_priv *priv)
 	uint32_t i;
 
 	mlx5_vdpa_dev_cache_clean(priv);
+	for (i = 0; i < priv->caps.max_num_virtio_queues * 2; i++) {
+		if (!priv->virtqs[i].counters)
+			continue;
+		claim_zero(mlx5_devx_cmd_destroy(priv->virtqs[i].counters));
+	}
 	mlx5_vdpa_event_qp_global_release(priv);
 	mlx5_vdpa_err_event_unset(priv);
 	if (priv->steer.tbl)

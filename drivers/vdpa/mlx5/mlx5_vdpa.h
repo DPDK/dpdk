@@ -92,6 +92,7 @@ struct mlx5_vdpa_virtq {
 	struct rte_intr_handle *intr_handle;
 	uint64_t err_time[3]; /* RDTSC time of recent errors. */
 	uint32_t n_retry;
+	struct mlx5_devx_virtio_q_couners_attr stats;
 	struct mlx5_devx_virtio_q_couners_attr reset;
 };
 

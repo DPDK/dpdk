@@ -109,3 +109,9 @@ Upon potential hardware errors, mlx5 PMD try to recover, give up if failed 3
 times in 3 seconds, virtq will be put in disable state. User should check log
 to get error information, or query vdpa statistics counter to know error type
 and count report.
+
+Statistics
+^^^^^^^^^^
+
+The device statistics counter persists in reconfiguration until the device gets
+removed. User can reset counters by calling function rte_vdpa_reset_stats().
