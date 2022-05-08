@@ -1673,10 +1673,6 @@ cn10k_nix_recv_pkts_vector(void *args, struct rte_mbuf **mbufs, uint16_t pkts,
 		vst1q_u64((uint64_t *)mbuf2->rearm_data, rearm2);
 		vst1q_u64((uint64_t *)mbuf3->rearm_data, rearm3);
 
-		/* Store the mbufs to rx_pkts */
-		vst1q_u64((uint64_t *)&mbufs[packets], mbuf01);
-		vst1q_u64((uint64_t *)&mbufs[packets + 2], mbuf23);
-
 		if (flags & NIX_RX_MULTI_SEG_F) {
 			/* Multi segment is enable build mseg list for
 			 * individual mbufs in scalar mode.
@@ -1694,6 +1690,10 @@ cn10k_nix_recv_pkts_vector(void *args, struct rte_mbuf **mbufs, uint16_t pkts,
 					    (CQE_PTR_OFF(cq0, 3, 8, flags)),
 					    mbuf3, mbuf_initializer, flags);
 		}
+
+		/* Store the mbufs to rx_pkts */
+		vst1q_u64((uint64_t *)&mbufs[packets], mbuf01);
+		vst1q_u64((uint64_t *)&mbufs[packets + 2], mbuf23);
 
 		/* Mark mempool obj as "get" as it is alloc'ed by NIX */
 		RTE_MEMPOOL_CHECK_COOKIES(mbuf0->pool, (void **)&mbuf0, 1, 1);
