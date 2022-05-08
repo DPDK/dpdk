@@ -577,6 +577,7 @@ cn10k_eth_sec_session_create(void *device,
 		/* Propagate inner checksum enable from SA to fast path */
 		sess_priv.chksum = (!ipsec->options.ip_csum_enable << 1 |
 				    !ipsec->options.l4_csum_enable);
+		sess_priv.dec_ttl = ipsec->options.dec_ttl;
 
 		/* Pointer from eth_sec -> outb_sa */
 		eth_sec->sa = outb_sa;

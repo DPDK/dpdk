@@ -315,7 +315,8 @@ cn10k_nix_prep_sec_vec(struct rte_mbuf *m, uint64x2_t *cmd0, uint64x2_t *cmd1,
 	sa = (uintptr_t)roc_nix_inl_ot_ipsec_outb_sa(sa_base, sess_priv.sa_idx);
 	ucode_cmd[3] = (ROC_CPT_DFLT_ENG_GRP_SE_IE << 61 | 1UL << 60 | sa);
 	ucode_cmd[0] = (ROC_IE_OT_MAJOR_OP_PROCESS_OUTBOUND_IPSEC << 48 |
-			((uint64_t)sess_priv.chksum) << 32 | pkt_len);
+			((uint64_t)sess_priv.chksum) << 32 |
+			((uint64_t)sess_priv.dec_ttl) << 34 | pkt_len);
 
 	/* CPT Word 0 and Word 1 */
 	cmd01 = vdupq_n_u64((nixtx + 16) | (cn10k_nix_tx_ext_subs(flags) + 1));
@@ -442,7 +443,8 @@ cn10k_nix_prep_sec(struct rte_mbuf *m, uint64_t *cmd, uintptr_t *nixtx_addr,
 	sa = (uintptr_t)roc_nix_inl_ot_ipsec_outb_sa(sa_base, sess_priv.sa_idx);
 	ucode_cmd[3] = (ROC_CPT_DFLT_ENG_GRP_SE_IE << 61 | 1UL << 60 | sa);
 	ucode_cmd[0] = (ROC_IE_OT_MAJOR_OP_PROCESS_OUTBOUND_IPSEC << 48 |
-			((uint64_t)sess_priv.chksum) << 32 | pkt_len);
+			((uint64_t)sess_priv.chksum) << 32 |
+			((uint64_t)sess_priv.dec_ttl) << 34 | pkt_len);
 
 	/* CPT Word 0 and Word 1. Assume no multi-seg support */
 	cmd01 = vdupq_n_u64((nixtx + 16) | (cn10k_nix_tx_ext_subs(flags) + 1));
