@@ -32,8 +32,6 @@ mlx5_vdpa_mem_dereg(struct mlx5_vdpa_priv *priv)
 		entry = next;
 	}
 	SLIST_INIT(&priv->mr_list);
-	if (priv->lm_mr.addr)
-		mlx5_os_wrapped_mkey_destroy(&priv->lm_mr);
 	if (priv->vmem) {
 		free(priv->vmem);
 		priv->vmem = NULL;
@@ -149,6 +147,23 @@ mlx5_vdpa_vhost_mem_regions_prepare(int vid, uint8_t *mode, uint64_t *mem_size,
 	return mem;
 }
 
+static int
+mlx5_vdpa_mem_cmp(struct rte_vhost_memory *mem1, struct rte_vhost_memory *mem2)
+{
+	uint32_t i;
+
+	if (mem1->nregions != mem2->nregions)
+		return -1;
+	for (i = 0; i < mem1->nregions; i++) {
+		if (mem1->regions[i].guest_phys_addr !=
+		    mem2->regions[i].guest_phys_addr)
+			return -1;
+		if (mem1->regions[i].size != mem2->regions[i].size)
+			return -1;
+	}
+	return 0;
+}
+
 #define KLM_SIZE_MAX_ALIGN(sz) ((sz) > MLX5_MAX_KLM_BYTE_COUNT ? \
 				MLX5_MAX_KLM_BYTE_COUNT : (sz))
 
@@ -191,6 +206,14 @@ mlx5_vdpa_mem_register(struct mlx5_vdpa_priv *priv)
 
 	if (!mem)
 		return -rte_errno;
+	if (priv->vmem != NULL) {
+		if (mlx5_vdpa_mem_cmp(mem, priv->vmem) == 0) {
+			/* VM memory not changed, reuse resources. */
+			free(mem);
+			return 0;
+		}
+		mlx5_vdpa_mem_dereg(priv);
+	}
 	priv->vmem = mem;
 	for (i = 0; i < mem->nregions; i++) {
 		reg = &mem->regions[i];

@@ -241,6 +241,13 @@ mlx5_vdpa_mtu_set(struct mlx5_vdpa_priv *priv)
 	return kern_mtu == vhost_mtu ? 0 : -1;
 }
 
+static void
+mlx5_vdpa_dev_cache_clean(struct mlx5_vdpa_priv *priv)
+{
+	mlx5_vdpa_virtqs_cleanup(priv);
+	mlx5_vdpa_mem_dereg(priv);
+}
+
 static int
 mlx5_vdpa_dev_close(int vid)
 {
@@ -260,7 +267,8 @@ mlx5_vdpa_dev_close(int vid)
 	}
 	mlx5_vdpa_steer_unset(priv);
 	mlx5_vdpa_virtqs_release(priv);
-	mlx5_vdpa_mem_dereg(priv);
+	if (priv->lm_mr.addr)
+		mlx5_os_wrapped_mkey_destroy(&priv->lm_mr);
 	priv->state = MLX5_VDPA_STATE_PROBED;
 	priv->vid = 0;
 	/* The mutex may stay locked after event thread cancel - initiate it. */
@@ -663,6 +671,7 @@ mlx5_vdpa_release_dev_resources(struct mlx5_vdpa_priv *priv)
 {
 	uint32_t i;
 
+	mlx5_vdpa_dev_cache_clean(priv);
 	mlx5_vdpa_event_qp_global_release(priv);
 	mlx5_vdpa_err_event_unset(priv);
 	if (priv->steer.tbl)

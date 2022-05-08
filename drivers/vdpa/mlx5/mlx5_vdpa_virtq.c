@@ -66,10 +66,33 @@ mlx5_vdpa_virtq_kick_handler(void *cb_arg)
 	DRV_LOG(DEBUG, "Ring virtq %u doorbell.", virtq->index);
 }
 
+/* Release cached VQ resources. */
+void
+mlx5_vdpa_virtqs_cleanup(struct mlx5_vdpa_priv *priv)
+{
+	unsigned int i, j;
+
+	for (i = 0; i < priv->caps.max_num_virtio_queues * 2; i++) {
+		struct mlx5_vdpa_virtq *virtq = &priv->virtqs[i];
+
+		for (j = 0; j < RTE_DIM(virtq->umems); ++j) {
+			if (virtq->umems[j].obj) {
+				claim_zero(mlx5_glue->devx_umem_dereg
+							(virtq->umems[j].obj));
+				virtq->umems[j].obj = NULL;
+			}
+			if (virtq->umems[j].buf) {
+				rte_free(virtq->umems[j].buf);
+				virtq->umems[j].buf = NULL;
+			}
+			virtq->umems[j].size = 0;
+		}
+	}
+}
+
 static int
 mlx5_vdpa_virtq_unset(struct mlx5_vdpa_virtq *virtq)
 {
-	unsigned int i;
 	int ret = -EAGAIN;
 
 	if (rte_intr_fd_get(virtq->intr_handle) >= 0) {
@@ -94,13 +117,6 @@ mlx5_vdpa_virtq_unset(struct mlx5_vdpa_virtq *virtq)
 		claim_zero(mlx5_devx_cmd_destroy(virtq->virtq));
 	}
 	virtq->virtq = NULL;
-	for (i = 0; i < RTE_DIM(virtq->umems); ++i) {
-		if (virtq->umems[i].obj)
-			claim_zero(mlx5_glue->devx_umem_dereg
-							 (virtq->umems[i].obj));
-		rte_free(virtq->umems[i].buf);
-	}
-	memset(&virtq->umems, 0, sizeof(virtq->umems));
 	if (virtq->eqp.fw_qp)
 		mlx5_vdpa_event_qp_destroy(&virtq->eqp);
 	virtq->notifier_state = MLX5_VDPA_NOTIFIER_STATE_DISABLED;
@@ -120,7 +136,6 @@ mlx5_vdpa_virtqs_release(struct mlx5_vdpa_priv *priv)
 			claim_zero(mlx5_devx_cmd_destroy(virtq->counters));
 	}
 	priv->features = 0;
-	memset(priv->virtqs, 0, sizeof(*virtq) * priv->nr_virtqs);
 	priv->nr_virtqs = 0;
 }
 
@@ -215,6 +230,8 @@ mlx5_vdpa_virtq_setup(struct mlx5_vdpa_priv *priv, int index)
 	ret = rte_vhost_get_vhost_vring(priv->vid, index, &vq);
 	if (ret)
 		return -1;
+	if (vq.size == 0)
+		return 0;
 	virtq->index = index;
 	virtq->vq_size = vq.size;
 	attr.tso_ipv4 = !!(priv->features & (1ULL << VIRTIO_NET_F_HOST_TSO4));
@@ -259,24 +276,42 @@ mlx5_vdpa_virtq_setup(struct mlx5_vdpa_priv *priv, int index)
 	}
 	/* Setup 3 UMEMs for each virtq. */
 	for (i = 0; i < RTE_DIM(virtq->umems); ++i) {
-		virtq->umems[i].size = priv->caps.umems[i].a * vq.size +
-							  priv->caps.umems[i].b;
-		virtq->umems[i].buf = rte_zmalloc(__func__,
-						  virtq->umems[i].size, 4096);
-		if (!virtq->umems[i].buf) {
+		uint32_t size;
+		void *buf;
+		struct mlx5dv_devx_umem *obj;
+
+		size = priv->caps.umems[i].a * vq.size + priv->caps.umems[i].b;
+		if (virtq->umems[i].size == size &&
+		    virtq->umems[i].obj != NULL) {
+			/* Reuse registered memory. */
+			memset(virtq->umems[i].buf, 0, size);
+			goto reuse;
+		}
+		if (virtq->umems[i].obj)
+			claim_zero(mlx5_glue->devx_umem_dereg
+				   (virtq->umems[i].obj));
+		if (virtq->umems[i].buf)
+			rte_free(virtq->umems[i].buf);
+		virtq->umems[i].size = 0;
+		virtq->umems[i].obj = NULL;
+		virtq->umems[i].buf = NULL;
+		buf = rte_zmalloc(__func__, size, 4096);
+		if (buf == NULL) {
 			DRV_LOG(ERR, "Cannot allocate umem %d memory for virtq"
 				" %u.", i, index);
 			goto error;
 		}
-		virtq->umems[i].obj = mlx5_glue->devx_umem_reg(priv->cdev->ctx,
-							virtq->umems[i].buf,
-							virtq->umems[i].size,
-							IBV_ACCESS_LOCAL_WRITE);
-		if (!virtq->umems[i].obj) {
+		obj = mlx5_glue->devx_umem_reg(priv->cdev->ctx, buf, size,
+					       IBV_ACCESS_LOCAL_WRITE);
+		if (obj == NULL) {
 			DRV_LOG(ERR, "Failed to register umem %d for virtq %u.",
 				i, index);
 			goto error;
 		}
+		virtq->umems[i].size = size;
+		virtq->umems[i].buf = buf;
+		virtq->umems[i].obj = obj;
+reuse:
 		attr.umems[i].id = virtq->umems[i].obj->umem_id;
 		attr.umems[i].offset = 0;
 		attr.umems[i].size = virtq->umems[i].size;

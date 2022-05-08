@@ -289,12 +289,20 @@ int mlx5_vdpa_err_event_setup(struct mlx5_vdpa_priv *priv);
 void mlx5_vdpa_err_event_unset(struct mlx5_vdpa_priv *priv);
 
 /**
- * Release a virtq and all its related resources.
+ * Release virtqs and resources except that to be reused.
  *
  * @param[in] priv
  *   The vdpa driver private structure.
  */
 void mlx5_vdpa_virtqs_release(struct mlx5_vdpa_priv *priv);
+
+/**
+ * Cleanup cached resources of all virtqs.
+ *
+ * @param[in] priv
+ *   The vdpa driver private structure.
+ */
+void mlx5_vdpa_virtqs_cleanup(struct mlx5_vdpa_priv *priv);
 
 /**
  * Create all the HW virtqs resources and all their related resources.
@@ -323,7 +331,7 @@ int mlx5_vdpa_virtqs_prepare(struct mlx5_vdpa_priv *priv);
 int mlx5_vdpa_virtq_enable(struct mlx5_vdpa_priv *priv, int index, int enable);
 
 /**
- * Unset steering and release all its related resources- stop traffic.
+ * Unset steering - stop traffic.
  *
  * @param[in] priv
  *   The vdpa driver private structure.
