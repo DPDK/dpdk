@@ -42,6 +42,18 @@
 		 (uint64_t *)(((uintptr_t)((uint64_t *)(b))[i]) - (o)) :       \
 		       (uint64_t *)(((uintptr_t)(b)) + CQE_SZ(i) - (o)))
 
+#define NIX_RX_SEC_UCC_CONST                                                   \
+	((RTE_MBUF_F_RX_IP_CKSUM_BAD >> 1) << 8 |                              \
+	 ((RTE_MBUF_F_RX_IP_CKSUM_GOOD | RTE_MBUF_F_RX_L4_CKSUM_GOOD) >> 1)    \
+		 << 24 |                                                       \
+	 ((RTE_MBUF_F_RX_IP_CKSUM_GOOD | RTE_MBUF_F_RX_L4_CKSUM_BAD) >> 1)     \
+		 << 32 |                                                       \
+	 ((RTE_MBUF_F_RX_IP_CKSUM_GOOD | RTE_MBUF_F_RX_L4_CKSUM_GOOD) >> 1)    \
+		 << 40 |                                                       \
+	 ((RTE_MBUF_F_RX_IP_CKSUM_GOOD | RTE_MBUF_F_RX_L4_CKSUM_GOOD) >> 1)    \
+		 << 48 |                                                       \
+	 (RTE_MBUF_F_RX_IP_CKSUM_GOOD >> 1) << 56)
+
 #ifdef RTE_LIBRTE_MEMPOOL_DEBUG
 static inline void
 nix_mbuf_validate_next(struct rte_mbuf *m)
@@ -467,6 +479,11 @@ nix_sec_meta_to_mbuf_sc(uint64_t cq_w1, uint64_t cq_w5, const uint64_t sa_base,
 					   RTE_MBUF_F_RX_SEC_OFFLOAD :
 					   (RTE_MBUF_F_RX_SEC_OFFLOAD |
 					    RTE_MBUF_F_RX_SEC_OFFLOAD_FAILED));
+
+			ucc = hdr->w3.uc_ccode;
+			inner->ol_flags |= ((ucc & 0xF0) == 0xF0) ?
+				((NIX_RX_SEC_UCC_CONST >> ((ucc & 0xF) << 3))
+				 & 0xFF) << 1 : 0;
 		} else if (!(hdr->w0.err_sum) && !(hdr->w0.reas_sts)) {
 			/* Reassembly success */
 			inner = nix_sec_reassemble_frags(hdr, cq_w1, cq_w5,
@@ -528,6 +545,11 @@ nix_sec_meta_to_mbuf_sc(uint64_t cq_w1, uint64_t cq_w5, const uint64_t sa_base,
 				   RTE_MBUF_F_RX_SEC_OFFLOAD :
 				   (RTE_MBUF_F_RX_SEC_OFFLOAD |
 				    RTE_MBUF_F_RX_SEC_OFFLOAD_FAILED));
+
+		ucc = hdr->w3.uc_ccode;
+		inner->ol_flags |= ((ucc & 0xF0) == 0xF0) ?
+			((NIX_RX_SEC_UCC_CONST >> ((ucc & 0xF) << 3))
+			 & 0xFF) << 1 : 0;
 
 		/* Store meta in lmtline to free
 		 * Assume all meta's from same aura.
@@ -1313,7 +1335,26 @@ cn10k_nix_recv_pkts_vector(void *args, struct rte_mbuf **mbufs, uint16_t pkts,
 			sa23 = vaddq_u64(sa23, vdupq_n_u64(sa_base));
 
 			const uint8x16_t tbl = {
-				0, 0, 0, 0, 0, 0, 0, 0,
+				/* ROC_IE_OT_UCC_SUCCESS_SA_SOFTEXP_FIRST */
+				0,
+				/* ROC_IE_OT_UCC_SUCCESS_PKT_IP_BADCSUM */
+				RTE_MBUF_F_RX_IP_CKSUM_BAD >> 1,
+				/* ROC_IE_OT_UCC_SUCCESS_SA_SOFTEXP_AGAIN */
+				0,
+				/* ROC_IE_OT_UCC_SUCCESS_PKT_L4_GOODCSUM */
+				(RTE_MBUF_F_RX_IP_CKSUM_GOOD |
+				 RTE_MBUF_F_RX_L4_CKSUM_GOOD) >> 1,
+				/* ROC_IE_OT_UCC_SUCCESS_PKT_L4_BADCSUM */
+				(RTE_MBUF_F_RX_IP_CKSUM_GOOD |
+				 RTE_MBUF_F_RX_L4_CKSUM_BAD) >> 1,
+				/* ROC_IE_OT_UCC_SUCCESS_PKT_UDPESP_NZCSUM */
+				(RTE_MBUF_F_RX_IP_CKSUM_GOOD |
+				 RTE_MBUF_F_RX_L4_CKSUM_GOOD) >> 1,
+				/* ROC_IE_OT_UCC_SUCCESS_PKT_UDP_ZEROCSUM */
+				(RTE_MBUF_F_RX_IP_CKSUM_GOOD |
+				 RTE_MBUF_F_RX_L4_CKSUM_GOOD) >> 1,
+				/* ROC_IE_OT_UCC_SUCCESS_PKT_IP_GOODCSUM */
+				RTE_MBUF_F_RX_IP_CKSUM_GOOD >> 1,
 				/* HW_CCODE -> RTE_MBUF_F_RX_SEC_OFFLOAD_FAILED */
 				1, 0, 1, 1, 1, 1, 0, 1,
 			};
@@ -1419,6 +1460,8 @@ cn10k_nix_recv_pkts_vector(void *args, struct rte_mbuf **mbufs, uint16_t pkts,
 				nix_sec_meta_to_mbuf(cq0_w1, cq0_w5, sa, cpth0,
 						     mbuf0, &f0, &ol_flags0,
 						     flags, &rearm0);
+				ol_flags0 |= ((uint64_t)vget_lane_u8(ucc, 0))
+					     << 1;
 				ol_flags0 |= (RTE_MBUF_F_RX_SEC_OFFLOAD |
 					(uint64_t)vget_lane_u8(ucc, 1) << 19);
 			}
@@ -1441,6 +1484,8 @@ cn10k_nix_recv_pkts_vector(void *args, struct rte_mbuf **mbufs, uint16_t pkts,
 				nix_sec_meta_to_mbuf(cq1_w1, cq1_w5, sa, cpth1,
 						     mbuf1, &f1, &ol_flags1,
 						     flags, &rearm1);
+				ol_flags1 |= ((uint64_t)vget_lane_u8(ucc, 2))
+					     << 1;
 				ol_flags1 |= (RTE_MBUF_F_RX_SEC_OFFLOAD |
 					(uint64_t)vget_lane_u8(ucc, 3) << 19);
 			}
@@ -1463,6 +1508,8 @@ cn10k_nix_recv_pkts_vector(void *args, struct rte_mbuf **mbufs, uint16_t pkts,
 				nix_sec_meta_to_mbuf(cq2_w1, cq2_w5, sa, cpth2,
 						     mbuf2, &f2, &ol_flags2,
 						     flags, &rearm2);
+				ol_flags2 |= ((uint64_t)vget_lane_u8(ucc, 4))
+					     << 1;
 				ol_flags2 |= (RTE_MBUF_F_RX_SEC_OFFLOAD |
 					(uint64_t)vget_lane_u8(ucc, 5) << 19);
 			}
@@ -1485,6 +1532,8 @@ cn10k_nix_recv_pkts_vector(void *args, struct rte_mbuf **mbufs, uint16_t pkts,
 				nix_sec_meta_to_mbuf(cq3_w1, cq3_w5, sa, cpth3,
 						     mbuf3, &f3, &ol_flags3,
 						     flags, &rearm3);
+				ol_flags3 |= ((uint64_t)vget_lane_u8(ucc, 6))
+					     << 1;
 				ol_flags3 |= (RTE_MBUF_F_RX_SEC_OFFLOAD |
 					(uint64_t)vget_lane_u8(ucc, 7) << 19);
 			}
