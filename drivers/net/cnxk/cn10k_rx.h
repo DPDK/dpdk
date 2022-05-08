@@ -486,10 +486,11 @@ cn10k_nix_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t pkts,
 	plt_write64((wdata | nb_pkts), rxq->cq_door);
 
 	/* Free remaining meta buffers if any */
-	if (flags & NIX_RX_OFFLOAD_SECURITY_F && loff) {
+	if (flags & NIX_RX_OFFLOAD_SECURITY_F && loff)
 		nix_sec_flush_meta(laddr, lmt_id + lnum, loff, aura_handle);
-		plt_io_wmb();
-	}
+
+	if (flags & NIX_RX_OFFLOAD_SECURITY_F)
+		rte_io_wmb();
 
 	return nb_pkts;
 }
