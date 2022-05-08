@@ -564,6 +564,7 @@ nix_tm_sq_flush_pre(struct roc_nix_sq *sq)
 	struct nix_tm_node *node, *sibling;
 	struct nix_tm_node_list *list;
 	enum roc_nix_tm_tree tree;
+	struct msg_req *req;
 	struct mbox *mbox;
 	struct nix *nix;
 	uint16_t qid;
@@ -653,6 +654,12 @@ nix_tm_sq_flush_pre(struct roc_nix_sq *sq)
 			rc);
 		goto cleanup;
 	}
+
+	req = mbox_alloc_msg_nix_rx_sw_sync(mbox);
+	if (!req)
+		return -ENOSPC;
+
+	rc = mbox_process(mbox);
 cleanup:
 	/* Restore cgx state */
 	if (!roc_nix->io_enabled) {

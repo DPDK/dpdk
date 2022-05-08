@@ -114,7 +114,7 @@ struct mbox_msghdr {
 	  msg_rsp)                                                             \
 	M(SSO_GRP_GET_PRIORITY, 0x606, sso_grp_get_priority, sso_info_req,     \
 	  sso_grp_priority)                                                    \
-	M(SSO_WS_CACHE_INV, 0x607, sso_ws_cache_inv, msg_req, msg_rsp)         \
+	M(SSO_WS_CACHE_INV, 0x607, sso_ws_cache_inv, ssow_lf_inv_req, msg_rsp) \
 	M(SSO_GRP_QOS_CONFIG, 0x608, sso_grp_qos_config, sso_grp_qos_cfg,      \
 	  msg_rsp)                                                             \
 	M(SSO_GRP_GET_STATS, 0x609, sso_grp_get_stats, sso_info_req,           \
@@ -123,6 +123,9 @@ struct mbox_msghdr {
 	  sso_hws_stats)                                                       \
 	M(SSO_HW_RELEASE_XAQ, 0x611, sso_hw_release_xaq_aura,                  \
 	  sso_hw_xaq_release, msg_rsp)                                         \
+	M(SSO_CONFIG_LSW, 0x612, ssow_config_lsw, ssow_config_lsw, msg_rsp)    \
+	M(SSO_HWS_CHNG_MSHIP, 0x613, ssow_chng_mship, ssow_chng_mship,         \
+	  msg_rsp)                                                             \
 	/* TIM mbox IDs (range 0x800 - 0x9FF) */                               \
 	M(TIM_LF_ALLOC, 0x800, tim_lf_alloc, tim_lf_alloc_req,                 \
 	  tim_lf_alloc_rsp)                                                    \
@@ -247,7 +250,8 @@ struct mbox_msghdr {
 	M(NIX_CPT_BP_ENABLE, 0x8020, nix_cpt_bp_enable, nix_bp_cfg_req,        \
 	  nix_bp_cfg_rsp)                                                      \
 	M(NIX_CPT_BP_DISABLE, 0x8021, nix_cpt_bp_disable, nix_bp_cfg_req,      \
-	  msg_rsp)
+	  msg_rsp)                                                             \
+	M(NIX_RX_SW_SYNC, 0x8022, nix_rx_sw_sync, msg_req, msg_rsp)
 
 /* Messages initiated by AF (range 0xC00 - 0xDFF) */
 #define MBOX_UP_CGX_MESSAGES                                                   \
@@ -1238,6 +1242,33 @@ struct ssow_lf_free_req {
 	struct mbox_msghdr hdr;
 	int __io node;
 	uint16_t __io hws;
+};
+
+#define SSOW_INVAL_SELECTIVE_VER 0x1000
+struct ssow_lf_inv_req {
+	struct mbox_msghdr hdr;
+	uint16_t nb_hws;		 /* Number of HWS to invalidate*/
+	uint16_t hws[MAX_RVU_BLKLF_CNT]; /* Array of HWS */
+};
+
+struct ssow_config_lsw {
+	struct mbox_msghdr hdr;
+#define SSOW_LSW_DIS	 0
+#define SSOW_LSW_GW_WAIT 1
+#define SSOW_LSW_GW_IMM	 2
+	uint8_t __io lsw_mode;
+#define SSOW_WQE_REL_LSW_WAIT 0
+#define SSOW_WQE_REL_IMM      1
+	uint8_t __io wqe_release;
+};
+
+struct ssow_chng_mship {
+	struct mbox_msghdr hdr;
+	uint8_t __io set;	 /* Membership set to modify. */
+	uint8_t __io enable;	 /* Enable/Disable the hwgrps. */
+	uint8_t __io hws;	 /* HWS to modify. */
+	uint16_t __io nb_hwgrps; /* Number of hwgrps in the array */
+	uint16_t __io hwgrps[MAX_RVU_BLKLF_CNT]; /* Array of hwgrps. */
 };
 
 struct sso_hw_setconfig {
