@@ -248,23 +248,29 @@ cn10k_nix_prep_sec_vec(struct rte_mbuf *m, uint64x2_t *cmd0, uint64x2_t *cmd1,
 	uint32_t pkt_len, dlen_adj, rlen;
 	uint8_t l3l4type, chksum;
 	uint64x2_t cmd01, cmd23;
+	uint8_t l2_len, l3_len;
 	uintptr_t dptr, nixtx;
 	uint64_t ucode_cmd[4];
 	uint64_t *laddr;
-	uint8_t l2_len;
 	uint16_t tag;
 	uint64_t sa;
 
 	sess_priv.u64 = *rte_security_dynfield(m);
 
 	if (flags & NIX_TX_NEED_SEND_HDR_W1) {
-		l2_len = vgetq_lane_u8(*cmd0, 8);
 		/* Extract l3l4type either from il3il4type or ol3ol4type */
 		if (flags & NIX_TX_OFFLOAD_L3_L4_CSUM_F &&
-		    flags & NIX_TX_OFFLOAD_OL3_OL4_CSUM_F)
+		    flags & NIX_TX_OFFLOAD_OL3_OL4_CSUM_F) {
+			l2_len = vgetq_lane_u8(*cmd0, 10);
+			/* L4 ptr from send hdr includes l2 and l3 len */
+			l3_len = vgetq_lane_u8(*cmd0, 11) - l2_len;
 			l3l4type = vgetq_lane_u8(*cmd0, 13);
-		else
+		} else {
+			l2_len = vgetq_lane_u8(*cmd0, 8);
+			/* L4 ptr from send hdr includes l2 and l3 len */
+			l3_len = vgetq_lane_u8(*cmd0, 9) - l2_len;
 			l3l4type = vgetq_lane_u8(*cmd0, 12);
+		}
 
 		chksum = (l3l4type & 0x1) << 1 | !!(l3l4type & 0x30);
 		chksum = ~chksum;
@@ -273,6 +279,7 @@ cn10k_nix_prep_sec_vec(struct rte_mbuf *m, uint64x2_t *cmd0, uint64x2_t *cmd1,
 		*cmd0 = vsetq_lane_u16(0, *cmd0, 6);
 	} else {
 		l2_len = m->l2_len;
+		l3_len = m->l3_len;
 	}
 
 	/* Retrieve DPTR */
@@ -281,6 +288,8 @@ cn10k_nix_prep_sec_vec(struct rte_mbuf *m, uint64x2_t *cmd0, uint64x2_t *cmd1,
 
 	/* Calculate dlen adj */
 	dlen_adj = pkt_len - l2_len;
+	/* Exclude l3 len from roundup for transport mode */
+	dlen_adj -= sess_priv.mode ? 0 : l3_len;
 	rlen = (dlen_adj + sess_priv.roundup_len) +
 	       (sess_priv.roundup_byte - 1);
 	rlen &= ~(uint64_t)(sess_priv.roundup_byte - 1);
@@ -360,10 +369,10 @@ cn10k_nix_prep_sec(struct rte_mbuf *m, uint64_t *cmd, uintptr_t *nixtx_addr,
 	uint8_t l3l4type, chksum;
 	uint64x2_t cmd01, cmd23;
 	union nix_send_sg_s *sg;
+	uint8_t l2_len, l3_len;
 	uintptr_t dptr, nixtx;
 	uint64_t ucode_cmd[4];
 	uint64_t *laddr;
-	uint8_t l2_len;
 	uint16_t tag;
 	uint64_t sa;
 
@@ -376,13 +385,19 @@ cn10k_nix_prep_sec(struct rte_mbuf *m, uint64_t *cmd, uintptr_t *nixtx_addr,
 		sg = (union nix_send_sg_s *)&cmd[2];
 
 	if (flags & NIX_TX_NEED_SEND_HDR_W1) {
-		l2_len = cmd[1] & 0xFF;
 		/* Extract l3l4type either from il3il4type or ol3ol4type */
 		if (flags & NIX_TX_OFFLOAD_L3_L4_CSUM_F &&
-		    flags & NIX_TX_OFFLOAD_OL3_OL4_CSUM_F)
+		    flags & NIX_TX_OFFLOAD_OL3_OL4_CSUM_F) {
+			l2_len = (cmd[1] >> 16) & 0xFF;
+			/* L4 ptr from send hdr includes l2 and l3 len */
+			l3_len = ((cmd[1] >> 24) & 0xFF) - l2_len;
 			l3l4type = (cmd[1] >> 40) & 0xFF;
-		else
+		} else {
+			l2_len = cmd[1] & 0xFF;
+			/* L4 ptr from send hdr includes l2 and l3 len */
+			l3_len = ((cmd[1] >> 8) & 0xFF) - l2_len;
 			l3l4type = (cmd[1] >> 32) & 0xFF;
+		}
 
 		chksum = (l3l4type & 0x1) << 1 | !!(l3l4type & 0x30);
 		chksum = ~chksum;
@@ -391,6 +406,7 @@ cn10k_nix_prep_sec(struct rte_mbuf *m, uint64_t *cmd, uintptr_t *nixtx_addr,
 		cmd[1] &= ~(0xFFFFUL << 32);
 	} else {
 		l2_len = m->l2_len;
+		l3_len = m->l3_len;
 	}
 
 	/* Retrieve DPTR */
@@ -399,6 +415,8 @@ cn10k_nix_prep_sec(struct rte_mbuf *m, uint64_t *cmd, uintptr_t *nixtx_addr,
 
 	/* Calculate dlen adj */
 	dlen_adj = pkt_len - l2_len;
+	/* Exclude l3 len from roundup for transport mode */
+	dlen_adj -= sess_priv.mode ? 0 : l3_len;
 	rlen = (dlen_adj + sess_priv.roundup_len) +
 	       (sess_priv.roundup_byte - 1);
 	rlen &= ~(uint64_t)(sess_priv.roundup_byte - 1);
