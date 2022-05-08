@@ -231,7 +231,7 @@ roc_nix_inl_inb_sa_get(struct roc_nix *roc_nix, bool inb_inl_dev, uint32_t spi)
 	mask = roc_nix_inl_inb_spi_range(roc_nix, inb_inl_dev, &min_spi,
 					 &max_spi);
 	if (spi > max_spi || spi < min_spi)
-		plt_warn("Inbound SA SPI %u not in range (%u..%u)", spi,
+		plt_nix_dbg("Inbound SA SPI %u not in range (%u..%u)", spi,
 			 min_spi, max_spi);
 
 	/* Basic logic of SPI->SA for now */
