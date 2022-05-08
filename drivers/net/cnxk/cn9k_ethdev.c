@@ -241,6 +241,17 @@ cn9k_nix_rx_queue_setup(struct rte_eth_dev *eth_dev, uint16_t qid,
 	if (rc)
 		return rc;
 
+	/* Do initial mtu setup for RQ0 before device start */
+	if (!qid) {
+		rc = nix_recalc_mtu(eth_dev);
+		if (rc)
+			return rc;
+
+		/* Update offload flags */
+		dev->rx_offload_flags = nix_rx_offload_flags(eth_dev);
+		dev->tx_offload_flags = nix_tx_offload_flags(eth_dev);
+	}
+
 	rq = &dev->rqs[qid];
 	cq = &dev->cqs[qid];
 
