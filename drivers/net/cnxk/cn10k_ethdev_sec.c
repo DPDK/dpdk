@@ -543,10 +543,11 @@ cn10k_eth_sec_session_create(void *device,
 			goto mempool_put;
 		}
 
-		iv_str = getenv("CN10K_ETH_SEC_IV_OVR");
-		if (iv_str)
-			outb_dbg_iv_update(outb_sa_dptr, iv_str);
-
+		if (conf->ipsec.options.iv_gen_disable == 1) {
+			iv_str = getenv("ETH_SEC_IV_OVR");
+			if (iv_str)
+				outb_dbg_iv_update(outb_sa_dptr, iv_str);
+		}
 		/* Fill outbound sa misc params */
 		rc = cn10k_eth_sec_outb_sa_misc_fill(&dev->nix, outb_sa_dptr,
 						     outb_sa, ipsec, sa_idx);
