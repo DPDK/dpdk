@@ -174,6 +174,8 @@ int __roc_api roc_nix_inl_inb_tag_update(struct roc_nix *roc_nix,
 uint64_t __roc_api roc_nix_inl_dev_rq_limit_get(void);
 int __roc_api roc_nix_reassembly_configure(uint32_t max_wait_time,
 					uint16_t max_frags);
+int __roc_api roc_nix_inl_ts_pkind_set(struct roc_nix *roc_nix, bool ts_ena,
+				       bool inb_inl_dev);
 
 /* NIX Inline Outbound API */
 int __roc_api roc_nix_inl_outb_init(struct roc_nix *roc_nix);

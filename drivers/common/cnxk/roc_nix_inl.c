@@ -1016,6 +1016,65 @@ roc_nix_inl_ctx_write(struct roc_nix *roc_nix, void *sa_dptr, void *sa_cptr,
 	return -ENOTSUP;
 }
 
+int
+roc_nix_inl_ts_pkind_set(struct roc_nix *roc_nix, bool ts_ena, bool inb_inl_dev)
+{
+	struct idev_cfg *idev = idev_get_cfg();
+	struct nix_inl_dev *inl_dev = NULL;
+	void *sa, *sa_base = NULL;
+	struct nix *nix = NULL;
+	uint16_t max_spi = 0;
+	uint8_t pkind = 0;
+	int i;
+
+	if (roc_model_is_cn9k())
+		return 0;
+
+	if (!inb_inl_dev && (roc_nix == NULL))
+		return -EINVAL;
+
+	if (inb_inl_dev) {
+		if ((idev == NULL) || (idev->nix_inl_dev == NULL))
+			return 0;
+		inl_dev = idev->nix_inl_dev;
+	} else {
+		nix = roc_nix_to_nix_priv(roc_nix);
+		if (!nix->inl_inb_ena)
+			return 0;
+		sa_base = nix->inb_sa_base;
+		max_spi = roc_nix->ipsec_in_max_spi;
+	}
+
+	if (inl_dev) {
+		if (inl_dev->rq_refs == 0) {
+			inl_dev->ts_ena = ts_ena;
+			max_spi = inl_dev->ipsec_in_max_spi;
+			sa_base = inl_dev->inb_sa_base;
+		} else if (inl_dev->ts_ena != ts_ena) {
+			if (inl_dev->ts_ena)
+				plt_err("Inline device is already configured with TS enable");
+			else
+				plt_err("Inline device is already configured with TS disable");
+			return -ENOTSUP;
+		} else {
+			return 0;
+		}
+	}
+
+	pkind = ts_ena ? ROC_IE_OT_CPT_TS_PKIND : ROC_IE_OT_CPT_PKIND;
+
+	sa = (uint8_t *)sa_base;
+	if (pkind == ((struct roc_ot_ipsec_inb_sa *)sa)->w0.s.pkind)
+		return 0;
+
+	for (i = 0; i < max_spi; i++) {
+		sa = ((uint8_t *)sa_base) +
+		     (i * ROC_NIX_INL_OT_IPSEC_INB_SA_SZ);
+		((struct roc_ot_ipsec_inb_sa *)sa)->w0.s.pkind = pkind;
+	}
+	return 0;
+}
+
 void
 roc_nix_inl_dev_lock(void)
 {

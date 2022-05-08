@@ -76,6 +76,7 @@ struct nix_inl_dev {
 	uint32_t inb_spi_mask;
 	bool attach_cptlf;
 	bool wqe_skip;
+	bool ts_ena;
 };
 
 int nix_inl_sso_register_irqs(struct nix_inl_dev *inl_dev);

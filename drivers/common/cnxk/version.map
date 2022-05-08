@@ -159,6 +159,7 @@ INTERNAL {
 	roc_nix_inl_outb_is_enabled;
 	roc_nix_inl_outb_soft_exp_poll_switch;
 	roc_nix_inl_sa_sync;
+	roc_nix_inl_ts_pkind_set;
 	roc_nix_inl_ctx_write;
 	roc_nix_inl_dev_pffunc_get;
 	roc_nix_cpt_ctx_cache_sync;
