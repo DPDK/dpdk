@@ -55,7 +55,7 @@ nix_tm_node_reg_conf(struct nix *nix, struct nix_tm_node *node)
 		req = mbox_alloc_msg_nix_txschq_cfg(mbox);
 		req->lvl = NIX_TXSCH_LVL_TL1;
 
-		k = nix_tm_tl1_default_prep(node->parent_hw_id, req->reg,
+		k = nix_tm_tl1_default_prep(nix, node->parent_hw_id, req->reg,
 					    req->regval);
 		req->num_regs = k;
 		rc = mbox_process(mbox);
@@ -1288,6 +1288,7 @@ nix_tm_alloc_txschq(struct nix *nix, enum roc_nix_tm_tree tree)
 	} while (pend);
 
 	nix->tm_link_cfg_lvl = rsp->link_cfg_lvl;
+	nix->tm_aggr_lvl_rr_prio = rsp->aggr_lvl_rr_prio;
 	return 0;
 alloc_err:
 	for (i = 0; i < NIX_TXSCH_LVL_CNT; i++) {

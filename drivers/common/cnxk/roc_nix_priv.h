@@ -181,6 +181,7 @@ struct nix {
 	uint16_t tm_root_lvl;
 	uint16_t tm_flags;
 	uint16_t tm_link_cfg_lvl;
+	uint8_t tm_aggr_lvl_rr_prio;
 	uint16_t contig_rsvd[NIX_TXSCH_LVL_CNT];
 	uint16_t discontig_rsvd[NIX_TXSCH_LVL_CNT];
 	uint64_t tm_markfmt_en;
@@ -284,7 +285,6 @@ void nix_unregister_irqs(struct nix *nix);
 
 /* Default TL1 priority and Quantum from AF */
 #define NIX_TM_TL1_DFLT_RR_QTM	((1 << 24) - 1)
-#define NIX_TM_TL1_DFLT_RR_PRIO 1
 
 struct nix_tm_shaper_data {
 	uint64_t burst_exponent;
@@ -432,7 +432,8 @@ bool nix_tm_child_res_valid(struct nix_tm_node_list *list,
 			    struct nix_tm_node *parent);
 uint16_t nix_tm_resource_estimate(struct nix *nix, uint16_t *schq_contig,
 				  uint16_t *schq, enum roc_nix_tm_tree tree);
-uint8_t nix_tm_tl1_default_prep(uint32_t schq, volatile uint64_t *reg,
+uint8_t nix_tm_tl1_default_prep(struct nix *nix, uint32_t schq,
+				volatile uint64_t *reg,
 				volatile uint64_t *regval);
 uint8_t nix_tm_topology_reg_prep(struct nix *nix, struct nix_tm_node *node,
 				 volatile uint64_t *reg,
