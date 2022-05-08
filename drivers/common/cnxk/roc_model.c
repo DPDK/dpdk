@@ -2,6 +2,9 @@
  * Copyright(C) 2021 Marvell.
  */
 
+#include <fcntl.h>
+#include <unistd.h>
+
 #include "roc_api.h"
 #include "roc_priv.h"
 
@@ -206,6 +209,12 @@ of_env_get(struct roc_model *model)
 	const char *const path = "/proc/device-tree/soc@0/runplatform";
 	uint64_t flag;
 	FILE *fp;
+
+	if (access(path, F_OK) != 0) {
+		strncpy(model->env, "HW_PLATFORM", ROC_MODEL_STR_LEN_MAX - 1);
+		model->flag |= ROC_ENV_HW;
+		return;
+	}
 
 	fp = fopen(path, "r");
 	if (!fp) {
