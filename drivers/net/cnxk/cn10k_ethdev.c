@@ -547,6 +547,12 @@ cn10k_nix_reassembly_conf_set(struct rte_eth_dev *eth_dev,
 	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
 	int rc = 0;
 
+	if (!conf->flags) {
+		/* Clear offload flags on disable */
+		dev->rx_offload_flags &= ~NIX_RX_REAS_F;
+		return 0;
+	}
+
 	rc = roc_nix_reassembly_configure(conf->timeout_ms,
 				conf->max_frags);
 	if (!rc && dev->rx_offloads & RTE_ETH_RX_OFFLOAD_SECURITY)
