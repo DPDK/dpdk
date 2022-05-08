@@ -321,6 +321,9 @@ struct cnxk_eth_dev_sec_outb {
 	/* Crypto queues => CPT lf count */
 	uint16_t nb_crypto_qs;
 
+	/* FC sw mem */
+	uint64_t *fc_sw_mem;
+
 	/* Active sessions */
 	uint16_t nb_sess;
 

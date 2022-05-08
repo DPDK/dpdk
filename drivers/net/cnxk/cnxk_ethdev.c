@@ -155,9 +155,19 @@ nix_security_setup(struct cnxk_eth_dev *dev)
 		dev->outb.sa_base = roc_nix_inl_outb_sa_base_get(nix);
 		dev->outb.sa_bmap_mem = mem;
 		dev->outb.sa_bmap = bmap;
+
+		dev->outb.fc_sw_mem = plt_zmalloc(dev->outb.nb_crypto_qs *
+							  RTE_CACHE_LINE_SIZE,
+						  RTE_CACHE_LINE_SIZE);
+		if (!dev->outb.fc_sw_mem) {
+			plt_err("Outbound fc sw mem alloc failed");
+			goto sa_bmap_free;
+		}
 	}
 	return 0;
 
+sa_bmap_free:
+	plt_free(dev->outb.sa_bmap_mem);
 sa_dptr_free:
 	if (dev->inb.sa_dptr)
 		plt_free(dev->inb.sa_dptr);
@@ -253,6 +263,9 @@ nix_security_release(struct cnxk_eth_dev *dev)
 			plt_free(dev->outb.sa_dptr);
 			dev->outb.sa_dptr = NULL;
 		}
+
+		plt_free(dev->outb.fc_sw_mem);
+		dev->outb.fc_sw_mem = NULL;
 	}
 
 	dev->inb.inl_dev = false;

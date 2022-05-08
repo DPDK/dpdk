@@ -209,6 +209,37 @@ cn10k_nix_tx_skeleton(struct cn10k_eth_txq *txq, uint64_t *cmd,
 }
 
 static __rte_always_inline void
+cn10k_nix_sec_fc_wait(struct cn10k_eth_txq *txq, uint16_t nb_pkts)
+{
+	int32_t nb_desc, val, newval;
+	int32_t *fc_sw;
+	volatile uint64_t *fc;
+
+	/* Check if there is any CPT instruction to submit */
+	if (!nb_pkts)
+		return;
+
+again:
+	fc_sw = txq->cpt_fc_sw;
+	val = __atomic_sub_fetch(fc_sw, nb_pkts, __ATOMIC_RELAXED);
+	if (likely(val >= 0))
+		return;
+
+	nb_desc = txq->cpt_desc;
+	fc = txq->cpt_fc;
+	while (true) {
+		newval = nb_desc - __atomic_load_n(fc, __ATOMIC_RELAXED);
+		newval -= nb_pkts;
+		if (newval >= 0)
+			break;
+	}
+
+	if (!__atomic_compare_exchange_n(fc_sw, &val, newval, false,
+					 __ATOMIC_RELAXED, __ATOMIC_RELAXED))
+		goto again;
+}
+
+static __rte_always_inline void
 cn10k_nix_sec_steorl(uintptr_t io_addr, uint32_t lmt_id, uint8_t lnum,
 		     uint8_t loff, uint8_t shft)
 {
@@ -995,6 +1026,7 @@ again:
 	if (flags & NIX_TX_OFFLOAD_SECURITY_F) {
 		/* Reduce pkts to be sent to CPT */
 		burst -= ((c_lnum << 1) + c_loff);
+		cn10k_nix_sec_fc_wait(txq, (c_lnum << 1) + c_loff);
 		cn10k_nix_sec_steorl(c_io_addr, c_lmt_id, c_lnum, c_loff,
 				     c_shft);
 	}
@@ -1138,6 +1170,7 @@ again:
 	if (flags & NIX_TX_OFFLOAD_SECURITY_F) {
 		/* Reduce pkts to be sent to CPT */
 		burst -= ((c_lnum << 1) + c_loff);
+		cn10k_nix_sec_fc_wait(txq, (c_lnum << 1) + c_loff);
 		cn10k_nix_sec_steorl(c_io_addr, c_lmt_id, c_lnum, c_loff,
 				     c_shft);
 	}
@@ -2682,9 +2715,11 @@ again:
 	left -= burst;
 
 	/* Submit CPT instructions if any */
-	if (flags & NIX_TX_OFFLOAD_SECURITY_F)
+	if (flags & NIX_TX_OFFLOAD_SECURITY_F) {
+		cn10k_nix_sec_fc_wait(txq, (c_lnum << 1) + c_loff);
 		cn10k_nix_sec_steorl(c_io_addr, c_lmt_id, c_lnum, c_loff,
 				     c_shft);
+	}
 
 	/* Trigger LMTST */
 	if (lnum > 16) {
