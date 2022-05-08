@@ -15,6 +15,7 @@
 #define ROC_IE_OT_CTX_ILEN 2
 /* PKIND to be used for CPT Meta parsing */
 #define ROC_IE_OT_CPT_PKIND	  58
+#define ROC_IE_OT_CPT_TS_PKIND	  54
 #define ROC_IE_OT_SA_CTX_HDR_SIZE 1
 
 enum roc_ie_ot_ucc_ipsec {
