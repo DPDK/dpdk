@@ -885,14 +885,15 @@ Unsuitable IOVA mode may be picked as the default
 **Driver/Module**:
    ALL.
 
-Vhost multi-queue reconnection failed with QEMU version >= 4.2.0
-----------------------------------------------------------------
+Vhost multi-queue reconnection failed with QEMU version 4.2.0 to 5.1.0
+----------------------------------------------------------------------
 
 **Description**
    It's a QEMU regression bug (bad commit: c6beefd674ff). QEMU only saves
    acked features for one vhost-net when vhost quits. When vhost reconnects
    to virtio-net/virtio-pmd in multi-queue situations, the features been
-   set multiple times are not consistent.
+   set multiple times are not consistent. QEMU-5.2.0 fixes this issue in commit
+   f66337bdbfda ("vhost-user: save features of multiqueues if chardev is closed").
 
 **Implication**
    Vhost cannot reconnect back to virtio-net/virtio-pmd normally.
