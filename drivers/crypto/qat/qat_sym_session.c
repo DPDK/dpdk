@@ -2,6 +2,8 @@
  * Copyright(c) 2015-2019 Intel Corporation
  */
 
+#define OPENSSL_API_COMPAT 0x10100000L
+
 #include <openssl/sha.h>	/* Needed to calculate pre-compute values */
 #include <openssl/aes.h>	/* Needed to calculate pre-compute values */
 #include <openssl/md5.h>	/* Needed to calculate pre-compute values */

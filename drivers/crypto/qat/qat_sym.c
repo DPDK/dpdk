@@ -2,6 +2,8 @@
  * Copyright(c) 2015-2019 Intel Corporation
  */
 
+#define OPENSSL_API_COMPAT 0x10100000L
+
 #include <openssl/evp.h>
 
 #include <rte_mempool.h>
