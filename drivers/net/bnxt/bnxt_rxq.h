@@ -40,7 +40,7 @@ struct bnxt_rx_queue {
 	struct bnxt_rx_ring_info	*rx_ring;
 	struct bnxt_cp_ring_info	*cp_ring;
 	struct rte_mbuf			fake_mbuf;
-	rte_atomic64_t		rx_mbuf_alloc_fail;
+	uint64_t			rx_mbuf_alloc_fail;
 	const struct rte_memzone *mz;
 };
 

@@ -392,7 +392,7 @@ int bnxt_rx_queue_setup_op(struct rte_eth_dev *eth_dev,
 			    "ring_dma_zone_reserve for rx_ring failed!\n");
 		goto err;
 	}
-	rte_atomic64_init(&rxq->rx_mbuf_alloc_fail);
+	rxq->rx_mbuf_alloc_fail = 0;
 
 	/* rxq 0 must not be stopped when used as async CPR */
 	if (!BNXT_NUM_ASYNC_CPR(bp) && queue_idx == 0)

@@ -578,7 +578,7 @@ int bnxt_stats_get_op(struct rte_eth_dev *eth_dev,
 
 		bnxt_fill_rte_eth_stats(bnxt_stats, &ring_stats, i, true);
 		bnxt_stats->rx_nombuf +=
-				rte_atomic64_read(&rxq->rx_mbuf_alloc_fail);
+				__atomic_load_n(&rxq->rx_mbuf_alloc_fail, __ATOMIC_RELAXED);
 	}
 
 	num_q_stats = RTE_MIN(bp->tx_cp_nr_rings,
@@ -632,7 +632,7 @@ int bnxt_stats_reset_op(struct rte_eth_dev *eth_dev)
 	for (i = 0; i < bp->rx_cp_nr_rings; i++) {
 		struct bnxt_rx_queue *rxq = bp->rx_queues[i];
 
-		rte_atomic64_clear(&rxq->rx_mbuf_alloc_fail);
+		rxq->rx_mbuf_alloc_fail = 0;
 	}
 
 	bnxt_clear_prev_stat(bp);
