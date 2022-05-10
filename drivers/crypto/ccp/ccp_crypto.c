@@ -2,6 +2,8 @@
  *   Copyright(c) 2018 Advanced Micro Devices, Inc. All rights reserved.
  */
 
+#define OPENSSL_API_COMPAT 0x10100000L
+
 #include <dirent.h>
 #include <fcntl.h>
 #include <stdio.h>
