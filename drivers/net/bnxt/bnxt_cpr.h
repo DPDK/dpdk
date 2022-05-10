@@ -39,23 +39,9 @@ struct bnxt_db_info;
 #define B_CP_DB_DISARM(cpr)	(*(uint32_t *)((cpr)->cp_db.doorbell) = \
 				 DB_KEY_CP | DB_IRQ_DIS)
 
-#define B_CP_DB_IDX_ARM(cpr, cons)					\
-		(*(uint32_t *)((cpr)->cp_db.doorbell) = (DB_CP_REARM_FLAGS | \
-				(cons)))
-
-#define B_CP_DB_IDX_DISARM(cpr, cons)	do {				\
-		rte_smp_wmb();						\
-		(*(uint32_t *)((cpr)->cp_db.doorbell) = (DB_CP_FLAGS |	\
-				(cons));				\
-} while (0)
 #define B_CP_DIS_DB(cpr, raw_cons)					\
 	rte_write32_relaxed((DB_CP_FLAGS |				\
 		    DB_RING_IDX(&((cpr)->cp_db), raw_cons)),		\
-		    ((cpr)->cp_db.doorbell))
-
-#define B_CP_DB(cpr, raw_cons, ring_mask)				\
-	rte_write32((DB_CP_FLAGS |					\
-		    RING_CMPL((ring_mask), raw_cons)),	\
 		    ((cpr)->cp_db.doorbell))
 
 struct bnxt_db_info {
