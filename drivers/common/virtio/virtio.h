@@ -102,6 +102,15 @@
 /* The alignment to use between consumer and producer parts of vring. */
 #define VIRTIO_VRING_ALIGN 4096
 
+struct virtadmin_ctl {
+	/**< memzone to populate hdr. */
+	const struct rte_memzone *virtio_admin_hdr_mz;
+	rte_iova_t virtio_admin_hdr_mem;/**< hdr for each xmit packet */
+	uint16_t port_id;	       /**< Device port identifier. */
+	const struct rte_memzone *mz;   /**< mem zone to populate CTL ring. */
+	rte_spinlock_t lock;	    /**< spinlock for control queue. */
+};
+
 struct virtio_hw {
 	struct virtqueue **vqs;
 	uint64_t guest_features;
@@ -110,6 +119,7 @@ struct virtio_hw {
 	uint16_t max_queue_pairs;
 	uint16_t num_queues_blk;
 	struct virtnet_ctl *cvq;
+	struct virtadmin_ctl *avq;
 	struct rte_pci_device *pci_dev;
 	const struct virtio_ops *virtio_ops;
 	const struct virtio_dev_specific_ops *virtio_dev_sp_ops;

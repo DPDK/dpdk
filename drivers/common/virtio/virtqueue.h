@@ -110,7 +110,7 @@ virtqueue_store_flags_packed(struct vring_packed_desc *dp,
 #define VTNET_SQ_TQ_QUEUE_IDX 1
 #define VTNET_SQ_CQ_QUEUE_IDX 2
 
-enum { VTNET_RQ = 0, VTNET_TQ = 1, VTNET_CQ = 2 };
+enum { VTNET_RQ = 0, VTNET_TQ = 1, VTNET_CQ = 2, VTNET_AQ = 3 };
 /**
  * The maximum virtqueue size is 2^15. Use that value as the end of
  * descriptor chain terminator since it will never be a valid index
@@ -235,6 +235,7 @@ struct vq_desc_extra {
 #define virtnet_rxq_to_vq(rxvq) container_of(rxvq, struct virtqueue, rxq)
 #define virtnet_txq_to_vq(txvq) container_of(txvq, struct virtqueue, txq)
 #define virtnet_cq_to_vq(cvq) container_of(cvq, struct virtqueue, cq)
+#define virtnet_aq_to_vq(avq) container_of(avq, struct virtqueue, aq)
 
 struct virtqueue {
 	struct virtio_hw  *hw; /**< virtio_hw structure pointer. */
@@ -270,6 +271,8 @@ struct virtqueue {
 
 	void *vq_ring_virt_mem;  /**< linear address of vring*/
 	unsigned int vq_ring_size;
+
+	struct virtadmin_ctl aq;
 
 	rte_iova_t vq_ring_mem; /**< physical address of vring,
 	                         * or virtual address for virtio_user. */
