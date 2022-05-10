@@ -45,6 +45,8 @@ static const struct vhost_vq_stats_name_off vhost_vq_stat_strings[] = {
 	{"guest_notifications",    offsetof(struct vhost_virtqueue, stats.guest_notifications)},
 	{"iotlb_hits",             offsetof(struct vhost_virtqueue, stats.iotlb_hits)},
 	{"iotlb_misses",           offsetof(struct vhost_virtqueue, stats.iotlb_misses)},
+	{"inflight_submitted",     offsetof(struct vhost_virtqueue, stats.inflight_submitted)},
+	{"inflight_completed",     offsetof(struct vhost_virtqueue, stats.inflight_completed)},
 };
 
 #define VHOST_NB_VQ_STATS RTE_DIM(vhost_vq_stat_strings)

@@ -136,6 +136,8 @@ struct virtqueue_stats {
 	uint64_t guest_notifications;
 	uint64_t iotlb_hits;
 	uint64_t iotlb_misses;
+	uint64_t inflight_submitted;
+	uint64_t inflight_completed;
 };
 
 /**

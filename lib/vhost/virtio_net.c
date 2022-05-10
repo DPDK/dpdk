@@ -2115,6 +2115,7 @@ rte_vhost_poll_enqueue_completed(int vid, uint16_t queue_id,
 	n_pkts_cpl = vhost_poll_enqueue_completed(dev, queue_id, pkts, count, dma_id, vchan_id);
 
 	vhost_queue_stats_update(dev, vq, pkts, n_pkts_cpl);
+	vq->stats.inflight_completed += n_pkts_cpl;
 
 out:
 	rte_spinlock_unlock(&vq->access_lock);
@@ -2157,6 +2158,9 @@ rte_vhost_clear_queue_thread_unsafe(int vid, uint16_t queue_id,
 	}
 
 	n_pkts_cpl = vhost_poll_enqueue_completed(dev, queue_id, pkts, count, dma_id, vchan_id);
+
+	vhost_queue_stats_update(dev, vq, pkts, n_pkts_cpl);
+	vq->stats.inflight_completed += n_pkts_cpl;
 
 	return n_pkts_cpl;
 }
@@ -2206,6 +2210,8 @@ virtio_dev_rx_async_submit(struct virtio_net *dev, uint16_t queue_id,
 	else
 		nb_tx = virtio_dev_rx_async_submit_split(dev, vq, queue_id,
 				pkts, count, dma_id, vchan_id);
+
+	vq->stats.inflight_submitted += nb_tx;
 
 out:
 	if (dev->features & (1ULL << VIRTIO_F_IOMMU_PLATFORM))
