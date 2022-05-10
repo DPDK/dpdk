@@ -37,6 +37,8 @@
 #define VIRTIO_DEV_FEATURES_FAILED ((uint32_t)1 << 4)
 /* Used to indicate that the virtio_net tx code should fill TX ol_flags */
 #define VIRTIO_DEV_LEGACY_OL_FLAGS ((uint32_t)1 << 5)
+/*  Used to indicate the application has requested statistics collection */
+#define VIRTIO_DEV_STATS_ENABLED ((uint32_t)1 << 6)
 
 /* Backend value set by guest. */
 #define VIRTIO_DEV_STOPPED -1
@@ -119,6 +121,18 @@ struct vring_used_elem_packed {
 	uint16_t flags;
 	uint32_t len;
 	uint32_t count;
+};
+
+/**
+ * Virtqueue statistics
+ */
+struct virtqueue_stats {
+	uint64_t packets;
+	uint64_t bytes;
+	uint64_t multicast;
+	uint64_t broadcast;
+	/* Size bins in array as RFC 2819, undersized [0], 64 [1], etc */
+	uint64_t size_bins[8];
 };
 
 /**
@@ -305,6 +319,7 @@ struct vhost_virtqueue {
 #define VIRTIO_UNINITIALIZED_NOTIF	(-1)
 
 	struct vhost_vring_addr ring_addrs;
+	struct virtqueue_stats	stats;
 } __rte_cache_aligned;
 
 /* Virtio device status as per Virtio specification */
@@ -780,7 +795,7 @@ int alloc_vring_queue(struct virtio_net *dev, uint32_t vring_idx);
 void vhost_attach_vdpa_device(int vid, struct rte_vdpa_device *dev);
 
 void vhost_set_ifname(int, const char *if_name, unsigned int if_len);
-void vhost_setup_virtio_net(int vid, bool enable, bool legacy_ol_flags);
+void vhost_setup_virtio_net(int vid, bool enable, bool legacy_ol_flags, bool stats_enabled);
 void vhost_enable_extbuf(int vid);
 void vhost_enable_linearbuf(int vid);
 int vhost_enable_guest_notification(struct virtio_net *dev,
@@ -957,5 +972,4 @@ mbuf_is_consumed(struct rte_mbuf *m)
 
 	return true;
 }
-
 #endif /* _VHOST_NET_CDEV_H_ */

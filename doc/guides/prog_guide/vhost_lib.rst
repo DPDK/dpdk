@@ -130,6 +130,15 @@ The following is an overview of some key Vhost API functions:
 
     It is disabled by default.
 
+  - ``RTE_VHOST_USER_NET_STATS_ENABLE``
+
+  Per-virtqueue statistics collection will be enabled when this flag is set.
+  When enabled, the application may use rte_vhost_stats_get_names() and
+  rte_vhost_stats_get() to collect statistics, and rte_vhost_stats_reset() to
+  reset them.
+
+  It is disabled by default
+
 * ``rte_vhost_driver_set_features(path, features)``
 
   This function sets the feature bits the vhost-user driver supports. The
@@ -281,6 +290,21 @@ The following is an overview of some key Vhost API functions:
 
   Clear inflight packets which are submitted to DMA engine in vhost async data
   path. Completed packets are returned to applications through ``pkts``.
+
+* ``rte_vhost_vring_stats_get_names(int vid, uint16_t queue_id, struct rte_vhost_stat_name *names, unsigned int size)``
+
+  This function returns the names of the queue statistics. It requires
+  statistics collection to be enabled at registration time.
+
+* ``rte_vhost_vring_stats_get(int vid, uint16_t queue_id, struct rte_vhost_stat *stats, unsigned int n)``
+
+  This function returns the queue statistics. It requires statistics
+  collection to be enabled at registration time.
+
+* ``rte_vhost_vring_stats_reset(int vid, uint16_t queue_id)``
+
+  This function resets the queue statistics. It requires statistics
+  collection to be enabled at registration time.
 
 Vhost-user Implementations
 --------------------------

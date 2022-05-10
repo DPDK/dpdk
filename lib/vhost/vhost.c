@@ -24,6 +24,28 @@
 struct virtio_net *vhost_devices[RTE_MAX_VHOST_DEVICE];
 pthread_mutex_t vhost_dev_lock = PTHREAD_MUTEX_INITIALIZER;
 
+struct vhost_vq_stats_name_off {
+	char name[RTE_VHOST_STATS_NAME_SIZE];
+	unsigned int offset;
+};
+
+static const struct vhost_vq_stats_name_off vhost_vq_stat_strings[] = {
+	{"good_packets",           offsetof(struct vhost_virtqueue, stats.packets)},
+	{"good_bytes",             offsetof(struct vhost_virtqueue, stats.bytes)},
+	{"multicast_packets",      offsetof(struct vhost_virtqueue, stats.multicast)},
+	{"broadcast_packets",      offsetof(struct vhost_virtqueue, stats.broadcast)},
+	{"undersize_packets",      offsetof(struct vhost_virtqueue, stats.size_bins[0])},
+	{"size_64_packets",        offsetof(struct vhost_virtqueue, stats.size_bins[1])},
+	{"size_65_127_packets",    offsetof(struct vhost_virtqueue, stats.size_bins[2])},
+	{"size_128_255_packets",   offsetof(struct vhost_virtqueue, stats.size_bins[3])},
+	{"size_256_511_packets",   offsetof(struct vhost_virtqueue, stats.size_bins[4])},
+	{"size_512_1023_packets",  offsetof(struct vhost_virtqueue, stats.size_bins[5])},
+	{"size_1024_1518_packets", offsetof(struct vhost_virtqueue, stats.size_bins[6])},
+	{"size_1519_max_packets",  offsetof(struct vhost_virtqueue, stats.size_bins[7])},
+};
+
+#define VHOST_NB_VQ_STATS RTE_DIM(vhost_vq_stat_strings)
+
 /* Called with iotlb_lock read-locked */
 uint64_t
 __vhost_iova_to_vva(struct virtio_net *dev, struct vhost_virtqueue *vq,
@@ -755,7 +777,7 @@ vhost_set_ifname(int vid, const char *if_name, unsigned int if_len)
 }
 
 void
-vhost_setup_virtio_net(int vid, bool enable, bool compliant_ol_flags)
+vhost_setup_virtio_net(int vid, bool enable, bool compliant_ol_flags, bool stats_enabled)
 {
 	struct virtio_net *dev = get_device(vid);
 
@@ -770,6 +792,10 @@ vhost_setup_virtio_net(int vid, bool enable, bool compliant_ol_flags)
 		dev->flags |= VIRTIO_DEV_LEGACY_OL_FLAGS;
 	else
 		dev->flags &= ~VIRTIO_DEV_LEGACY_OL_FLAGS;
+	if (stats_enabled)
+		dev->flags |= VIRTIO_DEV_STATS_ENABLED;
+	else
+		dev->flags &= ~VIRTIO_DEV_STATS_ENABLED;
 }
 
 void
@@ -1962,6 +1988,90 @@ rte_vhost_get_monitor_addr(int vid, uint16_t queue_id,
 		pmc->size = sizeof(vq->avail->idx);
 		pmc->match = 0;
 	}
+
+	return 0;
+}
+
+
+int
+rte_vhost_vring_stats_get_names(int vid, uint16_t queue_id,
+		struct rte_vhost_stat_name *name, unsigned int size)
+{
+	struct virtio_net *dev = get_device(vid);
+	unsigned int i;
+
+	if (dev == NULL)
+		return -1;
+
+	if (queue_id >= dev->nr_vring)
+		return -1;
+
+	if (!(dev->flags & VIRTIO_DEV_STATS_ENABLED))
+		return -1;
+
+	if (name == NULL || size < VHOST_NB_VQ_STATS)
+		return VHOST_NB_VQ_STATS;
+
+	for (i = 0; i < VHOST_NB_VQ_STATS; i++)
+		snprintf(name[i].name, sizeof(name[i].name), "%s_q%u_%s",
+				(queue_id & 1) ? "rx" : "tx",
+				queue_id / 2, vhost_vq_stat_strings[i].name);
+
+	return VHOST_NB_VQ_STATS;
+}
+
+int
+rte_vhost_vring_stats_get(int vid, uint16_t queue_id,
+		struct rte_vhost_stat *stats, unsigned int n)
+{
+	struct virtio_net *dev = get_device(vid);
+	struct vhost_virtqueue *vq;
+	unsigned int i;
+
+	if (dev == NULL)
+		return -1;
+
+	if (queue_id >= dev->nr_vring)
+		return -1;
+
+	if (!(dev->flags & VIRTIO_DEV_STATS_ENABLED))
+		return -1;
+
+	if (stats == NULL || n < VHOST_NB_VQ_STATS)
+		return VHOST_NB_VQ_STATS;
+
+	vq = dev->virtqueue[queue_id];
+
+	rte_spinlock_lock(&vq->access_lock);
+	for (i = 0; i < VHOST_NB_VQ_STATS; i++) {
+		stats[i].value =
+			*(uint64_t *)(((char *)vq) + vhost_vq_stat_strings[i].offset);
+		stats[i].id = i;
+	}
+	rte_spinlock_unlock(&vq->access_lock);
+
+	return VHOST_NB_VQ_STATS;
+}
+
+int rte_vhost_vring_stats_reset(int vid, uint16_t queue_id)
+{
+	struct virtio_net *dev = get_device(vid);
+	struct vhost_virtqueue *vq;
+
+	if (dev == NULL)
+		return -1;
+
+	if (queue_id >= dev->nr_vring)
+		return -1;
+
+	if (!(dev->flags & VIRTIO_DEV_STATS_ENABLED))
+		return -1;
+
+	vq = dev->virtqueue[queue_id];
+
+	rte_spinlock_lock(&vq->access_lock);
+	memset(&vq->stats, 0, sizeof(vq->stats));
+	rte_spinlock_unlock(&vq->access_lock);
 
 	return 0;
 }

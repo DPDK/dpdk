@@ -39,6 +39,7 @@ extern "C" {
 #define RTE_VHOST_USER_LINEARBUF_SUPPORT	(1ULL << 6)
 #define RTE_VHOST_USER_ASYNC_COPY	(1ULL << 7)
 #define RTE_VHOST_USER_NET_COMPLIANT_OL_FLAGS	(1ULL << 8)
+#define RTE_VHOST_USER_NET_STATS_ENABLE	(1ULL << 9)
 
 /* Features. */
 #ifndef VIRTIO_NET_F_GUEST_ANNOUNCE
@@ -319,6 +320,32 @@ struct rte_vhost_power_monitor_cond {
 	 *  the driver should skip core sleep.
 	 */
 	uint8_t match;
+};
+
+/** Maximum name length for the statistics counters */
+#define RTE_VHOST_STATS_NAME_SIZE 64
+
+/**
+ * Vhost virtqueue statistics structure
+ *
+ * This structure is used by rte_vhost_vring_stats_get() to provide
+ * virtqueue statistics to the calling application.
+ * It maps a name ID, corresponding to an index in the array returned
+ * by rte_vhost_vring_stats_get_names(), to a statistic value.
+ */
+struct rte_vhost_stat {
+	uint64_t id;    /**< The index in xstats name array. */
+	uint64_t value; /**< The statistic counter value. */
+};
+
+/**
+ * Vhost virtqueue statistic name element
+ *
+ * This structure is used by rte_vhost_vring_stats_get_names() to
+ * provide virtqueue statistics names to the calling application.
+ */
+struct rte_vhost_stat_name {
+	char name[RTE_VHOST_STATS_NAME_SIZE]; /**< The statistic name. */
 };
 
 /**
@@ -1062,6 +1089,78 @@ rte_vhost_get_vdpa_device(int vid);
 __rte_experimental
 int
 rte_vhost_slave_config_change(int vid, bool need_reply);
+
+/**
+ * Retrieve names of statistics of a Vhost virtqueue.
+ *
+ * There is an assumption that 'stat_names' and 'stats' arrays are matched
+ * by array index: stats_names[i].name => stats[i].value
+ *
+ * @param vid
+ *   vhost device ID
+ * @param queue_id
+ *   vhost queue index
+ * @param name
+ *   array of at least size elements to be filled.
+ *   If set to NULL, the function returns the required number of elements.
+ * @param size
+ *   The number of elements in stats_names array.
+ * @return
+ *  - Success if greater than 0 and lower or equal to *size*. The return value
+ *    indicates the number of elements filled in the *names* array.
+ *  - Failure if greater than *size*. The return value indicates the number of
+ *    elements the *names* array that should be given to succeed.
+ *  - Failure if lower than 0. The device ID or queue ID is invalid or
+ +    statistics collection is not enabled.
+ */
+__rte_experimental
+int
+rte_vhost_vring_stats_get_names(int vid, uint16_t queue_id,
+		struct rte_vhost_stat_name *name, unsigned int size);
+
+/**
+ * Retrieve statistics of a Vhost virtqueue.
+ *
+ * There is an assumption that 'stat_names' and 'stats' arrays are matched
+ * by array index: stats_names[i].name => stats[i].value
+ *
+ * @param vid
+ *   vhost device ID
+ * @param queue_id
+ *   vhost queue index
+ * @param stats
+ *   A pointer to a table of structure of type rte_vhost_stat to be filled with
+ *   virtqueue statistics ids and values.
+ * @param n
+ *   The number of elements in stats array.
+ * @return
+ *  - Success if greater than 0 and lower or equal to *n*. The return value
+ *    indicates the number of elements filled in the *stats* array.
+ *  - Failure if greater than *n*. The return value indicates the number of
+ *    elements the *stats* array that should be given to succeed.
+ *  - Failure if lower than 0. The device ID or queue ID is invalid, or
+ *    statistics collection is not enabled.
+ */
+__rte_experimental
+int
+rte_vhost_vring_stats_get(int vid, uint16_t queue_id,
+		struct rte_vhost_stat *stats, unsigned int n);
+
+/**
+ * Reset statistics of a Vhost virtqueue.
+ *
+ * @param vid
+ *   vhost device ID
+ * @param queue_id
+ *   vhost queue index
+ * @return
+ *  - Success if 0. Statistics have been reset.
+ *  - Failure if lower than 0. The device ID or queue ID is invalid, or
+ *    statistics collection is not enabled.
+ */
+__rte_experimental
+int
+rte_vhost_vring_stats_reset(int vid, uint16_t queue_id);
 
 #ifdef __cplusplus
 }
