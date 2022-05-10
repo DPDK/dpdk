@@ -1130,6 +1130,20 @@ check_docsis_buffer_length(struct cperf_options *options)
 }
 #endif
 
+static bool
+is_valid_chained_op(struct cperf_options *options)
+{
+	if (options->cipher_op == RTE_CRYPTO_CIPHER_OP_ENCRYPT &&
+			options->auth_op == RTE_CRYPTO_AUTH_OP_GENERATE)
+		return true;
+
+	if (options->cipher_op == RTE_CRYPTO_CIPHER_OP_DECRYPT &&
+			options->auth_op == RTE_CRYPTO_AUTH_OP_VERIFY)
+		return true;
+
+	return false;
+}
+
 int
 cperf_options_check(struct cperf_options *options)
 {
@@ -1236,20 +1250,20 @@ cperf_options_check(struct cperf_options *options)
 		return -EINVAL;
 	}
 
+	if (options->op_type == CPERF_CIPHER_THEN_AUTH ||
+			options->op_type == CPERF_AUTH_THEN_CIPHER) {
+		if (!is_valid_chained_op(options)) {
+			RTE_LOG(ERR, USER1, "Invalid chained operation.\n");
+			return -EINVAL;
+		}
+	}
+
 	if (options->op_type == CPERF_CIPHER_THEN_AUTH) {
 		if (options->cipher_op != RTE_CRYPTO_CIPHER_OP_ENCRYPT &&
 				options->auth_op !=
 				RTE_CRYPTO_AUTH_OP_GENERATE) {
 			RTE_LOG(ERR, USER1, "Option cipher then auth must use"
 					" options: encrypt and generate.\n");
-			return -EINVAL;
-		}
-	} else if (options->op_type == CPERF_AUTH_THEN_CIPHER) {
-		if (options->cipher_op != RTE_CRYPTO_CIPHER_OP_DECRYPT &&
-				options->auth_op !=
-				RTE_CRYPTO_AUTH_OP_VERIFY) {
-			RTE_LOG(ERR, USER1, "Option auth then cipher must use"
-					" options: decrypt and verify.\n");
 			return -EINVAL;
 		}
 	}

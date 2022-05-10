@@ -458,6 +458,10 @@ cperf_set_ops_cipher_auth(struct rte_crypto_op **ops,
 		} else
 			sym_op->cipher.data.length = options->test_buffer_size;
 
+		if ((options->auth_op == RTE_CRYPTO_AUTH_OP_GENERATE) &&
+				(options->op_type == CPERF_AUTH_THEN_CIPHER))
+			sym_op->cipher.data.length += options->digest_sz;
+
 		if (options->cipher_algo == RTE_CRYPTO_CIPHER_SNOW3G_UEA2 ||
 				options->cipher_algo == RTE_CRYPTO_CIPHER_KASUMI_F8 ||
 				options->cipher_algo == RTE_CRYPTO_CIPHER_ZUC_EEA3)
