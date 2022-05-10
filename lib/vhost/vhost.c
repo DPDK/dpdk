@@ -43,6 +43,8 @@ static const struct vhost_vq_stats_name_off vhost_vq_stat_strings[] = {
 	{"size_1024_1518_packets", offsetof(struct vhost_virtqueue, stats.size_bins[6])},
 	{"size_1519_max_packets",  offsetof(struct vhost_virtqueue, stats.size_bins[7])},
 	{"guest_notifications",    offsetof(struct vhost_virtqueue, stats.guest_notifications)},
+	{"iotlb_hits",             offsetof(struct vhost_virtqueue, stats.iotlb_hits)},
+	{"iotlb_misses",           offsetof(struct vhost_virtqueue, stats.iotlb_misses)},
 };
 
 #define VHOST_NB_VQ_STATS RTE_DIM(vhost_vq_stat_strings)
@@ -60,8 +62,14 @@ __vhost_iova_to_vva(struct virtio_net *dev, struct vhost_virtqueue *vq,
 	tmp_size = *size;
 
 	vva = vhost_user_iotlb_cache_find(vq, iova, &tmp_size, perm);
-	if (tmp_size == *size)
+	if (tmp_size == *size) {
+		if (dev->flags & VIRTIO_DEV_STATS_ENABLED)
+			vq->stats.iotlb_hits++;
 		return vva;
+	}
+
+	if (dev->flags & VIRTIO_DEV_STATS_ENABLED)
+		vq->stats.iotlb_misses++;
 
 	iova += tmp_size;
 

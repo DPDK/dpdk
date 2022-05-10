@@ -134,6 +134,8 @@ struct virtqueue_stats {
 	/* Size bins in array as RFC 2819, undersized [0], 64 [1], etc */
 	uint64_t size_bins[8];
 	uint64_t guest_notifications;
+	uint64_t iotlb_hits;
+	uint64_t iotlb_misses;
 };
 
 /**
