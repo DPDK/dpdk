@@ -133,6 +133,7 @@ struct virtqueue_stats {
 	uint64_t broadcast;
 	/* Size bins in array as RFC 2819, undersized [0], 64 [1], etc */
 	uint64_t size_bins[8];
+	uint64_t guest_notifications;
 };
 
 /**
@@ -871,6 +872,8 @@ vhost_vring_call_split(struct virtio_net *dev, struct vhost_virtqueue *vq)
 					(vq->callfd >= 0)) ||
 				unlikely(!signalled_used_valid)) {
 			eventfd_write(vq->callfd, (eventfd_t) 1);
+			if (dev->flags & VIRTIO_DEV_STATS_ENABLED)
+				vq->stats.guest_notifications++;
 			if (dev->notify_ops->guest_notified)
 				dev->notify_ops->guest_notified(dev->vid);
 		}
@@ -879,6 +882,8 @@ vhost_vring_call_split(struct virtio_net *dev, struct vhost_virtqueue *vq)
 		if (!(vq->avail->flags & VRING_AVAIL_F_NO_INTERRUPT)
 				&& (vq->callfd >= 0)) {
 			eventfd_write(vq->callfd, (eventfd_t)1);
+			if (dev->flags & VIRTIO_DEV_STATS_ENABLED)
+				vq->stats.guest_notifications++;
 			if (dev->notify_ops->guest_notified)
 				dev->notify_ops->guest_notified(dev->vid);
 		}

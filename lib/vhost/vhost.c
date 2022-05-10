@@ -42,6 +42,7 @@ static const struct vhost_vq_stats_name_off vhost_vq_stat_strings[] = {
 	{"size_512_1023_packets",  offsetof(struct vhost_virtqueue, stats.size_bins[5])},
 	{"size_1024_1518_packets", offsetof(struct vhost_virtqueue, stats.size_bins[6])},
 	{"size_1519_max_packets",  offsetof(struct vhost_virtqueue, stats.size_bins[7])},
+	{"guest_notifications",    offsetof(struct vhost_virtqueue, stats.guest_notifications)},
 };
 
 #define VHOST_NB_VQ_STATS RTE_DIM(vhost_vq_stat_strings)
