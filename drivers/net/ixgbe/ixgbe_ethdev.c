@@ -128,6 +128,13 @@
 #define IXGBE_EXVET_VET_EXT_SHIFT              16
 #define IXGBE_DMATXCTL_VT_MASK                 0xFFFF0000
 
+#define IXGBE_DEVARG_FIBER_SDP3_NOT_TX_DISABLE	"fiber_sdp3_no_tx_disable"
+
+static const char * const ixgbe_valid_arguments[] = {
+	IXGBE_DEVARG_FIBER_SDP3_NOT_TX_DISABLE,
+	NULL
+};
+
 #define IXGBEVF_DEVARG_PFLINK_FULLCHK		"pflink_fullchk"
 
 static const char * const ixgbevf_valid_arguments[] = {
@@ -355,6 +362,8 @@ static int ixgbe_dev_udp_tunnel_port_del(struct rte_eth_dev *dev,
 static int ixgbe_filter_restore(struct rte_eth_dev *dev);
 static void ixgbe_l2_tunnel_conf(struct rte_eth_dev *dev);
 static int ixgbe_wait_for_link_up(struct ixgbe_hw *hw);
+static int devarg_handle_int(__rte_unused const char *key, const char *value,
+			     void *extra_args);
 
 /*
  * Define VF Stats MACRO for Non "cleared on read" register
@@ -1039,6 +1048,29 @@ ixgbe_swfw_lock_reset(struct ixgbe_hw *hw)
 	ixgbe_release_swfw_semaphore(hw, mask);
 }
 
+static void
+ixgbe_parse_devargs(struct ixgbe_adapter *adapter,
+		      struct rte_devargs *devargs)
+{
+	struct rte_kvargs *kvlist;
+	uint16_t sdp3_no_tx_disable;
+
+	if (devargs == NULL)
+		return;
+
+	kvlist = rte_kvargs_parse(devargs->args, ixgbe_valid_arguments);
+	if (kvlist == NULL)
+		return;
+
+	if (rte_kvargs_count(kvlist, IXGBE_DEVARG_FIBER_SDP3_NOT_TX_DISABLE) == 1 &&
+	    rte_kvargs_process(kvlist, IXGBE_DEVARG_FIBER_SDP3_NOT_TX_DISABLE,
+			       devarg_handle_int, &sdp3_no_tx_disable) == 0 &&
+	    sdp3_no_tx_disable == 1)
+		adapter->sdp3_no_tx_disable = 1;
+
+	rte_kvargs_free(kvlist);
+}
+
 /*
  * This function is based on code in ixgbe_attach() in base/ixgbe.c.
  * It returns 0 on success.
@@ -1103,6 +1135,8 @@ eth_ixgbe_dev_init(struct rte_eth_dev *eth_dev, void *init_params __rte_unused)
 	}
 
 	rte_atomic32_clear(&ad->link_thread_running);
+	ixgbe_parse_devargs(eth_dev->data->dev_private,
+			    pci_dev->device.devargs);
 	rte_eth_copy_pci_info(eth_dev, pci_dev);
 	eth_dev->data->dev_flags |= RTE_ETH_DEV_AUTOFILL_QUEUE_XSTATS;
 
@@ -4278,7 +4312,8 @@ ixgbe_dev_link_update_share(struct rte_eth_dev *dev,
 		return rte_eth_linkstatus_set(dev, &link);
 	}
 
-	if (ixgbe_get_media_type(hw) == ixgbe_media_type_fiber) {
+	if (ixgbe_get_media_type(hw) == ixgbe_media_type_fiber &&
+	    !ad->sdp3_no_tx_disable) {
 		esdp_reg = IXGBE_READ_REG(hw, IXGBE_ESDP);
 		if ((esdp_reg & IXGBE_ESDP_SDP3))
 			link_up = 0;
@@ -8498,6 +8533,8 @@ ixgbe_dev_macsec_register_disable(struct rte_eth_dev *dev)
 RTE_PMD_REGISTER_PCI(net_ixgbe, rte_ixgbe_pmd);
 RTE_PMD_REGISTER_PCI_TABLE(net_ixgbe, pci_id_ixgbe_map);
 RTE_PMD_REGISTER_KMOD_DEP(net_ixgbe, "* igb_uio | uio_pci_generic | vfio-pci");
+RTE_PMD_REGISTER_PARAM_STRING(net_ixgbe,
+			      IXGBE_DEVARG_FIBER_SDP3_NOT_TX_DISABLE "=<0|1>");
 RTE_PMD_REGISTER_PCI(net_ixgbe_vf, rte_ixgbevf_pmd);
 RTE_PMD_REGISTER_PCI_TABLE(net_ixgbe_vf, pci_id_ixgbevf_map);
 RTE_PMD_REGISTER_KMOD_DEP(net_ixgbe_vf, "* igb_uio | vfio-pci");

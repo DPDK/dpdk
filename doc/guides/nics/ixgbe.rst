@@ -81,6 +81,23 @@ To guarantee the constraint, capabilities in dev_conf.rxmode.offloads will be ch
 
 fdir_conf->mode will also be checked.
 
+Disable SDP3 TX_DISABLE for Fiber Links
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The following ``devargs`` option can be enabled at runtime.  It must
+be passed as part of EAL arguments. For example,
+
+.. code-block:: console
+
+   dpdk-testpmd -a fiber_sdp3_no_tx_disable=1 -- -i
+
+- ``fiber_sdp3_no_tx_disable`` (default **0**)
+
+  Not all IXGBE implementations with SFP cages use the SDP3 signal as
+  TX_DISABLE as a means to disable the laser on fiber SFP modules.
+  This option informs the driver that in this case, SDP3 is not to be
+  used as a check for link up by testing for laser on/off.
+
 VF Runtime Options
 ^^^^^^^^^^^^^^^^^^
 

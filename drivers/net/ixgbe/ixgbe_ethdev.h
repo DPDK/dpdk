@@ -510,6 +510,9 @@ struct ixgbe_adapter {
 	/* For RSS reta table update */
 	uint8_t rss_reta_updated;
 
+	/* Used for limiting SDP3 TX_DISABLE checks */
+	uint8_t sdp3_no_tx_disable;
+
 	/* Used for VF link sync with PF's physical and logical (by checking
 	 * mailbox status) link status.
 	 */
