@@ -138,7 +138,7 @@ eth_virtio_pci_uninit(struct rte_eth_dev *eth_dev)
 static int vdpa_check_handler(__rte_unused const char *key,
 		const char *value, void *ret_val)
 {
-	if (strcmp(value, "1") == 0)
+	if (strlen(value))
 		*(int *)ret_val = 1;
 	else
 		*(int *)ret_val = 0;
