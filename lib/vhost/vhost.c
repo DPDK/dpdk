@@ -1769,6 +1769,12 @@ rte_vhost_async_channel_register_thread_unsafe(int vid, uint16_t queue_id)
 	if (unlikely(vq == NULL || !dev->async_copy))
 		return -1;
 
+	if (unlikely(!rte_spinlock_is_locked(&vq->access_lock))) {
+		VHOST_LOG_CONFIG(ERR, "(%s) %s() called without access lock taken.\n",
+				dev->ifname, __func__);
+		return -1;
+	}
+
 	return async_channel_register(vid, queue_id);
 }
 
@@ -1828,6 +1834,12 @@ rte_vhost_async_channel_unregister_thread_unsafe(int vid, uint16_t queue_id)
 
 	if (vq == NULL)
 		return -1;
+
+	if (unlikely(!rte_spinlock_is_locked(&vq->access_lock))) {
+		VHOST_LOG_CONFIG(ERR, "(%s) %s() called without access lock taken.\n",
+				dev->ifname, __func__);
+		return -1;
+	}
 
 	if (!vq->async)
 		return 0;
@@ -1956,6 +1968,12 @@ rte_vhost_async_get_inflight_thread_unsafe(int vid, uint16_t queue_id)
 
 	if (vq == NULL)
 		return ret;
+
+	if (unlikely(!rte_spinlock_is_locked(&vq->access_lock))) {
+		VHOST_LOG_CONFIG(ERR, "(%s) %s() called without access lock taken.\n",
+				dev->ifname, __func__);
+		return -1;
+	}
 
 	if (!vq->async)
 		return ret;

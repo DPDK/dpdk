@@ -2144,6 +2144,12 @@ rte_vhost_clear_queue_thread_unsafe(int vid, uint16_t queue_id,
 
 	vq = dev->virtqueue[queue_id];
 
+	if (unlikely(!rte_spinlock_is_locked(&vq->access_lock))) {
+		VHOST_LOG_DATA(ERR, "(%s) %s() called without access lock taken.\n",
+				dev->ifname, __func__);
+		return -1;
+	}
+
 	if (unlikely(!vq->async)) {
 		VHOST_LOG_DATA(ERR, "(%s) %s: async not registered for queue id %d.\n",
 			dev->ifname, __func__, queue_id);
