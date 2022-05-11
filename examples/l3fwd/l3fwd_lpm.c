@@ -28,6 +28,7 @@
 #include <rte_lpm6.h>
 
 #include "l3fwd.h"
+#include "l3fwd_common.h"
 #include "l3fwd_event.h"
 
 struct ipv4_l3fwd_lpm_route {
@@ -272,30 +273,17 @@ lpm_process_event_pkt(const struct lcore_conf *lconf, struct rte_mbuf *mbuf)
 
 	struct rte_ether_hdr *eth_hdr = rte_pktmbuf_mtod(mbuf,
 			struct rte_ether_hdr *);
-#ifdef DO_RFC_1812_CHECKS
-	struct rte_ipv4_hdr *ipv4_hdr;
-	if (RTE_ETH_IS_IPV4_HDR(mbuf->packet_type)) {
-		/* Handle IPv4 headers.*/
-		ipv4_hdr = rte_pktmbuf_mtod_offset(mbuf,
-				struct rte_ipv4_hdr *,
-				sizeof(struct rte_ether_hdr));
 
-		if (is_valid_ipv4_pkt(ipv4_hdr, mbuf->pkt_len)
-				< 0) {
-			mbuf->port = BAD_PORT;
-			continue;
-		}
-		/* Update time to live and header checksum */
-		--(ipv4_hdr->time_to_live);
-		++(ipv4_hdr->hdr_checksum);
-	}
-#endif
 	/* dst addr */
 	*(uint64_t *)&eth_hdr->d_addr = dest_eth_addr[mbuf->port];
 
 	/* src addr */
 	rte_ether_addr_copy(&ports_eth_addr[mbuf->port],
 			&eth_hdr->s_addr);
+
+	rfc1812_process(rte_pktmbuf_mtod_offset(mbuf, struct rte_ipv4_hdr *,
+						sizeof(struct rte_ether_hdr)),
+			&mbuf->port, mbuf->packet_type);
 #endif
 	return mbuf->port;
 }
