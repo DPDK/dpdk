@@ -5749,8 +5749,8 @@ test_zuc_authentication(const struct wireless_test_data *tdata)
 	else
 		ut_params->op = process_crypto_request(ts_params->valid_devs[0],
 				ut_params->op);
-	ut_params->obuf = ut_params->op->sym->m_src;
 	TEST_ASSERT_NOT_NULL(ut_params->op, "failed to retrieve obuf");
+	ut_params->obuf = ut_params->op->sym->m_src;
 	ut_params->digest = rte_pktmbuf_mtod(ut_params->obuf, uint8_t *)
 			+ plaintext_pad_len;
 
