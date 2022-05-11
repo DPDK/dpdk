@@ -726,7 +726,10 @@ struct aesni_mb_qp_data {
 	 * by the driver when verifying a digest provided
 	 * by the user (using authentication verify operation)
 	 */
-	struct gcm_context_data gcm_sgl_ctx;
+	union {
+		struct gcm_context_data gcm_sgl_ctx;
+		struct chacha20_poly1305_context_data chacha_sgl_ctx;
+	};
 };
 
 /* Maximum length for digest */
