@@ -176,6 +176,13 @@ nfp_net_configure(struct rte_eth_dev *dev)
 		return -EINVAL;
 	}
 
+	/* Checking MTU set */
+	if (rxmode->mtu > hw->flbufsz) {
+		PMD_INIT_LOG(INFO, "MTU (%u) larger then current mbufsize (%u) not supported",
+				    rxmode->mtu, hw->flbufsz);
+		return -ERANGE;
+	}
+
 	return 0;
 }
 
@@ -702,6 +709,7 @@ nfp_net_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	 */
 	dev_info->max_rx_pktlen = NFP_FRAME_SIZE_MAX;
 	dev_info->max_mtu = hw->max_mtu;
+	dev_info->min_mtu = RTE_ETHER_MIN_MTU;
 	/* Next should change when PF support is implemented */
 	dev_info->max_mac_addrs = 1;
 
@@ -959,6 +967,13 @@ nfp_net_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 		PMD_DRV_LOG(ERR, "port %d must be stopped before configuration",
 			    dev->data->port_id);
 		return -EBUSY;
+	}
+
+	/* MTU larger then current mbufsize not supported */
+	if (mtu > hw->flbufsz) {
+		PMD_DRV_LOG(ERR, "MTU (%u) larger then current mbufsize (%u) not supported",
+			    mtu, hw->flbufsz);
+		return -ERANGE;
 	}
 
 	/* writing to configuration space */
