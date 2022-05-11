@@ -97,7 +97,7 @@ test_ring_copy_from(struct rte_ring_zc_data *zcd, void *dst, int esize,
 	}
 }
 
-static __rte_always_inline unsigned int
+static inline unsigned int
 test_ring_enqueue(struct rte_ring *r, void **obj, int esize, unsigned int n,
 			unsigned int api_type)
 {
@@ -158,7 +158,7 @@ test_ring_enqueue(struct rte_ring *r, void **obj, int esize, unsigned int n,
 		}
 }
 
-static __rte_always_inline unsigned int
+static inline unsigned int
 test_ring_dequeue(struct rte_ring *r, void **obj, int esize, unsigned int n,
 			unsigned int api_type)
 {
@@ -222,7 +222,7 @@ test_ring_dequeue(struct rte_ring *r, void **obj, int esize, unsigned int n,
 /* This function is placed here as it is required for both
  * performance and functional tests.
  */
-static __rte_always_inline void *
+static inline void *
 test_ring_calloc(unsigned int rsize, int esize)
 {
 	unsigned int sz;
