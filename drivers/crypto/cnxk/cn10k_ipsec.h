@@ -20,6 +20,8 @@ struct cn10k_ipsec_sa {
 	uint16_t iv_offset;
 	uint8_t iv_length;
 	bool is_outbound;
+	/** Queue pair */
+	struct cnxk_cpt_qp *qp;
 
 	/**
 	 * End of SW mutable area

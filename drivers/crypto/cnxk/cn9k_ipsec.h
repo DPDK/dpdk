@@ -42,6 +42,8 @@ struct cn9k_ipsec_sa {
 	struct cnxk_on_ipsec_ar ar;
 	/** Anti replay window size */
 	uint32_t replay_win_sz;
+	/** Queue pair */
+	struct cnxk_cpt_qp *qp;
 };
 
 struct cn9k_sec_session {

@@ -33,6 +33,8 @@ struct cnxk_se_sess {
 	uint16_t auth_iv_offset;
 	uint32_t salt;
 	uint64_t cpt_inst_w7;
+	uint64_t cpt_inst_w2;
+	struct cnxk_cpt_qp *qp;
 	struct roc_se_ctx roc_se_ctx;
 } __rte_cache_aligned;
 

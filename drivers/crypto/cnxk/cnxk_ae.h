@@ -22,6 +22,8 @@ struct cnxk_ae_sess {
 	uint64_t *cnxk_fpm_iova;
 	struct roc_ae_ec_group **ec_grp;
 	uint64_t cpt_inst_w7;
+	uint64_t cpt_inst_w2;
+	struct cnxk_cpt_qp *qp;
 };
 
 static __rte_always_inline void

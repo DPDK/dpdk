@@ -125,24 +125,6 @@ int cnxk_ae_session_cfg(struct rte_cryptodev *dev,
 			struct rte_cryptodev_asym_session *sess);
 void cnxk_cpt_dump_on_err(struct cnxk_cpt_qp *qp);
 
-static inline union rte_event_crypto_metadata *
-cnxk_event_crypto_mdata_get(struct rte_crypto_op *op)
-{
-	union rte_event_crypto_metadata *ec_mdata;
-
-	if (op->sess_type == RTE_CRYPTO_OP_WITH_SESSION)
-		ec_mdata = rte_cryptodev_sym_session_get_user_data(
-			op->sym->session);
-	else if (op->sess_type == RTE_CRYPTO_OP_SESSIONLESS &&
-		 op->private_data_offset)
-		ec_mdata = (union rte_event_crypto_metadata
-				    *)((uint8_t *)op + op->private_data_offset);
-	else
-		return NULL;
-
-	return ec_mdata;
-}
-
 static __rte_always_inline void
 pending_queue_advance(uint64_t *index, const uint64_t mask)
 {
