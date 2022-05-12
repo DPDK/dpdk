@@ -227,8 +227,10 @@ test_op_forward_mode(uint8_t session_less)
 			m_data.request_info.queue_pair_id =
 				request_info.queue_pair_id;
 			m_data.response_info.event = response_info.event;
-			rte_cryptodev_sym_session_set_user_data(sess,
-						&m_data, sizeof(m_data));
+			rte_cryptodev_session_event_mdata_set(TEST_CDEV_ID,
+					sess, RTE_CRYPTO_OP_TYPE_SYMMETRIC,
+					RTE_CRYPTO_OP_WITH_SESSION,
+					&m_data, sizeof(m_data));
 		}
 
 		rte_crypto_op_attach_sym_session(op, sess);
@@ -416,8 +418,10 @@ test_op_new_mode(uint8_t session_less)
 		if (cap & RTE_EVENT_CRYPTO_ADAPTER_CAP_SESSION_PRIVATE_DATA) {
 			/* Fill in private user data information */
 			m_data.response_info.event = response_info.event;
-			rte_cryptodev_sym_session_set_user_data(sess,
-						&m_data, sizeof(m_data));
+			rte_cryptodev_session_event_mdata_set(TEST_CDEV_ID,
+					sess, RTE_CRYPTO_OP_TYPE_SYMMETRIC,
+					RTE_CRYPTO_OP_WITH_SESSION,
+					&m_data, sizeof(m_data));
 		}
 		ret = rte_cryptodev_sym_session_init(TEST_CDEV_ID, sess,
 				&cipher_xform, params.session_priv_mpool);

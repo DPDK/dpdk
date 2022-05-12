@@ -835,8 +835,12 @@ perf_event_dev_port_setup(struct evt_test *test, struct evt_options *opt,
 					return -ENOMEM;
 
 				m_data.response_info.flow_id = flow_id;
-				rte_cryptodev_sym_session_set_user_data(
-					crypto_sess, &m_data, sizeof(m_data));
+				rte_cryptodev_session_event_mdata_set(cdev_id,
+						crypto_sess,
+						RTE_CRYPTO_OP_TYPE_SYMMETRIC,
+						RTE_CRYPTO_OP_WITH_SESSION,
+						&m_data, sizeof(m_data));
+
 				p->ca.crypto_sess[flow_id] = crypto_sess;
 			}
 
