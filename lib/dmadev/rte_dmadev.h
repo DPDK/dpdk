@@ -1001,6 +1001,8 @@ rte_dma_submit(int16_t dev_id, uint16_t vchan)
  * @b EXPERIMENTAL: this API may change without prior notice.
  *
  * Return the number of operations that have been successfully completed.
+ * Once an operation has been reported as completed, the results of that
+ * operation will be visible to all cores on the system.
  *
  * @param dev_id
  *   The identifier of the device.
@@ -1058,6 +1060,8 @@ rte_dma_completed(int16_t dev_id, uint16_t vchan, const uint16_t nb_cpls,
  *
  * Return the number of operations that have been completed, and the operations
  * result may succeed or fail.
+ * Once an operation has been reported as completed successfully, the results of that
+ * operation will be visible to all cores on the system.
  *
  * @param dev_id
  *   The identifier of the device.
