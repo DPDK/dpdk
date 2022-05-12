@@ -6,6 +6,7 @@
 #include "test.h"
 #include <string.h>
 #include <rte_common.h>
+#include <rte_malloc.h>
 #include <rte_mempool.h>
 #include <rte_mbuf.h>
 #include <rte_cryptodev.h>
@@ -67,12 +68,97 @@ static const uint8_t text_64B[] = {
 	0x31, 0xbf, 0xe9, 0xa1, 0x97, 0x5c, 0x2b, 0xd6,
 	0x57, 0xa5, 0x9f, 0xab, 0xbd, 0xb0, 0x9b, 0x9c
 };
+#define DATA_SIZE		512
+struct modex_test_data {
+	enum rte_crypto_asym_xform_type xform_type;
+	struct {
+		uint8_t data[DATA_SIZE];
+		uint16_t len;
+	} base;
+	struct {
+		uint8_t data[DATA_SIZE];
+		uint16_t len;
+	} exponent;
+	struct {
+		uint8_t data[DATA_SIZE];
+		uint16_t len;
+	} modulus;
+	struct {
+		uint8_t data[DATA_SIZE];
+		uint16_t len;
+	} reminder;
+	uint16_t result_len;
+};
+
+static struct
+modex_test_data modex_test_case = {
+	.xform_type = RTE_CRYPTO_ASYM_XFORM_MODEX,
+	.base = {
+		.data = {
+			0xF8, 0xBA, 0x1A, 0x55, 0xD0, 0x2F, 0x85,
+			0xAE, 0x96, 0x7B, 0xB6, 0x2F, 0xB6, 0xCD,
+			0xA8, 0xEB, 0x7E, 0x78, 0xA0, 0x50
+		},
+		.len = 20,
+	},
+	.exponent = {
+		.data = {
+			0x01, 0x00, 0x01
+		},
+		.len = 3,
+	},
+	.reminder = {
+		.data = {
+			0x2C, 0x60, 0x75, 0x45, 0x98, 0x9D, 0xE0, 0x72,
+			0xA0, 0x9D, 0x3A, 0x9E, 0x03, 0x38, 0x73, 0x3C,
+			0x31, 0x83, 0x04, 0xFE, 0x75, 0x43, 0xE6, 0x17,
+			0x5C, 0x01, 0x29, 0x51, 0x69, 0x33, 0x62, 0x2D,
+			0x78, 0xBE, 0xAE, 0xC4, 0xBC, 0xDE, 0x7E, 0x2C,
+			0x77, 0x84, 0xF2, 0xC5, 0x14, 0xB5, 0x2F, 0xF7,
+			0xC5, 0x94, 0xEF, 0x86, 0x75, 0x75, 0xB5, 0x11,
+			0xE5, 0x0E, 0x0A, 0x29, 0x76, 0xE2, 0xEA, 0x32,
+			0x0E, 0x43, 0x77, 0x7E, 0x2C, 0x27, 0xAC, 0x3B,
+			0x86, 0xA5, 0xDB, 0xC9, 0x48, 0x40, 0xE8, 0x99,
+			0x9A, 0x0A, 0x3D, 0xD6, 0x74, 0xFA, 0x2E, 0x2E,
+			0x5B, 0xAF, 0x8C, 0x99, 0x44, 0x2A, 0x67, 0x38,
+			0x27, 0x41, 0x59, 0x9D, 0xB8, 0x51, 0xC9, 0xF7,
+			0x43, 0x61, 0x31, 0x6E, 0xF1, 0x25, 0x38, 0x7F,
+			0xAE, 0xC6, 0xD0, 0xBB, 0x29, 0x76, 0x3F, 0x46,
+			0x2E, 0x1B, 0xE4, 0x67, 0x71, 0xE3, 0x87, 0x5A
+		},
+		.len = 128,
+	},
+	.modulus = {
+		.data = {
+			0xb3, 0xa1, 0xaf, 0xb7, 0x13, 0x08, 0x00, 0x0a,
+			0x35, 0xdc, 0x2b, 0x20, 0x8d, 0xa1, 0xb5, 0xce,
+			0x47, 0x8a, 0xc3, 0x80, 0xf4, 0x7d, 0x4a, 0xa2,
+			0x62, 0xfd, 0x61, 0x7f, 0xb5, 0xa8, 0xde, 0x0a,
+			0x17, 0x97, 0xa0, 0xbf, 0xdf, 0x56, 0x5a, 0x3d,
+			0x51, 0x56, 0x4f, 0x70, 0x70, 0x3f, 0x63, 0x6a,
+			0x44, 0x5b, 0xad, 0x84, 0x0d, 0x3f, 0x27, 0x6e,
+			0x3b, 0x34, 0x91, 0x60, 0x14, 0xb9, 0xaa, 0x72,
+			0xfd, 0xa3, 0x64, 0xd2, 0x03, 0xa7, 0x53, 0x87,
+			0x9e, 0x88, 0x0b, 0xc1, 0x14, 0x93, 0x1a, 0x62,
+			0xff, 0xb1, 0x5d, 0x74, 0xcd, 0x59, 0x63, 0x18,
+			0x11, 0x3d, 0x4f, 0xba, 0x75, 0xd4, 0x33, 0x4e,
+			0x23, 0x6b, 0x7b, 0x57, 0x44, 0xe1, 0xd3, 0x03,
+			0x13, 0xa6, 0xf0, 0x8b, 0x60, 0xb0, 0x9e, 0xee,
+			0x75, 0x08, 0x9d, 0x71, 0x63, 0x13, 0xcb, 0xa6,
+			0x81, 0x92, 0x14, 0x03, 0x22, 0x2d, 0xde, 0x55
+		},
+		.len = 128,
+	},
+	.result_len = 128,
+};
 
 struct event_crypto_adapter_test_params {
 	struct rte_mempool *mbuf_pool;
 	struct rte_mempool *op_mpool;
+	struct rte_mempool *asym_op_mpool;
 	struct rte_mempool *session_mpool;
 	struct rte_mempool *session_priv_mpool;
+	struct rte_mempool *asym_sess_mpool;
 	struct rte_cryptodev_config *config;
 	uint8_t crypto_event_port_id;
 	uint8_t internal_port_op_fwd;
@@ -134,11 +220,24 @@ send_recv_ev(struct rte_event *ev)
 		rte_pause();
 
 	op = recv_ev.event_ptr;
+	if (op->type == RTE_CRYPTO_OP_TYPE_SYMMETRIC) {
 #if PKT_TRACE
-	struct rte_mbuf *m = op->sym->m_src;
-	rte_pktmbuf_dump(stdout, m, rte_pktmbuf_pkt_len(m));
+		struct rte_mbuf *m = op->sym->m_src;
+		rte_pktmbuf_dump(stdout, m, rte_pktmbuf_pkt_len(m));
 #endif
-	rte_pktmbuf_free(op->sym->m_src);
+		rte_pktmbuf_free(op->sym->m_src);
+	} else {
+		uint8_t *data_expected = NULL, *data_received = NULL;
+		uint32_t data_size;
+
+		data_expected = modex_test_case.reminder.data;
+		data_received = op->asym->modex.result.data;
+		data_size = op->asym->modex.result.length;
+		ret = memcmp(data_expected, data_received, data_size);
+		TEST_ASSERT_EQUAL(ret, 0,
+				"Data mismatch for asym crypto adapter\n");
+		rte_free(op->asym->modex.result.data);
+	}
 	rte_crypto_op_free(op);
 
 	return TEST_SUCCESS;
@@ -349,6 +448,170 @@ test_session_with_op_forward_mode(void)
 }
 
 static int
+test_asym_op_forward_mode(uint8_t session_less)
+{
+	const struct rte_cryptodev_asymmetric_xform_capability *capability;
+	struct rte_cryptodev_asym_capability_idx cap_idx;
+	struct rte_crypto_asym_xform xform_tc;
+	union rte_event_crypto_metadata m_data;
+	struct rte_cryptodev_info dev_info;
+	struct rte_crypto_asym_op *asym_op;
+	struct rte_crypto_op *op;
+	uint8_t input[4096] = {0};
+	uint8_t *result = NULL;
+	struct rte_event ev;
+	void *sess = NULL;
+	uint32_t cap;
+	int ret;
+
+	memset(&m_data, 0, sizeof(m_data));
+
+	rte_cryptodev_info_get(TEST_CDEV_ID, &dev_info);
+	if (session_less && !(dev_info.feature_flags &
+				RTE_CRYPTODEV_FF_ASYM_SESSIONLESS)) {
+		RTE_LOG(INFO, USER1,
+			"Device doesn't support Asym sessionless ops. Test Skipped\n");
+		return TEST_SKIPPED;
+	}
+	/* Setup Cipher Parameters */
+	xform_tc.next = NULL;
+	xform_tc.xform_type = RTE_CRYPTO_ASYM_XFORM_MODEX;
+	cap_idx.type = xform_tc.xform_type;
+	capability = rte_cryptodev_asym_capability_get(TEST_CDEV_ID, &cap_idx);
+
+	if (capability == NULL) {
+		RTE_LOG(INFO, USER1,
+			"Device doesn't support MODEX. Test Skipped\n");
+		return TEST_SKIPPED;
+	}
+
+	op = rte_crypto_op_alloc(params.asym_op_mpool,
+			RTE_CRYPTO_OP_TYPE_ASYMMETRIC);
+	TEST_ASSERT_NOT_NULL(op,
+		"Failed to allocate asymmetric crypto operation struct\n");
+
+	asym_op = op->asym;
+
+	result = rte_zmalloc(NULL, modex_test_case.result_len, 0);
+	xform_tc.modex.modulus.data = modex_test_case.modulus.data;
+	xform_tc.modex.modulus.length = modex_test_case.modulus.len;
+	xform_tc.modex.exponent.data = modex_test_case.exponent.data;
+	xform_tc.modex.exponent.length = modex_test_case.exponent.len;
+	memcpy(input, modex_test_case.base.data,
+		modex_test_case.base.len);
+	asym_op->modex.base.data = input;
+	asym_op->modex.base.length = modex_test_case.base.len;
+	asym_op->modex.result.data = result;
+	asym_op->modex.result.length = modex_test_case.result_len;
+	if (rte_cryptodev_asym_xform_capability_check_modlen(capability,
+			xform_tc.modex.modulus.length)) {
+		RTE_LOG(INFO, USER1,
+			"line %u FAILED: %s", __LINE__,
+			"Invalid MODULUS length specified");
+		return TEST_FAILED;
+	}
+
+	if (!session_less) {
+		/* Create Crypto session*/
+		ret = rte_cryptodev_asym_session_create(TEST_CDEV_ID,
+				&xform_tc, params.asym_sess_mpool, &sess);
+		TEST_ASSERT_SUCCESS(ret, "Failed to init session\n");
+
+		ret = rte_event_crypto_adapter_caps_get(evdev, TEST_CDEV_ID,
+							&cap);
+		TEST_ASSERT_SUCCESS(ret, "Failed to get adapter capabilities\n");
+
+		if (cap & RTE_EVENT_CRYPTO_ADAPTER_CAP_SESSION_PRIVATE_DATA) {
+			/* Fill in private user data information */
+			m_data.request_info.cdev_id = request_info.cdev_id;
+			m_data.request_info.queue_pair_id =
+				request_info.queue_pair_id;
+			m_data.response_info.event = response_info.event;
+			rte_cryptodev_session_event_mdata_set(TEST_CDEV_ID,
+					sess, RTE_CRYPTO_OP_TYPE_ASYMMETRIC,
+					RTE_CRYPTO_OP_WITH_SESSION,
+					&m_data, sizeof(m_data));
+		}
+
+		rte_crypto_op_attach_asym_session(op, sess);
+	} else {
+		op->sess_type = RTE_CRYPTO_OP_SESSIONLESS;
+		asym_op->xform = &xform_tc;
+		op->private_data_offset = (sizeof(struct rte_crypto_op) +
+				sizeof(struct rte_crypto_asym_op) +
+				DEFAULT_NUM_XFORMS *
+				sizeof(struct rte_crypto_asym_xform));
+		/* Fill in private data information */
+		m_data.request_info.cdev_id = request_info.cdev_id;
+		m_data.request_info.queue_pair_id = request_info.queue_pair_id;
+		m_data.response_info.event = response_info.event;
+		rte_memcpy((uint8_t *)op + op->private_data_offset,
+				&m_data, sizeof(m_data));
+	}
+	/* Fill in event info and update event_ptr with rte_crypto_op */
+	memset(&ev, 0, sizeof(ev));
+	ev.queue_id = TEST_CRYPTO_EV_QUEUE_ID;
+	ev.sched_type = RTE_SCHED_TYPE_ATOMIC;
+	ev.flow_id = 0xAABB;
+	ev.event_ptr = op;
+
+	ret = send_recv_ev(&ev);
+	TEST_ASSERT_SUCCESS(ret, "Failed to send/receive event to "
+				"crypto adapter\n");
+
+	test_crypto_adapter_stats();
+
+	return TEST_SUCCESS;
+}
+
+
+static int
+test_asym_sessionless_with_op_forward_mode(void)
+{
+	uint32_t cap;
+	int ret;
+
+	ret = rte_event_crypto_adapter_caps_get(evdev, TEST_CDEV_ID, &cap);
+	TEST_ASSERT_SUCCESS(ret, "Failed to get adapter capabilities\n");
+
+	if (!(cap & RTE_EVENT_CRYPTO_ADAPTER_CAP_INTERNAL_PORT_OP_FWD) &&
+	    !(cap & RTE_EVENT_CRYPTO_ADAPTER_CAP_INTERNAL_PORT_OP_NEW))
+		map_adapter_service_core();
+	else {
+		if (!(cap & RTE_EVENT_CRYPTO_ADAPTER_CAP_INTERNAL_PORT_OP_FWD))
+			return TEST_SKIPPED;
+	}
+
+	TEST_ASSERT_SUCCESS(rte_event_crypto_adapter_start(TEST_ADAPTER_ID),
+				"Failed to start event crypto adapter");
+
+	return test_asym_op_forward_mode(1);
+}
+
+static int
+test_asym_session_with_op_forward_mode(void)
+{
+	uint32_t cap;
+	int ret;
+
+	ret = rte_event_crypto_adapter_caps_get(evdev, TEST_CDEV_ID, &cap);
+	TEST_ASSERT_SUCCESS(ret, "Failed to get adapter capabilities\n");
+
+	if (!(cap & RTE_EVENT_CRYPTO_ADAPTER_CAP_INTERNAL_PORT_OP_FWD) &&
+	    !(cap & RTE_EVENT_CRYPTO_ADAPTER_CAP_INTERNAL_PORT_OP_NEW))
+		map_adapter_service_core();
+	else {
+		if (!(cap & RTE_EVENT_CRYPTO_ADAPTER_CAP_INTERNAL_PORT_OP_FWD))
+			return TEST_SKIPPED;
+	}
+
+	TEST_ASSERT_SUCCESS(rte_event_crypto_adapter_start(TEST_ADAPTER_ID
+				), "Failed to start event crypto adapter");
+
+	return test_asym_op_forward_mode(0);
+}
+
+static int
 send_op_recv_ev(struct rte_crypto_op *op)
 {
 	struct rte_crypto_op *recv_op;
@@ -365,11 +628,24 @@ send_op_recv_ev(struct rte_crypto_op *op)
 		rte_pause();
 
 	recv_op = ev.event_ptr;
+	if (recv_op->type == RTE_CRYPTO_OP_TYPE_SYMMETRIC) {
 #if PKT_TRACE
-	struct rte_mbuf *m = recv_op->sym->m_src;
-	rte_pktmbuf_dump(stdout, m, rte_pktmbuf_pkt_len(m));
+		struct rte_mbuf *m = recv_op->sym->m_src;
+		rte_pktmbuf_dump(stdout, m, rte_pktmbuf_pkt_len(m));
 #endif
-	rte_pktmbuf_free(recv_op->sym->m_src);
+		rte_pktmbuf_free(recv_op->sym->m_src);
+	} else {
+		uint8_t *data_expected = NULL, *data_received = NULL;
+		uint32_t data_size;
+
+		data_expected = modex_test_case.reminder.data;
+		data_received = op->asym->modex.result.data;
+		data_size = op->asym->modex.result.length;
+		ret = memcmp(data_expected, data_received, data_size);
+		TEST_ASSERT_EQUAL(ret, 0,
+				"Data mismatch for asym crypto adapter\n");
+		rte_free(op->asym->modex.result.data);
+	}
 	rte_crypto_op_free(recv_op);
 
 	return TEST_SUCCESS;
@@ -506,14 +782,167 @@ test_session_with_op_new_mode(void)
 }
 
 static int
+test_asym_op_new_mode(uint8_t session_less)
+{
+	const struct rte_cryptodev_asymmetric_xform_capability *capability;
+	struct rte_cryptodev_asym_capability_idx cap_idx;
+	struct rte_crypto_asym_xform xform_tc;
+	union rte_event_crypto_metadata m_data;
+	struct rte_cryptodev_info dev_info;
+	struct rte_crypto_asym_op *asym_op;
+	struct rte_crypto_op *op;
+	uint8_t input[4096] = {0};
+	uint8_t *result = NULL;
+	void *sess = NULL;
+	uint32_t cap;
+	int ret;
+
+	memset(&m_data, 0, sizeof(m_data));
+
+	rte_cryptodev_info_get(TEST_CDEV_ID, &dev_info);
+	if (session_less && !(dev_info.feature_flags &
+				RTE_CRYPTODEV_FF_ASYM_SESSIONLESS)) {
+		RTE_LOG(INFO, USER1,
+			"Device doesn't support Asym sessionless ops. Test Skipped\n");
+		return TEST_SKIPPED;
+	}
+	/* Setup Cipher Parameters */
+	xform_tc.next = NULL;
+	xform_tc.xform_type = RTE_CRYPTO_ASYM_XFORM_MODEX;
+	cap_idx.type = xform_tc.xform_type;
+	capability = rte_cryptodev_asym_capability_get(TEST_CDEV_ID, &cap_idx);
+
+	if (capability == NULL) {
+		RTE_LOG(INFO, USER1,
+			"Device doesn't support MODEX. Test Skipped\n");
+		return TEST_SKIPPED;
+	}
+
+	op = rte_crypto_op_alloc(params.asym_op_mpool,
+			RTE_CRYPTO_OP_TYPE_ASYMMETRIC);
+	TEST_ASSERT_NOT_NULL(op, "Failed to allocate asym crypto_op!\n");
+
+	asym_op = op->asym;
+
+	result = rte_zmalloc(NULL, modex_test_case.result_len, 0);
+	xform_tc.modex.modulus.data = modex_test_case.modulus.data;
+	xform_tc.modex.modulus.length = modex_test_case.modulus.len;
+	xform_tc.modex.exponent.data = modex_test_case.exponent.data;
+	xform_tc.modex.exponent.length = modex_test_case.exponent.len;
+	memcpy(input, modex_test_case.base.data,
+		modex_test_case.base.len);
+	asym_op->modex.base.data = input;
+	asym_op->modex.base.length = modex_test_case.base.len;
+	asym_op->modex.result.data = result;
+	asym_op->modex.result.length = modex_test_case.result_len;
+	if (rte_cryptodev_asym_xform_capability_check_modlen(capability,
+			xform_tc.modex.modulus.length)) {
+		RTE_LOG(INFO, USER1,
+			"line %u FAILED: %s", __LINE__,
+			"Invalid MODULUS length specified");
+		return TEST_FAILED;
+	}
+
+	if (!session_less) {
+		ret = rte_cryptodev_asym_session_create(TEST_CDEV_ID,
+				&xform_tc, params.asym_sess_mpool, &sess);
+		TEST_ASSERT_NOT_NULL(sess, "Session creation failed\n");
+		TEST_ASSERT_SUCCESS(ret, "Failed to init session\n");
+
+		ret = rte_event_crypto_adapter_caps_get(evdev, TEST_CDEV_ID,
+							&cap);
+		TEST_ASSERT_SUCCESS(ret, "Failed to get adapter capabilities\n");
+
+		if (cap & RTE_EVENT_CRYPTO_ADAPTER_CAP_SESSION_PRIVATE_DATA) {
+			/* Fill in private user data information */
+			m_data.response_info.event = response_info.event;
+			rte_cryptodev_session_event_mdata_set(TEST_CDEV_ID,
+					sess, RTE_CRYPTO_OP_TYPE_ASYMMETRIC,
+					RTE_CRYPTO_OP_WITH_SESSION,
+					&m_data, sizeof(m_data));
+		}
+
+		rte_crypto_op_attach_asym_session(op, sess);
+	} else {
+		op->sess_type = RTE_CRYPTO_OP_SESSIONLESS;
+		asym_op->xform = &xform_tc;
+		op->private_data_offset = (sizeof(struct rte_crypto_op) +
+				sizeof(struct rte_crypto_asym_op) +
+				DEFAULT_NUM_XFORMS *
+				sizeof(struct rte_crypto_asym_xform));
+		/* Fill in private data information */
+		m_data.response_info.event = response_info.event;
+		rte_memcpy((uint8_t *)op + op->private_data_offset,
+				&m_data, sizeof(m_data));
+	}
+
+	ret = send_op_recv_ev(op);
+	TEST_ASSERT_SUCCESS(ret, "Failed to enqueue op to cryptodev\n");
+
+	test_crypto_adapter_stats();
+
+	return TEST_SUCCESS;
+}
+
+static int
+test_asym_sessionless_with_op_new_mode(void)
+{
+	uint32_t cap;
+	int ret;
+
+	ret = rte_event_crypto_adapter_caps_get(evdev, TEST_CDEV_ID, &cap);
+	TEST_ASSERT_SUCCESS(ret, "Failed to get adapter capabilities\n");
+
+	if (!(cap & RTE_EVENT_CRYPTO_ADAPTER_CAP_INTERNAL_PORT_OP_FWD) &&
+	    !(cap & RTE_EVENT_CRYPTO_ADAPTER_CAP_INTERNAL_PORT_OP_NEW))
+		map_adapter_service_core();
+	else {
+		if (!(cap & RTE_EVENT_CRYPTO_ADAPTER_CAP_INTERNAL_PORT_OP_NEW))
+			return TEST_SKIPPED;
+	}
+
+	/* start the event crypto adapter */
+	TEST_ASSERT_SUCCESS(rte_event_crypto_adapter_start(TEST_ADAPTER_ID),
+				"Failed to start event crypto adapter");
+
+	return test_asym_op_new_mode(1);
+}
+
+static int
+test_asym_session_with_op_new_mode(void)
+{
+	uint32_t cap;
+	int ret;
+
+	ret = rte_event_crypto_adapter_caps_get(evdev, TEST_CDEV_ID, &cap);
+	TEST_ASSERT_SUCCESS(ret, "Failed to get adapter capabilities\n");
+
+	if (!(cap & RTE_EVENT_CRYPTO_ADAPTER_CAP_INTERNAL_PORT_OP_FWD) &&
+	    !(cap & RTE_EVENT_CRYPTO_ADAPTER_CAP_INTERNAL_PORT_OP_NEW))
+		map_adapter_service_core();
+	else {
+		if (!(cap & RTE_EVENT_CRYPTO_ADAPTER_CAP_INTERNAL_PORT_OP_NEW))
+			return TEST_SKIPPED;
+	}
+
+	TEST_ASSERT_SUCCESS(rte_event_crypto_adapter_start(TEST_ADAPTER_ID),
+				"Failed to start event crypto adapter");
+
+	return test_asym_op_new_mode(0);
+}
+
+static int
 configure_cryptodev(void)
 {
+	const struct rte_cryptodev_capabilities *capability;
 	struct rte_cryptodev_qp_conf qp_conf;
 	struct rte_cryptodev_config conf;
 	struct rte_cryptodev_info info;
 	unsigned int session_size;
+	unsigned int i = 0;
 	uint8_t nb_devs;
 	int ret;
+
 
 	params.mbuf_pool = rte_pktmbuf_pool_create(
 			"CRYPTO_ADAPTER_MBUFPOOL",
@@ -582,6 +1011,33 @@ configure_cryptodev(void)
 			"session mempool allocation failed\n");
 
 	rte_cryptodev_info_get(TEST_CDEV_ID, &info);
+
+	while ((capability = &info.capabilities[i++])->op !=
+			RTE_CRYPTO_OP_TYPE_UNDEFINED) {
+		if (capability->op == RTE_CRYPTO_OP_TYPE_ASYMMETRIC) {
+			params.asym_op_mpool = rte_crypto_op_pool_create(
+				"EVENT_CRYPTO_ASYM_OP_POOL",
+				RTE_CRYPTO_OP_TYPE_ASYMMETRIC,
+				NUM_MBUFS, MBUF_CACHE_SIZE,
+				(DEFAULT_NUM_XFORMS *
+				sizeof(struct rte_crypto_asym_xform)) +
+				sizeof(union rte_event_crypto_metadata),
+				rte_socket_id());
+			TEST_ASSERT_NOT_NULL(params.asym_op_mpool,
+					"Can't create CRYPTO_ASYM_OP_POOL\n");
+
+			params.asym_sess_mpool =
+				rte_cryptodev_asym_session_pool_create(
+					"CRYPTO_AD_ASYM_SESS_MP",
+					MAX_NB_SESSIONS, 0,
+					sizeof(union rte_event_crypto_metadata),
+					SOCKET_ID_ANY);
+			TEST_ASSERT_NOT_NULL(params.asym_sess_mpool,
+				"asym session mempool allocation failed\n");
+			break;
+		}
+	}
+
 	conf.nb_queue_pairs = info.max_nb_queue_pairs;
 	conf.socket_id = SOCKET_ID_ANY;
 	conf.ff_disable = RTE_CRYPTODEV_FF_SECURITY;
@@ -960,6 +1416,21 @@ crypto_teardown(void)
 		params.session_priv_mpool = NULL;
 	}
 
+	/* Free asym session mempool */
+	if (params.asym_sess_mpool != NULL) {
+		RTE_LOG(DEBUG, USER1, "CRYPTO_AD_ASYM_SESS_MP count %u\n",
+		rte_mempool_avail_count(params.asym_sess_mpool));
+		rte_mempool_free(params.asym_sess_mpool);
+		params.asym_sess_mpool = NULL;
+	}
+	/* Free asym ops mempool */
+	if (params.asym_op_mpool != NULL) {
+		RTE_LOG(DEBUG, USER1, "EVENT_CRYPTO_ASYM_OP_POOL count %u\n",
+		rte_mempool_avail_count(params.asym_op_mpool));
+		rte_mempool_free(params.asym_op_mpool);
+		params.asym_op_mpool = NULL;
+	}
+
 	/* Free ops mempool */
 	if (params.op_mpool != NULL) {
 		RTE_LOG(DEBUG, USER1, "EVENT_CRYPTO_SYM_OP_POOL count %u\n",
@@ -1015,6 +1486,22 @@ static struct unit_test_suite functional_testsuite = {
 		TEST_CASE_ST(test_crypto_adapter_conf_op_new_mode,
 				test_crypto_adapter_stop,
 				test_sessionless_with_op_new_mode),
+
+		TEST_CASE_ST(test_crypto_adapter_conf_op_forward_mode,
+				test_crypto_adapter_stop,
+				test_asym_session_with_op_forward_mode),
+
+		TEST_CASE_ST(test_crypto_adapter_conf_op_forward_mode,
+				test_crypto_adapter_stop,
+				test_asym_sessionless_with_op_forward_mode),
+
+		TEST_CASE_ST(test_crypto_adapter_conf_op_new_mode,
+				test_crypto_adapter_stop,
+				test_asym_session_with_op_new_mode),
+
+		TEST_CASE_ST(test_crypto_adapter_conf_op_new_mode,
+				test_crypto_adapter_stop,
+				test_asym_sessionless_with_op_new_mode),
 
 		TEST_CASES_END() /**< NULL terminate unit test array */
 	}
