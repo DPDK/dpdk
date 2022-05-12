@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  * Copyright 2021 Mellanox Technologies, Ltd
+ * Copyright (C) 2022 Microsoft Corporation
  */
 
 #include <errno.h>
@@ -14,6 +15,18 @@
 struct eal_tls_key {
 	pthread_key_t thread_index;
 };
+
+rte_thread_t
+rte_thread_self(void)
+{
+	RTE_BUILD_BUG_ON(sizeof(pthread_t) > sizeof(uintptr_t));
+
+	rte_thread_t thread_id;
+
+	thread_id.opaque_id = (uintptr_t)pthread_self();
+
+	return thread_id;
+}
 
 int
 rte_thread_key_create(rte_thread_key *key, void (*destructor)(void *))

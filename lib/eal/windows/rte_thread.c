@@ -11,6 +11,16 @@ struct eal_tls_key {
 	DWORD thread_index;
 };
 
+rte_thread_t
+rte_thread_self(void)
+{
+	rte_thread_t thread_id;
+
+	thread_id.opaque_id = GetCurrentThreadId();
+
+	return thread_id;
+}
+
 int
 rte_thread_key_create(rte_thread_key *key,
 		__rte_unused void (*destructor)(void *))
