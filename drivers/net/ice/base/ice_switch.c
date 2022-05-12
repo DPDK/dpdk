@@ -2303,7 +2303,7 @@ ice_get_recp_frm_fw(struct ice_hw *hw, struct ice_sw_recipe *recps, u8 rid,
 			lkup_exts->field_mask[fv_word_idx] =
 				rg_entry->fv_mask[i];
 			if (prot == ICE_META_DATA_ID_HW &&
-			    off == ICE_TUN_FLAG_MDID_OFF)
+			    off == ICE_TUN_FLAG_MDID_OFF(1))
 				vlan = true;
 			fv_word_idx++;
 		}
@@ -6770,6 +6770,7 @@ static struct ice_protocol_entry ice_prot_id_tbl[ICE_PROTOCOL_LAST] = {
 	{ ICE_GTP_NO_PAY,	ICE_UDP_ILOS_HW },
 	{ ICE_VLAN_EX,		ICE_VLAN_OF_HW },
 	{ ICE_VLAN_IN,		ICE_VLAN_OL_HW },
+	{ ICE_FLG_DIR,		ICE_META_DATA_ID_HW},
 };
 
 /**
@@ -7488,9 +7489,10 @@ free_mem:
 /**
  * ice_tun_type_match_word - determine if tun type needs a match mask
  * @tun_type: tunnel type
+ * @off: offset of packet flag
  * @mask: mask to be used for the tunnel
  */
-static bool ice_tun_type_match_word(enum ice_sw_tunnel_type tun_type, u16 *mask)
+static bool ice_tun_type_match_word(enum ice_sw_tunnel_type tun_type, u16 *off, u16 *mask)
 {
 	switch (tun_type) {
 	case ICE_SW_TUN_VXLAN_GPE:
@@ -7506,15 +7508,23 @@ static bool ice_tun_type_match_word(enum ice_sw_tunnel_type tun_type, u16 *mask)
 	case ICE_SW_TUN_PPPOE_IPV4_QINQ:
 	case ICE_SW_TUN_PPPOE_IPV6_QINQ:
 		*mask = ICE_TUN_FLAG_MASK;
+		*off = ICE_TUN_FLAG_MDID_OFF(1);
+		return true;
+
+	case ICE_SW_TUN_AND_NON_TUN:
+		*mask = ICE_DIR_FLAG_MASK;
+		*off = ICE_TUN_FLAG_MDID_OFF(0);
 		return true;
 
 	case ICE_SW_TUN_GENEVE_VLAN:
 	case ICE_SW_TUN_VXLAN_VLAN:
 		*mask = ICE_TUN_FLAG_MASK & ~ICE_TUN_FLAG_VLAN_MASK;
+		*off = ICE_TUN_FLAG_MDID_OFF(1);
 		return true;
 
 	default:
 		*mask = 0;
+		*off = 0;
 		return false;
 	}
 }
@@ -7529,16 +7539,18 @@ ice_add_special_words(struct ice_adv_rule_info *rinfo,
 		      struct ice_prot_lkup_ext *lkup_exts)
 {
 	u16 mask;
+	u16 off;
 
 	/* If this is a tunneled packet, then add recipe index to match the
-	 * tunnel bit in the packet metadata flags.
+	 * tunnel bit in the packet metadata flags. If this is a tun_and_non_tun
+	 * packet, then add recipe index to match the direction bit in the flag.
 	 */
-	if (ice_tun_type_match_word(rinfo->tun_type, &mask)) {
+	if (ice_tun_type_match_word(rinfo->tun_type, &off, &mask)) {
 		if (lkup_exts->n_val_words < ICE_MAX_CHAIN_WORDS) {
 			u8 word = lkup_exts->n_val_words++;
 
 			lkup_exts->fv_words[word].prot_id = ICE_META_DATA_ID_HW;
-			lkup_exts->fv_words[word].off = ICE_TUN_FLAG_MDID_OFF;
+			lkup_exts->fv_words[word].off = off;
 			lkup_exts->field_mask[word] = mask;
 		} else {
 			return ICE_ERR_MAX_LIMIT;
@@ -7863,6 +7875,15 @@ ice_add_adv_recipe(struct ice_hw *hw, struct ice_adv_lkup_elem *lkups,
 	 * ice_get_fv.
 	 */
 	ice_get_compat_fv_bitmap(hw, rinfo, fv_bitmap);
+
+	/* If it is a packet to match any, add a lookup element to match direction
+	 * flag of source interface.
+	 */
+	if (rinfo->tun_type == ICE_SW_TUN_AND_NON_TUN &&
+	    lkups_cnt < ICE_MAX_CHAIN_WORDS) {
+		lkups[lkups_cnt].type = ICE_FLG_DIR;
+		lkups_cnt++;
+	}
 
 	status = ice_get_fv(hw, lkups, lkups_cnt, fv_bitmap, &rm->fv_list);
 	if (status)
