@@ -398,6 +398,25 @@ typedef int (*cryptodev_sym_configure_raw_dp_ctx_t)(
 	enum rte_crypto_op_sess_type sess_type,
 	union rte_cryptodev_session_ctx session_ctx, uint8_t is_update);
 
+/**
+ * Typedef that the driver provided to set event crypto meta data.
+ *
+ * @param	dev		Crypto device pointer.
+ * @param	sess		Crypto or security session.
+ * @param	op_type		Operation type.
+ * @param	sess_type	Session type.
+ * @param	ev_mdata	Pointer to the event crypto meta data
+ *				(aka *union rte_event_crypto_metadata*)
+ * @return
+ *   - On success return 0.
+ *   - On failure return negative integer.
+ */
+typedef int (*cryptodev_session_event_mdata_set_t)(
+	struct rte_cryptodev *dev, void *sess,
+	enum rte_crypto_op_type op_type,
+	enum rte_crypto_op_sess_type sess_type,
+	void *ev_mdata);
+
 /** Crypto device operations function pointer table */
 struct rte_cryptodev_ops {
 	cryptodev_configure_t dev_configure;	/**< Configure device. */
@@ -442,6 +461,8 @@ struct rte_cryptodev_ops {
 			/**< Initialize raw data path context data. */
 		};
 	};
+	cryptodev_session_event_mdata_set_t session_ev_mdata_set;
+	/**< Set a Crypto or Security session even meta data. */
 };
 
 
@@ -603,6 +624,19 @@ void
 cryptodev_fp_ops_set(struct rte_crypto_fp_ops *fp_ops,
 		     const struct rte_cryptodev *dev);
 
+/**
+ * Get session event meta data (aka *union rte_event_crypto_metadata*)
+ *
+ * @param	op            pointer to *rte_crypto_op* structure.
+ *
+ * @return
+ *  - On success, pointer to event crypto metadata
+ *  - On failure, NULL.
+ */
+__rte_internal
+void *
+rte_cryptodev_session_event_mdata_get(struct rte_crypto_op *op);
+
 static inline void *
 get_sym_session_private_data(const struct rte_cryptodev_sym_session *sess,
 		uint8_t driver_id) {
@@ -637,6 +671,8 @@ RTE_STD_C11 struct rte_cryptodev_asym_session {
 	uint16_t user_data_sz;
 	/**< Session user data will be placed after sess_data */
 	uint8_t padding[3];
+	void *event_mdata;
+	/**< Event metadata (aka *union rte_event_crypto_metadata*) */
 	uint8_t sess_private_data[0];
 };
 

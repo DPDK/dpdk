@@ -105,6 +105,9 @@ EXPERIMENTAL {
 	rte_cryptodev_asym_session_pool_create;
 	rte_cryptodev_asym_session_set_user_data;
 	__rte_cryptodev_trace_asym_session_pool_create;
+
+	#added in 22.07
+	rte_cryptodev_session_event_mdata_set;
 };
 
 INTERNAL {
@@ -123,5 +126,6 @@ INTERNAL {
 	rte_cryptodev_pmd_parse_input_args;
 	rte_cryptodev_pmd_probing_finish;
 	rte_cryptodev_pmd_release_device;
+	rte_cryptodev_session_event_mdata_get;
 	rte_cryptodevs;
 };

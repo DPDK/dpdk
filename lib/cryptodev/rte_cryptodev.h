@@ -1270,6 +1270,28 @@ int
 rte_cryptodev_get_raw_dp_ctx_size(uint8_t dev_id);
 
 /**
+ * Set session event meta data
+ *
+ * @param	dev_id		The device identifier.
+ * @param	sess            Crypto or security session.
+ * @param	op_type         Operation type.
+ * @param	sess_type       Session type.
+ * @param	ev_mdata	Pointer to the event crypto meta data
+ *				(aka *union rte_event_crypto_metadata*)
+ * @param	size            Size of ev_mdata.
+ *
+ * @return
+ *  - On success, zero.
+ *  - On failure, a negative value.
+ */
+__rte_experimental
+int
+rte_cryptodev_session_event_mdata_set(uint8_t dev_id, void *sess,
+	enum rte_crypto_op_type op_type,
+	enum rte_crypto_op_sess_type sess_type,
+	void *ev_mdata, uint16_t size);
+
+/**
  * Union of different crypto session types, including session-less xform
  * pointer.
  */

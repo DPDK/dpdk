@@ -2051,6 +2051,8 @@ rte_cryptodev_asym_session_free(uint8_t dev_id, void *sess)
 
 	dev->dev_ops->asym_session_clear(dev, sess);
 
+	rte_free(((struct rte_cryptodev_asym_session *)sess)->event_mdata);
+
 	/* Return session to mempool */
 	sess_mp = rte_mempool_from_obj(sess);
 	rte_mempool_put(sess_mp, sess);
@@ -2257,6 +2259,47 @@ rte_cryptodev_configure_raw_dp_ctx(uint8_t dev_id, uint16_t qp_id,
 
 	return (*dev->dev_ops->sym_configure_raw_dp_ctx)(dev, qp_id, ctx,
 			sess_type, session_ctx, is_update);
+}
+
+int
+rte_cryptodev_session_event_mdata_set(uint8_t dev_id, void *sess,
+	enum rte_crypto_op_type op_type,
+	enum rte_crypto_op_sess_type sess_type,
+	void *ev_mdata,
+	uint16_t size)
+{
+	struct rte_cryptodev *dev;
+
+	if (sess == NULL || ev_mdata == NULL)
+		return -EINVAL;
+
+	if (!rte_cryptodev_is_valid_dev(dev_id))
+		goto skip_pmd_op;
+
+	dev = rte_cryptodev_pmd_get_dev(dev_id);
+	if (dev->dev_ops->session_ev_mdata_set == NULL)
+		goto skip_pmd_op;
+
+	return (*dev->dev_ops->session_ev_mdata_set)(dev, sess, op_type,
+			sess_type, ev_mdata);
+
+skip_pmd_op:
+	if (op_type == RTE_CRYPTO_OP_TYPE_SYMMETRIC)
+		return rte_cryptodev_sym_session_set_user_data(sess, ev_mdata,
+				size);
+	else if (op_type == RTE_CRYPTO_OP_TYPE_ASYMMETRIC) {
+		struct rte_cryptodev_asym_session *s = sess;
+
+		if (s->event_mdata == NULL) {
+			s->event_mdata = rte_malloc(NULL, size, 0);
+			if (s->event_mdata == NULL)
+				return -ENOMEM;
+		}
+		rte_memcpy(s->event_mdata, ev_mdata, size);
+
+		return 0;
+	} else
+		return -ENOTSUP;
 }
 
 uint32_t
