@@ -457,43 +457,22 @@ eca_enq_to_cryptodev(struct event_crypto_adapter *adapter, struct rte_event *ev,
 		crypto_op = ev[i].event_ptr;
 		if (crypto_op == NULL)
 			continue;
-		if (crypto_op->sess_type == RTE_CRYPTO_OP_WITH_SESSION) {
-			m_data = rte_cryptodev_sym_session_get_user_data(
-					crypto_op->sym->session);
-			if (m_data == NULL) {
-				rte_pktmbuf_free(crypto_op->sym->m_src);
-				rte_crypto_op_free(crypto_op);
-				continue;
-			}
-
-			cdev_id = m_data->request_info.cdev_id;
-			qp_id = m_data->request_info.queue_pair_id;
-			qp_info = &adapter->cdevs[cdev_id].qpairs[qp_id];
-			if (!qp_info->qp_enabled) {
-				rte_pktmbuf_free(crypto_op->sym->m_src);
-				rte_crypto_op_free(crypto_op);
-				continue;
-			}
-			eca_circular_buffer_add(&qp_info->cbuf, crypto_op);
-		} else if (crypto_op->sess_type == RTE_CRYPTO_OP_SESSIONLESS &&
-				crypto_op->private_data_offset) {
-			m_data = (union rte_event_crypto_metadata *)
-				 ((uint8_t *)crypto_op +
-					crypto_op->private_data_offset);
-			cdev_id = m_data->request_info.cdev_id;
-			qp_id = m_data->request_info.queue_pair_id;
-			qp_info = &adapter->cdevs[cdev_id].qpairs[qp_id];
-			if (!qp_info->qp_enabled) {
-				rte_pktmbuf_free(crypto_op->sym->m_src);
-				rte_crypto_op_free(crypto_op);
-				continue;
-			}
-			eca_circular_buffer_add(&qp_info->cbuf, crypto_op);
-		} else {
+		m_data = rte_cryptodev_session_event_mdata_get(crypto_op);
+		if (m_data == NULL) {
 			rte_pktmbuf_free(crypto_op->sym->m_src);
 			rte_crypto_op_free(crypto_op);
 			continue;
 		}
+
+		cdev_id = m_data->request_info.cdev_id;
+		qp_id = m_data->request_info.queue_pair_id;
+		qp_info = &adapter->cdevs[cdev_id].qpairs[qp_id];
+		if (!qp_info->qp_enabled) {
+			rte_pktmbuf_free(crypto_op->sym->m_src);
+			rte_crypto_op_free(crypto_op);
+			continue;
+		}
+		eca_circular_buffer_add(&qp_info->cbuf, crypto_op);
 
 		if (eca_circular_buffer_batch_ready(&qp_info->cbuf)) {
 			ret = eca_circular_buffer_flush_to_cdev(&qp_info->cbuf,
@@ -636,17 +615,7 @@ eca_ops_enqueue_burst(struct event_crypto_adapter *adapter,
 	for (i = 0; i < num; i++) {
 		struct rte_event *ev = &events[nb_ev++];
 
-		m_data = NULL;
-		if (ops[i]->sess_type == RTE_CRYPTO_OP_WITH_SESSION) {
-			m_data = rte_cryptodev_sym_session_get_user_data(
-					ops[i]->sym->session);
-		} else if (ops[i]->sess_type == RTE_CRYPTO_OP_SESSIONLESS &&
-				ops[i]->private_data_offset) {
-			m_data = (union rte_event_crypto_metadata *)
-				 ((uint8_t *)ops[i] +
-				  ops[i]->private_data_offset);
-		}
-
+		m_data = rte_cryptodev_session_event_mdata_get(ops[i]);
 		if (unlikely(m_data == NULL)) {
 			rte_pktmbuf_free(ops[i]->sym->m_src);
 			rte_crypto_op_free(ops[i]);
