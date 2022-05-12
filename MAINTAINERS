@@ -181,6 +181,7 @@ F: app/test/test_rwlock.c
 F: app/test/test_spinlock.c
 F: app/test/test_string_fns.c
 F: app/test/test_tailq.c
+F: app/test/test_threads.c
 F: app/test/test_version.c
 
 Trace - EXPERIMENTAL
