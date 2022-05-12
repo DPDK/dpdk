@@ -90,7 +90,7 @@
 
 /* Supported RSS */
 #define MLX5_RSS_HF_MASK (~(RTE_ETH_RSS_IP | RTE_ETH_RSS_UDP | RTE_ETH_RSS_TCP | \
-			    MLX5_RSS_SRC_DST_ONLY))
+			    MLX5_RSS_SRC_DST_ONLY | RTE_ETH_RSS_ESP))
 
 /* Timeout in seconds to get a valid link status. */
 #define MLX5_LINK_STATUS_TIMEOUT 10

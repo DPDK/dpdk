@@ -149,6 +149,7 @@ mlx5_flow_is_rss_expandable_item(const struct rte_flow_item *item)
 	case RTE_FLOW_ITEM_TYPE_IPV6:
 	case RTE_FLOW_ITEM_TYPE_UDP:
 	case RTE_FLOW_ITEM_TYPE_TCP:
+	case RTE_FLOW_ITEM_TYPE_ESP:
 	case RTE_FLOW_ITEM_TYPE_VXLAN:
 	case RTE_FLOW_ITEM_TYPE_NVGRE:
 	case RTE_FLOW_ITEM_TYPE_GRE:
@@ -213,6 +214,9 @@ mlx5_inet_proto_to_item_type(uint8_t proto_spec, uint8_t proto_mask)
 		break;
 	case IPPROTO_IPV6:
 		type = RTE_FLOW_ITEM_TYPE_IPV6;
+		break;
+	case IPPROTO_ESP:
+		type = RTE_FLOW_ITEM_TYPE_ESP;
 		break;
 	default:
 		type = RTE_FLOW_ITEM_TYPE_END;
@@ -558,9 +562,11 @@ enum mlx5_expansion {
 	MLX5_EXPANSION_OUTER_IPV4,
 	MLX5_EXPANSION_OUTER_IPV4_UDP,
 	MLX5_EXPANSION_OUTER_IPV4_TCP,
+	MLX5_EXPANSION_OUTER_IPV4_ESP,
 	MLX5_EXPANSION_OUTER_IPV6,
 	MLX5_EXPANSION_OUTER_IPV6_UDP,
 	MLX5_EXPANSION_OUTER_IPV6_TCP,
+	MLX5_EXPANSION_OUTER_IPV6_ESP,
 	MLX5_EXPANSION_VXLAN,
 	MLX5_EXPANSION_STD_VXLAN,
 	MLX5_EXPANSION_L3_VXLAN,
@@ -574,9 +580,11 @@ enum mlx5_expansion {
 	MLX5_EXPANSION_IPV4,
 	MLX5_EXPANSION_IPV4_UDP,
 	MLX5_EXPANSION_IPV4_TCP,
+	MLX5_EXPANSION_IPV4_ESP,
 	MLX5_EXPANSION_IPV6,
 	MLX5_EXPANSION_IPV6_UDP,
 	MLX5_EXPANSION_IPV6_TCP,
+	MLX5_EXPANSION_IPV6_ESP,
 	MLX5_EXPANSION_IPV6_FRAG_EXT,
 	MLX5_EXPANSION_GTP,
 	MLX5_EXPANSION_GENEVE,
@@ -611,6 +619,7 @@ static const struct mlx5_flow_expand_node mlx5_support_expansion[] = {
 		.next = MLX5_FLOW_EXPAND_RSS_NEXT
 			(MLX5_EXPANSION_OUTER_IPV4_UDP,
 			 MLX5_EXPANSION_OUTER_IPV4_TCP,
+			 MLX5_EXPANSION_OUTER_IPV4_ESP,
 			 MLX5_EXPANSION_GRE,
 			 MLX5_EXPANSION_NVGRE,
 			 MLX5_EXPANSION_IPV4,
@@ -632,10 +641,15 @@ static const struct mlx5_flow_expand_node mlx5_support_expansion[] = {
 		.type = RTE_FLOW_ITEM_TYPE_TCP,
 		.rss_types = RTE_ETH_RSS_NONFRAG_IPV4_TCP,
 	},
+	[MLX5_EXPANSION_OUTER_IPV4_ESP] = {
+		.type = RTE_FLOW_ITEM_TYPE_ESP,
+		.rss_types = RTE_ETH_RSS_ESP,
+	},
 	[MLX5_EXPANSION_OUTER_IPV6] = {
 		.next = MLX5_FLOW_EXPAND_RSS_NEXT
 			(MLX5_EXPANSION_OUTER_IPV6_UDP,
 			 MLX5_EXPANSION_OUTER_IPV6_TCP,
+			 MLX5_EXPANSION_OUTER_IPV6_ESP,
 			 MLX5_EXPANSION_IPV4,
 			 MLX5_EXPANSION_IPV6,
 			 MLX5_EXPANSION_GRE,
@@ -656,6 +670,10 @@ static const struct mlx5_flow_expand_node mlx5_support_expansion[] = {
 	[MLX5_EXPANSION_OUTER_IPV6_TCP] = {
 		.type = RTE_FLOW_ITEM_TYPE_TCP,
 		.rss_types = RTE_ETH_RSS_NONFRAG_IPV6_TCP,
+	},
+	[MLX5_EXPANSION_OUTER_IPV6_ESP] = {
+		.type = RTE_FLOW_ITEM_TYPE_ESP,
+		.rss_types = RTE_ETH_RSS_ESP,
 	},
 	[MLX5_EXPANSION_VXLAN] = {
 		.next = MLX5_FLOW_EXPAND_RSS_NEXT(MLX5_EXPANSION_ETH,
@@ -716,7 +734,8 @@ static const struct mlx5_flow_expand_node mlx5_support_expansion[] = {
 	},
 	[MLX5_EXPANSION_IPV4] = {
 		.next = MLX5_FLOW_EXPAND_RSS_NEXT(MLX5_EXPANSION_IPV4_UDP,
-						  MLX5_EXPANSION_IPV4_TCP),
+						  MLX5_EXPANSION_IPV4_TCP,
+						  MLX5_EXPANSION_IPV4_ESP),
 		.type = RTE_FLOW_ITEM_TYPE_IPV4,
 		.rss_types = RTE_ETH_RSS_IPV4 | RTE_ETH_RSS_FRAG_IPV4 |
 			RTE_ETH_RSS_NONFRAG_IPV4_OTHER,
@@ -729,9 +748,14 @@ static const struct mlx5_flow_expand_node mlx5_support_expansion[] = {
 		.type = RTE_FLOW_ITEM_TYPE_TCP,
 		.rss_types = RTE_ETH_RSS_NONFRAG_IPV4_TCP,
 	},
+	[MLX5_EXPANSION_IPV4_ESP] = {
+		.type = RTE_FLOW_ITEM_TYPE_ESP,
+		.rss_types = RTE_ETH_RSS_ESP,
+	},
 	[MLX5_EXPANSION_IPV6] = {
 		.next = MLX5_FLOW_EXPAND_RSS_NEXT(MLX5_EXPANSION_IPV6_UDP,
 						  MLX5_EXPANSION_IPV6_TCP,
+						  MLX5_EXPANSION_IPV6_ESP,
 						  MLX5_EXPANSION_IPV6_FRAG_EXT),
 		.type = RTE_FLOW_ITEM_TYPE_IPV6,
 		.rss_types = RTE_ETH_RSS_IPV6 | RTE_ETH_RSS_FRAG_IPV6 |
@@ -744,6 +768,10 @@ static const struct mlx5_flow_expand_node mlx5_support_expansion[] = {
 	[MLX5_EXPANSION_IPV6_TCP] = {
 		.type = RTE_FLOW_ITEM_TYPE_TCP,
 		.rss_types = RTE_ETH_RSS_NONFRAG_IPV6_TCP,
+	},
+	[MLX5_EXPANSION_IPV6_ESP] = {
+		.type = RTE_FLOW_ITEM_TYPE_ESP,
+		.rss_types = RTE_ETH_RSS_ESP,
 	},
 	[MLX5_EXPANSION_IPV6_FRAG_EXT] = {
 		.type = RTE_FLOW_ITEM_TYPE_IPV6_FRAG_EXT,
@@ -2613,6 +2641,60 @@ mlx5_flow_validate_item_ipv6(const struct rte_flow_item *item,
 						 : (const uint8_t *)&nic_mask,
 					sizeof(struct rte_flow_item_ipv6),
 					MLX5_ITEM_RANGE_NOT_ACCEPTED, error);
+	if (ret < 0)
+		return ret;
+	return 0;
+}
+
+/**
+ * Validate ESP item.
+ *
+ * @param[in] item
+ *   Item specification.
+ * @param[in] item_flags
+ *   Bit-fields that holds the items detected until now.
+ * @param[in] target_protocol
+ *   The next protocol in the previous item.
+ * @param[out] error
+ *   Pointer to error structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+int
+mlx5_flow_validate_item_esp(const struct rte_flow_item *item,
+			    uint64_t item_flags,
+			    uint8_t target_protocol,
+			    struct rte_flow_error *error)
+{
+	const struct rte_flow_item_esp *mask = item->mask;
+	const int tunnel = !!(item_flags & MLX5_FLOW_LAYER_TUNNEL);
+	const uint64_t l3m = tunnel ? MLX5_FLOW_LAYER_INNER_L3 :
+				      MLX5_FLOW_LAYER_OUTER_L3;
+	const uint64_t l4m = tunnel ? MLX5_FLOW_LAYER_INNER_L4 :
+				      MLX5_FLOW_LAYER_OUTER_L4;
+	int ret;
+
+	if (!(item_flags & l3m))
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ITEM, item,
+					  "L3 is mandatory to filter on L4");
+	if (item_flags & l4m)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ITEM, item,
+					  "multiple L4 layers not supported");
+	if (target_protocol != 0xff && target_protocol != IPPROTO_ESP)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ITEM, item,
+					  "protocol filtering not compatible"
+					  " with ESP layer");
+	if (!mask)
+		mask = &rte_flow_item_esp_mask;
+	ret = mlx5_flow_item_acceptable
+		(item, (const uint8_t *)mask,
+		 (const uint8_t *)&rte_flow_item_esp_mask,
+		 sizeof(struct rte_flow_item_esp), MLX5_ITEM_RANGE_NOT_ACCEPTED,
+		 error);
 	if (ret < 0)
 		return ret;
 	return 0;

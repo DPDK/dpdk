@@ -186,6 +186,9 @@ enum mlx5_feature_name {
 #define MLX5_FLOW_ITEM_INNER_FLEX (UINT64_C(1) << 38)
 #define MLX5_FLOW_ITEM_FLEX_TUNNEL (UINT64_C(1) << 39)
 
+/* ESP item */
+#define MLX5_FLOW_ITEM_ESP (UINT64_C(1) << 40)
+
 /* Outer Masks. */
 #define MLX5_FLOW_LAYER_OUTER_L3 \
 	(MLX5_FLOW_LAYER_OUTER_L3_IPV4 | MLX5_FLOW_LAYER_OUTER_L3_IPV6)
@@ -1185,6 +1188,16 @@ struct rte_flow_template_table {
 	(MLX5_RSS_HASH_IPV6 | IBV_RX_HASH_SRC_PORT_TCP)
 #define MLX5_RSS_HASH_IPV6_TCP_DST_ONLY \
 	(MLX5_RSS_HASH_IPV6 | IBV_RX_HASH_DST_PORT_TCP)
+
+#ifndef HAVE_IBV_RX_HASH_IPSEC_SPI
+#define IBV_RX_HASH_IPSEC_SPI (1U << 8)
+#endif
+
+#define MLX5_RSS_HASH_ESP_SPI IBV_RX_HASH_IPSEC_SPI
+#define MLX5_RSS_HASH_IPV4_ESP (MLX5_RSS_HASH_IPV4 | \
+				MLX5_RSS_HASH_ESP_SPI)
+#define MLX5_RSS_HASH_IPV6_ESP (MLX5_RSS_HASH_IPV6 | \
+				MLX5_RSS_HASH_ESP_SPI)
 #define MLX5_RSS_HASH_NONE 0ULL
 
 
@@ -1200,9 +1213,12 @@ static const uint64_t mlx5_rss_hash_fields[] = {
 	MLX5_RSS_HASH_IPV4,
 	MLX5_RSS_HASH_IPV4_TCP,
 	MLX5_RSS_HASH_IPV4_UDP,
+	MLX5_RSS_HASH_IPV4_ESP,
 	MLX5_RSS_HASH_IPV6,
 	MLX5_RSS_HASH_IPV6_TCP,
 	MLX5_RSS_HASH_IPV6_UDP,
+	MLX5_RSS_HASH_IPV6_ESP,
+	MLX5_RSS_HASH_ESP_SPI,
 	MLX5_RSS_HASH_NONE,
 };
 
@@ -1811,6 +1827,10 @@ int mlx5_flow_validate_item_tcp(const struct rte_flow_item *item,
 				uint64_t item_flags,
 				uint8_t target_protocol,
 				const struct rte_flow_item_tcp *flow_mask,
+				struct rte_flow_error *error);
+int mlx5_flow_validate_item_esp(const struct rte_flow_item *item,
+				uint64_t item_flags,
+				uint8_t target_protocol,
 				struct rte_flow_error *error);
 int mlx5_flow_validate_item_udp(const struct rte_flow_item *item,
 				uint64_t item_flags,

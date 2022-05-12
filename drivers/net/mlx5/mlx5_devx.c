@@ -765,7 +765,9 @@ mlx5_devx_tir_attr_set(struct rte_eth_dev *dev, const uint8_t *rss_key,
 			(!!(hash_fields & MLX5_L4_SRC_IBV_RX_HASH)) <<
 			 MLX5_RX_HASH_FIELD_SELECT_SELECTED_FIELDS_L4_SPORT |
 			(!!(hash_fields & MLX5_L4_DST_IBV_RX_HASH)) <<
-			 MLX5_RX_HASH_FIELD_SELECT_SELECTED_FIELDS_L4_DPORT;
+			 MLX5_RX_HASH_FIELD_SELECT_SELECTED_FIELDS_L4_DPORT |
+			(!!(hash_fields & IBV_RX_HASH_IPSEC_SPI)) <<
+			 MLX5_RX_HASH_FIELD_SELECT_SELECTED_FIELDS_IPSEC_SPI;
 	}
 	if (is_hairpin)
 		tir_attr->transport_domain = priv->sh->td->id;
