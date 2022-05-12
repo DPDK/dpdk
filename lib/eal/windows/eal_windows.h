@@ -58,6 +58,16 @@ int eal_thread_create(pthread_t *thread, unsigned int lcore_id);
 unsigned int eal_socket_numa_node(unsigned int socket_id);
 
 /**
+ * Get pointer to the group affinity for the cpu.
+ *
+ * @param cpu_index
+ *  Index of the cpu, as it comes from rte_cpuset_t.
+ * @return
+ *  Pointer to the group affinity for the cpu.
+ */
+PGROUP_AFFINITY eal_get_cpu_affinity(size_t cpu_index);
+
+/**
  * Schedule code for execution in the interrupt thread.
  *
  * @param func

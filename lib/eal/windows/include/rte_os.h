@@ -14,6 +14,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <sched.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif

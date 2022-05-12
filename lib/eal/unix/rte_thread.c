@@ -102,3 +102,19 @@ rte_thread_value_get(rte_thread_key key)
 	}
 	return pthread_getspecific(key->thread_index);
 }
+
+int
+rte_thread_set_affinity_by_id(rte_thread_t thread_id,
+		const rte_cpuset_t *cpuset)
+{
+	return pthread_setaffinity_np((pthread_t)thread_id.opaque_id,
+		sizeof(*cpuset), cpuset);
+}
+
+int
+rte_thread_get_affinity_by_id(rte_thread_t thread_id,
+		rte_cpuset_t *cpuset)
+{
+	return pthread_getaffinity_np((pthread_t)thread_id.opaque_id,
+		sizeof(*cpuset), cpuset);
+}
