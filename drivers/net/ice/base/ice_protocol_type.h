@@ -54,6 +54,7 @@ enum ice_protocol_type {
 	ICE_GTP_NO_PAY,
 	ICE_VLAN_EX,
 	ICE_VLAN_IN,
+	ICE_FLG_DIR,
 	ICE_PROTOCOL_LAST
 };
 
@@ -218,9 +219,10 @@ enum ice_prot_id {
 #define ICE_META_DATA_ID_HW 255 /* this is used for tunnel type */
 
 #define ICE_MDID_SIZE 2
-#define ICE_TUN_FLAG_MDID 21
-#define ICE_TUN_FLAG_MDID_OFF (ICE_MDID_SIZE * ICE_TUN_FLAG_MDID)
+#define ICE_TUN_FLAG_MDID 20
+#define ICE_TUN_FLAG_MDID_OFF(word)   (ICE_MDID_SIZE * (ICE_TUN_FLAG_MDID + (word)))
 #define ICE_TUN_FLAG_MASK 0xFF
+#define ICE_DIR_FLAG_MASK 0x10
 #define ICE_TUN_FLAG_VLAN_MASK 0x01
 #define ICE_TUN_FLAG_FV_IND 2
 
