@@ -768,6 +768,28 @@ pkt_copy_split(const struct rte_mbuf *pkt)
 	return md[0];
 }
 
+#if defined(RTE_LIB_GRO) || defined(RTE_LIB_GSO)
+/*
+ * Re-calculate IP checksum for merged/fragmented packets.
+ */
+static void
+pkts_ip_csum_recalc(struct rte_mbuf **pkts_burst, const uint16_t nb_pkts, uint64_t tx_offloads)
+{
+	int i;
+	struct rte_ipv4_hdr *ipv4_hdr;
+	for (i = 0; i < nb_pkts; i++) {
+		if ((pkts_burst[i]->ol_flags & RTE_MBUF_F_TX_IPV4) &&
+			(tx_offloads & RTE_ETH_TX_OFFLOAD_IPV4_CKSUM) == 0) {
+			ipv4_hdr = rte_pktmbuf_mtod_offset(pkts_burst[i],
+						struct rte_ipv4_hdr *,
+						pkts_burst[i]->l2_len);
+			ipv4_hdr->hdr_checksum = 0;
+			ipv4_hdr->hdr_checksum = rte_ipv4_cksum(ipv4_hdr);
+		}
+	}
+}
+#endif
+
 /*
  * Receive a burst of packets, and for each packet:
  *  - parse packet, and try to recognize a supported packet type (1)
@@ -1091,6 +1113,8 @@ tunnel_update:
 				fs->gro_times = 0;
 			}
 		}
+
+		pkts_ip_csum_recalc(pkts_burst, nb_rx, tx_offloads);
 	}
 #endif
 
@@ -1124,6 +1148,8 @@ tunnel_update:
 
 		tx_pkts_burst = gso_segments;
 		nb_rx = nb_segments;
+
+		pkts_ip_csum_recalc(tx_pkts_burst, nb_rx, tx_offloads);
 	} else
 #endif
 		tx_pkts_burst = pkts_burst;
