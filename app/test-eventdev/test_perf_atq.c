@@ -54,11 +54,13 @@ perf_atq_worker(void *arg, const int enable_fwd_latency)
 			struct rte_crypto_op *op = ev.event_ptr;
 
 			if (op->status == RTE_CRYPTO_OP_STATUS_SUCCESS) {
-				if (op->sym->m_dst == NULL)
-					ev.event_ptr = op->sym->m_src;
-				else
-					ev.event_ptr = op->sym->m_dst;
-				rte_crypto_op_free(op);
+				if (op->type == RTE_CRYPTO_OP_TYPE_SYMMETRIC) {
+					if (op->sym->m_dst == NULL)
+						ev.event_ptr = op->sym->m_src;
+					else
+						ev.event_ptr = op->sym->m_dst;
+					rte_crypto_op_free(op);
+				}
 			} else {
 				rte_crypto_op_free(op);
 				continue;

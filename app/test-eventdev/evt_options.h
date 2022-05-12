@@ -38,6 +38,7 @@
 #define EVT_PROD_TIMERDEV        ("prod_type_timerdev")
 #define EVT_PROD_TIMERDEV_BURST  ("prod_type_timerdev_burst")
 #define EVT_CRYPTO_ADPTR_MODE	 ("crypto_adptr_mode")
+#define EVT_CRYPTO_OP_TYPE	 ("crypto_op_type")
 #define EVT_NB_TIMERS            ("nb_timers")
 #define EVT_NB_TIMER_ADPTRS      ("nb_timer_adptrs")
 #define EVT_TIMER_TICK_NSEC      ("timer_tick_nsec")
@@ -298,6 +299,9 @@ evt_dump_producer_type(struct evt_options *opt)
 			 "Event crypto adapter producers");
 		evt_dump("crypto adapter mode", "%s",
 			 opt->crypto_adptr_mode ? "OP_FORWARD" : "OP_NEW");
+		evt_dump("crypto op type", "%s",
+			 (opt->crypto_op_type == RTE_CRYPTO_OP_TYPE_SYMMETRIC) ?
+			 "SYMMETRIC" : "ASYMMETRIC");
 		evt_dump("nb_cryptodev", "%u", rte_cryptodev_count());
 		break;
 	}

@@ -157,6 +157,11 @@ The following are the application command-line options:
         Set crypto adapter mode. Use 0 for OP_NEW (default) and 1 for
         OP_FORWARD mode.
 
+* ``--crypto_op_type``
+
+        Set crypto operation type. Use 0 for symmetric crypto ops (default)
+        and 1 for asymmetric crypto ops.
+
 * ``--mbuf_sz``
 
        Set packet mbuf size. Can be used to configure Jumbo Frames. Only
