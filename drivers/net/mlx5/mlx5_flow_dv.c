@@ -17380,6 +17380,68 @@ err_exit:
 }
 
 /**
+ * Check if need to create hierarchy tag rule.
+ *
+ * @param[in] priv
+ *   Pointer to mlx5_priv.
+ * @param[in] mtr_policy
+ *   Pointer to current meter policy.
+ * @param[in] src_port
+ *   The src port this extra rule should use.
+ * @param[out] next_fm
+ *   Pointer to next meter in hierarchy.
+ * @param[out] skip
+ *   Indicate if skip the tag rule creation.
+ * @param[out] error
+ *   Perform verbose error reporting if not NULL.
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+static int
+mlx5_meter_hierarchy_skip_tag_rule(struct mlx5_priv *priv,
+				   struct mlx5_flow_meter_policy *mtr_policy,
+				   int32_t src_port,
+				   struct mlx5_flow_meter_info **next_fm,
+				   bool *skip,
+				   struct rte_flow_error *error)
+{
+	struct mlx5_flow_meter_sub_policy *sub_policy;
+	struct mlx5_sub_policy_color_rule *color_rule;
+	uint32_t domain = MLX5_MTR_DOMAIN_TRANSFER;
+	int ret = 0;
+	int i;
+
+	*next_fm = NULL;
+	*skip = false;
+	rte_spinlock_lock(&mtr_policy->sl);
+	if (!mtr_policy->is_hierarchy)
+		goto exit;
+	*next_fm = mlx5_flow_meter_hierarchy_next_meter(priv, mtr_policy, NULL);
+	if (!*next_fm) {
+		ret = rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_ACTION,
+					 NULL, "Failed to find next meter in hierarchy.");
+		goto exit;
+	}
+	if (!(*next_fm)->drop_cnt) {
+		*skip = true;
+		goto exit;
+	}
+	sub_policy = mtr_policy->sub_policys[domain][0];
+	for (i = 0; i < MLX5_MTR_RTE_COLORS; i++) {
+		if (mtr_policy->act_cnt[i].fate_action != MLX5_FLOW_FATE_MTR)
+			continue;
+		TAILQ_FOREACH(color_rule, &sub_policy->color_rules[i], next_port)
+			if (color_rule->src_port == src_port) {
+				*skip = true;
+				goto exit;
+			}
+	}
+exit:
+	rte_spinlock_unlock(&mtr_policy->sl);
+	return ret;
+}
+
+/**
  * Create the sub policy tag rule for all meters in hierarchy.
  *
  * @param[in] dev
@@ -17422,111 +17484,129 @@ flow_dv_meter_hierarchy_rule_create(struct rte_eth_dev *dev,
 		.reserved = 0,
 	};
 	uint32_t domain = MLX5_MTR_DOMAIN_TRANSFER;
-	int i;
+	struct {
+		struct mlx5_flow_meter_policy *fm_policy;
+		struct mlx5_flow_meter_info *next_fm;
+		struct mlx5_sub_policy_color_rule *tag_rule[MLX5_MTR_RTE_COLORS];
+	} fm_info[MLX5_MTR_CHAIN_MAX_NUM] = { {0} };
+	uint32_t fm_cnt = 0;
+	uint32_t i, j;
 
-	mtr_policy = mlx5_flow_meter_policy_find(dev, fm->policy_id, NULL);
-	MLX5_ASSERT(mtr_policy);
-	if (!mtr_policy->is_hierarchy)
-		return 0;
-	next_fm = mlx5_flow_meter_find(priv,
-			mtr_policy->act_cnt[RTE_COLOR_GREEN].next_mtr_id, NULL);
-	if (!next_fm) {
-		return rte_flow_error_set(error, EINVAL,
-				RTE_FLOW_ERROR_TYPE_ACTION, NULL,
-				"Failed to find next meter in hierarchy.");
-	}
-	if (!next_fm->drop_cnt)
-		goto exit;
 	color_reg_c_idx = mlx5_flow_get_reg_id(dev, MLX5_MTR_COLOR, 0, error);
-	sub_policy = mtr_policy->sub_policys[domain][0];
-	for (i = 0; i < RTE_COLORS; i++) {
-		bool rule_exist = false;
-		struct mlx5_meter_policy_action_container *act_cnt;
+	/* Get all fms who need to create the tag color rule. */
+	do {
+		bool skip = false;
 
-		if (i >= RTE_COLOR_YELLOW)
-			break;
-		TAILQ_FOREACH(color_rule,
-			      &sub_policy->color_rules[i], next_port)
-			if (color_rule->src_port == src_port) {
-				rule_exist = true;
-				break;
+		mtr_policy = mlx5_flow_meter_policy_find(dev, fm->policy_id, NULL);
+		MLX5_ASSERT(mtr_policy);
+		if (mlx5_meter_hierarchy_skip_tag_rule(priv, mtr_policy, src_port,
+						       &next_fm, &skip, error))
+			goto err_exit;
+		if (next_fm && !skip) {
+			fm_info[fm_cnt].fm_policy = mtr_policy;
+			fm_info[fm_cnt].next_fm = next_fm;
+			if (++fm_cnt >= MLX5_MTR_CHAIN_MAX_NUM) {
+				rte_flow_error_set(error, errno,
+					RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+					"Exceed max meter number in hierarchy.");
+				goto err_exit;
 			}
-		if (rule_exist)
-			continue;
-		color_rule = mlx5_malloc(MLX5_MEM_ZERO,
-				sizeof(struct mlx5_sub_policy_color_rule),
-				0, SOCKET_ID_ANY);
-		if (!color_rule)
-			return rte_flow_error_set(error, ENOMEM,
-				RTE_FLOW_ERROR_TYPE_ACTION,
-				NULL, "No memory to create tag color rule.");
-		color_rule->src_port = src_port;
-		attr.priority = i;
-		next_policy = mlx5_flow_meter_policy_find(dev,
-						next_fm->policy_id, NULL);
-		MLX5_ASSERT(next_policy);
-		next_sub_policy = next_policy->sub_policys[domain][0];
-		tbl_data = container_of(next_sub_policy->tbl_rsc,
-					struct mlx5_flow_tbl_data_entry, tbl);
-		act_cnt = &mtr_policy->act_cnt[i];
-		if (mtr_first) {
-			acts.dv_actions[0] = next_fm->meter_action_g;
-			acts.dv_actions[1] = act_cnt->modify_hdr->action;
-		} else {
-			acts.dv_actions[0] = act_cnt->modify_hdr->action;
-			acts.dv_actions[1] = next_fm->meter_action_g;
 		}
-		acts.dv_actions[2] = tbl_data->jump.action;
-		acts.actions_n = 3;
-		if (mlx5_flow_meter_attach(priv, next_fm, &attr, error)) {
-			next_fm = NULL;
-			goto err_exit;
+		fm = next_fm;
+	} while (fm);
+	/* Create tag color rules for all needed fms. */
+	for (i = 0; i < fm_cnt; i++) {
+		void *mtr_action;
+
+		mtr_policy = fm_info[i].fm_policy;
+		rte_spinlock_lock(&mtr_policy->sl);
+		sub_policy = mtr_policy->sub_policys[domain][0];
+		for (j = 0; j < MLX5_MTR_RTE_COLORS; j++) {
+			if (mtr_policy->act_cnt[j].fate_action != MLX5_FLOW_FATE_MTR)
+				continue;
+			color_rule = mlx5_malloc(MLX5_MEM_ZERO,
+						 sizeof(struct mlx5_sub_policy_color_rule),
+						 0, SOCKET_ID_ANY);
+			if (!color_rule) {
+				rte_spinlock_unlock(&mtr_policy->sl);
+				rte_flow_error_set(error, ENOMEM,
+						   RTE_FLOW_ERROR_TYPE_ACTION, NULL,
+						   "No memory to create tag color rule.");
+				goto err_exit;
+			}
+			color_rule->src_port = src_port;
+			next_fm = fm_info[i].next_fm;
+			if (mlx5_flow_meter_attach(priv, next_fm, &attr, error)) {
+				mlx5_free(color_rule);
+				rte_spinlock_unlock(&mtr_policy->sl);
+				goto err_exit;
+			}
+			fm_info[i].tag_rule[j] = color_rule;
+			TAILQ_INSERT_TAIL(&sub_policy->color_rules[j], color_rule, next_port);
+			/* Prepare to create color rule. */
+			mtr_action = (next_fm->color_aware && j == RTE_COLOR_YELLOW) ?
+								next_fm->meter_action_y :
+								next_fm->meter_action_g;
+			next_policy = mlx5_flow_meter_policy_find(dev, next_fm->policy_id, NULL);
+			MLX5_ASSERT(next_policy);
+			next_sub_policy = next_policy->sub_policys[domain][0];
+			tbl_data = container_of(next_sub_policy->tbl_rsc,
+						struct mlx5_flow_tbl_data_entry, tbl);
+			if (mtr_first) {
+				acts.dv_actions[0] = mtr_action;
+				acts.dv_actions[1] = mtr_policy->act_cnt[j].modify_hdr->action;
+			} else {
+				acts.dv_actions[0] = mtr_policy->act_cnt[j].modify_hdr->action;
+				acts.dv_actions[1] = mtr_action;
+			}
+			acts.dv_actions[2] = tbl_data->jump.action;
+			acts.actions_n = 3;
+			if (__flow_dv_create_policy_matcher(dev, color_reg_c_idx,
+						MLX5_MTR_POLICY_MATCHER_PRIO, sub_policy,
+						&attr, true, item, &color_rule->matcher, error)) {
+				rte_spinlock_unlock(&mtr_policy->sl);
+				rte_flow_error_set(error, errno,
+						   RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+						   "Failed to create hierarchy meter matcher.");
+				goto err_exit;
+			}
+			if (__flow_dv_create_policy_flow(dev, color_reg_c_idx, (enum rte_color)j,
+						color_rule->matcher->matcher_object,
+						acts.actions_n, acts.dv_actions,
+						true, item, &color_rule->rule, &attr)) {
+				rte_spinlock_unlock(&mtr_policy->sl);
+				rte_flow_error_set(error, errno,
+						   RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+						   "Failed to create hierarchy meter rule.");
+				goto err_exit;
+			}
 		}
-		if (__flow_dv_create_policy_matcher(dev, color_reg_c_idx,
-				MLX5_MTR_POLICY_MATCHER_PRIO, sub_policy,
-				&attr, true, item,
-				&color_rule->matcher, error)) {
-			rte_flow_error_set(error, errno,
-				RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
-				"Failed to create hierarchy meter matcher.");
-			goto err_exit;
-		}
-		if (__flow_dv_create_policy_flow(dev, color_reg_c_idx,
-					(enum rte_color)i,
-					color_rule->matcher->matcher_object,
-					acts.actions_n, acts.dv_actions,
-					true, item,
-					&color_rule->rule, &attr)) {
-			rte_flow_error_set(error, errno,
-				RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
-				"Failed to create hierarchy meter rule.");
-			goto err_exit;
-		}
-		TAILQ_INSERT_TAIL(&sub_policy->color_rules[i],
-				  color_rule, next_port);
+		rte_spinlock_unlock(&mtr_policy->sl);
 	}
-exit:
-	/**
-	 * Recursive call to iterate all meters in hierarchy and
-	 * create needed rules.
-	 */
-	return flow_dv_meter_hierarchy_rule_create(dev, next_fm,
-						src_port, item, error);
+	return 0;
 err_exit:
-	if (color_rule) {
-		if (color_rule->rule)
-			mlx5_flow_os_destroy_flow(color_rule->rule);
-		if (color_rule->matcher) {
-			struct mlx5_flow_tbl_data_entry *tbl =
-				container_of(color_rule->matcher->tbl,
-						typeof(*tbl), tbl);
-			mlx5_list_unregister(tbl->matchers,
-						&color_rule->matcher->entry);
+	for (i = 0; i < fm_cnt; i++) {
+		mtr_policy = fm_info[i].fm_policy;
+		rte_spinlock_lock(&mtr_policy->sl);
+		sub_policy = mtr_policy->sub_policys[domain][0];
+		for (j = 0; j < MLX5_MTR_RTE_COLORS; j++) {
+			color_rule = fm_info[i].tag_rule[j];
+			if (!color_rule)
+				continue;
+			if (color_rule->rule)
+				mlx5_flow_os_destroy_flow(color_rule->rule);
+			if (color_rule->matcher) {
+				struct mlx5_flow_tbl_data_entry *tbl =
+					container_of(color_rule->matcher->tbl, typeof(*tbl), tbl);
+				mlx5_list_unregister(tbl->matchers, &color_rule->matcher->entry);
+			}
+			if (fm_info[i].next_fm)
+				mlx5_flow_meter_detach(priv, fm_info[i].next_fm);
+			TAILQ_REMOVE(&sub_policy->color_rules[j], color_rule, next_port);
+			mlx5_free(color_rule);
 		}
-		mlx5_free(color_rule);
+		rte_spinlock_unlock(&mtr_policy->sl);
 	}
-	if (next_fm)
-		mlx5_flow_meter_detach(priv, next_fm);
 	return -rte_errno;
 }
 
