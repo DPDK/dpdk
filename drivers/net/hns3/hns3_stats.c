@@ -1031,9 +1031,13 @@ hns3_imissed_stats_get(struct rte_eth_dev *dev, struct rte_eth_xstat *xstats,
  * @praram xstats
  *   A pointer to a table of structure of type *rte_eth_xstat*
  *   to be filled with device statistics ids and values.
- *   This parameter can be set to NULL if n is 0.
+ *   This parameter can be set to NULL if and only if n is 0.
  * @param n
  *   The size of the xstats array (number of elements).
+ *   If lower than the required number of elements, the function returns the
+ *   required number of elements.
+ *   If equal to zero, the xstats parameter must be NULL, the function returns
+ *   the required number of elements.
  * @return
  *   0 on fail, count(The size of the statistics elements) on success.
  */
@@ -1051,9 +1055,6 @@ hns3_dev_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstat *xstats,
 	char *addr;
 	int count;
 	int ret;
-
-	if (xstats == NULL)
-		return 0;
 
 	count = hns3_xstats_calc_num(dev);
 	if ((int)n < count)
