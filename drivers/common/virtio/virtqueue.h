@@ -226,6 +226,21 @@ struct virtio_pmd_ctrl {
 	uint8_t data[VIRTIO_MAX_CTRL_DATA];
 };
 
+struct virtio_admin_ctrl_hdr {
+	uint8_t class;
+	uint8_t cmd;
+} __rte_packed;
+
+typedef uint8_t virtio_admin_ctrl_ack;
+
+#define VIRTIO_MAX_ADMIN_DATA 2048
+
+struct virtio_admin_ctrl {
+	struct virtio_admin_ctrl_hdr hdr;
+	virtio_admin_ctrl_ack status;
+	uint8_t data[0];
+};
+
 struct vq_desc_extra {
 	void *cookie;
 	uint16_t ndescs;
@@ -236,6 +251,7 @@ struct vq_desc_extra {
 #define virtnet_txq_to_vq(txvq) container_of(txvq, struct virtqueue, txq)
 #define virtnet_cq_to_vq(cvq) container_of(cvq, struct virtqueue, cq)
 #define virtnet_aq_to_vq(avq) container_of(avq, struct virtqueue, aq)
+#define virtnet_get_aq_hdr_addr(avq) (avq->virtio_admin_hdr_mz->addr)
 
 struct virtqueue {
 	struct virtio_hw  *hw; /**< virtio_hw structure pointer. */

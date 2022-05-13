@@ -23,6 +23,8 @@
 
 #define VIRTIO_VDPA_MI_SUPPORTED_NET_FEATURES (1ULL << VIRTIO_F_ADMIN_VQ)
 
+#define VIRTIO_VDPA_MI_MAX_SGES 32
+
 struct virtio_vdpa_pf_priv;
 struct virtio_vdpa_dev_ops {
 	uint64_t (*get_required_features)(void);
@@ -39,6 +41,18 @@ struct virtio_vdpa_pf_priv {
 	uint16_t hw_nr_virtqs; /* number of vq device supported*/
 };
 
+struct sge_iova {
+	rte_iova_t iova;
+	uint32_t len;
+};
+
+struct virtio_admin_data_ctrl{
+	uint16_t num_in_data;
+	uint16_t num_out_data;
+	struct sge_iova in_data[VIRTIO_VDPA_MI_MAX_SGES];
+	struct sge_iova out_data[VIRTIO_VDPA_MI_MAX_SGES];
+};
+
 RTE_LOG_REGISTER(virtio_vdpa_mi_logtype, pmd.vdpa.virtio, NOTICE);
 #define DRV_LOG(level, fmt, args...) \
 	rte_log(RTE_LOG_ ## level, virtio_vdpa_mi_logtype, \
@@ -47,6 +61,142 @@ RTE_LOG_REGISTER(virtio_vdpa_mi_logtype, pmd.vdpa.virtio, NOTICE);
 TAILQ_HEAD(virtio_vdpa_mi_privs, virtio_vdpa_pf_priv) virtio_mi_priv_list =
 						TAILQ_HEAD_INITIALIZER(virtio_mi_priv_list);
 static pthread_mutex_t mi_priv_list_lock = PTHREAD_MUTEX_INITIALIZER;
+
+static struct virtio_admin_ctrl *
+virtio_vdpa_send_admin_command_split(struct virtadmin_ctl *avq,
+		struct virtio_admin_ctrl *ctrl,
+		struct virtio_admin_data_ctrl *dat_ctrl,
+		int *dlen, int pkt_num)
+{
+	struct virtqueue *vq = virtnet_aq_to_vq(avq);
+	struct virtio_admin_ctrl *result;
+	uint32_t head, i;
+	int k, sum = 0;
+
+	head = vq->vq_desc_head_idx;
+
+	/*
+	 * Format is enforced in qemu code:
+	 * One TX packet for header;
+	 * At least one TX packet per argument;
+	 * One RX packet for ACK.
+	 */
+	vq->vq_split.ring.desc[head].flags = VRING_DESC_F_NEXT;
+	vq->vq_split.ring.desc[head].addr = avq->virtio_admin_hdr_mem;
+	vq->vq_split.ring.desc[head].len = sizeof(struct virtio_admin_ctrl_hdr);
+	vq->vq_free_cnt--;
+	i = vq->vq_split.ring.desc[head].next;
+
+	for (k = 0; k < pkt_num; k++) {
+		vq->vq_split.ring.desc[i].flags = VRING_DESC_F_NEXT;
+		vq->vq_split.ring.desc[i].addr = avq->virtio_admin_hdr_mem
+			+ sizeof(struct virtio_admin_ctrl_hdr)
+			+ sizeof(ctrl->status) + sizeof(uint8_t)*sum;
+		vq->vq_split.ring.desc[i].len = dlen[k];
+		sum += dlen[k];
+		vq->vq_free_cnt--;
+		i = vq->vq_split.ring.desc[i].next;
+	}
+
+	for (k = 0; k < dat_ctrl->num_in_data; k++) {
+		vq->vq_split.ring.desc[i].flags = VRING_DESC_F_NEXT;
+		vq->vq_split.ring.desc[i].addr = dat_ctrl->in_data[k].iova;
+		vq->vq_split.ring.desc[i].len = dat_ctrl->in_data[k].len;
+		vq->vq_free_cnt--;
+		i = vq->vq_split.ring.desc[i].next;
+	}
+
+	for (k = 0; k < dat_ctrl->num_out_data; k++) {
+		vq->vq_split.ring.desc[i].flags = VRING_DESC_F_WRITE | VRING_DESC_F_NEXT;
+		vq->vq_split.ring.desc[i].addr = dat_ctrl->out_data[k].iova;
+		vq->vq_split.ring.desc[i].len = dat_ctrl->out_data[k].len;
+		vq->vq_free_cnt--;
+		i = vq->vq_split.ring.desc[i].next;
+	}
+
+	vq->vq_split.ring.desc[i].flags = VRING_DESC_F_WRITE;
+	vq->vq_split.ring.desc[i].addr = avq->virtio_admin_hdr_mem
+			+ sizeof(struct virtio_admin_ctrl_hdr);
+	vq->vq_split.ring.desc[i].len = sizeof(ctrl->status);
+	vq->vq_free_cnt--;
+
+	vq->vq_desc_head_idx = vq->vq_split.ring.desc[i].next;
+
+	vq_update_avail_ring(vq, head);
+	vq_update_avail_idx(vq);
+
+	virtqueue_notify(vq);
+
+	while (virtqueue_nused(vq) == 0) {
+		usleep(100);
+	}
+
+	while (virtqueue_nused(vq)) {
+		uint32_t idx, desc_idx, used_idx;
+		struct vring_used_elem *uep;
+
+		used_idx = (uint32_t)(vq->vq_used_cons_idx
+				& (vq->vq_nentries - 1));
+		uep = &vq->vq_split.ring.used->ring[used_idx];
+		idx = (uint32_t) uep->id;
+		desc_idx = idx;
+
+		while (vq->vq_split.ring.desc[desc_idx].flags &
+		       VRING_DESC_F_NEXT) {
+			desc_idx = vq->vq_split.ring.desc[desc_idx].next;
+			vq->vq_free_cnt++;
+		}
+
+		vq->vq_split.ring.desc[desc_idx].next = vq->vq_desc_head_idx;
+		vq->vq_desc_head_idx = idx;
+
+		vq->vq_used_cons_idx++;
+		vq->vq_free_cnt++;
+	}
+
+	DRV_LOG(DEBUG, "vq->vq_free_cnt=%d\nvq->vq_desc_head_idx=%d",
+			vq->vq_free_cnt, vq->vq_desc_head_idx);
+
+	result = avq->virtio_admin_hdr_mz->addr;
+	return result;
+}
+
+static int
+virtio_vdpa_send_admin_command(struct virtadmin_ctl *avq,
+		struct virtio_admin_ctrl *ctrl,
+		struct virtio_admin_data_ctrl *dat_ctrl,
+		int *dlen,
+		int pkt_num)
+{
+	virtio_admin_ctrl_ack status = ~0;
+	struct virtio_admin_ctrl *result;
+	struct virtqueue *vq;
+
+	ctrl->status = status;
+
+	if (!avq) {
+		DRV_LOG(ERR, "Admin queue is not supported");
+		return -1;
+	}
+
+	rte_spinlock_lock(&avq->lock);
+	vq = virtnet_aq_to_vq(avq);
+
+	DRV_LOG(DEBUG, "vq->vq_desc_head_idx = %d, status = %d, "
+		"vq->hw->avq = %p vq = %p",
+		vq->vq_desc_head_idx, status, vq->hw->avq, vq);
+
+	if (vq->vq_free_cnt < pkt_num + 2) {
+		rte_spinlock_unlock(&avq->lock);
+		return -1;
+	}
+
+	result = virtio_vdpa_send_admin_command_split(avq, ctrl, dat_ctrl,
+			dlen, pkt_num);
+
+	rte_spinlock_unlock(&avq->lock);
+	return result->status;
+}
 
 static void
 virtio_vdpa_init_vring(struct virtqueue *vq)
