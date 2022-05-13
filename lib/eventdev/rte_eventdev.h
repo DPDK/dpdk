@@ -830,6 +830,42 @@ int
 rte_event_port_setup(uint8_t dev_id, uint8_t port_id,
 		     const struct rte_event_port_conf *port_conf);
 
+typedef void (*rte_eventdev_port_flush_t)(uint8_t dev_id,
+					  struct rte_event event, void *arg);
+/**< Callback function prototype that can be passed during
+ * rte_event_port_release(), invoked once per a released event.
+ */
+
+/**
+ * Quiesce any core specific resources consumed by the event port.
+ *
+ * Event ports are generally coupled with lcores, and a given Hardware
+ * implementation might require the PMD to store port specific data in the
+ * lcore.
+ * When the application decides to migrate the event port to another lcore
+ * or teardown the current lcore it may to call `rte_event_port_quiesce`
+ * to make sure that all the data associated with the event port are released
+ * from the lcore, this might also include any prefetched events.
+ * While releasing the event port from the lcore, this function calls the
+ * user-provided flush callback once per event.
+ *
+ * @note Invocation of this API does not affect the existing port configuration.
+ *
+ * @param dev_id
+ *   The identifier of the device.
+ * @param port_id
+ *   The index of the event port to setup. The value must be in the range
+ *   [0, nb_event_ports - 1] previously supplied to rte_event_dev_configure().
+ * @param release_cb
+ *   Callback function invoked once per flushed event.
+ * @param args
+ *   Argument supplied to callback.
+ */
+__rte_experimental
+void
+rte_event_port_quiesce(uint8_t dev_id, uint8_t port_id,
+		       rte_eventdev_port_flush_t release_cb, void *args);
+
 /**
  * The queue depth of the port on the enqueue side
  */

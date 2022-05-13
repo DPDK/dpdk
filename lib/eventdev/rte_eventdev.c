@@ -730,6 +730,25 @@ rte_event_port_setup(uint8_t dev_id, uint8_t port_id,
 	return 0;
 }
 
+void
+rte_event_port_quiesce(uint8_t dev_id, uint8_t port_id,
+		       rte_eventdev_port_flush_t release_cb, void *args)
+{
+	struct rte_eventdev *dev;
+
+	RTE_EVENTDEV_VALID_DEVID_OR_RET(dev_id);
+	dev = &rte_eventdevs[dev_id];
+
+	if (!is_valid_port(dev, port_id)) {
+		RTE_EDEV_LOG_ERR("Invalid port_id=%" PRIu8, port_id);
+		return;
+	}
+
+	if (dev->dev_ops->port_quiesce)
+		(*dev->dev_ops->port_quiesce)(dev, dev->data->ports[port_id],
+					      release_cb, args);
+}
+
 int
 rte_event_dev_attr_get(uint8_t dev_id, uint32_t attr_id,
 		       uint32_t *attr_value)

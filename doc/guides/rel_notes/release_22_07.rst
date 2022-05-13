@@ -86,6 +86,12 @@ New Features
   * Added AH mode support in lookaside protocol (IPsec) for CN9K & CN10K.
   * Added AES-GMAC support in lookaside protocol (IPsec) for CN9K & CN10K.
 
+* **Added eventdev API to quiesce an event port.**
+
+  Added the function ``rte_event_port_quiesce()``
+  to quiesce any lcore-specific resources consumed by the event port,
+  when the lcore is no more associated with an event port.
+
 
 Removed Items
 -------------

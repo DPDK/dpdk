@@ -382,6 +382,23 @@ typedef int (*eventdev_port_setup_t)(struct rte_eventdev *dev,
 typedef void (*eventdev_port_release_t)(void *port);
 
 /**
+ * Quiesce any core specific resources consumed by the event port
+ *
+ * @param dev
+ *   Event device pointer.
+ * @param port
+ *   Event port pointer.
+ * @param flush_cb
+ *   User-provided event flush function.
+ * @param args
+ *   Arguments to be passed to the user-provided event flush function.
+ *
+ */
+typedef void (*eventdev_port_quiesce_t)(struct rte_eventdev *dev, void *port,
+					rte_eventdev_port_flush_t flush_cb,
+					void *args);
+
+/**
  * Link multiple source event queues to destination event port.
  *
  * @param dev
@@ -1218,6 +1235,8 @@ struct eventdev_ops {
 	/**< Set up an event port. */
 	eventdev_port_release_t port_release;
 	/**< Release an event port. */
+	eventdev_port_quiesce_t port_quiesce;
+	/**< Quiesce an event port. */
 
 	eventdev_port_link_t port_link;
 	/**< Link event queues to an event port. */

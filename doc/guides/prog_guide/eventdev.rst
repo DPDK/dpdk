@@ -412,6 +412,41 @@ An event driven worker thread has following typical workflow on fastpath:
                rte_event_enqueue_burst(...);
        }
 
+Quiescing Event Ports
+~~~~~~~~~~~~~~~~~~~~~
+
+To migrate the event port to another lcore
+or while tearing down a worker core using an event port,
+``rte_event_port_quiesce()`` can be invoked to make sure that all the data
+associated with the event port are released from the worker core,
+this might also include any prefetched events.
+
+A flush callback can be passed to the function to handle any outstanding events.
+
+.. code-block:: c
+
+        rte_event_port_quiesce(dev_id, port_id, release_cb, NULL);
+
+.. Note::
+
+        Invocation of this API does not affect the existing port configuration.
+
+Stopping the EventDev
+~~~~~~~~~~~~~~~~~~~~~
+
+A single function call tells the eventdev instance to stop processing events.
+A flush callback can be registered to free any inflight events
+using ``rte_event_dev_stop_flush_callback_register()`` function.
+
+.. code-block:: c
+
+        int err = rte_event_dev_stop(dev_id);
+
+.. Note::
+
+        The event producers such as ``event_eth_rx_adapter``,
+        ``event_timer_adapter`` and ``event_crypto_adapter``
+        need to be stopped before stopping the event device.
 
 Summary
 -------
