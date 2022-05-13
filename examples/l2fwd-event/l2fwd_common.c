@@ -128,6 +128,16 @@ l2fwd_event_vector_array_free(struct rte_event events[], uint16_t num)
 	}
 }
 
+static void
+l2fwd_event_port_flush(uint8_t event_d_id __rte_unused, struct rte_event ev,
+		       void *args __rte_unused)
+{
+	if (ev.event_type & RTE_EVENT_TYPE_VECTOR)
+		l2fwd_event_vector_array_free(&ev, 1);
+	else
+		rte_pktmbuf_free(ev.mbuf);
+}
+
 void
 l2fwd_event_worker_cleanup(uint8_t event_d_id, uint8_t port_id,
 			   struct rte_event events[], uint16_t nb_enq,
@@ -147,4 +157,7 @@ l2fwd_event_worker_cleanup(uint8_t event_d_id, uint8_t port_id,
 			events[i].op = RTE_EVENT_OP_RELEASE;
 		rte_event_enqueue_burst(event_d_id, port_id, events, nb_deq);
 	}
+
+	rte_event_port_quiesce(event_d_id, port_id, l2fwd_event_port_flush,
+			       NULL);
 }

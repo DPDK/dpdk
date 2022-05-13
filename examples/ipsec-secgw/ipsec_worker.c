@@ -737,6 +737,13 @@ ipsec_ev_vector_drv_mode_process(struct eh_event_link_info *links,
  * selected.
  */
 
+static void
+ipsec_event_port_flush(uint8_t eventdev_id __rte_unused, struct rte_event ev,
+		       void *args __rte_unused)
+{
+	rte_pktmbuf_free(ev.mbuf);
+}
+
 /* Workers registered */
 #define IPSEC_EVENTMODE_WORKERS		2
 
@@ -861,6 +868,9 @@ ipsec_wrkr_non_burst_int_port_drv_mode(struct eh_event_link_info *links,
 		rte_event_enqueue_burst(links[0].eventdev_id,
 					links[0].event_port_id, &ev, 1);
 	}
+
+	rte_event_port_quiesce(links[0].eventdev_id, links[0].event_port_id,
+			       ipsec_event_port_flush, NULL);
 }
 
 /*
@@ -974,6 +984,9 @@ ipsec_wrkr_non_burst_int_port_app_mode(struct eh_event_link_info *links,
 		rte_event_enqueue_burst(links[0].eventdev_id,
 					links[0].event_port_id, &ev, 1);
 	}
+
+	rte_event_port_quiesce(links[0].eventdev_id, links[0].event_port_id,
+			       ipsec_event_port_flush, NULL);
 }
 
 static uint8_t

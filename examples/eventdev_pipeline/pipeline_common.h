@@ -140,6 +140,13 @@ schedule_devices(unsigned int lcore_id)
 	}
 }
 
+static void
+event_port_flush(uint8_t dev_id __rte_unused, struct rte_event ev,
+		 void *args __rte_unused)
+{
+	rte_mempool_put(args, ev.event_ptr);
+}
+
 static inline void
 worker_cleanup(uint8_t dev_id, uint8_t port_id, struct rte_event events[],
 	       uint16_t nb_enq, uint16_t nb_deq)
@@ -160,6 +167,8 @@ worker_cleanup(uint8_t dev_id, uint8_t port_id, struct rte_event events[],
 			events[i].op = RTE_EVENT_OP_RELEASE;
 		rte_event_enqueue_burst(dev_id, port_id, events, nb_deq);
 	}
+
+	rte_event_port_quiesce(dev_id, port_id, event_port_flush, NULL);
 }
 
 void set_worker_generic_setup_data(struct setup_data *caps, bool burst);
