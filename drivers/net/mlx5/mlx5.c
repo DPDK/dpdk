@@ -686,10 +686,14 @@ mlx5_aso_flow_mtrs_mng_close(struct mlx5_dev_ctx_shared *sh)
 #ifdef HAVE_MLX5_DR_CREATE_ACTION_ASO
 			for (i = 0; i < MLX5_ASO_MTRS_PER_POOL; i++) {
 				aso_mtr = &mtr_pool->mtrs[i];
-				if (aso_mtr->fm.meter_action)
+				if (aso_mtr->fm.meter_action_g)
 					claim_zero
 					(mlx5_glue->destroy_flow_action
-					(aso_mtr->fm.meter_action));
+					(aso_mtr->fm.meter_action_g));
+				if (aso_mtr->fm.meter_action_y)
+					claim_zero
+					(mlx5_glue->destroy_flow_action
+					(aso_mtr->fm.meter_action_y));
 			}
 #endif /* HAVE_MLX5_DR_CREATE_ACTION_ASO */
 			claim_zero(mlx5_devx_cmd_destroy

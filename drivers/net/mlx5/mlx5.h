@@ -869,8 +869,10 @@ struct mlx5_flow_meter_info {
 	/**< Use count. */
 	struct mlx5_indexed_pool *flow_ipool;
 	/**< Index pool for flow id. */
-	void *meter_action;
+	void *meter_action_g;
 	/**< Flow meter action. */
+	void *meter_action_y;
+	/**< Flow meter action for yellow init_color. */
 };
 
 /* PPS(packets per second) map to BPS(Bytes per second).
@@ -1873,6 +1875,10 @@ struct mlx5_flow_meter_policy *mlx5_flow_meter_policy_find
 		(struct rte_eth_dev *dev,
 		uint32_t policy_id,
 		uint32_t *policy_idx);
+struct mlx5_flow_meter_info *
+mlx5_flow_meter_hierarchy_next_meter(struct mlx5_priv *priv,
+				     struct mlx5_flow_meter_policy *policy,
+				     uint32_t *mtr_idx);
 struct mlx5_flow_meter_policy *
 mlx5_flow_meter_hierarchy_get_final_policy(struct rte_eth_dev *dev,
 					struct mlx5_flow_meter_policy *policy);
