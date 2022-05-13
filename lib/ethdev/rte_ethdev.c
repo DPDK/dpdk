@@ -6182,6 +6182,8 @@ eth_dev_add_port_queue_stats(struct rte_tel_data *d, uint64_t *q_stats,
 {
 	int q;
 	struct rte_tel_data *q_data = rte_tel_data_alloc();
+	if (q_data == NULL)
+		return;
 	rte_tel_data_start_array(q_data, RTE_TEL_U64_VAL);
 	for (q = 0; q < RTE_ETHDEV_QUEUE_STAT_CNTRS; q++)
 		rte_tel_data_add_array_u64(q_data, q_stats[q]);
