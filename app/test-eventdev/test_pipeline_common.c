@@ -518,6 +518,16 @@ pipeline_vector_array_free(struct rte_event events[], uint16_t num)
 	}
 }
 
+static void
+pipeline_event_port_flush(uint8_t dev_id __rte_unused, struct rte_event ev,
+			  void *args __rte_unused)
+{
+	if (ev.event_type & RTE_EVENT_TYPE_VECTOR)
+		pipeline_vector_array_free(&ev, 1);
+	else
+		rte_pktmbuf_free(ev.mbuf);
+}
+
 void
 pipeline_worker_cleanup(uint8_t dev, uint8_t port, struct rte_event ev[],
 			uint16_t enq, uint16_t deq)
@@ -542,6 +552,8 @@ pipeline_worker_cleanup(uint8_t dev, uint8_t port, struct rte_event ev[],
 
 		rte_event_enqueue_burst(dev, port, ev, deq);
 	}
+
+	rte_event_port_quiesce(dev, port, pipeline_event_port_flush, NULL);
 }
 
 void
