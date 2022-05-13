@@ -1376,13 +1376,14 @@ mrvl_xstats_get(struct rte_eth_dev *dev,
 {
 	struct mrvl_priv *priv = dev->data->dev_private;
 	struct pp2_ppio_statistics ppio_stats;
-	unsigned int i;
+	unsigned int i, count;
 
-	if (!stats)
-		return 0;
+	count = RTE_DIM(mrvl_xstats_tbl);
+	if (n < count)
+		return count;
 
 	pp2_ppio_get_statistics(priv->ppio, &ppio_stats, 0);
-	for (i = 0; i < n && i < RTE_DIM(mrvl_xstats_tbl); i++) {
+	for (i = 0; i < count; i++) {
 		uint64_t val;
 
 		if (mrvl_xstats_tbl[i].size == sizeof(uint32_t))
@@ -1398,7 +1399,7 @@ mrvl_xstats_get(struct rte_eth_dev *dev,
 		stats[i].value = val;
 	}
 
-	return n;
+	return count;
 }
 
 /**
