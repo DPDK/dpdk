@@ -6275,6 +6275,7 @@ eth_dev_handle_port_xstats(const char *cmd __rte_unused,
 	for (i = 0; i < num_xstats; i++)
 		rte_tel_data_add_dict_u64(d, xstat_names[i].name,
 				eth_xstats[i].value);
+	free(eth_xstats);
 	return 0;
 }
 
