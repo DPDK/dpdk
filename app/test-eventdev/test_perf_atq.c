@@ -37,13 +37,14 @@ atq_fwd_event(struct rte_event *const ev, uint8_t *const sched_type_list,
 static int
 perf_atq_worker(void *arg, const int enable_fwd_latency)
 {
-	PERF_WORKER_INIT;
+	uint16_t enq = 0, deq = 0;
 	struct rte_event ev;
+	PERF_WORKER_INIT;
 
 	while (t->done == false) {
-		uint16_t event = rte_event_dequeue_burst(dev, port, &ev, 1, 0);
+		deq = rte_event_dequeue_burst(dev, port, &ev, 1, 0);
 
-		if (!event) {
+		if (!deq) {
 			rte_pause();
 			continue;
 		}
@@ -78,24 +79,29 @@ perf_atq_worker(void *arg, const int enable_fwd_latency)
 					 bufs, sz, cnt);
 		} else {
 			atq_fwd_event(&ev, sched_type_list, nb_stages);
-			while (rte_event_enqueue_burst(dev, port, &ev, 1) != 1)
-				rte_pause();
+			do {
+				enq = rte_event_enqueue_burst(dev, port, &ev,
+							      1);
+			} while (!enq && !t->done);
 		}
 	}
+
+	perf_worker_cleanup(pool, dev, port, &ev, enq, deq);
+
 	return 0;
 }
 
 static int
 perf_atq_worker_burst(void *arg, const int enable_fwd_latency)
 {
-	PERF_WORKER_INIT;
-	uint16_t i;
 	/* +1 to avoid prefetch out of array check */
 	struct rte_event ev[BURST_SIZE + 1];
+	uint16_t enq = 0, nb_rx = 0;
+	PERF_WORKER_INIT;
+	uint16_t i;
 
 	while (t->done == false) {
-		uint16_t const nb_rx = rte_event_dequeue_burst(dev, port, ev,
-				BURST_SIZE, 0);
+		nb_rx = rte_event_dequeue_burst(dev, port, ev, BURST_SIZE, 0);
 
 		if (!nb_rx) {
 			rte_pause();
@@ -146,14 +152,15 @@ perf_atq_worker_burst(void *arg, const int enable_fwd_latency)
 			}
 		}
 
-		uint16_t enq;
-
 		enq = rte_event_enqueue_burst(dev, port, ev, nb_rx);
-		while (enq < nb_rx) {
+		while ((enq < nb_rx) && !t->done) {
 			enq += rte_event_enqueue_burst(dev, port,
 							ev + enq, nb_rx - enq);
 		}
 	}
+
+	perf_worker_cleanup(pool, dev, port, ev, enq, nb_rx);
+
 	return 0;
 }
 

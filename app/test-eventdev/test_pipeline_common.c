@@ -505,6 +505,45 @@ pipeline_event_tx_adapter_setup(struct evt_options *opt,
 	return ret;
 }
 
+static void
+pipeline_vector_array_free(struct rte_event events[], uint16_t num)
+{
+	uint16_t i;
+
+	for (i = 0; i < num; i++) {
+		rte_pktmbuf_free_bulk(events[i].vec->mbufs,
+				      events[i].vec->nb_elem);
+		rte_mempool_put(rte_mempool_from_obj(events[i].vec),
+				events[i].vec);
+	}
+}
+
+void
+pipeline_worker_cleanup(uint8_t dev, uint8_t port, struct rte_event ev[],
+			uint16_t enq, uint16_t deq)
+{
+	int i;
+
+	if (!(deq - enq))
+		return;
+
+	if (deq) {
+		for (i = enq; i < deq; i++) {
+			if (ev[i].op == RTE_EVENT_OP_RELEASE)
+				continue;
+			if (ev[i].event_type & RTE_EVENT_TYPE_VECTOR)
+				pipeline_vector_array_free(&ev[i], 1);
+			else
+				rte_pktmbuf_free(ev[i].mbuf);
+		}
+
+		for (i = 0; i < deq; i++)
+			ev[i].op = RTE_EVENT_OP_RELEASE;
+
+		rte_event_enqueue_burst(dev, port, ev, deq);
+	}
+}
+
 void
 pipeline_ethdev_rx_stop(struct evt_test *test, struct evt_options *opt)
 {

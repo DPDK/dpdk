@@ -109,58 +109,79 @@ pipeline_fwd_event_vector(struct rte_event *ev, uint8_t sched)
 	ev->sched_type = sched;
 }
 
-static __rte_always_inline void
+static __rte_always_inline uint8_t
 pipeline_event_tx(const uint8_t dev, const uint8_t port,
-		struct rte_event * const ev)
+		  struct rte_event *const ev, struct test_pipeline *t)
 {
+	uint8_t enq;
+
 	rte_event_eth_tx_adapter_txq_set(ev->mbuf, 0);
-	while (!rte_event_eth_tx_adapter_enqueue(dev, port, ev, 1, 0))
-		rte_pause();
+	do {
+		enq = rte_event_eth_tx_adapter_enqueue(dev, port, ev, 1, 0);
+	} while (!enq && !t->done);
+
+	return enq;
 }
 
-static __rte_always_inline void
+static __rte_always_inline uint8_t
 pipeline_event_tx_vector(const uint8_t dev, const uint8_t port,
-			 struct rte_event *const ev)
+			 struct rte_event *const ev, struct test_pipeline *t)
 {
-	ev->vec->queue = 0;
+	uint8_t enq;
 
-	while (!rte_event_eth_tx_adapter_enqueue(dev, port, ev, 1, 0))
-		rte_pause();
+	ev->vec->queue = 0;
+	do {
+		enq = rte_event_eth_tx_adapter_enqueue(dev, port, ev, 1, 0);
+	} while (!enq && !t->done);
+
+	return enq;
 }
 
-static __rte_always_inline void
+static __rte_always_inline uint16_t
 pipeline_event_tx_burst(const uint8_t dev, const uint8_t port,
-		struct rte_event *ev, const uint16_t nb_rx)
+			struct rte_event *ev, const uint16_t nb_rx,
+			struct test_pipeline *t)
 {
 	uint16_t enq;
 
 	enq = rte_event_eth_tx_adapter_enqueue(dev, port, ev, nb_rx, 0);
-	while (enq < nb_rx) {
+	while (enq < nb_rx && !t->done) {
 		enq += rte_event_eth_tx_adapter_enqueue(dev, port,
 				ev + enq, nb_rx - enq, 0);
 	}
+
+	return enq;
 }
 
-static __rte_always_inline void
+static __rte_always_inline uint8_t
 pipeline_event_enqueue(const uint8_t dev, const uint8_t port,
-		struct rte_event *ev)
+		       struct rte_event *ev, struct test_pipeline *t)
 {
-	while (rte_event_enqueue_burst(dev, port, ev, 1) != 1)
-		rte_pause();
+	uint8_t enq;
+
+	do {
+		enq = rte_event_enqueue_burst(dev, port, ev, 1);
+	} while (!enq && !t->done);
+
+	return enq;
 }
 
-static __rte_always_inline void
+static __rte_always_inline uint16_t
 pipeline_event_enqueue_burst(const uint8_t dev, const uint8_t port,
-		struct rte_event *ev, const uint16_t nb_rx)
+			     struct rte_event *ev, const uint16_t nb_rx,
+			     struct test_pipeline *t)
 {
 	uint16_t enq;
 
 	enq = rte_event_enqueue_burst(dev, port, ev, nb_rx);
-	while (enq < nb_rx) {
+	while (enq < nb_rx && !t->done) {
 		enq += rte_event_enqueue_burst(dev, port,
 						ev + enq, nb_rx - enq);
 	}
+
+	return enq;
 }
+
 
 static inline int
 pipeline_nb_event_ports(struct evt_options *opt)
@@ -188,5 +209,7 @@ void pipeline_eventdev_destroy(struct evt_test *test, struct evt_options *opt);
 void pipeline_ethdev_destroy(struct evt_test *test, struct evt_options *opt);
 void pipeline_ethdev_rx_stop(struct evt_test *test, struct evt_options *opt);
 void pipeline_mempool_destroy(struct evt_test *test, struct evt_options *opt);
+void pipeline_worker_cleanup(uint8_t dev, uint8_t port, struct rte_event ev[],
+			     uint16_t enq, uint16_t deq);
 
 #endif /* _TEST_PIPELINE_COMMON_ */

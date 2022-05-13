@@ -184,5 +184,8 @@ void perf_cryptodev_destroy(struct evt_test *test, struct evt_options *opt);
 void perf_ethdev_destroy(struct evt_test *test, struct evt_options *opt);
 void perf_ethdev_rx_stop(struct evt_test *test, struct evt_options *opt);
 void perf_mempool_destroy(struct evt_test *test, struct evt_options *opt);
+void perf_worker_cleanup(struct rte_mempool *const pool, uint8_t dev_id,
+			 uint8_t port_id, struct rte_event events[],
+			 uint16_t nb_enq, uint16_t nb_deq);
 
 #endif /* _TEST_PERF_COMMON_ */

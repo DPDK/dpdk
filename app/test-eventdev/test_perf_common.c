@@ -986,6 +986,23 @@ perf_opt_dump(struct evt_options *opt, uint8_t nb_queues)
 }
 
 void
+perf_worker_cleanup(struct rte_mempool *const pool, uint8_t dev_id,
+		    uint8_t port_id, struct rte_event events[], uint16_t nb_enq,
+		    uint16_t nb_deq)
+{
+	int i;
+
+	if (nb_deq) {
+		for (i = nb_enq; i < nb_deq; i++)
+			rte_mempool_put(pool, events[i].event_ptr);
+
+		for (i = 0; i < nb_deq; i++)
+			events[i].op = RTE_EVENT_OP_RELEASE;
+		rte_event_enqueue_burst(dev_id, port_id, events, nb_deq);
+	}
+}
+
+void
 perf_eventdev_destroy(struct evt_test *test, struct evt_options *opt)
 {
 	int i;
