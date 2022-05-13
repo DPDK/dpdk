@@ -18089,8 +18089,8 @@ flow_dv_validate_policy_mtr_hierarchy(struct rte_eth_dev *dev,
 					NULL,
 					"Multiple fate actions not supported.");
 	*hierarchy_domain = 0;
+	fm = mlx5_flow_meter_find(priv, meter_id, NULL);
 	while (true) {
-		fm = mlx5_flow_meter_find(priv, meter_id, NULL);
 		if (!fm)
 			return -rte_mtr_error_set(error, EINVAL,
 						RTE_MTR_ERROR_TYPE_MTR_ID, NULL,
@@ -18099,6 +18099,10 @@ flow_dv_validate_policy_mtr_hierarchy(struct rte_eth_dev *dev,
 			return -rte_mtr_error_set(error, EINVAL,
 					RTE_MTR_ERROR_TYPE_MTR_ID, NULL,
 			"Non termination meter not supported in hierarchy.");
+		if (!fm->shared)
+			return -rte_mtr_error_set(error, EINVAL,
+					RTE_MTR_ERROR_TYPE_MTR_ID, NULL,
+					"Only shared meter supported in hierarchy.");
 		policy = mlx5_flow_meter_policy_find(dev, fm->policy_id, NULL);
 		MLX5_ASSERT(policy);
 		/**
@@ -18120,7 +18124,9 @@ flow_dv_validate_policy_mtr_hierarchy(struct rte_eth_dev *dev,
 			*is_rss = policy->is_rss;
 			break;
 		}
-		meter_id = policy->act_cnt[RTE_COLOR_GREEN].next_mtr_id;
+		rte_spinlock_lock(&policy->sl);
+		fm = mlx5_flow_meter_hierarchy_next_meter(priv, policy, NULL);
+		rte_spinlock_unlock(&policy->sl);
 		if (++cnt >= MLX5_MTR_CHAIN_MAX_NUM)
 			return -rte_mtr_error_set(error, EINVAL,
 					RTE_MTR_ERROR_TYPE_METER_POLICY, NULL,
@@ -18166,6 +18172,7 @@ flow_dv_validate_mtr_policy_acts(struct rte_eth_dev *dev,
 	uint8_t def_domain = MLX5_MTR_ALL_DOMAIN_BIT;
 	uint8_t hierarchy_domain = 0;
 	const struct rte_flow_action_meter *mtr;
+	const struct rte_flow_action_meter *next_mtr = NULL;
 	bool def_green = false;
 	bool def_yellow = false;
 	const struct rte_flow_action_rss *rss_color[RTE_COLORS] = {NULL};
@@ -18349,25 +18356,12 @@ flow_dv_validate_mtr_policy_acts(struct rte_eth_dev *dev,
 				++actions_n;
 				action_flags[i] |= MLX5_FLOW_ACTION_JUMP;
 				break;
-			/*
-			 * Only the last meter in the hierarchy will support
-			 * the YELLOW color steering. Then in the meter policy
-			 * actions list, there should be no other meter inside.
-			 */
 			case RTE_FLOW_ACTION_TYPE_METER:
-				if (i != RTE_COLOR_GREEN)
-					return -rte_mtr_error_set(error,
-						ENOTSUP,
-						RTE_MTR_ERROR_TYPE_METER_POLICY,
-						NULL,
-						"Meter hierarchy only supports GREEN color.");
-				if (*policy_mode != MLX5_MTR_POLICY_MODE_OG)
-					return -rte_mtr_error_set(error,
-						ENOTSUP,
-						RTE_MTR_ERROR_TYPE_METER_POLICY,
-						NULL,
-						"No yellow policy should be provided in meter hierarchy.");
 				mtr = act->conf;
+				if (next_mtr && next_mtr->mtr_id != mtr->mtr_id)
+					return -rte_mtr_error_set(error, ENOTSUP,
+						RTE_MTR_ERROR_TYPE_METER_POLICY, NULL,
+						"Green and Yellow must use the same meter.");
 				ret = flow_dv_validate_policy_mtr_hierarchy(dev,
 							mtr->mtr_id,
 							action_flags[i],
@@ -18379,6 +18373,7 @@ flow_dv_validate_mtr_policy_acts(struct rte_eth_dev *dev,
 				++actions_n;
 				action_flags[i] |=
 				MLX5_FLOW_ACTION_METER_WITH_TERMINATED_POLICY;
+				next_mtr = mtr;
 				break;
 			default:
 				return -rte_mtr_error_set(error, ENOTSUP,
@@ -18463,6 +18458,13 @@ flow_dv_validate_mtr_policy_acts(struct rte_eth_dev *dev,
 						"no fate action is found");
 			}
 		}
+	}
+	if (next_mtr && *policy_mode == MLX5_MTR_POLICY_MODE_ALL) {
+		if (!(action_flags[RTE_COLOR_GREEN] & action_flags[RTE_COLOR_YELLOW] &
+		      MLX5_FLOW_ACTION_METER_WITH_TERMINATED_POLICY))
+			return -rte_mtr_error_set(error, EINVAL, RTE_MTR_ERROR_TYPE_METER_POLICY,
+						  NULL,
+						  "Meter hierarchy supports meter action only.");
 	}
 	/* If both colors have RSS, the attributes should be the same. */
 	if (flow_dv_mtr_policy_rss_compare(rss_color[RTE_COLOR_GREEN],
