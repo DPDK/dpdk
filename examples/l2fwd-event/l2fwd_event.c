@@ -193,6 +193,7 @@ l2fwd_event_loop_single(struct l2fwd_resources *rsrc,
 					evt_rsrc->evq.nb_queues - 1];
 	const uint64_t timer_period = rsrc->timer_period;
 	const uint8_t event_d_id = evt_rsrc->event_d_id;
+	uint8_t enq = 0, deq = 0;
 	struct rte_event ev;
 
 	if (port_id < 0)
@@ -203,26 +204,28 @@ l2fwd_event_loop_single(struct l2fwd_resources *rsrc,
 
 	while (!rsrc->force_quit) {
 		/* Read packet from eventdev */
-		if (!rte_event_dequeue_burst(event_d_id, port_id, &ev, 1, 0))
+		deq = rte_event_dequeue_burst(event_d_id, port_id, &ev, 1, 0);
+		if (!deq)
 			continue;
 
 		l2fwd_event_fwd(rsrc, &ev, tx_q_id, timer_period, flags);
 
 		if (flags & L2FWD_EVENT_TX_ENQ) {
-			while (rte_event_enqueue_burst(event_d_id, port_id,
-						       &ev, 1) &&
-					!rsrc->force_quit)
-				;
+			do {
+				enq = rte_event_enqueue_burst(event_d_id,
+							      port_id, &ev, 1);
+			} while (!enq && !rsrc->force_quit);
 		}
 
 		if (flags & L2FWD_EVENT_TX_DIRECT) {
-			while (!rte_event_eth_tx_adapter_enqueue(event_d_id,
-								port_id,
-								&ev, 1, 0) &&
-					!rsrc->force_quit)
-				;
+			do {
+				enq = rte_event_eth_tx_adapter_enqueue(
+					event_d_id, port_id, &ev, 1, 0);
+			} while (!enq && !rsrc->force_quit);
 		}
 	}
+
+	l2fwd_event_worker_cleanup(event_d_id, port_id, &ev, enq, deq, 0);
 }
 
 static __rte_always_inline void
@@ -237,7 +240,7 @@ l2fwd_event_loop_burst(struct l2fwd_resources *rsrc,
 	const uint8_t event_d_id = evt_rsrc->event_d_id;
 	const uint8_t deq_len = evt_rsrc->deq_depth;
 	struct rte_event ev[MAX_PKT_BURST];
-	uint16_t nb_rx, nb_tx;
+	uint16_t nb_rx = 0, nb_tx = 0;
 	uint8_t i;
 
 	if (port_id < 0)
@@ -280,6 +283,8 @@ l2fwd_event_loop_burst(struct l2fwd_resources *rsrc,
 						ev + nb_tx, nb_rx - nb_tx, 0);
 		}
 	}
+
+	l2fwd_event_worker_cleanup(event_d_id, port_id, ev, nb_rx, nb_tx, 0);
 }
 
 static __rte_always_inline void
@@ -419,7 +424,7 @@ l2fwd_event_loop_vector(struct l2fwd_resources *rsrc, const uint32_t flags)
 	const uint8_t event_d_id = evt_rsrc->event_d_id;
 	const uint8_t deq_len = evt_rsrc->deq_depth;
 	struct rte_event ev[MAX_PKT_BURST];
-	uint16_t nb_rx, nb_tx;
+	uint16_t nb_rx = 0, nb_tx = 0;
 	uint8_t i;
 
 	if (port_id < 0)
@@ -462,6 +467,8 @@ l2fwd_event_loop_vector(struct l2fwd_resources *rsrc, const uint32_t flags)
 					nb_rx - nb_tx, 0);
 		}
 	}
+
+	l2fwd_event_worker_cleanup(event_d_id, port_id, ev, nb_rx, nb_tx, 1);
 }
 
 static void __rte_noinline

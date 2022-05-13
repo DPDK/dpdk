@@ -140,5 +140,8 @@ l2fwd_get_rsrc(void)
 }
 
 int l2fwd_event_init_ports(struct l2fwd_resources *rsrc);
+void l2fwd_event_worker_cleanup(uint8_t event_d_id, uint8_t port_id,
+				struct rte_event events[], uint16_t nb_enq,
+				uint16_t nb_deq, uint8_t is_vector);
 
 #endif /* __L2FWD_COMMON_H__ */
