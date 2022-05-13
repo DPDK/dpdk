@@ -3170,7 +3170,8 @@ rte_eth_xstats_get(uint16_t port_id, struct rte_eth_xstat *xstats,
 	int ret;
 
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
-
+	if (xstats == NULL && n > 0)
+		return -EINVAL;
 	dev = &rte_eth_devices[port_id];
 
 	nb_rxqs = RTE_MIN(dev->data->nb_rx_queues, RTE_ETHDEV_QUEUE_STAT_CNTRS);
@@ -3187,7 +3188,7 @@ rte_eth_xstats_get(uint16_t port_id, struct rte_eth_xstat *xstats,
 		 * xstats struct.
 		 */
 		xcount = (*dev->dev_ops->xstats_get)(dev,
-				     xstats ? xstats + count : NULL,
+				     (n > count) ? xstats + count : NULL,
 				     (n > count) ? n - count : 0);
 
 		if (xcount < 0)
