@@ -16,6 +16,7 @@ worker_generic(void *arg)
 	uint8_t port_id = data->port_id;
 	size_t sent = 0, received = 0;
 	unsigned int lcore_id = rte_lcore_id();
+	uint16_t nb_rx = 0, nb_tx = 0;
 
 	while (!fdata->done) {
 
@@ -27,8 +28,7 @@ worker_generic(void *arg)
 			continue;
 		}
 
-		const uint16_t nb_rx = rte_event_dequeue_burst(dev_id, port_id,
-				&ev, 1, 0);
+		nb_rx = rte_event_dequeue_burst(dev_id, port_id, &ev, 1, 0);
 
 		if (nb_rx == 0) {
 			rte_pause();
@@ -47,11 +47,14 @@ worker_generic(void *arg)
 
 		work();
 
-		while (rte_event_enqueue_burst(dev_id, port_id, &ev, 1) != 1)
-			rte_pause();
+		do {
+			nb_tx = rte_event_enqueue_burst(dev_id, port_id, &ev,
+							1);
+		} while (!nb_tx && !fdata->done);
 		sent++;
 	}
 
+	worker_cleanup(dev_id, port_id, &ev, nb_tx, nb_rx);
 	if (!cdata.quiet)
 		printf("  worker %u thread done. RX=%zu TX=%zu\n",
 				rte_lcore_id(), received, sent);
@@ -69,10 +72,9 @@ worker_generic_burst(void *arg)
 	uint8_t port_id = data->port_id;
 	size_t sent = 0, received = 0;
 	unsigned int lcore_id = rte_lcore_id();
+	uint16_t i, nb_rx = 0, nb_tx = 0;
 
 	while (!fdata->done) {
-		uint16_t i;
-
 		if (fdata->cap.scheduler)
 			fdata->cap.scheduler(lcore_id);
 
@@ -81,8 +83,8 @@ worker_generic_burst(void *arg)
 			continue;
 		}
 
-		const uint16_t nb_rx = rte_event_dequeue_burst(dev_id, port_id,
-				events, RTE_DIM(events), 0);
+		nb_rx = rte_event_dequeue_burst(dev_id, port_id, events,
+						RTE_DIM(events), 0);
 
 		if (nb_rx == 0) {
 			rte_pause();
@@ -103,14 +105,15 @@ worker_generic_burst(void *arg)
 
 			work();
 		}
-		uint16_t nb_tx = rte_event_enqueue_burst(dev_id, port_id,
-				events, nb_rx);
+		nb_tx = rte_event_enqueue_burst(dev_id, port_id, events, nb_rx);
 		while (nb_tx < nb_rx && !fdata->done)
 			nb_tx += rte_event_enqueue_burst(dev_id, port_id,
 							events + nb_tx,
 							nb_rx - nb_tx);
 		sent += nb_tx;
 	}
+
+	worker_cleanup(dev_id, port_id, events, nb_tx, nb_rx);
 
 	if (!cdata.quiet)
 		printf("  worker %u thread done. RX=%zu TX=%zu\n",

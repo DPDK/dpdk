@@ -140,5 +140,27 @@ schedule_devices(unsigned int lcore_id)
 	}
 }
 
+static inline void
+worker_cleanup(uint8_t dev_id, uint8_t port_id, struct rte_event events[],
+	       uint16_t nb_enq, uint16_t nb_deq)
+{
+	int i;
+
+	if (!(nb_deq - nb_enq))
+		return;
+
+	if (nb_deq) {
+		for (i = nb_enq; i < nb_deq; i++) {
+			if (events[i].op == RTE_EVENT_OP_RELEASE)
+				continue;
+			rte_pktmbuf_free(events[i].mbuf);
+		}
+
+		for (i = 0; i < nb_deq; i++)
+			events[i].op = RTE_EVENT_OP_RELEASE;
+		rte_event_enqueue_burst(dev_id, port_id, events, nb_deq);
+	}
+}
+
 void set_worker_generic_setup_data(struct setup_data *caps, bool burst);
 void set_worker_tx_enq_setup_data(struct setup_data *caps, bool burst);
