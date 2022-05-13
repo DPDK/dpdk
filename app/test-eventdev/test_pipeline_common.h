@@ -12,16 +12,16 @@
 
 #include <rte_cycles.h>
 #include <rte_ethdev.h>
-#include <rte_eventdev.h>
 #include <rte_event_eth_rx_adapter.h>
 #include <rte_event_eth_tx_adapter.h>
+#include <rte_eventdev.h>
 #include <rte_lcore.h>
 #include <rte_malloc.h>
 #include <rte_mempool.h>
 #include <rte_prefetch.h>
-#include <rte_spinlock.h>
 #include <rte_service.h>
 #include <rte_service_component.h>
+#include <rte_spinlock.h>
 
 #include "evt_common.h"
 #include "evt_options.h"
@@ -186,6 +186,7 @@ void pipeline_opt_dump(struct evt_options *opt, uint8_t nb_queues);
 void pipeline_test_destroy(struct evt_test *test, struct evt_options *opt);
 void pipeline_eventdev_destroy(struct evt_test *test, struct evt_options *opt);
 void pipeline_ethdev_destroy(struct evt_test *test, struct evt_options *opt);
+void pipeline_ethdev_rx_stop(struct evt_test *test, struct evt_options *opt);
 void pipeline_mempool_destroy(struct evt_test *test, struct evt_options *opt);
 
 #endif /* _TEST_PIPELINE_COMMON_ */

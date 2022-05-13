@@ -1087,7 +1087,8 @@ perf_ethdev_setup(struct evt_test *test, struct evt_options *opt)
 	return 0;
 }
 
-void perf_ethdev_destroy(struct evt_test *test, struct evt_options *opt)
+void
+perf_ethdev_rx_stop(struct evt_test *test, struct evt_options *opt)
 {
 	uint16_t i;
 	RTE_SET_USED(test);
@@ -1095,6 +1096,23 @@ void perf_ethdev_destroy(struct evt_test *test, struct evt_options *opt)
 	if (opt->prod_type == EVT_PROD_TYPE_ETH_RX_ADPTR) {
 		RTE_ETH_FOREACH_DEV(i) {
 			rte_event_eth_rx_adapter_stop(i);
+			rte_event_eth_rx_adapter_queue_del(i, i, -1);
+			rte_eth_dev_rx_queue_stop(i, 0);
+		}
+	}
+}
+
+void
+perf_ethdev_destroy(struct evt_test *test, struct evt_options *opt)
+{
+	uint16_t i;
+	RTE_SET_USED(test);
+
+	if (opt->prod_type == EVT_PROD_TYPE_ETH_RX_ADPTR) {
+		RTE_ETH_FOREACH_DEV(i) {
+			rte_event_eth_tx_adapter_stop(i);
+			rte_event_eth_tx_adapter_queue_del(i, i, -1);
+			rte_eth_dev_tx_queue_stop(i, 0);
 			rte_eth_dev_stop(i);
 		}
 	}

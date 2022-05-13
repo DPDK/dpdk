@@ -12,10 +12,11 @@
 #include <rte_cryptodev.h>
 #include <rte_cycles.h>
 #include <rte_ethdev.h>
-#include <rte_eventdev.h>
 #include <rte_event_crypto_adapter.h>
 #include <rte_event_eth_rx_adapter.h>
+#include <rte_event_eth_tx_adapter.h>
 #include <rte_event_timer_adapter.h>
+#include <rte_eventdev.h>
 #include <rte_lcore.h>
 #include <rte_malloc.h>
 #include <rte_mempool.h>
@@ -181,6 +182,7 @@ void perf_test_destroy(struct evt_test *test, struct evt_options *opt);
 void perf_eventdev_destroy(struct evt_test *test, struct evt_options *opt);
 void perf_cryptodev_destroy(struct evt_test *test, struct evt_options *opt);
 void perf_ethdev_destroy(struct evt_test *test, struct evt_options *opt);
+void perf_ethdev_rx_stop(struct evt_test *test, struct evt_options *opt);
 void perf_mempool_destroy(struct evt_test *test, struct evt_options *opt);
 
 #endif /* _TEST_PERF_COMMON_ */

@@ -41,6 +41,8 @@ typedef void (*evt_test_eventdev_destroy_t)
 		(struct evt_test *test, struct evt_options *opt);
 typedef void (*evt_test_ethdev_destroy_t)
 		(struct evt_test *test, struct evt_options *opt);
+typedef void (*evt_test_ethdev_rx_stop_t)(struct evt_test *test,
+					  struct evt_options *opt);
 typedef void (*evt_test_cryptodev_destroy_t)
 		(struct evt_test *test, struct evt_options *opt);
 typedef void (*evt_test_mempool_destroy_t)
@@ -60,6 +62,7 @@ struct evt_test_ops {
 	evt_test_launch_lcores_t launch_lcores;
 	evt_test_result_t test_result;
 	evt_test_eventdev_destroy_t eventdev_destroy;
+	evt_test_ethdev_rx_stop_t ethdev_rx_stop;
 	evt_test_ethdev_destroy_t ethdev_destroy;
 	evt_test_cryptodev_destroy_t cryptodev_destroy;
 	evt_test_mempool_destroy_t mempool_destroy;

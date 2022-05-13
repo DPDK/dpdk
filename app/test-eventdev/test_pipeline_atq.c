@@ -772,6 +772,7 @@ static const struct evt_test_ops pipeline_atq =  {
 	.ethdev_setup	    = pipeline_ethdev_setup,
 	.eventdev_setup     = pipeline_atq_eventdev_setup,
 	.launch_lcores      = pipeline_atq_launch_lcores,
+	.ethdev_rx_stop     = pipeline_ethdev_rx_stop,
 	.eventdev_destroy   = pipeline_eventdev_destroy,
 	.mempool_destroy    = pipeline_mempool_destroy,
 	.ethdev_destroy	    = pipeline_ethdev_destroy,

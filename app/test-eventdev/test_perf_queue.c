@@ -360,6 +360,7 @@ static const struct evt_test_ops perf_queue =  {
 	.mempool_setup      = perf_mempool_setup,
 	.ethdev_setup	    = perf_ethdev_setup,
 	.cryptodev_setup    = perf_cryptodev_setup,
+	.ethdev_rx_stop     = perf_ethdev_rx_stop,
 	.eventdev_setup     = perf_queue_eventdev_setup,
 	.launch_lcores      = perf_queue_launch_lcores,
 	.eventdev_destroy   = perf_eventdev_destroy,
