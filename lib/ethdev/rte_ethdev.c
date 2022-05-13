@@ -2967,9 +2967,8 @@ rte_eth_xstats_get(uint16_t port_id, struct rte_eth_xstat *xstats,
 	unsigned int n)
 {
 	struct rte_eth_dev *dev;
-	unsigned int count = 0, i;
+	unsigned int count, i;
 	signed int xcount = 0;
-	uint16_t nb_rxqs, nb_txqs;
 	int ret;
 
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
@@ -2977,13 +2976,7 @@ rte_eth_xstats_get(uint16_t port_id, struct rte_eth_xstat *xstats,
 		return -EINVAL;
 	dev = &rte_eth_devices[port_id];
 
-	nb_rxqs = RTE_MIN(dev->data->nb_rx_queues, RTE_ETHDEV_QUEUE_STAT_CNTRS);
-	nb_txqs = RTE_MIN(dev->data->nb_tx_queues, RTE_ETHDEV_QUEUE_STAT_CNTRS);
-
-	/* Return generic statistics */
-	count = RTE_NB_STATS;
-	if (dev->data->dev_flags & RTE_ETH_DEV_AUTOFILL_QUEUE_XSTATS)
-		count += (nb_rxqs * RTE_NB_RXQ_STATS) + (nb_txqs * RTE_NB_TXQ_STATS);
+	count = eth_dev_get_xstats_basic_count(dev);
 
 	/* implemented by the driver */
 	if (dev->dev_ops->xstats_get != NULL) {
