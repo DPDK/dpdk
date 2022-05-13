@@ -11,6 +11,7 @@ headers = files(
 )
 indirect_headers += files(
         'rte_crc_arm64.h',
+        'rte_crc_generic.h',
         'rte_crc_sw.h',
         'rte_crc_x86.h',
         'rte_thash_x86_gfni.h',
