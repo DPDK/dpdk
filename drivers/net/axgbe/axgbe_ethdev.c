@@ -984,18 +984,18 @@ axgbe_dev_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstat *stats,
 	struct axgbe_port *pdata = dev->data->dev_private;
 	unsigned int i;
 
-	if (!stats)
-		return 0;
+	if (n < AXGBE_XSTATS_COUNT)
+		return AXGBE_XSTATS_COUNT;
 
 	axgbe_read_mmc_stats(pdata);
 
-	for (i = 0; i < n && i < AXGBE_XSTATS_COUNT; i++) {
+	for (i = 0; i < AXGBE_XSTATS_COUNT; i++) {
 		stats[i].id = i;
 		stats[i].value = *(u64 *)((uint8_t *)&pdata->mmc_stats +
 				axgbe_xstats_strings[i].offset);
 	}
 
-	return i;
+	return AXGBE_XSTATS_COUNT;
 }
 
 static int
