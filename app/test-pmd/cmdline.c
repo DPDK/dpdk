@@ -16987,6 +16987,7 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_show_port_meter_cap,
 	(cmdline_parse_inst_t *)&cmd_add_port_meter_profile_srtcm,
 	(cmdline_parse_inst_t *)&cmd_add_port_meter_profile_trtcm,
+	(cmdline_parse_inst_t *)&cmd_add_port_meter_profile_trtcm_rfc4115,
 	(cmdline_parse_inst_t *)&cmd_del_port_meter_profile,
 	(cmdline_parse_inst_t *)&cmd_create_port_meter,
 	(cmdline_parse_inst_t *)&cmd_enable_port_meter,
