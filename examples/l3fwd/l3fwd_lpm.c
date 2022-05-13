@@ -273,6 +273,7 @@ lpm_event_loop_single(struct l3fwd_event_resources *evt_rsrc,
 	const uint8_t tx_q_id = evt_rsrc->evq.event_q_id[
 		evt_rsrc->evq.nb_queues - 1];
 	const uint8_t event_d_id = evt_rsrc->event_d_id;
+	uint8_t enq = 0, deq = 0;
 	struct lcore_conf *lconf;
 	unsigned int lcore_id;
 	struct rte_event ev;
@@ -285,7 +286,9 @@ lpm_event_loop_single(struct l3fwd_event_resources *evt_rsrc,
 
 	RTE_LOG(INFO, L3FWD, "entering %s on lcore %u\n", __func__, lcore_id);
 	while (!force_quit) {
-		if (!rte_event_dequeue_burst(event_d_id, event_p_id, &ev, 1, 0))
+		deq = rte_event_dequeue_burst(event_d_id, event_p_id, &ev, 1,
+					      0);
+		if (!deq)
 			continue;
 
 		if (lpm_process_event_pkt(lconf, ev.mbuf) == BAD_PORT) {
@@ -296,19 +299,22 @@ lpm_event_loop_single(struct l3fwd_event_resources *evt_rsrc,
 		if (flags & L3FWD_EVENT_TX_ENQ) {
 			ev.queue_id = tx_q_id;
 			ev.op = RTE_EVENT_OP_FORWARD;
-			while (rte_event_enqueue_burst(event_d_id, event_p_id,
-						&ev, 1) && !force_quit)
-				;
+			do {
+				enq = rte_event_enqueue_burst(
+					event_d_id, event_p_id, &ev, 1);
+			} while (!enq && !force_quit);
 		}
 
 		if (flags & L3FWD_EVENT_TX_DIRECT) {
 			rte_event_eth_tx_adapter_txq_set(ev.mbuf, 0);
-			while (!rte_event_eth_tx_adapter_enqueue(event_d_id,
-						event_p_id, &ev, 1, 0) &&
-					!force_quit)
-				;
+			do {
+				enq = rte_event_eth_tx_adapter_enqueue(
+					event_d_id, event_p_id, &ev, 1, 0);
+			} while (!enq && !force_quit);
 		}
 	}
+
+	l3fwd_event_worker_cleanup(event_d_id, event_p_id, &ev, enq, deq, 0);
 }
 
 static __rte_always_inline void
@@ -321,9 +327,9 @@ lpm_event_loop_burst(struct l3fwd_event_resources *evt_rsrc,
 	const uint8_t event_d_id = evt_rsrc->event_d_id;
 	const uint16_t deq_len = evt_rsrc->deq_depth;
 	struct rte_event events[MAX_PKT_BURST];
+	int i, nb_enq = 0, nb_deq = 0;
 	struct lcore_conf *lconf;
 	unsigned int lcore_id;
-	int i, nb_enq, nb_deq;
 
 	if (event_p_id < 0)
 		return;
@@ -375,6 +381,9 @@ lpm_event_loop_burst(struct l3fwd_event_resources *evt_rsrc,
 						nb_deq - nb_enq, 0);
 		}
 	}
+
+	l3fwd_event_worker_cleanup(event_d_id, event_p_id, events, nb_enq,
+				   nb_deq, 0);
 }
 
 static __rte_always_inline void
@@ -459,9 +468,9 @@ lpm_event_loop_vector(struct l3fwd_event_resources *evt_rsrc,
 	const uint8_t event_d_id = evt_rsrc->event_d_id;
 	const uint16_t deq_len = evt_rsrc->deq_depth;
 	struct rte_event events[MAX_PKT_BURST];
+	int i, nb_enq = 0, nb_deq = 0;
 	struct lcore_conf *lconf;
 	unsigned int lcore_id;
-	int i, nb_enq, nb_deq;
 
 	if (event_p_id < 0)
 		return;
@@ -510,6 +519,9 @@ lpm_event_loop_vector(struct l3fwd_event_resources *evt_rsrc,
 					nb_deq - nb_enq, 0);
 		}
 	}
+
+	l3fwd_event_worker_cleanup(event_d_id, event_p_id, events, nb_enq,
+				   nb_deq, 1);
 }
 
 int __rte_noinline

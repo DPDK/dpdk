@@ -103,10 +103,15 @@ event_vector_txq_set(struct rte_event_vector *vec, uint16_t txq)
 	}
 }
 
+
+
 struct l3fwd_event_resources *l3fwd_get_eventdev_rsrc(void);
 void l3fwd_event_resource_setup(struct rte_eth_conf *port_conf);
 int l3fwd_get_free_event_port(struct l3fwd_event_resources *eventdev_rsrc);
 void l3fwd_event_set_generic_ops(struct l3fwd_event_setup_ops *ops);
 void l3fwd_event_set_internal_port_ops(struct l3fwd_event_setup_ops *ops);
+void l3fwd_event_worker_cleanup(uint8_t event_d_id, uint8_t event_p_id,
+				struct rte_event events[], uint16_t nb_enq,
+				uint16_t nb_deq, uint8_t is_vector);
 
 #endif /* __L3FWD_EVENTDEV_H__ */

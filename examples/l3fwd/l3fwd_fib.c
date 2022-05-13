@@ -252,9 +252,9 @@ fib_event_loop(struct l3fwd_event_resources *evt_rsrc,
 	const uint8_t event_d_id = evt_rsrc->event_d_id;
 	const uint16_t deq_len = evt_rsrc->deq_depth;
 	struct rte_event events[MAX_PKT_BURST];
+	int i, nb_enq = 0, nb_deq = 0;
 	struct lcore_conf *lconf;
 	unsigned int lcore_id;
-	int nb_enq, nb_deq, i;
 
 	uint32_t ipv4_arr[MAX_PKT_BURST];
 	uint8_t ipv6_arr[MAX_PKT_BURST][RTE_FIB6_IPV6_ADDR_SIZE];
@@ -370,6 +370,9 @@ fib_event_loop(struct l3fwd_event_resources *evt_rsrc,
 						nb_deq - nb_enq, 0);
 		}
 	}
+
+	l3fwd_event_worker_cleanup(event_d_id, event_p_id, events, nb_enq,
+				   nb_deq, 0);
 }
 
 int __rte_noinline
@@ -491,7 +494,7 @@ fib_event_loop_vector(struct l3fwd_event_resources *evt_rsrc,
 	const uint8_t event_d_id = evt_rsrc->event_d_id;
 	const uint16_t deq_len = evt_rsrc->deq_depth;
 	struct rte_event events[MAX_PKT_BURST];
-	int nb_enq, nb_deq, i;
+	int nb_enq = 0, nb_deq = 0, i;
 
 	if (event_p_id < 0)
 		return;
@@ -538,6 +541,9 @@ fib_event_loop_vector(struct l3fwd_event_resources *evt_rsrc,
 					nb_deq - nb_enq, 0);
 		}
 	}
+
+	l3fwd_event_worker_cleanup(event_d_id, event_p_id, events, nb_enq,
+				   nb_deq, 1);
 }
 
 int __rte_noinline

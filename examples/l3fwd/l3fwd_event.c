@@ -287,3 +287,37 @@ l3fwd_event_resource_setup(struct rte_eth_conf *port_conf)
 		fib_event_loop[evt_rsrc->vector_enabled][evt_rsrc->tx_mode_q]
 			      [evt_rsrc->has_burst];
 }
+
+static void
+l3fwd_event_vector_array_free(struct rte_event events[], uint16_t num)
+{
+	uint16_t i;
+
+	for (i = 0; i < num; i++) {
+		rte_pktmbuf_free_bulk(events[i].vec->mbufs,
+				      events[i].vec->nb_elem);
+		rte_mempool_put(rte_mempool_from_obj(events[i].vec),
+				events[i].vec);
+	}
+}
+
+void
+l3fwd_event_worker_cleanup(uint8_t event_d_id, uint8_t event_p_id,
+			   struct rte_event events[], uint16_t nb_enq,
+			   uint16_t nb_deq, uint8_t is_vector)
+{
+	int i;
+
+	if (nb_deq) {
+		if (is_vector)
+			l3fwd_event_vector_array_free(events + nb_enq,
+						      nb_deq - nb_enq);
+		else
+			for (i = nb_enq; i < nb_deq; i++)
+				rte_pktmbuf_free(events[i].mbuf);
+
+		for (i = 0; i < nb_deq; i++)
+			events[i].op = RTE_EVENT_OP_RELEASE;
+		rte_event_enqueue_burst(event_d_id, event_p_id, events, nb_deq);
+	}
+}
