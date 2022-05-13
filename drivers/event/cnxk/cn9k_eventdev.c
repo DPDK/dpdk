@@ -186,6 +186,7 @@ cn9k_sso_hws_reset(void *arg, void *hws)
 	uint64_t pend_state;
 	uint8_t pend_tt;
 	uintptr_t base;
+	bool is_pend;
 	uint64_t tag;
 	uint8_t i;
 
@@ -193,6 +194,13 @@ cn9k_sso_hws_reset(void *arg, void *hws)
 	ws = hws;
 	for (i = 0; i < (dev->dual_ws ? CN9K_DUAL_WS_NB_WS : 1); i++) {
 		base = dev->dual_ws ? dws->base[i] : ws->base;
+		is_pend = false;
+		/* Work in WQE0 is always consumed, unless its a SWTAG. */
+		pend_state = plt_read64(base + SSOW_LF_GWS_PENDSTATE);
+		if (pend_state & (BIT_ULL(63) | BIT_ULL(62) | BIT_ULL(54)) ||
+		    (dev->dual_ws ? (dws->swtag_req && i == !dws->vws) :
+					  ws->swtag_req))
+			is_pend = true;
 		/* Wait till getwork/swtp/waitw/desched completes. */
 		do {
 			pend_state = plt_read64(base + SSOW_LF_GWS_PENDSTATE);
@@ -201,7 +209,7 @@ cn9k_sso_hws_reset(void *arg, void *hws)
 
 		tag = plt_read64(base + SSOW_LF_GWS_TAG);
 		pend_tt = (tag >> 32) & 0x3;
-		if (pend_tt != SSO_TT_EMPTY) { /* Work was pending */
+		if (is_pend && pend_tt != SSO_TT_EMPTY) { /* Work was pending */
 			if (pend_tt == SSO_TT_ATOMIC ||
 			    pend_tt == SSO_TT_ORDERED)
 				cnxk_sso_hws_swtag_untag(
@@ -213,7 +221,14 @@ cn9k_sso_hws_reset(void *arg, void *hws)
 		do {
 			pend_state = plt_read64(base + SSOW_LF_GWS_PENDSTATE);
 		} while (pend_state & BIT_ULL(58));
+
+		plt_write64(0, base + SSOW_LF_GWS_OP_GWC_INVAL);
 	}
+
+	if (dev->dual_ws)
+		dws->swtag_req = 0;
+	else
+		ws->swtag_req = 0;
 }
 
 void
@@ -789,6 +804,48 @@ free:
 	rte_free(gws_cookie);
 }
 
+static void
+cn9k_sso_port_quiesce(struct rte_eventdev *event_dev, void *port,
+		      rte_eventdev_port_flush_t flush_cb, void *args)
+{
+	struct cnxk_sso_evdev *dev = cnxk_sso_pmd_priv(event_dev);
+	struct cn9k_sso_hws_dual *dws;
+	struct cn9k_sso_hws *ws;
+	struct rte_event ev;
+	uintptr_t base;
+	uint64_t ptag;
+	bool is_pend;
+	uint8_t i;
+
+	dws = port;
+	ws = port;
+	for (i = 0; i < (dev->dual_ws ? CN9K_DUAL_WS_NB_WS : 1); i++) {
+		base = dev->dual_ws ? dws->base[i] : ws->base;
+		is_pend = false;
+		/* Work in WQE0 is always consumed, unless its a SWTAG. */
+		ptag = plt_read64(base + SSOW_LF_GWS_PENDSTATE);
+		if (ptag & (BIT_ULL(63) | BIT_ULL(62) | BIT_ULL(54)) ||
+		    (dev->dual_ws ? (dws->swtag_req && i == !dws->vws) :
+					  ws->swtag_req))
+			is_pend = true;
+		/* Wait till getwork/swtp/waitw/desched completes. */
+		do {
+			ptag = plt_read64(base + SSOW_LF_GWS_PENDSTATE);
+		} while (ptag & (BIT_ULL(63) | BIT_ULL(62) | BIT_ULL(58) |
+				 BIT_ULL(56)));
+
+		cn9k_sso_hws_get_work_empty(
+			base, &ev, dev->rx_offloads,
+			dev->dual_ws ? dws->lookup_mem : ws->lookup_mem,
+			dev->dual_ws ? dws->tstamp : ws->tstamp);
+		if (is_pend && ev.u64) {
+			if (flush_cb)
+				flush_cb(event_dev->data->dev_id, ev, args);
+			cnxk_sso_hws_swtag_flush(ws->base);
+		}
+	}
+}
+
 static int
 cn9k_sso_port_link(struct rte_eventdev *event_dev, void *port,
 		   const uint8_t queues[], const uint8_t priorities[],
@@ -1090,6 +1147,7 @@ static struct eventdev_ops cn9k_sso_dev_ops = {
 	.port_def_conf = cnxk_sso_port_def_conf,
 	.port_setup = cn9k_sso_port_setup,
 	.port_release = cn9k_sso_port_release,
+	.port_quiesce = cn9k_sso_port_quiesce,
 	.port_link = cn9k_sso_port_link,
 	.port_unlink = cn9k_sso_port_unlink,
 	.timeout_ticks = cnxk_sso_timeout_ticks,

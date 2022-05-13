@@ -167,15 +167,23 @@ cn10k_sso_hws_reset(void *arg, void *hws)
 		uint64_t u64[2];
 	} gw;
 	uint8_t pend_tt;
+	bool is_pend;
 
 	plt_write64(0, ws->base + SSOW_LF_GWS_OP_GWC_INVAL);
 	/* Wait till getwork/swtp/waitw/desched completes. */
+	is_pend = false;
+	/* Work in WQE0 is always consumed, unless its a SWTAG. */
+	pend_state = plt_read64(ws->base + SSOW_LF_GWS_PENDSTATE);
+	if (pend_state & (BIT_ULL(63) | BIT_ULL(62) | BIT_ULL(54)) ||
+	    ws->swtag_req)
+		is_pend = true;
+
 	do {
 		pend_state = plt_read64(base + SSOW_LF_GWS_PENDSTATE);
 	} while (pend_state & (BIT_ULL(63) | BIT_ULL(62) | BIT_ULL(58) |
 			       BIT_ULL(56) | BIT_ULL(54)));
 	pend_tt = CNXK_TT_FROM_TAG(plt_read64(base + SSOW_LF_GWS_WQE0));
-	if (pend_tt != SSO_TT_EMPTY) { /* Work was pending */
+	if (is_pend && pend_tt != SSO_TT_EMPTY) { /* Work was pending */
 		if (pend_tt == SSO_TT_ATOMIC || pend_tt == SSO_TT_ORDERED)
 			cnxk_sso_hws_swtag_untag(base +
 						 SSOW_LF_GWS_OP_SWTAG_UNTAG);
@@ -189,14 +197,9 @@ cn10k_sso_hws_reset(void *arg, void *hws)
 
 	switch (dev->gw_mode) {
 	case CN10K_GW_MODE_PREF:
+	case CN10K_GW_MODE_PREF_WFE:
 		while (plt_read64(base + SSOW_LF_GWS_PRF_WQE0) & BIT_ULL(63))
 			;
-		break;
-	case CN10K_GW_MODE_PREF_WFE:
-		while (plt_read64(base + SSOW_LF_GWS_PRF_WQE0) &
-		       SSOW_LF_GWS_TAG_PEND_GET_WORK_BIT)
-			continue;
-		plt_write64(0, base + SSOW_LF_GWS_OP_GWC_INVAL);
 		break;
 	case CN10K_GW_MODE_NONE:
 	default:
@@ -533,6 +536,66 @@ free:
 	rte_free(gws_cookie);
 }
 
+static void
+cn10k_sso_port_quiesce(struct rte_eventdev *event_dev, void *port,
+		       rte_eventdev_port_flush_t flush_cb, void *args)
+{
+	struct cnxk_sso_evdev *dev = cnxk_sso_pmd_priv(event_dev);
+	struct cn10k_sso_hws *ws = port;
+	struct rte_event ev;
+	uint64_t ptag;
+	bool is_pend;
+
+	is_pend = false;
+	/* Work in WQE0 is always consumed, unless its a SWTAG. */
+	ptag = plt_read64(ws->base + SSOW_LF_GWS_PENDSTATE);
+	if (ptag & (BIT_ULL(62) | BIT_ULL(54)) || ws->swtag_req)
+		is_pend = true;
+	do {
+		ptag = plt_read64(ws->base + SSOW_LF_GWS_PENDSTATE);
+	} while (ptag &
+		 (BIT_ULL(62) | BIT_ULL(58) | BIT_ULL(56) | BIT_ULL(54)));
+
+	cn10k_sso_hws_get_work_empty(ws, &ev,
+				     (NIX_RX_OFFLOAD_MAX - 1) | NIX_RX_REAS_F |
+					     NIX_RX_MULTI_SEG_F | CPT_RX_WQE_F);
+	if (is_pend && ev.u64) {
+		if (flush_cb)
+			flush_cb(event_dev->data->dev_id, ev, args);
+		cnxk_sso_hws_swtag_flush(ws->base);
+	}
+
+	/* Check if we have work in PRF_WQE0, if so extract it. */
+	switch (dev->gw_mode) {
+	case CN10K_GW_MODE_PREF:
+	case CN10K_GW_MODE_PREF_WFE:
+		while (plt_read64(ws->base + SSOW_LF_GWS_PRF_WQE0) &
+		       BIT_ULL(63))
+			;
+		break;
+	case CN10K_GW_MODE_NONE:
+	default:
+		break;
+	}
+
+	if (CNXK_TT_FROM_TAG(plt_read64(ws->base + SSOW_LF_GWS_PRF_WQE0)) !=
+	    SSO_TT_EMPTY) {
+		plt_write64(BIT_ULL(16) | 1,
+			    ws->base + SSOW_LF_GWS_OP_GET_WORK0);
+		cn10k_sso_hws_get_work_empty(
+			ws, &ev,
+			(NIX_RX_OFFLOAD_MAX - 1) | NIX_RX_REAS_F |
+				NIX_RX_MULTI_SEG_F | CPT_RX_WQE_F);
+		if (ev.u64) {
+			if (flush_cb)
+				flush_cb(event_dev->data->dev_id, ev, args);
+			cnxk_sso_hws_swtag_flush(ws->base);
+		}
+	}
+	ws->swtag_req = 0;
+	plt_write64(0, ws->base + SSOW_LF_GWS_OP_GWC_INVAL);
+}
+
 static int
 cn10k_sso_port_link(struct rte_eventdev *event_dev, void *port,
 		    const uint8_t queues[], const uint8_t priorities[],
@@ -852,6 +915,7 @@ static struct eventdev_ops cn10k_sso_dev_ops = {
 	.port_def_conf = cnxk_sso_port_def_conf,
 	.port_setup = cn10k_sso_port_setup,
 	.port_release = cn10k_sso_port_release,
+	.port_quiesce = cn10k_sso_port_quiesce,
 	.port_link = cn10k_sso_port_link,
 	.port_unlink = cn10k_sso_port_unlink,
 	.timeout_ticks = cnxk_sso_timeout_ticks,
