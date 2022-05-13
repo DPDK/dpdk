@@ -652,6 +652,7 @@ mlx5_aso_mtr_sq_enqueue_single(struct mlx5_dev_ctx_shared *sh,
 	uint16_t res;
 	uint32_t dseg_idx = 0;
 	struct mlx5_aso_mtr_pool *pool = NULL;
+	uint32_t param_le;
 
 	rte_spinlock_lock(&sq->sqsl);
 	res = size - (uint16_t)(sq->head - sq->tail);
@@ -688,15 +689,14 @@ mlx5_aso_mtr_sq_enqueue_single(struct mlx5_dev_ctx_shared *sh,
 		wqe->aso_dseg.mtrs[dseg_idx].ebs_eir = 0;
 	}
 	fmp = fm->profile;
-	if (fmp->profile.packet_mode)
-		wqe->aso_dseg.mtrs[dseg_idx].v_bo_sc_bbog_mm =
-				RTE_BE32((1 << ASO_DSEG_VALID_OFFSET) |
-				(MLX5_FLOW_COLOR_GREEN << ASO_DSEG_SC_OFFSET) |
-				(MLX5_METER_MODE_PKT << ASO_DSEG_MTR_MODE));
+	param_le = (1 << ASO_DSEG_VALID_OFFSET);
+	if (fm->color_aware)
+		param_le |= (MLX5_FLOW_COLOR_UNDEFINED << ASO_DSEG_SC_OFFSET);
 	else
-		wqe->aso_dseg.mtrs[dseg_idx].v_bo_sc_bbog_mm =
-				RTE_BE32((1 << ASO_DSEG_VALID_OFFSET) |
-				(MLX5_FLOW_COLOR_GREEN << ASO_DSEG_SC_OFFSET));
+		param_le |= (MLX5_FLOW_COLOR_GREEN << ASO_DSEG_SC_OFFSET);
+	if (fmp->profile.packet_mode)
+		param_le |= (MLX5_METER_MODE_PKT << ASO_DSEG_MTR_MODE);
+	wqe->aso_dseg.mtrs[dseg_idx].v_bo_sc_bbog_mm = RTE_BE32(param_le);
 	switch (fmp->profile.alg) {
 	case RTE_MTR_SRTCM_RFC2697:
 		/* Only needed for RFC2697. */
@@ -709,6 +709,9 @@ mlx5_aso_mtr_sq_enqueue_single(struct mlx5_dev_ctx_shared *sh,
 				RTE_BE32(1 << ASO_DSEG_BBOG_OFFSET);
 		break;
 	case RTE_MTR_TRTCM_RFC4115:
+		wqe->aso_dseg.mtrs[dseg_idx].v_bo_sc_bbog_mm |=
+				RTE_BE32(1 << ASO_DSEG_BO_OFFSET);
+		break;
 	default:
 		break;
 	}

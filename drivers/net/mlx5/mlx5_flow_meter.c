@@ -1005,7 +1005,7 @@ mlx5_flow_meter_validate(struct mlx5_priv *priv, uint32_t meter_id,
 					  RTE_MTR_ERROR_TYPE_MTR_PARAMS,
 					  NULL, "Meter object params null.");
 	/* Previous meter color is not supported. */
-	if (params->use_prev_mtr_color)
+	if (params->use_prev_mtr_color && !priv->sh->meter_aso_en)
 		return -rte_mtr_error_set(error, ENOTSUP,
 					  RTE_MTR_ERROR_TYPE_MTR_PARAMS,
 					  NULL,
@@ -1293,6 +1293,7 @@ mlx5_flow_meter_create(struct rte_eth_dev *dev, uint32_t meter_id,
 	fm->active_state = 1; /* Config meter starts as active. */
 	fm->is_enable = params->meter_enable;
 	fm->shared = !!shared;
+	fm->color_aware = !!params->use_prev_mtr_color;
 	__atomic_add_fetch(&fm->profile->ref_cnt, 1, __ATOMIC_RELAXED);
 	if (params->meter_policy_id == priv->sh->mtrmng->def_policy_id) {
 		fm->def_policy = 1;
