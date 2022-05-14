@@ -103,6 +103,140 @@ enum virtio_msix_status {
 	VIRTIO_MSIX_ENABLED = 2
 };
 
+/* PCI-specific Admin command set */
+#define VIRTIO_ADMIN_PCI_MIGRATION_CTRL 64
+#define VIRTIO_ADMIN_PCI_MIGRATION_IDENTITY 0
+#define VIRTIO_ADMIN_PCI_MIGRATION_GET_INTERNAL_STATUS 1
+#define VIRTIO_ADMIN_PCI_MIGRATION_MODIFY_INTERNAL_STATUS 2
+#define VIRTIO_ADMIN_PCI_MIGRATION_GET_INTERNAL_STATE_PENDING_BYTES 3
+#define VIRTIO_ADMIN_PCI_MIGRATION_SAVE_INTERNAL_STATE 4
+#define VIRTIO_ADMIN_PCI_MIGRATION_RESTORE_INTERNAL_STATE 5
+
+#define VIRTIO_ADMIN_PCI_DIRTY_PAGE_TRACK_CTRL 65
+#define VIRTIO_ADMIN_PCI_DIRTY_PAGE_IDENTITY 0
+#define VIRTIO_ADMIN_PCI_DIRTY_PAGE_START_TRACK 1
+#define VIRTIO_ADMIN_PCI_DIRTY_PAGE_STOP_TRACK 2
+#define VIRTIO_ADMIN_PCI_DIRTY_PAGE_GET_MAP_PENDING_BYTES 3
+#define VIRTIO_ADMIN_PCI_DIRTY_PAGE_REPORT_MAP 4
+
+enum virtio_internal_status {
+	/* Reset occurred. The device is in initial status. aka FLR state */
+	VIRTIO_S_INIT = 0,
+	/* The device is running (unquiesced and unfreezed) */
+	VIRTIO_S_RUNNING = 1,
+	/*
+	* The device has been quiesced (Internal state can be changed.
+	* Can't master transactions.)
+	*/
+	VIRTIO_S_QUIESCED = 2,
+	/*
+	* The device has been freezed (Internal state can't be changed.
+	* Can't master transactions.)
+	*/
+	VIRTIO_S_FREEZED = 3,
+};
+
+struct virtio_admin_migration_identity_result {
+	uint16_t major_ver;
+	uint16_t minor_ver;
+	uint16_t ter_ver;
+	uint16_t reserved;
+};
+
+struct virtio_admin_migration_get_internal_state_pending_bytes_data {
+	uint16_t vdev_id;
+	uint16_t reserved;
+};
+
+struct virtio_admin_migration_get_internal_state_pending_bytes_result {
+	uint64_t pending_bytes;
+};
+
+struct virtio_admin_migration_modify_internal_status_data {
+	uint16_t vdev_id;
+	uint16_t internal_status; /* Value from enum virtio_internal_status */
+};
+
+struct virtio_admin_migration_save_internal_state_data {
+	uint16_t vdev_id;
+	uint16_t reserved[3];
+	uint64_t offset;
+	uint64_t length; /* Num of data bytes to be returned by the device */
+};
+
+struct virtio_admin_migration_restore_internal_state_data {
+	uint16_t vdev_id;
+	uint16_t reserved;
+	uint64_t offset;
+	uint64_t length; /* Num of data bytes to be consumed by the device */
+	uint8_t data[];
+};
+
+struct virtio_admin_migration_get_internal_status_data {
+	uint16_t vdev_id;
+	uint16_t reserved;
+};
+
+struct virtio_admin_migration_get_internal_status_result {
+	uint16_t internal_status; /* Value from enum virtio_internal_status */
+	uint16_t reserved;
+};
+
+struct virtio_admin_dirty_page_identity_result {
+	uint16_t log_max_pages_track_pull_bitmap_mode; /* Per managed device (log) */
+	uint16_t log_max_pages_track_pull_bytemap_mode; /* Per managed device (log) */
+	uint32_t max_track_ranges; /* Maximum number of ranges a device can track */
+};
+
+enum virtio_dirty_track_mode {
+	VIRTIO_M_DIRTY_TRACK_PUSH_BITMAP = 1, /* Use push mode with bit granularity */
+	VIRTIO_M_DIRTY_TRACK_PUSH_BYTEMAP = 2, /* Use push mode with byte granularity */
+	VIRTIO_M_DIRTY_TRACK_PULL_BITMAP = 3, /* Use pull mode with bit granularity */
+	VIRTIO_M_DIRTY_TRACK_PULL_BYTEMAP = 4, /* Use pull mode with byte granularity */
+};
+
+struct virtio_sge {
+	uint64_t addr;
+	uint32_t len;
+	uint32_t reserved;
+};
+
+struct virtio_admin_dirty_page_start_track_data {
+	uint16_t vdev_id;
+	uint16_t track_mode; /* value from enum virtio_dirty_track_mode. must be a negotiated value */
+	uint32_t vdev_host_page_size; /* page size of the migrated device host */
+	uint64_t vdev_host_range_addr; /* Range start address */
+	uint64_t range_length; /* Range length */
+	struct virtio_sge sges[]; /* Push modes only */
+};
+
+struct virtio_admin_dirty_page_stop_track_data {
+	uint16_t vdev_id;
+	uint16_t reserved[3];
+	uint64_t vdev_host_range_addr; /* Range start address (must be same address given in the
+		start tracking) */
+};
+
+struct virtio_admin_dirty_page_get_map_pending_bytes_data {
+	uint16_t vdev_id;
+	uint16_t reserved[3];
+	uint64_t vdev_host_range_addr; /* Range start address (must be same address given in
+		the start tracking) */
+};
+
+struct virtio_admin_dirty_page_get_map_pending_bytes_result {
+	uint64_t pending_bytes;
+};
+
+struct virtio_admin_dirty_page_report_map_data {
+	uint16_t vdev_id;
+	uint16_t reserved[3];
+	uint64_t offset;
+	uint64_t length; /* Num of data bytes to be returned by the device */
+	uint64_t vdev_host_range_addr; /* Range start address (must be same address given in the
+		start tracking) */
+};
+
 struct virtio_pci_dev {
 	struct virtio_hw hw;
 	struct virtio_pci_common_cfg *common_cfg;
