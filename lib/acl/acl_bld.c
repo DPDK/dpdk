@@ -12,6 +12,9 @@
 /* number of pointers per alloc */
 #define ACL_PTR_ALLOC	32
 
+/* account for situation when all fields are 8B long */
+#define ACL_MAX_INDEXES	(2 * RTE_ACL_MAX_FIELDS)
+
 /* macros for dividing rule sets heuristics */
 #define NODE_MAX	0x4000
 #define NODE_MIN	0x800
@@ -80,7 +83,7 @@ struct acl_build_context {
 	struct tb_mem_pool        pool;
 	struct rte_acl_trie       tries[RTE_ACL_MAX_TRIES];
 	struct rte_acl_bld_trie   bld_tries[RTE_ACL_MAX_TRIES];
-	uint32_t            data_indexes[RTE_ACL_MAX_TRIES][RTE_ACL_MAX_FIELDS];
+	uint32_t            data_indexes[RTE_ACL_MAX_TRIES][ACL_MAX_INDEXES];
 
 	/* memory free lists for nodes and blocks used for node ptrs */
 	struct acl_mem_block      blocks[MEM_BLOCK_NUM];
@@ -988,7 +991,7 @@ build_trie(struct acl_build_context *context, struct rte_acl_build_rule *head,
 				 */
 				uint64_t mask;
 				mask = RTE_ACL_MASKLEN_TO_BITMASK(
-					fld->mask_range.u32,
+					fld->mask_range.u64,
 					rule->config->defs[n].size);
 
 				/* gen a mini-trie for this field */
@@ -1301,6 +1304,9 @@ acl_build_index(const struct rte_acl_config *config, uint32_t *data_index)
 		if (last_header != config->defs[n].input_index) {
 			last_header = config->defs[n].input_index;
 			data_index[m++] = config->defs[n].offset;
+			if (config->defs[n].size > sizeof(uint32_t))
+				data_index[m++] = config->defs[n].offset +
+					sizeof(uint32_t);
 		}
 	}
 
@@ -1487,7 +1493,7 @@ acl_set_data_indexes(struct rte_acl_ctx *ctx)
 		memcpy(ctx->data_indexes + ofs, ctx->trie[i].data_index,
 			n * sizeof(ctx->data_indexes[0]));
 		ctx->trie[i].data_index = ctx->data_indexes + ofs;
-		ofs += RTE_ACL_MAX_FIELDS;
+		ofs += ACL_MAX_INDEXES;
 	}
 }
 
@@ -1643,7 +1649,7 @@ rte_acl_build(struct rte_acl_ctx *ctx, const struct rte_acl_config *cfg)
 			/* allocate and fill run-time  structures. */
 			rc = rte_acl_gen(ctx, bcx.tries, bcx.bld_tries,
 				bcx.num_tries, bcx.cfg.num_categories,
-				RTE_ACL_MAX_FIELDS * RTE_DIM(bcx.tries) *
+				ACL_MAX_INDEXES * RTE_DIM(bcx.tries) *
 				sizeof(ctx->data_indexes[0]), max_size);
 			if (rc == 0) {
 				/* set data indexes. */
