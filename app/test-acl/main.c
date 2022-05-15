@@ -57,6 +57,12 @@ enum {
 	DUMP_MAX
 };
 
+enum {
+	IPV6_FRMT_NONE,
+	IPV6_FRMT_U32,
+	IPV6_FRMT_U64,
+};
+
 struct acl_alg {
 	const char *name;
 	enum rte_acl_classify_alg alg;
@@ -123,7 +129,7 @@ static struct {
 		.name = "default",
 		.alg = RTE_ACL_CLASSIFY_DEFAULT,
 	},
-	.ipv6 = 0
+	.ipv6 = IPV6_FRMT_NONE,
 };
 
 static struct rte_acl_param prm = {
@@ -210,6 +216,7 @@ struct rte_acl_field_def ipv4_defs[NUM_FIELDS_IPV4] = {
 #define	IPV6_ADDR_LEN	16
 #define	IPV6_ADDR_U16	(IPV6_ADDR_LEN / sizeof(uint16_t))
 #define	IPV6_ADDR_U32	(IPV6_ADDR_LEN / sizeof(uint32_t))
+#define	IPV6_ADDR_U64	(IPV6_ADDR_LEN / sizeof(uint64_t))
 
 struct ipv6_5tuple {
 	uint8_t  proto;
@@ -219,6 +226,7 @@ struct ipv6_5tuple {
 	uint16_t port_dst;
 };
 
+/* treat IPV6 address as uint32_t[4] (default mode) */
 enum {
 	PROTO_FIELD_IPV6,
 	SRC1_FIELD_IPV6,
@@ -232,6 +240,27 @@ enum {
 	SRCP_FIELD_IPV6,
 	DSTP_FIELD_IPV6,
 	NUM_FIELDS_IPV6
+};
+
+/* treat IPV6 address as uint64_t[2] (default mode) */
+enum {
+	PROTO_FIELD_IPV6_U64,
+	SRC1_FIELD_IPV6_U64,
+	SRC2_FIELD_IPV6_U64,
+	DST1_FIELD_IPV6_U64,
+	DST2_FIELD_IPV6_U64,
+	SRCP_FIELD_IPV6_U64,
+	DSTP_FIELD_IPV6_U64,
+	NUM_FIELDS_IPV6_U64
+};
+
+enum {
+	PROTO_INDEX_IPV6_U64 = PROTO_FIELD_IPV6_U64,
+	SRC1_INDEX_IPV6_U64 = SRC1_FIELD_IPV6_U64,
+	SRC2_INDEX_IPV6_U64 = SRC2_FIELD_IPV6_U64 + 1,
+	DST1_INDEX_IPV6_U64 = DST1_FIELD_IPV6_U64 + 2,
+	DST2_INDEX_IPV6_U64 = DST2_FIELD_IPV6_U64 + 3,
+	PRT_INDEX_IPV6_U64 = SRCP_FIELD_IPV6 + 4,
 };
 
 struct rte_acl_field_def ipv6_defs[NUM_FIELDS_IPV6] = {
@@ -314,6 +343,57 @@ struct rte_acl_field_def ipv6_defs[NUM_FIELDS_IPV6] = {
 	},
 };
 
+struct rte_acl_field_def ipv6_u64_defs[NUM_FIELDS_IPV6_U64] = {
+	{
+		.type = RTE_ACL_FIELD_TYPE_BITMASK,
+		.size = sizeof(uint8_t),
+		.field_index = PROTO_FIELD_IPV6_U64,
+		.input_index = PROTO_FIELD_IPV6_U64,
+		.offset = offsetof(struct ipv6_5tuple, proto),
+	},
+	{
+		.type = RTE_ACL_FIELD_TYPE_MASK,
+		.size = sizeof(uint64_t),
+		.field_index = SRC1_FIELD_IPV6_U64,
+		.input_index = SRC1_INDEX_IPV6_U64,
+		.offset = offsetof(struct ipv6_5tuple, ip_src[0]),
+	},
+	{
+		.type = RTE_ACL_FIELD_TYPE_MASK,
+		.size = sizeof(uint64_t),
+		.field_index = SRC2_FIELD_IPV6_U64,
+		.input_index = SRC2_INDEX_IPV6_U64,
+		.offset = offsetof(struct ipv6_5tuple, ip_src[2]),
+	},
+	{
+		.type = RTE_ACL_FIELD_TYPE_MASK,
+		.size = sizeof(uint64_t),
+		.field_index = DST1_FIELD_IPV6_U64,
+		.input_index = DST1_INDEX_IPV6_U64,
+		.offset = offsetof(struct ipv6_5tuple, ip_dst[0]),
+	},
+	{
+		.type = RTE_ACL_FIELD_TYPE_MASK,
+		.size = sizeof(uint64_t),
+		.field_index = DST2_FIELD_IPV6_U64,
+		.input_index = DST2_INDEX_IPV6_U64,
+		.offset = offsetof(struct ipv6_5tuple, ip_dst[2]),
+	},
+	{
+		.type = RTE_ACL_FIELD_TYPE_RANGE,
+		.size = sizeof(uint16_t),
+		.field_index = SRCP_FIELD_IPV6_U64,
+		.input_index = PRT_INDEX_IPV6_U64,
+		.offset = offsetof(struct ipv6_5tuple, port_src),
+	},
+	{
+		.type = RTE_ACL_FIELD_TYPE_RANGE,
+		.size = sizeof(uint16_t),
+		.field_index = DSTP_FIELD_IPV6_U64,
+		.input_index = PRT_INDEX_IPV6_U64,
+		.offset = offsetof(struct ipv6_5tuple, port_dst),
+	},
+};
 
 enum {
 	CB_FLD_SRC_ADDR,
@@ -385,49 +465,11 @@ parse_cb_ipv4_trace(char *str, struct ipv4_5tuple *v)
 	return 0;
 }
 
-/*
- * Parse IPv6 address, expects the following format:
- * XXXX:XXXX:XXXX:XXXX:XXXX:XXXX:XXXX:XXXX (where X is a hexadecimal digit).
- */
-static int
-parse_ipv6_addr(const char *in, const char **end, uint32_t v[IPV6_ADDR_U32],
-	char dlm)
-{
-	uint32_t addr[IPV6_ADDR_U16];
-
-	GET_CB_FIELD(in, addr[0], 16, UINT16_MAX, ':');
-	GET_CB_FIELD(in, addr[1], 16, UINT16_MAX, ':');
-	GET_CB_FIELD(in, addr[2], 16, UINT16_MAX, ':');
-	GET_CB_FIELD(in, addr[3], 16, UINT16_MAX, ':');
-	GET_CB_FIELD(in, addr[4], 16, UINT16_MAX, ':');
-	GET_CB_FIELD(in, addr[5], 16, UINT16_MAX, ':');
-	GET_CB_FIELD(in, addr[6], 16, UINT16_MAX, ':');
-	GET_CB_FIELD(in, addr[7], 16, UINT16_MAX, dlm);
-
-	*end = in;
-
-	v[0] = (addr[0] << 16) + addr[1];
-	v[1] = (addr[2] << 16) + addr[3];
-	v[2] = (addr[4] << 16) + addr[5];
-	v[3] = (addr[6] << 16) + addr[7];
-
-	return 0;
-}
-
 static int
 parse_cb_ipv6_addr_trace(const char *in, uint32_t v[IPV6_ADDR_U32])
 {
-	int32_t rc;
-	const char *end;
-
-	rc = parse_ipv6_addr(in, &end, v, 0);
-	if (rc != 0)
-		return rc;
-
-	v[0] = rte_cpu_to_be_32(v[0]);
-	v[1] = rte_cpu_to_be_32(v[1]);
-	v[2] = rte_cpu_to_be_32(v[2]);
-	v[3] = rte_cpu_to_be_32(v[3]);
+	if (inet_pton(AF_INET6, in, v) != 1)
+		return -EINVAL;
 
 	return 0;
 }
@@ -548,20 +590,33 @@ tracef_init(void)
 }
 
 static int
-parse_ipv6_net(const char *in, struct rte_acl_field field[4])
+parse_ipv6_u32_net(char *in, struct rte_acl_field field[IPV6_ADDR_U32])
 {
-	int32_t rc;
-	const char *mp;
-	uint32_t i, m, v[4];
+	char *sa, *sm, *sv;
+	uint32_t i, m, v[IPV6_ADDR_U32];
+
+	const char *dlm = "/";
 	const uint32_t nbu32 = sizeof(uint32_t) * CHAR_BIT;
 
 	/* get address. */
-	rc = parse_ipv6_addr(in, &mp, v, '/');
-	if (rc != 0)
-		return rc;
+	sv = NULL;
+	sa = strtok_r(in, dlm, &sv);
+	if (sa == NULL)
+		return -EINVAL;
+	sm = strtok_r(NULL, dlm, &sv);
+	if (sm == NULL)
+		return -EINVAL;
+
+	if (inet_pton(AF_INET6, sa, v) != 1)
+		return -EINVAL;
+
+	v[0] = rte_be_to_cpu_32(v[0]);
+	v[1] = rte_be_to_cpu_32(v[1]);
+	v[2] = rte_be_to_cpu_32(v[2]);
+	v[3] = rte_be_to_cpu_32(v[3]);
 
 	/* get mask. */
-	GET_CB_FIELD(mp, m, 0, CHAR_BIT * sizeof(v), 0);
+	GET_CB_FIELD(sm, m, 0, CHAR_BIT * sizeof(v), 0);
 
 	/* put all together. */
 	for (i = 0; i != RTE_DIM(v); i++) {
@@ -569,7 +624,7 @@ parse_ipv6_net(const char *in, struct rte_acl_field field[4])
 			field[i].mask_range.u32 = nbu32;
 		else
 			field[i].mask_range.u32 = m > (i * nbu32) ?
-				m - (i * 32) : 0;
+				m - (i * nbu32) : 0;
 
 		field[i].value.u32 = v[i];
 	}
@@ -577,13 +632,87 @@ parse_ipv6_net(const char *in, struct rte_acl_field field[4])
 	return 0;
 }
 
+static int
+parse_ipv6_u64_net(char *in, struct rte_acl_field field[IPV6_ADDR_U64])
+{
+	char *sa, *sm, *sv;
+	uint32_t i, m;
+	uint64_t v[IPV6_ADDR_U64];
+
+	const char *dlm = "/";
+	const uint32_t nbu64 = sizeof(uint64_t) * CHAR_BIT;
+
+	/* get address. */
+	sv = NULL;
+	sa = strtok_r(in, dlm, &sv);
+	if (sa == NULL)
+		return -EINVAL;
+	sm = strtok_r(NULL, dlm, &sv);
+	if (sm == NULL)
+		return -EINVAL;
+
+	if (inet_pton(AF_INET6, sa, v) != 1)
+		return -EINVAL;
+
+	v[0] = rte_be_to_cpu_64(v[0]);
+	v[1] = rte_be_to_cpu_64(v[1]);
+
+	/* get mask. */
+	GET_CB_FIELD(sm, m, 0, CHAR_BIT * sizeof(v), 0);
+
+	/* put all together. */
+	for (i = 0; i != RTE_DIM(v); i++) {
+		if (m >= (i + 1) * nbu64)
+			field[i].mask_range.u32 = nbu64;
+		else
+			field[i].mask_range.u32 = m > (i * nbu64) ?
+				m - (i * nbu64) : 0;
+
+		field[i].value.u64 = v[i];
+	}
+
+	return 0;
+}
 
 static int
-parse_cb_ipv6_rule(char *str, struct acl_rule *v)
+parse_cb_ipv6_rule(char *str, struct acl_rule *v, int frmt)
 {
 	int i, rc;
+	uint32_t fidx;
+	const uint32_t *field_map;
 	char *s, *sp, *in[CB_FLD_NUM];
+	int (*parse_ipv6_net)(char *s, struct rte_acl_field f[]);
+
 	static const char *dlm = " \t\n";
+
+	static const uint32_t field_map_u32[CB_FLD_NUM] = {
+		[CB_FLD_SRC_ADDR] = SRC1_FIELD_IPV6,
+		[CB_FLD_DST_ADDR] = DST1_FIELD_IPV6,
+		[CB_FLD_SRC_PORT_LOW] = SRCP_FIELD_IPV6,
+		[CB_FLD_SRC_PORT_HIGH] = SRCP_FIELD_IPV6,
+		[CB_FLD_DST_PORT_LOW] = DSTP_FIELD_IPV6,
+		[CB_FLD_DST_PORT_HIGH] = DSTP_FIELD_IPV6,
+		[CB_FLD_PROTO] = PROTO_FIELD_IPV6,
+	};
+
+	static const uint32_t field_map_u64[CB_FLD_NUM] = {
+		[CB_FLD_SRC_ADDR] = SRC1_FIELD_IPV6_U64,
+		[CB_FLD_DST_ADDR] = DST1_FIELD_IPV6_U64,
+		[CB_FLD_SRC_PORT_LOW] = SRCP_FIELD_IPV6_U64,
+		[CB_FLD_SRC_PORT_HIGH] = SRCP_FIELD_IPV6_U64,
+		[CB_FLD_DST_PORT_LOW] = DSTP_FIELD_IPV6_U64,
+		[CB_FLD_DST_PORT_HIGH] = DSTP_FIELD_IPV6_U64,
+		[CB_FLD_PROTO] = PROTO_FIELD_IPV6_U64,
+	};
+
+	if (frmt == IPV6_FRMT_U32) {
+		field_map = field_map_u32;
+		parse_ipv6_net = parse_ipv6_u32_net;
+	} else if (frmt == IPV6_FRMT_U64) {
+		field_map = field_map_u64;
+		parse_ipv6_net = parse_ipv6_u64_net;
+	} else
+		return -ENOTSUP;
 
 	/*
 	 * Skip leading '@'
@@ -600,28 +729,30 @@ parse_cb_ipv6_rule(char *str, struct acl_rule *v)
 		s = NULL;
 	}
 
-	rc = parse_ipv6_net(in[CB_FLD_SRC_ADDR], v->field + SRC1_FIELD_IPV6);
+	fidx = CB_FLD_SRC_ADDR;
+	rc = parse_ipv6_net(in[fidx], v->field + field_map[fidx]);
 	if (rc != 0) {
 		RTE_LOG(ERR, TESTACL,
-			"failed to read source address/mask: %s\n",
-			in[CB_FLD_SRC_ADDR]);
+			"failed to read source address/mask: %s\n", in[fidx]);
 		return rc;
 	}
 
-	rc = parse_ipv6_net(in[CB_FLD_DST_ADDR], v->field + DST1_FIELD_IPV6);
+	fidx = CB_FLD_DST_ADDR;
+	rc = parse_ipv6_net(in[fidx], v->field + field_map[fidx]);
 	if (rc != 0) {
 		RTE_LOG(ERR, TESTACL,
 			"failed to read destination address/mask: %s\n",
-			in[CB_FLD_DST_ADDR]);
+			in[fidx]);
 		return rc;
 	}
 
 	/* source port. */
-	GET_CB_FIELD(in[CB_FLD_SRC_PORT_LOW],
-		v->field[SRCP_FIELD_IPV6].value.u16,
+	fidx = CB_FLD_SRC_PORT_LOW;
+	GET_CB_FIELD(in[fidx], v->field[field_map[fidx]].value.u16,
 		0, UINT16_MAX, 0);
-	GET_CB_FIELD(in[CB_FLD_SRC_PORT_HIGH],
-		v->field[SRCP_FIELD_IPV6].mask_range.u16,
+
+	fidx = CB_FLD_SRC_PORT_HIGH;
+	GET_CB_FIELD(in[fidx], v->field[field_map[fidx]].mask_range.u16,
 		0, UINT16_MAX, 0);
 
 	if (strncmp(in[CB_FLD_SRC_PORT_DLM], cb_port_delim,
@@ -629,37 +760,61 @@ parse_cb_ipv6_rule(char *str, struct acl_rule *v)
 		return -EINVAL;
 
 	/* destination port. */
-	GET_CB_FIELD(in[CB_FLD_DST_PORT_LOW],
-		v->field[DSTP_FIELD_IPV6].value.u16,
+	fidx = CB_FLD_DST_PORT_LOW;
+	GET_CB_FIELD(in[fidx], v->field[field_map[fidx]].value.u16,
 		0, UINT16_MAX, 0);
-	GET_CB_FIELD(in[CB_FLD_DST_PORT_HIGH],
-		v->field[DSTP_FIELD_IPV6].mask_range.u16,
+
+	fidx = CB_FLD_DST_PORT_HIGH;
+	GET_CB_FIELD(in[fidx], v->field[field_map[fidx]].mask_range.u16,
 		0, UINT16_MAX, 0);
 
 	if (strncmp(in[CB_FLD_DST_PORT_DLM], cb_port_delim,
 			sizeof(cb_port_delim)) != 0)
 		return -EINVAL;
 
-	GET_CB_FIELD(in[CB_FLD_PROTO], v->field[PROTO_FIELD_IPV6].value.u8,
+	fidx = CB_FLD_PROTO;
+	GET_CB_FIELD(in[fidx], v->field[field_map[fidx]].value.u8,
 		0, UINT8_MAX, '/');
-	GET_CB_FIELD(in[CB_FLD_PROTO], v->field[PROTO_FIELD_IPV6].mask_range.u8,
+	GET_CB_FIELD(in[fidx], v->field[field_map[fidx]].mask_range.u8,
 		0, UINT8_MAX, 0);
 
 	return 0;
 }
 
 static int
-parse_ipv4_net(const char *in, uint32_t *addr, uint32_t *mask_len)
+parse_cb_ipv6_u32_rule(char *str, struct acl_rule *v)
 {
-	uint8_t a, b, c, d, m;
+	return parse_cb_ipv6_rule(str, v, IPV6_FRMT_U32);
+}
 
-	GET_CB_FIELD(in, a, 0, UINT8_MAX, '.');
-	GET_CB_FIELD(in, b, 0, UINT8_MAX, '.');
-	GET_CB_FIELD(in, c, 0, UINT8_MAX, '.');
-	GET_CB_FIELD(in, d, 0, UINT8_MAX, '/');
-	GET_CB_FIELD(in, m, 0, sizeof(uint32_t) * CHAR_BIT, 0);
+static int
+parse_cb_ipv6_u64_rule(char *str, struct acl_rule *v)
+{
+	return parse_cb_ipv6_rule(str, v, IPV6_FRMT_U64);
+}
 
-	addr[0] = RTE_IPV4(a, b, c, d);
+static int
+parse_ipv4_net(char *in, uint32_t *addr, uint32_t *mask_len)
+{
+	char *sa, *sm, *sv;
+	uint32_t m, v;
+
+	const char *dlm = "/";
+
+	sv = NULL;
+	sa = strtok_r(in, dlm, &sv);
+	if (sa == NULL)
+		return -EINVAL;
+	sm = strtok_r(NULL, dlm, &sv);
+	if (sm == NULL)
+		return -EINVAL;
+
+	if (inet_pton(AF_INET, sa, &v) != 1)
+		return -EINVAL;
+
+	addr[0] = rte_be_to_cpu_32(v);
+
+	GET_CB_FIELD(sm, m, 0, sizeof(uint32_t) * CHAR_BIT, 0);
 	mask_len[0] = m;
 
 	return 0;
@@ -757,8 +912,14 @@ add_cb_rules(FILE *f, struct rte_acl_ctx *ctx)
 	struct acl_rule v;
 	parse_5tuple parser;
 
+	static const parse_5tuple parser_func[] = {
+		[IPV6_FRMT_NONE] = parse_cb_ipv4_rule,
+		[IPV6_FRMT_U32] = parse_cb_ipv6_u32_rule,
+		[IPV6_FRMT_U64] = parse_cb_ipv6_u64_rule,
+	};
+
 	memset(&v, 0, sizeof(v));
-	parser = (config.ipv6 != 0) ? parse_cb_ipv6_rule : parse_cb_ipv4_rule;
+	parser = parser_func[config.ipv6];
 
 	k = 0;
 	for (i = 1; fgets(line, sizeof(line), f) != NULL; i++) {
@@ -804,9 +965,12 @@ acx_init(void)
 	memset(&cfg, 0, sizeof(cfg));
 
 	/* setup ACL build config. */
-	if (config.ipv6) {
+	if (config.ipv6 == IPV6_FRMT_U32) {
 		cfg.num_fields = RTE_DIM(ipv6_defs);
 		memcpy(&cfg.defs, ipv6_defs, sizeof(ipv6_defs));
+	} else if (config.ipv6 == IPV6_FRMT_U64) {
+		cfg.num_fields = RTE_DIM(ipv6_u64_defs);
+		memcpy(&cfg.defs, ipv6_u64_defs, sizeof(ipv6_u64_defs));
 	} else {
 		cfg.num_fields = RTE_DIM(ipv4_defs);
 		memcpy(&cfg.defs, ipv4_defs, sizeof(ipv4_defs));
@@ -959,6 +1123,37 @@ get_alg_opt(const char *opt, const char *name)
 }
 
 static void
+get_ipv6_opt(const char *opt, const char *name)
+{
+	uint32_t i;
+
+	static const struct {
+		const char *name;
+		uint32_t val;
+	} ipv6_opt[] = {
+		{
+			.name = "4B",
+			.val = IPV6_FRMT_U32,
+		},
+		{
+			.name = "8B",
+			.val = IPV6_FRMT_U64,
+		},
+	};
+
+	for (i = 0; i != RTE_DIM(ipv6_opt); i++) {
+		if (strcmp(opt, ipv6_opt[i].name) == 0) {
+			config.ipv6 = ipv6_opt[i].val;
+			return;
+		}
+	}
+
+	rte_exit(-EINVAL, "invalid value: \"%s\" for option: %s\n",
+		opt, name);
+}
+
+
+static void
 print_usage(const char *prgname)
 {
 	uint32_t i, n, rc;
@@ -999,7 +1194,7 @@ print_usage(const char *prgname)
 		"[--" OPT_ITER_NUM "=<number of iterations to perform>]\n"
 		"[--" OPT_VERBOSE "=<verbose level>]\n"
 		"[--" OPT_SEARCH_ALG "=%s]\n"
-		"[--" OPT_IPV6 "=<IPv6 rules and trace files>]\n",
+		"[--" OPT_IPV6 "(=4B | 8B) <IPv6 rules and trace files>]\n",
 		prgname, RTE_ACL_RESULTS_MULTIPLIER,
 		(uint32_t)RTE_ACL_MAX_CATEGORIES,
 		buf);
@@ -1050,7 +1245,7 @@ get_input_opts(int argc, char **argv)
 		{OPT_ITER_NUM, 1, 0, 0},
 		{OPT_VERBOSE, 1, 0, 0},
 		{OPT_SEARCH_ALG, 1, 0, 0},
-		{OPT_IPV6, 0, 0, 0},
+		{OPT_IPV6, 2, 0, 0},
 		{NULL, 0, 0, 0}
 	};
 
@@ -1099,7 +1294,9 @@ get_input_opts(int argc, char **argv)
 				OPT_SEARCH_ALG) == 0) {
 			get_alg_opt(optarg, lgopts[opt_idx].name);
 		} else if (strcmp(lgopts[opt_idx].name, OPT_IPV6) == 0) {
-			config.ipv6 = 1;
+			config.ipv6 = IPV6_FRMT_U32;
+			if (optarg != NULL)
+				get_ipv6_opt(optarg, lgopts[opt_idx].name);
 		}
 	}
 	config.trace_sz = config.ipv6 ? sizeof(struct ipv6_5tuple) :

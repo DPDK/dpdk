@@ -86,7 +86,9 @@ for i in ${V4F}; do
 done
 
 for i in ${V6F}; do
-	XPRM='--ipv6'
+	XPRM='--ipv6=4B'
+	run_test $i
+	XPRM='--ipv6=8B'
 	run_test $i
 	unset XPRM
 done
