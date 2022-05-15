@@ -240,8 +240,8 @@ struct sfc_adapter {
 	struct sfc_port			port;
 	struct sfc_sw_stats		sw_stats;
 	struct sfc_flow_rss		flow_rss;
-	/* Registry of tunnel offload contexts */
-	struct sfc_flow_tunnel		flow_tunnels[SFC_FT_MAX_NTUNNELS];
+	/* Registry of contexts used in Flow Tunnel (FT) offload */
+	struct sfc_ft_ctx		ft_ctx_pool[SFC_FT_MAX_NTUNNELS];
 	struct sfc_filter		filter;
 	struct sfc_mae			mae;
 	struct sfc_repr_proxy		repr_proxy;

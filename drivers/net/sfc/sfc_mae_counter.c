@@ -123,7 +123,7 @@ sfc_mae_counter_enable(struct sfc_adapter *sa,
 		       &p->value.pkts_bytes.int128, __ATOMIC_RELAXED);
 	p->generation_count = generation_count;
 
-	p->ft_group_hit_counter = counterp->ft_group_hit_counter;
+	p->ft_switch_hit_counter = counterp->ft_switch_hit_counter;
 
 	/*
 	 * The flag is set at the very end of add operation and reset
@@ -236,11 +236,11 @@ sfc_mae_counter_increment(struct sfc_adapter *sa,
 	__atomic_store(&p->value.pkts_bytes,
 		       &cnt_val.pkts_bytes, __ATOMIC_RELAXED);
 
-	if (p->ft_group_hit_counter != NULL) {
-		uint64_t ft_group_hit_counter;
+	if (p->ft_switch_hit_counter != NULL) {
+		uint64_t ft_switch_hit_counter;
 
-		ft_group_hit_counter = *p->ft_group_hit_counter + pkts;
-		__atomic_store_n(p->ft_group_hit_counter, ft_group_hit_counter,
+		ft_switch_hit_counter = *p->ft_switch_hit_counter + pkts;
+		__atomic_store_n(p->ft_switch_hit_counter, ft_switch_hit_counter,
 				 __ATOMIC_RELAXED);
 	}
 
@@ -946,8 +946,8 @@ sfc_mae_counter_get(struct sfc_mae_counters *counters,
 		    const struct sfc_mae_counter_id *counter,
 		    struct rte_flow_query_count *data)
 {
-	struct sfc_flow_tunnel *ft = counter->ft;
-	uint64_t non_reset_jump_hit_counter;
+	struct sfc_ft_ctx *ft_ctx = counter->ft_ctx;
+	uint64_t non_reset_tunnel_hit_counter;
 	struct sfc_mae_counter *p;
 	union sfc_pkts_bytes value;
 
@@ -965,18 +965,19 @@ sfc_mae_counter_get(struct sfc_mae_counters *counters,
 	data->hits_set = 1;
 	data->hits = value.pkts - p->reset.pkts;
 
-	if (ft != NULL) {
-		data->hits += ft->group_hit_counter;
-		non_reset_jump_hit_counter = data->hits;
-		data->hits -= ft->reset_jump_hit_counter;
+	if (ft_ctx != NULL) {
+		data->hits += ft_ctx->switch_hit_counter;
+		non_reset_tunnel_hit_counter = data->hits;
+		data->hits -= ft_ctx->reset_tunnel_hit_counter;
 	} else {
 		data->bytes_set = 1;
 		data->bytes = value.bytes - p->reset.bytes;
 	}
 
 	if (data->reset != 0) {
-		if (ft != NULL) {
-			ft->reset_jump_hit_counter = non_reset_jump_hit_counter;
+		if (ft_ctx != NULL) {
+			ft_ctx->reset_tunnel_hit_counter =
+				non_reset_tunnel_hit_counter;
 		} else {
 			p->reset.pkts = value.pkts;
 			p->reset.bytes = value.bytes;

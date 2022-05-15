@@ -76,10 +76,10 @@ struct sfc_mae_counter_id {
 	/* RTE counter ID validity status */
 	bool				rte_id_valid;
 
-	/* Flow Tunnel (FT) GROUP hit counter (or NULL) */
-	uint64_t			*ft_group_hit_counter;
-	/* Flow Tunnel (FT) context (for JUMP rules; otherwise, NULL) */
-	struct sfc_flow_tunnel		*ft;
+	/* Flow Tunnel (FT) SWITCH hit counter (or NULL) */
+	uint64_t			*ft_switch_hit_counter;
+	/* Flow Tunnel (FT) context (for TUNNEL rules; otherwise, NULL) */
+	struct sfc_ft_ctx		*ft_ctx;
 };
 
 /** Action set registry entry */
@@ -123,7 +123,7 @@ struct sfc_mae_counter {
 	union sfc_pkts_bytes		value;
 	union sfc_pkts_bytes		reset;
 
-	uint64_t			*ft_group_hit_counter;
+	uint64_t			*ft_switch_hit_counter;
 };
 
 struct sfc_mae_counters_xstats {
@@ -363,12 +363,12 @@ struct sfc_mae_parse_ctx {
 	size_t				tunnel_def_mask_size;
 	const void			*tunnel_def_mask;
 	bool				match_mport_set;
-	enum sfc_flow_tunnel_rule_type	ft_rule_type;
+	enum sfc_ft_rule_type		ft_rule_type;
 	struct sfc_mae_pattern_data	pattern_data;
 	efx_tunnel_protocol_t		encap_type;
 	const struct rte_flow_item	*pattern;
 	unsigned int			priority;
-	struct sfc_flow_tunnel		*ft;
+	struct sfc_ft_ctx		*ft_ctx;
 };
 
 int sfc_mae_attach(struct sfc_adapter *sa);

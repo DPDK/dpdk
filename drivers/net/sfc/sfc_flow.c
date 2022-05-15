@@ -1592,7 +1592,7 @@ sfc_flow_parse_mark(struct sfc_adapter *sa,
 	uint32_t mark_max;
 
 	mark_max = encp->enc_filter_action_mark_max;
-	if (sfc_flow_tunnel_is_active(sa))
+	if (sfc_ft_is_active(sa))
 		mark_max = RTE_MIN(mark_max, SFC_FT_USER_MARK_MASK);
 
 	if (mark == NULL || mark->id > mark_max)
@@ -2398,10 +2398,10 @@ sfc_flow_parse_rte_to_mae(struct rte_eth_dev *dev,
 	int rc;
 
 	/*
-	 * If the flow is meant to be a JUMP rule in tunnel offload,
+	 * If the flow is meant to be a TUNNEL rule in a FT context,
 	 * preparse its actions and save its properties in spec_mae.
 	 */
-	rc = sfc_flow_tunnel_detect_jump_rule(sa, actions, spec_mae, error);
+	rc = sfc_ft_tunnel_rule_detect(sa, actions, spec_mae, error);
 	if (rc != 0)
 		goto fail;
 
@@ -2409,7 +2409,7 @@ sfc_flow_parse_rte_to_mae(struct rte_eth_dev *dev,
 	if (rc != 0)
 		goto fail;
 
-	if (spec_mae->ft_rule_type == SFC_FT_RULE_JUMP) {
+	if (spec_mae->ft_rule_type == SFC_FT_RULE_TUNNEL) {
 		/*
 		 * By design, this flow should be represented solely by the
 		 * outer rule. But the HW/FW hasn't got support for setting
@@ -2425,11 +2425,11 @@ sfc_flow_parse_rte_to_mae(struct rte_eth_dev *dev,
 	if (rc != 0)
 		goto fail;
 
-	if (spec_mae->ft != NULL) {
-		if (spec_mae->ft_rule_type == SFC_FT_RULE_JUMP)
-			spec_mae->ft->jump_rule_is_set = B_TRUE;
+	if (spec_mae->ft_ctx != NULL) {
+		if (spec_mae->ft_rule_type == SFC_FT_RULE_TUNNEL)
+			spec_mae->ft_ctx->tunnel_rule_is_set = B_TRUE;
 
-		++(spec_mae->ft->refcnt);
+		++(spec_mae->ft_ctx->refcnt);
 	}
 
 	return 0;
@@ -2437,7 +2437,7 @@ sfc_flow_parse_rte_to_mae(struct rte_eth_dev *dev,
 fail:
 	/* Reset these values to avoid confusing sfc_mae_flow_cleanup(). */
 	spec_mae->ft_rule_type = SFC_FT_RULE_NONE;
-	spec_mae->ft = NULL;
+	spec_mae->ft_ctx = NULL;
 
 	return rc;
 }
@@ -2798,11 +2798,11 @@ const struct rte_flow_ops sfc_flow_ops = {
 	.flush = sfc_flow_flush,
 	.query = sfc_flow_query,
 	.isolate = sfc_flow_isolate,
-	.tunnel_decap_set = sfc_flow_tunnel_decap_set,
-	.tunnel_match = sfc_flow_tunnel_match,
-	.tunnel_action_decap_release = sfc_flow_tunnel_action_decap_release,
-	.tunnel_item_release = sfc_flow_tunnel_item_release,
-	.get_restore_info = sfc_flow_tunnel_get_restore_info,
+	.tunnel_decap_set = sfc_ft_decap_set,
+	.tunnel_match = sfc_ft_match,
+	.tunnel_action_decap_release = sfc_ft_action_decap_release,
+	.tunnel_item_release = sfc_ft_item_release,
+	.get_restore_info = sfc_ft_get_restore_info,
 	.pick_transfer_proxy = sfc_flow_pick_transfer_proxy,
 };
 
@@ -2854,7 +2854,7 @@ sfc_flow_start(struct sfc_adapter *sa)
 
 	SFC_ASSERT(sfc_adapter_is_locked(sa));
 
-	sfc_flow_tunnel_reset_hit_counters(sa);
+	sfc_ft_counters_reset(sa);
 
 	TAILQ_FOREACH(flow, &sa->flow_list, entries) {
 		rc = sfc_flow_insert(sa, flow, NULL);

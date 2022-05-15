@@ -2322,7 +2322,7 @@ sfc_rx_metadata_negotiate(struct rte_eth_dev *dev, uint64_t *features)
 	if ((sa->priv.dp_rx->features & SFC_DP_RX_FEAT_FLOW_MARK) != 0)
 		supported |= RTE_ETH_RX_METADATA_USER_MARK;
 
-	if (sfc_flow_tunnel_is_supported(sa))
+	if (sfc_ft_is_supported(sa))
 		supported |= RTE_ETH_RX_METADATA_TUNNEL_ID;
 
 	sa->negotiated_rx_metadata = supported & *features;

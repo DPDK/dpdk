@@ -53,21 +53,24 @@ struct sfc_flow_spec_filter {
 };
 
 /* Indicates the role of a given flow in tunnel offload */
-enum sfc_flow_tunnel_rule_type {
+enum sfc_ft_rule_type {
 	/* The flow has nothing to do with tunnel offload */
 	SFC_FT_RULE_NONE = 0,
-	/* The flow represents a JUMP rule */
-	SFC_FT_RULE_JUMP,
-	/* The flow represents a GROUP rule */
-	SFC_FT_RULE_GROUP,
+	/* The flow is a TUNNEL rule, to match on an outer header */
+	SFC_FT_RULE_TUNNEL,
+	/*
+	 * The flow is a SWITCH rule, to discard the outer header
+	 * and dispatch the resulting packets to a vSwitch tenant
+	 */
+	SFC_FT_RULE_SWITCH,
 };
 
 /* MAE-specific flow specification */
 struct sfc_flow_spec_mae {
 	/* FLow Tunnel (FT) rule type (or NONE) */
-	enum sfc_flow_tunnel_rule_type	ft_rule_type;
+	enum sfc_ft_rule_type		ft_rule_type;
 	/* Flow Tunnel (FT) context (or NULL) */
-	struct sfc_flow_tunnel		*ft;
+	struct sfc_ft_ctx		*ft_ctx;
 	/* Desired priority level */
 	unsigned int			priority;
 	/* Outer rule registry entry */
