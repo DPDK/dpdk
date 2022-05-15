@@ -206,6 +206,9 @@ Deprecation Notices
   ``rte_event_vector::elem_offset`` gives the number of valid elements left
   to process from the ``rte_event_vector::elem_offset``.
 
+* eventdev: New fields to represent event queue weight and affinity
+  will be added to ``rte_event_queue_conf`` structure in DPDK 22.11.
+
 * metrics: The function ``rte_metrics_init`` will have a non-void return
   in order to notify errors instead of calling ``rte_exit``.
 
