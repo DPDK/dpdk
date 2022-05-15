@@ -706,7 +706,7 @@ mlx5_devx_tir_attr_set(struct rte_eth_dev *dev, const uint8_t *rss_key,
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	enum mlx5_rxq_type rxq_obj_type;
-	bool lro = true;
+	bool lro = false;
 	uint32_t i;
 
 	/* NULL queues designate drop queue. */
@@ -715,6 +715,7 @@ mlx5_devx_tir_attr_set(struct rte_eth_dev *dev, const uint8_t *rss_key,
 				mlx5_rxq_ctrl_get(dev, ind_tbl->queues[0]);
 		rxq_obj_type = rxq_ctrl != NULL ? rxq_ctrl->type :
 						  MLX5_RXQ_TYPE_STANDARD;
+		lro = true;
 
 		/* Enable TIR LRO only if all the queues were configured for. */
 		for (i = 0; i < ind_tbl->queues_n; ++i) {
@@ -768,6 +769,7 @@ mlx5_devx_tir_attr_set(struct rte_eth_dev *dev, const uint8_t *rss_key,
 		tir_attr->self_lb_block =
 					MLX5_TIRC_SELF_LB_BLOCK_BLOCK_UNICAST;
 	if (lro) {
+		MLX5_ASSERT(priv->config.lro.supported);
 		tir_attr->lro_timeout_period_usecs = priv->config.lro.timeout;
 		tir_attr->lro_max_msg_sz = priv->max_lro_msg_size;
 		tir_attr->lro_enable_mask =
