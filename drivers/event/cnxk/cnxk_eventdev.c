@@ -464,9 +464,10 @@ static void
 cnxk_sso_cleanup(struct rte_eventdev *event_dev, cnxk_sso_hws_reset_t reset_fn,
 		 cnxk_sso_hws_flush_t flush_fn, uint8_t enable)
 {
+	uint8_t pend_list[RTE_EVENT_MAX_QUEUES_PER_DEV], pend_cnt, new_pcnt;
 	struct cnxk_sso_evdev *dev = cnxk_sso_pmd_priv(event_dev);
 	uintptr_t hwgrp_base;
-	uint16_t i;
+	uint8_t queue_id, i;
 	void *ws;
 
 	for (i = 0; i < dev->nb_event_ports; i++) {
@@ -475,14 +476,30 @@ cnxk_sso_cleanup(struct rte_eventdev *event_dev, cnxk_sso_hws_reset_t reset_fn,
 	}
 
 	rte_mb();
+
+	/* Consume all the events through HWS0 */
 	ws = event_dev->data->ports[0];
 
-	for (i = 0; i < dev->nb_event_queues; i++) {
-		/* Consume all the events through HWS0 */
-		hwgrp_base = roc_sso_hwgrp_base_get(&dev->sso, i);
-		flush_fn(ws, i, hwgrp_base, cnxk_handle_event, event_dev);
-		/* Enable/Disable SSO GGRP */
-		plt_write64(enable, hwgrp_base + SSO_LF_GGRP_QCTL);
+	/* Starting list of queues to flush */
+	pend_cnt = dev->nb_event_queues;
+	for (i = 0; i < dev->nb_event_queues; i++)
+		pend_list[i] = i;
+
+	while (pend_cnt) {
+		new_pcnt = 0;
+		for (i = 0; i < pend_cnt; i++) {
+			queue_id = pend_list[i];
+			hwgrp_base =
+				roc_sso_hwgrp_base_get(&dev->sso, queue_id);
+			if (flush_fn(ws, queue_id, hwgrp_base,
+				     cnxk_handle_event, event_dev)) {
+				pend_list[new_pcnt++] = queue_id;
+				continue;
+			}
+			/* Enable/Disable SSO GGRP */
+			plt_write64(enable, hwgrp_base + SSO_LF_GGRP_QCTL);
+		}
+		pend_cnt = new_pcnt;
 	}
 }
 

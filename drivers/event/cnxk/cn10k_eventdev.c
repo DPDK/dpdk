@@ -108,10 +108,11 @@ cn10k_sso_hws_release(void *arg, void *hws)
 	memset(ws, 0, sizeof(*ws));
 }
 
-static void
+static int
 cn10k_sso_hws_flush_events(void *hws, uint8_t queue_id, uintptr_t base,
 			   cnxk_handle_event_t fn, void *arg)
 {
+	uint64_t retry = CNXK_SSO_FLUSH_RETRY_MAX;
 	struct cn10k_sso_hws *ws = hws;
 	uint64_t cq_ds_cnt = 1;
 	uint64_t aq_cnt = 1;
@@ -141,6 +142,8 @@ cn10k_sso_hws_flush_events(void *hws, uint8_t queue_id, uintptr_t base,
 			fn(arg, ev);
 		if (ev.sched_type != SSO_TT_EMPTY)
 			cnxk_sso_hws_swtag_flush(ws->base);
+		else if (retry-- == 0)
+			break;
 		do {
 			val = plt_read64(ws->base + SSOW_LF_GWS_PENDSTATE);
 		} while (val & BIT_ULL(56));
@@ -151,8 +154,13 @@ cn10k_sso_hws_flush_events(void *hws, uint8_t queue_id, uintptr_t base,
 		cq_ds_cnt &= 0x3FFF3FFF0000;
 	}
 
+	if (aq_cnt || cq_ds_cnt || ds_cnt)
+		return -EAGAIN;
+
 	plt_write64(0, ws->base + SSOW_LF_GWS_OP_GWC_INVAL);
 	rte_mb();
+
+	return 0;
 }
 
 static void
