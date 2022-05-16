@@ -2551,10 +2551,10 @@ copy_vnet_hdr_from_desc(struct virtio_net_hdr *hdr,
 }
 
 static __rte_always_inline int
-copy_desc_to_mbuf(struct virtio_net *dev, struct vhost_virtqueue *vq,
+desc_to_mbuf(struct virtio_net *dev, struct vhost_virtqueue *vq,
 		  struct buf_vector *buf_vec, uint16_t nr_vec,
 		  struct rte_mbuf *m, struct rte_mempool *mbuf_pool,
-		  bool legacy_ol_flags)
+		  bool legacy_ol_flags, uint16_t slot_idx, bool is_async)
 {
 	uint32_t buf_avail, buf_offset, buf_len;
 	uint64_t buf_addr, buf_iova;
@@ -2565,6 +2565,8 @@ copy_desc_to_mbuf(struct virtio_net *dev, struct vhost_virtqueue *vq,
 	struct virtio_net_hdr *hdr = NULL;
 	/* A counter to avoid desc dead loop chain */
 	uint16_t vec_idx = 0;
+	struct vhost_async *async = vq->async;
+	struct async_inflight_info *pkts_info;
 
 	buf_addr = buf_vec[vec_idx].buf_addr;
 	buf_iova = buf_vec[vec_idx].buf_iova;
@@ -2602,6 +2604,7 @@ copy_desc_to_mbuf(struct virtio_net *dev, struct vhost_virtqueue *vq,
 		if (unlikely(++vec_idx >= nr_vec))
 			goto error;
 		buf_addr = buf_vec[vec_idx].buf_addr;
+		buf_iova = buf_vec[vec_idx].buf_iova;
 		buf_len = buf_vec[vec_idx].buf_len;
 
 		buf_offset = 0;
@@ -2617,12 +2620,25 @@ copy_desc_to_mbuf(struct virtio_net *dev, struct vhost_virtqueue *vq,
 
 	mbuf_offset = 0;
 	mbuf_avail  = m->buf_len - RTE_PKTMBUF_HEADROOM;
+
+	if (is_async) {
+		pkts_info = async->pkts_info;
+		if (async_iter_initialize(dev, async))
+			return -1;
+	}
+
 	while (1) {
 		cpy_len = RTE_MIN(buf_avail, mbuf_avail);
 
-		sync_fill_seg(dev, vq, cur, mbuf_offset,
-			      buf_addr + buf_offset,
-			      buf_iova + buf_offset, cpy_len, false);
+		if (is_async) {
+			if (async_fill_seg(dev, vq, cur, mbuf_offset,
+					   buf_iova + buf_offset, cpy_len, false) < 0)
+				goto error;
+		} else {
+			sync_fill_seg(dev, vq, cur, mbuf_offset,
+				      buf_addr + buf_offset,
+				      buf_iova + buf_offset, cpy_len, false);
+		}
 
 		mbuf_avail  -= cpy_len;
 		mbuf_offset += cpy_len;
@@ -2671,11 +2687,20 @@ copy_desc_to_mbuf(struct virtio_net *dev, struct vhost_virtqueue *vq,
 	prev->data_len = mbuf_offset;
 	m->pkt_len    += mbuf_offset;
 
-	if (hdr)
-		vhost_dequeue_offload(dev, hdr, m, legacy_ol_flags);
+	if (is_async) {
+		async_iter_finalize(async);
+		if (hdr)
+			pkts_info[slot_idx].nethdr = *hdr;
+	} else {
+		if (hdr)
+			vhost_dequeue_offload(dev, hdr, m, legacy_ol_flags);
+	}
 
 	return 0;
 error:
+	if (is_async)
+		async_iter_cancel(async);
+
 	return -1;
 }
 
@@ -2807,8 +2832,8 @@ virtio_dev_tx_split(struct virtio_net *dev, struct vhost_virtqueue *vq,
 			break;
 		}
 
-		err = copy_desc_to_mbuf(dev, vq, buf_vec, nr_vec, pkts[i],
-				mbuf_pool, legacy_ol_flags);
+		err = desc_to_mbuf(dev, vq, buf_vec, nr_vec, pkts[i],
+				   mbuf_pool, legacy_ol_flags, 0, false);
 		if (unlikely(err)) {
 			if (!allocerr_warned) {
 				VHOST_LOG_DATA(ERR, "(%s) failed to copy desc to mbuf.\n",
@@ -2819,6 +2844,7 @@ virtio_dev_tx_split(struct virtio_net *dev, struct vhost_virtqueue *vq,
 			i++;
 			break;
 		}
+
 	}
 
 	if (dropped)
@@ -3000,8 +3026,8 @@ vhost_dequeue_single_packed(struct virtio_net *dev,
 		return -1;
 	}
 
-	err = copy_desc_to_mbuf(dev, vq, buf_vec, nr_vec, pkts,
-				mbuf_pool, legacy_ol_flags);
+	err = desc_to_mbuf(dev, vq, buf_vec, nr_vec, pkts,
+			   mbuf_pool, legacy_ol_flags, 0, false);
 	if (unlikely(err)) {
 		if (!allocerr_warned) {
 			VHOST_LOG_DATA(ERR, "(%s) failed to copy desc to mbuf.\n",
