@@ -63,6 +63,9 @@
 
 #define DMA_RING_SIZE 4096
 
+#define ASYNC_ENQUEUE_VHOST 1
+#define ASYNC_DEQUEUE_VHOST 2
+
 /* number of mbufs in all pools - if specified on command-line. */
 static int total_num_mbufs = NUM_MBUFS_DEFAULT;
 
@@ -115,6 +118,8 @@ static uint32_t burst_rx_retry_num = BURST_RX_RETRIES;
 /* Socket file paths. Can be set by user */
 static char *socket_files;
 static int nb_sockets;
+
+static struct vhost_queue_ops vdev_queue_ops[RTE_MAX_VHOST_DEVICE];
 
 /* empty VMDq configuration structure. Filled in programmatically */
 static struct rte_eth_conf vmdq_conf_default = {
@@ -205,6 +210,20 @@ struct vhost_bufftable *vhost_txbuff[RTE_MAX_LCORE * RTE_MAX_VHOST_DEVICE];
 #define MBUF_TABLE_DRAIN_TSC	((rte_get_tsc_hz() + US_PER_S - 1) \
 				 / US_PER_S * BURST_TX_DRAIN_US)
 
+static int vid2socketid[RTE_MAX_VHOST_DEVICE];
+
+static inline uint32_t
+get_async_flag_by_socketid(int socketid)
+{
+	return dma_bind[socketid].async_flag;
+}
+
+static inline void
+init_vid2socketid_array(int vid, int socketid)
+{
+	vid2socketid[vid] = socketid;
+}
+
 static inline bool
 is_dma_configured(int16_t dev_id)
 {
@@ -224,7 +243,7 @@ open_dma(const char *value)
 	char *addrs = input;
 	char *ptrs[2];
 	char *start, *end, *substr;
-	int64_t vid;
+	int64_t socketid, vring_id;
 
 	struct rte_dma_info info;
 	struct rte_dma_conf dev_config = { .nb_vchans = 1 };
@@ -262,7 +281,9 @@ open_dma(const char *value)
 
 	while (i < args_nr) {
 		char *arg_temp = dma_arg[i];
+		char *txd, *rxd;
 		uint8_t sub_nr;
+		int async_flag;
 
 		sub_nr = rte_strsplit(arg_temp, strlen(arg_temp), ptrs, 2, '@');
 		if (sub_nr != 2) {
@@ -270,14 +291,23 @@ open_dma(const char *value)
 			goto out;
 		}
 
-		start = strstr(ptrs[0], "txd");
-		if (start == NULL) {
+		txd = strstr(ptrs[0], "txd");
+		rxd = strstr(ptrs[0], "rxd");
+		if (txd) {
+			start = txd;
+			vring_id = VIRTIO_RXQ;
+			async_flag = ASYNC_ENQUEUE_VHOST;
+		} else if (rxd) {
+			start = rxd;
+			vring_id = VIRTIO_TXQ;
+			async_flag = ASYNC_DEQUEUE_VHOST;
+		} else {
 			ret = -1;
 			goto out;
 		}
 
 		start += 3;
-		vid = strtol(start, &end, 0);
+		socketid = strtol(start, &end, 0);
 		if (end == start) {
 			ret = -1;
 			goto out;
@@ -338,7 +368,8 @@ open_dma(const char *value)
 		dmas_id[dma_count++] = dev_id;
 
 done:
-		(dma_info + vid)->dmas[VIRTIO_RXQ].dev_id = dev_id;
+		(dma_info + socketid)->dmas[vring_id].dev_id = dev_id;
+		(dma_info + socketid)->async_flag |= async_flag;
 		i++;
 	}
 out:
@@ -990,7 +1021,7 @@ complete_async_pkts(struct vhost_dev *vdev)
 {
 	struct rte_mbuf *p_cpl[MAX_PKT_BURST];
 	uint16_t complete_count;
-	int16_t dma_id = dma_bind[vdev->vid].dmas[VIRTIO_RXQ].dev_id;
+	int16_t dma_id = dma_bind[vid2socketid[vdev->vid]].dmas[VIRTIO_RXQ].dev_id;
 
 	complete_count = rte_vhost_poll_enqueue_completed(vdev->vid,
 					VIRTIO_RXQ, p_cpl, MAX_PKT_BURST, dma_id, 0);
@@ -1029,22 +1060,7 @@ drain_vhost(struct vhost_dev *vdev)
 	uint16_t nr_xmit = vhost_txbuff[buff_idx]->len;
 	struct rte_mbuf **m = vhost_txbuff[buff_idx]->m_table;
 
-	if (builtin_net_driver) {
-		ret = vs_enqueue_pkts(vdev, VIRTIO_RXQ, m, nr_xmit);
-	} else if (dma_bind[vdev->vid].dmas[VIRTIO_RXQ].async_enabled) {
-		uint16_t enqueue_fail = 0;
-		int16_t dma_id = dma_bind[vdev->vid].dmas[VIRTIO_RXQ].dev_id;
-
-		complete_async_pkts(vdev);
-		ret = rte_vhost_submit_enqueue_burst(vdev->vid, VIRTIO_RXQ, m, nr_xmit, dma_id, 0);
-
-		enqueue_fail = nr_xmit - ret;
-		if (enqueue_fail)
-			free_pkts(&m[ret], nr_xmit - ret);
-	} else {
-		ret = rte_vhost_enqueue_burst(vdev->vid, VIRTIO_RXQ,
-						m, nr_xmit);
-	}
+	ret = vdev_queue_ops[vdev->vid].enqueue_pkt_burst(vdev, VIRTIO_RXQ, m, nr_xmit);
 
 	if (enable_stats) {
 		__atomic_add_fetch(&vdev->stats.rx_total_atomic, nr_xmit,
@@ -1053,7 +1069,7 @@ drain_vhost(struct vhost_dev *vdev)
 				__ATOMIC_SEQ_CST);
 	}
 
-	if (!dma_bind[vdev->vid].dmas[VIRTIO_RXQ].async_enabled)
+	if (!dma_bind[vid2socketid[vdev->vid]].dmas[VIRTIO_RXQ].async_enabled)
 		free_pkts(m, nr_xmit);
 }
 
@@ -1325,6 +1341,32 @@ drain_mbuf_table(struct mbuf_table *tx_q)
 	}
 }
 
+uint16_t
+async_enqueue_pkts(struct vhost_dev *dev, uint16_t queue_id,
+		struct rte_mbuf **pkts, uint32_t rx_count)
+{
+	uint16_t enqueue_count;
+	uint16_t enqueue_fail = 0;
+	uint16_t dma_id = dma_bind[vid2socketid[dev->vid]].dmas[VIRTIO_RXQ].dev_id;
+
+	complete_async_pkts(dev);
+	enqueue_count = rte_vhost_submit_enqueue_burst(dev->vid, queue_id,
+					pkts, rx_count, dma_id, 0);
+
+	enqueue_fail = rx_count - enqueue_count;
+	if (enqueue_fail)
+		free_pkts(&pkts[enqueue_count], enqueue_fail);
+
+	return enqueue_count;
+}
+
+uint16_t
+sync_enqueue_pkts(struct vhost_dev *dev, uint16_t queue_id,
+		struct rte_mbuf **pkts, uint32_t rx_count)
+{
+	return rte_vhost_enqueue_burst(dev->vid, queue_id, pkts, rx_count);
+}
+
 static __rte_always_inline void
 drain_eth_rx(struct vhost_dev *vdev)
 {
@@ -1355,25 +1397,8 @@ drain_eth_rx(struct vhost_dev *vdev)
 		}
 	}
 
-	if (builtin_net_driver) {
-		enqueue_count = vs_enqueue_pkts(vdev, VIRTIO_RXQ,
-						pkts, rx_count);
-	} else if (dma_bind[vdev->vid].dmas[VIRTIO_RXQ].async_enabled) {
-		uint16_t enqueue_fail = 0;
-		int16_t dma_id = dma_bind[vdev->vid].dmas[VIRTIO_RXQ].dev_id;
-
-		complete_async_pkts(vdev);
-		enqueue_count = rte_vhost_submit_enqueue_burst(vdev->vid,
-					VIRTIO_RXQ, pkts, rx_count, dma_id, 0);
-
-		enqueue_fail = rx_count - enqueue_count;
-		if (enqueue_fail)
-			free_pkts(&pkts[enqueue_count], enqueue_fail);
-
-	} else {
-		enqueue_count = rte_vhost_enqueue_burst(vdev->vid, VIRTIO_RXQ,
-						pkts, rx_count);
-	}
+	enqueue_count = vdev_queue_ops[vdev->vid].enqueue_pkt_burst(vdev,
+					VIRTIO_RXQ, pkts, rx_count);
 
 	if (enable_stats) {
 		__atomic_add_fetch(&vdev->stats.rx_total_atomic, rx_count,
@@ -1382,8 +1407,29 @@ drain_eth_rx(struct vhost_dev *vdev)
 				__ATOMIC_SEQ_CST);
 	}
 
-	if (!dma_bind[vdev->vid].dmas[VIRTIO_RXQ].async_enabled)
+	if (!dma_bind[vid2socketid[vdev->vid]].dmas[VIRTIO_RXQ].async_enabled)
 		free_pkts(pkts, rx_count);
+}
+
+uint16_t async_dequeue_pkts(struct vhost_dev *dev, uint16_t queue_id,
+			    struct rte_mempool *mbuf_pool,
+			    struct rte_mbuf **pkts, uint16_t count)
+{
+	int nr_inflight;
+	uint16_t dequeue_count;
+	int16_t dma_id = dma_bind[vid2socketid[dev->vid]].dmas[VIRTIO_TXQ].dev_id;
+
+	dequeue_count = rte_vhost_async_try_dequeue_burst(dev->vid, queue_id,
+			mbuf_pool, pkts, count, &nr_inflight, dma_id, 0);
+
+	return dequeue_count;
+}
+
+uint16_t sync_dequeue_pkts(struct vhost_dev *dev, uint16_t queue_id,
+			   struct rte_mempool *mbuf_pool,
+			   struct rte_mbuf **pkts, uint16_t count)
+{
+	return rte_vhost_dequeue_burst(dev->vid, queue_id, mbuf_pool, pkts, count);
 }
 
 static __rte_always_inline void
@@ -1393,13 +1439,8 @@ drain_virtio_tx(struct vhost_dev *vdev)
 	uint16_t count;
 	uint16_t i;
 
-	if (builtin_net_driver) {
-		count = vs_dequeue_pkts(vdev, VIRTIO_TXQ, mbuf_pool,
-					pkts, MAX_PKT_BURST);
-	} else {
-		count = rte_vhost_dequeue_burst(vdev->vid, VIRTIO_TXQ,
-					mbuf_pool, pkts, MAX_PKT_BURST);
-	}
+	count = vdev_queue_ops[vdev->vid].dequeue_pkt_burst(vdev,
+				VIRTIO_TXQ, mbuf_pool, pkts, MAX_PKT_BURST);
 
 	/* setup VMDq for the first packet */
 	if (unlikely(vdev->ready == DEVICE_MAC_LEARNING) && count) {
@@ -1478,6 +1519,26 @@ switch_worker(void *arg __rte_unused)
 	return 0;
 }
 
+static void
+vhost_clear_queue_thread_unsafe(struct vhost_dev *vdev, uint16_t queue_id)
+{
+	uint16_t n_pkt = 0;
+	int pkts_inflight;
+
+	int16_t dma_id = dma_bind[vid2socketid[vdev->vid]].dmas[queue_id].dev_id;
+	pkts_inflight = rte_vhost_async_get_inflight_thread_unsafe(vdev->vid, queue_id);
+
+	struct rte_mbuf *m_cpl[pkts_inflight];
+
+	while (pkts_inflight) {
+		n_pkt = rte_vhost_clear_queue_thread_unsafe(vdev->vid, queue_id, m_cpl,
+							pkts_inflight, dma_id, 0);
+		free_pkts(m_cpl, n_pkt);
+		pkts_inflight = rte_vhost_async_get_inflight_thread_unsafe(vdev->vid,
+									queue_id);
+	}
+}
+
 /*
  * Remove a device from the specific data core linked list and from the
  * main linked list. Synchronization  occurs through the use of the
@@ -1535,26 +1596,78 @@ destroy_device(int vid)
 		vdev->vid);
 
 	if (dma_bind[vid].dmas[VIRTIO_RXQ].async_enabled) {
-		uint16_t n_pkt = 0;
-		int pkts_inflight;
-		int16_t dma_id = dma_bind[vid].dmas[VIRTIO_RXQ].dev_id;
-		pkts_inflight = rte_vhost_async_get_inflight_thread_unsafe(vid, VIRTIO_RXQ);
-		struct rte_mbuf *m_cpl[pkts_inflight];
-
-		while (pkts_inflight) {
-			n_pkt = rte_vhost_clear_queue_thread_unsafe(vid, VIRTIO_RXQ,
-						m_cpl, pkts_inflight, dma_id, 0);
-			free_pkts(m_cpl, n_pkt);
-			pkts_inflight = rte_vhost_async_get_inflight_thread_unsafe(vid,
-										VIRTIO_RXQ);
-		}
-
+		vhost_clear_queue_thread_unsafe(vdev, VIRTIO_RXQ);
 		rte_vhost_async_channel_unregister(vid, VIRTIO_RXQ);
 		dma_bind[vid].dmas[VIRTIO_RXQ].async_enabled = false;
 	}
 
+	if (dma_bind[vid].dmas[VIRTIO_TXQ].async_enabled) {
+		vhost_clear_queue_thread_unsafe(vdev, VIRTIO_TXQ);
+		rte_vhost_async_channel_unregister(vid, VIRTIO_TXQ);
+		dma_bind[vid].dmas[VIRTIO_TXQ].async_enabled = false;
+	}
+
 	rte_free(vdev);
 }
+
+static inline int
+get_socketid_by_vid(int vid)
+{
+	int i;
+	char ifname[PATH_MAX];
+	rte_vhost_get_ifname(vid, ifname, sizeof(ifname));
+
+	for (i = 0; i < nb_sockets; i++) {
+		char *file = socket_files + i * PATH_MAX;
+		if (strcmp(file, ifname) == 0)
+			return i;
+	}
+
+	return -1;
+}
+
+static int
+init_vhost_queue_ops(int vid)
+{
+	if (builtin_net_driver) {
+		vdev_queue_ops[vid].enqueue_pkt_burst = builtin_enqueue_pkts;
+		vdev_queue_ops[vid].dequeue_pkt_burst = builtin_dequeue_pkts;
+	} else {
+		if (dma_bind[vid2socketid[vid]].dmas[VIRTIO_RXQ].async_enabled)
+			vdev_queue_ops[vid].enqueue_pkt_burst = async_enqueue_pkts;
+		else
+			vdev_queue_ops[vid].enqueue_pkt_burst = sync_enqueue_pkts;
+
+		if (dma_bind[vid2socketid[vid]].dmas[VIRTIO_TXQ].async_enabled)
+			vdev_queue_ops[vid].dequeue_pkt_burst = async_dequeue_pkts;
+		else
+			vdev_queue_ops[vid].dequeue_pkt_burst = sync_dequeue_pkts;
+	}
+
+	return 0;
+}
+
+static inline int
+vhost_async_channel_register(int vid)
+{
+	int rx_ret = 0, tx_ret = 0;
+
+	if (dma_bind[vid2socketid[vid]].dmas[VIRTIO_RXQ].dev_id != INVALID_DMA_ID) {
+		rx_ret = rte_vhost_async_channel_register(vid, VIRTIO_RXQ);
+		if (rx_ret == 0)
+			dma_bind[vid2socketid[vid]].dmas[VIRTIO_RXQ].async_enabled = true;
+	}
+
+	if (dma_bind[vid2socketid[vid]].dmas[VIRTIO_TXQ].dev_id != INVALID_DMA_ID) {
+		tx_ret = rte_vhost_async_channel_register(vid, VIRTIO_TXQ);
+		if (tx_ret == 0)
+			dma_bind[vid2socketid[vid]].dmas[VIRTIO_TXQ].async_enabled = true;
+	}
+
+	return rx_ret | tx_ret;
+}
+
+
 
 /*
  * A new device is added to a data core. First the device is added to the main linked list
@@ -1567,6 +1680,8 @@ new_device(int vid)
 	uint16_t i;
 	uint32_t device_num_min = num_devices;
 	struct vhost_dev *vdev;
+	int ret;
+
 	vdev = rte_zmalloc("vhost device", sizeof(*vdev), RTE_CACHE_LINE_SIZE);
 	if (vdev == NULL) {
 		RTE_LOG(INFO, VHOST_DATA,
@@ -1588,6 +1703,17 @@ new_device(int vid)
 			return -1;
 		}
 	}
+
+	int socketid = get_socketid_by_vid(vid);
+	if (socketid == -1)
+		return -1;
+
+	init_vid2socketid_array(vid, socketid);
+
+	ret =  vhost_async_channel_register(vid);
+
+	if (init_vhost_queue_ops(vid) != 0)
+		return -1;
 
 	if (builtin_net_driver)
 		vs_vhost_net_setup(vdev);
@@ -1620,16 +1746,7 @@ new_device(int vid)
 		"(%d) device has been added to data core %d\n",
 		vid, vdev->coreid);
 
-	if (dma_bind[vid].dmas[VIRTIO_RXQ].dev_id != INVALID_DMA_ID) {
-		int ret;
-
-		ret = rte_vhost_async_channel_register(vid, VIRTIO_RXQ);
-		if (ret == 0)
-			dma_bind[vid].dmas[VIRTIO_RXQ].async_enabled = true;
-		return ret;
-	}
-
-	return 0;
+	return ret;
 }
 
 static int
@@ -1647,22 +1764,9 @@ vring_state_changed(int vid, uint16_t queue_id, int enable)
 	if (queue_id != VIRTIO_RXQ)
 		return 0;
 
-	if (dma_bind[vid].dmas[queue_id].async_enabled) {
-		if (!enable) {
-			uint16_t n_pkt = 0;
-			int pkts_inflight;
-			pkts_inflight = rte_vhost_async_get_inflight_thread_unsafe(vid, queue_id);
-			int16_t dma_id = dma_bind[vid].dmas[VIRTIO_RXQ].dev_id;
-			struct rte_mbuf *m_cpl[pkts_inflight];
-
-			while (pkts_inflight) {
-				n_pkt = rte_vhost_clear_queue_thread_unsafe(vid, queue_id,
-							m_cpl, pkts_inflight, dma_id, 0);
-				free_pkts(m_cpl, n_pkt);
-				pkts_inflight = rte_vhost_async_get_inflight_thread_unsafe(vid,
-											queue_id);
-			}
-		}
+	if (dma_bind[vid2socketid[vid]].dmas[queue_id].async_enabled) {
+		if (!enable)
+			vhost_clear_queue_thread_unsafe(vdev, queue_id);
 	}
 
 	return 0;
@@ -1887,7 +1991,7 @@ main(int argc, char *argv[])
 	for (i = 0; i < nb_sockets; i++) {
 		char *file = socket_files + i * PATH_MAX;
 
-		if (dma_count)
+		if (dma_count && get_async_flag_by_socketid(i) != 0)
 			flags = flags | RTE_VHOST_USER_ASYNC_COPY;
 
 		ret = rte_vhost_driver_register(file, flags);

@@ -238,6 +238,13 @@ vs_enqueue_pkts(struct vhost_dev *dev, uint16_t queue_id,
 	return count;
 }
 
+uint16_t
+builtin_enqueue_pkts(struct vhost_dev *dev, uint16_t queue_id,
+		struct rte_mbuf **pkts, uint32_t count)
+{
+	return vs_enqueue_pkts(dev, queue_id, pkts, count);
+}
+
 static __rte_always_inline int
 dequeue_pkt(struct vhost_dev *dev, struct rte_vhost_vring *vr,
 	    struct rte_mbuf *m, uint16_t desc_idx,
@@ -363,7 +370,7 @@ dequeue_pkt(struct vhost_dev *dev, struct rte_vhost_vring *vr,
 	return 0;
 }
 
-uint16_t
+static uint16_t
 vs_dequeue_pkts(struct vhost_dev *dev, uint16_t queue_id,
 	struct rte_mempool *mbuf_pool, struct rte_mbuf **pkts, uint16_t count)
 {
@@ -439,4 +446,11 @@ vs_dequeue_pkts(struct vhost_dev *dev, uint16_t queue_id,
 	rte_vhost_vring_call(dev->vid, queue_id);
 
 	return i;
+}
+
+uint16_t
+builtin_dequeue_pkts(struct vhost_dev *dev, uint16_t queue_id,
+	struct rte_mempool *mbuf_pool, struct rte_mbuf **pkts, uint16_t count)
+{
+	return vs_dequeue_pkts(dev, queue_id, mbuf_pool, pkts, count);
 }
