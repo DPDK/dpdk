@@ -909,9 +909,13 @@ cn10k_crypto_adapter_qp_del(const struct rte_eventdev *event_dev,
 static struct eventdev_ops cn10k_sso_dev_ops = {
 	.dev_infos_get = cn10k_sso_info_get,
 	.dev_configure = cn10k_sso_dev_configure,
+
 	.queue_def_conf = cnxk_sso_queue_def_conf,
 	.queue_setup = cnxk_sso_queue_setup,
 	.queue_release = cnxk_sso_queue_release,
+	.queue_attr_get = cnxk_sso_queue_attribute_get,
+	.queue_attr_set = cnxk_sso_queue_attribute_set,
+
 	.port_def_conf = cnxk_sso_port_def_conf,
 	.port_setup = cn10k_sso_port_setup,
 	.port_release = cn10k_sso_port_release,
