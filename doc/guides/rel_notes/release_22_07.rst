@@ -78,6 +78,11 @@ New Features
   Added an API which can get the number of in-flight packets in
   vhost async data path without using lock.
 
+* **Added vhost async dequeue API to receive packets from guest.**
+
+  Added vhost async dequeue API which can leverage DMA devices to
+  accelerate receiving packets from guest.
+
 * **Updated Intel iavf driver.**
 
   * Added Tx QoS queue rate limitation support.

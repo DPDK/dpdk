@@ -306,6 +306,12 @@ The following is an overview of some key Vhost API functions:
   This function resets the queue statistics. It requires statistics
   collection to be enabled at registration time.
 
+* ``rte_vhost_async_try_dequeue_burst(vid, queue_id, mbuf_pool, pkts, count,
+  nr_inflight, dma_id, vchan_id)``
+
+  Receive ``count`` packets from guest to host in async data path,
+  and store them at ``pkts``.
+
 Vhost-user Implementations
 --------------------------
 

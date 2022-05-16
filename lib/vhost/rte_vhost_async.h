@@ -204,6 +204,43 @@ uint16_t rte_vhost_clear_queue_thread_unsafe(int vid, uint16_t queue_id,
 __rte_experimental
 int rte_vhost_async_dma_configure(int16_t dma_id, uint16_t vchan_id);
 
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change, or be removed, without prior notice
+ *
+ * This function tries to receive packets from the guest with offloading
+ * copies to the DMA vChannels. Successfully dequeued packets are returned
+ * in "pkts". The other packets that their copies are submitted to
+ * the DMA vChannels but not completed are called "in-flight packets".
+ * This function will not return in-flight packets until their copies are
+ * completed by the DMA vChannels.
+ *
+ * @param vid
+ *  ID of vhost device to dequeue data
+ * @param queue_id
+ *  ID of virtqueue to dequeue data
+ * @param mbuf_pool
+ *  Mbuf_pool where host mbuf is allocated
+ * @param pkts
+ *  Blank array to keep successfully dequeued packets
+ * @param count
+ *  Size of the packet array
+ * @param nr_inflight
+ *  >= 0: The amount of in-flight packets
+ *  -1: Meaningless, indicates failed lock acquisition or invalid queue_id/dma_id
+ * @param dma_id
+ *  The identifier of DMA device
+ * @param vchan_id
+ *  The identifier of virtual DMA channel
+ * @return
+ *  Number of successfully dequeued packets
+ */
+__rte_experimental
+uint16_t
+rte_vhost_async_try_dequeue_burst(int vid, uint16_t queue_id,
+	struct rte_mempool *mbuf_pool, struct rte_mbuf **pkts, uint16_t count,
+	int *nr_inflight, int16_t dma_id, uint16_t vchan_id);
+
 #ifdef __cplusplus
 }
 #endif

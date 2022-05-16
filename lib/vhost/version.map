@@ -93,6 +93,7 @@ EXPERIMENTAL {
 	rte_vhost_vring_stats_get_names;
 	rte_vhost_vring_stats_get;
 	rte_vhost_vring_stats_reset;
+	rte_vhost_async_try_dequeue_burst;
 };
 
 INTERNAL {
