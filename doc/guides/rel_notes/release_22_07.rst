@@ -97,6 +97,13 @@ New Features
   Added new API ``rte_event_queue_attr_set()``, to set event queue attributes
   at runtime.
 
+* **Added new queues attributes weight and affinity in eventdev.**
+
+  Defined new event queue attributes weight and affinity as below:
+
+  * ``RTE_EVENT_QUEUE_ATTR_WEIGHT``
+  * ``RTE_EVENT_QUEUE_ATTR_AFFINITY``
+
 
 Removed Items
 -------------

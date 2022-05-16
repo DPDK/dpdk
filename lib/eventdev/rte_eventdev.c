@@ -857,6 +857,18 @@ rte_event_queue_attr_get(uint8_t dev_id, uint8_t queue_id, uint32_t attr_id,
 
 		*attr_value = conf->schedule_type;
 		break;
+	case RTE_EVENT_QUEUE_ATTR_WEIGHT:
+		*attr_value = RTE_EVENT_QUEUE_WEIGHT_LOWEST;
+		if (dev->dev_ops->queue_attr_get)
+			return (*dev->dev_ops->queue_attr_get)(
+				dev, queue_id, attr_id, attr_value);
+		break;
+	case RTE_EVENT_QUEUE_ATTR_AFFINITY:
+		*attr_value = RTE_EVENT_QUEUE_AFFINITY_LOWEST;
+		if (dev->dev_ops->queue_attr_get)
+			return (*dev->dev_ops->queue_attr_get)(
+				dev, queue_id, attr_id, attr_value);
+		break;
 	default:
 		return -EINVAL;
 	};
