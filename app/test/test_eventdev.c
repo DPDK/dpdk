@@ -386,6 +386,201 @@ test_eventdev_queue_attr_priority(void)
 }
 
 static int
+test_eventdev_queue_attr_priority_runtime(void)
+{
+	uint32_t queue_count, queue_req, prio, deq_cnt;
+	struct rte_event_queue_conf qconf;
+	struct rte_event_port_conf pconf;
+	struct rte_event_dev_info info;
+	struct rte_event event = {
+		.op = RTE_EVENT_OP_NEW,
+		.event_type = RTE_EVENT_TYPE_CPU,
+		.sched_type = RTE_SCHED_TYPE_ATOMIC,
+		.u64 = 0xbadbadba,
+	};
+	int i, ret;
+
+	ret = rte_event_dev_info_get(TEST_DEV_ID, &info);
+	TEST_ASSERT_SUCCESS(ret, "Failed to get event dev info");
+
+	if (!(info.event_dev_cap & RTE_EVENT_DEV_CAP_RUNTIME_QUEUE_ATTR))
+		return TEST_SKIPPED;
+
+	TEST_ASSERT_SUCCESS(rte_event_dev_attr_get(
+				    TEST_DEV_ID, RTE_EVENT_DEV_ATTR_QUEUE_COUNT,
+				    &queue_count),
+			    "Queue count get failed");
+
+	/* Need at least 2 queues to test LOW and HIGH priority. */
+	TEST_ASSERT(queue_count > 1, "Not enough event queues, needed 2");
+	queue_req = 2;
+
+	for (i = 0; i < (int)queue_count; i++) {
+		ret = rte_event_queue_default_conf_get(TEST_DEV_ID, i, &qconf);
+		TEST_ASSERT_SUCCESS(ret, "Failed to get queue%d def conf", i);
+		ret = rte_event_queue_setup(TEST_DEV_ID, i, &qconf);
+		TEST_ASSERT_SUCCESS(ret, "Failed to setup queue%d", i);
+	}
+
+	ret = rte_event_queue_attr_set(TEST_DEV_ID, 0,
+				       RTE_EVENT_QUEUE_ATTR_PRIORITY,
+				       RTE_EVENT_DEV_PRIORITY_LOWEST);
+	if (ret == -ENOTSUP)
+		return TEST_SKIPPED;
+	TEST_ASSERT_SUCCESS(ret, "Queue0 priority set failed");
+
+	ret = rte_event_queue_attr_set(TEST_DEV_ID, 1,
+				       RTE_EVENT_QUEUE_ATTR_PRIORITY,
+				       RTE_EVENT_DEV_PRIORITY_HIGHEST);
+	if (ret == -ENOTSUP)
+		return TEST_SKIPPED;
+	TEST_ASSERT_SUCCESS(ret, "Queue1 priority set failed");
+
+	/* Setup event port 0 */
+	ret = rte_event_port_default_conf_get(TEST_DEV_ID, 0, &pconf);
+	TEST_ASSERT_SUCCESS(ret, "Failed to get port0 info");
+	ret = rte_event_port_setup(TEST_DEV_ID, 0, &pconf);
+	TEST_ASSERT_SUCCESS(ret, "Failed to setup port0");
+	ret = rte_event_port_link(TEST_DEV_ID, 0, NULL, NULL, 0);
+	TEST_ASSERT(ret == (int)queue_count, "Failed to link port, device %d",
+		    TEST_DEV_ID);
+
+	ret = rte_event_dev_start(TEST_DEV_ID);
+	TEST_ASSERT_SUCCESS(ret, "Failed to start device%d", TEST_DEV_ID);
+
+	for (i = 0; i < (int)queue_req; i++) {
+		event.queue_id = i;
+		while (rte_event_enqueue_burst(TEST_DEV_ID, 0, &event, 1) != 1)
+			rte_pause();
+	}
+
+	prio = RTE_EVENT_DEV_PRIORITY_HIGHEST;
+	deq_cnt = 0;
+	while (deq_cnt < queue_req) {
+		uint32_t queue_prio;
+
+		if (rte_event_dequeue_burst(TEST_DEV_ID, 0, &event, 1, 0) == 0)
+			continue;
+
+		ret = rte_event_queue_attr_get(TEST_DEV_ID, event.queue_id,
+					       RTE_EVENT_QUEUE_ATTR_PRIORITY,
+					       &queue_prio);
+		if (ret == -ENOTSUP)
+			return TEST_SKIPPED;
+
+		TEST_ASSERT_SUCCESS(ret, "Queue priority get failed");
+		TEST_ASSERT(queue_prio >= prio,
+			    "Received event from a lower priority queue first");
+		prio = queue_prio;
+		deq_cnt++;
+	}
+
+	return TEST_SUCCESS;
+}
+
+static int
+test_eventdev_queue_attr_weight_runtime(void)
+{
+	struct rte_event_queue_conf qconf;
+	struct rte_event_dev_info info;
+	uint32_t queue_count;
+	int i, ret;
+
+	ret = rte_event_dev_info_get(TEST_DEV_ID, &info);
+	TEST_ASSERT_SUCCESS(ret, "Failed to get event dev info");
+
+	if (!(info.event_dev_cap & RTE_EVENT_DEV_CAP_RUNTIME_QUEUE_ATTR))
+		return TEST_SKIPPED;
+
+	TEST_ASSERT_SUCCESS(rte_event_dev_attr_get(
+				    TEST_DEV_ID, RTE_EVENT_DEV_ATTR_QUEUE_COUNT,
+				    &queue_count),
+			    "Queue count get failed");
+
+	for (i = 0; i < (int)queue_count; i++) {
+		ret = rte_event_queue_default_conf_get(TEST_DEV_ID, i, &qconf);
+		TEST_ASSERT_SUCCESS(ret, "Failed to get queue%d def conf", i);
+		ret = rte_event_queue_setup(TEST_DEV_ID, i, &qconf);
+		TEST_ASSERT_SUCCESS(ret, "Failed to setup queue%d", i);
+	}
+
+	for (i = 0; i < (int)queue_count; i++) {
+		uint32_t get_val;
+		uint64_t set_val;
+
+		set_val = i % RTE_EVENT_QUEUE_WEIGHT_HIGHEST;
+		ret = rte_event_queue_attr_set(
+			TEST_DEV_ID, i, RTE_EVENT_QUEUE_ATTR_WEIGHT, set_val);
+		if (ret == -ENOTSUP)
+			return TEST_SKIPPED;
+
+		TEST_ASSERT_SUCCESS(ret, "Queue weight set failed");
+
+		ret = rte_event_queue_attr_get(
+			TEST_DEV_ID, i, RTE_EVENT_QUEUE_ATTR_WEIGHT, &get_val);
+		if (ret == -ENOTSUP)
+			return TEST_SKIPPED;
+
+		TEST_ASSERT_SUCCESS(ret, "Queue weight get failed");
+		TEST_ASSERT_EQUAL(get_val, set_val,
+				  "Wrong weight value for queue%d", i);
+	}
+
+	return TEST_SUCCESS;
+}
+
+static int
+test_eventdev_queue_attr_affinity_runtime(void)
+{
+	struct rte_event_queue_conf qconf;
+	struct rte_event_dev_info info;
+	uint32_t queue_count;
+	int i, ret;
+
+	ret = rte_event_dev_info_get(TEST_DEV_ID, &info);
+	TEST_ASSERT_SUCCESS(ret, "Failed to get event dev info");
+
+	if (!(info.event_dev_cap & RTE_EVENT_DEV_CAP_RUNTIME_QUEUE_ATTR))
+		return TEST_SKIPPED;
+
+	TEST_ASSERT_SUCCESS(rte_event_dev_attr_get(
+				    TEST_DEV_ID, RTE_EVENT_DEV_ATTR_QUEUE_COUNT,
+				    &queue_count),
+			    "Queue count get failed");
+
+	for (i = 0; i < (int)queue_count; i++) {
+		ret = rte_event_queue_default_conf_get(TEST_DEV_ID, i, &qconf);
+		TEST_ASSERT_SUCCESS(ret, "Failed to get queue%d def conf", i);
+		ret = rte_event_queue_setup(TEST_DEV_ID, i, &qconf);
+		TEST_ASSERT_SUCCESS(ret, "Failed to setup queue%d", i);
+	}
+
+	for (i = 0; i < (int)queue_count; i++) {
+		uint32_t get_val;
+		uint64_t set_val;
+
+		set_val = i % RTE_EVENT_QUEUE_AFFINITY_HIGHEST;
+		ret = rte_event_queue_attr_set(
+			TEST_DEV_ID, i, RTE_EVENT_QUEUE_ATTR_AFFINITY, set_val);
+		if (ret == -ENOTSUP)
+			return TEST_SKIPPED;
+
+		TEST_ASSERT_SUCCESS(ret, "Queue affinity set failed");
+
+		ret = rte_event_queue_attr_get(
+			TEST_DEV_ID, i, RTE_EVENT_QUEUE_ATTR_AFFINITY, &get_val);
+		if (ret == -ENOTSUP)
+			return TEST_SKIPPED;
+
+		TEST_ASSERT_SUCCESS(ret, "Queue affinity get failed");
+		TEST_ASSERT_EQUAL(get_val, set_val,
+				  "Wrong affinity value for queue%d", i);
+	}
+
+	return TEST_SUCCESS;
+}
+
+static int
 test_eventdev_queue_attr_nb_atomic_flows(void)
 {
 	int i, ret;
@@ -964,6 +1159,12 @@ static struct unit_test_suite eventdev_common_testsuite  = {
 			test_eventdev_queue_count),
 		TEST_CASE_ST(eventdev_configure_setup, NULL,
 			test_eventdev_queue_attr_priority),
+		TEST_CASE_ST(eventdev_configure_setup, eventdev_stop_device,
+			test_eventdev_queue_attr_priority_runtime),
+		TEST_CASE_ST(eventdev_configure_setup, NULL,
+			test_eventdev_queue_attr_weight_runtime),
+		TEST_CASE_ST(eventdev_configure_setup, NULL,
+			test_eventdev_queue_attr_affinity_runtime),
 		TEST_CASE_ST(eventdev_configure_setup, NULL,
 			test_eventdev_queue_attr_nb_atomic_flows),
 		TEST_CASE_ST(eventdev_configure_setup, NULL,
