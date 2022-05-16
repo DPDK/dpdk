@@ -864,6 +864,32 @@ rte_event_queue_attr_get(uint8_t dev_id, uint8_t queue_id, uint32_t attr_id,
 }
 
 int
+rte_event_queue_attr_set(uint8_t dev_id, uint8_t queue_id, uint32_t attr_id,
+			 uint64_t attr_value)
+{
+	struct rte_eventdev *dev;
+
+	RTE_EVENTDEV_VALID_DEVID_OR_ERR_RET(dev_id, -EINVAL);
+	dev = &rte_eventdevs[dev_id];
+	if (!is_valid_queue(dev, queue_id)) {
+		RTE_EDEV_LOG_ERR("Invalid queue_id=%" PRIu8, queue_id);
+		return -EINVAL;
+	}
+
+	if (!(dev->data->event_dev_cap &
+	      RTE_EVENT_DEV_CAP_RUNTIME_QUEUE_ATTR)) {
+		RTE_EDEV_LOG_ERR(
+			"Device %" PRIu8 "does not support changing queue attributes at runtime",
+			dev_id);
+		return -ENOTSUP;
+	}
+
+	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->queue_attr_set, -ENOTSUP);
+	return (*dev->dev_ops->queue_attr_set)(dev, queue_id, attr_id,
+					       attr_value);
+}
+
+int
 rte_event_port_link(uint8_t dev_id, uint8_t port_id,
 		    const uint8_t queues[], const uint8_t priorities[],
 		    uint16_t nb_links)

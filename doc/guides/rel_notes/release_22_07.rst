@@ -92,6 +92,11 @@ New Features
   to quiesce any lcore-specific resources consumed by the event port,
   when the lcore is no more associated with an event port.
 
+* **Added support for setting queue attributes at runtime in eventdev.**
+
+  Added new API ``rte_event_queue_attr_set()``, to set event queue attributes
+  at runtime.
+
 
 Removed Items
 -------------

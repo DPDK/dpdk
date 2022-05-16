@@ -111,6 +111,7 @@ EXPERIMENTAL {
 
 	# added in 22.07
 	rte_event_port_quiesce;
+	rte_event_queue_attr_set;
 };
 
 INTERNAL {
