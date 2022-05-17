@@ -531,6 +531,15 @@ ice_tm_node_add(struct rte_eth_dev *dev, uint32_t node_id,
 			rte_calloc(NULL, 256, (sizeof(struct ice_tm_node *)), 0);
 	tm_node->parent->children[tm_node->parent->reference_count] = tm_node;
 
+	if (tm_node->priority != 0 && level_id != ICE_TM_NODE_TYPE_QUEUE &&
+	    level_id != ICE_TM_NODE_TYPE_QGROUP)
+		PMD_DRV_LOG(WARNING, "priority != 0 not supported in level %d",
+			    level_id);
+
+	if (tm_node->weight != 1 && level_id != ICE_TM_NODE_TYPE_QUEUE)
+		PMD_DRV_LOG(WARNING, "weight != 1 not supported in level %d",
+			    level_id);
+
 	rte_memcpy(&tm_node->params, params,
 			 sizeof(struct rte_tm_node_params));
 	if (parent_node_type == ICE_TM_NODE_TYPE_PORT) {
