@@ -147,9 +147,9 @@ ice_node_param_check(struct ice_pf *pf, uint32_t node_id,
 		return -EINVAL;
 	}
 
-	if (priority) {
+	if (priority >= 8) {
 		error->type = RTE_TM_ERROR_TYPE_NODE_PRIORITY;
-		error->message = "priority should be 0";
+		error->message = "priority should be less than 8";
 		return -EINVAL;
 	}
 
@@ -684,6 +684,7 @@ static int ice_hierarchy_commit(struct rte_eth_dev *dev,
 	struct ice_vsi *vsi;
 	int ret_val = ICE_SUCCESS;
 	uint64_t peak = 0;
+	uint8_t priority;
 	uint32_t i;
 	uint32_t idx_vsi_child;
 	uint32_t idx_qg;
@@ -763,6 +764,15 @@ static int ice_hierarchy_commit(struct rte_eth_dev *dev,
 				goto fail_clear;
 			}
 		}
+		priority = 7 - tm_node->priority;
+		ret_val = ice_sched_cfg_sibl_node_prio_lock(hw->port_info, qgroup_sched_node,
+							    priority);
+		if (ret_val) {
+			error->type = RTE_TM_ERROR_TYPE_NODE_PRIORITY;
+			PMD_DRV_LOG(ERR, "configure queue group %u priority failed",
+				    tm_node->priority);
+			goto fail_clear;
+		}
 		idx_qg++;
 		if (idx_qg >= nb_qg) {
 			idx_qg = 0;
@@ -779,6 +789,7 @@ static int ice_hierarchy_commit(struct rte_eth_dev *dev,
 		qid = tm_node->id;
 		txq = dev->data->tx_queues[qid];
 		vsi = txq->vsi;
+		q_teid = txq->q_teid;
 		if (tm_node->shaper_profile) {
 			/* Transfer from Byte per seconds to Kbps */
 			peak = tm_node->shaper_profile->profile.peak.rate;
@@ -793,6 +804,14 @@ static int ice_hierarchy_commit(struct rte_eth_dev *dev,
 					    tm_node->id);
 				goto fail_clear;
 			}
+		}
+		priority = 7 - tm_node->priority;
+		ret_val = ice_cfg_vsi_q_priority(hw->port_info, 1,
+						 &q_teid, &priority);
+		if (ret_val) {
+			error->type = RTE_TM_ERROR_TYPE_NODE_PRIORITY;
+			PMD_DRV_LOG(ERR, "configure queue %u priority failed", tm_node->priority);
+			goto fail_clear;
 		}
 	}
 
