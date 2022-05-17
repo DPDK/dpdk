@@ -101,6 +101,7 @@ New Features
  * Added support for promisc configuration in DCF mode.
  * Added support for MAC configuration in DCF mode.
  * Added support for VLAN filter and offload configuration in DCF mode.
+ * Added Tx QoS queue / queue group rate limitation configure support.
 
 * **Updated Mellanox mlx5 driver.**
 

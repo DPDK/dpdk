@@ -205,6 +205,18 @@ static const struct rte_pci_id pci_id_ice_map[] = {
 	{ .vendor_id = 0, /* sentinel */ },
 };
 
+static int
+ice_tm_ops_get(struct rte_eth_dev *dev __rte_unused,
+		void *arg)
+{
+	if (!arg)
+		return -EINVAL;
+
+	*(const void **)arg = &ice_tm_ops;
+
+	return 0;
+}
+
 static const struct eth_dev_ops ice_eth_dev_ops = {
 	.dev_configure                = ice_dev_configure,
 	.dev_start                    = ice_dev_start,
@@ -267,6 +279,7 @@ static const struct eth_dev_ops ice_eth_dev_ops = {
 	.timesync_read_time           = ice_timesync_read_time,
 	.timesync_write_time          = ice_timesync_write_time,
 	.timesync_disable             = ice_timesync_disable,
+	.tm_ops_get                   = ice_tm_ops_get,
 };
 
 /* store statistics names and its offset in stats structure */
@@ -2328,6 +2341,9 @@ ice_dev_init(struct rte_eth_dev *dev)
 	/* Initialize RSS context for gtpu_eh */
 	ice_rss_ctx_init(pf);
 
+	/* Initialize TM configuration */
+	ice_tm_conf_init(dev);
+
 	if (!ad->is_safe_mode) {
 		ret = ice_flow_init(ad);
 		if (ret) {
@@ -2507,6 +2523,9 @@ ice_dev_close(struct rte_eth_dev *dev)
 	ice_shutdown_all_ctrlq(hw);
 	rte_free(pf->proto_xtr);
 	pf->proto_xtr = NULL;
+
+	/* Uninit TM configuration */
+	ice_tm_conf_uninit(dev);
 
 	if (ad->devargs.pps_out_ena) {
 		ICE_WRITE_REG(hw, GLTSYN_AUX_OUT(pin_idx, timer), 0);

@@ -9,10 +9,12 @@
 #include <rte_time.h>
 
 #include <ethdev_driver.h>
+#include <rte_tm_driver.h>
 
 #include "base/ice_common.h"
 #include "base/ice_adminq_cmd.h"
 #include "base/ice_flow.h"
+#include "base/ice_sched.h"
 
 #define ICE_ADMINQ_LEN               32
 #define ICE_SBIOQ_LEN                32
@@ -453,6 +455,55 @@ struct ice_acl_info {
 	uint64_t hw_entry_id[MAX_ACL_NORMAL_ENTRIES];
 };
 
+TAILQ_HEAD(ice_shaper_profile_list, ice_tm_shaper_profile);
+TAILQ_HEAD(ice_tm_node_list, ice_tm_node);
+
+struct ice_tm_shaper_profile {
+	TAILQ_ENTRY(ice_tm_shaper_profile) node;
+	uint32_t shaper_profile_id;
+	uint32_t reference_count;
+	struct rte_tm_shaper_params profile;
+};
+
+/* Struct to store Traffic Manager node configuration. */
+struct ice_tm_node {
+	TAILQ_ENTRY(ice_tm_node) node;
+	uint32_t id;
+	uint32_t tc;
+	uint32_t priority;
+	uint32_t weight;
+	uint32_t reference_count;
+	struct ice_tm_node *parent;
+	struct ice_tm_node **children;
+	struct ice_tm_shaper_profile *shaper_profile;
+	struct rte_tm_node_params params;
+};
+
+/* node type of Traffic Manager */
+enum ice_tm_node_type {
+	ICE_TM_NODE_TYPE_PORT,
+	ICE_TM_NODE_TYPE_TC,
+	ICE_TM_NODE_TYPE_VSI,
+	ICE_TM_NODE_TYPE_QGROUP,
+	ICE_TM_NODE_TYPE_QUEUE,
+	ICE_TM_NODE_TYPE_MAX,
+};
+
+/* Struct to store all the Traffic Manager configuration. */
+struct ice_tm_conf {
+	struct ice_shaper_profile_list shaper_profile_list;
+	struct ice_tm_node *root; /* root node - port */
+	struct ice_tm_node_list tc_list; /* node list for all the TCs */
+	struct ice_tm_node_list vsi_list; /* node list for all the VSIs */
+	struct ice_tm_node_list qgroup_list; /* node list for all the queue groups */
+	struct ice_tm_node_list queue_list; /* node list for all the queues */
+	uint32_t nb_tc_node;
+	uint32_t nb_vsi_node;
+	uint32_t nb_qgroup_node;
+	uint32_t nb_queue_node;
+	bool committed;
+};
+
 struct ice_pf {
 	struct ice_adapter *adapter; /* The adapter this PF associate to */
 	struct ice_vsi *main_vsi; /* pointer to main VSI structure */
@@ -497,6 +548,7 @@ struct ice_pf {
 	uint64_t old_tx_bytes;
 	uint64_t supported_rxdid; /* bitmap for supported RXDID */
 	uint64_t rss_hf;
+	struct ice_tm_conf tm_conf;
 };
 
 #define ICE_MAX_QUEUE_NUM  2048
@@ -624,6 +676,9 @@ int ice_add_rss_cfg_wrap(struct ice_pf *pf, uint16_t vsi_id,
 			 struct ice_rss_hash_cfg *cfg);
 int ice_rem_rss_cfg_wrap(struct ice_pf *pf, uint16_t vsi_id,
 			 struct ice_rss_hash_cfg *cfg);
+void ice_tm_conf_init(struct rte_eth_dev *dev);
+void ice_tm_conf_uninit(struct rte_eth_dev *dev);
+extern const struct rte_tm_ops ice_tm_ops;
 
 static inline int
 ice_align_floor(int n)

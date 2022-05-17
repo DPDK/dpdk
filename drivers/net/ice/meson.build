@@ -12,6 +12,7 @@ sources = files(
         'ice_hash.c',
         'ice_rxtx.c',
         'ice_switch_filter.c',
+        'ice_tm.c',
 )
 
 deps += ['hash', 'net', 'common_iavf']
