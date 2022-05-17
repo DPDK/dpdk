@@ -20,6 +20,7 @@
 #include <rte_ether.h>
 #include <rte_mbuf.h>
 #include <rte_pcapng.h>
+#include <rte_reciprocal.h>
 #include <rte_time.h>
 
 #include "pcapng_proto.h"
@@ -35,27 +36,63 @@ struct rte_pcapng {
 };
 
 /* For converting TSC cycles to PCAPNG ns format */
-struct pcapng_time {
+static struct pcapng_time {
 	uint64_t ns;
 	uint64_t cycles;
+	uint64_t tsc_hz;
+	struct rte_reciprocal_u64 tsc_hz_inverse;
 } pcapng_time;
 
-RTE_INIT(pcapng_init)
+static inline void
+pcapng_init(void)
 {
 	struct timespec ts;
 
 	pcapng_time.cycles = rte_get_tsc_cycles();
 	clock_gettime(CLOCK_REALTIME, &ts);
+	pcapng_time.cycles = (pcapng_time.cycles + rte_get_tsc_cycles()) / 2;
 	pcapng_time.ns = rte_timespec_to_ns(&ts);
+
+	pcapng_time.tsc_hz = rte_get_tsc_hz();
+	pcapng_time.tsc_hz_inverse = rte_reciprocal_value_u64(pcapng_time.tsc_hz);
 }
 
 /* PCAPNG timestamps are in nanoseconds */
 static uint64_t pcapng_tsc_to_ns(uint64_t cycles)
 {
-	uint64_t delta;
+	uint64_t delta, secs;
 
+	if (!pcapng_time.tsc_hz)
+		pcapng_init();
+
+	/* In essence the calculation is:
+	 *   delta = (cycles - pcapng_time.cycles) * NSEC_PRE_SEC / rte_get_tsc_hz()
+	 * but this overflows within 4 to 8 seconds depending on TSC frequency.
+	 * Instead, if delta >= pcapng_time.tsc_hz:
+	 *   Increase pcapng_time.ns and pcapng_time.cycles by the number of
+	 *   whole seconds in delta and reduce delta accordingly.
+	 * delta will therefore always lie in the interval [0, pcapng_time.tsc_hz),
+	 * which will not overflow when multiplied by NSEC_PER_SEC provided the
+	 * TSC frequency < approx 18.4GHz.
+	 *
+	 * Currently all TSCs operate below 5GHz.
+	 */
 	delta = cycles - pcapng_time.cycles;
-	return pcapng_time.ns + (delta * NSEC_PER_SEC) / rte_get_tsc_hz();
+	if (unlikely(delta >= pcapng_time.tsc_hz)) {
+		if (likely(delta < pcapng_time.tsc_hz * 2)) {
+			delta -= pcapng_time.tsc_hz;
+			pcapng_time.cycles += pcapng_time.tsc_hz;
+			pcapng_time.ns += NSEC_PER_SEC;
+		} else {
+			secs = rte_reciprocal_divide_u64(delta, &pcapng_time.tsc_hz_inverse);
+			delta -= secs * pcapng_time.tsc_hz;
+			pcapng_time.cycles += secs * pcapng_time.tsc_hz;
+			pcapng_time.ns += secs * NSEC_PER_SEC;
+		}
+	}
+
+	return pcapng_time.ns + rte_reciprocal_divide_u64(delta * NSEC_PER_SEC,
+							  &pcapng_time.tsc_hz_inverse);
 }
 
 /* length of option including padding */
