@@ -586,8 +586,10 @@ roc_npc_flow_mcam_dump(FILE *file, struct roc_npc *roc_npc,
 		       struct roc_npc_flow *flow)
 {
 	struct npc *npc = roc_npc_to_npc_priv(roc_npc);
+	struct npc_mcam_read_entry_req *mcam_read_req;
+	struct npc_mcam_read_entry_rsp *mcam_read_rsp;
 	bool is_rx = 0;
-	int i;
+	int i, rc = 0;
 
 	fprintf(file, "MCAM Index:%d\n", flow->mcam_id);
 	fprintf(file, "Interface :%s (%d)\n", intf_str[flow->nix_intf],
@@ -607,6 +609,28 @@ roc_npc_flow_mcam_dump(FILE *file, struct roc_npc *roc_npc,
 	for (i = 0; i < ROC_NPC_MAX_MCAM_WIDTH_DWORDS; i++) {
 		fprintf(file, "\tDW%d     :%016lX\n", i, flow->mcam_data[i]);
 		fprintf(file, "\tDW%d_Mask:%016lX\n", i, flow->mcam_mask[i]);
+	}
+
+	mcam_read_req = mbox_alloc_msg_npc_mcam_read_entry(npc->mbox);
+	if (mcam_read_req == NULL) {
+		plt_err("Failed to alloc msg");
+		return;
+	}
+
+	mcam_read_req->entry = flow->mcam_id;
+	rc = mbox_process_msg(npc->mbox, (void *)&mcam_read_rsp);
+	if (rc) {
+		plt_err("Failed to fetch MCAM entry");
+		return;
+	}
+
+	fprintf(file, "HW MCAM Data :\n");
+
+	for (i = 0; i < ROC_NPC_MAX_MCAM_WIDTH_DWORDS; i++) {
+		fprintf(file, "\tDW%d     :%016lX\n", i,
+			mcam_read_rsp->entry_data.kw[i]);
+		fprintf(file, "\tDW%d_Mask:%016lX\n", i,
+			mcam_read_rsp->entry_data.kw_mask[i]);
 	}
 
 	fprintf(file, "\n");
