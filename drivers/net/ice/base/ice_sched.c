@@ -3614,6 +3614,28 @@ ice_cfg_vsi_q_priority(struct ice_port_info *pi, u16 num_qs, u32 *q_ids,
 }
 
 /**
+ * ice_sched_cfg_sibl_node_prio_lock - config priority of node
+ * @pi: port information structure
+ * @node: sched node to configure
+ * @priority: sibling priority
+ *
+ * This function configures node element's sibling priority only.
+ */
+enum ice_status
+ice_sched_cfg_sibl_node_prio_lock(struct ice_port_info *pi,
+				  struct ice_sched_node *node,
+				  u8 priority)
+{
+	enum ice_status status;
+
+	ice_acquire_lock(&pi->sched_lock);
+	status = ice_sched_cfg_sibl_node_prio(pi, node, priority);
+	ice_release_lock(&pi->sched_lock);
+
+	return status;
+}
+
+/**
  * ice_sched_save_q_bw_alloc - save queue node's BW allocation information
  * @q_ctx: queue context structure
  * @rl_type: rate limit type min, max, or shared

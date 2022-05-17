@@ -169,6 +169,9 @@ enum ice_status
 ice_cfg_agg_bw_no_shared_lmt_per_tc(struct ice_port_info *pi, u32 agg_id,
 				    u8 tc);
 enum ice_status
+ice_sched_cfg_sibl_node_prio_lock(struct ice_port_info *pi,
+				  struct ice_sched_node *node, u8 priority);
+enum ice_status
 ice_cfg_vsi_q_priority(struct ice_port_info *pi, u16 num_qs, u32 *q_ids,
 		       u8 *q_prio);
 enum ice_status
