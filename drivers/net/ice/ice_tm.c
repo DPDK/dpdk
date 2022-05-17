@@ -153,9 +153,9 @@ ice_node_param_check(struct ice_pf *pf, uint32_t node_id,
 		return -EINVAL;
 	}
 
-	if (weight != 1) {
+	if (weight > 200 || weight < 1) {
 		error->type = RTE_TM_ERROR_TYPE_NODE_WEIGHT;
-		error->message = "weight must be 1";
+		error->message = "weight must be between 1 and 200";
 		return -EINVAL;
 	}
 
@@ -811,6 +811,15 @@ static int ice_hierarchy_commit(struct rte_eth_dev *dev,
 		if (ret_val) {
 			error->type = RTE_TM_ERROR_TYPE_NODE_PRIORITY;
 			PMD_DRV_LOG(ERR, "configure queue %u priority failed", tm_node->priority);
+			goto fail_clear;
+		}
+
+		ret_val = ice_cfg_q_bw_alloc(hw->port_info, vsi->idx,
+					     tm_node->tc, tm_node->id,
+					     ICE_MAX_BW, (u32)tm_node->weight);
+		if (ret_val) {
+			error->type = RTE_TM_ERROR_TYPE_NODE_WEIGHT;
+			PMD_DRV_LOG(ERR, "configure queue %u weight failed", tm_node->weight);
 			goto fail_clear;
 		}
 	}
