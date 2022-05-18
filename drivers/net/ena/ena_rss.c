@@ -51,15 +51,14 @@ void ena_rss_key_fill(void *key, size_t size)
 	static uint8_t default_key[ENA_HASH_KEY_SIZE];
 	size_t i;
 
-	RTE_ASSERT(size <= ENA_HASH_KEY_SIZE);
-
 	if (!key_generated) {
-		for (i = 0; i < ENA_HASH_KEY_SIZE; ++i)
+		for (i = 0; i < RTE_DIM(default_key); ++i)
 			default_key[i] = rte_rand() & 0xff;
 		key_generated = true;
 	}
 
-	rte_memcpy(key, default_key, size);
+	RTE_ASSERT(size <= sizeof(default_key));
+	rte_memcpy(key, default_key, RTE_MIN(size, sizeof(default_key)));
 }
 
 int ena_rss_reta_update(struct rte_eth_dev *dev,
