@@ -3235,7 +3235,8 @@ static int ice_init_rss(struct ice_pf *pf)
 			   RTE_MIN(rss_conf->rss_key_len,
 				   vsi->rss_key_size));
 
-	rte_memcpy(key.standard_rss_key, vsi->rss_key, vsi->rss_key_size);
+	rte_memcpy(key.standard_rss_key, vsi->rss_key,
+		RTE_MIN(sizeof(key.standard_rss_key), vsi->rss_key_size));
 	ret = ice_aq_set_rss_key(hw, vsi->idx, &key);
 	if (ret)
 		goto out;
