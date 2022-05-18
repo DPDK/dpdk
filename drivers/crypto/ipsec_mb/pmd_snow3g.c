@@ -422,12 +422,13 @@ process_op_bit(struct rte_crypto_op *op, struct snow3g_session *session,
 		op->sym->session = NULL;
 	}
 
-	enqueued_op = rte_ring_enqueue_burst(qp->ingress_queue,
-			(void **)&op, processed_op, NULL);
+	if (unlikely(processed_op != 1))
+		return 0;
+	enqueued_op = rte_ring_enqueue(qp->ingress_queue, op);
 	qp->stats.enqueued_count += enqueued_op;
 	*accumulated_enqueued_ops += enqueued_op;
 
-	return enqueued_op;
+	return 1;
 }
 
 static uint16_t
