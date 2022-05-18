@@ -134,7 +134,6 @@ mlx5_ibv_modify_qp(struct mlx5_txq_obj *obj, enum mlx5_txq_modify_type type,
 		.qp_state = IBV_QPS_RESET,
 		.port_num = dev_port,
 	};
-	int attr_mask = (IBV_QP_STATE | IBV_QP_PORT);
 	int ret;
 
 	if (type != MLX5_TXQ_MOD_RST2RDY) {
@@ -148,10 +147,8 @@ mlx5_ibv_modify_qp(struct mlx5_txq_obj *obj, enum mlx5_txq_modify_type type,
 		if (type == MLX5_TXQ_MOD_RDY2RST)
 			return 0;
 	}
-	if (type == MLX5_TXQ_MOD_ERR2RDY)
-		attr_mask = IBV_QP_STATE;
 	mod.qp_state = IBV_QPS_INIT;
-	ret = mlx5_glue->modify_qp(obj->qp, &mod, attr_mask);
+	ret = mlx5_glue->modify_qp(obj->qp, &mod, IBV_QP_STATE | IBV_QP_PORT);
 	if (ret) {
 		DRV_LOG(ERR, "Cannot change Tx QP state to INIT %s",
 			strerror(errno));
