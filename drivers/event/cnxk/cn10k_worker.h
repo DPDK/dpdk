@@ -651,7 +651,7 @@ cn10k_sso_hws_event_tx(struct cn10k_sso_hws *ws, struct rte_event *ev,
 		}
 		rte_mempool_put(rte_mempool_from_obj(ev->vec), ev->vec);
 		rte_prefetch0(ws);
-		return (meta & 0xFFFF);
+		return 1;
 	}
 
 	m = ev->mbuf;
