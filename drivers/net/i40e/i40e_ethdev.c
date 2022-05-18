@@ -13139,16 +13139,20 @@ i40e_set_mac_max_frame(struct rte_eth_dev *dev, uint16_t size)
 	uint32_t rep_cnt = MAX_REPEAT_TIME;
 	struct rte_eth_link link;
 	enum i40e_status_code status;
+	bool can_be_set = true;
 
-	do {
-		update_link_reg(hw, &link);
-		if (link.link_status)
-			break;
+	/* I40E_MEDIA_TYPE_BASET link up can be ignored */
+	if (hw->phy.media_type != I40E_MEDIA_TYPE_BASET) {
+		do {
+			update_link_reg(hw, &link);
+			if (link.link_status)
+				break;
+			rte_delay_ms(CHECK_INTERVAL);
+		} while (--rep_cnt);
+		can_be_set = !!link.link_status;
+	}
 
-		rte_delay_ms(CHECK_INTERVAL);
-	} while (--rep_cnt);
-
-	if (link.link_status) {
+	if (can_be_set) {
 		status = i40e_aq_set_mac_config(hw, size, TRUE, 0, false, NULL);
 		if (status != I40E_SUCCESS)
 			PMD_DRV_LOG(ERR, "Failed to set max frame size at port level");
