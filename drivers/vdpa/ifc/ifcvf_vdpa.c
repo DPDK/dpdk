@@ -356,6 +356,8 @@ vdpa_enable_vfio_intr(struct ifcvf_internal *internal, bool m_rx)
 	vring.callfd = -1;
 
 	nr_vring = rte_vhost_get_vring_num(internal->vid);
+	if (nr_vring > IFCVF_MAX_QUEUES * 2)
+		return -1;
 
 	irq_set = (struct vfio_irq_set *)irq_set_buf;
 	irq_set->argsz = sizeof(irq_set_buf);
