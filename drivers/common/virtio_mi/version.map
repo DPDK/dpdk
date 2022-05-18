@@ -1,3 +1,17 @@
 INTERNAL {
+	global:
+
+	virtio_vdpa_cmd_identity;
+	virtio_vdpa_cmd_set_status;
+	virtio_vdpa_cmd_get_status;
+	virtio_vdpa_cmd_save_state;
+	virtio_vdpa_cmd_restore_state;
+	virtio_vdpa_cmd_get_internal_pending_bytes;
+	virtio_vdpa_cmd_dirty_page_identity;
+	virtio_vdpa_cmd_dirty_page_start_track;
+	virtio_vdpa_cmd_dirty_page_stop_track;
+	virtio_vdpa_cmd_dirty_page_get_map_pending_bytes;
+	virtio_vdpa_cmd_dirty_page_report_map;
+
 	local: *;
 };

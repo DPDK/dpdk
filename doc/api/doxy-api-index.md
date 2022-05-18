@@ -57,6 +57,7 @@ The public API headers are grouped by topics:
   [crypto_scheduler]   (@ref rte_cryptodev_scheduler.h),
   [dlb2]               (@ref rte_pmd_dlb2.h),
   [ifpga]              (@ref rte_pmd_ifpga.h)
+  [virtio_mi]          (@ref virtio_lm.h),
 
 - **memory**:
   [memseg]             (@ref rte_memory.h),

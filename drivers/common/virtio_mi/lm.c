@@ -20,6 +20,7 @@
 #include <virtqueue.h>
 #include <virtio_admin.h>
 #include <virtio_api.h>
+#include <virtio_lm.h>
 
 #define VIRTIO_VDPA_MI_SUPPORTED_NET_FEATURES (1ULL << VIRTIO_F_ADMIN_VQ)
 
@@ -57,6 +58,11 @@ RTE_LOG_REGISTER(virtio_vdpa_mi_logtype, pmd.vdpa.virtio, NOTICE);
 #define DRV_LOG(level, fmt, args...) \
 	rte_log(RTE_LOG_ ## level, virtio_vdpa_mi_logtype, \
 		"VIRTIO VDPA MI %s(): " fmt "\n", __func__, ##args)
+
+RTE_LOG_REGISTER(virtio_vdpa_cmd_logtype, pmd.vdpa.virtio, NOTICE);
+#define CMD_LOG(level, fmt, args...) \
+	rte_log(RTE_LOG_ ## level, virtio_vdpa_cmd_logtype, \
+		"VIRTIO VDPA CMD %s(): " fmt "\n", __func__, ##args)
 
 TAILQ_HEAD(virtio_vdpa_mi_privs, virtio_vdpa_pf_priv) virtio_mi_priv_list =
 						TAILQ_HEAD_INITIALIZER(virtio_mi_priv_list);
@@ -196,6 +202,498 @@ virtio_vdpa_send_admin_command(struct virtadmin_ctl *avq,
 
 	rte_spinlock_unlock(&avq->lock);
 	return result->status;
+}
+
+int
+virtio_vdpa_cmd_identity(struct virtio_vdpa_pf_priv *priv,
+		struct virtio_admin_migration_identity_result *result)
+{
+	struct virtio_admin_migration_identity_result *res;
+	struct virtio_hw *hw = &priv->vpdev->hw;
+	struct virtio_admin_data_ctrl dat_ctrl;
+	struct virtio_admin_ctrl *ctrl;
+	int dlen[1];
+	int ret;
+
+	RTE_VERIFY(priv);
+
+	if (!virtio_with_feature(hw, VIRTIO_F_ADMIN_VQ)) {
+		CMD_LOG(INFO, "host does not support admin queue");
+		return -ENOTSUP;
+	}
+
+	ctrl = virtnet_get_aq_hdr_addr(hw->avq);
+	ctrl->hdr.class = VIRTIO_ADMIN_PCI_MIGRATION_CTRL;
+	ctrl->hdr.cmd = VIRTIO_ADMIN_PCI_MIGRATION_IDENTITY;
+	dlen[0] = 0;
+	dat_ctrl.num_in_data = 0;
+	dat_ctrl.num_out_data = 1;
+	dat_ctrl.out_data[0].iova = hw->avq->virtio_admin_hdr_mem
+				+ sizeof(struct virtio_admin_ctrl_hdr)
+				+ sizeof(ctrl->status);
+	dat_ctrl.out_data[0].len = sizeof(*result);
+
+	ret = virtio_vdpa_send_admin_command(hw->avq, ctrl, &dat_ctrl, dlen, 0);
+	if (ret) {
+		CMD_LOG(ERR, "Failed to run class %u, cmd %u, status %d", ctrl->hdr.class, ctrl->hdr.cmd, ret);
+		return ret;
+	}
+
+	res = (struct virtio_admin_migration_identity_result *)
+			rte_mem_iova2virt(dat_ctrl.out_data[0].iova);
+	result->major_ver = rte_le_to_cpu_16(res->major_ver);
+	result->minor_ver = rte_le_to_cpu_16(res->minor_ver);
+	result->ter_ver   = rte_le_to_cpu_16(res->ter_ver);
+
+	return ret;
+}
+
+int
+virtio_vdpa_cmd_get_status(struct virtio_vdpa_pf_priv *priv, uint16_t vdev_id,
+		enum virtio_internal_status *status)
+{
+	struct virtio_admin_migration_get_internal_status_data *sd;
+	struct virtio_admin_migration_get_internal_status_result *result;
+	struct virtio_admin_data_ctrl dat_ctrl;
+	struct virtio_admin_ctrl *ctrl;
+	struct virtio_hw *hw;
+	int dlen[1];
+	int ret;
+
+	RTE_VERIFY(priv);
+	hw = &priv->vpdev->hw;
+	if (!virtio_with_feature(hw, VIRTIO_F_ADMIN_VQ)) {
+		CMD_LOG(INFO, "host does not support admin queue");
+		return -ENOTSUP;
+	}
+	ctrl = virtnet_get_aq_hdr_addr(hw->avq);
+	ctrl->hdr.class = VIRTIO_ADMIN_PCI_MIGRATION_CTRL;
+	ctrl->hdr.cmd = VIRTIO_ADMIN_PCI_MIGRATION_GET_INTERNAL_STATUS;
+	sd = (struct virtio_admin_migration_get_internal_status_data *)&ctrl->data[0];
+	sd->vdev_id = rte_cpu_to_le_16(vdev_id);
+	dlen[0] = sizeof(*sd);
+	dat_ctrl.num_in_data = 0;
+	dat_ctrl.num_out_data = 1;
+	dat_ctrl.out_data[0].iova = hw->avq->virtio_admin_hdr_mem
+			+ sizeof(struct virtio_admin_ctrl_hdr)
+			+ sizeof(ctrl->status) + dlen[0];
+	dat_ctrl.out_data[0].len = sizeof(*result);
+	ret = virtio_vdpa_send_admin_command(hw->avq, ctrl, &dat_ctrl, dlen, 1);
+	if (ret) {
+		CMD_LOG(ERR, "Failed to run class %u, cmd %u, status %d, vdev_id: %u",
+				ctrl->hdr.class, ctrl->hdr.cmd, ret, vdev_id);
+		return ret;
+	}
+
+	result = (struct virtio_admin_migration_get_internal_status_result *)
+			rte_mem_iova2virt(dat_ctrl.out_data[0].iova);
+	result->internal_status = rte_le_to_cpu_16(result->internal_status);
+	RTE_VERIFY(result->internal_status >= VIRTIO_S_INIT);
+	RTE_VERIFY(result->internal_status <= VIRTIO_S_FREEZED);
+	*status = (enum virtio_internal_status)result->internal_status;
+
+	return 0;
+}
+
+int
+virtio_vdpa_cmd_set_status(struct virtio_vdpa_pf_priv *priv, uint16_t vdev_id,
+		enum virtio_internal_status status)
+{
+	struct virtio_admin_migration_modify_internal_status_data *sd;
+	struct virtio_admin_data_ctrl dat_ctrl;
+	struct virtio_admin_ctrl *ctrl;
+	struct virtio_hw *hw;
+	int dlen[1];
+	int ret;
+
+	RTE_VERIFY(priv);
+	hw = &priv->vpdev->hw;
+	if (!virtio_with_feature(hw, VIRTIO_F_ADMIN_VQ)) {
+		CMD_LOG(INFO, "host does not support admin queue");
+		return -ENOTSUP;
+	}
+
+	ctrl = virtnet_get_aq_hdr_addr(hw->avq);
+	ctrl->hdr.class = VIRTIO_ADMIN_PCI_MIGRATION_CTRL;
+	ctrl->hdr.cmd = VIRTIO_ADMIN_PCI_MIGRATION_MODIFY_INTERNAL_STATUS;
+	sd = (struct virtio_admin_migration_modify_internal_status_data *)&ctrl->data[0];
+	sd->vdev_id = rte_cpu_to_le_16(vdev_id);
+	sd->internal_status = rte_cpu_to_le_16((uint16_t)status);
+	dlen[0] = sizeof(*sd);
+	dat_ctrl.num_in_data = 0;
+	dat_ctrl.num_out_data = 0;
+
+	ret = virtio_vdpa_send_admin_command(hw->avq, ctrl, &dat_ctrl, dlen, 1);
+	if (ret) {
+		CMD_LOG(ERR, "Failed to run class %u, cmd %u, status %d, vdev_id: %u",
+				ctrl->hdr.class, ctrl->hdr.cmd, ret, vdev_id);
+		return ret;
+	}
+
+	return 0;
+}
+
+int
+virtio_vdpa_cmd_save_state(struct virtio_vdpa_pf_priv *priv,
+		uint16_t vdev_id, uint64_t offset, uint64_t length,
+		rte_iova_t out_data)
+{
+	struct virtio_admin_migration_save_internal_state_data *sd;
+	struct virtio_hw *hw = &priv->vpdev->hw;
+	struct virtio_admin_data_ctrl dat_ctrl;
+	struct virtio_admin_ctrl *ctrl;
+	int dlen[1];
+	int ret;
+
+	RTE_VERIFY(priv);
+
+	if (!virtio_with_feature(hw, VIRTIO_F_ADMIN_VQ)) {
+		CMD_LOG(INFO, "host does not support admin queue");
+		return -ENOTSUP;
+	}
+
+	ctrl = virtnet_get_aq_hdr_addr(hw->avq);
+	ctrl->hdr.class = VIRTIO_ADMIN_PCI_MIGRATION_CTRL;
+	ctrl->hdr.cmd = VIRTIO_ADMIN_PCI_MIGRATION_SAVE_INTERNAL_STATE;
+	sd = (struct virtio_admin_migration_save_internal_state_data *)&ctrl->data[0];
+	sd->vdev_id = rte_cpu_to_le_16(vdev_id);
+	sd->offset = rte_cpu_to_le_64(offset);
+	sd->length = rte_cpu_to_le_64(length);
+	dlen[0] = sizeof(*sd);
+	dat_ctrl.num_in_data = 0;
+	dat_ctrl.num_out_data = 1;
+	dat_ctrl.out_data[0].iova = out_data;
+	dat_ctrl.out_data[0].len = length;
+	ret = virtio_vdpa_send_admin_command(hw->avq, ctrl, &dat_ctrl, dlen, 1);
+	if (ret) {
+		CMD_LOG(ERR, "Failed to run class %u, cmd %u, status %d, vdev_id: %u",
+				ctrl->hdr.class, ctrl->hdr.cmd, ret, vdev_id);
+		return ret;
+	}
+
+	return 0;
+}
+
+int
+virtio_vdpa_cmd_restore_state(struct virtio_vdpa_pf_priv *priv,
+		uint16_t vdev_id, uint64_t offset, uint64_t length,
+		rte_iova_t data)
+{
+	struct virtio_admin_migration_restore_internal_state_data *sd;
+	struct virtio_hw *hw = &priv->vpdev->hw;
+	struct virtio_admin_data_ctrl dat_ctrl;
+	struct virtio_admin_ctrl *ctrl;
+	int dlen[1];
+	int ret;
+
+	RTE_VERIFY(priv);
+
+	if (!virtio_with_feature(hw, VIRTIO_F_ADMIN_VQ)) {
+		CMD_LOG(INFO, "host does not support admin queue");
+		return -ENOTSUP;
+	}
+
+	ctrl = virtnet_get_aq_hdr_addr(hw->avq);
+	ctrl->hdr.class = VIRTIO_ADMIN_PCI_MIGRATION_CTRL;
+	ctrl->hdr.cmd = VIRTIO_ADMIN_PCI_MIGRATION_RESTORE_INTERNAL_STATE;
+	sd = (struct virtio_admin_migration_restore_internal_state_data *)&ctrl->data[0];
+	sd->vdev_id = rte_cpu_to_le_16(vdev_id);
+	sd->offset = rte_cpu_to_le_64(offset);
+	sd->length = rte_cpu_to_le_64(length);
+	dlen[0] = sizeof(*sd);
+	dat_ctrl.num_in_data = 1;
+	dat_ctrl.in_data[0].iova = data;
+	dat_ctrl.in_data[0].len = length;
+	dat_ctrl.num_out_data = 0;
+	ret = virtio_vdpa_send_admin_command(hw->avq, ctrl, &dat_ctrl, dlen, 1);
+	if (ret) {
+		CMD_LOG(ERR, "Failed to run class %u, cmd %u, status %d, vdev_id: %u",
+				ctrl->hdr.class, ctrl->hdr.cmd, ret, vdev_id);
+		return ret;
+	}
+
+	return 0;
+}
+
+int
+virtio_vdpa_cmd_get_internal_pending_bytes(struct virtio_vdpa_pf_priv *priv,
+		uint16_t vdev_id,
+		struct virtio_admin_migration_get_internal_state_pending_bytes_result *result)
+{
+	struct virtio_admin_migration_get_internal_state_pending_bytes_result *res;
+	struct virtio_admin_migration_get_internal_state_pending_bytes_data *sd;
+	struct virtio_hw *hw = &priv->vpdev->hw;
+	struct virtio_admin_data_ctrl dat_ctrl;
+	struct virtio_admin_ctrl *ctrl;
+	int dlen[1];
+	int ret;
+
+	RTE_VERIFY(priv);
+
+	if (!virtio_with_feature(hw, VIRTIO_F_ADMIN_VQ)) {
+		CMD_LOG(INFO, "host does not support admin queue");
+		return -ENOTSUP;
+	}
+
+	ctrl = virtnet_get_aq_hdr_addr(hw->avq);
+	ctrl->hdr.class = VIRTIO_ADMIN_PCI_MIGRATION_CTRL;
+	ctrl->hdr.cmd = VIRTIO_ADMIN_PCI_MIGRATION_GET_INTERNAL_STATE_PENDING_BYTES;
+	sd = (struct virtio_admin_migration_get_internal_state_pending_bytes_data *)&ctrl->data[0];
+	sd->vdev_id = rte_cpu_to_le_16(vdev_id);
+	dlen[0] = sizeof(*sd);
+
+	dat_ctrl.num_in_data = 0;
+	dat_ctrl.num_out_data = 1;
+	dat_ctrl.out_data[0].iova = hw->avq->virtio_admin_hdr_mem
+			+ sizeof(struct virtio_admin_ctrl_hdr)
+			+ sizeof(ctrl->status) + dlen[0];
+	dat_ctrl.out_data[0].len = sizeof(*result);
+	ret = virtio_vdpa_send_admin_command(hw->avq, ctrl, &dat_ctrl, dlen, 1);
+	if (ret) {
+		CMD_LOG(ERR, "Failed to run class %u, cmd %u, status %d, vdev_id: %u",
+				ctrl->hdr.class, ctrl->hdr.cmd, ret, vdev_id);
+		return ret;
+	}
+
+	res = (struct virtio_admin_migration_get_internal_state_pending_bytes_result *)
+			rte_mem_iova2virt(dat_ctrl.out_data[0].iova);
+	result->pending_bytes = rte_le_to_cpu_64(res->pending_bytes);
+
+	return 0;
+}
+
+int
+virtio_vdpa_cmd_dirty_page_identity(struct virtio_vdpa_pf_priv *priv,
+		struct virtio_admin_dirty_page_identity_result *result)
+{
+	struct virtio_admin_dirty_page_identity_result *res;
+	struct virtio_hw *hw = &priv->vpdev->hw;
+	struct virtio_admin_data_ctrl dat_ctrl;
+	struct virtio_admin_ctrl *ctrl;
+	int dlen[1];
+	int ret;
+
+	RTE_VERIFY(priv);
+
+	if (!virtio_with_feature(hw, VIRTIO_F_ADMIN_VQ)) {
+		CMD_LOG(INFO, "host does not support admin queue");
+		return -ENOTSUP;
+	}
+
+	ctrl = virtnet_get_aq_hdr_addr(hw->avq);
+	ctrl->hdr.class = VIRTIO_ADMIN_PCI_DIRTY_PAGE_TRACK_CTRL;
+	ctrl->hdr.cmd = VIRTIO_ADMIN_PCI_DIRTY_PAGE_IDENTITY;
+	dlen[0] = 0;
+	dat_ctrl.num_in_data = 0;
+	dat_ctrl.num_out_data = 1;
+	dat_ctrl.out_data[0].iova = hw->avq->virtio_admin_hdr_mem
+				+ sizeof(struct virtio_admin_ctrl_hdr)
+				+ sizeof(ctrl->status);
+	dat_ctrl.out_data[0].len = sizeof(*result);
+
+	ret = virtio_vdpa_send_admin_command(hw->avq, ctrl, &dat_ctrl, dlen, 0);
+	if (ret) {
+		CMD_LOG(ERR, "Failed to run class %u, cmd %u, status %d",
+				ctrl->hdr.class, ctrl->hdr.cmd, ret);
+		return ret;
+	}
+
+	res = (struct virtio_admin_dirty_page_identity_result *)
+			rte_mem_iova2virt(dat_ctrl.out_data[0].iova);
+	result->log_max_pages_track_pull_bitmap_mode =
+			rte_le_to_cpu_16(res->log_max_pages_track_pull_bitmap_mode);
+	result->log_max_pages_track_pull_bytemap_mode =
+			rte_le_to_cpu_16(res->log_max_pages_track_pull_bytemap_mode);
+	result->max_track_ranges = rte_le_to_cpu_32(res->max_track_ranges);
+
+	return 0;
+}
+
+int
+virtio_vdpa_cmd_dirty_page_start_track(struct virtio_vdpa_pf_priv *priv,
+		uint16_t vdev_id,
+		enum virtio_dirty_track_mode track_mode,
+		uint32_t vdev_host_page_size,
+		uint64_t vdev_host_range_addr,
+		uint64_t range_length,
+		int num_sges,
+		struct virtio_sge data[])
+{
+	struct virtio_admin_dirty_page_start_track_data *sd;
+	struct virtio_hw *hw = &priv->vpdev->hw;
+	struct virtio_admin_ctrl *ctrl;
+	struct virtio_admin_data_ctrl dat_ctrl;
+	int dlen[1];
+	int ret, i;
+
+	RTE_VERIFY(priv);
+	RTE_VERIFY(num_sges <= VIRTIO_VDPA_MI_MAX_SGES);
+
+	if (!virtio_with_feature(hw, VIRTIO_F_ADMIN_VQ)) {
+		CMD_LOG(INFO, "host does not support admin queue");
+		return -ENOTSUP;
+	}
+
+	ctrl = virtnet_get_aq_hdr_addr(hw->avq);
+	ctrl->hdr.class = VIRTIO_ADMIN_PCI_DIRTY_PAGE_TRACK_CTRL;
+	ctrl->hdr.cmd = VIRTIO_ADMIN_PCI_DIRTY_PAGE_START_TRACK;
+	sd = (struct virtio_admin_dirty_page_start_track_data *)&ctrl->data[0];
+	sd->vdev_id = rte_cpu_to_le_16(vdev_id);
+	sd->track_mode = rte_cpu_to_le_16((uint16_t)track_mode);
+	sd->vdev_host_page_size = rte_cpu_to_le_32(vdev_host_page_size);
+	sd->vdev_host_range_addr = rte_cpu_to_le_64(vdev_host_range_addr);
+	sd->range_length = rte_cpu_to_le_64(range_length);
+	for (i = 0; i < num_sges; i++) {
+		sd->sges[i].addr = rte_cpu_to_le_64((uint64_t)rte_mem_virt2iova((const void *)data[i].addr));
+		sd->sges[i].len = rte_cpu_to_le_32(data[i].len);
+		sd->sges[i].reserved = 0;
+	}
+	dat_ctrl.num_in_data = 0;
+	dat_ctrl.num_out_data = 0;
+	dlen[0] = sizeof(*sd) + sizeof(struct virtio_sge) * num_sges;
+
+	ret = virtio_vdpa_send_admin_command(hw->avq, ctrl, &dat_ctrl, dlen, 1);
+	if (ret) {
+		CMD_LOG(ERR, "Failed to run class %u, cmd %u, status %d, vdev id: %u",
+				ctrl->hdr.class, ctrl->hdr.cmd, ret, vdev_id);
+		return ret;
+	}
+
+	return 0;
+}
+
+int
+virtio_vdpa_cmd_dirty_page_stop_track(struct virtio_vdpa_pf_priv *priv,
+		uint16_t vdev_id, uint64_t vdev_host_range_addr)
+{
+	struct virtio_admin_dirty_page_stop_track_data *sd;
+	struct virtio_hw *hw = &priv->vpdev->hw;
+	struct virtio_admin_data_ctrl dat_ctrl;
+	struct virtio_admin_ctrl *ctrl;
+	int dlen[1];
+	int ret;
+
+	RTE_VERIFY(priv);
+
+	if (!virtio_with_feature(hw, VIRTIO_F_ADMIN_VQ)) {
+		CMD_LOG(INFO, "host does not support admin queue");
+		return -ENOTSUP;
+	}
+
+	ctrl = virtnet_get_aq_hdr_addr(hw->avq);
+	ctrl->hdr.class = VIRTIO_ADMIN_PCI_DIRTY_PAGE_TRACK_CTRL;
+	ctrl->hdr.cmd = VIRTIO_ADMIN_PCI_DIRTY_PAGE_STOP_TRACK;
+	sd = (struct virtio_admin_dirty_page_stop_track_data *)&ctrl->data[0];
+	sd->vdev_id = rte_cpu_to_le_16(vdev_id);
+	sd->vdev_host_range_addr = rte_cpu_to_le_64(vdev_host_range_addr);
+	dlen[0] = sizeof(*sd);
+	dat_ctrl.num_in_data = 0;
+	dat_ctrl.num_out_data = 0;
+
+	ret = virtio_vdpa_send_admin_command(hw->avq, ctrl, &dat_ctrl, dlen, 1);
+	if (ret) {
+		CMD_LOG(ERR, "Failed to run class %u, cmd %u, status %d, vdev id: %u",
+				ctrl->hdr.class, ctrl->hdr.cmd, ret, vdev_id);
+		return ret;
+	}
+
+	return 0;
+}
+
+int
+virtio_vdpa_cmd_dirty_page_get_map_pending_bytes(
+		struct virtio_vdpa_pf_priv *priv,
+		uint16_t vdev_id,
+		uint64_t vdev_host_range_addr,
+		struct virtio_admin_dirty_page_get_map_pending_bytes_result *result)
+{
+	struct virtio_admin_dirty_page_get_map_pending_bytes_result *res;
+	struct virtio_admin_dirty_page_get_map_pending_bytes_data *sd;
+	struct virtio_hw *hw = &priv->vpdev->hw;
+	struct virtio_admin_data_ctrl dat_ctrl;
+	struct virtio_admin_ctrl *ctrl;
+	int dlen[1];
+	int ret;
+
+	RTE_VERIFY(priv);
+
+	if (!virtio_with_feature(hw, VIRTIO_F_ADMIN_VQ)) {
+		CMD_LOG(INFO, "host does not support admin queue");
+		return -ENOTSUP;
+	}
+
+	ctrl = virtnet_get_aq_hdr_addr(hw->avq);
+	ctrl->hdr.class = VIRTIO_ADMIN_PCI_DIRTY_PAGE_TRACK_CTRL;
+	ctrl->hdr.cmd = VIRTIO_ADMIN_PCI_DIRTY_PAGE_GET_MAP_PENDING_BYTES;
+	sd = (struct virtio_admin_dirty_page_get_map_pending_bytes_data *)&ctrl->data[0];
+	sd->vdev_id = rte_cpu_to_le_16(vdev_id);
+	sd->vdev_host_range_addr = rte_cpu_to_le_64(vdev_host_range_addr);
+	dlen[0] = sizeof(*sd);
+
+	dat_ctrl.num_in_data = 0;
+	dat_ctrl.num_out_data = 1;
+	dat_ctrl.out_data[0].iova = hw->avq->virtio_admin_hdr_mem
+			+ sizeof(struct virtio_admin_ctrl_hdr)
+			+ sizeof(ctrl->status) + dlen[0];
+	dat_ctrl.out_data[0].len = sizeof(*result);
+	ret = virtio_vdpa_send_admin_command(hw->avq, ctrl, &dat_ctrl, dlen, 1);
+	if (ret) {
+		CMD_LOG(ERR, "Failed to run class %u, cmd %u, status %d, vdev_id: %u",
+				ctrl->hdr.class, ctrl->hdr.cmd, ret, vdev_id);
+		return ret;
+	}
+
+	res = (struct virtio_admin_dirty_page_get_map_pending_bytes_result *)
+			rte_mem_iova2virt(dat_ctrl.out_data[0].iova);
+	result->pending_bytes = rte_le_to_cpu_64(res->pending_bytes);
+
+	return 0;
+}
+
+int
+virtio_vdpa_cmd_dirty_page_report_map(struct virtio_vdpa_pf_priv *priv,
+		uint16_t vdev_id,
+		uint64_t offset,
+		uint64_t length,
+		uint64_t vdev_host_range_addr,
+		rte_iova_t data)
+{
+	struct virtio_admin_dirty_page_report_map_data *sd;
+	struct virtio_hw *hw = &priv->vpdev->hw;
+	struct virtio_admin_data_ctrl dat_ctrl;
+	struct virtio_admin_ctrl *ctrl;
+	int dlen[1];
+	int ret;
+
+	RTE_VERIFY(priv);
+
+	if (!virtio_with_feature(hw, VIRTIO_F_ADMIN_VQ)) {
+		CMD_LOG(INFO, "host does not support admin queue");
+		return -ENOTSUP;
+	}
+
+	ctrl = virtnet_get_aq_hdr_addr(hw->avq);
+	ctrl->hdr.class = VIRTIO_ADMIN_PCI_DIRTY_PAGE_TRACK_CTRL;
+	ctrl->hdr.cmd = VIRTIO_ADMIN_PCI_DIRTY_PAGE_REPORT_MAP;
+	sd = (struct virtio_admin_dirty_page_report_map_data *)&ctrl->data[0];
+	sd->vdev_id = rte_cpu_to_le_16(vdev_id);
+	sd->offset = rte_cpu_to_le_64(offset);
+	sd->length = rte_cpu_to_le_64(length);
+	sd->vdev_host_range_addr = rte_cpu_to_le_64(vdev_host_range_addr);
+	dlen[0] = sizeof(*sd);
+	dat_ctrl.num_in_data = 0;
+	dat_ctrl.num_out_data = 1;
+	dat_ctrl.out_data[0].iova = data;
+	dat_ctrl.out_data[0].len = length;
+
+	ret = virtio_vdpa_send_admin_command(hw->avq, ctrl, &dat_ctrl, dlen, 1);
+	if (ret) {
+		CMD_LOG(ERR, "Failed to run class %u, cmd %u, status %d, vdev id: %u",
+				ctrl->hdr.class, ctrl->hdr.cmd, ret, vdev_id);
+		return ret;
+	}
+
+	return 0;
 }
 
 static void
