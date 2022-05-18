@@ -16,6 +16,7 @@
  * gives packet per second measurement.
  */
 
+#include <locale.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -1713,36 +1714,6 @@ do_tx(struct lcore_info *li, uint16_t cnt, uint16_t tx_port,
 		rte_pktmbuf_free(li->pkts[i]);
 }
 
-/*
- * Method to convert numbers into pretty numbers that easy
- * to read. The design here is to add comma after each three
- * digits and set all of this inside buffer.
- *
- * For example if n = 1799321, the output will be
- * 1,799,321 after this method which is easier to read.
- */
-static char *
-pretty_number(uint64_t n, char *buf)
-{
-	char p[6][4];
-	int i = 0;
-	int off = 0;
-
-	while (n > 1000) {
-		sprintf(p[i], "%03d", (int)(n % 1000));
-		n /= 1000;
-		i += 1;
-	}
-
-	sprintf(p[i++], "%d", (int)n);
-
-	while (i--)
-		off += sprintf(buf + off, "%s,", p[i]);
-	buf[strlen(buf) - 1] = '\0';
-
-	return buf;
-}
-
 static void
 packet_per_second_stats(void)
 {
@@ -1764,7 +1735,6 @@ packet_per_second_stats(void)
 		uint64_t total_rx_pkts = 0;
 		uint64_t total_tx_drops = 0;
 		uint64_t tx_delta, rx_delta, drops_delta;
-		char buf[3][32];
 		int nr_valid_core = 0;
 
 		sleep(1);
@@ -1789,10 +1759,8 @@ packet_per_second_stats(void)
 			tx_delta    = li->tx_pkts  - oli->tx_pkts;
 			rx_delta    = li->rx_pkts  - oli->rx_pkts;
 			drops_delta = li->tx_drops - oli->tx_drops;
-			printf("%6d %16s %16s %16s\n", i,
-				pretty_number(tx_delta,    buf[0]),
-				pretty_number(drops_delta, buf[1]),
-				pretty_number(rx_delta,    buf[2]));
+			printf("%6d %'16"PRId64" %'16"PRId64" %'16"PRId64"\n",
+				i, tx_delta, drops_delta, rx_delta);
 
 			total_tx_pkts  += tx_delta;
 			total_rx_pkts  += rx_delta;
@@ -1803,10 +1771,9 @@ packet_per_second_stats(void)
 		}
 
 		if (nr_valid_core > 1) {
-			printf("%6s %16s %16s %16s\n", "total",
-				pretty_number(total_tx_pkts,  buf[0]),
-				pretty_number(total_tx_drops, buf[1]),
-				pretty_number(total_rx_pkts,  buf[2]));
+			printf("%6s %'16"PRId64" %'16"PRId64" %'16"PRId64"\n",
+				"total", total_tx_pkts, total_tx_drops,
+				total_rx_pkts);
 			nr_lines += 1;
 		}
 
@@ -2138,6 +2105,9 @@ main(int argc, char **argv)
 	argv += ret;
 	if (argc > 1)
 		args_parse(argc, argv);
+
+	/* For more fancy, localised integer formatting. */
+	setlocale(LC_NUMERIC, "");
 
 	init_port();
 
