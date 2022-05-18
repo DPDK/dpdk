@@ -579,9 +579,20 @@ an x86 based platform.
 Native Compilation
 ~~~~~~~~~~~~~~~~~~
 
+Refer to :doc:`../linux_gsg/build_dpdk` for generic native builds.
+
+CN9K:
+
 .. code-block:: console
 
-        meson build
+        meson -Dplatform=cn9k build
+        ninja -C build
+
+CN10K:
+
+.. code-block:: console
+
+        meson -Dplatform=cn10k build
         ninja -C build
 
 Cross Compilation
