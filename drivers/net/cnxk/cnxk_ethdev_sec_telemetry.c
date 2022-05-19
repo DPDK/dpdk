@@ -229,6 +229,9 @@ ethdev_sec_tel_handle_info(const char *cmd __rte_unused, const char *params,
 	uint32_t i;
 	int ret;
 
+	if (params == NULL || strlen(params) == 0 || !isdigit(*params))
+		return -EINVAL;
+
 	port_id = strtoul(params, &end_p, 0);
 	if (errno != 0)
 		return -EINVAL;
