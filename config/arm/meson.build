@@ -613,7 +613,7 @@ endif
 
 if cc.get_define('__ARM_FEATURE_SVE', args: machine_args) != ''
     compile_time_cpuflags += ['RTE_CPUFLAG_SVE']
-    if (cc.check_header('arm_sve.h'))
+    if (cc.check_header('arm_sve.h') and soc_config.get('sve_acle', true))
         dpdk_conf.set('RTE_HAS_SVE_ACLE', 1)
     endif
 endif
