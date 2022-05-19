@@ -1198,37 +1198,29 @@ iavf_xmit_pkts_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
 	return nb_tx;
 }
 
-static void __rte_cold
+void __rte_cold
 iavf_rx_queue_release_mbufs_sse(struct iavf_rx_queue *rxq)
 {
 	_iavf_rx_queue_release_mbufs_vec(rxq);
 }
 
-static void __rte_cold
+void __rte_cold
 iavf_tx_queue_release_mbufs_sse(struct iavf_tx_queue *txq)
 {
 	_iavf_tx_queue_release_mbufs_vec(txq);
 }
 
-static const struct iavf_rxq_ops sse_vec_rxq_ops = {
-	.release_mbufs = iavf_rx_queue_release_mbufs_sse,
-};
-
-static const struct iavf_txq_ops sse_vec_txq_ops = {
-	.release_mbufs = iavf_tx_queue_release_mbufs_sse,
-};
-
 int __rte_cold
 iavf_txq_vec_setup(struct iavf_tx_queue *txq)
 {
-	txq->ops = &sse_vec_txq_ops;
+	txq->rel_mbufs_type = IAVF_REL_MBUFS_SSE_VEC;
 	return 0;
 }
 
 int __rte_cold
 iavf_rxq_vec_setup(struct iavf_rx_queue *rxq)
 {
-	rxq->ops = &sse_vec_rxq_ops;
+	rxq->rel_mbufs_type = IAVF_REL_MBUFS_SSE_VEC;
 	return iavf_rxq_vec_setup_default(rxq);
 }
 

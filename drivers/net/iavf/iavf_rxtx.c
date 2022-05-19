@@ -326,12 +326,24 @@ release_txq_mbufs(struct iavf_tx_queue *txq)
 	}
 }
 
-static const struct iavf_rxq_ops def_rxq_ops = {
-	.release_mbufs = release_rxq_mbufs,
+static const
+struct iavf_rxq_ops iavf_rxq_release_mbufs_ops[] = {
+	[IAVF_REL_MBUFS_DEFAULT].release_mbufs = release_rxq_mbufs,
+#ifdef RTE_ARCH_X86
+	[IAVF_REL_MBUFS_SSE_VEC].release_mbufs = iavf_rx_queue_release_mbufs_sse,
+#endif
 };
 
-static const struct iavf_txq_ops def_txq_ops = {
-	.release_mbufs = release_txq_mbufs,
+static const
+struct iavf_txq_ops iavf_txq_release_mbufs_ops[] = {
+	[IAVF_REL_MBUFS_DEFAULT].release_mbufs = release_txq_mbufs,
+#ifdef RTE_ARCH_X86
+	[IAVF_REL_MBUFS_SSE_VEC].release_mbufs = iavf_tx_queue_release_mbufs_sse,
+#ifdef CC_AVX512_SUPPORT
+	[IAVF_REL_MBUFS_AVX512_VEC].release_mbufs = iavf_tx_queue_release_mbufs_avx512,
+#endif
+#endif
+
 };
 
 static inline void
@@ -610,7 +622,7 @@ iavf_dev_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 	rxq->q_set = true;
 	dev->data->rx_queues[queue_idx] = rxq;
 	rxq->qrx_tail = hw->hw_addr + IAVF_QRX_TAIL1(rxq->queue_id);
-	rxq->ops = &def_rxq_ops;
+	rxq->rel_mbufs_type = IAVF_REL_MBUFS_DEFAULT;
 
 	if (check_rx_bulk_allow(rxq) == true) {
 		PMD_INIT_LOG(DEBUG, "Rx Burst Bulk Alloc Preconditions are "
@@ -721,7 +733,7 @@ iavf_dev_tx_queue_setup(struct rte_eth_dev *dev,
 	txq->q_set = true;
 	dev->data->tx_queues[queue_idx] = txq;
 	txq->qtx_tail = hw->hw_addr + IAVF_QTX_TAIL1(queue_idx);
-	txq->ops = &def_txq_ops;
+	txq->rel_mbufs_type = IAVF_REL_MBUFS_DEFAULT;
 
 	if (check_tx_vec_allow(txq) == false) {
 		struct iavf_adapter *ad =
@@ -837,7 +849,7 @@ iavf_dev_rx_queue_stop(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 	}
 
 	rxq = dev->data->rx_queues[rx_queue_id];
-	rxq->ops->release_mbufs(rxq);
+	iavf_rxq_release_mbufs_ops[rxq->rel_mbufs_type].release_mbufs(rxq);
 	reset_rx_queue(rxq);
 	dev->data->rx_queue_state[rx_queue_id] = RTE_ETH_QUEUE_STATE_STOPPED;
 
@@ -865,7 +877,7 @@ iavf_dev_tx_queue_stop(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 	}
 
 	txq = dev->data->tx_queues[tx_queue_id];
-	txq->ops->release_mbufs(txq);
+	iavf_txq_release_mbufs_ops[txq->rel_mbufs_type].release_mbufs(txq);
 	reset_tx_queue(txq);
 	dev->data->tx_queue_state[tx_queue_id] = RTE_ETH_QUEUE_STATE_STOPPED;
 
@@ -880,7 +892,7 @@ iavf_dev_rx_queue_release(void *rxq)
 	if (!q)
 		return;
 
-	q->ops->release_mbufs(q);
+	iavf_rxq_release_mbufs_ops[q->rel_mbufs_type].release_mbufs(q);
 	rte_free(q->sw_ring);
 	rte_memzone_free(q->mz);
 	rte_free(q);
@@ -894,7 +906,7 @@ iavf_dev_tx_queue_release(void *txq)
 	if (!q)
 		return;
 
-	q->ops->release_mbufs(q);
+	iavf_txq_release_mbufs_ops[q->rel_mbufs_type].release_mbufs(q);
 	rte_free(q->sw_ring);
 	rte_memzone_free(q->mz);
 	rte_free(q);
@@ -928,7 +940,7 @@ iavf_stop_queues(struct rte_eth_dev *dev)
 		txq = dev->data->tx_queues[i];
 		if (!txq)
 			continue;
-		txq->ops->release_mbufs(txq);
+		iavf_txq_release_mbufs_ops[txq->rel_mbufs_type].release_mbufs(txq);
 		reset_tx_queue(txq);
 		dev->data->tx_queue_state[i] = RTE_ETH_QUEUE_STATE_STOPPED;
 	}
@@ -936,7 +948,7 @@ iavf_stop_queues(struct rte_eth_dev *dev)
 		rxq = dev->data->rx_queues[i];
 		if (!rxq)
 			continue;
-		rxq->ops->release_mbufs(rxq);
+		iavf_rxq_release_mbufs_ops[rxq->rel_mbufs_type].release_mbufs(rxq);
 		reset_rx_queue(rxq);
 		dev->data->rx_queue_state[i] = RTE_ETH_QUEUE_STATE_STOPPED;
 	}
