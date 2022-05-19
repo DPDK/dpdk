@@ -634,28 +634,38 @@ iavf_start_queues(struct rte_eth_dev *dev)
 	struct iavf_rx_queue *rxq;
 	struct iavf_tx_queue *txq;
 	int i;
+	uint16_t nb_txq, nb_rxq;
 
-	for (i = 0; i < dev->data->nb_tx_queues; i++) {
-		txq = dev->data->tx_queues[i];
+	for (nb_txq = 0; nb_txq < dev->data->nb_tx_queues; nb_txq++) {
+		txq = dev->data->tx_queues[nb_txq];
 		if (txq->tx_deferred_start)
 			continue;
-		if (iavf_dev_tx_queue_start(dev, i) != 0) {
-			PMD_DRV_LOG(ERR, "Fail to start queue %u", i);
-			return -1;
+		if (iavf_dev_tx_queue_start(dev, nb_txq) != 0) {
+			PMD_DRV_LOG(ERR, "Fail to start tx queue %u", nb_txq);
+			goto tx_err;
 		}
 	}
 
-	for (i = 0; i < dev->data->nb_rx_queues; i++) {
-		rxq = dev->data->rx_queues[i];
+	for (nb_rxq = 0; nb_rxq < dev->data->nb_rx_queues; nb_rxq++) {
+		rxq = dev->data->rx_queues[nb_rxq];
 		if (rxq->rx_deferred_start)
 			continue;
-		if (iavf_dev_rx_queue_start(dev, i) != 0) {
-			PMD_DRV_LOG(ERR, "Fail to start queue %u", i);
-			return -1;
+		if (iavf_dev_rx_queue_start(dev, nb_rxq) != 0) {
+			PMD_DRV_LOG(ERR, "Fail to start rx queue %u", nb_rxq);
+			goto rx_err;
 		}
 	}
 
 	return 0;
+
+rx_err:
+	for (i = 0; i < nb_rxq; i++)
+		iavf_dev_rx_queue_stop(dev, i);
+tx_err:
+	for (i = 0; i < nb_txq; i++)
+		iavf_dev_tx_queue_stop(dev, i);
+
+	return -1;
 }
 
 static int
