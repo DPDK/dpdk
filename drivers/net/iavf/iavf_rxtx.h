@@ -187,6 +187,7 @@ struct iavf_rx_queue {
 	struct rte_mbuf *pkt_last_seg;  /* last segment of current packet */
 	struct rte_mbuf fake_mbuf;      /* dummy mbuf */
 	uint8_t rxdid;
+	uint8_t rel_mbufs_type;
 
 	/* used for VPMD */
 	uint16_t rxrearm_nb;       /* number of remaining to be re-armed */
@@ -246,6 +247,7 @@ struct iavf_tx_queue {
 	uint16_t last_desc_cleaned;    /* last desc have been cleaned*/
 	uint16_t free_thresh;
 	uint16_t rs_thresh;
+	uint8_t rel_mbufs_type;
 
 	uint16_t port_id;
 	uint16_t queue_id;
@@ -387,6 +389,12 @@ struct iavf_32b_rx_flex_desc_comms_ipsec {
 	/* Qword 3 */
 	__le32 flow_id;
 	__le32 ipsec_said;
+};
+
+enum iavf_rxtx_rel_mbufs_type {
+	IAVF_REL_MBUFS_DEFAULT		= 0,
+	IAVF_REL_MBUFS_SSE_VEC		= 1,
+	IAVF_REL_MBUFS_AVX512_VEC	= 2,
 };
 
 /* Receive Flex Descriptor profile IDs: There are a total
@@ -692,6 +700,9 @@ int iavf_txq_vec_setup_avx512(struct iavf_tx_queue *txq);
 uint8_t iavf_proto_xtr_type_to_rxdid(uint8_t xtr_type);
 
 void iavf_set_default_ptype_table(struct rte_eth_dev *dev);
+void iavf_tx_queue_release_mbufs_avx512(struct iavf_tx_queue *txq);
+void iavf_rx_queue_release_mbufs_sse(struct iavf_rx_queue *rxq);
+void iavf_tx_queue_release_mbufs_sse(struct iavf_tx_queue *txq);
 
 static inline
 void iavf_dump_rx_descriptor(struct iavf_rx_queue *rxq,

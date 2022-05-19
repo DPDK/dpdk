@@ -1994,7 +1994,7 @@ iavf_xmit_pkts_vec_avx512(void *tx_queue, struct rte_mbuf **tx_pkts,
 	return iavf_xmit_pkts_vec_avx512_cmn(tx_queue, tx_pkts, nb_pkts, false);
 }
 
-static inline void
+void __rte_cold
 iavf_tx_queue_release_mbufs_avx512(struct iavf_tx_queue *txq)
 {
 	unsigned int i;
@@ -2014,14 +2014,10 @@ iavf_tx_queue_release_mbufs_avx512(struct iavf_tx_queue *txq)
 	}
 }
 
-static const struct iavf_txq_ops avx512_vec_txq_ops = {
-	.release_mbufs = iavf_tx_queue_release_mbufs_avx512,
-};
-
 int __rte_cold
 iavf_txq_vec_setup_avx512(struct iavf_tx_queue *txq)
 {
-	txq->ops = &avx512_vec_txq_ops;
+	txq->rel_mbufs_type = IAVF_REL_MBUFS_AVX512_VEC;
 	return 0;
 }
 
