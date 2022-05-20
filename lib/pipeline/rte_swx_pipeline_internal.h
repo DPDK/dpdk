@@ -2221,7 +2221,8 @@ __instr_learn_exec(struct rte_swx_pipeline *p,
 					   l->mailbox,
 					   t->time,
 					   action_id,
-					   &t->metadata[mf_offset]);
+					   &t->metadata[mf_offset],
+					   0);
 
 	TRACE("[Thread %2u] learner %u learn %s\n",
 	      p->thread_id,

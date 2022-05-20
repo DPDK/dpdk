@@ -8788,7 +8788,8 @@ learner_params_get(struct learner *l)
 	params->n_keys_max = l->size;
 
 	/* Timeout. */
-	params->key_timeout = l->timeout;
+	params->key_timeout[0] = l->timeout;
+	params->n_key_timeouts = 1;
 
 	return params;
 

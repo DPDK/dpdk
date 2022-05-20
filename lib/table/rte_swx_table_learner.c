@@ -157,6 +157,17 @@ hash(void *key, void *key_mask, uint32_t key_size, uint32_t seed)
 	}
 }
 
+/* n_bytes needs to be a multiple of 8 bytes. */
+static void
+table_keycpy(void *dst, void *src, void *src_mask, uint32_t n_bytes)
+{
+	uint64_t *dst64 = dst, *src64 = src, *src_mask64 = src_mask;
+	uint32_t i;
+
+	for (i = 0; i < n_bytes / sizeof(uint64_t); i++)
+		dst64[i] = src64[i] & src_mask64[i];
+}
+
 /*
  * Return: 0 = Keys are NOT equal; 1 = Keys are equal.
  */
@@ -230,12 +241,16 @@ table_keycmp(void *a, void *b, void *b_mask, uint32_t n_bytes)
 
 #define TABLE_KEYS_PER_BUCKET 4
 
+#define TABLE_BUCKET_USEFUL_SIZE \
+	(TABLE_KEYS_PER_BUCKET * (sizeof(uint32_t) + sizeof(uint32_t) + sizeof(uint8_t)))
+
 #define TABLE_BUCKET_PAD_SIZE \
-	(RTE_CACHE_LINE_SIZE - TABLE_KEYS_PER_BUCKET * (sizeof(uint32_t) + sizeof(uint32_t)))
+	(RTE_CACHE_LINE_SIZE - TABLE_BUCKET_USEFUL_SIZE)
 
 struct table_bucket {
 	uint32_t time[TABLE_KEYS_PER_BUCKET];
 	uint32_t sig[TABLE_KEYS_PER_BUCKET];
+	uint8_t key_timeout_id[TABLE_KEYS_PER_BUCKET];
 	uint8_t pad[TABLE_BUCKET_PAD_SIZE];
 	uint8_t key[0];
 };
@@ -284,8 +299,11 @@ struct table_params {
 	/* log2(bucket_size). Purpose: avoid multiplication with non-power of 2 numbers. */
 	size_t bucket_size_log2;
 
-	/* Timeout in CPU clock cycles. */
-	uint64_t key_timeout;
+	/* Set of all possible key timeout values measured in CPU clock cycles. */
+	uint64_t key_timeout[RTE_SWX_TABLE_LEARNER_N_KEY_TIMEOUTS_MAX];
+
+	/* Number of key timeout values. */
+	uint32_t n_key_timeouts;
 
 	/* Total memory size. */
 	size_t total_size;
@@ -302,17 +320,41 @@ struct table {
 	uint8_t buckets[0];
 } __rte_cache_aligned;
 
+/* The timeout (in cycles) is stored in the table as a 32-bit value by truncating its least
+ * significant 32 bits. Therefore, to make sure the time is always advancing when adding the timeout
+ * value on top of the current time, the minimum timeout value is 1^32 cycles, which is 2 seconds on
+ * a 2 GHz CPU.
+ */
+static uint64_t
+timeout_convert(uint32_t timeout_in_seconds)
+{
+	uint64_t timeout_in_cycles = timeout_in_seconds * rte_get_tsc_hz();
+
+	if (!(timeout_in_cycles >> 32))
+		timeout_in_cycles = 1LLU << 32;
+
+	return timeout_in_cycles;
+}
+
 static int
 table_params_get(struct table_params *p, struct rte_swx_table_learner_params *params)
 {
+	uint32_t i;
+
 	/* Check input parameters. */
 	if (!params ||
 	    !params->key_size ||
 	    (params->key_size > 64) ||
 	    !params->n_keys_max ||
 	    (params->n_keys_max > 1U << 31) ||
-	    !params->key_timeout)
+	    !params->key_timeout ||
+	    !params->n_key_timeouts ||
+	    (params->n_key_timeouts > RTE_SWX_TABLE_LEARNER_N_KEY_TIMEOUTS_MAX))
 		return -EINVAL;
+
+	for (i = 0; i < params->n_key_timeouts; i++)
+		if (!params->key_timeout[i])
+			return -EINVAL;
 
 	/* Key. */
 	p->key_size = params->key_size;
@@ -346,7 +388,13 @@ table_params_get(struct table_params *p, struct rte_swx_table_learner_params *pa
 	p->bucket_size_log2 = __builtin_ctzll(p->bucket_size);
 
 	/* Timeout. */
-	p->key_timeout = params->key_timeout * rte_get_tsc_hz();
+	for (i = 0; i < params->n_key_timeouts; i++)
+		p->key_timeout[i] = timeout_convert(params->key_timeout[i]);
+
+	p->n_key_timeouts = rte_align32pow2(params->n_key_timeouts);
+
+	for ( ; i < p->n_key_timeouts; i++)
+		p->key_timeout[i] = p->key_timeout[0];
 
 	/* Total size. */
 	p->total_size = sizeof(struct table) + p->n_buckets * p->bucket_size;
@@ -421,6 +469,23 @@ rte_swx_table_learner_free(void *table)
 		return;
 
 	env_free(t, t->params.total_size);
+}
+
+int
+rte_swx_table_learner_timeout_update(void *table,
+				     uint32_t key_timeout_id,
+				     uint32_t key_timeout)
+{
+	struct table *t = table;
+
+	if (!t ||
+	    (key_timeout_id >= t->params.n_key_timeouts) ||
+	    !key_timeout)
+		return -EINVAL;
+
+	t->params.key_timeout[key_timeout_id] = timeout_convert(key_timeout);
+
+	return 0;
 }
 
 struct mailbox {
@@ -505,8 +570,6 @@ rte_swx_table_learner_lookup(void *table,
 				/* Hit. */
 				rte_prefetch0(data);
 
-				b->time[i] = (input_time + t->params.key_timeout) >> 32;
-
 				m->hit = 1;
 				m->bucket_key_pos = i;
 				m->state = 0;
@@ -536,23 +599,83 @@ rte_swx_table_learner_lookup(void *table,
 	}
 }
 
+void
+rte_swx_table_learner_rearm(void *table,
+			    void *mailbox,
+			    uint64_t input_time)
+{
+	struct table *t = table;
+	struct mailbox *m = mailbox;
+	struct table_bucket *b;
+	size_t bucket_key_pos;
+	uint64_t key_timeout;
+	uint32_t key_timeout_id;
+
+	if (!m->hit)
+		return;
+
+	b = m->bucket;
+	bucket_key_pos = m->bucket_key_pos;
+
+	key_timeout_id = b->key_timeout_id[bucket_key_pos];
+	key_timeout = t->params.key_timeout[key_timeout_id];
+	b->time[bucket_key_pos] = (input_time + key_timeout) >> 32;
+}
+
+void
+rte_swx_table_learner_rearm_new(void *table,
+				void *mailbox,
+				uint64_t input_time,
+				uint32_t key_timeout_id)
+{
+	struct table *t = table;
+	struct mailbox *m = mailbox;
+	struct table_bucket *b;
+	size_t bucket_key_pos;
+	uint64_t key_timeout;
+
+	if (!m->hit)
+		return;
+
+	b = m->bucket;
+	bucket_key_pos = m->bucket_key_pos;
+
+	key_timeout_id &= t->params.n_key_timeouts - 1;
+	key_timeout = t->params.key_timeout[key_timeout_id];
+	b->time[bucket_key_pos] = (input_time + key_timeout) >> 32;
+	b->key_timeout_id[bucket_key_pos] = (uint8_t)key_timeout_id;
+}
+
 uint32_t
 rte_swx_table_learner_add(void *table,
 			  void *mailbox,
 			  uint64_t input_time,
 			  uint64_t action_id,
-			  uint8_t *action_data)
+			  uint8_t *action_data,
+			  uint32_t key_timeout_id)
 {
 	struct table *t = table;
 	struct mailbox *m = mailbox;
 	struct table_bucket *b = m->bucket;
+	uint64_t key_timeout;
 	uint32_t i;
 
-	/* Lookup hit: The key, key signature and key time are already properly configured (the key
-	 * time was bumped by lookup), only the key data need to be updated.
+	/* Adjust the key timeout ID to fit the valid range. */
+	key_timeout_id &= t->params.n_key_timeouts - 1;
+	key_timeout = t->params.key_timeout[key_timeout_id];
+
+	/* Lookup hit: The following bucket fields need to be updated:
+	 * - key (key, sig): NO (already correctly set).
+	 * - key timeout (key_timeout_id, time): YES.
+	 * - key data (data): YES.
 	 */
 	if (m->hit) {
-		uint64_t *data = table_bucket_data_get(t, b, m->bucket_key_pos);
+		size_t bucket_key_pos = m->bucket_key_pos;
+		uint64_t *data = table_bucket_data_get(t, b, bucket_key_pos);
+
+		/* Install the key timeout. */
+		b->time[bucket_key_pos] = (input_time + key_timeout) >> 32;
+		b->key_timeout_id[bucket_key_pos] = (uint8_t)key_timeout_id;
 
 		/* Install the key data. */
 		data[0] = action_id;
@@ -576,10 +699,11 @@ rte_swx_table_learner_add(void *table,
 			uint8_t *key = table_bucket_key_get(t, b, i);
 			uint64_t *data = table_bucket_data_get(t, b, i);
 
-			/* Install the key. */
-			b->time[i] = (input_time + t->params.key_timeout) >> 32;
+			/* Install the key and the key timeout. */
+			b->time[i] = (input_time + key_timeout) >> 32;
 			b->sig[i] = m->input_sig;
-			memcpy(key, m->input_key, t->params.key_size);
+			b->key_timeout_id[i] = (uint8_t)key_timeout_id;
+			table_keycpy(key, m->input_key, t->key_mask0, t->params.key_size_pow2);
 
 			/* Install the key data. */
 			data[0] = action_id;
