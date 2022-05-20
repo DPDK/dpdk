@@ -15697,7 +15697,7 @@ test_cryptodev_dpaa2_sec_raw_api(void)
 static int
 test_cryptodev_dpaa_sec_raw_api(void)
 {
-	static const char *pmd_name = RTE_STR(CRYPTODEV_NAME_DPAA2_SEC_PMD);
+	static const char *pmd_name = RTE_STR(CRYPTODEV_NAME_DPAA_SEC_PMD);
 	int ret;
 
 	ret = require_feature_flag(pmd_name, RTE_CRYPTODEV_FF_SYM_RAW_DP,
