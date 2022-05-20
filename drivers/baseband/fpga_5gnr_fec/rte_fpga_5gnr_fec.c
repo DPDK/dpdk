@@ -1844,7 +1844,7 @@ enqueue_ldpc_dec_one_op_cb(struct fpga_queue *q, struct rte_bbdev_dec_op *op,
 		else
 			l = k0 + e + dec->n_filler;
 		harq_out_length = RTE_MIN(RTE_MAX(harq_in_length, l),
-				dec->n_cb - dec->n_filler);
+				dec->n_cb);
 		dec->harq_combined_output.length = harq_out_length;
 	}
 
