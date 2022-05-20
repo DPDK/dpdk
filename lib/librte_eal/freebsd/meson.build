@@ -19,3 +19,14 @@ sources += files(
 )
 
 deps += ['kvargs', 'telemetry']
+                                                                                                                                                                                                        
+# test for version of cpuset macros                                                                                                                                                                      
+cpuset_test_code = '''                                                                                                                                                                                   
+        #include <sys/types.h>                                                                                                                                                                           
+        #include <sys/cpuset.h>                                                                                                                                                                          
+        void cpu_test_or(cpuset_t *s) { CPU_OR(s, s, s); }                                                                                                                                               
+'''                                                                                                                                                                                                      
+                                                                                                                                                                                                         
+if not cc.compiles(cpuset_test_code, name: 'Detect argument count for CPU_OR')                                                                                                                           
+    dpdk_conf.set('RTE_EAL_FREEBSD_CPUSET_LEGACY', 1)                                                                                                                                                    
+endif   
