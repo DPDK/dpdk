@@ -406,10 +406,10 @@ roc_sso_hwgrp_qos_config(struct roc_sso *roc_sso, struct roc_sso_hwgrp_qos *qos,
 		}
 		req->grp = qos[i].hwgrp;
 		req->xaq_limit = (nb_xaq * (xaq_prcnt ? xaq_prcnt : 100)) / 100;
-		req->taq_thr = (SSO_HWGRP_IAQ_MAX_THR_MASK *
+		req->iaq_thr = (SSO_HWGRP_IAQ_MAX_THR_MASK *
 				(iaq_prcnt ? iaq_prcnt : 100)) /
 			       100;
-		req->iaq_thr = (SSO_HWGRP_TAQ_MAX_THR_MASK *
+		req->taq_thr = (SSO_HWGRP_TAQ_MAX_THR_MASK *
 				(taq_prcnt ? taq_prcnt : 100)) /
 			       100;
 	}
