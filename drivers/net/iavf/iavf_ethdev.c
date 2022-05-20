@@ -1925,7 +1925,7 @@ iavf_dev_rx_queue_intr_disable(struct rte_eth_dev *dev, uint16_t queue_id)
 
 	IAVF_WRITE_REG(hw,
 		      IAVF_VFINT_DYN_CTLN1(msix_intr - IAVF_RX_VEC_START),
-		      0);
+		      IAVF_VFINT_DYN_CTLN1_WB_ON_ITR_MASK);
 
 	IAVF_WRITE_FLUSH(hw);
 	return 0;
