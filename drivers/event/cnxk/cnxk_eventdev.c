@@ -417,10 +417,10 @@ cnxk_sso_start(struct rte_eventdev *event_dev, cnxk_sso_hws_reset_t reset_fn,
 
 	plt_sso_dbg();
 	for (i = 0; i < dev->qos_queue_cnt; i++) {
-		qos->hwgrp = dev->qos_parse_data[i].queue;
-		qos->iaq_prcnt = dev->qos_parse_data[i].iaq_prcnt;
-		qos->taq_prcnt = dev->qos_parse_data[i].taq_prcnt;
-		qos->xaq_prcnt = dev->qos_parse_data[i].xaq_prcnt;
+		qos[i].hwgrp = dev->qos_parse_data[i].queue;
+		qos[i].iaq_prcnt = dev->qos_parse_data[i].iaq_prcnt;
+		qos[i].taq_prcnt = dev->qos_parse_data[i].taq_prcnt;
+		qos[i].xaq_prcnt = dev->qos_parse_data[i].xaq_prcnt;
 	}
 	rc = roc_sso_hwgrp_qos_config(&dev->sso, qos, dev->qos_queue_cnt,
 				      dev->xae_cnt);
