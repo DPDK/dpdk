@@ -200,7 +200,7 @@ cpt_lf_print(struct roc_cpt_lf *lf)
 	reg_val = plt_read64(lf->rbase + CPT_LF_CTX_DEC_BYTE_CNT);
 	plt_print("    Decrypted byte count:\t%" PRIu64, reg_val);
 
-	reg_val = plt_read64(lf->rbase + CPT_LF_CTX_ENC_PKT_CNT);
+	reg_val = plt_read64(lf->rbase + CPT_LF_CTX_DEC_PKT_CNT);
 	plt_print("    Decrypted packet count:\t%" PRIu64, reg_val);
 }
 
