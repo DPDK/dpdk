@@ -6,6 +6,9 @@
 #include <errno.h>
 #include <dlfcn.h>
 
+#include <rte_jhash.h>
+#include <rte_hash_crc.h>
+
 #include <rte_swx_port_ethdev.h>
 #include <rte_swx_port_fd.h>
 #include <rte_swx_port_ring.h>
@@ -1162,6 +1165,94 @@ extern_func_free(struct rte_swx_pipeline *p)
 			break;
 
 		TAILQ_REMOVE(&p->extern_funcs, elem, node);
+		free(elem);
+	}
+}
+
+/*
+ * Hash function.
+ */
+static struct hash_func *
+hash_func_find(struct rte_swx_pipeline *p, const char *name)
+{
+	struct hash_func *elem;
+
+	TAILQ_FOREACH(elem, &p->hash_funcs, node)
+		if (strcmp(elem->name, name) == 0)
+			return elem;
+
+	return NULL;
+}
+
+int
+rte_swx_pipeline_hash_func_register(struct rte_swx_pipeline *p,
+				    const char *name,
+				    rte_swx_hash_func_t func)
+{
+	struct hash_func *f;
+
+	CHECK(p, EINVAL);
+
+	CHECK_NAME(name, EINVAL);
+	CHECK(!hash_func_find(p, name), EEXIST);
+
+	CHECK(func, EINVAL);
+
+	/* Node allocation. */
+	f = calloc(1, sizeof(struct hash_func));
+	CHECK(func, ENOMEM);
+
+	/* Node initialization. */
+	strcpy(f->name, name);
+	f->func = func;
+	f->id = p->n_hash_funcs;
+
+	/* Node add to tailq. */
+	TAILQ_INSERT_TAIL(&p->hash_funcs, f, node);
+	p->n_hash_funcs++;
+
+	return 0;
+}
+
+static int
+hash_func_build(struct rte_swx_pipeline *p)
+{
+	struct hash_func *func;
+
+	/* Memory allocation. */
+	p->hash_func_runtime = calloc(p->n_hash_funcs, sizeof(struct hash_func_runtime));
+	CHECK(p->hash_func_runtime, ENOMEM);
+
+	/* Hash function. */
+	TAILQ_FOREACH(func, &p->hash_funcs, node) {
+		struct hash_func_runtime *r = &p->hash_func_runtime[func->id];
+
+		r->func = func->func;
+	}
+
+	return 0;
+}
+
+static void
+hash_func_build_free(struct rte_swx_pipeline *p)
+{
+	free(p->hash_func_runtime);
+	p->hash_func_runtime = NULL;
+}
+
+static void
+hash_func_free(struct rte_swx_pipeline *p)
+{
+	hash_func_build_free(p);
+
+	for ( ; ; ) {
+		struct hash_func *elem;
+
+		elem = TAILQ_FIRST(&p->hash_funcs);
+		if (!elem)
+			break;
+
+		TAILQ_REMOVE(&p->hash_funcs, elem, node);
 		free(elem);
 	}
 }
@@ -2794,6 +2885,61 @@ instr_extern_func_exec(struct rte_swx_pipeline *p)
 	/* Thread. */
 	thread_ip_inc_cond(t, done);
 	thread_yield_cond(p, done ^ 1);
+}
+
+/*
+ * hash.
+ */
+static int
+instr_hash_translate(struct rte_swx_pipeline *p,
+		     struct action *action,
+		     char **tokens,
+		     int n_tokens,
+		     struct instruction *instr,
+		     struct instruction_data *data __rte_unused)
+{
+	struct hash_func *func;
+	struct field *dst, *src_first, *src_last;
+	uint32_t src_struct_id_first = 0, src_struct_id_last = 0;
+
+	CHECK(n_tokens == 5, EINVAL);
+
+	func = hash_func_find(p, tokens[1]);
+	CHECK(func, EINVAL);
+
+	dst = metadata_field_parse(p, tokens[2]);
+	CHECK(dst, EINVAL);
+
+	src_first = struct_field_parse(p, action, tokens[3], &src_struct_id_first);
+	CHECK(src_first, EINVAL);
+
+	src_last = struct_field_parse(p, action, tokens[4], &src_struct_id_last);
+	CHECK(src_last, EINVAL);
+	CHECK(src_struct_id_first == src_struct_id_last, EINVAL);
+
+	instr->type = INSTR_HASH_FUNC;
+	instr->hash_func.hash_func_id = (uint8_t)func->id;
+	instr->hash_func.dst.offset = (uint8_t)dst->offset / 8;
+	instr->hash_func.dst.n_bits = (uint8_t)dst->n_bits;
+	instr->hash_func.src.struct_id = (uint8_t)src_struct_id_first;
+	instr->hash_func.src.offset = (uint16_t)src_first->offset / 8;
+	instr->hash_func.src.n_bytes = (uint16_t)((src_last->offset + src_last->n_bits -
+		src_first->offset) / 8);
+
+	return 0;
+}
+
+static inline void
+instr_hash_func_exec(struct rte_swx_pipeline *p)
+{
+	struct thread *t = &p->threads[p->thread_id];
+	struct instruction *ip = t->ip;
+
+	/* Extern function execute. */
+	__instr_hash_func_exec(p, t, ip);
+
+	/* Thread. */
+	thread_ip_inc(p);
 }
 
 /*
@@ -6142,6 +6288,14 @@ instr_translate(struct rte_swx_pipeline *p,
 					      instr,
 					      data);
 
+	if (!strcmp(tokens[tpos], "hash"))
+		return instr_hash_translate(p,
+					    action,
+					    &tokens[tpos],
+					    n_tokens - tpos,
+					    instr,
+					    data);
+
 	if (!strcmp(tokens[tpos], "jmp"))
 		return instr_jmp_translate(p,
 					   action,
@@ -7119,6 +7273,7 @@ static instr_exec_t instruction_table[] = {
 	[INSTR_LEARNER_FORGET] = instr_forget_exec,
 	[INSTR_EXTERN_OBJ] = instr_extern_obj_exec,
 	[INSTR_EXTERN_FUNC] = instr_extern_func_exec,
+	[INSTR_HASH_FUNC] = instr_hash_func_exec,
 
 	[INSTR_JMP] = instr_jmp_exec,
 	[INSTR_JMP_VALID] = instr_jmp_valid_exec,
@@ -9462,6 +9617,7 @@ rte_swx_pipeline_free(struct rte_swx_pipeline *p)
 	instruction_table_free(p);
 	metadata_free(p);
 	header_free(p);
+	hash_func_free(p);
 	extern_func_free(p);
 	extern_obj_free(p);
 	mirroring_free(p);
@@ -9563,6 +9719,22 @@ table_types_register(struct rte_swx_pipeline *p)
 	return 0;
 }
 
+static int
+hash_funcs_register(struct rte_swx_pipeline *p)
+{
+	int status;
+
+	status = rte_swx_pipeline_hash_func_register(p, "jhash", rte_jhash);
+	if (status)
+		return status;
+
+	status = rte_swx_pipeline_hash_func_register(p, "crc32", rte_hash_crc);
+	if (status)
+		return status;
+
+	return 0;
+}
+
 int
 rte_swx_pipeline_config(struct rte_swx_pipeline **p, int numa_node)
 {
@@ -9588,6 +9760,7 @@ rte_swx_pipeline_config(struct rte_swx_pipeline **p, int numa_node)
 	TAILQ_INIT(&pipeline->extern_types);
 	TAILQ_INIT(&pipeline->extern_objs);
 	TAILQ_INIT(&pipeline->extern_funcs);
+	TAILQ_INIT(&pipeline->hash_funcs);
 	TAILQ_INIT(&pipeline->headers);
 	TAILQ_INIT(&pipeline->actions);
 	TAILQ_INIT(&pipeline->table_types);
@@ -9610,6 +9783,10 @@ rte_swx_pipeline_config(struct rte_swx_pipeline **p, int numa_node)
 		goto error;
 
 	status = table_types_register(pipeline);
+	if (status)
+		goto error;
+
+	status = hash_funcs_register(pipeline);
 	if (status)
 		goto error;
 
@@ -9689,6 +9866,10 @@ rte_swx_pipeline_build(struct rte_swx_pipeline *p)
 	if (status)
 		goto error;
 
+	status = hash_func_build(p);
+	if (status)
+		goto error;
+
 	status = header_build(p);
 	if (status)
 		goto error;
@@ -9746,6 +9927,7 @@ error:
 	instruction_table_build_free(p);
 	metadata_build_free(p);
 	header_build_free(p);
+	hash_func_build_free(p);
 	extern_func_build_free(p);
 	extern_obj_build_free(p);
 	mirroring_build_free(p);
@@ -10731,6 +10913,7 @@ instr_type_to_name(struct instruction *instr)
 
 	case INSTR_EXTERN_OBJ: return "INSTR_EXTERN_OBJ";
 	case INSTR_EXTERN_FUNC: return "INSTR_EXTERN_FUNC";
+	case INSTR_HASH_FUNC: return "INSTR_HASH_FUNC";
 
 	case INSTR_JMP: return "INSTR_JMP";
 	case INSTR_JMP_VALID: return "INSTR_JMP_VALID";
@@ -11147,6 +11330,34 @@ instr_alu_export(struct instruction *instr, FILE *f)
 			instr->alu.dst.n_bits,
 			instr->alu.dst.offset,
 			instr->alu.src_val);
+}
+
+static void
+instr_hash_export(struct instruction *instr, FILE *f)
+{
+	fprintf(f,
+		"\t{\n"
+		"\t\t.type = %s,\n"
+		"\t\t.hash_func = {\n"
+		"\t\t\t.hash_func_id = %u,\n"
+		"\t\t\t.dst = {\n"
+		"\t\t\t\t.offset = %u,\n"
+		"\t\t\t\t.n_bits = %u,\n"
+		"\t\t\t},\n"
+		"\t\t\t.src = {\n"
+		"\t\t\t\t.struct_id = %u,\n"
+		"\t\t\t\t.offset = %u,\n"
+		"\t\t\t\t.n_bytes = %u,\n"
+		"\t\t\t},\n"
+		"\t\t},\n"
+		"\t},\n",
+		instr_type_to_name(instr),
+		instr->hash_func.hash_func_id,
+		instr->hash_func.dst.offset,
+		instr->hash_func.dst.n_bits,
+		instr->hash_func.src.struct_id,
+		instr->hash_func.src.offset,
+		instr->hash_func.src.n_bytes);
 }
 
 static void
@@ -11688,6 +11899,7 @@ static instruction_export_t export_table[] = {
 
 	[INSTR_EXTERN_OBJ] = instr_extern_export,
 	[INSTR_EXTERN_FUNC] = instr_extern_export,
+	[INSTR_HASH_FUNC] = instr_hash_export,
 
 	[INSTR_JMP] = instr_jmp_export,
 	[INSTR_JMP_VALID] = instr_jmp_export,
@@ -11911,6 +12123,7 @@ instr_type_to_func(struct instruction *instr)
 
 	case INSTR_EXTERN_OBJ: return NULL;
 	case INSTR_EXTERN_FUNC: return NULL;
+	case INSTR_HASH_FUNC: return "__instr_hash_func_exec";
 
 	case INSTR_JMP: return NULL;
 	case INSTR_JMP_VALID: return NULL;

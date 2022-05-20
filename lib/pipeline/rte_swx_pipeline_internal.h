@@ -184,6 +184,22 @@ struct extern_func_runtime {
 };
 
 /*
+ * Hash function.
+ */
+struct hash_func {
+	TAILQ_ENTRY(hash_func) node;
+	char name[RTE_SWX_NAME_SIZE];
+	rte_swx_hash_func_t func;
+	uint32_t id;
+};
+
+TAILQ_HEAD(hash_func_tailq, hash_func);
+
+struct hash_func_runtime {
+	rte_swx_hash_func_t func;
+};
+
+/*
  * Header.
  */
 struct header {
@@ -492,6 +508,15 @@ enum instruction_type {
 	/* extern f.func */
 	INSTR_EXTERN_FUNC,
 
+	/* hash HASH_FUNC_NAME dst src_first src_last
+	 * Compute hash value over range of struct fields.
+	 * dst = M
+	 * src_first = HMEFT
+	 * src_last = HMEFT
+	 * src_first and src_last must be fields within the same struct
+	 */
+	INSTR_HASH_FUNC,
+
 	/* jmp LABEL
 	 * Unconditional jump
 	 */
@@ -629,6 +654,21 @@ struct instr_extern_func {
 	uint8_t ext_func_id;
 };
 
+struct instr_hash_func {
+	uint8_t hash_func_id;
+
+	struct {
+		uint8_t offset;
+		uint8_t n_bits;
+	} dst;
+
+	struct {
+		uint8_t struct_id;
+		uint16_t offset;
+		uint16_t n_bytes;
+	} src;
+};
+
 struct instr_dst_src {
 	struct instr_operand dst;
 	union {
@@ -714,6 +754,7 @@ struct instruction {
 		struct instr_learn learn;
 		struct instr_extern_obj ext_obj;
 		struct instr_extern_func ext_func;
+		struct instr_hash_func hash_func;
 		struct instr_jmp jmp;
 	};
 };
@@ -1425,6 +1466,7 @@ struct rte_swx_pipeline {
 	struct extern_type_tailq extern_types;
 	struct extern_obj_tailq extern_objs;
 	struct extern_func_tailq extern_funcs;
+	struct hash_func_tailq hash_funcs;
 	struct header_tailq headers;
 	struct struct_type *metadata_st;
 	uint32_t metadata_struct_id;
@@ -1446,6 +1488,7 @@ struct rte_swx_pipeline {
 	struct table_statistics *table_stats;
 	struct selector_statistics *selector_stats;
 	struct learner_statistics *learner_stats;
+	struct hash_func_runtime *hash_func_runtime;
 	struct regarray_runtime *regarray_runtime;
 	struct metarray_runtime *metarray_runtime;
 	struct instruction *instructions;
@@ -1461,6 +1504,7 @@ struct rte_swx_pipeline {
 	uint32_t n_mirroring_sessions;
 	uint32_t n_extern_objs;
 	uint32_t n_extern_funcs;
+	uint32_t n_hash_funcs;
 	uint32_t n_actions;
 	uint32_t n_tables;
 	uint32_t n_selectors;
@@ -2355,6 +2399,33 @@ __instr_extern_func_exec(struct rte_swx_pipeline *p __rte_unused,
 	done = func(ext_func->mailbox);
 
 	return done;
+}
+
+/*
+ * hash.
+ */
+static inline void
+__instr_hash_func_exec(struct rte_swx_pipeline *p,
+		       struct thread *t,
+		       const struct instruction *ip)
+{
+	uint32_t hash_func_id = ip->hash_func.hash_func_id;
+	uint32_t dst_offset = ip->hash_func.dst.offset;
+	uint32_t n_dst_bits = ip->hash_func.dst.n_bits;
+	uint32_t src_struct_id = ip->hash_func.src.struct_id;
+	uint32_t src_offset = ip->hash_func.src.offset;
+	uint32_t n_src_bytes = ip->hash_func.src.n_bytes;
+
+	struct hash_func_runtime *func = &p->hash_func_runtime[hash_func_id];
+	uint8_t *src_ptr = t->structs[src_struct_id];
+	uint32_t result;
+
+	TRACE("[Thread %2u] hash %u\n",
+	      p->thread_id,
+	      hash_func_id);
+
+	result = func->func(&src_ptr[src_offset], n_src_bytes, 0);
+	METADATA_WRITE(t, dst_offset, n_dst_bits, result);
 }
 
 /*

@@ -301,6 +301,47 @@ rte_swx_pipeline_extern_func_register(struct rte_swx_pipeline *p,
 				      const char *name,
 				      const char *mailbox_struct_type_name,
 				      rte_swx_extern_func_t func);
+/*
+ * Hash function.
+ */
+
+/**
+ * Hash function prototype
+ *
+ * @param[in] key
+ *   Key to hash. Must be non-NULL.
+ * @param[in] length
+ *   Key length in bytes.
+ * @param[in] seed
+ *   Hash seed.
+ * @return
+ *   Hash value.
+ */
+typedef uint32_t
+(*rte_swx_hash_func_t)(const void *key,
+		       uint32_t length,
+		       uint32_t seed);
+
+/**
+ * Pipeline hash function register
+ *
+ * @param[in] p
+ *   Pipeline handle.
+ * @param[in] name
+ *   Hash function name.
+ * @param[in] func
+ *   Hash function.
+ * @return
+ *   0 on success or the following error codes otherwise:
+ *   -EINVAL: Invalid argument;
+ *   -ENOMEM: Not enough space/cannot allocate memory;
+ *   -EEXIST: Hash function with this name already exists.
+ */
+__rte_experimental
+int
+rte_swx_pipeline_hash_func_register(struct rte_swx_pipeline *p,
+				    const char *name,
+				    rte_swx_hash_func_t func);
 
 /*
  * Packet headers and meta-data
