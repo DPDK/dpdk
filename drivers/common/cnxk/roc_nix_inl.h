@@ -200,5 +200,6 @@ int __roc_api roc_nix_inl_sa_sync(struct roc_nix *roc_nix, void *sa, bool inb,
 				  enum roc_nix_inl_sa_sync_op op);
 int __roc_api roc_nix_inl_ctx_write(struct roc_nix *roc_nix, void *sa_dptr,
 				    void *sa_cptr, bool inb, uint16_t sa_len);
+void __roc_api roc_nix_inl_outb_cpt_lfs_dump(struct roc_nix *roc_nix);
 
 #endif /* _ROC_NIX_INL_H_ */

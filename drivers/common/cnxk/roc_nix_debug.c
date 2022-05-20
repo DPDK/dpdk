@@ -1272,3 +1272,17 @@ roc_nix_inl_dev_dump(struct roc_nix_inl_dev *roc_inl_dev)
 	for (i = 0; i < inl_dev->nb_rqs; i++)
 		roc_nix_rq_dump(&inl_dev->rqs[i]);
 }
+
+void
+roc_nix_inl_outb_cpt_lfs_dump(struct roc_nix *roc_nix)
+{
+	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
+	struct roc_cpt_lf *lf_base = nix->cpt_lf_base;
+	int i;
+
+	nix_dump("nix@%p", nix);
+	for (i = 0; i < nix->nb_cpt_lf; i++) {
+		nix_dump("NIX inline dev outbound CPT LFs:");
+		cpt_lf_print(&lf_base[i]);
+	}
+}
