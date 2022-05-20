@@ -476,8 +476,12 @@ enum instruction_type {
 	INSTR_LEARNER,
 	INSTR_LEARNER_AF,
 
-	/* learn LEARNER ACTION_NAME [ m.action_first_arg ] */
+	/* learn ACTION_NAME [ m.action_first_arg ] m.timeout_id */
 	INSTR_LEARNER_LEARN,
+
+	/* rearm [ m.timeout_id ] */
+	INSTR_LEARNER_REARM,
+	INSTR_LEARNER_REARM_NEW,
 
 	/* forget */
 	INSTR_LEARNER_FORGET,
@@ -611,7 +615,9 @@ struct instr_table {
 
 struct instr_learn {
 	uint8_t action_id;
-	uint8_t mf_offset;
+	uint8_t mf_first_arg_offset;
+	uint8_t mf_timeout_id_offset;
+	uint8_t mf_timeout_id_n_bits;
 };
 
 struct instr_extern_obj {
@@ -850,7 +856,8 @@ struct learner {
 	int *action_is_for_default_entry;
 
 	uint32_t size;
-	uint32_t timeout;
+	uint32_t timeout[RTE_SWX_TABLE_LEARNER_N_KEY_TIMEOUTS_MAX];
+	uint32_t n_timeouts;
 	uint32_t id;
 };
 
@@ -864,6 +871,7 @@ struct learner_runtime {
 struct learner_statistics {
 	uint64_t n_pkts_hit[2]; /* 0 = Miss, 1 = Hit. */
 	uint64_t n_pkts_learn[2]; /* 0 = Learn OK, 1 = Learn error. */
+	uint64_t n_pkts_rearm;
 	uint64_t n_pkts_forget;
 	uint64_t *n_pkts_action;
 };
@@ -2208,7 +2216,9 @@ __instr_learn_exec(struct rte_swx_pipeline *p,
 		   const struct instruction *ip)
 {
 	uint64_t action_id = ip->learn.action_id;
-	uint32_t mf_offset = ip->learn.mf_offset;
+	uint32_t mf_first_arg_offset = ip->learn.mf_first_arg_offset;
+	uint32_t timeout_id = METADATA_READ(t, ip->learn.mf_timeout_id_offset,
+		ip->learn.mf_timeout_id_n_bits);
 	uint32_t learner_id = t->learner_id;
 	struct rte_swx_table_state *ts = &t->table_state[p->n_tables +
 		p->n_selectors + learner_id];
@@ -2221,8 +2231,8 @@ __instr_learn_exec(struct rte_swx_pipeline *p,
 					   l->mailbox,
 					   t->time,
 					   action_id,
-					   &t->metadata[mf_offset],
-					   0);
+					   &t->metadata[mf_first_arg_offset],
+					   timeout_id);
 
 	TRACE("[Thread %2u] learner %u learn %s\n",
 	      p->thread_id,
@@ -2230,6 +2240,54 @@ __instr_learn_exec(struct rte_swx_pipeline *p,
 	      status ? "ok" : "error");
 
 	stats->n_pkts_learn[status] += 1;
+}
+
+/*
+ * rearm.
+ */
+static inline void
+__instr_rearm_exec(struct rte_swx_pipeline *p,
+		   struct thread *t,
+		   const struct instruction *ip __rte_unused)
+{
+	uint32_t learner_id = t->learner_id;
+	struct rte_swx_table_state *ts = &t->table_state[p->n_tables +
+		p->n_selectors + learner_id];
+	struct learner_runtime *l = &t->learners[learner_id];
+	struct learner_statistics *stats = &p->learner_stats[learner_id];
+
+	/* Table. */
+	rte_swx_table_learner_rearm(ts->obj, l->mailbox, t->time);
+
+	TRACE("[Thread %2u] learner %u rearm\n",
+	      p->thread_id,
+	      learner_id);
+
+	stats->n_pkts_rearm += 1;
+}
+
+static inline void
+__instr_rearm_new_exec(struct rte_swx_pipeline *p,
+		       struct thread *t,
+		       const struct instruction *ip)
+{
+	uint32_t timeout_id = METADATA_READ(t, ip->learn.mf_timeout_id_offset,
+		ip->learn.mf_timeout_id_n_bits);
+	uint32_t learner_id = t->learner_id;
+	struct rte_swx_table_state *ts = &t->table_state[p->n_tables +
+		p->n_selectors + learner_id];
+	struct learner_runtime *l = &t->learners[learner_id];
+	struct learner_statistics *stats = &p->learner_stats[learner_id];
+
+	/* Table. */
+	rte_swx_table_learner_rearm_new(ts->obj, l->mailbox, t->time, timeout_id);
+
+	TRACE("[Thread %2u] learner %u rearm with timeout ID %u\n",
+	      p->thread_id,
+	      learner_id,
+	      timeout_id);
+
+	stats->n_pkts_rearm += 1;
 }
 
 /*

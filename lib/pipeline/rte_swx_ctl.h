@@ -548,6 +548,9 @@ struct rte_swx_ctl_learner_info {
 
 	/** Learner table size parameter. */
 	uint32_t size;
+
+	/** Number of possible key timeout values. */
+	uint32_t n_key_timeouts;
 };
 
 /**
@@ -615,6 +618,50 @@ rte_swx_ctl_learner_action_info_get(struct rte_swx_pipeline *p,
 				    uint32_t learner_action_id,
 				    struct rte_swx_ctl_table_action_info *learner_action);
 
+/**
+ * Learner table timeout get
+ *
+ * @param[in] p
+ *   Pipeline handle.
+ * @param[in] learner_id
+ *   Learner table ID (0 .. *n_learners* - 1).
+ * @param[in] timeout_id
+ *   Timeout ID.
+ * @param[out] timeout
+ *   Timeout value measured in seconds. Must be non-NULL.
+ * @return
+ *   0 on success or the following error codes otherwise:
+ *   -EINVAL: Invalid argument.
+ */
+__rte_experimental
+int
+rte_swx_ctl_pipeline_learner_timeout_get(struct rte_swx_pipeline *p,
+					 uint32_t learner_id,
+					 uint32_t timeout_id,
+					 uint32_t *timeout);
+
+/**
+ * Learner table timeout set
+ *
+ * @param[in] p
+ *   Pipeline handle.
+ * @param[in] learner_id
+ *   Learner table ID (0 .. *n_learners* - 1).
+ * @param[in] timeout_id
+ *   Timeout ID.
+ * @param[in] timeout
+ *   Timeout value measured in seconds.
+ * @return
+ *   0 on success or the following error codes otherwise:
+ *   -EINVAL: Invalid argument.
+ */
+__rte_experimental
+int
+rte_swx_ctl_pipeline_learner_timeout_set(struct rte_swx_pipeline *p,
+					 uint32_t learner_id,
+					 uint32_t timeout_id,
+					 uint32_t timeout);
+
 /** Learner table statistics. */
 struct rte_swx_learner_stats {
 	/** Number of packets with lookup hit. */
@@ -628,6 +675,9 @@ struct rte_swx_learner_stats {
 
 	/** Number of packets with learning error. */
 	uint64_t n_pkts_learn_err;
+
+	/** Number of packets with rearm event. */
+	uint64_t n_pkts_rearm;
 
 	/** Number of packets with forget event. */
 	uint64_t n_pkts_forget;

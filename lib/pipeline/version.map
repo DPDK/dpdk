@@ -140,4 +140,8 @@ EXPERIMENTAL {
 	rte_swx_ctl_learner_info_get;
 	rte_swx_ctl_learner_match_field_info_get;
 	rte_swx_pipeline_learner_config;
+
+	#added in 22.07
+	rte_swx_ctl_pipeline_learner_timeout_get;
+	rte_swx_ctl_pipeline_learner_timeout_set;
 };

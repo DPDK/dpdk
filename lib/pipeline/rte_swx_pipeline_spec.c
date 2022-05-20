@@ -29,7 +29,8 @@
 #define LEARNER_BLOCK 7
 #define LEARNER_KEY_BLOCK 8
 #define LEARNER_ACTIONS_BLOCK 9
-#define APPLY_BLOCK 10
+#define LEARNER_TIMEOUT_BLOCK 10
+#define APPLY_BLOCK 11
 
 /*
  * extobj.
@@ -1395,14 +1396,18 @@ selector_block_parse(struct selector_spec *s,
  *	}
  *	default_action ACTION_NAME args none | ARG0_NAME ARG0_VALUE ... [ const ]
  *	size SIZE
- *	timeout TIMEOUT_IN_SECONDS
+ *	timeout {
+ *		TIMEOUT_IN_SECONDS
+ *		...
+ *	}
  * }
  */
 struct learner_spec {
 	char *name;
 	struct rte_swx_pipeline_learner_params params;
 	uint32_t size;
-	uint32_t timeout;
+	uint32_t *timeout;
+	uint32_t n_timeouts;
 };
 
 static void
@@ -1457,7 +1462,10 @@ learner_spec_free(struct learner_spec *s)
 
 	s->size = 0;
 
-	s->timeout = 0;
+	free(s->timeout);
+	s->timeout = NULL;
+
+	s->n_timeouts = 0;
 }
 
 static int
@@ -1720,6 +1728,95 @@ error:
 }
 
 static int
+learner_timeout_statement_parse(uint32_t *block_mask,
+				char **tokens,
+				uint32_t n_tokens,
+				uint32_t n_lines,
+				uint32_t *err_line,
+				const char **err_msg)
+{
+	/* Check format. */
+	if ((n_tokens != 2) || strcmp(tokens[1], "{")) {
+		if (err_line)
+			*err_line = n_lines;
+		if (err_msg)
+			*err_msg = "Invalid timeout statement.";
+		return -EINVAL;
+	}
+
+	/* block_mask. */
+	*block_mask |= 1 << LEARNER_TIMEOUT_BLOCK;
+
+	return 0;
+}
+
+static int
+learner_timeout_block_parse(struct learner_spec *s,
+			    uint32_t *block_mask,
+			    char **tokens,
+			    uint32_t n_tokens,
+			    uint32_t n_lines,
+			    uint32_t *err_line,
+			    const char **err_msg)
+{
+	uint32_t *new_timeout = NULL;
+	char *str;
+	uint32_t val;
+	int status = 0;
+
+	/* Handle end of block. */
+	if ((n_tokens == 1) && !strcmp(tokens[0], "}")) {
+		*block_mask &= ~(1 << LEARNER_TIMEOUT_BLOCK);
+		return 0;
+	}
+
+	/* Check input arguments. */
+	if (n_tokens != 1) {
+		status = -EINVAL;
+		goto error;
+	}
+
+	str = tokens[0];
+	val = strtoul(str, &str, 0);
+	if (str[0]) {
+		status = -EINVAL;
+		goto error;
+	}
+
+	new_timeout = realloc(s->timeout, (s->n_timeouts + 1) * sizeof(uint32_t));
+	if (!new_timeout) {
+		status = -ENOMEM;
+		goto error;
+	}
+
+	s->timeout = new_timeout;
+	s->timeout[s->n_timeouts] = val;
+	s->n_timeouts++;
+
+	return 0;
+
+error:
+	free(new_timeout);
+
+	if (err_line)
+		*err_line = n_lines;
+
+	if (err_msg)
+		switch (status) {
+		case -ENOMEM:
+			*err_msg = "Memory allocation failed.";
+			break;
+
+		default:
+			*err_msg = "Invalid timeout value statement.";
+			break;
+		}
+
+	return status;
+}
+
+
+static int
 learner_statement_parse(struct learner_spec *s,
 		      uint32_t *block_mask,
 		      char **tokens,
@@ -1780,6 +1877,15 @@ learner_block_parse(struct learner_spec *s,
 						   err_line,
 						   err_msg);
 
+	if (*block_mask & (1 << LEARNER_TIMEOUT_BLOCK))
+		return learner_timeout_block_parse(s,
+						   block_mask,
+						   tokens,
+						   n_tokens,
+						   n_lines,
+						   err_line,
+						   err_msg);
+
 	/* Handle end of block. */
 	if ((n_tokens == 1) && !strcmp(tokens[0], "}")) {
 		*block_mask &= ~(1 << LEARNER_BLOCK);
@@ -1833,28 +1939,13 @@ learner_block_parse(struct learner_spec *s,
 		return 0;
 	}
 
-	if (!strcmp(tokens[0], "timeout")) {
-		char *p = tokens[1];
-
-		if (n_tokens != 2) {
-			if (err_line)
-				*err_line = n_lines;
-			if (err_msg)
-				*err_msg = "Invalid timeout statement.";
-			return -EINVAL;
-		}
-
-		s->timeout = strtoul(p, &p, 0);
-		if (p[0]) {
-			if (err_line)
-				*err_line = n_lines;
-			if (err_msg)
-				*err_msg = "Invalid timeout argument.";
-			return -EINVAL;
-		}
-
-		return 0;
-	}
+	if (!strcmp(tokens[0], "timeout"))
+		return learner_timeout_statement_parse(block_mask,
+						       tokens,
+						       n_tokens,
+						       n_lines,
+						       err_line,
+						       err_msg);
 
 	/* Anything else. */
 	if (err_line)
@@ -2365,7 +2456,8 @@ rte_swx_pipeline_build_from_spec(struct rte_swx_pipeline *p,
 				learner_spec.name,
 				&learner_spec.params,
 				learner_spec.size,
-				learner_spec.timeout);
+				learner_spec.timeout,
+				learner_spec.n_timeouts);
 			if (status) {
 				if (err_line)
 					*err_line = n_lines;

@@ -786,7 +786,9 @@ struct rte_swx_pipeline_learner_params {
  * @param[in] size
  *   The maximum number of table entries. Must be non-zero.
  * @param[in] timeout
- *   Table entry timeout in seconds. Must be non-zero.
+ *   Array of possible table entry timeouts in seconds. Must be non-NULL.
+ * @param[in] n_timeouts
+ *   Number of elements in the *timeout* array.
  * @return
  *   0 on success or the following error codes otherwise:
  *   -EINVAL: Invalid argument;
@@ -800,7 +802,8 @@ rte_swx_pipeline_learner_config(struct rte_swx_pipeline *p,
 				const char *name,
 				struct rte_swx_pipeline_learner_params *params,
 				uint32_t size,
-				uint32_t timeout);
+				uint32_t *timeout,
+				uint32_t n_timeouts);
 
 /**
  * Pipeline register array configure

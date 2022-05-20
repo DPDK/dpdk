@@ -2556,7 +2556,7 @@ instr_learner_af_exec(struct rte_swx_pipeline *p)
 	stats->n_pkts_action[action_id] = n_pkts_action + 1;
 
 	/* Thread. */
-	thread_ip_action_call(p, t, action_id);
+	thread_ip_inc(p);
 
 	/* Action */
 	action_func(p);
@@ -2583,31 +2583,38 @@ instr_learn_translate(struct rte_swx_pipeline *p,
 		      struct instruction_data *data __rte_unused)
 {
 	struct action *a;
-	const char *mf_name;
-	uint32_t mf_offset = 0;
+	struct field *mf_first_arg = NULL, *mf_timeout_id = NULL;
+	const char *mf_first_arg_name, *mf_timeout_id_name;
 
 	CHECK(action, EINVAL);
-	CHECK((n_tokens == 2) || (n_tokens == 3), EINVAL);
+	CHECK((n_tokens == 3) || (n_tokens == 4), EINVAL);
 
+	/* Action. */
 	a = action_find(p, tokens[1]);
 	CHECK(a, EINVAL);
 	CHECK(!action_has_nbo_args(a), EINVAL);
 
-	mf_name = (n_tokens > 2) ? tokens[2] : NULL;
-	CHECK(!learner_action_args_check(p, a, mf_name), EINVAL);
+	/* Action first argument. */
+	mf_first_arg_name = (n_tokens == 4) ? tokens[2] : NULL;
+	CHECK(!learner_action_args_check(p, a, mf_first_arg_name), EINVAL);
 
-	if (mf_name) {
-		struct field *mf;
-
-		mf = metadata_field_parse(p, mf_name);
-		CHECK(mf, EINVAL);
-
-		mf_offset = mf->offset / 8;
+	if (mf_first_arg_name) {
+		mf_first_arg = metadata_field_parse(p, mf_first_arg_name);
+		CHECK(mf_first_arg, EINVAL);
 	}
 
+	/* Timeout ID. */
+	mf_timeout_id_name = (n_tokens == 4) ? tokens[3] : tokens[2];
+	CHECK_NAME(mf_timeout_id_name, EINVAL);
+	mf_timeout_id = metadata_field_parse(p, mf_timeout_id_name);
+	CHECK(mf_timeout_id, EINVAL);
+
+	/* Instruction. */
 	instr->type = INSTR_LEARNER_LEARN;
 	instr->learn.action_id = a->id;
-	instr->learn.mf_offset = mf_offset;
+	instr->learn.mf_first_arg_offset = mf_first_arg ? (mf_first_arg->offset / 8) : 0;
+	instr->learn.mf_timeout_id_offset = mf_timeout_id->offset / 8;
+	instr->learn.mf_timeout_id_n_bits = mf_timeout_id->n_bits;
 
 	return 0;
 }
@@ -2619,6 +2626,66 @@ instr_learn_exec(struct rte_swx_pipeline *p)
 	struct instruction *ip = t->ip;
 
 	__instr_learn_exec(p, t, ip);
+
+	/* Thread. */
+	thread_ip_inc(p);
+}
+
+/*
+ * rearm.
+ */
+static int
+instr_rearm_translate(struct rte_swx_pipeline *p,
+		      struct action *action,
+		      char **tokens,
+		      int n_tokens,
+		      struct instruction *instr,
+		      struct instruction_data *data __rte_unused)
+{
+	struct field *mf_timeout_id;
+	const char *mf_timeout_id_name;
+
+	CHECK(action, EINVAL);
+	CHECK((n_tokens == 1) || (n_tokens == 2), EINVAL);
+
+	/* INSTR_LEARNER_REARM. */
+	if (n_tokens == 1) {
+		instr->type = INSTR_LEARNER_REARM;
+		return 0;
+	}
+
+	/* INSTR_LEARNER_REARM_NEW. */
+	mf_timeout_id_name = tokens[1];
+	CHECK_NAME(mf_timeout_id_name, EINVAL);
+	mf_timeout_id = metadata_field_parse(p, mf_timeout_id_name);
+	CHECK(mf_timeout_id, EINVAL);
+
+	instr->type = INSTR_LEARNER_REARM_NEW;
+	instr->learn.mf_timeout_id_offset = mf_timeout_id->offset / 8;
+	instr->learn.mf_timeout_id_n_bits = mf_timeout_id->n_bits;
+
+	return 0;
+}
+
+static inline void
+instr_rearm_exec(struct rte_swx_pipeline *p)
+{
+	struct thread *t = &p->threads[p->thread_id];
+	struct instruction *ip = t->ip;
+
+	__instr_rearm_exec(p, t, ip);
+
+	/* Thread. */
+	thread_ip_inc(p);
+}
+
+static inline void
+instr_rearm_new_exec(struct rte_swx_pipeline *p)
+{
+	struct thread *t = &p->threads[p->thread_id];
+	struct instruction *ip = t->ip;
+
+	__instr_rearm_new_exec(p, t, ip);
 
 	/* Thread. */
 	thread_ip_inc(p);
@@ -6051,6 +6118,13 @@ instr_translate(struct rte_swx_pipeline *p,
 					     n_tokens - tpos,
 					     instr,
 					     data);
+	if (!strcmp(tokens[tpos], "rearm"))
+		return instr_rearm_translate(p,
+					     action,
+					     &tokens[tpos],
+					     n_tokens - tpos,
+					     instr,
+					     data);
 
 	if (!strcmp(tokens[tpos], "forget"))
 		return instr_forget_translate(p,
@@ -7040,6 +7114,8 @@ static instr_exec_t instruction_table[] = {
 	[INSTR_LEARNER] = instr_learner_exec,
 	[INSTR_LEARNER_AF] = instr_learner_af_exec,
 	[INSTR_LEARNER_LEARN] = instr_learn_exec,
+	[INSTR_LEARNER_REARM] = instr_rearm_exec,
+	[INSTR_LEARNER_REARM_NEW] = instr_rearm_new_exec,
 	[INSTR_LEARNER_FORGET] = instr_forget_exec,
 	[INSTR_EXTERN_OBJ] = instr_extern_obj_exec,
 	[INSTR_EXTERN_FUNC] = instr_extern_func_exec,
@@ -8546,7 +8622,8 @@ rte_swx_pipeline_learner_config(struct rte_swx_pipeline *p,
 			      const char *name,
 			      struct rte_swx_pipeline_learner_params *params,
 			      uint32_t size,
-			      uint32_t timeout)
+			      uint32_t *timeout,
+			      uint32_t n_timeouts)
 {
 	struct learner *l = NULL;
 	struct action *default_action;
@@ -8616,6 +8693,7 @@ rte_swx_pipeline_learner_config(struct rte_swx_pipeline *p,
 	/* Any other checks. */
 	CHECK(size, EINVAL);
 	CHECK(timeout, EINVAL);
+	CHECK(n_timeouts && (n_timeouts < RTE_SWX_TABLE_LEARNER_N_KEY_TIMEOUTS_MAX), EINVAL);
 
 	/* Memory allocation. */
 	l = calloc(1, sizeof(struct learner));
@@ -8702,7 +8780,10 @@ rte_swx_pipeline_learner_config(struct rte_swx_pipeline *p,
 
 	l->size = size;
 
-	l->timeout = timeout;
+	for (i = 0; i < n_timeouts; i++)
+		l->timeout[i] = timeout[i];
+
+	l->n_timeouts = n_timeouts;
 
 	l->id = p->n_learners;
 
@@ -8733,6 +8814,8 @@ learner_params_free(struct rte_swx_table_learner_params *params)
 		return;
 
 	free(params->key_mask0);
+
+	free(params->key_timeout);
 
 	free(params);
 }
@@ -8787,9 +8870,16 @@ learner_params_get(struct learner *l)
 	/* Maximum number of keys. */
 	params->n_keys_max = l->size;
 
+	/* Memory allocation. */
+	params->key_timeout = calloc(l->n_timeouts, sizeof(uint32_t));
+	if (!params->key_timeout)
+		goto error;
+
 	/* Timeout. */
-	params->key_timeout[0] = l->timeout;
-	params->n_key_timeouts = 1;
+	for (i = 0; i < l->n_timeouts; i++)
+		params->key_timeout[i] = l->timeout[i];
+
+	params->n_key_timeouts = l->n_timeouts;
 
 	return params;
 
@@ -9984,6 +10074,7 @@ rte_swx_ctl_learner_info_get(struct rte_swx_pipeline *p,
 	learner->n_actions = l->n_actions;
 	learner->default_action_is_const = l->default_action_is_const;
 	learner->size = l->size;
+	learner->n_key_timeouts = l->n_timeouts;
 
 	return 0;
 }
@@ -10035,6 +10126,56 @@ rte_swx_ctl_learner_action_info_get(struct rte_swx_pipeline *p,
 
 	learner_action->action_is_for_default_entry =
 		l->action_is_for_default_entry[learner_action_id];
+
+	return 0;
+}
+
+int
+rte_swx_ctl_pipeline_learner_timeout_get(struct rte_swx_pipeline *p,
+					 uint32_t learner_id,
+					 uint32_t timeout_id,
+					 uint32_t *timeout)
+{
+	struct learner *l;
+
+	if (!p || (learner_id >= p->n_learners) || !timeout)
+		return -EINVAL;
+
+	l = learner_find_by_id(p, learner_id);
+	if (!l || (timeout_id >= l->n_timeouts))
+		return -EINVAL;
+
+	*timeout = l->timeout[timeout_id];
+	return 0;
+}
+
+int
+rte_swx_ctl_pipeline_learner_timeout_set(struct rte_swx_pipeline *p,
+					 uint32_t learner_id,
+					 uint32_t timeout_id,
+					 uint32_t timeout)
+{
+	struct learner *l;
+	struct rte_swx_table_state *ts;
+	int status;
+
+	if (!p || (learner_id >= p->n_learners) || !timeout)
+		return -EINVAL;
+
+	l = learner_find_by_id(p, learner_id);
+	if (!l || (timeout_id >= l->n_timeouts))
+		return -EINVAL;
+
+	if (!p->build_done)
+		return -EINVAL;
+
+	ts = &p->table_state[p->n_tables + p->n_selectors + l->id];
+
+	status = rte_swx_table_learner_timeout_update(ts->obj, timeout_id, timeout);
+	if (status)
+		return -EINVAL;
+
+	l->timeout[timeout_id] = timeout;
 
 	return 0;
 }
@@ -10170,6 +10311,7 @@ rte_swx_ctl_pipeline_learner_stats_read(struct rte_swx_pipeline *p,
 	stats->n_pkts_learn_ok = learner_stats->n_pkts_learn[0];
 	stats->n_pkts_learn_err = learner_stats->n_pkts_learn[1];
 
+	stats->n_pkts_rearm = learner_stats->n_pkts_rearm;
 	stats->n_pkts_forget = learner_stats->n_pkts_forget;
 
 	return 0;
@@ -10583,6 +10725,8 @@ instr_type_to_name(struct instruction *instr)
 	case INSTR_LEARNER_AF: return "INSTR_LEARNER_AF";
 
 	case INSTR_LEARNER_LEARN: return "INSTR_LEARNER_LEARN";
+	case INSTR_LEARNER_REARM: return "INSTR_LEARNER_REARM";
+	case INSTR_LEARNER_REARM_NEW: return "INSTR_LEARNER_REARM_NEW";
 	case INSTR_LEARNER_FORGET: return "INSTR_LEARNER_FORGET";
 
 	case INSTR_EXTERN_OBJ: return "INSTR_EXTERN_OBJ";
@@ -11207,11 +11351,40 @@ instr_learn_export(struct instruction *instr, FILE *f)
 		"\t{\n"
 		"\t\t.type = %s,\n"
 		"\t\t.learn = {\n"
-		"\t\t\t\t.action_id = %u,\n"
+		"\t\t\t.action_id = %u,\n"
+		"\t\t\t.mf_first_arg_offset = %u,\n"
+		"\t\t\t.mf_timeout_id_offset = %u,\n"
+		"\t\t\t.mf_timeout_id_n_bits = %u,\n"
 		"\t\t},\n"
 		"\t},\n",
 		instr_type_to_name(instr),
-		instr->learn.action_id);
+		instr->learn.action_id,
+		instr->learn.mf_first_arg_offset,
+		instr->learn.mf_timeout_id_offset,
+		instr->learn.mf_timeout_id_n_bits);
+}
+
+static void
+instr_rearm_export(struct instruction *instr, FILE *f)
+{
+	if (instr->type == INSTR_LEARNER_REARM)
+		fprintf(f,
+			"\t{\n"
+			"\t\t.type = %s,\n"
+			"\t},\n",
+			instr_type_to_name(instr));
+	else
+		fprintf(f,
+			"\t{\n"
+			"\t\t.type = %s,\n"
+			"\t\t.learn = {\n"
+			"\t\t\t.mf_timeout_id_offset = %u,\n"
+			"\t\t\t.mf_timeout_id_n_bits = %u,\n"
+			"\t\t},\n"
+			"\t},\n",
+			instr_type_to_name(instr),
+			instr->learn.mf_timeout_id_offset,
+			instr->learn.mf_timeout_id_n_bits);
 }
 
 static void
@@ -11509,6 +11682,8 @@ static instruction_export_t export_table[] = {
 	[INSTR_LEARNER_AF] = instr_table_export,
 
 	[INSTR_LEARNER_LEARN] = instr_learn_export,
+	[INSTR_LEARNER_REARM] = instr_rearm_export,
+	[INSTR_LEARNER_REARM_NEW] = instr_rearm_export,
 	[INSTR_LEARNER_FORGET] = instr_forget_export,
 
 	[INSTR_EXTERN_OBJ] = instr_extern_export,
@@ -11730,6 +11905,8 @@ instr_type_to_func(struct instruction *instr)
 	case INSTR_LEARNER_AF: return NULL;
 
 	case INSTR_LEARNER_LEARN: return "__instr_learn_exec";
+	case INSTR_LEARNER_REARM: return "__instr_rearm_exec";
+	case INSTR_LEARNER_REARM_NEW: return "__instr_rearm_new_exec";
 	case INSTR_LEARNER_FORGET: return "__instr_forget_exec";
 
 	case INSTR_EXTERN_OBJ: return NULL;
