@@ -83,8 +83,6 @@ print_static_reg_debug_info(void *mmio_base)
 			FPGA_5GNR_FEC_LOAD_BALANCE_FACTOR);
 	uint16_t ring_desc_len = fpga_reg_read_16(mmio_base,
 			FPGA_5GNR_FEC_RING_DESC_LEN);
-	uint16_t flr_time_out = fpga_reg_read_16(mmio_base,
-			FPGA_5GNR_FEC_FLR_TIME_OUT);
 
 	rte_bbdev_log_debug("UL.DL Weights = %u.%u",
 			((uint8_t)config), ((uint8_t)(config >> 8)));
@@ -94,8 +92,6 @@ print_static_reg_debug_info(void *mmio_base)
 			(qmap_done > 0) ? "READY" : "NOT-READY");
 	rte_bbdev_log_debug("Ring Descriptor Size = %u bytes",
 			ring_desc_len*FPGA_RING_DESC_LEN_UNIT_BYTES);
-	rte_bbdev_log_debug("FLR Timeout = %f usec",
-			(float)flr_time_out*FPGA_FLR_TIMEOUT_UNIT);
 }
 
 /* Print decode DMA Descriptor of FPGA 5GNR Decoder device */
@@ -2118,11 +2114,6 @@ rte_fpga_5gnr_fec_configure(const char *dev_name,
 	/* Setting length of ring descriptor entry */
 	payload_16 = FPGA_RING_DESC_ENTRY_LENGTH;
 	address = FPGA_5GNR_FEC_RING_DESC_LEN;
-	fpga_reg_write_16(d->mmio_base, address, payload_16);
-
-	/* Setting FLR timeout value */
-	payload_16 = conf->flr_time_out;
-	address = FPGA_5GNR_FEC_FLR_TIME_OUT;
 	fpga_reg_write_16(d->mmio_base, address, payload_16);
 
 	/* Queue PF/VF mapping table is ready */

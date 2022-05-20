@@ -45,8 +45,6 @@ struct rte_fpga_5gnr_fec_conf {
 	uint8_t ul_load_balance;
 	/** DL Load Balance */
 	uint8_t dl_load_balance;
-	/** FLR timeout value */
-	uint16_t flr_time_out;
 };
 
 /**

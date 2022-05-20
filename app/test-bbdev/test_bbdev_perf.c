@@ -50,7 +50,6 @@
 #define DL_5G_BANDWIDTH 3
 #define UL_5G_LOAD_BALANCE 128
 #define DL_5G_LOAD_BALANCE 128
-#define FLR_5G_TIMEOUT 610
 #endif
 
 #ifdef RTE_BASEBAND_ACC100
@@ -698,9 +697,6 @@ add_bbdev_dev(uint8_t dev_id, struct rte_bbdev_info *info,
 		/* UL & DL load Balance Factor to 64 */
 		conf.ul_load_balance = UL_5G_LOAD_BALANCE;
 		conf.dl_load_balance = DL_5G_LOAD_BALANCE;
-
-		/**< FLR timeout value */
-		conf.flr_time_out = FLR_5G_TIMEOUT;
 
 		/* setup FPGA PF with configuration information */
 		ret = rte_fpga_5gnr_fec_configure(info->dev_name, &conf);
