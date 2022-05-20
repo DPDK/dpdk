@@ -115,8 +115,9 @@ Constraints
 
 *  No IPv6 options headers.
 *  No AH mode.
-*  Supported algorithms: AES-CBC, AES-CTR, AES-GCM, 3DES-CBC, HMAC-SHA1,
-   AES-GMAC, AES_CTR, AES_XCBC_MAC, AES_CCM, CHACHA20_POLY1305 and NULL.
+*  Supported algorithms: AES-CBC, AES-CTR, AES-GCM, 3DES-CBC, DES-CBC,
+   HMAC-SHA1, AES-GMAC, AES_CTR, AES_XCBC_MAC, AES_CCM, CHACHA20_POLY1305
+   and NULL.
 *  Each SA must be handle by a unique lcore (*1 RX queue per port*).
 
 Compiling the Application
@@ -566,6 +567,7 @@ where each options means:
    * *aes-256-cbc*: AES-CBC 256-bit algorithm
    * *aes-128-ctr*: AES-CTR 128-bit algorithm
    * *3des-cbc*: 3DES-CBC 192-bit algorithm
+   * *des-cbc*: DES-CBC 64-bit algorithm
 
  * Syntax: *cipher_algo <your algorithm>*
 
@@ -593,6 +595,7 @@ where each options means:
 
     * *null*: NULL algorithm
     * *sha1-hmac*: HMAC SHA1 algorithm
+    * *aes-xcbc-mac*: AES XCBC MAC algorithm
 
 ``<auth_key>``
 
