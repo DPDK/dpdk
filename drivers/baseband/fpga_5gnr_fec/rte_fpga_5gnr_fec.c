@@ -1032,23 +1032,11 @@ fpga_dma_desc_ld_fill(struct rte_bbdev_dec_op *op,
 	return 0;
 }
 
-#ifdef RTE_LIBRTE_BBDEV_DEBUG
 /* Validates LDPC encoder parameters */
-static int
-validate_enc_op(struct rte_bbdev_enc_op *op __rte_unused)
+static inline int
+validate_ldpc_enc_op(struct rte_bbdev_enc_op *op)
 {
 	struct rte_bbdev_op_ldpc_enc *ldpc_enc = &op->ldpc_enc;
-	struct rte_bbdev_op_enc_ldpc_cb_params *cb = NULL;
-	struct rte_bbdev_op_enc_ldpc_tb_params *tb = NULL;
-
-
-	if (ldpc_enc->input.length >
-			RTE_BBDEV_LDPC_MAX_CB_SIZE >> 3) {
-		rte_bbdev_log(ERR, "CB size (%u) is too big, max: %d",
-				ldpc_enc->input.length,
-				RTE_BBDEV_LDPC_MAX_CB_SIZE);
-		return -1;
-	}
 
 	if (op->mempool == NULL) {
 		rte_bbdev_log(ERR, "Invalid mempool pointer");
@@ -1062,65 +1050,425 @@ validate_enc_op(struct rte_bbdev_enc_op *op __rte_unused)
 		rte_bbdev_log(ERR, "Invalid output pointer");
 		return -1;
 	}
+	if (ldpc_enc->input.length == 0) {
+		rte_bbdev_log(ERR, "CB size (%u) is null",
+				ldpc_enc->input.length);
+		return -1;
+	}
 	if ((ldpc_enc->basegraph > 2) || (ldpc_enc->basegraph == 0)) {
 		rte_bbdev_log(ERR,
-				"basegraph (%u) is out of range 1 <= value <= 2",
+				"BG (%u) is out of range 1 <= value <= 2",
 				ldpc_enc->basegraph);
+		return -1;
+	}
+	if (ldpc_enc->rv_index > 3) {
+		rte_bbdev_log(ERR,
+				"rv_index (%u) is out of range 0 <= value <= 3",
+				ldpc_enc->rv_index);
 		return -1;
 	}
 	if (ldpc_enc->code_block_mode > RTE_BBDEV_CODE_BLOCK) {
 		rte_bbdev_log(ERR,
-				"code_block_mode (%u) is out of range 0:Tb 1:CB",
+				"code_block_mode (%u) is out of range 0 <= value <= 1",
 				ldpc_enc->code_block_mode);
 		return -1;
 	}
 
-	if (ldpc_enc->code_block_mode == RTE_BBDEV_TRANSPORT_BLOCK) {
-		tb = &ldpc_enc->tb_params;
-		if (tb->c == 0) {
-			rte_bbdev_log(ERR,
-					"c (%u) is out of range 1 <= value <= %u",
-					tb->c, RTE_BBDEV_LDPC_MAX_CODE_BLOCKS);
+	if (ldpc_enc->input.length >
+		RTE_BBDEV_LDPC_MAX_CB_SIZE >> 3) {
+		rte_bbdev_log(ERR, "CB size (%u) is too big, max: %d",
+				ldpc_enc->input.length,
+				RTE_BBDEV_LDPC_MAX_CB_SIZE);
+		return -1;
+	}
+	int z_c = ldpc_enc->z_c;
+	/* Check Zc is valid value */
+	if ((z_c > 384) || (z_c < 4)) {
+		rte_bbdev_log(ERR, "Zc (%u) is out of range", z_c);
+		return -1;
+	}
+	if (z_c > 256) {
+		if ((z_c % 32) != 0) {
+			rte_bbdev_log(ERR, "Invalid Zc %d", z_c);
 			return -1;
 		}
-		if (tb->cab > tb->c) {
-			rte_bbdev_log(ERR,
-					"cab (%u) is greater than c (%u)",
-					tb->cab, tb->c);
+	} else if (z_c > 128) {
+		if ((z_c % 16) != 0) {
+			rte_bbdev_log(ERR, "Invalid Zc %d", z_c);
 			return -1;
 		}
-		if ((tb->ea < RTE_BBDEV_LDPC_MIN_CB_SIZE)
-				&& tb->r < tb->cab) {
-			rte_bbdev_log(ERR,
-					"ea (%u) is less than %u or it is not even",
-					tb->ea, RTE_BBDEV_LDPC_MIN_CB_SIZE);
+	} else if (z_c > 64) {
+		if ((z_c % 8) != 0) {
+			rte_bbdev_log(ERR, "Invalid Zc %d", z_c);
 			return -1;
 		}
-		if ((tb->eb < RTE_BBDEV_LDPC_MIN_CB_SIZE)
-				&& tb->c > tb->cab) {
-			rte_bbdev_log(ERR,
-					"eb (%u) is less than %u",
-					tb->eb, RTE_BBDEV_LDPC_MIN_CB_SIZE);
+	} else if (z_c > 32) {
+		if ((z_c % 4) != 0) {
+			rte_bbdev_log(ERR, "Invalid Zc %d", z_c);
 			return -1;
 		}
-		if (tb->r > (tb->c - 1)) {
-			rte_bbdev_log(ERR,
-					"r (%u) is greater than c - 1 (%u)",
-					tb->r, tb->c - 1);
-			return -1;
-		}
-	} else {
-		cb = &ldpc_enc->cb_params;
-		if (cb->e < RTE_BBDEV_LDPC_MIN_CB_SIZE) {
-			rte_bbdev_log(ERR,
-					"e (%u) is less than %u or it is not even",
-					cb->e, RTE_BBDEV_LDPC_MIN_CB_SIZE);
+	} else if (z_c > 16) {
+		if ((z_c % 2) != 0) {
+			rte_bbdev_log(ERR, "Invalid Zc %d", z_c);
 			return -1;
 		}
 	}
+
+	int n_filler = ldpc_enc->n_filler;
+	int K = (ldpc_enc->basegraph == 1 ? 22 : 10) * ldpc_enc->z_c;
+	int Kp = K - n_filler;
+	int q_m = ldpc_enc->q_m;
+	int n_cb = ldpc_enc->n_cb;
+	int N = (ldpc_enc->basegraph == 1 ? N_ZC_1 : N_ZC_2) * z_c;
+	int k0 = get_k0(n_cb, z_c, ldpc_enc->basegraph,
+			ldpc_enc->rv_index);
+	int crc24 = 0;
+	int32_t L, Lcb, cw, cw_rm;
+	int32_t e = ldpc_enc->cb_params.e;
+	if (check_bit(op->ldpc_enc.op_flags,
+			RTE_BBDEV_LDPC_CRC_24B_ATTACH))
+		crc24 = 24;
+
+	if (K < (int) (ldpc_enc->input.length * 8 + n_filler) + crc24) {
+		rte_bbdev_log(ERR, "K and F not matching input size %u %u %u",
+				K, n_filler, ldpc_enc->input.length);
+		return -1;
+	}
+	if (ldpc_enc->code_block_mode == RTE_BBDEV_TRANSPORT_BLOCK) {
+		rte_bbdev_log(ERR, "TB mode not supported");
+		return -1;
+
+	}
+
+	/* K' range check */
+	if (Kp % 8 > 0) {
+		rte_bbdev_log(ERR, "K' not byte aligned %u", Kp);
+		return -1;
+	}
+	if ((crc24 > 0) && (Kp < 292)) {
+		rte_bbdev_log(ERR, "Invalid CRC24 for small block %u", Kp);
+		return -1;
+	}
+	if (Kp < 24) {
+		rte_bbdev_log(ERR, "K' too small %u", Kp);
+		return -1;
+	}
+	if (n_filler >= (K - 2 * z_c)) {
+		rte_bbdev_log(ERR, "K - F invalid %u %u", K, n_filler);
+		return -1;
+	}
+	/* Ncb range check */
+	if ((n_cb > N) || (n_cb < 32) || (n_cb <= (Kp - crc24))) {
+		rte_bbdev_log(ERR, "Ncb (%u) is out of range K  %d N %d", n_cb, K, N);
+		return -1;
+	}
+	/* Qm range check */
+	if (!check_bit(op->ldpc_enc.op_flags, RTE_BBDEV_LDPC_INTERLEAVER_BYPASS) &&
+			((q_m == 0) || ((q_m > 2) && ((q_m % 2) == 1)) || (q_m > 8))) {
+		rte_bbdev_log(ERR, "Qm (%u) is out of range", q_m);
+		return -1;
+	}
+	/* K0 range check */
+	if (((k0 % z_c) > 0) || (k0 >= n_cb) || ((k0 >= (Kp - 2 * z_c))
+			&& (k0 < (K - 2 * z_c)))) {
+		rte_bbdev_log(ERR, "K0 (%u) is out of range", k0);
+		return -1;
+	}
+	/* E range check */
+	if (e <= RTE_MAX(32, z_c)) {
+		rte_bbdev_log(ERR, "E is too small %"PRIu32"", e);
+		return -1;
+	}
+	if ((e > 0xFFFF)) {
+		rte_bbdev_log(ERR, "E is too large for N3000 %"PRIu32" > 64k", e);
+		return -1;
+	}
+	if (q_m > 0) {
+		if (e % q_m > 0) {
+			rte_bbdev_log(ERR, "E %"PRIu32" not multiple of qm %d", e, q_m);
+			return -1;
+		}
+	}
+	/* Code word in RM range check */
+	if (k0 > (Kp - 2 * z_c))
+		L = k0 + e;
+	else
+		L = k0 + e + n_filler;
+	Lcb = RTE_MIN(L, n_cb);
+	if (ldpc_enc->basegraph == 1) {
+		if (Lcb <= 25 * z_c)
+			cw = 25 * z_c;
+		else if (Lcb <= 27 * z_c)
+			cw = 27 * z_c;
+		else if (Lcb <= 30 * z_c)
+			cw = 30 * z_c;
+		else if (Lcb <= 33 * z_c)
+			cw = 33 * z_c;
+		else if (Lcb <= 44 * z_c)
+			cw = 44 * z_c;
+		else if (Lcb <= 55 * z_c)
+			cw = 55 * z_c;
+		else
+			cw = 66 * z_c;
+	} else {
+		if (Lcb <= 15 * z_c)
+			cw = 15 * z_c;
+		else if (Lcb <= 20 * z_c)
+			cw = 20 * z_c;
+		else if (Lcb <= 25 * z_c)
+			cw = 25 * z_c;
+		else if (Lcb <= 30 * z_c)
+			cw = 30 * z_c;
+		else
+			cw = 50 * z_c;
+	}
+	if (n_cb < Kp - 2 * z_c)
+		cw_rm = n_cb;
+	else if ((Kp - 2 * z_c <= n_cb) && (n_cb < K - 2 * z_c))
+		cw_rm = Kp - 2 * z_c;
+	else if ((K - 2 * z_c <= n_cb) && (n_cb < cw))
+		cw_rm = n_cb - n_filler;
+	else
+		cw_rm = cw - n_filler;
+	if (cw_rm <= 32) {
+		rte_bbdev_log(ERR,
+				"Invalid Ratematching");
+		return -1;
+	}
 	return 0;
 }
-#endif
+
+/* Validates LDPC decoder parameters */
+static inline int
+validate_ldpc_dec_op(struct rte_bbdev_dec_op *op)
+{
+	struct rte_bbdev_op_ldpc_dec *ldpc_dec = &op->ldpc_dec;
+	if (check_bit(ldpc_dec->op_flags,
+			RTE_BBDEV_LDPC_INTERNAL_HARQ_MEMORY_LOOPBACK))
+		return 0;
+	if (ldpc_dec->input.data == NULL) {
+		rte_bbdev_log(ERR, "Invalid input pointer");
+		return -1;
+	}
+	if (ldpc_dec->hard_output.data == NULL) {
+		rte_bbdev_log(ERR, "Invalid output pointer");
+		return -1;
+	}
+	if (ldpc_dec->input.length == 0) {
+		rte_bbdev_log(ERR, "input is null");
+		return -1;
+	}
+	if ((ldpc_dec->basegraph > 2) || (ldpc_dec->basegraph == 0)) {
+		rte_bbdev_log(ERR,
+				"BG (%u) is out of range 1 <= value <= 2",
+				ldpc_dec->basegraph);
+		return -1;
+	}
+	if (ldpc_dec->iter_max == 0) {
+		rte_bbdev_log(ERR,
+				"iter_max (%u) is equal to 0",
+				ldpc_dec->iter_max);
+		return -1;
+	}
+	if (ldpc_dec->rv_index > 3) {
+		rte_bbdev_log(ERR,
+				"rv_index (%u) is out of range 0 <= value <= 3",
+				ldpc_dec->rv_index);
+		return -1;
+	}
+	if (ldpc_dec->code_block_mode > RTE_BBDEV_CODE_BLOCK) {
+		rte_bbdev_log(ERR,
+				"code_block_mode (%u) is out of range 0 <= value <= 1",
+				ldpc_dec->code_block_mode);
+		return -1;
+	}
+	if (check_bit(op->ldpc_dec.op_flags,
+			RTE_BBDEV_LDPC_DECODE_BYPASS)) {
+		rte_bbdev_log(ERR, "Avoid LDPC Decode bypass");
+		return -1;
+	}
+	int z_c = ldpc_dec->z_c;
+	/* Check Zc is valid value */
+	if ((z_c > 384) || (z_c < 4)) {
+		rte_bbdev_log(ERR,
+				"Zc (%u) is out of range",
+				z_c);
+		return -1;
+	}
+	if (z_c > 256) {
+		if ((z_c % 32) != 0) {
+			rte_bbdev_log(ERR, "Invalid Zc %d", z_c);
+			return -1;
+		}
+	} else if (z_c > 128) {
+		if ((z_c % 16) != 0) {
+			rte_bbdev_log(ERR, "Invalid Zc %d", z_c);
+			return -1;
+		}
+	} else if (z_c > 64) {
+		if ((z_c % 8) != 0) {
+			rte_bbdev_log(ERR, "Invalid Zc %d", z_c);
+			return -1;
+		}
+	} else if (z_c > 32) {
+		if ((z_c % 4) != 0) {
+			rte_bbdev_log(ERR, "Invalid Zc %d", z_c);
+			return -1;
+		}
+	} else if (z_c > 16) {
+		if ((z_c % 2) != 0) {
+			rte_bbdev_log(ERR, "Invalid Zc %d", z_c);
+			return -1;
+		}
+	}
+
+	int n_filler = ldpc_dec->n_filler;
+	int K = (ldpc_dec->basegraph == 1 ? 22 : 10) * ldpc_dec->z_c;
+	int Kp = K - n_filler;
+	int q_m = ldpc_dec->q_m;
+	int n_cb = ldpc_dec->n_cb;
+	int N = (ldpc_dec->basegraph == 1 ? N_ZC_1 : N_ZC_2) * z_c;
+	int k0 = get_k0(n_cb, z_c, ldpc_dec->basegraph,
+			ldpc_dec->rv_index);
+	int crc24 = 0;
+	int32_t L, Lcb, cw, cw_rm;
+	int32_t e = ldpc_dec->cb_params.e;
+	if (check_bit(op->ldpc_dec.op_flags,
+			RTE_BBDEV_LDPC_CRC_TYPE_24B_CHECK))
+		crc24 = 24;
+
+	if (ldpc_dec->code_block_mode == RTE_BBDEV_TRANSPORT_BLOCK) {
+		rte_bbdev_log(ERR,
+				"TB mode not supported");
+		return -1;
+	}
+	/* Enforce HARQ input length */
+	ldpc_dec->harq_combined_input.length = RTE_MIN((uint32_t) n_cb,
+			ldpc_dec->harq_combined_input.length);
+	if ((ldpc_dec->harq_combined_input.length == 0) &&
+			check_bit(ldpc_dec->op_flags,
+			RTE_BBDEV_LDPC_HQ_COMBINE_IN_ENABLE)) {
+		rte_bbdev_log(ERR,
+				"HARQ input length (%u) should not be null",
+				ldpc_dec->harq_combined_input.length);
+		return -1;
+	}
+	if ((ldpc_dec->harq_combined_input.length > 0) &&
+			!check_bit(ldpc_dec->op_flags,
+			RTE_BBDEV_LDPC_HQ_COMBINE_IN_ENABLE)) {
+		ldpc_dec->harq_combined_input.length = 0;
+	}
+
+	/* K' range check */
+	if (Kp % 8 > 0) {
+		rte_bbdev_log(ERR,
+				"K' not byte aligned %u",
+				Kp);
+		return -1;
+	}
+	if ((crc24 > 0) && (Kp < 292)) {
+		rte_bbdev_log(ERR,
+				"Invalid CRC24 for small block %u",
+				Kp);
+		return -1;
+	}
+	if (Kp < 24) {
+		rte_bbdev_log(ERR,
+				"K' too small %u",
+				Kp);
+		return -1;
+	}
+	if (n_filler >= (K - 2 * z_c)) {
+		rte_bbdev_log(ERR,
+				"K - F invalid %u %u",
+				K, n_filler);
+		return -1;
+	}
+	/* Ncb range check */
+	if (n_cb != N) {
+		rte_bbdev_log(ERR,
+				"Ncb (%u) is out of range K  %d N %d",
+				n_cb, K, N);
+		return -1;
+	}
+	/* Qm range check */
+	if (!check_bit(op->ldpc_dec.op_flags,
+			RTE_BBDEV_LDPC_INTERLEAVER_BYPASS) &&
+			((q_m == 0) || ((q_m > 2) && ((q_m % 2) == 1))
+			|| (q_m > 8))) {
+		rte_bbdev_log(ERR,
+				"Qm (%u) is out of range",
+				q_m);
+		return -1;
+	}
+	/* K0 range check */
+	if (((k0 % z_c) > 0) || (k0 >= n_cb) || ((k0 >= (Kp - 2 * z_c))
+			&& (k0 < (K - 2 * z_c)))) {
+		rte_bbdev_log(ERR,
+				"K0 (%u) is out of range",
+				k0);
+		return -1;
+	}
+	/* E range check */
+	if (e <= RTE_MAX(32, z_c)) {
+		rte_bbdev_log(ERR,
+				"E is too small");
+		return -1;
+	}
+	if ((e > 0xFFFF)) {
+		rte_bbdev_log(ERR,
+				"E is too large");
+		return -1;
+	}
+	if (q_m > 0) {
+		if (e % q_m > 0) {
+			rte_bbdev_log(ERR,
+					"E not multiple of qm %d", q_m);
+			return -1;
+		}
+	}
+	/* Code word in RM range check */
+	if (k0 > (Kp - 2 * z_c))
+		L = k0 + e;
+	else
+		L = k0 + e + n_filler;
+	Lcb = RTE_MIN(n_cb, RTE_MAX(L,
+			(int32_t) ldpc_dec->harq_combined_input.length));
+	if (ldpc_dec->basegraph == 1) {
+		if (Lcb <= 25 * z_c)
+			cw = 25 * z_c;
+		else if (Lcb <= 27 * z_c)
+			cw = 27 * z_c;
+		else if (Lcb <= 30 * z_c)
+			cw = 30 * z_c;
+		else if (Lcb <= 33 * z_c)
+			cw = 33 * z_c;
+		else if (Lcb <= 44 * z_c)
+			cw = 44 * z_c;
+		else if (Lcb <= 55 * z_c)
+			cw = 55 * z_c;
+		else
+			cw = 66 * z_c;
+	} else {
+		if (Lcb <= 15 * z_c)
+			cw = 15 * z_c;
+		else if (Lcb <= 20 * z_c)
+			cw = 20 * z_c;
+		else if (Lcb <= 25 * z_c)
+			cw = 25 * z_c;
+		else if (Lcb <= 30 * z_c)
+			cw = 30 * z_c;
+		else
+			cw = 50 * z_c;
+	}
+	cw_rm = cw - n_filler;
+	if (cw_rm <= 32) {
+		rte_bbdev_log(ERR,
+				"Invalid Ratematching");
+		return -1;
+	}
+	return 0;
+}
 
 static inline char *
 mbuf_append(struct rte_mbuf *m_head, struct rte_mbuf *m, uint16_t len)
@@ -1133,69 +1481,6 @@ mbuf_append(struct rte_mbuf *m_head, struct rte_mbuf *m, uint16_t len)
 	m_head->pkt_len  = (m_head->pkt_len + len);
 	return tail;
 }
-
-#ifdef RTE_LIBRTE_BBDEV_DEBUG
-/* Validates LDPC decoder parameters */
-static int
-validate_dec_op(struct rte_bbdev_dec_op *op __rte_unused)
-{
-	struct rte_bbdev_op_ldpc_dec *ldpc_dec = &op->ldpc_dec;
-	struct rte_bbdev_op_dec_ldpc_cb_params *cb = NULL;
-	struct rte_bbdev_op_dec_ldpc_tb_params *tb = NULL;
-
-	if (op->mempool == NULL) {
-		rte_bbdev_log(ERR, "Invalid mempool pointer");
-		return -1;
-	}
-	if (ldpc_dec->rv_index > 3) {
-		rte_bbdev_log(ERR,
-				"rv_index (%u) is out of range 0 <= value <= 3",
-				ldpc_dec->rv_index);
-		return -1;
-	}
-
-	if (ldpc_dec->iter_max == 0) {
-		rte_bbdev_log(ERR,
-				"iter_max (%u) is equal to 0",
-				ldpc_dec->iter_max);
-		return -1;
-	}
-
-	if (ldpc_dec->code_block_mode > RTE_BBDEV_CODE_BLOCK) {
-		rte_bbdev_log(ERR,
-				"code_block_mode (%u) is out of range 0 <= value <= 1",
-				ldpc_dec->code_block_mode);
-		return -1;
-	}
-
-	if (ldpc_dec->code_block_mode == RTE_BBDEV_TRANSPORT_BLOCK) {
-		tb = &ldpc_dec->tb_params;
-		if (tb->c < 1) {
-			rte_bbdev_log(ERR,
-					"c (%u) is out of range 1 <= value <= %u",
-					tb->c, RTE_BBDEV_LDPC_MAX_CODE_BLOCKS);
-			return -1;
-		}
-		if (tb->cab > tb->c) {
-			rte_bbdev_log(ERR,
-					"cab (%u) is greater than c (%u)",
-					tb->cab, tb->c);
-			return -1;
-		}
-	} else {
-		cb = &ldpc_dec->cb_params;
-		if (cb->e < RTE_BBDEV_LDPC_MIN_CB_SIZE) {
-			rte_bbdev_log(ERR,
-					"e (%u) is out of range %u <= value <= %u",
-					cb->e, RTE_BBDEV_LDPC_MIN_CB_SIZE,
-					RTE_BBDEV_LDPC_MAX_CB_SIZE);
-			return -1;
-		}
-	}
-
-	return 0;
-}
-#endif
 
 static inline void
 fpga_mutex_acquisition(struct fpga_queue *q)
@@ -1386,14 +1671,11 @@ enqueue_ldpc_enc_one_op_cb(struct fpga_queue *q, struct rte_bbdev_enc_op *op,
 	uint16_t ring_offset;
 	uint16_t K, k_;
 
-#ifdef RTE_LIBRTE_BBDEV_DEBUG
-	/* Validate op structure */
-	/* FIXME */
-	if (validate_enc_op(op) == -1) {
-		rte_bbdev_log(ERR, "LDPC encoder validation failed");
+
+	if (validate_ldpc_enc_op(op) == -1) {
+		rte_bbdev_log(ERR, "LDPC encoder validation rejected");
 		return -EINVAL;
 	}
-#endif
 
 	/* Clear op status */
 	op->status = 0;
@@ -1481,13 +1763,10 @@ enqueue_ldpc_dec_one_op_cb(struct fpga_queue *q, struct rte_bbdev_dec_op *op,
 	uint16_t out_offset = dec->hard_output.offset;
 	uint32_t harq_offset = 0;
 
-#ifdef RTE_LIBRTE_BBDEV_DEBUG
-		/* Validate op structure */
-		if (validate_dec_op(op) == -1) {
-			rte_bbdev_log(ERR, "LDPC decoder validation failed");
-			return -EINVAL;
-		}
-#endif
+	if (validate_ldpc_dec_op(op) == -1) {
+		rte_bbdev_log(ERR, "LDPC decoder validation rejected");
+		return -EINVAL;
+	}
 
 	/* Clear op status */
 	op->status = 0;
@@ -1717,8 +1996,7 @@ fpga_enqueue_ldpc_dec(struct rte_bbdev_queue_data *q_data,
 
 
 static inline int
-dequeue_ldpc_enc_one_op_cb(struct fpga_queue *q,
-		struct rte_bbdev_enc_op **op,
+dequeue_ldpc_enc_one_op_cb(struct fpga_queue *q, struct rte_bbdev_enc_op **op,
 		uint16_t desc_offset)
 {
 	union fpga_dma_desc *desc;
