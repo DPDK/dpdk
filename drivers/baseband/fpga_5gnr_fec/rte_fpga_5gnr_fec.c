@@ -848,6 +848,9 @@ check_desc_error(uint32_t error_code) {
 	case DESC_ERR_DESC_READ_TLP_POISONED:
 		rte_bbdev_log(ERR, "Descriptor read TLP poisoned");
 		break;
+	case DESC_ERR_HARQ_INPUT_LEN:
+		rte_bbdev_log(ERR, "HARQ input length is invalid");
+		break;
 	case DESC_ERR_CB_READ_FAIL:
 		rte_bbdev_log(ERR, "Unsuccessful completion for code block");
 		break;
