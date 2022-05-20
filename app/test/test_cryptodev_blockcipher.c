@@ -2,8 +2,6 @@
  * Copyright(c) 2015-2017 Intel Corporation
  */
 
-#ifndef RTE_EXEC_ENV_WINDOWS
-
 #include <rte_common.h>
 #include <rte_hexdump.h>
 #include <rte_mbuf.h>
@@ -1219,5 +1217,3 @@ free_blockcipher_test_suite(struct unit_test_suite *ts)
 {
 	free(ts);
 }
-
-#endif /* !RTE_EXEC_ENV_WINDOWS */

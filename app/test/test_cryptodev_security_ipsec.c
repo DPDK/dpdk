@@ -2,8 +2,6 @@
  * Copyright(C) 2021 Marvell.
  */
 
-#ifndef RTE_EXEC_ENV_WINDOWS
-
 #include <rte_common.h>
 #include <rte_cryptodev.h>
 #include <rte_esp.h>
@@ -16,6 +14,10 @@
 #include "test_cryptodev_security_ipsec.h"
 
 #define IV_LEN_MAX 16
+
+#ifndef IPVERSION
+#define IPVERSION 4
+#endif
 
 struct crypto_param_comb alg_list[RTE_DIM(aead_list) +
 				  (RTE_DIM(cipher_list) *
@@ -1231,5 +1233,3 @@ test_ipsec_pkt_update(uint8_t *pkt, const struct ipsec_test_flags *flags)
 
 	return 0;
 }
-
-#endif /* !RTE_EXEC_ENV_WINDOWS */

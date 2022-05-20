@@ -3,8 +3,6 @@
  * Copyright 2020 NXP
  */
 
-#ifndef RTE_EXEC_ENV_WINDOWS
-
 #include <time.h>
 
 #include <rte_common.h>
@@ -16654,5 +16652,3 @@ REGISTER_TEST_COMMAND(cryptodev_nitrox_autotest, test_cryptodev_nitrox);
 REGISTER_TEST_COMMAND(cryptodev_bcmfs_autotest, test_cryptodev_bcmfs);
 REGISTER_TEST_COMMAND(cryptodev_cn9k_autotest, test_cryptodev_cn9k);
 REGISTER_TEST_COMMAND(cryptodev_cn10k_autotest, test_cryptodev_cn10k);
-
-#endif /* !RTE_EXEC_ENV_WINDOWS */
