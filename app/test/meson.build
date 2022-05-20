@@ -296,31 +296,32 @@ perf_test_names = [
         'thash_perf_autotest',
 ]
 
-driver_test_names = []
+driver_test_names = [
+        'cryptodev_aesni_gcm_autotest',
+        'cryptodev_aesni_mb_autotest',
+        'cryptodev_cn10k_autotest',
+        'cryptodev_cn9k_autotest',
+        'cryptodev_dpaa2_sec_autotest',
+        'cryptodev_dpaa_sec_autotest',
+        'cryptodev_null_autotest',
+        'cryptodev_openssl_autotest',
+        'cryptodev_qat_autotest',
+        'cryptodev_sw_armv8_autotest',
+        'cryptodev_sw_kasumi_autotest',
+        'cryptodev_sw_mvsam_autotest',
+        'cryptodev_sw_snow3g_autotest',
+        'cryptodev_sw_zuc_autotest',
+        'dmadev_autotest',
+        'rawdev_autotest',
+]
 
 dump_test_names = []
 
 if not is_windows
     driver_test_names += [
-            'cryptodev_aesni_mb_autotest',
-            'cryptodev_aesni_gcm_autotest',
-            'cryptodev_cn9k_autotest',
-            'cryptodev_cn10k_autotest',
-            'cryptodev_dpaa_sec_autotest',
-            'cryptodev_dpaa2_sec_autotest',
-            'cryptodev_null_autotest',
-            'cryptodev_openssl_autotest',
             'cryptodev_openssl_asym_autotest',
-            'cryptodev_qat_autotest',
-            'cryptodev_sw_armv8_autotest',
-            'cryptodev_sw_kasumi_autotest',
-            'cryptodev_sw_mvsam_autotest',
-            'cryptodev_sw_snow3g_autotest',
-            'cryptodev_sw_zuc_autotest',
-            'dmadev_autotest',
             'eventdev_selftest_octeontx',
             'eventdev_selftest_sw',
-            'rawdev_autotest',
     ]
 
     dump_test_names += [
