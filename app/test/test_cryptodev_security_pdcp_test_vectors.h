@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  *
  * Copyright (C) 2015-2016 Freescale Semiconductor,Inc.
- * Copyright 2018-2021 NXP
+ * Copyright 2018-2022 NXP
  */
 
 #ifndef SECURITY_PDCP_TEST_VECTOR_H_
@@ -128,7 +128,23 @@ static const struct pdcp_short_mac_test list_pdcp_smac_tests[] = {
 		.data_out = (uint8_t[]){ 0x33, 0x32, 0x34, 0x62, 0x63, 0x39,
 					 0x38, 0x00, 0x00, 0x00, 0x00 },
 	},
-
+	{
+		.test_idx = 6,
+		.param = {.name = "PDCP-SMAC ZUC",
+			.auth_alg = RTE_CRYPTO_AUTH_ZUC_EIA3,
+			.domain = RTE_SECURITY_PDCP_MODE_SHORT_MAC,
+			.auth_key_len = 16,
+		},
+		.auth_key = (uint8_t[]){ 0xB2, 0xA4, 0x73, 0xB6, 0x78, 0x5C,
+					0x51, 0x8E, 0x9C, 0x1E, 0x9B, 0xC6,
+					0x66, 0xE4, 0x84, 0x24
+		},
+		.data_in = (uint8_t[]){ 0x00, 0x40, 0x00, 0x00, 0x00, 0x05,
+					0x09, 0xe4 },
+		.in_len = 8,
+		.data_out = (uint8_t[]){ 0x00, 0x40, 0x00, 0x00, 0x00, 0x05,
+					0x09, 0xe4, 0xCC, 0x7D, 0xD0, 0xE4 },
+	},
 };
 
 static struct pdcp_test_param pdcp_test_params[] = {
