@@ -48,6 +48,9 @@ struct metadata_t {
 	bit<32> port_in
 	bit<32> port_out
 
+	// Key timeout.
+	bit<32> timeout_id
+
 	// Arguments for the "fwd_action" action.
 	bit<32> fwd_action_arg_port_out
 }
@@ -68,10 +71,14 @@ struct fwd_action_args_t {
 
 action fwd_action args instanceof fwd_action_args_t {
 	mov m.port_out t.port_out
+	rearm
 	return
 }
 
 action learn_action args none {
+	// Pick the key timeout. Timeout ID #1 (i.e. 120 seconds) is selected.
+	mov m.timeout_id 1
+
 	// Read current counter value into m.fwd_action_arg_port_out.
 	regrd m.fwd_action_arg_port_out counter 0
 
@@ -84,7 +91,7 @@ action learn_action args none {
 	// Add the current lookup key to the table with fwd_action as the key action. The action
 	// arguments are read from the packet meta-data (the m.fwd_action_arg_port_out field). These
 	// packet meta-data fields have to be written before the "learn" instruction is invoked.
-	learn fwd_action m.fwd_action_arg_port_out
+	learn fwd_action m.fwd_action_arg_port_out m.timeout_id
 
 	// Send the current packet to the same output port.
 	mov m.port_out m.fwd_action_arg_port_out
@@ -110,7 +117,11 @@ learner fwd_table {
 
 	size 1048576
 
-	timeout 120
+	timeout {
+		60
+		120
+		180
+	}
 }
 
 //

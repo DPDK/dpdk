@@ -2677,12 +2677,14 @@ cmd_pipeline_stats(char **tokens,
 			"\t\tMiss (packets): %" PRIu64 "\n"
 			"\t\tLearn OK (packets): %" PRIu64 "\n"
 			"\t\tLearn error (packets): %" PRIu64 "\n"
+			"\t\tRearm (packets): %" PRIu64 "\n"
 			"\t\tForget (packets): %" PRIu64 "\n",
 			learner_info.name,
 			stats.n_pkts_hit,
 			stats.n_pkts_miss,
 			stats.n_pkts_learn_ok,
 			stats.n_pkts_learn_err,
+			stats.n_pkts_rearm,
 			stats.n_pkts_forget);
 		out_size -= strlen(out);
 		out += strlen(out);
