@@ -1194,11 +1194,45 @@ validate_dec_op(struct rte_bbdev_dec_op *op __rte_unused)
 }
 #endif
 
+static inline void
+fpga_mutex_acquisition(struct fpga_queue *q)
+{
+	uint32_t mutex_ctrl, mutex_read, cnt = 0;
+	/* Assign a unique id for the duration of the DDR access */
+	q->ddr_mutex_uuid = rand();
+	/* Request and wait for acquisition of the mutex */
+	mutex_ctrl = (q->ddr_mutex_uuid << 16) + 1;
+	do {
+		if (cnt > 0)
+			usleep(FPGA_TIMEOUT_CHECK_INTERVAL);
+		rte_bbdev_log_debug("Acquiring Mutex for %x\n",
+				q->ddr_mutex_uuid);
+		fpga_reg_write_32(q->d->mmio_base,
+				FPGA_5GNR_FEC_MUTEX,
+				mutex_ctrl);
+		mutex_read = fpga_reg_read_32(q->d->mmio_base,
+				FPGA_5GNR_FEC_MUTEX);
+		rte_bbdev_log_debug("Mutex %x cnt %d owner %x\n",
+				mutex_read, cnt, q->ddr_mutex_uuid);
+		cnt++;
+	} while ((mutex_read >> 16) != q->ddr_mutex_uuid);
+}
+
+static inline void
+fpga_mutex_free(struct fpga_queue *q)
+{
+	uint32_t mutex_ctrl = q->ddr_mutex_uuid << 16;
+	fpga_reg_write_32(q->d->mmio_base,
+			FPGA_5GNR_FEC_MUTEX,
+			mutex_ctrl);
+}
+
 static inline int
-fpga_harq_write_loopback(struct fpga_5gnr_fec_device *fpga_dev,
+fpga_harq_write_loopback(struct fpga_queue *q,
 		struct rte_mbuf *harq_input, uint16_t harq_in_length,
 		uint32_t harq_in_offset, uint32_t harq_out_offset)
 {
+	fpga_mutex_acquisition(q);
 	uint32_t out_offset = harq_out_offset;
 	uint32_t in_offset = harq_in_offset;
 	uint32_t left_length = harq_in_length;
@@ -1215,7 +1249,7 @@ fpga_harq_write_loopback(struct fpga_5gnr_fec_device *fpga_dev,
 	 * Get HARQ buffer size for each VF/PF: When 0x00, there is no
 	 * available DDR space for the corresponding VF/PF.
 	 */
-	reg_32 = fpga_reg_read_32(fpga_dev->mmio_base,
+	reg_32 = fpga_reg_read_32(q->d->mmio_base,
 			FPGA_5GNR_FEC_HARQ_BUF_SIZE_REGS);
 	if (reg_32 < harq_in_length) {
 		left_length = reg_32;
@@ -1226,46 +1260,48 @@ fpga_harq_write_loopback(struct fpga_5gnr_fec_device *fpga_dev,
 			uint8_t *, in_offset);
 
 	while (left_length > 0) {
-		if (fpga_reg_read_8(fpga_dev->mmio_base,
+		if (fpga_reg_read_8(q->d->mmio_base,
 				FPGA_5GNR_FEC_DDR4_ADDR_RDY_REGS) ==  1) {
-			fpga_reg_write_32(fpga_dev->mmio_base,
+			fpga_reg_write_32(q->d->mmio_base,
 					FPGA_5GNR_FEC_DDR4_WR_ADDR_REGS,
 					out_offset);
-			fpga_reg_write_64(fpga_dev->mmio_base,
+			fpga_reg_write_64(q->d->mmio_base,
 					FPGA_5GNR_FEC_DDR4_WR_DATA_REGS,
 					input[increment]);
 			left_length -= FPGA_5GNR_FEC_DDR_WR_DATA_LEN_IN_BYTES;
 			out_offset += FPGA_5GNR_FEC_DDR_WR_DATA_LEN_IN_BYTES;
 			increment++;
-			fpga_reg_write_8(fpga_dev->mmio_base,
+			fpga_reg_write_8(q->d->mmio_base,
 					FPGA_5GNR_FEC_DDR4_WR_DONE_REGS, 1);
 		}
 	}
 	while (last_transaction > 0) {
-		if (fpga_reg_read_8(fpga_dev->mmio_base,
+		if (fpga_reg_read_8(q->d->mmio_base,
 				FPGA_5GNR_FEC_DDR4_ADDR_RDY_REGS) ==  1) {
-			fpga_reg_write_32(fpga_dev->mmio_base,
+			fpga_reg_write_32(q->d->mmio_base,
 					FPGA_5GNR_FEC_DDR4_WR_ADDR_REGS,
 					out_offset);
 			last_word = input[increment];
 			last_word &= (uint64_t)(1 << (last_transaction * 4))
 					- 1;
-			fpga_reg_write_64(fpga_dev->mmio_base,
+			fpga_reg_write_64(q->d->mmio_base,
 					FPGA_5GNR_FEC_DDR4_WR_DATA_REGS,
 					last_word);
-			fpga_reg_write_8(fpga_dev->mmio_base,
+			fpga_reg_write_8(q->d->mmio_base,
 					FPGA_5GNR_FEC_DDR4_WR_DONE_REGS, 1);
 			last_transaction = 0;
 		}
 	}
+	fpga_mutex_free(q);
 	return 1;
 }
 
 static inline int
-fpga_harq_read_loopback(struct fpga_5gnr_fec_device *fpga_dev,
+fpga_harq_read_loopback(struct fpga_queue *q,
 		struct rte_mbuf *harq_output, uint16_t harq_in_length,
 		uint32_t harq_in_offset, uint32_t harq_out_offset)
 {
+	fpga_mutex_acquisition(q);
 	uint32_t left_length, in_offset = harq_in_offset;
 	uint64_t reg;
 	uint32_t increment = 0;
@@ -1276,7 +1312,7 @@ fpga_harq_read_loopback(struct fpga_5gnr_fec_device *fpga_dev,
 	if (last_transaction > 0)
 		harq_in_length += (8 - last_transaction);
 
-	reg = fpga_reg_read_32(fpga_dev->mmio_base,
+	reg = fpga_reg_read_32(q->d->mmio_base,
 			FPGA_5GNR_FEC_HARQ_BUF_SIZE_REGS);
 	if (reg < harq_in_length) {
 		harq_in_length = reg;
@@ -1302,14 +1338,14 @@ fpga_harq_read_loopback(struct fpga_5gnr_fec_device *fpga_dev,
 			uint8_t *, harq_out_offset);
 
 	while (left_length > 0) {
-		fpga_reg_write_32(fpga_dev->mmio_base,
+		fpga_reg_write_32(q->d->mmio_base,
 			FPGA_5GNR_FEC_DDR4_RD_ADDR_REGS, in_offset);
-		fpga_reg_write_8(fpga_dev->mmio_base,
+		fpga_reg_write_8(q->d->mmio_base,
 				FPGA_5GNR_FEC_DDR4_RD_DONE_REGS, 1);
-		reg = fpga_reg_read_8(fpga_dev->mmio_base,
+		reg = fpga_reg_read_8(q->d->mmio_base,
 			FPGA_5GNR_FEC_DDR4_RD_RDY_REGS);
 		while (reg != 1) {
-			reg = fpga_reg_read_8(fpga_dev->mmio_base,
+			reg = fpga_reg_read_8(q->d->mmio_base,
 				FPGA_5GNR_FEC_DDR4_RD_RDY_REGS);
 			if (reg == FPGA_DDR_OVERFLOW) {
 				rte_bbdev_log(ERR,
@@ -1317,14 +1353,15 @@ fpga_harq_read_loopback(struct fpga_5gnr_fec_device *fpga_dev,
 				return -1;
 			}
 		}
-		input[increment] = fpga_reg_read_64(fpga_dev->mmio_base,
+		input[increment] = fpga_reg_read_64(q->d->mmio_base,
 			FPGA_5GNR_FEC_DDR4_RD_DATA_REGS);
 		left_length -= FPGA_5GNR_FEC_DDR_RD_DATA_LEN_IN_BYTES;
 		in_offset += FPGA_5GNR_FEC_DDR_WR_DATA_LEN_IN_BYTES;
 		increment++;
-		fpga_reg_write_8(fpga_dev->mmio_base,
+		fpga_reg_write_8(q->d->mmio_base,
 				FPGA_5GNR_FEC_DDR4_RD_DONE_REGS, 0);
 	}
+	fpga_mutex_free(q);
 	return 1;
 }
 
@@ -1467,13 +1504,13 @@ enqueue_ldpc_dec_one_op_cb(struct fpga_queue *q, struct rte_bbdev_dec_op *op,
 		if (check_bit(dec->op_flags,
 				RTE_BBDEV_LDPC_INTERNAL_HARQ_MEMORY_OUT_ENABLE
 				)) {
-			ret = fpga_harq_write_loopback(q->d, harq_in,
+			ret = fpga_harq_write_loopback(q, harq_in,
 					harq_in_length, harq_in_offset,
 					harq_out_offset);
 		} else if (check_bit(dec->op_flags,
 				RTE_BBDEV_LDPC_INTERNAL_HARQ_MEMORY_IN_ENABLE
 				)) {
-			ret = fpga_harq_read_loopback(q->d, harq_out,
+			ret = fpga_harq_read_loopback(q, harq_out,
 				harq_in_length, harq_in_offset,
 				harq_out_offset);
 			dec->harq_combined_output.length = harq_in_length;

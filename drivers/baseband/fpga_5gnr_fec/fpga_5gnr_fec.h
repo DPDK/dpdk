@@ -82,7 +82,9 @@ enum {
 	FPGA_5GNR_FEC_DDR4_RD_DATA_REGS = 0x00000A30, /* len: 8B */
 	FPGA_5GNR_FEC_DDR4_ADDR_RDY_REGS = 0x00000A38, /* len: 1B */
 	FPGA_5GNR_FEC_HARQ_BUF_SIZE_RDY_REGS = 0x00000A40, /* len: 1B */
-	FPGA_5GNR_FEC_HARQ_BUF_SIZE_REGS = 0x00000A48  /* len: 4B */
+	FPGA_5GNR_FEC_HARQ_BUF_SIZE_REGS = 0x00000A48, /* len: 4B */
+	FPGA_5GNR_FEC_MUTEX = 0x00000A60, /* len: 4B */
+	FPGA_5GNR_FEC_MUTEX_RESET = 0x00000A68  /* len: 4B */
 };
 
 /* FPGA 5GNR FEC Ring Control Registers */
@@ -264,6 +266,8 @@ struct __rte_cache_aligned fpga_queue {
 	uint32_t sw_ring_wrap_mask;
 	uint32_t irq_enable;  /* Enable ops dequeue interrupts if set to 1 */
 	uint8_t q_idx;  /* Queue index */
+	/** uuid used for MUTEX acquision for DDR */
+	uint16_t ddr_mutex_uuid;
 	struct fpga_5gnr_fec_device *d;
 	/* MMIO register of shadow_tail used to enqueue descriptors */
 	void *shadow_tail_addr;
