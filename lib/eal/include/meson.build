@@ -36,6 +36,8 @@ headers += files(
         'rte_per_lcore.h',
         'rte_random.h',
         'rte_reciprocal.h',
+        'rte_seqcount.h',
+        'rte_seqlock.h',
         'rte_service.h',
         'rte_service_component.h',
         'rte_string_fns.h',

@@ -258,6 +258,12 @@ M: Honnappa Nagarahalli <honnappa.nagarahalli@arm.com>
 F: lib/eal/include/generic/rte_mcslock.h
 F: app/test/test_mcslock.c
 
+Sequence Lock
+M: Mattias Rönnblom <mattias.ronnblom@ericsson.com>
+F: lib/eal/include/rte_seqcount.h
+F: lib/eal/include/rte_seqlock.h
+F: app/test/test_seqlock.c
+
 Ticketlock
 M: Joyce Kong <joyce.kong@arm.com>
 F: lib/eal/include/generic/rte_ticketlock.h

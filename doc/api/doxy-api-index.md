@@ -76,6 +76,8 @@ The public API headers are grouped by topics:
   [mcslock](@ref rte_mcslock.h),
   [pflock](@ref rte_pflock.h),
   [rwlock](@ref rte_rwlock.h),
+  [seqcount](@ref rte_seqcount.h),
+  [seqlock](@ref rte_seqlock.h),
   [spinlock](@ref rte_spinlock.h),
   [ticketlock](@ref rte_ticketlock.h),
   [RCU](@ref rte_rcu_qsbr.h)
