@@ -1049,9 +1049,11 @@ init_mem(uint16_t portid, unsigned int nb_mbuf)
 
 			nb_vec = (nb_mbuf + evt_rsrc->vector_size - 1) /
 				 evt_rsrc->vector_size;
+			nb_vec = RTE_MAX(512U, nb_vec);
+			nb_vec += rte_lcore_count() * 32;
 			snprintf(s, sizeof(s), "vector_pool_%d", portid);
 			vector_pool[portid] = rte_event_vector_pool_create(
-				s, nb_vec, 0, evt_rsrc->vector_size, socketid);
+				s, nb_vec, 32, evt_rsrc->vector_size, socketid);
 			if (vector_pool[portid] == NULL)
 				rte_exit(EXIT_FAILURE,
 					 "Failed to create vector pool for port %d\n",

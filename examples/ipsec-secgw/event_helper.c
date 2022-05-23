@@ -820,12 +820,12 @@ eh_rx_adapter_configure(struct eventmode_conf *em_conf,
 				   em_conf->ext_params.vector_size) + 1;
 			if (per_port_pool)
 				nb_elem = nb_ports * nb_elem;
+			nb_elem = RTE_MAX(512U, nb_elem);
 		}
-
+		nb_elem += rte_lcore_count() * 32;
 		vector_pool = rte_event_vector_pool_create(
-			"vector_pool", nb_elem, 0,
-			em_conf->ext_params.vector_size,
-			socket_id);
+			"vector_pool", nb_elem, 32,
+			em_conf->ext_params.vector_size, socket_id);
 		if (vector_pool == NULL) {
 			EH_LOG_ERR("failed to create event vector pool");
 			return -ENOMEM;
