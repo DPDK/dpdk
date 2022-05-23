@@ -223,6 +223,8 @@ struct iavf_rx_queue {
 		/* flexible descriptor metadata extraction offload flag */
 	struct iavf_rx_queue_stats stats;
 	uint64_t offloads;
+	uint64_t phc_time;
+	uint64_t hw_time_update;
 };
 
 struct iavf_tx_entry {

@@ -1039,18 +1039,11 @@ iavf_dev_start(struct rte_eth_dev *dev)
 	iavf_add_del_mc_addr_list(adapter, vf->mc_addrs, vf->mc_addrs_num,
 				  true);
 
+	rte_spinlock_init(&vf->phc_time_aq_lock);
+
 	if (iavf_start_queues(dev) != 0) {
 		PMD_DRV_LOG(ERR, "enable queues failed");
 		goto err_mac;
-	}
-
-	if (dev->data->dev_conf.rxmode.offloads &
-	    RTE_ETH_RX_OFFLOAD_TIMESTAMP) {
-		if (iavf_get_phc_time(adapter)) {
-			PMD_DRV_LOG(ERR, "get physical time failed");
-			goto err_mac;
-		}
-		adapter->hw_time_update = rte_get_timer_cycles() / (rte_get_timer_hz() / 1000);
 	}
 
 	return 0;

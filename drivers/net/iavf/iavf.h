@@ -270,6 +270,7 @@ struct iavf_info {
 	struct rte_eth_dev *eth_dev;
 
 	uint32_t ptp_caps;
+	rte_spinlock_t phc_time_aq_lock;
 };
 
 #define IAVF_MAX_PKT_TYPE 1024
@@ -315,8 +316,6 @@ struct iavf_adapter {
 	bool closed;
 	uint16_t fdir_ref_cnt;
 	struct iavf_devargs devargs;
-	uint64_t phc_time;
-	uint64_t hw_time_update;
 };
 
 /* IAVF_DEV_PRIVATE_TO */
@@ -482,5 +481,5 @@ int iavf_ipsec_crypto_request(struct iavf_adapter *adapter,
 		uint8_t *resp_msg, size_t resp_msg_len);
 extern const struct rte_tm_ops iavf_tm_ops;
 int iavf_get_ptp_cap(struct iavf_adapter *adapter);
-int iavf_get_phc_time(struct iavf_adapter *adapter);
+int iavf_get_phc_time(struct iavf_rx_queue *rxq);
 #endif /* _IAVF_ETHDEV_H_ */
