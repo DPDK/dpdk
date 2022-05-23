@@ -119,7 +119,7 @@ implementer_cavium = {
             'flags': flags_part_number_thunderx
         },
         '0xa3': {
-            'compiler_options': ['-mcpu=thunderxt83'],
+            'compiler_options': ['-march=armv8-a+crc', '-mcpu=thunderxt83'],
             'flags': flags_part_number_thunderx
         },
         '0xaf': {
@@ -371,6 +371,12 @@ soc_thunderxt88 = {
     'part_number': '0xa1'
 }
 
+soc_thunderxt83 = {
+    'description': 'Marvell ThunderX T83',
+    'implementer': '0x43',
+    'part_number': '0xa3'
+}
+
 '''
 Start of SoCs list
 generic:         Generic un-optimized build for armv8 aarch64 execution mode.
@@ -390,6 +396,7 @@ n2:              Arm Neoverse N2
 stingray:        Broadcom Stingray
 thunderx2:       Marvell ThunderX2 T99
 thunderxt88:     Marvell ThunderX T88
+thunderxt83:     Marvell ThunderX T83
 End of SoCs list
 '''
 # The string above is included in the documentation, keep it in sync with the
@@ -411,7 +418,8 @@ socs = {
     'n2': soc_n2,
     'stingray': soc_stingray,
     'thunderx2': soc_thunderx2,
-    'thunderxt88': soc_thunderxt88
+    'thunderxt88': soc_thunderxt88,
+    'thunderxt83': soc_thunderxt83,
 }
 
 dpdk_conf.set('RTE_ARCH_ARM', 1)
