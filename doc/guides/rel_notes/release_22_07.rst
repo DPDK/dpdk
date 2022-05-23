@@ -92,6 +92,7 @@ New Features
   * Added Tx QoS queue rate limitation support.
   * Added quanta size configuration support.
   * Added ``DEV_RX_OFFLOAD_TIMESTAMP`` support.
+  * Added Protocol Agnostic Flow Offloading support in AVF FDIR and RSS.
 
 * **Updated Intel ice driver.**
 

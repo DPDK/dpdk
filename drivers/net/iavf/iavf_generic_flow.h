@@ -180,6 +180,9 @@
 #define IAVF_INSET_L2TPV2 \
 	(IAVF_PROT_L2TPV2 | IAVF_L2TPV2_SESSION_ID)
 
+/* raw pattern */
+extern enum rte_flow_item_type iavf_pattern_raw[];
+
 /* empty pattern */
 extern enum rte_flow_item_type iavf_pattern_empty[];
 

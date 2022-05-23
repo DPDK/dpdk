@@ -48,6 +48,12 @@ const struct rte_flow_ops iavf_flow_ops = {
 	.query = iavf_flow_query,
 };
 
+/* raw */
+enum rte_flow_item_type iavf_pattern_raw[] = {
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
 /* empty */
 enum rte_flow_item_type iavf_pattern_empty[] = {
 	RTE_FLOW_ITEM_TYPE_END,

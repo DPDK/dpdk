@@ -194,6 +194,7 @@
 	IAVF_INSET_TUN_TCP_DST_PORT)
 
 static struct iavf_pattern_match_item iavf_fdir_pattern[] = {
+	{iavf_pattern_raw,			 IAVF_INSET_NONE,		IAVF_INSET_NONE},
 	{iavf_pattern_ethertype,		 IAVF_FDIR_INSET_ETH,		IAVF_INSET_NONE},
 	{iavf_pattern_eth_ipv4,			 IAVF_FDIR_INSET_ETH_IPV4,	IAVF_INSET_NONE},
 	{iavf_pattern_eth_ipv4_udp,		 IAVF_FDIR_INSET_ETH_IPV4_UDP,	IAVF_INSET_NONE},
@@ -720,6 +721,7 @@ iavf_fdir_parse_pattern(__rte_unused struct iavf_adapter *ad,
 	struct virtchnl_proto_hdrs *hdrs =
 			&filter->add_fltr.rule_cfg.proto_hdrs;
 	enum rte_flow_item_type l3 = RTE_FLOW_ITEM_TYPE_END;
+	const struct rte_flow_item_raw *raw_spec, *raw_mask;
 	const struct rte_flow_item_eth *eth_spec, *eth_mask;
 	const struct rte_flow_item_ipv4 *ipv4_spec, *ipv4_last, *ipv4_mask;
 	const struct rte_flow_item_ipv6 *ipv6_spec, *ipv6_mask;
@@ -746,6 +748,7 @@ iavf_fdir_parse_pattern(__rte_unused struct iavf_adapter *ad,
 	enum rte_flow_item_type next_type;
 	uint8_t tun_inner = 0;
 	uint16_t ether_type, flags_version;
+	uint8_t item_num = 0;
 	int layer = 0;
 
 	uint8_t  ipv6_addr_mask[16] = {
@@ -763,8 +766,72 @@ iavf_fdir_parse_pattern(__rte_unused struct iavf_adapter *ad,
 					   RTE_FLOW_ERROR_TYPE_ITEM, item,
 					   "Not support range");
 		}
+		item_num++;
 
 		switch (item_type) {
+		case RTE_FLOW_ITEM_TYPE_RAW: {
+			raw_spec = item->spec;
+			raw_mask = item->mask;
+
+			if (item_num != 1)
+				return -rte_errno;
+
+			if (raw_spec->length != raw_mask->length)
+				return -rte_errno;
+
+			uint16_t pkt_len = 0;
+			uint16_t tmp_val = 0;
+			uint8_t tmp = 0;
+			int i, j;
+
+			pkt_len = raw_spec->length;
+
+			for (i = 0, j = 0; i < pkt_len; i += 2, j++) {
+				tmp = raw_spec->pattern[i];
+				if (tmp >= 'a' && tmp <= 'f')
+					tmp_val = tmp - 'a' + 10;
+				if (tmp >= 'A' && tmp <= 'F')
+					tmp_val = tmp - 'A' + 10;
+				if (tmp >= '0' && tmp <= '9')
+					tmp_val = tmp - '0';
+
+				tmp_val *= 16;
+				tmp = raw_spec->pattern[i + 1];
+				if (tmp >= 'a' && tmp <= 'f')
+					tmp_val += (tmp - 'a' + 10);
+				if (tmp >= 'A' && tmp <= 'F')
+					tmp_val += (tmp - 'A' + 10);
+				if (tmp >= '0' && tmp <= '9')
+					tmp_val += (tmp - '0');
+
+				hdrs->raw.spec[j] = tmp_val;
+
+				tmp = raw_mask->pattern[i];
+				if (tmp >= 'a' && tmp <= 'f')
+					tmp_val = tmp - 'a' + 10;
+				if (tmp >= 'A' && tmp <= 'F')
+					tmp_val = tmp - 'A' + 10;
+				if (tmp >= '0' && tmp <= '9')
+					tmp_val = tmp - '0';
+
+				tmp_val *= 16;
+				tmp = raw_mask->pattern[i + 1];
+				if (tmp >= 'a' && tmp <= 'f')
+					tmp_val += (tmp - 'a' + 10);
+				if (tmp >= 'A' && tmp <= 'F')
+					tmp_val += (tmp - 'A' + 10);
+				if (tmp >= '0' && tmp <= '9')
+					tmp_val += (tmp - '0');
+
+				hdrs->raw.mask[j] = tmp_val;
+			}
+
+			hdrs->raw.pkt_len = pkt_len / 2;
+			hdrs->tunnel_level = 0;
+			hdrs->count = 0;
+			return 0;
+		}
+
 		case RTE_FLOW_ITEM_TYPE_ETH:
 			eth_spec = item->spec;
 			eth_mask = item->mask;
