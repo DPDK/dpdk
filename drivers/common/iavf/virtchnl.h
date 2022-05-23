@@ -1503,6 +1503,7 @@ enum virtchnl_vfr_states {
 };
 
 #define VIRTCHNL_MAX_NUM_PROTO_HDRS	32
+#define VIRTCHNL_MAX_SIZE_RAW_PACKET	1024
 #define PROTO_HDR_SHIFT			5
 #define PROTO_HDR_FIELD_START(proto_hdr_type) \
 					(proto_hdr_type << PROTO_HDR_SHIFT)
@@ -1697,14 +1698,25 @@ VIRTCHNL_CHECK_STRUCT_LEN(72, virtchnl_proto_hdr);
 struct virtchnl_proto_hdrs {
 	u8 tunnel_level;
 	/**
-	 * specify where protocol header start from.
+	 * specify where protocol header start from. must be 0 when sending a raw packet request.
 	 * 0 - from the outer layer
 	 * 1 - from the first inner layer
 	 * 2 - from the second inner layer
 	 * ....
-	 **/
-	int count; /* the proto layers must < VIRTCHNL_MAX_NUM_PROTO_HDRS */
-	struct virtchnl_proto_hdr proto_hdr[VIRTCHNL_MAX_NUM_PROTO_HDRS];
+	 */
+	int count;
+	/**
+	 * number of proto layers, must < VIRTCHNL_MAX_NUM_PROTO_HDRS
+	 * must be 0 for a raw packet request.
+	 */
+	union {
+		struct virtchnl_proto_hdr proto_hdr[VIRTCHNL_MAX_NUM_PROTO_HDRS];
+		struct {
+			u16 pkt_len;
+			u8 spec[VIRTCHNL_MAX_SIZE_RAW_PACKET];
+			u8 mask[VIRTCHNL_MAX_SIZE_RAW_PACKET];
+		} raw;
+	};
 };
 
 VIRTCHNL_CHECK_STRUCT_LEN(2312, virtchnl_proto_hdrs);

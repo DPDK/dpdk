@@ -181,252 +181,256 @@ iavf_hash_parse_pattern_action(struct iavf_adapter *ad,
 /* proto_hdrs template */
 struct virtchnl_proto_hdrs outer_ipv4_tmplt = {
 	TUNNEL_LEVEL_OUTER, 4,
-	{proto_hdr_eth, proto_hdr_svlan, proto_hdr_cvlan, proto_hdr_ipv4}
+	{{proto_hdr_eth, proto_hdr_svlan, proto_hdr_cvlan, proto_hdr_ipv4}}
 };
 
 struct virtchnl_proto_hdrs outer_ipv4_udp_tmplt = {
 	TUNNEL_LEVEL_OUTER, 5,
-	{proto_hdr_eth, proto_hdr_svlan, proto_hdr_cvlan,
-	 proto_hdr_ipv4_with_prot,
-	 proto_hdr_udp}
+	{{proto_hdr_eth, proto_hdr_svlan, proto_hdr_cvlan,
+	  proto_hdr_ipv4_with_prot,
+	  proto_hdr_udp}}
 };
 
 struct virtchnl_proto_hdrs outer_ipv4_tcp_tmplt = {
 	TUNNEL_LEVEL_OUTER, 5,
-	{proto_hdr_eth, proto_hdr_svlan, proto_hdr_cvlan,
-	 proto_hdr_ipv4_with_prot,
-	 proto_hdr_tcp}
+	{{proto_hdr_eth, proto_hdr_svlan, proto_hdr_cvlan,
+	  proto_hdr_ipv4_with_prot,
+	  proto_hdr_tcp}}
 };
 
 struct virtchnl_proto_hdrs outer_ipv4_sctp_tmplt = {
 	TUNNEL_LEVEL_OUTER, 5,
-	{proto_hdr_eth, proto_hdr_svlan, proto_hdr_cvlan, proto_hdr_ipv4,
-	 proto_hdr_sctp}
+	{{proto_hdr_eth, proto_hdr_svlan, proto_hdr_cvlan, proto_hdr_ipv4,
+	  proto_hdr_sctp}}
 };
 
 struct virtchnl_proto_hdrs outer_ipv6_tmplt = {
 	TUNNEL_LEVEL_OUTER, 4,
-	{proto_hdr_eth, proto_hdr_svlan, proto_hdr_cvlan, proto_hdr_ipv6}
+	{{proto_hdr_eth, proto_hdr_svlan, proto_hdr_cvlan, proto_hdr_ipv6}}
 };
 
 struct virtchnl_proto_hdrs outer_ipv6_frag_tmplt = {
 	TUNNEL_LEVEL_OUTER, 5,
-	{proto_hdr_eth, proto_hdr_svlan, proto_hdr_cvlan,
-	 proto_hdr_ipv6, proto_hdr_ipv6_frag}
+	{{proto_hdr_eth, proto_hdr_svlan, proto_hdr_cvlan,
+	  proto_hdr_ipv6, proto_hdr_ipv6_frag}}
 };
 
 struct virtchnl_proto_hdrs outer_ipv6_udp_tmplt = {
 	TUNNEL_LEVEL_OUTER, 5,
-	{proto_hdr_eth, proto_hdr_svlan, proto_hdr_cvlan,
-	 proto_hdr_ipv6_with_prot,
-	 proto_hdr_udp}
+	{{proto_hdr_eth, proto_hdr_svlan, proto_hdr_cvlan,
+	  proto_hdr_ipv6_with_prot,
+	  proto_hdr_udp}}
 };
 
 struct virtchnl_proto_hdrs outer_ipv6_tcp_tmplt = {
 	TUNNEL_LEVEL_OUTER, 5,
-	{proto_hdr_eth, proto_hdr_svlan, proto_hdr_cvlan,
-	 proto_hdr_ipv6_with_prot,
-	 proto_hdr_tcp}
+	{{proto_hdr_eth, proto_hdr_svlan, proto_hdr_cvlan,
+	  proto_hdr_ipv6_with_prot,
+	  proto_hdr_tcp}}
 };
 
 struct virtchnl_proto_hdrs outer_ipv6_sctp_tmplt = {
 	TUNNEL_LEVEL_OUTER, 5,
-	{proto_hdr_eth, proto_hdr_svlan, proto_hdr_cvlan, proto_hdr_ipv6,
-	 proto_hdr_sctp}
+	{{proto_hdr_eth, proto_hdr_svlan, proto_hdr_cvlan, proto_hdr_ipv6,
+	  proto_hdr_sctp}}
 };
 
 struct virtchnl_proto_hdrs inner_ipv4_tmplt = {
-	TUNNEL_LEVEL_INNER, 1, {proto_hdr_ipv4}
+	TUNNEL_LEVEL_INNER, 1, {{proto_hdr_ipv4}}
 };
 
 struct virtchnl_proto_hdrs inner_ipv4_udp_tmplt = {
-	TUNNEL_LEVEL_INNER, 2, {proto_hdr_ipv4_with_prot, proto_hdr_udp}
+	TUNNEL_LEVEL_INNER, 2, {{proto_hdr_ipv4_with_prot, proto_hdr_udp}}
 };
 
 struct virtchnl_proto_hdrs inner_ipv4_tcp_tmplt = {
-	TUNNEL_LEVEL_INNER, 2, {proto_hdr_ipv4_with_prot, proto_hdr_tcp}
+	TUNNEL_LEVEL_INNER, 2, {{proto_hdr_ipv4_with_prot, proto_hdr_tcp}}
 };
 
 struct virtchnl_proto_hdrs second_inner_ipv4_tmplt = {
-	2, 1, {proto_hdr_ipv4}
+	2, 1, {{proto_hdr_ipv4}}
 };
 
 struct virtchnl_proto_hdrs second_inner_ipv4_udp_tmplt = {
-	2, 2, {proto_hdr_ipv4_with_prot, proto_hdr_udp}
+	2, 2, {{proto_hdr_ipv4_with_prot, proto_hdr_udp}}
 };
 
 struct virtchnl_proto_hdrs second_inner_ipv4_tcp_tmplt = {
-	2, 2, {proto_hdr_ipv4_with_prot, proto_hdr_tcp}
+	2, 2, {{proto_hdr_ipv4_with_prot, proto_hdr_tcp}}
 };
 
 struct virtchnl_proto_hdrs second_inner_ipv6_tmplt = {
-	2, 1, {proto_hdr_ipv6}
+	2, 1, {{proto_hdr_ipv6}}
 };
 
 struct virtchnl_proto_hdrs second_inner_ipv6_udp_tmplt = {
-	2, 2, {proto_hdr_ipv6_with_prot, proto_hdr_udp}
+	2, 2, {{proto_hdr_ipv6_with_prot, proto_hdr_udp}}
 };
 
 struct virtchnl_proto_hdrs second_inner_ipv6_tcp_tmplt = {
-	2, 2, {proto_hdr_ipv6_with_prot, proto_hdr_tcp}
+	2, 2, {{proto_hdr_ipv6_with_prot, proto_hdr_tcp}}
 };
 
 struct virtchnl_proto_hdrs inner_ipv4_sctp_tmplt = {
-	TUNNEL_LEVEL_INNER, 2, {proto_hdr_ipv4, proto_hdr_sctp}
+	TUNNEL_LEVEL_INNER, 2, {{proto_hdr_ipv4, proto_hdr_sctp}}
 };
 
 struct virtchnl_proto_hdrs inner_ipv6_tmplt = {
-	TUNNEL_LEVEL_INNER, 1, {proto_hdr_ipv6}
+	TUNNEL_LEVEL_INNER, 1, {{proto_hdr_ipv6}}
 };
 
 struct virtchnl_proto_hdrs inner_ipv6_udp_tmplt = {
-	TUNNEL_LEVEL_INNER, 2, {proto_hdr_ipv6_with_prot, proto_hdr_udp}
+	TUNNEL_LEVEL_INNER, 2, {{proto_hdr_ipv6_with_prot, proto_hdr_udp}}
 };
 
 struct virtchnl_proto_hdrs inner_ipv6_tcp_tmplt = {
-	TUNNEL_LEVEL_INNER, 2, {proto_hdr_ipv6_with_prot, proto_hdr_tcp}
+	TUNNEL_LEVEL_INNER, 2, {{proto_hdr_ipv6_with_prot, proto_hdr_tcp}}
 };
 
 struct virtchnl_proto_hdrs inner_ipv6_sctp_tmplt = {
-	TUNNEL_LEVEL_INNER, 2, {proto_hdr_ipv6, proto_hdr_sctp}
+	TUNNEL_LEVEL_INNER, 2, {{proto_hdr_ipv6, proto_hdr_sctp}}
 };
 
 struct virtchnl_proto_hdrs ipv4_esp_tmplt = {
-	TUNNEL_LEVEL_OUTER, 2, {proto_hdr_ipv4, proto_hdr_esp}
+	TUNNEL_LEVEL_OUTER, 2, {{proto_hdr_ipv4, proto_hdr_esp}}
 };
 
 struct virtchnl_proto_hdrs ipv4_udp_esp_tmplt = {
 	TUNNEL_LEVEL_OUTER, 3,
-	{proto_hdr_ipv4, proto_hdr_udp, proto_hdr_esp}
+	{{proto_hdr_ipv4, proto_hdr_udp, proto_hdr_esp}}
 };
 
 struct virtchnl_proto_hdrs ipv4_ah_tmplt = {
-	TUNNEL_LEVEL_OUTER, 2, {proto_hdr_ipv4, proto_hdr_ah}
+	TUNNEL_LEVEL_OUTER, 2, {{proto_hdr_ipv4, proto_hdr_ah}}
 };
 
 struct virtchnl_proto_hdrs ipv6_esp_tmplt = {
-	TUNNEL_LEVEL_OUTER, 2, {proto_hdr_ipv6, proto_hdr_esp}
+	TUNNEL_LEVEL_OUTER, 2, {{proto_hdr_ipv6, proto_hdr_esp}}
 };
 
 struct virtchnl_proto_hdrs ipv6_udp_esp_tmplt = {
 	TUNNEL_LEVEL_OUTER, 3,
-	{proto_hdr_ipv6, proto_hdr_udp, proto_hdr_esp}
+	{{proto_hdr_ipv6, proto_hdr_udp, proto_hdr_esp}}
 };
 
 struct virtchnl_proto_hdrs ipv6_ah_tmplt = {
-	TUNNEL_LEVEL_OUTER, 2, {proto_hdr_ipv6, proto_hdr_ah}
+	TUNNEL_LEVEL_OUTER, 2, {{proto_hdr_ipv6, proto_hdr_ah}}
 };
 
 struct virtchnl_proto_hdrs ipv4_l2tpv3_tmplt = {
-	TUNNEL_LEVEL_OUTER, 2, {proto_hdr_ipv4, proto_hdr_l2tpv3}
+	TUNNEL_LEVEL_OUTER, 2, {{proto_hdr_ipv4, proto_hdr_l2tpv3}}
 };
 
 struct virtchnl_proto_hdrs ipv6_l2tpv3_tmplt = {
-	TUNNEL_LEVEL_OUTER, 2, {proto_hdr_ipv6, proto_hdr_l2tpv3}
+	TUNNEL_LEVEL_OUTER, 2, {{proto_hdr_ipv6, proto_hdr_l2tpv3}}
 };
 
 struct virtchnl_proto_hdrs ipv4_pfcp_tmplt = {
-	TUNNEL_LEVEL_OUTER, 2, {proto_hdr_ipv4, proto_hdr_pfcp}
+	TUNNEL_LEVEL_OUTER, 2, {{proto_hdr_ipv4, proto_hdr_pfcp}}
 };
 
 struct virtchnl_proto_hdrs ipv6_pfcp_tmplt = {
-	TUNNEL_LEVEL_OUTER, 2, {proto_hdr_ipv6, proto_hdr_pfcp}
+	TUNNEL_LEVEL_OUTER, 2, {{proto_hdr_ipv6, proto_hdr_pfcp}}
 };
 
 struct virtchnl_proto_hdrs ipv4_udp_gtpc_tmplt = {
-	TUNNEL_LEVEL_OUTER, 3, {proto_hdr_ipv4, proto_hdr_udp, proto_hdr_gtpc}
+	TUNNEL_LEVEL_OUTER, 3,
+	{{proto_hdr_ipv4, proto_hdr_udp, proto_hdr_gtpc}}
 };
 
 struct virtchnl_proto_hdrs ipv6_udp_gtpc_tmplt = {
-	TUNNEL_LEVEL_OUTER, 3, {proto_hdr_ipv6, proto_hdr_udp, proto_hdr_gtpc}
+	TUNNEL_LEVEL_OUTER, 3,
+	{{proto_hdr_ipv6, proto_hdr_udp, proto_hdr_gtpc}}
 };
 
 struct virtchnl_proto_hdrs eth_ecpri_tmplt = {
-	TUNNEL_LEVEL_OUTER, 2, {proto_hdr_eth, proto_hdr_ecpri}
+	TUNNEL_LEVEL_OUTER, 2, {{proto_hdr_eth, proto_hdr_ecpri}}
 };
 
 struct virtchnl_proto_hdrs ipv4_ecpri_tmplt = {
-	TUNNEL_LEVEL_OUTER, 3, {proto_hdr_ipv4, proto_hdr_udp, proto_hdr_ecpri}
+	TUNNEL_LEVEL_OUTER, 3,
+	{{proto_hdr_ipv4, proto_hdr_udp, proto_hdr_ecpri}}
 };
 
 struct virtchnl_proto_hdrs udp_l2tpv2_ppp_ipv4_tmplt = {
 	TUNNEL_LEVEL_INNER, 3,
-	{proto_hdr_l2tpv2,
-	 proto_hdr_ppp,
-	 proto_hdr_ipv4}
+	{{proto_hdr_l2tpv2,
+	  proto_hdr_ppp,
+	  proto_hdr_ipv4}}
 };
 
 struct virtchnl_proto_hdrs udp_l2tpv2_ppp_ipv6_tmplt = {
 	TUNNEL_LEVEL_INNER, 3,
-	{proto_hdr_l2tpv2,
-	 proto_hdr_ppp,
-	 proto_hdr_ipv6}
+	{{proto_hdr_l2tpv2,
+	  proto_hdr_ppp,
+	  proto_hdr_ipv6}}
 };
 
 struct virtchnl_proto_hdrs udp_l2tpv2_ppp_ipv4_udp_tmplt = {
 	TUNNEL_LEVEL_INNER, 4,
-	{proto_hdr_l2tpv2,
-	 proto_hdr_ppp,
-	 proto_hdr_ipv4_with_prot,
-	 proto_hdr_udp}
+	{{proto_hdr_l2tpv2,
+	  proto_hdr_ppp,
+	  proto_hdr_ipv4_with_prot,
+	  proto_hdr_udp}}
 };
 
 struct virtchnl_proto_hdrs udp_l2tpv2_ppp_ipv4_tcp_tmplt = {
 	TUNNEL_LEVEL_INNER, 4,
-	{proto_hdr_l2tpv2,
-	 proto_hdr_ppp,
-	 proto_hdr_ipv4_with_prot,
-	 proto_hdr_tcp}
+	{{proto_hdr_l2tpv2,
+	  proto_hdr_ppp,
+	  proto_hdr_ipv4_with_prot,
+	  proto_hdr_tcp}}
 };
 
 struct virtchnl_proto_hdrs udp_l2tpv2_ppp_ipv6_udp_tmplt = {
 	TUNNEL_LEVEL_INNER, 4,
-	{proto_hdr_l2tpv2,
-	 proto_hdr_ppp,
-	 proto_hdr_ipv6_with_prot,
-	 proto_hdr_udp}
+	{{proto_hdr_l2tpv2,
+	  proto_hdr_ppp,
+	  proto_hdr_ipv6_with_prot,
+	  proto_hdr_udp}}
 };
 
 struct virtchnl_proto_hdrs udp_l2tpv2_ppp_ipv6_tcp_tmplt = {
 	TUNNEL_LEVEL_INNER, 4,
-	{proto_hdr_l2tpv2,
-	 proto_hdr_ppp,
-	 proto_hdr_ipv6_with_prot,
-	 proto_hdr_tcp}
+	{{proto_hdr_l2tpv2,
+	  proto_hdr_ppp,
+	  proto_hdr_ipv6_with_prot,
+	  proto_hdr_tcp}}
+
 };
 
 struct virtchnl_proto_hdrs ipv4_l2tpv2_tmplt = {
 	TUNNEL_LEVEL_OUTER, 4,
-	{proto_hdr_eth,
-	 proto_hdr_ipv4,
-	 proto_hdr_udp,
-	 proto_hdr_l2tpv2}
+	{{proto_hdr_eth,
+	  proto_hdr_ipv4,
+	  proto_hdr_udp,
+	  proto_hdr_l2tpv2}}
 };
 
 struct virtchnl_proto_hdrs ipv6_l2tpv2_tmplt = {
 	TUNNEL_LEVEL_OUTER, 4,
-	{proto_hdr_eth,
-	 proto_hdr_ipv6,
-	 proto_hdr_udp,
-	 proto_hdr_l2tpv2}
+	{{proto_hdr_eth,
+	  proto_hdr_ipv6,
+	  proto_hdr_udp,
+	  proto_hdr_l2tpv2}}
 };
 
 struct virtchnl_proto_hdrs ipv4_l2tpv2_ppp_tmplt = {
 	TUNNEL_LEVEL_OUTER, 5,
-	{proto_hdr_eth,
-	 proto_hdr_ipv4,
-	 proto_hdr_udp,
-	 proto_hdr_l2tpv2,
-	 proto_hdr_ppp}
+	{{proto_hdr_eth,
+	  proto_hdr_ipv4,
+	  proto_hdr_udp,
+	  proto_hdr_l2tpv2,
+	  proto_hdr_ppp}}
 };
 
 struct virtchnl_proto_hdrs ipv6_l2tpv2_ppp_tmplt = {
 	TUNNEL_LEVEL_OUTER, 5,
-	{proto_hdr_eth,
-	 proto_hdr_ipv6,
-	 proto_hdr_udp,
-	 proto_hdr_l2tpv2,
-	 proto_hdr_ppp}
+	{{proto_hdr_eth,
+	  proto_hdr_ipv6,
+	  proto_hdr_udp,
+	  proto_hdr_l2tpv2,
+	  proto_hdr_ppp}}
 };
 
 /* rss type super set */
