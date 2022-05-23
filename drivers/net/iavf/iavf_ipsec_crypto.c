@@ -1551,8 +1551,6 @@ iavf_security_ctx_destroy(struct iavf_adapter *adapter)
 	if (iavf_sctx == NULL)
 		return -ENODEV;
 
-	/* TODO: Add resources cleanup */
-
 	/* free and reset security data structures */
 	rte_free(iavf_sctx);
 	rte_free(sctx);
