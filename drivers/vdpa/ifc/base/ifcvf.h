@@ -65,6 +65,10 @@
 #define IFCVF_32_BIT_MASK		0xffffffff
 
 
+#ifndef VHOST_USER_PROTOCOL_F_CONFIG
+#define VHOST_USER_PROTOCOL_F_CONFIG	9
+#endif
+
 struct ifcvf_pci_cap {
 	u8 cap_vndr;            /* Generic PCI field: PCI_CAP_ID_VNDR */
 	u8 cap_next;            /* Generic PCI field: next ptr. */

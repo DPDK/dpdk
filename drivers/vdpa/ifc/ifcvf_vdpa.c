@@ -1087,6 +1087,10 @@ ifcvf_get_vdpa_features(struct rte_vdpa_device *vdev, uint64_t *features)
 		 1ULL << VHOST_USER_PROTOCOL_F_HOST_NOTIFIER | \
 		 1ULL << VHOST_USER_PROTOCOL_F_LOG_SHMFD | \
 		 1ULL << VHOST_USER_PROTOCOL_F_STATUS)
+
+#define VDPA_BLK_PROTOCOL_FEATURES \
+		(1ULL << VHOST_USER_PROTOCOL_F_CONFIG)
+
 static int
 ifcvf_get_protocol_features(struct rte_vdpa_device *vdev, uint64_t *features)
 {
@@ -1199,6 +1203,96 @@ ifcvf_pci_get_device_type(struct rte_pci_device *pci_dev)
 	return device_id;
 }
 
+static int
+ifcvf_blk_get_config(int vid, uint8_t *config, uint32_t size)
+{
+	struct virtio_blk_config *dev_cfg;
+	struct ifcvf_internal *internal;
+	struct rte_vdpa_device *vdev;
+	struct internal_list *list;
+	uint32_t i;
+	uint64_t capacity = 0;
+	uint8_t *byte;
+
+	if (size != sizeof(struct virtio_blk_config)) {
+		DRV_LOG(ERR, "Invalid len: %u, required: %u",
+			size, (uint32_t)sizeof(struct virtio_blk_config));
+		return -1;
+	}
+
+	vdev = rte_vhost_get_vdpa_device(vid);
+	if (vdev == NULL) {
+		DRV_LOG(ERR, "Invalid vDPA device vid: %d", vid);
+		return -1;
+	}
+
+	list = find_internal_resource_by_vdev(vdev);
+	if (list == NULL) {
+		DRV_LOG(ERR, "Invalid vDPA device: %p", vdev);
+		return -1;
+	}
+
+	internal = list->internal;
+
+	for (i = 0; i < sizeof(struct virtio_blk_config); i++)
+		config[i] = *((u8 *)internal->hw.blk_cfg + i);
+
+	dev_cfg = (struct virtio_blk_config *)internal->hw.blk_cfg;
+
+	/* cannot read 64-bit register in one attempt, so read byte by byte. */
+	for (i = 0; i < sizeof(internal->hw.blk_cfg->capacity); i++) {
+		byte = (uint8_t *)&internal->hw.blk_cfg->capacity + i;
+		capacity |= (uint64_t)*byte << (i * 8);
+	}
+	/* The capacity is number of sectors in 512-byte.
+	 * So right shift 1 bit  we get in K,
+	 * another right shift 10 bits we get in M,
+	 * right shift 10 more bits, we get in G.
+	 * To show capacity in G, we right shift 21 bits in total.
+	 */
+	DRV_LOG(DEBUG, "capacity  : %"PRIu64"G", capacity >> 21);
+
+	DRV_LOG(DEBUG, "size_max  : 0x%08x", dev_cfg->size_max);
+	DRV_LOG(DEBUG, "seg_max   : 0x%08x", dev_cfg->seg_max);
+	DRV_LOG(DEBUG, "blk_size  : 0x%08x", dev_cfg->blk_size);
+	DRV_LOG(DEBUG, "geometry");
+	DRV_LOG(DEBUG, "      cylinders: %u", dev_cfg->geometry.cylinders);
+	DRV_LOG(DEBUG, "      heads    : %u", dev_cfg->geometry.heads);
+	DRV_LOG(DEBUG, "      sectors  : %u", dev_cfg->geometry.sectors);
+	DRV_LOG(DEBUG, "num_queues: 0x%08x", dev_cfg->num_queues);
+
+	DRV_LOG(DEBUG, "config: [%x] [%x] [%x] [%x] [%x] [%x] [%x] [%x]\n",
+		config[0], config[1], config[2], config[3], config[4],
+		config[5], config[6], config[7]);
+	return 0;
+}
+
+static int
+ifcvf_blk_get_protocol_features(struct rte_vdpa_device *vdev,
+	uint64_t *features)
+{
+	RTE_SET_USED(vdev);
+
+	*features = VDPA_SUPPORTED_PROTOCOL_FEATURES;
+	*features |= VDPA_BLK_PROTOCOL_FEATURES;
+	return 0;
+}
+
+static struct rte_vdpa_dev_ops ifcvf_blk_ops = {
+	.get_queue_num = ifcvf_get_queue_num,
+	.get_features = ifcvf_get_vdpa_features,
+	.set_features = ifcvf_set_features,
+	.get_protocol_features = ifcvf_blk_get_protocol_features,
+	.dev_conf = ifcvf_dev_config,
+	.dev_close = ifcvf_dev_close,
+	.set_vring_state = ifcvf_set_vring_state,
+	.migration_done = NULL,
+	.get_vfio_group_fd = ifcvf_get_vfio_group_fd,
+	.get_vfio_device_fd = ifcvf_get_vfio_device_fd,
+	.get_notify_area = ifcvf_get_notify_area,
+	.get_config = ifcvf_blk_get_config,
+};
+
 struct rte_vdpa_dev_info dev_info[] = {
 	{
 		.features = (1ULL << VIRTIO_NET_F_GUEST_ANNOUNCE) |
@@ -1211,7 +1305,7 @@ struct rte_vdpa_dev_info dev_info[] = {
 	{
 		.features = (1ULL << VHOST_USER_F_PROTOCOL_FEATURES) |
 			    (1ULL << VHOST_F_LOG_ALL),
-		.ops = NULL,
+		.ops = &ifcvf_blk_ops,
 	},
 };
 
