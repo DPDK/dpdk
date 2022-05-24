@@ -73,6 +73,15 @@ enum dscp_flags {
 	TEST_IPSEC_SET_DSCP_1_INNER_0,
 };
 
+#define TEST_IPSEC_FLABEL_VAL 0x1234
+
+enum flabel_flags {
+	TEST_IPSEC_COPY_FLABEL_INNER_0 = 1,
+	TEST_IPSEC_COPY_FLABEL_INNER_1,
+	TEST_IPSEC_SET_FLABEL_0_INNER_1,
+	TEST_IPSEC_SET_FLABEL_1_INNER_0,
+};
+
 struct ipsec_test_flags {
 	bool display_alg;
 	bool sa_expiry_pkts_soft;
@@ -92,6 +101,7 @@ struct ipsec_test_flags {
 	bool antireplay;
 	enum df_flags df;
 	enum dscp_flags dscp;
+	enum flabel_flags flabel;
 	bool dec_ttl_or_hop_limit;
 	bool ah;
 };

@@ -495,6 +495,10 @@ test_ipsec_td_prepare(const struct crypto_param *param1,
 		    flags->dscp == TEST_IPSEC_COPY_DSCP_INNER_1)
 			td->ipsec_xform.options.copy_dscp = 1;
 
+		if (flags->flabel == TEST_IPSEC_COPY_FLABEL_INNER_0 ||
+		    flags->flabel == TEST_IPSEC_COPY_FLABEL_INNER_1)
+			td->ipsec_xform.options.copy_flabel = 1;
+
 		if (flags->dec_ttl_or_hop_limit)
 			td->ipsec_xform.options.dec_ttl = 1;
 	}
@@ -933,6 +937,7 @@ test_ipsec_iph6_hdr_validate(const struct rte_ipv6_hdr *iph6,
 			     const struct ipsec_test_flags *flags)
 {
 	uint32_t vtc_flow;
+	uint32_t flabel;
 	uint8_t dscp;
 
 	if (!is_valid_ipv6_pkt(iph6)) {
@@ -955,6 +960,23 @@ test_ipsec_iph6_hdr_validate(const struct rte_ipv6_hdr *iph6,
 		if (dscp != 0) {
 			printf("DSCP value is set [exp: 0, actual: %x]\n",
 			       dscp);
+			return -1;
+		}
+	}
+
+	flabel = vtc_flow & RTE_IPV6_HDR_FL_MASK;
+
+	if (flags->flabel == TEST_IPSEC_COPY_FLABEL_INNER_1 ||
+	    flags->flabel == TEST_IPSEC_SET_FLABEL_1_INNER_0) {
+		if (flabel != TEST_IPSEC_FLABEL_VAL) {
+			printf("FLABEL value is not matching [exp: %x, actual: %x]\n",
+			       TEST_IPSEC_FLABEL_VAL, flabel);
+			return -1;
+		}
+	} else {
+		if (flabel != 0) {
+			printf("FLABEL value is set [exp: 0, actual: %x]\n",
+			       flabel);
 			return -1;
 		}
 	}
@@ -1159,7 +1181,11 @@ test_ipsec_pkt_update(uint8_t *pkt, const struct ipsec_test_flags *flags)
 	if (flags->dscp == TEST_IPSEC_COPY_DSCP_INNER_1 ||
 	    flags->dscp == TEST_IPSEC_SET_DSCP_0_INNER_1 ||
 	    flags->dscp == TEST_IPSEC_COPY_DSCP_INNER_0 ||
-	    flags->dscp == TEST_IPSEC_SET_DSCP_1_INNER_0) {
+	    flags->dscp == TEST_IPSEC_SET_DSCP_1_INNER_0 ||
+	    flags->flabel == TEST_IPSEC_COPY_FLABEL_INNER_1 ||
+	    flags->flabel == TEST_IPSEC_SET_FLABEL_0_INNER_1 ||
+	    flags->flabel == TEST_IPSEC_COPY_FLABEL_INNER_0 ||
+	    flags->flabel == TEST_IPSEC_SET_FLABEL_1_INNER_0) {
 
 		if (is_ipv4(iph4)) {
 			uint8_t tos;
@@ -1186,6 +1212,13 @@ test_ipsec_pkt_update(uint8_t *pkt, const struct ipsec_test_flags *flags)
 					     (TEST_IPSEC_DSCP_VAL << (RTE_IPV6_HDR_TC_SHIFT + 2)));
 			else
 				vtc_flow &= ~RTE_IPV6_HDR_DSCP_MASK;
+
+			if (flags->flabel == TEST_IPSEC_COPY_FLABEL_INNER_1 ||
+			    flags->flabel == TEST_IPSEC_SET_FLABEL_0_INNER_1)
+				vtc_flow |= (RTE_IPV6_HDR_FL_MASK &
+					     (TEST_IPSEC_FLABEL_VAL << RTE_IPV6_HDR_FL_SHIFT));
+			else
+				vtc_flow &= ~RTE_IPV6_HDR_FL_MASK;
 
 			iph6->vtc_flow = rte_cpu_to_be_32(vtc_flow);
 		}

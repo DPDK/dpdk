@@ -162,6 +162,13 @@ create_inline_ipsec_session(struct ipsec_test_data *sa, uint16_t portid,
 				sess_conf->ipsec.tunnel.ipv6.dscp =
 						TEST_IPSEC_DSCP_VAL;
 
+			if (flags->flabel == TEST_IPSEC_SET_FLABEL_0_INNER_1)
+				sess_conf->ipsec.tunnel.ipv6.flabel = 0;
+
+			if (flags->flabel == TEST_IPSEC_SET_FLABEL_1_INNER_0)
+				sess_conf->ipsec.tunnel.ipv6.flabel =
+						TEST_IPSEC_FLABEL_VAL;
+
 			memcpy(&sess_conf->ipsec.tunnel.ipv6.src_addr, &src_v6,
 					sizeof(src_v6));
 			memcpy(&sess_conf->ipsec.tunnel.ipv6.dst_addr, &dst_v6,
@@ -1793,6 +1800,62 @@ test_ipsec_inline_proto_ipv6_set_dscp_1_inner_0(const void *data __rte_unused)
 }
 
 static int
+test_ipsec_inline_proto_ipv6_copy_flabel_inner_0(const void *data __rte_unused)
+{
+	struct ipsec_test_flags flags;
+
+	memset(&flags, 0, sizeof(flags));
+
+	flags.ipv6 = true;
+	flags.tunnel_ipv6 = true;
+	flags.flabel = TEST_IPSEC_COPY_FLABEL_INNER_0;
+
+	return test_ipsec_inline_proto_all(&flags);
+}
+
+static int
+test_ipsec_inline_proto_ipv6_copy_flabel_inner_1(const void *data __rte_unused)
+{
+	struct ipsec_test_flags flags;
+
+	memset(&flags, 0, sizeof(flags));
+
+	flags.ipv6 = true;
+	flags.tunnel_ipv6 = true;
+	flags.flabel = TEST_IPSEC_COPY_FLABEL_INNER_1;
+
+	return test_ipsec_inline_proto_all(&flags);
+}
+
+static int
+test_ipsec_inline_proto_ipv6_set_flabel_0_inner_1(const void *data __rte_unused)
+{
+	struct ipsec_test_flags flags;
+
+	memset(&flags, 0, sizeof(flags));
+
+	flags.ipv6 = true;
+	flags.tunnel_ipv6 = true;
+	flags.flabel = TEST_IPSEC_SET_FLABEL_0_INNER_1;
+
+	return test_ipsec_inline_proto_all(&flags);
+}
+
+static int
+test_ipsec_inline_proto_ipv6_set_flabel_1_inner_0(const void *data __rte_unused)
+{
+	struct ipsec_test_flags flags;
+
+	memset(&flags, 0, sizeof(flags));
+
+	flags.ipv6 = true;
+	flags.tunnel_ipv6 = true;
+	flags.flabel = TEST_IPSEC_SET_FLABEL_1_INNER_0;
+
+	return test_ipsec_inline_proto_all(&flags);
+}
+
+static int
 test_ipsec_inline_proto_ipv4_ttl_decrement(const void *data __rte_unused)
 {
 	struct ipsec_test_flags flags = {
@@ -2201,6 +2264,22 @@ static struct unit_test_suite inline_ipsec_testsuite  = {
 			"Tunnel header IPv6 set DSCP 1 (inner 0)",
 			ut_setup_inline_ipsec, ut_teardown_inline_ipsec,
 			test_ipsec_inline_proto_ipv6_set_dscp_1_inner_0),
+		TEST_CASE_NAMED_ST(
+			"Tunnel header IPv6 copy FLABEL (inner 0)",
+			ut_setup_inline_ipsec, ut_teardown_inline_ipsec,
+			test_ipsec_inline_proto_ipv6_copy_flabel_inner_0),
+		TEST_CASE_NAMED_ST(
+			"Tunnel header IPv6 copy FLABEL (inner 1)",
+			ut_setup_inline_ipsec, ut_teardown_inline_ipsec,
+			test_ipsec_inline_proto_ipv6_copy_flabel_inner_1),
+		TEST_CASE_NAMED_ST(
+			"Tunnel header IPv6 set FLABEL 0 (inner 1)",
+			ut_setup_inline_ipsec, ut_teardown_inline_ipsec,
+			test_ipsec_inline_proto_ipv6_set_flabel_0_inner_1),
+		TEST_CASE_NAMED_ST(
+			"Tunnel header IPv6 set FLABEL 1 (inner 0)",
+			ut_setup_inline_ipsec, ut_teardown_inline_ipsec,
+			test_ipsec_inline_proto_ipv6_set_flabel_1_inner_0),
 		TEST_CASE_NAMED_ST(
 			"Tunnel header IPv4 decrement inner TTL",
 			ut_setup_inline_ipsec, ut_teardown_inline_ipsec,
