@@ -316,8 +316,34 @@ vdpa_ifcvf_stop(struct ifcvf_internal *internal)
 	uint64_t features = 0;
 	uint64_t log_base = 0, log_size = 0;
 	uint64_t len;
+	u32 ring_state = 0;
 
 	vid = internal->vid;
+
+	/* to make sure no packet is lost for blk device
+	 * do not stop until last_avail_idx == last_used_idx
+	 */
+	if (internal->hw.device_type == IFCVF_BLK) {
+		for (i = 0; i < hw->nr_vring; i++) {
+			do {
+				if (hw->lm_cfg != NULL)
+					ring_state = *(u32 *)(hw->lm_cfg +
+						IFCVF_LM_RING_STATE_OFFSET +
+						i * IFCVF_LM_CFG_SIZE);
+				hw->vring[i].last_avail_idx =
+					(u16)(ring_state & IFCVF_16_BIT_MASK);
+				hw->vring[i].last_used_idx =
+					(u16)(ring_state >> 16);
+				if (hw->vring[i].last_avail_idx !=
+					hw->vring[i].last_used_idx) {
+					ifcvf_notify_queue(hw, i);
+					usleep(10);
+				}
+			} while (hw->vring[i].last_avail_idx !=
+				hw->vring[i].last_used_idx);
+		}
+	}
+
 	ifcvf_stop_hw(hw);
 
 	for (i = 0; i < hw->nr_vring; i++)
@@ -641,8 +667,10 @@ m_ifcvf_start(struct ifcvf_internal *internal)
 		}
 		hw->vring[i].avail = gpa;
 
-		/* Direct I/O for Tx queue, relay for Rx queue */
-		if (i & 1) {
+		/* NET: Direct I/O for Tx queue, relay for Rx queue
+		 * BLK: relay every queue
+		 */
+		if ((internal->hw.device_type == IFCVF_NET) && (i & 1)) {
 			gpa = hva_to_gpa(vid, (uint64_t)(uintptr_t)vq.used);
 			if (gpa == 0) {
 				DRV_LOG(ERR, "Fail to get GPA for used ring.");
@@ -692,8 +720,12 @@ m_ifcvf_stop(struct ifcvf_internal *internal)
 
 	for (i = 0; i < hw->nr_vring; i++) {
 		/* synchronize remaining new used entries if any */
-		if ((i & 1) == 0)
+		if (internal->hw.device_type == IFCVF_NET) {
+			if ((i & 1) == 0)
+				update_used_ring(internal, i);
+		} else if (internal->hw.device_type == IFCVF_BLK) {
 			update_used_ring(internal, i);
+		}
 
 		rte_vhost_get_vhost_vring(vid, i, &vq);
 		len = IFCVF_USED_RING_LEN(vq.size);
@@ -755,7 +787,9 @@ vring_relay(void *arg)
 		}
 	}
 
-	for (qid = 0; qid < q_num; qid += 2) {
+	for (qid = 0; qid < q_num; qid += 1) {
+		if ((internal->hw.device_type == IFCVF_NET) && (qid & 1))
+			continue;
 		ev.events = EPOLLIN | EPOLLPRI;
 		/* leave a flag to mark it's for interrupt */
 		ev.data.u64 = 1 | qid << 1 |

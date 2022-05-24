@@ -63,6 +63,7 @@
 #define IFCVF_MEDIATED_VRING		0x200000000000
 
 #define IFCVF_32_BIT_MASK		0xffffffff
+#define IFCVF_16_BIT_MASK		0xffff
 
 
 #ifndef VHOST_USER_PROTOCOL_F_CONFIG
