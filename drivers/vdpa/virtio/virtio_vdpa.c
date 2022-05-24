@@ -741,15 +741,13 @@ static struct rte_vdpa_dev_ops virtio_vdpa_ops = {
 static int vdpa_check_handler(__rte_unused const char *key,
 		const char *value, void *ret_val)
 {
-	if (strcmp(value, "1") == 0)
+	if (strcmp(value, VIRTIO_ARG_VDPA_VALUE_VF) == 0)
 		*(int *)ret_val = 1;
 	else
 		*(int *)ret_val = 0;
 
 	return 0;
 }
-
-#define VIRTIO_ARG_VDPA "vdpa"
 
 static int
 virtio_pci_devargs_parse(struct rte_devargs *devargs, int *vdpa)
