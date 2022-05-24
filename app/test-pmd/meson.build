@@ -73,3 +73,8 @@ endif
 if dpdk_conf.has('RTE_NET_DPAA')
     deps += ['bus_dpaa', 'mempool_dpaa', 'net_dpaa']
 endif
+
+# Driver-specific commands are located in driver directories.
+includes = include_directories('.')
+sources += testpmd_drivers_sources
+deps += testpmd_drivers_deps

@@ -49,15 +49,18 @@ These are divided into sections and can be accessed using help, help section or 
 .. code-block:: console
 
    testpmd> help
+       Help is available for the following sections:
 
-       help control    : Start and stop forwarding.
-       help display    : Displaying port, stats and config information.
-       help config     : Configuration information.
-       help ports      : Configuring ports.
-       help registers  : Reading and setting port registers.
-       help filters    : Filters configuration help.
-       help all        : All of the above sections.
-
+           help control                    : Start and stop forwarding.
+           help display                    : Displaying port, stats and config information.
+           help config                     : Configuration information.
+           help ports                      : Configuring ports.
+           help registers                  : Reading and setting port registers.
+           help filters                    : Filters configuration help.
+           help traffic_management         : Traffic Management commands.
+           help devices                    : Device related commands.
+           help drivers                    : Driver specific commands.
+           help all                        : All of the above sections.
 
 Command File Functions
 ----------------------
@@ -5702,3 +5705,9 @@ Flex pattern can be shared between ports.
 
    testpmd> flow create 0 ingress pattern eth / ipv4 / udp / flex item is 3 pattern is 2 / end actions mark id 1 / queue index 0 / end
    Flow rule #0 created
+
+Driver specific commands
+------------------------
+
+Some drivers provide specific features.
+See:

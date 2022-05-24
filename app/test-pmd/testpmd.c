@@ -4364,6 +4364,10 @@ main(int argc, char** argv)
 	}
 #endif
 #ifdef RTE_LIB_CMDLINE
+	if (init_cmdline() != 0)
+		rte_exit(EXIT_FAILURE,
+			"Could not initialise cmdline context.\n");
+
 	if (strlen(cmdline_filename) != 0)
 		cmdline_read_from_file(cmdline_filename);
 

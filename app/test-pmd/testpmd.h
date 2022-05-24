@@ -16,7 +16,13 @@
 #include <rte_gso.h>
 #endif
 #include <rte_os_shim.h>
+#include <rte_ethdev.h>
+#include <rte_flow.h>
+#include <rte_mbuf_dyn.h>
+
 #include <cmdline.h>
+#include <cmdline_parse.h>
+
 #include <sys/queue.h>
 #ifdef RTE_HAS_JANSSON
 #include <jansson.h>
@@ -884,6 +890,7 @@ unsigned int parse_item_list(const char *str, const char *item_name,
 			unsigned int *parsed_items, int check_unique_values);
 void launch_args_parse(int argc, char** argv);
 void cmdline_read_from_file(const char *filename);
+int init_cmdline(void);
 void prompt(void);
 void prompt_exit(void);
 void nic_stats_display(portid_t port_id);
@@ -1187,6 +1194,22 @@ extern int flow_parse(const char *src, void *result, unsigned int size,
 		      struct rte_flow_attr **attr,
 		      struct rte_flow_item **pattern,
 		      struct rte_flow_action **actions);
+
+/* For registering driver specific testpmd commands. */
+struct testpmd_driver_commands {
+	TAILQ_ENTRY(testpmd_driver_commands) next;
+	struct {
+		cmdline_parse_inst_t *ctx;
+		const char *help;
+	} commands[];
+};
+
+void testpmd_add_driver_commands(struct testpmd_driver_commands *c);
+#define TESTPMD_ADD_DRIVER_COMMANDS(c) \
+RTE_INIT(__##c) \
+{ \
+	testpmd_add_driver_commands(&c); \
+}
 
 /*
  * Work-around of a compilation error with ICC on invocations of the
