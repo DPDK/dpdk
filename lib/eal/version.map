@@ -423,8 +423,10 @@ EXPERIMENTAL {
 
 	# added in 22.07
 	rte_thread_get_affinity_by_id;
+	rte_thread_get_priority;
 	rte_thread_self;
 	rte_thread_set_affinity_by_id;
+	rte_thread_set_priority;
 };
 
 INTERNAL {

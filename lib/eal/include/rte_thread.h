@@ -31,6 +31,16 @@ typedef struct {
 } rte_thread_t;
 
 /**
+ * Thread priority values.
+ */
+enum rte_thread_priority {
+	RTE_THREAD_PRIORITY_NORMAL            = 0,
+	/**< normal thread priority, the default */
+	RTE_THREAD_PRIORITY_REALTIME_CRITICAL = 1,
+	/**< highest thread priority allowed */
+};
+
+/**
  * TLS key type, an opaque pointer.
  */
 typedef struct eal_tls_key *rte_thread_key;
@@ -113,6 +123,46 @@ int rte_thread_set_affinity(rte_cpuset_t *cpusetp);
 void rte_thread_get_affinity(rte_cpuset_t *cpusetp);
 
 #endif /* RTE_HAS_CPUSET */
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Get the priority of a thread.
+ *
+ * @param thread_id
+ *   Id of the thread for which to get priority.
+ *
+ * @param priority
+ *   Location to store the retrieved priority.
+ *
+ * @return
+ *   On success, return 0.
+ *   On failure, return a positive errno-style error number.
+ */
+__rte_experimental
+int rte_thread_get_priority(rte_thread_t thread_id,
+		enum rte_thread_priority *priority);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Set the priority of a thread.
+ *
+ * @param thread_id
+ *   Id of the thread for which to set priority.
+ *
+ * @param priority
+ *   Priority value to be set.
+ *
+ * @return
+ *   On success, return 0.
+ *   On failure, return a positive errno-style error number.
+ */
+__rte_experimental
+int rte_thread_set_priority(rte_thread_t thread_id,
+		enum rte_thread_priority priority);
 
 /**
  * Create a TLS data key visible to all threads in the process.

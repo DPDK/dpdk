@@ -61,6 +61,59 @@ thread_log_last_error(const char *message)
 	return thread_translate_win32_error(error);
 }
 
+static int
+thread_map_priority_to_os_value(enum rte_thread_priority eal_pri, int *os_pri,
+	DWORD *pri_class)
+{
+	/* Clear the output parameters. */
+	*os_pri = -1;
+	*pri_class = -1;
+
+	switch (eal_pri) {
+	case RTE_THREAD_PRIORITY_NORMAL:
+		*pri_class = NORMAL_PRIORITY_CLASS;
+		*os_pri = THREAD_PRIORITY_NORMAL;
+		break;
+	case RTE_THREAD_PRIORITY_REALTIME_CRITICAL:
+		*pri_class = REALTIME_PRIORITY_CLASS;
+		*os_pri = THREAD_PRIORITY_TIME_CRITICAL;
+		break;
+	default:
+		RTE_LOG(DEBUG, EAL, "The requested priority value is invalid.\n");
+		return EINVAL;
+	}
+
+	return 0;
+}
+
+static int
+thread_map_os_priority_to_eal_value(int os_pri, DWORD pri_class,
+	enum rte_thread_priority *eal_pri)
+{
+	switch (pri_class) {
+	case NORMAL_PRIORITY_CLASS:
+		if (os_pri == THREAD_PRIORITY_NORMAL) {
+			*eal_pri = RTE_THREAD_PRIORITY_NORMAL;
+			return 0;
+		}
+		break;
+	case HIGH_PRIORITY_CLASS:
+		RTE_LOG(WARNING, EAL, "The OS priority class is high not real-time.\n");
+		/* FALLTHROUGH */
+	case REALTIME_PRIORITY_CLASS:
+		if (os_pri == THREAD_PRIORITY_TIME_CRITICAL) {
+			*eal_pri = RTE_THREAD_PRIORITY_REALTIME_CRITICAL;
+			return 0;
+		}
+		break;
+	default:
+		RTE_LOG(DEBUG, EAL, "The OS priority value does not map to an EAL-defined priority.\n");
+		return EINVAL;
+	}
+
+	return 0;
+}
+
 rte_thread_t
 rte_thread_self(void)
 {
@@ -69,6 +122,83 @@ rte_thread_self(void)
 	thread_id.opaque_id = GetCurrentThreadId();
 
 	return thread_id;
+}
+
+int
+rte_thread_get_priority(rte_thread_t thread_id,
+	enum rte_thread_priority *priority)
+{
+	HANDLE thread_handle = NULL;
+	DWORD pri_class;
+	int os_pri;
+	int ret;
+
+	pri_class = GetPriorityClass(GetCurrentProcess());
+	if (pri_class == 0) {
+		ret = thread_log_last_error("GetPriorityClass()");
+		goto cleanup;
+	}
+
+	thread_handle = OpenThread(THREAD_SET_INFORMATION |
+		THREAD_QUERY_INFORMATION, FALSE, thread_id.opaque_id);
+	if (thread_handle == NULL) {
+		ret = thread_log_last_error("OpenThread()");
+		goto cleanup;
+	}
+
+	os_pri = GetThreadPriority(thread_handle);
+	if (os_pri == THREAD_PRIORITY_ERROR_RETURN) {
+		ret = thread_log_last_error("GetThreadPriority()");
+		goto cleanup;
+	}
+
+	ret = thread_map_os_priority_to_eal_value(os_pri, pri_class, priority);
+	if (ret != 0)
+		goto cleanup;
+
+cleanup:
+	if (thread_handle != NULL)
+		CloseHandle(thread_handle);
+
+	return ret;
+}
+
+int
+rte_thread_set_priority(rte_thread_t thread_id,
+			enum rte_thread_priority priority)
+{
+	HANDLE thread_handle;
+	DWORD priority_class;
+	int os_priority;
+	int ret = 0;
+
+	thread_handle = OpenThread(THREAD_SET_INFORMATION |
+		THREAD_QUERY_INFORMATION, FALSE, thread_id.opaque_id);
+	if (thread_handle == NULL) {
+		ret = thread_log_last_error("OpenThread()");
+		goto cleanup;
+	}
+
+	ret = thread_map_priority_to_os_value(priority, &os_priority,
+		&priority_class);
+	if (ret != 0)
+		goto cleanup;
+
+	if (!SetPriorityClass(GetCurrentProcess(), priority_class)) {
+		ret = thread_log_last_error("SetPriorityClass()");
+		goto cleanup;
+	}
+
+	if (!SetThreadPriority(thread_handle, os_priority)) {
+		ret = thread_log_last_error("SetThreadPriority()");
+		goto cleanup;
+	}
+
+cleanup:
+	if (thread_handle != NULL)
+		CloseHandle(thread_handle);
+
+	return ret;
 }
 
 int
