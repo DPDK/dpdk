@@ -25,6 +25,7 @@
 #include "octeontx_ethdev.h"
 #include "octeontx_rxtx.h"
 #include "octeontx_logs.h"
+#include "octeontx_stats.h"
 
 /* Useful in stopping/closing event device if no of
  * eth ports are using it.
@@ -846,6 +847,127 @@ octeontx_dev_link_update(struct rte_eth_dev *dev,
 	return rte_eth_linkstatus_set(dev, &link);
 }
 
+static inline int octeontx_dev_total_xstat(void)
+{
+	return NUM_BGX_XSTAT;
+}
+
+static int
+octeontx_port_xstats(struct octeontx_nic *nic, struct rte_eth_xstat *xstats,
+		     unsigned int n)
+{
+	octeontx_mbox_bgx_port_stats_t bgx_stats;
+	int stat_cnt, res, si, i;
+
+	res = octeontx_bgx_port_xstats(nic->port_id, &bgx_stats);
+	if (res < 0) {
+		octeontx_log_err("failed to get port stats %d", nic->port_id);
+		return res;
+	}
+
+	si = 0;
+	/* Fill BGX stats */
+	stat_cnt = (n > NUM_BGX_XSTAT) ? NUM_BGX_XSTAT : n;
+	n = n - stat_cnt;
+	for (i = 0; i < stat_cnt; i++) {
+		xstats[si].id = si;
+		xstats[si].value = *(uint64_t *)(((char *)&bgx_stats) +
+				octeontx_bgx_xstats[i].soffset);
+		si++;
+	}
+	/*TODO: Similarly fill rest of HW stats */
+
+	return si;
+}
+
+static int
+octeontx_dev_xstats_get_by_id(struct rte_eth_dev *dev, const uint64_t *ids,
+			      uint64_t *stat_val, unsigned int n)
+{
+	unsigned int i, xstat_cnt = octeontx_dev_total_xstat();
+	struct octeontx_nic *nic = octeontx_pmd_priv(dev);
+	struct rte_eth_xstat xstats[xstat_cnt];
+
+	octeontx_port_xstats(nic, xstats, xstat_cnt);
+	for (i = 0; i < n; i++) {
+		if (ids[i] >= xstat_cnt) {
+			PMD_INIT_LOG(ERR, "out of range id value");
+			return -1;
+		}
+		stat_val[i] = xstats[ids[i]].value;
+	}
+	return n;
+}
+
+static int
+octeontx_dev_xstats_get_names(struct rte_eth_dev *dev __rte_unused,
+			      struct rte_eth_xstat_name *xstats_names,
+			      unsigned int size)
+{
+	int stat_cnt, si, i;
+
+	if (xstats_names) {
+		si = 0;
+		/* Fill BGX stats */
+		stat_cnt = (size > NUM_BGX_XSTAT) ? NUM_BGX_XSTAT : size;
+		size = size - stat_cnt;
+		for (i = 0; i < stat_cnt; i++) {
+			strlcpy(xstats_names[si].name,
+				octeontx_bgx_xstats[i].sname,
+				sizeof(xstats_names[si].name));
+			si++;
+		}
+		/*TODO: Similarly fill rest of HW stats */
+		return si;
+	} else {
+		return octeontx_dev_total_xstat();
+	}
+}
+
+static void build_xstat_names(struct rte_eth_xstat_name *xstat_names)
+{
+	unsigned int i;
+
+	for (i = 0; i < NUM_BGX_XSTAT; i++) {
+		strlcpy(xstat_names[i].name, octeontx_bgx_xstats[i].sname,
+			RTE_ETH_XSTATS_NAME_SIZE);
+	}
+}
+
+static int
+octeontx_dev_xstats_get_names_by_id(struct rte_eth_dev *dev __rte_unused,
+				    const uint64_t *ids,
+				    struct rte_eth_xstat_name *stat_names,
+				    unsigned int n)
+{
+	unsigned int i, xstat_cnt = octeontx_dev_total_xstat();
+	struct rte_eth_xstat_name xstat_names[xstat_cnt];
+
+	build_xstat_names(xstat_names);
+	for (i = 0; i < n; i++) {
+		if (ids[i] >= xstat_cnt) {
+			PMD_INIT_LOG(ERR, "out of range id value");
+			return -1;
+		}
+		strlcpy(stat_names[i].name, xstat_names[ids[i]].name,
+			sizeof(stat_names[i].name));
+	}
+	/*TODO: Similarly fill rest of HW stats */
+
+	return n;
+}
+
+static int
+octeontx_dev_xstats_get(struct rte_eth_dev *dev,
+			struct rte_eth_xstat *xstats,
+			unsigned int n)
+{
+	struct octeontx_nic *nic = octeontx_pmd_priv(dev);
+
+	PMD_INIT_FUNC_TRACE();
+	return octeontx_port_xstats(nic, xstats, n);
+}
+
 static int
 octeontx_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 {
@@ -1354,6 +1476,10 @@ static const struct eth_dev_ops octeontx_dev_ops = {
 	.pool_ops_supported      = octeontx_pool_ops,
 	.flow_ctrl_get           = octeontx_dev_flow_ctrl_get,
 	.flow_ctrl_set           = octeontx_dev_flow_ctrl_set,
+	.xstats_get		 = octeontx_dev_xstats_get,
+	.xstats_get_by_id	 = octeontx_dev_xstats_get_by_id,
+	.xstats_get_names	 = octeontx_dev_xstats_get_names,
+	.xstats_get_names_by_id	 = octeontx_dev_xstats_get_names_by_id,
 };
 
 /* Create Ethdev interface per BGX LMAC ports */

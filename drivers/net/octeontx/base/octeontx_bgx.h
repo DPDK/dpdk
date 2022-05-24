@@ -117,6 +117,8 @@ typedef struct octeontx_mbox_bgx_port_stats {
 	uint64_t rx_oversize_errors;
 	uint64_t rx_fragmented_errors;
 	uint64_t rx_jabber_errors;
+	uint64_t rx_pause_packets;
+	uint64_t tx_pause_packets;
 } octeontx_mbox_bgx_port_stats_t;
 
 struct octeontx_mbox_bgx_port_mac_filter {
@@ -161,6 +163,7 @@ int octeontx_bgx_port_get_config(int port, octeontx_mbox_bgx_port_conf_t *conf);
 int octeontx_bgx_port_status(int port, octeontx_mbox_bgx_port_status_t *stat);
 int octeontx_bgx_port_stats(int port, octeontx_mbox_bgx_port_stats_t *stats);
 int octeontx_bgx_port_stats_clr(int port);
+int octeontx_bgx_port_xstats(int port, octeontx_mbox_bgx_port_stats_t *stats);
 int octeontx_bgx_port_link_status(int port);
 int octeontx_bgx_port_promisc_set(int port, int en);
 int octeontx_bgx_port_mac_set(int port, uint8_t *mac_addr);
