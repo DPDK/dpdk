@@ -5,12 +5,19 @@
 #ifndef _IFCVF_H_
 #define _IFCVF_H_
 
+#include <linux/virtio_blk.h>
 #include "ifcvf_osdep.h"
 
-#define IFCVF_VENDOR_ID		0x1AF4
-#define IFCVF_DEVICE_ID		0x1041
-#define IFCVF_SUBSYS_VENDOR_ID	0x8086
-#define IFCVF_SUBSYS_DEVICE_ID	0x001A
+#define IFCVF_NET	0
+#define IFCVF_BLK	1
+
+#define IFCVF_VENDOR_ID                     0x1AF4
+#define IFCVF_NET_DEVICE_ID                 0x1041
+#define IFCVF_BLK_MODERN_DEVICE_ID          0x1042
+#define IFCVF_BLK_TRANSITIONAL_DEVICE_ID    0x1001
+#define IFCVF_SUBSYS_VENDOR_ID              0x8086
+#define IFCVF_SUBSYS_DEVICE_ID              0x001A
+#define IFCVF_BLK_DEVICE_ID                 0x0002
 
 #define IFCVF_MAX_QUEUES		1
 
@@ -126,13 +133,18 @@ struct ifcvf_hw {
 	u8     notify_region;
 	u32    notify_off_multiplier;
 	struct ifcvf_pci_common_cfg *common_cfg;
-	struct ifcvf_net_config *dev_cfg;
+	union {
+		struct ifcvf_net_config *net_cfg;
+		struct virtio_blk_config *blk_cfg;
+		void *dev_cfg;
+	};
 	u8     *isr;
 	u16    *notify_base;
 	u16    *notify_addr[IFCVF_MAX_QUEUES * 2];
 	u8     *lm_cfg;
 	struct vring_info vring[IFCVF_MAX_QUEUES * 2];
 	u8 nr_vring;
+	int device_type;
 	struct ifcvf_pci_mem_resource mem_resource[IFCVF_PCI_MAX_RESOURCE];
 };
 
