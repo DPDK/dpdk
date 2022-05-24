@@ -2468,6 +2468,89 @@ static int is_vring_iotlb(struct virtio_net *dev,
 }
 
 static int
+vhost_user_get_config(struct virtio_net **pdev,
+			struct vhu_msg_context *ctx,
+			int main_fd __rte_unused)
+{
+	struct virtio_net *dev = *pdev;
+	struct rte_vdpa_device *vdpa_dev = dev->vdpa_dev;
+	int ret = 0;
+
+	if (validate_msg_fds(dev, ctx, 0) != 0)
+		return RTE_VHOST_MSG_RESULT_ERR;
+
+	if (!vdpa_dev) {
+		VHOST_LOG_CONFIG(ERR, "(%s) is not vDPA device!\n",
+				 dev->ifname);
+		return RTE_VHOST_MSG_RESULT_ERR;
+	}
+
+	if (vdpa_dev->ops->get_config) {
+		ret = vdpa_dev->ops->get_config(dev->vid,
+					   ctx->msg.payload.cfg.region,
+					   ctx->msg.payload.cfg.size);
+		if (ret != 0) {
+			ctx->msg.size = 0;
+			VHOST_LOG_CONFIG(ERR,
+					 "(%s) get_config() return error!\n",
+					 dev->ifname);
+		}
+	} else {
+		VHOST_LOG_CONFIG(ERR, "(%s) get_config() not supported!\n",
+				 dev->ifname);
+	}
+
+	return RTE_VHOST_MSG_RESULT_REPLY;
+}
+
+static int
+vhost_user_set_config(struct virtio_net **pdev,
+			struct vhu_msg_context *ctx,
+			int main_fd __rte_unused)
+{
+	struct virtio_net *dev = *pdev;
+	struct rte_vdpa_device *vdpa_dev = dev->vdpa_dev;
+	int ret = 0;
+
+	if (validate_msg_fds(dev, ctx, 0) != 0)
+		return RTE_VHOST_MSG_RESULT_ERR;
+
+	if (ctx->msg.payload.cfg.size > VHOST_USER_MAX_CONFIG_SIZE) {
+		VHOST_LOG_CONFIG(ERR,
+			"(%s) vhost_user_config size: %"PRIu32", should not be larger than %d\n",
+			dev->ifname, ctx->msg.payload.cfg.size,
+			VHOST_USER_MAX_CONFIG_SIZE);
+		goto out;
+	}
+
+	if (!vdpa_dev) {
+		VHOST_LOG_CONFIG(ERR, "(%s) is not vDPA device!\n",
+				 dev->ifname);
+		goto out;
+	}
+
+	if (vdpa_dev->ops->set_config) {
+		ret = vdpa_dev->ops->set_config(dev->vid,
+			ctx->msg.payload.cfg.region,
+			ctx->msg.payload.cfg.offset,
+			ctx->msg.payload.cfg.size,
+			ctx->msg.payload.cfg.flags);
+		if (ret)
+			VHOST_LOG_CONFIG(ERR,
+					 "(%s) set_config() return error!\n",
+					 dev->ifname);
+	} else {
+		VHOST_LOG_CONFIG(ERR, "(%s) set_config() not supported!\n",
+				 dev->ifname);
+	}
+
+	return RTE_VHOST_MSG_RESULT_OK;
+
+out:
+	return RTE_VHOST_MSG_RESULT_ERR;
+}
+
+static int
 vhost_user_iotlb_msg(struct virtio_net **pdev,
 			struct vhu_msg_context *ctx,
 			int main_fd __rte_unused)
@@ -2686,6 +2769,8 @@ VHOST_MESSAGE_HANDLER(VHOST_USER_SEND_RARP, vhost_user_send_rarp, false) \
 VHOST_MESSAGE_HANDLER(VHOST_USER_NET_SET_MTU, vhost_user_net_set_mtu, false) \
 VHOST_MESSAGE_HANDLER(VHOST_USER_SET_SLAVE_REQ_FD, vhost_user_set_req_fd, true) \
 VHOST_MESSAGE_HANDLER(VHOST_USER_IOTLB_MSG, vhost_user_iotlb_msg, false) \
+VHOST_MESSAGE_HANDLER(VHOST_USER_GET_CONFIG, vhost_user_get_config, false) \
+VHOST_MESSAGE_HANDLER(VHOST_USER_SET_CONFIG, vhost_user_set_config, false) \
 VHOST_MESSAGE_HANDLER(VHOST_USER_POSTCOPY_ADVISE, vhost_user_set_postcopy_advise, false) \
 VHOST_MESSAGE_HANDLER(VHOST_USER_POSTCOPY_LISTEN, vhost_user_set_postcopy_listen, false) \
 VHOST_MESSAGE_HANDLER(VHOST_USER_POSTCOPY_END, vhost_user_postcopy_end, false) \
