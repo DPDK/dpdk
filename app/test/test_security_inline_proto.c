@@ -1098,6 +1098,139 @@ test_ipsec_inline_proto_all(const struct ipsec_test_flags *flags)
 		return TEST_SKIPPED;
 }
 
+static int
+test_ipsec_inline_proto_process_with_esn(struct ipsec_test_data td[],
+		struct ipsec_test_data res_d[],
+		int nb_pkts,
+		bool silent,
+		const struct ipsec_test_flags *flags)
+{
+	struct rte_security_session_conf sess_conf = {0};
+	struct ipsec_test_data *res_d_tmp = NULL;
+	struct rte_crypto_sym_xform cipher = {0};
+	struct rte_crypto_sym_xform auth = {0};
+	struct rte_crypto_sym_xform aead = {0};
+	struct rte_mbuf *rx_pkt = NULL;
+	struct rte_mbuf *tx_pkt = NULL;
+	int nb_rx, nb_sent;
+	struct rte_security_session *ses;
+	struct rte_security_ctx *ctx;
+	uint32_t ol_flags;
+	int i, ret;
+
+	if (td[0].aead) {
+		sess_conf.crypto_xform = &aead;
+	} else {
+		if (td[0].ipsec_xform.direction ==
+				RTE_SECURITY_IPSEC_SA_DIR_EGRESS) {
+			sess_conf.crypto_xform = &cipher;
+			sess_conf.crypto_xform->type = RTE_CRYPTO_SYM_XFORM_CIPHER;
+			sess_conf.crypto_xform->next = &auth;
+			sess_conf.crypto_xform->next->type = RTE_CRYPTO_SYM_XFORM_AUTH;
+		} else {
+			sess_conf.crypto_xform = &auth;
+			sess_conf.crypto_xform->type = RTE_CRYPTO_SYM_XFORM_AUTH;
+			sess_conf.crypto_xform->next = &cipher;
+			sess_conf.crypto_xform->next->type = RTE_CRYPTO_SYM_XFORM_CIPHER;
+		}
+	}
+
+	/* Create Inline IPsec session. */
+	ret = create_inline_ipsec_session(&td[0], port_id, &ses, &ctx,
+					  &ol_flags, flags, &sess_conf);
+	if (ret)
+		return ret;
+
+	if (td[0].ipsec_xform.direction == RTE_SECURITY_IPSEC_SA_DIR_INGRESS) {
+		ret = create_default_flow(port_id);
+		if (ret)
+			goto out;
+	}
+
+	for (i = 0; i < nb_pkts; i++) {
+		tx_pkt = init_packet(mbufpool, td[i].input_text.data,
+					td[i].input_text.len);
+		if (tx_pkt == NULL) {
+			ret = TEST_FAILED;
+			goto out;
+		}
+
+		if (test_ipsec_pkt_update(rte_pktmbuf_mtod_offset(tx_pkt,
+					uint8_t *, RTE_ETHER_HDR_LEN), flags)) {
+			ret = TEST_FAILED;
+			goto out;
+		}
+
+		if (td[i].ipsec_xform.direction ==
+				RTE_SECURITY_IPSEC_SA_DIR_EGRESS) {
+			if (flags->antireplay) {
+				sess_conf.ipsec.esn.value =
+						td[i].ipsec_xform.esn.value;
+				ret = rte_security_session_update(ctx, ses,
+						&sess_conf);
+				if (ret) {
+					printf("Could not update ESN in session\n");
+					rte_pktmbuf_free(tx_pkt);
+					ret = TEST_SKIPPED;
+					goto out;
+				}
+			}
+			if (ol_flags & RTE_SECURITY_TX_OLOAD_NEED_MDATA)
+				rte_security_set_pkt_metadata(ctx, ses,
+						tx_pkt, NULL);
+			tx_pkt->ol_flags |= RTE_MBUF_F_TX_SEC_OFFLOAD;
+		}
+		/* Send packet to ethdev for inline IPsec processing. */
+		nb_sent = rte_eth_tx_burst(port_id, 0, &tx_pkt, 1);
+		if (nb_sent != 1) {
+			printf("\nUnable to TX packets");
+			rte_pktmbuf_free(tx_pkt);
+			ret = TEST_FAILED;
+			goto out;
+		}
+
+		rte_pause();
+
+		/* Receive back packet on loopback interface. */
+		do {
+			rte_delay_ms(1);
+			nb_rx = rte_eth_rx_burst(port_id, 0, &rx_pkt, 1);
+		} while (nb_rx == 0);
+
+		rte_pktmbuf_adj(rx_pkt, RTE_ETHER_HDR_LEN);
+
+		if (res_d != NULL)
+			res_d_tmp = &res_d[i];
+
+		ret = test_ipsec_post_process(rx_pkt, &td[i],
+					      res_d_tmp, silent, flags);
+		if (ret != TEST_SUCCESS) {
+			rte_pktmbuf_free(rx_pkt);
+			goto out;
+		}
+
+		ret = test_ipsec_stats_verify(ctx, ses, flags,
+					td->ipsec_xform.direction);
+		if (ret != TEST_SUCCESS) {
+			rte_pktmbuf_free(rx_pkt);
+			goto out;
+		}
+
+		rte_pktmbuf_free(rx_pkt);
+		rx_pkt = NULL;
+		tx_pkt = NULL;
+	}
+
+out:
+	if (td->ipsec_xform.direction == RTE_SECURITY_IPSEC_SA_DIR_INGRESS)
+		destroy_default_flow(port_id);
+
+	/* Destroy session so that other cases can create the session again */
+	rte_security_session_destroy(ctx, ses);
+	ses = NULL;
+
+	return ret;
+}
 
 static int
 ut_setup_inline_ipsec(void)
@@ -1709,6 +1842,153 @@ test_ipsec_inline_proto_known_vec_fragmented(const void *test_data)
 	return test_ipsec_inline_proto_process(&td_outb, NULL, 1, false,
 						&flags);
 }
+
+static int
+test_ipsec_inline_pkt_replay(const void *test_data, const uint64_t esn[],
+		      bool replayed_pkt[], uint32_t nb_pkts, bool esn_en,
+		      uint64_t winsz)
+{
+	struct ipsec_test_data td_outb[IPSEC_TEST_PACKETS_MAX];
+	struct ipsec_test_data td_inb[IPSEC_TEST_PACKETS_MAX];
+	struct ipsec_test_flags flags;
+	uint32_t i, ret = 0;
+
+	memset(&flags, 0, sizeof(flags));
+	flags.antireplay = true;
+
+	for (i = 0; i < nb_pkts; i++) {
+		memcpy(&td_outb[i], test_data, sizeof(td_outb));
+		td_outb[i].ipsec_xform.options.iv_gen_disable = 1;
+		td_outb[i].ipsec_xform.replay_win_sz = winsz;
+		td_outb[i].ipsec_xform.options.esn = esn_en;
+	}
+
+	for (i = 0; i < nb_pkts; i++)
+		td_outb[i].ipsec_xform.esn.value = esn[i];
+
+	ret = test_ipsec_inline_proto_process_with_esn(td_outb, td_inb,
+				nb_pkts, true, &flags);
+	if (ret != TEST_SUCCESS)
+		return ret;
+
+	test_ipsec_td_update(td_inb, td_outb, nb_pkts, &flags);
+
+	for (i = 0; i < nb_pkts; i++) {
+		td_inb[i].ipsec_xform.options.esn = esn_en;
+		/* Set antireplay flag for packets to be dropped */
+		td_inb[i].ar_packet = replayed_pkt[i];
+	}
+
+	ret = test_ipsec_inline_proto_process_with_esn(td_inb, NULL, nb_pkts,
+				true, &flags);
+
+	return ret;
+}
+
+static int
+test_ipsec_inline_proto_pkt_antireplay(const void *test_data, uint64_t winsz)
+{
+
+	uint32_t nb_pkts = 5;
+	bool replayed_pkt[5];
+	uint64_t esn[5];
+
+	/* 1. Advance the TOP of the window to WS * 2 */
+	esn[0] = winsz * 2;
+	/* 2. Test sequence number within the new window(WS + 1) */
+	esn[1] = winsz + 1;
+	/* 3. Test sequence number less than the window BOTTOM */
+	esn[2] = winsz;
+	/* 4. Test sequence number in the middle of the window */
+	esn[3] = winsz + (winsz / 2);
+	/* 5. Test replay of the packet in the middle of the window */
+	esn[4] = winsz + (winsz / 2);
+
+	replayed_pkt[0] = false;
+	replayed_pkt[1] = false;
+	replayed_pkt[2] = true;
+	replayed_pkt[3] = false;
+	replayed_pkt[4] = true;
+
+	return test_ipsec_inline_pkt_replay(test_data, esn, replayed_pkt,
+			nb_pkts, false, winsz);
+}
+
+static int
+test_ipsec_inline_proto_pkt_antireplay1024(const void *test_data)
+{
+	return test_ipsec_inline_proto_pkt_antireplay(test_data, 1024);
+}
+
+static int
+test_ipsec_inline_proto_pkt_antireplay2048(const void *test_data)
+{
+	return test_ipsec_inline_proto_pkt_antireplay(test_data, 2048);
+}
+
+static int
+test_ipsec_inline_proto_pkt_antireplay4096(const void *test_data)
+{
+	return test_ipsec_inline_proto_pkt_antireplay(test_data, 4096);
+}
+
+static int
+test_ipsec_inline_proto_pkt_esn_antireplay(const void *test_data, uint64_t winsz)
+{
+
+	uint32_t nb_pkts = 7;
+	bool replayed_pkt[7];
+	uint64_t esn[7];
+
+	/* Set the initial sequence number */
+	esn[0] = (uint64_t)(0xFFFFFFFF - winsz);
+	/* 1. Advance the TOP of the window to (1<<32 + WS/2) */
+	esn[1] = (uint64_t)((1ULL << 32) + (winsz / 2));
+	/* 2. Test sequence number within new window (1<<32 + WS/2 + 1) */
+	esn[2] = (uint64_t)((1ULL << 32) - (winsz / 2) + 1);
+	/* 3. Test with sequence number within window (1<<32 - 1) */
+	esn[3] = (uint64_t)((1ULL << 32) - 1);
+	/* 4. Test with sequence number within window (1<<32 - 1) */
+	esn[4] = (uint64_t)(1ULL << 32);
+	/* 5. Test with duplicate sequence number within
+	 * new window (1<<32 - 1)
+	 */
+	esn[5] = (uint64_t)((1ULL << 32) - 1);
+	/* 6. Test with duplicate sequence number within new window (1<<32) */
+	esn[6] = (uint64_t)(1ULL << 32);
+
+	replayed_pkt[0] = false;
+	replayed_pkt[1] = false;
+	replayed_pkt[2] = false;
+	replayed_pkt[3] = false;
+	replayed_pkt[4] = false;
+	replayed_pkt[5] = true;
+	replayed_pkt[6] = true;
+
+	return test_ipsec_inline_pkt_replay(test_data, esn, replayed_pkt, nb_pkts,
+				     true, winsz);
+}
+
+static int
+test_ipsec_inline_proto_pkt_esn_antireplay1024(const void *test_data)
+{
+	return test_ipsec_inline_proto_pkt_esn_antireplay(test_data, 1024);
+}
+
+static int
+test_ipsec_inline_proto_pkt_esn_antireplay2048(const void *test_data)
+{
+	return test_ipsec_inline_proto_pkt_esn_antireplay(test_data, 2048);
+}
+
+static int
+test_ipsec_inline_proto_pkt_esn_antireplay4096(const void *test_data)
+{
+	return test_ipsec_inline_proto_pkt_esn_antireplay(test_data, 4096);
+}
+
+
+
 static struct unit_test_suite inline_ipsec_testsuite  = {
 	.suite_name = "Inline IPsec Ethernet Device Unit Test Suite",
 	.setup = inline_ipsec_testsuite_setup,
@@ -1934,6 +2214,37 @@ static struct unit_test_suite inline_ipsec_testsuite  = {
 			ut_setup_inline_ipsec, ut_teardown_inline_ipsec,
 			test_ipsec_inline_proto_iv_gen),
 
+
+		TEST_CASE_NAMED_WITH_DATA(
+			"Antireplay with window size 1024",
+			ut_setup_inline_ipsec, ut_teardown_inline_ipsec,
+			test_ipsec_inline_proto_pkt_antireplay1024,
+			&pkt_aes_128_gcm),
+		TEST_CASE_NAMED_WITH_DATA(
+			"Antireplay with window size 2048",
+			ut_setup_inline_ipsec, ut_teardown_inline_ipsec,
+			test_ipsec_inline_proto_pkt_antireplay2048,
+			&pkt_aes_128_gcm),
+		TEST_CASE_NAMED_WITH_DATA(
+			"Antireplay with window size 4096",
+			ut_setup_inline_ipsec, ut_teardown_inline_ipsec,
+			test_ipsec_inline_proto_pkt_antireplay4096,
+			&pkt_aes_128_gcm),
+		TEST_CASE_NAMED_WITH_DATA(
+			"ESN and Antireplay with window size 1024",
+			ut_setup_inline_ipsec, ut_teardown_inline_ipsec,
+			test_ipsec_inline_proto_pkt_esn_antireplay1024,
+			&pkt_aes_128_gcm),
+		TEST_CASE_NAMED_WITH_DATA(
+			"ESN and Antireplay with window size 2048",
+			ut_setup_inline_ipsec, ut_teardown_inline_ipsec,
+			test_ipsec_inline_proto_pkt_esn_antireplay2048,
+			&pkt_aes_128_gcm),
+		TEST_CASE_NAMED_WITH_DATA(
+			"ESN and Antireplay with window size 4096",
+			ut_setup_inline_ipsec, ut_teardown_inline_ipsec,
+			test_ipsec_inline_proto_pkt_esn_antireplay4096,
+			&pkt_aes_128_gcm),
 
 		TEST_CASE_NAMED_WITH_DATA(
 			"IPv4 Reassembly with 2 fragments",
