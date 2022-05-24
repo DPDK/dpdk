@@ -1189,6 +1189,29 @@ exit:
 	return 0;
 }
 
+static int
+ifcvf_get_device_type(struct rte_vdpa_device *vdev,
+	uint32_t *type)
+{
+	struct ifcvf_internal *internal;
+	struct internal_list *list;
+
+	list = find_internal_resource_by_vdev(vdev);
+	if (list == NULL) {
+		DRV_LOG(ERR, "Invalid vDPA device: %p", vdev);
+		return -1;
+	}
+
+	internal = list->internal;
+
+	if (internal->hw.device_type == IFCVF_BLK)
+		*type = RTE_VHOST_VDPA_DEVICE_TYPE_BLK;
+	else
+		*type = RTE_VHOST_VDPA_DEVICE_TYPE_NET;
+
+	return 0;
+}
+
 static struct rte_vdpa_dev_ops ifcvf_net_ops = {
 	.get_queue_num = ifcvf_get_queue_num,
 	.get_features = ifcvf_get_vdpa_features,
@@ -1201,6 +1224,7 @@ static struct rte_vdpa_dev_ops ifcvf_net_ops = {
 	.get_vfio_group_fd = ifcvf_get_vfio_group_fd,
 	.get_vfio_device_fd = ifcvf_get_vfio_device_fd,
 	.get_notify_area = ifcvf_get_notify_area,
+	.get_dev_type = ifcvf_get_device_type,
 };
 
 static inline int
@@ -1332,6 +1356,7 @@ static struct rte_vdpa_dev_ops ifcvf_blk_ops = {
 	.get_vfio_device_fd = ifcvf_get_vfio_device_fd,
 	.get_notify_area = ifcvf_get_notify_area,
 	.get_config = ifcvf_blk_get_config,
+	.get_dev_type = ifcvf_get_device_type,
 };
 
 struct rte_vdpa_dev_info dev_info[] = {
