@@ -2196,6 +2196,9 @@ nicvf_eth_dev_init(struct rte_eth_dev *eth_dev)
 			);
 	}
 
+	/* To make sure RX DMAC register is set to default value (0x3) */
+	nicvf_mbox_reset_xcast(nic);
+
 	ret = nicvf_base_init(nic);
 	if (ret) {
 		PMD_INIT_LOG(ERR, "Failed to execute nicvf_base_init");

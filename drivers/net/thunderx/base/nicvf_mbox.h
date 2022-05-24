@@ -43,6 +43,7 @@
 #define	NIC_MBOX_MSG_SET_LINK		0x21	/* Set link up/down */
 #define	NIC_MBOX_MSG_CFG_DONE		0xF0	/* VF configuration done */
 #define	NIC_MBOX_MSG_SHUTDOWN		0xF1	/* VF is being shutdown */
+#define NIC_MBOX_MSG_RESET_XCAST	0xF2    /* Reset DCAM filtering mode */
 #define	NIC_MBOX_MSG_MAX		0x100	/* Maximum number of messages */
 
 /* Get vNIC VF configuration */
@@ -223,5 +224,6 @@ int nicvf_mbox_set_link_up_down(struct nicvf *nic, bool enable);
 void nicvf_mbox_shutdown(struct nicvf *nic);
 void nicvf_mbox_cfg_done(struct nicvf *nic);
 void nicvf_mbox_link_change(struct nicvf *nic);
+void nicvf_mbox_reset_xcast(struct nicvf *nic);
 
 #endif /* __THUNDERX_NICVF_MBOX__ */
