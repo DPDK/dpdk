@@ -85,6 +85,17 @@ nicvf_mbox_send_msg_to_pf(struct nicvf *nic, struct nic_mbx *mbx)
 		nicvf_smp_wmb();
 
 		nicvf_mbox_send_msg_to_pf_raw(nic, mbx);
+
+		/* Handling case if mbox is called inside interrupt context,
+		 * Eg if hotplug attach/detach request is initiated from
+		 * secondary and primary handles the request in interrupt
+		 * context as part of multprocess framework.
+		 */
+		if (rte_thread_is_intr()) {
+			nicvf_delay_us(NICVF_MBOX_PF_RESPONSE_DELAY_US);
+			nicvf_reg_poll_interrupts(nic);
+		}
+
 		/* Give some time to get PF response */
 		nicvf_delay_us(NICVF_MBOX_PF_RESPONSE_DELAY_US);
 		timeout = NIC_MBOX_MSG_TIMEOUT;
@@ -100,10 +111,10 @@ nicvf_mbox_send_msg_to_pf(struct nicvf *nic, struct nic_mbx *mbx)
 			nicvf_delay_us(NICVF_MBOX_PF_RESPONSE_DELAY_US);
 			timeout -= sleep;
 		}
-		nicvf_log_error("PF didn't ack to msg 0x%02x %s VF%d (%d/%d)",
-				mbx->msg.msg, nicvf_mbox_msg_str(mbx->msg.msg),
-				nic->vf_id, i, retry);
 	}
+	nicvf_log_error("PF didn't ack to msg 0x%02x %s VF%d (%d/%d)",
+			mbx->msg.msg, nicvf_mbox_msg_str(mbx->msg.msg),
+			nic->vf_id, i, retry);
 	return -EBUSY;
 }
 
