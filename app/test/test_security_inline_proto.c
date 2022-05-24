@@ -666,6 +666,92 @@ out:
 }
 
 static int
+test_ipsec_inline_proto_all(const struct ipsec_test_flags *flags)
+{
+	struct ipsec_test_data td_outb;
+	struct ipsec_test_data td_inb;
+	unsigned int i, nb_pkts = 1, pass_cnt = 0, fail_cnt = 0;
+	int ret;
+
+	if (flags->iv_gen || flags->sa_expiry_pkts_soft ||
+			flags->sa_expiry_pkts_hard)
+		nb_pkts = IPSEC_TEST_PACKETS_MAX;
+
+	for (i = 0; i < RTE_DIM(alg_list); i++) {
+		test_ipsec_td_prepare(alg_list[i].param1,
+				      alg_list[i].param2,
+				      flags, &td_outb, 1);
+
+		if (!td_outb.aead) {
+			enum rte_crypto_cipher_algorithm cipher_alg;
+			enum rte_crypto_auth_algorithm auth_alg;
+
+			cipher_alg = td_outb.xform.chain.cipher.cipher.algo;
+			auth_alg = td_outb.xform.chain.auth.auth.algo;
+
+			if (td_outb.aes_gmac && cipher_alg != RTE_CRYPTO_CIPHER_NULL)
+				continue;
+
+			/* ICV is not applicable for NULL auth */
+			if (flags->icv_corrupt &&
+			    auth_alg == RTE_CRYPTO_AUTH_NULL)
+				continue;
+
+			/* IV is not applicable for NULL cipher */
+			if (flags->iv_gen &&
+			    cipher_alg == RTE_CRYPTO_CIPHER_NULL)
+				continue;
+		}
+
+		if (flags->udp_encap)
+			td_outb.ipsec_xform.options.udp_encap = 1;
+
+		ret = test_ipsec_inline_proto_process(&td_outb, &td_inb, nb_pkts,
+						false, flags);
+		if (ret == TEST_SKIPPED)
+			continue;
+
+		if (ret == TEST_FAILED) {
+			printf("\n TEST FAILED");
+			test_ipsec_display_alg(alg_list[i].param1,
+					       alg_list[i].param2);
+			fail_cnt++;
+			continue;
+		}
+
+		test_ipsec_td_update(&td_inb, &td_outb, 1, flags);
+
+		ret = test_ipsec_inline_proto_process(&td_inb, NULL, nb_pkts,
+						false, flags);
+		if (ret == TEST_SKIPPED)
+			continue;
+
+		if (ret == TEST_FAILED) {
+			printf("\n TEST FAILED");
+			test_ipsec_display_alg(alg_list[i].param1,
+					       alg_list[i].param2);
+			fail_cnt++;
+			continue;
+		}
+
+		if (flags->display_alg)
+			test_ipsec_display_alg(alg_list[i].param1,
+					       alg_list[i].param2);
+
+		pass_cnt++;
+	}
+
+	printf("Tests passed: %d, failed: %d", pass_cnt, fail_cnt);
+	if (fail_cnt > 0)
+		return TEST_FAILED;
+	if (pass_cnt > 0)
+		return TEST_SUCCESS;
+	else
+		return TEST_SKIPPED;
+}
+
+
+static int
 ut_setup_inline_ipsec(void)
 {
 	int ret;
@@ -841,6 +927,17 @@ test_ipsec_inline_proto_known_vec_inb(const void *test_data)
 	return test_ipsec_inline_proto_process(&td_inb, NULL, 1, false, &flags);
 }
 
+static int
+test_ipsec_inline_proto_display_list(const void *data __rte_unused)
+{
+	struct ipsec_test_flags flags;
+
+	memset(&flags, 0, sizeof(flags));
+
+	flags.display_alg = true;
+
+	return test_ipsec_inline_proto_all(&flags);
+}
 
 static struct unit_test_suite inline_ipsec_testsuite  = {
 	.suite_name = "Inline IPsec Ethernet Device Unit Test Suite",
@@ -933,6 +1030,11 @@ static struct unit_test_suite inline_ipsec_testsuite  = {
 			ut_setup_inline_ipsec, ut_teardown_inline_ipsec,
 			test_ipsec_inline_proto_known_vec_inb,
 			&pkt_null_aes_xcbc),
+
+		TEST_CASE_NAMED_ST(
+			"Combined test alg list",
+			ut_setup_inline_ipsec, ut_teardown_inline_ipsec,
+			test_ipsec_inline_proto_display_list),
 
 
 
