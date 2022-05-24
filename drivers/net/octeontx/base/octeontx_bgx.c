@@ -376,3 +376,22 @@ int octeontx_bgx_port_flow_ctrl_cfg(int port,
 done:
 	return 0;
 }
+
+int octeontx_bgx_port_change_mode(int port,
+				  octeontx_mbox_bgx_port_change_mode_t *cfg)
+{
+	int len = sizeof(octeontx_mbox_bgx_port_change_mode_t), res;
+	octeontx_mbox_bgx_port_change_mode_t conf;
+	struct octeontx_mbox_hdr hdr;
+
+	hdr.coproc = OCTEONTX_BGX_COPROC;
+	hdr.msg = MBOX_BGX_PORT_CHANGE_MODE;
+	hdr.vfid = port;
+
+	memcpy(&conf, cfg, len);
+	res = octeontx_mbox_send(&hdr, &conf, len, NULL, 0);
+	if (res < 0)
+		return -EACCES;
+
+	return res;
+}

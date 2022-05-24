@@ -31,6 +31,9 @@
  */
 uint16_t evdev_refcnt;
 
+#define OCTEONTX_QLM_MODE_SGMII  7
+#define OCTEONTX_QLM_MODE_XFI   12
+
 struct evdev_priv_data {
 	OFFLOAD_FLAGS; /*Sequence should not be changed */
 } __rte_cache_aligned;
@@ -50,7 +53,8 @@ enum octeontx_link_speed {
 	OCTEONTX_LINK_SPEED_40G_R,
 	OCTEONTX_LINK_SPEED_RESERVE1,
 	OCTEONTX_LINK_SPEED_QSGMII,
-	OCTEONTX_LINK_SPEED_RESERVE2
+	OCTEONTX_LINK_SPEED_RESERVE2,
+	OCTEONTX_LINK_SPEED_UNKNOWN = 255
 };
 
 RTE_LOG_REGISTER_SUFFIX(otx_net_logtype_mbox, mbox, NOTICE);
@@ -139,6 +143,7 @@ octeontx_port_open(struct octeontx_nic *nic)
 	nic->mcast_mode = bgx_port_conf.mcast_mode;
 	nic->speed	= bgx_port_conf.mode;
 
+	nic->duplex = RTE_ETH_LINK_FULL_DUPLEX;
 	memset(&fifo_cfg, 0x0, sizeof(fifo_cfg));
 
 	res = octeontx_bgx_port_get_fifo_cfg(nic->port_id, &fifo_cfg);
@@ -169,6 +174,67 @@ octeontx_link_status_print(struct rte_eth_dev *eth_dev,
 	else
 		octeontx_log_info("Port %d: Link Down",
 				  (int)(eth_dev->data->port_id));
+}
+
+static inline uint32_t
+octeontx_parse_link_speeds(uint32_t link_speeds)
+{
+	uint32_t link_speed = OCTEONTX_LINK_SPEED_UNKNOWN;
+
+	if (link_speeds & RTE_ETH_LINK_SPEED_40G)
+		link_speed = OCTEONTX_LINK_SPEED_40G_R;
+
+	if (link_speeds & RTE_ETH_LINK_SPEED_10G) {
+		link_speed  = OCTEONTX_LINK_SPEED_XAUI;
+		link_speed |= OCTEONTX_LINK_SPEED_RXAUI;
+		link_speed |= OCTEONTX_LINK_SPEED_10G_R;
+	}
+
+	if (link_speeds & RTE_ETH_LINK_SPEED_5G)
+		link_speed = OCTEONTX_LINK_SPEED_QSGMII;
+
+	if (link_speeds & RTE_ETH_LINK_SPEED_1G)
+		link_speed = OCTEONTX_LINK_SPEED_SGMII;
+
+	return link_speed;
+}
+
+static inline uint8_t
+octeontx_parse_eth_link_duplex(uint32_t link_speeds)
+{
+	if ((link_speeds & RTE_ETH_LINK_SPEED_10M_HD) ||
+			(link_speeds & RTE_ETH_LINK_SPEED_100M_HD))
+		return RTE_ETH_LINK_HALF_DUPLEX;
+	else
+		return RTE_ETH_LINK_FULL_DUPLEX;
+}
+
+static int
+octeontx_apply_link_speed(struct rte_eth_dev *dev)
+{
+	struct octeontx_nic *nic = octeontx_pmd_priv(dev);
+	struct rte_eth_conf *conf = &dev->data->dev_conf;
+	octeontx_mbox_bgx_port_change_mode_t cfg;
+
+	if (conf->link_speeds == RTE_ETH_LINK_SPEED_AUTONEG)
+		return 0;
+
+	cfg.speed = octeontx_parse_link_speeds(conf->link_speeds);
+	cfg.autoneg = (conf->link_speeds & RTE_ETH_LINK_SPEED_FIXED) ? 1 : 0;
+	cfg.duplex = octeontx_parse_eth_link_duplex(conf->link_speeds);
+	cfg.qlm_mode = ((conf->link_speeds & RTE_ETH_LINK_SPEED_1G) ?
+			OCTEONTX_QLM_MODE_SGMII :
+			(conf->link_speeds & RTE_ETH_LINK_SPEED_10G) ?
+			OCTEONTX_QLM_MODE_XFI : 0);
+
+	if (cfg.speed != OCTEONTX_LINK_SPEED_UNKNOWN &&
+	    (cfg.speed != nic->speed || cfg.duplex != nic->duplex)) {
+		nic->speed = cfg.speed;
+		nic->duplex = cfg.duplex;
+		return octeontx_bgx_port_change_mode(nic->port_id, &cfg);
+	} else {
+		return 0;
+	}
 }
 
 static void
@@ -440,11 +506,6 @@ octeontx_dev_configure(struct rte_eth_dev *dev)
 		txmode->offloads |= RTE_ETH_TX_OFFLOAD_MT_LOCKFREE;
 	}
 
-	if (conf->link_speeds & RTE_ETH_LINK_SPEED_FIXED) {
-		octeontx_log_err("setting link speed/duplex not supported");
-		return -EINVAL;
-	}
-
 	if (conf->dcb_capability_en) {
 		octeontx_log_err("DCB enable not supported");
 		return -EINVAL;
@@ -618,6 +679,13 @@ octeontx_dev_start(struct rte_eth_dev *dev)
 	ret = octeontx_dev_mtu_set(dev, nic->mtu);
 	if (ret) {
 		octeontx_log_err("Failed to set default MTU size %d", ret);
+		goto error;
+	}
+
+	/* Apply new link configurations if changed */
+	ret = octeontx_apply_link_speed(dev);
+	if (ret) {
+		octeontx_log_err("Failed to set link configuration: %d", ret);
 		goto error;
 	}
 
