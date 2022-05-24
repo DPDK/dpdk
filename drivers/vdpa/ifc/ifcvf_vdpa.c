@@ -53,7 +53,9 @@ struct ifcvf_internal {
 	int vfio_group_fd;
 	int vfio_dev_fd;
 	pthread_t tid;	/* thread for notify relay */
+	pthread_t intr_tid; /* thread for config space change interrupt relay */
 	int epfd;
+	int csc_epfd;
 	int vid;
 	struct rte_vdpa_device *vdev;
 	uint16_t max_queues;
@@ -566,6 +568,114 @@ unset_notify_relay(struct ifcvf_internal *internal)
 	return 0;
 }
 
+static void
+virtio_interrupt_handler(struct ifcvf_internal *internal)
+{
+	int vid = internal->vid;
+	int ret;
+
+	ret = rte_vhost_slave_config_change(vid, 1);
+	if (ret)
+		DRV_LOG(ERR, "failed to notify the guest about configuration space change.");
+}
+
+static void *
+intr_relay(void *arg)
+{
+	struct ifcvf_internal *internal = (struct ifcvf_internal *)arg;
+	struct epoll_event csc_event;
+	struct epoll_event ev;
+	uint64_t buf;
+	int nbytes;
+	int csc_epfd, csc_val = 0;
+
+	csc_epfd = epoll_create(1);
+	if (csc_epfd < 0) {
+		DRV_LOG(ERR, "failed to create epoll for config space change.");
+		return NULL;
+	}
+
+	ev.events = EPOLLIN | EPOLLPRI | EPOLLRDHUP | EPOLLHUP;
+	ev.data.fd = rte_intr_fd_get(internal->pdev->intr_handle);
+	if (epoll_ctl(csc_epfd, EPOLL_CTL_ADD,
+		rte_intr_fd_get(internal->pdev->intr_handle), &ev) < 0) {
+		DRV_LOG(ERR, "epoll add error: %s", strerror(errno));
+		goto out;
+	}
+
+	internal->csc_epfd = csc_epfd;
+
+	for (;;) {
+		csc_val = epoll_wait(csc_epfd, &csc_event, 1, -1);
+		if (csc_val < 0) {
+			if (errno == EINTR)
+				continue;
+			DRV_LOG(ERR, "epoll_wait return fail.");
+			goto out;
+		} else if (csc_val == 0) {
+			continue;
+		} else {
+			/* csc_val > 0 */
+			nbytes = read(csc_event.data.fd, &buf, 8);
+			if (nbytes < 0) {
+				if (errno == EINTR ||
+				    errno == EWOULDBLOCK ||
+				    errno == EAGAIN)
+					continue;
+				DRV_LOG(ERR, "Error reading from file descriptor %d: %s\n",
+					csc_event.data.fd,
+					strerror(errno));
+				goto out;
+			} else if (nbytes == 0) {
+				DRV_LOG(ERR, "Read nothing from file descriptor %d\n",
+					csc_event.data.fd);
+				continue;
+			} else {
+				virtio_interrupt_handler(internal);
+			}
+		}
+	}
+
+out:
+	if (csc_epfd >= 0)
+		close(csc_epfd);
+	internal->csc_epfd = -1;
+
+	return NULL;
+}
+
+static int
+setup_intr_relay(struct ifcvf_internal *internal)
+{
+	char name[THREAD_NAME_LEN];
+	int ret;
+
+	snprintf(name, sizeof(name), "ifc-intr-%d", internal->vid);
+	ret = rte_ctrl_thread_create(&internal->intr_tid, name, NULL,
+				     intr_relay, (void *)internal);
+	if (ret) {
+		DRV_LOG(ERR, "failed to create notify relay pthread.");
+		return -1;
+	}
+	return 0;
+}
+
+static void
+unset_intr_relay(struct ifcvf_internal *internal)
+{
+	void *status;
+
+	if (internal->intr_tid) {
+		pthread_cancel(internal->intr_tid);
+		pthread_join(internal->intr_tid, &status);
+	}
+	internal->intr_tid = 0;
+
+	if (internal->csc_epfd >= 0)
+		close(internal->csc_epfd);
+	internal->csc_epfd = -1;
+}
+
 static int
 update_datapath(struct ifcvf_internal *internal)
 {
@@ -592,10 +702,16 @@ update_datapath(struct ifcvf_internal *internal)
 		if (ret)
 			goto err;
 
+		ret = setup_intr_relay(internal);
+		if (ret)
+			goto err;
+
 		rte_atomic32_set(&internal->running, 1);
 	} else if (rte_atomic32_read(&internal->running) &&
 		   (!rte_atomic32_read(&internal->started) ||
 		    !rte_atomic32_read(&internal->dev_attached))) {
+		unset_intr_relay(internal);
+
 		ret = unset_notify_relay(internal);
 		if (ret)
 			goto err;
@@ -812,7 +928,7 @@ vring_relay(void *arg)
 		if (nfds < 0) {
 			if (errno == EINTR)
 				continue;
-			DRV_LOG(ERR, "epoll_wait return fail\n");
+			DRV_LOG(ERR, "epoll_wait return fail.");
 			return NULL;
 		}
 
@@ -888,6 +1004,9 @@ ifcvf_sw_fallback_switchover(struct ifcvf_internal *internal)
 	/* stop the direct IO data path */
 	unset_notify_relay(internal);
 	vdpa_ifcvf_stop(internal);
+
+	unset_intr_relay(internal);
+
 	vdpa_disable_vfio_intr(internal);
 
 	ret = rte_vhost_host_notifier_ctrl(vid, RTE_VHOST_QUEUE_ALL, false);
