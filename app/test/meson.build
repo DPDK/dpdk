@@ -125,6 +125,7 @@ test_sources = files(
         'test_rwlock.c',
         'test_sched.c',
         'test_security.c',
+        'test_security_inline_proto.c',
         'test_service_cores.c',
         'test_spinlock.c',
         'test_stack.c',
