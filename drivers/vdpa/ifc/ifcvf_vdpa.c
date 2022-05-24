@@ -369,6 +369,7 @@ vdpa_enable_vfio_intr(struct ifcvf_internal *internal, bool m_rx)
 	irq_set->index = VFIO_PCI_MSIX_IRQ_INDEX;
 	irq_set->start = 0;
 	fd_ptr = (int *)&irq_set->data;
+	/* The first interrupt is for the configure space change notification */
 	fd_ptr[RTE_INTR_VEC_ZERO_OFFSET] =
 		rte_intr_fd_get(internal->pdev->intr_handle);
 
@@ -378,7 +379,13 @@ vdpa_enable_vfio_intr(struct ifcvf_internal *internal, bool m_rx)
 	for (i = 0; i < nr_vring; i++) {
 		rte_vhost_get_vhost_vring(internal->vid, i, &vring);
 		fd_ptr[RTE_INTR_VEC_RXTX_OFFSET + i] = vring.callfd;
-		if ((i & 1) == 0 && m_rx == true) {
+		if (m_rx == true &&
+			((i & 1) == 0 || internal->hw.device_type == IFCVF_BLK)) {
+			/* For the net we only need to relay rx queue,
+			 * which will change the mem of VM.
+			 * For the blk we need to relay all the read cmd
+			 * of each queue
+			 */
 			fd = eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
 			if (fd < 0) {
 				DRV_LOG(ERR, "can't setup eventfd: %s",
