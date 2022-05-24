@@ -218,10 +218,17 @@ ifcvf_hw_enable(struct ifcvf_hw *hw)
 				&cfg->queue_used_hi);
 		IFCVF_WRITE_REG16(hw->vring[i].size, &cfg->queue_size);
 
-		*(u32 *)(lm_cfg + IFCVF_LM_RING_STATE_OFFSET +
-				(i / 2) * IFCVF_LM_CFG_SIZE + (i % 2) * 4) =
-			(u32)hw->vring[i].last_avail_idx |
-			((u32)hw->vring[i].last_used_idx << 16);
+		if (hw->device_type == IFCVF_BLK)
+			*(u32 *)(lm_cfg + IFCVF_LM_RING_STATE_OFFSET +
+				i * IFCVF_LM_CFG_SIZE) =
+				(u32)hw->vring[i].last_avail_idx |
+				((u32)hw->vring[i].last_used_idx << 16);
+		else
+			*(u32 *)(lm_cfg + IFCVF_LM_RING_STATE_OFFSET +
+				(i / 2) * IFCVF_LM_CFG_SIZE +
+				(i % 2) * 4) =
+				(u32)hw->vring[i].last_avail_idx |
+				((u32)hw->vring[i].last_used_idx << 16);
 
 		IFCVF_WRITE_REG16(i + 1, &cfg->queue_msix_vector);
 		if (IFCVF_READ_REG16(&cfg->queue_msix_vector) ==
@@ -254,9 +261,22 @@ ifcvf_hw_disable(struct ifcvf_hw *hw)
 		IFCVF_WRITE_REG16(i, &cfg->queue_select);
 		IFCVF_WRITE_REG16(0, &cfg->queue_enable);
 		IFCVF_WRITE_REG16(IFCVF_MSI_NO_VECTOR, &cfg->queue_msix_vector);
-		ring_state = *(u32 *)(hw->lm_cfg + IFCVF_LM_RING_STATE_OFFSET +
-				(i / 2) * IFCVF_LM_CFG_SIZE + (i % 2) * 4);
-		hw->vring[i].last_avail_idx = (u16)(ring_state >> 16);
+
+		if (hw->device_type == IFCVF_BLK)
+			ring_state = *(u32 *)(hw->lm_cfg +
+					IFCVF_LM_RING_STATE_OFFSET +
+					i * IFCVF_LM_CFG_SIZE);
+		else
+			ring_state = *(u32 *)(hw->lm_cfg +
+					IFCVF_LM_RING_STATE_OFFSET +
+					(i / 2) * IFCVF_LM_CFG_SIZE +
+					(i % 2) * 4);
+
+		if (hw->device_type == IFCVF_BLK)
+			hw->vring[i].last_avail_idx =
+				(u16)(ring_state & IFCVF_16_BIT_MASK);
+		else
+			hw->vring[i].last_avail_idx = (u16)(ring_state >> 16);
 		hw->vring[i].last_used_idx = (u16)(ring_state >> 16);
 	}
 }
