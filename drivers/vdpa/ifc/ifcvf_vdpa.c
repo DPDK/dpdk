@@ -1387,6 +1387,9 @@ ifcvf_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	struct rte_kvargs *kvlist = NULL;
 	int ret = 0;
 	int16_t device_id;
+	uint64_t capacity = 0;
+	uint8_t *byte;
+	uint32_t i;
 
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return 0;
@@ -1453,6 +1456,37 @@ ifcvf_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		internal->features = features &
 					~(1ULL << VIRTIO_F_IOMMU_PLATFORM);
 		internal->features |= dev_info[IFCVF_BLK].features;
+
+		/* cannot read 64-bit register in one attempt,
+		 * so read byte by byte.
+		 */
+		for (i = 0; i < sizeof(internal->hw.blk_cfg->capacity); i++) {
+			byte = (uint8_t *)&internal->hw.blk_cfg->capacity + i;
+			capacity |= (uint64_t)*byte << (i * 8);
+		}
+		/* The capacity is number of sectors in 512-byte.
+		 * So right shift 1 bit  we get in K,
+		 * another right shift 10 bits we get in M,
+		 * right shift 10 more bits, we get in G.
+		 * To show capacity in G, we right shift 21 bits in total.
+		 */
+		DRV_LOG(DEBUG, "capacity  : %"PRIu64"G", capacity >> 21);
+
+		DRV_LOG(DEBUG, "size_max  : 0x%08x",
+			internal->hw.blk_cfg->size_max);
+		DRV_LOG(DEBUG, "seg_max   : 0x%08x",
+			internal->hw.blk_cfg->seg_max);
+		DRV_LOG(DEBUG, "blk_size  : 0x%08x",
+			internal->hw.blk_cfg->blk_size);
+		DRV_LOG(DEBUG, "geometry");
+		DRV_LOG(DEBUG, "    cylinders: %u",
+			internal->hw.blk_cfg->geometry.cylinders);
+		DRV_LOG(DEBUG, "    heads    : %u",
+			internal->hw.blk_cfg->geometry.heads);
+		DRV_LOG(DEBUG, "    sectors  : %u",
+			internal->hw.blk_cfg->geometry.sectors);
+		DRV_LOG(DEBUG, "num_queues: 0x%08x",
+			internal->hw.blk_cfg->num_queues);
 	}
 
 	list->internal = internal;
