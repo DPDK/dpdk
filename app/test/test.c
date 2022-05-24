@@ -361,6 +361,8 @@ unit_test_suite_runner(struct unit_test_suite *suite)
 				suite->failed++;
 		} else if (test_success == -ENOTSUP) {
 			suite->unsupported++;
+		} else if (test_success == TEST_SKIPPED) {
+			suite->skipped++;
 		} else {
 			suite->failed++;
 		}
