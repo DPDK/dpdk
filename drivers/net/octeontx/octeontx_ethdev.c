@@ -26,6 +26,11 @@
 #include "octeontx_rxtx.h"
 #include "octeontx_logs.h"
 
+/* Useful in stopping/closing event device if no of
+ * eth ports are using it.
+ */
+uint16_t evdev_refcnt;
+
 struct evdev_priv_data {
 	OFFLOAD_FLAGS; /*Sequence should not be changed */
 } __rte_cache_aligned;
@@ -491,7 +496,11 @@ octeontx_dev_close(struct rte_eth_dev *dev)
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return 0;
 
-	rte_event_dev_close(nic->evdev);
+	/* Stopping/closing event device once all eth ports are closed. */
+	if (__atomic_sub_fetch(&evdev_refcnt, 1, __ATOMIC_ACQUIRE) == 0) {
+		rte_event_dev_stop(nic->evdev);
+		rte_event_dev_close(nic->evdev);
+	}
 
 	octeontx_dev_flow_ctrl_fini(dev);
 
@@ -670,8 +679,6 @@ octeontx_dev_stop(struct rte_eth_dev *dev)
 	int ret;
 
 	PMD_INIT_FUNC_TRACE();
-
-	rte_event_dev_stop(nic->evdev);
 
 	ret = octeontx_port_stop(nic);
 	if (ret < 0) {
@@ -1333,6 +1340,7 @@ octeontx_create(struct rte_vdev_device *dev, int port, uint8_t evdev,
 	nic->pko_vfid = pko_vfid;
 	nic->port_id = port;
 	nic->evdev = evdev;
+	__atomic_add_fetch(&evdev_refcnt, 1, __ATOMIC_ACQUIRE);
 
 	res = octeontx_port_open(nic);
 	if (res < 0)
@@ -1582,6 +1590,7 @@ octeontx_probe(struct rte_vdev_device *dev)
 		}
 	}
 
+	__atomic_store_n(&evdev_refcnt, 0, __ATOMIC_RELEASE);
 	/*
 	 * Do 1:1 links for ports & queues. All queues would be mapped to
 	 * one port. If there are more ports than queues, then some ports
