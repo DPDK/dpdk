@@ -71,6 +71,9 @@ nicvf_link_status_update(struct nicvf *nic,
 	link->link_autoneg = RTE_ETH_LINK_AUTONEG;
 }
 
+/*Poll for link status change by sending NIC_MBOX_MSG_BGX_LINK_CHANGE msg
+ * periodically to PF.
+ */
 static void
 nicvf_interrupt(void *arg)
 {
@@ -78,7 +81,10 @@ nicvf_interrupt(void *arg)
 	struct nicvf *nic = nicvf_pmd_priv(dev);
 	struct rte_eth_link link;
 
-	if (nicvf_reg_poll_interrupts(nic) == NIC_MBOX_MSG_BGX_LINK_CHANGE) {
+	rte_eth_linkstatus_get(dev, &link);
+
+	nicvf_mbox_link_change(nic);
+	if (nic->link_up != link.link_status) {
 		if (dev->data->dev_conf.intr_conf.lsc) {
 			nicvf_link_status_update(nic, &link);
 			rte_eth_linkstatus_set(dev, &link);
@@ -89,7 +95,7 @@ nicvf_interrupt(void *arg)
 		}
 	}
 
-	rte_eal_alarm_set(NICVF_INTR_POLL_INTERVAL_MS * 1000,
+	rte_eal_alarm_set(NICVF_INTR_LINK_POLL_INTERVAL_MS * 1000,
 				nicvf_interrupt, dev);
 }
 
@@ -1841,7 +1847,6 @@ nicvf_vf_stop(struct rte_eth_dev *dev, struct nicvf *nic, bool cleanup)
 static int
 nicvf_dev_close(struct rte_eth_dev *dev)
 {
-	size_t i;
 	struct nicvf *nic = nicvf_pmd_priv(dev);
 
 	PMD_INIT_FUNC_TRACE();
@@ -1850,13 +1855,7 @@ nicvf_dev_close(struct rte_eth_dev *dev)
 
 	nicvf_dev_stop_cleanup(dev, true);
 	nicvf_periodic_alarm_stop(nicvf_interrupt, dev);
-
-	for (i = 0; i < nic->sqs_count; i++) {
-		if (!nic->snicvf[i])
-			continue;
-
-		nicvf_periodic_alarm_stop(nicvf_vf_interrupt, nic->snicvf[i]);
-	}
+	nicvf_periodic_alarm_stop(nicvf_vf_interrupt, nic);
 
 	rte_intr_instance_free(nic->intr_handle);
 
@@ -2169,6 +2168,14 @@ nicvf_eth_dev_init(struct rte_eth_dev *eth_dev)
 
 	nicvf_disable_all_interrupts(nic);
 
+	/* To read mbox messages */
+	ret = nicvf_periodic_alarm_start(nicvf_vf_interrupt, nic);
+	if (ret) {
+		PMD_INIT_LOG(ERR, "Failed to start period alarm");
+		goto fail;
+	}
+
+	/* To poll link status change*/
 	ret = nicvf_periodic_alarm_start(nicvf_interrupt, eth_dev);
 	if (ret) {
 		PMD_INIT_LOG(ERR, "Failed to start period alarm");
@@ -2203,11 +2210,6 @@ nicvf_eth_dev_init(struct rte_eth_dev *eth_dev)
 		eth_dev->data->dev_private = NULL;
 
 		nicvf_periodic_alarm_stop(nicvf_interrupt, eth_dev);
-		ret = nicvf_periodic_alarm_start(nicvf_vf_interrupt, nic);
-		if (ret) {
-			PMD_INIT_LOG(ERR, "Failed to start period alarm");
-			goto fail;
-		}
 
 		/* Detach port by returning positive error number */
 		return ENOTSUP;

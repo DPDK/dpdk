@@ -440,3 +440,12 @@ nicvf_mbox_cfg_done(struct nicvf *nic)
 	mbx.msg.msg = NIC_MBOX_MSG_CFG_DONE;
 	nicvf_mbox_send_async_msg_to_pf(nic, &mbx);
 }
+
+void
+nicvf_mbox_link_change(struct nicvf *nic)
+{
+	struct nic_mbx mbx = { .msg = { 0 } };
+
+	mbx.msg.msg = NIC_MBOX_MSG_BGX_LINK_CHANGE;
+	nicvf_mbox_send_async_msg_to_pf(nic, &mbx);
+}

@@ -222,5 +222,6 @@ int nicvf_mbox_reset_stat_counters(struct nicvf *nic, uint16_t rx_stat_mask,
 int nicvf_mbox_set_link_up_down(struct nicvf *nic, bool enable);
 void nicvf_mbox_shutdown(struct nicvf *nic);
 void nicvf_mbox_cfg_done(struct nicvf *nic);
+void nicvf_mbox_link_change(struct nicvf *nic);
 
 #endif /* __THUNDERX_NICVF_MBOX__ */
