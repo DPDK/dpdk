@@ -113,4 +113,13 @@ struct nicvf {
 	struct nicvf *snicvf[MAX_SQS_PER_VF];
 } __rte_cache_aligned;
 
+struct change_link_mode {
+	bool	   enable;
+	uint8_t    qlm_mode;
+	bool	   autoneg;
+	uint8_t    duplex;
+	uint32_t   speed;
+
+};
+
 #endif /* _THUNDERX_NICVF_STRUCT_H */

@@ -423,6 +423,22 @@ nicvf_mbox_set_link_up_down(struct nicvf *nic, bool enable)
 	mbx.lbk.enable = enable;
 	return nicvf_mbox_send_msg_to_pf(nic, &mbx);
 }
+
+
+int
+nicvf_mbox_change_mode(struct nicvf *nic, struct change_link_mode *cfg)
+{
+	struct nic_mbx mbx = { .msg = { 0 } };
+
+	mbx.mode.msg = NIC_MBOX_MSG_CHANGE_MODE;
+	mbx.mode.vf_id = nic->vf_id;
+	mbx.mode.speed = cfg->speed;
+	mbx.mode.duplex = cfg->duplex;
+	mbx.mode.autoneg = cfg->autoneg;
+	mbx.mode.qlm_mode = cfg->qlm_mode;
+	return nicvf_mbox_send_msg_to_pf(nic, &mbx);
+}
+
 void
 nicvf_mbox_shutdown(struct nicvf *nic)
 {

@@ -55,6 +55,82 @@ RTE_LOG_REGISTER_SUFFIX(nicvf_logtype_mbox, mbox, NOTICE);
 RTE_LOG_REGISTER_SUFFIX(nicvf_logtype_init, init, NOTICE);
 RTE_LOG_REGISTER_SUFFIX(nicvf_logtype_driver, driver, NOTICE);
 
+#define NICVF_QLM_MODE_SGMII  7
+#define NICVF_QLM_MODE_XFI   12
+
+enum nicvf_link_speed {
+	NICVF_LINK_SPEED_SGMII,
+	NICVF_LINK_SPEED_XAUI,
+	NICVF_LINK_SPEED_RXAUI,
+	NICVF_LINK_SPEED_10G_R,
+	NICVF_LINK_SPEED_40G_R,
+	NICVF_LINK_SPEED_RESERVE1,
+	NICVF_LINK_SPEED_QSGMII,
+	NICVF_LINK_SPEED_RESERVE2,
+	NICVF_LINK_SPEED_UNKNOWN = 255
+};
+
+static inline uint32_t
+nicvf_parse_link_speeds(uint32_t link_speeds)
+{
+	uint32_t link_speed = NICVF_LINK_SPEED_UNKNOWN;
+
+	if (link_speeds & RTE_ETH_LINK_SPEED_40G)
+		link_speed = NICVF_LINK_SPEED_40G_R;
+
+	if (link_speeds & RTE_ETH_LINK_SPEED_10G) {
+		link_speed  = NICVF_LINK_SPEED_XAUI;
+		link_speed |= NICVF_LINK_SPEED_RXAUI;
+		link_speed |= NICVF_LINK_SPEED_10G_R;
+	}
+
+	if (link_speeds & RTE_ETH_LINK_SPEED_5G)
+		link_speed = NICVF_LINK_SPEED_QSGMII;
+
+	if (link_speeds & RTE_ETH_LINK_SPEED_1G)
+		link_speed = NICVF_LINK_SPEED_SGMII;
+
+	return link_speed;
+}
+
+static inline uint8_t
+nicvf_parse_eth_link_duplex(uint32_t link_speeds)
+{
+	if ((link_speeds & RTE_ETH_LINK_SPEED_10M_HD) ||
+			(link_speeds & RTE_ETH_LINK_SPEED_100M_HD))
+		return RTE_ETH_LINK_HALF_DUPLEX;
+	else
+		return RTE_ETH_LINK_FULL_DUPLEX;
+}
+
+static int
+nicvf_apply_link_speed(struct rte_eth_dev *dev)
+{
+	struct nicvf *nic = nicvf_pmd_priv(dev);
+	struct rte_eth_conf *conf = &dev->data->dev_conf;
+	struct change_link_mode cfg;
+	if (conf->link_speeds == RTE_ETH_LINK_SPEED_AUTONEG)
+		/* TODO: Handle this case */
+		return 0;
+
+	cfg.speed = nicvf_parse_link_speeds(conf->link_speeds);
+	cfg.autoneg = (conf->link_speeds & RTE_ETH_LINK_SPEED_FIXED) ? 1 : 0;
+	cfg.duplex = nicvf_parse_eth_link_duplex(conf->link_speeds);
+	cfg.qlm_mode = ((conf->link_speeds & RTE_ETH_LINK_SPEED_1G) ?
+			NICVF_QLM_MODE_SGMII :
+			(conf->link_speeds & RTE_ETH_LINK_SPEED_10G) ?
+			NICVF_QLM_MODE_XFI : 0);
+
+	if (cfg.speed != NICVF_LINK_SPEED_UNKNOWN &&
+	    (cfg.speed != nic->speed || cfg.duplex != nic->duplex)) {
+		nic->speed = cfg.speed;
+		nic->duplex = cfg.duplex;
+		return nicvf_mbox_change_mode(nic, &cfg);
+	} else {
+		return 0;
+	}
+}
+
 static void
 nicvf_link_status_update(struct nicvf *nic,
 			 struct rte_eth_link *link)
@@ -1728,6 +1804,13 @@ nicvf_dev_start(struct rte_eth_dev *dev)
 		return -EBUSY;
 	}
 
+	/* Apply new link configurations if changed */
+	ret = nicvf_apply_link_speed(dev);
+	if (ret) {
+		PMD_INIT_LOG(ERR, "Failed to set link configuration\n");
+		return ret;
+	}
+
 	ret = nicvf_vf_start(dev, nic, rbdrsz);
 	if (ret != 0)
 		return ret;
@@ -1918,11 +2001,6 @@ nicvf_dev_configure(struct rte_eth_dev *dev)
 
 	if (rxmode->split_hdr_size) {
 		PMD_INIT_LOG(INFO, "Rxmode does not support split header");
-		return -EINVAL;
-	}
-
-	if (conf->link_speeds & RTE_ETH_LINK_SPEED_FIXED) {
-		PMD_INIT_LOG(INFO, "Setting link speed/duplex not supported");
 		return -EINVAL;
 	}
 

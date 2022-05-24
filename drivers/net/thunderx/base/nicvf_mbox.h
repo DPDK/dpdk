@@ -41,6 +41,7 @@
 #define	NIC_MBOX_MSG_LOOPBACK		0x16	/* Set interface in loopback */
 #define	NIC_MBOX_MSG_RESET_STAT_COUNTER 0x17	/* Reset statistics counters */
 #define	NIC_MBOX_MSG_SET_LINK		0x21	/* Set link up/down */
+#define	NIC_MBOX_MSG_CHANGE_MODE	0x22	/* Change mode */
 #define	NIC_MBOX_MSG_CFG_DONE		0xF0	/* VF configuration done */
 #define	NIC_MBOX_MSG_SHUTDOWN		0xF1	/* VF is being shutdown */
 #define NIC_MBOX_MSG_RESET_XCAST	0xF2    /* Reset DCAM filtering mode */
@@ -178,6 +179,17 @@ struct set_link_state {
 	bool	   enable;
 };
 
+/* Change link mode */
+struct change_link_mode_msg {
+	uint8_t    msg;
+	uint8_t    vf_id;
+	uint8_t    qlm_mode;
+	bool	   autoneg;
+	uint8_t    duplex;
+	uint32_t   speed;
+
+};
+
 struct nic_mbx {
 /* 128 bit shared memory between PF and each VF */
 union {
@@ -196,6 +208,7 @@ union {
 	struct set_loopback	lbk;
 	struct reset_stat_cfg	reset_stat;
 	struct set_link_state	set_link;
+	struct change_link_mode_msg mode;
 };
 };
 
@@ -225,5 +238,6 @@ void nicvf_mbox_shutdown(struct nicvf *nic);
 void nicvf_mbox_cfg_done(struct nicvf *nic);
 void nicvf_mbox_link_change(struct nicvf *nic);
 void nicvf_mbox_reset_xcast(struct nicvf *nic);
+int nicvf_mbox_change_mode(struct nicvf *nic, struct change_link_mode *cfg);
 
 #endif /* __THUNDERX_NICVF_MBOX__ */
