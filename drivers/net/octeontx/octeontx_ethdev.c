@@ -847,6 +847,50 @@ octeontx_dev_link_update(struct rte_eth_dev *dev,
 	return rte_eth_linkstatus_set(dev, &link);
 }
 
+static int
+octeontx_port_mcast_set(struct octeontx_nic *nic, int en)
+{
+	struct rte_eth_dev *dev;
+	int res;
+
+	res = 0;
+	PMD_INIT_FUNC_TRACE();
+	dev = nic->dev;
+
+	res = octeontx_bgx_port_multicast_set(nic->port_id, en);
+	if (res < 0) {
+		octeontx_log_err("failed to set multicast mode %d",
+				nic->port_id);
+		return res;
+	}
+
+	/* Set proper flag for the mode */
+	dev->data->all_multicast = (en != 0) ? 1 : 0;
+
+	octeontx_log_dbg("port %d : multicast mode %s",
+			nic->port_id, en ? "set" : "unset");
+
+	return 0;
+}
+
+static int
+octeontx_allmulticast_enable(struct rte_eth_dev *dev)
+{
+	struct octeontx_nic *nic = octeontx_pmd_priv(dev);
+
+	PMD_INIT_FUNC_TRACE();
+	return octeontx_port_mcast_set(nic, 1);
+}
+
+static int
+octeontx_allmulticast_disable(struct rte_eth_dev *dev)
+{
+	struct octeontx_nic *nic = octeontx_pmd_priv(dev);
+
+	PMD_INIT_FUNC_TRACE();
+	return octeontx_port_mcast_set(nic, 0);
+}
+
 static inline int octeontx_dev_total_xstat(void)
 {
 	return NUM_BGX_XSTAT;
@@ -1480,6 +1524,8 @@ static const struct eth_dev_ops octeontx_dev_ops = {
 	.xstats_get_by_id	 = octeontx_dev_xstats_get_by_id,
 	.xstats_get_names	 = octeontx_dev_xstats_get_names,
 	.xstats_get_names_by_id	 = octeontx_dev_xstats_get_names_by_id,
+	.allmulticast_enable      = octeontx_allmulticast_enable,
+	.allmulticast_disable     = octeontx_allmulticast_disable,
 };
 
 /* Create Ethdev interface per BGX LMAC ports */

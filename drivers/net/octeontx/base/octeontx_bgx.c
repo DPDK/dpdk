@@ -145,6 +145,25 @@ octeontx_bgx_port_status(int port, octeontx_mbox_bgx_port_status_t *stat)
 }
 
 int
+octeontx_bgx_port_multicast_set(int port, int en)
+{
+	struct octeontx_mbox_hdr hdr;
+	uint8_t	prom;
+	int res;
+
+	hdr.coproc = OCTEONTX_BGX_COPROC;
+	hdr.msg = MBOX_BGX_PORT_SET_MCAST;
+	hdr.vfid = port;
+	prom = en ? 1 : 0;
+
+	res = octeontx_mbox_send(&hdr, &prom, sizeof(prom), NULL, 0);
+	if (res < 0)
+		return -EACCES;
+
+	return res;
+}
+
+int
 octeontx_bgx_port_xstats(int port, octeontx_mbox_bgx_port_stats_t *stats)
 {
 	struct octeontx_mbox_hdr hdr;

@@ -166,6 +166,7 @@ int octeontx_bgx_port_stats_clr(int port);
 int octeontx_bgx_port_xstats(int port, octeontx_mbox_bgx_port_stats_t *stats);
 int octeontx_bgx_port_link_status(int port);
 int octeontx_bgx_port_promisc_set(int port, int en);
+int octeontx_bgx_port_multicast_set(int port, int en);
 int octeontx_bgx_port_mac_set(int port, uint8_t *mac_addr);
 int octeontx_bgx_port_mac_add(int port, uint8_t *mac_addr, int index);
 int octeontx_bgx_port_mac_del(int port, uint32_t index);
