@@ -207,19 +207,19 @@ struct cmd_show_port_tm_cap_result {
 	uint16_t port_id;
 };
 
-cmdline_parse_token_string_t cmd_show_port_tm_cap_show =
+static cmdline_parse_token_string_t cmd_show_port_tm_cap_show =
 	TOKEN_STRING_INITIALIZER(struct cmd_show_port_tm_cap_result,
 		show, "show");
-cmdline_parse_token_string_t cmd_show_port_tm_cap_port =
+static cmdline_parse_token_string_t cmd_show_port_tm_cap_port =
 	TOKEN_STRING_INITIALIZER(struct cmd_show_port_tm_cap_result,
 		port, "port");
-cmdline_parse_token_string_t cmd_show_port_tm_cap_tm =
+static cmdline_parse_token_string_t cmd_show_port_tm_cap_tm =
 	TOKEN_STRING_INITIALIZER(struct cmd_show_port_tm_cap_result,
 		tm, "tm");
-cmdline_parse_token_string_t cmd_show_port_tm_cap_cap =
+static cmdline_parse_token_string_t cmd_show_port_tm_cap_cap =
 	TOKEN_STRING_INITIALIZER(struct cmd_show_port_tm_cap_result,
 		cap, "cap");
-cmdline_parse_token_num_t cmd_show_port_tm_cap_port_id =
+static cmdline_parse_token_num_t cmd_show_port_tm_cap_port_id =
 	TOKEN_NUM_INITIALIZER(struct cmd_show_port_tm_cap_result,
 		 port_id, RTE_UINT16);
 
@@ -353,25 +353,25 @@ struct cmd_show_port_tm_level_cap_result {
 	uint32_t level_id;
 };
 
-cmdline_parse_token_string_t cmd_show_port_tm_level_cap_show =
+static cmdline_parse_token_string_t cmd_show_port_tm_level_cap_show =
 	TOKEN_STRING_INITIALIZER(struct cmd_show_port_tm_level_cap_result,
 		show, "show");
-cmdline_parse_token_string_t cmd_show_port_tm_level_cap_port =
+static cmdline_parse_token_string_t cmd_show_port_tm_level_cap_port =
 	TOKEN_STRING_INITIALIZER(struct cmd_show_port_tm_level_cap_result,
 		port, "port");
-cmdline_parse_token_string_t cmd_show_port_tm_level_cap_tm =
+static cmdline_parse_token_string_t cmd_show_port_tm_level_cap_tm =
 	TOKEN_STRING_INITIALIZER(struct cmd_show_port_tm_level_cap_result,
 		tm, "tm");
-cmdline_parse_token_string_t cmd_show_port_tm_level_cap_level =
+static cmdline_parse_token_string_t cmd_show_port_tm_level_cap_level =
 	TOKEN_STRING_INITIALIZER(struct cmd_show_port_tm_level_cap_result,
 		level, "level");
-cmdline_parse_token_string_t cmd_show_port_tm_level_cap_cap =
+static cmdline_parse_token_string_t cmd_show_port_tm_level_cap_cap =
 	TOKEN_STRING_INITIALIZER(struct cmd_show_port_tm_level_cap_result,
 		cap, "cap");
-cmdline_parse_token_num_t cmd_show_port_tm_level_cap_port_id =
+static cmdline_parse_token_num_t cmd_show_port_tm_level_cap_port_id =
 	TOKEN_NUM_INITIALIZER(struct cmd_show_port_tm_level_cap_result,
 		 port_id, RTE_UINT16);
-cmdline_parse_token_num_t cmd_show_port_tm_level_cap_level_id =
+static cmdline_parse_token_num_t cmd_show_port_tm_level_cap_level_id =
 	TOKEN_NUM_INITIALIZER(struct cmd_show_port_tm_level_cap_result,
 		 level_id, RTE_UINT32);
 
@@ -503,25 +503,25 @@ struct cmd_show_port_tm_node_cap_result {
 	uint32_t node_id;
 };
 
-cmdline_parse_token_string_t cmd_show_port_tm_node_cap_show =
+static cmdline_parse_token_string_t cmd_show_port_tm_node_cap_show =
 	TOKEN_STRING_INITIALIZER(struct cmd_show_port_tm_node_cap_result,
 		show, "show");
-cmdline_parse_token_string_t cmd_show_port_tm_node_cap_port =
+static cmdline_parse_token_string_t cmd_show_port_tm_node_cap_port =
 	TOKEN_STRING_INITIALIZER(struct cmd_show_port_tm_node_cap_result,
 		port, "port");
-cmdline_parse_token_string_t cmd_show_port_tm_node_cap_tm =
+static cmdline_parse_token_string_t cmd_show_port_tm_node_cap_tm =
 	TOKEN_STRING_INITIALIZER(struct cmd_show_port_tm_node_cap_result,
 		tm, "tm");
-cmdline_parse_token_string_t cmd_show_port_tm_node_cap_node =
+static cmdline_parse_token_string_t cmd_show_port_tm_node_cap_node =
 	TOKEN_STRING_INITIALIZER(struct cmd_show_port_tm_node_cap_result,
 		node, "node");
-cmdline_parse_token_string_t cmd_show_port_tm_node_cap_cap =
+static cmdline_parse_token_string_t cmd_show_port_tm_node_cap_cap =
 	TOKEN_STRING_INITIALIZER(struct cmd_show_port_tm_node_cap_result,
 		cap, "cap");
-cmdline_parse_token_num_t cmd_show_port_tm_node_cap_port_id =
+static cmdline_parse_token_num_t cmd_show_port_tm_node_cap_port_id =
 	TOKEN_NUM_INITIALIZER(struct cmd_show_port_tm_node_cap_result,
 		 port_id, RTE_UINT16);
-cmdline_parse_token_num_t cmd_show_port_tm_node_cap_node_id =
+static cmdline_parse_token_num_t cmd_show_port_tm_node_cap_node_id =
 	TOKEN_NUM_INITIALIZER(struct cmd_show_port_tm_node_cap_result,
 		 node_id, RTE_UINT32);
 
@@ -627,29 +627,29 @@ struct cmd_show_port_tm_node_stats_result {
 	uint32_t clear;
 };
 
-cmdline_parse_token_string_t cmd_show_port_tm_node_stats_show =
+static cmdline_parse_token_string_t cmd_show_port_tm_node_stats_show =
 	TOKEN_STRING_INITIALIZER(
 		struct cmd_show_port_tm_node_stats_result, show, "show");
-cmdline_parse_token_string_t cmd_show_port_tm_node_stats_port =
+static cmdline_parse_token_string_t cmd_show_port_tm_node_stats_port =
 	TOKEN_STRING_INITIALIZER(
 		struct cmd_show_port_tm_node_stats_result, port, "port");
-cmdline_parse_token_string_t cmd_show_port_tm_node_stats_tm =
+static cmdline_parse_token_string_t cmd_show_port_tm_node_stats_tm =
 	TOKEN_STRING_INITIALIZER(
 		struct cmd_show_port_tm_node_stats_result, tm, "tm");
-cmdline_parse_token_string_t cmd_show_port_tm_node_stats_node =
+static cmdline_parse_token_string_t cmd_show_port_tm_node_stats_node =
 	TOKEN_STRING_INITIALIZER(
 		struct cmd_show_port_tm_node_stats_result, node, "node");
-cmdline_parse_token_string_t cmd_show_port_tm_node_stats_stats =
+static cmdline_parse_token_string_t cmd_show_port_tm_node_stats_stats =
 	TOKEN_STRING_INITIALIZER(
 		struct cmd_show_port_tm_node_stats_result, stats, "stats");
-cmdline_parse_token_num_t cmd_show_port_tm_node_stats_port_id =
+static cmdline_parse_token_num_t cmd_show_port_tm_node_stats_port_id =
 	TOKEN_NUM_INITIALIZER(struct cmd_show_port_tm_node_stats_result,
 			port_id, RTE_UINT16);
-cmdline_parse_token_num_t cmd_show_port_tm_node_stats_node_id =
+static cmdline_parse_token_num_t cmd_show_port_tm_node_stats_node_id =
 	TOKEN_NUM_INITIALIZER(
 		struct cmd_show_port_tm_node_stats_result,
 			node_id, RTE_UINT32);
-cmdline_parse_token_num_t cmd_show_port_tm_node_stats_clear =
+static cmdline_parse_token_num_t cmd_show_port_tm_node_stats_clear =
 	TOKEN_NUM_INITIALIZER(
 		struct cmd_show_port_tm_node_stats_result, clear, RTE_UINT32);
 
@@ -745,26 +745,26 @@ struct cmd_show_port_tm_node_type_result {
 	uint32_t node_id;
 };
 
-cmdline_parse_token_string_t cmd_show_port_tm_node_type_show =
+static cmdline_parse_token_string_t cmd_show_port_tm_node_type_show =
 	TOKEN_STRING_INITIALIZER(
 		struct cmd_show_port_tm_node_type_result, show, "show");
-cmdline_parse_token_string_t cmd_show_port_tm_node_type_port =
+static cmdline_parse_token_string_t cmd_show_port_tm_node_type_port =
 	TOKEN_STRING_INITIALIZER(
 		struct cmd_show_port_tm_node_type_result, port, "port");
-cmdline_parse_token_string_t cmd_show_port_tm_node_type_tm =
+static cmdline_parse_token_string_t cmd_show_port_tm_node_type_tm =
 	TOKEN_STRING_INITIALIZER(
 		struct cmd_show_port_tm_node_type_result, tm, "tm");
-cmdline_parse_token_string_t cmd_show_port_tm_node_type_node =
+static cmdline_parse_token_string_t cmd_show_port_tm_node_type_node =
 	TOKEN_STRING_INITIALIZER(
 		struct cmd_show_port_tm_node_type_result, node, "node");
-cmdline_parse_token_string_t cmd_show_port_tm_node_type_type =
+static cmdline_parse_token_string_t cmd_show_port_tm_node_type_type =
 	TOKEN_STRING_INITIALIZER(
 		struct cmd_show_port_tm_node_type_result, type, "type");
-cmdline_parse_token_num_t cmd_show_port_tm_node_type_port_id =
+static cmdline_parse_token_num_t cmd_show_port_tm_node_type_port_id =
 	TOKEN_NUM_INITIALIZER(
 		struct cmd_show_port_tm_node_type_result,
 			port_id, RTE_UINT16);
-cmdline_parse_token_num_t cmd_show_port_tm_node_type_node_id =
+static cmdline_parse_token_num_t cmd_show_port_tm_node_type_node_id =
 	TOKEN_NUM_INITIALIZER(
 		struct cmd_show_port_tm_node_type_result,
 			node_id, RTE_UINT32);
@@ -830,58 +830,58 @@ struct cmd_add_port_tm_node_shaper_profile_result {
 	int pkt_mode;
 };
 
-cmdline_parse_token_string_t cmd_add_port_tm_node_shaper_profile_add =
+static cmdline_parse_token_string_t cmd_add_port_tm_node_shaper_profile_add =
 	TOKEN_STRING_INITIALIZER(
 		struct cmd_add_port_tm_node_shaper_profile_result, add, "add");
-cmdline_parse_token_string_t cmd_add_port_tm_node_shaper_profile_port =
+static cmdline_parse_token_string_t cmd_add_port_tm_node_shaper_profile_port =
 	TOKEN_STRING_INITIALIZER(
 		struct cmd_add_port_tm_node_shaper_profile_result,
 			port, "port");
-cmdline_parse_token_string_t cmd_add_port_tm_node_shaper_profile_tm =
+static cmdline_parse_token_string_t cmd_add_port_tm_node_shaper_profile_tm =
 	TOKEN_STRING_INITIALIZER(
 		struct cmd_add_port_tm_node_shaper_profile_result,
 			tm, "tm");
-cmdline_parse_token_string_t cmd_add_port_tm_node_shaper_profile_node =
+static cmdline_parse_token_string_t cmd_add_port_tm_node_shaper_profile_node =
 	TOKEN_STRING_INITIALIZER(
 		struct cmd_add_port_tm_node_shaper_profile_result,
 			node, "node");
-cmdline_parse_token_string_t cmd_add_port_tm_node_shaper_profile_shaper =
+static cmdline_parse_token_string_t cmd_add_port_tm_node_shaper_profile_shaper =
 	TOKEN_STRING_INITIALIZER(
 		struct cmd_add_port_tm_node_shaper_profile_result,
 			shaper, "shaper");
-cmdline_parse_token_string_t cmd_add_port_tm_node_shaper_profile_profile =
+static cmdline_parse_token_string_t cmd_add_port_tm_node_shaper_profile_profile =
 	TOKEN_STRING_INITIALIZER(
 		struct cmd_add_port_tm_node_shaper_profile_result,
 			profile, "profile");
-cmdline_parse_token_num_t cmd_add_port_tm_node_shaper_profile_port_id =
+static cmdline_parse_token_num_t cmd_add_port_tm_node_shaper_profile_port_id =
 	TOKEN_NUM_INITIALIZER(
 		struct cmd_add_port_tm_node_shaper_profile_result,
 			port_id, RTE_UINT16);
-cmdline_parse_token_num_t cmd_add_port_tm_node_shaper_profile_shaper_id =
+static cmdline_parse_token_num_t cmd_add_port_tm_node_shaper_profile_shaper_id =
 	TOKEN_NUM_INITIALIZER(
 		struct cmd_add_port_tm_node_shaper_profile_result,
 			shaper_id, RTE_UINT32);
-cmdline_parse_token_num_t cmd_add_port_tm_node_shaper_profile_cmit_tb_rate =
+static cmdline_parse_token_num_t cmd_add_port_tm_node_shaper_profile_cmit_tb_rate =
 	TOKEN_NUM_INITIALIZER(
 		struct cmd_add_port_tm_node_shaper_profile_result,
 			cmit_tb_rate, RTE_UINT64);
-cmdline_parse_token_num_t cmd_add_port_tm_node_shaper_profile_cmit_tb_size =
+static cmdline_parse_token_num_t cmd_add_port_tm_node_shaper_profile_cmit_tb_size =
 	TOKEN_NUM_INITIALIZER(
 		struct cmd_add_port_tm_node_shaper_profile_result,
 			cmit_tb_size, RTE_UINT64);
-cmdline_parse_token_num_t cmd_add_port_tm_node_shaper_profile_peak_tb_rate =
+static cmdline_parse_token_num_t cmd_add_port_tm_node_shaper_profile_peak_tb_rate =
 	TOKEN_NUM_INITIALIZER(
 		struct cmd_add_port_tm_node_shaper_profile_result,
 			peak_tb_rate, RTE_UINT64);
-cmdline_parse_token_num_t cmd_add_port_tm_node_shaper_profile_peak_tb_size =
+static cmdline_parse_token_num_t cmd_add_port_tm_node_shaper_profile_peak_tb_size =
 	TOKEN_NUM_INITIALIZER(
 		struct cmd_add_port_tm_node_shaper_profile_result,
 			peak_tb_size, RTE_UINT64);
-cmdline_parse_token_num_t cmd_add_port_tm_node_shaper_profile_pktlen_adjust =
+static cmdline_parse_token_num_t cmd_add_port_tm_node_shaper_profile_pktlen_adjust =
 	TOKEN_NUM_INITIALIZER(
 		struct cmd_add_port_tm_node_shaper_profile_result,
 			pktlen_adjust, RTE_UINT32);
-cmdline_parse_token_num_t cmd_add_port_tm_node_shaper_profile_packet_mode =
+static cmdline_parse_token_num_t cmd_add_port_tm_node_shaper_profile_packet_mode =
 	TOKEN_NUM_INITIALIZER(
 		struct cmd_add_port_tm_node_shaper_profile_result,
 			pkt_mode, RTE_UINT32);
@@ -953,33 +953,33 @@ struct cmd_del_port_tm_node_shaper_profile_result {
 	uint32_t shaper_id;
 };
 
-cmdline_parse_token_string_t cmd_del_port_tm_node_shaper_profile_del =
+static cmdline_parse_token_string_t cmd_del_port_tm_node_shaper_profile_del =
 	TOKEN_STRING_INITIALIZER(
 		struct cmd_del_port_tm_node_shaper_profile_result, del, "del");
-cmdline_parse_token_string_t cmd_del_port_tm_node_shaper_profile_port =
+static cmdline_parse_token_string_t cmd_del_port_tm_node_shaper_profile_port =
 	TOKEN_STRING_INITIALIZER(
 		struct cmd_del_port_tm_node_shaper_profile_result,
 			port, "port");
-cmdline_parse_token_string_t cmd_del_port_tm_node_shaper_profile_tm =
+static cmdline_parse_token_string_t cmd_del_port_tm_node_shaper_profile_tm =
 	TOKEN_STRING_INITIALIZER(
 		struct cmd_del_port_tm_node_shaper_profile_result, tm, "tm");
-cmdline_parse_token_string_t cmd_del_port_tm_node_shaper_profile_node =
+static cmdline_parse_token_string_t cmd_del_port_tm_node_shaper_profile_node =
 	TOKEN_STRING_INITIALIZER(
 		struct cmd_del_port_tm_node_shaper_profile_result,
 			node, "node");
-cmdline_parse_token_string_t cmd_del_port_tm_node_shaper_profile_shaper =
+static cmdline_parse_token_string_t cmd_del_port_tm_node_shaper_profile_shaper =
 	TOKEN_STRING_INITIALIZER(
 		struct cmd_del_port_tm_node_shaper_profile_result,
 			shaper, "shaper");
-cmdline_parse_token_string_t cmd_del_port_tm_node_shaper_profile_profile =
+static cmdline_parse_token_string_t cmd_del_port_tm_node_shaper_profile_profile =
 	TOKEN_STRING_INITIALIZER(
 		struct cmd_del_port_tm_node_shaper_profile_result,
 			profile, "profile");
-cmdline_parse_token_num_t cmd_del_port_tm_node_shaper_profile_port_id =
+static cmdline_parse_token_num_t cmd_del_port_tm_node_shaper_profile_port_id =
 	TOKEN_NUM_INITIALIZER(
 		struct cmd_del_port_tm_node_shaper_profile_result,
 			port_id, RTE_UINT16);
-cmdline_parse_token_num_t cmd_del_port_tm_node_shaper_profile_shaper_id =
+static cmdline_parse_token_num_t cmd_del_port_tm_node_shaper_profile_shaper_id =
 	TOKEN_NUM_INITIALIZER(
 		struct cmd_del_port_tm_node_shaper_profile_result,
 			shaper_id, RTE_UINT32);
@@ -1035,36 +1035,36 @@ struct cmd_add_port_tm_node_shared_shaper_result {
 	uint32_t shaper_profile_id;
 };
 
-cmdline_parse_token_string_t cmd_add_port_tm_node_shared_shaper_cmd_type =
+static cmdline_parse_token_string_t cmd_add_port_tm_node_shared_shaper_cmd_type =
 	TOKEN_STRING_INITIALIZER(
 		struct cmd_add_port_tm_node_shared_shaper_result,
 			cmd_type, "add#set");
-cmdline_parse_token_string_t cmd_add_port_tm_node_shared_shaper_port =
+static cmdline_parse_token_string_t cmd_add_port_tm_node_shared_shaper_port =
 	TOKEN_STRING_INITIALIZER(
 		struct cmd_add_port_tm_node_shared_shaper_result, port, "port");
-cmdline_parse_token_string_t cmd_add_port_tm_node_shared_shaper_tm =
+static cmdline_parse_token_string_t cmd_add_port_tm_node_shared_shaper_tm =
 	TOKEN_STRING_INITIALIZER(
 		struct cmd_add_port_tm_node_shared_shaper_result, tm, "tm");
-cmdline_parse_token_string_t cmd_add_port_tm_node_shared_shaper_node =
+static cmdline_parse_token_string_t cmd_add_port_tm_node_shared_shaper_node =
 	TOKEN_STRING_INITIALIZER(
 		struct cmd_add_port_tm_node_shared_shaper_result, node, "node");
-cmdline_parse_token_string_t cmd_add_port_tm_node_shared_shaper_shared =
+static cmdline_parse_token_string_t cmd_add_port_tm_node_shared_shaper_shared =
 	TOKEN_STRING_INITIALIZER(
 		struct cmd_add_port_tm_node_shared_shaper_result,
 			shared, "shared");
-cmdline_parse_token_string_t cmd_add_port_tm_node_shared_shaper_shaper =
+static cmdline_parse_token_string_t cmd_add_port_tm_node_shared_shaper_shaper =
 	TOKEN_STRING_INITIALIZER(
 		struct cmd_add_port_tm_node_shared_shaper_result,
 			shaper, "shaper");
-cmdline_parse_token_num_t cmd_add_port_tm_node_shared_shaper_port_id =
+static cmdline_parse_token_num_t cmd_add_port_tm_node_shared_shaper_port_id =
 	TOKEN_NUM_INITIALIZER(
 		struct cmd_add_port_tm_node_shared_shaper_result,
 			port_id, RTE_UINT16);
-cmdline_parse_token_num_t cmd_add_port_tm_node_shared_shaper_shared_shaper_id =
+static cmdline_parse_token_num_t cmd_add_port_tm_node_shared_shaper_shared_shaper_id =
 	TOKEN_NUM_INITIALIZER(
 		struct cmd_add_port_tm_node_shared_shaper_result,
 			shared_shaper_id, RTE_UINT32);
-cmdline_parse_token_num_t cmd_add_port_tm_node_shared_shaper_shaper_profile_id =
+static cmdline_parse_token_num_t cmd_add_port_tm_node_shared_shaper_shaper_profile_id =
 	TOKEN_NUM_INITIALIZER(
 		struct cmd_add_port_tm_node_shared_shaper_result,
 			shaper_profile_id, RTE_UINT32);
@@ -1136,31 +1136,31 @@ struct cmd_del_port_tm_node_shared_shaper_result {
 	uint32_t shared_shaper_id;
 };
 
-cmdline_parse_token_string_t cmd_del_port_tm_node_shared_shaper_del =
+static cmdline_parse_token_string_t cmd_del_port_tm_node_shared_shaper_del =
 	TOKEN_STRING_INITIALIZER(
 		struct cmd_del_port_tm_node_shared_shaper_result, del, "del");
-cmdline_parse_token_string_t cmd_del_port_tm_node_shared_shaper_port =
+static cmdline_parse_token_string_t cmd_del_port_tm_node_shared_shaper_port =
 	TOKEN_STRING_INITIALIZER(
 		struct cmd_del_port_tm_node_shared_shaper_result, port, "port");
-cmdline_parse_token_string_t cmd_del_port_tm_node_shared_shaper_tm =
+static cmdline_parse_token_string_t cmd_del_port_tm_node_shared_shaper_tm =
 	TOKEN_STRING_INITIALIZER(
 		struct cmd_del_port_tm_node_shared_shaper_result, tm, "tm");
-cmdline_parse_token_string_t cmd_del_port_tm_node_shared_shaper_node =
+static cmdline_parse_token_string_t cmd_del_port_tm_node_shared_shaper_node =
 	TOKEN_STRING_INITIALIZER(
 		struct cmd_del_port_tm_node_shared_shaper_result, node, "node");
-cmdline_parse_token_string_t cmd_del_port_tm_node_shared_shaper_shared =
+static cmdline_parse_token_string_t cmd_del_port_tm_node_shared_shaper_shared =
 	TOKEN_STRING_INITIALIZER(
 		struct cmd_del_port_tm_node_shared_shaper_result,
 			shared, "shared");
-cmdline_parse_token_string_t cmd_del_port_tm_node_shared_shaper_shaper =
+static cmdline_parse_token_string_t cmd_del_port_tm_node_shared_shaper_shaper =
 	TOKEN_STRING_INITIALIZER(
 		struct cmd_del_port_tm_node_shared_shaper_result,
 			shaper, "shaper");
-cmdline_parse_token_num_t cmd_del_port_tm_node_shared_shaper_port_id =
+static cmdline_parse_token_num_t cmd_del_port_tm_node_shared_shaper_port_id =
 	TOKEN_NUM_INITIALIZER(
 		struct cmd_del_port_tm_node_shared_shaper_result,
 			port_id, RTE_UINT16);
-cmdline_parse_token_num_t cmd_del_port_tm_node_shared_shaper_shared_shaper_id =
+static cmdline_parse_token_num_t cmd_del_port_tm_node_shared_shaper_shared_shaper_id =
 	TOKEN_NUM_INITIALIZER(
 		struct cmd_del_port_tm_node_shared_shaper_result,
 			shared_shaper_id, RTE_UINT32);
@@ -1230,90 +1230,90 @@ struct cmd_add_port_tm_node_wred_profile_result {
 	uint16_t wq_log2_r;
 };
 
-cmdline_parse_token_string_t cmd_add_port_tm_node_wred_profile_add =
+static cmdline_parse_token_string_t cmd_add_port_tm_node_wred_profile_add =
 	TOKEN_STRING_INITIALIZER(
 		struct cmd_add_port_tm_node_wred_profile_result, add, "add");
-cmdline_parse_token_string_t cmd_add_port_tm_node_wred_profile_port =
+static cmdline_parse_token_string_t cmd_add_port_tm_node_wred_profile_port =
 	TOKEN_STRING_INITIALIZER(
 		struct cmd_add_port_tm_node_wred_profile_result, port, "port");
-cmdline_parse_token_string_t cmd_add_port_tm_node_wred_profile_tm =
+static cmdline_parse_token_string_t cmd_add_port_tm_node_wred_profile_tm =
 	TOKEN_STRING_INITIALIZER(
 		struct cmd_add_port_tm_node_wred_profile_result, tm, "tm");
-cmdline_parse_token_string_t cmd_add_port_tm_node_wred_profile_node =
+static cmdline_parse_token_string_t cmd_add_port_tm_node_wred_profile_node =
 	TOKEN_STRING_INITIALIZER(
 		struct cmd_add_port_tm_node_wred_profile_result, node, "node");
-cmdline_parse_token_string_t cmd_add_port_tm_node_wred_profile_wred =
+static cmdline_parse_token_string_t cmd_add_port_tm_node_wred_profile_wred =
 	TOKEN_STRING_INITIALIZER(
 		struct cmd_add_port_tm_node_wred_profile_result, wred, "wred");
-cmdline_parse_token_string_t cmd_add_port_tm_node_wred_profile_profile =
+static cmdline_parse_token_string_t cmd_add_port_tm_node_wred_profile_profile =
 	TOKEN_STRING_INITIALIZER(
 		struct cmd_add_port_tm_node_wred_profile_result,
 			profile, "profile");
-cmdline_parse_token_num_t cmd_add_port_tm_node_wred_profile_port_id =
+static cmdline_parse_token_num_t cmd_add_port_tm_node_wred_profile_port_id =
 	TOKEN_NUM_INITIALIZER(
 		struct cmd_add_port_tm_node_wred_profile_result,
 			port_id, RTE_UINT16);
-cmdline_parse_token_num_t cmd_add_port_tm_node_wred_profile_wred_profile_id =
+static cmdline_parse_token_num_t cmd_add_port_tm_node_wred_profile_wred_profile_id =
 	TOKEN_NUM_INITIALIZER(
 		struct cmd_add_port_tm_node_wred_profile_result,
 			wred_profile_id, RTE_UINT32);
-cmdline_parse_token_string_t cmd_add_port_tm_node_wred_profile_color_g =
+static cmdline_parse_token_string_t cmd_add_port_tm_node_wred_profile_color_g =
 	TOKEN_STRING_INITIALIZER(
 		struct cmd_add_port_tm_node_wred_profile_result,
 			color_g, "G#g");
-cmdline_parse_token_num_t cmd_add_port_tm_node_wred_profile_min_th_g =
+static cmdline_parse_token_num_t cmd_add_port_tm_node_wred_profile_min_th_g =
 	TOKEN_NUM_INITIALIZER(
 		struct cmd_add_port_tm_node_wred_profile_result,
 			min_th_g, RTE_UINT64);
-cmdline_parse_token_num_t cmd_add_port_tm_node_wred_profile_max_th_g =
+static cmdline_parse_token_num_t cmd_add_port_tm_node_wred_profile_max_th_g =
 	TOKEN_NUM_INITIALIZER(
 		struct cmd_add_port_tm_node_wred_profile_result,
 			max_th_g, RTE_UINT64);
-cmdline_parse_token_num_t cmd_add_port_tm_node_wred_profile_maxp_inv_g =
+static cmdline_parse_token_num_t cmd_add_port_tm_node_wred_profile_maxp_inv_g =
 	TOKEN_NUM_INITIALIZER(
 		struct cmd_add_port_tm_node_wred_profile_result,
 			maxp_inv_g, RTE_UINT16);
-cmdline_parse_token_num_t cmd_add_port_tm_node_wred_profile_wq_log2_g =
+static cmdline_parse_token_num_t cmd_add_port_tm_node_wred_profile_wq_log2_g =
 	TOKEN_NUM_INITIALIZER(
 		struct cmd_add_port_tm_node_wred_profile_result,
 			wq_log2_g, RTE_UINT16);
-cmdline_parse_token_string_t cmd_add_port_tm_node_wred_profile_color_y =
+static cmdline_parse_token_string_t cmd_add_port_tm_node_wred_profile_color_y =
 	TOKEN_STRING_INITIALIZER(
 		struct cmd_add_port_tm_node_wred_profile_result,
 			color_y, "Y#y");
-cmdline_parse_token_num_t cmd_add_port_tm_node_wred_profile_min_th_y =
+static cmdline_parse_token_num_t cmd_add_port_tm_node_wred_profile_min_th_y =
 	TOKEN_NUM_INITIALIZER(
 		struct cmd_add_port_tm_node_wred_profile_result,
 			min_th_y, RTE_UINT64);
-cmdline_parse_token_num_t cmd_add_port_tm_node_wred_profile_max_th_y =
+static cmdline_parse_token_num_t cmd_add_port_tm_node_wred_profile_max_th_y =
 	TOKEN_NUM_INITIALIZER(
 		struct cmd_add_port_tm_node_wred_profile_result,
 			max_th_y, RTE_UINT64);
-cmdline_parse_token_num_t cmd_add_port_tm_node_wred_profile_maxp_inv_y =
+static cmdline_parse_token_num_t cmd_add_port_tm_node_wred_profile_maxp_inv_y =
 	TOKEN_NUM_INITIALIZER(
 		struct cmd_add_port_tm_node_wred_profile_result,
 			maxp_inv_y, RTE_UINT16);
-cmdline_parse_token_num_t cmd_add_port_tm_node_wred_profile_wq_log2_y =
+static cmdline_parse_token_num_t cmd_add_port_tm_node_wred_profile_wq_log2_y =
 	TOKEN_NUM_INITIALIZER(
 		struct cmd_add_port_tm_node_wred_profile_result,
 			wq_log2_y, RTE_UINT16);
-cmdline_parse_token_string_t cmd_add_port_tm_node_wred_profile_color_r =
+static cmdline_parse_token_string_t cmd_add_port_tm_node_wred_profile_color_r =
 	TOKEN_STRING_INITIALIZER(
 		struct cmd_add_port_tm_node_wred_profile_result,
 			color_r, "R#r");
-cmdline_parse_token_num_t cmd_add_port_tm_node_wred_profile_min_th_r =
+static cmdline_parse_token_num_t cmd_add_port_tm_node_wred_profile_min_th_r =
 	TOKEN_NUM_INITIALIZER(
 		struct cmd_add_port_tm_node_wred_profile_result,
 			min_th_r, RTE_UINT64);
-cmdline_parse_token_num_t cmd_add_port_tm_node_wred_profile_max_th_r =
+static cmdline_parse_token_num_t cmd_add_port_tm_node_wred_profile_max_th_r =
 	TOKEN_NUM_INITIALIZER(
 		struct cmd_add_port_tm_node_wred_profile_result,
 			max_th_r, RTE_UINT64);
-cmdline_parse_token_num_t cmd_add_port_tm_node_wred_profile_maxp_inv_r =
+static cmdline_parse_token_num_t cmd_add_port_tm_node_wred_profile_maxp_inv_r =
 	TOKEN_NUM_INITIALIZER(
 		struct cmd_add_port_tm_node_wred_profile_result,
 			maxp_inv_r, RTE_UINT16);
-cmdline_parse_token_num_t cmd_add_port_tm_node_wred_profile_wq_log2_r =
+static cmdline_parse_token_num_t cmd_add_port_tm_node_wred_profile_wq_log2_r =
 	TOKEN_NUM_INITIALIZER(
 		struct cmd_add_port_tm_node_wred_profile_result,
 			wq_log2_r, RTE_UINT16);
@@ -1410,30 +1410,30 @@ struct cmd_del_port_tm_node_wred_profile_result {
 	uint32_t wred_profile_id;
 };
 
-cmdline_parse_token_string_t cmd_del_port_tm_node_wred_profile_del =
+static cmdline_parse_token_string_t cmd_del_port_tm_node_wred_profile_del =
 	TOKEN_STRING_INITIALIZER(
 		struct cmd_del_port_tm_node_wred_profile_result, del, "del");
-cmdline_parse_token_string_t cmd_del_port_tm_node_wred_profile_port =
+static cmdline_parse_token_string_t cmd_del_port_tm_node_wred_profile_port =
 	TOKEN_STRING_INITIALIZER(
 		struct cmd_del_port_tm_node_wred_profile_result, port, "port");
-cmdline_parse_token_string_t cmd_del_port_tm_node_wred_profile_tm =
+static cmdline_parse_token_string_t cmd_del_port_tm_node_wred_profile_tm =
 	TOKEN_STRING_INITIALIZER(
 		struct cmd_del_port_tm_node_wred_profile_result, tm, "tm");
-cmdline_parse_token_string_t cmd_del_port_tm_node_wred_profile_node =
+static cmdline_parse_token_string_t cmd_del_port_tm_node_wred_profile_node =
 	TOKEN_STRING_INITIALIZER(
 		struct cmd_del_port_tm_node_wred_profile_result, node, "node");
-cmdline_parse_token_string_t cmd_del_port_tm_node_wred_profile_wred =
+static cmdline_parse_token_string_t cmd_del_port_tm_node_wred_profile_wred =
 	TOKEN_STRING_INITIALIZER(
 		struct cmd_del_port_tm_node_wred_profile_result, wred, "wred");
-cmdline_parse_token_string_t cmd_del_port_tm_node_wred_profile_profile =
+static cmdline_parse_token_string_t cmd_del_port_tm_node_wred_profile_profile =
 	TOKEN_STRING_INITIALIZER(
 		struct cmd_del_port_tm_node_wred_profile_result,
 			profile, "profile");
-cmdline_parse_token_num_t cmd_del_port_tm_node_wred_profile_port_id =
+static cmdline_parse_token_num_t cmd_del_port_tm_node_wred_profile_port_id =
 	TOKEN_NUM_INITIALIZER(
 		struct cmd_del_port_tm_node_wred_profile_result,
 			port_id, RTE_UINT16);
-cmdline_parse_token_num_t cmd_del_port_tm_node_wred_profile_wred_profile_id =
+static cmdline_parse_token_num_t cmd_del_port_tm_node_wred_profile_wred_profile_id =
 	TOKEN_NUM_INITIALIZER(
 		struct cmd_del_port_tm_node_wred_profile_result,
 			wred_profile_id, RTE_UINT32);
@@ -1489,36 +1489,36 @@ struct cmd_set_port_tm_node_shaper_profile_result {
 	uint32_t shaper_profile_id;
 };
 
-cmdline_parse_token_string_t cmd_set_port_tm_node_shaper_profile_set =
+static cmdline_parse_token_string_t cmd_set_port_tm_node_shaper_profile_set =
 	TOKEN_STRING_INITIALIZER(
 		struct cmd_set_port_tm_node_shaper_profile_result, set, "set");
-cmdline_parse_token_string_t cmd_set_port_tm_node_shaper_profile_port =
+static cmdline_parse_token_string_t cmd_set_port_tm_node_shaper_profile_port =
 	TOKEN_STRING_INITIALIZER(
 		struct cmd_set_port_tm_node_shaper_profile_result,
 			port, "port");
-cmdline_parse_token_string_t cmd_set_port_tm_node_shaper_profile_tm =
+static cmdline_parse_token_string_t cmd_set_port_tm_node_shaper_profile_tm =
 	TOKEN_STRING_INITIALIZER(
 		struct cmd_set_port_tm_node_shaper_profile_result, tm, "tm");
-cmdline_parse_token_string_t cmd_set_port_tm_node_shaper_profile_node =
+static cmdline_parse_token_string_t cmd_set_port_tm_node_shaper_profile_node =
 	TOKEN_STRING_INITIALIZER(
 		struct cmd_set_port_tm_node_shaper_profile_result,
 			node, "node");
-cmdline_parse_token_string_t cmd_set_port_tm_node_shaper_profile_shaper =
+static cmdline_parse_token_string_t cmd_set_port_tm_node_shaper_profile_shaper =
 	TOKEN_STRING_INITIALIZER(
 		struct cmd_set_port_tm_node_shaper_profile_result,
 			shaper, "shaper");
-cmdline_parse_token_string_t cmd_set_port_tm_node_shaper_profile_profile =
+static cmdline_parse_token_string_t cmd_set_port_tm_node_shaper_profile_profile =
 	TOKEN_STRING_INITIALIZER(
 		struct cmd_set_port_tm_node_shaper_profile_result,
 			profile, "profile");
-cmdline_parse_token_num_t cmd_set_port_tm_node_shaper_profile_port_id =
+static cmdline_parse_token_num_t cmd_set_port_tm_node_shaper_profile_port_id =
 	TOKEN_NUM_INITIALIZER(
 		struct cmd_set_port_tm_node_shaper_profile_result,
 			port_id, RTE_UINT16);
-cmdline_parse_token_num_t cmd_set_port_tm_node_shaper_profile_node_id =
+static cmdline_parse_token_num_t cmd_set_port_tm_node_shaper_profile_node_id =
 	TOKEN_NUM_INITIALIZER(struct cmd_set_port_tm_node_shaper_profile_result,
 		node_id, RTE_UINT32);
-cmdline_parse_token_num_t
+static cmdline_parse_token_num_t
 	cmd_set_port_tm_node_shaper_shaper_profile_profile_id =
 		TOKEN_NUM_INITIALIZER(
 			struct cmd_set_port_tm_node_shaper_profile_result,
@@ -1590,50 +1590,50 @@ struct cmd_add_port_tm_nonleaf_node_result {
 	cmdline_multi_string_t multi_shared_shaper_id;
 };
 
-cmdline_parse_token_string_t cmd_add_port_tm_nonleaf_node_add =
+static cmdline_parse_token_string_t cmd_add_port_tm_nonleaf_node_add =
 	TOKEN_STRING_INITIALIZER(
 		struct cmd_add_port_tm_nonleaf_node_result, add, "add");
-cmdline_parse_token_string_t cmd_add_port_tm_nonleaf_node_port =
+static cmdline_parse_token_string_t cmd_add_port_tm_nonleaf_node_port =
 	TOKEN_STRING_INITIALIZER(
 		struct cmd_add_port_tm_nonleaf_node_result, port, "port");
-cmdline_parse_token_string_t cmd_add_port_tm_nonleaf_node_tm =
+static cmdline_parse_token_string_t cmd_add_port_tm_nonleaf_node_tm =
 	TOKEN_STRING_INITIALIZER(
 		struct cmd_add_port_tm_nonleaf_node_result, tm, "tm");
-cmdline_parse_token_string_t cmd_add_port_tm_nonleaf_node_nonleaf =
+static cmdline_parse_token_string_t cmd_add_port_tm_nonleaf_node_nonleaf =
 	TOKEN_STRING_INITIALIZER(
 		struct cmd_add_port_tm_nonleaf_node_result, nonleaf, "nonleaf");
-cmdline_parse_token_string_t cmd_add_port_tm_nonleaf_node_node =
+static cmdline_parse_token_string_t cmd_add_port_tm_nonleaf_node_node =
 	TOKEN_STRING_INITIALIZER(
 		struct cmd_add_port_tm_nonleaf_node_result, node, "node");
-cmdline_parse_token_num_t cmd_add_port_tm_nonleaf_node_port_id =
+static cmdline_parse_token_num_t cmd_add_port_tm_nonleaf_node_port_id =
 	TOKEN_NUM_INITIALIZER(
 		struct cmd_add_port_tm_nonleaf_node_result,
 		 port_id, RTE_UINT16);
-cmdline_parse_token_num_t cmd_add_port_tm_nonleaf_node_node_id =
+static cmdline_parse_token_num_t cmd_add_port_tm_nonleaf_node_node_id =
 	TOKEN_NUM_INITIALIZER(struct cmd_add_port_tm_nonleaf_node_result,
 		 node_id, RTE_UINT32);
-cmdline_parse_token_num_t cmd_add_port_tm_nonleaf_node_parent_node_id =
+static cmdline_parse_token_num_t cmd_add_port_tm_nonleaf_node_parent_node_id =
 	TOKEN_NUM_INITIALIZER(struct cmd_add_port_tm_nonleaf_node_result,
 		 parent_node_id, RTE_INT32);
-cmdline_parse_token_num_t cmd_add_port_tm_nonleaf_node_priority =
+static cmdline_parse_token_num_t cmd_add_port_tm_nonleaf_node_priority =
 	TOKEN_NUM_INITIALIZER(struct cmd_add_port_tm_nonleaf_node_result,
 		 priority, RTE_UINT32);
-cmdline_parse_token_num_t cmd_add_port_tm_nonleaf_node_weight =
+static cmdline_parse_token_num_t cmd_add_port_tm_nonleaf_node_weight =
 	TOKEN_NUM_INITIALIZER(struct cmd_add_port_tm_nonleaf_node_result,
 		 weight, RTE_UINT32);
-cmdline_parse_token_num_t cmd_add_port_tm_nonleaf_node_level_id =
+static cmdline_parse_token_num_t cmd_add_port_tm_nonleaf_node_level_id =
 	TOKEN_NUM_INITIALIZER(struct cmd_add_port_tm_nonleaf_node_result,
 		 level_id, RTE_UINT32);
-cmdline_parse_token_num_t cmd_add_port_tm_nonleaf_node_shaper_profile_id =
+static cmdline_parse_token_num_t cmd_add_port_tm_nonleaf_node_shaper_profile_id =
 	TOKEN_NUM_INITIALIZER(struct cmd_add_port_tm_nonleaf_node_result,
 		 shaper_profile_id, RTE_INT32);
-cmdline_parse_token_num_t cmd_add_port_tm_nonleaf_node_n_sp_priorities =
+static cmdline_parse_token_num_t cmd_add_port_tm_nonleaf_node_n_sp_priorities =
 	TOKEN_NUM_INITIALIZER(struct cmd_add_port_tm_nonleaf_node_result,
 		 n_sp_priorities, RTE_UINT32);
-cmdline_parse_token_num_t cmd_add_port_tm_nonleaf_node_stats_mask =
+static cmdline_parse_token_num_t cmd_add_port_tm_nonleaf_node_stats_mask =
 	TOKEN_NUM_INITIALIZER(struct cmd_add_port_tm_nonleaf_node_result,
 		 stats_mask, RTE_UINT64);
-cmdline_parse_token_string_t
+static cmdline_parse_token_string_t
 	cmd_add_port_tm_nonleaf_node_multi_shared_shaper_id =
 	TOKEN_STRING_INITIALIZER(struct cmd_add_port_tm_nonleaf_node_result,
 		 multi_shared_shaper_id, TOKEN_STRING_MULTI);
@@ -1749,53 +1749,53 @@ struct cmd_add_port_tm_nonleaf_node_pmode_result {
 	cmdline_multi_string_t multi_shared_shaper_id;
 };
 
-cmdline_parse_token_string_t cmd_add_port_tm_nonleaf_node_pmode_add =
+static cmdline_parse_token_string_t cmd_add_port_tm_nonleaf_node_pmode_add =
 	TOKEN_STRING_INITIALIZER(
 		struct cmd_add_port_tm_nonleaf_node_pmode_result, add, "add");
-cmdline_parse_token_string_t cmd_add_port_tm_nonleaf_node_pmode_port =
+static cmdline_parse_token_string_t cmd_add_port_tm_nonleaf_node_pmode_port =
 	TOKEN_STRING_INITIALIZER(
 		struct cmd_add_port_tm_nonleaf_node_pmode_result, port, "port");
-cmdline_parse_token_string_t cmd_add_port_tm_nonleaf_node_pmode_tm =
+static cmdline_parse_token_string_t cmd_add_port_tm_nonleaf_node_pmode_tm =
 	TOKEN_STRING_INITIALIZER(
 		struct cmd_add_port_tm_nonleaf_node_pmode_result, tm, "tm");
-cmdline_parse_token_string_t cmd_add_port_tm_nonleaf_node_pmode_nonleaf =
+static cmdline_parse_token_string_t cmd_add_port_tm_nonleaf_node_pmode_nonleaf =
 	TOKEN_STRING_INITIALIZER(
 		struct cmd_add_port_tm_nonleaf_node_pmode_result, nonleaf, "nonleaf");
-cmdline_parse_token_string_t cmd_add_port_tm_nonleaf_node_pmode_node =
+static cmdline_parse_token_string_t cmd_add_port_tm_nonleaf_node_pmode_node =
 	TOKEN_STRING_INITIALIZER(
 		struct cmd_add_port_tm_nonleaf_node_pmode_result, node, "node");
-cmdline_parse_token_string_t cmd_add_port_tm_nonleaf_node_pmode_pktmode =
+static cmdline_parse_token_string_t cmd_add_port_tm_nonleaf_node_pmode_pktmode =
 	TOKEN_STRING_INITIALIZER(
 		struct cmd_add_port_tm_nonleaf_node_pmode_result, node, "pktmode");
-cmdline_parse_token_num_t cmd_add_port_tm_nonleaf_node_pmode_port_id =
+static cmdline_parse_token_num_t cmd_add_port_tm_nonleaf_node_pmode_port_id =
 	TOKEN_NUM_INITIALIZER(
 		struct cmd_add_port_tm_nonleaf_node_pmode_result,
 		 port_id, RTE_UINT16);
-cmdline_parse_token_num_t cmd_add_port_tm_nonleaf_node_pmode_node_id =
+static cmdline_parse_token_num_t cmd_add_port_tm_nonleaf_node_pmode_node_id =
 	TOKEN_NUM_INITIALIZER(struct cmd_add_port_tm_nonleaf_node_pmode_result,
 		 node_id, RTE_UINT32);
-cmdline_parse_token_num_t cmd_add_port_tm_nonleaf_node_pmode_parent_node_id =
+static cmdline_parse_token_num_t cmd_add_port_tm_nonleaf_node_pmode_parent_node_id =
 	TOKEN_NUM_INITIALIZER(struct cmd_add_port_tm_nonleaf_node_pmode_result,
 		 parent_node_id, RTE_INT32);
-cmdline_parse_token_num_t cmd_add_port_tm_nonleaf_node_pmode_priority =
+static cmdline_parse_token_num_t cmd_add_port_tm_nonleaf_node_pmode_priority =
 	TOKEN_NUM_INITIALIZER(struct cmd_add_port_tm_nonleaf_node_pmode_result,
 		 priority, RTE_UINT32);
-cmdline_parse_token_num_t cmd_add_port_tm_nonleaf_node_pmode_weight =
+static cmdline_parse_token_num_t cmd_add_port_tm_nonleaf_node_pmode_weight =
 	TOKEN_NUM_INITIALIZER(struct cmd_add_port_tm_nonleaf_node_pmode_result,
 		 weight, RTE_UINT32);
-cmdline_parse_token_num_t cmd_add_port_tm_nonleaf_node_pmode_level_id =
+static cmdline_parse_token_num_t cmd_add_port_tm_nonleaf_node_pmode_level_id =
 	TOKEN_NUM_INITIALIZER(struct cmd_add_port_tm_nonleaf_node_pmode_result,
 		 level_id, RTE_UINT32);
-cmdline_parse_token_num_t cmd_add_port_tm_nonleaf_node_pmode_shaper_profile_id =
+static cmdline_parse_token_num_t cmd_add_port_tm_nonleaf_node_pmode_shaper_profile_id =
 	TOKEN_NUM_INITIALIZER(struct cmd_add_port_tm_nonleaf_node_pmode_result,
 		 shaper_profile_id, RTE_INT32);
-cmdline_parse_token_num_t cmd_add_port_tm_nonleaf_node_pmode_n_sp_priorities =
+static cmdline_parse_token_num_t cmd_add_port_tm_nonleaf_node_pmode_n_sp_priorities =
 	TOKEN_NUM_INITIALIZER(struct cmd_add_port_tm_nonleaf_node_pmode_result,
 		 n_sp_priorities, RTE_UINT32);
-cmdline_parse_token_num_t cmd_add_port_tm_nonleaf_node_pmode_stats_mask =
+static cmdline_parse_token_num_t cmd_add_port_tm_nonleaf_node_pmode_stats_mask =
 	TOKEN_NUM_INITIALIZER(struct cmd_add_port_tm_nonleaf_node_pmode_result,
 		 stats_mask, RTE_UINT64);
-cmdline_parse_token_string_t
+static cmdline_parse_token_string_t
 	cmd_add_port_tm_nonleaf_node_pmode_multi_shrd_shpr_id =
 	TOKEN_STRING_INITIALIZER(
 			struct cmd_add_port_tm_nonleaf_node_pmode_result,
@@ -1917,52 +1917,52 @@ struct cmd_add_port_tm_leaf_node_result {
 	cmdline_multi_string_t multi_shared_shaper_id;
 };
 
-cmdline_parse_token_string_t cmd_add_port_tm_leaf_node_add =
+static cmdline_parse_token_string_t cmd_add_port_tm_leaf_node_add =
 	TOKEN_STRING_INITIALIZER(
 		struct cmd_add_port_tm_leaf_node_result, add, "add");
-cmdline_parse_token_string_t cmd_add_port_tm_leaf_node_port =
+static cmdline_parse_token_string_t cmd_add_port_tm_leaf_node_port =
 	TOKEN_STRING_INITIALIZER(
 		struct cmd_add_port_tm_leaf_node_result, port, "port");
-cmdline_parse_token_string_t cmd_add_port_tm_leaf_node_tm =
+static cmdline_parse_token_string_t cmd_add_port_tm_leaf_node_tm =
 	TOKEN_STRING_INITIALIZER(
 		struct cmd_add_port_tm_leaf_node_result, tm, "tm");
-cmdline_parse_token_string_t cmd_add_port_tm_leaf_node_nonleaf =
+static cmdline_parse_token_string_t cmd_add_port_tm_leaf_node_nonleaf =
 	TOKEN_STRING_INITIALIZER(
 		struct cmd_add_port_tm_leaf_node_result, leaf, "leaf");
-cmdline_parse_token_string_t cmd_add_port_tm_leaf_node_node =
+static cmdline_parse_token_string_t cmd_add_port_tm_leaf_node_node =
 	TOKEN_STRING_INITIALIZER(
 		struct cmd_add_port_tm_leaf_node_result, node, "node");
-cmdline_parse_token_num_t cmd_add_port_tm_leaf_node_port_id =
+static cmdline_parse_token_num_t cmd_add_port_tm_leaf_node_port_id =
 	TOKEN_NUM_INITIALIZER(struct cmd_add_port_tm_leaf_node_result,
 		 port_id, RTE_UINT16);
-cmdline_parse_token_num_t cmd_add_port_tm_leaf_node_node_id =
+static cmdline_parse_token_num_t cmd_add_port_tm_leaf_node_node_id =
 	TOKEN_NUM_INITIALIZER(struct cmd_add_port_tm_leaf_node_result,
 		 node_id, RTE_UINT32);
-cmdline_parse_token_num_t cmd_add_port_tm_leaf_node_parent_node_id =
+static cmdline_parse_token_num_t cmd_add_port_tm_leaf_node_parent_node_id =
 	TOKEN_NUM_INITIALIZER(struct cmd_add_port_tm_leaf_node_result,
 		 parent_node_id, RTE_INT32);
-cmdline_parse_token_num_t cmd_add_port_tm_leaf_node_priority =
+static cmdline_parse_token_num_t cmd_add_port_tm_leaf_node_priority =
 	TOKEN_NUM_INITIALIZER(struct cmd_add_port_tm_leaf_node_result,
 		 priority, RTE_UINT32);
-cmdline_parse_token_num_t cmd_add_port_tm_leaf_node_weight =
+static cmdline_parse_token_num_t cmd_add_port_tm_leaf_node_weight =
 	TOKEN_NUM_INITIALIZER(struct cmd_add_port_tm_leaf_node_result,
 		 weight, RTE_UINT32);
-cmdline_parse_token_num_t cmd_add_port_tm_leaf_node_level_id =
+static cmdline_parse_token_num_t cmd_add_port_tm_leaf_node_level_id =
 	TOKEN_NUM_INITIALIZER(struct cmd_add_port_tm_leaf_node_result,
 		 level_id, RTE_UINT32);
-cmdline_parse_token_num_t cmd_add_port_tm_leaf_node_shaper_profile_id =
+static cmdline_parse_token_num_t cmd_add_port_tm_leaf_node_shaper_profile_id =
 	TOKEN_NUM_INITIALIZER(struct cmd_add_port_tm_leaf_node_result,
 		 shaper_profile_id, RTE_INT32);
-cmdline_parse_token_num_t cmd_add_port_tm_leaf_node_cman_mode =
+static cmdline_parse_token_num_t cmd_add_port_tm_leaf_node_cman_mode =
 	TOKEN_NUM_INITIALIZER(struct cmd_add_port_tm_leaf_node_result,
 		 cman_mode, RTE_UINT32);
-cmdline_parse_token_num_t cmd_add_port_tm_leaf_node_wred_profile_id =
+static cmdline_parse_token_num_t cmd_add_port_tm_leaf_node_wred_profile_id =
 	TOKEN_NUM_INITIALIZER(struct cmd_add_port_tm_leaf_node_result,
 		 wred_profile_id, RTE_UINT32);
-cmdline_parse_token_num_t cmd_add_port_tm_leaf_node_stats_mask =
+static cmdline_parse_token_num_t cmd_add_port_tm_leaf_node_stats_mask =
 	TOKEN_NUM_INITIALIZER(struct cmd_add_port_tm_leaf_node_result,
 		 stats_mask, RTE_UINT64);
-cmdline_parse_token_string_t
+static cmdline_parse_token_string_t
 	cmd_add_port_tm_leaf_node_multi_shared_shaper_id =
 	TOKEN_STRING_INITIALIZER(struct cmd_add_port_tm_leaf_node_result,
 		 multi_shared_shaper_id, TOKEN_STRING_MULTI);
@@ -2071,22 +2071,22 @@ struct cmd_del_port_tm_node_result {
 	uint32_t node_id;
 };
 
-cmdline_parse_token_string_t cmd_del_port_tm_node_del =
+static cmdline_parse_token_string_t cmd_del_port_tm_node_del =
 	TOKEN_STRING_INITIALIZER(
 		struct cmd_del_port_tm_node_result, del, "del");
-cmdline_parse_token_string_t cmd_del_port_tm_node_port =
+static cmdline_parse_token_string_t cmd_del_port_tm_node_port =
 	TOKEN_STRING_INITIALIZER(
 		struct cmd_del_port_tm_node_result, port, "port");
-cmdline_parse_token_string_t cmd_del_port_tm_node_tm =
+static cmdline_parse_token_string_t cmd_del_port_tm_node_tm =
 	TOKEN_STRING_INITIALIZER(
 		struct cmd_del_port_tm_node_result, tm, "tm");
-cmdline_parse_token_string_t cmd_del_port_tm_node_node =
+static cmdline_parse_token_string_t cmd_del_port_tm_node_node =
 	TOKEN_STRING_INITIALIZER(
 		struct cmd_del_port_tm_node_result, node, "node");
-cmdline_parse_token_num_t cmd_del_port_tm_node_port_id =
+static cmdline_parse_token_num_t cmd_del_port_tm_node_port_id =
 	TOKEN_NUM_INITIALIZER(struct cmd_del_port_tm_node_result,
 		 port_id, RTE_UINT16);
-cmdline_parse_token_num_t cmd_del_port_tm_node_node_id =
+static cmdline_parse_token_num_t cmd_del_port_tm_node_node_id =
 	TOKEN_NUM_INITIALIZER(struct cmd_del_port_tm_node_result,
 		node_id, RTE_UINT32);
 
@@ -2146,36 +2146,36 @@ struct cmd_set_port_tm_node_parent_result {
 	uint32_t weight;
 };
 
-cmdline_parse_token_string_t cmd_set_port_tm_node_parent_set =
+static cmdline_parse_token_string_t cmd_set_port_tm_node_parent_set =
 	TOKEN_STRING_INITIALIZER(
 		struct cmd_set_port_tm_node_parent_result, set, "set");
-cmdline_parse_token_string_t cmd_set_port_tm_node_parent_port =
+static cmdline_parse_token_string_t cmd_set_port_tm_node_parent_port =
 	TOKEN_STRING_INITIALIZER(
 		struct cmd_set_port_tm_node_parent_result, port, "port");
-cmdline_parse_token_string_t cmd_set_port_tm_node_parent_tm =
+static cmdline_parse_token_string_t cmd_set_port_tm_node_parent_tm =
 	TOKEN_STRING_INITIALIZER(
 		struct cmd_set_port_tm_node_parent_result, tm, "tm");
-cmdline_parse_token_string_t cmd_set_port_tm_node_parent_node =
+static cmdline_parse_token_string_t cmd_set_port_tm_node_parent_node =
 	TOKEN_STRING_INITIALIZER(
 		struct cmd_set_port_tm_node_parent_result, node, "node");
-cmdline_parse_token_string_t cmd_set_port_tm_node_parent_parent =
+static cmdline_parse_token_string_t cmd_set_port_tm_node_parent_parent =
 	TOKEN_STRING_INITIALIZER(
 		struct cmd_set_port_tm_node_parent_result, parent, "parent");
-cmdline_parse_token_num_t cmd_set_port_tm_node_parent_port_id =
+static cmdline_parse_token_num_t cmd_set_port_tm_node_parent_port_id =
 	TOKEN_NUM_INITIALIZER(
 		struct cmd_set_port_tm_node_parent_result, port_id,
 		RTE_UINT16);
-cmdline_parse_token_num_t cmd_set_port_tm_node_parent_node_id =
+static cmdline_parse_token_num_t cmd_set_port_tm_node_parent_node_id =
 	TOKEN_NUM_INITIALIZER(
 		struct cmd_set_port_tm_node_parent_result, node_id,
 		RTE_UINT32);
-cmdline_parse_token_num_t cmd_set_port_tm_node_parent_parent_id =
+static cmdline_parse_token_num_t cmd_set_port_tm_node_parent_parent_id =
 	TOKEN_NUM_INITIALIZER(struct cmd_set_port_tm_node_parent_result,
 		parent_id, RTE_UINT32);
-cmdline_parse_token_num_t cmd_set_port_tm_node_parent_priority =
+static cmdline_parse_token_num_t cmd_set_port_tm_node_parent_priority =
 	TOKEN_NUM_INITIALIZER(struct cmd_set_port_tm_node_parent_result,
 		priority, RTE_UINT32);
-cmdline_parse_token_num_t cmd_set_port_tm_node_parent_weight =
+static cmdline_parse_token_num_t cmd_set_port_tm_node_parent_weight =
 	TOKEN_NUM_INITIALIZER(struct cmd_set_port_tm_node_parent_result,
 		weight, RTE_UINT32);
 
@@ -2239,23 +2239,23 @@ struct cmd_suspend_port_tm_node_result {
 	uint32_t node_id;
 };
 
-cmdline_parse_token_string_t cmd_suspend_port_tm_node_suspend =
+static cmdline_parse_token_string_t cmd_suspend_port_tm_node_suspend =
 	TOKEN_STRING_INITIALIZER(
 		struct cmd_suspend_port_tm_node_result, suspend, "suspend");
-cmdline_parse_token_string_t cmd_suspend_port_tm_node_port =
+static cmdline_parse_token_string_t cmd_suspend_port_tm_node_port =
 	TOKEN_STRING_INITIALIZER(
 		struct cmd_suspend_port_tm_node_result, port, "port");
-cmdline_parse_token_string_t cmd_suspend_port_tm_node_tm =
+static cmdline_parse_token_string_t cmd_suspend_port_tm_node_tm =
 	TOKEN_STRING_INITIALIZER(
 		struct cmd_suspend_port_tm_node_result, tm, "tm");
-cmdline_parse_token_string_t cmd_suspend_port_tm_node_node =
+static cmdline_parse_token_string_t cmd_suspend_port_tm_node_node =
 	TOKEN_STRING_INITIALIZER(
 		struct cmd_suspend_port_tm_node_result, node, "node");
-cmdline_parse_token_num_t cmd_suspend_port_tm_node_port_id =
+static cmdline_parse_token_num_t cmd_suspend_port_tm_node_port_id =
 	TOKEN_NUM_INITIALIZER(
 		struct cmd_suspend_port_tm_node_result, port_id,
 		RTE_UINT16);
-cmdline_parse_token_num_t cmd_suspend_port_tm_node_node_id =
+static cmdline_parse_token_num_t cmd_suspend_port_tm_node_node_id =
 	TOKEN_NUM_INITIALIZER(
 		struct cmd_suspend_port_tm_node_result, node_id,
 		RTE_UINT32);
@@ -2306,22 +2306,22 @@ struct cmd_resume_port_tm_node_result {
 	uint32_t node_id;
 };
 
-cmdline_parse_token_string_t cmd_resume_port_tm_node_resume =
+static cmdline_parse_token_string_t cmd_resume_port_tm_node_resume =
 	TOKEN_STRING_INITIALIZER(
 		struct cmd_resume_port_tm_node_result, resume, "resume");
-cmdline_parse_token_string_t cmd_resume_port_tm_node_port =
+static cmdline_parse_token_string_t cmd_resume_port_tm_node_port =
 	TOKEN_STRING_INITIALIZER(
 		struct cmd_resume_port_tm_node_result, port, "port");
-cmdline_parse_token_string_t cmd_resume_port_tm_node_tm =
+static cmdline_parse_token_string_t cmd_resume_port_tm_node_tm =
 	TOKEN_STRING_INITIALIZER(
 		struct cmd_resume_port_tm_node_result, tm, "tm");
-cmdline_parse_token_string_t cmd_resume_port_tm_node_node =
+static cmdline_parse_token_string_t cmd_resume_port_tm_node_node =
 	TOKEN_STRING_INITIALIZER(
 		struct cmd_resume_port_tm_node_result, node, "node");
-cmdline_parse_token_num_t cmd_resume_port_tm_node_port_id =
+static cmdline_parse_token_num_t cmd_resume_port_tm_node_port_id =
 	TOKEN_NUM_INITIALIZER(
 		struct cmd_resume_port_tm_node_result, port_id, RTE_UINT16);
-cmdline_parse_token_num_t cmd_resume_port_tm_node_node_id =
+static cmdline_parse_token_num_t cmd_resume_port_tm_node_node_id =
 	TOKEN_NUM_INITIALIZER(
 		struct cmd_resume_port_tm_node_result, node_id, RTE_UINT32);
 
@@ -2371,24 +2371,24 @@ struct cmd_port_tm_hierarchy_commit_result {
 	cmdline_fixed_string_t clean_on_fail;
 };
 
-cmdline_parse_token_string_t cmd_port_tm_hierarchy_commit_port =
+static cmdline_parse_token_string_t cmd_port_tm_hierarchy_commit_port =
 	TOKEN_STRING_INITIALIZER(
 		struct cmd_port_tm_hierarchy_commit_result, port, "port");
-cmdline_parse_token_string_t cmd_port_tm_hierarchy_commit_tm =
+static cmdline_parse_token_string_t cmd_port_tm_hierarchy_commit_tm =
 	TOKEN_STRING_INITIALIZER(
 		struct cmd_port_tm_hierarchy_commit_result, tm, "tm");
-cmdline_parse_token_string_t cmd_port_tm_hierarchy_commit_hierarchy =
+static cmdline_parse_token_string_t cmd_port_tm_hierarchy_commit_hierarchy =
 	TOKEN_STRING_INITIALIZER(
 		struct cmd_port_tm_hierarchy_commit_result,
 			hierarchy, "hierarchy");
-cmdline_parse_token_string_t cmd_port_tm_hierarchy_commit_commit =
+static cmdline_parse_token_string_t cmd_port_tm_hierarchy_commit_commit =
 	TOKEN_STRING_INITIALIZER(
 		struct cmd_port_tm_hierarchy_commit_result, commit, "commit");
-cmdline_parse_token_num_t cmd_port_tm_hierarchy_commit_port_id =
+static cmdline_parse_token_num_t cmd_port_tm_hierarchy_commit_port_id =
 	TOKEN_NUM_INITIALIZER(
 		struct cmd_port_tm_hierarchy_commit_result,
 			port_id, RTE_UINT16);
-cmdline_parse_token_string_t cmd_port_tm_hierarchy_commit_clean_on_fail =
+static cmdline_parse_token_string_t cmd_port_tm_hierarchy_commit_clean_on_fail =
 	TOKEN_STRING_INITIALIZER(struct cmd_port_tm_hierarchy_commit_result,
 		 clean_on_fail, "yes#no");
 
@@ -2446,36 +2446,36 @@ struct cmd_port_tm_mark_ip_ecn_result {
 	uint16_t red;
 };
 
-cmdline_parse_token_string_t cmd_port_tm_mark_ip_ecn_set =
+static cmdline_parse_token_string_t cmd_port_tm_mark_ip_ecn_set =
 	TOKEN_STRING_INITIALIZER(struct cmd_port_tm_mark_ip_ecn_result,
 				 set, "set");
 
-cmdline_parse_token_string_t cmd_port_tm_mark_ip_ecn_port =
+static cmdline_parse_token_string_t cmd_port_tm_mark_ip_ecn_port =
 	TOKEN_STRING_INITIALIZER(struct cmd_port_tm_mark_ip_ecn_result,
 				 port, "port");
 
-cmdline_parse_token_string_t cmd_port_tm_mark_ip_ecn_tm =
+static cmdline_parse_token_string_t cmd_port_tm_mark_ip_ecn_tm =
 	TOKEN_STRING_INITIALIZER(struct cmd_port_tm_mark_ip_ecn_result, tm,
 				 "tm");
 
-cmdline_parse_token_string_t cmd_port_tm_mark_ip_ecn_mark =
+static cmdline_parse_token_string_t cmd_port_tm_mark_ip_ecn_mark =
 	TOKEN_STRING_INITIALIZER(struct cmd_port_tm_mark_ip_ecn_result,
 				 mark, "mark");
 
-cmdline_parse_token_string_t cmd_port_tm_mark_ip_ecn_ip_ecn =
+static cmdline_parse_token_string_t cmd_port_tm_mark_ip_ecn_ip_ecn =
 	TOKEN_STRING_INITIALIZER(struct cmd_port_tm_mark_ip_ecn_result,
 				 ip_ecn, "ip_ecn");
-cmdline_parse_token_num_t cmd_port_tm_mark_ip_ecn_port_id =
+static cmdline_parse_token_num_t cmd_port_tm_mark_ip_ecn_port_id =
 	TOKEN_NUM_INITIALIZER(struct cmd_port_tm_mark_ip_ecn_result,
 			      port_id, RTE_UINT16);
 
-cmdline_parse_token_num_t cmd_port_tm_mark_ip_ecn_green =
+static cmdline_parse_token_num_t cmd_port_tm_mark_ip_ecn_green =
 	TOKEN_NUM_INITIALIZER(struct cmd_port_tm_mark_ip_ecn_result,
 			      green, RTE_UINT16);
-cmdline_parse_token_num_t cmd_port_tm_mark_ip_ecn_yellow =
+static cmdline_parse_token_num_t cmd_port_tm_mark_ip_ecn_yellow =
 	TOKEN_NUM_INITIALIZER(struct cmd_port_tm_mark_ip_ecn_result,
 			      yellow, RTE_UINT16);
-cmdline_parse_token_num_t cmd_port_tm_mark_ip_ecn_red =
+static cmdline_parse_token_num_t cmd_port_tm_mark_ip_ecn_red =
 	TOKEN_NUM_INITIALIZER(struct cmd_port_tm_mark_ip_ecn_result,
 				red, RTE_UINT16);
 
@@ -2533,36 +2533,36 @@ struct cmd_port_tm_mark_ip_dscp_result {
 	uint16_t red;
 };
 
-cmdline_parse_token_string_t cmd_port_tm_mark_ip_dscp_set =
+static cmdline_parse_token_string_t cmd_port_tm_mark_ip_dscp_set =
 	TOKEN_STRING_INITIALIZER(struct cmd_port_tm_mark_ip_dscp_result,
 				 set, "set");
 
-cmdline_parse_token_string_t cmd_port_tm_mark_ip_dscp_port =
+static cmdline_parse_token_string_t cmd_port_tm_mark_ip_dscp_port =
 	TOKEN_STRING_INITIALIZER(struct cmd_port_tm_mark_ip_dscp_result,
 				 port, "port");
 
-cmdline_parse_token_string_t cmd_port_tm_mark_ip_dscp_tm =
+static cmdline_parse_token_string_t cmd_port_tm_mark_ip_dscp_tm =
 	TOKEN_STRING_INITIALIZER(struct cmd_port_tm_mark_ip_dscp_result, tm,
 				 "tm");
 
-cmdline_parse_token_string_t cmd_port_tm_mark_ip_dscp_mark =
+static cmdline_parse_token_string_t cmd_port_tm_mark_ip_dscp_mark =
 	TOKEN_STRING_INITIALIZER(struct cmd_port_tm_mark_ip_dscp_result,
 				 mark, "mark");
 
-cmdline_parse_token_string_t cmd_port_tm_mark_ip_dscp_ip_dscp =
+static cmdline_parse_token_string_t cmd_port_tm_mark_ip_dscp_ip_dscp =
 	TOKEN_STRING_INITIALIZER(struct cmd_port_tm_mark_ip_dscp_result,
 				 ip_dscp, "ip_dscp");
-cmdline_parse_token_num_t cmd_port_tm_mark_ip_dscp_port_id =
+static cmdline_parse_token_num_t cmd_port_tm_mark_ip_dscp_port_id =
 	TOKEN_NUM_INITIALIZER(struct cmd_port_tm_mark_ip_dscp_result,
 			      port_id, RTE_UINT16);
 
-cmdline_parse_token_num_t cmd_port_tm_mark_ip_dscp_green =
+static cmdline_parse_token_num_t cmd_port_tm_mark_ip_dscp_green =
 	TOKEN_NUM_INITIALIZER(struct cmd_port_tm_mark_ip_dscp_result,
 				green, RTE_UINT16);
-cmdline_parse_token_num_t cmd_port_tm_mark_ip_dscp_yellow =
+static cmdline_parse_token_num_t cmd_port_tm_mark_ip_dscp_yellow =
 	TOKEN_NUM_INITIALIZER(struct cmd_port_tm_mark_ip_dscp_result,
 				yellow, RTE_UINT16);
-cmdline_parse_token_num_t cmd_port_tm_mark_ip_dscp_red =
+static cmdline_parse_token_num_t cmd_port_tm_mark_ip_dscp_red =
 	TOKEN_NUM_INITIALIZER(struct cmd_port_tm_mark_ip_dscp_result,
 				red, RTE_UINT16);
 
@@ -2620,36 +2620,36 @@ struct cmd_port_tm_mark_vlan_dei_result {
 	uint16_t red;
 };
 
-cmdline_parse_token_string_t cmd_port_tm_mark_vlan_dei_set =
+static cmdline_parse_token_string_t cmd_port_tm_mark_vlan_dei_set =
 	TOKEN_STRING_INITIALIZER(struct cmd_port_tm_mark_vlan_dei_result,
 				 set, "set");
 
-cmdline_parse_token_string_t cmd_port_tm_mark_vlan_dei_port =
+static cmdline_parse_token_string_t cmd_port_tm_mark_vlan_dei_port =
 	TOKEN_STRING_INITIALIZER(struct cmd_port_tm_mark_vlan_dei_result,
 				 port, "port");
 
-cmdline_parse_token_string_t cmd_port_tm_mark_vlan_dei_tm =
+static cmdline_parse_token_string_t cmd_port_tm_mark_vlan_dei_tm =
 	TOKEN_STRING_INITIALIZER(struct cmd_port_tm_mark_vlan_dei_result, tm,
 				 "tm");
 
-cmdline_parse_token_string_t cmd_port_tm_mark_vlan_dei_mark =
+static cmdline_parse_token_string_t cmd_port_tm_mark_vlan_dei_mark =
 	TOKEN_STRING_INITIALIZER(struct cmd_port_tm_mark_vlan_dei_result,
 				 mark, "mark");
 
-cmdline_parse_token_string_t cmd_port_tm_mark_vlan_dei_vlan_dei =
+static cmdline_parse_token_string_t cmd_port_tm_mark_vlan_dei_vlan_dei =
 	TOKEN_STRING_INITIALIZER(struct cmd_port_tm_mark_vlan_dei_result,
 				 vlan_dei, "vlan_dei");
-cmdline_parse_token_num_t cmd_port_tm_mark_vlan_dei_port_id =
+static cmdline_parse_token_num_t cmd_port_tm_mark_vlan_dei_port_id =
 	TOKEN_NUM_INITIALIZER(struct cmd_port_tm_mark_vlan_dei_result,
 			      port_id, RTE_UINT16);
 
-cmdline_parse_token_num_t cmd_port_tm_mark_vlan_dei_green =
+static cmdline_parse_token_num_t cmd_port_tm_mark_vlan_dei_green =
 	TOKEN_NUM_INITIALIZER(struct cmd_port_tm_mark_vlan_dei_result,
 				green, RTE_UINT16);
-cmdline_parse_token_num_t cmd_port_tm_mark_vlan_dei_yellow =
+static cmdline_parse_token_num_t cmd_port_tm_mark_vlan_dei_yellow =
 	TOKEN_NUM_INITIALIZER(struct cmd_port_tm_mark_vlan_dei_result,
 				yellow, RTE_UINT16);
-cmdline_parse_token_num_t cmd_port_tm_mark_vlan_dei_red =
+static cmdline_parse_token_num_t cmd_port_tm_mark_vlan_dei_red =
 	TOKEN_NUM_INITIALIZER(struct cmd_port_tm_mark_vlan_dei_result,
 				red, RTE_UINT16);
 

@@ -11228,16 +11228,16 @@ cmd_show_set_raw_parsed(void *parsed_result, struct cmdline *cl, void *data)
 	} while (all && ++index < RAW_ENCAP_CONFS_MAX_NUM);
 }
 
-cmdline_parse_token_string_t cmd_show_set_raw_cmd_show =
+static cmdline_parse_token_string_t cmd_show_set_raw_cmd_show =
 	TOKEN_STRING_INITIALIZER(struct cmd_show_set_raw_result,
 			cmd_show, "show");
-cmdline_parse_token_string_t cmd_show_set_raw_cmd_what =
+static cmdline_parse_token_string_t cmd_show_set_raw_cmd_what =
 	TOKEN_STRING_INITIALIZER(struct cmd_show_set_raw_result,
 			cmd_what, "raw_encap#raw_decap");
-cmdline_parse_token_num_t cmd_show_set_raw_cmd_index =
+static cmdline_parse_token_num_t cmd_show_set_raw_cmd_index =
 	TOKEN_NUM_INITIALIZER(struct cmd_show_set_raw_result,
 			cmd_index, RTE_UINT16);
-cmdline_parse_token_string_t cmd_show_set_raw_cmd_all =
+static cmdline_parse_token_string_t cmd_show_set_raw_cmd_all =
 	TOKEN_STRING_INITIALIZER(struct cmd_show_set_raw_result,
 			cmd_all, "all");
 cmdline_parse_inst_t cmd_show_set_raw = {
