@@ -94,6 +94,7 @@ EXPERIMENTAL {
 	rte_vhost_vring_stats_get;
 	rte_vhost_vring_stats_reset;
 	rte_vhost_async_try_dequeue_burst;
+	rte_vhost_driver_get_vdpa_dev_type;
 };
 
 INTERNAL {

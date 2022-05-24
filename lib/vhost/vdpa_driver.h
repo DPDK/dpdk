@@ -78,6 +78,9 @@ struct rte_vdpa_dev_ops {
 	/** Set the device configuration space */
 	int (*set_config)(int vid, uint8_t *config, uint32_t offset,
 		      uint32_t size, uint32_t flags);
+
+	/** get device type: net device, blk device... */
+	int (*get_dev_type)(struct rte_vdpa_device *dev, uint32_t *type);
 };
 
 /**

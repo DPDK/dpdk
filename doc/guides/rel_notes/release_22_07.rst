@@ -83,6 +83,10 @@ New Features
   Added vhost async dequeue API which can leverage DMA devices to
   accelerate receiving packets from guest.
 
+* **Added vhost API to get the device type of a vDPA device.**
+
+  Added an API which can get the device type of vDPA device.
+
 * **Updated Intel iavf driver.**
 
   * Added Tx QoS queue rate limitation support.
