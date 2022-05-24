@@ -1321,6 +1321,394 @@ test_ipsec_inline_proto_display_list(const void *data __rte_unused)
 	return test_ipsec_inline_proto_all(&flags);
 }
 
+static int
+test_ipsec_inline_proto_udp_encap(const void *data __rte_unused)
+{
+	struct ipsec_test_flags flags;
+
+	memset(&flags, 0, sizeof(flags));
+
+	flags.udp_encap = true;
+
+	return test_ipsec_inline_proto_all(&flags);
+}
+
+static int
+test_ipsec_inline_proto_udp_ports_verify(const void *data __rte_unused)
+{
+	struct ipsec_test_flags flags;
+
+	memset(&flags, 0, sizeof(flags));
+
+	flags.udp_encap = true;
+	flags.udp_ports_verify = true;
+
+	return test_ipsec_inline_proto_all(&flags);
+}
+
+static int
+test_ipsec_inline_proto_err_icv_corrupt(const void *data __rte_unused)
+{
+	struct ipsec_test_flags flags;
+
+	memset(&flags, 0, sizeof(flags));
+
+	flags.icv_corrupt = true;
+
+	return test_ipsec_inline_proto_all(&flags);
+}
+
+static int
+test_ipsec_inline_proto_tunnel_dst_addr_verify(const void *data __rte_unused)
+{
+	struct ipsec_test_flags flags;
+
+	memset(&flags, 0, sizeof(flags));
+
+	flags.tunnel_hdr_verify = RTE_SECURITY_IPSEC_TUNNEL_VERIFY_DST_ADDR;
+
+	return test_ipsec_inline_proto_all(&flags);
+}
+
+static int
+test_ipsec_inline_proto_tunnel_src_dst_addr_verify(const void *data __rte_unused)
+{
+	struct ipsec_test_flags flags;
+
+	memset(&flags, 0, sizeof(flags));
+
+	flags.tunnel_hdr_verify = RTE_SECURITY_IPSEC_TUNNEL_VERIFY_SRC_DST_ADDR;
+
+	return test_ipsec_inline_proto_all(&flags);
+}
+
+static int
+test_ipsec_inline_proto_inner_ip_csum(const void *data __rte_unused)
+{
+	struct ipsec_test_flags flags;
+
+	memset(&flags, 0, sizeof(flags));
+
+	flags.ip_csum = true;
+
+	return test_ipsec_inline_proto_all(&flags);
+}
+
+static int
+test_ipsec_inline_proto_inner_l4_csum(const void *data __rte_unused)
+{
+	struct ipsec_test_flags flags;
+
+	memset(&flags, 0, sizeof(flags));
+
+	flags.l4_csum = true;
+
+	return test_ipsec_inline_proto_all(&flags);
+}
+
+static int
+test_ipsec_inline_proto_tunnel_v4_in_v4(const void *data __rte_unused)
+{
+	struct ipsec_test_flags flags;
+
+	memset(&flags, 0, sizeof(flags));
+
+	flags.ipv6 = false;
+	flags.tunnel_ipv6 = false;
+
+	return test_ipsec_inline_proto_all(&flags);
+}
+
+static int
+test_ipsec_inline_proto_tunnel_v6_in_v6(const void *data __rte_unused)
+{
+	struct ipsec_test_flags flags;
+
+	memset(&flags, 0, sizeof(flags));
+
+	flags.ipv6 = true;
+	flags.tunnel_ipv6 = true;
+
+	return test_ipsec_inline_proto_all(&flags);
+}
+
+static int
+test_ipsec_inline_proto_tunnel_v4_in_v6(const void *data __rte_unused)
+{
+	struct ipsec_test_flags flags;
+
+	memset(&flags, 0, sizeof(flags));
+
+	flags.ipv6 = false;
+	flags.tunnel_ipv6 = true;
+
+	return test_ipsec_inline_proto_all(&flags);
+}
+
+static int
+test_ipsec_inline_proto_tunnel_v6_in_v4(const void *data __rte_unused)
+{
+	struct ipsec_test_flags flags;
+
+	memset(&flags, 0, sizeof(flags));
+
+	flags.ipv6 = true;
+	flags.tunnel_ipv6 = false;
+
+	return test_ipsec_inline_proto_all(&flags);
+}
+
+static int
+test_ipsec_inline_proto_transport_v4(const void *data __rte_unused)
+{
+	struct ipsec_test_flags flags;
+
+	memset(&flags, 0, sizeof(flags));
+
+	flags.ipv6 = false;
+	flags.transport = true;
+
+	return test_ipsec_inline_proto_all(&flags);
+}
+
+static int
+test_ipsec_inline_proto_transport_l4_csum(const void *data __rte_unused)
+{
+	struct ipsec_test_flags flags = {
+		.l4_csum = true,
+		.transport = true,
+	};
+
+	return test_ipsec_inline_proto_all(&flags);
+}
+
+static int
+test_ipsec_inline_proto_stats(const void *data __rte_unused)
+{
+	struct ipsec_test_flags flags;
+
+	memset(&flags, 0, sizeof(flags));
+
+	flags.stats_success = true;
+
+	return test_ipsec_inline_proto_all(&flags);
+}
+
+static int
+test_ipsec_inline_proto_pkt_fragment(const void *data __rte_unused)
+{
+	struct ipsec_test_flags flags;
+
+	memset(&flags, 0, sizeof(flags));
+
+	flags.fragment = true;
+
+	return test_ipsec_inline_proto_all(&flags);
+
+}
+
+static int
+test_ipsec_inline_proto_copy_df_inner_0(const void *data __rte_unused)
+{
+	struct ipsec_test_flags flags;
+
+	memset(&flags, 0, sizeof(flags));
+
+	flags.df = TEST_IPSEC_COPY_DF_INNER_0;
+
+	return test_ipsec_inline_proto_all(&flags);
+}
+
+static int
+test_ipsec_inline_proto_copy_df_inner_1(const void *data __rte_unused)
+{
+	struct ipsec_test_flags flags;
+
+	memset(&flags, 0, sizeof(flags));
+
+	flags.df = TEST_IPSEC_COPY_DF_INNER_1;
+
+	return test_ipsec_inline_proto_all(&flags);
+}
+
+static int
+test_ipsec_inline_proto_set_df_0_inner_1(const void *data __rte_unused)
+{
+	struct ipsec_test_flags flags;
+
+	memset(&flags, 0, sizeof(flags));
+
+	flags.df = TEST_IPSEC_SET_DF_0_INNER_1;
+
+	return test_ipsec_inline_proto_all(&flags);
+}
+
+static int
+test_ipsec_inline_proto_set_df_1_inner_0(const void *data __rte_unused)
+{
+	struct ipsec_test_flags flags;
+
+	memset(&flags, 0, sizeof(flags));
+
+	flags.df = TEST_IPSEC_SET_DF_1_INNER_0;
+
+	return test_ipsec_inline_proto_all(&flags);
+}
+
+static int
+test_ipsec_inline_proto_ipv4_copy_dscp_inner_0(const void *data __rte_unused)
+{
+	struct ipsec_test_flags flags;
+
+	memset(&flags, 0, sizeof(flags));
+
+	flags.dscp = TEST_IPSEC_COPY_DSCP_INNER_0;
+
+	return test_ipsec_inline_proto_all(&flags);
+}
+
+static int
+test_ipsec_inline_proto_ipv4_copy_dscp_inner_1(const void *data __rte_unused)
+{
+	struct ipsec_test_flags flags;
+
+	memset(&flags, 0, sizeof(flags));
+
+	flags.dscp = TEST_IPSEC_COPY_DSCP_INNER_1;
+
+	return test_ipsec_inline_proto_all(&flags);
+}
+
+static int
+test_ipsec_inline_proto_ipv4_set_dscp_0_inner_1(const void *data __rte_unused)
+{
+	struct ipsec_test_flags flags;
+
+	memset(&flags, 0, sizeof(flags));
+
+	flags.dscp = TEST_IPSEC_SET_DSCP_0_INNER_1;
+
+	return test_ipsec_inline_proto_all(&flags);
+}
+
+static int
+test_ipsec_inline_proto_ipv4_set_dscp_1_inner_0(const void *data __rte_unused)
+{
+	struct ipsec_test_flags flags;
+
+	memset(&flags, 0, sizeof(flags));
+
+	flags.dscp = TEST_IPSEC_SET_DSCP_1_INNER_0;
+
+	return test_ipsec_inline_proto_all(&flags);
+}
+
+static int
+test_ipsec_inline_proto_ipv6_copy_dscp_inner_0(const void *data __rte_unused)
+{
+	struct ipsec_test_flags flags;
+
+	memset(&flags, 0, sizeof(flags));
+
+	flags.ipv6 = true;
+	flags.tunnel_ipv6 = true;
+	flags.dscp = TEST_IPSEC_COPY_DSCP_INNER_0;
+
+	return test_ipsec_inline_proto_all(&flags);
+}
+
+static int
+test_ipsec_inline_proto_ipv6_copy_dscp_inner_1(const void *data __rte_unused)
+{
+	struct ipsec_test_flags flags;
+
+	memset(&flags, 0, sizeof(flags));
+
+	flags.ipv6 = true;
+	flags.tunnel_ipv6 = true;
+	flags.dscp = TEST_IPSEC_COPY_DSCP_INNER_1;
+
+	return test_ipsec_inline_proto_all(&flags);
+}
+
+static int
+test_ipsec_inline_proto_ipv6_set_dscp_0_inner_1(const void *data __rte_unused)
+{
+	struct ipsec_test_flags flags;
+
+	memset(&flags, 0, sizeof(flags));
+
+	flags.ipv6 = true;
+	flags.tunnel_ipv6 = true;
+	flags.dscp = TEST_IPSEC_SET_DSCP_0_INNER_1;
+
+	return test_ipsec_inline_proto_all(&flags);
+}
+
+static int
+test_ipsec_inline_proto_ipv6_set_dscp_1_inner_0(const void *data __rte_unused)
+{
+	struct ipsec_test_flags flags;
+
+	memset(&flags, 0, sizeof(flags));
+
+	flags.ipv6 = true;
+	flags.tunnel_ipv6 = true;
+	flags.dscp = TEST_IPSEC_SET_DSCP_1_INNER_0;
+
+	return test_ipsec_inline_proto_all(&flags);
+}
+
+static int
+test_ipsec_inline_proto_ipv4_ttl_decrement(const void *data __rte_unused)
+{
+	struct ipsec_test_flags flags = {
+		.dec_ttl_or_hop_limit = true
+	};
+
+	return test_ipsec_inline_proto_all(&flags);
+}
+
+static int
+test_ipsec_inline_proto_ipv6_hop_limit_decrement(const void *data __rte_unused)
+{
+	struct ipsec_test_flags flags = {
+		.ipv6 = true,
+		.dec_ttl_or_hop_limit = true
+	};
+
+	return test_ipsec_inline_proto_all(&flags);
+}
+
+static int
+test_ipsec_inline_proto_iv_gen(const void *data __rte_unused)
+{
+	struct ipsec_test_flags flags;
+
+	memset(&flags, 0, sizeof(flags));
+
+	flags.iv_gen = true;
+
+	return test_ipsec_inline_proto_all(&flags);
+}
+
+static int
+test_ipsec_inline_proto_known_vec_fragmented(const void *test_data)
+{
+	struct ipsec_test_data td_outb;
+	struct ipsec_test_flags flags;
+
+	memset(&flags, 0, sizeof(flags));
+	flags.fragment = true;
+
+	memcpy(&td_outb, test_data, sizeof(td_outb));
+
+	/* Disable IV gen to be able to test with known vectors */
+	td_outb.ipsec_xform.options.iv_gen_disable = 1;
+
+	return test_ipsec_inline_proto_process(&td_outb, NULL, 1, false,
+						&flags);
+}
 static struct unit_test_suite inline_ipsec_testsuite  = {
 	.suite_name = "Inline IPsec Ethernet Device Unit Test Suite",
 	.setup = inline_ipsec_testsuite_setup,
@@ -1367,6 +1755,13 @@ static struct unit_test_suite inline_ipsec_testsuite  = {
 			ut_setup_inline_ipsec, ut_teardown_inline_ipsec,
 			test_ipsec_inline_proto_known_vec,
 			&pkt_null_aes_xcbc),
+
+		TEST_CASE_NAMED_WITH_DATA(
+			"Outbound fragmented packet",
+			ut_setup_inline_ipsec, ut_teardown_inline_ipsec,
+			test_ipsec_inline_proto_known_vec_fragmented,
+			&pkt_aes_128_gcm_frag),
+
 		TEST_CASE_NAMED_WITH_DATA(
 			"Inbound known vector (ESP tunnel mode IPv4 AES-GCM 128)",
 			ut_setup_inline_ipsec, ut_teardown_inline_ipsec,
@@ -1417,6 +1812,128 @@ static struct unit_test_suite inline_ipsec_testsuite  = {
 			"Combined test alg list",
 			ut_setup_inline_ipsec, ut_teardown_inline_ipsec,
 			test_ipsec_inline_proto_display_list),
+
+		TEST_CASE_NAMED_ST(
+			"UDP encapsulation",
+			ut_setup_inline_ipsec, ut_teardown_inline_ipsec,
+			test_ipsec_inline_proto_udp_encap),
+		TEST_CASE_NAMED_ST(
+			"UDP encapsulation ports verification test",
+			ut_setup_inline_ipsec, ut_teardown_inline_ipsec,
+			test_ipsec_inline_proto_udp_ports_verify),
+		TEST_CASE_NAMED_ST(
+			"Negative test: ICV corruption",
+			ut_setup_inline_ipsec, ut_teardown_inline_ipsec,
+			test_ipsec_inline_proto_err_icv_corrupt),
+		TEST_CASE_NAMED_ST(
+			"Tunnel dst addr verification",
+			ut_setup_inline_ipsec, ut_teardown_inline_ipsec,
+			test_ipsec_inline_proto_tunnel_dst_addr_verify),
+		TEST_CASE_NAMED_ST(
+			"Tunnel src and dst addr verification",
+			ut_setup_inline_ipsec, ut_teardown_inline_ipsec,
+			test_ipsec_inline_proto_tunnel_src_dst_addr_verify),
+		TEST_CASE_NAMED_ST(
+			"Inner IP checksum",
+			ut_setup_inline_ipsec, ut_teardown_inline_ipsec,
+			test_ipsec_inline_proto_inner_ip_csum),
+		TEST_CASE_NAMED_ST(
+			"Inner L4 checksum",
+			ut_setup_inline_ipsec, ut_teardown_inline_ipsec,
+			test_ipsec_inline_proto_inner_l4_csum),
+		TEST_CASE_NAMED_ST(
+			"Tunnel IPv4 in IPv4",
+			ut_setup_inline_ipsec, ut_teardown_inline_ipsec,
+			test_ipsec_inline_proto_tunnel_v4_in_v4),
+		TEST_CASE_NAMED_ST(
+			"Tunnel IPv6 in IPv6",
+			ut_setup_inline_ipsec, ut_teardown_inline_ipsec,
+			test_ipsec_inline_proto_tunnel_v6_in_v6),
+		TEST_CASE_NAMED_ST(
+			"Tunnel IPv4 in IPv6",
+			ut_setup_inline_ipsec, ut_teardown_inline_ipsec,
+			test_ipsec_inline_proto_tunnel_v4_in_v6),
+		TEST_CASE_NAMED_ST(
+			"Tunnel IPv6 in IPv4",
+			ut_setup_inline_ipsec, ut_teardown_inline_ipsec,
+			test_ipsec_inline_proto_tunnel_v6_in_v4),
+		TEST_CASE_NAMED_ST(
+			"Transport IPv4",
+			ut_setup_inline_ipsec, ut_teardown_inline_ipsec,
+			test_ipsec_inline_proto_transport_v4),
+		TEST_CASE_NAMED_ST(
+			"Transport l4 checksum",
+			ut_setup_inline_ipsec, ut_teardown_inline_ipsec,
+			test_ipsec_inline_proto_transport_l4_csum),
+		TEST_CASE_NAMED_ST(
+			"Statistics: success",
+			ut_setup_inline_ipsec, ut_teardown_inline_ipsec,
+			test_ipsec_inline_proto_stats),
+		TEST_CASE_NAMED_ST(
+			"Fragmented packet",
+			ut_setup_inline_ipsec, ut_teardown_inline_ipsec,
+			test_ipsec_inline_proto_pkt_fragment),
+		TEST_CASE_NAMED_ST(
+			"Tunnel header copy DF (inner 0)",
+			ut_setup_inline_ipsec, ut_teardown_inline_ipsec,
+			test_ipsec_inline_proto_copy_df_inner_0),
+		TEST_CASE_NAMED_ST(
+			"Tunnel header copy DF (inner 1)",
+			ut_setup_inline_ipsec, ut_teardown_inline_ipsec,
+			test_ipsec_inline_proto_copy_df_inner_1),
+		TEST_CASE_NAMED_ST(
+			"Tunnel header set DF 0 (inner 1)",
+			ut_setup_inline_ipsec, ut_teardown_inline_ipsec,
+			test_ipsec_inline_proto_set_df_0_inner_1),
+		TEST_CASE_NAMED_ST(
+			"Tunnel header set DF 1 (inner 0)",
+			ut_setup_inline_ipsec, ut_teardown_inline_ipsec,
+			test_ipsec_inline_proto_set_df_1_inner_0),
+		TEST_CASE_NAMED_ST(
+			"Tunnel header IPv4 copy DSCP (inner 0)",
+			ut_setup_inline_ipsec, ut_teardown_inline_ipsec,
+			test_ipsec_inline_proto_ipv4_copy_dscp_inner_0),
+		TEST_CASE_NAMED_ST(
+			"Tunnel header IPv4 copy DSCP (inner 1)",
+			ut_setup_inline_ipsec, ut_teardown_inline_ipsec,
+			test_ipsec_inline_proto_ipv4_copy_dscp_inner_1),
+		TEST_CASE_NAMED_ST(
+			"Tunnel header IPv4 set DSCP 0 (inner 1)",
+			ut_setup_inline_ipsec, ut_teardown_inline_ipsec,
+			test_ipsec_inline_proto_ipv4_set_dscp_0_inner_1),
+		TEST_CASE_NAMED_ST(
+			"Tunnel header IPv4 set DSCP 1 (inner 0)",
+			ut_setup_inline_ipsec, ut_teardown_inline_ipsec,
+			test_ipsec_inline_proto_ipv4_set_dscp_1_inner_0),
+		TEST_CASE_NAMED_ST(
+			"Tunnel header IPv6 copy DSCP (inner 0)",
+			ut_setup_inline_ipsec, ut_teardown_inline_ipsec,
+			test_ipsec_inline_proto_ipv6_copy_dscp_inner_0),
+		TEST_CASE_NAMED_ST(
+			"Tunnel header IPv6 copy DSCP (inner 1)",
+			ut_setup_inline_ipsec, ut_teardown_inline_ipsec,
+			test_ipsec_inline_proto_ipv6_copy_dscp_inner_1),
+		TEST_CASE_NAMED_ST(
+			"Tunnel header IPv6 set DSCP 0 (inner 1)",
+			ut_setup_inline_ipsec, ut_teardown_inline_ipsec,
+			test_ipsec_inline_proto_ipv6_set_dscp_0_inner_1),
+		TEST_CASE_NAMED_ST(
+			"Tunnel header IPv6 set DSCP 1 (inner 0)",
+			ut_setup_inline_ipsec, ut_teardown_inline_ipsec,
+			test_ipsec_inline_proto_ipv6_set_dscp_1_inner_0),
+		TEST_CASE_NAMED_ST(
+			"Tunnel header IPv4 decrement inner TTL",
+			ut_setup_inline_ipsec, ut_teardown_inline_ipsec,
+			test_ipsec_inline_proto_ipv4_ttl_decrement),
+		TEST_CASE_NAMED_ST(
+			"Tunnel header IPv6 decrement inner hop limit",
+			ut_setup_inline_ipsec, ut_teardown_inline_ipsec,
+			test_ipsec_inline_proto_ipv6_hop_limit_decrement),
+		TEST_CASE_NAMED_ST(
+			"IV generation",
+			ut_setup_inline_ipsec, ut_teardown_inline_ipsec,
+			test_ipsec_inline_proto_iv_gen),
+
 
 		TEST_CASE_NAMED_WITH_DATA(
 			"IPv4 Reassembly with 2 fragments",
