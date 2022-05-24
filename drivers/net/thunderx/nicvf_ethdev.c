@@ -1479,6 +1479,10 @@ nicvf_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->max_mac_addrs = 1;
 	dev_info->max_vfs = pci_dev->max_vfs;
 
+	dev_info->max_mtu = dev_info->max_rx_pktlen -
+				(RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN);
+	dev_info->min_mtu = dev_info->min_rx_bufsize - NIC_HW_L2_OVERHEAD;
+
 	dev_info->rx_offload_capa = NICVF_RX_OFFLOAD_CAPA;
 	dev_info->tx_offload_capa = NICVF_TX_OFFLOAD_CAPA;
 	dev_info->rx_queue_offload_capa = NICVF_RX_OFFLOAD_CAPA;
