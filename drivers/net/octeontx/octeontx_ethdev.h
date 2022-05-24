@@ -144,6 +144,7 @@ struct octeontx_nic {
 	struct octeontx_vlan_info vlan_info;
 	int print_flag;
 	struct octeontx_fc_info fc;
+	bool reconfigure;
 } __rte_cache_aligned;
 
 struct octeontx_txq {

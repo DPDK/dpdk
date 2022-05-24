@@ -518,29 +518,33 @@ octeontx_dev_configure(struct rte_eth_dev *dev)
 
 	nic->num_tx_queues = dev->data->nb_tx_queues;
 
-	ret = octeontx_pko_channel_open(nic->pko_vfid * PKO_VF_NUM_DQ,
-					nic->num_tx_queues,
-					nic->base_ochan);
-	if (ret) {
-		octeontx_log_err("failed to open channel %d no-of-txq %d",
-			   nic->base_ochan, nic->num_tx_queues);
-		return -EFAULT;
-	}
+	if (!nic->reconfigure) {
+		ret = octeontx_pko_channel_open(nic->pko_vfid * PKO_VF_NUM_DQ,
+						nic->num_tx_queues,
+						nic->base_ochan);
+		if (ret) {
+			octeontx_log_err("failed to open channel %d no-of-txq %d",
+					 nic->base_ochan, nic->num_tx_queues);
+			return -EFAULT;
+		}
 
-	ret = octeontx_dev_vlan_offload_init(dev);
-	if (ret) {
-		octeontx_log_err("failed to initialize vlan offload");
-		return -EFAULT;
-	}
+		ret = octeontx_dev_vlan_offload_init(dev);
+		if (ret) {
+			octeontx_log_err("failed to initialize vlan offload");
+			return -EFAULT;
+		}
 
-	nic->pki.classifier_enable = false;
-	nic->pki.hash_enable = true;
-	nic->pki.initialized = false;
+		nic->pki.classifier_enable = false;
+		nic->pki.hash_enable = true;
+		nic->pki.initialized = false;
+	}
 
 	nic->rx_offloads |= rxmode->offloads;
 	nic->tx_offloads |= txmode->offloads;
 	nic->rx_offload_flags |= octeontx_rx_offload_flags(dev);
 	nic->tx_offload_flags |= octeontx_tx_offload_flags(dev);
+
+	nic->reconfigure = true;
 
 	return 0;
 }
@@ -583,6 +587,7 @@ octeontx_dev_close(struct rte_eth_dev *dev)
 	}
 
 	octeontx_port_close(nic);
+	nic->reconfigure = false;
 
 	return 0;
 }
@@ -1431,6 +1436,7 @@ octeontx_create(struct rte_vdev_device *dev, int port, uint8_t evdev,
 	nic->ev_queues = 1;
 	nic->ev_ports = 1;
 	nic->print_flag = -1;
+	nic->reconfigure = false;
 
 	data->dev_link.link_status = RTE_ETH_LINK_DOWN;
 	data->dev_started = 0;
