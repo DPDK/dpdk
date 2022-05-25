@@ -294,6 +294,7 @@ eth_vmxnet3_dev_init(struct rte_eth_dev *eth_dev)
 	eth_dev->rx_pkt_burst = &vmxnet3_recv_pkts;
 	eth_dev->tx_pkt_burst = &vmxnet3_xmit_pkts;
 	eth_dev->tx_pkt_prepare = vmxnet3_prep_pkts;
+	eth_dev->rx_queue_count = vmxnet3_dev_rx_queue_count;
 	pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
 
 	/* extra mbuf field is required to guess MSS */

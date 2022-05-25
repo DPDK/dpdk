@@ -1019,6 +1019,36 @@ rcd_done:
 	return nb_rx;
 }
 
+uint32_t
+vmxnet3_dev_rx_queue_count(void *rx_queue)
+{
+	const vmxnet3_rx_queue_t *rxq;
+	const Vmxnet3_RxCompDesc *rcd;
+	uint32_t idx, nb_rxd = 0;
+	uint8_t gen;
+
+	rxq = rx_queue;
+	if (unlikely(rxq->stopped)) {
+		PMD_RX_LOG(DEBUG, "Rx queue is stopped.");
+		return 0;
+	}
+
+	gen = rxq->comp_ring.gen;
+	idx = rxq->comp_ring.next2proc;
+	rcd = &rxq->comp_ring.base[idx].rcd;
+	while (rcd->gen == gen) {
+		if (rcd->eop)
+			++nb_rxd;
+		if (++idx == rxq->comp_ring.size) {
+			idx = 0;
+			gen ^= 1;
+		}
+		rcd = &rxq->comp_ring.base[idx].rcd;
+	}
+
+	return nb_rxd;
+}
+
 int
 vmxnet3_dev_tx_queue_setup(struct rte_eth_dev *dev,
 			   uint16_t queue_idx,
