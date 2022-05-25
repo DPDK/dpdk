@@ -283,6 +283,9 @@ l2fwd_main_loop(void)
 			nb_rx = rte_eth_rx_burst(portid, 0,
 						 pkts_burst, MAX_PKT_BURST);
 
+			if (unlikely(nb_rx == 0))
+				continue;
+
 			port_statistics[portid].rx += nb_rx;
 
 			for (j = 0; j < nb_rx; j++) {
