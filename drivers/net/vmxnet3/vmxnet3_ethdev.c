@@ -316,9 +316,12 @@ eth_vmxnet3_dev_init(struct rte_eth_dev *eth_dev)
 
 	/* Check h/w version compatibility with driver. */
 	ver = VMXNET3_READ_BAR1_REG(hw, VMXNET3_REG_VRRS);
-	PMD_INIT_LOG(DEBUG, "Hardware version : %d", ver);
 
-	if (ver & (1 << VMXNET3_REV_4)) {
+	if (ver & (1 << VMXNET3_REV_5)) {
+		VMXNET3_WRITE_BAR1_REG(hw, VMXNET3_REG_VRRS,
+				       1 << VMXNET3_REV_5);
+		hw->version = VMXNET3_REV_5 + 1;
+	} else if (ver & (1 << VMXNET3_REV_4)) {
 		VMXNET3_WRITE_BAR1_REG(hw, VMXNET3_REG_VRRS,
 				       1 << VMXNET3_REV_4);
 		hw->version = VMXNET3_REV_4 + 1;

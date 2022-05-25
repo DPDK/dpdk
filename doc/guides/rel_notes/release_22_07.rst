@@ -90,6 +90,10 @@ New Features
   * Added support for MTU on Windows.
   * Added matching and RSS on IPsec ESP.
 
+* **Updated VMware vmxnet3 networking driver.**
+
+  * Added version 5 support.
+
 * **Updated Wangxun ngbe driver.**
 
   * Added support for yt8531s PHY.
