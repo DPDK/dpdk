@@ -93,6 +93,7 @@ New Features
 * **Updated VMware vmxnet3 networking driver.**
 
   * Added version 5 support.
+  * Added RETA query and RETA update support.
 
 * **Updated Wangxun ngbe driver.**
 

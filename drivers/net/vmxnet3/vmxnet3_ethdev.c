@@ -95,6 +95,14 @@ static int vmxnet3_mac_addr_set(struct rte_eth_dev *dev,
 				 struct rte_ether_addr *mac_addr);
 static void vmxnet3_process_events(struct rte_eth_dev *dev);
 static void vmxnet3_interrupt_handler(void *param);
+static int
+vmxnet3_rss_reta_update(struct rte_eth_dev *dev,
+			struct rte_eth_rss_reta_entry64 *reta_conf,
+			uint16_t reta_size);
+static int
+vmxnet3_rss_reta_query(struct rte_eth_dev *dev,
+		       struct rte_eth_rss_reta_entry64 *reta_conf,
+		       uint16_t reta_size);
 static int vmxnet3_dev_rx_queue_intr_enable(struct rte_eth_dev *dev,
 						uint16_t queue_id);
 static int vmxnet3_dev_rx_queue_intr_disable(struct rte_eth_dev *dev,
@@ -137,6 +145,8 @@ static const struct eth_dev_ops vmxnet3_eth_dev_ops = {
 	.tx_queue_release     = vmxnet3_dev_tx_queue_release,
 	.rx_queue_intr_enable = vmxnet3_dev_rx_queue_intr_enable,
 	.rx_queue_intr_disable = vmxnet3_dev_rx_queue_intr_disable,
+	.reta_update          = vmxnet3_rss_reta_update,
+	.reta_query           = vmxnet3_rss_reta_query,
 };
 
 struct vmxnet3_xstats_name_off {
@@ -1696,3 +1706,60 @@ RTE_PMD_REGISTER_PCI_TABLE(net_vmxnet3, pci_id_vmxnet3_map);
 RTE_PMD_REGISTER_KMOD_DEP(net_vmxnet3, "* igb_uio | uio_pci_generic | vfio-pci");
 RTE_LOG_REGISTER_SUFFIX(vmxnet3_logtype_init, init, NOTICE);
 RTE_LOG_REGISTER_SUFFIX(vmxnet3_logtype_driver, driver, NOTICE);
+
+static int
+vmxnet3_rss_reta_update(struct rte_eth_dev *dev,
+			struct rte_eth_rss_reta_entry64 *reta_conf,
+			uint16_t reta_size)
+{
+	int i, idx, shift;
+	struct vmxnet3_hw *hw = dev->data->dev_private;
+	struct VMXNET3_RSSConf *dev_rss_conf = hw->rss_conf;
+
+	if (reta_size != dev_rss_conf->indTableSize) {
+		PMD_DRV_LOG(ERR,
+			"The size of hash lookup table configured (%d) doesn't match "
+			"the supported number (%d)",
+			reta_size, dev_rss_conf->indTableSize);
+		return -EINVAL;
+	}
+
+	for (i = 0; i < reta_size; i++) {
+		idx = i / RTE_ETH_RETA_GROUP_SIZE;
+		shift = i % RTE_ETH_RETA_GROUP_SIZE;
+		if (reta_conf[idx].mask & RTE_BIT64(shift))
+			dev_rss_conf->indTable[i] = (uint8_t)reta_conf[idx].reta[shift];
+	}
+
+	VMXNET3_WRITE_BAR1_REG(hw, VMXNET3_REG_CMD,
+				VMXNET3_CMD_UPDATE_RSSIDT);
+
+	return 0;
+}
+
+static int
+vmxnet3_rss_reta_query(struct rte_eth_dev *dev,
+		       struct rte_eth_rss_reta_entry64 *reta_conf,
+		       uint16_t reta_size)
+{
+	int i, idx, shift;
+	struct vmxnet3_hw *hw = dev->data->dev_private;
+	struct VMXNET3_RSSConf *dev_rss_conf = hw->rss_conf;
+
+	if (reta_size != dev_rss_conf->indTableSize) {
+		PMD_DRV_LOG(ERR,
+			"Size of requested hash lookup table (%d) doesn't "
+			"match the configured size (%d)",
+			reta_size, dev_rss_conf->indTableSize);
+		return -EINVAL;
+	}
+
+	for (i = 0; i < reta_size; i++) {
+		idx = i / RTE_ETH_RETA_GROUP_SIZE;
+		shift = i % RTE_ETH_RETA_GROUP_SIZE;
+		if (reta_conf[idx].mask & RTE_BIT64(shift))
+			reta_conf[idx].reta[shift] = dev_rss_conf->indTable[i];
+	}
+
+	return 0;
+}
