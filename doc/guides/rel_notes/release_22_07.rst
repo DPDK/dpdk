@@ -133,6 +133,11 @@ API Changes
    Also, make sure to start the actual text at the margin.
    =======================================================
 
+* The DPDK header file ``rte_altivec.h``,
+  which is a wrapper for the PPC header file ``altivec.h``,
+  undefines the AltiVec keyword ``vector``.
+  The alternative keyword ``__vector`` should be used instead.
+
 
 ABI Changes
 -----------
