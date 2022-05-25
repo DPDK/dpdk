@@ -1504,10 +1504,10 @@ main(int argc, char **argv)
 	if (nb_ports == 0)
 		rte_exit(EXIT_FAILURE, "No Ethernet ports - bye\n");
 
-	/* If no port mask was specified, then show non-owned ports */
+	/* If no port mask was specified, then show all non-owned ports */
 	if (enabled_port_mask == 0) {
 		RTE_ETH_FOREACH_DEV(i)
-			enabled_port_mask = 1ul << i;
+			enabled_port_mask |= 1ul << i;
 	}
 
 	for (i = 0; i < RTE_MAX_ETHPORTS; i++) {
