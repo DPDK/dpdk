@@ -70,7 +70,7 @@ struct vmxnet3_intr {
 	enum vmxnet3_intr_type      type; /* MSI-X, MSI, or INTx? */
 	uint8_t num_intrs;                /* # of intr vectors */
 	uint8_t event_intr_idx;           /* idx of the intr vector for event */
-	uint8_t mod_levels[VMXNET3_MAX_MSIX_VECT]; /* moderation level */
+	uint8_t mod_levels[VMXNET3_EXT_MAX_INTRS]; /* moderation level */
 	bool lsc_only;                    /* no Rx queue interrupt */
 };
 
@@ -108,6 +108,7 @@ struct vmxnet3_hw {
 	uint64_t              queueDescPA;
 	uint16_t              queue_desc_len;
 	uint16_t              mtu;
+	bool                  queuesExtEnabled;
 
 	VMXNET3_RSSConf       *rss_conf;
 	uint64_t              rss_confPA;
@@ -117,19 +118,20 @@ struct vmxnet3_hw {
 	Vmxnet3_MemRegs	      *memRegs;
 	uint64_t	      memRegsPA;
 #define VMXNET3_VFT_TABLE_SIZE     (VMXNET3_VFT_SIZE * sizeof(uint32_t))
-	UPT1_TxStats	      saved_tx_stats[VMXNET3_MAX_TX_QUEUES];
-	UPT1_RxStats	      saved_rx_stats[VMXNET3_MAX_RX_QUEUES];
-
+	UPT1_TxStats	      saved_tx_stats[VMXNET3_EXT_MAX_TX_QUEUES];
+	UPT1_RxStats	      saved_rx_stats[VMXNET3_EXT_MAX_RX_QUEUES];
 	UPT1_TxStats          snapshot_tx_stats[VMXNET3_MAX_TX_QUEUES];
 	UPT1_RxStats          snapshot_rx_stats[VMXNET3_MAX_RX_QUEUES];
 };
 
+#define VMXNET3_REV_6		5		/* Vmxnet3 Rev. 6 */
 #define VMXNET3_REV_5		4		/* Vmxnet3 Rev. 5 */
 #define VMXNET3_REV_4		3		/* Vmxnet3 Rev. 4 */
 #define VMXNET3_REV_3		2		/* Vmxnet3 Rev. 3 */
 #define VMXNET3_REV_2		1		/* Vmxnet3 Rev. 2 */
 #define VMXNET3_REV_1		0		/* Vmxnet3 Rev. 1 */
 
+#define VMXNET3_VERSION_GE_6(hw) ((hw)->version >= VMXNET3_REV_6 + 1)
 #define VMXNET3_VERSION_GE_5(hw) ((hw)->version >= VMXNET3_REV_5 + 1)
 #define VMXNET3_VERSION_GE_4(hw) ((hw)->version >= VMXNET3_REV_4 + 1)
 #define VMXNET3_VERSION_GE_3(hw) ((hw)->version >= VMXNET3_REV_3 + 1)

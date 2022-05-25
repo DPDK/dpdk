@@ -94,6 +94,12 @@ New Features
 
   * Added version 5 support.
   * Added RETA query and RETA update support.
+  * Added version 6 support with some new features:
+
+    * Increased maximum MTU up to 9190;
+    * Increased maximum number of Rx and Tx queues;
+    * Removed power-of-two limitations on Rx and Tx queue size;
+    * Extended interrupt structures (required for additional queues).
 
 * **Updated Wangxun ngbe driver.**
 

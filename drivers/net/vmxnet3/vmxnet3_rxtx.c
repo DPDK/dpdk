@@ -1400,7 +1400,7 @@ vmxnet3_rss_configure(struct rte_eth_dev *dev)
 	/* loading hashKeySize */
 	dev_rss_conf->hashKeySize = VMXNET3_RSS_MAX_KEY_SIZE;
 	/* loading indTableSize: Must not exceed VMXNET3_RSS_MAX_IND_TABLE_SIZE (128)*/
-	dev_rss_conf->indTableSize = (uint16_t)(hw->num_rx_queues * 4);
+	dev_rss_conf->indTableSize = (uint16_t)((MAX_RX_QUEUES(hw)) * 4);
 
 	if (port_rss_conf->rss_key == NULL) {
 		/* Default hash key */
