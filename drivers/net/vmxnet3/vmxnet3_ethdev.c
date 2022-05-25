@@ -1479,7 +1479,12 @@ vmxnet3_dev_info_get(struct rte_eth_dev *dev,
 	dev_info->rx_queue_offload_capa = 0;
 	dev_info->tx_offload_capa = VMXNET3_TX_OFFLOAD_CAP;
 	dev_info->tx_queue_offload_capa = 0;
-
+	if (hw->rss_conf == NULL) {
+		/* RSS not configured */
+		dev_info->reta_size = 0;
+	} else {
+		dev_info->reta_size = hw->rss_conf->indTableSize;
+	}
 	return 0;
 }
 
