@@ -85,6 +85,8 @@ static int vmxnet3_dev_xstats_get(struct rte_eth_dev *dev,
 				  struct rte_eth_xstat *xstats, unsigned int n);
 static int vmxnet3_dev_info_get(struct rte_eth_dev *dev,
 				struct rte_eth_dev_info *dev_info);
+static int vmxnet3_hw_ver_get(struct rte_eth_dev *dev,
+			      char *fw_version, size_t fw_size);
 static const uint32_t *
 vmxnet3_dev_supported_ptypes_get(struct rte_eth_dev *dev);
 static int vmxnet3_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu);
@@ -103,6 +105,7 @@ static int
 vmxnet3_rss_reta_query(struct rte_eth_dev *dev,
 		       struct rte_eth_rss_reta_entry64 *reta_conf,
 		       uint16_t reta_size);
+
 static int vmxnet3_dev_rx_queue_intr_enable(struct rte_eth_dev *dev,
 						uint16_t queue_id);
 static int vmxnet3_dev_rx_queue_intr_disable(struct rte_eth_dev *dev,
@@ -136,6 +139,7 @@ static const struct eth_dev_ops vmxnet3_eth_dev_ops = {
 	.xstats_get           = vmxnet3_dev_xstats_get,
 	.xstats_get_names     = vmxnet3_dev_xstats_get_names,
 	.dev_infos_get        = vmxnet3_dev_info_get,
+	.fw_version_get       = vmxnet3_hw_ver_get,
 	.dev_supported_ptypes_get = vmxnet3_dev_supported_ptypes_get,
 	.vlan_filter_set      = vmxnet3_dev_vlan_filter_set,
 	.vlan_offload_set     = vmxnet3_dev_vlan_offload_set,
@@ -1408,6 +1412,22 @@ vmxnet3_dev_info_get(struct rte_eth_dev *dev,
 	dev_info->tx_queue_offload_capa = 0;
 
 	return 0;
+}
+
+static int
+vmxnet3_hw_ver_get(struct rte_eth_dev *dev,
+		   char *fw_version, size_t fw_size)
+{
+	int ret;
+	struct vmxnet3_hw *hw = dev->data->dev_private;
+
+	ret = snprintf(fw_version, fw_size, "v%d", hw->version);
+
+	ret += 1; /* add the size of '\0' */
+	if (fw_size < (uint32_t)ret)
+		return ret;
+	else
+		return 0;
 }
 
 static const uint32_t *
