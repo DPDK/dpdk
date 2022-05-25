@@ -822,6 +822,11 @@ vmxnet3_setup_driver_shared(struct rte_eth_dev *dev)
 		rqd->conf.rxRingSize[1]   = rxq->cmd_ring[1].size;
 		rqd->conf.compRingSize    = rxq->comp_ring.size;
 
+		if (VMXNET3_VERSION_GE_3(hw)) {
+			rqd->conf.rxDataRingBasePA = rxq->data_ring.basePA;
+			rqd->conf.rxDataRingDescSize = rxq->data_desc_size;
+		}
+
 		if (hw->intr.lsc_only)
 			rqd->conf.intrIdx = 1;
 		else
