@@ -397,7 +397,7 @@ try_expand_heap_primary(struct malloc_heap *heap, uint64_t pg_sz,
 	bool callback_triggered = false;
 
 	alloc_sz = RTE_ALIGN_CEIL(align + elt_size +
-			MALLOC_ELEM_TRAILER_LEN, pg_sz);
+			MALLOC_ELEM_OVERHEAD, pg_sz);
 	n_segs = alloc_sz / pg_sz;
 
 	/* we can't know in advance how many pages we'll need, so we malloc */
