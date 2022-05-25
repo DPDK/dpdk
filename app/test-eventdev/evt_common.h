@@ -66,6 +66,7 @@ struct evt_options {
 	uint16_t eth_queues;
 	uint32_t nb_flows;
 	uint32_t tx_first;
+	uint16_t tx_pkt_sz;
 	uint32_t max_pkt_sz;
 	uint32_t prod_enq_burst_sz;
 	uint32_t deq_tmo_nsec;

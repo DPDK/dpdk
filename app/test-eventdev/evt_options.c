@@ -108,6 +108,26 @@ evt_parse_eth_prod_type(struct evt_options *opt, const char *arg __rte_unused)
 }
 
 static int
+evt_parse_tx_first(struct evt_options *opt, const char *arg __rte_unused)
+{
+	int ret;
+
+	ret = parser_read_uint32(&(opt->tx_first), arg);
+
+	return ret;
+}
+
+static int
+evt_parse_tx_pkt_sz(struct evt_options *opt, const char *arg __rte_unused)
+{
+	int ret;
+
+	ret = parser_read_uint16(&(opt->tx_pkt_sz), arg);
+
+	return ret;
+}
+
+static int
 evt_parse_timer_prod_type(struct evt_options *opt, const char *arg __rte_unused)
 {
 	opt->prod_type = EVT_PROD_TYPE_EVENT_TIMER_ADPTR;
@@ -391,6 +411,10 @@ usage(char *program)
 		"\t--vector_size      : Max vector size.\n"
 		"\t--vector_tmo_ns    : Max vector timeout in nanoseconds\n"
 		"\t--per_port_pool    : Configure unique pool per ethdev port\n"
+		"\t--tx_first         : Transmit given number of packets\n"
+		"                       across all the ethernet devices before\n"
+		"                       event workers start.\n"
+		"\t--tx_pkt_sz        : Packet size to use with Tx first."
 		);
 	printf("available tests:\n");
 	evt_test_dump_names();
@@ -472,6 +496,8 @@ static struct option lgopts[] = {
 	{ EVT_VECTOR_TMO,          1, 0, 0 },
 	{ EVT_PER_PORT_POOL,       0, 0, 0 },
 	{ EVT_HELP,                0, 0, 0 },
+	{ EVT_TX_FIRST,            1, 0, 0 },
+	{ EVT_TX_PKT_SZ,           1, 0, 0 },
 	{ NULL,                    0, 0, 0 }
 };
 
@@ -514,6 +540,8 @@ evt_opts_parse_long(int opt_idx, struct evt_options *opt)
 		{ EVT_VECTOR_SZ, evt_parse_vector_size},
 		{ EVT_VECTOR_TMO, evt_parse_vector_tmo_ns},
 		{ EVT_PER_PORT_POOL, evt_parse_per_port_pool},
+		{ EVT_TX_FIRST, evt_parse_tx_first},
+		{ EVT_TX_PKT_SZ, evt_parse_tx_pkt_sz},
 	};
 
 	for (i = 0; i < RTE_DIM(parsermap); i++) {

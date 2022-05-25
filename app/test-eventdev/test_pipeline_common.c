@@ -56,14 +56,170 @@ processed_pkts(struct test_pipeline *t)
 	return total;
 }
 
+/* RFC863 discard port */
+#define UDP_SRC_PORT 9
+#define UDP_DST_PORT 9
+
+/* RFC2544 reserved test subnet 192.18.0.0 */
+#define IP_SRC_ADDR(x, y) ((192U << 24) | (18 << 16) | ((x) << 8) | (y))
+#define IP_DST_ADDR(x, y) ((192U << 24) | (18 << 16) | ((x) << 8) | (y))
+
+#define IP_DEFTTL  64 /* from RFC 1340. */
+#define IP_VERSION 0x40
+#define IP_HDRLEN  0x05 /* default IP header length == five 32-bits words. */
+#define IP_VHL_DEF (IP_VERSION | IP_HDRLEN)
+
+static void
+setup_pkt_udp_ip_headers(struct rte_ipv4_hdr *ip_hdr,
+			 struct rte_udp_hdr *udp_hdr, uint16_t pkt_data_len,
+			 uint8_t port, uint8_t flow)
+{
+	uint16_t *ptr16;
+	uint32_t ip_cksum;
+	uint16_t pkt_len;
+
+	/*
+	 * Initialize UDP header.
+	 */
+	pkt_len = (uint16_t)(pkt_data_len + sizeof(struct rte_udp_hdr));
+	udp_hdr->src_port = rte_cpu_to_be_16(UDP_SRC_PORT);
+	udp_hdr->dst_port = rte_cpu_to_be_16(UDP_DST_PORT);
+	udp_hdr->dgram_len = rte_cpu_to_be_16(pkt_len);
+	udp_hdr->dgram_cksum = 0; /* No UDP checksum. */
+
+	/*
+	 * Initialize IP header.
+	 */
+	pkt_len = (uint16_t)(pkt_len + sizeof(struct rte_ipv4_hdr));
+	ip_hdr->version_ihl = IP_VHL_DEF;
+	ip_hdr->type_of_service = 0;
+	ip_hdr->fragment_offset = 0;
+	ip_hdr->time_to_live = IP_DEFTTL;
+	ip_hdr->next_proto_id = IPPROTO_UDP;
+	ip_hdr->packet_id = 0;
+	ip_hdr->total_length = rte_cpu_to_be_16(pkt_len);
+	ip_hdr->src_addr = rte_cpu_to_be_32(IP_SRC_ADDR(port, 1));
+	ip_hdr->dst_addr = rte_cpu_to_be_32(IP_DST_ADDR(port + 1, flow));
+
+	/*
+	 * Compute IP header checksum.
+	 */
+	ptr16 = (unaligned_uint16_t *)ip_hdr;
+	ip_cksum = 0;
+	ip_cksum += ptr16[0];
+	ip_cksum += ptr16[1];
+	ip_cksum += ptr16[2];
+	ip_cksum += ptr16[3];
+	ip_cksum += ptr16[4];
+	ip_cksum += ptr16[6];
+	ip_cksum += ptr16[7];
+	ip_cksum += ptr16[8];
+	ip_cksum += ptr16[9];
+
+	/*
+	 * Reduce 32 bit checksum to 16 bits and complement it.
+	 */
+	ip_cksum = ((ip_cksum & 0xFFFF0000) >> 16) + (ip_cksum & 0x0000FFFF);
+	if (ip_cksum > 65535)
+		ip_cksum -= 65535;
+	ip_cksum = (~ip_cksum) & 0x0000FFFF;
+	if (ip_cksum == 0)
+		ip_cksum = 0xFFFF;
+	ip_hdr->hdr_checksum = (uint16_t)ip_cksum;
+}
+
+static void
+pipeline_tx_first(struct test_pipeline *t, struct evt_options *opt)
+{
+#define TX_DEF_PACKET_LEN 64
+	uint16_t eth_port_id = 0;
+	uint16_t pkt_sz, rc;
+	uint32_t i;
+
+	pkt_sz = opt->tx_pkt_sz;
+	if (pkt_sz > opt->max_pkt_sz)
+		pkt_sz = opt->max_pkt_sz;
+	if (!pkt_sz)
+		pkt_sz = TX_DEF_PACKET_LEN;
+
+	RTE_ETH_FOREACH_DEV(eth_port_id) {
+		struct rte_ether_addr src_mac;
+		struct rte_ether_addr dst_mac;
+		struct rte_ether_hdr eth_hdr;
+
+		/* Send to the same dest.mac as port mac */
+		rte_eth_macaddr_get(eth_port_id, &dst_mac);
+		rte_eth_random_addr((uint8_t *)&src_mac);
+
+		rte_ether_addr_copy(&dst_mac, &eth_hdr.dst_addr);
+		rte_ether_addr_copy(&src_mac, &eth_hdr.src_addr);
+		eth_hdr.ether_type = rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV4);
+
+		for (i = 0; i < opt->tx_first; i++) {
+			struct rte_udp_hdr *pkt_udp_hdr;
+			struct rte_ipv4_hdr ip_hdr;
+			struct rte_udp_hdr udp_hdr;
+			struct rte_mbuf *mbuf;
+
+			mbuf = rte_pktmbuf_alloc(
+				opt->per_port_pool ? t->pool[i] : t->pool[0]);
+			if (mbuf == NULL)
+				continue;
+
+			setup_pkt_udp_ip_headers(
+				&ip_hdr, &udp_hdr,
+				pkt_sz - sizeof(struct rte_ether_hdr) -
+					sizeof(struct rte_ipv4_hdr) -
+					sizeof(struct rte_udp_hdr),
+				eth_port_id, i);
+			mbuf->port = eth_port_id;
+			mbuf->data_len = pkt_sz;
+			mbuf->pkt_len = pkt_sz;
+
+			/* Copy Ethernet header */
+			rte_memcpy(rte_pktmbuf_mtod_offset(mbuf, char *, 0),
+				   &eth_hdr, sizeof(struct rte_ether_hdr));
+
+			/* Copy Ipv4 header */
+			rte_memcpy(rte_pktmbuf_mtod_offset(
+					   mbuf, char *,
+					   sizeof(struct rte_ether_hdr)),
+				   &ip_hdr, sizeof(struct rte_ipv4_hdr));
+
+			/* Copy UDP header */
+			rte_memcpy(
+				rte_pktmbuf_mtod_offset(
+					mbuf, char *,
+					sizeof(struct rte_ipv4_hdr) +
+						sizeof(struct rte_ether_hdr)),
+				&udp_hdr, sizeof(struct rte_udp_hdr));
+			pkt_udp_hdr = rte_pktmbuf_mtod_offset(
+				mbuf, struct rte_udp_hdr *,
+				sizeof(struct rte_ipv4_hdr) +
+					sizeof(struct rte_ether_hdr));
+			pkt_udp_hdr->src_port =
+				rte_cpu_to_be_16(UDP_SRC_PORT + i);
+			pkt_udp_hdr->dst_port =
+				rte_cpu_to_be_16(UDP_SRC_PORT + i);
+
+			rc = rte_eth_tx_burst(eth_port_id, 0, &mbuf, 1);
+			if (rc == 0)
+				rte_pktmbuf_free(mbuf);
+		}
+	}
+}
+
 int
 pipeline_launch_lcores(struct evt_test *test, struct evt_options *opt,
 		int (*worker)(void *))
 {
-	int ret, lcore_id;
 	struct test_pipeline *t = evt_test_priv(test);
-
+	int ret, lcore_id;
 	int port_idx = 0;
+
+	if (opt->tx_first)
+		pipeline_tx_first(t, opt);
+
 	/* launch workers */
 	RTE_LCORE_FOREACH_WORKER(lcore_id) {
 		if (!(opt->wlcores[lcore_id]))
@@ -152,6 +308,11 @@ pipeline_opt_check(struct evt_options *opt, uint64_t nb_queues)
 	}
 	if (pipeline_nb_event_ports(opt) > EVT_MAX_PORTS) {
 		evt_err("number of ports exceeds %d", EVT_MAX_PORTS);
+		return -1;
+	}
+
+	if (opt->prod_type != EVT_PROD_TYPE_ETH_RX_ADPTR) {
+		evt_err("Invalid producer type, only --prod_type_ethdev is supported");
 		return -1;
 	}
 
