@@ -351,13 +351,13 @@ eth_memif_rx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 			goto no_free_bufs;
 		mbuf = mbuf_head;
 		mbuf->port = mq->in_port;
+		dst_off = 0;
 
 next_slot:
 		s0 = cur_slot & mask;
 		d0 = &ring->desc[s0];
 
 		src_len = d0->length;
-		dst_off = 0;
 		src_off = 0;
 
 		do {
