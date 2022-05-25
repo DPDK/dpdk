@@ -1485,6 +1485,8 @@ fill_ipsec_sa_prm(struct rte_ipsec_sa_prm *prm, const struct ipsec_sa *ss,
 		RTE_SECURITY_IPSEC_SA_MODE_TRANSPORT :
 		RTE_SECURITY_IPSEC_SA_MODE_TUNNEL;
 	prm->ipsec_xform.options.udp_encap = ss->udp_encap;
+	prm->ipsec_xform.udp.dport = ss->udp.dport;
+	prm->ipsec_xform.udp.sport = ss->udp.sport;
 	prm->ipsec_xform.options.ecn = 1;
 	prm->ipsec_xform.options.copy_dscp = 1;
 
@@ -1535,13 +1537,13 @@ ipsec_sa_init(struct ipsec_sa *lsa, struct rte_ipsec_sa *sa, uint32_t sa_size)
 		.version_ihl = IPVERSION << 4 |
 			sizeof(v4) / RTE_IPV4_IHL_MULTIPLIER,
 		.time_to_live = IPDEFTTL,
-		.next_proto_id = IPPROTO_ESP,
+		.next_proto_id = lsa->udp_encap ? IPPROTO_UDP : IPPROTO_ESP,
 		.src_addr = lsa->src.ip.ip4,
 		.dst_addr = lsa->dst.ip.ip4,
 	};
 	struct rte_ipv6_hdr v6 = {
 		.vtc_flow = htonl(IP6_VERSION << 28),
-		.proto = IPPROTO_ESP,
+		.proto = lsa->udp_encap ? IPPROTO_UDP : IPPROTO_ESP,
 	};
 
 	if (IS_IP6_TUNNEL(lsa->flags)) {
