@@ -106,6 +106,11 @@ New Features
  * Added Tx QoS queue / queue group priority configuration support.
  * Added Tx QoS queue weight configuration support.
 
+* **Updated Intel igc driver.**
+
+  Added Intel Foxville I226 devices in ``igc`` driver.
+  See the doc:`../nics/igc` NIC guide for more details.
+
 * **Updated Mellanox mlx5 driver.**
 
   * Added support for promiscuous mode on Windows.

@@ -166,6 +166,12 @@ struct igc_hw;
 #define IGC_DEV_ID_I225_I			0x15F8
 #define IGC_DEV_ID_I220_V			0x15F7
 #define IGC_DEV_ID_I225_BLANK_NVM		0x15FD
+#define IGC_DEV_ID_I226_K           0x3102
+#define IGC_DEV_ID_I226_LMVP        0x5503
+#define IGC_DEV_ID_I226_LM          0x125B
+#define IGC_DEV_ID_I226_V           0x125C
+#define IGC_DEV_ID_I226_IT          0x125D
+#define IGC_DEV_ID_I226_BLANK_NVM   0x125F
 #define IGC_DEV_ID_I354_BACKPLANE_1GBPS	0x1F40
 #define IGC_DEV_ID_I354_SGMII			0x1F41
 #define IGC_DEV_ID_I354_BACKPLANE_2_5GBPS	0x1F45

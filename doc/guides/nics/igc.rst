@@ -5,11 +5,12 @@ IGC Poll Mode Driver
 ======================
 
 The IGC PMD (**librte_net_igc**) provides poll mode driver support for Foxville
-I225 Series Network Adapters.
+I225 and I226 Series Network Adapters.
 
 - For information about I225, please refer to: `Intel® Ethernet Controller I225 Series
   <https://ark.intel.com/content/www/us/en/ark/products/series/184686/intel-ethernet-controller-i225-series.html>`_.
-
+- For information about I226, please refer to: `Intel® Ethernet Controller I226 Series
+  <https://ark.intel.com/content/www/us/en/ark/products/series/210588/intel-ethernet-controller-i226-series.html>`_.
 
 Driver compilation and testing
 ------------------------------
@@ -21,11 +22,10 @@ for details.
 Supported Chipsets and NICs
 ---------------------------
 
-Foxville LM (I225 LM): Client 2.5G LAN vPro Corporate
-Foxville V (I225 V): Client 2.5G LAN Consumer
-Foxville I (I225 I): Client 2.5G Industrial Temp
-Foxville V (I225 K): Client 2.5G LAN Consumer
-
+Foxville LM (I225 LM, I226 LM): Client 2.5G LAN vPro Corporate
+Foxville V (I225 V, I226 V): Client 2.5G LAN Consumer
+Foxville I (I225 I, I226 IM): Client 2.5G Industrial Temp
+Foxville V (I225 K, I226 K): Client 2.5G LAN Consumer
 
 Sample Application Notes
 ------------------------
