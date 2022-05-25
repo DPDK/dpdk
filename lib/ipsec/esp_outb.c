@@ -197,7 +197,7 @@ outb_tun_pkt_prepare(struct rte_ipsec_sa *sa, rte_be64_t sqc,
 	/* if UDP encap is enabled update the dgram_len */
 	if (sa->type & RTE_IPSEC_SATP_NATT_ENABLE) {
 		struct rte_udp_hdr *udph = (struct rte_udp_hdr *)
-				(ph - sizeof(struct rte_udp_hdr));
+			(ph + sa->hdr_len - sizeof(struct rte_udp_hdr));
 		udph->dgram_len = rte_cpu_to_be_16(mb->pkt_len - sqh_len -
 				sa->hdr_l3_off - sa->hdr_len);
 	}
