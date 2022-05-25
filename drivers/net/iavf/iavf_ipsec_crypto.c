@@ -1118,11 +1118,14 @@ iavf_ipsec_crypto_compute_l4_payload_length(struct rte_mbuf *m,
 		 * ipv4/6 hdr + ext hdrs
 		 */
 
-	if (s->udp_encap.enabled)
+	if (s->udp_encap.enabled) {
 		ol4_len = sizeof(struct rte_udp_hdr);
-
-	l3_len = m->l3_len;
-	l4_len = m->l4_len;
+		l3_len = m->l3_len - ol4_len;
+		l4_len = l3_len;
+	} else {
+		l3_len = m->l3_len;
+		l4_len = m->l4_len;
+	}
 
 	return rte_pktmbuf_pkt_len(m) - (ol2_len + ol3_len + ol4_len +
 			esp_hlen + l3_len + l4_len + esp_tlen);
