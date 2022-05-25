@@ -759,6 +759,23 @@ vmxnet3_rx_offload(struct vmxnet3_hw *hw, const Vmxnet3_RxCompDesc *rcd,
 		/* Check packet type, checksum errors, etc. */
 		if (rcd->cnc) {
 			ol_flags |= RTE_MBUF_F_RX_L4_CKSUM_UNKNOWN;
+
+			if (rcd->v4) {
+				packet_type |= RTE_PTYPE_L3_IPV4_EXT_UNKNOWN;
+				if (rcd->tcp)
+					packet_type |= RTE_PTYPE_L4_TCP;
+				else if (rcd->udp)
+					packet_type |= RTE_PTYPE_L4_UDP;
+			} else if (rcd->v6) {
+				packet_type |= RTE_PTYPE_L3_IPV6_EXT_UNKNOWN;
+				if (rcd->tcp)
+					packet_type |= RTE_PTYPE_L4_TCP;
+				else if (rcd->udp)
+					packet_type |= RTE_PTYPE_L4_UDP;
+			} else {
+				packet_type |= RTE_PTYPE_UNKNOWN;
+			}
+
 		} else {
 			if (rcd->v4) {
 				packet_type |= RTE_PTYPE_L3_IPV4_EXT_UNKNOWN;
