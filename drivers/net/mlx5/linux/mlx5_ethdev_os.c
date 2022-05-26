@@ -1527,6 +1527,70 @@ static const struct mlx5_counter_ctrl mlx5_counters_init[] = {
 		.ctr_name = "rx_discards_phy",
 	},
 	{
+		.dpdk_name = "rx_prio0_buf_discard_packets",
+		.ctr_name = "rx_prio0_buf_discard",
+	},
+	{
+		.dpdk_name = "rx_prio1_buf_discard_packets",
+		.ctr_name = "rx_prio1_buf_discard",
+	},
+	{
+		.dpdk_name = "rx_prio2_buf_discard_packets",
+		.ctr_name = "rx_prio2_buf_discard",
+	},
+	{
+		.dpdk_name = "rx_prio3_buf_discard_packets",
+		.ctr_name = "rx_prio3_buf_discard",
+	},
+	{
+		.dpdk_name = "rx_prio4_buf_discard_packets",
+		.ctr_name = "rx_prio4_buf_discard",
+	},
+	{
+		.dpdk_name = "rx_prio5_buf_discard_packets",
+		.ctr_name = "rx_prio5_buf_discard",
+	},
+	{
+		.dpdk_name = "rx_prio6_buf_discard_packets",
+		.ctr_name = "rx_prio6_buf_discard",
+	},
+	{
+		.dpdk_name = "rx_prio7_buf_discard_packets",
+		.ctr_name = "rx_prio7_buf_discard",
+	},
+	{
+		.dpdk_name = "rx_prio0_cong_discard_packets",
+		.ctr_name = "rx_prio0_cong_discard",
+	},
+	{
+		.dpdk_name = "rx_prio1_cong_discard_packets",
+		.ctr_name = "rx_prio1_cong_discard",
+	},
+	{
+		.dpdk_name = "rx_prio2_cong_discard_packets",
+		.ctr_name = "rx_prio2_cong_discard",
+	},
+	{
+		.dpdk_name = "rx_prio3_cong_discard_packets",
+		.ctr_name = "rx_prio3_cong_discard",
+	},
+	{
+		.dpdk_name = "rx_prio4_cong_discard_packets",
+		.ctr_name = "rx_prio4_cong_discard",
+	},
+	{
+		.dpdk_name = "rx_prio5_cong_discard_packets",
+		.ctr_name = "rx_prio5_cong_discard",
+	},
+	{
+		.dpdk_name = "rx_prio6_cong_discard_packets",
+		.ctr_name = "rx_prio6_cong_discard",
+	},
+	{
+		.dpdk_name = "rx_prio7_cong_discard_packets",
+		.ctr_name = "rx_prio7_cong_discard",
+	},
+	{
 		.dpdk_name = "tx_phy_bytes",
 		.ctr_name = "tx_bytes_phy",
 	},
@@ -1625,6 +1689,7 @@ mlx5_os_stats_init(struct rte_eth_dev *dev)
 		}
 	}
 	/* Add dev counters. */
+	MLX5_ASSERT(xstats_ctrl->mlx5_stats_n <= MLX5_MAX_XSTATS);
 	for (i = 0; i != xstats_n; ++i) {
 		if (mlx5_counters_init[i].dev) {
 			unsigned int idx = xstats_ctrl->mlx5_stats_n++;
@@ -1633,7 +1698,6 @@ mlx5_os_stats_init(struct rte_eth_dev *dev)
 			xstats_ctrl->hw_stats[idx] = 0;
 		}
 	}
-	MLX5_ASSERT(xstats_ctrl->mlx5_stats_n <= MLX5_MAX_XSTATS);
 	xstats_ctrl->stats_n = dev_stats_n;
 	/* Copy to base at first time. */
 	ret = mlx5_os_read_dev_counters(dev, xstats_ctrl->base);

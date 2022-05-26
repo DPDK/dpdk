@@ -47,7 +47,7 @@
 #define MLX5_ALARM_TIMEOUT_US 100000
 
 /* Maximum number of extended statistics counters. */
-#define MLX5_MAX_XSTATS 32
+#define MLX5_MAX_XSTATS 64
 
 /* Maximum Packet headers size (L2+L3+L4) for TSO. */
 #define MLX5_MAX_TSO_HEADER 192U
