@@ -117,6 +117,7 @@ struct cnxk_sso_evdev {
 	uint16_t max_port_id;
 	uint16_t max_queue_id[RTE_MAX_ETHPORTS];
 	uint8_t tx_adptr_configured;
+	uint32_t tx_adptr_active_mask;
 	uint16_t tim_adptr_ring_cnt;
 	uint16_t *timer_adptr_rings;
 	uint64_t *timer_adptr_sz;
@@ -314,5 +315,8 @@ int cnxk_sso_tx_adapter_queue_add(const struct rte_eventdev *event_dev,
 int cnxk_sso_tx_adapter_queue_del(const struct rte_eventdev *event_dev,
 				  const struct rte_eth_dev *eth_dev,
 				  int32_t tx_queue_id);
+int cnxk_sso_tx_adapter_start(uint8_t id, const struct rte_eventdev *event_dev);
+int cnxk_sso_tx_adapter_stop(uint8_t id, const struct rte_eventdev *event_dev);
+int cnxk_sso_tx_adapter_free(uint8_t id, const struct rte_eventdev *event_dev);
 
 #endif /* __CNXK_EVENTDEV_H__ */

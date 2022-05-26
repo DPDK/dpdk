@@ -943,6 +943,9 @@ static struct eventdev_ops cn10k_sso_dev_ops = {
 	.eth_tx_adapter_caps_get = cn10k_sso_tx_adapter_caps_get,
 	.eth_tx_adapter_queue_add = cn10k_sso_tx_adapter_queue_add,
 	.eth_tx_adapter_queue_del = cn10k_sso_tx_adapter_queue_del,
+	.eth_tx_adapter_start = cnxk_sso_tx_adapter_start,
+	.eth_tx_adapter_stop = cnxk_sso_tx_adapter_stop,
+	.eth_tx_adapter_free = cnxk_sso_tx_adapter_free,
 
 	.timer_adapter_caps_get = cnxk_tim_caps_get,
 

@@ -589,3 +589,37 @@ cnxk_sso_tx_adapter_queue_del(const struct rte_eventdev *event_dev,
 
 	return 0;
 }
+
+int
+cnxk_sso_tx_adapter_start(uint8_t id, const struct rte_eventdev *event_dev)
+{
+	struct cnxk_sso_evdev *dev = cnxk_sso_pmd_priv(event_dev);
+
+	dev->tx_adptr_active_mask |= (1 << id);
+
+	return 0;
+}
+
+int
+cnxk_sso_tx_adapter_stop(uint8_t id, const struct rte_eventdev *event_dev)
+{
+	struct cnxk_sso_evdev *dev = cnxk_sso_pmd_priv(event_dev);
+
+	dev->tx_adptr_active_mask &= ~(1 << id);
+
+	return 0;
+}
+
+int
+cnxk_sso_tx_adapter_free(uint8_t id __rte_unused,
+			 const struct rte_eventdev *event_dev)
+{
+	struct cnxk_sso_evdev *dev = cnxk_sso_pmd_priv(event_dev);
+
+	if (dev->tx_adptr_data_sz && dev->tx_adptr_active_mask == 0) {
+		dev->tx_adptr_data_sz = 0;
+		free(dev->tx_adptr_data);
+	}
+
+	return 0;
+}
