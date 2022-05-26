@@ -15,6 +15,7 @@ sources = files(
         'sff_common.c',
         'sff_8079.c',
         'sff_8472.c',
+        'sff_8636.c',
 )
 
 headers = files(

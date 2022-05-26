@@ -71,6 +71,7 @@ New Features
 
     * SFF-8079 revision 1.7
     * SFF-8472 revision 12.0
+    * SFF-8636 revision 2.7
 
 * **Added vhost API to get the number of in-flight packets.**
 
