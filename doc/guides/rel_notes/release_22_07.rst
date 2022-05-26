@@ -70,6 +70,11 @@ New Features
   (seqlock). A seqlock allows for low overhead, parallel reads. The
   DPDK seqlock uses a spinlock to serialize multiple writing threads.
 
+* ** Added function get random floating point number.**
+
+  Added the function ``rte_drand()`` to provide a pseudo-random
+  floating point number.
+
 * **Added protocol based input color selection for meter.**
 
   Added new functions ``rte_mtr_color_in_protocol_set()``,

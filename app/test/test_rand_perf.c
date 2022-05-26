@@ -20,6 +20,7 @@ static volatile uint64_t vsum;
 
 enum rand_type {
 	rand_type_64,
+	rand_type_float,
 	rand_type_bounded_best_case,
 	rand_type_bounded_worst_case
 };
@@ -30,6 +31,8 @@ rand_type_desc(enum rand_type rand_type)
 	switch (rand_type) {
 	case rand_type_64:
 		return "Full 64-bit [rte_rand()]";
+	case rand_type_float:
+		return "Floating point [rte_drand()]";
 	case rand_type_bounded_best_case:
 		return "Bounded average best-case [rte_rand_max()]";
 	case rand_type_bounded_worst_case:
@@ -54,6 +57,9 @@ test_rand_perf_type(enum rand_type rand_type)
 		switch (rand_type) {
 		case rand_type_64:
 			sum += rte_rand();
+			break;
+		case rand_type_float:
+			sum += 1000. * rte_drand();
 			break;
 		case rand_type_bounded_best_case:
 			sum += rte_rand_max(BEST_CASE_BOUND);
@@ -83,6 +89,7 @@ test_rand_perf(void)
 	printf("Pseudo-random number generation latencies:\n");
 
 	test_rand_perf_type(rand_type_64);
+	test_rand_perf_type(rand_type_float);
 	test_rand_perf_type(rand_type_bounded_best_case);
 	test_rand_perf_type(rand_type_bounded_worst_case);
 
