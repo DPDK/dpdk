@@ -1280,7 +1280,8 @@ sfc_repr_proxy_stop(struct sfc_adapter *sa)
 
 int
 sfc_repr_proxy_add_port(uint16_t pf_port_id, uint16_t repr_id,
-			uint16_t rte_port_id, const efx_mport_sel_t *mport_sel)
+			uint16_t rte_port_id, const efx_mport_sel_t *mport_sel,
+			efx_pcie_interface_t intf, uint16_t pf, uint16_t vf)
 {
 	struct sfc_repr_proxy_port *port;
 	struct sfc_repr_proxy *rp;
@@ -1319,6 +1320,14 @@ sfc_repr_proxy_add_port(uint16_t pf_port_id, uint16_t repr_id,
 	port->rte_port_id = rte_port_id;
 	port->repr_id = repr_id;
 
+	rc = efx_mcdi_get_client_handle(sa->nic, intf, pf, vf,
+					&port->remote_vnic_mcdi_client_handle);
+	if (rc != 0) {
+		sfc_err(sa, "failed to get the represented VNIC's MCDI handle (repr_id=%u): %s",
+			repr_id, rte_strerror(rc));
+		goto fail_client_handle;
+	}
+
 	if (rp->started) {
 		rc = sfc_repr_proxy_mbox_send(&rp->mbox, port,
 					      SFC_REPR_PROXY_MBOX_ADD_PORT);
@@ -1337,6 +1346,7 @@ sfc_repr_proxy_add_port(uint16_t pf_port_id, uint16_t repr_id,
 	return 0;
 
 fail_port_add:
+fail_client_handle:
 fail_mport_id:
 	rte_free(port);
 fail_alloc_port:
@@ -1663,4 +1673,37 @@ sfc_repr_proxy_stop_repr(uint16_t pf_port_id, uint16_t repr_id)
 	sfc_put_adapter(sa);
 
 	return 0;
+}
+
+int
+sfc_repr_proxy_repr_entity_mac_addr_set(uint16_t pf_port_id, uint16_t repr_id,
+					const struct rte_ether_addr *mac_addr)
+{
+	struct sfc_repr_proxy_port *port;
+	struct sfc_repr_proxy *rp;
+	struct sfc_adapter *sa;
+	int rc;
+
+	sa = sfc_get_adapter_by_pf_port_id(pf_port_id);
+	rp = sfc_repr_proxy_by_adapter(sa);
+
+	port = sfc_repr_proxy_find_port(rp, repr_id);
+	if (port == NULL) {
+		sfc_err(sa, "%s() failed: no such port (repr_id=%u)",
+			__func__, repr_id);
+		sfc_put_adapter(sa);
+		return ENOENT;
+	}
+
+	rc = efx_mcdi_client_mac_addr_set(sa->nic,
+					  port->remote_vnic_mcdi_client_handle,
+					  mac_addr->addr_bytes);
+	if (rc != 0) {
+		sfc_err(sa, "%s() failed: cannot set MAC address (repr_id=%u): %s",
+			__func__, repr_id, rte_strerror(rc));
+	}
+
+	sfc_put_adapter(sa);
+
+	return rc;
 }

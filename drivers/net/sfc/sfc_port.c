@@ -8,6 +8,7 @@
  */
 
 #include <rte_bitmap.h>
+#include <rte_ether.h>
 
 #include "efx.h"
 

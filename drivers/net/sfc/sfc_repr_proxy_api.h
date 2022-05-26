@@ -23,7 +23,9 @@ extern "C" {
 
 int sfc_repr_proxy_add_port(uint16_t pf_port_id, uint16_t repr_id,
 			    uint16_t rte_port_id,
-			    const efx_mport_sel_t *mport_set);
+			    const efx_mport_sel_t *mport_sel,
+			    efx_pcie_interface_t intf, uint16_t pf,
+			    uint16_t vf);
 int sfc_repr_proxy_del_port(uint16_t pf_port_id, uint16_t repr_id);
 
 int sfc_repr_proxy_add_rxq(uint16_t pf_port_id, uint16_t repr_id,
@@ -40,6 +42,9 @@ void sfc_repr_proxy_del_txq(uint16_t pf_port_id, uint16_t repr_id,
 
 int sfc_repr_proxy_start_repr(uint16_t pf_port_id, uint16_t repr_id);
 int sfc_repr_proxy_stop_repr(uint16_t pf_port_id, uint16_t repr_id);
+
+int sfc_repr_proxy_repr_entity_mac_addr_set(uint16_t pf_port_id,
+		uint16_t repr_id, const struct rte_ether_addr *mac_addr);
 
 #ifdef __cplusplus
 }

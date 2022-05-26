@@ -854,6 +854,17 @@ sfc_repr_dev_close(struct rte_eth_dev *dev)
 }
 
 static int
+sfc_repr_mac_addr_set(struct rte_eth_dev *dev, struct rte_ether_addr *mac_addr)
+{
+	struct sfc_repr_shared *srs = sfc_repr_shared_by_eth_dev(dev);
+	int ret;
+
+	ret = sfc_repr_proxy_repr_entity_mac_addr_set(srs->pf_port_id,
+						      srs->repr_id, mac_addr);
+	return -ret;
+}
+
+static int
 sfc_repr_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 {
 	union sfc_pkts_bytes queue_stats;
@@ -889,6 +900,7 @@ static const struct eth_dev_ops sfc_repr_dev_ops = {
 	.dev_close			= sfc_repr_dev_close,
 	.dev_infos_get			= sfc_repr_dev_infos_get,
 	.link_update			= sfc_repr_dev_link_update,
+	.mac_addr_set			= sfc_repr_mac_addr_set,
 	.stats_get			= sfc_repr_stats_get,
 	.rx_queue_setup			= sfc_repr_rx_queue_setup,
 	.rx_queue_release		= sfc_repr_rx_queue_release,
@@ -956,9 +968,9 @@ sfc_repr_eth_dev_init(struct rte_eth_dev *dev, void *init_params)
 	}
 
 	ret = sfc_repr_proxy_add_port(repr_data->pf_port_id,
-				      srs->switch_port_id,
-				      dev->data->port_id,
-				      &repr_data->mport_sel);
+				      srs->switch_port_id, dev->data->port_id,
+				      &repr_data->mport_sel, repr_data->intf,
+				      repr_data->pf, repr_data->vf);
 	if (ret != 0) {
 		SFC_GENERIC_LOG(ERR, "%s() failed to add repr proxy port",
 				__func__);
@@ -996,6 +1008,16 @@ sfc_repr_eth_dev_init(struct rte_eth_dev *dev, void *init_params)
 		goto fail_mac_addrs;
 	}
 
+	rte_eth_random_addr(dev->data->mac_addrs[0].addr_bytes);
+
+	ret = sfc_repr_proxy_repr_entity_mac_addr_set(repr_data->pf_port_id,
+						      srs->repr_id,
+						      &dev->data->mac_addrs[0]);
+	if (ret != 0) {
+		ret = -ret;
+		goto fail_mac_addr_set;
+	}
+
 	dev->rx_pkt_burst = sfc_repr_rx_burst;
 	dev->tx_pkt_burst = sfc_repr_tx_burst;
 	dev->dev_ops = &sfc_repr_dev_ops;
@@ -1005,6 +1027,7 @@ sfc_repr_eth_dev_init(struct rte_eth_dev *dev, void *init_params)
 
 	return 0;
 
+fail_mac_addr_set:
 fail_mac_addrs:
 	sfc_repr_unlock(sr);
 	free(sr);

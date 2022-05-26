@@ -64,6 +64,7 @@ struct sfc_repr_proxy_port {
 	uint16_t				repr_id;
 	uint16_t				rte_port_id;
 	efx_mport_id_t				egress_mport;
+	uint32_t				remote_vnic_mcdi_client_handle;
 	struct sfc_repr_proxy_rxq		rxq[SFC_REPR_RXQ_MAX];
 	struct sfc_repr_proxy_txq		txq[SFC_REPR_TXQ_MAX];
 	struct sfc_mae_rule			*mae_rule;
