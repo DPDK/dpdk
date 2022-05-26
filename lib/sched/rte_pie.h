@@ -218,7 +218,7 @@ _rte_pie_drop(const struct rte_pie_config *pie_cfg,
 	struct rte_pie *pie)
 {
 	uint64_t rand_value;
-	double qdelay = pie_cfg->qdelay_ref * 0.5;
+	uint64_t qdelay = pie_cfg->qdelay_ref / 2;
 
 	/* PIE is active but the queue is not congested: return 0 */
 	if (((pie->qdelay_old < qdelay) && (pie->drop_prob < 0.2)) ||
