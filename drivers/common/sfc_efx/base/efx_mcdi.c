@@ -659,12 +659,17 @@ efx_mcdi_get_client_handle(
 	EFX_MCDI_DECLARE_BUF(payload,
 	    MC_CMD_GET_CLIENT_HANDLE_IN_LEN,
 	    MC_CMD_GET_CLIENT_HANDLE_OUT_LEN);
+	uint32_t pcie_intf;
 	efx_rc_t rc;
 
 	if (handle == NULL) {
 		rc = EINVAL;
 		goto fail1;
 	}
+
+	rc = efx_mcdi_intf_to_pcie(intf, &pcie_intf);
+	if (rc != 0)
+		goto fail2;
 
 	req.emr_cmd = MC_CMD_GET_CLIENT_HANDLE;
 	req.emr_in_buf = payload;
@@ -676,23 +681,25 @@ efx_mcdi_get_client_handle(
 	    MC_CMD_GET_CLIENT_HANDLE_IN_TYPE_FUNC);
 	MCDI_IN_SET_WORD(req, GET_CLIENT_HANDLE_IN_FUNC_PF, pf);
 	MCDI_IN_SET_WORD(req, GET_CLIENT_HANDLE_IN_FUNC_VF, vf);
-	MCDI_IN_SET_DWORD(req, GET_CLIENT_HANDLE_IN_FUNC_INTF, intf);
+	MCDI_IN_SET_DWORD(req, GET_CLIENT_HANDLE_IN_FUNC_INTF, pcie_intf);
 
 	efx_mcdi_execute(enp, &req);
 
 	if (req.emr_rc != 0) {
 		rc = req.emr_rc;
-		goto fail2;
+		goto fail3;
 	}
 
 	if (req.emr_out_length_used < MC_CMD_GET_CLIENT_HANDLE_OUT_LEN) {
 		rc = EMSGSIZE;
-		goto fail3;
+		goto fail4;
 	}
 
 	*handle = MCDI_OUT_DWORD(req, GET_CLIENT_HANDLE_OUT_HANDLE);
 
 	return 0;
+fail4:
+	EFSYS_PROBE(fail4);
 fail3:
 	EFSYS_PROBE(fail3);
 fail2:
@@ -709,7 +716,7 @@ efx_mcdi_get_own_client_handle(
 {
 	efx_rc_t rc;
 
-	rc = efx_mcdi_get_client_handle(enp, PCIE_INTERFACE_CALLER,
+	rc = efx_mcdi_get_client_handle(enp, EFX_PCIE_INTERFACE_CALLER,
 	    PCIE_FUNCTION_PF_NULL, PCIE_FUNCTION_VF_NULL, handle);
 	if (rc != 0)
 		goto fail1;
@@ -2230,6 +2237,35 @@ efx_mcdi_intf_from_pcie(
 fail1:
 	EFSYS_PROBE1(fail1, efx_rc_t, rc);
 
+	return (rc);
+}
+
+	__checkReturn		efx_rc_t
+efx_mcdi_intf_to_pcie(
+	__in			efx_pcie_interface_t efx_intf,
+	__out			uint32_t *pcie_intf)
+{
+	efx_rc_t rc;
+
+	switch (efx_intf) {
+	case EFX_PCIE_INTERFACE_CALLER:
+		*pcie_intf = PCIE_INTERFACE_CALLER;
+		break;
+	case EFX_PCIE_INTERFACE_HOST_PRIMARY:
+		*pcie_intf = PCIE_INTERFACE_HOST_PRIMARY;
+		break;
+	case EFX_PCIE_INTERFACE_NIC_EMBEDDED:
+		*pcie_intf = PCIE_INTERFACE_NIC_EMBEDDED;
+		break;
+	default:
+		rc = EINVAL;
+		goto fail1;
+	}
+
+	return (0);
+
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
 	return (rc);
 }
 

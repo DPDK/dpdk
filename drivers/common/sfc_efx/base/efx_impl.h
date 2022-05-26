@@ -1556,6 +1556,12 @@ efx_mcdi_intf_from_pcie(
 	__out			efx_pcie_interface_t *efx_intf);
 
 LIBEFX_INTERNAL
+extern	__checkReturn		efx_rc_t
+efx_mcdi_intf_to_pcie(
+	__in			efx_pcie_interface_t efx_intf,
+	__out			uint32_t *pcie_intf);
+
+LIBEFX_INTERNAL
 extern	__checkReturn	efx_rc_t
 efx_mcdi_init_evq(
 	__in		efx_nic_t *enp,
