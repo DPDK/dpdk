@@ -12,6 +12,7 @@ sources = files(
         'rte_mtr.c',
         'rte_tm.c',
         'sff_telemetry.c',
+        'sff_common.c',
 )
 
 headers = files(

@@ -78,6 +78,36 @@ sff_port_module_eeprom_parse(uint16_t port_id, struct rte_tel_data *d)
 	free(einfo.data);
 }
 
+void
+ssf_add_dict_string(struct rte_tel_data *d, const char *name_str, const char *value_str)
+{
+	struct tel_dict_entry *e = &d->data.dict[d->data_len];
+
+	if (d->type != RTE_TEL_DICT)
+		return;
+	if (d->data_len >= RTE_TEL_MAX_DICT_ENTRIES) {
+		RTE_ETHDEV_LOG(ERR, "data_len has exceeded the maximum number of inserts\n");
+		return;
+	}
+
+	e->type = RTE_TEL_STRING_VAL;
+	/* append different values for same keys */
+	if (d->data_len > 0) {
+		struct tel_dict_entry *previous = &d->data.dict[d->data_len - 1];
+		if (strcmp(previous->name, name_str) == 0) {
+			strlcat(previous->value.sval, "; ", RTE_TEL_MAX_STRING_LEN);
+			strlcat(previous->value.sval, value_str, RTE_TEL_MAX_STRING_LEN);
+			goto end;
+		}
+	}
+	strlcpy(e->value.sval, value_str, RTE_TEL_MAX_STRING_LEN);
+	strlcpy(e->name, name_str, RTE_TEL_MAX_STRING_LEN);
+	d->data_len++;
+
+end:
+	return;
+}
+
 int
 eth_dev_handle_port_module_eeprom(const char *cmd __rte_unused, const char *params,
 				  struct rte_tel_data *d)
