@@ -311,6 +311,8 @@ efx_nic_check_pcie_link_speed(
 	__in		uint32_t pcie_link_gen,
 	__out		efx_pcie_link_performance_t *resultp);
 
+#define	EFX_MAC_ADDR_LEN 6
+
 #if EFSYS_OPT_MCDI
 
 #if EFSYS_OPT_RIVERHEAD || EFX_OPTS_EF10()
@@ -405,6 +407,20 @@ extern	__checkReturn	efx_rc_t
 efx_mcdi_get_own_client_handle(
 	__in		efx_nic_t *enp,
 	__out		uint32_t *handle);
+
+LIBEFX_API
+extern	__checkReturn	efx_rc_t
+efx_mcdi_client_mac_addr_get(
+	__in		efx_nic_t *enp,
+	__in		uint32_t client_handle,
+	__out		uint8_t addr_bytes[EFX_MAC_ADDR_LEN]);
+
+LIBEFX_API
+extern	__checkReturn	efx_rc_t
+efx_mcdi_client_mac_addr_set(
+	__in		efx_nic_t *enp,
+	__in		uint32_t client_handle,
+	__in		const uint8_t addr_bytes[EFX_MAC_ADDR_LEN]);
 
 LIBEFX_API
 extern			void
@@ -616,11 +632,10 @@ typedef enum efx_link_mode_e {
 	EFX_LINK_NMODES
 } efx_link_mode_t;
 
-#define	EFX_MAC_ADDR_LEN 6
-
 #define	EFX_VNI_OR_VSID_LEN 3
 
-#define	EFX_MAC_ADDR_IS_MULTICAST(_address) (((uint8_t *)_address)[0] & 0x01)
+#define	EFX_MAC_ADDR_IS_MULTICAST(_address)	\
+	(((const uint8_t *)_address)[0] & 0x01)
 
 #define	EFX_MAC_MULTICAST_LIST_MAX	256
 

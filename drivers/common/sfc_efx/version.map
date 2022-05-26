@@ -144,6 +144,8 @@ INTERNAL {
 	efx_mae_outer_rule_remove;
 	efx_mae_read_mport_journal;
 
+	efx_mcdi_client_mac_addr_get;
+	efx_mcdi_client_mac_addr_set;
 	efx_mcdi_fini;
 	efx_mcdi_get_client_handle;
 	efx_mcdi_get_own_client_handle;

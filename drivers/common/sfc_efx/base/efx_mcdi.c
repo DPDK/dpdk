@@ -727,6 +727,107 @@ fail1:
 	return (rc);
 }
 
+	__checkReturn	efx_rc_t
+efx_mcdi_client_mac_addr_get(
+	__in		efx_nic_t *enp,
+	__in		uint32_t client_handle,
+	__out		uint8_t addr_bytes[EFX_MAC_ADDR_LEN])
+{
+	efx_mcdi_req_t req;
+	EFX_MCDI_DECLARE_BUF(payload,
+	    MC_CMD_GET_CLIENT_MAC_ADDRESSES_IN_LEN,
+	    MC_CMD_GET_CLIENT_MAC_ADDRESSES_OUT_LEN(1));
+	efx_rc_t rc;
+
+	req.emr_cmd = MC_CMD_GET_CLIENT_MAC_ADDRESSES;
+	req.emr_in_buf = payload;
+	req.emr_in_length = MC_CMD_GET_CLIENT_MAC_ADDRESSES_IN_LEN;
+	req.emr_out_buf = payload;
+	req.emr_out_length = MC_CMD_GET_CLIENT_MAC_ADDRESSES_OUT_LEN(1);
+
+	MCDI_IN_SET_DWORD(req, GET_CLIENT_MAC_ADDRESSES_IN_CLIENT_HANDLE,
+	    client_handle);
+
+	efx_mcdi_execute(enp, &req);
+
+	if (req.emr_rc != 0) {
+		rc = req.emr_rc;
+		goto fail1;
+	}
+
+	if (req.emr_out_length_used <
+	    MC_CMD_GET_CLIENT_MAC_ADDRESSES_OUT_LEN(1)) {
+		rc = EMSGSIZE;
+		goto fail2;
+	}
+
+	memcpy(addr_bytes,
+	    MCDI_OUT2(req, uint8_t, GET_CLIENT_MAC_ADDRESSES_OUT_MAC_ADDRS),
+	    EFX_MAC_ADDR_LEN);
+
+	return (0);
+
+fail2:
+	EFSYS_PROBE(fail2);
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+	return (rc);
+}
+
+	__checkReturn	efx_rc_t
+efx_mcdi_client_mac_addr_set(
+	__in		efx_nic_t *enp,
+	__in		uint32_t client_handle,
+	__in		const uint8_t addr_bytes[EFX_MAC_ADDR_LEN])
+{
+	efx_mcdi_req_t req;
+	EFX_MCDI_DECLARE_BUF(payload,
+	    MC_CMD_SET_CLIENT_MAC_ADDRESSES_IN_LEN(1),
+	    MC_CMD_SET_CLIENT_MAC_ADDRESSES_OUT_LEN);
+	uint32_t oui;
+	efx_rc_t rc;
+
+	if (EFX_MAC_ADDR_IS_MULTICAST(addr_bytes)) {
+		rc = EINVAL;
+		goto fail1;
+	}
+
+	oui = addr_bytes[0] << 16 | addr_bytes[1] << 8 | addr_bytes[2];
+	if (oui == 0x000000) {
+		rc = EINVAL;
+		goto fail2;
+	}
+
+	req.emr_cmd = MC_CMD_SET_CLIENT_MAC_ADDRESSES;
+	req.emr_in_buf = payload;
+	req.emr_in_length = MC_CMD_SET_CLIENT_MAC_ADDRESSES_IN_LEN(1);
+	req.emr_out_buf = payload;
+	req.emr_out_length = MC_CMD_SET_CLIENT_MAC_ADDRESSES_OUT_LEN;
+
+	MCDI_IN_SET_DWORD(req, SET_CLIENT_MAC_ADDRESSES_IN_CLIENT_HANDLE,
+	    client_handle);
+
+	memcpy(MCDI_IN2(req, uint8_t, SET_CLIENT_MAC_ADDRESSES_IN_MAC_ADDRS),
+	    addr_bytes, EFX_MAC_ADDR_LEN);
+
+	efx_mcdi_execute(enp, &req);
+
+	if (req.emr_rc != 0) {
+		rc = req.emr_rc;
+		goto fail3;
+	}
+
+	return (0);
+
+fail3:
+	EFSYS_PROBE(fail3);
+fail2:
+	EFSYS_PROBE(fail2);
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+	return (rc);
+}
+
 			void
 efx_mcdi_get_timeout(
 	__in		efx_nic_t *enp,

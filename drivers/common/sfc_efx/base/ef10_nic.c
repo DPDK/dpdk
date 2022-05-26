@@ -1991,8 +1991,9 @@ efx_mcdi_nic_board_cfg(
 	if ((rc = ef10_mcdi_get_pf_count(enp, &encp->enc_hw_pf_count)) != 0)
 		goto fail4;
 
-	/* MAC address for this function */
-	if (EFX_PCI_FUNCTION_IS_PF(encp)) {
+	rc = efx_mcdi_client_mac_addr_get(enp, CLIENT_HANDLE_SELF, mac_addr);
+	if ((rc != 0) && EFX_PCI_FUNCTION_IS_PF(encp)) {
+		/* Fallback for legacy MAC address get approach (PF) */
 		rc = efx_mcdi_get_mac_address_pf(enp, mac_addr);
 #if EFSYS_OPT_ALLOW_UNCONFIGURED_NIC
 		/*
@@ -2011,9 +2012,11 @@ efx_mcdi_nic_board_cfg(
 			rc = EINVAL;
 		}
 #endif /* EFSYS_OPT_ALLOW_UNCONFIGURED_NIC */
-	} else {
+	} else if (rc != 0) {
+		/* Fallback for legacy MAC address get approach (VF) */
 		rc = efx_mcdi_get_mac_address_vf(enp, mac_addr);
 	}
+
 	if (rc != 0)
 		goto fail5;
 
