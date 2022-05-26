@@ -2393,22 +2393,25 @@ nfp_net_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 {
 	uint32_t new_ctrl, update;
 	struct nfp_net_hw *hw;
+	struct rte_eth_conf *dev_conf;
 	int ret;
 
 	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	new_ctrl = 0;
+	dev_conf = &dev->data->dev_conf;
+	new_ctrl = hw->ctrl;
 
-	/* Enable vlan strip if it is not configured yet */
-	if ((mask & ETH_VLAN_STRIP_OFFLOAD) &&
-	    !(hw->ctrl & NFP_NET_CFG_CTRL_RXVLAN))
-		new_ctrl = hw->ctrl | NFP_NET_CFG_CTRL_RXVLAN;
+	/*
+	 * Vlan stripping setting
+	 * Enable or disable VLAN stripping
+	 */
+	if (mask & ETH_VLAN_STRIP_MASK) {
+		if (dev_conf->rxmode.offloads & DEV_RX_OFFLOAD_VLAN_STRIP)
+			new_ctrl |= NFP_NET_CFG_CTRL_RXVLAN;
+		else
+			new_ctrl &= ~NFP_NET_CFG_CTRL_RXVLAN;
+	}
 
-	/* Disable vlan strip just if it is configured */
-	if (!(mask & ETH_VLAN_STRIP_OFFLOAD) &&
-	    (hw->ctrl & NFP_NET_CFG_CTRL_RXVLAN))
-		new_ctrl = hw->ctrl & ~NFP_NET_CFG_CTRL_RXVLAN;
-
-	if (new_ctrl == 0)
+	if (new_ctrl == hw->ctrl)
 		return 0;
 
 	update = NFP_NET_CFG_UPDATE_GEN;
