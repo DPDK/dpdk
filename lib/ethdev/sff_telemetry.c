@@ -73,6 +73,10 @@ sff_port_module_eeprom_parse(uint16_t port_id, struct rte_tel_data *d)
 	case RTE_ETH_MODULE_SFF_8079:
 		sff_8079_show_all(einfo.data, d);
 		break;
+	case RTE_ETH_MODULE_SFF_8472:
+		sff_8079_show_all(einfo.data, d);
+		sff_8472_show_all(einfo.data, d);
+		break;
 	default:
 		RTE_ETHDEV_LOG(NOTICE, "Unsupported module type: %u\n", minfo.type);
 		break;

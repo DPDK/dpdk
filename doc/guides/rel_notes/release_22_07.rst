@@ -70,6 +70,7 @@ New Features
   Added support for module EEPROM information format defined in:
 
     * SFF-8079 revision 1.7
+    * SFF-8472 revision 12.0
 
 * **Added vhost API to get the number of in-flight packets.**
 
