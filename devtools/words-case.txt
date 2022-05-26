@@ -76,6 +76,7 @@ RSS
 RVU
 Rx
 SCTP
+SFF
 SMP
 SoC
 SQ

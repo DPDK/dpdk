@@ -64,6 +64,10 @@ New Features
   and updated ``struct rte_mtr_params`` and ``struct rte_mtr_capabilities`` to
   support protocol based input color selection for meter.
 
+* **Added telemetry for module EEPROM.**
+
+  Added telemetry command to dump module EEPROM.
+
 * **Added vhost API to get the number of in-flight packets.**
 
   Added an API which can get the number of in-flight packets in

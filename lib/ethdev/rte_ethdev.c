@@ -39,6 +39,7 @@
 #include "ethdev_driver.h"
 #include "ethdev_profile.h"
 #include "ethdev_private.h"
+#include "sff_telemetry.h"
 
 struct rte_eth_dev rte_eth_devices[RTE_MAX_ETHPORTS];
 
@@ -5890,4 +5891,6 @@ RTE_INIT(ethdev_init_telemetry)
 			"Returns the link status for a port. Parameters: int port_id");
 	rte_telemetry_register_cmd("/ethdev/info", eth_dev_handle_port_info,
 			"Returns the device info for a port. Parameters: int port_id");
+	rte_telemetry_register_cmd("/ethdev/module_eeprom", eth_dev_handle_port_module_eeprom,
+			"Returns module EEPROM info with SFF specs. Parameters: int port_id");
 }
