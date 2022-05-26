@@ -217,7 +217,6 @@ __rte_experimental
 _rte_pie_drop(const struct rte_pie_config *pie_cfg,
 	struct rte_pie *pie)
 {
-	uint64_t rand_value;
 	uint64_t qdelay = pie_cfg->qdelay_ref / 2;
 
 	/* PIE is active but the queue is not congested: return 0 */
@@ -240,9 +239,7 @@ _rte_pie_drop(const struct rte_pie_config *pie_cfg,
 	if (pie->accu_prob >= 8.5)
 		return 1;
 
-	rand_value = rte_rand()/RTE_RAND_MAX;
-
-	if ((double)rand_value < pie->drop_prob) {
+	if (rte_drand() < pie->drop_prob) {
 		pie->accu_prob = 0;
 		return 1;
 	}
