@@ -67,6 +67,9 @@ New Features
 * **Added telemetry for module EEPROM.**
 
   Added telemetry command to dump module EEPROM.
+  Added support for module EEPROM information format defined in:
+
+    * SFF-8079 revision 1.7
 
 * **Added vhost API to get the number of in-flight packets.**
 
