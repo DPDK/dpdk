@@ -177,6 +177,7 @@ do_multi_copies(int16_t dev_id, uint16_t vchan,
 static int
 test_enqueue_copies(int16_t dev_id, uint16_t vchan)
 {
+	enum rte_dma_status_code status;
 	unsigned int i;
 	uint16_t id;
 
@@ -213,6 +214,20 @@ test_enqueue_copies(int16_t dev_id, uint16_t vchan)
 
 		if (id != id_count)
 			ERR_RETURN("Error:incorrect job id received, %u [expected %u]\n",
+					id, id_count);
+
+		/* check for completed and id when no job done */
+		if (rte_dma_completed(dev_id, vchan, 1, &id, NULL) != 0)
+			ERR_RETURN("Error with rte_dma_completed when no job done\n");
+		if (id != id_count)
+			ERR_RETURN("Error:incorrect job id received when no job done, %u [expected %u]\n",
+					id, id_count);
+
+		/* check for completed_status and id when no job done */
+		if (rte_dma_completed_status(dev_id, vchan, 1, &id, &status) != 0)
+			ERR_RETURN("Error with rte_dma_completed_status when no job done\n");
+		if (id != id_count)
+			ERR_RETURN("Error:incorrect job id received when no job done, %u [expected %u]\n",
 					id, id_count);
 
 		rte_pktmbuf_free(src);
