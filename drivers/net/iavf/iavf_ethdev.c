@@ -2224,11 +2224,9 @@ static int iavf_parse_devargs(struct rte_eth_dev *dev)
 	if (ret)
 		goto bail;
 
-	if (ad->devargs.quanta_size == 0)
-		ad->devargs.quanta_size = 1024;
-
-	if (ad->devargs.quanta_size < 256 || ad->devargs.quanta_size > 4096 ||
-	    ad->devargs.quanta_size & 0x40) {
+	if (ad->devargs.quanta_size != 0 &&
+	    (ad->devargs.quanta_size < 256 || ad->devargs.quanta_size > 4096 ||
+	     ad->devargs.quanta_size & 0x40)) {
 		PMD_INIT_LOG(ERR, "invalid quanta size\n");
 		ret = -EINVAL;
 		goto bail;
