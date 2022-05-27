@@ -10,7 +10,7 @@ user-space dpdk application.
 
 It supports basic set of features from eBPF spec.
 Please refer to the
-`eBPF spec <https://www.kernel.org/doc/Documentation/networking/filter.txt>`
+`eBPF spec <https://www.kernel.org/doc/Documentation/networking/filter.txt>`_
 for more information.
 Also it introduces basic framework to load/unload BPF-based filters
 on eth devices (right now only via SW RX/TX callbacks).
@@ -48,9 +48,9 @@ For example, ``(BPF_IND | BPF_W | BPF_LD)`` means:
 .. code-block:: c
 
     uint32_t tmp;
-    R0 = rte_pktmbuf_read((const struct rte_mbuf *)R6,  src_reg + imm32,
-	sizeof(tmp), &tmp);
-    if (R0 == NULL) return FAILED;
+    R0 = rte_pktmbuf_read((const struct rte_mbuf *)R6,  src_reg + imm32, sizeof(tmp), &tmp);
+    if (R0 == NULL)
+        return FAILED;
     R0 = ntohl(*(uint32_t *)R0);
 
 and ``R1-R5`` were scratched.
