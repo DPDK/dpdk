@@ -634,7 +634,7 @@ hisi_dma_scan_cq(struct hisi_dma_dev *hw)
 	uint16_t count = 0;
 	uint64_t misc;
 
-	while (true) {
+	while (count < hw->cq_depth) {
 		cqe = &hw->cqe[cq_head];
 		misc = cqe->misc;
 		misc = rte_le_to_cpu_64(misc);
@@ -642,6 +642,16 @@ hisi_dma_scan_cq(struct hisi_dma_dev *hw)
 			break;
 
 		csq_head = FIELD_GET(CQE_SQ_HEAD_MASK, misc);
+		if (unlikely(csq_head > hw->sq_depth_mask)) {
+			/**
+			 * Defensive programming to prevent overflow of the
+			 * status array indexed by csq_head. Only error logs
+			 * are used for prompting.
+			 */
+			HISI_DMA_ERR(hw, "invalid csq_head:%u!\n", csq_head);
+			count = 0;
+			break;
+		}
 		if (unlikely(misc & CQE_STATUS_MASK))
 			hw->status[csq_head] = FIELD_GET(CQE_STATUS_MASK,
 							 misc);
