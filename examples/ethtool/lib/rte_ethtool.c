@@ -284,12 +284,6 @@ rte_ethtool_set_pauseparam(uint16_t port_id,
 int
 rte_ethtool_net_open(uint16_t port_id)
 {
-	int ret;
-
-	ret = rte_eth_dev_stop(port_id);
-	if (ret != 0)
-		return ret;
-
 	return rte_eth_dev_start(port_id);
 }
 
