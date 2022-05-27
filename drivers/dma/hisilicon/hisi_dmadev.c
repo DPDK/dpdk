@@ -649,12 +649,12 @@ hisi_dma_completed(void *dev_private,
 		}
 		sq_head = (sq_head + 1) & hw->sq_depth_mask;
 	}
+	*last_idx = hw->cridx + i - 1;
 	if (i > 0) {
 		hw->cridx += i;
-		*last_idx = hw->cridx - 1;
 		hw->sq_head = sq_head;
+		hw->completed += i;
 	}
-	hw->completed += i;
 
 	return i;
 }
@@ -708,12 +708,12 @@ hisi_dma_completed_status(void *dev_private,
 		hw->status[sq_head] = HISI_DMA_STATUS_SUCCESS;
 		sq_head = (sq_head + 1) & hw->sq_depth_mask;
 	}
+	*last_idx = hw->cridx + cpl_num - 1;
 	if (likely(cpl_num > 0)) {
 		hw->cridx += cpl_num;
-		*last_idx = hw->cridx - 1;
 		hw->sq_head = sq_head;
+		hw->completed += cpl_num;
 	}
-	hw->completed += cpl_num;
 
 	return cpl_num;
 }
