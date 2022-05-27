@@ -132,11 +132,16 @@ enum {
 
 /**
  * In fact, there are multiple states, but it need to pay attention to
- * the following two states for the driver:
+ * the following three states for the driver:
  */
 enum {
 	HISI_DMA_STATE_IDLE = 0,
 	HISI_DMA_STATE_RUN,
+	/**
+	 * All of the submitted descriptor are finished, and the queue
+	 * is waiting for new descriptors.
+	 */
+	HISI_DMA_STATE_CPL,
 };
 
 /**

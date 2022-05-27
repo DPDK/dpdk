@@ -461,6 +461,27 @@ hisi_dma_stats_reset(struct rte_dma_dev *dev, uint16_t vchan)
 	return 0;
 }
 
+static int
+hisi_dma_vchan_status(const struct rte_dma_dev *dev, uint16_t vchan,
+		      enum rte_dma_vchan_status *status)
+{
+	struct hisi_dma_dev *hw = dev->data->dev_private;
+	uint32_t val;
+
+	RTE_SET_USED(vchan);
+
+	val = hisi_dma_read_queue(hw, HISI_DMA_QUEUE_FSM_REG);
+	val = FIELD_GET(HISI_DMA_QUEUE_FSM_STS_M, val);
+	if (val == HISI_DMA_STATE_RUN)
+		*status = RTE_DMA_VCHAN_ACTIVE;
+	else if (val == HISI_DMA_STATE_CPL)
+		*status = RTE_DMA_VCHAN_IDLE;
+	else
+		*status = RTE_DMA_VCHAN_HALTED_ERROR;
+
+	return 0;
+}
+
 static void
 hisi_dma_dump_range(struct hisi_dma_dev *hw, FILE *f, uint32_t start,
 		    uint32_t end)
@@ -816,6 +837,14 @@ hisi_dma_gen_dev_name(const struct rte_pci_device *pci_dev,
  *                           dev_stop|          |
  *                                   |          v
  *                                ------------------
+ *                                |      CPL       |
+ *                                ------------------
+ *                                   ^          |
+ *                      hardware     |          |
+ *                      completed all|          |dev_submit
+ *                      descriptors  |          |
+ *                                   |          |
+ *                                ------------------
  *                                |      RUN       |
  *                                ------------------
  *
@@ -829,6 +858,7 @@ static const struct rte_dma_dev_ops hisi_dmadev_ops = {
 	.vchan_setup      = hisi_dma_vchan_setup,
 	.stats_get        = hisi_dma_stats_get,
 	.stats_reset      = hisi_dma_stats_reset,
+	.vchan_status     = hisi_dma_vchan_status,
 	.dev_dump         = hisi_dma_dump,
 };
 
