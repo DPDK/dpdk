@@ -5,23 +5,20 @@ Packet Capture Next Generation Library
 ======================================
 
 Exchanging packet traces becomes more and more critical every day.
-The de facto standard for this is the format define by libpcap;
+The de facto standard for this is the format defined by libpcap;
 but that format is rather old and is lacking in functionality
 for more modern applications.
 The `Pcapng file format`_ is the default capture file format
 for modern network capture processing tools
 such as `wireshark`_ (can also be read by `tcpdump`_).
 
-The Pcapng library is a an API for formatting packet data
+The Pcapng library is an API for formatting packet data
 into a Pcapng file.
 The format conforms to the current `Pcapng RFC`_ standard.
 It is designed to be integrated with the packet capture library.
 
 Usage
 -----
-
-Before the library can be used, the function ``rte_pcapng_init``
-should be called once to initialize timestamp computation.
 
 The output stream is created with ``rte_pcapng_fdopen``,
 and should be closed with ``rte_pcapng_close``.
