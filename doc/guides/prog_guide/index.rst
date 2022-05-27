@@ -10,6 +10,7 @@ Programmer's Guide
 
     intro
     overview
+    source_org
     env_abstraction_layer
     service_cores
     trace_lib
@@ -67,7 +68,6 @@ Programmer's Guide
     bpf_lib
     ipsec_lib
     graph_lib
-    source_org
     build-sdk-meson
     meson_ut
     build_app

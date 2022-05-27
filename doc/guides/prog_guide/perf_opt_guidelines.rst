@@ -3,8 +3,6 @@
 
 .. _Performance_Optimization:
 
-**Part 3: Performance Optimization**
-
 Performance Optimization Guidelines
 ===================================
 
