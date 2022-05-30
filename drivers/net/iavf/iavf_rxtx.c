@@ -2660,12 +2660,6 @@ iavf_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 	desc_idx = txq->tx_tail;
 	txe = &txe_ring[desc_idx];
 
-#ifdef RTE_LIBRTE_IAVF_DEBUG_TX_DESC_RING
-		iavf_dump_tx_entry_ring(txq);
-		iavf_dump_tx_desc_ring(txq);
-#endif
-
-
 	for (idx = 0; idx < nb_pkts; idx++) {
 		volatile struct iavf_tx_desc *ddesc;
 		struct iavf_ipsec_crypto_pkt_metadata *ipsec_md;
