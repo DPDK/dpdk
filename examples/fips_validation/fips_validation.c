@@ -276,6 +276,8 @@ parse_file_type(const char *path)
 		info.file_type = FIPS_TYPE_RSP;
 	else if (strstr(path, FAX_FILE_PREFIX))
 		info.file_type = FIPS_TYPE_FAX;
+	else if (strstr(path, JSON_FILE_PREFIX))
+		info.file_type = FIPS_TYPE_JSON;
 	else
 		return -EINVAL;
 
@@ -311,6 +313,21 @@ fips_test_init(const char *req_file_path, const char *rsp_file_path,
 		return -EINVAL;
 	}
 
+	if (info.file_type == FIPS_TYPE_JSON) {
+#ifdef RTE_HAS_JANSSON
+		json_error_t error;
+		json_info.json_root = json_loadf(info.fp_rd, 0, &error);
+		if (!json_info.json_root) {
+			RTE_LOG(ERR, USER1, "Cannot parse json file %s (line %d, column %d)\n",
+				req_file_path, error.line, error.column);
+			return -EINVAL;
+		}
+#else /* RTE_HAS_JANSSON */
+		RTE_LOG(ERR, USER1, "No json library configured.\n");
+		return -EINVAL;
+#endif /* RTE_HAS_JANSSON */
+	}
+
 	info.fp_wr = fopen(rsp_file_path, "w");
 	if (!info.fp_wr) {
 		RTE_LOG(ERR, USER1, "Cannot open file %s\n", rsp_file_path);
@@ -328,6 +345,9 @@ fips_test_init(const char *req_file_path, const char *rsp_file_path,
 		RTE_LOG(ERR, USER1, "Device name %s too long\n", device_name);
 		return -EINVAL;
 	}
+
+	if (info.file_type == FIPS_TYPE_JSON)
+		return 0;
 
 	if (fips_test_parse_header() < 0) {
 		RTE_LOG(ERR, USER1, "Failed parsing header\n");
@@ -427,6 +447,78 @@ fips_test_write_one_case(void)
 	for (i = info.vec_start_off; i < info.nb_vec_lines; i++)
 		fprintf(info.fp_wr, "%s\n", info.vec[i]);
 }
+
+#ifdef RTE_HAS_JANSSON
+int
+fips_test_parse_one_json_vector_set(void)
+{
+	json_t *algo_obj = json_object_get(json_info.json_vector_set, "algorithm");
+	const char *algo_str = json_string_value(algo_obj);
+
+	/* Vector sets contain the algorithm type, and nothing else we need. */
+	if (strstr(algo_str, "AES-GCM"))
+		info.algo = FIPS_TEST_ALGO_AES_GCM;
+	else
+		return -EINVAL;
+
+	return 0;
+}
+
+int
+fips_test_parse_one_json_group(void)
+{
+	int ret, i;
+	json_int_t val;
+	json_t *param;
+
+	if (info.interim_callbacks) {
+		char json_value[256];
+		for (i = 0; info.interim_callbacks[i].key != NULL; i++) {
+			param = json_object_get(json_info.json_test_group,
+					info.interim_callbacks[i].key);
+			val = json_integer_value(param);
+			snprintf(json_value, 255, "%"JSON_INTEGER_FORMAT, val);
+			/* First argument is blank because the key
+			 * is not included in the string being parsed.
+			 */
+			ret = info.interim_callbacks[i].cb(
+				"", json_value,
+				info.interim_callbacks[i].val
+			);
+			if (ret < 0)
+				return ret;
+		}
+	}
+
+	return 0;
+}
+
+int
+fips_test_parse_one_json_case(void)
+{
+	uint32_t i;
+	int ret = 0;
+	json_t *param;
+
+	for (i = 0; info.callbacks[i].key != NULL; i++) {
+		param = json_object_get(json_info.json_test_case, info.callbacks[i].key);
+		if (param) {
+			strcpy(info.one_line_text, json_string_value(param));
+			/* First argument is blank because the key
+			 * is not included in the string being parsed.
+			 */
+			ret = info.callbacks[i].cb(
+				"", info.one_line_text,
+				info.callbacks[i].val
+			);
+			if (ret < 0)
+				return ret;
+		}
+	}
+
+	return 0;
+}
+#endif /* RTE_HAS_JANSSON */
 
 static int
 parser_read_uint64_hex(uint64_t *value, const char *p)

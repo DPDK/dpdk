@@ -39,6 +39,10 @@ enum {
 struct fips_test_vector vec;
 struct fips_test_interim_info info;
 
+#ifdef RTE_HAS_JANSSON
+struct fips_test_json_info json_info;
+#endif /* RTE_HAS_JANSSON */
+
 struct cryptodev_fips_validate_env {
 	const char *req_path;
 	const char *rsp_path;
