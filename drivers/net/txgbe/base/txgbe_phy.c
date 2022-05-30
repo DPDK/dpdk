@@ -1367,9 +1367,17 @@ static void
 txgbe_set_sgmii_an37_ability(struct txgbe_hw *hw)
 {
 	u32 value;
+	u8 device_type = hw->subsystem_device_id & 0xF0;
 
 	wr32_epcs(hw, VR_XS_OR_PCS_MMD_DIGI_CTL1, 0x3002);
-	wr32_epcs(hw, SR_MII_MMD_AN_CTL, 0x0105);
+	/* for sgmii + external phy, set to 0x0105 (phy sgmii mode) */
+	/* for sgmii direct link, set to 0x010c (mac sgmii mode) */
+	if (device_type == TXGBE_DEV_ID_MAC_SGMII ||
+			hw->phy.media_type == txgbe_media_type_fiber)
+		wr32_epcs(hw, SR_MII_MMD_AN_CTL, 0x010C);
+	else if (device_type == TXGBE_DEV_ID_SGMII ||
+			device_type == TXGBE_DEV_ID_XAUI)
+		wr32_epcs(hw, SR_MII_MMD_AN_CTL, 0x0105);
 	wr32_epcs(hw, SR_MII_MMD_DIGI_CTL, 0x0200);
 	value = rd32_epcs(hw, SR_MII_MMD_CTL);
 	value = (value & ~0x1200) | (0x1 << 12) | (0x1 << 9);
@@ -2280,6 +2288,8 @@ void txgbe_autoc_write(struct txgbe_hw *hw, u64 autoc)
 		}
 	} else if (hw->phy.media_type == txgbe_media_type_fiber) {
 		txgbe_set_link_to_sfi(hw, speed);
+		if (speed == TXGBE_LINK_SPEED_1GB_FULL)
+			txgbe_set_sgmii_an37_ability(hw);
 	}
 
 	if (speed == TXGBE_LINK_SPEED_10GB_FULL)
