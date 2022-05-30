@@ -19,6 +19,7 @@
 #include <rte_config.h>
 #include <rte_io.h>
 #include <rte_ether.h>
+#include <rte_bus_pci.h>
 
 #include "../ngbe_logs.h"
 
@@ -179,5 +180,8 @@ static inline u64 REVERT_BIT_MASK64(u64 mask)
 
 #define ETH_P_8021Q      0x8100
 #define ETH_P_8021AD     0x88A8
+
+#define PCI_COMMAND		0x04
+#define  PCI_COMMAND_MASTER	0x4
 
 #endif /* _NGBE_OS_H_ */
