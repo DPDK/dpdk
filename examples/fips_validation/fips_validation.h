@@ -103,6 +103,7 @@ enum fips_aesavs_test_types {
 	AESAVS_TYPE_VARTXT,
 	AESAVS_TYPE_MMT,
 	AESAVS_TYPE_MCT,
+	AESAVS_TYPE_AFT,
 };
 
 enum fips_tdes_test_types {
@@ -262,6 +263,9 @@ parse_test_hmac_json_algorithm(void);
 
 int
 parse_test_cmac_json_init(void);
+
+int
+parse_test_aes_json_init(void);
 #endif /* RTE_HAS_JANSSON */
 
 int

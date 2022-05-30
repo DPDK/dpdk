@@ -120,7 +120,7 @@ fips_test_parse_header(void)
 
 	for (i = 0; i < info.nb_vec_lines; i++) {
 		if (!algo_parsed) {
-			if (strstr(info.vec[i], "AESVS")) {
+			if (strstr(info.vec[i], "AES")) {
 				algo_parsed = 1;
 				info.algo = FIPS_TEST_ALGO_AES;
 				ret = parse_test_aes_init();
@@ -458,10 +458,12 @@ fips_test_parse_one_json_vector_set(void)
 	/* Vector sets contain the algorithm type, and nothing else we need. */
 	if (strstr(algo_str, "AES-GCM"))
 		info.algo = FIPS_TEST_ALGO_AES_GCM;
-	if (strstr(algo_str, "HMAC"))
+	else if (strstr(algo_str, "HMAC"))
 		info.algo = FIPS_TEST_ALGO_HMAC;
-	if (strstr(algo_str, "CMAC"))
+	else if (strstr(algo_str, "CMAC"))
 		info.algo = FIPS_TEST_ALGO_AES_CMAC;
+	else if (strstr(algo_str, "AES-CBC"))
+		info.algo = FIPS_TEST_ALGO_AES;
 	else
 		return -EINVAL;
 

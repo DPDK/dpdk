@@ -1556,7 +1556,7 @@ fips_mct_aes_test(void)
 #define AES_BLOCK_SIZE	16
 #define AES_EXTERN_ITER	100
 #define AES_INTERN_ITER	1000
-	struct fips_val val = {NULL, 0}, val_key;
+	struct fips_val val[3] = {{NULL, 0},}, val_key,  pt, ct, iv;
 	uint8_t prev_out[AES_BLOCK_SIZE] = {0};
 	uint8_t prev_in[AES_BLOCK_SIZE] = {0};
 	uint32_t i, j, k;
@@ -1565,11 +1565,16 @@ fips_mct_aes_test(void)
 	if (info.interim_info.aes_data.cipher_algo == RTE_CRYPTO_CIPHER_AES_ECB)
 		return fips_mct_aes_ecb_test();
 
+	memset(&pt, 0, sizeof(struct fips_val));
+	memset(&ct, 0, sizeof(struct fips_val));
+	memset(&iv, 0, sizeof(struct fips_val));
 	for (i = 0; i < AES_EXTERN_ITER; i++) {
-		if (i != 0)
-			update_info_vec(i);
+		if (info.file_type != FIPS_TYPE_JSON) {
+			if (i != 0)
+				update_info_vec(i);
 
-		fips_test_write_one_case();
+			fips_test_write_one_case();
+		}
 
 		for (j = 0; j < AES_INTERN_ITER; j++) {
 			ret = fips_run_test();
@@ -1585,7 +1590,7 @@ fips_mct_aes_test(void)
 				return ret;
 			}
 
-			ret = get_writeback_data(&val);
+			ret = get_writeback_data(&val[0]);
 			if (ret < 0)
 				return ret;
 
@@ -1593,24 +1598,39 @@ fips_mct_aes_test(void)
 				memcpy(prev_in, vec.ct.val, AES_BLOCK_SIZE);
 
 			if (j == 0) {
-				memcpy(prev_out, val.val, AES_BLOCK_SIZE);
+				memcpy(prev_out, val[0].val, AES_BLOCK_SIZE);
+				pt.len = vec.pt.len;
+				pt.val = calloc(1, pt.len);
+				memcpy(pt.val, vec.pt.val, pt.len);
+
+				ct.len = vec.ct.len;
+				ct.val = calloc(1, ct.len);
+				memcpy(ct.val, vec.ct.val, ct.len);
+
+				iv.len = vec.iv.len;
+				iv.val = calloc(1, iv.len);
+				memcpy(iv.val, vec.iv.val, iv.len);
 
 				if (info.op == FIPS_TEST_ENC_AUTH_GEN) {
-					memcpy(vec.pt.val, vec.iv.val,
-							AES_BLOCK_SIZE);
-					memcpy(vec.iv.val, val.val,
-							AES_BLOCK_SIZE);
+					memcpy(vec.pt.val, vec.iv.val, AES_BLOCK_SIZE);
+					memcpy(vec.iv.val, val[0].val, AES_BLOCK_SIZE);
+					val[1].val = pt.val;
+					val[1].len = pt.len;
+					val[2].val = iv.val;
+					val[2].len = iv.len;
 				} else {
-					memcpy(vec.ct.val, vec.iv.val,
-							AES_BLOCK_SIZE);
-					memcpy(vec.iv.val, prev_in,
-							AES_BLOCK_SIZE);
+					memcpy(vec.ct.val, vec.iv.val, AES_BLOCK_SIZE);
+					memcpy(vec.iv.val, prev_in, AES_BLOCK_SIZE);
+					val[1].val = ct.val;
+					val[1].len = ct.len;
+					val[2].val = iv.val;
+					val[2].len = iv.len;
 				}
 				continue;
 			}
 
 			if (info.op == FIPS_TEST_ENC_AUTH_GEN) {
-				memcpy(vec.iv.val, val.val, AES_BLOCK_SIZE);
+				memcpy(vec.iv.val, val[0].val, AES_BLOCK_SIZE);
 				memcpy(vec.pt.val, prev_out, AES_BLOCK_SIZE);
 			} else {
 				memcpy(vec.iv.val, prev_in, AES_BLOCK_SIZE);
@@ -1620,33 +1640,38 @@ fips_mct_aes_test(void)
 			if (j == AES_INTERN_ITER - 1)
 				continue;
 
-			memcpy(prev_out, val.val, AES_BLOCK_SIZE);
+			memcpy(prev_out, val[0].val, AES_BLOCK_SIZE);
 		}
 
-		info.parse_writeback(&val);
-		fprintf(info.fp_wr, "\n");
+		info.parse_writeback(val);
+		if (info.file_type != FIPS_TYPE_JSON)
+			fprintf(info.fp_wr, "\n");
 
-		if (i == AES_EXTERN_ITER - 1)
+		if (i == AES_EXTERN_ITER - 1) {
+			free(pt.val);
+			free(ct.val);
+			free(iv.val);
 			continue;
+		}
 
 		/** update key */
 		memcpy(&val_key, &vec.cipher_auth.key, sizeof(val_key));
 		for (k = 0; k < vec.cipher_auth.key.len; k++) {
 			switch (vec.cipher_auth.key.len) {
 			case 16:
-				val_key.val[k] ^= val.val[k];
+				val_key.val[k] ^= val[0].val[k];
 				break;
 			case 24:
 				if (k < 8)
 					val_key.val[k] ^= prev_out[k + 8];
 				else
-					val_key.val[k] ^= val.val[k - 8];
+					val_key.val[k] ^= val[0].val[k - 8];
 				break;
 			case 32:
 				if (k < 16)
 					val_key.val[k] ^= prev_out[k];
 				else
-					val_key.val[k] ^= val.val[k - 16];
+					val_key.val[k] ^= val[0].val[k - 16];
 				break;
 			default:
 				return -1;
@@ -1654,10 +1679,10 @@ fips_mct_aes_test(void)
 		}
 
 		if (info.op == FIPS_TEST_DEC_AUTH_VERIF)
-			memcpy(vec.iv.val, val.val, AES_BLOCK_SIZE);
+			memcpy(vec.iv.val, val[0].val, AES_BLOCK_SIZE);
 	}
 
-	free(val.val);
+	free(val[0].val);
 
 	return 0;
 }
@@ -1962,6 +1987,9 @@ fips_test_one_test_group(void)
 		break;
 	case FIPS_TEST_ALGO_AES_CMAC:
 		ret = parse_test_cmac_json_init();
+		break;
+	case FIPS_TEST_ALGO_AES:
+		ret = parse_test_aes_json_init();
 		break;
 	default:
 		return -EINVAL;
