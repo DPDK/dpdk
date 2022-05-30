@@ -1422,8 +1422,13 @@ po32m(struct ngbe_hw *hw, u32 reg, u32 mask, u32 expect, u32 *actual,
 	}
 
 	do {
-		all |= rd32(hw, reg);
-		value |= mask & all;
+		if (expect != 0) {
+			all |= rd32(hw, reg);
+			value |= mask & all;
+		} else {
+			all = rd32(hw, reg);
+			value = mask & all;
+		}
 		if (value == expect)
 			break;
 

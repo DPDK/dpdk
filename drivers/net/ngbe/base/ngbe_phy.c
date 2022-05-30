@@ -121,17 +121,14 @@ bool ngbe_validate_phy_addr(struct ngbe_hw *hw, u32 phy_addr)
 	u16 phy_id = 0;
 	bool valid = false;
 
-	if (hw->sub_device_id == NGBE_SUB_DEV_ID_EM_YT8521S_SFP)
-		return true;
-
 	hw->phy.addr = phy_addr;
-	hw->phy.read_reg(hw, NGBE_MD_PHY_ID_HIGH,
+	hw->phy.read_reg(hw, NGBE_MD_PHY_ID_LOW,
 			     NGBE_MD_DEV_PMA_PMD, &phy_id);
 
 	if (phy_id != 0xFFFF && phy_id != 0x0)
 		valid = true;
 
-	DEBUGOUT("PHY ID HIGH is 0x%04X", phy_id);
+	DEBUGOUT("PHY ID LOW is 0x%04X", phy_id);
 
 	return valid;
 }
