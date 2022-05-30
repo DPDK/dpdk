@@ -83,6 +83,7 @@ s32 ngbe_init_phy(struct ngbe_hw *hw);
 s32 ngbe_enable_rx_dma(struct ngbe_hw *hw, u32 regval);
 void ngbe_map_device_id(struct ngbe_hw *hw);
 
+void ngbe_read_efuse(struct ngbe_hw *hw);
 u32 ngbe_fmgr_cmd_op(struct ngbe_hw *hw, u32 cmd, u32 cmd_addr);
 u32 ngbe_flash_read_dword(struct ngbe_hw *hw, u32 addr);
 

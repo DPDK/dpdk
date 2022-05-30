@@ -290,15 +290,9 @@ s32 ngbe_read_phy_reg(struct ngbe_hw *hw, u32 reg_addr,
 			       u32 device_type, u16 *phy_data)
 {
 	s32 err;
-	u32 gssr = hw->phy.phy_semaphore_mask;
-
-	if (hw->mac.acquire_swfw_sync(hw, gssr))
-		return NGBE_ERR_SWFW_SYNC;
 
 	err = hw->phy.read_reg_unlocked(hw, reg_addr, device_type,
 					phy_data);
-
-	hw->mac.release_swfw_sync(hw, gssr);
 
 	return err;
 }
@@ -350,15 +344,9 @@ s32 ngbe_write_phy_reg(struct ngbe_hw *hw, u32 reg_addr,
 				u32 device_type, u16 phy_data)
 {
 	s32 err;
-	u32 gssr = hw->phy.phy_semaphore_mask;
-
-	if (hw->mac.acquire_swfw_sync(hw, gssr))
-		err = NGBE_ERR_SWFW_SYNC;
 
 	err = hw->phy.write_reg_unlocked(hw, reg_addr, device_type,
 					 phy_data);
-
-	hw->mac.release_swfw_sync(hw, gssr);
 
 	return err;
 }

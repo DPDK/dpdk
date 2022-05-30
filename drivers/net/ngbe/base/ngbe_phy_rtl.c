@@ -14,7 +14,9 @@ s32 ngbe_read_phy_reg_rtl(struct ngbe_hw *hw,
 	reg.addr = reg_addr;
 	ngbe_mdi_map_register(&reg, &reg22);
 
-	wr32(hw, NGBE_PHY_CONFIG(RTL_PAGE_SELECT), reg22.page);
+	if (!(reg22.page == 0xa43 &&
+			(reg22.addr == 0x1a || reg22.addr == 0x1d)))
+		wr32(hw, NGBE_PHY_CONFIG(RTL_PAGE_SELECT), reg22.page);
 	*phy_data = 0xFFFF & rd32(hw, NGBE_PHY_CONFIG(reg22.addr));
 
 	return 0;
@@ -30,7 +32,9 @@ s32 ngbe_write_phy_reg_rtl(struct ngbe_hw *hw,
 	reg.addr = reg_addr;
 	ngbe_mdi_map_register(&reg, &reg22);
 
-	wr32(hw, NGBE_PHY_CONFIG(RTL_PAGE_SELECT), reg22.page);
+	if (!(reg22.page == 0xa43 &&
+			(reg22.addr == 0x1a || reg22.addr == 0x1d)))
+		wr32(hw, NGBE_PHY_CONFIG(RTL_PAGE_SELECT), reg22.page);
 	wr32(hw, NGBE_PHY_CONFIG(reg22.addr), phy_data);
 
 	return 0;
@@ -60,16 +64,61 @@ static void ngbe_phy_led_ctrl_rtl(struct ngbe_hw *hw)
 	hw->phy.write_reg(hw, RTL_LPCR, 0xd04, value);
 }
 
+static s32 ngbe_wait_mdio_access_on(struct ngbe_hw *hw)
+{
+	int i;
+	u16 val = 0;
+
+	for (i = 0; i < 100; i++) {
+		/* irq status */
+		hw->phy.read_reg(hw, RTL_INSR, 0xa43, &val);
+		if (val & RTL_INSR_ACCESS)
+			break;
+		msec_delay(1);
+	}
+
+	if (i == 100) {
+		DEBUGOUT("wait_mdio_access_on timeout");
+		return NGBE_ERR_PHY_TIMEOUT;
+	}
+
+	return 0;
+}
+
+static void ngbe_efuse_calibration(struct ngbe_hw *hw)
+{
+	u32 efuse[2];
+
+	ngbe_wait_mdio_access_on(hw);
+
+	efuse[0] = hw->gphy_efuse[0];
+	efuse[1] = hw->gphy_efuse[1];
+
+	if (!efuse[0] && !efuse[1]) {
+		efuse[0] = 0xFFFFFFFF;
+		efuse[1] = 0xFFFFFFFF;
+	}
+
+	/* calibration */
+	efuse[0] |= 0xF0000100;
+	efuse[1] |= 0xFF807FFF;
+	DEBUGOUT("port %d efuse[0] = %08x, efuse[1] = %08x",
+		hw->bus.lan_id, efuse[0], efuse[1]);
+
+	/* EODR, Efuse Output Data Register */
+	hw->phy.write_reg(hw, 16, 0xa46, (efuse[0] >>  0) & 0xFFFF);
+	hw->phy.write_reg(hw, 17, 0xa46, (efuse[0] >> 16) & 0xFFFF);
+	hw->phy.write_reg(hw, 18, 0xa46, (efuse[1] >>  0) & 0xFFFF);
+	hw->phy.write_reg(hw, 19, 0xa46, (efuse[1] >> 16) & 0xFFFF);
+}
+
 s32 ngbe_init_phy_rtl(struct ngbe_hw *hw)
 {
 	int i;
 	u16 value = 0;
 
-	/* enable interrupts, only link status change and an done is allowed */
-	value = RTL_INER_LSC | RTL_INER_ANC;
-	hw->phy.write_reg(hw, RTL_INER, 0xa42, value);
-
-	hw->phy.read_reg(hw, RTL_INSR, 0xa43, &value);
+	hw->init_phy = true;
+	msec_delay(1);
 
 	for (i = 0; i < 15; i++) {
 		if (!rd32m(hw, NGBE_STAT,
@@ -83,6 +132,8 @@ s32 ngbe_init_phy_rtl(struct ngbe_hw *hw)
 		return NGBE_ERR_PHY_TIMEOUT;
 	}
 
+	ngbe_efuse_calibration(hw);
+
 	hw->phy.write_reg(hw, RTL_SCR, 0xa46, RTL_SCR_EFUSE);
 	hw->phy.read_reg(hw, RTL_SCR, 0xa46, &value);
 	if (!(value & RTL_SCR_EFUSE)) {
@@ -90,15 +141,10 @@ s32 ngbe_init_phy_rtl(struct ngbe_hw *hw)
 		return NGBE_ERR_PHY_TIMEOUT;
 	}
 
-	for (i = 0; i < 1000; i++) {
-		hw->phy.read_reg(hw, RTL_INSR, 0xa43, &value);
-		if (value & RTL_INSR_ACCESS)
-			break;
-		msec_delay(1);
-	}
-	if (i == 1000)
-		DEBUGOUT("PHY wait mdio 1 access timeout.");
+	ngbe_wait_mdio_access_on(hw);
 
+	hw->phy.write_reg(hw, 27, 0xa42, 0x8011);
+	hw->phy.write_reg(hw, 28, 0xa42, 0x5737);
 
 	hw->phy.write_reg(hw, RTL_SCR, 0xa46, RTL_SCR_EXTINI);
 	hw->phy.read_reg(hw, RTL_SCR, 0xa46, &value);
@@ -107,23 +153,25 @@ s32 ngbe_init_phy_rtl(struct ngbe_hw *hw)
 		return NGBE_ERR_PHY_TIMEOUT;
 	}
 
-	for (i = 0; i < 1000; i++) {
-		hw->phy.read_reg(hw, RTL_INSR, 0xa43, &value);
-		if (value & RTL_INSR_ACCESS)
-			break;
-		msec_delay(1);
-	}
-	if (i == 1000)
-		DEBUGOUT("PHY wait mdio 2 access timeout.");
+	ngbe_wait_mdio_access_on(hw);
 
-	for (i = 0; i < 1000; i++) {
+	for (i = 0; i < 100; i++) {
 		hw->phy.read_reg(hw, RTL_GSR, 0xa42, &value);
 		if ((value & RTL_GSR_ST) == RTL_GSR_ST_LANON)
 			break;
 		msec_delay(1);
 	}
-	if (i == 1000)
+	if (i == 100)
 		return NGBE_ERR_PHY_TIMEOUT;
+
+	/* Disable EEE */
+	hw->phy.write_reg(hw, 0x11, 0xa4b, 0x1110);
+	hw->phy.write_reg(hw, 0xd, 0x0, 0x0007);
+	hw->phy.write_reg(hw, 0xe, 0x0, 0x003c);
+	hw->phy.write_reg(hw, 0xd, 0x0, 0x4007);
+	hw->phy.write_reg(hw, 0xe, 0x0, 0x0000);
+
+	hw->init_phy = false;
 
 	return 0;
 }
@@ -141,6 +189,9 @@ s32 ngbe_setup_phy_link_rtl(struct ngbe_hw *hw,
 	u16 value = 0;
 
 	UNREFERENCED_PARAMETER(autoneg_wait_to_complete);
+
+	hw->init_phy = true;
+	msec_delay(1);
 
 	hw->phy.read_reg(hw, RTL_INSR, 0xa43, &autoneg_reg);
 
@@ -243,6 +294,8 @@ s32 ngbe_setup_phy_link_rtl(struct ngbe_hw *hw,
 skip_an:
 	ngbe_phy_led_ctrl_rtl(hw);
 
+	hw->init_phy = false;
+
 	return 0;
 }
 
@@ -308,6 +361,9 @@ s32 ngbe_check_phy_link_rtl(struct ngbe_hw *hw, u32 *speed, bool *link_up)
 	u16 phy_speed = 0;
 	u16 phy_data = 0;
 	u16 insr = 0;
+
+	if (hw->init_phy)
+		return -1;
 
 	hw->phy.read_reg(hw, RTL_INSR, 0xa43, &insr);
 

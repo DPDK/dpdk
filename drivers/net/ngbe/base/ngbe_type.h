@@ -428,10 +428,12 @@ struct ngbe_hw {
 
 	u32 q_rx_regs[8 * 4];
 	u32 q_tx_regs[8 * 4];
+	u32 gphy_efuse[2];
 	bool offset_loaded;
 	bool is_pf;
 	bool gpio_ctl;
 	u32 led_conf;
+	bool init_phy;
 	struct {
 		u64 rx_qp_packets;
 		u64 tx_qp_packets;

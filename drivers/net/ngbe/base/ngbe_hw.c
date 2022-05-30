@@ -53,6 +53,7 @@ s32 ngbe_init_hw(struct ngbe_hw *hw)
 {
 	s32 status;
 
+	ngbe_read_efuse(hw);
 	ngbe_save_eeprom_version(hw);
 
 	/* Reset the hardware */
@@ -1853,6 +1854,21 @@ u32 ngbe_flash_read_dword(struct ngbe_hw *hw, u32 addr)
 	}
 
 	return rd32(hw, NGBE_SPIDAT);
+}
+
+void ngbe_read_efuse(struct ngbe_hw *hw)
+{
+	u32 efuse[2];
+	u8 lan_id = hw->bus.lan_id;
+
+	efuse[0] = ngbe_flash_read_dword(hw, 0xfe010 + lan_id * 8);
+	efuse[1] = ngbe_flash_read_dword(hw, 0xfe010 + lan_id * 8 + 4);
+
+	DEBUGOUT("port %d efuse[0] = %08x, efuse[1] = %08x\n",
+		lan_id, efuse[0], efuse[1]);
+
+	hw->gphy_efuse[0] = efuse[0];
+	hw->gphy_efuse[1] = efuse[1];
 }
 
 void ngbe_map_device_id(struct ngbe_hw *hw)
