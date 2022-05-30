@@ -1041,7 +1041,7 @@ ngbe_dev_start(struct rte_eth_dev *dev)
 	if (hw->mac.default_speeds & NGBE_LINK_SPEED_10M_FULL)
 		allowed_speeds |= RTE_ETH_LINK_SPEED_10M;
 
-	if (*link_speeds & ~allowed_speeds) {
+	if (((*link_speeds) >> 1) & ~(allowed_speeds >> 1)) {
 		PMD_INIT_LOG(ERR, "Invalid link setting");
 		goto error;
 	}
