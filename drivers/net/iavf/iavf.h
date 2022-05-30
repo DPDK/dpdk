@@ -18,7 +18,7 @@
 
 #define IAVF_AQ_LEN               32
 #define IAVF_AQ_BUF_SZ            4096
-#define IAVF_RESET_WAIT_CNT       50
+#define IAVF_RESET_WAIT_CNT       500
 #define IAVF_BUF_SIZE_MIN         1024
 #define IAVF_FRAME_SIZE_MAX       9728
 #define IAVF_QUEUE_BASE_ADDR_UNIT 128
