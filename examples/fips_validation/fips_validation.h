@@ -253,6 +253,12 @@ fips_test_parse_one_json_case(void);
 
 int
 parse_test_gcm_json_init(void);
+
+int
+parse_test_hmac_json_init(void);
+
+int
+parse_test_hmac_json_algorithm(void);
 #endif /* RTE_HAS_JANSSON */
 
 int

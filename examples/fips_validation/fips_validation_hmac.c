@@ -19,6 +19,15 @@
 #define PT_STR		"Msg = "
 #define TAG_STR		"Mac = "
 
+#define ALGO_JSON_STR	"algorithm"
+
+#define KEYLEN_JSON_STR	"keyLen"
+#define TAGLEN_JSON_STR	"macLen"
+
+#define KEY_JSON_STR	"key"
+#define PT_JSON_STR		"msg"
+#define TAG_JSON_STR	"mac"
+
 struct hash_size_conversion {
 	const char *str;
 	enum rte_crypto_auth_algorithm algo;
@@ -65,6 +74,29 @@ struct fips_test_callback hmac_tests_interim_vectors[] = {
 		{NULL, NULL, NULL} /**< end pointer */
 };
 
+#ifdef RTE_HAS_JANSSON
+struct hash_size_conversion json_algorithms[] = {
+		{"HMAC-SHA-1", RTE_CRYPTO_AUTH_SHA1_HMAC},
+		{"HMAC-SHA2-224", RTE_CRYPTO_AUTH_SHA224_HMAC},
+		{"HMAC-SHA2-256", RTE_CRYPTO_AUTH_SHA256_HMAC},
+		{"HMAC-SHA2-384", RTE_CRYPTO_AUTH_SHA384_HMAC},
+		{"HMAC-SHA2-512", RTE_CRYPTO_AUTH_SHA512_HMAC},
+};
+
+struct fips_test_callback hmac_tests_json_vectors[] = {
+		{KEY_JSON_STR, parse_uint8_hex_str, &vec.cipher_auth.key},
+		{PT_JSON_STR, parse_uint8_hex_str, &vec.pt},
+		{TAG_JSON_STR, parse_uint8_hex_str, &vec.cipher_auth.digest},
+		{NULL, NULL, NULL} /**< end pointer */
+};
+
+struct fips_test_callback hmac_tests_interim_json_vectors[] = {
+		{KEYLEN_JSON_STR, parser_read_uint32_val, &vec.cipher_auth.key},
+		{TAGLEN_JSON_STR, parser_read_uint32_bit_val, &vec.cipher_auth.digest},
+		{NULL, NULL, NULL} /**< end pointer */
+};
+#endif /* RTE_HAS_JANSSON */
+
 static int
 parse_test_hmac_writeback(struct fips_val *val)
 {
@@ -103,3 +135,64 @@ parse_test_hmac_init(void)
 
 	return 0;
 }
+
+#ifdef RTE_HAS_JANSSON
+static int
+parse_test_hmac_json_writeback(struct fips_val *val)
+{
+	struct fips_val val_local;
+	json_t *tcId, *mac;
+
+	tcId = json_object_get(json_info.json_test_case, "tcId");
+
+	json_info.json_write_case = json_object();
+	json_object_set(json_info.json_write_case, "tcId", tcId);
+
+
+	val_local.val = val->val + vec.pt.len;
+	val_local.len = vec.cipher_auth.digest.len;
+
+	writeback_hex_str("", info.one_line_text, &val_local);
+
+	mac = json_string(info.one_line_text);
+	json_object_set_new(json_info.json_write_case, TAG_JSON_STR, mac);
+
+	return 0;
+}
+
+int
+parse_test_hmac_json_algorithm(void)
+{
+	json_t *algorithm_object;
+	const char *algorithm_str;
+	uint32_t i;
+
+	algorithm_object = json_object_get(json_info.json_vector_set, "algorithm");
+	algorithm_str = json_string_value(algorithm_object);
+
+	for (i = 0; i < RTE_DIM(json_algorithms); i++) {
+		if (strstr(algorithm_str, json_algorithms[i].str)) {
+			info.interim_info.hmac_data.algo = json_algorithms[i].algo;
+			return 0;
+		}
+	}
+
+	return -1;
+}
+
+int
+parse_test_hmac_json_init(void)
+{
+	info.op = FIPS_TEST_ENC_AUTH_GEN;
+	info.parse_writeback = parse_test_hmac_json_writeback;
+	info.callbacks = hmac_tests_json_vectors;
+	info.writeback_callbacks = NULL;
+	info.kat_check = rsp_test_hmac_check;
+	info.interim_callbacks = hmac_tests_interim_json_vectors;
+
+	if (parse_test_hmac_json_algorithm() < 0)
+		return -1;
+
+	return 0;
+}
+#endif /* RTE_HAS_JANSSON */

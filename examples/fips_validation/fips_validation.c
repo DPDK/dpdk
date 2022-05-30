@@ -458,6 +458,8 @@ fips_test_parse_one_json_vector_set(void)
 	/* Vector sets contain the algorithm type, and nothing else we need. */
 	if (strstr(algo_str, "AES-GCM"))
 		info.algo = FIPS_TEST_ALGO_AES_GCM;
+	if (strstr(algo_str, "HMAC"))
+		info.algo = FIPS_TEST_ALGO_HMAC;
 	else
 		return -EINVAL;
 
