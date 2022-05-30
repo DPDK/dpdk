@@ -50,11 +50,12 @@ s32 ngbe_write_phy_reg_mvl(struct ngbe_hw *hw,
 
 s32 ngbe_check_phy_mode_mvl(struct ngbe_hw *hw)
 {
-	u16 value = 0;
+	u8 value = 0;
+	u32 phy_mode = 0;
 
-	/* select page 18 reg 20 */
-	ngbe_write_phy_reg_mdi(hw, MVL_PAGE_SEL, 0, 18);
-	ngbe_read_phy_reg_mdi(hw, MVL_GEN_CTL, 0, &value);
+	phy_mode = ngbe_flash_read_dword(hw, 0xFF010);
+	value = (u8)(phy_mode >> (hw->bus.lan_id * 8));
+
 	if (MVL_GEN_CTL_MODE(value) == MVL_GEN_CTL_MODE_COPPER) {
 		/* mode select to RGMII-to-copper */
 		hw->phy.type = ngbe_phy_mvl;

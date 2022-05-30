@@ -3,6 +3,7 @@
  */
 
 #include "ngbe_phy.h"
+#include "ngbe_hw.h"
 
 #ifndef _NGBE_PHY_MVL_H_
 #define _NGBE_PHY_MVL_H_

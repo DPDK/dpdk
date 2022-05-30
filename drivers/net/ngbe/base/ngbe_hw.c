@@ -1805,6 +1805,43 @@ s32 ngbe_enable_rx_dma(struct ngbe_hw *hw, u32 regval)
 	return 0;
 }
 
+/* cmd_addr is used for some special command:
+ * 1. to be sector address, when implemented erase sector command
+ * 2. to be flash address when implemented read, write flash address
+ */
+u32 ngbe_fmgr_cmd_op(struct ngbe_hw *hw, u32 cmd, u32 cmd_addr)
+{
+	u32 cmd_val = 0;
+	u32 i = 0;
+
+	cmd_val = NGBE_SPICMD_CMD(cmd) | NGBE_SPICMD_CLK(3) | cmd_addr;
+	wr32(hw, NGBE_SPICMD, cmd_val);
+
+	for (i = 0; i < 10000; i++) {
+		if (rd32(hw, NGBE_SPISTAT) & NGBE_SPISTAT_OPDONE)
+			break;
+
+		usec_delay(10);
+	}
+	if (i == 10000)
+		return 1;
+
+	return 0;
+}
+
+u32 ngbe_flash_read_dword(struct ngbe_hw *hw, u32 addr)
+{
+	u32 status = 0;
+
+	status = ngbe_fmgr_cmd_op(hw, 1, addr);
+	if (status) {
+		DEBUGOUT("Read flash timeout.");
+		return status;
+	}
+
+	return rd32(hw, NGBE_SPIDAT);
+}
+
 void ngbe_map_device_id(struct ngbe_hw *hw)
 {
 	u16 oem = hw->sub_system_id & NGBE_OEM_MASK;
