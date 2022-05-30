@@ -5,6 +5,10 @@
 #ifndef _FIPS_VALIDATION_H_
 #define _FIPS_VALIDATION_H_
 
+#ifdef RTE_HAS_JANSSON
+#include <jansson.h>
+#endif /* RTE_HAS_JANSSON */
+
 #define FIPS_PARSE_ERR(fmt, args)					\
 	RTE_LOG(ERR, USER1, "FIPS parse error" ## fmt ## "\n", ## args)
 
@@ -21,9 +25,12 @@
 #define POSITIVE_TEST		0
 #define NEGATIVE_TEST		-1
 
-#define REQ_FILE_PERFIX		"req"
-#define RSP_FILE_PERFIX		"rsp"
-#define FAX_FILE_PERFIX		"fax"
+#define REQ_FILE_PREFIX		"req"
+#define RSP_FILE_PREFIX		"rsp"
+#define FAX_FILE_PREFIX		"fax"
+#define JSON_FILE_PREFIX	"json"
+
+#define ACVVERSION			"1.0"
 
 enum fips_test_algorithms {
 		FIPS_TEST_ALGO_AES = 0,
@@ -40,7 +47,8 @@ enum fips_test_algorithms {
 enum file_types {
 	FIPS_TYPE_REQ = 1,
 	FIPS_TYPE_FAX,
-	FIPS_TYPE_RSP
+	FIPS_TYPE_RSP,
+	FIPS_TYPE_JSON,
 };
 
 enum fips_test_op {
@@ -161,6 +169,23 @@ struct gcm_interim_data {
 	uint8_t gen_iv;
 };
 
+#ifdef RTE_HAS_JANSSON
+struct fips_test_json_info {
+	/* Information used for reading from json */
+	json_t *json_root;
+	json_t *json_vector_set;
+	json_t *json_test_group;
+	json_t *json_test_case;
+	/* Location of json write output */
+	json_t *json_write_root;
+	json_t *json_write_group;
+	json_t *json_write_set;
+	json_t *json_write_case;
+	/* Other info */
+	uint8_t is_sample;
+};
+#endif /* RTE_HAS_JANSSON */
+
 struct fips_test_interim_info {
 	FILE *fp_rd;
 	FILE *fp_wr;
@@ -196,6 +221,10 @@ struct fips_test_interim_info {
 extern struct fips_test_vector vec;
 extern struct fips_test_interim_info info;
 
+#ifdef RTE_HAS_JANSSON
+extern struct fips_test_json_info json_info;
+#endif /* RTE_HAS_JANSSON */
+
 int
 fips_test_init(const char *req_file_path, const char *rsp_file_path,
 		const char *device_name);
@@ -211,6 +240,17 @@ fips_test_parse_one_case(void);
 
 void
 fips_test_write_one_case(void);
+
+#ifdef RTE_HAS_JANSSON
+int
+fips_test_parse_one_json_vector_set(void);
+
+int
+fips_test_parse_one_json_group(void);
+
+int
+fips_test_parse_one_json_case(void);
+#endif /* RTE_HAS_JANSSON */
 
 int
 parse_test_aes_init(void);

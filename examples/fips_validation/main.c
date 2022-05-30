@@ -1251,6 +1251,8 @@ fips_generic_test(void)
 		if (ret < 0)
 			return ret;
 		break;
+	default:
+		break;
 	}
 
 	fprintf(info.fp_wr, "\n");

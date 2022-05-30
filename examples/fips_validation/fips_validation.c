@@ -270,11 +270,11 @@ parse_file_type(const char *path)
 {
 	const char *tmp = path + strlen(path) - 3;
 
-	if (strstr(tmp, REQ_FILE_PERFIX))
+	if (strstr(tmp, REQ_FILE_PREFIX))
 		info.file_type = FIPS_TYPE_REQ;
-	else if (strstr(tmp, RSP_FILE_PERFIX))
+	else if (strstr(tmp, RSP_FILE_PREFIX))
 		info.file_type = FIPS_TYPE_RSP;
-	else if (strstr(path, FAX_FILE_PERFIX))
+	else if (strstr(path, FAX_FILE_PREFIX))
 		info.file_type = FIPS_TYPE_FAX;
 	else
 		return -EINVAL;
