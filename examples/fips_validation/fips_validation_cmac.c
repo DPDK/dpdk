@@ -32,12 +32,92 @@
 #define PASS_STR	"P"
 #define FAIL_STR	"F"
 
+#define KLEN_JSON_STR		"keyLen"
+#define PTLEN_JSON_STR		"msgLen"
+#define TAGLEN_JSON_STR		"macLen"
+#define KEY_JSON_STR		"key"
+#define PT_JSON_STR			"message"
+#define TAG_JSON_STR		"mac"
+#define DIRECTION_JSON_STR	"direction"
+#define POS_NEG_JSON_STR	"testPassed"
+
+#define GEN_JSON_STR	"gen"
+#define VERIF_JSON_STR	"ver"
+
 struct hash_algo_conversion {
 	const char *str;
 	enum fips_test_algorithms algo;
 } cmac_algo[] = {
 		{"AES", FIPS_TEST_ALGO_AES_CMAC},
 };
+
+#ifdef RTE_HAS_JANSSON
+static int
+parser_read_cmac_direction_str(__rte_unused const char *key, char *src,
+		__rte_unused struct fips_val *val)
+{
+	if (strcmp(src, "gen") == 0)
+		info.op = FIPS_TEST_ENC_AUTH_GEN;
+	else if (strcmp(src, "ver") == 0)
+		info.op = FIPS_TEST_DEC_AUTH_VERIF;
+
+	return 0;
+}
+
+struct fips_test_callback cmac_tests_interim_json_vectors[] = {
+		{KLEN_JSON_STR, parser_read_uint32_bit_val, &vec.cipher_auth.key},
+		{PTLEN_JSON_STR, parser_read_uint32_bit_val, &vec.pt},
+		{TAGLEN_JSON_STR, parser_read_uint32_bit_val, &vec.cipher_auth.digest},
+		{DIRECTION_JSON_STR, parser_read_cmac_direction_str, NULL},
+		{NULL, NULL, NULL} /**< end pointer */
+};
+
+struct fips_test_callback cmac_tests_json_vectors[] = {
+		{KEY_JSON_STR, parse_uint8_hex_str, &vec.cipher_auth.key},
+		{PT_JSON_STR, parse_uint8_known_len_hex_str, &vec.pt},
+		{TAG_JSON_STR, parse_uint8_known_len_hex_str,
+				&vec.cipher_auth.digest},
+		{NULL, NULL, NULL} /**< end pointer */
+};
+
+static int
+parse_test_cmac_json_writeback(struct fips_val *val)
+{
+	json_info.json_write_case = json_object();
+	json_object_set(json_info.json_write_case, "tcId",
+		json_object_get(json_info.json_test_case, "tcId"));
+
+	if (info.op == FIPS_TEST_ENC_AUTH_GEN) {
+		struct fips_val tmp_val = {val->val + vec.pt.len,
+				vec.cipher_auth.digest.len};
+
+		writeback_hex_str("", info.one_line_text, &tmp_val);
+		json_object_set_new(json_info.json_write_case, TAG_JSON_STR,
+			json_string(info.one_line_text));
+	} else {
+		if (vec.status == RTE_CRYPTO_OP_STATUS_SUCCESS)
+			json_object_set_new(json_info.json_write_case, POS_NEG_JSON_STR,
+				json_boolean(true));
+		else if (vec.status == RTE_CRYPTO_OP_STATUS_AUTH_FAILED)
+			json_object_set_new(json_info.json_write_case, POS_NEG_JSON_STR,
+				json_boolean(false));
+	}
+
+	return 0;
+}
+
+int
+parse_test_cmac_json_init(void)
+{
+	info.algo = FIPS_TEST_ALGO_AES_CMAC;
+
+	info.parse_writeback = parse_test_cmac_json_writeback;
+	info.callbacks = cmac_tests_json_vectors;
+	info.interim_callbacks = cmac_tests_interim_json_vectors;
+
+	return 0;
+}
+#endif /* RTE_HAS_JANSSON */
 
 static int
 parse_test_cmac_writeback(struct fips_val *val)

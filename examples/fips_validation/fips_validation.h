@@ -259,6 +259,9 @@ parse_test_hmac_json_init(void);
 
 int
 parse_test_hmac_json_algorithm(void);
+
+int
+parse_test_cmac_json_init(void);
 #endif /* RTE_HAS_JANSSON */
 
 int
