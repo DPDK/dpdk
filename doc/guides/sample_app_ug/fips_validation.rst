@@ -12,19 +12,22 @@ developed by the United States federal government for use in computer systems by
 non-military government agencies and government contractors.
 
 This application is used to parse and perform symmetric cryptography
-computation to the NIST Cryptographic Algorithm Validation Program (CAVP) test
-vectors.
+computation to the NIST Cryptographic Algorithm Validation Program (CAVP) and
+Automated Crypto Validation Protocol (ACVP) test vectors.
 
 For an algorithm implementation to be listed on a cryptographic module
 validation certificate as an Approved security function, the algorithm
-implementation must meet all the requirements of FIPS 140-2 and must
-successfully complete the cryptographic algorithm validation process.
+implementation must meet all the requirements of FIPS 140-2 (in case of CAVP)
+and FIPS 140-3 (in case of ACVP) and must successfully complete the
+cryptographic algorithm validation process.
 
 Limitations
 -----------
 
-* Only NIST CAVP request files are parsed by this application.
-* The version of request file supported is ``CAVS 21.0``
+CAVP
+----
+
+* The version of request file supported is ``CAVS 21.0``.
 * If the header comment in a ``.req`` file does not contain a Algo tag
   i.e ``AES,TDES,GCM`` you need to manually add it into the header comment for
   example::
@@ -32,7 +35,7 @@ Limitations
       # VARIABLE KEY - KAT for CBC / # TDES VARIABLE KEY - KAT for CBC
 
 * The application does not supply the test vectors. The user is expected to
-  obtain the test vector files from `NIST
+  obtain the test vector files from `CAVP
   <https://csrc.nist.gov/projects/cryptographic-algorithm-validation-
   program/block-ciphers>`_ website. To obtain the ``.req`` files you need to
   email a person from the NIST website and pay for the ``.req`` files.
@@ -47,6 +50,19 @@ Limitations
     * HMAC (SHA1, SHA224, SHA256, SHA384, SHA512)
     * TDES-CBC (1 Key, 2 Keys, 3 Keys) - MMT, Monte, Permop, Subkey, Varkey,
       VarText
+
+ACVP
+----
+
+* The application does not supply the test vectors. The user is expected to
+  obtain the test vector files from `ACVP  <https://pages.nist.gov/ACVP>`_
+  website.
+* Supported test vectors
+    * AES-CBC (128,192,256) - AFT, MCT
+    * AES-GCM (128,192,256) - AFT
+    * AES-CMAC (128,192,256) - AFT
+    * HMAC (SHA1, SHA224, SHA256, SHA384, SHA512)
+
 
 Application Information
 -----------------------
