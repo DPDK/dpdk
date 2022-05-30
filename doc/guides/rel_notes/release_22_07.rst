@@ -90,6 +90,10 @@ New Features
   * Added support for MTU on Windows.
   * Added matching and RSS on IPsec ESP.
 
+* **Updated Wangxun ngbe driver.**
+
+  * Added support for yt8531s PHY.
+
 * **Added Elliptic Curve Diffie-Hellman (ECDH) algorithm in cryptodev.**
 
   Added support for Elliptic Curve Diffie Hellman (ECDH) asymmetric
