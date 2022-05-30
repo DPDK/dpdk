@@ -1955,11 +1955,12 @@ fips_test_one_test_group(void)
 
 	switch (info.algo) {
 	case FIPS_TEST_ALGO_AES_GCM:
-		ret = parse_test_gcm_init();
+		ret = parse_test_gcm_json_init();
 		break;
 	default:
 		return -EINVAL;
 	}
+
 	if (ret < 0)
 		return ret;
 
