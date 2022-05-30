@@ -1165,6 +1165,8 @@ ngbe_dev_stop(struct rte_eth_dev *dev)
 	for (vf = 0; vfinfo != NULL && vf < pci_dev->max_vfs; vf++)
 		vfinfo[vf].clear_to_send = false;
 
+	hw->phy.set_phy_power(hw, false);
+
 	ngbe_dev_clear_queues(dev);
 
 	/* Clear stored conf */
@@ -1874,16 +1876,8 @@ ngbe_dev_link_update_share(struct rte_eth_dev *dev,
 		return rte_eth_linkstatus_set(dev, &link);
 	}
 
-	if (!link_up) {
-		if (hw->phy.media_type == ngbe_media_type_fiber &&
-			hw->phy.type != ngbe_phy_mvl_sfi) {
-			intr->flags |= NGBE_FLAG_NEED_LINK_CONFIG;
-			rte_eal_alarm_set(10,
-				ngbe_dev_setup_link_alarm_handler, dev);
-		}
-
+	if (!link_up)
 		return rte_eth_linkstatus_set(dev, &link);
-	}
 
 	intr->flags &= ~NGBE_FLAG_NEED_LINK_CONFIG;
 	link.link_status = RTE_ETH_LINK_UP;

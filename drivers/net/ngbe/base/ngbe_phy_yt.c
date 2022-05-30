@@ -100,23 +100,13 @@ s32 ngbe_write_phy_reg_sds_ext_yt(struct ngbe_hw *hw,
 
 s32 ngbe_init_phy_yt(struct ngbe_hw *hw)
 {
-	u16 value = 0;
-
 	/* close sds area register */
 	ngbe_write_phy_reg_ext_yt(hw, YT_SMI_PHY, 0, 0);
 	/* enable interrupts */
 	ngbe_write_phy_reg_mdi(hw, YT_INTR, 0,
 				YT_INTR_ENA_MASK | YT_SDS_INTR_ENA_MASK);
 
-	/* power down in fiber mode */
-	hw->phy.read_reg(hw, YT_BCR, 0, &value);
-	value |= YT_BCR_PWDN;
-	hw->phy.write_reg(hw, YT_BCR, 0, value);
-
-	/* power down in UTP mode */
-	ngbe_read_phy_reg_mdi(hw, YT_BCR, 0, &value);
-	value |= YT_BCR_PWDN;
-	ngbe_write_phy_reg_mdi(hw, YT_BCR, 0, value);
+	hw->phy.set_phy_power(hw, false);
 
 	return 0;
 }
@@ -200,10 +190,7 @@ s32 ngbe_setup_phy_link_yt(struct ngbe_hw *hw, u32 speed,
 		value |= YT_BCR_RESET | YT_BCR_ANE | YT_BCR_RESTART_AN;
 		hw->phy.write_reg(hw, YT_BCR, 0, value);
 skip_an:
-		/* power on in UTP mode */
-		ngbe_read_phy_reg_mdi(hw, YT_BCR, 0, &value);
-		value &= ~YT_BCR_PWDN;
-		ngbe_write_phy_reg_mdi(hw, YT_BCR, 0, value);
+		hw->phy.set_phy_power(hw, true);
 	} else if ((value & YT_CHIP_MODE_MASK) == YT_CHIP_MODE_SEL(1)) {
 		/* fiber to rgmii */
 		hw->phy.autoneg_advertised |= NGBE_LINK_SPEED_1GB_FULL;
@@ -221,19 +208,9 @@ skip_an:
 		/* software reset */
 		ngbe_write_phy_reg_sds_ext_yt(hw, 0x0, 0, 0x9140);
 
-		/* power on phy */
-		hw->phy.read_reg(hw, YT_BCR, 0, &value);
-		value &= ~YT_BCR_PWDN;
-		hw->phy.write_reg(hw, YT_BCR, 0, value);
+		hw->phy.set_phy_power(hw, true);
 	} else if ((value & YT_CHIP_MODE_MASK) == YT_CHIP_MODE_SEL(2)) {
-		/* power on in UTP mode */
-		ngbe_read_phy_reg_mdi(hw, YT_BCR, 0, &value);
-		value &= ~YT_BCR_PWDN;
-		ngbe_write_phy_reg_mdi(hw, YT_BCR, 0, value);
-		/* power down in fiber mode */
-		hw->phy.read_reg(hw, YT_BCR, 0, &value);
-		value &= ~YT_BCR_PWDN;
-		hw->phy.write_reg(hw, YT_BCR, 0, value);
+		hw->phy.set_phy_power(hw, true);
 
 		hw->phy.read_reg(hw, YT_SPST, 0, &value);
 		if (value & YT_SPST_LINK) {
@@ -303,10 +280,7 @@ skip_an:
 		value &= ~YT_SMI_PHY_SW_RST;
 		ngbe_write_phy_reg_ext_yt(hw, YT_CHIP, 0, value);
 
-		/* power on phy */
-		hw->phy.read_reg(hw, YT_BCR, 0, &value);
-		value &= ~YT_BCR_PWDN;
-		hw->phy.write_reg(hw, YT_BCR, 0, value);
+		hw->phy.set_phy_power(hw, true);
 	}
 
 	ngbe_write_phy_reg_ext_yt(hw, YT_SMI_PHY, 0, 0);
@@ -434,3 +408,26 @@ s32 ngbe_check_phy_link_yt(struct ngbe_hw *hw,
 	return status;
 }
 
+s32 ngbe_set_phy_power_yt(struct ngbe_hw *hw, bool on)
+{
+	u16 value = 0;
+
+	/* power down/up in fiber mode */
+	hw->phy.read_reg(hw, YT_BCR, 0, &value);
+	if (on)
+		value &= ~YT_BCR_PWDN;
+	else
+		value |= YT_BCR_PWDN;
+	hw->phy.write_reg(hw, YT_BCR, 0, value);
+
+	value = 0;
+	/* power down/up in UTP mode */
+	ngbe_read_phy_reg_mdi(hw, YT_BCR, 0, &value);
+	if (on)
+		value &= ~YT_BCR_PWDN;
+	else
+		value |= YT_BCR_PWDN;
+	ngbe_write_phy_reg_mdi(hw, YT_BCR, 0, value);
+
+	return 0;
+}

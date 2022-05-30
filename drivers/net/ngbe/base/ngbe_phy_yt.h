@@ -89,6 +89,8 @@ s32 ngbe_reset_phy_yt(struct ngbe_hw *hw);
 
 s32 ngbe_check_phy_link_yt(struct ngbe_hw *hw,
 		u32 *speed, bool *link_up);
+s32 ngbe_set_phy_power_yt(struct ngbe_hw *hw, bool on);
+
 s32 ngbe_setup_phy_link_yt(struct ngbe_hw *hw,
 			u32 speed, bool autoneg_wait_to_complete);
 s32 ngbe_get_phy_advertised_pause_yt(struct ngbe_hw *hw,

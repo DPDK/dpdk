@@ -421,6 +421,7 @@ s32 ngbe_init_phy(struct ngbe_hw *hw)
 		hw->phy.init_hw = ngbe_init_phy_mvl;
 		hw->phy.check_link = ngbe_check_phy_link_mvl;
 		hw->phy.setup_link = ngbe_setup_phy_link_mvl;
+		hw->phy.set_phy_power = ngbe_set_phy_power_mvl;
 		hw->phy.get_adv_pause = ngbe_get_phy_advertised_pause_mvl;
 		hw->phy.get_lp_adv_pause = ngbe_get_phy_lp_advertised_pause_mvl;
 		hw->phy.set_pause_adv = ngbe_set_phy_pause_adv_mvl;
@@ -430,6 +431,7 @@ s32 ngbe_init_phy(struct ngbe_hw *hw)
 		hw->phy.init_hw = ngbe_init_phy_yt;
 		hw->phy.check_link = ngbe_check_phy_link_yt;
 		hw->phy.setup_link = ngbe_setup_phy_link_yt;
+		hw->phy.set_phy_power = ngbe_set_phy_power_yt;
 		hw->phy.get_adv_pause = ngbe_get_phy_advertised_pause_yt;
 		hw->phy.get_lp_adv_pause = ngbe_get_phy_lp_advertised_pause_yt;
 		hw->phy.set_pause_adv = ngbe_set_phy_pause_adv_yt;
