@@ -21,3 +21,7 @@ sources = files(
         'fips_dev_self_test.c',
         'main.c',
 )
+
+if dpdk_conf.has('RTE_HAS_JANSSON')
+    ext_deps += jansson_dep
+endif
