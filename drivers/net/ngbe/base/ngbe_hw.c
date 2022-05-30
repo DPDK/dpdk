@@ -1059,17 +1059,30 @@ out:
  **/
 s32 ngbe_set_pcie_master(struct ngbe_hw *hw, bool enable)
 {
+	struct rte_pci_device *pci_dev = (struct rte_pci_device *)hw->back;
 	s32 status = 0;
-	u16 addr = 0x04;
-	u32 data, i;
+	s32 ret = 0;
+	u32 i;
+	u16 reg;
 
-	ngbe_hic_pcie_read(hw, addr, &data, 4);
+	ret = rte_pci_read_config(pci_dev, &reg,
+			sizeof(reg), PCI_COMMAND);
+	if (ret != sizeof(reg)) {
+		DEBUGOUT("Cannot read command from PCI config space!\n");
+		return -1;
+	}
+
 	if (enable)
-		data |= 0x04;
+		reg |= PCI_COMMAND_MASTER;
 	else
-		data &= ~0x04;
+		reg &= ~PCI_COMMAND_MASTER;
 
-	ngbe_hic_pcie_write(hw, addr, &data, 4);
+	ret = rte_pci_write_config(pci_dev, &reg,
+			sizeof(reg), PCI_COMMAND);
+	if (ret != sizeof(reg)) {
+		DEBUGOUT("Cannot write command to PCI config space!\n");
+		return -1;
+	}
 
 	if (enable)
 		goto out;
