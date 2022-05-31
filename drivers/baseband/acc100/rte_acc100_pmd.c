@@ -1131,7 +1131,7 @@ static const struct rte_bbdev_ops acc100_bbdev_ops = {
 /* ACC100 PCI PF address map */
 static struct rte_pci_id pci_id_acc100_pf_map[] = {
 	{
-		RTE_PCI_DEVICE(RTE_ACC100_VENDOR_ID, RTE_ACC100_PF_DEVICE_ID)
+		RTE_PCI_DEVICE(ACC100_VENDOR_ID, ACC100_PF_DEVICE_ID)
 	},
 	{.device_id = 0},
 };
@@ -1139,7 +1139,7 @@ static struct rte_pci_id pci_id_acc100_pf_map[] = {
 /* ACC100 PCI VF address map */
 static struct rte_pci_id pci_id_acc100_vf_map[] = {
 	{
-		RTE_PCI_DEVICE(RTE_ACC100_VENDOR_ID, RTE_ACC100_VF_DEVICE_ID)
+		RTE_PCI_DEVICE(ACC100_VENDOR_ID, ACC100_VF_DEVICE_ID)
 	},
 	{.device_id = 0},
 };
