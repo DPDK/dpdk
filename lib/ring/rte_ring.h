@@ -66,10 +66,9 @@ ssize_t rte_ring_get_memsize(unsigned int count);
  * object table. It is advised to use rte_ring_get_memsize() to get the
  * appropriate size.
  *
- * The ring size is set to *count*, which must be a power of two. Water
- * marking is disabled by default. The real usable ring size is
- * *count-1* instead of *count* to differentiate a full ring from an
- * empty ring.
+ * The ring size is set to *count*, which must be a power of two.
+ * The real usable ring size is *count-1* instead of *count* to
+ * differentiate a full ring from an empty ring.
  *
  * The ring is not added in RTE_TAILQ_RING global list. Indeed, the
  * memory given by the caller may not be shareable among dpdk
@@ -127,10 +126,9 @@ int rte_ring_init(struct rte_ring *r, const char *name, unsigned int count,
  * This function uses ``memzone_reserve()`` to allocate memory. Then it
  * calls rte_ring_init() to initialize an empty ring.
  *
- * The new ring size is set to *count*, which must be a power of
- * two. Water marking is disabled by default. The real usable ring size
- * is *count-1* instead of *count* to differentiate a full ring from an
- * empty ring.
+ * The new ring size is set to *count*, which must be a power of two.
+ * The real usable ring size is *count-1* instead of *count* to
+ * differentiate a full ring from an empty ring.
  *
  * The ring is added in RTE_TAILQ_RING list.
  *
