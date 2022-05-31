@@ -90,7 +90,7 @@ struct rte_acc100_conf {
 };
 
 /**
- * Configure a ACC100 device
+ * Configure a ACC100/ACC101 device in PF mode notably for bbdev-test
  *
  * @param dev_name
  *   The name of the device. This is the short form of PCI BDF, e.g. 00:01.0.
@@ -104,7 +104,7 @@ struct rte_acc100_conf {
  */
 __rte_experimental
 int
-rte_acc100_configure(const char *dev_name, struct rte_acc100_conf *conf);
+rte_acc10x_configure(const char *dev_name, struct rte_acc100_conf *conf);
 
 #ifdef __cplusplus
 }

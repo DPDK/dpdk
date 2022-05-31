@@ -707,11 +707,11 @@ add_bbdev_dev(uint8_t dev_id, struct rte_bbdev_info *info,
 #endif
 #ifdef RTE_BASEBAND_ACC100
 	if ((get_init_device() == true) &&
-		(!strcmp(info->drv.driver_name, ACC100PF_DRIVER_NAME))) {
+			(!strcmp(info->drv.driver_name, ACC100PF_DRIVER_NAME))) {
 		struct rte_acc100_conf conf;
 		unsigned int i;
 
-		printf("Configure ACC100 FEC Driver %s with default values\n",
+		printf("Configure ACC100/ACC101 FEC Driver %s with default values\n",
 				info->drv.driver_name);
 
 		/* clear default configuration before initialization */
@@ -756,7 +756,7 @@ add_bbdev_dev(uint8_t dev_id, struct rte_bbdev_info *info,
 		conf.q_dl_5g.aq_depth_log2 = ACC100_QMGR_AQ_DEPTH;
 
 		/* setup PF with configuration information */
-		ret = rte_acc100_configure(info->dev_name, &conf);
+		ret = rte_acc10x_configure(info->dev_name, &conf);
 		TEST_ASSERT_SUCCESS(ret,
 				"Failed to configure ACC100 PF for bbdev %s",
 				info->dev_name);

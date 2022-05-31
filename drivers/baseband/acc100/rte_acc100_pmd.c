@@ -4578,8 +4578,8 @@ poweron_cleanup(struct rte_bbdev *bbdev, struct acc100_device *d,
 }
 
 /* Initial configuration of a ACC100 device prior to running configure() */
-int
-rte_acc100_configure(const char *dev_name, struct rte_acc100_conf *conf)
+static int
+acc100_configure(const char *dev_name, struct rte_acc100_conf *conf)
 {
 	rte_bbdev_log(INFO, "rte_acc100_configure");
 	uint32_t value, address, status;
@@ -4969,4 +4969,314 @@ rte_acc100_configure(const char *dev_name, struct rte_acc100_conf *conf)
 
 	rte_bbdev_log_debug("PF Tip configuration complete for %s", dev_name);
 	return 0;
+}
+
+
+/* Initial configuration of a ACC101 device prior to running configure() */
+static int
+acc101_configure(const char *dev_name, struct rte_acc100_conf *conf)
+{
+	rte_bbdev_log(INFO, "rte_acc101_configure");
+	uint32_t value, address, status;
+	int qg_idx, template_idx, vf_idx, acc, i;
+	struct rte_bbdev *bbdev = rte_bbdev_get_named_dev(dev_name);
+
+	/* Compile time checks */
+	RTE_BUILD_BUG_ON(sizeof(struct acc100_dma_req_desc) != 256);
+	RTE_BUILD_BUG_ON(sizeof(union acc100_dma_desc) != 256);
+	RTE_BUILD_BUG_ON(sizeof(struct acc100_fcw_td) != 24);
+	RTE_BUILD_BUG_ON(sizeof(struct acc100_fcw_te) != 32);
+
+	if (bbdev == NULL) {
+		rte_bbdev_log(ERR,
+		"Invalid dev_name (%s), or device is not yet initialised",
+		dev_name);
+		return -ENODEV;
+	}
+	struct acc100_device *d = bbdev->data->dev_private;
+
+	/* Store configuration */
+	rte_memcpy(&d->acc100_conf, conf, sizeof(d->acc100_conf));
+
+	/* PCIe Bridge configuration */
+	acc100_reg_write(d, HwPfPcieGpexBridgeControl, ACC101_CFG_PCI_BRIDGE);
+	for (i = 1; i < ACC101_GPEX_AXIMAP_NUM; i++)
+		acc100_reg_write(d, HwPfPcieGpexAxiAddrMappingWindowPexBaseHigh + i * 16, 0);
+
+	/* Prevent blocking AXI read on BRESP for AXI Write */
+	address = HwPfPcieGpexAxiPioControl;
+	value = ACC101_CFG_PCI_AXI;
+	acc100_reg_write(d, address, value);
+
+	/* Explicitly releasing AXI including a 2ms delay on ACC101 */
+	usleep(2000);
+	acc100_reg_write(d, HWPfDmaAxiControl, 1);
+
+	/* Set the default 5GDL DMA configuration */
+	acc100_reg_write(d, HWPfDmaInboundDrainDataSize, ACC101_DMA_INBOUND);
+
+	/* Enable granular dynamic clock gating */
+	address = HWPfHiClkGateHystReg;
+	value = ACC101_CLOCK_GATING_EN;
+	acc100_reg_write(d, address, value);
+
+	/* Set default descriptor signature */
+	address = HWPfDmaDescriptorSignatuture;
+	value = 0;
+	acc100_reg_write(d, address, value);
+
+	/* Enable the Error Detection in DMA */
+	value = ACC101_CFG_DMA_ERROR;
+	address = HWPfDmaErrorDetectionEn;
+	acc100_reg_write(d, address, value);
+
+	/* AXI Cache configuration */
+	value = ACC101_CFG_AXI_CACHE;
+	address = HWPfDmaAxcacheReg;
+	acc100_reg_write(d, address, value);
+
+	/* Default DMA Configuration (Qmgr Enabled) */
+	address = HWPfDmaConfig0Reg;
+	value = 0;
+	acc100_reg_write(d, address, value);
+	address = HWPfDmaQmanen;
+	value = 0;
+	acc100_reg_write(d, address, value);
+
+	/* Default RLIM/ALEN configuration */
+	address = HWPfDmaConfig1Reg;
+	int alen_r = 0xF;
+	int alen_w = 0x7;
+	value = (1 << 31) + (alen_w << 20)  + (1 << 6) + alen_r;
+	acc100_reg_write(d, address, value);
+
+	/* Configure DMA Qmanager addresses */
+	address = HWPfDmaQmgrAddrReg;
+	value = HWPfQmgrEgressQueuesTemplate;
+	acc100_reg_write(d, address, value);
+
+	/* ===== Qmgr Configuration ===== */
+	/* Configuration of the AQueue Depth QMGR_GRP_0_DEPTH_LOG2 for UL */
+	int totalQgs = conf->q_ul_4g.num_qgroups +
+			conf->q_ul_5g.num_qgroups +
+			conf->q_dl_4g.num_qgroups +
+			conf->q_dl_5g.num_qgroups;
+	for (qg_idx = 0; qg_idx < totalQgs; qg_idx++) {
+		address = HWPfQmgrDepthLog2Grp +
+		ACC101_BYTES_IN_WORD * qg_idx;
+		value = aqDepth(qg_idx, conf);
+		acc100_reg_write(d, address, value);
+		address = HWPfQmgrTholdGrp +
+		ACC101_BYTES_IN_WORD * qg_idx;
+		value = (1 << 16) + (1 << (aqDepth(qg_idx, conf) - 1));
+		acc100_reg_write(d, address, value);
+	}
+
+	/* Template Priority in incremental order */
+	for (template_idx = 0; template_idx < ACC101_NUM_TMPL;
+			template_idx++) {
+		address = HWPfQmgrGrpTmplateReg0Indx + ACC101_BYTES_IN_WORD * template_idx;
+		value = ACC101_TMPL_PRI_0;
+		acc100_reg_write(d, address, value);
+		address = HWPfQmgrGrpTmplateReg1Indx + ACC101_BYTES_IN_WORD * template_idx;
+		value = ACC101_TMPL_PRI_1;
+		acc100_reg_write(d, address, value);
+		address = HWPfQmgrGrpTmplateReg2indx + ACC101_BYTES_IN_WORD * template_idx;
+		value = ACC101_TMPL_PRI_2;
+		acc100_reg_write(d, address, value);
+		address = HWPfQmgrGrpTmplateReg3Indx + ACC101_BYTES_IN_WORD * template_idx;
+		value = ACC101_TMPL_PRI_3;
+		acc100_reg_write(d, address, value);
+	}
+
+	address = HWPfQmgrGrpPriority;
+	value = ACC101_CFG_QMGR_HI_P;
+	acc100_reg_write(d, address, value);
+
+	/* Template Configuration */
+	for (template_idx = 0; template_idx < ACC101_NUM_TMPL;
+			template_idx++) {
+		value = 0;
+		address = HWPfQmgrGrpTmplateReg4Indx
+				+ ACC101_BYTES_IN_WORD * template_idx;
+		acc100_reg_write(d, address, value);
+	}
+	/* 4GUL */
+	int numQgs = conf->q_ul_4g.num_qgroups;
+	int numQqsAcc = 0;
+	value = 0;
+	for (qg_idx = numQqsAcc; qg_idx < (numQgs + numQqsAcc); qg_idx++)
+		value |= (1 << qg_idx);
+	for (template_idx = ACC101_SIG_UL_4G;
+			template_idx <= ACC101_SIG_UL_4G_LAST;
+			template_idx++) {
+		address = HWPfQmgrGrpTmplateReg4Indx
+				+ ACC101_BYTES_IN_WORD * template_idx;
+		acc100_reg_write(d, address, value);
+	}
+	/* 5GUL */
+	numQqsAcc += numQgs;
+	numQgs	= conf->q_ul_5g.num_qgroups;
+	value = 0;
+	int numEngines = 0;
+	for (qg_idx = numQqsAcc; qg_idx < (numQgs + numQqsAcc); qg_idx++)
+		value |= (1 << qg_idx);
+	for (template_idx = ACC101_SIG_UL_5G;
+			template_idx <= ACC101_SIG_UL_5G_LAST;
+			template_idx++) {
+		/* Check engine power-on status */
+		address = HwPfFecUl5gIbDebugReg +
+				ACC101_ENGINE_OFFSET * template_idx;
+		status = (acc100_reg_read(d, address) >> 4) & 0xF;
+		address = HWPfQmgrGrpTmplateReg4Indx
+				+ ACC101_BYTES_IN_WORD * template_idx;
+		if (status == 1) {
+			acc100_reg_write(d, address, value);
+			numEngines++;
+		} else
+			acc100_reg_write(d, address, 0);
+	}
+	printf("Number of 5GUL engines %d\n", numEngines);
+	/* 4GDL */
+	numQqsAcc += numQgs;
+	numQgs	= conf->q_dl_4g.num_qgroups;
+	value = 0;
+	for (qg_idx = numQqsAcc; qg_idx < (numQgs + numQqsAcc); qg_idx++)
+		value |= (1 << qg_idx);
+	for (template_idx = ACC101_SIG_DL_4G;
+			template_idx <= ACC101_SIG_DL_4G_LAST;
+			template_idx++) {
+		address = HWPfQmgrGrpTmplateReg4Indx
+				+ ACC101_BYTES_IN_WORD * template_idx;
+		acc100_reg_write(d, address, value);
+	}
+	/* 5GDL */
+	numQqsAcc += numQgs;
+	numQgs	= conf->q_dl_5g.num_qgroups;
+	value = 0;
+	for (qg_idx = numQqsAcc; qg_idx < (numQgs + numQqsAcc); qg_idx++)
+		value |= (1 << qg_idx);
+	for (template_idx = ACC101_SIG_DL_5G;
+			template_idx <= ACC101_SIG_DL_5G_LAST;
+			template_idx++) {
+		address = HWPfQmgrGrpTmplateReg4Indx
+				+ ACC101_BYTES_IN_WORD * template_idx;
+		acc100_reg_write(d, address, value);
+	}
+
+	/* Queue Group Function mapping */
+	int qman_func_id[8] = {0, 2, 1, 3, 4, 0, 0, 0};
+	address = HWPfQmgrGrpFunction0;
+	value = 0;
+	for (qg_idx = 0; qg_idx < 8; qg_idx++) {
+		acc = accFromQgid(qg_idx, conf);
+		value |= qman_func_id[acc]<<(qg_idx * 4);
+	}
+	acc100_reg_write(d, address, value);
+
+	/* Configuration of the Arbitration QGroup depth to 1 */
+	for (qg_idx = 0; qg_idx < totalQgs; qg_idx++) {
+		address = HWPfQmgrArbQDepthGrp +
+		ACC101_BYTES_IN_WORD * qg_idx;
+		value = 0;
+		acc100_reg_write(d, address, value);
+	}
+
+	/* Enabling AQueues through the Queue hierarchy*/
+	for (vf_idx = 0; vf_idx < ACC101_NUM_VFS; vf_idx++) {
+		for (qg_idx = 0; qg_idx < ACC101_NUM_QGRPS; qg_idx++) {
+			value = 0;
+			if (vf_idx < conf->num_vf_bundles &&
+					qg_idx < totalQgs)
+				value = (1 << aqNum(qg_idx, conf)) - 1;
+			address = HWPfQmgrAqEnableVf
+					+ vf_idx * ACC101_BYTES_IN_WORD;
+			value += (qg_idx << 16);
+			acc100_reg_write(d, address, value);
+		}
+	}
+
+	/* This pointer to ARAM (128kB) is shifted by 2 (4B per register) */
+	uint32_t aram_address = 0;
+	for (qg_idx = 0; qg_idx < totalQgs; qg_idx++) {
+		for (vf_idx = 0; vf_idx < conf->num_vf_bundles; vf_idx++) {
+			address = HWPfQmgrVfBaseAddr + vf_idx
+					* ACC101_BYTES_IN_WORD + qg_idx
+					* ACC101_BYTES_IN_WORD * 64;
+			value = aram_address;
+			acc100_reg_write(d, address, value);
+			/* Offset ARAM Address for next memory bank
+			 * - increment of 4B
+			 */
+			aram_address += aqNum(qg_idx, conf) *
+					(1 << aqDepth(qg_idx, conf));
+		}
+	}
+
+	if (aram_address > ACC101_WORDS_IN_ARAM_SIZE) {
+		rte_bbdev_log(ERR, "ARAM Configuration not fitting %d %d\n",
+				aram_address, ACC101_WORDS_IN_ARAM_SIZE);
+		return -EINVAL;
+	}
+
+	/* ==== HI Configuration ==== */
+
+	/* No Info Ring/MSI by default */
+	acc100_reg_write(d, HWPfHiInfoRingIntWrEnRegPf, 0);
+	acc100_reg_write(d, HWPfHiInfoRingVf2pfLoWrEnReg, 0);
+	acc100_reg_write(d, HWPfHiCfgMsiIntWrEnRegPf, 0xFFFFFFFF);
+	acc100_reg_write(d, HWPfHiCfgMsiVf2pfLoWrEnReg, 0xFFFFFFFF);
+	/* Prevent Block on Transmit Error */
+	address = HWPfHiBlockTransmitOnErrorEn;
+	value = 0;
+	acc100_reg_write(d, address, value);
+	/* Prevents to drop MSI */
+	address = HWPfHiMsiDropEnableReg;
+	value = 0;
+	acc100_reg_write(d, address, value);
+	/* Set the PF Mode register */
+	address = HWPfHiPfMode;
+	value = (conf->pf_mode_en) ? ACC101_PF_VAL : 0;
+	acc100_reg_write(d, address, value);
+	/* Explicitly releasing AXI after PF Mode and 2 ms */
+	usleep(2000);
+	acc100_reg_write(d, HWPfDmaAxiControl, 1);
+
+	/* QoS overflow init */
+	value = 1;
+	address = HWPfQosmonAEvalOverflow0;
+	acc100_reg_write(d, address, value);
+	address = HWPfQosmonBEvalOverflow0;
+	acc100_reg_write(d, address, value);
+
+	/* HARQ DDR Configuration */
+	unsigned int ddrSizeInMb = ACC101_HARQ_DDR;
+	for (vf_idx = 0; vf_idx < conf->num_vf_bundles; vf_idx++) {
+		address = HWPfDmaVfDdrBaseRw + vf_idx
+				* 0x10;
+		value = ((vf_idx * (ddrSizeInMb / 64)) << 16) +
+				(ddrSizeInMb - 1);
+		acc100_reg_write(d, address, value);
+	}
+	usleep(ACC101_LONG_WAIT);
+
+	rte_bbdev_log_debug("PF TIP configuration complete for %s", dev_name);
+	return 0;
+}
+
+int
+rte_acc10x_configure(const char *dev_name, struct rte_acc100_conf *conf)
+{
+	struct rte_bbdev *bbdev = rte_bbdev_get_named_dev(dev_name);
+	if (bbdev == NULL) {
+		rte_bbdev_log(ERR, "Invalid dev_name (%s), or device is not yet initialised",
+				dev_name);
+		return -ENODEV;
+	}
+	struct rte_pci_device *pci_dev = RTE_DEV_TO_PCI(bbdev->device);
+	printf("Configure dev id %x\n", pci_dev->id.device_id);
+	if (pci_dev->id.device_id == ACC100_PF_DEVICE_ID)
+		return acc100_configure(dev_name, conf);
+	else
+		return acc101_configure(dev_name, conf);
 }
