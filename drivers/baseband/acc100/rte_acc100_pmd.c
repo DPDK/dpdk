@@ -141,8 +141,8 @@ aqDepth(int qg_idx, struct rte_acc100_conf *acc100_conf)
 	int acc_enum = accFromQgid(qg_idx, acc100_conf);
 	qtopFromAcc(&q_top, acc_enum, acc100_conf);
 	if (unlikely(q_top == NULL))
-		return 0;
-	return q_top->aq_depth_log2;
+		return 1;
+	return RTE_MAX(1, q_top->aq_depth_log2);
 }
 
 /* Return the AQ depth for a Queue Group Index */
@@ -4406,7 +4406,7 @@ rte_acc100_configure(const char *dev_name, struct rte_acc100_conf *conf)
 {
 	rte_bbdev_log(INFO, "rte_acc100_configure");
 	uint32_t value, address, status;
-	int qg_idx, template_idx, vf_idx, acc, i;
+	int qg_idx, template_idx, vf_idx, acc, i, j;
 	struct rte_bbdev *bbdev = rte_bbdev_get_named_dev(dev_name);
 
 	/* Compile time checks */
@@ -4425,6 +4425,9 @@ rte_acc100_configure(const char *dev_name, struct rte_acc100_conf *conf)
 
 	/* Store configuration */
 	rte_memcpy(&d->acc100_conf, conf, sizeof(d->acc100_conf));
+
+	value = acc100_reg_read(d, HwPfPcieGpexBridgeControl);
+	bool firstCfg = (value != ACC100_CFG_PCI_BRIDGE);
 
 	/* PCIe Bridge configuration */
 	acc100_reg_write(d, HwPfPcieGpexBridgeControl, ACC100_CFG_PCI_BRIDGE);
@@ -4446,20 +4449,9 @@ rte_acc100_configure(const char *dev_name, struct rte_acc100_conf *conf)
 	value = 1;
 	acc100_reg_write(d, address, value);
 
-	/* DDR Configuration */
-	address = HWPfDdrBcTim6;
-	value = acc100_reg_read(d, address);
-	value &= 0xFFFFFFFB; /* Bit 2 */
-#ifdef ACC100_DDR_ECC_ENABLE
-	value |= 0x4;
-#endif
-	acc100_reg_write(d, address, value);
-	address = HWPfDdrPhyDqsCountNum;
-#ifdef ACC100_DDR_ECC_ENABLE
-	value = 9;
-#else
-	value = 8;
-#endif
+	/* Enable granular dynamic clock gating */
+	address = HWPfHiClkGateHystReg;
+	value = ACC100_CLOCK_GATING_EN;
 	acc100_reg_write(d, address, value);
 
 	/* Set default descriptor signature */
@@ -4477,6 +4469,17 @@ rte_acc100_configure(const char *dev_name, struct rte_acc100_conf *conf)
 	address = HWPfDmaAxcacheReg;
 	acc100_reg_write(d, address, value);
 
+	/* Adjust PCIe Lane adaptation */
+	for (i = 0; i < ACC100_QUAD_NUMS; i++)
+		for (j = 0; j < ACC100_LANES_PER_QUAD; j++)
+			acc100_reg_write(d, HwPfPcieLnAdaptctrl + i * ACC100_PCIE_QUAD_OFFSET
+					+ j * ACC100_PCIE_LANE_OFFSET, ACC100_ADAPT);
+
+	/* Enable PCIe live adaptation */
+	for (i = 0; i < ACC100_QUAD_NUMS; i++)
+		acc100_reg_write(d, HwPfPciePcsEqControl +
+				i * ACC100_PCIE_QUAD_OFFSET, ACC100_PCS_EQ);
+
 	/* Default DMA Configuration (Qmgr Enabled) */
 	address = HWPfDmaConfig0Reg;
 	value = 0;
@@ -4493,6 +4496,11 @@ rte_acc100_configure(const char *dev_name, struct rte_acc100_conf *conf)
 	/* Configure DMA Qmanager addresses */
 	address = HWPfDmaQmgrAddrReg;
 	value = HWPfQmgrEgressQueuesTemplate;
+	acc100_reg_write(d, address, value);
+
+	/* Default Fabric Mode */
+	address = HWPfFabricMode;
+	value = ACC100_FABRIC_MODE;
 	acc100_reg_write(d, address, value);
 
 	/* ===== Qmgr Configuration ===== */
@@ -4513,22 +4521,17 @@ rte_acc100_configure(const char *dev_name, struct rte_acc100_conf *conf)
 	}
 
 	/* Template Priority in incremental order */
-	for (template_idx = 0; template_idx < ACC100_NUM_TMPL;
-			template_idx++) {
-		address = HWPfQmgrGrpTmplateReg0Indx +
-		ACC100_BYTES_IN_WORD * (template_idx % 8);
+	for (template_idx = 0; template_idx < ACC100_NUM_TMPL; template_idx++) {
+		address = HWPfQmgrGrpTmplateReg0Indx + ACC100_BYTES_IN_WORD * template_idx;
 		value = ACC100_TMPL_PRI_0;
 		acc100_reg_write(d, address, value);
-		address = HWPfQmgrGrpTmplateReg1Indx +
-		ACC100_BYTES_IN_WORD * (template_idx % 8);
+		address = HWPfQmgrGrpTmplateReg1Indx + ACC100_BYTES_IN_WORD * template_idx;
 		value = ACC100_TMPL_PRI_1;
 		acc100_reg_write(d, address, value);
-		address = HWPfQmgrGrpTmplateReg2indx +
-		ACC100_BYTES_IN_WORD * (template_idx % 8);
+		address = HWPfQmgrGrpTmplateReg2indx + ACC100_BYTES_IN_WORD * template_idx;
 		value = ACC100_TMPL_PRI_2;
 		acc100_reg_write(d, address, value);
-		address = HWPfQmgrGrpTmplateReg3Indx +
-		ACC100_BYTES_IN_WORD * (template_idx % 8);
+		address = HWPfQmgrGrpTmplateReg3Indx + ACC100_BYTES_IN_WORD * template_idx;
 		value = ACC100_TMPL_PRI_3;
 		acc100_reg_write(d, address, value);
 	}
@@ -4579,9 +4582,6 @@ rte_acc100_configure(const char *dev_name, struct rte_acc100_conf *conf)
 			numEngines++;
 		} else
 			acc100_reg_write(d, address, 0);
-#if RTE_ACC100_SINGLE_FEC == 1
-		value = 0;
-#endif
 	}
 	printf("Number of 5GUL engines %d\n", numEngines);
 	/* 4GDL */
@@ -4596,9 +4596,6 @@ rte_acc100_configure(const char *dev_name, struct rte_acc100_conf *conf)
 		address = HWPfQmgrGrpTmplateReg4Indx
 				+ ACC100_BYTES_IN_WORD * template_idx;
 		acc100_reg_write(d, address, value);
-#if RTE_ACC100_SINGLE_FEC == 1
-			value = 0;
-#endif
 	}
 	/* 5GDL */
 	numQqsAcc += numQgs;
@@ -4612,13 +4609,10 @@ rte_acc100_configure(const char *dev_name, struct rte_acc100_conf *conf)
 		address = HWPfQmgrGrpTmplateReg4Indx
 				+ ACC100_BYTES_IN_WORD * template_idx;
 		acc100_reg_write(d, address, value);
-#if RTE_ACC100_SINGLE_FEC == 1
-		value = 0;
-#endif
 	}
 
 	/* Queue Group Function mapping */
-	int qman_func_id[5] = {0, 2, 1, 3, 4};
+	int qman_func_id[8] = {0, 2, 1, 3, 4, 0, 0, 0};
 	address = HWPfQmgrGrpFunction0;
 	value = 0;
 	for (qg_idx = 0; qg_idx < 8; qg_idx++) {
@@ -4649,7 +4643,7 @@ rte_acc100_configure(const char *dev_name, struct rte_acc100_conf *conf)
 		}
 	}
 
-	/* This pointer to ARAM (256kB) is shifted by 2 (4B per register) */
+	/* This pointer to ARAM (128kB) is shifted by 2 (4B per register) */
 	uint32_t aram_address = 0;
 	for (qg_idx = 0; qg_idx < totalQgs; qg_idx++) {
 		for (vf_idx = 0; vf_idx < conf->num_vf_bundles; vf_idx++) {
@@ -4674,6 +4668,11 @@ rte_acc100_configure(const char *dev_name, struct rte_acc100_conf *conf)
 
 	/* ==== HI Configuration ==== */
 
+	/* No Info Ring/MSI by default */
+	acc100_reg_write(d, HWPfHiInfoRingIntWrEnRegPf, 0);
+	acc100_reg_write(d, HWPfHiInfoRingVf2pfLoWrEnReg, 0);
+	acc100_reg_write(d, HWPfHiCfgMsiIntWrEnRegPf, 0xFFFFFFFF);
+	acc100_reg_write(d, HWPfHiCfgMsiVf2pfLoWrEnReg, 0xFFFFFFFF);
 	/* Prevent Block on Transmit Error */
 	address = HWPfHiBlockTransmitOnErrorEn;
 	value = 0;
@@ -4686,10 +4685,6 @@ rte_acc100_configure(const char *dev_name, struct rte_acc100_conf *conf)
 	address = HWPfHiPfMode;
 	value = (conf->pf_mode_en) ? ACC100_PF_VAL : 0;
 	acc100_reg_write(d, address, value);
-	/* Enable Error Detection in HW */
-	address = HWPfDmaErrorDetectionEn;
-	value = 0x3D7;
-	acc100_reg_write(d, address, value);
 
 	/* QoS overflow init */
 	value = 1;
@@ -4699,7 +4694,7 @@ rte_acc100_configure(const char *dev_name, struct rte_acc100_conf *conf)
 	acc100_reg_write(d, address, value);
 
 	/* HARQ DDR Configuration */
-	unsigned int ddrSizeInMb = 512; /* Fixed to 512 MB per VF for now */
+	unsigned int ddrSizeInMb = ACC100_HARQ_DDR;
 	for (vf_idx = 0; vf_idx < conf->num_vf_bundles; vf_idx++) {
 		address = HWPfDmaVfDdrBaseRw + vf_idx
 				* 0x10;
@@ -4712,6 +4707,88 @@ rte_acc100_configure(const char *dev_name, struct rte_acc100_conf *conf)
 	/* Workaround in case some 5GUL engines are in an unexpected state */
 	if (numEngines < (ACC100_SIG_UL_5G_LAST + 1))
 		poweron_cleanup(bbdev, d, conf);
+
+	uint32_t version = 0;
+	for (i = 0; i < 4; i++)
+		version += acc100_reg_read(d,
+				HWPfDdrPhyIdtmFwVersion + 4 * i) << (8 * i);
+	if (version != ACC100_PRQ_DDR_VER) {
+		printf("* Note: Not on DDR PRQ version %8x != %08x\n",
+				version, ACC100_PRQ_DDR_VER);
+	} else if (firstCfg) {
+		/* ---- DDR configuration at boot up --- */
+		/* Read Clear Ddr training status */
+		acc100_reg_read(d, HWPfChaDdrStDoneStatus);
+		/* Reset PHY/IDTM/UMMC */
+		acc100_reg_write(d, HWPfChaDdrWbRstCfg, 3);
+		acc100_reg_write(d, HWPfChaDdrApbRstCfg, 2);
+		acc100_reg_write(d, HWPfChaDdrPhyRstCfg, 2);
+		acc100_reg_write(d, HWPfChaDdrCpuRstCfg, 3);
+		acc100_reg_write(d, HWPfChaDdrSifRstCfg, 2);
+		usleep(ACC100_MS_IN_US);
+		/* Reset WB and APB resets */
+		acc100_reg_write(d, HWPfChaDdrWbRstCfg, 2);
+		acc100_reg_write(d, HWPfChaDdrApbRstCfg, 3);
+		/* Configure PHY-IDTM */
+		acc100_reg_write(d, HWPfDdrPhyIdletimeout, 0x3e8);
+		/* IDTM timing registers */
+		acc100_reg_write(d, HWPfDdrPhyRdLatency, 0x13);
+		acc100_reg_write(d, HWPfDdrPhyRdLatencyDbi, 0x15);
+		acc100_reg_write(d, HWPfDdrPhyWrLatency, 0x10011);
+		/* Configure SDRAM MRS registers */
+		acc100_reg_write(d, HWPfDdrPhyMr01Dimm, 0x3030b70);
+		acc100_reg_write(d, HWPfDdrPhyMr01DimmDbi, 0x3030b50);
+		acc100_reg_write(d, HWPfDdrPhyMr23Dimm, 0x30);
+		acc100_reg_write(d, HWPfDdrPhyMr67Dimm, 0xc00);
+		acc100_reg_write(d, HWPfDdrPhyMr45Dimm, 0x4000000);
+		/* Configure active lanes */
+		acc100_reg_write(d, HWPfDdrPhyDqsCountMax, 0x9);
+		acc100_reg_write(d, HWPfDdrPhyDqsCountNum, 0x9);
+		/* Configure WR/RD leveling timing registers */
+		acc100_reg_write(d, HWPfDdrPhyWrlvlWwRdlvlRr, 0x101212);
+		/* Configure what trainings to execute */
+		acc100_reg_write(d, HWPfDdrPhyTrngType, 0x2d3c);
+		/* Releasing PHY reset */
+		acc100_reg_write(d, HWPfChaDdrPhyRstCfg, 3);
+		/* Configure Memory Controller registers */
+		acc100_reg_write(d, HWPfDdrMemInitPhyTrng0, 0x3);
+		acc100_reg_write(d, HWPfDdrBcDram, 0x3c232003);
+		acc100_reg_write(d, HWPfDdrBcAddrMap, 0x31);
+		/* Configure UMMC BC timing registers */
+		acc100_reg_write(d, HWPfDdrBcRef, 0xa22);
+		acc100_reg_write(d, HWPfDdrBcTim0, 0x4050501);
+		acc100_reg_write(d, HWPfDdrBcTim1, 0xf0b0476);
+		acc100_reg_write(d, HWPfDdrBcTim2, 0x103);
+		acc100_reg_write(d, HWPfDdrBcTim3, 0x144050a1);
+		acc100_reg_write(d, HWPfDdrBcTim4, 0x23300);
+		acc100_reg_write(d, HWPfDdrBcTim5, 0x4230276);
+		acc100_reg_write(d, HWPfDdrBcTim6, 0x857914);
+		acc100_reg_write(d, HWPfDdrBcTim7, 0x79100232);
+		acc100_reg_write(d, HWPfDdrBcTim8, 0x100007ce);
+		acc100_reg_write(d, HWPfDdrBcTim9, 0x50020);
+		acc100_reg_write(d, HWPfDdrBcTim10, 0x40ee);
+		/* Configure UMMC DFI timing registers */
+		acc100_reg_write(d, HWPfDdrDfiInit, 0x5000);
+		acc100_reg_write(d, HWPfDdrDfiTim0, 0x15030006);
+		acc100_reg_write(d, HWPfDdrDfiTim1, 0x11305);
+		acc100_reg_write(d, HWPfDdrDfiPhyUpdEn, 0x1);
+		acc100_reg_write(d, HWPfDdrUmmcIntEn, 0x1f);
+		/* Release IDTM CPU out of reset */
+		acc100_reg_write(d, HWPfChaDdrCpuRstCfg, 0x2);
+		/* Wait PHY-IDTM to finish static training */
+		for (i = 0; i < ACC100_DDR_TRAINING_MAX; i++) {
+			usleep(ACC100_MS_IN_US);
+			value = acc100_reg_read(d,
+					HWPfChaDdrStDoneStatus);
+			if (value & 1)
+				break;
+		}
+		printf("DDR Training completed in %d ms", i);
+		/* Enable Memory Controller */
+		acc100_reg_write(d, HWPfDdrUmmcCtrl, 0x401);
+		/* Release AXI interface reset */
+		acc100_reg_write(d, HWPfChaDdrSifRstCfg, 3);
+	}
 
 	rte_bbdev_log_debug("PF Tip configuration complete for %s", dev_name);
 	return 0;
