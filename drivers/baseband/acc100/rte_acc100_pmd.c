@@ -22,6 +22,7 @@
 #include <rte_bbdev.h>
 #include <rte_bbdev_pmd.h>
 #include "rte_acc100_pmd.h"
+#include "acc101_pmd.h"
 
 #ifdef RTE_LIBRTE_BBDEV_DEBUG
 RTE_LOG_REGISTER_DEFAULT(acc100_logtype, DEBUG);
@@ -1133,7 +1134,10 @@ static const struct rte_bbdev_ops acc100_bbdev_ops = {
 /* ACC100 PCI PF address map */
 static struct rte_pci_id pci_id_acc100_pf_map[] = {
 	{
-		RTE_PCI_DEVICE(ACC100_VENDOR_ID, ACC100_PF_DEVICE_ID)
+		RTE_PCI_DEVICE(ACC100_VENDOR_ID, ACC100_PF_DEVICE_ID),
+	},
+	{
+		RTE_PCI_DEVICE(ACC101_VENDOR_ID, ACC101_PF_DEVICE_ID),
 	},
 	{.device_id = 0},
 };
@@ -1141,7 +1145,10 @@ static struct rte_pci_id pci_id_acc100_pf_map[] = {
 /* ACC100 PCI VF address map */
 static struct rte_pci_id pci_id_acc100_vf_map[] = {
 	{
-		RTE_PCI_DEVICE(ACC100_VENDOR_ID, ACC100_VF_DEVICE_ID)
+		RTE_PCI_DEVICE(ACC100_VENDOR_ID, ACC100_VF_DEVICE_ID),
+	},
+	{
+		RTE_PCI_DEVICE(ACC101_VENDOR_ID, ACC101_VF_DEVICE_ID),
 	},
 	{.device_id = 0},
 };
@@ -1290,7 +1297,7 @@ acc100_fcw_td_fill(const struct rte_bbdev_dec_op *op, struct acc100_fcw_td *fcw)
 
 /* Fill in a frame control word for LDPC decoding. */
 static inline void
-acc100_fcw_ld_fill(const struct rte_bbdev_dec_op *op, struct acc100_fcw_ld *fcw,
+acc100_fcw_ld_fill(struct rte_bbdev_dec_op *op, struct acc100_fcw_ld *fcw,
 		union acc100_harq_layout_data *harq_layout)
 {
 	uint16_t harq_out_length, harq_in_length, ncb_p, k0_p, parity_offset;
@@ -1405,6 +1412,128 @@ acc100_fcw_ld_fill(const struct rte_bbdev_dec_op *op, struct acc100_fcw_ld *fcw,
 			fcw->hcout_size1 = 0;
 			fcw->hcout_offset = 0;
 		}
+		harq_layout[harq_index].offset = fcw->hcout_offset;
+		harq_layout[harq_index].size0 = fcw->hcout_size0;
+	} else {
+		fcw->hcout_size0 = 0;
+		fcw->hcout_size1 = 0;
+		fcw->hcout_offset = 0;
+	}
+}
+
+/* Convert offset to harq index for harq_layout structure */
+static inline uint32_t hq_index(uint32_t offset)
+{
+	return (offset >> ACC100_HARQ_OFFSET_SHIFT) & ACC100_HARQ_OFFSET_MASK;
+}
+
+/* Fill in a frame control word for LDPC decoding for ACC101 */
+static inline void
+acc101_fcw_ld_fill(struct rte_bbdev_dec_op *op, struct acc100_fcw_ld *fcw,
+		union acc100_harq_layout_data *harq_layout)
+{
+	uint16_t harq_out_length, harq_in_length, ncb_p, k0_p, parity_offset;
+	uint32_t harq_index;
+	uint32_t l;
+
+	fcw->qm = op->ldpc_dec.q_m;
+	fcw->nfiller = op->ldpc_dec.n_filler;
+	fcw->BG = (op->ldpc_dec.basegraph - 1);
+	fcw->Zc = op->ldpc_dec.z_c;
+	fcw->ncb = op->ldpc_dec.n_cb;
+	fcw->k0 = get_k0(fcw->ncb, fcw->Zc, op->ldpc_dec.basegraph,
+			op->ldpc_dec.rv_index);
+	if (op->ldpc_dec.code_block_mode == RTE_BBDEV_CODE_BLOCK)
+		fcw->rm_e = op->ldpc_dec.cb_params.e;
+	else
+		fcw->rm_e = (op->ldpc_dec.tb_params.r <
+				op->ldpc_dec.tb_params.cab) ?
+						op->ldpc_dec.tb_params.ea :
+						op->ldpc_dec.tb_params.eb;
+
+	if (unlikely(check_bit(op->ldpc_dec.op_flags,
+			RTE_BBDEV_LDPC_HQ_COMBINE_IN_ENABLE) &&
+			(op->ldpc_dec.harq_combined_input.length == 0))) {
+		rte_bbdev_log(WARNING, "Null HARQ input size provided");
+		/* Disable HARQ input in that case to carry forward */
+		op->ldpc_dec.op_flags ^= RTE_BBDEV_LDPC_HQ_COMBINE_IN_ENABLE;
+	}
+
+	fcw->hcin_en = check_bit(op->ldpc_dec.op_flags,
+			RTE_BBDEV_LDPC_HQ_COMBINE_IN_ENABLE);
+	fcw->hcout_en = check_bit(op->ldpc_dec.op_flags,
+			RTE_BBDEV_LDPC_HQ_COMBINE_OUT_ENABLE);
+	fcw->crc_select = check_bit(op->ldpc_dec.op_flags,
+			RTE_BBDEV_LDPC_CRC_TYPE_24B_CHECK);
+	fcw->bypass_dec = check_bit(op->ldpc_dec.op_flags,
+			RTE_BBDEV_LDPC_DECODE_BYPASS);
+	fcw->bypass_intlv = check_bit(op->ldpc_dec.op_flags,
+			RTE_BBDEV_LDPC_DEINTERLEAVER_BYPASS);
+	if (op->ldpc_dec.q_m == 1) {
+		fcw->bypass_intlv = 1;
+		fcw->qm = 2;
+	}
+	fcw->hcin_decomp_mode = check_bit(op->ldpc_dec.op_flags,
+			RTE_BBDEV_LDPC_HARQ_6BIT_COMPRESSION);
+	fcw->hcout_comp_mode = check_bit(op->ldpc_dec.op_flags,
+			RTE_BBDEV_LDPC_HARQ_6BIT_COMPRESSION);
+	fcw->llr_pack_mode = check_bit(op->ldpc_dec.op_flags,
+			RTE_BBDEV_LDPC_LLR_COMPRESSION);
+	harq_index = hq_index(op->ldpc_dec.harq_combined_output.offset);
+	if (fcw->hcin_en > 0) {
+		harq_in_length = op->ldpc_dec.harq_combined_input.length;
+		if (fcw->hcin_decomp_mode > 0)
+			harq_in_length = harq_in_length * 8 / 6;
+		harq_in_length = RTE_MIN(harq_in_length, op->ldpc_dec.n_cb
+				- op->ldpc_dec.n_filler);
+		/* Alignment on next 64B - Already enforced from HC output */
+		harq_in_length = RTE_ALIGN_FLOOR(harq_in_length, 64);
+		fcw->hcin_size0 = harq_in_length;
+		fcw->hcin_offset = 0;
+		fcw->hcin_size1 = 0;
+	} else {
+		fcw->hcin_size0 = 0;
+		fcw->hcin_offset = 0;
+		fcw->hcin_size1 = 0;
+	}
+
+	fcw->itmax = op->ldpc_dec.iter_max;
+	fcw->itstop = check_bit(op->ldpc_dec.op_flags,
+			RTE_BBDEV_LDPC_ITERATION_STOP_ENABLE);
+	fcw->synd_precoder = fcw->itstop;
+	/*
+	 * These are all implicitly set
+	 * fcw->synd_post = 0;
+	 * fcw->so_en = 0;
+	 * fcw->so_bypass_rm = 0;
+	 * fcw->so_bypass_intlv = 0;
+	 * fcw->dec_convllr = 0;
+	 * fcw->hcout_convllr = 0;
+	 * fcw->hcout_size1 = 0;
+	 * fcw->so_it = 0;
+	 * fcw->hcout_offset = 0;
+	 * fcw->negstop_th = 0;
+	 * fcw->negstop_it = 0;
+	 * fcw->negstop_en = 0;
+	 * fcw->gain_i = 1;
+	 * fcw->gain_h = 1;
+	 */
+	if (fcw->hcout_en > 0) {
+		parity_offset = (op->ldpc_dec.basegraph == 1 ? 20 : 8)
+			* op->ldpc_dec.z_c - op->ldpc_dec.n_filler;
+		k0_p = (fcw->k0 > parity_offset) ?
+				fcw->k0 - op->ldpc_dec.n_filler : fcw->k0;
+		ncb_p = fcw->ncb - op->ldpc_dec.n_filler;
+		l = RTE_MIN(k0_p + fcw->rm_e, INT16_MAX);
+		harq_out_length = (uint16_t) fcw->hcin_size0;
+		harq_out_length = RTE_MAX(harq_out_length, l);
+		/* Cannot exceed the pruned Ncb circular buffer */
+		harq_out_length = RTE_MIN(harq_out_length, ncb_p);
+		/* Alignment on next 64B */
+		harq_out_length = RTE_ALIGN_CEIL(harq_out_length, 64);
+		fcw->hcout_size0 = harq_out_length;
+		fcw->hcout_size1 = 0;
+		fcw->hcout_offset = 0;
 		harq_layout[harq_index].offset = fcw->hcout_offset;
 		harq_layout[harq_index].size0 = fcw->hcout_size0;
 	} else {
@@ -2966,7 +3095,7 @@ enqueue_ldpc_dec_one_op_cb(struct acc100_queue *q, struct rte_bbdev_dec_op *op,
 		struct acc100_fcw_ld *fcw;
 		uint32_t seg_total_left;
 		fcw = &desc->req.fcw_ld;
-		acc100_fcw_ld_fill(op, fcw, harq_layout);
+		q->d->fcw_ld_fill(op, fcw, harq_layout);
 
 		/* Special handling when overusing mbuf */
 		if (fcw->rm_e < ACC100_MAX_E_MBUF)
@@ -3033,7 +3162,7 @@ enqueue_ldpc_dec_one_op_tb(struct acc100_queue *q, struct rte_bbdev_dec_op *op,
 	desc = q->ring_addr + desc_idx;
 	uint64_t fcw_offset = (desc_idx << 8) + ACC100_DESC_FCW_OFFSET;
 	union acc100_harq_layout_data *harq_layout = q->d->harq_layout;
-	acc100_fcw_ld_fill(op, &desc->req.fcw_ld, harq_layout);
+	q->d->fcw_ld_fill(op, &desc->req.fcw_ld, harq_layout);
 
 	input = op->ldpc_dec.input.data;
 	h_output_head = h_output = op->ldpc_dec.hard_output.data;
@@ -4145,9 +4274,19 @@ acc100_bbdev_init(struct rte_bbdev *dev, struct rte_pci_driver *drv)
 	dev->dequeue_ldpc_enc_ops = acc100_dequeue_ldpc_enc;
 	dev->dequeue_ldpc_dec_ops = acc100_dequeue_ldpc_dec;
 
+	/* Device variant specific handling */
+	if ((pci_dev->id.device_id == ACC100_PF_DEVICE_ID) ||
+			(pci_dev->id.device_id == ACC100_VF_DEVICE_ID)) {
+		((struct acc100_device *) dev->data->dev_private)->device_variant = ACC100_VARIANT;
+		((struct acc100_device *) dev->data->dev_private)->fcw_ld_fill = acc100_fcw_ld_fill;
+	} else {
+		((struct acc100_device *) dev->data->dev_private)->device_variant = ACC101_VARIANT;
+		((struct acc100_device *) dev->data->dev_private)->fcw_ld_fill = acc101_fcw_ld_fill;
+	}
+
 	((struct acc100_device *) dev->data->dev_private)->pf_device =
-			!strcmp(drv->driver.name,
-					RTE_STR(ACC100PF_DRIVER_NAME));
+			!strcmp(drv->driver.name, RTE_STR(ACC100PF_DRIVER_NAME));
+
 	((struct acc100_device *) dev->data->dev_private)->mmio_base =
 			pci_dev->mem_resource[0].addr;
 

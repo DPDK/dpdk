@@ -22,6 +22,9 @@
 #define rte_bbdev_log_debug(fmt, ...)
 #endif
 
+#define ACC100_VARIANT 0
+#define ACC101_VARIANT 1
+
 /* ACC100 PF and VF driver names */
 #define ACC100PF_DRIVER_NAME           intel_acc100_pf
 #define ACC100VF_DRIVER_NAME           intel_acc100_vf
@@ -62,6 +65,8 @@
 #define ACC100_HARQ_LAYOUT             (64*1024*1024)
 /* Assume offset for HARQ in memory */
 #define ACC100_HARQ_OFFSET             (32*1024)
+#define ACC100_HARQ_OFFSET_SHIFT       15
+#define ACC100_HARQ_OFFSET_MASK        0x7ffffff
 /* Mask used to calculate an index in an Info Ring array (not a byte offset) */
 #define ACC100_INFO_RING_MASK          (ACC100_INFO_RING_NUM_ENTRIES-1)
 /* Number of Virtual Functions ACC100 supports */
@@ -569,6 +574,10 @@ struct __rte_cache_aligned acc100_queue {
 	struct acc100_device *d;
 };
 
+typedef void (*acc10x_fcw_ld_fill_fun_t)(struct rte_bbdev_dec_op *op,
+		struct acc100_fcw_ld *fcw,
+		union acc100_harq_layout_data *harq_layout);
+
 /* Private data structure for each ACC100 device */
 struct acc100_device {
 	void *mmio_base;  /**< Base address of MMIO registers (BAR0) */
@@ -600,6 +609,8 @@ struct acc100_device {
 	uint16_t q_assigned_bit_map[ACC100_NUM_QGRPS];
 	bool pf_device; /**< True if this is a PF ACC100 device */
 	bool configured; /**< True if this ACC100 device is configured */
+	uint16_t device_variant;  /**< Device variant */
+	acc10x_fcw_ld_fill_fun_t fcw_ld_fill;  /**< 5GUL FCW generation function */
 };
 
 /**

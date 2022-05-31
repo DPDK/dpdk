@@ -1,17 +1,19 @@
 ..  SPDX-License-Identifier: BSD-3-Clause
     Copyright(c) 2020 Intel Corporation
 
-Intel(R) ACC100 5G/4G FEC Poll Mode Driver
-==========================================
+Intel(R) ACC100 and ACC101 5G/4G FEC Poll Mode Drivers
+======================================================
 
 The BBDEV ACC100 5G/4G FEC poll mode driver (PMD) supports an
 implementation of a VRAN FEC wireless acceleration function.
 This device is also known as Mount Bryce.
+The BBDEV ACC101, also known as Mount Cirrus, is a derivative device from Mount Bryce
+with functional and capacity improvements but still with the same exposed BBDEV capabilities.
 
 Features
 --------
 
-ACC100 5G/4G FEC PMD supports the following features:
+ACC100 and ACC101 5G/4G FEC PMDs support the following features:
 
 - LDPC Encode in the DL (5GNR)
 - LDPC Decode in the UL (5GNR)
@@ -23,7 +25,7 @@ ACC100 5G/4G FEC PMD supports the following features:
 - MSI
 - SR-IOV
 
-ACC100 5G/4G FEC PMD supports the following BBDEV capabilities:
+ACC100 and ACC101 5G/4G FEC PMDs support the following BBDEV capabilities:
 
 * For the LDPC encode operation:
    - ``RTE_BBDEV_LDPC_CRC_24B_ATTACH`` :  set to attach CRC24B to CB(s)
@@ -80,14 +82,16 @@ hugepage configuration of a server may be examined using:
 Initialization
 --------------
 
-When the device first powers up, its PCI Physical Functions (PF) can be listed through this command:
+When the device first powers up, its PCI Physical Functions (PF) can be listed through these
+commands for ACC100 and ACC101 respectively:
 
 .. code-block:: console
 
   sudo lspci -vd8086:0d5c
+  sudo lspci -vd8086:57c4
 
 The physical and virtual functions are compatible with Linux UIO drivers:
-``vfio`` and ``igb_uio``. However, in order to work the ACC100 5G/4G
+``vfio`` and ``igb_uio``. However, in order to work the 5G/4G
 FEC device first needs to be bound to one of these linux drivers through DPDK.
 
 
@@ -97,7 +101,8 @@ Bind PF UIO driver(s)
 Install the DPDK igb_uio driver, bind it with the PF PCI device ID and use
 ``lspci`` to confirm the PF device is under use by ``igb_uio`` DPDK UIO driver.
 
-The igb_uio driver may be bound to the PF PCI device using one of two methods:
+The igb_uio driver may be bound to the PF PCI device using one of two methods for ACC100
+(for ACC101 the device id ``57c4`` should be used in lieu of ``0d5c``):
 
 
 1. PCI functions (physical or virtual, depending on the use case) can be bound to
@@ -121,7 +126,7 @@ the UIO driver by repeating this command for every function.
 where the PCI device ID (example: 0000:06:00.0) is obtained using lspci -vd8086:0d5c
 
 
-In a similar way the ACC100 5G/4G FEC PF may be bound with vfio-pci as any PCIe device.
+In a similar way the 5G/4G FEC PF may be bound with vfio-pci as any PCIe device.
 
 
 Enable Virtual Functions
@@ -167,14 +172,14 @@ queues, priorities, load balance, bandwidth and other settings necessary for the
 device to perform FEC functions.
 
 This configuration needs to be executed at least once after reboot or PCI FLR and can
-be achieved by using the function ``acc100_configure()``, which sets up the
-parameters defined in ``acc100_conf`` structure.
+be achieved by using the functions ``rte_acc10x_configure()``,
+which sets up the parameters defined in the compatible ``acc100_conf`` structure.
 
 Test Application
 ----------------
 
 BBDEV provides a test application, ``test-bbdev.py`` and range of test data for testing
-the functionality of ACC100 5G/4G FEC encode and decode, depending on the device's
+the functionality of the device 5G/4G FEC encode and decode, depending on the device's
 capabilities. The test application is located under app->test-bbdev folder and has the
 following options:
 
@@ -212,7 +217,7 @@ Test Vectors
 
 In addition to the simple LDPC decoder and LDPC encoder tests, bbdev also provides
 a range of additional tests under the test_vectors folder, which may be useful. The results
-of these tests will depend on the ACC100 5G/4G FEC capabilities which may cause some
+of these tests will depend on the device 5G/4G FEC capabilities which may cause some
 testcases to be skipped, but no failure should be reported.
 
 
@@ -232,4 +237,11 @@ Specifically for the BBDEV ACC100 PMD, the command below can be used:
 .. code-block:: console
 
   ./pf_bb_config ACC100 -c acc100/acc100_config_vf_5g.cfg
+  ./test-bbdev.py -e="-c 0xff0 -a${VF_PCI_ADDR}" -c validation -n 64 -b 32 -l 1 -v ./ldpc_dec_default.data
+
+Specifically for the BBDEV ACC101 PMD, the command below can be used:
+
+.. code-block:: console
+
+  ./pf_bb_config ACC101 -c acc101/acc101_config_2vf_4g5g.cfg
   ./test-bbdev.py -e="-c 0xff0 -a${VF_PCI_ADDR}" -c validation -n 64 -b 32 -l 1 -v ./ldpc_dec_default.data

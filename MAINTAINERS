@@ -1337,6 +1337,7 @@ F: doc/guides/bbdevs/features/fpga_5gnr_fec.ini
 F: drivers/baseband/acc100/
 F: doc/guides/bbdevs/acc100.rst
 F: doc/guides/bbdevs/features/acc100.ini
+F: doc/guides/bbdevs/features/acc101.ini
 
 Null baseband
 M: Nicolas Chautru <nicolas.chautru@intel.com>

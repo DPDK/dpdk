@@ -186,6 +186,10 @@ New Features
 
   * Added support for secp384r1 elliptic curve.
 
+* **Added Intel ACC101 baseband PMD.**
+
+  Added a new baseband PMD for Intel ACC101 device.
+
 * **Added eventdev API to quiesce an event port.**
 
   Added the function ``rte_event_port_quiesce()``
