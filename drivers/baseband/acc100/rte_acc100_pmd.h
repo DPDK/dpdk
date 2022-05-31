@@ -27,9 +27,9 @@
 #define ACC100VF_DRIVER_NAME           intel_acc100_vf
 
 /* ACC100 PCI vendor & device IDs */
-#define RTE_ACC100_VENDOR_ID           (0x8086)
-#define RTE_ACC100_PF_DEVICE_ID        (0x0d5c)
-#define RTE_ACC100_VF_DEVICE_ID        (0x0d5d)
+#define ACC100_VENDOR_ID           (0x8086)
+#define ACC100_PF_DEVICE_ID        (0x0d5c)
+#define ACC100_VF_DEVICE_ID        (0x0d5d)
 
 /* Values used in filling in descriptors */
 #define ACC100_DMA_DESC_TYPE           2
