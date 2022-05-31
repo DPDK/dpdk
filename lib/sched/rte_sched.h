@@ -579,6 +579,24 @@ rte_sched_port_enqueue(struct rte_sched_port *port, struct rte_mbuf **pkts, uint
 int
 rte_sched_port_dequeue(struct rte_sched_port *port, struct rte_mbuf **pkts, uint32_t n_pkts);
 
+/**
+ * Hierarchical scheduler subport traffic class
+ * oversubscription enable/disable.
+ * This function should be called at the time of subport initialization.
+ *
+ * @param port
+ *   Handle to port scheduler instance
+ * @param subport_id
+ *   Subport ID
+ * @param tc_ov_enable
+ *  Boolean flag to enable/disable TC OV
+ * @return
+ *   0 upon success, error code otherwise
+ */
+__rte_experimental
+int
+rte_sched_subport_tc_ov_config(struct rte_sched_port *port, uint32_t subport_id, bool tc_ov_enable);
+
 #ifdef __cplusplus
 }
 #endif

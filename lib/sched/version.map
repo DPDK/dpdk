@@ -34,4 +34,7 @@ EXPERIMENTAL {
 	# added in 21.11
 	rte_pie_rt_data_init;
 	rte_pie_config_init;
+
+	# added in 22.07
+	rte_sched_subport_tc_ov_config;
 };

@@ -213,6 +213,9 @@ struct rte_sched_subport {
 	uint8_t *bmp_array;
 	struct rte_mbuf **queue_array;
 	uint8_t memory[0] __rte_cache_aligned;
+
+	/* TC oversubscription activation */
+	int tc_ov_enabled;
 } __rte_cache_aligned;
 
 struct rte_sched_port {
@@ -1166,6 +1169,31 @@ rte_sched_cman_config(struct rte_sched_port *port,
 #endif
 
 int
+rte_sched_subport_tc_ov_config(struct rte_sched_port *port,
+	uint32_t subport_id,
+	bool tc_ov_enable)
+{
+	struct rte_sched_subport *s;
+
+	if (port == NULL) {
+		RTE_LOG(ERR, SCHED,
+			"%s: Incorrect value for parameter port\n", __func__);
+		return -EINVAL;
+	}
+
+	if (subport_id >= port->n_subports_per_port) {
+		RTE_LOG(ERR, SCHED,
+			"%s: Incorrect value for parameter subport id\n", __func__);
+		return  -EINVAL;
+	}
+
+	s = port->subports[subport_id];
+	s->tc_ov_enabled = tc_ov_enable ? 1 : 0;
+
+	return 0;
+}
+
+int
 rte_sched_subport_config(struct rte_sched_port *port,
 	uint32_t subport_id,
 	struct rte_sched_subport_params *params,
@@ -1253,6 +1281,9 @@ rte_sched_subport_config(struct rte_sched_port *port,
 		memcpy(s->qsize, params->qsize, sizeof(params->qsize));
 		s->n_pipe_profiles = params->n_pipe_profiles;
 		s->n_max_pipe_profiles = params->n_max_pipe_profiles;
+
+		/* TC oversubscription is enabled by default */
+		s->tc_ov_enabled = 1;
 
 #ifdef RTE_SCHED_CMAN
 		if (params->cman_params != NULL) {
@@ -2320,6 +2351,45 @@ grinder_credits_update(struct rte_sched_port *port,
 
 	/* Subport TCs */
 	if (unlikely(port->time >= subport->tc_time)) {
+		for (i = 0; i < RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE; i++)
+			subport->tc_credits[i] = sp->tc_credits_per_period[i];
+
+		subport->tc_time = port->time + sp->tc_period;
+	}
+
+	/* Pipe TCs */
+	if (unlikely(port->time >= pipe->tc_time)) {
+		for (i = 0; i < RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE; i++)
+			pipe->tc_credits[i] = params->tc_credits_per_period[i];
+		pipe->tc_time = port->time + params->tc_period;
+	}
+}
+
+static inline void
+grinder_credits_update_with_tc_ov(struct rte_sched_port *port,
+	struct rte_sched_subport *subport, uint32_t pos)
+{
+	struct rte_sched_grinder *grinder = subport->grinder + pos;
+	struct rte_sched_pipe *pipe = grinder->pipe;
+	struct rte_sched_pipe_profile *params = grinder->pipe_params;
+	struct rte_sched_subport_profile *sp = grinder->subport_params;
+	uint64_t n_periods;
+	uint32_t i;
+
+	/* Subport TB */
+	n_periods = (port->time - subport->tb_time) / sp->tb_period;
+	subport->tb_credits += n_periods * sp->tb_credits_per_period;
+	subport->tb_credits = RTE_MIN(subport->tb_credits, sp->tb_size);
+	subport->tb_time += n_periods * sp->tb_period;
+
+	/* Pipe TB */
+	n_periods = (port->time - pipe->tb_time) / params->tb_period;
+	pipe->tb_credits += n_periods * params->tb_credits_per_period;
+	pipe->tb_credits = RTE_MIN(pipe->tb_credits, params->tb_size);
+	pipe->tb_time += n_periods * params->tb_period;
+
+	/* Subport TCs */
+	if (unlikely(port->time >= subport->tc_time)) {
 		subport->tc_ov_wm =
 			grinder_tc_ov_credits_update(port, subport, pos);
 
@@ -2347,6 +2417,39 @@ grinder_credits_update(struct rte_sched_port *port,
 
 static inline int
 grinder_credits_check(struct rte_sched_port *port,
+	struct rte_sched_subport *subport, uint32_t pos)
+{
+	struct rte_sched_grinder *grinder = subport->grinder + pos;
+	struct rte_sched_pipe *pipe = grinder->pipe;
+	struct rte_mbuf *pkt = grinder->pkt;
+	uint32_t tc_index = grinder->tc_index;
+	uint64_t pkt_len = pkt->pkt_len + port->frame_overhead;
+	uint64_t subport_tb_credits = subport->tb_credits;
+	uint64_t subport_tc_credits = subport->tc_credits[tc_index];
+	uint64_t pipe_tb_credits = pipe->tb_credits;
+	uint64_t pipe_tc_credits = pipe->tc_credits[tc_index];
+	int enough_credits;
+
+	/* Check pipe and subport credits */
+	enough_credits = (pkt_len <= subport_tb_credits) &&
+		(pkt_len <= subport_tc_credits) &&
+		(pkt_len <= pipe_tb_credits) &&
+		(pkt_len <= pipe_tc_credits);
+
+	if (!enough_credits)
+		return 0;
+
+	/* Update pipe and subport credits */
+	subport->tb_credits -= pkt_len;
+	subport->tc_credits[tc_index] -= pkt_len;
+	pipe->tb_credits -= pkt_len;
+	pipe->tc_credits[tc_index] -= pkt_len;
+
+	return 1;
+}
+
+static inline int
+grinder_credits_check_with_tc_ov(struct rte_sched_port *port,
 	struct rte_sched_subport *subport, uint32_t pos)
 {
 	struct rte_sched_grinder *grinder = subport->grinder + pos;
@@ -2403,8 +2506,13 @@ grinder_schedule(struct rte_sched_port *port,
 	uint32_t pkt_len = pkt->pkt_len + port->frame_overhead;
 	uint32_t be_tc_active;
 
-	if (!grinder_credits_check(port, subport, pos))
-		return 0;
+	if (subport->tc_ov_enabled) {
+		if (!grinder_credits_check_with_tc_ov(port, subport, pos))
+			return 0;
+	} else {
+		if (!grinder_credits_check(port, subport, pos))
+			return 0;
+	}
 
 	/* Advance port time */
 	port->time += pkt_len;
@@ -2770,7 +2878,11 @@ grinder_handle(struct rte_sched_port *port,
 						subport->profile;
 
 		grinder_prefetch_tc_queue_arrays(subport, pos);
-		grinder_credits_update(port, subport, pos);
+
+		if (subport->tc_ov_enabled)
+			grinder_credits_update_with_tc_ov(port, subport, pos);
+		else
+			grinder_credits_update(port, subport, pos);
 
 		grinder->state = e_GRINDER_PREFETCH_MBUF;
 		return 0;
