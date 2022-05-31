@@ -1236,6 +1236,8 @@ get_k0(uint16_t n_cb, uint16_t z_c, uint8_t bg, uint8_t rv_index)
 			return (bg == 1 ? ACC100_K0_3_1 : ACC100_K0_3_2) * z_c;
 	}
 	/* LBRM case - includes a division by N */
+	if (unlikely(z_c == 0))
+		return 0;
 	if (rv_index == 1)
 		return (((bg == 1 ? ACC100_K0_1_1 : ACC100_K0_1_2) * n_cb)
 				/ n) * z_c;
@@ -1764,6 +1766,10 @@ acc100_dma_desc_td_fill(struct rte_bbdev_dec_op *op,
 
 	/* Soft output */
 	if (check_bit(op->turbo_dec.op_flags, RTE_BBDEV_TURBO_SOFT_OUTPUT)) {
+		if (op->turbo_dec.soft_output.data == 0) {
+			rte_bbdev_log(ERR, "Soft output is not defined");
+			return -1;
+		}
 		if (check_bit(op->turbo_dec.op_flags,
 				RTE_BBDEV_TURBO_EQUALIZER))
 			*s_out_length = e;
