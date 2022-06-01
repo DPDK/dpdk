@@ -141,7 +141,7 @@ hns3vf_enable_msix(const struct rte_pci_device *device, bool op)
 	pos = hns3vf_find_pci_capability(device, PCI_CAP_ID_MSIX);
 	if (pos) {
 		ret = rte_pci_read_config(device, &control, sizeof(control),
-				    (pos + PCI_MSIX_FLAGS));
+					  (pos + PCI_MSIX_FLAGS));
 		if (ret < 0) {
 			PMD_INIT_LOG(ERR, "Failed to read PCI offset 0x%x",
 				     (pos + PCI_MSIX_FLAGS));
@@ -153,10 +153,10 @@ hns3vf_enable_msix(const struct rte_pci_device *device, bool op)
 		else
 			control &= ~PCI_MSIX_FLAGS_ENABLE;
 		ret = rte_pci_write_config(device, &control, sizeof(control),
-					  (pos + PCI_MSIX_FLAGS));
+					   (pos + PCI_MSIX_FLAGS));
 		if (ret < 0) {
 			PMD_INIT_LOG(ERR, "failed to write PCI offset 0x%x",
-				    (pos + PCI_MSIX_FLAGS));
+				     (pos + PCI_MSIX_FLAGS));
 			return -ENXIO;
 		}
 
@@ -198,7 +198,7 @@ hns3vf_remove_uc_mac_addr(struct hns3_hw *hw, struct rte_ether_addr *mac_addr)
 				false, NULL, 0);
 	if (ret) {
 		hns3_ether_format_addr(mac_str, RTE_ETHER_ADDR_FMT_SIZE,
-				      mac_addr);
+				       mac_addr);
 		hns3_err(hw, "failed to add uc mac addr(%s), ret = %d",
 			 mac_str, ret);
 	}
@@ -240,12 +240,12 @@ hns3vf_set_default_mac_addr(struct rte_eth_dev *dev,
 		 */
 		if (ret == -EPERM) {
 			hns3_ether_format_addr(mac_str, RTE_ETHER_ADDR_FMT_SIZE,
-					      old_addr);
+					       old_addr);
 			hns3_warn(hw, "Has permanent mac addr(%s) for vf",
 				  mac_str);
 		} else {
 			hns3_ether_format_addr(mac_str, RTE_ETHER_ADDR_FMT_SIZE,
-					      mac_addr);
+					       mac_addr);
 			hns3_err(hw, "Failed to set mac addr(%s) for vf: %d",
 				 mac_str, ret);
 		}
@@ -292,7 +292,7 @@ hns3vf_remove_mc_mac_addr(struct hns3_hw *hw,
 				NULL, 0);
 	if (ret) {
 		hns3_ether_format_addr(mac_str, RTE_ETHER_ADDR_FMT_SIZE,
-				      mac_addr);
+				       mac_addr);
 		hns3_err(hw, "Failed to remove mc mac addr(%s) for vf: %d",
 			 mac_str, ret);
 	}
@@ -714,9 +714,8 @@ hns3vf_check_dev_specifications(struct hns3_hw *hw)
 {
 	if (hw->rss_ind_tbl_size == 0 ||
 	    hw->rss_ind_tbl_size > HNS3_RSS_IND_TBL_SIZE_MAX) {
-		hns3_warn(hw, "the size of hash lookup table configured (%u)"
-			      " exceeds the maximum(%u)", hw->rss_ind_tbl_size,
-			      HNS3_RSS_IND_TBL_SIZE_MAX);
+		hns3_warn(hw, "the size of hash lookup table configured (%u) exceeds the maximum(%u)",
+			  hw->rss_ind_tbl_size, HNS3_RSS_IND_TBL_SIZE_MAX);
 		return -EINVAL;
 	}
 
@@ -1167,8 +1166,8 @@ hns3vf_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 	int ret = 0;
 
 	if (__atomic_load_n(&hw->reset.resetting, __ATOMIC_RELAXED)) {
-		hns3_err(hw, "vf set vlan offload failed during resetting, "
-			     "mask = 0x%x", mask);
+		hns3_err(hw, "vf set vlan offload failed during resetting, mask = 0x%x",
+			 mask);
 		return -EIO;
 	}
 

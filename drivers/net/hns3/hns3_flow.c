@@ -285,9 +285,8 @@ hns3_handle_action_queue(struct rte_eth_dev *dev,
 
 	queue = (const struct rte_flow_action_queue *)action->conf;
 	if (queue->index >= hw->data->nb_rx_queues) {
-		hns3_err(hw, "queue ID(%u) is greater than number of "
-			  "available queue (%u) in driver.",
-			  queue->index, hw->data->nb_rx_queues);
+		hns3_err(hw, "queue ID(%u) is greater than number of available queue (%u) in driver.",
+			 queue->index, hw->data->nb_rx_queues);
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ACTION_CONF,
 					  action, "Invalid queue ID in PF");
@@ -1656,9 +1655,8 @@ hns3_clear_rss_filter(struct rte_eth_dev *dev)
 	}
 
 	if (rss_rule_fail_cnt) {
-		hns3_err(hw, "fail to delete all RSS filters, success num = %d "
-			     "fail num = %d", rss_rule_succ_cnt,
-			     rss_rule_fail_cnt);
+		hns3_err(hw, "fail to delete all RSS filters, success num = %d fail num = %d",
+			 rss_rule_succ_cnt, rss_rule_fail_cnt);
 		ret = -EIO;
 	}
 

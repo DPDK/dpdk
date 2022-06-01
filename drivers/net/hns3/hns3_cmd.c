@@ -108,7 +108,7 @@ hns3_alloc_cmd_queue(struct hns3_hw *hw, int ring_type)
 	ret = hns3_alloc_cmd_desc(hw, ring);
 	if (ret)
 		hns3_err(hw, "descriptor %s alloc error %d",
-			    (ring_type == HNS3_TYPE_CSQ) ? "CSQ" : "CRQ", ret);
+			 (ring_type == HNS3_TYPE_CSQ) ? "CSQ" : "CRQ", ret);
 
 	return ret;
 }

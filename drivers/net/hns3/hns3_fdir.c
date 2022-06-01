@@ -321,7 +321,7 @@ int hns3_init_fd_config(struct hns3_adapter *hns)
 		break;
 	default:
 		hns3_err(hw, "Unsupported flow director mode %u",
-			    pf->fdir.fd_cfg.fd_mode);
+			 pf->fdir.fd_cfg.fd_mode);
 		return -EOPNOTSUPP;
 	}
 
@@ -337,7 +337,7 @@ int hns3_init_fd_config(struct hns3_adapter *hns)
 	    BIT(INNER_SRC_IP) | BIT(INNER_DST_IP) |
 	    BIT(INNER_SRC_PORT) | BIT(INNER_DST_PORT);
 	hns3_dbg(hw, "fdir tuple: inner<vlan_tag1 eth_type ip_src ip_dst "
-		  "ip_proto ip_tos l4_src_port l4_dst_port>");
+		 "ip_proto ip_tos l4_src_port l4_dst_port>");
 
 	/* If use max 400bit key, we can support tuples for ether type */
 	if (pf->fdir.fd_cfg.max_key_length == MAX_KEY_LENGTH) {
@@ -348,8 +348,8 @@ int hns3_init_fd_config(struct hns3_adapter *hns)
 		    BIT(OUTER_TUN_VNI) | BIT(OUTER_TUN_FLOW_ID) |
 		    BIT(OUTER_ETH_TYPE) | BIT(OUTER_IP_PROTO);
 		hns3_dbg(hw, "fdir tuple more: inner<dst_mac src_mac "
-			  "vlan_tag2 sctp_tag> outer<eth_type ip_proto "
-			  "l4_src_port l4_dst_port tun_vni tun_flow_id>");
+			 "vlan_tag2 sctp_tag> outer<eth_type ip_proto "
+			 "l4_src_port l4_dst_port tun_vni tun_flow_id>");
 	}
 
 	/* roce_type is used to filter roce frames
@@ -367,12 +367,11 @@ int hns3_init_fd_config(struct hns3_adapter *hns)
 	if (ret)
 		return ret;
 
-	hns3_dbg(hw, "fdir: stage1<rules-%u counters-%u> stage2<rules-%u "
-		  "counters=%u>",
-		  pf->fdir.fd_cfg.rule_num[HNS3_FD_STAGE_1],
-		  pf->fdir.fd_cfg.cnt_num[HNS3_FD_STAGE_1],
-		  pf->fdir.fd_cfg.rule_num[HNS3_FD_STAGE_2],
-		  pf->fdir.fd_cfg.cnt_num[HNS3_FD_STAGE_2]);
+	hns3_dbg(hw, "fdir: stage1<rules-%u counters-%u> stage2<rules-%u counters=%u>",
+		 pf->fdir.fd_cfg.rule_num[HNS3_FD_STAGE_1],
+		 pf->fdir.fd_cfg.cnt_num[HNS3_FD_STAGE_1],
+		 pf->fdir.fd_cfg.rule_num[HNS3_FD_STAGE_2],
+		 pf->fdir.fd_cfg.cnt_num[HNS3_FD_STAGE_2]);
 
 	return hns3_set_fd_key_config(hns);
 }
@@ -420,7 +419,7 @@ static int hns3_fd_tcam_config(struct hns3_hw *hw, bool sel_x, int loc,
 	ret = hns3_cmd_send(hw, desc, FD_TCAM_CMD_NUM);
 	if (ret)
 		hns3_err(hw, "Config tcam key fail, ret=%d loc=%d add=%d",
-			    ret, loc, is_add);
+			 ret, loc, is_add);
 	return ret;
 }
 
@@ -673,6 +672,7 @@ static void hns3_fd_convert_meta_data(struct hns3_fd_key_cfg *cfg,
 		} else if (i == VLAN_NUMBER) {
 			uint32_t vlan_tag;
 			uint8_t vlan_num;
+
 			if (rule->key_conf.spec.tunnel_type == 0)
 				vlan_num = rule->key_conf.vlan_num;
 			else
@@ -758,14 +758,14 @@ static int hns3_config_key(struct hns3_adapter *hns,
 	ret = hns3_fd_tcam_config(hw, false, rule->location, key_y, true);
 	if (ret) {
 		hns3_err(hw, "Config fd key_y fail, loc=%u, ret=%d",
-			    rule->queue_id, ret);
+			 rule->queue_id, ret);
 		return ret;
 	}
 
 	ret = hns3_fd_tcam_config(hw, true, rule->location, key_x, true);
 	if (ret)
 		hns3_err(hw, "Config fd key_x fail, loc=%u, ret=%d",
-			    rule->queue_id, ret);
+			 rule->queue_id, ret);
 	return ret;
 }
 

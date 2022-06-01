@@ -603,8 +603,8 @@ hns3_send_reset_tqp_cmd(struct hns3_hw *hw, uint16_t queue_id, bool enable)
 	hns3_set_bit(req->reset_req, HNS3_TQP_RESET_B, enable ? 1 : 0);
 	ret = hns3_cmd_send(hw, &desc, 1);
 	if (ret)
-		hns3_err(hw, "send tqp reset cmd error, queue_id = %u, "
-			     "ret = %d", queue_id, ret);
+		hns3_err(hw, "send tqp reset cmd error, queue_id = %u, ret = %d",
+			 queue_id, ret);
 
 	return ret;
 }
@@ -624,8 +624,8 @@ hns3_get_tqp_reset_status(struct hns3_hw *hw, uint16_t queue_id,
 
 	ret = hns3_cmd_send(hw, &desc, 1);
 	if (ret) {
-		hns3_err(hw, "get tqp reset status error, queue_id = %u, "
-			     "ret = %d.", queue_id, ret);
+		hns3_err(hw, "get tqp reset status error, queue_id = %u, ret = %d.",
+			 queue_id, ret);
 		return ret;
 	}
 	*reset_status = hns3_get_bit(req->ready_to_reset, HNS3_TQP_RESET_B);
@@ -666,7 +666,7 @@ hns3pf_reset_tqp(struct hns3_hw *hw, uint16_t queue_id)
 	if (!reset_status) {
 		ret = -ETIMEDOUT;
 		hns3_err(hw, "reset tqp timeout, queue_id = %u, ret = %d",
-			     queue_id, ret);
+			 queue_id, ret);
 		goto tqp_reset_fail;
 	}
 
@@ -749,15 +749,14 @@ hns3pf_reset_all_tqps(struct hns3_hw *hw)
 		for (i = 0; i < hw->cfg_max_queues; i++) {
 			ret = hns3pf_reset_tqp(hw, i);
 			if (ret) {
-				hns3_err(hw,
-				  "fail to reset tqp, queue_id = %d, ret = %d.",
-				  i, ret);
+				hns3_err(hw, "fail to reset tqp, queue_id = %d, ret = %d.",
+					 i, ret);
 				return ret;
 			}
 		}
 	} else if (reset_status != HNS3_RESET_ALL_TQP_SUCCESS) {
 		hns3_err(hw, "fail to reset all tqps, reset_status = %u.",
-				reset_status);
+			 reset_status);
 		return -EIO;
 	}
 
@@ -810,9 +809,8 @@ hns3_reset_all_tqps(struct hns3_adapter *hns)
 	for (i = 0; i < hw->cfg_max_queues; i++) {
 		ret = hns3_tqp_enable(hw, i, false);
 		if (ret) {
-			hns3_err(hw,
-			    "fail to disable tqps before tqps reset, ret = %d.",
-			    ret);
+			hns3_err(hw, "fail to disable tqps before tqps reset, ret = %d.",
+				 ret);
 			return ret;
 		}
 	}
@@ -919,9 +917,9 @@ hns3_reset_queue(struct hns3_hw *hw, uint16_t queue_id,
 	}
 
 	if (!reset_status) {
-		hns3_err(hw, "reset queue timeout, queue_id = %u, "
-			     "queue_type = %s", queue_id,
-			     queue_type == HNS3_RING_TYPE_TX ? "Tx" : "Rx");
+		hns3_err(hw, "reset queue timeout, queue_id = %u, queue_type = %s",
+			 queue_id,
+			 queue_type == HNS3_RING_TYPE_TX ? "Tx" : "Rx");
 		ret = -ETIMEDOUT;
 		goto queue_reset_fail;
 	}

@@ -1626,7 +1626,7 @@ hns3_set_default_mac_addr(struct rte_eth_dev *dev,
 	ret = hw->ops.del_uc_mac_addr(hw, oaddr);
 	if (ret) {
 		hns3_ether_format_addr(mac_str, RTE_ETHER_ADDR_FMT_SIZE,
-				      oaddr);
+				       oaddr);
 		hns3_warn(hw, "Remove old uc mac address(%s) fail: %d",
 			  mac_str, ret);
 
@@ -1658,7 +1658,7 @@ err_pause_addr_cfg:
 	ret_val = hw->ops.del_uc_mac_addr(hw, mac_addr);
 	if (ret_val) {
 		hns3_ether_format_addr(mac_str, RTE_ETHER_ADDR_FMT_SIZE,
-				      mac_addr);
+				       mac_addr);
 		hns3_warn(hw,
 			  "Failed to roll back to del setted mac addr(%s): %d",
 			  mac_str, ret_val);
@@ -1669,7 +1669,7 @@ err_add_uc_addr:
 	if (ret_val) {
 		hns3_ether_format_addr(mac_str, RTE_ETHER_ADDR_FMT_SIZE, oaddr);
 		hns3_warn(hw, "Failed to restore old uc mac addr(%s): %d",
-				  mac_str, ret_val);
+			  mac_str, ret_val);
 	}
 	rte_spinlock_unlock(&hw->lock);
 
@@ -1746,7 +1746,7 @@ hns3_add_mc_mac_addr(struct hns3_hw *hw, struct rte_ether_addr *mac_addr)
 		if (ret == -ENOSPC)
 			hns3_err(hw, "mc mac vlan table is full");
 		hns3_ether_format_addr(mac_str, RTE_ETHER_ADDR_FMT_SIZE,
-				      mac_addr);
+				       mac_addr);
 		hns3_err(hw, "failed to add mc mac addr(%s): %d", mac_str, ret);
 	}
 
@@ -2675,9 +2675,8 @@ hns3_check_dev_specifications(struct hns3_hw *hw)
 {
 	if (hw->rss_ind_tbl_size == 0 ||
 	    hw->rss_ind_tbl_size > HNS3_RSS_IND_TBL_SIZE_MAX) {
-		hns3_err(hw, "the size of hash lookup table configured (%u)"
-			      " exceeds the maximum(%u)", hw->rss_ind_tbl_size,
-			      HNS3_RSS_IND_TBL_SIZE_MAX);
+		hns3_err(hw, "the size of hash lookup table configured (%u) exceeds the maximum(%u)",
+			 hw->rss_ind_tbl_size, HNS3_RSS_IND_TBL_SIZE_MAX);
 		return -EINVAL;
 	}
 
@@ -3915,7 +3914,7 @@ hns3_dev_promiscuous_enable(struct rte_eth_dev *dev)
 		ret = hns3_enable_vlan_filter(hns, false);
 		if (ret) {
 			hns3_err(hw, "failed to enable promiscuous mode due to "
-				     "failure to disable vlan filter, ret = %d",
+				 "failure to disable vlan filter, ret = %d",
 				 ret);
 			err = hns3_set_promisc_mode(hw, false, allmulti);
 			if (err)
@@ -5992,8 +5991,7 @@ hns3_reset_service(void *param)
 		timersub(&tv, &tv_start, &tv_delta);
 		msec = hns3_clock_calctime_ms(&tv_delta);
 		if (msec > HNS3_RESET_PROCESS_MS)
-			hns3_err(hw, "%d handle long time delta %" PRIu64
-				     " ms time=%ld.%.6ld",
+			hns3_err(hw, "%d handle long time delta %" PRIu64 " ms time=%ld.%.6ld",
 				 hw->reset.level, msec,
 				 tv.tv_sec, tv.tv_usec);
 		if (ret == -EAGAIN)

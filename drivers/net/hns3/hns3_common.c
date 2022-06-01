@@ -604,7 +604,7 @@ hns3_init_mac_addrs(struct rte_eth_dev *dev)
 				0);
 	if (dev->data->mac_addrs == NULL) {
 		hns3_err(hw, "failed to allocate %zx bytes needed to store MAC addresses",
-			     sizeof(struct rte_ether_addr) * mac_addrs_capa);
+			 sizeof(struct rte_ether_addr) * mac_addrs_capa);
 		return -ENOMEM;
 	}
 
@@ -680,16 +680,16 @@ hns3_init_ring_with_vector(struct hns3_hw *hw)
 		ret = hw->ops.bind_ring_with_vector(hw, vec, false,
 						    HNS3_RING_TYPE_TX, i);
 		if (ret) {
-			PMD_INIT_LOG(ERR, "fail to unbind TX ring(%d) with "
-					  "vector: %u, ret=%d", i, vec, ret);
+			PMD_INIT_LOG(ERR, "fail to unbind TX ring(%d) with vector: %u, ret=%d",
+				     i, vec, ret);
 			return ret;
 		}
 
 		ret = hw->ops.bind_ring_with_vector(hw, vec, false,
 						    HNS3_RING_TYPE_RX, i);
 		if (ret) {
-			PMD_INIT_LOG(ERR, "fail to unbind RX ring(%d) with "
-					  "vector: %u, ret=%d", i, vec, ret);
+			PMD_INIT_LOG(ERR, "fail to unbind RX ring(%d) with vector: %u, ret=%d",
+				     i, vec, ret);
 			return ret;
 		}
 	}
