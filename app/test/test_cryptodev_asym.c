@@ -976,27 +976,30 @@ static inline void print_asym_capa(
 
 	for (i = 0; i < RTE_CRYPTO_ASYM_OP_LIST_END; i++) {
 		/* check supported operations */
-		if (rte_cryptodev_asym_xform_capability_check_optype(capa, i))
-			printf(" %s",
-					rte_crypto_asym_op_strings[i]);
+		if (rte_cryptodev_asym_xform_capability_check_optype(capa, i)) {
+			if (capa->xform_type == RTE_CRYPTO_ASYM_XFORM_DH)
+				printf(" %s", rte_crypto_asym_ke_strings[i]);
+			else
+				printf(" %s", rte_crypto_asym_op_strings[i]);
 		}
-		switch (capa->xform_type) {
-		case RTE_CRYPTO_ASYM_XFORM_RSA:
-		case RTE_CRYPTO_ASYM_XFORM_MODINV:
-		case RTE_CRYPTO_ASYM_XFORM_MODEX:
-		case RTE_CRYPTO_ASYM_XFORM_DH:
-		case RTE_CRYPTO_ASYM_XFORM_DSA:
-			printf(" modlen: min %d max %d increment %d",
-					capa->modlen.min,
-					capa->modlen.max,
-					capa->modlen.increment);
+	}
+	switch (capa->xform_type) {
+	case RTE_CRYPTO_ASYM_XFORM_RSA:
+	case RTE_CRYPTO_ASYM_XFORM_MODINV:
+	case RTE_CRYPTO_ASYM_XFORM_MODEX:
+	case RTE_CRYPTO_ASYM_XFORM_DH:
+	case RTE_CRYPTO_ASYM_XFORM_DSA:
+		printf(" modlen: min %d max %d increment %d",
+				capa->modlen.min,
+				capa->modlen.max,
+				capa->modlen.increment);
+	break;
+	case RTE_CRYPTO_ASYM_XFORM_ECDSA:
+	case RTE_CRYPTO_ASYM_XFORM_ECPM:
+	default:
 		break;
-		case RTE_CRYPTO_ASYM_XFORM_ECDSA:
-		case RTE_CRYPTO_ASYM_XFORM_ECPM:
-		default:
-			break;
-		}
-		printf("\n");
+	}
+	printf("\n");
 }
 
 static int
@@ -1064,7 +1067,7 @@ test_dh_gen_shared_sec(struct rte_crypto_asym_xform *xfrm)
 	asym_op = op->asym;
 
 	/* Setup a xform and op to generate private key only */
-	xform.dh.type = RTE_CRYPTO_ASYM_OP_SHARED_SECRET_COMPUTE;
+	xform.dh.ke_type = RTE_CRYPTO_ASYM_KE_SHARED_SECRET_COMPUTE;
 	xform.next = NULL;
 	asym_op->dh.priv_key.data = dh_test_params.priv_key.data;
 	asym_op->dh.priv_key.length = dh_test_params.priv_key.length;
@@ -1146,7 +1149,7 @@ test_dh_gen_priv_key(struct rte_crypto_asym_xform *xfrm)
 	asym_op = op->asym;
 
 	/* Setup a xform and op to generate private key only */
-	xform.dh.type = RTE_CRYPTO_ASYM_OP_PRIVATE_KEY_GENERATE;
+	xform.dh.ke_type = RTE_CRYPTO_ASYM_KE_PRIV_KEY_GENERATE;
 	xform.next = NULL;
 	asym_op->dh.priv_key.data = output;
 	asym_op->dh.priv_key.length = sizeof(output);
@@ -1229,7 +1232,7 @@ test_dh_gen_pub_key(struct rte_crypto_asym_xform *xfrm)
 	 * using test private key
 	 *
 	 */
-	xform.dh.type = RTE_CRYPTO_ASYM_OP_PUBLIC_KEY_GENERATE;
+	xform.dh.ke_type = RTE_CRYPTO_ASYM_KE_PUB_KEY_GENERATE;
 	xform.next = NULL;
 
 	asym_op->dh.pub_key.data = output;
@@ -1319,9 +1322,10 @@ test_dh_gen_kp(struct rte_crypto_asym_xform *xfrm)
 	/* Setup a xform chain to generate
 	 * private key first followed by
 	 * public key
-	 */xform.dh.type = RTE_CRYPTO_ASYM_OP_PRIVATE_KEY_GENERATE;
+	 */
+	xform.dh.ke_type = RTE_CRYPTO_ASYM_KE_PRIV_KEY_GENERATE;
 	pub_key_xform.xform_type = RTE_CRYPTO_ASYM_XFORM_DH;
-	pub_key_xform.dh.type = RTE_CRYPTO_ASYM_OP_PUBLIC_KEY_GENERATE;
+	pub_key_xform.dh.ke_type = RTE_CRYPTO_ASYM_KE_PUB_KEY_GENERATE;
 	xform.next = &pub_key_xform;
 
 	asym_op->dh.pub_key.data = out_pub_key;

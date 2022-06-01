@@ -177,10 +177,16 @@ const char *rte_crypto_asym_op_strings[] = {
 	[RTE_CRYPTO_ASYM_OP_ENCRYPT]	= "encrypt",
 	[RTE_CRYPTO_ASYM_OP_DECRYPT]	= "decrypt",
 	[RTE_CRYPTO_ASYM_OP_SIGN]	= "sign",
-	[RTE_CRYPTO_ASYM_OP_VERIFY]	= "verify",
-	[RTE_CRYPTO_ASYM_OP_PRIVATE_KEY_GENERATE]	= "priv_key_generate",
-	[RTE_CRYPTO_ASYM_OP_PUBLIC_KEY_GENERATE] = "pub_key_generate",
-	[RTE_CRYPTO_ASYM_OP_SHARED_SECRET_COMPUTE] = "sharedsecret_compute",
+	[RTE_CRYPTO_ASYM_OP_VERIFY]	= "verify"
+};
+
+/**
+ * Asymmetric crypto key exchange operation strings identifiers.
+ */
+const char *rte_crypto_asym_ke_strings[] = {
+	[RTE_CRYPTO_ASYM_KE_PRIV_KEY_GENERATE] = "priv_key_generate",
+	[RTE_CRYPTO_ASYM_KE_PUB_KEY_GENERATE] = "pub_key_generate",
+	[RTE_CRYPTO_ASYM_KE_SHARED_SECRET_COMPUTE] = "sharedsecret_compute"
 };
 
 /**

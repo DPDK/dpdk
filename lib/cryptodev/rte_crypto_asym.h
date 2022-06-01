@@ -33,6 +33,10 @@ struct rte_cryptodev_asym_session;
 extern const char *
 rte_crypto_asym_xform_strings[];
 
+/** asym key exchange operation type name strings */
+extern const char *
+rte_crypto_asym_ke_strings[];
+
 /** asym operations type name strings */
 extern const char *
 rte_crypto_asym_op_strings[];
@@ -113,13 +117,19 @@ enum rte_crypto_asym_op_type {
 	/**< Signature Generation operation */
 	RTE_CRYPTO_ASYM_OP_VERIFY,
 	/**< Signature Verification operation */
-	RTE_CRYPTO_ASYM_OP_PRIVATE_KEY_GENERATE,
-	/**< DH Private Key generation operation */
-	RTE_CRYPTO_ASYM_OP_PUBLIC_KEY_GENERATE,
-	/**< DH Public Key generation operation */
-	RTE_CRYPTO_ASYM_OP_SHARED_SECRET_COMPUTE,
-	/**< DH Shared Secret compute operation */
 	RTE_CRYPTO_ASYM_OP_LIST_END
+};
+
+/**
+ * Asymmetric crypto key exchange operation type
+ */
+enum rte_crypto_asym_ke_type {
+	RTE_CRYPTO_ASYM_KE_PRIV_KEY_GENERATE,
+	/**< Private Key generation operation */
+	RTE_CRYPTO_ASYM_KE_PUB_KEY_GENERATE,
+	/**< Public Key generation operation */
+	RTE_CRYPTO_ASYM_KE_SHARED_SECRET_COMPUTE
+	/**< Shared Secret compute operation */
 };
 
 /**
@@ -260,7 +270,7 @@ struct rte_crypto_modinv_xform {
  *
  */
 struct rte_crypto_dh_xform {
-	enum rte_crypto_asym_op_type type;
+	enum rte_crypto_asym_ke_type ke_type;
 	/**< Setup xform for key generate or shared secret compute */
 	rte_crypto_uint p;
 	/**< Prime modulus data */
@@ -397,26 +407,27 @@ struct rte_crypto_rsa_op_param {
 struct rte_crypto_dh_op_param {
 	rte_crypto_uint pub_key;
 	/**<
-	 * Output generated public key when xform type is
-	 * DH PUB_KEY_GENERATION.
-	 * Input peer public key when xform type is DH
-	 * SHARED_SECRET_COMPUTATION
+	 * Output - generated public key, when dh xform ke_type is
+	 * RTE_CRYPTO_ASYM_KE_PUB_KEY_GENERATE.
 	 *
+	 * Input - peer's public key, when dh xform ke_type is
+	 * RTE_CRYPTO_ASYM_KE_SHARED_SECRET_COMPUTE.
 	 */
 
 	rte_crypto_uint priv_key;
 	/**<
-	 * Output generated private key if xform type is
-	 * DH PRIVATE_KEY_GENERATION
-	 * Input when xform type is DH SHARED_SECRET_COMPUTATION.
+	 * Output - generated private key, when dh xform ke_type is
+	 * RTE_CRYPTO_ASYM_KE_PRIV_KEY_GENERATE.
 	 *
+	 * Input - private key, when dh xform ke_type is one of:
+	 * RTE_CRYPTO_ASYM_KE_PUB_KEY_GENERATE,
+	 * RTE_CRYPTO_ASYM_KE_SHARED_SECRET_COMPUTE.
 	 */
 
 	rte_crypto_uint shared_secret;
 	/**<
-	 * Output with calculated shared secret
-	 * when dh xform set up with op type = SHARED_SECRET_COMPUTATION.
-	 *
+	 * Output - calculated shared secret when dh xform ke_type is
+	 * RTE_CRYPTO_ASYM_KE_SHARED_SECRET_COMPUTE.
 	 */
 };
 

@@ -168,7 +168,13 @@ struct rte_cryptodev_asymmetric_xform_capability {
 	/**< Transform type: RSA/MODEXP/DH/DSA/MODINV */
 
 	uint32_t op_types;
-	/**< bitmask for supported rte_crypto_asym_op_type */
+	/**<
+	 * Bitmask for supported rte_crypto_asym_op_type or
+	 * rte_crypto_asym_ke_type. Which enum is used is determined
+	 * by the rte_crypto_asym_xform_type. For key exchange algorithms
+	 * like Diffie-Hellman it is rte_crypto_asym_ke_type, for others
+	 * it is rte_crypto_asym_op_type.
+	 */
 
 	__extension__
 	union {
