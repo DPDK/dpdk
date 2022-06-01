@@ -41,6 +41,19 @@ rte_crypto_asym_ke_strings[];
 extern const char *
 rte_crypto_asym_op_strings[];
 
+#define RTE_CRYPTO_ASYM_FLAG_PUB_KEY_NO_PADDING		RTE_BIT32(0)
+/**<
+ * Flag to denote public key will be returned without leading zero bytes
+ * and if the flag is not set, public key will be padded to the left with
+ * zeros to the size of the underlying algorithm (default)
+ */
+#define RTE_CRYPTO_ASYM_FLAG_SHARED_KEY_NO_PADDING	RTE_BIT32(1)
+/**<
+ * Flag to denote shared secret will be returned without leading zero bytes
+ * and if the flag is not set, shared secret will be padded to the left with
+ * zeros to the size of the underlying algorithm (default)
+ */
+
 /**
  * List of elliptic curves. This enum aligns with
  * TLS "Supported Groups" registry (previously known  as
@@ -613,6 +626,11 @@ struct rte_crypto_asym_op {
 		struct rte_crypto_ecdsa_op_param ecdsa;
 		struct rte_crypto_ecpm_op_param ecpm;
 	};
+	uint16_t flags;
+	/**<
+	 * Asymmetric crypto operation flags.
+	 * Please refer to the RTE_CRYPTO_ASYM_FLAG_*.
+	 */
 };
 
 #ifdef __cplusplus
