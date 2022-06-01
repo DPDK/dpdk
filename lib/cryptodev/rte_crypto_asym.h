@@ -38,16 +38,20 @@ extern const char *
 rte_crypto_asym_op_strings[];
 
 /**
- * TLS named curves
- * https://tools.ietf.org/html/rfc8422
+ * List of elliptic curves. This enum aligns with
+ * TLS "Supported Groups" registry (previously known  as
+ * NamedCurve registry). FFDH groups are not, and will not
+ * be included in this list.
+ * Deprecation for selected curve in TLS does not deprecate
+ * the selected curve in Cryptodev.
+ * https://www.iana.org/assignments/tls-parameters/tls-parameters.xhtml
  */
-enum rte_crypto_ec_group {
-	RTE_CRYPTO_EC_GROUP_UNKNOWN  = 0,
+enum rte_crypto_curve_id {
 	RTE_CRYPTO_EC_GROUP_SECP192R1 = 19,
 	RTE_CRYPTO_EC_GROUP_SECP224R1 = 21,
 	RTE_CRYPTO_EC_GROUP_SECP256R1 = 23,
 	RTE_CRYPTO_EC_GROUP_SECP384R1 = 24,
-	RTE_CRYPTO_EC_GROUP_SECP521R1 = 25,
+	RTE_CRYPTO_EC_GROUP_SECP521R1 = 25
 };
 
 /**
@@ -294,7 +298,7 @@ struct rte_crypto_dsa_xform {
  *
  */
 struct rte_crypto_ec_xform {
-	enum rte_crypto_ec_group curve_id;
+	enum rte_crypto_curve_id curve_id;
 	/**< Pre-defined ec groups */
 };
 
