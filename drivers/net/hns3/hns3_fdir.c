@@ -631,7 +631,7 @@ static bool hns3_fd_convert_tuple(struct hns3_hw *hw,
 		break;
 	default:
 		hns3_warn(hw, "not support tuple of (%u)", tuple);
-		break;
+		return false;
 	}
 	return true;
 }
