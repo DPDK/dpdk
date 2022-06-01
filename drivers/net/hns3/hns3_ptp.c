@@ -81,7 +81,7 @@ hns3_timesync_configure(struct hns3_adapter *hns, bool en)
 	struct hns3_hw *hw = &hns->hw;
 	struct hns3_pf *pf = &hns->pf;
 	struct hns3_cmd_desc desc;
-	int val;
+	uint32_t val;
 	int ret;
 
 	hns3_cmd_setup_basic_desc(&desc, HNS3_OPC_CFG_PTP_MODE, false);
