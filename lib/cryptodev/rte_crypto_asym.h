@@ -241,7 +241,7 @@ struct rte_crypto_rsa_priv_key_qt {
 struct rte_crypto_rsa_padding {
 	enum rte_crypto_rsa_padding_type type;
 	/**< RSA padding scheme to be used for transform */
-	enum rte_crypto_auth_algorithm md;
+	enum rte_crypto_auth_algorithm hash;
 	/**<
 	 * RSA padding hash algorithm
 	 * Valid hash algorithms are:
@@ -266,13 +266,28 @@ struct rte_crypto_rsa_padding {
 	 * This field shall be set with the hash algorithm used
 	 * in the padding scheme (and to create the input message digest)
 	 */
-	enum rte_crypto_auth_algorithm mgf1md;
+	enum rte_crypto_auth_algorithm mgf1hash;
 	/**<
 	 * Hash algorithm to be used for mask generation if the
 	 * padding scheme is either OAEP or PSS. If the padding
 	 * scheme is unspecified a data hash algorithm is used
 	 * for mask generation. Valid hash algorithms are:
 	 * MD5, SHA1, SHA224, SHA256, SHA384, SHA512
+	 */
+	uint16_t pss_saltlen;
+	/**<
+	 * RSA PSS padding salt length
+	 *
+	 * Used only when RTE_CRYPTO_RSA_PADDING_PSS padding is selected,
+	 * otherwise ignored.
+	 */
+	rte_crypto_param oaep_label;
+	/**<
+	 * RSA OAEP padding optional label
+	 *
+	 * Used only when RTE_CRYPTO_RSA_PADDING_OAEP padding is selected,
+	 * otherwise ignored. If label.data == NULL, a default
+	 * label (empty string) is used.
 	 */
 };
 
