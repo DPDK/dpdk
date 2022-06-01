@@ -14,6 +14,7 @@ headers = files('rte_lpm.h', 'rte_lpm6.h')
 indirect_headers += files(
         'rte_lpm_altivec.h',
         'rte_lpm_neon.h',
+        'rte_lpm_scalar.h',
         'rte_lpm_sse.h',
         'rte_lpm_sve.h',
 )

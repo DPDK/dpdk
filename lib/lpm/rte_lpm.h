@@ -405,8 +405,10 @@ rte_lpm_lookupx4(const struct rte_lpm *lpm, xmm_t ip, uint32_t hop[4],
 #endif
 #elif defined(RTE_ARCH_PPC_64)
 #include "rte_lpm_altivec.h"
-#else
+#elif defined(RTE_ARCH_X86)
 #include "rte_lpm_sse.h"
+#else
+#include "rte_lpm_scalar.h"
 #endif
 
 #ifdef __cplusplus

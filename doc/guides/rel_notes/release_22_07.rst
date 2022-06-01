@@ -113,6 +113,12 @@ New Features
   * ``RTE_EVENT_QUEUE_ATTR_WEIGHT``
   * ``RTE_EVENT_QUEUE_ATTR_AFFINITY``
 
+* **Added scalar version of the LPM library.**
+
+  Added scalar implementation of ``rte_lpm_lookupx4``.
+  This is a fall-back implementation for platforms that
+  don't support vector operations.
+
 
 Removed Items
 -------------
