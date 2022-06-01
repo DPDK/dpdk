@@ -4424,6 +4424,8 @@ hns3_eth_dev_fp_ops_config(const struct rte_eth_dev *dev)
 	fpo[port_id].tx_pkt_prepare = dev->tx_pkt_prepare;
 	fpo[port_id].rx_descriptor_status = dev->rx_descriptor_status;
 	fpo[port_id].tx_descriptor_status = dev->tx_descriptor_status;
+	fpo[port_id].rxq.data = dev->data->rx_queues;
+	fpo[port_id].txq.data = dev->data->tx_queues;
 }
 
 void
