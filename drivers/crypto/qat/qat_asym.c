@@ -332,7 +332,7 @@ rsa_set_pub_input(struct rte_crypto_asym_op *asym_op,
 	alg_bytesize = qat_function.bytesize;
 
 	if (asym_op->rsa.op_type == RTE_CRYPTO_ASYM_OP_ENCRYPT) {
-		switch (asym_op->rsa.pad) {
+		switch (asym_op->rsa.padding.type) {
 		case RTE_CRYPTO_RSA_PADDING_NONE:
 			SET_PKE_LN(asym_op->rsa.message, alg_bytesize, 0);
 			break;
@@ -344,7 +344,7 @@ rsa_set_pub_input(struct rte_crypto_asym_op *asym_op,
 		}
 		HEXDUMP("RSA Message", cookie->input_array[0], alg_bytesize);
 	} else {
-		switch (asym_op->rsa.pad) {
+		switch (asym_op->rsa.padding.type) {
 		case RTE_CRYPTO_RSA_PADDING_NONE:
 			SET_PKE_LN(asym_op->rsa.sign, alg_bytesize, 0);
 			break;
@@ -430,7 +430,7 @@ rsa_set_priv_input(struct rte_crypto_asym_op *asym_op,
 
 	if (asym_op->rsa.op_type ==
 			RTE_CRYPTO_ASYM_OP_DECRYPT) {
-		switch (asym_op->rsa.pad) {
+		switch (asym_op->rsa.padding.type) {
 		case RTE_CRYPTO_RSA_PADDING_NONE:
 			SET_PKE_LN(asym_op->rsa.cipher,	alg_bytesize, 0);
 			HEXDUMP("RSA ciphertext", cookie->input_array[0],
@@ -444,7 +444,7 @@ rsa_set_priv_input(struct rte_crypto_asym_op *asym_op,
 
 	} else if (asym_op->rsa.op_type ==
 			RTE_CRYPTO_ASYM_OP_SIGN) {
-		switch (asym_op->rsa.pad) {
+		switch (asym_op->rsa.padding.type) {
 		case RTE_CRYPTO_RSA_PADDING_NONE:
 			SET_PKE_LN(asym_op->rsa.message, alg_bytesize, 0);
 			HEXDUMP("RSA text to be signed", cookie->input_array[0],
@@ -503,7 +503,7 @@ rsa_collect(struct rte_crypto_asym_op *asym_op,
 		} else {
 			uint8_t *rsa_result = asym_op->rsa.cipher.data;
 
-			switch (asym_op->rsa.pad) {
+			switch (asym_op->rsa.padding.type) {
 			case RTE_CRYPTO_RSA_PADDING_NONE:
 				rte_memcpy(rsa_result,
 						cookie->output_array[0],
@@ -521,7 +521,7 @@ rsa_collect(struct rte_crypto_asym_op *asym_op,
 		if (asym_op->rsa.op_type == RTE_CRYPTO_ASYM_OP_DECRYPT) {
 			uint8_t *rsa_result = asym_op->rsa.message.data;
 
-			switch (asym_op->rsa.pad) {
+			switch (asym_op->rsa.padding.type) {
 			case RTE_CRYPTO_RSA_PADDING_NONE:
 				rte_memcpy(rsa_result,
 					cookie->output_array[0],

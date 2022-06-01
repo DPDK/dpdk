@@ -288,7 +288,7 @@ cnxk_ae_rsa_prep(struct rte_crypto_op *op, struct roc_ae_buf_ptr *meta_buf,
 	dptr += in_size;
 	dlen = total_key_len + in_size;
 
-	if (rsa_op.pad == RTE_CRYPTO_RSA_PADDING_NONE) {
+	if (rsa_op.padding.type == RTE_CRYPTO_RSA_PADDING_NONE) {
 		/* Use mod_exp operation for no_padding type */
 		w4.s.opcode_minor = ROC_AE_MINOR_OP_MODEX;
 		w4.s.param2 = exp_len;
@@ -347,7 +347,7 @@ cnxk_ae_rsa_crt_prep(struct rte_crypto_op *op, struct roc_ae_buf_ptr *meta_buf,
 	dptr += in_size;
 	dlen = total_key_len + in_size;
 
-	if (rsa_op.pad == RTE_CRYPTO_RSA_PADDING_NONE) {
+	if (rsa_op.padding.type == RTE_CRYPTO_RSA_PADDING_NONE) {
 		/*Use mod_exp operation for no_padding type */
 		w4.s.opcode_minor = ROC_AE_MINOR_OP_MODEX_CRT;
 	} else {
@@ -675,7 +675,7 @@ cnxk_ae_dequeue_rsa_op(struct rte_crypto_op *cop, uint8_t *rptr,
 		memcpy(rsa->cipher.data, rptr, rsa->cipher.length);
 		break;
 	case RTE_CRYPTO_ASYM_OP_DECRYPT:
-		if (rsa->pad == RTE_CRYPTO_RSA_PADDING_NONE) {
+		if (rsa->padding.type == RTE_CRYPTO_RSA_PADDING_NONE) {
 			rsa->message.length = rsa_ctx->n.length;
 			memcpy(rsa->message.data, rptr, rsa->message.length);
 		} else {
@@ -695,7 +695,7 @@ cnxk_ae_dequeue_rsa_op(struct rte_crypto_op *cop, uint8_t *rptr,
 		memcpy(rsa->sign.data, rptr, rsa->sign.length);
 		break;
 	case RTE_CRYPTO_ASYM_OP_VERIFY:
-		if (rsa->pad == RTE_CRYPTO_RSA_PADDING_NONE) {
+		if (rsa->padding.type == RTE_CRYPTO_RSA_PADDING_NONE) {
 			rsa->sign.length = rsa_ctx->n.length;
 			memcpy(rsa->sign.data, rptr, rsa->sign.length);
 		} else {
