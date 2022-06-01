@@ -395,10 +395,29 @@ struct rte_crypto_rsa_op_param {
 	/**< RSA padding scheme to be used for transform */
 
 	enum rte_crypto_auth_algorithm md;
-	/**< Hash algorithm to be used for data hash if padding
-	 * scheme is either OAEP or PSS. Valid hash algorithms
-	 * are:
+	/**<
+	 * RSA padding hash algorithm
+	 * Valid hash algorithms are:
 	 * MD5, SHA1, SHA224, SHA256, SHA384, SHA512
+	 *
+	 * When a specific padding type is selected, the following rule apply:
+	 * - RTE_CRYPTO_RSA_PADDING_NONE:
+	 * This field is ignored by the PMD
+	 *
+	 * - RTE_CRYPTO_RSA_PADDING_PKCS1_5:
+	 * For sign operation, this field is used to determine value
+	 * of the DigestInfo structure, therefore specifying which algorithm
+	 * was used to create the message digest.
+	 * For encryption/decryption, this field is ignored for this
+	 * padding type.
+	 *
+	 * - RTE_CRYPTO_RSA_PADDING_OAEP
+	 * This field shall be set with the hash algorithm used
+	 * in the padding scheme
+	 *
+	 * - RTE_CRYPTO_RSA_PADDING_PSS
+	 * This field shall be set with the hash algorithm used
+	 * in the padding scheme (and to create the input message digest)
 	 */
 
 	enum rte_crypto_auth_algorithm mgf1md;
