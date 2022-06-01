@@ -773,7 +773,7 @@ hns3vf_reset_all_tqps(struct hns3_hw *hw)
 	int ret;
 	uint16_t i;
 
-	memset(msg_data, 0, sizeof(uint16_t));
+	memset(msg_data, 0, sizeof(msg_data));
 	ret = hns3_send_mbx_msg(hw, HNS3_MBX_QUEUE_RESET, 0, msg_data,
 				sizeof(msg_data), true, &reset_status,
 				sizeof(reset_status));
