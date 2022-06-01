@@ -416,6 +416,11 @@ struct rte_crypto_dh_op_param {
 	 * Input - private key, when dh xform ke_type is one of:
 	 * RTE_CRYPTO_ASYM_KE_PUB_KEY_GENERATE,
 	 * RTE_CRYPTO_ASYM_KE_SHARED_SECRET_COMPUTE.
+	 *
+	 * In case priv_key.length is 0 and xform type is set with
+	 * RTE_CRYPTO_ASYM_KE_PUB_KEY_GENERATE, CSRNG capable
+	 * device will generate a private key and use it for public
+	 * key generation.
 	 */
 
 	rte_crypto_uint shared_secret;
