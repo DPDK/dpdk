@@ -186,7 +186,8 @@ const char *rte_crypto_asym_op_strings[] = {
 const char *rte_crypto_asym_ke_strings[] = {
 	[RTE_CRYPTO_ASYM_KE_PRIV_KEY_GENERATE] = "priv_key_generate",
 	[RTE_CRYPTO_ASYM_KE_PUB_KEY_GENERATE] = "pub_key_generate",
-	[RTE_CRYPTO_ASYM_KE_SHARED_SECRET_COMPUTE] = "sharedsecret_compute"
+	[RTE_CRYPTO_ASYM_KE_SHARED_SECRET_COMPUTE] = "sharedsecret_compute",
+	[RTE_CRYPTO_ASYM_KE_PUB_KEY_VERIFY] = "pub_ec_key_verify"
 };
 
 /**

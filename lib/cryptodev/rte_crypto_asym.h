@@ -130,8 +130,12 @@ enum rte_crypto_asym_ke_type {
 	/**< Private Key generation operation */
 	RTE_CRYPTO_ASYM_KE_PUB_KEY_GENERATE,
 	/**< Public Key generation operation */
-	RTE_CRYPTO_ASYM_KE_SHARED_SECRET_COMPUTE
+	RTE_CRYPTO_ASYM_KE_SHARED_SECRET_COMPUTE,
 	/**< Shared Secret compute operation */
+	RTE_CRYPTO_ASYM_KE_PUB_KEY_VERIFY
+	/**< Public Key Verification - can be used for
+	 * elliptic curve point validation.
+	 */
 };
 
 /**
@@ -455,8 +459,9 @@ struct rte_crypto_ecdh_op_param {
 	 * Output - generated public key when ke_type is
 	 * RTE_CRYPTO_ASYM_KE_PUBLIC_KEY_GENERATE.
 	 *
-	 * Input - peer's public key when ke_type is
-	 * RTE_CRYPTO_ASYM_KE_SHARED_SECRET_COMPUTE.
+	 * Input - peer's public key, when ke_type is one of:
+	 * RTE_CRYPTO_ASYM_KE_SHARED_SECRET_COMPUTE,
+	 * RTE_CRYPTO_ASYM_KE_EC_PUBLIC_KEY_VERIFY.
 	 */
 	struct rte_crypto_ec_point shared_secret;
 	/**<
