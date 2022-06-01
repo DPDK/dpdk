@@ -1932,7 +1932,13 @@ rte_eth_dev_close(uint16_t port_id)
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
 	dev = &rte_eth_devices[port_id];
 
-	if (dev->data->dev_started) {
+	/*
+	 * Secondary process needs to close device to release process private
+	 * resources. But secondary process should not be obliged to wait
+	 * for device stop before closing ethdev.
+	 */
+	if (rte_eal_process_type() == RTE_PROC_PRIMARY &&
+			dev->data->dev_started) {
 		RTE_ETHDEV_LOG(ERR, "Cannot close started device (port %u)\n",
 			       port_id);
 		return -EINVAL;
