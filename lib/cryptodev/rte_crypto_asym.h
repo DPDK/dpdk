@@ -99,6 +99,8 @@ enum rte_crypto_asym_xform_type {
 	/**< Elliptic Curve Digital Signature Algorithm
 	 * Perform Signature Generation and Verification.
 	 */
+	RTE_CRYPTO_ASYM_XFORM_ECDH,
+	/**< Elliptic Curve Diffie Hellman */
 	RTE_CRYPTO_ASYM_XFORM_ECPM,
 	/**< Elliptic Curve Point Multiplication */
 	RTE_CRYPTO_ASYM_XFORM_TYPE_LIST_END
@@ -429,6 +431,41 @@ struct rte_crypto_dh_op_param {
 };
 
 /**
+ * Elliptic Curve Diffie-Hellman Operations params.
+ */
+struct rte_crypto_ecdh_op_param {
+	enum rte_crypto_asym_ke_type ke_type;
+	/**< Key exchange operation type */
+	rte_crypto_uint priv_key;
+	/**<
+	 * Output - generated private key when ke_type is
+	 * RTE_CRYPTO_ASYM_KE_PRIVATE_KEY_GENERATE.
+	 *
+	 * Input - private key when ke_type is one of:
+	 * RTE_CRYPTO_ASYM_KE_PUBLIC_KEY_GENERATE,
+	 * RTE_CRYPTO_ASYM_KE_SHARED_SECRET_COMPUTE.
+	 *
+	 * In case priv_key.length is 0 and ke_type is set with
+	 * RTE_CRYPTO_ASYM_KE_PUBLIC_KEY_GENERATE, CSRNG capable
+	 * device will generate private key and use it for public
+	 * key generation.
+	 */
+	struct rte_crypto_ec_point pub_key;
+	/**<
+	 * Output - generated public key when ke_type is
+	 * RTE_CRYPTO_ASYM_KE_PUBLIC_KEY_GENERATE.
+	 *
+	 * Input - peer's public key when ke_type is
+	 * RTE_CRYPTO_ASYM_KE_SHARED_SECRET_COMPUTE.
+	 */
+	struct rte_crypto_ec_point shared_secret;
+	/**<
+	 * Output - calculated shared secret when ke_type is
+	 * RTE_CRYPTO_ASYM_KE_SHARED_SECRET_COMPUTE.
+	 */
+};
+
+/**
  * DSA Operations params
  *
  */
@@ -566,6 +603,7 @@ struct rte_crypto_asym_op {
 		struct rte_crypto_mod_op_param modex;
 		struct rte_crypto_mod_op_param modinv;
 		struct rte_crypto_dh_op_param dh;
+		struct rte_crypto_ecdh_op_param ecdh;
 		struct rte_crypto_dsa_op_param dsa;
 		struct rte_crypto_ecdsa_op_param ecdsa;
 		struct rte_crypto_ecpm_op_param ecpm;

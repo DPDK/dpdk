@@ -1018,9 +1018,9 @@ Asymmetric Cryptography
 -----------------------
 
 The cryptodev library currently provides support for the following asymmetric
-Crypto operations; RSA, Modular exponentiation and inversion, Diffie-Hellman
-public and/or private key generation and shared secret compute, DSA Signature
-generation and verification.
+Crypto operations; RSA, Modular exponentiation and inversion, Diffie-Hellman and
+Elliptic Curve Diffie-Hellman public and/or private key generation and shared
+secret compute, DSA Signature generation and verification.
 
 Session and Session Management
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1088,6 +1088,7 @@ Each xform defines specific asymmetric crypto algo. Currently supported are:
 * Modular operations (Exponentiation and Inverse)
 * Diffie-Hellman
 * DSA
+* Elliptic Curve Diffie-Hellman
 * None - special case where PMD may support a passthrough mode. More for diagnostic purpose
 
 See *DPDK API Reference* for details on each rte_crypto_xxx_xform struct
