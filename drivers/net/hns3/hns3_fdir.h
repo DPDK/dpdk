@@ -184,7 +184,7 @@ void hns3_fdir_filter_uninit(struct hns3_adapter *hns);
 int hns3_fdir_filter_program(struct hns3_adapter *hns,
 			     struct hns3_fdir_rule *rule, bool del);
 int hns3_clear_all_fdir_filter(struct hns3_adapter *hns);
-int hns3_get_count(struct hns3_hw *hw, uint32_t id, uint64_t *value);
+int hns3_fd_get_count(struct hns3_hw *hw, uint32_t id, uint64_t *value);
 int hns3_restore_all_fdir_filter(struct hns3_adapter *hns);
 
 #endif /* _HNS3_FDIR_H_ */

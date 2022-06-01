@@ -1099,7 +1099,7 @@ int hns3_restore_all_fdir_filter(struct hns3_adapter *hns)
 	return 0;
 }
 
-int hns3_get_count(struct hns3_hw *hw, uint32_t id, uint64_t *value)
+int hns3_fd_get_count(struct hns3_hw *hw, uint32_t id, uint64_t *value)
 {
 	struct hns3_fd_get_cnt_cmd *req;
 	struct hns3_cmd_desc desc;

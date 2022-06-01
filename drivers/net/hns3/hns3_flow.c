@@ -164,13 +164,13 @@ hns3_counter_new(struct rte_eth_dev *dev, uint32_t indirect, uint32_t id,
 				"Counter id is used, indirect flag not match");
 		/* Clear the indirect counter on first use. */
 		if (cnt->indirect && cnt->ref_cnt == 1)
-			(void)hns3_get_count(hw, id, &value);
+			(void)hns3_fd_get_count(hw, id, &value);
 		cnt->ref_cnt++;
 		return 0;
 	}
 
 	/* Clear the counter by read ops because the counter is read-clear */
-	ret = hns3_get_count(hw, id, &value);
+	ret = hns3_fd_get_count(hw, id, &value);
 	if (ret)
 		return rte_flow_error_set(error, EIO,
 					  RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
@@ -210,7 +210,7 @@ hns3_counter_query(struct rte_eth_dev *dev, struct rte_flow *flow,
 					  RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
 					  "Can't find counter id");
 
-	ret = hns3_get_count(&hns->hw, flow->counter_id, &value);
+	ret = hns3_fd_get_count(&hns->hw, flow->counter_id, &value);
 	if (ret) {
 		rte_flow_error_set(error, -ret, RTE_FLOW_ERROR_TYPE_HANDLE,
 				   NULL, "Read counter fail.");
