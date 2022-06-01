@@ -167,7 +167,7 @@ hns3_fake_rx_queue_release(struct hns3_rx_queue *queue)
 	}
 
 	/* free fake rx queue arrays */
-	if (idx == (hw->fkq_data.nb_fake_rx_queues - 1)) {
+	if (idx == hw->fkq_data.nb_fake_rx_queues - 1) {
 		hw->fkq_data.nb_fake_rx_queues = 0;
 		rte_free(hw->fkq_data.rx_queues);
 		hw->fkq_data.rx_queues = NULL;
@@ -194,7 +194,7 @@ hns3_fake_tx_queue_release(struct hns3_tx_queue *queue)
 	}
 
 	/* free fake tx queue arrays */
-	if (idx == (hw->fkq_data.nb_fake_tx_queues - 1)) {
+	if (idx == hw->fkq_data.nb_fake_tx_queues - 1) {
 		hw->fkq_data.nb_fake_tx_queues = 0;
 		rte_free(hw->fkq_data.tx_queues);
 		hw->fkq_data.tx_queues = NULL;
