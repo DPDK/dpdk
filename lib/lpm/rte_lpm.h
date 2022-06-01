@@ -279,7 +279,7 @@ rte_lpm_delete_all(struct rte_lpm *lpm);
  *   -EINVAL for incorrect arguments, -ENOENT on lookup miss, 0 on lookup hit
  */
 static inline int
-rte_lpm_lookup(struct rte_lpm *lpm, uint32_t ip, uint32_t *next_hop)
+rte_lpm_lookup(const struct rte_lpm *lpm, uint32_t ip, uint32_t *next_hop)
 {
 	unsigned tbl24_index = (ip >> 8);
 	uint32_t tbl_entry;
