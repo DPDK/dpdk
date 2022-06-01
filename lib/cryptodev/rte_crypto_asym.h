@@ -398,8 +398,6 @@ struct rte_crypto_rsa_op_param {
 	 * (i.e. must be at least RSA key size). The message.length
 	 * field should be 0 and will be overwritten by the PMD
 	 * with the decrypted length.
-	 *
-	 * All data is in Octet-string network byte order format.
 	 */
 
 	rte_crypto_param cipher;
@@ -414,7 +412,8 @@ struct rte_crypto_rsa_op_param {
 	 * at least RSA key size). The cipher.length field should
 	 * be 0 and will be overwritten by the PMD with the encrypted length.
 	 *
-	 * All data is in Octet-string network byte order format.
+	 * When RTE_CRYPTO_RSA_PADDING_NONE and RTE_CRYPTO_ASYM_OP_VERIFY
+	 * selected, this is an output of decrypted signature.
 	 */
 
 	rte_crypto_param sign;
@@ -428,8 +427,6 @@ struct rte_crypto_rsa_op_param {
 	 * with enough memory to hold signature output (i.e. must be
 	 * at least RSA key size). The sign.length field should
 	 * be 0 and will be overwritten by the PMD with the signature length.
-	 *
-	 * All data is in Octet-string network byte order format.
 	 */
 
 	struct rte_crypto_rsa_padding padding;
