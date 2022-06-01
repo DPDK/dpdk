@@ -292,13 +292,7 @@ struct rte_crypto_dsa_xform {
 	rte_crypto_uint g;
 	/**< Generator of the subgroup */
 	rte_crypto_uint x;
-	/**< x: Private key of the signer in octet-string network
-	 * byte order format.
-	 * Used when app has pre-defined private key.
-	 * Valid only when xform chain is DSA ONLY.
-	 * if xform chain is DH private key generate + DSA, then DSA sign
-	 * compute will use internally generated key.
-	 */
+	/**< x: Private key of the signer */
 };
 
 /**
