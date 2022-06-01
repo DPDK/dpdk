@@ -597,6 +597,12 @@ test_libipsec_perf(void)
 	uint32_t i;
 	int ret;
 
+	ret = rte_cryptodev_count();
+	if (ret < 1) {
+		RTE_LOG(WARNING, USER1, "No crypto devices found?\n");
+		return TEST_SKIPPED;
+	}
+
 	if (testsuite_setup() < 0) {
 		testsuite_teardown();
 		return TEST_FAILED;
