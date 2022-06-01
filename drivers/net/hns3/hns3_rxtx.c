@@ -1199,6 +1199,9 @@ hns3_init_rx_queues(struct hns3_adapter *hns)
 out:
 	for (j = 0; j < i; j++) {
 		rxq = (struct hns3_rx_queue *)hw->data->rx_queues[j];
+		if (rxq->rx_deferred_start)
+			continue;
+
 		hns3_rx_queue_release_mbufs(rxq);
 	}
 
