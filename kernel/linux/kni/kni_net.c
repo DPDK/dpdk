@@ -441,7 +441,11 @@ kni_net_rx_normal(struct kni_dev *kni)
 		skb->ip_summed = CHECKSUM_UNNECESSARY;
 
 		/* Call netif interface */
+#ifdef HAVE_NETIF_RX_NI
 		netif_rx_ni(skb);
+#else
+		netif_rx(skb);
+#else
 
 		/* Update statistics */
 		dev->stats.rx_bytes += len;
