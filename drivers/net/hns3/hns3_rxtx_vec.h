@@ -15,7 +15,7 @@ hns3_tx_bulk_free_buffers(struct hns3_tx_queue *txq)
 	struct hns3_entry *tx_entry;
 	struct rte_mbuf *m;
 	int nb_free = 0;
-	int i;
+	uint16_t i;
 
 	tx_entry = &txq->sw_ring[txq->next_to_clean];
 	if (txq->mbuf_fast_free_en) {
@@ -56,7 +56,7 @@ static inline void
 hns3_tx_free_buffers(struct hns3_tx_queue *txq)
 {
 	struct hns3_desc *tx_desc;
-	int i;
+	uint16_t i;
 
 	/*
 	 * All mbufs can be released only when the VLD bits of all

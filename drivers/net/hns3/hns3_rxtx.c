@@ -387,7 +387,7 @@ hns3_enable_all_queues(struct hns3_hw *hw, bool en)
 	struct hns3_tx_queue *txq;
 	uint32_t rcb_reg;
 	void *tqp_base;
-	int i;
+	uint16_t i;
 
 	for (i = 0; i < hw->cfg_max_queues; i++) {
 		if (hns3_dev_get_support(hw, INDEP_TXRX)) {
@@ -733,8 +733,8 @@ hns3pf_reset_all_tqps(struct hns3_hw *hw)
 #define HNS3_RESET_RCB_NOT_SUPPORT	0U
 #define HNS3_RESET_ALL_TQP_SUCCESS	1U
 	uint8_t reset_status;
+	uint16_t i;
 	int ret;
-	int i;
 
 	ret = hns3_reset_rcb_cmd(hw, &reset_status);
 	if (ret)
@@ -771,7 +771,7 @@ hns3vf_reset_all_tqps(struct hns3_hw *hw)
 	uint8_t reset_status;
 	uint8_t msg_data[2];
 	int ret;
-	int i;
+	uint16_t i;
 
 	memset(msg_data, 0, sizeof(uint16_t));
 	ret = hns3_send_mbx_msg(hw, HNS3_MBX_QUEUE_RESET, 0, msg_data,
@@ -803,7 +803,8 @@ int
 hns3_reset_all_tqps(struct hns3_adapter *hns)
 {
 	struct hns3_hw *hw = &hns->hw;
-	int ret, i;
+	uint16_t i;
+	int ret;
 
 	/* Disable all queues before reset all queues */
 	for (i = 0; i < hw->cfg_max_queues; i++) {
@@ -1034,7 +1035,7 @@ hns3_dev_all_rx_queue_intr_enable(struct hns3_hw *hw, bool en)
 {
 	struct rte_eth_dev *dev = &rte_eth_devices[hw->data->port_id];
 	uint16_t nb_rx_q = hw->data->nb_rx_queues;
-	int i;
+	uint16_t i;
 
 	if (dev->data->dev_conf.intr_conf.rxq == 0)
 		return;
@@ -1118,7 +1119,7 @@ static void
 hns3_init_txq(struct hns3_tx_queue *txq)
 {
 	struct hns3_desc *desc;
-	int i;
+	uint16_t i;
 
 	/* Clear tx bd */
 	desc = txq->tx_ring;
@@ -1142,7 +1143,7 @@ hns3_init_tx_ring_tc(struct hns3_adapter *hns)
 
 	for (i = 0; i < HNS3_MAX_TC_NUM; i++) {
 		struct hns3_tc_queue_info *tc_queue = &hw->tc_queue[i];
-		int j;
+		uint16_t j;
 
 		if (!tc_queue->enable)
 			continue;
@@ -1439,7 +1440,7 @@ hns3_alloc_txq_and_dma_zone(struct rte_eth_dev *dev,
 	struct hns3_tx_queue *txq;
 	struct hns3_desc *desc;
 	unsigned int tx_desc;
-	int i;
+	uint16_t i;
 
 	txq = rte_zmalloc_socket(q_info->type, sizeof(struct hns3_tx_queue),
 				 RTE_CACHE_LINE_SIZE, q_info->socket_id);
@@ -1676,7 +1677,7 @@ hns3_dev_release_mbufs(struct hns3_adapter *hns)
 	struct rte_eth_dev_data *dev_data = hns->hw.data;
 	struct hns3_rx_queue *rxq;
 	struct hns3_tx_queue *txq;
-	int i;
+	uint16_t i;
 
 	if (dev_data->rx_queues)
 		for (i = 0; i < dev_data->nb_rx_queues; i++) {
@@ -3083,7 +3084,7 @@ hns3_tx_free_useless_buffer(struct hns3_tx_queue *txq)
 	uint16_t tx_next_use = txq->next_to_use;
 	struct hns3_entry *tx_entry = &txq->sw_ring[tx_next_clean];
 	struct hns3_desc *desc = &txq->tx_ring[tx_next_clean];
-	int i;
+	uint16_t i;
 
 	if (tx_next_use >= tx_next_clean &&
 	    tx_next_use < tx_next_clean + txq->tx_rs_thresh)
@@ -3981,7 +3982,7 @@ hns3_tx_free_buffer_simple(struct hns3_tx_queue *txq)
 	struct hns3_entry *tx_entry;
 	struct hns3_desc *desc;
 	uint16_t tx_next_clean;
-	int i;
+	uint16_t i;
 
 	while (1) {
 		if (HNS3_GET_TX_QUEUE_PEND_BD_NUM(txq) < txq->tx_rs_thresh)

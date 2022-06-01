@@ -475,7 +475,7 @@ hns3_configure_all_mac_addr(struct hns3_adapter *hns, bool del)
 	struct rte_ether_addr *addr;
 	uint16_t mac_addrs_capa;
 	int ret = 0;
-	int i;
+	uint16_t i;
 
 	mac_addrs_capa =
 		hns->is_vf ? HNS3_VF_UC_MACADDR_NUM : HNS3_UC_MACADDR_NUM;
@@ -645,8 +645,8 @@ int
 hns3_init_ring_with_vector(struct hns3_hw *hw)
 {
 	uint16_t vec;
+	uint16_t i;
 	int ret;
-	int i;
 
 	/*
 	 * In hns3 network engine, vector 0 is always the misc interrupt of this

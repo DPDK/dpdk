@@ -2928,8 +2928,8 @@ hns3_map_tqps_to_func(struct hns3_hw *hw, uint16_t func_id, uint16_t tqp_pid,
 static int
 hns3_map_tqp(struct hns3_hw *hw)
 {
+	uint16_t i;
 	int ret;
-	int i;
 
 	/*
 	 * In current version, VF is not supported when PF is driven by DPDK
