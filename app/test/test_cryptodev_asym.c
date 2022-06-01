@@ -1067,8 +1067,8 @@ test_dh_gen_shared_sec(struct rte_crypto_asym_xform *xfrm)
 	asym_op = op->asym;
 
 	/* Setup a xform and op to generate private key only */
-	xform.dh.ke_type = RTE_CRYPTO_ASYM_KE_SHARED_SECRET_COMPUTE;
 	xform.next = NULL;
+	asym_op->dh.ke_type = RTE_CRYPTO_ASYM_KE_SHARED_SECRET_COMPUTE;
 	asym_op->dh.priv_key.data = dh_test_params.priv_key.data;
 	asym_op->dh.priv_key.length = dh_test_params.priv_key.length;
 	asym_op->dh.pub_key.data = (uint8_t *)peer;
@@ -1149,8 +1149,8 @@ test_dh_gen_priv_key(struct rte_crypto_asym_xform *xfrm)
 	asym_op = op->asym;
 
 	/* Setup a xform and op to generate private key only */
-	xform.dh.ke_type = RTE_CRYPTO_ASYM_KE_PRIV_KEY_GENERATE;
 	xform.next = NULL;
+	asym_op->dh.ke_type = RTE_CRYPTO_ASYM_KE_PRIV_KEY_GENERATE;
 	asym_op->dh.priv_key.data = output;
 	asym_op->dh.priv_key.length = sizeof(output);
 
@@ -1232,9 +1232,9 @@ test_dh_gen_pub_key(struct rte_crypto_asym_xform *xfrm)
 	 * using test private key
 	 *
 	 */
-	xform.dh.ke_type = RTE_CRYPTO_ASYM_KE_PUB_KEY_GENERATE;
 	xform.next = NULL;
 
+	asym_op->dh.ke_type = RTE_CRYPTO_ASYM_KE_PUB_KEY_GENERATE;
 	asym_op->dh.pub_key.data = output;
 	asym_op->dh.pub_key.length = sizeof(output);
 	/* load pre-defined private key */
@@ -1323,15 +1323,14 @@ test_dh_gen_kp(struct rte_crypto_asym_xform *xfrm)
 	 * private key first followed by
 	 * public key
 	 */
-	xform.dh.ke_type = RTE_CRYPTO_ASYM_KE_PRIV_KEY_GENERATE;
 	pub_key_xform.xform_type = RTE_CRYPTO_ASYM_XFORM_DH;
-	pub_key_xform.dh.ke_type = RTE_CRYPTO_ASYM_KE_PUB_KEY_GENERATE;
 	xform.next = &pub_key_xform;
 
+	asym_op->dh.ke_type = RTE_CRYPTO_ASYM_KE_PUB_KEY_GENERATE;
 	asym_op->dh.pub_key.data = out_pub_key;
 	asym_op->dh.pub_key.length = sizeof(out_pub_key);
 	asym_op->dh.priv_key.data = out_prv_key;
-	asym_op->dh.priv_key.length = sizeof(out_prv_key);
+	asym_op->dh.priv_key.length = 0;
 
 	ret = rte_cryptodev_asym_session_create(dev_id, &xform, sess_mpool, &sess);
 	if (ret < 0) {

@@ -1001,33 +1001,6 @@ err_rsa:
 			DH_free(dh);
 			goto err_dh;
 		}
-
-		/*
-		 * setup xfrom for
-		 * public key generate, or
-		 * DH Priv key generate, or both
-		 * public and private key generate
-		 */
-		asym_session->u.dh.key_op = (1 << xform->dh.ke_type);
-
-		if (xform->dh.ke_type ==
-			RTE_CRYPTO_ASYM_KE_PRIV_KEY_GENERATE) {
-			/* check if next is pubkey */
-			if ((xform->next != NULL) &&
-				(xform->next->xform_type ==
-				RTE_CRYPTO_ASYM_XFORM_DH) &&
-				(xform->next->dh.ke_type ==
-				RTE_CRYPTO_ASYM_KE_PUB_KEY_GENERATE)
-				) {
-				/*
-				 * setup op as pub/priv key
-				 * pair generationi
-				 */
-				asym_session->u.dh.key_op |=
-				(1 <<
-				RTE_CRYPTO_ASYM_KE_PUB_KEY_GENERATE);
-			}
-		}
 		asym_session->u.dh.dh_key = dh;
 		asym_session->xfrm_type = RTE_CRYPTO_ASYM_XFORM_DH;
 		break;

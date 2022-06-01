@@ -270,8 +270,6 @@ struct rte_crypto_modinv_xform {
  *
  */
 struct rte_crypto_dh_xform {
-	enum rte_crypto_asym_ke_type ke_type;
-	/**< Setup xform for key generate or shared secret compute */
 	rte_crypto_uint p;
 	/**< Prime modulus data */
 	rte_crypto_uint g;
@@ -399,33 +397,33 @@ struct rte_crypto_rsa_op_param {
  * @note:
  */
 struct rte_crypto_dh_op_param {
-	rte_crypto_uint pub_key;
-	/**<
-	 * Output - generated public key, when dh xform ke_type is
-	 * RTE_CRYPTO_ASYM_KE_PUB_KEY_GENERATE.
-	 *
-	 * Input - peer's public key, when dh xform ke_type is
-	 * RTE_CRYPTO_ASYM_KE_SHARED_SECRET_COMPUTE.
-	 */
-
+	enum rte_crypto_asym_ke_type ke_type;
+	/**< Key exchange operation type */
 	rte_crypto_uint priv_key;
 	/**<
-	 * Output - generated private key, when dh xform ke_type is
+	 * Output - generated private key when ke_type is
 	 * RTE_CRYPTO_ASYM_KE_PRIV_KEY_GENERATE.
 	 *
-	 * Input - private key, when dh xform ke_type is one of:
+	 * Input - private key when ke_type is one of:
 	 * RTE_CRYPTO_ASYM_KE_PUB_KEY_GENERATE,
 	 * RTE_CRYPTO_ASYM_KE_SHARED_SECRET_COMPUTE.
 	 *
-	 * In case priv_key.length is 0 and xform type is set with
+	 * In case priv_key.length is 0 and ke_type is set with
 	 * RTE_CRYPTO_ASYM_KE_PUB_KEY_GENERATE, CSRNG capable
 	 * device will generate a private key and use it for public
 	 * key generation.
 	 */
-
+	rte_crypto_uint pub_key;
+	/**<
+	 * Output - generated public key when ke_type is
+	 * RTE_CRYPTO_ASYM_KE_PUB_KEY_GENERATE.
+	 *
+	 * Input - peer's public key when ke_type is
+	 * RTE_CRYPTO_ASYM_KE_SHARED_SECRET_COMPUTE.
+	 */
 	rte_crypto_uint shared_secret;
 	/**<
-	 * Output - calculated shared secret when dh xform ke_type is
+	 * Output - calculated shared secret when ke_type is
 	 * RTE_CRYPTO_ASYM_KE_SHARED_SECRET_COMPUTE.
 	 */
 };

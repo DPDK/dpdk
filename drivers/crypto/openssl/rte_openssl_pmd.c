@@ -1694,12 +1694,12 @@ process_openssl_dh_op(struct rte_crypto_op *cop,
 		struct openssl_asym_session *sess)
 {
 	struct rte_crypto_dh_op_param *op = &cop->asym->dh;
+	struct rte_crypto_asym_op *asym_op = cop->asym;
 	DH *dh_key = sess->u.dh.dh_key;
 	BIGNUM *priv_key = NULL;
 	int ret = 0;
 
-	if (sess->u.dh.key_op &
-			(1 << RTE_CRYPTO_ASYM_KE_SHARED_SECRET_COMPUTE)) {
+	if (asym_op->dh.ke_type == RTE_CRYPTO_ASYM_KE_SHARED_SECRET_COMPUTE) {
 		/* compute shared secret using peer public key
 		 * and current private key
 		 * shared secret = peer_key ^ priv_key mod p
@@ -1755,10 +1755,8 @@ process_openssl_dh_op(struct rte_crypto_op *cop,
 	 * if user provides private key,
 	 * then first set DH with user provided private key
 	 */
-	if ((sess->u.dh.key_op &
-			(1 << RTE_CRYPTO_ASYM_KE_PUB_KEY_GENERATE)) &&
-			!(sess->u.dh.key_op &
-			(1 << RTE_CRYPTO_ASYM_KE_PRIV_KEY_GENERATE))) {
+	if (asym_op->dh.ke_type == RTE_CRYPTO_ASYM_KE_PUB_KEY_GENERATE &&
+			op->priv_key.length) {
 		/* generate public key using user-provided private key
 		 * pub_key = g ^ priv_key mod p
 		 */
@@ -1792,7 +1790,7 @@ process_openssl_dh_op(struct rte_crypto_op *cop,
 		return 0;
 	}
 
-	if (sess->u.dh.key_op & (1 << RTE_CRYPTO_ASYM_KE_PUB_KEY_GENERATE)) {
+	if (asym_op->dh.ke_type == RTE_CRYPTO_ASYM_KE_PUB_KEY_GENERATE) {
 		const BIGNUM *pub_key = NULL;
 
 		OPENSSL_LOG(DEBUG, "%s:%d update public key\n",
@@ -1806,8 +1804,7 @@ process_openssl_dh_op(struct rte_crypto_op *cop,
 				op->pub_key.data);
 	}
 
-	if (sess->u.dh.key_op &
-			(1 << RTE_CRYPTO_ASYM_KE_PRIV_KEY_GENERATE)) {
+	if (asym_op->dh.ke_type == RTE_CRYPTO_ASYM_KE_PRIV_KEY_GENERATE) {
 		const BIGNUM *priv_key = NULL;
 
 		OPENSSL_LOG(DEBUG, "%s:%d updated priv key\n",
