@@ -2782,7 +2782,7 @@ cmd_pipeline_mirror_session(char **tokens,
 {
 	struct rte_swx_pipeline_mirroring_session_params params;
 	struct pipeline *p;
-	uint32_t session_id;
+	uint32_t session_id = 0;
 	int status;
 
 	if (n_tokens != 11) {
