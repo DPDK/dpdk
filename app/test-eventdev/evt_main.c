@@ -159,9 +159,6 @@ main(int argc, char **argv)
 	if (test->ops.ethdev_rx_stop)
 		test->ops.ethdev_rx_stop(test, &opt);
 
-	if (test->ops.cryptodev_destroy)
-		test->ops.cryptodev_destroy(test, &opt);
-
 	rte_eal_mp_wait_lcore();
 
 	if (test->ops.test_result)
@@ -172,6 +169,9 @@ main(int argc, char **argv)
 
 	if (test->ops.eventdev_destroy)
 		test->ops.eventdev_destroy(test, &opt);
+
+	if (test->ops.cryptodev_destroy)
+		test->ops.cryptodev_destroy(test, &opt);
 
 	if (test->ops.mempool_destroy)
 		test->ops.mempool_destroy(test, &opt);
