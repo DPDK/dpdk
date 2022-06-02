@@ -10,6 +10,45 @@
 static rte_thread_key key_workspace;
 
 int
+mlx5_flow_os_validate_item_esp(const struct rte_flow_item *item,
+			    uint64_t item_flags,
+			    uint8_t target_protocol,
+			    struct rte_flow_error *error)
+{
+	const struct rte_flow_item_esp *mask = item->mask;
+	const int tunnel = !!(item_flags & MLX5_FLOW_LAYER_TUNNEL);
+	const uint64_t l3m = tunnel ? MLX5_FLOW_LAYER_INNER_L3 :
+				      MLX5_FLOW_LAYER_OUTER_L3;
+	const uint64_t l4m = tunnel ? MLX5_FLOW_LAYER_INNER_L4 :
+				      MLX5_FLOW_LAYER_OUTER_L4;
+	int ret;
+
+	if (!(item_flags & l3m))
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ITEM, item,
+					  "L3 is mandatory to filter on L4");
+	if (item_flags & l4m)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ITEM, item,
+					  "multiple L4 layers not supported");
+	if (target_protocol != 0xff && target_protocol != IPPROTO_ESP)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ITEM, item,
+					  "protocol filtering not compatible"
+					  " with ESP layer");
+	if (!mask)
+		mask = &rte_flow_item_esp_mask;
+	ret = mlx5_flow_item_acceptable
+		(item, (const uint8_t *)mask,
+		 (const uint8_t *)&rte_flow_item_esp_mask,
+		 sizeof(struct rte_flow_item_esp), MLX5_ITEM_RANGE_NOT_ACCEPTED,
+		 error);
+	if (ret < 0)
+		return ret;
+	return 0;
+}
+
+int
 mlx5_flow_os_init_workspace_once(void)
 {
 	if (rte_thread_key_create(&key_workspace, flow_release_workspace)) {
