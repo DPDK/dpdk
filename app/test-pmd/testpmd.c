@@ -2406,8 +2406,10 @@ rx_queue_setup(uint16_t port_id, uint16_t rx_queue_id,
 {
 	union rte_eth_rxseg rx_useg[MAX_SEGS_BUFFER_SPLIT] = {};
 	unsigned int i, mp_n;
-	int ret;
+	int ret = -1;
 
+	if (mbuf_data_size_n < 1)
+		goto exit;
 	if (rx_pkt_nb_segs <= 1 ||
 	    (rx_conf->offloads & RTE_ETH_RX_OFFLOAD_BUFFER_SPLIT) == 0) {
 		rx_conf->rx_seg = NULL;
@@ -2424,7 +2426,7 @@ rx_queue_setup(uint16_t port_id, uint16_t rx_queue_id,
 		 * Use last valid pool for the segments with number
 		 * exceeding the pool index.
 		 */
-		mp_n = (i > mbuf_data_size_n) ? mbuf_data_size_n - 1 : i;
+		mp_n = (i >= mbuf_data_size_n) ? mbuf_data_size_n - 1 : i;
 		mpx = mbuf_pool_find(socket_id, mp_n);
 		/* Handle zero as mbuf data buffer size. */
 		rx_seg->length = rx_pkt_seg_lengths[i] ?
