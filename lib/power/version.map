@@ -42,6 +42,10 @@ EXPERIMENTAL {
 	# added in 22.07
 	rte_power_pmd_mgmt_get_emptypoll_max;
 	rte_power_pmd_mgmt_get_pause_duration;
+	rte_power_pmd_mgmt_get_scaling_freq_max;
+	rte_power_pmd_mgmt_get_scaling_freq_min;
 	rte_power_pmd_mgmt_set_emptypoll_max;
 	rte_power_pmd_mgmt_set_pause_duration;
+	rte_power_pmd_mgmt_set_scaling_freq_max;
+	rte_power_pmd_mgmt_set_scaling_freq_min;
 };

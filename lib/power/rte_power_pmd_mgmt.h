@@ -148,6 +148,87 @@ __rte_experimental
 unsigned int
 rte_power_pmd_mgmt_get_pause_duration(void);
 
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change, or be removed, without prior notice.
+ *
+ * Set the min frequency to be used for frequency scaling or zero to use defaults.
+ *
+ * @note Supported by: Pstate mode.
+ *
+ * @param lcore
+ *   The ID of the lcore to set the min frequency for.
+ * @param min
+ *   The value, in KiloHertz, to set the minimum frequency to.
+ * @return
+ *   0 on success
+ *   <0 on error
+ */
+__rte_experimental
+int
+rte_power_pmd_mgmt_set_scaling_freq_min(unsigned int lcore, unsigned int min);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change, or be removed, without prior notice.
+ *
+ * Set the max frequency to be used for frequency scaling or zero to use defaults.
+ *
+ * @note Supported by: Pstate mode.
+ *
+ * @param lcore
+ *   The ID of the lcore to set the max frequency for.
+ * @param max
+ *   The value, in KiloHertz, to set the maximum frequency to.
+ *   If 'max' is 0, it is considered 'not set'.
+ * @return
+ *   0 on success
+ *   <0 on error
+ */
+__rte_experimental
+int
+rte_power_pmd_mgmt_set_scaling_freq_max(unsigned int lcore, unsigned int max);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change, or be removed, without prior notice.
+ *
+ * Get the current configured min frequency used for frequency scaling.
+ *
+ * @note Supported by: Pstate mode.
+ *
+ * @param lcore
+ *   The ID of the lcore to get the min frequency for.
+ * @return
+ *   0 if no value has been configured via the 'set' API.
+ *   >0 if a minimum frequency has been configured. Value is the minimum frequency
+ *   , in KiloHertz, used for frequency scaling.
+ *   <0 on error
+ */
+__rte_experimental
+int
+rte_power_pmd_mgmt_get_scaling_freq_min(unsigned int lcore);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change, or be removed, without prior notice.
+ *
+ * Get the current configured max frequency used for frequency scaling.
+ *
+ * @note Supported by: Pstate mode.
+ *
+ * @param lcore
+ *   The ID of the lcore to get the max frequency for.
+ * @return
+ *   0 if no value has been configured via the 'set' API.
+ *   >0 if a maximum frequency has been configured. Value is the maximum frequency
+ *   , in KiloHertz, used for frequency scaling.
+ *   <0 on error
+ */
+__rte_experimental
+int
+rte_power_pmd_mgmt_get_scaling_freq_max(unsigned int lcore);
+
 #ifdef __cplusplus
 }
 #endif

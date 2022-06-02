@@ -12,6 +12,7 @@
 
 #include <rte_memcpy.h>
 
+#include "rte_power_pmd_mgmt.h"
 #include "power_pstate_cpufreq.h"
 #include "power_common.h"
 
@@ -354,6 +355,7 @@ power_get_available_freqs(struct pstate_power_info *pi)
 	FILE *f_min = NULL, *f_max = NULL;
 	int ret = -1;
 	uint32_t sys_min_freq = 0, sys_max_freq = 0, base_max_freq = 0;
+	int config_min_freq, config_max_freq;
 	uint32_t i, num_freqs = 0;
 
 	/* open all files */
@@ -388,6 +390,18 @@ power_get_available_freqs(struct pstate_power_info *pi)
 		goto out;
 	}
 
+	/* check for config set by user or application to limit frequency range */
+	config_min_freq = rte_power_pmd_mgmt_get_scaling_freq_min(pi->lcore_id);
+	if (config_min_freq < 0)
+		goto out;
+	config_max_freq = rte_power_pmd_mgmt_get_scaling_freq_max(pi->lcore_id);
+	if (config_max_freq < 0)
+		goto out;
+
+	sys_min_freq = RTE_MAX(sys_min_freq, (uint32_t)config_min_freq);
+	if (config_max_freq > 0) /* Only use config_max_freq if a value has been set */
+		sys_max_freq = RTE_MIN(sys_max_freq, (uint32_t)config_max_freq);
+
 	if (sys_max_freq < sys_min_freq)
 		goto out;
 
@@ -411,8 +425,8 @@ power_get_available_freqs(struct pstate_power_info *pi)
 	/* If turbo is available then there is one extra freq bucket
 	 * to store the sys max freq which value is base_max +1
 	 */
-	num_freqs = (base_max_freq - sys_min_freq) / BUS_FREQ + 1 +
-		pi->turbo_available;
+	num_freqs = (RTE_MIN(base_max_freq, sys_max_freq) - sys_min_freq) / BUS_FREQ
+			+ 1 + pi->turbo_available;
 	if (num_freqs >= RTE_MAX_LCORE_FREQS) {
 		RTE_LOG(ERR, POWER, "Too many available frequencies: %d\n",
 				num_freqs);
@@ -427,10 +441,10 @@ power_get_available_freqs(struct pstate_power_info *pi)
 	 */
 	for (i = 0, pi->nb_freqs = 0; i < num_freqs; i++) {
 		if ((i == 0) && pi->turbo_available)
-			pi->freqs[pi->nb_freqs++] = base_max_freq + 1;
+			pi->freqs[pi->nb_freqs++] = RTE_MIN(base_max_freq, sys_max_freq) + 1;
 		else
-			pi->freqs[pi->nb_freqs++] =
-			base_max_freq - (i - pi->turbo_available) * BUS_FREQ;
+			pi->freqs[pi->nb_freqs++] = RTE_MIN(base_max_freq, sys_max_freq) -
+					(i - pi->turbo_available) * BUS_FREQ;
 	}
 
 	ret = 0;

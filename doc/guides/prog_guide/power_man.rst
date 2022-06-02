@@ -264,6 +264,18 @@ API Overview for Ethernet PMD Power Management
 * **Set Pause Duration**: Set the duration of the pause (microseconds) used in
   the Pause mode callback.
 
+* **Get Scaling Min Freq**: Get the configured minimum frequency (kHz) to be used
+  in Frequency Scaling mode.
+
+* **Set Scaling Min Freq**: Set the minimum frequency (kHz) to be used in Frequency
+  Scaling mode.
+
+* **Get Scaling Max Freq**: Get the configured maximum frequency (kHz) to be used
+  in Frequency Scaling mode.
+
+* **Set Scaling Max Freq**: Set the maximum frequency (kHz) to be used in Frequency
+  Scaling mode.
+
 References
 ----------
 
