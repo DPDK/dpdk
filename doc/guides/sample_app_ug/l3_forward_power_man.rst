@@ -109,6 +109,14 @@ where,
 
 *   --pmd-mgmt: PMD power management mode.
 
+*   --max-empty-polls : Number of empty polls to wait before entering sleep state. Applies to --pmd-mgmt mode only.
+
+*   --pause-duration: Set the duration of the pause callback (microseconds). Applies to --pmd-mgmt mode only.
+
+*   --scale-freq-min: Set minimum frequency for scaling. Applies to --pmd-mgmt mode only.
+
+*   --scale-freq-max: Set maximum frequency for scaling. Applies to --pmd-mgmt mode only.
+
 See :doc:`l3_forward` for details.
 The L3fwd-power example reuses the L3fwd command line options.
 

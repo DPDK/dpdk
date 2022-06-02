@@ -265,6 +265,10 @@ static struct rte_eth_conf port_conf = {
 };
 
 static uint32_t max_pkt_len;
+static uint32_t max_empty_polls = 512;
+static uint32_t pause_duration = 1;
+static uint32_t scale_freq_min;
+static uint32_t scale_freq_max;
 
 static struct rte_mempool * pktmbuf_pool[NB_SOCKETS];
 
@@ -1626,8 +1630,30 @@ print_usage(const char *prgname)
 		" empty polls, full polls, and core busyness to telemetry\n"
 		" --interrupt-only: enable interrupt-only mode\n"
 		" --pmd-mgmt MODE: enable PMD power management mode. "
-		"Currently supported modes: baseline, monitor, pause, scale\n",
+		"Currently supported modes: baseline, monitor, pause, scale\n"
+		"  --max-empty-polls MAX_EMPTY_POLLS: number of empty polls to"
+		" wait before entering sleep state\n"
+		"  --pause-duration DURATION: set the duration, in microseconds,"
+		" of the pause callback\n"
+		"  --scale-freq-min FREQ_MIN: set minimum frequency for scaling mode for"
+		" all application lcores (FREQ_MIN must be in kHz, in increments of 100MHz)\n"
+		"  --scale-freq-max FREQ_MAX: set maximum frequency for scaling mode for"
+		" all application lcores (FREQ_MAX must be in kHz, in increments of 100MHz)\n",
 		prgname);
+}
+
+static int
+parse_int(const char *opt)
+{
+	char *end = NULL;
+	unsigned long val;
+
+	/* parse integer string */
+	val = strtoul(opt, &end, 10);
+	if ((opt[0] == '\0') || (end == NULL) || (*end != '\0'))
+		return -1;
+
+	return val;
 }
 
 static int parse_max_pkt_len(const char *pktlen)
@@ -1803,6 +1829,10 @@ parse_ep_config(const char *q_arg)
 #define CMD_LINE_OPT_TELEMETRY "telemetry"
 #define CMD_LINE_OPT_PMD_MGMT "pmd-mgmt"
 #define CMD_LINE_OPT_MAX_PKT_LEN "max-pkt-len"
+#define CMD_LINE_OPT_MAX_EMPTY_POLLS "max-empty-polls"
+#define CMD_LINE_OPT_PAUSE_DURATION "pause-duration"
+#define CMD_LINE_OPT_SCALE_FREQ_MIN "scale-freq-min"
+#define CMD_LINE_OPT_SCALE_FREQ_MAX "scale-freq-max"
 
 /* Parse the argument given in the command line of the application */
 static int
@@ -1825,6 +1855,10 @@ parse_args(int argc, char **argv)
 		{CMD_LINE_OPT_TELEMETRY, 0, 0, 0},
 		{CMD_LINE_OPT_INTERRUPT_ONLY, 0, 0, 0},
 		{CMD_LINE_OPT_PMD_MGMT, 1, 0, 0},
+		{CMD_LINE_OPT_MAX_EMPTY_POLLS, 1, 0, 0},
+		{CMD_LINE_OPT_PAUSE_DURATION, 1, 0, 0},
+		{CMD_LINE_OPT_SCALE_FREQ_MIN, 1, 0, 0},
+		{CMD_LINE_OPT_SCALE_FREQ_MAX, 1, 0, 0},
 		{NULL, 0, 0, 0}
 	};
 
@@ -1973,6 +2007,34 @@ parse_args(int argc, char **argv)
 				     sizeof(CMD_LINE_OPT_PARSE_PTYPE))) {
 				printf("soft parse-ptype is enabled\n");
 				parse_ptype = 1;
+			}
+
+			if (!strncmp(lgopts[option_index].name,
+					CMD_LINE_OPT_MAX_EMPTY_POLLS,
+					sizeof(CMD_LINE_OPT_MAX_EMPTY_POLLS))) {
+				printf("Maximum empty polls configured\n");
+				max_empty_polls = parse_int(optarg);
+			}
+
+			if (!strncmp(lgopts[option_index].name,
+					CMD_LINE_OPT_PAUSE_DURATION,
+					sizeof(CMD_LINE_OPT_PAUSE_DURATION))) {
+				printf("Pause duration configured\n");
+				pause_duration = parse_int(optarg);
+			}
+
+			if (!strncmp(lgopts[option_index].name,
+					CMD_LINE_OPT_SCALE_FREQ_MIN,
+					sizeof(CMD_LINE_OPT_SCALE_FREQ_MIN))) {
+				printf("Scaling frequency minimum configured\n");
+				scale_freq_min = parse_int(optarg);
+			}
+
+			if (!strncmp(lgopts[option_index].name,
+					CMD_LINE_OPT_SCALE_FREQ_MAX,
+					sizeof(CMD_LINE_OPT_SCALE_FREQ_MAX))) {
+				printf("Scaling frequency maximum configured\n");
+				scale_freq_max = parse_int(optarg);
 			}
 
 			break;
@@ -2801,6 +2863,28 @@ main(int argc, char **argv)
 			}
 
 			if (app_mode == APP_MODE_PMD_MGMT && !baseline_enabled) {
+				/* Set power_pmd_mgmt configs passed by user */
+				rte_power_pmd_mgmt_set_emptypoll_max(max_empty_polls);
+				ret = rte_power_pmd_mgmt_set_pause_duration(pause_duration);
+				if (ret < 0)
+					rte_exit(EXIT_FAILURE,
+						"Error setting pause_duration: err=%d, lcore=%d\n",
+							ret, lcore_id);
+
+				ret = rte_power_pmd_mgmt_set_scaling_freq_min(lcore_id,
+						scale_freq_min);
+				if (ret < 0)
+					rte_exit(EXIT_FAILURE,
+						"Error setting scaling freq min: err=%d, lcore=%d\n",
+							ret, lcore_id);
+
+				ret = rte_power_pmd_mgmt_set_scaling_freq_max(lcore_id,
+						scale_freq_max);
+				if (ret < 0)
+					rte_exit(EXIT_FAILURE,
+						"Error setting scaling freq max: err=%d, lcore %d\n",
+							ret, lcore_id);
+
 				ret = rte_power_ethdev_pmgmt_queue_enable(
 						lcore_id, portid, queueid,
 						pmgmt_type);
