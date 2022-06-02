@@ -2044,7 +2044,7 @@ flow_hw_configure(struct rte_eth_dev *dev,
 	struct mlx5_hw_q_job *job = NULL;
 	uint32_t mem_size, i, j;
 	struct mlx5_indexed_pool_config cfg = {
-		.size = sizeof(struct rte_flow_hw),
+		.size = sizeof(struct mlx5_action_construct_data),
 		.trunk_size = 4096,
 		.need_lock = 1,
 		.release_mem_en = !!priv->sh->config.reclaim_mode,
