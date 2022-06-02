@@ -12,6 +12,7 @@
 #include "rte_power_pmd_mgmt.h"
 
 unsigned int emptypoll_max;
+unsigned int pause_duration;
 
 /* store some internal state */
 static struct pmd_conf_data {
@@ -315,6 +316,7 @@ clb_pause(uint16_t port_id __rte_unused, uint16_t qidx __rte_unused,
 	struct queue_list_entry *queue_conf = arg;
 	struct pmd_core_cfg *lcore_conf;
 	const bool empty = nb_rx == 0;
+	uint32_t pause_duration = rte_power_pmd_mgmt_get_pause_duration();
 
 	lcore_conf = &lcore_cfgs[lcore];
 
@@ -334,11 +336,11 @@ clb_pause(uint16_t port_id __rte_unused, uint16_t qidx __rte_unused,
 		if (global_data.intrinsics_support.power_pause) {
 			const uint64_t cur = rte_rdtsc();
 			const uint64_t wait_tsc =
-					cur + global_data.tsc_per_us;
+					cur + global_data.tsc_per_us * pause_duration;
 			rte_power_pause(wait_tsc);
 		} else {
 			uint64_t i;
-			for (i = 0; i < global_data.pause_per_us; i++)
+			for (i = 0; i < global_data.pause_per_us * pause_duration; i++)
 				rte_pause();
 		}
 	}
@@ -673,6 +675,24 @@ rte_power_pmd_mgmt_get_emptypoll_max(void)
 	return emptypoll_max;
 }
 
+int
+rte_power_pmd_mgmt_set_pause_duration(unsigned int duration)
+{
+	if (duration == 0) {
+		RTE_LOG(ERR, POWER, "Pause duration must be greater than 0, value unchanged");
+		return -EINVAL;
+	}
+	pause_duration = duration;
+
+	return 0;
+}
+
+unsigned int
+rte_power_pmd_mgmt_get_pause_duration(void)
+{
+	return pause_duration;
+}
+
 RTE_INIT(rte_power_ethdev_pmgmt_init) {
 	size_t i;
 
@@ -684,4 +704,5 @@ RTE_INIT(rte_power_ethdev_pmgmt_init) {
 
 	/* initialize config defaults */
 	emptypoll_max = 512;
+	pause_duration = 1;
 }

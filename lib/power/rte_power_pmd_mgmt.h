@@ -117,6 +117,37 @@ __rte_experimental
 unsigned int
 rte_power_pmd_mgmt_get_emptypoll_max(void);
 
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change, or be removed, without prior notice.
+ *
+ * Set the pause_duration. Used to adjust the pause mode callback duration.
+ *
+ * @note Duration must be greater than zero.
+ *
+ * @param duration
+ *   The value to set pause_duration to.
+ * @return
+ *   0 on success
+ *   <0 on error
+ */
+__rte_experimental
+int
+rte_power_pmd_mgmt_set_pause_duration(unsigned int duration);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change, or be removed, without prior notice.
+ *
+ * Get the current value of pause_duration.
+ *
+ * @return
+ *   The current pause_duration value.
+ */
+__rte_experimental
+unsigned int
+rte_power_pmd_mgmt_get_pause_duration(void);
+
 #ifdef __cplusplus
 }
 #endif
