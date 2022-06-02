@@ -252,6 +252,12 @@ API Overview for Ethernet PMD Power Management
 
 * **Queue Disable**: Disable power scheme for certain queue/port/core.
 
+* **Get Emptypoll Max**: Get the configured number of empty polls to wait before
+  entering sleep state.
+
+* **Set Emptypoll Max**: Set the number of empty polls to wait before entering
+  sleep state.
+
 References
 ----------
 

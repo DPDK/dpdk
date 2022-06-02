@@ -38,4 +38,8 @@ EXPERIMENTAL {
 	# added in 21.02
 	rte_power_ethdev_pmgmt_queue_disable;
 	rte_power_ethdev_pmgmt_queue_enable;
+
+	# added in 22.07
+	rte_power_pmd_mgmt_get_emptypoll_max;
+	rte_power_pmd_mgmt_set_emptypoll_max;
 };

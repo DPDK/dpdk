@@ -90,6 +90,33 @@ int
 rte_power_ethdev_pmgmt_queue_disable(unsigned int lcore_id,
 		uint16_t port_id, uint16_t queue_id);
 
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change, or be removed, without prior notice.
+ *
+ * Set a emptypoll_max to specified value. Used to specify the number of empty
+ * polls to wait before entering sleep state.
+ *
+ * @param max
+ *   The value to set emptypoll_max to.
+ */
+__rte_experimental
+void
+rte_power_pmd_mgmt_set_emptypoll_max(unsigned int max);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change, or be removed, without prior notice.
+ *
+ * Get the current value of emptypoll_max.
+ *
+ * @return
+ *   The current emptypoll_max value
+ */
+__rte_experimental
+unsigned int
+rte_power_pmd_mgmt_get_emptypoll_max(void);
+
 #ifdef __cplusplus
 }
 #endif

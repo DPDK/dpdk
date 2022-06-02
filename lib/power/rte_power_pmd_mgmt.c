@@ -11,7 +11,7 @@
 
 #include "rte_power_pmd_mgmt.h"
 
-#define EMPTYPOLL_MAX  512
+unsigned int emptypoll_max;
 
 /* store some internal state */
 static struct pmd_conf_data {
@@ -206,7 +206,7 @@ queue_can_sleep(struct pmd_core_cfg *cfg, struct queue_list_entry *qcfg)
 	qcfg->n_empty_polls++;
 
 	/* if we haven't reached threshold for empty polls, we can't sleep */
-	if (qcfg->n_empty_polls <= EMPTYPOLL_MAX)
+	if (qcfg->n_empty_polls <= emptypoll_max)
 		return false;
 
 	/*
@@ -290,7 +290,7 @@ clb_umwait(uint16_t port_id, uint16_t qidx, struct rte_mbuf **pkts __rte_unused,
 	/* this callback can't do more than one queue, omit multiqueue logic */
 	if (unlikely(nb_rx == 0)) {
 		queue_conf->n_empty_polls++;
-		if (unlikely(queue_conf->n_empty_polls > EMPTYPOLL_MAX)) {
+		if (unlikely(queue_conf->n_empty_polls > emptypoll_max)) {
 			struct rte_power_monitor_cond pmc;
 			int ret;
 
@@ -661,6 +661,18 @@ rte_power_ethdev_pmgmt_queue_disable(unsigned int lcore_id,
 	return 0;
 }
 
+void
+rte_power_pmd_mgmt_set_emptypoll_max(unsigned int max)
+{
+	emptypoll_max = max;
+}
+
+unsigned int
+rte_power_pmd_mgmt_get_emptypoll_max(void)
+{
+	return emptypoll_max;
+}
+
 RTE_INIT(rte_power_ethdev_pmgmt_init) {
 	size_t i;
 
@@ -669,4 +681,7 @@ RTE_INIT(rte_power_ethdev_pmgmt_init) {
 		struct pmd_core_cfg *cfg = &lcore_cfgs[i];
 		TAILQ_INIT(&cfg->head);
 	}
+
+	/* initialize config defaults */
+	emptypoll_max = 512;
 }
