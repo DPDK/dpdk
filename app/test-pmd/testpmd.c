@@ -2672,7 +2672,7 @@ rx_queue_setup(uint16_t port_id, uint16_t rx_queue_id,
 		 * Use last valid pool for the segments with number
 		 * exceeding the pool index.
 		 */
-		mp_n = (i > mbuf_data_size_n) ? mbuf_data_size_n - 1 : i;
+		mp_n = (i >= mbuf_data_size_n) ? mbuf_data_size_n - 1 : i;
 		mpx = mbuf_pool_find(socket_id, mp_n);
 		/* Handle zero as mbuf data buffer size. */
 		rx_seg->length = rx_pkt_seg_lengths[i] ?
