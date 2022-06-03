@@ -81,7 +81,7 @@ struct hinic_sq_wqe {
 	struct hinic_sq_task		task;
 
 	/* sq sge section start address, 1~127 sges */
-	struct hinic_sq_bufdesc     buf_descs[0];
+	struct hinic_sq_bufdesc     buf_descs[];
 };
 
 struct hinic_txq_stats {

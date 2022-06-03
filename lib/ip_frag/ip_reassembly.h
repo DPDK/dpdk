@@ -83,7 +83,7 @@ struct rte_ip_frag_tbl {
 	struct ip_frag_pkt *last;     /* last used entry. */
 	struct ip_pkt_list lru;       /* LRU list for table entries. */
 	struct ip_frag_tbl_stat stat; /* statistics counters. */
-	__extension__ struct ip_frag_pkt pkt[0]; /* hash table. */
+	__extension__ struct ip_frag_pkt pkt[]; /* hash table. */
 };
 
 #endif /* _IP_REASSEMBLY_H_ */

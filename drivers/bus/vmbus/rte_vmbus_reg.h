@@ -107,7 +107,7 @@ struct vmbus_bufring {
 	 * Ring data starts here + RingDataStartOffset
 	 * !!! DO NOT place any fields below this !!!
 	 */
-	uint8_t data[0];
+	uint8_t data[];
 } __rte_packed;
 
 /*
@@ -140,7 +140,7 @@ vmbus_chanpkt_getlen(uint16_t pktlen)
 struct vmbus_gpa_range {
 	uint32_t       len;
 	uint32_t       ofs;
-	uint64_t       page[0];
+	uint64_t       page[];
 } __rte_packed;
 
 /* This is actually vmbus_gpa_range.gpa_page[1] */

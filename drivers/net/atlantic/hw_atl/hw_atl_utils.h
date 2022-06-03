@@ -334,7 +334,7 @@ struct offload_info {
 	struct offload_port_info ports;
 	struct offload_ka_info kas;
 	struct offload_rr_info rrs;
-	u8 buf[0];
+	u8 buf[];
 } __rte_packed;
 
 struct smbus_request {

@@ -246,7 +246,7 @@ struct roc_se_buf_ptr {
 /* IOV Pointer */
 struct roc_se_iov_ptr {
 	int buf_cnt;
-	struct roc_se_buf_ptr bufs[0];
+	struct roc_se_buf_ptr bufs[];
 };
 
 struct roc_se_fc_params {

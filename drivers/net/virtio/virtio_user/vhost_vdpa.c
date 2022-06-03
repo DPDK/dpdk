@@ -70,7 +70,7 @@ struct vhost_iotlb_msg {
 struct vhost_vdpa_config {
 	uint32_t off;
 	uint32_t len;
-	uint8_t buf[0];
+	uint8_t buf[];
 };
 
 struct vhost_msg {

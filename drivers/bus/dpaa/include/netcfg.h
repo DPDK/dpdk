@@ -23,7 +23,7 @@ struct fm_eth_port_cfg {
 struct netcfg_info {
 	uint8_t num_ethports;
 	/**< Number of ports */
-	struct fm_eth_port_cfg port_cfg[0];
+	struct fm_eth_port_cfg port_cfg[];
 	/**< Variable structure array of size num_ethports */
 };
 
@@ -38,7 +38,7 @@ struct interface_info {
 struct netcfg_interface {
 	uint8_t numof_netcfg_interface;
 	uint8_t numof_fman_enabled_macless;
-	struct interface_info interface_info[0];
+	struct interface_info interface_info[];
 };
 
 /* pcd_file: FMC netpcd XML ("policy") file, that contains PCD information.

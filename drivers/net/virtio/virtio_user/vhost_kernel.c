@@ -22,7 +22,7 @@ struct vhost_kernel_data {
 struct vhost_memory_kernel {
 	uint32_t nregions;
 	uint32_t padding;
-	struct vhost_memory_region regions[0];
+	struct vhost_memory_region regions[];
 };
 
 /* vhost kernel ioctls */

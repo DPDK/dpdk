@@ -88,7 +88,7 @@ struct virtqueue {
 
 	uint16_t  *notify_addr;
 
-	struct vq_desc_extra vq_descx[0];
+	struct vq_desc_extra vq_descx[];
 };
 
 /**

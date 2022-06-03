@@ -486,7 +486,7 @@ struct rte_event_timer {
 	 */
 	enum rte_event_timer_state state;
 	/**< State of the event timer. */
-	uint8_t user_meta[0];
+	uint8_t user_meta[];
 	/**< Memory to store user specific metadata.
 	 * The event timer adapter implementation should not modify this area.
 	 */

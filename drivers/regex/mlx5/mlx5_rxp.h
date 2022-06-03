@@ -64,7 +64,7 @@ struct mlx5_rxp_match_tuple {
 
 struct mlx5_rxp_response {
 	struct mlx5_rxp_response_desc header;
-	struct mlx5_rxp_match_tuple matches[0];
+	struct mlx5_rxp_match_tuple matches[];
 };
 
 #define MLX5_RXP_MAX_MATCHES 254
@@ -114,7 +114,7 @@ struct mlx5_rxp_rof {
 struct mlx5_rxp_ctl_rules_pgm {
 	struct mlx5_rxp_ctl_hdr hdr;
 	uint32_t count;
-	struct mlx5_rxp_rof_entry rules[0];
+	struct mlx5_rxp_rof_entry rules[];
 } __rte_packed;
 
 /* RXP programming mode setting. */

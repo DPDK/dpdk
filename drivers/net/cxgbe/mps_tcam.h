@@ -41,7 +41,7 @@ struct mpstcam_table {
 			 * free_idx cannot alone determine
 			 * if the table is full
 			 */
-	struct mps_tcam_entry entry[0];
+	struct mps_tcam_entry entry[];
 };
 
 struct mpstcam_table *t4_init_mpstcam(struct adapter *adap);

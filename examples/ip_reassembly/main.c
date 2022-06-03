@@ -126,7 +126,7 @@ struct mbuf_table {
 	uint32_t len;
 	uint32_t head;
 	uint32_t tail;
-	struct rte_mbuf *m_table[0];
+	struct rte_mbuf *m_table[];
 };
 
 struct rx_queue {

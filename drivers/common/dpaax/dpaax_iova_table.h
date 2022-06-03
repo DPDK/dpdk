@@ -32,7 +32,7 @@ struct dpaax_iovat_element {
 
 struct dpaax_iova_table {
 	unsigned int count; /**< No. of blocks of contiguous physical pages */
-	struct dpaax_iovat_element entries[0];
+	struct dpaax_iovat_element entries[];
 };
 
 /* Pointer to the table, which is common for DPAA/DPAA2 and only a single

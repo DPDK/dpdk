@@ -37,7 +37,7 @@ struct l2t_data {
 	unsigned int l2t_start;     /* start index of our piece of the L2T */
 	unsigned int l2t_size;      /* number of entries in l2tab */
 	rte_rwlock_t lock;          /* table rw lock */
-	struct l2t_entry l2tab[0];  /* MUST BE LAST */
+	struct l2t_entry l2tab[];  /* MUST BE LAST */
 };
 
 #define L2T_LPBK	true

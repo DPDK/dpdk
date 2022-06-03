@@ -560,7 +560,7 @@ struct mlx5_umr_wqe {
 struct mlx5_rdma_write_wqe {
 	struct mlx5_wqe_cseg ctr;
 	struct mlx5_wqe_rseg rseg;
-	struct mlx5_wqe_dseg dseg[0];
+	struct mlx5_wqe_dseg dseg[];
 } __rte_packed;
 
 #ifdef PEDANTIC
@@ -3479,7 +3479,7 @@ struct mlx5_ifc_qpc_pas_list_bits {
 #endif
 struct mlx5_ifc_qpc_extension_and_pas_list_bits {
 	struct mlx5_ifc_qpc_extension_bits qpc_data_extension;
-	u8 pas[0][0x40];
+	u8 pas[][0x40];
 };
 
 
@@ -3703,7 +3703,7 @@ struct mlx5_ifc_query_qp_out_bits {
 	u8 reserved_at_a0[0x20];
 	struct mlx5_ifc_qpc_bits qpc;
 	u8 reserved_at_800[0x80];
-	u8 pas[0][0x40];
+	u8 pas[][0x40];
 };
 #ifdef PEDANTIC
 #pragma GCC diagnostic error "-Wpedantic"
@@ -3743,7 +3743,7 @@ struct mlx5_ifc_access_register_out_bits {
 	u8 reserved_at_8[0x18];
 	u8 syndrome[0x20];
 	u8 reserved_at_40[0x40];
-	u8 register_data[0][0x20];
+	u8 register_data[][0x20];
 };
 
 struct mlx5_ifc_access_register_in_bits {
@@ -3754,7 +3754,7 @@ struct mlx5_ifc_access_register_in_bits {
 	u8 reserved_at_40[0x10];
 	u8 register_id[0x10];
 	u8 argument[0x20];
-	u8 register_data[0][0x20];
+	u8 register_data[][0x20];
 };
 #ifdef PEDANTIC
 #pragma GCC diagnostic error "-Wpedantic"

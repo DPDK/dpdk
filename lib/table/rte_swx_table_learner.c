@@ -252,7 +252,7 @@ struct table_bucket {
 	uint32_t sig[TABLE_KEYS_PER_BUCKET];
 	uint8_t key_timeout_id[TABLE_KEYS_PER_BUCKET];
 	uint8_t pad[TABLE_BUCKET_PAD_SIZE];
-	uint8_t key[0];
+	uint8_t key[];
 };
 
 struct table_params {
@@ -317,7 +317,7 @@ struct table {
 	uint8_t key_mask0[RTE_CACHE_LINE_SIZE];
 
 	/* Table buckets. */
-	uint8_t buckets[0];
+	uint8_t buckets[];
 } __rte_cache_aligned;
 
 /* The timeout (in cycles) is stored in the table as a 32-bit value by truncating its least

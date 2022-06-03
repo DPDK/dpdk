@@ -918,7 +918,7 @@ struct rte_cryptodev_sym_session {
 	__extension__ struct {
 		void *data;
 		uint16_t refcnt;
-	} sess_data[0];
+	} sess_data[];
 	/**< Driver specific session material, variable size */
 };
 

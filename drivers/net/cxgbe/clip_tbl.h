@@ -20,7 +20,7 @@ struct clip_tbl {
 	unsigned int clipt_start;     /* start index of CLIP table */
 	unsigned int clipt_size;      /* size of CLIP table */
 	rte_rwlock_t lock;            /* table rw lock */
-	struct clip_entry cl_list[0]; /* MUST BE LAST */
+	struct clip_entry cl_list[]; /* MUST BE LAST */
 };
 
 struct clip_tbl *t4_init_clip_tbl(unsigned int clipt_start,

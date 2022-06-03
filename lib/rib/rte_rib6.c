@@ -34,7 +34,7 @@ struct rte_rib6_node {
 	uint8_t			ip[RTE_RIB6_IPV6_ADDR_SIZE];
 	uint8_t			depth;
 	uint8_t			flag;
-	__extension__ uint64_t		ext[0];
+	__extension__ uint64_t ext[];
 };
 
 struct rte_rib6 {

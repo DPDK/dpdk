@@ -43,7 +43,7 @@ struct rte_bucket_4_32 {
 	uint64_t key[4][4];
 
 	/* Cache line 3 */
-	uint8_t data[0];
+	uint8_t data[];
 };
 #else
 struct rte_bucket_4_32 {
@@ -58,7 +58,7 @@ struct rte_bucket_4_32 {
 	uint64_t key[4][4];
 
 	/* Cache line 3 */
-	uint8_t data[0];
+	uint8_t data[];
 };
 #endif
 

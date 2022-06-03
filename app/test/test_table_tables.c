@@ -53,7 +53,7 @@ struct rte_bucket_4_8 {
 	uint64_t next_valid;
 	uint64_t key[4];
 	/* Cache line 1 */
-	uint8_t data[0];
+	uint8_t data[];
 };
 
 #if RTE_TABLE_HASH_LRU_STRATEGY == 3

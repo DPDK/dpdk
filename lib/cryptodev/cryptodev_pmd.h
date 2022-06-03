@@ -673,7 +673,7 @@ RTE_STD_C11 struct rte_cryptodev_asym_session {
 	uint8_t padding[3];
 	void *event_mdata;
 	/**< Event metadata (aka *union rte_event_crypto_metadata*) */
-	uint8_t sess_private_data[0];
+	uint8_t sess_private_data[];
 };
 
 #ifdef __cplusplus
