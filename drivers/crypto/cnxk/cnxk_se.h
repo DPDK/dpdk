@@ -44,17 +44,16 @@ fill_sess_gmac(struct rte_crypto_sym_xform *xform, struct cnxk_se_sess *sess);
 static inline void
 cpt_pack_iv(uint8_t *iv_src, uint8_t *iv_dst)
 {
-	iv_dst[16] = iv_src[16];
-	/* pack the last 8 bytes of IV to 6 bytes.
+	/* pack the first 8 bytes of IV to 6 bytes.
 	 * discard the 2 MSB bits of each byte
 	 */
-	iv_dst[17] = (((iv_src[17] & 0x3f) << 2) | ((iv_src[18] >> 4) & 0x3));
-	iv_dst[18] = (((iv_src[18] & 0xf) << 4) | ((iv_src[19] >> 2) & 0xf));
-	iv_dst[19] = (((iv_src[19] & 0x3) << 6) | (iv_src[20] & 0x3f));
+	iv_dst[0] = (((iv_src[0] & 0x3f) << 2) | ((iv_src[1] >> 4) & 0x3));
+	iv_dst[1] = (((iv_src[1] & 0xf) << 4) | ((iv_src[2] >> 2) & 0xf));
+	iv_dst[2] = (((iv_src[2] & 0x3) << 6) | (iv_src[3] & 0x3f));
 
-	iv_dst[20] = (((iv_src[21] & 0x3f) << 2) | ((iv_src[22] >> 4) & 0x3));
-	iv_dst[21] = (((iv_src[22] & 0xf) << 4) | ((iv_src[23] >> 2) & 0xf));
-	iv_dst[22] = (((iv_src[23] & 0x3) << 6) | (iv_src[24] & 0x3f));
+	iv_dst[3] = (((iv_src[4] & 0x3f) << 2) | ((iv_src[5] >> 4) & 0x3));
+	iv_dst[4] = (((iv_src[5] & 0xf) << 4) | ((iv_src[6] >> 2) & 0xf));
+	iv_dst[5] = (((iv_src[6] & 0x3) << 6) | (iv_src[7] & 0x3f));
 }
 
 static inline void
@@ -76,10 +75,11 @@ pdcp_iv_copy(uint8_t *iv_d, uint8_t *iv_s, const uint8_t pdcp_alg_type,
 			iv_temp[j] = iv_s_temp[3 - j];
 		memcpy(iv_d, iv_temp, 16);
 	} else if (pdcp_alg_type == ROC_SE_PDCP_ALG_TYPE_ZUC) {
-		/* ZUC doesn't need a swap */
-		memcpy(iv_d, iv_s, 16);
-		if (pack_iv)
+		if (pack_iv) {
 			cpt_pack_iv(iv_s, iv_d);
+			memcpy(iv_d + 6, iv_s + 8, 17);
+		} else
+			memcpy(iv_d, iv_s, 16);
 	} else {
 		/* AES-CMAC EIA2, microcode expects 16B zeroized IV */
 		for (j = 0; j < 4; j++)
@@ -1037,6 +1037,7 @@ cpt_pdcp_alg_prep(uint32_t req_flags, uint64_t d_offs, uint64_t d_lens,
 			iv_len = params->auth_iv_len;
 
 			if (iv_len == 25) {
+				roc_se_zuc_bytes_swap(iv_s, iv_len);
 				iv_len -= 2;
 				pack_iv = 1;
 			}
@@ -1068,6 +1069,7 @@ cpt_pdcp_alg_prep(uint32_t req_flags, uint64_t d_offs, uint64_t d_lens,
 		iv_len = params->cipher_iv_len;
 
 		if (iv_len == 25) {
+			roc_se_zuc_bytes_swap(iv_s, iv_len);
 			iv_len -= 2;
 			pack_iv = 1;
 		}
