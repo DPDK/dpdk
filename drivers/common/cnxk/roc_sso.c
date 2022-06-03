@@ -784,29 +784,34 @@ roc_sso_dev_init(struct roc_sso *roc_sso)
 	}
 	rc = -ENOMEM;
 
-	sso->link_map =
-		plt_zmalloc(sizeof(struct plt_bitmap *) * roc_sso->max_hws, 0);
-	if (sso->link_map == NULL) {
-		plt_err("Failed to allocate memory for link_map array");
-		goto rsrc_fail;
-	}
-
-	link_map_sz = plt_bitmap_get_memory_footprint(roc_sso->max_hwgrp);
-	sso->link_map_mem = plt_zmalloc(link_map_sz * roc_sso->max_hws, 0);
-	if (sso->link_map_mem == NULL) {
-		plt_err("Failed to get link_map memory");
-		goto rsrc_fail;
-	}
-
-	link_mem = sso->link_map_mem;
-	for (i = 0; i < roc_sso->max_hws; i++) {
-		sso->link_map[i] = plt_bitmap_init(roc_sso->max_hwgrp, link_mem,
-						   link_map_sz);
-		if (sso->link_map[i] == NULL) {
-			plt_err("Failed to allocate link map");
-			goto link_mem_free;
+	if (roc_sso->max_hws) {
+		sso->link_map = plt_zmalloc(
+			sizeof(struct plt_bitmap *) * roc_sso->max_hws, 0);
+		if (sso->link_map == NULL) {
+			plt_err("Failed to allocate memory for link_map array");
+			goto rsrc_fail;
 		}
-		link_mem = PLT_PTR_ADD(link_mem, link_map_sz);
+
+		link_map_sz =
+			plt_bitmap_get_memory_footprint(roc_sso->max_hwgrp);
+		sso->link_map_mem =
+			plt_zmalloc(link_map_sz * roc_sso->max_hws, 0);
+		if (sso->link_map_mem == NULL) {
+			plt_err("Failed to get link_map memory");
+			goto rsrc_fail;
+		}
+
+		link_mem = sso->link_map_mem;
+
+		for (i = 0; i < roc_sso->max_hws; i++) {
+			sso->link_map[i] = plt_bitmap_init(
+				roc_sso->max_hwgrp, link_mem, link_map_sz);
+			if (sso->link_map[i] == NULL) {
+				plt_err("Failed to allocate link map");
+				goto link_mem_free;
+			}
+			link_mem = PLT_PTR_ADD(link_mem, link_map_sz);
+		}
 	}
 	idev_sso_pffunc_set(sso->dev.pf_func);
 	idev_sso_set(roc_sso);
