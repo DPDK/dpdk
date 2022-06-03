@@ -521,7 +521,7 @@ F: app/test/test_event_crypto_adapter.c
 F: doc/guides/prog_guide/event_crypto_adapter.rst
 
 Raw device API
-M: Nipun Gupta <nipun.gupta@nxp.com>
+M: Sachin Saxena <sachin.saxena@oss.nxp.com>
 M: Hemant Agrawal <hemant.agrawal@nxp.com>
 F: lib/rawdev/
 F: drivers/raw/skeleton/
@@ -1206,12 +1206,12 @@ F: doc/guides/dmadevs/cnxk.rst
 
 NXP DPAA DMA
 M: Gagandeep Singh <g.singh@nxp.com>
-M: Nipun Gupta <nipun.gupta@nxp.com>
+M: Sachin Saxena <sachin.saxena@oss.nxp.com>
 F: drivers/dma/dpaa/
 F: doc/guides/dmadevs/dpaa.rst
 
 NXP DPAA2 QDMA
-M: Nipun Gupta <nipun.gupta@nxp.com>
+M: Gagandeep Singh <g.singh@nxp.com>
 M: Hemant Agrawal <hemant.agrawal@nxp.com>
 F: drivers/dma/dpaa2/
 F: doc/guides/dmadevs/dpaa2.rst
@@ -1284,13 +1284,13 @@ F: doc/guides/eventdevs/cnxk.rst
 
 NXP DPAA eventdev
 M: Hemant Agrawal <hemant.agrawal@nxp.com>
-M: Nipun Gupta <nipun.gupta@nxp.com>
+M: Sachin Saxena <sachin.saxena@oss.nxp.com>
 F: drivers/event/dpaa/
 F: doc/guides/eventdevs/dpaa.rst
 
 NXP DPAA2 eventdev
 M: Hemant Agrawal <hemant.agrawal@nxp.com>
-M: Nipun Gupta <nipun.gupta@nxp.com>
+M: Sachin Saxena <sachin.saxena@oss.nxp.com>
 F: drivers/event/dpaa2/
 F: doc/guides/eventdevs/dpaa2.rst
 
@@ -1340,7 +1340,7 @@ F: doc/guides/bbdevs/null.rst
 F: doc/guides/bbdevs/features/null.ini
 
 NXP LA12xx
-M: Nipun Gupta <nipun.gupta@nxp.com>
+M: Gagandeep Singh <g.singh@nxp.com>
 M: Hemant Agrawal <hemant.agrawal@nxp.com>
 T: git://dpdk.org/next/dpdk-next-crypto
 F: drivers/baseband/la12xx/
@@ -1393,7 +1393,7 @@ F: examples/ntb/
 F: doc/guides/sample_app_ug/ntb.rst
 
 NXP DPAA2 CMDIF
-M: Nipun Gupta <nipun.gupta@nxp.com>
+M: Gagandeep Singh <g.singh@nxp.com>
 F: drivers/raw/dpaa2_cmdif/
 F: doc/guides/rawdevs/dpaa2_cmdif.rst
 
