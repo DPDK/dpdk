@@ -995,6 +995,7 @@ fslmc_vfio_setup_group(void)
 {
 	int groupid;
 	int ret;
+	int vfio_container_fd;
 	struct vfio_group_status status = { .argsz = sizeof(status) };
 
 	/* if already done once */
@@ -1013,8 +1014,15 @@ fslmc_vfio_setup_group(void)
 		return 0;
 	}
 
+	ret = rte_vfio_container_create();
+	if (ret < 0) {
+		DPAA2_BUS_ERR("Failed to open VFIO container");
+		return ret;
+	}
+	vfio_container_fd = ret;
+
 	/* Get the actual group fd */
-	ret = rte_vfio_get_group_fd(groupid);
+	ret = rte_vfio_container_group_bind(vfio_container_fd, groupid);
 	if (ret < 0)
 		return ret;
 	vfio_group.fd = ret;
