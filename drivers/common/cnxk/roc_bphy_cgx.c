@@ -173,8 +173,14 @@ out:
 static unsigned int
 roc_bphy_cgx_dev_id(struct roc_bphy_cgx *roc_cgx)
 {
-	uint64_t cgx_id = roc_model_is_cn10k() ? GENMASK_ULL(26, 24) :
-						 GENMASK_ULL(25, 24);
+	uint64_t cgx_id;
+
+	if (roc_model_is_cnf10kb())
+		cgx_id = GENMASK_ULL(27, 24);
+	else if (roc_model_is_cn10k())
+		cgx_id = GENMASK_ULL(26, 24);
+	else
+		cgx_id = GENMASK_ULL(25, 24);
 
 	return FIELD_GET(cgx_id, roc_cgx->bar0_pa);
 }
