@@ -11,8 +11,6 @@
 #include "roc_api.h"
 #include "roc_bphy_irq.h"
 
-#define roc_cpuset_t cpu_set_t
-
 struct roc_bphy_irq_usr_data {
 	uint64_t isr_base;
 	uint64_t sp;
@@ -222,14 +220,13 @@ roc_bphy_intr_handler(unsigned int irq_num)
 }
 
 static int
-roc_bphy_irq_handler_set(struct roc_bphy_irq_chip *chip, int irq_num,
+roc_bphy_irq_handler_set(struct roc_bphy_irq_chip *chip, int cpu, int irq_num,
 			 void (*isr)(int irq_num, void *isr_data),
 			 void *isr_data)
 {
-	roc_cpuset_t orig_cpuset, intr_cpuset;
 	struct roc_bphy_irq_usr_data irq_usr;
 	const struct plt_memzone *mz;
-	int i, retval, curr_cpu, rc;
+	int retval, rc;
 	char *env;
 
 	mz = plt_memzone_lookup(chip->mz_name);
@@ -244,38 +241,11 @@ roc_bphy_irq_handler_set(struct roc_bphy_irq_chip *chip, int irq_num,
 	if (chip->irq_vecs[irq_num].handler != NULL)
 		return -EINVAL;
 
-	rc = pthread_getaffinity_np(pthread_self(), sizeof(orig_cpuset),
-				    &orig_cpuset);
-	if (rc < 0) {
-		plt_err("Failed to get affinity mask");
-		return rc;
-	}
-
-	for (curr_cpu = -1, i = 0; i < CPU_SETSIZE; i++)
-		if (CPU_ISSET(i, &orig_cpuset))
-			curr_cpu = i;
-	if (curr_cpu < 0)
-		return -ENOENT;
-
-	CPU_ZERO(&intr_cpuset);
-	CPU_SET(curr_cpu, &intr_cpuset);
-	rc = pthread_setaffinity_np(pthread_self(), sizeof(intr_cpuset),
-					&intr_cpuset);
-	if (rc < 0) {
-		plt_err("Failed to set affinity mask");
-		return rc;
-	}
-
 	irq_usr.isr_base = (uint64_t)roc_bphy_intr_handler;
-	irq_usr.sp = (uint64_t)roc_bphy_irq_stack_get(curr_cpu);
-	irq_usr.cpu = curr_cpu;
-	if (irq_usr.sp == 0) {
-		rc = pthread_setaffinity_np(pthread_self(), sizeof(orig_cpuset),
-					    &orig_cpuset);
-		if (rc < 0)
-			plt_err("Failed to restore affinity mask");
-		return rc;
-	}
+	irq_usr.sp = (uint64_t)roc_bphy_irq_stack_get(cpu);
+	irq_usr.cpu = cpu;
+	if (irq_usr.sp == 0)
+		return -ENOMEM;
 
 	/* On simulator memory locking operation takes much time. We want
 	 * to skip this when running in such an environment.
@@ -289,22 +259,17 @@ roc_bphy_irq_handler_set(struct roc_bphy_irq_chip *chip, int irq_num,
 
 	*((struct roc_bphy_irq_chip **)(mz->addr)) = chip;
 	irq_usr.irq_num = irq_num;
-	chip->irq_vecs[irq_num].handler_cpu = curr_cpu;
+	chip->irq_vecs[irq_num].handler_cpu = cpu;
 	chip->irq_vecs[irq_num].handler = isr;
 	chip->irq_vecs[irq_num].isr_data = isr_data;
 	retval = ioctl(chip->intfd, ROC_BPHY_IOC_SET_BPHY_HANDLER, &irq_usr);
 	if (retval != 0) {
-		roc_bphy_irq_stack_remove(curr_cpu);
+		roc_bphy_irq_stack_remove(cpu);
 		chip->irq_vecs[irq_num].handler = NULL;
 		chip->irq_vecs[irq_num].handler_cpu = -1;
 	} else {
 		chip->n_handlers++;
 	}
-
-	rc = pthread_setaffinity_np(pthread_self(), sizeof(orig_cpuset),
-				    &orig_cpuset);
-	if (rc < 0)
-		plt_warn("Failed to restore affinity mask");
 
 	return retval;
 }
@@ -327,7 +292,6 @@ roc_bphy_intr_max_get(struct roc_bphy_irq_chip *irq_chip)
 int
 roc_bphy_intr_clear(struct roc_bphy_irq_chip *chip, int irq_num)
 {
-	roc_cpuset_t orig_cpuset, intr_cpuset;
 	const struct plt_memzone *mz;
 	int retval;
 
@@ -342,24 +306,6 @@ roc_bphy_intr_clear(struct roc_bphy_irq_chip *chip, int irq_num)
 	mz = plt_memzone_lookup(chip->mz_name);
 	if (mz == NULL)
 		return -ENXIO;
-
-	retval = pthread_getaffinity_np(pthread_self(), sizeof(orig_cpuset),
-					&orig_cpuset);
-	if (retval < 0) {
-		plt_warn("Failed to get affinity mask");
-		CPU_ZERO(&orig_cpuset);
-		CPU_SET(0, &orig_cpuset);
-	}
-
-	CPU_ZERO(&intr_cpuset);
-	CPU_SET(chip->irq_vecs[irq_num].handler_cpu, &intr_cpuset);
-	retval = pthread_setaffinity_np(pthread_self(), sizeof(intr_cpuset),
-					&intr_cpuset);
-	if (retval < 0) {
-		plt_warn("Failed to set affinity mask");
-		CPU_ZERO(&orig_cpuset);
-		CPU_SET(0, &orig_cpuset);
-	}
 
 	retval = ioctl(chip->intfd, ROC_BPHY_IOC_CLR_BPHY_HANDLER, irq_num);
 	if (retval == 0) {
@@ -378,14 +324,6 @@ roc_bphy_intr_clear(struct roc_bphy_irq_chip *chip, int irq_num)
 		plt_err("Failed to clear bphy interrupt handler");
 	}
 
-	retval = pthread_setaffinity_np(pthread_self(), sizeof(orig_cpuset),
-					&orig_cpuset);
-	if (retval < 0) {
-		plt_warn("Failed to restore affinity mask");
-		CPU_ZERO(&orig_cpuset);
-		CPU_SET(0, &orig_cpuset);
-	}
-
 	return retval;
 }
 
@@ -393,36 +331,13 @@ int
 roc_bphy_intr_register(struct roc_bphy_irq_chip *irq_chip,
 		       struct roc_bphy_intr *intr)
 {
-	roc_cpuset_t orig_cpuset, intr_cpuset;
-	int retval;
 	int ret;
 
 	if (!roc_bphy_intr_available(irq_chip, intr->irq_num))
 		return -ENOTSUP;
 
-	retval = pthread_getaffinity_np(pthread_self(), sizeof(orig_cpuset),
-					&orig_cpuset);
-	if (retval < 0) {
-		plt_err("Failed to get affinity mask");
-		return retval;
-	}
-
-	CPU_ZERO(&intr_cpuset);
-	CPU_SET(intr->cpu, &intr_cpuset);
-	retval = pthread_setaffinity_np(pthread_self(), sizeof(intr_cpuset),
-					&intr_cpuset);
-	if (retval < 0) {
-		plt_err("Failed to set affinity mask");
-		return retval;
-	}
-
-	ret = roc_bphy_irq_handler_set(irq_chip, intr->irq_num,
+	ret = roc_bphy_irq_handler_set(irq_chip, intr->cpu, intr->irq_num,
 				       intr->intr_handler, intr->isr_data);
-
-	retval = pthread_setaffinity_np(pthread_self(), sizeof(orig_cpuset),
-					&orig_cpuset);
-	if (retval < 0)
-		plt_warn("Failed to restore affinity mask");
 
 	return ret;
 }
