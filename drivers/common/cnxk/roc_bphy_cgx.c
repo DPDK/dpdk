@@ -21,10 +21,13 @@
  *
  * Hence common longer mask may be used.
  */
-#define CGX_CMRX_RX_LMACS	0x128
-#define CGX_CMRX_RX_LMACS_LMACS GENMASK_ULL(3, 0)
-#define CGX_CMRX_SCRATCH0	0x1050
-#define CGX_CMRX_SCRATCH1	0x1058
+#define CGX_CMRX_RX_LMACS                     0x128
+#define CGX_CMRX_RX_LMACS_LMACS               GENMASK_ULL(3, 0)
+#define CGX_CMRX_SCRATCH0                     0x1050
+#define CGX_CMRX_SCRATCH1                     0x1058
+#define CGX_MTI_MAC100X_COMMAND_CONFIG        0x8010
+#define CGX_MTI_MAC100X_COMMAND_CONFIG_RX_ENA BIT_ULL(1)
+#define CGX_MTI_MAC100X_COMMAND_CONFIG_TX_ENA BIT_ULL(0)
 
 static uint64_t
 roc_bphy_cgx_read(struct roc_bphy_cgx *roc_cgx, uint64_t lmac, uint64_t offset)
@@ -221,7 +224,7 @@ static int
 roc_bphy_cgx_start_stop_rxtx(struct roc_bphy_cgx *roc_cgx, unsigned int lmac,
 			     bool start)
 {
-	uint64_t val;
+	uint64_t val, reg, rx_field, tx_field;
 
 	if (!roc_cgx)
 		return -EINVAL;
@@ -229,16 +232,24 @@ roc_bphy_cgx_start_stop_rxtx(struct roc_bphy_cgx *roc_cgx, unsigned int lmac,
 	if (!roc_bphy_cgx_lmac_exists(roc_cgx, lmac))
 		return -ENODEV;
 
+	if (roc_model_is_cnf10kb()) {
+		reg = CGX_MTI_MAC100X_COMMAND_CONFIG;
+		rx_field = CGX_MTI_MAC100X_COMMAND_CONFIG_RX_ENA;
+		tx_field = CGX_MTI_MAC100X_COMMAND_CONFIG_TX_ENA;
+	} else {
+		reg = CGX_CMRX_CONFIG;
+		rx_field = CGX_CMRX_CONFIG_DATA_PKT_RX_EN;
+		tx_field = CGX_CMRX_CONFIG_DATA_PKT_TX_EN;
+	}
+
 	pthread_mutex_lock(&roc_cgx->lock);
-	val = roc_bphy_cgx_read(roc_cgx, lmac, CGX_CMRX_CONFIG);
-	val &= ~(CGX_CMRX_CONFIG_DATA_PKT_RX_EN |
-		 CGX_CMRX_CONFIG_DATA_PKT_TX_EN);
+	val = roc_bphy_cgx_read(roc_cgx, lmac, reg);
+	val &= ~(rx_field | tx_field);
 
 	if (start)
-		val |= FIELD_PREP(CGX_CMRX_CONFIG_DATA_PKT_RX_EN, 1) |
-		       FIELD_PREP(CGX_CMRX_CONFIG_DATA_PKT_TX_EN, 1);
+		val |= FIELD_PREP(rx_field, 1) | FIELD_PREP(tx_field, 1);
 
-	roc_bphy_cgx_write(roc_cgx, lmac, CGX_CMRX_CONFIG, val);
+	roc_bphy_cgx_write(roc_cgx, lmac, reg, val);
 	pthread_mutex_unlock(&roc_cgx->lock);
 
 	return 0;
