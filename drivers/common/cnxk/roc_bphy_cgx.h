@@ -106,6 +106,12 @@ struct roc_bphy_cgx_cpri_mode_tx_ctrl {
 	bool enable;
 };
 
+struct roc_bphy_cgx_cpri_mode_misc {
+	int gserc_idx;
+	int lane_idx;
+	int flags;
+};
+
 __roc_api int roc_bphy_cgx_dev_init(struct roc_bphy_cgx *roc_cgx);
 __roc_api int roc_bphy_cgx_dev_fini(struct roc_bphy_cgx *roc_cgx);
 
@@ -138,5 +144,7 @@ __roc_api int roc_bphy_cgx_cpri_mode_change(struct roc_bphy_cgx *roc_cgx, unsign
 					    struct roc_bphy_cgx_cpri_mode_change *mode);
 __roc_api int roc_bphy_cgx_cpri_mode_tx_control(struct roc_bphy_cgx *roc_cgx, unsigned int lmac,
 						struct roc_bphy_cgx_cpri_mode_tx_ctrl *mode);
+__roc_api int roc_bphy_cgx_cpri_mode_misc(struct roc_bphy_cgx *roc_cgx, unsigned int lmac,
+					  struct roc_bphy_cgx_cpri_mode_misc *mode);
 
 #endif /* _ROC_BPHY_CGX_H_ */

@@ -54,6 +54,8 @@ enum cnxk_bphy_cgx_msg_type {
 	CNXK_BPHY_CGX_MSG_TYPE_CPRI_MODE_CHANGE,
 	/** Type used to enable TX for CPRI SERDES */
 	CNXK_BPHY_CGX_MSG_TYPE_CPRI_TX_CONTROL,
+	/** Type use to change misc CPRI SERDES settings */
+	CNXK_BPHY_CGX_MSG_TYPE_CPRI_MODE_MISC,
 };
 
 /** Available link speeds */
@@ -195,6 +197,15 @@ struct cnxk_bphy_cgx_msg_cpri_mode_tx_ctrl {
 	int lane_idx;
 	/** Disable or enable SERDES */
 	bool enable;
+};
+
+struct cnxk_bphy_cgx_msg_cpri_mode_misc {
+	/** SERDES index (0 - 4) */
+	int gserc_idx;
+	/** Lane index (0 - 1) */
+	int lane_idx;
+	/** Misc flags (0 - RX Eq, 1 - RX state machine reset) */
+	int flags;
 };
 
 struct cnxk_bphy_cgx_msg {
@@ -764,6 +775,31 @@ rte_pmd_bphy_cgx_cpri_tx_control(uint16_t dev_id, uint16_t lmac,
 {
 	struct cnxk_bphy_cgx_msg msg = {
 		.type = CNXK_BPHY_CGX_MSG_TYPE_CPRI_TX_CONTROL,
+		.data = mode,
+	};
+
+	return __rte_pmd_bphy_enq_deq(dev_id, lmac, &msg, NULL, 0);
+}
+
+/**
+ * CPRI misc settings
+ *
+ * @param dev_id
+ *   The identifier of the device
+ * @param lmac
+ *   LMAC number for operation
+ * @param mode
+ *   CPRI settings holding misc control data
+ *
+ * @return
+ *   Returns 0 on success, negative error code otherwise
+ */
+static __rte_always_inline int
+rte_pmd_bphy_cgx_cpri_mode_misc(uint16_t dev_id, uint16_t lmac,
+				struct cnxk_bphy_cgx_msg_cpri_mode_misc *mode)
+{
+	struct cnxk_bphy_cgx_msg msg = {
+		.type = CNXK_BPHY_CGX_MSG_TYPE_CPRI_MODE_MISC,
 		.data = mode,
 	};
 

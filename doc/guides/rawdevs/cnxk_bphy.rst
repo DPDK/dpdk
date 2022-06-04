@@ -121,6 +121,17 @@ Prior to sending actual message payload i.e
 ``struct cnxk_bphy_cgx_msg_cpri_mode_tx_ctrl`` needs to be filled with relevant
 information.
 
+Change CPRI misc settings
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Message is used to change misc CPRI settings, for example to reset RX state
+machine on CPRI SERDES.
+
+Message must have type set to ``CNXK_BPHY_CGX_MSG_TYPE_CPRI_MODE_MISC``.
+Prior to sending actual message payload i.e
+``struct cnxk_bphy_cgx_msg_cpri_mode_misc`` needs to be filled with relevant
+information.
+
 BPHY PMD
 --------
 

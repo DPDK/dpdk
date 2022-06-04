@@ -59,10 +59,12 @@ cnxk_bphy_cgx_process_buf(struct cnxk_bphy_cgx *cgx, unsigned int queue,
 	struct cnxk_bphy_cgx_msg_cpri_mode_change *cpri_mode;
 	struct cnxk_bphy_cgx_msg_set_link_state *link_state;
 	struct cnxk_bphy_cgx_msg_cpri_mode_tx_ctrl *tx_ctrl;
+	struct cnxk_bphy_cgx_msg_cpri_mode_misc *mode_misc;
 	struct cnxk_bphy_cgx_msg *msg = buf->buf_addr;
 	struct cnxk_bphy_cgx_msg_link_mode *link_mode;
 	struct cnxk_bphy_cgx_msg_link_info *link_info;
 	struct roc_bphy_cgx_cpri_mode_change rcpri_mode;
+	struct roc_bphy_cgx_cpri_mode_misc rmode_misc;
 	struct roc_bphy_cgx_cpri_mode_tx_ctrl rtx_ctrl;
 	struct roc_bphy_cgx_link_info rlink_info;
 	struct roc_bphy_cgx_link_mode rlink_mode;
@@ -158,6 +160,14 @@ cnxk_bphy_cgx_process_buf(struct cnxk_bphy_cgx *cgx, unsigned int queue,
 		rtx_ctrl.enable = tx_ctrl->enable;
 		ret = roc_bphy_cgx_cpri_mode_tx_control(cgx->rcgx, lmac,
 							&rtx_ctrl);
+		break;
+	case CNXK_BPHY_CGX_MSG_TYPE_CPRI_MODE_MISC:
+		mode_misc = msg->data;
+		memset(&rmode_misc, 0, sizeof(rmode_misc));
+		rmode_misc.gserc_idx = mode_misc->gserc_idx;
+		rmode_misc.lane_idx = mode_misc->lane_idx;
+		rmode_misc.flags = mode_misc->flags;
+		ret = roc_bphy_cgx_cpri_mode_misc(cgx->rcgx, lmac, &rmode_misc);
 		break;
 	default:
 		return -EINVAL;
