@@ -759,11 +759,6 @@ cn10k_nix_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 	struct cnxk_eth_dev *dev;
 	int rc;
 
-	if (RTE_CACHE_LINE_SIZE != 64) {
-		plt_err("Driver not compiled for CN10K");
-		return -EFAULT;
-	}
-
 	rc = roc_plt_init();
 	if (rc) {
 		plt_err("Failed to initialize platform model, rc=%d", rc);

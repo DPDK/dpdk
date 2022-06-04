@@ -1094,6 +1094,29 @@ fail:
 	return -errno;
 }
 
+static bool
+dev_cache_line_size_valid(void)
+{
+	if (roc_model_is_cn9k()) {
+		if (PLT_CACHE_LINE_SIZE != 128) {
+			plt_err("Cache line size of %d is wrong for CN9K",
+				PLT_CACHE_LINE_SIZE);
+			return false;
+		}
+	} else if (roc_model_is_cn10k()) {
+		if (PLT_CACHE_LINE_SIZE == 128) {
+			plt_warn("Cache line size of %d might affect performance",
+				 PLT_CACHE_LINE_SIZE);
+		} else if (PLT_CACHE_LINE_SIZE != 64) {
+			plt_err("Cache line size of %d is wrong for CN10K",
+				PLT_CACHE_LINE_SIZE);
+			return false;
+		}
+	}
+
+	return true;
+}
+
 int
 dev_init(struct dev *dev, struct plt_pci_device *pci_dev)
 {
@@ -1101,6 +1124,9 @@ dev_init(struct dev *dev, struct plt_pci_device *pci_dev)
 	uintptr_t bar2, bar4, mbox;
 	uintptr_t vf_mbase = 0;
 	uint64_t intr_offset;
+
+	if (!dev_cache_line_size_valid())
+		return -EFAULT;
 
 	bar2 = (uintptr_t)pci_dev->mem_resource[2].addr;
 	bar4 = (uintptr_t)pci_dev->mem_resource[4].addr;
