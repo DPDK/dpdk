@@ -56,10 +56,12 @@ cnxk_bphy_cgx_process_buf(struct cnxk_bphy_cgx *cgx, unsigned int queue,
 			  struct rte_rawdev_buf *buf)
 {
 	struct cnxk_bphy_cgx_queue *qp = &cgx->queues[queue];
+	struct cnxk_bphy_cgx_msg_cpri_mode_change *cpri_mode;
 	struct cnxk_bphy_cgx_msg_set_link_state *link_state;
 	struct cnxk_bphy_cgx_msg *msg = buf->buf_addr;
 	struct cnxk_bphy_cgx_msg_link_mode *link_mode;
 	struct cnxk_bphy_cgx_msg_link_info *link_info;
+	struct roc_bphy_cgx_cpri_mode_change rcpri_mode;
 	struct roc_bphy_cgx_link_info rlink_info;
 	struct roc_bphy_cgx_link_mode rlink_mode;
 	enum roc_bphy_cgx_eth_link_fec *fec;
@@ -134,6 +136,17 @@ cnxk_bphy_cgx_process_buf(struct cnxk_bphy_cgx *cgx, unsigned int queue,
 	case CNXK_BPHY_CGX_MSG_TYPE_SET_FEC:
 		fec = msg->data;
 		ret = roc_bphy_cgx_fec_set(cgx->rcgx, lmac, *fec);
+		break;
+	case CNXK_BPHY_CGX_MSG_TYPE_CPRI_MODE_CHANGE:
+		cpri_mode = msg->data;
+		memset(&rcpri_mode, 0, sizeof(rcpri_mode));
+		rcpri_mode.gserc_idx = cpri_mode->gserc_idx;
+		rcpri_mode.lane_idx = cpri_mode->lane_idx;
+		rcpri_mode.rate = cpri_mode->rate;
+		rcpri_mode.disable_leq = cpri_mode->disable_leq;
+		rcpri_mode.disable_dfe = cpri_mode->disable_dfe;
+		ret = roc_bphy_cgx_cpri_mode_change(cgx->rcgx, lmac,
+						    &rcpri_mode);
 		break;
 	default:
 		return -EINVAL;

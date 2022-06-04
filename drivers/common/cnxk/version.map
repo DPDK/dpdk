@@ -28,6 +28,7 @@ INTERNAL {
 	roc_ae_fpm_get;
 	roc_ae_fpm_put;
 	roc_aes_xcbc_key_derive;
+	roc_bphy_cgx_cpri_mode_change;
 	roc_bphy_cgx_dev_fini;
 	roc_bphy_cgx_dev_init;
 	roc_bphy_cgx_fec_set;

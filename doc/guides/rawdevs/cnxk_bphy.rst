@@ -100,6 +100,17 @@ Message must have type set to ``CNXK_BPHY_CGX_MSG_TYPE_START_RXTX`` or
 ``CNXK_BPHY_CGX_MSG_TYPE_STOP_RXTX``. Former will enable traffic while the latter will
 do the opposite.
 
+Change mode from eCPRI to CPRI
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Message is used to change operating mode from eCPRI to CPRI along with other
+settings.
+
+Message must have type set to ``CNXK_BPHY_CGX_MSG_TYPE_CPRI_MODE_CHANGE``.
+Prior to sending actual message payload i.e
+``struct cnxk_bphy_cgx_msg_cpri_mode_change`` needs to be filled with relevant
+information.
+
 BPHY PMD
 --------
 

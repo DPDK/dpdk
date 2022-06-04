@@ -138,6 +138,30 @@ roc_model_is_cn95_a0(void)
 }
 
 static inline uint64_t
+roc_model_is_cnf95xxn_a0(void)
+{
+	return roc_model->flag & ROC_MODEL_CNF95xxN_A0;
+}
+
+static inline uint64_t
+roc_model_is_cnf95xxn_a1(void)
+{
+	return roc_model->flag & ROC_MODEL_CNF95xxN_A1;
+}
+
+static inline uint64_t
+roc_model_is_cnf95xxn_b0(void)
+{
+	return roc_model->flag & ROC_MODEL_CNF95xxN_B0;
+}
+
+static inline uint16_t
+roc_model_is_cn95xxn_a0(void)
+{
+	return roc_model->flag & ROC_MODEL_CNF95xxN_A0;
+}
+
+static inline uint64_t
 roc_model_is_cn10ka(void)
 {
 	return roc_model->flag & ROC_MODEL_CN106xx;

@@ -69,6 +69,7 @@ enum eth_cmd_id {
 	ETH_CMD_GET_SUPPORTED_FEC = 18,
 	ETH_CMD_SET_FEC = 19,
 	ETH_CMD_SET_PTP_MODE = 34,
+	ETH_CMD_CPRI_MODE_CHANGE = 35,
 };
 
 /* event types - cause of interrupt */
@@ -132,6 +133,13 @@ enum eth_cmd_own {
 
 /* struct eth_set_fec_args */
 #define SCR1_ETH_SET_FEC_ARGS GENMASK_ULL(9, 8)
+
+/* struct eth_cpri_mode_change_args */
+#define SCR1_CPRI_MODE_CHANGE_ARGS_GSERC_IDX   GENMASK_ULL(11, 8)
+#define SCR1_CPRI_MODE_CHANGE_ARGS_LANE_IDX    GENMASK_ULL(15, 12)
+#define SCR1_CPRI_MODE_CHANGE_ARGS_RATE        GENMASK_ULL(31, 16)
+#define SCR1_CPRI_MODE_CHANGE_ARGS_DISABLE_LEQ BIT_ULL(32)
+#define SCR1_CPRI_MODE_CHANGE_ARGS_DISABLE_DFE BIT_ULL(33)
 
 #define SCR1_OWN_STATUS GENMASK_ULL(1, 0)
 

@@ -50,6 +50,8 @@ enum cnxk_bphy_cgx_msg_type {
 	CNXK_BPHY_CGX_MSG_TYPE_GET_SUPPORTED_FEC,
 	/** Type used to set FEC */
 	CNXK_BPHY_CGX_MSG_TYPE_SET_FEC,
+	/** Type used to switch from eCPRI to CPRI */
+	CNXK_BPHY_CGX_MSG_TYPE_CPRI_MODE_CHANGE,
 };
 
 /** Available link speeds */
@@ -169,6 +171,19 @@ struct cnxk_bphy_cgx_msg_link_info {
 struct cnxk_bphy_cgx_msg_set_link_state {
 	/** Defines link state result */
 	bool state; /* up or down */
+};
+
+struct cnxk_bphy_cgx_msg_cpri_mode_change {
+	/** SERDES index (0 - 4) */
+	int gserc_idx;
+	/** Lane index (0 - 1) */
+	int lane_idx;
+	/** Baud rate (9830/4915/2458/6144/3072) */
+	int rate;
+	/** Disable LEQ */
+	bool disable_leq;
+	/** Disable  DFE */
+	bool disable_dfe;
 };
 
 struct cnxk_bphy_cgx_msg {
@@ -689,6 +704,31 @@ rte_pmd_bphy_cgx_set_fec(uint16_t dev_id, uint16_t lmac,
 	struct cnxk_bphy_cgx_msg msg = {
 		.type = CNXK_BPHY_CGX_MSG_TYPE_SET_FEC,
 		.data = &fec,
+	};
+
+	return __rte_pmd_bphy_enq_deq(dev_id, lmac, &msg, NULL, 0);
+}
+
+/**
+ * Switch from eCPRI to CPRI and change
+ *
+ * @param dev_id
+ *   The identifier of the device
+ * @param lmac
+ *   LMAC number for operation
+ * @param mode
+ *   CPRI structure which holds configuration data
+ *
+ * @return
+ *   Returns 0 on success, negative error code otherwise
+ */
+static __rte_always_inline int
+rte_pmd_bphy_cgx_cpri_mode_change(uint16_t dev_id, uint16_t lmac,
+				  struct cnxk_bphy_cgx_msg_cpri_mode_change *mode)
+{
+	struct cnxk_bphy_cgx_msg msg = {
+		.type = CNXK_BPHY_CGX_MSG_TYPE_CPRI_MODE_CHANGE,
+		.data = mode,
 	};
 
 	return __rte_pmd_bphy_enq_deq(dev_id, lmac, &msg, NULL, 0);

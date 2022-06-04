@@ -92,6 +92,14 @@ struct roc_bphy_cgx_link_info {
 	enum roc_bphy_cgx_eth_link_mode mode;
 };
 
+struct roc_bphy_cgx_cpri_mode_change {
+	int gserc_idx;
+	int lane_idx;
+	int rate;
+	bool disable_leq;
+	bool disable_dfe;
+};
+
 __roc_api int roc_bphy_cgx_dev_init(struct roc_bphy_cgx *roc_cgx);
 __roc_api int roc_bphy_cgx_dev_fini(struct roc_bphy_cgx *roc_cgx);
 
@@ -118,9 +126,9 @@ __roc_api int roc_bphy_cgx_ptp_rx_disable(struct roc_bphy_cgx *roc_cgx,
 __roc_api int roc_bphy_cgx_fec_set(struct roc_bphy_cgx *roc_cgx,
 				   unsigned int lmac,
 				   enum roc_bphy_cgx_eth_link_fec fec);
-__roc_api int roc_bphy_cgx_fec_supported_get(struct roc_bphy_cgx *roc_cgx,
-					     unsigned int lmac,
+__roc_api int roc_bphy_cgx_fec_supported_get(struct roc_bphy_cgx *roc_cgx, unsigned int lmac,
 					     enum roc_bphy_cgx_eth_link_fec *fec);
-
+__roc_api int roc_bphy_cgx_cpri_mode_change(struct roc_bphy_cgx *roc_cgx, unsigned int lmac,
+					    struct roc_bphy_cgx_cpri_mode_change *mode);
 
 #endif /* _ROC_BPHY_CGX_H_ */
