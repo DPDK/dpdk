@@ -58,10 +58,12 @@ cnxk_bphy_cgx_process_buf(struct cnxk_bphy_cgx *cgx, unsigned int queue,
 	struct cnxk_bphy_cgx_queue *qp = &cgx->queues[queue];
 	struct cnxk_bphy_cgx_msg_cpri_mode_change *cpri_mode;
 	struct cnxk_bphy_cgx_msg_set_link_state *link_state;
+	struct cnxk_bphy_cgx_msg_cpri_mode_tx_ctrl *tx_ctrl;
 	struct cnxk_bphy_cgx_msg *msg = buf->buf_addr;
 	struct cnxk_bphy_cgx_msg_link_mode *link_mode;
 	struct cnxk_bphy_cgx_msg_link_info *link_info;
 	struct roc_bphy_cgx_cpri_mode_change rcpri_mode;
+	struct roc_bphy_cgx_cpri_mode_tx_ctrl rtx_ctrl;
 	struct roc_bphy_cgx_link_info rlink_info;
 	struct roc_bphy_cgx_link_mode rlink_mode;
 	enum roc_bphy_cgx_eth_link_fec *fec;
@@ -147,6 +149,15 @@ cnxk_bphy_cgx_process_buf(struct cnxk_bphy_cgx *cgx, unsigned int queue,
 		rcpri_mode.disable_dfe = cpri_mode->disable_dfe;
 		ret = roc_bphy_cgx_cpri_mode_change(cgx->rcgx, lmac,
 						    &rcpri_mode);
+		break;
+	case CNXK_BPHY_CGX_MSG_TYPE_CPRI_TX_CONTROL:
+		tx_ctrl = msg->data;
+		memset(&rtx_ctrl, 0, sizeof(rtx_ctrl));
+		rtx_ctrl.gserc_idx = tx_ctrl->gserc_idx;
+		rtx_ctrl.lane_idx = tx_ctrl->lane_idx;
+		rtx_ctrl.enable = tx_ctrl->enable;
+		ret = roc_bphy_cgx_cpri_mode_tx_control(cgx->rcgx, lmac,
+							&rtx_ctrl);
 		break;
 	default:
 		return -EINVAL;

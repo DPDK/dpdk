@@ -111,6 +111,16 @@ Prior to sending actual message payload i.e
 ``struct cnxk_bphy_cgx_msg_cpri_mode_change`` needs to be filled with relevant
 information.
 
+Enable TX for CPRI SERDES
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Message is used to enable TX for SERDES configured in CPRI mode.
+
+Message must have type set to ``CNXK_BPHY_CGX_MSG_TYPE_CPRI_TX_CONTROL``.
+Prior to sending actual message payload i.e
+``struct cnxk_bphy_cgx_msg_cpri_mode_tx_ctrl`` needs to be filled with relevant
+information.
+
 BPHY PMD
 --------
 

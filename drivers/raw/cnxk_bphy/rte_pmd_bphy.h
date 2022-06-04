@@ -52,6 +52,8 @@ enum cnxk_bphy_cgx_msg_type {
 	CNXK_BPHY_CGX_MSG_TYPE_SET_FEC,
 	/** Type used to switch from eCPRI to CPRI */
 	CNXK_BPHY_CGX_MSG_TYPE_CPRI_MODE_CHANGE,
+	/** Type used to enable TX for CPRI SERDES */
+	CNXK_BPHY_CGX_MSG_TYPE_CPRI_TX_CONTROL,
 };
 
 /** Available link speeds */
@@ -184,6 +186,15 @@ struct cnxk_bphy_cgx_msg_cpri_mode_change {
 	bool disable_leq;
 	/** Disable  DFE */
 	bool disable_dfe;
+};
+
+struct cnxk_bphy_cgx_msg_cpri_mode_tx_ctrl {
+	/** SERDES index (0 - 4) */
+	int gserc_idx;
+	/** Lane index (0 - 1) */
+	int lane_idx;
+	/** Disable or enable SERDES */
+	bool enable;
 };
 
 struct cnxk_bphy_cgx_msg {
@@ -728,6 +739,31 @@ rte_pmd_bphy_cgx_cpri_mode_change(uint16_t dev_id, uint16_t lmac,
 {
 	struct cnxk_bphy_cgx_msg msg = {
 		.type = CNXK_BPHY_CGX_MSG_TYPE_CPRI_MODE_CHANGE,
+		.data = mode,
+	};
+
+	return __rte_pmd_bphy_enq_deq(dev_id, lmac, &msg, NULL, 0);
+}
+
+/**
+ * Enable TX for SERDES configured in CPRI mode
+ *
+ * @param dev_id
+ *   The identifier of the device
+ * @param lmac
+ *   LMAC number for operation
+ * @param mode
+ *   CPRI TX control structure holding control data
+ *
+ * @return
+ *   Returns 0 on success, negative error code otherwise
+ */
+static __rte_always_inline int
+rte_pmd_bphy_cgx_cpri_tx_control(uint16_t dev_id, uint16_t lmac,
+				 struct cnxk_bphy_cgx_msg_cpri_mode_tx_ctrl *mode)
+{
+	struct cnxk_bphy_cgx_msg msg = {
+		.type = CNXK_BPHY_CGX_MSG_TYPE_CPRI_TX_CONTROL,
 		.data = mode,
 	};
 

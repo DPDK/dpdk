@@ -100,6 +100,12 @@ struct roc_bphy_cgx_cpri_mode_change {
 	bool disable_dfe;
 };
 
+struct roc_bphy_cgx_cpri_mode_tx_ctrl {
+	int gserc_idx;
+	int lane_idx;
+	bool enable;
+};
+
 __roc_api int roc_bphy_cgx_dev_init(struct roc_bphy_cgx *roc_cgx);
 __roc_api int roc_bphy_cgx_dev_fini(struct roc_bphy_cgx *roc_cgx);
 
@@ -130,5 +136,7 @@ __roc_api int roc_bphy_cgx_fec_supported_get(struct roc_bphy_cgx *roc_cgx, unsig
 					     enum roc_bphy_cgx_eth_link_fec *fec);
 __roc_api int roc_bphy_cgx_cpri_mode_change(struct roc_bphy_cgx *roc_cgx, unsigned int lmac,
 					    struct roc_bphy_cgx_cpri_mode_change *mode);
+__roc_api int roc_bphy_cgx_cpri_mode_tx_control(struct roc_bphy_cgx *roc_cgx, unsigned int lmac,
+						struct roc_bphy_cgx_cpri_mode_tx_ctrl *mode);
 
 #endif /* _ROC_BPHY_CGX_H_ */

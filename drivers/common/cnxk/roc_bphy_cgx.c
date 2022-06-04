@@ -488,3 +488,34 @@ roc_bphy_cgx_cpri_mode_change(struct roc_bphy_cgx *roc_cgx, unsigned int lmac,
 
 	return roc_bphy_cgx_intf_req(roc_cgx, lmac, scr1, &scr0);
 }
+
+int
+roc_bphy_cgx_cpri_mode_tx_control(struct roc_bphy_cgx *roc_cgx,
+				  unsigned int lmac,
+				  struct roc_bphy_cgx_cpri_mode_tx_ctrl *mode)
+{
+	uint64_t scr1, scr0;
+
+	if (!(roc_model_is_cnf95xxn_a0() ||
+	      roc_model_is_cnf95xxn_a1() ||
+	      roc_model_is_cnf95xxn_b0()))
+		return -ENOTSUP;
+
+	if (!roc_cgx)
+		return -EINVAL;
+
+	if (!roc_bphy_cgx_lmac_exists(roc_cgx, lmac))
+		return -ENODEV;
+
+	if (!mode)
+		return -EINVAL;
+
+	scr1 = FIELD_PREP(SCR1_ETH_CMD_ID, ETH_CMD_CPRI_TX_CONTROL) |
+	       FIELD_PREP(SCR1_CPRI_MODE_TX_CTRL_ARGS_GSERC_IDX,
+			  mode->gserc_idx) |
+	       FIELD_PREP(SCR1_CPRI_MODE_TX_CTRL_ARGS_LANE_IDX,
+			  mode->lane_idx) |
+	       FIELD_PREP(SCR1_CPRI_MODE_TX_CTRL_ARGS_ENABLE, mode->enable);
+
+	return roc_bphy_cgx_intf_req(roc_cgx, lmac, scr1, &scr0);
+}
