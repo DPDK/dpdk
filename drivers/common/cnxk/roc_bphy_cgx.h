@@ -86,8 +86,20 @@ enum roc_bphy_cgx_eth_link_mode {
 	__ROC_BPHY_CGX_ETH_LINK_MODE_MAX
 };
 
+/* Supported CPRI modes */
+enum roc_bphy_cgx_eth_mode_cpri {
+	ROC_BPHY_CGX_ETH_MODE_CPRI_2_4G_BIT,
+	ROC_BPHY_CGX_ETH_MODE_CPRI_3_1G_BIT,
+	ROC_BPHY_CGX_ETH_MODE_CPRI_4_9G_BIT,
+	ROC_BPHY_CGX_ETH_MODE_CPRI_6_1G_BIT,
+	ROC_BPHY_CGX_ETH_MODE_CPRI_9_8G_BIT,
+	ROC_BPHY_CGX_ETH_MODE_CPRI_10_1_BIT,
+	ROC_BPHY_CGX_ETH_MODE_CPRI_24_3G_BIT,
+};
+
 enum roc_bphy_cgx_mode_group {
 	ROC_BPHY_CGX_MODE_GROUP_ETH,
+	ROC_BPHY_CGX_MODE_GROUP_CPRI = 2,
 };
 
 struct roc_bphy_cgx_link_mode {
@@ -97,7 +109,10 @@ struct roc_bphy_cgx_link_mode {
 	unsigned int portm_idx;
 	enum roc_bphy_cgx_mode_group mode_group_idx;
 	enum roc_bphy_cgx_eth_link_speed speed;
-	enum roc_bphy_cgx_eth_link_mode mode;
+	union {
+		enum roc_bphy_cgx_eth_link_mode mode;
+		enum roc_bphy_cgx_eth_mode_cpri mode_cpri;
+	};
 };
 
 struct roc_bphy_cgx_link_info {

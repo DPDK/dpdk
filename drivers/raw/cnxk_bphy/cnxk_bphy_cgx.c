@@ -118,8 +118,18 @@ cnxk_bphy_cgx_process_buf(struct cnxk_bphy_cgx *cgx, unsigned int queue,
 			(enum roc_bphy_cgx_mode_group)link_mode->mode_group_idx;
 		rlink_mode.speed =
 			(enum roc_bphy_cgx_eth_link_speed)link_mode->speed;
-		rlink_mode.mode =
-			(enum roc_bphy_cgx_eth_link_mode)link_mode->mode;
+		switch (link_mode->mode_group_idx) {
+		case CNXK_BPHY_CGX_MODE_GROUP_ETH:
+			rlink_mode.mode =
+				(enum roc_bphy_cgx_eth_link_mode)
+				link_mode->mode;
+			break;
+		case CNXK_BPHY_CGX_MODE_GROUP_CPRI:
+			rlink_mode.mode_cpri =
+				(enum roc_bphy_cgx_eth_mode_cpri)
+				link_mode->mode_cpri;
+			break;
+		}
 		ret = roc_bphy_cgx_set_link_mode(cgx->rcgx, lmac, &rlink_mode);
 		break;
 	case CNXK_BPHY_CGX_MSG_TYPE_SET_LINK_STATE:

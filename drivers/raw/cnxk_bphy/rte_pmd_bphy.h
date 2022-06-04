@@ -168,9 +168,28 @@ enum cnxk_bphy_cgx_eth_link_mode {
 	__CNXK_BPHY_CGX_ETH_LINK_MODE_MAX
 };
 
+enum cnxk_bphy_cgx_eth_mode_cpri {
+	/** 2.4G Lane Rate */
+	CNXK_BPHY_CGX_ETH_MODE_CPRI_2_4G_BIT,
+	/** 3.1G Lane Rate */
+	CNXK_BPHY_CGX_ETH_MODE_CPRI_3_1G_BIT,
+	/** 4.9G Lane Rate */
+	CNXK_BPHY_CGX_ETH_MODE_CPRI_4_9G_BIT,
+	/** 6.1G Lane Rate */
+	CNXK_BPHY_CGX_ETH_MODE_CPRI_6_1G_BIT,
+	/** 9.8G Lane Rate */
+	CNXK_BPHY_CGX_ETH_MODE_CPRI_9_8G_BIT,
+	/** 10.1G Lane Rate */
+	CNXK_BPHY_CGX_ETH_MODE_CPRI_10_1_BIT,
+	/** 24.3G Lane Rate */
+	CNXK_BPHY_CGX_ETH_MODE_CPRI_24_3G_BIT,
+};
+
 enum cnxk_bphy_cgx_mode_group {
 	/** ETH group */
 	CNXK_BPHY_CGX_MODE_GROUP_ETH,
+	/** CPRI group */
+	CNXK_BPHY_CGX_MODE_GROUP_CPRI = 2,
 };
 
 struct cnxk_bphy_cgx_msg_link_mode {
@@ -186,8 +205,12 @@ struct cnxk_bphy_cgx_msg_link_mode {
 	enum cnxk_bphy_cgx_mode_group mode_group_idx;
 	/** Link speed */
 	enum cnxk_bphy_cgx_eth_link_speed speed;
-	/** Link mode */
-	enum cnxk_bphy_cgx_eth_link_mode mode;
+	union {
+		/** Link mode */
+		enum cnxk_bphy_cgx_eth_link_mode mode;
+		/** CPRI mode */
+		enum cnxk_bphy_cgx_eth_mode_cpri mode_cpri;
+	};
 };
 
 struct cnxk_bphy_cgx_msg_link_info {
