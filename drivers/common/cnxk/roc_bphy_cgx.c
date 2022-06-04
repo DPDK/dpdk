@@ -367,8 +367,10 @@ roc_bphy_cgx_set_link_mode(struct roc_bphy_cgx *roc_cgx, unsigned int lmac,
 {
 	uint64_t scr1, scr0;
 
-	if (roc_model_is_cn10k())
+	if (roc_model_is_cn9k() &&
+	    (mode->use_portm_idx || mode->portm_idx || mode->mode_group_idx)) {
 		return -ENOTSUP;
+	}
 
 	if (!roc_cgx)
 		return -EINVAL;
@@ -383,7 +385,12 @@ roc_bphy_cgx_set_link_mode(struct roc_bphy_cgx *roc_cgx, unsigned int lmac,
 	       FIELD_PREP(SCR1_ETH_MODE_CHANGE_ARGS_SPEED, mode->speed) |
 	       FIELD_PREP(SCR1_ETH_MODE_CHANGE_ARGS_DUPLEX, mode->full_duplex) |
 	       FIELD_PREP(SCR1_ETH_MODE_CHANGE_ARGS_AN, mode->an) |
-	       FIELD_PREP(SCR1_ETH_MODE_CHANGE_ARGS_PORT, mode->port) |
+	       FIELD_PREP(SCR1_ETH_MODE_CHANGE_ARGS_USE_PORTM_IDX,
+			  mode->use_portm_idx) |
+	       FIELD_PREP(SCR1_ETH_MODE_CHANGE_ARGS_PORTM_IDX,
+			  mode->portm_idx) |
+	       FIELD_PREP(SCR1_ETH_MODE_CHANGE_ARGS_MODE_GROUP_IDX,
+			  mode->mode_group_idx) |
 	       FIELD_PREP(SCR1_ETH_MODE_CHANGE_ARGS_MODE, BIT_ULL(mode->mode));
 
 	return roc_bphy_cgx_intf_req(roc_cgx, lmac, scr1, &scr0);

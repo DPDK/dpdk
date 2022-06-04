@@ -112,6 +112,10 @@ cnxk_bphy_cgx_process_buf(struct cnxk_bphy_cgx *cgx, unsigned int queue,
 		memset(&rlink_mode, 0, sizeof(rlink_mode));
 		rlink_mode.full_duplex = link_mode->full_duplex;
 		rlink_mode.an = link_mode->autoneg;
+		rlink_mode.use_portm_idx = link_mode->use_portm_idx;
+		rlink_mode.portm_idx = link_mode->portm_idx;
+		rlink_mode.mode_group_idx =
+			(enum roc_bphy_cgx_mode_group)link_mode->mode_group_idx;
 		rlink_mode.speed =
 			(enum roc_bphy_cgx_eth_link_speed)link_mode->speed;
 		rlink_mode.mode =

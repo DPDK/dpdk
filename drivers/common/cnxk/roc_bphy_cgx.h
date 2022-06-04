@@ -72,13 +72,30 @@ enum roc_bphy_cgx_eth_link_mode {
 	ROC_BPHY_CGX_ETH_LINK_MODE_100G_C2M_BIT,
 	ROC_BPHY_CGX_ETH_LINK_MODE_100G_CR4_BIT,
 	ROC_BPHY_CGX_ETH_LINK_MODE_100G_KR4_BIT,
+	ROC_BPHY_CGX_ETH_LINK_MODE_50GAUI_2_C2C_BIT,
+	ROC_BPHY_CGX_ETH_LINK_MODE_50GAUI_2_C2M_BIT,
+	ROC_BPHY_CGX_ETH_LINK_MODE_50GBASE_CR2_C_BIT,
+	ROC_BPHY_CGX_ETH_LINK_MODE_50GBASE_KR2_C_BIT,
+	ROC_BPHY_CGX_ETH_LINK_MODE_100GAUI_2_C2C_BIT,
+	ROC_BPHY_CGX_ETH_LINK_MODE_100GAUI_2_C2M_BIT,
+	ROC_BPHY_CGX_ETH_LINK_MODE_100GBASE_CR2_BIT,
+	ROC_BPHY_CGX_ETH_LINK_MODE_100GBASE_KR2_BIT,
+	ROC_BPHY_CGX_ETH_LINK_MODE_SFI_1G_BIT,
+	ROC_BPHY_CGX_ETH_LINK_MODE_25GBASE_CR_C_BIT,
+	ROC_BPHY_CGX_ETH_LINK_MODE_25GBASE_KR_C_BIT,
 	__ROC_BPHY_CGX_ETH_LINK_MODE_MAX
+};
+
+enum roc_bphy_cgx_mode_group {
+	ROC_BPHY_CGX_MODE_GROUP_ETH,
 };
 
 struct roc_bphy_cgx_link_mode {
 	bool full_duplex;
 	bool an;
-	unsigned int port;
+	bool use_portm_idx;
+	unsigned int portm_idx;
+	enum roc_bphy_cgx_mode_group mode_group_idx;
 	enum roc_bphy_cgx_eth_link_speed speed;
 	enum roc_bphy_cgx_eth_link_mode mode;
 };

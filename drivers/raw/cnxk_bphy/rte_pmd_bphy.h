@@ -143,7 +143,34 @@ enum cnxk_bphy_cgx_eth_link_mode {
 	CNXK_BPHY_CGX_ETH_LINK_MODE_100G_CR4_BIT,
 	/** 100GBASE-KR4 */
 	CNXK_BPHY_CGX_ETH_LINK_MODE_100G_KR4_BIT,
+	/** 50GAUI-2-C2C */
+	CNXK_BPHY_CGX_ETH_LINK_MODE_50GAUI_2_C2C_BIT,
+	/** 50GAUI-2-C2M */
+	CNXK_BPHY_CGX_ETH_LINK_MODE_50GAUI_2_C2M_BIT,
+	/** 50GBASE-CR2-C */
+	CNXK_BPHY_CGX_ETH_LINK_MODE_50GBASE_CR2_C_BIT,
+	/** 50GBASE-KR2-C */
+	CNXK_BPHY_CGX_ETH_LINK_MODE_50GBASE_KR2_C_BIT,
+	/** 100GAUI-2-C2C */
+	CNXK_BPHY_CGX_ETH_LINK_MODE_100GAUI_2_C2C_BIT,
+	/** 100GAUI-2-C2M */
+	CNXK_BPHY_CGX_ETH_LINK_MODE_100GAUI_2_C2M_BIT,
+	/** 100GBASE-CR2 */
+	CNXK_BPHY_CGX_ETH_LINK_MODE_100GBASE_CR2_BIT,
+	/** 100GBASE-KR2 */
+	CNXK_BPHY_CGX_ETH_LINK_MODE_100GBASE_KR2_BIT,
+	/** SFI-1G */
+	CNXK_BPHY_CGX_ETH_LINK_MODE_SFI_1G_BIT,
+	/** 25GBASE-CR-C */
+	CNXK_BPHY_CGX_ETH_LINK_MODE_25GBASE_CR_C_BIT,
+	/** 25GBASE-KR-C */
+	CNXK_BPHY_CGX_ETH_LINK_MODE_25GBASE_KR_C_BIT,
 	__CNXK_BPHY_CGX_ETH_LINK_MODE_MAX
+};
+
+enum cnxk_bphy_cgx_mode_group {
+	/** ETH group */
+	CNXK_BPHY_CGX_MODE_GROUP_ETH,
 };
 
 struct cnxk_bphy_cgx_msg_link_mode {
@@ -151,6 +178,12 @@ struct cnxk_bphy_cgx_msg_link_mode {
 	bool full_duplex;
 	/** Setting for automatic link negotiation */
 	bool autoneg;
+	/** Set to true to use port index */
+	bool use_portm_idx;
+	/** Port index */
+	unsigned int portm_idx;
+	/** Mode group */
+	enum cnxk_bphy_cgx_mode_group mode_group_idx;
 	/** Link speed */
 	enum cnxk_bphy_cgx_eth_link_speed speed;
 	/** Link mode */
