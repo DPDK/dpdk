@@ -4,6 +4,7 @@
 
 #include <dirent.h>
 #include <string.h>
+#include <sys/stat.h>
 
 #include <rte_bus_vdev.h>
 #include <rte_eal.h>
@@ -277,6 +278,17 @@ cnxk_gpio_lookup(struct cnxk_gpiochip *gpiochip, uint16_t queue)
 	return gpiochip->gpios[gpio];
 }
 
+static bool
+cnxk_gpio_exists(int num)
+{
+	char buf[CNXK_GPIO_BUFSZ];
+	struct stat st;
+
+	snprintf(buf, sizeof(buf), "%s/gpio%d", CNXK_GPIO_CLASS_PATH, num);
+
+	return !stat(buf, &st);
+}
+
 static int
 cnxk_gpio_queue_setup(struct rte_rawdev *dev, uint16_t queue_id,
 		      rte_rawdev_obj_t queue_conf, size_t queue_conf_size)
@@ -304,11 +316,15 @@ cnxk_gpio_queue_setup(struct rte_rawdev *dev, uint16_t queue_id,
 	gpio->num = num + gpiochip->base;
 	gpio->gpiochip = gpiochip;
 
-	snprintf(buf, sizeof(buf), "%s/export", CNXK_GPIO_CLASS_PATH);
-	ret = cnxk_gpio_write_attr_int(buf, gpio->num);
-	if (ret) {
-		rte_free(gpio);
-		return ret;
+	if (!cnxk_gpio_exists(gpio->num)) {
+		snprintf(buf, sizeof(buf), "%s/export", CNXK_GPIO_CLASS_PATH);
+		ret = cnxk_gpio_write_attr_int(buf, gpio->num);
+		if (ret) {
+			rte_free(gpio);
+			return ret;
+		}
+	} else {
+		RTE_LOG(WARNING, PMD, "using existing gpio%d\n", gpio->num);
 	}
 
 	gpiochip->gpios[num] = gpio;
