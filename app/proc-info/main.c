@@ -84,6 +84,8 @@ static char bdr_str[MAX_STRING_LEN];
 
 /**< Enable show port. */
 static uint32_t enable_shw_port;
+/* Enable show port private info. */
+static uint32_t enable_shw_port_priv;
 /**< Enable show tm. */
 static uint32_t enable_shw_tm;
 /**< Enable show crypto. */
@@ -123,6 +125,7 @@ proc_info_usage(const char *prgname)
 		"  --collectd-format: to print statistics to STDOUT in expected by collectd format\n"
 		"  --host-id STRING: host id used to identify the system process is running on\n"
 		"  --show-port: to display ports information\n"
+		"  --show-port-private: to display ports private information\n"
 		"  --show-tm: to display traffic manager information for ports\n"
 		"  --show-crypto: to display crypto information\n"
 		"  --show-ring[=name]: to display ring information\n"
@@ -232,6 +235,7 @@ proc_info_parse_args(int argc, char **argv)
 		{"xstats-ids", 1, NULL, 1},
 		{"host-id", 0, NULL, 0},
 		{"show-port", 0, NULL, 0},
+		{"show-port-private", 0, NULL, 0},
 		{"show-tm", 0, NULL, 0},
 		{"show-crypto", 0, NULL, 0},
 		{"show-ring", optional_argument, NULL, 0},
@@ -284,6 +288,9 @@ proc_info_parse_args(int argc, char **argv)
 			else if (!strncmp(long_option[option_index].name,
 					"show-port", MAX_LONG_OPT_SZ))
 				enable_shw_port = 1;
+			else if (!strncmp(long_option[option_index].name,
+					"show-port-private", MAX_LONG_OPT_SZ))
+				enable_shw_port_priv = 1;
 			else if (!strncmp(long_option[option_index].name,
 					"show-tm", MAX_LONG_OPT_SZ))
 				enable_shw_tm = 1;
@@ -884,6 +891,25 @@ show_port(void)
 #ifdef RTE_LIB_SECURITY
 		show_security_context(i, true);
 #endif
+	}
+}
+
+static void
+show_port_private_info(void)
+{
+	int i;
+
+	snprintf(bdr_str, MAX_STRING_LEN, " Dump - Ports private information");
+	STATS_BDR_STR(10, bdr_str);
+
+	RTE_ETH_FOREACH_DEV(i) {
+		/* Skip if port is not in mask */
+		if ((enabled_port_mask & (1ul << i)) == 0)
+			continue;
+
+		snprintf(bdr_str, MAX_STRING_LEN, " Port %u ", i);
+		STATS_BDR_STR(5, bdr_str);
+		rte_eth_dev_priv_dump(i, stdout);
 	}
 }
 
@@ -1549,6 +1575,8 @@ main(int argc, char **argv)
 	/* show information for PMD */
 	if (enable_shw_port)
 		show_port();
+	if (enable_shw_port_priv)
+		show_port_private_info();
 	if (enable_shw_tm)
 		show_tm();
 	if (enable_shw_crypto)
