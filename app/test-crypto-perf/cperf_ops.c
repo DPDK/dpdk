@@ -865,6 +865,7 @@ cperf_create_session(struct rte_mempool *sess_mp,
 				.hfn = options->pdcp_ses_hfn_en ?
 					PDCP_DEFAULT_HFN : 0,
 				.hfn_threshold = 0x70C0A,
+				.sdap_enabled = options->pdcp_sdap,
 				.hfn_ovrd = !(options->pdcp_ses_hfn_en),
 			} },
 			.crypto_xform = &cipher_xform

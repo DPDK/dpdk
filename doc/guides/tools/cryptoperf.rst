@@ -332,6 +332,10 @@ The following are the application command-line options:
 
         Enable fixed session based HFN instead of per packet HFN.
 
+* ``--enable-sdap``
+
+        Enable Service Data Adaptation Protocol.
+
 * ``--modex-len <n>``
 
         Set modex length for asymmetric crypto perf test.
