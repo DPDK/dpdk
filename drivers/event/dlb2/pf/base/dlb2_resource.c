@@ -3728,7 +3728,7 @@ dlb2_verify_create_ldb_queue_args(struct dlb2_hw *hw,
 		}
 	}
 
-	if (args->num_qid_inflights > 4096) {
+	if (args->num_qid_inflights < 1 || args->num_qid_inflights > 2048) {
 		resp->status = DLB2_ST_INVALID_QID_INFLIGHT_ALLOCATION;
 		return -EINVAL;
 	}
