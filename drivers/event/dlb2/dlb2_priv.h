@@ -114,7 +114,7 @@
 
 #define DLB2_NUM_QES_PER_CACHE_LINE 4
 
-#define DLB2_MAX_ENQUEUE_DEPTH 64
+#define DLB2_MAX_ENQUEUE_DEPTH 32
 #define DLB2_MIN_ENQUEUE_DEPTH 4
 
 #define DLB2_NAME_SIZE 64
@@ -519,6 +519,7 @@ struct dlb2_eventdev_port {
 	 */
 	uint16_t outstanding_releases;
 	uint16_t inflight_max; /* app requested max inflights for this port */
+	int enq_retries; /* Number of attempts before ret ENOSPC */
 	/* setup_done is set when the event port is setup */
 	bool setup_done;
 	/* enq_configured is set when the qm port is created */
