@@ -445,7 +445,7 @@ kni_net_rx_normal(struct kni_dev *kni)
 		netif_rx_ni(skb);
 #else
 		netif_rx(skb);
-#else
+#endif
 
 		/* Update statistics */
 		dev->stats.rx_bytes += len;
