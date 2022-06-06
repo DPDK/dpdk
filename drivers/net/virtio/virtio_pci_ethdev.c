@@ -122,10 +122,20 @@ static int
 eth_virtio_pci_uninit(struct rte_eth_dev *eth_dev)
 {
 	int ret;
+	struct virtio_pci_dev *dev;
+	struct virtio_hw *hw;
 	PMD_INIT_FUNC_TRACE();
 
-	if (rte_eal_process_type() == RTE_PROC_SECONDARY)
+	if (rte_eal_process_type() == RTE_PROC_SECONDARY) {
+		dev = eth_dev->data->dev_private;
+		hw = &dev->hw;
+
+		if (dev->modern)
+			rte_pci_unmap_device(RTE_ETH_DEV_TO_PCI(eth_dev));
+		else
+			vtpci_legacy_ioport_unmap(hw);
 		return 0;
+	}
 
 	ret = virtio_dev_stop(eth_dev);
 	virtio_dev_close(eth_dev);
