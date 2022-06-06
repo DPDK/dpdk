@@ -1057,7 +1057,7 @@ static u32 dlb2_dir_cq_token_count(struct dlb2_hw *hw,
 	       port->init_tkn_cnt;
 }
 
-static void dlb2_drain_dir_cq(struct dlb2_hw *hw,
+static int dlb2_drain_dir_cq(struct dlb2_hw *hw,
 			      struct dlb2_dir_pq_pair *port)
 {
 	unsigned int port_id = port->id.phys_id;
@@ -1089,6 +1089,8 @@ static void dlb2_drain_dir_cq(struct dlb2_hw *hw,
 
 		os_unmap_producer_port(hw, pp_addr);
 	}
+
+	return cnt;
 }
 
 static void dlb2_dir_port_cq_enable(struct dlb2_hw *hw,
@@ -1107,6 +1109,7 @@ static int dlb2_domain_drain_dir_cqs(struct dlb2_hw *hw,
 {
 	struct dlb2_list_entry *iter;
 	struct dlb2_dir_pq_pair *port;
+	int drain_cnt = 0;
 	RTE_SET_USED(iter);
 
 	DLB2_DOM_LIST_FOR(domain->used_dir_pq_pairs, port, iter) {
@@ -1120,13 +1123,13 @@ static int dlb2_domain_drain_dir_cqs(struct dlb2_hw *hw,
 		if (toggle_port)
 			dlb2_dir_port_cq_disable(hw, port);
 
-		dlb2_drain_dir_cq(hw, port);
+		drain_cnt = dlb2_drain_dir_cq(hw, port);
 
 		if (toggle_port)
 			dlb2_dir_port_cq_enable(hw, port);
 	}
 
-	return 0;
+	return drain_cnt;
 }
 
 static u32 dlb2_dir_queue_depth(struct dlb2_hw *hw,
@@ -1170,10 +1173,20 @@ static int dlb2_domain_drain_dir_queues(struct dlb2_hw *hw,
 		return 0;
 
 	for (i = 0; i < DLB2_MAX_QID_EMPTY_CHECK_LOOPS; i++) {
-		dlb2_domain_drain_dir_cqs(hw, domain, true);
+		int drain_cnt;
+
+		drain_cnt = dlb2_domain_drain_dir_cqs(hw, domain, false);
 
 		if (dlb2_domain_dir_queues_empty(hw, domain))
 			break;
+
+		/*
+		 * Allow time for DLB to schedule QEs before draining
+		 * the CQs again.
+		 */
+		if (!drain_cnt)
+			rte_delay_us(1);
+
 	}
 
 	if (i == DLB2_MAX_QID_EMPTY_CHECK_LOOPS) {
@@ -1249,7 +1262,7 @@ static u32 dlb2_ldb_cq_token_count(struct dlb2_hw *hw,
 		port->init_tkn_cnt;
 }
 
-static void dlb2_drain_ldb_cq(struct dlb2_hw *hw, struct dlb2_ldb_port *port)
+static int dlb2_drain_ldb_cq(struct dlb2_hw *hw, struct dlb2_ldb_port *port)
 {
 	u32 infl_cnt, tkn_cnt;
 	unsigned int i;
@@ -1289,32 +1302,37 @@ static void dlb2_drain_ldb_cq(struct dlb2_hw *hw, struct dlb2_ldb_port *port)
 
 		os_unmap_producer_port(hw, pp_addr);
 	}
+
+	return tkn_cnt;
 }
 
-static void dlb2_domain_drain_ldb_cqs(struct dlb2_hw *hw,
+static int dlb2_domain_drain_ldb_cqs(struct dlb2_hw *hw,
 				      struct dlb2_hw_domain *domain,
 				      bool toggle_port)
 {
 	struct dlb2_list_entry *iter;
 	struct dlb2_ldb_port *port;
+	int drain_cnt = 0;
 	int i;
 	RTE_SET_USED(iter);
 
 	/* If the domain hasn't been started, there's no traffic to drain */
 	if (!domain->started)
-		return;
+		return 0;
 
 	for (i = 0; i < DLB2_NUM_COS_DOMAINS; i++) {
 		DLB2_DOM_LIST_FOR(domain->used_ldb_ports[i], port, iter) {
 			if (toggle_port)
 				dlb2_ldb_port_cq_disable(hw, port);
 
-			dlb2_drain_ldb_cq(hw, port);
+			drain_cnt = dlb2_drain_ldb_cq(hw, port);
 
 			if (toggle_port)
 				dlb2_ldb_port_cq_enable(hw, port);
 		}
 	}
+
+	return drain_cnt;
 }
 
 static u32 dlb2_ldb_queue_depth(struct dlb2_hw *hw,
@@ -1375,10 +1393,19 @@ static int dlb2_domain_drain_mapped_queues(struct dlb2_hw *hw,
 	}
 
 	for (i = 0; i < DLB2_MAX_QID_EMPTY_CHECK_LOOPS; i++) {
-		dlb2_domain_drain_ldb_cqs(hw, domain, true);
+		int drain_cnt;
+
+		drain_cnt = dlb2_domain_drain_ldb_cqs(hw, domain, false);
 
 		if (dlb2_domain_mapped_queues_empty(hw, domain))
 			break;
+
+		/*
+		 * Allow time for DLB to schedule QEs before draining
+		 * the CQs again.
+		 */
+		if (!drain_cnt)
+			rte_delay_us(1);
 	}
 
 	if (i == DLB2_MAX_QID_EMPTY_CHECK_LOOPS) {
