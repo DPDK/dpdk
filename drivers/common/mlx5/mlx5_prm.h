@@ -744,6 +744,7 @@ enum mlx5_modification_field {
 	MLX5_MODI_OUT_TCP_ACK_NUM,
 	MLX5_MODI_IN_TCP_ACK_NUM = 0x5C,
 	MLX5_MODI_GTP_TEID = 0x6E,
+	MLX5_MODI_OUT_IP_ECN = 0x73,
 };
 
 /* Total number of metadata reg_c's. */
@@ -1890,6 +1891,62 @@ struct mlx5_ifc_roce_caps_bits {
 	u8 reserved_at_20[0x7e0];
 };
 
+struct mlx5_ifc_ft_fields_support_bits {
+	u8 outer_dmac[0x1];
+	u8 outer_smac[0x1];
+	u8 outer_ether_type[0x1];
+	u8 reserved_at_3[0x1];
+	u8 outer_first_prio[0x1];
+	u8 outer_first_cfi[0x1];
+	u8 outer_first_vid[0x1];
+	u8 reserved_at_7[0x1];
+	u8 outer_second_prio[0x1];
+	u8 outer_second_cfi[0x1];
+	u8 outer_second_vid[0x1];
+	u8 reserved_at_b[0x1];
+	u8 outer_sip[0x1];
+	u8 outer_dip[0x1];
+	u8 outer_frag[0x1];
+	u8 outer_ip_protocol[0x1];
+	u8 outer_ip_ecn[0x1];
+	u8 outer_ip_dscp[0x1];
+	u8 outer_udp_sport[0x1];
+	u8 outer_udp_dport[0x1];
+	u8 outer_tcp_sport[0x1];
+	u8 outer_tcp_dport[0x1];
+	u8 outer_tcp_flags[0x1];
+	u8 outer_gre_protocol[0x1];
+	u8 outer_gre_key[0x1];
+	u8 outer_vxlan_vni[0x1];
+	u8 reserved_at_1a[0x5];
+	u8 source_eswitch_port[0x1];
+	u8 inner_dmac[0x1];
+	u8 inner_smac[0x1];
+	u8 inner_ether_type[0x1];
+	u8 reserved_at_23[0x1];
+	u8 inner_first_prio[0x1];
+	u8 inner_first_cfi[0x1];
+	u8 inner_first_vid[0x1];
+	u8 reserved_at_27[0x1];
+	u8 inner_second_prio[0x1];
+	u8 inner_second_cfi[0x1];
+	u8 inner_second_vid[0x1];
+	u8 reserved_at_2b[0x1];
+	u8 inner_sip[0x1];
+	u8 inner_dip[0x1];
+	u8 inner_frag[0x1];
+	u8 inner_ip_protocol[0x1];
+	u8 inner_ip_ecn[0x1];
+	u8 inner_ip_dscp[0x1];
+	u8 inner_udp_sport[0x1];
+	u8 inner_udp_dport[0x1];
+	u8 inner_tcp_sport[0x1];
+	u8 inner_tcp_dport[0x1];
+	u8 inner_tcp_flags[0x1];
+	u8 reserved_at_37[0x9];
+	u8 reserved_at_40[0x40];
+};
+
 /*
  * Table 1872 - Flow Table Fields Supported 2 Format
  */
@@ -1929,7 +1986,10 @@ struct mlx5_ifc_flow_table_nic_cap_bits {
 		flow_table_properties_nic_transmit_rdma;
 	struct mlx5_ifc_flow_table_prop_layout_bits
 		flow_table_properties_nic_transmit_sniffer;
-	u8 reserved_at_e00[0x600];
+	u8 reserved_at_e00[0x200];
+	struct mlx5_ifc_ft_fields_support_bits
+		ft_header_modify_nic_receive;
+	u8 reserved_at_1080[0x380];
 	struct mlx5_ifc_ft_fields_support_2_bits
 		ft_field_support_2_nic_receive;
 };

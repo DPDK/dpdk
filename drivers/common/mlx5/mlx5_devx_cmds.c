@@ -1065,6 +1065,9 @@ mlx5_devx_cmd_query_hca_attr(void *ctx,
 	attr->flow.tunnel_header_2_3 = MLX5_GET
 		(flow_table_nic_cap, hcattr,
 		 ft_field_support_2_nic_receive.tunnel_header_2_3);
+	attr->modify_outer_ip_ecn = MLX5_GET
+		(flow_table_nic_cap, hcattr,
+		 ft_header_modify_nic_receive.outer_ip_ecn);
 	attr->pkt_integrity_match = mlx5_devx_query_pkt_integrity_match(hcattr);
 	attr->inner_ipv4_ihl = MLX5_GET
 		(flow_table_nic_cap, hcattr,
