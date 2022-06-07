@@ -18,6 +18,8 @@
 #include "l3fwd_neon.h"
 #elif defined RTE_ARCH_PPC_64
 #include "l3fwd_altivec.h"
+#else
+#include "l3fwd_common.h"
 #endif
 #include "l3fwd_event.h"
 #include "l3fwd_route.h"
