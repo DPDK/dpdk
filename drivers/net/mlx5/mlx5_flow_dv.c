@@ -1450,6 +1450,9 @@ mlx5_flow_item_field_width(struct rte_eth_dev *dev,
 	case RTE_FLOW_FIELD_POINTER:
 	case RTE_FLOW_FIELD_VALUE:
 		return inherit < 0 ? 0 : inherit;
+	case RTE_FLOW_FIELD_IPV4_ECN:
+	case RTE_FLOW_FIELD_IPV6_ECN:
+		return 2;
 	default:
 		MLX5_ASSERT(false);
 	}
@@ -1826,6 +1829,13 @@ mlx5_flow_field_id_to_modify_info
 				mask[idx] = rte_cpu_to_be_32((meta_mask >>
 					(meta_count - width)) & meta_mask);
 		}
+		break;
+	case RTE_FLOW_FIELD_IPV4_ECN:
+	case RTE_FLOW_FIELD_IPV6_ECN:
+		info[idx] = (struct field_modify_info){1, 0,
+					MLX5_MODI_OUT_IP_ECN};
+		if (mask)
+			mask[idx] = 0x3 >> (2 - width);
 		break;
 	case RTE_FLOW_FIELD_POINTER:
 	case RTE_FLOW_FIELD_VALUE:
@@ -4900,6 +4910,7 @@ flow_dv_validate_action_modify_field(struct rte_eth_dev *dev,
 	int ret = 0;
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_sh_config *config = &priv->sh->config;
+	struct mlx5_hca_attr *hca_attr = &priv->sh->cdev->config.hca_attr;
 	const struct rte_flow_action_modify_field *action_modify_field =
 		action->conf;
 	uint32_t dst_width = mlx5_flow_item_field_width(dev,
@@ -5027,6 +5038,15 @@ flow_dv_validate_action_modify_field(struct rte_eth_dev *dev,
 				RTE_FLOW_ERROR_TYPE_ACTION, action,
 				"add and sub operations"
 				" are not supported");
+	if (action_modify_field->dst.field == RTE_FLOW_FIELD_IPV4_ECN ||
+	    action_modify_field->src.field == RTE_FLOW_FIELD_IPV4_ECN ||
+	    action_modify_field->dst.field == RTE_FLOW_FIELD_IPV6_ECN ||
+	    action_modify_field->src.field == RTE_FLOW_FIELD_IPV6_ECN)
+		if (!hca_attr->modify_outer_ip_ecn &&
+		    !attr->transfer && !attr->group)
+			return rte_flow_error_set(error, ENOTSUP,
+				RTE_FLOW_ERROR_TYPE_ACTION, action,
+				"modifications of the ECN for current firmware is not supported");
 	return (action_modify_field->width / 32) +
 	       !!(action_modify_field->width % 32);
 }
