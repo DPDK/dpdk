@@ -987,20 +987,6 @@ err:
 	return rc;
 }
 
-static int ena_check_valid_conf(struct ena_adapter *adapter)
-{
-	uint32_t mtu = adapter->edev_data->mtu;
-
-	if (mtu > adapter->max_mtu || mtu < ENA_MIN_MTU) {
-		PMD_INIT_LOG(ERR,
-			"Unsupported MTU of %d. Max MTU: %d, min MTU: %d\n",
-			mtu, adapter->max_mtu, ENA_MIN_MTU);
-		return ENA_COM_UNSUPPORTED;
-	}
-
-	return 0;
-}
-
 static int
 ena_calc_io_queue_size(struct ena_calc_queue_size_ctx *ctx,
 		       bool use_large_llq_hdr)
@@ -1165,13 +1151,6 @@ static int ena_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 	ena_dev = &adapter->ena_dev;
 	ena_assert_msg(ena_dev != NULL, "Uninitialized device\n");
 
-	if (mtu > adapter->max_mtu || mtu < ENA_MIN_MTU) {
-		PMD_DRV_LOG(ERR,
-			"Invalid MTU setting. New MTU: %d, max MTU: %d, min MTU: %d\n",
-			mtu, adapter->max_mtu, ENA_MIN_MTU);
-		return -EINVAL;
-	}
-
 	rc = ENA_PROXY(adapter, ena_com_set_dev_mtu, ena_dev, mtu);
 	if (rc)
 		PMD_DRV_LOG(ERR, "Could not set MTU: %d\n", mtu);
@@ -1192,10 +1171,6 @@ static int ena_start(struct rte_eth_dev *dev)
 		PMD_DRV_LOG(WARNING, "dev_start not supported in secondary.\n");
 		return -EPERM;
 	}
-
-	rc = ena_check_valid_conf(adapter);
-	if (rc)
-		return rc;
 
 	rc = ena_setup_rx_intr(dev);
 	if (rc)
