@@ -1379,6 +1379,7 @@ typedef int (*mlx5_flow_create_mtr_acts_t)
 			(struct rte_eth_dev *dev,
 		      struct mlx5_flow_meter_policy *mtr_policy,
 		      const struct rte_flow_action *actions[RTE_COLORS],
+		      struct rte_flow_attr *attr,
 		      struct rte_mtr_error *error);
 typedef void (*mlx5_flow_destroy_mtr_acts_t)
 			(struct rte_eth_dev *dev,
@@ -2037,6 +2038,7 @@ void mlx5_flow_destroy_mtr_acts(struct rte_eth_dev *dev,
 int mlx5_flow_create_mtr_acts(struct rte_eth_dev *dev,
 		      struct mlx5_flow_meter_policy *mtr_policy,
 		      const struct rte_flow_action *actions[RTE_COLORS],
+		      struct rte_flow_attr *attr,
 		      struct rte_mtr_error *error);
 int mlx5_flow_create_policy_rules(struct rte_eth_dev *dev,
 			     struct mlx5_flow_meter_policy *mtr_policy);

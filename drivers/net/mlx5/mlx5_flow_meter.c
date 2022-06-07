@@ -916,7 +916,7 @@ mlx5_flow_meter_policy_add(struct rte_eth_dev *dev,
 	}
 	rte_spinlock_init(&mtr_policy->sl);
 	ret = mlx5_flow_create_mtr_acts(dev, mtr_policy,
-					policy->actions, error);
+					policy->actions, &attr, error);
 	if (ret)
 		goto policy_add_err;
 	if (mtr_policy->is_hierarchy) {
