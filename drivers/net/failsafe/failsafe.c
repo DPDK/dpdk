@@ -308,8 +308,8 @@ fs_rte_eth_free(const char *name)
 	if (dev == NULL)
 		return 0; /* port already released */
 	ret = failsafe_eth_dev_close(dev);
-	rte_eth_dev_release_port(dev);
 	rte_intr_instance_free(PRIV(dev)->intr_handle);
+	rte_eth_dev_release_port(dev);
 	return ret;
 }
 
