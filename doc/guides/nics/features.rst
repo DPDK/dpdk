@@ -842,6 +842,12 @@ Support PowerPC architecture.
 
 .. _nic_features_x86-32:
 
+rv64
+----
+
+Support 64-bit RISC-V architecture.
+
+
 x86-32
 ------
 
@@ -854,7 +860,6 @@ x86-64
 ------
 
 Support 64bits x86 architecture.
-
 
 .. _nic_features_usage_doc:
 

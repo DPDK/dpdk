@@ -1,0 +1,17 @@
+[binaries]
+c = 'riscv64-linux-gnu-gcc'
+cpp = 'riscv64-linux-gnu-g++'
+ar = 'riscv64-linux-gnu-ar'
+strip = 'riscv64-linux-gnu-strip'
+pcap-config = ''
+
+[host_machine]
+system = 'linux'
+cpu_family = 'riscv64'
+cpu = 'rv64gc'
+endian = 'little'
+
+[properties]
+vendor_id = 'generic'
+arch_id = 'generic'
+pkg_config_libdir = '/usr/lib/riscv64-linux-gnu/pkgconfig'

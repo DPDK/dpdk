@@ -6,6 +6,12 @@
 # To build this example as a standalone application with an already-installed
 # DPDK instance, use 'make'
 
+if arch_subdir == 'riscv'
+    build = false
+    reason = 'not supported on RISC-V'
+    subdir_done()
+endif
+
 allow_experimental_apis = true
 deps += ['hash', 'lpm', 'fib', 'eventdev']
 sources = files(

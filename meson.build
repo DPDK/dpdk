@@ -54,6 +54,8 @@ elif host_machine.cpu_family().startswith('arm') or host_machine.cpu_family().st
     arch_subdir = 'arm'
 elif host_machine.cpu_family().startswith('ppc')
     arch_subdir = 'ppc'
+elif host_machine.cpu_family().startswith('riscv')
+    arch_subdir = 'riscv'
 endif
 
 # configure the build, and make sure configs here and in config folder are

@@ -303,6 +303,12 @@ F: drivers/*/*/*_altivec.*
 F: app/*/*_altivec.*
 F: examples/*/*_altivec.*
 
+RISC-V
+M: Stanislaw Kardach <kda@semihalf.com>
+F: config/riscv/
+F: doc/guides/linux_gsg/cross_build_dpdk_for_riscv.rst
+F: lib/eal/riscv/
+
 Intel x86
 M: Bruce Richardson <bruce.richardson@intel.com>
 M: Konstantin Ananyev <konstantin.v.ananyev@yandex.ru>
