@@ -59,12 +59,6 @@ static int eth_ark_tx_jumbo(struct ark_tx_queue *queue,
 static int eth_ark_tx_hw_queue_config(struct ark_tx_queue *queue);
 static void free_completed_tx(struct ark_tx_queue *queue);
 
-static inline void
-ark_tx_hw_queue_stop(struct ark_tx_queue *queue)
-{
-	ark_mpu_stop(queue->mpu);
-}
-
 /* ************************************************************************* */
 static inline void
 eth_ark_tx_desc_fill(struct ark_tx_queue *queue,
@@ -309,7 +303,6 @@ static int
 eth_ark_tx_hw_queue_config(struct ark_tx_queue *queue)
 {
 	rte_iova_t queue_base, ring_base, cons_index_addr;
-	uint32_t write_interval_ns;
 
 	/* Verify HW -- MPU */
 	if (ark_mpu_verify(queue->mpu, sizeof(union ark_tx_meta)))
@@ -326,28 +319,9 @@ eth_ark_tx_hw_queue_config(struct ark_tx_queue *queue)
 	/* Stop and Reset and configure MPU */
 	ark_mpu_configure(queue->mpu, ring_base, queue->queue_size, 1);
 
-	/*
-	 * Adjust the write interval based on queue size --
-	 * increase pcie traffic  when low mbuf count
-	 * Queue sizes less than 128 are not allowed
-	 */
-	switch (queue->queue_size) {
-	case 128:
-		write_interval_ns = 500;
-		break;
-	case 256:
-		write_interval_ns = 500;
-		break;
-	case 512:
-		write_interval_ns = 1000;
-		break;
-	default:
-		write_interval_ns = 2000;
-		break;
-	}
-
 	/* Completion address in UDM */
-	ark_ddm_setup(queue->ddm, cons_index_addr, write_interval_ns);
+	ark_ddm_queue_setup(queue->ddm, cons_index_addr);
+	ark_ddm_queue_reset_stats(queue->ddm);
 
 	return 0;
 }
@@ -360,7 +334,8 @@ eth_ark_tx_queue_release(void *vtx_queue)
 
 	queue = (struct ark_tx_queue *)vtx_queue;
 
-	ark_tx_hw_queue_stop(queue);
+	ark_ddm_queue_enable(queue->ddm, 0);
+	ark_mpu_stop(queue->mpu);
 
 	queue->cons_index = queue->prod_index;
 	free_completed_tx(queue);
@@ -386,6 +361,7 @@ eth_ark_tx_queue_stop(struct rte_eth_dev *dev, uint16_t queue_id)
 			return -1;
 	}
 
+	ark_ddm_queue_enable(queue->ddm, 0);
 	ark_mpu_stop(queue->mpu);
 	free_completed_tx(queue);
 
@@ -404,6 +380,7 @@ eth_ark_tx_queue_start(struct rte_eth_dev *dev, uint16_t queue_id)
 		return 0;
 
 	ark_mpu_start(queue->mpu);
+	ark_ddm_queue_enable(queue->ddm, 1);
 	dev->data->tx_queue_state[queue_id] = RTE_ETH_QUEUE_STATE_STARTED;
 
 	return 0;

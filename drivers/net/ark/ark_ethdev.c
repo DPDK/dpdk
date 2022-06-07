@@ -527,10 +527,6 @@ ark_config_device(struct rte_eth_dev *dev)
 		mpu = RTE_PTR_ADD(mpu, ARK_MPU_QOFFSET);
 	}
 
-	/* TX -- DDM */
-	if (ark_ddm_stop(ark->ddm.v, 1))
-		ARK_PMD_LOG(ERR, "Unable to stop DDM\n");
-
 	mpu = ark->mputx.v;
 	num_q = ark_api_num_queues(mpu);
 	ark->tx_queues = num_q;
@@ -538,10 +534,6 @@ ark_config_device(struct rte_eth_dev *dev)
 		mpu = RTE_PTR_ADD(mpu, ARK_MPU_QOFFSET);
 	}
 
-	ark_ddm_reset(ark->ddm.v);
-	ark_ddm_stats_reset(ark->ddm.v);
-
-	ark_ddm_stop(ark->ddm.v, 0);
 	if (ark->rqpacing)
 		ark_rqp_stats_reset(ark->rqpacing);
 
@@ -594,9 +586,6 @@ eth_ark_dev_start(struct rte_eth_dev *dev)
 	/* TX Side */
 	for (i = 0; i < dev->data->nb_tx_queues; i++)
 		eth_ark_tx_queue_start(dev, i);
-
-	/* start DDM */
-	ark_ddm_start(ark->ddm.v);
 
 	ark->started = 1;
 	/* set xmit and receive function */
@@ -668,28 +657,6 @@ eth_ark_dev_stop(struct rte_eth_dev *dev)
 				    "tx_queue stop anomaly"
 				    " port %u, queue %u\n",
 				    port, i);
-		}
-	}
-
-	/* Stop DDM */
-	/* Wait up to 0.1 second.  each stop is up to 1000 * 10 useconds */
-	for (i = 0; i < 10; i++) {
-		status = ark_ddm_stop(ark->ddm.v, 1);
-		if (status == 0)
-			break;
-	}
-	if (status || i != 0) {
-		ARK_PMD_LOG(ERR, "DDM stop anomaly. status:"
-			    " %d iter: %u. (%s)\n",
-			    status,
-			    i,
-			    __func__);
-		ark_ddm_dump(ark->ddm.v, "Stop anomaly");
-
-		mpu = ark->mputx.v;
-		for (i = 0; i < ark->tx_queues; i++) {
-			ark_mpu_dump(mpu, "DDM failure dump", i);
-			mpu = RTE_PTR_ADD(mpu, ARK_MPU_QOFFSET);
 		}
 	}
 
