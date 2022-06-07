@@ -68,9 +68,6 @@ typedef struct {
 } rte_pmd_ifpga_phy_info;
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change, or be removed, without prior notice
- *
  * Get raw device ID from PCI address string like 'Domain:Bus:Dev.Func'
  *
  * @param pci_addr
@@ -82,14 +79,10 @@ typedef struct {
  *   - (-EINVAL) if bad parameter.
  *   - (-ENODEV) if FPGA is not probed by ifpga driver.
  */
-__rte_experimental
 int
 rte_pmd_ifpga_get_dev_id(const char *pci_addr, uint16_t *dev_id);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change, or be removed, without prior notice
- *
  * Get current RSU status of the specified Intel FPGA device
  *
  * @param dev_id
@@ -103,14 +96,10 @@ rte_pmd_ifpga_get_dev_id(const char *pci_addr, uint16_t *dev_id);
  *   - (-ENODEV) if dev_id is invalid.
  *   - (-ENOMEM) if share data is not initialized.
  */
-__rte_experimental
 int
 rte_pmd_ifpga_get_rsu_status(uint16_t dev_id, uint32_t *stat, uint32_t *prog);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change, or be removed, without prior notice
- *
  * Set current RSU status of the specified Intel FPGA device
  *
  * @param dev_id
@@ -124,14 +113,10 @@ rte_pmd_ifpga_get_rsu_status(uint16_t dev_id, uint32_t *stat, uint32_t *prog);
  *   - (-ENODEV) if dev_id is invalid.
  *   - (-ENOMEM) if share data is not initialized.
  */
-__rte_experimental
 int
 rte_pmd_ifpga_set_rsu_status(uint16_t dev_id, uint32_t stat, uint32_t prog);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change, or be removed, without prior notice
- *
  * Get FPGA property of specified Intel FPGA device
  *
  * @param dev_id
@@ -144,14 +129,10 @@ rte_pmd_ifpga_set_rsu_status(uint16_t dev_id, uint32_t stat, uint32_t prog);
  *   - (-EBUSY) if FPGA is rebooting.
  *   - (-EIO) if failed to access hardware.
  */
-__rte_experimental
 int
 rte_pmd_ifpga_get_property(uint16_t dev_id, rte_pmd_ifpga_prop *prop);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change, or be removed, without prior notice
- *
  * Get PHY information of specified Intel FPGA device
  *
  * @param dev_id
@@ -164,14 +145,10 @@ rte_pmd_ifpga_get_property(uint16_t dev_id, rte_pmd_ifpga_prop *prop);
  *   - (-EBUSY) if FPGA is rebooting.
  *   - (-EIO) if failed to access hardware.
  */
-__rte_experimental
 int
 rte_pmd_ifpga_get_phy_info(uint16_t dev_id, rte_pmd_ifpga_phy_info *info);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change, or be removed, without prior notice
- *
  * Update image flash of specified Intel FPGA device
  *
  * @param dev_id
@@ -187,15 +164,11 @@ rte_pmd_ifpga_get_phy_info(uint16_t dev_id, rte_pmd_ifpga_phy_info *info);
  *   - (-EBUSY) if FPGA is updating or rebooting.
  *   - (-EIO) if failed to open image file.
  */
-__rte_experimental
 int
 rte_pmd_ifpga_update_flash(uint16_t dev_id, const char *image,
 	uint64_t *status);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change, or be removed, without prior notice
- *
  * Stop flash update of specified Intel FPGA device
  *
  * @param dev_id
@@ -208,14 +181,10 @@ rte_pmd_ifpga_update_flash(uint16_t dev_id, const char *image,
  *   - (-EINVAL) if bad parameter.
  *   - (-EAGAIN) if failed with force.
  */
-__rte_experimental
 int
 rte_pmd_ifpga_stop_update(uint16_t dev_id, int force);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change, or be removed, without prior notice
- *
  * Check current Intel FPGA status and change it to reboot status if it is idle
  *
  * @param dev_id
@@ -226,14 +195,10 @@ rte_pmd_ifpga_stop_update(uint16_t dev_id, int force);
  *   - (-ENOMEM) if share data is not initialized.
  *   - (-EBUSY) if FPGA is updating or rebooting.
  */
-__rte_experimental
 int
 rte_pmd_ifpga_reboot_try(uint16_t dev_id);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change, or be removed, without prior notice
- *
  * Trigger full reconfiguration of specified Intel FPGA device
  *
  * @param dev_id
@@ -252,28 +217,20 @@ rte_pmd_ifpga_reboot_try(uint16_t dev_id);
  *   - (-EINVAL) if bad parameter.
  *   - (-EBUSY) if failed to access BMC register.
  */
-__rte_experimental
 int
 rte_pmd_ifpga_reload(uint16_t dev_id, int type, int page);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change, or be removed, without prior notice
- *
  * Get PCI bus the Intel FPGA driver register to
  *
  * @return
  *   - (valid pointer) if successful.
  *   - (NULL) if the Intel FPGA driver is not registered to any PCI bus.
  */
-__rte_experimental
 const struct rte_pci_bus *
 rte_pmd_ifpga_get_pci_bus(void);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change, or be removed, without prior notice
- *
  * Perform PR (partial reconfiguration) on specified Intel FPGA device
  *
  * @param dev_id
@@ -287,17 +244,12 @@ rte_pmd_ifpga_get_pci_bus(void);
  *   - (-EINVAL) if bad parameter or operation failed.
  *   - (-ENOMEM) if failed to allocate memory.
  */
-__rte_experimental
 int
 rte_pmd_ifpga_partial_reconfigure(uint16_t dev_id, int port, const char *file);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change, or be removed, without prior notice
- *
  * Free software resources allocated by Intel FPGA PMD
  */
-__rte_experimental
 void
 rte_pmd_ifpga_cleanup(void);
 
