@@ -300,6 +300,25 @@ ARK PMD supports the following Arkville RTL PCIe instances including:
 * ``1d6c:101e`` - AR-ARKA-FX1 [Arkville 64B DPDK Data Mover for Agilex R-Tile]
 * ``1d6c:101f`` - AR-TK242 [2x100GbE Packet Capture Device]
 
+DPDK and Arkville Firmware Versioning
+-------------------------------------
+
+Arkville's firmware releases and its PMD have version dependencies which
+must be stepped together at certain releases. PMD code ensures the
+versions are compatible. The following lists shows where version
+compatible steps have occurred between DPDK releases and the corresponding
+Arkville releases.  Intermediate releases not listed below remain
+compatible, e.g., DPDK releases 21.05, 21.08, and 21.11 are all compatible
+with Arkville releases 21.05, 21.08 and 21.11. LTS versions of DPDK remain
+compatible with the corresponding Arkville version.  If other combinations
+are required, please contact Atomic Rules support.
+
+* DPDK 22.07 requires Arkville 22.07.
+* DPDK 22.03 requires Arkville 22.03.
+* DPDK 21.05 requires Arkville 21.05.
+* DPDK 18.11 requires Arkville 18.11.
+* DPDK 17.05 requires Arkville 17.05 -- initial version.
+
 Supported Operating Systems
 ---------------------------
 

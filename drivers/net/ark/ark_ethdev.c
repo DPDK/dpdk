@@ -524,7 +524,6 @@ ark_config_device(struct rte_eth_dev *dev)
 	num_q = ark_api_num_queues(mpu);
 	ark->rx_queues = num_q;
 	for (i = 0; i < num_q; i++) {
-		ark_mpu_reset(mpu);
 		mpu = RTE_PTR_ADD(mpu, ARK_MPU_QOFFSET);
 	}
 
@@ -536,7 +535,6 @@ ark_config_device(struct rte_eth_dev *dev)
 	num_q = ark_api_num_queues(mpu);
 	ark->tx_queues = num_q;
 	for (i = 0; i < num_q; i++) {
-		ark_mpu_reset(mpu);
 		mpu = RTE_PTR_ADD(mpu, ARK_MPU_QOFFSET);
 	}
 

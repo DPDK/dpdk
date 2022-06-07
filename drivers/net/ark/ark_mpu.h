@@ -15,6 +15,8 @@
  * there is minimal documentation.
  */
 
+#define ARK_MPU_MODID 0x2055504d
+#define ARK_MPU_MODVER 0x37313232
 /*
  * MPU hardware structures
  * These are overlay structures to a memory mapped FPGA device.  These
@@ -64,26 +66,6 @@ enum ARK_MPU_COMMAND {
 	MPU_COMMAND_LIMIT = 0xfFFFFFFF
 };
 
-#define ARK_MPU_STATS 0x080
-struct ark_mpu_stats_t {
-	volatile uint64_t pci_request;
-	volatile uint64_t q_empty;
-	volatile uint64_t q_q1;
-	volatile uint64_t q_q2;
-	volatile uint64_t q_q3;
-	volatile uint64_t q_q4;
-	volatile uint64_t q_full;
-};
-
-#define ARK_MPU_DEBUG 0x0C0
-struct ark_mpu_debug_t {
-	volatile uint32_t state;
-	uint32_t reserved;
-	volatile uint32_t count;
-	volatile uint32_t take;
-	volatile uint32_t peek[4];
-};
-
 /*  Consolidated structure */
 struct ark_mpu_t {
 	struct ark_mpu_id_t id;
@@ -93,12 +75,6 @@ struct ark_mpu_t {
 	uint8_t reserved1[(ARK_MPU_CFG - ARK_MPU_HW) -
 			  sizeof(struct ark_mpu_hw_t)];
 	struct ark_mpu_cfg_t cfg;
-	uint8_t reserved2[(ARK_MPU_STATS - ARK_MPU_CFG) -
-			  sizeof(struct ark_mpu_cfg_t)];
-	struct ark_mpu_stats_t stats;
-	uint8_t reserved3[(ARK_MPU_DEBUG - ARK_MPU_STATS) -
-			  sizeof(struct ark_mpu_stats_t)];
-	struct ark_mpu_debug_t debug;
 };
 
 uint16_t ark_api_num_queues(struct ark_mpu_t *mpu);
@@ -113,7 +89,6 @@ int ark_mpu_configure(struct ark_mpu_t *mpu, rte_iova_t ring,
 
 void ark_mpu_dump(struct ark_mpu_t *mpu, const char *msg, uint16_t idx);
 void ark_mpu_dump_setup(struct ark_mpu_t *mpu, uint16_t qid);
-void ark_mpu_reset_stats(struct ark_mpu_t *mpu);
 
 /*  this action is in a performance critical path */
 static inline void

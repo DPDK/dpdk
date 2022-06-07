@@ -110,6 +110,10 @@ New Features
   * Added ``enable_llq`` device argument for controlling the PMD LLQ
     (Low Latency Queue) mode.
 
+* **Updated Atomic Rules' Arkville PMD.**
+
+  * A firmware version update to Arkville 22.07 is required.
+
 * **Updated Intel iavf driver.**
 
   * Added Tx QoS queue rate limitation support.

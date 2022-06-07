@@ -91,9 +91,6 @@ eth_ark_rx_hw_setup(struct rte_eth_dev *dev,
 
 	ark_udm_write_addr(queue->udm, phys_addr_prod_index);
 
-	/* advance the valid pointer, but don't start until the queue starts */
-	ark_mpu_reset_stats(queue->mpu);
-
 	/* The seed is the producer index for the HW */
 	ark_mpu_set_producer(queue->mpu, queue->seed_index);
 	dev->data->rx_queue_state[rx_queue_idx] = RTE_ETH_QUEUE_STATE_STOPPED;
@@ -589,7 +586,6 @@ eth_rx_queue_stats_reset(void *vqueue)
 	if (queue == 0)
 		return;
 
-	ark_mpu_reset_stats(queue->mpu);
 	ark_udm_queue_stats_reset(queue->udm);
 }
 

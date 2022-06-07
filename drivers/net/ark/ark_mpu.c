@@ -24,10 +24,10 @@ ark_mpu_verify(struct ark_mpu_t *mpu, uint32_t obj_size)
 {
 	uint32_t version;
 
-	version = mpu->id.vernum & 0x0000fF00;
-	if ((mpu->id.idnum != 0x2055504d) ||
-	    (mpu->hw.obj_size != obj_size) ||
-	    (version != 0x00003100)) {
+	version = mpu->id.vernum;
+	if (mpu->id.idnum != ARK_MPU_MODID ||
+	    version != ARK_MPU_MODVER ||
+	    mpu->hw.obj_size != obj_size) {
 		ARK_PMD_LOG(ERR,
 			    "   MPU module not found as expected %08x"
 			    " \"%c%c%c%c %c%c%c%c\"\n",
@@ -79,14 +79,7 @@ ark_mpu_reset(struct ark_mpu_t *mpu)
 		mpu->cfg.command = MPU_CMD_FORCE_RESET;
 		usleep(10);
 	}
-	ark_mpu_reset_stats(mpu);
 	return mpu->cfg.command != MPU_CMD_IDLE;
-}
-
-void
-ark_mpu_reset_stats(struct ark_mpu_t *mpu)
-{
-	mpu->stats.pci_request = 1;	/* reset stats */
 }
 
 int
@@ -118,12 +111,6 @@ ark_mpu_dump(struct ark_mpu_t *mpu, const char *code, uint16_t qid)
 	ARK_PMD_LOG(DEBUG, "MPU: %s Q: %3u sw_prod %u, hw_cons: %u\n",
 		      code, qid,
 		      mpu->cfg.sw_prod_index, mpu->cfg.hw_cons_index);
-	ARK_PMD_LOG(DEBUG, "MPU: %s state: %d count %d, reserved %d"
-		      "\n",
-		      code,
-		      mpu->debug.state, mpu->debug.count,
-		      mpu->debug.reserved
-		      );
 }
 
 void
