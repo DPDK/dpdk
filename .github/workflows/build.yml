@@ -26,6 +26,7 @@ jobs:
       MINI: ${{ matrix.config.mini != '' }}
       PPC64LE: ${{ matrix.config.cross == 'ppc64le' }}
       REF_GIT_TAG: v22.03
+      RISCV64: ${{ matrix.config.cross == 'riscv64' }}
       RUN_TESTS: ${{ contains(matrix.config.checks, 'tests') }}
 
     strategy:
@@ -74,6 +75,10 @@ jobs:
             compiler: gcc
             library: shared
             cross: ppc64le
+          - os: ubuntu-20.04
+            compiler: gcc
+            library: shared
+            cross: riscv64
 
     steps:
     - name: Checkout sources
@@ -132,8 +137,12 @@ jobs:
       if: env.PPC64LE == 'true'
       run: sudo apt install -y gcc-powerpc64le-linux-gnu libc6-dev-ppc64el-cross
         pkg-config-powerpc-linux-gnu
+    - name: Install riscv64 cross compiling packages
+      if: env.RISCV64 == 'true'
+      run: sudo apt install -y gcc-riscv64-linux-gnu libc6-dev-riscv64-cross
+        pkg-config-riscv64-linux-gnu
     - name: Install test tools packages
-      if: env.AARCH64 != 'true' || env.PPC64LE != 'true' || env.RUN_TESTS == 'true'
+      if: env.AARCH64 != 'true' || env.PPC64LE != 'true' || env.RISCV64 != 'true' || env.RUN_TESTS == 'true'
       run: sudo apt install -y gdb
     - name: Install doc generation packages
       if: env.BUILD_DOCS == 'true'

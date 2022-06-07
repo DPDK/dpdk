@@ -74,6 +74,10 @@ if [ "$PPC64LE" = "true" ]; then
     cross_file=config/ppc/ppc64le-power8-linux-gcc-ubuntu
 fi
 
+if [ "$RISCV64" = "true" ]; then
+    cross_file=config/riscv/riscv64_linux_gcc
+fi
+
 if [ -n "$cross_file" ]; then
     OPTS="$OPTS --cross-file $cross_file"
 fi
