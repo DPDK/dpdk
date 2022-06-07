@@ -297,6 +297,9 @@ ARK PMD supports the following Arkville RTL PCIe instances including:
 * ``1d6c:1017`` - AR-ARK-FX1 [Arkville 64B Multi-Homed Primary Endpoint]
 * ``1d6c:1018`` - AR-ARK-FX1 [Arkville 64B Multi-Homed Secondary Endpoint]
 * ``1d6c:1019`` - AR-ARK-FX1 [Arkville 64B Multi-Homed Tertiary Endpoint]
+* ``1d6c:101a`` - AR-ARK-SRIOV-FX0 [Arkville 32B Primary Physical Function]
+* ``1d6c:101b`` - AR-ARK-SRIOV-FX1 [Arkville 64B Primary Physical Function]
+* ``1d6c:101c`` - AR-ARK-SRIOV-VF [Arkville Virtual Function]
 * ``1d6c:101e`` - AR-ARKA-FX1 [Arkville 64B DPDK Data Mover for Agilex R-Tile]
 * ``1d6c:101f`` - AR-TK242 [2x100GbE Packet Capture Device]
 
@@ -341,7 +344,6 @@ Unsupported Features
 Features that may be part of, or become part of, the Arkville RTL IP that are
 not currently supported or exposed by the ARK PMD include:
 
-* PCIe SR-IOV Virtual Functions (VFs)
 * Arkville's Packet Generator Control and Status
 * Arkville's Packet Director Control and Status
 * Arkville's Packet Checker Control and Status
