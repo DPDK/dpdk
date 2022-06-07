@@ -78,6 +78,7 @@ static int set_surprise_link_check_aer(
 static int ifpga_pci_find_next_ext_capability(unsigned int fd,
 					      int start, uint32_t cap);
 static int ifpga_pci_find_ext_capability(unsigned int fd, uint32_t cap);
+static void fme_interrupt_handler(void *param);
 
 struct ifpga_rawdev *
 ifpga_rawdev_get(const struct rte_rawdev *rawdev)
@@ -740,8 +741,9 @@ ifpga_rawdev_close(struct rte_rawdev *dev)
 {
 	struct ifpga_rawdev *ifpga_rdev = NULL;
 	struct opae_adapter *adapter;
+	struct opae_manager *mgr;
 	char *vdev_name = NULL;
-	int i = 0;
+	int i, ret = 0;
 
 	if (dev) {
 		ifpga_rdev = ifpga_rawdev_get(dev);
@@ -756,12 +758,19 @@ ifpga_rawdev_close(struct rte_rawdev *dev)
 		}
 		adapter = ifpga_rawdev_get_priv(dev);
 		if (adapter) {
+			mgr = opae_adapter_get_mgr(adapter);
+			if (ifpga_rdev && mgr) {
+				if (ifpga_unregister_msix_irq(ifpga_rdev,
+					IFPGA_FME_IRQ, 0,
+					fme_interrupt_handler, mgr) < 0)
+					ret = -EINVAL;
+			}
 			opae_adapter_destroy(adapter);
 			opae_adapter_data_free(adapter->data);
 		}
 	}
 
-	return dev ? 0:1;
+	return ret;
 }
 
 static int
@@ -1629,9 +1638,6 @@ ifpga_rawdev_destroy(struct rte_pci_device *pci_dev)
 	int ret;
 	struct rte_rawdev *rawdev;
 	char name[RTE_RAWDEV_NAME_MAX_LEN];
-	struct opae_adapter *adapter;
-	struct opae_manager *mgr;
-	struct ifpga_rawdev *dev;
 
 	if (!pci_dev) {
 		IFPGA_RAWDEV_PMD_ERR("Invalid pci_dev of the device!");
@@ -1651,19 +1657,6 @@ ifpga_rawdev_destroy(struct rte_pci_device *pci_dev)
 		IFPGA_RAWDEV_PMD_ERR("Invalid device name (%s)", name);
 		return -EINVAL;
 	}
-	dev = ifpga_rawdev_get(rawdev);
-
-	adapter = ifpga_rawdev_get_priv(rawdev);
-	if (!adapter)
-		return -ENODEV;
-
-	mgr = opae_adapter_get_mgr(adapter);
-	if (!mgr)
-		return -ENODEV;
-
-	if (ifpga_unregister_msix_irq(dev, IFPGA_FME_IRQ, 0,
-				fme_interrupt_handler, mgr) < 0)
-		return -EINVAL;
 
 	/* rte_rawdev_close is called by pmd_release */
 	ret = rte_rawdev_pmd_release(rawdev);
