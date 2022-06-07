@@ -72,6 +72,12 @@ struct ena_stats {
  * considered as a missing.
  */
 #define ENA_DEVARG_MISS_TXC_TO "miss_txc_to"
+/*
+ * Controls whether LLQ should be used (if available). Enabled by default.
+ * NOTE: It's highly not recommended to disable the LLQ, as it may lead to a
+ * huge performance degradation on 6th generation AWS instances.
+ */
+#define ENA_DEVARG_ENABLE_LLQ "enable_llq"
 
 /*
  * Each rte_memzone should have unique name.
@@ -1932,6 +1938,14 @@ ena_set_queues_placement_policy(struct ena_adapter *adapter,
 	int rc;
 	u32 llq_feature_mask;
 
+	if (!adapter->enable_llq) {
+		PMD_DRV_LOG(WARNING,
+			"NOTE: LLQ has been disabled as per user's request. "
+			"This may lead to a huge performance degradation!\n");
+		ena_dev->tx_mem_queue_type = ENA_ADMIN_PLACEMENT_POLICY_HOST;
+		return 0;
+	}
+
 	llq_feature_mask = 1 << ENA_ADMIN_LLQ;
 	if (!(ena_dev->supported_features & llq_feature_mask)) {
 		PMD_DRV_LOG(INFO,
@@ -2127,7 +2141,10 @@ static int eth_ena_dev_init(struct rte_eth_dev *eth_dev)
 	snprintf(adapter->name, ENA_NAME_MAX_LEN, "ena_%d",
 		 adapter->id_number);
 
+	/* Assign default devargs values */
 	adapter->missing_tx_completion_to = ENA_TX_TIMEOUT;
+	adapter->enable_llq = true;
+	adapter->use_large_llq_hdr = false;
 
 	rc = ena_parse_devargs(adapter, pci_dev->device.devargs);
 	if (rc != 0) {
@@ -3478,6 +3495,8 @@ static int ena_process_bool_devarg(const char *key,
 	/* Now, assign it to the proper adapter field. */
 	if (strcmp(key, ENA_DEVARG_LARGE_LLQ_HDR) == 0)
 		adapter->use_large_llq_hdr = bool_value;
+	else if (strcmp(key, ENA_DEVARG_ENABLE_LLQ) == 0)
+		adapter->enable_llq = bool_value;
 
 	return 0;
 }
@@ -3488,6 +3507,7 @@ static int ena_parse_devargs(struct ena_adapter *adapter,
 	static const char * const allowed_args[] = {
 		ENA_DEVARG_LARGE_LLQ_HDR,
 		ENA_DEVARG_MISS_TXC_TO,
+		ENA_DEVARG_ENABLE_LLQ,
 		NULL,
 	};
 	struct rte_kvargs *kvlist;
@@ -3509,6 +3529,10 @@ static int ena_parse_devargs(struct ena_adapter *adapter,
 		goto exit;
 	rc = rte_kvargs_process(kvlist, ENA_DEVARG_MISS_TXC_TO,
 		ena_process_uint_devarg, adapter);
+	if (rc != 0)
+		goto exit;
+	rc = rte_kvargs_process(kvlist, ENA_DEVARG_ENABLE_LLQ,
+		ena_process_bool_devarg, adapter);
 
 exit:
 	rte_kvargs_free(kvlist);
@@ -3727,7 +3751,10 @@ static struct rte_pci_driver rte_ena_pmd = {
 RTE_PMD_REGISTER_PCI(net_ena, rte_ena_pmd);
 RTE_PMD_REGISTER_PCI_TABLE(net_ena, pci_id_ena_map);
 RTE_PMD_REGISTER_KMOD_DEP(net_ena, "* igb_uio | uio_pci_generic | vfio-pci");
-RTE_PMD_REGISTER_PARAM_STRING(net_ena, ENA_DEVARG_LARGE_LLQ_HDR "=<0|1>");
+RTE_PMD_REGISTER_PARAM_STRING(net_ena,
+	ENA_DEVARG_LARGE_LLQ_HDR "=<0|1> "
+	ENA_DEVARG_ENABLE_LLQ "=<0|1> "
+	ENA_DEVARG_MISS_TXC_TO "=<uint>");
 RTE_LOG_REGISTER_SUFFIX(ena_logtype_init, init, NOTICE);
 RTE_LOG_REGISTER_SUFFIX(ena_logtype_driver, driver, NOTICE);
 #ifdef RTE_ETHDEV_DEBUG_RX

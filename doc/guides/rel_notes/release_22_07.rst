@@ -107,6 +107,8 @@ New Features
   The new driver version (v2.7.0) includes:
 
   * Added fast mbuf free feature support.
+  * Added ``enable_llq`` device argument for controlling the PMD LLQ
+    (Low Latency Queue) mode.
 
 * **Updated Intel iavf driver.**
 

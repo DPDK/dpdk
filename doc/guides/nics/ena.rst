@@ -96,6 +96,15 @@ Configuration information
      timer service. Setting this parameter to 0 disables this feature. Maximum
      allowed value is 60 seconds.
 
+   * **enable_llq** (default 1)
+
+     Determines whenever the driver should use the LLQ (if it's available) or
+     not.
+
+     **NOTE: On the 6th generation AWS instances disabling LLQ may lead to a
+     huge performance degradation. In general disabling LLQ is highly not
+     recommended!**
+
 **ENA Configuration Parameters**
 
    * **Number of Queues**

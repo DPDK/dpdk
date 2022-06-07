@@ -303,6 +303,7 @@ struct ena_adapter {
 
 	bool trigger_reset;
 
+	bool enable_llq;
 	bool use_large_llq_hdr;
 
 	uint32_t last_tx_comp_qid;
