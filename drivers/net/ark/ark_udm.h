@@ -32,19 +32,25 @@ struct ark_rx_meta {
 
 #define ARK_RX_WRITE_TIME_NS 2500
 #define ARK_UDM_SETUP 0
-#define ARK_UDM_CONST2 0xbACECACE
-#define ARK_UDM_CONST3 0x344d4455
-#define ARK_UDM_CONST ARK_UDM_CONST3
+#define ARK_UDM_MODID 0x4d445500
+#define ARK_UDM_MODVER 0x37313232
+
 struct ark_udm_setup_t {
+	union {
+		char id[4];
+		uint32_t idnum;
+	};
+	union {
+		char ver[4];
+		uint32_t vernum;
+	};
 	uint32_t r0;
-	uint32_t r4;
-	volatile uint32_t cycle_count;
 	uint32_t const0;
 };
 
 #define ARK_UDM_CFG 0x010
 struct ark_udm_cfg_t {
-	volatile uint32_t stop_flushed;	/* RO */
+	uint32_t write_interval;	/* 4ns cycles */
 	volatile uint32_t command;
 	uint32_t dataroom;
 	uint32_t headroom;
@@ -74,45 +80,11 @@ struct ark_udm_queue_stats_t {
 	uint32_t q_enable;
 };
 
-#define ARK_UDM_TLP 0x0070
-struct ark_udm_tlp_t {
-	volatile uint64_t pkt_drop;	/* global */
-	volatile uint32_t tlp_q1;
-	volatile uint32_t tlp_q2;
-	volatile uint32_t tlp_q3;
-	volatile uint32_t tlp_q4;
-	volatile uint32_t tlp_full;
-};
-
-#define ARK_UDM_PCIBP 0x00a0
-struct ark_udm_pcibp_t {
-	volatile uint32_t pci_clear;
-	volatile uint32_t pci_empty;
-	volatile uint32_t pci_q1;
-	volatile uint32_t pci_q2;
-	volatile uint32_t pci_q3;
-	volatile uint32_t pci_q4;
-	volatile uint32_t pci_full;
-};
-
-#define ARK_UDM_TLP_PS 0x00bc
-struct ark_udm_tlp_ps_t {
-	volatile uint32_t tlp_clear;
-	volatile uint32_t tlp_ps_min;
-	volatile uint32_t tlp_ps_max;
-	volatile uint32_t tlp_full_ps_min;
-	volatile uint32_t tlp_full_ps_max;
-	volatile uint32_t tlp_dw_ps_min;
-	volatile uint32_t tlp_dw_ps_max;
-	volatile uint32_t tlp_pldw_ps_min;
-	volatile uint32_t tlp_pldw_ps_max;
-};
-
 #define ARK_UDM_RT_CFG 0x00e0
 struct ark_udm_rt_cfg_t {
 	rte_iova_t hw_prod_addr;
-	uint32_t write_interval;	/* 4ns cycles */
-	volatile uint32_t prod_idx;	/* RO */
+	uint32_t reserved;
+	volatile uint32_t prod_idx; /* Updated by HW */
 };
 
 /*  Consolidated structure */
@@ -123,13 +95,8 @@ struct ark_udm_t {
 	struct ark_udm_cfg_t cfg;
 	struct ark_udm_stats_t stats;
 	struct ark_udm_queue_stats_t qstats;
-	uint8_t reserved1[(ARK_UDM_TLP - ARK_UDM_PQ) -
+	uint8_t reserved1[(ARK_UDM_RT_CFG - ARK_UDM_PQ) -
 			  sizeof(struct ark_udm_queue_stats_t)];
-	struct ark_udm_tlp_t tlp;
-	uint8_t reserved2[(ARK_UDM_PCIBP - ARK_UDM_TLP) -
-			  sizeof(struct ark_udm_tlp_t)];
-	struct ark_udm_pcibp_t pcibp;
-	struct ark_udm_tlp_ps_t tlp_ps;
 	struct ark_udm_rt_cfg_t rt_cfg;
 	int8_t reserved3[(ARK_UDM_EXPECT_SIZE - ARK_UDM_RT_CFG) -
 			 sizeof(struct ark_udm_rt_cfg_t)];
@@ -137,22 +104,14 @@ struct ark_udm_t {
 
 
 int ark_udm_verify(struct ark_udm_t *udm);
-int ark_udm_stop(struct ark_udm_t *udm, int wait);
-void ark_udm_start(struct ark_udm_t *udm);
-int ark_udm_reset(struct ark_udm_t *udm);
 void ark_udm_configure(struct ark_udm_t *udm,
 		       uint32_t headroom,
-		       uint32_t dataroom,
-		       uint32_t write_interval_ns);
+		       uint32_t dataroom);
 void ark_udm_write_addr(struct ark_udm_t *udm, rte_iova_t addr);
-void ark_udm_stats_reset(struct ark_udm_t *udm);
 void ark_udm_dump_stats(struct ark_udm_t *udm, const char *msg);
 void ark_udm_dump_queue_stats(struct ark_udm_t *udm, const char *msg,
 			      uint16_t qid);
-void ark_udm_dump(struct ark_udm_t *udm, const char *msg);
-void ark_udm_dump_perf(struct ark_udm_t *udm, const char *msg);
 void ark_udm_dump_setup(struct ark_udm_t *udm, uint16_t q_id);
-int ark_udm_is_flushed(struct ark_udm_t *udm);
 
 /* Per queue data */
 uint64_t ark_udm_dropped(struct ark_udm_t *udm);

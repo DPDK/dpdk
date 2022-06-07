@@ -512,13 +512,6 @@ ark_config_device(struct rte_eth_dev *dev)
 	if (ark_ddm_verify(ark->ddm.v))
 		return -1;
 
-	/* UDM */
-	if (ark_udm_reset(ark->udm.v)) {
-		ARK_PMD_LOG(ERR, "Unable to stop and reset UDM\n");
-		return -1;
-	}
-	/* Keep in reset until the MPU are cleared */
-
 	/* MPU reset */
 	mpu = ark->mpurx.v;
 	num_q = ark_api_num_queues(mpu);
@@ -577,9 +570,6 @@ eth_ark_dev_start(struct rte_eth_dev *dev)
 	int i;
 
 	/* RX Side */
-	/* start UDM */
-	ark_udm_start(ark->udm.v);
-
 	for (i = 0; i < dev->data->nb_rx_queues; i++)
 		eth_ark_rx_start_queue(dev, i);
 
@@ -627,7 +617,6 @@ eth_ark_dev_stop(struct rte_eth_dev *dev)
 	uint16_t i;
 	int status;
 	struct ark_adapter *ark = dev->data->dev_private;
-	struct ark_mpu_t *mpu;
 
 	if (ark->started == 0)
 		return 0;
@@ -648,6 +637,10 @@ eth_ark_dev_stop(struct rte_eth_dev *dev)
 	dev->rx_pkt_burst = rte_eth_pkt_burst_dummy;
 	dev->tx_pkt_burst = rte_eth_pkt_burst_dummy;
 
+	/* Stop RX Side */
+	for (i = 0; i < dev->data->nb_rx_queues; i++)
+		eth_ark_rx_stop_queue(dev, i);
+
 	/* STOP TX Side */
 	for (i = 0; i < dev->data->nb_tx_queues; i++) {
 		status = eth_ark_tx_queue_stop(dev, i);
@@ -660,27 +653,7 @@ eth_ark_dev_stop(struct rte_eth_dev *dev)
 		}
 	}
 
-	/* STOP RX Side */
-	/* Stop UDM  multiple tries attempted */
-	for (i = 0; i < 10; i++) {
-		status = ark_udm_stop(ark->udm.v, 1);
-		if (status == 0)
-			break;
-	}
-	if (status || i != 0) {
-		ARK_PMD_LOG(ERR, "UDM stop anomaly. status %d iter: %u. (%s)\n",
-			    status, i, __func__);
-		ark_udm_dump(ark->udm.v, "Stop anomaly");
-
-		mpu = ark->mpurx.v;
-		for (i = 0; i < ark->rx_queues; i++) {
-			ark_mpu_dump(mpu, "UDM Stop anomaly", i);
-			mpu = RTE_PTR_ADD(mpu, ARK_MPU_QOFFSET);
-		}
-	}
-
 	ark_udm_dump_stats(ark->udm.v, "Post stop");
-	ark_udm_dump_perf(ark->udm.v, "Post stop");
 
 	for (i = 0; i < dev->data->nb_rx_queues; i++)
 		eth_ark_rx_dump_queue(dev, i, __func__);
@@ -708,10 +681,9 @@ eth_ark_dev_close(struct rte_eth_dev *dev)
 		 ark->user_data[dev->data->port_id]);
 
 	eth_ark_dev_stop(dev);
-	eth_ark_udm_force_close(dev);
 
 	/*
-	 * TODO This should only be called once for the device during shutdown
+	 * This should only be called once for the device during shutdown
 	 */
 	if (ark->rqpacing)
 		ark_rqp_dump(ark->rqpacing);

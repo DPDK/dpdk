@@ -27,6 +27,5 @@ void eth_rx_queue_stats_get(void *vqueue, struct rte_eth_stats *stats);
 void eth_rx_queue_stats_reset(void *vqueue);
 void eth_ark_rx_dump_queue(struct rte_eth_dev *dev, uint16_t queue_id,
 			   const char *msg);
-void eth_ark_udm_force_close(struct rte_eth_dev *dev);
 
 #endif
