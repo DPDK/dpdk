@@ -113,28 +113,29 @@ static const struct rte_pci_id pci_id_ark_map[] = {
  */
 struct ark_caps {
 	bool rqpacing;
+	bool isvf;
 };
 struct ark_dev_caps {
 	uint32_t  device_id;
 	struct ark_caps  caps;
 };
-#define SET_DEV_CAPS(id, rqp) \
-	{id, {.rqpacing = rqp} }
+#define SET_DEV_CAPS(id, rqp, vf)			\
+	{id, {.rqpacing = rqp, .isvf = vf} }
 
 static const struct ark_dev_caps
 ark_device_caps[] = {
-		     SET_DEV_CAPS(0x100d, true),
-		     SET_DEV_CAPS(0x100e, true),
-		     SET_DEV_CAPS(0x100f, true),
-		     SET_DEV_CAPS(0x1010, false),
-		     SET_DEV_CAPS(0x1017, true),
-		     SET_DEV_CAPS(0x1018, true),
-		     SET_DEV_CAPS(0x1019, true),
-		     SET_DEV_CAPS(0x101a, true),
-		     SET_DEV_CAPS(0x101b, true),
-		     SET_DEV_CAPS(0x101c, false),
-		     SET_DEV_CAPS(0x101e, false),
-		     SET_DEV_CAPS(0x101f, false),
+		     SET_DEV_CAPS(0x100d, true, false),
+		     SET_DEV_CAPS(0x100e, true, false),
+		     SET_DEV_CAPS(0x100f, true, false),
+		     SET_DEV_CAPS(0x1010, false, false),
+		     SET_DEV_CAPS(0x1017, true, false),
+		     SET_DEV_CAPS(0x1018, true, false),
+		     SET_DEV_CAPS(0x1019, true, false),
+		     SET_DEV_CAPS(0x101a, true, false),
+		     SET_DEV_CAPS(0x101b, true, false),
+		     SET_DEV_CAPS(0x101c, true, true),
+		     SET_DEV_CAPS(0x101e, false, false),
+		     SET_DEV_CAPS(0x101f, false, false),
 		     {.device_id = 0,}
 };
 
@@ -317,6 +318,7 @@ eth_ark_dev_init(struct rte_eth_dev *dev)
 	while (ark_device_caps[p].device_id != 0) {
 		if (pci_dev->id.device_id == ark_device_caps[p].device_id) {
 			rqpacing = ark_device_caps[p].caps.rqpacing;
+			ark->isvf = ark_device_caps[p].caps.isvf;
 			break;
 		}
 		p++;
@@ -498,20 +500,21 @@ ark_config_device(struct rte_eth_dev *dev)
 	 * Make sure that the packet director, generator and checker are in a
 	 * known state
 	 */
-	ark->start_pg = 0;
-	ark->pg_running = 0;
-	ark->pg = ark_pktgen_init(ark->pktgen.v, 0, 1);
-	if (ark->pg == NULL)
-		return -1;
-	ark_pktgen_reset(ark->pg);
-	ark->pc = ark_pktchkr_init(ark->pktchkr.v, 0, 1);
-	if (ark->pc == NULL)
-		return -1;
-	ark_pktchkr_stop(ark->pc);
-	ark->pd = ark_pktdir_init(ark->pktdir.v);
-	if (ark->pd == NULL)
-		return -1;
-
+	if (!ark->isvf) {
+		ark->start_pg = 0;
+		ark->pg_running = 0;
+		ark->pg = ark_pktgen_init(ark->pktgen.v, 0, 1);
+		if (ark->pg == NULL)
+			return -1;
+		ark_pktgen_reset(ark->pg);
+		ark->pc = ark_pktchkr_init(ark->pktchkr.v, 0, 1);
+		if (ark->pc == NULL)
+			return -1;
+		ark_pktchkr_stop(ark->pc);
+		ark->pd = ark_pktdir_init(ark->pktdir.v);
+		if (ark->pd == NULL)
+			return -1;
+	}
 	/* Verify HW */
 	if (ark_udm_verify(ark->udm.v))
 		return -1;
@@ -533,7 +536,7 @@ ark_config_device(struct rte_eth_dev *dev)
 		mpu = RTE_PTR_ADD(mpu, ARK_MPU_QOFFSET);
 	}
 
-	if (ark->rqpacing)
+	if (!ark->isvf && ark->rqpacing)
 		ark_rqp_stats_reset(ark->rqpacing);
 
 	return 0;
@@ -551,8 +554,10 @@ eth_ark_dev_uninit(struct rte_eth_dev *dev)
 		ark->user_ext.dev_uninit(dev,
 			 ark->user_data[dev->data->port_id]);
 
-	ark_pktgen_uninit(ark->pg);
-	ark_pktchkr_uninit(ark->pc);
+	if (!ark->isvf) {
+		ark_pktgen_uninit(ark->pg);
+		ark_pktchkr_uninit(ark->pc);
+	}
 
 	return 0;
 }
@@ -588,10 +593,10 @@ eth_ark_dev_start(struct rte_eth_dev *dev)
 	dev->rx_pkt_burst = &eth_ark_recv_pkts;
 	dev->tx_pkt_burst = &eth_ark_xmit_pkts;
 
-	if (ark->start_pg)
+	if (!ark->isvf && ark->start_pg)
 		ark_pktchkr_run(ark->pc);
 
-	if (ark->start_pg && !ark->pg_running) {
+	if (!ark->isvf && ark->start_pg && !ark->pg_running) {
 		pthread_t thread;
 
 		/* Delay packet generatpr start allow the hardware to be ready
@@ -635,7 +640,7 @@ eth_ark_dev_stop(struct rte_eth_dev *dev)
 		       ark->user_data[dev->data->port_id]);
 
 	/* Stop the packet generator */
-	if (ark->start_pg && ark->pg_running) {
+	if (!ark->isvf && ark->start_pg && ark->pg_running) {
 		ark_pktgen_pause(ark->pg);
 		ark->pg_running = 0;
 	}
@@ -665,7 +670,7 @@ eth_ark_dev_stop(struct rte_eth_dev *dev)
 		eth_ark_rx_dump_queue(dev, i, __func__);
 
 	/* Stop the packet checker if it is running */
-	if (ark->start_pg) {
+	if (!ark->isvf && ark->start_pg) {
 		ark_pktchkr_dump_stats(ark->pc);
 		ark_pktchkr_stop(ark->pc);
 	}
@@ -693,6 +698,10 @@ eth_ark_dev_close(struct rte_eth_dev *dev)
 	 */
 	if (ark->rqpacing)
 		ark_rqp_dump(ark->rqpacing);
+
+	/* return to power-on state */
+	if (ark->pd)
+		ark_pktdir_setup(ark->pd, ARK_PKT_DIR_INIT_VAL);
 
 	for (i = 0; i < dev->data->nb_tx_queues; i++) {
 		eth_ark_tx_queue_release(dev->data->tx_queues[i]);
@@ -978,6 +987,10 @@ eth_ark_check_args(struct ark_adapter *ark, const char *params)
 		goto free_kvlist;
 	}
 
+	if (ark->isvf) {
+		ret = 0;
+		goto free_kvlist;
+	}
 	ARK_PMD_LOG(INFO, "packet director set to 0x%x\n", ark->pkt_dir_v);
 	/* Setup the packet director */
 	ark_pktdir_setup(ark->pd, ark->pkt_dir_v);

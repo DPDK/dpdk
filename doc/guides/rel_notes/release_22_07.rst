@@ -114,6 +114,7 @@ New Features
 
   * A firmware version update to Arkville 22.07 is required.
   * Added support for Atomic Rules PCI device IDs ``0x101a, 0x101b, 0x101c``.
+  * Added PMD support for virtual functions and vfio_pci driver.
 
 * **Updated Intel iavf driver.**
 

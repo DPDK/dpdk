@@ -113,6 +113,7 @@ struct ark_adapter {
 	ark_pkt_dir_t pd;
 
 	int num_ports;
+	bool isvf;
 
 	/* Packet generator/checker args */
 	char pkt_gen_args[ARK_MAX_ARG_LEN];
