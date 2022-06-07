@@ -36,6 +36,12 @@
 
 #define ENA_MIN_RING_DESC	128
 
+/*
+ * We should try to keep ENA_CLEANUP_BUF_SIZE lower than
+ * RTE_MEMPOOL_CACHE_MAX_SIZE, so we can fit this in mempool local cache.
+ */
+#define ENA_CLEANUP_BUF_SIZE	256
+
 #define ENA_PTYPE_HAS_HASH	(RTE_PTYPE_L4_TCP | RTE_PTYPE_L4_UDP)
 
 struct ena_stats {
@@ -2402,6 +2408,8 @@ static uint64_t ena_get_tx_port_offloads(struct ena_adapter *adapter)
 
 	port_offloads |= RTE_ETH_TX_OFFLOAD_MULTI_SEGS;
 
+	port_offloads |= RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE;
+
 	return port_offloads;
 }
 
@@ -2414,9 +2422,12 @@ static uint64_t ena_get_rx_queue_offloads(struct ena_adapter *adapter)
 
 static uint64_t ena_get_tx_queue_offloads(struct ena_adapter *adapter)
 {
+	uint64_t queue_offloads = 0;
 	RTE_SET_USED(adapter);
 
-	return 0;
+	queue_offloads |= RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE;
+
+	return queue_offloads;
 }
 
 static int ena_infos_get(struct rte_eth_dev *dev,
@@ -3001,13 +3012,38 @@ static int ena_xmit_mbuf(struct ena_ring *tx_ring, struct rte_mbuf *mbuf)
 	return 0;
 }
 
+static __rte_always_inline size_t
+ena_tx_cleanup_mbuf_fast(struct rte_mbuf **mbufs_to_clean,
+			 struct rte_mbuf *mbuf,
+			 size_t mbuf_cnt,
+			 size_t buf_size)
+{
+	struct rte_mbuf *m_next;
+
+	while (mbuf != NULL) {
+		m_next = mbuf->next;
+		mbufs_to_clean[mbuf_cnt++] = mbuf;
+		if (mbuf_cnt == buf_size) {
+			rte_mempool_put_bulk(mbufs_to_clean[0]->pool, (void **)mbufs_to_clean,
+				(unsigned int)mbuf_cnt);
+			mbuf_cnt = 0;
+		}
+		mbuf = m_next;
+	}
+
+	return mbuf_cnt;
+}
+
 static int ena_tx_cleanup(void *txp, uint32_t free_pkt_cnt)
 {
+	struct rte_mbuf *mbufs_to_clean[ENA_CLEANUP_BUF_SIZE];
 	struct ena_ring *tx_ring = (struct ena_ring *)txp;
+	size_t mbuf_cnt = 0;
 	unsigned int total_tx_descs = 0;
 	unsigned int total_tx_pkts = 0;
 	uint16_t cleanup_budget;
 	uint16_t next_to_clean = tx_ring->next_to_clean;
+	bool fast_free = tx_ring->offloads & RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE;
 
 	/*
 	 * If free_pkt_cnt is equal to 0, it means that the user requested
@@ -3032,7 +3068,12 @@ static int ena_tx_cleanup(void *txp, uint32_t free_pkt_cnt)
 		tx_info->timestamp = 0;
 
 		mbuf = tx_info->mbuf;
-		rte_pktmbuf_free(mbuf);
+		if (fast_free) {
+			mbuf_cnt = ena_tx_cleanup_mbuf_fast(mbufs_to_clean, mbuf, mbuf_cnt,
+				ENA_CLEANUP_BUF_SIZE);
+		} else {
+			rte_pktmbuf_free(mbuf);
+		}
 
 		tx_info->mbuf = NULL;
 		tx_ring->empty_tx_reqs[next_to_clean] = req_id;
@@ -3051,6 +3092,10 @@ static int ena_tx_cleanup(void *txp, uint32_t free_pkt_cnt)
 		ena_com_comp_ack(tx_ring->ena_com_io_sq, total_tx_descs);
 		ena_com_update_dev_comp_head(tx_ring->ena_com_io_cq);
 	}
+
+	if (mbuf_cnt != 0)
+		rte_mempool_put_bulk(mbufs_to_clean[0]->pool,
+			(void **)mbufs_to_clean, mbuf_cnt);
 
 	/* Notify completion handler that full cleanup was performed */
 	if (free_pkt_cnt == 0 || total_tx_pkts < cleanup_budget)
