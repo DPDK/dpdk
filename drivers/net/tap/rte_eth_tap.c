@@ -2171,8 +2171,8 @@ error_exit:
 		close(pmd->ioctl_sock);
 	/* mac_addrs must not be freed alone because part of dev_private */
 	dev->data->mac_addrs = NULL;
-	rte_eth_dev_release_port(dev);
 	rte_intr_instance_free(pmd->intr_handle);
+	rte_eth_dev_release_port(dev);
 
 error_exit_nodev:
 	TAP_LOG(ERR, "%s Unable to initialize %s",
