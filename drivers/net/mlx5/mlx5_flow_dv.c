@@ -2211,6 +2211,80 @@ flow_dv_validate_item_port_id(struct rte_eth_dev *dev,
 }
 
 /**
+ * Validate represented port item.
+ *
+ * @param[in] dev
+ *   Pointer to the rte_eth_dev structure.
+ * @param[in] item
+ *   Item specification.
+ * @param[in] attr
+ *   Attributes of flow that includes this item.
+ * @param[in] item_flags
+ *   Bit-fields that holds the items detected until now.
+ * @param[out] error
+ *   Pointer to error structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+static int
+flow_dv_validate_item_represented_port(struct rte_eth_dev *dev,
+				       const struct rte_flow_item *item,
+				       const struct rte_flow_attr *attr,
+				       uint64_t item_flags,
+				       struct rte_flow_error *error)
+{
+	const struct rte_flow_item_ethdev *spec = item->spec;
+	const struct rte_flow_item_ethdev *mask = item->mask;
+	const struct rte_flow_item_ethdev switch_mask = {
+			.port_id = UINT16_MAX,
+	};
+	struct mlx5_priv *esw_priv;
+	struct mlx5_priv *dev_priv;
+	int ret;
+
+	if (!attr->transfer)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ITEM, NULL,
+					  "match on port id is valid only when transfer flag is enabled");
+	if (item_flags & MLX5_FLOW_ITEM_REPRESENTED_PORT)
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ITEM, item,
+					  "multiple source ports are not supported");
+	if (!mask)
+		mask = &switch_mask;
+	if (mask->port_id != UINT16_MAX)
+		return rte_flow_error_set(error, ENOTSUP,
+					   RTE_FLOW_ERROR_TYPE_ITEM_MASK, mask,
+					   "no support for partial mask on \"id\" field");
+	ret = mlx5_flow_item_acceptable
+				(item, (const uint8_t *)mask,
+				 (const uint8_t *)&rte_flow_item_ethdev_mask,
+				 sizeof(struct rte_flow_item_ethdev),
+				 MLX5_ITEM_RANGE_NOT_ACCEPTED, error);
+	if (ret)
+		return ret;
+	if (!spec || spec->port_id == UINT16_MAX)
+		return 0;
+	esw_priv = mlx5_port_to_eswitch_info(spec->port_id, false);
+	if (!esw_priv)
+		return rte_flow_error_set(error, rte_errno,
+					  RTE_FLOW_ERROR_TYPE_ITEM_SPEC, spec,
+					  "failed to obtain E-Switch info for port");
+	dev_priv = mlx5_dev_to_eswitch_info(dev);
+	if (!dev_priv)
+		return rte_flow_error_set(error, rte_errno,
+					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					  NULL,
+					  "failed to obtain E-Switch info");
+	if (esw_priv->domain_id != dev_priv->domain_id)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ITEM_SPEC, spec,
+					  "cannot match on a port from a different E-Switch");
+	return 0;
+}
+
+/**
  * Validate VLAN item.
  *
  * @param[in] item
@@ -6972,6 +7046,13 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 			last_item = MLX5_FLOW_ITEM_PORT_ID;
 			port_id_item = items;
 			break;
+		case RTE_FLOW_ITEM_TYPE_REPRESENTED_PORT:
+			ret = flow_dv_validate_item_represented_port
+					(dev, items, attr, item_flags, error);
+			if (ret < 0)
+				return ret;
+			last_item = MLX5_FLOW_ITEM_REPRESENTED_PORT;
+			break;
 		case RTE_FLOW_ITEM_TYPE_ETH:
 			ret = mlx5_flow_validate_item_eth(items, item_flags,
 							  true, error);
@@ -9960,6 +10041,77 @@ flow_dv_translate_item_port_id(struct rte_eth_dev *dev, void *matcher,
 		 * save the extra vport match.
 		 */
 		if (mask == 0xffff && priv->vport_id == 0xffff &&
+		    priv->pf_bond < 0 && attr->transfer)
+			flow_dv_translate_item_source_vport
+				(matcher, key, priv->vport_id, mask);
+		/*
+		 * We should always set the vport metadata register,
+		 * otherwise the SW steering library can drop
+		 * the rule if wire vport metadata value is not zero,
+		 * it depends on kernel configuration.
+		 */
+		flow_dv_translate_item_meta_vport(matcher, key,
+						  priv->vport_meta_tag,
+						  priv->vport_meta_mask);
+	} else {
+		flow_dv_translate_item_source_vport(matcher, key,
+						    priv->vport_id, mask);
+	}
+	return 0;
+}
+
+/**
+ * Translate represented port item to eswitch match on port id.
+ *
+ * @param[in] dev
+ *   The devich to configure through.
+ * @param[in, out] matcher
+ *   Flow matcher.
+ * @param[in, out] key
+ *   Flow matcher value.
+ * @param[in] item
+ *   Flow pattern to translate.
+ * @param[in]
+ *   Flow attributes.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise.
+ */
+static int
+flow_dv_translate_item_represented_port(struct rte_eth_dev *dev, void *matcher,
+					void *key,
+					const struct rte_flow_item *item,
+					const struct rte_flow_attr *attr)
+{
+	const struct rte_flow_item_ethdev *pid_m = item ? item->mask : NULL;
+	const struct rte_flow_item_ethdev *pid_v = item ? item->spec : NULL;
+	struct mlx5_priv *priv;
+	uint16_t mask, id;
+
+	if (!pid_m && !pid_v)
+		return 0;
+	if (pid_v && pid_v->port_id == UINT16_MAX) {
+		flow_dv_translate_item_source_vport(matcher, key,
+			flow_dv_get_esw_manager_vport_id(dev), UINT16_MAX);
+		return 0;
+	}
+	mask = pid_m ? pid_m->port_id : UINT16_MAX;
+	id = pid_v ? pid_v->port_id : dev->data->port_id;
+	priv = mlx5_port_to_eswitch_info(id, item == NULL);
+	if (!priv)
+		return -rte_errno;
+	/*
+	 * Translate to vport field or to metadata, depending on mode.
+	 * Kernel can use either misc.source_port or half of C0 metadata
+	 * register.
+	 */
+	if (priv->vport_meta_mask) {
+		/*
+		 * Provide the hint for SW steering library
+		 * to insert the flow into ingress domain and
+		 * save the extra vport match.
+		 */
+		if (mask == UINT16_MAX && priv->vport_id == UINT16_MAX &&
 		    priv->pf_bond < 0 && attr->transfer)
 			flow_dv_translate_item_source_vport
 				(matcher, key, priv->vport_id, mask);
@@ -13615,6 +13767,11 @@ flow_dv_translate(struct rte_eth_dev *dev,
 				(dev, match_mask, match_value, items, attr);
 			last_item = MLX5_FLOW_ITEM_PORT_ID;
 			break;
+		case RTE_FLOW_ITEM_TYPE_REPRESENTED_PORT:
+			flow_dv_translate_item_represented_port
+				(dev, match_mask, match_value, items, attr);
+			last_item = MLX5_FLOW_ITEM_REPRESENTED_PORT;
+			break;
 		case RTE_FLOW_ITEM_TYPE_ETH:
 			flow_dv_translate_item_eth(match_mask, match_value,
 						   items, tunnel,
@@ -13873,7 +14030,8 @@ flow_dv_translate(struct rte_eth_dev *dev,
 	 * In both cases the source port is set according the current port
 	 * in use.
 	 */
-	if (!(item_flags & MLX5_FLOW_ITEM_PORT_ID) && priv->sh->esw_mode &&
+	if (!(item_flags & MLX5_FLOW_ITEM_PORT_ID) &&
+	    !(item_flags & MLX5_FLOW_ITEM_REPRESENTED_PORT) && priv->sh->esw_mode &&
 	    !(attr->egress && !attr->transfer)) {
 		if (flow_dv_translate_item_port_id(dev, match_mask,
 						   match_value, NULL, attr))

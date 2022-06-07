@@ -93,6 +93,7 @@ Features
 - Connection tracking.
 - Sub-Function representors.
 - Sub-Function.
+- Matching on represented port.
 
 
 Limitations
