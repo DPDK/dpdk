@@ -50,6 +50,7 @@ ifpga_rawdev_get_priv(const struct rte_rawdev *rawdev)
 
 #define IFPGA_RAWDEV_MSIX_IRQ_NUM 7
 #define IFPGA_RAWDEV_NUM 32
+#define IFPGA_MAX_VDEV 4
 #define IFPGA_MAX_IRQ 12
 
 struct ifpga_rawdev {
@@ -64,6 +65,13 @@ struct ifpga_rawdev {
 	void *intr_handle[IFPGA_MAX_IRQ];
 	/* enable monitor thread poll device's sensors or not */
 	int poll_enabled;
+	/* name of virtual devices created on raw device */
+	char *vdev_name[IFPGA_MAX_VDEV];
+};
+
+struct ifpga_vdev_args {
+	char bdf[PCI_PRI_STR_SIZE];
+	int port;
 };
 
 struct ifpga_rawdev *
