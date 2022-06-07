@@ -101,6 +101,8 @@ union bpf_attr {
 #  define __NR_bpf 351
 # elif defined(__powerpc__)
 #  define __NR_bpf 361
+# elif defined(__riscv)
+#  define __NR_bpf 280
 # else
 #  error __NR_bpf not defined
 # endif

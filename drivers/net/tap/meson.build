@@ -5,11 +5,6 @@ if not is_linux
     build = false
     reason = 'only supported on Linux'
 endif
-if arch_subdir == 'riscv'
-    build = false
-    reason = 'not supported on RISC-V'
-    subdir_done()
-endif
 sources = files(
         'rte_eth_tap.c',
         'tap_bpf_api.c',
