@@ -74,7 +74,7 @@ struct fips_test_callback hmac_tests_interim_vectors[] = {
 		{NULL, NULL, NULL} /**< end pointer */
 };
 
-#ifdef RTE_HAS_JANSSON
+#ifdef USE_JANSSON
 struct hash_size_conversion json_algorithms[] = {
 		{"HMAC-SHA-1", RTE_CRYPTO_AUTH_SHA1_HMAC},
 		{"HMAC-SHA2-224", RTE_CRYPTO_AUTH_SHA224_HMAC},
@@ -95,7 +95,7 @@ struct fips_test_callback hmac_tests_interim_json_vectors[] = {
 		{TAGLEN_JSON_STR, parser_read_uint32_bit_val, &vec.cipher_auth.digest},
 		{NULL, NULL, NULL} /**< end pointer */
 };
-#endif /* RTE_HAS_JANSSON */
+#endif /* USE_JANSSON */
 
 static int
 parse_test_hmac_writeback(struct fips_val *val)
@@ -136,7 +136,7 @@ parse_test_hmac_init(void)
 	return 0;
 }
 
-#ifdef RTE_HAS_JANSSON
+#ifdef USE_JANSSON
 static int
 parse_test_hmac_json_writeback(struct fips_val *val)
 {
@@ -195,4 +195,4 @@ parse_test_hmac_json_init(void)
 
 	return 0;
 }
-#endif /* RTE_HAS_JANSSON */
+#endif /* USE_JANSSON */

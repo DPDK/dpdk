@@ -24,4 +24,5 @@ sources = files(
 
 if dpdk_conf.has('RTE_HAS_JANSSON')
     ext_deps += jansson_dep
+    cflags += '-DUSE_JANSSON'
 endif

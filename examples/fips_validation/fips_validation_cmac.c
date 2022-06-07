@@ -51,7 +51,7 @@ struct hash_algo_conversion {
 		{"AES", FIPS_TEST_ALGO_AES_CMAC},
 };
 
-#ifdef RTE_HAS_JANSSON
+#ifdef USE_JANSSON
 static int
 parser_read_cmac_direction_str(__rte_unused const char *key, char *src,
 		__rte_unused struct fips_val *val)
@@ -117,7 +117,7 @@ parse_test_cmac_json_init(void)
 
 	return 0;
 }
-#endif /* RTE_HAS_JANSSON */
+#endif /* USE_JANSSON */
 
 static int
 parse_test_cmac_writeback(struct fips_val *val)

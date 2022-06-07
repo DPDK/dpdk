@@ -41,9 +41,9 @@ enum {
 struct fips_test_vector vec;
 struct fips_test_interim_info info;
 
-#ifdef RTE_HAS_JANSSON
+#ifdef USE_JANSSON
 struct fips_test_json_info json_info;
-#endif /* RTE_HAS_JANSSON */
+#endif /* USE_JANSSON */
 
 struct cryptodev_fips_validate_env {
 	const char *req_path;
@@ -172,10 +172,10 @@ cryptodev_fips_validate_app_uninit(void)
 static int
 fips_test_one_file(void);
 
-#ifdef RTE_HAS_JANSSON
+#ifdef USE_JANSSON
 static int
 fips_test_one_json_file(void);
-#endif /* RTE_HAS_JANSSON */
+#endif /* USE_JANSSON */
 
 static int
 parse_cryptodev_arg(char *arg)
@@ -436,16 +436,16 @@ main(int argc, char *argv[])
 			goto exit;
 		}
 
-#ifdef RTE_HAS_JANSSON
+#ifdef USE_JANSSON
 		if (info.file_type == FIPS_TYPE_JSON) {
 			ret = fips_test_one_json_file();
 			json_decref(json_info.json_root);
 		}  else {
 			ret = fips_test_one_file();
 		}
-#else /* RTE_HAS_JANSSON */
+#else /* USE_JANSSON */
 		ret = fips_test_one_file();
-#endif /* RTE_HAS_JANSSON */
+#endif /* USE_JANSSON */
 
 		if (ret < 0) {
 			RTE_LOG(ERR, USER1, "Error %i: Failed test %s\n",
@@ -501,16 +501,16 @@ main(int argc, char *argv[])
 				break;
 			}
 
-#ifdef RTE_HAS_JANSSON
+#ifdef USE_JANSSON
 			if (info.file_type == FIPS_TYPE_JSON) {
 				ret = fips_test_one_json_file();
 				json_decref(json_info.json_root);
 			} else {
 				ret = fips_test_one_file();
 			}
-#else /* RTE_HAS_JANSSON */
+#else /* USE_JANSSON */
 			ret = fips_test_one_file();
-#endif /* RTE_HAS_JANSSON */
+#endif /* USE_JANSSON */
 
 			if (ret < 0) {
 				RTE_LOG(ERR, USER1, "Error %i: Failed test %s\n",
@@ -1920,7 +1920,7 @@ error_one_case:
 	return ret;
 }
 
-#ifdef RTE_HAS_JANSSON
+#ifdef USE_JANSSON
 static int
 fips_test_json_init_writeback(void)
 {
@@ -2084,4 +2084,4 @@ fips_test_one_json_file(void)
 
 	return 0;
 }
-#endif /* RTE_HAS_JANSSON */
+#endif /* USE_JANSSON */

@@ -6,9 +6,9 @@
 #include <time.h>
 #include <stdio.h>
 
-#ifdef RTE_HAS_JANSSON
+#ifdef USE_JANSSON
 #include <jansson.h>
-#endif /* RTE_HAS_JANSSON */
+#endif /* USE_JANSSON */
 
 #include <rte_cryptodev.h>
 #include <rte_malloc.h>
@@ -161,7 +161,7 @@ struct fips_test_callback gcm_enc_vectors[] = {
 		{NULL, NULL, NULL} /**< end pointer */
 };
 
-#ifdef RTE_HAS_JANSSON
+#ifdef USE_JANSSON
 struct fips_test_callback gcm_dec_json_vectors[] = {
 		{KEY_JSON_STR, parse_uint8_known_len_hex_str, &vec.aead.key},
 		{IV_JSON_STR, parse_uint8_known_len_hex_str, &vec.iv},
@@ -193,7 +193,7 @@ struct fips_test_callback gcm_enc_json_vectors[] = {
 		{AAD_JSON_STR, parse_gcm_aad_str, &vec.aead.aad},
 		{NULL, NULL, NULL} /**< end pointer */
 };
-#endif /* RTE_HAS_JANSSON */
+#endif /* USE_JANSSON */
 
 static int
 parse_test_gcm_writeback(struct fips_val *val)
@@ -277,7 +277,7 @@ parse_test_gcm_init(void)
 	return 0;
 }
 
-#ifdef RTE_HAS_JANSSON
+#ifdef USE_JANSSON
 static int
 parse_test_gcm_json_writeback(struct fips_val *val)
 {
@@ -367,4 +367,4 @@ parse_test_gcm_json_init(void)
 	return 0;
 }
 
-#endif /* RTE_HAS_JANSSON */
+#endif /* USE_JANSSON */

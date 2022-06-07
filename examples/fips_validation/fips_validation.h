@@ -5,9 +5,9 @@
 #ifndef _FIPS_VALIDATION_H_
 #define _FIPS_VALIDATION_H_
 
-#ifdef RTE_HAS_JANSSON
+#ifdef USE_JANSSON
 #include <jansson.h>
-#endif /* RTE_HAS_JANSSON */
+#endif /* USE_JANSSON */
 
 #define FIPS_PARSE_ERR(fmt, args)					\
 	RTE_LOG(ERR, USER1, "FIPS parse error" ## fmt ## "\n", ## args)
@@ -170,7 +170,7 @@ struct gcm_interim_data {
 	uint8_t gen_iv;
 };
 
-#ifdef RTE_HAS_JANSSON
+#ifdef USE_JANSSON
 struct fips_test_json_info {
 	/* Information used for reading from json */
 	json_t *json_root;
@@ -185,7 +185,7 @@ struct fips_test_json_info {
 	/* Other info */
 	uint8_t is_sample;
 };
-#endif /* RTE_HAS_JANSSON */
+#endif /* USE_JANSSON */
 
 struct fips_test_interim_info {
 	FILE *fp_rd;
@@ -222,9 +222,9 @@ struct fips_test_interim_info {
 extern struct fips_test_vector vec;
 extern struct fips_test_interim_info info;
 
-#ifdef RTE_HAS_JANSSON
+#ifdef USE_JANSSON
 extern struct fips_test_json_info json_info;
-#endif /* RTE_HAS_JANSSON */
+#endif /* USE_JANSSON */
 
 int
 fips_test_init(const char *req_file_path, const char *rsp_file_path,
@@ -242,7 +242,7 @@ fips_test_parse_one_case(void);
 void
 fips_test_write_one_case(void);
 
-#ifdef RTE_HAS_JANSSON
+#ifdef USE_JANSSON
 int
 fips_test_parse_one_json_vector_set(void);
 
@@ -266,7 +266,7 @@ parse_test_cmac_json_init(void);
 
 int
 parse_test_aes_json_init(void);
-#endif /* RTE_HAS_JANSSON */
+#endif /* USE_JANSSON */
 
 int
 parse_test_aes_init(void);

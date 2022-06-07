@@ -36,6 +36,12 @@ CFLAGS += -O3 $(shell $(PKGCONF) --cflags libdpdk)
 LDFLAGS_SHARED = $(shell $(PKGCONF) --libs libdpdk)
 LDFLAGS_STATIC = $(shell $(PKGCONF) --static --libs libdpdk)
 
+JANSSON := $(shell $(PKGCONF) --exists jansson; echo $$?)
+ifeq ($(JANSSON), 0)
+LDFLAGS += $(shell $(PKGCONF) --libs jansson)
+CFLAGS += -DUSE_JANSSON
+endif
+
 ifeq ($(MAKECMDGOALS),static)
 # check for broken pkg-config
 ifeq ($(shell echo $(LDFLAGS_STATIC) | grep 'whole-archive.*l:lib.*no-whole-archive'),)

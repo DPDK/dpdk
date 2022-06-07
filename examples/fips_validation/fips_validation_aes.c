@@ -107,7 +107,7 @@ struct fips_test_callback aes_writeback_callbacks[] = {
 		{NULL, NULL, NULL} /**< end pointer */
 };
 
-#ifdef RTE_HAS_JANSSON
+#ifdef USE_JANSSON
 struct fips_test_callback aes_dec_json_vectors[] = {
 		{KEY_JSON_STR, parse_uint8_known_len_hex_str, &vec.cipher_auth.key},
 		{IV_JSON_STR, parse_uint8_hex_str, &vec.iv},
@@ -313,7 +313,7 @@ parse_test_aes_json_init(void)
 
 	return 0;
 }
-#endif /* RTE_HAS_JANSSON */
+#endif /* USE_JANSSON */
 
 static int
 parse_test_aes_writeback(struct fips_val *val)

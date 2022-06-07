@@ -314,7 +314,7 @@ fips_test_init(const char *req_file_path, const char *rsp_file_path,
 	}
 
 	if (info.file_type == FIPS_TYPE_JSON) {
-#ifdef RTE_HAS_JANSSON
+#ifdef USE_JANSSON
 		json_error_t error;
 		json_info.json_root = json_loadf(info.fp_rd, 0, &error);
 		if (!json_info.json_root) {
@@ -322,10 +322,10 @@ fips_test_init(const char *req_file_path, const char *rsp_file_path,
 				req_file_path, error.line, error.column);
 			return -EINVAL;
 		}
-#else /* RTE_HAS_JANSSON */
+#else /* USE_JANSSON */
 		RTE_LOG(ERR, USER1, "No json library configured.\n");
 		return -EINVAL;
-#endif /* RTE_HAS_JANSSON */
+#endif /* USE_JANSSON */
 	}
 
 	info.fp_wr = fopen(rsp_file_path, "w");
@@ -448,7 +448,7 @@ fips_test_write_one_case(void)
 		fprintf(info.fp_wr, "%s\n", info.vec[i]);
 }
 
-#ifdef RTE_HAS_JANSSON
+#ifdef USE_JANSSON
 int
 fips_test_parse_one_json_vector_set(void)
 {
@@ -535,7 +535,7 @@ fips_test_parse_one_json_case(void)
 
 	return 0;
 }
-#endif /* RTE_HAS_JANSSON */
+#endif /* USE_JANSSON */
 
 static int
 parser_read_uint64_hex(uint64_t *value, const char *p)
