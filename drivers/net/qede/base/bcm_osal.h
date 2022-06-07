@@ -14,7 +14,6 @@
 #include <rte_spinlock.h>
 #include <rte_malloc.h>
 #include <rte_atomic.h>
-#include <rte_memcpy.h>
 #include <rte_log.h>
 #include <rte_cycles.h>
 #include <rte_debug.h>
@@ -99,7 +98,7 @@ typedef intptr_t osal_int_ptr_t;
 	} while (0)
 #define OSAL_VFREE(dev, memory) OSAL_FREE(dev, memory)
 #define OSAL_MEM_ZERO(mem, size) bzero(mem, size)
-#define OSAL_MEMCPY(dst, src, size) rte_memcpy(dst, src, size)
+#define OSAL_MEMCPY(dst, src, size) memcpy(dst, src, size)
 #define OSAL_MEMCMP(s1, s2, size) memcmp(s1, s2, size)
 #define OSAL_MEMSET(dst, val, length) \
 	memset(dst, val, length)

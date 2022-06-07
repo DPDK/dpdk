@@ -203,10 +203,10 @@ void qed_inform_vf_link_state(struct ecore_hwfn *hwfn)
 	if (!hwfn->pf_iov_info)
 		return;
 
-	rte_memcpy(&params, ecore_mcp_get_link_params(lead_hwfn),
+	memcpy(&params, ecore_mcp_get_link_params(lead_hwfn),
 		   sizeof(params));
-	rte_memcpy(&link, ecore_mcp_get_link_state(lead_hwfn), sizeof(link));
-	rte_memcpy(&caps, ecore_mcp_get_link_capabilities(lead_hwfn),
+	memcpy(&link, ecore_mcp_get_link_state(lead_hwfn), sizeof(link));
+	memcpy(&caps, ecore_mcp_get_link_capabilities(lead_hwfn),
 		   sizeof(caps));
 
 	/* Update bulletin of all future possible VFs with link configuration */

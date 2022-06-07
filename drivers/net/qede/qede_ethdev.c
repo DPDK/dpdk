@@ -358,7 +358,7 @@ qede_assign_rxtx_handlers(struct rte_eth_dev *dev, bool is_dummy)
 static void
 qede_alloc_etherdev(struct qede_dev *qdev, struct qed_dev_eth_info *info)
 {
-	rte_memcpy(&qdev->dev_info, info, sizeof(*info));
+	qdev->dev_info = *info;
 	qdev->ops = qed_ops;
 }
 
