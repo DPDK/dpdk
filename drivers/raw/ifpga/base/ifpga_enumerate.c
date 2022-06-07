@@ -2,12 +2,29 @@
  * Copyright(c) 2010-2018 Intel Corporation
  */
 
+#include <fcntl.h>
+#include <inttypes.h>
+#include <unistd.h>
+
 #include "opae_hw_api.h"
 #include "ifpga_api.h"
 
 #include "ifpga_hw.h"
 #include "ifpga_enumerate.h"
 #include "ifpga_feature_dev.h"
+
+struct dfl_fpga_enum_dfl {
+	u64 start;
+	u64 len;
+	void *addr;
+	TAILQ_ENTRY(dfl_fpga_enum_dfl) node;
+};
+
+TAILQ_HEAD(dfl_fpga_enum_dfls, dfl_fpga_enum_dfl);
+struct dfl_fpga_enum_info {
+	struct ifpga_hw *hw;
+	struct dfl_fpga_enum_dfls dfls;
+};
 
 struct build_feature_devs_info {
 	struct opae_adapter_data_pci *pci_data;
@@ -21,7 +38,6 @@ struct build_feature_devs_info {
 	void *ioaddr;
 	void *ioend;
 	uint64_t phys_addr;
-	int current_bar;
 
 	void *pfme_hdr;
 
@@ -141,8 +157,10 @@ create_feature_instance(struct build_feature_devs_info *binfo,
 			unsigned int size, unsigned int vec_start,
 			unsigned int vec_cnt)
 {
-	return build_info_add_sub_feature(binfo, start, fid, size, vec_start,
-			vec_cnt);
+	if (binfo->current_type != AFU_ID)
+		return build_info_add_sub_feature(binfo, start, fid, size,
+			vec_start, vec_cnt);
+	return 0;
 }
 
 /*
@@ -152,13 +170,14 @@ create_feature_instance(struct build_feature_devs_info *binfo,
  */
 static bool feature_is_UAFU(struct build_feature_devs_info *binfo)
 {
-	if (binfo->current_type != PORT_ID)
-		return false;
+	if ((binfo->current_type == PORT_ID) ||
+		(binfo->current_type == AFU_ID))
+		return true;
 
-	return true;
+	return false;
 }
 
-static int parse_feature_port_uafu(struct build_feature_devs_info *binfo,
+static int parse_feature_uafu(struct build_feature_devs_info *binfo,
 				   struct feature_header *hdr)
 {
 	u64 id = PORT_FEATURE_ID_UAFU;
@@ -169,9 +188,19 @@ static int parse_feature_port_uafu(struct build_feature_devs_info *binfo,
 	int ret;
 	int size;
 
+	if (binfo->acc_info) {
+		dev_info(binfo, "Sub AFU found @ %p.\n", start);
+		return 0;
+	}
+
 	capability.csr = readq(&port_hdr->capability);
 
-	size = capability.mmio_size << 10;
+	if (binfo->current_type == AFU_ID) {
+		size = AFU_REGION_SIZE;
+	} else {
+		capability.csr = readq(&port_hdr->capability);
+		size = capability.mmio_size << 10;
+	}
 
 	ret = create_feature_instance(binfo, hdr, id, size, 0, 0);
 	if (ret)
@@ -185,42 +214,11 @@ static int parse_feature_port_uafu(struct build_feature_devs_info *binfo,
 	info->region[0].phys_addr = binfo->phys_addr +
 			(uint8_t *)start - (uint8_t *)binfo->ioaddr;
 	info->region[0].len = size;
-	info->num_regions = 1;
+	info->num_regions = AFU_MAX_REGION;
 
 	binfo->acc_info = info;
 
 	return ret;
-}
-
-static int parse_feature_afus(struct build_feature_devs_info *binfo,
-			      struct feature_header *hdr)
-{
-	int ret;
-	struct feature_afu_header *afu_hdr, header;
-	u8 __iomem *start;
-	u8 __iomem *end = binfo->ioend;
-
-	start = (u8 __iomem *)hdr;
-	for (; start < end; start += header.next_afu) {
-		if ((unsigned int)(end - start) <
-			(unsigned int)(sizeof(*afu_hdr) + sizeof(*hdr)))
-			return -EINVAL;
-
-		hdr = (struct feature_header *)start;
-		afu_hdr = (struct feature_afu_header *)(hdr + 1);
-		header.csr = readq(&afu_hdr->csr);
-
-		if (feature_is_UAFU(binfo)) {
-			ret = parse_feature_port_uafu(binfo, hdr);
-			if (ret)
-				return ret;
-		}
-
-		if (!header.next_afu)
-			break;
-	}
-
-	return 0;
 }
 
 /* create and register proper private data */
@@ -235,13 +233,9 @@ static int build_info_commit_dev(struct build_feature_devs_info *binfo)
 	struct ifpga_fme_hw *fme;
 	struct ifpga_feature *feature;
 
-	if (!binfo->fiu)
-		return 0;
-
 	if (binfo->current_type == PORT_ID) {
-		/* return error if no valid acc info data structure */
-		if (!info)
-			return -EFAULT;
+		if (!binfo->fiu)
+			return 0;
 
 		br = opae_bridge_alloc(hw->adapter->name, &ifpga_br_ops,
 				       binfo->fiu);
@@ -254,7 +248,7 @@ static int build_info_commit_dev(struct build_feature_devs_info *binfo)
 		port = &hw->port[binfo->current_port_id];
 		feature = get_feature_by_id(&port->feature_list,
 				PORT_FEATURE_ID_UINT);
-		if (feature)
+		if (feature && info)
 			info->num_irqs = feature->vec_cnt;
 
 		acc = opae_accelerator_alloc(hw->adapter->name,
@@ -264,17 +258,21 @@ static int build_info_commit_dev(struct build_feature_devs_info *binfo)
 			return -ENOMEM;
 		}
 
+		acc->adapter = hw->adapter;
 		acc->br = br;
 		if (hw->adapter->mgr)
 			acc->mgr = hw->adapter->mgr;
 		acc->index = br->id;
 
 		fme = &hw->fme;
-		fme->nums_acc_region = info->num_regions;
+		fme->nums_acc_region = info ? info->num_regions : 0;
 
 		opae_adapter_add_acc(hw->adapter, acc);
 
 	} else if (binfo->current_type == FME_ID) {
+		if (!binfo->fiu)
+			return 0;
+
 		mgr = opae_manager_alloc(hw->adapter->name, &ifpga_mgr_ops,
 				&ifpga_mgr_network_ops, binfo->fiu);
 		if (!mgr)
@@ -282,6 +280,22 @@ static int build_info_commit_dev(struct build_feature_devs_info *binfo)
 
 		mgr->adapter = hw->adapter;
 		hw->adapter->mgr = mgr;
+	} else if (binfo->current_type == AFU_ID) {
+		if (!info)
+			return -EFAULT;
+
+		info->num_irqs = 0;
+		acc = opae_accelerator_alloc(hw->adapter->name,
+					&ifpga_acc_ops, info);
+		if (!acc)
+			return -ENOMEM;
+
+		acc->adapter = hw->adapter;
+		acc->br = NULL;
+		acc->mgr = NULL;
+		acc->index = hw->num_afus++;
+
+		opae_adapter_add_acc(hw->adapter, acc);
 	}
 
 	binfo->fiu = NULL;
@@ -295,17 +309,56 @@ build_info_create_dev(struct build_feature_devs_info *binfo,
 {
 	int ret;
 
+	if ((type == AFU_ID) && (binfo->current_type == PORT_ID))
+		return 0;
+
 	ret = build_info_commit_dev(binfo);
 	if (ret)
 		return ret;
 
 	binfo->current_type = type;
+	binfo->acc_info = NULL;
 
 	if (type == FME_ID) {
 		binfo->fiu = &binfo->hw->fme;
 	} else if (type == PORT_ID) {
 		binfo->fiu = &binfo->hw->port[index];
 		binfo->current_port_id = index;
+	}
+
+	return 0;
+}
+
+static int parse_feature_afus(struct build_feature_devs_info *binfo,
+			      struct feature_header *hdr)
+{
+	int ret;
+	struct feature_afu_header *afu_hdr, header;
+	u8 __iomem *start;
+	u8 __iomem *end = binfo->ioend;
+
+	ret = build_info_create_dev(binfo, AFU_ID, 0);
+	if (ret)
+		return ret;
+
+	start = (u8 __iomem *)hdr;
+	for (; start < end; start += header.next_afu) {
+		if ((unsigned int)(end - start) <
+			(unsigned int)(sizeof(*afu_hdr) + sizeof(*hdr)))
+			return -EINVAL;
+
+		hdr = (struct feature_header *)start;
+		afu_hdr = (struct feature_afu_header *)(hdr + 1);
+		header.csr = readq(&afu_hdr->csr);
+
+		if (feature_is_UAFU(binfo)) {
+			ret = parse_feature_uafu(binfo, hdr);
+			if (ret)
+				return ret;
+		}
+
+		if (!header.next_afu)
+			break;
 	}
 
 	return 0;
@@ -405,7 +458,7 @@ static int parse_feature_fiu(struct build_feature_devs_info *binfo,
 			if (ret)
 				return ret;
 		} else {
-			dev_info(binfo, "No AFUs detected on Port\n");
+			dev_info(binfo, "No AFU detected on Port\n");
 		}
 
 		break;
@@ -426,7 +479,7 @@ static void parse_feature_irqs(struct build_feature_devs_info *binfo,
 
 	id = feature_id(start);
 
-	if (id == PORT_FEATURE_ID_UINT) {
+	if ((binfo->current_type == PORT_ID) && (id == PORT_FEATURE_ID_UINT)) {
 		struct feature_port_uint *port_uint = start;
 		struct feature_port_uint_cap uint_cap;
 
@@ -437,7 +490,8 @@ static void parse_feature_irqs(struct build_feature_devs_info *binfo,
 		} else {
 			dev_debug(binfo, "UAFU doesn't support interrupt\n");
 		}
-	} else if (id == PORT_FEATURE_ID_ERROR) {
+	} else if ((binfo->current_type == PORT_ID) &&
+			(id == PORT_FEATURE_ID_ERROR)) {
 		struct feature_port_error *port_err = start;
 		struct feature_port_err_capability port_err_cap;
 
@@ -449,7 +503,8 @@ static void parse_feature_irqs(struct build_feature_devs_info *binfo,
 			dev_debug(&binfo, "Port error doesn't support interrupt\n");
 		}
 
-	} else if (id == FME_FEATURE_ID_GLOBAL_ERR) {
+	} else if ((binfo->current_type == FME_ID) &&
+			(id == FME_FEATURE_ID_GLOBAL_ERR)) {
 		struct feature_fme_err *fme_err = start;
 		struct feature_fme_error_capability fme_err_cap;
 
@@ -497,9 +552,15 @@ static int parse_feature_private(struct build_feature_devs_info *binfo,
 		return parse_feature_fme_private(binfo, hdr);
 	case PORT_ID:
 		return parse_feature_port_private(binfo, hdr);
+	case AFU_ID:
+		dev_err(binfo, "private feature %x belonging to AFU "
+			"is not supported yet.\n", header.id);
+		break;
 	default:
-		dev_err(binfo, "private feature %x belonging to AFU %d (unknown_type) is not supported yet.\n",
+		dev_err(binfo, "private feature %x belonging to TYPE %d "
+			"(unknown_type) is not supported yet.\n",
 			header.id, binfo->current_type);
+		break;
 	}
 	return 0;
 }
@@ -530,32 +591,57 @@ static int parse_feature(struct build_feature_devs_info *binfo,
 	return ret;
 }
 
-static int
-parse_feature_list(struct build_feature_devs_info *binfo, u8 __iomem *start)
+static int build_info_prepare(struct build_feature_devs_info *binfo,
+	struct dfl_fpga_enum_dfl *dfl)
 {
+	if (!binfo || !dfl)
+		return -EINVAL;
+
+	binfo->ioaddr = dfl->addr;
+	binfo->ioend = (u8 *)dfl->addr + dfl->len;
+	binfo->phys_addr = dfl->start;
+
+	return 0;
+}
+
+static int parse_feature_list(struct build_feature_devs_info *binfo,
+	struct dfl_fpga_enum_dfl *dfl)
+{
+	u8 *start, *end;
 	struct feature_header *hdr, header;
-	u8 __iomem *end = (u8 __iomem *)binfo->ioend;
 	int ret = 0;
 
+	ret = build_info_prepare(binfo, dfl);
+	if (ret)
+		return ret;
+
+	start = (u8 *)binfo->ioaddr;
+	end = (u8 *)binfo->ioend;
+
+	/* walk through the device feature list via DFH's next DFH pointer. */
 	for (; start < end; start += header.next_header_offset) {
 		if ((unsigned int)(end - start) < (unsigned int)sizeof(*hdr)) {
-			dev_err(binfo, "The region is too small to contain a feature.\n");
-			ret =  -EINVAL;
+			dev_err(binfo, "The region is too small to "
+				"contain a feature.\n");
+			ret = -EINVAL;
 			break;
 		}
 
 		hdr = (struct feature_header *)start;
-		header.csr = readq(hdr);
+		header.csr = opae_readq(hdr);
 
-		dev_debug(binfo, "%s: address=0x%p, val=0x%llx, header.id=0x%x, header.next_offset=0x%x, header.eol=0x%x, header.type=0x%x\n",
-			__func__, hdr, (unsigned long long)header.csr,
-			header.id, header.next_header_offset,
-			header.end_of_list, header.type);
+		dev_debug(binfo, "%s: address=0x%p, val=0x%"PRIx64", "
+			"header.id=0x%x, header.next_offset=0x%x, "
+			"header.eol=0x%x, header.type=0x%x\n",
+			__func__, hdr, header.csr, header.id,
+			header.next_header_offset, header.end_of_list,
+			header.type);
 
 		ret = parse_feature(binfo, hdr);
 		if (ret)
 			return ret;
 
+		/* stop parsing if EOL(End of List) is set or offset is 0 */
 		if (header.end_of_list || !header.next_header_offset)
 			break;
 	}
@@ -563,82 +649,9 @@ parse_feature_list(struct build_feature_devs_info *binfo, u8 __iomem *start)
 	return build_info_commit_dev(binfo);
 }
 
-/* switch the memory mapping to BAR# @bar */
-static int parse_switch_to(struct build_feature_devs_info *binfo, int bar)
-{
-	struct opae_adapter_data_pci *pci_data = binfo->pci_data;
-
-	if (!pci_data->region[bar].addr)
-		return -ENOMEM;
-
-	binfo->ioaddr = pci_data->region[bar].addr;
-	binfo->ioend = (u8 __iomem *)binfo->ioaddr + pci_data->region[bar].len;
-	binfo->phys_addr = pci_data->region[bar].phys_addr;
-	binfo->current_bar = bar;
-
-	return 0;
-}
-
-static int parse_ports_from_fme(struct build_feature_devs_info *binfo)
-{
-	struct feature_fme_header *fme_hdr;
-	struct feature_fme_port port;
-	int i = 0, ret = 0;
-
-	if (!binfo->pfme_hdr) {
-		dev_info(binfo,  "VF is detected.\n");
-		return ret;
-	}
-
-	fme_hdr = binfo->pfme_hdr;
-
-	do {
-		port.csr = readq(&fme_hdr->port[i]);
-		if (!port.port_implemented)
-			break;
-
-		/* skip port which only could be accessed via VF */
-		if (port.afu_access_control == FME_AFU_ACCESS_VF)
-			continue;
-
-		ret = parse_switch_to(binfo, port.port_bar);
-		if (ret)
-			break;
-
-		ret = parse_feature_list(binfo,
-					 (u8 __iomem *)binfo->ioaddr +
-					  port.port_offset);
-		if (ret)
-			break;
-	} while (++i < MAX_FPGA_PORT_NUM);
-
-	return ret;
-}
-
-static struct build_feature_devs_info *
-build_info_alloc_and_init(struct ifpga_hw *hw)
-{
-	struct build_feature_devs_info *binfo;
-
-	binfo = zmalloc(sizeof(*binfo));
-	if (!binfo)
-		return binfo;
-
-	binfo->hw = hw;
-	binfo->pci_data = hw->pci_data;
-
-	/* fpga feature list starts from BAR 0 */
-	if (parse_switch_to(binfo, 0)) {
-		free(binfo);
-		return NULL;
-	}
-
-	return binfo;
-}
-
 static void build_info_free(struct build_feature_devs_info *binfo)
 {
-	free(binfo);
+	opae_free(binfo);
 }
 
 static void ifpga_print_device_feature_list(struct ifpga_hw *hw)
@@ -647,6 +660,11 @@ static void ifpga_print_device_feature_list(struct ifpga_hw *hw)
 	struct ifpga_port_hw *port;
 	struct ifpga_feature *feature;
 	int i;
+
+	if (fme->state == IFPGA_FME_UNUSED) {
+		dev_info(hw, "FME is not present\n");
+		return;
+	}
 
 	dev_info(hw, "found fme_device, is in PF: %s\n",
 		 is_ifpga_hw_pf(hw) ? "yes" : "no");
@@ -685,40 +703,410 @@ static void ifpga_print_device_feature_list(struct ifpga_hw *hw)
 	}
 }
 
-int ifpga_bus_enumerate(struct ifpga_hw *hw)
+static struct dfl_fpga_enum_info *dfl_fpga_enum_info_alloc(struct ifpga_hw *hw)
 {
-	struct build_feature_devs_info *binfo;
+	struct dfl_fpga_enum_info *info;
+
+	info = opae_zmalloc(sizeof(*info));
+	if (!info)
+		return NULL;
+
+	info->hw = hw;
+	TAILQ_INIT(&info->dfls);
+
+	return info;
+}
+
+static void dfl_fpga_enum_info_free(struct dfl_fpga_enum_info *info)
+{
+	struct dfl_fpga_enum_dfl *tmp, *dfl;
+
+	if (!info)
+		return;
+
+	/* remove all device feature lists in the list. */
+	for (dfl = TAILQ_FIRST(&info->dfls);
+		dfl && (tmp = TAILQ_NEXT(dfl, node), 1);
+		dfl = tmp) {
+		TAILQ_REMOVE(&info->dfls, dfl, node);
+		opae_free(dfl);
+	}
+
+	opae_free(info);
+}
+
+static int dfl_fpga_enum_info_add_dfl(struct dfl_fpga_enum_info *info,
+	u64 start, u64 len, void *addr)
+{
+	struct dfl_fpga_enum_dfl *dfl;
+
+	dfl = opae_zmalloc(sizeof(*dfl));
+	if (!dfl)
+		return -ENOMEM;
+
+	dfl->start = start;
+	dfl->len = len;
+	dfl->addr = addr;
+
+	TAILQ_INSERT_TAIL(&info->dfls, dfl, node);
+
+	return 0;
+}
+
+#define PCI_CFG_SPACE_SIZE	256
+#define PCI_CFG_SPACE_EXP_SIZE	4096
+#define PCI_EXT_CAP_ID(header)		(header & 0x0000ffff)
+#define PCI_EXT_CAP_NEXT(header)	((header >> 20) & 0xffc)
+
+static int
+pci_find_next_ecap(int fd, int start, u32 cap)
+{
+	u32 header;
+	int ttl = (PCI_CFG_SPACE_EXP_SIZE - PCI_CFG_SPACE_SIZE) / 8;
+	int pos = PCI_CFG_SPACE_SIZE;
 	int ret;
 
-	binfo = build_info_alloc_and_init(hw);
+	if (start > 0)
+		pos = start;
+
+	ret = pread(fd, &header, sizeof(header), pos);
+	if (ret < 0)
+		return ret;
+
+	/*
+	 * If we have no capabilities, this is indicated by cap ID,
+	 * cap version and next pointer all being 0.
+	 */
+	if (header == 0)
+		return 0;
+
+	while (ttl-- > 0) {
+		if ((PCI_EXT_CAP_ID(header) == cap) && (pos != start))
+			return pos;
+
+		pos = PCI_EXT_CAP_NEXT(header);
+		if (pos < PCI_CFG_SPACE_SIZE)
+			break;
+		ret = pread(fd, &header, sizeof(header), pos);
+		if (ret < 0)
+			return ret;
+	}
+
+	return 0;
+}
+
+#define PCI_EXT_CAP_ID_VNDR	0x0B
+#define PCI_VNDR_HEADER		4
+#define PCI_VNDR_HEADER_ID(x)	((x) & 0xffff)
+#define PCI_VENDOR_ID_INTEL 0x8086
+#define PCI_VSEC_ID_INTEL_DFLS 0x43
+#define PCI_VNDR_DFLS_CNT 0x8
+#define PCI_VNDR_DFLS_RES 0xc
+#define PCI_VNDR_DFLS_RES_BAR_MASK GENMASK(2, 0)
+#define PCI_VNDR_DFLS_RES_OFF_MASK GENMASK(31, 3)
+
+static int find_dfls_by_vsec(struct dfl_fpga_enum_info *info)
+{
+	struct ifpga_hw *hw;
+	struct opae_adapter_data_pci *pci_data;
+	char path[64];
+	u32 bir, offset, vndr_hdr, i, dfl_cnt, dfl_res;
+	int fd, ret, dfl_res_off, voff = 0;
+	u64 start, len;
+	void *addr;
+
+	if (!info || !info->hw)
+		return -EINVAL;
+	hw = info->hw;
+
+	if (!hw->adapter || !hw->pci_data)
+		return -EINVAL;
+	pci_data = hw->pci_data;
+
+	ret = snprintf(path, sizeof(path), "/sys/bus/pci/devices/%s/config",
+			hw->adapter->name);
+	if ((unsigned int)ret >= sizeof(path))
+		return -EINVAL;
+
+	fd = open(path, O_RDWR);
+	if (fd < 0)
+		return -EIO;
+
+	while ((voff = pci_find_next_ecap(fd, voff,
+		PCI_EXT_CAP_ID_VNDR))) {
+		vndr_hdr = 0;
+		ret = pread(fd, &vndr_hdr, sizeof(vndr_hdr),
+			voff + PCI_VNDR_HEADER);
+		if (ret < 0)
+			return -EIO;
+		if (PCI_VNDR_HEADER_ID(vndr_hdr) == PCI_VSEC_ID_INTEL_DFLS &&
+			pci_data->vendor_id == PCI_VENDOR_ID_INTEL)
+			break;
+	}
+
+	if (!voff) {
+		dev_debug(hw, "%s no DFL VSEC found\n", __func__);
+		return -ENODEV;
+	}
+
+	dfl_cnt = 0;
+	ret = pread(fd, &dfl_cnt, sizeof(dfl_cnt), voff + PCI_VNDR_DFLS_CNT);
+	if (ret < 0)
+		return -EIO;
+
+	dfl_res_off = voff + PCI_VNDR_DFLS_RES;
+	if (dfl_res_off + (dfl_cnt * sizeof(u32)) > PCI_CFG_SPACE_EXP_SIZE) {
+		dev_err(hw, "%s DFL VSEC too big for PCIe config space\n",
+			__func__);
+		return -EINVAL;
+	}
+
+	for (i = 0; i < dfl_cnt; i++, dfl_res_off += sizeof(u32)) {
+		dfl_res = GENMASK(31, 0);
+		ret = pread(fd, &dfl_res, sizeof(dfl_res), dfl_res_off);
+		bir = dfl_res & PCI_VNDR_DFLS_RES_BAR_MASK;
+		if (bir >= PCI_MAX_RESOURCE) {
+			dev_err(hw, "%s bad bir number %d\n",
+				__func__, bir);
+			return -EINVAL;
+		}
+
+		len = pci_data->region[bir].len;
+		offset = dfl_res & PCI_VNDR_DFLS_RES_OFF_MASK;
+		if (offset >= len) {
+			dev_err(hw, "%s bad offset %u >= %"PRIu64"\n",
+				__func__, offset, len);
+			return -EINVAL;
+		}
+
+		dev_debug(hw, "%s BAR %d offset 0x%x\n", __func__, bir, offset);
+		len -= offset;
+		start = pci_data->region[bir].phys_addr + offset;
+		addr = pci_data->region[bir].addr + offset;
+		dfl_fpga_enum_info_add_dfl(info, start, len, addr);
+	}
+
+	return 0;
+}
+
+/* default method of finding dfls starting at offset 0 of bar 0 */
+static int
+find_dfls_by_default(struct dfl_fpga_enum_info *info)
+{
+	struct ifpga_hw *hw;
+	struct opae_adapter_data_pci *pci_data;
+	int port_num, bar, i, ret = 0;
+	u64 start, len;
+	void *addr;
+	u32 offset;
+	struct feature_header hdr;
+	struct feature_fme_capability cap;
+	struct feature_fme_port port;
+	struct feature_fme_header *fme_hdr;
+
+	if (!info || !info->hw)
+		return -EINVAL;
+	hw = info->hw;
+
+	if (!hw->pci_data)
+		return -EINVAL;
+	pci_data = hw->pci_data;
+
+	/* start to find Device Feature List from Bar 0 */
+	addr = pci_data->region[0].addr;
+	if (!addr)
+		return -ENOMEM;
+
+	/*
+	 * PF device has FME and Ports/AFUs, and VF device only has one
+	 * Port/AFU. Check them and add related "Device Feature List" info
+	 * for the next step enumeration.
+	 */
+	hdr.csr = opae_readq(addr);
+	if ((hdr.type == FEATURE_TYPE_FIU) && (hdr.id == FEATURE_FIU_ID_FME)) {
+		start = pci_data->region[0].phys_addr;
+		len = pci_data->region[0].len;
+		addr = pci_data->region[0].addr;
+
+		dfl_fpga_enum_info_add_dfl(info, start, len, addr);
+
+		/*
+		 * find more Device Feature Lists (e.g. Ports) per information
+		 * indicated by FME module.
+		 */
+		fme_hdr = (struct feature_fme_header *)addr;
+		cap.csr = opae_readq(&fme_hdr->capability);
+		port_num = (int)cap.num_ports;
+
+		dev_info(hw, "port_num = %d\n", port_num);
+		if (port_num > MAX_FPGA_PORT_NUM)
+			port_num = MAX_FPGA_PORT_NUM;
+
+		for (i = 0; i < port_num; i++) {
+			port.csr = opae_readq(&fme_hdr->port[i]);
+
+			/* skip ports which are not implemented. */
+			if (!port.port_implemented)
+				continue;
+
+			/* skip port which only could be accessed via VF */
+			if (port.afu_access_control == FME_AFU_ACCESS_VF)
+				continue;
+
+			/*
+			 * add Port's Device Feature List information for next
+			 * step enumeration.
+			 */
+			bar = (int)port.port_bar;
+			offset = port.port_offset;
+			if (bar == FME_PORT_OFST_BAR_SKIP) {
+				continue;
+			} else if (bar >= PCI_MAX_RESOURCE) {
+				dev_err(hw, "bad BAR %d for port %d\n", bar, i);
+				ret = -EINVAL;
+				break;
+			}
+			dev_info(hw, "BAR %d offset %u\n", bar, offset);
+
+			len = pci_data->region[bar].len;
+			if (offset >= len) {
+				dev_warn(hw, "bad port offset %u >= %pa\n",
+					 offset, &len);
+				continue;
+			}
+
+			len -= offset;
+			start = pci_data->region[bar].phys_addr + offset;
+			addr = pci_data->region[bar].addr + offset;
+			dfl_fpga_enum_info_add_dfl(info, start, len, addr);
+		}
+	} else if ((hdr.type == FEATURE_TYPE_FIU) &&
+		(hdr.id == FEATURE_FIU_ID_PORT)) {
+		start = pci_data->region[0].phys_addr;
+		len = pci_data->region[0].len;
+		addr = pci_data->region[0].addr;
+
+		dfl_fpga_enum_info_add_dfl(info, start, len, addr);
+	} else if (hdr.type == FEATURE_TYPE_AFU) {
+		start = pci_data->region[0].phys_addr;
+		len = pci_data->region[0].len;
+		addr = pci_data->region[0].addr;
+
+		dfl_fpga_enum_info_add_dfl(info, start, len, addr);
+	} else {
+		dev_info(hw, "Unknown feature type 0x%x id 0x%x\n",
+			 hdr.type, hdr.id);
+		ret = -ENODEV;
+	}
+
+	return ret;
+}
+
+static int dfl_fpga_feature_devs_enumerate(struct dfl_fpga_enum_info *info)
+{
+	struct build_feature_devs_info *binfo;
+	struct dfl_fpga_enum_dfl *dfl;
+	int ret = 0;
+
+	if (!info || !info->hw)
+		return -EINVAL;
+
+	/* create and init build info for enumeration */
+	binfo = opae_zmalloc(sizeof(*binfo));
 	if (!binfo)
 		return -ENOMEM;
 
-	ret = parse_feature_list(binfo, binfo->ioaddr);
+	binfo->hw = info->hw;
+	binfo->pci_data = info->hw->pci_data;
+
+	/*
+	 * start enumeration for all feature devices based on Device Feature
+	 * Lists.
+	 */
+	TAILQ_FOREACH(dfl, &info->dfls, node) {
+		ret = parse_feature_list(binfo, dfl);
+		if (ret)
+			break;
+	}
+
+	build_info_free(binfo);
+
+	return ret;
+}
+
+int ifpga_bus_enumerate(struct ifpga_hw *hw)
+{
+	struct dfl_fpga_enum_info *info;
+	int ret;
+
+	/* allocate enumeration info */
+	info = dfl_fpga_enum_info_alloc(hw);
+	if (!info)
+		return -ENOMEM;
+
+	ret = find_dfls_by_vsec(info);
+	if (ret < 0)
+		ret = find_dfls_by_default(info);
+
 	if (ret)
 		goto exit;
 
-	ret = parse_ports_from_fme(binfo);
-	if (ret)
+	/* start enumeration with prepared enumeration information */
+	ret = dfl_fpga_feature_devs_enumerate(info);
+	if (ret < 0) {
+		dev_err(hw, "Enumeration failure\n");
 		goto exit;
+	}
 
 	ifpga_print_device_feature_list(hw);
 
 exit:
-	build_info_free(binfo);
+	dfl_fpga_enum_info_free(info);
+
 	return ret;
+}
+
+static void ifpga_print_acc_list(struct opae_adapter *adapter)
+{
+	struct opae_accelerator *acc;
+	struct ifpga_afu_info *info;
+	struct uuid guid;
+	char buf[48];
+	int i;
+
+	opae_adapter_for_each_acc(adapter, acc) {
+		info = acc->data;
+		if (!info)
+			continue;
+		acc->ops->get_uuid(acc, &guid);
+		i = sprintf(buf, "%02x%02x%02x%02x-",
+			guid.b[15], guid.b[14], guid.b[13], guid.b[12]);
+		i += sprintf(buf+i, "%02x%02x-", guid.b[11], guid.b[10]);
+		i += sprintf(buf+i, "%02x%02x-", guid.b[9], guid.b[8]);
+		i += sprintf(buf+i, "%02x%02x-", guid.b[7], guid.b[6]);
+		sprintf(buf+i, "%02x%02x%02x%02x%02x%02x",
+			guid.b[5], guid.b[4], guid.b[3],
+			guid.b[2], guid.b[1], guid.b[0]);
+		dev_info(hw, "AFU(%s-%d)@%p: len:0x%"PRIx64", guid:%s\n",
+			acc->name, acc->index, info->region[0].addr,
+			info->region[0].len, buf);
+	}
 }
 
 int ifpga_bus_init(struct ifpga_hw *hw)
 {
-	int i;
+	int i, ret = 0;
 	struct ifpga_port_hw *port;
 
-	fme_hw_init(&hw->fme);
+	ret = fme_hw_init(&hw->fme);
+	if (ret)
+		return ret;
+
 	for (i = 0; i < MAX_FPGA_PORT_NUM; i++) {
 		port = &hw->port[i];
 		port_hw_init(port);
 	}
+	ifpga_print_acc_list(hw->adapter);
 
 	return 0;
 }

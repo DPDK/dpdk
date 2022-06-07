@@ -73,6 +73,7 @@
 enum fpga_id_type {
 	FME_ID,
 	PORT_ID,
+	AFU_ID,
 	FPGA_ID_MAX,
 };
 

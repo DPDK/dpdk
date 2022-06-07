@@ -143,6 +143,7 @@ struct opae_accelerator {
 	TAILQ_ENTRY(opae_accelerator) node;
 	const char *name;
 	int index;
+	struct opae_adapter *adapter;
 	struct opae_bridge *br;
 	struct opae_manager *mgr;
 	struct opae_accelerator_ops *ops;
@@ -240,6 +241,7 @@ struct opae_adapter_data {
 
 struct opae_reg_region {
 	u64 phys_addr;
+#define AFU_REGION_SIZE  0x8000
 	u64 len;
 	u8 *addr;
 };

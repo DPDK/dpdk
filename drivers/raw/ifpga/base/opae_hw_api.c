@@ -177,7 +177,7 @@ int opae_acc_get_region_info(struct opae_accelerator *acc,
 int opae_acc_set_irq(struct opae_accelerator *acc,
 		     u32 start, u32 count, s32 evtfds[])
 {
-	if (!acc || !acc->data)
+	if (!acc)
 		return -EINVAL;
 
 	if (start + count <= start)
