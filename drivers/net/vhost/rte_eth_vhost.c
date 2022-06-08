@@ -12,6 +12,7 @@
 #include <ethdev_vdev.h>
 #include <rte_malloc.h>
 #include <rte_memcpy.h>
+#include <rte_net.h>
 #include <rte_bus_vdev.h>
 #include <rte_kvargs.h>
 #include <rte_vhost.h>
@@ -85,10 +86,12 @@ struct pmd_internal {
 	char *iface_name;
 	uint64_t flags;
 	uint64_t disable_flags;
+	uint64_t features;
 	uint16_t max_queues;
 	int vid;
 	rte_atomic32_t started;
 	bool vlan_strip;
+	bool rx_sw_csum;
 };
 
 struct internal_list {
@@ -275,6 +278,70 @@ vhost_dev_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstat *xstats,
 	return nstats;
 }
 
+static void
+vhost_dev_csum_configure(struct rte_eth_dev *eth_dev)
+{
+	struct pmd_internal *internal = eth_dev->data->dev_private;
+	const struct rte_eth_rxmode *rxmode = &eth_dev->data->dev_conf.rxmode;
+
+	internal->rx_sw_csum = false;
+
+	/* SW checksum is not compatible with legacy mode */
+	if (!(internal->flags & RTE_VHOST_USER_NET_COMPLIANT_OL_FLAGS))
+		return;
+
+	if (internal->features & (1ULL << VIRTIO_NET_F_CSUM)) {
+		if (!(rxmode->offloads &
+				(RTE_ETH_RX_OFFLOAD_UDP_CKSUM | RTE_ETH_RX_OFFLOAD_TCP_CKSUM))) {
+			VHOST_LOG(NOTICE, "Rx csum will be done in SW, may impact performance.");
+			internal->rx_sw_csum = true;
+		}
+	}
+}
+
+static void
+vhost_dev_rx_sw_csum(struct rte_mbuf *mbuf)
+{
+	struct rte_net_hdr_lens hdr_lens;
+	uint32_t ptype, hdr_len;
+	uint16_t csum = 0, csum_offset;
+
+	/* Return early if the L4 checksum was not offloaded */
+	if ((mbuf->ol_flags & RTE_MBUF_F_RX_L4_CKSUM_MASK) != RTE_MBUF_F_RX_L4_CKSUM_NONE)
+		return;
+
+	ptype = rte_net_get_ptype(mbuf, &hdr_lens, RTE_PTYPE_ALL_MASK);
+
+	hdr_len = hdr_lens.l2_len + hdr_lens.l3_len;
+
+	switch (ptype & RTE_PTYPE_L4_MASK) {
+	case RTE_PTYPE_L4_TCP:
+		csum_offset = offsetof(struct rte_tcp_hdr, cksum) + hdr_len;
+		break;
+	case RTE_PTYPE_L4_UDP:
+		csum_offset = offsetof(struct rte_udp_hdr, dgram_cksum) + hdr_len;
+		break;
+	default:
+		/* Unsupported packet type */
+		return;
+	}
+
+	/* The pseudo-header checksum is already performed, as per Virtio spec */
+	if (rte_raw_cksum_mbuf(mbuf, hdr_len, rte_pktmbuf_pkt_len(mbuf) - hdr_len, &csum) < 0)
+		return;
+
+	csum = ~csum;
+	/* See RFC768 */
+	if (unlikely((ptype & RTE_PTYPE_L4_UDP) && csum == 0))
+		csum = 0xffff;
+
+	if (rte_pktmbuf_data_len(mbuf) >= csum_offset + 1)
+		*rte_pktmbuf_mtod_offset(mbuf, uint16_t *, csum_offset) = csum;
+
+	mbuf->ol_flags &= ~RTE_MBUF_F_RX_L4_CKSUM_MASK;
+	mbuf->ol_flags |= RTE_MBUF_F_RX_L4_CKSUM_GOOD;
+}
+
 static uint16_t
 eth_vhost_rx(void *q, struct rte_mbuf **bufs, uint16_t nb_bufs)
 {
@@ -314,6 +381,9 @@ eth_vhost_rx(void *q, struct rte_mbuf **bufs, uint16_t nb_bufs)
 
 		if (r->internal->vlan_strip)
 			rte_vlan_strip(bufs[i]);
+
+		if (r->internal->rx_sw_csum)
+			vhost_dev_rx_sw_csum(bufs[i]);
 
 		r->stats.bytes += bufs[i]->pkt_len;
 	}
@@ -711,6 +781,11 @@ new_device(int vid)
 		eth_dev->data->numa_node = newnode;
 #endif
 
+	if (rte_vhost_get_negotiated_features(vid, &internal->features)) {
+		VHOST_LOG(ERR, "Failed to get device features\n");
+		return -1;
+	}
+
 	internal->vid = vid;
 	if (rte_atomic32_read(&internal->started) == 1) {
 		queue_setup(eth_dev, internal);
@@ -732,6 +807,8 @@ new_device(int vid)
 	rte_vhost_get_mtu(vid, &eth_dev->data->mtu);
 
 	eth_dev->data->dev_link.link_status = RTE_ETH_LINK_UP;
+
+	vhost_dev_csum_configure(eth_dev);
 
 	rte_atomic32_set(&internal->dev_attached, 1);
 	update_queuing_status(eth_dev);
@@ -1039,6 +1116,8 @@ eth_dev_configure(struct rte_eth_dev *dev)
 
 	internal->vlan_strip = !!(rxmode->offloads & RTE_ETH_RX_OFFLOAD_VLAN_STRIP);
 
+	vhost_dev_csum_configure(dev);
+
 	return 0;
 }
 
@@ -1189,6 +1268,10 @@ eth_dev_info(struct rte_eth_dev *dev,
 	dev_info->tx_offload_capa = RTE_ETH_TX_OFFLOAD_MULTI_SEGS |
 				RTE_ETH_TX_OFFLOAD_VLAN_INSERT;
 	dev_info->rx_offload_capa = RTE_ETH_RX_OFFLOAD_VLAN_STRIP;
+	if (internal->flags & RTE_VHOST_USER_NET_COMPLIANT_OL_FLAGS) {
+		dev_info->rx_offload_capa |= RTE_ETH_RX_OFFLOAD_UDP_CKSUM |
+			RTE_ETH_RX_OFFLOAD_TCP_CKSUM;
+	}
 
 	return 0;
 }
