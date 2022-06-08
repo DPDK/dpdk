@@ -64,6 +64,12 @@ The user can specify below arguments in `--vdev` option.
     It is used to enable external buffer support in vhost library.
     (Default: 0 (disabled))
 
+#.  ``legacy-ol-flags``:
+
+    It is used to restore legacy behavior for offloading that was not
+    compliant with offloading API.
+    (Default: 0 (disabled))
+
 Vhost PMD event handling
 ------------------------
 
