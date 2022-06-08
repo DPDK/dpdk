@@ -199,8 +199,7 @@ mlx5_devx_cmd_flow_counter_alloc(void *ctx, uint32_t bulk_n_128)
 	dcs->obj = mlx5_glue->devx_obj_create(ctx, in,
 					      sizeof(in), out, sizeof(out));
 	if (!dcs->obj) {
-		DRV_LOG(ERR, "Can't allocate counters - error %d", errno);
-		rte_errno = errno;
+		mlx5_devx_err_log(out, "allocate counters", NULL, 0);
 		mlx5_free(dcs);
 		return NULL;
 	}
@@ -378,9 +377,9 @@ mlx5_devx_cmd_mkey_create(void *ctx,
 	mkey->obj = mlx5_glue->devx_obj_create(ctx, in, in_size_dw * 4, out,
 					       sizeof(out));
 	if (!mkey->obj) {
-		DRV_LOG(ERR, "Can't create %sdirect mkey - error %d",
-			klm_num ? "an in" : "a ", errno);
-		rte_errno = errno;
+		mlx5_devx_err_log(out,
+				  klm_num ? "create indirect mkey" : "create direct key",
+				  NULL, 0);
 		mlx5_free(mkey);
 		return NULL;
 	}
@@ -718,9 +717,7 @@ mlx5_devx_cmd_create_flex_parser(void *ctx,
 	parse_flex_obj->obj = mlx5_glue->devx_obj_create(ctx, in, sizeof(in),
 							 out, sizeof(out));
 	if (!parse_flex_obj->obj) {
-		rte_errno = errno;
-		DRV_LOG(ERR, "Failed to create FLEX PARSE GRAPH object "
-			"by using DevX.");
+		mlx5_devx_err_log(out, "create FLEX PARSE GRAPH", NULL, 0);
 		mlx5_free(parse_flex_obj);
 		return NULL;
 	}
@@ -1295,8 +1292,7 @@ mlx5_devx_cmd_create_rq(void *ctx,
 	rq->obj = mlx5_glue->devx_obj_create(ctx, in, sizeof(in),
 						  out, sizeof(out));
 	if (!rq->obj) {
-		DRV_LOG(ERR, "Failed to create RQ using DevX");
-		rte_errno = errno;
+		mlx5_devx_err_log(out, "create RQ", NULL, 0);
 		mlx5_free(rq);
 		return NULL;
 	}
@@ -1395,8 +1391,7 @@ mlx5_devx_cmd_create_rmp(void *ctx,
 	rmp->obj = mlx5_glue->devx_obj_create(ctx, in, sizeof(in), out,
 					      sizeof(out));
 	if (!rmp->obj) {
-		DRV_LOG(ERR, "Failed to create RMP using DevX");
-		rte_errno = errno;
+		mlx5_devx_err_log(out, "create RMP", NULL, 0);
 		mlx5_free(rmp);
 		return NULL;
 	}
@@ -1464,8 +1459,7 @@ mlx5_devx_cmd_create_tir(void *ctx,
 	tir->obj = mlx5_glue->devx_obj_create(ctx, in, sizeof(in),
 						   out, sizeof(out));
 	if (!tir->obj) {
-		DRV_LOG(ERR, "Failed to create TIR using DevX");
-		rte_errno = errno;
+		mlx5_devx_err_log(out, "create TIR", NULL, 0);
 		mlx5_free(tir);
 		return NULL;
 	}
@@ -1603,8 +1597,7 @@ mlx5_devx_cmd_create_rqt(void *ctx,
 	rqt->obj = mlx5_glue->devx_obj_create(ctx, in, inlen, out, sizeof(out));
 	mlx5_free(in);
 	if (!rqt->obj) {
-		DRV_LOG(ERR, "Failed to create RQT using DevX");
-		rte_errno = errno;
+		mlx5_devx_err_log(out, "create RQT", NULL, 0);
 		mlx5_free(rqt);
 		return NULL;
 	}
@@ -1718,8 +1711,7 @@ mlx5_devx_cmd_create_sq(void *ctx,
 	sq->obj = mlx5_glue->devx_obj_create(ctx, in, sizeof(in),
 					     out, sizeof(out));
 	if (!sq->obj) {
-		DRV_LOG(ERR, "Failed to create SQ using DevX");
-		rte_errno = errno;
+		mlx5_devx_err_log(out, "create SQ", NULL, 0);
 		mlx5_free(sq);
 		return NULL;
 	}
@@ -1802,8 +1794,7 @@ mlx5_devx_cmd_create_tis(void *ctx,
 	tis->obj = mlx5_glue->devx_obj_create(ctx, in, sizeof(in),
 					      out, sizeof(out));
 	if (!tis->obj) {
-		DRV_LOG(ERR, "Failed to create TIS using DevX");
-		rte_errno = errno;
+		mlx5_devx_err_log(out, "create TIS", NULL, 0);
 		mlx5_free(tis);
 		return NULL;
 	}
@@ -1837,8 +1828,7 @@ mlx5_devx_cmd_create_td(void *ctx)
 	td->obj = mlx5_glue->devx_obj_create(ctx, in, sizeof(in),
 					     out, sizeof(out));
 	if (!td->obj) {
-		DRV_LOG(ERR, "Failed to create TIS using DevX");
-		rte_errno = errno;
+		mlx5_devx_err_log(out, "create TIS", NULL, 0);
 		mlx5_free(td);
 		return NULL;
 	}
@@ -1958,8 +1948,7 @@ mlx5_devx_cmd_create_cq(void *ctx, struct mlx5_devx_cq_attr *attr)
 	cq_obj->obj = mlx5_glue->devx_obj_create(ctx, in, sizeof(in), out,
 						 sizeof(out));
 	if (!cq_obj->obj) {
-		rte_errno = errno;
-		DRV_LOG(ERR, "Failed to create CQ using DevX errno=%d.", errno);
+		mlx5_devx_err_log(out, "create CQ", NULL, 0);
 		mlx5_free(cq_obj);
 		return NULL;
 	}
@@ -2035,8 +2024,7 @@ mlx5_devx_cmd_create_virtq(void *ctx,
 	virtq_obj->obj = mlx5_glue->devx_obj_create(ctx, in, sizeof(in), out,
 						    sizeof(out));
 	if (!virtq_obj->obj) {
-		rte_errno = errno;
-		DRV_LOG(ERR, "Failed to create VIRTQ Obj using DevX.");
+		mlx5_devx_err_log(out, "create VIRTQ", NULL, 0);
 		mlx5_free(virtq_obj);
 		return NULL;
 	}
@@ -2269,8 +2257,7 @@ mlx5_devx_cmd_create_qp(void *ctx,
 	qp_obj->obj = mlx5_glue->devx_obj_create(ctx, in, sizeof(in), out,
 						 sizeof(out));
 	if (!qp_obj->obj) {
-		rte_errno = errno;
-		DRV_LOG(ERR, "Failed to create QP Obj using DevX.");
+		mlx5_devx_err_log(out, "create QP", NULL, 0);
 		mlx5_free(qp_obj);
 		return NULL;
 	}
@@ -2391,9 +2378,8 @@ mlx5_devx_cmd_create_virtio_q_counters(void *ctx)
 	couners_obj->obj = mlx5_glue->devx_obj_create(ctx, in, sizeof(in), out,
 						      sizeof(out));
 	if (!couners_obj->obj) {
-		rte_errno = errno;
-		DRV_LOG(ERR, "Failed to create virtio queue counters Obj using"
-			" DevX.");
+		mlx5_devx_err_log(out, "create virtio queue counters Obj",
+				  NULL, 0);
 		mlx5_free(couners_obj);
 		return NULL;
 	}
@@ -2475,8 +2461,7 @@ mlx5_devx_cmd_create_flow_hit_aso_obj(void *ctx, uint32_t pd)
 	flow_hit_aso_obj->obj = mlx5_glue->devx_obj_create(ctx, in, sizeof(in),
 							   out, sizeof(out));
 	if (!flow_hit_aso_obj->obj) {
-		rte_errno = errno;
-		DRV_LOG(ERR, "Failed to create FLOW_HIT_ASO obj using DevX.");
+		mlx5_devx_err_log(out, "create FLOW_HIT_ASO", NULL, 0);
 		mlx5_free(flow_hit_aso_obj);
 		return NULL;
 	}
@@ -2563,8 +2548,7 @@ mlx5_devx_cmd_create_flow_meter_aso_obj(void *ctx, uint32_t pd,
 							ctx, in, sizeof(in),
 							out, sizeof(out));
 	if (!flow_meter_aso_obj->obj) {
-		rte_errno = errno;
-		DRV_LOG(ERR, "Failed to create FLOW_METER_ASO obj using DevX.");
+		mlx5_devx_err_log(out, "create FLOW_METTER_ASO", NULL, 0);
 		mlx5_free(flow_meter_aso_obj);
 		return NULL;
 	}
@@ -2614,8 +2598,7 @@ mlx5_devx_cmd_create_conn_track_offload_obj(void *ctx, uint32_t pd,
 	ct_aso_obj->obj = mlx5_glue->devx_obj_create(ctx, in, sizeof(in),
 						     out, sizeof(out));
 	if (!ct_aso_obj->obj) {
-		rte_errno = errno;
-		DRV_LOG(ERR, "Failed to create CONN_TRACK_OFFLOAD obj by using DevX.");
+		mlx5_devx_err_log(out, "create CONN_TRACK_OFFLOAD", NULL, 0);
 		mlx5_free(ct_aso_obj);
 		return NULL;
 	}
@@ -2667,9 +2650,7 @@ mlx5_devx_cmd_create_geneve_tlv_option(void *ctx,
 	geneve_tlv_opt_obj->obj = mlx5_glue->devx_obj_create(ctx, in,
 					sizeof(in), out, sizeof(out));
 	if (!geneve_tlv_opt_obj->obj) {
-		rte_errno = errno;
-		DRV_LOG(ERR, "Failed to create Geneve tlv option "
-				"Obj using DevX.");
+		mlx5_devx_err_log(out, "create GENEVE TLV", NULL, 0);
 		mlx5_free(geneve_tlv_opt_obj);
 		return NULL;
 	}
@@ -2731,9 +2712,7 @@ mlx5_devx_cmd_queue_counter_alloc(void *ctx)
 	dcs->obj = mlx5_glue->devx_obj_create(ctx, in, sizeof(in), out,
 					      sizeof(out));
 	if (!dcs->obj) {
-		DRV_LOG(DEBUG, "Can't allocate q counter set by DevX - error "
-			"%d.", errno);
-		rte_errno = errno;
+		mlx5_devx_err_log(out, "create q counter set", NULL, 0);
 		mlx5_free(dcs);
 		return NULL;
 	}
@@ -2820,8 +2799,7 @@ mlx5_devx_cmd_create_dek_obj(void *ctx, struct mlx5_devx_dek_attr *attr)
 	dek_obj->obj = mlx5_glue->devx_obj_create(ctx, in, sizeof(in),
 						  out, sizeof(out));
 	if (dek_obj->obj == NULL) {
-		rte_errno = errno;
-		DRV_LOG(ERR, "Failed to create DEK obj using DevX.");
+		mlx5_devx_err_log(out, "create DEK", NULL, 0);
 		mlx5_free(dek_obj);
 		return NULL;
 	}
@@ -2868,8 +2846,7 @@ mlx5_devx_cmd_create_import_kek_obj(void *ctx,
 	import_kek_obj->obj = mlx5_glue->devx_obj_create(ctx, in, sizeof(in),
 							 out, sizeof(out));
 	if (import_kek_obj->obj == NULL) {
-		rte_errno = errno;
-		DRV_LOG(ERR, "Failed to create IMPORT_KEK object using DevX.");
+		mlx5_devx_err_log(out, "create IMPORT_KEK", NULL, 0);
 		mlx5_free(import_kek_obj);
 		return NULL;
 	}
@@ -2917,8 +2894,7 @@ mlx5_devx_cmd_create_credential_obj(void *ctx,
 	credential_obj->obj = mlx5_glue->devx_obj_create(ctx, in, sizeof(in),
 							 out, sizeof(out));
 	if (credential_obj->obj == NULL) {
-		rte_errno = errno;
-		DRV_LOG(ERR, "Failed to create CREDENTIAL object using DevX.");
+		mlx5_devx_err_log(out, "create CREDENTIAL", NULL, 0);
 		mlx5_free(credential_obj);
 		return NULL;
 	}
@@ -2969,8 +2945,7 @@ mlx5_devx_cmd_create_crypto_login_obj(void *ctx,
 	crypto_login_obj->obj = mlx5_glue->devx_obj_create(ctx, in, sizeof(in),
 							   out, sizeof(out));
 	if (crypto_login_obj->obj == NULL) {
-		rte_errno = errno;
-		DRV_LOG(ERR, "Failed to create CRYPTO_LOGIN obj using DevX.");
+		mlx5_devx_err_log(out, "create CRYPTO_LOGIN", NULL, 0);
 		mlx5_free(crypto_login_obj);
 		return NULL;
 	}
