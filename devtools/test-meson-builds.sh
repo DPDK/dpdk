@@ -253,31 +253,20 @@ if check_cc_flags '-m32' ; then
 fi
 
 # x86 MinGW
-build build-x86-mingw $srcdir/config/x86/cross-mingw skipABI \
-	-Dexamples=helloworld
+f=$srcdir/config/x86/cross-mingw
+build build-x86-mingw $f skipABI -Dexamples=helloworld
 
-# generic armv8a with clang as host compiler
+# generic armv8
 f=$srcdir/config/arm/arm64_armv8_linux_gcc
-export CC="clang"
-build build-arm64-host-clang $f ABI $use_shared
-unset CC
-# some gcc/arm configurations
-for f in $srcdir/config/arm/arm64_[bdo]*gcc ; do
-	export CC="$CCACHE gcc"
-	targetdir=build-$(basename $f | tr '_' '-' | cut -d'-' -f-2)
-	build $targetdir $f skipABI $use_shared
-	unset CC
-done
+build build-arm64-generic-gcc $f ABI $use_shared
 
-# ppc configurations
-for f in $srcdir/config/ppc/ppc* ; do
-	targetdir=build-$(basename $f | cut -d'-' -f-2)
-	build $targetdir $f ABI $use_shared
-done
+# IBM POWER
+f=$srcdir/config/ppc/ppc64le-power8-linux-gcc
+build build-ppc64-power8-gcc $f ABI $use_shared
 
-# RISC-V configuration
-build build-riscv64-linux-gcc $srcdir/config/riscv/riscv64_linux_gcc ABI \
-	$use_shared
+# generic RISC-V
+f=$srcdir/config/riscv/riscv64_linux_gcc
+build build-riscv64-generic-gcc $f ABI $use_shared
 
 # Test installation of the x86-generic target, to be used for checking
 # the sample apps build using the pkg-config file for cflags and libs
