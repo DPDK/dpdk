@@ -13,39 +13,49 @@
 #include "mlx5_common_log.h"
 #include "mlx5_malloc.h"
 
+/* FW writes status value to the OUT buffer at offset 00H */
+#define MLX5_FW_STATUS(o) MLX5_GET(general_obj_out_cmd_hdr, (o), status)
+/* FW writes syndrome value to the OUT buffer at offset 04H */
+#define MLX5_FW_SYNDROME(o) MLX5_GET(general_obj_out_cmd_hdr, (o), syndrome)
+
+#define MLX5_DEVX_ERR_RC(x) ((x) > 0 ? -(x) : ((x) < 0 ? (x) : -1))
+
+static void
+mlx5_devx_err_log(void *out, const char *reason,
+		  const char *param, uint32_t value)
+{
+	rte_errno = errno;
+	if (!param)
+		DRV_LOG(ERR, "DevX %s failed errno=%d status=%#x syndrome=%#x",
+			reason, errno, MLX5_FW_STATUS(out),
+			MLX5_FW_SYNDROME(out));
+	else
+		DRV_LOG(ERR, "DevX %s %s=%#X failed errno=%d status=%#x syndrome=%#x",
+			reason, param, value, errno, MLX5_FW_STATUS(out),
+			MLX5_FW_SYNDROME(out));
+}
+
 static void *
 mlx5_devx_get_hca_cap(void *ctx, uint32_t *in, uint32_t *out,
 		      int *err, uint32_t flags)
 {
 	const size_t size_in = MLX5_ST_SZ_DW(query_hca_cap_in) * sizeof(int);
 	const size_t size_out = MLX5_ST_SZ_DW(query_hca_cap_out) * sizeof(int);
-	int status, syndrome, rc;
+	int rc;
 
-	if (err)
-		*err = 0;
 	memset(in, 0, size_in);
 	memset(out, 0, size_out);
 	MLX5_SET(query_hca_cap_in, in, opcode, MLX5_CMD_OP_QUERY_HCA_CAP);
 	MLX5_SET(query_hca_cap_in, in, op_mod, flags);
 	rc = mlx5_glue->devx_general_cmd(ctx, in, size_in, out, size_out);
-	if (rc) {
-		DRV_LOG(ERR,
-			"Failed to query devx HCA capabilities func %#02x",
-			flags >> 1);
+	if (rc || MLX5_FW_STATUS(out)) {
+		mlx5_devx_err_log(out, "HCA capabilities", "func", flags >> 1);
 		if (err)
-			*err = rc > 0 ? -rc : rc;
+			*err = MLX5_DEVX_ERR_RC(rc);
 		return NULL;
 	}
-	status = MLX5_GET(query_hca_cap_out, out, status);
-	syndrome = MLX5_GET(query_hca_cap_out, out, syndrome);
-	if (status) {
-		DRV_LOG(ERR,
-			"Failed to query devx HCA capabilities func %#02x status %x, syndrome = %x",
-			flags >> 1, status, syndrome);
-		if (err)
-			*err = -1;
-		return NULL;
-	}
+	if (err)
+		*err = 0;
 	return MLX5_ADDR_OF(query_hca_cap_out, out, capability);
 }
 
@@ -74,7 +84,7 @@ mlx5_devx_cmd_register_read(void *ctx, uint16_t reg_id, uint32_t arg,
 	uint32_t in[MLX5_ST_SZ_DW(access_register_in)]   = {0};
 	uint32_t out[MLX5_ST_SZ_DW(access_register_out) +
 		     MLX5_ACCESS_REGISTER_DATA_DWORD_MAX] = {0};
-	int status, rc;
+	int rc;
 
 	MLX5_ASSERT(data && dw_cnt);
 	MLX5_ASSERT(dw_cnt <= MLX5_ACCESS_REGISTER_DATA_DWORD_MAX);
@@ -91,23 +101,13 @@ mlx5_devx_cmd_register_read(void *ctx, uint16_t reg_id, uint32_t arg,
 	rc = mlx5_glue->devx_general_cmd(ctx, in, sizeof(in), out,
 					 MLX5_ST_SZ_BYTES(access_register_out) +
 					 sizeof(uint32_t) * dw_cnt);
-	if (rc)
-		goto error;
-	status = MLX5_GET(access_register_out, out, status);
-	if (status) {
-		int syndrome = MLX5_GET(access_register_out, out, syndrome);
-
-		DRV_LOG(DEBUG, "Failed to read access NIC register 0x%X, "
-			       "status %x, syndrome = %x",
-			       reg_id, status, syndrome);
-		return -1;
+	if (rc || MLX5_FW_STATUS(out)) {
+		mlx5_devx_err_log(out, "read access", "NIC register", reg_id);
+		return MLX5_DEVX_ERR_RC(rc);
 	}
 	memcpy(data, &out[MLX5_ST_SZ_DW(access_register_out)],
 	       dw_cnt * sizeof(uint32_t));
 	return 0;
-error:
-	rc = (rc > 0) ? -rc : rc;
-	return rc;
 }
 
 /**
@@ -134,7 +134,7 @@ mlx5_devx_cmd_register_write(void *ctx, uint16_t reg_id, uint32_t arg,
 	uint32_t in[MLX5_ST_SZ_DW(access_register_in) +
 		    MLX5_ACCESS_REGISTER_DATA_DWORD_MAX] = {0};
 	uint32_t out[MLX5_ST_SZ_DW(access_register_out)] = {0};
-	int status, rc;
+	int rc;
 	void *ptr;
 
 	MLX5_ASSERT(data && dw_cnt);
@@ -152,26 +152,19 @@ mlx5_devx_cmd_register_write(void *ctx, uint16_t reg_id, uint32_t arg,
 	ptr = MLX5_ADDR_OF(access_register_in, in, register_data);
 	memcpy(ptr, data, dw_cnt * sizeof(uint32_t));
 	rc = mlx5_glue->devx_general_cmd(ctx, in, sizeof(in), out, sizeof(out));
-
+	if (rc || MLX5_FW_STATUS(out)) {
+		mlx5_devx_err_log(out, "write access", "NIC register", reg_id);
+		return MLX5_DEVX_ERR_RC(rc);
+	}
 	rc = mlx5_glue->devx_general_cmd(ctx, in,
 					 MLX5_ST_SZ_BYTES(access_register_in) +
 					 dw_cnt * sizeof(uint32_t),
 					 out, sizeof(out));
-	if (rc)
-		goto error;
-	status = MLX5_GET(access_register_out, out, status);
-	if (status) {
-		int syndrome = MLX5_GET(access_register_out, out, syndrome);
-
-		DRV_LOG(DEBUG, "Failed to write access NIC register 0x%X, "
-			       "status %x, syndrome = %x",
-			       reg_id, status, syndrome);
-		return -1;
+	if (rc || MLX5_FW_STATUS(out)) {
+		mlx5_devx_err_log(out, "write access", "NIC register", reg_id);
+		return MLX5_DEVX_ERR_RC(rc);
 	}
 	return 0;
-error:
-	rc = (rc > 0) ? -rc : rc;
-	return rc;
 }
 
 /**
@@ -466,7 +459,7 @@ mlx5_devx_cmd_query_nic_vport_context(void *ctx,
 	uint32_t in[MLX5_ST_SZ_DW(query_nic_vport_context_in)] = {0};
 	uint32_t out[MLX5_ST_SZ_DW(query_nic_vport_context_out)] = {0};
 	void *vctx;
-	int status, syndrome, rc;
+	int rc;
 
 	/* Query NIC vport context to determine inline mode. */
 	MLX5_SET(query_nic_vport_context_in, in, opcode,
@@ -477,23 +470,15 @@ mlx5_devx_cmd_query_nic_vport_context(void *ctx,
 	rc = mlx5_glue->devx_general_cmd(ctx,
 					 in, sizeof(in),
 					 out, sizeof(out));
-	if (rc)
-		goto error;
-	status = MLX5_GET(query_nic_vport_context_out, out, status);
-	syndrome = MLX5_GET(query_nic_vport_context_out, out, syndrome);
-	if (status) {
-		DRV_LOG(DEBUG, "Failed to query NIC vport context, "
-			"status %x, syndrome = %x", status, syndrome);
-		return -1;
+	if (rc || MLX5_FW_STATUS(out)) {
+		mlx5_devx_err_log(out, "query NIC vport context", NULL, 0);
+		return MLX5_DEVX_ERR_RC(rc);
 	}
 	vctx = MLX5_ADDR_OF(query_nic_vport_context_out, out,
 			    nic_vport_context);
 	attr->vport_inline_mode = MLX5_GET(nic_vport_context, vctx,
 					   min_wqe_inline_mode);
 	return 0;
-error:
-	rc = (rc > 0) ? -rc : rc;
-	return rc;
 }
 
 /**
