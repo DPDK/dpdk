@@ -12,6 +12,7 @@
 #include "virtio_pci.h"
 #include "virtio_logs.h"
 #include "virtqueue.h"
+#include "virtio_blk.h"
 
 /*
  * Following macros are derived from linux/pci_regs.h, however,
@@ -443,32 +444,6 @@ modern_get_queue_size(struct virtio_hw *hw, uint16_t queue_id)
 }
 
 static uint16_t
-modern_net_get_queue_num(struct virtio_hw *hw)
-{
-	uint16_t nr_vq;
-
-	if (virtio_with_feature(hw, VIRTIO_NET_F_MQ) ||
-			virtio_with_feature(hw, VIRTIO_NET_F_RSS)) {
-		VIRTIO_OPS(hw)->read_dev_cfg(hw,
-			offsetof(struct virtio_net_config, max_virtqueue_pairs),
-			&hw->max_queue_pairs,
-			sizeof(hw->max_queue_pairs));
-	} else {
-		PMD_INIT_LOG(DEBUG,
-				 "Neither VIRTIO_NET_F_MQ nor VIRTIO_NET_F_RSS are supported");
-		hw->max_queue_pairs = 1;
-	}
-
-	nr_vq = hw->max_queue_pairs * 2;
-	if (virtio_with_feature(hw, VIRTIO_NET_F_CTRL_VQ))
-		nr_vq += 1;
-
-	PMD_INIT_LOG(DEBUG, "Virtio net nr_vq is %d", nr_vq);
-	return nr_vq;
-
-}
-
-static uint16_t
 modern_get_queue_num(struct virtio_hw *hw)
 {
 	return hw->virtio_dev_sp_ops->get_queue_num(hw);
@@ -596,9 +571,8 @@ static const struct virtio_ops virtio_dev_pci_modern_ops = {
 	.dev_close      = modern_dev_close,
 };
 
-const struct virtio_dev_specific_ops virtio_net_dev_pci_modern_ops = {
-	.get_queue_num	= modern_net_get_queue_num,
-};
+extern const struct virtio_dev_specific_ops virtio_net_dev_pci_modern_ops;
+extern const struct virtio_dev_specific_ops virtio_blk_dev_pci_modern_ops;
 
 static void *
 get_cfg_addr(struct rte_pci_device *dev, struct virtio_pci_cap *cap)
@@ -777,6 +751,8 @@ virtio_pci_dev_init(struct rte_pci_device *pci_dev, struct virtio_pci_dev *dev)
 		VIRTIO_OPS(hw) = &virtio_dev_pci_modern_ops;
 		if (pci_dev->id.device_id == VIRTIO_PCI_MODERN_DEVICEID_NET)
 			hw->virtio_dev_sp_ops = &virtio_net_dev_pci_modern_ops;
+		else if (pci_dev->id.device_id == VIRTIO_PCI_MODERN_DEVICEID_BLK)
+			hw->virtio_dev_sp_ops = &virtio_blk_dev_pci_modern_ops;
 		else {
 			rte_pci_unmap_device(pci_dev);
 			PMD_INIT_LOG(ERR, "device id 0x%x not supported", pci_dev->id.device_id);

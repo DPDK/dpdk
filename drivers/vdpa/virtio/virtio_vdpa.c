@@ -11,62 +11,18 @@
 #include <rte_kvargs.h>
 
 #include <virtio_api.h>
-
-enum {
-	VIRTIO_VDPA_NOTIFIER_STATE_DISABLED,
-	VIRTIO_VDPA_NOTIFIER_STATE_ENABLED,
-	VIRTIO_VDPA_NOTIFIER_STATE_ERR
-};
-
-struct virtio_vdpa_vring_info {
-	uint64_t desc;
-	uint64_t avail;
-	uint64_t used;
-	uint16_t size;
-	uint16_t index;
-	uint8_t notifier_state;
-	bool enable;
-	struct rte_intr_handle *intr_handle;
-	struct virtio_vdpa_priv *priv;
-};
-
-#define VIRTIO_VDPA_DRIVER_NAME vdpa_virtio
-#define VIRTIO_VDPA_PROTOCOL_FEATURES \
-				((1ULL << VHOST_USER_PROTOCOL_F_SLAVE_REQ) | \
-				 (1ULL << VHOST_USER_PROTOCOL_F_SLAVE_SEND_FD) | \
-				 (1ULL << VHOST_USER_PROTOCOL_F_HOST_NOTIFIER) | \
-				 (1ULL << VHOST_USER_PROTOCOL_F_STATUS) | \
-				 (1ULL << VHOST_USER_PROTOCOL_F_MQ) | \
-				 (1ULL << VHOST_USER_PROTOCOL_F_REPLY_ACK))
-/*				   (1ULL << VHOST_USER_PROTOCOL_F_LOG_SHMFD) | \
- *				 (1ULL << VHOST_USER_PROTOCOL_F_MQ) | \
- *				 (1ULL << VHOST_USER_PROTOCOL_F_NET_MTU) | \
- *				 (1ULL << VHOST_USER_PROTOCOL_F_STATUS))
- */
-struct virtio_vdpa_priv {
-	TAILQ_ENTRY(virtio_vdpa_priv) next;
-	struct rte_pci_device *pdev;
-	struct rte_vdpa_device *vdev;
-	struct virtio_pci_dev *vpdev;
-	int vfio_container_fd;
-	int vfio_group_fd;
-	int vfio_dev_fd;
-	int vid;
-	int nvec;
-	uint64_t guest_features;
-	struct virtio_vdpa_vring_info **vrings;
-	uint16_t nr_virtqs;   /* Number of vq vhost enabled */
-	uint16_t hw_nr_virtqs; /* Number of vq device supported */
-	bool configured;
-};
-
-#define VIRTIO_VDPA_INTR_RETRIES_USEC 1000
-#define VIRTIO_VDPA_INTR_RETRIES 256
+#include "virtio_vdpa.h"
 
 RTE_LOG_REGISTER(virtio_vdpa_logtype, pmd.vdpa.virtio, NOTICE);
 #define DRV_LOG(level, fmt, args...) \
 	rte_log(RTE_LOG_ ## level, virtio_vdpa_logtype, \
 		"VIRTIO VDPA %s(): " fmt "\n", __func__, ##args)
+
+#define VIRTIO_VDPA_INTR_RETRIES_USEC 1000
+#define VIRTIO_VDPA_INTR_RETRIES 256
+
+extern struct virtio_vdpa_device_callback virtio_vdpa_blk_callback;
+extern struct virtio_vdpa_device_callback virtio_vdpa_net_callback;
 
 static TAILQ_HEAD(virtio_vdpa_privs, virtio_vdpa_priv) virtio_priv_list =
 						  TAILQ_HEAD_INITIALIZER(virtio_priv_list);
@@ -138,7 +94,8 @@ virtio_vdpa_protocol_features_get(struct rte_vdpa_device *vdev,
 		DRV_LOG(ERR, "Invalid vDPA device: %s", vdev->device->name);
 		return -ENODEV;
 	}
-	*features = VIRTIO_VDPA_PROTOCOL_FEATURES;
+
+	priv->dev_ops->vhost_feature_get(features);
 	return 0;
 }
 
@@ -747,6 +704,21 @@ virtio_vdpa_notify_area_get(int vid, int qid, uint64_t *offset, uint64_t *size)
 					vid, qid, *offset, *size);
 	return 0;
 }
+static int
+virtio_vdpa_dev_config_get(int vid, uint8_t *payload, uint32_t len)
+{
+	struct rte_vdpa_device *vdev = rte_vhost_get_vdpa_device(vid);
+	struct virtio_vdpa_priv *priv = virtio_vdpa_find_priv_resource_by_vdev(vdev);
+
+	if (priv == NULL) {
+		DRV_LOG(ERR, "Invalid vDPA device: %s.", vdev->device->name);
+		return -EINVAL;
+	}
+	virtio_pci_dev_config_read(priv->vpdev, 0, payload, len);
+	DRV_LOG(INFO, "vDPA device %d get config len %d", vid, len);
+
+	return 0;
+}
 
 static struct rte_vdpa_dev_ops virtio_vdpa_ops = {
 	.get_queue_num = virtio_vdpa_vqs_max_get,
@@ -763,6 +735,7 @@ static struct rte_vdpa_dev_ops virtio_vdpa_ops = {
 	.get_stats_names = NULL,
 	.get_stats = NULL,
 	.reset_stats = NULL,
+	.get_dev_config = virtio_vdpa_dev_config_get,
 };
 
 static int vdpa_check_handler(__rte_unused const char *key,
@@ -935,6 +908,11 @@ virtio_vdpa_dev_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		goto error;
 	}
 
+	if (priv->pdev->id.device_id == VIRTIO_PCI_MODERN_DEVICEID_NET)
+		priv->dev_ops = &virtio_vdpa_net_callback;
+	else if (priv->pdev->id.device_id == VIRTIO_PCI_MODERN_DEVICEID_BLK)
+		priv->dev_ops = &virtio_vdpa_blk_callback;
+
 	priv->vfio_dev_fd = rte_intr_dev_fd_get(pci_dev->intr_handle);
 	if (priv->vfio_dev_fd < 0) {
 		DRV_LOG(ERR, "%s failed to get vfio dev fd", devname);
@@ -1027,6 +1005,7 @@ virtio_vdpa_dev_remove(struct rte_pci_device *pci_dev)
  */
 static const struct rte_pci_id pci_id_virtio_map[] = {
 	{ RTE_PCI_DEVICE(VIRTIO_PCI_VENDORID, VIRTIO_PCI_MODERN_DEVICEID_NET) },
+	{ RTE_PCI_DEVICE(VIRTIO_PCI_VENDORID, VIRTIO_PCI_MODERN_DEVICEID_BLK) },
 	{ .vendor_id = 0, /* sentinel */ },
 };
 

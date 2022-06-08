@@ -5,6 +5,7 @@
 #ifndef _VIRTIO_H_
 #define _VIRTIO_H_
 #include "virtio_net.h"
+#include "virtio_blk.h"
 
 /*
  * Do we get callbacks when the ring is completely used,
@@ -107,6 +108,7 @@ struct virtio_hw {
 	uint8_t weak_barriers;
 	uint8_t intr_lsc;
 	uint16_t max_queue_pairs;
+	uint16_t num_queues_blk;
 	struct virtnet_ctl *cvq;
 	struct rte_pci_device *pci_dev;
 	const struct virtio_ops *virtio_ops;

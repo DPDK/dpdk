@@ -5,5 +5,7 @@ deps += ['pci', 'bus_pci', 'ethdev']
 sources += files(
         'virtio.c',
         'virtio_pci.c',
+        'virtio_pci_net.c',
+        'virtio_pci_blk.c',
 )
 
