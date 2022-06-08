@@ -1707,6 +1707,12 @@ slave_configure(struct rte_eth_dev *bonded_eth_dev,
 				bonded_eth_dev->data->dev_conf.rx_adv_conf.rss_conf.rss_hf;
 		slave_eth_dev->data->dev_conf.rxmode.mq_mode =
 				bonded_eth_dev->data->dev_conf.rxmode.mq_mode;
+	} else {
+		slave_eth_dev->data->dev_conf.rx_adv_conf.rss_conf.rss_key_len = 0;
+		slave_eth_dev->data->dev_conf.rx_adv_conf.rss_conf.rss_key = NULL;
+		slave_eth_dev->data->dev_conf.rx_adv_conf.rss_conf.rss_hf = 0;
+		slave_eth_dev->data->dev_conf.rxmode.mq_mode =
+				bonded_eth_dev->data->dev_conf.rxmode.mq_mode;
 	}
 
 	slave_eth_dev->data->dev_conf.rxmode.mtu =
