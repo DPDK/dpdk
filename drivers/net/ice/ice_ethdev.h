@@ -529,9 +529,6 @@ struct ice_adapter {
 	struct rte_timecounter tx_tstamp_tc;
 	bool ptp_ena;
 	uint64_t time_hw;
-	uint32_t hw_time_high; /* high 32 bits of timestamp */
-	uint32_t hw_time_low; /* low 32 bits of timestamp */
-	uint64_t hw_time_update; /* SW time of HW record updating */
 	struct ice_fdir_prof_info fdir_prof_info[ICE_MAX_PTGS];
 	struct ice_rss_prof_info rss_prof_info[ICE_MAX_PTGS];
 	/* True if DCF state of the associated PF is on */
