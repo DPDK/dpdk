@@ -24,6 +24,8 @@
 
 #define VIRTIO_VDPA_MI_SUPPORTED_NET_FEATURES (1ULL << VIRTIO_F_ADMIN_VQ)
 
+#define VIRTIO_VDPA_MI_SUPPORTED_BLK_FEATURES (1ULL << VIRTIO_F_ADMIN_VQ)
+
 #define VIRTIO_VDPA_MI_MAX_SGES 32
 
 struct virtio_vdpa_pf_priv;
@@ -957,9 +959,26 @@ virtio_vdpa_net_dev_get_adminq_idx(struct virtio_vdpa_pf_priv *priv)
 	return virtio_pci_dev_nr_vq_get(priv->vpdev) + have_ctrlq;
 }
 
+static uint64_t
+virtio_vdpa_blk_dev_get_required_features(void)
+{
+	return VIRTIO_VDPA_MI_SUPPORTED_BLK_FEATURES;
+}
+
+static uint16_t
+virtio_vdpa_blk_dev_get_adminq_idx(struct virtio_vdpa_pf_priv *priv __rte_unused)
+{
+	return 0;
+}
+
 static struct virtio_vdpa_dev_ops virtio_vdpa_net_dev_ops = {
 	.get_required_features = virtio_vdpa_get_net_dev_required_features,
 	.get_adminq_idx = virtio_vdpa_net_dev_get_adminq_idx,
+};
+
+static struct virtio_vdpa_dev_ops virtio_vdpa_blk_dev_ops = {
+	.get_required_features = virtio_vdpa_blk_dev_get_required_features,
+	.get_adminq_idx = virtio_vdpa_blk_dev_get_adminq_idx,
 };
 
 static int
@@ -1007,7 +1026,20 @@ virtio_vdpa_mi_dev_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		goto err_free_pci_dev;
 	}
 
-	priv->dev_ops = &virtio_vdpa_net_dev_ops;
+	if (priv->pdev->id.device_id == VIRTIO_PCI_MODERN_DEVICEID_NET) {
+		priv->dev_ops = &virtio_vdpa_net_dev_ops;
+	}
+	else if (priv->pdev->id.device_id == VIRTIO_PCI_MODERN_DEVICEID_BLK) {
+		priv->dev_ops = &virtio_vdpa_blk_dev_ops;;
+	}
+	else {
+		DRV_LOG(ERR, "PCI device: %s device id 0x%x is not supported",
+					priv->pdev->device.name,
+					priv->pdev->id.device_id);
+		rte_errno = rte_errno ? rte_errno : EOPNOTSUPP;
+		goto err_free_pci_dev;
+	}
+
 	virtio_pci_dev_features_get(priv->vpdev, &priv->device_features);
 	features = priv->dev_ops->get_required_features();
 	if (!(priv->device_features & features)) {
@@ -1142,6 +1174,7 @@ rte_vdpa_get_pf_list(struct virtio_vdpa_pf_info *pf_info, int max_pf_num)
  */
 static const struct rte_pci_id pci_id_virtio_mi_map[] = {
 	{ RTE_PCI_DEVICE(VIRTIO_PCI_VENDORID, VIRTIO_PCI_MODERN_DEVICEID_NET) },
+	{ RTE_PCI_DEVICE(VIRTIO_PCI_VENDORID, VIRTIO_PCI_MODERN_DEVICEID_BLK) },
 	{ .vendor_id = 0, /* sentinel */ },
 };
 
