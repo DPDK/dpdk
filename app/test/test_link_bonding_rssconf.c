@@ -466,15 +466,85 @@ test_rss(void)
 
 	TEST_ASSERT_SUCCESS(test_propagate(), "Propagation test failed");
 
-	TEST_ASSERT(slave_remove_and_add() == 1, "New slave should be synced");
+	TEST_ASSERT(slave_remove_and_add() == 1, "remove and add slaves success.");
 
 	remove_slaves_and_stop_bonded_device();
 
 	return TEST_SUCCESS;
 }
 
+
 /**
- * Test propagation logic, when RX_RSS mq_mode is turned off for bonding port
+ * Test RSS configuration over bonded and slaves.
+ */
+static int
+test_rss_config_lazy(void)
+{
+	struct rte_eth_rss_conf bond_rss_conf = {0};
+	struct slave_conf *port;
+	uint8_t rss_key[40];
+	uint64_t rss_hf;
+	int retval;
+	uint16_t i;
+	uint8_t n;
+
+	retval = rte_eth_dev_info_get(test_params.bond_port_id,
+				      &test_params.bond_dev_info);
+	TEST_ASSERT((retval == 0), "Error during getting device (port %u) info: %s\n",
+		    test_params.bond_port_id, strerror(-retval));
+
+	rss_hf = test_params.bond_dev_info.flow_type_rss_offloads;
+	if (rss_hf != 0) {
+		bond_rss_conf.rss_key = NULL;
+		bond_rss_conf.rss_hf = rss_hf;
+		retval = rte_eth_dev_rss_hash_update(test_params.bond_port_id,
+						     &bond_rss_conf);
+		TEST_ASSERT(retval != 0, "Succeeded in setting bonded port hash function");
+	}
+
+	/* Set all keys to zero for all slaves */
+	FOR_EACH_PORT(n, port) {
+		port = &test_params.slave_ports[n];
+		retval = rte_eth_dev_rss_hash_conf_get(port->port_id,
+						       &port->rss_conf);
+		TEST_ASSERT_SUCCESS(retval, "Cannot get slaves RSS configuration");
+		memset(port->rss_key, 0, sizeof(port->rss_key));
+		port->rss_conf.rss_key = port->rss_key;
+		port->rss_conf.rss_key_len = sizeof(port->rss_key);
+		retval = rte_eth_dev_rss_hash_update(port->port_id,
+						     &port->rss_conf);
+		TEST_ASSERT(retval != 0, "Succeeded in setting slaves RSS keys");
+	}
+
+	/* Set RSS keys for bonded port */
+	memset(rss_key, 1, sizeof(rss_key));
+	bond_rss_conf.rss_hf = rss_hf;
+	bond_rss_conf.rss_key = rss_key;
+	bond_rss_conf.rss_key_len = sizeof(rss_key);
+
+	retval = rte_eth_dev_rss_hash_update(test_params.bond_port_id,
+					     &bond_rss_conf);
+	TEST_ASSERT(retval != 0, "Succeeded in setting bonded port RSS keys");
+
+	/*  Test RETA propagation */
+	for (i = 0; i < RXTX_QUEUE_COUNT; i++) {
+		FOR_EACH_PORT(n, port) {
+			port = &test_params.slave_ports[n];
+			retval = reta_set(port->port_id, (i + 1) % RXTX_QUEUE_COUNT,
+					  port->dev_info.reta_size);
+			TEST_ASSERT(retval != 0, "Succeeded in setting slaves RETA");
+		}
+
+		retval = reta_set(test_params.bond_port_id, i % RXTX_QUEUE_COUNT,
+				  test_params.bond_dev_info.reta_size);
+		TEST_ASSERT(retval != 0, "Succeeded in setting bonded port RETA");
+	}
+
+	return TEST_SUCCESS;
+}
+
+/**
+ * Test RSS function logic, when RX_RSS mq_mode is turned off for bonding port
  */
 static int
 test_rss_lazy(void)
@@ -495,9 +565,7 @@ test_rss_lazy(void)
 	TEST_ASSERT_SUCCESS(rte_eth_dev_start(test_params.bond_port_id),
 			"Failed to start bonding port (%d).", test_params.bond_port_id);
 
-	TEST_ASSERT_SUCCESS(test_propagate(), "Propagation test failed");
-
-	TEST_ASSERT(slave_remove_and_add() == 0, "New slave shouldn't be synced");
+	TEST_ASSERT_SUCCESS(test_rss_config_lazy(), "Succeeded in setting RSS hash when RX_RSS mq_mode is turned off");
 
 	remove_slaves_and_stop_bonded_device();
 
