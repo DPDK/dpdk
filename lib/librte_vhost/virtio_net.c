@@ -428,6 +428,16 @@ virtio_enqueue_offload(struct rte_mbuf *m_buf, struct virtio_net_hdr *net_hdr)
 		csum_l4 |= PKT_TX_TCP_CKSUM;
 
 	if (csum_l4) {
+		/*
+		 * Pseudo-header checksum must be set as per Virtio spec.
+		 *
+		 * Note: We don't propagate rte_net_intel_cksum_prepare()
+		 * errors, as it would have an impact on performance, and an
+		 * error would mean the packet is dropped by the guest instead
+		 * of being dropped here.
+		 */
+		rte_net_intel_cksum_prepare(m_buf);
+
 		net_hdr->flags = VIRTIO_NET_HDR_F_NEEDS_CSUM;
 		net_hdr->csum_start = m_buf->l2_len + m_buf->l3_len;
 
