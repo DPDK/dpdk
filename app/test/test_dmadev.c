@@ -209,6 +209,7 @@ test_enqueue_copies(int16_t dev_id, uint16_t vchan)
 						dst_data[i], src_data[i]);
 
 		/* now check completion works */
+		id = ~id;
 		if (rte_dma_completed(dev_id, vchan, 1, &id, NULL) != 1)
 			ERR_RETURN("Error with rte_dma_completed\n");
 
@@ -217,6 +218,7 @@ test_enqueue_copies(int16_t dev_id, uint16_t vchan)
 					id, id_count);
 
 		/* check for completed and id when no job done */
+		id = ~id;
 		if (rte_dma_completed(dev_id, vchan, 1, &id, NULL) != 0)
 			ERR_RETURN("Error with rte_dma_completed when no job done\n");
 		if (id != id_count)
@@ -224,6 +226,7 @@ test_enqueue_copies(int16_t dev_id, uint16_t vchan)
 					id, id_count);
 
 		/* check for completed_status and id when no job done */
+		id = ~id;
 		if (rte_dma_completed_status(dev_id, vchan, 1, &id, &status) != 0)
 			ERR_RETURN("Error with rte_dma_completed_status when no job done\n");
 		if (id != id_count)
