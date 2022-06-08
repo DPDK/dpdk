@@ -50,6 +50,7 @@ struct skeldma_hw {
 	/* Cache delimiter for dataplane API's operation data */
 	char cache1 __rte_cache_aligned;
 	uint16_t ridx;  /* ring idx */
+	uint16_t last_ridx;
 	uint64_t submitted_count;
 
 	/* Cache delimiter for cpucopy thread's operation data */

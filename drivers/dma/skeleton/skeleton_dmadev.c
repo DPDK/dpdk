@@ -118,6 +118,7 @@ skeldma_start(struct rte_dma_dev *dev)
 	fflush_ring(hw, hw->desc_running);
 	fflush_ring(hw, hw->desc_completed);
 	hw->ridx = 0;
+	hw->last_ridx = hw->ridx - 1;
 	hw->submitted_count = 0;
 	hw->zero_req_count = 0;
 	hw->completed_count = 0;
@@ -322,9 +323,11 @@ skeldma_dump(const struct rte_dma_dev *dev, FILE *f)
 		GET_RING_COUNT(hw->desc_completed));
 	(void)fprintf(f,
 		"    next_ring_idx: %u\n"
+		"    last_ring_idx: %u\n"
 		"    submitted_count: %" PRIu64 "\n"
 		"    completed_count: %" PRIu64 "\n",
-		hw->ridx, hw->submitted_count, hw->completed_count);
+		hw->ridx, hw->last_ridx,
+		hw->submitted_count, hw->completed_count);
 
 	return 0;
 }
@@ -398,11 +401,15 @@ skeldma_completed(void *dev_private,
 	count = RTE_MIN(nb_cpls, rte_ring_count(hw->desc_completed));
 	while (index < count) {
 		(void)rte_ring_dequeue(hw->desc_completed, (void **)&desc);
-		if (index == count - 1)
+		if (index == count - 1) {
+			hw->last_ridx = desc->ridx;
 			*last_idx = desc->ridx;
+		}
 		index++;
 		(void)rte_ring_enqueue(hw->desc_empty, (void *)desc);
 	}
+	if (unlikely(count == 0))
+		*last_idx = hw->last_ridx;
 
 	return count;
 }
@@ -422,11 +429,15 @@ skeldma_completed_status(void *dev_private,
 	count = RTE_MIN(nb_cpls, rte_ring_count(hw->desc_completed));
 	while (index < count) {
 		(void)rte_ring_dequeue(hw->desc_completed, (void **)&desc);
-		if (index == count - 1)
+		if (index == count - 1) {
+			hw->last_ridx = desc->ridx;
 			*last_idx = desc->ridx;
+		}
 		status[index++] = RTE_DMA_STATUS_SUCCESSFUL;
 		(void)rte_ring_enqueue(hw->desc_empty, (void *)desc);
 	}
+	if (unlikely(count == 0))
+		*last_idx = hw->last_ridx;
 
 	return count;
 }
