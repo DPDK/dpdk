@@ -407,8 +407,8 @@ kni_ioctl_create(struct net *net, uint32_t ioctl_num,
 	if (is_valid_ether_addr(dev_info.mac_addr))
 		memcpy(net_dev->dev_addr, dev_info.mac_addr, ETH_ALEN);
 	else
-		/* Generate random MAC address. */
-		eth_random_addr(net_dev->dev_addr);
+		/* Assign random MAC address. */
+		eth_hw_addr_random(net_dev);
 
 	if (dev_info.mtu)
 		net_dev->mtu = dev_info.mtu;
