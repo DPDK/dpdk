@@ -88,7 +88,7 @@ struct pmd_internal {
 	uint16_t max_queues;
 	int vid;
 	rte_atomic32_t started;
-	uint8_t vlan_strip;
+	bool vlan_strip;
 };
 
 struct internal_list {
