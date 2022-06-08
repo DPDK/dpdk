@@ -783,7 +783,11 @@ kni_net_set_mac(struct net_device *netdev, void *p)
 		return -EADDRNOTAVAIL;
 
 	memcpy(req.mac_addr, addr->sa_data, netdev->addr_len);
+#ifdef HAVE_ETH_HW_ADDR_SET
+	eth_hw_addr_set(netdev, addr->sa_data);
+#else
 	memcpy(netdev->dev_addr, addr->sa_data, netdev->addr_len);
+#endif
 
 	ret = kni_net_process_request(netdev, &req);
 

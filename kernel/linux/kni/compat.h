@@ -142,6 +142,10 @@
 #define HAVE_TSK_IN_GUP
 #endif
 
+#if KERNEL_VERSION(5, 15, 0) <= LINUX_VERSION_CODE
+#define HAVE_ETH_HW_ADDR_SET
+#endif
+
 #if KERNEL_VERSION(5, 18, 0) > LINUX_VERSION_CODE
 #define HAVE_NETIF_RX_NI
 #endif

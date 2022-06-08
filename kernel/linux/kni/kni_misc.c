@@ -404,11 +404,16 @@ kni_ioctl_create(struct net *net, uint32_t ioctl_num,
 	pr_debug("mbuf_size:    %u\n", kni->mbuf_size);
 
 	/* if user has provided a valid mac address */
-	if (is_valid_ether_addr(dev_info.mac_addr))
+	if (is_valid_ether_addr(dev_info.mac_addr)) {
+#ifdef HAVE_ETH_HW_ADDR_SET
+		eth_hw_addr_set(net_dev, dev_info.mac_addr);
+#else
 		memcpy(net_dev->dev_addr, dev_info.mac_addr, ETH_ALEN);
-	else
+#endif
+	} else {
 		/* Assign random MAC address. */
 		eth_hw_addr_random(net_dev);
+	}
 
 	if (dev_info.mtu)
 		net_dev->mtu = dev_info.mtu;
