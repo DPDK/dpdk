@@ -1,6 +1,6 @@
 [binaries]
-c = 'riscv64-linux-gnu-gcc'
-cpp = 'riscv64-linux-gnu-g++'
+c = ['ccache', 'riscv64-linux-gnu-gcc']
+cpp = ['ccache', 'riscv64-linux-gnu-g++']
 ar = 'riscv64-linux-gnu-ar'
 strip = 'riscv64-linux-gnu-strip'
 pcap-config = ''

@@ -1,6 +1,6 @@
 [binaries]
-c = 'aarch64-linux-gnu-gcc'
-cpp = 'aarch64-linux-gnu-cpp'
+c = ['ccache', 'aarch64-linux-gnu-gcc']
+cpp = ['ccache', 'aarch64-linux-gnu-cpp']
 ar = 'aarch64-linux-gnu-ar'
 as = 'aarch64-linux-gnu-as'
 strip = 'aarch64-linux-gnu-strip'

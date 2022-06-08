@@ -160,7 +160,7 @@ build () # <directory> <target cc | cross file> <ABI check> [meson options]
 	if [ -n "$crossfile" ] ; then
 		cross="--cross-file $crossfile"
 		targetcc=$(sed -n 's,^c[[:space:]]*=[[:space:]]*,,p' \
-			$crossfile | tr -d "'" | tr -d '"')
+			$crossfile | cut -d ',' -f 2 | tr -d "'"'"] ')
 	else
 		cross=
 	fi

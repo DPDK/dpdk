@@ -1,6 +1,6 @@
 [binaries]
-c = 'clang'
-cpp = 'clang++'
+c = ['ccache', 'clang']
+cpp = ['ccache', 'clang++']
 ar = 'llvm-ar'
 strip = 'llvm-strip'
 llvm-config = 'llvm-config'
