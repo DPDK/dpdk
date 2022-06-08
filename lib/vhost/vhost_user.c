@@ -80,6 +80,8 @@ static const char *vhost_message_str[VHOST_USER_MAX] = {
 	[VHOST_USER_NET_SET_MTU]  = "VHOST_USER_NET_SET_MTU",
 	[VHOST_USER_SET_SLAVE_REQ_FD]  = "VHOST_USER_SET_SLAVE_REQ_FD",
 	[VHOST_USER_IOTLB_MSG]  = "VHOST_USER_IOTLB_MSG",
+	[VHOST_USER_GET_CONFIG]  = "VHOST_USER_GET_CONFIG",
+	[VHOST_USER_SET_CONFIG]  = "VHOST_USER_SET_CONFIG",
 	[VHOST_USER_CRYPTO_CREATE_SESS] = "VHOST_USER_CRYPTO_CREATE_SESS",
 	[VHOST_USER_CRYPTO_CLOSE_SESS] = "VHOST_USER_CRYPTO_CLOSE_SESS",
 	[VHOST_USER_POSTCOPY_ADVISE]  = "VHOST_USER_POSTCOPY_ADVISE",
@@ -338,6 +340,27 @@ vhost_user_get_features(struct virtio_net **pdev,
 	ctx->msg.payload.u64 = features;
 	ctx->msg.size = sizeof(ctx->msg.payload.u64);
 	ctx->fd_num = 0;
+
+	return RTE_VHOST_MSG_RESULT_REPLY;
+}
+
+static int
+vhost_user_get_config(struct virtio_net **pdev,
+			struct vhu_msg_context *ctx,
+			int main_fd __rte_unused)
+{
+	struct virtio_net *dev = *pdev;
+	struct rte_vdpa_device *vdpa_dev;
+
+	if (validate_msg_fds(dev, ctx, 0) != 0)
+		return RTE_VHOST_MSG_RESULT_ERR;
+
+	vdpa_dev = dev->vdpa_dev;
+
+	if (vdpa_dev)
+		vdpa_dev->ops->get_dev_config(dev->vid,
+				ctx->msg.payload.cfg.region,
+				ctx->msg.payload.cfg.size);
 
 	return RTE_VHOST_MSG_RESULT_REPLY;
 }
@@ -1505,6 +1528,17 @@ virtio_is_ready(struct virtio_net *dev)
 	if (!dev->nr_vring)
 		return 0;
 
+	/* If supported, we rely on device status */
+	if (dev->protocol_features & (1ULL << VHOST_USER_PROTOCOL_F_STATUS)) {
+		if (dev->status & VIRTIO_DEVICE_STATUS_DRIVER_OK) {
+			dev->flags |= VIRTIO_DEV_READY;
+			if (!(dev->flags & VIRTIO_DEV_RUNNING))
+				VHOST_LOG_CONFIG(INFO, "(%s) virtio is now ready for processing.\n", dev->ifname);
+			return 1;
+		} else
+			return 0;
+	}
+
 	if (dev->flags & VIRTIO_DEV_BUILTIN_VIRTIO_NET) {
 		nr_vring = VIRTIO_BUILTIN_NUM_VQS_TO_BE_READY;
 
@@ -1518,11 +1552,6 @@ virtio_is_ready(struct virtio_net *dev)
 		if (!vq_is_ready(dev, vq))
 			return 0;
 	}
-
-	/* If supported, ensure the frontend is really done with config */
-	if (dev->protocol_features & (1ULL << VHOST_USER_PROTOCOL_F_STATUS))
-		if (!(dev->status & VIRTIO_DEVICE_STATUS_DRIVER_OK))
-			return 0;
 
 	dev->flags |= VIRTIO_DEV_READY;
 
@@ -2131,6 +2160,11 @@ vhost_user_get_vring_base(struct virtio_net **pdev,
 	/* We have to stop the queue (virtio) if it is running. */
 	vhost_destroy_device_notify(dev);
 
+	/* Device is not running after get vring base, we should unmask driver_ok.
+	 * If no, function virtio_is_ready will judge device is ready again and
+	 * config device. So, should unmask driver_ok.
+	 */
+	dev->status &= ~VIRTIO_DEVICE_STATUS_DRIVER_OK;
 	dev->flags &= ~VIRTIO_DEV_READY;
 	dev->flags &= ~VIRTIO_DEV_VDPA_CONFIGURED;
 
@@ -2782,6 +2816,8 @@ static vhost_message_handler_t vhost_message_handlers[VHOST_USER_MAX] = {
 	[VHOST_USER_NET_SET_MTU] = vhost_user_net_set_mtu,
 	[VHOST_USER_SET_SLAVE_REQ_FD] = vhost_user_set_req_fd,
 	[VHOST_USER_IOTLB_MSG] = vhost_user_iotlb_msg,
+	[VHOST_USER_GET_CONFIG] = vhost_user_get_config,
+	[VHOST_USER_SET_CONFIG] = NULL,
 	[VHOST_USER_POSTCOPY_ADVISE] = vhost_user_set_postcopy_advise,
 	[VHOST_USER_POSTCOPY_LISTEN] = vhost_user_set_postcopy_listen,
 	[VHOST_USER_POSTCOPY_END] = vhost_user_postcopy_end,
@@ -3311,7 +3347,9 @@ int rte_vhost_host_notifier_ctrl(int vid, uint16_t qid, bool enable)
 		return -ENODEV;
 
 	if (!(dev->features & (1ULL << VIRTIO_F_VERSION_1)) ||
-	    !(dev->features & (1ULL << VHOST_USER_F_PROTOCOL_FEATURES)) ||
+/*	    !(dev->features & (1ULL << VHOST_USER_F_PROTOCOL_FEATURES)) ||
+ * Blk device will not negotiate protocal feature, but still can use notify
+ */
 	    !(dev->protocol_features &
 			(1ULL << VHOST_USER_PROTOCOL_F_SLAVE_REQ)) ||
 	    !(dev->protocol_features &

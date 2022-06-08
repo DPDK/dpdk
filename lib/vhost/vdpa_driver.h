@@ -72,6 +72,9 @@ struct rte_vdpa_dev_ops {
 	/** Reset statistics of the queue */
 	int (*reset_stats)(struct rte_vdpa_device *dev, int qid);
 
+	/** Get the device specific config */
+	int (*get_dev_config)(int vid, uint8_t *payload, uint32_t len);
+
 	/** Reserved for future extension */
 	void *reserved[2];
 };

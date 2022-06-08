@@ -24,6 +24,7 @@
 					 (1ULL << VHOST_USER_PROTOCOL_F_SLAVE_SEND_FD) | \
 					 (1ULL << VHOST_USER_PROTOCOL_F_HOST_NOTIFIER) | \
 					 (1ULL << VHOST_USER_PROTOCOL_F_PAGEFAULT) | \
+					 (1ULL << VHOST_USER_PROTOCOL_F_CONFIG) | \
 					 (1ULL << VHOST_USER_PROTOCOL_F_STATUS))
 
 typedef enum VhostUserRequest {
@@ -50,6 +51,8 @@ typedef enum VhostUserRequest {
 	VHOST_USER_NET_SET_MTU = 20,
 	VHOST_USER_SET_SLAVE_REQ_FD = 21,
 	VHOST_USER_IOTLB_MSG = 22,
+	VHOST_USER_GET_CONFIG = 24,
+	VHOST_USER_SET_CONFIG = 25,
 	VHOST_USER_CRYPTO_CREATE_SESS = 26,
 	VHOST_USER_CRYPTO_CLOSE_SESS = 27,
 	VHOST_USER_POSTCOPY_ADVISE = 28,
@@ -125,6 +128,18 @@ typedef struct VhostUserInflight {
 	uint16_t queue_size;
 } VhostUserInflight;
 
+#ifndef VHOST_USER_MAX_CONFIG_SIZE
+#define VHOST_USER_MAX_CONFIG_SIZE		256
+#endif
+
+/* Get/set config msg payload */
+struct vhost_user_config {
+	uint32_t offset;
+	uint32_t size;
+	uint32_t flags;
+	uint8_t region[VHOST_USER_MAX_CONFIG_SIZE];
+};
+
 typedef struct VhostUserMsg {
 	union {
 		uint32_t master; /* a VhostUserRequest value */
@@ -148,6 +163,7 @@ typedef struct VhostUserMsg {
 		VhostUserCryptoSessionParam crypto_session;
 		VhostUserVringArea area;
 		VhostUserInflight inflight;
+		struct vhost_user_config cfg;
 	} payload;
 	/* Nothing should be added after the payload */
 } __rte_packed VhostUserMsg;
