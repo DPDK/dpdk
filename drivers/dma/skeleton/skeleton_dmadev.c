@@ -22,9 +22,6 @@ RTE_LOG_REGISTER_DEFAULT(skeldma_logtype, INFO);
 	rte_log(RTE_LOG_ ## level, skeldma_logtype, "%s(): " fmt "\n", \
 		__func__, ##args)
 
-/* Count of instances, currently only 1 is supported. */
-static uint16_t skeldma_count;
-
 static int
 skeldma_info_get(const struct rte_dma_dev *dev, struct rte_dma_info *dev_info,
 		 uint32_t info_sz)
@@ -100,6 +97,7 @@ static int
 skeldma_start(struct rte_dma_dev *dev)
 {
 	struct skeldma_hw *hw = dev->data->dev_private;
+	char name[RTE_MAX_THREAD_NAME_LEN];
 	rte_cpuset_t cpuset;
 	int ret;
 
@@ -126,7 +124,8 @@ skeldma_start(struct rte_dma_dev *dev)
 
 	rte_mb();
 
-	ret = rte_ctrl_thread_create(&hw->thread, "dma_skeleton", NULL,
+	snprintf(name, sizeof(name), "dma_skel_%d", dev->data->dev_id);
+	ret = rte_ctrl_thread_create(&hw->thread, name, NULL,
 				     cpucopy_thread, dev);
 	if (ret) {
 		SKELDMA_LOG(ERR, "Start cpucopy thread fail!");
@@ -161,8 +160,9 @@ skeldma_stop(struct rte_dma_dev *dev)
 }
 
 static int
-vchan_setup(struct skeldma_hw *hw, uint16_t nb_desc)
+vchan_setup(struct skeldma_hw *hw, int16_t dev_id, uint16_t nb_desc)
 {
+	char name[RTE_RING_NAMESIZE];
 	struct skeldma_desc *desc;
 	struct rte_ring *empty;
 	struct rte_ring *pending;
@@ -170,22 +170,25 @@ vchan_setup(struct skeldma_hw *hw, uint16_t nb_desc)
 	struct rte_ring *completed;
 	uint16_t i;
 
-	desc = rte_zmalloc_socket("dma_skeleton_desc",
-				  nb_desc * sizeof(struct skeldma_desc),
+	desc = rte_zmalloc_socket(NULL, nb_desc * sizeof(struct skeldma_desc),
 				  RTE_CACHE_LINE_SIZE, hw->socket_id);
 	if (desc == NULL) {
 		SKELDMA_LOG(ERR, "Malloc dma skeleton desc fail!");
 		return -ENOMEM;
 	}
 
-	empty = rte_ring_create("dma_skeleton_desc_empty", nb_desc,
-				hw->socket_id, RING_F_SP_ENQ | RING_F_SC_DEQ);
-	pending = rte_ring_create("dma_skeleton_desc_pending", nb_desc,
-				  hw->socket_id, RING_F_SP_ENQ | RING_F_SC_DEQ);
-	running = rte_ring_create("dma_skeleton_desc_running", nb_desc,
-				  hw->socket_id, RING_F_SP_ENQ | RING_F_SC_DEQ);
-	completed = rte_ring_create("dma_skeleton_desc_completed", nb_desc,
-				  hw->socket_id, RING_F_SP_ENQ | RING_F_SC_DEQ);
+	snprintf(name, RTE_RING_NAMESIZE, "dma_skel_desc_empty_%d", dev_id);
+	empty = rte_ring_create(name, nb_desc, hw->socket_id,
+				RING_F_SP_ENQ | RING_F_SC_DEQ);
+	snprintf(name, RTE_RING_NAMESIZE, "dma_skel_desc_pend_%d", dev_id);
+	pending = rte_ring_create(name, nb_desc, hw->socket_id,
+				  RING_F_SP_ENQ | RING_F_SC_DEQ);
+	snprintf(name, RTE_RING_NAMESIZE, "dma_skel_desc_run_%d", dev_id);
+	running = rte_ring_create(name, nb_desc, hw->socket_id,
+				  RING_F_SP_ENQ | RING_F_SC_DEQ);
+	snprintf(name, RTE_RING_NAMESIZE, "dma_skel_desc_comp_%d", dev_id);
+	completed = rte_ring_create(name, nb_desc, hw->socket_id,
+				    RING_F_SP_ENQ | RING_F_SC_DEQ);
 	if (empty == NULL || pending == NULL || running == NULL ||
 	    completed == NULL) {
 		SKELDMA_LOG(ERR, "Create dma skeleton desc ring fail!");
@@ -255,7 +258,7 @@ skeldma_vchan_setup(struct rte_dma_dev *dev, uint16_t vchan,
 	}
 
 	vchan_release(hw);
-	return vchan_setup(hw, conf->nb_desc);
+	return vchan_setup(hw, dev->data->dev_id, conf->nb_desc);
 }
 
 static int
@@ -559,21 +562,12 @@ skeldma_probe(struct rte_vdev_device *vdev)
 		return -EINVAL;
 	}
 
-	/* More than one instance is not supported */
-	if (skeldma_count > 0) {
-		SKELDMA_LOG(ERR, "Multiple instance not supported for %s",
-			name);
-		return -EINVAL;
-	}
-
 	skeldma_parse_vdev_args(vdev, &lcore_id);
 
 	ret = skeldma_create(name, vdev, lcore_id);
-	if (ret >= 0) {
+	if (ret >= 0)
 		SKELDMA_LOG(INFO, "Create %s dmadev with lcore-id %d",
 			name, lcore_id);
-		skeldma_count = 1;
-	}
 
 	return ret < 0 ? ret : 0;
 }
@@ -589,10 +583,8 @@ skeldma_remove(struct rte_vdev_device *vdev)
 		return -1;
 
 	ret = skeldma_destroy(name);
-	if (!ret) {
-		skeldma_count = 0;
+	if (!ret)
 		SKELDMA_LOG(INFO, "Remove %s dmadev", name);
-	}
 
 	return ret;
 }
