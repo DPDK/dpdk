@@ -95,6 +95,9 @@ struct ice_rx_queue {
 	uint32_t time_high;
 	uint32_t hw_register_set;
 	const struct rte_memzone *mz;
+	uint32_t hw_time_high; /* high 32 bits of timestamp */
+	uint32_t hw_time_low; /* low 32 bits of timestamp */
+	uint64_t hw_time_update; /* SW time of HW record updating */
 };
 
 struct ice_tx_entry {

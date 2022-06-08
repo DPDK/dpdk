@@ -1595,7 +1595,7 @@ ice_rx_scan_hw_ring(struct ice_rx_queue *rxq)
 	if (rxq->offloads & RTE_ETH_RX_OFFLOAD_TIMESTAMP) {
 		uint64_t sw_cur_time = rte_get_timer_cycles() / (rte_get_timer_hz() / 1000);
 
-		if (unlikely(sw_cur_time - ad->hw_time_update > 4))
+		if (unlikely(sw_cur_time - rxq->hw_time_update > 4))
 			is_tsinit = 1;
 	}
 #endif
@@ -1639,16 +1639,16 @@ ice_rx_scan_hw_ring(struct ice_rx_queue *rxq)
 				if (unlikely(is_tsinit)) {
 					ts_ns = ice_tstamp_convert_32b_64b(hw, ad, 1,
 									   rxq->time_high);
-					ad->hw_time_low = (uint32_t)ts_ns;
-					ad->hw_time_high = (uint32_t)(ts_ns >> 32);
+					rxq->hw_time_low = (uint32_t)ts_ns;
+					rxq->hw_time_high = (uint32_t)(ts_ns >> 32);
 					is_tsinit = false;
 				} else {
-					if (rxq->time_high < ad->hw_time_low)
-						ad->hw_time_high += 1;
-					ts_ns = (uint64_t)ad->hw_time_high << 32 | rxq->time_high;
-					ad->hw_time_low = rxq->time_high;
+					if (rxq->time_high < rxq->hw_time_low)
+						rxq->hw_time_high += 1;
+					ts_ns = (uint64_t)rxq->hw_time_high << 32 | rxq->time_high;
+					rxq->hw_time_low = rxq->time_high;
 				}
-				ad->hw_time_update = rte_get_timer_cycles() /
+				rxq->hw_time_update = rte_get_timer_cycles() /
 						     (rte_get_timer_hz() / 1000);
 				*RTE_MBUF_DYNFIELD(mb,
 						   ice_timestamp_dynfield_offset,
@@ -1861,7 +1861,7 @@ ice_recv_scattered_pkts(void *rx_queue,
 	if (rxq->offloads & RTE_ETH_RX_OFFLOAD_TIMESTAMP) {
 		uint64_t sw_cur_time = rte_get_timer_cycles() / (rte_get_timer_hz() / 1000);
 
-		if (unlikely(sw_cur_time - ad->hw_time_update > 4))
+		if (unlikely(sw_cur_time - rxq->hw_time_update > 4))
 			is_tsinit = true;
 	}
 #endif
@@ -1981,16 +1981,16 @@ ice_recv_scattered_pkts(void *rx_queue,
 			   rte_le_to_cpu_32(rxd.wb.flex_ts.ts_high);
 			if (unlikely(is_tsinit)) {
 				ts_ns = ice_tstamp_convert_32b_64b(hw, ad, 1, rxq->time_high);
-				ad->hw_time_low = (uint32_t)ts_ns;
-				ad->hw_time_high = (uint32_t)(ts_ns >> 32);
+				rxq->hw_time_low = (uint32_t)ts_ns;
+				rxq->hw_time_high = (uint32_t)(ts_ns >> 32);
 				is_tsinit = false;
 			} else {
-				if (rxq->time_high < ad->hw_time_low)
-					ad->hw_time_high += 1;
-				ts_ns = (uint64_t)ad->hw_time_high << 32 | rxq->time_high;
-				ad->hw_time_low = rxq->time_high;
+				if (rxq->time_high < rxq->hw_time_low)
+					rxq->hw_time_high += 1;
+				ts_ns = (uint64_t)rxq->hw_time_high << 32 | rxq->time_high;
+				rxq->hw_time_low = rxq->time_high;
 			}
-			ad->hw_time_update = rte_get_timer_cycles() /
+			rxq->hw_time_update = rte_get_timer_cycles() /
 					     (rte_get_timer_hz() / 1000);
 			*RTE_MBUF_DYNFIELD(rxm,
 					   (ice_timestamp_dynfield_offset),
@@ -2371,7 +2371,7 @@ ice_recv_pkts(void *rx_queue,
 	if (rxq->offloads & RTE_ETH_RX_OFFLOAD_TIMESTAMP) {
 		uint64_t sw_cur_time = rte_get_timer_cycles() / (rte_get_timer_hz() / 1000);
 
-		if (unlikely(sw_cur_time - ad->hw_time_update > 4))
+		if (unlikely(sw_cur_time - rxq->hw_time_update > 4))
 			is_tsinit = 1;
 	}
 #endif
@@ -2432,16 +2432,16 @@ ice_recv_pkts(void *rx_queue,
 			   rte_le_to_cpu_32(rxd.wb.flex_ts.ts_high);
 			if (unlikely(is_tsinit)) {
 				ts_ns = ice_tstamp_convert_32b_64b(hw, ad, 1, rxq->time_high);
-				ad->hw_time_low = (uint32_t)ts_ns;
-				ad->hw_time_high = (uint32_t)(ts_ns >> 32);
+				rxq->hw_time_low = (uint32_t)ts_ns;
+				rxq->hw_time_high = (uint32_t)(ts_ns >> 32);
 				is_tsinit = false;
 			} else {
-				if (rxq->time_high < ad->hw_time_low)
-					ad->hw_time_high += 1;
-				ts_ns = (uint64_t)ad->hw_time_high << 32 | rxq->time_high;
-				ad->hw_time_low = rxq->time_high;
+				if (rxq->time_high < rxq->hw_time_low)
+					rxq->hw_time_high += 1;
+				ts_ns = (uint64_t)rxq->hw_time_high << 32 | rxq->time_high;
+				rxq->hw_time_low = rxq->time_high;
 			}
-			ad->hw_time_update = rte_get_timer_cycles() /
+			rxq->hw_time_update = rte_get_timer_cycles() /
 					     (rte_get_timer_hz() / 1000);
 			*RTE_MBUF_DYNFIELD(rxm,
 					   (ice_timestamp_dynfield_offset),
