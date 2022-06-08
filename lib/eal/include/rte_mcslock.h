@@ -19,6 +19,10 @@
  * they acquired the lock.
  */
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <rte_lcore.h>
 #include <rte_common.h>
 #include <rte_pause.h>
@@ -168,5 +172,9 @@ rte_mcslock_is_locked(rte_mcslock_t *msl)
 {
 	return (__atomic_load_n(&msl, __ATOMIC_RELAXED) != NULL);
 }
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* _RTE_MCSLOCK_H_ */

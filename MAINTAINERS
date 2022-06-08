@@ -255,7 +255,7 @@ F: app/test/test_bitmap.c
 
 MCSlock
 M: Honnappa Nagarahalli <honnappa.nagarahalli@arm.com>
-F: lib/eal/include/generic/rte_mcslock.h
+F: lib/eal/include/rte_mcslock.h
 F: app/test/test_mcslock.c
 
 Sequence Lock
@@ -266,7 +266,7 @@ F: app/test/test_seqlock.c
 
 Ticketlock
 M: Joyce Kong <joyce.kong@arm.com>
-F: lib/eal/include/generic/rte_ticketlock.h
+F: lib/eal/include/rte_ticketlock.h
 F: app/test/test_ticketlock.c
 
 Pseudo-random Number Generation
