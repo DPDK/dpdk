@@ -92,6 +92,7 @@ struct pmd_internal {
 	rte_atomic32_t started;
 	bool vlan_strip;
 	bool rx_sw_csum;
+	bool tx_sw_csum;
 };
 
 struct internal_list {
@@ -283,8 +284,10 @@ vhost_dev_csum_configure(struct rte_eth_dev *eth_dev)
 {
 	struct pmd_internal *internal = eth_dev->data->dev_private;
 	const struct rte_eth_rxmode *rxmode = &eth_dev->data->dev_conf.rxmode;
+	const struct rte_eth_txmode *txmode = &eth_dev->data->dev_conf.txmode;
 
 	internal->rx_sw_csum = false;
+	internal->tx_sw_csum = false;
 
 	/* SW checksum is not compatible with legacy mode */
 	if (!(internal->flags & RTE_VHOST_USER_NET_COMPLIANT_OL_FLAGS))
@@ -297,6 +300,56 @@ vhost_dev_csum_configure(struct rte_eth_dev *eth_dev)
 			internal->rx_sw_csum = true;
 		}
 	}
+
+	if (!(internal->features & (1ULL << VIRTIO_NET_F_GUEST_CSUM))) {
+		if (txmode->offloads &
+				(RTE_ETH_TX_OFFLOAD_UDP_CKSUM | RTE_ETH_TX_OFFLOAD_TCP_CKSUM)) {
+			VHOST_LOG(NOTICE, "Tx csum will be done in SW, may impact performance.");
+			internal->tx_sw_csum = true;
+		}
+	}
+}
+
+static void
+vhost_dev_tx_sw_csum(struct rte_mbuf *mbuf)
+{
+	uint32_t hdr_len;
+	uint16_t csum = 0, csum_offset;
+
+	switch (mbuf->ol_flags & RTE_MBUF_F_TX_L4_MASK) {
+	case RTE_MBUF_F_TX_L4_NO_CKSUM:
+		return;
+	case RTE_MBUF_F_TX_TCP_CKSUM:
+		csum_offset = offsetof(struct rte_tcp_hdr, cksum);
+		break;
+	case RTE_MBUF_F_TX_UDP_CKSUM:
+		csum_offset = offsetof(struct rte_udp_hdr, dgram_cksum);
+		break;
+	default:
+		/* Unsupported packet type. */
+		return;
+	}
+
+	hdr_len = mbuf->l2_len + mbuf->l3_len;
+	csum_offset += hdr_len;
+
+	/* Prepare the pseudo-header checksum */
+	if (rte_net_intel_cksum_prepare(mbuf) < 0)
+		return;
+
+	if (rte_raw_cksum_mbuf(mbuf, hdr_len, rte_pktmbuf_pkt_len(mbuf) - hdr_len, &csum) < 0)
+		return;
+
+	csum = ~csum;
+	/* See RFC768 */
+	if (unlikely((mbuf->packet_type & RTE_PTYPE_L4_UDP) && csum == 0))
+		csum = 0xffff;
+
+	if (rte_pktmbuf_data_len(mbuf) >= csum_offset + 1)
+		*rte_pktmbuf_mtod_offset(mbuf, uint16_t *, csum_offset) = csum;
+
+	mbuf->ol_flags &= ~RTE_MBUF_F_TX_L4_MASK;
+	mbuf->ol_flags |= RTE_MBUF_F_TX_L4_NO_CKSUM;
 }
 
 static void
@@ -422,6 +475,10 @@ eth_vhost_tx(void *q, struct rte_mbuf **bufs, uint16_t nb_bufs)
 				continue;
 			}
 		}
+
+		if (r->internal->tx_sw_csum)
+			vhost_dev_tx_sw_csum(m);
+
 
 		bufs[nb_send] = m;
 		++nb_send;
@@ -1267,6 +1324,11 @@ eth_dev_info(struct rte_eth_dev *dev,
 
 	dev_info->tx_offload_capa = RTE_ETH_TX_OFFLOAD_MULTI_SEGS |
 				RTE_ETH_TX_OFFLOAD_VLAN_INSERT;
+	if (internal->flags & RTE_VHOST_USER_NET_COMPLIANT_OL_FLAGS) {
+		dev_info->tx_offload_capa |= RTE_ETH_TX_OFFLOAD_UDP_CKSUM |
+			RTE_ETH_TX_OFFLOAD_TCP_CKSUM;
+	}
+
 	dev_info->rx_offload_capa = RTE_ETH_RX_OFFLOAD_VLAN_STRIP;
 	if (internal->flags & RTE_VHOST_USER_NET_COMPLIANT_OL_FLAGS) {
 		dev_info->rx_offload_capa |= RTE_ETH_RX_OFFLOAD_UDP_CKSUM |
