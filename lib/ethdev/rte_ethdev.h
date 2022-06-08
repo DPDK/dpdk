@@ -1931,6 +1931,13 @@ struct rte_eth_rxq_info {
 	uint8_t queue_state;        /**< one of RTE_ETH_QUEUE_STATE_*. */
 	uint16_t nb_desc;           /**< configured number of RXDs. */
 	uint16_t rx_buf_size;       /**< hardware receive buffer size. */
+	/**
+	 * Available Rx descriptors threshold defined as percentage
+	 * of Rx queue size. If number of available descriptors is lower,
+	 * the event RTE_ETH_EVENT_RX_AVAIL_THESH is generated.
+	 * Value 0 means that the threshold monitoring is disabled.
+	 */
+	uint8_t avail_thresh;
 } __rte_cache_min_aligned;
 
 /**
@@ -3652,6 +3659,65 @@ int rte_eth_dev_get_vlan_offload(uint16_t port_id);
  */
 int rte_eth_dev_set_vlan_pvid(uint16_t port_id, uint16_t pvid, int on);
 
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Set Rx queue available descriptors threshold.
+ *
+ * @param port_id
+ *  The port identifier of the Ethernet device.
+ * @param queue_id
+ *  The index of the receive queue.
+ * @param avail_thresh
+ *  The available descriptors threshold is percentage of Rx queue size
+ *  which describes the availability of Rx queue for hardware.
+ *  If the Rx queue availability is below it,
+ *  the event RTE_ETH_EVENT_RX_AVAIL_THRESH is triggered.
+ *  [1-99] to set a new available descriptors threshold.
+ *  0 to disable threshold monitoring.
+ *
+ * @return
+ *   - 0 if successful.
+ *   - (-ENODEV) if @p port_id is invalid.
+ *   - (-EINVAL) if bad parameter.
+ *   - (-ENOTSUP) if available Rx descriptors threshold is not supported.
+ *   - (-EIO) if device is removed.
+ */
+__rte_experimental
+int rte_eth_rx_avail_thresh_set(uint16_t port_id, uint16_t queue_id,
+			       uint8_t avail_thresh);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Find Rx queue with RTE_ETH_EVENT_RX_AVAIL_THRESH event pending.
+ *
+ * @param port_id
+ *  The port identifier of the Ethernet device.
+ * @param[inout] queue_id
+ *  On input starting Rx queue index to search from.
+ *  If the queue_id is bigger than maximum queue ID of the port,
+ *  search is started from 0. So that application can keep calling
+ *  this function to handle all pending events with a simple increment
+ *  of queue_id on the next call.
+ *  On output if return value is 1, Rx queue index with the event pending.
+ * @param[out] avail_thresh
+ *  Location for available descriptors threshold of the found Rx queue.
+ *
+ * @return
+ *   - 1 if an Rx queue with pending event is found.
+ *   - 0 if no Rx queue with pending event is found.
+ *   - (-ENODEV) if @p port_id is invalid.
+ *   - (-EINVAL) if bad parameter (e.g. @p queue_id is NULL).
+ *   - (-ENOTSUP) if operation is not supported.
+ *   - (-EIO) if device is removed.
+ */
+__rte_experimental
+int rte_eth_rx_avail_thresh_query(uint16_t port_id, uint16_t *queue_id,
+				 uint8_t *avail_thresh);
+
 typedef void (*buffer_tx_error_fn)(struct rte_mbuf **unsent, uint16_t count,
 		void *userdata);
 
@@ -3857,6 +3923,11 @@ enum rte_eth_event_type {
 	RTE_ETH_EVENT_DESTROY,  /**< port is released */
 	RTE_ETH_EVENT_IPSEC,    /**< IPsec offload related event */
 	RTE_ETH_EVENT_FLOW_AGED,/**< New aged-out flows is detected */
+	/**
+	 * Number of available Rx descriptors is smaller than the threshold.
+	 * @see rte_eth_rx_avail_thresh_set()
+	 */
+	RTE_ETH_EVENT_RX_AVAIL_THRESH,
 	RTE_ETH_EVENT_MAX       /**< max value of this enum */
 };
 

@@ -279,6 +279,8 @@ EXPERIMENTAL {
 	rte_flow_async_action_handle_update;
 
 	# added in 22.07
+	rte_eth_rx_avail_thresh_query;
+	rte_eth_rx_avail_thresh_set;
 	rte_mtr_color_in_protocol_get;
 	rte_mtr_color_in_protocol_priority_get;
 	rte_mtr_color_in_protocol_set;

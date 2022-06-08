@@ -1587,6 +1587,15 @@ Where:
 * ``pause_time`` (integer): Pause quanta filled in the PFC frame for which
   interval, remote Tx will be paused. Valid only if Tx pause is on.
 
+Set Rx queue available descriptors threshold
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Set available descriptors threshold for a specific Rx queue of port::
+
+  testpmd> set port (port_id) rxq (queue_id) avail_thresh (0..99)
+
+Use 0 value to disable the threshold and corresponding event.
+
 set stat_qmap
 ~~~~~~~~~~~~~
 

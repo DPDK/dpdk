@@ -420,6 +420,7 @@ static const char * const eth_event_desc[] = {
 	[RTE_ETH_EVENT_NEW] = "device probed",
 	[RTE_ETH_EVENT_DESTROY] = "device released",
 	[RTE_ETH_EVENT_FLOW_AGED] = "flow aged",
+	[RTE_ETH_EVENT_RX_AVAIL_THRESH] = "RxQ available descriptors threshold reached",
 	[RTE_ETH_EVENT_MAX] = NULL,
 };
 
@@ -3672,6 +3673,21 @@ eth_event_callback(portid_t port_id, enum rte_eth_event_type type, void *param,
 		ports[port_id].port_status = RTE_PORT_CLOSED;
 		printf("Port %u is closed\n", port_id);
 		break;
+	case RTE_ETH_EVENT_RX_AVAIL_THRESH: {
+		uint16_t rxq_id;
+		int ret;
+
+		/* avail_thresh query API rewinds rxq_id, no need to check max RxQ num */
+		for (rxq_id = 0; ; rxq_id++) {
+			ret = rte_eth_rx_avail_thresh_query(port_id, &rxq_id,
+							    NULL);
+			if (ret <= 0)
+				break;
+			printf("Received avail_thresh event, port: %u, rxq_id: %u\n",
+			       port_id, rxq_id);
+		}
+		break;
+	}
 	default:
 		break;
 	}

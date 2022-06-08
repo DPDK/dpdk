@@ -5989,6 +5989,15 @@ set_vf_rate_limit(portid_t port_id, uint16_t vf, uint16_t rate, uint64_t q_msk)
 	return diag;
 }
 
+int
+set_rxq_avail_thresh(portid_t port_id, uint16_t queue_id, uint8_t avail_thresh)
+{
+	if (port_id_is_invalid(port_id, ENABLED_WARN))
+		return -EINVAL;
+
+	return rte_eth_rx_avail_thresh_set(port_id, queue_id, avail_thresh);
+}
+
 /*
  * Functions to manage the set of filtered Multicast MAC addresses.
  *

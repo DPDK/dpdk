@@ -553,6 +553,9 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"    Set the queue priority flow control parameter on a"
 			" given Rx and Tx queues of a port.\n\n"
 
+			"set port (port_id) rxq (queue_id) avail_thresh (0..99)>\n "
+			"    set available descriptors threshold for Rx queue\n\n"
+
 			"set stat_qmap (tx|rx) (port_id) (queue_id) (qmapping)\n"
 			"    Set statistics mapping (qmapping 0..15) for RX/TX"
 			" queue on port.\n"
@@ -17331,6 +17334,74 @@ static cmdline_parse_inst_t cmd_set_fec_mode = {
 	},
 };
 
+/* *** set available descriptors threshold for an RxQ of a port *** */
+struct cmd_set_rxq_avail_thresh_result {
+	cmdline_fixed_string_t set;
+	cmdline_fixed_string_t port;
+	uint16_t port_num;
+	cmdline_fixed_string_t rxq;
+	uint16_t rxq_num;
+	cmdline_fixed_string_t avail_thresh;
+	uint8_t avail_thresh_num;
+};
+
+static void cmd_set_rxq_avail_thresh_parsed(void *parsed_result,
+		__rte_unused struct cmdline *cl,
+		__rte_unused void *data)
+{
+	struct cmd_set_rxq_avail_thresh_result *res = parsed_result;
+	int ret = 0;
+
+	if ((strcmp(res->set, "set") == 0) && (strcmp(res->port, "port") == 0)
+	    && (strcmp(res->rxq, "rxq") == 0)
+	    && (strcmp(res->avail_thresh, "avail_thresh") == 0))
+		ret = set_rxq_avail_thresh(res->port_num, res->rxq_num,
+				  res->avail_thresh_num);
+	if (ret < 0)
+		printf("rxq_avail_thresh_cmd error: (%s)\n", strerror(-ret));
+
+}
+
+static cmdline_parse_token_string_t cmd_set_rxq_avail_thresh_set =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_rxq_avail_thresh_result,
+				set, "set");
+static cmdline_parse_token_string_t cmd_set_rxq_avail_thresh_port =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_rxq_avail_thresh_result,
+				port, "port");
+static cmdline_parse_token_num_t cmd_set_rxq_avail_thresh_portnum =
+	TOKEN_NUM_INITIALIZER(struct cmd_set_rxq_avail_thresh_result,
+				port_num, RTE_UINT16);
+static cmdline_parse_token_string_t cmd_set_rxq_avail_thresh_rxq =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_rxq_avail_thresh_result,
+				rxq, "rxq");
+static cmdline_parse_token_num_t cmd_set_rxq_avail_thresh_rxqnum =
+	TOKEN_NUM_INITIALIZER(struct cmd_set_rxq_avail_thresh_result,
+				rxq_num, RTE_UINT16);
+static cmdline_parse_token_string_t cmd_set_rxq_avail_thresh_avail_thresh =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_rxq_avail_thresh_result,
+				avail_thresh, "avail_thresh");
+static cmdline_parse_token_num_t cmd_set_rxq_avail_thresh_avail_threshnum =
+	TOKEN_NUM_INITIALIZER(struct cmd_set_rxq_avail_thresh_result,
+				avail_thresh_num, RTE_UINT8);
+
+static cmdline_parse_inst_t cmd_set_rxq_avail_thresh = {
+	.f = cmd_set_rxq_avail_thresh_parsed,
+	.data = (void *)0,
+	.help_str =
+		"set port <port_id> rxq <queue_id> avail_thresh <0..99>: "
+		"Set available descriptors threshold for Rx queue",
+	.tokens = {
+		(void *)&cmd_set_rxq_avail_thresh_set,
+		(void *)&cmd_set_rxq_avail_thresh_port,
+		(void *)&cmd_set_rxq_avail_thresh_portnum,
+		(void *)&cmd_set_rxq_avail_thresh_rxq,
+		(void *)&cmd_set_rxq_avail_thresh_rxqnum,
+		(void *)&cmd_set_rxq_avail_thresh_avail_thresh,
+		(void *)&cmd_set_rxq_avail_thresh_avail_threshnum,
+		NULL,
+	},
+};
+
 /* show port supported ptypes */
 
 /* Common result structure for show port ptypes */
@@ -18110,6 +18181,7 @@ static cmdline_parse_ctx_t builtin_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_config_tx_dynf_specific,
 	(cmdline_parse_inst_t *)&cmd_show_fec_mode,
 	(cmdline_parse_inst_t *)&cmd_set_fec_mode,
+	(cmdline_parse_inst_t *)&cmd_set_rxq_avail_thresh,
 	(cmdline_parse_inst_t *)&cmd_show_capability,
 	(cmdline_parse_inst_t *)&cmd_set_flex_is_pattern,
 	(cmdline_parse_inst_t *)&cmd_set_flex_spec_pattern,

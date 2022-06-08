@@ -79,6 +79,12 @@ New Features
   and updated ``struct rte_mtr_params`` and ``struct rte_mtr_capabilities`` to
   support protocol based input color selection for meter.
 
+* **Added Rx queue available descriptors threshold and event.**
+
+  Added ethdev API and corresponding driver operations to set Rx queue
+  available descriptors threshold and query for queues with reached
+  threshold when a new event ``RTE_ETH_EVENT_RX_AVAIL_THRESH`` is received.
+
 * **Added telemetry for module EEPROM.**
 
   Added telemetry command to dump module EEPROM.

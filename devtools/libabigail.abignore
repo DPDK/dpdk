@@ -35,6 +35,18 @@
 ; Temporary exceptions till next major ABI version ;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+; Ignore ethdev event enum update
+; because new event cannot be received if not registered
+[suppress_type]
+        type_kind = enum
+        changed_enumerators = RTE_ETH_EVENT_MAX
+
+; Ignore fields inserted in cacheline boundary of rte_eth_rxq_info
+; because the struct size is unchanged
+[suppress_type]
+        name = rte_eth_rxq_info
+        has_data_member_inserted_between = {offset_of(rx_buf_size), end}
+
 ; Ignore fields inserted in place of reserved_opts of rte_security_ipsec_sa_options
 [suppress_type]
         name = rte_security_ipsec_sa_options

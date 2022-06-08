@@ -4432,6 +4432,50 @@ int rte_eth_set_queue_rate_limit(uint16_t port_id, uint16_t queue_idx,
 							queue_idx, tx_rate));
 }
 
+int rte_eth_rx_avail_thresh_set(uint16_t port_id, uint16_t queue_id,
+			       uint8_t avail_thresh)
+{
+	struct rte_eth_dev *dev;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
+	dev = &rte_eth_devices[port_id];
+
+	if (queue_id > dev->data->nb_rx_queues) {
+		RTE_ETHDEV_LOG(ERR,
+			"Set queue avail thresh: port %u: invalid queue ID=%u.\n",
+			port_id, queue_id);
+		return -EINVAL;
+	}
+
+	if (avail_thresh > 99) {
+		RTE_ETHDEV_LOG(ERR,
+			"Set queue avail thresh: port %u: threshold should be <= 99.\n",
+			port_id);
+		return -EINVAL;
+	}
+	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->rx_queue_avail_thresh_set, -ENOTSUP);
+	return eth_err(port_id, (*dev->dev_ops->rx_queue_avail_thresh_set)(dev,
+							     queue_id, avail_thresh));
+}
+
+int rte_eth_rx_avail_thresh_query(uint16_t port_id, uint16_t *queue_id,
+				 uint8_t *avail_thresh)
+{
+	struct rte_eth_dev *dev;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
+	dev = &rte_eth_devices[port_id];
+
+	if (queue_id == NULL)
+		return -EINVAL;
+	if (*queue_id >= dev->data->nb_rx_queues)
+		*queue_id = 0;
+
+	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->rx_queue_avail_thresh_query, -ENOTSUP);
+	return eth_err(port_id, (*dev->dev_ops->rx_queue_avail_thresh_query)(dev,
+							     queue_id, avail_thresh));
+}
+
 RTE_INIT(eth_dev_init_fp_ops)
 {
 	uint32_t i;
