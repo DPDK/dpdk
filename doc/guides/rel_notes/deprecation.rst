@@ -143,6 +143,19 @@ Deprecation Notices
   alternative is implemented.
   The legacy actions should be removed in DPDK 22.11.
 
+* bbdev: ``RTE_BBDEV_OP_TYPE_COUNT`` terminating the ``rte_bbdev_op_type``
+  enum will be deprecated and instead use fixed array size when required
+  to allow for future enum extension.
+  Will extend API to support new operation type ``RTE_BBDEV_OP_FFT`` as per
+  this `RFC <https://patches.dpdk.org/project/dpdk/list/?series=22111>`__.
+  New members will be added in ``rte_bbdev_driver_info`` to expose
+  PMD queue topology inspired by
+  this `RFC <https://patches.dpdk.org/project/dpdk/list/?series=22076>`__.
+  New member will be added in ``rte_bbdev_driver_info`` to expose
+  the device status as per
+  this `RFC <https://patches.dpdk.org/project/dpdk/list/?series=23367>`__.
+  This should be updated in DPDK 22.11.
+
 * cryptodev: Hide structures ``rte_cryptodev_sym_session`` and
   ``rte_cryptodev_asym_session`` to remove unnecessary indirection between
   session and the private data of session. An opaque pointer can be exposed
