@@ -8918,6 +8918,7 @@ static void cmd_quit_parsed(__rte_unused void *parsed_result,
 			    __rte_unused void *data)
 {
 	cmdline_quit(cl);
+	cl_quit = 1;
 }
 
 static cmdline_parse_token_string_t cmd_quit_quit =
