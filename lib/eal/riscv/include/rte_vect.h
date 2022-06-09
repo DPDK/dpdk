@@ -41,8 +41,8 @@ vect_load_128(void *p)
 static inline xmm_t
 vect_and(xmm_t data, xmm_t mask)
 {
-	rte_xmm_t ret = (rte_xmm_t)data;
-	rte_xmm_t m = (rte_xmm_t)mask;
+	rte_xmm_t ret = {.x = data };
+	rte_xmm_t m = {.x = mask };
 	ret.u64[0] &= m.u64[0];
 	ret.u64[1] &= m.u64[1];
 	return ret.x;
