@@ -62,7 +62,6 @@ volatile bool force_quit;
 
 #define MEMPOOL_CACHE_SIZE 256
 
-#define CDEV_QUEUE_DESC 2048
 #define CDEV_MAP_ENTRIES 16384
 #define CDEV_MP_CACHE_SZ 64
 #define CDEV_MP_CACHE_MULTIPLIER 1.5 /* from rte_mempool.c */
@@ -77,6 +76,11 @@ volatile bool force_quit;
 #define IPSEC_SECGW_TX_DESC_DEFAULT 1024
 static uint16_t nb_rxd = IPSEC_SECGW_RX_DESC_DEFAULT;
 static uint16_t nb_txd = IPSEC_SECGW_TX_DESC_DEFAULT;
+
+/*
+ * Configurable number of descriptors per queue pair
+ */
+static uint32_t qp_desc_nb = 2048;
 
 #define ETHADDR_TO_UINT64(addr) __BYTES_TO_UINT64( \
 		(addr)->addr_bytes[0], (addr)->addr_bytes[1], \
@@ -113,6 +117,7 @@ struct flow_info flow_info_tbl[RTE_MAX_ETHPORTS];
 #define CMD_LINE_OPT_VECTOR_TIMEOUT	"vector-tmo"
 #define CMD_LINE_OPT_VECTOR_POOL_SZ	"vector-pool-sz"
 #define CMD_LINE_OPT_PER_PORT_POOL	"per-port-pool"
+#define CMD_LINE_OPT_QP_DESC_NB		"desc-nb"
 
 #define CMD_LINE_ARG_EVENT	"event"
 #define CMD_LINE_ARG_POLL	"poll"
@@ -142,6 +147,7 @@ enum {
 	CMD_LINE_OPT_VECTOR_TIMEOUT_NUM,
 	CMD_LINE_OPT_VECTOR_POOL_SZ_NUM,
 	CMD_LINE_OPT_PER_PORT_POOL_NUM,
+	CMD_LINE_OPT_QP_DESC_NB_NUM,
 };
 
 static const struct option lgopts[] = {
@@ -160,6 +166,7 @@ static const struct option lgopts[] = {
 	{CMD_LINE_OPT_VECTOR_TIMEOUT, 1, 0, CMD_LINE_OPT_VECTOR_TIMEOUT_NUM},
 	{CMD_LINE_OPT_VECTOR_POOL_SZ, 1, 0, CMD_LINE_OPT_VECTOR_POOL_SZ_NUM},
 	{CMD_LINE_OPT_PER_PORT_POOL, 0, 0, CMD_LINE_OPT_PER_PORT_POOL_NUM},
+	{CMD_LINE_OPT_QP_DESC_NB, 1, 0, CMD_LINE_OPT_QP_DESC_NB_NUM},
 	{NULL, 0, 0, 0}
 };
 
@@ -886,6 +893,7 @@ print_usage(const char *prgname)
 		" [--event-vector]"
 		" [--vector-size SIZE]"
 		" [--vector-tmo TIMEOUT in ns]"
+		" [--" CMD_LINE_OPT_QP_DESC_NB " NUMBER_OF_DESC]"
 		"\n\n"
 		"  -p PORTMASK: Hexadecimal bitmask of ports to configure\n"
 		"  -P : Enable promiscuous mode\n"
@@ -948,6 +956,8 @@ print_usage(const char *prgname)
 		"  --" CMD_LINE_OPT_PER_PORT_POOL " Enable per port mbuf pool\n"
 		"  --" CMD_LINE_OPT_VECTOR_POOL_SZ " Vector pool size\n"
 		"                    (default value is based on mbuf count)\n"
+		"  --" CMD_LINE_OPT_QP_DESC_NB " DESC_NB"
+		": Number of descriptors per queue pair (default value: 2048)\n"
 		"\n",
 		prgname);
 }
@@ -1341,6 +1351,9 @@ parse_args(int32_t argc, char **argv, struct eh_conf *eh_conf)
 		case CMD_LINE_OPT_PER_PORT_POOL_NUM:
 			per_port_pool = 1;
 			break;
+		case CMD_LINE_OPT_QP_DESC_NB_NUM:
+			qp_desc_nb = parse_decimal(optarg);
+			break;
 		default:
 			print_usage(prgname);
 			return -1;
@@ -1658,7 +1671,7 @@ cryptodevs_init(uint16_t req_queue_num)
 			rte_panic("Failed to initialize cryptodev %u\n",
 					cdev_id);
 
-		qp_conf.nb_descriptors = CDEV_QUEUE_DESC;
+		qp_conf.nb_descriptors = qp_desc_nb;
 		qp_conf.mp_session =
 			socket_ctx[dev_conf.socket_id].session_pool;
 		qp_conf.mp_session_private =
@@ -2543,7 +2556,7 @@ calculate_nb_mbufs(uint16_t nb_ports, uint16_t nb_crypto_qp, uint32_t nb_rxq,
 			nb_ports * nb_lcores * MAX_PKT_BURST +
 			nb_ports * nb_txq * nb_txd +
 			nb_lcores * MEMPOOL_CACHE_SIZE +
-			nb_crypto_qp * CDEV_QUEUE_DESC +
+			nb_crypto_qp * qp_desc_nb +
 			nb_lcores * frag_tbl_sz *
 			FRAG_TBL_BUCKET_ENTRIES),
 		       8192U);

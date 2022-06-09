@@ -151,6 +151,7 @@ The application has a number of command line options::
                         --reassemble NUM
                         --mtu MTU
                         --frag-ttl FRAG_TTL_NS
+                        --desc-nb NUMBER_OF_DESC
 
 Where:
 
@@ -257,6 +258,9 @@ Where:
 *   ``--vector-pool-sz``: Number of buffers in vector pool.
     By default, vector pool size depeneds on packet pool size
     and size of each vector.
+
+*   ``--desc-nb NUMBER_OF_DESC``: Number of descriptors per queue pair.
+    Default value: 2048.
 
 The mapping of lcores to port/queues is similar to other l3fwd applications.
 
