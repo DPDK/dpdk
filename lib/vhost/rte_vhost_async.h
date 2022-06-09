@@ -184,6 +184,31 @@ uint16_t rte_vhost_clear_queue_thread_unsafe(int vid, uint16_t queue_id,
 		uint16_t vchan_id);
 
 /**
+ * This function checks async completion status and clear packets for
+ * a specific vhost device queue. Packets which are inflight will be
+ * returned in an array.
+ *
+ * @param vid
+ *  ID of vhost device to clear data
+ * @param queue_id
+ *  Queue id to clear data
+ * @param pkts
+ *  Blank array to get return packet pointer
+ * @param count
+ *  Size of the packet array
+ * @param dma_id
+ *  The identifier of the DMA device
+ * @param vchan_id
+ *  The identifier of virtual DMA channel
+ * @return
+ *  Number of packets returned
+ */
+__rte_experimental
+uint16_t rte_vhost_clear_queue(int vid, uint16_t queue_id,
+		struct rte_mbuf **pkts, uint16_t count, int16_t dma_id,
+		uint16_t vchan_id);
+
+/**
  * The DMA vChannels used in asynchronous data path must be configured
  * first. So this function needs to be called before enabling DMA
  * acceleration for vring. If this function fails, the given DMA vChannel

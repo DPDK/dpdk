@@ -109,6 +109,11 @@ New Features
   Added vhost async dequeue API which can leverage DMA devices to
   accelerate receiving packets from guest.
 
+* **Added thread-safe version of in-flight packet clear API in vhost library.**
+
+  Added an API which can clear the in-flight packets submitted to
+  the async channel in a thread-safe manner in the vhost async data path.
+
 * **Added vhost API to get the device type of a vDPA device.**
 
   Added an API which can get the device type of vDPA device.

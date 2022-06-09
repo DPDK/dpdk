@@ -26,6 +26,11 @@
 
 #define MAX_BATCH_LEN 256
 
+static __rte_always_inline uint16_t
+async_poll_dequeue_completed_split(struct virtio_net *dev, struct vhost_virtqueue *vq,
+		struct rte_mbuf **pkts, uint16_t count, int16_t dma_id,
+		uint16_t vchan_id, bool legacy_ol_flags);
+
 /* DMA device copy operation tracking array. */
 struct async_dma_info dma_copy_track[RTE_DMADEV_DEFAULT_MAX];
 
@@ -2165,9 +2170,15 @@ rte_vhost_clear_queue_thread_unsafe(int vid, uint16_t queue_id,
 		return 0;
 
 	VHOST_LOG_DATA(DEBUG, "(%s) %s\n", dev->ifname, __func__);
-	if (unlikely(!is_valid_virt_queue_idx(queue_id, 0, dev->nr_vring))) {
+	if (unlikely(queue_id >= dev->nr_vring)) {
 		VHOST_LOG_DATA(ERR, "(%s) %s: invalid virtqueue idx %d.\n",
 			dev->ifname, __func__, queue_id);
+		return 0;
+	}
+
+	if (unlikely(dma_id < 0 || dma_id >= RTE_DMADEV_DEFAULT_MAX)) {
+		VHOST_LOG_DATA(ERR, "(%s) %s: invalid dma id %d.\n",
+				dev->ifname, __func__, dma_id);
 		return 0;
 	}
 
@@ -2192,10 +2203,88 @@ rte_vhost_clear_queue_thread_unsafe(int vid, uint16_t queue_id,
 		return 0;
 	}
 
-	n_pkts_cpl = vhost_poll_enqueue_completed(dev, queue_id, pkts, count, dma_id, vchan_id);
+	if ((queue_id & 1) == 0)
+		n_pkts_cpl = vhost_poll_enqueue_completed(dev, queue_id,
+					pkts, count, dma_id, vchan_id);
+	else {
+		if (unlikely(vq_is_packed(dev)))
+			VHOST_LOG_DATA(ERR,
+					"(%s) %s: async dequeue does not support packed ring.\n",
+					dev->ifname, __func__);
+		else
+			n_pkts_cpl = async_poll_dequeue_completed_split(dev, vq, pkts, count,
+					dma_id, vchan_id, dev->flags & VIRTIO_DEV_LEGACY_OL_FLAGS);
+	}
 
 	vhost_queue_stats_update(dev, vq, pkts, n_pkts_cpl);
 	vq->stats.inflight_completed += n_pkts_cpl;
+
+	return n_pkts_cpl;
+}
+
+uint16_t
+rte_vhost_clear_queue(int vid, uint16_t queue_id, struct rte_mbuf **pkts,
+		uint16_t count, int16_t dma_id, uint16_t vchan_id)
+{
+	struct virtio_net *dev = get_device(vid);
+	struct vhost_virtqueue *vq;
+	uint16_t n_pkts_cpl = 0;
+
+	if (!dev)
+		return 0;
+
+	VHOST_LOG_DATA(DEBUG, "(%s) %s\n", dev->ifname, __func__);
+	if (unlikely(queue_id >= dev->nr_vring)) {
+		VHOST_LOG_DATA(ERR, "(%s) %s: invalid virtqueue idx %u.\n",
+			dev->ifname, __func__, queue_id);
+		return 0;
+	}
+
+	if (unlikely(dma_id < 0 || dma_id >= RTE_DMADEV_DEFAULT_MAX)) {
+		VHOST_LOG_DATA(ERR, "(%s) %s: invalid dma id %d.\n",
+				dev->ifname, __func__, dma_id);
+		return 0;
+	}
+
+	vq = dev->virtqueue[queue_id];
+
+	if (!rte_spinlock_trylock(&vq->access_lock)) {
+		VHOST_LOG_DATA(DEBUG, "(%s) %s: virtqueue %u is busy.\n",
+				dev->ifname, __func__, queue_id);
+		return 0;
+	}
+
+	if (unlikely(!vq->async)) {
+		VHOST_LOG_DATA(ERR, "(%s) %s: async not registered for queue id %u.\n",
+				dev->ifname, __func__, queue_id);
+		goto out_access_unlock;
+	}
+
+	if (unlikely(!dma_copy_track[dma_id].vchans ||
+				!dma_copy_track[dma_id].vchans[vchan_id].pkts_cmpl_flag_addr)) {
+		VHOST_LOG_DATA(ERR, "(%s) %s: invalid channel %d:%u.\n", dev->ifname, __func__,
+				dma_id, vchan_id);
+		goto out_access_unlock;
+	}
+
+	if ((queue_id & 1) == 0)
+		n_pkts_cpl = vhost_poll_enqueue_completed(dev, queue_id,
+				pkts, count, dma_id, vchan_id);
+	else {
+		if (unlikely(vq_is_packed(dev)))
+			VHOST_LOG_DATA(ERR,
+					"(%s) %s: async dequeue does not support packed ring.\n",
+					dev->ifname, __func__);
+		else
+			n_pkts_cpl = async_poll_dequeue_completed_split(dev, vq, pkts, count,
+					dma_id, vchan_id, dev->flags & VIRTIO_DEV_LEGACY_OL_FLAGS);
+	}
+
+	vhost_queue_stats_update(dev, vq, pkts, n_pkts_cpl);
+	vq->stats.inflight_completed += n_pkts_cpl;
+
+out_access_unlock:
+	rte_spinlock_unlock(&vq->access_lock);
 
 	return n_pkts_cpl;
 }

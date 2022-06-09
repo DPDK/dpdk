@@ -288,7 +288,13 @@ The following is an overview of some key Vhost API functions:
 
 * ``rte_vhost_clear_queue_thread_unsafe(vid, queue_id, **pkts, count, dma_id, vchan_id)``
 
-  Clear inflight packets which are submitted to DMA engine in vhost async data
+  Clear in-flight packets which are submitted to async channel in vhost
+  async data path without performing locking on virtqueue. Completed
+  packets are returned to applications through ``pkts``.
+
+* ``rte_vhost_clear_queue(vid, queue_id, **pkts, count, dma_id, vchan_id)``
+
+  Clear in-flight packets which are submitted to async channel in vhost async data
   path. Completed packets are returned to applications through ``pkts``.
 
 * ``rte_vhost_vring_stats_get_names(int vid, uint16_t queue_id, struct rte_vhost_stat_name *names, unsigned int size)``
