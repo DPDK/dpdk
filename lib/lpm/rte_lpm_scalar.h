@@ -17,16 +17,17 @@ static inline void
 rte_lpm_lookupx4(const struct rte_lpm *lpm, xmm_t ip, uint32_t hop[4],
 		uint32_t defv)
 {
+	rte_xmm_t xip = { .x = ip };
 	uint32_t nh;
 	int ret;
 
-	ret = rte_lpm_lookup(lpm, ((rte_xmm_t)ip).u32[0], &nh);
+	ret = rte_lpm_lookup(lpm, xip.u32[0], &nh);
 	hop[0] = (ret == 0) ? nh : defv;
-	ret = rte_lpm_lookup(lpm, ((rte_xmm_t)ip).u32[1], &nh);
+	ret = rte_lpm_lookup(lpm, xip.u32[1], &nh);
 	hop[1] = (ret == 0) ? nh : defv;
-	ret = rte_lpm_lookup(lpm, ((rte_xmm_t)ip).u32[2], &nh);
+	ret = rte_lpm_lookup(lpm, xip.u32[2], &nh);
 	hop[2] = (ret == 0) ? nh : defv;
-	ret = rte_lpm_lookup(lpm, ((rte_xmm_t)ip).u32[3], &nh);
+	ret = rte_lpm_lookup(lpm, xip.u32[3], &nh);
 	hop[3] = (ret == 0) ? nh : defv;
 }
 
