@@ -97,6 +97,11 @@ New Features
 
 * **Added support for power intrinsics with AMD processors.**
 
+* **Added support for allow/block list in vmbus bus driver.***
+
+  The ``vmbus`` bus driver now supports -a and -b EAL options for selecting
+  devices.
+
 * **Added mbuf recycling support.**
 
   Added ``rte_eth_recycle_rx_queue_info_get`` and ``rte_eth_recycle_mbufs``
