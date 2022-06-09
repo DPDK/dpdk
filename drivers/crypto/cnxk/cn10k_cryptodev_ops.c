@@ -350,10 +350,10 @@ cn10k_ca_meta_info_extract(struct rte_crypto_op *op,
 			uint8_t cdev_id;
 			uint16_t qp_id;
 
+			if (unlikely(op->private_data_offset == 0))
+				return -EINVAL;
 			ec_mdata = (union rte_event_crypto_metadata *)
 				((uint8_t *)op + op->private_data_offset);
-			if (!ec_mdata)
-				return -EINVAL;
 			rsp_info = &ec_mdata->response_info;
 			cdev_id = ec_mdata->request_info.cdev_id;
 			qp_id = ec_mdata->request_info.queue_pair_id;
