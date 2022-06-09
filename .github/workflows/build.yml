@@ -139,8 +139,7 @@ jobs:
         pkg-config-powerpc-linux-gnu
     - name: Install riscv64 cross compiling packages
       if: env.RISCV64 == 'true'
-      run: sudo apt install -y gcc-riscv64-linux-gnu libc6-dev-riscv64-cross
-        pkg-config-riscv64-linux-gnu
+      run: sudo apt install -y crossbuild-essential-riscv64
     - name: Install test tools packages
       if: env.AARCH64 != 'true' || env.PPC64LE != 'true' || env.RISCV64 != 'true' || env.RUN_TESTS == 'true'
       run: sudo apt install -y gdb
