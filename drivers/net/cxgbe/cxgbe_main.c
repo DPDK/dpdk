@@ -1108,9 +1108,10 @@ out_free:
 
 static int cxgbe_load_fw_config(struct adapter *adap)
 {
-	u32 finiver, finicsum, cfcsum, mtype, maddr, param, val;
 	struct fw_caps_config_cmd caps_cmd = { 0 };
+	u32 finiver, finicsum, cfcsum, param, val;
 	const char *config_name = NULL;
+	u32 mtype = 0, maddr = 0;
 	int ret;
 
 	ret = cxgbe_load_fw_config_from_filesystem(adap, &config_name,
