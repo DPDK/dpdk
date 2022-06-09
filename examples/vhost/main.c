@@ -1543,6 +1543,25 @@ vhost_clear_queue_thread_unsafe(struct vhost_dev *vdev, uint16_t queue_id)
 	}
 }
 
+static void
+vhost_clear_queue(struct vhost_dev *vdev, uint16_t queue_id)
+{
+	uint16_t n_pkt = 0;
+	int pkts_inflight;
+
+	int16_t dma_id = dma_bind[vid2socketid[vdev->vid]].dmas[queue_id].dev_id;
+	pkts_inflight = rte_vhost_async_get_inflight(vdev->vid, queue_id);
+
+	struct rte_mbuf *m_cpl[pkts_inflight];
+
+	while (pkts_inflight) {
+		n_pkt = rte_vhost_clear_queue(vdev->vid, queue_id, m_cpl,
+						pkts_inflight, dma_id, 0);
+		free_pkts(m_cpl, n_pkt);
+		pkts_inflight = rte_vhost_async_get_inflight(vdev->vid, queue_id);
+	}
+}
+
 /*
  * Remove a device from the specific data core linked list and from the
  * main linked list. Synchronization  occurs through the use of the
@@ -1600,13 +1619,13 @@ destroy_device(int vid)
 		vdev->vid);
 
 	if (dma_bind[vid].dmas[VIRTIO_RXQ].async_enabled) {
-		vhost_clear_queue_thread_unsafe(vdev, VIRTIO_RXQ);
+		vhost_clear_queue(vdev, VIRTIO_RXQ);
 		rte_vhost_async_channel_unregister(vid, VIRTIO_RXQ);
 		dma_bind[vid].dmas[VIRTIO_RXQ].async_enabled = false;
 	}
 
 	if (dma_bind[vid].dmas[VIRTIO_TXQ].async_enabled) {
-		vhost_clear_queue_thread_unsafe(vdev, VIRTIO_TXQ);
+		vhost_clear_queue(vdev, VIRTIO_TXQ);
 		rte_vhost_async_channel_unregister(vid, VIRTIO_TXQ);
 		dma_bind[vid].dmas[VIRTIO_TXQ].async_enabled = false;
 	}
@@ -1764,9 +1783,6 @@ vring_state_changed(int vid, uint16_t queue_id, int enable)
 	}
 	if (!vdev)
 		return -1;
-
-	if (queue_id != VIRTIO_RXQ)
-		return 0;
 
 	if (dma_bind[vid2socketid[vid]].dmas[queue_id].async_enabled) {
 		if (!enable)
