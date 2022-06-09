@@ -229,6 +229,7 @@ unsigned int xstats_display_num; /**< Size of extended statistics to show */
  * option. Set flag to exit stats period loop after received SIGINT/SIGTERM.
  */
 uint8_t f_quit;
+uint8_t cl_quit; /* Quit testpmd from cmdline. */
 
 /*
  * Max Rx frame size, set by '--max-pkt-len' parameter.
@@ -3202,11 +3203,39 @@ remove_invalid_ports(void)
 	nb_cfg_ports = nb_fwd_ports;
 }
 
+static void
+clear_bonding_slave_device(portid_t *slave_pids, uint16_t num_slaves)
+{
+	struct rte_port *port;
+	portid_t slave_pid;
+	uint16_t i;
+
+	for (i = 0; i < num_slaves; i++) {
+		slave_pid = slave_pids[i];
+		if (port_is_started(slave_pid) == 1) {
+			if (rte_eth_dev_stop(slave_pid) != 0)
+				fprintf(stderr, "rte_eth_dev_stop failed for port %u\n",
+					slave_pid);
+
+			port = &ports[slave_pid];
+			port->port_status = RTE_PORT_STOPPED;
+		}
+
+		clear_port_slave_flag(slave_pid);
+
+		/* Close slave device when testpmd quit or is killed. */
+		if (cl_quit == 1 || f_quit == 1)
+			rte_eth_dev_close(slave_pid);
+	}
+}
+
 void
 close_port(portid_t pid)
 {
 	portid_t pi;
 	struct rte_port *port;
+	portid_t slave_pids[RTE_MAX_ETHPORTS];
+	int num_slaves = 0;
 
 	if (port_id_is_invalid(pid, ENABLED_WARN))
 		return;
@@ -3242,7 +3271,19 @@ close_port(portid_t pid)
 			port_flow_flush(pi);
 			port_flex_item_flush(pi);
 			port_action_handle_flush(pi);
+#ifdef RTE_NET_BOND
+			if (port->bond_flag == 1)
+				num_slaves = rte_eth_bond_slaves_get(pi,
+						slave_pids, RTE_MAX_ETHPORTS);
+#endif
 			rte_eth_dev_close(pi);
+			/*
+			 * If this port is bonded device, all slaves under the
+			 * device need to be removed or closed.
+			 */
+			if (port->bond_flag == 1 && num_slaves > 0)
+				clear_bonding_slave_device(slave_pids,
+							num_slaves);
 		}
 
 		free_xstats_display_info(pi);
