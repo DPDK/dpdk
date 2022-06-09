@@ -249,11 +249,18 @@ PMD does not work with --no-huge EAL command line parameter
 -----------------------------------------------------------
 
 **Description**:
-   Currently, the DPDK does not store any information about memory allocated by ``malloc()` (for example, NUMA node,
-   physical address), hence PMDs do not work when the ``--no-huge`` command line parameter is supplied to EAL.
+   Currently, the DPDK does not store any information about memory allocated by ``malloc()``
+   (for example, NUMA node, physical address),
+   hence PMDs do not work when the ``--no-huge`` command line parameter is supplied to EAL.
+   This happens when using non-IOMMU based UIO drivers (i.e. ``igb_uio`` or ``uio_pci_generic``)
+   or when IOVA mode is explicitly set to use physical addresses
+   (via the ``--iova-mode=pa`` EAL parameter).
 
 **Implication**:
    Sending and receiving data with PMD will not work.
+   Unit tests checking ``--no-huge`` operation will fail if there is a device bound to the PMD
+   (``eal_flags_n_opt_autotest``, ``eal_flags_no_huge_autotest``,
+   ``eal_flags_vdev_opt_autotest``, ``eal_flags_misc_autotest``).
 
 **Resolution/Workaround**:
    Use huge page memory or use VFIO to map devices.
