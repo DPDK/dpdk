@@ -837,8 +837,10 @@ static int find_dfls_by_vsec(struct dfl_fpga_enum_info *info)
 		vndr_hdr = 0;
 		ret = pread(fd, &vndr_hdr, sizeof(vndr_hdr),
 			voff + PCI_VNDR_HEADER);
-		if (ret < 0)
-			return -EIO;
+		if (ret < 0) {
+			ret = -EIO;
+			goto free_handle;
+		}
 		if (PCI_VNDR_HEADER_ID(vndr_hdr) == PCI_VSEC_ID_INTEL_DFLS &&
 			pci_data->vendor_id == PCI_VENDOR_ID_INTEL)
 			break;
@@ -846,19 +848,23 @@ static int find_dfls_by_vsec(struct dfl_fpga_enum_info *info)
 
 	if (!voff) {
 		dev_debug(hw, "%s no DFL VSEC found\n", __func__);
-		return -ENODEV;
+		ret = -ENODEV;
+		goto free_handle;
 	}
 
 	dfl_cnt = 0;
 	ret = pread(fd, &dfl_cnt, sizeof(dfl_cnt), voff + PCI_VNDR_DFLS_CNT);
-	if (ret < 0)
-		return -EIO;
+	if (ret < 0) {
+		ret = -EIO;
+		goto free_handle;
+	}
 
 	dfl_res_off = voff + PCI_VNDR_DFLS_RES;
 	if (dfl_res_off + (dfl_cnt * sizeof(u32)) > PCI_CFG_SPACE_EXP_SIZE) {
 		dev_err(hw, "%s DFL VSEC too big for PCIe config space\n",
 			__func__);
-		return -EINVAL;
+		ret = -EINVAL;
+		goto free_handle;
 	}
 
 	for (i = 0; i < dfl_cnt; i++, dfl_res_off += sizeof(u32)) {
@@ -868,7 +874,8 @@ static int find_dfls_by_vsec(struct dfl_fpga_enum_info *info)
 		if (bir >= PCI_MAX_RESOURCE) {
 			dev_err(hw, "%s bad bir number %d\n",
 				__func__, bir);
-			return -EINVAL;
+			ret = -EINVAL;
+			goto free_handle;
 		}
 
 		len = pci_data->region[bir].len;
@@ -876,7 +883,8 @@ static int find_dfls_by_vsec(struct dfl_fpga_enum_info *info)
 		if (offset >= len) {
 			dev_err(hw, "%s bad offset %u >= %"PRIu64"\n",
 				__func__, offset, len);
-			return -EINVAL;
+			ret = -EINVAL;
+			goto free_handle;
 		}
 
 		dev_debug(hw, "%s BAR %d offset 0x%x\n", __func__, bir, offset);
@@ -886,7 +894,9 @@ static int find_dfls_by_vsec(struct dfl_fpga_enum_info *info)
 		dfl_fpga_enum_info_add_dfl(info, start, len, addr);
 	}
 
-	return 0;
+free_handle:
+	close(fd);
+	return ret;
 }
 
 /* default method of finding dfls starting at offset 0 of bar 0 */
