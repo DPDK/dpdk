@@ -186,22 +186,10 @@ main(int argc, char **argv)
 #ifdef RTE_LIB_CMDLINE
 	char *dpdk_test = getenv("DPDK_TEST");
 
-	if (dpdk_test && strlen(dpdk_test) == 0)
-		dpdk_test = NULL;
-
-	if (dpdk_test && !command_valid(dpdk_test)) {
-		RTE_LOG(WARNING, APP, "Invalid DPDK_TEST value '%s'\n", dpdk_test);
-		dpdk_test = NULL;
-	}
-
-	if (dpdk_test)
+	if (dpdk_test && strlen(dpdk_test) > 0)
 		tests[test_count++] = dpdk_test;
-	for (i = 1; i < argc; i++) {
-		if (!command_valid(argv[i]))
-			RTE_LOG(WARNING, APP, "Invalid test requested: '%s'\n", argv[i]);
-		else
-			tests[test_count++] = argv[i];
-	}
+	for (i = 1; i < argc; i++)
+		tests[test_count++] = argv[i];
 
 	if (test_count > 0) {
 		char buf[1024];
@@ -214,9 +202,11 @@ main(int argc, char **argv)
 
 		for (i = 0; i < test_count; i++) {
 			snprintf(buf, sizeof(buf), "%s\n", tests[i]);
-			if (cmdline_in(cl, buf, strlen(buf)) < 0) {
+			if (cmdline_parse_check(cl, buf) < 0) {
+				printf("Error: invalid test command: '%s'\n", tests[i]);
+				ret = -1;
+			} else if (cmdline_in(cl, buf, strlen(buf)) < 0) {
 				printf("error on cmdline input\n");
-
 				ret = -1;
 			} else
 				ret = last_test_result;
