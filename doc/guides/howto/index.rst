@@ -15,7 +15,7 @@ HowTo Guides
     pvp_reference_benchmark
     vfd
     virtio_user_for_container_networking
-    virtio_user_as_exceptional_path
+    virtio_user_as_exception_path
     packet_capture_framework
     telemetry
     debug_troubleshoot
