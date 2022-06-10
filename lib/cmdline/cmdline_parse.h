@@ -7,6 +7,8 @@
 #ifndef _CMDLINE_PARSE_H_
 #define _CMDLINE_PARSE_H_
 
+#include <rte_compat.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -149,10 +151,24 @@ typedef cmdline_parse_inst_t *cmdline_parse_ctx_t;
  * argument buf must ends with "\n\0". The function returns
  * CMDLINE_PARSE_AMBIGUOUS, CMDLINE_PARSE_NOMATCH or
  * CMDLINE_PARSE_BAD_ARGS on error. Else it calls the associated
- * function (defined in the context) and returns 0
- * (CMDLINE_PARSE_SUCCESS).
+ * function (defined in the context) and returns the parsed line length (>= 0).
  */
 int cmdline_parse(struct cmdline *cl, const char *buf);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice
+ *
+ * Try to parse a buffer according to the specified context, but do not
+ * perform any function calls if parse is successful.
+ *
+ * The argument buf must ends with "\n\0".
+ * The function returns CMDLINE_PARSE_AMBIGUOUS, CMDLINE_PARSE_NOMATCH or
+ * CMDLINE_PARSE_BAD_ARGS on error and returns the parsed line length (>=0)
+ * on successful parse.
+ */
+__rte_experimental
+int cmdline_parse_check(struct cmdline *cl, const char *buf);
 
 /**
  * complete() must be called with *state==0 (try to complete) or

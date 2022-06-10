@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <errno.h>
 #include <string.h>
+#include <stdbool.h>
 
 #include <rte_string_fns.h>
 
@@ -182,8 +183,8 @@ match_inst(cmdline_parse_inst_t *inst, const char *buf,
 }
 
 
-int
-cmdline_parse(struct cmdline *cl, const char * buf)
+static inline int
+__cmdline_parse(struct cmdline *cl, const char *buf, bool call_fn)
 {
 	unsigned int inst_num=0;
 	cmdline_parse_inst_t *inst;
@@ -282,18 +283,29 @@ cmdline_parse(struct cmdline *cl, const char * buf)
 		inst = ctx[inst_num];
 	}
 
-	/* call func */
-	if (f) {
-		f(result.buf, cl, data);
-	}
-
 	/* no match */
-	else {
+	if (f == NULL) {
 		debug_printf("No match err=%d\n", err);
 		return err;
 	}
 
+	/* call func if requested */
+	if (call_fn)
+		f(result.buf, cl, data);
+
 	return linelen;
+}
+
+int
+cmdline_parse(struct cmdline *cl, const char *buf)
+{
+	return __cmdline_parse(cl, buf, true);
+}
+
+int
+cmdline_parse_check(struct cmdline *cl, const char *buf)
+{
+	return __cmdline_parse(cl, buf, false);
 }
 
 int

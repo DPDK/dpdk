@@ -81,5 +81,8 @@ EXPERIMENTAL {
 	rdline_get_history_buffer_size;
 	rdline_get_opaque;
 
+	# added in 22.07
+	cmdline_parse_check;
+
 	local: *;
 };
