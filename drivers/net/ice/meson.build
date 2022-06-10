@@ -6,6 +6,7 @@ objs = [base_objs]
 
 sources = files(
         'ice_acl_filter.c',
+        'ice_ddp_package.c',
         'ice_ethdev.c',
         'ice_fdir_filter.c',
         'ice_generic_flow.c',
@@ -14,6 +15,8 @@ sources = files(
         'ice_switch_filter.c',
         'ice_tm.c',
 )
+
+testpmd_sources = files('ice_testpmd.c')
 
 deps += ['hash', 'net', 'common_iavf']
 includes += include_directories('base', '../../common/iavf')

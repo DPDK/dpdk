@@ -5931,3 +5931,8 @@ RTE_LOG_REGISTER_SUFFIX(ice_logtype_rx, rx, DEBUG);
 #ifdef RTE_ETHDEV_DEBUG_TX
 RTE_LOG_REGISTER_SUFFIX(ice_logtype_tx, tx, DEBUG);
 #endif
+
+bool is_ice_supported(struct rte_eth_dev *dev)
+{
+	return !strcmp(dev->device->driver->name, rte_ice_pmd.driver.name);
+}

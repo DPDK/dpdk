@@ -237,6 +237,9 @@ rte_net_ice_dump_proto_xtr_metadata(struct rte_mbuf *m)
 		       data.ip_ofs);
 }
 
+__rte_experimental
+int rte_pmd_ice_dump_package(uint16_t port, uint8_t **buff, uint32_t *size);
+
 #ifdef __cplusplus
 }
 #endif
