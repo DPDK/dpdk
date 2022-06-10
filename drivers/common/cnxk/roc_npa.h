@@ -264,7 +264,8 @@ roc_npa_batch_alloc_wait(uint64_t *cache_line)
 }
 
 static inline unsigned int
-roc_npa_aura_batch_alloc_count(uint64_t *aligned_buf, unsigned int num)
+roc_npa_aura_batch_alloc_count(uint64_t *aligned_buf, unsigned int num,
+			       unsigned int do_wait)
 {
 	unsigned int count, i;
 
@@ -278,7 +279,9 @@ roc_npa_aura_batch_alloc_count(uint64_t *aligned_buf, unsigned int num)
 
 		status = (struct npa_batch_alloc_status_s *)&aligned_buf[i];
 
-		roc_npa_batch_alloc_wait(&aligned_buf[i]);
+		if (do_wait)
+			roc_npa_batch_alloc_wait(&aligned_buf[i]);
+
 		count += status->count;
 	}
 

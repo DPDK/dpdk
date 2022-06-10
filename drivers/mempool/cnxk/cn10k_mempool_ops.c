@@ -177,8 +177,8 @@ cn10k_mempool_get_count(const struct rte_mempool *mp)
 		struct batch_op_mem *mem = &op_data->mem[i];
 
 		if (mem->status == BATCH_ALLOC_OP_ISSUED)
-			count += roc_npa_aura_batch_alloc_count(mem->objs,
-								BATCH_ALLOC_SZ);
+			count += roc_npa_aura_batch_alloc_count(
+				mem->objs, BATCH_ALLOC_SZ, 1);
 
 		if (mem->status == BATCH_ALLOC_OP_DONE)
 			count += mem->sz;
