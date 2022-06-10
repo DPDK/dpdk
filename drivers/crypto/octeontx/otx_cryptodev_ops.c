@@ -675,6 +675,7 @@ submit_request_to_sso(struct ssows *ws, uintptr_t req,
 	uint64_t add_work;
 
 	add_work = rsp_info->flow_id | (RTE_EVENT_TYPE_CRYPTODEV << 28) |
+		   (rsp_info->sub_event_type << 20) |
 		   ((uint64_t)(rsp_info->sched_type) << 32);
 
 	if (!rsp_info->sched_type)
