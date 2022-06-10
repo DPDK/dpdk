@@ -37,7 +37,11 @@ roc_plt_init(void)
 				plt_err("Failed to reserve mem for roc_model");
 				return -ENOMEM;
 			}
-			roc_model_init(mz->addr);
+			if (roc_model_init(mz->addr)) {
+				plt_err("Failed to init roc_model");
+				rte_memzone_free(mz);
+				return -EINVAL;
+			}
 		}
 	} else {
 		if (mz == NULL) {
