@@ -156,3 +156,59 @@ For example:
      /path/to/dpdk-testpmd --vdev=virtio_user0,path=/dev/vhost-net,queues=2,queue_size=1024 -- \
          -i --tx-offloads=0x002c --enable-lro --txq=2 --rxq=2 --txd=1024 --rxd=1024
 
+
+Creating Virtio-User Ports within an Application
+------------------------------------------------
+
+To use virtio-user ports within an application,
+it is not necessary to explicitly initialize those ports using EAL arguments at startup.
+Instead, one can use the generic EAL API
+`rte_eal_hotplug_add <https://doc.dpdk.org/api/rte__dev_8h.html#ad32e8eebf1f81ef9f290cb296b0c90bb>`_
+function to create a new instance at startup.
+For example, to create a basic virtio-user port, the following code could be used:
+
+.. code-block:: C
+
+   rte_eal_hotplug_add("vdev", "virtio_user0", "path=/dev/vhost-net");
+
+A fuller code example is shown below, where a virtio-user port, and hence kernel netdev,
+is created for each NIC port discovered by DPDK.
+Each virtio-user port is given the MAC address of its matching physical port
+(assuming app was run without vdev args on command line, so all ports auto-discovered are HW ones).
+These new virtio-user netdevs will appear in the kernel port listings
+as ``virtio_user0``, ``virtio_user1``, etc.,
+based on the names passed in as ``iface=`` via the ``portargs`` parameter.
+
+.. code-block:: C
+
+   nb_ports = rte_eth_dev_count_avail();
+
+   /* Create a vhost_user port for each physical port */
+   unsigned port_count = 0;
+   RTE_ETH_FOREACH_DEV(portid) {
+       char portname[32];
+       char portargs[256];
+       struct rte_ether_addr addr = {0};
+
+       /* once we have created a virtio port for each physical port, stop creating more */
+       if (++port_count > nb_ports)
+           break;
+
+       /* get MAC address of physical port to use as MAC of virtio_user port */
+       rte_eth_macaddr_get(portid, &addr);
+
+       /* set the name and arguments */
+       snprintf(portname, sizeof(portname), "virtio_user%u", portid);
+       snprintf(portargs, sizeof(portargs),
+               "path=/dev/vhost-net,queues=1,queue_size=%u,iface=%s,mac=" RTE_ETHER_ADDR_PRT_FMT,
+               RX_RING_SIZE, portname, RTE_ETHER_ADDR_BYTES(&addr));
+
+       /* add the vdev for virtio_user */
+       if (rte_eal_hotplug_add("vdev", portname, portargs) < 0)
+           rte_exit(EXIT_FAILURE, "Cannot create paired port for port %u\n", portid);
+
+   }
+
+Once these virtio-user ports have been created in the loop,
+all ports, both physical and virtual,
+may be initialized and used as normal in the application.
