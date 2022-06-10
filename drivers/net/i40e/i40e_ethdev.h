@@ -1188,6 +1188,9 @@ struct i40e_pf {
 	/* Switch Domain Id */
 	uint16_t switch_domain_id;
 
+	/* When firmware > 8.3, the enable flag for outer VLAN processing */
+	bool fw8_3gt;
+
 	struct i40e_vf_msg_cfg vf_msg_cfg;
 	uint64_t prev_rx_bytes;
 	uint64_t prev_tx_bytes;
