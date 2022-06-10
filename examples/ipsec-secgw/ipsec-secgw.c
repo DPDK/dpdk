@@ -1808,7 +1808,7 @@ parse_ptype(struct rte_mbuf *m)
 		break;
 	}
 exit:
-	m->packet_type = packet_type;
+	m->packet_type |= packet_type;
 }
 
 static uint16_t
