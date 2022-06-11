@@ -777,6 +777,14 @@ hns3vf_get_push_lsc_cap(struct hns3_hw *hw)
 
 	while (remain_ms > 0) {
 		rte_delay_ms(HNS3_POLL_RESPONE_MS);
+		/*
+		 * The probe process may perform in interrupt thread context.
+		 * For example, users attach a device in the secondary process.
+		 * At the moment, the handling mailbox task will be blocked. So
+		 * driver has to actively handle the HNS3_MBX_LINK_STAT_CHANGE
+		 * mailbox from PF driver to get this capability.
+		 */
+		hns3_dev_handle_mbx_msg(hw);
 		if (__atomic_load_n(&vf->pf_push_lsc_cap, __ATOMIC_ACQUIRE) !=
 			HNS3_PF_PUSH_LSC_CAP_UNKNOWN)
 			break;
