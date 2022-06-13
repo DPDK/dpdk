@@ -1303,6 +1303,14 @@ rte_eal_vfio_get_vf_token(rte_uuid_t vf_token)
 	rte_uuid_copy(vf_token, cfg->vfio_vf_token);
 }
 
+void
+rte_eal_vfio_set_vf_token(rte_uuid_t vf_token)
+{
+	struct internal_config *cfg = eal_get_internal_configuration();
+
+	rte_uuid_copy(cfg->vfio_vf_token, vf_token);
+}
+
 int
 rte_eal_check_module(const char *module_name)
 {

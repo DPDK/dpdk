@@ -420,6 +420,9 @@ EXPERIMENTAL {
 	rte_intr_instance_free;
 	rte_intr_type_get;
 	rte_intr_type_set;
+
+	# added in 22.06
+	rte_eal_vfio_set_vf_token; # WINDOWS_NO_EXPORT
 };
 
 INTERNAL {

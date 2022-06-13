@@ -425,6 +425,19 @@ __rte_experimental
 void rte_eal_vfio_get_vf_token(rte_uuid_t vf_token);
 
 /**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice
+ *
+ * Copy VF token into the user-configured vfio VF token.
+ *
+ * @param vf_token
+ *   Set VF token into the user-configured vfio VF token configured,
+ *   zero uuid by default.
+ */
+__rte_experimental
+void rte_eal_vfio_set_vf_token(rte_uuid_t vf_token);
+
+/**
  * A wrap API for syscall gettid.
  *
  * @return
