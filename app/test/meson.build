@@ -250,8 +250,6 @@ fast_tests = [
 # Tests known to have issues or which don't belong in other tests lists.
 extra_test_names = [
         'alarm_autotest', # ee00af60170b ("test: remove strict timing requirements some tests")
-        'cycles_autotest', # ee00af60170b ("test: remove strict timing requirements some tests")
-        'delay_us_sleep_autotest', # ee00af60170b ("test: remove strict timing requirements some tests")
         'red_autotest', # https://bugs.dpdk.org/show_bug.cgi?id=826
 ]
 
