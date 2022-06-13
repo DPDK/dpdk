@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2016-2020 Intel Corporation
+ * Copyright(c) 2016-2022 Intel Corporation
  */
 
 #ifndef _DLB2_PRIV_H_
@@ -377,6 +377,7 @@ struct dlb2_port {
 	struct dlb2_eventdev_port *ev_port; /* back ptr */
 	bool use_scalar; /* force usage of scalar code */
 	uint16_t hw_credit_quanta;
+	bool use_avx512;
 };
 
 /* Per-process per-port mmio and memory pointers */
@@ -685,6 +686,13 @@ int dlb2_parse_params(const char *params,
 		      const char *name,
 		      struct dlb2_devargs *dlb2_args,
 		      uint8_t version);
+
+void dlb2_event_build_hcws(struct dlb2_port *qm_port,
+			   const struct rte_event ev[],
+			   int num,
+			   uint8_t *sched_type,
+			   uint8_t *queue_id);
+
 
 /* Extern globals */
 extern struct process_local_port_data dlb2_port[][DLB2_NUM_PORT_TYPES];
