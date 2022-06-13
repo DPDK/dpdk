@@ -16,6 +16,7 @@
 
 #define QAT_DEV_NAME_MAX_LEN	64
 
+#define QAT_IPSEC_MB_LIB "qat_ipsec_mb_lib"
 #define SYM_ENQ_THRESHOLD_NAME "qat_sym_enq_threshold"
 #define ASYM_ENQ_THRESHOLD_NAME "qat_asym_enq_threshold"
 #define COMP_ENQ_THRESHOLD_NAME "qat_comp_enq_threshold"
