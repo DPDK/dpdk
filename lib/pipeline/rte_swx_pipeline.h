@@ -163,6 +163,16 @@ rte_swx_pipeline_port_out_config(struct rte_swx_pipeline *p,
  * Packet mirroring
  */
 
+/** Default number of packet mirroring slots. */
+#ifndef RTE_SWX_PACKET_MIRRORING_SLOTS_DEFAULT
+#define RTE_SWX_PACKET_MIRRORING_SLOTS_DEFAULT 4
+#endif
+
+/** Default maximum number of packet mirroring sessions. */
+#ifndef RTE_SWX_PACKET_MIRRORING_SESSIONS_DEFAULT
+#define RTE_SWX_PACKET_MIRRORING_SESSIONS_DEFAULT 64
+#endif
+
 /** Packet mirroring parameters. */
 struct rte_swx_pipeline_mirroring_params {
 	/** Number of packet mirroring slots. */

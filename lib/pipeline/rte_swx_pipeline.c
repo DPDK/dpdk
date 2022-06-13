@@ -612,9 +612,6 @@ mirroring_build(struct rte_swx_pipeline *p)
 {
 	uint32_t i;
 
-	if (!p->n_mirroring_slots || !p->n_mirroring_sessions)
-		return 0;
-
 	for (i = 0; i < RTE_SWX_PIPELINE_THREADS_MAX; i++) {
 		struct thread *t = &p->threads[i];
 
@@ -9772,6 +9769,8 @@ rte_swx_pipeline_config(struct rte_swx_pipeline **p, int numa_node)
 	TAILQ_INIT(&pipeline->metarrays);
 
 	pipeline->n_structs = 1; /* Struct 0 is reserved for action_data. */
+	pipeline->n_mirroring_slots = RTE_SWX_PACKET_MIRRORING_SLOTS_DEFAULT;
+	pipeline->n_mirroring_sessions = RTE_SWX_PACKET_MIRRORING_SESSIONS_DEFAULT;
 	pipeline->numa_node = numa_node;
 
 	status = port_in_types_register(pipeline);
