@@ -34,6 +34,29 @@ static const struct cnxk_nix_xstats_name nix_rx_xstats[] = {
 	{"rx_drp_l3mcast", NIX_STAT_LF_RX_RX_DRP_L3MCAST},
 };
 
+static const struct cnxk_nix_xstats_name inl_nix_rx_xstats[] = {
+	{"inl_rx_octs", NIX_STAT_LF_RX_RX_OCTS},
+	{"inl_rx_ucast", NIX_STAT_LF_RX_RX_UCAST},
+	{"inl_rx_bcast", NIX_STAT_LF_RX_RX_BCAST},
+	{"inl_rx_mcast", NIX_STAT_LF_RX_RX_MCAST},
+	{"inl_rx_drop", NIX_STAT_LF_RX_RX_DROP},
+	{"inl_rx_drop_octs", NIX_STAT_LF_RX_RX_DROP_OCTS},
+	{"inl_rx_fcs", NIX_STAT_LF_RX_RX_FCS},
+	{"inl_rx_err", NIX_STAT_LF_RX_RX_ERR},
+	{"inl_rx_drp_bcast", NIX_STAT_LF_RX_RX_DRP_BCAST},
+	{"inl_rx_drp_mcast", NIX_STAT_LF_RX_RX_DRP_MCAST},
+	{"inl_rx_drp_l3bcast", NIX_STAT_LF_RX_RX_DRP_L3BCAST},
+	{"inl_rx_drp_l3mcast", NIX_STAT_LF_RX_RX_DRP_L3MCAST},
+};
+
+static const struct cnxk_nix_xstats_name inl_nix_rq_xstats[] = {
+	{"inl_rq_op_pkts", NIX_LF_RQ_OP_PKTS},
+	{"inl_rq_op_octs", NIX_LF_RQ_OP_OCTS},
+	{"inl_rq_op_drop_pkts", NIX_LF_RQ_OP_DROP_PKTS},
+	{"inl_rq_op_drop_octs", NIX_LF_RQ_OP_DROP_OCTS},
+	{"inl_rq_op_re_pkts", NIX_LF_RQ_OP_RE_PKTS},
+};
+
 static const struct cnxk_nix_xstats_name nix_cn10k_rx_xstats[] = {
 	{"rx_gc_octs_pass", NIX_STAT_LF_RX_RX_GC_OCTS_PASSED},
 	{"rx_gc_pkts_pass", NIX_STAT_LF_RX_RX_GC_PKTS_PASSED},
@@ -191,16 +214,20 @@ static const struct cnxk_nix_xstats_name nix_tx_xstats_cgx[] = {
 #define CNXK_NIX_NUM_RX_XSTATS_RPM PLT_DIM(nix_rx_xstats_rpm)
 #define CNXK_NIX_NUM_TX_XSTATS_RPM PLT_DIM(nix_tx_xstats_rpm)
 #define CNXK_NIX_NUM_CN10K_RX_XSTATS PLT_DIM(nix_cn10k_rx_xstats)
+#define CNXK_INL_NIX_NUM_RX_XSTATS PLT_DIM(inl_nix_rx_xstats)
+#define CNXK_INL_NIX_RQ_XSTATS     PLT_DIM(inl_nix_rq_xstats)
 
 #define CNXK_NIX_NUM_XSTATS_REG                                                \
 	(CNXK_NIX_NUM_RX_XSTATS + CNXK_NIX_NUM_TX_XSTATS +                     \
+	 CNXK_INL_NIX_NUM_RX_XSTATS + CNXK_INL_NIX_RQ_XSTATS +                 \
 	 CNXK_NIX_NUM_QUEUE_XSTATS)
 #define CNXK_NIX_NUM_XSTATS_CGX                                                \
 	(CNXK_NIX_NUM_XSTATS_REG + CNXK_NIX_NUM_RX_XSTATS_CGX +                \
 	 CNXK_NIX_NUM_TX_XSTATS_CGX)
 #define CNXK_NIX_NUM_XSTATS_RPM                                                \
 	(CNXK_NIX_NUM_XSTATS_REG + CNXK_NIX_NUM_RX_XSTATS_RPM +                \
-	 CNXK_NIX_NUM_TX_XSTATS_RPM + CNXK_NIX_NUM_CN10K_RX_XSTATS)
+	 CNXK_NIX_NUM_TX_XSTATS_RPM + CNXK_NIX_NUM_CN10K_RX_XSTATS +           \
+	 CNXK_INL_NIX_NUM_RX_XSTATS + CNXK_INL_NIX_RQ_XSTATS)
 
 static inline uint64_t
 roc_nix_num_rx_xstats(void)
