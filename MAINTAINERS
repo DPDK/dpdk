@@ -1700,7 +1700,6 @@ F: app/test/sample_packet_forward.c
 F: app/test/sample_packet_forward.h
 
 Networking drivers testing tool
-M: Xiaoyun Li <xiaoyun.li@intel.com>
 M: Aman Singh <aman.deep.singh@intel.com>
 M: Yuying Zhang <yuying.zhang@intel.com>
 T: git://dpdk.org/next/dpdk-next-net
