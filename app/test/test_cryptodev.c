@@ -10056,6 +10056,9 @@ test_ipsec_pkt_replay(const void *test_data, const uint64_t esn[],
 	struct ipsec_test_flags flags;
 	uint32_t i = 0, ret = 0;
 
+	if (nb_pkts == 0)
+		return TEST_FAILED;
+
 	memset(&flags, 0, sizeof(flags));
 	flags.antireplay = true;
 
