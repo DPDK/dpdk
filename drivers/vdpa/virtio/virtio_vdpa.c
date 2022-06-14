@@ -201,6 +201,7 @@ virtio_vdpa_features_get(struct rte_vdpa_device *vdev, uint64_t *features)
 
 	virtio_pci_dev_features_get(priv->vpdev, features);
 	*features |= (1ULL << VHOST_USER_F_PROTOCOL_FEATURES);
+	DRV_LOG(INFO, "%s hw feature is 0x%" PRIx64, priv->vdev->device->name, *features);
 
 	return 0;
 }
@@ -499,13 +500,6 @@ virtio_vdpa_vring_state_set(int vid, int vq_idx, int state)
 	/* TO_DO: check if vid set here is suitable */
 	priv->vid = vid;
 
-	if (virtio_pci_dev_get_status(priv->vpdev) &
-		VIRTIO_CONFIG_STATUS_DRIVER_OK) {
-		DRV_LOG(ERR, "Can not set vring state when driver ok vDPA device: %s",
-						vdev->device->name);
-		return -EINVAL;
-	}
-
 	/* If vq is already enabled, and enable again means parameter change, so,
 	 * we disable vq first, then enable
 	 */
@@ -663,8 +657,9 @@ virtio_vdpa_features_set(int vid)
 
 	/* TO_DO: check why --- */
 	features |= (1ULL << VIRTIO_F_IOMMU_PLATFORM);
+	features |= (1ULL << VIRTIO_F_RING_RESET);
 	priv->guest_features = virtio_pci_dev_features_set(priv->vpdev, features);
-	DRV_LOG(INFO, "%s vid %d hw feature is %" PRIx64 "guest feature is %" PRIx64,
+	DRV_LOG(INFO, "%s vid %d guest feature is %" PRIx64 "orign feature is %" PRIx64,
 					priv->vdev->device->name, vid,
 					priv->guest_features, features);
 

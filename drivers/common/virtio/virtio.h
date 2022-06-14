@@ -62,6 +62,14 @@
 #define VIRTIO_RING_F_EVENT_IDX		29
 
 /*
+ * When VIRTIO_F_RING_RESET is negotiated, the driver can reset a virtqueue
+ * individually. The way to reset the virtqueue is transport specific.
+ * Virtqueue reset is divided into two parts. The driver first resets a queue
+ * and can afterwards optionally reenable it.
+ */
+#define VIRTIO_F_RING_RESET 40
+
+/*
  * Each virtqueue indirect descriptor list must be physically contiguous.
  * To allow us to malloc(9) each list individually, limit the number
  * supported to what will fit in one page. With 4KB pages, this is a limit

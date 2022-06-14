@@ -5,10 +5,11 @@
  #include <dirent.h>
  #include <fcntl.h>
 #endif
-
+#include <unistd.h>
 #include <rte_io.h>
 #include <rte_bus.h>
 
+#include <virtio_api.h>
 #include "virtio_pci.h"
 #include "virtio_logs.h"
 #include "virtqueue.h"
@@ -456,6 +457,11 @@ modern_setup_queue(struct virtio_hw *hw, struct virtqueue *vq)
 	uint64_t desc_addr, avail_addr, used_addr;
 	uint16_t notify_off;
 
+	if ((modern_get_status(hw) & VIRTIO_CONFIG_STATUS_DRIVER_OK) &&
+		(!virtio_with_feature(hw, VIRTIO_F_RING_RESET))) {
+		PMD_INIT_LOG(ERR, "can't set queue after driver ok and queue reset not support");
+		return -EINVAL;
+	}
 	desc_addr  = vq->vq_ring_mem;
 	avail_addr = vq->vq_avail_mem;
 	used_addr  = vq->vq_used_mem;
@@ -490,6 +496,28 @@ static void
 modern_del_queue(struct virtio_hw *hw, struct virtqueue *vq)
 {
 	struct virtio_pci_dev *dev = virtio_pci_get_dev(hw);
+	uint32_t retry = 0;
+
+	if (modern_get_status(hw) & VIRTIO_CONFIG_STATUS_DRIVER_OK) {
+		if (virtio_with_feature(hw, VIRTIO_F_RING_RESET)) {
+			PMD_INIT_LOG(INFO, "queue reset for %d", vq->vq_queue_index);
+			rte_write16(vq->vq_queue_index, &dev->common_cfg->queue_select);
+			rte_write16(1, &dev->common_cfg->queue_reset);
+			while (rte_read16(&dev->common_cfg->queue_reset)) {
+				if (retry++ > 120000) {
+					PMD_INIT_LOG(ERR, "queue %d reset timeout", vq->vq_queue_index);
+					return;
+				}
+				if (!(retry % 1000))
+					PMD_INIT_LOG(INFO, "queue %d resetting", vq->vq_queue_index);
+				usleep(1000L);
+			}
+			return;
+		} else {
+			PMD_INIT_LOG(ERR, "can't set queue after driver ok and queue reset not support");
+			return;
+		}
+	}
 
 	rte_write16(vq->vq_queue_index, &dev->common_cfg->queue_select);
 

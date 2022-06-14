@@ -95,6 +95,8 @@ struct virtio_pci_common_cfg {
 	uint32_t queue_avail_hi;	/* read-write */
 	uint32_t queue_used_lo;		/* read-write */
 	uint32_t queue_used_hi;		/* read-write */
+	uint16_t queue_notify_data;		/* read-only for driver */
+	uint16_t queue_reset;		/* read-write */
 };
 
 enum virtio_msix_status {
