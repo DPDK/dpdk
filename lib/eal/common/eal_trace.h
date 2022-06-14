@@ -24,14 +24,13 @@
 
 #define TRACE_PREFIX_LEN 12
 #define TRACE_DIR_STR_LEN (sizeof("YYYY-mm-dd-AM-HH-MM-SS") + TRACE_PREFIX_LEN)
-#define TRACE_POINT_NAME_SIZE 64
 #define TRACE_CTF_MAGIC 0xC1FC1FC1
 #define TRACE_MAX_ARGS	32
 
 struct trace_point {
 	STAILQ_ENTRY(trace_point) next;
 	rte_trace_point_t *handle;
-	char name[TRACE_POINT_NAME_SIZE];
+	const char *name;
 	char *ctf_field;
 };
 

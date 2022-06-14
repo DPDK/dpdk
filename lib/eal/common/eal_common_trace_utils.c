@@ -42,7 +42,7 @@ trace_entry_compare(const char *name)
 	int count = 0;
 
 	STAILQ_FOREACH(tp, tp_list, next) {
-		if (strncmp(tp->name, name, TRACE_POINT_NAME_SIZE) == 0)
+		if (strcmp(tp->name, name) == 0)
 			count++;
 		if (count > 1) {
 			trace_err("found duplicate entry %s", name);
