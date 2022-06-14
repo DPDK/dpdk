@@ -7,6 +7,8 @@
 
 #include <rte_byteorder.h>
 #include <rte_common.h>
+#include <rte_memzone.h>
+#include <rte_dmadev_pmd.h>
 
 #define BIT(x)	(1ul << (x))
 #define BITS_PER_LONG	(__SIZEOF_LONG__ * 8)
