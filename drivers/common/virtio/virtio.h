@@ -122,6 +122,7 @@ struct virtadmin_ctl {
 struct virtio_hw {
 	struct virtqueue **vqs;
 	uint64_t guest_features;
+	uint64_t device_features;
 	uint8_t weak_barriers;
 	uint8_t intr_lsc;
 	uint16_t max_queue_pairs;
@@ -168,6 +169,12 @@ struct virtio_hw_internal {
 #define VIRTIO_OPS(hw)	((hw)->virtio_ops)
 
 static inline int
+virtio_dev_with_feature(struct virtio_hw *hw, uint64_t bit)
+{
+	return (hw->device_features & (1ULL << bit)) != 0;
+}
+
+static inline int
 virtio_with_feature(struct virtio_hw *hw, uint64_t bit)
 {
 	return (hw->guest_features & (1ULL << bit)) != 0;
@@ -179,6 +186,5 @@ virtio_with_packed_queue(struct virtio_hw *hw)
 	return virtio_with_feature(hw, VIRTIO_F_RING_PACKED);
 }
 
-uint64_t virtio_pci_dev_negotiate_features(struct virtio_hw *hw, uint64_t host_features);
 uint8_t virtio_pci_dev_isr_get(struct virtio_hw *hw);
 #endif /* _VIRTIO_H_ */

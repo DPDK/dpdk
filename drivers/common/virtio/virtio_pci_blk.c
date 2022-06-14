@@ -17,7 +17,7 @@
 static uint16_t
 modern_blk_get_queue_num(struct virtio_hw *hw)
 {
-	if (virtio_with_feature(hw, VIRTIO_BLK_F_MQ)) {
+	if (virtio_dev_with_feature(hw, VIRTIO_BLK_F_MQ)) {
 			VIRTIO_OPS(hw)->read_dev_cfg(hw,
 					offsetof(struct virtio_blk_config, num_queues),
 					&hw->num_queues_blk,

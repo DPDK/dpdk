@@ -55,8 +55,8 @@ virtio_pci_dev_alloc(struct rte_pci_device *pci_dev)
 	/* Tell the device that driver known how to drive it. */
 	virtio_pci_dev_set_status(vpdev, VIRTIO_CONFIG_STATUS_DRIVER);
 
-	hw->guest_features = VIRTIO_OPS(hw)->get_features(hw);
-	PMD_INIT_LOG(DEBUG, "Guest_features is 0x%"PRIx64, hw->guest_features);
+	hw->device_features = VIRTIO_OPS(hw)->get_features(hw);
+	PMD_INIT_LOG(DEBUG, "device_features is 0x%"PRIx64, hw->device_features);
 	return vpdev;
 
 error:
@@ -148,16 +148,21 @@ virtio_pci_dev_features_get(struct virtio_pci_dev *vpdev, uint64_t *features)
 	struct virtio_hw *hw;
 
 	hw = &vpdev->hw;
-	*features = hw->guest_features;
+	*features = VIRTIO_OPS(hw)->get_features(hw);
 }
 
 uint64_t
 virtio_pci_dev_features_set(struct virtio_pci_dev *vpdev, uint64_t features)
 {
 	struct virtio_hw *hw;
+	uint64_t hw_features;
 
 	hw = &vpdev->hw;
-	return virtio_pci_dev_negotiate_features(hw, features);
+	hw_features = VIRTIO_OPS(hw)->get_features(hw);
+	features &= hw_features;
+	VIRTIO_OPS(hw)->set_features(hw, features);
+	hw->guest_features = features;
+	return features;
 }
 
 int
@@ -421,21 +426,6 @@ virtio_pci_dev_reset(struct virtio_pci_dev *vpdev)
 			PMD_INIT_LOG(INFO, "vpdev %s  resetting", VP_DEV_NAME(vpdev));
 		usleep(1000L);
 	}
-}
-
-uint64_t
-virtio_pci_dev_negotiate_features(struct virtio_hw *hw, uint64_t host_features)
-{
-	uint64_t features;
-
-	/*
-	 * Limit negotiated features to what the driver, virtqueue, and
-	 * host all support.
-	 */
-	features = host_features & hw->guest_features;
-	VIRTIO_OPS(hw)->set_features(hw, features);
-
-	return features;
 }
 
 void
