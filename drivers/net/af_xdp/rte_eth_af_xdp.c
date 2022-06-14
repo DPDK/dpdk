@@ -150,6 +150,7 @@ struct pmd_internals {
 	bool shared_umem;
 	char prog_path[PATH_MAX];
 	bool custom_prog_configured;
+	bool force_copy;
 	struct bpf_map *map;
 
 	struct rte_ether_addr eth_addr;
@@ -168,6 +169,7 @@ struct pmd_process_private {
 #define ETH_AF_XDP_SHARED_UMEM_ARG		"shared_umem"
 #define ETH_AF_XDP_PROG_ARG			"xdp_prog"
 #define ETH_AF_XDP_BUDGET_ARG			"busy_budget"
+#define ETH_AF_XDP_FORCE_COPY_ARG		"force_copy"
 
 static const char * const valid_arguments[] = {
 	ETH_AF_XDP_IFACE_ARG,
@@ -176,6 +178,7 @@ static const char * const valid_arguments[] = {
 	ETH_AF_XDP_SHARED_UMEM_ARG,
 	ETH_AF_XDP_PROG_ARG,
 	ETH_AF_XDP_BUDGET_ARG,
+	ETH_AF_XDP_FORCE_COPY_ARG,
 	NULL
 };
 
@@ -1308,6 +1311,10 @@ xsk_configure(struct pmd_internals *internals, struct pkt_rx_queue *rxq,
 	cfg.xdp_flags = XDP_FLAGS_UPDATE_IF_NOEXIST;
 	cfg.bind_flags = 0;
 
+	/* Force AF_XDP socket into copy mode when users want it */
+	if (internals->force_copy)
+		cfg.bind_flags |= XDP_COPY;
+
 #if defined(XDP_USE_NEED_WAKEUP)
 	cfg.bind_flags |= XDP_USE_NEED_WAKEUP;
 #endif
@@ -1655,7 +1662,7 @@ xdp_get_channels_info(const char *if_name, int *max_queues,
 static int
 parse_parameters(struct rte_kvargs *kvlist, char *if_name, int *start_queue,
 			int *queue_cnt, int *shared_umem, char *prog_path,
-			int *busy_budget)
+			int *busy_budget, int *force_copy)
 {
 	int ret;
 
@@ -1688,6 +1695,11 @@ parse_parameters(struct rte_kvargs *kvlist, char *if_name, int *start_queue,
 
 	ret = rte_kvargs_process(kvlist, ETH_AF_XDP_BUDGET_ARG,
 				&parse_budget_arg, busy_budget);
+	if (ret < 0)
+		goto free_kvlist;
+
+	ret = rte_kvargs_process(kvlist, ETH_AF_XDP_FORCE_COPY_ARG,
+				&parse_integer_arg, force_copy);
 	if (ret < 0)
 		goto free_kvlist;
 
@@ -1729,7 +1741,7 @@ error:
 static struct rte_eth_dev *
 init_internals(struct rte_vdev_device *dev, const char *if_name,
 		int start_queue_idx, int queue_cnt, int shared_umem,
-		const char *prog_path, int busy_budget)
+		const char *prog_path, int busy_budget, int force_copy)
 {
 	const char *name = rte_vdev_device_name(dev);
 	const unsigned int numa_node = dev->device.numa_node;
@@ -1757,6 +1769,7 @@ init_internals(struct rte_vdev_device *dev, const char *if_name,
 	}
 #endif
 	internals->shared_umem = shared_umem;
+	internals->force_copy = force_copy;
 
 	if (xdp_get_channels_info(if_name, &internals->max_queue_cnt,
 				  &internals->combined_queue_cnt)) {
@@ -1941,6 +1954,7 @@ rte_pmd_af_xdp_probe(struct rte_vdev_device *dev)
 	int shared_umem = 0;
 	char prog_path[PATH_MAX] = {'\0'};
 	int busy_budget = -1, ret;
+	int force_copy = 0;
 	struct rte_eth_dev *eth_dev = NULL;
 	const char *name = rte_vdev_device_name(dev);
 
@@ -1986,7 +2000,7 @@ rte_pmd_af_xdp_probe(struct rte_vdev_device *dev)
 
 	if (parse_parameters(kvlist, if_name, &xsk_start_queue_idx,
 			     &xsk_queue_cnt, &shared_umem, prog_path,
-			     &busy_budget) < 0) {
+			     &busy_budget, &force_copy) < 0) {
 		AF_XDP_LOG(ERR, "Invalid kvargs value\n");
 		return -EINVAL;
 	}
@@ -2001,7 +2015,7 @@ rte_pmd_af_xdp_probe(struct rte_vdev_device *dev)
 
 	eth_dev = init_internals(dev, if_name, xsk_start_queue_idx,
 					xsk_queue_cnt, shared_umem, prog_path,
-					busy_budget);
+					busy_budget, force_copy);
 	if (eth_dev == NULL) {
 		AF_XDP_LOG(ERR, "Failed to init internals\n");
 		return -1;
@@ -2060,4 +2074,5 @@ RTE_PMD_REGISTER_PARAM_STRING(net_af_xdp,
 			      "queue_count=<int> "
 			      "shared_umem=<int> "
 			      "xdp_prog=<string> "
-			      "busy_budget=<int>");
+			      "busy_budget=<int> "
+			      "force_copy=<int> ");

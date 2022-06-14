@@ -36,6 +36,8 @@ The following options can be provided to set up an af_xdp port in DPDK.
     default 0);
 *   ``xdp_prog`` - path to custom xdp program (optional, default none);
 *   ``busy_budget`` - busy polling budget (optional, default 64);
+*   ``force_copy`` - PMD will force AF_XDP socket into copy mode (optional,
+    default 0);
 
 Prerequisites
 -------------
