@@ -1463,6 +1463,11 @@ fill_ipsec_sa_prm(struct rte_ipsec_sa_prm *prm, const struct ipsec_sa *ss,
 	prm->ipsec_xform.options.ecn = 1;
 	prm->ipsec_xform.options.copy_dscp = 1;
 
+	if (ss->esn > 0) {
+		prm->ipsec_xform.options.esn = 1;
+		prm->ipsec_xform.esn.value = ss->esn;
+	}
+
 	if (IS_IP4_TUNNEL(ss->flags)) {
 		prm->ipsec_xform.tunnel.type = RTE_SECURITY_IPSEC_TUNNEL_IPV4;
 		prm->tun.hdr_len = sizeof(*v4);
