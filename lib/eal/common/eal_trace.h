@@ -22,8 +22,6 @@
 #define trace_crit(fmt, args...) \
 	RTE_LOG(CRIT, EAL, "%s():%u " fmt "\n", __func__, __LINE__, ## args)
 
-#define TRACE_PREFIX_LEN 12
-#define TRACE_DIR_STR_LEN (sizeof("YYYY-mm-dd-AM-HH-MM-SS") + TRACE_PREFIX_LEN)
 #define TRACE_CTF_MAGIC 0xC1FC1FC1
 #define TRACE_MAX_ARGS	32
 
@@ -50,8 +48,7 @@ struct trace_arg {
 };
 
 struct trace {
-	char dir[PATH_MAX];
-	int dir_offset;
+	char *dir;
 	int register_errno;
 	uint32_t status;
 	enum rte_trace_mode mode;

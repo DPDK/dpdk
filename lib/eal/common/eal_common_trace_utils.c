@@ -87,11 +87,11 @@ trace_uuid_generate(void)
 }
 
 static int
-trace_session_name_generate(char *trace_dir)
+trace_session_name_generate(char **trace_dir)
 {
+	char date[sizeof("YYYY-mm-dd-AM-HH-MM-SS")];
 	struct tm *tm_result;
 	time_t tm;
-	int rc;
 
 	tm = time(NULL);
 	if ((int)tm == -1)
@@ -101,38 +101,32 @@ trace_session_name_generate(char *trace_dir)
 	if (tm_result == NULL)
 		goto fail;
 
-	rc = rte_strscpy(trace_dir, eal_get_hugefile_prefix(),
-			TRACE_PREFIX_LEN);
-	if (rc == -E2BIG)
-		rc = TRACE_PREFIX_LEN - 1;
-	trace_dir[rc++] = '-';
-
-	rc = strftime(trace_dir + rc, TRACE_DIR_STR_LEN - rc,
-			"%Y-%m-%d-%p-%I-%M-%S", tm_result);
-	if (rc == 0) {
+	if (strftime(date, sizeof(date), "%Y-%m-%d-%p-%I-%M-%S", tm_result) == 0) {
 		errno = ENOSPC;
 		goto fail;
 	}
 
-	return rc;
+	if (asprintf(trace_dir, "%s-%s", eal_get_hugefile_prefix(), date) == -1)
+		goto fail;
+
+	return 0;
 fail:
 	rte_errno = errno;
-	return -rte_errno;
+	return -1;
 }
 
 static int
 trace_dir_update(const char *str)
 {
 	struct trace *trace = trace_obj_get();
-	int rc, remaining;
+	char *dir;
+	int rc;
 
-	remaining = sizeof(trace->dir) - trace->dir_offset;
-	rc = rte_strscpy(&trace->dir[0] + trace->dir_offset, str, remaining);
-	if (rc < 0)
-		goto fail;
-
-	trace->dir_offset += rc;
-fail:
+	rc = asprintf(&dir, "%s%s", trace->dir != NULL ? trace->dir : "", str);
+	if (rc != -1) {
+		free(trace->dir);
+		trace->dir = dir;
+	}
 	return rc;
 }
 
@@ -246,14 +240,8 @@ eal_trace_mode_args_save(const char *val)
 int
 eal_trace_dir_args_save(char const *val)
 {
-	struct trace *trace = trace_obj_get();
 	char *dir_path;
 	int rc;
-
-	if (strlen(val) >= sizeof(trace->dir) - 1) {
-		trace_err("input string is too big");
-		return -ENAMETOOLONG;
-	}
 
 	if (asprintf(&dir_path, "%s/", val) == -1) {
 		trace_err("failed to copy directory: %s", strerror(errno));
@@ -261,7 +249,6 @@ eal_trace_dir_args_save(char const *val)
 	}
 
 	rc = trace_dir_update(dir_path);
-
 	free(dir_path);
 	return rc;
 }
@@ -289,10 +276,8 @@ trace_epoch_time_save(void)
 }
 
 static int
-trace_dir_default_path_get(char *dir_path)
+trace_dir_default_path_get(char **dir_path)
 {
-	struct trace *trace = trace_obj_get();
-	uint32_t size = sizeof(trace->dir);
 	struct passwd *pwd;
 	char *home_dir;
 
@@ -308,8 +293,8 @@ trace_dir_default_path_get(char *dir_path)
 	}
 
 	/* Append dpdk-traces to directory */
-	if (snprintf(dir_path, size, "%s/dpdk-traces/", home_dir) < 0)
-		return -ENAMETOOLONG;
+	if (asprintf(dir_path, "%s/dpdk-traces/", home_dir) == -1)
+		return -ENOMEM;
 
 	return 0;
 }
@@ -318,25 +303,19 @@ static int
 trace_mkdir(void)
 {
 	struct trace *trace = trace_obj_get();
-	char session[TRACE_DIR_STR_LEN];
 	static bool already_done;
-	char *dir_path;
+	char *session;
 	int rc;
 
 	if (already_done)
 		return 0;
 
-	if (!trace->dir_offset) {
-		dir_path = calloc(1, sizeof(trace->dir));
-		if (dir_path == NULL) {
-			trace_err("fail to allocate memory");
-			return -ENOMEM;
-		}
+	if (trace->dir == NULL) {
+		char *dir_path;
 
-		rc = trace_dir_default_path_get(dir_path);
+		rc = trace_dir_default_path_get(&dir_path);
 		if (rc < 0) {
 			trace_err("fail to get default path");
-			free(dir_path);
 			return rc;
 		}
 
@@ -354,10 +333,11 @@ trace_mkdir(void)
 		return -rte_errno;
 	}
 
-	rc = trace_session_name_generate(session);
+	rc = trace_session_name_generate(&session);
 	if (rc < 0)
 		return rc;
 	rc = trace_dir_update(session);
+	free(session);
 	if (rc < 0)
 		return rc;
 
