@@ -140,6 +140,9 @@ struct bnxt_pf_resource_info {
 	 BNXT_TUNNELED_OFFLOADS_CAP_GRE_EN(bp)   &&		\
 	 BNXT_TUNNELED_OFFLOADS_CAP_IPINIP_EN(bp))
 
+#define BNXT_SIG_MODE_NRZ	HWRM_PORT_PHY_QCFG_OUTPUT_SIGNAL_MODE_NRZ
+#define BNXT_SIG_MODE_PAM4	HWRM_PORT_PHY_QCFG_OUTPUT_SIGNAL_MODE_PAM4
+
 int bnxt_hwrm_cfa_l2_clear_rx_mask(struct bnxt *bp,
 				   struct bnxt_vnic_info *vnic);
 int bnxt_hwrm_cfa_l2_set_rx_mask(struct bnxt *bp, struct bnxt_vnic_info *vnic,

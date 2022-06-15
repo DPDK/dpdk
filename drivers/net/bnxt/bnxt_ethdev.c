@@ -917,6 +917,7 @@ static int bnxt_shutdown_nic(struct bnxt *bp)
 
 uint32_t bnxt_get_speed_capabilities(struct bnxt *bp)
 {
+	uint32_t pam4_link_speed = 0;
 	uint32_t link_speed = 0;
 	uint32_t speed_capa = 0;
 
@@ -926,8 +927,8 @@ uint32_t bnxt_get_speed_capabilities(struct bnxt *bp)
 	link_speed = bp->link_info->support_speeds;
 
 	/* If PAM4 is configured, use PAM4 supported speed */
-	if (link_speed == 0 && bp->link_info->support_pam4_speeds > 0)
-		link_speed = bp->link_info->support_pam4_speeds;
+	if (bp->link_info->support_pam4_speeds > 0)
+		pam4_link_speed = bp->link_info->support_pam4_speeds;
 
 	if (link_speed & HWRM_PORT_PHY_QCFG_OUTPUT_LINK_SPEED_100MB)
 		speed_capa |= ETH_LINK_SPEED_100M;
@@ -949,11 +950,11 @@ uint32_t bnxt_get_speed_capabilities(struct bnxt *bp)
 		speed_capa |= ETH_LINK_SPEED_50G;
 	if (link_speed & HWRM_PORT_PHY_QCFG_OUTPUT_SUPPORT_SPEEDS_100GB)
 		speed_capa |= ETH_LINK_SPEED_100G;
-	if (link_speed & HWRM_PORT_PHY_QCFG_OUTPUT_SUPPORT_PAM4_SPEEDS_50G)
+	if (pam4_link_speed & HWRM_PORT_PHY_QCFG_OUTPUT_SUPPORT_PAM4_SPEEDS_50G)
 		speed_capa |= ETH_LINK_SPEED_50G;
-	if (link_speed & HWRM_PORT_PHY_QCFG_OUTPUT_SUPPORT_PAM4_SPEEDS_100G)
+	if (pam4_link_speed & HWRM_PORT_PHY_QCFG_OUTPUT_SUPPORT_PAM4_SPEEDS_100G)
 		speed_capa |= ETH_LINK_SPEED_100G;
-	if (link_speed & HWRM_PORT_PHY_QCFG_OUTPUT_SUPPORT_PAM4_SPEEDS_200G)
+	if (pam4_link_speed & HWRM_PORT_PHY_QCFG_OUTPUT_SUPPORT_PAM4_SPEEDS_200G)
 		speed_capa |= ETH_LINK_SPEED_200G;
 
 	if (bp->link_info->auto_mode ==
