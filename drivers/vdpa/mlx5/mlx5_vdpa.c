@@ -14,6 +14,7 @@
 #include <rte_errno.h>
 #include <rte_string_fns.h>
 #include <rte_bus_pci.h>
+#include <rte_eal_paging.h>
 
 #include <mlx5_glue.h>
 #include <mlx5_common.h>
@@ -560,6 +561,9 @@ mlx5_vdpa_create_dev_resources(struct mlx5_vdpa_priv *priv)
 		rte_errno = errno;
 		return -rte_errno;
 	}
+	/* Add within page offset for 64K page system. */
+	priv->virtq_db_addr = (char *)priv->virtq_db_addr +
+		((rte_mem_page_size() - 1) & priv->caps.doorbell_bar_offset);
 	DRV_LOG(DEBUG, "VAR address of doorbell mapping is %p.",
 		priv->virtq_db_addr);
 	priv->td = mlx5_devx_cmd_create_td(ctx);
@@ -705,7 +709,9 @@ mlx5_vdpa_release_dev_resources(struct mlx5_vdpa_priv *priv)
 	if (priv->td)
 		claim_zero(mlx5_devx_cmd_destroy(priv->td));
 	if (priv->virtq_db_addr)
-		claim_zero(munmap(priv->virtq_db_addr, priv->var->length));
+		/* Mask out the within page offset for munmap. */
+		claim_zero(munmap((void *)((uintptr_t)priv->virtq_db_addr &
+			~(rte_mem_page_size() - 1)), priv->var->length));
 	if (priv->var)
 		mlx5_glue->dv_free_var(priv->var);
 }
