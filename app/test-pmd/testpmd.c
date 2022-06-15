@@ -3207,6 +3207,15 @@ remove_invalid_ports(void)
 }
 
 static void
+flush_port_owned_resources(portid_t pi)
+{
+	mcast_addr_pool_destroy(pi);
+	port_flow_flush(pi);
+	port_flex_item_flush(pi);
+	port_action_handle_flush(pi);
+}
+
+static void
 clear_bonding_slave_device(portid_t *slave_pids, uint16_t num_slaves)
 {
 	struct rte_port *port;
@@ -3270,10 +3279,7 @@ close_port(portid_t pid)
 		}
 
 		if (is_proc_primary()) {
-			mcast_addr_pool_destroy(pi);
-			port_flow_flush(pi);
-			port_flex_item_flush(pi);
-			port_action_handle_flush(pi);
+			flush_port_owned_resources(pi);
 #ifdef RTE_NET_BOND
 			if (port->bond_flag == 1)
 				num_slaves = rte_eth_bond_slaves_get(pi,
@@ -3430,7 +3436,7 @@ detach_device(struct rte_device *dev)
 					sibling);
 				return;
 			}
-			port_flow_flush(sibling);
+			flush_port_owned_resources(sibling);
 		}
 	}
 
@@ -3497,7 +3503,7 @@ detach_devargs(char *identifier)
 				rte_devargs_reset(&da);
 				return;
 			}
-			port_flow_flush(port_id);
+			flush_port_owned_resources(port_id);
 		}
 	}
 
