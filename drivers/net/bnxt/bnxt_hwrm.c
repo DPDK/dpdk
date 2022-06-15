@@ -3235,9 +3235,11 @@ int bnxt_set_hwrm_link_config(struct bnxt *bp, bool link_up)
 	if (!link_up)
 		goto port_phy_cfg;
 
+	/* Get user requested autoneg setting */
 	autoneg = bnxt_check_eth_link_autoneg(dev_conf->link_speeds);
+
 	if (BNXT_CHIP_P5(bp) &&
-	    dev_conf->link_speeds == RTE_ETH_LINK_SPEED_40G) {
+	    dev_conf->link_speeds & RTE_ETH_LINK_SPEED_40G) {
 		/* 40G is not supported as part of media auto detect.
 		 * The speed should be forced and autoneg disabled
 		 * to configure 40G speed.
@@ -3246,11 +3248,13 @@ int bnxt_set_hwrm_link_config(struct bnxt *bp, bool link_up)
 		autoneg = 0;
 	}
 
-	/* No auto speeds and no auto_pam4_link. Disable autoneg */
-	if (bp->link_info->auto_link_speed == 0 &&
-	    bp->link_info->link_signal_mode &&
-	    bp->link_info->auto_pam4_link_speed_mask == 0)
+	/* Override based on current Autoneg setting in PHY for 200G */
+	if (autoneg == 1 && BNXT_CHIP_P5(bp) && bp->link_info->auto_mode == 0 &&
+	    bp->link_info->force_pam4_link_speed ==
+	    HWRM_PORT_PHY_CFG_INPUT_FORCE_PAM4_LINK_SPEED_200GB) {
 		autoneg = 0;
+		PMD_DRV_LOG(DEBUG, "Disabling autoneg for 200G\n");
+	}
 
 	speed = bnxt_parse_eth_link_speed(dev_conf->link_speeds,
 					  bp->link_info);
@@ -3283,14 +3287,14 @@ int bnxt_set_hwrm_link_config(struct bnxt *bp, bool link_up)
 		else if (bp->link_info->force_pam4_link_speed)
 			link_req.link_speed =
 				bp->link_info->force_pam4_link_speed;
+		else if (bp->link_info->force_link_speed)
+			link_req.link_speed = bp->link_info->force_link_speed;
 		else if (bp->link_info->auto_pam4_link_speed_mask)
 			link_req.link_speed =
 				bp->link_info->auto_pam4_link_speed_mask;
 		else if (bp->link_info->support_pam4_speeds)
 			link_req.link_speed =
 				bp->link_info->support_pam4_speeds;
-		else if (bp->link_info->force_link_speed)
-			link_req.link_speed = bp->link_info->force_link_speed;
 		else
 			link_req.link_speed = bp->link_info->auto_link_speed;
 		/* Auto PAM4 link speed is zero, but auto_link_speed is not
