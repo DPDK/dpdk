@@ -3019,9 +3019,7 @@ bnxt_tx_burst_mode_get(struct rte_eth_dev *dev, __rte_unused uint16_t queue_id,
 
 int bnxt_mtu_set_op(struct rte_eth_dev *eth_dev, uint16_t new_mtu)
 {
-	uint32_t overhead = BNXT_MAX_PKT_LEN - BNXT_MAX_MTU;
 	struct bnxt *bp = eth_dev->data->dev_private;
-	uint32_t new_pkt_size;
 	uint32_t rc;
 	uint32_t i;
 
@@ -3029,25 +3027,15 @@ int bnxt_mtu_set_op(struct rte_eth_dev *eth_dev, uint16_t new_mtu)
 	if (rc)
 		return rc;
 
+	/* Return if port is active */
+	if (eth_dev->data->dev_started) {
+		PMD_DRV_LOG(ERR, "Stop port before changing MTU\n");
+		return -EPERM;
+	}
+
 	/* Exit if receive queues are not configured yet */
 	if (!eth_dev->data->nb_rx_queues)
-		return rc;
-
-	new_pkt_size = new_mtu + overhead;
-
-	/*
-	 * Disallow any MTU change that would require scattered receive support
-	 * if it is not already enabled.
-	 */
-	if (eth_dev->data->dev_started &&
-	    !eth_dev->data->scattered_rx &&
-	    (new_pkt_size >
-	     eth_dev->data->min_rx_buf_size - RTE_PKTMBUF_HEADROOM)) {
-		PMD_DRV_LOG(ERR,
-			    "MTU change would require scattered rx support. ");
-		PMD_DRV_LOG(ERR, "Stop port before changing MTU.\n");
-		return -EINVAL;
-	}
+		return -ENOTSUP;
 
 	if (new_mtu > RTE_ETHER_MTU)
 		bp->flags |= BNXT_FLAG_JUMBO;
@@ -3056,7 +3044,7 @@ int bnxt_mtu_set_op(struct rte_eth_dev *eth_dev, uint16_t new_mtu)
 
 	/* Is there a change in mtu setting? */
 	if (eth_dev->data->mtu == new_mtu)
-		return rc;
+		return 0;
 
 	for (i = 0; i < bp->nr_vnics; i++) {
 		struct bnxt_vnic_info *vnic = &bp->vnic_info[i];
