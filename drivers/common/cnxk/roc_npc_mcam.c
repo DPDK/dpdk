@@ -401,16 +401,37 @@ npc_mcam_write_entry(struct npc *npc, struct roc_npc_flow *mcam)
 	struct mbox *mbox = npc->mbox;
 	struct mbox_msghdr *rsp;
 	int rc = -ENOSPC;
+	uint16_t ctr = 0;
 	int i;
 
+	if (mcam->use_ctr && mcam->ctr_id == NPC_COUNTER_NONE) {
+		rc = npc_mcam_alloc_counter(npc, &ctr);
+		if (rc)
+			return rc;
+		mcam->ctr_id = ctr;
+
+		rc = npc_mcam_clear_counter(npc, mcam->ctr_id);
+		if (rc)
+			return rc;
+	}
+
 	req = mbox_alloc_msg_npc_mcam_write_entry(mbox);
-	if (req == NULL)
+	if (req == NULL) {
+		if (mcam->use_ctr)
+			npc_mcam_free_counter(npc, ctr);
+
 		return rc;
+	}
 	req->entry = mcam->mcam_id;
 	req->intf = mcam->nix_intf;
 	req->enable_entry = mcam->enable;
 	req->entry_data.action = mcam->npc_action;
 	req->entry_data.vtag_action = mcam->vtag_action;
+	if (mcam->use_ctr) {
+		req->set_cntr = 1;
+		req->cntr = mcam->ctr_id;
+	}
+
 	for (i = 0; i < NPC_MCAM_KEY_X4_WORDS; i++) {
 		req->entry_data.kw[i] = mcam->mcam_data[i];
 		req->entry_data.kw_mask[i] = mcam->mcam_mask[i];
@@ -539,7 +560,6 @@ int
 npc_mcam_alloc_and_write(struct npc *npc, struct roc_npc_flow *flow,
 			 struct npc_parse_state *pst)
 {
-	int use_ctr = (flow->ctr_id == NPC_COUNTER_NONE ? 0 : 1);
 	struct npc_mcam_write_entry_req *req;
 	struct nix_inl_dev *inl_dev = NULL;
 	struct mbox *mbox = npc->mbox;
@@ -552,15 +572,20 @@ npc_mcam_alloc_and_write(struct npc *npc, struct roc_npc_flow *flow,
 
 	PLT_SET_USED(pst);
 
-	if (use_ctr) {
+	if (flow->use_ctr) {
 		rc = npc_mcam_alloc_counter(npc, &ctr);
+		if (rc)
+			return rc;
+
+		flow->ctr_id = ctr;
+		rc = npc_mcam_clear_counter(npc, flow->ctr_id);
 		if (rc)
 			return rc;
 	}
 
 	entry = npc_get_free_mcam_entry(mbox, flow, npc);
 	if (entry < 0) {
-		if (use_ctr)
+		if (flow->use_ctr)
 			npc_mcam_free_counter(npc, ctr);
 		return NPC_ERR_MCAM_ALLOC;
 	}
@@ -568,8 +593,8 @@ npc_mcam_alloc_and_write(struct npc *npc, struct roc_npc_flow *flow,
 	req = mbox_alloc_msg_npc_mcam_write_entry(mbox);
 	if (req == NULL)
 		return -ENOSPC;
-	req->set_cntr = use_ctr;
-	req->cntr = ctr;
+	req->set_cntr = flow->use_ctr;
+	req->cntr = flow->ctr_id;
 	req->entry = entry;
 
 	req->intf = (flow->nix_intf == NIX_INTF_RX) ? NPC_MCAM_RX : NPC_MCAM_TX;
@@ -636,7 +661,7 @@ npc_mcam_alloc_and_write(struct npc *npc, struct roc_npc_flow *flow,
 
 	flow->mcam_id = entry;
 
-	if (use_ctr)
+	if (flow->use_ctr)
 		flow->ctr_id = ctr;
 	return 0;
 }

@@ -332,7 +332,10 @@ INTERNAL {
 	roc_npc_mcam_ena_dis_entry;
 	roc_npc_mcam_free_all_resources;
 	roc_npc_mcam_free_counter;
+	roc_npc_mcam_free;
 	roc_npc_mcam_free_entry;
+	roc_npc_mcam_init;
+	roc_npc_mcam_move;
 	roc_npc_mcam_merge_base_steering_rule;
 	roc_npc_mcam_write_entry;
 	roc_npc_mcam_read_counter;

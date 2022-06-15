@@ -246,6 +246,7 @@ struct roc_npc_flow {
 	uint8_t nix_intf;
 	uint8_t enable;
 	uint32_t mcam_id;
+	uint8_t use_ctr;
 	int32_t ctr_id;
 	uint32_t priority;
 	uint32_t mtr_id;
@@ -329,6 +330,8 @@ roc_npc_flow_create(struct roc_npc *roc_npc, const struct roc_npc_attr *attr,
 		    const struct roc_npc_action actions[], int *errcode);
 int __roc_api roc_npc_flow_destroy(struct roc_npc *roc_npc,
 				   struct roc_npc_flow *flow);
+int __roc_api roc_npc_mcam_free(struct roc_npc *roc_npc,
+				struct roc_npc_flow *mcam);
 int __roc_api roc_npc_mcam_free_entry(struct roc_npc *roc_npc, uint32_t entry);
 int __roc_api roc_npc_mcam_enable_all_entries(struct roc_npc *roc_npc,
 					      bool enable);
@@ -367,4 +370,8 @@ int __roc_api roc_npc_mcam_merge_base_steering_rule(struct roc_npc *roc_npc,
 						    struct roc_npc_flow *flow);
 int __roc_api roc_npc_validate_portid_action(struct roc_npc *roc_npc_src,
 					     struct roc_npc *roc_npc_dst);
+int __roc_api roc_npc_mcam_init(struct roc_npc *roc_npc,
+				struct roc_npc_flow *flow, int mcam_id);
+int __roc_api roc_npc_mcam_move(struct roc_npc *roc_npc, uint16_t old_ent,
+				uint16_t new_ent);
 #endif /* _ROC_NPC_H_ */

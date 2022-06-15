@@ -453,4 +453,6 @@ int npc_rss_action_program(struct roc_npc *roc_npc,
 			   const struct roc_npc_action actions[],
 			   struct roc_npc_flow *flow);
 int npc_rss_group_free(struct npc *npc, struct roc_npc_flow *flow);
+int npc_mcam_init(struct npc *npc, struct roc_npc_flow *flow, int mcam_id);
+int npc_mcam_move(struct mbox *mbox, uint16_t old_ent, uint16_t new_ent);
 #endif /* _ROC_NPC_PRIV_H_ */

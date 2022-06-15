@@ -264,9 +264,8 @@ done:
 	return 0;
 }
 
-static int
-npc_initialise_mcam_entry(struct npc *npc, struct roc_npc_flow *flow,
-			  int mcam_id)
+int
+npc_mcam_init(struct npc *npc, struct roc_npc_flow *flow, int mcam_id)
 {
 	struct npc_mcam_write_entry_req *req;
 	struct npc_mcam_write_entry_rsq *rsp;
@@ -308,8 +307,8 @@ npc_initialise_mcam_entry(struct npc *npc, struct roc_npc_flow *flow,
 	return 0;
 }
 
-static int
-npc_shift_mcam_entry(struct mbox *mbox, uint16_t old_ent, uint16_t new_ent)
+int
+npc_mcam_move(struct mbox *mbox, uint16_t old_ent, uint16_t new_ent)
 {
 	struct npc_mcam_shift_entry_req *req;
 	struct npc_mcam_shift_entry_rsp *rsp;
@@ -365,12 +364,10 @@ npc_slide_mcam_entries(struct mbox *mbox, struct npc *npc, int prio,
 			 * Initialise and enable before moving an entry into
 			 * this mcam.
 			 */
-			rc = npc_initialise_mcam_entry(npc, curr->flow,
-						       to_mcam_id);
+			rc = npc_mcam_init(npc, curr->flow, to_mcam_id);
 			if (rc)
 				return rc;
-			rc = npc_shift_mcam_entry(mbox, from_mcam_id,
-						  to_mcam_id);
+			rc = npc_mcam_move(mbox, from_mcam_id, to_mcam_id);
 			if (rc)
 				return rc;
 			curr->flow->mcam_id = to_mcam_id;

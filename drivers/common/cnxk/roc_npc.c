@@ -56,6 +56,53 @@ roc_npc_mcam_free_entry(struct roc_npc *roc_npc, uint32_t entry)
 }
 
 int
+roc_npc_mcam_free(struct roc_npc *roc_npc, struct roc_npc_flow *mcam)
+{
+	int rc = 0;
+
+	if (mcam->use_ctr) {
+		rc = roc_npc_mcam_clear_counter(roc_npc, mcam->ctr_id);
+		if (rc)
+			return rc;
+
+		rc = roc_npc_mcam_free_counter(roc_npc, mcam->ctr_id);
+		if (rc)
+			return rc;
+	}
+
+	return roc_npc_mcam_free_entry(roc_npc, mcam->mcam_id);
+}
+
+int
+roc_npc_mcam_init(struct roc_npc *roc_npc, struct roc_npc_flow *flow,
+		  int mcam_id)
+{
+	struct npc *npc = roc_npc_to_npc_priv(roc_npc);
+	int rc;
+
+	rc = npc_mcam_init(npc, flow, mcam_id);
+	if (rc != 0) {
+		plt_err("npc: mcam initialisation write failed");
+		return rc;
+	}
+	return 0;
+}
+
+int
+roc_npc_mcam_move(struct roc_npc *roc_npc, uint16_t old_ent, uint16_t new_ent)
+{
+	struct npc *npc = roc_npc_to_npc_priv(roc_npc);
+	struct mbox *mbox = npc->mbox;
+	int rc;
+
+	rc = npc_mcam_move(mbox, old_ent, new_ent);
+	if (rc)
+		return rc;
+
+	return 0;
+}
+
+int
 roc_npc_mcam_free_all_resources(struct roc_npc *roc_npc)
 {
 	struct npc *npc = roc_npc_to_npc_priv(roc_npc);
@@ -383,7 +430,7 @@ npc_parse_actions(struct roc_npc *roc_npc, const struct roc_npc_attr *attr,
 
 		case ROC_NPC_ACTION_TYPE_COUNT:
 			/* Indicates, need a counter */
-			flow->ctr_id = 1;
+			flow->use_ctr = 1;
 			req_act |= ROC_NPC_ACTION_TYPE_COUNT;
 			break;
 
@@ -1268,7 +1315,7 @@ roc_npc_flow_create(struct roc_npc *roc_npc, const struct roc_npc_attr *attr,
 	return flow;
 
 set_rss_failed:
-	rc = npc_mcam_free_entry(npc, flow->mcam_id);
+	rc = roc_npc_mcam_free_entry(roc_npc, flow->mcam_id);
 	if (rc != 0) {
 		*errcode = rc;
 		plt_free(flow);
@@ -1314,17 +1361,7 @@ roc_npc_flow_destroy(struct roc_npc *roc_npc, struct roc_npc_flow *flow)
 			return rc;
 	}
 
-	if (flow->ctr_id != NPC_COUNTER_NONE) {
-		rc = roc_npc_mcam_clear_counter(roc_npc, flow->ctr_id);
-		if (rc != 0)
-			return rc;
-
-		rc = npc_mcam_free_counter(npc, flow->ctr_id);
-		if (rc != 0)
-			return rc;
-	}
-
-	rc = npc_mcam_free_entry(npc, flow->mcam_id);
+	rc = roc_npc_mcam_free(roc_npc, flow);
 	if (rc != 0)
 		return rc;
 
