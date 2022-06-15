@@ -5194,11 +5194,34 @@ bnxt_init_locks(struct bnxt *bp)
 	return err;
 }
 
+/* This should be called after we have queried trusted VF cap */
+static int bnxt_alloc_switch_domain(struct bnxt *bp)
+{
+	int rc = 0;
+
+	if (BNXT_PF(bp) || BNXT_VF_IS_TRUSTED(bp)) {
+		rc = rte_eth_switch_domain_alloc(&bp->switch_domain_id);
+		if (rc)
+			PMD_DRV_LOG(ERR,
+				    "Failed to alloc switch domain: %d\n", rc);
+		else
+			PMD_DRV_LOG(INFO,
+				    "Switch domain allocated %d\n",
+				    bp->switch_domain_id);
+	}
+
+	return rc;
+}
+
 static int bnxt_init_resources(struct bnxt *bp, bool reconfig_dev)
 {
 	int rc = 0;
 
 	rc = bnxt_get_config(bp);
+	if (rc)
+		return rc;
+
+	rc = bnxt_alloc_switch_domain(bp);
 	if (rc)
 		return rc;
 
@@ -5646,24 +5669,6 @@ err:
 	return ret;
 }
 
-static int bnxt_alloc_switch_domain(struct bnxt *bp)
-{
-	int rc = 0;
-
-	if (BNXT_PF(bp) || BNXT_VF_IS_TRUSTED(bp)) {
-		rc = rte_eth_switch_domain_alloc(&bp->switch_domain_id);
-		if (rc)
-			PMD_DRV_LOG(ERR,
-				    "Failed to alloc switch domain: %d\n", rc);
-		else
-			PMD_DRV_LOG(INFO,
-				    "Switch domain allocated %d\n",
-				    bp->switch_domain_id);
-	}
-
-	return rc;
-}
-
 /* Allocate and initialize various fields in bnxt struct that
  * need to be allocated/destroyed only once in the lifetime of the driver
  */
@@ -5737,10 +5742,6 @@ static int bnxt_drv_init(struct rte_eth_dev *eth_dev)
 		return rc;
 
 	rc = bnxt_init_locks(bp);
-	if (rc)
-		return rc;
-
-	rc = bnxt_alloc_switch_domain(bp);
 	if (rc)
 		return rc;
 
