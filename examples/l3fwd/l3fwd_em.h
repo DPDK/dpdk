@@ -5,6 +5,8 @@
 #ifndef __L3FWD_EM_H__
 #define __L3FWD_EM_H__
 
+#include <rte_common.h>
+
 static __rte_always_inline uint16_t
 l3fwd_em_handle_ipv4(struct rte_mbuf *m, uint16_t portid,
 		     struct rte_ether_hdr *eth_hdr, struct lcore_conf *qconf)

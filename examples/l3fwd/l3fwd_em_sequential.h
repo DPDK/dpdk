@@ -5,6 +5,8 @@
 #ifndef __L3FWD_EM_SEQUENTIAL_H__
 #define __L3FWD_EM_SEQUENTIAL_H__
 
+#include <rte_common.h>
+
 /**
  * @file
  * This is an optional implementation of packet classification in Exact-Match
