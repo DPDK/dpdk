@@ -255,12 +255,21 @@ ifcvf_hw_disable(struct ifcvf_hw *hw)
 	u32 ring_state;
 
 	cfg = hw->common_cfg;
+	if (!cfg) {
+		DEBUGOUT("common_cfg in HW is NULL.\n");
+		return;
+	}
 
 	IFCVF_WRITE_REG16(IFCVF_MSI_NO_VECTOR, &cfg->msix_config);
 	for (i = 0; i < hw->nr_vring; i++) {
 		IFCVF_WRITE_REG16(i, &cfg->queue_select);
 		IFCVF_WRITE_REG16(0, &cfg->queue_enable);
 		IFCVF_WRITE_REG16(IFCVF_MSI_NO_VECTOR, &cfg->queue_msix_vector);
+
+		if (!hw->lm_cfg) {
+			DEBUGOUT("live migration cfg in HW is NULL.\n");
+			continue;
+		}
 
 		if (hw->device_type == IFCVF_BLK)
 			ring_state = *(u32 *)(hw->lm_cfg +
