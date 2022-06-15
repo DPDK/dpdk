@@ -3037,14 +3037,14 @@ int bnxt_mtu_set_op(struct rte_eth_dev *eth_dev, uint16_t new_mtu)
 	if (!eth_dev->data->nb_rx_queues)
 		return -ENOTSUP;
 
+	/* Is there a change in mtu setting? */
+	if (eth_dev->data->mtu == new_mtu)
+		return 0;
+
 	if (new_mtu > RTE_ETHER_MTU)
 		bp->flags |= BNXT_FLAG_JUMBO;
 	else
 		bp->flags &= ~BNXT_FLAG_JUMBO;
-
-	/* Is there a change in mtu setting? */
-	if (eth_dev->data->mtu == new_mtu)
-		return 0;
 
 	for (i = 0; i < bp->nr_vnics; i++) {
 		struct bnxt_vnic_info *vnic = &bp->vnic_info[i];

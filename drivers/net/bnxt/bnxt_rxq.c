@@ -402,10 +402,6 @@ int bnxt_rx_queue_setup_op(struct rte_eth_dev *eth_dev,
 	rxq->rx_started = rxq->rx_deferred_start ? false : true;
 	rxq->vnic = BNXT_GET_DEFAULT_VNIC(bp);
 
-	/* Configure mtu if it is different from what was configured before */
-	if (!queue_idx)
-		bnxt_mtu_set_op(eth_dev, eth_dev->data->mtu);
-
 	return 0;
 err:
 	bnxt_rx_queue_release_op(eth_dev, queue_idx);
