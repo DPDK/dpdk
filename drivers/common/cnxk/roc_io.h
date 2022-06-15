@@ -5,6 +5,8 @@
 #ifndef _ROC_IO_H_
 #define _ROC_IO_H_
 
+#include "roc_platform.h" /* for __plt_always_inline macro */
+
 #define ROC_LMT_BASE_ID_GET(lmt_addr, lmt_id)                                  \
 	do {                                                                   \
 		/* 32 Lines per core */                                        \
