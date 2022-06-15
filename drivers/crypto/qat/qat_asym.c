@@ -144,6 +144,10 @@ cleanup(struct qat_asym_op_cookie *cookie,
 			cleanup_arrays(cookie, QAT_ASYM_RSA_NUM_IN_PARAMS,
 				QAT_ASYM_RSA_NUM_OUT_PARAMS, alg_size);
 		}
+	} else {
+		cleanup_arrays(cookie, QAT_ASYM_MAX_PARAMS,
+				QAT_ASYM_MAX_PARAMS,
+				QAT_PKE_MAX_LN_SIZE);
 	}
 }
 
