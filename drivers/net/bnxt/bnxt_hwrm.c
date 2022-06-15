@@ -2970,7 +2970,7 @@ static uint16_t bnxt_check_eth_link_autoneg(uint32_t conf_link)
 }
 
 static uint16_t bnxt_parse_eth_link_speed(uint32_t conf_link_speed,
-					  uint16_t pam4_link)
+					  struct bnxt_link_info *link_info)
 {
 	uint16_t eth_link_speed = 0;
 
@@ -3009,18 +3009,29 @@ static uint16_t bnxt_parse_eth_link_speed(uint32_t conf_link_speed,
 			HWRM_PORT_PHY_CFG_INPUT_FORCE_LINK_SPEED_40GB;
 		break;
 	case RTE_ETH_LINK_SPEED_50G:
-		eth_link_speed = pam4_link ?
-			HWRM_PORT_PHY_CFG_INPUT_FORCE_PAM4_LINK_SPEED_50GB :
-			HWRM_PORT_PHY_CFG_INPUT_FORCE_LINK_SPEED_50GB;
+		if (link_info->support_pam4_speeds &
+		    HWRM_PORT_PHY_QCFG_OUTPUT_SUPPORT_PAM4_SPEEDS_50G) {
+			eth_link_speed = HWRM_PORT_PHY_CFG_INPUT_FORCE_PAM4_LINK_SPEED_50GB;
+			link_info->link_signal_mode = BNXT_SIG_MODE_PAM4;
+		} else {
+			eth_link_speed = HWRM_PORT_PHY_CFG_INPUT_FORCE_LINK_SPEED_50GB;
+			link_info->link_signal_mode = BNXT_SIG_MODE_NRZ;
+		}
 		break;
 	case RTE_ETH_LINK_SPEED_100G:
-		eth_link_speed = pam4_link ?
-			HWRM_PORT_PHY_CFG_INPUT_FORCE_PAM4_LINK_SPEED_100GB :
-			HWRM_PORT_PHY_CFG_INPUT_FORCE_LINK_SPEED_100GB;
+		if (link_info->support_pam4_speeds &
+		    HWRM_PORT_PHY_QCFG_OUTPUT_SUPPORT_PAM4_SPEEDS_100G) {
+			eth_link_speed = HWRM_PORT_PHY_CFG_INPUT_FORCE_PAM4_LINK_SPEED_100GB;
+			link_info->link_signal_mode = BNXT_SIG_MODE_PAM4;
+		} else {
+			eth_link_speed = HWRM_PORT_PHY_CFG_INPUT_FORCE_LINK_SPEED_100GB;
+			link_info->link_signal_mode = BNXT_SIG_MODE_NRZ;
+		}
 		break;
 	case RTE_ETH_LINK_SPEED_200G:
 		eth_link_speed =
 			HWRM_PORT_PHY_CFG_INPUT_FORCE_PAM4_LINK_SPEED_200GB;
+		link_info->link_signal_mode = BNXT_SIG_MODE_PAM4;
 		break;
 	default:
 		PMD_DRV_LOG(ERR,
@@ -3242,7 +3253,7 @@ int bnxt_set_hwrm_link_config(struct bnxt *bp, bool link_up)
 		autoneg = 0;
 
 	speed = bnxt_parse_eth_link_speed(dev_conf->link_speeds,
-					  bp->link_info->link_signal_mode);
+					  bp->link_info);
 	link_req.phy_flags = HWRM_PORT_PHY_CFG_INPUT_FLAGS_RESET_PHY;
 	/* Autoneg can be done only when the FW allows. */
 	if (autoneg == 1 &&
