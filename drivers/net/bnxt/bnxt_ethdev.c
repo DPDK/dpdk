@@ -723,7 +723,7 @@ static int bnxt_alloc_prev_ring_stats(struct bnxt *bp)
 					     sizeof(struct bnxt_ring_stats) *
 					     bp->tx_cp_nr_rings,
 					     0);
-	if (bp->prev_tx_ring_stats == NULL)
+	if (bp->tx_cp_nr_rings > 0 && bp->prev_tx_ring_stats == NULL)
 		goto error;
 
 	return 0;
@@ -1566,11 +1566,6 @@ int bnxt_dev_start_op(struct rte_eth_dev *eth_dev)
 	uint64_t rx_offloads = eth_dev->data->dev_conf.rxmode.offloads;
 	int vlan_mask = 0;
 	int rc, retry_cnt = BNXT_IF_CHANGE_RETRY_COUNT;
-
-	if (!eth_dev->data->nb_tx_queues || !eth_dev->data->nb_rx_queues) {
-		PMD_DRV_LOG(ERR, "Queues are not configured yet!\n");
-		return -EINVAL;
-	}
 
 	if (bp->rx_cp_nr_rings > RTE_ETHDEV_QUEUE_STAT_CNTRS)
 		PMD_DRV_LOG(ERR,
