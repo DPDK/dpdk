@@ -44,6 +44,8 @@ int virtio_pci_dev_queues_alloc(struct virtio_pci_dev *vpdev, uint16_t nr_vq);
 __rte_internal
 void virtio_pci_dev_queues_free(struct virtio_pci_dev *vpdev, uint16_t nr_vq);
 __rte_internal
+uint16_t virtio_pci_dev_queue_size_get(struct virtio_pci_dev *vpdev, uint16_t idx);
+__rte_internal
 void virtio_pci_dev_free(struct virtio_pci_dev *vpdev);
 __rte_internal
 void virtio_pci_dev_features_get(struct virtio_pci_dev *vpdev, uint64_t *features);

@@ -134,6 +134,14 @@ virtio_pci_dev_queues_alloc(struct virtio_pci_dev *vpdev, uint16_t nr_vq)
 	return 0;
 }
 
+uint16_t
+virtio_pci_dev_queue_size_get(struct virtio_pci_dev *vpdev, uint16_t idx)
+{
+	struct virtio_hw *hw = &vpdev->hw;
+
+	return VIRTIO_OPS(hw)->get_queue_size(hw, idx);
+}
+
 void
 virtio_pci_dev_features_get(struct virtio_pci_dev *vpdev, uint64_t *features)
 {

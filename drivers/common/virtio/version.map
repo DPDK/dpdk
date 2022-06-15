@@ -5,6 +5,7 @@ INTERNAL {
 	virtio_pci_dev_nr_vq_get;
 	virtio_pci_dev_queues_alloc;
 	virtio_pci_dev_queues_free;
+	virtio_pci_dev_queue_size_get;
 	virtio_pci_dev_free;
 	virtio_pci_dev_features_get;
 	virtio_pci_dev_features_set;
