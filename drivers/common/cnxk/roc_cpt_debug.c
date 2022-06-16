@@ -8,6 +8,10 @@
 void
 roc_cpt_parse_hdr_dump(const struct cpt_parse_hdr_s *cpth)
 {
+	struct cpt_frag_info_s *frag_info;
+	uint32_t offset;
+	uint64_t *slot;
+
 	plt_print("CPT_PARSE \t0x%p:", cpth);
 
 	/* W0 */
@@ -19,7 +23,7 @@ roc_cpt_parse_hdr_dump(const struct cpt_parse_hdr_s *cpth)
 		  cpth->w0.pad_len, cpth->w0.num_frags, cpth->w0.pkt_out);
 
 	/* W1 */
-	plt_print("W1: wqe_ptr \t0x%016lx\t", cpth->wqe_ptr);
+	plt_print("W1: wqe_ptr \t0x%016lx\t", plt_be_to_cpu_64(cpth->wqe_ptr));
 
 	/* W2 */
 	plt_print("W2: frag_age \t0x%x\t\torig_pf_func \t0x%04x",
@@ -33,7 +37,32 @@ roc_cpt_parse_hdr_dump(const struct cpt_parse_hdr_s *cpth)
 
 	/* W4 */
 	plt_print("W4: esn \t%" PRIx64 " \t OR frag1_wqe_ptr \t0x%" PRIx64,
-		  cpth->esn, cpth->frag1_wqe_ptr);
+		  cpth->esn, plt_be_to_cpu_64(cpth->frag1_wqe_ptr));
+
+	/* offset of 0 implies 256B, otherwise it implies offset*8B */
+	offset = cpth->w2.fi_offset;
+	offset = (((offset - 1) & 0x1f) + 1) * 8;
+	frag_info = PLT_PTR_ADD(cpth, offset);
+
+	plt_print("CPT Fraginfo \t0x%p:", frag_info);
+
+	/* W0 */
+	plt_print("W0: f0.info \t0x%x", frag_info->w0.f0.info);
+	plt_print("W0: f1.info \t0x%x", frag_info->w0.f1.info);
+	plt_print("W0: f2.info \t0x%x", frag_info->w0.f2.info);
+	plt_print("W0: f3.info \t0x%x", frag_info->w0.f3.info);
+
+	/* W1 */
+	plt_print("W1: frag_size0 \t0x%x", frag_info->w1.frag_size0);
+	plt_print("W1: frag_size1 \t0x%x", frag_info->w1.frag_size1);
+	plt_print("W1: frag_size2 \t0x%x", frag_info->w1.frag_size2);
+	plt_print("W1: frag_size3 \t0x%x", frag_info->w1.frag_size3);
+
+	slot = (uint64_t *)(frag_info + 1);
+	plt_print("Frag Slot2:  WQE ptr \t%p",
+		  (void *)plt_be_to_cpu_64(slot[0]));
+	plt_print("Frag Slot3:  WQE ptr \t%p",
+		  (void *)plt_be_to_cpu_64(slot[1]));
 }
 
 static int
