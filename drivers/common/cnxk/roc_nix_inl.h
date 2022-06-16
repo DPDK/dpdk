@@ -131,7 +131,7 @@ struct roc_nix_inl_dev {
 	uint16_t channel;
 	uint16_t chan_mask;
 	bool attach_cptlf;
-	bool wqe_skip;
+	uint16_t wqe_skip;
 	uint8_t spb_drop_pc;
 	uint8_t lpb_drop_pc;
 	bool set_soft_exp_poll;

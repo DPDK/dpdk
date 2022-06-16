@@ -125,6 +125,7 @@ cnxk_sso_rxq_enable(struct cnxk_eth_dev *cnxk_eth_dev, uint16_t rq_id,
 {
 	struct roc_nix *nix = &cnxk_eth_dev->nix;
 	struct roc_nix_rq *rq;
+	uint16_t wqe_skip;
 	int rc;
 
 	rq = &cnxk_eth_dev->rqs[rq_id];
@@ -132,7 +133,9 @@ cnxk_sso_rxq_enable(struct cnxk_eth_dev *cnxk_eth_dev, uint16_t rq_id,
 	rq->tt = ev->sched_type;
 	rq->hwgrp = ev->queue_id;
 	rq->flow_tag_width = 20;
-	rq->wqe_skip = 1;
+	wqe_skip = RTE_ALIGN_CEIL(sizeof(struct rte_mbuf), ROC_CACHE_LINE_SZ);
+	wqe_skip = wqe_skip / ROC_CACHE_LINE_SZ;
+	rq->wqe_skip = wqe_skip;
 	rq->tag_mask = (port_id & 0xF) << 20;
 	rq->tag_mask |= (((port_id >> 4) & 0xF) | (RTE_EVENT_TYPE_ETHDEV << 4))
 			<< 24;

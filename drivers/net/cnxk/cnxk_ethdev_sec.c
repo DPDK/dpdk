@@ -264,6 +264,7 @@ cnxk_nix_inl_dev_probe(struct rte_pci_driver *pci_drv,
 	char name[CNXK_NIX_INL_DEV_NAME_LEN];
 	struct roc_nix_inl_dev *inl_dev;
 	const struct rte_memzone *mz;
+	uint16_t wqe_skip;
 	int rc = -ENOMEM;
 
 	RTE_SET_USED(pci_drv);
@@ -295,7 +296,9 @@ cnxk_nix_inl_dev_probe(struct rte_pci_driver *pci_drv,
 
 	inl_dev->attach_cptlf = true;
 	/* WQE skip is one for DPDK */
-	inl_dev->wqe_skip = true;
+	wqe_skip = RTE_ALIGN_CEIL(sizeof(struct rte_mbuf), ROC_CACHE_LINE_SZ);
+	wqe_skip = wqe_skip / ROC_CACHE_LINE_SZ;
+	inl_dev->wqe_skip = wqe_skip;
 	inl_dev->set_soft_exp_poll = true;
 	rc = roc_nix_inl_dev_init(inl_dev);
 	if (rc) {

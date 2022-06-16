@@ -84,7 +84,7 @@ struct nix_inl_dev {
 	uint32_t ipsec_in_max_spi;
 	uint32_t inb_spi_mask;
 	bool attach_cptlf;
-	bool wqe_skip;
+	uint16_t wqe_skip;
 	bool ts_ena;
 };
 
