@@ -156,13 +156,10 @@ struct cnxk_fc_cfg {
 };
 
 struct cnxk_pfc_cfg {
-	struct cnxk_fc_cfg fc_cfg;
 	uint16_t class_en;
 	uint16_t pause_time;
-	uint8_t rx_tc;
-	uint8_t rx_qid;
-	uint8_t tx_tc;
-	uint8_t tx_qid;
+	uint16_t rx_pause_en;
+	uint16_t tx_pause_en;
 };
 
 struct cnxk_eth_qconf {
@@ -669,8 +666,10 @@ int nix_mtr_color_action_validate(struct rte_eth_dev *eth_dev, uint32_t id,
 				  uint32_t *prev_id, uint32_t *next_id,
 				  struct cnxk_mtr_policy_node *policy,
 				  int *tree_level);
-int nix_priority_flow_ctrl_configure(struct rte_eth_dev *eth_dev,
-				     struct cnxk_pfc_cfg *conf);
+int nix_priority_flow_ctrl_rq_conf(struct rte_eth_dev *eth_dev, uint16_t qid,
+				   uint8_t tx_pause, uint8_t tc);
+int nix_priority_flow_ctrl_sq_conf(struct rte_eth_dev *eth_dev, uint16_t qid,
+				   uint8_t rx_pause, uint8_t tc);
 
 /* Inlines */
 static __rte_always_inline uint64_t

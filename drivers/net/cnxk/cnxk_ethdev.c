@@ -323,7 +323,7 @@ nix_init_flow_ctrl_config(struct rte_eth_dev *eth_dev)
 	struct cnxk_fc_cfg *fc = &dev->fc_cfg;
 	int rc;
 
-	if (roc_nix_is_sdp(&dev->nix))
+	if (roc_nix_is_vf_or_sdp(&dev->nix))
 		return 0;
 
 	/* To avoid Link credit deadlock on Ax, disable Tx FC if it's enabled */
@@ -604,6 +604,9 @@ cnxk_nix_rx_queue_setup(struct rte_eth_dev *eth_dev, uint16_t qid,
 	rxq_sp->qconf.conf.rx.offloads = dev->rx_offloads;
 	rxq_sp->qconf.nb_desc = nb_desc;
 	rxq_sp->qconf.mp = mp;
+	rxq_sp->tc = 0;
+	rxq_sp->tx_pause = (dev->fc_cfg.mode == RTE_ETH_FC_FULL ||
+			    dev->fc_cfg.mode == RTE_ETH_FC_TX_PAUSE);
 
 	if (dev->rx_offloads & RTE_ETH_RX_OFFLOAD_SECURITY) {
 		/* Pass a tagmask used to handle error packets in inline device.
@@ -1795,7 +1798,6 @@ cnxk_eth_dev_uninit(struct rte_eth_dev *eth_dev, bool reset)
 		if (dev->pfc_tc_sq_map[i] != 0xFFFF) {
 			pfc_conf.rx_pause.tx_qid = dev->pfc_tc_sq_map[i];
 			pfc_conf.rx_pause.tc = i;
-			pfc_conf.tx_pause.rx_qid = i;
 			pfc_conf.tx_pause.tc = i;
 			rc = cnxk_nix_priority_flow_ctrl_queue_config(eth_dev,
 				&pfc_conf);
@@ -1804,9 +1806,6 @@ cnxk_eth_dev_uninit(struct rte_eth_dev *eth_dev, bool reset)
 					rc);
 		}
 	}
-
-	fc_conf.mode = RTE_ETH_FC_FULL;
-	rc = cnxk_nix_flow_ctrl_set(eth_dev, &fc_conf);
 
 	/* Disable and free rte_meter entries */
 	nix_meter_fini(dev);
