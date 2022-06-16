@@ -13,7 +13,7 @@ objs = [base_objs]
 deps += ['ethdev', 'rawdev', 'pci', 'bus_pci', 'kvargs',
     'bus_vdev', 'bus_ifpga', 'net', 'net_i40e', 'net_ipn3ke']
 
-sources = files('ifpga_rawdev.c', 'rte_pmd_ifpga.c')
+sources = files('ifpga_rawdev.c', 'rte_pmd_ifpga.c', 'afu_pmd_core.c')
 
 includes += include_directories('base')
 includes += include_directories('../../net/ipn3ke')

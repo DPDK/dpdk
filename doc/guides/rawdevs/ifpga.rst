@@ -102,6 +102,106 @@ The following device parameters are supported:
   identifies AFU Bit Stream file.
 
 
+IFPGA AFU Driver
+================
+
+AFU (Acceleration Function Unit) is a function or set of functions
+that perform various acceleration task on FPGA platform.
+The image of AFU is called as GBS (Green Bit Stream)
+which can be used by PR (Partial Reconfigure) tool to load into the FPGA,
+different AFUs can be dynamically reloaded respectively.
+
+AFU has two main communication paths between the host:
+
+- FPGA to host transactions
+
+  The FPGA accesses host memory using a 512 bits data path.
+  This data path has separate channels for read and write traffic
+  allowing for simultaneous read and write to occur.
+  The read and write channels support bursts of 1, 2, and 4 cache lines.
+
+- Host to FPGA (MMIO) transactions
+
+  The host can access a 256 KB address space within the FPGA.
+  This address space contains Device Feature Header (DFHs)
+  and the control and status registers of the AFU hardware.
+
+AFU must implement the following registers:
+
+- AFU DFH - a 64-bit header at MMIO address offset 0x0
+
+- AFU ID - a 128-bit UUID at MMIO address offset 0x2
+
+The AFU is enumerated and recorded by IFPGA Rawdev Driver.
+Then AFU devices are created with the help of IFPGA Bus Driver,
+AFU driver probe these AFU devices and expose them
+as standard raw devices for application to access.
+
+Implementation details
+----------------------
+
+IFPGA Rawdev Driver identifies AFU in FPGA, AFU location (PF/VF address)
+and UUID are taken by ``ifpga_rawdev_cfg`` vdev driver
+which hot plug AFU into IFPGA Bus.
+
+IFPGA Bus takes AFU device scan and AFU driver probe.
+All AFU device driver bind to AFU device by its dedicated UUID.
+To avoid unnecessary code duplication and ensure maximum performance,
+AFU driver implements the common part of raw device driver.
+Several specific AFU drivers are provided for reference.
+The design is summarized by the following block diagram::
+
+     +---------------------------------------------------------------+
+     |                       Application(s)                          |
+     +----------------------------.----------------------------------+
+                                  |
+     +----------------------------'----------------------------------+
+     |                  DPDK Framework (Rawdev APIs)                 |
+     +-----------------+------------------------------------+--------+
+                       |                                    |
+     +-----------------'----------------+                   |
+     |          IFPGA AFU Driver        |          +--------'--------+
+     |                                  |          |                 |
+     |+---------------+ +--------------+|          |                 |
+     ||  AFU Dev1 PMD | | AFU Dev2 PMD ||          |                 |
+     |+-------+-------+ +-------+------+|          |                 |
+     +--------|-----------------|-------+          |                 |
+              |                 |                  |                 |
+     +--------'------+  +-------'-------+          |      IFPGA      |
+     |    AFU Dev1   |  |    AFU Dev2   |          |  Rawdev Driver  |
+     +-------.-------+  +-------.-------+          |                 |
+             |                  |          Rawdev  |                 |
+     +-------'------------------'-------+    Ops   |                 |
+     |              IFPGA Bus           |--------->|                 |
+     +-----------------.----------------+          +--------.--------+
+                       |                                    |
+         Hot-plugin -->|                                    |
+                       |                                    |
+     +-----------------'------------------+        +--------'--------+
+     |    ifpga_rawdev_cfg vdev driver    |        |  Intel FpgaDev  |
+     +------------------------------------+        +-----------------+
+
+How to test AFU function
+------------------------
+
+Suppose AFU is found in FPGA at PCI address 31:00.0,
+then you can create and test a AFU device by following steps in application.
+
+#. rte_vdev_init("ifpga_rawdev_cfg0", "ifpga=31:00.0,port=0")
+
+#. rawdev = rte_rawdev_pmd_get_named_dev("afu_0|31:00.0")
+
+#. rte_rawdev_configure(rawdev->dev_id, &cfg, sizeof(cfg))
+
+#. rte_rawdev_selftest(rawdev->dev_id)
+
+#. rte_vdev_uninit("ifpga_rawdev_cfg0")
+
+AFU device name format used in ``rte_rawdev_pmd_get_named_dev`` is ``afu_[port]|[BDF]``.
+Please refer to OPAE documentation for the meaning of port.
+Each AFU device has specific configuration data, they are defined in ``rte_pmd_afu.h``.
+
+
 Open FPGA Stack
 =====================
 
