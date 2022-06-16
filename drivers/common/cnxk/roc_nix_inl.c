@@ -246,6 +246,8 @@ roc_nix_reassembly_configure(uint32_t max_wait_time, uint16_t max_frags)
 	struct roc_cpt_rxc_time_cfg cfg;
 
 	PLT_SET_USED(max_frags);
+	if (idev == NULL)
+		return -ENOTSUP;
 	roc_cpt = idev->cpt;
 	if (!roc_cpt) {
 		plt_err("Cannot support inline inbound, cryptodev not probed");

@@ -777,7 +777,7 @@ struct nix_lf_alloc_req {
 	uint64_t __io way_mask;
 #define NIX_LF_RSS_TAG_LSB_AS_ADDER BIT_ULL(0)
 #define NIX_LF_LBK_BLK_SEL	    BIT_ULL(1)
-	uint64_t flags;
+	uint64_t __io flags;
 };
 
 struct nix_lf_alloc_rsp {
@@ -798,7 +798,7 @@ struct nix_lf_alloc_rsp {
 	uint8_t __io cgx_links;	      /* No. of CGX links present in HW */
 	uint8_t __io lbk_links;	      /* No. of LBK links present in HW */
 	uint8_t __io sdp_links;	      /* No. of SDP links present in HW */
-	uint8_t tx_link;	      /* Transmit channel link number */
+	uint8_t __io tx_link;	      /* Transmit channel link number */
 };
 
 struct nix_lf_free_req {
@@ -1275,8 +1275,8 @@ struct ssow_lf_free_req {
 #define SSOW_INVAL_SELECTIVE_VER 0x1000
 struct ssow_lf_inv_req {
 	struct mbox_msghdr hdr;
-	uint16_t nb_hws;		 /* Number of HWS to invalidate*/
-	uint16_t hws[MAX_RVU_BLKLF_CNT]; /* Array of HWS */
+	uint16_t __io nb_hws;		      /* Number of HWS to invalidate*/
+	uint16_t __io hws[MAX_RVU_BLKLF_CNT]; /* Array of HWS */
 };
 
 struct ssow_config_lsw {
@@ -1453,11 +1453,11 @@ struct cpt_sts_rsp {
 struct cpt_rxc_time_cfg_req {
 	struct mbox_msghdr hdr;
 	int blkaddr;
-	uint32_t step;
-	uint16_t zombie_thres;
-	uint16_t zombie_limit;
-	uint16_t active_thres;
-	uint16_t active_limit;
+	uint32_t __io step;
+	uint16_t __io zombie_thres;
+	uint16_t __io zombie_limit;
+	uint16_t __io active_thres;
+	uint16_t __io active_limit;
 };
 
 struct cpt_rx_inline_lf_cfg_msg {
