@@ -164,6 +164,28 @@ set_cq_weight(const char *key __rte_unused,
 	return 0;
 }
 
+/* override defaults with value(s) provided on command line */
+static void
+dlb2_init_port_cos(struct dlb2_eventdev *dlb2, int *port_cos)
+{
+	int q;
+
+	for (q = 0; q < DLB2_MAX_NUM_PORTS_ALL; q++) {
+		dlb2->ev_ports[q].cos_id = port_cos[q];
+		dlb2->cos_ports[port_cos[q]]++;
+	}
+}
+
+static void
+dlb2_init_cos_bw(struct dlb2_eventdev *dlb2,
+		 struct dlb2_cos_bw *cos_bw)
+{
+	int q;
+	for (q = 0; q < DLB2_COS_NUM_VALS; q++)
+		dlb2->cos_bw[q] = cos_bw->val[q];
+
+}
+
 static int
 dlb2_hw_query_resources(struct dlb2_eventdev *dlb2)
 {
@@ -379,36 +401,6 @@ set_dev_id(const char *key __rte_unused,
 }
 
 static int
-set_cos(const char *key __rte_unused,
-	const char *value,
-	void *opaque)
-{
-	enum dlb2_cos *cos_id = opaque;
-	int x = 0;
-	int ret;
-
-	if (value == NULL || opaque == NULL) {
-		DLB2_LOG_ERR("NULL pointer\n");
-		return -EINVAL;
-	}
-
-	ret = dlb2_string_to_int(&x, value);
-	if (ret < 0)
-		return ret;
-
-	if (x != DLB2_COS_DEFAULT && (x < DLB2_COS_0 || x > DLB2_COS_3)) {
-		DLB2_LOG_ERR(
-			"COS %d out of range, must be DLB2_COS_DEFAULT or 0-3\n",
-			x);
-		return -EINVAL;
-	}
-
-	*cos_id = x;
-
-	return 0;
-}
-
-static int
 set_poll_interval(const char *key __rte_unused,
 	const char *value,
 	void *opaque)
@@ -424,6 +416,80 @@ set_poll_interval(const char *key __rte_unused,
 	ret = dlb2_string_to_int(poll_interval, value);
 	if (ret < 0)
 		return ret;
+
+	return 0;
+}
+
+static int
+set_port_cos(const char *key __rte_unused,
+	     const char *value,
+	     void *opaque)
+{
+	struct dlb2_port_cos *port_cos = opaque;
+	int first, last, cos_id, i;
+
+	if (value == NULL || opaque == NULL) {
+		DLB2_LOG_ERR("NULL pointer\n");
+		return -EINVAL;
+	}
+
+	/* command line override may take one of the following 3 forms:
+	 * port_cos=all:<cos_id> ... all ports
+	 * port_cos=port-port:<cos_id> ... a range of ports
+	 * port_cos=port:<cos_id> ... just one port
+	 */
+	if (sscanf(value, "all:%d", &cos_id) == 1) {
+		first = 0;
+		last = DLB2_MAX_NUM_LDB_PORTS - 1;
+	} else if (sscanf(value, "%d-%d:%d", &first, &last, &cos_id) == 3) {
+		/* we have everything we need */
+	} else if (sscanf(value, "%d:%d", &first, &cos_id) == 2) {
+		last = first;
+	} else {
+		DLB2_LOG_ERR("Error parsing ldb port port_cos devarg. Should be all:val, port-port:val, or port:val\n");
+		return -EINVAL;
+	}
+
+	if (first > last || first < 0 ||
+		last >= DLB2_MAX_NUM_LDB_PORTS) {
+		DLB2_LOG_ERR("Error parsing ldb port cos_id arg, invalid port value\n");
+		return -EINVAL;
+	}
+
+	if (cos_id < DLB2_COS_0 || cos_id > DLB2_COS_3) {
+		DLB2_LOG_ERR("Error parsing ldb port cos_id devarg, must be between 0 and 4\n");
+		return -EINVAL;
+	}
+
+	for (i = first; i <= last; i++)
+		port_cos->cos_id[i] = cos_id; /* indexed by port */
+
+	return 0;
+}
+
+static int
+set_cos_bw(const char *key __rte_unused,
+	     const char *value,
+	     void *opaque)
+{
+	struct dlb2_cos_bw *cos_bw = opaque;
+
+	if (opaque == NULL) {
+		DLB2_LOG_ERR("NULL pointer\n");
+		return -EINVAL;
+	}
+
+	/* format must be %d,%d,%d,%d */
+
+	if (sscanf(value, "%d,%d,%d,%d", &cos_bw->val[0], &cos_bw->val[1],
+		   &cos_bw->val[2], &cos_bw->val[3]) != 4) {
+		DLB2_LOG_ERR("Error parsing cos bandwidth devarg. Should be bw0,bw1,bw2,bw3 where all values combined are <= 100\n");
+		return -EINVAL;
+	}
+	if (cos_bw->val[0] + cos_bw->val[1] + cos_bw->val[2] + cos_bw->val[3] > 100) {
+		DLB2_LOG_ERR("Error parsing cos bandwidth devarg. Should be bw0,bw1,bw2,bw3  where all values combined are <= 100\n");
+		return -EINVAL;
+	}
 
 	return 0;
 }
@@ -653,11 +719,13 @@ dlb2_eventdev_info_get(struct rte_eventdev *dev,
 }
 
 static int
-dlb2_hw_create_sched_domain(struct dlb2_hw_dev *handle,
+dlb2_hw_create_sched_domain(struct dlb2_eventdev *dlb2,
+			    struct dlb2_hw_dev *handle,
 			    const struct dlb2_hw_rsrcs *resources_asked,
 			    uint8_t device_version)
 {
 	int ret = 0;
+	uint32_t cos_ports = 0;
 	struct dlb2_create_sched_domain_args *cfg;
 
 	if (resources_asked == NULL) {
@@ -683,37 +751,21 @@ dlb2_hw_create_sched_domain(struct dlb2_hw_dev *handle,
 
 	/* LDB ports */
 
-	cfg->cos_strict = 0; /* Best effort */
-	cfg->num_cos_ldb_ports[0] = 0;
-	cfg->num_cos_ldb_ports[1] = 0;
-	cfg->num_cos_ldb_ports[2] = 0;
-	cfg->num_cos_ldb_ports[3] = 0;
+	/* tally of ports with non default COS */
+	cos_ports = dlb2->cos_ports[1] + dlb2->cos_ports[2] +
+		    dlb2->cos_ports[3];
 
-	switch (handle->cos_id) {
-	case DLB2_COS_0:
-		cfg->num_ldb_ports = 0; /* no don't care ports */
-		cfg->num_cos_ldb_ports[0] =
-			resources_asked->num_ldb_ports;
-		break;
-	case DLB2_COS_1:
-		cfg->num_ldb_ports = 0; /* no don't care ports */
-		cfg->num_cos_ldb_ports[1] = resources_asked->num_ldb_ports;
-		break;
-	case DLB2_COS_2:
-		cfg->num_ldb_ports = 0; /* no don't care ports */
-		cfg->num_cos_ldb_ports[2] = resources_asked->num_ldb_ports;
-		break;
-	case DLB2_COS_3:
-		cfg->num_ldb_ports = 0; /* no don't care ports */
-		cfg->num_cos_ldb_ports[3] =
-			resources_asked->num_ldb_ports;
-		break;
-	case DLB2_COS_DEFAULT:
-		/* all ldb ports are don't care ports from a cos perspective */
-		cfg->num_ldb_ports =
-			resources_asked->num_ldb_ports;
-		break;
+	if (cos_ports > resources_asked->num_ldb_ports) {
+		DLB2_LOG_ERR("dlb2: num_ldb_ports < nonzero cos_ports\n");
+		ret = EINVAL;
+		goto error_exit;
 	}
+
+	cfg->cos_strict = 0; /* Best effort */
+	cfg->num_cos_ldb_ports[0] = resources_asked->num_ldb_ports - cos_ports;
+	cfg->num_cos_ldb_ports[1] = dlb2->cos_ports[1];
+	cfg->num_cos_ldb_ports[2] = dlb2->cos_ports[2];
+	cfg->num_cos_ldb_ports[3] = dlb2->cos_ports[3];
 
 	if (device_version == DLB2_HW_V2)
 		cfg->num_ldb_credits = resources_asked->num_ldb_credits;
@@ -892,7 +944,8 @@ dlb2_eventdev_configure(const struct rte_eventdev *dev)
 			rsrcs->num_dir_credits = dlb2->num_dir_credits_override;
 	}
 
-	if (dlb2_hw_create_sched_domain(handle, rsrcs, dlb2->version) < 0) {
+	if (dlb2_hw_create_sched_domain(dlb2, handle, rsrcs,
+					dlb2->version) < 0) {
 		DLB2_LOG_ERR("dlb2_hw_create_sched_domain failed\n");
 		return -ENODEV;
 	}
@@ -1449,12 +1502,8 @@ dlb2_hw_create_ldb_port(struct dlb2_eventdev *dlb2,
 
 	cfg.cq_history_list_size = DLB2_NUM_HIST_LIST_ENTRIES_PER_LDB_PORT;
 
-	if (handle->cos_id == DLB2_COS_DEFAULT)
-		cfg.cos_id = 0;
-	else
-		cfg.cos_id = handle->cos_id;
-
-	cfg.cos_strict = 0;
+	cfg.cos_id = ev_port->cos_id;
+	cfg.cos_strict = 0;/* best effots */
 
 	/* User controls the LDB high watermark via enqueue depth. The DIR high
 	 * watermark is equal, unless the directed credit pool is too small.
@@ -1509,7 +1558,8 @@ dlb2_hw_create_ldb_port(struct dlb2_eventdev *dlb2,
 		qm_port->cached_ldb_credits = 0;
 		qm_port->cached_dir_credits = 0;
 		if (ev_port->cq_weight) {
-			struct dlb2_enable_cq_weight_args cq_weight_args = {0};
+			struct dlb2_enable_cq_weight_args
+				cq_weight_args = { {0} };
 
 			cq_weight_args.port_id = qm_port->id;
 			cq_weight_args.limit = ev_port->cq_weight;
@@ -4450,7 +4500,6 @@ dlb2_primary_eventdev_probe(struct rte_eventdev *dev,
 
 	dlb2->max_num_events_override = dlb2_args->max_num_events;
 	dlb2->num_dir_credits_override = dlb2_args->num_dir_credits_override;
-	dlb2->qm_instance.cos_id = dlb2_args->cos_id;
 	dlb2->poll_interval = dlb2_args->poll_interval;
 	dlb2->sw_credit_quanta = dlb2_args->sw_credit_quanta;
 	dlb2->hw_credit_quanta = dlb2_args->hw_credit_quanta;
@@ -4482,6 +4531,28 @@ dlb2_primary_eventdev_probe(struct rte_eventdev *dev,
 
 	dlb2_iface_hardware_init(&dlb2->qm_instance);
 
+	/* configure class of service */
+	{
+		struct dlb2_set_cos_bw_args
+			set_cos_bw_args = { {0} };
+		int id;
+		int ret = 0;
+
+		for (id = 0; id < DLB2_COS_NUM_VALS; id++) {
+			set_cos_bw_args.cos_id = id;
+			set_cos_bw_args.cos_id = dlb2->cos_bw[id];
+			ret = dlb2_iface_set_cos_bw(&dlb2->qm_instance,
+						    &set_cos_bw_args);
+			if (ret != 0)
+				break;
+		}
+		if (ret) {
+			DLB2_LOG_ERR("dlb2: failed to configure class of service, err=%d\n",
+				     err);
+			return err;
+		}
+	}
+
 	err = dlb2_iface_get_cq_poll_mode(&dlb2->qm_instance, &dlb2->poll_mode);
 	if (err < 0) {
 		DLB2_LOG_ERR("dlb2: failed to get the poll mode, err=%d\n",
@@ -4511,6 +4582,12 @@ dlb2_primary_eventdev_probe(struct rte_eventdev *dev,
 
 	dlb2_init_cq_weight(dlb2,
 			    dlb2_args->cq_weight.limit);
+
+	dlb2_init_port_cos(dlb2,
+			   dlb2_args->port_cos.cos_id);
+
+	dlb2_init_cos_bw(dlb2,
+			 &dlb2_args->cos_bw);
 
 	return 0;
 }
@@ -4567,6 +4644,8 @@ dlb2_parse_params(const char *params,
 					     DLB2_VECTOR_OPTS_ENAB_ARG,
 					     DLB2_MAX_CQ_DEPTH,
 					     DLB2_CQ_WEIGHT,
+					     DLB2_PORT_COS,
+					     DLB2_COS_BW,
 					     NULL };
 
 	if (params != NULL && params[0] != '\0') {
@@ -4634,16 +4713,6 @@ dlb2_parse_params(const char *params,
 			}
 			if (ret != 0) {
 				DLB2_LOG_ERR("%s: Error parsing qid_depth_thresh parameter",
-					     name);
-				rte_kvargs_free(kvlist);
-				return ret;
-			}
-
-			ret = rte_kvargs_process(kvlist, DLB2_COS_ARG,
-						 set_cos,
-						 &dlb2_args->cos_id);
-			if (ret != 0) {
-				DLB2_LOG_ERR("%s: Error parsing cos parameter",
 					     name);
 				rte_kvargs_free(kvlist);
 				return ret;
@@ -4723,6 +4792,29 @@ dlb2_parse_params(const char *params,
 				rte_kvargs_free(kvlist);
 				return ret;
 			}
+
+			ret = rte_kvargs_process(kvlist,
+					DLB2_PORT_COS,
+					set_port_cos,
+					&dlb2_args->port_cos);
+			if (ret != 0) {
+				DLB2_LOG_ERR("%s: Error parsing port cos",
+					     name);
+				rte_kvargs_free(kvlist);
+				return ret;
+			}
+
+			ret = rte_kvargs_process(kvlist,
+					DLB2_COS_BW,
+					set_cos_bw,
+					&dlb2_args->cos_bw);
+			if (ret != 0) {
+				DLB2_LOG_ERR("%s: Error parsing cos_bw",
+					     name);
+				rte_kvargs_free(kvlist);
+				return ret;
+			}
+
 
 			rte_kvargs_free(kvlist);
 		}

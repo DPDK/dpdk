@@ -646,6 +646,25 @@ dlb2_pf_enable_cq_weight(struct dlb2_hw_dev *handle,
 	return ret;
 }
 
+static int
+dlb2_pf_set_cos_bandwidth(struct dlb2_hw_dev *handle,
+			  struct dlb2_set_cos_bw_args *args)
+{
+	struct dlb2_dev *dlb2_dev = (struct dlb2_dev *)handle->pf_dev;
+	int ret = 0;
+
+	DLB2_INFO(dev->dlb2_device, "Entering %s()\n", __func__);
+
+	ret = dlb2_hw_set_cos_bandwidth(&dlb2_dev->hw,
+					args->cos_id,
+					args->bandwidth);
+
+	DLB2_INFO(dev->dlb2_device, "Exiting %s() with ret=%d\n",
+		  __func__, ret);
+
+	return ret;
+}
+
 static void
 dlb2_pf_iface_fn_ptrs_init(void)
 {
@@ -671,6 +690,7 @@ dlb2_pf_iface_fn_ptrs_init(void)
 	dlb2_iface_set_sn_allocation = dlb2_pf_set_sn_allocation;
 	dlb2_iface_get_sn_occupancy = dlb2_pf_get_sn_occupancy;
 	dlb2_iface_enable_cq_weight = dlb2_pf_enable_cq_weight;
+	dlb2_iface_set_cos_bw = dlb2_pf_set_cos_bandwidth;
 }
 
 /* PCI DEV HOOKS */
@@ -684,7 +704,6 @@ dlb2_eventdev_pci_init(struct rte_eventdev *eventdev)
 		.max_num_events = DLB2_MAX_NUM_LDB_CREDITS,
 		.num_dir_credits_override = -1,
 		.qid_depth_thresholds = { {0} },
-		.cos_id = DLB2_COS_DEFAULT,
 		.poll_interval = DLB2_POLL_INTERVAL_DEFAULT,
 		.sw_credit_quanta = DLB2_SW_CREDIT_QUANTA_DEFAULT,
 		.hw_credit_quanta = DLB2_SW_CREDIT_BATCH_SZ,

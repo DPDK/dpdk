@@ -45,6 +45,8 @@
 #define DLB2_VECTOR_OPTS_ENAB_ARG "vector_opts_enable"
 #define DLB2_MAX_CQ_DEPTH "max_cq_depth"
 #define DLB2_CQ_WEIGHT "cq_weight"
+#define DLB2_PORT_COS "port_cos"
+#define DLB2_COS_BW "cos_bw"
 
 /* Begin HW related defines and structs */
 
@@ -416,7 +418,8 @@ enum dlb2_cos {
 	DLB2_COS_0 = 0,
 	DLB2_COS_1,
 	DLB2_COS_2,
-	DLB2_COS_3
+	DLB2_COS_3,
+	DLB2_COS_NUM_VALS
 };
 
 struct dlb2_hw_dev {
@@ -424,7 +427,6 @@ struct dlb2_hw_dev {
 	struct dlb2_hw_resource_info info;
 	void *pf_dev; /* opaque pointer to PF PMD dev (struct dlb2_dev) */
 	uint32_t domain_id;
-	enum dlb2_cos cos_id;
 	rte_spinlock_t resource_lock; /* for MP support */
 } __rte_cache_aligned;
 
@@ -529,6 +531,7 @@ struct dlb2_eventdev_port {
 	bool enq_configured;
 	uint8_t implicit_release; /* release events before dequeuing */
 	uint32_t cq_weight; /* DLB2.5 and above ldb ports only */
+	int cos_id; /*ldb port class of service */
 }  __rte_cache_aligned;
 
 struct dlb2_queue {
@@ -623,6 +626,8 @@ struct dlb2_eventdev {
 			uint32_t credit_pool __rte_cache_aligned;
 		};
 	};
+	uint32_t cos_ports[DLB2_COS_NUM_VALS]; /* total ldb ports in each class */
+	uint32_t cos_bw[DLB2_COS_NUM_VALS]; /* bandwidth per cos domain */
 };
 
 /* used for collecting and passing around the dev args */
@@ -632,6 +637,14 @@ struct dlb2_qid_depth_thresholds {
 
 struct dlb2_cq_weight {
 	int limit[DLB2_MAX_NUM_LDB_PORTS];
+};
+
+struct dlb2_port_cos {
+	int cos_id[DLB2_MAX_NUM_LDB_PORTS];
+};
+
+struct dlb2_cos_bw {
+	int val[DLB2_COS_NUM_VALS];
 };
 
 struct dlb2_devargs {
@@ -648,6 +661,8 @@ struct dlb2_devargs {
 	bool vector_opts_enabled;
 	int max_cq_depth;
 	struct dlb2_cq_weight cq_weight;
+	struct dlb2_port_cos port_cos;
+	struct dlb2_cos_bw cos_bw;
 };
 
 /* End Eventdev related defines and structs */

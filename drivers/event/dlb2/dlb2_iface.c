@@ -76,3 +76,6 @@ int (*dlb2_iface_get_dir_queue_depth)(struct dlb2_hw_dev *handle,
 
 int (*dlb2_iface_enable_cq_weight)(struct dlb2_hw_dev *handle,
 				   struct dlb2_enable_cq_weight_args *args);
+
+int (*dlb2_iface_set_cos_bw)(struct dlb2_hw_dev *handle,
+			     struct dlb2_set_cos_bw_args *args);

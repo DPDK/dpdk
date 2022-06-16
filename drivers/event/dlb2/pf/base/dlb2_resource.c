@@ -6489,3 +6489,69 @@ int dlb2_hw_enable_cq_weight(struct dlb2_hw *hw,
 
 	return 0;
 }
+
+static void dlb2_log_set_cos_bandwidth(struct dlb2_hw *hw, u32 cos_id, u8 bw)
+{
+	DLB2_HW_DBG(hw, "DLB2 set port CoS bandwidth:\n");
+	DLB2_HW_DBG(hw, "\tCoS ID:    %u\n", cos_id);
+	DLB2_HW_DBG(hw, "\tBandwidth: %u\n", bw);
+}
+
+#define DLB2_MAX_BW_PCT 100
+
+/**
+ * dlb2_hw_set_cos_bandwidth() - set a bandwidth allocation percentage for a
+ *      port class-of-service.
+ * @hw: dlb2_hw handle for a particular device.
+ * @cos_id: class-of-service ID.
+ * @bandwidth: class-of-service bandwidth.
+ *
+ * Return:
+ * Returns 0 upon success, < 0 otherwise.
+ *
+ * Errors:
+ * EINVAL - Invalid cos ID, bandwidth is greater than 100, or bandwidth would
+ *          cause the total bandwidth across all classes of service to exceed
+ *          100%.
+ */
+int dlb2_hw_set_cos_bandwidth(struct dlb2_hw *hw, u32 cos_id, u8 bandwidth)
+{
+	unsigned int i;
+	u32 reg;
+	u8 total;
+
+	if (cos_id >= DLB2_NUM_COS_DOMAINS)
+		return -EINVAL;
+
+	if (bandwidth > DLB2_MAX_BW_PCT)
+		return -EINVAL;
+
+	total = 0;
+
+	for (i = 0; i < DLB2_NUM_COS_DOMAINS; i++)
+		total += (i == cos_id) ? bandwidth : hw->cos_reservation[i];
+
+	if (total > DLB2_MAX_BW_PCT)
+		return -EINVAL;
+
+	reg = DLB2_CSR_RD(hw, DLB2_LSP_CFG_SHDW_RANGE_COS(hw->ver, cos_id));
+
+	/*
+	 * Normalize the bandwidth to a value in the range 0-255. Integer
+	 * division may leave unreserved scheduling slots; these will be
+	 * divided among the 4 classes of service.
+	 */
+	DLB2_BITS_SET(reg, (bandwidth * 256) / 100, DLB2_LSP_CFG_SHDW_RANGE_COS_BW_RANGE);
+	DLB2_CSR_WR(hw, DLB2_LSP_CFG_SHDW_RANGE_COS(hw->ver, cos_id), reg);
+
+	reg = 0;
+	DLB2_BIT_SET(reg, DLB2_LSP_CFG_SHDW_CTRL_TRANSFER);
+	/* Atomically transfer the newly configured service weight */
+	DLB2_CSR_WR(hw, DLB2_LSP_CFG_SHDW_CTRL(hw->ver), reg);
+
+	dlb2_log_set_cos_bandwidth(hw, cos_id, bandwidth);
+
+	hw->cos_reservation[cos_id] = bandwidth;
+
+	return 0;
+}
