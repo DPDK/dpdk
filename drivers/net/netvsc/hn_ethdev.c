@@ -366,6 +366,8 @@ static void hn_rss_hash_init(struct hn_data *hv,
 		hv->rss_hash |= NDIS_HASH_IPV4;
 	if (rss_conf->rss_hf & RTE_ETH_RSS_NONFRAG_IPV4_TCP)
 		hv->rss_hash |= NDIS_HASH_TCP_IPV4;
+	if (rss_conf->rss_hf & RTE_ETH_RSS_NONFRAG_IPV4_UDP)
+		hv->rss_hash |= NDIS_HASH_UDP_IPV4;
 	if (rss_conf->rss_hf & RTE_ETH_RSS_IPV6)
 		hv->rss_hash |=  NDIS_HASH_IPV6;
 	if (rss_conf->rss_hf & RTE_ETH_RSS_IPV6_EX)
@@ -431,6 +433,9 @@ static int hn_rss_hash_conf_get(struct rte_eth_dev *dev,
 
 	if (hv->rss_hash & NDIS_HASH_TCP_IPV4)
 		rss_conf->rss_hf |= RTE_ETH_RSS_NONFRAG_IPV4_TCP;
+
+	if (hv->rss_hash & NDIS_HASH_UDP_IPV4)
+		rss_conf->rss_hf |= RTE_ETH_RSS_NONFRAG_IPV4_UDP;
 
 	if (hv->rss_hash & NDIS_HASH_IPV6)
 		rss_conf->rss_hf |= RTE_ETH_RSS_IPV6;
