@@ -439,6 +439,7 @@ cnxk_nix_tx_queue_setup(struct rte_eth_dev *eth_dev, uint16_t qid,
 	sq->qid = qid;
 	sq->nb_desc = nb_desc;
 	sq->max_sqe_sz = nix_sq_max_sqe_sz(dev);
+	sq->tc = ROC_NIX_PFC_CLASS_INVALID;
 
 	rc = roc_nix_sq_init(&dev->nix, sq);
 	if (rc) {
@@ -1281,8 +1282,6 @@ skip_lbk_setup:
 		goto cq_fini;
 	}
 
-	/* Initialize TC to SQ mapping as invalid */
-	memset(dev->pfc_tc_sq_map, 0xFF, sizeof(dev->pfc_tc_sq_map));
 	/*
 	 * Restore queue config when reconfigure followed by
 	 * reconfigure and no queue configure invoked from application case.
@@ -1794,17 +1793,17 @@ cnxk_eth_dev_uninit(struct rte_eth_dev *eth_dev, bool reset)
 	rc = cnxk_nix_flow_ctrl_set(eth_dev, &fc_conf);
 
 	pfc_conf.mode = RTE_ETH_FC_NONE;
-	for (i = 0; i < CNXK_NIX_PFC_CHAN_COUNT; i++) {
-		if (dev->pfc_tc_sq_map[i] != 0xFFFF) {
-			pfc_conf.rx_pause.tx_qid = dev->pfc_tc_sq_map[i];
-			pfc_conf.rx_pause.tc = i;
-			pfc_conf.tx_pause.tc = i;
-			rc = cnxk_nix_priority_flow_ctrl_queue_config(eth_dev,
-				&pfc_conf);
-			if (rc)
-				plt_err("Failed to reset PFC. error code(%d)",
-					rc);
-		}
+	for (i = 0; i < RTE_MAX(eth_dev->data->nb_rx_queues,
+				eth_dev->data->nb_tx_queues);
+	     i++) {
+		pfc_conf.rx_pause.tc = ROC_NIX_PFC_CLASS_INVALID;
+		pfc_conf.rx_pause.tx_qid = i;
+		pfc_conf.tx_pause.tc = ROC_NIX_PFC_CLASS_INVALID;
+		pfc_conf.tx_pause.rx_qid = i;
+		rc = cnxk_nix_priority_flow_ctrl_queue_config(eth_dev,
+							      &pfc_conf);
+		if (rc)
+			plt_err("Failed to reset PFC. error code(%d)", rc);
 	}
 
 	/* Disable and free rte_meter entries */

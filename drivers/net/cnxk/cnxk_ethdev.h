@@ -396,7 +396,6 @@ struct cnxk_eth_dev {
 	struct cnxk_eth_qconf *rx_qconf;
 
 	/* Flow control configuration */
-	uint16_t pfc_tc_sq_map[CNXK_NIX_PFC_CHAN_COUNT];
 	struct cnxk_pfc_cfg pfc_cfg;
 	struct cnxk_fc_cfg fc_cfg;
 

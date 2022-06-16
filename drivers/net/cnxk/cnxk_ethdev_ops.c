@@ -1129,8 +1129,10 @@ nix_priority_flow_ctrl_sq_conf(struct rte_eth_dev *eth_dev, uint16_t qid,
 	struct rte_eth_dev_data *data = eth_dev->data;
 	struct cnxk_pfc_cfg *pfc = &dev->pfc_cfg;
 	struct roc_nix *nix = &dev->nix;
+	struct roc_nix_pfc_cfg pfc_cfg;
 	struct roc_nix_fc_cfg fc_cfg;
 	struct cnxk_eth_txq_sp *txq;
+	enum roc_nix_fc_mode mode;
 	struct roc_nix_sq *sq;
 	int rc;
 
@@ -1139,12 +1141,6 @@ nix_priority_flow_ctrl_sq_conf(struct rte_eth_dev *eth_dev, uint16_t qid,
 
 	if (qid >= eth_dev->data->nb_tx_queues)
 		return -ENOTSUP;
-
-	if (dev->pfc_tc_sq_map[tc] != 0xFFFF &&
-	    dev->pfc_tc_sq_map[tc] != qid) {
-		plt_err("Same TC can not be configured on multiple SQs");
-		return -ENOTSUP;
-	}
 
 	/* Check if RX pause frame is enabled or not */
 	if (!pfc->rx_pause_en) {
@@ -1180,7 +1176,31 @@ nix_priority_flow_ctrl_sq_conf(struct rte_eth_dev *eth_dev, uint16_t qid,
 	if (rc)
 		return rc;
 
-	dev->pfc_tc_sq_map[tc] = sq->qid;
+	/* Maintaining a count for SQs which are configured for PFC. This is
+	 * required to handle disabling of a particular SQ without affecting
+	 * PFC on other SQs.
+	 */
+	if (!fc_cfg.tm_cfg.enable && sq->tc != ROC_NIX_PFC_CLASS_INVALID) {
+		sq->tc = ROC_NIX_PFC_CLASS_INVALID;
+		pfc->rx_pause_en--;
+	} else if (fc_cfg.tm_cfg.enable &&
+		   sq->tc == ROC_NIX_PFC_CLASS_INVALID) {
+		sq->tc = tc;
+		pfc->rx_pause_en++;
+	}
+
+	if (pfc->rx_pause_en > 1)
+		goto exit;
+
+	if (pfc->tx_pause_en)
+		mode = pfc->rx_pause_en ? ROC_NIX_FC_FULL : ROC_NIX_FC_TX;
+	else
+		mode = pfc->rx_pause_en ? ROC_NIX_FC_RX : ROC_NIX_FC_NONE;
+
+	memset(&pfc_cfg, 0, sizeof(struct roc_nix_pfc_cfg));
+	pfc_cfg.mode = mode;
+	pfc_cfg.tc = pfc->class_en;
+	rc = roc_nix_pfc_mode_set(nix, &pfc_cfg);
 exit:
 	return rc;
 }
