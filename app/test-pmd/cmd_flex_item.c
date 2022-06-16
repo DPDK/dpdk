@@ -20,6 +20,8 @@
 struct flex_item *flex_items[RTE_MAX_ETHPORTS][FLEX_MAX_PARSERS_NUM];
 struct flex_pattern flex_patterns[FLEX_MAX_PATTERNS_NUM];
 
+#ifdef RTE_HAS_JANSSON
+
 static struct flex_item *
 flex_parser_fetch(uint16_t port_id, uint16_t flex_id)
 {
@@ -34,7 +36,6 @@ flex_parser_fetch(uint16_t port_id, uint16_t flex_id)
 	return flex_items[port_id][flex_id];
 }
 
-#ifdef RTE_HAS_JANSSON
 static __rte_always_inline bool
 match_strkey(const char *key, const char *pattern)
 {
@@ -369,23 +370,12 @@ out:
 		free(fp);
 }
 
-#else /* RTE_HAS_JANSSON */
-void flex_item_create(__rte_unused portid_t port_id,
-		      __rte_unused uint16_t flex_id,
-		      __rte_unused const char *filename)
-{
-	printf("cannot create flex item - no JSON library configured\n");
-}
-#endif /* RTE_HAS_JANSSON */
-
 void
 flex_item_destroy(portid_t port_id, uint16_t flex_id)
 {
 	int ret;
 	struct rte_flow_error error;
 	struct flex_item *fp = flex_parser_fetch(port_id, flex_id);
-	if (!flex_id)
-		return;
 	if (fp == FLEX_PARSER_ERR) {
 		printf("Bad parameters: port_id=%u flex_id=%u\n",
 		       port_id, flex_id);
@@ -405,6 +395,22 @@ flex_item_destroy(portid_t port_id, uint16_t flex_id)
 		       port_id, flex_id, error.message);
 	}
 }
+
+#else /* RTE_HAS_JANSSON */
+void flex_item_create(__rte_unused portid_t port_id,
+		      __rte_unused uint16_t flex_id,
+		      __rte_unused const char *filename)
+{
+	printf("cannot create flex item - no JSON library configured\n");
+}
+
+void
+flex_item_destroy(__rte_unused portid_t port_id, __rte_unused uint16_t flex_id)
+{
+
+}
+
+#endif /* RTE_HAS_JANSSON */
 
 void
 port_flex_item_flush(portid_t port_id)
