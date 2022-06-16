@@ -1268,6 +1268,9 @@ struct mlx5_dev_ctx_shared {
 	struct mlx5_lb_ctx self_lb; /* QP to enable self loopback for Devx. */
 	unsigned int flow_max_priority;
 	enum modify_reg flow_mreg_c[MLX5_MREG_C_NUM];
+	void *devx_channel_lwm;
+	struct rte_intr_handle *intr_handle_lwm;
+	pthread_mutex_t lwm_config_lock;
 	/* Availability of mreg_c's. */
 	struct mlx5_dev_shared_port port[]; /* per device port data array. */
 };
@@ -1405,6 +1408,7 @@ enum mlx5_txq_modify_type {
 };
 
 struct mlx5_rxq_priv;
+struct mlx5_priv;
 
 /* HW objects operations structure. */
 struct mlx5_obj_ops {
@@ -1413,6 +1417,7 @@ struct mlx5_obj_ops {
 	int (*rxq_event_get)(struct mlx5_rxq_obj *rxq_obj);
 	int (*rxq_obj_modify)(struct mlx5_rxq_priv *rxq, uint8_t type);
 	void (*rxq_obj_release)(struct mlx5_rxq_priv *rxq);
+	int (*rxq_event_get_lwm)(struct mlx5_priv *priv, int *rxq_idx, int *port_id);
 	int (*ind_table_new)(struct rte_eth_dev *dev, const unsigned int log_n,
 			     struct mlx5_ind_table_obj *ind_tbl);
 	int (*ind_table_modify)(struct rte_eth_dev *dev,
@@ -1603,6 +1608,8 @@ int mlx5_net_remove(struct mlx5_common_device *cdev);
 bool mlx5_is_hpf(struct rte_eth_dev *dev);
 bool mlx5_is_sf_repr(struct rte_eth_dev *dev);
 void mlx5_age_event_prepare(struct mlx5_dev_ctx_shared *sh);
+int mlx5_lwm_setup(struct mlx5_priv *priv);
+void mlx5_lwm_unset(struct mlx5_dev_ctx_shared *sh);
 
 /* Macro to iterate over all valid ports for mlx5 driver. */
 #define MLX5_ETH_FOREACH_DEV(port_id, dev) \

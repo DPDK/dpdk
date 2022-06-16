@@ -233,6 +233,52 @@ mlx5_rx_devx_get_event(struct mlx5_rxq_obj *rxq_obj)
 }
 
 /**
+ * Get LWM event for shared context, return the correct port/rxq for this event.
+ *
+ * @param priv
+ *   Mlx5_priv object.
+ * @param rxq_idx [out]
+ *   Which rxq gets this event.
+ * @param port_id [out]
+ *   Which port gets this event.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+static int
+mlx5_rx_devx_get_event_lwm(struct mlx5_priv *priv, int *rxq_idx, int *port_id)
+{
+#ifdef HAVE_IBV_DEVX_EVENT
+	union {
+		struct mlx5dv_devx_async_event_hdr event_resp;
+		uint8_t buf[sizeof(struct mlx5dv_devx_async_event_hdr) + 128];
+	} out;
+	int ret;
+
+	memset(&out, 0, sizeof(out));
+	ret = mlx5_glue->devx_get_event(priv->sh->devx_channel_lwm,
+					&out.event_resp,
+					sizeof(out.buf));
+	if (ret < 0) {
+		rte_errno = errno;
+		DRV_LOG(WARNING, "%s err\n", __func__);
+		return -rte_errno;
+	}
+	*port_id = (((uint32_t)out.event_resp.cookie) >>
+		    LWM_COOKIE_PORTID_OFFSET) & LWM_COOKIE_PORTID_MASK;
+	*rxq_idx = (((uint32_t)out.event_resp.cookie) >>
+		    LWM_COOKIE_RXQID_OFFSET) & LWM_COOKIE_RXQID_MASK;
+	return 0;
+#else
+	(void)priv;
+	(void)rxq_idx;
+	(void)port_id;
+	rte_errno = ENOTSUP;
+	return -rte_errno;
+#endif /* HAVE_IBV_DEVX_EVENT */
+}
+
+/**
  * Create a RQ object using DevX.
  *
  * @param rxq
@@ -1421,6 +1467,7 @@ struct mlx5_obj_ops devx_obj_ops = {
 	.rxq_event_get = mlx5_rx_devx_get_event,
 	.rxq_obj_modify = mlx5_devx_modify_rq,
 	.rxq_obj_release = mlx5_rxq_devx_obj_release,
+	.rxq_event_get_lwm = mlx5_rx_devx_get_event_lwm,
 	.ind_table_new = mlx5_devx_ind_table_new,
 	.ind_table_modify = mlx5_devx_ind_table_modify,
 	.ind_table_destroy = mlx5_devx_ind_table_destroy,

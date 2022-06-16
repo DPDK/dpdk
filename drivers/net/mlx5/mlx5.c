@@ -9,6 +9,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <errno.h>
+#include <fcntl.h>
 
 #include <rte_malloc.h>
 #include <ethdev_driver.h>
@@ -22,6 +23,7 @@
 #include <rte_eal_paging.h>
 #include <rte_alarm.h>
 #include <rte_cycles.h>
+#include <rte_interrupts.h>
 
 #include <mlx5_glue.h>
 #include <mlx5_devx_cmds.h>
@@ -1525,6 +1527,69 @@ error:
 }
 
 /**
+ * Create LWM event_channel and interrupt handle for shared device
+ * context. All rxqs sharing the device context share the event_channel.
+ * A callback is registered in interrupt thread to receive the LWM event.
+ *
+ * @param[in] priv
+ *   Pointer to mlx5_priv instance.
+ *
+ * @return
+ *   0 on success, negative with rte_errno set.
+ */
+int
+mlx5_lwm_setup(struct mlx5_priv *priv)
+{
+	int fd_lwm;
+
+	pthread_mutex_init(&priv->sh->lwm_config_lock, NULL);
+	priv->sh->devx_channel_lwm = mlx5_os_devx_create_event_channel
+			(priv->sh->cdev->ctx,
+			 MLX5DV_DEVX_CREATE_EVENT_CHANNEL_FLAGS_OMIT_EV_DATA);
+	if (!priv->sh->devx_channel_lwm)
+		goto err;
+	fd_lwm = mlx5_os_get_devx_channel_fd(priv->sh->devx_channel_lwm);
+	priv->sh->intr_handle_lwm = mlx5_os_interrupt_handler_create
+		(RTE_INTR_INSTANCE_F_SHARED, true,
+		 fd_lwm, mlx5_dev_interrupt_handler_lwm, priv);
+	if (!priv->sh->intr_handle_lwm)
+		goto err;
+	return 0;
+err:
+	if (priv->sh->devx_channel_lwm) {
+		mlx5_os_devx_destroy_event_channel
+			(priv->sh->devx_channel_lwm);
+		priv->sh->devx_channel_lwm = NULL;
+	}
+	pthread_mutex_destroy(&priv->sh->lwm_config_lock);
+	return -rte_errno;
+}
+
+/**
+ * Destroy LWM event_channel and interrupt handle for shared device
+ * context before free this context. The interrupt handler is also
+ * unregistered.
+ *
+ * @param[in] sh
+ *   Pointer to shared device context.
+ */
+void
+mlx5_lwm_unset(struct mlx5_dev_ctx_shared *sh)
+{
+	if (sh->intr_handle_lwm) {
+		mlx5_os_interrupt_handler_destroy(sh->intr_handle_lwm,
+			mlx5_dev_interrupt_handler_lwm, (void *)-1);
+		sh->intr_handle_lwm = NULL;
+	}
+	if (sh->devx_channel_lwm) {
+		mlx5_os_devx_destroy_event_channel
+			(sh->devx_channel_lwm);
+		sh->devx_channel_lwm = NULL;
+	}
+	pthread_mutex_destroy(&sh->lwm_config_lock);
+}
+
+/**
  * Free shared IB device context. Decrement counter and if zero free
  * all allocated resources and close handles.
  *
@@ -1601,6 +1666,7 @@ mlx5_free_shared_dev_ctx(struct mlx5_dev_ctx_shared *sh)
 		claim_zero(mlx5_devx_cmd_destroy(sh->td));
 	MLX5_ASSERT(sh->geneve_tlv_option_resource == NULL);
 	pthread_mutex_destroy(&sh->txpp.mutex);
+	mlx5_lwm_unset(sh);
 	mlx5_free(sh);
 	return;
 exit:
