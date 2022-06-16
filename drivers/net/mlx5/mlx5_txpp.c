@@ -741,11 +741,8 @@ mlx5_txpp_interrupt_handler(void *cb_arg)
 static void
 mlx5_txpp_stop_service(struct mlx5_dev_ctx_shared *sh)
 {
-	if (!rte_intr_fd_get(sh->txpp.intr_handle))
-		return;
-	mlx5_intr_callback_unregister(sh->txpp.intr_handle,
-				      mlx5_txpp_interrupt_handler, sh);
-	rte_intr_instance_free(sh->txpp.intr_handle);
+	mlx5_os_interrupt_handler_destroy(sh->txpp.intr_handle,
+					  mlx5_txpp_interrupt_handler, sh);
 }
 
 /* Attach interrupt handler and fires first request to Rearm Queue. */
@@ -769,23 +766,12 @@ mlx5_txpp_start_service(struct mlx5_dev_ctx_shared *sh)
 		rte_errno = errno;
 		return -rte_errno;
 	}
-	sh->txpp.intr_handle =
-			rte_intr_instance_alloc(RTE_INTR_INSTANCE_F_SHARED);
-	if (sh->txpp.intr_handle == NULL) {
-		DRV_LOG(ERR, "Fail to allocate intr_handle");
-		return -ENOMEM;
-	}
 	fd = mlx5_os_get_devx_channel_fd(sh->txpp.echan);
-	if (rte_intr_fd_set(sh->txpp.intr_handle, fd))
-		return -rte_errno;
-
-	if (rte_intr_type_set(sh->txpp.intr_handle, RTE_INTR_HANDLE_EXT))
-		return -rte_errno;
-
-	if (rte_intr_callback_register(sh->txpp.intr_handle,
-				       mlx5_txpp_interrupt_handler, sh)) {
-		rte_intr_fd_set(sh->txpp.intr_handle, 0);
-		DRV_LOG(ERR, "Failed to register CQE interrupt %d.", rte_errno);
+	sh->txpp.intr_handle = mlx5_os_interrupt_handler_create
+		(RTE_INTR_INSTANCE_F_SHARED, false,
+		 fd, mlx5_txpp_interrupt_handler, sh);
+	if (!sh->txpp.intr_handle) {
+		DRV_LOG(ERR, "Fail to allocate intr_handle");
 		return -rte_errno;
 	}
 	/* Subscribe CQ event to the event channel controlled by the driver. */

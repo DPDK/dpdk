@@ -11,6 +11,7 @@
 #endif
 #include <dirent.h>
 #include <net/if.h>
+#include <fcntl.h>
 
 #include <rte_errno.h>
 #include <rte_string_fns.h>
@@ -963,4 +964,134 @@ mlx5_os_wrapped_mkey_destroy(struct mlx5_pmd_wrapped_mr *pmd_mr)
 	if (pmd_mr->obj)
 		claim_zero(mlx5_glue->dereg_mr(pmd_mr->obj));
 	memset(pmd_mr, 0, sizeof(*pmd_mr));
+}
+
+/**
+ * Rte_intr_handle create and init helper.
+ *
+ * @param[in] mode
+ *   interrupt instance can be shared between primary and secondary
+ *   processes or not.
+ * @param[in] set_fd_nonblock
+ *   Whether to set fd to O_NONBLOCK.
+ * @param[in] fd
+ *   Fd to set in created intr_handle.
+ * @param[in] cb
+ *   Callback to register for intr_handle.
+ * @param[in] cb_arg
+ *   Callback argument for cb.
+ *
+ * @return
+ *  - Interrupt handle on success.
+ *  - NULL on failure, with rte_errno set.
+ */
+struct rte_intr_handle *
+mlx5_os_interrupt_handler_create(int mode, bool set_fd_nonblock, int fd,
+				 rte_intr_callback_fn cb, void *cb_arg)
+{
+	struct rte_intr_handle *tmp_intr_handle;
+	int ret, flags;
+
+	tmp_intr_handle = rte_intr_instance_alloc(mode);
+	if (!tmp_intr_handle) {
+		rte_errno = ENOMEM;
+		goto err;
+	}
+	if (set_fd_nonblock) {
+		flags = fcntl(fd, F_GETFL);
+		ret = fcntl(fd, F_SETFL, flags | O_NONBLOCK);
+		if (ret) {
+			rte_errno = errno;
+			goto err;
+		}
+	}
+	ret = rte_intr_fd_set(tmp_intr_handle, fd);
+	if (ret)
+		goto err;
+	ret = rte_intr_type_set(tmp_intr_handle, RTE_INTR_HANDLE_EXT);
+	if (ret)
+		goto err;
+	ret = rte_intr_callback_register(tmp_intr_handle, cb, cb_arg);
+	if (ret) {
+		rte_errno = -ret;
+		goto err;
+	}
+	return tmp_intr_handle;
+err:
+	if (tmp_intr_handle)
+		rte_intr_instance_free(tmp_intr_handle);
+	return NULL;
+}
+
+/* Safe unregistration for interrupt callback. */
+static void
+mlx5_intr_callback_unregister(const struct rte_intr_handle *handle,
+			      rte_intr_callback_fn cb_fn, void *cb_arg)
+{
+	uint64_t twait = 0;
+	uint64_t start = 0;
+
+	do {
+		int ret;
+
+		ret = rte_intr_callback_unregister(handle, cb_fn, cb_arg);
+		if (ret >= 0)
+			return;
+		if (ret != -EAGAIN) {
+			DRV_LOG(INFO, "failed to unregister interrupt"
+				      " handler (error: %d)", ret);
+			MLX5_ASSERT(false);
+			return;
+		}
+		if (twait) {
+			struct timespec onems;
+
+			/* Wait one millisecond and try again. */
+			onems.tv_sec = 0;
+			onems.tv_nsec = NS_PER_S / MS_PER_S;
+			nanosleep(&onems, 0);
+			/* Check whether one second elapsed. */
+			if ((rte_get_timer_cycles() - start) <= twait)
+				continue;
+		} else {
+			/*
+			 * We get the amount of timer ticks for one second.
+			 * If this amount elapsed it means we spent one
+			 * second in waiting. This branch is executed once
+			 * on first iteration.
+			 */
+			twait = rte_get_timer_hz();
+			MLX5_ASSERT(twait);
+		}
+		/*
+		 * Timeout elapsed, show message (once a second) and retry.
+		 * We have no other acceptable option here, if we ignore
+		 * the unregistering return code the handler will not
+		 * be unregistered, fd will be closed and we may get the
+		 * crush. Hanging and messaging in the loop seems not to be
+		 * the worst choice.
+		 */
+		DRV_LOG(INFO, "Retrying to unregister interrupt handler");
+		start = rte_get_timer_cycles();
+	} while (true);
+}
+
+/**
+ * Rte_intr_handle destroy helper.
+ *
+ * @param[in] intr_handle
+ *   Rte_intr_handle to destroy.
+ * @param[in] cb
+ *   Callback which is registered to intr_handle.
+ * @param[in] cb_arg
+ *   Callback argument for cb.
+ *
+ */
+void
+mlx5_os_interrupt_handler_destroy(struct rte_intr_handle *intr_handle,
+				  rte_intr_callback_fn cb, void *cb_arg)
+{
+	if (rte_intr_fd_get(intr_handle) >= 0)
+		mlx5_intr_callback_unregister(intr_handle, cb, cb_arg);
+	rte_intr_instance_free(intr_handle);
 }

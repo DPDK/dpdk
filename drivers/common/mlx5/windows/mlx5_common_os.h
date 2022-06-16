@@ -9,6 +9,7 @@
 #include <sys/types.h>
 
 #include <rte_errno.h>
+#include <rte_interrupts.h>
 
 #include "mlx5_autoconf.h"
 #include "mlx5_glue.h"
@@ -252,5 +253,28 @@ __rte_internal
 void *mlx5_os_umem_reg(void *ctx, void *addr, size_t size, uint32_t access);
 __rte_internal
 int mlx5_os_umem_dereg(void *pumem);
+
+static inline struct rte_intr_handle *
+mlx5_os_interrupt_handler_create(int mode, bool set_fd_nonblock, int fd,
+				 rte_intr_callback_fn cb, void *cb_arg)
+{
+	(void)mode;
+	(void)set_fd_nonblock;
+	(void)fd;
+	(void)cb;
+	(void)cb_arg;
+	rte_errno = ENOTSUP;
+	return NULL;
+}
+
+static inline void
+mlx5_os_interrupt_handler_destroy(struct rte_intr_handle *intr_handle,
+				  rte_intr_callback_fn cb, void *cb_arg)
+{
+	(void)intr_handle;
+	(void)cb;
+	(void)cb_arg;
+}
+
 
 #endif /* RTE_PMD_MLX5_COMMON_OS_H_ */

@@ -1682,8 +1682,6 @@ int mlx5_sysfs_switch_info(unsigned int ifindex,
 			   struct mlx5_switch_info *info);
 void mlx5_translate_port_name(const char *port_name_in,
 			      struct mlx5_switch_info *port_info_out);
-void mlx5_intr_callback_unregister(const struct rte_intr_handle *handle,
-				   rte_intr_callback_fn cb_fn, void *cb_arg);
 int mlx5_sysfs_bond_info(unsigned int pf_ifindex, unsigned int *ifindex,
 			 char *ifname);
 int mlx5_get_module_info(struct rte_eth_dev *dev,

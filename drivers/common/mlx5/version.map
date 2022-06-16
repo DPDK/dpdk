@@ -153,5 +153,7 @@ INTERNAL {
 	mlx5_mr_mempool2mr_bh;
 	mlx5_mr_mempool_populate_cache;
 
+	mlx5_os_interrupt_handler_create; # WINDOWS_NO_EXPORT
+	mlx5_os_interrupt_handler_destroy; # WINDOWS_NO_EXPORT
 	local: *;
 };

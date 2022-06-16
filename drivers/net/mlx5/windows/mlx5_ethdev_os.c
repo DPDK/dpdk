@@ -140,28 +140,6 @@ mlx5_set_mtu(struct rte_eth_dev *dev, uint16_t mtu)
 	return 0;
 }
 
-/*
- * Unregister callback handler safely. The handler may be active
- * while we are trying to unregister it, in this case code -EAGAIN
- * is returned by rte_intr_callback_unregister(). This routine checks
- * the return code and tries to unregister handler again.
- *
- * @param handle
- *   interrupt handle
- * @param cb_fn
- *   pointer to callback routine
- * @cb_arg
- *   opaque callback parameter
- */
-void
-mlx5_intr_callback_unregister(const struct rte_intr_handle *handle,
-			      rte_intr_callback_fn cb_fn, void *cb_arg)
-{
-	RTE_SET_USED(handle);
-	RTE_SET_USED(cb_fn);
-	RTE_SET_USED(cb_arg);
-}
-
 /**
  * DPDK callback to get flow control status.
  *

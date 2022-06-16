@@ -134,51 +134,6 @@ error:
 }
 
 /**
- * Install interrupt handler.
- *
- * @param dev
- *   Pointer to Ethernet device.
- * @return
- *   0 on success, a negative errno value otherwise.
- */
-static int
-mlx5_pmd_interrupt_handler_install(void)
-{
-	MLX5_ASSERT(server_socket != -1);
-
-	server_intr_handle =
-		rte_intr_instance_alloc(RTE_INTR_INSTANCE_F_PRIVATE);
-	if (server_intr_handle == NULL) {
-		DRV_LOG(ERR, "Fail to allocate intr_handle");
-		return -ENOMEM;
-	}
-	if (rte_intr_fd_set(server_intr_handle, server_socket))
-		return -rte_errno;
-
-	if (rte_intr_type_set(server_intr_handle, RTE_INTR_HANDLE_EXT))
-		return -rte_errno;
-
-	return rte_intr_callback_register(server_intr_handle,
-					  mlx5_pmd_socket_handle, NULL);
-}
-
-/**
- * Uninstall interrupt handler.
- */
-static void
-mlx5_pmd_interrupt_handler_uninstall(void)
-{
-	if (server_socket != -1) {
-		mlx5_intr_callback_unregister(server_intr_handle,
-					      mlx5_pmd_socket_handle,
-					      NULL);
-	}
-	rte_intr_fd_set(server_intr_handle, 0);
-	rte_intr_type_set(server_intr_handle, RTE_INTR_HANDLE_UNKNOWN);
-	rte_intr_instance_free(server_intr_handle);
-}
-
-/**
  * Initialise the socket to communicate with external tools.
  *
  * @return
@@ -224,7 +179,10 @@ mlx5_pmd_socket_init(void)
 			strerror(errno));
 		goto remove;
 	}
-	if (mlx5_pmd_interrupt_handler_install()) {
+	server_intr_handle = mlx5_os_interrupt_handler_create
+		(RTE_INTR_INSTANCE_F_PRIVATE, false,
+		 server_socket, mlx5_pmd_socket_handle, NULL);
+	if (server_intr_handle == NULL) {
 		DRV_LOG(WARNING, "cannot register interrupt handler for mlx5 socket: %s",
 			strerror(errno));
 		goto remove;
@@ -248,7 +206,8 @@ mlx5_pmd_socket_uninit(void)
 {
 	if (server_socket == -1)
 		return;
-	mlx5_pmd_interrupt_handler_uninstall();
+	mlx5_os_interrupt_handler_destroy(server_intr_handle,
+					  mlx5_pmd_socket_handle, NULL);
 	claim_zero(close(server_socket));
 	server_socket = -1;
 	MKSTR(path, MLX5_SOCKET_PATH, getpid());

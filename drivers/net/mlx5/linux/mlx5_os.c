@@ -2494,40 +2494,6 @@ mlx5_os_net_cleanup(void)
 	mlx5_pmd_socket_uninit();
 }
 
-static int
-mlx5_os_dev_shared_handler_install_lsc(struct mlx5_dev_ctx_shared *sh)
-{
-	int nlsk_fd, flags, ret;
-
-	nlsk_fd = mlx5_nl_init(NETLINK_ROUTE, RTMGRP_LINK);
-	if (nlsk_fd < 0) {
-		DRV_LOG(ERR, "Failed to create a socket for Netlink events: %s",
-			rte_strerror(rte_errno));
-		return -1;
-	}
-	flags = fcntl(nlsk_fd, F_GETFL);
-	ret = fcntl(nlsk_fd, F_SETFL, flags | O_NONBLOCK);
-	if (ret != 0) {
-		DRV_LOG(ERR, "Failed to make Netlink event socket non-blocking: %s",
-			strerror(errno));
-		rte_errno = errno;
-		goto error;
-	}
-	rte_intr_type_set(sh->intr_handle_nl, RTE_INTR_HANDLE_EXT);
-	rte_intr_fd_set(sh->intr_handle_nl, nlsk_fd);
-	if (rte_intr_callback_register(sh->intr_handle_nl,
-				       mlx5_dev_interrupt_handler_nl,
-				       sh) != 0) {
-		DRV_LOG(ERR, "Failed to register Netlink events interrupt");
-		rte_intr_fd_set(sh->intr_handle_nl, -1);
-		goto error;
-	}
-	return 0;
-error:
-	close(nlsk_fd);
-	return -1;
-}
-
 /**
  * Install shared asynchronous device events handler.
  * This function is implemented to support event sharing
@@ -2539,75 +2505,46 @@ error:
 void
 mlx5_os_dev_shared_handler_install(struct mlx5_dev_ctx_shared *sh)
 {
-	int ret;
-	int flags;
 	struct ibv_context *ctx = sh->cdev->ctx;
+	int nlsk_fd;
 
-	sh->intr_handle = rte_intr_instance_alloc(RTE_INTR_INSTANCE_F_SHARED);
-	if (sh->intr_handle == NULL) {
-		DRV_LOG(ERR, "Fail to allocate intr_handle");
-		rte_errno = ENOMEM;
+	sh->intr_handle = mlx5_os_interrupt_handler_create
+		(RTE_INTR_INSTANCE_F_SHARED, true,
+		 ctx->async_fd, mlx5_dev_interrupt_handler, sh);
+	if (!sh->intr_handle) {
+		DRV_LOG(ERR, "Failed to allocate intr_handle.");
 		return;
 	}
-	rte_intr_fd_set(sh->intr_handle, -1);
-
-	flags = fcntl(ctx->async_fd, F_GETFL);
-	ret = fcntl(ctx->async_fd, F_SETFL, flags | O_NONBLOCK);
-	if (ret) {
-		DRV_LOG(INFO, "failed to change file descriptor async event"
-			" queue");
-	} else {
-		rte_intr_fd_set(sh->intr_handle, ctx->async_fd);
-		rte_intr_type_set(sh->intr_handle, RTE_INTR_HANDLE_EXT);
-		if (rte_intr_callback_register(sh->intr_handle,
-					mlx5_dev_interrupt_handler, sh)) {
-			DRV_LOG(INFO, "Fail to install the shared interrupt.");
-			rte_intr_fd_set(sh->intr_handle, -1);
-		}
+	nlsk_fd = mlx5_nl_init(NETLINK_ROUTE, RTMGRP_LINK);
+	if (nlsk_fd < 0) {
+		DRV_LOG(ERR, "Failed to create a socket for Netlink events: %s",
+			rte_strerror(rte_errno));
+		return;
 	}
-	sh->intr_handle_nl = rte_intr_instance_alloc
-						(RTE_INTR_INSTANCE_F_SHARED);
+	sh->intr_handle_nl = mlx5_os_interrupt_handler_create
+		(RTE_INTR_INSTANCE_F_SHARED, true,
+		 nlsk_fd, mlx5_dev_interrupt_handler_nl, sh);
 	if (sh->intr_handle_nl == NULL) {
 		DRV_LOG(ERR, "Fail to allocate intr_handle");
-		rte_errno = ENOMEM;
 		return;
-	}
-	rte_intr_fd_set(sh->intr_handle_nl, -1);
-	if (mlx5_os_dev_shared_handler_install_lsc(sh) < 0) {
-		DRV_LOG(INFO, "Fail to install the shared Netlink event handler.");
-		rte_intr_fd_set(sh->intr_handle_nl, -1);
 	}
 	if (sh->cdev->config.devx) {
 #ifdef HAVE_IBV_DEVX_ASYNC
-		sh->intr_handle_devx =
-			rte_intr_instance_alloc(RTE_INTR_INSTANCE_F_SHARED);
-		if (!sh->intr_handle_devx) {
-			DRV_LOG(ERR, "Fail to allocate intr_handle");
-			rte_errno = ENOMEM;
-			return;
-		}
-		rte_intr_fd_set(sh->intr_handle_devx, -1);
+		struct mlx5dv_devx_cmd_comp *devx_comp;
+
 		sh->devx_comp = (void *)mlx5_glue->devx_create_cmd_comp(ctx);
-		struct mlx5dv_devx_cmd_comp *devx_comp = sh->devx_comp;
+		devx_comp = sh->devx_comp;
 		if (!devx_comp) {
 			DRV_LOG(INFO, "failed to allocate devx_comp.");
 			return;
 		}
-		flags = fcntl(devx_comp->fd, F_GETFL);
-		ret = fcntl(devx_comp->fd, F_SETFL, flags | O_NONBLOCK);
-		if (ret) {
-			DRV_LOG(INFO, "failed to change file descriptor"
-				" devx comp");
+		sh->intr_handle_devx = mlx5_os_interrupt_handler_create
+			(RTE_INTR_INSTANCE_F_SHARED, true,
+			 devx_comp->fd,
+			 mlx5_dev_interrupt_handler_devx, sh);
+		if (!sh->intr_handle_devx) {
+			DRV_LOG(ERR, "Failed to allocate intr_handle.");
 			return;
-		}
-		rte_intr_fd_set(sh->intr_handle_devx, devx_comp->fd);
-		rte_intr_type_set(sh->intr_handle_devx,
-					 RTE_INTR_HANDLE_EXT);
-		if (rte_intr_callback_register(sh->intr_handle_devx,
-					mlx5_dev_interrupt_handler_devx, sh)) {
-			DRV_LOG(INFO, "Fail to install the devx shared"
-				" interrupt.");
-			rte_intr_fd_set(sh->intr_handle_devx, -1);
 		}
 #endif /* HAVE_IBV_DEVX_ASYNC */
 	}
@@ -2624,24 +2561,13 @@ mlx5_os_dev_shared_handler_install(struct mlx5_dev_ctx_shared *sh)
 void
 mlx5_os_dev_shared_handler_uninstall(struct mlx5_dev_ctx_shared *sh)
 {
-	int nlsk_fd;
-
-	if (rte_intr_fd_get(sh->intr_handle) >= 0)
-		mlx5_intr_callback_unregister(sh->intr_handle,
-					      mlx5_dev_interrupt_handler, sh);
-	rte_intr_instance_free(sh->intr_handle);
-	nlsk_fd = rte_intr_fd_get(sh->intr_handle_nl);
-	if (nlsk_fd >= 0) {
-		mlx5_intr_callback_unregister
-			(sh->intr_handle_nl, mlx5_dev_interrupt_handler_nl, sh);
-		close(nlsk_fd);
-	}
-	rte_intr_instance_free(sh->intr_handle_nl);
+	mlx5_os_interrupt_handler_destroy(sh->intr_handle,
+					  mlx5_dev_interrupt_handler, sh);
+	mlx5_os_interrupt_handler_destroy(sh->intr_handle_nl,
+					  mlx5_dev_interrupt_handler_nl, sh);
 #ifdef HAVE_IBV_DEVX_ASYNC
-	if (rte_intr_fd_get(sh->intr_handle_devx) >= 0)
-		rte_intr_callback_unregister(sh->intr_handle_devx,
-				  mlx5_dev_interrupt_handler_devx, sh);
-	rte_intr_instance_free(sh->intr_handle_devx);
+	mlx5_os_interrupt_handler_destroy(sh->intr_handle_devx,
+					  mlx5_dev_interrupt_handler_devx, sh);
 	if (sh->devx_comp)
 		mlx5_glue->devx_destroy_cmd_comp(sh->devx_comp);
 #endif
