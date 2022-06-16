@@ -75,11 +75,11 @@ struct rte_gtp_psc_generic_hdr {
 	uint8_t spare:2;	/**< type specific spare bits */
 	uint8_t qfi:6;		/**< Qos Flow Identifier */
 #else
-	uint8_t qfi:6;		/**< Qos Flow Identifier */
-	uint8_t spare:2;	/**< type specific spare bits */
 	uint8_t pad:3;		/**< type specific pad bits */
 	uint8_t qmp:1;		/**< Qos Monitoring Packet */
 	uint8_t type:4;		/**< PDU type */
+	uint8_t qfi:6;		/**< Qos Flow Identifier */
+	uint8_t spare:2;	/**< type specific spare bits */
 #endif
 	uint8_t data[0];	/**< variable length data fields */
 } __rte_packed;
@@ -100,12 +100,13 @@ struct rte_gtp_psc_type0_hdr {
 	uint8_t rqi:1;		/**< Reflective Qos Indicator */
 	uint8_t qfi:6;		/**< Qos Flow Identifier */
 #else
+	uint8_t spare_dl1:2;	/**< spare down link bits */
+	uint8_t snp:1;		/**< Sequence number presence */
+	uint8_t qmp:1;		/**< Qos Monitoring Packet */
+	uint8_t type:4;		/**< PDU type */
 	uint8_t qfi:6;		/**< Qos Flow Identifier */
 	uint8_t rqi:1;		/**< Reflective Qos Indicator */
 	uint8_t ppp:1;		/**< Paging policy presence */
-	uint8_t spare_dl1:2;	/**< spare down link bits */
-	uint8_t snp:1;		/**< Sequence number presence */
-	uint8_t type:4;		/**< PDU type */
 #endif
 	uint8_t data[0];	/**< variable length data fields */
 } __rte_packed;
@@ -127,14 +128,14 @@ struct rte_gtp_psc_type1_hdr {
 	uint8_t spare_ul2:1;	/**< spare up link bits */
 	uint8_t qfi:6;		/**< Qos Flow Identifier */
 #else
-	uint8_t qfi:6;		/**< Qos Flow Identifier */
-	uint8_t spare_ul2:1;	/**< spare up link bits */
-	uint8_t n_delay_ind:1;	/**< N3/N9 delay result presence */
 	uint8_t snp:1;		/**< Sequence number presence ul */
 	uint8_t ul_delay_ind:1;	/**< ul delay result presence */
 	uint8_t dl_delay_ind:1;	/**< dl delay result presence */
 	uint8_t qmp:1;		/**< Qos Monitoring Packet */
 	uint8_t type:4;		/**< PDU type */
+	uint8_t qfi:6;		/**< Qos Flow Identifier */
+	uint8_t spare_ul2:1;	/**< spare up link bits */
+	uint8_t n_delay_ind:1;	/**< N3/N9 delay result presence */
 #endif
 	uint8_t data[0];	/**< variable length data fields */
 } __rte_packed;
