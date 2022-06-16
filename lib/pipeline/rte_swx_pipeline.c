@@ -2284,6 +2284,7 @@ instr_hdr_validate_translate(struct rte_swx_pipeline *p,
 
 	instr->type = INSTR_HDR_VALIDATE;
 	instr->valid.header_id = h->id;
+	instr->valid.struct_id = h->struct_id;
 	return 0;
 }
 
@@ -6754,7 +6755,7 @@ action_arg_src_mov_count(struct action *a,
 			 uint32_t n_instructions);
 
 static int
-instr_pattern_mov_all_validate_search(struct rte_swx_pipeline *p,
+instr_pattern_validate_mov_all_search(struct rte_swx_pipeline *p,
 				      struct action *a,
 				      struct instruction *instr,
 				      struct instruction_data *data,
@@ -6771,50 +6772,41 @@ instr_pattern_mov_all_validate_search(struct rte_swx_pipeline *p,
 	if (!a || !a->st)
 		return 0;
 
-	/* First instruction: MOV_HM. */
-	if (data[0].invalid || (instr[0].type != INSTR_MOV_HM))
+	/* First instruction: HDR_VALIDATE. Second instruction: MOV_HM. */
+	if (data[0].invalid ||
+	    (instr[0].type != INSTR_HDR_VALIDATE) ||
+	    (n_instr < 2) ||
+	    data[1].invalid ||
+	    (instr[1].type != INSTR_MOV_HM) ||
+	    instr[1].mov.src.struct_id)
 		return 0;
 
-	h = header_find_by_struct_id(p, instr[0].mov.dst.struct_id);
-	if (!h || h->st->var_size)
+	h = header_find_by_struct_id(p, instr[0].valid.struct_id);
+	if (!h ||
+	    h->st->var_size ||
+	    (n_instr < 1 + h->st->n_fields))
 		return 0;
 
 	for (src_field_id = 0; src_field_id < a->st->n_fields; src_field_id++)
-		if (instr[0].mov.src.offset == a->st->fields[src_field_id].offset / 8)
+		if (instr[1].mov.src.offset == a->st->fields[src_field_id].offset / 8)
 			break;
 
-	if (src_field_id == a->st->n_fields)
+	if (src_field_id + h->st->n_fields > a->st->n_fields)
 		return 0;
 
-	if (instr[0].mov.dst.offset ||
-	    (instr[0].mov.dst.n_bits != h->st->fields[0].n_bits) ||
-	    instr[0].mov.src.struct_id ||
-	    (instr[0].mov.src.n_bits != a->st->fields[src_field_id].n_bits) ||
-	    (instr[0].mov.dst.n_bits != instr[0].mov.src.n_bits))
-		return 0;
-
-	if ((n_instr < h->st->n_fields + 1) ||
-	     (a->st->n_fields < src_field_id + h->st->n_fields + 1))
-		return 0;
-
-	/* Subsequent instructions: MOV_HM. */
-	for (i = 1; i < h->st->n_fields; i++)
-		if (data[i].invalid ||
-		    data[i].n_users ||
-		    (instr[i].type != INSTR_MOV_HM) ||
-		    (instr[i].mov.dst.struct_id != h->struct_id) ||
-		    (instr[i].mov.dst.offset != h->st->fields[i].offset / 8) ||
-		    (instr[i].mov.dst.n_bits != h->st->fields[i].n_bits) ||
-		    instr[i].mov.src.struct_id ||
-		    (instr[i].mov.src.offset != a->st->fields[src_field_id + i].offset / 8) ||
-		    (instr[i].mov.src.n_bits != a->st->fields[src_field_id + i].n_bits) ||
-		    (instr[i].mov.dst.n_bits != instr[i].mov.src.n_bits))
+	/* Second and subsequent instructions: MOV_HM. */
+	for (i = 0; i < h->st->n_fields; i++)
+		if (data[1 + i].invalid ||
+		    data[1 + i].n_users ||
+		    (instr[1 + i].type != INSTR_MOV_HM) ||
+		    (instr[1 + i].mov.dst.struct_id != h->struct_id) ||
+		    (instr[1 + i].mov.dst.offset != h->st->fields[i].offset / 8) ||
+		    (instr[1 + i].mov.dst.n_bits != h->st->fields[i].n_bits) ||
+		    instr[1 + i].mov.src.struct_id ||
+		    (instr[1 + i].mov.src.offset != a->st->fields[src_field_id + i].offset / 8) ||
+		    (instr[1 + i].mov.src.n_bits != a->st->fields[src_field_id + i].n_bits) ||
+		    (instr[1 + i].mov.dst.n_bits != instr[1 + i].mov.src.n_bits))
 			return 0;
-
-	/* Last instruction: HDR_VALIDATE. */
-	if ((instr[i].type != INSTR_HDR_VALIDATE) ||
-	    (instr[i].valid.header_id != h->id))
-		return 0;
 
 	/* Check that none of the action args that are used as source for this
 	 * DMA transfer are not used as source in any other mov instruction.
@@ -6831,12 +6823,12 @@ instr_pattern_mov_all_validate_search(struct rte_swx_pipeline *p,
 			return 0;
 	}
 
-	*n_pattern_instr = 1 + i;
+	*n_pattern_instr = 1 + h->st->n_fields;
 	return 1;
 }
 
 static void
-instr_pattern_mov_all_validate_replace(struct rte_swx_pipeline *p,
+instr_pattern_validate_mov_all_replace(struct rte_swx_pipeline *p,
 				       struct action *a,
 				       struct instruction *instr,
 				       struct instruction_data *data,
@@ -6846,18 +6838,15 @@ instr_pattern_mov_all_validate_replace(struct rte_swx_pipeline *p,
 	uint32_t src_field_id, src_offset, i;
 
 	/* Read from the instructions before they are modified. */
-	h = header_find_by_struct_id(p, instr[0].mov.dst.struct_id);
+	h = header_find_by_struct_id(p, instr[1].mov.dst.struct_id);
 	if (!h)
 		return;
 
+	src_offset = instr[1].mov.src.offset;
+
 	for (src_field_id = 0; src_field_id < a->st->n_fields; src_field_id++)
-		if (instr[0].mov.src.offset == a->st->fields[src_field_id].offset / 8)
+		if (src_offset == a->st->fields[src_field_id].offset / 8)
 			break;
-
-	if (src_field_id == a->st->n_fields)
-		return;
-
-	src_offset = instr[0].mov.src.offset;
 
 	/* Modify the instructions. */
 	instr[0].type = INSTR_DMA_HT;
@@ -6875,7 +6864,7 @@ instr_pattern_mov_all_validate_replace(struct rte_swx_pipeline *p,
 }
 
 static uint32_t
-instr_pattern_mov_all_validate_optimize(struct rte_swx_pipeline *p,
+instr_pattern_validate_mov_all_optimize(struct rte_swx_pipeline *p,
 					struct action *a,
 					struct instruction *instructions,
 					struct instruction_data *instruction_data,
@@ -6892,8 +6881,8 @@ instr_pattern_mov_all_validate_optimize(struct rte_swx_pipeline *p,
 		uint32_t n_instr = 0;
 		int detected;
 
-		/* Mov all + validate. */
-		detected = instr_pattern_mov_all_validate_search(p,
+		/* Validate + mov all. */
+		detected = instr_pattern_validate_mov_all_search(p,
 								 a,
 								 instr,
 								 data,
@@ -6903,7 +6892,7 @@ instr_pattern_mov_all_validate_optimize(struct rte_swx_pipeline *p,
 								 n_instructions,
 								 &n_instr);
 		if (detected) {
-			instr_pattern_mov_all_validate_replace(p, a, instr, data, n_instr);
+			instr_pattern_validate_mov_all_replace(p, a, instr, data, n_instr);
 			i += n_instr;
 			continue;
 		}
@@ -7020,8 +7009,8 @@ instr_optimize(struct rte_swx_pipeline *p,
 							     instruction_data,
 							     n_instructions);
 
-	/* Mov all + validate. */
-	n_instructions = instr_pattern_mov_all_validate_optimize(p,
+	/* Validate + mov all. */
+	n_instructions = instr_pattern_validate_mov_all_optimize(p,
 								 a,
 								 instructions,
 								 instruction_data,

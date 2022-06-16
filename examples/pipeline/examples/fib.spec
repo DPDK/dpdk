@@ -83,10 +83,10 @@ struct nexthop_action_args_t {
 
 action nexthop_action args instanceof nexthop_action_args_t {
 	//Set Ethernet header.
+	validate h.ethernet
 	mov h.ethernet.dst_addr t.ethernet_dst_addr
 	mov h.ethernet.src_addr t.ethernet_src_addr
 	mov h.ethernet.ethertype t.ethernet_ethertype
-	validate h.ethernet
 
 	//Decrement the TTL and update the checksum within the IPv4 header.
 	cksub h.ipv4.hdr_checksum h.ipv4.ttl

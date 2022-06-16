@@ -115,12 +115,13 @@ struct vxlan_encap_args_t {
 
 action vxlan_encap args instanceof vxlan_encap_args_t {
 	//Set the outer Ethernet header.
+	validate h.outer_ethernet
 	mov h.outer_ethernet.dst_addr t.ethernet_dst_addr
 	mov h.outer_ethernet.src_addr t.ethernet_src_addr
 	mov h.outer_ethernet.ethertype t.ethernet_ethertype
-	validate h.outer_ethernet
 
 	//Set the outer IPv4 header.
+	validate h.outer_ipv4
 	mov h.outer_ipv4.ver_ihl t.ipv4_ver_ihl
 	mov h.outer_ipv4.diffserv t.ipv4_diffserv
 	mov h.outer_ipv4.total_len t.ipv4_total_len
@@ -131,21 +132,20 @@ action vxlan_encap args instanceof vxlan_encap_args_t {
 	mov h.outer_ipv4.hdr_checksum t.ipv4_hdr_checksum
 	mov h.outer_ipv4.src_addr t.ipv4_src_addr
 	mov h.outer_ipv4.dst_addr t.ipv4_dst_addr
-	validate h.outer_ipv4
 
 	//Set the outer UDP header.
+	validate h.outer_udp
 	mov h.outer_udp.src_port t.udp_src_port
 	mov h.outer_udp.dst_port t.udp_dst_port
 	mov h.outer_udp.length t.udp_length
 	mov h.outer_udp.checksum t.udp_checksum
-	validate h.outer_udp
 
 	//Set the outer VXLAN header.
+	validate h.outer_vxlan
 	mov h.outer_vxlan.flags t.vxlan_flags
 	mov h.outer_vxlan.reserved t.vxlan_reserved
 	mov h.outer_vxlan.vni t.vxlan_vni
 	mov h.outer_vxlan.reserved2 t.vxlan_reserved2
-	validate h.outer_vxlan
 
 	//Set the output port.
 	mov m.port_out t.port_out

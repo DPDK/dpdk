@@ -632,6 +632,7 @@ struct instr_io {
 
 struct instr_hdr_validity {
 	uint8_t header_id;
+	uint8_t struct_id;
 };
 
 struct instr_table {
@@ -2228,11 +2229,22 @@ __instr_hdr_validate_exec(struct rte_swx_pipeline *p __rte_unused,
 			  const struct instruction *ip)
 {
 	uint32_t header_id = ip->valid.header_id;
+	uint32_t struct_id = ip->valid.struct_id;
+	uint64_t valid_headers = t->valid_headers;
+	struct header_runtime *h = &t->headers[header_id];
 
 	TRACE("[Thread %2u] validate header %u\n", p->thread_id, header_id);
 
+	/* If this header is already valid, then its associated t->structs[] element is also valid
+	 * and therefore it should not be modified. It could point to the packet buffer (in case of
+	 * extracted header) and setting it to the default location (h->ptr0) would be incorrect.
+	 */
+	if (MASK64_BIT_GET(valid_headers, header_id))
+		return;
+
 	/* Headers. */
-	t->valid_headers = MASK64_BIT_SET(t->valid_headers, header_id);
+	t->structs[struct_id] = h->ptr0;
+	t->valid_headers = MASK64_BIT_SET(valid_headers, header_id);
 }
 
 /*
