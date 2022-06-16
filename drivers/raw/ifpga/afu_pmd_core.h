@@ -14,6 +14,7 @@ extern "C" {
 #include <unistd.h>
 
 #include <rte_spinlock.h>
+#include <rte_cycles.h>
 #include <rte_bus_ifpga.h>
 #include <rte_rawdev.h>
 
@@ -59,6 +60,24 @@ afu_rawdev_get_priv(const struct rte_rawdev *rawdev)
 {
 	return rawdev ? (struct afu_rawdev *)rawdev->dev_private : NULL;
 }
+
+#define CLS_TO_SIZE(n)  ((n) << 6)  /* get size of n cache lines */
+#define SIZE_TO_CLS(s)  ((s) >> 6)  /* convert size to number of cache lines */
+#define MHZ(f)  ((f) * 1000000)
+
+#define dsm_poll_timeout(addr, val, cond, invl, timeout) \
+({                                                       \
+	uint64_t __wait = 0;                                 \
+	uint64_t __invl = (invl);                            \
+	uint64_t __timeout = (timeout);                      \
+	for (; __wait <= __timeout; __wait += __invl) {      \
+		(val) = *(addr);                                 \
+		if (cond)                                        \
+			break;                                       \
+		rte_delay_ms(__invl);                            \
+	}                                                    \
+	(cond) ? 0 : 1;                                      \
+})
 
 void afu_pmd_register(struct afu_rawdev_drv *driver);
 void afu_pmd_unregister(struct afu_rawdev_drv *driver);
