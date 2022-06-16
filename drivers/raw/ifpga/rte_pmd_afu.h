@@ -111,6 +111,24 @@ struct rte_pmd_afu_he_mem_tg_cfg {
 	uint32_t channel_mask;   /* mask of traffic generator channel */
 };
 
+#define NUM_RND_SEEDS  3
+
+/**
+ * HE-HSSI AFU configuration data structure.
+ */
+struct rte_pmd_afu_he_hssi_cfg {
+	uint32_t port;
+	uint32_t timeout;
+	uint32_t num_packets;
+	uint32_t random_length;
+	uint32_t packet_length;
+	uint32_t random_payload;
+	uint32_t rnd_seed[NUM_RND_SEEDS];
+	uint64_t src_addr;
+	uint64_t dest_addr;
+	int he_loopback;
+};
+
 #ifdef __cplusplus
 }
 #endif
