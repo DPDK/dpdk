@@ -38,6 +38,7 @@ Features
 - Multiple TX and RX queues.
 - Shared Rx queue.
 - Rx queue delay drop.
+- Rx queue available descriptor threshold event.
 - Support steering for external Rx queue created outside the PMD.
 - Support for scattered TX frames.
 - Advanced support for scattered Rx frames with tunable buffer attributes.
@@ -131,6 +132,10 @@ Limitations
 
   - Counters of received packets and bytes number of devices in same share group are same.
   - Counters of received packets and bytes number of queues in same group and queue ID are same.
+
+- Available descriptor threshold event:
+
+  - Does not support shared Rx queue and hairpin Rx queue.
 
 - When using Verbs flow engine (``dv_flow_en`` = 0), flow pattern without any
   specific VLAN will match for VLAN packets as well:

@@ -3365,6 +3365,7 @@ struct mlx5_aso_wqe {
 
 enum {
 	MLX5_EVENT_TYPE_OBJECT_CHANGE = 0x27,
+	MLX5_EVENT_TYPE_SRQ_LIMIT_REACHED = 0x14,
 };
 
 enum {

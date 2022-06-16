@@ -177,6 +177,7 @@ struct mlx5_rxq_priv {
 	uint32_t hairpin_status; /* Hairpin binding status. */
 	uint32_t lwm:16;
 	uint32_t lwm_event_pending:1;
+	uint32_t lwm_devx_subscribed:1;
 };
 
 /* External RX queue descriptor. */
@@ -297,6 +298,10 @@ int mlx5_rx_burst_mode_get(struct rte_eth_dev *dev, uint16_t rx_queue_id,
 			   struct rte_eth_burst_mode *mode);
 int mlx5_get_monitor_addr(void *rx_queue, struct rte_power_monitor_cond *pmc);
 void mlx5_dev_interrupt_handler_lwm(void *args);
+int mlx5_rx_queue_lwm_set(struct rte_eth_dev *dev, uint16_t rx_queue_id,
+			  uint8_t lwm);
+int mlx5_rx_queue_lwm_query(struct rte_eth_dev *dev, uint16_t *rx_queue_id,
+			    uint8_t *lwm);
 
 /* Vectorized version of mlx5_rx.c */
 int mlx5_rxq_check_vec_support(struct mlx5_rxq_data *rxq_data);

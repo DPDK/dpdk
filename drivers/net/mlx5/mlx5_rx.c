@@ -25,6 +25,7 @@
 #include "mlx5.h"
 #include "mlx5_utils.h"
 #include "mlx5_rxtx.h"
+#include "mlx5_devx.h"
 #include "mlx5_rx.h"
 
 
@@ -128,6 +129,16 @@ mlx5_rx_descriptor_status(void *rx_queue, uint16_t offset)
 	return RTE_ETH_RX_DESC_AVAIL;
 }
 
+/* Get rxq lwm percentage according to lwm number. */
+static uint8_t
+mlx5_rxq_lwm_to_percentage(struct mlx5_rxq_priv *rxq)
+{
+	struct mlx5_rxq_data *rxq_data = &rxq->ctrl->rxq;
+	uint32_t wqe_cnt = 1 << (rxq_data->elts_n - rxq_data->sges_n);
+
+	return rxq->lwm * 100 / wqe_cnt;
+}
+
 /**
  * DPDK callback to get the RX queue information.
  *
@@ -150,6 +161,7 @@ mlx5_rxq_info_get(struct rte_eth_dev *dev, uint16_t rx_queue_id,
 {
 	struct mlx5_rxq_ctrl *rxq_ctrl = mlx5_rxq_ctrl_get(dev, rx_queue_id);
 	struct mlx5_rxq_data *rxq = mlx5_rxq_data_get(dev, rx_queue_id);
+	struct mlx5_rxq_priv *rxq_priv = mlx5_rxq_get(dev, rx_queue_id);
 
 	if (!rxq)
 		return;
@@ -169,6 +181,8 @@ mlx5_rxq_info_get(struct rte_eth_dev *dev, uint16_t rx_queue_id,
 	qinfo->nb_desc = mlx5_rxq_mprq_enabled(rxq) ?
 		RTE_BIT32(rxq->elts_n) * RTE_BIT32(rxq->log_strd_num) :
 		RTE_BIT32(rxq->elts_n);
+	qinfo->avail_thresh = rxq_priv ?
+		mlx5_rxq_lwm_to_percentage(rxq_priv) : 0;
 }
 
 /**
@@ -1188,6 +1202,34 @@ mlx5_check_vec_rx_support(struct rte_eth_dev *dev __rte_unused)
 	return -ENOTSUP;
 }
 
+int
+mlx5_rx_queue_lwm_query(struct rte_eth_dev *dev,
+			uint16_t *queue_id, uint8_t *lwm)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	unsigned int rxq_id, found = 0, n;
+	struct mlx5_rxq_priv *rxq;
+
+	if (!queue_id)
+		return -EINVAL;
+	/* Query all the Rx queues of the port in a circular way. */
+	for (rxq_id = *queue_id, n = 0; n < priv->rxqs_n; n++) {
+		rxq = mlx5_rxq_get(dev, rxq_id);
+		if (rxq && rxq->lwm_event_pending) {
+			pthread_mutex_lock(&priv->sh->lwm_config_lock);
+			rxq->lwm_event_pending = 0;
+			pthread_mutex_unlock(&priv->sh->lwm_config_lock);
+			*queue_id = rxq_id;
+			found = 1;
+			if (lwm)
+				*lwm =  mlx5_rxq_lwm_to_percentage(rxq);
+			break;
+		}
+		rxq_id = (rxq_id + 1) % priv->rxqs_n;
+	}
+	return found;
+}
+
 /**
  * Rte interrupt handler for LWM event.
  * It first checks if the event arrives, if so process the callback for
@@ -1220,3 +1262,112 @@ mlx5_dev_interrupt_handler_lwm(void *args)
 	}
 	rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_RX_AVAIL_THRESH, NULL);
 }
+
+/**
+ * DPDK callback to arm an Rx queue LWM(limit watermark) event.
+ * While the Rx queue fullness reaches the LWM limit, the driver catches
+ * an HW event and invokes the user event callback.
+ * After the last event handling, the user needs to call this API again
+ * to arm an additional event.
+ *
+ * @param dev
+ *   Pointer to the device structure.
+ * @param[in] rx_queue_id
+ *   Rx queue identificator.
+ * @param[in] lwm
+ *   The LWM value, is defined by a percentage of the Rx queue size.
+ *   [1-99] to set a new LWM (update the old value).
+ *   0 to unarm the event.
+ *
+ * @return
+ *   0 : operation success.
+ *   Otherwise:
+ *   - ENOMEM - not enough memory to create LWM event channel.
+ *   - EINVAL - the input Rxq is not created by devx.
+ *   - E2BIG  - lwm is bigger than 99.
+ */
+int
+mlx5_rx_queue_lwm_set(struct rte_eth_dev *dev, uint16_t rx_queue_id,
+		      uint8_t lwm)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	uint16_t port_id = PORT_ID(priv);
+	struct mlx5_rxq_priv *rxq = mlx5_rxq_get(dev, rx_queue_id);
+	uint16_t event_nums[1] = {MLX5_EVENT_TYPE_SRQ_LIMIT_REACHED};
+	struct mlx5_rxq_data *rxq_data;
+	uint32_t wqe_cnt;
+	uint64_t cookie;
+	int ret = 0;
+
+	if (!rxq) {
+		rte_errno = EINVAL;
+		return -rte_errno;
+	}
+	rxq_data = &rxq->ctrl->rxq;
+	/* Ensure the Rq is created by devx. */
+	if (priv->obj_ops.rxq_obj_new != devx_obj_ops.rxq_obj_new) {
+		rte_errno = EINVAL;
+		return -rte_errno;
+	}
+	if (lwm > 99) {
+		DRV_LOG(WARNING, "Too big LWM configuration.");
+		rte_errno = E2BIG;
+		return -rte_errno;
+	}
+	/* Start config LWM. */
+	pthread_mutex_lock(&priv->sh->lwm_config_lock);
+	if (rxq->lwm == 0 && lwm == 0) {
+		/* Both old/new values are 0, do nothing. */
+		ret = 0;
+		goto end;
+	}
+	wqe_cnt = 1 << (rxq_data->elts_n - rxq_data->sges_n);
+	if (lwm) {
+		if (!priv->sh->devx_channel_lwm) {
+			ret = mlx5_lwm_setup(priv);
+			if (ret) {
+				DRV_LOG(WARNING,
+					"Failed to create shared_lwm.");
+				rte_errno = ENOMEM;
+				ret = -rte_errno;
+				goto end;
+			}
+		}
+		if (!rxq->lwm_devx_subscribed) {
+			cookie = ((uint32_t)
+				  (port_id << LWM_COOKIE_PORTID_OFFSET)) |
+				(rx_queue_id << LWM_COOKIE_RXQID_OFFSET);
+			ret = mlx5_os_devx_subscribe_devx_event
+				(priv->sh->devx_channel_lwm,
+				 rxq->devx_rq.rq->obj,
+				 sizeof(event_nums),
+				 event_nums,
+				 cookie);
+			if (ret) {
+				rte_errno = rte_errno ? rte_errno : EINVAL;
+				ret = -rte_errno;
+				goto end;
+			}
+			rxq->lwm_devx_subscribed = 1;
+		}
+	}
+	/* Save LWM to rxq and send modify_rq devx command. */
+	rxq->lwm = lwm * wqe_cnt / 100;
+	/* Prevent integer division loss when switch lwm number to percentage. */
+	if (lwm && (lwm * wqe_cnt % 100)) {
+		rxq->lwm = ((uint32_t)(rxq->lwm + 1) >= wqe_cnt) ?
+			rxq->lwm : (rxq->lwm + 1);
+	}
+	if (lwm && !rxq->lwm) {
+		/* With mprq, wqe_cnt may be < 100. */
+		DRV_LOG(WARNING, "Too small LWM configuration.");
+		rte_errno = EINVAL;
+		ret = -rte_errno;
+		goto end;
+	}
+	ret = mlx5_devx_modify_rq(rxq, MLX5_RXQ_MOD_RDY2RDY);
+end:
+	pthread_mutex_unlock(&priv->sh->lwm_config_lock);
+	return ret;
+}
+

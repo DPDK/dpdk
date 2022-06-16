@@ -170,6 +170,7 @@ New Features
   * Added matching and RSS on IPsec ESP.
   * Added matching on represented port.
   * Added support for modifying ECN field of IPv4/IPv6.
+  * Added Rx queue available descriptor threshold support.
 
 * **Updated Netronome nfp driver.**
 
