@@ -3860,6 +3860,7 @@ enum {
 	MLX5_CRYPTO_COMMISSIONING_REGISTER_ID = 0xC003,
 	MLX5_IMPORT_KEK_HANDLE_REGISTER_ID = 0xC004,
 	MLX5_CREDENTIAL_HANDLE_REGISTER_ID = 0xC005,
+	MLX5_QSHR_REGISTER_ID = 0x4030,
 };
 
 struct mlx5_ifc_register_mtutc_bits {
@@ -3872,6 +3873,30 @@ struct mlx5_ifc_register_mtutc_bits {
 	u8 utc_sec[0x20];
 	u8 utc_nsec[0x20];
 	u8 time_adjustment[0x20];
+};
+
+struct mlx5_ifc_ets_global_config_register_bits {
+	u8 reserved_at_0[0x2];
+	u8 rate_limit_update[0x1];
+	u8 reserved_at_3[0x29];
+	u8 max_bw_units[0x4];
+	u8 reserved_at_48[0x8];
+	u8 max_bw_value[0x8];
+};
+
+#define ETS_GLOBAL_CONFIG_BW_UNIT_DISABLED      0x0
+#define ETS_GLOBAL_CONFIG_BW_UNIT_HUNDREDS_MBPS 0x3
+#define ETS_GLOBAL_CONFIG_BW_UNIT_GBPS          0x4
+
+struct mlx5_ifc_register_qshr_bits {
+	u8 reserved_at_0[0x4];
+	u8 connected_host[0x1];
+	u8 vqos[0x1];
+	u8 fast_response[0x1];
+	u8 reserved_at_7[0x1];
+	u8 local_port[0x8];
+	u8 reserved_at_16[0x230];
+	struct mlx5_ifc_ets_global_config_register_bits global_config;
 };
 
 #define MLX5_MTUTC_TIMESTAMP_MODE_INTERNAL_TIMER 0

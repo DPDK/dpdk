@@ -1271,6 +1271,8 @@ struct mlx5_dev_ctx_shared {
 	void *devx_channel_lwm;
 	struct rte_intr_handle *intr_handle_lwm;
 	pthread_mutex_t lwm_config_lock;
+	uint32_t host_shaper_rate:8;
+	uint32_t lwm_triggered:1;
 	/* Availability of mreg_c's. */
 	struct mlx5_dev_shared_port port[]; /* per device port data array. */
 };

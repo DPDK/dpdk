@@ -171,6 +171,7 @@ New Features
   * Added matching on represented port.
   * Added support for modifying ECN field of IPv4/IPv6.
   * Added Rx queue available descriptor threshold support.
+  * Added host shaper support.
 
 * **Updated Netronome nfp driver.**
 

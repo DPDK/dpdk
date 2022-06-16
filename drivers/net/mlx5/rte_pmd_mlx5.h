@@ -109,6 +109,36 @@ __rte_experimental
 int rte_pmd_mlx5_external_rx_queue_id_unmap(uint16_t port_id,
 					    uint16_t dpdk_idx);
 
+/**
+ * The rate of the host port shaper will be updated directly at the next
+ * available descriptor threshold event to the rate that comes with this flag set;
+ * set rate 0 to disable this rate update.
+ * Unset this flag to update the rate of the host port shaper directly in
+ * the API call; use rate 0 to disable the current shaper.
+ */
+#define MLX5_HOST_SHAPER_FLAG_AVAIL_THRESH_TRIGGERED 0
+
+/**
+ * Configure a HW shaper to limit Tx rate for a host port.
+ * The configuration will affect all the ethdev ports belonging to
+ * the same rte_device.
+ *
+ * @param[in] port_id
+ *   The port identifier of the Ethernet device.
+ * @param[in] rate
+ *   Unit is 100Mbps, setting the rate to 0 disables the shaper.
+ * @param[in] flags
+ *   Host shaper flags.
+ * @return
+ *   0 : operation success.
+ *   Otherwise:
+ *   - ENOENT - no ibdev interface.
+ *   - EBUSY  - the register access unit is busy.
+ *   - EIO    - the register access command meets IO error.
+ */
+__rte_experimental
+int rte_pmd_mlx5_host_shaper_config(int port_id, uint8_t rate, uint32_t flags);
+
 #ifdef __cplusplus
 }
 #endif

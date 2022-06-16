@@ -19,6 +19,7 @@
 #include <mlx5_prm.h>
 #include <mlx5_common.h>
 #include <mlx5_common_mr.h>
+#include <rte_pmd_mlx5.h>
 
 #include "mlx5_autoconf.h"
 #include "mlx5_defs.h"
@@ -27,6 +28,9 @@
 #include "mlx5_rxtx.h"
 #include "mlx5_devx.h"
 #include "mlx5_rx.h"
+#ifdef HAVE_MLX5_MSTFLINT
+#include <mstflint/mtcr.h>
+#endif
 
 
 static __rte_always_inline uint32_t
@@ -1371,3 +1375,103 @@ end:
 	return ret;
 }
 
+/**
+ * Mlx5 access register function to configure host shaper.
+ * It calls API in libmtcr_ul to access QSHR(Qos Shaper Host Register)
+ * in firmware.
+ *
+ * @param dev
+ *   Pointer to rte_eth_dev.
+ * @param lwm_triggered
+ *   Flag to enable/disable lwm_triggered bit in QSHR.
+ * @param rate
+ *   Host shaper rate, unit is 100Mbps, set to 0 means disable the shaper.
+ * @return
+ *   0 : operation success.
+ *   Otherwise:
+ *   - ENOENT - no ibdev interface.
+ *   - EBUSY  - the register access unit is busy.
+ *   - EIO    - the register access command meets IO error.
+ */
+static int
+mlxreg_host_shaper_config(struct rte_eth_dev *dev,
+			  bool lwm_triggered, uint8_t rate)
+{
+#ifdef HAVE_MLX5_MSTFLINT
+	struct mlx5_priv *priv = dev->data->dev_private;
+	uint32_t data[MLX5_ST_SZ_DW(register_qshr)] = {0};
+	int rc, retry_count = 3;
+	mfile *mf = NULL;
+	int status;
+	void *ptr;
+
+	mf = mopen(priv->sh->ibdev_name);
+	if (!mf) {
+		DRV_LOG(WARNING, "mopen failed\n");
+		rte_errno = ENOENT;
+		return -rte_errno;
+	}
+	MLX5_SET(register_qshr, data, connected_host, 1);
+	MLX5_SET(register_qshr, data, fast_response, lwm_triggered ? 1 : 0);
+	MLX5_SET(register_qshr, data, local_port, 1);
+	ptr = MLX5_ADDR_OF(register_qshr, data, global_config);
+	MLX5_SET(ets_global_config_register, ptr, rate_limit_update, 1);
+	MLX5_SET(ets_global_config_register, ptr, max_bw_units,
+		 rate ? ETS_GLOBAL_CONFIG_BW_UNIT_HUNDREDS_MBPS :
+		 ETS_GLOBAL_CONFIG_BW_UNIT_DISABLED);
+	MLX5_SET(ets_global_config_register, ptr, max_bw_value, rate);
+	do {
+		rc = maccess_reg(mf,
+				 MLX5_QSHR_REGISTER_ID,
+				 MACCESS_REG_METHOD_SET,
+				 (u_int32_t *)&data[0],
+				 sizeof(data),
+				 sizeof(data),
+				 sizeof(data),
+				 &status);
+		if ((rc != ME_ICMD_STATUS_IFC_BUSY &&
+		     status != ME_REG_ACCESS_BAD_PARAM) ||
+		    !(mf->flags & MDEVS_REM)) {
+			break;
+		}
+		DRV_LOG(WARNING, "%s retry.", __func__);
+		usleep(10000);
+	} while (retry_count-- > 0);
+	mclose(mf);
+	rte_errno = (rc == ME_REG_ACCESS_DEV_BUSY) ? EBUSY : EIO;
+	return rc ? -rte_errno : 0;
+#else
+	(void)dev;
+	(void)lwm_triggered;
+	(void)rate;
+	return -1;
+#endif
+}
+
+int rte_pmd_mlx5_host_shaper_config(int port_id, uint8_t rate,
+				    uint32_t flags)
+{
+	struct rte_eth_dev *dev = &rte_eth_devices[port_id];
+	struct mlx5_priv *priv = dev->data->dev_private;
+	bool lwm_triggered =
+	     !!(flags & RTE_BIT32(MLX5_HOST_SHAPER_FLAG_AVAIL_THRESH_TRIGGERED));
+
+	if (!lwm_triggered) {
+		priv->sh->host_shaper_rate = rate;
+	} else {
+		switch (rate) {
+		case 0:
+		/* Rate 0 means disable lwm_triggered. */
+			priv->sh->lwm_triggered = 0;
+			break;
+		case 1:
+		/* Rate 1 means enable lwm_triggered. */
+			priv->sh->lwm_triggered = 1;
+			break;
+		default:
+			return -ENOTSUP;
+		}
+	}
+	return mlxreg_host_shaper_config(dev, priv->sh->lwm_triggered,
+					 priv->sh->host_shaper_rate);
+}

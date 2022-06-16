@@ -39,6 +39,7 @@ Features
 - Shared Rx queue.
 - Rx queue delay drop.
 - Rx queue available descriptor threshold event.
+- Host shaper support.
 - Support steering for external Rx queue created outside the PMD.
 - Support for scattered TX frames.
 - Advanced support for scattered Rx frames with tunable buffer attributes.
@@ -136,6 +137,12 @@ Limitations
 - Available descriptor threshold event:
 
   - Does not support shared Rx queue and hairpin Rx queue.
+
+- Host shaper:
+
+  - Support BlueField series NIC from BlueField 2.
+  - When configuring host shaper with MLX5_HOST_SHAPER_FLAG_AVAIL_THRESH_TRIGGERED flag set,
+    only rates 0 and 100Mbps are supported.
 
 - When using Verbs flow engine (``dv_flow_en`` = 0), flow pattern without any
   specific VLAN will match for VLAN packets as well:
@@ -1687,3 +1694,38 @@ The procedure below is an example of using a ConnectX-5 adapter card (pf0) with 
 #. For each VF PCIe, using the following command to bind the driver::
 
    $ echo "0000:82:00.2" >> /sys/bus/pci/drivers/mlx5_core/bind
+
+Host shaper
+-----------
+
+Host shaper register is per host port register
+which sets a shaper on the host port.
+All VF/host PF representors belonging to one host port share one host shaper.
+For example, if representor 0 and representor 1 belong to the same host port,
+and a host shaper rate of 1Gbps is configured,
+the shaper throttles both representors traffic from the host.
+
+Host shaper has two modes for setting the shaper,
+immediate and deferred to available descriptor threshold event trigger.
+
+In immediate mode, the rate limit is configured immediately to host shaper.
+
+When deferring to the available descriptor threshold trigger,
+the shaper is not set until an available descriptor threshold event
+is received by any Rx queue in a VF representor belonging to the host port.
+The only rate supported for deferred mode is 100Mbps
+(there is no limit on the supported rates for immediate mode).
+In deferred mode, the shaper is set on the host port by the firmware
+upon receiving the available descriptor threshold event,
+which allows throttling host traffic on available descriptor threshold events
+at minimum latency, preventing excess drops in the Rx queue.
+
+Dependency on mstflint package
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+In order to configure host shaper register,
+``librte_net_mlx5`` depends on ``libmtcr_ul``
+which can be installed from OFED mstflint package.
+Meson detects ``libmtcr_ul`` existence at configure stage.
+If the library is detected, the application must link with ``-lmtcr_ul``,
+as done by the pkg-config file libdpdk.pc.
