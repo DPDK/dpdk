@@ -2677,8 +2677,10 @@ desc_to_mbuf(struct virtio_net *dev, struct vhost_virtqueue *vq,
 	buf_iova = buf_vec[vec_idx].buf_iova;
 	buf_len = buf_vec[vec_idx].buf_len;
 
-	if (unlikely(buf_len < dev->vhost_hlen && nr_vec <= 1))
-		return -1;
+	/*
+	 * The caller has checked the descriptors chain is larger than the
+	 * header size.
+	 */
 
 	if (virtio_net_with_host_offload(dev)) {
 		if (unlikely(buf_len < sizeof(struct virtio_net_hdr))) {
@@ -2922,6 +2924,14 @@ virtio_dev_tx_split(struct virtio_net *dev, struct vhost_virtqueue *vq,
 
 		update_shadow_used_ring_split(vq, head_idx, 0);
 
+		if (unlikely(buf_len <= dev->vhost_hlen)) {
+			dropped += 1;
+			i++;
+			break;
+		}
+
+		buf_len -= dev->vhost_hlen;
+
 		err = virtio_dev_pktmbuf_prep(dev, pkts[i], buf_len);
 		if (unlikely(err)) {
 			/*
@@ -3123,6 +3133,11 @@ vhost_dequeue_single_packed(struct virtio_net *dev,
 					 buf_id, &buf_len,
 					 VHOST_ACCESS_RO) < 0))
 		return -1;
+
+	if (unlikely(buf_len <= dev->vhost_hlen))
+		return -1;
+
+	buf_len -= dev->vhost_hlen;
 
 	if (unlikely(virtio_dev_pktmbuf_prep(dev, pkts, buf_len))) {
 		if (!allocerr_warned) {
@@ -3447,6 +3462,13 @@ virtio_dev_tx_async_split(struct virtio_net *dev, struct vhost_virtqueue *vq,
 			dropped = true;
 			break;
 		}
+
+		if (unlikely(buf_len <= dev->vhost_hlen)) {
+			dropped = true;
+			break;
+		}
+
+		buf_len -= dev->vhost_hlen;
 
 		err = virtio_dev_pktmbuf_prep(dev, pkt, buf_len);
 		if (unlikely(err)) {
