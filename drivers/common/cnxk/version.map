@@ -128,7 +128,7 @@ INTERNAL {
 	roc_nix_fc_config_set;
 	roc_nix_fc_mode_set;
 	roc_nix_fc_mode_get;
-	rox_nix_fc_npa_bp_cfg;
+	roc_nix_fc_npa_bp_cfg;
 	roc_nix_get_base_chan;
 	roc_nix_get_pf;
 	roc_nix_get_pf_func;
@@ -226,6 +226,7 @@ INTERNAL {
 	roc_nix_rq_ena_dis;
 	roc_nix_rq_fini;
 	roc_nix_rq_init;
+	roc_nix_rq_is_sso_enable;
 	roc_nix_rq_modify;
 	roc_nix_rss_default_setup;
 	roc_nix_rss_flowkey_set;

@@ -98,16 +98,12 @@ int
 nix_tm_txsch_reg_config(struct nix *nix, enum roc_nix_tm_tree tree)
 {
 	struct nix_tm_node_list *list;
-	bool is_pf_or_lbk = false;
 	struct nix_tm_node *node;
 	bool skip_bp = false;
 	uint32_t hw_lvl;
 	int rc = 0;
 
 	list = nix_tm_node_list(nix, tree);
-
-	if ((!dev_is_vf(&nix->dev) || nix->lbk_link) && !nix->sdp_link)
-		is_pf_or_lbk = true;
 
 	for (hw_lvl = 0; hw_lvl <= nix->tm_root_lvl; hw_lvl++) {
 		TAILQ_FOREACH(node, list, node) {
@@ -118,7 +114,7 @@ nix_tm_txsch_reg_config(struct nix *nix, enum roc_nix_tm_tree tree)
 			 * set per channel only for PF or lbk vf.
 			 */
 			node->bp_capa = 0;
-			if (is_pf_or_lbk && !skip_bp &&
+			if (!nix->sdp_link && !skip_bp &&
 			    node->hw_lvl == nix->tm_link_cfg_lvl) {
 				node->bp_capa = 1;
 				skip_bp = false;
@@ -329,6 +325,7 @@ nix_tm_bp_config_set(struct roc_nix *roc_nix, uint16_t sq, uint16_t tc,
 	struct nix_tm_node *sq_node;
 	struct nix_tm_node *parent;
 	struct nix_tm_node *node;
+	uint8_t parent_lvl;
 	uint8_t k = 0;
 	int rc = 0;
 
@@ -336,9 +333,12 @@ nix_tm_bp_config_set(struct roc_nix *roc_nix, uint16_t sq, uint16_t tc,
 	if (!sq_node)
 		return -ENOENT;
 
+	parent_lvl = (nix_tm_have_tl1_access(nix) ? ROC_TM_LVL_SCH2 :
+		      ROC_TM_LVL_SCH1);
+
 	parent = sq_node->parent;
 	while (parent) {
-		if (parent->lvl == ROC_TM_LVL_SCH2)
+		if (parent->lvl == parent_lvl)
 			break;
 
 		parent = parent->parent;
@@ -1469,16 +1469,18 @@ int
 roc_nix_tm_pfc_prepare_tree(struct roc_nix *roc_nix)
 {
 	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
+	uint8_t leaf_lvl, lvl, lvl_start, lvl_end;
 	uint32_t nonleaf_id = nix->nb_tx_queues;
 	struct nix_tm_node *node = NULL;
-	uint8_t leaf_lvl, lvl, lvl_end;
 	uint32_t tl2_node_id;
 	uint32_t parent, i;
 	int rc = -ENOMEM;
 
 	parent = ROC_NIX_TM_NODE_ID_INVALID;
-	lvl_end = ROC_TM_LVL_SCH3;
-	leaf_lvl = ROC_TM_LVL_QUEUE;
+	lvl_end = (nix_tm_have_tl1_access(nix) ? ROC_TM_LVL_SCH3 :
+		   ROC_TM_LVL_SCH2);
+	leaf_lvl = (nix_tm_have_tl1_access(nix) ? ROC_TM_LVL_QUEUE :
+		    ROC_TM_LVL_SCH4);
 
 	/* TL1 node */
 	node = nix_tm_node_alloc();
@@ -1501,31 +1503,37 @@ roc_nix_tm_pfc_prepare_tree(struct roc_nix *roc_nix)
 	parent = nonleaf_id;
 	nonleaf_id++;
 
-	/* TL2 node */
-	rc = -ENOMEM;
-	node = nix_tm_node_alloc();
-	if (!node)
-		goto error;
+	lvl_start = ROC_TM_LVL_SCH1;
+	if (roc_nix_is_pf(roc_nix)) {
+		/* TL2 node */
+		rc = -ENOMEM;
+		node = nix_tm_node_alloc();
+		if (!node)
+			goto error;
 
-	node->id = nonleaf_id;
-	node->parent_id = parent;
-	node->priority = 0;
-	node->weight = NIX_TM_DFLT_RR_WT;
-	node->shaper_profile_id = ROC_NIX_TM_SHAPER_PROFILE_NONE;
-	node->lvl = ROC_TM_LVL_SCH1;
-	node->tree = ROC_NIX_TM_PFC;
-	node->rel_chan = NIX_TM_CHAN_INVALID;
+		node->id = nonleaf_id;
+		node->parent_id = parent;
+		node->priority = 0;
+		node->weight = NIX_TM_DFLT_RR_WT;
+		node->shaper_profile_id = ROC_NIX_TM_SHAPER_PROFILE_NONE;
+		node->lvl = ROC_TM_LVL_SCH1;
+		node->tree = ROC_NIX_TM_PFC;
+		node->rel_chan = NIX_TM_CHAN_INVALID;
 
-	rc = nix_tm_node_add(roc_nix, node);
-	if (rc)
-		goto error;
+		rc = nix_tm_node_add(roc_nix, node);
+		if (rc)
+			goto error;
 
-	tl2_node_id = nonleaf_id;
-	nonleaf_id++;
+		lvl_start = ROC_TM_LVL_SCH2;
+		tl2_node_id = nonleaf_id;
+		nonleaf_id++;
+	} else {
+		tl2_node_id = parent;
+	}
 
 	for (i = 0; i < nix->nb_tx_queues; i++) {
 		parent = tl2_node_id;
-		for (lvl = ROC_TM_LVL_SCH2; lvl <= lvl_end; lvl++) {
+		for (lvl = lvl_start; lvl <= lvl_end; lvl++) {
 			rc = -ENOMEM;
 			node = nix_tm_node_alloc();
 			if (!node)
@@ -1549,7 +1557,8 @@ roc_nix_tm_pfc_prepare_tree(struct roc_nix *roc_nix)
 			nonleaf_id++;
 		}
 
-		lvl = ROC_TM_LVL_SCH4;
+		lvl = (nix_tm_have_tl1_access(nix) ? ROC_TM_LVL_SCH4 :
+		       ROC_TM_LVL_SCH3);
 
 		rc = -ENOMEM;
 		node = nix_tm_node_alloc();

@@ -157,6 +157,7 @@ struct roc_nix_fc_cfg {
 #define ROC_NIX_FC_RXCHAN_CFG 0
 #define ROC_NIX_FC_CQ_CFG     1
 #define ROC_NIX_FC_TM_CFG     2
+#define ROC_NIX_FC_RQ_CFG     3
 	uint8_t type;
 	union {
 		struct {
@@ -169,6 +170,14 @@ struct roc_nix_fc_cfg {
 			uint16_t cq_drop;
 			bool enable;
 		} cq_cfg;
+
+		struct {
+			uint32_t rq;
+			uint16_t tc;
+			uint16_t cq_drop;
+			bool enable;
+			uint64_t pool;
+		} rq_cfg;
 
 		struct {
 			uint32_t sq;
@@ -791,8 +800,8 @@ uint16_t __roc_api roc_nix_chan_count_get(struct roc_nix *roc_nix);
 
 enum roc_nix_fc_mode __roc_api roc_nix_fc_mode_get(struct roc_nix *roc_nix);
 
-void __roc_api rox_nix_fc_npa_bp_cfg(struct roc_nix *roc_nix, uint64_t pool_id,
-				     uint8_t ena, uint8_t force);
+void __roc_api roc_nix_fc_npa_bp_cfg(struct roc_nix *roc_nix, uint64_t pool_id,
+				     uint8_t ena, uint8_t force, uint8_t tc);
 
 /* NPC */
 int __roc_api roc_nix_npc_promisc_ena_dis(struct roc_nix *roc_nix, int enable);
@@ -845,6 +854,7 @@ int __roc_api roc_nix_rq_init(struct roc_nix *roc_nix, struct roc_nix_rq *rq,
 int __roc_api roc_nix_rq_modify(struct roc_nix *roc_nix, struct roc_nix_rq *rq,
 				bool ena);
 int __roc_api roc_nix_rq_ena_dis(struct roc_nix_rq *rq, bool enable);
+int __roc_api roc_nix_rq_is_sso_enable(struct roc_nix *roc_nix, uint32_t qid);
 int __roc_api roc_nix_rq_fini(struct roc_nix_rq *rq);
 int __roc_api roc_nix_cq_init(struct roc_nix *roc_nix, struct roc_nix_cq *cq);
 int __roc_api roc_nix_cq_fini(struct roc_nix_cq *cq);

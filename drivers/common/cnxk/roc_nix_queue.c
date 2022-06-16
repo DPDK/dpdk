@@ -94,6 +94,53 @@ roc_nix_rq_ena_dis(struct roc_nix_rq *rq, bool enable)
 }
 
 int
+roc_nix_rq_is_sso_enable(struct roc_nix *roc_nix, uint32_t qid)
+{
+	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
+	struct dev *dev = &nix->dev;
+	struct mbox *mbox = dev->mbox;
+	bool sso_enable;
+	int rc;
+
+	if (roc_model_is_cn9k()) {
+		struct nix_aq_enq_rsp *rsp;
+		struct nix_aq_enq_req *aq;
+
+		aq = mbox_alloc_msg_nix_aq_enq(mbox);
+		if (!aq)
+			return -ENOSPC;
+
+		aq->qidx = qid;
+		aq->ctype = NIX_AQ_CTYPE_RQ;
+		aq->op = NIX_AQ_INSTOP_READ;
+		rc = mbox_process_msg(mbox, (void *)&rsp);
+		if (rc)
+			return rc;
+
+		sso_enable = rsp->rq.sso_ena;
+	} else {
+		struct nix_cn10k_aq_enq_rsp *rsp;
+		struct nix_cn10k_aq_enq_req *aq;
+
+		aq = mbox_alloc_msg_nix_cn10k_aq_enq(mbox);
+		if (!aq)
+			return -ENOSPC;
+
+		aq->qidx = qid;
+		aq->ctype = NIX_AQ_CTYPE_RQ;
+		aq->op = NIX_AQ_INSTOP_READ;
+
+		rc = mbox_process_msg(mbox, (void *)&rsp);
+		if (rc)
+			return rc;
+
+		sso_enable = rsp->rq.sso_ena;
+	}
+
+	return sso_enable ? true : false;
+}
+
+int
 nix_rq_cn9k_cfg(struct dev *dev, struct roc_nix_rq *rq, uint16_t qints,
 		bool cfg, bool ena)
 {

@@ -357,6 +357,8 @@ nix_tm_tree2str(enum roc_nix_tm_tree tree)
 		return "Default Tree";
 	else if (tree == ROC_NIX_TM_RLIMIT)
 		return "Rate Limit Tree";
+	else if (tree == ROC_NIX_TM_PFC)
+		return "PFC Tree";
 	else if (tree == ROC_NIX_TM_USER)
 		return "User Tree";
 	return "???";

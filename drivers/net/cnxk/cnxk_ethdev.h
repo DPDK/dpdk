@@ -443,6 +443,8 @@ struct cnxk_eth_rxq_sp {
 	struct cnxk_eth_dev *dev;
 	struct cnxk_eth_qconf qconf;
 	uint16_t qid;
+	uint8_t tx_pause;
+	uint8_t tc;
 } __plt_cache_aligned;
 
 struct cnxk_eth_txq_sp {

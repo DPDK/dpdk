@@ -148,6 +148,61 @@ exit:
 }
 
 static int
+nix_fc_rq_config_get(struct roc_nix *roc_nix, struct roc_nix_fc_cfg *fc_cfg)
+{
+	struct mbox *mbox = get_mbox(roc_nix);
+	struct nix_aq_enq_rsp *rsp;
+	struct npa_aq_enq_req *npa_req;
+	struct npa_aq_enq_rsp *npa_rsp;
+	int rc;
+
+	if (roc_model_is_cn9k()) {
+		struct nix_aq_enq_req *aq;
+
+		aq = mbox_alloc_msg_nix_aq_enq(mbox);
+		if (!aq)
+			return -ENOSPC;
+
+		aq->qidx = fc_cfg->rq_cfg.rq;
+		aq->ctype = NIX_AQ_CTYPE_RQ;
+		aq->op = NIX_AQ_INSTOP_READ;
+	} else {
+		struct nix_cn10k_aq_enq_req *aq;
+
+		aq = mbox_alloc_msg_nix_cn10k_aq_enq(mbox);
+		if (!aq)
+			return -ENOSPC;
+
+		aq->qidx = fc_cfg->rq_cfg.rq;
+		aq->ctype = NIX_AQ_CTYPE_RQ;
+		aq->op = NIX_AQ_INSTOP_READ;
+	}
+
+	rc = mbox_process_msg(mbox, (void *)&rsp);
+	if (rc)
+		goto exit;
+
+	npa_req = mbox_alloc_msg_npa_aq_enq(mbox);
+	if (!npa_req)
+		return -ENOSPC;
+
+	npa_req->aura_id = rsp->rq.lpb_aura;
+	npa_req->ctype = NPA_AQ_CTYPE_AURA;
+	npa_req->op = NPA_AQ_INSTOP_READ;
+
+	rc = mbox_process_msg(mbox, (void *)&npa_rsp);
+	if (rc)
+		goto exit;
+
+	fc_cfg->cq_cfg.cq_drop = npa_rsp->aura.bp;
+	fc_cfg->cq_cfg.enable = npa_rsp->aura.bp_ena;
+	fc_cfg->type = ROC_NIX_FC_RQ_CFG;
+
+exit:
+	return rc;
+}
+
+static int
 nix_fc_cq_config_set(struct roc_nix *roc_nix, struct roc_nix_fc_cfg *fc_cfg)
 {
 	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
@@ -198,6 +253,33 @@ nix_fc_cq_config_set(struct roc_nix *roc_nix, struct roc_nix_fc_cfg *fc_cfg)
 	return mbox_process(mbox);
 }
 
+static int
+nix_fc_rq_config_set(struct roc_nix *roc_nix, struct roc_nix_fc_cfg *fc_cfg)
+{
+	struct roc_nix_fc_cfg tmp;
+	int sso_ena = 0;
+
+	/* Check whether RQ is connected to SSO or not */
+	sso_ena = roc_nix_rq_is_sso_enable(roc_nix, fc_cfg->rq_cfg.rq);
+	if (sso_ena < 0)
+		return -EINVAL;
+
+	if (sso_ena)
+		roc_nix_fc_npa_bp_cfg(roc_nix, fc_cfg->rq_cfg.pool,
+				      fc_cfg->rq_cfg.enable, true,
+				      fc_cfg->rq_cfg.tc);
+
+	/* Copy RQ config to CQ config as they are occupying same area */
+	memset(&tmp, 0, sizeof(tmp));
+	tmp.type = ROC_NIX_FC_CQ_CFG;
+	tmp.cq_cfg.rq = fc_cfg->rq_cfg.rq;
+	tmp.cq_cfg.tc = fc_cfg->rq_cfg.tc;
+	tmp.cq_cfg.cq_drop = fc_cfg->rq_cfg.cq_drop;
+	tmp.cq_cfg.enable = fc_cfg->rq_cfg.enable;
+
+	return nix_fc_cq_config_set(roc_nix, &tmp);
+}
+
 int
 roc_nix_fc_config_get(struct roc_nix *roc_nix, struct roc_nix_fc_cfg *fc_cfg)
 {
@@ -207,6 +289,8 @@ roc_nix_fc_config_get(struct roc_nix *roc_nix, struct roc_nix_fc_cfg *fc_cfg)
 
 	if (fc_cfg->type == ROC_NIX_FC_CQ_CFG)
 		return nix_fc_cq_config_get(roc_nix, fc_cfg);
+	else if (fc_cfg->type == ROC_NIX_FC_RQ_CFG)
+		return nix_fc_rq_config_get(roc_nix, fc_cfg);
 	else if (fc_cfg->type == ROC_NIX_FC_RXCHAN_CFG)
 		return nix_fc_rxchan_bpid_get(roc_nix, fc_cfg);
 	else if (fc_cfg->type == ROC_NIX_FC_TM_CFG)
@@ -218,12 +302,10 @@ roc_nix_fc_config_get(struct roc_nix *roc_nix, struct roc_nix_fc_cfg *fc_cfg)
 int
 roc_nix_fc_config_set(struct roc_nix *roc_nix, struct roc_nix_fc_cfg *fc_cfg)
 {
-	if (!roc_nix_is_pf(roc_nix) && !roc_nix_is_lbk(roc_nix) &&
-	    !roc_nix_is_sdp(roc_nix))
-		return 0;
-
 	if (fc_cfg->type == ROC_NIX_FC_CQ_CFG)
 		return nix_fc_cq_config_set(roc_nix, fc_cfg);
+	else if (fc_cfg->type == ROC_NIX_FC_RQ_CFG)
+		return nix_fc_rq_config_set(roc_nix, fc_cfg);
 	else if (fc_cfg->type == ROC_NIX_FC_RXCHAN_CFG)
 		return nix_fc_rxchan_bpid_set(roc_nix,
 					      fc_cfg->rxchan_cfg.enable);
@@ -320,8 +402,8 @@ exit:
 }
 
 void
-rox_nix_fc_npa_bp_cfg(struct roc_nix *roc_nix, uint64_t pool_id, uint8_t ena,
-		      uint8_t force)
+roc_nix_fc_npa_bp_cfg(struct roc_nix *roc_nix, uint64_t pool_id, uint8_t ena,
+		      uint8_t force, uint8_t tc)
 {
 	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
 	struct npa_lf *lf = idev_npa_obj_get();
@@ -329,6 +411,7 @@ rox_nix_fc_npa_bp_cfg(struct roc_nix *roc_nix, uint64_t pool_id, uint8_t ena,
 	struct npa_aq_enq_rsp *rsp;
 	struct mbox *mbox;
 	uint32_t limit;
+	uint64_t shift;
 	int rc;
 
 	if (roc_nix_is_sdp(roc_nix))
@@ -351,8 +434,10 @@ rox_nix_fc_npa_bp_cfg(struct roc_nix *roc_nix, uint64_t pool_id, uint8_t ena,
 		return;
 
 	limit = rsp->aura.limit;
+	shift = rsp->aura.shift;
+
 	/* BP is already enabled. */
-	if (rsp->aura.bp_ena) {
+	if (rsp->aura.bp_ena && ena) {
 		uint16_t bpid;
 		bool nix1;
 
@@ -363,12 +448,15 @@ rox_nix_fc_npa_bp_cfg(struct roc_nix *roc_nix, uint64_t pool_id, uint8_t ena,
 			bpid = rsp->aura.nix0_bpid;
 
 		/* If BP ids don't match disable BP. */
-		if (((nix1 != nix->is_nix1) || (bpid != nix->bpid[0])) &&
+		if (((nix1 != nix->is_nix1) || (bpid != nix->bpid[tc])) &&
 		    !force) {
 			req = mbox_alloc_msg_npa_aq_enq(mbox);
 			if (req == NULL)
 				return;
 
+			plt_info("Disabling BP/FC on aura 0x%" PRIx64
+				 " as it shared across ports or tc",
+				 pool_id);
 			req->aura_id = roc_npa_aura_handle_to_aura(pool_id);
 			req->ctype = NPA_AQ_CTYPE_AURA;
 			req->op = NPA_AQ_INSTOP_WRITE;
@@ -378,11 +466,15 @@ rox_nix_fc_npa_bp_cfg(struct roc_nix *roc_nix, uint64_t pool_id, uint8_t ena,
 
 			mbox_process(mbox);
 		}
+
+		if ((nix1 != nix->is_nix1) || (bpid != nix->bpid[tc]))
+			plt_info("Ignoring aura 0x%" PRIx64 "->%u bpid mapping",
+				 pool_id, nix->bpid[tc]);
 		return;
 	}
 
 	/* BP was previously enabled but now disabled skip. */
-	if (rsp->aura.bp)
+	if (rsp->aura.bp && ena)
 		return;
 
 	req = mbox_alloc_msg_npa_aq_enq(mbox);
@@ -395,14 +487,16 @@ rox_nix_fc_npa_bp_cfg(struct roc_nix *roc_nix, uint64_t pool_id, uint8_t ena,
 
 	if (ena) {
 		if (nix->is_nix1) {
-			req->aura.nix1_bpid = nix->bpid[0];
+			req->aura.nix1_bpid = nix->bpid[tc];
 			req->aura_mask.nix1_bpid = ~(req->aura_mask.nix1_bpid);
 		} else {
-			req->aura.nix0_bpid = nix->bpid[0];
+			req->aura.nix0_bpid = nix->bpid[tc];
 			req->aura_mask.nix0_bpid = ~(req->aura_mask.nix0_bpid);
 		}
-		req->aura.bp = NIX_RQ_AURA_THRESH(
-			limit > 128 ? 256 : limit); /* 95% of size*/
+		req->aura.bp = NIX_RQ_AURA_THRESH(limit >> shift);
+		req->aura_mask.bp = ~(req->aura_mask.bp);
+	} else {
+		req->aura.bp = 0;
 		req->aura_mask.bp = ~(req->aura_mask.bp);
 	}
 
