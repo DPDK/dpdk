@@ -312,7 +312,7 @@ roc_nix_fc_config_set(struct roc_nix *roc_nix, struct roc_nix_fc_cfg *fc_cfg)
 	else if (fc_cfg->type == ROC_NIX_FC_TM_CFG)
 		return nix_tm_bp_config_set(roc_nix, fc_cfg->tm_cfg.sq,
 					    fc_cfg->tm_cfg.tc,
-					    fc_cfg->tm_cfg.enable);
+					    fc_cfg->tm_cfg.enable, false);
 
 	return -EINVAL;
 }

@@ -314,7 +314,7 @@ nix_tm_clear_path_xoff(struct nix *nix, struct nix_tm_node *node)
 
 int
 nix_tm_bp_config_set(struct roc_nix *roc_nix, uint16_t sq, uint16_t tc,
-		     bool enable)
+		     bool enable, bool force_flush)
 {
 	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
 	enum roc_nix_tm_tree tree = nix->tm_tree;
@@ -325,9 +325,14 @@ nix_tm_bp_config_set(struct roc_nix *roc_nix, uint16_t sq, uint16_t tc,
 	struct nix_tm_node *sq_node;
 	struct nix_tm_node *parent;
 	struct nix_tm_node *node;
+	struct roc_nix_sq *sq_s;
 	uint8_t parent_lvl;
 	uint8_t k = 0;
 	int rc = 0;
+
+	sq_s = nix->sqs[sq];
+	if (!sq_s)
+		return -ENOENT;
 
 	sq_node = nix_tm_node_search(nix, sq, nix->tm_tree);
 	if (!sq_node)
@@ -348,11 +353,22 @@ nix_tm_bp_config_set(struct roc_nix *roc_nix, uint16_t sq, uint16_t tc,
 
 	list = nix_tm_node_list(nix, tree);
 
-	if (parent->rel_chan != NIX_TM_CHAN_INVALID && parent->rel_chan != tc) {
+	/* Enable request, parent rel chan already configured */
+	if (enable && parent->rel_chan != NIX_TM_CHAN_INVALID &&
+	    parent->rel_chan != tc) {
 		rc = -EINVAL;
 		goto err;
 	}
 
+	/* No action if enable request for a non participating SQ. This case is
+	 * required to handle post flush where TCs should be reconfigured after
+	 * pre flush.
+	 */
+	if (enable && sq_s->tc == ROC_NIX_PFC_CLASS_INVALID &&
+	    tc == ROC_NIX_PFC_CLASS_INVALID)
+		return 0;
+
+	/* Find the parent TL3 */
 	TAILQ_FOREACH(node, list, node) {
 		if (node->hw_lvl != nix->tm_link_cfg_lvl)
 			continue;
@@ -360,38 +376,51 @@ nix_tm_bp_config_set(struct roc_nix *roc_nix, uint16_t sq, uint16_t tc,
 		if (!(node->flags & NIX_TM_NODE_HWRES) || !node->bp_capa)
 			continue;
 
-		if (node->hw_id != parent->hw_id)
-			continue;
-
-		if (!req) {
-			req = mbox_alloc_msg_nix_txschq_cfg(mbox);
-			req->lvl = nix->tm_link_cfg_lvl;
-			k = 0;
-		}
-
-		req->reg[k] = NIX_AF_TL3_TL2X_LINKX_CFG(node->hw_id, link);
-		req->regval[k] = enable ? tc : 0;
-		req->regval[k] |= enable ? BIT_ULL(13) : 0;
-		req->regval_mask[k] = ~(BIT_ULL(13) | GENMASK_ULL(7, 0));
-		k++;
-
-		if (k >= MAX_REGS_PER_MBOX_MSG) {
-			req->num_regs = k;
-			rc = mbox_process(mbox);
-			if (rc)
-				goto err;
-			req = NULL;
+		/* Restrict sharing of TL3 across the queues */
+		if (enable && node != parent && node->rel_chan == tc) {
+			plt_err("SQ %d node TL3 id %d already has %d tc value set",
+				sq, node->hw_id, tc);
+			return -EINVAL;
 		}
 	}
 
-	if (req) {
-		req->num_regs = k;
-		rc = mbox_process(mbox);
-		if (rc)
-			goto err;
+	/* In case of user tree i.e. multiple SQs may share a TL3, disabling PFC
+	 * on one of such SQ should not hamper the traffic control on other SQs.
+	 * Maitaining a reference count scheme to account no of SQs sharing the
+	 * TL3 before disabling PFC on it.
+	 */
+	if (!force_flush && !enable &&
+	    parent->rel_chan != NIX_TM_CHAN_INVALID) {
+		if (sq_s->tc != ROC_NIX_PFC_CLASS_INVALID)
+			parent->tc_refcnt--;
+		if (parent->tc_refcnt > 0)
+			return 0;
 	}
+
+	/* Allocating TL3 resources */
+	if (!req) {
+		req = mbox_alloc_msg_nix_txschq_cfg(mbox);
+		req->lvl = nix->tm_link_cfg_lvl;
+		k = 0;
+	}
+
+	/* Enable PFC on the identified TL3 */
+	req->reg[k] = NIX_AF_TL3_TL2X_LINKX_CFG(parent->hw_id, link);
+	req->regval[k] = enable ? tc : 0;
+	req->regval[k] |= enable ? BIT_ULL(13) : 0;
+	req->regval_mask[k] = ~(BIT_ULL(13) | GENMASK_ULL(7, 0));
+	k++;
+
+	req->num_regs = k;
+	rc = mbox_process(mbox);
+	if (rc)
+		goto err;
 
 	parent->rel_chan = enable ? tc : NIX_TM_CHAN_INVALID;
+	/* Increase reference count for parent TL3 */
+	if (enable && sq_s->tc == ROC_NIX_PFC_CLASS_INVALID)
+		parent->tc_refcnt++;
+
 	return 0;
 err:
 	plt_err("Failed to %s bp on link %u, rc=%d(%s)",
@@ -629,7 +658,7 @@ nix_tm_sq_flush_pre(struct roc_nix_sq *sq)
 	}
 
 	/* Disable backpressure */
-	rc = nix_tm_bp_config_set(roc_nix, sq->qid, 0, false);
+	rc = nix_tm_bp_config_set(roc_nix, sq->qid, 0, false, true);
 	if (rc) {
 		plt_err("Failed to disable backpressure for flush, rc=%d", rc);
 		return rc;
@@ -764,7 +793,7 @@ nix_tm_sq_flush_post(struct roc_nix_sq *sq)
 		return 0;
 
 	/* Restore backpressure */
-	rc = nix_tm_bp_config_set(roc_nix, sq->qid, 0, true);
+	rc = nix_tm_bp_config_set(roc_nix, sq->qid, sq->tc, true, false);
 	if (rc) {
 		plt_err("Failed to restore backpressure, rc=%d", rc);
 		return rc;

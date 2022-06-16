@@ -292,6 +292,7 @@ roc_nix_tm_node_add(struct roc_nix *roc_nix, struct roc_nix_tm_node *roc_node)
 	node->pkt_mode_set = roc_node->pkt_mode_set;
 	node->free_fn = roc_node->free_fn;
 	node->tree = ROC_NIX_TM_USER;
+	node->rel_chan = NIX_TM_CHAN_INVALID;
 
 	return nix_tm_node_add(roc_nix, node);
 }
@@ -473,7 +474,7 @@ roc_nix_tm_hierarchy_disable(struct roc_nix *roc_nix)
 		if (!sq)
 			continue;
 
-		rc = nix_tm_bp_config_set(roc_nix, sq->qid, 0, false);
+		rc = nix_tm_bp_config_set(roc_nix, sq->qid, 0, false, false);
 		if (rc && rc != -ENOENT) {
 			plt_err("Failed to disable backpressure, rc=%d", rc);
 			goto cleanup;

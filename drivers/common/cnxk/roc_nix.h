@@ -11,7 +11,8 @@
 #define ROC_NIX_BPF_LEVEL_IDX_INVALID 0xFF
 #define ROC_NIX_BPF_LEVEL_MAX	      3
 #define ROC_NIX_BPF_STATS_MAX	      12
-#define ROC_NIX_MTR_ID_INVALID       UINT32_MAX
+#define ROC_NIX_MTR_ID_INVALID	      UINT32_MAX
+#define ROC_NIX_PFC_CLASS_INVALID     UINT8_MAX
 
 enum roc_nix_rss_reta_sz {
 	ROC_NIX_RSS_RETA_SZ_64 = 64,
@@ -349,6 +350,7 @@ struct roc_nix_sq {
 	void *lmt_addr;
 	void *sqe_mem;
 	void *fc;
+	uint8_t tc;
 };
 
 struct roc_nix_link_info {

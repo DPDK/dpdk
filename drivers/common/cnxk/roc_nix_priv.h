@@ -100,6 +100,7 @@ struct nix_tm_node {
 	/* Last stats */
 	uint64_t last_pkts;
 	uint64_t last_bytes;
+	uint32_t tc_refcnt;
 };
 
 struct nix_tm_shaper_profile {
@@ -402,7 +403,7 @@ int nix_rq_cfg(struct dev *dev, struct roc_nix_rq *rq, uint16_t qints, bool cfg,
 int nix_rq_ena_dis(struct dev *dev, struct roc_nix_rq *rq, bool enable);
 int nix_tm_bp_config_get(struct roc_nix *roc_nix, bool *is_enabled);
 int nix_tm_bp_config_set(struct roc_nix *roc_nix, uint16_t sq, uint16_t tc,
-			 bool enable);
+			 bool enable, bool force_flush);
 void nix_rq_vwqe_flush(struct roc_nix_rq *rq, uint16_t vwqe_interval);
 int nix_tm_mark_init(struct nix *nix);
 

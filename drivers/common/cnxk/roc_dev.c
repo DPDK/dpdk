@@ -421,6 +421,24 @@ process_msgs(struct dev *dev, struct mbox *mbox)
 			/* Get our identity */
 			dev->pf_func = msg->pcifunc;
 			break;
+		case MBOX_MSG_CGX_PRIO_FLOW_CTRL_CFG:
+			/* Handling the case where one VF tries to disable PFC
+			 * while PFC already configured on other VFs. This is
+			 * not an error but a warning which can be ignored.
+			 */
+#define LMAC_AF_ERR_PERM_DENIED -1103
+			if (msg->rc) {
+				if (msg->rc == LMAC_AF_ERR_PERM_DENIED) {
+					plt_mbox_dbg(
+						"Receive Flow control disable not permitted "
+						"as its used by other PFVFs");
+					msg->rc = 0;
+				} else {
+					plt_err("Message (%s) response has err=%d",
+						mbox_id2name(msg->id), msg->rc);
+				}
+			}
+			break;
 
 		default:
 			if (msg->rc)
