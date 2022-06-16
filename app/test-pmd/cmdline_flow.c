@@ -11029,19 +11029,13 @@ cmd_set_raw_parsed(const struct buffer *in)
 			} else {
 				const struct rte_flow_item_gtp_psc
 					*opt = item->spec;
-				struct {
-					uint8_t len;
-					uint8_t pdu_type:4;
-					uint8_t qfi:6;
-					uint8_t next;
-				} psc;
-				psc.len = sizeof(psc) / 4;
-				psc.pdu_type = opt->hdr.type;
-				psc.qfi = opt->hdr.qfi;
-				psc.next = 0;
-				*total_size += sizeof(psc);
-				rte_memcpy(data_tail - (*total_size),
-					   &psc, sizeof(psc));
+				struct rte_gtp_psc_generic_hdr *hdr;
+
+				*total_size += RTE_ALIGN(sizeof(hdr),
+							 sizeof(int32_t));
+				hdr = (typeof(hdr))(data_tail - (*total_size));
+				*hdr = opt->hdr;
+				hdr->ext_hdr_len = 1;
 				gtp_psc = i;
 				size = 0;
 			}
