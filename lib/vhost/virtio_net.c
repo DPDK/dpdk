@@ -2664,18 +2664,14 @@ desc_to_mbuf(struct virtio_net *dev, struct vhost_virtqueue *vq,
 	uint32_t buf_avail, buf_offset, buf_len;
 	uint64_t buf_addr, buf_iova;
 	uint32_t mbuf_avail, mbuf_offset;
+	uint32_t hdr_remain = dev->vhost_hlen;
 	uint32_t cpy_len;
 	struct rte_mbuf *cur = m, *prev = m;
 	struct virtio_net_hdr tmp_hdr;
 	struct virtio_net_hdr *hdr = NULL;
-	/* A counter to avoid desc dead loop chain */
-	uint16_t vec_idx = 0;
+	uint16_t vec_idx;
 	struct vhost_async *async = vq->async;
 	struct async_inflight_info *pkts_info;
-
-	buf_addr = buf_vec[vec_idx].buf_addr;
-	buf_iova = buf_vec[vec_idx].buf_iova;
-	buf_len = buf_vec[vec_idx].buf_len;
 
 	/*
 	 * The caller has checked the descriptors chain is larger than the
@@ -2683,7 +2679,7 @@ desc_to_mbuf(struct virtio_net *dev, struct vhost_virtqueue *vq,
 	 */
 
 	if (virtio_net_with_host_offload(dev)) {
-		if (unlikely(buf_len < sizeof(struct virtio_net_hdr))) {
+		if (unlikely(buf_vec[0].buf_len < sizeof(struct virtio_net_hdr))) {
 			/*
 			 * No luck, the virtio-net header doesn't fit
 			 * in a contiguous virtual area.
@@ -2691,35 +2687,22 @@ desc_to_mbuf(struct virtio_net *dev, struct vhost_virtqueue *vq,
 			copy_vnet_hdr_from_desc(&tmp_hdr, buf_vec);
 			hdr = &tmp_hdr;
 		} else {
-			hdr = (struct virtio_net_hdr *)((uintptr_t)buf_addr);
+			hdr = (struct virtio_net_hdr *)((uintptr_t)buf_vec[0].buf_addr);
 		}
 	}
 
-	/*
-	 * A virtio driver normally uses at least 2 desc buffers
-	 * for Tx: the first for storing the header, and others
-	 * for storing the data.
-	 */
-	if (unlikely(buf_len < dev->vhost_hlen)) {
-		buf_offset = dev->vhost_hlen - buf_len;
-		vec_idx++;
-		buf_addr = buf_vec[vec_idx].buf_addr;
-		buf_iova = buf_vec[vec_idx].buf_iova;
-		buf_len = buf_vec[vec_idx].buf_len;
-		buf_avail  = buf_len - buf_offset;
-	} else if (buf_len == dev->vhost_hlen) {
-		if (unlikely(++vec_idx >= nr_vec))
-			goto error;
-		buf_addr = buf_vec[vec_idx].buf_addr;
-		buf_iova = buf_vec[vec_idx].buf_iova;
-		buf_len = buf_vec[vec_idx].buf_len;
+	for (vec_idx = 0; vec_idx < nr_vec; vec_idx++) {
+		if (buf_vec[vec_idx].buf_len > hdr_remain)
+			break;
 
-		buf_offset = 0;
-		buf_avail = buf_len;
-	} else {
-		buf_offset = dev->vhost_hlen;
-		buf_avail = buf_vec[vec_idx].buf_len - dev->vhost_hlen;
+		hdr_remain -= buf_vec[vec_idx].buf_len;
 	}
+
+	buf_addr = buf_vec[vec_idx].buf_addr;
+	buf_iova = buf_vec[vec_idx].buf_iova;
+	buf_len = buf_vec[vec_idx].buf_len;
+	buf_offset = hdr_remain;
+	buf_avail = buf_vec[vec_idx].buf_len - hdr_remain;
 
 	PRINT_PACKET(dev,
 			(uintptr_t)(buf_addr + buf_offset),
