@@ -224,7 +224,7 @@ txa_service_data_init(void)
 	if (txa_service_data_array == NULL) {
 		txa_service_data_array =
 				txa_memzone_array_get("txa_service_data_array",
-					sizeof(int),
+					sizeof(*txa_service_data_array),
 					RTE_EVENT_ETH_TX_ADAPTER_MAX_INSTANCE);
 		if (txa_service_data_array == NULL)
 			return -ENOMEM;
