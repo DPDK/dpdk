@@ -189,6 +189,14 @@ dlb2_event_build_hcws(struct dlb2_port *qm_port,
 		qe[2].data = ev[2].u64;
 		qe[3].data = ev[3].u64;
 
+		/* will only be set for DLB 2.5 + */
+		if (qm_port->cq_weight) {
+			qe[0].weight = ev[0].impl_opaque & 3;
+			qe[1].weight = ev[1].impl_opaque & 3;
+			qe[2].weight = ev[2].impl_opaque & 3;
+			qe[3].weight = ev[3].impl_opaque & 3;
+		}
+
 		break;
 	case 3:
 	case 2:

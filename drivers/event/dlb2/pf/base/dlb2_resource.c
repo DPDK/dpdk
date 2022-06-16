@@ -6273,3 +6273,219 @@ int dlb2_set_group_sequence_numbers(struct dlb2_hw *hw,
 	return 0;
 }
 
+/**
+ * dlb2_hw_set_qe_arbiter_weights() - program QE arbiter weights
+ * @hw: dlb2_hw handle for a particular device.
+ * @weight: 8-entry array of arbiter weights.
+ *
+ * weight[N] programs priority N's weight. In cases where the 8 priorities are
+ * reduced to 4 bins, the mapping is:
+ * - weight[1] programs bin 0
+ * - weight[3] programs bin 1
+ * - weight[5] programs bin 2
+ * - weight[7] programs bin 3
+ */
+void dlb2_hw_set_qe_arbiter_weights(struct dlb2_hw *hw, u8 weight[8])
+{
+	u32 reg = 0;
+
+	DLB2_BITS_SET(reg, weight[1], DLB2_ATM_CFG_ARB_WEIGHTS_RDY_BIN_BIN0);
+	DLB2_BITS_SET(reg, weight[3], DLB2_ATM_CFG_ARB_WEIGHTS_RDY_BIN_BIN1);
+	DLB2_BITS_SET(reg, weight[5], DLB2_ATM_CFG_ARB_WEIGHTS_RDY_BIN_BIN2);
+	DLB2_BITS_SET(reg, weight[7], DLB2_ATM_CFG_ARB_WEIGHTS_RDY_BIN_BIN3);
+	DLB2_CSR_WR(hw, DLB2_ATM_CFG_ARB_WEIGHTS_RDY_BIN, reg);
+
+	reg = 0;
+	DLB2_BITS_SET(reg, weight[1], DLB2_NALB_CFG_ARB_WEIGHTS_TQPRI_NALB_0_PRI0);
+	DLB2_BITS_SET(reg, weight[3], DLB2_NALB_CFG_ARB_WEIGHTS_TQPRI_NALB_0_PRI1);
+	DLB2_BITS_SET(reg, weight[5], DLB2_NALB_CFG_ARB_WEIGHTS_TQPRI_NALB_0_PRI2);
+	DLB2_BITS_SET(reg, weight[7], DLB2_NALB_CFG_ARB_WEIGHTS_TQPRI_NALB_0_PRI3);
+	DLB2_CSR_WR(hw, DLB2_NALB_CFG_ARB_WEIGHTS_TQPRI_NALB_0(hw->ver), reg);
+
+	reg = 0;
+	DLB2_BITS_SET(reg, weight[1], DLB2_NALB_CFG_ARB_WEIGHTS_TQPRI_REPLAY_0_PRI0);
+	DLB2_BITS_SET(reg, weight[3], DLB2_NALB_CFG_ARB_WEIGHTS_TQPRI_REPLAY_0_PRI1);
+	DLB2_BITS_SET(reg, weight[5], DLB2_NALB_CFG_ARB_WEIGHTS_TQPRI_REPLAY_0_PRI2);
+	DLB2_BITS_SET(reg, weight[7], DLB2_NALB_CFG_ARB_WEIGHTS_TQPRI_REPLAY_0_PRI3);
+	DLB2_CSR_WR(hw, DLB2_NALB_CFG_ARB_WEIGHTS_TQPRI_REPLAY_0(hw->ver), reg);
+
+	reg = 0;
+	DLB2_BITS_SET(reg, weight[1], DLB2_DP_CFG_ARB_WEIGHTS_TQPRI_REPLAY_0_PRI0);
+	DLB2_BITS_SET(reg, weight[3], DLB2_DP_CFG_ARB_WEIGHTS_TQPRI_REPLAY_0_PRI1);
+	DLB2_BITS_SET(reg, weight[5], DLB2_DP_CFG_ARB_WEIGHTS_TQPRI_REPLAY_0_PRI2);
+	DLB2_BITS_SET(reg, weight[7], DLB2_DP_CFG_ARB_WEIGHTS_TQPRI_REPLAY_0_PRI3);
+	DLB2_CSR_WR(hw, DLB2_DP_CFG_ARB_WEIGHTS_TQPRI_REPLAY_0, reg);
+
+	reg = 0;
+	DLB2_BITS_SET(reg, weight[1], DLB2_DP_CFG_ARB_WEIGHTS_TQPRI_DIR_0_PRI0);
+	DLB2_BITS_SET(reg, weight[3], DLB2_DP_CFG_ARB_WEIGHTS_TQPRI_DIR_0_PRI1);
+	DLB2_BITS_SET(reg, weight[5], DLB2_DP_CFG_ARB_WEIGHTS_TQPRI_DIR_0_PRI2);
+	DLB2_BITS_SET(reg, weight[7], DLB2_DP_CFG_ARB_WEIGHTS_TQPRI_DIR_0_PRI3);
+	DLB2_CSR_WR(hw, DLB2_DP_CFG_ARB_WEIGHTS_TQPRI_DIR_0, reg);
+
+	reg = 0;
+	DLB2_BITS_SET(reg, weight[1], DLB2_NALB_CFG_ARB_WEIGHTS_TQPRI_ATQ_0_PRI0);
+	DLB2_BITS_SET(reg, weight[3], DLB2_NALB_CFG_ARB_WEIGHTS_TQPRI_ATQ_0_PRI1);
+	DLB2_BITS_SET(reg, weight[5], DLB2_NALB_CFG_ARB_WEIGHTS_TQPRI_ATQ_0_PRI2);
+	DLB2_BITS_SET(reg, weight[7], DLB2_NALB_CFG_ARB_WEIGHTS_TQPRI_ATQ_0_PRI3);
+	DLB2_CSR_WR(hw, DLB2_NALB_CFG_ARB_WEIGHTS_TQPRI_ATQ_0(hw->ver), reg);
+
+	reg = 0;
+	DLB2_BITS_SET(reg, weight[1], DLB2_ATM_CFG_ARB_WEIGHTS_SCHED_BIN_BIN0);
+	DLB2_BITS_SET(reg, weight[3], DLB2_ATM_CFG_ARB_WEIGHTS_SCHED_BIN_BIN1);
+	DLB2_BITS_SET(reg, weight[5], DLB2_ATM_CFG_ARB_WEIGHTS_SCHED_BIN_BIN2);
+	DLB2_BITS_SET(reg, weight[7], DLB2_ATM_CFG_ARB_WEIGHTS_SCHED_BIN_BIN3);
+	DLB2_CSR_WR(hw, DLB2_ATM_CFG_ARB_WEIGHTS_SCHED_BIN, reg);
+
+	reg = 0;
+	DLB2_BITS_SET(reg, weight[1], DLB2_AQED_CFG_ARB_WEIGHTS_TQPRI_ATM_0_PRI0);
+	DLB2_BITS_SET(reg, weight[3], DLB2_AQED_CFG_ARB_WEIGHTS_TQPRI_ATM_0_PRI1);
+	DLB2_BITS_SET(reg, weight[5], DLB2_AQED_CFG_ARB_WEIGHTS_TQPRI_ATM_0_PRI2);
+	DLB2_BITS_SET(reg, weight[7], DLB2_AQED_CFG_ARB_WEIGHTS_TQPRI_ATM_0_PRI3);
+	DLB2_CSR_WR(hw, DLB2_AQED_CFG_ARB_WEIGHTS_TQPRI_ATM_0, reg);
+}
+
+/**
+ * dlb2_hw_set_qid_arbiter_weights() - program QID arbiter weights
+ * @hw: dlb2_hw handle for a particular device.
+ * @weight: 8-entry array of arbiter weights.
+ *
+ * weight[N] programs priority N's weight. In cases where the 8 priorities are
+ * reduced to 4 bins, the mapping is:
+ * - weight[1] programs bin 0
+ * - weight[3] programs bin 1
+ * - weight[5] programs bin 2
+ * - weight[7] programs bin 3
+ */
+void dlb2_hw_set_qid_arbiter_weights(struct dlb2_hw *hw, u8 weight[8])
+{
+	u32 reg = 0;
+
+	DLB2_BITS_SET(reg, weight[1], DLB2_LSP_CFG_ARB_WEIGHT_LDB_QID_0_PRI0_WEIGHT);
+	DLB2_BITS_SET(reg, weight[3], DLB2_LSP_CFG_ARB_WEIGHT_LDB_QID_0_PRI1_WEIGHT);
+	DLB2_BITS_SET(reg, weight[5], DLB2_LSP_CFG_ARB_WEIGHT_LDB_QID_0_PRI2_WEIGHT);
+	DLB2_BITS_SET(reg, weight[7], DLB2_LSP_CFG_ARB_WEIGHT_LDB_QID_0_PRI3_WEIGHT);
+	DLB2_CSR_WR(hw, DLB2_LSP_CFG_ARB_WEIGHT_LDB_QID_0(hw->ver), reg);
+
+	reg = 0;
+	DLB2_BITS_SET(reg, weight[1], DLB2_LSP_CFG_ARB_WEIGHT_ATM_NALB_QID_0_PRI0_WEIGHT);
+	DLB2_BITS_SET(reg, weight[3], DLB2_LSP_CFG_ARB_WEIGHT_ATM_NALB_QID_0_PRI1_WEIGHT);
+	DLB2_BITS_SET(reg, weight[5], DLB2_LSP_CFG_ARB_WEIGHT_ATM_NALB_QID_0_PRI2_WEIGHT);
+	DLB2_BITS_SET(reg, weight[7], DLB2_LSP_CFG_ARB_WEIGHT_ATM_NALB_QID_0_PRI3_WEIGHT);
+	DLB2_CSR_WR(hw, DLB2_LSP_CFG_ARB_WEIGHT_ATM_NALB_QID_0(hw->ver), reg);
+}
+
+static void dlb2_log_enable_cq_weight(struct dlb2_hw *hw,
+				      u32 domain_id,
+				      struct dlb2_enable_cq_weight_args *args,
+				      bool vdev_req,
+				      unsigned int vdev_id)
+{
+	DLB2_HW_DBG(hw, "DLB2 enable CQ weight arguments:\n");
+	DLB2_HW_DBG(hw, "\tvdev_req %d, vdev_id %d\n", vdev_req, vdev_id);
+	DLB2_HW_DBG(hw, "\tDomain ID: %d\n", domain_id);
+	DLB2_HW_DBG(hw, "\tPort ID:   %d\n", args->port_id);
+	DLB2_HW_DBG(hw, "\tLimit:   %d\n", args->limit);
+}
+
+static int
+dlb2_verify_enable_cq_weight_args(struct dlb2_hw *hw,
+				  u32 domain_id,
+				  struct dlb2_enable_cq_weight_args *args,
+				  struct dlb2_cmd_response *resp,
+				  bool vdev_req,
+				  unsigned int vdev_id)
+{
+	struct dlb2_hw_domain *domain;
+	struct dlb2_ldb_port *port;
+
+	if (hw->ver == DLB2_HW_V2) {
+		resp->status = DLB2_ST_FEATURE_UNAVAILABLE;
+		return -EINVAL;
+	}
+
+	domain = dlb2_get_domain_from_id(hw, domain_id, vdev_req, vdev_id);
+
+	if (!domain) {
+		resp->status = DLB2_ST_INVALID_DOMAIN_ID;
+		return -EINVAL;
+	}
+
+	if (!domain->configured) {
+		resp->status = DLB2_ST_DOMAIN_NOT_CONFIGURED;
+		return -EINVAL;
+	}
+
+	if (domain->started) {
+		resp->status = DLB2_ST_DOMAIN_STARTED;
+		return -EINVAL;
+	}
+
+	port = dlb2_get_domain_used_ldb_port(args->port_id, vdev_req, domain);
+	if (!port || !port->configured) {
+		resp->status = DLB2_ST_INVALID_PORT_ID;
+		return -EINVAL;
+	}
+
+	if (args->limit == 0 || args->limit > port->cq_depth) {
+		resp->status = DLB2_ST_INVALID_CQ_WEIGHT_LIMIT;
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+int dlb2_hw_enable_cq_weight(struct dlb2_hw *hw,
+			     u32 domain_id,
+			     struct dlb2_enable_cq_weight_args *args,
+			     struct dlb2_cmd_response *resp,
+			     bool vdev_req,
+			     unsigned int vdev_id)
+{
+	struct dlb2_hw_domain *domain;
+	struct dlb2_ldb_port *port;
+	int ret, id;
+	u32 reg = 0;
+
+	dlb2_log_enable_cq_weight(hw, domain_id, args, vdev_req, vdev_id);
+
+	/*
+	 * Verify that hardware resources are available before attempting to
+	 * satisfy the request. This simplifies the error unwinding code.
+	 */
+	ret = dlb2_verify_enable_cq_weight_args(hw,
+						domain_id,
+						args,
+						resp,
+						vdev_req,
+						vdev_id);
+	if (ret)
+		return ret;
+
+	domain = dlb2_get_domain_from_id(hw, domain_id, vdev_req, vdev_id);
+	if (!domain) {
+		DLB2_HW_ERR(hw,
+			    "[%s():%d] Internal error: domain not found\n",
+			    __func__, __LINE__);
+		return -EFAULT;
+	}
+
+	id = args->port_id;
+
+	port = dlb2_get_domain_used_ldb_port(id, vdev_req, domain);
+	if (!port) {
+		DLB2_HW_ERR(hw,
+			    "[%s():	%d] Internal error: port not found\n",
+			    __func__, __LINE__);
+		return -EFAULT;
+	}
+
+	DLB2_BIT_SET(reg, DLB2_LSP_CFG_CQ_LDB_WU_LIMIT_V);
+	DLB2_BITS_SET(reg, args->limit, DLB2_LSP_CFG_CQ_LDB_WU_LIMIT_LIMIT);
+
+	DLB2_CSR_WR(hw, DLB2_LSP_CFG_CQ_LDB_WU_LIMIT(port->id.phys_id), reg);
+
+	resp->status = 0;
+
+	return 0;
+}

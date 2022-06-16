@@ -107,6 +107,63 @@ dlb2_init_queue_depth_thresholds(struct dlb2_eventdev *dlb2,
 	}
 }
 
+/* override defaults with value(s) provided on command line */
+static void
+dlb2_init_cq_weight(struct dlb2_eventdev *dlb2, int *cq_weight)
+{
+	int q;
+
+	for (q = 0; q < DLB2_MAX_NUM_PORTS_ALL; q++)
+		dlb2->ev_ports[q].cq_weight = cq_weight[q];
+}
+
+static int
+set_cq_weight(const char *key __rte_unused,
+	      const char *value,
+	      void *opaque)
+{
+	struct dlb2_cq_weight *cq_weight = opaque;
+	int first, last, weight, i;
+
+	if (value == NULL || opaque == NULL) {
+		DLB2_LOG_ERR("NULL pointer\n");
+		return -EINVAL;
+	}
+
+	/* command line override may take one of the following 3 forms:
+	 * qid_depth_thresh=all:<threshold_value> ... all queues
+	 * qid_depth_thresh=qidA-qidB:<threshold_value> ... a range of queues
+	 * qid_depth_thresh=qid:<threshold_value> ... just one queue
+	 */
+	if (sscanf(value, "all:%d", &weight) == 1) {
+		first = 0;
+		last = DLB2_MAX_NUM_LDB_PORTS - 1;
+	} else if (sscanf(value, "%d-%d:%d", &first, &last, &weight) == 3) {
+		/* we have everything we need */
+	} else if (sscanf(value, "%d:%d", &first, &weight) == 2) {
+		last = first;
+	} else {
+		DLB2_LOG_ERR("Error parsing ldb port qe weight devarg. Should be all:val, qid-qid:val, or qid:val\n");
+		return -EINVAL;
+	}
+
+	if (first > last || first < 0 ||
+		last >= DLB2_MAX_NUM_LDB_PORTS) {
+		DLB2_LOG_ERR("Error parsing ldb port qe weight arg, invalid port value\n");
+		return -EINVAL;
+	}
+
+	if (weight < 0 || weight > DLB2_MAX_CQ_DEPTH_OVERRIDE) {
+		DLB2_LOG_ERR("Error parsing ldb port qe weight devarg, must be < cq depth\n");
+		return -EINVAL;
+	}
+
+	for (i = first; i <= last; i++)
+		cq_weight->limit[i] = weight; /* indexed by qid */
+
+	return 0;
+}
+
 static int
 dlb2_hw_query_resources(struct dlb2_eventdev *dlb2)
 {
@@ -1372,13 +1429,14 @@ dlb2_hw_create_ldb_port(struct dlb2_eventdev *dlb2,
 		return -EINVAL;
 
 	if (dequeue_depth < DLB2_MIN_CQ_DEPTH) {
-		DLB2_LOG_ERR("dlb2: invalid enqueue_depth, must be at least %d\n",
+		DLB2_LOG_ERR("dlb2: invalid cq depth, must be at least %d\n",
 			     DLB2_MIN_CQ_DEPTH);
 		return -EINVAL;
 	}
 
-	if (enqueue_depth < DLB2_MIN_ENQUEUE_DEPTH) {
-		DLB2_LOG_ERR("dlb2: invalid enqueue_depth, must be at least %d\n",
+	if (dlb2->version == DLB2_HW_V2 && ev_port->cq_weight != 0 &&
+	    ev_port->cq_weight > dequeue_depth) {
+		DLB2_LOG_ERR("dlb2: invalid cq depth, must be >= cq weight%d\n",
 			     DLB2_MIN_ENQUEUE_DEPTH);
 		return -EINVAL;
 	}
@@ -1450,8 +1508,24 @@ dlb2_hw_create_ldb_port(struct dlb2_eventdev *dlb2,
 	if (dlb2->version == DLB2_HW_V2) {
 		qm_port->cached_ldb_credits = 0;
 		qm_port->cached_dir_credits = 0;
-	} else
+		if (ev_port->cq_weight) {
+			struct dlb2_enable_cq_weight_args cq_weight_args = {0};
+
+			cq_weight_args.port_id = qm_port->id;
+			cq_weight_args.limit = ev_port->cq_weight;
+			ret = dlb2_iface_enable_cq_weight(handle, &cq_weight_args);
+			if (ret < 0) {
+				DLB2_LOG_ERR("dlb2: dlb2_dir_port_create error, ret=%d (driver status: %s)\n",
+					ret,
+					dlb2_error_strings[cfg.response.  status]);
+				goto error_exit;
+			}
+		}
+		qm_port->cq_weight = ev_port->cq_weight;
+	} else {
 		qm_port->cached_credits = 0;
+		qm_port->cq_weight = 0;
+	}
 
 	/* CQs with depth < 8 use an 8-entry queue, but withhold credits so
 	 * the effective depth is smaller.
@@ -4435,6 +4509,9 @@ dlb2_primary_eventdev_probe(struct rte_eventdev *dev,
 	dlb2_init_queue_depth_thresholds(dlb2,
 					 dlb2_args->qid_depth_thresholds.val);
 
+	dlb2_init_cq_weight(dlb2,
+			    dlb2_args->cq_weight.limit);
+
 	return 0;
 }
 
@@ -4489,6 +4566,7 @@ dlb2_parse_params(const char *params,
 					     DLB2_DEPTH_THRESH_ARG,
 					     DLB2_VECTOR_OPTS_ENAB_ARG,
 					     DLB2_MAX_CQ_DEPTH,
+					     DLB2_CQ_WEIGHT,
 					     NULL };
 
 	if (params != NULL && params[0] != '\0') {
@@ -4629,7 +4707,18 @@ dlb2_parse_params(const char *params,
 					set_max_cq_depth,
 					&dlb2_args->max_cq_depth);
 			if (ret != 0) {
-				DLB2_LOG_ERR("%s: Error parsing vector opts enabled",
+				DLB2_LOG_ERR("%s: Error parsing max cq depth",
+					     name);
+				rte_kvargs_free(kvlist);
+				return ret;
+			}
+
+			ret = rte_kvargs_process(kvlist,
+					DLB2_CQ_WEIGHT,
+					set_cq_weight,
+					&dlb2_args->cq_weight);
+			if (ret != 0) {
+				DLB2_LOG_ERR("%s: Error parsing cq weight on",
 					     name);
 				rte_kvargs_free(kvlist);
 				return ret;

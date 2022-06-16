@@ -44,6 +44,7 @@
 #define DLB2_DEPTH_THRESH_ARG "default_depth_thresh"
 #define DLB2_VECTOR_OPTS_ENAB_ARG "vector_opts_enable"
 #define DLB2_MAX_CQ_DEPTH "max_cq_depth"
+#define DLB2_CQ_WEIGHT "cq_weight"
 
 /* Begin HW related defines and structs */
 
@@ -249,7 +250,7 @@ struct dlb2_enqueue_qe {
 	/* Word 4 */
 	uint16_t lock_id;
 	uint8_t meas_lat:1;
-	uint8_t rsvd1:2;
+	uint8_t weight:2; /* DLB 2.5 and above */
 	uint8_t no_dec:1;
 	uint8_t cmp_id:4;
 	union {
@@ -378,6 +379,7 @@ struct dlb2_port {
 	bool use_scalar; /* force usage of scalar code */
 	uint16_t hw_credit_quanta;
 	bool use_avx512;
+	uint32_t cq_weight;
 };
 
 /* Per-process per-port mmio and memory pointers */
@@ -526,6 +528,7 @@ struct dlb2_eventdev_port {
 	/* enq_configured is set when the qm port is created */
 	bool enq_configured;
 	uint8_t implicit_release; /* release events before dequeuing */
+	uint32_t cq_weight; /* DLB2.5 and above ldb ports only */
 }  __rte_cache_aligned;
 
 struct dlb2_queue {
@@ -627,6 +630,10 @@ struct dlb2_qid_depth_thresholds {
 	int val[DLB2_MAX_NUM_QUEUES_ALL];
 };
 
+struct dlb2_cq_weight {
+	int limit[DLB2_MAX_NUM_LDB_PORTS];
+};
+
 struct dlb2_devargs {
 	int socket_id;
 	int max_num_events;
@@ -640,6 +647,7 @@ struct dlb2_devargs {
 	int default_depth_thresh;
 	bool vector_opts_enabled;
 	int max_cq_depth;
+	struct dlb2_cq_weight cq_weight;
 };
 
 /* End Eventdev related defines and structs */

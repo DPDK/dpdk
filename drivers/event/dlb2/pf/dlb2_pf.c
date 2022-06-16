@@ -41,6 +41,8 @@
 #include "base/dlb2_resource.h"
 
 static const char *event_dlb2_pf_name = RTE_STR(EVDEV_DLB2_NAME_PMD);
+static unsigned int dlb2_qe_sa_pct = 1;
+static unsigned int dlb2_qid_sa_pct;
 
 static void
 dlb2_pf_low_level_io_init(void)
@@ -80,6 +82,27 @@ dlb2_pf_get_device_version(struct dlb2_hw_dev *handle,
 	return 0;
 }
 
+static void dlb2_pf_calc_arbiter_weights(u8 *weight,
+					 unsigned int pct)
+{
+	int val, i;
+
+	/* Largest possible weight (100% SA case): 32 */
+	val = (DLB2_MAX_WEIGHT + 1) / DLB2_NUM_ARB_WEIGHTS;
+
+	/* Scale val according to the starvation avoidance percentage */
+	val = (val * pct) / 100;
+	if (val == 0 && pct != 0)
+		val = 1;
+
+	/* Prio 7 always has weight 0xff */
+	weight[DLB2_NUM_ARB_WEIGHTS - 1] = DLB2_MAX_WEIGHT;
+
+	for (i = DLB2_NUM_ARB_WEIGHTS - 2; i >= 0; i--)
+		weight[i] = weight[i + 1] - val;
+}
+
+
 static void
 dlb2_pf_hardware_init(struct dlb2_hw_dev *handle)
 {
@@ -87,6 +110,27 @@ dlb2_pf_hardware_init(struct dlb2_hw_dev *handle)
 
 	dlb2_hw_enable_sparse_ldb_cq_mode(&dlb2_dev->hw);
 	dlb2_hw_enable_sparse_dir_cq_mode(&dlb2_dev->hw);
+
+	/* Configure arbitration weights for QE selection */
+	if (dlb2_qe_sa_pct <= 100) {
+		u8 weight[DLB2_NUM_ARB_WEIGHTS];
+
+		dlb2_pf_calc_arbiter_weights(weight,
+					     dlb2_qe_sa_pct);
+
+		dlb2_hw_set_qe_arbiter_weights(&dlb2_dev->hw, weight);
+	}
+
+	/* Configure arbitration weights for QID selection */
+	if (dlb2_qid_sa_pct <= 100) {
+		u8 weight[DLB2_NUM_ARB_WEIGHTS];
+
+		dlb2_pf_calc_arbiter_weights(weight,
+					     dlb2_qid_sa_pct);
+
+		dlb2_hw_set_qid_arbiter_weights(&dlb2_dev->hw, weight);
+	}
+
 }
 
 static int
@@ -578,6 +622,30 @@ dlb2_pf_get_dir_queue_depth(struct dlb2_hw_dev *handle,
 	return ret;
 }
 
+static int
+dlb2_pf_enable_cq_weight(struct dlb2_hw_dev *handle,
+			 struct dlb2_enable_cq_weight_args *args)
+{
+	struct dlb2_dev *dlb2_dev = (struct dlb2_dev *)handle->pf_dev;
+	struct dlb2_cmd_response response = {0};
+	int ret = 0;
+
+	DLB2_INFO(dev->dlb2_device, "Entering %s()\n", __func__);
+
+	ret = dlb2_hw_enable_cq_weight(&dlb2_dev->hw,
+				       handle->domain_id,
+				       args,
+				       &response,
+				       false,
+				       0);
+	args->response = response;
+
+	DLB2_INFO(dev->dlb2_device, "Exiting %s() with ret=%d\n",
+		  __func__, ret);
+
+	return ret;
+}
+
 static void
 dlb2_pf_iface_fn_ptrs_init(void)
 {
@@ -602,6 +670,7 @@ dlb2_pf_iface_fn_ptrs_init(void)
 	dlb2_iface_get_sn_allocation = dlb2_pf_get_sn_allocation;
 	dlb2_iface_set_sn_allocation = dlb2_pf_set_sn_allocation;
 	dlb2_iface_get_sn_occupancy = dlb2_pf_get_sn_occupancy;
+	dlb2_iface_enable_cq_weight = dlb2_pf_enable_cq_weight;
 }
 
 /* PCI DEV HOOKS */
