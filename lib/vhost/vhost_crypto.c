@@ -565,94 +565,58 @@ get_data_ptr(struct vhost_crypto_data_req *vc_req,
 	return data;
 }
 
+static __rte_always_inline uint32_t
+copy_data_from_desc(void *dst, struct vhost_crypto_data_req *vc_req,
+	struct vhost_crypto_desc *desc, uint32_t size)
+{
+	uint64_t remain;
+	uint64_t addr;
+
+	remain = RTE_MIN(desc->len, size);
+	addr = desc->addr;
+	do {
+		uint64_t len;
+		void *src;
+
+		len = remain;
+		src = IOVA_TO_VVA(void *, vc_req, addr, &len, VHOST_ACCESS_RO);
+		if (unlikely(src == NULL || len == 0))
+			return 0;
+
+		rte_memcpy(dst, src, len);
+		remain -= len;
+		/* cast is needed for 32-bit architecture */
+		dst = RTE_PTR_ADD(dst, (size_t)len);
+		addr += len;
+	} while (unlikely(remain != 0));
+
+	return RTE_MIN(desc->len, size);
+}
+
+
 static __rte_always_inline int
-copy_data(void *dst_data, struct vhost_crypto_data_req *vc_req,
-		struct vhost_crypto_desc *head,
-		struct vhost_crypto_desc **cur_desc,
-		uint32_t size, uint32_t max_n_descs)
+copy_data(void *data, struct vhost_crypto_data_req *vc_req,
+	struct vhost_crypto_desc *head, struct vhost_crypto_desc **cur_desc,
+	uint32_t size, uint32_t max_n_descs)
 {
 	struct vhost_crypto_desc *desc = *cur_desc;
-	uint64_t remain, addr, dlen, len;
-	uint32_t to_copy;
-	uint8_t *data = dst_data;
-	uint8_t *src;
-	int left = size;
+	uint32_t left = size;
 
-	to_copy = RTE_MIN(desc->len, (uint32_t)left);
-	dlen = to_copy;
-	src = IOVA_TO_VVA(uint8_t *, vc_req, desc->addr, &dlen,
-			VHOST_ACCESS_RO);
-	if (unlikely(!src || !dlen))
-		return -1;
+	do {
+		uint32_t copied;
 
-	rte_memcpy((uint8_t *)data, src, dlen);
-	data += dlen;
-
-	if (unlikely(dlen < to_copy)) {
-		remain = to_copy - dlen;
-		addr = desc->addr + dlen;
-
-		while (remain) {
-			len = remain;
-			src = IOVA_TO_VVA(uint8_t *, vc_req, addr, &len,
-					VHOST_ACCESS_RO);
-			if (unlikely(!src || !len)) {
-				VC_LOG_ERR("Failed to map descriptor");
-				return -1;
-			}
-
-			rte_memcpy(data, src, len);
-			addr += len;
-			remain -= len;
-			data += len;
-		}
-	}
-
-	left -= to_copy;
-
-	while (desc >= head && desc - head < (int)max_n_descs && left) {
-		desc++;
-		to_copy = RTE_MIN(desc->len, (uint32_t)left);
-		dlen = to_copy;
-		src = IOVA_TO_VVA(uint8_t *, vc_req, desc->addr, &dlen,
-				VHOST_ACCESS_RO);
-		if (unlikely(!src || !dlen)) {
-			VC_LOG_ERR("Failed to map descriptor");
+		copied = copy_data_from_desc(data, vc_req, desc, left);
+		if (copied == 0)
 			return -1;
-		}
+		left -= copied;
+		data = RTE_PTR_ADD(data, copied);
+		desc++;
+	} while (desc < head + max_n_descs && left != 0);
 
-		rte_memcpy(data, src, dlen);
-		data += dlen;
-
-		if (unlikely(dlen < to_copy)) {
-			remain = to_copy - dlen;
-			addr = desc->addr + dlen;
-
-			while (remain) {
-				len = remain;
-				src = IOVA_TO_VVA(uint8_t *, vc_req, addr, &len,
-						VHOST_ACCESS_RO);
-				if (unlikely(!src || !len)) {
-					VC_LOG_ERR("Failed to map descriptor");
-					return -1;
-				}
-
-				rte_memcpy(data, src, len);
-				addr += len;
-				remain -= len;
-				data += len;
-			}
-		}
-
-		left -= to_copy;
-	}
-
-	if (unlikely(left > 0)) {
-		VC_LOG_ERR("Incorrect virtio descriptor");
+	if (unlikely(left != 0))
 		return -1;
-	}
 
-	if (unlikely(desc - head == (int)max_n_descs))
+	if (unlikely(desc == head + max_n_descs))
 		*cur_desc = NULL;
 	else
 		*cur_desc = desc + 1;
@@ -852,6 +816,7 @@ prepare_sym_cipher_op(struct vhost_crypto *vcrypto, struct rte_crypto_op *op,
 	/* iv */
 	if (unlikely(copy_data(iv_data, vc_req, head, &desc,
 			cipher->para.iv_len, max_n_descs))) {
+		VC_LOG_ERR("Incorrect virtio descriptor");
 		ret = VIRTIO_CRYPTO_BADMSG;
 		goto error_exit;
 	}
@@ -883,6 +848,7 @@ prepare_sym_cipher_op(struct vhost_crypto *vcrypto, struct rte_crypto_op *op,
 		if (unlikely(copy_data(rte_pktmbuf_mtod(m_src, uint8_t *),
 				vc_req, head, &desc, cipher->para.src_data_len,
 				max_n_descs) < 0)) {
+			VC_LOG_ERR("Incorrect virtio descriptor");
 			ret = VIRTIO_CRYPTO_BADMSG;
 			goto error_exit;
 		}
@@ -1006,6 +972,7 @@ prepare_sym_chain_op(struct vhost_crypto *vcrypto, struct rte_crypto_op *op,
 	/* iv */
 	if (unlikely(copy_data(iv_data, vc_req, head, &desc,
 			chain->para.iv_len, max_n_descs) < 0)) {
+		VC_LOG_ERR("Incorrect virtio descriptor");
 		ret = VIRTIO_CRYPTO_BADMSG;
 		goto error_exit;
 	}
@@ -1037,6 +1004,7 @@ prepare_sym_chain_op(struct vhost_crypto *vcrypto, struct rte_crypto_op *op,
 		if (unlikely(copy_data(rte_pktmbuf_mtod(m_src, uint8_t *),
 				vc_req, head, &desc, chain->para.src_data_len,
 				max_n_descs) < 0)) {
+			VC_LOG_ERR("Incorrect virtio descriptor");
 			ret = VIRTIO_CRYPTO_BADMSG;
 			goto error_exit;
 		}
@@ -1121,6 +1089,7 @@ prepare_sym_chain_op(struct vhost_crypto *vcrypto, struct rte_crypto_op *op,
 		if (unlikely(copy_data(digest_addr, vc_req, head, &digest_desc,
 				chain->para.hash_result_len,
 				max_n_descs) < 0)) {
+			VC_LOG_ERR("Incorrect virtio descriptor");
 			ret = VIRTIO_CRYPTO_BADMSG;
 			goto error_exit;
 		}
