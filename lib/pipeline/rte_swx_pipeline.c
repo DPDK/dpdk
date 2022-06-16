@@ -8845,7 +8845,7 @@ rte_swx_pipeline_learner_config(struct rte_swx_pipeline *p,
 	/* Any other checks. */
 	CHECK(size, EINVAL);
 	CHECK(timeout, EINVAL);
-	CHECK(n_timeouts && (n_timeouts < RTE_SWX_TABLE_LEARNER_N_KEY_TIMEOUTS_MAX), EINVAL);
+	CHECK(n_timeouts && (n_timeouts <= RTE_SWX_TABLE_LEARNER_N_KEY_TIMEOUTS_MAX), EINVAL);
 
 	/* Memory allocation. */
 	l = calloc(1, sizeof(struct learner));
