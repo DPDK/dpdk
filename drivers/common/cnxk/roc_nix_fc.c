@@ -77,7 +77,8 @@ nix_fc_rxchan_bpid_set(struct roc_nix *roc_nix, bool enable)
 		goto exit;
 
 	/* Enable backpressure on CPT if inline inb is enabled */
-	if (enable && roc_nix_inl_inb_is_enabled(roc_nix)) {
+	if (enable && roc_nix_inl_inb_is_enabled(roc_nix) &&
+	    !roc_errata_cpt_hang_on_x2p_bp()) {
 		req = mbox_alloc_msg_nix_cpt_bp_enable(mbox);
 		if (req == NULL)
 			return rc;

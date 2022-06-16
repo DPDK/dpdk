@@ -77,4 +77,11 @@ roc_errata_nix_has_perf_issue_on_stats_update(void)
 	return true;
 }
 
+/* Errata IPBUCPT-38726, IPBUCPT-38727 */
+static inline bool
+roc_errata_cpt_hang_on_x2p_bp(void)
+{
+	return roc_model_is_cn10ka_a0();
+}
+
 #endif /* _ROC_ERRATA_H_ */

@@ -309,7 +309,7 @@ struct roc_nix_rq {
 struct roc_nix_cq {
 	/* Input parameters */
 	uint16_t qid;
-	uint16_t nb_desc;
+	uint32_t nb_desc;
 	/* End of Input parameters */
 	uint16_t drop_thresh;
 	struct roc_nix *roc_nix;
