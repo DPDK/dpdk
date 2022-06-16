@@ -5,6 +5,8 @@
 
 #include <rte_eventdev.h>
 
+#define CNXK_NIX_CQ_INL_CLAMP_MAX (64UL * 1024UL)
+
 static inline uint64_t
 nix_get_rx_offload_capa(struct cnxk_eth_dev *dev)
 {
@@ -38,6 +40,39 @@ nix_get_speed_capa(struct cnxk_eth_dev *dev)
 	}
 
 	return speed_capa;
+}
+
+static uint32_t
+nix_inl_cq_sz_clamp_up(struct roc_nix *nix, struct rte_mempool *mp,
+		       uint32_t nb_desc)
+{
+	struct roc_nix_rq *inl_rq;
+	uint64_t limit;
+
+	if (!roc_errata_cpt_hang_on_x2p_bp())
+		return nb_desc;
+
+	/* CQ should be able to hold all buffers in first pass RQ's aura
+	 * this RQ's aura.
+	 */
+	inl_rq = roc_nix_inl_dev_rq(nix);
+	if (!inl_rq) {
+		/* This itself is going to be inline RQ's aura */
+		limit = roc_npa_aura_op_limit_get(mp->pool_id);
+	} else {
+		limit = roc_npa_aura_op_limit_get(inl_rq->aura_handle);
+		/* Also add this RQ's aura if it is different */
+		if (inl_rq->aura_handle != mp->pool_id)
+			limit += roc_npa_aura_op_limit_get(mp->pool_id);
+	}
+	nb_desc = PLT_MAX(limit + 1, nb_desc);
+	if (nb_desc > CNXK_NIX_CQ_INL_CLAMP_MAX) {
+		plt_warn("Could not setup CQ size to accommodate"
+			 " all buffers in related auras (%" PRIu64 ")",
+			 limit);
+		nb_desc = CNXK_NIX_CQ_INL_CLAMP_MAX;
+	}
+	return nb_desc;
 }
 
 int
@@ -504,7 +539,7 @@ cnxk_nix_tx_queue_release(struct rte_eth_dev *eth_dev, uint16_t qid)
 
 int
 cnxk_nix_rx_queue_setup(struct rte_eth_dev *eth_dev, uint16_t qid,
-			uint16_t nb_desc, uint16_t fp_rx_q_sz,
+			uint32_t nb_desc, uint16_t fp_rx_q_sz,
 			const struct rte_eth_rxconf *rx_conf,
 			struct rte_mempool *mp)
 {
@@ -551,6 +586,12 @@ cnxk_nix_rx_queue_setup(struct rte_eth_dev *eth_dev, uint16_t qid,
 	if (dev->rx_offloads & RTE_ETH_RX_OFFLOAD_SECURITY ||
 	    dev->tx_offloads & RTE_ETH_TX_OFFLOAD_SECURITY)
 		roc_nix_inl_dev_xaq_realloc(mp->pool_id);
+
+	/* Increase CQ size to Aura size to avoid CQ overflow and
+	 * then CPT buffer leak.
+	 */
+	if (dev->rx_offloads & RTE_ETH_RX_OFFLOAD_SECURITY)
+		nb_desc = nix_inl_cq_sz_clamp_up(nix, mp, nb_desc);
 
 	/* Setup ROC CQ */
 	cq = &dev->cqs[qid];

@@ -530,7 +530,7 @@ int cnxk_nix_tx_queue_setup(struct rte_eth_dev *eth_dev, uint16_t qid,
 			    uint16_t nb_desc, uint16_t fp_tx_q_sz,
 			    const struct rte_eth_txconf *tx_conf);
 int cnxk_nix_rx_queue_setup(struct rte_eth_dev *eth_dev, uint16_t qid,
-			    uint16_t nb_desc, uint16_t fp_rx_q_sz,
+			    uint32_t nb_desc, uint16_t fp_rx_q_sz,
 			    const struct rte_eth_rxconf *rx_conf,
 			    struct rte_mempool *mp);
 int cnxk_nix_tx_queue_start(struct rte_eth_dev *eth_dev, uint16_t qid);
