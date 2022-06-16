@@ -90,6 +90,20 @@ struct rte_pmd_afu_n3000_cfg {
 	};
 };
 
+/**
+ * HE-LPBK & HE-MEM-LPBK AFU configuration data structure.
+ */
+struct rte_pmd_afu_he_lpbk_cfg {
+	uint32_t mode;
+	uint32_t begin;
+	uint32_t end;
+	uint32_t multi_cl;
+	uint32_t cont;
+	uint32_t timeout;
+	uint32_t trput_interleave;
+	uint32_t freq_mhz;
+};
+
 #ifdef __cplusplus
 }
 #endif
