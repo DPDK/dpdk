@@ -104,6 +104,13 @@ struct rte_pmd_afu_he_lpbk_cfg {
 	uint32_t freq_mhz;
 };
 
+/**
+ * HE-MEM-TG AFU configuration data structure.
+ */
+struct rte_pmd_afu_he_mem_tg_cfg {
+	uint32_t channel_mask;   /* mask of traffic generator channel */
+};
+
 #ifdef __cplusplus
 }
 #endif
