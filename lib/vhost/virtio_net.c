@@ -2863,7 +2863,7 @@ virtio_dev_tx_split(struct virtio_net *dev, struct vhost_virtqueue *vq,
 	bool legacy_ol_flags)
 {
 	uint16_t i;
-	uint16_t free_entries;
+	uint16_t avail_entries;
 	uint16_t dropped = 0;
 	static bool allocerr_warned;
 
@@ -2871,9 +2871,9 @@ virtio_dev_tx_split(struct virtio_net *dev, struct vhost_virtqueue *vq,
 	 * The ordering between avail index and
 	 * desc reads needs to be enforced.
 	 */
-	free_entries = __atomic_load_n(&vq->avail->idx, __ATOMIC_ACQUIRE) -
+	avail_entries = __atomic_load_n(&vq->avail->idx, __ATOMIC_ACQUIRE) -
 			vq->last_avail_idx;
-	if (free_entries == 0)
+	if (avail_entries == 0)
 		return 0;
 
 	rte_prefetch0(&vq->avail->ring[vq->last_avail_idx & (vq->size - 1)]);
@@ -2881,7 +2881,7 @@ virtio_dev_tx_split(struct virtio_net *dev, struct vhost_virtqueue *vq,
 	VHOST_LOG_DATA(DEBUG, "(%s) %s\n", dev->ifname, __func__);
 
 	count = RTE_MIN(count, MAX_PKT_BURST);
-	count = RTE_MIN(count, free_entries);
+	count = RTE_MIN(count, avail_entries);
 	VHOST_LOG_DATA(DEBUG, "(%s) about to dequeue %u buffers\n",
 			dev->ifname, count);
 
@@ -3381,7 +3381,7 @@ virtio_dev_tx_async_split(struct virtio_net *dev, struct vhost_virtqueue *vq,
 {
 	static bool allocerr_warned;
 	bool dropped = false;
-	uint16_t free_entries;
+	uint16_t avail_entries;
 	uint16_t pkt_idx, slot_idx = 0;
 	uint16_t nr_done_pkts = 0;
 	uint16_t pkt_err = 0;
@@ -3395,9 +3395,9 @@ virtio_dev_tx_async_split(struct virtio_net *dev, struct vhost_virtqueue *vq,
 	 * The ordering between avail index and
 	 * desc reads needs to be enforced.
 	 */
-	free_entries = __atomic_load_n(&vq->avail->idx, __ATOMIC_ACQUIRE) -
+	avail_entries = __atomic_load_n(&vq->avail->idx, __ATOMIC_ACQUIRE) -
 			vq->last_avail_idx;
-	if (free_entries == 0)
+	if (avail_entries == 0)
 		goto out;
 
 	rte_prefetch0(&vq->avail->ring[vq->last_avail_idx & (vq->size - 1)]);
@@ -3405,7 +3405,7 @@ virtio_dev_tx_async_split(struct virtio_net *dev, struct vhost_virtqueue *vq,
 	async_iter_reset(async);
 
 	count = RTE_MIN(count, MAX_PKT_BURST);
-	count = RTE_MIN(count, free_entries);
+	count = RTE_MIN(count, avail_entries);
 	VHOST_LOG_DATA(DEBUG, "(%s) about to dequeue %u buffers\n",
 			dev->ifname, count);
 
