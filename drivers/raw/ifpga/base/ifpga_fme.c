@@ -983,11 +983,25 @@ static int fme_spi_init(struct ifpga_feature *feature)
 
 	altera_spi_init(spi_master);
 
-	max10 = intel_max10_device_probe(spi_master, 0);
-	if (!max10) {
+	max10 = opae_zmalloc(sizeof(*max10));
+	if (!max10)
+		goto release_dev;
+
+	max10->spi_master = spi_master;
+	max10->type = M10_N3000;
+
+	max10->spi_tran_dev = spi_transaction_init(spi_master, 0);
+	if (!max10->spi_tran_dev) {
+		dev_err(fme, "%s spi tran init fail\n", __func__);
+		goto free_max10;
+	}
+
+	/* init the max10 device */
+	ret = intel_max10_device_init(max10);
+	if (ret) {
 		ret = -ENODEV;
 		dev_err(fme, "max10 init fail\n");
-		goto spi_fail;
+		goto release_spi_tran_dev;
 	}
 
 	fme->max10_dev = max10;
@@ -1002,7 +1016,12 @@ static int fme_spi_init(struct ifpga_feature *feature)
 
 max10_fail:
 	intel_max10_device_remove(fme->max10_dev);
-spi_fail:
+release_spi_tran_dev:
+	if (max10->spi_tran_dev)
+		spi_transaction_remove(max10->spi_tran_dev);
+free_max10:
+	opae_free(max10);
+release_dev:
 	altera_spi_release(spi_master);
 	return ret;
 }
@@ -1011,8 +1030,10 @@ static void fme_spi_uinit(struct ifpga_feature *feature)
 {
 	struct ifpga_fme_hw *fme = (struct ifpga_fme_hw *)feature->parent;
 
-	if (fme->max10_dev)
+	if (fme->max10_dev) {
 		intel_max10_device_remove(fme->max10_dev);
+		opae_free(fme->max10_dev);
+	}
 }
 
 struct ifpga_feature_ops fme_spi_master_ops = {
@@ -1157,20 +1178,30 @@ static int fme_nios_spi_init(struct ifpga_feature *feature)
 	/* 3. init the spi master*/
 	altera_spi_init(spi_master);
 
+	max10 = opae_zmalloc(sizeof(*max10));
+	if (!max10)
+		goto release_dev;
+
+	max10->spi_master = spi_master;
+	max10->type = M10_N3000;
+
+	max10->spi_tran_dev = spi_transaction_init(spi_master, 0);
+	if (!max10->spi_tran_dev) {
+		dev_err(fme, "%s spi tran init fail\n", __func__);
+		goto free_max10;
+	}
+
 	/* init the max10 device */
-	max10 = intel_max10_device_probe(spi_master, 0);
-	if (!max10) {
+	ret = intel_max10_device_init(max10);
+	if (ret) {
 		ret = -ENODEV;
 		dev_err(fme, "max10 init fail\n");
-		goto release_dev;
+		goto release_spi_tran_dev;
 	}
 
 	fme->max10_dev = max10;
-
 	max10->bus = hw->pci_data->bus;
-
 	fme_get_board_interface(fme);
-
 	mgr->sensor_list = &max10->opae_sensor_list;
 
 	/* SPI self test */
@@ -1187,6 +1218,11 @@ static int fme_nios_spi_init(struct ifpga_feature *feature)
 
 spi_fail:
 	intel_max10_device_remove(fme->max10_dev);
+release_spi_tran_dev:
+	if (max10->spi_tran_dev)
+		spi_transaction_remove(max10->spi_tran_dev);
+free_max10:
+	opae_free(max10);
 release_dev:
 	altera_spi_release(spi_master);
 	return -ENODEV;
@@ -1197,8 +1233,10 @@ static void fme_nios_spi_uinit(struct ifpga_feature *feature)
 	struct ifpga_fme_hw *fme = (struct ifpga_fme_hw *)feature->parent;
 
 	release_sec_mgr(fme);
-	if (fme->max10_dev)
+	if (fme->max10_dev) {
 		intel_max10_device_remove(fme->max10_dev);
+		opae_free(fme->max10_dev);
+	}
 }
 
 struct ifpga_feature_ops fme_nios_spi_master_ops = {
@@ -1230,7 +1268,7 @@ static int i2c_mac_rom_test(struct altera_i2c_dev *dev)
 	}
 
 	if (memcmp(buf, read_buf, strlen(string))) {
-		dev_err(NULL, "%s test fail!\n", __func__);
+		dev_info(NULL, "%s test fail!\n", __func__);
 		return -EFAULT;
 	}
 
@@ -1499,3 +1537,81 @@ int fme_mgr_get_sensor_value(struct ifpga_fme_hw *fme,
 
 	return 0;
 }
+
+static int fme_pmci_init(struct ifpga_feature *feature)
+{
+	struct ifpga_fme_hw *fme = (struct ifpga_fme_hw *)feature->parent;
+	struct intel_max10_device *max10;
+	struct ifpga_hw *hw;
+	struct opae_manager *mgr;
+	opae_share_data *sd = NULL;
+	int ret = 0;
+
+	hw = fme->parent;
+	if (!hw)
+		return -ENODEV;
+
+	mgr = hw->adapter->mgr;
+	if (!mgr)
+		return -ENODEV;
+
+	dev_info(fme, "FME PMCI Init.\n");
+	dev_debug(fme, "FME PMCI base addr %p.\n",
+			feature->addr);
+
+	max10 = opae_zmalloc(sizeof(*max10));
+	if (!max10)
+		return -ENOMEM;
+
+	max10->type = M10_N6000;
+	max10->mmio = feature->addr;
+	if (hw->adapter && hw->adapter->shm.ptr) {
+		sd = (opae_share_data *)hw->adapter->shm.ptr;
+		max10->bmc_ops.mutex = &sd->spi_mutex;
+	} else {
+		max10->bmc_ops.mutex = NULL;
+	}
+
+	/* init the max10 device */
+	ret = intel_max10_device_init(max10);
+	if (ret) {
+		dev_err(fme, "max10 init fail\n");
+		goto free_max10;
+	}
+
+	fme->max10_dev = max10;
+	max10->bus = hw->pci_data->bus;
+	fme_get_board_interface(fme);
+	mgr->sensor_list = &max10->opae_sensor_list;
+
+	ret = init_sec_mgr(fme);
+	if (ret) {
+		dev_err(fme, "security manager init fail\n");
+		goto release_max10;
+	}
+
+	return ret;
+
+release_max10:
+	intel_max10_device_remove(max10);
+free_max10:
+	opae_free(max10);
+
+	return ret;
+}
+
+static void fme_pmci_uinit(struct ifpga_feature *feature)
+{
+	struct ifpga_fme_hw *fme = (struct ifpga_fme_hw *)feature->parent;
+
+	release_sec_mgr(fme);
+	if (fme->max10_dev) {
+		intel_max10_device_remove(fme->max10_dev);
+		opae_free(fme->max10_dev);
+	}
+}
+
+struct ifpga_feature_ops fme_pmci_ops = {
+	.init = fme_pmci_init,
+	.uinit = fme_pmci_uinit,
+};

@@ -23,6 +23,7 @@
 #define FME_FEATURE_NIOS_SPI        "fme_nios_spi"
 #define FME_FEATURE_I2C_MASTER      "fme_i2c_master"
 #define FME_FEATURE_ETH_GROUP       "fme_eth_group"
+#define FME_FEATURE_PMCI            "fme_pmci"
 
 #define PORT_FEATURE_HEADER         "port_hdr"
 #define PORT_FEATURE_UAFU           "port_uafu"
@@ -91,6 +92,7 @@ enum fpga_id_type {
 #define FME_FEATURE_ID_NIOS_SPI 0xd
 #define FME_FEATURE_ID_I2C_MASTER  0xf
 #define FME_FEATURE_ID_ETH_GROUP 0x10
+#define FME_FEATURE_ID_PMCI      0x12
 
 #define PORT_FEATURE_ID_HEADER FEATURE_ID_FIU_HEADER
 #define PORT_FEATURE_ID_ERROR 0x10

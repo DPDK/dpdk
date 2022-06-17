@@ -4,51 +4,42 @@
 
 #include "opae_intel_max10.h"
 #include <libfdt.h>
-
-int max10_reg_read(struct intel_max10_device *dev,
-	unsigned int reg, unsigned int *val)
-{
-	if (!dev)
-		return -ENODEV;
-
-	dev_debug(dev, "%s: bus:0x%x, reg:0x%x\n", __func__, dev->bus, reg);
-
-	return spi_transaction_read(dev->spi_tran_dev,
-			reg, 4, (unsigned char *)val);
-}
-
-int max10_reg_write(struct intel_max10_device *dev,
-	unsigned int reg, unsigned int val)
-{
-	unsigned int tmp = val;
-
-	if (!dev)
-		return -ENODEV;
-
-	dev_debug(dev, "%s: bus:0x%x, reg:0x%x, val:0x%x\n", __func__,
-			dev->bus, reg, val);
-
-	return spi_transaction_write(dev->spi_tran_dev,
-			reg, 4, (unsigned char *)&tmp);
-}
+#include "opae_osdep.h"
 
 int max10_sys_read(struct intel_max10_device *dev,
 	unsigned int offset, unsigned int *val)
 {
-	if (!dev)
+	if (!dev || !dev->ops->reg_read)
 		return -ENODEV;
 
-
-	return max10_reg_read(dev, dev->base + offset, val);
+	return dev->ops->reg_read(dev, dev->csr->base + offset, val);
 }
 
 int max10_sys_write(struct intel_max10_device *dev,
 	unsigned int offset, unsigned int val)
 {
-	if (!dev)
+	if (!dev || !dev->ops->reg_write)
 		return -ENODEV;
 
-	return max10_reg_write(dev, dev->base + offset, val);
+	return dev->ops->reg_write(dev, dev->csr->base + offset, val);
+}
+
+int max10_reg_read(struct intel_max10_device *dev,
+	unsigned int offset, unsigned int *val)
+{
+	if (!dev || !dev->ops->reg_read)
+		return -ENODEV;
+
+	return dev->ops->reg_read(dev, offset, val);
+}
+
+int max10_reg_write(struct intel_max10_device *dev,
+	unsigned int offset, unsigned int val)
+{
+	if (!dev || !dev->ops->reg_write)
+		return -ENODEV;
+
+	return dev->ops->reg_write(dev, offset, val);
 }
 
 int max10_sys_update_bits(struct intel_max10_device *dev, unsigned int offset,
@@ -66,6 +57,135 @@ int max10_sys_update_bits(struct intel_max10_device *dev, unsigned int offset,
 
 	return max10_sys_write(dev, offset, temp);
 }
+
+static int max10_spi_read(struct intel_max10_device *dev,
+	unsigned int addr, unsigned int *val)
+{
+	if (!dev)
+		return -ENODEV;
+
+	dev_debug(dev, "%s: bus:0x%x, addr:0x%x\n", __func__, dev->bus, addr);
+
+	return spi_transaction_read(dev->spi_tran_dev,
+			addr, 4, (unsigned char *)val);
+}
+
+static int max10_spi_write(struct intel_max10_device *dev,
+	unsigned int addr, unsigned int val)
+{
+	unsigned int tmp = val;
+
+	if (!dev)
+		return -ENODEV;
+
+	dev_debug(dev, "%s: bus:0x%x, reg:0x%x, val:0x%x\n", __func__,
+			dev->bus, addr, val);
+
+	return spi_transaction_write(dev->spi_tran_dev,
+			addr, 4, (unsigned char *)&tmp);
+}
+
+static int indirect_bus_clr_cmd(struct intel_max10_device *dev)
+{
+	unsigned int cmd;
+	int ret;
+
+	opae_writel(0, dev->mmio + INDIRECT_CMD_OFF);
+
+	ret = opae_readl_poll_timeout((dev->mmio + INDIRECT_CMD_OFF), cmd,
+				 (!cmd), INDIRECT_INT_US, INDIRECT_TIMEOUT_US);
+
+	if (ret)
+		dev_err(dev, "%s timed out on clearing cmd 0x%x\n",
+				__func__, cmd);
+
+	return ret;
+}
+
+static int max10_indirect_reg_read(struct intel_max10_device *dev,
+	unsigned int addr, unsigned int *val)
+{
+	unsigned int cmd;
+	int ret;
+
+	if (!dev)
+		return -ENODEV;
+
+	pthread_mutex_lock(dev->bmc_ops.mutex);
+
+	cmd = opae_readl(dev->mmio + INDIRECT_CMD_OFF);
+	if (cmd)
+		dev_warn(dev, "%s non-zero cmd 0x%x\n", __func__, cmd);
+
+	opae_writel(addr, dev->mmio + INDIRECT_ADDR_OFF);
+
+	opae_writel(INDIRECT_CMD_RD, dev->mmio + INDIRECT_CMD_OFF);
+
+	ret = opae_readl_poll_timeout((dev->mmio + INDIRECT_CMD_OFF), cmd,
+				 (cmd & INDIRECT_CMD_ACK), INDIRECT_INT_US,
+				 INDIRECT_TIMEOUT_US);
+
+	*val = opae_readl(dev->mmio + INDIRECT_RD_OFF);
+
+	if (ret)
+		dev_err(dev, "%s timed out on reg 0x%x cmd 0x%x\n",
+				__func__, addr, cmd);
+
+	if (indirect_bus_clr_cmd(dev))
+		ret = -ETIME;
+
+	pthread_mutex_unlock(dev->bmc_ops.mutex);
+
+	return ret;
+}
+
+static int max10_indirect_reg_write(struct intel_max10_device *dev,
+	unsigned int addr, unsigned int val)
+{
+	unsigned int cmd;
+	int ret;
+
+	if (!dev)
+		return -ENODEV;
+
+	pthread_mutex_lock(dev->bmc_ops.mutex);
+
+	cmd = readl(dev->mmio + INDIRECT_CMD_OFF);
+
+	if (cmd)
+		dev_warn(dev, "%s non-zero cmd 0x%x\n", __func__, cmd);
+
+	opae_writel(val, dev->mmio + INDIRECT_WR_OFF);
+
+	opae_writel(addr, dev->mmio + INDIRECT_ADDR_OFF);
+
+	writel(INDIRECT_CMD_WR, dev->mmio + INDIRECT_CMD_OFF);
+
+	ret = opae_readl_poll_timeout((dev->mmio + INDIRECT_CMD_OFF), cmd,
+				 (cmd & INDIRECT_CMD_ACK), INDIRECT_INT_US,
+				 INDIRECT_TIMEOUT_US);
+
+	if (ret)
+		dev_err(dev, "%s timed out on reg 0x%x cmd 0x%x\n",
+				__func__, addr, cmd);
+
+	if (indirect_bus_clr_cmd(dev))
+		ret = -ETIME;
+
+	pthread_mutex_unlock(dev->bmc_ops.mutex);
+
+	return ret;
+}
+
+const struct m10bmc_regmap m10bmc_pmci_regmap = {
+	.reg_write = max10_indirect_reg_write,
+	.reg_read = max10_indirect_reg_read,
+};
+
+const struct m10bmc_regmap m10bmc_n3000_regmap = {
+	.reg_write = max10_spi_write,
+	.reg_read = max10_spi_read,
+};
 
 static struct max10_compatible_id max10_id_table[] = {
 	{.compatible = MAX10_PAC,},
@@ -561,11 +681,9 @@ static int check_max10_version(struct intel_max10_device *dev)
 				&v)) {
 		if (v != 0xffffffff) {
 			dev_info(dev, "secure MAX10 detected\n");
-			dev->base = MAX10_SEC_BASE_ADDR;
 			dev->flags |= MAX10_FLAGS_SECURE;
 		} else {
 			dev_info(dev, "non-secure MAX10 detected\n");
-			dev->base = MAX10_BASE_ADDR;
 		}
 		return 0;
 	}
@@ -648,73 +766,75 @@ max10_non_secure_hw_init(struct intel_max10_device *dev)
 	return 0;
 }
 
-struct intel_max10_device *
-intel_max10_device_probe(struct altera_spi_device *spi,
-		int chipselect)
-{
-	struct intel_max10_device *dev;
-	int ret;
-	unsigned int val;
+static const struct m10bmc_csr m10bmc_spi_csr = {
+	.base = MAX10_SEC_BASE_ADDR,
+	.build_version = MAX10_BUILD_VER,
+	.fw_version = NIOS2_FW_VERSION,
+	.fpga_page_info = FPGA_PAGE_INFO,
+	.doorbell = MAX10_DOORBELL,
+	.auth_result = MAX10_AUTH_RESULT,
+};
 
-	dev = opae_malloc(sizeof(*dev));
-	if (!dev)
-		return NULL;
+static const struct m10bmc_csr m10bmc_pmci_csr = {
+	.base = M10BMC_PMCI_SYS_BASE,
+	.build_version = M10BMC_PMCI_BUILD_VER,
+	.fw_version = NIOS2_PMCI_FW_VERSION,
+	.fpga_page_info = M10BMC_PMCI_FPGA_CONF_STS,
+	.doorbell = M10BMC_PMCI_DOORBELL,
+	.auth_result = M10BMC_PMCI_AUTH_RESULT,
+};
+
+int
+intel_max10_device_init(struct intel_max10_device *dev)
+{
+	int ret = 0;
 
 	TAILQ_INIT(&dev->opae_sensor_list);
 
-	dev->spi_master = spi;
 
-	dev->spi_tran_dev = spi_transaction_init(spi, chipselect);
-	if (!dev->spi_tran_dev) {
-		dev_err(dev, "%s spi tran init fail\n", __func__);
-		goto free_dev;
+	if (dev->type == M10_N3000) {
+		dev->ops = &m10bmc_n3000_regmap;
+		dev->csr = &m10bmc_spi_csr;
+
+		/* check the max10 version */
+		ret = check_max10_version(dev);
+		if (ret) {
+			dev_err(dev, "Failed to find max10 hardware!\n");
+			return ret;
+		}
+
+		/* load the MAX10 device table */
+		ret = init_max10_device_table(dev);
+		if (ret) {
+			dev_err(dev, "Init max10 device table fail\n");
+			return ret;
+		}
+
+		/* init max10 devices, like sensor*/
+		if (dev->flags & MAX10_FLAGS_SECURE)
+			ret = max10_secure_hw_init(dev);
+		else
+			ret = max10_non_secure_hw_init(dev);
+		if (ret) {
+			dev_err(dev, "Failed to init max10 hardware!\n");
+			opae_free(dev->fdt_root);
+			return ret;
+		}
+	} else if (dev->type == M10_N6000) {
+		dev->ops = &m10bmc_pmci_regmap;
+		dev->csr = &m10bmc_pmci_csr;
+		dev->staging_area_size = MAX_STAGING_AREA_SIZE;
+		dev->flags |= MAX10_FLAGS_SECURE;
+
+		ret = pthread_mutex_init(&dev->bmc_ops.lock, NULL);
+		if (ret)
+			return ret;
+
+		if (!dev->bmc_ops.mutex)
+			dev->bmc_ops.mutex = &dev->bmc_ops.lock;
 	}
 
-	/* check the max10 version */
-	ret = check_max10_version(dev);
-	if (ret) {
-		dev_err(dev, "Failed to find max10 hardware!\n");
-		goto free_dev;
-	}
-
-	/* load the MAX10 device table */
-	ret = init_max10_device_table(dev);
-	if (ret) {
-		dev_err(dev, "Init max10 device table fail\n");
-		goto free_dev;
-	}
-
-	/* init max10 devices, like sensor*/
-	if (dev->flags & MAX10_FLAGS_SECURE)
-		ret = max10_secure_hw_init(dev);
-	else
-		ret = max10_non_secure_hw_init(dev);
-	if (ret) {
-		dev_err(dev, "Failed to init max10 hardware!\n");
-		goto free_dtb;
-	}
-
-	/* read FPGA loading information */
-	ret = max10_sys_read(dev, FPGA_PAGE_INFO, &val);
-	if (ret) {
-		dev_err(dev, "fail to get FPGA loading info\n");
-		goto release_max10_hw;
-	}
-	dev_info(dev, "FPGA loaded from %s Image\n", val ? "User" : "Factory");
-
-	return dev;
-
-release_max10_hw:
-	max10_sensor_uinit(dev);
-free_dtb:
-	if (dev->fdt_root)
-		opae_free(dev->fdt_root);
-	if (dev->spi_tran_dev)
-		spi_transaction_remove(dev->spi_tran_dev);
-free_dev:
-	opae_free(dev);
-
-	return NULL;
+	return ret;
 }
 
 int intel_max10_device_remove(struct intel_max10_device *dev)
@@ -722,15 +842,14 @@ int intel_max10_device_remove(struct intel_max10_device *dev)
 	if (!dev)
 		return 0;
 
-	max10_sensor_uinit(dev);
+	pthread_mutex_destroy(&dev->bmc_ops.lock);
 
-	if (dev->spi_tran_dev)
-		spi_transaction_remove(dev->spi_tran_dev);
+	if (dev->type == M10_N3000) {
+		max10_sensor_uinit(dev);
 
-	if (dev->fdt_root)
-		opae_free(dev->fdt_root);
-
-	opae_free(dev);
+		if (dev->fdt_root)
+			opae_free(dev->fdt_root);
+	}
 
 	return 0;
 }
