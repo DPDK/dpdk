@@ -135,6 +135,8 @@ ifpga_rawdev_allocate(struct rte_rawdev *rawdev)
 	for (i = 0; i < IFPGA_MAX_IRQ; i++)
 		dev->intr_handle[i] = NULL;
 	dev->poll_enabled = 0;
+	for (i = 0; i < IFPGA_MAX_VDEV; i++)
+		dev->vdev_name[i] = NULL;
 
 	return dev;
 }
@@ -740,12 +742,20 @@ ifpga_rawdev_close(struct rte_rawdev *dev)
 	struct ifpga_rawdev *ifpga_rdev = NULL;
 	struct opae_adapter *adapter;
 	struct opae_manager *mgr;
-	int ret = 0;
+	char *vdev_name = NULL;
+	int i, ret = 0;
 
 	if (dev) {
-		ifpga_rdev = ifpga_rawdev_get(dev); 
-		if (ifpga_rdev)
+		ifpga_rdev = ifpga_rawdev_get(dev);
+		if (ifpga_rdev) {
+			for (i = 0; i < IFPGA_MAX_VDEV; i++) {
+				vdev_name = ifpga_rdev->vdev_name[i];
+				if (vdev_name)
+					rte_vdev_uninit(vdev_name);
+			}
 			ifpga_monitor_stop_func(ifpga_rdev);
+			ifpga_rdev->rawdev = NULL;
+		}
 		adapter = ifpga_rawdev_get_priv(dev);
 		if (adapter) {
 			mgr = opae_adapter_get_mgr(adapter);
@@ -1637,9 +1647,6 @@ ifpga_rawdev_destroy(struct rte_pci_device *pci_dev)
 	if (ret)
 		IFPGA_RAWDEV_PMD_DEBUG("Device cleanup failed");
 
-	if (dev)
-		dev->rawdev = NULL;
-
 	return ret;
 }
 
@@ -1696,75 +1703,118 @@ static int ifpga_rawdev_get_string_arg(const char *key __rte_unused,
 
 	return 0;
 }
-static int
-ifpga_cfg_probe(struct rte_vdev_device *dev)
-{
-	struct rte_devargs *devargs;
-	struct rte_kvargs *kvlist = NULL;
-	struct rte_rawdev *rawdev = NULL;
-	struct ifpga_rawdev *ifpga_dev;
-	int port;
-	char *name = NULL;
-	char dev_name[RTE_RAWDEV_NAME_MAX_LEN];
-	int ret = -1;
 
-	devargs = dev->device.devargs;
+static int
+ifpga_vdev_parse_devargs(struct rte_devargs *devargs,
+	struct ifpga_vdev_args *args)
+{
+	struct rte_kvargs *kvlist;
+	char *name = NULL;
+	int port = 0;
+	int ret = -EINVAL;
+
+	if (!devargs || !args)
+		return ret;
 
 	kvlist = rte_kvargs_parse(devargs->args, valid_args);
 	if (!kvlist) {
-		IFPGA_RAWDEV_PMD_LOG(ERR, "error when parsing param");
-		goto end;
+		IFPGA_RAWDEV_PMD_ERR("error when parsing devargs");
+		return ret;
 	}
 
 	if (rte_kvargs_count(kvlist, IFPGA_ARG_NAME) == 1) {
 		if (rte_kvargs_process(kvlist, IFPGA_ARG_NAME,
-				       &ifpga_rawdev_get_string_arg,
-				       &name) < 0) {
+			&ifpga_rawdev_get_string_arg, &name) < 0) {
 			IFPGA_RAWDEV_PMD_ERR("error to parse %s",
-				     IFPGA_ARG_NAME);
+				IFPGA_ARG_NAME);
 			goto end;
+		} else {
+			strlcpy(args->bdf, name, sizeof(args->bdf));
+			rte_free(name);
 		}
 	} else {
 		IFPGA_RAWDEV_PMD_ERR("arg %s is mandatory for ifpga bus",
-			  IFPGA_ARG_NAME);
+			IFPGA_ARG_NAME);
 		goto end;
 	}
 
 	if (rte_kvargs_count(kvlist, IFPGA_ARG_PORT) == 1) {
-		if (rte_kvargs_process(kvlist,
-			IFPGA_ARG_PORT,
-			&rte_ifpga_get_integer32_arg,
-			&port) < 0) {
+		if (rte_kvargs_process(kvlist, IFPGA_ARG_PORT,
+			&rte_ifpga_get_integer32_arg, &port) < 0) {
 			IFPGA_RAWDEV_PMD_ERR("error to parse %s",
 				IFPGA_ARG_PORT);
 			goto end;
+		} else {
+			args->port = port;
 		}
 	} else {
 		IFPGA_RAWDEV_PMD_ERR("arg %s is mandatory for ifpga bus",
-			  IFPGA_ARG_PORT);
+			IFPGA_ARG_PORT);
 		goto end;
 	}
 
-	memset(dev_name, 0, sizeof(dev_name));
-	snprintf(dev_name, RTE_RAWDEV_NAME_MAX_LEN, "IFPGA:%s", name);
-	rawdev = rte_rawdev_pmd_get_named_dev(dev_name);
-	if (!rawdev)
-		goto end;
-	ifpga_dev = ifpga_rawdev_get(rawdev);
-	if (!ifpga_dev)
-		goto end;
+	ret = 0;
 
-	memset(dev_name, 0, sizeof(dev_name));
-	snprintf(dev_name, RTE_RAWDEV_NAME_MAX_LEN, "%d|%s",
-	port, name);
-
-	ret = rte_eal_hotplug_add(RTE_STR(IFPGA_BUS_NAME),
-			dev_name, devargs->args);
 end:
 	if (kvlist)
 		rte_kvargs_free(kvlist);
-	if (name)
-		free(name);
+
+	return ret;
+}
+
+static int
+ifpga_cfg_probe(struct rte_vdev_device *vdev)
+{
+	struct rte_rawdev *rawdev = NULL;
+	struct ifpga_rawdev *ifpga_dev;
+	struct ifpga_vdev_args args;
+	char dev_name[RTE_RAWDEV_NAME_MAX_LEN];
+	const char *vdev_name = NULL;
+	int i, n, ret = 0;
+
+	vdev_name = rte_vdev_device_name(vdev);
+	if (!vdev_name)
+		return -EINVAL;
+
+	IFPGA_RAWDEV_PMD_INFO("probe ifpga virtual device %s", vdev_name);
+
+	ret = ifpga_vdev_parse_devargs(vdev->device.devargs, &args);
+	if (ret)
+		return ret;
+
+	memset(dev_name, 0, sizeof(dev_name));
+	snprintf(dev_name, RTE_RAWDEV_NAME_MAX_LEN, "IFPGA:%s", args.bdf);
+	rawdev = rte_rawdev_pmd_get_named_dev(dev_name);
+	if (!rawdev)
+		return -ENODEV;
+	ifpga_dev = ifpga_rawdev_get(rawdev);
+	if (!ifpga_dev)
+		return -ENODEV;
+
+	for (i = 0; i < IFPGA_MAX_VDEV; i++) {
+		if (ifpga_dev->vdev_name[i] == NULL) {
+			n = strlen(vdev_name) + 1;
+			ifpga_dev->vdev_name[i] = rte_malloc(NULL, n, 0);
+			if (ifpga_dev->vdev_name[i] == NULL)
+				return -ENOMEM;
+			strlcpy(ifpga_dev->vdev_name[i], vdev_name, n);
+			break;
+		}
+	}
+
+	if (i >= IFPGA_MAX_VDEV) {
+		IFPGA_RAWDEV_PMD_ERR("Can't create more virtual device!");
+		return -ENOENT;
+	}
+
+	snprintf(dev_name, RTE_RAWDEV_NAME_MAX_LEN, "%d|%s",
+		args.port, args.bdf);
+	ret = rte_eal_hotplug_add(RTE_STR(IFPGA_BUS_NAME),
+			dev_name, vdev->device.devargs->args);
+	if (ret) {
+		rte_free(ifpga_dev->vdev_name[i]);
+		ifpga_dev->vdev_name[i] = NULL;
+	}
 
 	return ret;
 }
@@ -1772,10 +1822,47 @@ end:
 static int
 ifpga_cfg_remove(struct rte_vdev_device *vdev)
 {
-	IFPGA_RAWDEV_PMD_INFO("Remove ifpga_cfg %p",
-		vdev);
+	struct rte_rawdev *rawdev = NULL;
+	struct ifpga_rawdev *ifpga_dev;
+	struct ifpga_vdev_args args;
+	char dev_name[RTE_RAWDEV_NAME_MAX_LEN];
+	const char *vdev_name = NULL;
+	char *tmp_vdev = NULL;
+	int i, ret = 0;
 
-	return 0;
+	vdev_name = rte_vdev_device_name(vdev);
+	if (!vdev_name)
+		return -EINVAL;
+
+	IFPGA_RAWDEV_PMD_INFO("remove ifpga virtual device %s", vdev_name);
+
+	ret = ifpga_vdev_parse_devargs(vdev->device.devargs, &args);
+	if (ret)
+		return ret;
+
+	memset(dev_name, 0, sizeof(dev_name));
+	snprintf(dev_name, RTE_RAWDEV_NAME_MAX_LEN, "IFPGA:%s", args.bdf);
+	rawdev = rte_rawdev_pmd_get_named_dev(dev_name);
+	if (!rawdev)
+		return -ENODEV;
+	ifpga_dev = ifpga_rawdev_get(rawdev);
+	if (!ifpga_dev)
+		return -ENODEV;
+
+	snprintf(dev_name, RTE_RAWDEV_NAME_MAX_LEN, "%d|%s",
+		args.port, args.bdf);
+	ret = rte_eal_hotplug_remove(RTE_STR(IFPGA_BUS_NAME), dev_name);
+
+	for (i = 0; i < IFPGA_MAX_VDEV; i++) {
+		tmp_vdev = ifpga_dev->vdev_name[i];
+		if (tmp_vdev && !strcmp(tmp_vdev, vdev_name)) {
+			free(tmp_vdev);
+			ifpga_dev->vdev_name[i] = NULL;
+			break;
+		}
+	}
+
+	return ret;
 }
 
 static struct rte_vdev_driver ifpga_cfg_driver = {
