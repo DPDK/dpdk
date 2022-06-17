@@ -135,7 +135,7 @@ nfp_net_set_hash(struct nfp_net_rxq *rxq, struct nfp_net_rx_desc *rxd,
 	uint32_t hash = 0;
 	uint32_t hash_type = 0;
 
-	if (!(hw->ctrl & NFP_NET_CFG_CTRL_RSS))
+	if (!(hw->ctrl & NFP_NET_CFG_CTRL_RSS_ANY))
 		return;
 
 	/* this is true for new firmwares */

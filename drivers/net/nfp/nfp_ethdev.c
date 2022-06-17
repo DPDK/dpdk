@@ -123,7 +123,10 @@ nfp_net_start(struct rte_eth_dev *dev)
 	if (rxmode->mq_mode & RTE_ETH_MQ_RX_RSS) {
 		nfp_net_rss_config_default(dev);
 		update |= NFP_NET_CFG_UPDATE_RSS;
-		new_ctrl |= NFP_NET_CFG_CTRL_RSS;
+		if (hw->cap & NFP_NET_CFG_CTRL_RSS2)
+			new_ctrl |= NFP_NET_CFG_CTRL_RSS2;
+		else
+			new_ctrl |= NFP_NET_CFG_CTRL_RSS;
 	}
 
 	/* Enable device */

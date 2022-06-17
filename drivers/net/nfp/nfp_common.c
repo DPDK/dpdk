@@ -171,7 +171,7 @@ nfp_net_configure(struct rte_eth_dev *dev)
 
 	/* Checking RX mode */
 	if (rxmode->mq_mode & RTE_ETH_MQ_RX_RSS &&
-	    !(hw->cap & NFP_NET_CFG_CTRL_RSS)) {
+	    !(hw->cap & NFP_NET_CFG_CTRL_RSS_ANY)) {
 		PMD_INIT_LOG(INFO, "RSS not supported");
 		return -EINVAL;
 	}
@@ -769,7 +769,7 @@ nfp_net_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 		.nb_mtu_seg_max = NFP_TX_MAX_MTU_SEG,
 	};
 
-	if (hw->cap & NFP_NET_CFG_CTRL_RSS) {
+	if (hw->cap & NFP_NET_CFG_CTRL_RSS_ANY) {
 		dev_info->rx_offload_capa |= RTE_ETH_RX_OFFLOAD_RSS_HASH;
 
 		dev_info->flow_type_rss_offloads = RTE_ETH_RSS_IPV4 |
@@ -1080,7 +1080,7 @@ nfp_net_reta_update(struct rte_eth_dev *dev,
 	uint32_t update;
 	int ret;
 
-	if (!(hw->ctrl & NFP_NET_CFG_CTRL_RSS))
+	if (!(hw->ctrl & NFP_NET_CFG_CTRL_RSS_ANY))
 		return -EINVAL;
 
 	ret = nfp_net_rss_reta_write(dev, reta_conf, reta_size);
@@ -1108,7 +1108,7 @@ nfp_net_reta_query(struct rte_eth_dev *dev,
 
 	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
-	if (!(hw->ctrl & NFP_NET_CFG_CTRL_RSS))
+	if (!(hw->ctrl & NFP_NET_CFG_CTRL_RSS_ANY))
 		return -EINVAL;
 
 	if (reta_size != NFP_NET_CFG_RSS_ITBL_SZ) {
@@ -1206,7 +1206,7 @@ nfp_net_rss_hash_update(struct rte_eth_dev *dev,
 	rss_hf = rss_conf->rss_hf;
 
 	/* Checking if RSS is enabled */
-	if (!(hw->ctrl & NFP_NET_CFG_CTRL_RSS)) {
+	if (!(hw->ctrl & NFP_NET_CFG_CTRL_RSS_ANY)) {
 		if (rss_hf != 0) { /* Enable RSS? */
 			PMD_DRV_LOG(ERR, "RSS unsupported");
 			return -EINVAL;
@@ -1241,7 +1241,7 @@ nfp_net_rss_hash_conf_get(struct rte_eth_dev *dev,
 
 	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
-	if (!(hw->ctrl & NFP_NET_CFG_CTRL_RSS))
+	if (!(hw->ctrl & NFP_NET_CFG_CTRL_RSS_ANY))
 		return -EINVAL;
 
 	rss_hf = rss_conf->rss_hf;
