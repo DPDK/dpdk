@@ -3787,7 +3787,7 @@ rte_vhost_async_try_dequeue_burst(int vid, uint16_t queue_id,
 
 		rarp_mbuf = rte_net_make_rarp_packet(mbuf_pool, &dev->mac);
 		if (rarp_mbuf == NULL) {
-			VHOST_LOG_DATA(ERR, "Failed to make RARP packet.\n");
+			VHOST_LOG_DATA(ERR, "(%s) failed to make RARP packet.\n", dev->ifname);
 			count = 0;
 			goto out;
 		}
