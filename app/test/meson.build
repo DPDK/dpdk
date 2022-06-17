@@ -508,6 +508,16 @@ foreach arg : fast_tests
                 timeout : timeout_seconds_fast,
                 is_parallel : false,
                 suite : 'fast-tests')
+        if not is_windows and arg[0] == 'trace_autotest'
+            test_args += ['--trace=.*']
+            test_args += ['--trace-dir=@0@'.format(meson.current_build_dir())]
+            test(arg[0] + '_with_traces', dpdk_test,
+                    env : ['DPDK_TEST=' + arg[0]],
+                    args : test_args,
+                    timeout : timeout_seconds_fast,
+                    is_parallel : false,
+                    suite : 'fast-tests')
+        endif
     endif
 endforeach
 
