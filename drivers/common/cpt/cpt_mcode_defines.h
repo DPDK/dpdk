@@ -387,7 +387,7 @@ typedef struct buf_ptr {
 /* IOV Pointer */
 typedef struct{
 	int buf_cnt;
-	buf_ptr_t bufs[0];
+	buf_ptr_t bufs[];
 } iov_ptr_t;
 
 typedef struct fc_params {
