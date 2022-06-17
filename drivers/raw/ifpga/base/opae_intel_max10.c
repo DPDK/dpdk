@@ -1102,6 +1102,328 @@ static const struct m10bmc_csr m10bmc_pmci_csr = {
 	.auth_result = M10BMC_PMCI_AUTH_RESULT,
 };
 
+static const struct max10_sensor_raw_data n6000bmc_temp_tbl[] = {
+	{ 0x444, 0x448, 0x44c, 0x0, 0x0, 500,
+		"FPGA E-TILE Temperature #1" },
+	{ 0x450, 0x454, 0x458, 0x0, 0x0, 500,
+		"FPGA E-TILE Temperature #2" },
+	{ 0x45c, 0x460, 0x464, 0x0, 0x0, 500,
+		"FPGA E-TILE Temperature #3" },
+	{ 0x468, 0x46c, 0x470, 0x0, 0x0, 500,
+		"FPGA E-TILE Temperature #4" },
+	{ 0x474, 0x478, 0x47c, 0x0, 0x0, 500,
+		"FPGA P-TILE Temperature" },
+	{ 0x484, 0x488, 0x48c, 0x0, 0x0, 500,
+		"FPGA FABRIC Digital Temperature#1" },
+	{ 0x490, 0x494, 0x498, 0x0, 0x0, 500,
+		"FPGA FABRIC Digital Temperature#2" },
+	{ 0x49c, 0x4a0, 0x4a4, 0x0, 0x0, 500,
+		"FPGA FABRIC Digital Temperature#3" },
+	{ 0x4a8, 0x4ac, 0x4b0, 0x0, 0x0, 500,
+		"FPGA FABRIC Digital Temperature#4" },
+	{ 0x4b4, 0x4b8, 0x4bc, 0x0, 0x0, 500,
+		"FPGA FABRIC Digital Temperature#5" },
+	{ 0x4c0, 0x4c4, 0x4c8, 0x0, 0x0, 500,
+		"FPGA FABRIC Remote Digital Temperature#1" },
+	{ 0x4cc, 0x4d0, 0x4d4, 0x0, 0x0, 500,
+		"FPGA FABRIC Remote Digital Temperature#2" },
+	{ 0x4d8, 0x4dc, 0x4e0, 0x0, 0x0, 500,
+		"FPGA FABRIC Remote Digital Temperature#3" },
+	{ 0x4e4, 0x4e8, 0x4ec, 0x0, 0x0, 500,
+		"FPGA FABRIC Remote Digital Temperature#4" },
+	{ 0x4f0, 0x4f4, 0x4f8, 0x0, 0x0, 500,
+		"Board Top Near FPGA Temperature" },
+	{ 0x4fc, 0x500, 0x504, 0x52c, 0x0, 500,
+		"Board Bottom Near CVL Temperature" },
+	{ 0x508, 0x50c, 0x510, 0x52c, 0x0, 500,
+		"Board Top East Near VRs Temperature" },
+	{ 0x514, 0x518, 0x51c, 0x52c, 0x0, 500,
+		"Columbiaville Die Temperature" },
+	{ 0x520, 0x524, 0x528, 0x52c, 0x0, 500,
+		"Board Rear Side Temperature" },
+	{ 0x530, 0x534, 0x538, 0x52c, 0x0, 500,
+		"Board Front Side Temperature" },
+	{ 0x53c, 0x540, 0x544, 0x0, 0x0, 500,
+		"QSFP1 Temperature" },
+	{ 0x548, 0x54c, 0x550, 0x0, 0x0, 500,
+		"QSFP2 Temperature" },
+	{ 0x554, 0x0, 0x0, 0x0, 0x0, 500,
+		"FPGA Core Voltage Phase 0 VR Temperature" },
+	{ 0x560, 0x0, 0x0, 0x0, 0x0, 500,
+		"FPGA Core Voltage Phase 1 VR Temperature" },
+	{ 0x56c, 0x0, 0x0, 0x0, 0x0, 500,
+		"FPGA Core Voltage Phase 2 VR Temperature" },
+	{ 0x578, 0x0, 0x0, 0x0, 0x0, 500,
+		"FPGA Core Voltage VR Controller Temperature" },
+	{ 0x584, 0x0, 0x0, 0x0, 0x0, 500,
+		"FPGA VCCH VR Temperature" },
+	{ 0x590, 0x0, 0x0, 0x0, 0x0, 500,
+		"FPGA VCC_1V2 VR Temperature" },
+	{ 0x59c, 0x0, 0x0, 0x0, 0x0, 500,
+		"FPGA VCCH, VCC_1V2 VR Controller Temperature" },
+	{ 0x5a8, 0x0, 0x0, 0x0, 0x0, 500,
+		"3V3 VR Temperature" },
+	{ 0x5b4, 0x5b8, 0x5bc, 0x0, 0x0, 500,
+		"CVL Core Voltage VR Temperature" },
+	{ 0x5c4, 0x5c8, 0x5cc, 0x5c0, 0x0, 500,
+		"FPGA P-Tile Temperature [Remote]" },
+	{ 0x5d0, 0x5d4, 0x5d8, 0x5c0, 0x0, 500,
+		"FPGA E-Tile Temperature [Remote]" },
+	{ 0x5dc, 0x5e0, 0x5e4, 0x5c0, 0x0, 500,
+		"FPGA SDM Temperature [Remote]" },
+	{ 0x5e8, 0x5ec, 0x5f0, 0x5c0, 0x0, 500,
+		"FPGA Corner Temperature [Remote]" },
+};
+
+static const struct max10_sensor_data n6000bmc_tmp_data = {
+	.type = SENSOR_TMP_NAME,
+	.number = ARRAY_SIZE(n6000bmc_temp_tbl),
+	.table = n6000bmc_temp_tbl,
+};
+
+static const struct max10_sensor_raw_data n6000bmc_in_tbl[] = {
+	{ 0x5f4, 0x0, 0x0, 0x0, 0x0, 1,
+		"Inlet 12V PCIe Rail Voltage" },
+	{ 0x60c, 0x0, 0x0, 0x0, 0x0, 1,
+		"Inlet 12V Aux Rail Voltage" },
+	{ 0x624, 0x0, 0x0, 0x0, 0x0, 1,
+		"Inlet 3V3 PCIe Rail Voltage" },
+	{ 0x63c, 0x0, 0x0, 0x0, 0x0, 1,
+		"FPGA Core Voltage Rail Voltage" },
+	{ 0x644, 0x0, 0x0, 0x0, 0x0, 1,
+		"FPGA VCCH Rail Voltage" },
+	{ 0x64c, 0x0, 0x0, 0x0, 0x0, 1,
+		"FPGA VCC_1V2 Rail Voltage" },
+	{ 0x654, 0x0, 0x0, 0x0, 0x0, 1,
+		"FPGA VCCH_GXER_1V1, VCCA_1V8 Voltage" },
+	{ 0x664, 0x0, 0x0, 0x0, 0x0, 1,
+		"FPGA VCCIO_1V2 Voltage" },
+	{ 0x674, 0x0, 0x0, 0x0, 0x0, 1,
+		"CVL Non Core Rails Inlet Voltage" },
+	{ 0x684, 0x0, 0x0, 0x0, 0x0, 1,
+		"MAX10 & Board CLK PWR 3V3 Inlet Voltage" },
+	{ 0x694, 0x0, 0x0, 0x0, 0x0, 1,
+		"CVL Core Voltage Rail Voltage" },
+	{ 0x6ac, 0x0, 0x0, 0x0, 0x0, 1,
+		"Board 3V3 VR Voltage" },
+	{ 0x6b4, 0x0, 0x0, 0x0, 0x0, 1,
+		"QSFP 3V3 Rail Voltage" },
+	{ 0x6c4, 0x0, 0x0, 0x0, 0x0, 1,
+		"QSFP (Primary) Supply Rail Voltage" },
+	{ 0x6c8, 0x0, 0x0, 0x0, 0x0, 1,
+		"QSFP (Secondary) Supply Rail Voltage" },
+	{ 0x6cc, 0x0, 0x0, 0x0, 0x0, 1,
+		"VCCCLK_GXER_2V5 Voltage" },
+	{ 0x6d0, 0x0, 0x0, 0x0, 0x0, 1,
+		"AVDDH_1V1_CVL Voltage" },
+	{ 0x6d4, 0x0, 0x0, 0x0, 0x0, 1,
+		"VDDH_1V8_CVL Voltage" },
+	{ 0x6d8, 0x0, 0x0, 0x0, 0x0, 1,
+		"VCCA_PLL Voltage" },
+	{ 0x6e0, 0x0, 0x0, 0x0, 0x0, 1,
+		"VCCRT_GXER_0V9 Voltage" },
+	{ 0x6e8, 0x0, 0x0, 0x0, 0x0, 1,
+		"VCCRT_GXEL_0V9 Voltage" },
+	{ 0x6f0, 0x0, 0x0, 0x0, 0x0, 1,
+		"VCCH_GXPL_1V8 Voltage" },
+	{ 0x6f4, 0x0, 0x0, 0x0, 0x0, 1,
+		"VCCPT_1V8 Voltage" },
+	{ 0x6fc, 0x0, 0x0, 0x0, 0x0, 1,
+		"VCC_3V3_M10 Voltage" },
+	{ 0x700, 0x0, 0x0, 0x0, 0x0, 1,
+		"VCC_1V8_M10 Voltage" },
+	{ 0x704, 0x0, 0x0, 0x0, 0x0, 1,
+		"VCC_1V2_EMIF1_2_3 Voltage" },
+	{ 0x70c, 0x0, 0x0, 0x0, 0x0, 1,
+		"VCC_1V2_EMIF4_5 Voltage" },
+	{ 0x714, 0x0, 0x0, 0x0, 0x0, 1,
+		"VCCA_1V8 Voltage" },
+	{ 0x718, 0x0, 0x0, 0x0, 0x0, 1,
+		"VCCH_GXER_1V1 Voltage" },
+	{ 0x71c, 0x0, 0x0, 0x0, 0x0, 1,
+		"AVDD_ETH_0V9_CVL Voltage" },
+	{ 0x720, 0x0, 0x0, 0x0, 0x0, 1,
+		"AVDD_PCIE_0V9_CVL Voltage" },
+};
+
+static const struct max10_sensor_data n6000bmc_in_data = {
+	.type = SENSOR_IN_NAME,
+	.number = ARRAY_SIZE(n6000bmc_in_tbl),
+	.table = n6000bmc_in_tbl,
+};
+
+static const struct max10_sensor_raw_data n6000bmc_curr_tbl[] = {
+	{ 0x600, 0x604, 0x608, 0x0, 0x0, 1,
+		"Inlet 12V PCIe Rail Current" },
+	{ 0x618, 0x61c, 0x620, 0x0, 0x0, 1,
+		"Inlet 12V Aux Rail Current" },
+	{ 0x630, 0x634, 0x638, 0x0, 0x0, 1,
+		"Inlet 3V3 PCIe Rail Current" },
+	{ 0x640, 0x0, 0x0, 0x0, 0x0, 1,
+		"FPGA Core Voltage Rail Current" },
+	{ 0x648, 0x0, 0x0, 0x0, 0x0, 1,
+		"FPGA VCCH Rail Current" },
+	{ 0x650, 0x0, 0x0, 0x0, 0x0, 1,
+		"FPGA VCC_1V2 Rail Current" },
+	{ 0x658, 0x65c, 0x660, 0x0, 0x0, 1,
+		"FPGA VCCH_GXER_1V1, VCCA_1V8 Current" },
+	{ 0x668, 0x66c, 0x670, 0x0, 0x0, 1,
+		"FPGA VCCIO_1V2 Current" },
+	{ 0x678, 0x67c, 0x680, 0x0, 0x0, 1,
+		"CVL Non Core Rails Inlet Current" },
+	{ 0x688, 0x68c, 0x680, 0x0, 0x0, 1,
+		"MAX10 & Board CLK PWR 3V3 Inlet Current" },
+	{ 0x690, 0x0, 0x0, 0x0, 0x0, 1,
+		"CVL Core Voltage Rail Current" },
+	{ 0x6b0, 0x0, 0x0, 0x0, 0x0, 1,
+		"Board 3V3 VR Current" },
+	{ 0x6b8, 0x6bc, 0x670, 0x0, 0x0, 1,
+		"QSFP 3V3 Rail Current" },
+};
+
+static const struct max10_sensor_data n6000bmc_curr_data = {
+	.type = SENSOR_CURR_NAME,
+	.number = ARRAY_SIZE(n6000bmc_curr_tbl),
+	.table = n6000bmc_curr_tbl,
+};
+
+static const struct max10_sensor_raw_data n6000bmc_power_tbl[] = {
+	{ 0x724, 0x0, 0x0, 0x0, 0x0, 1000, "Board Power" },
+};
+
+static const struct max10_sensor_data n6000bmc_power_data = {
+	.type = SENSOR_POWER_NAME,
+	.number = ARRAY_SIZE(n6000bmc_power_tbl),
+	.table = n6000bmc_power_tbl,
+};
+
+static const struct max10_sensor_board_data n6000bmc_sensor_board_data = {
+	.tables = {
+		[sensor_temp] = &n6000bmc_tmp_data,
+		[sensor_in] = &n6000bmc_in_data,
+		[sensor_curr] = &n6000bmc_curr_data,
+		[sensor_power] = &n6000bmc_power_data,
+	},
+};
+
+static int get_sensor_data(struct intel_max10_device *dev,
+		struct opae_sensor_info *sensor,
+		unsigned int *value,
+		unsigned int reg,
+		unsigned int flags)
+{
+	int ret;
+	unsigned int data;
+
+	if (!reg)
+		return 0;
+
+	ret = max10_sys_read(dev, reg, &data);
+	if (ret)
+		return ret;
+
+	if (data == SENSOR_INVALID) {
+		dev_debug(dev, "%s: sensor:%s invalid 0x%x at:%d\n",
+				__func__, sensor->name, data, reg);
+		return ret;
+	}
+
+	*value = data * sensor->multiplier;
+	sensor->flags |= flags;
+
+	return 0;
+}
+
+static int max10_parse_sensor_data(struct intel_max10_device *dev,
+		const struct max10_sensor_data *sdata)
+{
+	struct opae_sensor_info *sensor;
+	const struct max10_sensor_raw_data *raw;
+	const struct max10_sensor_raw_data *table =
+		(const struct max10_sensor_raw_data *)sdata->table;
+	unsigned int i;
+	static unsigned int sensor_id;
+	int ret = 0;
+
+	for (i = 0; i < sdata->number; i++) {
+		raw = &table[i];
+
+		sensor = opae_zmalloc(sizeof(*sensor));
+		if (!sensor) {
+			ret = -EINVAL;
+			goto free_sensor;
+		}
+
+		sensor->type = sdata->type;
+		sensor->id = sensor_id++;
+
+		if (!raw->reg_input)
+			continue;
+
+		sensor->value_reg = raw->reg_input;
+		sensor->multiplier = raw->multiplier;
+		sensor->name = raw->label;
+
+		ret = get_sensor_data(dev, sensor,
+				&sensor->high_warn,
+				raw->reg_high_warn,
+				OPAE_SENSOR_HIGH_WARN_VALID);
+		if (ret)
+			break;
+
+		ret = get_sensor_data(dev, sensor,
+				&sensor->high_fatal,
+				raw->reg_high_fatal,
+				OPAE_SENSOR_HIGH_FATAL_VALID);
+		if (ret)
+			break;
+
+		ret = get_sensor_data(dev, sensor,
+				&sensor->hysteresis,
+				raw->reg_hyst,
+				OPAE_SENSOR_HYSTERESIS_VALID);
+		if (ret)
+			break;
+
+		ret = get_sensor_data(dev, sensor,
+				&sensor->low_warn,
+				raw->reg_low_warn,
+				OPAE_SENSOR_LOW_WARN_VALID);
+		if (ret)
+			break;
+
+		sensor->flags |= OPAE_SENSOR_VALID;
+
+		TAILQ_INSERT_TAIL(&dev->opae_sensor_list, sensor, node);
+		dev_info(dev, "found valid sensor: %s\n", sensor->name);
+	}
+
+	return ret;
+
+free_sensor:
+	max10_sensor_uinit(dev);
+	return ret;
+}
+
+static int max10_sensor_init_table(struct intel_max10_device *dev,
+		const struct max10_sensor_board_data *data)
+{
+	int ret = 0;
+	unsigned int i;
+	const struct max10_sensor_data *sdata;
+
+	for (i = 0; i < ARRAY_SIZE(data->tables); i++) {
+		sdata = data->tables[i];
+		if (!sdata)
+			continue;
+		ret = max10_parse_sensor_data(dev, sdata);
+		if (ret)
+			break;
+	}
+
+	return ret;
+}
+
 int
 intel_max10_device_init(struct intel_max10_device *dev)
 {
@@ -1152,6 +1474,10 @@ intel_max10_device_init(struct intel_max10_device *dev)
 		dev->bmc_ops.flash_read = pmci_flash_bulk_read;
 		dev->bmc_ops.flash_write = pmci_flash_bulk_write;
 		dev->bmc_ops.check_flash_range = pmci_check_flash_address;
+
+		ret = max10_sensor_init_table(dev, &n6000bmc_sensor_board_data);
+		if (ret)
+			return ret;
 
 		ret = pthread_mutex_init(&dev->bmc_ops.lock, NULL);
 		if (ret)

@@ -831,6 +831,35 @@ int opae_manager_get_retimer_status(struct opae_manager *mgr,
 }
 
 /**
+ * opae_manager_get_sensor_list - get sensor name list
+ * @mgr: opae_manager of sensors
+ * @buf: buffer to accommodate name list separated by semicolon
+ * @size: size of buffer
+ *
+ * Return: the pointer of the opae_sensor_info
+ */
+int
+opae_mgr_get_sensor_list(struct opae_manager *mgr, char *buf, size_t size)
+{
+	struct opae_sensor_info *sensor;
+	uint32_t offset = 0;
+
+	opae_mgr_for_each_sensor(mgr, sensor) {
+		if (sensor->name) {
+			if (buf && (offset < size))
+				snprintf(buf + offset, size - offset, "%s;",
+					sensor->name);
+			offset += strlen(sensor->name) + 1;
+		}
+	}
+
+	if (buf && (offset > 0) && (offset <= size))
+		buf[offset-1] = 0;
+
+	return offset;
+}
+
+/**
  * opae_manager_get_sensor_by_id - get sensor device
  * @id: the id of the sensor
  *

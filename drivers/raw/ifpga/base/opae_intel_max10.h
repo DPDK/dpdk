@@ -410,6 +410,41 @@ struct opae_sensor_info {
 	unsigned int value_reg;
 };
 
+#define SENSOR_INVALID 0xdeadbeef
+
+struct max10_sensor_raw_data {
+	unsigned int reg_input;
+	unsigned int reg_high_warn;
+	unsigned int reg_high_fatal;
+	unsigned int reg_hyst;
+	unsigned int reg_low_warn;
+	unsigned int multiplier;
+	const char *label;
+};
+
+struct max10_sensor_data {
+	const char *type;
+	unsigned int number;
+	const struct max10_sensor_raw_data *table;
+};
+
+enum max10_sensor_types {
+	sensor_temp,
+	sensor_in,
+	sensor_curr,
+	sensor_power,
+	sensor_max,
+};
+
+#define SENSOR_TMP_NAME "Temperature"
+#define SENSOR_IN_NAME "Voltage"
+#define SENSOR_CURR_NAME "Current"
+#define SENSOR_POWER_NAME "Power"
+
+struct max10_sensor_board_data {
+	const struct max10_sensor_data *tables[sensor_max];
+};
+
 /* indirect access for PMCI */
 #define PMCI_INDIRECT_BASE 0x400
 #define INDIRECT_CMD_OFF   (PMCI_INDIRECT_BASE + 0x0)
