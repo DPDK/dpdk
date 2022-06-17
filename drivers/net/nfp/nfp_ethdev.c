@@ -446,12 +446,13 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 
 	/* Work out where in the BAR the queues start. */
 	switch (pci_dev->id.device_id) {
+	case PCI_DEVICE_ID_NFP3800_PF_NIC:
 	case PCI_DEVICE_ID_NFP4000_PF_NIC:
 	case PCI_DEVICE_ID_NFP6000_PF_NIC:
 		start_q = nn_cfg_readl(hw, NFP_NET_CFG_START_TXQ);
-		tx_bar_off = (uint64_t)start_q * NFP_QCP_QUEUE_ADDR_SZ;
+		tx_bar_off = nfp_pci_queue(pci_dev, start_q);
 		start_q = nn_cfg_readl(hw, NFP_NET_CFG_START_RXQ);
-		rx_bar_off = (uint64_t)start_q * NFP_QCP_QUEUE_ADDR_SZ;
+		rx_bar_off = nfp_pci_queue(pci_dev, start_q);
 		break;
 	default:
 		PMD_DRV_LOG(ERR, "nfp_net: no device ID matching");
@@ -764,6 +765,7 @@ nfp_pf_init(struct rte_pci_device *pci_dev)
 {
 	int err;
 	int ret = 0;
+	uint64_t addr;
 	int total_ports;
 	struct nfp_cpp *cpp;
 	struct nfp_pf_dev *pf_dev;
@@ -867,8 +869,24 @@ nfp_pf_init(struct rte_pci_device *pci_dev)
 	PMD_INIT_LOG(DEBUG, "ctrl bar: %p", pf_dev->ctrl_bar);
 
 	/* configure access to tx/rx vNIC BARs */
+	switch (pci_dev->id.device_id) {
+	case PCI_DEVICE_ID_NFP3800_PF_NIC:
+		addr = NFP_PCIE_QUEUE(NFP_PCIE_QCP_NFP3800_OFFSET,
+					0, NFP_PCIE_QUEUE_NFP3800_MASK);
+		break;
+	case PCI_DEVICE_ID_NFP4000_PF_NIC:
+	case PCI_DEVICE_ID_NFP6000_PF_NIC:
+		addr = NFP_PCIE_QUEUE(NFP_PCIE_QCP_NFP6000_OFFSET,
+					0, NFP_PCIE_QUEUE_NFP6000_MASK);
+		break;
+	default:
+		PMD_INIT_LOG(ERR, "nfp_net: no device ID matching");
+		err = -ENODEV;
+		goto ctrl_area_cleanup;
+	}
+
 	pf_dev->hw_queues = nfp_cpp_map_area(pf_dev->cpp, 0, 0,
-			NFP_PCIE_QUEUE(0), NFP_QCP_QUEUE_AREA_SZ,
+			addr, NFP_QCP_QUEUE_AREA_SZ,
 			&pf_dev->hwqueues_area);
 	if (pf_dev->hw_queues == NULL) {
 		PMD_INIT_LOG(ERR, "nfp_rtsym_map fails for net.qc");
@@ -995,6 +1013,10 @@ nfp_pf_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 }
 
 static const struct rte_pci_id pci_id_nfp_pf_net_map[] = {
+	{
+		RTE_PCI_DEVICE(PCI_VENDOR_ID_NETRONOME,
+			       PCI_DEVICE_ID_NFP3800_PF_NIC)
+	},
 	{
 		RTE_PCI_DEVICE(PCI_VENDOR_ID_NETRONOME,
 			       PCI_DEVICE_ID_NFP4000_PF_NIC)

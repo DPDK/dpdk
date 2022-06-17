@@ -266,6 +266,7 @@ __nfp_eth_read_ports(struct nfp_nsp *nsp)
 	struct nfp_eth_table *table;
 	uint32_t table_sz;
 	int i, j, ret, cnt = 0;
+	const struct rte_ether_addr *mac;
 
 	entries = malloc(NSP_ETH_TABLE_SIZE);
 	if (!entries)
@@ -278,9 +279,15 @@ __nfp_eth_read_ports(struct nfp_nsp *nsp)
 		goto err;
 	}
 
-	for (i = 0; i < NSP_ETH_MAX_COUNT; i++)
-		if (entries[i].port & NSP_ETH_PORT_LANES_MASK)
+	/* The NFP3800 NIC support 8 ports, but only 2 ports are valid,
+	 * the rest 6 ports mac are all 0, ensure we don't use these port
+	 */
+	for (i = 0; i < NSP_ETH_MAX_COUNT; i++) {
+		mac = (const struct rte_ether_addr *)entries[i].mac_addr;
+		if ((entries[i].port & NSP_ETH_PORT_LANES_MASK) &&
+				(!rte_is_zero_ether_addr(mac)))
 			cnt++;
+	}
 
 	/* Some versions of flash will give us 0 instead of port count. For
 	 * those that give a port count, verify it against the value calculated
@@ -299,10 +306,13 @@ __nfp_eth_read_ports(struct nfp_nsp *nsp)
 
 	memset(table, 0, table_sz);
 	table->count = cnt;
-	for (i = 0, j = 0; i < NSP_ETH_MAX_COUNT; i++)
-		if (entries[i].port & NSP_ETH_PORT_LANES_MASK)
+	for (i = 0, j = 0; i < NSP_ETH_MAX_COUNT; i++) {
+		mac = (const struct rte_ether_addr *)entries[i].mac_addr;
+		if ((entries[i].port & NSP_ETH_PORT_LANES_MASK) &&
+				(!rte_is_zero_ether_addr(mac)))
 			nfp_eth_port_translate(nsp, &entries[i], i,
-					       &table->ports[j++]);
+					&table->ports[j++]);
+	}
 
 	nfp_eth_calc_port_geometry(table);
 	for (i = 0; i < (int)table->count; i++)

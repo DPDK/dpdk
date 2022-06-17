@@ -214,7 +214,7 @@ void nfp_cpp_free(struct nfp_cpp *cpp);
  * @return		true if model is in the NFP6000 family, false otherwise.
  */
 #define NFP_CPP_MODEL_IS_6000(model)		     \
-		((NFP_CPP_MODEL_CHIP_of(model) >= 0x4000) && \
+		((NFP_CPP_MODEL_CHIP_of(model) >= 0x3800) && \
 		(NFP_CPP_MODEL_CHIP_of(model) < 0x7000))
 
 /*

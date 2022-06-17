@@ -157,6 +157,10 @@ New Features
   * Added support for MTU on Windows.
   * Added matching and RSS on IPsec ESP.
 
+* **Updated Netronome nfp driver.**
+
+  * Added support for NFP3800 NIC.
+
 * **Updated VMware vmxnet3 networking driver.**
 
   * Added version 5 support.

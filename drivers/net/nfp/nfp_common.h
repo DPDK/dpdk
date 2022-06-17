@@ -16,9 +16,11 @@
 
 #define NFP_NET_PMD_VERSION "0.1"
 #define PCI_VENDOR_ID_NETRONOME         0x19ee
+#define PCI_DEVICE_ID_NFP3800_PF_NIC    0x3800
+#define PCI_DEVICE_ID_NFP3800_VF_NIC    0x3803
 #define PCI_DEVICE_ID_NFP4000_PF_NIC    0x4000
 #define PCI_DEVICE_ID_NFP6000_PF_NIC    0x6000
-#define PCI_DEVICE_ID_NFP6000_VF_NIC    0x6003
+#define PCI_DEVICE_ID_NFP6000_VF_NIC    0x6003  /* Include NFP4000VF */
 
 /* Forward declaration */
 struct nfp_net_adapter;
@@ -41,8 +43,16 @@ struct nfp_net_adapter;
 #define NFP_QCP_QUEUE_STS_HI                    0x000c
 #define NFP_QCP_QUEUE_STS_HI_WRITEPTR_mask    (0x3ffff)
 
+#define NFP_PCIE_QCP_NFP3800_OFFSET            0x400000
+#define NFP_PCIE_QCP_NFP6000_OFFSET            0x80000
+#define NFP_PCIE_QUEUE_NFP3800_MASK            0x1ff
+#define NFP_PCIE_QUEUE_NFP6000_MASK            0xff
+#define NFP_PCIE_QCP_PF_OFFSET                 0x0
+#define NFP_PCIE_QCP_VF_OFFSET                 0x0
+
 /* The offset of the queue controller queues in the PCIe Target */
-#define NFP_PCIE_QUEUE(_q) (0x80000 + (NFP_QCP_QUEUE_ADDR_SZ * ((_q) & 0xff)))
+#define NFP_PCIE_QUEUE(_offset, _q, _mask)    \
+		((_offset) + (NFP_QCP_QUEUE_ADDR_SZ * ((_q) & (_mask))))
 
 /* Interrupt definitions */
 #define NFP_NET_IRQ_LSC_IDX             0
@@ -340,6 +350,26 @@ nfp_qcp_read(uint8_t *q, enum nfp_qcp_ptr ptr)
 		return val & NFP_QCP_QUEUE_STS_LO_READPTR_mask;
 	else
 		return val & NFP_QCP_QUEUE_STS_HI_WRITEPTR_mask;
+}
+
+static inline uint32_t
+nfp_pci_queue(struct rte_pci_device *pdev, uint16_t queue)
+{
+	switch (pdev->id.device_id) {
+	case PCI_DEVICE_ID_NFP4000_PF_NIC:
+	case PCI_DEVICE_ID_NFP6000_PF_NIC:
+		return NFP_PCIE_QUEUE(NFP_PCIE_QCP_PF_OFFSET, queue,
+				NFP_PCIE_QUEUE_NFP6000_MASK);
+	case PCI_DEVICE_ID_NFP3800_VF_NIC:
+		return NFP_PCIE_QUEUE(NFP_PCIE_QCP_VF_OFFSET, queue,
+				NFP_PCIE_QUEUE_NFP3800_MASK);
+	case PCI_DEVICE_ID_NFP6000_VF_NIC:
+		return NFP_PCIE_QUEUE(NFP_PCIE_QCP_VF_OFFSET, queue,
+				NFP_PCIE_QUEUE_NFP6000_MASK);
+	default:
+		return NFP_PCIE_QUEUE(NFP_PCIE_QCP_PF_OFFSET, queue,
+				NFP_PCIE_QUEUE_NFP3800_MASK);
+	}
 }
 
 /* Prototypes for common NFP functions */
