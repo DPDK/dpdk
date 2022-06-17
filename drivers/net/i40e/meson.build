@@ -27,6 +27,8 @@ sources = files(
         'rte_pmd_i40e.c',
 )
 
+testpmd_sources = files('i40e_testpmd.c')
+
 deps += ['hash']
 includes += include_directories('base')
 

@@ -431,20 +431,6 @@ For example::
    testpmd> read txd 0 0 4
         0x00000001 - 0x24C3C440 / 0x000F0000 - 0x2330003C
 
-ddp get list
-~~~~~~~~~~~~
-
-Get loaded dynamic device personalization (DDP) package info list::
-
-   testpmd> ddp get list (port_id)
-
-ddp get info
-~~~~~~~~~~~~
-
-Display information about dynamic device personalization (DDP) profile::
-
-   testpmd> ddp get info (profile_path)
-
 show vf stats
 ~~~~~~~~~~~~~
 
@@ -458,13 +444,6 @@ clear vf stats
 Reset VF statistics::
 
    testpmd> clear vf stats (port_id) (vf_id)
-
-show port pctype mapping
-~~~~~~~~~~~~~~~~~~~~~~~~
-
-List all items from the pctype mapping table::
-
-   testpmd> show port (port_id) pctype mapping
 
 show rx offloading capabilities
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -997,13 +976,6 @@ Configure MACsec secure association (SA)::
    The IDX value must be 0 or 1.
    Check the NIC Datasheet for hardware limits.
 
-set broadcast mode (for VF)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Set broadcast mode for a VF from the PF::
-
-   testpmd> set vf broadcast (port_id) (vf_id) (on|off)
-
 vlan set stripq
 ~~~~~~~~~~~~~~~
 
@@ -1024,13 +996,6 @@ vlan set insert (for VF)
 Set VLAN insert for a VF from the PF::
 
    testpmd> set vf vlan insert (port_id) (vf_id) (vlan_id)
-
-vlan set tag (for VF)
-~~~~~~~~~~~~~~~~~~~~~
-
-Set VLAN tag for a VF from the PF::
-
-   testpmd> set vf vlan tag (port_id) (vf_id) (on|off)
 
 vlan set antispoof (for VF)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1157,50 +1122,6 @@ Where:
 .. note::
 
    Check the NIC Datasheet for hardware limits.
-
-RSS queue region
-~~~~~~~~~~~~~~~~
-
-Set RSS queue region span on a port::
-
-   testpmd> set port (port_id) queue-region region_id (value) \
-		queue_start_index (value) queue_num (value)
-
-Set flowtype mapping on a RSS queue region on a port::
-
-   testpmd> set port (port_id) queue-region region_id (value) flowtype (value)
-
-where:
-
-* For the flowtype(pctype) of packet,the specific index for each type has
-  been defined in file i40e_type.h as enum i40e_filter_pctype.
-
-Set user priority mapping on a RSS queue region on a port::
-
-   testpmd> set port (port_id) queue-region UP (value) region_id (value)
-
-Flush all queue region related configuration on a port::
-
-   testpmd> set port (port_id) queue-region flush (on|off)
-
-where:
-
-* ``on``: is just an enable function which server for other configuration,
-  it is for all configuration about queue region from up layer,
-  at first will only keep in DPDK software stored in driver,
-  only after "flush on", it commit all configuration to HW.
-
-* ``"off``: is just clean all configuration about queue region just now,
-  and restore all to DPDK i40e driver default config when start up.
-
-Show all queue region related configuration info on a port::
-
-   testpmd> show port (port_id) queue-region
-
-.. note::
-
-  Queue region only support on PF by now, so these command is
-  only for configuration of queue region on PF port.
 
 csum parse-tunnel
 ~~~~~~~~~~~~~~~~~
@@ -1463,52 +1384,6 @@ Set the allmulti mode for a port or for all ports::
 
 Same as the ifconfig (8) option. Controls how multicast packets are handled.
 
-set promisc (for VF)
-~~~~~~~~~~~~~~~~~~~~
-
-Set the unicast promiscuous mode for a VF from PF.
-It's supported by Intel i40e NICs now.
-In promiscuous mode packets are not dropped if they aren't for the specified MAC address::
-
-   testpmd> set vf promisc (port_id) (vf_id) (on|off)
-
-set allmulticast (for VF)
-~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Set the multicast promiscuous mode for a VF from PF.
-It's supported by Intel i40e NICs now.
-In promiscuous mode packets are not dropped if they aren't for the specified MAC address::
-
-   testpmd> set vf allmulti (port_id) (vf_id) (on|off)
-
-set tx max bandwidth (for VF)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Set TX max absolute bandwidth (Mbps) for a VF from PF::
-
-   testpmd> set vf tx max-bandwidth (port_id) (vf_id) (max_bandwidth)
-
-set tc tx min bandwidth (for VF)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Set all TCs' TX min relative bandwidth (%) for a VF from PF::
-
-   testpmd> set vf tc tx min-bandwidth (port_id) (vf_id) (bw1, bw2, ...)
-
-set tc tx max bandwidth (for VF)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Set a TC's TX max absolute bandwidth (Mbps) for a VF from PF::
-
-   testpmd> set vf tc tx max-bandwidth (port_id) (vf_id) (tc_no) (max_bandwidth)
-
-set tc strict link priority mode
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Set some TCs' strict link priority mode on a physical port::
-
-   testpmd> set tx strict-link-priority (port_id) (tc_bitmap)
-
 set tc tx min bandwidth
 ~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -1740,57 +1615,6 @@ Enable/disable E-tag stripping on a port::
 Enable/disable E-tag based forwarding on a port::
 
    testpmd> E-tag set forwarding (on|off) port (port_id)
-
-ddp add
-~~~~~~~
-
-Load a dynamic device personalization (DDP) profile and store backup profile::
-
-   testpmd> ddp add (port_id) (profile_path[,backup_profile_path])
-
-ddp del
-~~~~~~~
-
-Delete a dynamic device personalization profile and restore backup profile::
-
-   testpmd> ddp del (port_id) (backup_profile_path)
-
-ptype mapping
-~~~~~~~~~~~~~
-
-List all items from the ptype mapping table::
-
-   testpmd> ptype mapping get (port_id) (valid_only)
-
-Where:
-
-* ``valid_only``: A flag indicates if only list valid items(=1) or all items(=0).
-
-Replace a specific or a group of software defined ptype with a new one::
-
-   testpmd> ptype mapping replace  (port_id) (target) (mask) (pkt_type)
-
-where:
-
-* ``target``: A specific software ptype or a mask to represent a group of software ptypes.
-
-* ``mask``: A flag indicate if "target" is a specific software ptype(=0) or a ptype mask(=1).
-
-* ``pkt_type``: The new software ptype to replace the old ones.
-
-Update hardware defined ptype to software defined packet type mapping table::
-
-   testpmd> ptype mapping update (port_id) (hw_ptype) (sw_ptype)
-
-where:
-
-* ``hw_ptype``: hardware ptype as the index of the ptype mapping table.
-
-* ``sw_ptype``: software ptype as the value of the ptype mapping table.
-
-Reset ptype mapping table::
-
-   testpmd> ptype mapping reset (port_id)
 
 config per port Rx offloading
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -5586,3 +5410,4 @@ Some drivers provide specific features.
 See:
 
 - :ref:`net/bonding testpmd driver specific commands <bonding_testpmd_commands>`
+- :ref:`net/i40e testpmd driver specific commands <net_i40e_testpmd_commands>`

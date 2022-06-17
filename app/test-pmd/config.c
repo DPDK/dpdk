@@ -6303,49 +6303,6 @@ close_file(uint8_t *buf)
 }
 
 void
-port_queue_region_info_display(portid_t port_id, void *buf)
-{
-#ifdef RTE_NET_I40E
-	uint16_t i, j;
-	struct rte_pmd_i40e_queue_regions *info =
-		(struct rte_pmd_i40e_queue_regions *)buf;
-	static const char *queue_region_info_stats_border = "-------";
-
-	if (!info->queue_region_number)
-		printf("there is no region has been set before");
-
-	printf("\n	%s All queue region info for port=%2d %s",
-			queue_region_info_stats_border, port_id,
-			queue_region_info_stats_border);
-	printf("\n	queue_region_number: %-14u \n",
-			info->queue_region_number);
-
-	for (i = 0; i < info->queue_region_number; i++) {
-		printf("\n	region_id: %-14u queue_number: %-14u "
-			"queue_start_index: %-14u \n",
-			info->region[i].region_id,
-			info->region[i].queue_num,
-			info->region[i].queue_start_index);
-
-		printf("  user_priority_num is	%-14u :",
-					info->region[i].user_priority_num);
-		for (j = 0; j < info->region[i].user_priority_num; j++)
-			printf(" %-14u ", info->region[i].user_priority[j]);
-
-		printf("\n	flowtype_num is  %-14u :",
-				info->region[i].flowtype_num);
-		for (j = 0; j < info->region[i].flowtype_num; j++)
-			printf(" %-14u ", info->region[i].hw_flowtype[j]);
-	}
-#else
-	RTE_SET_USED(port_id);
-	RTE_SET_USED(buf);
-#endif
-
-	printf("\n\n");
-}
-
-void
 show_macs(portid_t port_id)
 {
 	char buf[RTE_ETHER_ADDR_FMT_SIZE];
