@@ -350,7 +350,7 @@ void nfp_net_disable_queues(struct rte_eth_dev *dev);
 void nfp_net_params_setup(struct nfp_net_hw *hw);
 void nfp_eth_copy_mac(uint8_t *dst, const uint8_t *src);
 void nfp_net_write_mac(struct nfp_net_hw *hw, uint8_t *mac);
-int nfp_set_mac_addr(struct rte_eth_dev *dev, struct rte_ether_addr *mac_addr);
+int nfp_net_set_mac_addr(struct rte_eth_dev *dev, struct rte_ether_addr *mac_addr);
 int nfp_configure_rx_interrupt(struct rte_eth_dev *dev,
 			       struct rte_intr_handle *intr_handle);
 uint32_t nfp_check_offloads(struct rte_eth_dev *dev);
