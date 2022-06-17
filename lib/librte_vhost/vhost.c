@@ -1697,31 +1697,26 @@ int rte_vhost_async_channel_unregister(int vid, uint16_t queue_id)
 	if (vq == NULL)
 		return ret;
 
-	ret = 0;
-
-	if (!vq->async_registered)
-		return ret;
-
 	if (!rte_spinlock_trylock(&vq->access_lock)) {
 		VHOST_LOG_CONFIG(ERR, "Failed to unregister async channel. "
 			"virt queue busy.\n");
-		return -1;
+		return ret;
 	}
 
-	if (vq->async_pkts_inflight_n) {
+	if (!vq->async_registered) {
+		ret = 0;
+	} else if (vq->async_pkts_inflight_n) {
 		VHOST_LOG_CONFIG(ERR, "Failed to unregister async channel. "
 			"async inflight packets must be completed before unregistration.\n");
-		ret = -1;
-		goto out;
+	} else {
+		ret = 0;
+		vhost_free_async_mem(vq);
+
+		vq->async_ops.transfer_data = NULL;
+		vq->async_ops.check_completed_copies = NULL;
+		vq->async_registered = false;
 	}
 
-	vhost_free_async_mem(vq);
-
-	vq->async_ops.transfer_data = NULL;
-	vq->async_ops.check_completed_copies = NULL;
-	vq->async_registered = false;
-
-out:
 	rte_spinlock_unlock(&vq->access_lock);
 
 	return ret;
