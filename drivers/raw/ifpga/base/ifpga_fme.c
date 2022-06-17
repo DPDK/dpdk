@@ -1658,3 +1658,11 @@ struct ifpga_feature_ops fme_pmci_ops = {
 	.init = fme_pmci_init,
 	.uinit = fme_pmci_uinit,
 };
+
+int fme_mgr_read_flash(struct ifpga_fme_hw *fme, u32 address,
+		u32 size, void *buf)
+{
+	struct intel_max10_device *max10 = fme->max10_dev;
+
+	return opae_read_flash(max10, address, size, buf);
+}

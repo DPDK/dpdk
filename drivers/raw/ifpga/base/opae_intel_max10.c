@@ -58,6 +58,279 @@ int max10_sys_update_bits(struct intel_max10_device *dev, unsigned int offset,
 	return max10_sys_write(dev, offset, temp);
 }
 
+static int n3000_bulk_raw_write(struct intel_max10_device *dev, uint32_t addr,
+	void *buf, uint32_t len)
+{
+	uint32_t v = 0;
+	uint32_t i = 0;
+	char *p = buf;
+	int ret = 0;
+
+	len = IFPGA_ALIGN(len, 4);
+
+	for (i = 0; i < len; i += 4) {
+		v = *(uint32_t *)(p + i);
+		ret = max10_reg_write(dev, addr + i, v);
+		if (ret < 0) {
+			dev_err(dev,
+				"Failed to write to staging area 0x%08x [e:%d]\n",
+				addr + i, ret);
+			return ret;
+		}
+	}
+
+	return 0;
+}
+
+static int n3000_bulk_raw_read(struct intel_max10_device *dev,
+		uint32_t addr, void *buf, uint32_t len)
+{
+	u32 v, i;
+	char *p = buf;
+	int ret;
+
+	len = IFPGA_ALIGN(len, 4);
+
+	for (i = 0; i < len; i += 4) {
+		ret = max10_reg_read(dev, addr + i, &v);
+		if (ret < 0) {
+			dev_err(dev,
+				"Failed to write to staging area 0x%08x [e:%d]\n",
+				addr + i, ret);
+			return ret;
+		}
+		*(u32 *)(p + i) = v;
+	}
+
+	return 0;
+}
+
+static int n3000_flash_read(struct intel_max10_device *dev,
+		u32 addr, void *buf, u32 size)
+{
+	if (!dev->raw_blk_ops.read_blk)
+		return -ENODEV;
+
+	return dev->raw_blk_ops.read_blk(dev, addr, buf, size);
+}
+
+static int n3000_flash_write(struct intel_max10_device *dev,
+		u32 addr, void *buf, u32 size)
+{
+	if (!dev->raw_blk_ops.write_blk)
+		return -ENODEV;
+
+	return dev->raw_blk_ops.write_blk(dev, addr, buf, size);
+}
+
+static u32
+pmci_get_write_space(struct intel_max10_device *dev, u32 size)
+{
+	u32 count, val;
+	int ret;
+
+	ret = opae_readl_poll_timeout(dev->mmio + PMCI_FLASH_CTRL, val,
+				GET_FIELD(PMCI_FLASH_FIFO_SPACE, val) ==
+				PMCI_FIFO_MAX_WORDS,
+				PMCI_FLASH_INT_US, PMCI_FLASH_TIMEOUT_US);
+	if (ret == -ETIMEDOUT)
+		return 0;
+
+	count = GET_FIELD(PMCI_FLASH_FIFO_SPACE, val) * 4;
+
+	return (size > count) ? count : size;
+}
+
+static void pmci_write_fifo(void __iomem *base, char *buf, size_t count)
+{
+	size_t i;
+	u32 val;
+
+	for (i = 0; i < count/4 ; i++) {
+		val = *(u32 *)(buf + i * 4);
+		writel(val, base);
+	}
+}
+
+static void pmci_read_fifo(void __iomem *base, char *buf, size_t count)
+{
+	size_t i;
+	u32 val;
+
+	for (i = 0; i < count/4; i++) {
+		val = readl(base);
+		*(u32 *)(buf + i * 4) = val;
+	}
+}
+
+static int
+__pmci_flash_bulk_write(struct intel_max10_device *dev, u32 addr,
+		void *buf, u32 size)
+{
+	UNUSED(addr);
+	u32 blk_size, n_offset = 0;
+
+	while (size) {
+		blk_size = pmci_get_write_space(dev, size);
+		if (blk_size == 0) {
+			dev_err(pmci->dev, "get FIFO available size fail\n");
+			return -EIO;
+		}
+		size -= blk_size;
+		pmci_write_fifo(dev->mmio + PMCI_FLASH_FIFO, (char *)buf + n_offset,
+				blk_size);
+		n_offset += blk_size;
+	}
+
+	return 0;
+}
+
+static int
+pmci_flash_bulk_write(struct intel_max10_device *dev, u32 addr,
+		void *buf, u32 size)
+{
+	int ret;
+
+	pthread_mutex_lock(dev->bmc_ops.mutex);
+
+	ret = __pmci_flash_bulk_write(dev, addr, buf, size);
+
+	pthread_mutex_unlock(dev->bmc_ops.mutex);
+	return ret;
+}
+
+static int
+pmci_set_flash_host_mux(struct intel_max10_device *dev, bool request)
+{
+	u32 ctrl;
+	int ret;
+
+	ret = max10_sys_update_bits(dev,
+			m10bmc_base(dev) + M10BMC_PMCI_FLASH_CTRL,
+			FLASH_HOST_REQUEST,
+			SET_FIELD(FLASH_HOST_REQUEST, request));
+	if (ret)
+		return ret;
+
+	return opae_max10_read_poll_timeout(dev, m10bmc_base(dev) + M10BMC_PMCI_FLASH_CTRL,
+			ctrl, request ? (get_flash_mux(ctrl) == FLASH_MUX_HOST) :
+			(get_flash_mux(ctrl) != FLASH_MUX_HOST),
+			PMCI_FLASH_INT_US, PMCI_FLASH_TIMEOUT_US);
+}
+
+static int
+pmci_get_mux(struct intel_max10_device *dev)
+{
+	pthread_mutex_lock(dev->bmc_ops.mutex);
+	return pmci_set_flash_host_mux(dev, true);
+}
+
+static int
+pmci_put_mux(struct intel_max10_device *dev)
+{
+	int ret;
+
+	ret = pmci_set_flash_host_mux(dev, false);
+	pthread_mutex_unlock(dev->bmc_ops.mutex);
+	return ret;
+}
+
+static int
+__pmci_flash_bulk_read(struct intel_max10_device *dev, u32 addr,
+		     void *buf, u32 size)
+{
+	u32 blk_size, offset = 0, val;
+	int ret;
+
+	while (size) {
+		blk_size = min_t(u32, size, PMCI_READ_BLOCK_SIZE);
+
+		opae_writel(addr + offset, dev->mmio + PMCI_FLASH_ADDR);
+
+		opae_writel(SET_FIELD(PMCI_FLASH_READ_COUNT, blk_size / 4)
+				| PMCI_FLASH_RD_MODE,
+			dev->mmio + PMCI_FLASH_CTRL);
+
+		ret = opae_readl_poll_timeout((dev->mmio + PMCI_FLASH_CTRL),
+				val, !(val & PMCI_FLASH_BUSY),
+				PMCI_FLASH_INT_US,
+				PMCI_FLASH_TIMEOUT_US);
+		if (ret) {
+			dev_err(dev, "%s timed out on reading flash 0x%xn",
+				__func__, val);
+			return ret;
+		}
+
+		pmci_read_fifo(dev->mmio + PMCI_FLASH_FIFO, (char *)buf + offset,
+				blk_size);
+
+		size -= blk_size;
+		offset += blk_size;
+
+		opae_writel(0, dev->mmio + PMCI_FLASH_CTRL);
+	}
+
+	return 0;
+}
+
+static int
+pmci_flash_bulk_read(struct intel_max10_device *dev, u32 addr,
+		     void *buf, u32 size)
+{
+	int ret;
+
+	ret = pmci_get_mux(dev);
+	if (ret)
+		goto fail;
+
+	ret = __pmci_flash_bulk_read(dev, addr, buf, size);
+	if (ret)
+		goto fail;
+
+	return pmci_put_mux(dev);
+
+fail:
+	pmci_put_mux(dev);
+	return ret;
+}
+
+static int pmci_check_flash_address(u32 start, u32 end)
+{
+	if (start < PMCI_FLASH_START || end > PMCI_FLASH_END)
+		return -EINVAL;
+
+	return 0;
+}
+
+int opae_read_flash(struct intel_max10_device *dev, u32 addr,
+		u32 size, void *buf)
+{
+	int ret;
+
+	if (!dev->bmc_ops.flash_read)
+		return -ENODEV;
+
+	if (!buf)
+		return -EINVAL;
+
+	if (dev->bmc_ops.check_flash_range) {
+		ret = dev->bmc_ops.check_flash_range(addr, addr + size);
+		if (ret)
+			return ret;
+	} else {
+		u32 top_addr = dev->staging_area_base + dev->staging_area_size;
+		if ((addr < dev->staging_area_base) ||
+			((addr + size) >= top_addr))
+			return -EINVAL;
+	}
+
+	ret = dev->bmc_ops.flash_read(dev, addr, buf, size);
+	if (ret)
+		return ret;
+
+	return 0;
+}
+
 static int max10_spi_read(struct intel_max10_device *dev,
 	unsigned int addr, unsigned int *val)
 {
@@ -841,6 +1114,11 @@ intel_max10_device_init(struct intel_max10_device *dev)
 		dev->ops = &m10bmc_n3000_regmap;
 		dev->csr = &m10bmc_spi_csr;
 
+		dev->raw_blk_ops.write_blk = n3000_bulk_raw_write;
+		dev->raw_blk_ops.read_blk = n3000_bulk_raw_read;
+		dev->bmc_ops.flash_read = n3000_flash_read;
+		dev->bmc_ops.flash_write = n3000_flash_write;
+
 		/* check the max10 version */
 		ret = check_max10_version(dev);
 		if (ret) {
@@ -870,6 +1148,10 @@ intel_max10_device_init(struct intel_max10_device *dev)
 		dev->csr = &m10bmc_pmci_csr;
 		dev->staging_area_size = MAX_STAGING_AREA_SIZE;
 		dev->flags |= MAX10_FLAGS_SECURE;
+
+		dev->bmc_ops.flash_read = pmci_flash_bulk_read;
+		dev->bmc_ops.flash_write = pmci_flash_bulk_write;
+		dev->bmc_ops.check_flash_range = pmci_check_flash_address;
 
 		ret = pthread_mutex_init(&dev->bmc_ops.lock, NULL);
 		if (ret)

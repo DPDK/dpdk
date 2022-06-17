@@ -223,4 +223,6 @@ int fme_mgr_get_retimer_status(struct ifpga_fme_hw *fme,
 int fme_mgr_get_sensor_value(struct ifpga_fme_hw *fme,
 		struct opae_sensor_info *sensor,
 		unsigned int *value);
+int fme_mgr_read_flash(struct ifpga_fme_hw *fme, u32 address,
+		u32 size, void *buf);
 #endif /* _IFPGA_FEATURE_DEV_H_ */

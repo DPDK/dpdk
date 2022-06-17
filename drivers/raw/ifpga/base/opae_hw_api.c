@@ -1041,3 +1041,23 @@ int opae_mgr_reload(struct opae_manager *mgr, int type, int page)
 
 	return -ENOENT;
 }
+/**
+ * opae_mgr_read_flash -  read flash content
+ * @mgr: targeted manager
+ * @address: the start address of flash
+ * @size: the size of flash
+ * @buf: the read buffer
+ *
+ * Return: 0 on success, otherwise error code.
+ */
+int opae_mgr_read_flash(struct opae_manager *mgr, u32 address,
+		u32 size, void *buf)
+{
+	if (!mgr)
+		return -EINVAL;
+
+	if (mgr->ops && mgr->ops->read_flash)
+		return mgr->ops->read_flash(mgr, address, size, buf);
+
+	return -ENOENT;
+}

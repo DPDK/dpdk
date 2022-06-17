@@ -60,6 +60,7 @@ struct opae_manager_ops {
 			u64 *status);
 	int (*stop_flash_update)(struct opae_manager *mgr, int force);
 	int (*reload)(struct opae_manager *mgr, int type, int page);
+	int (*read_flash)(struct opae_manager *mgr, u32 address, u32 size, void *buf);
 };
 
 /* networking management ops in FME */
@@ -368,4 +369,5 @@ int opae_mgr_update_flash(struct opae_manager *mgr, const char *image,
 		uint64_t *status);
 int opae_mgr_stop_flash_update(struct opae_manager *mgr, int force);
 int opae_mgr_reload(struct opae_manager *mgr, int type, int page);
+int opae_mgr_read_flash(struct opae_manager *mgr, u32 address, u32 size, void *buf);
 #endif /* _OPAE_HW_API_H_*/

@@ -62,9 +62,22 @@ struct m10bmc_csr {
 };
 
 /**
+ * struct flash_raw_blk_ops - device specific operations for flash R/W
+ * @write_blk: write a block of data to flash
+ * @read_blk: read a block of data from flash
+ */
+struct flash_raw_blk_ops {
+	int (*write_blk)(struct intel_max10_device *dev, uint32_t addr,
+			void *buf, uint32_t size);
+	int (*read_blk)(struct intel_max10_device *dev, uint32_t addr,
+			void *buf, uint32_t size);
+};
+
+/**
  * struct m10bmc_ops - device specific operations
  * @lock: prevent concurrent flash read/write
  * @mutex: prevent concurrent bmc read/write
+ * @check_flash_range: validate flash address
  * @flash_read: read a block of data from flash
  * @flash_write: write a block of data to flash
  */
@@ -92,6 +105,7 @@ struct intel_max10_device {
 	enum m10bmc_type type;
 	const struct m10bmc_regmap *ops;
 	const struct m10bmc_csr *csr;
+	struct flash_raw_blk_ops raw_blk_ops;
 	struct m10bmc_ops bmc_ops;
 	u8 *mmio; /* mmio address for PMCI */
 };
@@ -431,6 +445,22 @@ struct opae_sensor_info {
 #define PMCI_FPGA_RECONF_PAGE  GENMASK(22, 20)
 #define PMCI_FPGA_RP_LOAD      BIT(23)
 
+#define PMCI_FLASH_CTRL 0x40
+#define PMCI_FLASH_WR_MODE BIT(0)
+#define PMCI_FLASH_RD_MODE BIT(1)
+#define PMCI_FLASH_BUSY    BIT(2)
+#define PMCI_FLASH_FIFO_SPACE GENMASK(13, 4)
+#define PMCI_FLASH_READ_COUNT GENMASK(25, 16)
+
+#define PMCI_FLASH_INT_US       1
+#define PMCI_FLASH_TIMEOUT_US   10000
+
+#define PMCI_FLASH_ADDR 0x44
+#define PMCI_FLASH_FIFO 0x800
+#define PMCI_READ_BLOCK_SIZE 0x800
+#define PMCI_FIFO_MAX_BYTES 0x800
+#define PMCI_FIFO_MAX_WORDS (PMCI_FIFO_MAX_BYTES / 4)
+
 #define M10BMC_PMCI_FPGA_POC	0xb0
 #define PMCI_FPGA_POC		BIT(0)
 #define PMCI_NIOS_REQ_CLEAR	BIT(1)
@@ -446,6 +476,16 @@ struct opae_sensor_info {
 #define M10BMC_PMCI_FPGA_CONF_STS 0xa0
 #define PMCI_FPGA_BOOT_PAGE  GENMASK(2, 0)
 #define PMCI_FPGA_CONFIGURED  BIT(3)
+
+#define M10BMC_PMCI_FLASH_CTRL 0x1d0
+#define FLASH_MUX_SELECTION GENMASK(2, 0)
+#define FLASH_MUX_IDLE 0
+#define FLASH_MUX_NIOS 1
+#define FLASH_MUX_HOST 2
+#define FLASH_MUX_PFL  4
+#define get_flash_mux(mux)  GET_FIELD(FLASH_MUX_SELECTION, mux)
+#define FLASH_NIOS_REQUEST BIT(4)
+#define FLASH_HOST_REQUEST BIT(5)
 
 #define M10BMC_PMCI_SDM_CTRL_STS 0x230
 #define PMCI_SDM_IMG_REQ	BIT(0)
@@ -472,4 +512,10 @@ struct opae_sensor_info {
 #define SDM_STAT_CS_MIS   0x12
 #define SDM_STAT_PR_MIS   0x13
 #define SDM_STAT_MAX SDM_STAT_PR_MIS
+
+#define PMCI_FLASH_START 0x10000
+#define PMCI_FLASH_END 0xC7FFFFF
+
+int opae_read_flash(struct intel_max10_device *dev, u32 addr,
+		u32 size, void *buf);
 #endif
