@@ -188,27 +188,27 @@ fill_sg_comp_from_iov(struct roc_se_sglist_comp *list, uint32_t i,
 	int32_t j;
 	uint32_t extra_len = extra_buf ? extra_buf->size : 0;
 	uint32_t size = *psize;
-	struct roc_se_buf_ptr *bufs;
 
-	bufs = from->bufs;
 	for (j = 0; (j < from->buf_cnt) && size; j++) {
+		struct roc_se_sglist_comp *to = &list[i >> 2];
+		uint32_t buf_sz = from->bufs[j].size;
+		void *vaddr = from->bufs[j].vaddr;
 		uint64_t e_vaddr;
 		uint32_t e_len;
-		struct roc_se_sglist_comp *to = &list[i >> 2];
 
 		if (unlikely(from_offset)) {
-			if (from_offset >= bufs[j].size) {
-				from_offset -= bufs[j].size;
+			if (from_offset >= buf_sz) {
+				from_offset -= buf_sz;
 				continue;
 			}
-			e_vaddr = (uint64_t)bufs[j].vaddr + from_offset;
-			e_len = (size > (bufs[j].size - from_offset)) ?
-					(bufs[j].size - from_offset) :
+			e_vaddr = (uint64_t)vaddr + from_offset;
+			e_len = (size > (buf_sz - from_offset)) ?
+					(buf_sz - from_offset) :
 					size;
 			from_offset = 0;
 		} else {
-			e_vaddr = (uint64_t)bufs[j].vaddr;
-			e_len = (size > bufs[j].size) ? bufs[j].size : size;
+			e_vaddr = (uint64_t)vaddr;
+			e_len = (size > buf_sz) ? buf_sz : size;
 		}
 
 		to->u.s.len[i % 4] = rte_cpu_to_be_16(e_len);
