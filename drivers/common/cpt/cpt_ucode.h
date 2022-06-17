@@ -394,27 +394,26 @@ fill_sg_comp_from_iov(sg_comp_t *list,
 	int32_t j;
 	uint32_t extra_len = extra_buf ? extra_buf->size : 0;
 	uint32_t size = *psize;
-	buf_ptr_t *bufs;
 
-	bufs = from->bufs;
 	for (j = 0; (j < from->buf_cnt) && size; j++) {
+		phys_addr_t dma_addr = from->bufs[j].dma_addr;
+		uint32_t buf_sz = from->bufs[j].size;
+		sg_comp_t *to = &list[i >> 2];
 		phys_addr_t e_dma_addr;
 		uint32_t e_len;
-		sg_comp_t *to = &list[i >> 2];
 
 		if (unlikely(from_offset)) {
-			if (from_offset >= bufs[j].size) {
-				from_offset -= bufs[j].size;
+			if (from_offset >= buf_sz) {
+				from_offset -= buf_sz;
 				continue;
 			}
-			e_dma_addr = bufs[j].dma_addr + from_offset;
-			e_len = (size > (bufs[j].size - from_offset)) ?
-				(bufs[j].size - from_offset) : size;
+			e_dma_addr = dma_addr + from_offset;
+			e_len = (size > (buf_sz - from_offset)) ?
+				(buf_sz - from_offset) : size;
 			from_offset = 0;
 		} else {
-			e_dma_addr = bufs[j].dma_addr;
-			e_len = (size > bufs[j].size) ?
-				bufs[j].size : size;
+			e_dma_addr = dma_addr;
+			e_len = (size > buf_sz) ? buf_sz : size;
 		}
 
 		to->u.s.len[i % 4] = rte_cpu_to_be_16(e_len);
