@@ -358,11 +358,41 @@ static const struct eth_dev_ops nfp_net_nfd3_eth_dev_ops = {
 	.rx_queue_intr_disable  = nfp_rx_queue_intr_disable,
 };
 
+static const struct eth_dev_ops nfp_net_nfdk_eth_dev_ops = {
+	.dev_configure		= nfp_net_configure,
+	.dev_start		= nfp_net_start,
+	.dev_stop		= nfp_net_stop,
+	.dev_set_link_up	= nfp_net_set_link_up,
+	.dev_set_link_down	= nfp_net_set_link_down,
+	.dev_close		= nfp_net_close,
+	.promiscuous_enable	= nfp_net_promisc_enable,
+	.promiscuous_disable	= nfp_net_promisc_disable,
+	.link_update		= nfp_net_link_update,
+	.stats_get		= nfp_net_stats_get,
+	.stats_reset		= nfp_net_stats_reset,
+	.dev_infos_get		= nfp_net_infos_get,
+	.dev_supported_ptypes_get = nfp_net_supported_ptypes_get,
+	.mtu_set		= nfp_net_dev_mtu_set,
+	.mac_addr_set		= nfp_net_set_mac_addr,
+	.vlan_offload_set	= nfp_net_vlan_offload_set,
+	.reta_update		= nfp_net_reta_update,
+	.reta_query		= nfp_net_reta_query,
+	.rss_hash_update	= nfp_net_rss_hash_update,
+	.rss_hash_conf_get	= nfp_net_rss_hash_conf_get,
+	.rx_queue_setup		= nfp_net_rx_queue_setup,
+	.rx_queue_release	= nfp_net_rx_queue_release,
+	.tx_queue_setup		= nfp_net_nfdk_tx_queue_setup,
+	.tx_queue_release	= nfp_net_tx_queue_release,
+	.rx_queue_intr_enable   = nfp_rx_queue_intr_enable,
+	.rx_queue_intr_disable  = nfp_rx_queue_intr_disable,
+};
+
 static inline int
 nfp_net_ethdev_ops_mount(struct nfp_net_hw *hw, struct rte_eth_dev *eth_dev)
 {
 	switch (NFD_CFG_CLASS_VER_of(hw->ver)) {
 	case NFP_NET_CFG_VERSION_DP_NFD3:
+		eth_dev->dev_ops = &nfp_net_nfd3_eth_dev_ops;
 		break;
 	case NFP_NET_CFG_VERSION_DP_NFDK:
 		if (NFD_CFG_MAJOR_VERSION_of(hw->ver) < 5) {
@@ -370,13 +400,13 @@ nfp_net_ethdev_ops_mount(struct nfp_net_hw *hw, struct rte_eth_dev *eth_dev)
 				NFD_CFG_MAJOR_VERSION_of(hw->ver));
 			return -EINVAL;
 		}
+		eth_dev->dev_ops = &nfp_net_nfdk_eth_dev_ops;
 		break;
 	default:
 		PMD_DRV_LOG(ERR, "The version of firmware is not correct.");
 		return -EINVAL;
 	}
 
-	eth_dev->dev_ops = &nfp_net_nfd3_eth_dev_ops;
 	eth_dev->rx_queue_count = nfp_net_rx_queue_count;
 	eth_dev->rx_pkt_burst = &nfp_net_recv_pkts;
 	eth_dev->tx_pkt_burst = &nfp_net_nfd3_xmit_pkts;

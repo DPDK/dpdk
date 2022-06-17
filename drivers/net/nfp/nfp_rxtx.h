@@ -347,6 +347,11 @@ int nfp_net_nfd3_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 				  const struct rte_eth_txconf *tx_conf);
 uint16_t nfp_net_nfd3_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 				  uint16_t nb_pkts);
+int nfp_net_nfdk_tx_queue_setup(struct rte_eth_dev *dev,
+		uint16_t queue_idx,
+		uint16_t nb_desc,
+		unsigned int socket_id,
+		const struct rte_eth_txconf *tx_conf);
 
 #endif /* _NFP_RXTX_H_ */
 /*
