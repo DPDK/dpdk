@@ -104,13 +104,15 @@ trace_session_name_generate(char *trace_dir)
 	rc = rte_strscpy(trace_dir, eal_get_hugefile_prefix(),
 			TRACE_PREFIX_LEN);
 	if (rc == -E2BIG)
-		rc = TRACE_PREFIX_LEN;
+		rc = TRACE_PREFIX_LEN - 1;
 	trace_dir[rc++] = '-';
 
 	rc = strftime(trace_dir + rc, TRACE_DIR_STR_LEN - rc,
 			"%Y-%m-%d-%p-%I-%M-%S", tm_result);
-	if (rc == 0)
+	if (rc == 0) {
+		errno = ENOSPC;
 		goto fail;
+	}
 
 	return rc;
 fail:
