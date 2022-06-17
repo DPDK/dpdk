@@ -336,6 +336,9 @@ int max10_reg_write(struct intel_max10_device *dev,
 	unsigned int offset, unsigned int val);
 int max10_sys_update_bits(struct intel_max10_device *dev,
 	unsigned int offset, unsigned int msk, unsigned int val);
+int max10_get_bmcfw_version(struct intel_max10_device *dev, unsigned int *val);
+int max10_get_bmc_version(struct intel_max10_device *dev, unsigned int *val);
+int max10_get_fpga_load_info(struct intel_max10_device *dev, unsigned int *val);
 int intel_max10_device_init(struct intel_max10_device *dev);
 int intel_max10_device_remove(struct intel_max10_device *dev);
 

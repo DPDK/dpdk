@@ -268,6 +268,24 @@ struct feature_fme_bitstream_id {
 	union {
 		u64 csr;
 		struct {
+			u8 build_patch:8;
+			u8 build_minor:8;
+			u8 build_major:8;
+			u8 fvl_bypass:1;
+			u8 mac_lightweight:1;
+			u8 disagregate:1;
+			u8 lightweiht:1;
+			u8 seu:1;
+			u8 ptp:1;
+			u8 reserve:2;
+			u8 interface:4;
+			u32 afu_revision:12;
+			u8 patch:4;
+			u8 minor:4;
+			u8 major:4;
+			u8 reserved:4;
+		} v1;
+		struct {
 			u32 gitrepo_hash:32;	/* GIT repository hash */
 			/*
 			 * HSSI configuration identifier:
@@ -276,7 +294,8 @@ struct feature_fme_bitstream_id {
 			 * 2 - Ethernet
 			 */
 			u8  hssi_id:4;
-			u16 rsvd1:12;		/* Reserved */
+			u8  rsvd1:4;
+			u8  fim_type:8;
 			/* Bitstream version patch number */
 			u8  bs_verpatch:4;
 			/* Bitstream version minor number */
@@ -285,7 +304,7 @@ struct feature_fme_bitstream_id {
 			u8  bs_vermajor:4;
 			/* Bitstream version debug number */
 			u8  bs_verdebug:4;
-		};
+		} v2;
 	};
 };
 
@@ -1672,31 +1691,6 @@ struct bts_header {
 
 #define check_support(n) (n == 1 ? "support" : "no")
 
-/* bitstream id definition */
-struct fme_bitstream_id {
-	union {
-		u64 id;
-		struct {
-			u8 build_patch:8;
-			u8 build_minor:8;
-			u8 build_major:8;
-			u8 fvl_bypass:1;
-			u8 mac_lightweight:1;
-			u8 disagregate:1;
-			u8 lightweiht:1;
-			u8 seu:1;
-			u8 ptp:1;
-			u8 reserve:2;
-			u8 interface:4;
-			u32 afu_revision:12;
-			u8 patch:4;
-			u8 minor:4;
-			u8 major:4;
-			u8 reserved:4;
-		};
-	};
-};
-
 enum board_interface {
 	VC_8_10G = 0,
 	VC_4_25G = 1,
@@ -1705,10 +1699,30 @@ enum board_interface {
 	VC_2_2_25G = 4,
 };
 
+enum fim_type {
+	BASE_ADP = 0,
+	BASE_FDK,
+	BASE_X16_ADP,
+	BASE_X16_FDK,
+	FIMA_10G_ADP,
+	FIMA_25G_ADP,
+	FIMA_100G_ADP,
+	FIMB_ADP,
+	FIMC_ADP
+};
+
+enum hssi_id {
+	NO_HSSI = 0,
+	PCIE_RP,
+	ETHER_NET
+};
+
 enum pac_major {
 	VISTA_CREEK = 0,
 	RUSH_CREEK = 1,
 	DARBY_CREEK = 2,
+	LIGHTNING_CREEK = 3,
+	ARROW_CREEK = 5,
 };
 
 enum pac_minor {
@@ -1720,23 +1734,30 @@ enum pac_minor {
 struct opae_board_info {
 	enum pac_major major;
 	enum pac_minor minor;
-	enum board_interface type;
-
-	/* PAC features */
-	u8 fvl_bypass;
-	u8 mac_lightweight;
-	u8 disaggregate;
-	u8 lightweight;
-	u8 seu;
-	u8 ptp;
 
 	u32 boot_page;
 	u32 max10_version;
 	u32 nios_fw_version;
-	u32 nums_of_retimer;
-	u32 ports_per_retimer;
-	u32 nums_of_fvl;
-	u32 ports_per_fvl;
+
+	union {
+		struct {  /* N3000 specific */
+			enum board_interface type;
+			u8 fvl_bypass;
+			u8 mac_lightweight;
+			u8 disaggregate;
+			u8 lightweight;
+			u8 seu;
+			u8 ptp;
+			u32 nums_of_retimer;
+			u32 ports_per_retimer;
+			u32 nums_of_fvl;
+			u32 ports_per_fvl;
+		};
+		struct {
+			enum fim_type n6000_fim_type;
+			enum hssi_id n6000_hssi_id;
+		};
+	};
 };
 
 #pragma pack(pop)

@@ -224,6 +224,8 @@ static int fme_global_error_init(struct ifpga_feature *feature)
 {
 	struct ifpga_fme_hw *fme = feature->parent;
 
+	dev_info(NULL, "FME error_module Init.\n");
+
 	fme_error_enable(fme);
 
 	if (feature->ctx_num)

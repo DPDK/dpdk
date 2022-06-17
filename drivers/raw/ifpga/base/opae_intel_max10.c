@@ -766,6 +766,51 @@ max10_non_secure_hw_init(struct intel_max10_device *dev)
 	return 0;
 }
 
+int max10_get_fpga_load_info(struct intel_max10_device *dev, unsigned int *val)
+{
+	int ret;
+	unsigned int value;
+
+	/* read FPGA loading information */
+	ret = max10_sys_read(dev, dev->csr->fpga_page_info, &value);
+	if (ret) {
+		dev_err(dev, "fail to get FPGA loading info\n");
+		return ret;
+	}
+
+	if (dev->type == M10_N3000)
+		*val = value & 0x7;
+	else if (dev->type == M10_N6000) {
+		if (!GET_FIELD(PMCI_FPGA_CONFIGURED, value))
+			return -EINVAL;
+		*val = GET_FIELD(PMCI_FPGA_BOOT_PAGE, value);
+	}
+
+	return 0;
+}
+
+int max10_get_bmc_version(struct intel_max10_device *dev, unsigned int *val)
+{
+	int ret;
+
+	ret = max10_sys_read(dev, dev->csr->build_version, val);
+	if (ret)
+		return ret;
+
+	return 0;
+}
+
+int max10_get_bmcfw_version(struct intel_max10_device *dev, unsigned int *val)
+{
+	int ret;
+
+	ret = max10_sys_read(dev, dev->csr->fw_version, val);
+	if (ret)
+		return ret;
+
+	return 0;
+}
+
 static const struct m10bmc_csr m10bmc_spi_csr = {
 	.base = MAX10_SEC_BASE_ADDR,
 	.build_version = MAX10_BUILD_VER,

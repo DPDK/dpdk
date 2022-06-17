@@ -88,7 +88,7 @@ static int port_error_init(struct ifpga_feature *feature)
 {
 	struct ifpga_port_hw *port = feature->parent;
 
-	dev_info(NULL, "port error Init.\n");
+	dev_info(NULL, "port error_module Init.\n");
 
 	spinlock_lock(&port->lock);
 	port_err_mask(port, false);
