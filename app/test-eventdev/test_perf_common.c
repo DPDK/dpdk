@@ -6,7 +6,7 @@
 
 #include "test_perf_common.h"
 
-#define NB_CRYPTODEV_DESCRIPTORS 128
+#define NB_CRYPTODEV_DESCRIPTORS 1024
 #define DATA_SIZE		512
 struct modex_test_data {
 	enum rte_crypto_asym_xform_type xform_type;
