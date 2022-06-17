@@ -122,7 +122,7 @@ def main(args):
     arg_p.add_argument('--name-prefix', metavar='prefix', dest='prefix',
                        default="dpdk",
                        help="Prefix for workqueue name to mark for DPDK use [default: 'dpdk']")
-    arg_p.add_argument('--wq-option', action='append',
+    arg_p.add_argument('--wq-option', action='append', default=[],
                        help="Provide additional config option for queues (format 'x=y')")
     arg_p.add_argument('--reset', action='store_true',
                        help="Reset DSA device and its queues")
