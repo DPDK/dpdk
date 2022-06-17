@@ -53,7 +53,7 @@
 #define PCIE_DESC_TX_ENCAP_VXLAN        (1 << 1)
 #define PCIE_DESC_TX_ENCAP_GRE          (1 << 0)
 
-struct nfp_net_tx_desc {
+struct nfp_net_nfd3_tx_desc {
 	union {
 		struct {
 			uint8_t dma_addr_hi; /* High bits of host buf address */
@@ -124,7 +124,7 @@ struct nfp_net_txq {
 	 * of the queue and @size is the size in bytes for the queue
 	 * (needed for free)
 	 */
-	struct nfp_net_tx_desc *txds;
+	struct nfp_net_nfd3_tx_desc *txds;
 
 	/*
 	 * At this point 48 bytes have been used for all the fields in the
@@ -286,10 +286,10 @@ int nfp_net_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 				  struct rte_mempool *mp);
 void nfp_net_tx_queue_release(struct rte_eth_dev *dev, uint16_t queue_idx);
 void nfp_net_reset_tx_queue(struct nfp_net_txq *txq);
-int nfp_net_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
+int nfp_net_nfd3_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 				  uint16_t nb_desc, unsigned int socket_id,
 				  const struct rte_eth_txconf *tx_conf);
-uint16_t nfp_net_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
+uint16_t nfp_net_nfd3_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 				  uint16_t nb_pkts);
 
 #endif /* _NFP_RXTX_H_ */

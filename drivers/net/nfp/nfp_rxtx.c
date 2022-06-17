@@ -655,7 +655,7 @@ nfp_net_reset_tx_queue(struct nfp_net_txq *txq)
 }
 
 int
-nfp_net_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
+nfp_net_nfd3_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 		       uint16_t nb_desc, unsigned int socket_id,
 		       const struct rte_eth_txconf *tx_conf)
 {
@@ -670,7 +670,7 @@ nfp_net_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 	PMD_INIT_FUNC_TRACE();
 
 	/* Validating number of descriptors */
-	tx_desc_sz = nb_desc * sizeof(struct nfp_net_tx_desc);
+	tx_desc_sz = nb_desc * sizeof(struct nfp_net_nfd3_tx_desc);
 	if (tx_desc_sz % NFP_ALIGN_RING_DESC != 0 ||
 	    nb_desc > NFP_NET_MAX_TX_DESC ||
 	    nb_desc < NFP_NET_MIN_TX_DESC) {
@@ -718,7 +718,7 @@ nfp_net_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 	 * resizing in later calls to the queue setup function.
 	 */
 	tz = rte_eth_dma_zone_reserve(dev, "tx_ring", queue_idx,
-				   sizeof(struct nfp_net_tx_desc) *
+				   sizeof(struct nfp_net_nfd3_tx_desc) *
 				   NFP_NET_MAX_TX_DESC, NFP_MEMZONE_ALIGN,
 				   socket_id);
 	if (tz == NULL) {
@@ -743,7 +743,7 @@ nfp_net_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 
 	/* Saving physical and virtual addresses for the TX ring */
 	txq->dma = (uint64_t)tz->iova;
-	txq->txds = (struct nfp_net_tx_desc *)tz->addr;
+	txq->txds = (struct nfp_net_nfd3_tx_desc *)tz->addr;
 
 	/* mbuf pointers array for referencing mbufs linked to TX descriptors */
 	txq->txbufs = rte_zmalloc_socket("txq->txbufs",
@@ -773,7 +773,7 @@ nfp_net_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 
 /* Leaving always free descriptors for avoiding wrapping confusion */
 static inline
-uint32_t nfp_free_tx_desc(struct nfp_net_txq *txq)
+uint32_t nfp_net_nfd3_free_tx_desc(struct nfp_net_txq *txq)
 {
 	if (txq->wr_p >= txq->rd_p)
 		return txq->tx_count - (txq->wr_p - txq->rd_p) - 8;
@@ -790,14 +790,14 @@ uint32_t nfp_free_tx_desc(struct nfp_net_txq *txq)
  * This function uses the host copy* of read/write pointers
  */
 static inline
-uint32_t nfp_net_txq_full(struct nfp_net_txq *txq)
+uint32_t nfp_net_nfd3_txq_full(struct nfp_net_txq *txq)
 {
-	return (nfp_free_tx_desc(txq) < txq->tx_free_thresh);
+	return (nfp_net_nfd3_free_tx_desc(txq) < txq->tx_free_thresh);
 }
 
 /* nfp_net_tx_tso - Set TX descriptor for TSO */
 static inline void
-nfp_net_tx_tso(struct nfp_net_txq *txq, struct nfp_net_tx_desc *txd,
+nfp_net_nfd3_tx_tso(struct nfp_net_txq *txq, struct nfp_net_nfd3_tx_desc *txd,
 	       struct rte_mbuf *mb)
 {
 	uint64_t ol_flags;
@@ -828,7 +828,7 @@ clean_txd:
 
 /* nfp_net_tx_cksum - Set TX CSUM offload flags in TX descriptor */
 static inline void
-nfp_net_tx_cksum(struct nfp_net_txq *txq, struct nfp_net_tx_desc *txd,
+nfp_net_nfd3_tx_cksum(struct nfp_net_txq *txq, struct nfp_net_nfd3_tx_desc *txd,
 		 struct rte_mbuf *mb)
 {
 	uint64_t ol_flags;
@@ -857,11 +857,11 @@ nfp_net_tx_cksum(struct nfp_net_txq *txq, struct nfp_net_tx_desc *txd,
 }
 
 uint16_t
-nfp_net_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
+nfp_net_nfd3_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 {
 	struct nfp_net_txq *txq;
 	struct nfp_net_hw *hw;
-	struct nfp_net_tx_desc *txds, txd;
+	struct nfp_net_nfd3_tx_desc *txds, txd;
 	struct rte_mbuf *pkt;
 	uint64_t dma_addr;
 	int pkt_size, dma_size;
@@ -876,10 +876,10 @@ nfp_net_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 	PMD_TX_LOG(DEBUG, "working for queue %u at pos %d and %u packets",
 		   txq->qidx, txq->wr_p, nb_pkts);
 
-	if ((nfp_free_tx_desc(txq) < nb_pkts) || (nfp_net_txq_full(txq)))
+	if ((nfp_net_nfd3_free_tx_desc(txq) < nb_pkts) || (nfp_net_nfd3_txq_full(txq)))
 		nfp_net_tx_free_bufs(txq);
 
-	free_descs = (uint16_t)nfp_free_tx_desc(txq);
+	free_descs = (uint16_t)nfp_net_nfd3_free_tx_desc(txq);
 	if (unlikely(free_descs == 0))
 		return 0;
 
@@ -913,8 +913,8 @@ nfp_net_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 		 * multisegment packet, but TSO info needs to be in all of them.
 		 */
 		txd.data_len = pkt->pkt_len;
-		nfp_net_tx_tso(txq, &txd, pkt);
-		nfp_net_tx_cksum(txq, &txd, pkt);
+		nfp_net_nfd3_tx_tso(txq, &txd, pkt);
+		nfp_net_nfd3_tx_cksum(txq, &txd, pkt);
 
 		if ((pkt->ol_flags & RTE_MBUF_F_TX_VLAN) &&
 		    (hw->cap & NFP_NET_CFG_CTRL_TXVLAN)) {

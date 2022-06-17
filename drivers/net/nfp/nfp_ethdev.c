@@ -329,7 +329,7 @@ nfp_net_close(struct rte_eth_dev *dev)
 }
 
 /* Initialise and register driver with DPDK Application */
-static const struct eth_dev_ops nfp_net_eth_dev_ops = {
+static const struct eth_dev_ops nfp_net_nfd3_eth_dev_ops = {
 	.dev_configure		= nfp_net_configure,
 	.dev_start		= nfp_net_start,
 	.dev_stop		= nfp_net_stop,
@@ -352,7 +352,7 @@ static const struct eth_dev_ops nfp_net_eth_dev_ops = {
 	.rss_hash_conf_get	= nfp_net_rss_hash_conf_get,
 	.rx_queue_setup		= nfp_net_rx_queue_setup,
 	.rx_queue_release	= nfp_net_rx_queue_release,
-	.tx_queue_setup		= nfp_net_tx_queue_setup,
+	.tx_queue_setup		= nfp_net_nfd3_tx_queue_setup,
 	.tx_queue_release	= nfp_net_tx_queue_release,
 	.rx_queue_intr_enable   = nfp_rx_queue_intr_enable,
 	.rx_queue_intr_disable  = nfp_rx_queue_intr_disable,
@@ -402,10 +402,10 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 	PMD_INIT_LOG(DEBUG, "Working with physical port number: %d, "
 			"NFP internal port number: %d", port, hw->nfp_idx);
 
-	eth_dev->dev_ops = &nfp_net_eth_dev_ops;
+	eth_dev->dev_ops = &nfp_net_nfd3_eth_dev_ops;
 	eth_dev->rx_queue_count = nfp_net_rx_queue_count;
 	eth_dev->rx_pkt_burst = &nfp_net_recv_pkts;
-	eth_dev->tx_pkt_burst = &nfp_net_xmit_pkts;
+	eth_dev->tx_pkt_burst = &nfp_net_nfd3_xmit_pkts;
 
 	/* For secondary processes, the primary has done all the work */
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
@@ -971,10 +971,10 @@ nfp_pf_secondary_init(struct rte_pci_device *pci_dev)
 			return -ENODEV;
 		}
 		eth_dev->process_private = cpp;
-		eth_dev->dev_ops = &nfp_net_eth_dev_ops;
+		eth_dev->dev_ops = &nfp_net_nfd3_eth_dev_ops;
 		eth_dev->rx_queue_count = nfp_net_rx_queue_count;
 		eth_dev->rx_pkt_burst = &nfp_net_recv_pkts;
-		eth_dev->tx_pkt_burst = &nfp_net_xmit_pkts;
+		eth_dev->tx_pkt_burst = &nfp_net_nfd3_xmit_pkts;
 		rte_eth_dev_probing_finish(eth_dev);
 	}
 
