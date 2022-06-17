@@ -942,15 +942,8 @@ vhost_user_update_link_state(struct virtio_user_dev *dev)
 
 	if (data->vhostfd >= 0) {
 		int r;
-		int flags;
 
-		flags = fcntl(data->vhostfd, F_GETFL);
-		if (fcntl(data->vhostfd, F_SETFL, flags | O_NONBLOCK) == -1) {
-			PMD_DRV_LOG(ERR, "error setting O_NONBLOCK flag");
-			return -1;
-		}
-
-		r = recv(data->vhostfd, buf, 128, MSG_PEEK);
+		r = recv(data->vhostfd, buf, 128, MSG_PEEK | MSG_DONTWAIT);
 		if (r == 0 || (r < 0 && errno != EAGAIN)) {
 			dev->net_status &= (~VIRTIO_NET_S_LINK_UP);
 			PMD_DRV_LOG(ERR, "virtio-user port %u is down", dev->hw.port_id);
@@ -964,12 +957,6 @@ vhost_user_update_link_state(struct virtio_user_dev *dev)
 				(void *)dev);
 		} else {
 			dev->net_status |= VIRTIO_NET_S_LINK_UP;
-		}
-
-		if (fcntl(data->vhostfd, F_SETFL,
-					flags & ~O_NONBLOCK) == -1) {
-			PMD_DRV_LOG(ERR, "error clearing O_NONBLOCK flag");
-			return -1;
 		}
 	} else if (dev->is_server) {
 		dev->net_status &= (~VIRTIO_NET_S_LINK_UP);
