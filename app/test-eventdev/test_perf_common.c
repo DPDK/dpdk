@@ -367,6 +367,7 @@ crypto_adapter_enq_op_new(struct prod_data *p)
 	struct evt_options *opt = t->opt;
 	uint16_t qp_id = p->ca.cdev_qp_id;
 	uint8_t cdev_id = p->ca.cdev_id;
+	uint64_t alloc_failures = 0;
 	uint32_t flow_counter = 0;
 	struct rte_crypto_op *op;
 	struct rte_mbuf *m;
@@ -386,9 +387,17 @@ crypto_adapter_enq_op_new(struct prod_data *p)
 
 			op = rte_crypto_op_alloc(t->ca_op_pool,
 					 RTE_CRYPTO_OP_TYPE_SYMMETRIC);
-			m = rte_pktmbuf_alloc(pool);
-			if (m == NULL)
+			if (unlikely(op == NULL)) {
+				alloc_failures++;
 				continue;
+			}
+
+			m = rte_pktmbuf_alloc(pool);
+			if (unlikely(m == NULL)) {
+				alloc_failures++;
+				rte_crypto_op_free(op);
+				continue;
+			}
 
 			rte_pktmbuf_append(m, len);
 			sym_op = op->sym;
@@ -404,6 +413,11 @@ crypto_adapter_enq_op_new(struct prod_data *p)
 
 			op = rte_crypto_op_alloc(t->ca_op_pool,
 					 RTE_CRYPTO_OP_TYPE_ASYMMETRIC);
+			if (unlikely(op == NULL)) {
+				alloc_failures++;
+				continue;
+			}
+
 			asym_op = op->asym;
 			asym_op->modex.base.data = modex_test_case.base.data;
 			asym_op->modex.base.length = modex_test_case.base.len;
@@ -418,6 +432,10 @@ crypto_adapter_enq_op_new(struct prod_data *p)
 
 		count++;
 	}
+
+	if (opt->verbose_level > 1 && alloc_failures)
+		printf("%s(): lcore %d allocation failures: %"PRIu64"\n",
+		       __func__, rte_lcore_id(), alloc_failures);
 }
 
 static inline void
@@ -430,6 +448,7 @@ crypto_adapter_enq_op_fwd(struct prod_data *p)
 	const uint64_t nb_pkts = t->nb_pkts;
 	struct rte_mempool *pool = t->pool;
 	struct evt_options *opt = t->opt;
+	uint64_t alloc_failures = 0;
 	uint32_t flow_counter = 0;
 	struct rte_crypto_op *op;
 	struct rte_event ev;
@@ -455,9 +474,17 @@ crypto_adapter_enq_op_fwd(struct prod_data *p)
 
 			op = rte_crypto_op_alloc(t->ca_op_pool,
 					 RTE_CRYPTO_OP_TYPE_SYMMETRIC);
-			m = rte_pktmbuf_alloc(pool);
-			if (m == NULL)
+			if (unlikely(op == NULL)) {
+				alloc_failures++;
 				continue;
+			}
+
+			m = rte_pktmbuf_alloc(pool);
+			if (unlikely(m == NULL)) {
+				alloc_failures++;
+				rte_crypto_op_free(op);
+				continue;
+			}
 
 			rte_pktmbuf_append(m, len);
 			sym_op = op->sym;
@@ -473,6 +500,11 @@ crypto_adapter_enq_op_fwd(struct prod_data *p)
 
 			op = rte_crypto_op_alloc(t->ca_op_pool,
 					 RTE_CRYPTO_OP_TYPE_ASYMMETRIC);
+			if (unlikely(op == NULL)) {
+				alloc_failures++;
+				continue;
+			}
+
 			asym_op = op->asym;
 			asym_op->modex.base.data = modex_test_case.base.data;
 			asym_op->modex.base.length = modex_test_case.base.len;
@@ -489,6 +521,10 @@ crypto_adapter_enq_op_fwd(struct prod_data *p)
 
 		count++;
 	}
+
+	if (opt->verbose_level > 1 && alloc_failures)
+		printf("%s(): lcore %d allocation failures: %"PRIu64"\n",
+		       __func__, rte_lcore_id(), alloc_failures);
 }
 
 static inline int
