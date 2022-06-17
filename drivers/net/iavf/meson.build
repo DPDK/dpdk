@@ -65,6 +65,8 @@ if arch_subdir == 'x86'
                 c_args: avx512_args)
         objs += iavf_avx512_lib.extract_objects('iavf_rxtx_vec_avx512.c')
     endif
+elif arch_subdir == 'arm'
+    sources += files('iavf_rxtx_vec_neon.c')
 endif
 
 headers = files('rte_pmd_iavf.h')
