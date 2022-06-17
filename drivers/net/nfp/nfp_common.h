@@ -44,9 +44,6 @@ struct nfp_net_adapter;
 /* The offset of the queue controller queues in the PCIe Target */
 #define NFP_PCIE_QUEUE(_q) (0x80000 + (NFP_QCP_QUEUE_ADDR_SZ * ((_q) & 0xff)))
 
-/* Maximum value which can be added to a queue with one transaction */
-#define NFP_QCP_MAX_ADD	0x7f
-
 /* Interrupt definitions */
 #define NFP_NET_IRQ_LSC_IDX             0
 
@@ -307,8 +304,6 @@ nn_cfg_writeq(struct nfp_net_hw *hw, int off, uint64_t val)
  * @q: Base address for queue structure
  * @ptr: Add to the Read or Write pointer
  * @val: Value to add to the queue pointer
- *
- * If @val is greater than @NFP_QCP_MAX_ADD multiple writes are performed.
  */
 static inline void
 nfp_qcp_ptr_add(uint8_t *q, enum nfp_qcp_ptr ptr, uint32_t val)
@@ -320,12 +315,7 @@ nfp_qcp_ptr_add(uint8_t *q, enum nfp_qcp_ptr ptr, uint32_t val)
 	else
 		off = NFP_QCP_QUEUE_ADD_WPTR;
 
-	while (val > NFP_QCP_MAX_ADD) {
-		nn_writel(rte_cpu_to_le_32(NFP_QCP_MAX_ADD), q + off);
-		val -= NFP_QCP_MAX_ADD;
-}
-
-nn_writel(rte_cpu_to_le_32(val), q + off);
+	nn_writel(rte_cpu_to_le_32(val), q + off);
 }
 
 /*
