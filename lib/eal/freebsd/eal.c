@@ -986,11 +986,11 @@ rte_eal_cleanup(void)
 		eal_get_internal_configuration();
 	rte_service_finalize();
 	rte_mp_channel_cleanup();
+	rte_trace_save();
+	eal_trace_fini();
 	/* after this point, any DPDK pointers will become dangling */
 	rte_eal_memory_detach();
 	rte_eal_alarm_cleanup();
-	rte_trace_save();
-	eal_trace_fini();
 	eal_cleanup_config(internal_conf);
 	return 0;
 }
