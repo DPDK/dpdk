@@ -160,6 +160,7 @@ New Features
 * **Updated Netronome nfp driver.**
 
   * Added support for NFP3800 NIC.
+  * Added support for firmware with NFDk.
 
 * **Updated VMware vmxnet3 networking driver.**
 

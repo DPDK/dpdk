@@ -358,6 +358,32 @@ static const struct eth_dev_ops nfp_net_nfd3_eth_dev_ops = {
 	.rx_queue_intr_disable  = nfp_rx_queue_intr_disable,
 };
 
+static inline int
+nfp_net_ethdev_ops_mount(struct nfp_net_hw *hw, struct rte_eth_dev *eth_dev)
+{
+	switch (NFD_CFG_CLASS_VER_of(hw->ver)) {
+	case NFP_NET_CFG_VERSION_DP_NFD3:
+		break;
+	case NFP_NET_CFG_VERSION_DP_NFDK:
+		if (NFD_CFG_MAJOR_VERSION_of(hw->ver) < 5) {
+			PMD_DRV_LOG(ERR, "NFDK must use ABI 5 or newer, found: %d",
+				NFD_CFG_MAJOR_VERSION_of(hw->ver));
+			return -EINVAL;
+		}
+		break;
+	default:
+		PMD_DRV_LOG(ERR, "The version of firmware is not correct.");
+		return -EINVAL;
+	}
+
+	eth_dev->dev_ops = &nfp_net_nfd3_eth_dev_ops;
+	eth_dev->rx_queue_count = nfp_net_rx_queue_count;
+	eth_dev->rx_pkt_burst = &nfp_net_recv_pkts;
+	eth_dev->tx_pkt_burst = &nfp_net_nfd3_xmit_pkts;
+
+	return 0;
+}
+
 static int
 nfp_net_init(struct rte_eth_dev *eth_dev)
 {
@@ -402,11 +428,6 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 	PMD_INIT_LOG(DEBUG, "Working with physical port number: %d, "
 			"NFP internal port number: %d", port, hw->nfp_idx);
 
-	eth_dev->dev_ops = &nfp_net_nfd3_eth_dev_ops;
-	eth_dev->rx_queue_count = nfp_net_rx_queue_count;
-	eth_dev->rx_pkt_burst = &nfp_net_recv_pkts;
-	eth_dev->tx_pkt_burst = &nfp_net_nfd3_xmit_pkts;
-
 	/* For secondary processes, the primary has done all the work */
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return 0;
@@ -441,6 +462,11 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 
 	PMD_INIT_LOG(DEBUG, "ctrl bar: %p", hw->ctrl_bar);
 
+	hw->ver = nn_cfg_readl(hw, NFP_NET_CFG_VERSION);
+
+	if (nfp_net_ethdev_ops_mount(hw, eth_dev))
+		return -EINVAL;
+
 	hw->max_rx_queues = nn_cfg_readl(hw, NFP_NET_CFG_MAX_RXRINGS);
 	hw->max_tx_queues = nn_cfg_readl(hw, NFP_NET_CFG_MAX_TXRINGS);
 
@@ -473,7 +499,6 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 	nfp_net_cfg_queue_setup(hw);
 
 	/* Get some of the read-only fields from the config BAR */
-	hw->ver = nn_cfg_readl(hw, NFP_NET_CFG_VERSION);
 	hw->cap = nn_cfg_readl(hw, NFP_NET_CFG_CAP);
 	hw->max_mtu = nn_cfg_readl(hw, NFP_NET_CFG_MAX_MTU);
 	hw->mtu = RTE_ETHER_MTU;
@@ -939,6 +964,7 @@ nfp_pf_secondary_init(struct rte_pci_device *pci_dev)
 	int err;
 	int total_ports;
 	struct nfp_cpp *cpp;
+	struct nfp_net_hw *hw;
 	struct nfp_rtsym_table *sym_tbl;
 
 	if (pci_dev == NULL)
@@ -988,11 +1014,14 @@ nfp_pf_secondary_init(struct rte_pci_device *pci_dev)
 				"secondary process attach failed, ethdev doesn't exist");
 			return -ENODEV;
 		}
+
+		hw = NFP_NET_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
+
+		if (nfp_net_ethdev_ops_mount(hw, eth_dev))
+			return -EINVAL;
+
 		eth_dev->process_private = cpp;
-		eth_dev->dev_ops = &nfp_net_nfd3_eth_dev_ops;
-		eth_dev->rx_queue_count = nfp_net_rx_queue_count;
-		eth_dev->rx_pkt_burst = &nfp_net_recv_pkts;
-		eth_dev->tx_pkt_burst = &nfp_net_nfd3_xmit_pkts;
+
 		rte_eth_dev_probing_finish(eth_dev);
 	}
 

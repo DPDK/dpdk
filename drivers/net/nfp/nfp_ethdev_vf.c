@@ -265,6 +265,32 @@ static const struct eth_dev_ops nfp_netvf_nfd3_eth_dev_ops = {
 	.rx_queue_intr_disable  = nfp_rx_queue_intr_disable,
 };
 
+static inline int
+nfp_netvf_ethdev_ops_mount(struct nfp_net_hw *hw, struct rte_eth_dev *eth_dev)
+{
+	switch (NFD_CFG_CLASS_VER_of(hw->ver)) {
+	case NFP_NET_CFG_VERSION_DP_NFD3:
+		break;
+	case NFP_NET_CFG_VERSION_DP_NFDK:
+		if (NFD_CFG_MAJOR_VERSION_of(hw->ver) < 5) {
+			PMD_DRV_LOG(ERR, "NFDK must use ABI 5 or newer, found: %d",
+				NFD_CFG_MAJOR_VERSION_of(hw->ver));
+			return -EINVAL;
+		}
+		break;
+	default:
+		PMD_DRV_LOG(ERR, "The version of firmware is not correct.");
+		return -EINVAL;
+	}
+
+	eth_dev->dev_ops = &nfp_netvf_nfd3_eth_dev_ops;
+	eth_dev->rx_queue_count = nfp_net_rx_queue_count;
+	eth_dev->rx_pkt_burst = &nfp_net_recv_pkts;
+	eth_dev->tx_pkt_burst = &nfp_net_nfd3_xmit_pkts;
+
+	return 0;
+}
+
 static int
 nfp_netvf_init(struct rte_eth_dev *eth_dev)
 {
@@ -292,10 +318,19 @@ nfp_netvf_init(struct rte_eth_dev *eth_dev)
 
 	hw = NFP_NET_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
 
-	eth_dev->dev_ops = &nfp_netvf_nfd3_eth_dev_ops;
-	eth_dev->rx_queue_count = nfp_net_rx_queue_count;
-	eth_dev->rx_pkt_burst = &nfp_net_recv_pkts;
-	eth_dev->tx_pkt_burst = &nfp_net_nfd3_xmit_pkts;
+	hw->ctrl_bar = (uint8_t *)pci_dev->mem_resource[0].addr;
+	if (hw->ctrl_bar == NULL) {
+		PMD_DRV_LOG(ERR,
+			"hw->ctrl_bar is NULL. BAR0 not configured");
+		return -ENODEV;
+	}
+
+	PMD_INIT_LOG(DEBUG, "ctrl bar: %p", hw->ctrl_bar);
+
+	hw->ver = nn_cfg_readl(hw, NFP_NET_CFG_VERSION);
+
+	if (nfp_netvf_ethdev_ops_mount(hw, eth_dev))
+		return -EINVAL;
 
 	/* For secondary processes, the primary has done all the work */
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
@@ -312,15 +347,6 @@ nfp_netvf_init(struct rte_eth_dev *eth_dev)
 		     pci_dev->id.vendor_id, pci_dev->id.device_id,
 		     pci_dev->addr.domain, pci_dev->addr.bus,
 		     pci_dev->addr.devid, pci_dev->addr.function);
-
-	hw->ctrl_bar = (uint8_t *)pci_dev->mem_resource[0].addr;
-	if (hw->ctrl_bar == NULL) {
-		PMD_DRV_LOG(ERR,
-			"hw->ctrl_bar is NULL. BAR0 not configured");
-		return -ENODEV;
-	}
-
-	PMD_INIT_LOG(DEBUG, "ctrl bar: %p", hw->ctrl_bar);
 
 	hw->max_rx_queues = nn_cfg_readl(hw, NFP_NET_CFG_MAX_RXRINGS);
 	hw->max_tx_queues = nn_cfg_readl(hw, NFP_NET_CFG_MAX_TXRINGS);
@@ -354,7 +380,6 @@ nfp_netvf_init(struct rte_eth_dev *eth_dev)
 	nfp_net_cfg_queue_setup(hw);
 
 	/* Get some of the read-only fields from the config BAR */
-	hw->ver = nn_cfg_readl(hw, NFP_NET_CFG_VERSION);
 	hw->cap = nn_cfg_readl(hw, NFP_NET_CFG_CAP);
 	hw->max_mtu = nn_cfg_readl(hw, NFP_NET_CFG_MAX_MTU);
 	hw->mtu = RTE_ETHER_MTU;
