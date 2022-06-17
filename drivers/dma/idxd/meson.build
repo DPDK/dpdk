@@ -5,7 +5,6 @@ build = dpdk_conf.has('RTE_ARCH_X86')
 reason = 'only supported on x86'
 
 deps += ['bus_pci']
-cflags += '-mavx2' # all platforms with idxd HW support AVX
 sources = files(
         'idxd_common.c',
         'idxd_pci.c',

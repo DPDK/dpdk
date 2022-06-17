@@ -13,12 +13,23 @@
 
 #define IDXD_PMD_NAME_STR "dmadev_idxd"
 
+/* systems with DSA all support AVX2 so allow our data-path functions to
+ * always use at least that instruction set
+ */
+#ifndef __AVX2__
+#define __use_avx2 __attribute__((target("avx2")))
+#else
+#define __use_avx2
+#endif
+
+__use_avx2
 static __rte_always_inline rte_iova_t
 __desc_idx_to_iova(struct idxd_dmadev *idxd, uint16_t n)
 {
 	return idxd->desc_iova + (n * sizeof(struct idxd_hw_desc));
 }
 
+__use_avx2
 static __rte_always_inline void
 __idxd_movdir64b(volatile void *dst, const struct idxd_hw_desc *src)
 {
@@ -28,6 +39,7 @@ __idxd_movdir64b(volatile void *dst, const struct idxd_hw_desc *src)
 			: "memory");
 }
 
+__use_avx2
 static __rte_always_inline void
 __submit(struct idxd_dmadev *idxd)
 {
@@ -74,6 +86,7 @@ __submit(struct idxd_dmadev *idxd)
 			_mm256_setzero_si256());
 }
 
+__use_avx2
 static __rte_always_inline int
 __idxd_write_desc(struct idxd_dmadev *idxd,
 		const uint32_t op_flags,
@@ -112,6 +125,7 @@ __idxd_write_desc(struct idxd_dmadev *idxd,
 	return job_id;
 }
 
+__use_avx2
 int
 idxd_enqueue_copy(void *dev_private, uint16_t qid __rte_unused, rte_iova_t src,
 		rte_iova_t dst, unsigned int length, uint64_t flags)
@@ -126,6 +140,7 @@ idxd_enqueue_copy(void *dev_private, uint16_t qid __rte_unused, rte_iova_t src,
 			flags);
 }
 
+__use_avx2
 int
 idxd_enqueue_fill(void *dev_private, uint16_t qid __rte_unused, uint64_t pattern,
 		rte_iova_t dst, unsigned int length, uint64_t flags)
@@ -136,6 +151,7 @@ idxd_enqueue_fill(void *dev_private, uint16_t qid __rte_unused, uint64_t pattern
 			flags);
 }
 
+__use_avx2
 int
 idxd_submit(void *dev_private, uint16_t qid __rte_unused)
 {
@@ -143,6 +159,7 @@ idxd_submit(void *dev_private, uint16_t qid __rte_unused)
 	return 0;
 }
 
+__use_avx2
 static enum rte_dma_status_code
 get_comp_status(struct idxd_completion *c)
 {
@@ -163,6 +180,7 @@ get_comp_status(struct idxd_completion *c)
 	}
 }
 
+__use_avx2
 int
 idxd_vchan_status(const struct rte_dma_dev *dev, uint16_t vchan __rte_unused,
 		enum rte_dma_vchan_status *status)
@@ -180,6 +198,7 @@ idxd_vchan_status(const struct rte_dma_dev *dev, uint16_t vchan __rte_unused,
 	return 0;
 }
 
+__use_avx2
 static __rte_always_inline int
 batch_ok(struct idxd_dmadev *idxd, uint16_t max_ops, enum rte_dma_status_code *status)
 {
@@ -224,6 +243,7 @@ batch_ok(struct idxd_dmadev *idxd, uint16_t max_ops, enum rte_dma_status_code *s
 	return -1; /* error case */
 }
 
+__use_avx2
 static inline uint16_t
 batch_completed(struct idxd_dmadev *idxd, uint16_t max_ops, bool *has_error)
 {
@@ -275,6 +295,7 @@ batch_completed(struct idxd_dmadev *idxd, uint16_t max_ops, bool *has_error)
 	return ret;
 }
 
+__use_avx2
 static uint16_t
 batch_completed_status(struct idxd_dmadev *idxd, uint16_t max_ops, enum rte_dma_status_code *status)
 {
@@ -366,6 +387,7 @@ batch_completed_status(struct idxd_dmadev *idxd, uint16_t max_ops, enum rte_dma_
 	return ret;
 }
 
+__use_avx2
 uint16_t
 idxd_completed(void *dev_private, uint16_t qid __rte_unused, uint16_t max_ops,
 		uint16_t *last_idx, bool *has_error)
@@ -383,6 +405,7 @@ idxd_completed(void *dev_private, uint16_t qid __rte_unused, uint16_t max_ops,
 	return ret;
 }
 
+__use_avx2
 uint16_t
 idxd_completed_status(void *dev_private, uint16_t qid __rte_unused, uint16_t max_ops,
 		uint16_t *last_idx, enum rte_dma_status_code *status)
