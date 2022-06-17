@@ -16,6 +16,7 @@ sources = files(
         'rte_eth_bond_flow.c',
         'rte_eth_bond_pmd.c',
 )
+testpmd_sources = files('bonding_testpmd.c')
 
 deps += 'sched' # needed for rte_bitmap.h
 deps += ['ip_frag']

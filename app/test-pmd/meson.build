@@ -58,9 +58,6 @@ endif
 if dpdk_conf.has('RTE_LIB_PDUMP')
     deps += 'pdump'
 endif
-if dpdk_conf.has('RTE_NET_BOND')
-    deps += 'net_bond'
-endif
 if dpdk_conf.has('RTE_NET_BNXT')
     deps += 'net_bnxt'
 endif

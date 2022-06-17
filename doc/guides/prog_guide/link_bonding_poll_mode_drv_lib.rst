@@ -497,3 +497,148 @@ Create a bonded device in balance mode with two slaves specified by their PCI ad
 .. code-block:: console
 
     ./<build_dir>/app/dpdk-testpmd -l 0-3 -n 4 --vdev 'net_bonding0,mode=2,slave=0000:0a:00.01,slave=0000:04:00.00,xmit_policy=l34' -- --port-topology=chained
+
+.. _bonding_testpmd_commands:
+
+Testpmd driver specific commands
+--------------------------------
+
+Some bonding driver specific features are integrated in testpmd.
+
+create bonded device
+~~~~~~~~~~~~~~~~~~~~
+
+Create a new bonding device::
+
+   testpmd> create bonded device (mode) (socket)
+
+For example, to create a bonded device in mode 1 on socket 0::
+
+   testpmd> create bonded device 1 0
+   created new bonded device (port X)
+
+add bonding slave
+~~~~~~~~~~~~~~~~~
+
+Adds Ethernet device to a Link Bonding device::
+
+   testpmd> add bonding slave (slave id) (port id)
+
+For example, to add Ethernet device (port 6) to a Link Bonding device (port 10)::
+
+   testpmd> add bonding slave 6 10
+
+
+remove bonding slave
+~~~~~~~~~~~~~~~~~~~~
+
+Removes an Ethernet slave device from a Link Bonding device::
+
+   testpmd> remove bonding slave (slave id) (port id)
+
+For example, to remove Ethernet slave device (port 6) to a Link Bonding device (port 10)::
+
+   testpmd> remove bonding slave 6 10
+
+set bonding mode
+~~~~~~~~~~~~~~~~
+
+Set the Link Bonding mode of a Link Bonding device::
+
+   testpmd> set bonding mode (value) (port id)
+
+For example, to set the bonding mode of a Link Bonding device (port 10) to broadcast (mode 3)::
+
+   testpmd> set bonding mode 3 10
+
+set bonding primary
+~~~~~~~~~~~~~~~~~~~
+
+Set an Ethernet slave device as the primary device on a Link Bonding device::
+
+   testpmd> set bonding primary (slave id) (port id)
+
+For example, to set the Ethernet slave device (port 6) as the primary port of a Link Bonding device (port 10)::
+
+   testpmd> set bonding primary 6 10
+
+set bonding mac
+~~~~~~~~~~~~~~~
+
+Set the MAC address of a Link Bonding device::
+
+   testpmd> set bonding mac (port id) (mac)
+
+For example, to set the MAC address of a Link Bonding device (port 10) to 00:00:00:00:00:01::
+
+   testpmd> set bonding mac 10 00:00:00:00:00:01
+
+set bonding balance_xmit_policy
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Set the transmission policy for a Link Bonding device when it is in Balance XOR mode::
+
+   testpmd> set bonding balance_xmit_policy (port_id) (l2|l23|l34)
+
+For example, set a Link Bonding device (port 10) to use a balance policy of layer 3+4 (IP addresses & UDP ports)::
+
+   testpmd> set bonding balance_xmit_policy 10 l34
+
+
+set bonding mon_period
+~~~~~~~~~~~~~~~~~~~~~~
+
+Set the link status monitoring polling period in milliseconds for a bonding device.
+
+This adds support for PMD slave devices which do not support link status interrupts.
+When the mon_period is set to a value greater than 0 then all PMD's which do not support
+link status ISR will be queried every polling interval to check if their link status has changed::
+
+   testpmd> set bonding mon_period (port_id) (value)
+
+For example, to set the link status monitoring polling period of bonded device (port 5) to 150ms::
+
+   testpmd> set bonding mon_period 5 150
+
+
+set bonding lacp dedicated_queue
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Enable dedicated tx/rx queues on bonding devices slaves to handle LACP control plane traffic
+when in mode 4 (link-aggregation-802.3ad)::
+
+   testpmd> set bonding lacp dedicated_queues (port_id) (enable|disable)
+
+
+set bonding agg_mode
+~~~~~~~~~~~~~~~~~~~~
+
+Enable one of the specific aggregators mode when in mode 4 (link-aggregation-802.3ad)::
+
+   testpmd> set bonding agg_mode (port_id) (bandwidth|count|stable)
+
+
+show bonding config
+~~~~~~~~~~~~~~~~~~~
+
+Show the current configuration of a Link Bonding device::
+
+   testpmd> show bonding config (port id)
+
+For example,
+to show the configuration a Link Bonding device (port 9) with 3 slave devices (1, 3, 4)
+in balance mode with a transmission policy of layer 2+3::
+
+   testpmd> show bonding config 9
+        Bonding mode: 2
+        Balance Xmit Policy: BALANCE_XMIT_POLICY_LAYER23
+        Slaves (3): [1 3 4]
+        Active Slaves (3): [1 3 4]
+        Primary: [3]
+
+show bonding lacp info
+~~~~~~~~~~~~~~~~~~~~~~
+
+Show information about the Link Bonding device in mode 4 (link-aggregation-802.3ad)::
+
+   testpmd> show bonding lacp info (port_id)
