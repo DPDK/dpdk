@@ -21,27 +21,6 @@
 #include "nfp_logs.h"
 #include "nfp_ctrl.h"
 
-/* Prototypes */
-static int nfp_net_rx_fill_freelist(struct nfp_net_rxq *rxq);
-static inline void nfp_net_mbuf_alloc_failed(struct nfp_net_rxq *rxq);
-static inline void nfp_net_set_hash(struct nfp_net_rxq *rxq,
-				    struct nfp_net_rx_desc *rxd,
-				    struct rte_mbuf *mbuf);
-static inline void nfp_net_rx_cksum(struct nfp_net_rxq *rxq,
-				    struct nfp_net_rx_desc *rxd,
-				    struct rte_mbuf *mb);
-static void nfp_net_rx_queue_release_mbufs(struct nfp_net_rxq *rxq);
-static int nfp_net_tx_free_bufs(struct nfp_net_txq *txq);
-static void nfp_net_tx_queue_release_mbufs(struct nfp_net_txq *txq);
-static inline uint32_t nfp_free_tx_desc(struct nfp_net_txq *txq);
-static inline uint32_t nfp_net_txq_full(struct nfp_net_txq *txq);
-static inline void nfp_net_tx_tso(struct nfp_net_txq *txq,
-				  struct nfp_net_tx_desc *txd,
-				  struct rte_mbuf *mb);
-static inline void nfp_net_tx_cksum(struct nfp_net_txq *txq,
-				    struct nfp_net_tx_desc *txd,
-				    struct rte_mbuf *mb);
-
 static int
 nfp_net_rx_fill_freelist(struct nfp_net_rxq *rxq)
 {

@@ -38,28 +38,6 @@
 #include "nfp_ctrl.h"
 #include "nfp_cpp_bridge.h"
 
-
-static int nfp_net_pf_read_mac(struct nfp_pf_dev *pf_dev, int port);
-static int nfp_net_start(struct rte_eth_dev *dev);
-static int nfp_net_stop(struct rte_eth_dev *dev);
-static int nfp_net_set_link_up(struct rte_eth_dev *dev);
-static int nfp_net_set_link_down(struct rte_eth_dev *dev);
-static int nfp_net_close(struct rte_eth_dev *dev);
-static int nfp_net_init(struct rte_eth_dev *eth_dev);
-static int nfp_fw_upload(struct rte_pci_device *dev,
-			 struct nfp_nsp *nsp, char *card);
-static int nfp_fw_setup(struct rte_pci_device *dev,
-			struct nfp_cpp *cpp,
-			struct nfp_eth_table *nfp_eth_table,
-			struct nfp_hwinfo *hwinfo);
-static int nfp_init_phyports(struct nfp_pf_dev *pf_dev);
-static int nfp_pf_init(struct rte_pci_device *pci_dev);
-static int nfp_pf_secondary_init(struct rte_pci_device *pci_dev);
-static int nfp_pf_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
-			    struct rte_pci_device *dev);
-static int nfp_pci_uninit(struct rte_eth_dev *eth_dev);
-static int eth_nfp_pci_remove(struct rte_pci_device *pci_dev);
-
 static int
 nfp_net_pf_read_mac(struct nfp_pf_dev *pf_dev, int port)
 {

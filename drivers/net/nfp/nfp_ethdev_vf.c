@@ -23,18 +23,6 @@
 #include "nfp_logs.h"
 #include "nfp_ctrl.h"
 
-static void nfp_netvf_read_mac(struct nfp_net_hw *hw);
-static int nfp_netvf_start(struct rte_eth_dev *dev);
-static int nfp_netvf_stop(struct rte_eth_dev *dev);
-static int nfp_netvf_set_link_up(struct rte_eth_dev *dev);
-static int nfp_netvf_set_link_down(struct rte_eth_dev *dev);
-static int nfp_netvf_close(struct rte_eth_dev *dev);
-static int nfp_netvf_init(struct rte_eth_dev *eth_dev);
-static int nfp_vf_pci_uninit(struct rte_eth_dev *eth_dev);
-static int eth_nfp_vf_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
-	struct rte_pci_device *pci_dev);
-static int eth_nfp_vf_pci_remove(struct rte_pci_device *pci_dev);
-
 static void
 nfp_netvf_read_mac(struct nfp_net_hw *hw)
 {
