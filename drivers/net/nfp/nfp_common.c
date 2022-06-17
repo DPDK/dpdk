@@ -1320,6 +1320,56 @@ nfp_net_rss_config_default(struct rte_eth_dev *dev)
 	return ret;
 }
 
+void
+nfp_net_stop_rx_queue(struct rte_eth_dev *dev)
+{
+	uint16_t i;
+	struct nfp_net_rxq *this_rx_q;
+
+	for (i = 0; i < dev->data->nb_rx_queues; i++) {
+		this_rx_q = (struct nfp_net_rxq *)dev->data->rx_queues[i];
+		nfp_net_reset_rx_queue(this_rx_q);
+	}
+}
+
+void
+nfp_net_close_rx_queue(struct rte_eth_dev *dev)
+{
+	uint16_t i;
+	struct nfp_net_rxq *this_rx_q;
+
+	for (i = 0; i < dev->data->nb_rx_queues; i++) {
+		this_rx_q = (struct nfp_net_rxq *)dev->data->rx_queues[i];
+		nfp_net_reset_rx_queue(this_rx_q);
+		nfp_net_rx_queue_release(dev, i);
+	}
+}
+
+void
+nfp_net_stop_tx_queue(struct rte_eth_dev *dev)
+{
+	uint16_t i;
+	struct nfp_net_txq *this_tx_q;
+
+	for (i = 0; i < dev->data->nb_tx_queues; i++) {
+		this_tx_q = (struct nfp_net_txq *)dev->data->tx_queues[i];
+		nfp_net_reset_tx_queue(this_tx_q);
+	}
+}
+
+void
+nfp_net_close_tx_queue(struct rte_eth_dev *dev)
+{
+	uint16_t i;
+	struct nfp_net_txq *this_tx_q;
+
+	for (i = 0; i < dev->data->nb_tx_queues; i++) {
+		this_tx_q = (struct nfp_net_txq *)dev->data->tx_queues[i];
+		nfp_net_reset_tx_queue(this_tx_q);
+		nfp_net_tx_queue_release(dev, i);
+	}
+}
+
 RTE_LOG_REGISTER_SUFFIX(nfp_logtype_init, init, NOTICE);
 RTE_LOG_REGISTER_SUFFIX(nfp_logtype_driver, driver, NOTICE);
 /*

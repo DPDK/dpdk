@@ -413,6 +413,10 @@ int nfp_net_rss_hash_update(struct rte_eth_dev *dev,
 int nfp_net_rss_hash_conf_get(struct rte_eth_dev *dev,
 			      struct rte_eth_rss_conf *rss_conf);
 int nfp_net_rss_config_default(struct rte_eth_dev *dev);
+void nfp_net_stop_rx_queue(struct rte_eth_dev *dev);
+void nfp_net_close_rx_queue(struct rte_eth_dev *dev);
+void nfp_net_stop_tx_queue(struct rte_eth_dev *dev);
+void nfp_net_close_tx_queue(struct rte_eth_dev *dev);
 
 #define NFP_NET_DEV_PRIVATE_TO_HW(adapter)\
 	(&((struct nfp_net_adapter *)adapter)->hw)

@@ -181,10 +181,7 @@ error:
 static int
 nfp_net_stop(struct rte_eth_dev *dev)
 {
-	int i;
 	struct nfp_net_hw *hw;
-	struct nfp_net_txq *this_tx_q;
-	struct nfp_net_rxq *this_rx_q;
 
 	PMD_INIT_LOG(DEBUG, "Stop");
 
@@ -193,15 +190,9 @@ nfp_net_stop(struct rte_eth_dev *dev)
 	nfp_net_disable_queues(dev);
 
 	/* Clear queues */
-	for (i = 0; i < dev->data->nb_tx_queues; i++) {
-		this_tx_q = (struct nfp_net_txq *)dev->data->tx_queues[i];
-		nfp_net_reset_tx_queue(this_tx_q);
-	}
+	nfp_net_stop_tx_queue(dev);
 
-	for (i = 0; i < dev->data->nb_rx_queues; i++) {
-		this_rx_q = (struct nfp_net_rxq *)dev->data->rx_queues[i];
-		nfp_net_reset_rx_queue(this_rx_q);
-	}
+	nfp_net_stop_rx_queue(dev);
 
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY)
 		/* Configure the physical port down */
@@ -256,8 +247,6 @@ nfp_net_close(struct rte_eth_dev *dev)
 	struct nfp_net_hw *hw;
 	struct rte_pci_device *pci_dev;
 	struct nfp_pf_dev *pf_dev;
-	struct nfp_net_txq *this_tx_q;
-	struct nfp_net_rxq *this_rx_q;
 	int i;
 
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
@@ -277,17 +266,9 @@ nfp_net_close(struct rte_eth_dev *dev)
 	nfp_net_disable_queues(dev);
 
 	/* Clear queues */
-	for (i = 0; i < dev->data->nb_tx_queues; i++) {
-		this_tx_q = (struct nfp_net_txq *)dev->data->tx_queues[i];
-		nfp_net_reset_tx_queue(this_tx_q);
-		nfp_net_tx_queue_release(dev, i);
-	}
+	nfp_net_close_tx_queue(dev);
 
-	for (i = 0; i < dev->data->nb_rx_queues; i++) {
-		this_rx_q = (struct nfp_net_rxq *)dev->data->rx_queues[i];
-		nfp_net_reset_rx_queue(this_rx_q);
-		nfp_net_rx_queue_release(dev, i);
-	}
+	nfp_net_close_rx_queue(dev);
 
 	/* Cancel possible impending LSC work here before releasing the port*/
 	rte_eal_alarm_cancel(nfp_net_dev_interrupt_delayed_handler,
