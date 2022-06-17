@@ -1266,13 +1266,13 @@ rte_eal_cleanup(void)
 	vfio_mp_sync_cleanup();
 #endif
 	rte_mp_channel_cleanup();
+	rte_trace_save();
+	eal_trace_fini();
 	/* after this point, any DPDK pointers will become dangling */
 	rte_eal_memory_detach();
 	eal_mp_dev_hotplug_cleanup();
 	rte_eal_malloc_heap_cleanup();
 	rte_eal_alarm_cleanup();
-	rte_trace_save();
-	eal_trace_fini();
 	eal_cleanup_config(internal_conf);
 	rte_eal_log_cleanup();
 	return 0;
