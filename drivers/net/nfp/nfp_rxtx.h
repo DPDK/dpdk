@@ -53,6 +53,31 @@
 #define PCIE_DESC_TX_ENCAP_VXLAN        (1 << 1)
 #define PCIE_DESC_TX_ENCAP_GRE          (1 << 0)
 
+#define NFDK_TX_MAX_DATA_PER_HEAD       0x00001000
+#define NFDK_DESC_TX_DMA_LEN_HEAD       0x0fff
+#define NFDK_DESC_TX_TYPE_HEAD          0xf000
+#define NFDK_DESC_TX_DMA_LEN            0x3fff
+#define NFDK_TX_DESC_PER_SIMPLE_PKT     2
+#define NFDK_DESC_TX_TYPE_TSO           2
+#define NFDK_DESC_TX_TYPE_SIMPLE        8
+#define NFDK_DESC_TX_TYPE_GATHER        1
+#define NFDK_DESC_TX_EOP                BIT(14)
+#define NFDK_DESC_TX_L4_CSUM            BIT(1)
+#define NFDK_DESC_TX_L3_CSUM            BIT(0)
+
+#define NFDK_TX_MAX_DATA_PER_DESC      0x00004000
+#define NFDK_TX_DESC_GATHER_MAX        17
+#define DIV_ROUND_UP(n, d)             (((n) + (d) - 1) / (d))
+#define NFDK_TX_DESC_BLOCK_SZ          256
+#define NFDK_TX_DESC_BLOCK_CNT         (NFDK_TX_DESC_BLOCK_SZ /         \
+					sizeof(struct nfp_net_nfdk_tx_desc))
+#define NFDK_TX_DESC_STOP_CNT          (NFDK_TX_DESC_BLOCK_CNT *        \
+					NFDK_TX_DESC_PER_SIMPLE_PKT)
+#define NFDK_TX_MAX_DATA_PER_BLOCK     0x00010000
+#define D_BLOCK_CPL(idx)               (NFDK_TX_DESC_BLOCK_CNT -        \
+					(idx) % NFDK_TX_DESC_BLOCK_CNT)
+#define D_IDX(ring, idx)               ((idx) & ((ring)->tx_count - 1))
+
 struct nfp_net_nfd3_tx_desc {
 	union {
 		struct {
@@ -81,6 +106,33 @@ struct nfp_net_nfd3_tx_desc {
 			__le16 data_len;    /* Length of frame + meta data */
 		} __rte_packed;
 		__le32 vals[4];
+	};
+};
+
+struct nfp_net_nfdk_tx_desc {
+	union {
+		struct {
+			__le16 dma_addr_hi;  /* High bits of host buf address */
+			__le16 dma_len_type; /* Length to DMA for this desc */
+			__le32 dma_addr_lo;  /* Low 32bit of host buf addr */
+		};
+
+		struct {
+			__le16 mss;	/* MSS to be used for LSO */
+			uint8_t lso_hdrlen;  /* LSO, TCP payload offset */
+			uint8_t lso_totsegs; /* LSO, total segments */
+			uint8_t l3_offset;   /* L3 header offset */
+			uint8_t l4_offset;   /* L4 header offset */
+			__le16 lso_meta_res; /* Rsvd bits in TSO metadata */
+		};
+
+		struct {
+			uint8_t flags;	/* TX Flags, see @NFDK_DESC_TX_* */
+			uint8_t reserved[7];	/* meta byte placeholder */
+		};
+
+		__le32 vals[2];
+		__le64 raw;
 	};
 };
 
@@ -124,7 +176,10 @@ struct nfp_net_txq {
 	 * of the queue and @size is the size in bytes for the queue
 	 * (needed for free)
 	 */
-	struct nfp_net_nfd3_tx_desc *txds;
+	union {
+		struct nfp_net_nfd3_tx_desc *txds;
+		struct nfp_net_nfdk_tx_desc *ktxds;
+	};
 
 	/*
 	 * At this point 48 bytes have been used for all the fields in the
@@ -137,6 +192,7 @@ struct nfp_net_txq {
 	uint32_t tx_hthresh;   /* not used by now. Future? */
 	uint32_t tx_wthresh;   /* not used by now. Future? */
 	uint16_t port_id;
+	uint16_t data_pending; /* used by nfdk only */
 	int qidx;
 	int tx_qcidx;
 	__le64 dma;
