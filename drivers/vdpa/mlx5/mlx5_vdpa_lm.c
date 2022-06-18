@@ -89,39 +89,90 @@ err:
 	return -1;
 }
 
-#define MLX5_VDPA_USED_RING_LEN(size) \
-	((size) * sizeof(struct vring_used_elem) + sizeof(uint16_t) * 3)
-
 int
 mlx5_vdpa_lm_log(struct mlx5_vdpa_priv *priv)
 {
+	uint32_t remaining_cnt = 0, err_cnt = 0, task_num = 0;
+	uint32_t i, thrd_idx, data[1];
 	struct mlx5_vdpa_virtq *virtq;
 	uint64_t features;
-	int ret = rte_vhost_get_negotiated_features(priv->vid, &features);
-	int i;
+	int ret;
 
+	ret = rte_vhost_get_negotiated_features(priv->vid, &features);
 	if (ret) {
 		DRV_LOG(ERR, "Failed to get negotiated features.");
 		return -1;
 	}
-	if (!RTE_VHOST_NEED_LOG(features))
-		return 0;
-	for (i = 0; i < priv->nr_virtqs; ++i) {
-		virtq = &priv->virtqs[i];
-		if (!priv->virtqs[i].virtq) {
-			DRV_LOG(DEBUG, "virtq %d is invalid for LM log.", i);
-		} else {
-			pthread_mutex_lock(&virtq->virtq_lock);
-			ret = mlx5_vdpa_virtq_stop(priv, i);
-			pthread_mutex_unlock(&virtq->virtq_lock);
-			if (ret) {
-				DRV_LOG(ERR, "Failed to stop virtq %d for LM "
-					"log.", i);
-				return -1;
+	if (priv->use_c_thread && priv->nr_virtqs) {
+		uint32_t main_task_idx[priv->nr_virtqs];
+
+		for (i = 0; i < priv->nr_virtqs; i++) {
+			virtq = &priv->virtqs[i];
+			if (!virtq->configured)
+				continue;
+			thrd_idx = i % (conf_thread_mng.max_thrds + 1);
+			if (!thrd_idx) {
+				main_task_idx[task_num] = i;
+				task_num++;
+				continue;
+			}
+			thrd_idx = priv->last_c_thrd_idx + 1;
+			if (thrd_idx >= conf_thread_mng.max_thrds)
+				thrd_idx = 0;
+			priv->last_c_thrd_idx = thrd_idx;
+			data[0] = i;
+			if (mlx5_vdpa_task_add(priv, thrd_idx,
+				MLX5_VDPA_TASK_STOP_VIRTQ,
+				&remaining_cnt, &err_cnt,
+				(void **)&data, 1)) {
+				DRV_LOG(ERR, "Fail to add "
+					"task stop virtq (%d).", i);
+				main_task_idx[task_num] = i;
+				task_num++;
 			}
 		}
-		rte_vhost_log_used_vring(priv->vid, i, 0,
-			      MLX5_VDPA_USED_RING_LEN(priv->virtqs[i].vq_size));
+		for (i = 0; i < task_num; i++) {
+			virtq = &priv->virtqs[main_task_idx[i]];
+			pthread_mutex_lock(&virtq->virtq_lock);
+			ret = mlx5_vdpa_virtq_stop(priv,
+					main_task_idx[i]);
+			if (ret) {
+				pthread_mutex_unlock(&virtq->virtq_lock);
+				DRV_LOG(ERR,
+				"Failed to stop virtq %d.", i);
+				return -1;
+			}
+			if (RTE_VHOST_NEED_LOG(features))
+				rte_vhost_log_used_vring(priv->vid, i, 0,
+				MLX5_VDPA_USED_RING_LEN(virtq->vq_size));
+			pthread_mutex_unlock(&virtq->virtq_lock);
+		}
+		if (mlx5_vdpa_c_thread_wait_bulk_tasks_done(&remaining_cnt,
+			&err_cnt, 2000)) {
+			DRV_LOG(ERR,
+			"Failed to wait virt-queue setup tasks ready.");
+			return -1;
+		}
+	} else {
+		for (i = 0; i < priv->nr_virtqs; i++) {
+			virtq = &priv->virtqs[i];
+			pthread_mutex_lock(&virtq->virtq_lock);
+			if (!virtq->configured) {
+				pthread_mutex_unlock(&virtq->virtq_lock);
+				continue;
+			}
+			ret = mlx5_vdpa_virtq_stop(priv, i);
+			if (ret) {
+				pthread_mutex_unlock(&virtq->virtq_lock);
+				DRV_LOG(ERR,
+				"Failed to stop virtq %d for LM log.", i);
+				return -1;
+			}
+			if (RTE_VHOST_NEED_LOG(features))
+				rte_vhost_log_used_vring(priv->vid, i, 0,
+				MLX5_VDPA_USED_RING_LEN(virtq->vq_size));
+			pthread_mutex_unlock(&virtq->virtq_lock);
+		}
 	}
 	return 0;
 }

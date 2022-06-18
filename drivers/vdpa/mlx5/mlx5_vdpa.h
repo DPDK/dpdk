@@ -72,6 +72,8 @@ enum {
 	MLX5_VDPA_NOTIFIER_STATE_ERR
 };
 
+#define MLX5_VDPA_USED_RING_LEN(size) \
+	((size) * sizeof(struct vring_used_elem) + sizeof(uint16_t) * 3)
 #define MLX5_VDPA_MAX_C_THRD 256
 #define MLX5_VDPA_MAX_TASKS_PER_THRD 4096
 #define MLX5_VDPA_TASKS_PER_DEV 64
@@ -81,6 +83,7 @@ enum {
 enum mlx5_vdpa_task_type {
 	MLX5_VDPA_TASK_REG_MR = 1,
 	MLX5_VDPA_TASK_SETUP_VIRTQ,
+	MLX5_VDPA_TASK_STOP_VIRTQ,
 };
 
 /* Generic task information and size must be multiple of 4B. */

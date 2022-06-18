@@ -104,6 +104,7 @@ mlx5_vdpa_c_thread_handle(void *arg)
 	struct mlx5_vdpa_priv *priv;
 	struct mlx5_vdpa_task task;
 	struct rte_ring *rng;
+	uint64_t features;
 	uint32_t thrd_idx;
 	uint32_t task_num;
 	int ret;
@@ -151,6 +152,39 @@ mlx5_vdpa_c_thread_handle(void *arg)
 				__atomic_fetch_add(
 					task.err_cnt, 1, __ATOMIC_RELAXED);
 			}
+			pthread_mutex_unlock(&virtq->virtq_lock);
+			break;
+		case MLX5_VDPA_TASK_STOP_VIRTQ:
+			virtq = &priv->virtqs[task.idx];
+			pthread_mutex_lock(&virtq->virtq_lock);
+			ret = mlx5_vdpa_virtq_stop(priv,
+					task.idx);
+			if (ret) {
+				DRV_LOG(ERR,
+				"Failed to stop virtq %d.",
+				task.idx);
+				__atomic_fetch_add(
+					task.err_cnt, 1,
+					__ATOMIC_RELAXED);
+				pthread_mutex_unlock(&virtq->virtq_lock);
+				break;
+			}
+			ret = rte_vhost_get_negotiated_features(
+				priv->vid, &features);
+			if (ret) {
+				DRV_LOG(ERR,
+		"Failed to get negotiated features virtq %d.",
+				task.idx);
+				__atomic_fetch_add(
+					task.err_cnt, 1,
+					__ATOMIC_RELAXED);
+				pthread_mutex_unlock(&virtq->virtq_lock);
+				break;
+			}
+			if (RTE_VHOST_NEED_LOG(features))
+				rte_vhost_log_used_vring(
+				priv->vid, task.idx, 0,
+			    MLX5_VDPA_USED_RING_LEN(virtq->vq_size));
 			pthread_mutex_unlock(&virtq->virtq_lock);
 			break;
 		default:
