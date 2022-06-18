@@ -85,7 +85,7 @@ mlx5_vdpa_get_queue_num(struct rte_vdpa_device *vdev, uint32_t *queue_num)
 		DRV_LOG(ERR, "Invalid vDPA device: %s.", vdev->device->name);
 		return -1;
 	}
-	*queue_num = priv->caps.max_num_virtio_queues;
+	*queue_num = priv->caps.max_num_virtio_queues / 2;
 	return 0;
 }
 
@@ -142,7 +142,7 @@ mlx5_vdpa_set_vring_state(int vid, int vring, int state)
 		DRV_LOG(ERR, "Invalid vDPA device: %s.", vdev->device->name);
 		return -EINVAL;
 	}
-	if (vring >= (int)priv->caps.max_num_virtio_queues * 2) {
+	if (vring >= (int)priv->caps.max_num_virtio_queues) {
 		DRV_LOG(ERR, "Too big vring id: %d.", vring);
 		return -E2BIG;
 	}
@@ -389,7 +389,7 @@ mlx5_vdpa_get_stats(struct rte_vdpa_device *vdev, int qid,
 		DRV_LOG(ERR, "Invalid device: %s.", vdev->device->name);
 		return -ENODEV;
 	}
-	if (qid >= (int)priv->caps.max_num_virtio_queues * 2) {
+	if (qid >= (int)priv->caps.max_num_virtio_queues) {
 		DRV_LOG(ERR, "Too big vring id: %d for device %s.", qid,
 				vdev->device->name);
 		return -E2BIG;
@@ -412,7 +412,7 @@ mlx5_vdpa_reset_stats(struct rte_vdpa_device *vdev, int qid)
 		DRV_LOG(ERR, "Invalid device: %s.", vdev->device->name);
 		return -ENODEV;
 	}
-	if (qid >= (int)priv->caps.max_num_virtio_queues * 2) {
+	if (qid >= (int)priv->caps.max_num_virtio_queues) {
 		DRV_LOG(ERR, "Too big vring id: %d for device %s.", qid,
 				vdev->device->name);
 		return -E2BIG;
@@ -628,7 +628,7 @@ mlx5_vdpa_dev_probe(struct mlx5_common_device *cdev,
 		DRV_LOG(DEBUG, "No capability to support virtq statistics.");
 	priv = rte_zmalloc("mlx5 vDPA device private", sizeof(*priv) +
 			   sizeof(struct mlx5_vdpa_virtq) *
-			   attr->vdpa.max_num_virtio_queues * 2,
+			   attr->vdpa.max_num_virtio_queues,
 			   RTE_CACHE_LINE_SIZE);
 	if (!priv) {
 		DRV_LOG(ERR, "Failed to allocate private memory.");
@@ -689,7 +689,7 @@ mlx5_vdpa_release_dev_resources(struct mlx5_vdpa_priv *priv)
 	uint32_t i;
 
 	mlx5_vdpa_dev_cache_clean(priv);
-	for (i = 0; i < priv->caps.max_num_virtio_queues * 2; i++) {
+	for (i = 0; i < priv->caps.max_num_virtio_queues; i++) {
 		if (!priv->virtqs[i].counters)
 			continue;
 		claim_zero(mlx5_devx_cmd_destroy(priv->virtqs[i].counters));
