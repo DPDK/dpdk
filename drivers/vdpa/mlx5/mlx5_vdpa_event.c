@@ -371,7 +371,7 @@ mlx5_vdpa_err_interrupt_handler(void *cb_arg __rte_unused)
 			goto unlock;
 		if (rte_rdtsc() / rte_get_tsc_hz() < MLX5_VDPA_ERROR_TIME_SEC)
 			goto unlock;
-		virtq->stopped = true;
+		virtq->stopped = 1;
 		/* Query error info. */
 		if (mlx5_vdpa_virtq_query(priv, vq_index))
 			goto log;

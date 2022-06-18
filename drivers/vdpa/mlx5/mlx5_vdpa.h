@@ -80,6 +80,7 @@ enum {
 /* Vdpa task types. */
 enum mlx5_vdpa_task_type {
 	MLX5_VDPA_TASK_REG_MR = 1,
+	MLX5_VDPA_TASK_SETUP_VIRTQ,
 };
 
 /* Generic task information and size must be multiple of 4B. */
@@ -117,12 +118,12 @@ struct mlx5_vdpa_vmem_info {
 
 struct mlx5_vdpa_virtq {
 	SLIST_ENTRY(mlx5_vdpa_virtq) next;
-	uint8_t enable;
 	uint16_t index;
 	uint16_t vq_size;
 	uint8_t notifier_state;
-	bool stopped;
 	uint32_t configured:1;
+	uint32_t enable:1;
+	uint32_t stopped:1;
 	uint32_t version;
 	pthread_mutex_t virtq_lock;
 	struct mlx5_vdpa_priv *priv;
@@ -565,11 +566,13 @@ bool
 mlx5_vdpa_task_add(struct mlx5_vdpa_priv *priv,
 		uint32_t thrd_idx,
 		enum mlx5_vdpa_task_type task_type,
-		uint32_t *bulk_refcnt, uint32_t *bulk_err_cnt,
+		uint32_t *remaining_cnt, uint32_t *err_cnt,
 		void **task_data, uint32_t num);
 int
 mlx5_vdpa_register_mr(struct mlx5_vdpa_priv *priv, uint32_t idx);
 bool
 mlx5_vdpa_c_thread_wait_bulk_tasks_done(uint32_t *remaining_cnt,
 		uint32_t *err_cnt, uint32_t sleep_time);
+int
+mlx5_vdpa_virtq_setup(struct mlx5_vdpa_priv *priv, int index, bool reg_kick);
 #endif /* RTE_PMD_MLX5_VDPA_H_ */

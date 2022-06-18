@@ -100,6 +100,7 @@ mlx5_vdpa_c_thread_handle(void *arg)
 {
 	struct mlx5_vdpa_conf_thread_mng *multhrd = arg;
 	pthread_t thread_id = pthread_self();
+	struct mlx5_vdpa_virtq *virtq;
 	struct mlx5_vdpa_priv *priv;
 	struct mlx5_vdpa_task task;
 	struct rte_ring *rng;
@@ -138,6 +139,19 @@ mlx5_vdpa_c_thread_handle(void *arg)
 				__atomic_fetch_add(task.err_cnt, 1,
 				__ATOMIC_RELAXED);
 			}
+			break;
+		case MLX5_VDPA_TASK_SETUP_VIRTQ:
+			virtq = &priv->virtqs[task.idx];
+			pthread_mutex_lock(&virtq->virtq_lock);
+			ret = mlx5_vdpa_virtq_setup(priv,
+				task.idx, false);
+			if (ret) {
+				DRV_LOG(ERR,
+					"Failed to setup virtq %d.", task.idx);
+				__atomic_fetch_add(
+					task.err_cnt, 1, __ATOMIC_RELAXED);
+			}
+			pthread_mutex_unlock(&virtq->virtq_lock);
 			break;
 		default:
 			DRV_LOG(ERR, "Invalid vdpa task type %d.",
