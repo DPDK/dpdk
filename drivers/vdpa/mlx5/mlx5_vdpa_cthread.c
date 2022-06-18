@@ -153,6 +153,7 @@ mlx5_vdpa_c_thread_handle(void *arg)
 				__atomic_fetch_add(
 					task.err_cnt, 1, __ATOMIC_RELAXED);
 			}
+			virtq->enable = 1;
 			pthread_mutex_unlock(&virtq->virtq_lock);
 			break;
 		case MLX5_VDPA_TASK_STOP_VIRTQ:
@@ -193,7 +194,7 @@ mlx5_vdpa_c_thread_handle(void *arg)
 			pthread_mutex_lock(&priv->steer_update_lock);
 			mlx5_vdpa_steer_unset(priv);
 			pthread_mutex_unlock(&priv->steer_update_lock);
-			mlx5_vdpa_virtqs_release(priv);
+			mlx5_vdpa_virtqs_release(priv, false);
 			mlx5_vdpa_drain_cq(priv);
 			if (priv->lm_mr.addr)
 				mlx5_os_wrapped_mkey_destroy(
@@ -204,6 +205,18 @@ mlx5_vdpa_c_thread_handle(void *arg)
 			__atomic_store_n(
 				&priv->dev_close_progress, 0,
 				__ATOMIC_RELAXED);
+			break;
+		case MLX5_VDPA_TASK_PREPARE_VIRTQ:
+			ret = mlx5_vdpa_virtq_single_resource_prepare(
+					priv, task.idx);
+			if (ret) {
+				DRV_LOG(ERR,
+				"Failed to prepare virtq %d.",
+				task.idx);
+				__atomic_fetch_add(
+				task.err_cnt, 1,
+				__ATOMIC_RELAXED);
+			}
 			break;
 		default:
 			DRV_LOG(ERR, "Invalid vdpa task type %d.",

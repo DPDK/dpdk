@@ -116,18 +116,29 @@ mlx5_vdpa_virtq_unreg_intr_handle_all(struct mlx5_vdpa_priv *priv)
 	}
 }
 
+static void
+mlx5_vdpa_vq_destroy(struct mlx5_vdpa_virtq *virtq)
+{
+	/* Clean pre-created resource in dev removal only */
+	claim_zero(mlx5_devx_cmd_destroy(virtq->virtq));
+	virtq->index = 0;
+	virtq->virtq = NULL;
+	virtq->configured = 0;
+}
+
 /* Release cached VQ resources. */
 void
 mlx5_vdpa_virtqs_cleanup(struct mlx5_vdpa_priv *priv)
 {
 	unsigned int i, j;
 
+	mlx5_vdpa_steer_unset(priv);
 	for (i = 0; i < priv->caps.max_num_virtio_queues; i++) {
 		struct mlx5_vdpa_virtq *virtq = &priv->virtqs[i];
 
-		if (virtq->index != i)
-			continue;
 		pthread_mutex_lock(&virtq->virtq_lock);
+		if (virtq->virtq)
+			mlx5_vdpa_vq_destroy(virtq);
 		for (j = 0; j < RTE_DIM(virtq->umems); ++j) {
 			if (virtq->umems[j].obj) {
 				claim_zero(mlx5_glue->devx_umem_dereg
@@ -157,29 +168,37 @@ mlx5_vdpa_virtq_unset(struct mlx5_vdpa_virtq *virtq)
 		if (ret)
 			DRV_LOG(WARNING, "Failed to stop virtq %d.",
 				virtq->index);
-		claim_zero(mlx5_devx_cmd_destroy(virtq->virtq));
-		virtq->index = 0;
-		virtq->virtq = NULL;
-		virtq->configured = 0;
 	}
+	mlx5_vdpa_vq_destroy(virtq);
 	virtq->notifier_state = MLX5_VDPA_NOTIFIER_STATE_DISABLED;
 }
 
 void
-mlx5_vdpa_virtqs_release(struct mlx5_vdpa_priv *priv)
+mlx5_vdpa_virtqs_release(struct mlx5_vdpa_priv *priv,
+	bool release_resource)
 {
 	struct mlx5_vdpa_virtq *virtq;
-	int i;
+	uint32_t i, max_virtq, valid_vq_num;
 
-	for (i = 0; i < priv->nr_virtqs; i++) {
+	valid_vq_num = ((priv->queues * 2) < priv->caps.max_num_virtio_queues) ?
+		(priv->queues * 2) : priv->caps.max_num_virtio_queues;
+	max_virtq = (release_resource &&
+		(valid_vq_num) > priv->nr_virtqs) ?
+		(valid_vq_num) : priv->nr_virtqs;
+	for (i = 0; i < max_virtq; i++) {
 		virtq = &priv->virtqs[i];
 		pthread_mutex_lock(&virtq->virtq_lock);
 		mlx5_vdpa_virtq_unset(virtq);
-		if (i < (priv->queues * 2))
+		virtq->enable = 0;
+		if (!release_resource && i < valid_vq_num)
 			mlx5_vdpa_virtq_single_resource_prepare(
 					priv, i);
 		pthread_mutex_unlock(&virtq->virtq_lock);
 	}
+	if (!release_resource && priv->queues &&
+		mlx5_vdpa_is_modify_virtq_supported(priv))
+		if (mlx5_vdpa_steer_update(priv, true))
+			mlx5_vdpa_steer_unset(priv);
 	priv->features = 0;
 	priv->nr_virtqs = 0;
 }
@@ -455,6 +474,9 @@ mlx5_vdpa_virtq_single_resource_prepare(struct mlx5_vdpa_priv *priv,
 		virtq->priv = priv;
 		if (!virtq->virtq)
 			return true;
+		virtq->rx_csum = attr.rx_csum;
+		virtq->virtio_version_1_0 = attr.virtio_version_1_0;
+		virtq->event_mode = attr.event_mode;
 	}
 	return false;
 }
@@ -538,6 +560,9 @@ mlx5_vdpa_virtq_setup(struct mlx5_vdpa_priv *priv, int index, bool reg_kick)
 		goto error;
 	}
 	claim_zero(rte_vhost_enable_guest_notification(priv->vid, index, 1));
+	virtq->rx_csum = attr.rx_csum;
+	virtq->virtio_version_1_0 = attr.virtio_version_1_0;
+	virtq->event_mode = attr.event_mode;
 	virtq->configured = 1;
 	rte_spinlock_lock(&priv->db_lock);
 	rte_write32(virtq->index, priv->virtq_db_addr);
@@ -629,6 +654,31 @@ mlx5_vdpa_features_validate(struct mlx5_vdpa_priv *priv)
 	return 0;
 }
 
+static bool
+mlx5_vdpa_is_pre_created_vq_mismatch(struct mlx5_vdpa_priv *priv,
+		struct mlx5_vdpa_virtq *virtq)
+{
+	struct rte_vhost_vring vq;
+	uint32_t event_mode;
+
+	if (virtq->rx_csum !=
+		!!(priv->features & (1ULL << VIRTIO_NET_F_GUEST_CSUM)))
+		return true;
+	if (virtq->virtio_version_1_0 !=
+		!!(priv->features & (1ULL << VIRTIO_F_VERSION_1)))
+		return true;
+	if (rte_vhost_get_vhost_vring(priv->vid, virtq->index, &vq))
+		return true;
+	if (vq.size != virtq->vq_size)
+		return true;
+	event_mode = vq.callfd != -1 || !(priv->caps.event_mode &
+		(1 << MLX5_VIRTQ_EVENT_MODE_NO_MSIX)) ?
+		MLX5_VIRTQ_EVENT_MODE_QP : MLX5_VIRTQ_EVENT_MODE_NO_MSIX;
+	if (virtq->event_mode != event_mode)
+		return true;
+	return false;
+}
+
 int
 mlx5_vdpa_virtqs_prepare(struct mlx5_vdpa_priv *priv)
 {
@@ -664,6 +714,15 @@ mlx5_vdpa_virtqs_prepare(struct mlx5_vdpa_priv *priv)
 			virtq = &priv->virtqs[i];
 			if (!virtq->enable)
 				continue;
+			if (priv->queues && virtq->virtq) {
+				if (mlx5_vdpa_is_pre_created_vq_mismatch(priv, virtq)) {
+					mlx5_vdpa_prepare_virtq_destroy(priv);
+					i = 0;
+					virtq = &priv->virtqs[i];
+					if (!virtq->enable)
+						continue;
+				}
+			}
 			thrd_idx = i % (conf_thread_mng.max_thrds + 1);
 			if (!thrd_idx) {
 				main_task_idx[task_num] = i;
@@ -693,6 +752,7 @@ mlx5_vdpa_virtqs_prepare(struct mlx5_vdpa_priv *priv)
 				pthread_mutex_unlock(&virtq->virtq_lock);
 				goto error;
 			}
+			virtq->enable = 1;
 			pthread_mutex_unlock(&virtq->virtq_lock);
 		}
 		if (mlx5_vdpa_c_thread_wait_bulk_tasks_done(&remaining_cnt,
@@ -724,20 +784,32 @@ mlx5_vdpa_virtqs_prepare(struct mlx5_vdpa_priv *priv)
 	} else {
 		for (i = 0; i < nr_vring; i++) {
 			virtq = &priv->virtqs[i];
-			pthread_mutex_lock(&virtq->virtq_lock);
-			if (virtq->enable) {
-				if (mlx5_vdpa_virtq_setup(priv, i, true)) {
-					pthread_mutex_unlock(
-						&virtq->virtq_lock);
-					goto error;
+			if (!virtq->enable)
+				continue;
+			if (priv->queues && virtq->virtq) {
+				if (mlx5_vdpa_is_pre_created_vq_mismatch(priv,
+					virtq)) {
+					mlx5_vdpa_prepare_virtq_destroy(
+					priv);
+					i = 0;
+					virtq = &priv->virtqs[i];
+					if (!virtq->enable)
+						continue;
 				}
 			}
+			pthread_mutex_lock(&virtq->virtq_lock);
+			if (mlx5_vdpa_virtq_setup(priv, i, true)) {
+				pthread_mutex_unlock(
+						&virtq->virtq_lock);
+				goto error;
+			}
+			virtq->enable = 1;
 			pthread_mutex_unlock(&virtq->virtq_lock);
 		}
 	}
 	return 0;
 error:
-	mlx5_vdpa_virtqs_release(priv);
+	mlx5_vdpa_virtqs_release(priv, true);
 	return -1;
 }
 
@@ -795,6 +867,11 @@ mlx5_vdpa_virtq_enable(struct mlx5_vdpa_priv *priv, int index, int enable)
 					"for virtq %d.", index);
 		}
 		mlx5_vdpa_virtq_unset(virtq);
+	} else {
+		if (virtq->virtq &&
+			mlx5_vdpa_is_pre_created_vq_mismatch(priv, virtq))
+			DRV_LOG(WARNING,
+			"Configuration mismatch dummy virtq %d.", index);
 	}
 	if (enable) {
 		ret = mlx5_vdpa_virtq_setup(priv, index, true);

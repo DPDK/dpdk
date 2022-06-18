@@ -122,6 +122,8 @@ New Features
 
   * Added new devargs options ``queue_size`` and ``queues``
     to allow prior creation of virtq resources.
+  * Added new devargs option ``max_conf_threads``
+    defining the number of management threads for parallel configurations.
 
 * **Updated Amazon ena driver.**
 
