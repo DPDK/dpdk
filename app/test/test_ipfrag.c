@@ -23,7 +23,6 @@ test_ipfrag(void)
 
 #include <rte_ip_frag.h>
 #include <rte_mbuf.h>
-#include <rte_memcpy.h>
 #include <rte_random.h>
 
 #define NUM_MBUFS 128
@@ -147,13 +146,13 @@ test_get_ipv4_opt(bool is_first_frag, bool opt_copied,
 		if (opt_copied) {
 			expected_opt->len =
 				sizeof(expected_first_frag_ipv4_opts_copied);
-			rte_memcpy(expected_opt->data,
+			memcpy(expected_opt->data,
 				expected_first_frag_ipv4_opts_copied,
 				sizeof(expected_first_frag_ipv4_opts_copied));
 		} else {
 			expected_opt->len =
 				sizeof(expected_first_frag_ipv4_opts_nocopied);
-			rte_memcpy(expected_opt->data,
+			memcpy(expected_opt->data,
 				expected_first_frag_ipv4_opts_nocopied,
 				sizeof(expected_first_frag_ipv4_opts_nocopied));
 		}
@@ -161,13 +160,13 @@ test_get_ipv4_opt(bool is_first_frag, bool opt_copied,
 		if (opt_copied) {
 			expected_opt->len =
 				sizeof(expected_sub_frag_ipv4_opts_copied);
-			rte_memcpy(expected_opt->data,
+			memcpy(expected_opt->data,
 				expected_sub_frag_ipv4_opts_copied,
 				sizeof(expected_sub_frag_ipv4_opts_copied));
 		} else {
 			expected_opt->len =
 				sizeof(expected_sub_frag_ipv4_opts_nocopied);
-			rte_memcpy(expected_opt->data,
+			memcpy(expected_opt->data,
 				expected_sub_frag_ipv4_opts_nocopied,
 				sizeof(expected_sub_frag_ipv4_opts_nocopied));
 		}
@@ -227,7 +226,7 @@ v4_allocate_packet_of(struct rte_mbuf *b, int fill, size_t s,
 	hdr->src_addr = rte_cpu_to_be_32(0x8080808);
 	hdr->dst_addr = rte_cpu_to_be_32(0x8080404);
 
-	rte_memcpy(hdr + 1, opt.data, opt.len);
+	memcpy(hdr + 1, opt.data, opt.len);
 }
 
 static void
@@ -312,7 +311,7 @@ test_get_frag_opt(struct rte_mbuf **mb, int32_t num,
 				char *iph_opt = rte_pktmbuf_mtod_offset(mb[i],
 				    char *, sizeof(struct rte_ipv4_hdr));
 				opt->len = opt_len;
-				rte_memcpy(opt->data, iph_opt, opt_len);
+				memcpy(opt->data, iph_opt, opt_len);
 			} else {
 				opt->len = RTE_IPV4_HDR_OPT_MAX_LEN;
 				memset(opt->data, RTE_IPV4_HDR_OPT_EOL,

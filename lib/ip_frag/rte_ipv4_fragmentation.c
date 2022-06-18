@@ -5,7 +5,6 @@
 #include <stddef.h>
 #include <errno.h>
 
-#include <rte_memcpy.h>
 #include <rte_ether.h>
 
 #include "ip_frag_common.h"
@@ -26,7 +25,7 @@ static inline void __fill_ipv4hdr_frag(struct rte_ipv4_hdr *dst,
 		const struct rte_ipv4_hdr *src, uint16_t header_len,
 		uint16_t len, uint16_t fofs, uint16_t dofs, uint32_t mf)
 {
-	rte_memcpy(dst, src, header_len);
+	memcpy(dst, src, header_len);
 	fofs = (uint16_t)(fofs + (dofs >> RTE_IPV4_HDR_FO_SHIFT));
 	fofs = (uint16_t)(fofs | mf << RTE_IPV4_HDR_MF_SHIFT);
 	dst->fragment_offset = rte_cpu_to_be_16(fofs);
@@ -48,7 +47,7 @@ static inline uint16_t __create_ipopt_frag_hdr(uint8_t *iph,
 	struct rte_ipv4_hdr *iph_opt = (struct rte_ipv4_hdr *)ipopt_frag_hdr;
 
 	ipopt_len = 0;
-	rte_memcpy(ipopt_frag_hdr, iph, sizeof(struct rte_ipv4_hdr));
+	memcpy(ipopt_frag_hdr, iph, sizeof(struct rte_ipv4_hdr));
 	ipopt_frag_hdr += sizeof(struct rte_ipv4_hdr);
 
 	uint8_t *p_opt = iph + sizeof(struct rte_ipv4_hdr);
@@ -65,7 +64,7 @@ static inline uint16_t __create_ipopt_frag_hdr(uint8_t *iph,
 			break;
 
 		if (RTE_IPV4_HDR_OPT_COPIED(*p_opt)) {
-			rte_memcpy(ipopt_frag_hdr + ipopt_len,
+			memcpy(ipopt_frag_hdr + ipopt_len,
 				p_opt, p_opt[1]);
 			ipopt_len += p_opt[1];
 		}
