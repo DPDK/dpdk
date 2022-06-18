@@ -102,6 +102,20 @@ mlx5_vdpa_virtq_unregister_intr_handle(struct mlx5_vdpa_virtq *virtq)
 	virtq->intr_handle = NULL;
 }
 
+void
+mlx5_vdpa_virtq_unreg_intr_handle_all(struct mlx5_vdpa_priv *priv)
+{
+	uint32_t i;
+	struct mlx5_vdpa_virtq *virtq;
+
+	for (i = 0; i < priv->nr_virtqs; i++) {
+		virtq = &priv->virtqs[i];
+		pthread_mutex_lock(&virtq->virtq_lock);
+		mlx5_vdpa_virtq_unregister_intr_handle(virtq);
+		pthread_mutex_unlock(&virtq->virtq_lock);
+	}
+}
+
 /* Release cached VQ resources. */
 void
 mlx5_vdpa_virtqs_cleanup(struct mlx5_vdpa_priv *priv)

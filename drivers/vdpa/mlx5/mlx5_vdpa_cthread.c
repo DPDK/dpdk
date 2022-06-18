@@ -63,7 +63,8 @@ mlx5_vdpa_task_add(struct mlx5_vdpa_priv *priv,
 		task[i].type = task_type;
 		task[i].remaining_cnt = remaining_cnt;
 		task[i].err_cnt = err_cnt;
-		task[i].idx = data[i];
+		if (data)
+			task[i].idx = data[i];
 	}
 	if (!mlx5_vdpa_c_thrd_ring_enqueue_bulk(rng, (void **)&task, num, NULL))
 		return -1;
@@ -186,6 +187,23 @@ mlx5_vdpa_c_thread_handle(void *arg)
 				priv->vid, task.idx, 0,
 			    MLX5_VDPA_USED_RING_LEN(virtq->vq_size));
 			pthread_mutex_unlock(&virtq->virtq_lock);
+			break;
+		case MLX5_VDPA_TASK_DEV_CLOSE_NOWAIT:
+			mlx5_vdpa_virtq_unreg_intr_handle_all(priv);
+			pthread_mutex_lock(&priv->steer_update_lock);
+			mlx5_vdpa_steer_unset(priv);
+			pthread_mutex_unlock(&priv->steer_update_lock);
+			mlx5_vdpa_virtqs_release(priv);
+			mlx5_vdpa_drain_cq(priv);
+			if (priv->lm_mr.addr)
+				mlx5_os_wrapped_mkey_destroy(
+					&priv->lm_mr);
+			if (!priv->connected)
+				mlx5_vdpa_dev_cache_clean(priv);
+			priv->vid = 0;
+			__atomic_store_n(
+				&priv->dev_close_progress, 0,
+				__ATOMIC_RELAXED);
 			break;
 		default:
 			DRV_LOG(ERR, "Invalid vdpa task type %d.",

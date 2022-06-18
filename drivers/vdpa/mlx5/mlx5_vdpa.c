@@ -246,13 +246,33 @@ mlx5_vdpa_mtu_set(struct mlx5_vdpa_priv *priv)
 	return kern_mtu == vhost_mtu ? 0 : -1;
 }
 
-static void
+void
 mlx5_vdpa_dev_cache_clean(struct mlx5_vdpa_priv *priv)
 {
 	/* Clean pre-created resource in dev removal only. */
 	if (!priv->queues)
 		mlx5_vdpa_virtqs_cleanup(priv);
 	mlx5_vdpa_mem_dereg(priv);
+}
+
+static bool
+mlx5_vdpa_wait_dev_close_tasks_done(struct mlx5_vdpa_priv *priv)
+{
+	uint32_t timeout = 0;
+
+	/* Check and wait all close tasks done. */
+	while (__atomic_load_n(&priv->dev_close_progress,
+		__ATOMIC_RELAXED) != 0 && timeout < 1000) {
+		rte_delay_us_sleep(10000);
+		timeout++;
+	}
+	if (priv->dev_close_progress) {
+		DRV_LOG(ERR,
+		"Failed to wait close device tasks done vid %d.",
+		priv->vid);
+		return true;
+	}
+	return false;
 }
 
 static int
@@ -272,6 +292,27 @@ mlx5_vdpa_dev_close(int vid)
 		ret |= mlx5_vdpa_lm_log(priv);
 		priv->state = MLX5_VDPA_STATE_IN_PROGRESS;
 	}
+	if (priv->use_c_thread) {
+		if (priv->last_c_thrd_idx >=
+			(conf_thread_mng.max_thrds - 1))
+			priv->last_c_thrd_idx = 0;
+		else
+			priv->last_c_thrd_idx++;
+		__atomic_store_n(&priv->dev_close_progress,
+			1, __ATOMIC_RELAXED);
+		if (mlx5_vdpa_task_add(priv,
+			priv->last_c_thrd_idx,
+			MLX5_VDPA_TASK_DEV_CLOSE_NOWAIT,
+			NULL, NULL, NULL, 1)) {
+			DRV_LOG(ERR,
+			"Fail to add dev close task. ");
+			goto single_thrd;
+		}
+		priv->state = MLX5_VDPA_STATE_PROBED;
+		DRV_LOG(INFO, "vDPA device %d was closed.", vid);
+		return ret;
+	}
+single_thrd:
 	pthread_mutex_lock(&priv->steer_update_lock);
 	mlx5_vdpa_steer_unset(priv);
 	pthread_mutex_unlock(&priv->steer_update_lock);
@@ -279,10 +320,12 @@ mlx5_vdpa_dev_close(int vid)
 	mlx5_vdpa_drain_cq(priv);
 	if (priv->lm_mr.addr)
 		mlx5_os_wrapped_mkey_destroy(&priv->lm_mr);
-	priv->state = MLX5_VDPA_STATE_PROBED;
 	if (!priv->connected)
 		mlx5_vdpa_dev_cache_clean(priv);
 	priv->vid = 0;
+	__atomic_store_n(&priv->dev_close_progress, 0,
+		__ATOMIC_RELAXED);
+	priv->state = MLX5_VDPA_STATE_PROBED;
 	DRV_LOG(INFO, "vDPA device %d was closed.", vid);
 	return ret;
 }
@@ -303,6 +346,8 @@ mlx5_vdpa_dev_config(int vid)
 		DRV_LOG(ERR, "Failed to reconfigure vid %d.", vid);
 		return -1;
 	}
+	if (mlx5_vdpa_wait_dev_close_tasks_done(priv))
+		return -1;
 	priv->vid = vid;
 	priv->connected = true;
 	if (mlx5_vdpa_mtu_set(priv))
@@ -445,8 +490,11 @@ mlx5_vdpa_dev_cleanup(int vid)
 		DRV_LOG(ERR, "Invalid vDPA device: %s.", vdev->device->name);
 		return -1;
 	}
-	if (priv->state == MLX5_VDPA_STATE_PROBED)
+	if (priv->state == MLX5_VDPA_STATE_PROBED) {
+		if (priv->use_c_thread)
+			mlx5_vdpa_wait_dev_close_tasks_done(priv);
 		mlx5_vdpa_dev_cache_clean(priv);
+	}
 	priv->connected = false;
 	return 0;
 }
@@ -845,6 +893,8 @@ mlx5_vdpa_dev_release(struct mlx5_vdpa_priv *priv)
 {
 	if (priv->state == MLX5_VDPA_STATE_CONFIGURED)
 		mlx5_vdpa_dev_close(priv->vid);
+	if (priv->use_c_thread)
+		mlx5_vdpa_wait_dev_close_tasks_done(priv);
 	mlx5_vdpa_release_dev_resources(priv);
 	if (priv->vdev)
 		rte_vdpa_unregister_device(priv->vdev);

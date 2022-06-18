@@ -84,6 +84,7 @@ enum mlx5_vdpa_task_type {
 	MLX5_VDPA_TASK_REG_MR = 1,
 	MLX5_VDPA_TASK_SETUP_VIRTQ,
 	MLX5_VDPA_TASK_STOP_VIRTQ,
+	MLX5_VDPA_TASK_DEV_CLOSE_NOWAIT,
 };
 
 /* Generic task information and size must be multiple of 4B. */
@@ -206,6 +207,7 @@ struct mlx5_vdpa_priv {
 	uint64_t features; /* Negotiated features. */
 	uint16_t log_max_rqt_size;
 	uint16_t last_c_thrd_idx;
+	uint16_t dev_close_progress;
 	uint16_t num_mrs; /* Number of memory regions. */
 	struct mlx5_vdpa_steer steer;
 	struct mlx5dv_var *var;
@@ -578,4 +580,10 @@ mlx5_vdpa_c_thread_wait_bulk_tasks_done(uint32_t *remaining_cnt,
 		uint32_t *err_cnt, uint32_t sleep_time);
 int
 mlx5_vdpa_virtq_setup(struct mlx5_vdpa_priv *priv, int index, bool reg_kick);
+void
+mlx5_vdpa_vq_destroy(struct mlx5_vdpa_virtq *virtq);
+void
+mlx5_vdpa_dev_cache_clean(struct mlx5_vdpa_priv *priv);
+void
+mlx5_vdpa_virtq_unreg_intr_handle_all(struct mlx5_vdpa_priv *priv);
 #endif /* RTE_PMD_MLX5_VDPA_H_ */
