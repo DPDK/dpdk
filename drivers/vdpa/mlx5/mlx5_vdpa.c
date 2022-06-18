@@ -136,6 +136,7 @@ mlx5_vdpa_set_vring_state(int vid, int vring, int state)
 	struct rte_vdpa_device *vdev = rte_vhost_get_vdpa_device(vid);
 	struct mlx5_vdpa_priv *priv =
 		mlx5_vdpa_find_priv_resource_by_vdev(vdev);
+	struct mlx5_vdpa_virtq *virtq;
 	int ret;
 
 	if (priv == NULL) {
@@ -146,9 +147,10 @@ mlx5_vdpa_set_vring_state(int vid, int vring, int state)
 		DRV_LOG(ERR, "Too big vring id: %d.", vring);
 		return -E2BIG;
 	}
-	pthread_mutex_lock(&priv->vq_config_lock);
+	virtq = &priv->virtqs[vring];
+	pthread_mutex_lock(&virtq->virtq_lock);
 	ret = mlx5_vdpa_virtq_enable(priv, vring, state);
-	pthread_mutex_unlock(&priv->vq_config_lock);
+	pthread_mutex_unlock(&virtq->virtq_lock);
 	return ret;
 }
 
@@ -268,7 +270,9 @@ mlx5_vdpa_dev_close(int vid)
 		ret |= mlx5_vdpa_lm_log(priv);
 		priv->state = MLX5_VDPA_STATE_IN_PROGRESS;
 	}
+	pthread_mutex_lock(&priv->steer_update_lock);
 	mlx5_vdpa_steer_unset(priv);
+	pthread_mutex_unlock(&priv->steer_update_lock);
 	mlx5_vdpa_virtqs_release(priv);
 	mlx5_vdpa_drain_cq(priv);
 	if (priv->lm_mr.addr)
@@ -277,8 +281,6 @@ mlx5_vdpa_dev_close(int vid)
 	if (!priv->connected)
 		mlx5_vdpa_dev_cache_clean(priv);
 	priv->vid = 0;
-	/* The mutex may stay locked after event thread cancel - initiate it. */
-	pthread_mutex_init(&priv->vq_config_lock, NULL);
 	DRV_LOG(INFO, "vDPA device %d was closed.", vid);
 	return ret;
 }
@@ -550,15 +552,21 @@ mlx5_vdpa_config_get(struct mlx5_kvargs_ctrl *mkvlist,
 static int
 mlx5_vdpa_virtq_resource_prepare(struct mlx5_vdpa_priv *priv)
 {
+	struct mlx5_vdpa_virtq *virtq;
 	uint32_t index;
 	uint32_t i;
 
+	for (index = 0; index < priv->caps.max_num_virtio_queues * 2;
+		index++) {
+		virtq = &priv->virtqs[index];
+		pthread_mutex_init(&virtq->virtq_lock, NULL);
+	}
 	if (!priv->queues)
 		return 0;
 	for (index = 0; index < (priv->queues * 2); ++index) {
-		struct mlx5_vdpa_virtq *virtq = &priv->virtqs[index];
+		virtq = &priv->virtqs[index];
 		int ret = mlx5_vdpa_event_qp_prepare(priv, priv->queue_size,
-					-1, &virtq->eqp);
+					-1, virtq);
 
 		if (ret) {
 			DRV_LOG(ERR, "Failed to create event QPs for virtq %d.",
@@ -717,7 +725,8 @@ mlx5_vdpa_dev_probe(struct mlx5_common_device *cdev,
 	priv->num_lag_ports = attr->num_lag_ports;
 	if (attr->num_lag_ports == 0)
 		priv->num_lag_ports = 1;
-	pthread_mutex_init(&priv->vq_config_lock, NULL);
+	rte_spinlock_init(&priv->db_lock);
+	pthread_mutex_init(&priv->steer_update_lock, NULL);
 	priv->cdev = cdev;
 	mlx5_vdpa_config_get(mkvlist, priv);
 	if (mlx5_vdpa_create_dev_resources(priv))
@@ -803,7 +812,6 @@ mlx5_vdpa_dev_release(struct mlx5_vdpa_priv *priv)
 	mlx5_vdpa_release_dev_resources(priv);
 	if (priv->vdev)
 		rte_vdpa_unregister_device(priv->vdev);
-	pthread_mutex_destroy(&priv->vq_config_lock);
 	rte_free(priv);
 }
 

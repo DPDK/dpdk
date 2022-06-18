@@ -24,13 +24,17 @@ mlx5_vdpa_virtq_kick_handler(void *cb_arg)
 	int nbytes;
 	int retry;
 
+	pthread_mutex_lock(&virtq->virtq_lock);
 	if (priv->state != MLX5_VDPA_STATE_CONFIGURED && !virtq->enable) {
+		pthread_mutex_unlock(&virtq->virtq_lock);
 		DRV_LOG(ERR,  "device %d queue %d down, skip kick handling",
 			priv->vid, virtq->index);
 		return;
 	}
-	if (rte_intr_fd_get(virtq->intr_handle) < 0)
+	if (rte_intr_fd_get(virtq->intr_handle) < 0) {
+		pthread_mutex_unlock(&virtq->virtq_lock);
 		return;
+	}
 	for (retry = 0; retry < 3; ++retry) {
 		nbytes = read(rte_intr_fd_get(virtq->intr_handle), &buf,
 			      8);
@@ -44,9 +48,14 @@ mlx5_vdpa_virtq_kick_handler(void *cb_arg)
 		}
 		break;
 	}
-	if (nbytes < 0)
+	if (nbytes < 0) {
+		pthread_mutex_unlock(&virtq->virtq_lock);
 		return;
+	}
+	rte_spinlock_lock(&priv->db_lock);
 	rte_write32(virtq->index, priv->virtq_db_addr);
+	rte_spinlock_unlock(&priv->db_lock);
+	pthread_mutex_unlock(&virtq->virtq_lock);
 	if (priv->state != MLX5_VDPA_STATE_CONFIGURED && !virtq->enable) {
 		DRV_LOG(ERR,  "device %d queue %d down, skip kick handling",
 			priv->vid, virtq->index);
@@ -66,6 +75,33 @@ mlx5_vdpa_virtq_kick_handler(void *cb_arg)
 	DRV_LOG(DEBUG, "Ring virtq %u doorbell.", virtq->index);
 }
 
+/* Virtq must be locked before calling this function. */
+static void
+mlx5_vdpa_virtq_unregister_intr_handle(struct mlx5_vdpa_virtq *virtq)
+{
+	int ret = -EAGAIN;
+
+	if (!virtq->intr_handle)
+		return;
+	if (rte_intr_fd_get(virtq->intr_handle) >= 0) {
+		while (ret == -EAGAIN) {
+			ret = rte_intr_callback_unregister(virtq->intr_handle,
+					mlx5_vdpa_virtq_kick_handler, virtq);
+			if (ret == -EAGAIN) {
+				DRV_LOG(DEBUG, "Try again to unregister fd %d of virtq %hu interrupt",
+					rte_intr_fd_get(virtq->intr_handle),
+					virtq->index);
+				pthread_mutex_unlock(&virtq->virtq_lock);
+				usleep(MLX5_VDPA_INTR_RETRIES_USEC);
+				pthread_mutex_lock(&virtq->virtq_lock);
+			}
+		}
+		(void)rte_intr_fd_set(virtq->intr_handle, -1);
+	}
+	rte_intr_instance_free(virtq->intr_handle);
+	virtq->intr_handle = NULL;
+}
+
 /* Release cached VQ resources. */
 void
 mlx5_vdpa_virtqs_cleanup(struct mlx5_vdpa_priv *priv)
@@ -75,6 +111,7 @@ mlx5_vdpa_virtqs_cleanup(struct mlx5_vdpa_priv *priv)
 	for (i = 0; i < priv->caps.max_num_virtio_queues; i++) {
 		struct mlx5_vdpa_virtq *virtq = &priv->virtqs[i];
 
+		pthread_mutex_lock(&virtq->virtq_lock);
 		virtq->configured = 0;
 		for (j = 0; j < RTE_DIM(virtq->umems); ++j) {
 			if (virtq->umems[j].obj) {
@@ -90,28 +127,17 @@ mlx5_vdpa_virtqs_cleanup(struct mlx5_vdpa_priv *priv)
 		}
 		if (virtq->eqp.fw_qp)
 			mlx5_vdpa_event_qp_destroy(&virtq->eqp);
+		pthread_mutex_unlock(&virtq->virtq_lock);
 	}
 }
+
 
 static int
 mlx5_vdpa_virtq_unset(struct mlx5_vdpa_virtq *virtq)
 {
 	int ret = -EAGAIN;
 
-	if (rte_intr_fd_get(virtq->intr_handle) >= 0) {
-		while (ret == -EAGAIN) {
-			ret = rte_intr_callback_unregister(virtq->intr_handle,
-					mlx5_vdpa_virtq_kick_handler, virtq);
-			if (ret == -EAGAIN) {
-				DRV_LOG(DEBUG, "Try again to unregister fd %d of virtq %hu interrupt",
-					rte_intr_fd_get(virtq->intr_handle),
-					virtq->index);
-				usleep(MLX5_VDPA_INTR_RETRIES_USEC);
-			}
-		}
-		rte_intr_fd_set(virtq->intr_handle, -1);
-	}
-	rte_intr_instance_free(virtq->intr_handle);
+	mlx5_vdpa_virtq_unregister_intr_handle(virtq);
 	if (virtq->configured) {
 		ret = mlx5_vdpa_virtq_stop(virtq->priv, virtq->index);
 		if (ret)
@@ -128,10 +154,15 @@ mlx5_vdpa_virtq_unset(struct mlx5_vdpa_virtq *virtq)
 void
 mlx5_vdpa_virtqs_release(struct mlx5_vdpa_priv *priv)
 {
+	struct mlx5_vdpa_virtq *virtq;
 	int i;
 
-	for (i = 0; i < priv->nr_virtqs; i++)
-		mlx5_vdpa_virtq_unset(&priv->virtqs[i]);
+	for (i = 0; i < priv->nr_virtqs; i++) {
+		virtq = &priv->virtqs[i];
+		pthread_mutex_lock(&virtq->virtq_lock);
+		mlx5_vdpa_virtq_unset(virtq);
+		pthread_mutex_unlock(&virtq->virtq_lock);
+	}
 	priv->features = 0;
 	priv->nr_virtqs = 0;
 }
@@ -250,7 +281,7 @@ mlx5_vdpa_virtq_sub_objs_prepare(struct mlx5_vdpa_priv *priv,
 	MLX5_VIRTQ_EVENT_MODE_QP : MLX5_VIRTQ_EVENT_MODE_NO_MSIX;
 	if (attr->event_mode == MLX5_VIRTQ_EVENT_MODE_QP) {
 		ret = mlx5_vdpa_event_qp_prepare(priv,
-				vq->size, vq->callfd, &virtq->eqp);
+				vq->size, vq->callfd, virtq);
 		if (ret) {
 			DRV_LOG(ERR,
 				"Failed to create event QPs for virtq %d.",
@@ -420,7 +451,9 @@ mlx5_vdpa_virtq_setup(struct mlx5_vdpa_priv *priv, int index)
 	}
 	claim_zero(rte_vhost_enable_guest_notification(priv->vid, index, 1));
 	virtq->configured = 1;
+	rte_spinlock_lock(&priv->db_lock);
 	rte_write32(virtq->index, priv->virtq_db_addr);
+	rte_spinlock_unlock(&priv->db_lock);
 	/* Setup doorbell mapping. */
 	virtq->intr_handle =
 		rte_intr_instance_alloc(RTE_INTR_INSTANCE_F_SHARED);
@@ -441,7 +474,7 @@ mlx5_vdpa_virtq_setup(struct mlx5_vdpa_priv *priv, int index)
 		if (rte_intr_callback_register(virtq->intr_handle,
 					       mlx5_vdpa_virtq_kick_handler,
 					       virtq)) {
-			rte_intr_fd_set(virtq->intr_handle, -1);
+			(void)rte_intr_fd_set(virtq->intr_handle, -1);
 			DRV_LOG(ERR, "Failed to register virtq %d interrupt.",
 				index);
 			goto error;
@@ -537,6 +570,7 @@ mlx5_vdpa_virtqs_prepare(struct mlx5_vdpa_priv *priv)
 	uint32_t i;
 	uint16_t nr_vring = rte_vhost_get_vring_num(priv->vid);
 	int ret = rte_vhost_get_negotiated_features(priv->vid, &priv->features);
+	struct mlx5_vdpa_virtq *virtq;
 
 	if (ret || mlx5_vdpa_features_validate(priv)) {
 		DRV_LOG(ERR, "Failed to configure negotiated features.");
@@ -556,9 +590,17 @@ mlx5_vdpa_virtqs_prepare(struct mlx5_vdpa_priv *priv)
 		return -1;
 	}
 	priv->nr_virtqs = nr_vring;
-	for (i = 0; i < nr_vring; i++)
-		if (priv->virtqs[i].enable && mlx5_vdpa_virtq_setup(priv, i))
-			goto error;
+	for (i = 0; i < nr_vring; i++) {
+		virtq = &priv->virtqs[i];
+		if (virtq->enable) {
+			pthread_mutex_lock(&virtq->virtq_lock);
+			if (mlx5_vdpa_virtq_setup(priv, i)) {
+				pthread_mutex_unlock(&virtq->virtq_lock);
+				goto error;
+			}
+			pthread_mutex_unlock(&virtq->virtq_lock);
+		}
+	}
 	return 0;
 error:
 	mlx5_vdpa_virtqs_release(priv);

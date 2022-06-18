@@ -24,10 +24,19 @@ mlx5_vdpa_logging_enable(struct mlx5_vdpa_priv *priv, int enable)
 		virtq = &priv->virtqs[i];
 		if (!virtq->configured) {
 			DRV_LOG(DEBUG, "virtq %d is invalid for dirty bitmap enabling.", i);
-		} else if (mlx5_devx_cmd_modify_virtq(priv->virtqs[i].virtq,
+		} else {
+			struct mlx5_vdpa_virtq *virtq = &priv->virtqs[i];
+
+			pthread_mutex_lock(&virtq->virtq_lock);
+			if (mlx5_devx_cmd_modify_virtq(priv->virtqs[i].virtq,
 			   &attr)) {
-			DRV_LOG(ERR, "Failed to modify virtq %d for dirty bitmap enabling.", i);
-			return -1;
+				pthread_mutex_unlock(&virtq->virtq_lock);
+				DRV_LOG(ERR,
+					"Failed to modify virtq %d for dirty bitmap enabling.",
+					i);
+				return -1;
+			}
+			pthread_mutex_unlock(&virtq->virtq_lock);
 		}
 	}
 	return 0;
@@ -59,10 +68,19 @@ mlx5_vdpa_dirty_bitmap_set(struct mlx5_vdpa_priv *priv, uint64_t log_base,
 		virtq = &priv->virtqs[i];
 		if (!virtq->configured) {
 			DRV_LOG(DEBUG, "virtq %d is invalid for LM.", i);
-		} else if (mlx5_devx_cmd_modify_virtq(priv->virtqs[i].virtq,
-						      &attr)) {
-			DRV_LOG(ERR, "Failed to modify virtq %d for LM.", i);
-			goto err;
+		} else {
+			struct mlx5_vdpa_virtq *virtq = &priv->virtqs[i];
+
+			pthread_mutex_lock(&virtq->virtq_lock);
+			if (mlx5_devx_cmd_modify_virtq(
+					priv->virtqs[i].virtq,
+					&attr)) {
+				pthread_mutex_unlock(&virtq->virtq_lock);
+				DRV_LOG(ERR,
+				"Failed to modify virtq %d for LM.", i);
+				goto err;
+			}
+			pthread_mutex_unlock(&virtq->virtq_lock);
 		}
 	}
 	return 0;
@@ -77,6 +95,7 @@ err:
 int
 mlx5_vdpa_lm_log(struct mlx5_vdpa_priv *priv)
 {
+	struct mlx5_vdpa_virtq *virtq;
 	uint64_t features;
 	int ret = rte_vhost_get_negotiated_features(priv->vid, &features);
 	int i;
@@ -88,10 +107,13 @@ mlx5_vdpa_lm_log(struct mlx5_vdpa_priv *priv)
 	if (!RTE_VHOST_NEED_LOG(features))
 		return 0;
 	for (i = 0; i < priv->nr_virtqs; ++i) {
+		virtq = &priv->virtqs[i];
 		if (!priv->virtqs[i].virtq) {
 			DRV_LOG(DEBUG, "virtq %d is invalid for LM log.", i);
 		} else {
+			pthread_mutex_lock(&virtq->virtq_lock);
 			ret = mlx5_vdpa_virtq_stop(priv, i);
+			pthread_mutex_unlock(&virtq->virtq_lock);
 			if (ret) {
 				DRV_LOG(ERR, "Failed to stop virtq %d for LM "
 					"log.", i);

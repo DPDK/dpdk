@@ -82,6 +82,7 @@ struct mlx5_vdpa_virtq {
 	bool stopped;
 	uint32_t configured:1;
 	uint32_t version;
+	pthread_mutex_t virtq_lock;
 	struct mlx5_vdpa_priv *priv;
 	struct mlx5_devx_obj *virtq;
 	struct mlx5_devx_obj *counters;
@@ -126,7 +127,8 @@ struct mlx5_vdpa_priv {
 	TAILQ_ENTRY(mlx5_vdpa_priv) next;
 	bool connected;
 	enum mlx5_dev_state state;
-	pthread_mutex_t vq_config_lock;
+	rte_spinlock_t db_lock;
+	pthread_mutex_t steer_update_lock;
 	uint64_t no_traffic_counter;
 	pthread_t timer_tid;
 	int event_mode;
@@ -222,14 +224,15 @@ int mlx5_vdpa_mem_register(struct mlx5_vdpa_priv *priv);
  *   Number of descriptors.
  * @param[in] callfd
  *   The guest notification file descriptor.
- * @param[in/out] eqp
- *   Pointer to the event QP structure.
+ * @param[in/out] virtq
+ *   Pointer to the virt-queue structure.
  *
  * @return
  *   0 on success, -1 otherwise and rte_errno is set.
  */
-int mlx5_vdpa_event_qp_prepare(struct mlx5_vdpa_priv *priv, uint16_t desc_n,
-			      int callfd, struct mlx5_vdpa_event_qp *eqp);
+int
+mlx5_vdpa_event_qp_prepare(struct mlx5_vdpa_priv *priv, uint16_t desc_n,
+	int callfd, struct mlx5_vdpa_virtq *virtq);
 
 /**
  * Destroy an event QP and all its related resources.
