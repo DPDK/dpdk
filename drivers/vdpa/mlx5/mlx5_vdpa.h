@@ -277,13 +277,15 @@ int mlx5_vdpa_mem_register(struct mlx5_vdpa_priv *priv);
  *   The guest notification file descriptor.
  * @param[in/out] virtq
  *   Pointer to the virt-queue structure.
+ * @param[in] reset
+ *   If true, it will reset event qp.
  *
  * @return
  *   0 on success, -1 otherwise and rte_errno is set.
  */
 int
 mlx5_vdpa_event_qp_prepare(struct mlx5_vdpa_priv *priv, uint16_t desc_n,
-	int callfd, struct mlx5_vdpa_virtq *virtq);
+	int callfd, struct mlx5_vdpa_virtq *virtq, bool reset);
 
 /**
  * Destroy an event QP and all its related resources.
@@ -403,11 +405,13 @@ void mlx5_vdpa_steer_unset(struct mlx5_vdpa_priv *priv);
  *
  * @param[in] priv
  *   The vdpa driver private structure.
+ * @param[in] is_dummy
+ *   If set, it is updated with dummy queue for prepare resource.
  *
  * @return
  *   0 on success, a negative value otherwise.
  */
-int mlx5_vdpa_steer_update(struct mlx5_vdpa_priv *priv);
+int mlx5_vdpa_steer_update(struct mlx5_vdpa_priv *priv, bool is_dummy);
 
 /**
  * Setup steering and all its related resources to enable RSS traffic from the
@@ -581,9 +585,14 @@ mlx5_vdpa_c_thread_wait_bulk_tasks_done(uint32_t *remaining_cnt,
 int
 mlx5_vdpa_virtq_setup(struct mlx5_vdpa_priv *priv, int index, bool reg_kick);
 void
-mlx5_vdpa_vq_destroy(struct mlx5_vdpa_virtq *virtq);
-void
 mlx5_vdpa_dev_cache_clean(struct mlx5_vdpa_priv *priv);
 void
 mlx5_vdpa_virtq_unreg_intr_handle_all(struct mlx5_vdpa_priv *priv);
+bool
+mlx5_vdpa_virtq_single_resource_prepare(struct mlx5_vdpa_priv *priv,
+		int index);
+int
+mlx5_vdpa_qps2rst2rts(struct mlx5_vdpa_event_qp *eqp);
+void
+mlx5_vdpa_virtq_unset(struct mlx5_vdpa_virtq *virtq);
 #endif /* RTE_PMD_MLX5_VDPA_H_ */

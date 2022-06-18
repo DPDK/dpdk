@@ -628,65 +628,39 @@ mlx5_vdpa_config_get(struct mlx5_kvargs_ctrl *mkvlist,
 static int
 mlx5_vdpa_virtq_resource_prepare(struct mlx5_vdpa_priv *priv)
 {
-	struct mlx5_vdpa_virtq *virtq;
+	uint32_t max_queues;
 	uint32_t index;
-	uint32_t i;
+	struct mlx5_vdpa_virtq *virtq;
 
-	for (index = 0; index < priv->caps.max_num_virtio_queues * 2;
+	for (index = 0; index < priv->caps.max_num_virtio_queues;
 		index++) {
 		virtq = &priv->virtqs[index];
 		pthread_mutex_init(&virtq->virtq_lock, NULL);
 	}
-	if (!priv->queues)
+	if (!priv->queues || !priv->queue_size)
 		return 0;
-	for (index = 0; index < (priv->queues * 2); ++index) {
+	max_queues = (priv->queues < priv->caps.max_num_virtio_queues) ?
+		(priv->queues * 2) : (priv->caps.max_num_virtio_queues);
+	for (index = 0; index < max_queues; ++index)
+		if (mlx5_vdpa_virtq_single_resource_prepare(priv,
+			index))
+			goto error;
+	if (mlx5_vdpa_is_modify_virtq_supported(priv))
+		if (mlx5_vdpa_steer_update(priv, true))
+			goto error;
+	return 0;
+error:
+	for (index = 0; index < max_queues; ++index) {
 		virtq = &priv->virtqs[index];
-		int ret = mlx5_vdpa_event_qp_prepare(priv, priv->queue_size,
-					-1, virtq);
-
-		if (ret) {
-			DRV_LOG(ERR, "Failed to create event QPs for virtq %d.",
-				index);
-			return -1;
-		}
-		if (priv->caps.queue_counters_valid) {
-			if (!virtq->counters)
-				virtq->counters =
-					mlx5_devx_cmd_create_virtio_q_counters
-						(priv->cdev->ctx);
-			if (!virtq->counters) {
-				DRV_LOG(ERR, "Failed to create virtq couners for virtq"
-					" %d.", index);
-				return -1;
-			}
-		}
-		for (i = 0; i < RTE_DIM(virtq->umems); ++i) {
-			uint32_t size;
-			void *buf;
-			struct mlx5dv_devx_umem *obj;
-
-			size = priv->caps.umems[i].a * priv->queue_size +
-					priv->caps.umems[i].b;
-			buf = rte_zmalloc(__func__, size, 4096);
-			if (buf == NULL) {
-				DRV_LOG(ERR, "Cannot allocate umem %d memory for virtq"
-						" %u.", i, index);
-				return -1;
-			}
-			obj = mlx5_glue->devx_umem_reg(priv->cdev->ctx, buf,
-					size, IBV_ACCESS_LOCAL_WRITE);
-			if (obj == NULL) {
-				rte_free(buf);
-				DRV_LOG(ERR, "Failed to register umem %d for virtq %u.",
-						i, index);
-				return -1;
-			}
-			virtq->umems[i].size = size;
-			virtq->umems[i].buf = buf;
-			virtq->umems[i].obj = obj;
+		if (virtq->virtq) {
+			pthread_mutex_lock(&virtq->virtq_lock);
+			mlx5_vdpa_virtq_unset(virtq);
+			pthread_mutex_unlock(&virtq->virtq_lock);
 		}
 	}
-	return 0;
+	if (mlx5_vdpa_is_modify_virtq_supported(priv))
+		mlx5_vdpa_steer_unset(priv);
+	return -1;
 }
 
 static int

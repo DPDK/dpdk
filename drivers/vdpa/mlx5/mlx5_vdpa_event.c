@@ -249,7 +249,7 @@ mlx5_vdpa_drain_cq(struct mlx5_vdpa_priv *priv)
 {
 	unsigned int i;
 
-	for (i = 0; i < priv->caps.max_num_virtio_queues * 2; i++) {
+	for (i = 0; i < priv->caps.max_num_virtio_queues; i++) {
 		struct mlx5_vdpa_cq *cq = &priv->virtqs[i].eqp.cq;
 
 		mlx5_vdpa_queue_complete(cq);
@@ -618,7 +618,7 @@ mlx5_vdpa_qps2rts(struct mlx5_vdpa_event_qp *eqp)
 	return 0;
 }
 
-static int
+int
 mlx5_vdpa_qps2rst2rts(struct mlx5_vdpa_event_qp *eqp)
 {
 	if (mlx5_devx_cmd_modify_qp_state(eqp->fw_qp, MLX5_CMD_OP_QP_2RST,
@@ -638,7 +638,7 @@ mlx5_vdpa_qps2rst2rts(struct mlx5_vdpa_event_qp *eqp)
 
 int
 mlx5_vdpa_event_qp_prepare(struct mlx5_vdpa_priv *priv, uint16_t desc_n,
-	int callfd, struct mlx5_vdpa_virtq *virtq)
+	int callfd, struct mlx5_vdpa_virtq *virtq, bool reset)
 {
 	struct mlx5_vdpa_event_qp *eqp = &virtq->eqp;
 	struct mlx5_devx_qp_attr attr = {0};
@@ -649,11 +649,10 @@ mlx5_vdpa_event_qp_prepare(struct mlx5_vdpa_priv *priv, uint16_t desc_n,
 		/* Reuse existing resources. */
 		eqp->cq.callfd = callfd;
 		/* FW will set event qp to error state in q destroy. */
-		if (!mlx5_vdpa_qps2rst2rts(eqp)) {
+		if (reset && !mlx5_vdpa_qps2rst2rts(eqp))
 			rte_write32(rte_cpu_to_be_32(RTE_BIT32(log_desc_n)),
 					&eqp->sw_qp.db_rec[0]);
-			return 0;
-		}
+		return 0;
 	}
 	if (eqp->fw_qp)
 		mlx5_vdpa_event_qp_destroy(eqp);

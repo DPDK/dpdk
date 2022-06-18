@@ -146,10 +146,10 @@ mlx5_vdpa_virtqs_cleanup(struct mlx5_vdpa_priv *priv)
 	}
 }
 
-static int
+void
 mlx5_vdpa_virtq_unset(struct mlx5_vdpa_virtq *virtq)
 {
-	int ret = -EAGAIN;
+	int ret;
 
 	mlx5_vdpa_virtq_unregister_intr_handle(virtq);
 	if (virtq->configured) {
@@ -157,12 +157,12 @@ mlx5_vdpa_virtq_unset(struct mlx5_vdpa_virtq *virtq)
 		if (ret)
 			DRV_LOG(WARNING, "Failed to stop virtq %d.",
 				virtq->index);
-		virtq->configured = 0;
 		claim_zero(mlx5_devx_cmd_destroy(virtq->virtq));
+		virtq->index = 0;
+		virtq->virtq = NULL;
+		virtq->configured = 0;
 	}
-	virtq->virtq = NULL;
 	virtq->notifier_state = MLX5_VDPA_NOTIFIER_STATE_DISABLED;
-	return 0;
 }
 
 void
@@ -175,6 +175,9 @@ mlx5_vdpa_virtqs_release(struct mlx5_vdpa_priv *priv)
 		virtq = &priv->virtqs[i];
 		pthread_mutex_lock(&virtq->virtq_lock);
 		mlx5_vdpa_virtq_unset(virtq);
+		if (i < (priv->queues * 2))
+			mlx5_vdpa_virtq_single_resource_prepare(
+					priv, i);
 		pthread_mutex_unlock(&virtq->virtq_lock);
 	}
 	priv->features = 0;
@@ -258,7 +261,8 @@ mlx5_vdpa_hva_to_gpa(struct rte_vhost_memory *mem, uint64_t hva)
 static int
 mlx5_vdpa_virtq_sub_objs_prepare(struct mlx5_vdpa_priv *priv,
 		struct mlx5_devx_virtq_attr *attr,
-		struct rte_vhost_vring *vq, int index)
+		struct rte_vhost_vring *vq,
+		int index, bool is_prepare)
 {
 	struct mlx5_vdpa_virtq *virtq = &priv->virtqs[index];
 	uint64_t gpa;
@@ -277,11 +281,15 @@ mlx5_vdpa_virtq_sub_objs_prepare(struct mlx5_vdpa_priv *priv,
 			MLX5_VIRTQ_MODIFY_TYPE_Q_MKEY |
 			MLX5_VIRTQ_MODIFY_TYPE_QUEUE_FEATURE_BIT_MASK |
 			MLX5_VIRTQ_MODIFY_TYPE_EVENT_MODE;
-	attr->tso_ipv4 = !!(priv->features & (1ULL << VIRTIO_NET_F_HOST_TSO4));
-	attr->tso_ipv6 = !!(priv->features & (1ULL << VIRTIO_NET_F_HOST_TSO6));
-	attr->tx_csum = !!(priv->features & (1ULL << VIRTIO_NET_F_CSUM));
-	attr->rx_csum = !!(priv->features & (1ULL << VIRTIO_NET_F_GUEST_CSUM));
-	attr->virtio_version_1_0 =
+	attr->tso_ipv4 = is_prepare ? 1 :
+		!!(priv->features & (1ULL << VIRTIO_NET_F_HOST_TSO4));
+	attr->tso_ipv6 = is_prepare ? 1 :
+		!!(priv->features & (1ULL << VIRTIO_NET_F_HOST_TSO6));
+	attr->tx_csum = is_prepare ? 1 :
+		!!(priv->features & (1ULL << VIRTIO_NET_F_CSUM));
+	attr->rx_csum = is_prepare ? 1 :
+		!!(priv->features & (1ULL << VIRTIO_NET_F_GUEST_CSUM));
+	attr->virtio_version_1_0 = is_prepare ? 1 :
 		!!(priv->features & (1ULL << VIRTIO_F_VERSION_1));
 	attr->q_type =
 		(priv->features & (1ULL << VIRTIO_F_RING_PACKED)) ?
@@ -290,12 +298,12 @@ mlx5_vdpa_virtq_sub_objs_prepare(struct mlx5_vdpa_priv *priv,
 	 * No need event QPs creation when the guest in poll mode or when the
 	 * capability allows it.
 	 */
-	attr->event_mode = vq->callfd != -1 ||
+	attr->event_mode = is_prepare || vq->callfd != -1 ||
 	!(priv->caps.event_mode & (1 << MLX5_VIRTQ_EVENT_MODE_NO_MSIX)) ?
 	MLX5_VIRTQ_EVENT_MODE_QP : MLX5_VIRTQ_EVENT_MODE_NO_MSIX;
 	if (attr->event_mode == MLX5_VIRTQ_EVENT_MODE_QP) {
-		ret = mlx5_vdpa_event_qp_prepare(priv,
-				vq->size, vq->callfd, virtq);
+		ret = mlx5_vdpa_event_qp_prepare(priv, vq->size,
+				vq->callfd, virtq, !virtq->virtq);
 		if (ret) {
 			DRV_LOG(ERR,
 				"Failed to create event QPs for virtq %d.",
@@ -320,7 +328,7 @@ mlx5_vdpa_virtq_sub_objs_prepare(struct mlx5_vdpa_priv *priv,
 		attr->counters_obj_id = virtq->counters->id;
 	}
 	/* Setup 3 UMEMs for each virtq. */
-	if (virtq->virtq) {
+	if (!virtq->virtq) {
 		for (i = 0; i < RTE_DIM(virtq->umems); ++i) {
 			uint32_t size;
 			void *buf;
@@ -345,7 +353,7 @@ mlx5_vdpa_virtq_sub_objs_prepare(struct mlx5_vdpa_priv *priv,
 			buf = rte_zmalloc(__func__,
 				size, 4096);
 			if (buf == NULL) {
-				DRV_LOG(ERR, "Cannot allocate umem %d memory for virtq"
+				DRV_LOG(ERR, "Cannot allocate umem %d memory for virtq."
 				" %u.", i, index);
 				return -1;
 			}
@@ -366,7 +374,7 @@ reuse:
 			attr->umems[i].size = virtq->umems[i].size;
 		}
 	}
-	if (attr->q_type == MLX5_VIRTQ_TYPE_SPLIT) {
+	if (!is_prepare && attr->q_type == MLX5_VIRTQ_TYPE_SPLIT) {
 		gpa = mlx5_vdpa_hva_to_gpa(priv->vmem_info.vmem,
 					   (uint64_t)(uintptr_t)vq->desc);
 		if (!gpa) {
@@ -389,21 +397,23 @@ reuse:
 		}
 		attr->available_addr = gpa;
 	}
-	ret = rte_vhost_get_vring_base(priv->vid,
+	if (!is_prepare) {
+		ret = rte_vhost_get_vring_base(priv->vid,
 			index, &last_avail_idx, &last_used_idx);
-	if (ret) {
-		last_avail_idx = 0;
-		last_used_idx = 0;
-		DRV_LOG(WARNING, "Couldn't get vring base, idx are set to 0.");
-	} else {
-		DRV_LOG(INFO, "vid %d: Init last_avail_idx=%d, last_used_idx=%d for "
+		if (ret) {
+			last_avail_idx = 0;
+			last_used_idx = 0;
+			DRV_LOG(WARNING, "Couldn't get vring base, idx are set to 0.");
+		} else {
+			DRV_LOG(INFO, "vid %d: Init last_avail_idx=%d, last_used_idx=%d for "
 				"virtq %d.", priv->vid, last_avail_idx,
 				last_used_idx, index);
+		}
 	}
 	attr->hw_available_index = last_avail_idx;
 	attr->hw_used_index = last_used_idx;
 	attr->q_size = vq->size;
-	attr->mkey = priv->gpa_mkey_index;
+	attr->mkey = is_prepare ? 0 : priv->gpa_mkey_index;
 	attr->tis_id = priv->tiss[(index / 2) % priv->num_lag_ports]->id;
 	attr->queue_index = index;
 	attr->pd = priv->cdev->pdn;
@@ -414,6 +424,39 @@ reuse:
 		attr->hw_max_pending_comp)
 		attr->mod_fields_bitmap |= MLX5_VIRTQ_MODIFY_TYPE_QUEUE_PERIOD;
 	return 0;
+}
+
+bool
+mlx5_vdpa_virtq_single_resource_prepare(struct mlx5_vdpa_priv *priv,
+		int index)
+{
+	struct mlx5_devx_virtq_attr attr = {0};
+	struct mlx5_vdpa_virtq *virtq;
+	struct rte_vhost_vring vq = {
+		.size = priv->queue_size,
+		.callfd = -1,
+	};
+	int ret;
+
+	virtq = &priv->virtqs[index];
+	virtq->index = index;
+	virtq->vq_size = vq.size;
+	virtq->configured = 0;
+	virtq->virtq = NULL;
+	ret = mlx5_vdpa_virtq_sub_objs_prepare(priv, &attr, &vq, index, true);
+	if (ret) {
+		DRV_LOG(ERR,
+		"Cannot prepare setup resource for virtq %d.", index);
+		return true;
+	}
+	if (mlx5_vdpa_is_modify_virtq_supported(priv)) {
+		virtq->virtq =
+		mlx5_devx_cmd_create_virtq(priv->cdev->ctx, &attr);
+		virtq->priv = priv;
+		if (!virtq->virtq)
+			return true;
+	}
+	return false;
 }
 
 bool
@@ -473,7 +516,7 @@ mlx5_vdpa_virtq_setup(struct mlx5_vdpa_priv *priv, int index, bool reg_kick)
 	virtq->priv = priv;
 	virtq->stopped = 0;
 	ret = mlx5_vdpa_virtq_sub_objs_prepare(priv, &attr,
-				&vq, index);
+				&vq, index, false);
 	if (ret) {
 		DRV_LOG(ERR, "Failed to setup update virtq attr %d.",
 			index);
@@ -746,7 +789,7 @@ mlx5_vdpa_virtq_enable(struct mlx5_vdpa_priv *priv, int index, int enable)
 	if (virtq->configured) {
 		virtq->enable = 0;
 		if (is_virtq_recvq(virtq->index, priv->nr_virtqs)) {
-			ret = mlx5_vdpa_steer_update(priv);
+			ret = mlx5_vdpa_steer_update(priv, false);
 			if (ret)
 				DRV_LOG(WARNING, "Failed to disable steering "
 					"for virtq %d.", index);
@@ -761,7 +804,7 @@ mlx5_vdpa_virtq_enable(struct mlx5_vdpa_priv *priv, int index, int enable)
 		}
 		virtq->enable = 1;
 		if (is_virtq_recvq(virtq->index, priv->nr_virtqs)) {
-			ret = mlx5_vdpa_steer_update(priv);
+			ret = mlx5_vdpa_steer_update(priv, false);
 			if (ret)
 				DRV_LOG(WARNING, "Failed to enable steering "
 					"for virtq %d.", index);
