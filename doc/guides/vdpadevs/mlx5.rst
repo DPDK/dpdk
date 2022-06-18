@@ -101,6 +101,20 @@ for an additional list of options shared with other mlx5 drivers.
 
   - 0, HW default.
 
+- ``queue_size`` parameter [int]
+
+  - 1 - 1024, Virtio queue depth for pre-creating queue resource to speed up
+    first time queue creation. Set it together with ``queues`` parameter.
+
+  - 0, default value, no pre-create virtq resource.
+
+- ``queues`` parameter [int]
+
+  - 1 - 128, Maximum number of virtio queue pair (including 1 Rx queue and 1 Tx queue)
+    for pre-creating queue resource to speed up first time queue creation.
+    Set it together with ``queue_size`` parameter.
+
+  - 0, default value, no pre-create virtq resource.
 
 Error handling
 ^^^^^^^^^^^^^^

@@ -135,6 +135,8 @@ struct mlx5_vdpa_priv {
 	uint8_t hw_latency_mode; /* Hardware CQ moderation mode. */
 	uint16_t hw_max_latency_us; /* Hardware CQ moderation period in usec. */
 	uint16_t hw_max_pending_comp; /* Hardware CQ moderation counter. */
+	uint16_t queue_size; /* virtq depth for pre-creating virtq resource */
+	uint16_t queues; /* Max virtq pair for pre-creating virtq resource */
 	struct rte_vdpa_device *vdev; /* vDPA device. */
 	struct mlx5_common_device *cdev; /* Backend mlx5 device. */
 	int vid; /* vhost device id. */
