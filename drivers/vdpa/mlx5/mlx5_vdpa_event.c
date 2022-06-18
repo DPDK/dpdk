@@ -507,7 +507,7 @@ mlx5_vdpa_cqe_event_setup(struct mlx5_vdpa_priv *priv)
 	pthread_attr_t attr;
 	char name[16];
 	const struct sched_param sp = {
-		.sched_priority = sched_get_priority_max(SCHED_RR),
+		.sched_priority = sched_get_priority_max(SCHED_RR) - 1,
 	};
 
 	if (!priv->eventc)

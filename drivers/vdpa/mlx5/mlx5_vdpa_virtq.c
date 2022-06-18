@@ -43,7 +43,7 @@ mlx5_vdpa_virtq_kick_handler(void *cb_arg)
 			    errno == EWOULDBLOCK ||
 			    errno == EAGAIN)
 				continue;
-			DRV_LOG(ERR,  "Failed to read kickfd of virtq %d: %s",
+			DRV_LOG(ERR,  "Failed to read kickfd of virtq %d: %s.",
 				virtq->index, strerror(errno));
 		}
 		break;
@@ -57,7 +57,7 @@ mlx5_vdpa_virtq_kick_handler(void *cb_arg)
 	rte_spinlock_unlock(&priv->db_lock);
 	pthread_mutex_unlock(&virtq->virtq_lock);
 	if (priv->state != MLX5_VDPA_STATE_CONFIGURED && !virtq->enable) {
-		DRV_LOG(ERR,  "device %d queue %d down, skip kick handling",
+		DRV_LOG(ERR,  "device %d queue %d down, skip kick handling.",
 			priv->vid, virtq->index);
 		return;
 	}
@@ -218,7 +218,7 @@ mlx5_vdpa_virtq_query(struct mlx5_vdpa_priv *priv, int index)
 		return -1;
 	}
 	if (attr.state == MLX5_VIRTQ_STATE_ERROR)
-		DRV_LOG(WARNING, "vid %d vring %d hw error=%hhu",
+		DRV_LOG(WARNING, "vid %d vring %d hw error=%hhu.",
 			priv->vid, index, attr.error_type);
 	return 0;
 }
@@ -380,7 +380,7 @@ reuse:
 	if (ret) {
 		last_avail_idx = 0;
 		last_used_idx = 0;
-		DRV_LOG(WARNING, "Couldn't get vring base, idx are set to 0");
+		DRV_LOG(WARNING, "Couldn't get vring base, idx are set to 0.");
 	} else {
 		DRV_LOG(INFO, "vid %d: Init last_avail_idx=%d, last_used_idx=%d for "
 				"virtq %d.", priv->vid, last_avail_idx,

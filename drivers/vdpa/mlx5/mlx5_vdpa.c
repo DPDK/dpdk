@@ -51,6 +51,8 @@ TAILQ_HEAD(mlx5_vdpa_privs, mlx5_vdpa_priv) priv_list =
 					      TAILQ_HEAD_INITIALIZER(priv_list);
 static pthread_mutex_t priv_list_lock = PTHREAD_MUTEX_INITIALIZER;
 
+struct mlx5_vdpa_conf_thread_mng conf_thread_mng;
+
 static void mlx5_vdpa_dev_release(struct mlx5_vdpa_priv *priv);
 
 static struct mlx5_vdpa_priv *
@@ -494,6 +496,29 @@ mlx5_vdpa_args_check_handler(const char *key, const char *val, void *opaque)
 			DRV_LOG(WARNING, "Invalid event_core %s.", val);
 		else
 			priv->event_core = tmp;
+	} else if (strcmp(key, "max_conf_threads") == 0) {
+		if (tmp) {
+			priv->use_c_thread = true;
+			if (!conf_thread_mng.initializer_priv) {
+				conf_thread_mng.initializer_priv = priv;
+				if (tmp > MLX5_VDPA_MAX_C_THRD) {
+					DRV_LOG(WARNING,
+				"Invalid max_conf_threads %s "
+				"and set max_conf_threads to %d",
+				val, MLX5_VDPA_MAX_C_THRD);
+					tmp = MLX5_VDPA_MAX_C_THRD;
+				}
+				conf_thread_mng.max_thrds = tmp;
+			} else if (tmp != conf_thread_mng.max_thrds) {
+				DRV_LOG(WARNING,
+	"max_conf_threads is PMD argument and not per device, "
+	"only the first device configuration set it, current value is %d "
+	"and will not be changed to %d.",
+				conf_thread_mng.max_thrds, (int)tmp);
+			}
+		} else {
+			priv->use_c_thread = false;
+		}
 	} else if (strcmp(key, "hw_latency_mode") == 0) {
 		priv->hw_latency_mode = (uint32_t)tmp;
 	} else if (strcmp(key, "hw_max_latency_us") == 0) {
@@ -522,6 +547,9 @@ mlx5_vdpa_config_get(struct mlx5_kvargs_ctrl *mkvlist,
 		"hw_max_latency_us",
 		"hw_max_pending_comp",
 		"no_traffic_time",
+		"queue_size",
+		"queues",
+		"max_conf_threads",
 		NULL,
 	};
 
@@ -729,6 +757,13 @@ mlx5_vdpa_dev_probe(struct mlx5_common_device *cdev,
 	pthread_mutex_init(&priv->steer_update_lock, NULL);
 	priv->cdev = cdev;
 	mlx5_vdpa_config_get(mkvlist, priv);
+	if (priv->use_c_thread) {
+		if (conf_thread_mng.initializer_priv == priv)
+			if (mlx5_vdpa_mult_threads_create(priv->event_core))
+				goto error;
+		__atomic_fetch_add(&conf_thread_mng.refcnt, 1,
+			__ATOMIC_RELAXED);
+	}
 	if (mlx5_vdpa_create_dev_resources(priv))
 		goto error;
 	priv->vdev = rte_vdpa_register_device(cdev->dev, &mlx5_vdpa_ops);
@@ -743,6 +778,8 @@ mlx5_vdpa_dev_probe(struct mlx5_common_device *cdev,
 	pthread_mutex_unlock(&priv_list_lock);
 	return 0;
 error:
+	if (conf_thread_mng.initializer_priv == priv)
+		mlx5_vdpa_mult_threads_destroy(false);
 	if (priv)
 		mlx5_vdpa_dev_release(priv);
 	return -rte_errno;
@@ -812,6 +849,10 @@ mlx5_vdpa_dev_release(struct mlx5_vdpa_priv *priv)
 	mlx5_vdpa_release_dev_resources(priv);
 	if (priv->vdev)
 		rte_vdpa_unregister_device(priv->vdev);
+	if (priv->use_c_thread)
+		if (__atomic_fetch_sub(&conf_thread_mng.refcnt,
+			1, __ATOMIC_RELAXED) == 1)
+			mlx5_vdpa_mult_threads_destroy(true);
 	rte_free(priv);
 }
 

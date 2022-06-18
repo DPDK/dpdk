@@ -73,6 +73,22 @@ enum {
 	MLX5_VDPA_NOTIFIER_STATE_ERR
 };
 
+#define MLX5_VDPA_MAX_C_THRD 256
+
+/* Generic mlx5_vdpa_c_thread information. */
+struct mlx5_vdpa_c_thread {
+	pthread_t tid;
+};
+
+struct mlx5_vdpa_conf_thread_mng {
+	void *initializer_priv;
+	uint32_t refcnt;
+	uint32_t max_thrds;
+	pthread_mutex_t cthrd_lock;
+	struct mlx5_vdpa_c_thread cthrd[MLX5_VDPA_MAX_C_THRD];
+};
+extern struct mlx5_vdpa_conf_thread_mng conf_thread_mng;
+
 struct mlx5_vdpa_virtq {
 	SLIST_ENTRY(mlx5_vdpa_virtq) next;
 	uint8_t enable;
@@ -126,6 +142,7 @@ enum mlx5_dev_state {
 struct mlx5_vdpa_priv {
 	TAILQ_ENTRY(mlx5_vdpa_priv) next;
 	bool connected;
+	bool use_c_thread;
 	enum mlx5_dev_state state;
 	rte_spinlock_t db_lock;
 	pthread_mutex_t steer_update_lock;
@@ -496,4 +513,23 @@ mlx5_vdpa_drain_cq(struct mlx5_vdpa_priv *priv);
 
 bool
 mlx5_vdpa_is_modify_virtq_supported(struct mlx5_vdpa_priv *priv);
+
+/**
+ * Create configuration multi-threads resource
+ *
+ * @param[in] cpu_core
+ *   CPU core number to set configuration threads affinity to.
+ *
+ * @return
+ *   0 on success, a negative value otherwise.
+ */
+int
+mlx5_vdpa_mult_threads_create(int cpu_core);
+
+/**
+ * Destroy configuration multi-threads resource
+ *
+ */
+void
+mlx5_vdpa_mult_threads_destroy(bool need_unlock);
 #endif /* RTE_PMD_MLX5_VDPA_H_ */
