@@ -74,10 +74,22 @@ enum {
 };
 
 #define MLX5_VDPA_MAX_C_THRD 256
+#define MLX5_VDPA_MAX_TASKS_PER_THRD 4096
+#define MLX5_VDPA_TASKS_PER_DEV 64
+
+/* Generic task information and size must be multiple of 4B. */
+struct mlx5_vdpa_task {
+	struct mlx5_vdpa_priv *priv;
+	uint32_t *remaining_cnt;
+	uint32_t *err_cnt;
+	uint32_t idx;
+} __rte_packed __rte_aligned(4);
 
 /* Generic mlx5_vdpa_c_thread information. */
 struct mlx5_vdpa_c_thread {
 	pthread_t tid;
+	struct rte_ring *rng;
+	pthread_cond_t c_cond;
 };
 
 struct mlx5_vdpa_conf_thread_mng {
@@ -532,4 +544,9 @@ mlx5_vdpa_mult_threads_create(int cpu_core);
  */
 void
 mlx5_vdpa_mult_threads_destroy(bool need_unlock);
+
+bool
+mlx5_vdpa_task_add(struct mlx5_vdpa_priv *priv,
+		uint32_t thrd_idx,
+		uint32_t num);
 #endif /* RTE_PMD_MLX5_VDPA_H_ */
