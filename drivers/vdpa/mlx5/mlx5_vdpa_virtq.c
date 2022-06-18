@@ -87,6 +87,8 @@ mlx5_vdpa_virtqs_cleanup(struct mlx5_vdpa_priv *priv)
 			}
 			virtq->umems[j].size = 0;
 		}
+		if (virtq->eqp.fw_qp)
+			mlx5_vdpa_event_qp_destroy(&virtq->eqp);
 	}
 }
 
@@ -117,8 +119,6 @@ mlx5_vdpa_virtq_unset(struct mlx5_vdpa_virtq *virtq)
 		claim_zero(mlx5_devx_cmd_destroy(virtq->virtq));
 	}
 	virtq->virtq = NULL;
-	if (virtq->eqp.fw_qp)
-		mlx5_vdpa_event_qp_destroy(&virtq->eqp);
 	virtq->notifier_state = MLX5_VDPA_NOTIFIER_STATE_DISABLED;
 	return 0;
 }
@@ -246,7 +246,7 @@ mlx5_vdpa_virtq_setup(struct mlx5_vdpa_priv *priv, int index)
 						      MLX5_VIRTQ_EVENT_MODE_QP :
 						  MLX5_VIRTQ_EVENT_MODE_NO_MSIX;
 	if (attr.event_mode == MLX5_VIRTQ_EVENT_MODE_QP) {
-		ret = mlx5_vdpa_event_qp_create(priv, vq.size, vq.callfd,
+		ret = mlx5_vdpa_event_qp_prepare(priv, vq.size, vq.callfd,
 						&virtq->eqp);
 		if (ret) {
 			DRV_LOG(ERR, "Failed to create event QPs for virtq %d.",

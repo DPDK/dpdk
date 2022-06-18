@@ -137,7 +137,7 @@ mlx5_vdpa_cq_poll(struct mlx5_vdpa_cq *cq)
 		};
 		uint32_t word;
 	} last_word;
-	uint16_t next_wqe_counter = cq->cq_ci;
+	uint16_t next_wqe_counter = eqp->qp_pi;
 	uint16_t cur_wqe_counter;
 	uint16_t comp;
 
@@ -156,9 +156,10 @@ mlx5_vdpa_cq_poll(struct mlx5_vdpa_cq *cq)
 		rte_io_wmb();
 		/* Ring CQ doorbell record. */
 		cq->cq_obj.db_rec[0] = rte_cpu_to_be_32(cq->cq_ci);
+		eqp->qp_pi += comp;
 		rte_io_wmb();
 		/* Ring SW QP doorbell record. */
-		eqp->sw_qp.db_rec[0] = rte_cpu_to_be_32(cq->cq_ci + cq_size);
+		eqp->sw_qp.db_rec[0] = rte_cpu_to_be_32(eqp->qp_pi + cq_size);
 	}
 	return comp;
 }
@@ -230,6 +231,25 @@ mlx5_vdpa_queues_complete(struct mlx5_vdpa_priv *priv)
 			max = comp;
 	}
 	return max;
+}
+
+void
+mlx5_vdpa_drain_cq(struct mlx5_vdpa_priv *priv)
+{
+	unsigned int i;
+
+	for (i = 0; i < priv->caps.max_num_virtio_queues * 2; i++) {
+		struct mlx5_vdpa_cq *cq = &priv->virtqs[i].eqp.cq;
+
+		mlx5_vdpa_queue_complete(cq);
+		if (cq->cq_obj.cq) {
+			cq->cq_obj.cqes[0].wqe_counter =
+				rte_cpu_to_be_16(UINT16_MAX);
+			priv->virtqs[i].eqp.qp_pi = 0;
+			if (!cq->armed)
+				mlx5_vdpa_cq_arm(priv, cq);
+		}
+	}
 }
 
 /* Wait on all CQs channel for completion event. */
@@ -574,14 +594,44 @@ mlx5_vdpa_qps2rts(struct mlx5_vdpa_event_qp *eqp)
 	return 0;
 }
 
+static int
+mlx5_vdpa_qps2rst2rts(struct mlx5_vdpa_event_qp *eqp)
+{
+	if (mlx5_devx_cmd_modify_qp_state(eqp->fw_qp, MLX5_CMD_OP_QP_2RST,
+					  eqp->sw_qp.qp->id)) {
+		DRV_LOG(ERR, "Failed to modify FW QP to RST state(%u).",
+			rte_errno);
+		return -1;
+	}
+	if (mlx5_devx_cmd_modify_qp_state(eqp->sw_qp.qp,
+			MLX5_CMD_OP_QP_2RST, eqp->fw_qp->id)) {
+		DRV_LOG(ERR, "Failed to modify SW QP to RST state(%u).",
+			rte_errno);
+		return -1;
+	}
+	return mlx5_vdpa_qps2rts(eqp);
+}
+
 int
-mlx5_vdpa_event_qp_create(struct mlx5_vdpa_priv *priv, uint16_t desc_n,
+mlx5_vdpa_event_qp_prepare(struct mlx5_vdpa_priv *priv, uint16_t desc_n,
 			  int callfd, struct mlx5_vdpa_event_qp *eqp)
 {
 	struct mlx5_devx_qp_attr attr = {0};
 	uint16_t log_desc_n = rte_log2_u32(desc_n);
 	uint32_t ret;
 
+	if (eqp->cq.cq_obj.cq != NULL && log_desc_n == eqp->cq.log_desc_n) {
+		/* Reuse existing resources. */
+		eqp->cq.callfd = callfd;
+		/* FW will set event qp to error state in q destroy. */
+		if (!mlx5_vdpa_qps2rst2rts(eqp)) {
+			rte_write32(rte_cpu_to_be_32(RTE_BIT32(log_desc_n)),
+					&eqp->sw_qp.db_rec[0]);
+			return 0;
+		}
+	}
+	if (eqp->fw_qp)
+		mlx5_vdpa_event_qp_destroy(eqp);
 	if (mlx5_vdpa_cq_create(priv, log_desc_n, callfd, &eqp->cq))
 		return -1;
 	attr.pd = priv->cdev->pdn;
@@ -608,8 +658,10 @@ mlx5_vdpa_event_qp_create(struct mlx5_vdpa_priv *priv, uint16_t desc_n,
 	}
 	if (mlx5_vdpa_qps2rts(eqp))
 		goto error;
+	eqp->qp_pi = 0;
 	/* First ringing. */
-	rte_write32(rte_cpu_to_be_32(RTE_BIT32(log_desc_n)),
+	if (eqp->sw_qp.db_rec)
+		rte_write32(rte_cpu_to_be_32(RTE_BIT32(log_desc_n)),
 			&eqp->sw_qp.db_rec[0]);
 	return 0;
 error:

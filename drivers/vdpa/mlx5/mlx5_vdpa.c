@@ -270,6 +270,7 @@ mlx5_vdpa_dev_close(int vid)
 	}
 	mlx5_vdpa_steer_unset(priv);
 	mlx5_vdpa_virtqs_release(priv);
+	mlx5_vdpa_drain_cq(priv);
 	if (priv->lm_mr.addr)
 		mlx5_os_wrapped_mkey_destroy(&priv->lm_mr);
 	priv->state = MLX5_VDPA_STATE_PROBED;
@@ -556,7 +557,14 @@ mlx5_vdpa_virtq_resource_prepare(struct mlx5_vdpa_priv *priv)
 		return 0;
 	for (index = 0; index < (priv->queues * 2); ++index) {
 		struct mlx5_vdpa_virtq *virtq = &priv->virtqs[index];
+		int ret = mlx5_vdpa_event_qp_prepare(priv, priv->queue_size,
+					-1, &virtq->eqp);
 
+		if (ret) {
+			DRV_LOG(ERR, "Failed to create event QPs for virtq %d.",
+				index);
+			return -1;
+		}
 		if (priv->caps.queue_counters_valid) {
 			if (!virtq->counters)
 				virtq->counters =

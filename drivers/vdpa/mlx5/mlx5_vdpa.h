@@ -55,6 +55,7 @@ struct mlx5_vdpa_event_qp {
 	struct mlx5_vdpa_cq cq;
 	struct mlx5_devx_obj *fw_qp;
 	struct mlx5_devx_qp sw_qp;
+	uint16_t qp_pi;
 };
 
 struct mlx5_vdpa_query_mr {
@@ -226,7 +227,7 @@ int mlx5_vdpa_mem_register(struct mlx5_vdpa_priv *priv);
  * @return
  *   0 on success, -1 otherwise and rte_errno is set.
  */
-int mlx5_vdpa_event_qp_create(struct mlx5_vdpa_priv *priv, uint16_t desc_n,
+int mlx5_vdpa_event_qp_prepare(struct mlx5_vdpa_priv *priv, uint16_t desc_n,
 			      int callfd, struct mlx5_vdpa_event_qp *eqp);
 
 /**
@@ -479,4 +480,13 @@ mlx5_vdpa_virtq_stats_get(struct mlx5_vdpa_priv *priv, int qid,
  */
 int
 mlx5_vdpa_virtq_stats_reset(struct mlx5_vdpa_priv *priv, int qid);
+
+/**
+ * Drain virtq CQ CQE.
+ *
+ * @param[in] priv
+ *   The vdpa driver private structure.
+ */
+void
+mlx5_vdpa_drain_cq(struct mlx5_vdpa_priv *priv);
 #endif /* RTE_PMD_MLX5_VDPA_H_ */
