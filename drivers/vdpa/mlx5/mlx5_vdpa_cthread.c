@@ -47,16 +47,23 @@ mlx5_vdpa_c_thrd_ring_enqueue_bulk(struct rte_ring *r,
 bool
 mlx5_vdpa_task_add(struct mlx5_vdpa_priv *priv,
 		uint32_t thrd_idx,
-		uint32_t num)
+		enum mlx5_vdpa_task_type task_type,
+		uint32_t *remaining_cnt, uint32_t *err_cnt,
+		void **task_data, uint32_t num)
 {
 	struct rte_ring *rng = conf_thread_mng.cthrd[thrd_idx].rng;
 	struct mlx5_vdpa_task task[MLX5_VDPA_TASKS_PER_DEV];
+	uint32_t *data = (uint32_t *)task_data;
 	uint32_t i;
 
 	MLX5_ASSERT(num <= MLX5_VDPA_TASKS_PER_DEV);
 	for (i = 0 ; i < num; i++) {
 		task[i].priv = priv;
 		/* To be added later. */
+		task[i].type = task_type;
+		task[i].remaining_cnt = remaining_cnt;
+		task[i].err_cnt = err_cnt;
+		task[i].idx = data[i];
 	}
 	if (!mlx5_vdpa_c_thrd_ring_enqueue_bulk(rng, (void **)&task, num, NULL))
 		return -1;
@@ -71,6 +78,23 @@ mlx5_vdpa_task_add(struct mlx5_vdpa_priv *priv,
 	return 0;
 }
 
+bool
+mlx5_vdpa_c_thread_wait_bulk_tasks_done(uint32_t *remaining_cnt,
+		uint32_t *err_cnt, uint32_t sleep_time)
+{
+	/* Check and wait all tasks done. */
+	while (__atomic_load_n(remaining_cnt,
+		__ATOMIC_RELAXED) != 0) {
+		rte_delay_us_sleep(sleep_time);
+	}
+	if (__atomic_load_n(err_cnt,
+		__ATOMIC_RELAXED)) {
+		DRV_LOG(ERR, "Tasks done with error.");
+		return true;
+	}
+	return false;
+}
+
 static void *
 mlx5_vdpa_c_thread_handle(void *arg)
 {
@@ -81,6 +105,7 @@ mlx5_vdpa_c_thread_handle(void *arg)
 	struct rte_ring *rng;
 	uint32_t thrd_idx;
 	uint32_t task_num;
+	int ret;
 
 	for (thrd_idx = 0; thrd_idx < multhrd->max_thrds;
 		thrd_idx++)
@@ -99,13 +124,29 @@ mlx5_vdpa_c_thread_handle(void *arg)
 				&multhrd->cthrd[thrd_idx].c_cond,
 				&multhrd->cthrd_lock);
 			pthread_mutex_unlock(&multhrd->cthrd_lock);
+			continue;
 		}
 		priv = task.priv;
 		if (priv == NULL)
 			continue;
-		__atomic_fetch_sub(task.remaining_cnt,
+		switch (task.type) {
+		case MLX5_VDPA_TASK_REG_MR:
+			ret = mlx5_vdpa_register_mr(priv, task.idx);
+			if (ret) {
+				DRV_LOG(ERR,
+				"Failed to register mr %d.", task.idx);
+				__atomic_fetch_add(task.err_cnt, 1,
+				__ATOMIC_RELAXED);
+			}
+			break;
+		default:
+			DRV_LOG(ERR, "Invalid vdpa task type %d.",
+			task.type);
+			break;
+		}
+		if (task.remaining_cnt)
+			__atomic_fetch_sub(task.remaining_cnt,
 			1, __ATOMIC_RELAXED);
-		/* To be added later. */
 	}
 	return NULL;
 }

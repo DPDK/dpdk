@@ -59,7 +59,6 @@ struct mlx5_vdpa_event_qp {
 };
 
 struct mlx5_vdpa_query_mr {
-	SLIST_ENTRY(mlx5_vdpa_query_mr) next;
 	union {
 		struct ibv_mr *mr;
 		struct mlx5_devx_obj *mkey;
@@ -76,10 +75,17 @@ enum {
 #define MLX5_VDPA_MAX_C_THRD 256
 #define MLX5_VDPA_MAX_TASKS_PER_THRD 4096
 #define MLX5_VDPA_TASKS_PER_DEV 64
+#define MLX5_VDPA_MAX_MRS 0xFFFF
+
+/* Vdpa task types. */
+enum mlx5_vdpa_task_type {
+	MLX5_VDPA_TASK_REG_MR = 1,
+};
 
 /* Generic task information and size must be multiple of 4B. */
 struct mlx5_vdpa_task {
 	struct mlx5_vdpa_priv *priv;
+	enum mlx5_vdpa_task_type type;
 	uint32_t *remaining_cnt;
 	uint32_t *err_cnt;
 	uint32_t idx;
@@ -100,6 +106,14 @@ struct mlx5_vdpa_conf_thread_mng {
 	struct mlx5_vdpa_c_thread cthrd[MLX5_VDPA_MAX_C_THRD];
 };
 extern struct mlx5_vdpa_conf_thread_mng conf_thread_mng;
+
+struct mlx5_vdpa_vmem_info {
+	struct rte_vhost_memory *vmem;
+	uint32_t entries_num;
+	uint64_t gcd;
+	uint64_t size;
+	uint8_t mode;
+};
 
 struct mlx5_vdpa_virtq {
 	SLIST_ENTRY(mlx5_vdpa_virtq) next;
@@ -176,7 +190,7 @@ struct mlx5_vdpa_priv {
 	struct mlx5_hca_vdpa_attr caps;
 	uint32_t gpa_mkey_index;
 	struct ibv_mr *null_mr;
-	struct rte_vhost_memory *vmem;
+	struct mlx5_vdpa_vmem_info vmem_info;
 	struct mlx5dv_devx_event_channel *eventc;
 	struct mlx5dv_devx_event_channel *err_chnl;
 	struct mlx5_uar uar;
@@ -187,11 +201,13 @@ struct mlx5_vdpa_priv {
 	uint8_t num_lag_ports;
 	uint64_t features; /* Negotiated features. */
 	uint16_t log_max_rqt_size;
+	uint16_t last_c_thrd_idx;
+	uint16_t num_mrs; /* Number of memory regions. */
 	struct mlx5_vdpa_steer steer;
 	struct mlx5dv_var *var;
 	void *virtq_db_addr;
 	struct mlx5_pmd_wrapped_mr lm_mr;
-	SLIST_HEAD(mr_list, mlx5_vdpa_query_mr) mr_list;
+	struct mlx5_vdpa_query_mr **mrs;
 	struct mlx5_vdpa_virtq virtqs[];
 };
 
@@ -548,5 +564,12 @@ mlx5_vdpa_mult_threads_destroy(bool need_unlock);
 bool
 mlx5_vdpa_task_add(struct mlx5_vdpa_priv *priv,
 		uint32_t thrd_idx,
-		uint32_t num);
+		enum mlx5_vdpa_task_type task_type,
+		uint32_t *bulk_refcnt, uint32_t *bulk_err_cnt,
+		void **task_data, uint32_t num);
+int
+mlx5_vdpa_register_mr(struct mlx5_vdpa_priv *priv, uint32_t idx);
+bool
+mlx5_vdpa_c_thread_wait_bulk_tasks_done(uint32_t *remaining_cnt,
+		uint32_t *err_cnt, uint32_t sleep_time);
 #endif /* RTE_PMD_MLX5_VDPA_H_ */

@@ -353,21 +353,21 @@ reuse:
 		}
 	}
 	if (attr->q_type == MLX5_VIRTQ_TYPE_SPLIT) {
-		gpa = mlx5_vdpa_hva_to_gpa(priv->vmem,
+		gpa = mlx5_vdpa_hva_to_gpa(priv->vmem_info.vmem,
 					   (uint64_t)(uintptr_t)vq->desc);
 		if (!gpa) {
 			DRV_LOG(ERR, "Failed to get descriptor ring GPA.");
 			return -1;
 		}
 		attr->desc_addr = gpa;
-		gpa = mlx5_vdpa_hva_to_gpa(priv->vmem,
+		gpa = mlx5_vdpa_hva_to_gpa(priv->vmem_info.vmem,
 					   (uint64_t)(uintptr_t)vq->used);
 		if (!gpa) {
 			DRV_LOG(ERR, "Failed to get GPA for used ring.");
 			return -1;
 		}
 		attr->used_addr = gpa;
-		gpa = mlx5_vdpa_hva_to_gpa(priv->vmem,
+		gpa = mlx5_vdpa_hva_to_gpa(priv->vmem_info.vmem,
 					   (uint64_t)(uintptr_t)vq->avail);
 		if (!gpa) {
 			DRV_LOG(ERR, "Failed to get GPA for available ring.");

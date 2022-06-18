@@ -772,7 +772,6 @@ mlx5_vdpa_dev_probe(struct mlx5_common_device *cdev,
 		rte_errno = rte_errno ? rte_errno : EINVAL;
 		goto error;
 	}
-	SLIST_INIT(&priv->mr_list);
 	pthread_mutex_lock(&priv_list_lock);
 	TAILQ_INSERT_TAIL(&priv_list, priv, next);
 	pthread_mutex_unlock(&priv_list_lock);
