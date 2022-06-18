@@ -118,6 +118,11 @@ New Features
 
   Added an API which can get the device type of vDPA device.
 
+* **Updated NVIDIA mlx5 vDPA driver.**
+
+  * Added new devargs options ``queue_size`` and ``queues``
+    to allow prior creation of virtq resources.
+
 * **Updated Amazon ena driver.**
 
   The new driver version (v2.7.0) includes:

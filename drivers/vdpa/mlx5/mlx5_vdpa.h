@@ -80,6 +80,7 @@ struct mlx5_vdpa_virtq {
 	uint16_t vq_size;
 	uint8_t notifier_state;
 	bool stopped;
+	uint32_t configured:1;
 	uint32_t version;
 	struct mlx5_vdpa_priv *priv;
 	struct mlx5_devx_obj *virtq;
@@ -489,4 +490,7 @@ mlx5_vdpa_virtq_stats_reset(struct mlx5_vdpa_priv *priv, int qid);
  */
 void
 mlx5_vdpa_drain_cq(struct mlx5_vdpa_priv *priv);
+
+bool
+mlx5_vdpa_is_modify_virtq_supported(struct mlx5_vdpa_priv *priv);
 #endif /* RTE_PMD_MLX5_VDPA_H_ */

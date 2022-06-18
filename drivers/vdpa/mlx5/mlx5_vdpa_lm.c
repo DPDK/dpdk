@@ -12,20 +12,21 @@ int
 mlx5_vdpa_logging_enable(struct mlx5_vdpa_priv *priv, int enable)
 {
 	struct mlx5_devx_virtq_attr attr = {
-		.type = MLX5_VIRTQ_MODIFY_TYPE_DIRTY_BITMAP_DUMP_ENABLE,
+		.mod_fields_bitmap =
+			MLX5_VIRTQ_MODIFY_TYPE_DIRTY_BITMAP_DUMP_ENABLE,
 		.dirty_bitmap_dump_enable = enable,
 	};
+	struct mlx5_vdpa_virtq *virtq;
 	int i;
 
 	for (i = 0; i < priv->nr_virtqs; ++i) {
 		attr.queue_index = i;
-		if (!priv->virtqs[i].virtq) {
-			DRV_LOG(DEBUG, "virtq %d is invalid for dirty bitmap "
-				"enabling.", i);
+		virtq = &priv->virtqs[i];
+		if (!virtq->configured) {
+			DRV_LOG(DEBUG, "virtq %d is invalid for dirty bitmap enabling.", i);
 		} else if (mlx5_devx_cmd_modify_virtq(priv->virtqs[i].virtq,
 			   &attr)) {
-			DRV_LOG(ERR, "Failed to modify virtq %d for dirty "
-				"bitmap enabling.", i);
+			DRV_LOG(ERR, "Failed to modify virtq %d for dirty bitmap enabling.", i);
 			return -1;
 		}
 	}
@@ -37,10 +38,11 @@ mlx5_vdpa_dirty_bitmap_set(struct mlx5_vdpa_priv *priv, uint64_t log_base,
 			   uint64_t log_size)
 {
 	struct mlx5_devx_virtq_attr attr = {
-		.type = MLX5_VIRTQ_MODIFY_TYPE_DIRTY_BITMAP_PARAMS,
+		.mod_fields_bitmap = MLX5_VIRTQ_MODIFY_TYPE_DIRTY_BITMAP_PARAMS,
 		.dirty_bitmap_addr = log_base,
 		.dirty_bitmap_size = log_size,
 	};
+	struct mlx5_vdpa_virtq *virtq;
 	int i;
 	int ret = mlx5_os_wrapped_mkey_create(priv->cdev->ctx, priv->cdev->pd,
 					      priv->cdev->pdn,
@@ -54,7 +56,8 @@ mlx5_vdpa_dirty_bitmap_set(struct mlx5_vdpa_priv *priv, uint64_t log_base,
 	attr.dirty_bitmap_mkey = priv->lm_mr.lkey;
 	for (i = 0; i < priv->nr_virtqs; ++i) {
 		attr.queue_index = i;
-		if (!priv->virtqs[i].virtq) {
+		virtq = &priv->virtqs[i];
+		if (!virtq->configured) {
 			DRV_LOG(DEBUG, "virtq %d is invalid for LM.", i);
 		} else if (mlx5_devx_cmd_modify_virtq(priv->virtqs[i].virtq,
 						      &attr)) {
