@@ -1802,7 +1802,9 @@ struct mlx5_ifc_virtio_emulation_cap_bits {
 	u8 virtio_queue_type[0x8];
 	u8 reserved_at_20[0x13];
 	u8 log_doorbell_stride[0x5];
-	u8 reserved_at_3b[0x3];
+	u8 vnet_modify_ext[0x1];
+	u8 virtio_net_q_addr_modify[0x1];
+	u8 virtio_q_index_modify[0x1];
 	u8 log_doorbell_bar_size[0x5];
 	u8 doorbell_bar_offset[0x40];
 	u8 reserved_at_80[0x8];
@@ -3024,6 +3026,15 @@ enum {
 	MLX5_VIRTQ_MODIFY_TYPE_STATE = (1UL << 0),
 	MLX5_VIRTQ_MODIFY_TYPE_DIRTY_BITMAP_PARAMS = (1UL << 3),
 	MLX5_VIRTQ_MODIFY_TYPE_DIRTY_BITMAP_DUMP_ENABLE = (1UL << 4),
+	MLX5_VIRTQ_MODIFY_TYPE_QUEUE_PERIOD = (1UL << 5),
+	MLX5_VIRTQ_MODIFY_TYPE_ADDR = (1UL << 6),
+	MLX5_VIRTQ_MODIFY_TYPE_HW_AVAILABLE_INDEX = (1UL << 7),
+	MLX5_VIRTQ_MODIFY_TYPE_HW_USED_INDEX = (1UL << 8),
+	MLX5_VIRTQ_MODIFY_TYPE_Q_TYPE = (1UL << 9),
+	MLX5_VIRTQ_MODIFY_TYPE_VERSION_1_0 = (1UL << 10),
+	MLX5_VIRTQ_MODIFY_TYPE_Q_MKEY = (1UL << 11),
+	MLX5_VIRTQ_MODIFY_TYPE_QUEUE_FEATURE_BIT_MASK = (1UL << 12),
+	MLX5_VIRTQ_MODIFY_TYPE_EVENT_MODE = (1UL << 13),
 };
 
 struct mlx5_ifc_virtio_q_bits {

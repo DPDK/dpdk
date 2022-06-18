@@ -545,6 +545,15 @@ mlx5_devx_cmd_query_hca_vdpa_attr(void *ctx,
 		vdpa_attr->log_doorbell_stride =
 			MLX5_GET(virtio_emulation_cap, hcattr,
 				 log_doorbell_stride);
+		vdpa_attr->vnet_modify_ext =
+			MLX5_GET(virtio_emulation_cap, hcattr,
+				 vnet_modify_ext);
+		vdpa_attr->virtio_net_q_addr_modify =
+			MLX5_GET(virtio_emulation_cap, hcattr,
+				 virtio_net_q_addr_modify);
+		vdpa_attr->virtio_q_index_modify =
+			MLX5_GET(virtio_emulation_cap, hcattr,
+				 virtio_q_index_modify);
 		vdpa_attr->log_doorbell_bar_size =
 			MLX5_GET(virtio_emulation_cap, hcattr,
 				 log_doorbell_bar_size);
@@ -2074,27 +2083,66 @@ mlx5_devx_cmd_modify_virtq(struct mlx5_devx_obj *virtq_obj,
 	MLX5_SET(general_obj_in_cmd_hdr, hdr, obj_type,
 		 MLX5_GENERAL_OBJ_TYPE_VIRTQ);
 	MLX5_SET(general_obj_in_cmd_hdr, hdr, obj_id, virtq_obj->id);
-	MLX5_SET64(virtio_net_q, virtq, modify_field_select, attr->type);
+	MLX5_SET64(virtio_net_q, virtq, modify_field_select,
+		attr->mod_fields_bitmap);
 	MLX5_SET16(virtio_q, virtctx, queue_index, attr->queue_index);
-	switch (attr->type) {
-	case MLX5_VIRTQ_MODIFY_TYPE_STATE:
+	if (!attr->mod_fields_bitmap) {
+		DRV_LOG(ERR, "Failed to modify VIRTQ for no type set.");
+		rte_errno = EINVAL;
+		return -rte_errno;
+	}
+	if (attr->mod_fields_bitmap & MLX5_VIRTQ_MODIFY_TYPE_STATE)
 		MLX5_SET16(virtio_net_q, virtq, state, attr->state);
-		break;
-	case MLX5_VIRTQ_MODIFY_TYPE_DIRTY_BITMAP_PARAMS:
+	if (attr->mod_fields_bitmap &
+	    MLX5_VIRTQ_MODIFY_TYPE_DIRTY_BITMAP_PARAMS) {
 		MLX5_SET(virtio_net_q, virtq, dirty_bitmap_mkey,
 			 attr->dirty_bitmap_mkey);
 		MLX5_SET64(virtio_net_q, virtq, dirty_bitmap_addr,
 			 attr->dirty_bitmap_addr);
 		MLX5_SET(virtio_net_q, virtq, dirty_bitmap_size,
 			 attr->dirty_bitmap_size);
-		break;
-	case MLX5_VIRTQ_MODIFY_TYPE_DIRTY_BITMAP_DUMP_ENABLE:
+	}
+	if (attr->mod_fields_bitmap &
+	    MLX5_VIRTQ_MODIFY_TYPE_DIRTY_BITMAP_DUMP_ENABLE)
 		MLX5_SET(virtio_net_q, virtq, dirty_bitmap_dump_enable,
 			 attr->dirty_bitmap_dump_enable);
-		break;
-	default:
-		rte_errno = EINVAL;
-		return -rte_errno;
+	if (attr->mod_fields_bitmap & MLX5_VIRTQ_MODIFY_TYPE_QUEUE_PERIOD) {
+		MLX5_SET(virtio_q, virtctx, queue_period_mode,
+			attr->hw_latency_mode);
+		MLX5_SET(virtio_q, virtctx, queue_period_us,
+			attr->hw_max_latency_us);
+		MLX5_SET(virtio_q, virtctx, queue_max_count,
+			attr->hw_max_pending_comp);
+	}
+	if (attr->mod_fields_bitmap & MLX5_VIRTQ_MODIFY_TYPE_ADDR) {
+		MLX5_SET64(virtio_q, virtctx, desc_addr, attr->desc_addr);
+		MLX5_SET64(virtio_q, virtctx, used_addr, attr->used_addr);
+		MLX5_SET64(virtio_q, virtctx, available_addr,
+			attr->available_addr);
+	}
+	if (attr->mod_fields_bitmap & MLX5_VIRTQ_MODIFY_TYPE_HW_AVAILABLE_INDEX)
+		MLX5_SET16(virtio_net_q, virtq, hw_available_index,
+		   attr->hw_available_index);
+	if (attr->mod_fields_bitmap & MLX5_VIRTQ_MODIFY_TYPE_HW_USED_INDEX)
+		MLX5_SET16(virtio_net_q, virtq, hw_used_index,
+			attr->hw_used_index);
+	if (attr->mod_fields_bitmap & MLX5_VIRTQ_MODIFY_TYPE_Q_TYPE)
+		MLX5_SET16(virtio_q, virtctx, virtio_q_type, attr->q_type);
+	if (attr->mod_fields_bitmap & MLX5_VIRTQ_MODIFY_TYPE_VERSION_1_0)
+		MLX5_SET16(virtio_q, virtctx, virtio_version_1_0,
+		   attr->virtio_version_1_0);
+	if (attr->mod_fields_bitmap & MLX5_VIRTQ_MODIFY_TYPE_Q_MKEY)
+		MLX5_SET(virtio_q, virtctx, virtio_q_mkey, attr->mkey);
+	if (attr->mod_fields_bitmap &
+		MLX5_VIRTQ_MODIFY_TYPE_QUEUE_FEATURE_BIT_MASK) {
+		MLX5_SET16(virtio_net_q, virtq, tso_ipv4, attr->tso_ipv4);
+		MLX5_SET16(virtio_net_q, virtq, tso_ipv6, attr->tso_ipv6);
+		MLX5_SET16(virtio_net_q, virtq, tx_csum, attr->tx_csum);
+		MLX5_SET16(virtio_net_q, virtq, rx_csum, attr->rx_csum);
+	}
+	if (attr->mod_fields_bitmap & MLX5_VIRTQ_MODIFY_TYPE_EVENT_MODE) {
+		MLX5_SET16(virtio_q, virtctx, event_mode, attr->event_mode);
+		MLX5_SET(virtio_q, virtctx, event_qpn_or_msix, attr->qp_id);
 	}
 	ret = mlx5_glue->devx_obj_modify(virtq_obj->obj, in, sizeof(in),
 					 out, sizeof(out));

@@ -74,6 +74,9 @@ struct mlx5_hca_vdpa_attr {
 	uint32_t log_doorbell_stride:5;
 	uint32_t log_doorbell_bar_size:5;
 	uint32_t queue_counters_valid:1;
+	uint32_t vnet_modify_ext:1;
+	uint32_t virtio_net_q_addr_modify:1;
+	uint32_t virtio_q_index_modify:1;
 	uint32_t max_num_virtio_queues;
 	struct {
 		uint32_t a;
@@ -465,7 +468,7 @@ struct mlx5_devx_virtq_attr {
 	uint32_t tis_id;
 	uint32_t counters_obj_id;
 	uint64_t dirty_bitmap_addr;
-	uint64_t type;
+	uint64_t mod_fields_bitmap;
 	uint64_t desc_addr;
 	uint64_t used_addr;
 	uint64_t available_addr;
@@ -475,6 +478,7 @@ struct mlx5_devx_virtq_attr {
 		uint64_t offset;
 	} umems[3];
 	uint8_t error_type;
+	uint8_t q_type;
 };
 
 
