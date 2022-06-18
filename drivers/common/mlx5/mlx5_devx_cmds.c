@@ -2264,11 +2264,13 @@ mlx5_devx_cmd_modify_qp_state(struct mlx5_devx_obj *qp, uint32_t qp_st_mod_op,
 		uint32_t rst2init[MLX5_ST_SZ_DW(rst2init_qp_in)];
 		uint32_t init2rtr[MLX5_ST_SZ_DW(init2rtr_qp_in)];
 		uint32_t rtr2rts[MLX5_ST_SZ_DW(rtr2rts_qp_in)];
+		uint32_t qp2rst[MLX5_ST_SZ_DW(2rst_qp_in)];
 	} in;
 	union {
 		uint32_t rst2init[MLX5_ST_SZ_DW(rst2init_qp_out)];
 		uint32_t init2rtr[MLX5_ST_SZ_DW(init2rtr_qp_out)];
 		uint32_t rtr2rts[MLX5_ST_SZ_DW(rtr2rts_qp_out)];
+		uint32_t qp2rst[MLX5_ST_SZ_DW(2rst_qp_out)];
 	} out;
 	void *qpc;
 	int ret;
@@ -2310,6 +2312,11 @@ mlx5_devx_cmd_modify_qp_state(struct mlx5_devx_obj *qp, uint32_t qp_st_mod_op,
 		MLX5_SET(qpc, qpc, rnr_retry, 7);
 		inlen = sizeof(in.rtr2rts);
 		outlen = sizeof(out.rtr2rts);
+		break;
+	case MLX5_CMD_OP_QP_2RST:
+		MLX5_SET(2rst_qp_in, &in, qpn, qp->id);
+		inlen = sizeof(in.qp2rst);
+		outlen = sizeof(out.qp2rst);
 		break;
 	default:
 		DRV_LOG(ERR, "Invalid or unsupported QP modify op %u.",

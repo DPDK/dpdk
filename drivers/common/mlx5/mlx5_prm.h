@@ -3657,6 +3657,23 @@ struct mlx5_ifc_init2init_qp_in_bits {
 	u8 reserved_at_800[0x80];
 };
 
+struct mlx5_ifc_2rst_qp_out_bits {
+	u8 status[0x8];
+	u8 reserved_at_8[0x18];
+	u8 syndrome[0x20];
+	u8 reserved_at_40[0x40];
+};
+
+struct mlx5_ifc_2rst_qp_in_bits {
+	u8 opcode[0x10];
+	u8 uid[0x10];
+	u8 vhca_tunnel_id[0x10];
+	u8 op_mod[0x10];
+	u8 reserved_at_80[0x8];
+	u8 qpn[0x18];
+	u8 reserved_at_a0[0x20];
+};
+
 struct mlx5_ifc_dealloc_pd_out_bits {
 	u8 status[0x8];
 	u8 reserved_0[0x18];
