@@ -358,6 +358,12 @@ Limitations
   - can be applied to VF ports only.
   - must specify PF port action (packet redirection from VF to PF).
 
+- E-Switch Manager matching:
+
+  - For Bluefield with old FW
+    which doesn't expose the E-Switch Manager vport ID in the capability,
+    matching E-Switch Manager should be used only in Bluefield embedded CPU mode.
+
 - Raw encapsulation:
 
   - The input buffer, used as outer header, is not validated.

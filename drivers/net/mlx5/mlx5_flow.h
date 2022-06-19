@@ -2076,4 +2076,8 @@ int flow_dv_action_query(struct rte_eth_dev *dev,
 size_t flow_dv_get_item_hdr_len(const enum rte_flow_item_type item_type);
 int flow_dv_convert_encap_data(const struct rte_flow_item *items, uint8_t *buf,
 			   size_t *size, struct rte_flow_error *error);
+
+#define MLX5_PF_VPORT_ID 0
+#define MLX5_ECPF_VPORT_ID 0xFFFE
+
 #endif /* RTE_PMD_MLX5_FLOW_H_ */

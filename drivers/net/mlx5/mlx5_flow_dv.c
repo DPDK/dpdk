@@ -99,6 +99,7 @@ flow_dv_get_esw_manager_vport_id(struct rte_eth_dev *dev)
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_common_device *cdev = priv->sh->cdev;
 
+	/* New FW exposes E-Switch Manager vport ID, can use it directly. */
 	if (cdev->config.hca_attr.esw_mgr_vport_id_valid)
 		return (int16_t)cdev->config.hca_attr.esw_mgr_vport_id;
 
@@ -108,9 +109,14 @@ flow_dv_get_esw_manager_vport_id(struct rte_eth_dev *dev)
 	case PCI_DEVICE_ID_MELLANOX_CONNECTX5BF:
 	case PCI_DEVICE_ID_MELLANOX_CONNECTX6DXBF:
 	case PCI_DEVICE_ID_MELLANOX_CONNECTX7BF:
-		return (int16_t)0xfffe;
+	/*
+	 * In old FW which doesn't expose the E-Switch Manager vport ID in the capability,
+	 * only the BF embedded CPUs control the E-Switch Manager port. Hence,
+	 * ECPF vport ID is selected and not the host port (0) in any BF case.
+	 */
+		return (int16_t)MLX5_ECPF_VPORT_ID;
 	default:
-		return 0;
+		return MLX5_PF_VPORT_ID;
 	}
 }
 
