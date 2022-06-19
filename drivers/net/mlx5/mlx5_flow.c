@@ -5057,7 +5057,7 @@ flow_meter_split_prep(struct rte_eth_dev *dev,
 	const struct rte_flow_item *orig_items = items;
 	struct rte_flow_action *hw_mtr_action;
 	struct rte_flow_action *action_pre_head = NULL;
-	int32_t flow_src_port = priv->representor_id;
+	uint16_t flow_src_port = priv->representor_id;
 	bool mtr_first;
 	uint8_t mtr_id_offset = priv->mtr_reg_share ? MLX5_MTR_COLOR_BITS : 0;
 	uint8_t mtr_reg_bits = priv->mtr_reg_share ?
@@ -5071,22 +5071,12 @@ flow_meter_split_prep(struct rte_eth_dev *dev,
 	/* Prepare the suffix subflow items. */
 	tag_item = sfx_items++;
 	for (; items->type != RTE_FLOW_ITEM_TYPE_END; items++) {
-		struct mlx5_priv *port_priv;
-		const struct rte_flow_item_port_id *pid_v;
 		int item_type = items->type;
 
 		switch (item_type) {
 		case RTE_FLOW_ITEM_TYPE_PORT_ID:
-			pid_v = items->spec;
-			MLX5_ASSERT(pid_v);
-			port_priv = mlx5_port_to_eswitch_info(pid_v->id, false);
-			if (!port_priv)
-				return rte_flow_error_set(error,
-						rte_errno,
-						RTE_FLOW_ERROR_TYPE_ITEM_SPEC,
-						pid_v,
-						"Failed to get port info.");
-			flow_src_port = port_priv->representor_id;
+			if (mlx5_flow_get_item_vport_id(dev, items, &flow_src_port, error))
+				return -rte_errno;
 			if (!fm->def_policy && wks->policy->is_hierarchy &&
 			    flow_src_port != priv->representor_id) {
 				if (flow_drv_mtr_hierarchy_rule_create(dev,
@@ -10163,4 +10153,81 @@ mlx5_flow_adjust_priority(struct rte_eth_dev *dev, int32_t priority,
 		break;
 	}
 	return  res;
+}
+
+/**
+ * Get the E-Switch Manager vport id.
+ *
+ * @param[in] dev
+ *   Pointer to the Ethernet device structure.
+ *
+ * @return
+ *   The vport id.
+ */
+int16_t mlx5_flow_get_esw_manager_vport_id(struct rte_eth_dev *dev)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_common_device *cdev = priv->sh->cdev;
+
+	/* New FW exposes E-Switch Manager vport ID, can use it directly. */
+	if (cdev->config.hca_attr.esw_mgr_vport_id_valid)
+		return (int16_t)cdev->config.hca_attr.esw_mgr_vport_id;
+
+	if (priv->pci_dev == NULL)
+		return 0;
+	switch (priv->pci_dev->id.device_id) {
+	case PCI_DEVICE_ID_MELLANOX_CONNECTX5BF:
+	case PCI_DEVICE_ID_MELLANOX_CONNECTX6DXBF:
+	case PCI_DEVICE_ID_MELLANOX_CONNECTX7BF:
+	/*
+	 * In old FW which doesn't expose the E-Switch Manager vport ID in the capability,
+	 * only the BF embedded CPUs control the E-Switch Manager port. Hence,
+	 * ECPF vport ID is selected and not the host port (0) in any BF case.
+	 */
+		return (int16_t)MLX5_ECPF_VPORT_ID;
+	default:
+		return MLX5_PF_VPORT_ID;
+	}
+}
+
+/**
+ * Parse item to get the vport id.
+ *
+ * @param[in] dev
+ *   Pointer to the Ethernet device structure.
+ * @param[in] item
+ *   The src port id match item.
+ * @param[out] vport_id
+ *   Pointer to put the vport id.
+ * @param[out] error
+ *   Pointer to error structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+int mlx5_flow_get_item_vport_id(struct rte_eth_dev *dev,
+				const struct rte_flow_item *item,
+				uint16_t *vport_id,
+				struct rte_flow_error *error)
+{
+	struct mlx5_priv *port_priv;
+	const struct rte_flow_item_port_id *pid_v;
+
+	if (item->type != RTE_FLOW_ITEM_TYPE_PORT_ID)
+		return rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_ITEM_SPEC,
+					  NULL, "Incorrect item type.");
+	pid_v = item->spec;
+	if (!pid_v)
+		return 0;
+	if (pid_v->id == MLX5_PORT_ESW_MGR) {
+		*vport_id = mlx5_flow_get_esw_manager_vport_id(dev);
+	} else {
+		port_priv = mlx5_port_to_eswitch_info(pid_v->id, false);
+		if (!port_priv)
+			return rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_ITEM_SPEC,
+						  NULL, "Failed to get port info.");
+		*vport_id = port_priv->representor_id;
+	}
+
+	return 0;
 }

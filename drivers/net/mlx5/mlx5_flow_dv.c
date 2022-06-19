@@ -93,33 +93,6 @@ static int
 flow_dv_jump_tbl_resource_release(struct rte_eth_dev *dev,
 				  uint32_t rix_jump);
 
-static int16_t
-flow_dv_get_esw_manager_vport_id(struct rte_eth_dev *dev)
-{
-	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5_common_device *cdev = priv->sh->cdev;
-
-	/* New FW exposes E-Switch Manager vport ID, can use it directly. */
-	if (cdev->config.hca_attr.esw_mgr_vport_id_valid)
-		return (int16_t)cdev->config.hca_attr.esw_mgr_vport_id;
-
-	if (priv->pci_dev == NULL)
-		return 0;
-	switch (priv->pci_dev->id.device_id) {
-	case PCI_DEVICE_ID_MELLANOX_CONNECTX5BF:
-	case PCI_DEVICE_ID_MELLANOX_CONNECTX6DXBF:
-	case PCI_DEVICE_ID_MELLANOX_CONNECTX7BF:
-	/*
-	 * In old FW which doesn't expose the E-Switch Manager vport ID in the capability,
-	 * only the BF embedded CPUs control the E-Switch Manager port. Hence,
-	 * ECPF vport ID is selected and not the host port (0) in any BF case.
-	 */
-		return (int16_t)MLX5_ECPF_VPORT_ID;
-	default:
-		return MLX5_PF_VPORT_ID;
-	}
-}
-
 /**
  * Initialize flow attributes structure according to flow items' types.
  *
@@ -5244,21 +5217,12 @@ mlx5_flow_validate_action_meter(struct rte_eth_dev *dev,
 			 */
 			struct mlx5_priv *policy_port_priv =
 					mtr_policy->dev->data->dev_private;
-			int32_t flow_src_port = priv->representor_id;
+			uint16_t flow_src_port = priv->representor_id;
 
 			if (port_id_item) {
-				const struct rte_flow_item_port_id *spec =
-							port_id_item->spec;
-				struct mlx5_priv *port_priv =
-					mlx5_port_to_eswitch_info(spec->id,
-								  false);
-				if (!port_priv)
-					return rte_flow_error_set(error,
-						rte_errno,
-						RTE_FLOW_ERROR_TYPE_ITEM_SPEC,
-						spec,
-						"Failed to get port info.");
-				flow_src_port = port_priv->representor_id;
+				if (mlx5_flow_get_item_vport_id(dev, port_id_item,
+								&flow_src_port, error))
+					return -rte_errno;
 			}
 			if (flow_src_port != policy_port_priv->representor_id)
 				return rte_flow_error_set(error,
@@ -9784,7 +9748,7 @@ flow_dv_translate_item_port_id(struct rte_eth_dev *dev, void *matcher,
 
 	if (pid_v && pid_v->id == MLX5_PORT_ESW_MGR) {
 		flow_dv_translate_item_source_vport(matcher, key,
-			flow_dv_get_esw_manager_vport_id(dev), 0xffff);
+			mlx5_flow_get_esw_manager_vport_id(dev), 0xffff);
 		return 0;
 	}
 	mask = pid_m ? pid_m->id : 0xffff;
