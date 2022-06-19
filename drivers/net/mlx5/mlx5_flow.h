@@ -1766,4 +1766,8 @@ const struct mlx5_flow_tunnel *
 mlx5_get_tof(const struct rte_flow_item *items,
 	     const struct rte_flow_action *actions,
 	     enum mlx5_tof_rule_type *rule_type);
+
+#define MLX5_PF_VPORT_ID 0
+#define MLX5_ECPF_VPORT_ID 0xFFFE
+
 #endif /* RTE_PMD_MLX5_FLOW_H_ */
