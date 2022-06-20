@@ -20,7 +20,6 @@ extern "C" {
 
 #include <rte_common.h>
 #include <rte_memory.h>
-#include <rte_errno.h>
 
 /* Rawdevice object - essentially a void to be typecast by implementation */
 typedef void *rte_rawdev_obj_t;
