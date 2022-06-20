@@ -1027,12 +1027,6 @@ cpt_pdcp_chain_alg_prep(uint32_t req_flags, uint64_t d_offs, uint64_t d_lens,
 	void *dm_vaddr;
 	uint8_t *iv_d;
 
-	if (unlikely((!(req_flags & ROC_SE_SINGLE_BUF_INPLACE)) ||
-		     (!(req_flags & ROC_SE_SINGLE_BUF_HEADROOM)))) {
-		plt_dp_err("Scatter gather mode is not supported");
-		return -1;
-	}
-
 	encr_offset = ROC_SE_ENCR_OFFSET(d_offs);
 	auth_offset = ROC_SE_AUTH_OFFSET(d_offs);
 
@@ -1084,28 +1078,141 @@ cpt_pdcp_chain_alg_prep(uint32_t req_flags, uint64_t d_offs, uint64_t d_lens,
 	else
 		inputlen = encr_offset + encr_data_len;
 
-	dm_vaddr = params->bufs[0].vaddr;
+	if (likely(((req_flags & ROC_SE_SINGLE_BUF_INPLACE)) &&
+		   ((req_flags & ROC_SE_SINGLE_BUF_HEADROOM)))) {
 
-	/* Use Direct mode */
+		dm_vaddr = params->bufs[0].vaddr;
 
-	offset_vaddr = (uint64_t *)((uint8_t *)dm_vaddr - ROC_SE_OFF_CTRL_LEN -
-				    iv_len);
+		/* Use Direct mode */
 
-	/* DPTR */
-	inst->dptr = (uint64_t)offset_vaddr;
-	/* RPTR should just exclude offset control word */
-	inst->rptr = (uint64_t)dm_vaddr - iv_len;
+		offset_vaddr = (uint64_t *)((uint8_t *)dm_vaddr -
+					    ROC_SE_OFF_CTRL_LEN - iv_len);
 
-	cpt_inst_w4.s.dlen = inputlen + ROC_SE_OFF_CTRL_LEN;
+		/* DPTR */
+		inst->dptr = (uint64_t)offset_vaddr;
+		/* RPTR should just exclude offset control word */
+		inst->rptr = (uint64_t)dm_vaddr - iv_len;
 
-	*(uint64_t *)offset_vaddr = rte_cpu_to_be_64(
-		((uint64_t)(iv_offset) << 16) | ((uint64_t)(encr_offset)));
+		cpt_inst_w4.s.dlen = inputlen + ROC_SE_OFF_CTRL_LEN;
 
-	iv_d = ((uint8_t *)offset_vaddr + ROC_SE_OFF_CTRL_LEN);
-	pdcp_iv_copy(iv_d, cipher_iv, pdcp_ci_alg, pack_iv);
+		*(uint64_t *)offset_vaddr =
+			rte_cpu_to_be_64(((uint64_t)(iv_offset) << 16) |
+					 ((uint64_t)(encr_offset)));
 
-	iv_d = ((uint8_t *)offset_vaddr + ROC_SE_OFF_CTRL_LEN + 16);
-	pdcp_iv_copy(iv_d, auth_iv, pdcp_auth_alg, pack_iv);
+		iv_d = ((uint8_t *)offset_vaddr + ROC_SE_OFF_CTRL_LEN);
+		pdcp_iv_copy(iv_d, cipher_iv, pdcp_ci_alg, pack_iv);
+
+		iv_d = ((uint8_t *)offset_vaddr + ROC_SE_OFF_CTRL_LEN + 16);
+		pdcp_iv_copy(iv_d, auth_iv, pdcp_auth_alg, pack_iv);
+
+	} else {
+
+		struct roc_se_sglist_comp *scatter_comp, *gather_comp;
+		void *m_vaddr = params->meta_buf.vaddr;
+		uint32_t i, g_size_bytes, s_size_bytes;
+		uint8_t *in_buffer;
+		uint32_t size;
+
+		/* save space for IV */
+		offset_vaddr = m_vaddr;
+
+		m_vaddr = (uint8_t *)m_vaddr + ROC_SE_OFF_CTRL_LEN +
+			  RTE_ALIGN_CEIL(iv_len, 8);
+
+		cpt_inst_w4.s.opcode_major |= (uint64_t)ROC_SE_DMA_MODE;
+
+		/* DPTR has SG list */
+		in_buffer = m_vaddr;
+
+		((uint16_t *)in_buffer)[0] = 0;
+		((uint16_t *)in_buffer)[1] = 0;
+
+		gather_comp =
+			(struct roc_se_sglist_comp *)((uint8_t *)m_vaddr + 8);
+
+		/* Input Gather List */
+		i = 0;
+
+		/* Offset control word followed by iv */
+
+		i = fill_sg_comp(gather_comp, i, (uint64_t)offset_vaddr,
+				 ROC_SE_OFF_CTRL_LEN + iv_len);
+
+		*(uint64_t *)offset_vaddr =
+			rte_cpu_to_be_64(((uint64_t)(iv_offset) << 16) |
+					 ((uint64_t)(encr_offset)));
+
+		iv_d = ((uint8_t *)offset_vaddr + ROC_SE_OFF_CTRL_LEN);
+		pdcp_iv_copy(iv_d, cipher_iv, pdcp_ci_alg, pack_iv);
+
+		iv_d = ((uint8_t *)offset_vaddr + ROC_SE_OFF_CTRL_LEN + 16);
+		pdcp_iv_copy(iv_d, auth_iv, pdcp_auth_alg, pack_iv);
+
+		/* input data */
+		size = inputlen - iv_len;
+		if (size) {
+			i = fill_sg_comp_from_iov(gather_comp, i,
+						  params->src_iov, 0, &size,
+						  NULL, 0);
+			if (unlikely(size)) {
+				plt_dp_err("Insufficient buffer space,"
+					   " size %d needed",
+					   size);
+				return -1;
+			}
+		}
+		((uint16_t *)in_buffer)[2] = rte_cpu_to_be_16(i);
+		g_size_bytes =
+			((i + 3) / 4) * sizeof(struct roc_se_sglist_comp);
+
+		/*
+		 * Output Scatter List
+		 */
+
+		i = 0;
+		scatter_comp =
+			(struct roc_se_sglist_comp *)((uint8_t *)gather_comp +
+						      g_size_bytes);
+
+		if (iv_len) {
+			i = fill_sg_comp(scatter_comp, i,
+					 (uint64_t)offset_vaddr +
+						 ROC_SE_OFF_CTRL_LEN,
+					 iv_len);
+		}
+
+		/* Add output data */
+		if (se_ctx->ciph_then_auth &&
+		    (req_flags & ROC_SE_VALID_MAC_BUF))
+			size = inputlen - iv_len;
+		else
+			/* Output including mac */
+			size = inputlen - iv_len + mac_len;
+
+		if (size) {
+			i = fill_sg_comp_from_iov(scatter_comp, i,
+						  params->dst_iov, 0, &size,
+						  NULL, 0);
+
+			if (unlikely(size)) {
+				plt_dp_err("Insufficient buffer space,"
+					   " size %d needed",
+					   size);
+				return -1;
+			}
+		}
+
+		((uint16_t *)in_buffer)[3] = rte_cpu_to_be_16(i);
+		s_size_bytes =
+			((i + 3) / 4) * sizeof(struct roc_se_sglist_comp);
+
+		size = g_size_bytes + s_size_bytes + ROC_SE_SG_LIST_HDR_SIZE;
+
+		/* This is DPTR len in case of SG mode */
+		cpt_inst_w4.s.dlen = size;
+
+		inst->dptr = (uint64_t)in_buffer;
+	}
 
 	inst->w4.u64 = cpt_inst_w4.u64;
 
