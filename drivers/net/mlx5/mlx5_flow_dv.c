@@ -11567,8 +11567,8 @@ __flow_dv_action_rss_hrxqs_release(struct rte_eth_dev *dev,
  * MLX5_RSS_HASH_IPV4_DST_ONLY are mutually exclusive so they can share
  * same slot in mlx5_rss_hash_fields.
  *
- * @param[in] rss
- *   Pointer to the shared action RSS conf.
+ * @param[in] orig_rss_types
+ *   RSS type as provided in shared RSS action.
  * @param[in, out] hash_field
  *   hash_field variable needed to be adjusted.
  *
@@ -11576,10 +11576,10 @@ __flow_dv_action_rss_hrxqs_release(struct rte_eth_dev *dev,
  *   void
  */
 static void
-__flow_dv_action_rss_l34_hash_adjust(struct mlx5_shared_action_rss *rss,
+__flow_dv_action_rss_l34_hash_adjust(uint64_t orig_rss_types,
 				     uint64_t *hash_field)
 {
-	uint64_t rss_types = rss->origin.types;
+	uint64_t rss_types = rte_eth_rss_hf_refine(orig_rss_types);
 
 	switch (*hash_field & ~IBV_RX_HASH_INNER) {
 	case MLX5_RSS_HASH_IPV4:
@@ -11680,7 +11680,8 @@ __flow_dv_action_rss_setup(struct rte_eth_dev *dev,
 		uint64_t hash_fields = mlx5_rss_hash_fields[i];
 		int tunnel = 0;
 
-		__flow_dv_action_rss_l34_hash_adjust(shared_rss, &hash_fields);
+		__flow_dv_action_rss_l34_hash_adjust(shared_rss->origin.types,
+						     &hash_fields);
 		if (shared_rss->origin.level > 1) {
 			hash_fields |= IBV_RX_HASH_INNER;
 			tunnel = 1;
