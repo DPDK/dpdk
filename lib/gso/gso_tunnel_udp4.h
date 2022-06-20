@@ -6,7 +6,6 @@
 #define _GSO_TUNNEL_UDP4_H_
 
 #include <stdint.h>
-#include <rte_mbuf.h>
 
 /**
  * Segment a tunneling packet with inner UDP/IPv4 headers. This function

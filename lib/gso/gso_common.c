@@ -6,7 +6,6 @@
 #include <errno.h>
 
 #include <rte_memcpy.h>
-#include <rte_mempool.h>
 
 #include "gso_common.h"
 

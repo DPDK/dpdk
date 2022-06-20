@@ -6,7 +6,6 @@
 #define _GSO_UDP4_H_
 
 #include <stdint.h>
-#include <rte_mbuf.h>
 
 /**
  * Segment an UDP/IPv4 packet. This function doesn't check if the input

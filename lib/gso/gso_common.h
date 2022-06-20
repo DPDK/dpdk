@@ -7,7 +7,6 @@
 
 #include <stdint.h>
 
-#include <rte_mbuf.h>
 #include <rte_ip.h>
 #include <rte_tcp.h>
 #include <rte_udp.h>

@@ -6,7 +6,6 @@
 #define _GSO_TCP4_H_
 
 #include <stdint.h>
-#include <rte_mbuf.h>
 
 /**
  * Segment an IPv4/TCP packet. This function doesn't check if the input
