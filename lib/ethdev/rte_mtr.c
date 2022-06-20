@@ -5,7 +5,6 @@
 #include <stdint.h>
 
 #include <rte_errno.h>
-#include "rte_compat.h"
 #include "rte_ethdev.h"
 #include "rte_mtr_driver.h"
 #include "rte_mtr.h"

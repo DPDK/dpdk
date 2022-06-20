@@ -169,7 +169,6 @@ extern "C" {
 #include <rte_errno.h>
 #include <rte_common.h>
 #include <rte_config.h>
-#include <rte_ether.h>
 #include <rte_power_intrinsics.h>
 
 #include "rte_ethdev_trace_fp.h"

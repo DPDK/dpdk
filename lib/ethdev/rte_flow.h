@@ -17,7 +17,6 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include <rte_arp.h>
 #include <rte_common.h>
 #include <rte_ether.h>
 #include <rte_icmp.h>
@@ -26,12 +25,10 @@
 #include <rte_tcp.h>
 #include <rte_udp.h>
 #include <rte_vxlan.h>
-#include <rte_byteorder.h>
 #include <rte_esp.h>
 #include <rte_higig.h>
 #include <rte_ecpri.h>
 #include <rte_bitops.h>
-#include <rte_mbuf.h>
 #include <rte_mbuf_dyn.h>
 #include <rte_meter.h>
 #include <rte_gtp.h>
