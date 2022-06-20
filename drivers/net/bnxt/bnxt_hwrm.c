@@ -824,6 +824,10 @@ static int __bnxt_hwrm_func_qcaps(struct bnxt *bp)
 		bp->fw_cap |= BNXT_FW_CAP_VLAN_TX_INSERT;
 		PMD_DRV_LOG(DEBUG, "VLAN acceleration for TX is enabled\n");
 	}
+	bp->tunnel_disable_flag = rte_le_to_cpu_16(resp->tunnel_disable_flag);
+	if (bp->tunnel_disable_flag)
+		PMD_DRV_LOG(DEBUG, "Tunnel parsing capability is disabled, flags : %#x\n",
+			    bp->tunnel_disable_flag);
 unlock:
 	HWRM_UNLOCK();
 

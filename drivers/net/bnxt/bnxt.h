@@ -835,6 +835,7 @@ struct bnxt {
 	uint32_t		max_mcast_addr; /* maximum number of mcast filters supported */
 
 	struct rte_eth_rss_conf	rss_conf; /* RSS configuration. */
+	uint16_t tunnel_disable_flag; /* tunnel stateless offloads status */
 };
 
 static

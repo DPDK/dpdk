@@ -8,6 +8,7 @@
 #include <rte_malloc.h>
 
 #include "bnxt.h"
+#include "bnxt_hwrm.h"
 #include "bnxt_ring.h"
 #include "bnxt_txq.h"
 #include "bnxt_txr.h"
@@ -27,14 +28,20 @@ uint64_t bnxt_get_tx_port_offloads(struct bnxt *bp)
 			  DEV_TX_OFFLOAD_QINQ_INSERT |
 			  DEV_TX_OFFLOAD_MULTI_SEGS;
 
-	tx_offload_capa |= DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM |
-			   DEV_TX_OFFLOAD_VXLAN_TNL_TSO |
-			   DEV_TX_OFFLOAD_GRE_TNL_TSO |
-			   DEV_TX_OFFLOAD_IPIP_TNL_TSO |
-			   DEV_TX_OFFLOAD_GENEVE_TNL_TSO;
-
 	if (bp->fw_cap & BNXT_FW_CAP_VLAN_TX_INSERT)
 		tx_offload_capa |= DEV_TX_OFFLOAD_VLAN_INSERT;
+
+	if (BNXT_TUNNELED_OFFLOADS_CAP_ALL_EN(bp))
+		tx_offload_capa |= DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM;
+
+	if (BNXT_TUNNELED_OFFLOADS_CAP_VXLAN_EN(bp))
+		tx_offload_capa |= DEV_TX_OFFLOAD_VXLAN_TNL_TSO;
+	if (BNXT_TUNNELED_OFFLOADS_CAP_GRE_EN(bp))
+		tx_offload_capa |= DEV_TX_OFFLOAD_GRE_TNL_TSO;
+	if (BNXT_TUNNELED_OFFLOADS_CAP_NGE_EN(bp))
+		tx_offload_capa |= DEV_TX_OFFLOAD_GENEVE_TNL_TSO;
+	if (BNXT_TUNNELED_OFFLOADS_CAP_IPINIP_EN(bp))
+		tx_offload_capa |= DEV_TX_OFFLOAD_IPIP_TNL_TSO;
 
 	return tx_offload_capa;
 }

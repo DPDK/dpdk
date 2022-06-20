@@ -10718,7 +10718,7 @@ struct hwrm_func_qcaps_input {
 	uint8_t	unused_0[6];
 } __rte_packed;
 
-/* hwrm_func_qcaps_output (size:704b/88B) */
+/* hwrm_func_qcaps_output (size:768b/96B) */
 struct hwrm_func_qcaps_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
@@ -11082,7 +11082,13 @@ struct hwrm_func_qcaps_output {
 	 * (max_tx_rings) to the function.
 	 */
 	uint16_t	max_sp_tx_rings;
-	uint8_t	unused_0[2];
+	/*
+	 * The maximum number of MSI-X vectors that may be allocated across
+	 * all VFs for the function. This is valid only on the PF with SR-IOV
+	 * enabled. Returns zero if this command is called on a PF with
+	 * SR-IOV disabled or on a VF.
+	 */
+	uint16_t	max_msix_vfs;
 	uint32_t	flags_ext;
 	/*
 	 * If 1, the device can be configured to set the ECN bits in the
@@ -11164,6 +11170,70 @@ struct hwrm_func_qcaps_output {
 	 * to the primate processor block.
 	 */
 	#define HWRM_FUNC_QCAPS_OUTPUT_MPC_CHNLS_CAP_PRIMATE     UINT32_C(0x10)
+	/*
+	 * Maximum number of Key Contexts supported per HWRM
+	 * function call for allocating Key Contexts.
+	 */
+	uint16_t	max_key_ctxs_alloc;
+	uint32_t	flags_ext2;
+	/*
+	 * When this bit is '1', it indicates that FW will support
+	 * timestamping on all RX packets, not just PTP type packets.
+	 */
+	#define HWRM_FUNC_QCAPS_OUTPUT_FLAGS_EXT2_RX_ALL_PKTS_TIMESTAMPS_SUPPORTED \
+		UINT32_C(0x1)
+	/* When this bit is '1', it indicates that HW and FW support QUIC. */
+	#define HWRM_FUNC_QCAPS_OUTPUT_FLAGS_EXT2_QUIC_SUPPORTED \
+		UINT32_C(0x2)
+	uint16_t	tunnel_disable_flag;
+	/*
+	 * When this bit is '1', it indicates that the VXLAN parsing
+	 * is disabled in hardware
+	 */
+	#define HWRM_FUNC_QCAPS_OUTPUT_TUNNEL_DISABLE_FLAG_DISABLE_VXLAN \
+		UINT32_C(0x1)
+	/*
+	 * When this bit is '1', it indicates that the NGE parsing
+	 * is disabled in hardware
+	 */
+	#define HWRM_FUNC_QCAPS_OUTPUT_TUNNEL_DISABLE_FLAG_DISABLE_NGE \
+		UINT32_C(0x2)
+	/*
+	 * When this bit is '1', it indicates that the NVGRE parsing
+	 * is disabled in hardware
+	 */
+	#define HWRM_FUNC_QCAPS_OUTPUT_TUNNEL_DISABLE_FLAG_DISABLE_NVGRE \
+		UINT32_C(0x4)
+	/*
+	 * When this bit is '1', it indicates that the L2GRE parsing
+	 * is disabled in hardware
+	 */
+	#define HWRM_FUNC_QCAPS_OUTPUT_TUNNEL_DISABLE_FLAG_DISABLE_L2GRE \
+		UINT32_C(0x8)
+	/*
+	 * When this bit is '1', it indicates that the GRE parsing
+	 * is disabled in hardware
+	 */
+	#define HWRM_FUNC_QCAPS_OUTPUT_TUNNEL_DISABLE_FLAG_DISABLE_GRE \
+		UINT32_C(0x10)
+	/*
+	 * When this bit is '1', it indicates that the IPINIP parsing
+	 * is disabled in hardware
+	 */
+	#define HWRM_FUNC_QCAPS_OUTPUT_TUNNEL_DISABLE_FLAG_DISABLE_IPINIP \
+		UINT32_C(0x20)
+	/*
+	 * When this bit is '1', it indicates that the MPLS parsing
+	 * is disabled in hardware
+	 */
+	#define HWRM_FUNC_QCAPS_OUTPUT_TUNNEL_DISABLE_FLAG_DISABLE_MPLS \
+		UINT32_C(0x40)
+	/*
+	 * When this bit is '1', it indicates that the PPPOE parsing
+	 * is disabled in hardware
+	 */
+	#define HWRM_FUNC_QCAPS_OUTPUT_TUNNEL_DISABLE_FLAG_DISABLE_PPPOE \
+		UINT32_C(0x80)
 	uint8_t	unused_1;
 	/*
 	 * This field is used in Output records to indicate that the output
