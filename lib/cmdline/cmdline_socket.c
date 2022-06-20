@@ -5,11 +5,7 @@
  */
 
 #include <stdio.h>
-#include <string.h>
 #include <unistd.h>
-#include <stdlib.h>
-#include <stdarg.h>
-#include <inttypes.h>
 #include <fcntl.h>
 
 #include "cmdline.h"

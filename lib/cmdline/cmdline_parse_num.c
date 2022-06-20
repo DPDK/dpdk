@@ -7,10 +7,7 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <inttypes.h>
-#include <ctype.h>
 #include <string.h>
-#include <stdarg.h>
-#include <errno.h>
 #include <rte_string_fns.h>
 
 #include "cmdline_parse.h"
