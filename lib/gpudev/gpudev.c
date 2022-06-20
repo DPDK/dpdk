@@ -9,7 +9,6 @@
 #include <rte_malloc.h>
 #include <rte_errno.h>
 #include <rte_log.h>
-#include <rte_eal_paging.h>
 
 #include "rte_gpudev.h"
 #include "gpudev_driver.h"
