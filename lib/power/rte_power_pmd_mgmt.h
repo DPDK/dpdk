@@ -11,13 +11,9 @@
  */
 
 #include <stdint.h>
-#include <stdbool.h>
 
-#include <rte_common.h>
-#include <rte_byteorder.h>
 #include <rte_log.h>
 #include <rte_power.h>
-#include <rte_atomic.h>
 
 #ifdef __cplusplus
 extern "C" {
