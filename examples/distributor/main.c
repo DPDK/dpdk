@@ -265,8 +265,8 @@ lcore_rx(struct lcore_params *p)
  * packets are then send straight to the tx core.
  */
 #if 0
-	rte_distributor_process(d, bufs, nb_rx);
-	const uint16_t nb_ret = rte_distributor_returned_pktsd,
+		rte_distributor_process(p->d, bufs, nb_rx);
+		const uint16_t nb_ret = rte_distributor_returned_pkts(p->d,
 			bufs, BURST_SIZE*2);
 
 		app_stats.rx.returned_pkts += nb_ret;
