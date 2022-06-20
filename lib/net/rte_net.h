@@ -12,7 +12,6 @@ extern "C" {
 #include <rte_ip.h>
 #include <rte_udp.h>
 #include <rte_tcp.h>
-#include <rte_sctp.h>
 
 /**
  * Structure containing header lengths associated to a packet, filled
