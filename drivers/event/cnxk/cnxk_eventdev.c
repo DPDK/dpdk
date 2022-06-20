@@ -12,6 +12,24 @@ crypto_adapter_qp_setup(const struct rte_cryptodev *cdev,
 	char name[RTE_MEMPOOL_NAMESIZE];
 	uint32_t cache_size, nb_req;
 	unsigned int req_size;
+	uint32_t nb_desc_min;
+
+	/*
+	 * Update CPT FC threshold. Decrement by hardware burst size to allow
+	 * simultaneous enqueue from all available cores.
+	 */
+	if (roc_model_is_cn10k())
+		nb_desc_min = rte_lcore_count() * 32;
+	else
+		nb_desc_min = rte_lcore_count() * 2;
+
+	if (qp->lmtline.fc_thresh < nb_desc_min) {
+		plt_err("CPT queue depth not sufficient to allow enqueueing from %d cores",
+			rte_lcore_count());
+		return -ENOSPC;
+	}
+
+	qp->lmtline.fc_thresh -= nb_desc_min;
 
 	snprintf(name, RTE_MEMPOOL_NAMESIZE, "cnxk_ca_req_%u:%u",
 		 cdev->data->dev_id, qp->lf.lf_id);
@@ -69,8 +87,17 @@ cnxk_crypto_adapter_qp_add(const struct rte_eventdev *event_dev,
 static int
 crypto_adapter_qp_free(struct cnxk_cpt_qp *qp)
 {
+	int ret;
+
 	rte_mempool_free(qp->ca.req_mp);
 	qp->ca.enabled = false;
+
+	ret = roc_cpt_lmtline_init(qp->lf.roc_cpt, &qp->lmtline, qp->lf.lf_id);
+	if (ret < 0) {
+		plt_err("Could not reset lmtline for queue pair %d",
+			qp->lf.lf_id);
+		return ret;
+	}
 
 	return 0;
 }

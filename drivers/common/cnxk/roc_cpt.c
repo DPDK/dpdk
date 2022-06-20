@@ -21,8 +21,9 @@
 #define CPT_IQ_GRP_SIZE(nb_desc)                                               \
 	(CPT_IQ_NB_DESC_SIZE_DIV40(nb_desc) * CPT_IQ_GRP_LEN)
 
-#define CPT_LF_MAX_NB_DESC     128000
-#define CPT_LF_DEFAULT_NB_DESC 1024
+#define CPT_LF_MAX_NB_DESC	128000
+#define CPT_LF_DEFAULT_NB_DESC	1024
+#define CPT_LF_FC_MIN_THRESHOLD 32
 
 static void
 cpt_lf_misc_intr_enb_dis(struct roc_cpt_lf *lf, bool enb)
@@ -474,8 +475,6 @@ cpt_iq_init(struct roc_cpt_lf *lf)
 	plt_write64(lf_q_size.u, lf->rbase + CPT_LF_Q_SIZE);
 
 	lf->fc_addr = (uint64_t *)addr;
-	lf->fc_hyst_bits = plt_log2_u32(lf->nb_desc) / 2;
-	lf->fc_thresh = lf->nb_desc - (lf->nb_desc % (1 << lf->fc_hyst_bits));
 }
 
 int
@@ -879,7 +878,7 @@ roc_cpt_iq_enable(struct roc_cpt_lf *lf)
 	lf_ctl.s.ena = 1;
 	lf_ctl.s.fc_ena = 1;
 	lf_ctl.s.fc_up_crossing = 0;
-	lf_ctl.s.fc_hyst_bits = lf->fc_hyst_bits;
+	lf_ctl.s.fc_hyst_bits = plt_log2_u32(CPT_LF_FC_MIN_THRESHOLD);
 	plt_write64(lf_ctl.u, lf->rbase + CPT_LF_CTL);
 
 	/* Enable command queue execution */
@@ -906,6 +905,7 @@ roc_cpt_lmtline_init(struct roc_cpt *roc_cpt, struct roc_cpt_lmtline *lmtline,
 
 	lmtline->fc_addr = lf->fc_addr;
 	lmtline->lmt_base = lf->lmt_base;
+	lmtline->fc_thresh = lf->nb_desc - CPT_LF_FC_MIN_THRESHOLD;
 
 	return 0;
 }

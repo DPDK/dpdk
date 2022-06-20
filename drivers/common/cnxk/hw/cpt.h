@@ -322,4 +322,13 @@ struct cpt_frag_info_s {
 	} w1;
 };
 
+union cpt_fc_write_s {
+	struct {
+		uint32_t qsize;
+		uint32_t reserved_32_63;
+		uint64_t reserved_64_127;
+	} s;
+	uint64_t u64[2];
+};
+
 #endif /* __CPT_HW_H__ */

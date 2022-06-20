@@ -452,8 +452,10 @@ uint16_t
 cn9k_cpt_crypto_adapter_enqueue(uintptr_t base, struct rte_crypto_op *op)
 {
 	struct cpt_inflight_req *infl_req;
+	union cpt_fc_write_s fc;
 	struct cnxk_cpt_qp *qp;
 	struct cpt_inst_s inst;
+	uint64_t *fc_addr;
 	int ret;
 
 	ret = cn9k_ca_meta_info_extract(op, &qp, &inst);
@@ -487,7 +489,12 @@ cn9k_cpt_crypto_adapter_enqueue(uintptr_t base, struct rte_crypto_op *op)
 	inst.res_addr = (uint64_t)&infl_req->res;
 	inst.w3.u64 = CNXK_CPT_INST_W3(1, infl_req);
 
-	if (roc_cpt_is_iq_full(&qp->lf)) {
+	fc_addr = qp->lmtline.fc_addr;
+
+	const uint32_t fc_thresh = qp->lmtline.fc_thresh;
+
+	fc.u64[0] = __atomic_load_n(fc_addr, __ATOMIC_RELAXED);
+	if (unlikely(fc.s.qsize > fc_thresh)) {
 		rte_mempool_put(qp->ca.req_mp, infl_req);
 		rte_errno = EAGAIN;
 		return 0;
