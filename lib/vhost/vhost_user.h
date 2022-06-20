@@ -6,7 +6,6 @@
 #define _VHOST_NET_USER_H
 
 #include <stdint.h>
-#include <linux/vhost.h>
 
 #include "rte_vhost.h"
 
