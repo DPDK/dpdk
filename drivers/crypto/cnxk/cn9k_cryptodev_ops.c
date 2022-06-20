@@ -65,8 +65,8 @@ cn9k_cpt_sec_inst_fill(struct rte_crypto_op *op,
 	else {
 		infl_req->op_flags |= CPT_OP_FLAGS_IPSEC_DIR_INBOUND;
 		process_inb_sa(op, sa, inst);
-		if (unlikely(sa->esn_en))
-			infl_req->op_flags |= CPT_OP_FLAGS_IPSEC_INB_ESN;
+		if (unlikely(sa->replay_win_sz))
+			infl_req->op_flags |= CPT_OP_FLAGS_IPSEC_INB_REPLAY;
 		ret = 0;
 	}
 
@@ -501,6 +501,45 @@ cn9k_cpt_crypto_adapter_enqueue(uintptr_t base, struct rte_crypto_op *op)
 	return 1;
 }
 
+static inline int
+ipsec_antireplay_check(struct cn9k_ipsec_sa *sa, uint32_t win_sz,
+		       struct roc_ie_on_inb_hdr *data)
+{
+	struct roc_ie_on_common_sa *common_sa;
+	struct roc_ie_on_inb_sa *in_sa;
+	struct roc_ie_on_sa_ctl *ctl;
+	uint32_t seql, seqh = 0;
+	uint64_t seq;
+	uint8_t esn;
+	int ret;
+
+	in_sa = &sa->in_sa;
+	common_sa = &in_sa->common_sa;
+	ctl = &common_sa->ctl;
+
+	esn = ctl->esn_en;
+	seql = rte_be_to_cpu_32(data->seql);
+
+	if (!esn) {
+		seq = (uint64_t)seql;
+	} else {
+		seqh = rte_be_to_cpu_32(data->seqh);
+		seq = ((uint64_t)seqh << 32) | seql;
+	}
+
+	if (unlikely(seq == 0))
+		return IPSEC_ANTI_REPLAY_FAILED;
+
+	ret = cnxk_on_anti_replay_check(seq, &sa->ar, win_sz);
+	if (esn && !ret) {
+		common_sa = &sa->in_sa.common_sa;
+		if (seq > common_sa->seq_t.u64)
+			common_sa->seq_t.u64 = seq;
+	}
+
+	return ret;
+}
+
 static inline void
 cn9k_cpt_sec_post_process(struct rte_crypto_op *cop,
 			  struct cpt_inflight_req *infl_req)
@@ -515,23 +554,23 @@ cn9k_cpt_sec_post_process(struct rte_crypto_op *cop,
 	char *data;
 
 	if (infl_req->op_flags & CPT_OP_FLAGS_IPSEC_DIR_INBOUND) {
-		struct roc_ie_on_common_sa *common_sa;
 
 		data = rte_pktmbuf_mtod(m, char *);
-		if (unlikely(infl_req->op_flags & CPT_OP_FLAGS_IPSEC_INB_ESN)) {
-			struct roc_ie_on_inb_hdr *inb_hdr;
-			uint64_t seq;
+		if (unlikely(infl_req->op_flags &
+			     CPT_OP_FLAGS_IPSEC_INB_REPLAY)) {
+			int ret;
 
 			priv = get_sec_session_private_data(
 				sym_op->sec_session);
 			sa = &priv->sa;
-			common_sa = &sa->in_sa.common_sa;
 
-			inb_hdr = (struct roc_ie_on_inb_hdr *)data;
-			seq = rte_be_to_cpu_64(inb_hdr->seq);
-
-			if (seq > common_sa->seq_t.u64)
-				common_sa->seq_t.u64 = seq;
+			ret = ipsec_antireplay_check(
+				sa, sa->replay_win_sz,
+				(struct roc_ie_on_inb_hdr *)data);
+			if (unlikely(ret)) {
+				cop->status = RTE_CRYPTO_OP_STATUS_ERROR;
+				return;
+			}
 		}
 
 		ip = (struct rte_ipv4_hdr *)(data + ROC_IE_ON_INB_RPTR_HDR);

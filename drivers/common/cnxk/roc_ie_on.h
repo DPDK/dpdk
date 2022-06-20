@@ -18,8 +18,6 @@ enum roc_ie_on_ucc_ipsec {
 	ROC_IE_ON_UCC_SUCCESS = 0,
 	ROC_IE_ON_AUTH_UNSUPPORTED = 0xB0,
 	ROC_IE_ON_ENCRYPT_UNSUPPORTED = 0xB1,
-	/* Software defined completion code for anti-replay failed packets */
-	ROC_IE_ON_SWCC_ANTI_REPLAY = 0xE7,
 };
 
 /* Helper macros */
@@ -74,7 +72,8 @@ struct roc_ie_on_outb_hdr {
 
 struct roc_ie_on_inb_hdr {
 	uint32_t sa_index;
-	uint64_t seq;
+	uint32_t seql;
+	uint32_t seqh;
 	uint32_t pad;
 };
 

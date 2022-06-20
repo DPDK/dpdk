@@ -24,53 +24,6 @@ ipsec_po_out_rlen_get(struct cn9k_ipsec_sa *sa, uint32_t plen)
 }
 
 static __rte_always_inline int
-ipsec_antireplay_check(struct cn9k_ipsec_sa *sa, uint32_t win_sz,
-		       struct rte_mbuf *m)
-{
-	uint32_t esn_low = 0, esn_hi = 0, seql = 0, seqh = 0;
-	struct roc_ie_on_common_sa *common_sa;
-	struct roc_ie_on_inb_sa *in_sa;
-	struct roc_ie_on_sa_ctl *ctl;
-	uint64_t seq_in_sa, seq = 0;
-	struct rte_esp_hdr *esp;
-	uint8_t esn;
-	int ret;
-
-	in_sa = &sa->in_sa;
-	common_sa = &in_sa->common_sa;
-	ctl = &common_sa->ctl;
-
-	esn = ctl->esn_en;
-	esn_low = rte_be_to_cpu_32(common_sa->seq_t.tl);
-	esn_hi = rte_be_to_cpu_32(common_sa->seq_t.th);
-
-	esp = rte_pktmbuf_mtod_offset(m, void *, sizeof(struct rte_ipv4_hdr));
-	seql = rte_be_to_cpu_32(esp->seq);
-
-	if (!esn) {
-		seq = (uint64_t)seql;
-	} else {
-		seqh = cnxk_on_anti_replay_get_seqh(win_sz, seql, esn_hi,
-						    esn_low);
-		seq = ((uint64_t)seqh << 32) | seql;
-	}
-
-	if (unlikely(seq == 0))
-		return IPSEC_ANTI_REPLAY_FAILED;
-
-	ret = cnxk_on_anti_replay_check(seq, &sa->ar, win_sz);
-	if (esn && !ret) {
-		seq_in_sa = ((uint64_t)esn_hi << 32) | esn_low;
-		if (seq > seq_in_sa) {
-			common_sa->seq_t.tl = rte_cpu_to_be_32(seql);
-			common_sa->seq_t.th = rte_cpu_to_be_32(seqh);
-		}
-	}
-
-	return ret;
-}
-
-static __rte_always_inline int
 process_outb_sa(struct rte_crypto_op *cop, struct cn9k_ipsec_sa *sa,
 		struct cpt_inst_s *inst)
 {
@@ -143,27 +96,6 @@ process_inb_sa(struct rte_crypto_op *cop, struct cn9k_ipsec_sa *sa,
 {
 	struct rte_crypto_sym_op *sym_op = cop->sym;
 	struct rte_mbuf *m_src = sym_op->m_src;
-	int ret;
-
-	if (sa->replay_win_sz) {
-		ret = ipsec_antireplay_check(sa, sa->replay_win_sz, m_src);
-		if (unlikely(ret)) {
-			/* Use PASSTHROUGH op for failed antireplay packet */
-			inst->w4.u64 = 0;
-			inst->w4.s.opcode_major = ROC_SE_MAJOR_OP_MISC;
-			inst->w4.s.opcode_minor =
-				ROC_SE_MISC_MINOR_OP_PASSTHROUGH;
-			inst->w4.s.param1 = 1;
-			/* Send out completion code only */
-			inst->w4.s.param2 =
-				(ROC_IE_ON_SWCC_ANTI_REPLAY << 8) | 0x1;
-			inst->w4.s.dlen = 1;
-			inst->dptr = rte_pktmbuf_iova(m_src);
-			inst->rptr = inst->dptr;
-			inst->w7.u64 = sa->inst.w7;
-			return;
-		}
-	}
 
 	/* Prepare CPT instruction */
 	inst->w4.u64 = sa->inst.w4 | rte_pktmbuf_pkt_len(m_src);

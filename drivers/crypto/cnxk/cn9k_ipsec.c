@@ -156,6 +156,9 @@ cn9k_ipsec_inb_sa_create(struct cnxk_cpt_qp *qp,
 		sa->ar.wint = sa->replay_win_sz;
 		sa->ar.base = sa->replay_win_sz;
 
+		sa->seq_lo = ipsec->esn.low;
+		sa->seq_hi = ipsec->esn.hi;
+
 		sa->in_sa.common_sa.seq_t.tl = sa->seq_lo;
 		sa->in_sa.common_sa.seq_t.th = sa->seq_hi;
 	}

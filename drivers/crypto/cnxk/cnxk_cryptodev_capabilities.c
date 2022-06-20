@@ -1269,6 +1269,7 @@ cn9k_sec_caps_update(struct rte_security_capability *sec_cap)
 #endif
 	}
 	sec_cap->ipsec.replay_win_sz_max = CNXK_ON_AR_WIN_SIZE_MAX;
+	sec_cap->ipsec.options.esn = 1;
 }
 
 void
