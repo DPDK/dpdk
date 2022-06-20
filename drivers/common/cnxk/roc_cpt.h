@@ -181,4 +181,7 @@ void __roc_api roc_cpt_parse_hdr_dump(const struct cpt_parse_hdr_s *cpth);
 int __roc_api roc_cpt_ctx_write(struct roc_cpt_lf *lf, void *sa_dptr,
 				void *sa_cptr, uint16_t sa_len);
 
+int __roc_api roc_on_cpt_ctx_write(struct roc_cpt_lf *lf, void *sa,
+				   uint8_t opcode, uint16_t ctx_len,
+				   uint8_t egrp);
 #endif /* _ROC_CPT_H_ */

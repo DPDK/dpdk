@@ -20,7 +20,7 @@ ipsec_po_out_rlen_get(struct cn9k_ipsec_sa *sa, uint32_t plen)
 	enc_payload_len = RTE_ALIGN_CEIL(plen + sa->rlens.roundup_len,
 					 sa->rlens.roundup_byte);
 
-	return sa->rlens.partial_len + enc_payload_len;
+	return sa->custom_hdr_len + sa->rlens.partial_len + enc_payload_len;
 }
 
 static __rte_always_inline int
@@ -41,8 +41,8 @@ ipsec_antireplay_check(struct cn9k_ipsec_sa *sa, uint32_t win_sz,
 	ctl = &common_sa->ctl;
 
 	esn = ctl->esn_en;
-	esn_low = rte_be_to_cpu_32(common_sa->esn_low);
-	esn_hi = rte_be_to_cpu_32(common_sa->esn_hi);
+	esn_low = rte_be_to_cpu_32(common_sa->seq_t.tl);
+	esn_hi = rte_be_to_cpu_32(common_sa->seq_t.th);
 
 	esp = rte_pktmbuf_mtod_offset(m, void *, sizeof(struct rte_ipv4_hdr));
 	seql = rte_be_to_cpu_32(esp->seq);
@@ -62,8 +62,8 @@ ipsec_antireplay_check(struct cn9k_ipsec_sa *sa, uint32_t win_sz,
 	if (esn && !ret) {
 		seq_in_sa = ((uint64_t)esn_hi << 32) | esn_low;
 		if (seq > seq_in_sa) {
-			common_sa->esn_low = rte_cpu_to_be_32(seql);
-			common_sa->esn_hi = rte_cpu_to_be_32(seqh);
+			common_sa->seq_t.tl = rte_cpu_to_be_32(seql);
+			common_sa->seq_t.th = rte_cpu_to_be_32(seqh);
 		}
 	}
 
@@ -77,12 +77,9 @@ process_outb_sa(struct rte_crypto_op *cop, struct cn9k_ipsec_sa *sa,
 	const unsigned int hdr_len = sa->custom_hdr_len;
 	struct rte_crypto_sym_op *sym_op = cop->sym;
 	struct rte_mbuf *m_src = sym_op->m_src;
-	struct roc_ie_on_outb_sa *out_sa;
 	struct roc_ie_on_outb_hdr *hdr;
 	uint32_t dlen, rlen;
 	int32_t extend_tail;
-
-	out_sa = &sa->out_sa;
 
 	dlen = rte_pktmbuf_pkt_len(m_src) + hdr_len;
 	rlen = ipsec_po_out_rlen_get(sa, dlen - hdr_len);
@@ -114,8 +111,7 @@ process_outb_sa(struct rte_crypto_op *cop, struct cn9k_ipsec_sa *sa,
 
 	hdr->seq = rte_cpu_to_be_32(sa->seq_lo);
 	hdr->ip_id = rte_cpu_to_be_32(sa->ip_id);
-
-	out_sa->common_sa.esn_hi = sa->seq_hi;
+	hdr->esn = rte_cpu_to_be_32(sa->seq_hi);
 
 	sa->ip_id++;
 	sa->esn++;

@@ -981,3 +981,96 @@ roc_cpt_ctx_write(struct roc_cpt_lf *lf, void *sa_dptr, void *sa_cptr,
 
 	return 0;
 }
+
+int
+roc_on_cpt_ctx_write(struct roc_cpt_lf *lf, void *sa, uint8_t opcode,
+		     uint16_t ctx_len, uint8_t egrp)
+{
+	union cpt_res_s res, *hw_res;
+	struct cpt_inst_s inst;
+	uint64_t lmt_status;
+	int ret = 0;
+
+	hw_res = plt_zmalloc(sizeof(*hw_res), ROC_CPT_RES_ALIGN);
+	if (unlikely(hw_res == NULL)) {
+		plt_err("Couldn't allocate memory for result address");
+		return -ENOMEM;
+	}
+
+	hw_res->cn9k.compcode = CPT_COMP_NOT_DONE;
+
+	inst.w4.s.opcode_major = opcode;
+	inst.w4.s.opcode_minor = ctx_len >> 3;
+	inst.w4.s.param1 = 0;
+	inst.w4.s.param2 = 0;
+	inst.w4.s.dlen = ctx_len;
+	inst.dptr = rte_mempool_virt2iova(sa);
+	inst.rptr = 0;
+	inst.w7.s.cptr = rte_mempool_virt2iova(sa);
+	inst.w7.s.egrp = egrp;
+
+	inst.w0.u64 = 0;
+	inst.w2.u64 = 0;
+	inst.w3.u64 = 0;
+	inst.res_addr = (uintptr_t)hw_res;
+
+	rte_io_wmb();
+
+	do {
+		/* Copy CPT command to LMTLINE */
+		roc_lmt_mov64((void *)lf->lmt_base, &inst);
+		lmt_status = roc_lmt_submit_ldeor(lf->io_addr);
+	} while (lmt_status == 0);
+
+	const uint64_t timeout = plt_tsc_cycles() + 60 * plt_tsc_hz();
+
+	/* Wait until CPT instruction completes */
+	do {
+		res.u64[0] = __atomic_load_n(&hw_res->u64[0], __ATOMIC_RELAXED);
+		if (unlikely(plt_tsc_cycles() > timeout)) {
+			plt_err("Request timed out");
+			ret = -ETIMEDOUT;
+			goto free;
+		}
+	} while (res.cn9k.compcode == CPT_COMP_NOT_DONE);
+
+	if (unlikely(res.cn9k.compcode != CPT_COMP_GOOD)) {
+		ret = res.cn9k.compcode;
+		switch (ret) {
+		case CPT_COMP_INSTERR:
+			plt_err("Request failed with instruction error");
+			break;
+		case CPT_COMP_FAULT:
+			plt_err("Request failed with DMA fault");
+			break;
+		case CPT_COMP_HWERR:
+			plt_err("Request failed with hardware error");
+			break;
+		default:
+			plt_err("Request failed with unknown hardware completion code : 0x%x",
+				ret);
+		}
+		ret = -EINVAL;
+		goto free;
+	}
+
+	if (unlikely(res.cn9k.uc_compcode != ROC_IE_ON_UCC_SUCCESS)) {
+		ret = res.cn9k.uc_compcode;
+		switch (ret) {
+		case ROC_IE_ON_AUTH_UNSUPPORTED:
+			plt_err("Invalid auth type");
+			break;
+		case ROC_IE_ON_ENCRYPT_UNSUPPORTED:
+			plt_err("Invalid encrypt type");
+			break;
+		default:
+			plt_err("Request failed with unknown microcode completion code : 0x%x",
+				ret);
+		}
+		ret = -ENOTSUP;
+	}
+
+free:
+	plt_free(hw_res);
+	return ret;
+}

@@ -33,6 +33,7 @@ struct cpt_qp_meta_info {
 #define CPT_OP_FLAGS_METABUF	       (1 << 1)
 #define CPT_OP_FLAGS_AUTH_VERIFY       (1 << 0)
 #define CPT_OP_FLAGS_IPSEC_DIR_INBOUND (1 << 2)
+#define CPT_OP_FLAGS_IPSEC_INB_ESN     (1 << 3)
 
 struct cpt_inflight_req {
 	union cpt_res_s res;

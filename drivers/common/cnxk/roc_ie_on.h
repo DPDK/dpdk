@@ -23,7 +23,7 @@ enum roc_ie_on_ucc_ipsec {
 };
 
 /* Helper macros */
-#define ROC_IE_ON_INB_RPTR_HDR 0x8
+#define ROC_IE_ON_INB_RPTR_HDR 16
 #define ROC_IE_ON_MAX_IV_LEN   16
 #define ROC_IE_ON_PER_PKT_IV   BIT(43)
 
@@ -67,7 +67,15 @@ enum {
 struct roc_ie_on_outb_hdr {
 	uint32_t ip_id;
 	uint32_t seq;
+	uint32_t esn;
+	uint32_t df_tos;
 	uint8_t iv[16];
+};
+
+struct roc_ie_on_inb_hdr {
+	uint32_t sa_index;
+	uint64_t seq;
+	uint32_t pad;
 };
 
 union roc_ie_on_bit_perfect_iv {
@@ -113,7 +121,7 @@ struct roc_ie_on_ip_template {
 union roc_on_ipsec_outb_param1 {
 	uint16_t u16;
 	struct {
-		uint16_t frag_num : 4;
+		uint16_t l2hdr_len : 4;
 		uint16_t rsvd_4_6 : 3;
 		uint16_t gre_select : 1;
 		uint16_t dsiv : 1;
@@ -171,8 +179,13 @@ struct roc_ie_on_common_sa {
 	union roc_ie_on_bit_perfect_iv iv;
 
 	/* w7 */
-	uint32_t esn_hi;
-	uint32_t esn_low;
+	union {
+		uint64_t u64;
+		struct {
+			uint32_t th;
+			uint32_t tl;
+		};
+	} seq_t;
 };
 
 struct roc_ie_on_outb_sa {

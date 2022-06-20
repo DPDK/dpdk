@@ -23,6 +23,8 @@ INTERNAL {
 	cnxk_ot_ipsec_outb_sa_fill;
 	cnxk_ot_ipsec_inb_sa_valid;
 	cnxk_ot_ipsec_outb_sa_valid;
+	cnxk_on_ipsec_inb_sa_create;
+	cnxk_on_ipsec_outb_sa_create;
 	roc_ae_ec_grp_get;
 	roc_ae_ec_grp_put;
 	roc_ae_fpm_get;
@@ -75,6 +77,7 @@ INTERNAL {
 	roc_cpt_parse_hdr_dump;
 	roc_cpt_rxc_time_cfg;
 	roc_cpt_ctx_write;
+	roc_on_cpt_ctx_write;
 	roc_dpi_configure;
 	roc_dpi_dev_fini;
 	roc_dpi_dev_init;

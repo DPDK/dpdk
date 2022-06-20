@@ -971,3 +971,401 @@ cnxk_ipsec_outb_rlens_get(struct cnxk_ipsec_outb_rlens *rlens,
 	rlens->max_extended_len = partial_len + roundup_len + roundup_byte;
 	return 0;
 }
+
+static inline int
+on_ipsec_sa_ctl_set(struct rte_security_ipsec_xform *ipsec,
+		    struct rte_crypto_sym_xform *crypto_xform,
+		    struct roc_ie_on_sa_ctl *ctl)
+{
+	struct rte_crypto_sym_xform *cipher_xform, *auth_xform;
+	int aes_key_len = 0;
+
+	if (crypto_xform->type == RTE_CRYPTO_SYM_XFORM_AUTH) {
+		auth_xform = crypto_xform;
+		cipher_xform = crypto_xform->next;
+	} else {
+		cipher_xform = crypto_xform;
+		auth_xform = crypto_xform->next;
+	}
+
+	if (ipsec->direction == RTE_SECURITY_IPSEC_SA_DIR_EGRESS)
+		ctl->direction = ROC_IE_SA_DIR_OUTBOUND;
+	else
+		ctl->direction = ROC_IE_SA_DIR_INBOUND;
+
+	if (ipsec->mode == RTE_SECURITY_IPSEC_SA_MODE_TUNNEL) {
+		if (ipsec->tunnel.type == RTE_SECURITY_IPSEC_TUNNEL_IPV4)
+			ctl->outer_ip_ver = ROC_IE_SA_IP_VERSION_4;
+		else if (ipsec->tunnel.type == RTE_SECURITY_IPSEC_TUNNEL_IPV6)
+			ctl->outer_ip_ver = ROC_IE_SA_IP_VERSION_6;
+		else
+			return -EINVAL;
+	}
+
+	if (ipsec->mode == RTE_SECURITY_IPSEC_SA_MODE_TRANSPORT) {
+		ctl->ipsec_mode = ROC_IE_SA_MODE_TRANSPORT;
+		ctl->outer_ip_ver = ROC_IE_SA_IP_VERSION_4;
+	} else if (ipsec->mode == RTE_SECURITY_IPSEC_SA_MODE_TUNNEL)
+		ctl->ipsec_mode = ROC_IE_SA_MODE_TUNNEL;
+	else
+		return -EINVAL;
+
+	if (ipsec->proto == RTE_SECURITY_IPSEC_SA_PROTO_AH)
+		ctl->ipsec_proto = ROC_IE_SA_PROTOCOL_AH;
+	else if (ipsec->proto == RTE_SECURITY_IPSEC_SA_PROTO_ESP)
+		ctl->ipsec_proto = ROC_IE_SA_PROTOCOL_ESP;
+	else
+		return -EINVAL;
+
+	if (crypto_xform->type == RTE_CRYPTO_SYM_XFORM_AEAD) {
+		switch (crypto_xform->aead.algo) {
+		case RTE_CRYPTO_AEAD_AES_GCM:
+			ctl->enc_type = ROC_IE_ON_SA_ENC_AES_GCM;
+			aes_key_len = crypto_xform->aead.key.length;
+			break;
+		default:
+			plt_err("Unsupported AEAD algorithm");
+			return -ENOTSUP;
+		}
+	} else {
+		if (cipher_xform != NULL) {
+			switch (cipher_xform->cipher.algo) {
+			case RTE_CRYPTO_CIPHER_NULL:
+				ctl->enc_type = ROC_IE_ON_SA_ENC_NULL;
+				break;
+			case RTE_CRYPTO_CIPHER_AES_CBC:
+				ctl->enc_type = ROC_IE_ON_SA_ENC_AES_CBC;
+				aes_key_len = cipher_xform->cipher.key.length;
+				break;
+			case RTE_CRYPTO_CIPHER_AES_CTR:
+				ctl->enc_type = ROC_IE_ON_SA_ENC_AES_CTR;
+				aes_key_len = cipher_xform->cipher.key.length;
+				break;
+			default:
+				plt_err("Unsupported cipher algorithm");
+				return -ENOTSUP;
+			}
+		}
+
+		switch (auth_xform->auth.algo) {
+		case RTE_CRYPTO_AUTH_NULL:
+			ctl->auth_type = ROC_IE_ON_SA_AUTH_NULL;
+			break;
+		case RTE_CRYPTO_AUTH_MD5_HMAC:
+			ctl->auth_type = ROC_IE_ON_SA_AUTH_MD5;
+			break;
+		case RTE_CRYPTO_AUTH_SHA1_HMAC:
+			ctl->auth_type = ROC_IE_ON_SA_AUTH_SHA1;
+			break;
+		case RTE_CRYPTO_AUTH_SHA224_HMAC:
+			ctl->auth_type = ROC_IE_ON_SA_AUTH_SHA2_224;
+			break;
+		case RTE_CRYPTO_AUTH_SHA256_HMAC:
+			ctl->auth_type = ROC_IE_ON_SA_AUTH_SHA2_256;
+			break;
+		case RTE_CRYPTO_AUTH_SHA384_HMAC:
+			ctl->auth_type = ROC_IE_ON_SA_AUTH_SHA2_384;
+			break;
+		case RTE_CRYPTO_AUTH_SHA512_HMAC:
+			ctl->auth_type = ROC_IE_ON_SA_AUTH_SHA2_512;
+			break;
+		case RTE_CRYPTO_AUTH_AES_GMAC:
+			ctl->auth_type = ROC_IE_ON_SA_AUTH_AES_GMAC;
+			aes_key_len = auth_xform->auth.key.length;
+			break;
+		case RTE_CRYPTO_AUTH_AES_XCBC_MAC:
+			ctl->auth_type = ROC_IE_ON_SA_AUTH_AES_XCBC_128;
+			break;
+		default:
+			plt_err("Unsupported auth algorithm");
+			return -ENOTSUP;
+		}
+	}
+
+	/* Set AES key length */
+	if (ctl->enc_type == ROC_IE_ON_SA_ENC_AES_CBC ||
+	    ctl->enc_type == ROC_IE_ON_SA_ENC_AES_CCM ||
+	    ctl->enc_type == ROC_IE_ON_SA_ENC_AES_CTR ||
+	    ctl->enc_type == ROC_IE_ON_SA_ENC_AES_GCM ||
+	    ctl->auth_type == ROC_IE_ON_SA_AUTH_AES_GMAC) {
+		switch (aes_key_len) {
+		case 16:
+			ctl->aes_key_len = ROC_IE_SA_AES_KEY_LEN_128;
+			break;
+		case 24:
+			ctl->aes_key_len = ROC_IE_SA_AES_KEY_LEN_192;
+			break;
+		case 32:
+			ctl->aes_key_len = ROC_IE_SA_AES_KEY_LEN_256;
+			break;
+		default:
+			plt_err("Invalid AES key length");
+			return -EINVAL;
+		}
+	}
+
+	if (ipsec->options.esn)
+		ctl->esn_en = 1;
+
+	if (ipsec->options.udp_encap == 1)
+		ctl->encap_type = ROC_IE_ON_SA_ENCAP_UDP;
+
+	ctl->copy_df = ipsec->options.copy_df;
+
+	ctl->spi = rte_cpu_to_be_32(ipsec->spi);
+
+	rte_io_wmb();
+
+	ctl->valid = 1;
+
+	return 0;
+}
+
+static inline int
+on_fill_ipsec_common_sa(struct rte_security_ipsec_xform *ipsec,
+			struct rte_crypto_sym_xform *crypto_xform,
+			struct roc_ie_on_common_sa *common_sa)
+{
+	struct rte_crypto_sym_xform *cipher_xform, *auth_xform;
+	const uint8_t *cipher_key;
+	int cipher_key_len = 0;
+	int ret;
+
+	ret = on_ipsec_sa_ctl_set(ipsec, crypto_xform, &common_sa->ctl);
+	if (ret)
+		return ret;
+
+	if (crypto_xform->type == RTE_CRYPTO_SYM_XFORM_AUTH) {
+		auth_xform = crypto_xform;
+		cipher_xform = crypto_xform->next;
+	} else {
+		cipher_xform = crypto_xform;
+		auth_xform = crypto_xform->next;
+	}
+
+	if (crypto_xform->type == RTE_CRYPTO_SYM_XFORM_AEAD) {
+		if (crypto_xform->aead.algo == RTE_CRYPTO_AEAD_AES_GCM)
+			memcpy(common_sa->iv.gcm.nonce, &ipsec->salt, 4);
+		cipher_key = crypto_xform->aead.key.data;
+		cipher_key_len = crypto_xform->aead.key.length;
+	} else {
+		if (cipher_xform) {
+			cipher_key = cipher_xform->cipher.key.data;
+			cipher_key_len = cipher_xform->cipher.key.length;
+		}
+
+		if (auth_xform->auth.algo == RTE_CRYPTO_AUTH_AES_GMAC) {
+			memcpy(common_sa->iv.gcm.nonce, &ipsec->salt, 4);
+			cipher_key = auth_xform->auth.key.data;
+			cipher_key_len = auth_xform->auth.key.length;
+		}
+	}
+
+	if (cipher_key_len != 0)
+		memcpy(common_sa->cipher_key, cipher_key, cipher_key_len);
+
+	return 0;
+}
+
+int
+cnxk_on_ipsec_outb_sa_create(struct rte_security_ipsec_xform *ipsec,
+			     struct rte_crypto_sym_xform *crypto_xform,
+			     struct roc_ie_on_outb_sa *out_sa)
+{
+	struct roc_ie_on_ip_template *template = NULL;
+	struct rte_crypto_sym_xform *auth_xform;
+	struct roc_ie_on_sa_ctl *ctl;
+	struct rte_ipv6_hdr *ip6;
+	struct rte_ipv4_hdr *ip4;
+	const uint8_t *auth_key;
+	int auth_key_len = 0;
+	size_t ctx_len;
+	int ret;
+
+	ctl = &out_sa->common_sa.ctl;
+
+	if (crypto_xform->type == RTE_CRYPTO_SYM_XFORM_AUTH)
+		auth_xform = crypto_xform;
+	else
+		auth_xform = crypto_xform->next;
+
+	ret = on_fill_ipsec_common_sa(ipsec, crypto_xform, &out_sa->common_sa);
+	if (ret)
+		return ret;
+
+	if (ctl->enc_type == ROC_IE_ON_SA_ENC_AES_GCM ||
+	    ctl->auth_type == ROC_IE_ON_SA_AUTH_NULL ||
+	    ctl->auth_type == ROC_IE_ON_SA_AUTH_AES_GMAC) {
+		template = &out_sa->aes_gcm.template;
+		ctx_len = offsetof(struct roc_ie_on_outb_sa, aes_gcm.template);
+	} else {
+		switch (ctl->auth_type) {
+		case ROC_IE_ON_SA_AUTH_SHA1:
+			template = &out_sa->sha1.template;
+			ctx_len = offsetof(struct roc_ie_on_outb_sa,
+					   sha1.template);
+			break;
+		case ROC_IE_ON_SA_AUTH_SHA2_256:
+		case ROC_IE_ON_SA_AUTH_SHA2_384:
+		case ROC_IE_ON_SA_AUTH_SHA2_512:
+			template = &out_sa->sha2.template;
+			ctx_len = offsetof(struct roc_ie_on_outb_sa,
+					   sha2.template);
+			break;
+		case ROC_IE_ON_SA_AUTH_AES_XCBC_128:
+			template = &out_sa->aes_xcbc.template;
+			ctx_len = offsetof(struct roc_ie_on_outb_sa,
+					   aes_xcbc.template);
+			break;
+		default:
+			plt_err("Unsupported auth algorithm");
+			return -EINVAL;
+		}
+	}
+
+	ip4 = (struct rte_ipv4_hdr *)&template->ip4.ipv4_hdr;
+	if (ipsec->options.udp_encap) {
+		ip4->next_proto_id = IPPROTO_UDP;
+		template->ip4.udp_src = rte_be_to_cpu_16(4500);
+		template->ip4.udp_dst = rte_be_to_cpu_16(4500);
+	} else {
+		if (ipsec->proto == RTE_SECURITY_IPSEC_SA_PROTO_AH)
+			ip4->next_proto_id = IPPROTO_AH;
+		else
+			ip4->next_proto_id = IPPROTO_ESP;
+	}
+
+	if (ipsec->mode == RTE_SECURITY_IPSEC_SA_MODE_TUNNEL) {
+		if (ipsec->tunnel.type == RTE_SECURITY_IPSEC_TUNNEL_IPV4) {
+			uint16_t frag_off = 0;
+
+			ctx_len += sizeof(template->ip4);
+
+			ip4->version_ihl = RTE_IPV4_VHL_DEF;
+			ip4->time_to_live = ipsec->tunnel.ipv4.ttl;
+			ip4->type_of_service |= (ipsec->tunnel.ipv4.dscp << 2);
+			if (ipsec->tunnel.ipv4.df)
+				frag_off |= RTE_IPV4_HDR_DF_FLAG;
+			ip4->fragment_offset = rte_cpu_to_be_16(frag_off);
+
+			memcpy(&ip4->src_addr, &ipsec->tunnel.ipv4.src_ip,
+			       sizeof(struct in_addr));
+			memcpy(&ip4->dst_addr, &ipsec->tunnel.ipv4.dst_ip,
+			       sizeof(struct in_addr));
+		} else if (ipsec->tunnel.type ==
+			   RTE_SECURITY_IPSEC_TUNNEL_IPV6) {
+			ctx_len += sizeof(template->ip6);
+
+			ip6 = (struct rte_ipv6_hdr *)&template->ip6.ipv6_hdr;
+			if (ipsec->options.udp_encap) {
+				ip6->proto = IPPROTO_UDP;
+				template->ip6.udp_src = rte_be_to_cpu_16(4500);
+				template->ip6.udp_dst = rte_be_to_cpu_16(4500);
+			} else {
+				ip6->proto = (ipsec->proto ==
+					      RTE_SECURITY_IPSEC_SA_PROTO_ESP) ?
+						     IPPROTO_ESP :
+						     IPPROTO_AH;
+			}
+			ip6->vtc_flow =
+				rte_cpu_to_be_32(0x60000000 |
+						 ((ipsec->tunnel.ipv6.dscp
+						   << RTE_IPV6_HDR_TC_SHIFT) &
+						  RTE_IPV6_HDR_TC_MASK) |
+						 ((ipsec->tunnel.ipv6.flabel
+						   << RTE_IPV6_HDR_FL_SHIFT) &
+						  RTE_IPV6_HDR_FL_MASK));
+			ip6->hop_limits = ipsec->tunnel.ipv6.hlimit;
+			memcpy(&ip6->src_addr, &ipsec->tunnel.ipv6.src_addr,
+			       sizeof(struct in6_addr));
+			memcpy(&ip6->dst_addr, &ipsec->tunnel.ipv6.dst_addr,
+			       sizeof(struct in6_addr));
+		}
+	} else
+		ctx_len += sizeof(template->ip4);
+
+	ctx_len += RTE_ALIGN_CEIL(ctx_len, 8);
+
+	if (crypto_xform->type != RTE_CRYPTO_SYM_XFORM_AEAD) {
+		auth_key = auth_xform->auth.key.data;
+		auth_key_len = auth_xform->auth.key.length;
+
+		switch (auth_xform->auth.algo) {
+		case RTE_CRYPTO_AUTH_AES_GMAC:
+		case RTE_CRYPTO_AUTH_NULL:
+			break;
+		case RTE_CRYPTO_AUTH_SHA1_HMAC:
+			memcpy(out_sa->sha1.hmac_key, auth_key, auth_key_len);
+			break;
+		case RTE_CRYPTO_AUTH_SHA256_HMAC:
+		case RTE_CRYPTO_AUTH_SHA384_HMAC:
+		case RTE_CRYPTO_AUTH_SHA512_HMAC:
+			memcpy(out_sa->sha2.hmac_key, auth_key, auth_key_len);
+			break;
+		case RTE_CRYPTO_AUTH_AES_XCBC_MAC:
+			memcpy(out_sa->aes_xcbc.key, auth_key, auth_key_len);
+			break;
+		default:
+			plt_err("Unsupported auth algorithm %u",
+				auth_xform->auth.algo);
+			return -ENOTSUP;
+		}
+	}
+
+	return ctx_len;
+}
+
+int
+cnxk_on_ipsec_inb_sa_create(struct rte_security_ipsec_xform *ipsec,
+			    struct rte_crypto_sym_xform *crypto_xform,
+			    struct roc_ie_on_inb_sa *in_sa)
+{
+	struct rte_crypto_sym_xform *auth_xform = crypto_xform;
+	const uint8_t *auth_key;
+	int auth_key_len = 0;
+	size_t ctx_len = 0;
+	int ret;
+
+	ret = on_fill_ipsec_common_sa(ipsec, crypto_xform, &in_sa->common_sa);
+	if (ret)
+		return ret;
+
+	if (crypto_xform->type == RTE_CRYPTO_SYM_XFORM_AEAD ||
+	    auth_xform->auth.algo == RTE_CRYPTO_AUTH_NULL ||
+	    auth_xform->auth.algo == RTE_CRYPTO_AUTH_AES_GMAC) {
+		ctx_len = offsetof(struct roc_ie_on_inb_sa,
+				   sha1_or_gcm.hmac_key[0]);
+	} else {
+		auth_key = auth_xform->auth.key.data;
+		auth_key_len = auth_xform->auth.key.length;
+
+		switch (auth_xform->auth.algo) {
+		case RTE_CRYPTO_AUTH_NULL:
+			break;
+		case RTE_CRYPTO_AUTH_SHA1_HMAC:
+			memcpy(in_sa->sha1_or_gcm.hmac_key, auth_key,
+			       auth_key_len);
+			ctx_len = offsetof(struct roc_ie_on_inb_sa,
+					   sha1_or_gcm.selector);
+			break;
+		case RTE_CRYPTO_AUTH_SHA256_HMAC:
+		case RTE_CRYPTO_AUTH_SHA384_HMAC:
+		case RTE_CRYPTO_AUTH_SHA512_HMAC:
+			memcpy(in_sa->sha2.hmac_key, auth_key, auth_key_len);
+			ctx_len = offsetof(struct roc_ie_on_inb_sa,
+					   sha2.selector);
+			break;
+		case RTE_CRYPTO_AUTH_AES_XCBC_MAC:
+			memcpy(in_sa->aes_xcbc.key, auth_key, auth_key_len);
+			ctx_len = offsetof(struct roc_ie_on_inb_sa,
+					   aes_xcbc.selector);
+			break;
+		default:
+			plt_err("Unsupported auth algorithm %u",
+				auth_xform->auth.algo);
+			return -ENOTSUP;
+		}
+	}
+
+	return ctx_len;
+}
