@@ -6,7 +6,6 @@
 #include <string.h>
 
 #include "rte_pie.h"
-#include <rte_malloc.h>
 
 #ifdef __INTEL_COMPILER
 #pragma warning(disable:2259) /* conversion may lose significant bits */
