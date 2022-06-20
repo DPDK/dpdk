@@ -4,20 +4,13 @@
 
 #include <errno.h>
 #include <stdio.h>
-#include <stdint.h>
 #include <unistd.h>
 #include <pthread.h>
 #include <sys/syscall.h>
 
-#include <rte_debug.h>
-#include <rte_launch.h>
-#include <rte_log.h>
 #include <rte_eal.h>
 #include <rte_lcore.h>
 #include <rte_string_fns.h>
-
-#include "eal_private.h"
-#include "eal_thread.h"
 
 /* require calling thread tid by gettid() */
 int rte_sys_gettid(void)

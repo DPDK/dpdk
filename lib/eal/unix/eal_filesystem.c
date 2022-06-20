@@ -10,10 +10,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
-#include <sys/types.h>
 #include <unistd.h>
 
-#include <rte_common.h>
 #include <rte_log.h>
 
 #include "eal_private.h"

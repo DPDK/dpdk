@@ -13,7 +13,6 @@
 #include <sys/queue.h>
 
 #include <rte_log.h>
-#include <rte_os_shim.h>
 #include <rte_per_lcore.h>
 
 #include "eal_log.h"
