@@ -77,28 +77,35 @@ process_outb_sa(struct rte_crypto_op *cop, struct cn9k_ipsec_sa *sa,
 	const unsigned int hdr_len = sa->custom_hdr_len;
 	struct rte_crypto_sym_op *sym_op = cop->sym;
 	struct rte_mbuf *m_src = sym_op->m_src;
+	uint32_t dlen, rlen, pkt_len, seq_lo;
+	uint16_t data_off = m_src->data_off;
 	struct roc_ie_on_outb_hdr *hdr;
-	uint32_t dlen, rlen;
 	int32_t extend_tail;
+	uint64_t esn;
 
-	dlen = rte_pktmbuf_pkt_len(m_src) + hdr_len;
-	rlen = ipsec_po_out_rlen_get(sa, dlen - hdr_len);
+	pkt_len = rte_pktmbuf_pkt_len(m_src);
+	dlen = pkt_len + hdr_len;
+	rlen = ipsec_po_out_rlen_get(sa, pkt_len);
 
 	extend_tail = rlen - dlen;
 	if (unlikely(extend_tail > rte_pktmbuf_tailroom(m_src))) {
-		plt_dp_err("Not enough tail room (required: %d, available: %d",
+		plt_dp_err("Not enough tail room (required: %d, available: %d)",
 			   extend_tail, rte_pktmbuf_tailroom(m_src));
 		return -ENOMEM;
 	}
 
-	m_src->data_len += extend_tail;
-	m_src->pkt_len += extend_tail;
-
-	hdr = (struct roc_ie_on_outb_hdr *)rte_pktmbuf_prepend(m_src, hdr_len);
-	if (unlikely(hdr == NULL)) {
-		plt_dp_err("Not enough head room");
+	if (unlikely(hdr_len > data_off)) {
+		plt_dp_err("Not enough head room (required: %d, available: %d)",
+			   hdr_len, rte_pktmbuf_headroom(m_src));
 		return -ENOMEM;
 	}
+
+	pkt_len += extend_tail;
+
+	m_src->data_len = pkt_len;
+	m_src->pkt_len = pkt_len;
+
+	hdr = PLT_PTR_ADD(m_src->buf_addr, data_off - hdr_len);
 
 #ifdef LA_IPSEC_DEBUG
 	if (sa->inst.w4 & ROC_IE_ON_PER_PKT_IV) {
@@ -109,23 +116,28 @@ process_outb_sa(struct rte_crypto_op *cop, struct cn9k_ipsec_sa *sa,
 	}
 #endif
 
-	hdr->seq = rte_cpu_to_be_32(sa->seq_lo);
-	hdr->ip_id = rte_cpu_to_be_32(sa->ip_id);
-	hdr->esn = rte_cpu_to_be_32(sa->seq_hi);
+	esn = ++sa->esn;
 
-	sa->ip_id++;
-	sa->esn++;
+	/* Set ESN seq hi */
+	hdr->esn = rte_cpu_to_be_32(esn >> 32);
+
+	/* Set ESN seq lo */
+	seq_lo = rte_cpu_to_be_32(esn & (BIT_ULL(32) - 1));
+	hdr->seq = seq_lo;
+
+	/* Set IPID same as seq_lo */
+	hdr->ip_id = seq_lo;
 
 	/* Prepare CPT instruction */
 	inst->w4.u64 = sa->inst.w4 | dlen;
-	inst->dptr = rte_pktmbuf_iova(m_src);
-	inst->rptr = inst->dptr;
+	inst->dptr = PLT_U64_CAST(hdr);
+	inst->rptr = PLT_U64_CAST(hdr);
 	inst->w7.u64 = sa->inst.w7;
 
 	return 0;
 }
 
-static __rte_always_inline int
+static __rte_always_inline void
 process_inb_sa(struct rte_crypto_op *cop, struct cn9k_ipsec_sa *sa,
 	       struct cpt_inst_s *inst)
 {
@@ -149,16 +161,13 @@ process_inb_sa(struct rte_crypto_op *cop, struct cn9k_ipsec_sa *sa,
 			inst->dptr = rte_pktmbuf_iova(m_src);
 			inst->rptr = inst->dptr;
 			inst->w7.u64 = sa->inst.w7;
-			return 0;
+			return;
 		}
 	}
 
 	/* Prepare CPT instruction */
 	inst->w4.u64 = sa->inst.w4 | rte_pktmbuf_pkt_len(m_src);
-	inst->dptr = rte_pktmbuf_iova(m_src);
-	inst->rptr = inst->dptr;
+	inst->dptr = inst->rptr = rte_pktmbuf_iova(m_src);
 	inst->w7.u64 = sa->inst.w7;
-
-	return 0;
 }
 #endif /* __CN9K_IPSEC_LA_OPS_H__ */

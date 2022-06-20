@@ -43,10 +43,12 @@ cn9k_cpt_sec_inst_fill(struct rte_crypto_op *op,
 		       struct cpt_inst_s *inst)
 {
 	struct rte_crypto_sym_op *sym_op = op->sym;
-	struct roc_ie_on_common_sa *common_sa;
 	struct cn9k_sec_session *priv;
-	struct roc_ie_on_sa_ctl *ctl;
 	struct cn9k_ipsec_sa *sa;
+	int ret;
+
+	priv = get_sec_session_private_data(op->sym->sec_session);
+	sa = &priv->sa;
 
 	if (unlikely(sym_op->m_dst && sym_op->m_dst != sym_op->m_src)) {
 		plt_dp_err("Out of place is not supported");
@@ -58,21 +60,17 @@ cn9k_cpt_sec_inst_fill(struct rte_crypto_op *op,
 		return -ENOTSUP;
 	}
 
-	priv = get_sec_session_private_data(op->sym->sec_session);
-	sa = &priv->sa;
-
 	if (sa->dir == RTE_SECURITY_IPSEC_SA_DIR_EGRESS)
-		return process_outb_sa(op, sa, inst);
+		ret = process_outb_sa(op, sa, inst);
+	else {
+		infl_req->op_flags |= CPT_OP_FLAGS_IPSEC_DIR_INBOUND;
+		process_inb_sa(op, sa, inst);
+		if (unlikely(sa->esn_en))
+			infl_req->op_flags |= CPT_OP_FLAGS_IPSEC_INB_ESN;
+		ret = 0;
+	}
 
-	infl_req->op_flags |= CPT_OP_FLAGS_IPSEC_DIR_INBOUND;
-
-	common_sa = &sa->in_sa.common_sa;
-	ctl = &common_sa->ctl;
-
-	if (ctl->esn_en)
-		infl_req->op_flags |= CPT_OP_FLAGS_IPSEC_INB_ESN;
-
-	return process_inb_sa(op, sa, inst);
+	return ret;
 }
 
 static inline struct cnxk_se_sess *
@@ -234,19 +232,29 @@ cn9k_cpt_enqueue_burst(void *qptr, struct rte_crypto_op **ops, uint16_t nb_ops)
 	};
 
 	pend_q = &qp->pend_q;
-
-	const uint64_t lmt_base = qp->lf.lmt_base;
-	const uint64_t io_addr = qp->lf.io_addr;
-	const uint64_t pq_mask = pend_q->pq_mask;
+	rte_prefetch2(pend_q);
 
 	/* Clear w0, w2, w3 of both inst */
 
+#if defined(RTE_ARCH_ARM64)
+	uint64x2_t zero = vdupq_n_u64(0);
+
+	vst1q_u64(&inst[0].w0.u64, zero);
+	vst1q_u64(&inst[1].w0.u64, zero);
+	vst1q_u64(&inst[0].w2.u64, zero);
+	vst1q_u64(&inst[1].w2.u64, zero);
+#else
 	inst[0].w0.u64 = 0;
 	inst[0].w2.u64 = 0;
 	inst[0].w3.u64 = 0;
 	inst[1].w0.u64 = 0;
 	inst[1].w2.u64 = 0;
 	inst[1].w3.u64 = 0;
+#endif
+
+	const uint64_t lmt_base = qp->lf.lmt_base;
+	const uint64_t io_addr = qp->lf.io_addr;
+	const uint64_t pq_mask = pend_q->pq_mask;
 
 	head = pend_q->head;
 	nb_allowed = pending_queue_free_cnt(head, pend_q->tail, pq_mask);
@@ -506,21 +514,26 @@ cn9k_cpt_sec_post_process(struct rte_crypto_op *cop,
 	uint16_t m_len = 0;
 	char *data;
 
-	priv = get_sec_session_private_data(cop->sym->sec_session);
-	sa = &priv->sa;
-
 	if (infl_req->op_flags & CPT_OP_FLAGS_IPSEC_DIR_INBOUND) {
-		struct roc_ie_on_common_sa *common_sa = &sa->in_sa.common_sa;
+		struct roc_ie_on_common_sa *common_sa;
 
 		data = rte_pktmbuf_mtod(m, char *);
-		if (infl_req->op_flags == CPT_OP_FLAGS_IPSEC_INB_ESN) {
-			struct roc_ie_on_inb_hdr *inb_hdr =
-				(struct roc_ie_on_inb_hdr *)data;
-			uint64_t seq = rte_be_to_cpu_64(inb_hdr->seq);
+		if (unlikely(infl_req->op_flags & CPT_OP_FLAGS_IPSEC_INB_ESN)) {
+			struct roc_ie_on_inb_hdr *inb_hdr;
+			uint64_t seq;
+
+			priv = get_sec_session_private_data(
+				sym_op->sec_session);
+			sa = &priv->sa;
+			common_sa = &sa->in_sa.common_sa;
+
+			inb_hdr = (struct roc_ie_on_inb_hdr *)data;
+			seq = rte_be_to_cpu_64(inb_hdr->seq);
 
 			if (seq > common_sa->seq_t.u64)
 				common_sa->seq_t.u64 = seq;
 		}
+
 		ip = (struct rte_ipv4_hdr *)(data + ROC_IE_ON_INB_RPTR_HDR);
 
 		if (((ip->version_ihl & 0xf0) >> RTE_IPV4_IHL_MULTIPLIER) ==
@@ -537,8 +550,6 @@ cn9k_cpt_sec_post_process(struct rte_crypto_op *cop,
 		m->data_len = m_len;
 		m->pkt_len = m_len;
 		m->data_off += ROC_IE_ON_INB_RPTR_HDR;
-	} else {
-		rte_pktmbuf_adj(m, sa->custom_hdr_len);
 	}
 }
 

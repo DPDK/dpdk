@@ -40,13 +40,8 @@ cn9k_ipsec_outb_sa_create(struct cnxk_cpt_qp *qp,
 
 	/* Initialize lookaside IPsec private data */
 	sa->dir = RTE_SECURITY_IPSEC_SA_DIR_EGRESS;
-	/* Start ip id from 1 */
-	sa->ip_id = 1;
-	sa->seq_lo = 1;
-	sa->seq_hi = 0;
 
-	if (ipsec->esn.value)
-		sa->esn = ipsec->esn.value;
+	sa->esn = ipsec->esn.value;
 
 	ret = cnxk_ipsec_outb_rlens_get(&sa->rlens, ipsec, crypto_xform);
 	if (ret)
@@ -166,9 +161,11 @@ cn9k_ipsec_inb_sa_create(struct cnxk_cpt_qp *qp,
 	}
 
 	ret = cnxk_on_ipsec_inb_sa_create(ipsec, crypto_xform, &sa->in_sa);
-
 	if (ret < 0)
 		return ret;
+
+	if (sa->in_sa.common_sa.ctl.esn_en)
+		sa->esn_en = 1;
 
 	ctx_len = ret;
 	opcode = ROC_IE_ON_MAJOR_OP_WRITE_IPSEC_INBOUND;

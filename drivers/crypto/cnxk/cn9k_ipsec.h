@@ -28,8 +28,6 @@ struct cn9k_ipsec_sa {
 	uint8_t custom_hdr_len;
 	/** Response length calculation data */
 	struct cnxk_ipsec_outb_rlens rlens;
-	/** Outbound IP-ID */
-	uint16_t ip_id;
 	/** ESN */
 	union {
 		uint64_t esn;
@@ -42,6 +40,11 @@ struct cn9k_ipsec_sa {
 	struct cnxk_on_ipsec_ar ar;
 	/** Anti replay window size */
 	uint32_t replay_win_sz;
+	/*
+	 * ESN enable flag. Copy of in_sa ctl.esn_en to have single cache line
+	 * access in the non-esn fastpath.
+	 */
+	uint8_t esn_en;
 	/** Queue pair */
 	struct cnxk_cpt_qp *qp;
 };
