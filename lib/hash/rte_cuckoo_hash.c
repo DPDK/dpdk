@@ -10,7 +10,6 @@
 #include <sys/queue.h>
 
 #include <rte_common.h>
-#include <rte_memory.h>         /* for definition of RTE_CACHE_LINE_SIZE */
 #include <rte_log.h>
 #include <rte_prefetch.h>
 #include <rte_branch_prediction.h>
@@ -21,7 +20,6 @@
 #include <rte_cpuflags.h>
 #include <rte_rwlock.h>
 #include <rte_ring_elem.h>
-#include <rte_compat.h>
 #include <rte_vect.h>
 #include <rte_tailq.h>
 
