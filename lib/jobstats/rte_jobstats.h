@@ -8,7 +8,6 @@
 #include <stdint.h>
 
 #include <rte_memory.h>
-#include <rte_memcpy.h>
 
 #ifdef __cplusplus
 extern "C" {
