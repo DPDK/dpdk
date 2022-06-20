@@ -504,6 +504,7 @@ mlx5_vdpa_cqe_event_setup(struct mlx5_vdpa_priv *priv)
 {
 	int ret;
 	rte_cpuset_t cpuset;
+	pthread_attr_t *attrp = NULL;
 	pthread_attr_t attr;
 	char name[16];
 	const struct sched_param sp = {
@@ -513,22 +514,27 @@ mlx5_vdpa_cqe_event_setup(struct mlx5_vdpa_priv *priv)
 	if (!priv->eventc)
 		/* All virtqs are in poll mode. */
 		return 0;
-	pthread_attr_init(&attr);
-	ret = pthread_attr_setschedpolicy(&attr, SCHED_RR);
+	ret = pthread_attr_init(&attr);
+	if (ret != 0) {
+		DRV_LOG(ERR, "Failed to initialize thread attributes");
+		goto out;
+	}
+	attrp = &attr;
+	ret = pthread_attr_setschedpolicy(attrp, SCHED_RR);
 	if (ret) {
 		DRV_LOG(ERR, "Failed to set thread sched policy = RR.");
-		return -1;
+		goto out;
 	}
-	ret = pthread_attr_setschedparam(&attr, &sp);
+	ret = pthread_attr_setschedparam(attrp, &sp);
 	if (ret) {
 		DRV_LOG(ERR, "Failed to set thread priority.");
-		return -1;
+		goto out;
 	}
-	ret = pthread_create(&priv->timer_tid, &attr, mlx5_vdpa_event_handle,
+	ret = pthread_create(&priv->timer_tid, attrp, mlx5_vdpa_event_handle,
 			     (void *)priv);
 	if (ret) {
 		DRV_LOG(ERR, "Failed to create timer thread.");
-		return -1;
+		goto out;
 	}
 	CPU_ZERO(&cpuset);
 	if (priv->event_core != -1)
@@ -538,12 +544,16 @@ mlx5_vdpa_cqe_event_setup(struct mlx5_vdpa_priv *priv)
 	ret = pthread_setaffinity_np(priv->timer_tid, sizeof(cpuset), &cpuset);
 	if (ret) {
 		DRV_LOG(ERR, "Failed to set thread affinity.");
-		return -1;
+		goto out;
 	}
 	snprintf(name, sizeof(name), "vDPA-mlx5-%d", priv->vid);
-	ret = rte_thread_setname(priv->timer_tid, name);
-	if (ret)
+	if (rte_thread_setname(priv->timer_tid, name) != 0)
 		DRV_LOG(DEBUG, "Cannot set timer thread name.");
+out:
+	if (attrp != NULL)
+		pthread_attr_destroy(attrp);
+	if (ret != 0)
+		return -1;
 	return 0;
 }
 
