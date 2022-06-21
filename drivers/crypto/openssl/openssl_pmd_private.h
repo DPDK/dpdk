@@ -134,7 +134,11 @@ struct openssl_session {
 				/**< pointer to EVP key */
 				const EVP_MD *evp_algo;
 				/**< pointer to EVP algorithm function */
+# if OPENSSL_VERSION_NUMBER >= 0x30000000L
+				EVP_MAC_CTX * ctx;
+# else
 				HMAC_CTX *ctx;
+# endif
 				/**< pointer to EVP context structure */
 			} hmac;
 		};
