@@ -6033,7 +6033,7 @@ test_zuc_encryption(const struct wireless_test_data *tdata)
 	retval = create_wireless_algo_cipher_operation(tdata->cipher_iv.data,
 					tdata->cipher_iv.len,
 					tdata->plaintext.len,
-					0);
+					tdata->validCipherOffsetInBits.len);
 	if (retval < 0)
 		return retval;
 
@@ -6128,7 +6128,7 @@ test_zuc_encryption_sgl(const struct wireless_test_data *tdata)
 	/* Create ZUC operation */
 	retval = create_wireless_algo_cipher_operation(tdata->cipher_iv.data,
 			tdata->cipher_iv.len, tdata->plaintext.len,
-			0);
+			tdata->validCipherOffsetInBits.len);
 	if (retval < 0)
 		return retval;
 
