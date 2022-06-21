@@ -128,15 +128,13 @@ jobs:
       run: sudo apt install -y gcc-multilib g++-multilib
     - name: Install aarch64 cross compiling packages
       if: env.AARCH64 == 'true'
-      run: sudo apt install -y gcc-aarch64-linux-gnu libc6-dev-arm64-cross
-        pkg-config-aarch64-linux-gnu
+      run: sudo apt install -y crossbuild-essential-arm64
     - name: Install mingw cross compiling packages
       if: env.MINGW == 'true'
       run: sudo apt install -y mingw-w64 mingw-w64-tools
     - name: Install ppc64le cross compiling packages
       if: env.PPC64LE == 'true'
-      run: sudo apt install -y gcc-powerpc64le-linux-gnu libc6-dev-ppc64el-cross
-        pkg-config-powerpc-linux-gnu
+      run: sudo apt install -y crossbuild-essential-ppc64el
     - name: Install riscv64 cross compiling packages
       if: env.RISCV64 == 'true'
       run: sudo apt install -y crossbuild-essential-riscv64
