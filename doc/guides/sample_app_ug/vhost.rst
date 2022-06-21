@@ -33,19 +33,7 @@ The application is located in the ``vhost`` sub-directory.
 .. note::
    In this example, you need build DPDK both on the host and inside guest.
 
-Start the vswitch example
-~~~~~~~~~~~~~~~~~~~~~~~~~
-
-.. code-block:: console
-
-        ./dpdk-vhost -l 0-3 -n 4 --socket-mem 1024  \
-             -- --socket-file /tmp/sock0 --client \
-             ...
-
-Check the `Parameters`_ section for the explanations on what do those
-parameters mean.
-
-.. _vhost_app_run_vm:
+. _vhost_app_run_vm:
 
 Start the VM
 ~~~~~~~~~~~~
@@ -66,6 +54,19 @@ Start the VM
     some specific features, a higher version might be need. Such as
     QEMU 2.7 (or above) for the reconnect feature.
 
+
+Start the vswitch example
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. code-block:: console
+
+        ./dpdk-vhost -l 0-3 -n 4 --socket-mem 1024  \
+             -- --socket-file /tmp/sock0 --client \
+             ...
+
+Check the `Parameters`_ section for the explanations on what do those
+parameters mean.
+
 .. _vhost_app_run_dpdk_inside_guest:
 
 Run testpmd inside guest
@@ -77,8 +78,8 @@ could be done by:
 
 .. code-block:: console
 
-   modprobe uio_pci_generic
-   dpdk/usertools/dpdk-devbind.py -b uio_pci_generic 0000:00:04.0
+   modprobe vfio-pci
+   dpdk/usertools/dpdk-devbind.py -b vfio-pci 0000:00:04.0
 
 Then start testpmd for packet forwarding testing.
 
@@ -86,6 +87,9 @@ Then start testpmd for packet forwarding testing.
 
     ./<build_dir>/app/dpdk-testpmd -l 0-1 -- -i
     > start tx_first
+
+For more information about vIOMMU and NO-IOMMU and VFIO please refer to
+:doc:`/../linux_gsg/linux_drivers` section of the DPDK Getting started guide.
 
 Inject packets
 --------------
@@ -146,25 +150,9 @@ The rx-retry-delay option specifies the timeout (in micro seconds) between
 retries on an RX burst, it takes effect only when rx retry is enabled. The
 default value is 15.
 
-**--dequeue-zero-copy**
-Dequeue zero copy will be enabled when this option is given. it is worth to
-note that if NIC is bound to driver with iommu enabled, dequeue zero copy
-cannot work at VM2NIC mode (vm2vm=0) due to currently we don't setup iommu
-dma mapping for guest memory.
-
-**--vlan-strip 0|1**
-VLAN strip option is removed, because different NICs have different behaviors
-when disabling VLAN strip. Such feature, which heavily depends on hardware,
-should be removed from this example to reduce confusion. Now, VLAN strip is
-enabled and cannot be disabled.
-
 **--builtin-net-driver**
 A very simple vhost-user net driver which demonstrates how to use the generic
 vhost APIs will be used when this option is given. It is disabled by default.
-
-**--dma-type**
-This parameter is used to specify DMA type for async vhost-user net driver which
-demonstrates how to use the async vhost APIs. It's used in combination with dmas.
 
 **--dmas**
 This parameter is used to specify the assigned DMA device of a vhost device.
@@ -175,6 +163,20 @@ and use DMA channel 00:04.1/00:04.3 for vhost device 1 enqueue/dequeue
 operation. The index of the device corresponds to the socket file in order,
 that means vhost device 0 is created through the first socket file, vhost
 device 1 is created through the second socket file, and so on.
+
+**--total-num-mbufs 0-N**
+This parameter sets the number of mbufs to be allocated in mbuf pools,
+the default value is 147456. This is can be used if launch of a port fails
+due to shortage of mbufs.
+
+**--tso 0|1**
+Disables/enables TCP segment offload.
+
+**--tx-csum 0|1**
+Disables/enables TX checksum offload.
+
+**-p mask**
+Port mask which specifies the ports to be used
 
 Common Issues
 -------------
@@ -204,7 +206,8 @@ Common Issues
 
   mbuf pool size is dependent on the MAX_QUEUES configuration, if NIC's
   max queue number is larger than 128, device start will fail due to
-  insufficient mbuf.
+  insufficient mbuf. This can be adjusted using ``--total-num-mbufs``
+  parameter.
 
 * Option "builtin-net-driver" is incompatible with QEMU
 
