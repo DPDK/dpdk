@@ -45,6 +45,7 @@ static void HMAC_CTX_free(HMAC_CTX *ctx)
 
 #include <openssl/provider.h>
 #include <openssl/core_names.h>
+#include <openssl/param_build.h>
 
 #define MAX_OSSL_ALGO_NAME_SIZE		16
 
@@ -1846,6 +1847,185 @@ process_openssl_dsa_verify_op(struct rte_crypto_op *cop,
 }
 
 /* process dh operation */
+#if (OPENSSL_VERSION_NUMBER >= 0x30000000L)
+static int
+process_openssl_dh_op_evp(struct rte_crypto_op *cop,
+		struct openssl_asym_session *sess)
+{
+	struct rte_crypto_dh_op_param *op = &cop->asym->dh;
+	OSSL_PARAM_BLD *param_bld = sess->u.dh.param_bld;
+	OSSL_PARAM_BLD *param_bld_peer = sess->u.dh.param_bld_peer;
+	OSSL_PARAM *params = NULL;
+	EVP_PKEY *dhpkey = NULL;
+	EVP_PKEY *peerkey = NULL;
+	BIGNUM *priv_key = NULL;
+	BIGNUM *pub_key = NULL;
+	int ret = -1;
+
+	cop->status = RTE_CRYPTO_OP_STATUS_NOT_PROCESSED;
+	EVP_PKEY_CTX *dh_ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_DH, NULL);
+	if (dh_ctx == NULL || param_bld == NULL)
+		return ret;
+
+	if (op->ke_type == RTE_CRYPTO_ASYM_KE_SHARED_SECRET_COMPUTE) {
+		OSSL_PARAM *params_peer = NULL;
+
+		if (!param_bld_peer)
+			return ret;
+
+		pub_key = BN_bin2bn(op->pub_key.data, op->pub_key.length,
+					pub_key);
+		if (pub_key == NULL) {
+			OSSL_PARAM_BLD_free(param_bld_peer);
+			return ret;
+		}
+
+		if (!OSSL_PARAM_BLD_push_BN(param_bld_peer, OSSL_PKEY_PARAM_PUB_KEY,
+				pub_key)) {
+			OPENSSL_LOG(ERR, "Failed to set public key\n");
+			OSSL_PARAM_BLD_free(param_bld_peer);
+			BN_free(pub_key);
+			return ret;
+		}
+
+		params_peer = OSSL_PARAM_BLD_to_param(param_bld_peer);
+		if (!params_peer) {
+			OSSL_PARAM_BLD_free(param_bld_peer);
+			BN_free(pub_key);
+			return ret;
+		}
+
+		EVP_PKEY_CTX *peer_ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_DH, NULL);
+		if (EVP_PKEY_keygen_init(peer_ctx) != 1) {
+			OSSL_PARAM_free(params_peer);
+			BN_free(pub_key);
+			return ret;
+		}
+
+		if (EVP_PKEY_CTX_set_params(peer_ctx, params_peer) != 1) {
+			EVP_PKEY_CTX_free(peer_ctx);
+			OSSL_PARAM_free(params_peer);
+			BN_free(pub_key);
+			return ret;
+		}
+
+		if (EVP_PKEY_keygen(peer_ctx, &peerkey) != 1) {
+			EVP_PKEY_CTX_free(peer_ctx);
+			OSSL_PARAM_free(params_peer);
+			BN_free(pub_key);
+			return ret;
+		}
+
+		priv_key = BN_bin2bn(op->priv_key.data, op->priv_key.length,
+					priv_key);
+		if (priv_key == NULL) {
+			EVP_PKEY_CTX_free(peer_ctx);
+			OSSL_PARAM_free(params_peer);
+			BN_free(pub_key);
+			return ret;
+		}
+
+		if (!OSSL_PARAM_BLD_push_BN(param_bld, OSSL_PKEY_PARAM_PRIV_KEY,
+				priv_key)) {
+			OPENSSL_LOG(ERR, "Failed to set private key\n");
+			EVP_PKEY_CTX_free(peer_ctx);
+			OSSL_PARAM_free(params_peer);
+			BN_free(pub_key);
+			BN_free(priv_key);
+			return ret;
+		}
+
+		OSSL_PARAM_free(params_peer);
+		EVP_PKEY_CTX_free(peer_ctx);
+	}
+
+	params = OSSL_PARAM_BLD_to_param(param_bld);
+	if (!params)
+		goto err_dh;
+
+	if (EVP_PKEY_keygen_init(dh_ctx) != 1)
+		goto err_dh;
+
+	if (EVP_PKEY_CTX_set_params(dh_ctx, params) != 1)
+		goto err_dh;
+
+	if (EVP_PKEY_keygen(dh_ctx, &dhpkey) != 1)
+		goto err_dh;
+
+	if (op->ke_type == RTE_CRYPTO_ASYM_KE_PUB_KEY_GENERATE) {
+		OPENSSL_LOG(DEBUG, "%s:%d updated pub key\n", __func__, __LINE__);
+		if (!EVP_PKEY_get_bn_param(dhpkey, OSSL_PKEY_PARAM_PUB_KEY, &pub_key))
+			goto err_dh;
+				/* output public key */
+		op->pub_key.length = BN_bn2bin(pub_key, op->pub_key.data);
+	}
+
+	if (op->ke_type == RTE_CRYPTO_ASYM_KE_PRIV_KEY_GENERATE) {
+
+		OPENSSL_LOG(DEBUG, "%s:%d updated priv key\n", __func__, __LINE__);
+		if (!EVP_PKEY_get_bn_param(dhpkey, OSSL_PKEY_PARAM_PRIV_KEY, &priv_key))
+			goto err_dh;
+
+		/* provide generated private key back to user */
+		op->priv_key.length = BN_bn2bin(priv_key, op->priv_key.data);
+	}
+
+	if (op->ke_type == RTE_CRYPTO_ASYM_KE_SHARED_SECRET_COMPUTE) {
+		size_t skey_len;
+		EVP_PKEY_CTX *sc_ctx = EVP_PKEY_CTX_new(dhpkey, NULL);
+		if (!sc_ctx)
+			goto err_dh;
+
+		if (EVP_PKEY_derive_init(sc_ctx) <= 0) {
+			EVP_PKEY_CTX_free(sc_ctx);
+			goto err_dh;
+		}
+
+		if (!peerkey) {
+			EVP_PKEY_CTX_free(sc_ctx);
+			goto err_dh;
+		}
+
+		if (EVP_PKEY_derive_set_peer(sc_ctx, peerkey) <= 0) {
+			EVP_PKEY_CTX_free(sc_ctx);
+			goto err_dh;
+		}
+
+		/* Determine buffer length */
+		if (EVP_PKEY_derive(sc_ctx, NULL, &skey_len) <= 0) {
+			EVP_PKEY_CTX_free(sc_ctx);
+			goto err_dh;
+		}
+
+		if (EVP_PKEY_derive(sc_ctx, op->shared_secret.data, &skey_len) <= 0) {
+			EVP_PKEY_CTX_free(sc_ctx);
+			goto err_dh;
+		}
+
+		op->shared_secret.length = skey_len;
+		EVP_PKEY_CTX_free(sc_ctx);
+	}
+
+	cop->status = RTE_CRYPTO_OP_STATUS_SUCCESS;
+	ret = 0;
+
+ err_dh:
+	if (pub_key)
+		BN_free(pub_key);
+	if (priv_key)
+		BN_free(priv_key);
+	if (params)
+		OSSL_PARAM_free(params);
+	if (dhpkey)
+		EVP_PKEY_free(dhpkey);
+	if (peerkey)
+		EVP_PKEY_free(peerkey);
+
+	EVP_PKEY_CTX_free(dh_ctx);
+
+	return ret;
+}
+#else
 static int
 process_openssl_dh_op(struct rte_crypto_op *cop,
 		struct openssl_asym_session *sess)
@@ -1979,6 +2159,7 @@ process_openssl_dh_op(struct rte_crypto_op *cop,
 
 	return 0;
 }
+#endif
 
 /* process modinv operation */
 static int
@@ -2313,7 +2494,11 @@ process_asym_op(struct openssl_qp *qp, struct rte_crypto_op *op,
 		retval = process_openssl_modinv_op(op, sess);
 		break;
 	case RTE_CRYPTO_ASYM_XFORM_DH:
+#if (OPENSSL_VERSION_NUMBER >= 0x30000000L)
+		retval = process_openssl_dh_op_evp(op, sess);
+# else
 		retval = process_openssl_dh_op(op, sess);
+#endif
 		break;
 	case RTE_CRYPTO_ASYM_XFORM_DSA:
 		if (op->asym->dsa.op_type == RTE_CRYPTO_ASYM_OP_SIGN)

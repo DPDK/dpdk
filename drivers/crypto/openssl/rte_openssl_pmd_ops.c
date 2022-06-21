@@ -1095,7 +1095,46 @@ err_rsa:
 		if (!p || !g)
 			goto err_dh;
 
-		DH *dh = DH_new();
+		DH *dh = NULL;
+#if (OPENSSL_VERSION_NUMBER >= 0x30000000L)
+		OSSL_PARAM_BLD *param_bld = NULL;
+		param_bld = OSSL_PARAM_BLD_new();
+		if (!param_bld) {
+			OPENSSL_LOG(ERR, "failed to allocate resources\n");
+			goto err_dh;
+		}
+		if ((!OSSL_PARAM_BLD_push_utf8_string(param_bld,
+					"group", "ffdhe2048", 0))
+			|| (!OSSL_PARAM_BLD_push_BN(param_bld,
+					OSSL_PKEY_PARAM_FFC_P, p))
+			|| (!OSSL_PARAM_BLD_push_BN(param_bld,
+					OSSL_PKEY_PARAM_FFC_G, g))) {
+			OSSL_PARAM_BLD_free(param_bld);
+			goto err_dh;
+		}
+
+		OSSL_PARAM_BLD *param_bld_peer = NULL;
+		param_bld_peer = OSSL_PARAM_BLD_new();
+		if (!param_bld_peer) {
+			OPENSSL_LOG(ERR, "failed to allocate resources\n");
+			OSSL_PARAM_BLD_free(param_bld);
+			goto err_dh;
+		}
+		if ((!OSSL_PARAM_BLD_push_utf8_string(param_bld_peer,
+					"group", "ffdhe2048", 0))
+			|| (!OSSL_PARAM_BLD_push_BN(param_bld_peer,
+					OSSL_PKEY_PARAM_FFC_P, p))
+			|| (!OSSL_PARAM_BLD_push_BN(param_bld_peer,
+					OSSL_PKEY_PARAM_FFC_G, g))) {
+			OSSL_PARAM_BLD_free(param_bld);
+			OSSL_PARAM_BLD_free(param_bld_peer);
+			goto err_dh;
+		}
+
+		asym_session->u.dh.param_bld = param_bld;
+		asym_session->u.dh.param_bld_peer = param_bld_peer;
+#else
+		dh = DH_new();
 		if (dh == NULL) {
 			OPENSSL_LOG(ERR,
 				"failed to allocate resources\n");
@@ -1106,6 +1145,7 @@ err_rsa:
 			DH_free(dh);
 			goto err_dh;
 		}
+#endif
 		asym_session->u.dh.dh_key = dh;
 		asym_session->xfrm_type = RTE_CRYPTO_ASYM_XFORM_DH;
 		break;
@@ -1261,8 +1301,13 @@ static void openssl_reset_asym_session(struct openssl_asym_session *sess)
 		}
 		break;
 	case RTE_CRYPTO_ASYM_XFORM_DH:
+#if (OPENSSL_VERSION_NUMBER >= 0x30000000L)
+		sess->u.dh.param_bld = NULL;
+		sess->u.dh.param_bld_peer = NULL;
+#else
 		if (sess->u.dh.dh_key)
 			DH_free(sess->u.dh.dh_key);
+#endif
 		break;
 	case RTE_CRYPTO_ASYM_XFORM_DSA:
 		if (sess->u.s.dsa)
