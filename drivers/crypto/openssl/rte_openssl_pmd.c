@@ -2046,6 +2046,150 @@ process_openssl_modexp_op(struct rte_crypto_op *cop,
 }
 
 /* process rsa operations */
+#if (OPENSSL_VERSION_NUMBER >= 0x30000000L)
+static int
+process_openssl_rsa_op_evp(struct rte_crypto_op *cop,
+		struct openssl_asym_session *sess)
+{
+	struct rte_crypto_asym_op *op = cop->asym;
+	uint32_t pad = (op->rsa.padding.type);
+	uint8_t *tmp;
+	size_t outlen = 0;
+	int ret = -1;
+
+	cop->status = RTE_CRYPTO_OP_STATUS_ERROR;
+	EVP_PKEY_CTX *rsa_ctx = sess->u.r.ctx;
+	if (!rsa_ctx)
+		return ret;
+
+	switch (pad) {
+	case RTE_CRYPTO_RSA_PADDING_PKCS1_5:
+		pad = RSA_PKCS1_PADDING;
+		break;
+	case RTE_CRYPTO_RSA_PADDING_NONE:
+		pad = RSA_NO_PADDING;
+		break;
+	default:
+		cop->status = RTE_CRYPTO_OP_STATUS_INVALID_ARGS;
+		OPENSSL_LOG(ERR,
+				"rsa pad type not supported %d\n", pad);
+		return ret;
+	}
+
+	switch (op->rsa.op_type) {
+	case RTE_CRYPTO_ASYM_OP_ENCRYPT:
+		if (EVP_PKEY_encrypt_init(rsa_ctx) != 1)
+			goto err_rsa;
+
+		if (EVP_PKEY_CTX_set_rsa_padding(rsa_ctx, pad) <= 0)
+			goto err_rsa;
+
+		if (EVP_PKEY_encrypt(rsa_ctx, NULL, &outlen,
+				op->rsa.message.data,
+				op->rsa.message.length) <= 0)
+			goto err_rsa;
+
+		if (outlen <= 0)
+			goto err_rsa;
+
+		if (EVP_PKEY_encrypt(rsa_ctx, op->rsa.cipher.data, &outlen,
+				op->rsa.message.data,
+				op->rsa.message.length) <= 0)
+			goto err_rsa;
+		op->rsa.cipher.length = outlen;
+
+		OPENSSL_LOG(DEBUG,
+				"length of encrypted text %zu\n", outlen);
+		break;
+
+	case RTE_CRYPTO_ASYM_OP_DECRYPT:
+		if (EVP_PKEY_decrypt_init(rsa_ctx) != 1)
+			goto err_rsa;
+
+		if (EVP_PKEY_CTX_set_rsa_padding(rsa_ctx, pad) <= 0)
+			goto err_rsa;
+
+		if (EVP_PKEY_decrypt(rsa_ctx, NULL, &outlen,
+				op->rsa.cipher.data,
+				op->rsa.cipher.length) <= 0)
+			goto err_rsa;
+
+		if (outlen <= 0)
+			goto err_rsa;
+
+		if (EVP_PKEY_decrypt(rsa_ctx, op->rsa.message.data, &outlen,
+				op->rsa.cipher.data,
+				op->rsa.cipher.length) <= 0)
+			goto err_rsa;
+		op->rsa.message.length = outlen;
+
+		OPENSSL_LOG(DEBUG, "length of decrypted text %zu\n", outlen);
+		break;
+
+	case RTE_CRYPTO_ASYM_OP_SIGN:
+		if (EVP_PKEY_sign_init(rsa_ctx) <= 0)
+			goto err_rsa;
+
+		if (EVP_PKEY_CTX_set_rsa_padding(rsa_ctx, pad) <= 0)
+			goto err_rsa;
+
+		if (EVP_PKEY_sign(rsa_ctx, op->rsa.sign.data, &outlen,
+				op->rsa.message.data,
+				op->rsa.message.length) <= 0)
+			goto err_rsa;
+		op->rsa.sign.length = outlen;
+		break;
+
+	case RTE_CRYPTO_ASYM_OP_VERIFY:
+		tmp = rte_malloc(NULL, op->rsa.sign.length, 0);
+		if (tmp == NULL) {
+			OPENSSL_LOG(ERR, "Memory allocation failed");
+			goto err_rsa;
+		}
+
+		if (EVP_PKEY_verify_recover_init(rsa_ctx) <= 0) {
+			rte_free(tmp);
+			goto err_rsa;
+		}
+
+		if (EVP_PKEY_CTX_set_rsa_padding(rsa_ctx, pad) <= 0) {
+			rte_free(tmp);
+			goto err_rsa;
+		}
+
+		if (EVP_PKEY_verify_recover(rsa_ctx, tmp, &outlen,
+				op->rsa.sign.data,
+				op->rsa.sign.length) <= 0) {
+			rte_free(tmp);
+			goto err_rsa;
+		}
+
+		OPENSSL_LOG(DEBUG,
+				"Length of public_decrypt %zu "
+				"length of message %zd\n",
+				outlen, op->rsa.message.length);
+		if (CRYPTO_memcmp(tmp, op->rsa.message.data,
+				op->rsa.message.length)) {
+			OPENSSL_LOG(ERR, "RSA sign Verification failed");
+		}
+		rte_free(tmp);
+		break;
+
+	default:
+		/* allow ops with invalid args to be pushed to
+		 * completion queue
+		 */
+		cop->status = RTE_CRYPTO_OP_STATUS_INVALID_ARGS;
+		goto err_rsa;
+	}
+
+	ret = 0;
+	cop->status = RTE_CRYPTO_OP_STATUS_SUCCESS;
+err_rsa:
+	return ret;
+
+}
+#else
 static int
 process_openssl_rsa_op(struct rte_crypto_op *cop,
 		struct openssl_asym_session *sess)
@@ -2144,6 +2288,7 @@ process_openssl_rsa_op(struct rte_crypto_op *cop,
 
 	return 0;
 }
+#endif
 
 static int
 process_asym_op(struct openssl_qp *qp, struct rte_crypto_op *op,
@@ -2155,7 +2300,11 @@ process_asym_op(struct openssl_qp *qp, struct rte_crypto_op *op,
 
 	switch (sess->xfrm_type) {
 	case RTE_CRYPTO_ASYM_XFORM_RSA:
+#if (OPENSSL_VERSION_NUMBER >= 0x30000000L)
+		retval = process_openssl_rsa_op_evp(op, sess);
+# else
 		retval = process_openssl_rsa_op(op, sess);
+#endif
 		break;
 	case RTE_CRYPTO_ASYM_XFORM_MODEX:
 		retval = process_openssl_modexp_op(op, sess);

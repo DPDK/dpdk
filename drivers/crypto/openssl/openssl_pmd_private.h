@@ -11,6 +11,10 @@
 #include <openssl/rsa.h>
 #include <openssl/dh.h>
 #include <openssl/dsa.h>
+#if (OPENSSL_VERSION_NUMBER >= 0x30000000L)
+#include <openssl/provider.h>
+#include <openssl/core_names.h>
+#endif
 
 #define CRYPTODEV_NAME_OPENSSL_PMD	crypto_openssl
 /**< Open SSL Crypto PMD device name */
@@ -157,6 +161,9 @@ struct openssl_asym_session {
 	union {
 		struct rsa {
 			RSA *rsa;
+#if (OPENSSL_VERSION_NUMBER >= 0x30000000L)
+			EVP_PKEY_CTX * ctx;
+#endif
 		} r;
 		struct exp {
 			BIGNUM *exp;
