@@ -1400,7 +1400,7 @@ ifcvf_blk_get_config(int vid, uint8_t *config, uint32_t size)
 	uint64_t capacity = 0;
 	uint8_t *byte;
 
-	if (size != sizeof(struct virtio_blk_config)) {
+	if (size < sizeof(struct virtio_blk_config)) {
 		DRV_LOG(ERR, "Invalid len: %u, required: %u",
 			size, (uint32_t)sizeof(struct virtio_blk_config));
 		return -1;
