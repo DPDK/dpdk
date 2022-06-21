@@ -43,6 +43,12 @@ enum roc_nix_bpf_level_flag {
 	ROC_NIX_BPF_LEVEL_F_TOP = BIT(2),
 };
 
+enum roc_nix_bpf_precolor_tbl_size {
+	ROC_NIX_BPF_PRECOLOR_TBL_SIZE_GEN = 16,
+	ROC_NIX_BPF_PRECOLOR_TBL_SIZE_VLAN = 16,
+	ROC_NIX_BPF_PRECOLOR_TBL_SIZE_DSCP = 64,
+};
+
 enum roc_nix_bpf_pc_mode {
 	ROC_NIX_BPF_PC_MODE_VLAN_INNER,
 	ROC_NIX_BPF_PC_MODE_VLAN_OUTER,

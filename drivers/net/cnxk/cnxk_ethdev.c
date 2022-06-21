@@ -1717,6 +1717,7 @@ cnxk_eth_dev_init(struct rte_eth_dev *eth_dev)
 	dev->eth_dev = eth_dev;
 	dev->configured = 0;
 	dev->ptype_disable = 0;
+	dev->proto = RTE_MTR_COLOR_IN_PROTO_OUTER_VLAN;
 
 	TAILQ_INIT(&dev->inb.list);
 	TAILQ_INIT(&dev->outb.list);

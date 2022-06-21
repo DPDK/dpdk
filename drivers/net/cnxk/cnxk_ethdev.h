@@ -408,7 +408,8 @@ struct cnxk_eth_dev {
 	uint64_t clk_delta;
 
 	/* Ingress policer */
-	enum roc_nix_bpf_color precolor_tbl[ROC_NIX_BPF_PRE_COLOR_MAX];
+	enum roc_nix_bpf_color precolor_tbl[ROC_NIX_BPF_PRECOLOR_TBL_SIZE_DSCP];
+	enum rte_mtr_color_in_protocol proto;
 	struct cnxk_mtr_profiles mtr_profiles;
 	struct cnxk_mtr_policy mtr_policy;
 	struct cnxk_mtr mtr;
