@@ -486,6 +486,14 @@ the same vring with their own DMA virtual channels. Besides, the number
 of DMA devices is limited. For the purpose of scaling, it's necessary to
 support sharing DMA channels among vrings.
 
+* Async enqueue API usage
+
+  In async enqueue path, rte_vhost_poll_enqueue_completed() needs to be
+  called in time to notify the guest of DMA copy completed packets.
+  Moreover, calling rte_vhost_submit_enqueue_burst() all the time but
+  not poll completed will cause the DMA ring to be full, which will
+  result in packet loss eventually.
+
 Recommended IOVA mode in async datapath
 ---------------------------------------
 
