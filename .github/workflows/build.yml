@@ -102,8 +102,7 @@ jobs:
       run: sudo apt install -y gcc-multilib
     - name: Install aarch64 cross compiling packages
       if: env.AARCH64 == 'true'
-      run: sudo apt install -y gcc-aarch64-linux-gnu libc6-dev-arm64-cross
-        pkg-config-aarch64-linux-gnu
+      run: sudo apt install -y crossbuild-essential-arm64
     - name: Install test tools packages
       if: env.AARCH64 != 'true' || env.RUN_TESTS == 'true'
       run: sudo apt install -y gdb
