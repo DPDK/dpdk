@@ -580,8 +580,8 @@ testsuite_teardown(void)
 static int
 test_libipsec_perf(void)
 {
-	struct ipsec_sa sa_out;
-	struct ipsec_sa sa_in;
+	struct ipsec_sa sa_out = { .sa_prm = { 0 } };
+	struct ipsec_sa sa_in = { .sa_prm = { 0 } };
 	uint32_t i;
 	int ret;
 
