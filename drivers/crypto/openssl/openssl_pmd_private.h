@@ -184,6 +184,9 @@ struct openssl_asym_session {
 		} dh;
 		struct {
 			DSA *dsa;
+#if (OPENSSL_VERSION_NUMBER >= 0x30000000L)
+			OSSL_PARAM_BLD * param_bld;
+#endif
 		} s;
 	} u;
 } __rte_cache_aligned;

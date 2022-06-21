@@ -2,8 +2,6 @@
  * Copyright(c) 2016-2017 Intel Corporation
  */
 
-#define OPENSSL_API_COMPAT 0x10100000L
-
 #include <rte_common.h>
 #include <rte_hexdump.h>
 #include <rte_cryptodev.h>
@@ -1764,6 +1762,171 @@ process_openssl_auth_op(struct openssl_qp *qp, struct rte_crypto_op *op,
 }
 
 /* process dsa sign operation */
+#if (OPENSSL_VERSION_NUMBER >= 0x30000000L)
+static int
+process_openssl_dsa_sign_op_evp(struct rte_crypto_op *cop,
+		struct openssl_asym_session *sess)
+{
+	struct rte_crypto_dsa_op_param *op = &cop->asym->dsa;
+	EVP_PKEY_CTX *dsa_ctx = NULL;
+	EVP_PKEY_CTX *key_ctx = EVP_PKEY_CTX_new_from_name(NULL, "DSA", NULL);
+	EVP_PKEY *pkey = NULL;
+	OSSL_PARAM_BLD *param_bld = sess->u.s.param_bld;
+	OSSL_PARAM *params = NULL;
+
+	size_t outlen;
+	unsigned char *dsa_sign_data;
+	const unsigned char *dsa_sign_data_p;
+
+	cop->status = RTE_CRYPTO_OP_STATUS_ERROR;
+	params = OSSL_PARAM_BLD_to_param(param_bld);
+	if (!params) {
+		OSSL_PARAM_BLD_free(param_bld);
+		return -1;
+	}
+
+	if (key_ctx == NULL
+		|| EVP_PKEY_fromdata_init(key_ctx) <= 0
+		|| EVP_PKEY_fromdata(key_ctx, &pkey,
+						EVP_PKEY_PUBLIC_KEY, params) <= 0)
+		goto err_dsa_sign;
+
+	dsa_ctx = EVP_PKEY_CTX_new(pkey, NULL);
+	if (!dsa_ctx)
+		goto err_dsa_sign;
+
+	if (EVP_PKEY_sign_init(dsa_ctx) <= 0)
+		goto err_dsa_sign;
+
+	if (EVP_PKEY_sign(dsa_ctx, NULL, &outlen, op->message.data,
+						op->message.length) <= 0)
+		goto err_dsa_sign;
+
+	if (outlen <= 0)
+		goto err_dsa_sign;
+
+	dsa_sign_data = OPENSSL_malloc(outlen);
+	if (!dsa_sign_data)
+		goto err_dsa_sign;
+
+	if (EVP_PKEY_sign(dsa_ctx, dsa_sign_data, &outlen, op->message.data,
+						op->message.length) <= 0) {
+		free(dsa_sign_data);
+		goto err_dsa_sign;
+	}
+
+	dsa_sign_data_p = (const unsigned char *)dsa_sign_data;
+	DSA_SIG *sign = d2i_DSA_SIG(NULL, &dsa_sign_data_p, outlen);
+	if (!sign) {
+		OPENSSL_LOG(ERR, "%s:%d\n", __func__, __LINE__);
+		free(dsa_sign_data);
+		goto err_dsa_sign;
+	} else {
+		const BIGNUM *r = NULL, *s = NULL;
+		get_dsa_sign(sign, &r, &s);
+
+		op->r.length = BN_bn2bin(r, op->r.data);
+		op->s.length = BN_bn2bin(s, op->s.data);
+		cop->status = RTE_CRYPTO_OP_STATUS_SUCCESS;
+	}
+
+	DSA_SIG_free(sign);
+	free(dsa_sign_data);
+	return 0;
+
+err_dsa_sign:
+	if (params)
+		OSSL_PARAM_free(params);
+	if (key_ctx)
+		EVP_PKEY_CTX_free(key_ctx);
+	if (dsa_ctx)
+		EVP_PKEY_CTX_free(dsa_ctx);
+	return -1;
+}
+
+/* process dsa verify operation */
+static int
+process_openssl_dsa_verify_op_evp(struct rte_crypto_op *cop,
+		struct openssl_asym_session *sess)
+{
+	struct rte_crypto_dsa_op_param *op = &cop->asym->dsa;
+	DSA_SIG *sign = DSA_SIG_new();
+	BIGNUM *r = NULL, *s = NULL;
+	BIGNUM *pub_key = NULL;
+	OSSL_PARAM_BLD *param_bld = sess->u.s.param_bld;
+	OSSL_PARAM *params = NULL;
+	EVP_PKEY *pkey = NULL;
+	EVP_PKEY_CTX *dsa_ctx = NULL;
+	EVP_PKEY_CTX *key_ctx = EVP_PKEY_CTX_new_from_name(NULL, "DSA", NULL);
+	unsigned char *dsa_sig = NULL;
+	size_t sig_len;
+	int ret = -1;
+
+	cop->status = RTE_CRYPTO_OP_STATUS_ERROR;
+	if (!param_bld) {
+		OPENSSL_LOG(ERR, " %s:%d\n", __func__, __LINE__);
+		return -1;
+	}
+
+	r = BN_bin2bn(op->r.data, op->r.length, r);
+	s = BN_bin2bn(op->s.data, op->s.length,	s);
+	pub_key = BN_bin2bn(op->y.data, op->y.length, pub_key);
+	if (!r || !s || !pub_key) {
+		BN_free(r);
+		BN_free(s);
+		BN_free(pub_key);
+		OSSL_PARAM_BLD_free(param_bld);
+		goto err_dsa_verify;
+	}
+
+	set_dsa_sign(sign, r, s);
+	if (!OSSL_PARAM_BLD_push_BN(param_bld, OSSL_PKEY_PARAM_PUB_KEY, pub_key)) {
+		OSSL_PARAM_BLD_free(param_bld);
+		goto err_dsa_verify;
+	}
+
+	params = OSSL_PARAM_BLD_to_param(param_bld);
+	if (!params) {
+		OSSL_PARAM_BLD_free(param_bld);
+		goto err_dsa_verify;
+	}
+
+	if (key_ctx == NULL
+		|| EVP_PKEY_fromdata_init(key_ctx) <= 0
+		|| EVP_PKEY_fromdata(key_ctx, &pkey, EVP_PKEY_KEYPAIR, params) <= 0)
+		goto err_dsa_verify;
+
+	dsa_ctx = EVP_PKEY_CTX_new(pkey, NULL);
+	if (!dsa_ctx)
+		goto err_dsa_verify;
+
+	if (!sign)
+		goto err_dsa_verify;
+
+	sig_len = i2d_DSA_SIG(sign, &dsa_sig);
+	if (EVP_PKEY_verify_init(dsa_ctx) <= 0)
+		goto err_dsa_verify;
+
+	ret = EVP_PKEY_verify(dsa_ctx, dsa_sig, sig_len,
+					op->message.data, op->message.length);
+	if (ret == 1) {
+		cop->status = RTE_CRYPTO_OP_STATUS_SUCCESS;
+		ret = 0;
+	}
+
+err_dsa_verify:
+	if (sign)
+		DSA_SIG_free(sign);
+	if (params)
+		OSSL_PARAM_free(params);
+	if (key_ctx)
+		EVP_PKEY_CTX_free(key_ctx);
+	if (dsa_ctx)
+		EVP_PKEY_CTX_free(dsa_ctx);
+
+	return ret;
+}
+#else
 static int
 process_openssl_dsa_sign_op(struct rte_crypto_op *cop,
 		struct openssl_asym_session *sess)
@@ -1845,6 +2008,7 @@ process_openssl_dsa_verify_op(struct rte_crypto_op *cop,
 
 	return 0;
 }
+#endif
 
 /* process dh operation */
 #if (OPENSSL_VERSION_NUMBER >= 0x30000000L)
@@ -2501,6 +2665,14 @@ process_asym_op(struct openssl_qp *qp, struct rte_crypto_op *op,
 #endif
 		break;
 	case RTE_CRYPTO_ASYM_XFORM_DSA:
+#if (OPENSSL_VERSION_NUMBER >= 0x30000000L)
+		if (op->asym->dsa.op_type == RTE_CRYPTO_ASYM_OP_SIGN)
+			retval = process_openssl_dsa_sign_op_evp(op, sess);
+		else if (op->asym->dsa.op_type ==
+				RTE_CRYPTO_ASYM_OP_VERIFY)
+			retval =
+				process_openssl_dsa_verify_op_evp(op, sess);
+#else
 		if (op->asym->dsa.op_type == RTE_CRYPTO_ASYM_OP_SIGN)
 			retval = process_openssl_dsa_sign_op(op, sess);
 		else if (op->asym->dsa.op_type ==
@@ -2509,6 +2681,7 @@ process_asym_op(struct openssl_qp *qp, struct rte_crypto_op *op,
 				process_openssl_dsa_verify_op(op, sess);
 		else
 			op->status = RTE_CRYPTO_OP_STATUS_INVALID_ARGS;
+#endif
 		break;
 	default:
 		op->status = RTE_CRYPTO_OP_STATUS_INVALID_ARGS;

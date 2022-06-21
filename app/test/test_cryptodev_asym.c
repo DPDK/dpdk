@@ -1640,7 +1640,7 @@ test_dh_keygenration(void)
 }
 
 static int
-test_dsa_sign(void)
+test_dsa_sign(struct rte_crypto_dsa_op_param *dsa_op)
 {
 	struct crypto_testsuite_params_asym *ts_params = &testsuite_params;
 	struct rte_mempool *op_mpool = ts_params->op_mpool;
@@ -1650,9 +1650,6 @@ test_dsa_sign(void)
 	struct rte_crypto_op *op = NULL, *result_op = NULL;
 	void *sess = NULL;
 	int status = TEST_SUCCESS;
-	uint8_t r[TEST_DH_MOD_LEN];
-	uint8_t s[TEST_DH_MOD_LEN];
-	uint8_t dgst[] = "35d81554afaad2cf18f3a1770d5fedc4ea5be344";
 	int ret;
 
 	ret = rte_cryptodev_asym_session_create(dev_id, &dsa_xform, sess_mpool, &sess);
@@ -1674,6 +1671,7 @@ test_dsa_sign(void)
 		goto error_exit;
 	}
 	asym_op = op->asym;
+	asym_op->dsa = *dsa_op;
 
 	debug_hexdump(stdout, "p: ", dsa_xform.dsa.p.data,
 			dsa_xform.dsa.p.length);
@@ -1687,13 +1685,6 @@ test_dsa_sign(void)
 	/* attach asymmetric crypto session to crypto operations */
 	rte_crypto_op_attach_asym_session(op, sess);
 	asym_op->dsa.op_type = RTE_CRYPTO_ASYM_OP_SIGN;
-	asym_op->dsa.message.data = dgst;
-	asym_op->dsa.message.length = sizeof(dgst);
-	asym_op->dsa.r.length = sizeof(r);
-	asym_op->dsa.r.data = r;
-	asym_op->dsa.s.length = sizeof(s);
-	asym_op->dsa.s.data = s;
-
 	RTE_LOG(DEBUG, USER1, "Process ASYM operation");
 
 	/* Process crypto operation */
@@ -1717,12 +1708,71 @@ test_dsa_sign(void)
 	}
 
 	asym_op = result_op->asym;
+	dsa_op->r.length = asym_op->dsa.r.length;
+	dsa_op->s.length = asym_op->dsa.s.length;
+
+	debug_hexdump(stdout, "r:",
+			asym_op->dsa.r.data, asym_op->dsa.r.length);
+	debug_hexdump(stdout, "s:",
+			asym_op->dsa.s.data, asym_op->dsa.s.length);
+error_exit:
+	if (sess != NULL)
+		rte_cryptodev_asym_session_free(dev_id, sess);
+	if (op != NULL)
+		rte_crypto_op_free(op);
+	return status;
+}
+
+static int
+test_dsa_verify(struct rte_crypto_dsa_op_param *dsa_op)
+{
+	struct crypto_testsuite_params_asym *ts_params = &testsuite_params;
+	struct rte_mempool *op_mpool = ts_params->op_mpool;
+	struct rte_mempool *sess_mpool = ts_params->session_mpool;
+	uint8_t dev_id = ts_params->valid_devs[0];
+	struct rte_crypto_asym_op *asym_op = NULL;
+	struct rte_crypto_op *op = NULL, *result_op = NULL;
+	void *sess = NULL;
+	int status = TEST_SUCCESS;
+	int ret;
+
+	ret = rte_cryptodev_asym_session_create(dev_id, &dsa_xform, sess_mpool, &sess);
+	if (ret < 0) {
+		RTE_LOG(ERR, USER1,
+				 "line %u FAILED: %s", __LINE__,
+				"Session creation failed");
+		status = (ret == -ENOTSUP) ? TEST_SKIPPED : TEST_FAILED;
+		goto error_exit;
+	}
+	/* set up crypto op data structure */
+	op = rte_crypto_op_alloc(op_mpool, RTE_CRYPTO_OP_TYPE_ASYMMETRIC);
+	if (!op) {
+		RTE_LOG(ERR, USER1,
+			"line %u FAILED: %s",
+			__LINE__, "Failed to allocate asymmetric crypto "
+			"operation struct");
+		status = TEST_FAILED;
+		goto error_exit;
+	}
+	asym_op = op->asym;
+	asym_op->dsa = *dsa_op;
+
+	debug_hexdump(stdout, "p: ", dsa_xform.dsa.p.data,
+			dsa_xform.dsa.p.length);
+	debug_hexdump(stdout, "q: ", dsa_xform.dsa.q.data,
+			dsa_xform.dsa.q.length);
+	debug_hexdump(stdout, "g: ", dsa_xform.dsa.g.data,
+			dsa_xform.dsa.g.length);
+
+	/* attach asymmetric crypto session to crypto operations */
+	rte_crypto_op_attach_asym_session(op, sess);
 
 	debug_hexdump(stdout, "r:",
 			asym_op->dsa.r.data, asym_op->dsa.r.length);
 	debug_hexdump(stdout, "s:",
 			asym_op->dsa.s.data, asym_op->dsa.s.length);
 
+	RTE_LOG(DEBUG, USER1, "Process ASYM verify operation");
 	/* Test PMD DSA sign verification using signer public key */
 	asym_op->dsa.op_type = RTE_CRYPTO_ASYM_OP_VERIFY;
 
@@ -1768,8 +1818,22 @@ static int
 test_dsa(void)
 {
 	int status;
-	status = test_dsa_sign();
-	TEST_ASSERT_EQUAL(status, 0, "Test failed");
+	uint8_t r[TEST_DH_MOD_LEN];
+	uint8_t s[TEST_DH_MOD_LEN];
+	struct rte_crypto_dsa_op_param dsa_op;
+	uint8_t dgst[] = "35d81554afaad2cf18f3a1770d5fedc4ea5be344";
+
+	dsa_op.message.data = dgst;
+	dsa_op.message.length = sizeof(dgst);
+	dsa_op.r.data = r;
+	dsa_op.s.data = s;
+	dsa_op.r.length = sizeof(r);
+	dsa_op.s.length = sizeof(s);
+
+	status = test_dsa_sign(&dsa_op);
+	TEST_ASSERT_EQUAL(status, 0, "DSA sign test failed");
+	status = test_dsa_verify(&dsa_op);
+	TEST_ASSERT_EQUAL(status, 0, "DSA verify test failed");
 	return status;
 }
 

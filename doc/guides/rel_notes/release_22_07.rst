@@ -177,6 +177,11 @@ New Features
   Added support for Elliptic Curve Diffie Hellman (ECDH) asymmetric
   algorithm in cryptodev.
 
+* **Updated OpenSSL crypto driver with 3.0 EVP API.**
+
+  Updated OpenSSL driver to support OpenSSL v3.0 EVP API.
+  Backward compatibility with OpenSSL v1.1.1 is also maintained.
+
 * **Updated Marvell cnxk crypto driver.**
 
   * Added AH mode support in lookaside protocol (IPsec) for CN9K & CN10K.
