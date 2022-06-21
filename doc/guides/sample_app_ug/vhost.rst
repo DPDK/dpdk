@@ -17,10 +17,10 @@ Testing steps
 -------------
 
 This section shows the steps how to test a typical PVP case with this
-vhost-switch sample, whereas packets are received from the physical NIC
+dpdk-vhost sample, whereas packets are received from the physical NIC
 port first and enqueued to the VM's Rx queue. Through the guest testpmd's
 default forwarding mode (io forward), those packets will be put into
-the Tx queue. The vhost-switch example, in turn, gets the packets and
+the Tx queue. The dpdk-vhost example, in turn, gets the packets and
 puts back to the same physical NIC port.
 
 Build
@@ -38,7 +38,7 @@ Start the vswitch example
 
 .. code-block:: console
 
-        ./dpdk-vhost-switch -l 0-3 -n 4 --socket-mem 1024  \
+        ./dpdk-vhost -l 0-3 -n 4 --socket-mem 1024  \
              -- --socket-file /tmp/sock0 --client \
              ...
 
@@ -90,10 +90,10 @@ Then start testpmd for packet forwarding testing.
 Inject packets
 --------------
 
-While a virtio-net is connected to vhost-switch, a VLAN tag starts with
+While a virtio-net is connected to dpdk-vhost, a VLAN tag starts with
 1000 is assigned to it. So make sure configure your packet generator
 with the right MAC and VLAN tag, you should be able to see following
-log from the vhost-switch console. It means you get it work::
+log from the dpdk-vhost console. It means you get it work::
 
     VHOST_DATA: (0) mac 52:54:00:00:00:14 and vlan 1000 registered
 

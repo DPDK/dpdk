@@ -2,7 +2,7 @@
 # Copyright(c) 2010-2014 Intel Corporation
 
 # binary name
-APP = vhost-switch
+APP = dpdk-vhost
 
 # all source are stored in SRCS-y
 SRCS-y := main.c virtio_net.c
