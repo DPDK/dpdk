@@ -851,6 +851,8 @@ rte_memcpy(void *dst, const void *src, size_t n)
 		return rte_memcpy_generic(dst, src, n);
 }
 
+#undef ALIGNMENT_MASK
+
 #if defined(RTE_TOOLCHAIN_GCC) && (GCC_VERSION >= 100000)
 #pragma GCC diagnostic pop
 #endif
