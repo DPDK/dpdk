@@ -1,6 +1,6 @@
 [binaries]
 c = ['ccache', 'powerpc64le-linux-gnu-gcc']
-cpp = ['ccache', 'powerpc64le-linux-gnu-cpp']
+cpp = ['ccache', 'powerpc64le-linux-gnu-g++']
 ar = 'powerpc64le-linux-gnu-ar'
 strip = 'powerpc64le-linux-gnu-strip'
 

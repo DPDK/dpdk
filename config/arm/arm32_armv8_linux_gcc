@@ -1,6 +1,6 @@
 [binaries]
 c = ['ccache', 'arm-linux-gnueabihf-gcc']
-cpp = ['ccache', 'arm-linux-gnueabihf-cpp']
+cpp = ['ccache', 'arm-linux-gnueabihf-g++']
 ar = 'arm-linux-gnueabihf-gcc-ar'
 strip = 'arm-linux-gnueabihf-strip'
 pkgconfig = 'arm-linux-gnueabihf-pkg-config'
