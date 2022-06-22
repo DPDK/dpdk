@@ -610,8 +610,7 @@ copy_data(void *data, struct vhost_crypto_data_req *vc_req,
 			return -1;
 		left -= copied;
 		data = RTE_PTR_ADD(data, copied);
-		desc++;
-	} while (desc < head + max_n_descs && left != 0);
+	} while (left != 0 && ++desc < head + max_n_descs);
 
 	if (unlikely(left != 0))
 		return -1;
