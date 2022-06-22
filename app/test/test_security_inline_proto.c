@@ -21,7 +21,18 @@ test_inline_ipsec(void)
 	return TEST_SKIPPED;
 }
 
+static int
+test_event_inline_ipsec(void)
+{
+	printf("Event inline ipsec not supported on Windows, skipping test\n");
+	return TEST_SKIPPED;
+}
+
 #else
+
+#include <rte_eventdev.h>
+#include <rte_event_eth_rx_adapter.h>
+#include <rte_event_eth_tx_adapter.h>
 
 #define NB_ETHPORTS_USED		1
 #define MEMPOOL_CACHE_SIZE		32
@@ -93,7 +104,12 @@ static struct rte_eth_txconf tx_conf = {
 	.tx_rs_thresh = 32, /* Use PMD default values */
 };
 
-uint16_t port_id;
+static uint16_t port_id;
+static uint8_t eventdev_id;
+static uint8_t rx_adapter_id;
+static uint8_t tx_adapter_id;
+
+static bool event_mode_enabled;
 
 static uint64_t link_mbps;
 
@@ -886,6 +902,52 @@ out:
 }
 
 static int
+event_tx_burst(struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
+{
+	struct rte_event ev;
+	int i, nb_sent = 0;
+
+	/* Convert packets to events */
+	memset(&ev, 0, sizeof(ev));
+	ev.sched_type = RTE_SCHED_TYPE_PARALLEL;
+	for (i = 0; i < nb_pkts; i++) {
+		ev.mbuf = tx_pkts[i];
+		nb_sent += rte_event_eth_tx_adapter_enqueue(
+				eventdev_id, port_id, &ev, 1, 0);
+	}
+
+	return nb_sent;
+}
+
+static int
+event_rx_burst(struct rte_mbuf **rx_pkts, uint16_t nb_pkts_to_rx)
+{
+	int nb_ev, nb_rx = 0, j = 0;
+	const int ms_per_pkt = 3;
+	struct rte_event ev;
+
+	do {
+		nb_ev = rte_event_dequeue_burst(eventdev_id, port_id,
+				&ev, 1, 0);
+
+		if (nb_ev == 0) {
+			rte_delay_ms(1);
+			continue;
+		}
+
+		/* Get packet from event */
+		if (ev.event_type != RTE_EVENT_TYPE_ETHDEV) {
+			printf("Unsupported event type: %i\n",
+				ev.event_type);
+			continue;
+		}
+		rx_pkts[nb_rx++] = ev.mbuf;
+	} while (j++ < (nb_pkts_to_rx * ms_per_pkt) && nb_rx < nb_pkts_to_rx);
+
+	return nb_rx;
+}
+
+static int
 test_ipsec_inline_proto_process(struct ipsec_test_data *td,
 		struct ipsec_test_data *res_d,
 		int nb_pkts,
@@ -958,9 +1020,13 @@ test_ipsec_inline_proto_process(struct ipsec_test_data *td,
 		}
 	}
 	/* Send packet to ethdev for inline IPsec processing. */
-	nb_sent = rte_eth_tx_burst(port_id, 0, tx_pkts_burst, nb_pkts);
+	if (event_mode_enabled)
+		nb_sent = event_tx_burst(tx_pkts_burst, nb_pkts);
+	else
+		nb_sent = rte_eth_tx_burst(port_id, 0, tx_pkts_burst, nb_pkts);
+
 	if (nb_sent != nb_pkts) {
-		printf("\nUnable to TX %d packets", nb_pkts);
+		printf("\nUnable to TX %d packets, sent: %i", nb_pkts, nb_sent);
 		for ( ; nb_sent < nb_pkts; nb_sent++)
 			rte_pktmbuf_free(tx_pkts_burst[nb_sent]);
 		ret = TEST_FAILED;
@@ -970,17 +1036,22 @@ test_ipsec_inline_proto_process(struct ipsec_test_data *td,
 	rte_pause();
 
 	/* Receive back packet on loopback interface. */
-	do {
-		rte_delay_ms(1);
-		nb_rx += rte_eth_rx_burst(port_id, 0, &rx_pkts_burst[nb_rx],
-				nb_sent - nb_rx);
-		if (nb_rx >= nb_sent)
-			break;
-	} while (j++ < 5 || nb_rx == 0);
+	if (event_mode_enabled)
+		nb_rx = event_rx_burst(rx_pkts_burst, nb_sent);
+	else
+		do {
+			rte_delay_ms(1);
+			nb_rx += rte_eth_rx_burst(port_id, 0,
+					&rx_pkts_burst[nb_rx],
+					nb_sent - nb_rx);
+			if (nb_rx >= nb_sent)
+				break;
+		} while (j++ < 5 || nb_rx == 0);
 
 	if (nb_rx != nb_sent) {
-		printf("\nUnable to RX all %d packets", nb_sent);
-		while (--nb_rx)
+		printf("\nUnable to RX all %d packets, received(%i)",
+				nb_sent, nb_rx);
+		while (--nb_rx >= 0)
 			rte_pktmbuf_free(rx_pkts_burst[nb_rx]);
 		ret = TEST_FAILED;
 		goto out;
@@ -1380,6 +1451,289 @@ inline_ipsec_testsuite_teardown(void)
 			printf("rte_eth_dev_reset: err=%s, port=%u\n",
 			       rte_strerror(-ret), port_id);
 	}
+	rte_free(tx_pkts_burst);
+	rte_free(rx_pkts_burst);
+}
+
+static int
+event_inline_ipsec_testsuite_setup(void)
+{
+	struct rte_event_eth_rx_adapter_queue_conf queue_conf = {0};
+	struct rte_event_dev_info evdev_default_conf = {0};
+	struct rte_event_dev_config eventdev_conf = {0};
+	struct rte_event_queue_conf eventq_conf = {0};
+	struct rte_event_port_conf ev_port_conf = {0};
+	const uint16_t nb_txd = 1024, nb_rxd = 1024;
+	uint16_t nb_rx_queue = 1, nb_tx_queue = 1;
+	uint8_t ev_queue_id = 0, tx_queue_id = 0;
+	int nb_eventqueue = 1, nb_eventport = 1;
+	const int all_queues = -1;
+	uint32_t caps = 0;
+	uint16_t nb_ports;
+	int ret;
+
+	printf("Start event inline IPsec test.\n");
+
+	nb_ports = rte_eth_dev_count_avail();
+	if (nb_ports == 0) {
+		printf("Test require: 1 port, available: 0\n");
+		return TEST_SKIPPED;
+	}
+
+	init_mempools(NB_MBUF);
+
+	if (tx_pkts_burst == NULL) {
+		tx_pkts_burst = (struct rte_mbuf **)rte_calloc("tx_buff",
+					  MAX_TRAFFIC_BURST,
+					  sizeof(void *),
+					  RTE_CACHE_LINE_SIZE);
+		if (!tx_pkts_burst)
+			return -1;
+
+		rx_pkts_burst = (struct rte_mbuf **)rte_calloc("rx_buff",
+					  MAX_TRAFFIC_BURST,
+					  sizeof(void *),
+					  RTE_CACHE_LINE_SIZE);
+		if (!rx_pkts_burst)
+			return -1;
+
+	}
+
+	printf("Generate %d packets\n", MAX_TRAFFIC_BURST);
+
+	/* configuring port 0 for the test is enough */
+	port_id = 0;
+	/* port configure */
+	ret = rte_eth_dev_configure(port_id, nb_rx_queue,
+				    nb_tx_queue, &port_conf);
+	if (ret < 0) {
+		printf("Cannot configure device: err=%d, port=%d\n",
+			 ret, port_id);
+		return ret;
+	}
+
+	/* Tx queue setup */
+	ret = rte_eth_tx_queue_setup(port_id, 0, nb_txd,
+				     SOCKET_ID_ANY, &tx_conf);
+	if (ret < 0) {
+		printf("rte_eth_tx_queue_setup: err=%d, port=%d\n",
+				ret, port_id);
+		return ret;
+	}
+
+	/* rx queue steup */
+	ret = rte_eth_rx_queue_setup(port_id, 0, nb_rxd, SOCKET_ID_ANY,
+				     &rx_conf, mbufpool);
+	if (ret < 0) {
+		printf("rte_eth_rx_queue_setup: err=%d, port=%d\n",
+				ret, port_id);
+		return ret;
+	}
+
+	/* Setup eventdev */
+	eventdev_id = 0;
+	rx_adapter_id = 0;
+	tx_adapter_id = 0;
+
+	/* Get default conf of eventdev */
+	ret = rte_event_dev_info_get(eventdev_id, &evdev_default_conf);
+	if (ret < 0) {
+		printf("Error in getting event device info[devID:%d]\n",
+				eventdev_id);
+		return ret;
+	}
+
+	/* Get Tx adapter capabilities */
+	ret = rte_event_eth_tx_adapter_caps_get(eventdev_id, tx_adapter_id, &caps);
+	if (ret < 0) {
+		printf("Failed to get event device %d eth tx adapter"
+				" capabilities for port %d\n",
+				eventdev_id, port_id);
+		return ret;
+	}
+	if (!(caps & RTE_EVENT_ETH_TX_ADAPTER_CAP_INTERNAL_PORT))
+		tx_queue_id = nb_eventqueue++;
+
+	eventdev_conf.nb_events_limit =
+			evdev_default_conf.max_num_events;
+	eventdev_conf.nb_event_queue_flows =
+			evdev_default_conf.max_event_queue_flows;
+	eventdev_conf.nb_event_port_dequeue_depth =
+			evdev_default_conf.max_event_port_dequeue_depth;
+	eventdev_conf.nb_event_port_enqueue_depth =
+			evdev_default_conf.max_event_port_enqueue_depth;
+
+	eventdev_conf.nb_event_queues = nb_eventqueue;
+	eventdev_conf.nb_event_ports = nb_eventport;
+
+	/* Configure event device */
+
+	ret = rte_event_dev_configure(eventdev_id, &eventdev_conf);
+	if (ret < 0) {
+		printf("Error in configuring event device\n");
+		return ret;
+	}
+
+	/* Configure event queue */
+	eventq_conf.schedule_type = RTE_SCHED_TYPE_PARALLEL;
+	eventq_conf.nb_atomic_flows = 1024;
+	eventq_conf.nb_atomic_order_sequences = 1024;
+
+	/* Setup the queue */
+	ret = rte_event_queue_setup(eventdev_id, ev_queue_id, &eventq_conf);
+	if (ret < 0) {
+		printf("Failed to setup event queue %d\n", ret);
+		return ret;
+	}
+
+	/* Configure event port */
+	ret = rte_event_port_setup(eventdev_id, port_id, NULL);
+	if (ret < 0) {
+		printf("Failed to setup event port %d\n", ret);
+		return ret;
+	}
+
+	/* Make event queue - event port link */
+	ret = rte_event_port_link(eventdev_id, port_id, NULL, NULL, 1);
+	if (ret < 0) {
+		printf("Failed to link event port %d\n", ret);
+		return ret;
+	}
+
+	/* Setup port conf */
+	ev_port_conf.new_event_threshold = 1200;
+	ev_port_conf.dequeue_depth =
+			evdev_default_conf.max_event_port_dequeue_depth;
+	ev_port_conf.enqueue_depth =
+			evdev_default_conf.max_event_port_enqueue_depth;
+
+	/* Create Rx adapter */
+	ret = rte_event_eth_rx_adapter_create(rx_adapter_id, eventdev_id,
+			&ev_port_conf);
+	if (ret < 0) {
+		printf("Failed to create rx adapter %d\n", ret);
+		return ret;
+	}
+
+	/* Setup queue conf */
+	queue_conf.ev.queue_id = ev_queue_id;
+	queue_conf.ev.sched_type = RTE_SCHED_TYPE_PARALLEL;
+	queue_conf.ev.event_type = RTE_EVENT_TYPE_ETHDEV;
+
+	/* Add queue to the adapter */
+	ret = rte_event_eth_rx_adapter_queue_add(rx_adapter_id, port_id,
+			all_queues, &queue_conf);
+	if (ret < 0) {
+		printf("Failed to add eth queue to rx adapter %d\n", ret);
+		return ret;
+	}
+
+	/* Start rx adapter */
+	ret = rte_event_eth_rx_adapter_start(rx_adapter_id);
+	if (ret < 0) {
+		printf("Failed to start rx adapter %d\n", ret);
+		return ret;
+	}
+
+	/* Create tx adapter */
+	ret = rte_event_eth_tx_adapter_create(tx_adapter_id, eventdev_id,
+			&ev_port_conf);
+	if (ret < 0) {
+		printf("Failed to create tx adapter %d\n", ret);
+		return ret;
+	}
+
+	/* Add queue to the adapter */
+	ret = rte_event_eth_tx_adapter_queue_add(tx_adapter_id, port_id,
+			all_queues);
+	if (ret < 0) {
+		printf("Failed to add eth queue to tx adapter %d\n", ret);
+		return ret;
+	}
+	/* Setup Tx queue & port */
+	if (tx_queue_id) {
+		/* Setup the queue */
+		ret = rte_event_queue_setup(eventdev_id, tx_queue_id,
+				&eventq_conf);
+		if (ret < 0) {
+			printf("Failed to setup tx event queue %d\n", ret);
+			return ret;
+		}
+		/* Link Tx event queue to Tx port */
+		ret = rte_event_port_link(eventdev_id, port_id,
+				&tx_queue_id, NULL, 1);
+		if (ret != 1) {
+			printf("Failed to link event queue to port\n");
+			return ret;
+		}
+	}
+
+	/* Start tx adapter */
+	ret = rte_event_eth_tx_adapter_start(tx_adapter_id);
+	if (ret < 0) {
+		printf("Failed to start tx adapter %d\n", ret);
+		return ret;
+	}
+
+	/* Start eventdev */
+	ret = rte_event_dev_start(eventdev_id);
+	if (ret < 0) {
+		printf("Failed to start event device %d\n", ret);
+		return ret;
+	}
+
+	event_mode_enabled = true;
+	test_ipsec_alg_list_populate();
+
+	return 0;
+}
+
+static void
+event_inline_ipsec_testsuite_teardown(void)
+{
+	uint16_t portid;
+	int ret;
+
+	event_mode_enabled = false;
+
+	/* Stop and release rx adapter */
+	ret = rte_event_eth_rx_adapter_stop(rx_adapter_id);
+	if (ret < 0)
+		printf("Failed to stop rx adapter %d\n", ret);
+	ret = rte_event_eth_rx_adapter_queue_del(rx_adapter_id, port_id, -1);
+	if (ret < 0)
+		printf("Failed to remove rx adapter queues %d\n", ret);
+	ret = rte_event_eth_rx_adapter_free(rx_adapter_id);
+	if (ret < 0)
+		printf("Failed to free rx adapter %d\n", ret);
+
+	/* Stop and release tx adapter */
+	ret = rte_event_eth_tx_adapter_stop(tx_adapter_id);
+	if (ret < 0)
+		printf("Failed to stop tx adapter %d\n", ret);
+	ret = rte_event_eth_tx_adapter_queue_del(tx_adapter_id, port_id, -1);
+	if (ret < 0)
+		printf("Failed to remove tx adapter queues %d\n", ret);
+	ret = rte_event_eth_tx_adapter_free(tx_adapter_id);
+	if (ret < 0)
+		printf("Failed to free tx adapter %d\n", ret);
+
+	/* Stop and release event devices */
+	rte_event_dev_stop(eventdev_id);
+	ret = rte_event_dev_close(eventdev_id);
+	if (ret < 0)
+		printf("Failed to close event dev %d, %d\n", eventdev_id, ret);
+
+	/* port tear down */
+	RTE_ETH_FOREACH_DEV(portid) {
+		ret = rte_eth_dev_reset(portid);
+		if (ret != 0)
+			printf("rte_eth_dev_reset: err=%s, port=%u\n",
+			       rte_strerror(-ret), port_id);
+	}
+
+	rte_free(tx_pkts_burst);
+	rte_free(rx_pkts_burst);
 }
 
 static int
@@ -1920,7 +2274,7 @@ test_ipsec_inline_pkt_replay(const void *test_data, const uint64_t esn[],
 	flags.antireplay = true;
 
 	for (i = 0; i < nb_pkts; i++) {
-		memcpy(&td_outb[i], test_data, sizeof(td_outb));
+		memcpy(&td_outb[i], test_data, sizeof(td_outb[0]));
 		td_outb[i].ipsec_xform.options.iv_gen_disable = 1;
 		td_outb[i].ipsec_xform.replay_win_sz = winsz;
 		td_outb[i].ipsec_xform.options.esn = esn_en;
@@ -2054,8 +2408,6 @@ test_ipsec_inline_proto_pkt_esn_antireplay4096(const void *test_data)
 
 static struct unit_test_suite inline_ipsec_testsuite  = {
 	.suite_name = "Inline IPsec Ethernet Device Unit Test Suite",
-	.setup = inline_ipsec_testsuite_setup,
-	.teardown = inline_ipsec_testsuite_teardown,
 	.unit_test_cases = {
 		TEST_CASE_NAMED_WITH_DATA(
 			"Outbound known vector (ESP tunnel mode IPv4 AES-GCM 128)",
@@ -2374,9 +2726,20 @@ static struct unit_test_suite inline_ipsec_testsuite  = {
 static int
 test_inline_ipsec(void)
 {
+	inline_ipsec_testsuite.setup = inline_ipsec_testsuite_setup;
+	inline_ipsec_testsuite.teardown = inline_ipsec_testsuite_teardown;
+	return unit_test_suite_runner(&inline_ipsec_testsuite);
+}
+
+static int
+test_event_inline_ipsec(void)
+{
+	inline_ipsec_testsuite.setup = event_inline_ipsec_testsuite_setup;
+	inline_ipsec_testsuite.teardown = event_inline_ipsec_testsuite_teardown;
 	return unit_test_suite_runner(&inline_ipsec_testsuite);
 }
 
 #endif /* !RTE_EXEC_ENV_WINDOWS */
 
 REGISTER_TEST_COMMAND(inline_ipsec_autotest, test_inline_ipsec);
+REGISTER_TEST_COMMAND(event_inline_ipsec_autotest, test_event_inline_ipsec);
