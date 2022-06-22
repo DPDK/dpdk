@@ -494,11 +494,11 @@ support sharing DMA channels among vrings.
   not poll completed will cause the DMA ring to be full, which will
   result in packet loss eventually.
 
-Recommended IOVA mode in async datapath
----------------------------------------
+* Recommended IOVA mode in async datapath
 
-When DMA devices are bound to VFIO driver, VA mode is recommended.
-For PA mode, page by page mapping may exceed IOMMU's max capability,
-better to use 1G guest hugepage.
+  When DMA devices are bound to VFIO driver, VA mode is recommended.
+  For PA mode, page by page mapping may exceed IOMMU's max capability,
+  better to use 1G guest hugepage.
 
-For UIO driver, any VFIO related error message can be ignored.
+  For UIO driver or kernel driver, any VFIO related error messages
+  can be ignored.
