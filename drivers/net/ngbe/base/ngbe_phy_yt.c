@@ -205,8 +205,26 @@ skip_an:
 			YT_CHIP_SW_RST;
 		ngbe_write_phy_reg_ext_yt(hw, YT_CHIP, 0, value);
 
+		ngbe_read_phy_reg_sds_ext_yt(hw, YT_AUTO, 0, &value);
+		value &= ~YT_AUTO_SENSING;
+		ngbe_write_phy_reg_sds_ext_yt(hw, YT_AUTO, 0, value);
+
+		ngbe_read_phy_reg_ext_yt(hw, YT_MISC, 0, &value);
+		value |= YT_MISC_RESV;
+		ngbe_write_phy_reg_ext_yt(hw, YT_MISC, 0, value);
+
+		ngbe_read_phy_reg_ext_yt(hw, YT_CHIP, 0, &value);
+		value &= ~YT_CHIP_SW_RST;
+		ngbe_write_phy_reg_ext_yt(hw, YT_CHIP, 0, value);
+
 		/* software reset */
-		ngbe_write_phy_reg_sds_ext_yt(hw, 0x0, 0, 0x9140);
+		if (hw->mac.autoneg)
+			value = YT_BCR_RESET | YT_BCR_ANE | YT_BCR_RESTART_AN |
+				YT_BCR_DUPLEX | YT_BCR_SPEED_SELECT1;
+		else
+			value = YT_BCR_RESET | YT_BCR_DUPLEX |
+				YT_BCR_SPEED_SELECT1;
+		hw->phy.write_reg(hw, YT_BCR, 0, value);
 
 		hw->phy.set_phy_power(hw, true);
 	} else if ((value & YT_CHIP_MODE_MASK) == YT_CHIP_MODE_SEL(2)) {

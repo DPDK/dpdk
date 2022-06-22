@@ -31,6 +31,11 @@
 #define   YT_RGMII_CONF2_LINKUP		MS16(4, 0x1)
 #define YT_MISC				0xA006
 #define   YT_MISC_FIBER_PRIO		MS16(8, 0x1) /* 0 for UTP */
+#define   YT_MISC_RESV			MS16(0, 0x1)
+
+/* SDS EXT */
+#define YT_AUTO				0xA5
+#define   YT_AUTO_SENSING		MS16(15, 0x1)
 
 /* MII common registers in UTP and SDS */
 #define YT_BCR				0x0

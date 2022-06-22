@@ -203,6 +203,10 @@ s32 ngbe_setup_phy_link_mvl(struct ngbe_hw *hw, u32 speed,
 			   MVL_PHY_1000BASET_HALF);
 		value_r9 |= value;
 		hw->phy.write_reg(hw, MVL_PHY_1000BASET, 0, value_r9);
+
+		value = MVL_CTRL_RESTART_AN | MVL_CTRL_ANE |
+			MVL_CTRL_RESET | MVL_CTRL_DUPLEX;
+		ngbe_write_phy_reg_mdi(hw, MVL_CTRL, 0, value);
 	} else {
 		hw->phy.autoneg_advertised |= NGBE_LINK_SPEED_1GB_FULL;
 
@@ -210,10 +214,16 @@ s32 ngbe_setup_phy_link_mvl(struct ngbe_hw *hw, u32 speed,
 		value &= ~(MVL_PHY_1000BASEX_HALF | MVL_PHY_1000BASEX_FULL);
 		value |= MVL_PHY_1000BASEX_FULL;
 		hw->phy.write_reg(hw, MVL_ANA, 0, value);
-	}
 
-	value = MVL_CTRL_RESTART_AN | MVL_CTRL_ANE | MVL_CTRL_RESET;
-	ngbe_write_phy_reg_mdi(hw, MVL_CTRL, 0, value);
+		if (hw->mac.autoneg)
+			value = MVL_CTRL_RESTART_AN | MVL_CTRL_ANE |
+				MVL_CTRL_RESET | MVL_CTRL_DUPLEX |
+				MVL_CTRL_SPEED_SELECT1;
+		else
+			value = MVL_CTRL_RESET | MVL_CTRL_DUPLEX |
+				MVL_CTRL_SPEED_SELECT1;
+		ngbe_write_phy_reg_mdi(hw, MVL_CTRL, 0, value);
+	}
 
 skip_an:
 	hw->phy.set_phy_power(hw, true);

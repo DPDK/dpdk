@@ -177,6 +177,7 @@ New Features
 
   * Added support for yt8531s PHY.
   * Added support for OEM subsystem vendor ID.
+  * Added autoneg on/off for external PHY SFI mode.
 
 * **Updated Wangxun txgbe driver.**
 
