@@ -2813,11 +2813,8 @@ hns3_check_media_type(struct hns3_hw *hw, uint8_t media_type)
 		}
 		break;
 	case HNS3_MEDIA_TYPE_FIBER:
-		ret = 0;
-		break;
 	case HNS3_MEDIA_TYPE_BACKPLANE:
-		PMD_INIT_LOG(ERR, "Media type is Backplane, not supported.");
-		ret = -EOPNOTSUPP;
+		ret = 0;
 		break;
 	default:
 		PMD_INIT_LOG(ERR, "Unknown media type = %u!", media_type);
@@ -4272,14 +4269,11 @@ hns3_update_link_info(struct rte_eth_dev *eth_dev)
 {
 	struct hns3_adapter *hns = eth_dev->data->dev_private;
 	struct hns3_hw *hw = &hns->hw;
-	int ret = 0;
 
 	if (hw->mac.media_type == HNS3_MEDIA_TYPE_COPPER)
-		ret = hns3_update_copper_link_info(hw);
-	else if (hw->mac.media_type == HNS3_MEDIA_TYPE_FIBER)
-		ret = hns3_update_fiber_link_info(hw);
+		return hns3_update_copper_link_info(hw);
 
-	return ret;
+	return hns3_update_fiber_link_info(hw);
 }
 
 static int
@@ -4572,11 +4566,13 @@ hns3_get_port_supported_speed(struct rte_eth_dev *eth_dev)
 	if (ret)
 		return ret;
 
-	if (mac->media_type == HNS3_MEDIA_TYPE_FIBER) {
+	if (mac->media_type == HNS3_MEDIA_TYPE_FIBER ||
+	    mac->media_type == HNS3_MEDIA_TYPE_BACKPLANE) {
 		/*
 		 * Some firmware does not support the report of supported_speed,
-		 * and only report the effective speed of SFP. In this case, it
-		 * is necessary to use the SFP's speed as the supported_speed.
+		 * and only report the effective speed of SFP/backplane. In this
+		 * case, it is necessary to use the SFP/backplane's speed as the
+		 * supported_speed.
 		 */
 		if (mac->supported_speed == 0)
 			mac->supported_speed =
@@ -4838,7 +4834,7 @@ hns3_check_port_speed(struct hns3_hw *hw, uint32_t link_speeds)
 
 	if (mac->media_type == HNS3_MEDIA_TYPE_COPPER)
 		speed_bit = hns3_convert_link_speeds2bitmap_copper(link_speeds);
-	else if (mac->media_type == HNS3_MEDIA_TYPE_FIBER)
+	else
 		speed_bit = hns3_convert_link_speeds2bitmap_fiber(link_speeds);
 
 	if (!(speed_bit & supported_speed)) {
@@ -4982,6 +4978,19 @@ hns3_set_fiber_port_link_speed(struct hns3_hw *hw,
 	return hns3_cfg_mac_speed_dup(hw, cfg->speed, cfg->duplex);
 }
 
+static const char *
+hns3_get_media_type_name(uint8_t media_type)
+{
+	if (media_type == HNS3_MEDIA_TYPE_FIBER)
+		return "fiber";
+	else if (media_type == HNS3_MEDIA_TYPE_COPPER)
+		return "copper";
+	else if (media_type == HNS3_MEDIA_TYPE_BACKPLANE)
+		return "backplane";
+	else
+		return "unknown";
+}
+
 static int
 hns3_set_port_link_speed(struct hns3_hw *hw,
 			 struct hns3_set_link_speed_cfg *cfg)
@@ -4996,18 +5005,15 @@ hns3_set_port_link_speed(struct hns3_hw *hw,
 #endif
 
 		ret = hns3_set_copper_port_link_speed(hw, cfg);
-		if (ret) {
-			hns3_err(hw, "failed to set copper port link speed,"
-				 "ret = %d.", ret);
-			return ret;
-		}
-	} else if (hw->mac.media_type == HNS3_MEDIA_TYPE_FIBER) {
+	} else {
 		ret = hns3_set_fiber_port_link_speed(hw, cfg);
-		if (ret) {
-			hns3_err(hw, "failed to set fiber port link speed,"
-				 "ret = %d.", ret);
-			return ret;
-		}
+	}
+
+	if (ret) {
+		hns3_err(hw, "failed to set %s port link speed, ret = %d.",
+			 hns3_get_media_type_name(hw->mac.media_type),
+			 ret);
+		return ret;
 	}
 
 	return 0;
