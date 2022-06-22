@@ -1864,8 +1864,13 @@ po32m(struct txgbe_hw *hw, u32 reg, u32 mask, u32 expect, u32 *actual,
 	}
 
 	do {
-		all |= rd32(hw, reg);
-		value |= mask & all;
+		if (expect != 0) {
+			all |= rd32(hw, reg);
+			value |= mask & all;
+		} else {
+			all = rd32(hw, reg);
+			value = mask & all;
+		}
 		if (value == expect)
 			break;
 
@@ -1898,7 +1903,7 @@ po32m(struct txgbe_hw *hw, u32 reg, u32 mask, u32 expect, u32 *actual,
 
 #define wr32w(hw, reg, val, mask, slice) do { \
 	wr32((hw), reg, val); \
-	po32m((hw), reg, mask, mask, NULL, 5, slice); \
+	po32m((hw), reg, mask, 0, NULL, 5, slice); \
 } while (0)
 
 #define TXGBE_XPCS_IDAADDR    0x13000
