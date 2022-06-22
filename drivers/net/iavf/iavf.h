@@ -296,6 +296,7 @@ struct iavf_adapter {
 	bool tx_vec_allowed;
 	uint32_t ptype_tbl[IAVF_MAX_PKT_TYPE] __rte_cache_min_aligned;
 	bool stopped;
+	bool closed;
 	uint16_t fdir_ref_cnt;
 	struct iavf_devargs devargs;
 };

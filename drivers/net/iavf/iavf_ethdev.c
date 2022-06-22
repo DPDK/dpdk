@@ -229,9 +229,15 @@ static const struct eth_dev_ops iavf_eth_dev_ops = {
 };
 
 static int
-iavf_tm_ops_get(struct rte_eth_dev *dev __rte_unused,
+iavf_tm_ops_get(struct rte_eth_dev *dev,
 			void *arg)
 {
+	struct iavf_adapter *adapter =
+		IAVF_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
+
+	if (adapter->closed)
+		return -EIO;
+
 	if (!arg)
 		return -EINVAL;
 
@@ -341,6 +347,9 @@ iavf_set_mc_addr_list(struct rte_eth_dev *dev,
 			    (uint32_t)IAVF_NUM_MACADDR_MAX);
 		return -EINVAL;
 	}
+
+	if (adapter->closed)
+		return -EIO;
 
 	/* flush previous addresses */
 	err = iavf_add_del_mc_addr_list(adapter, vf->mc_addrs, vf->mc_addrs_num,
@@ -612,6 +621,9 @@ iavf_dev_configure(struct rte_eth_dev *dev)
 	uint16_t num_queue_pairs = RTE_MAX(dev->data->nb_rx_queues,
 		dev->data->nb_tx_queues);
 	int ret;
+
+	if (ad->closed)
+		return -EIO;
 
 	ad->rx_bulk_alloc_allowed = true;
 	/* Initialize to TRUE. If any of Rx queues doesn't meet the
@@ -942,6 +954,9 @@ iavf_dev_start(struct rte_eth_dev *dev)
 
 	PMD_INIT_FUNC_TRACE();
 
+	if (adapter->closed)
+		return -1;
+
 	adapter->stopped = 0;
 
 	vf->max_pkt_len = dev->data->mtu + IAVF_ETH_OVERHEAD;
@@ -1019,6 +1034,9 @@ iavf_dev_stop(struct rte_eth_dev *dev)
 
 	PMD_INIT_FUNC_TRACE();
 
+	if (adapter->closed)
+		return -1;
+
 	if (!(vf->vf_res->vf_cap_flags & VIRTCHNL_VF_OFFLOAD_WB_ON_ITR) &&
 	    dev->data->dev_conf.intr_conf.rxq != 0)
 		rte_intr_disable(intr_handle);
@@ -1052,6 +1070,9 @@ iavf_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	struct iavf_adapter *adapter =
 		IAVF_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
 	struct iavf_info *vf = &adapter->vf;
+
+	if (adapter->closed)
+		return -EIO;
 
 	dev_info->max_rx_queues = IAVF_MAX_NUM_QUEUES_LV;
 	dev_info->max_tx_queues = IAVF_MAX_NUM_QUEUES_LV;
@@ -1293,6 +1314,9 @@ iavf_dev_vlan_filter_set(struct rte_eth_dev *dev, uint16_t vlan_id, int on)
 	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(adapter);
 	int err;
 
+	if (adapter->closed)
+		return -EIO;
+
 	if (vf->vf_res->vf_cap_flags & VIRTCHNL_VF_OFFLOAD_VLAN_V2) {
 		err = iavf_add_del_vlan_v2(adapter, vlan_id, on);
 		if (err)
@@ -1369,6 +1393,9 @@ iavf_dev_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 	struct rte_eth_conf *dev_conf = &dev->data->dev_conf;
 	int err;
 
+	if (adapter->closed)
+		return -EIO;
+
 	if (vf->vf_res->vf_cap_flags & VIRTCHNL_VF_OFFLOAD_VLAN_V2)
 		return iavf_dev_vlan_offload_set_v2(dev, mask);
 
@@ -1400,6 +1427,9 @@ iavf_dev_rss_reta_update(struct rte_eth_dev *dev,
 	uint8_t *lut;
 	uint16_t i, idx, shift;
 	int ret;
+
+	if (adapter->closed)
+		return -EIO;
 
 	if (!(vf->vf_res->vf_cap_flags & VIRTCHNL_VF_OFFLOAD_RSS_PF))
 		return -ENOTSUP;
@@ -1445,6 +1475,9 @@ iavf_dev_rss_reta_query(struct rte_eth_dev *dev,
 		IAVF_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
 	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(adapter);
 	uint16_t i, idx, shift;
+
+	if (adapter->closed)
+		return -EIO;
 
 	if (!(vf->vf_res->vf_cap_flags & VIRTCHNL_VF_OFFLOAD_RSS_PF))
 		return -ENOTSUP;
@@ -1499,6 +1532,9 @@ iavf_dev_rss_hash_update(struct rte_eth_dev *dev,
 
 	adapter->dev_data->dev_conf.rx_adv_conf.rss_conf = *rss_conf;
 
+	if (adapter->closed)
+		return -EIO;
+
 	if (!(vf->vf_res->vf_cap_flags & VIRTCHNL_VF_OFFLOAD_RSS_PF))
 		return -ENOTSUP;
 
@@ -1551,6 +1587,9 @@ iavf_dev_rss_hash_conf_get(struct rte_eth_dev *dev,
 	struct iavf_adapter *adapter =
 		IAVF_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
 	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(adapter);
+
+	if (adapter->closed)
+		return -EIO;
 
 	if (!(vf->vf_res->vf_cap_flags & VIRTCHNL_VF_OFFLOAD_RSS_PF))
 		return -ENOTSUP;
@@ -1798,6 +1837,9 @@ iavf_dev_rx_queue_intr_enable(struct rte_eth_dev *dev, uint16_t queue_id)
 	struct iavf_hw *hw = IAVF_DEV_PRIVATE_TO_HW(adapter);
 	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(adapter);
 	uint16_t msix_intr;
+
+	if (adapter->closed)
+		return -EIO;
 
 	msix_intr = rte_intr_vec_list_index_get(pci_dev->intr_handle,
 						       queue_id);
@@ -2419,8 +2461,11 @@ static int
 iavf_dev_flow_ops_get(struct rte_eth_dev *dev,
 		      const struct rte_flow_ops **ops)
 {
-	if (!dev)
-		return -EINVAL;
+	struct iavf_adapter *adapter =
+		IAVF_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
+
+	if (adapter->closed)
+		return -EIO;
 
 	*ops = &iavf_flow_ops;
 	return 0;
@@ -2561,7 +2606,7 @@ iavf_dev_init(struct rte_eth_dev *eth_dev)
 
 	/* Start device watchdog */
 	iavf_dev_watchdog_enable(adapter);
-
+	adapter->closed = false;
 
 	return 0;
 
@@ -2589,7 +2634,11 @@ iavf_dev_close(struct rte_eth_dev *dev)
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return 0;
 
+	if (adapter->closed)
+		return 0;
+
 	ret = iavf_dev_stop(dev);
+	adapter->closed = true;
 
 	/* free iAVF security device context all related resources */
 	iavf_security_ctx_destroy(adapter);

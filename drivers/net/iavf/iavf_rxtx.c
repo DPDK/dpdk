@@ -567,6 +567,9 @@ iavf_dev_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 
 	PMD_INIT_FUNC_TRACE();
 
+	if (ad->closed)
+		return -EIO;
+
 	offloads = rx_conf->offloads | dev->data->dev_conf.rxmode.offloads;
 
 	if (nb_desc % IAVF_ALIGN_RING_DESC != 0 ||
@@ -727,6 +730,9 @@ iavf_dev_tx_queue_setup(struct rte_eth_dev *dev,
 	uint64_t offloads;
 
 	PMD_INIT_FUNC_TRACE();
+
+	if (adapter->closed)
+		return -EIO;
 
 	offloads = tx_conf->offloads | dev->data->dev_conf.txmode.offloads;
 
@@ -2746,6 +2752,10 @@ iavf_prep_pkts(__rte_unused void *tx_queue, struct rte_mbuf **tx_pkts,
 	struct iavf_tx_queue *txq = tx_queue;
 	struct rte_eth_dev *dev = &rte_eth_devices[txq->port_id];
 	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
+	struct iavf_adapter *adapter = IAVF_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
+
+	if (adapter->closed)
+		return 0;
 
 	for (i = 0; i < nb_pkts; i++) {
 		m = tx_pkts[i];
