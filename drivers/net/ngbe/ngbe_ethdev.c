@@ -164,6 +164,8 @@ static const struct rte_ngbe_xstats_name_off rte_ngbe_stats_strings[] = {
 	HW_XSTAT(rx_management_packets),
 	HW_XSTAT(tx_management_packets),
 	HW_XSTAT(rx_management_dropped),
+	HW_XSTAT(rx_dma_drop),
+	HW_XSTAT(tx_secdrp_packets),
 
 	/* Basic Error */
 	HW_XSTAT(rx_crc_errors),
@@ -178,6 +180,12 @@ static const struct rte_ngbe_xstats_name_off rte_ngbe_stats_strings[] = {
 	HW_XSTAT(rx_l3_l4_xsum_error),
 	HW_XSTAT(mac_local_errors),
 	HW_XSTAT(mac_remote_errors),
+
+	/* PB Stats */
+	HW_XSTAT(rx_up_dropped),
+	HW_XSTAT(rdb_pkt_cnt),
+	HW_XSTAT(rdb_repli_cnt),
+	HW_XSTAT(rdb_drp_cnt),
 
 	/* MACSEC */
 	HW_XSTAT(tx_macsec_pkts_untagged),
