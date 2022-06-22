@@ -2608,6 +2608,45 @@ out:
 	return err;
 }
 
+/* cmd_addr is used for some special command:
+ * 1. to be sector address, when implemented erase sector command
+ * 2. to be flash address when implemented read, write flash address
+ *
+ * Return 0 on success, return 1 on failure.
+ */
+u32 txgbe_fmgr_cmd_op(struct txgbe_hw *hw, u32 cmd, u32 cmd_addr)
+{
+	u32 cmd_val, i;
+
+	cmd_val = TXGBE_SPICMD_CMD(cmd) | TXGBE_SPICMD_CLK(3) | cmd_addr;
+	wr32(hw, TXGBE_SPICMD, cmd_val);
+
+	for (i = 0; i < TXGBE_SPI_TIMEOUT; i++) {
+		if (rd32(hw, TXGBE_SPISTAT) & TXGBE_SPISTAT_OPDONE)
+			break;
+
+		usec_delay(10);
+	}
+
+	if (i == TXGBE_SPI_TIMEOUT)
+		return 1;
+
+	return 0;
+}
+
+u32 txgbe_flash_read_dword(struct txgbe_hw *hw, u32 addr)
+{
+	u32 status;
+
+	status = txgbe_fmgr_cmd_op(hw, 1, addr);
+	if (status == 0x1) {
+		DEBUGOUT("Read flash timeout.");
+		return status;
+	}
+
+	return rd32(hw, TXGBE_SPIDAT);
+}
+
 /**
  *  txgbe_init_ops_pf - Inits func ptrs and MAC type
  *  @hw: pointer to hardware structure

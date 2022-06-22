@@ -28,6 +28,7 @@
 #define TXGBE_FDIR_INIT_DONE_POLL		10
 #define TXGBE_FDIRCMD_CMD_POLL			10
 #define TXGBE_VF_INIT_TIMEOUT	200 /* Number of retries to clear RSTI */
+#define TXGBE_SPI_TIMEOUT	10000
 
 #define TXGBE_ALIGN		128 /* as intel did */
 

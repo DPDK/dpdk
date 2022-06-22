@@ -177,6 +177,10 @@ New Features
 
   * Added support for yt8531s PHY.
 
+* **Updated Wangxun txgbe driver.**
+
+  * Added support for OEM subsystem vendor ID.
+
 * **Added Elliptic Curve Diffie-Hellman (ECDH) algorithm in cryptodev.**
 
   Added support for Elliptic Curve Diffie Hellman (ECDH) asymmetric
