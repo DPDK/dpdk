@@ -18,7 +18,7 @@
 #define NGBE_MAX_UTA              128
 
 #define NGBE_PCI_MASTER_DISABLE_TIMEOUT	800
-
+#define NGBE_SPI_TIMEOUT	10000
 
 #define NGBE_ALIGN		128 /* as intel did */
 #define NGBE_ISB_SIZE		16

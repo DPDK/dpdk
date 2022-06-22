@@ -176,6 +176,7 @@ New Features
 * **Updated Wangxun ngbe driver.**
 
   * Added support for yt8531s PHY.
+  * Added support for OEM subsystem vendor ID.
 
 * **Updated Wangxun txgbe driver.**
 
