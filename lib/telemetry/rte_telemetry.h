@@ -293,7 +293,7 @@ rte_tel_data_alloc(void);
  *
  * @param data
  *  Pointer to container.
- *.
+ *  If data is NULL, no operation is performed.
  */
 void
 rte_tel_data_free(struct rte_tel_data *data);

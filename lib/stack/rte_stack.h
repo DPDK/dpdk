@@ -213,7 +213,8 @@ rte_stack_create(const char *name, unsigned int count, int socket_id,
  * Free all memory used by the stack.
  *
  * @param s
- *   Stack to free
+ *   Pointer to stack created with rte_stack_create().
+ *   If s is NULL, no operation is performed.
  */
 void
 rte_stack_free(struct rte_stack *s);

@@ -987,6 +987,7 @@ rte_swx_pipeline_run(struct rte_swx_pipeline *p,
  *
  * @param[in] p
  *   Pipeline handle.
+ *   If p is NULL, no operation is performed.
  */
 __rte_experimental
 void

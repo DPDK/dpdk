@@ -242,7 +242,8 @@ rte_intr_instance_alloc(uint32_t flags);
  * Free the memory allocated for interrupt handle resources.
  *
  * @param intr_handle
- *  Interrupt handle address.
+ *  Interrupt handle allocated with rte_intr_instance_alloc().
+ *  If intr_handle is NULL, no operation is performed.
  *
  */
 __rte_experimental

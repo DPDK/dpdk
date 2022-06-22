@@ -113,7 +113,8 @@ rte_fib6_find_existing(const char *name);
  * Free an FIB object.
  *
  * @param fib
- *   FIB object handle
+ *   FIB object handle created by rte_fib6_create().
+ *   If fib is NULL, no operation is performed.
  * @return
  *   None
  */

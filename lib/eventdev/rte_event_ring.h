@@ -234,7 +234,8 @@ rte_event_ring_lookup(const char *name);
  * De-allocate all memory used by the ring.
  *
  * @param r
- *   Ring to free
+ *   Pointer to ring to created with rte_event_ring_create().
+ *   If r is NULL, no operation is performed.
  */
 void
 rte_event_ring_free(struct rte_event_ring *r);

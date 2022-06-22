@@ -263,7 +263,8 @@ rte_rib_find_existing(const char *name);
  * Free an RIB object.
  *
  * @param rib
- *   RIB object handle
+ *   RIB object handle created with rte_rib_create().
+ *   If rib is NULL, no operation is performed.
  * @return
  *   None
  */

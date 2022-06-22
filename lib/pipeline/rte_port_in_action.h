@@ -181,8 +181,9 @@ rte_port_in_action_profile_create(uint32_t socket_id);
  *
  * @param[in] profile
  *   Input port action profile handle (needs to be valid).
+ *   If profile is NULL, no operation is performed.
  * @return
- *   Zero on success, non-zero error code otherwise.
+ *   Always zero.
  */
 __rte_experimental
 int
@@ -259,8 +260,9 @@ rte_port_in_action_create(struct rte_port_in_action_profile *profile,
  *
  * @param[in] action
  *   Handle to input port action object (needs to be valid).
+ *   If action is NULL, no operation is performed.
  * @return
- *   Zero on success, non-zero error code otherwise.
+ *   Always zero.
  */
 __rte_experimental
 int

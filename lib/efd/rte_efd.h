@@ -145,7 +145,8 @@ rte_efd_create(const char *name, uint32_t max_num_rules, uint32_t key_len,
  * Releases the resources from an EFD table
  *
  * @param table
- *   Table to free
+ *   Pointer to table allocated with rte_efd_create().
+ *   If table is NULL, no operation is performed.
  */
 void
 rte_efd_free(struct rte_efd_table *table);

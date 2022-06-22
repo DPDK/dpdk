@@ -1375,6 +1375,7 @@ rte_swx_ctl_meter_stats_read(struct rte_swx_pipeline *p,
  *
  * @param[in] ctl
  *   Pipeline control handle.
+ *   If ctl is NULL, no operation is performed.
  */
 __rte_experimental
 void

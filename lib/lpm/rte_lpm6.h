@@ -72,6 +72,7 @@ rte_lpm6_find_existing(const char *name);
  *
  * @param lpm
  *   LPM object handle
+ *   If lpm is NULL, no operation is performed.
  * @return
  *   None
  */

@@ -114,7 +114,8 @@ rte_reorder_reset(struct rte_reorder_buffer *b);
  * Free reorder buffer instance.
  *
  * @param b
- *   reorder buffer instance
+ *   Pointer to reorder buffer instance.
+ *   If b is NULL, no operation is performed.
  * @return
  *   None
  */

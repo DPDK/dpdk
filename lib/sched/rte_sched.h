@@ -328,7 +328,8 @@ rte_sched_port_config(struct rte_sched_port_params *params);
  * Hierarchical scheduler port free
  *
  * @param port
- *   Handle to port scheduler instance
+ *   Handle to port scheduler instance.
+ *   If port is NULL, no operation is performed.
  */
 void
 rte_sched_port_free(struct rte_sched_port *port);
