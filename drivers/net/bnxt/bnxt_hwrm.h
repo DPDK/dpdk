@@ -121,6 +121,26 @@ struct bnxt_pf_resource_info {
 
 #define BNXT_CTX_VAL_INVAL	0xFFFF
 
+#define BNXT_TUNNELED_OFFLOADS_CAP_VXLAN_EN(bp)		\
+	(!((bp)->tunnel_disable_flag & HWRM_FUNC_QCAPS_OUTPUT_TUNNEL_DISABLE_FLAG_DISABLE_VXLAN))
+#define BNXT_TUNNELED_OFFLOADS_CAP_NGE_EN(bp)		\
+	(!((bp)->tunnel_disable_flag & HWRM_FUNC_QCAPS_OUTPUT_TUNNEL_DISABLE_FLAG_DISABLE_NGE))
+#define BNXT_TUNNELED_OFFLOADS_CAP_GRE_EN(bp)		\
+	(!((bp)->tunnel_disable_flag & HWRM_FUNC_QCAPS_OUTPUT_TUNNEL_DISABLE_FLAG_DISABLE_GRE))
+#define BNXT_TUNNELED_OFFLOADS_CAP_IPINIP_EN(bp)	\
+	(!((bp)->tunnel_disable_flag & HWRM_FUNC_QCAPS_OUTPUT_TUNNEL_DISABLE_FLAG_DISABLE_IPINIP))
+
+/*
+ * If the device supports VXLAN, GRE, IPIP and GENEVE tunnel parsing, then report
+ * RTE_ETH_RX_OFFLOAD_OUTER_IPV4_CKSUM, RTE_ETH_RX_OFFLOAD_OUTER_UDP_CKSUM and
+ * RTE_ETH_TX_OFFLOAD_OUTER_IPV4_CKSUM in the Rx/Tx offload capabilities of the device.
+ */
+#define BNXT_TUNNELED_OFFLOADS_CAP_ALL_EN(bp)			\
+	(BNXT_TUNNELED_OFFLOADS_CAP_VXLAN_EN(bp) &&		\
+	 BNXT_TUNNELED_OFFLOADS_CAP_NGE_EN(bp)   &&		\
+	 BNXT_TUNNELED_OFFLOADS_CAP_GRE_EN(bp)   &&		\
+	 BNXT_TUNNELED_OFFLOADS_CAP_IPINIP_EN(bp))
+
 int bnxt_hwrm_cfa_l2_clear_rx_mask(struct bnxt *bp,
 				   struct bnxt_vnic_info *vnic);
 int bnxt_hwrm_cfa_l2_set_rx_mask(struct bnxt *bp, struct bnxt_vnic_info *vnic,

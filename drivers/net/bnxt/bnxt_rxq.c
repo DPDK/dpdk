@@ -34,13 +34,14 @@ uint64_t bnxt_get_rx_port_offloads(struct bnxt *bp)
 			  RTE_ETH_RX_OFFLOAD_SCATTER |
 			  RTE_ETH_RX_OFFLOAD_RSS_HASH;
 
-	rx_offload_capa |= RTE_ETH_RX_OFFLOAD_OUTER_IPV4_CKSUM |
-			   RTE_ETH_RX_OFFLOAD_OUTER_UDP_CKSUM;
-
 	if (bp->flags & BNXT_FLAG_PTP_SUPPORTED)
 		rx_offload_capa |= RTE_ETH_RX_OFFLOAD_TIMESTAMP;
 	if (bp->vnic_cap_flags & BNXT_VNIC_CAP_VLAN_RX_STRIP)
 		rx_offload_capa |= RTE_ETH_RX_OFFLOAD_VLAN_STRIP;
+
+	if (BNXT_TUNNELED_OFFLOADS_CAP_ALL_EN(bp))
+		rx_offload_capa |= RTE_ETH_RX_OFFLOAD_OUTER_IPV4_CKSUM |
+					RTE_ETH_RX_OFFLOAD_OUTER_UDP_CKSUM;
 
 	return rx_offload_capa;
 }
