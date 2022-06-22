@@ -299,6 +299,55 @@ skip_an:
 		ngbe_write_phy_reg_ext_yt(hw, YT_CHIP, 0, value);
 
 		hw->phy.set_phy_power(hw, true);
+	} else if ((value & YT_CHIP_MODE_MASK) == YT_CHIP_MODE_SEL(5)) {
+		/* sgmii_to_rgmii */
+		if (!hw->mac.autoneg) {
+			switch (speed) {
+			case NGBE_LINK_SPEED_1GB_FULL:
+				value = YT_BCR_SPEED_SELECT1;
+				break;
+			case NGBE_LINK_SPEED_100M_FULL:
+				value = YT_BCR_SPEED_SELECT0;
+				break;
+			case NGBE_LINK_SPEED_10M_FULL:
+				value = 0;
+				break;
+			default:
+				value = YT_BCR_SPEED_SELECT0 |
+					YT_BCR_SPEED_SELECT1;
+				DEBUGOUT("unknown speed = 0x%x", speed);
+				break;
+			}
+			/* duplex full */
+			value |= YT_BCR_DUPLEX | YT_BCR_RESET;
+			hw->phy.write_reg(hw, YT_BCR, 0, value);
+
+			goto skip_an_sr;
+		}
+
+		value = 0;
+		if (speed & NGBE_LINK_SPEED_1GB_FULL) {
+			hw->phy.autoneg_advertised |= NGBE_LINK_SPEED_1GB_FULL;
+			value |= YT_BCR_SPEED_SELECT1;
+		}
+		if (speed & NGBE_LINK_SPEED_100M_FULL) {
+			hw->phy.autoneg_advertised |= NGBE_LINK_SPEED_100M_FULL;
+			value |= YT_BCR_SPEED_SELECT0;
+		}
+		if (speed & NGBE_LINK_SPEED_10M_FULL)
+			hw->phy.autoneg_advertised |= NGBE_LINK_SPEED_10M_FULL;
+
+		/* duplex full */
+		value |= YT_BCR_DUPLEX | YT_BCR_RESET;
+		hw->phy.write_reg(hw, YT_BCR, 0, value);
+
+		/* software reset to make the above configuration take effect */
+		hw->phy.read_reg(hw, YT_BCR, 0, &value);
+		value |= YT_BCR_RESET | YT_BCR_ANE | YT_BCR_RESTART_AN;
+		hw->phy.write_reg(hw, 0x0, 0, value);
+
+skip_an_sr:
+		hw->phy.set_phy_power(hw, true);
 	}
 
 	ngbe_write_phy_reg_ext_yt(hw, YT_SMI_PHY, 0, 0);
