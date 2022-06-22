@@ -2946,6 +2946,7 @@ vhost_user_msg_handler(int vid, int fd)
 	int ret;
 	int unlock_required = 0;
 	bool handled;
+	uint32_t vdpa_type = 0;
 	uint32_t request;
 	uint32_t i;
 
@@ -3150,6 +3151,20 @@ unlock:
 
 	vdpa_dev = dev->vdpa_dev;
 	if (!vdpa_dev)
+		goto out;
+
+	if (vdpa_dev->ops->get_dev_type) {
+		ret = vdpa_dev->ops->get_dev_type(vdpa_dev, &vdpa_type);
+		if (ret) {
+			VHOST_LOG_CONFIG(ERR, "failed to get vdpa dev type.\n");
+			ret = -1;
+			goto out;
+		}
+	} else {
+		vdpa_type = RTE_VHOST_VDPA_DEVICE_TYPE_NET;
+	}
+	if (vdpa_type == RTE_VHOST_VDPA_DEVICE_TYPE_BLK
+		&& request != VHOST_USER_SET_VRING_CALL)
 		goto out;
 
 	if (!(dev->flags & VIRTIO_DEV_VDPA_CONFIGURED)) {
