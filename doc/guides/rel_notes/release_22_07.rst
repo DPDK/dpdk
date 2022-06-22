@@ -139,6 +139,10 @@ New Features
   * Added support for Atomic Rules PCI device IDs ``0x101a, 0x101b, 0x101c``.
   * Added PMD support for virtual functions and vfio_pci driver.
 
+* **Updated HiSilicon hns3 driver.**
+
+  * Added support for backplane media type.
+
 * **Updated Intel iavf driver.**
 
   * Added Tx QoS queue rate limitation support.
