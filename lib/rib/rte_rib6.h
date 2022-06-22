@@ -39,12 +39,12 @@ struct rte_rib6_node;
 /** RIB configuration structure */
 struct rte_rib6_conf {
 	/**
-	 * Size of extension block inside rte_rib_node.
+	 * Size of extension block inside rte_rib6_node.
 	 * This space could be used to store additional user
 	 * defined data.
 	 */
 	size_t	ext_sz;
-	/* size of rte_rib_node's pool */
+	/* size of rte_rib6_node's pool */
 	int	max_nodes;
 };
 
@@ -306,7 +306,7 @@ rte_rib6_create(const char *name, int socket_id,
  * Find an existing RIB object and return a pointer to it.
  *
  * @param name
- *  Name of the rib object as passed to rte_rib_create()
+ *  Name of the rib object as passed to rte_rib6_create()
  * @return
  *  Pointer to RIB object on success
  *  NULL otherwise with rte_errno indicating reason for failure.
