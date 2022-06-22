@@ -634,7 +634,7 @@ us_vhost_usage(const char *prgname)
 {
 	RTE_LOG(INFO, VHOST_CONFIG, "%s [EAL options] -- -p PORTMASK\n"
 	"		--vm2vm [0|1|2]\n"
-	"		--rx_retry [0|1] --mergeable [0|1] --stats [0-N]\n"
+	"		--rx-retry [0|1] --mergeable [0|1] --stats [0-N]\n"
 	"		--socket-file <path>\n"
 	"		--nb-devices ND\n"
 	"		-p PORTMASK: Set mask for ports to be used by application\n"
@@ -1383,26 +1383,20 @@ drain_eth_rx(struct vhost_dev *vdev)
 	if (!rx_count)
 		return;
 
-	/*
-	 * When "enable_retry" is set, here we wait and retry when there
-	 * is no enough free slots in the queue to hold @rx_count packets,
-	 * to diminish packet loss.
-	 */
-	if (enable_retry &&
-	    unlikely(rx_count > rte_vhost_avail_entries(vdev->vid,
-			VIRTIO_RXQ))) {
-		uint32_t retry;
+	enqueue_count = vdev_queue_ops[vdev->vid].enqueue_pkt_burst(vdev,
+						VIRTIO_RXQ, pkts, rx_count);
 
-		for (retry = 0; retry < burst_rx_retry_num; retry++) {
+	/* Retry if necessary */
+	if (enable_retry && unlikely(enqueue_count < rx_count)) {
+		uint32_t retry = 0;
+
+		while (enqueue_count < rx_count && retry++ < burst_rx_retry_num) {
 			rte_delay_us(burst_rx_delay_time);
-			if (rx_count <= rte_vhost_avail_entries(vdev->vid,
-					VIRTIO_RXQ))
-				break;
+			enqueue_count += vdev_queue_ops[vdev->vid].enqueue_pkt_burst(vdev,
+							VIRTIO_RXQ, &pkts[enqueue_count],
+							rx_count - enqueue_count);
 		}
 	}
-
-	enqueue_count = vdev_queue_ops[vdev->vid].enqueue_pkt_burst(vdev,
-					VIRTIO_RXQ, pkts, rx_count);
 
 	if (enable_stats) {
 		__atomic_add_fetch(&vdev->stats.rx_total_atomic, rx_count,
