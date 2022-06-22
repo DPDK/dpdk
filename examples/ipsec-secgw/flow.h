@@ -11,5 +11,6 @@ void parse_flow_tokens(char **tokens, uint32_t n_tokens,
 		       struct parse_status *status);
 
 void flow_init(void);
+void flow_print_counters(void);
 
 #endif /* _FLOW_H_ */

@@ -894,16 +894,35 @@ The flow rule syntax is shown as follows:
 
 .. code-block:: console
 
-    flow <ip_ver> <src_ip> <dst_ip> <port> <queue>
-
+    flow <mark> <eth> <ip_ver> <src_ip> <dst_ip> <port> <queue> \
+         <count> <security> <set_mark>
 
 where each options means:
+
+``<mark>``
+
+ * Set RTE_FLOW_ITEM_TYPE_MARK pattern item in the flow rule with the given
+   mark value. This option can be used to match an arbitrary integer value
+   which was set using the RTE_FLOW_ACTION_TYPE_MARK action (see ``<set_mark>``)
+   in a previously matched rule.
+
+ * Optional: Yes, this pattern is not set by default.
+
+ * Syntax: *mark X*
+
+``<eth>``
+
+ * Set RTE_FLOW_ITEM_TYPE_ETH pattern item. This matches all ethernet packets.
+
+ * Optional: Yes, this pattern is not set by default.
+
+ * Syntax: *eth*
 
 ``<ip_ver>``
 
  * IP protocol version
 
- * Optional: No
+ * Optional: Yes, this pattern is not set by default.
 
  * Available options:
 
@@ -948,6 +967,32 @@ where each options means:
 
  * Syntax: *queue X*
 
+``<count>``
+
+ * Set RTE_FLOW_ACTION_TYPE_COUNT action.
+
+ * Optional: yes, this action is not set by default.
+
+ * Syntax: *count*
+
+``<security>``
+
+ * Set RTE_FLOW_ITEM_TYPE_ESP pattern and RTE_FLOW_ACTION_TYPE_SECURITY action.
+
+ * Optional: yes, this pattern and action are not set by default.
+
+ * Syntax: *security*
+
+``<set_mark>``
+
+ * Set RTE_FLOW_ACTION_TYPE_MARK action in the flow rule with the given mark
+   value. This option can be used to set the given integer value(mark) to
+   packets and set RTE_MBUF_F_RX_FDIR and RTE_MBUF_F_RX_FDIR_ID mbuf flags.
+
+ * Optional: yes, this action is not set by default.
+
+ * Syntax: *set_mark X*
+
 Example flow rules:
 
 .. code-block:: console
@@ -955,6 +1000,18 @@ Example flow rules:
     flow ipv4 dst 172.16.1.5/32 port 0 queue 0
 
     flow ipv6 dst 1111:1111:1111:1111:1111:1111:1111:5555/116 port 1 queue 0
+
+    flow mark 123 ipv4 dst 192.168.0.0/16 port 0 queue 0 count
+
+    flow eth ipv4 dst 192.168.0.0/16 port 0 queue 0 count
+
+    flow ipv4 dst 192.168.0.0/16 port 0 queue 0 count
+
+    flow ipv4 dst 192.168.0.0/16 port 0 queue 0
+
+    flow port 0 security set_mark 123
+
+    flow ipv4 dst 1.1.0.0/16 port 0 count set_mark 123 security
 
 
 Neighbour rule syntax

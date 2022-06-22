@@ -2888,7 +2888,6 @@ ipsec_secgw_telemetry_init(void)
 		"Optional Parameters: int <logical core id>");
 }
 
-
 int32_t
 main(int32_t argc, char **argv)
 {
@@ -3143,6 +3142,8 @@ skip_sec_ctx:
 		rte_cryptodev_close(cdev_id);
 		printf(" Done\n");
 	}
+
+	flow_print_counters();
 
 	RTE_ETH_FOREACH_DEV(portid) {
 		if ((enabled_port_mask & (1 << portid)) == 0)
