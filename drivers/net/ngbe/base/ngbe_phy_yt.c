@@ -146,21 +146,21 @@ s32 ngbe_setup_phy_link_yt(struct ngbe_hw *hw, u32 speed,
 			}
 			/* duplex full */
 			value |= YT_BCR_DUPLEX | YT_BCR_RESET;
-			hw->phy.write_reg(hw, YT_BCR, 0, value);
+			ngbe_write_phy_reg_mdi(hw, YT_BCR, 0, value);
 
 			goto skip_an;
 		}
 
 		/*disable 100/10base-T Self-negotiation ability*/
-		hw->phy.read_reg(hw, YT_ANA, 0, &value);
+		ngbe_read_phy_reg_mdi(hw, YT_ANA, 0, &value);
 		value &= ~(YT_ANA_100BASET_FULL | YT_ANA_100BASET_HALF |
 			YT_ANA_10BASET_FULL | YT_ANA_10BASET_HALF);
-		hw->phy.write_reg(hw, YT_ANA, 0, value);
+		ngbe_write_phy_reg_mdi(hw, YT_ANA, 0, value);
 
 		/*disable 1000base-T Self-negotiation ability*/
-		hw->phy.read_reg(hw, YT_MS_CTRL, 0, &value);
+		ngbe_read_phy_reg_mdi(hw, YT_MS_CTRL, 0, &value);
 		value &= ~(YT_MS_1000BASET_FULL | YT_MS_1000BASET_HALF);
-		hw->phy.write_reg(hw, YT_MS_CTRL, 0, value);
+		ngbe_write_phy_reg_mdi(hw, YT_MS_CTRL, 0, value);
 
 		if (speed & NGBE_LINK_SPEED_1GB_FULL) {
 			hw->phy.autoneg_advertised |= NGBE_LINK_SPEED_1GB_FULL;
@@ -176,19 +176,19 @@ s32 ngbe_setup_phy_link_yt(struct ngbe_hw *hw, u32 speed,
 		}
 
 		/* enable 1000base-T Self-negotiation ability */
-		hw->phy.read_reg(hw, YT_MS_CTRL, 0, &value);
+		ngbe_read_phy_reg_mdi(hw, YT_MS_CTRL, 0, &value);
 		value |= value_r9;
-		hw->phy.write_reg(hw, YT_MS_CTRL, 0, value);
+		ngbe_write_phy_reg_mdi(hw, YT_MS_CTRL, 0, value);
 
 		/* enable 100/10base-T Self-negotiation ability */
-		hw->phy.read_reg(hw, YT_ANA, 0, &value);
+		ngbe_read_phy_reg_mdi(hw, YT_ANA, 0, &value);
 		value |= value_r4;
-		hw->phy.write_reg(hw, YT_ANA, 0, value);
+		ngbe_write_phy_reg_mdi(hw, YT_ANA, 0, value);
 
 		/* software reset to make the above configuration take effect*/
-		hw->phy.read_reg(hw, YT_BCR, 0, &value);
+		ngbe_read_phy_reg_mdi(hw, YT_BCR, 0, &value);
 		value |= YT_BCR_RESET | YT_BCR_ANE | YT_BCR_RESTART_AN;
-		hw->phy.write_reg(hw, YT_BCR, 0, value);
+		ngbe_write_phy_reg_mdi(hw, YT_BCR, 0, value);
 skip_an:
 		hw->phy.set_phy_power(hw, true);
 	} else if ((value & YT_CHIP_MODE_MASK) == YT_CHIP_MODE_SEL(1)) {
@@ -219,15 +219,15 @@ skip_an:
 		} else {
 			/* utp up */
 			/*disable 100/10base-T Self-negotiation ability*/
-			hw->phy.read_reg(hw, YT_ANA, 0, &value);
+			ngbe_read_phy_reg_mdi(hw, YT_ANA, 0, &value);
 			value &= ~(YT_ANA_100BASET_FULL | YT_ANA_100BASET_HALF |
 				YT_ANA_10BASET_FULL | YT_ANA_10BASET_HALF);
-			hw->phy.write_reg(hw, YT_ANA, 0, value);
+			ngbe_write_phy_reg_mdi(hw, YT_ANA, 0, value);
 
 			/*disable 1000base-T Self-negotiation ability*/
-			hw->phy.read_reg(hw, YT_MS_CTRL, 0, &value);
+			ngbe_read_phy_reg_mdi(hw, YT_MS_CTRL, 0, &value);
 			value &= ~(YT_MS_1000BASET_FULL | YT_MS_1000BASET_HALF);
-			hw->phy.write_reg(hw, YT_MS_CTRL, 0, value);
+			ngbe_write_phy_reg_mdi(hw, YT_MS_CTRL, 0, value);
 
 			if (speed & NGBE_LINK_SPEED_1GB_FULL) {
 				hw->phy.autoneg_advertised |=
@@ -246,21 +246,21 @@ skip_an:
 			}
 
 			/* enable 1000base-T Self-negotiation ability */
-			hw->phy.read_reg(hw, YT_MS_CTRL, 0, &value);
+			ngbe_read_phy_reg_mdi(hw, YT_MS_CTRL, 0, &value);
 			value |= value_r9;
-			hw->phy.write_reg(hw, YT_MS_CTRL, 0, value);
+			ngbe_write_phy_reg_mdi(hw, YT_MS_CTRL, 0, value);
 
 			/* enable 100/10base-T Self-negotiation ability */
-			hw->phy.read_reg(hw, YT_ANA, 0, &value);
+			ngbe_read_phy_reg_mdi(hw, YT_ANA, 0, &value);
 			value |= value_r4;
-			hw->phy.write_reg(hw, YT_ANA, 0, value);
+			ngbe_write_phy_reg_mdi(hw, YT_ANA, 0, value);
 
 			/* software reset to make the above configuration
 			 * take effect
 			 */
-			hw->phy.read_reg(hw, YT_BCR, 0, &value);
+			ngbe_read_phy_reg_mdi(hw, YT_BCR, 0, &value);
 			value |= YT_BCR_RESET;
-			hw->phy.write_reg(hw, YT_BCR, 0, value);
+			ngbe_write_phy_reg_mdi(hw, YT_BCR, 0, value);
 		}
 	} else if ((value & YT_CHIP_MODE_MASK) == YT_CHIP_MODE_SEL(4)) {
 		hw->phy.autoneg_advertised |= NGBE_LINK_SPEED_1GB_FULL;
