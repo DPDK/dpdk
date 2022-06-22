@@ -695,9 +695,8 @@ F: doc/guides/nics/enic.rst
 F: doc/guides/nics/features/enic.ini
 
 Hisilicon hns3
-M: Min Hu (Connor) <humin29@huawei.com>
+M: Dongdong Liu <liudongdong3@huawei.com>
 M: Yisen Zhuang <yisen.zhuang@huawei.com>
-M: Lijun Ou <oulijun@huawei.com>
 F: drivers/net/hns3/
 F: doc/guides/nics/hns3.rst
 F: doc/guides/nics/features/hns3.ini
