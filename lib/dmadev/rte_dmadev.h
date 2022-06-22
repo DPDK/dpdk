@@ -970,7 +970,7 @@ rte_dma_fill(int16_t dev_id, uint16_t vchan, uint64_t pattern,
  *
  * Trigger hardware to begin performing enqueued operations.
  *
- * This API is used to write the "doorbell" to the hardware to trigger it
+ * Writes the "doorbell" to the hardware to trigger it
  * to begin the operations previously enqueued by rte_dma_copy/fill().
  *
  * @param dev_id

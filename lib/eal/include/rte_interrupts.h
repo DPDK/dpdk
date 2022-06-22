@@ -239,8 +239,7 @@ rte_intr_instance_alloc(uint32_t flags);
  * @warning
  * @b EXPERIMENTAL: this API may change without prior notice
  *
- * This API is used to free the memory allocated for interrupt handle
- * resources.
+ * Free the memory allocated for interrupt handle resources.
  *
  * @param intr_handle
  *  Interrupt handle address.
@@ -254,7 +253,7 @@ rte_intr_instance_free(struct rte_intr_handle *intr_handle);
  * @warning
  * @b EXPERIMENTAL: this API may change without prior notice
  *
- * This API is used to set the fd field of interrupt handle with user provided
+ * Set the fd field of interrupt handle with user provided
  * file descriptor.
  *
  * @param intr_handle
@@ -291,7 +290,7 @@ rte_intr_fd_get(const struct rte_intr_handle *intr_handle);
  * @warning
  * @b EXPERIMENTAL: this API may change without prior notice
  *
- * This API is used to set the type field of interrupt handle with user provided
+ * Set the type field of interrupt handle with user provided
  * interrupt type.
  *
  * @param intr_handle
@@ -452,7 +451,7 @@ rte_intr_instance_dup(const struct rte_intr_handle *src);
 
 /**
  * @internal
- * This API is used to set the device fd field of interrupt handle with user
+ * Set the device fd field of interrupt handle with user
  * provided dev fd. Device fd corresponds to VFIO device fd or UIO config fd.
  *
  * @param intr_handle
@@ -485,7 +484,7 @@ rte_intr_dev_fd_get(const struct rte_intr_handle *intr_handle);
 
 /**
  * @internal
- * This API is used to set the max intr field of interrupt handle with user
+ * Set the max intr field of interrupt handle with user
  * provided max intr value.
  *
  * @param intr_handle
@@ -518,7 +517,7 @@ rte_intr_max_intr_get(const struct rte_intr_handle *intr_handle);
 
 /**
  * @internal
- * This API is used to set the number of event fd field of interrupt handle
+ * Set the number of event fd field of interrupt handle
  * with user provided available event file descriptor value.
  *
  * @param intr_handle
@@ -572,7 +571,7 @@ rte_intr_nb_intr_get(const struct rte_intr_handle *intr_handle);
 
 /**
  * @internal
- * This API is used to set the event fd counter size field of interrupt handle
+ * Set the event fd counter size field of interrupt handle
  * with user provided efd counter size.
  *
  * @param intr_handle
@@ -607,7 +606,7 @@ rte_intr_efd_counter_size_get(const struct rte_intr_handle *intr_handle);
 
 /**
  * @internal
- * This API is used to set the event fd array index with the given fd.
+ * Set the event fd array index with the given fd.
  *
  * @param intr_handle
  *  pointer to the interrupt handle.
@@ -643,7 +642,7 @@ rte_intr_efds_index_get(const struct rte_intr_handle *intr_handle, int index);
 
 /**
  * @internal
- * This API is used to set the epoll event object array index with the given
+ * Set the epoll event object array index with the given
  * elist instance.
  *
  * @param intr_handle
@@ -779,7 +778,7 @@ rte_intr_event_list_update(struct rte_intr_handle *intr_handle, int size);
 
 /**
  * @internal
- * This API returns the Windows handle of the given interrupt instance.
+ * Returns the Windows handle of the given interrupt instance.
  *
  * @param intr_handle
  *  pointer to the interrupt handle.
@@ -794,7 +793,7 @@ rte_intr_instance_windows_handle_get(struct rte_intr_handle *intr_handle);
 
 /**
  * @internal
- * This API set the Windows handle for the given interrupt instance.
+ * Set the Windows handle for the given interrupt instance.
  *
  * @param intr_handle
  *  pointer to the interrupt handle.

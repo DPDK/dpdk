@@ -123,7 +123,7 @@ rte_ioat_fence(int dev_id);
 /**
  * Trigger hardware to begin performing enqueued operations
  *
- * This API is used to write the "doorbell" to the hardware to trigger it
+ * Writes the "doorbell" to the hardware to trigger it
  * to begin the operations previously enqueued by rte_ioat_enqueue_copy()
  *
  * @param dev_id
