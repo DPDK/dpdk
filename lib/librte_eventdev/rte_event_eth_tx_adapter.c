@@ -845,9 +845,10 @@ txa_service_queue_del(uint8_t id,
 
 	txa = txa_service_id_to_data(id);
 
+	rte_spinlock_lock(&txa->tx_lock);
 	tqi = txa_service_queue(txa, port_id, tx_queue_id);
 	if (tqi == NULL || !tqi->added)
-		return 0;
+		goto ret_unlock;
 
 	tb = tqi->tx_buf;
 	tqi->added = 0;
@@ -857,6 +858,9 @@ txa_service_queue_del(uint8_t id,
 	txa->txa_ethdev[port_id].nb_queues--;
 
 	txa_service_queue_array_free(txa, port_id);
+
+ret_unlock:
+	rte_spinlock_unlock(&txa->tx_lock);
 	return 0;
 }
 
