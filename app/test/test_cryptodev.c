@@ -6968,6 +6968,34 @@ test_snow3g_auth_cipher_part_digest_enc_oop_sgl(void)
 }
 
 static int
+test_snow3g_auth_cipher_total_digest_enc_1(void)
+{
+	return test_snow3g_auth_cipher(
+		&snow3g_auth_cipher_total_digest_encryption_1, IN_PLACE, 0);
+}
+
+static int
+test_snow3g_auth_cipher_total_digest_enc_1_oop(void)
+{
+	return test_snow3g_auth_cipher(
+		&snow3g_auth_cipher_total_digest_encryption_1, OUT_OF_PLACE, 0);
+}
+
+static int
+test_snow3g_auth_cipher_total_digest_enc_1_sgl(void)
+{
+	return test_snow3g_auth_cipher_sgl(
+		&snow3g_auth_cipher_total_digest_encryption_1, IN_PLACE, 0);
+}
+
+static int
+test_snow3g_auth_cipher_total_digest_enc_1_oop_sgl(void)
+{
+	return test_snow3g_auth_cipher_sgl(
+		&snow3g_auth_cipher_total_digest_encryption_1, OUT_OF_PLACE, 0);
+}
+
+static int
 test_snow3g_auth_cipher_verify_test_case_1(void)
 {
 	return test_snow3g_auth_cipher(
@@ -7032,6 +7060,34 @@ test_snow3g_auth_cipher_verify_part_digest_enc_oop_sgl(void)
 	return test_snow3g_auth_cipher_sgl(
 		&snow3g_auth_cipher_partial_digest_encryption,
 			OUT_OF_PLACE, 1);
+}
+
+static int
+test_snow3g_auth_cipher_verify_total_digest_enc_1(void)
+{
+	return test_snow3g_auth_cipher(
+		&snow3g_auth_cipher_total_digest_encryption_1, IN_PLACE, 1);
+}
+
+static int
+test_snow3g_auth_cipher_verify_total_digest_enc_1_oop(void)
+{
+	return test_snow3g_auth_cipher(
+		&snow3g_auth_cipher_total_digest_encryption_1, OUT_OF_PLACE, 1);
+}
+
+static int
+test_snow3g_auth_cipher_verify_total_digest_enc_1_sgl(void)
+{
+	return test_snow3g_auth_cipher_sgl(
+		&snow3g_auth_cipher_total_digest_encryption_1, IN_PLACE, 1);
+}
+
+static int
+test_snow3g_auth_cipher_verify_total_digest_enc_1_oop_sgl(void)
+{
+	return test_snow3g_auth_cipher_sgl(
+		&snow3g_auth_cipher_total_digest_encryption_1, OUT_OF_PLACE, 1);
 }
 
 static int
@@ -7260,6 +7316,20 @@ test_zuc_auth_cipher_test_case_1_oop_sgl(void)
 }
 
 static int
+test_zuc_auth_cipher_test_case_2(void)
+{
+	return test_zuc_auth_cipher(
+		&zuc_auth_cipher_test_case_2, IN_PLACE, 0);
+}
+
+static int
+test_zuc_auth_cipher_test_case_2_oop(void)
+{
+	return test_zuc_auth_cipher(
+		&zuc_auth_cipher_test_case_2, OUT_OF_PLACE, 0);
+}
+
+static int
 test_zuc_auth_cipher_verify_test_case_1(void)
 {
 	return test_zuc_auth_cipher(
@@ -7285,6 +7355,20 @@ test_zuc_auth_cipher_verify_test_case_1_oop_sgl(void)
 {
 	return test_zuc_auth_cipher_sgl(
 		&zuc_auth_cipher_test_case_1, OUT_OF_PLACE, 1);
+}
+
+static int
+test_zuc_auth_cipher_verify_test_case_2(void)
+{
+	return test_zuc_auth_cipher(
+		&zuc_auth_cipher_test_case_2, IN_PLACE, 1);
+}
+
+static int
+test_zuc_auth_cipher_verify_test_case_2_oop(void)
+{
+	return test_zuc_auth_cipher(
+		&zuc_auth_cipher_test_case_2, OUT_OF_PLACE, 1);
 }
 
 static int
@@ -7777,10 +7861,31 @@ test_aes_cmac_aes_ctr_digest_enc_test_case_1_oop_sgl(void)
 }
 
 static int
+test_aes_cmac_aes_ctr_digest_enc_test_case_2(void)
+{
+	return test_mixed_auth_cipher(
+		&auth_aes_cmac_cipher_aes_ctr_test_case_2, IN_PLACE, 0);
+}
+
+static int
+test_aes_cmac_aes_ctr_digest_enc_test_case_2_oop(void)
+{
+	return test_mixed_auth_cipher(
+		&auth_aes_cmac_cipher_aes_ctr_test_case_2, OUT_OF_PLACE, 0);
+}
+
+static int
 test_verify_aes_cmac_aes_ctr_digest_enc_test_case_1(void)
 {
 	return test_mixed_auth_cipher(
 		&auth_aes_cmac_cipher_aes_ctr_test_case_1, IN_PLACE, 1);
+}
+
+static int
+test_verify_aes_cmac_aes_ctr_digest_enc_test_case_2(void)
+{
+	return test_mixed_auth_cipher(
+		&auth_aes_cmac_cipher_aes_ctr_test_case_2, IN_PLACE, 1);
 }
 
 static int
@@ -7804,6 +7909,13 @@ test_verify_aes_cmac_aes_ctr_digest_enc_test_case_1_oop_sgl(void)
 		&auth_aes_cmac_cipher_aes_ctr_test_case_1, OUT_OF_PLACE, 1);
 }
 
+static int
+test_verify_aes_cmac_aes_ctr_digest_enc_test_case_2_oop(void)
+{
+	return test_mixed_auth_cipher(
+		&auth_aes_cmac_cipher_aes_ctr_test_case_2, OUT_OF_PLACE, 1);
+}
+
 /** MIXED AUTH + CIPHER */
 
 static int
@@ -7821,6 +7933,21 @@ test_verify_auth_zuc_cipher_snow_test_case_1(void)
 }
 
 static int
+test_auth_zuc_cipher_snow_test_case_1_inplace(void)
+{
+	return test_mixed_auth_cipher(
+		&auth_zuc_cipher_snow_test_case_1, IN_PLACE, 0);
+}
+
+static int
+test_verify_auth_zuc_cipher_snow_test_case_1_inplace(void)
+{
+	return test_mixed_auth_cipher(
+		&auth_zuc_cipher_snow_test_case_1, IN_PLACE, 1);
+}
+
+
+static int
 test_auth_aes_cmac_cipher_snow_test_case_1(void)
 {
 	return test_mixed_auth_cipher(
@@ -7832,6 +7959,20 @@ test_verify_auth_aes_cmac_cipher_snow_test_case_1(void)
 {
 	return test_mixed_auth_cipher(
 		&auth_aes_cmac_cipher_snow_test_case_1, OUT_OF_PLACE, 1);
+}
+
+static int
+test_auth_aes_cmac_cipher_snow_test_case_1_inplace(void)
+{
+	return test_mixed_auth_cipher(
+		&auth_aes_cmac_cipher_snow_test_case_1, IN_PLACE, 0);
+}
+
+static int
+test_verify_auth_aes_cmac_cipher_snow_test_case_1_inplace(void)
+{
+	return test_mixed_auth_cipher(
+		&auth_aes_cmac_cipher_snow_test_case_1, IN_PLACE, 1);
 }
 
 static int
@@ -7849,6 +7990,20 @@ test_verify_auth_zuc_cipher_aes_ctr_test_case_1(void)
 }
 
 static int
+test_auth_zuc_cipher_aes_ctr_test_case_1_inplace(void)
+{
+	return test_mixed_auth_cipher(
+		&auth_zuc_cipher_aes_ctr_test_case_1, IN_PLACE, 0);
+}
+
+static int
+test_verify_auth_zuc_cipher_aes_ctr_test_case_1_inplace(void)
+{
+	return test_mixed_auth_cipher(
+		&auth_zuc_cipher_aes_ctr_test_case_1, IN_PLACE, 1);
+}
+
+static int
 test_auth_snow_cipher_aes_ctr_test_case_1(void)
 {
 	return test_mixed_auth_cipher(
@@ -7860,6 +8015,34 @@ test_verify_auth_snow_cipher_aes_ctr_test_case_1(void)
 {
 	return test_mixed_auth_cipher(
 		&auth_snow_cipher_aes_ctr_test_case_1, OUT_OF_PLACE, 1);
+}
+
+static int
+test_auth_snow_cipher_aes_ctr_test_case_1_inplace_sgl(void)
+{
+	return test_mixed_auth_cipher_sgl(
+		&auth_snow_cipher_aes_ctr_test_case_1, IN_PLACE, 0);
+}
+
+static int
+test_auth_snow_cipher_aes_ctr_test_case_1_inplace(void)
+{
+	return test_mixed_auth_cipher(
+		&auth_snow_cipher_aes_ctr_test_case_1, IN_PLACE, 0);
+}
+
+static int
+test_verify_auth_snow_cipher_aes_ctr_test_case_1_inplace_sgl(void)
+{
+	return test_mixed_auth_cipher_sgl(
+		&auth_snow_cipher_aes_ctr_test_case_1, IN_PLACE, 1);
+}
+
+static int
+test_verify_auth_snow_cipher_aes_ctr_test_case_1_inplace(void)
+{
+	return test_mixed_auth_cipher(
+		&auth_snow_cipher_aes_ctr_test_case_1, IN_PLACE, 1);
 }
 
 static int
@@ -7877,6 +8060,20 @@ test_verify_auth_snow_cipher_zuc_test_case_1(void)
 }
 
 static int
+test_auth_snow_cipher_zuc_test_case_1_inplace(void)
+{
+	return test_mixed_auth_cipher(
+		&auth_snow_cipher_zuc_test_case_1, IN_PLACE, 0);
+}
+
+static int
+test_verify_auth_snow_cipher_zuc_test_case_1_inplace(void)
+{
+	return test_mixed_auth_cipher(
+		&auth_snow_cipher_zuc_test_case_1, IN_PLACE, 1);
+}
+
+static int
 test_auth_aes_cmac_cipher_zuc_test_case_1(void)
 {
 	return test_mixed_auth_cipher(
@@ -7888,6 +8085,19 @@ test_verify_auth_aes_cmac_cipher_zuc_test_case_1(void)
 {
 	return test_mixed_auth_cipher(
 		&auth_aes_cmac_cipher_zuc_test_case_1, OUT_OF_PLACE, 1);
+}
+static int
+test_auth_aes_cmac_cipher_zuc_test_case_1_inplace(void)
+{
+	return test_mixed_auth_cipher(
+		&auth_aes_cmac_cipher_zuc_test_case_1, IN_PLACE, 0);
+}
+
+static int
+test_verify_auth_aes_cmac_cipher_zuc_test_case_1_inplace(void)
+{
+	return test_mixed_auth_cipher(
+		&auth_aes_cmac_cipher_zuc_test_case_1, IN_PLACE, 1);
 }
 
 static int
@@ -15791,6 +16001,14 @@ static struct unit_test_suite cryptodev_snow3g_testsuite  = {
 			test_snow3g_auth_cipher_part_digest_enc_sgl),
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			test_snow3g_auth_cipher_part_digest_enc_oop_sgl),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_snow3g_auth_cipher_total_digest_enc_1),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_snow3g_auth_cipher_total_digest_enc_1_oop),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_snow3g_auth_cipher_total_digest_enc_1_sgl),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_snow3g_auth_cipher_total_digest_enc_1_oop_sgl),
 
 		/** SNOW 3G decrypt (UEA2), then verify auth */
 		TEST_CASE_ST(ut_setup, ut_teardown,
@@ -15811,6 +16029,14 @@ static struct unit_test_suite cryptodev_snow3g_testsuite  = {
 			test_snow3g_auth_cipher_verify_part_digest_enc_sgl),
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			test_snow3g_auth_cipher_verify_part_digest_enc_oop_sgl),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_snow3g_auth_cipher_verify_total_digest_enc_1),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_snow3g_auth_cipher_verify_total_digest_enc_1_oop),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_snow3g_auth_cipher_verify_total_digest_enc_1_sgl),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_snow3g_auth_cipher_verify_total_digest_enc_1_oop_sgl),
 
 		/** SNOW 3G decrypt only (UEA2) */
 		TEST_CASE_ST(ut_setup, ut_teardown,
@@ -15919,6 +16145,10 @@ static struct unit_test_suite cryptodev_zuc_testsuite  = {
 			test_zuc_auth_cipher_test_case_1_sgl),
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			test_zuc_auth_cipher_test_case_1_oop_sgl),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_zuc_auth_cipher_test_case_2),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_zuc_auth_cipher_test_case_2_oop),
 
 		/** ZUC decrypt (EEA3), then verify auth */
 		TEST_CASE_ST(ut_setup, ut_teardown,
@@ -15929,6 +16159,10 @@ static struct unit_test_suite cryptodev_zuc_testsuite  = {
 			test_zuc_auth_cipher_verify_test_case_1_sgl),
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			test_zuc_auth_cipher_verify_test_case_1_oop_sgl),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_zuc_auth_cipher_verify_test_case_2),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_zuc_auth_cipher_verify_test_case_2_oop),
 
 		/** ZUC-256 encrypt only **/
 		TEST_CASE_ST(ut_setup, ut_teardown,
@@ -16132,37 +16366,73 @@ static struct unit_test_suite cryptodev_mixed_cipher_hash_testsuite  = {
 			test_verify_aes_cmac_aes_ctr_digest_enc_test_case_1_sgl),
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			test_verify_aes_cmac_aes_ctr_digest_enc_test_case_1_oop_sgl),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_aes_cmac_aes_ctr_digest_enc_test_case_2),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_aes_cmac_aes_ctr_digest_enc_test_case_2_oop),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_verify_aes_cmac_aes_ctr_digest_enc_test_case_2),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_verify_aes_cmac_aes_ctr_digest_enc_test_case_2_oop),
 
 		/** AUTH ZUC + CIPHER SNOW3G */
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			test_auth_zuc_cipher_snow_test_case_1),
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			test_verify_auth_zuc_cipher_snow_test_case_1),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_auth_zuc_cipher_snow_test_case_1_inplace),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_verify_auth_zuc_cipher_snow_test_case_1_inplace),
 		/** AUTH AES CMAC + CIPHER SNOW3G */
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			test_auth_aes_cmac_cipher_snow_test_case_1),
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			test_verify_auth_aes_cmac_cipher_snow_test_case_1),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_auth_aes_cmac_cipher_snow_test_case_1_inplace),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_verify_auth_aes_cmac_cipher_snow_test_case_1_inplace),
 		/** AUTH ZUC + CIPHER AES CTR */
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			test_auth_zuc_cipher_aes_ctr_test_case_1),
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			test_verify_auth_zuc_cipher_aes_ctr_test_case_1),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_auth_zuc_cipher_aes_ctr_test_case_1_inplace),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_verify_auth_zuc_cipher_aes_ctr_test_case_1_inplace),
 		/** AUTH SNOW3G + CIPHER AES CTR */
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			test_auth_snow_cipher_aes_ctr_test_case_1),
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			test_verify_auth_snow_cipher_aes_ctr_test_case_1),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_auth_snow_cipher_aes_ctr_test_case_1_inplace),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_auth_snow_cipher_aes_ctr_test_case_1_inplace_sgl),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_verify_auth_snow_cipher_aes_ctr_test_case_1_inplace),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_verify_auth_snow_cipher_aes_ctr_test_case_1_inplace_sgl),
 		/** AUTH SNOW3G + CIPHER ZUC */
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			test_auth_snow_cipher_zuc_test_case_1),
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			test_verify_auth_snow_cipher_zuc_test_case_1),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_auth_snow_cipher_zuc_test_case_1_inplace),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_verify_auth_snow_cipher_zuc_test_case_1_inplace),
 		/** AUTH AES CMAC + CIPHER ZUC */
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			test_auth_aes_cmac_cipher_zuc_test_case_1),
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			test_verify_auth_aes_cmac_cipher_zuc_test_case_1),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_auth_aes_cmac_cipher_zuc_test_case_1_inplace),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_verify_auth_aes_cmac_cipher_zuc_test_case_1_inplace),
 
 		/** AUTH NULL + CIPHER SNOW3G */
 		TEST_CASE_ST(ut_setup, ut_teardown,
