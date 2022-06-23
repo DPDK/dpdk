@@ -1591,7 +1591,7 @@ static int fme_pmci_init(struct ifpga_feature *feature)
 	int ret = 0;
 
 	hw = fme->parent;
-	if (!hw)
+	if (!hw || !hw->adapter)
 		return -ENODEV;
 
 	mgr = hw->adapter->mgr;
@@ -1608,7 +1608,7 @@ static int fme_pmci_init(struct ifpga_feature *feature)
 
 	max10->type = M10_N6000;
 	max10->mmio = feature->addr;
-	if (hw->adapter && hw->adapter->shm.ptr) {
+	if (hw->adapter->shm.ptr) {
 		sd = (opae_share_data *)hw->adapter->shm.ptr;
 		max10->bmc_ops.mutex = &sd->spi_mutex;
 	} else {
