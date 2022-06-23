@@ -2527,9 +2527,10 @@ create port meter
 Create new meter object for the ethernet device::
 
    testpmd> create port meter (port_id) (mtr_id) (profile_id) \
-   (policy_id) (meter_enable) (stats_mask) (shared) \
+   (policy_id) (meter_enable) (stats_mask) (shared) (default_input_color) \
    (use_pre_meter_color) [(dscp_tbl_entry0) (dscp_tbl_entry1)...\
-   (dscp_tbl_entry63)]
+   (dscp_tbl_entry63)] [(vlan_tbl_entry0) (vlan_tbl_entry1) ... \
+   (vlan_tbl_entry15)]
 
 where:
 
@@ -2542,12 +2543,17 @@ where:
   meter object.
 * ``shared``:  When this parameter has a non-zero value, the meter object is
   shared by multiple flows. Otherwise, meter object is used by single flow.
+* ``default_input_color``:  Default input color for incoming packets.
+  If incoming packet misses DSCP or VLAN input color table then it will be used
+  as input color.
 * ``use_pre_meter_color``: When this parameter has a non-zero value, the
   input color for the current meter object is determined by the latest meter
   object in the same flow. Otherwise, the current meter object uses the
   *dscp_table* to determine the input color.
 * ``dscp_tbl_entryx``: DSCP table entry x providing meter providing input
   color, 0 <= x <= 63.
+* ``vlan_tbl_entryx``: VLAN table entry x providing meter input color,
+  0 <= x <= 15.
 
 enable port meter
 ~~~~~~~~~~~~~~~~~
@@ -2584,6 +2590,31 @@ Set meter dscp table for the ethernet device::
 
    testpmd> set port meter dscp table (port_id) (mtr_id) [(dscp_tbl_entry0) \
    (dscp_tbl_entry1)...(dscp_tbl_entry63)]
+
+set port meter vlan table
+~~~~~~~~~~~~~~~~~~~~~~~~~
+Set meter VLAN table for the Ethernet device::
+
+   testpmd> set port meter vlan table (port_id) (mtr_id) [(vlan_tbl_entry0) \
+   (vlan_tbl_entry1)...(vlan_tbl_entry15)]
+
+set port meter protocol
+~~~~~~~~~~~~~~~~~~~~~~~
+Set meter protocol and corresponding priority::
+
+   testpmd> set port meter proto (port_id) (mtr_id) (proto) (prio)
+
+get port meter protocol
+~~~~~~~~~~~~~~~~~~~~~~~
+Get meter protocol::
+
+   testpmd> get port meter proto (port_id) (mtr_id)
+
+get port meter protocol priority
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Get priority associated to meter protocol::
+
+   testpmd> get port meter proto_prio (port_id) (mtr_id) (proto)
 
 set port meter stats mask
 ~~~~~~~~~~~~~~~~~~~~~~~~~
