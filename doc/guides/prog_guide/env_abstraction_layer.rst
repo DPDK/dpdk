@@ -329,6 +329,25 @@ Another option is to use bigger page sizes. Since fewer pages are required to
 cover the same memory area, fewer file descriptors will be stored internally
 by EAL.
 
+Hugepage Worker Stacks
+^^^^^^^^^^^^^^^^^^^^^^
+
+When the ``--huge-worker-stack[=size]`` EAL option is specified, worker
+thread stacks are allocated from hugepage memory local to the NUMA node
+of the thread. Worker stack size defaults to system pthread stack size
+if the optional size parameter is not specified.
+
+.. warning::
+    Stacks allocated from hugepage memory are not protected by guard
+    pages. Worker stacks must be sufficiently sized to prevent stack
+    overflow when this option is used.
+
+    As with normal thread stacks, hugepage worker thread stack size is
+    fixed and is not dynamically resized. Therefore, an application that
+    is free of stack page faults under a given load should be safe with
+    hugepage worker thread stacks given the same thread stack size and
+    loading conditions.
+
 Support for Externally Allocated Memory
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

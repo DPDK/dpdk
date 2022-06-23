@@ -116,6 +116,12 @@ Memory-related options
 
     Force IOVA mode to a specific value.
 
+*   ``--huge-worker-stack[=size]``
+
+    Allocate worker stack memory from hugepage memory. Stack size defaults
+    to system pthread stack size unless the optional size (in kbytes) is
+    specified.
+
 Debugging options
 ~~~~~~~~~~~~~~~~~
 

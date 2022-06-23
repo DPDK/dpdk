@@ -103,6 +103,7 @@ eal_long_options[] = {
 	{OPT_TELEMETRY,         0, NULL, OPT_TELEMETRY_NUM        },
 	{OPT_NO_TELEMETRY,      0, NULL, OPT_NO_TELEMETRY_NUM     },
 	{OPT_FORCE_MAX_SIMD_BITWIDTH, 1, NULL, OPT_FORCE_MAX_SIMD_BITWIDTH_NUM},
+	{OPT_HUGE_WORKER_STACK, 2, NULL, OPT_HUGE_WORKER_STACK_NUM     },
 
 	{0,                     0, NULL, 0                        }
 };
@@ -2076,6 +2077,12 @@ eal_check_common_options(struct internal_config *internal_cfg)
 			internal_cfg->hugepage_file.unlink_before_mapping &&
 			!internal_cfg->in_memory) {
 		RTE_LOG(ERR, EAL, "Option --"OPT_HUGE_UNLINK" cannot "
+			"be specified together with --"OPT_NO_HUGE"\n");
+		return -1;
+	}
+	if (internal_cfg->no_hugetlbfs &&
+			internal_cfg->huge_worker_stack_size != 0) {
+		RTE_LOG(ERR, EAL, "Option --"OPT_HUGE_WORKER_STACK" cannot "
 			"be specified together with --"OPT_NO_HUGE"\n");
 		return -1;
 	}
