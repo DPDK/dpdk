@@ -51,6 +51,7 @@ endif
 
 CFLAGS += -DALLOW_EXPERIMENTAL_API
 CFLAGS += -Wno-address-of-packed-member
+CFLAGS += -I../common
 
 build/$(APP)-shared: $(SRCS-y) Makefile $(PC_FILE) | build
 	$(CC) $(CFLAGS) $(SRCS-y) -o $@ $(LDFLAGS) $(LDFLAGS_SHARED)

@@ -12,6 +12,10 @@
 #include "ipsec-secgw.h"
 #include "ipsec_worker.h"
 
+#if defined(__ARM_NEON)
+#include "ipsec_lpm_neon.h"
+#endif
+
 struct port_drv_mode_data {
 	struct rte_security_session *sess;
 	struct rte_security_ctx *ctx;
@@ -1248,8 +1252,13 @@ ipsec_poll_mode_wrkr_inl_pr(void)
 				v6_num = ip6.num;
 			}
 
+#if defined __ARM_NEON
+			route4_pkts_neon(rt4_ctx, v4, v4_num, 0, false);
+			route6_pkts_neon(rt6_ctx, v6, v6_num);
+#else
 			route4_pkts(rt4_ctx, v4, v4_num, 0, false);
 			route6_pkts(rt6_ctx, v6, v6_num);
+#endif
 		}
 	}
 }

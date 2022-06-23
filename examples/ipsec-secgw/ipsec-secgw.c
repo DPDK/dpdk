@@ -56,6 +56,10 @@
 #include "parser.h"
 #include "sad.h"
 
+#if defined(__ARM_NEON)
+#include "ipsec_lpm_neon.h"
+#endif
+
 volatile bool force_quit;
 
 #define MAX_JUMBO_PKT_LEN  9600
@@ -99,6 +103,12 @@ struct ethaddr_info ethaddr_tbl[RTE_MAX_ETHPORTS] = {
 	{ 0, ETHADDR(0x00, 0x16, 0x3e, 0x08, 0x69, 0x26) },
 	{ 0, ETHADDR(0x00, 0x16, 0x3e, 0x49, 0x9e, 0xdd) }
 };
+
+/*
+ * To hold ethernet header per port, which will be applied
+ * to outgoing packets.
+ */
+xmm_t val_eth[RTE_MAX_ETHPORTS];
 
 struct flow_info flow_info_tbl[RTE_MAX_ETHPORTS];
 
@@ -568,9 +578,16 @@ process_pkts(struct lcore_conf *qconf, struct rte_mbuf **pkts,
 			process_pkts_outbound(&qconf->outbound, &traffic);
 	}
 
+#if defined __ARM_NEON
+	/* Neon optimized packet routing */
+	route4_pkts_neon(qconf->rt4_ctx, traffic.ip4.pkts, traffic.ip4.num,
+			 qconf->outbound.ipv4_offloads, true);
+	route6_pkts_neon(qconf->rt6_ctx, traffic.ip6.pkts, traffic.ip6.num);
+#else
 	route4_pkts(qconf->rt4_ctx, traffic.ip4.pkts, traffic.ip4.num,
 		    qconf->outbound.ipv4_offloads, true);
 	route6_pkts(qconf->rt6_ctx, traffic.ip6.pkts, traffic.ip6.num);
+#endif
 }
 
 static inline void
@@ -1403,6 +1420,8 @@ add_dst_ethaddr(uint16_t port, const struct rte_ether_addr *addr)
 		return -EINVAL;
 
 	ethaddr_tbl[port].dst = ETHADDR_TO_UINT64(addr);
+	rte_ether_addr_copy((struct rte_ether_addr *)&ethaddr_tbl[port].dst,
+			    (struct rte_ether_addr *)(val_eth + port));
 	return 0;
 }
 
@@ -1865,6 +1884,12 @@ port_init(uint16_t portid, uint64_t req_rx_offloads, uint64_t req_tx_offloads)
 			portid, rte_strerror(-ret));
 
 	ethaddr_tbl[portid].src = ETHADDR_TO_UINT64(&ethaddr);
+
+	rte_ether_addr_copy((struct rte_ether_addr *)&ethaddr_tbl[portid].dst,
+			    (struct rte_ether_addr *)(val_eth + portid));
+	rte_ether_addr_copy((struct rte_ether_addr *)&ethaddr_tbl[portid].src,
+			    (struct rte_ether_addr *)(val_eth + portid) + 1);
+
 	print_ethaddr("Address: ", &ethaddr);
 	printf("\n");
 
