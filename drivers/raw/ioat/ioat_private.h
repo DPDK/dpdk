@@ -18,10 +18,10 @@
 #include <rte_rawdev_pmd.h>
 #include "rte_ioat_rawdev.h"
 
-extern int ioat_pmd_logtype;
+extern int ioat_rawdev_logtype;
 
 #define IOAT_PMD_LOG(level, fmt, args...) rte_log(RTE_LOG_ ## level, \
-		ioat_pmd_logtype, "%s(): " fmt "\n", __func__, ##args)
+		ioat_rawdev_logtype, "%s(): " fmt "\n", __func__, ##args)
 
 #define IOAT_PMD_DEBUG(fmt, args...)  IOAT_PMD_LOG(DEBUG, fmt, ## args)
 #define IOAT_PMD_INFO(fmt, args...)   IOAT_PMD_LOG(INFO, fmt, ## args)

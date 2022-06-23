@@ -9,6 +9,8 @@
 
 #include "ioat_private.h"
 
+RTE_LOG_REGISTER(ioat_rawdev_logtype, rawdev.ioat, INFO);
+
 static const char * const xstat_names[] = {
 		"failed_enqueues", "successful_enqueues",
 		"copies_started", "copies_completed"
