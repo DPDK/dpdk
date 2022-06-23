@@ -1158,7 +1158,7 @@ static int dma_fpga_to_fpga(struct dma_afu_ctx *ctx, uint64_t dst, uint64_t src,
 	uint64_t count_left = count;
 	uint64_t dma_chunks = 0;
 	uint64_t offset = 0;
-	uint32_t tx_chunks = 0;
+	uint64_t tx_chunks = 0;
 	uint64_t *tmp_buf = NULL;
 	int ret = 0;
 
@@ -1213,7 +1213,7 @@ static int dma_fpga_to_fpga(struct dma_afu_ctx *ctx, uint64_t dst, uint64_t src,
 		offset = tx_chunks * ctx->dma_buf_size;
 		count_left -= offset;
 		IFPGA_RAWDEV_PMD_DEBUG("0x%"PRIx64" --> 0x%"PRIx64
-			" (%u...0x%"PRIx64")",
+			" (%"PRIu64"...0x%"PRIx64")",
 			src, dst, tx_chunks, count_left);
 		tmp_buf = (uint64_t *)rte_malloc(NULL, ctx->dma_buf_size,
 			DMA_ALIGN_BYTES);
