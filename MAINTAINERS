@@ -293,6 +293,7 @@ F: lib/*/*_neon.*
 F: drivers/*/*/*_neon.*
 F: app/*/*_neon.*
 F: examples/*/*_neon.*
+F: examples/common/neon/
 
 IBM POWER (alpha)
 M: David Christensen <drc@linux.vnet.ibm.com>
@@ -302,6 +303,7 @@ F: lib/*/*_altivec*
 F: drivers/*/*/*_altivec.*
 F: app/*/*_altivec.*
 F: examples/*/*_altivec.*
+F: examples/common/altivec/
 
 RISC-V
 M: Stanislaw Kardach <kda@semihalf.com>
@@ -325,6 +327,7 @@ F: app/*/*_sse*
 F: app/*/*_avx*
 F: examples/*/*_sse*
 F: examples/*/*_avx*
+F: examples/common/sse/
 
 Linux EAL (with overlaps)
 F: lib/eal/linux/

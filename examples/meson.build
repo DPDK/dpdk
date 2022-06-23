@@ -97,7 +97,7 @@ foreach example: examples
     ldflags = default_ldflags
 
     ext_deps = []
-    includes = [include_directories(example)]
+    includes = [include_directories(example, 'common')]
     deps = ['eal', 'mempool', 'net', 'mbuf', 'ethdev', 'cmdline']
     subdir(example)
 

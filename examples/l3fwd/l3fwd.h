@@ -44,8 +44,6 @@
 /* Used to mark destination port as 'invalid'. */
 #define	BAD_PORT ((uint16_t)-1)
 
-#define FWDSTEP	4
-
 /* replace first 12B of the ethernet header. */
 #define	MASK_ETH 0x3f
 

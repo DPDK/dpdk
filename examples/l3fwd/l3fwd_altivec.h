@@ -8,6 +8,7 @@
 #define _L3FWD_ALTIVEC_H_
 
 #include "l3fwd.h"
+#include "altivec/port_group.h"
 #include "l3fwd_common.h"
 
 /*
@@ -80,42 +81,6 @@ processx4_step3(struct rte_mbuf *pkt[FWDSTEP], uint16_t dst_port[FWDSTEP])
 	rfc1812_process((struct rte_ipv4_hdr *)
 			((struct rte_ether_hdr *)p[3] + 1),
 			&dst_port[3], pkt[3]->packet_type);
-}
-
-/*
- * Group consecutive packets with the same destination port in bursts of 4.
- * Suppose we have array of destination ports:
- * dst_port[] = {a, b, c, d,, e, ... }
- * dp1 should contain: <a, b, c, d>, dp2: <b, c, d, e>.
- * We doing 4 comparisons at once and the result is 4 bit mask.
- * This mask is used as an index into prebuild array of pnum values.
- */
-static inline uint16_t *
-port_groupx4(uint16_t pn[FWDSTEP + 1], uint16_t *lp,
-		__vector unsigned short dp1,
-		__vector unsigned short dp2)
-{
-	union {
-		uint16_t u16[FWDSTEP + 1];
-		uint64_t u64;
-	} *pnum = (void *)pn;
-
-	int32_t v;
-
-	v = vec_any_eq(dp1, dp2);
-
-
-	/* update last port counter. */
-	lp[0] += gptbl[v].lpv;
-
-	/* if dest port value has changed. */
-	if (v != GRPMSK) {
-		pnum->u64 = gptbl[v].pnum;
-		pnum->u16[FWDSTEP] = 1;
-		lp = pnum->u16 + gptbl[v].idx;
-	}
-
-	return lp;
 }
 
 /**
