@@ -352,6 +352,9 @@ int nfp_net_nfdk_tx_queue_setup(struct rte_eth_dev *dev,
 		uint16_t nb_desc,
 		unsigned int socket_id,
 		const struct rte_eth_txconf *tx_conf);
+uint16_t nfp_net_nfdk_xmit_pkts(void *tx_queue,
+		struct rte_mbuf **tx_pkts,
+		uint16_t nb_pkts);
 
 #endif /* _NFP_RXTX_H_ */
 /*
