@@ -16,6 +16,7 @@
  */
 
 #include <stdint.h>
+#include <rte_errno.h>
 
 /*
  * Defines used in the data path for interacting with IDXD hardware.
