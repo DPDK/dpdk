@@ -699,11 +699,13 @@ npc_parse_ld(struct npc_parse_state *pst)
 	case ROC_NPC_ITEM_TYPE_GRE:
 		lt = NPC_LT_LD_GRE;
 		info.len = pst->pattern->size;
+		pst->tunnel = 1;
 		break;
 	case ROC_NPC_ITEM_TYPE_GRE_KEY:
 		lt = NPC_LT_LD_GRE;
 		info.len = pst->pattern->size;
 		info.hw_hdr_len = 4;
+		pst->tunnel = 1;
 		break;
 	case ROC_NPC_ITEM_TYPE_NVGRE:
 		lt = NPC_LT_LD_NVGRE;
