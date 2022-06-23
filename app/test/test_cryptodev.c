@@ -6562,7 +6562,7 @@ test_zuc_auth_cipher_sgl(const struct wireless_test_data *tdata,
 	retval = create_wireless_algo_auth_cipher_operation(
 		tdata->digest.data, tdata->digest.len,
 		tdata->cipher_iv.data, tdata->cipher_iv.len,
-		NULL, 0,
+		tdata->auth_iv.data, tdata->auth_iv.len,
 		(tdata->digest.offset_bytes == 0 ?
 		(verify ? ciphertext_pad_len : plaintext_pad_len)
 			: tdata->digest.offset_bytes),
