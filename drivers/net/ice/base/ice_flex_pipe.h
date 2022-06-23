@@ -25,7 +25,7 @@ enum ice_status
 ice_acquire_change_lock(struct ice_hw *hw, enum ice_aq_res_access_type access);
 void ice_release_change_lock(struct ice_hw *hw);
 enum ice_status
-ice_find_prot_off(struct ice_hw *hw, enum ice_block blk, u8 prof, u16 fv_idx,
+ice_find_prot_off(struct ice_hw *hw, enum ice_block blk, u8 prof, u8 fv_idx,
 		  u8 *prot, u16 *off);
 enum ice_status
 ice_find_label_value(struct ice_seg *ice_seg, char const *name, u32 type,
