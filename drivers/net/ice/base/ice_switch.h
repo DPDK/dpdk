@@ -203,7 +203,7 @@ struct ice_fltr_info {
 
 struct ice_update_recipe_lkup_idx_params {
 	u16 rid;
-	u16 fv_idx;
+	u8 fv_idx;
 	bool ignore_valid;
 	u16 mask;
 	bool mask_valid;

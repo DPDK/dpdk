@@ -424,7 +424,7 @@ struct ice_recp_grp_entry {
 #define ICE_INVAL_CHAIN_IND 0xFF
 	u16 rid;
 	u8 chain_idx;
-	u16 fv_idx[ICE_NUM_WORDS_RECIPE];
+	u8 fv_idx[ICE_NUM_WORDS_RECIPE];
 	u16 fv_mask[ICE_NUM_WORDS_RECIPE];
 	struct ice_pref_recipe_group r_group;
 };

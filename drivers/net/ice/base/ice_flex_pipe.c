@@ -2564,7 +2564,7 @@ ice_destroy_tunnel_end:
  * @off: variable to receive the protocol offset
  */
 enum ice_status
-ice_find_prot_off(struct ice_hw *hw, enum ice_block blk, u8 prof, u16 fv_idx,
+ice_find_prot_off(struct ice_hw *hw, enum ice_block blk, u8 prof, u8 fv_idx,
 		  u8 *prot, u16 *off)
 {
 	struct ice_fv_word *fv_ext;
