@@ -166,6 +166,11 @@ Deprecation Notices
   session and the private data of session. An opaque pointer can be exposed
   directly to application which can be attached to the ``rte_crypto_op``.
 
+* cryptodev: The function ``rte_cryptodev_cb_fn`` will be updated
+  to have another parameter ``qp_id`` to return the queue pair ID
+  which got error interrupt to the application,
+  so that application can reset that particular queue pair.
+
 * security: Hide structure ``rte_security_session`` and expose an opaque
   pointer for the private data to the application which can be attached
   to the packet while enqueuing.
