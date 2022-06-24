@@ -170,7 +170,7 @@ def get_mountpoints():
     return mounted
 
 
-def mount_huge(pagesize, mountpoint):
+def mount_huge(pagesize, mountpoint, user, group):
     '''Mount the huge TLB file system'''
     if mountpoint in get_mountpoints():
         print(mountpoint, "already mounted")
@@ -178,6 +178,10 @@ def mount_huge(pagesize, mountpoint):
     cmd = "mount -t hugetlbfs"
     if pagesize:
         cmd += ' -o pagesize={}'.format(pagesize * 1024)
+    if user:
+        cmd += ' -o uid=' + user
+    if group:
+        cmd += ' -o gid=' + group
     cmd += ' nodev ' + mountpoint
     os.system(cmd)
 
@@ -235,6 +239,16 @@ To a complete setup of with 2 Gigabyte of 1G huge pages:
         default=HUGE_MOUNT,
         help='mount point')
     parser.add_argument(
+        '--user',
+        '-U',
+        metavar='UID',
+        help='set the mounted directory owner user')
+    parser.add_argument(
+        '--group',
+        '-G',
+        metavar='GID',
+        help='set the mounted directory owner group')
+    parser.add_argument(
         '--node', '-n', help='select numa node to reserve pages on')
     parser.add_argument(
         '--pagesize',
@@ -279,7 +293,7 @@ To a complete setup of with 2 Gigabyte of 1G huge pages:
         reserve_pages(
             int(reserve_kb / pagesize_kb), pagesize_kb, node=args.node)
     if args.mount:
-        mount_huge(pagesize_kb, args.directory)
+        mount_huge(pagesize_kb, args.directory, args.user, args.group)
     if args.show:
         show_pages()
         print()
