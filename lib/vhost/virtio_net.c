@@ -2724,9 +2724,17 @@ desc_to_mbuf(struct virtio_net *dev, struct vhost_virtqueue *vq,
 					   buf_iova + buf_offset, cpy_len, false) < 0)
 				goto error;
 		} else {
-			sync_fill_seg(dev, vq, cur, mbuf_offset,
-				      buf_addr + buf_offset,
-				      buf_iova + buf_offset, cpy_len, false);
+			if (hdr && cur == m) {
+				rte_memcpy(rte_pktmbuf_mtod_offset(cur, void *, mbuf_offset),
+					(void *)((uintptr_t)(buf_addr + buf_offset)),
+					cpy_len);
+				vhost_log_cache_write_iova(dev, vq, buf_iova + buf_offset, cpy_len);
+				PRINT_PACKET(dev, (uintptr_t)(buf_addr + buf_offset), cpy_len, 0);
+			} else {
+				sync_fill_seg(dev, vq, cur, mbuf_offset,
+					buf_addr + buf_offset,
+					buf_iova + buf_offset, cpy_len, false);
+			}
 		}
 
 		mbuf_avail  -= cpy_len;
