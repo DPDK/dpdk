@@ -318,7 +318,7 @@ hns3_interrupt_handler(void *param)
 		hns3_schedule_reset(hns);
 	} else if (event_cause == HNS3_VECTOR0_EVENT_MBX) {
 		hns3_dev_handle_mbx_msg(hw);
-	} else {
+	} else if (event_cause != HNS3_VECTOR0_EVENT_PTP) {
 		hns3_warn(hw, "received unknown event: vector0_int_stat:0x%x "
 			  "ras_int_stat:0x%x cmdq_int_stat:0x%x",
 			  vector0_int, ras_int, cmdq_int);
