@@ -228,6 +228,8 @@ Normally, these options do not need to be changed.
     can later be mapped into that preallocated VA space (if dynamic memory mode
     is enabled), and can optionally be mapped into it at startup.
 
+.. _hugepage_mapping:
+
 Hugepage Mapping
 ^^^^^^^^^^^^^^^^
 
