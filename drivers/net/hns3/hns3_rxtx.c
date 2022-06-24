@@ -1756,7 +1756,8 @@ hns3_rxq_conf_runtime_check(struct hns3_hw *hw, uint16_t buf_size,
 		return -EINVAL;
 	}
 
-	if (pkt_burst == hns3_recv_pkts_vec) {
+	if (pkt_burst == hns3_recv_pkts_vec ||
+	    pkt_burst == hns3_recv_pkts_vec_sve) {
 		min_vec_bds = HNS3_DEFAULT_RXQ_REARM_THRESH +
 			      HNS3_DEFAULT_RX_BURST;
 		if (nb_desc < min_vec_bds ||
