@@ -629,6 +629,7 @@ hns3_stats_get(struct rte_eth_dev *eth_dev, struct rte_eth_stats *rte_stats)
 	uint16_t i;
 	int ret;
 
+	rte_spinlock_lock(&hw->stats_lock);
 	/* Update imissed stats */
 	ret = hns3_update_imissed_stats(hw, false);
 	if (ret) {
@@ -644,10 +645,7 @@ hns3_stats_get(struct rte_eth_dev *eth_dev, struct rte_eth_stats *rte_stats)
 		if (rxq == NULL)
 			continue;
 
-		rte_spinlock_lock(&hw->stats_lock);
 		hns3_rcb_rx_ring_stats_get(rxq, stats);
-		rte_spinlock_unlock(&hw->stats_lock);
-
 		rte_stats->ierrors += rxq->err_stats.l2_errors +
 				      rxq->err_stats.pkt_len_errors;
 		rte_stats->ibytes += rxq->basic_stats.bytes;
@@ -659,9 +657,7 @@ hns3_stats_get(struct rte_eth_dev *eth_dev, struct rte_eth_stats *rte_stats)
 		if (txq == NULL)
 			continue;
 
-		rte_spinlock_lock(&hw->stats_lock);
 		hns3_rcb_tx_ring_stats_get(txq, stats);
-		rte_spinlock_unlock(&hw->stats_lock);
 		rte_stats->obytes += txq->basic_stats.bytes;
 	}
 
@@ -683,7 +679,10 @@ hns3_stats_get(struct rte_eth_dev *eth_dev, struct rte_eth_stats *rte_stats)
 	rte_stats->opackets  = stats->rcb_tx_ring_pktnum_rcd -
 		rte_stats->oerrors;
 	rte_stats->rx_nombuf = eth_dev->data->rx_mbuf_alloc_failed;
+
 out:
+	rte_spinlock_unlock(&hw->stats_lock);
+
 	return ret;
 }
 
@@ -697,6 +696,7 @@ hns3_stats_reset(struct rte_eth_dev *eth_dev)
 	uint16_t i;
 	int ret;
 
+	rte_spinlock_lock(&hw->stats_lock);
 	/*
 	 * Note: Reading hardware statistics of imissed registers will
 	 * clear them.
@@ -732,7 +732,6 @@ hns3_stats_reset(struct rte_eth_dev *eth_dev)
 		if (rxq == NULL)
 			continue;
 
-		rte_spinlock_lock(&hw->stats_lock);
 		memset(&rxq->basic_stats, 0,
 				sizeof(struct hns3_rx_basic_stats));
 
@@ -740,7 +739,6 @@ hns3_stats_reset(struct rte_eth_dev *eth_dev)
 		(void)hns3_read_dev(rxq, HNS3_RING_RX_PKTNUM_RECORD_REG);
 		rxq->err_stats.pkt_len_errors = 0;
 		rxq->err_stats.l2_errors = 0;
-		rte_spinlock_unlock(&hw->stats_lock);
 	}
 
 	/* Clear all the stats of a txq in a loop to keep them synchronized */
@@ -749,19 +747,18 @@ hns3_stats_reset(struct rte_eth_dev *eth_dev)
 		if (txq == NULL)
 			continue;
 
-		rte_spinlock_lock(&hw->stats_lock);
 		memset(&txq->basic_stats, 0,
 				sizeof(struct hns3_tx_basic_stats));
 
 		/* This register is read-clear */
 		(void)hns3_read_dev(txq, HNS3_RING_TX_PKTNUM_RECORD_REG);
-		rte_spinlock_unlock(&hw->stats_lock);
 	}
 
-	rte_spinlock_lock(&hw->stats_lock);
 	hns3_tqp_stats_clear(hw);
-	rte_spinlock_unlock(&hw->stats_lock);
+
 out:
+	rte_spinlock_unlock(&hw->stats_lock);
+
 	return ret;
 }
 
@@ -1082,11 +1079,11 @@ hns3_dev_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstat *xstats,
 			count++;
 		}
 	}
-	rte_spinlock_unlock(&hw->stats_lock);
 
 	ret = hns3_update_imissed_stats(hw, false);
 	if (ret) {
 		hns3_err(hw, "update imissed stats failed, ret = %d", ret);
+		rte_spinlock_unlock(&hw->stats_lock);
 		return ret;
 	}
 
@@ -1115,7 +1112,6 @@ hns3_dev_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstat *xstats,
 		}
 	}
 
-	rte_spinlock_lock(&hw->stats_lock);
 	hns3_tqp_dfx_stats_get(dev, xstats, &count);
 	hns3_queue_stats_get(dev, xstats, &count);
 	rte_spinlock_unlock(&hw->stats_lock);
