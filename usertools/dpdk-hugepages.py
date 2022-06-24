@@ -229,6 +229,12 @@ To a complete setup of with 2 Gigabyte of 1G huge pages:
         action='store_true',
         help='unmount the system huge page directory')
     parser.add_argument(
+        '--directory',
+        '-d',
+        metavar='DIR',
+        default=HUGE_MOUNT,
+        help='mount point')
+    parser.add_argument(
         '--node', '-n', help='select numa node to reserve pages on')
     parser.add_argument(
         '--pagesize',
@@ -262,7 +268,7 @@ To a complete setup of with 2 Gigabyte of 1G huge pages:
     if args.clear:
         clear_pages()
     if args.unmount:
-        umount_huge(HUGE_MOUNT)
+        umount_huge(args.directory)
 
     if args.reserve:
         reserve_kb = get_memsize(args.reserve)
@@ -273,7 +279,7 @@ To a complete setup of with 2 Gigabyte of 1G huge pages:
         reserve_pages(
             int(reserve_kb / pagesize_kb), pagesize_kb, node=args.node)
     if args.mount:
-        mount_huge(pagesize_kb, HUGE_MOUNT)
+        mount_huge(pagesize_kb, args.directory)
     if args.show:
         show_pages()
         print()
