@@ -1906,8 +1906,6 @@ hns3_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t nb_desc,
 		rxq->pvid_sw_discard_en = false;
 	rxq->ptype_en = hns3_dev_get_support(hw, RXD_ADV_LAYOUT) ? true : false;
 	rxq->configured = true;
-	rxq->io_base = (void *)((char *)hw->io_base + HNS3_TQP_REG_OFFSET +
-				idx * HNS3_TQP_REG_SIZE);
 	rxq->io_base = (void *)((char *)hw->io_base +
 					hns3_get_tqp_reg_offset(idx));
 	rxq->io_head_reg = (volatile void *)((char *)rxq->io_base +
@@ -2439,10 +2437,8 @@ hns3_recv_pkts_simple(void *rx_queue,
 
 		nmb = hns3_rx_alloc_buffer(rxq);
 		if (unlikely(nmb == NULL)) {
-			uint16_t port_id;
-
-			port_id = rxq->port_id;
-			rte_eth_devices[port_id].data->rx_mbuf_alloc_failed++;
+			rte_eth_devices[rxq->port_id].data->
+				rx_mbuf_alloc_failed++;
 			break;
 		}
 
@@ -3867,7 +3863,7 @@ hns3_prep_pkt_proc(struct hns3_tx_queue *tx_queue, struct rte_mbuf *m)
 #endif
 	if (hns3_pkt_is_tso(m)) {
 		if (hns3_pkt_need_linearized(m, m->nb_segs,
-					     tx_queue->max_non_tso_bd_num) ||
+		    tx_queue->max_non_tso_bd_num) ||
 		    hns3_check_tso_pkt_valid(m)) {
 			rte_errno = EINVAL;
 			return -EINVAL;
