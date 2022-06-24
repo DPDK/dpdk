@@ -404,25 +404,30 @@ The device can be bound again at this point.
 Run as Non-Root
 ^^^^^^^^^^^^^^^
 
-In order to run as a non-root user,
-some capabilities must be granted to the application::
+Hugepage and resource limit setup are documented
+in the :ref:`common Linux guide <Running_Without_Root_Privileges>`.
+This PMD can operate without access to physical addresses,
+therefore it does not require ``SYS_ADMIN`` to access ``/proc/self/pagemaps``.
+Note that this requirement may still come from other drivers.
 
-   setcap cap_sys_admin,cap_net_admin,cap_net_raw,cap_ipc_lock+ep <dpdk-app>
+Below are additional capabilities that must be granted to the application
+with the reasons for the need of each capability:
 
-Below are the reasons for the need of each capability:
+``NET_RAW``
+   For raw Ethernet queue allocation through the kernel driver.
 
-``cap_sys_admin``
-   When using physical addresses (PA mode), with Linux >= 4.0,
-   for access to ``/proc/self/pagemap``.
+``NET_ADMIN``
+   For device configuration, like setting link status or MTU.
 
-``cap_net_admin``
-   For device configuration.
+``SYS_RAWIO``
+   For using group 1 and above (software steering) in Flow API.
 
-``cap_net_raw``
-   For raw ethernet queue allocation through kernel driver.
+They can be manually granted for a specific executable file::
 
-``cap_ipc_lock``
-   For DMA memory pinning.
+   setcap cap_net_raw,cap_net_admin,cap_sys_rawio+ep <executable>
+
+Alternatively, a service manager or a container runtime
+may configure the capabilities for a process.
 
 
 Windows Environment
