@@ -4997,17 +4997,10 @@ hns3_set_port_link_speed(struct hns3_hw *hw,
 {
 	int ret;
 
-	if (hw->mac.media_type == HNS3_MEDIA_TYPE_COPPER) {
-#if defined(RTE_HNS3_ONLY_1630_FPGA)
-		struct hns3_pf *pf = HNS3_DEV_HW_TO_PF(hw);
-		if (pf->is_tmp_phy)
-			return 0;
-#endif
-
+	if (hw->mac.media_type == HNS3_MEDIA_TYPE_COPPER)
 		ret = hns3_set_copper_port_link_speed(hw, cfg);
-	} else {
+	else
 		ret = hns3_set_fiber_port_link_speed(hw, cfg);
-	}
 
 	if (ret) {
 		hns3_err(hw, "failed to set %s port link speed, ret = %d.",
