@@ -283,6 +283,8 @@ roc_se_auth_key_set(struct roc_se_ctx *se_ctx, roc_se_auth_type type,
 				return ret;
 			se_ctx->pdcp_alg_type = ROC_SE_PDCP_ALG_TYPE_ZUC;
 			memcpy(ci_key, key, key_len);
+			if (key_len == 32)
+				roc_se_zuc_bytes_swap(ci_key, key_len);
 			cpt_pdcp_update_zuc_const(zuc_const, key_len, mac_len);
 			se_ctx->fc_type = ROC_SE_PDCP;
 			se_ctx->zsk_flags = 0x1;
@@ -459,9 +461,10 @@ roc_se_ciph_key_set(struct roc_se_ctx *se_ctx, roc_se_cipher_type type,
 		zs_ctx->zuc.otk_ctx.w0.s.alg_type = ROC_SE_PDCP_ALG_TYPE_ZUC;
 		se_ctx->pdcp_alg_type = ROC_SE_PDCP_ALG_TYPE_ZUC;
 		memcpy(ci_key, key, key_len);
-		if (key_len == 32)
+		if (key_len == 32) {
+			roc_se_zuc_bytes_swap(ci_key, key_len);
 			memcpy(zuc_const, zuc_key256, 16);
-		else
+		} else
 			memcpy(zuc_const, zuc_key128, 32);
 
 		se_ctx->zsk_flags = 0;

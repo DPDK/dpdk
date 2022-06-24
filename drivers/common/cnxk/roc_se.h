@@ -297,6 +297,27 @@ struct roc_se_ctx {
 	uint8_t *auth_key;
 };
 
+static inline void
+roc_se_zuc_bytes_swap(uint8_t *arr, int len)
+{
+	int start, end;
+	uint8_t tmp;
+
+	if (len <= 0)
+		return;
+
+	start = 0;
+	end = len - 1;
+
+	while (start < end) {
+		tmp = arr[start];
+		arr[start] = arr[end];
+		arr[end] = tmp;
+		start++;
+		end--;
+	}
+}
+
 int __roc_api roc_se_auth_key_set(struct roc_se_ctx *se_ctx,
 				  roc_se_auth_type type, const uint8_t *key,
 				  uint16_t key_len, uint16_t mac_len);
@@ -306,4 +327,5 @@ int __roc_api roc_se_ciph_key_set(struct roc_se_ctx *se_ctx,
 				  uint16_t key_len, uint8_t *salt);
 
 void __roc_api roc_se_ctx_swap(struct roc_se_ctx *se_ctx);
+
 #endif /* __ROC_SE_H__ */
