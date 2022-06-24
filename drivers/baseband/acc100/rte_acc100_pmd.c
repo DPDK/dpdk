@@ -21,7 +21,7 @@
 
 #include <rte_bbdev.h>
 #include <rte_bbdev_pmd.h>
-#include "rte_acc100_pmd.h"
+#include "acc100_pmd.h"
 
 #ifdef RTE_LIBRTE_BBDEV_DEBUG
 RTE_LOG_REGISTER(acc100_logtype, pmd.bb.acc100, DEBUG);
