@@ -86,6 +86,9 @@ The following prerequisites apply:
 *   Linux kernel with KVM module; vhost module loaded and ioeventfd supported.
     Qemu standard backend without vhost support isn't tested, and probably isn't supported.
 
+*   When using legacy interface, ``SYS_RAWIO`` capability is required
+    for ``iopl()`` call to enable access to PCI I/O ports.
+
 Virtio with kni vhost Back End
 ------------------------------
 
