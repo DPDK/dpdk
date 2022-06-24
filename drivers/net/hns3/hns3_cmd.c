@@ -631,39 +631,6 @@ hns3_firmware_compat_config(struct hns3_hw *hw, bool is_init)
 	struct hns3_cmd_desc desc;
 	uint32_t compat = 0;
 
-#if defined(RTE_HNS3_ONLY_1630_FPGA)
-	/* If resv reg enabled phy driver of imp is not configured, driver
-	 * will use temporary phy driver.
-	 */
-	struct rte_pci_device *pci_dev;
-	struct rte_eth_dev *eth_dev;
-	uint8_t revision;
-	int ret;
-
-	eth_dev = &rte_eth_devices[hw->data->port_id];
-	pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
-	/* Get PCI revision id */
-	ret = rte_pci_read_config(pci_dev, &revision, HNS3_PCI_REVISION_ID_LEN,
-				  HNS3_PCI_REVISION_ID);
-	if (ret != HNS3_PCI_REVISION_ID_LEN) {
-		PMD_INIT_LOG(ERR, "failed to read pci revision id, ret = %d",
-			     ret);
-		return -EIO;
-	}
-	if (revision == PCI_REVISION_ID_HIP09_A) {
-		struct hns3_pf *pf = HNS3_DEV_HW_TO_PF(hw);
-		if (hns3_dev_get_support(hw, COPPER) == 0 || pf->is_tmp_phy) {
-			PMD_INIT_LOG(ERR, "***use temp phy driver in dpdk***");
-			pf->is_tmp_phy = true;
-			hns3_set_bit(hw->capability,
-				     HNS3_DEV_SUPPORT_COPPER_B, 1);
-			return 0;
-		}
-
-		PMD_INIT_LOG(ERR, "***use phy driver in imp***");
-	}
-#endif
-
 	hns3_cmd_setup_basic_desc(&desc, HNS3_OPC_FIRMWARE_COMPAT_CFG, false);
 	req = (struct hns3_firmware_compat_cmd *)desc.data;
 
