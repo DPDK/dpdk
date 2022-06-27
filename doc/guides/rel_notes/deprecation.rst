@@ -143,6 +143,11 @@ Deprecation Notices
   alternative is implemented.
   The legacy actions should be removed in DPDK 22.11.
 
+* ethdev: The enum ``rte_eth_event_ipsec_subtype`` will be extended to add
+  new subtype values ``RTE_ETH_EVENT_IPSEC_SA_PKT_EXPIRY``,
+  ``RTE_ETH_EVENT_IPSEC_SA_BYTE_HARD_EXPIRY`` and
+  ``RTE_ETH_EVENT_IPSEC_SA_PKT_HARD_EXPIRY`` in DPDK 22.11.
+
 * bbdev: ``RTE_BBDEV_OP_TYPE_COUNT`` terminating the ``rte_bbdev_op_type``
   enum will be deprecated and instead use fixed array size when required
   to allow for future enum extension.
