@@ -2634,8 +2634,10 @@ iavf_dev_close(struct rte_eth_dev *dev)
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return 0;
 
-	if (adapter->closed)
-		return 0;
+	if (adapter->closed) {
+		ret = 0;
+		goto out;
+	}
 
 	ret = iavf_dev_stop(dev);
 	adapter->closed = true;
@@ -2695,6 +2697,7 @@ iavf_dev_close(struct rte_eth_dev *dev)
 	 * the bus master bit will not be disabled, and this call will have no
 	 * effect.
 	 */
+out:
 	if (vf->vf_reset && !rte_pci_set_bus_master(pci_dev, true))
 		vf->vf_reset = false;
 
