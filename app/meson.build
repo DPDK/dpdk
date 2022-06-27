@@ -18,6 +18,7 @@ apps = [
         'test-pmd',
         'test-regex',
         'test-sad',
+        'vfe-vdpa',
 ]
 
 default_cflags = machine_args + ['-DALLOW_EXPERIMENTAL_API']
