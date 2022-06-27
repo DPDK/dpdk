@@ -715,7 +715,7 @@ eth_vhost_install_intr(struct rte_eth_dev *dev)
 }
 
 static void
-update_queuing_status(struct rte_eth_dev *dev)
+update_queuing_status(struct rte_eth_dev *dev, bool wait_queuing)
 {
 	struct pmd_internal *internal = dev->data->dev_private;
 	struct vhost_queue *vq;
@@ -741,7 +741,7 @@ update_queuing_status(struct rte_eth_dev *dev)
 			rte_atomic32_set(&vq->allow_queuing, 1);
 		else
 			rte_atomic32_set(&vq->allow_queuing, 0);
-		while (rte_atomic32_read(&vq->while_queuing))
+		while (wait_queuing && rte_atomic32_read(&vq->while_queuing))
 			rte_pause();
 	}
 
@@ -753,7 +753,7 @@ update_queuing_status(struct rte_eth_dev *dev)
 			rte_atomic32_set(&vq->allow_queuing, 1);
 		else
 			rte_atomic32_set(&vq->allow_queuing, 0);
-		while (rte_atomic32_read(&vq->while_queuing))
+		while (wait_queuing && rte_atomic32_read(&vq->while_queuing))
 			rte_pause();
 	}
 }
@@ -835,7 +835,7 @@ new_device(int vid)
 	eth_dev->data->dev_link.link_status = ETH_LINK_UP;
 
 	rte_atomic32_set(&internal->dev_attached, 1);
-	update_queuing_status(eth_dev);
+	update_queuing_status(eth_dev, false);
 
 	VHOST_LOG(INFO, "Vhost device %d created\n", vid);
 
@@ -865,7 +865,7 @@ destroy_device(int vid)
 	internal = eth_dev->data->dev_private;
 
 	rte_atomic32_set(&internal->dev_attached, 0);
-	update_queuing_status(eth_dev);
+	update_queuing_status(eth_dev, true);
 
 	eth_dev->data->dev_link.link_status = ETH_LINK_DOWN;
 
@@ -972,7 +972,7 @@ vring_state_changed(int vid, uint16_t vring, int enable)
 	state->max_vring = RTE_MAX(vring, state->max_vring);
 	rte_spinlock_unlock(&state->lock);
 
-	update_queuing_status(eth_dev);
+	update_queuing_status(eth_dev, false);
 
 	VHOST_LOG(INFO, "vring%u is %s\n",
 			vring, enable ? "enabled" : "disabled");
@@ -1159,7 +1159,7 @@ eth_dev_start(struct rte_eth_dev *eth_dev)
 	}
 
 	rte_atomic32_set(&internal->started, 1);
-	update_queuing_status(eth_dev);
+	update_queuing_status(eth_dev, false);
 
 	return 0;
 }
@@ -1171,7 +1171,7 @@ eth_dev_stop(struct rte_eth_dev *dev)
 
 	dev->data->dev_started = 0;
 	rte_atomic32_set(&internal->started, 0);
-	update_queuing_status(dev);
+	update_queuing_status(dev, true);
 
 	return 0;
 }
