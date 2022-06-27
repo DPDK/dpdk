@@ -41,7 +41,8 @@ cn9k_ipsec_outb_sa_create(struct cnxk_cpt_qp *qp,
 	/* Initialize lookaside IPsec private data */
 	sa->dir = RTE_SECURITY_IPSEC_SA_DIR_EGRESS;
 
-	sa->esn = ipsec->esn.value;
+	if (ipsec->esn.value)
+		sa->esn = ipsec->esn.value - 1;
 
 	ret = cnxk_ipsec_outb_rlens_get(&sa->rlens, ipsec, crypto_xform);
 	if (ret)
