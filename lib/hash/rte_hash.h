@@ -286,7 +286,7 @@ rte_hash_add_key_with_hash_data(const struct rte_hash *h, const void *key,
  * @return
  *   - -EINVAL if the parameters are invalid.
  *   - -ENOSPC if there is no space in the hash for this key.
- *   - A positive value that can be used by the caller as an offset into an
+ *   - A non-negative value that can be used by the caller as an offset into an
  *     array of user data. This value is unique for this key. This
  *     unique key id may be larger than the user specified entry count
  *     when RTE_HASH_EXTRA_FLAGS_MULTI_WRITER_ADD flag is set.
@@ -310,7 +310,7 @@ rte_hash_add_key(const struct rte_hash *h, const void *key);
  * @return
  *   - -EINVAL if the parameters are invalid.
  *   - -ENOSPC if there is no space in the hash for this key.
- *   - A positive value that can be used by the caller as an offset into an
+ *   - A non-negative value that can be used by the caller as an offset into an
  *     array of user data. This value is unique for this key. This
  *     unique key ID may be larger than the user specified entry count
  *     when RTE_HASH_EXTRA_FLAGS_MULTI_WRITER_ADD flag is set.
@@ -341,7 +341,7 @@ rte_hash_add_key_with_hash(const struct rte_hash *h, const void *key, hash_sig_t
  * @return
  *   - -EINVAL if the parameters are invalid.
  *   - -ENOENT if the key is not found.
- *   - A positive value that can be used by the caller as an offset into an
+ *   - A non-negative value that can be used by the caller as an offset into an
  *     array of user data. This value is unique for this key, and is the same
  *     value that was returned when the key was added.
  */
@@ -373,7 +373,7 @@ rte_hash_del_key(const struct rte_hash *h, const void *key);
  * @return
  *   - -EINVAL if the parameters are invalid.
  *   - -ENOENT if the key is not found.
- *   - A positive value that can be used by the caller as an offset into an
+ *   - A non-negative value that can be used by the caller as an offset into an
  *     array of user data. This value is unique for this key, and is the same
  *     value that was returned when the key was added.
  */
@@ -440,7 +440,7 @@ rte_hash_free_key_with_position(const struct rte_hash *h,
  * @param data
  *   Output with pointer to data returned from the hash table.
  * @return
- *   - A positive value that can be used by the caller as an offset into an
+ *   - A non-negative value that can be used by the caller as an offset into an
  *     array of user data. This value is unique for this key, and is the same
  *     value that was returned when the key was added.
  *   - -EINVAL if the parameters are invalid.
@@ -465,7 +465,7 @@ rte_hash_lookup_data(const struct rte_hash *h, const void *key, void **data);
  * @param data
  *   Output with pointer to data returned from the hash table.
  * @return
- *   - A positive value that can be used by the caller as an offset into an
+ *   - A non-negative value that can be used by the caller as an offset into an
  *     array of user data. This value is unique for this key, and is the same
  *     value that was returned when the key was added.
  *   - -EINVAL if the parameters are invalid.
@@ -488,7 +488,7 @@ rte_hash_lookup_with_hash_data(const struct rte_hash *h, const void *key,
  * @return
  *   - -EINVAL if the parameters are invalid.
  *   - -ENOENT if the key is not found.
- *   - A positive value that can be used by the caller as an offset into an
+ *   - A non-negative value that can be used by the caller as an offset into an
  *     array of user data. This value is unique for this key, and is the same
  *     value that was returned when the key was added.
  */
@@ -510,7 +510,7 @@ rte_hash_lookup(const struct rte_hash *h, const void *key);
  * @return
  *   - -EINVAL if the parameters are invalid.
  *   - -ENOENT if the key is not found.
- *   - A positive value that can be used by the caller as an offset into an
+ *   - A non-negative value that can be used by the caller as an offset into an
  *     array of user data. This value is unique for this key, and is the same
  *     value that was returned when the key was added.
  */
