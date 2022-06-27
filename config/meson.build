@@ -197,6 +197,15 @@ if fdt_dep.found() and cc.has_header('fdt.h')
     dpdk_extra_ldflags += '-lfdt'
 endif
 
+has_libev = 0
+ev_dep = cc.find_library('libev', required: false)
+if ev_dep.found() and cc.has_header('ev.h')
+	dpdk_conf.set10('RTE_HAS_LIBEV', true)
+	has_libev = 1
+	add_project_link_arguments('-lev', language: 'c')
+	dpdk_extra_ldflags += '-lev'
+endif
+
 libexecinfo = cc.find_library('libexecinfo', required: false)
 if libexecinfo.found() and cc.has_header('execinfo.h')
     add_project_link_arguments('-lexecinfo', language: 'c')
