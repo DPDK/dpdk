@@ -6337,6 +6337,7 @@ static void cmd_create_bonded_device_parsed(void *parsed_result,
 			printf("Failed to enable promiscuous mode for port %u: %s - ignore\n",
 				port_id, rte_strerror(-ret));
 
+		ports[port_id].bond_flag = 1;
 		ports[port_id].need_setup = 0;
 		ports[port_id].port_status = RTE_PORT_STOPPED;
 	}

@@ -60,6 +60,9 @@
 #ifdef RTE_LIB_LATENCYSTATS
 #include <rte_latencystats.h>
 #endif
+#ifdef RTE_NET_BOND
+#include <rte_eth_bond.h>
+#endif
 
 #include "testpmd.h"
 
@@ -2449,6 +2452,38 @@ exit:
 	return ret;
 }
 
+static int
+change_bonding_slave_port_status(portid_t bond_pid, bool is_stop)
+{
+#ifdef RTE_NET_BOND
+
+	portid_t slave_pids[RTE_MAX_ETHPORTS];
+	struct rte_port *port;
+	int num_slaves;
+	portid_t slave_pid;
+	int i;
+
+	num_slaves = rte_eth_bond_slaves_get(bond_pid, slave_pids,
+						RTE_MAX_ETHPORTS);
+	if (num_slaves < 0) {
+		fprintf(stderr, "Failed to get slave list for port = %u\n",
+			bond_pid);
+		return num_slaves;
+	}
+
+	for (i = 0; i < num_slaves; i++) {
+		slave_pid = slave_pids[i];
+		port = &ports[slave_pid];
+		port->port_status =
+			is_stop ? RTE_PORT_STOPPED : RTE_PORT_STARTED;
+	}
+#else
+	RTE_SET_USED(bond_pid);
+	RTE_SET_USED(is_stop);
+#endif
+	return 0;
+}
+
 int
 start_port(portid_t pid)
 {
@@ -2640,6 +2675,15 @@ start_port(portid_t pid)
 							"stopped\n", pi);
 			continue;
 		}
+		/*
+		 * Starting a bonded port also starts all slaves under the
+		 * bonded device. So if this port is bond device, we need
+		 * to modify the port status of these slaves.
+		 */
+		if (port->bond_flag == 1) {
+			if (change_bonding_slave_port_status(pi, false) != 0)
+				continue;
+		}
 
 		if (rte_atomic16_cmpset(&(port->port_status),
 			RTE_PORT_HANDLING, RTE_PORT_STARTED) == 0)
@@ -2768,6 +2812,17 @@ stop_port(portid_t pid)
 		if (rte_eth_dev_stop(pi) != 0)
 			RTE_LOG(ERR, EAL, "rte_eth_dev_stop failed for port %u\n",
 				pi);
+		/*
+		 * Stopping a bonded port also stops all slaves under the bonded
+		 * device. So if this port is bond device, we need to modify the
+		 * port status of these slaves.
+		 */
+		if (port->bond_flag == 1) {
+			if (change_bonding_slave_port_status(pi, true) != 0) {
+				RTE_LOG(ERR, EAL, "Fail to change bonding slave port status %u\n",
+					pi);
+			}
+		}
 
 		if (rte_atomic16_cmpset(&(port->port_status),
 			RTE_PORT_HANDLING, RTE_PORT_STOPPED) == 0)

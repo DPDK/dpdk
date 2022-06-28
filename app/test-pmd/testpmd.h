@@ -234,7 +234,8 @@ struct rte_port {
 	struct port_txqueue     txq[RTE_MAX_QUEUES_PER_PORT+1]; /**< per queue Tx config and state */
 	struct rte_ether_addr   *mc_addr_pool; /**< pool of multicast addrs */
 	uint32_t                mc_addr_nb; /**< nb. of addr. in mc_addr_pool */
-	uint8_t                 slave_flag; /**< bonding slave port */
+	uint8_t                 slave_flag : 1, /**< bonding slave port */
+				bond_flag : 1; /**< port is bond device */
 	struct port_flow        *flow_list; /**< Associated flows. */
 	struct port_shared_action *actions_list;
 	/**< Associated shared actions. */
