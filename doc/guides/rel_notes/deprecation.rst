@@ -170,6 +170,11 @@ Deprecation Notices
   pointer for the private data to the application which can be attached
   to the packet while enqueuing.
 
+* security: MACsec support is planned to be added in DPDK 22.11,
+  which would result in updates to structures ``rte_security_macsec_xform``,
+  ``rte_security_macsec_stats`` and security capability structure
+  ``rte_security_capability`` to accommodate MACsec capabilities.
+
 * metrics: The function ``rte_metrics_init`` will have a non-void return
   in order to notify errors instead of calling ``rte_exit``.
 
