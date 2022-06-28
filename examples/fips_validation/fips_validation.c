@@ -522,7 +522,7 @@ parse_uint8_hex_str(const char *key, char *src, struct fips_val *val)
 		val->val = NULL;
 	}
 
-	val->val = rte_zmalloc(NULL, len, 0);
+	val->val = rte_zmalloc(NULL, len + 1, 0);
 	if (!val->val)
 		return -ENOMEM;
 
