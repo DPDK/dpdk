@@ -1882,6 +1882,8 @@ The following sections show functions for configuring ports.
 
    Port configuration changes only become active when forwarding is started/restarted.
 
+.. _port_attach:
+
 port attach
 ~~~~~~~~~~~
 

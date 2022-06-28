@@ -6,6 +6,11 @@
 #include <stdint.h>
 #include <string.h>
 #include <stdlib.h>
+#include <unistd.h>
+#ifndef RTE_EXEC_ENV_WINDOWS
+#include <sys/socket.h>
+#include <sys/un.h>
+#endif
 
 #include <rte_prefetch.h>
 #include <rte_common.h>
@@ -14,6 +19,7 @@
 #include <rte_alarm.h>
 #include <rte_pmd_mlx5.h>
 #include <rte_ethdev.h>
+
 #include "mlx5_testpmd.h"
 #include "testpmd.h"
 
@@ -111,6 +117,162 @@ mlx5_test_set_port_host_shaper(uint16_t port_id, uint16_t avail_thresh_triggered
 	return 0;
 }
 
+#ifndef RTE_EXEC_ENV_WINDOWS
+static const char*
+mlx5_test_get_socket_path(char *extend)
+{
+	if (strstr(extend, "socket=") == extend) {
+		const char *socket_path = strchr(extend, '=') + 1;
+
+		TESTPMD_LOG(DEBUG, "MLX5 socket path is %s\n", socket_path);
+		return socket_path;
+	}
+
+	TESTPMD_LOG(ERR, "Failed to extract a valid socket path from %s\n",
+		    extend);
+	return NULL;
+}
+
+static int
+mlx5_test_extend_devargs(char *identifier, char *extend)
+{
+	struct sockaddr_un un = {
+		.sun_family = AF_UNIX,
+	};
+	int cmd_fd;
+	int pd_handle;
+	struct iovec iov = {
+		.iov_base = &pd_handle,
+		.iov_len = sizeof(int),
+	};
+	union {
+		char buf[CMSG_SPACE(sizeof(int))];
+		struct cmsghdr align;
+	} control;
+	struct msghdr msgh = {
+		.msg_iov = NULL,
+		.msg_iovlen = 0,
+	};
+	struct cmsghdr *cmsg;
+	const char *path = mlx5_test_get_socket_path(extend + 1);
+	size_t len = 1;
+	int socket_fd;
+	int ret;
+
+	if (path == NULL) {
+		TESTPMD_LOG(ERR, "Invalid devargs extension is specified\n");
+		return -1;
+	}
+
+	/* Initialize IPC channel. */
+	socket_fd = socket(AF_UNIX, SOCK_SEQPACKET, 0);
+	if (socket_fd < 0) {
+		TESTPMD_LOG(ERR, "Failed to create unix socket: %s\n",
+			    strerror(errno));
+		return -1;
+	}
+	rte_strlcpy(un.sun_path, path, sizeof(un.sun_path));
+	if (connect(socket_fd, (struct sockaddr *)&un, sizeof(un)) < 0) {
+		TESTPMD_LOG(ERR, "Failed to connect %s: %s\n", un.sun_path,
+			    strerror(errno));
+		close(socket_fd);
+		return -1;
+	}
+
+	/* Send the request message. */
+	do {
+		ret = sendmsg(socket_fd, &msgh, 0);
+	} while (ret < 0 && errno == EINTR);
+	if (ret < 0) {
+		TESTPMD_LOG(ERR, "Failed to send request to (%s): %s\n", path,
+			    strerror(errno));
+		close(socket_fd);
+		return -1;
+	}
+
+	msgh.msg_iov = &iov;
+	msgh.msg_iovlen = 1;
+	msgh.msg_control = control.buf;
+	msgh.msg_controllen = sizeof(control.buf);
+	do {
+		ret = recvmsg(socket_fd, &msgh, 0);
+	} while (ret < 0);
+	if (ret != sizeof(int) || (msgh.msg_flags & (MSG_TRUNC | MSG_CTRUNC))) {
+		TESTPMD_LOG(ERR, "truncated msg");
+		close(socket_fd);
+		return -1;
+	}
+
+	/* Translate the FD. */
+	cmsg = CMSG_FIRSTHDR(&msgh);
+	if (cmsg == NULL || cmsg->cmsg_len != CMSG_LEN(sizeof(int)) ||
+	    cmsg->cmsg_level != SOL_SOCKET || cmsg->cmsg_type != SCM_RIGHTS) {
+		TESTPMD_LOG(ERR, "Fail to get FD using SCM_RIGHTS mechanism\n");
+		close(socket_fd);
+		unlink(un.sun_path);
+		return -1;
+	}
+	memcpy(&cmd_fd, CMSG_DATA(cmsg), sizeof(int));
+
+	TESTPMD_LOG(DEBUG, "Command FD (%d) and PD handle (%d) "
+		    "are successfully imported from remote process\n",
+		    cmd_fd, pd_handle);
+
+	/* Cleanup IPC channel. */
+	close(socket_fd);
+
+	/* Calculate the new length of devargs string. */
+	len += snprintf(NULL, 0, ",cmd_fd=%d,pd_handle=%d", cmd_fd, pd_handle);
+	/* Extend the devargs string. */
+	snprintf(extend, len, ",cmd_fd=%d,pd_handle=%d", cmd_fd, pd_handle);
+
+	TESTPMD_LOG(DEBUG, "Attach port with extra devargs %s\n", identifier);
+	return 0;
+}
+
+static bool
+is_delimiter_path_spaces(char *extend)
+{
+	while (*extend != '\0') {
+		if (*extend != ' ')
+			return true;
+		extend++;
+	}
+	return false;
+}
+
+/*
+ * Extend devargs list with "cmd_fd" and "pd_handle" coming from external
+ * process. It happens only in this format:
+ *  testpmd> mlx5 port attach (identifier) socket=<socket path>
+ * all "(identifier) socket=<socket path>" is in the same string pointed
+ * by the input parameter 'identifier'.
+ *
+ * @param identifier
+ *   Identifier of port attach command line.
+ */
+static void
+mlx5_test_attach_port_extend_devargs(char *identifier)
+{
+	char *extend;
+
+	if (identifier == NULL) {
+		fprintf(stderr, "Invalid parameters are specified\n");
+		return;
+	}
+
+	extend = strchr(identifier, ' ');
+	if (extend != NULL && is_delimiter_path_spaces(extend) &&
+	    mlx5_test_extend_devargs(identifier, extend) < 0) {
+		TESTPMD_LOG(ERR, "Failed to extend devargs for port %s\n",
+			    identifier);
+		return;
+	}
+
+	attach_port(identifier);
+}
+#endif
+
 /* *** SET HOST_SHAPER FOR A PORT *** */
 struct cmd_port_host_shaper_result {
 	cmdline_fixed_string_t mlx5;
@@ -189,6 +351,56 @@ static cmdline_parse_inst_t mlx5_test_cmd_port_host_shaper = {
 	}
 };
 
+#ifndef RTE_EXEC_ENV_WINDOWS
+/* *** attach a specified port *** */
+struct mlx5_cmd_operate_attach_port_result {
+	cmdline_fixed_string_t mlx5;
+	cmdline_fixed_string_t port;
+	cmdline_fixed_string_t keyword;
+	cmdline_multi_string_t identifier;
+};
+
+static void mlx5_cmd_operate_attach_port_parsed(void *parsed_result,
+						__rte_unused struct cmdline *cl,
+						__rte_unused void *data)
+{
+	struct mlx5_cmd_operate_attach_port_result *res = parsed_result;
+
+	if (!strcmp(res->keyword, "attach"))
+		mlx5_test_attach_port_extend_devargs(res->identifier);
+	else
+		fprintf(stderr, "Unknown parameter\n");
+}
+
+static cmdline_parse_token_string_t mlx5_cmd_operate_attach_port_mlx5 =
+	TOKEN_STRING_INITIALIZER(struct mlx5_cmd_operate_attach_port_result,
+				 mlx5, "mlx5");
+static cmdline_parse_token_string_t mlx5_cmd_operate_attach_port_port =
+	TOKEN_STRING_INITIALIZER(struct mlx5_cmd_operate_attach_port_result,
+				 port, "port");
+static cmdline_parse_token_string_t mlx5_cmd_operate_attach_port_keyword =
+	TOKEN_STRING_INITIALIZER(struct mlx5_cmd_operate_attach_port_result,
+				 keyword, "attach");
+static cmdline_parse_token_string_t mlx5_cmd_operate_attach_port_identifier =
+	TOKEN_STRING_INITIALIZER(struct mlx5_cmd_operate_attach_port_result,
+				 identifier, TOKEN_STRING_MULTI);
+
+static cmdline_parse_inst_t mlx5_cmd_operate_attach_port = {
+	.f = mlx5_cmd_operate_attach_port_parsed,
+	.data = NULL,
+	.help_str = "mlx5 port attach <identifier> socket=<path>: "
+		"(identifier: pci address or virtual dev name"
+		", path (optional): socket path to get cmd FD and PD handle)",
+	.tokens = {
+		(void *)&mlx5_cmd_operate_attach_port_mlx5,
+		(void *)&mlx5_cmd_operate_attach_port_port,
+		(void *)&mlx5_cmd_operate_attach_port_keyword,
+		(void *)&mlx5_cmd_operate_attach_port_identifier,
+		NULL,
+	},
+};
+#endif
+
 static struct testpmd_driver_commands mlx5_driver_cmds = {
 	.commands = {
 		{
@@ -197,6 +409,14 @@ static struct testpmd_driver_commands mlx5_driver_cmds = {
 				"rate (rate_num):\n"
 				"    Set HOST_SHAPER avail_thresh_triggered and rate with port_id\n\n",
 		},
+#ifndef RTE_EXEC_ENV_WINDOWS
+		{
+			.ctx = &mlx5_cmd_operate_attach_port,
+			.help = "mlx5 port attach (ident) socket=(path)\n"
+				"    Attach physical or virtual dev by pci address or virtual device name "
+				"and add \"cmd_fd\" and \"pd_handle\" devargs before attaching\n\n",
+		},
+#endif
 		{
 			.ctx = NULL,
 		},

@@ -1793,3 +1793,50 @@ and disables ``avail_thresh_triggered``.
 .. code-block:: console
 
    testpmd> mlx5 set port 1 host_shaper avail_thresh_triggered 0 rate 50
+
+
+Testpmd
+-------
+
+port attach with socket path
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+It is possible to allocate a port with ``libibverbs`` from external application.
+For importing the external port with extra device arguments,
+there is a specific testpmd command
+similar to :ref:`port attach command <port_attach>`::
+
+   testpmd> mlx5 port attach (identifier) socket=(path)
+
+where:
+
+* ``identifier``: device identifier with optional parameters
+  as same as :ref:`port attach command <port_attach>`.
+* ``path``: path to IPC server socket created by the external application.
+
+This command performs:
+
+#. Open IPC client socket using the given path, and connect it.
+
+#. Import ibverbs context and ibverbs protection domain.
+
+#. Add two device arguments for context (``cmd_fd``)
+   and protection domain (``pd_handle``) to the device identifier.
+   See :ref:`mlx5 driver options <mlx5_common_driver_options>` for more
+   information about these device arguments.
+
+#. Call the regular ``port attach`` function with updated identifier.
+
+For example, to attach a port whose PCI address is ``0000:0a:00.0``
+and its socket path is ``/var/run/import_ipc_socket``:
+
+.. code-block:: console
+
+   testpmd> mlx5 port attach 0000:0a:00.0 socket=/var/run/import_ipc_socket
+   testpmd: MLX5 socket path is /var/run/import_ipc_socket
+   testpmd: Attach port with extra devargs 0000:0a:00.0,cmd_fd=40,pd_handle=1
+   Attaching a new port...
+   EAL: Probe PCI driver: mlx5_pci (15b3:101d) device: 0000:0a:00.0 (socket 0)
+   Port 0 is attached. Now total ports is 1
+   Done
+
