@@ -131,8 +131,10 @@ parse_input_color_table_entries(char *str, enum rte_color **dscp_table,
 	/* Allocate memory for vlan table */
 	vlan = (enum rte_color *)malloc(MAX_VLAN_TABLE_ENTRIES *
 		sizeof(enum rte_color));
-	if (vlan == NULL)
+	if (vlan == NULL) {
+		free(*dscp_table);
 		return -1;
+	}
 
 	i = 0;
 	while (1) {
@@ -144,6 +146,7 @@ parse_input_color_table_entries(char *str, enum rte_color **dscp_table,
 			vlan[i++] = RTE_COLOR_RED;
 		else {
 			free(vlan);
+			free(*dscp_table);
 			return -1;
 		}
 		if (i == MAX_VLAN_TABLE_ENTRIES)
@@ -152,6 +155,7 @@ parse_input_color_table_entries(char *str, enum rte_color **dscp_table,
 		token = strtok_r(str, PARSE_DELIMITER, &str);
 		if (token == NULL) {
 			free(vlan);
+			free(*dscp_table);
 			return -1;
 		}
 	}
