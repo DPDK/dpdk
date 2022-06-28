@@ -401,6 +401,158 @@ static cmdline_parse_inst_t mlx5_cmd_operate_attach_port = {
 };
 #endif
 
+/* Map HW queue index to rte queue index. */
+struct mlx5_cmd_map_ext_rxq {
+	cmdline_fixed_string_t mlx5;
+	cmdline_fixed_string_t port;
+	portid_t port_id;
+	cmdline_fixed_string_t ext_rxq;
+	cmdline_fixed_string_t map;
+	uint16_t sw_queue_id;
+	uint32_t hw_queue_id;
+};
+
+cmdline_parse_token_string_t mlx5_cmd_map_ext_rxq_mlx5 =
+	TOKEN_STRING_INITIALIZER(struct mlx5_cmd_map_ext_rxq, mlx5, "mlx5");
+cmdline_parse_token_string_t mlx5_cmd_map_ext_rxq_port =
+	TOKEN_STRING_INITIALIZER(struct mlx5_cmd_map_ext_rxq, port, "port");
+cmdline_parse_token_num_t mlx5_cmd_map_ext_rxq_port_id =
+	TOKEN_NUM_INITIALIZER(struct mlx5_cmd_map_ext_rxq, port_id, RTE_UINT16);
+cmdline_parse_token_string_t mlx5_cmd_map_ext_rxq_ext_rxq =
+	TOKEN_STRING_INITIALIZER(struct mlx5_cmd_map_ext_rxq, ext_rxq,
+				 "ext_rxq");
+cmdline_parse_token_string_t mlx5_cmd_map_ext_rxq_map =
+	TOKEN_STRING_INITIALIZER(struct mlx5_cmd_map_ext_rxq, map, "map");
+cmdline_parse_token_num_t mlx5_cmd_map_ext_rxq_sw_queue_id =
+	TOKEN_NUM_INITIALIZER(struct mlx5_cmd_map_ext_rxq, sw_queue_id,
+			      RTE_UINT16);
+cmdline_parse_token_num_t mlx5_cmd_map_ext_rxq_hw_queue_id =
+	TOKEN_NUM_INITIALIZER(struct mlx5_cmd_map_ext_rxq, hw_queue_id,
+			      RTE_UINT32);
+
+static void
+mlx5_cmd_map_ext_rxq_parsed(void *parsed_result,
+			    __rte_unused struct cmdline *cl,
+			    __rte_unused void *data)
+{
+	struct mlx5_cmd_map_ext_rxq *res = parsed_result;
+	int ret;
+
+	if (port_id_is_invalid(res->port_id, ENABLED_WARN))
+		return;
+	ret = rte_pmd_mlx5_external_rx_queue_id_map(res->port_id,
+						    res->sw_queue_id,
+						    res->hw_queue_id);
+	switch (ret) {
+	case 0:
+		break;
+	case -EINVAL:
+		fprintf(stderr, "invalid ethdev index (%u), out of range\n",
+			res->sw_queue_id);
+		break;
+	case -ENODEV:
+		fprintf(stderr, "invalid port_id %u\n", res->port_id);
+		break;
+	case -ENOTSUP:
+		fprintf(stderr, "function not implemented or supported\n");
+		break;
+	case -EEXIST:
+		fprintf(stderr, "mapping with index %u already exists\n",
+			res->sw_queue_id);
+		break;
+	default:
+		fprintf(stderr, "programming error: (%s)\n", strerror(-ret));
+	}
+}
+
+cmdline_parse_inst_t mlx5_cmd_map_ext_rxq = {
+	.f = mlx5_cmd_map_ext_rxq_parsed,
+	.data = NULL,
+	.help_str = "mlx5 port <port_id> ext_rxq map <sw_queue_id> <hw_queue_id>",
+	.tokens = {
+		(void *)&mlx5_cmd_map_ext_rxq_mlx5,
+		(void *)&mlx5_cmd_map_ext_rxq_port,
+		(void *)&mlx5_cmd_map_ext_rxq_port_id,
+		(void *)&mlx5_cmd_map_ext_rxq_ext_rxq,
+		(void *)&mlx5_cmd_map_ext_rxq_map,
+		(void *)&mlx5_cmd_map_ext_rxq_sw_queue_id,
+		(void *)&mlx5_cmd_map_ext_rxq_hw_queue_id,
+		NULL,
+	}
+};
+
+/* Unmap HW queue index to rte queue index. */
+struct mlx5_cmd_unmap_ext_rxq {
+	cmdline_fixed_string_t mlx5;
+	cmdline_fixed_string_t port;
+	portid_t port_id;
+	cmdline_fixed_string_t ext_rxq;
+	cmdline_fixed_string_t unmap;
+	uint16_t queue_id;
+};
+
+cmdline_parse_token_string_t mlx5_cmd_unmap_ext_rxq_mlx5 =
+	TOKEN_STRING_INITIALIZER(struct mlx5_cmd_unmap_ext_rxq, mlx5, "mlx5");
+cmdline_parse_token_string_t mlx5_cmd_unmap_ext_rxq_port =
+	TOKEN_STRING_INITIALIZER(struct mlx5_cmd_unmap_ext_rxq, port, "port");
+cmdline_parse_token_num_t mlx5_cmd_unmap_ext_rxq_port_id =
+	TOKEN_NUM_INITIALIZER(struct mlx5_cmd_unmap_ext_rxq, port_id,
+			      RTE_UINT16);
+cmdline_parse_token_string_t mlx5_cmd_unmap_ext_rxq_ext_rxq =
+	TOKEN_STRING_INITIALIZER(struct mlx5_cmd_unmap_ext_rxq, ext_rxq,
+				 "ext_rxq");
+cmdline_parse_token_string_t mlx5_cmd_unmap_ext_rxq_unmap =
+	TOKEN_STRING_INITIALIZER(struct mlx5_cmd_unmap_ext_rxq, unmap, "unmap");
+cmdline_parse_token_num_t mlx5_cmd_unmap_ext_rxq_queue_id =
+	TOKEN_NUM_INITIALIZER(struct mlx5_cmd_unmap_ext_rxq, queue_id,
+			      RTE_UINT16);
+
+static void
+mlx5_cmd_unmap_ext_rxq_parsed(void *parsed_result,
+			      __rte_unused struct cmdline *cl,
+			      __rte_unused void *data)
+{
+	struct mlx5_cmd_unmap_ext_rxq *res = parsed_result;
+	int ret;
+
+	if (port_id_is_invalid(res->port_id, ENABLED_WARN))
+		return;
+	ret = rte_pmd_mlx5_external_rx_queue_id_unmap(res->port_id,
+						      res->queue_id);
+	switch (ret) {
+	case 0:
+		break;
+	case -EINVAL:
+		fprintf(stderr, "invalid rte_flow index (%u), "
+			"out of range, doesn't exist or still referenced\n",
+			res->queue_id);
+		break;
+	case -ENODEV:
+		fprintf(stderr, "invalid port_id %u\n", res->port_id);
+		break;
+	case -ENOTSUP:
+		fprintf(stderr, "function not implemented or supported\n");
+		break;
+	default:
+		fprintf(stderr, "programming error: (%s)\n", strerror(-ret));
+	}
+}
+
+cmdline_parse_inst_t mlx5_cmd_unmap_ext_rxq = {
+	.f = mlx5_cmd_unmap_ext_rxq_parsed,
+	.data = NULL,
+	.help_str = "mlx5 port <port_id> ext_rxq unmap <queue_id>",
+	.tokens = {
+		(void *)&mlx5_cmd_unmap_ext_rxq_mlx5,
+		(void *)&mlx5_cmd_unmap_ext_rxq_port,
+		(void *)&mlx5_cmd_unmap_ext_rxq_port_id,
+		(void *)&mlx5_cmd_unmap_ext_rxq_ext_rxq,
+		(void *)&mlx5_cmd_unmap_ext_rxq_unmap,
+		(void *)&mlx5_cmd_unmap_ext_rxq_queue_id,
+		NULL,
+	}
+};
+
 static struct testpmd_driver_commands mlx5_driver_cmds = {
 	.commands = {
 		{
@@ -417,6 +569,17 @@ static struct testpmd_driver_commands mlx5_driver_cmds = {
 				"and add \"cmd_fd\" and \"pd_handle\" devargs before attaching\n\n",
 		},
 #endif
+		{
+			.ctx = &mlx5_cmd_map_ext_rxq,
+			.help = "mlx5 port (port_id) ext_rxq map (sw_queue_id) (hw_queue_id)\n"
+				"    Map HW queue index (32-bit) to ethdev"
+				" queue index (16-bit) for external RxQ\n\n",
+		},
+		{
+			.ctx = &mlx5_cmd_unmap_ext_rxq,
+			.help = "mlx5 port (port_id) ext_rxq unmap (sw_queue_id)\n"
+				"    Unmap external Rx queue ethdev index mapping\n\n",
+		},
 		{
 			.ctx = NULL,
 		},

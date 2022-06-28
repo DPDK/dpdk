@@ -1840,3 +1840,22 @@ and its socket path is ``/var/run/import_ipc_socket``:
    Port 0 is attached. Now total ports is 1
    Done
 
+
+port map external Rx queue
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+External Rx queue indexes mapping management.
+
+Map HW queue index (32-bit) to ethdev queue index (16-bit) for external Rx queue::
+
+   testpmd> mlx5 port (port_id) ext_rxq map (sw_queue_id) (hw_queue_id)
+
+Unmap external Rx queue::
+
+   testpmd> mlx5 port (port_id) ext_rxq unmap (sw_queue_id)
+
+where:
+
+* ``sw_queue_id``: queue index in range [64536, 65535].
+  This range is the highest 1000 numbers.
+* ``hw_queue_id``: queue index given by HW in queue creation.
