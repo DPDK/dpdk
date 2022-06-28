@@ -794,6 +794,8 @@ sfc_vdpa_get_notify_area(int vid, int qid, uint64_t *offset, uint64_t *size)
 	int vfio_dev_fd;
 	efx_rc_t rc;
 	unsigned int bar_offset;
+	volatile void *doorbell;
+	struct rte_pci_device *pci_dev;
 	struct rte_vdpa_device *vdpa_dev;
 	struct sfc_vdpa_ops_data *ops_data;
 	struct vfio_region_info reg = { .argsz = sizeof(reg) };
@@ -855,6 +857,18 @@ sfc_vdpa_get_notify_area(int vid, int qid, uint64_t *offset, uint64_t *size)
 
 	sfc_vdpa_info(dev, "vDPA ops get_notify_area :: offset : 0x%" PRIx64,
 		      *offset);
+
+	pci_dev = sfc_vdpa_adapter_by_dev_handle(dev)->pdev;
+	doorbell = (uint8_t *)pci_dev->mem_resource[reg.index].addr + *offset;
+
+	/*
+	 * virtio-net driver in VM sends queue notifications before
+	 * vDPA has a chance to setup the queues and notification area,
+	 * and hence the HW misses these doorbell notifications.
+	 * Since, it is safe to send duplicate doorbell, send another
+	 * doorbell from vDPA driver as workaround for this timing issue.
+	 */
+	rte_write16(qid, doorbell);
 
 	return 0;
 }
