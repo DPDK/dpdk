@@ -1863,7 +1863,10 @@ ice_switch_parse_pattern_action(struct ice_adapter *ad,
 	else if (vlan_num == 2)
 		tun_type = ICE_NON_TUN_QINQ;
 
-	list = rte_zmalloc(NULL, item_num * sizeof(*list), 0);
+	/* reserve one more memory slot for direction flag which may
+	 * consume 1 lookup item.
+	 */
+	list = rte_zmalloc(NULL, (item_num + 1) * sizeof(*list), 0);
 	if (!list) {
 		rte_flow_error_set(error, EINVAL,
 				   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
