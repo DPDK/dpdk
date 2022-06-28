@@ -180,6 +180,12 @@ Deprecation Notices
   ``rte_security_macsec_stats`` and security capability structure
   ``rte_security_capability`` to accommodate MACsec capabilities.
 
+* eventdev: The function ``rte_event_crypto_adapter_queue_pair_add`` will
+  accept configuration of type ``rte_event_crypto_adapter_queue_conf`` instead
+  of ``rte_event``, similar to ``rte_event_eth_rx_adapter_queue_add`` signature.
+  Event will be one of the configuration fields,
+  together with additional vector parameters.
+
 * metrics: The function ``rte_metrics_init`` will have a non-void return
   in order to notify errors instead of calling ``rte_exit``.
 
