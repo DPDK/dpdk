@@ -473,9 +473,9 @@ mlx5_vdpa_virtqs_prepare(struct mlx5_vdpa_priv *priv)
 		DRV_LOG(INFO, "TSO is enabled without CSUM, force CSUM.");
 		priv->features |= (1ULL << VIRTIO_NET_F_CSUM);
 	}
-	if (nr_vring > priv->caps.max_num_virtio_queues * 2) {
+	if (nr_vring > priv->caps.max_num_virtio_queues) {
 		DRV_LOG(ERR, "Do not support more than %d virtqs(%d).",
-			(int)priv->caps.max_num_virtio_queues * 2,
+			(int)priv->caps.max_num_virtio_queues,
 			(int)nr_vring);
 		return -1;
 	}
