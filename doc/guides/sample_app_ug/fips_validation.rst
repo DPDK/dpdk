@@ -63,6 +63,7 @@ ACVP
     * AES-CMAC (128,192,256) - AFT
     * AES-XTS (128,256) - AFT
     * HMAC (SHA1, SHA224, SHA256, SHA384, SHA512)
+    * SHA (1, 256, 384, 512) - AFT, MCT
 
 
 Application Information

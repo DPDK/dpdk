@@ -133,6 +133,7 @@ enum fips_ccm_test_types {
 
 enum fips_sha_test_types {
 	SHA_KAT = 0,
+	SHA_AFT,
 	SHA_MCT
 };
 
@@ -280,6 +281,15 @@ parse_test_aes_json_init(void);
 
 int
 parse_test_xts_json_init(void);
+
+int
+parse_test_sha_json_init(void);
+
+int
+parse_test_sha_json_algorithm(void);
+
+int
+parse_test_sha_json_test_type(void);
 #endif /* USE_JANSSON */
 
 int
