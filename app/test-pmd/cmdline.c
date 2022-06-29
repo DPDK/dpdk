@@ -694,7 +694,7 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"receive buffers available.\n\n"
 
 			"port config all rss (all|default|ip|tcp|udp|sctp|"
-			"ether|port|vxlan|geneve|nvgre|vxlan-gpe|ecpri|mpls|ipv4-chksum|l2tpv2|"
+			"l2-payload|port|vxlan|geneve|nvgre|vxlan-gpe|ecpri|mpls|ipv4-chksum|l2tpv2|"
 			"none|level-default|level-outer|level-inner|<flowtype_id>)\n"
 			"    Set the RSS mode.\n\n"
 
@@ -2080,7 +2080,7 @@ cmd_config_rss_parsed(void *parsed_result,
 		rss_conf.rss_hf = RTE_ETH_RSS_TCP;
 	else if (!strcmp(res->value, "sctp"))
 		rss_conf.rss_hf = RTE_ETH_RSS_SCTP;
-	else if (!strcmp(res->value, "ether"))
+	else if (!strcmp(res->value, "l2_payload"))
 		rss_conf.rss_hf = RTE_ETH_RSS_L2_PAYLOAD;
 	else if (!strcmp(res->value, "port"))
 		rss_conf.rss_hf = RTE_ETH_RSS_PORT;
@@ -2203,7 +2203,7 @@ static cmdline_parse_inst_t cmd_config_rss = {
 	.f = cmd_config_rss_parsed,
 	.data = NULL,
 	.help_str = "port config all rss "
-		"all|default|eth|vlan|ip|tcp|udp|sctp|ether|port|vxlan|geneve|"
+		"all|default|eth|vlan|ip|tcp|udp|sctp|l2-payload|port|vxlan|geneve|"
 		"nvgre|vxlan-gpe|l2tpv3|esp|ah|pfcp|ecpri|mpls|ipv4-chksum|l2tpv2|"
 		"none|level-default|level-outer|level-inner|<flowtype_id>",
 	.tokens = {
