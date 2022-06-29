@@ -63,8 +63,6 @@
 
 #define NS_PER_SEC 1E9
 
-static char *flowtype_to_str(uint16_t flow_type);
-
 static const struct {
 	enum tx_pkt_split split;
 	const char *name;
@@ -566,6 +564,19 @@ skip_parse:
 	};
 }
 
+const char *
+rsstypes_to_str(uint64_t rss_type)
+{
+	uint16_t i;
+
+	for (i = 0; rss_type_table[i].str != NULL; i++) {
+		if (rss_type_table[i].rss_type == rss_type)
+			return rss_type_table[i].str;
+	}
+
+	return NULL;
+}
+
 void
 port_infos_display(portid_t port_id)
 {
@@ -668,19 +679,20 @@ port_infos_display(portid_t port_id)
 	if (!dev_info.flow_type_rss_offloads)
 		printf("No RSS offload flow type is supported.\n");
 	else {
+		uint64_t rss_offload_types = dev_info.flow_type_rss_offloads;
 		uint16_t i;
-		char *p;
 
 		printf("Supported RSS offload flow types:\n");
-		for (i = RTE_ETH_FLOW_UNKNOWN + 1;
-		     i < sizeof(dev_info.flow_type_rss_offloads) * CHAR_BIT; i++) {
-			if (!(dev_info.flow_type_rss_offloads & (1ULL << i)))
-				continue;
-			p = flowtype_to_str(i);
-			if (p)
-				printf("  %s\n", p);
-			else
-				printf("  user defined %d\n", i);
+		for (i = 0; i < sizeof(rss_offload_types) * CHAR_BIT; i++) {
+			uint64_t rss_offload = UINT64_C(1) << i;
+			if ((rss_offload_types & rss_offload) != 0) {
+				const char *p = rsstypes_to_str(rss_offload);
+				if (p)
+					printf("  %s\n", p);
+				else
+					printf("  user defined %u\n",
+					       i);
+			}
 		}
 	}
 

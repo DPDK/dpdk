@@ -1027,6 +1027,8 @@ uint16_t tx_pkt_set_dynf(uint16_t port_id, __rte_unused uint16_t queue,
 void add_tx_dynf_callback(portid_t portid);
 void remove_tx_dynf_callback(portid_t portid);
 int update_jumbo_frame_offload(portid_t portid);
+const char *rsstypes_to_str(uint64_t rss_type);
+
 
 /*
  * Work-around of a compilation error with ICC on invocations of the
