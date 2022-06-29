@@ -363,6 +363,8 @@ eth_ngbe_dev_init(struct rte_eth_dev *eth_dev, void *init_params __rte_unused)
 	rte_eth_copy_pci_info(eth_dev, pci_dev);
 	eth_dev->data->dev_flags |= RTE_ETH_DEV_AUTOFILL_QUEUE_XSTATS;
 
+	hw->hw_addr = (void *)pci_dev->mem_resource[0].addr;
+
 	/* Vendor and Device ID need to be set before init of shared code */
 	hw->back = pci_dev;
 	hw->device_id = pci_dev->id.device_id;
@@ -381,7 +383,6 @@ eth_ngbe_dev_init(struct rte_eth_dev *eth_dev, void *init_params __rte_unused)
 		hw->sub_system_id = (u16)ssid >> 8 | (u16)ssid << 8;
 	}
 	ngbe_map_device_id(hw);
-	hw->hw_addr = (void *)pci_dev->mem_resource[0].addr;
 
 	/* Reserve memory for interrupt status block */
 	mz = rte_eth_dma_zone_reserve(eth_dev, "ngbe_driver", -1,
