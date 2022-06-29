@@ -1199,6 +1199,8 @@ extern int flow_parse(const char *src, void *result, unsigned int size,
 		      struct rte_flow_item **pattern,
 		      struct rte_flow_action **actions);
 
+const char *rsstypes_to_str(uint64_t rss_type);
+
 /* For registering driver specific testpmd commands. */
 struct testpmd_driver_commands {
 	TAILQ_ENTRY(testpmd_driver_commands) next;
