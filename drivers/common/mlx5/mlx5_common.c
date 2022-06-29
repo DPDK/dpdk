@@ -762,6 +762,7 @@ mlx5_common_dev_dma_map(struct rte_device *rte_dev, void *addr,
 			uint64_t iova __rte_unused, size_t len)
 {
 	struct mlx5_common_device *dev;
+	struct mlx5_mr_btree *bt;
 	struct mlx5_mr *mr;
 
 	dev = to_mlx5_device(rte_dev);
@@ -779,7 +780,36 @@ mlx5_common_dev_dma_map(struct rte_device *rte_dev, void *addr,
 		rte_errno = EINVAL;
 		return -1;
 	}
+try_insert:
 	rte_rwlock_write_lock(&dev->mr_scache.rwlock);
+	bt = &dev->mr_scache.cache;
+	if (bt->len == bt->size) {
+		uint32_t size;
+		int ret;
+
+		size = bt->size + 1;
+		MLX5_ASSERT(size > bt->size);
+		/*
+		 * Avoid deadlock (numbers show the sequence of events):
+		 *    mlx5_mr_create_primary():
+		 *        1) take EAL memory lock
+		 *        3) take MR lock
+		 *    this function:
+		 *        2) take MR lock
+		 *        4) take EAL memory lock while allocating the new cache
+		 * Releasing the MR lock before step 4
+		 * allows another thread to execute step 3.
+		 */
+		rte_rwlock_write_unlock(&dev->mr_scache.rwlock);
+		ret = mlx5_mr_expand_cache(&dev->mr_scache, size,
+					   rte_dev->numa_node);
+		if (ret < 0) {
+			mlx5_mr_free(mr, dev->mr_scache.dereg_mr_cb);
+			rte_errno = ret;
+			return -1;
+		}
+		goto try_insert;
+	}
 	LIST_INSERT_HEAD(&dev->mr_scache.mr_list, mr, mr);
 	/* Insert to the global cache table. */
 	mlx5_mr_insert_cache(&dev->mr_scache, mr);
