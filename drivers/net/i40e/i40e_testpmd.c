@@ -461,45 +461,6 @@ static cmdline_parse_inst_t cmd_show_queue_region_info_all = {
 	},
 };
 
-static uint16_t
-str2flowtype(char *string)
-{
-	uint8_t i = 0;
-	static const struct {
-		char str[32];
-		uint16_t type;
-	} flowtype_str[] = {
-		{"raw", RTE_ETH_FLOW_RAW},
-		{"ipv4", RTE_ETH_FLOW_IPV4},
-		{"ipv4-frag", RTE_ETH_FLOW_FRAG_IPV4},
-		{"ipv4-tcp", RTE_ETH_FLOW_NONFRAG_IPV4_TCP},
-		{"ipv4-udp", RTE_ETH_FLOW_NONFRAG_IPV4_UDP},
-		{"ipv4-sctp", RTE_ETH_FLOW_NONFRAG_IPV4_SCTP},
-		{"ipv4-other", RTE_ETH_FLOW_NONFRAG_IPV4_OTHER},
-		{"ipv6", RTE_ETH_FLOW_IPV6},
-		{"ipv6-frag", RTE_ETH_FLOW_FRAG_IPV6},
-		{"ipv6-tcp", RTE_ETH_FLOW_NONFRAG_IPV6_TCP},
-		{"ipv6-udp", RTE_ETH_FLOW_NONFRAG_IPV6_UDP},
-		{"ipv6-sctp", RTE_ETH_FLOW_NONFRAG_IPV6_SCTP},
-		{"ipv6-other", RTE_ETH_FLOW_NONFRAG_IPV6_OTHER},
-		{"l2_payload", RTE_ETH_FLOW_L2_PAYLOAD},
-		{"ipv6-ex", RTE_ETH_FLOW_IPV6_EX},
-		{"ipv6-tcp-ex", RTE_ETH_FLOW_IPV6_TCP_EX},
-		{"ipv6-udp-ex", RTE_ETH_FLOW_IPV6_UDP_EX},
-		{"gtpu", RTE_ETH_FLOW_GTPU},
-	};
-
-	for (i = 0; i < RTE_DIM(flowtype_str); i++) {
-		if (!strcmp(flowtype_str[i].str, string))
-			return flowtype_str[i].type;
-	}
-
-	if (isdigit(string[0]) && atoi(string) > 0 && atoi(string) < 64)
-		return (uint16_t)atoi(string);
-
-	return RTE_ETH_FLOW_UNKNOWN;
-}
-
 /* *** deal with flow director filter *** */
 struct cmd_flow_director_result {
 	cmdline_fixed_string_t flow_director_filter;
@@ -527,7 +488,7 @@ cmd_flow_director_filter_parsed(void *parsed_result,
 	struct rte_pmd_i40e_flow_type_mapping
 			mapping[RTE_PMD_I40E_FLOW_TYPE_MAX];
 	struct rte_pmd_i40e_pkt_template_conf conf;
-	uint16_t flow_type = str2flowtype(res->flow_type);
+	uint16_t flow_type = str_to_flowtype(res->flow_type);
 	uint16_t i, port = res->port_id;
 	uint8_t add;
 
