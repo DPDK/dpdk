@@ -582,7 +582,7 @@ static void hn_rxpkt(struct hn_rx_queue *rxq, struct hn_rx_bufinfo *rxb,
 		 * Use refcount to handle multiple packets in same
 		 * receive buffer section.
 		 */
-		rxbuf = hv->rxbuf_res->addr;
+		rxbuf = hv->rxbuf_res.addr;
 		iova = rte_mem_virt2iova(rxbuf) + RTE_PTR_DIFF(data, rxbuf);
 		shinfo = &rxb->shinfo;
 
@@ -765,8 +765,8 @@ hn_nvs_handle_rxbuf(struct rte_eth_dev *dev,
 {
 	const struct vmbus_chanpkt_rxbuf *pkt;
 	const struct hn_nvs_hdr *nvs_hdr = buf;
-	uint32_t rxbuf_sz = hv->rxbuf_res->len;
-	char *rxbuf = hv->rxbuf_res->addr;
+	uint32_t rxbuf_sz = hv->rxbuf_res.len;
+	char *rxbuf = hv->rxbuf_res.addr;
 	unsigned int i, hlen, count;
 	struct hn_rx_bufinfo *rxb;
 
@@ -1266,7 +1266,7 @@ hn_try_txagg(struct hn_data *hv, struct hn_tx_queue *txq,
 	if (txd->chim_index == NVS_CHIM_IDX_INVALID)
 		return NULL;
 
-	chim = (uint8_t *)hv->chim_res->addr
+	chim = (uint8_t *)hv->chim_res.addr
 			+ txd->chim_index * hv->chim_szmax;
 
 	txq->agg_txd = txd;
