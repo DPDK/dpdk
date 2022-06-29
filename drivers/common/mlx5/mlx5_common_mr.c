@@ -78,7 +78,7 @@ mlx5_mprq_buf_free_cb(void *addr __rte_unused, void *opaque)
  *   0 on success, -1 on failure.
  */
 static int
-mr_btree_expand(struct mlx5_mr_btree *bt, int n)
+mr_btree_expand(struct mlx5_mr_btree *bt, uint32_t n)
 {
 	void *mem;
 	int ret = 0;
@@ -123,11 +123,11 @@ mr_btree_expand(struct mlx5_mr_btree *bt, int n)
  *   Searched LKey on success, UINT32_MAX on no match.
  */
 static uint32_t
-mr_btree_lookup(struct mlx5_mr_btree *bt, uint16_t *idx, uintptr_t addr)
+mr_btree_lookup(struct mlx5_mr_btree *bt, uint32_t *idx, uintptr_t addr)
 {
 	struct mr_cache_entry *lkp_tbl;
-	uint16_t n;
-	uint16_t base = 0;
+	uint32_t n;
+	uint32_t base = 0;
 
 	MLX5_ASSERT(bt != NULL);
 	lkp_tbl = *bt->table;
@@ -137,7 +137,7 @@ mr_btree_lookup(struct mlx5_mr_btree *bt, uint16_t *idx, uintptr_t addr)
 				    lkp_tbl[0].lkey == UINT32_MAX));
 	/* Binary search. */
 	do {
-		register uint16_t delta = n >> 1;
+		register uint32_t delta = n >> 1;
 
 		if (addr < lkp_tbl[base + delta].start) {
 			n = delta;
@@ -169,7 +169,7 @@ static int
 mr_btree_insert(struct mlx5_mr_btree *bt, struct mr_cache_entry *entry)
 {
 	struct mr_cache_entry *lkp_tbl;
-	uint16_t idx = 0;
+	uint32_t idx = 0;
 	size_t shift;
 
 	MLX5_ASSERT(bt != NULL);
@@ -185,11 +185,8 @@ mr_btree_insert(struct mlx5_mr_btree *bt, struct mr_cache_entry *entry)
 		/* Already exist, return. */
 		return 0;
 	}
-	/* If table is full, return error. */
-	if (unlikely(bt->len == bt->size)) {
-		bt->overflow = 1;
-		return -1;
-	}
+	/* Caller must ensure that there is enough place for a new entry. */
+	MLX5_ASSERT(bt->len < bt->size);
 	/* Insert entry. */
 	++idx;
 	shift = (bt->len - idx) * sizeof(struct mr_cache_entry);
@@ -273,7 +270,7 @@ void
 mlx5_mr_btree_dump(struct mlx5_mr_btree *bt __rte_unused)
 {
 #ifdef RTE_LIBRTE_MLX5_DEBUG
-	int idx;
+	uint32_t idx;
 	struct mr_cache_entry *lkp_tbl;
 
 	if (bt == NULL)
@@ -409,13 +406,8 @@ mlx5_mr_insert_cache(struct mlx5_mr_share_cache *share_cache,
 		n = mr_find_next_chunk(mr, &entry, n);
 		if (!entry.end)
 			break;
-		if (mr_btree_insert(&share_cache->cache, &entry) < 0) {
-			/*
-			 * Overflowed, but the global table cannot be expanded
-			 * because of deadlock.
-			 */
+		if (mr_btree_insert(&share_cache->cache, &entry) < 0)
 			return -1;
-		}
 	}
 	return 0;
 }
@@ -477,26 +469,12 @@ static uint32_t
 mlx5_mr_lookup_cache(struct mlx5_mr_share_cache *share_cache,
 		     struct mr_cache_entry *entry, uintptr_t addr)
 {
-	uint16_t idx;
-	uint32_t lkey = UINT32_MAX;
-	struct mlx5_mr *mr;
+	uint32_t idx;
+	uint32_t lkey;
 
-	/*
-	 * If the global cache has overflowed since it failed to expand the
-	 * B-tree table, it can't have all the existing MRs. Then, the address
-	 * has to be searched by traversing the original MR list instead, which
-	 * is very slow path. Otherwise, the global cache is all inclusive.
-	 */
-	if (!unlikely(share_cache->cache.overflow)) {
-		lkey = mr_btree_lookup(&share_cache->cache, &idx, addr);
-		if (lkey != UINT32_MAX)
-			*entry = (*share_cache->cache.table)[idx];
-	} else {
-		/* Falling back to the slowest path. */
-		mr = mlx5_mr_lookup_list(share_cache, entry, addr);
-		if (mr != NULL)
-			lkey = entry->lkey;
-	}
+	lkey = mr_btree_lookup(&share_cache->cache, &idx, addr);
+	if (lkey != UINT32_MAX)
+		*entry = (*share_cache->cache.table)[idx];
 	MLX5_ASSERT(lkey == UINT32_MAX || (addr >= entry->start &&
 					   addr < entry->end));
 	return lkey;
@@ -528,7 +506,6 @@ mlx5_mr_rebuild_cache(struct mlx5_mr_share_cache *share_cache)
 	DRV_LOG(DEBUG, "Rebuild dev cache[] %p", (void *)share_cache);
 	/* Flush cache to rebuild. */
 	share_cache->cache.len = 1;
-	share_cache->cache.overflow = 0;
 	/* Iterate all the existing MRs. */
 	LIST_FOREACH(mr, &share_cache->mr_list, mr)
 		if (mlx5_mr_insert_cache(share_cache, mr) < 0)
@@ -582,6 +559,74 @@ mr_find_contig_memsegs_cb(const struct rte_memseg_list *msl,
 	data->end = ms->addr_64 + len;
 	data->msl = msl;
 	return 1;
+}
+
+/**
+ * Get the number of virtually-contiguous chunks in the MR.
+ * HW MR does not need to be already created to use this function.
+ *
+ * @param mr
+ *   Pointer to the MR.
+ *
+ * @return
+ *   Number of chunks.
+ */
+static uint32_t
+mr_get_chunk_count(const struct mlx5_mr *mr)
+{
+	uint32_t i, count = 0;
+	bool was_in_chunk = false;
+	bool is_in_chunk;
+
+	/* There is only one chunk in case of external memory. */
+	if (mr->msl == NULL)
+		return 1;
+	for (i = 0; i < mr->ms_bmp_n; i++) {
+		is_in_chunk = rte_bitmap_get(mr->ms_bmp, i);
+		if (!was_in_chunk && is_in_chunk)
+			count++;
+		was_in_chunk = is_in_chunk;
+	}
+	return count;
+}
+
+/**
+ * Thread-safely expand the global MR cache to at least @p new_size slots.
+ *
+ * @param share_cache
+ *  Shared MR cache for locking.
+ * @param new_size
+ *  Desired cache size.
+ * @param socket
+ *  NUMA node.
+ *
+ * @return
+ *  0 in success, negative on failure and rte_errno is set.
+ */
+int
+mlx5_mr_expand_cache(struct mlx5_mr_share_cache *share_cache,
+		     uint32_t size, int socket)
+{
+	struct mlx5_mr_btree cache = {0};
+	struct mlx5_mr_btree *bt;
+	struct mr_cache_entry *lkp_tbl;
+	int ret;
+
+	size = rte_align32pow2(size);
+	ret = mlx5_mr_btree_init(&cache, size, socket);
+	if (ret < 0)
+		return ret;
+	rte_rwlock_write_lock(&share_cache->rwlock);
+	bt = &share_cache->cache;
+	lkp_tbl = *bt->table;
+	if (cache.size > bt->size) {
+		rte_memcpy(cache.table, lkp_tbl, bt->len * sizeof(lkp_tbl[0]));
+		RTE_SWAP(*bt, cache);
+		DRV_LOG(DEBUG, "Global MR cache expanded to %u slots", size);
+	}
+	rte_rwlock_write_unlock(&share_cache->rwlock);
+	mlx5_mr_btree_free(&cache);
+	return 0;
 }
 
 /**
@@ -659,12 +704,14 @@ mlx5_mr_create_primary(void *pd,
 	struct mr_find_contig_memsegs_data data_re;
 	const struct rte_memseg_list *msl;
 	const struct rte_memseg *ms;
+	struct mlx5_mr_btree *bt;
 	struct mlx5_mr *mr = NULL;
 	int ms_idx_shift = -1;
 	uint32_t bmp_size;
 	void *bmp_mem;
 	uint32_t ms_n;
 	uint32_t n;
+	uint32_t chunks_n;
 	size_t len;
 
 	DRV_LOG(DEBUG, "Creating a MR using address (%p)", (void *)addr);
@@ -676,6 +723,7 @@ mlx5_mr_create_primary(void *pd,
 	 * is quite opportunistic.
 	 */
 	mlx5_mr_garbage_collect(share_cache);
+find_range:
 	/*
 	 * If enabled, find out a contiguous virtual address chunk in use, to
 	 * which the given address belongs, in order to register maximum range.
@@ -828,6 +876,33 @@ alloc_resources:
 	mr->ms_bmp_n = len / msl->page_sz;
 	MLX5_ASSERT(ms_idx_shift + mr->ms_bmp_n <= ms_n);
 	/*
+	 * It is now known how many entries will be used in the global cache.
+	 * If there is not enough, expand the cache.
+	 * This cannot be done while holding the memory hotplug lock.
+	 * While it is released, memory layout may change,
+	 * so the process must be repeated from the beginning.
+	 */
+	bt = &share_cache->cache;
+	chunks_n = mr_get_chunk_count(mr);
+	if (bt->len + chunks_n > bt->size) {
+		struct mlx5_common_device *cdev;
+		uint32_t size;
+
+		size = bt->size + chunks_n;
+		MLX5_ASSERT(size > bt->size);
+		cdev = container_of(share_cache, struct mlx5_common_device,
+				    mr_scache);
+		rte_rwlock_write_unlock(&share_cache->rwlock);
+		rte_mcfg_mem_read_unlock();
+		if (mlx5_mr_expand_cache(share_cache, size,
+					 cdev->dev->numa_node) < 0) {
+			DRV_LOG(ERR, "Failed to expand global MR cache to %u slots",
+				size);
+			goto err_nolock;
+		}
+		goto find_range;
+	}
+	/*
 	 * Finally create an MR for the memory chunk. Verbs: ibv_reg_mr() can
 	 * be called with holding the memory lock because it doesn't use
 	 * mlx5_alloc_buf_extern() which eventually calls rte_malloc_socket()
@@ -937,7 +1012,7 @@ mr_lookup_caches(struct mlx5_mr_ctrl *mr_ctrl,
 		container_of(share_cache, struct mlx5_common_device, mr_scache);
 	struct mlx5_mr_btree *bt = &mr_ctrl->cache_bh;
 	uint32_t lkey;
-	uint16_t idx;
+	uint32_t idx;
 
 	/* If local cache table is full, try to double it. */
 	if (unlikely(bt->len == bt->size))
@@ -988,7 +1063,7 @@ static uint32_t
 mlx5_mr_addr2mr_bh(struct mlx5_mr_ctrl *mr_ctrl, uintptr_t addr)
 {
 	uint32_t lkey;
-	uint16_t bh_idx = 0;
+	uint32_t bh_idx = 0;
 	/* Victim in top-half cache to replace with new entry. */
 	struct mr_cache_entry *repl = &mr_ctrl->cache[mr_ctrl->head];
 
@@ -1085,7 +1160,6 @@ mlx5_mr_flush_local_cache(struct mlx5_mr_ctrl *mr_ctrl)
 	memset(mr_ctrl->cache, 0, sizeof(mr_ctrl->cache));
 	/* Reset the B-tree table. */
 	mr_ctrl->cache_bh.len = 1;
-	mr_ctrl->cache_bh.overflow = 0;
 	/* Update the generation number. */
 	mr_ctrl->cur_gen = *mr_ctrl->dev_gen_ptr;
 	DRV_LOG(DEBUG, "mr_ctrl(%p): flushed, cur_gen=%d",
@@ -1933,7 +2007,7 @@ mlx5_mr_mempool_populate_cache(struct mlx5_mr_ctrl *mr_ctrl,
 		struct mlx5_mempool_mr *mr = &mpr->mrs[i];
 		struct mr_cache_entry entry;
 		uint32_t lkey;
-		uint16_t idx;
+		uint32_t idx;
 
 		lkey = mr_btree_lookup(bt, &idx, (uintptr_t)mr->pmd_mr.addr);
 		if (lkey != UINT32_MAX)
@@ -1971,7 +2045,7 @@ mlx5_mr_mempool2mr_bh(struct mlx5_mr_ctrl *mr_ctrl,
 {
 	struct mr_cache_entry *repl = &mr_ctrl->cache[mr_ctrl->head];
 	uint32_t lkey;
-	uint16_t bh_idx = 0;
+	uint32_t bh_idx = 0;
 
 	/* Binary-search MR translation table. */
 	lkey = mr_btree_lookup(&mr_ctrl->cache_bh, &bh_idx, addr);

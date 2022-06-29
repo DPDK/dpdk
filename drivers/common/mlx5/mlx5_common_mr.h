@@ -56,9 +56,8 @@ struct mr_cache_entry {
 
 /* MR Cache table for Binary search. */
 struct mlx5_mr_btree {
-	uint16_t len; /* Number of entries. */
-	uint16_t size; /* Total number of entries. */
-	int overflow; /* Mark failure of table expansion. */
+	uint32_t len; /* Number of entries. */
+	uint32_t size; /* Total number of entries. */
 	struct mr_cache_entry (*table)[];
 } __rte_packed;
 
@@ -218,6 +217,8 @@ void mlx5_mr_btree_dump(struct mlx5_mr_btree *bt __rte_unused);
 __rte_internal
 uint32_t mlx5_mr_mempool2mr_bh(struct mlx5_mr_ctrl *mr_ctrl,
 			       struct rte_mempool *mp, uintptr_t addr);
+int mlx5_mr_expand_cache(struct mlx5_mr_share_cache *share_cache,
+			 uint32_t new_size, int socket);
 void mlx5_mr_release_cache(struct mlx5_mr_share_cache *mr_cache);
 int mlx5_mr_create_cache(struct mlx5_mr_share_cache *share_cache, int socket);
 void mlx5_mr_dump_cache(struct mlx5_mr_share_cache *share_cache __rte_unused);
