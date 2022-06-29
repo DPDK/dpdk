@@ -113,6 +113,8 @@ struct pkt_burst_stats {
 	unsigned int pkt_burst_spread[MAX_PKT_BURST + 1];
 };
 
+
+#define TESTPMD_RSS_TYPES_CHAR_NUM_PER_LINE 64
 /** Information for a given RSS type. */
 struct rss_type_info {
 	const char *str; /**< Type name. */

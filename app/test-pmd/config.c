@@ -699,6 +699,38 @@ rsstypes_to_str(uint64_t rss_type)
 	return NULL;
 }
 
+static void
+rss_offload_types_display(uint64_t offload_types, uint16_t char_num_per_line)
+{
+	uint16_t user_defined_str_len;
+	uint16_t total_len = 0;
+	uint16_t str_len = 0;
+	uint64_t rss_offload;
+	uint16_t i;
+
+	for (i = 0; i < sizeof(offload_types) * CHAR_BIT; i++) {
+		rss_offload = RTE_BIT64(i);
+		if ((offload_types & rss_offload) != 0) {
+			const char *p = rsstypes_to_str(rss_offload);
+
+			user_defined_str_len =
+				strlen("user-defined-") + (i / 10 + 1);
+			str_len = p ? strlen(p) : user_defined_str_len;
+			str_len += 2; /* add two spaces */
+			if (total_len + str_len >= char_num_per_line) {
+				total_len = 0;
+				printf("\n");
+			}
+
+			if (p)
+				printf("  %s", p);
+			else
+				printf("  user-defined-%u", i);
+			total_len += str_len;
+		}
+	}
+}
+
 void
 port_infos_display(portid_t port_id)
 {
@@ -803,21 +835,10 @@ port_infos_display(portid_t port_id)
 	if (!dev_info.flow_type_rss_offloads)
 		printf("No RSS offload flow type is supported.\n");
 	else {
-		uint64_t rss_offload_types = dev_info.flow_type_rss_offloads;
-		uint16_t i;
-
 		printf("Supported RSS offload flow types:\n");
-		for (i = 0; i < sizeof(rss_offload_types) * CHAR_BIT; i++) {
-			uint64_t rss_offload = RTE_BIT64(i);
-			if ((rss_offload_types & rss_offload) != 0) {
-				const char *p = rsstypes_to_str(rss_offload);
-				if (p)
-					printf("  %s\n", p);
-				else
-					printf("  user defined %u\n",
-					       i);
-			}
-		}
+		rss_offload_types_display(dev_info.flow_type_rss_offloads,
+				TESTPMD_RSS_TYPES_CHAR_NUM_PER_LINE);
+		printf("\n");
 	}
 
 	printf("Minimum size of RX buffer: %u\n", dev_info.min_rx_bufsize);
@@ -1570,8 +1591,10 @@ port_flow_complain(struct rte_flow_error *error)
 }
 
 static void
-rss_types_display(uint64_t rss_types)
+rss_types_display(uint64_t rss_types, uint16_t char_num_per_line)
 {
+	uint16_t total_len = 0;
+	uint16_t str_len;
 	uint16_t i;
 
 	if (rss_types == 0)
@@ -1580,9 +1603,18 @@ rss_types_display(uint64_t rss_types)
 	for (i = 0; rss_type_table[i].str; i++) {
 		if (rss_type_table[i].rss_type == 0)
 			continue;
+
 		if ((rss_types & rss_type_table[i].rss_type) ==
-						rss_type_table[i].rss_type)
+					rss_type_table[i].rss_type) {
+			/* Contain two spaces */
+			str_len = strlen(rss_type_table[i].str) + 2;
+			if (total_len + str_len > char_num_per_line) {
+				printf("\n");
+				total_len = 0;
+			}
 			printf("  %s", rss_type_table[i].str);
+			total_len += str_len;
+		}
 	}
 }
 
@@ -1628,7 +1660,7 @@ rss_config_display(struct rte_flow_action_rss *rss_conf)
 		printf("  none\n");
 		return;
 	}
-	rss_types_display(rss_conf->types);
+	rss_types_display(rss_conf->types, TESTPMD_RSS_TYPES_CHAR_NUM_PER_LINE);
 }
 
 static struct port_indirect_action *
@@ -3859,7 +3891,7 @@ port_rss_hash_conf_show(portid_t port_id, int show_rss_key)
 		return;
 	}
 	printf("RSS functions:\n");
-	rss_types_display(rss_hf);
+	rss_types_display(rss_hf, TESTPMD_RSS_TYPES_CHAR_NUM_PER_LINE);
 	printf("\n");
 	if (!show_rss_key)
 		return;
