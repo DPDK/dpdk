@@ -1868,7 +1868,11 @@ rte_vhost_async_dma_configure(int16_t dma_id, uint16_t vchan_id)
 		return -1;
 	}
 
-	rte_dma_info_get(dma_id, &info);
+	if (rte_dma_info_get(dma_id, &info) != 0) {
+		VHOST_LOG_CONFIG(ERR, "Fail to get DMA %d information.\n", dma_id);
+		return -1;
+	}
+
 	if (vchan_id >= info.max_vchans) {
 		VHOST_LOG_CONFIG(ERR, "Invalid DMA %d vChannel %u.\n", dma_id, vchan_id);
 		return -1;
