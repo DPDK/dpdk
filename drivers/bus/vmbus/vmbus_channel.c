@@ -27,7 +27,7 @@ vmbus_sync_set_bit(volatile uint32_t *addr, uint32_t mask)
 }
 
 static inline void
-vmbus_set_monitor(const struct rte_vmbus_device *dev, uint32_t monitor_id)
+vmbus_set_monitor(const struct vmbus_channel *channel, uint32_t monitor_id)
 {
 	uint32_t *monitor_addr, monitor_mask;
 	unsigned int trigger_index;
@@ -35,15 +35,14 @@ vmbus_set_monitor(const struct rte_vmbus_device *dev, uint32_t monitor_id)
 	trigger_index = monitor_id / HV_MON_TRIG_LEN;
 	monitor_mask = 1u << (monitor_id % HV_MON_TRIG_LEN);
 
-	monitor_addr = &dev->monitor_page->trigs[trigger_index].pending;
+	monitor_addr = &channel->monitor_page->trigs[trigger_index].pending;
 	vmbus_sync_set_bit(monitor_addr, monitor_mask);
 }
 
 static void
-vmbus_set_event(const struct rte_vmbus_device *dev,
-		const struct vmbus_channel *chan)
+vmbus_set_event(const struct vmbus_channel *chan)
 {
-	vmbus_set_monitor(dev, chan->monitor_id);
+	vmbus_set_monitor(chan, chan->monitor_id);
 }
 
 /*
@@ -81,7 +80,6 @@ rte_vmbus_set_latency(const struct rte_vmbus_device *dev,
 void
 rte_vmbus_chan_signal_tx(const struct vmbus_channel *chan)
 {
-	const struct rte_vmbus_device *dev = chan->device;
 	const struct vmbus_br *tbr = &chan->txbr;
 
 	/* Make sure all updates are done before signaling host */
@@ -91,7 +89,7 @@ rte_vmbus_chan_signal_tx(const struct vmbus_channel *chan)
 	if (tbr->vbr->imask)
 		return;
 
-	vmbus_set_event(dev, chan);
+	vmbus_set_event(chan);
 }
 
 
@@ -218,7 +216,7 @@ void rte_vmbus_chan_signal_read(struct vmbus_channel *chan, uint32_t bytes_read)
 	if (write_sz <= pending_sz)
 		return;
 
-	vmbus_set_event(chan->device, chan);
+	vmbus_set_event(chan);
 }
 
 int rte_vmbus_chan_recv(struct vmbus_channel *chan, void *data, uint32_t *len,
@@ -325,6 +323,7 @@ int vmbus_chan_create(const struct rte_vmbus_device *device,
 	chan->subchannel_id = subid;
 	chan->relid = relid;
 	chan->monitor_id = monitor_id;
+	chan->monitor_page = device->monitor_page;
 	*new_chan = chan;
 
 	err = vmbus_uio_map_rings(chan);

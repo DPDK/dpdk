@@ -193,11 +193,11 @@ hn_nvs_conn_rxbuf(struct hn_data *hv)
 	 * Connect RXBUF to NVS.
 	 */
 	conn.type = NVS_TYPE_RXBUF_CONN;
-	conn.gpadl = hv->rxbuf_res->phys_addr;
+	conn.gpadl = hv->rxbuf_res.phys_addr;
 	conn.sig = NVS_RXBUF_SIG;
 	PMD_DRV_LOG(DEBUG, "connect rxbuff va=%p gpad=%#" PRIx64,
-		    hv->rxbuf_res->addr,
-		    hv->rxbuf_res->phys_addr);
+		    hv->rxbuf_res.addr,
+		    hv->rxbuf_res.phys_addr);
 
 	error = hn_nvs_execute(hv, &conn, sizeof(conn),
 			       &resp, sizeof(resp),
@@ -308,17 +308,17 @@ hn_nvs_conn_chim(struct hn_data *hv)
 	struct hn_nvs_chim_conn chim;
 	struct hn_nvs_chim_connresp resp;
 	uint32_t sectsz;
-	unsigned long len = hv->chim_res->len;
+	unsigned long len = hv->chim_res.len;
 	int error;
 
 	/* Connect chimney sending buffer to NVS */
 	memset(&chim, 0, sizeof(chim));
 	chim.type = NVS_TYPE_CHIM_CONN;
-	chim.gpadl = hv->chim_res->phys_addr;
+	chim.gpadl = hv->chim_res.phys_addr;
 	chim.sig = NVS_CHIM_SIG;
 	PMD_DRV_LOG(DEBUG, "connect send buf va=%p gpad=%#" PRIx64,
-		    hv->chim_res->addr,
-		    hv->chim_res->phys_addr);
+		    hv->chim_res.addr,
+		    hv->chim_res.phys_addr);
 
 	error = hn_nvs_execute(hv, &chim, sizeof(chim),
 			       &resp, sizeof(resp),

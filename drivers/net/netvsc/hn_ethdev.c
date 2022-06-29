@@ -980,8 +980,8 @@ eth_hn_dev_init(struct rte_eth_dev *eth_dev)
 	}
 
 	hv->vmbus = vmbus;
-	hv->rxbuf_res = &vmbus->resource[HV_RECV_BUF_MAP];
-	hv->chim_res  = &vmbus->resource[HV_SEND_BUF_MAP];
+	hv->rxbuf_res = vmbus->resource[HV_RECV_BUF_MAP];
+	hv->chim_res  = vmbus->resource[HV_SEND_BUF_MAP];
 	hv->port_id = eth_dev->data->port_id;
 	hv->latency = HN_CHAN_LATENCY_NS;
 	hv->rx_copybreak = HN_RXCOPY_THRESHOLD;

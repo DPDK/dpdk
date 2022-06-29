@@ -77,6 +77,8 @@ struct vmbus_channel {
 	uint16_t relid;
 	uint16_t subchannel_id;
 	uint8_t monitor_id;
+
+	struct vmbus_mon_page *monitor_page;
 };
 
 #define VMBUS_MAX_CHANNELS	64
