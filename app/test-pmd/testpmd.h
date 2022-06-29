@@ -1124,6 +1124,8 @@ extern int flow_parse(const char *src, void *result, unsigned int size,
 		      struct rte_flow_item **pattern,
 		      struct rte_flow_action **actions);
 
+const char *rsstypes_to_str(uint64_t rss_type);
+
 /*
  * Work-around of a compilation error with ICC on invocations of the
  * rte_be_to_cpu_16() function.
