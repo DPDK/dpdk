@@ -1781,6 +1781,7 @@ static int
 init_test_ops(void)
 {
 	switch (info.algo) {
+	case FIPS_TEST_ALGO_AES_CBC:
 	case FIPS_TEST_ALGO_AES:
 		test_ops.prepare_op = prepare_cipher_op;
 		test_ops.prepare_xform  = prepare_aes_xform;
