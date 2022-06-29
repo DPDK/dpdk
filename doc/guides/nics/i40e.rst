@@ -969,11 +969,10 @@ it will fail and return the info "Conflict with the first rule's input set",
 which means the current rule's input set conflicts with the first rule's.
 Remove the first rule if want to change the input set of the PCTYPE.
 
-PF reset fail after QinQ set with FW >= 8.4
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Disable QinQ is not supported when FW >= 8.4
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-If upgrade FW to version 8.4 and higher, after set MAC VLAN filter and configure outer VLAN on PF, kill
-DPDK process will cause the card crash.
+If upgrade FW to version 8.4 and higher, enable QinQ by default and disable QinQ is not supported.
 
 
 Example of getting best performance with l3fwd example

@@ -2575,7 +2575,6 @@ i40e_dev_close(struct rte_eth_dev *dev)
 	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 	struct rte_intr_handle *intr_handle = pci_dev->intr_handle;
-	struct rte_eth_rxmode *rxmode = &dev->data->dev_conf.rxmode;
 	struct i40e_filter_control_settings settings;
 	struct rte_flow *p_flow;
 	uint32_t reg;
@@ -2587,18 +2586,6 @@ i40e_dev_close(struct rte_eth_dev *dev)
 	PMD_INIT_FUNC_TRACE();
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return 0;
-
-	/*
-	 * It is a workaround, if the double VLAN is disabled when
-	 * the program exits, an abnormal error will occur on the
-	 * NIC. Need to enable double VLAN when dev is closed.
-	 */
-	if (pf->fw8_3gt) {
-		if (!(rxmode->offloads & RTE_ETH_RX_OFFLOAD_VLAN_EXTEND)) {
-			rxmode->offloads |= RTE_ETH_RX_OFFLOAD_VLAN_EXTEND;
-			i40e_vlan_offload_set(dev, RTE_ETH_VLAN_EXTEND_MASK);
-		}
-	}
 
 	ret = rte_eth_switch_domain_free(pf->switch_domain_id);
 	if (ret)
@@ -3950,20 +3937,8 @@ i40e_vlan_tpid_set(struct rte_eth_dev *dev,
 			else if (vlan_type == RTE_ETH_VLAN_TYPE_INNER)
 				hw->second_tag = rte_cpu_to_le_16(tpid);
 		} else {
-			/*
-			 * If tpid is equal to 0x88A8, indicates that the
-			 * disable double VLAN operation is in progress.
-			 * Need set switch configuration back to default.
-			 */
-			if (pf->fw8_3gt && tpid == RTE_ETHER_TYPE_QINQ) {
-				sw_flags = 0;
-				valid_flags = I40E_AQ_SET_SWITCH_CFG_OUTER_VLAN;
-				if (vlan_type == RTE_ETH_VLAN_TYPE_OUTER)
-					hw->first_tag = rte_cpu_to_le_16(tpid);
-			} else {
-				if (vlan_type == RTE_ETH_VLAN_TYPE_OUTER)
-					hw->second_tag = rte_cpu_to_le_16(tpid);
-			}
+			if (vlan_type == RTE_ETH_VLAN_TYPE_OUTER)
+				hw->second_tag = rte_cpu_to_le_16(tpid);
 		}
 		ret = i40e_aq_set_switch_config(hw, sw_flags,
 						valid_flags, 0, NULL);
@@ -4043,6 +4018,12 @@ i40e_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 	}
 
 	if (mask & RTE_ETH_VLAN_EXTEND_MASK) {
+		/* Double VLAN not allowed to be disabled.*/
+		if (pf->fw8_3gt && !(rxmode->offloads & RTE_ETH_RX_OFFLOAD_VLAN_EXTEND)) {
+			PMD_DRV_LOG(WARNING,
+				"Disable double VLAN is not allowed after firmwarev8.3!");
+			return 0;
+		}
 		i = 0;
 		num = vsi->mac_num;
 		mac_filter = rte_zmalloc("mac_filter_info_data",
@@ -4078,9 +4059,6 @@ i40e_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 			i40e_vlan_tpid_set(dev, RTE_ETH_VLAN_TYPE_INNER,
 					   RTE_ETHER_TYPE_VLAN);
 		} else {
-			if (pf->fw8_3gt)
-				i40e_vlan_tpid_set(dev, RTE_ETH_VLAN_TYPE_OUTER,
-					   RTE_ETHER_TYPE_QINQ);
 			i40e_vsi_config_double_vlan(vsi, FALSE);
 		}
 		/* Restore all mac */
@@ -6176,6 +6154,7 @@ i40e_vsi_config_vlan_stripping(struct i40e_vsi *vsi, bool on)
 static int
 i40e_dev_init_vlan(struct rte_eth_dev *dev)
 {
+	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
 	struct rte_eth_dev_data *data = dev->data;
 	int ret;
 	int mask = 0;
@@ -6185,6 +6164,12 @@ i40e_dev_init_vlan(struct rte_eth_dev *dev)
 	       RTE_ETH_QINQ_STRIP_MASK |
 	       RTE_ETH_VLAN_FILTER_MASK |
 	       RTE_ETH_VLAN_EXTEND_MASK;
+
+	/* Double VLAN be enabled by default.*/
+	if (pf->fw8_3gt) {
+		struct rte_eth_rxmode *rxmode = &dev->data->dev_conf.rxmode;
+		rxmode->offloads |= RTE_ETH_RX_OFFLOAD_VLAN_EXTEND;
+	}
 	ret = i40e_vlan_offload_set(dev, mask);
 	if (ret) {
 		PMD_DRV_LOG(INFO, "Failed to update vlan offload");
