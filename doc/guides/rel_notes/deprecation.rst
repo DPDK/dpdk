@@ -152,6 +152,9 @@ Deprecation Notices
   Names for the telemetry commands will be similarly limited.
   The parameters for telemetry commands are unaffected by this change.
 
+* raw/dpaa2_cmdif: The ``dpaa2_cmdif`` rawdev driver will be deprecated
+  in DPDK 22.11, as it is no longer in use, no active user known.
+
 * raw/ioat: The ``ioat`` rawdev driver has been deprecated, since it's
   functionality is provided through the new ``dmadev`` infrastructure.
   To continue to use hardware previously supported by the ``ioat`` rawdev driver,
