@@ -136,8 +136,10 @@ bpi_cipher_ctx_init(enum rte_crypto_cipher_algorithm cryptodev_algo,
 	return 0;
 
 ctx_init_err:
-	if (*ctx != NULL)
+	if (*ctx != NULL) {
 		EVP_CIPHER_CTX_free(*ctx);
+		*ctx = NULL;
+	}
 	return ret;
 }
 
