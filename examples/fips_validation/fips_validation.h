@@ -38,10 +38,10 @@ enum fips_test_algorithms {
 		FIPS_TEST_ALGO_AES_GCM,
 		FIPS_TEST_ALGO_AES_CMAC,
 		FIPS_TEST_ALGO_AES_CCM,
+		FIPS_TEST_ALGO_AES_XTS,
 		FIPS_TEST_ALGO_HMAC,
 		FIPS_TEST_ALGO_TDES,
 		FIPS_TEST_ALGO_SHA,
-		FIPS_TEST_ALGO_AES_XTS,
 		FIPS_TEST_ALGO_MAX
 };
 
@@ -171,6 +171,15 @@ struct gcm_interim_data {
 	uint8_t gen_iv;
 };
 
+enum xts_tweak_modes {
+	XTS_TWEAK_MODE_HEX = 0,
+	XTS_TWEAK_MODE_NUMBER
+};
+
+struct xts_interim_data {
+	enum xts_tweak_modes tweak_mode;
+};
+
 #ifdef USE_JANSSON
 struct fips_test_json_info {
 	/* Information used for reading from json */
@@ -208,6 +217,7 @@ struct fips_test_interim_info {
 		struct ccm_interim_data ccm_data;
 		struct sha_interim_data sha_data;
 		struct gcm_interim_data gcm_data;
+		struct xts_interim_data xts_data;
 	} interim_info;
 
 	enum fips_test_op op;
@@ -267,6 +277,9 @@ parse_test_cmac_json_init(void);
 
 int
 parse_test_aes_json_init(void);
+
+int
+parse_test_xts_json_init(void);
 #endif /* USE_JANSSON */
 
 int
