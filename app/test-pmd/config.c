@@ -673,6 +673,19 @@ print_dev_capabilities(uint64_t capabilities)
 	}
 }
 
+uint64_t
+str_to_rsstypes(const char *str)
+{
+	uint16_t i;
+
+	for (i = 0; rss_type_table[i].str != NULL; i++) {
+		if (strcmp(rss_type_table[i].str, str) == 0)
+			return rss_type_table[i].rss_type;
+	}
+
+	return 0;
+}
+
 const char *
 rsstypes_to_str(uint64_t rss_type)
 {
@@ -3856,15 +3869,10 @@ port_rss_hash_key_update(portid_t port_id, char rss_type[], uint8_t *hash_key,
 {
 	struct rte_eth_rss_conf rss_conf;
 	int diag;
-	unsigned int i;
 
 	rss_conf.rss_key = NULL;
 	rss_conf.rss_key_len = 0;
-	rss_conf.rss_hf = 0;
-	for (i = 0; rss_type_table[i].str; i++) {
-		if (!strcmp(rss_type_table[i].str, rss_type))
-			rss_conf.rss_hf = rss_type_table[i].rss_type;
-	}
+	rss_conf.rss_hf = str_to_rsstypes(rss_type);
 	diag = rte_eth_dev_rss_hash_conf_get(port_id, &rss_conf);
 	if (diag == 0) {
 		rss_conf.rss_key = hash_key;

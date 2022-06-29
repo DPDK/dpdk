@@ -1199,6 +1199,7 @@ extern int flow_parse(const char *src, void *result, unsigned int size,
 		      struct rte_flow_item **pattern,
 		      struct rte_flow_action **actions);
 
+uint64_t str_to_rsstypes(const char *str);
 const char *rsstypes_to_str(uint64_t rss_type);
 
 /* For registering driver specific testpmd commands. */

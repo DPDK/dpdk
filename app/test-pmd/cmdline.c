@@ -693,9 +693,14 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"    Enable or disable packet drop on all RX queues of all ports when no "
 			"receive buffers available.\n\n"
 
-			"port config all rss (all|default|ip|tcp|udp|sctp|"
-			"l2-payload|port|vxlan|geneve|nvgre|vxlan-gpe|ecpri|mpls|ipv4-chksum|l2tpv2|"
-			"none|level-default|level-outer|level-inner|<flowtype_id>)\n"
+			"port config all rss (all|default|level-default|level-outer|level-inner|"
+			"ip|tcp|udp|sctp|tunnel|vlan|none|"
+			"ipv4|ipv4-frag|ipv4-tcp|ipv4-udp|ipv4-sctp|ipv4-other|"
+			"ipv6|ipv6-frag|ipv6-tcp|ipv6-udp|ipv6-sctp|ipv6-other|ipv6-ex|ipv6-tcp-ex|ipv6-udp-ex|"
+			"l2-payload|port|vxlan|geneve|nvgre|gtpu|eth|s-vlan|c-vlan|"
+			"esp|ah|l2tpv3|pfcp|pppoe|ecpri|mpls|ipv4-chksum|l4-chksum|"
+			"l2tpv2|l3-pre96|l3-pre64|l3-pre56|l3-pre48|l3-pre40|l3-pre32|"
+			"l2-dst-only|l2-src-only|l4-dst-only|l4-src-only|l3-dst-only|l3-src-only|<rsstype_id>)\n"
 			"    Set the RSS mode.\n\n"
 
 			"port config port-id rss reta (hash,queue)[,(hash,queue)]\n"
@@ -2062,81 +2067,7 @@ cmd_config_rss_parsed(void *parsed_result,
 	uint16_t i;
 	int ret;
 
-	if (!strcmp(res->value, "all"))
-		rss_conf.rss_hf = RTE_ETH_RSS_ETH | RTE_ETH_RSS_VLAN | RTE_ETH_RSS_IP |
-			RTE_ETH_RSS_TCP | RTE_ETH_RSS_UDP | RTE_ETH_RSS_SCTP |
-			RTE_ETH_RSS_L2_PAYLOAD | RTE_ETH_RSS_L2TPV3 | RTE_ETH_RSS_ESP |
-			RTE_ETH_RSS_AH | RTE_ETH_RSS_PFCP | RTE_ETH_RSS_GTPU |
-			RTE_ETH_RSS_ECPRI | RTE_ETH_RSS_L2TPV2;
-	else if (!strcmp(res->value, "eth"))
-		rss_conf.rss_hf = RTE_ETH_RSS_ETH;
-	else if (!strcmp(res->value, "vlan"))
-		rss_conf.rss_hf = RTE_ETH_RSS_VLAN;
-	else if (!strcmp(res->value, "ip"))
-		rss_conf.rss_hf = RTE_ETH_RSS_IP;
-	else if (!strcmp(res->value, "udp"))
-		rss_conf.rss_hf = RTE_ETH_RSS_UDP;
-	else if (!strcmp(res->value, "tcp"))
-		rss_conf.rss_hf = RTE_ETH_RSS_TCP;
-	else if (!strcmp(res->value, "sctp"))
-		rss_conf.rss_hf = RTE_ETH_RSS_SCTP;
-	else if (!strcmp(res->value, "l2_payload"))
-		rss_conf.rss_hf = RTE_ETH_RSS_L2_PAYLOAD;
-	else if (!strcmp(res->value, "port"))
-		rss_conf.rss_hf = RTE_ETH_RSS_PORT;
-	else if (!strcmp(res->value, "vxlan"))
-		rss_conf.rss_hf = RTE_ETH_RSS_VXLAN;
-	else if (!strcmp(res->value, "geneve"))
-		rss_conf.rss_hf = RTE_ETH_RSS_GENEVE;
-	else if (!strcmp(res->value, "nvgre"))
-		rss_conf.rss_hf = RTE_ETH_RSS_NVGRE;
-	else if (!strcmp(res->value, "l3-pre32"))
-		rss_conf.rss_hf = RTE_ETH_RSS_L3_PRE32;
-	else if (!strcmp(res->value, "l3-pre40"))
-		rss_conf.rss_hf = RTE_ETH_RSS_L3_PRE40;
-	else if (!strcmp(res->value, "l3-pre48"))
-		rss_conf.rss_hf = RTE_ETH_RSS_L3_PRE48;
-	else if (!strcmp(res->value, "l3-pre56"))
-		rss_conf.rss_hf = RTE_ETH_RSS_L3_PRE56;
-	else if (!strcmp(res->value, "l3-pre64"))
-		rss_conf.rss_hf = RTE_ETH_RSS_L3_PRE64;
-	else if (!strcmp(res->value, "l3-pre96"))
-		rss_conf.rss_hf = RTE_ETH_RSS_L3_PRE96;
-	else if (!strcmp(res->value, "l3-src-only"))
-		rss_conf.rss_hf = RTE_ETH_RSS_L3_SRC_ONLY;
-	else if (!strcmp(res->value, "l3-dst-only"))
-		rss_conf.rss_hf = RTE_ETH_RSS_L3_DST_ONLY;
-	else if (!strcmp(res->value, "l4-src-only"))
-		rss_conf.rss_hf = RTE_ETH_RSS_L4_SRC_ONLY;
-	else if (!strcmp(res->value, "l4-dst-only"))
-		rss_conf.rss_hf = RTE_ETH_RSS_L4_DST_ONLY;
-	else if (!strcmp(res->value, "l2-src-only"))
-		rss_conf.rss_hf = RTE_ETH_RSS_L2_SRC_ONLY;
-	else if (!strcmp(res->value, "l2-dst-only"))
-		rss_conf.rss_hf = RTE_ETH_RSS_L2_DST_ONLY;
-	else if (!strcmp(res->value, "l2tpv3"))
-		rss_conf.rss_hf = RTE_ETH_RSS_L2TPV3;
-	else if (!strcmp(res->value, "esp"))
-		rss_conf.rss_hf = RTE_ETH_RSS_ESP;
-	else if (!strcmp(res->value, "ah"))
-		rss_conf.rss_hf = RTE_ETH_RSS_AH;
-	else if (!strcmp(res->value, "pfcp"))
-		rss_conf.rss_hf = RTE_ETH_RSS_PFCP;
-	else if (!strcmp(res->value, "pppoe"))
-		rss_conf.rss_hf = RTE_ETH_RSS_PPPOE;
-	else if (!strcmp(res->value, "gtpu"))
-		rss_conf.rss_hf = RTE_ETH_RSS_GTPU;
-	else if (!strcmp(res->value, "ecpri"))
-		rss_conf.rss_hf = RTE_ETH_RSS_ECPRI;
-	else if (!strcmp(res->value, "mpls"))
-		rss_conf.rss_hf = RTE_ETH_RSS_MPLS;
-	else if (!strcmp(res->value, "ipv4-chksum"))
-		rss_conf.rss_hf = RTE_ETH_RSS_IPV4_CHKSUM;
-	else if (!strcmp(res->value, "l2tpv2"))
-		rss_conf.rss_hf = RTE_ETH_RSS_L2TPV2;
-	else if (!strcmp(res->value, "none"))
-		rss_conf.rss_hf = 0;
-	else if (!strcmp(res->value, "level-default")) {
+	if (!strcmp(res->value, "level-default")) {
 		rss_hf &= (~RTE_ETH_RSS_LEVEL_MASK);
 		rss_conf.rss_hf = (rss_hf | RTE_ETH_RSS_LEVEL_PMD_DEFAULT);
 	} else if (!strcmp(res->value, "level-outer")) {
@@ -2145,14 +2076,24 @@ cmd_config_rss_parsed(void *parsed_result,
 	} else if (!strcmp(res->value, "level-inner")) {
 		rss_hf &= (~RTE_ETH_RSS_LEVEL_MASK);
 		rss_conf.rss_hf = (rss_hf | RTE_ETH_RSS_LEVEL_INNERMOST);
-	} else if (!strcmp(res->value, "default"))
+	} else if (!strcmp(res->value, "default")) {
 		use_default = 1;
-	else if (isdigit(res->value[0]) && atoi(res->value) > 0 &&
-						atoi(res->value) < 64)
-		rss_conf.rss_hf = 1ULL << atoi(res->value);
-	else {
-		fprintf(stderr, "Unknown parameter\n");
-		return;
+	} else if (isdigit(res->value[0])) {
+		int value = atoi(res->value);
+		if (value > 0 && value < 64)
+			rss_conf.rss_hf = 1ULL << (uint8_t)value;
+		else {
+			fprintf(stderr, "flowtype_id should be greater than 0 and less than 64.\n");
+			return;
+		}
+	} else if (!strcmp(res->value, "none")) {
+		rss_conf.rss_hf = 0;
+	} else {
+		rss_conf.rss_hf = str_to_rsstypes(res->value);
+		if (rss_conf.rss_hf == 0) {
+			fprintf(stderr, "Unknown parameter\n");
+			return;
+		}
 	}
 	rss_conf.rss_key = NULL;
 	/* Update global configuration for RSS types. */
@@ -2203,9 +2144,14 @@ static cmdline_parse_inst_t cmd_config_rss = {
 	.f = cmd_config_rss_parsed,
 	.data = NULL,
 	.help_str = "port config all rss "
-		"all|default|eth|vlan|ip|tcp|udp|sctp|l2-payload|port|vxlan|geneve|"
-		"nvgre|vxlan-gpe|l2tpv3|esp|ah|pfcp|ecpri|mpls|ipv4-chksum|l2tpv2|"
-		"none|level-default|level-outer|level-inner|<flowtype_id>",
+		"all|default|level-default|level-outer|level-inner|"
+		"ip|tcp|udp|sctp|tunnel|vlan|none|"
+		"ipv4|ipv4-frag|ipv4-tcp|ipv4-udp|ipv4-sctp|ipv4-other|"
+		"ipv6|ipv6-frag|ipv6-tcp|ipv6-udp|ipv6-sctp|ipv6-other|ipv6-ex|ipv6-tcp-ex|ipv6-udp-ex|"
+		"l2-payload|port|vxlan|geneve|nvgre|gtpu|eth|s-vlan|c-vlan|"
+		"esp|ah|l2tpv3|pfcp|pppoe|ecpri|mpls|ipv4-chksum|l4-chksum|"
+		"l2tpv2|l3-pre96|l3-pre64|l3-pre56|l3-pre48|l3-pre40|l3-pre32|"
+		"l2-dst-only|l2-src-only|l4-dst-only|l4-src-only|l3-dst-only|l3-src-only|<rsstype_id>",
 	.tokens = {
 		(void *)&cmd_config_rss_port,
 		(void *)&cmd_config_rss_keyword,

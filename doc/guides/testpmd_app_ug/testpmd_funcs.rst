@@ -2143,8 +2143,15 @@ port config - RSS
 ~~~~~~~~~~~~~~~~~
 
 Set the RSS (Receive Side Scaling) mode on or off::
-
-   testpmd> port config all rss (all|default|eth|vlan|ip|tcp|udp|sctp|l2-payload|port|vxlan|geneve|nvgre|vxlan-gpe|l2tpv3|esp|ah|pfcp|ecpri|mpls|l2tpv2|none)
+   testpmd> port config all rss (all|default|level-default|level-outer|level-inner| \
+                                 ip|tcp|udp|sctp|tunnel|vlan|none| \
+                                 ipv4|ipv4-frag|ipv4-tcp|ipv4-udp|ipv4-sctp|ipv4-other| \
+                                 ipv6|ipv6-frag|ipv6-tcp|ipv6-udp|ipv6-sctp| \
+                                 ipv6-other|ipv6-ex|ipv6-tcp-ex|ipv6-udp-ex| \
+                                 l2-payload|port|vxlan|geneve|nvgre|gtpu|eth|s-vlan|c-vlan| \
+                                 esp|ah|l2tpv3|pfcp|pppoe|ecpri|mpls|ipv4-chksum|l4-chksum| \
+                                 l2tpv2|l3-pre96|l3-pre64|l3-pre56|l3-pre48|l3-pre40|l3-pre32| \
+                                 l2-dst-only|l2-src-only|l4-dst-only|l4-src-only|l3-dst-only|l3-src-only|<rsstype_id>)
 
 RSS is on by default.
 
