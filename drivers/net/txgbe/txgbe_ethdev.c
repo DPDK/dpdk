@@ -591,6 +591,8 @@ eth_txgbe_dev_init(struct rte_eth_dev *eth_dev, void *init_params __rte_unused)
 
 	rte_eth_copy_pci_info(eth_dev, pci_dev);
 
+	hw->hw_addr = (void *)pci_dev->mem_resource[0].addr;
+
 	/* Vendor and Device ID need to be set before init of shared code */
 	hw->device_id = pci_dev->id.device_id;
 	hw->vendor_id = pci_dev->id.vendor_id;
@@ -607,7 +609,6 @@ eth_txgbe_dev_init(struct rte_eth_dev *eth_dev, void *init_params __rte_unused)
 		}
 		hw->subsystem_device_id = (u16)ssid >> 8 | (u16)ssid << 8;
 	}
-	hw->hw_addr = (void *)pci_dev->mem_resource[0].addr;
 	hw->allow_unsupported_sfp = 1;
 
 	/* Reserve memory for interrupt status block */
