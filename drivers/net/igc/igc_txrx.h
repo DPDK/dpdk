@@ -49,6 +49,12 @@ void eth_igc_txq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
 	struct rte_eth_txq_info *qinfo);
 void eth_igc_vlan_strip_queue_set(struct rte_eth_dev *dev,
 			uint16_t rx_queue_id, int on);
+uint16_t igc_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts);
+uint16_t igc_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts);
+uint16_t eth_igc_prep_pkts(__rte_unused void *tx_queue, struct rte_mbuf **tx_pkts,
+	uint16_t nb_pkts);
+uint16_t igc_recv_scattered_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
+	uint16_t nb_pkts);
 #ifdef __cplusplus
 }
 #endif
