@@ -1533,7 +1533,8 @@ fill_ipsec_session(struct rte_ipsec_session *ss, struct rte_ipsec_sa *sa)
  * Initialise related rte_ipsec_sa object.
  */
 static int
-ipsec_sa_init(struct ipsec_sa *lsa, struct rte_ipsec_sa *sa, uint32_t sa_size)
+ipsec_sa_init(struct ipsec_sa *lsa, struct rte_ipsec_sa *sa, uint32_t sa_size,
+		struct socket_ctx *skt_ctx, struct ipsec_ctx *ips_ctx[])
 {
 	int rc;
 	struct rte_ipsec_sa_prm prm;
@@ -1572,8 +1573,15 @@ ipsec_sa_init(struct ipsec_sa *lsa, struct rte_ipsec_sa *sa, uint32_t sa_size)
 		return rc;
 
 	/* init inline fallback processing session */
-	if (lsa->fallback_sessions == 1)
-		rc = fill_ipsec_session(ipsec_get_fallback_session(lsa), sa);
+	if (lsa->fallback_sessions == 1) {
+		struct rte_ipsec_session *ipfs = ipsec_get_fallback_session(lsa);
+		if (ipfs->security.ses == NULL) {
+			rc = create_lookaside_session(ips_ctx, skt_ctx, lsa, ipfs);
+			if (rc != 0)
+				return rc;
+		}
+		rc = fill_ipsec_session(ipfs, sa);
+	}
 
 	return rc;
 }
@@ -1583,7 +1591,8 @@ ipsec_sa_init(struct ipsec_sa *lsa, struct rte_ipsec_sa *sa, uint32_t sa_size)
  * one per session.
  */
 static int
-ipsec_satbl_init(struct sa_ctx *ctx, uint32_t nb_ent, int32_t socket)
+ipsec_satbl_init(struct sa_ctx *ctx, uint32_t nb_ent, int32_t socket,
+		struct socket_ctx *skt_ctx, struct ipsec_ctx *ips_ctx[])
 {
 	int32_t rc, sz;
 	uint32_t i, idx;
@@ -1621,7 +1630,7 @@ ipsec_satbl_init(struct sa_ctx *ctx, uint32_t nb_ent, int32_t socket)
 		sa = (struct rte_ipsec_sa *)((uintptr_t)ctx->satbl + sz * i);
 		lsa = ctx->sa + idx;
 
-		rc = ipsec_sa_init(lsa, sa, sz);
+		rc = ipsec_sa_init(lsa, sa, sz, skt_ctx, ips_ctx);
 	}
 
 	return rc;
@@ -1700,7 +1709,7 @@ sa_init(struct socket_ctx *ctx, int32_t socket_id,
 
 		if (app_sa_prm.enable != 0) {
 			rc = ipsec_satbl_init(ctx->sa_in, nb_sa_in,
-				socket_id);
+				socket_id, ctx, ipsec_ctx);
 			if (rc != 0)
 				rte_exit(EXIT_FAILURE,
 					"failed to init inbound SAs\n");
@@ -1722,7 +1731,7 @@ sa_init(struct socket_ctx *ctx, int32_t socket_id,
 
 		if (app_sa_prm.enable != 0) {
 			rc = ipsec_satbl_init(ctx->sa_out, nb_sa_out,
-				socket_id);
+				socket_id, ctx, ipsec_ctx);
 			if (rc != 0)
 				rte_exit(EXIT_FAILURE,
 					"failed to init outbound SAs\n");
