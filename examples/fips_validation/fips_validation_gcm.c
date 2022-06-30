@@ -327,6 +327,9 @@ parse_test_gcm_json_writeback(struct fips_val *val)
 				writeback_hex_str("", info.one_line_text, &tmp_val);
 				json_object_set_new(json_info.json_write_case, PT_JSON_STR,
 					json_string(info.one_line_text));
+			} else {
+				json_object_set_new(json_info.json_write_case, PT_JSON_STR,
+					json_string(""));
 			}
 		} else {
 			json_object_set_new(json_info.json_write_case, "testPassed", json_false());
