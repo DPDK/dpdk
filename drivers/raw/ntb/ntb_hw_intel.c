@@ -37,7 +37,8 @@ is_gen3_ntb(const struct ntb_hw *hw)
 static inline int
 is_gen4_ntb(const struct ntb_hw *hw)
 {
-	if (hw->pci_dev->id.device_id == NTB_INTEL_DEV_ID_B2B_ICX)
+	if (hw->pci_dev->id.device_id == NTB_INTEL_DEV_ID_B2B_ICX ||
+	    hw->pci_dev->id.device_id == NTB_INTEL_DEV_ID_B2B_SPR)
 		return 1;
 
 	return 0;
@@ -87,12 +88,8 @@ intel_ntb3_check_ppd(struct ntb_hw *hw)
 }
 
 static int
-intel_ntb4_check_ppd(struct ntb_hw *hw)
+intel_ntb4_check_ppd_for_ICX(struct ntb_hw *hw, uint32_t reg_val)
 {
-	uint32_t reg_val;
-
-	reg_val = rte_read32(hw->hw_addr + XEON_GEN4_PPD1_OFFSET);
-
 	/* Check connection topo type. Only support B2B. */
 	switch (reg_val & XEON_GEN4_PPD_CONN_MASK) {
 	case XEON_GEN4_PPD_CONN_B2B:
@@ -113,6 +110,61 @@ intel_ntb4_check_ppd(struct ntb_hw *hw)
 	}
 
 	return 0;
+}
+
+static int
+intel_ntb4_check_ppd_for_SPR(struct ntb_hw *hw, uint32_t reg_val)
+{
+	/* Check connection topo type. Only support B2B. */
+	switch (reg_val & XEON_SPR_PPD_CONN_MASK) {
+	case XEON_SPR_PPD_CONN_B2B:
+		NTB_LOG(INFO, "Topo B2B (back to back) is using.");
+		break;
+	default:
+		NTB_LOG(ERR, "Not supported conn topo. Please use B2B.");
+		return -EINVAL;
+	}
+
+	/* Check device type. */
+	if (reg_val & XEON_SPR_PPD_DEV_DSD) {
+		NTB_LOG(INFO, "DSD, Downstream Device.");
+		hw->topo = NTB_TOPO_B2B_DSD;
+	} else {
+		NTB_LOG(INFO, "USD, Upstream device.");
+		hw->topo = NTB_TOPO_B2B_USD;
+	}
+
+	return 0;
+}
+
+static int
+intel_ntb4_check_ppd(struct ntb_hw *hw)
+{
+	uint8_t revision_id;
+	uint32_t reg_val;
+	int ret;
+
+	ret = rte_pci_read_config(hw->pci_dev, &revision_id,
+				  NTB_PCI_DEV_REVISION_ID_LEN,
+				  NTB_PCI_DEV_REVISION_ID_REG);
+	if (ret != NTB_PCI_DEV_REVISION_ID_LEN) {
+		NTB_LOG(ERR, "Cannot get NTB PCI Device Revision ID.");
+		return -EIO;
+	}
+
+	reg_val = rte_read32(hw->hw_addr + XEON_GEN4_PPD1_OFFSET);
+
+	/* Distinguish HW platform (ICX/SPR) via PCI Revision ID */
+	if (revision_id > NTB_PCI_DEV_REVISION_ICX_MAX)
+		ret = intel_ntb4_check_ppd_for_SPR(hw, reg_val);
+	else if (revision_id >= NTB_PCI_DEV_REVISION_ICX_MIN)
+		ret = intel_ntb4_check_ppd_for_ICX(hw, reg_val);
+	else {
+		NTB_LOG(ERR, "Invalid NTB PCI Device Revision ID.");
+		return -EIO;
+	}
+
+	return ret;
 }
 
 static int

@@ -5,6 +5,13 @@
 #ifndef _NTB_HW_INTEL_H_
 #define _NTB_HW_INTEL_H_
 
+/* Supported PCI device revision ID range for ICX */
+#define NTB_PCI_DEV_REVISION_ICX_MIN	0x02
+#define NTB_PCI_DEV_REVISION_ICX_MAX	0x0F
+
+#define NTB_PCI_DEV_REVISION_ID_REG	0x08
+#define NTB_PCI_DEV_REVISION_ID_LEN	1
+
 /* Ntb control and link status */
 #define NTB_CTL_CFG_LOCK		1
 #define NTB_CTL_DISABLE			2
@@ -89,6 +96,12 @@
 #define XEON_GEN4_PPD_LINKTRN		0x0008
 #define XEON_GEN4_SLOTSTS		0xb05a
 #define XEON_GEN4_SLOTSTS_DLLSCS	0x100
+
+#define XEON_SPR_PPD_CONN_MASK		0x0700
+#define XEON_SPR_PPD_CONN_B2B		0x0200
+#define XEON_SPR_PPD_DEV_MASK		0x4000
+#define XEON_SPR_PPD_DEV_DSD		0x4000
+#define XEON_SPR_PPD_DEV_USD		0x0000
 
 #define XEON_MW_COUNT			2
 
