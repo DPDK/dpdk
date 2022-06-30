@@ -26,7 +26,8 @@ enum ipsec_mb_vector_mode {
 	IPSEC_MB_SSE,
 	IPSEC_MB_AVX,
 	IPSEC_MB_AVX2,
-	IPSEC_MB_AVX512
+	IPSEC_MB_AVX512,
+	IPSEC_MB_ARM64,
 };
 
 extern enum ipsec_mb_vector_mode vector_mode;
