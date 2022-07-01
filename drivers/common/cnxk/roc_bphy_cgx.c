@@ -285,9 +285,6 @@ roc_bphy_cgx_ptp_rx_ena_dis(struct roc_bphy_cgx *roc_cgx, unsigned int lmac,
 {
 	uint64_t scr1, scr0;
 
-	if (roc_model_is_cn10k())
-		return -ENOTSUP;
-
 	if (!roc_cgx)
 		return -EINVAL;
 
