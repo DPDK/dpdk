@@ -81,8 +81,8 @@ rte_vdpa_register_device(struct rte_device *rte_dev,
 			!ops->get_protocol_features || !ops->dev_conf ||
 			!ops->dev_close || !ops->set_vring_state ||
 			!ops->set_features) {
-		VHOST_LOG_CONFIG(ERR, "(%s) Some mandatory vDPA ops aren't implemented\n",
-				rte_dev->name);
+		VHOST_LOG_CONFIG(rte_dev->name, ERR,
+			"Some mandatory vDPA ops aren't implemented\n");
 		return NULL;
 	}
 
