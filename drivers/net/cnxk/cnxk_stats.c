@@ -172,7 +172,7 @@ cnxk_nix_xstats_get_names(struct rte_eth_dev *eth_dev,
 	struct roc_nix *nix = &dev->nix;
 	int roc_size, size, i, q;
 
-	roc_size = roc_nix_num_xstats_get(nix);
+	roc_size = roc_nix_xstats_names_get(nix, NULL, 0);
 	/* Per Queue statistics also returned as part of xstats */
 	size = roc_size + (dev->nb_rxq * CNXK_NB_RXQ_STATS) +
 	       (dev->nb_txq * CNXK_NB_TXQ_STATS);
@@ -232,7 +232,7 @@ cnxk_nix_xstats_get_names_by_id(struct rte_eth_dev *eth_dev,
 				unsigned int limit)
 {
 	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
-	uint32_t nix_cnt = roc_nix_num_xstats_get(&dev->nix);
+	uint32_t nix_cnt = roc_nix_xstats_names_get(&dev->nix, NULL, 0);
 	uint32_t stat_cnt = nix_cnt + (dev->nb_rxq * CNXK_NB_RXQ_STATS) +
 			    (dev->nb_txq * CNXK_NB_TXQ_STATS);
 	struct rte_eth_xstat_name xnames[stat_cnt];
@@ -265,7 +265,7 @@ cnxk_nix_xstats_get_by_id(struct rte_eth_dev *eth_dev, const uint64_t *ids,
 			  uint64_t *values, unsigned int n)
 {
 	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
-	uint32_t nix_cnt = roc_nix_num_xstats_get(&dev->nix);
+	uint32_t nix_cnt = roc_nix_xstats_names_get(&dev->nix, NULL, 0);
 	uint32_t stat_cnt = nix_cnt + (dev->nb_rxq * CNXK_NB_RXQ_STATS) +
 			    (dev->nb_txq * CNXK_NB_TXQ_STATS);
 	struct rte_eth_xstat xstats[stat_cnt];
