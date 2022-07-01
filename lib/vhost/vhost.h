@@ -652,7 +652,7 @@ extern int vhost_data_log_level;
 	} \
 	snprintf(packet + strnlen(packet, VHOST_MAX_PRINT_BUFF), VHOST_MAX_PRINT_BUFF - strnlen(packet, VHOST_MAX_PRINT_BUFF), "\n"); \
 	\
-	VHOST_LOG_DATA(DEBUG, "%s", packet); \
+	VHOST_LOG_DATA(DEBUG, "(%s) %s", device->ifname, packet); \
 } while (0)
 #else
 #define PRINT_PACKET(device, addr, size, header) do {} while (0)
@@ -866,8 +866,8 @@ vhost_vring_call_split(struct virtio_net *dev, struct vhost_virtqueue *vq)
 		vq->signalled_used = new;
 		vq->signalled_used_valid = true;
 
-		VHOST_LOG_DATA(DEBUG, "%s: used_event_idx=%d, old=%d, new=%d\n",
-			__func__,
+		VHOST_LOG_DATA(DEBUG, "(%s) %s: used_event_idx=%d, old=%d, new=%d\n",
+			dev->ifname, __func__,
 			vhost_used_event(vq),
 			old, new);
 
