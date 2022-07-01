@@ -374,21 +374,21 @@ to see the full table)
    +=====+=====+=====+=====+==========+===============+===============+============+========+======+========+========+
    | Yes | No  | No  | 1   | DH895xCC | linux/4.4+    | qat_dh895xcc  | dh895xcc   | 435    | 1    | 443    | 32     |
    +-----+-----+-----+-----+----------+---------------+---------------+------------+--------+------+--------+--------+
-   | Yes | Yes | No  | "   | "        | 01.org/4.2.0+ | "             | "          | "      | "    | "      | "      |
+   | Yes | Yes | No  | "   | "        | IDZ/4.12.0+   | "             | "          | "      | "    | "      | "      |
    +-----+-----+-----+-----+----------+---------------+---------------+------------+--------+------+--------+--------+
-   | Yes | Yes | Yes | "   | "        | 01.org/4.3.0+ | "             | "          | "      | "    | "      | "      |
+   | Yes | Yes | Yes | "   | "        | IDZ/4.13.0+   | "             | "          | "      | "    | "      | "      |
    +-----+-----+-----+-----+----------+---------------+---------------+------------+--------+------+--------+--------+
    | Yes | No  | No  | 2   | C62x     | linux/4.5+    | qat_c62x      | c6xx       | 37c8   | 3    | 37c9   | 16     |
    +-----+-----+-----+-----+----------+---------------+---------------+------------+--------+------+--------+--------+
-   | Yes | Yes | Yes | "   | "        | 01.org/4.2.0+ | "             | "          | "      | "    | "      | "      |
+   | Yes | Yes | Yes | "   | "        | IDZ/4.12.0+   | "             | "          | "      | "    | "      | "      |
    +-----+-----+-----+-----+----------+---------------+---------------+------------+--------+------+--------+--------+
    | Yes | No  | No  | 2   | C3xxx    | linux/4.5+    | qat_c3xxx     | c3xxx      | 19e2   | 1    | 19e3   | 16     |
    +-----+-----+-----+-----+----------+---------------+---------------+------------+--------+------+--------+--------+
-   | Yes | Yes | Yes | "   | "        | 01.org/4.2.0+ | "             | "          | "      | "    | "      | "      |
+   | Yes | Yes | Yes | "   | "        | IDZ/4.12.0+   | "             | "          | "      | "    | "      | "      |
    +-----+-----+-----+-----+----------+---------------+---------------+------------+--------+------+--------+--------+
    | Yes | No  | No  | 2   | 200xx    | p             | qat_200xx     | 200xx      | 18ee   | 1    | 18ef   | 16     |
    +-----+-----+-----+-----+----------+---------------+---------------+------------+--------+------+--------+--------+
-   | Yes | No  | No  | 2   | D15xx    | 01.org/4.2.0+ | qat_d15xx     | d15xx      | 6f54   | 1    | 6f55   | 16     |
+   | Yes | No  | No  | 2   | D15xx    | p             | qat_d15xx     | d15xx      | 6f54   | 1    | 6f55   | 16     |
    +-----+-----+-----+-----+----------+---------------+---------------+------------+--------+------+--------+--------+
    | Yes | No  | No  | 3   | C4xxx    | p             | qat_c4xxx     | c4xxx      | 18a0   | 1    | 18a1   | 128    |
    +-----+-----+-----+-----+----------+---------------+---------------+------------+--------+------+--------+--------+
@@ -397,7 +397,7 @@ to see the full table)
    | Yes | No  | No  | 4   | 401xxx   | N/A           | qat_401xxx    | 4xxx       | 4942   | 2    | 4943   | 16     |
    +-----+-----+-----+-----+----------+---------------+---------------+------------+--------+------+--------+--------+
 
-* Note: Symmetric mixed crypto algorithms feature on Gen 2 works only with 01.org driver version 4.9.0+
+* Note: Symmetric mixed crypto algorithms feature on Gen 2 works only with IDZ driver version 4.9.0+
 
 The first 3 columns indicate the service:
 
@@ -406,13 +406,13 @@ The first 3 columns indicate the service:
 * C = Compression service (via compressdev API)
 
 The ``Driver`` column indicates either the Linux kernel version in which
-support for this device was introduced or a driver available on Intel's 01.org
-website. There are both linux in-tree and 01.org kernel drivers available for some
+support for this device was introduced or a driver available on Intel Developer Zone (IDZ).
+There are both linux in-tree and IDZ kernel drivers available for some
 devices. p = release pending.
 
 If you are running on a kernel which includes a driver for your device, see
 `Installation using kernel.org driver`_ below. Otherwise see
-`Installation using 01.org QAT driver`_.
+`Installation using IDZ QAT driver`_.
 
 
 Installation using kernel.org driver
@@ -485,12 +485,12 @@ To complete the installation follow the instructions in
    ``IOMMU should be enabled for SR-IOV to work correctly``.
 
 
-Installation using 01.org QAT driver
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Installation using IDZ QAT driver
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Download the latest QuickAssist Technology Driver from `01.org
-<https://01.org/packet-processing/intel%C2%AE-quickassist-technology-drivers-and-patches>`_.
-Consult the *Getting Started Guide* at the same URL for further information.
+Download the latest QuickAssist Technology Driver from `Intel Developer Zone
+<https://developer.intel.com/quickassist>`_.
+Consult the *Quick Start Guide* at the same URL for further information.
 
 The steps below assume you are:
 
@@ -579,6 +579,40 @@ To complete the installation - follow instructions in
       sudo yum install kernel-src-`uname -r`
       sudo yum install kernel-devel-`uname -r`
 
+.. Note::
+
+   If the build fails on newer GCC versions (such as GCC 12) with an error relating to
+   ``-lc`` not being found, apply the following patch:
+
+   .. code-block:: diff
+
+      /QAT/quickassist/lookaside/access_layer/src/Makefile
+      cd $(ICP_FINAL_OUTPUT_DIR);\
+      cmd="$(LINKER) $(LIB_SHARED_FLAGS) -o \
+        $(LIB_SHARED) $(ADDITIONAL_OBJECTS) $(ADDITIONAL_LIBS) *.o -lpthread -ludev \
+      - -Bstatic -L$(ADF_DIR)/src/build/$(ICP_OS)/$(ICP_OS_LEVEL) \
+      - -ladf_user -L$(OSAL_DIR)/src/build/$(ICP_OS)/$(ICP_OS_LEVEL)/ \
+      - -losal -Bdynamic -lc"; \
+      + -Bstatic -L$(ADF_DIR)/src/build/$(ICP_OS)/$(ICP_OS_LEVEL) \
+      + -ladf_user -L$(OSAL_DIR)/src/build/$(ICP_OS)/$(ICP_OS_LEVEL)/ \
+      + -losal -Bdynamic -L/lib/x86_64-linux-gnu/ -lc"; \
+      echo "$$cmd"; \
+      $$cmd
+
+   Followed by this patch:
+
+   .. code-block:: diff
+
+      /QAT/quickassist/build_system/build_files/OS/linux_common_user_space_rules.mk
+      @echo 'Creating shared library ${LIB_SHARED}'; \
+      cd $($(PROG_ACY)_FINAL_OUTPUT_DIR);\
+      -  echo $(LINKER) $(LIB_SHARED_FLAGS) -o $@  $(OBJECTS) $(ADDITIONAL_OBJECTS) -lc;\
+      -  $(LINKER) $(LIB_SHARED_FLAGS) -o $@  $(OBJECTS) $(ADDITIONAL_OBJECTS) -lc ;
+      +  echo $(LINKER) $(LIB_SHARED_FLAGS) -o $@  $(OBJECTS) $(ADDITIONAL_OBJECTS) \
+      +  -L/lib/x86_64-linux-gnu/ -lc;\
+      +  $(LINKER) $(LIB_SHARED_FLAGS) -o $@  $(OBJECTS) $(ADDITIONAL_OBJECTS) \
+      +  -L/lib/x86_64-linux-gnu/ -lc ;
+
 
 Binding the available VFs to the vfio-pci driver
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -590,7 +624,7 @@ Note:
   vfio-pci driver.
 * If QAT fails to bind to vfio-pci on Linux kernel 5.9+, please see the
   QATE-39220 and QATE-7495 issues in
-  `01.org doc <https://01.org/sites/default/files/downloads/336211-015-qatsoftwareforlinux-rn-hwv1.7-final.pdf>`_
+  `IDZ doc <https://cdrdv2.intel.com/v1/dl/getContent/710057?explicitVersion=true>`_
   which details the constraint about trusted guests and add `disable_denylist=1`
   to the vfio-pci params to use QAT. See also `this patch description <https://lkml.org/lkml/2020/7/23/1155>`_.
 
