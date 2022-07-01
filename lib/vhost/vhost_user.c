@@ -144,7 +144,8 @@ async_dma_map(struct virtio_net *dev, bool do_map)
 					return;
 
 				/* DMA mapping errors won't stop VHOST_USER_SET_MEM_TABLE. */
-				VHOST_LOG_CONFIG(ERR, "DMA engine map failed\n");
+				VHOST_LOG_CONFIG(ERR, "(%s) DMA engine map failed\n",
+					dev->ifname);
 			}
 		}
 
@@ -160,7 +161,8 @@ async_dma_map(struct virtio_net *dev, bool do_map)
 				if (rte_errno == EINVAL)
 					return;
 
-				VHOST_LOG_CONFIG(ERR, "DMA engine unmap failed\n");
+				VHOST_LOG_CONFIG(ERR, "(%s) DMA engine unmap failed\n",
+					dev->ifname);
 			}
 		}
 	}
@@ -945,7 +947,8 @@ add_one_guest_page(struct virtio_net *dev, uint64_t guest_phys_addr,
 					dev->max_guest_pages * sizeof(*page),
 					RTE_CACHE_LINE_SIZE);
 		if (dev->guest_pages == NULL) {
-			VHOST_LOG_CONFIG(ERR, "cannot realloc guest_pages\n");
+			VHOST_LOG_CONFIG(ERR, "(%s) cannot realloc guest_pages\n",
+				dev->ifname);
 			rte_free(old_pages);
 			return -1;
 		}
