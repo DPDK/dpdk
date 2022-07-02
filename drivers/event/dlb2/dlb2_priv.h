@@ -640,7 +640,7 @@ struct dlb2_cq_weight {
 };
 
 struct dlb2_port_cos {
-	int cos_id[DLB2_MAX_NUM_LDB_PORTS];
+	int cos_id[DLB2_MAX_NUM_PORTS_ALL];
 };
 
 struct dlb2_cos_bw {
