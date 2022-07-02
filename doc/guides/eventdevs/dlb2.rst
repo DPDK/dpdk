@@ -343,23 +343,21 @@ Class of service
 ~~~~~~~~~~~~~~~~
 
 DLB supports provisioning the DLB bandwidth into 4 classes of service.
+A LDB port or range of LDB ports may be configured to use one of the classes.
+If a port's COS is not defined, then it will be allocated from class 0,
+class 1, class 2, or class 3, in that order, depending on availability.
 
-- Class 4 corresponds to 40% of the DLB hardware bandwidth
-- Class 3 corresponds to 30% of the DLB hardware bandwidth
-- Class 2 corresponds to 20% of the DLB hardware bandwidth
-- Class 1 corresponds to 10% of the DLB hardware bandwidth
-- Class 0 corresponds to don't care
-
-The classes are applied globally to the set of ports contained in this
-scheduling domain, which is more appropriate for the bifurcated
-PMD than for the PF PMD, since the PF PMD supports just 1 scheduling
-domain.
-
-Class of service can be specified in the devargs, as follows
+The sum of the cos_bw values may not exceed 100, and no more than
+16 LDB ports may be assigned to a given class of service. If port cos is
+not defined on the command line, then each class is assigned 25% of the
+bandwidth, and the available load balanced ports are split between the classes.
+Per-port class of service and bandwidth can be specified in the devargs,
+as follows.
 
     .. code-block:: console
 
-       --allow ea:00.0,cos=<0..4>
+       --allow ea:00.0,port_cos=Px-Py:<0-3>,cos_bw=5:10:80:5
+       --allow ea:00.0,port_cos=Px:<0-3>,cos_bw=5:10:80:5
 
 Use X86 Vector Instructions
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -373,3 +371,46 @@ follows
     .. code-block:: console
 
        --allow ea:00.0,vector_opts_enabled=<y/Y>
+
+Maximum CQ Depth
+~~~~~~~~~~~~~~~~
+
+DLB supports configuring the maximum depth of a consumer queue (CQ).
+The depth must be between 32 and 128, and must be a power of 2. Note
+that credit deadlocks may occur as a result of changing the default depth.
+To prevent deadlock, the user may also need to configure the maximum
+enqueue depth.
+
+    .. code-block:: console
+
+       --allow ea:00.0,max_cq_depth=<depth>
+
+Maximum Enqueue Depth
+~~~~~~~~~~~~~~~~~~~~~
+
+DLB supports configuring the maximum enqueue depth of a producer port (PP).
+The depth must be between 32 and 1024, and must be a power of 2.
+
+    .. code-block:: console
+
+       --allow ea:00.0,max_enqueue_depth=<depth>
+
+QE Weight
+~~~~~~~~~
+
+DLB supports advanced scheduling mechanisms, such as CQ weight.
+Each load balanced CQ has a configurable work capacity (max 256)
+which corresponds to the total QE weight DLB will allow to be enqueued
+to that consumer. Every load balanced event/QE carries a weight of 0, 2, 4,
+or 8 and DLB will increment a (per CQ) load indicator when it schedules a
+QE to that CQ. The weight is also stored in the history list. When a
+completion arrives, the weight is popped from the history list and used to
+decrement the load indicator. This creates a new scheduling condition - a CQ
+whose load is equal to or in excess of capacity is not available for traffic.
+Note that the weight may not exceed the maximum CQ depth.
+
+    .. code-block:: console
+
+       --allow ea:00.0,cq_weight=all:<weight>
+       --allow ea:00.0,cq_weight=qidA-qidB:<weight>
+       --allow ea:00.0,cq_weight=qid:<weight>
