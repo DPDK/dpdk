@@ -712,9 +712,13 @@ dlb2_eventdev_pci_init(struct rte_eventdev *eventdev)
 		.max_enq_depth = DLB2_MAX_ENQUEUE_DEPTH
 	};
 	struct dlb2_eventdev *dlb2;
+	int q;
 
 	DLB2_LOG_DBG("Enter with dev_id=%d socket_id=%d",
 		     eventdev->data->dev_id, eventdev->data->socket_id);
+
+	for (q = 0; q < DLB2_MAX_NUM_PORTS_ALL; q++)
+		dlb2_args.port_cos.cos_id[q] = DLB2_COS_DEFAULT;
 
 	dlb2_pf_iface_fn_ptrs_init();
 

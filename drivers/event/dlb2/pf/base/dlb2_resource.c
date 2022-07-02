@@ -236,9 +236,6 @@ int dlb2_resource_init(struct dlb2_hw *hw, enum dlb2_hw_ver ver)
 		hw->rsrcs.sn_groups[i].slot_use_bitmap = 0;
 	}
 
-	for (i = 0; i < DLB2_NUM_COS_DOMAINS; i++)
-		hw->cos_reservation[i] = 100 / DLB2_NUM_COS_DOMAINS;
-
 	return 0;
 
 unwind:
