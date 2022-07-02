@@ -4505,7 +4505,14 @@ dlb2_primary_eventdev_probe(struct rte_eventdev *dev,
 	dlb2->hw_credit_quanta = dlb2_args->hw_credit_quanta;
 	dlb2->default_depth_thresh = dlb2_args->default_depth_thresh;
 	dlb2->vector_opts_enabled = dlb2_args->vector_opts_enabled;
-	dlb2->max_cq_depth = dlb2_args->max_cq_depth;
+
+
+	if (dlb2_args->max_cq_depth != 0)
+		dlb2->max_cq_depth = dlb2_args->max_cq_depth;
+	else
+		dlb2->max_cq_depth = DLB2_DEFAULT_CQ_DEPTH;
+
+	evdev_dlb2_default_info.max_event_port_dequeue_depth = dlb2->max_cq_depth;
 
 	err = dlb2_iface_open(&dlb2->qm_instance, name);
 	if (err < 0) {
