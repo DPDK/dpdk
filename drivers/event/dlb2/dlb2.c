@@ -4540,7 +4540,7 @@ dlb2_primary_eventdev_probe(struct rte_eventdev *dev,
 
 		for (id = 0; id < DLB2_COS_NUM_VALS; id++) {
 			set_cos_bw_args.cos_id = id;
-			set_cos_bw_args.cos_id = dlb2->cos_bw[id];
+			set_cos_bw_args.bandwidth = dlb2->cos_bw[id];
 			ret = dlb2_iface_set_cos_bw(&dlb2->qm_instance,
 						    &set_cos_bw_args);
 			if (ret != 0)
