@@ -29,7 +29,10 @@
 #define DLB2_SW_CREDIT_C_QUANTA_DEFAULT 256 /* Consumer */
 #define DLB2_DEPTH_THRESH_DEFAULT 256
 #define DLB2_MIN_CQ_DEPTH_OVERRIDE 32
-#define DLB2_MAX_CQ_DEPTH_OVERRIDE 1024
+#define DLB2_MAX_CQ_DEPTH_OVERRIDE 128
+#define DLB2_MIN_ENQ_DEPTH_OVERRIDE 32
+#define DLB2_MAX_ENQ_DEPTH_OVERRIDE 1024
+
 
 /*  command line arg strings */
 #define NUMA_NODE_ARG "numa_node"
@@ -44,6 +47,7 @@
 #define DLB2_DEPTH_THRESH_ARG "default_depth_thresh"
 #define DLB2_VECTOR_OPTS_ENAB_ARG "vector_opts_enable"
 #define DLB2_MAX_CQ_DEPTH "max_cq_depth"
+#define DLB2_MAX_ENQ_DEPTH "max_enqueue_depth"
 #define DLB2_CQ_WEIGHT "cq_weight"
 #define DLB2_PORT_COS "port_cos"
 #define DLB2_COS_BW "cos_bw"
@@ -585,6 +589,7 @@ struct dlb2_eventdev {
 	int num_dir_credits_override;
 	bool vector_opts_enabled;
 	int max_cq_depth;
+	int max_enq_depth;
 	volatile enum dlb2_run_state run_state;
 	uint16_t num_dir_queues; /* total num of evdev dir queues requested */
 	union {
@@ -660,6 +665,7 @@ struct dlb2_devargs {
 	int default_depth_thresh;
 	bool vector_opts_enabled;
 	int max_cq_depth;
+	int max_enq_depth;
 	struct dlb2_cq_weight cq_weight;
 	struct dlb2_port_cos port_cos;
 	struct dlb2_cos_bw cos_bw;

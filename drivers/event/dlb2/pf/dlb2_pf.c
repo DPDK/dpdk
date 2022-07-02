@@ -708,7 +708,8 @@ dlb2_eventdev_pci_init(struct rte_eventdev *eventdev)
 		.sw_credit_quanta = DLB2_SW_CREDIT_QUANTA_DEFAULT,
 		.hw_credit_quanta = DLB2_SW_CREDIT_BATCH_SZ,
 		.default_depth_thresh = DLB2_DEPTH_THRESH_DEFAULT,
-		.max_cq_depth = DLB2_DEFAULT_CQ_DEPTH
+		.max_cq_depth = DLB2_DEFAULT_CQ_DEPTH,
+		.max_enq_depth = DLB2_MAX_ENQUEUE_DEPTH
 	};
 	struct dlb2_eventdev *dlb2;
 

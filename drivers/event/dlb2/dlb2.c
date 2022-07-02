@@ -327,6 +327,36 @@ set_max_cq_depth(const char *key __rte_unused,
 }
 
 static int
+set_max_enq_depth(const char *key __rte_unused,
+		  const char *value,
+		  void *opaque)
+{
+	int *max_enq_depth = opaque;
+	int ret;
+
+	if (value == NULL || opaque == NULL) {
+		DLB2_LOG_ERR("NULL pointer\n");
+		return -EINVAL;
+	}
+
+	ret = dlb2_string_to_int(max_enq_depth, value);
+	if (ret < 0)
+		return ret;
+
+	if (*max_enq_depth < DLB2_MIN_ENQ_DEPTH_OVERRIDE ||
+	    *max_enq_depth > DLB2_MAX_ENQ_DEPTH_OVERRIDE ||
+	    !rte_is_power_of_2(*max_enq_depth)) {
+		DLB2_LOG_ERR("dlb2: max_enq_depth %d and %d and a power of 2\n",
+		DLB2_MIN_ENQ_DEPTH_OVERRIDE,
+		DLB2_MAX_ENQ_DEPTH_OVERRIDE);
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+
+static int
 set_max_num_events(const char *key __rte_unused,
 		   const char *value,
 		   void *opaque)
@@ -4514,6 +4544,15 @@ dlb2_primary_eventdev_probe(struct rte_eventdev *dev,
 
 	evdev_dlb2_default_info.max_event_port_dequeue_depth = dlb2->max_cq_depth;
 
+	if (dlb2_args->max_enq_depth != 0)
+		dlb2->max_enq_depth = dlb2_args->max_enq_depth;
+	else
+		dlb2->max_enq_depth = DLB2_DEFAULT_CQ_DEPTH;
+
+	evdev_dlb2_default_info.max_event_port_enqueue_depth =
+		dlb2->max_enq_depth;
+
+
 	err = dlb2_iface_open(&dlb2->qm_instance, name);
 	if (err < 0) {
 		DLB2_LOG_ERR("could not open event hardware device, err=%d\n",
@@ -4650,6 +4689,7 @@ dlb2_parse_params(const char *params,
 					     DLB2_DEPTH_THRESH_ARG,
 					     DLB2_VECTOR_OPTS_ENAB_ARG,
 					     DLB2_MAX_CQ_DEPTH,
+					     DLB2_MAX_ENQ_DEPTH,
 					     DLB2_CQ_WEIGHT,
 					     DLB2_PORT_COS,
 					     DLB2_COS_BW,
@@ -4784,6 +4824,17 @@ dlb2_parse_params(const char *params,
 					&dlb2_args->max_cq_depth);
 			if (ret != 0) {
 				DLB2_LOG_ERR("%s: Error parsing max cq depth",
+					     name);
+				rte_kvargs_free(kvlist);
+				return ret;
+			}
+
+			ret = rte_kvargs_process(kvlist,
+						 DLB2_MAX_ENQ_DEPTH,
+						 set_max_enq_depth,
+						 &dlb2_args->max_enq_depth);
+			if (ret != 0) {
+				DLB2_LOG_ERR("%s: Error parsing vector opts enabled",
 					     name);
 				rte_kvargs_free(kvlist);
 				return ret;
