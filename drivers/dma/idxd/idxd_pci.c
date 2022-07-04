@@ -6,6 +6,7 @@
 #include <rte_devargs.h>
 #include <rte_dmadev_pmd.h>
 #include <rte_malloc.h>
+#include <rte_atomic.h>
 
 #include "idxd_internal.h"
 
@@ -115,19 +116,37 @@ idxd_pci_dev_close(struct rte_dma_dev *dev)
 {
 	struct idxd_dmadev *idxd = dev->fp_obj->dev_private;
 	uint8_t err_code;
+	int is_last_wq;
 
-	/* disable the device */
-	err_code = idxd_pci_dev_command(idxd, idxd_disable_dev);
-	if (err_code) {
-		IDXD_PMD_ERR("Error disabling device: code %#x", err_code);
-		return err_code;
+	if (idxd_is_wq_enabled(idxd)) {
+		/* disable the wq */
+		err_code = idxd_pci_dev_command(idxd, idxd_disable_wq);
+		if (err_code) {
+			IDXD_PMD_ERR("Error disabling wq: code %#x", err_code);
+			return err_code;
+		}
+		IDXD_PMD_DEBUG("IDXD WQ disabled OK");
 	}
-	IDXD_PMD_DEBUG("IDXD Device disabled OK");
 
 	/* free device memory */
 	IDXD_PMD_DEBUG("Freeing device driver memory");
 	rte_free(idxd->batch_idx_ring);
 	rte_free(idxd->desc_ring);
+
+	/* if this is the last WQ on the device, disable the device and free
+	 * the PCI struct
+	 */
+	is_last_wq = rte_atomic16_dec_and_test(&idxd->u.pci->ref_count);
+	if (is_last_wq) {
+		/* disable the device */
+		err_code = idxd_pci_dev_command(idxd, idxd_disable_dev);
+		if (err_code) {
+			IDXD_PMD_ERR("Error disabling device: code %#x", err_code);
+			return err_code;
+		}
+		IDXD_PMD_DEBUG("IDXD device disabled OK");
+		rte_free(idxd->u.pci);
+	}
 
 	return 0;
 }
@@ -159,12 +178,13 @@ init_pci_device(struct rte_pci_device *dev, struct idxd_dmadev *idxd,
 	uint8_t lg2_max_batch, lg2_max_copy_size;
 	unsigned int i, err_code;
 
-	pci = malloc(sizeof(*pci));
+	pci = rte_malloc(NULL, sizeof(*pci), 0);
 	if (pci == NULL) {
 		IDXD_PMD_ERR("%s: Can't allocate memory", __func__);
 		err_code = -1;
 		goto err;
 	}
+	memset(pci, 0, sizeof(*pci));
 	rte_spinlock_init(&pci->lk);
 
 	/* assign the bar registers, and then configure device */
@@ -330,6 +350,7 @@ idxd_dmadev_probe_pci(struct rte_pci_driver *drv, struct rte_pci_device *dev)
 				free(idxd.u.pci);
 			return ret;
 		}
+		rte_atomic16_inc(&idxd.u.pci->ref_count);
 	}
 
 	return 0;

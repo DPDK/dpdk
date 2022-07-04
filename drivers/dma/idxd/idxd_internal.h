@@ -7,6 +7,7 @@
 
 #include <rte_dmadev_pmd.h>
 #include <rte_spinlock.h>
+#include <rte_atomic.h>
 
 #include "idxd_hw_defs.h"
 
@@ -33,6 +34,7 @@ struct idxd_pci_common {
 	rte_spinlock_t lk;
 
 	uint8_t wq_cfg_sz;
+	rte_atomic16_t ref_count;
 	volatile struct rte_idxd_bar0 *regs;
 	volatile uint32_t *wq_regs_base;
 	volatile struct rte_idxd_grpcfg *grp_regs;
