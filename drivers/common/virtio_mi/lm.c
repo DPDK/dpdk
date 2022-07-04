@@ -1068,6 +1068,75 @@ virtio_vdpa_mi_dev_remove(struct rte_pci_device *pci_dev)
 	return 0;
 }
 
+struct virtio_vdpa_pf_priv *
+rte_vdpa_get_mi_by_bdf(const char *bdf)
+{
+	struct virtio_vdpa_pf_priv *priv;
+	struct rte_pci_addr dev_addr;
+	int found = 0;
+
+	if (rte_pci_addr_parse(bdf, &dev_addr))
+		return NULL;
+
+	pthread_mutex_lock(&mi_priv_list_lock);
+	TAILQ_FOREACH(priv, &virtio_mi_priv_list, next) {
+		if (!rte_pci_addr_cmp(&priv->pdev->addr, &dev_addr)) {
+			found = 1;
+			break;
+		}
+	}
+	pthread_mutex_unlock(&mi_priv_list_lock);
+
+	if (found)
+		return priv;
+	return NULL;
+}
+
+int
+rte_vdpa_pf_dev_add(const char *pf_name)
+{
+	if (!pf_name)
+		return -EINVAL;
+
+	if (rte_vdpa_get_mi_by_bdf(pf_name))
+		return -EEXIST;
+
+	return rte_eal_hotplug_add("pci", pf_name, "vdpa=2");
+}
+
+int
+rte_vdpa_pf_dev_remove(const char *pf_name)
+{
+	if (!pf_name)
+		return -EINVAL;
+
+	if (!rte_vdpa_get_mi_by_bdf(pf_name))
+		return -ENODEV;
+
+	/* Fixme: no vf count checking */
+	return rte_eal_hotplug_remove("pci", pf_name);
+}
+
+int
+rte_vdpa_get_pf_list(struct virtio_vdpa_pf_info *pf_info, int max_pf_num)
+{
+	struct virtio_vdpa_pf_info *info = pf_info;
+	struct virtio_vdpa_pf_priv *priv;
+	int count = 0;
+
+	pthread_mutex_lock(&mi_priv_list_lock);
+	TAILQ_FOREACH(priv, &virtio_mi_priv_list, next) {
+		rte_pci_device_name(&priv->pdev->addr, info->pf_name,
+				sizeof(info->pf_name));
+		count++;
+		if (count >= max_pf_num)
+			break;
+		info++;
+	}
+	pthread_mutex_unlock(&mi_priv_list_lock);
+	return count;
+}
+
 /*
  * The set of PCI devices this driver supports
  */

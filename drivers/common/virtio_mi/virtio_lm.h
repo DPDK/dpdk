@@ -7,6 +7,10 @@
 
 struct virtio_vdpa_pf_priv;
 
+struct virtio_vdpa_pf_info {
+	char pf_name[RTE_DEV_NAME_MAX_LEN];
+};
+
 __rte_internal int
 virtio_vdpa_cmd_identity(struct virtio_vdpa_pf_priv *priv,
 		struct virtio_admin_migration_identity_result *result);
@@ -56,5 +60,13 @@ virtio_vdpa_cmd_dirty_page_report_map(struct virtio_vdpa_pf_priv *priv,
 		uint64_t length,
 		uint64_t vdev_host_range_addr,
 		rte_iova_t data);
+struct virtio_vdpa_pf_priv *
+rte_vdpa_get_mi_by_bdf(const char *bdf);
+int
+rte_vdpa_pf_dev_add(const char *pf_name);
+int
+rte_vdpa_pf_dev_remove(const char *pf_name);
+int
+rte_vdpa_get_pf_list(struct virtio_vdpa_pf_info *pf_info, int max_pf_num);
 
 #endif /* _VIRTIO_LM_H_ */

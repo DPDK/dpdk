@@ -15,3 +15,14 @@ INTERNAL {
 
 	local: *;
 };
+
+DPDK_22 {
+	global:
+
+	rte_vdpa_get_mi_by_bdf;
+	rte_vdpa_pf_dev_add;
+	rte_vdpa_pf_dev_remove;
+	rte_vdpa_get_pf_list;
+
+	local: *;
+};
