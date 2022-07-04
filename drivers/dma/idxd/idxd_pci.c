@@ -380,10 +380,10 @@ idxd_dmadev_remove_pci(struct rte_pci_device *dev)
 	IDXD_PMD_INFO("Closing %s on NUMA node %d", name, dev->device.numa_node);
 
 	RTE_DMA_FOREACH_DEV(i) {
-		struct rte_dma_info *info = {0};
-		rte_dma_info_get(i, info);
-		if (strncmp(name, info->dev_name, strlen(name)) == 0)
-			idxd_dmadev_destroy(info->dev_name);
+		struct rte_dma_info info;
+		rte_dma_info_get(i, &info);
+		if (strncmp(name, info.dev_name, strlen(name)) == 0)
+			idxd_dmadev_destroy(info.dev_name);
 	}
 
 	return 0;
