@@ -6693,6 +6693,12 @@ flow_dv_validate_item_integrity(struct rte_eth_dev *dev,
 					  RTE_FLOW_ERROR_TYPE_ITEM,
 					  integrity_item,
 					  "unsupported integrity filter");
+	if ((mask->l3_ok & !spec->l3_ok) || (mask->l4_ok & !spec->l4_ok) ||
+		(mask->ipv4_csum_ok & !spec->ipv4_csum_ok) ||
+		(mask->l4_csum_ok & !spec->l4_csum_ok))
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ITEM,
+					  NULL, "negative integrity flow is not supported");
 	if (spec->level > 1) {
 		if (pattern_flags & MLX5_FLOW_ITEM_INNER_INTEGRITY)
 			return rte_flow_error_set
