@@ -130,7 +130,7 @@ idxd_pci_dev_close(struct rte_dma_dev *dev)
 
 	/* free device memory */
 	IDXD_PMD_DEBUG("Freeing device driver memory");
-	rte_free(idxd->batch_idx_ring);
+	rte_free(idxd->batch_comp_ring);
 	rte_free(idxd->desc_ring);
 
 	/* if this is the last WQ on the device, disable the device and free
