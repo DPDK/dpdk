@@ -1788,7 +1788,7 @@ process_openssl_dsa_sign_op_evp(struct rte_crypto_op *cop,
 	if (key_ctx == NULL
 		|| EVP_PKEY_fromdata_init(key_ctx) <= 0
 		|| EVP_PKEY_fromdata(key_ctx, &pkey,
-						EVP_PKEY_PUBLIC_KEY, params) <= 0)
+			EVP_PKEY_KEYPAIR, params) <= 0)
 		goto err_dsa_sign;
 
 	dsa_ctx = EVP_PKEY_CTX_new(pkey, NULL);
@@ -2478,6 +2478,14 @@ process_openssl_rsa_op_evp(struct rte_crypto_op *cop,
 		if (EVP_PKEY_CTX_set_rsa_padding(rsa_ctx, pad) <= 0)
 			goto err_rsa;
 
+		if (EVP_PKEY_sign(rsa_ctx, NULL, &outlen,
+				op->rsa.message.data,
+				op->rsa.message.length) <= 0)
+			goto err_rsa;
+
+		if (outlen <= 0)
+			goto err_rsa;
+
 		if (EVP_PKEY_sign(rsa_ctx, op->rsa.sign.data, &outlen,
 				op->rsa.message.data,
 				op->rsa.message.length) <= 0)
@@ -2486,19 +2494,23 @@ process_openssl_rsa_op_evp(struct rte_crypto_op *cop,
 		break;
 
 	case RTE_CRYPTO_ASYM_OP_VERIFY:
-		tmp = rte_malloc(NULL, op->rsa.sign.length, 0);
+		if (EVP_PKEY_verify_recover_init(rsa_ctx) <= 0)
+			goto err_rsa;
+
+		if (EVP_PKEY_CTX_set_rsa_padding(rsa_ctx, pad) <= 0)
+			goto err_rsa;
+
+		if (EVP_PKEY_verify_recover(rsa_ctx, NULL, &outlen,
+				op->rsa.sign.data,
+				op->rsa.sign.length) <= 0)
+			goto err_rsa;
+
+		if ((outlen <= 0) || (outlen != op->rsa.sign.length))
+			goto err_rsa;
+
+		tmp = OPENSSL_malloc(outlen);
 		if (tmp == NULL) {
 			OPENSSL_LOG(ERR, "Memory allocation failed");
-			goto err_rsa;
-		}
-
-		if (EVP_PKEY_verify_recover_init(rsa_ctx) <= 0) {
-			rte_free(tmp);
-			goto err_rsa;
-		}
-
-		if (EVP_PKEY_CTX_set_rsa_padding(rsa_ctx, pad) <= 0) {
-			rte_free(tmp);
 			goto err_rsa;
 		}
 

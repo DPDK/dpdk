@@ -2,8 +2,6 @@
  * Copyright(c) 2016-2017 Intel Corporation
  */
 
-#define OPENSSL_API_COMPAT 0x10100000L
-
 #include <string.h>
 
 #include <rte_common.h>
