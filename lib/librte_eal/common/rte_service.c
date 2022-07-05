@@ -764,13 +764,20 @@ rte_service_lcore_stop(uint32_t lcore)
 		return -EALREADY;
 
 	uint32_t i;
-	uint64_t service_mask = lcore_states[lcore].service_mask;
+	struct core_state *cs = &lcore_states[lcore];
+	uint64_t service_mask = cs->service_mask;
+
 	for (i = 0; i < RTE_SERVICE_NUM_MAX; i++) {
 		int32_t enabled = service_mask & (UINT64_C(1) << i);
 		int32_t service_running = rte_service_runstate_get(i);
 		int32_t only_core = (1 ==
 			__atomic_load_n(&rte_services[i].num_mapped_cores,
 				__ATOMIC_RELAXED));
+
+		/* Switch off this core for all services, to ensure that future
+		 * calls to may_be_active() know this core is switched off.
+		 */
+		cs->service_active_on_lcore[i] = 0;
 
 		/* if the core is mapped, and the service is running, and this
 		 * is the only core that is mapped, the service would cease to
