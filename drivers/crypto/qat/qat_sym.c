@@ -105,16 +105,15 @@ qat_sym_build_request(void *in_op, uint8_t *out_msg,
 
 #ifdef RTE_LIB_SECURITY
 	else if (op->sess_type == RTE_CRYPTO_OP_SECURITY_SESSION) {
-		if ((void *)sess != (void *)op->sym->sec_session) {
+		ctx = get_sec_session_private_data(op->sym->sec_session);
+		if (unlikely(!ctx)) {
+			QAT_DP_LOG(ERR, "No session for this device");
+			return -EINVAL;
+		}
+		if (sess != (uintptr_t)ctx) {
 			struct rte_cryptodev *cdev;
 			struct qat_cryptodev_private *internals;
 
-			ctx = get_sec_session_private_data(
-					op->sym->sec_session);
-			if (unlikely(!ctx)) {
-				QAT_DP_LOG(ERR, "No session for this device");
-				return -EINVAL;
-			}
 			if (unlikely(ctx->bpi_ctx == NULL)) {
 				QAT_DP_LOG(ERR, "QAT PMD only supports security"
 						" operation requests for"
