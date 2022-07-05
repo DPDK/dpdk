@@ -197,6 +197,22 @@ implementer_hisilicon = {
     }
 }
 
+implementer_phytium = {
+    'description': 'Phytium',
+    'flags': [
+        ['RTE_MACHINE', '"armv8a"'],
+        ['RTE_USE_C11_MEM_MODEL', true],
+        ['RTE_CACHE_LINE_SIZE', 64],
+        ['RTE_MAX_LCORE', 64],
+        ['RTE_MAX_NUMA_NODES', 8]
+    ],
+    'part_number_config': {
+        '0x662': {
+            'machine_args': ['-march=armv8-a+crc'],
+        },
+    }
+}
+
 implementer_qualcomm = {
     'description': 'Qualcomm',
     'flags': [
@@ -225,7 +241,8 @@ implementers = {
     '0x43': implementer_cavium,
     '0x48': implementer_hisilicon,
     '0x50': implementer_ampere,
-    '0x51': implementer_qualcomm
+    '0x51': implementer_qualcomm,
+    '0x70': implementer_phytium,
 }
 
 # SoC specific armv8 flags have the highest priority
@@ -302,6 +319,13 @@ soc_emag = {
     'description': 'Ampere eMAG',
     'implementer': '0x50',
     'part_number': '0x0'
+}
+
+soc_ft2000plus = {
+    'description': 'Phytium FT-2000+',
+    'implementer': '0x70',
+    'part_number': '0x662',
+    'numa': true
 }
 
 soc_graviton2 = {
@@ -389,6 +413,7 @@ cn9k:            Marvell OCTEON 9
 cn10k:           Marvell OCTEON 10
 dpaa:            NXP DPAA
 emag:            Ampere eMAG
+ft2000plus:      Phytium FT-2000+
 graviton2:       AWS Graviton2
 kunpeng920:      HiSilicon Kunpeng 920
 kunpeng930:      HiSilicon Kunpeng 930
@@ -412,6 +437,7 @@ socs = {
     'cn10k' : soc_cn10k,
     'dpaa': soc_dpaa,
     'emag': soc_emag,
+    'ft2000plus': soc_ft2000plus,
     'graviton2': soc_graviton2,
     'kunpeng920': soc_kunpeng920,
     'kunpeng930': soc_kunpeng930,
