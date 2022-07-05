@@ -492,29 +492,12 @@ static int
 mlx5_vdpa_virtq_doorbell_setup(struct mlx5_vdpa_virtq *virtq,
 		struct rte_vhost_vring *vq, int index)
 {
-	virtq->intr_handle =
-		rte_intr_instance_alloc(RTE_INTR_INSTANCE_F_SHARED);
+	virtq->intr_handle = mlx5_os_interrupt_handler_create(
+				  RTE_INTR_INSTANCE_F_SHARED, false,
+				  vq->kickfd, mlx5_vdpa_virtq_kick_handler, virtq);
 	if (virtq->intr_handle == NULL) {
-		DRV_LOG(ERR, "Fail to allocate intr_handle");
+		DRV_LOG(ERR, "Fail to allocate intr_handle for virtq %d.", index);
 		return -1;
-	}
-	if (rte_intr_fd_set(virtq->intr_handle, vq->kickfd))
-		return -1;
-	if (rte_intr_fd_get(virtq->intr_handle) == -1) {
-		DRV_LOG(WARNING, "Virtq %d kickfd is invalid.", index);
-	} else {
-		if (rte_intr_type_set(virtq->intr_handle,
-			RTE_INTR_HANDLE_EXT))
-			return -1;
-		if (rte_intr_callback_register(virtq->intr_handle,
-			mlx5_vdpa_virtq_kick_handler, virtq)) {
-			(void)rte_intr_fd_set(virtq->intr_handle, -1);
-			DRV_LOG(ERR, "Failed to register virtq %d interrupt.",
-				index);
-			return -1;
-		}
-		DRV_LOG(DEBUG, "Register fd %d interrupt for virtq %d.",
-			rte_intr_fd_get(virtq->intr_handle), index);
 	}
 	return 0;
 }
