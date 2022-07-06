@@ -11030,10 +11030,12 @@ cmd_set_raw_parsed(const struct buffer *in)
 				const struct rte_flow_item_gtp_psc
 					*opt = item->spec;
 				struct rte_gtp_psc_generic_hdr *hdr;
-
-				*total_size += RTE_ALIGN(sizeof(hdr),
+				size_t hdr_size = RTE_ALIGN(sizeof(*hdr),
 							 sizeof(int32_t));
+
+				*total_size += hdr_size;
 				hdr = (typeof(hdr))(data_tail - (*total_size));
+				memset(hdr, 0, hdr_size);
 				*hdr = opt->hdr;
 				hdr->ext_hdr_len = 1;
 				gtp_psc = i;
