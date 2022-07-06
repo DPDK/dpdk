@@ -177,14 +177,18 @@ struct rte_mp_msg mp_res;
 			mlx5_tx_uar_uninit_secondary(dev);
 			mlx5_proc_priv_uninit(dev);
 			ret = mlx5_proc_priv_init(dev);
-			if (ret)
+			if (ret) {
+				close(mp_msg->fds[0]);
 				return -rte_errno;
+			}
 			ret = mlx5_tx_uar_init_secondary(dev, mp_msg->fds[0]);
 			if (ret) {
+				close(mp_msg->fds[0]);
 				mlx5_proc_priv_uninit(dev);
 				return -rte_errno;
 			}
 		}
+		close(mp_msg->fds[0]);
 		rte_mb();
 		mp_init_msg(&priv->mp_id, &mp_res, param->type);
 		res->result = 0;

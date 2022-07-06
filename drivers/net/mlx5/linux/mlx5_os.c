@@ -933,6 +933,7 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 	DRV_LOG(DEBUG, "naming Ethernet device \"%s\"", name);
 	if (rte_eal_process_type() == RTE_PROC_SECONDARY) {
 		struct mlx5_mp_id mp_id;
+		int fd;
 
 		eth_dev = rte_eth_dev_attach_secondary(name);
 		if (eth_dev == NULL) {
@@ -949,11 +950,12 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 			return NULL;
 		mlx5_mp_id_init(&mp_id, eth_dev->data->port_id);
 		/* Receive command fd from primary process */
-		err = mlx5_mp_req_verbs_cmd_fd(&mp_id);
-		if (err < 0)
+		fd = mlx5_mp_req_verbs_cmd_fd(&mp_id);
+		if (fd < 0)
 			goto err_secondary;
 		/* Remap UAR for Tx queues. */
-		err = mlx5_tx_uar_init_secondary(eth_dev, err);
+		err = mlx5_tx_uar_init_secondary(eth_dev, fd);
+		close(fd);
 		if (err)
 			goto err_secondary;
 		/*
