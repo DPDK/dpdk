@@ -1185,8 +1185,22 @@ iavf_fdir_parse_pattern(__rte_unused struct iavf_adapter *ad,
 										 GTPU_DWN, QFI);
 				}
 
-				rte_memcpy(hdr->buffer, gtp_psc_spec,
-					sizeof(*gtp_psc_spec));
+				/*
+				 * New structure to fix gap between kernel driver and
+				 * rte_gtp_psc_generic_hdr.
+				 */
+				struct iavf_gtp_psc_spec_hdr {
+					uint8_t len;
+					uint8_t qfi:6;
+					uint8_t type:4;
+					uint8_t next;
+				} psc;
+				psc.len = gtp_psc_spec->hdr.ext_hdr_len;
+				psc.qfi = gtp_psc_spec->hdr.qfi;
+				psc.type = gtp_psc_spec->hdr.type;
+				psc.next = 0;
+				rte_memcpy(hdr->buffer, &psc,
+					sizeof(struct iavf_gtp_psc_spec_hdr));
 			}
 
 			hdrs->count = ++layer;
