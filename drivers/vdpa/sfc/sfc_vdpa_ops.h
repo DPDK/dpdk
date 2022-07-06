@@ -35,6 +35,7 @@ struct sfc_vdpa_vring_info {
 };
 
 typedef struct sfc_vdpa_vq_context_s {
+	volatile void			*doorbell;
 	uint8_t				enable;
 	uint32_t			pidx;
 	uint32_t			cidx;
