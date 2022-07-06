@@ -1527,8 +1527,8 @@ dlb2_hw_create_ldb_port(struct dlb2_eventdev *dlb2,
 
 	if (dlb2->version == DLB2_HW_V2 && ev_port->cq_weight != 0 &&
 	    ev_port->cq_weight > dequeue_depth) {
-		DLB2_LOG_ERR("dlb2: invalid cq depth, must be >= cq weight%d\n",
-			     DLB2_MIN_ENQUEUE_DEPTH);
+		DLB2_LOG_ERR("dlb2: invalid cq dequeue depth %d, must be >= cq weight %d\n",
+			     dequeue_depth, ev_port->cq_weight);
 		return -EINVAL;
 	}
 

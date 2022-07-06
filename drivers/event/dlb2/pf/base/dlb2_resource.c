@@ -6397,6 +6397,9 @@ dlb2_verify_enable_cq_weight_args(struct dlb2_hw *hw,
 	struct dlb2_ldb_port *port;
 
 	if (hw->ver == DLB2_HW_V2) {
+		DLB2_HW_ERR(hw,
+			    "[%s():%d] CQ weight feature requires DLB 2.5 or later\n",
+			    __func__, __LINE__);
 		resp->status = DLB2_ST_FEATURE_UNAVAILABLE;
 		return -EINVAL;
 	}
