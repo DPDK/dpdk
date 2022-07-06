@@ -222,6 +222,7 @@ static int
 sfc_vdpa_virtq_start(struct sfc_vdpa_ops_data *ops_data, int vq_num)
 {
 	int rc;
+	uint32_t doorbell;
 	efx_virtio_vq_t *vq;
 	struct sfc_vdpa_vring_info vring;
 	efx_virtio_vq_cfg_t vq_cfg;
@@ -270,22 +271,35 @@ sfc_vdpa_virtq_start(struct sfc_vdpa_ops_data *ops_data, int vq_num)
 	/* Start virtqueue */
 	rc = efx_virtio_qstart(vq, &vq_cfg, &vq_dyncfg);
 	if (rc != 0) {
-		/* destroy virtqueue */
 		sfc_vdpa_err(ops_data->dev_handle,
 			     "virtqueue start failed: %s",
 			     rte_strerror(rc));
-		efx_virtio_qdestroy(vq);
 		goto fail_virtio_qstart;
 	}
 
 	sfc_vdpa_info(ops_data->dev_handle,
 		      "virtqueue started successfully for vq_num %d", vq_num);
 
+	rc = efx_virtio_get_doorbell_offset(vq,	&doorbell);
+	if (rc != 0) {
+		sfc_vdpa_err(ops_data->dev_handle,
+			     "failed to get doorbell offset: %s",
+			     rte_strerror(rc));
+		goto fail_doorbell;
+	}
+
+	/*
+	 * Cache the bar_offset here for each VQ here, it will come
+	 * in handy when sfc_vdpa_get_notify_area() is invoked.
+	 */
+	ops_data->vq_cxt[vq_num].doorbell = (void *)(uintptr_t)doorbell;
 	ops_data->vq_cxt[vq_num].enable = B_TRUE;
 
 	return rc;
 
+fail_doorbell:
 fail_virtio_qstart:
+	efx_virtio_qdestroy(vq);
 fail_vring_info:
 	return rc;
 }
@@ -792,8 +806,6 @@ sfc_vdpa_get_notify_area(int vid, int qid, uint64_t *offset, uint64_t *size)
 	int ret;
 	efx_nic_t *nic;
 	int vfio_dev_fd;
-	efx_rc_t rc;
-	unsigned int bar_offset;
 	volatile void *doorbell;
 	struct rte_pci_device *pci_dev;
 	struct rte_vdpa_device *vdpa_dev;
@@ -824,19 +836,6 @@ sfc_vdpa_get_notify_area(int vid, int qid, uint64_t *offset, uint64_t *size)
 		return -1;
 	}
 
-	if (ops_data->vq_cxt[qid].enable != B_TRUE) {
-		sfc_vdpa_err(dev, "vq is not enabled");
-		return -1;
-	}
-
-	rc = efx_virtio_get_doorbell_offset(ops_data->vq_cxt[qid].vq,
-					    &bar_offset);
-	if (rc != 0) {
-		sfc_vdpa_err(dev, "failed to get doorbell offset: %s",
-			     rte_strerror(rc));
-		return rc;
-	}
-
 	reg.index = sfc_vdpa_adapter_by_dev_handle(dev)->mem_bar.esb_rid;
 	ret = ioctl(vfio_dev_fd, VFIO_DEVICE_GET_REGION_INFO, &reg);
 	if (ret != 0) {
@@ -845,7 +844,8 @@ sfc_vdpa_get_notify_area(int vid, int qid, uint64_t *offset, uint64_t *size)
 		return ret;
 	}
 
-	*offset = reg.offset + bar_offset;
+	/* Use bar_offset that was cached during sfc_vdpa_virtq_start() */
+	*offset = reg.offset + (uint64_t)ops_data->vq_cxt[qid].doorbell;
 
 	len = (1U << encp->enc_vi_window_shift) / 2;
 	if (len >= sysconf(_SC_PAGESIZE)) {
