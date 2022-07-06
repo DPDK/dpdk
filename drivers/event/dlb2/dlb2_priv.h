@@ -641,7 +641,7 @@ struct dlb2_qid_depth_thresholds {
 };
 
 struct dlb2_cq_weight {
-	int limit[DLB2_MAX_NUM_LDB_PORTS];
+	int limit[DLB2_MAX_NUM_PORTS_ALL];
 };
 
 struct dlb2_port_cos {
