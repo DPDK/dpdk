@@ -5,6 +5,7 @@
 
 #include <stdio.h>
 #include <time.h>
+#include <unistd.h>
 
 #include <rte_eal.h>
 #include <rte_ethdev_driver.h>
@@ -134,15 +135,19 @@ mp_secondary_handle(const struct rte_mp_msg *mp_msg, const void *peer)
 			mlx4_tx_uar_uninit_secondary(dev);
 			mlx4_proc_priv_uninit(dev);
 			ret = mlx4_proc_priv_init(dev);
-			if (ret)
+			if (ret) {
+				close(mp_msg->fds[0]);
 				return -rte_errno;
+			}
 			ret = mlx4_tx_uar_init_secondary(dev, mp_msg->fds[0]);
 			if (ret) {
+				close(mp_msg->fds[0]);
 				mlx4_proc_priv_uninit(dev);
 				return -rte_errno;
 			}
 		}
 #endif
+		close(mp_msg->fds[0]);
 		rte_mb();
 		mp_init_msg(dev, &mp_res, param->type);
 		res->result = 0;
