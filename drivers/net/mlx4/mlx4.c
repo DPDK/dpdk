@@ -877,6 +877,8 @@ mlx4_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 		snprintf(name, sizeof(name), "%s port %u",
 			 mlx4_glue->get_device_name(ibv_dev), port);
 		if (rte_eal_process_type() == RTE_PROC_SECONDARY) {
+			int fd;
+
 			eth_dev = rte_eth_dev_attach_secondary(name);
 			if (eth_dev == NULL) {
 				ERROR("can not attach rte ethdev");
@@ -899,13 +901,14 @@ mlx4_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 			if (err)
 				goto err_secondary;
 			/* Receive command fd from primary process. */
-			err = mlx4_mp_req_verbs_cmd_fd(eth_dev);
-			if (err < 0) {
+			fd = mlx4_mp_req_verbs_cmd_fd(eth_dev);
+			if (fd < 0) {
 				err = rte_errno;
 				goto err_secondary;
 			}
 			/* Remap UAR for Tx queues. */
-			err = mlx4_tx_uar_init_secondary(eth_dev, err);
+			err = mlx4_tx_uar_init_secondary(eth_dev, fd);
+			close(fd);
 			if (err) {
 				err = rte_errno;
 				goto err_secondary;
