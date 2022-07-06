@@ -335,6 +335,10 @@ dsa_scan(void)
 		IDXD_PMD_DEBUG("%s(): found %s/%s", __func__, path, wq->d_name);
 
 		dev = malloc(sizeof(*dev));
+		if (dev == NULL) {
+			closedir(dev_dir);
+			return -ENOMEM;
+		}
 		if (dsa_addr_parse(wq->d_name, &dev->addr) < 0) {
 			IDXD_PMD_ERR("Error parsing WQ name: %s", wq->d_name);
 			free(dev);
