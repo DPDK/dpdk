@@ -128,7 +128,6 @@ struct dsw_queue_flow {
 enum dsw_migration_state {
 	DSW_MIGRATION_STATE_IDLE,
 	DSW_MIGRATION_STATE_PAUSING,
-	DSW_MIGRATION_STATE_FORWARDING,
 	DSW_MIGRATION_STATE_UNPAUSING
 };
 
@@ -191,6 +190,13 @@ struct dsw_port {
 	 */
 	uint16_t paused_events_len;
 	struct rte_event paused_events[DSW_MAX_EVENTS];
+
+	uint16_t emigrating_events_len;
+	/* Buffer for not-yet-processed events pertaining to a flow
+	 * emigrating from this port. These events will be forwarded
+	 * to the target port.
+	 */
+	struct rte_event emigrating_events[DSW_MAX_EVENTS];
 
 	uint16_t seen_events_len;
 	uint16_t seen_events_idx;
