@@ -7,7 +7,7 @@ MLX5 Crypto Driver
 ==================
 
 The MLX5 crypto driver library
-(**librte_crypto_mlx5**) provides support for **Mellanox ConnectX-6**
+(**librte_crypto_mlx5**) provides support for **NVIDIA ConnectX-6**
 family adapters.
 
 Overview
@@ -35,7 +35,7 @@ Configuration
 
 See the :ref:`mlx5 common configuration <mlx5_common_env>`.
 
-A device comes out of Mellanox factory with pre-defined import methods.
+A device comes out of NVIDIA factory with pre-defined import methods.
 There are two possible import methods: wrapped or plaintext.
 
 In case the device is in wrapped mode, it needs to be moved to crypto operational mode.
@@ -139,9 +139,9 @@ for an additional list of options shared with other mlx5 drivers.
 Supported NICs
 --------------
 
-* Mellanox\ |reg| ConnectX\ |reg|-6 200G MCX654106A-HCAT (2x200G)
-* Mellanox\ |reg| BlueField-2 SmartNIC
-* Mellanox\ |reg| ConnectX\ |reg|-6 Dx
+* NVIDIA\ |reg| ConnectX\ |reg|-6 200G MCX654106A-HCAT (2x200G)
+* NVIDIA\ |reg| ConnectX\ |reg|-6 Dx
+* NVIDIA\ |reg| BlueField-2 SmartNIC
 
 
 Limitations

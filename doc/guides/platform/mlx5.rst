@@ -8,9 +8,9 @@ MLX5 Common Driver
 ==================
 
 The mlx5 common driver library (**librte_common_mlx5**) provides support for
-**Mellanox ConnectX-4**, **Mellanox ConnectX-4 Lx**, **Mellanox ConnectX-5**,
-**Mellanox ConnectX-6**, **Mellanox ConnectX-6 Dx**, **Mellanox ConnectX-6 Lx**,
-**Mellanox BlueField** and **Mellanox BlueField-2** families of
+**NVIDIA ConnectX-4**, **NVIDIA ConnectX-4 Lx**, **NVIDIA ConnectX-5**,
+**NVIDIA ConnectX-6**, **NVIDIA ConnectX-6 Dx**, **NVIDIA ConnectX-6 Lx**,
+**NVIDIA ConnectX-7**, **NVIDIA BlueField**, and **NVIDIA BlueField-2** families of
 10/25/40/50/100/200 Gb/s adapters.
 
 Information and documentation for these adapters can be found on the
@@ -176,6 +176,8 @@ The minimal supported versions are:
   - ConnectX-5 Ex: **16.21.1000** and above.
   - ConnectX-6: **20.27.0090** and above.
   - ConnectX-6 Dx: **22.27.0090** and above.
+  - ConnectX-6 Lx: **26.27.0090** and above.
+  - ConnectX-7: **28.33.2028** and above.
   - BlueField: **18.25.1010** and above.
   - BlueField-2: **24.28.1002** and above.
 

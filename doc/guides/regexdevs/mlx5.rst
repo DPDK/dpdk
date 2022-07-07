@@ -7,7 +7,7 @@ MLX5 RegEx Driver
 =================
 
 The mlx5 RegEx (Regular Expression) driver library
-(**librte_regex_mlx5**) provides support for **Mellanox BlueField-2**
+(**librte_regex_mlx5**) provides support for **NVIDIA BlueField-2**
 families of 25/50/100/200 Gb/s adapters.
 
 Design
@@ -35,12 +35,12 @@ and :ref:`mlx5 common driver options <mlx5_common_driver_options>`.
 Supported NICs
 --------------
 
-* Mellanox\ |reg| BlueField-2 SmartNIC
+* NVIDIA\ |reg| BlueField-2 SmartNIC
 
 Prerequisites
 -------------
 
-- BlueField-2 running Mellanox supported kernel.
+- BlueField-2 running NVIDIA supported kernel.
 - Enable the RegEx capabilities using system call from the BlueField-2.
 - Official support is not yet released.
 
