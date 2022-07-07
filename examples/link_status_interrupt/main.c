@@ -99,9 +99,10 @@ struct lsi_port_statistics {
 struct lsi_port_statistics port_statistics[RTE_MAX_ETHPORTS];
 
 /* A tsc-based timer responsible for triggering statistics printout */
-#define TIMER_MILLISECOND 2000000ULL /* around 1ms at 2 Ghz */
+#define TIMER_MILLISECOND (rte_get_timer_hz() / 1000)
 #define MAX_TIMER_PERIOD 86400 /* 1 day max */
-static int64_t timer_period = 10 * TIMER_MILLISECOND * 1000; /* default period is 10 seconds */
+#define DEFAULT_TIMER_PERIOD 10UL /* default period is 10 seconds */
+static int64_t timer_period;
 
 /* Print out statistics on packets dropped */
 static void
@@ -364,6 +365,8 @@ lsi_parse_args(int argc, char **argv)
 	static struct option lgopts[] = {
 		{NULL, 0, 0, 0}
 	};
+
+	timer_period = DEFAULT_TIMER_PERIOD * TIMER_MILLISECOND * 1000;
 
 	argvopt = argv;
 
