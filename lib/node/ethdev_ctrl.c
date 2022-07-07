@@ -77,6 +77,8 @@ rte_node_eth_config(struct rte_node_ethdev_config *conf, uint16_t nb_confs,
 
 			/* Add it to list of ethdev rx nodes for lookup */
 			elem = malloc(sizeof(ethdev_rx_node_elem_t));
+			if (elem == NULL)
+				return -ENOMEM;
 			memset(elem, 0, sizeof(ethdev_rx_node_elem_t));
 			elem->ctx.port_id = port_id;
 			elem->ctx.queue_id = j;
