@@ -1113,27 +1113,27 @@ sync_fill_seg(struct virtio_net *dev, struct vhost_virtqueue *vq,
 			rte_memcpy((void *)((uintptr_t)(buf_addr)),
 				rte_pktmbuf_mtod_offset(m, void *, mbuf_offset),
 				cpy_len);
+			vhost_log_cache_write_iova(dev, vq, buf_iova, cpy_len);
+			PRINT_PACKET(dev, (uintptr_t)(buf_addr), cpy_len, 0);
 		} else {
 			rte_memcpy(rte_pktmbuf_mtod_offset(m, void *, mbuf_offset),
 				(void *)((uintptr_t)(buf_addr)),
 				cpy_len);
 		}
-		vhost_log_cache_write_iova(dev, vq, buf_iova, cpy_len);
-		PRINT_PACKET(dev, (uintptr_t)(buf_addr), cpy_len, 0);
 	} else {
 		if (to_desc) {
 			batch_copy[vq->batch_copy_nb_elems].dst =
 				(void *)((uintptr_t)(buf_addr));
 			batch_copy[vq->batch_copy_nb_elems].src =
 				rte_pktmbuf_mtod_offset(m, void *, mbuf_offset);
+			batch_copy[vq->batch_copy_nb_elems].log_addr = buf_iova;
+			batch_copy[vq->batch_copy_nb_elems].len = cpy_len;
 		} else {
 			batch_copy[vq->batch_copy_nb_elems].dst =
 				rte_pktmbuf_mtod_offset(m, void *, mbuf_offset);
 			batch_copy[vq->batch_copy_nb_elems].src =
 				(void *)((uintptr_t)(buf_addr));
 		}
-		batch_copy[vq->batch_copy_nb_elems].log_addr = buf_iova;
-		batch_copy[vq->batch_copy_nb_elems].len = cpy_len;
 		vq->batch_copy_nb_elems++;
 	}
 }
@@ -2739,18 +2739,14 @@ desc_to_mbuf(struct virtio_net *dev, struct vhost_virtqueue *vq,
 			if (async_fill_seg(dev, vq, cur, mbuf_offset,
 					   buf_iova + buf_offset, cpy_len, false) < 0)
 				goto error;
+		} else if (likely(hdr && cur == m)) {
+			rte_memcpy(rte_pktmbuf_mtod_offset(cur, void *, mbuf_offset),
+				(void *)((uintptr_t)(buf_addr + buf_offset)),
+				cpy_len);
 		} else {
-			if (hdr && cur == m) {
-				rte_memcpy(rte_pktmbuf_mtod_offset(cur, void *, mbuf_offset),
-					(void *)((uintptr_t)(buf_addr + buf_offset)),
-					cpy_len);
-				vhost_log_cache_write_iova(dev, vq, buf_iova + buf_offset, cpy_len);
-				PRINT_PACKET(dev, (uintptr_t)(buf_addr + buf_offset), cpy_len, 0);
-			} else {
-				sync_fill_seg(dev, vq, cur, mbuf_offset,
-					buf_addr + buf_offset,
-					buf_iova + buf_offset, cpy_len, false);
-			}
+			sync_fill_seg(dev, vq, cur, mbuf_offset,
+				      buf_addr + buf_offset,
+				      buf_iova + buf_offset, cpy_len, false);
 		}
 
 		mbuf_avail  -= cpy_len;
@@ -2804,9 +2800,8 @@ desc_to_mbuf(struct virtio_net *dev, struct vhost_virtqueue *vq,
 		async_iter_finalize(async);
 		if (hdr)
 			pkts_info[slot_idx].nethdr = *hdr;
-	} else {
-		if (hdr)
-			vhost_dequeue_offload(dev, hdr, m, legacy_ol_flags);
+	} else if (hdr) {
+		vhost_dequeue_offload(dev, hdr, m, legacy_ol_flags);
 	}
 
 	return 0;
