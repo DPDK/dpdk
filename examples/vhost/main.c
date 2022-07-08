@@ -900,6 +900,33 @@ sync_virtio_xmit(struct vhost_dev *dst_vdev, struct vhost_dev *src_vdev,
 	}
 }
 
+static __rte_always_inline uint16_t
+enqueue_pkts(struct vhost_dev *vdev, struct rte_mbuf **pkts, uint16_t rx_count)
+{
+	uint16_t enqueue_count;
+
+	if (builtin_net_driver) {
+		enqueue_count = vs_enqueue_pkts(vdev, VIRTIO_RXQ, pkts, rx_count);
+	} else if (async_vhost_driver) {
+		uint16_t enqueue_fail = 0;
+
+		complete_async_pkts(vdev);
+		enqueue_count = rte_vhost_submit_enqueue_burst(vdev->vid,
+					VIRTIO_RXQ, pkts, rx_count);
+		__atomic_add_fetch(&vdev->pkts_inflight, enqueue_count, __ATOMIC_SEQ_CST);
+
+		enqueue_fail = rx_count - enqueue_count;
+		if (enqueue_fail)
+			free_pkts(&pkts[enqueue_count], enqueue_fail);
+
+	} else {
+		enqueue_count = rte_vhost_enqueue_burst(vdev->vid, VIRTIO_RXQ,
+						pkts, rx_count);
+	}
+
+	return enqueue_count;
+}
+
 static __rte_always_inline void
 drain_vhost(struct vhost_dev *vdev)
 {
@@ -908,22 +935,7 @@ drain_vhost(struct vhost_dev *vdev)
 	uint16_t nr_xmit = vhost_txbuff[buff_idx]->len;
 	struct rte_mbuf **m = vhost_txbuff[buff_idx]->m_table;
 
-	if (builtin_net_driver) {
-		ret = vs_enqueue_pkts(vdev, VIRTIO_RXQ, m, nr_xmit);
-	} else if (async_vhost_driver) {
-		uint16_t enqueue_fail = 0;
-
-		complete_async_pkts(vdev);
-		ret = rte_vhost_submit_enqueue_burst(vdev->vid, VIRTIO_RXQ, m, nr_xmit);
-		__atomic_add_fetch(&vdev->pkts_inflight, ret, __ATOMIC_SEQ_CST);
-
-		enqueue_fail = nr_xmit - ret;
-		if (enqueue_fail)
-			free_pkts(&m[ret], nr_xmit - ret);
-	} else {
-		ret = rte_vhost_enqueue_burst(vdev->vid, VIRTIO_RXQ,
-						m, nr_xmit);
-	}
+	ret = enqueue_pkts(vdev, m, nr_xmit);
 
 	if (enable_stats) {
 		__atomic_add_fetch(&vdev->stats.rx_total_atomic, nr_xmit,
@@ -1217,42 +1229,17 @@ drain_eth_rx(struct vhost_dev *vdev)
 	if (!rx_count)
 		return;
 
-	/*
-	 * When "enable_retry" is set, here we wait and retry when there
-	 * is no enough free slots in the queue to hold @rx_count packets,
-	 * to diminish packet loss.
-	 */
-	if (enable_retry &&
-	    unlikely(rx_count > rte_vhost_avail_entries(vdev->vid,
-			VIRTIO_RXQ))) {
-		uint32_t retry;
+	enqueue_count = enqueue_pkts(vdev, pkts, rx_count);
 
-		for (retry = 0; retry < burst_rx_retry_num; retry++) {
+	/* Retry if necessary */
+	if (enable_retry && unlikely(enqueue_count < rx_count)) {
+		uint32_t retry = 0;
+
+		while (enqueue_count < rx_count && retry++ < burst_rx_retry_num) {
 			rte_delay_us(burst_rx_delay_time);
-			if (rx_count <= rte_vhost_avail_entries(vdev->vid,
-					VIRTIO_RXQ))
-				break;
+			enqueue_count += enqueue_pkts(vdev, &pkts[enqueue_count],
+						rx_count - enqueue_count);
 		}
-	}
-
-	if (builtin_net_driver) {
-		enqueue_count = vs_enqueue_pkts(vdev, VIRTIO_RXQ,
-						pkts, rx_count);
-	} else if (async_vhost_driver) {
-		uint16_t enqueue_fail = 0;
-
-		complete_async_pkts(vdev);
-		enqueue_count = rte_vhost_submit_enqueue_burst(vdev->vid,
-					VIRTIO_RXQ, pkts, rx_count);
-		__atomic_add_fetch(&vdev->pkts_inflight, enqueue_count, __ATOMIC_SEQ_CST);
-
-		enqueue_fail = rx_count - enqueue_count;
-		if (enqueue_fail)
-			free_pkts(&pkts[enqueue_count], enqueue_fail);
-
-	} else {
-		enqueue_count = rte_vhost_enqueue_burst(vdev->vid, VIRTIO_RXQ,
-						pkts, rx_count);
 	}
 
 	if (enable_stats) {
