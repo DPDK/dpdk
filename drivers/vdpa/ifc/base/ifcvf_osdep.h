@@ -14,6 +14,7 @@
 #include <rte_log.h>
 #include <rte_io.h>
 
+#define WARNINGOUT(S, args...)  RTE_LOG(WARNING, PMD, S, ##args)
 #define DEBUGOUT(S, args...)    RTE_LOG(DEBUG, PMD, S, ##args)
 #define STATIC                  static
 
