@@ -8,6 +8,7 @@ if is_windows
 endif
 
 sources = files('rte_rawdev.c')
-headers = files('rte_rawdev.h', 'rte_rawdev_pmd.h')
+headers = files('rte_rawdev.h')
+driver_sdk_headers = files('rte_rawdev_pmd.h')
 
 deps += ['telemetry']

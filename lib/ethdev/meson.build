@@ -26,11 +26,8 @@ headers = files(
         'rte_ethdev_trace_fp.h',
         'rte_dev_info.h',
         'rte_flow.h',
-        'rte_flow_driver.h',
         'rte_mtr.h',
-        'rte_mtr_driver.h',
         'rte_tm.h',
-        'rte_tm_driver.h',
 )
 
 indirect_headers += files(
@@ -42,6 +39,9 @@ driver_sdk_headers += files(
         'ethdev_driver.h',
         'ethdev_pci.h',
         'ethdev_vdev.h',
+        'rte_flow_driver.h',
+        'rte_mtr_driver.h',
+        'rte_tm_driver.h',
 )
 
 if is_linux

@@ -26,11 +26,8 @@ headers = files(
         'rte_mldev.h',
 )
 
-indirect_headers += files(
-        'rte_mldev_core.h',
-)
-
 driver_sdk_headers += files(
+        'rte_mldev_core.h',
         'rte_mldev_pmd.h',
         'mldev_utils.h',
 )
