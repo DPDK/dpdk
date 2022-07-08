@@ -761,6 +761,7 @@ rss_offload_types_display(uint64_t offload_types, uint16_t char_num_per_line)
 			total_len += str_len;
 		}
 	}
+	printf("\n");
 }
 
 void
@@ -870,7 +871,6 @@ port_infos_display(portid_t port_id)
 		printf("Supported RSS offload flow types:\n");
 		rss_offload_types_display(dev_info.flow_type_rss_offloads,
 				TESTPMD_RSS_TYPES_CHAR_NUM_PER_LINE);
-		printf("\n");
 	}
 
 	printf("Minimum size of RX buffer: %u\n", dev_info.min_rx_bufsize);
@@ -1648,6 +1648,7 @@ rss_types_display(uint64_t rss_types, uint16_t char_num_per_line)
 			total_len += str_len;
 		}
 	}
+	printf("\n");
 }
 
 static void
@@ -3924,7 +3925,6 @@ port_rss_hash_conf_show(portid_t port_id, int show_rss_key)
 	}
 	printf("RSS functions:\n");
 	rss_types_display(rss_hf, TESTPMD_RSS_TYPES_CHAR_NUM_PER_LINE);
-	printf("\n");
 	if (!show_rss_key)
 		return;
 	printf("RSS key:\n");
