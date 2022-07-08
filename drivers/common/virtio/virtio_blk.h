@@ -28,6 +28,20 @@
 
 #define VIRTIO_BLK_ID_BYTES	20	/* ID string length */
 
+/*
+ * This comes first in the read scatter-gather list.
+ * For legacy virtio, if VIRTIO_F_ANY_LAYOUT is not negotiated,
+ * this is the first element of the read scatter-gather list.
+ */
+struct virtio_blk_outhdr {
+    /* VIRTIO_BLK_T* */
+    uint32_t type;
+    /* io priority. */
+    uint32_t ioprio;
+    /* Sector (ie. 512 byte offset) */
+    uint64_t sector;
+};
+
 struct virtio_blk_config {
 	/* The capacity (in 512-byte sectors). */
 	uint64_t capacity;

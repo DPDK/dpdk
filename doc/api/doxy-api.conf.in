@@ -25,6 +25,7 @@ INPUT                   = @TOPDIR@/doc/api/doxy-api-index.md \
                           @TOPDIR@/drivers/raw/ifpga \
                           @TOPDIR@/drivers/raw/ioat \
                           @TOPDIR@/drivers/common/virtio_mi \
+                          @TOPDIR@/drivers/vdpa/virtio \
                           @TOPDIR@/lib/eal/include \
                           @TOPDIR@/lib/eal/include/generic \
                           @TOPDIR@/lib/acl \

@@ -27,10 +27,13 @@ struct virtio_vdpa_vring_info {
 
 struct virtio_vdpa_device_callback {
 	void (*vhost_feature_get)(uint64_t *features);
+	int (*dirty_desc_get)(int vid, int qix, uint64_t *desc_addr, uint32_t *write_len);
 };
 
 struct virtio_vdpa_priv {
 	TAILQ_ENTRY(virtio_vdpa_priv) next;
+	const struct rte_memzone *vdpa_dp_map;
+	struct virtio_vdpa_pf_priv *pf_priv;
 	struct rte_pci_device *pdev;
 	struct rte_vdpa_device *vdev;
 	struct virtio_pci_dev *vpdev;
@@ -39,6 +42,7 @@ struct virtio_vdpa_priv {
 	int vfio_group_fd;
 	int vfio_dev_fd;
 	int vid;
+	int vf_id;
 	int nvec;
 	uint64_t guest_features;
 	struct virtio_vdpa_vring_info **vrings;
@@ -47,4 +51,12 @@ struct virtio_vdpa_priv {
 	bool configured;
 };
 
+int virtio_vdpa_dev_pf_filter_dump(struct vdpa_vf_params *vf_info, int max_vf_num, struct virtio_vdpa_pf_priv *pf_priv);
+int virtio_vdpa_dev_vf_filter_dump(const char *vf_name, struct vdpa_vf_params *vf_info);
+struct virtio_vdpa_priv * virtio_vdpa_find_priv_resource_by_name(const char *vf_name);
+int virtio_vdpa_max_phy_addr_get(struct virtio_vdpa_priv *priv, uint64_t *phy_addr);
+int virtio_vdpa_dirty_desc_get(struct virtio_vdpa_priv *priv, int qix, uint64_t *desc_addr, uint32_t *write_len);
+int virtio_vdpa_used_vring_addr_get(struct virtio_vdpa_priv *priv, int qix, uint64_t *used_vring_addr, uint32_t *used_vring_len);
+const struct rte_memzone * virtio_vdpa_dev_dp_map_get(struct virtio_vdpa_priv *priv, size_t len);
+uint64_t virtio_vdpa_gpa_to_hva(int vid, uint64_t gpa);
 #endif /* _VIRTIO_VDPA_H_ */

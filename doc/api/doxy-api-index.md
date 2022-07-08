@@ -34,7 +34,8 @@ The public API headers are grouped by topics:
   [devargs]            (@ref rte_devargs.h),
   [PCI]                (@ref rte_pci.h),
   [vdev]               (@ref rte_bus_vdev.h),
-  [vfio]               (@ref rte_vfio.h)
+  [vfio]               (@ref rte_vfio.h),
+  [virtio_rpc]         (@ref rte_vf_rpc.h)
 
 - **device specific**:
   [softnic]            (@ref rte_eth_softnic.h),

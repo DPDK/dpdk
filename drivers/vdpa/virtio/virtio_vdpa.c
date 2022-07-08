@@ -11,6 +11,8 @@
 #include <rte_kvargs.h>
 
 #include <virtio_api.h>
+#include <virtio_lm.h>
+#include "rte_vf_rpc.h"
 #include "virtio_vdpa.h"
 
 RTE_LOG_REGISTER(virtio_vdpa_logtype, pmd.vdpa.virtio, NOTICE);
@@ -48,6 +50,126 @@ virtio_vdpa_find_priv_resource_by_vdev(const struct rte_vdpa_device *vdev)
 		return NULL;
 	}
 	return priv;
+}
+
+const struct rte_memzone *
+virtio_vdpa_dev_dp_map_get(struct virtio_vdpa_priv *priv, size_t len)
+{
+	if (!priv->vdpa_dp_map) {
+		if (!priv->vdpa_dp_map) {
+			char dp_mzone_name[64];
+
+			snprintf(dp_mzone_name, sizeof(dp_mzone_name), "VIRTIO_VDPA_DEBUG_DP_MZ_%u",
+					priv->vid);
+			priv->vdpa_dp_map = rte_memzone_reserve_aligned(dp_mzone_name,
+					len, rte_socket_id(), RTE_MEMZONE_IOVA_CONTIG,
+					VIRTIO_VRING_ALIGN);
+			if (!priv->vdpa_dp_map) {
+				DRV_LOG(ERR, "Fail to alloc mem zone for VIRTIO_VDPA_DEBUG_DP_MZ_%u", priv->vid);
+			}
+		}
+	}
+
+	return priv->vdpa_dp_map;
+}
+
+struct virtio_vdpa_priv *
+virtio_vdpa_find_priv_resource_by_name(const char *vf_name)
+{
+	struct virtio_vdpa_priv *priv;
+	bool found = false;
+
+	pthread_mutex_lock(&priv_list_lock);
+	TAILQ_FOREACH(priv, &virtio_priv_list, next) {
+		if (strcmp(vf_name, priv->pdev->device.name) == 0) {
+			found = true;
+			break;
+		}
+	}
+	pthread_mutex_unlock(&priv_list_lock);
+	if (!found) {
+		DRV_LOG(ERR, "Invalid vDPA device: %s", vf_name);
+		rte_errno = ENODEV;
+		return NULL;
+	}
+	return priv;
+}
+
+uint64_t
+virtio_vdpa_gpa_to_hva(int vid, uint64_t gpa)
+{
+	struct rte_vhost_memory *mem = NULL;
+	struct rte_vhost_mem_region *reg;
+	uint32_t i;
+	uint64_t hva = 0;
+
+	if (rte_vhost_get_mem_table(vid, &mem) < 0) {
+		if (mem)
+			free(mem);
+		DRV_LOG(ERR, "Virtio dev %d get mem table fail", vid);
+		return 0;
+	}
+
+	for (i = 0; i < mem->nregions; i++) {
+		reg = &mem->regions[i];
+
+		if (gpa >= reg->guest_phys_addr &&
+				gpa < reg->guest_phys_addr + reg->size) {
+			hva = gpa - reg->guest_phys_addr + reg->host_user_addr;
+			break;
+		}
+	}
+
+	free(mem);
+	return hva;
+}
+
+int virtio_vdpa_dirty_desc_get(struct virtio_vdpa_priv *priv, int qix, uint64_t *desc_addr, uint32_t *write_len)
+{
+	return priv->dev_ops->dirty_desc_get(priv->vid, qix, desc_addr, write_len);
+}
+
+int virtio_vdpa_used_vring_addr_get(struct virtio_vdpa_priv *priv, int qix, uint64_t *used_vring_addr, uint32_t *used_vring_len)
+{
+	*used_vring_addr = priv->vrings[qix]->used;
+	*used_vring_len = sizeof(struct vring_used);
+	return 0;
+}
+
+int virtio_vdpa_max_phy_addr_get(struct virtio_vdpa_priv *priv, uint64_t *phy_addr)
+{
+	struct rte_vhost_memory *mem = NULL;
+	struct rte_vhost_mem_region *reg;
+	int ret;
+	uint32_t i = 0;
+
+	if (priv == NULL) {
+		DRV_LOG(ERR, "Invalid priv device");
+		return -ENODEV;
+	}
+
+	*phy_addr = 0;
+	ret = rte_vhost_get_mem_table(priv->vid, &mem);
+	if (ret < 0) {
+		DRV_LOG(ERR, "%s failed to get VM memory layout ret:%d",
+					priv->vdev->device->name, ret);
+		return ret;
+	}
+
+	for (i = 0; i < mem->nregions; i++) {
+		reg = &mem->regions[i];
+		DRV_LOG(INFO, "%s, region %u: HVA 0x%" PRIx64 ", "
+			"GPA 0x%" PRIx64 ", size 0x%" PRIx64 ".",
+			"DMA map", i,
+			reg->host_user_addr, reg->guest_phys_addr, reg->size);
+
+		if (*phy_addr < reg->guest_phys_addr + reg->size)
+			*phy_addr = reg->guest_phys_addr + reg->size;
+	}
+
+	DRV_LOG(INFO, "Max phy addr is 0x%" PRIx64, *phy_addr);
+	free(mem);
+	return 0;
 }
 
 static int
@@ -840,13 +962,63 @@ virtio_vdpa_queues_alloc(struct virtio_vdpa_priv *priv)
 }
 
 static int
+virtio_vdpa_get_pf_name(const char *vf_name, char *pf_name, size_t pf_name_len)
+{
+	char pf_path[1024];
+	char link[1024];
+	int ret;
+
+	if (!pf_name || !vf_name)
+		return -EINVAL;
+
+	snprintf(pf_path, 1024, "%s/%s/physfn", rte_pci_get_sysfs_path(), vf_name);
+	memset(link, 0, sizeof(link));
+	ret = readlink(pf_path, link, (sizeof(link)-1));
+	if ((ret < 0) || ((unsigned int)ret > (sizeof(link)-1)))
+		return -ENOENT;
+
+	strlcpy(pf_name, &link[3], pf_name_len);
+	DRV_LOG(DEBUG, "Link %s, vf name: %s pf name: %s", link, vf_name, pf_name);
+
+	return 0;
+}
+#define VIRTIO_VDPA_MAX_VF 4096
+static int
+virtio_vdpa_get_vfid(const char *pf_name, const char *vf_name, int *vfid)
+{
+	char pf_path[1024];
+	char link[1024];
+	int ret, i;
+
+	if (!pf_name || !vf_name)
+		return -EINVAL;
+
+	for(i = 0; i < VIRTIO_VDPA_MAX_VF; i++) {
+		snprintf(pf_path, 1024, "%s/%s/virtfn%d", rte_pci_get_sysfs_path(), pf_name, i);
+		memset(link, 0, sizeof(link));
+		ret = readlink(pf_path, link, (sizeof(link)-1));
+		if ((ret < 0) || ((unsigned int)ret > (sizeof(link)-1)))
+			return -ENOENT;
+
+		if (strcmp(&link[3], vf_name) == 0) {
+			*vfid = i + 1;
+			DRV_LOG(DEBUG, "Vf name: %s pf name: %s vfid %d", vf_name, pf_name, *vfid);
+			return 0;
+		}
+	}
+	DRV_LOG(DEBUG, "Vf name: %s pf name: %s can't get vfid", vf_name, pf_name);
+	return -ENODEV;
+}
+
+static int
 virtio_vdpa_dev_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		struct rte_pci_device *pci_dev)
 {
 	int vdpa = 0;
-	int ret;
+	int ret, vf_id = 0;
 	struct virtio_vdpa_priv *priv;
 	char devname[RTE_DEV_NAME_MAX_LEN] = {0};
+	char pfname[RTE_DEV_NAME_MAX_LEN] = {0};
 	int iommu_group_num;
 
 	rte_pci_device_name(&pci_dev->addr, devname, RTE_DEV_NAME_MAX_LEN);
@@ -868,6 +1040,31 @@ virtio_vdpa_dev_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		rte_errno = ENOMEM;
 		return -rte_errno;
 	}
+
+	priv->pdev = pci_dev;
+
+	ret = virtio_vdpa_get_pf_name(devname, pfname, sizeof(pfname));
+	if (ret) {
+		DRV_LOG(ERR, "%s failed to get pf name ret:%d", devname, ret);
+		rte_errno = rte_errno ? rte_errno : EINVAL;
+		goto error;
+	}
+
+	/* check pf_priv before use it, might be null if not set */
+	priv->pf_priv = rte_vdpa_get_mi_by_bdf(pfname);;
+	if (!priv->pf_priv) {
+		DRV_LOG(ERR, "%s failed to get pf priv", devname);
+		rte_errno = rte_errno ? rte_errno : EINVAL;
+		goto error;
+	}
+
+	ret = virtio_vdpa_get_vfid(pfname, devname, &vf_id);
+	if (ret) {
+		DRV_LOG(ERR, "%s pf %s failed to get vfid ret:%d", devname, pfname, ret);
+		rte_errno = rte_errno ? rte_errno : EINVAL;
+		goto error;
+	}
+	priv->vf_id = vf_id;
 
 	/* TO_DO: need to confirm following: */
 	priv->vfio_dev_fd = -1;
@@ -896,8 +1093,6 @@ virtio_vdpa_dev_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		rte_errno = rte_errno ? rte_errno : EINVAL;
 		goto error;
 	}
-
-	priv->pdev = pci_dev;
 
 	priv->vpdev = virtio_pci_dev_alloc(pci_dev);
 	if (priv->vpdev == NULL) {
@@ -992,10 +1187,65 @@ virtio_vdpa_dev_remove(struct rte_pci_device *pci_dev)
 		virtio_vdpa_queues_free(priv);
 		virtio_pci_dev_free(priv->vpdev);
 
+		if (priv->vdpa_dp_map)
+			rte_memzone_free(priv->vdpa_dp_map);
 		rte_free(priv);
 	}
 
 	return found ? 0 : -ENODEV;
+}
+
+int
+virtio_vdpa_dev_pf_filter_dump(struct vdpa_vf_params *vf_info, int max_vf_num, struct virtio_vdpa_pf_priv *pf_priv)
+{
+	struct virtio_vdpa_priv *priv;
+	int count = 0;
+
+	if (!vf_info || !pf_priv)
+		return -EINVAL;
+
+	pthread_mutex_lock(&priv_list_lock);
+	TAILQ_FOREACH(priv, &virtio_priv_list, next) {
+		if (priv->pf_priv == pf_priv) {
+			vf_info[count].msix_num = priv->nvec;
+			vf_info[count].queue_num = priv->hw_nr_virtqs;
+			vf_info[count].queue_size = priv->vrings[0]->size;
+			vf_info[count].features = priv->guest_features;
+			strlcpy(vf_info[count].vf_name, priv->vdev->device->name, RTE_DEV_NAME_MAX_LEN);
+			count++;
+			if (count >= max_vf_num)
+				break;
+		}
+	}
+	pthread_mutex_unlock(&priv_list_lock);
+
+	return count;
+}
+
+int
+virtio_vdpa_dev_vf_filter_dump(const char *vf_name, struct vdpa_vf_params *vf_info)
+{
+	struct virtio_vdpa_priv *priv;
+	bool found = false;
+
+	if (!vf_info)
+		return -EINVAL;
+
+	pthread_mutex_lock(&priv_list_lock);
+	TAILQ_FOREACH(priv, &virtio_priv_list, next) {
+		if (!strncmp(vf_name, priv->vdev->device->name, RTE_DEV_NAME_MAX_LEN)) {
+			vf_info->msix_num = priv->nvec;
+			vf_info->queue_num = priv->hw_nr_virtqs;
+			vf_info->queue_size = priv->vrings[0]->size;
+			vf_info->features = priv->guest_features;
+			strlcpy(vf_info->vf_name, priv->vdev->device->name, RTE_DEV_NAME_MAX_LEN);
+			found = true;
+			break;
+		}
+	}
+	pthread_mutex_unlock(&priv_list_lock);
+
+	return found ? 0 : -EINVAL;
 }
 
 /*
