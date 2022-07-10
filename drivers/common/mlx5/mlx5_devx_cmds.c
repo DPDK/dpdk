@@ -20,20 +20,29 @@
 
 #define MLX5_DEVX_ERR_RC(x) ((x) > 0 ? -(x) : ((x) < 0 ? (x) : -1))
 
-static void
-mlx5_devx_err_log(void *out, const char *reason,
-		  const char *param, uint32_t value)
-{
-	rte_errno = errno;
-	if (!param)
-		DRV_LOG(ERR, "DevX %s failed errno=%d status=%#x syndrome=%#x",
-			reason, errno, MLX5_FW_STATUS(out),
-			MLX5_FW_SYNDROME(out));
-	else
-		DRV_LOG(ERR, "DevX %s %s=%#X failed errno=%d status=%#x syndrome=%#x",
-			reason, param, value, errno, MLX5_FW_STATUS(out),
-			MLX5_FW_SYNDROME(out));
-}
+#define DEVX_DRV_LOG(level, out, reason, param, value)				\
+do {										\
+	/*									\
+	 * Some (old) GCC compilers like 7.5.0 and aarch64 GCC 7.1-2017.08	\
+	 * do not expand correctly when the macro invoked when the `param`	\
+	 * is `NULL`.								\
+	 * Use `local_param` to avoid direct `NULL` expansion.			\
+	 */									\
+	const char *local_param = (const char *)param; 				\
+										\
+	rte_errno = errno;							\
+	if (!local_param) {							\
+		DRV_LOG(level,							\
+			"DevX %s failed errno=%d status=%#x syndrome=%#x",	\
+			(reason), errno, MLX5_FW_STATUS((out)),			\
+			MLX5_FW_SYNDROME((out)));				\
+	} else {								\
+		DRV_LOG(level,							\
+			"DevX %s %s=%#X failed errno=%d status=%#x syndrome=%#x",\
+			(reason), local_param, (value), errno,         		\
+			MLX5_FW_STATUS((out)), MLX5_FW_SYNDROME((out)));	\
+	}									\
+} while (0)
 
 static void *
 mlx5_devx_get_hca_cap(void *ctx, uint32_t *in, uint32_t *out,
@@ -49,7 +58,7 @@ mlx5_devx_get_hca_cap(void *ctx, uint32_t *in, uint32_t *out,
 	MLX5_SET(query_hca_cap_in, in, op_mod, flags);
 	rc = mlx5_glue->devx_general_cmd(ctx, in, size_in, out, size_out);
 	if (rc || MLX5_FW_STATUS(out)) {
-		mlx5_devx_err_log(out, "HCA capabilities", "func", flags >> 1);
+		DEVX_DRV_LOG(ERR, out, "HCA capabilities", "func", flags >> 1);
 		if (err)
 			*err = MLX5_DEVX_ERR_RC(rc);
 		return NULL;
@@ -102,7 +111,7 @@ mlx5_devx_cmd_register_read(void *ctx, uint16_t reg_id, uint32_t arg,
 					 MLX5_ST_SZ_BYTES(access_register_out) +
 					 sizeof(uint32_t) * dw_cnt);
 	if (rc || MLX5_FW_STATUS(out)) {
-		mlx5_devx_err_log(out, "read access", "NIC register", reg_id);
+		DEVX_DRV_LOG(ERR, out, "read access", "NIC register", reg_id);
 		return MLX5_DEVX_ERR_RC(rc);
 	}
 	memcpy(data, &out[MLX5_ST_SZ_DW(access_register_out)],
@@ -153,7 +162,7 @@ mlx5_devx_cmd_register_write(void *ctx, uint16_t reg_id, uint32_t arg,
 	memcpy(ptr, data, dw_cnt * sizeof(uint32_t));
 	rc = mlx5_glue->devx_general_cmd(ctx, in, sizeof(in), out, sizeof(out));
 	if (rc || MLX5_FW_STATUS(out)) {
-		mlx5_devx_err_log(out, "write access", "NIC register", reg_id);
+		DEVX_DRV_LOG(ERR, out, "write access", "NIC register", reg_id);
 		return MLX5_DEVX_ERR_RC(rc);
 	}
 	rc = mlx5_glue->devx_general_cmd(ctx, in,
@@ -161,7 +170,7 @@ mlx5_devx_cmd_register_write(void *ctx, uint16_t reg_id, uint32_t arg,
 					 dw_cnt * sizeof(uint32_t),
 					 out, sizeof(out));
 	if (rc || MLX5_FW_STATUS(out)) {
-		mlx5_devx_err_log(out, "write access", "NIC register", reg_id);
+		DEVX_DRV_LOG(ERR, out, "write access", "NIC register", reg_id);
 		return MLX5_DEVX_ERR_RC(rc);
 	}
 	return 0;
@@ -199,7 +208,7 @@ mlx5_devx_cmd_flow_counter_alloc(void *ctx, uint32_t bulk_n_128)
 	dcs->obj = mlx5_glue->devx_obj_create(ctx, in,
 					      sizeof(in), out, sizeof(out));
 	if (!dcs->obj) {
-		mlx5_devx_err_log(out, "allocate counters", NULL, 0);
+		DEVX_DRV_LOG(ERR, out, "allocate counters", NULL, 0);
 		mlx5_free(dcs);
 		return NULL;
 	}
@@ -377,9 +386,8 @@ mlx5_devx_cmd_mkey_create(void *ctx,
 	mkey->obj = mlx5_glue->devx_obj_create(ctx, in, in_size_dw * 4, out,
 					       sizeof(out));
 	if (!mkey->obj) {
-		mlx5_devx_err_log(out,
-				  klm_num ? "create indirect mkey" : "create direct key",
-				  NULL, 0);
+		DEVX_DRV_LOG(ERR, out, klm_num ? "create indirect mkey"
+					       : "create direct key", NULL, 0);
 		mlx5_free(mkey);
 		return NULL;
 	}
@@ -470,7 +478,7 @@ mlx5_devx_cmd_query_nic_vport_context(void *ctx,
 					 in, sizeof(in),
 					 out, sizeof(out));
 	if (rc || MLX5_FW_STATUS(out)) {
-		mlx5_devx_err_log(out, "query NIC vport context", NULL, 0);
+		DEVX_DRV_LOG(ERR, out, "query NIC vport context", NULL, 0);
 		return MLX5_DEVX_ERR_RC(rc);
 	}
 	vctx = MLX5_ADDR_OF(query_nic_vport_context_out, out,
@@ -717,7 +725,7 @@ mlx5_devx_cmd_create_flex_parser(void *ctx,
 	parse_flex_obj->obj = mlx5_glue->devx_obj_create(ctx, in, sizeof(in),
 							 out, sizeof(out));
 	if (!parse_flex_obj->obj) {
-		mlx5_devx_err_log(out, "create FLEX PARSE GRAPH", NULL, 0);
+		DEVX_DRV_LOG(ERR, out, "create FLEX PARSE GRAPH", NULL, 0);
 		mlx5_free(parse_flex_obj);
 		return NULL;
 	}
@@ -1292,7 +1300,7 @@ mlx5_devx_cmd_create_rq(void *ctx,
 	rq->obj = mlx5_glue->devx_obj_create(ctx, in, sizeof(in),
 						  out, sizeof(out));
 	if (!rq->obj) {
-		mlx5_devx_err_log(out, "create RQ", NULL, 0);
+		DEVX_DRV_LOG(ERR, out, "create RQ", NULL, 0);
 		mlx5_free(rq);
 		return NULL;
 	}
@@ -1391,7 +1399,7 @@ mlx5_devx_cmd_create_rmp(void *ctx,
 	rmp->obj = mlx5_glue->devx_obj_create(ctx, in, sizeof(in), out,
 					      sizeof(out));
 	if (!rmp->obj) {
-		mlx5_devx_err_log(out, "create RMP", NULL, 0);
+		DEVX_DRV_LOG(ERR, out, "create RMP", NULL, 0);
 		mlx5_free(rmp);
 		return NULL;
 	}
@@ -1459,7 +1467,7 @@ mlx5_devx_cmd_create_tir(void *ctx,
 	tir->obj = mlx5_glue->devx_obj_create(ctx, in, sizeof(in),
 						   out, sizeof(out));
 	if (!tir->obj) {
-		mlx5_devx_err_log(out, "create TIR", NULL, 0);
+		DEVX_DRV_LOG(ERR, out, "create TIR", NULL, 0);
 		mlx5_free(tir);
 		return NULL;
 	}
@@ -1597,7 +1605,7 @@ mlx5_devx_cmd_create_rqt(void *ctx,
 	rqt->obj = mlx5_glue->devx_obj_create(ctx, in, inlen, out, sizeof(out));
 	mlx5_free(in);
 	if (!rqt->obj) {
-		mlx5_devx_err_log(out, "create RQT", NULL, 0);
+		DEVX_DRV_LOG(ERR, out, "create RQT", NULL, 0);
 		mlx5_free(rqt);
 		return NULL;
 	}
@@ -1711,7 +1719,7 @@ mlx5_devx_cmd_create_sq(void *ctx,
 	sq->obj = mlx5_glue->devx_obj_create(ctx, in, sizeof(in),
 					     out, sizeof(out));
 	if (!sq->obj) {
-		mlx5_devx_err_log(out, "create SQ", NULL, 0);
+		DEVX_DRV_LOG(ERR, out, "create SQ", NULL, 0);
 		mlx5_free(sq);
 		return NULL;
 	}
@@ -1794,7 +1802,7 @@ mlx5_devx_cmd_create_tis(void *ctx,
 	tis->obj = mlx5_glue->devx_obj_create(ctx, in, sizeof(in),
 					      out, sizeof(out));
 	if (!tis->obj) {
-		mlx5_devx_err_log(out, "create TIS", NULL, 0);
+		DEVX_DRV_LOG(ERR, out, "create TIS", NULL, 0);
 		mlx5_free(tis);
 		return NULL;
 	}
@@ -1828,7 +1836,7 @@ mlx5_devx_cmd_create_td(void *ctx)
 	td->obj = mlx5_glue->devx_obj_create(ctx, in, sizeof(in),
 					     out, sizeof(out));
 	if (!td->obj) {
-		mlx5_devx_err_log(out, "create TIS", NULL, 0);
+		DEVX_DRV_LOG(ERR, out, "create TIS", NULL, 0);
 		mlx5_free(td);
 		return NULL;
 	}
@@ -1948,7 +1956,7 @@ mlx5_devx_cmd_create_cq(void *ctx, struct mlx5_devx_cq_attr *attr)
 	cq_obj->obj = mlx5_glue->devx_obj_create(ctx, in, sizeof(in), out,
 						 sizeof(out));
 	if (!cq_obj->obj) {
-		mlx5_devx_err_log(out, "create CQ", NULL, 0);
+		DEVX_DRV_LOG(ERR, out, "create CQ", NULL, 0);
 		mlx5_free(cq_obj);
 		return NULL;
 	}
@@ -2024,7 +2032,7 @@ mlx5_devx_cmd_create_virtq(void *ctx,
 	virtq_obj->obj = mlx5_glue->devx_obj_create(ctx, in, sizeof(in), out,
 						    sizeof(out));
 	if (!virtq_obj->obj) {
-		mlx5_devx_err_log(out, "create VIRTQ", NULL, 0);
+		DEVX_DRV_LOG(ERR, out, "create VIRTQ", NULL, 0);
 		mlx5_free(virtq_obj);
 		return NULL;
 	}
@@ -2257,7 +2265,7 @@ mlx5_devx_cmd_create_qp(void *ctx,
 	qp_obj->obj = mlx5_glue->devx_obj_create(ctx, in, sizeof(in), out,
 						 sizeof(out));
 	if (!qp_obj->obj) {
-		mlx5_devx_err_log(out, "create QP", NULL, 0);
+		DEVX_DRV_LOG(ERR, out, "create QP", NULL, 0);
 		mlx5_free(qp_obj);
 		return NULL;
 	}
@@ -2378,8 +2386,8 @@ mlx5_devx_cmd_create_virtio_q_counters(void *ctx)
 	couners_obj->obj = mlx5_glue->devx_obj_create(ctx, in, sizeof(in), out,
 						      sizeof(out));
 	if (!couners_obj->obj) {
-		mlx5_devx_err_log(out, "create virtio queue counters Obj",
-				  NULL, 0);
+		DEVX_DRV_LOG(ERR, out, "create virtio queue counters Obj", NULL,
+			     0);
 		mlx5_free(couners_obj);
 		return NULL;
 	}
@@ -2461,7 +2469,7 @@ mlx5_devx_cmd_create_flow_hit_aso_obj(void *ctx, uint32_t pd)
 	flow_hit_aso_obj->obj = mlx5_glue->devx_obj_create(ctx, in, sizeof(in),
 							   out, sizeof(out));
 	if (!flow_hit_aso_obj->obj) {
-		mlx5_devx_err_log(out, "create FLOW_HIT_ASO", NULL, 0);
+		DEVX_DRV_LOG(ERR, out, "create FLOW_HIT_ASO", NULL, 0);
 		mlx5_free(flow_hit_aso_obj);
 		return NULL;
 	}
@@ -2548,7 +2556,7 @@ mlx5_devx_cmd_create_flow_meter_aso_obj(void *ctx, uint32_t pd,
 							ctx, in, sizeof(in),
 							out, sizeof(out));
 	if (!flow_meter_aso_obj->obj) {
-		mlx5_devx_err_log(out, "create FLOW_METTER_ASO", NULL, 0);
+		DEVX_DRV_LOG(ERR, out, "create FLOW_METTER_ASO", NULL, 0);
 		mlx5_free(flow_meter_aso_obj);
 		return NULL;
 	}
@@ -2598,7 +2606,7 @@ mlx5_devx_cmd_create_conn_track_offload_obj(void *ctx, uint32_t pd,
 	ct_aso_obj->obj = mlx5_glue->devx_obj_create(ctx, in, sizeof(in),
 						     out, sizeof(out));
 	if (!ct_aso_obj->obj) {
-		mlx5_devx_err_log(out, "create CONN_TRACK_OFFLOAD", NULL, 0);
+		DEVX_DRV_LOG(ERR, out, "create CONN_TRACK_OFFLOAD", NULL, 0);
 		mlx5_free(ct_aso_obj);
 		return NULL;
 	}
@@ -2650,7 +2658,7 @@ mlx5_devx_cmd_create_geneve_tlv_option(void *ctx,
 	geneve_tlv_opt_obj->obj = mlx5_glue->devx_obj_create(ctx, in,
 					sizeof(in), out, sizeof(out));
 	if (!geneve_tlv_opt_obj->obj) {
-		mlx5_devx_err_log(out, "create GENEVE TLV", NULL, 0);
+		DEVX_DRV_LOG(ERR, out, "create GENEVE TLV", NULL, 0);
 		mlx5_free(geneve_tlv_opt_obj);
 		return NULL;
 	}
@@ -2712,7 +2720,7 @@ mlx5_devx_cmd_queue_counter_alloc(void *ctx)
 	dcs->obj = mlx5_glue->devx_obj_create(ctx, in, sizeof(in), out,
 					      sizeof(out));
 	if (!dcs->obj) {
-		mlx5_devx_err_log(out, "create q counter set", NULL, 0);
+		DEVX_DRV_LOG(DEBUG, out, "create q counter set", NULL, 0);
 		mlx5_free(dcs);
 		return NULL;
 	}
@@ -2799,7 +2807,7 @@ mlx5_devx_cmd_create_dek_obj(void *ctx, struct mlx5_devx_dek_attr *attr)
 	dek_obj->obj = mlx5_glue->devx_obj_create(ctx, in, sizeof(in),
 						  out, sizeof(out));
 	if (dek_obj->obj == NULL) {
-		mlx5_devx_err_log(out, "create DEK", NULL, 0);
+		DEVX_DRV_LOG(ERR, out, "create DEK", NULL, 0);
 		mlx5_free(dek_obj);
 		return NULL;
 	}
@@ -2846,7 +2854,7 @@ mlx5_devx_cmd_create_import_kek_obj(void *ctx,
 	import_kek_obj->obj = mlx5_glue->devx_obj_create(ctx, in, sizeof(in),
 							 out, sizeof(out));
 	if (import_kek_obj->obj == NULL) {
-		mlx5_devx_err_log(out, "create IMPORT_KEK", NULL, 0);
+		DEVX_DRV_LOG(ERR, out, "create IMPORT_KEK", NULL, 0);
 		mlx5_free(import_kek_obj);
 		return NULL;
 	}
@@ -2894,7 +2902,7 @@ mlx5_devx_cmd_create_credential_obj(void *ctx,
 	credential_obj->obj = mlx5_glue->devx_obj_create(ctx, in, sizeof(in),
 							 out, sizeof(out));
 	if (credential_obj->obj == NULL) {
-		mlx5_devx_err_log(out, "create CREDENTIAL", NULL, 0);
+		DEVX_DRV_LOG(ERR, out, "create CREDENTIAL", NULL, 0);
 		mlx5_free(credential_obj);
 		return NULL;
 	}
@@ -2945,7 +2953,7 @@ mlx5_devx_cmd_create_crypto_login_obj(void *ctx,
 	crypto_login_obj->obj = mlx5_glue->devx_obj_create(ctx, in, sizeof(in),
 							   out, sizeof(out));
 	if (crypto_login_obj->obj == NULL) {
-		mlx5_devx_err_log(out, "create CRYPTO_LOGIN", NULL, 0);
+		DEVX_DRV_LOG(ERR, out, "create CRYPTO_LOGIN", NULL, 0);
 		mlx5_free(crypto_login_obj);
 		return NULL;
 	}
