@@ -777,6 +777,22 @@ service_run_on_app_core_func(void *arg)
 	return rte_service_run_iter_on_app_lcore(*delay_service_id, 1);
 }
 
+static float
+service_app_lcore_perf_measure(uint32_t id)
+{
+	/* Performance test: call in a loop, and measure tsc() */
+	const uint32_t perf_iters = (1 << 12);
+	uint64_t start = rte_rdtsc();
+	uint32_t i;
+	for (i = 0; i < perf_iters; i++) {
+		int err = service_run_on_app_core_func(&id);
+		TEST_ASSERT_EQUAL(0, err, "perf test: returned run failure");
+	}
+	uint64_t end = rte_rdtsc();
+
+	return (end - start)/(float)perf_iters;
+}
+
 static int
 service_app_lcore_poll_impl(const int mt_safe)
 {
@@ -828,17 +844,15 @@ service_app_lcore_poll_impl(const int mt_safe)
 				"MT Unsafe: App core1 didn't return -EBUSY");
 	}
 
-	/* Performance test: call in a loop, and measure tsc() */
-	const uint32_t perf_iters = (1 << 12);
-	uint64_t start = rte_rdtsc();
-	uint32_t i;
-	for (i = 0; i < perf_iters; i++) {
-		int err = service_run_on_app_core_func(&id);
-		TEST_ASSERT_EQUAL(0, err, "perf test: returned run failure");
-	}
-	uint64_t end = rte_rdtsc();
-	printf("perf test for %s: %0.1f cycles per call\n", mt_safe ?
-		"MT Safe" : "MT Unsafe", (end - start)/(float)perf_iters);
+	/* Measure performance of no-stats and with-stats. */
+	float cyc_no_stats = service_app_lcore_perf_measure(id);
+
+	TEST_ASSERT_EQUAL(0, rte_service_set_stats_enable(id, 1),
+			"failed to enable stats for service.");
+	float cyc_with_stats = service_app_lcore_perf_measure(id);
+
+	printf("perf test for %s, no stats: %0.1f, with stats %0.1f cycles/call\n",
+		mt_safe ? "MT Safe" : "MT Unsafe", cyc_no_stats, cyc_with_stats);
 
 	unregister_all();
 	return TEST_SUCCESS;
