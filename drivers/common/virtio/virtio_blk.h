@@ -108,6 +108,9 @@ struct virtio_blk_config {
 	uint8_t write_zeroes_may_unmap;
 
 	uint8_t unused1[3];
+	uint32_t max_secure_erase_sectors;
+	uint32_t max_secure_erase_seg;
+	uint32_t secure_erase_sector_alignment;
 } __attribute__((packed));
 
 /*

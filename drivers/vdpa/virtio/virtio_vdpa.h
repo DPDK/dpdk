@@ -37,7 +37,11 @@ struct virtio_vdpa_priv {
 	struct rte_pci_device *pdev;
 	struct rte_vdpa_device *vdev;
 	struct virtio_pci_dev *vpdev;
+	const struct rte_memzone *state_mz; /* This is used to formmat state  at local */
+	const struct rte_memzone *state_mz_remote; /* This is used get state frome contoller */
 	const struct virtio_vdpa_device_callback *dev_ops;
+	enum virtio_internal_status lm_status;
+	int state_size;
 	int vfio_container_fd;
 	int vfio_group_fd;
 	int vfio_dev_fd;
@@ -50,6 +54,8 @@ struct virtio_vdpa_priv {
 	uint16_t hw_nr_virtqs; /* Number of vq device supported */
 	bool configured;
 };
+
+#define VIRTIO_VDPA_REMOTE_STATE_DEFAULT_SIZE 8192
 
 int virtio_vdpa_dev_pf_filter_dump(struct vdpa_vf_params *vf_info, int max_vf_num, struct virtio_vdpa_pf_priv *pf_priv);
 int virtio_vdpa_dev_vf_filter_dump(const char *vf_name, struct vdpa_vf_params *vf_info);

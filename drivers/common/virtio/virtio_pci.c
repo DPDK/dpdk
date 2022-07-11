@@ -14,6 +14,7 @@
 #include "virtio_logs.h"
 #include "virtqueue.h"
 #include "virtio_blk.h"
+#include "virtio_pci_state.h"
 
 /*
  * Following macros are derived from linux/pci_regs.h, however,
@@ -293,7 +294,7 @@ legacy_dev_close(struct virtio_hw *hw)
 	return 0;
 }
 
-static const struct virtio_ops virtio_dev_pci_legacy_ops = {
+static const struct virtio_ops virtio_dev_pci_legacy_ops __rte_unused = {
 	.read_dev_cfg   = legacy_dev_config_read,
 	.write_dev_cfg  = legacy_dev_config_write,
 	.get_status     = legacy_get_status,
@@ -790,27 +791,92 @@ virtio_pci_dev_init(struct rte_pci_device *pci_dev, struct virtio_pci_dev *dev)
 		goto msix_detect;
 	}
 
-	PMD_INIT_LOG(INFO, "trying with legacy virtio pci");
-	if (rte_pci_ioport_map(pci_dev, 0, VTPCI_IO(hw)) < 0) {
-		rte_pci_unmap_device(pci_dev);
-		if (pci_dev->kdrv == RTE_PCI_KDRV_UNKNOWN &&
-		    (!pci_dev->device.devargs ||
-		     pci_dev->device.devargs->bus !=
-		     rte_bus_find_by_name("pci"))) {
-			PMD_INIT_LOG(INFO,
-				"skip kernel managed virtio device");
-			return 1;
-		}
-		return -EINVAL;
-	}
-
-	VIRTIO_OPS(hw) = &virtio_dev_pci_legacy_ops;
-	dev->modern = false;
+	PMD_INIT_LOG(ERR, "Probe fail to read caps");
+	return -EINVAL;
 
 msix_detect:
 	VIRTIO_OPS(hw)->intr_detect(hw);
-
 	return 0;
+}
+
+int
+virtio_pci_dev_state_bar_copy(struct virtio_pci_dev *vpdev, void *state, int state_len)
+{
+	struct virtio_hw *hw;
+	struct virtqueue *hw_vq;
+	struct virtio_dev_common_state *state_info = state;
+	struct virtio_dev_queue_info *q_info;
+	uint16_t qid, max_q, notify_off, num_queues, dev_cfg_len;
+
+	if (state_len < virtio_pci_dev_state_size_get(vpdev)) {
+		PMD_INIT_LOG(ERR, "State len is too small:%d", state_len);
+		return -EINVAL;
+	}
+
+	/* Internal vq info assign */
+	max_q = virtio_pci_dev_nr_vq_get(vpdev);
+	hw = &vpdev->hw;
+	for(qid = 0; qid < max_q; qid++) {
+		hw_vq = hw->vqs[qid];
+		rte_write16(qid, &vpdev->common_cfg->queue_select);
+		notify_off = rte_read16(&vpdev->common_cfg->queue_notify_off);
+		hw_vq->notify_addr=  (void *)((uint8_t *)vpdev->notify_base +
+				notify_off * vpdev->notify_off_multiplier);
+	}
+
+	num_queues = hw->num_queues;
+	state_info->hdr.virtio_field_count = rte_cpu_to_le_32(VIRTIO_DEV_STATE_COMMON_FIELD_CNT +
+										VIRTIO_DEV_STATE_PER_QUEUE_FIELD_CNT * num_queues);
+	state_info->common_cfg_hdr.type = rte_cpu_to_le_32(VIRTIO_DEV_PCI_COMMON_CFG);
+	state_info->common_cfg_hdr.size = rte_cpu_to_le_32(sizeof(struct virtio_pci_state_common_cfg));
+	state_info->common_cfg.device_feature = rte_cpu_to_le_64(modern_get_features(hw));
+	state_info->common_cfg.num_queues = rte_cpu_to_le_16(num_queues);
+
+	/* Dev cfg space */
+	dev_cfg_len = hw->virtio_dev_sp_ops->get_dev_cfg_size();
+	state_info->dev_cfg_hdr.type = rte_cpu_to_le_32(VIRTIO_DEV_CFG_SPACE);
+	state_info->dev_cfg_hdr.size = rte_cpu_to_le_32(dev_cfg_len);
+
+	modern_read_dev_config(hw, 0, state_info + 1, dev_cfg_len);
+
+	/* Read config generation after read dev config in case it change */
+	state_info->common_cfg.config_generation = rte_read8(&vpdev->common_cfg->config_generation);
+
+	/* Queue state info init */
+	q_info = hw->virtio_dev_sp_ops->get_queue_offset(state);
+	for(qid = 0; qid < num_queues; qid++) {
+		rte_write16(qid, &vpdev->common_cfg->queue_select);
+		q_info[qid].q_cfg_hdr.type = rte_cpu_to_le_32(VIRTIO_DEV_QUEUE_CFG);
+		q_info[qid].q_cfg_hdr.size = rte_cpu_to_le_32(sizeof(struct virtio_dev_q_cfg));
+		q_info[qid].q_cfg.queue_index = rte_cpu_to_le_16(qid);
+		q_info[qid].q_cfg.queue_size = rte_cpu_to_le_16(rte_read16(&vpdev->common_cfg->queue_size));
+		q_info[qid].q_cfg.queue_msix_vector = rte_cpu_to_le_16(rte_read16(&vpdev->common_cfg->queue_msix_vector));
+		q_info[qid].q_cfg.queue_notify_off = rte_cpu_to_le_16(rte_read16(&vpdev->common_cfg->queue_notify_off));
+		q_info[qid].q_cfg.queue_notify_data = rte_cpu_to_le_16(rte_read16(&vpdev->common_cfg->queue_notify_data));
+
+		q_info[qid].q_run_state_hdr.type = rte_cpu_to_le_32(VIRTIO_DEV_SPLIT_Q_RUN_STATE);
+		q_info[qid].q_run_state_hdr.size = rte_cpu_to_le_32(sizeof(struct virtio_dev_split_q_run_state));
+		q_info[qid].q_run_state.queue_index = rte_cpu_to_le_16(qid);
+	}
+	return 0;
+}
+
+void
+virtio_pci_dev_state_num_queue_set(struct virtio_pci_dev *vpdev)
+{
+	struct virtio_hw *hw = &vpdev->hw;
+
+	/* Common state space */
+	hw->num_queues = rte_read16(&vpdev->common_cfg->num_queues);
+	PMD_INIT_LOG(DEBUG, "Common cfg num_queues %d", hw->num_queues);
+}
+
+int
+virtio_pci_dev_state_size_get(struct virtio_pci_dev *vpdev)
+{
+	struct virtio_hw *hw = &vpdev->hw;
+
+	return hw->virtio_dev_sp_ops->get_state_size(hw->num_queues);
 }
 
 void virtio_pci_dev_legacy_ioport_unmap(struct virtio_hw *hw)

@@ -32,4 +32,8 @@ extern int virtio_pci_dev_logtype;
 	rte_log(RTE_LOG_ ## level, virtio_pci_dev_logtype, \
 		"VIRTIO DEV %s(): " fmt "\n", __func__, ## args)
 
+#define PMD_DUMP_LOG(level, fmt, args...) \
+	rte_log(RTE_LOG_ ## level, virtio_pci_dev_logtype, \
+		 fmt , ## args)
+
 #endif /* _VIRTIO_LOGS_H_ */

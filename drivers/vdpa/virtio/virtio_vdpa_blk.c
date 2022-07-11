@@ -5,6 +5,7 @@
 #include <rte_common.h>
 #include <rte_vhost.h>
 #include "rte_vf_rpc.h"
+#include "virtio_api.h"
 #include "virtio_vdpa.h"
 #include "virtio_blk.h"
 

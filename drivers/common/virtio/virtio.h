@@ -125,8 +125,9 @@ struct virtio_hw {
 	uint64_t device_features;
 	uint8_t weak_barriers;
 	uint8_t intr_lsc;
-	uint16_t max_queue_pairs;
-	uint16_t num_queues_blk;
+	uint16_t max_queue_pairs; /**< Only for net */
+	uint16_t num_queues_blk; /**< Only for blk */
+	uint16_t num_queues; /**< Common cfg's num_queues, it only used in state operation */
 	struct virtnet_ctl *cvq;
 	struct virtadmin_ctl *avq;
 	struct rte_pci_device *pci_dev;
@@ -157,6 +158,10 @@ struct virtio_ops {
 
 struct virtio_dev_specific_ops {
 	uint16_t (*get_queue_num)(struct virtio_hw *hw);
+	uint16_t (*get_dev_cfg_size)(void);
+	void * (*get_queue_offset)(void *state);
+	uint32_t (*get_state_size)(uint16_t num_queues);
+	void (*dev_cfg_dump)(void *f_hdr);
 };
 
 /*
