@@ -1355,6 +1355,11 @@ Supported hardware offloads
    | |                     | | rdma-core 24  | | rdma-core 24  |
    | |                     | | ConnectX-5    | | ConnectX-5    |
    +-----------------------+-----------------+-----------------+
+   | | Header rewrite      | | DPDK 22.07    | | DPDK 22.07    |
+   | | (ipv4_ecn /         | | OFED 5.6-2    | | OFED 5.6-2    |
+   | | ipv6_ecn)           | | rdma-core 41  | | rdma-core 41  |
+   | |                     | | ConnectX-5    | | ConnectX-5    |
+   +-----------------------+-----------------+-----------------+
    | Jump                  | | DPDK 19.05    | | DPDK 19.02    |
    |                       | | OFED 4.7-1    | | OFED 4.7-1    |
    |                       | | rdma-core 24  | | N/A           |
