@@ -818,6 +818,76 @@ Known Issues
 
   The debug statistics of rte_ring, rte_mempool and rte_timer are not supported in an unregistered non-EAL pthread.
 
+Signal Safety
+~~~~~~~~~~~~~
+
+  The Posix API defines an async-signal-safe function as one that can be safely
+  called from with a signal handler. Many DPDK functions are non-reentrant and
+  therefore are unsafe to call from a signal handler.
+
+  The kinds of issues that make DPDK functions unsafe can be understood when
+  one considers that much of the code in DPDK uses locks and other shared
+  resources. For example, calling ``rte_mempool_lookup()`` from a signal
+  would deadlock if the signal happened during previous call ``rte_mempool``
+  routines.
+
+  Other functions are not signal safe because they use one or more
+  library routines that are not themselves signal safe.
+  For example, calling ``rte_panic()`` is not safe in a signal handler
+  because it uses ``rte_log()`` and ``rte_log()`` calls the
+  ``syslog()`` library function which is in the list of
+  signal safe functions in
+  `Signal-Safety manual page <https://man7.org/linux/man-pages/man7/signal-safety.7.html>`_.
+
+  The set of functions that are expected to be async-signal-safe in DPDK
+  is shown in the following table. The functions not otherwise noted
+  are not async-signal-safe.
+
+.. csv-table:: **Signal Safe Functions**
+   :header: "Function"
+   :widths: 32
+
+   rte_dump_stack
+   rte_eal_get_lcore_state
+   rte_eal_get_runtime_dir
+   rte_eal_has_hugepages
+   rte_eal_has_pci
+   rte_eal_lcore_role
+   rte_eal_process_type
+   rte_eal_using_phys_addrs
+   rte_get_hpet_cycles
+   rte_get_hpet_hz
+   rte_get_main_lcore
+   rte_get_next_lcore
+   rte_get_tsc_hz
+   rte_hypervisor_get
+   rte_hypervisor_get_name
+   rte_lcore_count
+   rte_lcore_cpuset
+   rte_lcore_has_role
+   rte_lcore_index
+   rte_lcore_is_enabled
+   rte_lcore_to_cpu_id
+   rte_lcore_to_socket_id
+   rte_log_get_global_level
+   rte_log_get_level
+   rte_memory_get_nchannel
+   rte_memory_get_nrank
+   rte_reciprocal_value
+   rte_reciprocal_value_u64
+   rte_socket_count
+   rte_socket_id
+   rte_socket_id_by_idx
+   rte_strerror
+   rte_strscpy
+   rte_strsplit
+   rte_sys_gettid
+   rte_uuid_compare
+   rte_uuid_is_null
+   rte_uuid_parse
+   rte_uuid_unparse
+
+
 cgroup control
 ~~~~~~~~~~~~~~
 
