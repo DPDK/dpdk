@@ -34,6 +34,35 @@
 
 #if (OPENSSL_VERSION_NUMBER >= 0x30000000L)
 #include <openssl/provider.h>
+
+static OSSL_PROVIDER * legacy_lib;
+static OSSL_PROVIDER *default_lib;
+
+/* Some cryptographic algorithms such as MD and DES are now considered legacy
+ * and not enabled by default in OpenSSL 3.0. Load up lagacy provider as MD5
+ * DES are needed in QAT pre-computes and secure session creation.
+ */
+static int ossl_legacy_provider_load(void)
+{
+	/* Load Multiple providers into the default (NULL) library context */
+	legacy_lib = OSSL_PROVIDER_load(NULL, "legacy");
+	if (legacy_lib == NULL)
+		return -EINVAL;
+
+	default_lib = OSSL_PROVIDER_load(NULL, "default");
+	if (default_lib == NULL) {
+		OSSL_PROVIDER_unload(legacy_lib);
+		return  -EINVAL;
+	}
+
+	return 0;
+}
+
+static void ossl_legacy_provider_unload(void)
+{
+	OSSL_PROVIDER_unload(legacy_lib);
+	OSSL_PROVIDER_unload(default_lib);
+}
 #endif
 
 extern int qat_ipsec_mb_lib;
@@ -489,19 +518,8 @@ qat_sym_session_configure(struct rte_cryptodev *dev,
 	}
 
 #if (OPENSSL_VERSION_NUMBER >= 0x30000000L)
-	OSSL_PROVIDER *legacy;
-	OSSL_PROVIDER *deflt;
-
-	/* Load Multiple providers into the default (NULL) library context */
-	legacy = OSSL_PROVIDER_load(NULL, "legacy");
-	if (legacy == NULL)
+	if (ossl_legacy_provider_load())
 		return -EINVAL;
-
-	deflt = OSSL_PROVIDER_load(NULL, "default");
-	if (deflt == NULL) {
-		OSSL_PROVIDER_unload(legacy);
-		return  -EINVAL;
-	}
 #endif
 	ret = qat_sym_session_set_parameters(dev, xform, sess_private_data);
 	if (ret != 0) {
@@ -517,8 +535,7 @@ qat_sym_session_configure(struct rte_cryptodev *dev,
 		sess_private_data);
 
 # if (OPENSSL_VERSION_NUMBER >= 0x30000000L)
-	OSSL_PROVIDER_unload(legacy);
-	OSSL_PROVIDER_unload(deflt);
+	ossl_legacy_provider_unload();
 # endif
 	return 0;
 }
@@ -2610,6 +2627,10 @@ qat_security_session_create(void *dev,
 		return -ENOMEM;
 	}
 
+#if (OPENSSL_VERSION_NUMBER >= 0x30000000L)
+	if (ossl_legacy_provider_load())
+		return -EINVAL;
+#endif
 	ret = qat_sec_session_set_docsis_parameters(cdev, conf,
 			sess_private_data);
 	if (ret != 0) {
@@ -2643,6 +2664,10 @@ qat_security_session_destroy(void *dev __rte_unused,
 		set_sec_session_private_data(sess, NULL);
 		rte_mempool_put(sess_mp, sess_priv);
 	}
+
+# if (OPENSSL_VERSION_NUMBER >= 0x30000000L)
+	ossl_legacy_provider_unload();
+# endif
 	return 0;
 }
 #endif
