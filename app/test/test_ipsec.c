@@ -309,8 +309,10 @@ testsuite_setup(void)
 		}
 	}
 
-	if (ts_params->valid_dev_found == 0)
-		return TEST_FAILED;
+	if (ts_params->valid_dev_found == 0) {
+		RTE_LOG(WARNING, USER1, "No compatible crypto device found.\n");
+		return TEST_SKIPPED;
+	}
 
 	ts_params->mbuf_pool = rte_pktmbuf_pool_create(
 			"CRYPTO_MBUFPOOL",
