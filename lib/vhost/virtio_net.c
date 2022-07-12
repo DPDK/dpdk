@@ -1127,13 +1127,13 @@ sync_fill_seg(struct virtio_net *dev, struct vhost_virtqueue *vq,
 			batch_copy[vq->batch_copy_nb_elems].src =
 				rte_pktmbuf_mtod_offset(m, void *, mbuf_offset);
 			batch_copy[vq->batch_copy_nb_elems].log_addr = buf_iova;
-			batch_copy[vq->batch_copy_nb_elems].len = cpy_len;
 		} else {
 			batch_copy[vq->batch_copy_nb_elems].dst =
 				rte_pktmbuf_mtod_offset(m, void *, mbuf_offset);
 			batch_copy[vq->batch_copy_nb_elems].src =
 				(void *)((uintptr_t)(buf_addr));
 		}
+		batch_copy[vq->batch_copy_nb_elems].len = cpy_len;
 		vq->batch_copy_nb_elems++;
 	}
 }
