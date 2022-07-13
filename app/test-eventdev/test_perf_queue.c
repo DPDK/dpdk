@@ -215,7 +215,6 @@ perf_queue_eventdev_setup(struct evt_test *test, struct evt_options *opt)
 
 	nb_queues = perf_queue_nb_event_queues(opt);
 
-	memset(&dev_info, 0, sizeof(struct rte_event_dev_info));
 	ret = rte_event_dev_info_get(opt->dev_id, &dev_info);
 	if (ret) {
 		evt_err("failed to get eventdev info %d", opt->dev_id);
