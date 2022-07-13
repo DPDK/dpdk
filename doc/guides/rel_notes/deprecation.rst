@@ -48,6 +48,13 @@ Deprecation Notices
   in the header will not be considered as ABI anymore. This change is inspired
   by the RFC https://patchwork.dpdk.org/project/dpdk/list/?series=17176.
 
+* bus: The ``dev->device.numa_node`` field is set by each bus driver for
+  every device it manages to indicate on which NUMA node this device lies.
+  When this information is unknown, the assigned value is not consistent
+  across the bus drivers.
+  In DPDK 22.11, the default value will be set to -1 by all bus drivers
+  when the NUMA information is unavailable.
+
 * kni: The KNI kernel module and library are not recommended for use by new
   applications - other technologies such as virtio-user are recommended instead.
   Following the DPDK technical board
