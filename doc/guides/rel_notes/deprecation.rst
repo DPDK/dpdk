@@ -152,6 +152,11 @@ Deprecation Notices
   Names for the telemetry commands will be similarly limited.
   The parameters for telemetry commands are unaffected by this change.
 
+* net/octeontx_ep: The driver ``octeontx_ep`` was to support OCTEON TX
+  line of products.
+  It will be renamed to ``octeon_ep`` in DPDK 22.11 to apply for
+  all OCTEON EP products: OCTEON TX and future OCTEON chipsets.
+
 * raw/dpaa2_cmdif: The ``dpaa2_cmdif`` rawdev driver will be deprecated
   in DPDK 22.11, as it is no longer in use, no active user known.
 
