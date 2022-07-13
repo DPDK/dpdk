@@ -808,9 +808,9 @@ F: doc/guides/nics/mvneta.rst
 F: doc/guides/nics/features/mvneta.ini
 
 Marvell OCTEON TX EP - endpoint
-M: Nalla Pradeep <pnalla@marvell.com>
 M: Radha Mohan Chintakuntla <radhac@marvell.com>
 M: Veerasenareddy Burru <vburru@marvell.com>
+M: Sathesh Edara <sedara@marvell.com>
 T: git://dpdk.org/next/dpdk-next-net-mrvl
 F: drivers/net/octeontx_ep/
 F: doc/guides/nics/features/octeontx_ep.ini
