@@ -625,8 +625,8 @@ sw_dump(struct rte_eventdev *dev, FILE *f)
 			"Ordered", "Atomic", "Parallel", "Directed"
 	};
 	uint32_t i;
-	fprintf(f, "EventDev %s: ports %d, qids %d\n", "todo-fix-name",
-			sw->port_count, sw->qid_count);
+	fprintf(f, "EventDev %s: ports %d, qids %d\n",
+		dev->data->name, sw->port_count, sw->qid_count);
 
 	fprintf(f, "\trx   %"PRIu64"\n\tdrop %"PRIu64"\n\ttx   %"PRIu64"\n",
 		sw->stats.rx_pkts, sw->stats.rx_dropped, sw->stats.tx_pkts);
