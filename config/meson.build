@@ -171,6 +171,17 @@ if link_lib != ''
     dpdk_extra_ldflags += '-l' + link_lib
 endif
 
+# VDPA depends on libuuid
+# apt-get install uuid-dev in ubuntu
+has_libuuid = 0
+uuid_dep = cc.find_library('libuuid', required: false)
+if uuid_dep.found()
+	dpdk_conf.set10('RTE_HAS_LIBUUID', true)
+	has_libuuid = 1
+	add_project_link_arguments('-luuid', language: 'c')
+	dpdk_extra_ldflags += '-luuid'
+endif
+
 # check for libraries used in multiple places in DPDK
 has_libnuma = 0
 find_libnuma = true

@@ -7,6 +7,13 @@ if has_libev == 0
 	subdir_done()
 endif
 
+# Depends on libuuid
+if has_libuuid == 0
+	build = false
+	reason = 'missing dependency, "libuuid"'
+	subdir_done()
+endif
+
 sources = files('cJSON.c', 'jsonrpc-c.c', 'jsonrpc-client.c', 'main.c', 'vdpa_rpc.c')
 headers = files('cJSON.h', 'jsonrpc-c.h', 'jsonrpc-client.h', 'vdpa_rpc.h')
 deps += ['vhost', 'ethdev', 'cmdline', 'vdpa_virtio', 'common_virtio', 'common_virtio_mi']

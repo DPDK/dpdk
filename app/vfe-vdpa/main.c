@@ -8,12 +8,14 @@
 #include <string.h>
 #include <unistd.h>
 #include <sys/eventfd.h>
+#include <uuid/uuid.h>
 
 #include <rte_ethdev.h>
 #include <rte_malloc.h>
 #include <rte_vhost.h>
 #include <rte_vdpa.h>
 #include <rte_pci.h>
+#include <rte_uuid.h>
 #include <rte_string_fns.h>
 #include <virtio_api.h>
 #include <virtio_lm.h>
@@ -610,6 +612,7 @@ main(int argc, char *argv[])
 	struct rte_vdpa_device *vdev;
 	struct rte_device *dev;
 	struct rte_dev_iterator dev_iter;
+	rte_uuid_t vf_token;
 
 	ret = vdpa_rpc_start(&vdpa_rpc_ctx);
 	if (ret < 0)
@@ -623,6 +626,12 @@ main(int argc, char *argv[])
 	signal(SIGINT, signal_handler);
 	signal(SIGTERM, signal_handler);
 
+	rte_eal_vfio_get_vf_token(vf_token);
+	/* Generate VF token firstly, if the user-configured NULL*/
+	if (rte_uuid_is_null(vf_token)) {
+		uuid_generate(vf_token);
+		rte_eal_vfio_set_vf_token(vf_token);
+	}
 	ret = parse_args(argc, argv);
 	if (ret < 0)
 		rte_exit(EXIT_FAILURE, "invalid argument\n");
