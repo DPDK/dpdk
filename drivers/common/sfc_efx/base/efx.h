@@ -4887,17 +4887,17 @@ typedef enum efx_virtio_vq_type_e {
 
 typedef struct efx_virtio_vq_dyncfg_s {
 	/*
-	 * If queue is being created to be migrated then this
-	 * should be the FINAL_PIDX value returned by MC_CMD_VIRTIO_FINI_QUEUE
+	 * If queue is being created to be migrated then this should be
+	 * the FINAL_AVAIL_IDX value returned by MC_CMD_VIRTIO_FINI_QUEUE
 	 * of the queue being migrated from. Otherwise, it should be zero.
 	 */
-	uint32_t		evvd_vq_pidx;
+	uint32_t		evvd_vq_avail_idx;
 	/*
-	 * If this queue is being created to be migrated then this
-	 * should be the FINAL_CIDX value returned by MC_CMD_VIRTIO_FINI_QUEUE
+	 * If queue is being created to be migrated then this should be
+	 * the FINAL_USED_IDX value returned by MC_CMD_VIRTIO_FINI_QUEUE
 	 * of the queue being migrated from. Otherwise, it should be zero.
 	 */
-	uint32_t		evvd_vq_cidx;
+	uint32_t		evvd_vq_used_idx;
 } efx_virtio_vq_dyncfg_t;
 
 /*
