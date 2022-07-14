@@ -6,59 +6,13 @@
 DPDK Release 22.07
 ==================
 
-.. **Read this first.**
-
-   The text in the sections below explains how to update the release notes.
-
-   Use proper spelling, capitalization and punctuation in all sections.
-
-   Variable and config names should be quoted as fixed width text:
-   ``LIKE_THIS``.
-
-   Build the docs and view the output file to ensure the changes are correct::
-
-      ninja -C build doc
-      xdg-open build/doc/guides/html/rel_notes/release_22_07.html
-
-
 New Features
 ------------
 
-.. This section should contain new features added in this release.
-   Sample format:
-
-   * **Add a title in the past tense with a full stop.**
-
-     Add a short 1-2 sentence description in the past tense.
-     The description should be enough to allow someone scanning
-     the release notes to understand the new feature.
-
-     If the feature adds a lot of sub-features you can use a bullet list
-     like this:
-
-     * Added feature foo to do something.
-     * Enhanced feature bar to do something else.
-
-     Refer to the previous release notes for examples.
-
-     Suggested order in release notes items:
-     * Core libs (EAL, mempool, ring, mbuf, buses)
-     * Device abstraction libs and PMDs (ordered alphabetically by vendor name)
-       - ethdev (lib, PMDs)
-       - cryptodev (lib, PMDs)
-       - eventdev (lib, PMDs)
-       - etc
-     * Other libs
-     * Apps, Examples, Tools (if significant)
-
-     This section is a comment. Do not overwrite or remove it.
-     Also, make sure to start the actual text at the margin.
-     =======================================================
-
-* **Added initial RISC-V architecture support.***
+* **Added initial RISC-V architecture support.**
 
   Added EAL implementation for RISC-V architecture.
-  The initial device the porting was tested on is
+  The initial device the porting was tested on was
   a HiFive Unmatched development board based on the SiFive Freedom U740 SoC.
   In theory this implementation should work
   with any ``rv64gc`` ISA compatible implementation
@@ -70,7 +24,7 @@ New Features
   (seqlock). A seqlock allows for low overhead, parallel reads. The
   DPDK seqlock uses a spinlock to serialize multiple writing threads.
 
-* ** Added function get random floating point number.**
+* **Added function to get random floating point number.**
 
   Added the function ``rte_drand()`` to provide a pseudo-random
   floating point number.
@@ -87,7 +41,7 @@ New Features
 * **Added Rx queue available descriptors threshold and event.**
 
   Added ethdev API and corresponding driver operations to set Rx queue
-  available descriptors threshold and query for queues with reached
+  available descriptors threshold and query for queues that have reached the
   threshold when a new event ``RTE_ETH_EVENT_RX_AVAIL_THRESH`` is received.
 
 * **Added telemetry for module EEPROM.**
@@ -102,22 +56,22 @@ New Features
 * **Added vhost API to get the number of in-flight packets.**
 
   Added an API which can get the number of in-flight packets in
-  vhost async data path without using lock.
+  the vhost async data path without using lock.
 
 * **Added vhost async dequeue API to receive packets from guest.**
 
   Added vhost async dequeue API which can leverage DMA devices to
-  accelerate receiving packets from guest.
-  Split virtqueue and packed virtqueue are both supported.
+  accelerate receiving packets from a guest.
+  Both split and packed virtqueues are supported.
 
 * **Added thread-safe version of in-flight packet clear API in vhost library.**
 
   Added an API which can clear the in-flight packets submitted to
-  the async channel in a thread-safe manner in the vhost async data path.
+  the async channel in a thread-safe manner, in the vhost async data path.
 
 * **Added vhost API to get the device type of a vDPA device.**
 
-  Added an API which can get the device type of vDPA device.
+  Added an API which can get the device type of vDPA devices.
 
 * **Updated NVIDIA mlx5 vDPA driver.**
 
@@ -126,9 +80,7 @@ New Features
   * Added new devargs option ``max_conf_threads``
     defining the number of management threads for parallel configurations.
 
-* **Updated Amazon ena driver.**
-
-  The new driver version (v2.7.0) includes:
+* **Updated Amazon ENA driver to version 2.7.0.**
 
   * Added fast mbuf free feature support.
   * Added ``enable_llq`` device argument for controlling the PMD LLQ
@@ -153,20 +105,20 @@ New Features
 
 * **Updated Intel ice driver.**
 
- * Added support for RSS RETA configure in DCF mode.
- * Added support for RSS HASH configure in DCF mode.
- * Added support for MTU configure in DCF mode.
- * Added support for promisc configuration in DCF mode.
- * Added support for MAC configuration in DCF mode.
- * Added support for VLAN filter and offload configuration in DCF mode.
- * Added Tx QoS queue / queue group rate limitation configure support.
- * Added Tx QoS queue / queue group priority configuration support.
- * Added Tx QoS queue weight configuration support.
+  * Added support for RSS RETA configure in DCF mode.
+  * Added support for RSS HASH configure in DCF mode.
+  * Added support for MTU configure in DCF mode.
+  * Added support for promisc configuration in DCF mode.
+  * Added support for MAC configuration in DCF mode.
+  * Added support for VLAN filter and offload configuration in DCF mode.
+  * Added Tx QoS queue / queue group rate limitation configure support.
+  * Added Tx QoS queue / queue group priority configuration support.
+  * Added Tx QoS queue weight configuration support.
 
 * **Updated Intel igc driver.**
 
   Added Intel Foxville I226 devices in ``igc`` driver.
-  See the doc:`../nics/igc` NIC guide for more details.
+  See the :doc:`../nics/igc` NIC guide for more details.
 
 * **Updated Mellanox mlx5 driver.**
 
@@ -241,7 +193,7 @@ New Features
 
 * **Added new queues attributes weight and affinity in eventdev.**
 
-  Defined new event queue attributes weight and affinity as below:
+  Defined new event queue attributes weight and affinity:
 
   * ``RTE_EVENT_QUEUE_ATTR_WEIGHT``
   * ``RTE_EVENT_QUEUE_ATTR_AFFINITY``
@@ -268,33 +220,8 @@ New Features
   command.
 
 
-Removed Items
--------------
-
-.. This section should contain removed items in this release. Sample format:
-
-   * Add a short 1-2 sentence description of the removed item
-     in the past tense.
-
-   This section is a comment. Do not overwrite or remove it.
-   Also, make sure to start the actual text at the margin.
-   =======================================================
-
-
 API Changes
 -----------
-
-.. This section should contain API changes. Sample format:
-
-   * sample: Add a short 1-2 sentence description of the API change
-     which was announced in the previous releases and made in this release.
-     Start with a scope label like "ethdev:".
-     Use fixed width quotes for ``function_names`` or ``struct_names``.
-     Use the past tense.
-
-   This section is a comment. Do not overwrite or remove it.
-   Also, make sure to start the actual text at the margin.
-   =======================================================
 
 * The DPDK header file ``rte_altivec.h``,
   which is a wrapper for the PPC header file ``altivec.h``,
@@ -302,61 +229,18 @@ API Changes
   The alternative keyword ``__vector`` should be used instead.
 
 * Experimental structures ``struct rte_mtr_params``
-  and ``struct rte_mtr_capabilities`` updated to support
+  and ``struct rte_mtr_capabilities`` were updated to support
   protocol based input color for meter.
 
 
 ABI Changes
 -----------
 
-.. This section should contain ABI changes. Sample format:
-
-   * sample: Add a short 1-2 sentence description of the ABI change
-     which was announced in the previous releases and made in this release.
-     Start with a scope label like "ethdev:".
-     Use fixed width quotes for ``function_names`` or ``struct_names``.
-     Use the past tense.
-
-   This section is a comment. Do not overwrite or remove it.
-   Also, make sure to start the actual text at the margin.
-   =======================================================
-
 * No ABI change that would break compatibility with 21.11.
-
-
-Known Issues
-------------
-
-.. This section should contain new known issues in this release. Sample format:
-
-   * **Add title in present tense with full stop.**
-
-     Add a short 1-2 sentence description of the known issue
-     in the present tense. Add information on any known workarounds.
-
-   This section is a comment. Do not overwrite or remove it.
-   Also, make sure to start the actual text at the margin.
-   =======================================================
 
 
 Tested Platforms
 ----------------
-
-.. This section should contain a list of platforms that were tested
-   with this release.
-
-   The format is:
-
-   * <vendor> platform with <vendor> <type of devices> combinations
-
-     * List of CPU
-     * List of OS
-     * List of devices
-     * Other relevant details...
-
-   This section is a comment. Do not overwrite or remove it.
-   Also, make sure to start the actual text at the margin.
-   =======================================================
 
 * Intel\ |reg| platforms with Intel\ |reg| NICs combinations
 
