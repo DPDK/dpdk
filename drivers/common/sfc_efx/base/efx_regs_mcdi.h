@@ -28071,18 +28071,26 @@
 #define	MC_CMD_VIRTIO_INIT_QUEUE_REQ_FEATURES_HI_WIDTH 32
 /*            Enum values, see field(s): */
 /*               MC_CMD_VIRTIO_GET_FEATURES/MC_CMD_VIRTIO_GET_FEATURES_OUT/FEATURES */
-/* The initial producer index for this queue's used ring. If this queue is
- * being created to be migrated into, this should be the FINAL_PIDX value
- * returned by MC_CMD_VIRTIO_FINI_QUEUE of the queue being migrated from.
- * Otherwise, it should be zero.
+/* The initial available index for this virtqueue. If this queue is being
+ * created to be migrated into, this should be the FINAL_AVAIL_IDX value
+ * returned by MC_CMD_VIRTIO_FINI_QUEUE of the queue being migrated from (or
+ * equivalent if the original queue was on a thirdparty device). Otherwise, it
+ * should be zero.
  */
+#define	MC_CMD_VIRTIO_INIT_QUEUE_REQ_INITIAL_AVAIL_IDX_OFST 56
+#define	MC_CMD_VIRTIO_INIT_QUEUE_REQ_INITIAL_AVAIL_IDX_LEN 4
+/* Alias of INITIAL_AVAIL_IDX, kept for compatibility. */
 #define	MC_CMD_VIRTIO_INIT_QUEUE_REQ_INITIAL_PIDX_OFST 56
 #define	MC_CMD_VIRTIO_INIT_QUEUE_REQ_INITIAL_PIDX_LEN 4
-/* The initial consumer index for this queue's available ring. If this queue is
- * being created to be migrated into, this should be the FINAL_CIDX value
- * returned by MC_CMD_VIRTIO_FINI_QUEUE of the queue being migrated from.
- * Otherwise, it should be zero.
+/* The initial used index for this virtqueue. If this queue is being created to
+ * be migrated into, this should be the FINAL_USED_IDX value returned by
+ * MC_CMD_VIRTIO_FINI_QUEUE of the queue being migrated from (or equivalent if
+ * the original queue was on a thirdparty device). Otherwise, it should be
+ * zero.
  */
+#define	MC_CMD_VIRTIO_INIT_QUEUE_REQ_INITIAL_USED_IDX_OFST 60
+#define	MC_CMD_VIRTIO_INIT_QUEUE_REQ_INITIAL_USED_IDX_LEN 4
+/* Alias of INITIAL_USED_IDX, kept for compatibility. */
 #define	MC_CMD_VIRTIO_INIT_QUEUE_REQ_INITIAL_CIDX_OFST 60
 #define	MC_CMD_VIRTIO_INIT_QUEUE_REQ_INITIAL_CIDX_LEN 4
 /* A MAE_MPORT_SELECTOR defining which mport this queue should be associated
@@ -28128,10 +28136,16 @@
 
 /* MC_CMD_VIRTIO_FINI_QUEUE_RESP msgresponse */
 #define	MC_CMD_VIRTIO_FINI_QUEUE_RESP_LEN 8
-/* The producer index of the used ring when the queue was stopped. */
+/* The available index of the virtqueue when the queue was stopped. */
+#define	MC_CMD_VIRTIO_FINI_QUEUE_RESP_FINAL_AVAIL_IDX_OFST 0
+#define	MC_CMD_VIRTIO_FINI_QUEUE_RESP_FINAL_AVAIL_IDX_LEN 4
+/* Alias of FINAL_AVAIL_IDX, kept for compatibility. */
 #define	MC_CMD_VIRTIO_FINI_QUEUE_RESP_FINAL_PIDX_OFST 0
 #define	MC_CMD_VIRTIO_FINI_QUEUE_RESP_FINAL_PIDX_LEN 4
-/* The consumer index of the available ring when the queue was stopped. */
+/* The used index of the virtqueue when the queue was stopped. */
+#define	MC_CMD_VIRTIO_FINI_QUEUE_RESP_FINAL_USED_IDX_OFST 4
+#define	MC_CMD_VIRTIO_FINI_QUEUE_RESP_FINAL_USED_IDX_LEN 4
+/* Alias of FINAL_USED_IDX, kept for compatibility. */
 #define	MC_CMD_VIRTIO_FINI_QUEUE_RESP_FINAL_CIDX_OFST 4
 #define	MC_CMD_VIRTIO_FINI_QUEUE_RESP_FINAL_CIDX_LEN 4
 
