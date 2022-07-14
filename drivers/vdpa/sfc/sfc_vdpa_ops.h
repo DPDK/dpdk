@@ -7,7 +7,7 @@
 
 #include <rte_vdpa.h>
 
-#define SFC_VDPA_MAX_QUEUE_PAIRS		1
+#define SFC_VDPA_MAX_QUEUE_PAIRS		8
 
 enum sfc_vdpa_context {
 	SFC_VDPA_AS_VF

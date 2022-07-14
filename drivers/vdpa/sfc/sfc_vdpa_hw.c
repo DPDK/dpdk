@@ -286,6 +286,8 @@ sfc_vdpa_estimate_resource_limits(struct sfc_vdpa_adapter *sva)
 	SFC_VDPA_ASSERT(max_queue_cnt > 0);
 
 	sva->max_queue_count = max_queue_cnt;
+	sfc_vdpa_log_init(sva, "NIC init done with %u pair(s) of queues",
+			  max_queue_cnt);
 
 	return 0;
 

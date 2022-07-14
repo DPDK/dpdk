@@ -24,14 +24,16 @@
 		 (1ULL << VHOST_USER_PROTOCOL_F_SLAVE_REQ) | \
 		 (1ULL << VHOST_USER_PROTOCOL_F_SLAVE_SEND_FD) | \
 		 (1ULL << VHOST_USER_PROTOCOL_F_HOST_NOTIFIER) | \
-		 (1ULL << VHOST_USER_PROTOCOL_F_LOG_SHMFD))
+		 (1ULL << VHOST_USER_PROTOCOL_F_LOG_SHMFD) | \
+		 (1ULL << VHOST_USER_PROTOCOL_F_MQ))
 
 /*
  * Set of features which are enabled by default.
  * Protocol feature bit is needed to enable notification notifier ctrl.
  */
 #define SFC_VDPA_DEFAULT_FEATURES \
-		(1ULL << VHOST_USER_F_PROTOCOL_FEATURES)
+		((1ULL << VHOST_USER_F_PROTOCOL_FEATURES) | \
+		 (1ULL << VIRTIO_NET_F_MQ))
 
 #define SFC_VDPA_MSIX_IRQ_SET_BUF_LEN \
 		(sizeof(struct vfio_irq_set) + \
