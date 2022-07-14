@@ -927,7 +927,7 @@ virtio_vdpa_dev_config(int vid)
 	}
 
 	priv->nr_virtqs = rte_vhost_get_vring_num(vid);
-	if (priv->nvec <= (priv->nr_virtqs + 1)) {
+	if (priv->nvec < (priv->nr_virtqs + 1)) {
 		DRV_LOG(ERR, "%s error dev interrupts %d less than queue: %d",
 					vdev->device->name, priv->nvec, priv->nr_virtqs + 1);
 		return -EINVAL;
