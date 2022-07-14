@@ -1163,8 +1163,13 @@ drain_eth_rx(struct vhost_dev *vdev)
 		rte_atomic64_add(&vdev->stats.rx_atomic, enqueue_count);
 	}
 
-	if (!async_vhost_driver)
+	if (!async_vhost_driver) {
 		free_pkts(pkts, rx_count);
+	} else {
+		uint16_t enqueue_fail = rx_count - enqueue_count;
+		if (enqueue_fail > 0)
+			free_pkts(&pkts[enqueue_count], enqueue_fail);
+	}
 }
 
 static __rte_always_inline void
