@@ -17,77 +17,6 @@ static uint32_t n_subport_profiles;
 static struct rte_sched_pipe_params
 	pipe_profile[TMGR_PIPE_PROFILE_MAX];
 
-#ifdef RTE_SCHED_CMAN
-static struct rte_sched_cman_params cman_params = {
-	.red_params = {
-		/* Traffic Class 0 Colors Green / Yellow / Red */
-		[0][0] = {.min_th = 48, .max_th = 64, .maxp_inv = 10, .wq_log2 = 9},
-		[0][1] = {.min_th = 40, .max_th = 64, .maxp_inv = 10, .wq_log2 = 9},
-		[0][2] = {.min_th = 32, .max_th = 64, .maxp_inv = 10, .wq_log2 = 9},
-
-		/* Traffic Class 1 - Colors Green / Yellow / Red */
-		[1][0] = {.min_th = 48, .max_th = 64, .maxp_inv = 10, .wq_log2 = 9},
-		[1][1] = {.min_th = 40, .max_th = 64, .maxp_inv = 10, .wq_log2 = 9},
-		[1][2] = {.min_th = 32, .max_th = 64, .maxp_inv = 10, .wq_log2 = 9},
-
-		/* Traffic Class 2 - Colors Green / Yellow / Red */
-		[2][0] = {.min_th = 48, .max_th = 64, .maxp_inv = 10, .wq_log2 = 9},
-		[2][1] = {.min_th = 40, .max_th = 64, .maxp_inv = 10, .wq_log2 = 9},
-		[2][2] = {.min_th = 32, .max_th = 64, .maxp_inv = 10, .wq_log2 = 9},
-
-		/* Traffic Class 3 - Colors Green / Yellow / Red */
-		[3][0] = {.min_th = 48, .max_th = 64, .maxp_inv = 10, .wq_log2 = 9},
-		[3][1] = {.min_th = 40, .max_th = 64, .maxp_inv = 10, .wq_log2 = 9},
-		[3][2] = {.min_th = 32, .max_th = 64, .maxp_inv = 10, .wq_log2 = 9},
-
-		/* Traffic Class 4 - Colors Green / Yellow / Red */
-		[4][0] = {.min_th = 48, .max_th = 64, .maxp_inv = 10, .wq_log2 = 9},
-		[4][1] = {.min_th = 40, .max_th = 64, .maxp_inv = 10, .wq_log2 = 9},
-		[4][2] = {.min_th = 32, .max_th = 64, .maxp_inv = 10, .wq_log2 = 9},
-
-		/* Traffic Class 5 - Colors Green / Yellow / Red */
-		[5][0] = {.min_th = 48, .max_th = 64, .maxp_inv = 10, .wq_log2 = 9},
-		[5][1] = {.min_th = 40, .max_th = 64, .maxp_inv = 10, .wq_log2 = 9},
-		[5][2] = {.min_th = 32, .max_th = 64, .maxp_inv = 10, .wq_log2 = 9},
-
-		/* Traffic Class 6 - Colors Green / Yellow / Red */
-		[6][0] = {.min_th = 48, .max_th = 64, .maxp_inv = 10, .wq_log2 = 9},
-		[6][1] = {.min_th = 40, .max_th = 64, .maxp_inv = 10, .wq_log2 = 9},
-		[6][2] = {.min_th = 32, .max_th = 64, .maxp_inv = 10, .wq_log2 = 9},
-
-		/* Traffic Class 7 - Colors Green / Yellow / Red */
-		[7][0] = {.min_th = 48, .max_th = 64, .maxp_inv = 10, .wq_log2 = 9},
-		[7][1] = {.min_th = 40, .max_th = 64, .maxp_inv = 10, .wq_log2 = 9},
-		[7][2] = {.min_th = 32, .max_th = 64, .maxp_inv = 10, .wq_log2 = 9},
-
-		/* Traffic Class 8 - Colors Green / Yellow / Red */
-		[8][0] = {.min_th = 48, .max_th = 64, .maxp_inv = 10, .wq_log2 = 9},
-		[8][1] = {.min_th = 40, .max_th = 64, .maxp_inv = 10, .wq_log2 = 9},
-		[8][2] = {.min_th = 32, .max_th = 64, .maxp_inv = 10, .wq_log2 = 9},
-
-		/* Traffic Class 9 - Colors Green / Yellow / Red */
-		[9][0] = {.min_th = 48, .max_th = 64, .maxp_inv = 10, .wq_log2 = 9},
-		[9][1] = {.min_th = 40, .max_th = 64, .maxp_inv = 10, .wq_log2 = 9},
-		[9][2] = {.min_th = 32, .max_th = 64, .maxp_inv = 10, .wq_log2 = 9},
-
-		/* Traffic Class 10 - Colors Green / Yellow / Red */
-		[10][0] = {.min_th = 48, .max_th = 64, .maxp_inv = 10, .wq_log2 = 9},
-		[10][1] = {.min_th = 40, .max_th = 64, .maxp_inv = 10, .wq_log2 = 9},
-		[10][2] = {.min_th = 32, .max_th = 64, .maxp_inv = 10, .wq_log2 = 9},
-
-		/* Traffic Class 11 - Colors Green / Yellow / Red */
-		[11][0] = {.min_th = 48, .max_th = 64, .maxp_inv = 10, .wq_log2 = 9},
-		[11][1] = {.min_th = 40, .max_th = 64, .maxp_inv = 10, .wq_log2 = 9},
-		[11][2] = {.min_th = 32, .max_th = 64, .maxp_inv = 10, .wq_log2 = 9},
-
-		/* Traffic Class 12 - Colors Green / Yellow / Red */
-		[12][0] = {.min_th = 48, .max_th = 64, .maxp_inv = 10, .wq_log2 = 9},
-		[12][1] = {.min_th = 40, .max_th = 64, .maxp_inv = 10, .wq_log2 = 9},
-		[12][2] = {.min_th = 32, .max_th = 64, .maxp_inv = 10, .wq_log2 = 9},
-		},
-};
-#endif /* RTE_SCHED_CMAN */
-
 static uint32_t n_pipe_profiles;
 
 static const struct rte_sched_subport_params subport_params_default = {
@@ -96,9 +25,7 @@ static const struct rte_sched_subport_params subport_params_default = {
 	.pipe_profiles = pipe_profile,
 	.n_pipe_profiles = 0, /* filled at run time */
 	.n_max_pipe_profiles = RTE_DIM(pipe_profile),
-#ifdef RTE_SCHED_CMAN
-	.cman_params = &cman_params,
-#endif /* RTE_SCHED_CMAN */
+	.cman_params = NULL,
 };
 
 static struct tmgr_port_list tmgr_port_list;

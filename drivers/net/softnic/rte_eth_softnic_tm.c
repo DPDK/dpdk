@@ -420,11 +420,7 @@ pmd_tm_node_type_get(struct rte_eth_dev *dev,
 	return 0;
 }
 
-#ifdef RTE_SCHED_CMAN
-#define WRED_SUPPORTED						1
-#else
 #define WRED_SUPPORTED						0
-#endif
 
 #define STATS_MASK_DEFAULT					\
 	(RTE_TM_STATS_N_PKTS |					\
@@ -2300,8 +2296,6 @@ tm_tc_wred_profile_get(struct rte_eth_dev *dev, uint32_t tc_id)
 	return NULL;
 }
 
-#ifdef RTE_SCHED_CMAN
-
 static void
 wred_profiles_set(struct rte_eth_dev *dev, uint32_t subport_id)
 {
@@ -2324,12 +2318,6 @@ wred_profiles_set(struct rte_eth_dev *dev, uint32_t subport_id)
 			memcpy(dst, src, sizeof(*dst));
 		}
 }
-
-#else
-
-#define wred_profiles_set(dev, subport_id)
-
-#endif
 
 static struct tm_shared_shaper *
 tm_tc_shared_shaper_get(struct rte_eth_dev *dev, struct tm_node *tc_node)

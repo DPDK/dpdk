@@ -88,9 +88,6 @@
 /* rte_power defines */
 #define RTE_MAX_LCORE_FREQS 64
 
-/* rte_sched defines */
-// RTE_SCHED_CMAN is not set
-
 /* rte_graph defines */
 #define RTE_GRAPH_BURST_SIZE 256
 #define RTE_LIBRTE_GRAPH_STATS 1
