@@ -11095,8 +11095,10 @@ instr_recircid_export(struct instruction *instr, FILE *f)
 		"\t{\n"
 		"\t\t.type = %s,\n"
 		"\t\t.io = {\n"
-		"\t\t\t.offset = %u,\n"
-		"\t\t\t.n_bits = %u,\n"
+		"\t\t\t.io = {\n"
+		"\t\t\t\t.offset = %u,\n"
+		"\t\t\t\t.n_bits = %u,\n"
+		"\t\t\t},\n"
 		"\t\t},\n"
 		"\t},\n",
 		instr_type_to_name(instr),
