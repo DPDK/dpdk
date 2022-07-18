@@ -82,7 +82,7 @@ bond_ethdev_rx_burst(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 					 bufs + num_rx_total, nb_pkts);
 		num_rx_total += num_rx_slave;
 		nb_pkts -= num_rx_slave;
-		if (++active_slave == slave_count)
+		if (++active_slave >= slave_count)
 			active_slave = 0;
 	}
 
