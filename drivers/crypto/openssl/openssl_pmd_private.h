@@ -6,6 +6,7 @@
 #define _OPENSSL_PMD_PRIVATE_H_
 
 #include <openssl/evp.h>
+#include <openssl/cmac.h>
 #include <openssl/hmac.h>
 #include <openssl/des.h>
 #include <openssl/rsa.h>
@@ -50,6 +51,7 @@ enum openssl_cipher_mode {
 enum openssl_auth_mode {
 	OPENSSL_AUTH_AS_AUTH,
 	OPENSSL_AUTH_AS_HMAC,
+	OPENSSL_AUTH_AS_CMAC,
 };
 
 /** private data structure for each OPENSSL crypto device */
@@ -145,6 +147,18 @@ struct openssl_session {
 # endif
 				/**< pointer to EVP context structure */
 			} hmac;
+
+			struct {
+# if OPENSSL_VERSION_NUMBER >= 0x30000000L
+				EVP_MAC_CTX * ctx;
+				/**< pointer to EVP context structure */
+# else
+				const EVP_CIPHER * evp_algo;
+				/**< pointer to EVP algorithm function */
+				CMAC_CTX *ctx;
+				/**< pointer to EVP context structure */
+# endif
+			} cmac;
 		};
 
 		uint16_t aad_length;
