@@ -360,6 +360,36 @@ Where ``NNNNN`` is patchwork ID for patch or series::
      ---
      Depends-on: series-10000 ("Title of the series")
 
+Tag order
+~~~~~~~~~
+
+There is a pattern indicating how certain tags should relate to each other.
+
+Example of proper tag sequence::
+
+     Coverity issue:
+     Bugzilla ID:
+     Fixes:
+     Cc:
+
+     Reported-by:
+     Suggested-by:
+     Signed-off-by:
+     Acked-by:
+     Reviewed-by:
+     Tested-by:
+
+Between first and second tag section there is and empty line.
+
+While ``Signed-off-by:`` is an obligatory tag and must exist in each commit,
+all other tags are optional.
+Any tag, as long as it is in proper location to other adjacent tags (if present),
+may occur multiple times.
+
+Tags after the first occurrence of ``Signed-off-by:`` shall be laid out
+in a chronological order.
+
+
 Creating Patches
 ----------------
 
