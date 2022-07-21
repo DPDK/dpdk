@@ -51,6 +51,7 @@ if dpdk_conf.has('RTE_NET_I40E')
 	deps += 'net_i40e'
 endif
 if dpdk_conf.has('RTE_NET_IXGBE')
+	cflags += ['-DRTE_LIBRTE_IXGBE_BYPASS']
 	deps += 'net_ixgbe'
 endif
 if dpdk_conf.has('RTE_NET_DPAA')
