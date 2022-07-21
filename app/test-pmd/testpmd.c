@@ -445,16 +445,6 @@ uint32_t event_print_mask = (UINT32_C(1) << RTE_ETH_EVENT_UNKNOWN) |
  */
 int do_mlockall = 0;
 
-/*
- * NIC bypass mode configuration options.
- */
-
-#if defined RTE_NET_IXGBE && defined RTE_LIBRTE_IXGBE_BYPASS
-/* The NIC bypass watchdog timeout. */
-uint32_t bypass_timeout = RTE_PMD_IXGBE_BYPASS_TMT_OFF;
-#endif
-
-
 #ifdef RTE_LIB_LATENCYSTATS
 
 /*

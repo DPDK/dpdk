@@ -20,6 +20,8 @@ sources = files(
         'rte_pmd_ixgbe.c',
 )
 
+testpmd_sources = files('ixgbe_testpmd.c')
+
 deps += ['hash', 'security']
 
 if arch_subdir == 'x86'

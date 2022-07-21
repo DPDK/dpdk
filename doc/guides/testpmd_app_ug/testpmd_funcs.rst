@@ -929,51 +929,12 @@ set drop enable bit for all queues::
 
    testpmd> set all queues drop (port_id) (on|off)
 
-set split drop enable (for VF)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-set split drop enable bit for VF from PF::
-
-   testpmd> set vf split drop (port_id) (vf_id) (on|off)
-
 set mac antispoof (for VF)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Set mac antispoof for a VF from the PF::
 
    testpmd> set vf mac antispoof  (port_id) (vf_id) (on|off)
-
-set macsec offload
-~~~~~~~~~~~~~~~~~~
-
-Enable/disable MACsec offload::
-
-   testpmd> set macsec offload (port_id) on encrypt (on|off) replay-protect (on|off)
-   testpmd> set macsec offload (port_id) off
-
-set macsec sc
-~~~~~~~~~~~~~
-
-Configure MACsec secure connection (SC)::
-
-   testpmd> set macsec sc (tx|rx) (port_id) (mac) (pi)
-
-.. note::
-
-   The pi argument is ignored for tx.
-   Check the NIC Datasheet for hardware limits.
-
-set macsec sa
-~~~~~~~~~~~~~
-
-Configure MACsec secure association (SA)::
-
-   testpmd> set macsec sa (tx|rx) (port_id) (idx) (an) (pn) (key)
-
-.. note::
-
-   The IDX value must be 0 or 1.
-   Check the NIC Datasheet for hardware limits.
 
 vlan set stripq
 ~~~~~~~~~~~~~~~
@@ -1383,13 +1344,6 @@ Set the allmulti mode for a port or for all ports::
 
 Same as the ifconfig (8) option. Controls how multicast packets are handled.
 
-set tc tx min bandwidth
-~~~~~~~~~~~~~~~~~~~~~~~
-
-Set all TCs' TX min relative bandwidth (%) globally for all PF and VFs::
-
-   testpmd> set tc tx min-bandwidth (port_id) (bw1, bw2, ...)
-
 set flow_ctrl rx
 ~~~~~~~~~~~~~~~~
 
@@ -1539,48 +1493,6 @@ The default is flush ``on``.
 Mainly used with PCAP drivers to turn off the default behavior of flushing the first 512 packets on RX streams::
 
    testpmd> set flush_rx off
-
-set bypass mode
-~~~~~~~~~~~~~~~
-
-Set the bypass mode for the lowest port on bypass enabled NIC::
-
-   testpmd> set bypass mode (normal|bypass|isolate) (port_id)
-
-set bypass event
-~~~~~~~~~~~~~~~~
-
-Set the event required to initiate specified bypass mode for the lowest port on a bypass enabled::
-
-   testpmd> set bypass event (timeout|os_on|os_off|power_on|power_off) \
-            mode (normal|bypass|isolate) (port_id)
-
-Where:
-
-* ``timeout``: Enable bypass after watchdog timeout.
-
-* ``os_on``: Enable bypass when OS/board is powered on.
-
-* ``os_off``: Enable bypass when OS/board is powered off.
-
-* ``power_on``: Enable bypass when power supply is turned on.
-
-* ``power_off``: Enable bypass when power supply is turned off.
-
-
-set bypass timeout
-~~~~~~~~~~~~~~~~~~
-
-Set the bypass watchdog timeout to ``n`` seconds where 0 = instant::
-
-   testpmd> set bypass timeout (0|1.5|2|3|4|8|16|32)
-
-show bypass config
-~~~~~~~~~~~~~~~~~~
-
-Show the bypass configuration for a bypass enabled NIC using the lowest port on the NIC::
-
-   testpmd> show bypass config (port_id)
 
 set link up
 ~~~~~~~~~~~
@@ -5370,3 +5282,4 @@ See:
 
 - :ref:`net/bonding testpmd driver specific commands <bonding_testpmd_commands>`
 - :ref:`net/i40e testpmd driver specific commands <net_i40e_testpmd_commands>`
+- :ref:`net/ixgbe testpmd driver specific commands <net_ixgbe_testpmd_commands>`

@@ -459,10 +459,6 @@ extern uint8_t hot_plug; /**< enable by "--hot-plug" parameter */
 extern int do_mlockall; /**< set by "--mlockall" or "--no-mlockall" parameter */
 extern uint8_t clear_ptypes; /**< disabled by set ptype cmd */
 
-#ifdef RTE_LIBRTE_IXGBE_BYPASS
-extern uint32_t bypass_timeout; /**< Store the NIC bypass watchdog timeout */
-#endif
-
 /*
  * Store specified sockets on which memory pool to be used by ports
  * is allocated.
@@ -832,6 +828,7 @@ unsigned int parse_item_list(const char *str, const char *item_name,
 			unsigned int max_items,
 			unsigned int *parsed_items, int check_unique_values);
 void launch_args_parse(int argc, char** argv);
+void cmd_reconfig_device_queue(portid_t id, uint8_t dev, uint8_t queue);
 void cmdline_read_from_file(const char *filename);
 int init_cmdline(void);
 void prompt(void);
