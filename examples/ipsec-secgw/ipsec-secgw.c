@@ -2370,12 +2370,6 @@ port_init(uint16_t portid, uint64_t req_rx_offloads, uint64_t req_tx_offloads)
 		qconf = &lcore_conf[lcore_id];
 		qconf->tx_queue_id[portid] = tx_queueid;
 
-		/* Pre-populate pkt offloads based on capabilities */
-		qconf->outbound.ipv4_offloads = RTE_MBUF_F_TX_IPV4;
-		qconf->outbound.ipv6_offloads = RTE_MBUF_F_TX_IPV6;
-		if (local_port_conf.txmode.offloads & RTE_ETH_TX_OFFLOAD_IPV4_CKSUM)
-			qconf->outbound.ipv4_offloads |= RTE_MBUF_F_TX_IP_CKSUM;
-
 		tx_queueid++;
 
 		/* init RX queues */
@@ -3253,6 +3247,7 @@ main(int32_t argc, char **argv)
 	uint64_t req_rx_offloads[RTE_MAX_ETHPORTS];
 	uint64_t req_tx_offloads[RTE_MAX_ETHPORTS];
 	struct eh_conf *eh_conf = NULL;
+	uint32_t ipv4_cksum_port_mask = 0;
 	size_t sess_sz;
 
 	nb_bufs_in_pool = 0;
@@ -3360,6 +3355,20 @@ main(int32_t argc, char **argv)
 				&req_tx_offloads[portid]);
 		port_init(portid, req_rx_offloads[portid],
 				req_tx_offloads[portid]);
+		if ((req_tx_offloads[portid] & RTE_ETH_TX_OFFLOAD_IPV4_CKSUM))
+			ipv4_cksum_port_mask = 1U << portid;
+	}
+
+	for (lcore_id = 0; lcore_id < RTE_MAX_LCORE; lcore_id++) {
+		if (rte_lcore_is_enabled(lcore_id) == 0)
+			continue;
+
+		/* Pre-populate pkt offloads based on capabilities */
+		lcore_conf[lcore_id].outbound.ipv4_offloads = RTE_MBUF_F_TX_IPV4;
+		lcore_conf[lcore_id].outbound.ipv6_offloads = RTE_MBUF_F_TX_IPV6;
+		/* Update per lcore checksum offload support only if all ports support it */
+		if (ipv4_cksum_port_mask == enabled_port_mask)
+			lcore_conf[lcore_id].outbound.ipv4_offloads |= RTE_MBUF_F_TX_IP_CKSUM;
 	}
 
 	/*
