@@ -47,7 +47,7 @@ processx4_step3(struct rte_mbuf *pkts[FWDSTEP], uint16_t dst_port[FWDSTEP],
 			pkt->ol_flags |= tx_offloads;
 
 			ip = (struct rte_ipv4_hdr *)
-				(p[i] + RTE_ETHER_HDR_LEN + 1);
+				(((uintptr_t)p[i]) + RTE_ETHER_HDR_LEN);
 			ip->hdr_checksum = 0;
 
 			/* calculate IPv4 cksum in SW */
