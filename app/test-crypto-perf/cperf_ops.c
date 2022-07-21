@@ -9,7 +9,7 @@
 #include "cperf_ops.h"
 #include "cperf_test_vectors.h"
 
-static int
+static void
 cperf_set_ops_asym(struct rte_crypto_op **ops,
 		   uint32_t src_buf_offset __rte_unused,
 		   uint32_t dst_buf_offset __rte_unused, uint16_t nb_ops,
@@ -33,7 +33,6 @@ cperf_set_ops_asym(struct rte_crypto_op **ops,
 		asym_op->modex.result.length = options->modex_data->result.len;
 		rte_crypto_op_attach_asym_session(ops[i], asym_sess);
 	}
-	return 0;
 }
 
 #ifdef RTE_LIB_SECURITY
@@ -52,7 +51,7 @@ test_ipsec_vec_populate(struct rte_mbuf *m, const struct cperf_options *options,
 	}
 }
 
-static int
+static void
 cperf_set_ops_security(struct rte_crypto_op **ops,
 		uint32_t src_buf_offset __rte_unused,
 		uint32_t dst_buf_offset __rte_unused,
@@ -120,11 +119,9 @@ cperf_set_ops_security(struct rte_crypto_op **ops,
 
 	RTE_SET_USED(tsc_start);
 	RTE_SET_USED(test_vector);
-
-	return 0;
 }
 
-static int
+static void
 cperf_set_ops_security_ipsec(struct rte_crypto_op **ops,
 		uint32_t src_buf_offset __rte_unused,
 		uint32_t dst_buf_offset __rte_unused,
@@ -166,7 +163,7 @@ cperf_set_ops_security_ipsec(struct rte_crypto_op **ops,
 	}
 
 	if (options->test_file != NULL)
-		return 0;
+		return;
 
 	tsc_start_temp = rte_rdtsc_precise();
 
@@ -179,13 +176,11 @@ cperf_set_ops_security_ipsec(struct rte_crypto_op **ops,
 
 	tsc_end_temp = rte_rdtsc_precise();
 	*tsc_start += tsc_end_temp - tsc_start_temp;
-
-	return 0;
 }
 
 #endif
 
-static int
+static void
 cperf_set_ops_null_cipher(struct rte_crypto_op **ops,
 		uint32_t src_buf_offset, uint32_t dst_buf_offset,
 		uint16_t nb_ops, struct rte_cryptodev_sym_session *sess,
@@ -221,11 +216,9 @@ cperf_set_ops_null_cipher(struct rte_crypto_op **ops,
 			sym_op->cipher.data.length = options->test_buffer_size;
 		sym_op->cipher.data.offset = 0;
 	}
-
-	return 0;
 }
 
-static int
+static void
 cperf_set_ops_null_auth(struct rte_crypto_op **ops,
 		uint32_t src_buf_offset, uint32_t dst_buf_offset,
 		uint16_t nb_ops, struct rte_cryptodev_sym_session *sess,
@@ -261,11 +254,9 @@ cperf_set_ops_null_auth(struct rte_crypto_op **ops,
 			sym_op->auth.data.length = options->test_buffer_size;
 		sym_op->auth.data.offset = 0;
 	}
-
-	return 0;
 }
 
-static int
+static void
 cperf_set_ops_cipher(struct rte_crypto_op **ops,
 		uint32_t src_buf_offset, uint32_t dst_buf_offset,
 		uint16_t nb_ops, struct rte_cryptodev_sym_session *sess,
@@ -318,11 +309,9 @@ cperf_set_ops_cipher(struct rte_crypto_op **ops,
 
 		}
 	}
-
-	return 0;
 }
 
-static int
+static void
 cperf_set_ops_auth(struct rte_crypto_op **ops,
 		uint32_t src_buf_offset, uint32_t dst_buf_offset,
 		uint16_t nb_ops, struct rte_cryptodev_sym_session *sess,
@@ -420,10 +409,9 @@ cperf_set_ops_auth(struct rte_crypto_op **ops,
 			}
 		}
 	}
-	return 0;
 }
 
-static int
+static void
 cperf_set_ops_cipher_auth(struct rte_crypto_op **ops,
 		uint32_t src_buf_offset, uint32_t dst_buf_offset,
 		uint16_t nb_ops, struct rte_cryptodev_sym_session *sess,
@@ -539,11 +527,9 @@ cperf_set_ops_cipher_auth(struct rte_crypto_op **ops,
 		}
 
 	}
-
-	return 0;
 }
 
-static int
+static void
 cperf_set_ops_aead(struct rte_crypto_op **ops,
 		uint32_t src_buf_offset, uint32_t dst_buf_offset,
 		uint16_t nb_ops, struct rte_cryptodev_sym_session *sess,
@@ -652,8 +638,6 @@ cperf_set_ops_aead(struct rte_crypto_op **ops,
 			}
 		}
 	}
-
-	return 0;
 }
 
 static struct rte_cryptodev_sym_session *
