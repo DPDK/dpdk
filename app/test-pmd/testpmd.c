@@ -3962,10 +3962,6 @@ init_port_config(void)
 		if (ret != 0)
 			return;
 
-#if defined RTE_NET_IXGBE && defined RTE_LIBRTE_IXGBE_BYPASS
-		rte_pmd_ixgbe_bypass_init(pid);
-#endif
-
 		if (lsc_interrupt && (*port->dev_info.dev_flags & RTE_ETH_DEV_INTR_LSC))
 			port->dev_conf.intr_conf.lsc = 1;
 		if (rmv_interrupt && (*port->dev_info.dev_flags & RTE_ETH_DEV_INTR_RMV))

@@ -2,6 +2,9 @@
  * Copyright(c) 2010-2016 Intel Corporation.
  */
 
+/* Required for ixgbe internal structures to be aligned with the driver */
+#define RTE_LIBRTE_IXGBE_BYPASS
+
 #include <ethdev_driver.h>
 #include "ixgbe_ethdev.h"
 #include "rte_pmd_ixgbe.h"
@@ -618,6 +621,71 @@ static cmdline_parse_inst_t cmd_tc_min_bw = {
 /* The NIC bypass watchdog timeout. */
 uint32_t bypass_timeout = RTE_PMD_IXGBE_BYPASS_TMT_OFF;
 
+static inline bool
+check_bypass_enabled(portid_t port_id)
+{
+	struct ixgbe_adapter *adapter;
+
+	adapter = rte_eth_devices[port_id].data->dev_private;
+	if (adapter->bps.ops.bypass_rw == NULL) {
+		fprintf(stderr, "Bypass is not enabled on this port.\n");
+		return false;
+	}
+
+	return true;
+}
+
+/* Enable bypass mode */
+struct cmd_config_bypass_result {
+	cmdline_fixed_string_t port;
+	cmdline_fixed_string_t config;
+	cmdline_fixed_string_t bypass;
+	portid_t port_id;
+	cmdline_fixed_string_t value;
+};
+
+static void
+cmd_config_bypass_parsed(void *parsed_result,
+		      __rte_unused struct cmdline *cl,
+		      __rte_unused void *data)
+{
+	struct cmd_config_bypass_result *res = parsed_result;
+	portid_t port_id = res->port_id;
+
+	if (ports[port_id].port_status == RTE_PORT_STARTED) {
+		fprintf(stderr, "Cannot change bypass configuration while port is started, please stop it and retry\n");
+		return;
+	}
+
+	if (strcmp(res->value, "on") == 0)
+		rte_pmd_ixgbe_bypass_init(port_id);
+}
+
+static cmdline_parse_token_string_t cmd_config_bypass_port =
+	TOKEN_STRING_INITIALIZER(struct cmd_config_bypass_result, port, "port");
+static cmdline_parse_token_string_t cmd_config_bypass_config =
+	TOKEN_STRING_INITIALIZER(struct cmd_config_bypass_result, config, "config");
+static cmdline_parse_token_string_t cmd_config_bypass_bypass =
+	TOKEN_STRING_INITIALIZER(struct cmd_config_bypass_result, bypass, "bypass");
+static cmdline_parse_token_num_t cmd_config_bypass_port_id =
+	TOKEN_NUM_INITIALIZER(struct cmd_config_bypass_result, port_id, RTE_UINT16);
+static cmdline_parse_token_string_t cmd_config_bypass_value =
+	TOKEN_STRING_INITIALIZER(struct cmd_config_bypass_result, value, "on#off");
+
+static cmdline_parse_inst_t cmd_config_bypass = {
+	.f = cmd_config_bypass_parsed,
+	.data = NULL,
+	.help_str = "port config bypass <port_id> on|off",
+	.tokens = {
+		(void *)&cmd_config_bypass_port,
+		(void *)&cmd_config_bypass_config,
+		(void *)&cmd_config_bypass_bypass,
+		(void *)&cmd_config_bypass_port_id,
+		(void *)&cmd_config_bypass_value,
+		NULL,
+	},
+};
+
 /* *** SET NIC BYPASS MODE *** */
 struct cmd_set_bypass_mode_result {
 	cmdline_fixed_string_t set;
@@ -635,6 +703,9 @@ cmd_set_bypass_mode_parsed(void *parsed_result,
 	uint32_t bypass_mode = RTE_PMD_IXGBE_BYPASS_MODE_NORMAL;
 	portid_t port_id = res->port_id;
 	int32_t rc = -EINVAL;
+
+	if (!check_bypass_enabled(port_id))
+		return;
 
 	if (!strcmp(res->value, "bypass"))
 		bypass_mode = RTE_PMD_IXGBE_BYPASS_MODE_BYPASS;
@@ -701,6 +772,9 @@ cmd_set_bypass_event_parsed(void *parsed_result,
 	portid_t port_id = res->port_id;
 	uint32_t bypass_event = RTE_PMD_IXGBE_BYPASS_EVENT_NONE;
 	uint32_t bypass_mode = RTE_PMD_IXGBE_BYPASS_MODE_NORMAL;
+
+	if (!check_bypass_enabled(port_id))
+		return;
 
 	if (!strcmp(res->event_value, "timeout"))
 		bypass_event = RTE_PMD_IXGBE_BYPASS_EVENT_TIMEOUT;
@@ -878,6 +952,9 @@ cmd_show_bypass_config_parsed(void *parsed_result,
 		"power supply off",
 		"timeout"};
 
+	if (!check_bypass_enabled(port_id))
+		return;
+
 	/* Display the bypass mode.*/
 	if (rte_pmd_ixgbe_bypass_state_show(port_id, &bypass_mode) != 0) {
 		fprintf(stderr, "\tFailed to get bypass mode for port = %d\n",
@@ -972,6 +1049,11 @@ static struct testpmd_driver_commands ixgbe_cmds = {
 		&cmd_tc_min_bw,
 		"set tc tx min-bandwidth (port_id) (bw1, bw2, ...)\n"
 		"    Set all TCs' min bandwidth(%%) for all PF and VFs.\n",
+	},
+	{
+		&cmd_config_bypass,
+		"port config bypass (port_id) (on|off)\n"
+		"   Enable/disable bypass before starting the port\n",
 	},
 	{
 		&cmd_set_bypass_mode,

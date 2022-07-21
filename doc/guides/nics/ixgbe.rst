@@ -418,6 +418,13 @@ Set all TCs' TX min relative bandwidth (%) globally for all PF and VFs::
 
    testpmd> set tc tx min-bandwidth (port_id) (bw1, bw2, ...)
 
+port config bypass
+~~~~~~~~~~~~~~~~~~
+
+Enable/disable bypass feature::
+
+   port config bypass (port_id) (on|off)
+
 set bypass mode
 ~~~~~~~~~~~~~~~
 
