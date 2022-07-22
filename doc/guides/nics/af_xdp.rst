@@ -5,78 +5,152 @@ AF_XDP Poll Mode Driver
 ==========================
 
 AF_XDP is an address family that is optimized for high performance
-packet processing. AF_XDP sockets enable the possibility for XDP program to
+packet processing. AF_XDP sockets enable the possibility for an XDP program to
 redirect packets to a memory buffer in userspace.
 
-For the full details behind AF_XDP socket, you can refer to
-`AF_XDP documentation in the Kernel
+Further information about AF_XDP can be found in the
+`AF_XDP kernel documentation
 <https://www.kernel.org/doc/Documentation/networking/af_xdp.rst>`_.
 
 This Linux-specific PMD creates the AF_XDP socket and binds it to a
-specific netdev queue, it allows a DPDK application to send and receive raw
-packets through the socket which would bypass the kernel network stack.
-Current implementation only supports single queue, multi-queues feature will
-be added later.
-
-AF_XDP PMD enables need_wakeup flag by default if it is supported. This
-need_wakeup feature is used to support executing application and driver on the
-same core efficiently. This feature not only has a large positive performance
-impact for the one core case, but also does not degrade 2 core performance and
-actually improves it for Tx heavy workloads.
-
-Options
--------
-
-The following options can be provided to set up an af_xdp port in DPDK.
-
-*   ``iface`` - name of the Kernel interface to attach to (required);
-*   ``start_queue`` - starting netdev queue id (optional, default 0);
-*   ``queue_count`` - total netdev queue number (optional, default 1);
-*   ``shared_umem`` - PMD will attempt to share UMEM with others (optional,
-    default 0);
-*   ``xdp_prog`` - path to custom xdp program (optional, default none);
-*   ``busy_budget`` - busy polling budget (optional, default 64);
-*   ``force_copy`` - PMD will force AF_XDP socket into copy mode (optional,
-    default 0);
+specific netdev queue. The DPDK application can then send and receive raw
+packets through the socket which bypass the kernel network stack.
 
 Prerequisites
 -------------
 
-This is a Linux-specific PMD, thus the following prerequisites apply:
-
-*  A Linux Kernel (version > v4.18) with XDP sockets configuration enabled;
-*  Both libxdp >=v1.2.2 and libbpf libraries installed, or, libbpf <=v0.6.0
+*  A Linux Kernel (version >= v4.18) with the XDP sockets configuration option
+   enabled (CONFIG_XDP_SOCKETS=y).
+*  Both libxdp (>= v1.2.2) and libbpf (any version) libraries installed, or
+   alternatively just the libbpf library <= v0.6.0.
+*  The pkg-config package should be installed on the system as it is used to
+   discover the libbpf and libxdp libraries and determine their versions are
+   sufficient.
 *  If using libxdp, it requires an environment variable called
    LIBXDP_OBJECT_PATH to be set to the location of where libxdp placed its bpf
    object files. This is usually in /usr/local/lib/bpf or /usr/local/lib64/bpf.
-*  A Kernel bound interface to attach to;
-*  For need_wakeup feature, it requires kernel version later than v5.3-rc1;
-*  For PMD zero copy, it requires kernel version later than v5.4-rc1;
-*  For shared_umem, it requires kernel version v5.10 or later and libbpf version
-   v0.2.0 or later.
-*  For 32-bit OS, a kernel with version 5.4 or later is required.
-*  For busy polling, kernel version v5.11 or later is required.
+*  A Kernel bound interface to attach to.
+*  The need_wakeup feature requires kernel version >= v5.4.
+*  The PMD zero copy feature requires kernel version >= v5.4.
+*  The shared UMEM feature requires kernel version >= v5.10 and libbpf version
+   v0.2.0 or later. The LINUX_VERSION_CODE defined in the version.h kernel
+   header is used to determine the kernel version at compile time.
+*  A kernel with version 5.4 or later is required for 32-bit OS.
+*  The busy polling feature requires kernel version >= v5.11.
 
-Set up an af_xdp interface
------------------------------
 
-The following example will set up an af_xdp interface in DPDK:
+Options
+-------
+
+iface
+~~~~~
+
+The ``iface`` option is the only required option. It is the name of the Kernel
+interface to attach to.
 
 .. code-block:: console
 
     --vdev net_af_xdp,iface=ens786f1
 
-If 'start_queue' is not specified in the vdev arguments,
-the socket will by default be created on Rx queue 0.
-To ensure traffic lands on this queue,
-one can use flow steering if the network card supports it.
-Or, a simpler way is to reduce the number of configured queues
-for the device which will ensure that all traffic will land on queue 0
-and thus reach the socket:
+The socket will by default be created on Rx queue 0. To ensure traffic lands on
+this queue, one can use flow steering if the network card supports it. Or, a
+simpler way is to reduce the number of configured queues for the device to just
+a single queue which will ensure that all traffic will land on that queue (queue
+1) and thus reach the socket. This can be configured using ethtool:
 
 .. code-block:: console
 
     ethtool -L ens786f1 combined 1
+
+start_queue
+~~~~~~~~~~~
+
+To create a socket on another queue, first configure the netdev with multiple
+queues, for example 2, like so:
+
+.. code-block:: console
+
+    ethtool -L ens786f1 combined 2
+
+Then, create the socket on one of those queues, for example queue 1:
+
+.. code-block:: console
+
+    --vdev net_af_xdp,iface=ens786f1,start_queue=1
+
+queue_count
+~~~~~~~~~~~
+
+To create a PMD with sockets on multiple queues, use the queue_count arg. The
+following example creates sockets on queues 0 and 1:
+
+.. code-block:: console
+
+    --vdev net_af_xdp,iface=ens786f1,queue_count=2
+
+shared_umem
+~~~~~~~~~~~
+
+The shared UMEM feature allows for two sockets to share UMEM and can be
+configured like so:
+
+.. code-block:: console
+
+    --vdev net_af_xdp0,iface=ens786f1,shared_umem=1 \
+    --vdev net_af_xdp1,iface=ens786f2,shared_umem=1
+
+xdp_prog
+~~~~~~~~
+
+The xdp_prog argument allows for the user to provide a path to a custom XDP
+program which should be used in place of the default libbpf/libxdp program which
+simply redirects packets to the sockets. For example:
+
+.. code-block:: console
+
+    --vdev net_af_xdp,iface=ens786f1,xdp_prog=/path/to/prog.o
+
+busy_budget
+~~~~~~~~~~~
+
+The busy polling feature aims to improve single-core performance for AF_XDP
+sockets under heavy load. It is enabled by default if the detected kernel
+version is sufficient ie. >= v5.11. The busy_budget arg sets the busy-polling
+NAPI budget which is the number of packets the kernel will attempt to process in
+the netdev's NAPI context. It can be configured like so:
+
+.. code-block:: console
+
+    --vdev net_af_xdp,iface=ens786f1,busy_budget=32
+
+To disable busy polling, simply set the busy_budget to 0:
+
+.. code-block:: console
+
+    --vdev net_af_xdp,iface=ens786f1,busy_budget=0
+
+It is also strongly recommended to set the following for optimal performance
+when using the busy polling feature:
+
+.. code-block:: console
+
+    echo 2 | sudo tee /sys/class/net/ens786f1/napi_defer_hard_irqs
+    echo 200000 | sudo tee /sys/class/net/ens786f1/gro_flush_timeout
+
+The above defers interrupts for interface ens786f1 and instead schedules its
+NAPI context from a watchdog timer instead of from softirqs. More information
+on this feature can be found at [1].
+
+force_copy
+~~~~~~~~~~
+
+The force_copy argument allows the user to force the socket to use copy mode
+instead of zero copy mode (if available).
+
+.. code-block:: console
+
+    --vdev net_af_xdp,iface=ens786f1,force_copy=1
+
 
 Limitations
 -----------
@@ -125,38 +199,6 @@ Limitations
 
     --vdev net_af_xdp0,iface=ens786f1,shared_umem=1 \
     --vdev net_af_xdp1,iface=ens786f2,shared_umem=1 \
-
-- **Preferred Busy Polling**
-
-  The SO_PREFER_BUSY_POLL socket option was introduced in kernel v5.11. It can
-  deliver a performance improvement for sockets with heavy traffic loads and
-  can significantly improve single-core performance in this context.
-
-  The feature is enabled by default in the AF_XDP PMD. To disable it, set the
-  'busy_budget' vdevarg to zero:
-
-  .. code-block:: console
-
-    --vdev net_af_xdp0,iface=ens786f1,busy_budget=0
-
-  The default 'busy_budget' is 64 and it represents the number of packets the
-  kernel will attempt to process in the netdev's NAPI context. You can change
-  the value for example to 256 like so:
-
-  .. code-block:: console
-
-    --vdev net_af_xdp0,iface=ens786f1,busy_budget=256
-
-  It is also strongly recommended to set the following for optimal performance:
-
-  .. code-block:: console
-
-    echo 2 | sudo tee /sys/class/net/ens786f1/napi_defer_hard_irqs
-    echo 200000 | sudo tee /sys/class/net/ens786f1/gro_flush_timeout
-
-  The above defers interrupts for interface ens786f1 and instead schedules its
-  NAPI context from a watchdog timer instead of from softirqs. More information
-  on this feature can be found at [1].
 
 - **Secondary Processes**
 
