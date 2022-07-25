@@ -409,8 +409,13 @@ dma_rx_port(struct rxtx_port_config *rx_config)
 		nb_rx = rte_eth_rx_burst(rx_config->rxtx_port, i,
 			pkts_burst, MAX_PKT_BURST);
 
-		if (nb_rx == 0)
+		if (nb_rx == 0) {
+			if (copy_mode == COPY_MODE_DMA_NUM &&
+				(nb_rx = dma_dequeue(pkts_burst, pkts_burst_copy,
+					MAX_PKT_BURST, rx_config->dmadev_ids[i])) > 0)
+				goto handle_tx;
 			continue;
+		}
 
 		port_statistics.rx[rx_config->rxtx_port] += nb_rx;
 
@@ -451,6 +456,7 @@ dma_rx_port(struct rxtx_port_config *rx_config)
 					pkts_burst_copy[j]);
 		}
 
+handle_tx:
 		rte_mempool_put_bulk(dma_pktmbuf_pool,
 			(void *)pkts_burst, nb_rx);
 
