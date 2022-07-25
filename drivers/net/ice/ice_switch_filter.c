@@ -1618,9 +1618,12 @@ ice_switch_parse_dcf_action(struct ice_dcf_adapter *ad,
 			    struct rte_flow_error *error,
 			    struct ice_adv_rule_info *rule_info)
 {
+	const struct rte_flow_action_ethdev *act_ethdev;
 	const struct rte_flow_action_vf *act_vf;
 	const struct rte_flow_action *action;
+	const struct rte_eth_dev *repr_dev;
 	enum rte_flow_action_type action_type;
+	uint16_t rule_port_id, backer_port_id;
 
 	for (action = actions; action->type !=
 				RTE_FLOW_ACTION_TYPE_END; action++) {
@@ -1645,6 +1648,34 @@ ice_switch_parse_dcf_action(struct ice_dcf_adapter *ad,
 			else
 				rule_info->sw_act.vsi_handle = act_vf->id;
 			break;
+
+		case RTE_FLOW_ACTION_TYPE_REPRESENTED_PORT:
+			rule_info->sw_act.fltr_act = ICE_FWD_TO_VSI;
+			act_ethdev = action->conf;
+
+			if (!rte_eth_dev_is_valid_port(act_ethdev->port_id))
+				goto invalid;
+
+			repr_dev = &rte_eth_devices[act_ethdev->port_id];
+
+			if (!repr_dev->data)
+				goto invalid;
+
+			rule_port_id = ad->parent.pf.dev_data->port_id;
+			backer_port_id = repr_dev->data->backer_port_id;
+
+			if (backer_port_id != rule_port_id)
+				goto invalid;
+
+			rule_info->sw_act.vsi_handle = repr_dev->data->representor_id;
+			break;
+
+invalid:
+			rte_flow_error_set(error,
+						EINVAL, RTE_FLOW_ERROR_TYPE_ACTION,
+						actions,
+						"Invalid ethdev_port_id");
+			return -rte_errno;
 
 		case RTE_FLOW_ACTION_TYPE_DROP:
 			rule_info->sw_act.fltr_act = ICE_DROP_PACKET;
@@ -1789,6 +1820,7 @@ ice_switch_check_action(const struct rte_flow_action *actions,
 		case RTE_FLOW_ACTION_TYPE_RSS:
 		case RTE_FLOW_ACTION_TYPE_QUEUE:
 		case RTE_FLOW_ACTION_TYPE_DROP:
+		case RTE_FLOW_ACTION_TYPE_REPRESENTED_PORT:
 			actions_num++;
 			break;
 		case RTE_FLOW_ACTION_TYPE_VOID:
