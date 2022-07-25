@@ -394,7 +394,7 @@ free_vq(struct virtio_net *dev, struct vhost_virtqueue *vq)
 
 	vhost_free_async_mem(vq);
 	rte_free(vq->batch_copy_elems);
-	rte_mempool_free(vq->iotlb_pool);
+	vhost_user_iotlb_destroy(vq);
 	rte_free(vq->log_cache);
 	rte_free(vq);
 }

@@ -299,10 +299,12 @@ struct vhost_virtqueue {
 
 	rte_rwlock_t	iotlb_lock;
 	rte_rwlock_t	iotlb_pending_lock;
-	struct rte_mempool *iotlb_pool;
+	struct vhost_iotlb_entry *iotlb_pool;
 	TAILQ_HEAD(, vhost_iotlb_entry) iotlb_list;
 	TAILQ_HEAD(, vhost_iotlb_entry) iotlb_pending_list;
 	int				iotlb_cache_nr;
+	rte_spinlock_t	iotlb_free_lock;
+	SLIST_HEAD(, vhost_iotlb_entry) iotlb_free_list;
 
 	/* Used to notify the guest (trigger interrupt) */
 	int			callfd;
