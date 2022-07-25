@@ -2596,6 +2596,7 @@ vhost_user_iotlb_msg(struct virtio_net **pdev,
 			if (is_vring_iotlb(dev, vq, imsg)) {
 				rte_spinlock_lock(&vq->access_lock);
 				*pdev = dev = translate_ring_addresses(dev, i);
+				vq = dev->virtqueue[i];
 				rte_spinlock_unlock(&vq->access_lock);
 			}
 		}
