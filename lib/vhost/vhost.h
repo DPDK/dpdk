@@ -309,6 +309,9 @@ struct vhost_virtqueue {
 	/* Currently unused as polling mode is enabled */
 	int			kickfd;
 
+	/* Index of this vq in dev->virtqueue[] */
+	uint32_t		index;
+
 	/* inflight share memory info */
 	union {
 		struct rte_vhost_inflight_info_split *inflight_split;

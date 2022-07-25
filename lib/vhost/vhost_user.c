@@ -240,22 +240,20 @@ vhost_backend_cleanup(struct virtio_net *dev)
 }
 
 static void
-vhost_user_notify_queue_state(struct virtio_net *dev, uint16_t index,
-			      int enable)
+vhost_user_notify_queue_state(struct virtio_net *dev, struct vhost_virtqueue *vq,
+	int enable)
 {
 	struct rte_vdpa_device *vdpa_dev = dev->vdpa_dev;
-	struct vhost_virtqueue *vq = dev->virtqueue[index];
 
 	/* Configure guest notifications on enable */
 	if (enable && vq->notif_enable != VIRTIO_UNINITIALIZED_NOTIF)
 		vhost_enable_guest_notification(dev, vq, vq->notif_enable);
 
 	if (vdpa_dev && vdpa_dev->ops->set_vring_state)
-		vdpa_dev->ops->set_vring_state(dev->vid, index, enable);
+		vdpa_dev->ops->set_vring_state(dev->vid, vq->index, enable);
 
 	if (dev->notify_ops->vring_state_changed)
-		dev->notify_ops->vring_state_changed(dev->vid,
-				index, enable);
+		dev->notify_ops->vring_state_changed(dev->vid, vq->index, enable);
 }
 
 /*
@@ -494,7 +492,7 @@ vhost_user_set_vring_num(struct virtio_net **pdev,
  */
 #ifdef RTE_LIBRTE_VHOST_NUMA
 static void
-numa_realloc(struct virtio_net **pdev, struct vhost_virtqueue **pvq, int index)
+numa_realloc(struct virtio_net **pdev, struct vhost_virtqueue **pvq)
 {
 	int node, dev_node;
 	struct virtio_net *dev;
@@ -519,7 +517,7 @@ numa_realloc(struct virtio_net **pdev, struct vhost_virtqueue **pvq, int index)
 	if (ret) {
 		VHOST_LOG_CONFIG(dev->ifname, ERR,
 			"unable to get virtqueue %d numa information.\n",
-			index);
+			vq->index);
 		return;
 	}
 
@@ -530,15 +528,15 @@ numa_realloc(struct virtio_net **pdev, struct vhost_virtqueue **pvq, int index)
 	if (!vq) {
 		VHOST_LOG_CONFIG(dev->ifname, ERR,
 			"failed to realloc virtqueue %d on node %d\n",
-			index, node);
+			(*pvq)->index, node);
 		return;
 	}
 	*pvq = vq;
 
-	if (vq != dev->virtqueue[index]) {
+	if (vq != dev->virtqueue[vq->index]) {
 		VHOST_LOG_CONFIG(dev->ifname, INFO, "reallocated virtqueue on node %d\n", node);
-		dev->virtqueue[index] = vq;
-		vhost_user_iotlb_init(dev, index);
+		dev->virtqueue[vq->index] = vq;
+		vhost_user_iotlb_init(dev, vq);
 	}
 
 	if (vq_is_packed(dev)) {
@@ -666,11 +664,10 @@ out_dev_realloc:
 }
 #else
 static void
-numa_realloc(struct virtio_net **pdev, struct vhost_virtqueue **pvq, int index)
+numa_realloc(struct virtio_net **pdev, struct vhost_virtqueue **pvq)
 {
 	RTE_SET_USED(pdev);
 	RTE_SET_USED(pvq);
-	RTE_SET_USED(index);
 }
 #endif
 
@@ -741,8 +738,7 @@ log_addr_to_gpa(struct virtio_net *dev, struct vhost_virtqueue *vq)
 }
 
 static void
-translate_ring_addresses(struct virtio_net **pdev, struct vhost_virtqueue **pvq,
-	int vq_index)
+translate_ring_addresses(struct virtio_net **pdev, struct vhost_virtqueue **pvq)
 {
 	struct vhost_virtqueue *vq;
 	struct virtio_net *dev;
@@ -771,7 +767,7 @@ translate_ring_addresses(struct virtio_net **pdev, struct vhost_virtqueue **pvq,
 			return;
 		}
 
-		numa_realloc(&dev, &vq, vq_index);
+		numa_realloc(&dev, &vq);
 		*pdev = dev;
 		*pvq = vq;
 
@@ -813,7 +809,7 @@ translate_ring_addresses(struct virtio_net **pdev, struct vhost_virtqueue **pvq,
 		return;
 	}
 
-	numa_realloc(&dev, &vq, vq_index);
+	numa_realloc(&dev, &vq);
 	*pdev = dev;
 	*pvq = vq;
 
@@ -891,7 +887,7 @@ vhost_user_set_vring_addr(struct virtio_net **pdev,
 	if ((vq->enabled && (dev->features &
 				(1ULL << VHOST_USER_F_PROTOCOL_FEATURES))) ||
 			access_ok) {
-		translate_ring_addresses(&dev, &vq, ctx->msg.payload.addr.index);
+		translate_ring_addresses(&dev, &vq);
 		*pdev = dev;
 	}
 
@@ -1397,7 +1393,7 @@ vhost_user_set_mem_table(struct virtio_net **pdev,
 			 */
 			vring_invalidate(dev, vq);
 
-			translate_ring_addresses(&dev, &vq, i);
+			translate_ring_addresses(&dev, &vq);
 			*pdev = dev;
 		}
 	}
@@ -1777,7 +1773,7 @@ vhost_user_set_vring_call(struct virtio_net **pdev,
 
 	if (vq->ready) {
 		vq->ready = false;
-		vhost_user_notify_queue_state(dev, file.index, 0);
+		vhost_user_notify_queue_state(dev, vq, 0);
 	}
 
 	if (vq->callfd >= 0)
@@ -2026,7 +2022,7 @@ vhost_user_set_vring_kick(struct virtio_net **pdev,
 
 	/* Interpret ring addresses only when ring is started. */
 	vq = dev->virtqueue[file.index];
-	translate_ring_addresses(&dev, &vq, file.index);
+	translate_ring_addresses(&dev, &vq);
 	*pdev = dev;
 
 	/*
@@ -2040,7 +2036,7 @@ vhost_user_set_vring_kick(struct virtio_net **pdev,
 
 	if (vq->ready) {
 		vq->ready = false;
-		vhost_user_notify_queue_state(dev, file.index, 0);
+		vhost_user_notify_queue_state(dev, vq, 0);
 	}
 
 	if (vq->kickfd >= 0)
@@ -2583,7 +2579,7 @@ vhost_user_iotlb_msg(struct virtio_net **pdev,
 
 			if (is_vring_iotlb(dev, vq, imsg)) {
 				rte_spinlock_lock(&vq->access_lock);
-				translate_ring_addresses(&dev, &vq, i);
+				translate_ring_addresses(&dev, &vq);
 				*pdev = dev;
 				rte_spinlock_unlock(&vq->access_lock);
 			}
@@ -3148,7 +3144,7 @@ skip_to_post_handle:
 
 		if (cur_ready != (vq && vq->ready)) {
 			vq->ready = cur_ready;
-			vhost_user_notify_queue_state(dev, i, cur_ready);
+			vhost_user_notify_queue_state(dev, vq, cur_ready);
 		}
 	}
 

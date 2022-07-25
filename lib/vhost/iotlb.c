@@ -293,10 +293,9 @@ vhost_user_iotlb_flush_all(struct vhost_virtqueue *vq)
 }
 
 int
-vhost_user_iotlb_init(struct virtio_net *dev, int vq_index)
+vhost_user_iotlb_init(struct virtio_net *dev, struct vhost_virtqueue *vq)
 {
 	char pool_name[RTE_MEMPOOL_NAMESIZE];
-	struct vhost_virtqueue *vq = dev->virtqueue[vq_index];
 	int socket = 0;
 
 	if (vq->iotlb_pool) {
@@ -319,7 +318,7 @@ vhost_user_iotlb_init(struct virtio_net *dev, int vq_index)
 	TAILQ_INIT(&vq->iotlb_pending_list);
 
 	snprintf(pool_name, sizeof(pool_name), "iotlb_%u_%d_%d",
-			getpid(), dev->vid, vq_index);
+			getpid(), dev->vid, vq->index);
 	VHOST_LOG_CONFIG(dev->ifname, DEBUG, "IOTLB cache name: %s\n", pool_name);
 
 	/* If already created, free it and recreate */
