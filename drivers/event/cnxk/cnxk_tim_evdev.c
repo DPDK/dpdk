@@ -8,6 +8,7 @@
 #include "cnxk_tim_evdev.h"
 
 static struct event_timer_adapter_ops cnxk_tim_ops;
+static cnxk_sso_set_priv_mem_t sso_set_priv_mem_fn;
 
 static int
 cnxk_tim_chnk_pool_create(struct cnxk_tim_ring *tim_ring,
@@ -353,6 +354,7 @@ cnxk_tim_ring_create(struct rte_event_timer_adapter *adptr)
 	cnxk_sso_updt_xae_cnt(cnxk_sso_pmd_priv(dev->event_dev), tim_ring,
 			      RTE_EVENT_TYPE_TIMER);
 	cnxk_sso_xae_reconfigure(dev->event_dev);
+	sso_set_priv_mem_fn(dev->event_dev, NULL, 0);
 
 	plt_tim_dbg(
 		"Total memory used %" PRIu64 "MB\n",
@@ -483,7 +485,8 @@ cnxk_tim_stats_reset(const struct rte_event_timer_adapter *adapter)
 
 int
 cnxk_tim_caps_get(const struct rte_eventdev *evdev, uint64_t flags,
-		  uint32_t *caps, const struct event_timer_adapter_ops **ops)
+		  uint32_t *caps, const struct event_timer_adapter_ops **ops,
+		  cnxk_sso_set_priv_mem_t priv_mem_fn)
 {
 	struct cnxk_tim_evdev *dev = cnxk_tim_priv_get();
 
@@ -497,6 +500,7 @@ cnxk_tim_caps_get(const struct rte_eventdev *evdev, uint64_t flags,
 	cnxk_tim_ops.start = cnxk_tim_ring_start;
 	cnxk_tim_ops.stop = cnxk_tim_ring_stop;
 	cnxk_tim_ops.get_info = cnxk_tim_ring_info_get;
+	sso_set_priv_mem_fn = priv_mem_fn;
 
 	if (dev->enable_stats) {
 		cnxk_tim_ops.stats_get = cnxk_tim_stats_get;
