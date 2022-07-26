@@ -1447,8 +1447,8 @@ memif_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 	stats->opackets = 0;
 	stats->obytes = 0;
 
-	tmp = (pmd->role == MEMIF_ROLE_CLIENT) ? pmd->run.num_c2s_rings :
-	    pmd->run.num_s2c_rings;
+	tmp = (pmd->role == MEMIF_ROLE_CLIENT) ? pmd->run.num_s2c_rings :
+	    pmd->run.num_c2s_rings;
 	nq = (tmp < RTE_ETHDEV_QUEUE_STAT_CNTRS) ? tmp :
 	    RTE_ETHDEV_QUEUE_STAT_CNTRS;
 
@@ -1461,8 +1461,8 @@ memif_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 		stats->ibytes += mq->n_bytes;
 	}
 
-	tmp = (pmd->role == MEMIF_ROLE_CLIENT) ? pmd->run.num_s2c_rings :
-	    pmd->run.num_c2s_rings;
+	tmp = (pmd->role == MEMIF_ROLE_CLIENT) ? pmd->run.num_c2s_rings :
+	    pmd->run.num_s2c_rings;
 	nq = (tmp < RTE_ETHDEV_QUEUE_STAT_CNTRS) ? tmp :
 	    RTE_ETHDEV_QUEUE_STAT_CNTRS;
 
