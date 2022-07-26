@@ -768,7 +768,7 @@ burst_xmit_l34_hash(struct rte_mbuf **buf, uint16_t nb_pkts,
 						((char *)ipv4_hdr +
 							ip_hdr_offset);
 					if ((size_t)tcp_hdr + sizeof(*tcp_hdr)
-							< pkt_end)
+							<= pkt_end)
 						l4hash = HASH_L4_PORTS(tcp_hdr);
 				} else if (ipv4_hdr->next_proto_id ==
 								IPPROTO_UDP) {
