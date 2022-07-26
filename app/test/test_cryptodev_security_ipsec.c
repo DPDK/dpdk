@@ -392,6 +392,9 @@ test_ipsec_td_prepare(const struct crypto_param *param1,
 			else
 				memcpy(td, &pkt_aes_256_gcm, sizeof(*td));
 
+			if (param1->alg.aead == RTE_CRYPTO_AEAD_AES_CCM)
+				td->salt.len = 3;
+
 			td->aead = true;
 			td->xform.aead.aead.algo = param1->alg.aead;
 			td->xform.aead.aead.key.length = param1->key_length;
