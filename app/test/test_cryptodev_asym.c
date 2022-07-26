@@ -209,8 +209,8 @@ queue_ops_rsa_enc_dec(struct rte_cryptodev_asym_session *sess)
 		status = TEST_FAILED;
 		goto error_exit;
 	}
-	debug_hexdump(stdout, "encrypted message", asym_op->rsa.message.data,
-		      asym_op->rsa.message.length);
+	debug_hexdump(stdout, "encrypted message", asym_op->rsa.cipher.data,
+		      asym_op->rsa.cipher.length);
 
 	/* Use the resulted output as decryption Input vector*/
 	asym_op = result_op->asym;

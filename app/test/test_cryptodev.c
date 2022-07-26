@@ -7535,7 +7535,7 @@ create_aead_operation(enum rte_crypto_aead_operation op,
 				rte_pktmbuf_iova(ut_params->ibuf);
 		/* Copy AAD 18 bytes after the AAD pointer, according to the API */
 		memcpy(sym_op->aead.aad.data + 18, tdata->aad.data, tdata->aad.len);
-		debug_hexdump(stdout, "aad:", sym_op->aead.aad.data,
+		debug_hexdump(stdout, "aad:", sym_op->aead.aad.data + 18,
 			tdata->aad.len);
 
 		/* Append IV at the end of the crypto operation*/
@@ -7544,7 +7544,7 @@ create_aead_operation(enum rte_crypto_aead_operation op,
 
 		/* Copy IV 1 byte after the IV pointer, according to the API */
 		rte_memcpy(iv_ptr + 1, tdata->iv.data, tdata->iv.len);
-		debug_hexdump(stdout, "iv:", iv_ptr,
+		debug_hexdump(stdout, "iv:", iv_ptr + 1,
 			tdata->iv.len);
 	} else {
 		aad_pad_len = RTE_ALIGN_CEIL(tdata->aad.len, 16);
