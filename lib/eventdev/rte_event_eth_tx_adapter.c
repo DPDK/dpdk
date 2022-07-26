@@ -44,7 +44,7 @@
 #define RTE_EVENT_ETH_TX_ADAPTER_ID_VALID_OR_ERR_RET(id, retval) \
 do { \
 	if (!txa_valid_id(id)) { \
-		RTE_EDEV_LOG_ERR("Invalid eth Rx adapter id = %d", id); \
+		RTE_EDEV_LOG_ERR("Invalid eth Tx adapter id = %d", id); \
 		return retval; \
 	} \
 } while (0)
@@ -468,10 +468,13 @@ txa_service_ctrl(uint8_t id, int start)
 	struct txa_service_data *txa;
 
 	txa = txa_service_id_to_data(id);
-	if (txa->service_id == TXA_INVALID_SERVICE_ID)
+	if (txa == NULL || txa->service_id == TXA_INVALID_SERVICE_ID)
 		return 0;
 
+	rte_spinlock_lock(&txa->tx_lock);
 	ret = rte_service_runstate_set(txa->service_id, start);
+	rte_spinlock_unlock(&txa->tx_lock);
+
 	if (ret == 0 && !start) {
 		while (rte_service_may_be_active(txa->service_id))
 			rte_pause();
