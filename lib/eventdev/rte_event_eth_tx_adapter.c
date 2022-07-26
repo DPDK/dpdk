@@ -509,10 +509,6 @@ txa_service_ctrl(uint8_t id, int start)
 	ret = rte_service_runstate_set(txa->service_id, start);
 	rte_spinlock_unlock(&txa->tx_lock);
 
-	if (ret == 0 && !start) {
-		while (rte_service_may_be_active(txa->service_id))
-			rte_pause();
-	}
 	return ret;
 }
 
