@@ -4,6 +4,7 @@
 
 #include <errno.h>
 #include <net/if.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -454,9 +455,10 @@ rte_pcapng_copy(uint16_t port_id, uint32_t queue,
 	struct pcapng_enhance_packet_block *epb;
 	uint32_t orig_len, data_len, padding, flags;
 	struct pcapng_option *opt;
-	const uint16_t optlen = pcapng_optlen(sizeof(flags)) + pcapng_optlen(sizeof(queue));
+	uint16_t optlen;
 	struct rte_mbuf *mc;
 	uint64_t ns;
+	bool rss_hash;
 
 #ifdef RTE_LIBRTE_ETHDEV_DEBUG
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, NULL);
@@ -489,6 +491,10 @@ rte_pcapng_copy(uint16_t port_id, uint32_t queue,
 			goto fail;
 	}
 
+	/* record HASH on incoming packets */
+	rss_hash = (direction == RTE_PCAPNG_DIRECTION_IN &&
+		    (md->ol_flags & RTE_MBUF_F_RX_RSS_HASH));
+
 	/* pad the packet to 32 bit boundary */
 	data_len = rte_pktmbuf_data_len(mc);
 	padding = RTE_ALIGN(data_len, sizeof(uint32_t)) - data_len;
@@ -499,6 +505,11 @@ rte_pcapng_copy(uint16_t port_id, uint32_t queue,
 			goto fail;
 		memset(tail, 0, padding);
 	}
+
+	optlen = pcapng_optlen(sizeof(flags));
+	optlen += pcapng_optlen(sizeof(queue));
+	if (rss_hash)
+		optlen += pcapng_optlen(sizeof(uint8_t) + sizeof(uint32_t));
 
 	/* reserve trailing options and block length */
 	opt = (struct pcapng_option *)
@@ -522,6 +533,20 @@ rte_pcapng_copy(uint16_t port_id, uint32_t queue,
 
 	opt = pcapng_add_option(opt, PCAPNG_EPB_QUEUE,
 				&queue, sizeof(queue));
+
+	if (rss_hash) {
+		uint8_t hash_opt[5];
+
+		/* The algorithm could be something else if
+		 * using rte_flow_action_rss; but the current API does not
+		 * have a way for ethdev to report  this on a per-packet basis.
+		 */
+		hash_opt[0] = PCAPNG_HASH_TOEPLITZ;
+
+		memcpy(&hash_opt[1], &md->hash.rss, sizeof(uint32_t));
+		opt = pcapng_add_option(opt, PCAPNG_EPB_HASH,
+					&hash_opt, sizeof(hash_opt));
+	}
 
 	/* Note: END_OPT necessary here. Wireshark doesn't do it. */
 
