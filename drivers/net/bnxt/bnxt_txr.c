@@ -194,6 +194,21 @@ bnxt_check_pkt_needs_ts(struct rte_mbuf *m)
 	return false;
 }
 
+static bool
+bnxt_invalid_nb_segs(struct rte_mbuf *tx_pkt)
+{
+	uint16_t nb_segs = 1;
+	struct rte_mbuf *m_seg;
+
+	m_seg = tx_pkt->next;
+	while (m_seg) {
+		nb_segs++;
+		m_seg = m_seg->next;
+	}
+
+	return (nb_segs != tx_pkt->nb_segs);
+}
+
 static uint16_t bnxt_start_xmit(struct rte_mbuf *tx_pkt,
 				struct bnxt_tx_queue *txq,
 				uint16_t *coal_pkts,
@@ -220,6 +235,9 @@ static uint16_t bnxt_start_xmit(struct rte_mbuf *tx_pkt,
 
 	if (unlikely(is_bnxt_in_error(txq->bp)))
 		return -EIO;
+
+	if (unlikely(bnxt_invalid_nb_segs(tx_pkt)))
+		return -EINVAL;
 
 	long_bd = bnxt_xmit_need_long_bd(tx_pkt, txq);
 	nr_bds = long_bd + tx_pkt->nb_segs;
