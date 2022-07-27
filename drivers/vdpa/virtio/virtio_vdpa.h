@@ -48,6 +48,8 @@ struct virtio_vdpa_priv {
 	int vid;
 	int vf_id;
 	int nvec;
+	int lcore_id;
+	int dev_work_flag;
 	uint64_t guest_features;
 	struct virtio_vdpa_vring_info **vrings;
 	uint16_t nr_virtqs;   /* Number of vq vhost enabled */

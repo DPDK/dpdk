@@ -20,6 +20,12 @@ RTE_LOG_REGISTER(virtio_vdpa_logtype, pmd.vdpa.virtio, NOTICE);
 	rte_log(RTE_LOG_ ## level, virtio_vdpa_logtype, \
 		"VIRTIO VDPA %s(): " fmt "\n", __func__, ##args)
 
+int virtio_vdpa_lcore_id = 0;
+#define VIRTIO_VDPA_DEV_CLOSE_WORK_CLEAN 0
+#define VIRTIO_VDPA_DEV_CLOSE_WORK_START 1
+#define VIRTIO_VDPA_DEV_CLOSE_WORK_DONE 2
+#define VIRTIO_VDPA_DEV_CLOSE_WORK_ERR 3
+
 #define VIRTIO_VDPA_INTR_RETRIES_USEC 1000
 #define VIRTIO_VDPA_INTR_RETRIES 256
 #define VIRTIO_VDPA_STATE_ALIGN 4096
@@ -499,6 +505,17 @@ virtio_vdpa_vring_state_set(int vid, int vq_idx, int state)
 		DRV_LOG(ERR, "Invalid vDPA device: %s", vdev->device->name);
 		return -ENODEV;
 	}
+
+	if (priv->dev_work_flag == VIRTIO_VDPA_DEV_CLOSE_WORK_START) {
+		DRV_LOG(ERR, "%s is waiting dev close work finish lcore:%d", vdev->device->name, priv->lcore_id);
+		rte_eal_wait_lcore(priv->lcore_id);
+	}
+
+	if (priv->dev_work_flag == VIRTIO_VDPA_DEV_CLOSE_WORK_ERR) {
+		DRV_LOG(ERR, "%s is dev close work had err", vdev->device->name);
+		return -EINVAL;
+	}
+
 	if (vq_idx >= (int)priv->hw_nr_virtqs) {
 		DRV_LOG(ERR, "Too big vq_idx: %d", vq_idx);
 		return -E2BIG;
@@ -651,6 +668,17 @@ virtio_vdpa_features_set(int vid)
 		DRV_LOG(ERR, "Invalid vDPA device: %s", vdev->device->name);
 		return -ENODEV;
 	}
+
+	if (priv->dev_work_flag == VIRTIO_VDPA_DEV_CLOSE_WORK_START) {
+		DRV_LOG(ERR, "%s is waiting dev close work finish lcore:%d", vdev->device->name, priv->lcore_id);
+		rte_eal_wait_lcore(priv->lcore_id);
+	}
+
+	if (priv->dev_work_flag == VIRTIO_VDPA_DEV_CLOSE_WORK_ERR) {
+		DRV_LOG(ERR, "%s is dev close work had err", vdev->device->name);
+		return -EINVAL;
+	}
+
 	priv->vid = vid;
 	ret = rte_vhost_get_negotiated_features(vid, &features);
 	if (ret) {
@@ -716,6 +744,33 @@ virtio_vdpa_features_set(int vid)
 					priv->guest_features, features);
 
 	return 0;
+}
+
+static int
+virtio_vdpa_dev_close_work(void *arg)
+{
+	int ret;
+	struct virtio_vdpa_priv *priv = arg;
+
+	DRV_LOG(INFO, "%s vfid %d dev close work of lcore:%d start", priv->vdev->device->name, priv->vf_id, priv->lcore_id);
+	ret = virtio_vdpa_dma_unmap(priv);
+	if (ret) {
+		DRV_LOG(ERR, "%s fail to do dma map: %d",
+					priv->vdev->device->name, ret);
+		priv->dev_work_flag = VIRTIO_VDPA_DEV_CLOSE_WORK_ERR;
+		return ret;
+	}
+
+	ret = virtio_vdpa_cmd_restore_state(priv->pf_priv, priv->vf_id, 0, priv->state_size, priv->state_mz->iova);
+	if (ret) {
+		DRV_LOG(ERR, "%s vfid %d failed restore state ret:%d", priv->vdev->device->name, priv->vf_id, ret);
+		priv->dev_work_flag = VIRTIO_VDPA_DEV_CLOSE_WORK_ERR;
+		return ret;
+	}
+
+	DRV_LOG(INFO, "%s vfid %d dev close work of lcore:%d finish", priv->vdev->device->name, priv->vf_id, priv->lcore_id);
+	priv->dev_work_flag = VIRTIO_VDPA_DEV_CLOSE_WORK_DONE;
+	return ret;
 }
 
 static int
@@ -876,11 +931,6 @@ virtio_vdpa_dev_close(int vid)
 		return ret;
 	}
 
-	ret = virtio_vdpa_dma_unmap(priv);
-	if (ret) {
-		DRV_LOG(ERR, "%s fail to do dma map: %d",
-					priv->vdev->device->name, ret);
-	}
 
 	/* Disable all queues */
 	for (i = 0; i < priv->nr_virtqs; i++) {
@@ -893,15 +943,18 @@ virtio_vdpa_dev_close(int vid)
 	virtio_pci_dev_state_dev_status_set(priv->state_mz->addr, VIRTIO_CONFIG_STATUS_ACK |
 													VIRTIO_CONFIG_STATUS_DRIVER);
 
-	virtio_pci_dev_state_dump(priv->vpdev ,priv->state_mz->addr, priv->state_size);
 
-	ret = virtio_vdpa_cmd_restore_state(priv->pf_priv, priv->vf_id, 0, priv->state_size, priv->state_mz->iova);
+
+	virtio_vdpa_lcore_id = rte_get_next_lcore(virtio_vdpa_lcore_id, 1, 1);
+	priv->lcore_id = virtio_vdpa_lcore_id;
+	DRV_LOG(INFO, "%s vfid %d launch dev close work lcore:%d", vdev->device->name, priv->vf_id, priv->lcore_id);
+	ret = rte_eal_remote_launch(virtio_vdpa_dev_close_work, priv, virtio_vdpa_lcore_id);
 	if (ret) {
-		DRV_LOG(ERR, "%s vfid %d failed restore state ret:%d", vdev->device->name, priv->vf_id, ret);
+		DRV_LOG(ERR, "%s vfid %d failed launch work ret:%d lcore:%d", vdev->device->name, priv->vf_id, ret, virtio_vdpa_lcore_id);
 		rte_errno = rte_errno ? rte_errno : EINVAL;
-		virtio_vdpa_dma_unmap(priv);
 		return -rte_errno;
 	}
+	priv->dev_work_flag = VIRTIO_VDPA_DEV_CLOSE_WORK_START;
 
 	DRV_LOG(INFO, "%s vid %d was closed", priv->vdev->device->name, vid);
 	return ret;
@@ -925,6 +978,18 @@ virtio_vdpa_dev_config(int vid)
 					vdev->device->name, vid);
 		return -EBUSY;
 	}
+
+	if (priv->dev_work_flag == VIRTIO_VDPA_DEV_CLOSE_WORK_START) {
+		DRV_LOG(ERR, "%s is waiting dev close work finish lcore:%d", vdev->device->name, priv->lcore_id);
+		rte_eal_wait_lcore(priv->lcore_id);
+	}
+
+	if (priv->dev_work_flag == VIRTIO_VDPA_DEV_CLOSE_WORK_ERR) {
+		DRV_LOG(ERR, "%s is dev close work had err", vdev->device->name);
+		return -EINVAL;
+	}
+
+	priv->dev_work_flag = VIRTIO_VDPA_DEV_CLOSE_WORK_CLEAN;
 
 	priv->nr_virtqs = rte_vhost_get_vring_num(vid);
 	if (priv->nvec < (priv->nr_virtqs + 1)) {
@@ -1270,6 +1335,15 @@ virtio_vdpa_dev_remove(struct rte_pci_device *pci_dev)
 	if (found) {
 		if (priv->configured)
 			virtio_vdpa_dev_close(priv->vid);
+
+		if (priv->dev_work_flag == VIRTIO_VDPA_DEV_CLOSE_WORK_START) {
+			DRV_LOG(ERR, "%s is waiting dev close work finish lcore:%d", pci_dev->name, priv->lcore_id);
+			rte_eal_wait_lcore(priv->lcore_id);
+		}
+
+		if (priv->dev_work_flag == VIRTIO_VDPA_DEV_CLOSE_WORK_ERR) {
+			DRV_LOG(ERR, "%s is dev close work had err", pci_dev->name);
+		}
 
 		if (priv->lm_status == VIRTIO_S_FREEZED) {
 			ret = virtio_vdpa_cmd_set_status(priv->pf_priv, priv->vf_id, VIRTIO_S_QUIESCED);
