@@ -5,8 +5,6 @@
 #ifndef _PMD_AESNI_GCM_PRIV_H_
 #define _PMD_AESNI_GCM_PRIV_H_
 
-#include <intel-ipsec-mb.h>
-
 #include "ipsec_mb_private.h"
 
 #define AESNI_GCM_IV_LENGTH 12

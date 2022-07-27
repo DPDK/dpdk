@@ -5,8 +5,6 @@
 #ifndef _PMD_AESNI_MB_PRIV_H_
 #define _PMD_AESNI_MB_PRIV_H_
 
-#include <intel-ipsec-mb.h>
-
 #if defined(RTE_LIB_SECURITY)
 #define AESNI_MB_DOCSIS_SEC_ENABLED 1
 #include <rte_security.h>
