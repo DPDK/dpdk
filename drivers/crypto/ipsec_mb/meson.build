@@ -8,6 +8,10 @@ if is_windows
 endif
 
 IMB_required_ver = '1.0.0'
+IMB_header = '#include<intel-ipsec-mb.h>'
+if arch_subdir == 'arm'
+    IMB_header = '#include<ipsec-mb.h>'
+endif
 lib = cc.find_library('IPSec_MB', required: false)
 if not lib.found()
     build = false
@@ -17,7 +21,7 @@ else
 
     # version comes with quotes, so we split based on " and take the middle
     imb_ver = cc.get_define('IMB_VERSION_STR',
-        prefix : '#include<intel-ipsec-mb.h>').split('"')[1]
+        prefix : IMB_header).split('"')[1]
 
     if (imb_ver == '') or (imb_ver.version_compare('<' + IMB_required_ver))
         reason = 'IPSec_MB version >= @0@ is required, found version @1@'.format(

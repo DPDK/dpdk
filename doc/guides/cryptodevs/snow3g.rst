@@ -33,10 +33,16 @@ Installation
 ------------
 
 To build DPDK with the SNOW3G_PMD the user is required to download the multi-buffer
-library from `here <https://github.com/01org/intel-ipsec-mb>`_
-and compile it on their user system before building DPDK.
+library and compile it on their user system before building DPDK.
+
+For x86 system, the multi-buffer library is available
+`here <https://github.com/01org/intel-ipsec-mb>`_.
 The latest version of the library supported by this PMD is v1.2, which
 can be downloaded from `<https://github.com/01org/intel-ipsec-mb/archive/v1.2.zip>`_.
+
+For Arm system, ARM64 port of the multi-buffer library can be downloaded from
+`<https://gitlab.arm.com/arm-reference-solutions/ipsec-mb/-/tree/main/>`_. The
+latest version of the library supported by this PMD is tagged as SECLIB-IPSEC-2022.05.25.
 
 After downloading the library, the user needs to unpack and compile it
 on their system before building DPDK:
@@ -46,8 +52,8 @@ on their system before building DPDK:
     make
     make install
 
-The library requires NASM to be built. Depending on the library version, it might
-require a minimum NASM version (e.g. v0.54 requires at least NASM 2.14).
+The library requires NASM to be built on x86. Depending on the library version,
+it might require a minimum NASM version (e.g. v0.54 requires at least NASM 2.14).
 
 NASM is packaged for different OS. However, on some OS the version is too old,
 so a manual installation is required. In that case, NASM can be downloaded from

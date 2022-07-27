@@ -53,6 +53,12 @@ ipsec_mb_create(struct rte_vdev_device *vdev,
 	const char *name, *args;
 	int retval;
 
+#if defined(RTE_ARCH_ARM)
+	if ((pmd_type != IPSEC_MB_PMD_TYPE_SNOW3G) &&
+		(pmd_type != IPSEC_MB_PMD_TYPE_ZUC))
+		return -ENOTSUP;
+#endif
+
 #if defined(RTE_ARCH_ARM64)
 	vector_mode = IPSEC_MB_ARM64;
 #elif defined(RTE_ARCH_X86_64)

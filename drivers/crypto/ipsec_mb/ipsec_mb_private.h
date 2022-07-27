@@ -5,7 +5,11 @@
 #ifndef _IPSEC_MB_PRIVATE_H_
 #define _IPSEC_MB_PRIVATE_H_
 
+#if defined(RTE_ARCH_ARM)
+#include <ipsec-mb.h>
+#else
 #include <intel-ipsec-mb.h>
+#endif
 #include <cryptodev_pmd.h>
 #include <bus_vdev_driver.h>
 

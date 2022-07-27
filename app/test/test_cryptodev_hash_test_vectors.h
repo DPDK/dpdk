@@ -6,7 +6,11 @@
 #define TEST_CRYPTODEV_HASH_TEST_VECTORS_H_
 
 #ifdef RTE_CRYPTO_AESNI_MB
+#if defined(RTE_ARCH_ARM)
+#include <ipsec-mb.h>
+#else
 #include <intel-ipsec-mb.h>
+#endif
 #endif
 
 static const uint8_t plaintext_hash[] = {
