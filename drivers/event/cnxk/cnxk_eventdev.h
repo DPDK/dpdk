@@ -290,13 +290,6 @@ int cnxk_sso_xstats_reset(struct rte_eventdev *event_dev,
 			  int16_t queue_port_id, const uint32_t ids[],
 			  uint32_t n);
 
-/* Crypto adapter APIs. */
-int cnxk_crypto_adapter_qp_add(const struct rte_eventdev *event_dev,
-			       const struct rte_cryptodev *cdev,
-			       int32_t queue_pair_id);
-int cnxk_crypto_adapter_qp_del(const struct rte_cryptodev *cdev,
-			       int32_t queue_pair_id);
-
 /* CN9K */
 void cn9k_sso_set_rsrc(void *arg);
 
@@ -321,5 +314,8 @@ int cnxk_sso_tx_adapter_queue_del(const struct rte_eventdev *event_dev,
 int cnxk_sso_tx_adapter_start(uint8_t id, const struct rte_eventdev *event_dev);
 int cnxk_sso_tx_adapter_stop(uint8_t id, const struct rte_eventdev *event_dev);
 int cnxk_sso_tx_adapter_free(uint8_t id, const struct rte_eventdev *event_dev);
+int cnxk_crypto_adapter_qp_add(const struct rte_eventdev *event_dev,
+			       const struct rte_cryptodev *cdev, int32_t queue_pair_id);
+int cnxk_crypto_adapter_qp_del(const struct rte_cryptodev *cdev, int32_t queue_pair_id);
 
 #endif /* __CNXK_EVENTDEV_H__ */
