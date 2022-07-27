@@ -1327,6 +1327,15 @@ mlx5_shared_dev_ctx_args_config(struct mlx5_dev_ctx_shared *sh,
 		DRV_LOG(WARNING,
 			"\"tx_skew\" doesn't affect without \"tx_pp\".");
 	}
+	/* Check for LRO support. */
+	if (mlx5_devx_obj_ops_en(sh) && sh->cdev->config.hca_attr.lro_cap) {
+		/* TBD check tunnel lro caps. */
+		config->lro_allowed = 1;
+		DRV_LOG(DEBUG, "LRO is allowed.");
+		DRV_LOG(DEBUG,
+			"LRO minimal size of TCP segment required for coalescing is %d bytes.",
+			sh->cdev->config.hca_attr.lro_min_mss_size);
+	}
 	/*
 	 * If HW has bug working with tunnel packet decapsulation and scatter
 	 * FCS, and decapsulation is needed, clear the hw_fcs_strip bit.
@@ -2392,10 +2401,7 @@ mlx5_port_args_config(struct mlx5_priv *priv, struct mlx5_kvargs_ctrl *mkvlist,
 		config->mps == MLX5_MPW_ENHANCED ? "enhanced " :
 		config->mps == MLX5_MPW ? "legacy " : "",
 		config->mps != MLX5_MPW_DISABLED ? "enabled" : "disabled");
-	/* LRO is supported only when DV flow enabled. */
-	if (dev_cap->lro_supported && !priv->sh->config.dv_flow_en)
-		dev_cap->lro_supported = 0;
-	if (dev_cap->lro_supported) {
+	if (priv->sh->config.lro_allowed) {
 		/*
 		 * If LRO timeout is not configured by application,
 		 * use the minimal supported value.

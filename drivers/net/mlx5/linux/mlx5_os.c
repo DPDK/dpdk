@@ -370,15 +370,6 @@ mlx5_os_capabilities_prepare(struct mlx5_dev_ctx_shared *sh)
 		"DevX does not provide UAR offset, can't create queues for packet pacing.");
 	sh->dev_cap.txpp_en = 0;
 #endif
-	/* Check for LRO support. */
-	if (mlx5_devx_obj_ops_en(sh) && hca_attr->lro_cap) {
-		/* TBD check tunnel lro caps. */
-		sh->dev_cap.lro_supported = 1;
-		DRV_LOG(DEBUG, "Device supports LRO.");
-		DRV_LOG(DEBUG,
-			"LRO minimal size of TCP segment required for coalescing is %d bytes.",
-			hca_attr->lro_min_mss_size);
-	}
 	sh->dev_cap.scatter_fcs_w_decap_disable =
 					hca_attr->scatter_fcs_w_decap_disable;
 	sh->dev_cap.rq_delay_drop_en = hca_attr->rq_delay_drop;

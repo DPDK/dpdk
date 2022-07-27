@@ -835,7 +835,7 @@ mlx5_devx_tir_attr_set(struct rte_eth_dev *dev, const uint8_t *rss_key,
 	if (dev->data->dev_conf.lpbk_mode)
 		tir_attr->self_lb_block = MLX5_TIRC_SELF_LB_BLOCK_BLOCK_UNICAST;
 	if (lro) {
-		MLX5_ASSERT(priv->sh->dev_cap.lro_supported);
+		MLX5_ASSERT(priv->sh->config.lro_allowed);
 		tir_attr->lro_timeout_period_usecs = priv->config.lro_timeout;
 		tir_attr->lro_max_msg_sz = priv->max_lro_msg_size;
 		tir_attr->lro_enable_mask =
