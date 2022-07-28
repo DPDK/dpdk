@@ -2457,68 +2457,6 @@ cmd_pipeline_stats(char **tokens,
 	}
 }
 
-static const char cmd_pipeline_mirror_help[] =
-"pipeline <pipeline_name> mirror slots <n_slots> sessions <n_sessions>\n";
-
-static void
-cmd_pipeline_mirror(char **tokens,
-	uint32_t n_tokens,
-	char *out,
-	size_t out_size,
-	void *obj)
-{
-	struct rte_swx_pipeline_mirroring_params params;
-	struct pipeline *p;
-	int status;
-
-	if (n_tokens != 7) {
-		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
-		return;
-	}
-
-	if (strcmp(tokens[0], "pipeline")) {
-		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "pipeline");
-		return;
-	}
-
-	p = pipeline_find(obj, tokens[1]);
-	if (!p) {
-		snprintf(out, out_size, MSG_ARG_INVALID, "pipeline_name");
-		return;
-	}
-
-	if (strcmp(tokens[2], "mirror")) {
-		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "mirror");
-		return;
-	}
-
-	if (strcmp(tokens[3], "slots")) {
-		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "slots");
-		return;
-	}
-
-	if (parser_read_uint32(&params.n_slots, tokens[4])) {
-		snprintf(out, out_size, MSG_ARG_INVALID, "n_slots");
-		return;
-	}
-
-	if (strcmp(tokens[5], "sessions")) {
-		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "sessions");
-		return;
-	}
-
-	if (parser_read_uint32(&params.n_sessions, tokens[6])) {
-		snprintf(out, out_size, MSG_ARG_INVALID, "n_sessions");
-		return;
-	}
-
-	status = rte_swx_pipeline_mirroring_config(p->p, &params);
-	if (status) {
-		snprintf(out, out_size, "Command failed!\n");
-		return;
-	}
-}
-
 static const char cmd_pipeline_mirror_session_help[] =
 "pipeline <pipeline_name> mirror session <session_id> port <port_id> clone fast | slow "
 "truncate <truncation_length>\n";
@@ -2746,7 +2684,6 @@ cmd_help(char **tokens,
 			"\tpipeline meter set\n"
 			"\tpipeline meter stats\n"
 			"\tpipeline stats\n"
-			"\tpipeline mirror\n"
 			"\tpipeline mirror session\n"
 			"\tthread pipeline enable\n"
 			"\tthread pipeline disable\n\n");
@@ -2955,12 +2892,6 @@ cmd_help(char **tokens,
 	if ((strcmp(tokens[0], "pipeline") == 0) &&
 		(n_tokens == 2) && (strcmp(tokens[1], "stats") == 0)) {
 		snprintf(out, out_size, "\n%s\n", cmd_pipeline_stats_help);
-		return;
-	}
-
-	if (!strcmp(tokens[0], "pipeline") &&
-		(n_tokens == 2) && !strcmp(tokens[1], "mirror")) {
-		snprintf(out, out_size, "\n%s\n", cmd_pipeline_mirror_help);
 		return;
 	}
 
@@ -3214,13 +3145,6 @@ cli_process(char *in, char *out, size_t out_size, void *obj)
 			(strcmp(tokens[2], "stats") == 0)) {
 			cmd_pipeline_stats(tokens, n_tokens, out, out_size,
 				obj);
-			return;
-		}
-
-		if ((n_tokens >= 4) &&
-			(strcmp(tokens[2], "mirror") == 0) &&
-			(strcmp(tokens[3], "slots") == 0)) {
-			cmd_pipeline_mirror(tokens, n_tokens, out, out_size, obj);
 			return;
 		}
 
