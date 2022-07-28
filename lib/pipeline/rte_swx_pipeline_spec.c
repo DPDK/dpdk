@@ -2,6 +2,7 @@
  * Copyright(c) 2020 Intel Corporation
  */
 #include <stdint.h>
+#include <inttypes.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -2101,6 +2102,627 @@ pipeline_spec_free(struct pipeline_spec *s)
 	free(s->apply);
 
 	memset(s, 0, sizeof(struct pipeline_spec));
+}
+
+static const char *
+match_type_string_get(enum rte_swx_table_match_type match_type)
+{
+	switch (match_type) {
+	case RTE_SWX_TABLE_MATCH_WILDCARD: return "RTE_SWX_TABLE_MATCH_WILDCARD";
+	case RTE_SWX_TABLE_MATCH_LPM: return "RTE_SWX_TABLE_MATCH_LPM";
+	case RTE_SWX_TABLE_MATCH_EXACT: return "RTE_SWX_TABLE_MATCH_EXACT";
+	default: return "RTE_SWX_TABLE_MATCH_UNKNOWN";
+	}
+}
+
+void
+pipeline_spec_codegen(FILE *f,
+		      struct pipeline_spec *s)
+{
+	uint32_t i;
+
+	/* Check the input arguments. */
+	if (!f || !s)
+		return;
+
+	/* extobj. */
+	fprintf(f, "static struct extobj_spec extobjs[] = {\n");
+
+	for (i = 0; i < s->n_extobjs; i++) {
+		struct extobj_spec *extobj_spec = &s->extobjs[i];
+
+		fprintf(f, "\t[%d] = {\n", i);
+		fprintf(f, "\t\t.name = \"%s\",\n", extobj_spec->name);
+		fprintf(f, "\t\t.extern_type_name = \"%s\",\n", extobj_spec->extern_type_name);
+		if (extobj_spec->pragma)
+			fprintf(f, "\t\t.pragma = \"%s\",\n", extobj_spec->pragma);
+		else
+			fprintf(f, "\t\t.pragma = NULL,\n");
+		fprintf(f, "\t},\n");
+	}
+
+	fprintf(f, "};\n\n");
+
+	/* regarray. */
+	fprintf(f, "static struct regarray_spec regarrays[] = {\n");
+
+	for (i = 0; i < s->n_regarrays; i++) {
+		struct regarray_spec *regarray_spec = &s->regarrays[i];
+
+		fprintf(f, "\t[%d] = {\n", i);
+		fprintf(f, "\t\t.name = \"%s\",\n", regarray_spec->name);
+		fprintf(f, "\t\t.init_val = %" PRIu64 ",\n", regarray_spec->init_val);
+		fprintf(f, "\t\t.size = %u,\n", regarray_spec->size);
+		fprintf(f, "\t},\n");
+	}
+
+	fprintf(f, "};\n\n");
+
+	/* metarray. */
+	fprintf(f, "static struct metarray_spec metarrays[] = {\n");
+
+	for (i = 0; i < s->n_metarrays; i++) {
+		struct metarray_spec *metarray_spec = &s->metarrays[i];
+
+		fprintf(f, "\t[%d] = {\n", i);
+		fprintf(f, "\t\t.name = \"%s\",\n", metarray_spec->name);
+		fprintf(f, "\t\t.size = %u,\n", metarray_spec->size);
+		fprintf(f, "\t},\n");
+	}
+
+	fprintf(f, "};\n\n");
+
+	/* struct. */
+	for (i = 0; i < s->n_structs; i++) {
+		struct struct_spec *struct_spec = &s->structs[i];
+		uint32_t j;
+
+		fprintf(f, "static struct rte_swx_field_params struct_%s_fields[] = {\n",
+			struct_spec->name);
+
+		for (j = 0; j < struct_spec->n_fields; j++) {
+			struct rte_swx_field_params *field = &struct_spec->fields[j];
+
+			fprintf(f, "\t[%d] = {\n", j);
+			fprintf(f, "\t\t.name = \"%s\",\n", field->name);
+			fprintf(f, "\t\t.n_bits = %u,\n", field->n_bits);
+			fprintf(f, "\t},\n");
+		}
+
+		fprintf(f, "};\n\n");
+	}
+
+	fprintf(f, "static struct struct_spec structs[] = {\n");
+
+	for (i = 0; i < s->n_structs; i++) {
+		struct struct_spec *struct_spec = &s->structs[i];
+
+		fprintf(f, "\t[%d] = {\n", i);
+		fprintf(f, "\t\t.name = \"%s\",\n", struct_spec->name);
+		fprintf(f, "\t\t.fields = struct_%s_fields,\n", struct_spec->name);
+		fprintf(f, "\t\t.n_fields = "
+			"sizeof(struct_%s_fields) / sizeof(struct_%s_fields[0]),\n",
+			struct_spec->name,
+			struct_spec->name);
+		fprintf(f, "\t\t.varbit = %d,\n", struct_spec->varbit);
+		fprintf(f, "\t},\n");
+	}
+
+	fprintf(f, "};\n\n");
+
+	/* header. */
+	fprintf(f, "static struct header_spec headers[] = {\n");
+
+	for (i = 0; i < s->n_headers; i++) {
+		struct header_spec *header_spec = &s->headers[i];
+
+		fprintf(f, "\t[%d] = {\n", i);
+		fprintf(f, "\t\t.name = \"%s\",\n", header_spec->name);
+		fprintf(f, "\t\t.struct_type_name = \"%s\",\n", header_spec->struct_type_name);
+		fprintf(f, "\t},\n");
+	}
+
+	fprintf(f, "};\n\n");
+
+	/* metadata. */
+	fprintf(f, "static struct metadata_spec metadata[] = {\n");
+
+	for (i = 0; i < s->n_metadata; i++) {
+		struct metadata_spec *metadata_spec = &s->metadata[i];
+
+		fprintf(f, "\t[%d] = {\n", i);
+		fprintf(f, "\t\t.struct_type_name = \"%s\",\n", metadata_spec->struct_type_name);
+		fprintf(f, "\t},\n");
+
+	}
+
+	fprintf(f, "};\n\n");
+
+	/* action. */
+	for (i = 0; i < s->n_actions; i++) {
+		struct action_spec *action_spec = &s->actions[i];
+		uint32_t j;
+
+		fprintf(f, "static const char *action_%s_initial_instructions[] = {\n",
+			action_spec->name);
+
+		for (j = 0; j < action_spec->n_instructions; j++) {
+			const char *instr = action_spec->instructions[j];
+
+			fprintf(f, "\t[%d] = \"%s\",\n", j, instr);
+		}
+
+		fprintf(f, "};\n\n");
+	}
+
+	fprintf(f, "static struct action_spec actions[] = {\n");
+
+	for (i = 0; i < s->n_actions; i++) {
+		struct action_spec *action_spec = &s->actions[i];
+
+		fprintf(f, "\t[%d] = {\n", i);
+		fprintf(f, "\t\t.name = \"%s\",\n", action_spec->name);
+
+		if (action_spec->args_struct_type_name)
+			fprintf(f, "\t\t.args_struct_type_name = \"%s\",\n",
+				action_spec->args_struct_type_name);
+		else
+			fprintf(f, "\t\t.args_struct_type_name = NULL,\n");
+
+		fprintf(f, "\t\t.instructions = action_%s_initial_instructions,\n",
+			action_spec->name);
+		fprintf(f, "\t\t.n_instructions = "
+			"sizeof(action_%s_initial_instructions) / "
+			"sizeof(action_%s_initial_instructions[0]),\n",
+			action_spec->name,
+			action_spec->name);
+		fprintf(f, "\t},\n");
+	}
+
+	fprintf(f, "};\n\n");
+
+	/* table. */
+	for (i = 0; i < s->n_tables; i++) {
+		struct table_spec *table_spec = &s->tables[i];
+		uint32_t j;
+
+		/* fields. */
+		if (table_spec->params.fields && table_spec->params.n_fields) {
+			fprintf(f, "static struct rte_swx_match_field_params "
+				"table_%s_fields[] = {\n",
+				table_spec->name);
+
+			for (j = 0; j < table_spec->params.n_fields; j++) {
+				struct rte_swx_match_field_params *field =
+					&table_spec->params.fields[j];
+
+				fprintf(f, "\t[%d] = {\n", j);
+				fprintf(f, "\t\t.name = \"%s\",\n", field->name);
+				fprintf(f, "\t\t.match_type = %s,\n",
+					match_type_string_get(field->match_type));
+				fprintf(f, "\t},\n");
+			}
+
+			fprintf(f, "};\n\n");
+		}
+
+		/* action_names. */
+		if (table_spec->params.action_names && table_spec->params.n_actions) {
+			fprintf(f, "static const char *table_%s_action_names[] = {\n",
+				table_spec->name);
+
+			for (j = 0; j < table_spec->params.n_actions; j++) {
+				const char *action_name = table_spec->params.action_names[j];
+
+				fprintf(f, "\t[%d] = \"%s\",\n", j, action_name);
+			}
+
+			fprintf(f, "};\n\n");
+		}
+
+		/* action_is_for_table_entries. */
+		if (table_spec->params.action_is_for_table_entries &&
+		    table_spec->params.n_actions) {
+			fprintf(f, "static int table_%s_action_is_for_table_entries[] = {\n",
+				table_spec->name);
+
+			for (j = 0; j < table_spec->params.n_actions; j++) {
+				int value = table_spec->params.action_is_for_table_entries[j];
+
+				fprintf(f, "\t[%d] = %d,\n", j, value);
+			}
+
+			fprintf(f, "};\n\n");
+		}
+
+		/* action_is_for_default_entry. */
+		if (table_spec->params.action_is_for_default_entry &&
+		    table_spec->params.n_actions) {
+			fprintf(f, "static int table_%s_action_is_for_default_entry[] = {\n",
+				table_spec->name);
+
+			for (j = 0; j < table_spec->params.n_actions; j++) {
+				int value = table_spec->params.action_is_for_default_entry[j];
+
+				fprintf(f, "\t[%d] = %d,\n", j, value);
+			}
+
+			fprintf(f, "};\n\n");
+		}
+	}
+
+	fprintf(f, "static struct table_spec tables[] = {\n");
+
+	for (i = 0; i < s->n_tables; i++) {
+		struct table_spec *table_spec = &s->tables[i];
+
+		fprintf(f, "\t[%d] = {\n", i);
+		fprintf(f, "\t\t.name = \"%s\",\n", table_spec->name);
+
+		fprintf(f, "\t\t.params = {\n");
+
+		if (table_spec->params.fields && table_spec->params.n_fields) {
+			fprintf(f, "\t\t\t.fields = table_%s_fields,\n", table_spec->name);
+			fprintf(f, "\t\t\t.n_fields = "
+				"sizeof(table_%s_fields) / sizeof(table_%s_fields[0]),\n",
+				table_spec->name,
+				table_spec->name);
+		} else {
+			fprintf(f, "\t\t\t.fields = NULL,\n");
+			fprintf(f, "\t\t\t.n_fields = 0,\n");
+		}
+
+		if (table_spec->params.action_names && table_spec->params.n_actions)
+			fprintf(f, "\t\t\t.action_names = table_%s_action_names,\n",
+				table_spec->name);
+		else
+			fprintf(f, "\t\t\t.action_names = NULL,\n");
+
+		if (table_spec->params.action_is_for_table_entries && table_spec->params.n_actions)
+			fprintf(f, "\t\t\t.action_is_for_table_entries = "
+				"table_%s_action_is_for_table_entries,\n",
+				table_spec->name);
+		else
+			fprintf(f, "\t\t\t.action_is_for_table_entries = NULL,\n");
+
+		if (table_spec->params.action_is_for_default_entry && table_spec->params.n_actions)
+			fprintf(f, "\t\t\t.action_is_for_default_entry = "
+				"table_%s_action_is_for_default_entry,\n",
+				table_spec->name);
+		else
+			fprintf(f, "\t\t\t.action_is_for_default_entry = NULL,\n");
+
+		if (table_spec->params.n_actions)
+			fprintf(f, "\t\t\t.n_actions = sizeof(table_%s_action_names) / "
+				"sizeof(table_%s_action_names[0]),\n",
+				table_spec->name,
+				table_spec->name);
+		else
+			fprintf(f, "\t\t\t.n_actions = 0,\n");
+
+		if (table_spec->params.default_action_name)
+			fprintf(f, "\t\t\t.default_action_name = \"%s\",\n",
+				table_spec->params.default_action_name);
+		else
+			fprintf(f, "\t\t\t.default_action_name = NULL,\n");
+
+		if (table_spec->params.default_action_args)
+			fprintf(f, "\t\t\t.default_action_args = \"%s\",\n",
+				table_spec->params.default_action_args);
+		else
+			fprintf(f, "\t\t\t.default_action_args = NULL,\n");
+
+		fprintf(f, "\t\t\t.default_action_is_const = %d,\n",
+			table_spec->params.default_action_is_const);
+		fprintf(f, "\t\t},\n");
+
+		if (table_spec->recommended_table_type_name)
+			fprintf(f, "\t\t.recommended_table_type_name = \"%s\",\n",
+				table_spec->recommended_table_type_name);
+		else
+			fprintf(f, "\t\t.recommended_table_type_name = NULL,\n");
+
+		if (table_spec->args)
+			fprintf(f, "\t\t.args = \"%s\",\n", table_spec->args);
+		else
+			fprintf(f, "\t\t.args = NULL,\n");
+
+		fprintf(f, "\t\t.size = %u,\n", table_spec->size);
+
+		fprintf(f, "\t},\n");
+	}
+
+	fprintf(f, "};\n\n");
+
+	/* selector. */
+	for (i = 0; i < s->n_selectors; i++) {
+		struct selector_spec *selector_spec = &s->selectors[i];
+		uint32_t j;
+
+		if (selector_spec->params.selector_field_names &&
+		    selector_spec->params.n_selector_fields) {
+			fprintf(f, "static const char *selector_%s_field_names[] = {\n",
+				selector_spec->name);
+
+			for (j = 0; j < selector_spec->params.n_selector_fields; j++) {
+				const char *field_name =
+					selector_spec->params.selector_field_names[j];
+
+				fprintf(f, "\t[%d] = \"%s\",\n", j, field_name);
+			}
+
+			fprintf(f, "};\n\n");
+		}
+	}
+
+	fprintf(f, "static struct selector_spec selectors[] = {\n");
+
+	for (i = 0; i < s->n_selectors; i++) {
+		struct selector_spec *selector_spec = &s->selectors[i];
+
+		fprintf(f, "\t[%d] = {\n", i);
+
+		fprintf(f, "\t\t.name = \"%s\",\n", selector_spec->name);
+		fprintf(f, "\t\t.params = {\n");
+
+		if (selector_spec->params.group_id_field_name)
+			fprintf(f, "\t\t\t.group_id_field_name = \"%s\",\n",
+				selector_spec->params.group_id_field_name);
+		else
+			fprintf(f, "\t\t\t.group_id_field_name = NULL,\n");
+
+		if (selector_spec->params.selector_field_names &&
+		    selector_spec->params.n_selector_fields) {
+			fprintf(f, "\t\t\t.selector_field_names = selector_%s_field_names,\n",
+				selector_spec->name);
+			fprintf(f, "\t\t\t.n_selector_fields = "
+				"sizeof(selector_%s_field_names) / sizeof(selector_%s_field_names[0]),\n",
+				selector_spec->name,
+				selector_spec->name);
+		} else {
+			fprintf(f, "\t\t\t.selector_field_names = NULL,\n");
+			fprintf(f, "\t\t\t.n_selector_fields = 0,\n");
+		}
+
+		if (selector_spec->params.member_id_field_name)
+			fprintf(f, "\t\t\t.member_id_field_name = \"%s\",\n",
+				selector_spec->params.member_id_field_name);
+		else
+			fprintf(f, "\t\t\t.member_id_field_name = NULL,\n");
+
+		fprintf(f, "\t\t\t.n_groups_max = %u,\n", selector_spec->params.n_groups_max);
+
+		fprintf(f, "\t\t\t.n_members_per_group_max = %u,\n",
+			selector_spec->params.n_members_per_group_max);
+
+		fprintf(f, "\t\t},\n");
+		fprintf(f, "\t},\n");
+	}
+
+	fprintf(f, "};\n\n");
+
+	/* learner. */
+	for (i = 0; i < s->n_learners; i++) {
+		struct learner_spec *learner_spec = &s->learners[i];
+		uint32_t j;
+
+		/* field_names. */
+		if (learner_spec->params.field_names && learner_spec->params.n_fields) {
+			fprintf(f, "static const char *learner_%s_field_names[] = {\n",
+				learner_spec->name);
+
+			for (j = 0; j < learner_spec->params.n_fields; j++) {
+				const char *field_name = learner_spec->params.field_names[j];
+
+				fprintf(f, "\t[%d] = \"%s\",\n", j, field_name);
+			}
+
+			fprintf(f, "};\n\n");
+		}
+
+		/* action_names. */
+		if (learner_spec->params.action_names && learner_spec->params.n_actions) {
+			fprintf(f, "static const char *learner_%s_action_names[] = {\n",
+				learner_spec->name);
+
+			for (j = 0; j < learner_spec->params.n_actions; j++) {
+				const char *action_name = learner_spec->params.action_names[j];
+
+				fprintf(f, "\t[%d] = \"%s\",\n", j, action_name);
+			}
+
+			fprintf(f, "};\n\n");
+		}
+
+		/* action_is_for_table_entries. */
+		if (learner_spec->params.action_is_for_table_entries &&
+		    learner_spec->params.n_actions) {
+			fprintf(f, "static int learner_%s_action_is_for_table_entries[] = {\n",
+				learner_spec->name);
+
+			for (j = 0; j < learner_spec->params.n_actions; j++) {
+				int value = learner_spec->params.action_is_for_table_entries[j];
+
+				fprintf(f, "\t[%d] = %d,\n", j, value);
+			}
+
+			fprintf(f, "};\n\n");
+		}
+
+		/* action_is_for_default_entry. */
+		if (learner_spec->params.action_is_for_default_entry &&
+		    learner_spec->params.n_actions) {
+			fprintf(f, "static int learner_%s_action_is_for_default_entry[] = {\n",
+				learner_spec->name);
+
+			for (j = 0; j < learner_spec->params.n_actions; j++) {
+				int value = learner_spec->params.action_is_for_default_entry[j];
+
+				fprintf(f, "\t[%d] = %d,\n", j, value);
+			}
+
+			fprintf(f, "};\n\n");
+		}
+
+		/* timeout. */
+		if (learner_spec->timeout && learner_spec->n_timeouts) {
+			fprintf(f, "static uint32_t learner_%s_timeout[] = {\n",
+				learner_spec->name);
+
+			for (j = 0; j < learner_spec->n_timeouts; j++) {
+				uint32_t value = learner_spec->timeout[j];
+
+				fprintf(f, "\t[%d] = %u,\n", j, value);
+			}
+
+			fprintf(f, "};\n\n");
+		}
+	}
+
+	fprintf(f, "static struct learner_spec learners[] = {\n");
+
+	for (i = 0; i < s->n_learners; i++) {
+		struct learner_spec *learner_spec = &s->learners[i];
+
+		fprintf(f, "\t[%d] = {\n", i);
+		fprintf(f, "\t\t.name = \"%s\",\n", learner_spec->name);
+
+		fprintf(f, "\t\t.params = {\n");
+
+		if (learner_spec->params.field_names && learner_spec->params.n_fields) {
+			fprintf(f, "\t\t\t.field_names = learner_%s_field_names,\n",
+				learner_spec->name);
+			fprintf(f, "\t\t\t.n_fields = "
+				"sizeof(learner_%s_field_names) / "
+				"sizeof(learner_%s_field_names[0]),\n",
+				learner_spec->name,
+				learner_spec->name);
+		} else {
+			fprintf(f, "\t\t\t.field_names = NULL,\n");
+			fprintf(f, "\t\t\t.n_fields = 0,\n");
+		}
+
+		if (learner_spec->params.action_names && learner_spec->params.n_actions)
+			fprintf(f, "\t\t\t.action_names = learner_%s_action_names,\n",
+				learner_spec->name);
+		else
+			fprintf(f, "\t\t\t.action_names = NULL,\n");
+
+		if (learner_spec->params.action_is_for_table_entries &&
+		    learner_spec->params.n_actions)
+			fprintf(f, "\t\t\t.action_is_for_table_entries = "
+				"learner_%s_action_is_for_table_entries,\n",
+				learner_spec->name);
+		else
+			fprintf(f, "\t\t\t.action_is_for_table_entries = NULL,\n");
+
+		if (learner_spec->params.action_is_for_default_entry &&
+		    learner_spec->params.n_actions)
+			fprintf(f, "\t\t\t.action_is_for_default_entry = "
+				"learner_%s_action_is_for_default_entry,\n",
+				learner_spec->name);
+		else
+			fprintf(f, "\t\t\t.action_is_for_default_entry = NULL,\n");
+
+		if (learner_spec->params.action_names && learner_spec->params.n_actions)
+			fprintf(f, "\t\t\t.n_actions = "
+				"sizeof(learner_%s_action_names) / sizeof(learner_%s_action_names[0]),\n",
+				learner_spec->name,
+				learner_spec->name);
+		else
+			fprintf(f, "\t\t\t.n_actions = NULL,\n");
+
+		if (learner_spec->params.default_action_name)
+			fprintf(f, "\t\t\t.default_action_name = \"%s\",\n",
+				learner_spec->params.default_action_name);
+		else
+			fprintf(f, "\t\t\t.default_action_name = NULL,\n");
+
+		if (learner_spec->params.default_action_args)
+			fprintf(f, "\t\t\t.default_action_args = \"%s\",\n",
+				learner_spec->params.default_action_args);
+		else
+			fprintf(f, "\t\t\t.default_action_args = NULL,\n");
+
+		fprintf(f, "\t\t\t.default_action_is_const = %d,\n",
+			learner_spec->params.default_action_is_const);
+
+		fprintf(f, "\t\t},\n");
+
+		fprintf(f, "\t\t.size = %u,\n", learner_spec->size);
+
+		if (learner_spec->timeout && learner_spec->n_timeouts) {
+			fprintf(f, "\t\t.timeout = learner_%s_timeout,\n", learner_spec->name);
+			fprintf(f, "\t\t\t.n_timeouts = "
+				"sizeof(learner_%s_timeout) / sizeof(learner_%s_timeout[0]),\n",
+				learner_spec->name,
+				learner_spec->name);
+		} else {
+			fprintf(f, "\t\t.timeout = NULL,\n");
+			fprintf(f, "\t\t\t.n_timeouts = 0,\n");
+		}
+
+		fprintf(f, "\t},\n");
+	}
+
+	fprintf(f, "};\n\n");
+
+	/* apply. */
+	for (i = 0; i < s->n_apply; i++) {
+		struct apply_spec *apply_spec = &s->apply[i];
+		uint32_t j;
+
+		fprintf(f, "static const char *apply%u_initial_instructions[] = {\n", i);
+
+		for (j = 0; j < apply_spec->n_instructions; j++) {
+			const char *instr = apply_spec->instructions[j];
+
+			fprintf(f, "\t[%d] = \"%s\",\n", j, instr);
+		}
+
+		fprintf(f, "};\n\n");
+	}
+
+	fprintf(f, "static struct apply_spec apply[] = {\n");
+
+	for (i = 0; i < s->n_apply; i++) {
+		fprintf(f, "\t[%d] = {\n", i);
+		fprintf(f, "\t.instructions = apply%u_initial_instructions,\n", i);
+		fprintf(f, "\t.n_instructions = "
+			"sizeof(apply%u_initial_instructions) / "
+			"sizeof(apply%u_initial_instructions[0]),\n",
+			i,
+			i);
+		fprintf(f, "\t},\n");
+	}
+
+	fprintf(f, "};\n\n");
+
+	/* pipeline. */
+	fprintf(f, "struct pipeline_spec pipeline_spec = {\n");
+	fprintf(f, "\t.extobjs = extobjs,\n");
+	fprintf(f, "\t.structs = structs,\n");
+	fprintf(f, "\t.headers = headers,\n");
+	fprintf(f, "\t.metadata = metadata,\n");
+	fprintf(f, "\t.actions = actions,\n");
+	fprintf(f, "\t.tables = tables,\n");
+	fprintf(f, "\t.selectors = selectors,\n");
+	fprintf(f, "\t.learners = learners,\n");
+	fprintf(f, "\t.regarrays = regarrays,\n");
+	fprintf(f, "\t.metarrays = metarrays,\n");
+	fprintf(f, "\t.apply = apply,\n");
+	fprintf(f, "\t.n_extobjs = sizeof(extobjs) / sizeof(extobjs[0]),\n");
+	fprintf(f, "\t.n_structs = sizeof(structs) / sizeof(structs[0]),\n");
+	fprintf(f, "\t.n_headers = sizeof(headers) / sizeof(headers[0]),\n");
+	fprintf(f, "\t.n_metadata = sizeof(metadata) / sizeof(metadata[0]),\n");
+	fprintf(f, "\t.n_actions = sizeof(actions) / sizeof(actions[0]),\n");
+	fprintf(f, "\t.n_tables = sizeof(tables) / sizeof(tables[0]),\n");
+	fprintf(f, "\t.n_selectors = sizeof(selectors) / sizeof(selectors[0]),\n");
+	fprintf(f, "\t.n_learners = sizeof(learners) / sizeof(learners[0]),\n");
+	fprintf(f, "\t.n_regarrays = sizeof(regarrays) / sizeof(regarrays[0]),\n");
+	fprintf(f, "\t.n_metarrays = sizeof(metarrays) / sizeof(metarrays[0]),\n");
+	fprintf(f, "\t.n_apply = sizeof(apply) / sizeof(apply[0]),\n");
+	fprintf(f, "};\n");
 }
 
 struct pipeline_spec *
