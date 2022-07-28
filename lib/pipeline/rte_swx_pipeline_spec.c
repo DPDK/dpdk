@@ -2103,11 +2103,10 @@ pipeline_spec_free(struct pipeline_spec *s)
 	memset(s, 0, sizeof(struct pipeline_spec));
 }
 
-int
-rte_swx_pipeline_build_from_spec(struct rte_swx_pipeline *p,
-				 FILE *spec,
-				 uint32_t *err_line,
-				 const char **err_msg)
+struct pipeline_spec *
+pipeline_spec_parse(FILE *spec,
+		    uint32_t *err_line,
+		    const char **err_msg)
 {
 	struct extobj_spec extobj_spec = {0};
 	struct struct_spec struct_spec = {0};
@@ -2120,26 +2119,29 @@ rte_swx_pipeline_build_from_spec(struct rte_swx_pipeline *p,
 	struct regarray_spec regarray_spec = {0};
 	struct metarray_spec metarray_spec = {0};
 	struct apply_spec apply_spec = {0};
-	uint32_t n_lines;
+	struct pipeline_spec *s = NULL;
+	uint32_t n_lines = 0;
 	uint32_t block_mask = 0;
-	int status;
+	int status = 0;
 
 	/* Check the input arguments. */
-	if (!p) {
+	if (!spec) {
 		if (err_line)
-			*err_line = 0;
+			*err_line = n_lines;
 		if (err_msg)
-			*err_msg = "Null pipeline argument.";
+			*err_msg = "Invalid input argument.";
 		status = -EINVAL;
 		goto error;
 	}
 
-	if (!spec) {
+	/* Memory allocation. */
+	s = calloc(sizeof(struct pipeline_spec), 1);
+	if (!s) {
 		if (err_line)
-			*err_line = 0;
+			*err_line = n_lines;
 		if (err_msg)
-			*err_msg = "Null specification file argument.";
-		status = -EINVAL;
+			*err_msg = "Memory allocation failed.";
+		status = -ENOMEM;
 		goto error;
 	}
 
@@ -2200,6 +2202,8 @@ rte_swx_pipeline_build_from_spec(struct rte_swx_pipeline *p,
 
 		/* struct block. */
 		if (block_mask & (1 << STRUCT_BLOCK)) {
+			struct struct_spec *new_structs;
+
 			status = struct_block_parse(&struct_spec,
 						    &block_mask,
 						    tokens,
@@ -2214,26 +2218,29 @@ rte_swx_pipeline_build_from_spec(struct rte_swx_pipeline *p,
 				continue;
 
 			/* End of block. */
-			status = rte_swx_pipeline_struct_type_register(p,
-				struct_spec.name,
-				struct_spec.fields,
-				struct_spec.n_fields,
-				struct_spec.varbit);
-			if (status) {
+			new_structs = realloc(s->structs,
+					      (s->n_structs + 1) * sizeof(struct struct_spec));
+			if (!new_structs) {
 				if (err_line)
 					*err_line = n_lines;
 				if (err_msg)
-					*err_msg = "Struct registration error.";
+					*err_msg = "Memory allocation failed.";
+				status = -ENOMEM;
 				goto error;
 			}
 
-			struct_spec_free(&struct_spec);
+			s->structs = new_structs;
+			memcpy(&s->structs[s->n_structs], &struct_spec, sizeof(struct struct_spec));
+			s->n_structs++;
+			memset(&struct_spec, 0, sizeof(struct struct_spec));
 
 			continue;
 		}
 
 		/* action block. */
 		if (block_mask & (1 << ACTION_BLOCK)) {
+			struct action_spec *new_actions;
+
 			status = action_block_parse(&action_spec,
 						    &block_mask,
 						    tokens,
@@ -2248,26 +2255,29 @@ rte_swx_pipeline_build_from_spec(struct rte_swx_pipeline *p,
 				continue;
 
 			/* End of block. */
-			status = rte_swx_pipeline_action_config(p,
-				action_spec.name,
-				action_spec.args_struct_type_name,
-				action_spec.instructions,
-				action_spec.n_instructions);
-			if (status) {
+			new_actions = realloc(s->actions,
+					      (s->n_actions + 1) * sizeof(struct action_spec));
+			if (!new_actions) {
 				if (err_line)
 					*err_line = n_lines;
 				if (err_msg)
-					*err_msg = "Action config error.";
+					*err_msg = "Memory allocation failed.";
+				status = -ENOMEM;
 				goto error;
 			}
 
-			action_spec_free(&action_spec);
+			s->actions = new_actions;
+			memcpy(&s->actions[s->n_actions], &action_spec, sizeof(struct action_spec));
+			s->n_actions++;
+			memset(&action_spec, 0, sizeof(struct action_spec));
 
 			continue;
 		}
 
 		/* table block. */
 		if (block_mask & (1 << TABLE_BLOCK)) {
+			struct table_spec *new_tables;
+
 			status = table_block_parse(&table_spec,
 						   &block_mask,
 						   tokens,
@@ -2282,27 +2292,29 @@ rte_swx_pipeline_build_from_spec(struct rte_swx_pipeline *p,
 				continue;
 
 			/* End of block. */
-			status = rte_swx_pipeline_table_config(p,
-				table_spec.name,
-				&table_spec.params,
-				table_spec.recommended_table_type_name,
-				table_spec.args,
-				table_spec.size);
-			if (status) {
+			new_tables = realloc(s->tables,
+					     (s->n_tables + 1) * sizeof(struct table_spec));
+			if (!new_tables) {
 				if (err_line)
 					*err_line = n_lines;
 				if (err_msg)
-					*err_msg = "Table configuration error.";
+					*err_msg = "Memory allocation failed.";
+				status = -ENOMEM;
 				goto error;
 			}
 
-			table_spec_free(&table_spec);
+			s->tables = new_tables;
+			memcpy(&s->tables[s->n_tables], &table_spec, sizeof(struct table_spec));
+			s->n_tables++;
+			memset(&table_spec, 0, sizeof(struct table_spec));
 
 			continue;
 		}
 
 		/* selector block. */
 		if (block_mask & (1 << SELECTOR_BLOCK)) {
+			struct selector_spec *new_selectors;
+
 			status = selector_block_parse(&selector_spec,
 						      &block_mask,
 						      tokens,
@@ -2317,24 +2329,31 @@ rte_swx_pipeline_build_from_spec(struct rte_swx_pipeline *p,
 				continue;
 
 			/* End of block. */
-			status = rte_swx_pipeline_selector_config(p,
-				selector_spec.name,
-				&selector_spec.params);
-			if (status) {
+			new_selectors = realloc(s->selectors,
+				(s->n_selectors + 1) * sizeof(struct selector_spec));
+			if (!new_selectors) {
 				if (err_line)
 					*err_line = n_lines;
 				if (err_msg)
-					*err_msg = "Selector configuration error.";
+					*err_msg = "Memory allocation failed.";
+				status = -ENOMEM;
 				goto error;
 			}
 
-			selector_spec_free(&selector_spec);
+			s->selectors = new_selectors;
+			memcpy(&s->selectors[s->n_selectors],
+			       &selector_spec,
+			       sizeof(struct selector_spec));
+			s->n_selectors++;
+			memset(&selector_spec, 0, sizeof(struct selector_spec));
 
 			continue;
 		}
 
 		/* learner block. */
 		if (block_mask & (1 << LEARNER_BLOCK)) {
+			struct learner_spec *new_learners;
+
 			status = learner_block_parse(&learner_spec,
 						     &block_mask,
 						     tokens,
@@ -2349,27 +2368,31 @@ rte_swx_pipeline_build_from_spec(struct rte_swx_pipeline *p,
 				continue;
 
 			/* End of block. */
-			status = rte_swx_pipeline_learner_config(p,
-				learner_spec.name,
-				&learner_spec.params,
-				learner_spec.size,
-				learner_spec.timeout,
-				learner_spec.n_timeouts);
-			if (status) {
+			new_learners = realloc(s->learners,
+					       (s->n_learners + 1) * sizeof(struct learner_spec));
+			if (!new_learners) {
 				if (err_line)
 					*err_line = n_lines;
 				if (err_msg)
-					*err_msg = "Learner table configuration error.";
+					*err_msg = "Memory allocation failed.";
+				status = -ENOMEM;
 				goto error;
 			}
 
-			learner_spec_free(&learner_spec);
+			s->learners = new_learners;
+			memcpy(&s->learners[s->n_learners],
+			       &learner_spec,
+			       sizeof(struct learner_spec));
+			s->n_learners++;
+			memset(&learner_spec, 0, sizeof(struct learner_spec));
 
 			continue;
 		}
 
 		/* apply block. */
 		if (block_mask & (1 << APPLY_BLOCK)) {
+			struct apply_spec *new_apply;
+
 			status = apply_block_parse(&apply_spec,
 						   &block_mask,
 						   tokens,
@@ -2384,24 +2407,28 @@ rte_swx_pipeline_build_from_spec(struct rte_swx_pipeline *p,
 				continue;
 
 			/* End of block. */
-			status = rte_swx_pipeline_instructions_config(p,
-				apply_spec.instructions,
-				apply_spec.n_instructions);
-			if (status) {
+			new_apply = realloc(s->apply, (s->n_apply + 1) * sizeof(struct apply_spec));
+			if (!new_apply) {
 				if (err_line)
 					*err_line = n_lines;
 				if (err_msg)
-					*err_msg = "Pipeline instructions err.";
+					*err_msg = "Memory allocation failed.";
+				status = -ENOMEM;
 				goto error;
 			}
 
-			apply_spec_free(&apply_spec);
+			s->apply = new_apply;
+			memcpy(&s->apply[s->n_apply], &apply_spec, sizeof(struct apply_spec));
+			s->n_apply++;
+			memset(&apply_spec, 0, sizeof(struct apply_spec));
 
 			continue;
 		}
 
 		/* extobj. */
 		if (!strcmp(tokens[0], "extobj")) {
+			struct extobj_spec *new_extobjs;
+
 			status = extobj_statement_parse(&extobj_spec,
 							tokens,
 							n_tokens,
@@ -2411,19 +2438,21 @@ rte_swx_pipeline_build_from_spec(struct rte_swx_pipeline *p,
 			if (status)
 				goto error;
 
-			status = rte_swx_pipeline_extern_object_config(p,
-				extobj_spec.name,
-				extobj_spec.extern_type_name,
-				extobj_spec.pragma);
-			if (status) {
+			new_extobjs = realloc(s->extobjs,
+					      (s->n_extobjs + 1) * sizeof(struct extobj_spec));
+			if (!new_extobjs) {
 				if (err_line)
 					*err_line = n_lines;
 				if (err_msg)
-					*err_msg = "Extern object config err.";
+					*err_msg = "Memory allocation failed.";
+				status = -ENOMEM;
 				goto error;
 			}
 
-			extobj_spec_free(&extobj_spec);
+			s->extobjs = new_extobjs;
+			memcpy(&s->extobjs[s->n_extobjs], &extobj_spec, sizeof(struct extobj_spec));
+			s->n_extobjs++;
+			memset(&extobj_spec, 0, sizeof(struct extobj_spec));
 
 			continue;
 		}
@@ -2445,6 +2474,8 @@ rte_swx_pipeline_build_from_spec(struct rte_swx_pipeline *p,
 
 		/* header. */
 		if (!strcmp(tokens[0], "header")) {
+			struct header_spec *new_headers;
+
 			status = header_statement_parse(&header_spec,
 							tokens,
 							n_tokens,
@@ -2454,24 +2485,29 @@ rte_swx_pipeline_build_from_spec(struct rte_swx_pipeline *p,
 			if (status)
 				goto error;
 
-			status = rte_swx_pipeline_packet_header_register(p,
-				header_spec.name,
-				header_spec.struct_type_name);
-			if (status) {
+			new_headers = realloc(s->headers,
+					      (s->n_headers + 1) * sizeof(struct header_spec));
+			if (!new_headers) {
 				if (err_line)
 					*err_line = n_lines;
 				if (err_msg)
-					*err_msg = "Header registration error.";
+					*err_msg = "Memory allocation failed.";
+				status = -ENOMEM;
 				goto error;
 			}
 
-			header_spec_free(&header_spec);
+			s->headers = new_headers;
+			memcpy(&s->headers[s->n_headers], &header_spec, sizeof(struct header_spec));
+			s->n_headers++;
+			memset(&header_spec, 0, sizeof(struct header_spec));
 
 			continue;
 		}
 
 		/* metadata. */
 		if (!strcmp(tokens[0], "metadata")) {
+			struct metadata_spec *new_metadata;
+
 			status = metadata_statement_parse(&metadata_spec,
 							  tokens,
 							  n_tokens,
@@ -2481,17 +2517,23 @@ rte_swx_pipeline_build_from_spec(struct rte_swx_pipeline *p,
 			if (status)
 				goto error;
 
-			status = rte_swx_pipeline_packet_metadata_register(p,
-				metadata_spec.struct_type_name);
-			if (status) {
+			new_metadata = realloc(s->metadata,
+					       (s->n_metadata + 1) * sizeof(struct metadata_spec));
+			if (!new_metadata) {
 				if (err_line)
 					*err_line = n_lines;
 				if (err_msg)
-					*err_msg = "Meta-data reg err.";
+					*err_msg = "Memory allocation failed.";
+				status = -ENOMEM;
 				goto error;
 			}
 
-			metadata_spec_free(&metadata_spec);
+			s->metadata = new_metadata;
+			memcpy(&s->metadata[s->n_metadata],
+			       &metadata_spec,
+			       sizeof(struct metadata_spec));
+			s->n_metadata++;
+			memset(&metadata_spec, 0, sizeof(struct metadata_spec));
 
 			continue;
 		}
@@ -2558,6 +2600,8 @@ rte_swx_pipeline_build_from_spec(struct rte_swx_pipeline *p,
 
 		/* regarray. */
 		if (!strcmp(tokens[0], "regarray")) {
+			struct regarray_spec *new_regarrays;
+
 			status = regarray_statement_parse(&regarray_spec,
 							  tokens,
 							  n_tokens,
@@ -2567,25 +2611,31 @@ rte_swx_pipeline_build_from_spec(struct rte_swx_pipeline *p,
 			if (status)
 				goto error;
 
-			status = rte_swx_pipeline_regarray_config(p,
-				regarray_spec.name,
-				regarray_spec.size,
-				regarray_spec.init_val);
-			if (status) {
+			new_regarrays = realloc(s->regarrays,
+				(s->n_regarrays + 1) * sizeof(struct regarray_spec));
+			if (!new_regarrays) {
 				if (err_line)
 					*err_line = n_lines;
 				if (err_msg)
-					*err_msg = "Register array configuration error.";
+					*err_msg = "Memory allocation failed.";
+				status = -ENOMEM;
 				goto error;
 			}
 
-			regarray_spec_free(&regarray_spec);
+			s->regarrays = new_regarrays;
+			memcpy(&s->regarrays[s->n_regarrays],
+			       &regarray_spec,
+			       sizeof(struct regarray_spec));
+			s->n_regarrays++;
+			memset(&regarray_spec, 0, sizeof(struct regarray_spec));
 
 			continue;
 		}
 
 		/* metarray. */
 		if (!strcmp(tokens[0], "metarray")) {
+			struct metarray_spec *new_metarrays;
+
 			status = metarray_statement_parse(&metarray_spec,
 							  tokens,
 							  n_tokens,
@@ -2595,18 +2645,23 @@ rte_swx_pipeline_build_from_spec(struct rte_swx_pipeline *p,
 			if (status)
 				goto error;
 
-			status = rte_swx_pipeline_metarray_config(p,
-				metarray_spec.name,
-				metarray_spec.size);
-			if (status) {
+			new_metarrays = realloc(s->metarrays,
+				(s->n_metarrays + 1) * sizeof(struct metarray_spec));
+			if (!new_metarrays) {
 				if (err_line)
 					*err_line = n_lines;
 				if (err_msg)
-					*err_msg = "Meter array configuration error.";
+					*err_msg = "Memory allocation failed.";
+				status = -ENOMEM;
 				goto error;
 			}
 
-			metarray_spec_free(&metarray_spec);
+			s->metarrays = new_metarrays;
+			memcpy(&s->metarrays[s->n_metarrays],
+			       &metarray_spec,
+			       sizeof(struct metarray_spec));
+			s->n_metarrays++;
+			memset(&metarray_spec, 0, sizeof(struct metarray_spec));
 
 			continue;
 		}
@@ -2644,17 +2699,7 @@ rte_swx_pipeline_build_from_spec(struct rte_swx_pipeline *p,
 		goto error;
 	}
 
-	/* Pipeline build. */
-	status = rte_swx_pipeline_build(p);
-	if (status) {
-		if (err_line)
-			*err_line = n_lines;
-		if (err_msg)
-			*err_msg = "Pipeline build error.";
-		goto error;
-	}
-
-	return 0;
+	return s;
 
 error:
 	extobj_spec_free(&extobj_spec);
@@ -2668,5 +2713,234 @@ error:
 	regarray_spec_free(&regarray_spec);
 	metarray_spec_free(&metarray_spec);
 	apply_spec_free(&apply_spec);
+	pipeline_spec_free(s);
+
+	return NULL;
+}
+
+int
+pipeline_spec_configure(struct rte_swx_pipeline *p,
+			struct pipeline_spec *s,
+			const char **err_msg)
+{
+	uint32_t i;
+	int status = 0;
+
+	/* extobj. */
+	for (i = 0; i < s->n_extobjs; i++) {
+		struct extobj_spec *extobj_spec = &s->extobjs[i];
+
+		status = rte_swx_pipeline_extern_object_config(p,
+			extobj_spec->name,
+			extobj_spec->extern_type_name,
+			extobj_spec->pragma);
+		if (status) {
+			if (err_msg)
+				*err_msg = "Extern object configuration error.";
+			return status;
+		}
+	}
+
+	/* regarray. */
+	for (i = 0; i < s->n_regarrays; i++) {
+		struct regarray_spec *regarray_spec = &s->regarrays[i];
+
+		status = rte_swx_pipeline_regarray_config(p,
+			regarray_spec->name,
+			regarray_spec->size,
+			regarray_spec->init_val);
+		if (status) {
+			if (err_msg)
+				*err_msg = "Register array configuration error.";
+			return status;
+		}
+	}
+
+	/* metarray. */
+	for (i = 0; i < s->n_metarrays; i++) {
+		struct metarray_spec *metarray_spec = &s->metarrays[i];
+
+		status = rte_swx_pipeline_metarray_config(p,
+			metarray_spec->name,
+			metarray_spec->size);
+		if (status) {
+			if (err_msg)
+				*err_msg = "Meter array configuration error.";
+			return status;
+		}
+	}
+
+	/* struct. */
+	for (i = 0; i < s->n_structs; i++) {
+		struct struct_spec *struct_spec = &s->structs[i];
+
+		status = rte_swx_pipeline_struct_type_register(p,
+			struct_spec->name,
+			struct_spec->fields,
+			struct_spec->n_fields,
+			struct_spec->varbit);
+		if (status) {
+			if (err_msg)
+				*err_msg = "Struct type registration error.";
+			return status;
+		}
+	}
+
+	/* header. */
+	for (i = 0; i < s->n_headers; i++) {
+		struct header_spec *header_spec = &s->headers[i];
+
+		status = rte_swx_pipeline_packet_header_register(p,
+			header_spec->name,
+			header_spec->struct_type_name);
+		if (status) {
+			if (err_msg)
+				*err_msg = "Header configuration error.";
+			return status;
+		}
+	}
+
+	/* metadata. */
+	for (i = 0; i < s->n_metadata; i++) {
+		struct metadata_spec *metadata_spec = &s->metadata[i];
+
+		status = rte_swx_pipeline_packet_metadata_register(p,
+			metadata_spec->struct_type_name);
+		if (status) {
+			if (err_msg)
+				*err_msg = "Meta-data registration error.";
+			return status;
+		}
+	}
+
+	/* action. */
+	for (i = 0; i < s->n_actions; i++) {
+		struct action_spec *action_spec = &s->actions[i];
+
+		status = rte_swx_pipeline_action_config(p,
+			action_spec->name,
+			action_spec->args_struct_type_name,
+			action_spec->instructions,
+			action_spec->n_instructions);
+		if (status) {
+			if (err_msg)
+				*err_msg = "Action configuration error.";
+			return status;
+		}
+	}
+
+	/* table. */
+	for (i = 0; i < s->n_tables; i++) {
+		struct table_spec *table_spec = &s->tables[i];
+
+		status = rte_swx_pipeline_table_config(p,
+			table_spec->name,
+			&table_spec->params,
+			table_spec->recommended_table_type_name,
+			table_spec->args,
+			table_spec->size);
+		if (status) {
+			if (err_msg)
+				*err_msg = "Table configuration error.";
+			return status;
+		}
+	}
+
+	/* selector. */
+	for (i = 0; i < s->n_selectors; i++) {
+		struct selector_spec *selector_spec = &s->selectors[i];
+
+		status = rte_swx_pipeline_selector_config(p,
+			selector_spec->name,
+			&selector_spec->params);
+		if (status) {
+			if (err_msg)
+				*err_msg = "Selector table configuration error.";
+			return status;
+		}
+	}
+
+	/* learner. */
+	for (i = 0; i < s->n_learners; i++) {
+		struct learner_spec *learner_spec = &s->learners[i];
+
+		status = rte_swx_pipeline_learner_config(p,
+			learner_spec->name,
+			&learner_spec->params,
+			learner_spec->size,
+			learner_spec->timeout,
+			learner_spec->n_timeouts);
+		if (status) {
+			if (err_msg)
+				*err_msg = "Learner table configuration error.";
+			return status;
+		}
+	}
+
+	/* apply. */
+	for (i = 0; i < s->n_apply; i++) {
+		struct apply_spec *apply_spec = &s->apply[i];
+
+		status = rte_swx_pipeline_instructions_config(p,
+			apply_spec->instructions,
+			apply_spec->n_instructions);
+		if (status) {
+			if (err_msg)
+				*err_msg = "Pipeline instructions configuration error.";
+			return status;
+		}
+	}
+
+	return 0;
+}
+
+int
+rte_swx_pipeline_build_from_spec(struct rte_swx_pipeline *p,
+				 FILE *spec_file,
+				 uint32_t *err_line,
+				 const char **err_msg)
+{
+	struct pipeline_spec *s = NULL;
+	int status = 0;
+
+	/* Check the input arguments. */
+	if (!p || !spec_file) {
+		if (err_line)
+			*err_line = 0;
+		if (err_msg)
+			*err_msg = "Invalid input argument.";
+		status = -EINVAL;
+		goto error;
+	}
+
+	/* Spec file parse. */
+	s = pipeline_spec_parse(spec_file, err_line, err_msg);
+	if (!s) {
+		status = -EINVAL;
+		goto error;
+	}
+
+	/* Pipeline configure. */
+	status = pipeline_spec_configure(p, s, err_msg);
+	if (status) {
+		if (err_line)
+			*err_line = 0;
+		goto error;
+	}
+
+	/* Pipeline build. */
+	status = rte_swx_pipeline_build(p);
+	if (status) {
+		if (err_line)
+			*err_line = 0;
+		if (err_msg)
+			*err_msg = "Pipeline build error.";
+		goto error;
+	}
+
+	return 0;
+
+error:
+	pipeline_spec_free(s);
 	return status;
 }

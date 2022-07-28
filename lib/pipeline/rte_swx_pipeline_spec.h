@@ -206,3 +206,12 @@ struct pipeline_spec {
 
 void
 pipeline_spec_free(struct pipeline_spec *s);
+struct pipeline_spec *
+pipeline_spec_parse(FILE *spec,
+		    uint32_t *err_line,
+		    const char **err_msg);
+
+int
+pipeline_spec_configure(struct rte_swx_pipeline *p,
+			struct pipeline_spec *s,
+			const char **err_msg);
