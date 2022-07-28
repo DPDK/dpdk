@@ -185,7 +185,7 @@ handle_alloc_request(const struct malloc_mp_req *m,
 	int n_segs;
 	void *map_addr;
 
-	alloc_sz = RTE_ALIGN_CEIL(ar->align + ar->elt_size +
+	alloc_sz = RTE_ALIGN_CEIL(RTE_ALIGN_CEIL(ar->elt_size, ar->align) +
 			MALLOC_ELEM_OVERHEAD, ar->page_sz);
 	n_segs = alloc_sz / ar->page_sz;
 
