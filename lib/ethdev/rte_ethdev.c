@@ -11,7 +11,7 @@
 #include <string.h>
 #include <sys/queue.h>
 
-#include <rte_bus.h>
+#include <bus_driver.h>
 #include <rte_log.h>
 #include <rte_interrupts.h>
 #include <rte_memcpy.h>

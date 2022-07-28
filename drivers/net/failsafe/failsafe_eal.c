@@ -3,7 +3,7 @@
  * Copyright 2017 Mellanox Technologies, Ltd
  */
 
-#include <rte_bus.h>
+#include <bus_driver.h>
 #include <rte_string_fns.h>
 #include <rte_malloc.h>
 

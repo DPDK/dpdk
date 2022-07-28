@@ -11,7 +11,7 @@
 #include <ethdev_vdev.h>
 #include <rte_devargs.h>
 #include <rte_kvargs.h>
-#include <rte_bus.h>
+#include <bus_driver.h>
 #include <bus_vdev_driver.h>
 
 #include "failsafe_private.h"

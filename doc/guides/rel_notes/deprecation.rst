@@ -47,12 +47,6 @@ Deprecation Notices
 * mempool: The mempool API macros ``MEMPOOL_PG_*`` are deprecated and
   will be removed in DPDK 22.11.
 
-* bus: The ``rte_bus`` object will be made opaque in DPDK 22.11.
-  The goal is to remove it from the public ABI and make this object extendable.
-  As a side effect, registering a bus will be marked as an internal API:
-  external users may still register their bus using a new driver header
-  (see ``enable_driver_sdk`` meson option).
-
 * drivers: As a follow-up of the work on the ``rte_bus`` object,
   the ``rte_driver`` and ``rte_device`` objects (and as a domino effect,
   their bus-specific counterparts) will be made opaque in DPDK 22.11.

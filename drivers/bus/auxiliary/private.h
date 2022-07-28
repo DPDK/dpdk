@@ -9,7 +9,7 @@
 #include <stdio.h>
 #include <sys/queue.h>
 
-#include <rte_bus.h>
+#include <bus_driver.h>
 
 #include "bus_auxiliary_driver.h"
 

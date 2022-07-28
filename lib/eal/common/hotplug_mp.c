@@ -4,7 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <rte_bus.h>
+#include <bus_driver.h>
 #include <rte_eal.h>
 #include <rte_errno.h>
 #include <rte_alarm.h>

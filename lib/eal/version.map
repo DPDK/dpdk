@@ -12,10 +12,9 @@ DPDK_23 {
 	rte_bus_find_by_device;
 	rte_bus_find_by_name;
 	rte_bus_get_iommu_class;
+	rte_bus_name;
 	rte_bus_probe;
-	rte_bus_register;
 	rte_bus_scan;
-	rte_bus_unregister;
 	rte_calloc;
 	rte_calloc_socket;
 	rte_cpu_get_flag_enabled;
@@ -425,14 +424,13 @@ EXPERIMENTAL {
 	rte_thread_self;
 	rte_thread_set_affinity_by_id;
 	rte_thread_set_priority;
-
-	# added in 22.11
-	rte_bus_name;
 };
 
 INTERNAL {
 	global:
 
+	rte_bus_register;
+	rte_bus_unregister;
 	rte_eal_get_baseaddr;
 	rte_eal_parse_coremask;
 	rte_firmware_read;

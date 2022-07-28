@@ -19,7 +19,7 @@
 #include <ethdev_driver.h>
 #include <ethdev_pci.h>
 #include <rte_pci.h>
-#include <rte_bus.h>
+#include <bus_driver.h>
 #include <bus_pci_driver.h>
 #include <bus_auxiliary_driver.h>
 #include <rte_common.h>

@@ -8,7 +8,7 @@
 #include <string.h>
 #include <sys/queue.h>
 
-#include <rte_bus.h>
+#include <bus_driver.h>
 #include <rte_class.h>
 #include <rte_dev.h>
 #include <rte_devargs.h>

@@ -14,7 +14,7 @@
 #include <fcntl.h>
 
 #include <rte_errno.h>
-#include <rte_bus.h>
+#include <bus_driver.h>
 #include <rte_per_lcore.h>
 #include <rte_memory.h>
 #include <rte_memzone.h>

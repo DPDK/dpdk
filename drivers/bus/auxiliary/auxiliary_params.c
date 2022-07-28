@@ -4,7 +4,7 @@
 
 #include <string.h>
 
-#include <rte_bus.h>
+#include <bus_driver.h>
 #include <rte_dev.h>
 #include <rte_errno.h>
 #include <rte_kvargs.h>

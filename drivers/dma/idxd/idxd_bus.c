@@ -8,7 +8,7 @@
 #include <sys/mman.h>
 #include <libgen.h>
 
-#include <rte_bus.h>
+#include <bus_driver.h>
 #include <rte_devargs.h>
 #include <rte_eal.h>
 #include <rte_log.h>

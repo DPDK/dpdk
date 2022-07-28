@@ -5,7 +5,7 @@
 #ifndef BUS_FSLMC_PRIVATE_H
 #define BUS_FSLMC_PRIVATE_H
 
-#include <rte_bus.h>
+#include <bus_driver.h>
 
 #include <bus_fslmc_driver.h>
 

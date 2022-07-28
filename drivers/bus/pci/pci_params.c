@@ -4,7 +4,7 @@
 
 #include <sys/queue.h>
 
-#include <rte_bus.h>
+#include <bus_driver.h>
 #include <rte_bus_pci.h>
 #include <rte_dev.h>
 #include <rte_errno.h>

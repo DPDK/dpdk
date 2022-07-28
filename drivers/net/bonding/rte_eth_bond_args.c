@@ -4,7 +4,7 @@
 
 #include <rte_devargs.h>
 #include <rte_pci.h>
-#include <rte_bus.h>
+#include <bus_driver.h>
 #include <bus_pci_driver.h>
 #include <rte_kvargs.h>
 

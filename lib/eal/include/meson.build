@@ -55,6 +55,10 @@ headers += files(
         'rte_vfio.h',
 )
 
+driver_sdk_headers = files(
+        'bus_driver.h',
+)
+
 # special case install the generic headers, since they go in a subdir
 generic_headers = files(
         'generic/rte_atomic.h',

@@ -9,7 +9,7 @@
 #include <stdbool.h>
 #include <sys/uio.h>
 
-#include <rte_bus.h>
+#include <bus_driver.h>
 #include <bus_vmbus_driver.h>
 #include <rte_log.h>
 #include <rte_eal_paging.h>
