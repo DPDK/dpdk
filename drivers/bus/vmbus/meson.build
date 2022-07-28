@@ -8,6 +8,7 @@ endif
 
 
 headers = files('rte_bus_vmbus.h','rte_vmbus_reg.h')
+driver_sdk_headers = files('bus_vmbus_driver.h')
 
 sources = files(
         'vmbus_bufring.c',

@@ -27,7 +27,7 @@
 #include <rte_eal.h>
 #include <rte_dev.h>
 #include <rte_net.h>
-#include <rte_bus_vmbus.h>
+#include <bus_vmbus_driver.h>
 #include <rte_spinlock.h>
 
 #include "hn_logs.h"

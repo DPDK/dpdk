@@ -13,7 +13,6 @@
 
 #include <rte_eal.h>
 #include <rte_log.h>
-#include <rte_bus.h>
 #include <rte_memory.h>
 #include <rte_common.h>
 #include <rte_malloc.h>
