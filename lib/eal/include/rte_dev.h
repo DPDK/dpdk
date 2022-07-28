@@ -76,6 +76,21 @@ struct rte_driver {
 	const char *alias;              /**< Driver alias. */
 };
 
+/**
+ * Retrieve a driver name.
+ *
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice
+ *
+ * @param driver
+ *   A pointer to a driver structure.
+ * @return
+ *   A pointer to the driver name string.
+ */
+__rte_experimental
+const char *
+rte_driver_name(const struct rte_driver *driver);
+
 /*
  * Internal identifier length
  * Sufficiently large to allow for UUID or PCI address

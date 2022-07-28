@@ -656,7 +656,7 @@ skip_parse:
 			printf("\n%s Infos for device %s %s\n",
 			       info_border, dev->name, info_border);
 			printf("Bus name: %s", rte_bus_name(dev->bus));
-			printf("\nDriver name: %s", dev->driver->name);
+			printf("\nDriver name: %s", rte_driver_name(dev->driver));
 			printf("\nDevargs: %s",
 			       dev->devargs ? dev->devargs->args : "");
 			printf("\nConnect to socket: %d", dev->numa_node);

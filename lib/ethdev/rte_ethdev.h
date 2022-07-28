@@ -3380,7 +3380,7 @@ int rte_eth_macaddrs_get(uint16_t port_id, struct rte_ether_addr *ma,
  * exists for the device and the rte_eth_dev 'dev' has been populated
  * successfully with a call to it:
  *
- * driver_name = dev->device->driver->name
+ * driver_name = rte_driver_name(dev->device->driver)
  * nb_rx_queues = dev->data->nb_rx_queues
  * nb_tx_queues = dev->data->nb_tx_queues
  * dev_flags = &dev->data->dev_flags

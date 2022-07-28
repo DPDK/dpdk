@@ -20,6 +20,12 @@
 #include "eal_private.h"
 #include "hotplug_mp.h"
 
+const char *
+rte_driver_name(const struct rte_driver *driver)
+{
+	return driver->name;
+}
+
 /**
  * The device event callback description.
  *
