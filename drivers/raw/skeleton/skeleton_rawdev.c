@@ -22,7 +22,7 @@
 #include <rte_memory.h>
 #include <rte_memcpy.h>
 #include <rte_lcore.h>
-#include <rte_bus_vdev.h>
+#include <bus_vdev_driver.h>
 
 #include <rte_rawdev.h>
 #include <rte_rawdev_pmd.h>

@@ -3,10 +3,15 @@ DPDK_23 {
 
 	rte_vdev_add_custom_scan;
 	rte_vdev_init;
-	rte_vdev_register;
 	rte_vdev_remove_custom_scan;
 	rte_vdev_uninit;
-	rte_vdev_unregister;
 
 	local: *;
+};
+
+INTERNAL {
+	global:
+
+	rte_vdev_register;
+	rte_vdev_unregister;
 };

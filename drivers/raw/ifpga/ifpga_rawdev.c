@@ -26,7 +26,7 @@
 #include <rte_memzone.h>
 #include <rte_eal.h>
 #include <rte_common.h>
-#include <rte_bus_vdev.h>
+#include <bus_vdev_driver.h>
 #include <rte_string_fns.h>
 #include <rte_pmd_i40e.h>
 

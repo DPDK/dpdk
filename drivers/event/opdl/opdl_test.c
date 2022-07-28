@@ -20,7 +20,7 @@
 #include <rte_ethdev.h>
 #include <rte_cycles.h>
 #include <rte_eventdev.h>
-#include <rte_bus_vdev.h>
+#include <bus_vdev_driver.h>
 #include <rte_pause.h>
 
 #include "opdl_evdev.h"

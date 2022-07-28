@@ -17,7 +17,7 @@
 #include <rte_log.h>
 #include <rte_malloc.h>
 #include <rte_memory.h>
-#include <rte_bus_vdev.h>
+#include <bus_vdev_driver.h>
 
 #include "ssovf_evdev.h"
 #include "timvf_evdev.h"

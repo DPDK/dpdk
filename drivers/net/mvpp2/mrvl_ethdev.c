@@ -9,7 +9,7 @@
 #include <rte_kvargs.h>
 #include <rte_log.h>
 #include <rte_malloc.h>
-#include <rte_bus_vdev.h>
+#include <bus_vdev_driver.h>
 
 #include <fcntl.h>
 #include <linux/ethtool.h>

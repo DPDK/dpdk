@@ -10,7 +10,7 @@
 #include <rte_memcpy.h>
 #include <rte_dev.h>
 #include <rte_rawdev.h>
-#include <rte_bus_vdev.h>
+#include <bus_vdev_driver.h>
 #include <rte_test.h>
 
 /* Using relative path as skeleton_rawdev is not part of exported headers */

@@ -22,7 +22,7 @@
 #include <rte_pause.h>
 #include <rte_service.h>
 #include <rte_service_component.h>
-#include <rte_bus_vdev.h>
+#include <bus_vdev_driver.h>
 
 #include "sw_evdev.h"
 

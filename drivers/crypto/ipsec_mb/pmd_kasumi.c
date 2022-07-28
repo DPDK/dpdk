@@ -2,7 +2,7 @@
  * Copyright(c) 2016-2021 Intel Corporation
  */
 
-#include <rte_bus_vdev.h>
+#include <bus_vdev_driver.h>
 #include <rte_common.h>
 #include <rte_cpuflags.h>
 #include <rte_cryptodev.h>

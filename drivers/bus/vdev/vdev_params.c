@@ -6,7 +6,6 @@
 #include <string.h>
 
 #include <rte_dev.h>
-#include <rte_bus.h>
 #include <rte_kvargs.h>
 #include <rte_errno.h>
 

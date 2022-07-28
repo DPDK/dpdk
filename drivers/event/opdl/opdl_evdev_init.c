@@ -5,7 +5,7 @@
 #include <inttypes.h>
 #include <string.h>
 
-#include <rte_bus_vdev.h>
+#include <bus_vdev_driver.h>
 #include <rte_errno.h>
 #include <rte_cycles.h>
 #include <rte_memzone.h>
