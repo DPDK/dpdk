@@ -656,6 +656,8 @@ skip_parse:
 			printf("\n%s Infos for device %s %s\n",
 			       info_border, rte_dev_name(dev), info_border);
 			printf("Bus name: %s", rte_bus_name(rte_dev_bus(dev)));
+			printf("\nBus information: %s",
+				rte_dev_bus_info(dev) ? rte_dev_bus_info(dev) : "");
 			printf("\nDriver name: %s", rte_driver_name(rte_dev_driver(dev)));
 			printf("\nDevargs: %s",
 			       rte_dev_devargs(dev) ? rte_dev_devargs(dev)->args : "");

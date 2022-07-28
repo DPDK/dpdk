@@ -32,6 +32,12 @@ rte_dev_bus(const struct rte_device *dev)
 	return dev->bus;
 }
 
+const char *
+rte_dev_bus_info(const struct rte_device *dev)
+{
+	return dev->bus_info;
+}
+
 const struct rte_devargs *
 rte_dev_devargs(const struct rte_device *dev)
 {

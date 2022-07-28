@@ -428,6 +428,7 @@ EXPERIMENTAL {
 
 	# added in 22.11
 	rte_dev_bus;
+	rte_dev_bus_info;
 	rte_dev_devargs;
 	rte_dev_driver;
 	rte_dev_name;
