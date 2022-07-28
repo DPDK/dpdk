@@ -983,6 +983,53 @@ cmd_pipeline_port_out(char **tokens,
 	}
 }
 
+static const char cmd_pipeline_codegen_help[] =
+"pipeline codegen <spec_file> <code_file>\n";
+
+static void
+cmd_pipeline_codegen(char **tokens,
+	uint32_t n_tokens,
+	char *out,
+	size_t out_size,
+	void *obj __rte_unused)
+{
+	FILE *spec_file = NULL;
+	FILE *code_file = NULL;
+	uint32_t err_line;
+	const char *err_msg;
+	int status;
+
+	if (n_tokens != 4) {
+		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
+		return;
+	}
+
+	spec_file = fopen(tokens[2], "r");
+	if (!spec_file) {
+		snprintf(out, out_size, "Cannot open file %s.\n", tokens[2]);
+		return;
+	}
+
+	code_file = fopen(tokens[3], "w");
+	if (!code_file) {
+		snprintf(out, out_size, "Cannot open file %s.\n", tokens[3]);
+		return;
+	}
+
+	status = rte_swx_pipeline_codegen(spec_file,
+					  code_file,
+					  &err_line,
+					  &err_msg);
+
+	fclose(spec_file);
+	fclose(code_file);
+
+	if (status) {
+		snprintf(out, out_size, "Error %d at line %u: %s\n.",
+			status, err_line, err_msg);
+		return;
+	}
+}
 static const char cmd_pipeline_build_help[] =
 "pipeline <pipeline_name> build lib <lib_file> io <iospec_file> numa <numa_node>\n";
 
@@ -3009,6 +3056,7 @@ cmd_help(char **tokens,
 			"\tpipeline create\n"
 			"\tpipeline port in\n"
 			"\tpipeline port out\n"
+			"\tpipeline codegen\n"
 			"\tpipeline build\n"
 			"\tpipeline table add\n"
 			"\tpipeline table delete\n"
@@ -3076,6 +3124,12 @@ cmd_help(char **tokens,
 				cmd_pipeline_port_out_help);
 			return;
 		}
+	}
+
+	if ((strcmp(tokens[0], "pipeline") == 0) &&
+		(n_tokens == 2) && (strcmp(tokens[1], "codegen") == 0)) {
+		snprintf(out, out_size, "\n%s\n", cmd_pipeline_codegen_help);
+		return;
 	}
 
 	if ((strcmp(tokens[0], "pipeline") == 0) &&
@@ -3352,6 +3406,13 @@ cli_process(char *in, char *out, size_t out_size, void *obj)
 			(strcmp(tokens[2], "port") == 0) &&
 			(strcmp(tokens[3], "out") == 0)) {
 			cmd_pipeline_port_out(tokens, n_tokens, out, out_size,
+				obj);
+			return;
+		}
+
+		if ((n_tokens >= 3) &&
+			(strcmp(tokens[1], "codegen") == 0)) {
+			cmd_pipeline_codegen(tokens, n_tokens, out, out_size,
 				obj);
 			return;
 		}
