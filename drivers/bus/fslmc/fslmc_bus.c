@@ -16,7 +16,7 @@
 #include <ethdev_driver.h>
 #include <rte_mbuf_dyn.h>
 
-#include <rte_fslmc.h>
+#include "private.h"
 #include <fslmc_vfio.h>
 #include "fslmc_logs.h"
 
@@ -530,27 +530,19 @@ rte_fslmc_driver_register(struct rte_dpaa2_driver *driver)
 	RTE_VERIFY(driver);
 
 	TAILQ_INSERT_TAIL(&rte_fslmc_bus.driver_list, driver, next);
-	/* Update Bus references */
-	driver->fslmc_bus = &rte_fslmc_bus;
 }
 
 /*un-register a fslmc bus based dpaa2 driver */
 void
 rte_fslmc_driver_unregister(struct rte_dpaa2_driver *driver)
 {
-	struct rte_fslmc_bus *fslmc_bus;
-
-	fslmc_bus = driver->fslmc_bus;
-
 	/* Cleanup the PA->VA Translation table; From wherever this function
 	 * is called from.
 	 */
 	if (rte_eal_iova_mode() == RTE_IOVA_PA)
 		dpaax_iova_table_depopulate();
 
-	TAILQ_REMOVE(&fslmc_bus->driver_list, driver, next);
-	/* Update Bus references */
-	driver->fslmc_bus = NULL;
+	TAILQ_REMOVE(&rte_fslmc_bus.driver_list, driver, next);
 }
 
 /*

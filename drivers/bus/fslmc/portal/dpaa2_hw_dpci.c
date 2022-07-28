@@ -21,7 +21,7 @@
 #include <ethdev_driver.h>
 
 #include <fslmc_logs.h>
-#include <rte_fslmc.h>
+#include <bus_fslmc_driver.h>
 #include <mc/fsl_dpci.h>
 #include "portal/dpaa2_hw_pvt.h"
 #include "portal/dpaa2_hw_dpio.h"

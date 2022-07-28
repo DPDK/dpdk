@@ -11,7 +11,7 @@
 #include <rte_event_eth_rx_adapter.h>
 #include <rte_pmd_dpaa2.h>
 
-#include <rte_fslmc.h>
+#include <bus_fslmc_driver.h>
 #include <dpaa2_hw_pvt.h>
 #include "dpaa2_tm.h"
 

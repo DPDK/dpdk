@@ -12,8 +12,8 @@
 #include <rte_malloc.h>
 #include <rte_dev.h>
 
+#include "private.h"
 #include <fslmc_logs.h>
-#include <rte_fslmc.h>
 #include <mc/fsl_dprc.h>
 #include "portal/dpaa2_hw_pvt.h"
 

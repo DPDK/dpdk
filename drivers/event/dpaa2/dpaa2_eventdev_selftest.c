@@ -19,7 +19,7 @@
 #include <rte_random.h>
 #include <rte_bus_vdev.h>
 #include <rte_test.h>
-#include <rte_fslmc.h>
+#include <bus_fslmc_driver.h>
 
 #include "dpaa2_eventdev.h"
 #include "dpaa2_eventdev_logs.h"

@@ -16,7 +16,7 @@
 #include <rte_dev.h>
 #include <rte_hexdump.h>
 
-#include <rte_fslmc.h>
+#include <bus_fslmc_driver.h>
 #include <fslmc_vfio.h>
 #include <dpaa2_hw_pvt.h>
 #include <dpaa2_hw_dpio.h>

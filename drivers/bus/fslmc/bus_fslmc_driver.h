@@ -4,8 +4,8 @@
  *
  */
 
-#ifndef _RTE_FSLMC_H_
-#define _RTE_FSLMC_H_
+#ifndef BUS_FSLMC_DRIVER_H
+#define BUS_FSLMC_DRIVER_H
 
 /**
  * @file
@@ -26,10 +26,10 @@ extern "C" {
 #include <inttypes.h>
 #include <linux/vfio.h>
 
+#include <rte_compat.h>
 #include <rte_debug.h>
 #include <rte_interrupts.h>
 #include <rte_dev.h>
-#include <rte_bus.h>
 #include <rte_tailq.h>
 #include <rte_devargs.h>
 #include <rte_mbuf.h>
@@ -69,14 +69,8 @@ dpaa2_seqn(struct rte_mbuf *mbuf)
 
 struct rte_dpaa2_driver;
 
-/* DPAA2 Device and Driver lists for FSLMC bus */
-TAILQ_HEAD(rte_fslmc_device_list, rte_dpaa2_device);
-TAILQ_HEAD(rte_fslmc_driver_list, rte_dpaa2_driver);
-
 #define RTE_DEV_TO_FSLMC_CONST(ptr) \
 	container_of(ptr, const struct rte_dpaa2_device, device)
-
-extern struct rte_fslmc_bus rte_fslmc_bus;
 
 enum rte_dpaa2_dev_type {
 	/* Devices backed by DPDK driver */
@@ -146,24 +140,10 @@ typedef int (*rte_dpaa2_remove_t)(struct rte_dpaa2_device *dpaa2_dev);
 struct rte_dpaa2_driver {
 	TAILQ_ENTRY(rte_dpaa2_driver) next; /**< Next in list. */
 	struct rte_driver driver;           /**< Inherit core driver. */
-	struct rte_fslmc_bus *fslmc_bus;    /**< FSLMC bus reference */
 	uint32_t drv_flags;                 /**< Flags for controlling device.*/
 	enum rte_dpaa2_dev_type drv_type;   /**< Driver Type */
 	rte_dpaa2_probe_t probe;
 	rte_dpaa2_remove_t remove;
-};
-
-/*
- * FSLMC bus
- */
-struct rte_fslmc_bus {
-	struct rte_bus bus;     /**< Generic Bus object */
-	struct rte_fslmc_device_list device_list;
-				/**< FSLMC DPAA2 Device list */
-	struct rte_fslmc_driver_list driver_list;
-				/**< FSLMC DPAA2 Driver list */
-	int device_count[DPAA2_DEVTYPE_MAX];
-				/**< Count of all devices scanned */
 };
 
 /**
@@ -230,4 +210,4 @@ RTE_PMD_EXPORT_NAME(nm, __COUNTER__)
 }
 #endif
 
-#endif /* _RTE_FSLMC_H_ */
+#endif /* BUS_FSLMC_DRIVER_H */

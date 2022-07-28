@@ -16,7 +16,7 @@
 #include <rte_cycles.h>
 #include <rte_kvargs.h>
 #include <rte_dev.h>
-#include <rte_fslmc.h>
+#include <bus_fslmc_driver.h>
 #include <rte_flow_driver.h>
 #include "rte_dpaa2_mempool.h"
 

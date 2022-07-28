@@ -33,7 +33,7 @@
 #include <rte_dev.h>
 
 #include <fslmc_logs.h>
-#include <rte_fslmc.h>
+#include <bus_fslmc_driver.h>
 #include "dpaa2_hw_pvt.h"
 #include "dpaa2_hw_dpio.h"
 #include <mc/fsl_dpmng.h>

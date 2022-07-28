@@ -16,7 +16,7 @@
 #include <rte_debug.h>
 #include <rte_dev.h>
 #include <rte_eal.h>
-#include <rte_fslmc.h>
+#include <bus_fslmc_driver.h>
 #include <rte_lcore.h>
 #include <rte_log.h>
 #include <rte_malloc.h>
