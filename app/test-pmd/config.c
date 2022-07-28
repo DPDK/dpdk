@@ -7,6 +7,7 @@
 #include <stdarg.h>
 #include <errno.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
 #include <inttypes.h>
@@ -32,7 +33,6 @@
 #include <rte_mempool.h>
 #include <rte_mbuf.h>
 #include <rte_interrupts.h>
-#include <rte_pci.h>
 #include <rte_ether.h>
 #include <rte_ethdev.h>
 #include <rte_string_fns.h>
@@ -1137,200 +1137,6 @@ vlan_id_is_invalid(uint16_t vlan_id)
 		return 0;
 	fprintf(stderr, "Invalid vlan_id %d (must be < 4096)\n", vlan_id);
 	return 1;
-}
-
-static int
-port_reg_off_is_invalid(portid_t port_id, uint32_t reg_off)
-{
-	const struct rte_pci_device *pci_dev;
-	const struct rte_bus *bus;
-	uint64_t pci_len;
-
-	if (reg_off & 0x3) {
-		fprintf(stderr,
-			"Port register offset 0x%X not aligned on a 4-byte boundary\n",
-			(unsigned int)reg_off);
-		return 1;
-	}
-
-	if (!ports[port_id].dev_info.device) {
-		fprintf(stderr, "Invalid device\n");
-		return 0;
-	}
-
-	bus = rte_bus_find_by_device(ports[port_id].dev_info.device);
-	if (bus && !strcmp(bus->name, "pci")) {
-		pci_dev = RTE_DEV_TO_PCI(ports[port_id].dev_info.device);
-	} else {
-		fprintf(stderr, "Not a PCI device\n");
-		return 1;
-	}
-
-	pci_len = pci_dev->mem_resource[0].len;
-	if (reg_off >= pci_len) {
-		fprintf(stderr,
-			"Port %d: register offset %u (0x%X) out of port PCI resource (length=%"PRIu64")\n",
-			port_id, (unsigned int)reg_off, (unsigned int)reg_off,
-			pci_len);
-		return 1;
-	}
-	return 0;
-}
-
-static int
-reg_bit_pos_is_invalid(uint8_t bit_pos)
-{
-	if (bit_pos <= 31)
-		return 0;
-	fprintf(stderr, "Invalid bit position %d (must be <= 31)\n", bit_pos);
-	return 1;
-}
-
-#define display_port_and_reg_off(port_id, reg_off) \
-	printf("port %d PCI register at offset 0x%X: ", (port_id), (reg_off))
-
-static inline void
-display_port_reg_value(portid_t port_id, uint32_t reg_off, uint32_t reg_v)
-{
-	display_port_and_reg_off(port_id, (unsigned)reg_off);
-	printf("0x%08X (%u)\n", (unsigned)reg_v, (unsigned)reg_v);
-}
-
-void
-port_reg_bit_display(portid_t port_id, uint32_t reg_off, uint8_t bit_x)
-{
-	uint32_t reg_v;
-
-
-	if (port_id_is_invalid(port_id, ENABLED_WARN))
-		return;
-	if (port_reg_off_is_invalid(port_id, reg_off))
-		return;
-	if (reg_bit_pos_is_invalid(bit_x))
-		return;
-	reg_v = port_id_pci_reg_read(port_id, reg_off);
-	display_port_and_reg_off(port_id, (unsigned)reg_off);
-	printf("bit %d=%d\n", bit_x, (int) ((reg_v & (1 << bit_x)) >> bit_x));
-}
-
-void
-port_reg_bit_field_display(portid_t port_id, uint32_t reg_off,
-			   uint8_t bit1_pos, uint8_t bit2_pos)
-{
-	uint32_t reg_v;
-	uint8_t  l_bit;
-	uint8_t  h_bit;
-
-	if (port_id_is_invalid(port_id, ENABLED_WARN))
-		return;
-	if (port_reg_off_is_invalid(port_id, reg_off))
-		return;
-	if (reg_bit_pos_is_invalid(bit1_pos))
-		return;
-	if (reg_bit_pos_is_invalid(bit2_pos))
-		return;
-	if (bit1_pos > bit2_pos)
-		l_bit = bit2_pos, h_bit = bit1_pos;
-	else
-		l_bit = bit1_pos, h_bit = bit2_pos;
-
-	reg_v = port_id_pci_reg_read(port_id, reg_off);
-	reg_v >>= l_bit;
-	if (h_bit < 31)
-		reg_v &= ((1 << (h_bit - l_bit + 1)) - 1);
-	display_port_and_reg_off(port_id, (unsigned)reg_off);
-	printf("bits[%d, %d]=0x%0*X (%u)\n", l_bit, h_bit,
-	       ((h_bit - l_bit) / 4) + 1, (unsigned)reg_v, (unsigned)reg_v);
-}
-
-void
-port_reg_display(portid_t port_id, uint32_t reg_off)
-{
-	uint32_t reg_v;
-
-	if (port_id_is_invalid(port_id, ENABLED_WARN))
-		return;
-	if (port_reg_off_is_invalid(port_id, reg_off))
-		return;
-	reg_v = port_id_pci_reg_read(port_id, reg_off);
-	display_port_reg_value(port_id, reg_off, reg_v);
-}
-
-void
-port_reg_bit_set(portid_t port_id, uint32_t reg_off, uint8_t bit_pos,
-		 uint8_t bit_v)
-{
-	uint32_t reg_v;
-
-	if (port_id_is_invalid(port_id, ENABLED_WARN))
-		return;
-	if (port_reg_off_is_invalid(port_id, reg_off))
-		return;
-	if (reg_bit_pos_is_invalid(bit_pos))
-		return;
-	if (bit_v > 1) {
-		fprintf(stderr, "Invalid bit value %d (must be 0 or 1)\n",
-			(int) bit_v);
-		return;
-	}
-	reg_v = port_id_pci_reg_read(port_id, reg_off);
-	if (bit_v == 0)
-		reg_v &= ~(1 << bit_pos);
-	else
-		reg_v |= (1 << bit_pos);
-	port_id_pci_reg_write(port_id, reg_off, reg_v);
-	display_port_reg_value(port_id, reg_off, reg_v);
-}
-
-void
-port_reg_bit_field_set(portid_t port_id, uint32_t reg_off,
-		       uint8_t bit1_pos, uint8_t bit2_pos, uint32_t value)
-{
-	uint32_t max_v;
-	uint32_t reg_v;
-	uint8_t  l_bit;
-	uint8_t  h_bit;
-
-	if (port_id_is_invalid(port_id, ENABLED_WARN))
-		return;
-	if (port_reg_off_is_invalid(port_id, reg_off))
-		return;
-	if (reg_bit_pos_is_invalid(bit1_pos))
-		return;
-	if (reg_bit_pos_is_invalid(bit2_pos))
-		return;
-	if (bit1_pos > bit2_pos)
-		l_bit = bit2_pos, h_bit = bit1_pos;
-	else
-		l_bit = bit1_pos, h_bit = bit2_pos;
-
-	if ((h_bit - l_bit) < 31)
-		max_v = (1 << (h_bit - l_bit + 1)) - 1;
-	else
-		max_v = 0xFFFFFFFF;
-
-	if (value > max_v) {
-		fprintf(stderr, "Invalid value %u (0x%x) must be < %u (0x%x)\n",
-				(unsigned)value, (unsigned)value,
-				(unsigned)max_v, (unsigned)max_v);
-		return;
-	}
-	reg_v = port_id_pci_reg_read(port_id, reg_off);
-	reg_v &= ~(max_v << l_bit); /* Keep unchanged bits */
-	reg_v |= (value << l_bit); /* Set changed bits */
-	port_id_pci_reg_write(port_id, reg_off, reg_v);
-	display_port_reg_value(port_id, reg_off, reg_v);
-}
-
-void
-port_reg_set(portid_t port_id, uint32_t reg_off, uint32_t reg_v)
-{
-	if (port_id_is_invalid(port_id, ENABLED_WARN))
-		return;
-	if (port_reg_off_is_invalid(port_id, reg_off))
-		return;
-	port_id_pci_reg_write(port_id, reg_off, reg_v);
-	display_port_reg_value(port_id, reg_off, reg_v);
 }
 
 static uint32_t

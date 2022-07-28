@@ -55,7 +55,6 @@ These are divided into sections and can be accessed using help, help section or 
            help display                    : Displaying port, stats and config information.
            help config                     : Configuration information.
            help ports                      : Configuring ports.
-           help registers                  : Reading and setting port registers.
            help filters                    : Filters configuration help.
            help traffic_management         : Traffic Management commands.
            help devices                    : Device related commands.
@@ -2355,86 +2354,6 @@ The Link Bonding functions make it possible to dynamically create and
 manage link bonding devices from within testpmd interactive prompt.
 
 See :doc:`../prog_guide/link_bonding_poll_mode_drv_lib` for more information.
-
-Register Functions
-------------------
-
-The Register Functions can be used to read from and write to registers on the network card referenced by a port number.
-This is mainly useful for debugging purposes.
-Reference should be made to the appropriate datasheet for the network card for details on the register addresses
-and fields that can be accessed.
-
-read reg
-~~~~~~~~
-
-Display the value of a port register::
-
-   testpmd> read reg (port_id) (address)
-
-For example, to examine the Flow Director control register (FDIRCTL, 0x0000EE000) on an Intel 82599 10 GbE Controller::
-
-   testpmd> read reg 0 0xEE00
-   port 0 PCI register at offset 0xEE00: 0x4A060029 (1241907241)
-
-read regfield
-~~~~~~~~~~~~~
-
-Display a port register bit field::
-
-   testpmd> read regfield (port_id) (address) (bit_x) (bit_y)
-
-For example, reading the lowest two bits from the register in the example above::
-
-   testpmd> read regfield 0 0xEE00 0 1
-   port 0 PCI register at offset 0xEE00: bits[0, 1]=0x1 (1)
-
-read regbit
-~~~~~~~~~~~
-
-Display a single port register bit::
-
-   testpmd> read regbit (port_id) (address) (bit_x)
-
-For example, reading the lowest bit from the register in the example above::
-
-   testpmd> read regbit 0 0xEE00 0
-   port 0 PCI register at offset 0xEE00: bit 0=1
-
-write reg
-~~~~~~~~~
-
-Set the value of a port register::
-
-   testpmd> write reg (port_id) (address) (value)
-
-For example, to clear a register::
-
-   testpmd> write reg 0 0xEE00 0x0
-   port 0 PCI register at offset 0xEE00: 0x00000000 (0)
-
-write regfield
-~~~~~~~~~~~~~~
-
-Set bit field of a port register::
-
-   testpmd> write regfield (port_id) (address) (bit_x) (bit_y) (value)
-
-For example, writing to the register cleared in the example above::
-
-   testpmd> write regfield 0 0xEE00 0 1 2
-   port 0 PCI register at offset 0xEE00: 0x00000002 (2)
-
-write regbit
-~~~~~~~~~~~~
-
-Set single bit value of a port register::
-
-   testpmd> write regbit (port_id) (address) (bit_x) (value)
-
-For example, to set the high bit in the register from the example above::
-
-   testpmd> write regbit 0 0xEE00 31 1
-   port 0 PCI register at offset 0xEE00: 0x8000000A (2147483658)
 
 Traffic Metering and Policing
 -----------------------------

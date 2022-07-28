@@ -33,7 +33,6 @@
 #include <rte_branch_prediction.h>
 #include <rte_mempool.h>
 #include <rte_interrupts.h>
-#include <rte_pci.h>
 #include <rte_ether.h>
 #include <rte_ethdev.h>
 #include <rte_string_fns.h>

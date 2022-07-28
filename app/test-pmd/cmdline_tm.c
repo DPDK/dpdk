@@ -3,6 +3,7 @@
  */
 
 #include <ctype.h>
+#include <stdlib.h>
 
 #include <cmdline_parse.h>
 #include <cmdline_parse_num.h>

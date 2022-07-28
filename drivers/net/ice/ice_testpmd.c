@@ -2,6 +2,8 @@
  * Copyright(c) 2022 Intel Corporation.
  */
 
+#include <stdlib.h>
+
 #include <rte_pmd_ice.h>
 
 #include <cmdline_parse_num.h>

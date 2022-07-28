@@ -1,6 +1,9 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  * Copyright(c) 2010-2016 Intel Corporation.
  */
+
+#include <stdlib.h>
+
 #include <rte_pmd_i40e.h>
 
 #include <cmdline_parse_num.h>

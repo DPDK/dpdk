@@ -8,6 +8,7 @@
 #include <errno.h>
 #include <stdio.h>
 #include <stdint.h>
+#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 #include <inttypes.h>
@@ -29,7 +30,6 @@
 #include <rte_ring.h>
 #include <rte_mempool.h>
 #include <rte_interrupts.h>
-#include <rte_pci.h>
 #include <rte_ether.h>
 #include <rte_ethdev.h>
 #include <rte_string_fns.h>
@@ -90,7 +90,6 @@ static void cmd_help_brief_parsed(__rte_unused void *parsed_result,
 		"information.\n"
 		"    help config                     : Configuration information.\n"
 		"    help ports                      : Configuring ports.\n"
-		"    help registers                  : Reading and setting port registers.\n"
 		"    help filters                    : Filters configuration help.\n"
 		"    help traffic_management         : Traffic Management commands.\n"
 		"    help devices                    : Device related commands.\n"
@@ -800,34 +799,6 @@ static void cmd_help_long_parsed(void *parsed_result,
 		);
 	}
 
-	if (show_all || !strcmp(res->section, "registers")) {
-
-		cmdline_printf(
-			cl,
-			"\n"
-			"Registers:\n"
-			"----------\n\n"
-
-			"read reg (port_id) (address)\n"
-			"    Display value of a port register.\n\n"
-
-			"read regfield (port_id) (address) (bit_x) (bit_y)\n"
-			"    Display a port register bit field.\n\n"
-
-			"read regbit (port_id) (address) (bit_x)\n"
-			"    Display a single port register bit.\n\n"
-
-			"write reg (port_id) (address) (value)\n"
-			"    Set value of a port register.\n\n"
-
-			"write regfield (port_id) (address) (bit_x) (bit_y)"
-			" (value)\n"
-			"    Set bit field of a port register.\n\n"
-
-			"write regbit (port_id) (address) (bit_x) (value)\n"
-			"    Set single bit value of a port register.\n\n"
-		);
-	}
 	if (show_all || !strcmp(res->section, "filters")) {
 
 		cmdline_printf(
@@ -1078,13 +1049,13 @@ static cmdline_parse_token_string_t cmd_help_long_help =
 
 static cmdline_parse_token_string_t cmd_help_long_section =
 	TOKEN_STRING_INITIALIZER(struct cmd_help_long_result, section,
-		"all#control#display#config#ports#registers#"
+		"all#control#display#config#ports#"
 		"filters#traffic_management#devices#drivers");
 
 static cmdline_parse_inst_t cmd_help_long = {
 	.f = cmd_help_long_parsed,
 	.data = NULL,
-	.help_str = "help all|control|display|config|ports|register|"
+	.help_str = "help all|control|display|config|ports|"
 		"filters|traffic_management|devices|drivers: "
 		"Show help",
 	.tokens = {
@@ -7387,305 +7358,6 @@ static cmdline_parse_inst_t cmd_showfwdall = {
 		(void *)&cmd_fwd_fwd,
 		(void *)&cmd_fwd_stats,
 		(void *)&cmd_fwd_all,
-		NULL,
-	},
-};
-
-/* *** READ PORT REGISTER *** */
-struct cmd_read_reg_result {
-	cmdline_fixed_string_t read;
-	cmdline_fixed_string_t reg;
-	portid_t port_id;
-	uint32_t reg_off;
-};
-
-static void
-cmd_read_reg_parsed(void *parsed_result,
-		    __rte_unused struct cmdline *cl,
-		    __rte_unused void *data)
-{
-	struct cmd_read_reg_result *res = parsed_result;
-	port_reg_display(res->port_id, res->reg_off);
-}
-
-static cmdline_parse_token_string_t cmd_read_reg_read =
-	TOKEN_STRING_INITIALIZER(struct cmd_read_reg_result, read, "read");
-static cmdline_parse_token_string_t cmd_read_reg_reg =
-	TOKEN_STRING_INITIALIZER(struct cmd_read_reg_result, reg, "reg");
-static cmdline_parse_token_num_t cmd_read_reg_port_id =
-	TOKEN_NUM_INITIALIZER(struct cmd_read_reg_result, port_id, RTE_UINT16);
-static cmdline_parse_token_num_t cmd_read_reg_reg_off =
-	TOKEN_NUM_INITIALIZER(struct cmd_read_reg_result, reg_off, RTE_UINT32);
-
-static cmdline_parse_inst_t cmd_read_reg = {
-	.f = cmd_read_reg_parsed,
-	.data = NULL,
-	.help_str = "read reg <port_id> <reg_off>",
-	.tokens = {
-		(void *)&cmd_read_reg_read,
-		(void *)&cmd_read_reg_reg,
-		(void *)&cmd_read_reg_port_id,
-		(void *)&cmd_read_reg_reg_off,
-		NULL,
-	},
-};
-
-/* *** READ PORT REGISTER BIT FIELD *** */
-struct cmd_read_reg_bit_field_result {
-	cmdline_fixed_string_t read;
-	cmdline_fixed_string_t regfield;
-	portid_t port_id;
-	uint32_t reg_off;
-	uint8_t bit1_pos;
-	uint8_t bit2_pos;
-};
-
-static void
-cmd_read_reg_bit_field_parsed(void *parsed_result,
-			      __rte_unused struct cmdline *cl,
-			      __rte_unused void *data)
-{
-	struct cmd_read_reg_bit_field_result *res = parsed_result;
-	port_reg_bit_field_display(res->port_id, res->reg_off,
-				   res->bit1_pos, res->bit2_pos);
-}
-
-static cmdline_parse_token_string_t cmd_read_reg_bit_field_read =
-	TOKEN_STRING_INITIALIZER(struct cmd_read_reg_bit_field_result, read,
-				 "read");
-static cmdline_parse_token_string_t cmd_read_reg_bit_field_regfield =
-	TOKEN_STRING_INITIALIZER(struct cmd_read_reg_bit_field_result,
-				 regfield, "regfield");
-static cmdline_parse_token_num_t cmd_read_reg_bit_field_port_id =
-	TOKEN_NUM_INITIALIZER(struct cmd_read_reg_bit_field_result, port_id,
-			      RTE_UINT16);
-static cmdline_parse_token_num_t cmd_read_reg_bit_field_reg_off =
-	TOKEN_NUM_INITIALIZER(struct cmd_read_reg_bit_field_result, reg_off,
-			      RTE_UINT32);
-static cmdline_parse_token_num_t cmd_read_reg_bit_field_bit1_pos =
-	TOKEN_NUM_INITIALIZER(struct cmd_read_reg_bit_field_result, bit1_pos,
-			      RTE_UINT8);
-static cmdline_parse_token_num_t cmd_read_reg_bit_field_bit2_pos =
-	TOKEN_NUM_INITIALIZER(struct cmd_read_reg_bit_field_result, bit2_pos,
-			      RTE_UINT8);
-
-static cmdline_parse_inst_t cmd_read_reg_bit_field = {
-	.f = cmd_read_reg_bit_field_parsed,
-	.data = NULL,
-	.help_str = "read regfield <port_id> <reg_off> <bit_x> <bit_y>: "
-	"Read register bit field between bit_x and bit_y included",
-	.tokens = {
-		(void *)&cmd_read_reg_bit_field_read,
-		(void *)&cmd_read_reg_bit_field_regfield,
-		(void *)&cmd_read_reg_bit_field_port_id,
-		(void *)&cmd_read_reg_bit_field_reg_off,
-		(void *)&cmd_read_reg_bit_field_bit1_pos,
-		(void *)&cmd_read_reg_bit_field_bit2_pos,
-		NULL,
-	},
-};
-
-/* *** READ PORT REGISTER BIT *** */
-struct cmd_read_reg_bit_result {
-	cmdline_fixed_string_t read;
-	cmdline_fixed_string_t regbit;
-	portid_t port_id;
-	uint32_t reg_off;
-	uint8_t bit_pos;
-};
-
-static void
-cmd_read_reg_bit_parsed(void *parsed_result,
-			__rte_unused struct cmdline *cl,
-			__rte_unused void *data)
-{
-	struct cmd_read_reg_bit_result *res = parsed_result;
-	port_reg_bit_display(res->port_id, res->reg_off, res->bit_pos);
-}
-
-static cmdline_parse_token_string_t cmd_read_reg_bit_read =
-	TOKEN_STRING_INITIALIZER(struct cmd_read_reg_bit_result, read, "read");
-static cmdline_parse_token_string_t cmd_read_reg_bit_regbit =
-	TOKEN_STRING_INITIALIZER(struct cmd_read_reg_bit_result,
-				 regbit, "regbit");
-static cmdline_parse_token_num_t cmd_read_reg_bit_port_id =
-	TOKEN_NUM_INITIALIZER(struct cmd_read_reg_bit_result, port_id,
-				 RTE_UINT16);
-static cmdline_parse_token_num_t cmd_read_reg_bit_reg_off =
-	TOKEN_NUM_INITIALIZER(struct cmd_read_reg_bit_result, reg_off,
-				 RTE_UINT32);
-static cmdline_parse_token_num_t cmd_read_reg_bit_bit_pos =
-	TOKEN_NUM_INITIALIZER(struct cmd_read_reg_bit_result, bit_pos,
-				 RTE_UINT8);
-
-static cmdline_parse_inst_t cmd_read_reg_bit = {
-	.f = cmd_read_reg_bit_parsed,
-	.data = NULL,
-	.help_str = "read regbit <port_id> <reg_off> <bit_x>: 0 <= bit_x <= 31",
-	.tokens = {
-		(void *)&cmd_read_reg_bit_read,
-		(void *)&cmd_read_reg_bit_regbit,
-		(void *)&cmd_read_reg_bit_port_id,
-		(void *)&cmd_read_reg_bit_reg_off,
-		(void *)&cmd_read_reg_bit_bit_pos,
-		NULL,
-	},
-};
-
-/* *** WRITE PORT REGISTER *** */
-struct cmd_write_reg_result {
-	cmdline_fixed_string_t write;
-	cmdline_fixed_string_t reg;
-	portid_t port_id;
-	uint32_t reg_off;
-	uint32_t value;
-};
-
-static void
-cmd_write_reg_parsed(void *parsed_result,
-		     __rte_unused struct cmdline *cl,
-		     __rte_unused void *data)
-{
-	struct cmd_write_reg_result *res = parsed_result;
-	port_reg_set(res->port_id, res->reg_off, res->value);
-}
-
-static cmdline_parse_token_string_t cmd_write_reg_write =
-	TOKEN_STRING_INITIALIZER(struct cmd_write_reg_result, write, "write");
-static cmdline_parse_token_string_t cmd_write_reg_reg =
-	TOKEN_STRING_INITIALIZER(struct cmd_write_reg_result, reg, "reg");
-static cmdline_parse_token_num_t cmd_write_reg_port_id =
-	TOKEN_NUM_INITIALIZER(struct cmd_write_reg_result, port_id, RTE_UINT16);
-static cmdline_parse_token_num_t cmd_write_reg_reg_off =
-	TOKEN_NUM_INITIALIZER(struct cmd_write_reg_result, reg_off, RTE_UINT32);
-static cmdline_parse_token_num_t cmd_write_reg_value =
-	TOKEN_NUM_INITIALIZER(struct cmd_write_reg_result, value, RTE_UINT32);
-
-static cmdline_parse_inst_t cmd_write_reg = {
-	.f = cmd_write_reg_parsed,
-	.data = NULL,
-	.help_str = "write reg <port_id> <reg_off> <reg_value>",
-	.tokens = {
-		(void *)&cmd_write_reg_write,
-		(void *)&cmd_write_reg_reg,
-		(void *)&cmd_write_reg_port_id,
-		(void *)&cmd_write_reg_reg_off,
-		(void *)&cmd_write_reg_value,
-		NULL,
-	},
-};
-
-/* *** WRITE PORT REGISTER BIT FIELD *** */
-struct cmd_write_reg_bit_field_result {
-	cmdline_fixed_string_t write;
-	cmdline_fixed_string_t regfield;
-	portid_t port_id;
-	uint32_t reg_off;
-	uint8_t bit1_pos;
-	uint8_t bit2_pos;
-	uint32_t value;
-};
-
-static void
-cmd_write_reg_bit_field_parsed(void *parsed_result,
-			       __rte_unused struct cmdline *cl,
-			       __rte_unused void *data)
-{
-	struct cmd_write_reg_bit_field_result *res = parsed_result;
-	port_reg_bit_field_set(res->port_id, res->reg_off,
-			  res->bit1_pos, res->bit2_pos, res->value);
-}
-
-static cmdline_parse_token_string_t cmd_write_reg_bit_field_write =
-	TOKEN_STRING_INITIALIZER(struct cmd_write_reg_bit_field_result, write,
-				 "write");
-static cmdline_parse_token_string_t cmd_write_reg_bit_field_regfield =
-	TOKEN_STRING_INITIALIZER(struct cmd_write_reg_bit_field_result,
-				 regfield, "regfield");
-static cmdline_parse_token_num_t cmd_write_reg_bit_field_port_id =
-	TOKEN_NUM_INITIALIZER(struct cmd_write_reg_bit_field_result, port_id,
-			      RTE_UINT16);
-static cmdline_parse_token_num_t cmd_write_reg_bit_field_reg_off =
-	TOKEN_NUM_INITIALIZER(struct cmd_write_reg_bit_field_result, reg_off,
-			      RTE_UINT32);
-static cmdline_parse_token_num_t cmd_write_reg_bit_field_bit1_pos =
-	TOKEN_NUM_INITIALIZER(struct cmd_write_reg_bit_field_result, bit1_pos,
-			      RTE_UINT8);
-static cmdline_parse_token_num_t cmd_write_reg_bit_field_bit2_pos =
-	TOKEN_NUM_INITIALIZER(struct cmd_write_reg_bit_field_result, bit2_pos,
-			      RTE_UINT8);
-static cmdline_parse_token_num_t cmd_write_reg_bit_field_value =
-	TOKEN_NUM_INITIALIZER(struct cmd_write_reg_bit_field_result, value,
-			      RTE_UINT32);
-
-static cmdline_parse_inst_t cmd_write_reg_bit_field = {
-	.f = cmd_write_reg_bit_field_parsed,
-	.data = NULL,
-	.help_str = "write regfield <port_id> <reg_off> <bit_x> <bit_y> "
-		"<reg_value>: "
-		"Set register bit field between bit_x and bit_y included",
-	.tokens = {
-		(void *)&cmd_write_reg_bit_field_write,
-		(void *)&cmd_write_reg_bit_field_regfield,
-		(void *)&cmd_write_reg_bit_field_port_id,
-		(void *)&cmd_write_reg_bit_field_reg_off,
-		(void *)&cmd_write_reg_bit_field_bit1_pos,
-		(void *)&cmd_write_reg_bit_field_bit2_pos,
-		(void *)&cmd_write_reg_bit_field_value,
-		NULL,
-	},
-};
-
-/* *** WRITE PORT REGISTER BIT *** */
-struct cmd_write_reg_bit_result {
-	cmdline_fixed_string_t write;
-	cmdline_fixed_string_t regbit;
-	portid_t port_id;
-	uint32_t reg_off;
-	uint8_t bit_pos;
-	uint8_t value;
-};
-
-static void
-cmd_write_reg_bit_parsed(void *parsed_result,
-			 __rte_unused struct cmdline *cl,
-			 __rte_unused void *data)
-{
-	struct cmd_write_reg_bit_result *res = parsed_result;
-	port_reg_bit_set(res->port_id, res->reg_off, res->bit_pos, res->value);
-}
-
-static cmdline_parse_token_string_t cmd_write_reg_bit_write =
-	TOKEN_STRING_INITIALIZER(struct cmd_write_reg_bit_result, write,
-				 "write");
-static cmdline_parse_token_string_t cmd_write_reg_bit_regbit =
-	TOKEN_STRING_INITIALIZER(struct cmd_write_reg_bit_result,
-				 regbit, "regbit");
-static cmdline_parse_token_num_t cmd_write_reg_bit_port_id =
-	TOKEN_NUM_INITIALIZER(struct cmd_write_reg_bit_result, port_id,
-				 RTE_UINT16);
-static cmdline_parse_token_num_t cmd_write_reg_bit_reg_off =
-	TOKEN_NUM_INITIALIZER(struct cmd_write_reg_bit_result, reg_off,
-				 RTE_UINT32);
-static cmdline_parse_token_num_t cmd_write_reg_bit_bit_pos =
-	TOKEN_NUM_INITIALIZER(struct cmd_write_reg_bit_result, bit_pos,
-				 RTE_UINT8);
-static cmdline_parse_token_num_t cmd_write_reg_bit_value =
-	TOKEN_NUM_INITIALIZER(struct cmd_write_reg_bit_result, value,
-				 RTE_UINT8);
-
-static cmdline_parse_inst_t cmd_write_reg_bit = {
-	.f = cmd_write_reg_bit_parsed,
-	.data = NULL,
-	.help_str = "write regbit <port_id> <reg_off> <bit_x> 0|1: "
-		"0 <= bit_x <= 31",
-	.tokens = {
-		(void *)&cmd_write_reg_bit_write,
-		(void *)&cmd_write_reg_bit_regbit,
-		(void *)&cmd_write_reg_bit_port_id,
-		(void *)&cmd_write_reg_bit_reg_off,
-		(void *)&cmd_write_reg_bit_bit_pos,
-		(void *)&cmd_write_reg_bit_value,
 		NULL,
 	},
 };
@@ -14223,12 +13895,6 @@ static cmdline_parse_ctx_t builtin_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_priority_flow_control_set,
 	(cmdline_parse_inst_t *)&cmd_queue_priority_flow_control_set,
 	(cmdline_parse_inst_t *)&cmd_config_dcb,
-	(cmdline_parse_inst_t *)&cmd_read_reg,
-	(cmdline_parse_inst_t *)&cmd_read_reg_bit_field,
-	(cmdline_parse_inst_t *)&cmd_read_reg_bit,
-	(cmdline_parse_inst_t *)&cmd_write_reg,
-	(cmdline_parse_inst_t *)&cmd_write_reg_bit_field,
-	(cmdline_parse_inst_t *)&cmd_write_reg_bit,
 	(cmdline_parse_inst_t *)&cmd_read_rxd_txd,
 	(cmdline_parse_inst_t *)&cmd_stop,
 	(cmdline_parse_inst_t *)&cmd_mac_addr,
