@@ -49,7 +49,7 @@ rte_ethtool_get_drvinfo(uint16_t port_id, struct ethtool_drvinfo *drvinfo)
 	strlcpy(drvinfo->driver, dev_info.driver_name,
 		sizeof(drvinfo->driver));
 	strlcpy(drvinfo->version, rte_version(), sizeof(drvinfo->version));
-	strlcpy(drvinfo->bus_info, dev_info.device->name,
+	strlcpy(drvinfo->bus_info, rte_dev_name(dev_info.device),
 		sizeof(drvinfo->bus_info));
 
 	memset(&reg_info, 0, sizeof(reg_info));

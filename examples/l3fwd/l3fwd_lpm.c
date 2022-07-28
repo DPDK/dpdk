@@ -598,7 +598,7 @@ setup_lpm(const int socketid)
 		printf("LPM: Adding route %s / %d (%d) [%s]\n",
 		       inet_ntop(AF_INET, &in, abuf, sizeof(abuf)),
 		       route_base_v4[i].depth,
-		       route_base_v4[i].if_out, dev_info.device->name);
+		       route_base_v4[i].if_out, rte_dev_name(dev_info.device));
 	}
 
 	/* create the LPM6 table */
@@ -642,7 +642,7 @@ setup_lpm(const int socketid)
 		       inet_ntop(AF_INET6, route_base_v6[i].ip_8, abuf,
 				 sizeof(abuf)),
 		       route_base_v6[i].depth,
-		       route_base_v6[i].if_out, dev_info.device->name);
+		       route_base_v6[i].if_out, rte_dev_name(dev_info.device));
 	}
 }
 

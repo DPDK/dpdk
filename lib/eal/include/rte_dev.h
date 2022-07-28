@@ -24,6 +24,9 @@ extern "C" {
 #include <rte_compat.h>
 #include <rte_log.h>
 
+struct rte_bus;
+struct rte_devargs;
+struct rte_device;
 struct rte_driver;
 
 /**
@@ -79,6 +82,81 @@ struct rte_mem_resource {
  */
 const char *
 rte_driver_name(const struct rte_driver *driver);
+
+/**
+ * Retrieve a device bus.
+ *
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice
+ *
+ * @param dev
+ *   A pointer to a device structure.
+ * @return
+ *   A pointer to this device bus.
+ */
+__rte_experimental
+const struct rte_bus *
+rte_dev_bus(const struct rte_device *dev);
+
+/**
+ * Retrieve a device arguments.
+ *
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice
+ *
+ * @param dev
+ *   A pointer to a device structure.
+ * @return
+ *   A pointer to this device devargs.
+ */
+__rte_experimental
+const struct rte_devargs *
+rte_dev_devargs(const struct rte_device *dev);
+
+/**
+ * Retrieve a device driver.
+ *
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice
+ *
+ * @param dev
+ *   A pointer to a device structure.
+ * @return
+ *   A pointer to this device driver.
+ */
+__rte_experimental
+const struct rte_driver *
+rte_dev_driver(const struct rte_device *dev);
+
+/**
+ * Retrieve a device name.
+ *
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice
+ *
+ * @param dev
+ *   A pointer to a device structure.
+ * @return
+ *   A pointer to this device name.
+ */
+__rte_experimental
+const char *
+rte_dev_name(const struct rte_device *dev);
+
+/**
+ * Retrieve a device numa node.
+ *
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice
+ *
+ * @param dev
+ *   A pointer to a device structure.
+ * @return
+ *   A pointer to this device numa node.
+ */
+__rte_experimental
+int
+rte_dev_numa_node(const struct rte_device *dev);
 
 /*
  * Internal identifier length

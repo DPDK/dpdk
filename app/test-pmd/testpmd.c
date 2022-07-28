@@ -1057,7 +1057,7 @@ dma_unmap_cb(struct rte_mempool *mp __rte_unused, void *opaque __rte_unused,
 			TESTPMD_LOG(DEBUG,
 				    "unable to DMA unmap addr 0x%p "
 				    "for device %s\n",
-				    memhdr->addr, dev_info.device->name);
+				    memhdr->addr, rte_dev_name(dev_info.device));
 		}
 	}
 	ret = rte_extmem_unregister(memhdr->addr, memhdr->len);
@@ -1098,7 +1098,7 @@ dma_map_cb(struct rte_mempool *mp __rte_unused, void *opaque __rte_unused,
 			TESTPMD_LOG(DEBUG,
 				    "unable to DMA map addr 0x%p "
 				    "for device %s\n",
-				    memhdr->addr, dev_info.device->name);
+				    memhdr->addr, rte_dev_name(dev_info.device));
 		}
 	}
 }
@@ -3441,7 +3441,7 @@ detach_device(struct rte_device *dev)
 	}
 
 	if (rte_dev_remove(dev) < 0) {
-		TESTPMD_LOG(ERR, "Failed to detach device %s\n", dev->name);
+		TESTPMD_LOG(ERR, "Failed to detach device %s\n", rte_dev_name(dev));
 		return;
 	}
 	remove_invalid_ports();

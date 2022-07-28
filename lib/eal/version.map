@@ -425,6 +425,13 @@ EXPERIMENTAL {
 	rte_thread_self;
 	rte_thread_set_affinity_by_id;
 	rte_thread_set_priority;
+
+	# added in 22.11
+	rte_dev_bus;
+	rte_dev_devargs;
+	rte_dev_driver;
+	rte_dev_name;
+	rte_dev_numa_node;
 };
 
 INTERNAL {

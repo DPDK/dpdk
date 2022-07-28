@@ -26,6 +26,36 @@ rte_driver_name(const struct rte_driver *driver)
 	return driver->name;
 }
 
+const struct rte_bus *
+rte_dev_bus(const struct rte_device *dev)
+{
+	return dev->bus;
+}
+
+const struct rte_devargs *
+rte_dev_devargs(const struct rte_device *dev)
+{
+	return dev->devargs;
+}
+
+const struct rte_driver *
+rte_dev_driver(const struct rte_device *dev)
+{
+	return dev->driver;
+}
+
+const char *
+rte_dev_name(const struct rte_device *dev)
+{
+	return dev->name;
+}
+
+int
+rte_dev_numa_node(const struct rte_device *dev)
+{
+	return dev->numa_node;
+}
+
 /**
  * The device event callback description.
  *

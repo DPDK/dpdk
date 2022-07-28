@@ -647,19 +647,19 @@ skip_parse:
 		snprintf(devstr, sizeof(devstr), "bus=%s", rte_bus_name(next));
 		RTE_DEV_FOREACH(dev, devstr, &dev_iter) {
 
-			if (!dev->driver)
+			if (rte_dev_driver(dev) == NULL)
 				continue;
 			/* Check for matching device if identifier is present */
 			if (identifier &&
-			    strncmp(da.name, dev->name, strlen(dev->name)))
+			    strncmp(da.name, rte_dev_name(dev), strlen(rte_dev_name(dev))))
 				continue;
 			printf("\n%s Infos for device %s %s\n",
-			       info_border, dev->name, info_border);
-			printf("Bus name: %s", rte_bus_name(dev->bus));
-			printf("\nDriver name: %s", rte_driver_name(dev->driver));
+			       info_border, rte_dev_name(dev), info_border);
+			printf("Bus name: %s", rte_bus_name(rte_dev_bus(dev)));
+			printf("\nDriver name: %s", rte_driver_name(rte_dev_driver(dev)));
 			printf("\nDevargs: %s",
-			       dev->devargs ? dev->devargs->args : "");
-			printf("\nConnect to socket: %d", dev->numa_node);
+			       rte_dev_devargs(dev) ? rte_dev_devargs(dev)->args : "");
+			printf("\nConnect to socket: %d", rte_dev_numa_node(dev));
 			printf("\n");
 
 			/* List ports with matching device name */
@@ -804,8 +804,8 @@ port_infos_display(portid_t port_id)
 	else
 		printf("\nFirmware-version: %s", "not available");
 
-	if (dev_info.device->devargs && dev_info.device->devargs->args)
-		printf("\nDevargs: %s", dev_info.device->devargs->args);
+	if (rte_dev_devargs(dev_info.device) && rte_dev_devargs(dev_info.device)->args)
+		printf("\nDevargs: %s", rte_dev_devargs(dev_info.device)->args);
 	printf("\nConnect to socket: %u", port->socket_id);
 
 	if (port_numa[port_id] != NUMA_NO_CONFIG) {

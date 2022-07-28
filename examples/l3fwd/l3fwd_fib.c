@@ -640,11 +640,11 @@ setup_fib(const int socketid)
 			printf("FIB: Adding route %s / %d (%d) [%s]\n", abuf,
 			       route_base_v4[i].depth,
 			       route_base_v4[i].if_out,
-			       dev_info.device->name);
+			       rte_dev_name(dev_info.device));
 		} else {
 			printf("FIB: IPv4 route added to port %d [%s]\n",
 			       route_base_v4[i].if_out,
-			       dev_info.device->name);
+			       rte_dev_name(dev_info.device));
 		}
 	}
 	/* >8 End of setup fib. */
@@ -695,11 +695,11 @@ setup_fib(const int socketid)
 			printf("FIB: Adding route %s / %d (%d) [%s]\n", abuf,
 			       route_base_v6[i].depth,
 			       route_base_v6[i].if_out,
-			       dev_info.device->name);
+			       rte_dev_name(dev_info.device));
 		} else {
 			printf("FIB: IPv6 route added to port %d [%s]\n",
 			       route_base_v6[i].if_out,
-			       dev_info.device->name);
+			       rte_dev_name(dev_info.device));
 		}
 	}
 }
