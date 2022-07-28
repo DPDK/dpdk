@@ -402,7 +402,7 @@ try_expand_heap_primary(struct malloc_heap *heap, uint64_t pg_sz,
 	int n_segs;
 	bool callback_triggered = false;
 
-	alloc_sz = RTE_ALIGN_CEIL(align + elt_size +
+	alloc_sz = RTE_ALIGN_CEIL(RTE_ALIGN_CEIL(elt_size, align) +
 			MALLOC_ELEM_OVERHEAD, pg_sz);
 	n_segs = alloc_sz / pg_sz;
 
