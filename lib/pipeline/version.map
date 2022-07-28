@@ -148,5 +148,6 @@ EXPERIMENTAL {
 
 	# added in 22.11
 	rte_swx_ctl_pipeline_find;
+	rte_swx_pipeline_codegen;
 	rte_swx_pipeline_find;
 };

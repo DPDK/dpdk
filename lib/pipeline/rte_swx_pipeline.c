@@ -20,6 +20,7 @@
 #include <rte_swx_table_wm.h>
 
 #include "rte_swx_pipeline_internal.h"
+#include "rte_swx_pipeline_spec.h"
 
 #define CHECK(condition, err_code)                                             \
 do {                                                                           \
@@ -13578,6 +13579,99 @@ pipeline_compile(struct rte_swx_pipeline *p)
 
 free:
 	instruction_group_list_free(igl);
+
+	return status;
+}
+
+int
+rte_swx_pipeline_codegen(FILE *spec_file,
+			 FILE *code_file,
+			 uint32_t *err_line,
+			 const char **err_msg)
+
+{
+	struct rte_swx_pipeline *p = NULL;
+	struct pipeline_spec *s = NULL;
+	struct instruction_group_list *igl = NULL;
+	struct action *a;
+	int status = 0;
+
+	/* Check input arguments. */
+	if (!spec_file || !code_file) {
+		if (err_line)
+			*err_line = 0;
+		if (err_msg)
+			*err_msg = "Invalid input argument.";
+		status = -EINVAL;
+		goto free;
+	}
+
+	/* Pipeline configuration. */
+	s = pipeline_spec_parse(spec_file, err_line, err_msg);
+	if (!s) {
+		status = -EINVAL;
+		goto free;
+	}
+
+	status = rte_swx_pipeline_config(&p, NULL, 0);
+	if (status) {
+		if (err_line)
+			*err_line = 0;
+		if (err_msg)
+			*err_msg = "Pipeline configuration error.";
+		goto free;
+	}
+
+	status = pipeline_spec_configure(p, s, err_msg);
+	if (status) {
+		if (err_line)
+			*err_line = 0;
+		goto free;
+	}
+
+	/*
+	 * Pipeline code generation.
+	 */
+
+	/* Instruction Group List (IGL) computation: the pipeline configuration must be done first,
+	 * but there is no need for the pipeline build to be done as well.
+	 */
+	igl = instruction_group_list_create(p);
+	if (!igl) {
+		if (err_line)
+			*err_line = 0;
+		if (err_msg)
+			*err_msg = "Memory allocation failed.";
+		status = -ENOMEM;
+		goto free;
+	}
+
+	/* Header file inclusion. */
+	fprintf(code_file, "#include \"rte_swx_pipeline_internal.h\"\n");
+	fprintf(code_file, "#include \"rte_swx_pipeline_spec.h\"\n\n");
+
+	/* Code generation for the pipeline specification. */
+	pipeline_spec_codegen(code_file, s);
+	fprintf(code_file, "\n");
+
+	/* Code generation for the action instructions. */
+	TAILQ_FOREACH(a, &p->actions, node) {
+		fprintf(code_file, "/**\n * Action %s\n */\n\n", a->name);
+
+		action_data_codegen(a, code_file);
+		fprintf(code_file, "\n");
+
+		action_instr_codegen(a, code_file);
+		fprintf(code_file, "\n");
+	}
+
+	/* Code generation for the pipeline instructions. */
+	instruction_group_list_codegen(igl, p, code_file);
+
+free:
+	instruction_group_list_free(igl);
+	rte_swx_pipeline_free(p);
+	pipeline_spec_free(s);
 
 	return status;
 }

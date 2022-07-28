@@ -958,6 +958,31 @@ int
 rte_swx_pipeline_build(struct rte_swx_pipeline *p);
 
 /**
+ * Pipeline C code generate based on input specification file
+ *
+ * @param[in] spec_file
+ *   Pipeline specification file (.spec) provided as input.
+ * @param[in] code_file
+ *   Pipeline C language file (.c) to be generated.
+ * @param[out] err_line
+ *   In case of error and non-NULL, the line number within the *spec* file where
+ *   the error occurred. The first line number in the file is 1.
+ * @param[out] err_msg
+ *   In case of error and non-NULL, the error message.
+ * @return
+ *   0 on success or the following error codes otherwise:
+ *   -EINVAL: Invalid argument;
+ *   -ENOMEM: Not enough space/cannot allocate memory;
+ *   -EEXIST: Resource with the same name already exists.
+ */
+__rte_experimental
+int
+rte_swx_pipeline_codegen(FILE *spec_file,
+			 FILE *code_file,
+			 uint32_t *err_line,
+			 const char **err_msg);
+
+/**
  * Pipeline build from specification file
  *
  * @param[in] p
