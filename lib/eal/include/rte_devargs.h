@@ -22,7 +22,9 @@ extern "C" {
 
 #include <stdio.h>
 #include <rte_compat.h>
-#include <rte_bus.h>
+#include <rte_dev.h>
+
+struct rte_bus;
 
 /**
  * Bus type key in global devargs syntax.

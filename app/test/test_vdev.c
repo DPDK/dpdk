@@ -8,6 +8,7 @@
 
 #include <rte_common.h>
 #include <rte_kvargs.h>
+#include <rte_bus.h>
 #include <rte_bus_vdev.h>
 
 #include "test.h"
