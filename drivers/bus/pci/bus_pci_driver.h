@@ -43,6 +43,7 @@ struct rte_pci_device {
 	uint16_t max_vfs;                   /**< sriov enable if not zero */
 	enum rte_pci_kernel_driver kdrv;    /**< Kernel driver passthrough */
 	char name[PCI_PRI_STR_SIZE+1];      /**< PCI location (ASCII) */
+	char *bus_info;                     /**< PCI bus specific info */
 	struct rte_intr_handle *vfio_req_intr_handle;
 				/**< Handler of VFIO request interrupt */
 };

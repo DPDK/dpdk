@@ -382,7 +382,7 @@ pci_scan_one(HDEVINFO dev_info, PSP_DEVINFO_DATA device_info_data)
 	dev->id = pci_id;
 	dev->max_vfs = 0; /* TODO: get max_vfs */
 
-	pci_name_set(dev);
+	pci_common_set(dev);
 
 	set_kernel_driver_type(device_info_data, dev);
 
@@ -410,7 +410,7 @@ pci_scan_one(HDEVINFO dev_info, PSP_DEVINFO_DATA device_info_data)
 				dev2->max_vfs = dev->max_vfs;
 				memmove(dev2->mem_resource, dev->mem_resource,
 					sizeof(dev->mem_resource));
-				free(dev);
+				pci_free(dev);
 			}
 			return 0;
 		}
@@ -419,7 +419,7 @@ pci_scan_one(HDEVINFO dev_info, PSP_DEVINFO_DATA device_info_data)
 
 	return 0;
 end:
-	free(dev);
+	pci_free(dev);
 	return ret;
 }
 

@@ -44,10 +44,16 @@ struct rte_pci_device;
 int rte_pci_scan(void);
 
 /**
- * Find the name of a PCI device.
+ * Set common internal information for a PCI device.
  */
 void
-pci_name_set(struct rte_pci_device *dev);
+pci_common_set(struct rte_pci_device *dev);
+
+/**
+ * Free a PCI device.
+ */
+void
+pci_free(struct rte_pci_device *dev);
 
 /**
  * Validate whether a device with given PCI address should be ignored or not.

@@ -226,7 +226,7 @@ pci_scan_one(const char *dirname, const struct rte_pci_addr *addr)
 	/* get vendor id */
 	snprintf(filename, sizeof(filename), "%s/vendor", dirname);
 	if (eal_parse_sysfs_value(filename, &tmp) < 0) {
-		free(dev);
+		pci_free(dev);
 		return -1;
 	}
 	dev->id.vendor_id = (uint16_t)tmp;
@@ -234,7 +234,7 @@ pci_scan_one(const char *dirname, const struct rte_pci_addr *addr)
 	/* get device id */
 	snprintf(filename, sizeof(filename), "%s/device", dirname);
 	if (eal_parse_sysfs_value(filename, &tmp) < 0) {
-		free(dev);
+		pci_free(dev);
 		return -1;
 	}
 	dev->id.device_id = (uint16_t)tmp;
@@ -243,7 +243,7 @@ pci_scan_one(const char *dirname, const struct rte_pci_addr *addr)
 	snprintf(filename, sizeof(filename), "%s/subsystem_vendor",
 		 dirname);
 	if (eal_parse_sysfs_value(filename, &tmp) < 0) {
-		free(dev);
+		pci_free(dev);
 		return -1;
 	}
 	dev->id.subsystem_vendor_id = (uint16_t)tmp;
@@ -252,7 +252,7 @@ pci_scan_one(const char *dirname, const struct rte_pci_addr *addr)
 	snprintf(filename, sizeof(filename), "%s/subsystem_device",
 		 dirname);
 	if (eal_parse_sysfs_value(filename, &tmp) < 0) {
-		free(dev);
+		pci_free(dev);
 		return -1;
 	}
 	dev->id.subsystem_device_id = (uint16_t)tmp;
@@ -261,7 +261,7 @@ pci_scan_one(const char *dirname, const struct rte_pci_addr *addr)
 	snprintf(filename, sizeof(filename), "%s/class",
 		 dirname);
 	if (eal_parse_sysfs_value(filename, &tmp) < 0) {
-		free(dev);
+		pci_free(dev);
 		return -1;
 	}
 	/* the least 24 bits are valid: class, subclass, program interface */
@@ -295,13 +295,13 @@ pci_scan_one(const char *dirname, const struct rte_pci_addr *addr)
 		dev->device.numa_node = 0;
 	}
 
-	pci_name_set(dev);
+	pci_common_set(dev);
 
 	/* parse resources */
 	snprintf(filename, sizeof(filename), "%s/resource", dirname);
 	if (pci_parse_sysfs_resource(filename, dev) < 0) {
 		RTE_LOG(ERR, EAL, "%s(): cannot parse resource\n", __func__);
-		free(dev);
+		pci_free(dev);
 		return -1;
 	}
 
@@ -310,7 +310,7 @@ pci_scan_one(const char *dirname, const struct rte_pci_addr *addr)
 	ret = pci_get_kernel_driver_by_path(filename, driver, sizeof(driver));
 	if (ret < 0) {
 		RTE_LOG(ERR, EAL, "Fail to get kernel driver\n");
-		free(dev);
+		pci_free(dev);
 		return -1;
 	}
 
@@ -324,7 +324,7 @@ pci_scan_one(const char *dirname, const struct rte_pci_addr *addr)
 		else
 			dev->kdrv = RTE_PCI_KDRV_UNKNOWN;
 	} else {
-		free(dev);
+		pci_free(dev);
 		return 0;
 	}
 	/* device is valid, add in list (sorted) */
@@ -346,7 +346,7 @@ pci_scan_one(const char *dirname, const struct rte_pci_addr *addr)
 					dev2->kdrv = dev->kdrv;
 					dev2->max_vfs = dev->max_vfs;
 					dev2->id = dev->id;
-					pci_name_set(dev2);
+					pci_common_set(dev2);
 					memmove(dev2->mem_resource,
 						dev->mem_resource,
 						sizeof(dev->mem_resource));
@@ -376,10 +376,10 @@ pci_scan_one(const char *dirname, const struct rte_pci_addr *addr)
 					else if (dev2->device.devargs !=
 						 dev->device.devargs) {
 						rte_devargs_remove(dev2->device.devargs);
-						pci_name_set(dev2);
+						pci_common_set(dev2);
 					}
 				}
-				free(dev);
+				pci_free(dev);
 			}
 			return 0;
 		}
