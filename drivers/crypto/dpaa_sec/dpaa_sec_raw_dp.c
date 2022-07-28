@@ -15,7 +15,7 @@
 #include <desc/algo.h>
 #include <desc/ipsec.h>
 
-#include <rte_dpaa_bus.h>
+#include <bus_dpaa_driver.h>
 #include <dpaa_sec.h>
 #include <dpaa_sec_log.h>
 

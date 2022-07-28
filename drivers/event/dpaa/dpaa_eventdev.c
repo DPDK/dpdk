@@ -29,7 +29,7 @@
 #include <rte_event_eth_rx_adapter.h>
 #include <rte_event_eth_tx_adapter.h>
 #include <cryptodev_pmd.h>
-#include <rte_dpaa_bus.h>
+#include <bus_dpaa_driver.h>
 #include <rte_dpaa_logs.h>
 #include <rte_cycles.h>
 #include <rte_kvargs.h>

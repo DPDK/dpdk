@@ -41,7 +41,7 @@
 #include <desc/pdcp.h>
 #include <desc/sdap.h>
 
-#include <rte_dpaa_bus.h>
+#include <bus_dpaa_driver.h>
 #include <dpaa_sec.h>
 #include <dpaa_sec_event.h>
 #include <dpaa_sec_log.h>

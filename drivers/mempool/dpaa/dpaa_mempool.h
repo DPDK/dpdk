@@ -14,7 +14,7 @@
 
 #include <rte_mempool.h>
 
-#include <rte_dpaa_bus.h>
+#include <bus_dpaa_driver.h>
 #include <rte_dpaa_logs.h>
 
 #include <fsl_usd.h>
