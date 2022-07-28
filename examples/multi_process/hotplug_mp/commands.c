@@ -8,6 +8,8 @@
 #include <cmdline_parse_num.h>
 #include <cmdline_parse_string.h>
 #include <cmdline.h>
+
+#include <rte_bus.h>
 #include <rte_ethdev.h>
 
 /**********************************************************/

@@ -20,26 +20,12 @@ extern "C" {
 
 #include <stdio.h>
 
-#include <rte_log.h>
 #include <rte_dev.h>
+#include <rte_eal.h>
+#include <rte_log.h>
 
 /** Double linked list of buses */
 RTE_TAILQ_HEAD(rte_bus_list, rte_bus);
-
-
-/**
- * IOVA mapping mode.
- *
- * IOVA mapping mode is iommu programming mode of a device.
- * That device (for example: IOMMU backed DMA device) based
- * on rte_iova_mode will generate physical or virtual address.
- *
- */
-enum rte_iova_mode {
-	RTE_IOVA_DC = 0,	/* Don't care mode */
-	RTE_IOVA_PA = (1 << 0), /* DMA using physical address */
-	RTE_IOVA_VA = (1 << 1)  /* DMA using virtual address */
-};
 
 /**
  * Bus specific scan for devices attached on the bus.

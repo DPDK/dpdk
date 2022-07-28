@@ -17,7 +17,6 @@
 #include <rte_config.h>
 #include <rte_compat.h>
 #include <rte_per_lcore.h>
-#include <rte_bus.h>
 #include <rte_uuid.h>
 
 #include <rte_pci_dev_feature_defs.h>
@@ -457,6 +456,20 @@ static inline int rte_gettid(void)
  */
 __rte_internal
 uint64_t rte_eal_get_baseaddr(void);
+
+/**
+ * IOVA mapping mode.
+ *
+ * IOVA mapping mode is iommu programming mode of a device.
+ * That device (for example: IOMMU backed DMA device) based
+ * on rte_iova_mode will generate physical or virtual address.
+ *
+ */
+enum rte_iova_mode {
+	RTE_IOVA_DC = 0,	/* Don't care mode */
+	RTE_IOVA_PA = (1 << 0), /* DMA using physical address */
+	RTE_IOVA_VA = (1 << 1)  /* DMA using virtual address */
+};
 
 /**
  * Get the iova mode

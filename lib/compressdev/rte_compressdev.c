@@ -8,6 +8,7 @@
 
 #include <rte_string_fns.h>
 #include <rte_malloc.h>
+#include <rte_dev.h>
 #include <rte_eal.h>
 #include <rte_memzone.h>
 
