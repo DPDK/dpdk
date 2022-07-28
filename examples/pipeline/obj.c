@@ -16,7 +16,6 @@
 #include <rte_mempool.h>
 #include <rte_mbuf.h>
 #include <rte_ethdev.h>
-#include <rte_swx_pipeline.h>
 #include <rte_swx_ctl.h>
 
 #include "obj.h"
@@ -42,18 +41,12 @@ TAILQ_HEAD(ring_list, ring);
 TAILQ_HEAD(tap_list, tap);
 
 /*
- * pipeline
- */
-TAILQ_HEAD(pipeline_list, pipeline);
-
-/*
  * obj
  */
 struct obj {
 	struct mempool_list mempool_list;
 	struct link_list link_list;
 	struct ring_list ring_list;
-	struct pipeline_list pipeline_list;
 	struct tap_list tap_list;
 };
 
@@ -514,65 +507,6 @@ tap_create(struct obj *obj, const char *name)
 #endif
 
 /*
- * pipeline
- */
-#ifndef PIPELINE_MSGQ_SIZE
-#define PIPELINE_MSGQ_SIZE                                 64
-#endif
-
-struct pipeline *
-pipeline_create(struct obj *obj, const char *name, int numa_node)
-{
-	struct pipeline *pipeline;
-	struct rte_swx_pipeline *p = NULL;
-	int status;
-
-	/* Check input params */
-	if ((name == NULL) ||
-		pipeline_find(obj, name))
-		return NULL;
-
-	/* Resource create */
-	status = rte_swx_pipeline_config(&p, name, numa_node);
-	if (status)
-		goto error;
-
-	/* Node allocation */
-	pipeline = calloc(1, sizeof(struct pipeline));
-	if (pipeline == NULL)
-		goto error;
-
-	/* Node fill in */
-	strlcpy(pipeline->name, name, sizeof(pipeline->name));
-	pipeline->p = p;
-	pipeline->timer_period_ms = 10;
-
-	/* Node add to list */
-	TAILQ_INSERT_TAIL(&obj->pipeline_list, pipeline, node);
-
-	return pipeline;
-
-error:
-	rte_swx_pipeline_free(p);
-	return NULL;
-}
-
-struct pipeline *
-pipeline_find(struct obj *obj, const char *name)
-{
-	struct pipeline *pipeline;
-
-	if (!obj || !name)
-		return NULL;
-
-	TAILQ_FOREACH(pipeline, &obj->pipeline_list, node)
-		if (strcmp(name, pipeline->name) == 0)
-			return pipeline;
-
-	return NULL;
-}
-
-/*
  * obj
  */
 struct obj *
@@ -587,7 +521,6 @@ obj_init(void)
 	TAILQ_INIT(&obj->mempool_list);
 	TAILQ_INIT(&obj->link_list);
 	TAILQ_INIT(&obj->ring_list);
-	TAILQ_INIT(&obj->pipeline_list);
 	TAILQ_INIT(&obj->tap_list);
 
 	return obj;

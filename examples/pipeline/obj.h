@@ -143,28 +143,4 @@ tap_next(struct obj *obj, struct tap *tap);
 struct tap *
 tap_create(struct obj *obj, const char *name);
 
-/*
- * pipeline
- */
-struct pipeline {
-	TAILQ_ENTRY(pipeline) node;
-	char name[NAME_SIZE];
-
-	struct rte_swx_pipeline *p;
-	struct rte_swx_ctl_pipeline *ctl;
-
-	uint32_t timer_period_ms;
-	int enabled;
-	uint32_t thread_id;
-	uint32_t cpu_id;
-};
-
-struct pipeline *
-pipeline_create(struct obj *obj,
-		const char *name,
-		int numa_node);
-
-struct pipeline *
-pipeline_find(struct obj *obj, const char *name);
-
 #endif /* _INCLUDE_OBJ_H_ */

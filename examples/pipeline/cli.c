@@ -858,9 +858,9 @@ cmd_pipeline_table_add(char **tokens,
 		       uint32_t n_tokens,
 		       char *out,
 		       size_t out_size,
-		       void *obj)
+		       void *obj __rte_unused)
 {
-	struct pipeline *p;
+	struct rte_swx_ctl_pipeline *ctl;
 	char *pipeline_name, *table_name, *file_name;
 	FILE *file = NULL;
 	uint32_t file_line_number = 0;
@@ -872,8 +872,8 @@ cmd_pipeline_table_add(char **tokens,
 	}
 
 	pipeline_name = tokens[1];
-	p = pipeline_find(obj, pipeline_name);
-	if (!p || !p->ctl) {
+	ctl = rte_swx_ctl_pipeline_find(pipeline_name);
+	if (!ctl) {
 		snprintf(out, out_size, MSG_ARG_INVALID, "pipeline_name");
 		return;
 	}
@@ -887,7 +887,7 @@ cmd_pipeline_table_add(char **tokens,
 		return;
 	}
 
-	status = pipeline_table_entries_add(p->ctl,
+	status = pipeline_table_entries_add(ctl,
 					    table_name,
 					    file,
 					    &file_line_number);
@@ -956,9 +956,9 @@ cmd_pipeline_table_delete(char **tokens,
 			  uint32_t n_tokens,
 			  char *out,
 			  size_t out_size,
-			  void *obj)
+			  void *obj __rte_unused)
 {
-	struct pipeline *p;
+	struct rte_swx_ctl_pipeline *ctl;
 	char *pipeline_name, *table_name, *file_name;
 	FILE *file = NULL;
 	uint32_t file_line_number = 0;
@@ -970,8 +970,8 @@ cmd_pipeline_table_delete(char **tokens,
 	}
 
 	pipeline_name = tokens[1];
-	p = pipeline_find(obj, pipeline_name);
-	if (!p || !p->ctl) {
+	ctl = rte_swx_ctl_pipeline_find(pipeline_name);
+	if (!ctl) {
 		snprintf(out, out_size, MSG_ARG_INVALID, "pipeline_name");
 		return;
 	}
@@ -985,7 +985,7 @@ cmd_pipeline_table_delete(char **tokens,
 		return;
 	}
 
-	status = pipeline_table_entries_delete(p->ctl,
+	status = pipeline_table_entries_delete(ctl,
 					       table_name,
 					       file,
 					       &file_line_number);
@@ -1054,9 +1054,9 @@ cmd_pipeline_table_default(char **tokens,
 			   uint32_t n_tokens,
 			   char *out,
 			   size_t out_size,
-			   void *obj)
+			   void *obj __rte_unused)
 {
-	struct pipeline *p;
+	struct rte_swx_ctl_pipeline *ctl;
 	char *pipeline_name, *table_name, *file_name;
 	FILE *file = NULL;
 	uint32_t file_line_number = 0;
@@ -1068,8 +1068,8 @@ cmd_pipeline_table_default(char **tokens,
 	}
 
 	pipeline_name = tokens[1];
-	p = pipeline_find(obj, pipeline_name);
-	if (!p || !p->ctl) {
+	ctl = rte_swx_ctl_pipeline_find(pipeline_name);
+	if (!ctl) {
 		snprintf(out, out_size, MSG_ARG_INVALID, "pipeline_name");
 		return;
 	}
@@ -1083,7 +1083,7 @@ cmd_pipeline_table_default(char **tokens,
 		return;
 	}
 
-	status = pipeline_table_default_entry_add(p->ctl,
+	status = pipeline_table_default_entry_add(ctl,
 						  table_name,
 						  file,
 						  &file_line_number);
@@ -1103,9 +1103,9 @@ cmd_pipeline_table_show(char **tokens,
 	uint32_t n_tokens,
 	char *out,
 	size_t out_size,
-	void *obj)
+	void *obj __rte_unused)
 {
-	struct pipeline *p;
+	struct rte_swx_ctl_pipeline *ctl;
 	char *pipeline_name, *table_name;
 	FILE *file = NULL;
 	int status;
@@ -1116,8 +1116,8 @@ cmd_pipeline_table_show(char **tokens,
 	}
 
 	pipeline_name = tokens[1];
-	p = pipeline_find(obj, pipeline_name);
-	if (!p || !p->ctl) {
+	ctl = rte_swx_ctl_pipeline_find(pipeline_name);
+	if (!ctl) {
 		snprintf(out, out_size, MSG_ARG_INVALID, "pipeline_name");
 		return;
 	}
@@ -1129,7 +1129,7 @@ cmd_pipeline_table_show(char **tokens,
 		return;
 	}
 
-	status = rte_swx_ctl_pipeline_table_fprintf(file, p->ctl, table_name);
+	status = rte_swx_ctl_pipeline_table_fprintf(file, ctl, table_name);
 	if (status)
 		snprintf(out, out_size, MSG_ARG_INVALID, "table_name");
 
@@ -1145,9 +1145,9 @@ cmd_pipeline_selector_group_add(char **tokens,
 	uint32_t n_tokens,
 	char *out,
 	size_t out_size,
-	void *obj)
+	void *obj __rte_unused)
 {
-	struct pipeline *p;
+	struct rte_swx_ctl_pipeline *ctl;
 	char *pipeline_name, *selector_name;
 	uint32_t group_id;
 	int status;
@@ -1158,8 +1158,8 @@ cmd_pipeline_selector_group_add(char **tokens,
 	}
 
 	pipeline_name = tokens[1];
-	p = pipeline_find(obj, pipeline_name);
-	if (!p || !p->ctl) {
+	ctl = rte_swx_ctl_pipeline_find(pipeline_name);
+	if (!ctl) {
 		snprintf(out, out_size, MSG_ARG_INVALID, "pipeline_name");
 		return;
 	}
@@ -1177,7 +1177,7 @@ cmd_pipeline_selector_group_add(char **tokens,
 		return;
 	}
 
-	status = rte_swx_ctl_pipeline_selector_group_add(p->ctl,
+	status = rte_swx_ctl_pipeline_selector_group_add(ctl,
 		selector_name,
 		&group_id);
 	if (status)
@@ -1194,9 +1194,9 @@ cmd_pipeline_selector_group_delete(char **tokens,
 	uint32_t n_tokens,
 	char *out,
 	size_t out_size,
-	void *obj)
+	void *obj __rte_unused)
 {
-	struct pipeline *p;
+	struct rte_swx_ctl_pipeline *ctl;
 	char *pipeline_name, *selector_name;
 	uint32_t group_id;
 	int status;
@@ -1207,8 +1207,8 @@ cmd_pipeline_selector_group_delete(char **tokens,
 	}
 
 	pipeline_name = tokens[1];
-	p = pipeline_find(obj, pipeline_name);
-	if (!p || !p->ctl) {
+	ctl = rte_swx_ctl_pipeline_find(pipeline_name);
+	if (!ctl) {
 		snprintf(out, out_size, MSG_ARG_INVALID, "pipeline_name");
 		return;
 	}
@@ -1231,7 +1231,7 @@ cmd_pipeline_selector_group_delete(char **tokens,
 		return;
 	}
 
-	status = rte_swx_ctl_pipeline_selector_group_delete(p->ctl,
+	status = rte_swx_ctl_pipeline_selector_group_delete(ctl,
 		selector_name,
 		group_id);
 	if (status)
@@ -1402,9 +1402,9 @@ cmd_pipeline_selector_group_member_add(char **tokens,
 	uint32_t n_tokens,
 	char *out,
 	size_t out_size,
-	void *obj)
+	void *obj __rte_unused)
 {
-	struct pipeline *p;
+	struct rte_swx_ctl_pipeline *ctl;
 	char *pipeline_name, *selector_name, *file_name;
 	FILE *file = NULL;
 	uint32_t file_line_number = 0;
@@ -1416,8 +1416,8 @@ cmd_pipeline_selector_group_member_add(char **tokens,
 	}
 
 	pipeline_name = tokens[1];
-	p = pipeline_find(obj, pipeline_name);
-	if (!p || !p->ctl) {
+	ctl = rte_swx_ctl_pipeline_find(pipeline_name);
+	if (!ctl) {
 		snprintf(out, out_size, MSG_ARG_INVALID, "pipeline_name");
 		return;
 	}
@@ -1443,7 +1443,7 @@ cmd_pipeline_selector_group_member_add(char **tokens,
 		return;
 	}
 
-	status = pipeline_selector_group_members_add(p->ctl,
+	status = pipeline_selector_group_members_add(ctl,
 					    selector_name,
 					    file,
 					    &file_line_number);
@@ -1512,9 +1512,9 @@ cmd_pipeline_selector_group_member_delete(char **tokens,
 	uint32_t n_tokens,
 	char *out,
 	size_t out_size,
-	void *obj)
+	void *obj __rte_unused)
 {
-	struct pipeline *p;
+	struct rte_swx_ctl_pipeline *ctl;
 	char *pipeline_name, *selector_name, *file_name;
 	FILE *file = NULL;
 	uint32_t file_line_number = 0;
@@ -1526,8 +1526,8 @@ cmd_pipeline_selector_group_member_delete(char **tokens,
 	}
 
 	pipeline_name = tokens[1];
-	p = pipeline_find(obj, pipeline_name);
-	if (!p || !p->ctl) {
+	ctl = rte_swx_ctl_pipeline_find(pipeline_name);
+	if (!ctl) {
 		snprintf(out, out_size, MSG_ARG_INVALID, "pipeline_name");
 		return;
 	}
@@ -1553,7 +1553,7 @@ cmd_pipeline_selector_group_member_delete(char **tokens,
 		return;
 	}
 
-	status = pipeline_selector_group_members_delete(p->ctl,
+	status = pipeline_selector_group_members_delete(ctl,
 					    selector_name,
 					    file,
 					    &file_line_number);
@@ -1573,9 +1573,9 @@ cmd_pipeline_selector_show(char **tokens,
 	uint32_t n_tokens,
 	char *out,
 	size_t out_size,
-	void *obj)
+	void *obj __rte_unused)
 {
-	struct pipeline *p;
+	struct rte_swx_ctl_pipeline *ctl;
 	char *pipeline_name, *selector_name;
 	FILE *file = NULL;
 	int status;
@@ -1586,8 +1586,8 @@ cmd_pipeline_selector_show(char **tokens,
 	}
 
 	pipeline_name = tokens[1];
-	p = pipeline_find(obj, pipeline_name);
-	if (!p || !p->ctl) {
+	ctl = rte_swx_ctl_pipeline_find(pipeline_name);
+	if (!ctl) {
 		snprintf(out, out_size, MSG_ARG_INVALID, "pipeline_name");
 		return;
 	}
@@ -1600,7 +1600,7 @@ cmd_pipeline_selector_show(char **tokens,
 		return;
 	}
 
-	status = rte_swx_ctl_pipeline_selector_fprintf(file, p->ctl, selector_name);
+	status = rte_swx_ctl_pipeline_selector_fprintf(file, ctl, selector_name);
 	if (status)
 		snprintf(out, out_size, MSG_ARG_INVALID, "selector_name");
 
@@ -1665,9 +1665,9 @@ cmd_pipeline_learner_default(char **tokens,
 			     uint32_t n_tokens,
 			     char *out,
 			     size_t out_size,
-			     void *obj)
+			     void *obj __rte_unused)
 {
-	struct pipeline *p;
+	struct rte_swx_ctl_pipeline *ctl;
 	char *pipeline_name, *learner_name, *file_name;
 	FILE *file = NULL;
 	uint32_t file_line_number = 0;
@@ -1679,8 +1679,8 @@ cmd_pipeline_learner_default(char **tokens,
 	}
 
 	pipeline_name = tokens[1];
-	p = pipeline_find(obj, pipeline_name);
-	if (!p || !p->ctl) {
+	ctl = rte_swx_ctl_pipeline_find(pipeline_name);
+	if (!ctl) {
 		snprintf(out, out_size, MSG_ARG_INVALID, "pipeline_name");
 		return;
 	}
@@ -1694,7 +1694,7 @@ cmd_pipeline_learner_default(char **tokens,
 		return;
 	}
 
-	status = pipeline_learner_default_entry_add(p->ctl,
+	status = pipeline_learner_default_entry_add(ctl,
 						    learner_name,
 						    file,
 						    &file_line_number);
@@ -1714,9 +1714,9 @@ cmd_pipeline_commit(char **tokens,
 	uint32_t n_tokens,
 	char *out,
 	size_t out_size,
-	void *obj)
+	void *obj __rte_unused)
 {
-	struct pipeline *p;
+	struct rte_swx_ctl_pipeline *ctl;
 	char *pipeline_name;
 	int status;
 
@@ -1726,13 +1726,13 @@ cmd_pipeline_commit(char **tokens,
 	}
 
 	pipeline_name = tokens[1];
-	p = pipeline_find(obj, pipeline_name);
-	if (!p || !p->ctl) {
+	ctl = rte_swx_ctl_pipeline_find(pipeline_name);
+	if (!ctl) {
 		snprintf(out, out_size, MSG_ARG_INVALID, "pipeline_name");
 		return;
 	}
 
-	status = rte_swx_ctl_pipeline_commit(p->ctl, 1);
+	status = rte_swx_ctl_pipeline_commit(ctl, 1);
 	if (status)
 		snprintf(out, out_size, "Commit failed. "
 			"Use \"commit\" to retry or \"abort\" to discard the pending work.\n");
@@ -1746,9 +1746,9 @@ cmd_pipeline_abort(char **tokens,
 	uint32_t n_tokens,
 	char *out,
 	size_t out_size,
-	void *obj)
+	void *obj __rte_unused)
 {
-	struct pipeline *p;
+	struct rte_swx_ctl_pipeline *ctl;
 	char *pipeline_name;
 
 	if (n_tokens != 3) {
@@ -1757,13 +1757,13 @@ cmd_pipeline_abort(char **tokens,
 	}
 
 	pipeline_name = tokens[1];
-	p = pipeline_find(obj, pipeline_name);
-	if (!p || !p->ctl) {
+	ctl = rte_swx_ctl_pipeline_find(pipeline_name);
+	if (!ctl) {
 		snprintf(out, out_size, MSG_ARG_INVALID, "pipeline_name");
 		return;
 	}
 
-	rte_swx_ctl_pipeline_abort(p->ctl);
+	rte_swx_ctl_pipeline_abort(ctl);
 }
 
 static const char cmd_pipeline_regrd_help[] =
@@ -1774,9 +1774,9 @@ cmd_pipeline_regrd(char **tokens,
 	uint32_t n_tokens,
 	char *out,
 	size_t out_size,
-	void *obj)
+	void *obj __rte_unused)
 {
-	struct pipeline *p;
+	struct rte_swx_pipeline *p;
 	const char *name;
 	uint64_t value;
 	uint32_t idx;
@@ -1787,8 +1787,8 @@ cmd_pipeline_regrd(char **tokens,
 		return;
 	}
 
-	p = pipeline_find(obj, tokens[1]);
-	if (!p || !p->ctl) {
+	p = rte_swx_pipeline_find(tokens[1]);
+	if (!p) {
 		snprintf(out, out_size, MSG_ARG_INVALID, "pipeline_name");
 		return;
 	}
@@ -1805,7 +1805,7 @@ cmd_pipeline_regrd(char **tokens,
 		return;
 	}
 
-	status = rte_swx_ctl_pipeline_regarray_read(p->p, name, idx, &value);
+	status = rte_swx_ctl_pipeline_regarray_read(p, name, idx, &value);
 	if (status) {
 		snprintf(out, out_size, "Command failed.\n");
 		return;
@@ -1822,9 +1822,9 @@ cmd_pipeline_regwr(char **tokens,
 	uint32_t n_tokens,
 	char *out,
 	size_t out_size,
-	void *obj)
+	void *obj __rte_unused)
 {
-	struct pipeline *p;
+	struct rte_swx_pipeline *p;
 	const char *name;
 	uint64_t value;
 	uint32_t idx;
@@ -1835,8 +1835,8 @@ cmd_pipeline_regwr(char **tokens,
 		return;
 	}
 
-	p = pipeline_find(obj, tokens[1]);
-	if (!p || !p->ctl) {
+	p = rte_swx_pipeline_find(tokens[1]);
+	if (!p) {
 		snprintf(out, out_size, MSG_ARG_INVALID, "pipeline_name");
 		return;
 	}
@@ -1858,7 +1858,7 @@ cmd_pipeline_regwr(char **tokens,
 		return;
 	}
 
-	status = rte_swx_ctl_pipeline_regarray_write(p->p, name, idx, value);
+	status = rte_swx_ctl_pipeline_regarray_write(p, name, idx, value);
 	if (status) {
 		snprintf(out, out_size, "Command failed.\n");
 		return;
@@ -1874,10 +1874,10 @@ cmd_pipeline_meter_profile_add(char **tokens,
 	uint32_t n_tokens,
 	char *out,
 	size_t out_size,
-	void *obj)
+	void *obj __rte_unused)
 {
 	struct rte_meter_trtcm_params params;
-	struct pipeline *p;
+	struct rte_swx_pipeline *p;
 	const char *profile_name;
 	int status;
 
@@ -1886,8 +1886,8 @@ cmd_pipeline_meter_profile_add(char **tokens,
 		return;
 	}
 
-	p = pipeline_find(obj, tokens[1]);
-	if (!p || !p->ctl) {
+	p = rte_swx_pipeline_find(tokens[1]);
+	if (!p) {
 		snprintf(out, out_size, MSG_ARG_INVALID, "pipeline_name");
 		return;
 	}
@@ -1949,7 +1949,7 @@ cmd_pipeline_meter_profile_add(char **tokens,
 		return;
 	}
 
-	status = rte_swx_ctl_meter_profile_add(p->p, profile_name, &params);
+	status = rte_swx_ctl_meter_profile_add(p, profile_name, &params);
 	if (status) {
 		snprintf(out, out_size, "Command failed.\n");
 		return;
@@ -1964,9 +1964,9 @@ cmd_pipeline_meter_profile_delete(char **tokens,
 	uint32_t n_tokens,
 	char *out,
 	size_t out_size,
-	void *obj)
+	void *obj __rte_unused)
 {
-	struct pipeline *p;
+	struct rte_swx_pipeline *p;
 	const char *profile_name;
 	int status;
 
@@ -1975,8 +1975,8 @@ cmd_pipeline_meter_profile_delete(char **tokens,
 		return;
 	}
 
-	p = pipeline_find(obj, tokens[1]);
-	if (!p || !p->ctl) {
+	p = rte_swx_pipeline_find(tokens[1]);
+	if (!p) {
 		snprintf(out, out_size, MSG_ARG_INVALID, "pipeline_name");
 		return;
 	}
@@ -1998,7 +1998,7 @@ cmd_pipeline_meter_profile_delete(char **tokens,
 		return;
 	}
 
-	status = rte_swx_ctl_meter_profile_delete(p->p, profile_name);
+	status = rte_swx_ctl_meter_profile_delete(p, profile_name);
 	if (status) {
 		snprintf(out, out_size, "Command failed.\n");
 		return;
@@ -2014,9 +2014,9 @@ cmd_pipeline_meter_reset(char **tokens,
 	uint32_t n_tokens,
 	char *out,
 	size_t out_size,
-	void *obj)
+	void *obj __rte_unused)
 {
-	struct pipeline *p;
+	struct rte_swx_pipeline *p;
 	const char *name;
 	uint32_t idx0 = 0, idx1 = 0;
 
@@ -2025,8 +2025,8 @@ cmd_pipeline_meter_reset(char **tokens,
 		return;
 	}
 
-	p = pipeline_find(obj, tokens[1]);
-	if (!p || !p->ctl) {
+	p = rte_swx_pipeline_find(tokens[1]);
+	if (!p) {
 		snprintf(out, out_size, MSG_ARG_INVALID, "pipeline_name");
 		return;
 	}
@@ -2066,7 +2066,7 @@ cmd_pipeline_meter_reset(char **tokens,
 	for ( ; idx0 <= idx1; idx0++) {
 		int status;
 
-		status = rte_swx_ctl_meter_reset(p->p, name, idx0);
+		status = rte_swx_ctl_meter_reset(p, name, idx0);
 		if (status) {
 			snprintf(out, out_size, "Command failed for index %u.\n", idx0);
 			return;
@@ -2083,9 +2083,9 @@ cmd_pipeline_meter_set(char **tokens,
 	uint32_t n_tokens,
 	char *out,
 	size_t out_size,
-	void *obj)
+	void *obj __rte_unused)
 {
-	struct pipeline *p;
+	struct rte_swx_pipeline *p;
 	const char *name, *profile_name;
 	uint32_t idx0 = 0, idx1 = 0;
 
@@ -2094,8 +2094,8 @@ cmd_pipeline_meter_set(char **tokens,
 		return;
 	}
 
-	p = pipeline_find(obj, tokens[1]);
-	if (!p || !p->ctl) {
+	p = rte_swx_pipeline_find(tokens[1]);
+	if (!p) {
 		snprintf(out, out_size, MSG_ARG_INVALID, "pipeline_name");
 		return;
 	}
@@ -2142,7 +2142,7 @@ cmd_pipeline_meter_set(char **tokens,
 	for ( ; idx0 <= idx1; idx0++) {
 		int status;
 
-		status = rte_swx_ctl_meter_set(p->p, name, idx0, profile_name);
+		status = rte_swx_ctl_meter_set(p, name, idx0, profile_name);
 		if (status) {
 			snprintf(out, out_size, "Command failed for index %u.\n", idx0);
 			return;
@@ -2159,10 +2159,10 @@ cmd_pipeline_meter_stats(char **tokens,
 	uint32_t n_tokens,
 	char *out,
 	size_t out_size,
-	void *obj)
+	void *obj __rte_unused)
 {
 	struct rte_swx_ctl_meter_stats stats;
-	struct pipeline *p;
+	struct rte_swx_pipeline *p;
 	const char *name;
 	uint32_t idx0 = 0, idx1 = 0;
 
@@ -2171,8 +2171,8 @@ cmd_pipeline_meter_stats(char **tokens,
 		return;
 	}
 
-	p = pipeline_find(obj, tokens[1]);
-	if (!p || !p->ctl) {
+	p = rte_swx_pipeline_find(tokens[1]);
+	if (!p) {
 		snprintf(out, out_size, MSG_ARG_INVALID, "pipeline_name");
 		return;
 	}
@@ -2235,7 +2235,7 @@ cmd_pipeline_meter_stats(char **tokens,
 	for ( ; idx0 <= idx1; idx0++) {
 		int status;
 
-		status = rte_swx_ctl_meter_stats_read(p->p, name, idx0, &stats);
+		status = rte_swx_ctl_meter_stats_read(p, name, idx0, &stats);
 		if (status) {
 			snprintf(out, out_size, "Pipeline meter stats error at index %u.\n", idx0);
 			out_size -= strlen(out);
@@ -2265,10 +2265,10 @@ cmd_pipeline_stats(char **tokens,
 	uint32_t n_tokens,
 	char *out,
 	size_t out_size,
-	void *obj)
+	void *obj __rte_unused)
 {
 	struct rte_swx_ctl_pipeline_info info;
-	struct pipeline *p;
+	struct rte_swx_pipeline *p;
 	uint32_t i;
 	int status;
 
@@ -2277,8 +2277,8 @@ cmd_pipeline_stats(char **tokens,
 		return;
 	}
 
-	p = pipeline_find(obj, tokens[1]);
-	if (!p || !p->ctl) {
+	p = rte_swx_pipeline_find(tokens[1]);
+	if (!p) {
 		snprintf(out, out_size, MSG_ARG_INVALID, "pipeline_name");
 		return;
 	}
@@ -2288,7 +2288,7 @@ cmd_pipeline_stats(char **tokens,
 		return;
 	}
 
-	status = rte_swx_ctl_pipeline_info_get(p->p, &info);
+	status = rte_swx_ctl_pipeline_info_get(p, &info);
 	if (status) {
 		snprintf(out, out_size, "Pipeline info get error.");
 		return;
@@ -2301,7 +2301,7 @@ cmd_pipeline_stats(char **tokens,
 	for (i = 0; i < info.n_ports_in; i++) {
 		struct rte_swx_port_in_stats stats;
 
-		rte_swx_ctl_pipeline_port_in_stats_read(p->p, i, &stats);
+		rte_swx_ctl_pipeline_port_in_stats_read(p, i, &stats);
 
 		snprintf(out, out_size, "\tPort %u:"
 			" packets %" PRIu64
@@ -2319,7 +2319,7 @@ cmd_pipeline_stats(char **tokens,
 	for (i = 0; i < info.n_ports_out; i++) {
 		struct rte_swx_port_out_stats stats;
 
-		rte_swx_ctl_pipeline_port_out_stats_read(p->p, i, &stats);
+		rte_swx_ctl_pipeline_port_out_stats_read(p, i, &stats);
 
 		if (i != info.n_ports_out - 1)
 			snprintf(out, out_size, "\tPort %u:", i);
@@ -2358,13 +2358,13 @@ cmd_pipeline_stats(char **tokens,
 		};
 		uint32_t j;
 
-		status = rte_swx_ctl_table_info_get(p->p, i, &table_info);
+		status = rte_swx_ctl_table_info_get(p, i, &table_info);
 		if (status) {
 			snprintf(out, out_size, "Table info get error.");
 			return;
 		}
 
-		status = rte_swx_ctl_pipeline_table_stats_read(p->p, table_info.name, &stats);
+		status = rte_swx_ctl_pipeline_table_stats_read(p, table_info.name, &stats);
 		if (status) {
 			snprintf(out, out_size, "Table stats read error.");
 			return;
@@ -2382,7 +2382,7 @@ cmd_pipeline_stats(char **tokens,
 		for (j = 0; j < info.n_actions; j++) {
 			struct rte_swx_ctl_action_info action_info;
 
-			status = rte_swx_ctl_action_info_get(p->p, j, &action_info);
+			status = rte_swx_ctl_action_info_get(p, j, &action_info);
 			if (status) {
 				snprintf(out, out_size, "Action info get error.");
 				return;
@@ -2410,13 +2410,13 @@ cmd_pipeline_stats(char **tokens,
 		};
 		uint32_t j;
 
-		status = rte_swx_ctl_learner_info_get(p->p, i, &learner_info);
+		status = rte_swx_ctl_learner_info_get(p, i, &learner_info);
 		if (status) {
 			snprintf(out, out_size, "Learner table info get error.");
 			return;
 		}
 
-		status = rte_swx_ctl_pipeline_learner_stats_read(p->p, learner_info.name, &stats);
+		status = rte_swx_ctl_pipeline_learner_stats_read(p, learner_info.name, &stats);
 		if (status) {
 			snprintf(out, out_size, "Learner table stats read error.");
 			return;
@@ -2442,7 +2442,7 @@ cmd_pipeline_stats(char **tokens,
 		for (j = 0; j < info.n_actions; j++) {
 			struct rte_swx_ctl_action_info action_info;
 
-			status = rte_swx_ctl_action_info_get(p->p, j, &action_info);
+			status = rte_swx_ctl_action_info_get(p, j, &action_info);
 			if (status) {
 				snprintf(out, out_size, "Action info get error.");
 				return;
@@ -2466,10 +2466,10 @@ cmd_pipeline_mirror_session(char **tokens,
 	uint32_t n_tokens,
 	char *out,
 	size_t out_size,
-	void *obj)
+	void *obj __rte_unused)
 {
 	struct rte_swx_pipeline_mirroring_session_params params;
-	struct pipeline *p;
+	struct rte_swx_pipeline *p;
 	uint32_t session_id = 0;
 	int status;
 
@@ -2483,8 +2483,8 @@ cmd_pipeline_mirror_session(char **tokens,
 		return;
 	}
 
-	p = pipeline_find(obj, tokens[1]);
-	if (!p || !p->ctl) {
+	p = rte_swx_pipeline_find(tokens[1]);
+	if (!p) {
 		snprintf(out, out_size, MSG_ARG_INVALID, "pipeline_name");
 		return;
 	}
@@ -2538,7 +2538,7 @@ cmd_pipeline_mirror_session(char **tokens,
 		return;
 	}
 
-	status = rte_swx_ctl_pipeline_mirroring_session_set(p->p, session_id, &params);
+	status = rte_swx_ctl_pipeline_mirroring_session_set(p, session_id, &params);
 	if (status) {
 		snprintf(out, out_size, "Command failed!\n");
 		return;
@@ -2546,21 +2546,25 @@ cmd_pipeline_mirror_session(char **tokens,
 }
 
 static const char cmd_thread_pipeline_enable_help[] =
-"thread <thread_id> pipeline <pipeline_name> enable\n";
+"thread <thread_id> pipeline <pipeline_name> enable [ period <timer_period_ms> ]\n";
+
+#ifndef TIMER_PERIOD_MS_DEFAULT
+#define TIMER_PERIOD_MS_DEFAULT 10
+#endif
 
 static void
 cmd_thread_pipeline_enable(char **tokens,
 	uint32_t n_tokens,
 	char *out,
 	size_t out_size,
-	void *obj)
+	void *obj __rte_unused)
 {
 	char *pipeline_name;
-	struct pipeline *p;
-	uint32_t thread_id;
+	struct rte_swx_pipeline *p;
+	uint32_t thread_id, timer_period_ms = TIMER_PERIOD_MS_DEFAULT;
 	int status;
 
-	if (n_tokens != 5) {
+	if ((n_tokens != 5) && (n_tokens != 7)) {
 		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
 		return;
 	}
@@ -2576,8 +2580,8 @@ cmd_thread_pipeline_enable(char **tokens,
 	}
 
 	pipeline_name = tokens[3];
-	p = pipeline_find(obj, pipeline_name);
-	if (!p || !p->ctl) {
+	p = rte_swx_pipeline_find(pipeline_name);
+	if (!p) {
 		snprintf(out, out_size, MSG_ARG_INVALID, "pipeline_name");
 		return;
 	}
@@ -2587,7 +2591,19 @@ cmd_thread_pipeline_enable(char **tokens,
 		return;
 	}
 
-	status = thread_pipeline_enable(thread_id, obj, pipeline_name);
+	if (n_tokens == 7) {
+		if (strcmp(tokens[5], "period") != 0) {
+			snprintf(out, out_size, MSG_ARG_NOT_FOUND, "period");
+			return;
+		}
+
+		if (parser_read_uint32(&timer_period_ms, tokens[6]) != 0) {
+			snprintf(out, out_size, MSG_ARG_INVALID, "timer_period_ms");
+			return;
+		}
+	}
+
+	status = thread_pipeline_enable(thread_id, p, timer_period_ms);
 	if (status) {
 		snprintf(out, out_size, MSG_CMD_FAIL, "thread pipeline enable");
 		return;
@@ -2602,9 +2618,9 @@ cmd_thread_pipeline_disable(char **tokens,
 	uint32_t n_tokens,
 	char *out,
 	size_t out_size,
-	void *obj)
+	void *obj __rte_unused)
 {
-	struct pipeline *p;
+	struct rte_swx_pipeline *p;
 	char *pipeline_name;
 	uint32_t thread_id;
 	int status;
@@ -2625,8 +2641,8 @@ cmd_thread_pipeline_disable(char **tokens,
 	}
 
 	pipeline_name = tokens[3];
-	p = pipeline_find(obj, pipeline_name);
-	if (!p || !p->ctl) {
+	p = rte_swx_pipeline_find(pipeline_name);
+	if (!p) {
 		snprintf(out, out_size, MSG_ARG_INVALID, "pipeline_name");
 		return;
 	}
@@ -2636,7 +2652,7 @@ cmd_thread_pipeline_disable(char **tokens,
 		return;
 	}
 
-	status = thread_pipeline_disable(thread_id, obj, pipeline_name);
+	status = thread_pipeline_disable(thread_id, p);
 	if (status) {
 		snprintf(out, out_size, MSG_CMD_FAIL,
 			"thread pipeline disable");
