@@ -84,6 +84,8 @@ API Changes
    Also, make sure to start the actual text at the margin.
    =======================================================
 
+* raw/ifgpa: The function ``rte_pmd_ifpga_get_pci_bus`` has been removed.
+
 
 ABI Changes
 -----------

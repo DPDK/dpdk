@@ -3,7 +3,6 @@ DPDK_23 {
 
 	rte_pmd_ifpga_cleanup;
 	rte_pmd_ifpga_get_dev_id;
-	rte_pmd_ifpga_get_pci_bus;
 	rte_pmd_ifpga_get_phy_info;
 	rte_pmd_ifpga_get_property;
 	rte_pmd_ifpga_get_rsu_status;

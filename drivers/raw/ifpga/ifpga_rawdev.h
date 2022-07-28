@@ -91,7 +91,6 @@ int
 ifpga_unregister_msix_irq(struct ifpga_rawdev *dev, enum ifpga_irq_type type,
 		int vec_start, rte_intr_callback_fn handler, void *arg);
 
-struct rte_pci_bus *ifpga_get_pci_bus(void);
 int ifpga_rawdev_partial_reconfigure(struct rte_rawdev *dev, int port,
 	const char *file);
 void ifpga_rawdev_cleanup(void);

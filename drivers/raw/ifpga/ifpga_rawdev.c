@@ -10,8 +10,8 @@
 #include <fcntl.h>
 #include <sys/ioctl.h>
 #include <sys/epoll.h>
+
 #include <rte_log.h>
-#include <rte_bus.h>
 #include <rte_malloc.h>
 #include <rte_devargs.h>
 #include <rte_memcpy.h>
@@ -1887,11 +1887,6 @@ RTE_PMD_REGISTER_PARAM_STRING(ifpga_rawdev_cfg,
 	"ifpga=<string> "
 	"port=<int> "
 	"afu_bts=<path>");
-
-struct rte_pci_bus *ifpga_get_pci_bus(void)
-{
-	return rte_ifpga_rawdev_pmd.bus;
-}
 
 int ifpga_rawdev_partial_reconfigure(struct rte_rawdev *dev, int port,
 	const char *file)

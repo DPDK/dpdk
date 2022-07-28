@@ -402,12 +402,6 @@ rte_pmd_ifpga_reload(uint16_t dev_id, int type, int page)
 	return opae_mgr_reload(adapter->mgr, type, page);
 }
 
-const struct rte_pci_bus *
-rte_pmd_ifpga_get_pci_bus(void)
-{
-	return ifpga_get_pci_bus();
-}
-
 int
 rte_pmd_ifpga_partial_reconfigure(uint16_t dev_id, int port, const char *file)
 {
