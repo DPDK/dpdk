@@ -30,55 +30,55 @@
  * This feature indicates that the device supports administration virtqueue
  * negotiation.
  */
-#define VIRTIO_F_ADMIN_VQ               40
+#define VIRTIO_F_ADMIN_VQ               41
 
 /* We support indirect buffer descriptors for admin queue */
-#define VIRTIO_F_ADMIN_VQ_INDIRECT_DESC 41
+#define VIRTIO_F_ADMIN_VQ_INDIRECT_DESC 42
 
 /* We support in-order buffer consumptions for admin queue */
-#define VIRTIO_F_ADMIN_VQ_IN_ORDER      42
+#define VIRTIO_F_ADMIN_VQ_IN_ORDER      43
 
 /*
  * This feature indicates that the device supports administrating migration
  * operations for its managed functions using the admin queue of the parent
  * device.
  */
-#define VIRTIO_F_ADMIN_MIGRATION        43
+#define VIRTIO_F_ADMIN_MIGRATION        44
 
 /*
  * This feature indicates that the device supports internal state tracking
  * mechanism for its managed devices, while managed device internal status is
  * not VIRTIO_S_FREEZED.
  */
-#define VIRTIO_F_ADMIN_MIGRATION_DYNAMIC_INTERNAL_STATE_TRACK   44
+#define VIRTIO_F_ADMIN_MIGRATION_DYNAMIC_INTERNAL_STATE_TRACK   45
 
 /*
  * This feature indicates that the device supports dirty page tracking in push
  * map mode with bit granularity for its managed devices using the admin
  * virtq of the parent device.
  */
-#define VIRTIO_F_ADMIN_DIRTY_PAGE_PUSH_BITMAP_TRACK 45
+#define VIRTIO_F_ADMIN_DIRTY_PAGE_PUSH_BITMAP_TRACK 46
 
 /*
  * This feature indicates that the device supports dirty page tracking in push
  * map mode with byte granularity for its managed devices using the admin
  * virtq of the parent device.
  */
-#define VIRTIO_F_ADMIN_DIRTY_PAGE_PUSH_BYTEMAP_TRACK 46
+#define VIRTIO_F_ADMIN_DIRTY_PAGE_PUSH_BYTEMAP_TRACK 47
 
 /*
  * This feature indicates that the device supports dirty page tracking in pull
  * map mode with bit granularity for its managed devices using the admin
  * virtq of the parent device.
  */
-#define VIRTIO_F_ADMIN_DIRTY_PAGE_PULL_BITMAP_TRACK 47
+#define VIRTIO_F_ADMIN_DIRTY_PAGE_PULL_BITMAP_TRACK 48
 
 /*
  * This feature indicates that the device supports dirty page tracking in pull
  * map mode with byte granularity for its managed devices using the
  * admin virtq of the parent device.
  */
-#define VIRTIO_F_ADMIN_DIRTY_PAGE_PULL_BYTEMAP_TRACK 48
+#define VIRTIO_F_ADMIN_DIRTY_PAGE_PULL_BYTEMAP_TRACK 49
 
 /*
  * Admin virtqueue data structures
