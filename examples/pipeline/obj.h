@@ -63,9 +63,6 @@ struct link_params_rss {
 };
 
 struct link_params {
-	const char *dev_name;
-	uint16_t port_id; /**< Valid only when *dev_name* is NULL. */
-
 	struct {
 		uint32_t n_queues;
 		uint32_t queue_size;
@@ -84,7 +81,6 @@ struct link_params {
 struct link {
 	TAILQ_ENTRY(link) node;
 	char name[NAME_SIZE];
-	char dev_name[NAME_SIZE];
 	uint16_t port_id;
 	uint32_t n_rxq;
 	uint32_t n_txq;

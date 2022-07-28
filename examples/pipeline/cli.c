@@ -106,22 +106,6 @@ parser_read_uint32(uint32_t *value, const char *p)
 	return 0;
 }
 
-static int
-parser_read_uint16(uint16_t *value, const char *p)
-{
-	uint64_t val = 0;
-	int ret = parser_read_uint64(&val, p);
-
-	if (ret < 0)
-		return ret;
-
-	if (val > UINT16_MAX)
-		return -ERANGE;
-
-	*value = val;
-	return 0;
-}
-
 #define PARSE_DELIMITER " \f\n\r\t\v"
 
 static int
@@ -230,16 +214,15 @@ cmd_mempool(char **tokens,
 	}
 }
 
-static const char cmd_link_help[] =
-"link <link_name>\n"
-"   dev <device_name> | port <port_id>\n"
+static const char cmd_ethdev_help[] =
+"ethdev <ethdev_name>\n"
 "   rxq <n_queues> <queue_size> <mempool_name>\n"
 "   txq <n_queues> <queue_size>\n"
 "   promiscuous on | off\n"
 "   [rss <qid_0> ... <qid_n>]\n";
 
 static void
-cmd_link(char **tokens,
+cmd_ethdev(char **tokens,
 	uint32_t n_tokens,
 	char *out,
 	size_t out_size,
@@ -252,65 +235,51 @@ cmd_link(char **tokens,
 
 	memset(&p, 0, sizeof(p));
 
-	if ((n_tokens < 13) || (n_tokens > 14 + LINK_RXQ_RSS_MAX)) {
+	if ((n_tokens < 11) || (n_tokens > 12 + LINK_RXQ_RSS_MAX)) {
 		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
 		return;
 	}
 	name = tokens[1];
 
-	if (strcmp(tokens[2], "dev") == 0)
-		p.dev_name = tokens[3];
-	else if (strcmp(tokens[2], "port") == 0) {
-		p.dev_name = NULL;
-
-		if (parser_read_uint16(&p.port_id, tokens[3]) != 0) {
-			snprintf(out, out_size, MSG_ARG_INVALID, "port_id");
-			return;
-		}
-	} else {
-		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "dev or port");
-		return;
-	}
-
-	if (strcmp(tokens[4], "rxq") != 0) {
+	if (strcmp(tokens[2], "rxq") != 0) {
 		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "rxq");
 		return;
 	}
 
-	if (parser_read_uint32(&p.rx.n_queues, tokens[5]) != 0) {
+	if (parser_read_uint32(&p.rx.n_queues, tokens[3]) != 0) {
 		snprintf(out, out_size, MSG_ARG_INVALID, "n_queues");
 		return;
 	}
-	if (parser_read_uint32(&p.rx.queue_size, tokens[6]) != 0) {
+	if (parser_read_uint32(&p.rx.queue_size, tokens[4]) != 0) {
 		snprintf(out, out_size, MSG_ARG_INVALID, "queue_size");
 		return;
 	}
 
-	p.rx.mempool_name = tokens[7];
+	p.rx.mempool_name = tokens[5];
 
-	if (strcmp(tokens[8], "txq") != 0) {
+	if (strcmp(tokens[6], "txq") != 0) {
 		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "txq");
 		return;
 	}
 
-	if (parser_read_uint32(&p.tx.n_queues, tokens[9]) != 0) {
+	if (parser_read_uint32(&p.tx.n_queues, tokens[7]) != 0) {
 		snprintf(out, out_size, MSG_ARG_INVALID, "n_queues");
 		return;
 	}
 
-	if (parser_read_uint32(&p.tx.queue_size, tokens[10]) != 0) {
+	if (parser_read_uint32(&p.tx.queue_size, tokens[8]) != 0) {
 		snprintf(out, out_size, MSG_ARG_INVALID, "queue_size");
 		return;
 	}
 
-	if (strcmp(tokens[11], "promiscuous") != 0) {
+	if (strcmp(tokens[9], "promiscuous") != 0) {
 		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "promiscuous");
 		return;
 	}
 
-	if (strcmp(tokens[12], "on") == 0)
+	if (strcmp(tokens[10], "on") == 0)
 		p.promiscuous = 1;
-	else if (strcmp(tokens[12], "off") == 0)
+	else if (strcmp(tokens[10], "off") == 0)
 		p.promiscuous = 0;
 	else {
 		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "on or off");
@@ -319,10 +288,10 @@ cmd_link(char **tokens,
 
 	/* RSS */
 	p.rx.rss = NULL;
-	if (n_tokens > 13) {
+	if (n_tokens > 11) {
 		uint32_t queue_id, i;
 
-		if (strcmp(tokens[13], "rss") != 0) {
+		if (strcmp(tokens[11], "rss") != 0) {
 			snprintf(out, out_size, MSG_ARG_NOT_FOUND, "rss");
 			return;
 		}
@@ -330,7 +299,7 @@ cmd_link(char **tokens,
 		p.rx.rss = &rss;
 
 		rss.n_queues = 0;
-		for (i = 14; i < n_tokens; i++) {
+		for (i = 12; i < n_tokens; i++) {
 			if (parser_read_uint32(&queue_id, tokens[i]) != 0) {
 				snprintf(out, out_size, MSG_ARG_INVALID,
 					"queue_id");
@@ -406,10 +375,10 @@ print_link_info(struct link *link, char *out, size_t out_size)
 }
 
 /*
- * link show [<link_name>]
+ * ethdev show [<ethdev_name>]
  */
 static void
-cmd_link_show(char **tokens,
+cmd_ethdev_show(char **tokens,
 	      uint32_t n_tokens,
 	      char *out,
 	      size_t out_size,
@@ -2675,7 +2644,7 @@ cmd_help(char **tokens,
 			"Type 'help <command>' for command details.\n\n"
 			"List of commands:\n"
 			"\tmempool\n"
-			"\tlink\n"
+			"\tethdev\n"
 			"\ttap\n"
 			"\tpipeline codegen\n"
 			"\tpipeline libbuild\n"
@@ -2711,8 +2680,8 @@ cmd_help(char **tokens,
 		return;
 	}
 
-	if (strcmp(tokens[0], "link") == 0) {
-		snprintf(out, out_size, "\n%s\n", cmd_link_help);
+	if (strcmp(tokens[0], "ethdev") == 0) {
+		snprintf(out, out_size, "\n%s\n", cmd_ethdev_help);
 		return;
 	}
 
@@ -2966,13 +2935,13 @@ cli_process(char *in, char *out, size_t out_size, void *obj)
 		return;
 	}
 
-	if (strcmp(tokens[0], "link") == 0) {
+	if (strcmp(tokens[0], "ethdev") == 0) {
 		if ((n_tokens >= 2) && (strcmp(tokens[1], "show") == 0)) {
-			cmd_link_show(tokens, n_tokens, out, out_size, obj);
+			cmd_ethdev_show(tokens, n_tokens, out, out_size, obj);
 			return;
 		}
 
-		cmd_link(tokens, n_tokens, out, out_size, obj);
+		cmd_ethdev(tokens, n_tokens, out, out_size, obj);
 		return;
 	}
 

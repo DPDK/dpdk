@@ -181,7 +181,7 @@ link_create(struct obj *obj, const char *name, struct link_params *params)
 	struct mempool *mempool;
 	uint32_t cpu_id, i;
 	int status;
-	uint16_t port_id;
+	uint16_t port_id = 0;
 
 	/* Check input params */
 	if ((name == NULL) ||
@@ -193,16 +193,9 @@ link_create(struct obj *obj, const char *name, struct link_params *params)
 		(params->tx.queue_size == 0))
 		return NULL;
 
-	port_id = params->port_id;
-	if (params->dev_name) {
-		status = rte_eth_dev_get_port_by_name(params->dev_name,
-			&port_id);
-
-		if (status)
-			return NULL;
-	} else
-		if (!rte_eth_dev_is_valid_port(port_id))
-			return NULL;
+	status = rte_eth_dev_get_port_by_name(name, &port_id);
+	if (status)
+		return NULL;
 
 	if (rte_eth_dev_info_get(port_id, &port_info) != 0)
 		return NULL;
@@ -315,7 +308,6 @@ link_create(struct obj *obj, const char *name, struct link_params *params)
 	/* Node fill in */
 	strlcpy(link->name, name, sizeof(link->name));
 	link->port_id = port_id;
-	rte_eth_dev_get_name_by_port(port_id, link->dev_name);
 	link->n_rxq = params->rx.n_queues;
 	link->n_txq = params->tx.n_queues;
 
