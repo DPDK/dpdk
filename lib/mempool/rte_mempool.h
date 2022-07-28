@@ -329,10 +329,6 @@ struct rte_mempool {
 	(sizeof(*(mp)) + (((cs) == 0) ? 0 : \
 	(sizeof(struct rte_mempool_cache) * RTE_MAX_LCORE)))
 
-/** Deprecated. Use RTE_MEMPOOL_HEADER_SIZE() for internal purposes only. */
-#define MEMPOOL_HEADER_SIZE(mp, cs) \
-	RTE_DEPRECATED(MEMPOOL_HEADER_SIZE) RTE_MEMPOOL_HEADER_SIZE(mp, cs)
-
 /* return the header of a mempool object (internal) */
 static inline struct rte_mempool_objhdr *
 rte_mempool_get_header(void *obj)

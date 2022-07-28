@@ -36,10 +36,6 @@ Deprecation Notices
   ``__atomic_thread_fence`` must be used for patches that need to be merged in
   20.08 onwards. This change will not introduce any performance degradation.
 
-* mempool: Helper macro ``MEMPOOL_HEADER_SIZE()`` is deprecated and will
-  be removed in DPDK 22.11. The replacement macro
-  ``RTE_MEMPOOL_HEADER_SIZE()`` is internal only.
-
 * mempool: Macro to register mempool driver ``MEMPOOL_REGISTER_OPS()`` is
   deprecated and will be removed in DPDK 22.11. Use replacement macro
   ``RTE_MEMPOOL_REGISTER_OPS()``.

@@ -92,6 +92,9 @@ API Changes
   in the future. Applications can use ``devtools/cocci/func_or_ret.cocci``
   to update their code.
 
+* mempool: Deprecated helper macro ``MEMPOOL_HEADER_SIZE()`` is removed.
+  The replacement macro ``RTE_MEMPOOL_HEADER_SIZE()`` is internal only.
+
 * bus: Registering a bus has been marked as an internal API.
   External users may still register their bus using the ``bus_driver.h``
   driver header (see ``enable_driver_sdk`` meson option).
