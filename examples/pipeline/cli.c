@@ -466,32 +466,6 @@ cmd_ring(char **tokens,
 	}
 }
 
-static const char cmd_tap_help[] =
-"tap <tap_name>\n";
-
-static void
-cmd_tap(char **tokens,
-	uint32_t n_tokens,
-	char *out,
-	size_t out_size,
-	void *obj)
-{
-	struct tap *tap;
-	char *name;
-
-	if (n_tokens < 2) {
-		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
-		return;
-	}
-	name = tokens[1];
-
-	tap = tap_create(obj, name);
-	if (tap == NULL) {
-		snprintf(out, out_size, MSG_CMD_FAIL, tokens[0]);
-		return;
-	}
-}
-
 static const char cmd_pipeline_codegen_help[] =
 "pipeline codegen <spec_file> <code_file>\n";
 
@@ -2645,7 +2619,6 @@ cmd_help(char **tokens,
 			"List of commands:\n"
 			"\tmempool\n"
 			"\tethdev\n"
-			"\ttap\n"
 			"\tpipeline codegen\n"
 			"\tpipeline libbuild\n"
 			"\tpipeline build\n"
@@ -2687,11 +2660,6 @@ cmd_help(char **tokens,
 
 	if (strcmp(tokens[0], "ring") == 0) {
 		snprintf(out, out_size, "\n%s\n", cmd_ring_help);
-		return;
-	}
-
-	if (strcmp(tokens[0], "tap") == 0) {
-		snprintf(out, out_size, "\n%s\n", cmd_tap_help);
 		return;
 	}
 
@@ -2947,11 +2915,6 @@ cli_process(char *in, char *out, size_t out_size, void *obj)
 
 	if (strcmp(tokens[0], "ring") == 0) {
 		cmd_ring(tokens, n_tokens, out, out_size, obj);
-		return;
-	}
-
-	if (strcmp(tokens[0], "tap") == 0) {
-		cmd_tap(tokens, n_tokens, out, out_size, obj);
 		return;
 	}
 

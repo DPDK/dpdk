@@ -121,22 +121,4 @@ ring_create(struct obj *obj,
 struct ring *
 ring_find(struct obj *obj, const char *name);
 
-/*
- * tap
- */
-struct tap {
-	TAILQ_ENTRY(tap) node;
-	char name[NAME_SIZE];
-	int fd;
-};
-
-struct tap *
-tap_find(struct obj *obj, const char *name);
-
-struct tap *
-tap_next(struct obj *obj, struct tap *tap);
-
-struct tap *
-tap_create(struct obj *obj, const char *name);
-
 #endif /* _INCLUDE_OBJ_H_ */
