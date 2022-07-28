@@ -23,7 +23,6 @@
 #include <rte_devargs.h>
 
 #include "private.h"
-#include "rte_bus_auxiliary.h"
 
 static struct rte_devargs *
 auxiliary_devargs_lookup(const char *name)
@@ -259,7 +258,6 @@ void
 rte_auxiliary_register(struct rte_auxiliary_driver *driver)
 {
 	TAILQ_INSERT_TAIL(&auxiliary_bus.driver_list, driver, next);
-	driver->bus = &auxiliary_bus;
 }
 
 /* Unregister a driver */
@@ -267,7 +265,6 @@ void
 rte_auxiliary_unregister(struct rte_auxiliary_driver *driver)
 {
 	TAILQ_REMOVE(&auxiliary_bus.driver_list, driver, next);
-	driver->bus = NULL;
 }
 
 /* Add a device to auxiliary bus */

@@ -8,7 +8,7 @@
 
 #include <rte_malloc.h>
 #include <rte_errno.h>
-#include <rte_bus_auxiliary.h>
+#include <bus_auxiliary_driver.h>
 #include <rte_common.h>
 #include "eal_filesystem.h"
 

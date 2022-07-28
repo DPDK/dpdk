@@ -10,7 +10,6 @@
 #include <rte_kvargs.h>
 
 #include "private.h"
-#include "rte_bus_auxiliary.h"
 
 enum auxiliary_params {
 	RTE_AUXILIARY_PARAM_NAME,

@@ -20,7 +20,7 @@
 #include <ethdev_pci.h>
 #include <rte_pci.h>
 #include <rte_bus_pci.h>
-#include <rte_bus_auxiliary.h>
+#include <bus_auxiliary_driver.h>
 #include <rte_common.h>
 #include <rte_kvargs.h>
 #include <rte_rwlock.h>
