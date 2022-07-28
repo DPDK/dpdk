@@ -117,9 +117,9 @@ ifpga_scan_one(struct rte_rawdev *rawdev,
 
 	if (rte_kvargs_count(kvlist, IFPGA_ARG_PORT) == 1) {
 		if (rte_kvargs_process(kvlist, IFPGA_ARG_PORT,
-		&rte_ifpga_get_integer32_arg, &afu_pr_conf.afu_id.port) < 0) {
-			IFPGA_BUS_ERR("error to parse %s",
-				     IFPGA_ARG_PORT);
+				ifpga_get_integer32_arg,
+				&afu_pr_conf.afu_id.port) < 0) {
+			IFPGA_BUS_ERR("error to parse %s", IFPGA_ARG_PORT);
 			goto end;
 		}
 	} else {
@@ -130,9 +130,8 @@ ifpga_scan_one(struct rte_rawdev *rawdev,
 
 	if (rte_kvargs_count(kvlist, IFPGA_AFU_BTS) == 1) {
 		if (rte_kvargs_process(kvlist, IFPGA_AFU_BTS,
-				       &rte_ifpga_get_string_arg, &path) < 0) {
-			IFPGA_BUS_ERR("Failed to parse %s",
-				     IFPGA_AFU_BTS);
+				ifpga_get_string_arg, &path) < 0) {
+			IFPGA_BUS_ERR("Failed to parse %s", IFPGA_AFU_BTS);
 			goto end;
 		}
 		afu_pr_conf.pr_enable = 1;
@@ -228,7 +227,7 @@ ifpga_scan(void)
 
 		if (rte_kvargs_count(kvlist, IFPGA_ARG_NAME) == 1) {
 			if (rte_kvargs_process(kvlist, IFPGA_ARG_NAME,
-				       &rte_ifpga_get_string_arg, &name) < 0) {
+					ifpga_get_string_arg, &name) < 0) {
 				IFPGA_BUS_ERR("error to parse %s",
 				     IFPGA_ARG_NAME);
 				goto end;

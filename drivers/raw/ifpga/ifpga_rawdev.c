@@ -1754,7 +1754,7 @@ ifpga_vdev_parse_devargs(struct rte_devargs *devargs,
 
 	if (rte_kvargs_count(kvlist, IFPGA_ARG_PORT) == 1) {
 		if (rte_kvargs_process(kvlist, IFPGA_ARG_PORT,
-			&rte_ifpga_get_integer32_arg, &port) < 0) {
+				ifpga_get_integer32_arg, &port) < 0) {
 			IFPGA_RAWDEV_PMD_ERR("error to parse %s",
 				IFPGA_ARG_PORT);
 			goto end;
