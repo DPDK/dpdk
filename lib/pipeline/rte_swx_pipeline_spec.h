@@ -1,6 +1,13 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  * Copyright(c) 2022 Intel Corporation
  */
+#ifndef __INCLUDE_RTE_SWX_PIPELINE_SPEC_H__
+#define __INCLUDE_RTE_SWX_PIPELINE_SPEC_H__
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <stdint.h>
 #include <stdio.h>
 
@@ -204,6 +211,38 @@ struct pipeline_spec {
 	uint32_t n_apply;
 };
 
+/*
+ * Mirroring:
+ *      mirroring slots <n_slots> sessions <n_sessions>
+ *
+ * Input ports:
+ *      port in <port_id> ethdev <ethdev_name> rxq <queue_id> bsz <burst_size>
+ *      port in <port_id> ring <ring_name> bsz <burst_size>
+ *      port in <port_id> source mempool <mempool_name> file <file_name> loop <n_loops>
+ *                               packets <n_pkts_max>
+ *      port in <port_id> fd <file_descriptor> mtu <mtu> mempool <mempool_name> bsz <burst_size>
+ *
+ * Output ports:
+ *      port out <port_id> ethdev <ethdev_name> txq <queue_id> bsz <burst_size>
+ *      port out <port_id> ring <ring_name> bsz <burst_size>
+ *      port out <port_id> sink file <file_name> | none
+ *      port out <port_id> fd <file_descriptor> bsz <burst_size>
+ */
+struct pipeline_iospec {
+	struct rte_swx_pipeline_mirroring_params mirroring_params;
+
+	uint32_t *port_in_id;
+	const char **port_in_type;
+	void **port_in_params;
+
+	uint32_t *port_out_id;
+	const char **port_out_type;
+	void **port_out_params;
+
+	uint32_t n_ports_in;
+	uint32_t n_ports_out;
+};
+
 void
 pipeline_spec_free(struct pipeline_spec *s);
 
@@ -220,3 +259,22 @@ int
 pipeline_spec_configure(struct rte_swx_pipeline *p,
 			struct pipeline_spec *s,
 			const char **err_msg);
+
+void
+pipeline_iospec_free(struct pipeline_iospec *s);
+
+struct pipeline_iospec *
+pipeline_iospec_parse(FILE *spec,
+		      uint32_t *err_line,
+		      const char **err_msg);
+
+int
+pipeline_iospec_configure(struct rte_swx_pipeline *p,
+			  struct pipeline_iospec *s,
+			  const char **err_msg);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif
