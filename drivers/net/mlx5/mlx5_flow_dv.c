@@ -13756,6 +13756,7 @@ flow_dv_translate(struct rte_eth_dev *dev,
 		case RTE_FLOW_ITEM_TYPE_ESP:
 			flow_dv_translate_item_esp(match_mask, match_value,
 						   items, tunnel);
+			matcher.priority = MLX5_PRIORITY_MAP_L4;
 			last_item = MLX5_FLOW_ITEM_ESP;
 			break;
 		case RTE_FLOW_ITEM_TYPE_PORT_ID:
