@@ -643,10 +643,6 @@ skip_parse:
 		if (identifier && da.bus != next)
 			continue;
 
-		/* Skip buses that don't have iterate method */
-		if (!next->dev_iterate)
-			continue;
-
 		snprintf(devstr, sizeof(devstr), "bus=%s", next->name);
 		RTE_DEV_FOREACH(dev, devstr, &dev_iter) {
 
