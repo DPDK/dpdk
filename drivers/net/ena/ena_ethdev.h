@@ -14,7 +14,7 @@
 #include <rte_pci.h>
 #include <bus_pci_driver.h>
 #include <rte_timer.h>
-#include <rte_dev.h>
+#include <dev_driver.h>
 #include <rte_net.h>
 
 #include "ena_com.h"

@@ -98,6 +98,8 @@ API Changes
   ``vdev``, ``vmbus`` buses has been marked as an internal API.
   External users may still register their driver using the associated driver
   headers (see ``enable_driver_sdk`` meson option).
+  The ``rte_driver`` object is now opaque and must be manipulated through added
+  accessors.
 
 * raw/ifgpa: The function ``rte_pmd_ifpga_get_pci_bus`` has been removed.
 

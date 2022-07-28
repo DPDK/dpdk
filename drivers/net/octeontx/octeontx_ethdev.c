@@ -16,7 +16,7 @@
 #include <bus_vdev_driver.h>
 #include <rte_cycles.h>
 #include <rte_debug.h>
-#include <rte_dev.h>
+#include <dev_driver.h>
 #include <rte_devargs.h>
 #include <rte_kvargs.h>
 #include <rte_malloc.h>

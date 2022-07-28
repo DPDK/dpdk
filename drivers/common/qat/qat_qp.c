@@ -4,7 +4,7 @@
 
 #include <rte_common.h>
 #include <rte_cycles.h>
-#include <rte_dev.h>
+#include <dev_driver.h>
 #include <rte_malloc.h>
 #include <rte_memzone.h>
 #include <rte_pci.h>

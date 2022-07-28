@@ -24,7 +24,7 @@
 #include <rte_malloc.h>
 #include <rte_memcpy.h>
 #include <rte_alarm.h>
-#include <rte_dev.h>
+#include <dev_driver.h>
 #include <rte_tailq.h>
 #include <rte_hash_crc.h>
 #include <rte_bitmap.h>

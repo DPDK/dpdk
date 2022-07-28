@@ -7,7 +7,7 @@
 #include <rte_crypto.h>
 #include <rte_cryptodev.h>
 #include <cryptodev_pmd.h>
-#include <rte_dev.h>
+#include <dev_driver.h>
 #include <rte_pci.h>
 
 #include "cn10k_cryptodev.h"

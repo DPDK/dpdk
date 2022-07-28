@@ -18,7 +18,7 @@
 #include <rte_string_fns.h>
 #include <rte_cycles.h>
 #include <rte_kvargs.h>
-#include <rte_dev.h>
+#include <dev_driver.h>
 #include <ethdev_driver.h>
 #include <rte_mbuf_pool_ops.h>
 

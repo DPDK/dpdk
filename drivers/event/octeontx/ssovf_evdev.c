@@ -8,7 +8,7 @@
 #include <rte_common.h>
 #include <cryptodev_pmd.h>
 #include <rte_debug.h>
-#include <rte_dev.h>
+#include <dev_driver.h>
 #include <rte_eal.h>
 #include <ethdev_driver.h>
 #include <rte_event_eth_rx_adapter.h>

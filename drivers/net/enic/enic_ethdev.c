@@ -6,7 +6,7 @@
 #include <stdio.h>
 #include <stdint.h>
 
-#include <rte_dev.h>
+#include <dev_driver.h>
 #include <rte_pci.h>
 #include <bus_pci_driver.h>
 #include <ethdev_driver.h>

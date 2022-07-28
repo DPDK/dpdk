@@ -21,7 +21,7 @@
 #include <ethdev_pci.h>
 #include <rte_malloc.h>
 #include <rte_memzone.h>
-#include <rte_dev.h>
+#include <dev_driver.h>
 
 #include "ice_dcf.h"
 #include "ice_rxtx.h"

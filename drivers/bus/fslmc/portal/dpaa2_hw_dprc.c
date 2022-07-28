@@ -10,7 +10,7 @@
 #include <errno.h>
 
 #include <rte_malloc.h>
-#include <rte_dev.h>
+#include <dev_driver.h>
 
 #include "private.h"
 #include <fslmc_logs.h>

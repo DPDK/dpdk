@@ -29,7 +29,7 @@ extern "C" {
 #include <rte_compat.h>
 #include <rte_debug.h>
 #include <rte_interrupts.h>
-#include <rte_dev.h>
+#include <dev_driver.h>
 #include <rte_tailq.h>
 #include <rte_devargs.h>
 #include <rte_mbuf.h>

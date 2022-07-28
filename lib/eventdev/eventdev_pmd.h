@@ -22,7 +22,7 @@ extern "C" {
 #include <rte_common.h>
 #include <rte_compat.h>
 #include <rte_config.h>
-#include <rte_dev.h>
+#include <dev_driver.h>
 #include <rte_log.h>
 #include <rte_malloc.h>
 #include <rte_mbuf.h>

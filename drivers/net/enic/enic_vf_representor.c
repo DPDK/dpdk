@@ -7,7 +7,7 @@
 
 #include <bus_pci_driver.h>
 #include <rte_common.h>
-#include <rte_dev.h>
+#include <dev_driver.h>
 #include <ethdev_driver.h>
 #include <ethdev_pci.h>
 #include <rte_flow_driver.h>

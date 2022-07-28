@@ -15,7 +15,7 @@
 
 #include <rte_debug.h>
 #include <rte_log.h>
-#include <rte_dev.h>
+#include <dev_driver.h>
 #include <rte_devargs.h>
 #include <rte_mbuf.h>
 #include <rte_ring.h>

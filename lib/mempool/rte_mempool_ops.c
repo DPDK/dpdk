@@ -9,7 +9,7 @@
 #include <rte_string_fns.h>
 #include <rte_mempool.h>
 #include <rte_errno.h>
-#include <rte_dev.h>
+#include <dev_driver.h>
 
 #include "rte_mempool_trace.h"
 

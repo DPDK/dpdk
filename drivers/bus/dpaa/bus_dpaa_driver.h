@@ -7,7 +7,7 @@
 #define BUS_DPAA_DRIVER_H
 
 #include <rte_compat.h>
-#include <rte_dev.h>
+#include <dev_driver.h>
 #include <rte_mbuf_dyn.h>
 #include <rte_mempool.h>
 

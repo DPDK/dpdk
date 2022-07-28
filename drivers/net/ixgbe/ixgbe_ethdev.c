@@ -30,7 +30,7 @@
 #include <ethdev_pci.h>
 #include <rte_malloc.h>
 #include <rte_random.h>
-#include <rte_dev.h>
+#include <dev_driver.h>
 #include <rte_hash_crc.h>
 #ifdef RTE_LIB_SECURITY
 #include <rte_security_driver.h>

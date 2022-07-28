@@ -26,7 +26,7 @@
 #include <rte_cycles.h>
 #include <rte_memory.h>
 #include <rte_eal.h>
-#include <rte_dev.h>
+#include <dev_driver.h>
 #include <bus_vmbus_driver.h>
 
 #include "hn_logs.h"

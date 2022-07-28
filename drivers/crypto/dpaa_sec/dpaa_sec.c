@@ -19,7 +19,7 @@
 #include <rte_security_driver.h>
 #endif
 #include <rte_cycles.h>
-#include <rte_dev.h>
+#include <dev_driver.h>
 #include <rte_io.h>
 #include <rte_ip.h>
 #include <rte_kvargs.h>

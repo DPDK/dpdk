@@ -7,7 +7,7 @@
  * for Solarflare) and Solarflare Communications, Inc.
  */
 
-#include <rte_dev.h>
+#include <dev_driver.h>
 #include <ethdev_driver.h>
 #include <ethdev_pci.h>
 #include <rte_pci.h>

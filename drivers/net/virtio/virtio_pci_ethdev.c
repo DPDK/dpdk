@@ -16,7 +16,7 @@
 
 #include <rte_memory.h>
 #include <rte_eal.h>
-#include <rte_dev.h>
+#include <dev_driver.h>
 #include <rte_kvargs.h>
 
 #include "virtio.h"

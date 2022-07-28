@@ -25,7 +25,7 @@ extern "C" {
 #include <rte_compat.h>
 #include <rte_debug.h>
 #include <rte_interrupts.h>
-#include <rte_dev.h>
+#include <dev_driver.h>
 #include <rte_kvargs.h>
 
 #define RTE_BUS_AUXILIARY_NAME "auxiliary"

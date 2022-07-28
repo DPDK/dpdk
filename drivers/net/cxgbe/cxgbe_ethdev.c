@@ -31,7 +31,7 @@
 #include <ethdev_pci.h>
 #include <rte_malloc.h>
 #include <rte_random.h>
-#include <rte_dev.h>
+#include <dev_driver.h>
 
 #include "cxgbe.h"
 #include "cxgbe_pfvf.h"

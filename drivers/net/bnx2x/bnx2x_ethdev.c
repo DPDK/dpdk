@@ -9,7 +9,7 @@
 #include "bnx2x_rxtx.h"
 
 #include <rte_string_fns.h>
-#include <rte_dev.h>
+#include <dev_driver.h>
 #include <ethdev_pci.h>
 #include <rte_alarm.h>
 

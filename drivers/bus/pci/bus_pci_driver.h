@@ -11,7 +11,7 @@ extern "C" {
 #endif
 
 #include <rte_bus_pci.h>
-#include <rte_dev.h>
+#include <dev_driver.h>
 #include <rte_compat.h>
 
 /** Pathname of PCI devices directory. */

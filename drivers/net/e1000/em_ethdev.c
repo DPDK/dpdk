@@ -20,7 +20,7 @@
 #include <rte_memory.h>
 #include <rte_eal.h>
 #include <rte_malloc.h>
-#include <rte_dev.h>
+#include <dev_driver.h>
 
 #include "e1000_logs.h"
 #include "base/e1000_api.h"

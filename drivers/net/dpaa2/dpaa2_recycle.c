@@ -14,7 +14,7 @@
 #include <rte_string_fns.h>
 #include <rte_cycles.h>
 #include <rte_kvargs.h>
-#include <rte_dev.h>
+#include <dev_driver.h>
 #include <bus_fslmc_driver.h>
 #include <rte_flow_driver.h>
 

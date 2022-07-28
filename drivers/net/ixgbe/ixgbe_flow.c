@@ -27,7 +27,7 @@
 #include <ethdev_driver.h>
 #include <rte_malloc.h>
 #include <rte_random.h>
-#include <rte_dev.h>
+#include <dev_driver.h>
 #include <rte_hash_crc.h>
 #include <rte_flow.h>
 #include <rte_flow_driver.h>

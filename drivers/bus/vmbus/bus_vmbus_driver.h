@@ -12,7 +12,7 @@ extern "C" {
 
 #include <rte_bus_vmbus.h>
 #include <rte_compat.h>
-#include <rte_dev.h>
+#include <dev_driver.h>
 
 struct vmbus_channel;
 struct vmbus_mon_page;

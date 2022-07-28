@@ -33,7 +33,7 @@
 #include <rte_memzone.h>
 #include <rte_ether.h>
 #include <rte_ethdev.h>
-#include <rte_dev.h>
+#include <dev_driver.h>
 #include <rte_errno.h>
 #include <ethdev_pci.h>
 #include <rte_common.h>

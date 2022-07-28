@@ -37,6 +37,7 @@ DPDK_23 {
 	rte_devargs_parsef;
 	rte_devargs_remove;
 	rte_devargs_type_count;
+	rte_driver_name;
 	rte_dump_physmem_layout;
 	rte_dump_stack;
 	rte_dump_tailq;
@@ -424,9 +425,6 @@ EXPERIMENTAL {
 	rte_thread_self;
 	rte_thread_set_affinity_by_id;
 	rte_thread_set_priority;
-
-	# added in 22.11
-	rte_driver_name;
 };
 
 INTERNAL {

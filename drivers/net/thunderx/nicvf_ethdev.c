@@ -20,7 +20,7 @@
 #include <rte_common.h>
 #include <rte_cycles.h>
 #include <rte_debug.h>
-#include <rte_dev.h>
+#include <dev_driver.h>
 #include <rte_eal.h>
 #include <rte_ether.h>
 #include <ethdev_driver.h>

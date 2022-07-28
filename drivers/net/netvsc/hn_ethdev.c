@@ -30,7 +30,7 @@
 #include <rte_errno.h>
 #include <rte_memory.h>
 #include <rte_eal.h>
-#include <rte_dev.h>
+#include <dev_driver.h>
 #include <bus_driver.h>
 #include <bus_vmbus_driver.h>
 #include <rte_alarm.h>

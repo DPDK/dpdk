@@ -14,7 +14,7 @@
 #include <rte_byteorder.h>
 #include <rte_common.h>
 #include <rte_debug.h>
-#include <rte_dev.h>
+#include <dev_driver.h>
 #include <rte_eal.h>
 #include <bus_fslmc_driver.h>
 #include <rte_lcore.h>

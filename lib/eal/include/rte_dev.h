@@ -24,6 +24,8 @@ extern "C" {
 #include <rte_compat.h>
 #include <rte_log.h>
 
+struct rte_driver;
+
 /**
  * The device event type.
  */
@@ -68,26 +70,13 @@ struct rte_mem_resource {
 };
 
 /**
- * A structure describing a device driver.
- */
-struct rte_driver {
-	RTE_TAILQ_ENTRY(rte_driver) next; /**< Next in list. */
-	const char *name;                   /**< Driver name. */
-	const char *alias;              /**< Driver alias. */
-};
-
-/**
  * Retrieve a driver name.
- *
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
  *
  * @param driver
  *   A pointer to a driver structure.
  * @return
  *   A pointer to the driver name string.
  */
-__rte_experimental
 const char *
 rte_driver_name(const struct rte_driver *driver);
 

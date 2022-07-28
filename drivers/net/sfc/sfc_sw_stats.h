@@ -5,7 +5,7 @@
 #ifndef _SFC_SW_STATS_H
 #define _SFC_SW_STATS_H
 
-#include <rte_dev.h>
+#include <dev_driver.h>
 
 #include "sfc.h"
 

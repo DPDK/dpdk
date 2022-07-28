@@ -11,7 +11,7 @@
 
 #include <rte_cycles.h>
 #include <rte_common.h>
-#include <rte_dev.h>
+#include <dev_driver.h>
 #include <rte_errno.h>
 #include <ethdev_driver.h>
 #include <rte_log.h>

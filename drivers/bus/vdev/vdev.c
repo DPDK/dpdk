@@ -11,7 +11,7 @@
 #include <sys/queue.h>
 
 #include <rte_eal.h>
-#include <rte_dev.h>
+#include <dev_driver.h>
 #include <bus_driver.h>
 #include <rte_common.h>
 #include <rte_devargs.h>

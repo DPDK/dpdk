@@ -22,7 +22,7 @@
 #include <rte_cycles.h>
 #include <rte_spinlock.h>
 #include <rte_byteorder.h>
-#include <rte_dev.h>
+#include <dev_driver.h>
 #include <rte_memory.h>
 #include <rte_eal.h>
 #include <rte_io.h>

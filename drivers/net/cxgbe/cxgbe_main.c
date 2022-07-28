@@ -31,7 +31,7 @@
 #include <ethdev_driver.h>
 #include <ethdev_pci.h>
 #include <rte_random.h>
-#include <rte_dev.h>
+#include <dev_driver.h>
 #include <rte_kvargs.h>
 
 #include "base/common.h"

@@ -30,7 +30,7 @@
 #include <ethdev_pci.h>
 #include <rte_string_fns.h>
 #include <rte_malloc.h>
-#include <rte_dev.h>
+#include <dev_driver.h>
 
 #include "base/vmxnet3_defs.h"
 

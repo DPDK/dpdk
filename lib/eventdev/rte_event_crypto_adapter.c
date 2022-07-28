@@ -6,7 +6,7 @@
 #include <string.h>
 #include <stdbool.h>
 #include <rte_common.h>
-#include <rte_dev.h>
+#include <dev_driver.h>
 #include <rte_errno.h>
 #include <rte_cryptodev.h>
 #include <cryptodev_pmd.h>

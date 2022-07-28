@@ -11,7 +11,7 @@ extern "C" {
 
 #include <rte_bus_vdev.h>
 #include <rte_compat.h>
-#include <rte_dev.h>
+#include <dev_driver.h>
 #include <rte_devargs.h>
 
 struct rte_vdev_device {

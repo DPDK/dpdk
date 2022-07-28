@@ -8,7 +8,7 @@
 #include <rte_mbuf.h>
 #include <rte_malloc.h>
 #include <rte_memcpy.h>
-#include <rte_dev.h>
+#include <dev_driver.h>
 #include <rte_rawdev.h>
 #include <bus_vdev_driver.h>
 #include <rte_test.h>
