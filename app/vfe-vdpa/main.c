@@ -219,6 +219,29 @@ start_vdpa(struct vdpa_port *vport)
 	return 0;
 }
 
+static void
+close_vdpa(struct vdpa_port *vport)
+{
+	int ret;
+	char *socket_path = vport->ifname;
+
+	ret = rte_vhost_driver_detach_vdpa_device(socket_path);
+	if (ret != 0)
+		RTE_LOG(ERR, VDPA,
+				"detach vdpa device failed: %s\n",
+				socket_path);
+
+	ret = rte_vhost_driver_unregister(socket_path);
+	if (ret != 0)
+		RTE_LOG(ERR, VDPA,
+				"Fail to unregister vhost driver for %s.\n",
+				socket_path);
+	if (vport->stats_names) {
+		rte_free(vport->stats_names);
+		vport->stats_names = NULL;
+	}
+}
+
 int vdpa_with_socket_path_start(const char *vf_name,
 		const char *socket_file)
 {
@@ -252,6 +275,32 @@ int vdpa_with_socket_path_start(const char *vf_name,
 	return 0;
 }
 
+void vdpa_with_socket_path_stop(const char *vf_name)
+{
+	struct rte_vdpa_device *dev;
+	struct vdpa_port *vport = NULL;
+	int i;
+	dev = rte_vdpa_find_device_by_name(vf_name);
+	if (dev == NULL) {
+		RTE_LOG(ERR, VDPA, "Unable to find vdpa device id for %s.\n",
+		vf_name);
+		return;
+	}
+	for (i = 0; i < RTE_MIN(MAX_VDPA_SAMPLE_PORTS, devcnt); i++) {
+		if (vports[i].dev == dev) {
+			vport = &vports[i];
+			break;
+		}
+	}
+	if (vport == NULL) {
+		RTE_LOG(ERR, VDPA, "Unable to find vdpa device port for %s.\n",
+		vf_name);
+		return;
+	}
+	if (vport->ifname[0] != '\0')
+		close_vdpa(vport);
+}
+
 int vdpa_get_socket_file_name(const char *vf_name,
 		char *socket_file)
 {
@@ -281,29 +330,6 @@ int vdpa_get_socket_file_name(const char *vf_name,
 		return -1;
 	}
 	return 0;
-}
-
-static void
-close_vdpa(struct vdpa_port *vport)
-{
-	int ret;
-	char *socket_path = vport->ifname;
-
-	ret = rte_vhost_driver_detach_vdpa_device(socket_path);
-	if (ret != 0)
-		RTE_LOG(ERR, VDPA,
-				"detach vdpa device failed: %s\n",
-				socket_path);
-
-	ret = rte_vhost_driver_unregister(socket_path);
-	if (ret != 0)
-		RTE_LOG(ERR, VDPA,
-				"Fail to unregister vhost driver for %s.\n",
-				socket_path);
-	if (vport->stats_names) {
-		rte_free(vport->stats_names);
-		vport->stats_names = NULL;
-	}
 }
 
 static void

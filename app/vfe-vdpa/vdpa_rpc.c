@@ -218,10 +218,12 @@ static cJSON *vdpa_vf_dev_remove(const char *vf_name)
 {
 	cJSON *result = cJSON_CreateObject();
 
+	vdpa_with_socket_path_stop(vf_name);
 	if (rte_vdpa_vf_dev_remove(vf_name))
 		cJSON_AddStringToObject(result, "Error",
 			"Fail to remove VF device");
 	else
+		
 		cJSON_AddStringToObject(result, "Success", vf_name);
 	return result;
 }
