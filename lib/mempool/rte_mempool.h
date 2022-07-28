@@ -112,12 +112,6 @@ struct rte_mempool_objsz {
 /* "MP_<name>" */
 #define	RTE_MEMPOOL_MZ_FORMAT	RTE_MEMPOOL_MZ_PREFIX "%s"
 
-#define	MEMPOOL_PG_SHIFT_MAX \
-	RTE_DEPRECATED(MEMPOOL_PG_SHIFT_MAX) (sizeof(uintptr_t) * CHAR_BIT - 1)
-
-/** Deprecated. Mempool over one chunk of physically continuous memory */
-#define	MEMPOOL_PG_NUM_DEFAULT	RTE_DEPRECATED(MEMPOOL_PG_NUM_DEFAULT) 1
-
 #ifndef RTE_MEMPOOL_ALIGN
 /**
  * Alignment of elements inside mempool.

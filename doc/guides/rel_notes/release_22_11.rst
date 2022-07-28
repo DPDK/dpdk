@@ -99,6 +99,10 @@ API Changes
   ``MEMPOOL_REGISTER_OPS()`` is removed. Use replacement macro
   ``RTE_MEMPOOL_REGISTER_OPS()`` instead.
 
+* mempool: Deprecated macros ``MEMPOOL_PG_NUM_DEFAULT`` and
+  ``MEMPOOL_PG_SHIFT_MAX`` are removed. These macros are not used and
+  not required any more.
+
 * bus: Registering a bus has been marked as an internal API.
   External users may still register their bus using the ``bus_driver.h``
   driver header (see ``enable_driver_sdk`` meson option).

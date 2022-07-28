@@ -36,9 +36,6 @@ Deprecation Notices
   ``__atomic_thread_fence`` must be used for patches that need to be merged in
   20.08 onwards. This change will not introduce any performance degradation.
 
-* mempool: The mempool API macros ``MEMPOOL_PG_*`` are deprecated and
-  will be removed in DPDK 22.11.
-
 * bus: The ``dev->device.numa_node`` field is set by each bus driver for
   every device it manages to indicate on which NUMA node this device lies.
   When this information is unknown, the assigned value is not consistent
