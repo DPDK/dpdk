@@ -523,39 +523,6 @@ cmd_tap(char **tokens,
 	}
 }
 
-static const char cmd_pipeline_create_help[] =
-"pipeline <pipeline_name> create <numa_node>\n";
-
-static void
-cmd_pipeline_create(char **tokens,
-	uint32_t n_tokens,
-	char *out,
-	size_t out_size,
-	void *obj)
-{
-	struct pipeline *p;
-	char *name;
-	uint32_t numa_node;
-
-	if (n_tokens != 4) {
-		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
-		return;
-	}
-
-	name = tokens[1];
-
-	if (parser_read_uint32(&numa_node, tokens[3]) != 0) {
-		snprintf(out, out_size, MSG_ARG_INVALID, "numa_node");
-		return;
-	}
-
-	p = pipeline_create(obj, name, (int)numa_node);
-	if (!p) {
-		snprintf(out, out_size, "pipeline create error.");
-		return;
-	}
-}
-
 static const char cmd_pipeline_port_in_help[] =
 "pipeline <pipeline_name> port in <port_id>\n"
 "   link <link_name> rxq <queue_id> bsz <burst_size>\n"
@@ -3188,7 +3155,6 @@ cmd_help(char **tokens,
 			"\tmempool\n"
 			"\tlink\n"
 			"\ttap\n"
-			"\tpipeline create\n"
 			"\tpipeline port in\n"
 			"\tpipeline port out\n"
 			"\tpipeline codegen\n"
@@ -3238,12 +3204,6 @@ cmd_help(char **tokens,
 
 	if (strcmp(tokens[0], "tap") == 0) {
 		snprintf(out, out_size, "\n%s\n", cmd_tap_help);
-		return;
-	}
-
-	if ((strcmp(tokens[0], "pipeline") == 0) &&
-		(n_tokens == 2) && (strcmp(tokens[1], "create") == 0)) {
-		snprintf(out, out_size, "\n%s\n", cmd_pipeline_create_help);
 		return;
 	}
 
@@ -3529,13 +3489,6 @@ cli_process(char *in, char *out, size_t out_size, void *obj)
 	}
 
 	if (strcmp(tokens[0], "pipeline") == 0) {
-		if ((n_tokens >= 3) &&
-			(strcmp(tokens[2], "create") == 0)) {
-			cmd_pipeline_create(tokens, n_tokens, out, out_size,
-				obj);
-			return;
-		}
-
 		if ((n_tokens >= 4) &&
 			(strcmp(tokens[2], "port") == 0) &&
 			(strcmp(tokens[3], "in") == 0)) {
