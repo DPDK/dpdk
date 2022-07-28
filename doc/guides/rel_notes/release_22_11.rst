@@ -88,7 +88,7 @@ API Changes
   in the future. Applications can use ``devtools/cocci/func_or_ret.cocci``
   to update their code.
 
-* drivers: Registering a driver on the ``auxiliary``,
+* drivers: Registering a driver on the ``auxiliary``, ``ifpga``
   buses has been marked as an internal API.
   External users may still register their driver using the associated driver
   headers (see ``enable_driver_sdk`` meson option).

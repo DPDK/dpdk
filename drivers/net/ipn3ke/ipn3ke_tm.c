@@ -19,7 +19,7 @@
 #include <rte_io.h>
 #include <rte_rawdev.h>
 #include <rte_rawdev_pmd.h>
-#include <rte_bus_ifpga.h>
+#include <bus_ifpga_driver.h>
 #include <ifpga_logs.h>
 
 #include "ipn3ke_rawdev_api.h"

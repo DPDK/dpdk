@@ -1,4 +1,4 @@
-DPDK_23 {
+INTERNAL {
 	global:
 
 	rte_ifpga_driver_register;

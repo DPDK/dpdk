@@ -9,7 +9,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <rte_bus_ifpga.h>
+#include <bus_ifpga_driver.h>
 #include <rte_common.h>
 
 static inline int

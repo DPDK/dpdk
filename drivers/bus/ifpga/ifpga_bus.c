@@ -28,7 +28,7 @@
 
 #include "rte_rawdev.h"
 #include "rte_rawdev_pmd.h"
-#include "rte_bus_ifpga.h"
+#include "bus_ifpga_driver.h"
 #include "ifpga_logs.h"
 #include "ifpga_common.h"
 
@@ -37,9 +37,9 @@
  */
 static struct rte_bus rte_ifpga_bus;
 
-static struct ifpga_afu_dev_list ifpga_afu_dev_list =
+static TAILQ_HEAD(, rte_afu_device) ifpga_afu_dev_list =
 	TAILQ_HEAD_INITIALIZER(ifpga_afu_dev_list);
-static struct ifpga_afu_drv_list ifpga_afu_drv_list =
+static TAILQ_HEAD(, rte_afu_driver) ifpga_afu_drv_list =
 	TAILQ_HEAD_INITIALIZER(ifpga_afu_drv_list);
 
 
