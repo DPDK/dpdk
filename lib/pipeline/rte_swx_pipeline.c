@@ -9911,9 +9911,6 @@ rte_swx_pipeline_instructions_config(struct rte_swx_pipeline *p,
 	return 0;
 }
 
-static int
-pipeline_compile(struct rte_swx_pipeline *p);
-
 int
 rte_swx_pipeline_build(struct rte_swx_pipeline *p)
 {
@@ -10002,8 +9999,6 @@ rte_swx_pipeline_build(struct rte_swx_pipeline *p)
 		goto error;
 
 	p->build_done = 1;
-
-	pipeline_compile(p);
 
 	return 0;
 
@@ -13328,160 +13323,6 @@ instruction_group_list_custom_instructions_count(struct instruction_group_list *
 }
 
 static int
-pipeline_codegen(struct rte_swx_pipeline *p, struct instruction_group_list *igl)
-{
-	struct action *a;
-	FILE *f = NULL;
-
-	/* Create the .c file. */
-	f = fopen("/tmp/pipeline.c", "w");
-	if (!f)
-		return -EIO;
-
-	/* Include the .h file. */
-	fprintf(f, "#include \"rte_swx_pipeline_internal.h\"\n");
-
-	/* Add the code for each action. */
-	TAILQ_FOREACH(a, &p->actions, node) {
-		fprintf(f, "/**\n * Action %s\n */\n\n", a->name);
-
-		action_data_codegen(a, f);
-
-		fprintf(f, "\n");
-
-		action_instr_codegen(a, f);
-
-		fprintf(f, "\n");
-	}
-
-	/* Add the pipeline code. */
-	instruction_group_list_codegen(igl, p, f);
-
-	/* Close the .c file. */
-	fclose(f);
-
-	return 0;
-}
-
-#ifndef RTE_SWX_PIPELINE_CMD_MAX_SIZE
-#define RTE_SWX_PIPELINE_CMD_MAX_SIZE 4096
-#endif
-
-static int
-pipeline_libload(struct rte_swx_pipeline *p, struct instruction_group_list *igl)
-{
-	struct action *a;
-	struct instruction_group *g;
-	char *dir_in, *buffer = NULL;
-	const char *dir_out;
-	int status = 0;
-
-	/* Get the environment variables. */
-	dir_in = getenv("RTE_INSTALL_DIR");
-	if (!dir_in) {
-		status = -EINVAL;
-		goto free;
-	}
-
-	dir_out = "/tmp";
-
-	/* Memory allocation for the command buffer. */
-	buffer = malloc(RTE_SWX_PIPELINE_CMD_MAX_SIZE);
-	if (!buffer) {
-		status = -ENOMEM;
-		goto free;
-	}
-
-	snprintf(buffer,
-		 RTE_SWX_PIPELINE_CMD_MAX_SIZE,
-		 "gcc -c -O3 -fpic -Wno-deprecated-declarations -o %s/pipeline.o %s/pipeline.c "
-		 "-I %s/lib/pipeline "
-		 "-I %s/lib/eal/include "
-		 "-I %s/lib/eal/x86/include "
-		 "-I %s/lib/eal/include/generic "
-		 "-I %s/lib/meter "
-		 "-I %s/lib/port "
-		 "-I %s/lib/table "
-		 "-I %s/lib/pipeline "
-		 "-I %s/config "
-		 "-I %s/build "
-		 "-I %s/lib/eal/linux/include "
-		 ">%s/pipeline.log 2>&1 "
-		 "&& "
-		 "gcc -shared %s/pipeline.o -o %s/libpipeline.so "
-		 ">>%s/pipeline.log 2>&1",
-		 dir_out,
-		 dir_out,
-		 dir_in,
-		 dir_in,
-		 dir_in,
-		 dir_in,
-		 dir_in,
-		 dir_in,
-		 dir_in,
-		 dir_in,
-		 dir_in,
-		 dir_in,
-		 dir_in,
-		 dir_out,
-		 dir_out,
-		 dir_out,
-		 dir_out);
-
-	/* Build the shared object library. */
-	status = system(buffer);
-	if (status)
-		goto free;
-
-	/* Open library. */
-	snprintf(buffer,
-		 RTE_SWX_PIPELINE_CMD_MAX_SIZE,
-		 "%s/libpipeline.so",
-		 dir_out);
-
-	p->lib = dlopen(buffer, RTLD_LAZY);
-	if (!p->lib) {
-		status = -EIO;
-		goto free;
-	}
-
-	/* Get the action function symbols. */
-	TAILQ_FOREACH(a, &p->actions, node) {
-		snprintf(buffer, RTE_SWX_PIPELINE_CMD_MAX_SIZE, "action_%s_run", a->name);
-
-		p->action_funcs[a->id] = dlsym(p->lib, buffer);
-		if (!p->action_funcs[a->id]) {
-			status = -EINVAL;
-			goto free;
-		}
-	}
-
-	/* Get the pipeline function symbols. */
-	TAILQ_FOREACH(g, igl, node) {
-		if (g->first_instr_id == g->last_instr_id)
-			continue;
-
-		snprintf(buffer, RTE_SWX_PIPELINE_CMD_MAX_SIZE, "pipeline_func_%u", g->group_id);
-
-		g->func = dlsym(p->lib, buffer);
-		if (!g->func) {
-			status = -EINVAL;
-			goto free;
-		}
-	}
-
-free:
-	if (status && p->lib) {
-		dlclose(p->lib);
-		p->lib = NULL;
-	}
-
-	free(buffer);
-
-	return status;
-}
-
-static int
 pipeline_adjust_check(struct rte_swx_pipeline *p __rte_unused,
 		      struct instruction_group_list *igl)
 {
@@ -13546,41 +13387,6 @@ pipeline_adjust(struct rte_swx_pipeline *p, struct instruction_group_list *igl)
 	 * unmodified).
 	 */
 	instr_jmp_resolve(p->instructions, p->instruction_data, p->n_instructions);
-}
-
-static int
-pipeline_compile(struct rte_swx_pipeline *p)
-{
-	struct instruction_group_list *igl = NULL;
-	int status = 0;
-
-	igl = instruction_group_list_create(p);
-	if (!igl) {
-		status = -ENOMEM;
-		goto free;
-	}
-
-	/* Code generation. */
-	status = pipeline_codegen(p, igl);
-	if (status)
-		goto free;
-
-	/* Build and load the shared object library. */
-	status = pipeline_libload(p, igl);
-	if (status)
-		goto free;
-
-	/* Adjust instructions. */
-	status = pipeline_adjust_check(p, igl);
-	if (status)
-		goto free;
-
-	pipeline_adjust(p, igl);
-
-free:
-	instruction_group_list_free(igl);
-
-	return status;
 }
 
 int
@@ -13672,6 +13478,131 @@ free:
 	instruction_group_list_free(igl);
 	rte_swx_pipeline_free(p);
 	pipeline_spec_free(s);
+
+	return status;
+}
+
+int
+rte_swx_pipeline_build_from_lib(struct rte_swx_pipeline **pipeline,
+				const char *name,
+				const char *lib_file_name,
+				FILE *iospec_file,
+				int numa_node)
+{
+	struct rte_swx_pipeline *p = NULL;
+	void *lib = NULL;
+	struct pipeline_iospec *sio = NULL;
+	struct pipeline_spec *s = NULL;
+	struct instruction_group_list *igl = NULL;
+	struct action *a;
+	struct instruction_group *g;
+	int status = 0;
+
+	/* Check input arguments. */
+	if (!pipeline ||
+	    !name ||
+	    !name[0] ||
+	    !lib_file_name ||
+	    !lib_file_name[0] ||
+	    !iospec_file) {
+		status = -EINVAL;
+		goto free;
+	}
+
+	/* Open the library. */
+	lib = dlopen(lib_file_name, RTLD_LAZY);
+	if (!lib) {
+		status = -EIO;
+		goto free;
+	}
+
+	/* Get the pipeline specification structures. */
+	s = dlsym(lib, "pipeline_spec");
+	if (!s) {
+		status = -EINVAL;
+		goto free;
+	}
+
+	sio = pipeline_iospec_parse(iospec_file, NULL, NULL);
+	if (!sio) {
+		status = -EINVAL;
+		goto free;
+	}
+
+	/* Pipeline configuration based on the specification structures. */
+	status = rte_swx_pipeline_config(&p, name, numa_node);
+	if (status)
+		goto free;
+
+	status = pipeline_iospec_configure(p, sio, NULL);
+	if (status)
+		goto free;
+
+	status = pipeline_spec_configure(p, s, NULL);
+	if (status)
+		goto free;
+
+	/* Pipeline build. */
+	status = rte_swx_pipeline_build(p);
+	if (status)
+		goto free;
+
+	/* Action instructions. */
+	TAILQ_FOREACH(a, &p->actions, node) {
+		char name[RTE_SWX_NAME_SIZE * 2];
+
+		snprintf(name, sizeof(name), "action_%s_run", a->name);
+
+		p->action_funcs[a->id] = dlsym(lib, name);
+		if (!p->action_funcs[a->id]) {
+			status = -EINVAL;
+			goto free;
+		}
+	}
+
+	/* Pipeline instructions. */
+	igl = instruction_group_list_create(p);
+	if (!igl) {
+		status = -ENOMEM;
+		goto free;
+	}
+
+	TAILQ_FOREACH(g, igl, node) {
+		char name[RTE_SWX_NAME_SIZE * 2];
+
+		if (g->first_instr_id == g->last_instr_id)
+			continue;
+
+		snprintf(name, sizeof(name), "pipeline_func_%u", g->group_id);
+
+		g->func = dlsym(lib, name);
+		if (!g->func) {
+			status = -EINVAL;
+			goto free;
+		}
+	}
+
+	status = pipeline_adjust_check(p, igl);
+	if (status)
+		goto free;
+
+	pipeline_adjust(p, igl);
+
+	p->lib = lib;
+
+	*pipeline = p;
+
+free:
+	instruction_group_list_free(igl);
+
+	pipeline_iospec_free(sio);
+
+	if (status) {
+		rte_swx_pipeline_free(p);
+
+		if (lib)
+			dlclose(lib);
+	}
 
 	return status;
 }

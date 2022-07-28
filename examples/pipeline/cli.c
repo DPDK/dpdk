@@ -984,55 +984,88 @@ cmd_pipeline_port_out(char **tokens,
 }
 
 static const char cmd_pipeline_build_help[] =
-"pipeline <pipeline_name> build <spec_file>\n";
+"pipeline <pipeline_name> build lib <lib_file> io <iospec_file> numa <numa_node>\n";
 
 static void
 cmd_pipeline_build(char **tokens,
 	uint32_t n_tokens,
 	char *out,
 	size_t out_size,
-	void *obj)
+	void *obj __rte_unused)
 {
-	struct pipeline *p = NULL;
-	FILE *spec = NULL;
-	uint32_t err_line;
-	const char *err_msg;
-	int status;
+	struct rte_swx_pipeline *p = NULL;
+	struct rte_swx_ctl_pipeline *ctl = NULL;
+	char *pipeline_name, *lib_file_name, *iospec_file_name;
+	FILE *iospec_file = NULL;
+	uint32_t numa_node = 0;
+	int status = 0;
 
-	if (n_tokens != 4) {
+	/* Parsing. */
+	if (n_tokens != 9) {
 		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
 		return;
 	}
 
-	p = pipeline_find(obj, tokens[1]);
-	if (!p || p->ctl) {
-		snprintf(out, out_size, MSG_ARG_INVALID, tokens[0]);
+	pipeline_name = tokens[1];
+
+	if (strcmp(tokens[2], "build")) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "build");
 		return;
 	}
 
-	spec = fopen(tokens[3], "r");
-	if (!spec) {
-		snprintf(out, out_size, "Cannot open file %s.\n", tokens[3]);
+	if (strcmp(tokens[3], "lib")) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "lib");
 		return;
 	}
 
-	status = rte_swx_pipeline_build_from_spec(p->p,
-		spec,
-		&err_line,
-		&err_msg);
-	fclose(spec);
+	lib_file_name = tokens[4];
+
+	if (strcmp(tokens[5], "io")) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "io");
+		return;
+	}
+
+	iospec_file_name = tokens[6];
+
+	if (strcmp(tokens[7], "numa")) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "numa");
+		return;
+	}
+
+	if (parser_read_uint32(&numa_node, tokens[8])) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "numa_node");
+		return;
+	}
+
+	/* I/O spec file open. */
+	iospec_file = fopen(iospec_file_name, "r");
+	if (!iospec_file) {
+		snprintf(out, out_size, "Cannot open file \"%s\".\n", iospec_file_name);
+		return;
+	}
+
+	status = rte_swx_pipeline_build_from_lib(&p,
+						 pipeline_name,
+						 lib_file_name,
+						 iospec_file,
+						 (int)numa_node);
 	if (status) {
-		snprintf(out, out_size, "Error %d at line %u: %s\n.",
-			status, err_line, err_msg);
-		return;
+		snprintf(out, out_size, "Pipeline build failed (%d).", status);
+		goto free;
 	}
 
-	p->ctl = rte_swx_ctl_pipeline_create(p->p);
-	if (!p->ctl) {
+	ctl = rte_swx_ctl_pipeline_create(p);
+	if (!ctl) {
 		snprintf(out, out_size, "Pipeline control create failed.");
-		rte_swx_pipeline_free(p->p);
-		return;
+		goto free;
 	}
+
+free:
+	if (status)
+		rte_swx_pipeline_free(p);
+
+	if (iospec_file)
+		fclose(iospec_file);
 }
 
 static void

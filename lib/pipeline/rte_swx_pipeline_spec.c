@@ -3522,57 +3522,6 @@ pipeline_spec_configure(struct rte_swx_pipeline *p,
 	return 0;
 }
 
-int
-rte_swx_pipeline_build_from_spec(struct rte_swx_pipeline *p,
-				 FILE *spec_file,
-				 uint32_t *err_line,
-				 const char **err_msg)
-{
-	struct pipeline_spec *s = NULL;
-	int status = 0;
-
-	/* Check the input arguments. */
-	if (!p || !spec_file) {
-		if (err_line)
-			*err_line = 0;
-		if (err_msg)
-			*err_msg = "Invalid input argument.";
-		status = -EINVAL;
-		goto error;
-	}
-
-	/* Spec file parse. */
-	s = pipeline_spec_parse(spec_file, err_line, err_msg);
-	if (!s) {
-		status = -EINVAL;
-		goto error;
-	}
-
-	/* Pipeline configure. */
-	status = pipeline_spec_configure(p, s, err_msg);
-	if (status) {
-		if (err_line)
-			*err_line = 0;
-		goto error;
-	}
-
-	/* Pipeline build. */
-	status = rte_swx_pipeline_build(p);
-	if (status) {
-		if (err_line)
-			*err_line = 0;
-		if (err_msg)
-			*err_msg = "Pipeline build error.";
-		goto error;
-	}
-
-	return 0;
-
-error:
-	pipeline_spec_free(s);
-	return status;
-}
-
 static void
 port_in_params_free(void *params, const char *port_type)
 {

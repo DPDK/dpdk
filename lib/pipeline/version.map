@@ -82,7 +82,6 @@ EXPERIMENTAL {
 	rte_swx_ctl_table_ops_get;
 	rte_swx_pipeline_action_config;
 	rte_swx_pipeline_build;
-	rte_swx_pipeline_build_from_spec;
 	rte_swx_pipeline_config;
 	rte_swx_pipeline_extern_func_register;
 	rte_swx_pipeline_extern_object_config;
@@ -148,6 +147,7 @@ EXPERIMENTAL {
 
 	# added in 22.11
 	rte_swx_ctl_pipeline_find;
+	rte_swx_pipeline_build_from_lib;
 	rte_swx_pipeline_codegen;
 	rte_swx_pipeline_find;
 };
