@@ -35,6 +35,9 @@ struct rte_swx_pipeline;
 
 /** Pipeline info. */
 struct rte_swx_ctl_pipeline_info {
+	/** Pipeline name. */
+	char name[RTE_SWX_CTL_NAME_SIZE];
+
 	/** Number of input ports. */
 	uint32_t n_ports_in;
 
@@ -811,6 +814,18 @@ rte_swx_pipeline_table_state_set(struct rte_swx_pipeline *p,
 
 /** Pipeline control opaque data structure. */
 struct rte_swx_ctl_pipeline;
+
+/**
+ * Pipeline control find
+ *
+ * @param[in] name
+ *   Pipeline name.
+ * @return
+ *   Valid pipeline control handle if found or NULL otherwise.
+ */
+__rte_experimental
+struct rte_swx_ctl_pipeline *
+rte_swx_ctl_pipeline_find(const char *name);
 
 /**
  * Pipeline control create

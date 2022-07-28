@@ -45,21 +45,37 @@ extern "C" {
 struct rte_swx_pipeline;
 
 /**
+ * Pipeline find
+ *
+ * @param[in] name
+ *   Pipeline name.
+ * @return
+ *   Valid pipeline handle if found or NULL otherwise.
+ */
+__rte_experimental
+struct rte_swx_pipeline *
+rte_swx_pipeline_find(const char *name);
+
+/**
  * Pipeline configure
  *
  * @param[out] p
  *   Pipeline handle. Must point to valid memory. Contains valid pipeline handle
  *   when the function returns successfully.
+ * @param[in] name
+ *   Pipeline unique name.
  * @param[in] numa_node
  *   Non-Uniform Memory Access (NUMA) node.
  * @return
  *   0 on success or the following error codes otherwise:
  *   -EINVAL: Invalid argument;
- *   -ENOMEM: Not enough space/cannot allocate memory.
+ *   -ENOMEM: Not enough space/cannot allocate memory;
+ *   -EEXIST: Pipeline with this name already exists.
  */
 __rte_experimental
 int
 rte_swx_pipeline_config(struct rte_swx_pipeline **p,
+			const char *name,
 			int numa_node);
 
 /*

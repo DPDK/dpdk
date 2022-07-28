@@ -9,6 +9,8 @@
 
 #include <rte_common.h>
 #include <rte_byteorder.h>
+#include <rte_tailq.h>
+#include <rte_eal_memconfig.h>
 
 #include <rte_swx_table_selector.h>
 
@@ -1157,11 +1159,102 @@ error:
 	return status;
 }
 
+/* Global list of pipeline instances. */
+TAILQ_HEAD(rte_swx_ctl_pipeline_list, rte_tailq_entry);
+
+static struct rte_tailq_elem rte_swx_ctl_pipeline_tailq = {
+	.name = "RTE_SWX_CTL_PIPELINE",
+};
+
+EAL_REGISTER_TAILQ(rte_swx_ctl_pipeline_tailq)
+
+struct rte_swx_ctl_pipeline *
+rte_swx_ctl_pipeline_find(const char *name)
+{
+	struct rte_swx_ctl_pipeline_list *ctl_list;
+	struct rte_tailq_entry *te = NULL;
+
+	if (!name || !name[0] || (strnlen(name, RTE_SWX_CTL_NAME_SIZE) >= RTE_SWX_CTL_NAME_SIZE))
+		return NULL;
+
+	ctl_list = RTE_TAILQ_CAST(rte_swx_ctl_pipeline_tailq.head, rte_swx_ctl_pipeline_list);
+
+	rte_mcfg_tailq_read_lock();
+
+	TAILQ_FOREACH(te, ctl_list, next) {
+		struct rte_swx_ctl_pipeline *ctl = (struct rte_swx_ctl_pipeline *)te->data;
+
+		if (!strncmp(name, ctl->info.name, sizeof(ctl->info.name))) {
+			rte_mcfg_tailq_read_unlock();
+			return ctl;
+		}
+	}
+
+	rte_mcfg_tailq_read_unlock();
+	return NULL;
+}
+
+static int
+ctl_register(struct rte_swx_ctl_pipeline *ctl)
+{
+	struct rte_swx_ctl_pipeline_list *ctl_list;
+	struct rte_tailq_entry *te = NULL;
+
+	ctl_list = RTE_TAILQ_CAST(rte_swx_ctl_pipeline_tailq.head, rte_swx_ctl_pipeline_list);
+
+	rte_mcfg_tailq_write_lock();
+
+	TAILQ_FOREACH(te, ctl_list, next) {
+		struct rte_swx_ctl_pipeline *ctl_crt = (struct rte_swx_ctl_pipeline *)te->data;
+
+		if (!strncmp(ctl->info.name, ctl_crt->info.name, sizeof(ctl->info.name))) {
+			rte_mcfg_tailq_write_unlock();
+			return -EEXIST;
+		}
+	}
+
+	te = calloc(1, sizeof(struct rte_tailq_entry));
+	if (!te) {
+		rte_mcfg_tailq_write_unlock();
+		return -ENOMEM;
+	}
+
+	te->data = (void *)ctl;
+	TAILQ_INSERT_TAIL(ctl_list, te, next);
+	rte_mcfg_tailq_write_unlock();
+	return 0;
+}
+
+static void
+ctl_unregister(struct rte_swx_ctl_pipeline *ctl)
+{
+	struct rte_swx_ctl_pipeline_list *ctl_list;
+	struct rte_tailq_entry *te = NULL;
+
+	ctl_list = RTE_TAILQ_CAST(rte_swx_ctl_pipeline_tailq.head, rte_swx_ctl_pipeline_list);
+
+	rte_mcfg_tailq_write_lock();
+
+	TAILQ_FOREACH(te, ctl_list, next) {
+		if (te->data == (void *)ctl) {
+			TAILQ_REMOVE(ctl_list, te, next);
+			rte_mcfg_tailq_write_unlock();
+			free(te);
+			return;
+		}
+	}
+
+	rte_mcfg_tailq_write_unlock();
+}
+
 void
 rte_swx_ctl_pipeline_free(struct rte_swx_ctl_pipeline *ctl)
 {
 	if (!ctl)
 		return;
+
+	if (ctl->info.name[0])
+		ctl_unregister(ctl);
 
 	action_free(ctl);
 
@@ -1440,6 +1533,12 @@ rte_swx_ctl_pipeline_create(struct rte_swx_pipeline *p)
 	status = table_state_create(ctl);
 	if (status)
 		goto error;
+
+	if (ctl->info.name[0]) {
+		status = ctl_register(ctl);
+		if (status)
+			goto error;
+	}
 
 	return ctl;
 

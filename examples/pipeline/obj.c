@@ -533,7 +533,7 @@ pipeline_create(struct obj *obj, const char *name, int numa_node)
 		return NULL;
 
 	/* Resource create */
-	status = rte_swx_pipeline_config(&p, numa_node);
+	status = rte_swx_pipeline_config(&p, name, numa_node);
 	if (status)
 		goto error;
 

@@ -1459,6 +1459,8 @@ instr_operand_nbo(struct thread *t, const struct instr_operand *x)
 #endif
 
 struct rte_swx_pipeline {
+	char name[RTE_SWX_NAME_SIZE];
+
 	struct struct_type_tailq struct_types;
 	struct port_in_type_tailq port_in_types;
 	struct port_in_tailq ports_in;

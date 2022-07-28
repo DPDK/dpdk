@@ -6,6 +6,8 @@
 #include <errno.h>
 #include <dlfcn.h>
 
+#include <rte_tailq.h>
+#include <rte_eal_memconfig.h>
 #include <rte_jhash.h>
 #include <rte_hash_crc.h>
 
@@ -9578,6 +9580,95 @@ metarray_free(struct rte_swx_pipeline *p)
 /*
  * Pipeline.
  */
+
+/* Global list of pipeline instances. */
+TAILQ_HEAD(rte_swx_pipeline_list, rte_tailq_entry);
+
+static struct rte_tailq_elem rte_swx_pipeline_tailq = {
+	.name = "RTE_SWX_PIPELINE",
+};
+
+EAL_REGISTER_TAILQ(rte_swx_pipeline_tailq)
+
+struct rte_swx_pipeline *
+rte_swx_pipeline_find(const char *name)
+{
+	struct rte_swx_pipeline_list *pipeline_list;
+	struct rte_tailq_entry *te = NULL;
+
+	if (!name || !name[0] || (strnlen(name, RTE_SWX_NAME_SIZE) >= RTE_SWX_NAME_SIZE))
+		return NULL;
+
+	pipeline_list = RTE_TAILQ_CAST(rte_swx_pipeline_tailq.head, rte_swx_pipeline_list);
+
+	rte_mcfg_tailq_read_lock();
+
+	TAILQ_FOREACH(te, pipeline_list, next) {
+		struct rte_swx_pipeline *p = (struct rte_swx_pipeline *)te->data;
+
+		if (!strncmp(name, p->name, sizeof(p->name))) {
+			rte_mcfg_tailq_read_unlock();
+			return p;
+		}
+	}
+
+	rte_mcfg_tailq_read_unlock();
+	return NULL;
+}
+
+static int
+pipeline_register(struct rte_swx_pipeline *p)
+{
+	struct rte_swx_pipeline_list *pipeline_list;
+	struct rte_tailq_entry *te = NULL;
+
+	pipeline_list = RTE_TAILQ_CAST(rte_swx_pipeline_tailq.head, rte_swx_pipeline_list);
+
+	rte_mcfg_tailq_write_lock();
+
+	TAILQ_FOREACH(te, pipeline_list, next) {
+		struct rte_swx_pipeline *pipeline = (struct rte_swx_pipeline *)te->data;
+
+		if (!strncmp(p->name, pipeline->name, sizeof(p->name))) {
+			rte_mcfg_tailq_write_unlock();
+			return -EEXIST;
+		}
+	}
+
+	te = calloc(1, sizeof(struct rte_tailq_entry));
+	if (!te) {
+		rte_mcfg_tailq_write_unlock();
+		return -ENOMEM;
+	}
+
+	te->data = (void *)p;
+	TAILQ_INSERT_TAIL(pipeline_list, te, next);
+	rte_mcfg_tailq_write_unlock();
+	return 0;
+}
+
+static void
+pipeline_unregister(struct rte_swx_pipeline *p)
+{
+	struct rte_swx_pipeline_list *pipeline_list;
+	struct rte_tailq_entry *te = NULL;
+
+	pipeline_list = RTE_TAILQ_CAST(rte_swx_pipeline_tailq.head, rte_swx_pipeline_list);
+
+	rte_mcfg_tailq_write_lock();
+
+	TAILQ_FOREACH(te, pipeline_list, next) {
+		if (te->data == (void *)p) {
+			TAILQ_REMOVE(pipeline_list, te, next);
+			rte_mcfg_tailq_write_unlock();
+			free(te);
+			return;
+		}
+	}
+
+	rte_mcfg_tailq_write_unlock();
+}
+
 void
 rte_swx_pipeline_free(struct rte_swx_pipeline *p)
 {
@@ -9585,6 +9676,9 @@ rte_swx_pipeline_free(struct rte_swx_pipeline *p)
 
 	if (!p)
 		return;
+
+	if (p->name[0])
+		pipeline_unregister(p);
 
 	lib = p->lib;
 
@@ -9720,13 +9814,14 @@ hash_funcs_register(struct rte_swx_pipeline *p)
 }
 
 int
-rte_swx_pipeline_config(struct rte_swx_pipeline **p, int numa_node)
+rte_swx_pipeline_config(struct rte_swx_pipeline **p, const char *name, int numa_node)
 {
 	struct rte_swx_pipeline *pipeline = NULL;
 	int status = 0;
 
 	/* Check input parameters. */
 	CHECK(p, EINVAL);
+	CHECK(!name || (strnlen(name, RTE_SWX_NAME_SIZE) < RTE_SWX_NAME_SIZE), EINVAL);
 
 	/* Memory allocation. */
 	pipeline = calloc(1, sizeof(struct rte_swx_pipeline));
@@ -9736,6 +9831,9 @@ rte_swx_pipeline_config(struct rte_swx_pipeline **p, int numa_node)
 	}
 
 	/* Initialization. */
+	if (name)
+		strcpy(pipeline->name, name);
+
 	TAILQ_INIT(&pipeline->struct_types);
 	TAILQ_INIT(&pipeline->port_in_types);
 	TAILQ_INIT(&pipeline->ports_in);
@@ -9775,6 +9873,12 @@ rte_swx_pipeline_config(struct rte_swx_pipeline **p, int numa_node)
 	status = hash_funcs_register(pipeline);
 	if (status)
 		goto error;
+
+	if (pipeline->name[0]) {
+		status = pipeline_register(pipeline);
+		if (status)
+			goto error;
+	}
 
 	*p = pipeline;
 	return 0;
@@ -9966,6 +10070,7 @@ rte_swx_ctl_pipeline_info_get(struct rte_swx_pipeline *p,
 	TAILQ_FOREACH(table, &p->tables, node)
 		n_tables++;
 
+	strcpy(pipeline->name, p->name);
 	pipeline->n_ports_in = p->n_ports_in;
 	pipeline->n_ports_out = p->n_ports_out;
 	pipeline->n_mirroring_slots = p->n_mirroring_slots;

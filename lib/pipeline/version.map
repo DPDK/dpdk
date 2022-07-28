@@ -145,4 +145,8 @@ EXPERIMENTAL {
 	rte_swx_ctl_pipeline_learner_timeout_get;
 	rte_swx_ctl_pipeline_learner_timeout_set;
 	rte_swx_pipeline_hash_func_register;
+
+	# added in 22.11
+	rte_swx_ctl_pipeline_find;
+	rte_swx_pipeline_find;
 };
