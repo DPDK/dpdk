@@ -4,7 +4,7 @@
  */
 
 #include <sys/queue.h>
-#include <rte_bus_pci.h>
+#include <bus_pci_driver.h>
 #include <rte_malloc.h>
 #include <rte_flow.h>
 #include <rte_flow_driver.h>

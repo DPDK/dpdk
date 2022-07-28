@@ -5,7 +5,7 @@
 #include <string.h>
 
 #include <rte_eal.h>
-#include <rte_bus_pci.h>
+#include <bus_pci_driver.h>
 
 #include "../octeontx_logs.h"
 #include "octeontx_io.h"

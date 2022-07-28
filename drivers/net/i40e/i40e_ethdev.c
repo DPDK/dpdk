@@ -16,7 +16,7 @@
 #include <rte_eal.h>
 #include <rte_string_fns.h>
 #include <rte_pci.h>
-#include <rte_bus_pci.h>
+#include <bus_pci_driver.h>
 #include <rte_ether.h>
 #include <ethdev_driver.h>
 #include <ethdev_pci.h>

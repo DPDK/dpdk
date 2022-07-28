@@ -6,7 +6,7 @@
 #include <rte_mbuf.h>
 #include <rte_hexdump.h>
 #include <rte_comp.h>
-#include <rte_bus_pci.h>
+#include <bus_pci_driver.h>
 #include <rte_byteorder.h>
 #include <rte_memcpy.h>
 #include <rte_common.h>

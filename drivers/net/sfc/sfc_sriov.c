@@ -8,7 +8,7 @@
  */
 
 #include <rte_common.h>
-#include <rte_bus_pci.h>
+#include <bus_pci_driver.h>
 
 #include "sfc.h"
 #include "sfc_log.h"

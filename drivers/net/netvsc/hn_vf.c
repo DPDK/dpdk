@@ -21,7 +21,7 @@
 #include <rte_memory.h>
 #include <rte_bus_vmbus.h>
 #include <rte_pci.h>
-#include <rte_bus_pci.h>
+#include <bus_pci_driver.h>
 #include <rte_log.h>
 #include <rte_string_fns.h>
 #include <rte_alarm.h>

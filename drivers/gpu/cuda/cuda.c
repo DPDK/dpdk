@@ -6,7 +6,7 @@
 
 #include <rte_malloc.h>
 #include <rte_pci.h>
-#include <rte_bus_pci.h>
+#include <bus_pci_driver.h>
 #include <rte_byteorder.h>
 #include <rte_dev.h>
 

@@ -443,7 +443,6 @@ void
 rte_pci_register(struct rte_pci_driver *driver)
 {
 	TAILQ_INSERT_TAIL(&rte_pci_bus.driver_list, driver, next);
-	driver->bus = &rte_pci_bus;
 }
 
 /* unregister a driver */
@@ -451,7 +450,6 @@ void
 rte_pci_unregister(struct rte_pci_driver *driver)
 {
 	TAILQ_REMOVE(&rte_pci_bus.driver_list, driver, next);
-	driver->bus = NULL;
 }
 
 /* Add a device to PCI bus */

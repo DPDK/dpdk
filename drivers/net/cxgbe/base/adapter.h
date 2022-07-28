@@ -8,7 +8,7 @@
 #ifndef __T4_ADAPTER_H__
 #define __T4_ADAPTER_H__
 
-#include <rte_bus_pci.h>
+#include <bus_pci_driver.h>
 #include <rte_mbuf.h>
 #include <rte_io.h>
 #include <rte_rwlock.h>

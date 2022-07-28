@@ -13,7 +13,7 @@
 #include <rte_log.h>
 #include <rte_pci.h>
 #include <rte_mbuf.h>
-#include <rte_bus_pci.h>
+#include <bus_pci_driver.h>
 #include <rte_memzone.h>
 #include <rte_memcpy.h>
 #include <rte_rawdev.h>

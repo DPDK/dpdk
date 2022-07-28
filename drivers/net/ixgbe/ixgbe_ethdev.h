@@ -20,7 +20,7 @@
 #include <rte_time.h>
 #include <rte_hash.h>
 #include <rte_pci.h>
-#include <rte_bus_pci.h>
+#include <bus_pci_driver.h>
 #include <rte_tm_driver.h>
 
 /* need update link, bit flag */

@@ -3,7 +3,7 @@
  */
 
 #include<ethdev_driver.h>
-#include <rte_bus_pci.h>
+#include <bus_pci_driver.h>
 #include <rte_hash.h>
 #include <rte_jhash.h>
 

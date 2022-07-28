@@ -5,7 +5,7 @@
 #ifndef _NITROX_DEVICE_H_
 #define _NITROX_DEVICE_H_
 
-#include <rte_bus_pci.h>
+#include <bus_pci_driver.h>
 #include <rte_cryptodev.h>
 
 struct nitrox_sym_device;

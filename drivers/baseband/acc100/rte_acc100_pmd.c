@@ -14,7 +14,7 @@
 #include <rte_branch_prediction.h>
 #include <rte_hexdump.h>
 #include <rte_pci.h>
-#include <rte_bus_pci.h>
+#include <bus_pci_driver.h>
 #ifdef RTE_BBDEV_OFFLOAD_COST
 #include <rte_cycles.h>
 #endif

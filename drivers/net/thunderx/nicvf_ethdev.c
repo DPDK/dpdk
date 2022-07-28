@@ -32,7 +32,7 @@
 #include <rte_malloc.h>
 #include <rte_random.h>
 #include <rte_pci.h>
-#include <rte_bus_pci.h>
+#include <bus_pci_driver.h>
 #include <rte_tailq.h>
 #include <rte_devargs.h>
 #include <rte_kvargs.h>

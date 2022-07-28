@@ -10,7 +10,7 @@
 #ifndef _SFC_EFX_H_
 #define _SFC_EFX_H_
 
-#include <rte_bus_pci.h>
+#include <bus_pci_driver.h>
 
 #include "efx.h"
 #include "efsys.h"

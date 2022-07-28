@@ -10,7 +10,6 @@
 #endif
 
 #include <rte_io.h>
-#include <rte_bus.h>
 
 #include "virtio_pci.h"
 #include "virtqueue.h"

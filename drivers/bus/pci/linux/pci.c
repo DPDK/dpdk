@@ -6,7 +6,6 @@
 #include <dirent.h>
 
 #include <rte_log.h>
-#include <rte_bus.h>
 #include <rte_pci.h>
 #include <rte_bus_pci.h>
 #include <rte_malloc.h>
@@ -23,8 +22,6 @@
  * @file
  * PCI probing using Linux sysfs.
  */
-
-extern struct rte_pci_bus rte_pci_bus;
 
 static int
 pci_get_kernel_driver_by_path(const char *filename, char *dri_name,

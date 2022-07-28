@@ -3,7 +3,7 @@
  */
 
 #include <rte_alarm.h>
-#include <rte_bus_pci.h>
+#include <bus_pci_driver.h>
 #include <ethdev_pci.h>
 
 #include "hns3_ethdev.h"

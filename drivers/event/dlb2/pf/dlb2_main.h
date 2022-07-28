@@ -9,7 +9,7 @@
 #include <rte_log.h>
 #include <rte_spinlock.h>
 #include <rte_pci.h>
-#include <rte_bus_pci.h>
+#include <bus_pci_driver.h>
 #include <rte_eal_paging.h>
 
 #include "base/dlb2_hw_types.h"

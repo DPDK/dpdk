@@ -14,7 +14,7 @@
 #include <rte_eal_paging.h>
 #include <rte_malloc.h>
 #include <rte_memory.h>
-#include <rte_bus_pci.h>
+#include <bus_pci_driver.h>
 #include <rte_vhost.h>
 #include <rte_vdpa.h>
 #include <vdpa_driver.h>
