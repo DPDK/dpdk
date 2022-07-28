@@ -6,6 +6,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 #include <rte_common.h>
 #include <rte_ethdev.h>
@@ -23,6 +24,10 @@
 
 #ifndef CMD_MAX_TOKENS
 #define CMD_MAX_TOKENS     256
+#endif
+
+#ifndef MAX_LINE_SIZE
+#define MAX_LINE_SIZE 2048
 #endif
 
 #define MSG_OUT_OF_MEMORY   "Not enough memory.\n"
@@ -1030,6 +1035,140 @@ cmd_pipeline_codegen(char **tokens,
 		return;
 	}
 }
+
+static const char cmd_pipeline_libbuild_help[] =
+"pipeline libbuild <code_file> <lib_file>\n";
+
+static void
+cmd_pipeline_libbuild(char **tokens,
+	uint32_t n_tokens,
+	char *out,
+	size_t out_size,
+	void *obj __rte_unused)
+{
+	char *code_file, *lib_file, *obj_file = NULL, *log_file = NULL;
+	char *install_dir, *cwd = NULL, *buffer = NULL;
+	size_t length;
+	int status = 0;
+
+	if (n_tokens != 4) {
+		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
+		goto free;
+	}
+
+	install_dir = getenv("RTE_INSTALL_DIR");
+	if (!install_dir) {
+		cwd = malloc(MAX_LINE_SIZE);
+		if (!cwd) {
+			snprintf(out, out_size, MSG_OUT_OF_MEMORY);
+			goto free;
+		}
+
+		install_dir = getcwd(cwd, MAX_LINE_SIZE);
+		if (!install_dir) {
+			snprintf(out, out_size, "Error: Path too long.\n");
+			goto free;
+		}
+	}
+
+	snprintf(out, out_size, "Using DPDK source code from \"%s\".\n", install_dir);
+	out_size -= strlen(out);
+	out += strlen(out);
+
+	code_file = tokens[2];
+	length = strnlen(code_file, MAX_LINE_SIZE);
+	if ((length < 3) ||
+	    (code_file[length - 2] != '.') ||
+	    (code_file[length - 1] != 'c')) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "code_file");
+		goto free;
+	}
+
+	lib_file = tokens[3];
+	length = strnlen(lib_file, MAX_LINE_SIZE);
+	if ((length < 4) ||
+	    (lib_file[length - 3] != '.') ||
+	    (lib_file[length - 2] != 's') ||
+	    (lib_file[length - 1] != 'o')) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "lib_file");
+		goto free;
+	}
+
+	obj_file = malloc(length);
+	log_file = malloc(length + 2);
+	if (!obj_file || !log_file) {
+		snprintf(out, out_size, MSG_OUT_OF_MEMORY);
+		goto free;
+	}
+
+	memcpy(obj_file, lib_file, length - 2);
+	obj_file[length - 2] = 'o';
+	obj_file[length - 1] = 0;
+
+	memcpy(log_file, lib_file, length - 2);
+	log_file[length - 2] = 'l';
+	log_file[length - 1] = 'o';
+	log_file[length] = 'g';
+	log_file[length + 1] = 0;
+
+	buffer = malloc(MAX_LINE_SIZE);
+	if (!buffer) {
+		snprintf(out, out_size, MSG_OUT_OF_MEMORY);
+		return;
+	}
+
+	snprintf(buffer,
+		 MAX_LINE_SIZE,
+		 "gcc -c -O3 -fpic -Wno-deprecated-declarations -o %s %s "
+		 "-I %s/lib/pipeline "
+		 "-I %s/lib/eal/include "
+		 "-I %s/lib/eal/x86/include "
+		 "-I %s/lib/eal/include/generic "
+		 "-I %s/lib/meter "
+		 "-I %s/lib/port "
+		 "-I %s/lib/table "
+		 "-I %s/lib/pipeline "
+		 "-I %s/config "
+		 "-I %s/build "
+		 "-I %s/lib/eal/linux/include "
+		 ">%s 2>&1 "
+		 "&& "
+		 "gcc -shared %s -o %s "
+		 ">>%s 2>&1",
+		 obj_file,
+		 code_file,
+		 install_dir,
+		 install_dir,
+		 install_dir,
+		 install_dir,
+		 install_dir,
+		 install_dir,
+		 install_dir,
+		 install_dir,
+		 install_dir,
+		 install_dir,
+		 install_dir,
+		 log_file,
+		 obj_file,
+		 lib_file,
+		 log_file);
+
+	status = system(buffer);
+	if (status) {
+		snprintf(out,
+			 out_size,
+			 "Library build failed, see file \"%s\" for details.\n",
+			 log_file);
+		goto free;
+	}
+
+free:
+	free(cwd);
+	free(obj_file);
+	free(log_file);
+	free(buffer);
+}
+
 static const char cmd_pipeline_build_help[] =
 "pipeline <pipeline_name> build lib <lib_file> io <iospec_file> numa <numa_node>\n";
 
@@ -1126,10 +1265,6 @@ table_entry_free(struct rte_swx_table_entry *entry)
 	free(entry->action_data);
 	free(entry);
 }
-
-#ifndef MAX_LINE_SIZE
-#define MAX_LINE_SIZE 2048
-#endif
 
 static int
 pipeline_table_entries_add(struct rte_swx_ctl_pipeline *p,
@@ -3057,6 +3192,7 @@ cmd_help(char **tokens,
 			"\tpipeline port in\n"
 			"\tpipeline port out\n"
 			"\tpipeline codegen\n"
+			"\tpipeline libbuild\n"
 			"\tpipeline build\n"
 			"\tpipeline table add\n"
 			"\tpipeline table delete\n"
@@ -3129,6 +3265,12 @@ cmd_help(char **tokens,
 	if ((strcmp(tokens[0], "pipeline") == 0) &&
 		(n_tokens == 2) && (strcmp(tokens[1], "codegen") == 0)) {
 		snprintf(out, out_size, "\n%s\n", cmd_pipeline_codegen_help);
+		return;
+	}
+
+	if ((strcmp(tokens[0], "pipeline") == 0) &&
+		(n_tokens == 2) && (strcmp(tokens[1], "libbuild") == 0)) {
+		snprintf(out, out_size, "\n%s\n", cmd_pipeline_libbuild_help);
 		return;
 	}
 
@@ -3413,6 +3555,13 @@ cli_process(char *in, char *out, size_t out_size, void *obj)
 		if ((n_tokens >= 3) &&
 			(strcmp(tokens[1], "codegen") == 0)) {
 			cmd_pipeline_codegen(tokens, n_tokens, out, out_size,
+				obj);
+			return;
+		}
+
+		if ((n_tokens >= 3) &&
+			(strcmp(tokens[1], "libbuild") == 0)) {
+			cmd_pipeline_libbuild(tokens, n_tokens, out, out_size,
 				obj);
 			return;
 		}
