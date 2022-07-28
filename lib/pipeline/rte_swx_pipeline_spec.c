@@ -9,7 +9,7 @@
 
 #include <rte_common.h>
 
-#include "rte_swx_pipeline.h"
+#include "rte_swx_pipeline_spec.h"
 
 #ifndef MAX_LINE_LENGTH
 #define MAX_LINE_LENGTH 2048
@@ -34,15 +34,7 @@
 
 /*
  * extobj.
- *
- * extobj OBJ_NAME instanceof OBJ_TYPE [ pragma OBJ_CREATE_ARGS ]
  */
-struct extobj_spec {
-	char *name;
-	char *extern_type_name;
-	char *pragma;
-};
-
 static void
 extobj_spec_free(struct extobj_spec *s)
 {
@@ -104,18 +96,7 @@ extobj_statement_parse(struct extobj_spec *s,
 /*
  * struct.
  *
- * struct STRUCT_TYPE_NAME {
- *	bit<SIZE> | varbit<SIZE> FIELD_NAME
- *	...
- * }
  */
-struct struct_spec {
-	char *name;
-	struct rte_swx_field_params *fields;
-	uint32_t n_fields;
-	int varbit;
-};
-
 static void
 struct_spec_free(struct struct_spec *s)
 {
@@ -293,13 +274,7 @@ error:
 /*
  * header.
  *
- * header HEADER_NAME instanceof STRUCT_TYPE_NAME
  */
-struct header_spec {
-	char *name;
-	char *struct_type_name;
-};
-
 static void
 header_spec_free(struct header_spec *s)
 {
@@ -351,12 +326,7 @@ header_statement_parse(struct header_spec *s,
 /*
  * metadata.
  *
- * metadata instanceof STRUCT_TYPE_NAME
  */
-struct metadata_spec {
-	char *struct_type_name;
-};
-
 static void
 metadata_spec_free(struct metadata_spec *s)
 {
@@ -400,18 +370,7 @@ metadata_statement_parse(struct metadata_spec *s,
 /*
  * action.
  *
- * action ACTION_NAME args none | instanceof STRUCT_TYPE_NAME {
- *	INSTRUCTION
- *	...
- * }
  */
-struct action_spec {
-	char *name;
-	char *args_struct_type_name;
-	const char **instructions;
-	uint32_t n_instructions;
-};
-
 static void
 action_spec_free(struct action_spec *s)
 {
@@ -540,29 +499,7 @@ action_block_parse(struct action_spec *s,
 /*
  * table.
  *
- * table TABLE_NAME {
- *	key {
- *		MATCH_FIELD_NAME exact | wildcard | lpm
- *		...
- *	}
- *	actions {
- *		ACTION_NAME [ @tableonly | @defaultonly ]
- *		...
- *	}
- *	default_action ACTION_NAME args none | ARG0_NAME ARG0_VALUE ... [ const ]
- *	instanceof TABLE_TYPE_NAME
- *	pragma ARGS
- *	size SIZE
- * }
  */
-struct table_spec {
-	char *name;
-	struct rte_swx_pipeline_table_params params;
-	char *recommended_table_type_name;
-	char *args;
-	uint32_t size;
-};
-
 static void
 table_spec_free(struct table_spec *s)
 {
@@ -1084,22 +1021,7 @@ table_block_parse(struct table_spec *s,
 /*
  * selector.
  *
- * selector SELECTOR_NAME {
- *	group_id FIELD_NAME
- *	selector {
- *		FIELD_NAME
- *		...
- *	}
- *	member_id FIELD_NAME
- *	n_groups N_GROUPS
- *	n_members_per_group N_MEMBERS_PER_GROUP
- * }
  */
-struct selector_spec {
-	char *name;
-	struct rte_swx_pipeline_selector_params params;
-};
-
 static void
 selector_spec_free(struct selector_spec *s)
 {
@@ -1385,31 +1307,7 @@ selector_block_parse(struct selector_spec *s,
 /*
  * learner.
  *
- * learner LEARNER_NAME {
- *	key {
- *		MATCH_FIELD_NAME
- *		...
- *	}
- *	actions {
- *		ACTION_NAME [ @tableonly | @defaultonly]
- *		...
- *	}
- *	default_action ACTION_NAME args none | ARG0_NAME ARG0_VALUE ... [ const ]
- *	size SIZE
- *	timeout {
- *		TIMEOUT_IN_SECONDS
- *		...
- *	}
- * }
  */
-struct learner_spec {
-	char *name;
-	struct rte_swx_pipeline_learner_params params;
-	uint32_t size;
-	uint32_t *timeout;
-	uint32_t n_timeouts;
-};
-
 static void
 learner_spec_free(struct learner_spec *s)
 {
@@ -1958,14 +1856,7 @@ learner_block_parse(struct learner_spec *s,
 /*
  * regarray.
  *
- * regarray NAME size SIZE initval INITVAL
  */
-struct regarray_spec {
-	char *name;
-	uint64_t init_val;
-	uint32_t size;
-};
-
 static void
 regarray_spec_free(struct regarray_spec *s)
 {
@@ -2033,13 +1924,7 @@ regarray_statement_parse(struct regarray_spec *s,
 /*
  * metarray.
  *
- * metarray NAME size SIZE
  */
-struct metarray_spec {
-	char *name;
-	uint32_t size;
-};
-
 static void
 metarray_spec_free(struct metarray_spec *s)
 {
@@ -2095,16 +1980,7 @@ metarray_statement_parse(struct metarray_spec *s,
 /*
  * apply.
  *
- * apply {
- *	INSTRUCTION
- *	...
- * }
  */
-struct apply_spec {
-	const char **instructions;
-	uint32_t n_instructions;
-};
-
 static void
 apply_spec_free(struct apply_spec *s)
 {
