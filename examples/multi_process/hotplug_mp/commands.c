@@ -126,7 +126,7 @@ static void cmd_dev_attach_parsed(void *parsed_result,
 		return;
 	}
 
-	if (!rte_eal_hotplug_add(da.bus->name, da.name, da.args))
+	if (!rte_eal_hotplug_add(rte_bus_name(da.bus), da.name, da.args))
 		cmdline_printf(cl, "attached device %s\n", da.name);
 	else
 		cmdline_printf(cl, "failed to attached device %s\n",
@@ -173,7 +173,7 @@ static void cmd_dev_detach_parsed(void *parsed_result,
 	}
 
 	printf("detaching...\n");
-	if (!rte_eal_hotplug_remove(da.bus->name, da.name))
+	if (!rte_eal_hotplug_remove(rte_bus_name(da.bus), da.name))
 		cmdline_printf(cl, "detached device %s\n",
 			da.name);
 	else

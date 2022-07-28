@@ -644,7 +644,7 @@ skip_parse:
 		if (identifier && da.bus != next)
 			continue;
 
-		snprintf(devstr, sizeof(devstr), "bus=%s", next->name);
+		snprintf(devstr, sizeof(devstr), "bus=%s", rte_bus_name(next));
 		RTE_DEV_FOREACH(dev, devstr, &dev_iter) {
 
 			if (!dev->driver)
@@ -655,7 +655,7 @@ skip_parse:
 				continue;
 			printf("\n%s Infos for device %s %s\n",
 			       info_border, dev->name, info_border);
-			printf("Bus name: %s", dev->bus->name);
+			printf("Bus name: %s", rte_bus_name(dev->bus));
 			printf("\nDriver name: %s", dev->driver->name);
 			printf("\nDevargs: %s",
 			       dev->devargs ? dev->devargs->args : "");

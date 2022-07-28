@@ -267,6 +267,20 @@ struct rte_bus {
 };
 
 /**
+ * Retrieve a bus name.
+ *
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice
+ *
+ * @param bus
+ *   A pointer to a rte_bus structure.
+ * @return
+ *   A pointer to the bus name string.
+ */
+__rte_experimental
+const char *rte_bus_name(const struct rte_bus *bus);
+
+/**
  * Register a Bus handler.
  *
  * @param bus

@@ -425,6 +425,9 @@ EXPERIMENTAL {
 	rte_thread_self;
 	rte_thread_set_affinity_by_id;
 	rte_thread_set_priority;
+
+	# added in 22.11
+	rte_bus_name;
 };
 
 INTERNAL {

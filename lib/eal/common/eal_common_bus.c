@@ -16,11 +16,17 @@
 static struct rte_bus_list rte_bus_list =
 	TAILQ_HEAD_INITIALIZER(rte_bus_list);
 
+const char *
+rte_bus_name(const struct rte_bus *bus)
+{
+	return bus->name;
+}
+
 void
 rte_bus_register(struct rte_bus *bus)
 {
 	RTE_VERIFY(bus);
-	RTE_VERIFY(bus->name && strlen(bus->name));
+	RTE_VERIFY(rte_bus_name(bus) && strlen(rte_bus_name(bus)));
 	/* A bus should mandatorily have the scan implemented */
 	RTE_VERIFY(bus->scan);
 	RTE_VERIFY(bus->probe);
@@ -29,14 +35,14 @@ rte_bus_register(struct rte_bus *bus)
 	RTE_VERIFY(!bus->plug || bus->unplug);
 
 	TAILQ_INSERT_TAIL(&rte_bus_list, bus, next);
-	RTE_LOG(DEBUG, EAL, "Registered [%s] bus.\n", bus->name);
+	RTE_LOG(DEBUG, EAL, "Registered [%s] bus.\n", rte_bus_name(bus));
 }
 
 void
 rte_bus_unregister(struct rte_bus *bus)
 {
 	TAILQ_REMOVE(&rte_bus_list, bus, next);
-	RTE_LOG(DEBUG, EAL, "Unregistered [%s] bus.\n", bus->name);
+	RTE_LOG(DEBUG, EAL, "Unregistered [%s] bus.\n", rte_bus_name(bus));
 }
 
 /* Scan all the buses for registered devices */
@@ -50,7 +56,7 @@ rte_bus_scan(void)
 		ret = bus->scan();
 		if (ret)
 			RTE_LOG(ERR, EAL, "Scan for (%s) bus failed.\n",
-				bus->name);
+				rte_bus_name(bus));
 	}
 
 	return 0;
@@ -64,7 +70,7 @@ rte_bus_probe(void)
 	struct rte_bus *bus, *vbus = NULL;
 
 	TAILQ_FOREACH(bus, &rte_bus_list, next) {
-		if (!strcmp(bus->name, "vdev")) {
+		if (!strcmp(rte_bus_name(bus), "vdev")) {
 			vbus = bus;
 			continue;
 		}
@@ -72,14 +78,14 @@ rte_bus_probe(void)
 		ret = bus->probe();
 		if (ret)
 			RTE_LOG(ERR, EAL, "Bus (%s) probe failed.\n",
-				bus->name);
+				rte_bus_name(bus));
 	}
 
 	if (vbus) {
 		ret = vbus->probe();
 		if (ret)
 			RTE_LOG(ERR, EAL, "Bus (%s) probe failed.\n",
-				vbus->name);
+				rte_bus_name(vbus));
 	}
 
 	return 0;
@@ -92,7 +98,7 @@ bus_dump_one(FILE *f, struct rte_bus *bus)
 	int ret;
 
 	/* For now, dump only the bus name */
-	ret = fprintf(f, " %s\n", bus->name);
+	ret = fprintf(f, " %s\n", rte_bus_name(bus));
 
 	/* Error in case of inability in writing to stream */
 	if (ret < 0)
@@ -163,7 +169,7 @@ cmp_bus_name(const struct rte_bus *bus, const void *_name)
 {
 	const char *name = _name;
 
-	return strcmp(bus->name, name);
+	return strcmp(rte_bus_name(bus), name);
 }
 
 struct rte_bus *
@@ -213,7 +219,7 @@ rte_bus_get_iommu_class(void)
 
 		bus_iova_mode = bus->get_iommu_class();
 		RTE_LOG(DEBUG, EAL, "Bus %s wants IOVA as '%s'\n",
-			bus->name,
+			rte_bus_name(bus),
 			bus_iova_mode == RTE_IOVA_DC ? "DC" :
 			(bus_iova_mode == RTE_IOVA_PA ? "PA" : "VA"));
 		if (bus_iova_mode == RTE_IOVA_PA)

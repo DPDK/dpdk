@@ -3507,9 +3507,9 @@ detach_devargs(char *identifier)
 		}
 	}
 
-	if (rte_eal_hotplug_remove(da.bus->name, da.name) != 0) {
+	if (rte_eal_hotplug_remove(rte_bus_name(da.bus), da.name) != 0) {
 		TESTPMD_LOG(ERR, "Failed to detach device %s(%s)\n",
-			    da.name, da.bus->name);
+			    da.name, rte_bus_name(da.bus));
 		rte_devargs_reset(&da);
 		return;
 	}
