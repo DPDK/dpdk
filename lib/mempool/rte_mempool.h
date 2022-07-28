@@ -930,10 +930,6 @@ int rte_mempool_register_ops(const struct rte_mempool_ops *ops);
 		rte_mempool_register_ops(&ops);			\
 	}
 
-/** Deprecated. Use RTE_MEMPOOL_REGISTER_OPS() instead. */
-#define MEMPOOL_REGISTER_OPS(ops) \
-	RTE_DEPRECATED(MEMPOOL_REGISTER_OPS) RTE_MEMPOOL_REGISTER_OPS(ops)
-
 /**
  * An object callback function for mempool.
  *

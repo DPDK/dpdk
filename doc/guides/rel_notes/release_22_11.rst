@@ -95,6 +95,10 @@ API Changes
 * mempool: Deprecated helper macro ``MEMPOOL_HEADER_SIZE()`` is removed.
   The replacement macro ``RTE_MEMPOOL_HEADER_SIZE()`` is internal only.
 
+* mempool: Deprecated macro to register mempool driver
+  ``MEMPOOL_REGISTER_OPS()`` is removed. Use replacement macro
+  ``RTE_MEMPOOL_REGISTER_OPS()`` instead.
+
 * bus: Registering a bus has been marked as an internal API.
   External users may still register their bus using the ``bus_driver.h``
   driver header (see ``enable_driver_sdk`` meson option).
