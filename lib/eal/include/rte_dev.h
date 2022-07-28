@@ -86,90 +86,66 @@ rte_driver_name(const struct rte_driver *driver);
 /**
  * Retrieve a device bus.
  *
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * @param dev
  *   A pointer to a device structure.
  * @return
  *   A pointer to this device bus.
  */
-__rte_experimental
 const struct rte_bus *
 rte_dev_bus(const struct rte_device *dev);
 
 /**
  * Retrieve bus specific information for a device.
  *
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * @param dev
  *   A pointer to a device structure.
  * @return
  *   A string describing this device or NULL if none is available.
  */
-__rte_experimental
 const char *
 rte_dev_bus_info(const struct rte_device *dev);
 
 /**
  * Retrieve a device arguments.
  *
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * @param dev
  *   A pointer to a device structure.
  * @return
  *   A pointer to this device devargs.
  */
-__rte_experimental
 const struct rte_devargs *
 rte_dev_devargs(const struct rte_device *dev);
 
 /**
  * Retrieve a device driver.
  *
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * @param dev
  *   A pointer to a device structure.
  * @return
  *   A pointer to this device driver.
  */
-__rte_experimental
 const struct rte_driver *
 rte_dev_driver(const struct rte_device *dev);
 
 /**
  * Retrieve a device name.
  *
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * @param dev
  *   A pointer to a device structure.
  * @return
  *   A pointer to this device name.
  */
-__rte_experimental
 const char *
 rte_dev_name(const struct rte_device *dev);
 
 /**
  * Retrieve a device numa node.
  *
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * @param dev
  *   A pointer to a device structure.
  * @return
  *   A pointer to this device numa node.
  */
-__rte_experimental
 int
 rte_dev_numa_node(const struct rte_device *dev);
 
@@ -178,19 +154,6 @@ rte_dev_numa_node(const struct rte_device *dev);
  * Sufficiently large to allow for UUID or PCI address
  */
 #define RTE_DEV_NAME_MAX_LEN 64
-
-/**
- * A structure describing a generic device.
- */
-struct rte_device {
-	RTE_TAILQ_ENTRY(rte_device) next; /**< Next device */
-	const char *name;             /**< Device name */
-	const char *bus_info;         /**< Device bus specific information */
-	const struct rte_driver *driver; /**< Driver assigned after probing */
-	const struct rte_bus *bus;    /**< Bus handle assigned on scan */
-	int numa_node;                /**< NUMA node connection */
-	struct rte_devargs *devargs;  /**< Arguments for latest probing */
-};
 
 /**
  * Query status of a device.

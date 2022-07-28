@@ -10,6 +10,7 @@
 
 #include <sys/queue.h>
 
+#include <dev_driver.h>
 #include <rte_class.h>
 #include <rte_malloc.h>
 #include <rte_spinlock.h>

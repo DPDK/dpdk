@@ -26,7 +26,13 @@ DPDK_23 {
 	rte_delay_us_block;
 	rte_delay_us_callback_register;
 	rte_delay_us_sleep;
+	rte_dev_bus;
+	rte_dev_bus_info;
+	rte_dev_devargs;
+	rte_dev_driver;
 	rte_dev_is_probed;
+	rte_dev_name;
+	rte_dev_numa_node;
 	rte_dev_probe;
 	rte_dev_remove;
 	rte_devargs_add;
@@ -425,14 +431,6 @@ EXPERIMENTAL {
 	rte_thread_self;
 	rte_thread_set_affinity_by_id;
 	rte_thread_set_priority;
-
-	# added in 22.11
-	rte_dev_bus;
-	rte_dev_bus_info;
-	rte_dev_devargs;
-	rte_dev_driver;
-	rte_dev_name;
-	rte_dev_numa_node;
 };
 
 INTERNAL {

@@ -21,6 +21,19 @@ struct rte_driver {
 	const char *alias;              /**< Driver alias. */
 };
 
+/**
+ * A structure describing a generic device.
+ */
+struct rte_device {
+	RTE_TAILQ_ENTRY(rte_device) next; /**< Next device */
+	const char *name;             /**< Device name */
+	const char *bus_info;         /**< Device bus specific information */
+	const struct rte_driver *driver; /**< Driver assigned after probing */
+	const struct rte_bus *bus;    /**< Bus handle assigned on scan */
+	int numa_node;                /**< NUMA node connection */
+	struct rte_devargs *devargs;  /**< Arguments for latest probing */
+};
+
 #ifdef __cplusplus
 }
 #endif

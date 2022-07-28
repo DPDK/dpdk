@@ -47,13 +47,6 @@ Deprecation Notices
 * mempool: The mempool API macros ``MEMPOOL_PG_*`` are deprecated and
   will be removed in DPDK 22.11.
 
-* drivers: As a follow-up of the work on the ``rte_bus`` object,
-  the ``rte_driver`` and ``rte_device`` objects (and as a domino effect,
-  their bus-specific counterparts) will be made opaque in DPDK 22.11.
-  Registering a driver on a bus will be marked as an internal API:
-  external users may still register their drivers using the bus-specific
-  driver header (see ``enable_driver_sdk`` meson option).
-
 * bus: The ``dev->device.numa_node`` field is set by each bus driver for
   every device it manages to indicate on which NUMA node this device lies.
   When this information is unknown, the assigned value is not consistent
