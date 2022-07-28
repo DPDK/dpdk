@@ -174,3 +174,35 @@ struct apply_spec {
 	const char **instructions;
 	uint32_t n_instructions;
 };
+
+/*
+ * Pipeline.
+ */
+struct pipeline_spec {
+	struct extobj_spec *extobjs;
+	struct struct_spec *structs;
+	struct header_spec *headers;
+	struct metadata_spec *metadata;
+	struct action_spec *actions;
+	struct table_spec *tables;
+	struct selector_spec *selectors;
+	struct learner_spec *learners;
+	struct regarray_spec *regarrays;
+	struct metarray_spec *metarrays;
+	struct apply_spec *apply;
+
+	uint32_t n_extobjs;
+	uint32_t n_structs;
+	uint32_t n_headers;
+	uint32_t n_metadata;
+	uint32_t n_actions;
+	uint32_t n_tables;
+	uint32_t n_selectors;
+	uint32_t n_learners;
+	uint32_t n_regarrays;
+	uint32_t n_metarrays;
+	uint32_t n_apply;
+};
+
+void
+pipeline_spec_free(struct pipeline_spec *s);

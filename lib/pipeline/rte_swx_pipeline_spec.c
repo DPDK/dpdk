@@ -2082,6 +2082,27 @@ apply_block_parse(struct apply_spec *s,
 /*
  * Pipeline.
  */
+void
+pipeline_spec_free(struct pipeline_spec *s)
+{
+	if (!s)
+		return;
+
+	free(s->extobjs);
+	free(s->structs);
+	free(s->headers);
+	free(s->metadata);
+	free(s->actions);
+	free(s->tables);
+	free(s->selectors);
+	free(s->learners);
+	free(s->regarrays);
+	free(s->metarrays);
+	free(s->apply);
+
+	memset(s, 0, sizeof(struct pipeline_spec));
+}
+
 int
 rte_swx_pipeline_build_from_spec(struct rte_swx_pipeline *p,
 				 FILE *spec,
