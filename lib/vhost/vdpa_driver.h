@@ -75,6 +75,9 @@ struct rte_vdpa_dev_ops {
 	/** Get the device specific config */
 	int (*get_dev_config)(int vid, uint8_t *payload, uint32_t len);
 
+	/** Set mem table */
+	int (*set_mem_table)(int vid);
+
 	/** Reserved for future extension */
 	void *reserved[2];
 };

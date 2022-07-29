@@ -552,21 +552,25 @@ virtio_vdpa_vring_state_set(int vid, int vq_idx, int state)
 }
 
 static int
-virtio_vdpa_dma_unmap(struct virtio_vdpa_priv *priv)
+virtio_vdpa_dev_cleanup(int vid)
 {
 	uint32_t i;
 	int ret;
-	struct rte_vhost_memory *mem = NULL;
-	int vfio_container_fd;
+	struct rte_vhost_memory *mem;
+	struct rte_vdpa_device *vdev = rte_vhost_get_vdpa_device(vid);
+	struct virtio_vdpa_priv *priv =
+		virtio_vdpa_find_priv_resource_by_vdev(vdev);
 
-	ret = rte_vhost_get_mem_table(priv->vid, &mem);
-	if (ret < 0) {
-		DRV_LOG(ERR, "%s failed to get VM memory layout ret:%d",
-					priv->vdev->device->name, ret);
-		goto exit;
+	if (priv == NULL) {
+		DRV_LOG(ERR, "Invalid vDPA device: %s", vdev->device->name);
+		return -ENODEV;
 	}
 
-	vfio_container_fd = priv->vfio_container_fd;
+	mem = priv->mem;
+	if (mem == NULL) {
+		DRV_LOG(INFO, "No mem is registered: %s", vdev->device->name);
+		return 0;
+	}
 
 	for (i = 0; i < mem->nregions; i++) {
 		struct rte_vhost_mem_region *reg;
@@ -574,78 +578,121 @@ virtio_vdpa_dma_unmap(struct virtio_vdpa_priv *priv)
 		reg = &mem->regions[i];
 		DRV_LOG(INFO, "%s, region %u: HVA 0x%" PRIx64 ", "
 			"GPA 0x%" PRIx64 ", size 0x%" PRIx64 ".",
-			"DMA unmap", i,
+			"DMA clean up unmap", i,
 			reg->host_user_addr, reg->guest_phys_addr, reg->size);
 
-		ret = rte_vfio_container_dma_unmap(vfio_container_fd,
+		ret = rte_vfio_container_dma_unmap(priv->vfio_container_fd,
 			reg->host_user_addr, reg->guest_phys_addr,
 			reg->size);
 		if (ret < 0) {
-			DRV_LOG(ERR, "%s DMA unmap failed ret:%d",
+			DRV_LOG(ERR, "%s DMA clean up failed ret:%d",
 						priv->vdev->device->name, ret);
-			goto exit;
+			free(mem);
+			priv->mem = NULL;
+			return ret;
 		}
 	}
 
-exit:
 	free(mem);
-	return ret;
+	priv->mem = NULL;
+	return 0;
 }
-
-static int
-virtio_vdpa_dma_map(struct virtio_vdpa_priv *priv)
+static inline bool
+virtio_vdpa_find_mem_reg(const struct rte_vhost_mem_region *key, const struct rte_vhost_memory *mem)
 {
-	uint32_t i = 0, j;
-	int ret;
-	struct rte_vhost_memory *mem = NULL;
-	struct rte_vhost_mem_region *reg;
-	int vfio_container_fd = priv->vfio_container_fd;
+	uint32_t i;
+	const struct rte_vhost_mem_region *reg;
 
-	ret = rte_vhost_get_mem_table(priv->vid, &mem);
-	if (ret < 0) {
-		DRV_LOG(ERR, "%s failed to get VM memory layout ret:%d",
-					priv->vdev->device->name, ret);
-		goto exit;
-	}
+	if (mem == NULL)
+		return false;
 
 	for (i = 0; i < mem->nregions; i++) {
 		reg = &mem->regions[i];
-		DRV_LOG(INFO, "%s, region %u: HVA 0x%" PRIx64 ", "
-			"GPA 0x%" PRIx64 ", size 0x%" PRIx64 ".",
-			"DMA map", i,
-			reg->host_user_addr, reg->guest_phys_addr, reg->size);
-
-		ret = rte_vfio_container_dma_map(vfio_container_fd,
-			reg->host_user_addr, reg->guest_phys_addr,
-			reg->size);
-		if (ret < 0) {
-			DRV_LOG(ERR, "%s DMA map failed ret:%d",
-						priv->vdev->device->name, ret);
-			goto exit;
-		}
+		if ((reg->host_user_addr == key->host_user_addr) &&
+			(reg->guest_phys_addr == key->guest_phys_addr) &&
+			(reg->size == key->size))
+			return true;
 	}
-	free(mem);
-	return ret;
+	return false;
+}
+static int
+virtio_vdpa_dev_set_mem_table(int vid)
+{
+	uint32_t i = 0;
+	int ret;
+	struct rte_vhost_memory *cur_mem = NULL;
+	struct rte_vhost_mem_region *reg;
+	struct rte_vdpa_device *vdev = rte_vhost_get_vdpa_device(vid);
+	struct virtio_vdpa_priv *priv =
+		virtio_vdpa_find_priv_resource_by_vdev(vdev);
 
-exit:
-	for (j = 0; j < i; j++) {
-		reg = &mem->regions[j];
-		DRV_LOG(INFO, "%s, region %u: HVA 0x%" PRIx64 ", "
-			"GPA 0x%" PRIx64 ", size 0x%" PRIx64 ".",
-			"DMA unmap", j,
-			reg->host_user_addr, reg->guest_phys_addr, reg->size);
-
-		ret = rte_vfio_container_dma_unmap(vfio_container_fd,
-			reg->host_user_addr, reg->guest_phys_addr,
-			reg->size);
-		if (ret < 0) {
-			DRV_LOG(ERR, "%s DMA unmap failed ret:%d",
-						priv->vdev->device->name, ret);
-		}
+	if (priv == NULL) {
+		DRV_LOG(ERR, "Invalid vDPA device: %s", vdev->device->name);
+		return -ENODEV;
 	}
 
-	free(mem);
-	return ret;
+	priv->vid = vid;
+	ret = rte_vhost_get_mem_table(priv->vid, &cur_mem);
+	if (ret < 0) {
+		DRV_LOG(ERR, "%s failed to get VM memory layout ret:%d",
+					priv->vdev->device->name, ret);
+		return ret;
+	}
+
+	/* Unmap reagion dind't exsit in current */
+	if (priv->mem) {
+		for (i = 0; i < priv->mem->nregions; i++) {
+			reg = &priv->mem->regions[i];
+			if (!virtio_vdpa_find_mem_reg(reg, cur_mem)) {
+				ret = rte_vfio_container_dma_unmap(priv->vfio_container_fd,
+					reg->host_user_addr, reg->guest_phys_addr,
+					reg->size);
+				DRV_LOG(INFO, "%s, region %u: HVA 0x%" PRIx64 ", "
+					"GPA 0x%" PRIx64 ", size 0x%" PRIx64 ".",
+					"DMA unmap", i,
+					reg->host_user_addr, reg->guest_phys_addr, reg->size);
+				if (ret < 0) {
+					DRV_LOG(ERR, "%s vdpa unmap reduandnat DMA failed ret:%d",
+								priv->vdev->device->name, ret);
+					free(cur_mem);
+					return ret;
+				}
+			} else {
+				DRV_LOG(INFO, "%s HVA 0x%" PRIx64", "
+				"GPA 0x%" PRIx64 ", size 0x%" PRIx64 " exist in cur map",
+				vdev->device->name, reg->host_user_addr, reg->guest_phys_addr, reg->size);
+			}
+		}
+	}
+
+	/* Map the region if it doesn't exist yet */
+	for (i = 0; i < cur_mem->nregions; i++) {
+		reg = &cur_mem->regions[i];
+		if (!virtio_vdpa_find_mem_reg(reg, priv->mem)) {
+			ret = rte_vfio_container_dma_map(priv->vfio_container_fd,
+				reg->host_user_addr, reg->guest_phys_addr,
+				reg->size);
+			DRV_LOG(INFO, "%s, region %u: HVA 0x%" PRIx64 ", "
+				"GPA 0x%" PRIx64 ", size 0x%" PRIx64 ".",
+				"DMA map", i,
+				reg->host_user_addr, reg->guest_phys_addr, reg->size);
+			if (ret < 0) {
+				DRV_LOG(ERR, "%s DMA map failed ret:%d",
+							priv->vdev->device->name, ret);
+				free(cur_mem);
+				return ret;
+			}
+		} else {
+			DRV_LOG(INFO, "%s HVA 0x%" PRIx64", "
+			"GPA 0x%" PRIx64 ", size 0x%" PRIx64 " already mapped",
+			vdev->device->name, reg->host_user_addr, reg->guest_phys_addr, reg->size);
+		}
+	}
+
+	if (priv->mem)
+		free(priv->mem);
+	priv->mem = cur_mem;
+	return 0;
 }
 
 #ifndef PAGE_SIZE
@@ -753,13 +800,6 @@ virtio_vdpa_dev_close_work(void *arg)
 	struct virtio_vdpa_priv *priv = arg;
 
 	DRV_LOG(INFO, "%s vfid %d dev close work of lcore:%d start", priv->vdev->device->name, priv->vf_id, priv->lcore_id);
-	ret = virtio_vdpa_dma_unmap(priv);
-	if (ret) {
-		DRV_LOG(ERR, "%s fail to do dma map: %d",
-					priv->vdev->device->name, ret);
-		priv->dev_work_flag = VIRTIO_VDPA_DEV_CLOSE_WORK_ERR;
-		return ret;
-	}
 
 	ret = virtio_vdpa_cmd_restore_state(priv->pf_priv, priv->vf_id, 0, priv->state_size, priv->state_mz->iova);
 	if (ret) {
@@ -999,12 +1039,6 @@ virtio_vdpa_dev_config(int vid)
 	}
 
 	priv->vid = vid;
-	ret = virtio_vdpa_dma_map(priv);
-	if (ret) {
-		DRV_LOG(ERR, "%s fail to do dma map: %d",
-					vdev->device->name, ret);
-		return ret;
-	}
 
 	fd = rte_intr_fd_get(priv->pdev->intr_handle);
 	ret = virtio_pci_dev_state_interrupt_enable(priv->vpdev, fd, 0, priv->state_mz->addr);
@@ -1012,7 +1046,6 @@ virtio_vdpa_dev_config(int vid)
 		DRV_LOG(ERR, "%s error enabling virtio dev interrupts: %d(%s)",
 				vdev->device->name, ret, strerror(errno));
 		rte_errno = rte_errno ? rte_errno : EINVAL;
-		virtio_vdpa_dma_unmap(priv);
 		return -rte_errno;
 	}
 
@@ -1021,7 +1054,6 @@ virtio_vdpa_dev_config(int vid)
 		if (ret) {
 			DRV_LOG(ERR, "%s error get vring base ret:%d", vdev->device->name, ret);
 			rte_errno = rte_errno ? rte_errno : EINVAL;
-			virtio_vdpa_dma_unmap(priv);
 			return -rte_errno;
 		}
 
@@ -1035,7 +1067,6 @@ virtio_vdpa_dev_config(int vid)
 		if (ret) {
 			DRV_LOG(ERR, "%s error get vring base ret:%d", vdev->device->name, ret);
 			rte_errno = rte_errno ? rte_errno : EINVAL;
-			virtio_vdpa_dma_unmap(priv);
 			return -rte_errno;
 		}
 	}
@@ -1051,7 +1082,6 @@ virtio_vdpa_dev_config(int vid)
 	if (ret) {
 		DRV_LOG(ERR, "%s vfid %d failed restore state ret:%d", vdev->device->name, priv->vf_id, ret);
 		rte_errno = rte_errno ? rte_errno : EINVAL;
-		virtio_vdpa_dma_unmap(priv);
 		return -rte_errno;
 	}
 
@@ -1059,7 +1089,6 @@ virtio_vdpa_dev_config(int vid)
 	if (ret) {
 		DRV_LOG(ERR, "%s vfid %d failed unfreeze ret:%d", vdev->device->name, priv->vf_id, ret);
 		rte_errno = rte_errno ? rte_errno : EINVAL;
-		virtio_vdpa_dma_unmap(priv);
 		return -rte_errno;
 	}
 	priv->lm_status = VIRTIO_S_QUIESCED;
@@ -1068,7 +1097,6 @@ virtio_vdpa_dev_config(int vid)
 	if (ret) {
 		DRV_LOG(ERR, "%s vfid %d failed unquiesced ret:%d", vdev->device->name, priv->vf_id, ret);
 		rte_errno = rte_errno ? rte_errno : EINVAL;
-		virtio_vdpa_dma_unmap(priv);
 		return -rte_errno;
 	}
 	priv->lm_status = VIRTIO_S_RUNNING;
@@ -1165,6 +1193,8 @@ static struct rte_vdpa_dev_ops virtio_vdpa_ops = {
 	.get_stats = NULL,
 	.reset_stats = NULL,
 	.get_dev_config = virtio_vdpa_dev_config_get,
+	.set_mem_table = virtio_vdpa_dev_set_mem_table,
+	.dev_cleanup = virtio_vdpa_dev_cleanup,
 };
 
 static int vdpa_check_handler(__rte_unused const char *key,

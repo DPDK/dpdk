@@ -1445,6 +1445,9 @@ vhost_user_set_mem_table(struct virtio_net **pdev,
 	if (dev->async_copy && rte_vfio_is_enabled("vfio"))
 		async_dma_map(dev, true);
 
+	if ((dev->vdpa_dev) && (dev->vdpa_dev->ops->set_mem_table))
+		dev->vdpa_dev->ops->set_mem_table(dev->vid);
+
 	if (vhost_user_postcopy_register(dev, main_fd, ctx) < 0)
 		goto free_mem_table;
 

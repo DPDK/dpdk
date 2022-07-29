@@ -40,6 +40,7 @@ struct virtio_vdpa_priv {
 	const struct rte_memzone *state_mz; /* This is used to formmat state  at local */
 	const struct rte_memzone *state_mz_remote; /* This is used get state frome contoller */
 	const struct virtio_vdpa_device_callback *dev_ops;
+	struct rte_vhost_memory *mem;
 	enum virtio_internal_status lm_status;
 	int state_size;
 	int vfio_container_fd;
