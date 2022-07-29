@@ -52,6 +52,8 @@ if cc.has_argument('-Wno-format-truncation')
     default_cflags += '-Wno-format-truncation'
 endif
 
+dpdk_drivers_build_dir = meson.current_build_dir()
+
 foreach subpath:subdirs
     drivers = []
     std_deps = []

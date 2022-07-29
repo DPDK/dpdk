@@ -492,9 +492,7 @@ foreach arg : fast_tests
 
     if (get_option('default_library') == 'shared' and
         arg[0] == 'event_eth_tx_adapter_autotest')
-        foreach drv:dpdk_drivers
-            test_args += ['-d', drv.full_path().split('.a')[0] + '.so']
-        endforeach
+        test_args += ['-d', dpdk_drivers_build_dir]
     endif
     if is_linux
         test_args += ['--file-prefix=@0@'.format(arg[0])]
