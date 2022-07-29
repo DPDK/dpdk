@@ -59,7 +59,7 @@ int qat_pf2vf_exch_msg(struct qat_pci_device *qat_dev,
 		 * the message
 		 */
 		do {
-			rte_delay_us_sleep(5);
+			rte_delay_us_sleep(ADF_IOV_MSG_ACK_DELAY_US * 2);
 			val = ADF_CSR_RD(pmisc_bar_addr, vf_csr_off);
 		} while ((val & ADF_PFVF_INT) &&
 			(++count < ADF_IOV_MSG_ACK_MAX_RETRY));
@@ -70,6 +70,8 @@ int qat_pf2vf_exch_msg(struct qat_pci_device *qat_dev,
 		}
 
 		uint32_t pf_val = ADF_CSR_RD(pmisc_bar_addr, pf_csr_off);
+		msg &= ~ADF_PFVF_INT;
+		ADF_CSR_WR(pmisc_bar_addr, pf_csr_off, msg);
 
 		*(ret + i) = (uint8_t)(pf_val >> (pf2vf_msg.block_hdr > 0 ?
 				10 : 8) & 0xff);
