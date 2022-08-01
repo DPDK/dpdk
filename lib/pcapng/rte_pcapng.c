@@ -552,33 +552,16 @@ fail:
 	return NULL;
 }
 
-/* Count how many segments are in this array of mbufs */
-static unsigned int
-mbuf_burst_segs(struct rte_mbuf *pkts[], unsigned int n)
-{
-	unsigned int i, iovcnt;
-
-	for (iovcnt = 0, i = 0; i < n; i++) {
-		const struct rte_mbuf *m = pkts[i];
-
-		__rte_mbuf_sanity_check(m, 1);
-
-		iovcnt += m->nb_segs;
-	}
-	return iovcnt;
-}
-
 /* Write pre-formatted packets to file. */
 ssize_t
 rte_pcapng_write_packets(rte_pcapng_t *self,
 			 struct rte_mbuf *pkts[], uint16_t nb_pkts)
 {
-	int iovcnt = mbuf_burst_segs(pkts, nb_pkts);
-	struct iovec iov[iovcnt];
-	unsigned int i, cnt;
-	ssize_t ret;
+	struct iovec iov[IOV_MAX];
+	unsigned int i, cnt = 0;
+	ssize_t ret, total = 0;
 
-	for (i = cnt = 0; i < nb_pkts; i++) {
+	for (i = 0; i < nb_pkts; i++) {
 		struct rte_mbuf *m = pkts[i];
 		struct pcapng_enhance_packet_block *epb;
 
@@ -588,6 +571,20 @@ rte_pcapng_write_packets(rte_pcapng_t *self,
 			     epb->block_length != rte_pktmbuf_data_len(m))) {
 			rte_errno = EINVAL;
 			return -1;
+		}
+
+		/*
+		 * Handle case of highly fragmented and large burst size
+		 * Note: this assumes that max segments per mbuf < IOV_MAX
+		 */
+		if (unlikely(cnt + m->nb_segs >= IOV_MAX)) {
+			ret = writev(self->outfd, iov, cnt);
+			if (unlikely(ret < 0)) {
+				rte_errno = errno;
+				return -1;
+			}
+			total += ret;
+			cnt = 0;
 		}
 
 		/*
@@ -602,10 +599,12 @@ rte_pcapng_write_packets(rte_pcapng_t *self,
 		} while ((m = m->next));
 	}
 
-	ret = writev(self->outfd, iov, iovcnt);
-	if (unlikely(ret < 0))
+	ret = writev(self->outfd, iov, cnt);
+	if (unlikely(ret < 0)) {
 		rte_errno = errno;
-	return ret;
+		return -1;
+	}
+	return total + ret;
 }
 
 /* Create new pcapng writer handle */
