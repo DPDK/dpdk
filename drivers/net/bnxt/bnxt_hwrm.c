@@ -4535,7 +4535,7 @@ int bnxt_hwrm_port_led_cfg(struct bnxt *bp, bool led_on)
 	uint16_t duration = 0;
 	int rc, i;
 
-	if (!bp->leds->num_leds || BNXT_VF(bp))
+	if (BNXT_VF(bp) || !bp->leds || !bp->leds->num_leds)
 		return -EOPNOTSUPP;
 
 	HWRM_PREP(&req, HWRM_PORT_LED_CFG, BNXT_USE_CHIMP_MB);
