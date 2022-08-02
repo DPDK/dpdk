@@ -680,7 +680,9 @@ nfp_fw_setup(struct rte_pci_device *dev,
 	char card_desc[100];
 	int err = 0;
 
-	nfp_fw_model = nfp_hwinfo_lookup(hwinfo, "assembly.partno");
+	nfp_fw_model = nfp_hwinfo_lookup(hwinfo, "nffw.partno");
+	if (nfp_fw_model == NULL)
+		nfp_fw_model = nfp_hwinfo_lookup(hwinfo, "assembly.partno");
 
 	if (nfp_fw_model) {
 		PMD_DRV_LOG(INFO, "firmware model found: %s", nfp_fw_model);
