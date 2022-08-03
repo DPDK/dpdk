@@ -4092,6 +4092,8 @@ ice_rss_cfg_raw_symm(struct ice_hw *hw,
 
 		switch (proto_id) {
 		case ICE_PROT_IPV4_OF_OR_S:
+		case ICE_PROT_IPV4_IL:
+		case ICE_PROT_IPV4_IL_IL:
 			len = ICE_FLOW_FLD_SZ_IPV4_ADDR /
 			      ICE_FLOW_FV_EXTRACT_SZ;
 			if (prof->fv[i].offset ==
@@ -4107,6 +4109,8 @@ ice_rss_cfg_raw_symm(struct ice_hw *hw,
 			i++;
 			continue;
 		case ICE_PROT_IPV6_OF_OR_S:
+		case ICE_PROT_IPV6_IL:
+		case ICE_PROT_IPV6_IL_IL:
 			len = ICE_FLOW_FLD_SZ_IPV6_ADDR /
 			      ICE_FLOW_FV_EXTRACT_SZ;
 			if (prof->fv[i].offset ==
