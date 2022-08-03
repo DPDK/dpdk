@@ -271,7 +271,7 @@ parse_flow_tokens(char **tokens, uint32_t n_tokens,
 	nb_flow_rule++;
 }
 
-#define MAX_RTE_FLOW_PATTERN (4)
+#define MAX_RTE_FLOW_PATTERN (5)
 #define MAX_RTE_FLOW_ACTIONS (5)
 
 static void
@@ -335,9 +335,7 @@ flow_init_single(struct flow_rule_entry *rule)
 		pattern[pattern_idx].spec = &rule->ipv4.spec;
 		pattern[pattern_idx].mask = &rule->ipv4.mask;
 		pattern_idx++;
-	}
-
-	if (rule->is_ipv6) {
+	} else if (rule->is_ipv6) {
 		pattern[pattern_idx].type = RTE_FLOW_ITEM_TYPE_IPV6;
 		pattern[pattern_idx].spec = &rule->ipv6.spec;
 		pattern[pattern_idx].mask = &rule->ipv6.mask;
