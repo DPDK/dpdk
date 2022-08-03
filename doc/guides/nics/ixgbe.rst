@@ -99,7 +99,6 @@ To guarantee the constraint, capabilities in dev_conf.rxmode.offloads will be ch
 
 *   dev_conf
 
-fdir_conf->mode will also be checked.
 
 Disable SDP3 TX_DISABLE for Fiber Links
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

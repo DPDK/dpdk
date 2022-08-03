@@ -548,8 +548,6 @@ extern lcoreid_t bitrate_lcore_id;
 extern uint8_t bitrate_enabled;
 #endif
 
-extern struct rte_eth_fdir_conf fdir_conf;
-
 extern uint32_t max_rx_pkt_len;
 
 /*
@@ -1018,10 +1016,6 @@ void pmd_test_exit(void);
 #if defined(RTE_NET_I40E) || defined(RTE_NET_IXGBE)
 void fdir_get_infos(portid_t port_id);
 #endif
-void fdir_set_flex_mask(portid_t port_id,
-			   struct rte_eth_fdir_flex_mask *cfg);
-void fdir_set_flex_payload(portid_t port_id,
-			   struct rte_eth_flex_payload_cfg *cfg);
 void port_rss_reta_info(portid_t port_id,
 			struct rte_eth_rss_reta_entry64 *reta_conf,
 			uint16_t nb_entries);

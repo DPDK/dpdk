@@ -513,11 +513,6 @@ octeontx_dev_configure(struct rte_eth_dev *dev)
 		return -EINVAL;
 	}
 
-	if (conf->fdir_conf.mode != RTE_FDIR_MODE_NONE) {
-		octeontx_log_err("flow director not supported");
-		return -EINVAL;
-	}
-
 	nic->num_tx_queues = dev->data->nb_tx_queues;
 
 	if (!nic->reconfigure) {

@@ -346,6 +346,7 @@ struct txgbe_tm_conf {
 struct txgbe_adapter {
 	struct txgbe_hw             hw;
 	struct txgbe_hw_stats       stats;
+	struct rte_eth_fdir_conf    fdir_conf;
 	struct txgbe_hw_fdir_info   fdir;
 	struct txgbe_interrupt      intr;
 	struct txgbe_stat_mappings  stat_mappings;
@@ -373,7 +374,7 @@ struct txgbe_adapter {
 #define TXGBE_DEV_ADAPTER(dev) \
 	((struct txgbe_adapter *)(dev)->data->dev_private)
 
-#define TXGBE_DEV_FDIR_CONF(dev)	(&(dev)->data->dev_conf.fdir_conf)
+#define TXGBE_DEV_FDIR_CONF(dev)	(&TXGBE_DEV_ADAPTER(dev)->fdir_conf)
 
 #define TXGBE_DEV_HW(dev) \
 	(&((struct txgbe_adapter *)(dev)->data->dev_private)->hw)

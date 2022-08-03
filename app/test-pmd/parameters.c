@@ -100,17 +100,6 @@ usage(char* progname)
 	printf("  --eth-peer=X,M:M:M:M:M:M: set the MAC address of the X peer "
 	       "port (0 <= X < %d).\n", RTE_MAX_ETHPORTS);
 #endif
-	printf("  --pkt-filter-mode=N: set Flow Director mode "
-	       "(N: none (default mode) or signature or perfect).\n");
-	printf("  --pkt-filter-report-hash=N: set Flow Director report mode "
-	       "(N: none  or match (default) or always).\n");
-	printf("  --pkt-filter-size=N: set Flow Director mode "
-	       "(N: 64K (default mode) or 128K or 256K).\n");
-	printf("  --pkt-filter-drop-queue=N: set drop-queue. "
-	       "In perfect mode, when you add a rule with queue = -1 "
-	       "the packet will be enqueued into the rx drop-queue. "
-	       "If the drop-queue doesn't exist, the packet is dropped. "
-	       "By default drop-queue=127.\n");
 #ifdef RTE_LIB_LATENCYSTATS
 	printf("  --latencystats=N: enable latency and jitter statistics "
 	       "monitoring on forwarding lcore id N.\n");
@@ -624,10 +613,6 @@ launch_args_parse(int argc, char** argv)
 		{ "total-num-mbufs",		1, 0, 0 },
 		{ "max-pkt-len",		1, 0, 0 },
 		{ "max-lro-pkt-size",		1, 0, 0 },
-		{ "pkt-filter-mode",            1, 0, 0 },
-		{ "pkt-filter-report-hash",     1, 0, 0 },
-		{ "pkt-filter-size",            1, 0, 0 },
-		{ "pkt-filter-drop-queue",      1, 0, 0 },
 #ifdef RTE_LIB_LATENCYSTATS
 		{ "latencystats",               1, 0, 0 },
 #endif
@@ -961,67 +946,6 @@ launch_args_parse(int argc, char** argv)
 			if (!strcmp(lgopts[opt_idx].name, "max-lro-pkt-size")) {
 				n = atoi(optarg);
 				rx_mode.max_lro_pkt_size = (uint32_t) n;
-			}
-			if (!strcmp(lgopts[opt_idx].name, "pkt-filter-mode")) {
-				if (!strcmp(optarg, "signature"))
-					fdir_conf.mode =
-						RTE_FDIR_MODE_SIGNATURE;
-				else if (!strcmp(optarg, "perfect"))
-					fdir_conf.mode = RTE_FDIR_MODE_PERFECT;
-				else if (!strcmp(optarg, "perfect-mac-vlan"))
-					fdir_conf.mode = RTE_FDIR_MODE_PERFECT_MAC_VLAN;
-				else if (!strcmp(optarg, "perfect-tunnel"))
-					fdir_conf.mode = RTE_FDIR_MODE_PERFECT_TUNNEL;
-				else if (!strcmp(optarg, "none"))
-					fdir_conf.mode = RTE_FDIR_MODE_NONE;
-				else
-					rte_exit(EXIT_FAILURE,
-						 "pkt-mode-invalid %s invalid - must be: "
-						 "none, signature, perfect, perfect-mac-vlan"
-						 " or perfect-tunnel\n",
-						 optarg);
-			}
-			if (!strcmp(lgopts[opt_idx].name,
-				    "pkt-filter-report-hash")) {
-				if (!strcmp(optarg, "none"))
-					fdir_conf.status =
-						RTE_FDIR_NO_REPORT_STATUS;
-				else if (!strcmp(optarg, "match"))
-					fdir_conf.status =
-						RTE_FDIR_REPORT_STATUS;
-				else if (!strcmp(optarg, "always"))
-					fdir_conf.status =
-						RTE_FDIR_REPORT_STATUS_ALWAYS;
-				else
-					rte_exit(EXIT_FAILURE,
-						 "pkt-filter-report-hash %s invalid "
-						 "- must be: none or match or always\n",
-						 optarg);
-			}
-			if (!strcmp(lgopts[opt_idx].name, "pkt-filter-size")) {
-				if (!strcmp(optarg, "64K"))
-					fdir_conf.pballoc =
-						RTE_ETH_FDIR_PBALLOC_64K;
-				else if (!strcmp(optarg, "128K"))
-					fdir_conf.pballoc =
-						RTE_ETH_FDIR_PBALLOC_128K;
-				else if (!strcmp(optarg, "256K"))
-					fdir_conf.pballoc =
-						RTE_ETH_FDIR_PBALLOC_256K;
-				else
-					rte_exit(EXIT_FAILURE, "pkt-filter-size %s invalid -"
-						 " must be: 64K or 128K or 256K\n",
-						 optarg);
-			}
-			if (!strcmp(lgopts[opt_idx].name,
-				    "pkt-filter-drop-queue")) {
-				n = atoi(optarg);
-				if (n >= 0)
-					fdir_conf.drop_queue = (uint8_t) n;
-				else
-					rte_exit(EXIT_FAILURE,
-						 "drop queue %d invalid - must"
-						 "be >= 0 \n", n);
 			}
 #ifdef RTE_LIB_LATENCYSTATS
 			if (!strcmp(lgopts[opt_idx].name,

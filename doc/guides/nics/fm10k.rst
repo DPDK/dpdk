@@ -84,8 +84,6 @@ will be checked:
 
 *   ``RTE_ETH_RX_OFFLOAD_HEADER_SPLIT``
 
-*   ``fdir_conf->mode``
-
 
 RX Burst Size
 ^^^^^^^^^^^^^

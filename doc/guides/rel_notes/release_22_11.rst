@@ -138,6 +138,10 @@ API Changes
   * Removed deprecated ``PKT_{R,T}X_DYNF_METADATA`` defines.
     Use corresponding defines ``RTE_MBUF_DYNFLAG_{R,T}X_METADATA`` instead.
 
+* ethdev: Removed deprecated Flow Director configuration from device
+  configuration (``dev_conf.fdir_conf``). Moved corresponding structures
+  to internal API since some drivers still use it internally.
+
 * raw/ifgpa: The function ``rte_pmd_ifpga_get_pci_bus`` has been removed.
 
 

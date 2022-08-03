@@ -89,10 +89,6 @@ Deprecation Notices
   The per-queue Rx packet split offload ``RTE_ETH_RX_OFFLOAD_BUFFER_SPLIT``
   can still be used, and it is configured by ``rte_eth_rxseg_split``.
 
-* ethdev: The flow director API, including ``rte_eth_conf.fdir_conf`` field,
-  and the related structures (``rte_fdir_*`` and ``rte_eth_fdir_*``),
-  will be removed in DPDK 20.11.
-
 * ethdev: Announce moving from dedicated modify function for each field,
   to using the general ``rte_flow_modify_field`` action.
 

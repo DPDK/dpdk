@@ -1298,48 +1298,6 @@ enum rte_eth_tunnel_type {
 #include "rte_eth_ctrl.h"
 
 /**
- *  Memory space that can be configured to store Flow Director filters
- *  in the board memory.
- */
-enum rte_eth_fdir_pballoc_type {
-	RTE_ETH_FDIR_PBALLOC_64K = 0,  /**< 64k. */
-	RTE_ETH_FDIR_PBALLOC_128K,     /**< 128k. */
-	RTE_ETH_FDIR_PBALLOC_256K,     /**< 256k. */
-};
-#define rte_fdir_pballoc_type	rte_eth_fdir_pballoc_type
-
-#define RTE_FDIR_PBALLOC_64K  RTE_DEPRECATED(RTE_FDIR_PBALLOC_64K)  RTE_ETH_FDIR_PBALLOC_64K
-#define RTE_FDIR_PBALLOC_128K RTE_DEPRECATED(RTE_FDIR_PBALLOC_128K) RTE_ETH_FDIR_PBALLOC_128K
-#define RTE_FDIR_PBALLOC_256K RTE_DEPRECATED(RTE_FDIR_PBALLOC_256K) RTE_ETH_FDIR_PBALLOC_256K
-
-/**
- *  Select report mode of FDIR hash information in Rx descriptors.
- */
-enum rte_fdir_status_mode {
-	RTE_FDIR_NO_REPORT_STATUS = 0, /**< Never report FDIR hash. */
-	RTE_FDIR_REPORT_STATUS, /**< Only report FDIR hash for matching pkts. */
-	RTE_FDIR_REPORT_STATUS_ALWAYS, /**< Always report FDIR hash. */
-};
-
-/**
- * A structure used to configure the Flow Director (FDIR) feature
- * of an Ethernet port.
- *
- * If mode is RTE_FDIR_MODE_NONE, the pballoc value is ignored.
- */
-struct rte_eth_fdir_conf {
-	enum rte_fdir_mode mode; /**< Flow Director mode. */
-	enum rte_eth_fdir_pballoc_type pballoc; /**< Space for FDIR filters. */
-	enum rte_fdir_status_mode status;  /**< How to report FDIR hash. */
-	/** Rx queue of packets matching a "drop" filter in perfect mode. */
-	uint8_t drop_queue;
-	struct rte_eth_fdir_masks mask;
-	/** Flex payload configuration. */
-	struct rte_eth_fdir_flex_conf flex_conf;
-};
-#define rte_fdir_conf rte_eth_fdir_conf
-
-/**
  * UDP tunneling configuration.
  *
  * Used to configure the classifier of a device,
@@ -1407,7 +1365,6 @@ struct rte_eth_conf {
 	/** Currently,Priority Flow Control(PFC) are supported,if DCB with PFC
 	    is needed,and the variable must be set RTE_ETH_DCB_PFC_SUPPORT. */
 	uint32_t dcb_capability_en;
-	struct rte_eth_fdir_conf fdir_conf; /**< FDIR configuration. DEPRECATED */
 	struct rte_eth_intr_conf intr_conf; /**< Interrupt mode configuration. */
 };
 

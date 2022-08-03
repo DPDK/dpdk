@@ -2835,44 +2835,6 @@ This section details the available filter functions that are available.
 Note these functions interface the deprecated legacy filtering framework,
 superseded by *rte_flow*. See `Flow rules management`_.
 
-.. _testpmd_flow_director:
-
-flow_director_mask
-~~~~~~~~~~~~~~~~~~
-
-Set flow director's input masks::
-
-   flow_director_mask (port_id) mode IP vlan (vlan_value) \
-                      src_mask (ipv4_src) (ipv6_src) (src_port) \
-                      dst_mask (ipv4_dst) (ipv6_dst) (dst_port)
-
-   flow_director_mask (port_id) mode MAC-VLAN vlan (vlan_value)
-
-   flow_director_mask (port_id) mode Tunnel vlan (vlan_value) \
-                      mac (mac_value) tunnel-type (tunnel_type_value) \
-                      tunnel-id (tunnel_id_value)
-
-Example, to set flow director mask on port 0::
-
-   testpmd> flow_director_mask 0 mode IP vlan 0xefff \
-            src_mask 255.255.255.255 \
-                FFFF:FFFF:FFFF:FFFF:FFFF:FFFF:FFFF:FFFF 0xFFFF \
-            dst_mask 255.255.255.255 \
-                FFFF:FFFF:FFFF:FFFF:FFFF:FFFF:FFFF:FFFF 0xFFFF
-
-flow_director_flex_payload
-~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Configure flexible payload selection::
-
-   flow_director_flex_payload (port_id) (raw|l2|l3|l4) (config)
-
-For example, to select the first 16 bytes from the offset 4 (bytes) of packet's payload as flexible payload::
-
-   testpmd> flow_director_flex_payload 0 l4 \
-            (4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19)
-
-
 .. _testpmd_rte_flow:
 
 Flow rules management

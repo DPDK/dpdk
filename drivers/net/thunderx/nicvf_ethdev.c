@@ -2013,11 +2013,6 @@ nicvf_dev_configure(struct rte_eth_dev *dev)
 		return -EINVAL;
 	}
 
-	if (conf->fdir_conf.mode != RTE_FDIR_MODE_NONE) {
-		PMD_INIT_LOG(INFO, "Flow director not supported");
-		return -EINVAL;
-	}
-
 	assert_primary(nic);
 	NICVF_STATIC_ASSERT(MAX_RCV_QUEUES_PER_QS == MAX_SND_QUEUES_PER_QS);
 	cqcount = RTE_MAX(data->nb_tx_queues, data->nb_rx_queues);

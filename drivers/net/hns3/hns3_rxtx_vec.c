@@ -230,7 +230,6 @@ hns3_rxq_vec_check(struct hns3_rx_queue *rxq, void *arg)
 int
 hns3_rx_check_vec_support(struct rte_eth_dev *dev)
 {
-	struct rte_eth_fdir_conf *fconf = &dev->data->dev_conf.fdir_conf;
 	struct rte_eth_rxmode *rxmode = &dev->data->dev_conf.rxmode;
 	uint64_t offloads_mask = RTE_ETH_RX_OFFLOAD_TCP_LRO |
 				 RTE_ETH_RX_OFFLOAD_VLAN;
@@ -238,9 +237,6 @@ hns3_rx_check_vec_support(struct rte_eth_dev *dev)
 	struct hns3_pf *pf = &hns->pf;
 
 	if (dev->data->scattered_rx)
-		return -ENOTSUP;
-
-	if (fconf->mode != RTE_FDIR_MODE_NONE)
 		return -ENOTSUP;
 
 	if (rxmode->offloads & offloads_mask)

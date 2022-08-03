@@ -468,29 +468,6 @@ struct rte_eth_txmode tx_mode = {
 	.offloads = RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE,
 };
 
-struct rte_eth_fdir_conf fdir_conf = {
-	.mode = RTE_FDIR_MODE_NONE,
-	.pballoc = RTE_ETH_FDIR_PBALLOC_64K,
-	.status = RTE_FDIR_REPORT_STATUS,
-	.mask = {
-		.vlan_tci_mask = 0xFFEF,
-		.ipv4_mask     = {
-			.src_ip = 0xFFFFFFFF,
-			.dst_ip = 0xFFFFFFFF,
-		},
-		.ipv6_mask     = {
-			.src_ip = {0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF},
-			.dst_ip = {0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF},
-		},
-		.src_port_mask = 0xFFFF,
-		.dst_port_mask = 0xFFFF,
-		.mac_addr_byte_mask = 0xFF,
-		.tunnel_type_mask = 1,
-		.tunnel_id_mask = 0xFFFFFFFF,
-	},
-	.drop_queue = 127,
-};
-
 volatile int test_done = 1; /* stop packet forwarding when set to 1. */
 
 /*
@@ -3923,7 +3900,6 @@ init_port_config(void)
 
 	RTE_ETH_FOREACH_DEV(pid) {
 		port = &ports[pid];
-		port->dev_conf.fdir_conf = fdir_conf;
 
 		ret = eth_dev_info_get_print_err(pid, &port->dev_info);
 		if (ret != 0)

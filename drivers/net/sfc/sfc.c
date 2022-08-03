@@ -176,11 +176,6 @@ sfc_check_conf(struct sfc_adapter *sa)
 		rc = EINVAL;
 	}
 
-	if (conf->fdir_conf.mode != RTE_FDIR_MODE_NONE) {
-		sfc_err(sa, "Flow Director not supported");
-		rc = EINVAL;
-	}
-
 	if ((conf->intr_conf.lsc != 0) &&
 	    (sa->intr.type != EFX_INTR_LINE) &&
 	    (sa->intr.type != EFX_INTR_MESSAGE)) {
