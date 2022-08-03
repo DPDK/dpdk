@@ -1719,7 +1719,7 @@ txgbe_dev_start(struct rte_eth_dev *dev)
 	txgbe_configure_port(dev);
 	txgbe_configure_dcb(dev);
 
-	if (dev->data->dev_conf.fdir_conf.mode != RTE_FDIR_MODE_NONE) {
+	if (TXGBE_DEV_FDIR_CONF(dev)->mode != RTE_FDIR_MODE_NONE) {
 		err = txgbe_fdir_configure(dev);
 		if (err)
 			goto error;

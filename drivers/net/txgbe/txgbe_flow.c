@@ -2439,7 +2439,7 @@ txgbe_parse_fdir_filter(struct rte_eth_dev *dev,
 {
 	int ret;
 	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
-	enum rte_fdir_mode fdir_mode = dev->data->dev_conf.fdir_conf.mode;
+	enum rte_fdir_mode fdir_mode = TXGBE_DEV_FDIR_CONF(dev)->mode;
 
 	ret = txgbe_parse_fdir_filter_normal(dev, attr, pattern,
 					actions, rule, error);

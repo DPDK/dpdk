@@ -373,6 +373,8 @@ struct txgbe_adapter {
 #define TXGBE_DEV_ADAPTER(dev) \
 	((struct txgbe_adapter *)(dev)->data->dev_private)
 
+#define TXGBE_DEV_FDIR_CONF(dev)	(&(dev)->data->dev_conf.fdir_conf)
+
 #define TXGBE_DEV_HW(dev) \
 	(&((struct txgbe_adapter *)(dev)->data->dev_private)->hw)
 
