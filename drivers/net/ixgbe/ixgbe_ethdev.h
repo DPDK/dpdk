@@ -522,6 +522,9 @@ struct ixgbe_vf_representor {
 int ixgbe_vf_representor_init(struct rte_eth_dev *ethdev, void *init_params);
 int ixgbe_vf_representor_uninit(struct rte_eth_dev *ethdev);
 
+#define IXGBE_DEV_FDIR_CONF(dev) \
+	(&(dev)->data->dev_conf.fdir_conf)
+
 #define IXGBE_DEV_PRIVATE_TO_HW(adapter)\
 	(&((struct ixgbe_adapter *)adapter)->hw)
 
