@@ -1409,6 +1409,10 @@ static int qat_sym_do_precomputes(enum icp_qat_hw_auth_algo hash_alg,
 		QAT_LOG(ERR, "invalid keylen %u", auth_keylen);
 		return -EFAULT;
 	}
+
+	RTE_VERIFY(auth_keylen <= sizeof(ipad));
+	RTE_VERIFY(auth_keylen <= sizeof(opad));
+
 	rte_memcpy(ipad, auth_key, auth_keylen);
 	rte_memcpy(opad, auth_key, auth_keylen);
 
