@@ -619,7 +619,8 @@ setup_test_string_tunneled(struct rte_mempool *mpool, const char *string,
 		rte_memcpy(dst, string, len);
 		dst += len;
 		/* copy pad bytes */
-		rte_memcpy(dst, esp_pad_bytes, padlen);
+		rte_memcpy(dst, esp_pad_bytes, RTE_MIN(padlen,
+			sizeof(esp_pad_bytes)));
 		dst += padlen;
 		/* copy ESP tail header */
 		rte_memcpy(dst, &espt, sizeof(espt));
