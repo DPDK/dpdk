@@ -135,6 +135,9 @@ API Changes
   * Removed deprecated ``ETH_NUM_RECEIVE_MAC_ADDR`` define.
     Use corresponding define with ``RTE_`` prefix instead.
 
+  * Removed deprecated ``PKT_{R,T}X_DYNF_METADATA`` defines.
+    Use corresponding defines ``RTE_MBUF_DYNFLAG_{R,T}X_METADATA`` instead.
+
 * raw/ifgpa: The function ``rte_pmd_ifpga_get_pci_bus`` has been removed.
 
 

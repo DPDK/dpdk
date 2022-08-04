@@ -3761,11 +3761,7 @@ extern uint64_t rte_flow_dynf_metadata_mask;
 
 /* Mbuf dynamic flags for metadata. */
 #define RTE_MBUF_DYNFLAG_RX_METADATA (rte_flow_dynf_metadata_mask)
-#define PKT_RX_DYNF_METADATA RTE_DEPRECATED(PKT_RX_DYNF_METADATA) \
-		RTE_MBUF_DYNFLAG_RX_METADATA
 #define RTE_MBUF_DYNFLAG_TX_METADATA (rte_flow_dynf_metadata_mask)
-#define PKT_TX_DYNF_METADATA RTE_DEPRECATED(PKT_TX_DYNF_METADATA) \
-		RTE_MBUF_DYNFLAG_TX_METADATA
 
 __rte_experimental
 static inline uint32_t
