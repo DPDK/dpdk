@@ -126,6 +126,9 @@ API Changes
   * Removed deprecated ``RTE_TUNNEL_*`` defines. Use corresponding
     defines with ``RTE_ETH_TUNNEL_`` prefix instead.
 
+  * Removed deprecated ``RTE_FC_*`` defines. Use corresponding
+    defines with ``RTE_ETH_FC_`` prefix instead.
+
 * raw/ifgpa: The function ``rte_pmd_ifpga_get_pci_bus`` has been removed.
 
 

@@ -1215,10 +1215,6 @@ enum rte_eth_fc_mode {
 	RTE_ETH_FC_TX_PAUSE, /**< Tx pause frame, enable flowctrl on Rx side. */
 	RTE_ETH_FC_FULL      /**< Enable flow control on both side. */
 };
-#define RTE_FC_NONE     RTE_DEPRECATED(RTE_FC_NONE)     RTE_ETH_FC_NONE
-#define RTE_FC_RX_PAUSE RTE_DEPRECATED(RTE_FC_RX_PAUSE) RTE_ETH_FC_RX_PAUSE
-#define RTE_FC_TX_PAUSE RTE_DEPRECATED(RTE_FC_TX_PAUSE) RTE_ETH_FC_TX_PAUSE
-#define RTE_FC_FULL     RTE_DEPRECATED(RTE_FC_FULL)     RTE_ETH_FC_FULL
 
 /**
  * A structure used to configure Ethernet flow control parameter.
