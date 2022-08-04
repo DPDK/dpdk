@@ -111,6 +111,10 @@ API Changes
   * Removed deprecated ``ETH_MQ_RX_*`` and ``ETH_MQ_TX_*`` defines.
     Use corresponding defines with ``RTE_`` prefix instead.
 
+  * Removed deprecated ``ETH_RSS_*`` defines for hash function and
+    RETA size specification. Use corresponding defines with ``RTE_`` prefix
+    instead.
+
 * raw/ifgpa: The function ``rte_pmd_ifpga_get_pci_bus`` has been removed.
 
 
