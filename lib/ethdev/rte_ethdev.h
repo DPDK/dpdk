@@ -810,18 +810,10 @@ rte_eth_rss_hf_refine(uint64_t rss_hf)
 #define RTE_ETH_DCB_NUM_QUEUES          128 /**< Maximum nb. of DCB queues. */
 /**@}*/
 
-#define ETH_VMDQ_MAX_VLAN_FILTERS   RTE_DEPRECATED(ETH_VMDQ_MAX_VLAN_FILTERS)   RTE_ETH_VMDQ_MAX_VLAN_FILTERS
-#define ETH_DCB_NUM_USER_PRIORITIES RTE_DEPRECATED(ETH_DCB_NUM_USER_PRIORITIES) RTE_ETH_DCB_NUM_USER_PRIORITIES
-#define ETH_VMDQ_DCB_NUM_QUEUES     RTE_DEPRECATED(ETH_VMDQ_DCB_NUM_QUEUES)     RTE_ETH_VMDQ_DCB_NUM_QUEUES
-#define ETH_DCB_NUM_QUEUES          RTE_DEPRECATED(ETH_DCB_NUM_QUEUES)          RTE_ETH_DCB_NUM_QUEUES
-
 /**@{@name DCB capabilities */
 #define RTE_ETH_DCB_PG_SUPPORT      RTE_BIT32(0) /**< Priority Group(ETS) support. */
 #define RTE_ETH_DCB_PFC_SUPPORT     RTE_BIT32(1) /**< Priority Flow Control support. */
 /**@}*/
-
-#define ETH_DCB_PG_SUPPORT  RTE_DEPRECATED(ETH_DCB_PG_SUPPORT)  RTE_ETH_DCB_PG_SUPPORT
-#define ETH_DCB_PFC_SUPPORT RTE_DEPRECATED(ETH_DCB_PFC_SUPPORT) RTE_ETH_DCB_PFC_SUPPORT
 
 /**@{@name VLAN offload bits */
 #define RTE_ETH_VLAN_STRIP_OFFLOAD   0x0001 /**< VLAN Strip  On/Off */
@@ -853,7 +845,6 @@ rte_eth_rss_hf_refine(uint64_t rss_hf)
 
 /* Definitions used for unicast hash  */
 #define RTE_ETH_VMDQ_NUM_UC_HASH_ARRAY 128 /**< Maximum nb. of UC hash array. */
-#define ETH_VMDQ_NUM_UC_HASH_ARRAY RTE_DEPRECATED(ETH_VMDQ_NUM_UC_HASH_ARRAY) RTE_ETH_VMDQ_NUM_UC_HASH_ARRAY
 
 /**@{@name VMDq Rx mode
  * @see rte_eth_vmdq_rx_conf.rx_mode
@@ -869,12 +860,6 @@ rte_eth_rss_hf_refine(uint64_t rss_hf)
 /** Multicast promiscuous. */
 #define RTE_ETH_VMDQ_ACCEPT_MULTICAST  RTE_BIT32(4)
 /**@}*/
-
-#define ETH_VMDQ_ACCEPT_UNTAG     RTE_DEPRECATED(ETH_VMDQ_ACCEPT_UNTAG)     RTE_ETH_VMDQ_ACCEPT_UNTAG
-#define ETH_VMDQ_ACCEPT_HASH_MC   RTE_DEPRECATED(ETH_VMDQ_ACCEPT_HASH_MC)   RTE_ETH_VMDQ_ACCEPT_HASH_MC
-#define ETH_VMDQ_ACCEPT_HASH_UC   RTE_DEPRECATED(ETH_VMDQ_ACCEPT_HASH_UC)   RTE_ETH_VMDQ_ACCEPT_HASH_UC
-#define ETH_VMDQ_ACCEPT_BROADCAST RTE_DEPRECATED(ETH_VMDQ_ACCEPT_BROADCAST) RTE_ETH_VMDQ_ACCEPT_BROADCAST
-#define ETH_VMDQ_ACCEPT_MULTICAST RTE_DEPRECATED(ETH_VMDQ_ACCEPT_MULTICAST) RTE_ETH_VMDQ_ACCEPT_MULTICAST
 
 /**
  * A structure used to configure 64 entries of Redirection Table of the
@@ -897,8 +882,6 @@ enum rte_eth_nb_tcs {
 	RTE_ETH_4_TCS = 4, /**< 4 TCs with DCB. */
 	RTE_ETH_8_TCS = 8  /**< 8 TCs with DCB. */
 };
-#define ETH_4_TCS RTE_DEPRECATED(ETH_4_TCS) RTE_ETH_4_TCS
-#define ETH_8_TCS RTE_DEPRECATED(ETH_8_TCS) RTE_ETH_8_TCS
 
 /**
  * This enum indicates the possible number of queue pools
@@ -910,10 +893,6 @@ enum rte_eth_nb_pools {
 	RTE_ETH_32_POOLS = 32,  /**< 32 VMDq pools. */
 	RTE_ETH_64_POOLS = 64   /**< 64 VMDq pools. */
 };
-#define ETH_8_POOLS  RTE_DEPRECATED(ETH_8_POOLS)  RTE_ETH_8_POOLS
-#define ETH_16_POOLS RTE_DEPRECATED(ETH_16_POOLS) RTE_ETH_16_POOLS
-#define ETH_32_POOLS RTE_DEPRECATED(ETH_32_POOLS) RTE_ETH_32_POOLS
-#define ETH_64_POOLS RTE_DEPRECATED(ETH_64_POOLS) RTE_ETH_64_POOLS
 
 /* This structure may be extended in future. */
 struct rte_eth_dcb_rx_conf {
@@ -986,7 +965,7 @@ struct rte_eth_vmdq_rx_conf {
 	uint8_t default_pool; /**< The default pool, if applicable */
 	uint8_t enable_loop_back; /**< Enable VT loop back */
 	uint8_t nb_pool_maps; /**< We can have up to 64 filters/mappings */
-	uint32_t rx_mode; /**< Flags from ETH_VMDQ_ACCEPT_* */
+	uint32_t rx_mode; /**< Flags from RTE_ETH_VMDQ_ACCEPT_* */
 	struct {
 		uint16_t vlan_id; /**< The VLAN ID of the received frame */
 		uint64_t pools;   /**< Bitmask of pools for packet Rx */
@@ -1819,9 +1798,6 @@ struct rte_eth_xstat_name {
 
 #define RTE_ETH_DCB_NUM_TCS    8
 #define RTE_ETH_MAX_VMDQ_POOL  64
-
-#define ETH_DCB_NUM_TCS   RTE_DEPRECATED(ETH_DCB_NUM_TCS)   RTE_ETH_DCB_NUM_TCS
-#define ETH_MAX_VMDQ_POOL RTE_DEPRECATED(ETH_MAX_VMDQ_POOL) RTE_ETH_MAX_VMDQ_POOL
 
 /**
  * A structure used to get the information of queue and
