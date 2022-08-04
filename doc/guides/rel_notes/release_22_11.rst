@@ -132,6 +132,9 @@ API Changes
   * Removed deprecated ``ETH_VLAN_*`` and ``ETH_QINQ_`` defines.
     Use corresponding defines with ``RTE_`` prefix instead.
 
+  * Removed deprecated ``ETH_NUM_RECEIVE_MAC_ADDR`` define.
+    Use corresponding define with ``RTE_`` prefix instead.
+
 * raw/ifgpa: The function ``rte_pmd_ifpga_get_pci_bus`` has been removed.
 
 

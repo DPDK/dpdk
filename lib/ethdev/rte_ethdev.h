@@ -825,7 +825,6 @@ rte_eth_rss_hf_refine(uint64_t rss_hf)
 
 /* Definitions used for receive MAC address   */
 #define RTE_ETH_NUM_RECEIVE_MAC_ADDR   128 /**< Maximum nb. of receive mac addr. */
-#define ETH_NUM_RECEIVE_MAC_ADDR RTE_DEPRECATED(ETH_NUM_RECEIVE_MAC_ADDR) RTE_ETH_NUM_RECEIVE_MAC_ADDR
 
 /* Definitions used for unicast hash  */
 #define RTE_ETH_VMDQ_NUM_UC_HASH_ARRAY 128 /**< Maximum nb. of UC hash array. */
