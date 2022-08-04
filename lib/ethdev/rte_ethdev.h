@@ -366,10 +366,6 @@ struct rte_eth_thresh {
 #define RTE_ETH_MQ_RX_VMDQ_FLAG RTE_BIT32(2) /**< Enable VMDq. */
 /**@}*/
 
-#define ETH_MQ_RX_RSS_FLAG  RTE_DEPRECATED(ETH_MQ_RX_RSS_FLAG)  RTE_ETH_MQ_RX_RSS_FLAG
-#define ETH_MQ_RX_DCB_FLAG  RTE_DEPRECATED(ETH_MQ_RX_DCB_FLAG)  RTE_ETH_MQ_RX_DCB_FLAG
-#define ETH_MQ_RX_VMDQ_FLAG RTE_DEPRECATED(ETH_MQ_RX_VMDQ_FLAG) RTE_ETH_MQ_RX_VMDQ_FLAG
-
 /**
  *  A set of values to identify what method is to be used to route
  *  packets to multiple queues.
@@ -396,15 +392,6 @@ enum rte_eth_rx_mq_mode {
 				 RTE_ETH_MQ_RX_VMDQ_FLAG,
 };
 
-#define ETH_MQ_RX_NONE         RTE_DEPRECATED(ETH_MQ_RX_NONE)         RTE_ETH_MQ_RX_NONE
-#define ETH_MQ_RX_RSS          RTE_DEPRECATED(ETH_MQ_RX_RSS)          RTE_ETH_MQ_RX_RSS
-#define ETH_MQ_RX_DCB          RTE_DEPRECATED(ETH_MQ_RX_DCB)          RTE_ETH_MQ_RX_DCB
-#define ETH_MQ_RX_DCB_RSS      RTE_DEPRECATED(ETH_MQ_RX_DCB_RSS)      RTE_ETH_MQ_RX_DCB_RSS
-#define ETH_MQ_RX_VMDQ_ONLY    RTE_DEPRECATED(ETH_MQ_RX_VMDQ_ONLY)    RTE_ETH_MQ_RX_VMDQ_ONLY
-#define ETH_MQ_RX_VMDQ_RSS     RTE_DEPRECATED(ETH_MQ_RX_VMDQ_RSS)     RTE_ETH_MQ_RX_VMDQ_RSS
-#define ETH_MQ_RX_VMDQ_DCB     RTE_DEPRECATED(ETH_MQ_RX_VMDQ_DCB)     RTE_ETH_MQ_RX_VMDQ_DCB
-#define ETH_MQ_RX_VMDQ_DCB_RSS RTE_DEPRECATED(ETH_MQ_RX_VMDQ_DCB_RSS) RTE_ETH_MQ_RX_VMDQ_DCB_RSS
-
 /**
  * A set of values to identify what method is to be used to transmit
  * packets using multi-TCs.
@@ -415,11 +402,6 @@ enum rte_eth_tx_mq_mode {
 	RTE_ETH_MQ_TX_VMDQ_DCB,     /**< For Tx side,both DCB and VT is on. */
 	RTE_ETH_MQ_TX_VMDQ_ONLY,    /**< Only VT on, no DCB */
 };
-
-#define ETH_MQ_TX_NONE      RTE_DEPRECATED(ETH_MQ_TX_NONE)      RTE_ETH_MQ_TX_NONE
-#define ETH_MQ_TX_DCB       RTE_DEPRECATED(ETH_MQ_TX_DCB)       RTE_ETH_MQ_TX_DCB
-#define ETH_MQ_TX_VMDQ_DCB  RTE_DEPRECATED(ETH_MQ_TX_VMDQ_DCB)  RTE_ETH_MQ_TX_VMDQ_DCB
-#define ETH_MQ_TX_VMDQ_ONLY RTE_DEPRECATED(ETH_MQ_TX_VMDQ_ONLY) RTE_ETH_MQ_TX_VMDQ_ONLY
 
 /**
  * A structure used to configure the Rx features of an Ethernet port.
