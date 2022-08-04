@@ -101,6 +101,13 @@ API Changes
   The ``rte_driver`` and ``rte_device`` objects are now opaque and must be
   manipulated through added accessors.
 
+* ethdev: Removed deprecated macros. Applications can use ``devtools/cocci/namespace_ethdev.cocci``
+  to update their code.
+
+  * Removed deprecated ``ETH_LINK_SPEED_*``, ``ETH_SPEED_NUM_*`` and ``ETH_LINK_*``
+    (duplex-related) defines.  Use corresponding defines with ``RTE_`` prefix
+    instead.
+
 * raw/ifgpa: The function ``rte_pmd_ifpga_get_pci_bus`` has been removed.
 
 
