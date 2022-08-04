@@ -176,6 +176,7 @@ static s32 igc_init_phy_params_i225(struct igc_hw *hw)
 	/* Verify phy id and set remaining function pointers */
 	switch (phy->id) {
 	case I225_I_PHY_ID:
+	case I225_IT_PHY_ID:
 	case I226_LM_PHY_ID:
 		phy->type		= igc_phy_i225;
 		phy->ops.set_d0_lplu_state = igc_set_d0_lplu_state_i225;
