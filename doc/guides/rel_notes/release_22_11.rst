@@ -115,6 +115,10 @@ API Changes
     RETA size specification. Use corresponding defines with ``RTE_`` prefix
     instead.
 
+  * Removed deprecated ``DEV_RX_OFFLOAD_*`` and ``DEV_TX_OFFLOAD_``
+    defines. Use corresponding defines with ``RTE_ETH_RX_OFFLOAD_`` and
+    ``RTE_ETH_TX_OFFLOAD_`` prefix instead.
+
 * raw/ifgpa: The function ``rte_pmd_ifpga_get_pci_bus`` has been removed.
 
 
