@@ -224,7 +224,7 @@ __rte_node_enqueue_prologue(struct rte_graph *graph, struct rte_node *node,
 		__rte_node_enqueue_tail_update(graph, node);
 
 	if (unlikely(node->size < (idx + space)))
-		__rte_node_stream_alloc(graph, node);
+		__rte_node_stream_alloc_size(graph, node, node->size + space);
 }
 
 /**
@@ -432,7 +432,7 @@ rte_node_next_stream_get(struct rte_graph *graph, struct rte_node *node,
 	uint16_t free_space = node->size - idx;
 
 	if (unlikely(free_space < nb_objs))
-		__rte_node_stream_alloc_size(graph, node, nb_objs);
+		__rte_node_stream_alloc_size(graph, node, node->size + nb_objs);
 
 	return &node->objs[idx];
 }
