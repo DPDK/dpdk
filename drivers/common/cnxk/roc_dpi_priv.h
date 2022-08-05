@@ -23,7 +23,7 @@ typedef union dpi_mbox_msg_t {
 	uint64_t u[2];
 	struct dpi_mbox_message_s {
 		/* VF ID to configure */
-		uint64_t vfid : 4;
+		uint64_t vfid : 8;
 		/* Command code */
 		uint64_t cmd : 4;
 		/* Command buffer size in 8-byte words */

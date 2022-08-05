@@ -8,7 +8,7 @@
 #define DPI_QUEUE_STOP		0x0
 #define DPI_QUEUE_START		0x1
 #define STRM_INC(s)		((s).tail = ((s).tail + 1) % (s).max_cnt)
-#define DPI_MAX_DESC		DPI_MAX_POINTER
+#define DPI_MAX_DESC		1024
 
 /* Set Completion data to 0xFF when request submitted,
  * upon successful request completion engine reset to completion status
