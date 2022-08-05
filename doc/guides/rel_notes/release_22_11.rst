@@ -103,6 +103,11 @@ API Changes
   ``MEMPOOL_PG_SHIFT_MAX`` are removed. These macros are not used and
   not required any more.
 
+* mbuf: Removed deprecated ``PKT_*`` flags.
+  Use corresponding flags with ``RTE_MBUF_F_`` prefix instead.
+  Application can use ``devtools/cocci/prefix_mbuf_offload_flags.cocci``
+  to replace all occurrences of old mbuf flags in C code.
+
 * bus: Registering a bus has been marked as an internal API.
   External users may still register their bus using the ``bus_driver.h``
   driver header (see ``enable_driver_sdk`` meson option).
