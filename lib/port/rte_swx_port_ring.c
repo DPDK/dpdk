@@ -174,6 +174,7 @@ struct writer {
 	struct rte_mbuf **pkts;
 	int n_pkts;
 	uint32_t n_bytes;
+	int flush_flag;
 };
 
 static void *
@@ -254,6 +255,7 @@ __writer_flush(struct writer *p)
 	p->stats.n_bytes_drop = n_bytes_drop_total + n_bytes_drop;
 	p->n_pkts = 0;
 	p->n_bytes = 0;
+	p->flush_flag = 0;
 
 	TRACE("[Ring %s] Buffered packets flushed: %d out, %d dropped\n",
 	      p->params.name,
@@ -364,8 +366,10 @@ writer_flush(void *port)
 {
 	struct writer *p = port;
 
-	if (p->n_pkts)
+	if (p->n_pkts && p->flush_flag)
 		__writer_flush(p);
+
+	p->flush_flag = 1;
 }
 
 static void
