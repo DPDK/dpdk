@@ -372,11 +372,17 @@ static void
 writer_free(void *port)
 {
 	struct writer *p = port;
+	int i;
 
 	if (!p)
 		return;
 
-	writer_flush(p);
+	for (i = 0; i < p->n_pkts; i++) {
+		struct rte_mbuf *m = p->pkts[i];
+
+		rte_pktmbuf_free(m);
+	}
+
 	free(p->pkts);
 	free(p->params.name);
 	free(port);
