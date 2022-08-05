@@ -2277,10 +2277,14 @@ cmd_pipeline_stats(char **tokens,
 			out_size,
 			" packets %" PRIu64
 			" bytes %" PRIu64
+			" packets dropped %" PRIu64
+			" bytes dropped %" PRIu64
 			" clone %" PRIu64
 			" clonerr %" PRIu64 "\n",
 			stats.n_pkts,
 			stats.n_bytes,
+			stats.n_pkts_drop,
+			stats.n_bytes_drop,
 			stats.n_pkts_clone,
 			stats.n_pkts_clone_err);
 
