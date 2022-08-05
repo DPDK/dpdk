@@ -1911,16 +1911,22 @@ rte_vhost_poll_enqueue_completed(int vid, uint16_t queue_id,
 
 	vq = dev->virtqueue[queue_id];
 
-	if (unlikely(!vq->async)) {
-		VHOST_LOG_DATA(ERR, "(%d) %s: async not registered for queue id %d.\n",
-			dev->vid, __func__, queue_id);
+	if (!rte_spinlock_trylock(&vq->access_lock)) {
+		VHOST_LOG_DATA(DEBUG,
+			"%s: virtqueue %u is busy.\n",
+			__func__, queue_id);
 		return 0;
 	}
 
-	rte_spinlock_lock(&vq->access_lock);
+	if (unlikely(!vq->async)) {
+		VHOST_LOG_DATA(ERR, "(%d) %s: async not registered for queue id %d.\n",
+			dev->vid, __func__, queue_id);
+		goto out;
+	}
 
 	n_pkts_cpl = vhost_poll_enqueue_completed(dev, queue_id, pkts, count);
 
+out:
 	rte_spinlock_unlock(&vq->access_lock);
 
 	return n_pkts_cpl;
