@@ -1854,6 +1854,8 @@ typedef void (rte_mempool_event_callback)(
  * Register a callback function invoked on mempool life cycle event.
  * The function will be invoked in the process
  * that performs an action which triggers the callback.
+ * Registration is process-private,
+ * i.e. each process must manage callbacks on its own if needed.
  *
  * @param func
  *   Callback function.
