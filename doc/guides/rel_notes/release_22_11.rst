@@ -176,6 +176,9 @@ API Changes
 * eal: Updated ``rte_eal_remote_launch`` so it returns -EPIPE in case of
   a read or write error on the pipe, instead of calling ``rte_panic``.
 
+* eal: Updated return types for rte_{bsf,fls} inline functions
+  to be consistently ``uint32_t``.
+
 * mempool: Deprecated helper macro ``MEMPOOL_HEADER_SIZE()`` is removed.
   The replacement macro ``RTE_MEMPOOL_HEADER_SIZE()`` is internal only.
 

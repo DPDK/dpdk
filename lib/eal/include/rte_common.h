@@ -660,7 +660,7 @@ rte_bsf32(uint32_t v)
  * @return
  *     Returns 0 if ``v`` was 0, otherwise returns 1.
  */
-static inline int
+static inline uint32_t
 rte_bsf32_safe(uint32_t v, uint32_t *pos)
 {
 	if (v == 0)
@@ -702,7 +702,7 @@ rte_log2_u32(uint32_t v)
  * @return
  *     The last (most-significant) bit set, or 0 if the input is 0.
  */
-static inline int
+static inline uint32_t
 rte_fls_u32(uint32_t x)
 {
 	return (x == 0) ? 0 : 32 - __builtin_clz(x);
@@ -719,7 +719,7 @@ rte_fls_u32(uint32_t x)
  * @return
  *     least significant set bit in the input parameter.
  */
-static inline int
+static inline uint32_t
 rte_bsf64(uint64_t v)
 {
 	return (uint32_t)__builtin_ctzll(v);
@@ -739,7 +739,7 @@ rte_bsf64(uint64_t v)
  * @return
  *     Returns 0 if ``v`` was 0, otherwise returns 1.
  */
-static inline int
+static inline uint32_t
 rte_bsf64_safe(uint64_t v, uint32_t *pos)
 {
 	if (v == 0)
@@ -761,7 +761,7 @@ rte_bsf64_safe(uint64_t v, uint32_t *pos)
  * @return
  *     The last (most-significant) bit set, or 0 if the input is 0.
  */
-static inline int
+static inline uint32_t
 rte_fls_u64(uint64_t x)
 {
 	return (x == 0) ? 0 : 64 - __builtin_clzll(x);
