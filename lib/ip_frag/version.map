@@ -17,4 +17,5 @@ EXPERIMENTAL {
 	global:
 
 	rte_ip_frag_table_del_expired_entries;
+	rte_ipv4_fragment_copy_nonseg_packet;
 };
