@@ -4,6 +4,7 @@
  */
 
 #include <stdbool.h>
+#include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdint.h>
@@ -43,12 +44,10 @@ static struct rte_tailq_elem rte_mempool_tailq = {
 };
 EAL_REGISTER_TAILQ(rte_mempool_tailq)
 
-TAILQ_HEAD(mempool_callback_list, rte_tailq_entry);
+TAILQ_HEAD(mempool_callback_tailq, mempool_callback_data);
 
-static struct rte_tailq_elem callback_tailq = {
-	.name = "RTE_MEMPOOL_CALLBACK",
-};
-EAL_REGISTER_TAILQ(callback_tailq)
+static struct mempool_callback_tailq callback_tailq =
+		TAILQ_HEAD_INITIALIZER(callback_tailq);
 
 /* Invoke all registered mempool event callbacks. */
 static void
@@ -1379,6 +1378,7 @@ void rte_mempool_walk(void (*func)(struct rte_mempool *, void *),
 }
 
 struct mempool_callback_data {
+	TAILQ_ENTRY(mempool_callback_data) callbacks;
 	rte_mempool_event_callback *func;
 	void *user_data;
 };
@@ -1387,14 +1387,11 @@ static void
 mempool_event_callback_invoke(enum rte_mempool_event event,
 			      struct rte_mempool *mp)
 {
-	struct mempool_callback_list *list;
-	struct rte_tailq_entry *te;
+	struct mempool_callback_data *cb;
 	void *tmp_te;
 
 	rte_mcfg_tailq_read_lock();
-	list = RTE_TAILQ_CAST(callback_tailq.head, mempool_callback_list);
-	RTE_TAILQ_FOREACH_SAFE(te, list, next, tmp_te) {
-		struct mempool_callback_data *cb = te->data;
+	RTE_TAILQ_FOREACH_SAFE(cb, &callback_tailq, callbacks, tmp_te) {
 		rte_mcfg_tailq_read_unlock();
 		cb->func(event, mp, cb->user_data);
 		rte_mcfg_tailq_read_lock();
@@ -1406,10 +1403,7 @@ int
 rte_mempool_event_callback_register(rte_mempool_event_callback *func,
 				    void *user_data)
 {
-	struct mempool_callback_list *list;
-	struct rte_tailq_entry *te = NULL;
 	struct mempool_callback_data *cb;
-	void *tmp_te;
 	int ret;
 
 	if (func == NULL) {
@@ -1418,36 +1412,23 @@ rte_mempool_event_callback_register(rte_mempool_event_callback *func,
 	}
 
 	rte_mcfg_tailq_write_lock();
-	list = RTE_TAILQ_CAST(callback_tailq.head, mempool_callback_list);
-	RTE_TAILQ_FOREACH_SAFE(te, list, next, tmp_te) {
-		cb = te->data;
+	TAILQ_FOREACH(cb, &callback_tailq, callbacks) {
 		if (cb->func == func && cb->user_data == user_data) {
 			ret = -EEXIST;
 			goto exit;
 		}
 	}
 
-	te = rte_zmalloc("mempool_cb_tail_entry", sizeof(*te), 0);
-	if (te == NULL) {
-		RTE_LOG(ERR, MEMPOOL,
-			"Cannot allocate event callback tailq entry!\n");
-		ret = -ENOMEM;
-		goto exit;
-	}
-
-	cb = rte_malloc("mempool_cb_data", sizeof(*cb), 0);
+	cb = calloc(1, sizeof(*cb));
 	if (cb == NULL) {
-		RTE_LOG(ERR, MEMPOOL,
-			"Cannot allocate event callback!\n");
-		rte_free(te);
+		RTE_LOG(ERR, MEMPOOL, "Cannot allocate event callback!\n");
 		ret = -ENOMEM;
 		goto exit;
 	}
 
 	cb->func = func;
 	cb->user_data = user_data;
-	te->data = cb;
-	TAILQ_INSERT_TAIL(list, te, next);
+	TAILQ_INSERT_TAIL(&callback_tailq, cb, callbacks);
 	ret = 0;
 
 exit:
@@ -1460,27 +1441,21 @@ int
 rte_mempool_event_callback_unregister(rte_mempool_event_callback *func,
 				      void *user_data)
 {
-	struct mempool_callback_list *list;
-	struct rte_tailq_entry *te = NULL;
 	struct mempool_callback_data *cb;
 	int ret = -ENOENT;
 
 	rte_mcfg_tailq_write_lock();
-	list = RTE_TAILQ_CAST(callback_tailq.head, mempool_callback_list);
-	TAILQ_FOREACH(te, list, next) {
-		cb = te->data;
+	TAILQ_FOREACH(cb, &callback_tailq, callbacks) {
 		if (cb->func == func && cb->user_data == user_data) {
-			TAILQ_REMOVE(list, te, next);
+			TAILQ_REMOVE(&callback_tailq, cb, callbacks);
 			ret = 0;
 			break;
 		}
 	}
 	rte_mcfg_tailq_write_unlock();
 
-	if (ret == 0) {
-		rte_free(te);
-		rte_free(cb);
-	}
+	if (ret == 0)
+		free(cb);
 	rte_errno = -ret;
 	return ret;
 }
