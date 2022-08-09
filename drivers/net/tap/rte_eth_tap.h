@@ -80,6 +80,7 @@ struct pmd_internals {
 	int flower_support;               /* 1 if kernel supports, else 0 */
 	int flower_vlan_support;          /* 1 if kernel supports, else 0 */
 	int rss_enabled;                  /* 1 if RSS is enabled, else 0 */
+	int persist;			  /* 1 if keep link up, else 0 */
 	/* implicit rules set when RSS is enabled */
 	int map_fd;                       /* BPF RSS map fd */
 	int bpf_fd[RTE_PMD_TAP_MAX_QUEUES];/* List of bpf fds per queue */

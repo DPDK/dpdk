@@ -83,6 +83,12 @@ can utilize that stack to handle the network protocols. Plus you would be able
 to address the interface using an IP address assigned to the internal
 interface.
 
+Normally, when the DPDK application exits,
+the TAP device is marked down and is removed.
+But this behaviour can be overridden by the use of the persist flag, example::
+
+  --vdev=net_tap0,iface=tap0,persist ...
+
 The TUN PMD allows user to create a TUN device on host. The PMD allows user
 to transmit and receive packets via DPDK API calls with L3 header and payload.
 The devices in host can be accessed via ``ifconfig`` or ``ip`` command. TUN
