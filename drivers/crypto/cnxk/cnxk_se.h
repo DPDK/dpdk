@@ -334,7 +334,7 @@ cpt_digest_gen_prep(uint32_t flags, uint64_t d_lens,
 	uint32_t g_size_bytes, s_size_bytes;
 	union cpt_inst_w4 cpt_inst_w4;
 
-	ctx = params->ctx_buf.vaddr;
+	ctx = params->ctx;
 
 	hash_type = ctx->hash_type;
 	mac_len = ctx->mac_len;
@@ -478,7 +478,8 @@ cpt_enc_hmac_prep(uint32_t flags, uint64_t d_offs, uint64_t d_lens,
 		aad_len = fc_params->aad_buf.size;
 		aad_buf = &fc_params->aad_buf;
 	}
-	se_ctx = fc_params->ctx_buf.vaddr;
+
+	se_ctx = fc_params->ctx;
 	cipher_type = se_ctx->enc_cipher;
 	hash_type = se_ctx->hash_type;
 	mac_len = se_ctx->mac_len;
@@ -777,7 +778,7 @@ cpt_dec_hmac_prep(uint32_t flags, uint64_t d_offs, uint64_t d_lens,
 		aad_buf = &fc_params->aad_buf;
 	}
 
-	se_ctx = fc_params->ctx_buf.vaddr;
+	se_ctx = fc_params->ctx;
 	hash_type = se_ctx->hash_type;
 	mac_len = se_ctx->mac_len;
 	op_minor = se_ctx->template_w4.s.opcode_minor;
@@ -1087,7 +1088,7 @@ cpt_pdcp_chain_alg_prep(uint32_t req_flags, uint64_t d_offs, uint64_t d_lens,
 		return -1;
 	}
 
-	se_ctx = params->ctx_buf.vaddr;
+	se_ctx = params->ctx;
 	mac_len = se_ctx->mac_len;
 	pdcp_ci_alg = se_ctx->pdcp_ci_alg;
 	pdcp_auth_alg = se_ctx->pdcp_auth_alg;
@@ -1281,7 +1282,7 @@ cpt_pdcp_alg_prep(uint32_t req_flags, uint64_t d_offs, uint64_t d_lens,
 	uint8_t pack_iv = 0;
 	union cpt_inst_w4 cpt_inst_w4;
 
-	se_ctx = params->ctx_buf.vaddr;
+	se_ctx = params->ctx;
 	flags = se_ctx->zsk_flags;
 	mac_len = se_ctx->mac_len;
 
@@ -1562,7 +1563,7 @@ cpt_kasumi_enc_prep(uint32_t req_flags, uint64_t d_offs, uint64_t d_lens,
 	encr_data_len = ROC_SE_ENCR_DLEN(d_lens);
 	auth_data_len = ROC_SE_AUTH_DLEN(d_lens);
 
-	se_ctx = params->ctx_buf.vaddr;
+	se_ctx = params->ctx;
 	flags = se_ctx->zsk_flags;
 	mac_len = se_ctx->mac_len;
 
@@ -1751,7 +1752,7 @@ cpt_kasumi_dec_prep(uint64_t d_offs, uint64_t d_lens,
 	encr_offset = ROC_SE_ENCR_OFFSET(d_offs) / 8;
 	encr_data_len = ROC_SE_ENCR_DLEN(d_lens);
 
-	se_ctx = params->ctx_buf.vaddr;
+	se_ctx = params->ctx;
 	flags = se_ctx->zsk_flags;
 
 	cpt_inst_w4.u64 = 0;
@@ -1863,7 +1864,7 @@ static __rte_always_inline int
 cpt_fc_enc_hmac_prep(uint32_t flags, uint64_t d_offs, uint64_t d_lens,
 		     struct roc_se_fc_params *fc_params, struct cpt_inst_s *inst)
 {
-	struct roc_se_ctx *ctx = fc_params->ctx_buf.vaddr;
+	struct roc_se_ctx *ctx = fc_params->ctx;
 	uint8_t fc_type;
 	int ret = -1;
 
@@ -2410,7 +2411,7 @@ fill_fc_params(struct rte_crypto_op *cop, struct cnxk_se_sess *sess,
 		flags |= ROC_SE_VALID_IV_BUF;
 		fc_params.iv_buf = rte_crypto_op_ctod_offset(cop, uint8_t *,
 							     sess->iv_offset);
-		if (sess->aes_ctr && unlikely(sess->iv_length != 16)) {
+		if (!is_aead && sess->aes_ctr && unlikely(sess->iv_length != 16)) {
 			memcpy((uint8_t *)iv_buf,
 			       rte_crypto_op_ctod_offset(cop, uint8_t *,
 							 sess->iv_offset),
@@ -2520,7 +2521,7 @@ fill_fc_params(struct rte_crypto_op *cop, struct cnxk_se_sess *sess,
 			}
 		}
 	}
-	fc_params.ctx_buf.vaddr = &sess->roc_se_ctx;
+	fc_params.ctx = &sess->roc_se_ctx;
 
 	if (!(sess->auth_first) && unlikely(sess->is_null || sess->cpt_op == ROC_SE_OP_DECODE))
 		inplace = 0;
@@ -2649,7 +2650,7 @@ fill_pdcp_params(struct rte_crypto_op *cop, struct cnxk_se_sess *sess,
 	d_offs = (uint64_t)c_data_off << 16;
 	d_lens = (uint64_t)c_data_len << 32;
 
-	fc_params.ctx_buf.vaddr = &sess->roc_se_ctx;
+	fc_params.ctx = &sess->roc_se_ctx;
 
 	if (likely(m_dst == NULL || m_src == m_dst)) {
 		fc_params.dst_iov = fc_params.src_iov = (void *)src;
@@ -2792,7 +2793,7 @@ fill_pdcp_chain_params(struct rte_crypto_op *cop, struct cnxk_se_sess *sess,
 					ci_data_length, true);
 	}
 
-	fc_params.ctx_buf.vaddr = &sess->roc_se_ctx;
+	fc_params.ctx = &sess->roc_se_ctx;
 
 	if (likely((m_dst == NULL || m_dst == m_src)) && inplace) {
 		fc_params.dst_iov = fc_params.src_iov = (void *)src;
@@ -2991,7 +2992,7 @@ fill_digest_params(struct rte_crypto_op *cop, struct cnxk_se_sess *sess,
 
 	d_lens = sym_op->auth.data.length;
 
-	params.ctx_buf.vaddr = &sess->roc_se_ctx;
+	params.ctx = &sess->roc_se_ctx;
 
 	if (auth_op == ROC_SE_OP_AUTH_GENERATE) {
 		if (sym_op->auth.digest.data) {

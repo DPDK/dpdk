@@ -287,32 +287,6 @@ struct roc_se_iov_ptr {
 	struct roc_se_buf_ptr bufs[];
 };
 
-struct roc_se_fc_params {
-	/* 0th cache line */
-	union {
-		struct roc_se_buf_ptr bufs[1];
-		struct {
-			struct roc_se_iov_ptr *src_iov;
-			struct roc_se_iov_ptr *dst_iov;
-		};
-	};
-	void *iv_buf;
-	void *auth_iv_buf;
-	struct roc_se_buf_ptr meta_buf;
-	struct roc_se_buf_ptr ctx_buf;
-	uint32_t rsvd2;
-	uint8_t rsvd3;
-	uint8_t iv_ovr;
-	uint8_t cipher_iv_len;
-	uint8_t auth_iv_len;
-
-	/* 1st cache line */
-	struct roc_se_buf_ptr aad_buf __plt_cache_aligned;
-	struct roc_se_buf_ptr mac_buf;
-};
-
-PLT_STATIC_ASSERT((offsetof(struct roc_se_fc_params, aad_buf) % 128) == 0);
-
 #define ROC_SE_PDCP_ALG_TYPE_ZUC	  0
 #define ROC_SE_PDCP_ALG_TYPE_SNOW3G	  1
 #define ROC_SE_PDCP_ALG_TYPE_AES_CTR	  2
@@ -347,6 +321,25 @@ struct roc_se_ctx {
 		struct roc_se_kasumi_ctx k_ctx;
 	} se_ctx;
 	uint8_t *auth_key;
+};
+
+struct roc_se_fc_params {
+	union {
+		struct roc_se_buf_ptr bufs[1];
+		struct {
+			struct roc_se_iov_ptr *src_iov;
+			struct roc_se_iov_ptr *dst_iov;
+		};
+	};
+	void *iv_buf;
+	void *auth_iv_buf;
+	struct roc_se_ctx *ctx;
+	struct roc_se_buf_ptr meta_buf;
+	uint8_t cipher_iv_len;
+	uint8_t auth_iv_len;
+
+	struct roc_se_buf_ptr aad_buf;
+	struct roc_se_buf_ptr mac_buf;
 };
 
 static inline void
