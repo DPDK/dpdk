@@ -2453,6 +2453,7 @@ fill_fc_params(struct rte_crypto_op *cop, struct cnxk_se_sess *sess,
 	m_dst = sym_op->m_dst;
 
 	if (sess->aes_gcm || sess->chacha_poly) {
+		struct rte_mbuf *m;
 		uint8_t *salt;
 		uint8_t *aad_data;
 		uint16_t aad_len;
@@ -2483,20 +2484,19 @@ fill_fc_params(struct rte_crypto_op *cop, struct cnxk_se_sess *sess,
 			cpt_fc_salt_update(&sess->roc_se_ctx, salt);
 			sess->salt = *(uint32_t *)salt;
 		}
-		fc_params.iv_buf = salt + 4;
-		if (likely(sess->mac_len)) {
-			struct rte_mbuf *m = cpt_m_dst_get(cpt_op, m_src, m_dst);
 
-			/* hmac immediately following data is best case */
-			if (unlikely(rte_pktmbuf_mtod(m, uint8_t *) +
-					     mc_hash_off !=
-				     (uint8_t *)sym_op->aead.digest.data)) {
-				flags |= ROC_SE_VALID_MAC_BUF;
-				fc_params.mac_buf.size = sess->mac_len;
-				fc_params.mac_buf.vaddr =
-					sym_op->aead.digest.data;
-				inplace = 0;
-			}
+		fc_params.iv_buf = PLT_PTR_ADD(salt, 4);
+		fc_params.mac_buf.size = 0;
+		fc_params.mac_buf.vaddr = NULL;
+		m = cpt_m_dst_get(cpt_op, m_src, m_dst);
+
+		/* Digest immediately following data is best case */
+		if (unlikely(rte_pktmbuf_mtod(m, uint8_t *) + mc_hash_off !=
+			     (uint8_t *)sym_op->aead.digest.data)) {
+			flags |= ROC_SE_VALID_MAC_BUF;
+			fc_params.mac_buf.size = sess->mac_len;
+			fc_params.mac_buf.vaddr = sym_op->aead.digest.data;
+			inplace = 0;
 		}
 	} else {
 		uint32_t ci_data_length = sym_op->cipher.data.length;
