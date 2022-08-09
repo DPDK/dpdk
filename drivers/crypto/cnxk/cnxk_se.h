@@ -1853,35 +1853,8 @@ cpt_kasumi_dec_prep(uint64_t d_offs, uint64_t d_lens,
 }
 
 static __rte_always_inline int
-cpt_fc_dec_hmac_prep(uint32_t flags, uint64_t d_offs, uint64_t d_lens,
-		     struct roc_se_fc_params *fc_params,
-		     struct cpt_inst_s *inst)
-{
-	struct roc_se_ctx *ctx = fc_params->ctx_buf.vaddr;
-	uint8_t fc_type;
-	int ret = -1;
-
-	fc_type = ctx->fc_type;
-
-	if (likely(fc_type == ROC_SE_FC_GEN)) {
-		ret = cpt_dec_hmac_prep(flags, d_offs, d_lens, fc_params, inst);
-	} else if (fc_type == ROC_SE_KASUMI) {
-		ret = cpt_kasumi_dec_prep(d_offs, d_lens, fc_params, inst);
-	}
-
-	/*
-	 * For AUTH_ONLY case,
-	 * MC only supports digest generation and verification
-	 * should be done in software by memcmp()
-	 */
-
-	return ret;
-}
-
-static __rte_always_inline int
 cpt_fc_enc_hmac_prep(uint32_t flags, uint64_t d_offs, uint64_t d_lens,
-		     struct roc_se_fc_params *fc_params,
-		     struct cpt_inst_s *inst)
+		     struct roc_se_fc_params *fc_params, struct cpt_inst_s *inst)
 {
 	struct roc_se_ctx *ctx = fc_params->ctx_buf.vaddr;
 	uint8_t fc_type;
@@ -2425,6 +2398,8 @@ fill_fc_params(struct rte_crypto_op *cop, struct cnxk_se_sess *sess,
 	fc_params.auth_iv_len = 0;
 	fc_params.auth_iv_buf = NULL;
 	fc_params.iv_buf = NULL;
+	fc_params.mac_buf.size = 0;
+	fc_params.mac_buf.vaddr = 0;
 
 	if (likely(sess->iv_length)) {
 		flags |= ROC_SE_VALID_IV_BUF;
@@ -2486,8 +2461,6 @@ fill_fc_params(struct rte_crypto_op *cop, struct cnxk_se_sess *sess,
 		}
 
 		fc_params.iv_buf = PLT_PTR_ADD(salt, 4);
-		fc_params.mac_buf.size = 0;
-		fc_params.mac_buf.vaddr = NULL;
 		m = cpt_m_dst_get(cpt_op, m_src, m_dst);
 
 		/* Digest immediately following data is best case */
@@ -2600,8 +2573,8 @@ fill_fc_params(struct rte_crypto_op *cop, struct cnxk_se_sess *sess,
 		}
 	}
 
-	if (unlikely(!((flags & ROC_SE_SINGLE_BUF_INPLACE) &&
-		       (flags & ROC_SE_SINGLE_BUF_HEADROOM) && !is_kasumi))) {
+	if (unlikely(is_kasumi || !((flags & ROC_SE_SINGLE_BUF_INPLACE) &&
+				    (flags & ROC_SE_SINGLE_BUF_HEADROOM)))) {
 		mdata = alloc_op_meta(&fc_params.meta_buf, m_info->mlen, m_info->pool, infl_req);
 		if (mdata == NULL) {
 			plt_dp_err("Error allocating meta buffer for request");
@@ -2610,12 +2583,18 @@ fill_fc_params(struct rte_crypto_op *cop, struct cnxk_se_sess *sess,
 	}
 
 	/* Finally prepare the instruction */
-	if (cpt_op & ROC_SE_OP_ENCODE)
-		ret = cpt_fc_enc_hmac_prep(flags, d_offs, d_lens, &fc_params,
-					   inst);
-	else
-		ret = cpt_fc_dec_hmac_prep(flags, d_offs, d_lens, &fc_params,
-					   inst);
+
+	if (is_kasumi) {
+		if (cpt_op & ROC_SE_OP_ENCODE)
+			ret = cpt_kasumi_enc_prep(flags, d_offs, d_lens, &fc_params, inst);
+		else
+			ret = cpt_kasumi_dec_prep(d_offs, d_lens, &fc_params, inst);
+	} else {
+		if (cpt_op & ROC_SE_OP_ENCODE)
+			ret = cpt_enc_hmac_prep(flags, d_offs, d_lens, &fc_params, inst);
+		else
+			ret = cpt_dec_hmac_prep(flags, d_offs, d_lens, &fc_params, inst);
+	}
 
 	if (unlikely(ret)) {
 		plt_dp_err("Preparing request failed due to bad input arg");
