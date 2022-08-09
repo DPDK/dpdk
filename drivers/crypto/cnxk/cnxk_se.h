@@ -2411,14 +2411,9 @@ fill_fc_params(struct rte_crypto_op *cop, struct cnxk_se_sess *sess,
 		}
 	}
 
-	/* Kasumi would need auth IV */
-	if (is_kasumi && sess->zsk_flag) {
-		fc_params.auth_iv_len = sess->auth_iv_length;
-		if (sess->auth_iv_length)
-			fc_params.auth_iv_buf =
-				rte_crypto_op_ctod_offset(cop, uint8_t *, sess->auth_iv_offset);
+	/* Kasumi would need SG mode */
+	if (is_kasumi)
 		inplace = 0;
-	}
 
 	m_src = sym_op->m_src;
 	m_dst = sym_op->m_dst;
