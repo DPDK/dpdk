@@ -4,6 +4,7 @@
 
 #include <rte_malloc.h>
 #include <ethdev_driver.h>
+#include <rte_eal_paging.h>
 
 #include "ionic.h"
 #include "ionic_logs.h"
@@ -770,7 +771,7 @@ ionic_rx_qcq_alloc(struct ionic_lif *lif, uint32_t socket_id, uint32_t index,
 	if (max_frame > hdr_seg_size) {
 		IONIC_PRINT(NOTICE, "Enabling RX_OFFLOAD_SCATTER");
 		lif->eth_dev->data->dev_conf.rxmode.offloads |=
-			DEV_RX_OFFLOAD_SCATTER;
+			RTE_ETH_RX_OFFLOAD_SCATTER;
 	        ionic_lif_configure_rx_sg_offload(lif);
 	}
 
@@ -1837,7 +1838,7 @@ ionic_lif_configure_rx_sg_offload(struct ionic_lif *lif)
 {
 	struct rte_eth_rxmode *rxmode = &lif->eth_dev->data->dev_conf.rxmode;
 
-	if (rxmode->offloads & DEV_RX_OFFLOAD_SCATTER) {
+	if (rxmode->offloads & RTE_ETH_RX_OFFLOAD_SCATTER) {
 		lif->features |= IONIC_ETH_HW_RX_SG;
 		lif->eth_dev->data->scattered_rx = 1;
 	} else {

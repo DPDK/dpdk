@@ -357,7 +357,7 @@ ionic_dev_mtu_set(struct rte_eth_dev *eth_dev, uint16_t mtu)
 
 	/* Update the frame size used by the Rx path */
 	lif->frame_size = mtu + IONIC_ETH_OVERHEAD;
-
+#if 0
 	/* Update the JUMBO_FRAME flag to match the provided MTU */
 	if (mtu > RTE_ETHER_MTU) {
 		IONIC_PRINT(DEBUG, "Set device mtu %u frame %u JUMBO",
@@ -369,6 +369,7 @@ ionic_dev_mtu_set(struct rte_eth_dev *eth_dev, uint16_t mtu)
 			mtu, lif->frame_size);
 		rxmode->offloads &= ~DEV_RX_OFFLOAD_JUMBO_FRAME;
 	}
+#endif    
 
 	return 0;
 }
@@ -882,7 +883,7 @@ ionic_dev_start(struct rte_eth_dev *eth_dev)
 	struct ionic_adapter *adapter = lif->adapter;
 	struct ionic_dev *idev = &adapter->idev;
 	uint32_t speed = 0, allowed_speeds;
-	uint32_t mtu;
+	uint32_t mtu = 0;
 	uint8_t an_enable;
 	int err;
 
@@ -911,6 +912,7 @@ ionic_dev_start(struct rte_eth_dev *eth_dev)
 		return err;
 	}
 
+#if 0   
 	if (dev_conf->rxmode.offloads & DEV_RX_OFFLOAD_JUMBO_FRAME) {
 		lif->frame_size = dev_conf->rxmode.max_rx_pkt_len;
 		mtu = lif->frame_size - IONIC_ETH_OVERHEAD;
@@ -918,7 +920,7 @@ ionic_dev_start(struct rte_eth_dev *eth_dev)
 		mtu = RTE_MIN(eth_dev->data->mtu, RTE_ETHER_MTU);
 		lif->frame_size = mtu + IONIC_ETH_OVERHEAD;
 	}
-
+#endif
 	err = ionic_lif_set_mtu(lif, mtu);
 	if (err) {
 		IONIC_PRINT(ERR, "Cannot set LIF frame size %u: %d",
@@ -1029,10 +1031,6 @@ eth_ionic_dev_init(struct rte_eth_dev *eth_dev, void *init_params)
 	IONIC_PRINT_CALL();
 
 	eth_dev->dev_ops = &ionic_eth_dev_ops;
-
-	eth_dev->rx_descriptor_done = ionic_dev_rx_descriptor_done;
-	eth_dev->rx_descriptor_status = ionic_dev_rx_descriptor_status;
-	eth_dev->tx_descriptor_status = ionic_dev_tx_descriptor_status;
 
 	/* Multi-process not supported, primary does initialization anyway */
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)

@@ -103,14 +103,14 @@ ionic_txq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
 	qinfo->nb_desc = q->num_descs;
 	qinfo->conf.offloads = dev->data->dev_conf.txmode.offloads;
 	if (txq->flags & IONIC_QCQ_F_FAST_FREE)
-		qinfo->conf.offloads |= DEV_TX_OFFLOAD_MBUF_FAST_FREE;
+		qinfo->conf.offloads |= RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE;
 	qinfo->conf.tx_deferred_start = txq->flags & IONIC_QCQ_F_DEFERRED;
 }
 
 void __rte_cold
 ionic_dev_tx_queue_release(struct rte_eth_dev *dev, uint16_t qid)
 {
-	struct ionic_tx_qcq *txq = tx_queue;
+	struct ionic_tx_qcq *txq = dev->data->tx_queues[qid];
 
 	IONIC_PRINT_CALL();
 
@@ -209,7 +209,7 @@ ionic_dev_tx_queue_setup(struct rte_eth_dev *eth_dev, uint16_t tx_queue_id,
 		txq->flags |= IONIC_QCQ_F_CSUM_TCP;
 	if (offloads & RTE_ETH_TX_OFFLOAD_UDP_CKSUM)
 		txq->flags |= IONIC_QCQ_F_CSUM_UDP;
-	if (offloads & DEV_TX_OFFLOAD_MBUF_FAST_FREE)
+	if (offloads & RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE)
 		txq->flags |= IONIC_QCQ_F_FAST_FREE;
 
 	txq->free_thresh =
@@ -368,7 +368,7 @@ ionic_tx_tso(struct ionic_tx_qcq *txq, struct rte_mbuf *txm)
 	uint32_t offset = 0;
 	bool start, done;
 	bool encap;
-	bool has_vlan = !!(txm->ol_flags & PKT_TX_VLAN_PKT);
+	bool has_vlan = !!(txm->ol_flags & RTE_MBUF_F_TX_VLAN);
 	bool use_sgl = !!(txq->flags & IONIC_QCQ_F_SG);
 	uint16_t vlan_tci = txm->vlan_tci;
 	uint64_t ol_flags = txm->ol_flags;
@@ -515,7 +515,7 @@ ionic_rxq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
 void __rte_cold
 ionic_dev_rx_queue_release(struct rte_eth_dev *dev, uint16_t qid)
 {
-	struct ionic_rx_qcq *rxq = rx_queue;
+	struct ionic_rx_qcq *rxq = dev->data->rx_queues[qid];
 
 	if (!rxq)
 		return;
@@ -606,30 +606,30 @@ ionic_dev_rx_queue_setup(struct rte_eth_dev *eth_dev,
 const uint64_t ionic_csum_flags[IONIC_CSUM_FLAG_MASK]
 		__rte_cache_aligned = {
 	/* IP_BAD set */
-	[IONIC_RXQ_COMP_CSUM_F_IP_BAD] = PKT_RX_IP_CKSUM_BAD,
+	[IONIC_RXQ_COMP_CSUM_F_IP_BAD] = RTE_MBUF_F_RX_IP_CKSUM_BAD,
 	[IONIC_RXQ_COMP_CSUM_F_IP_BAD | IONIC_RXQ_COMP_CSUM_F_TCP_OK] =
-			PKT_RX_IP_CKSUM_BAD | PKT_RX_L4_CKSUM_GOOD,
+			RTE_MBUF_F_RX_IP_CKSUM_BAD | RTE_MBUF_F_RX_L4_CKSUM_GOOD,
 	[IONIC_RXQ_COMP_CSUM_F_IP_BAD | IONIC_RXQ_COMP_CSUM_F_TCP_BAD] =
-			PKT_RX_IP_CKSUM_BAD | PKT_RX_L4_CKSUM_BAD,
+			RTE_MBUF_F_RX_IP_CKSUM_BAD | RTE_MBUF_F_RX_L4_CKSUM_BAD,
 	[IONIC_RXQ_COMP_CSUM_F_IP_BAD | IONIC_RXQ_COMP_CSUM_F_UDP_OK] =
-			PKT_RX_IP_CKSUM_BAD | PKT_RX_L4_CKSUM_GOOD,
+			RTE_MBUF_F_RX_IP_CKSUM_BAD | RTE_MBUF_F_RX_L4_CKSUM_GOOD,
 	[IONIC_RXQ_COMP_CSUM_F_IP_BAD | IONIC_RXQ_COMP_CSUM_F_UDP_BAD] =
-			PKT_RX_IP_CKSUM_BAD | PKT_RX_L4_CKSUM_BAD,
+			RTE_MBUF_F_RX_IP_CKSUM_BAD | RTE_MBUF_F_RX_L4_CKSUM_BAD,
 	/* IP_OK set */
-	[IONIC_RXQ_COMP_CSUM_F_IP_OK] = PKT_RX_IP_CKSUM_GOOD,
+	[IONIC_RXQ_COMP_CSUM_F_IP_OK] = RTE_MBUF_F_RX_IP_CKSUM_GOOD,
 	[IONIC_RXQ_COMP_CSUM_F_IP_OK | IONIC_RXQ_COMP_CSUM_F_TCP_OK] =
-			PKT_RX_IP_CKSUM_GOOD | PKT_RX_L4_CKSUM_GOOD,
+			RTE_MBUF_F_RX_IP_CKSUM_GOOD | RTE_MBUF_F_RX_L4_CKSUM_GOOD,
 	[IONIC_RXQ_COMP_CSUM_F_IP_OK | IONIC_RXQ_COMP_CSUM_F_TCP_BAD] =
-			PKT_RX_IP_CKSUM_GOOD | PKT_RX_L4_CKSUM_BAD,
+			RTE_MBUF_F_RX_IP_CKSUM_GOOD | RTE_MBUF_F_RX_L4_CKSUM_BAD,
 	[IONIC_RXQ_COMP_CSUM_F_IP_OK | IONIC_RXQ_COMP_CSUM_F_UDP_OK] =
-			PKT_RX_IP_CKSUM_GOOD | PKT_RX_L4_CKSUM_GOOD,
+			RTE_MBUF_F_RX_IP_CKSUM_GOOD | RTE_MBUF_F_RX_L4_CKSUM_GOOD,
 	[IONIC_RXQ_COMP_CSUM_F_IP_OK | IONIC_RXQ_COMP_CSUM_F_UDP_BAD] =
-			PKT_RX_IP_CKSUM_GOOD | PKT_RX_L4_CKSUM_BAD,
+			RTE_MBUF_F_RX_IP_CKSUM_GOOD | RTE_MBUF_F_RX_L4_CKSUM_BAD,
 	/* No IP flag set */
-	[IONIC_RXQ_COMP_CSUM_F_TCP_OK] = PKT_RX_L4_CKSUM_GOOD,
-	[IONIC_RXQ_COMP_CSUM_F_TCP_BAD] = PKT_RX_L4_CKSUM_BAD,
-	[IONIC_RXQ_COMP_CSUM_F_UDP_OK] = PKT_RX_L4_CKSUM_GOOD,
-	[IONIC_RXQ_COMP_CSUM_F_UDP_BAD] = PKT_RX_L4_CKSUM_BAD,
+	[IONIC_RXQ_COMP_CSUM_F_TCP_OK] = RTE_MBUF_F_RX_L4_CKSUM_GOOD,
+	[IONIC_RXQ_COMP_CSUM_F_TCP_BAD] = RTE_MBUF_F_RX_L4_CKSUM_BAD,
+	[IONIC_RXQ_COMP_CSUM_F_UDP_OK] = RTE_MBUF_F_RX_L4_CKSUM_GOOD,
+	[IONIC_RXQ_COMP_CSUM_F_UDP_BAD] = RTE_MBUF_F_RX_L4_CKSUM_BAD,
 };
 
 /* RTE_PTYPE_UNKNOWN is 0x0 */

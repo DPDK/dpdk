@@ -65,6 +65,6 @@ void ionic_uio_scan_mcrypt_devices(void);
 void ionic_uio_get_rsrc(const char *name, int idx, struct ionic_dev_bar *bar);
 void ionic_uio_rel_rsrc(const char *name, int idx, struct ionic_dev_bar *bar);
 
-size_t rte_mem_page_size(void);
+//size_t rte_mem_page_size(void);
 
 #endif /* _IONIC_COMMON_H_ */

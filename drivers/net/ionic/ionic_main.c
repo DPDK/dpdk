@@ -5,6 +5,7 @@
 #include <stdbool.h>
 
 #include <rte_memzone.h>
+#include <rte_eal_paging.h>
 
 #include "ionic.h"
 #include "ionic_ethdev.h"

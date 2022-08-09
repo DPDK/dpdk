@@ -11,6 +11,7 @@
 
 #include "ionic_common.h"
 
+#if 0
 // Added in DPDK 20.08
 size_t
 rte_mem_page_size(void)
@@ -22,3 +23,4 @@ rte_mem_page_size(void)
 
 	return page_size;
 }
+#endif

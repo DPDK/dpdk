@@ -30,7 +30,7 @@
 #include <rte_malloc.h>
 #include <rte_mbuf.h>
 #include <rte_ether.h>
-#include <rte_ethdev_driver.h>
+#include <ethdev_driver.h>
 #include <rte_udp.h>
 #include <rte_tcp.h>
 #include <rte_sctp.h>
@@ -125,15 +125,15 @@ ionic_tx_sg(struct ionic_tx_qcq *txq, struct rte_mbuf *txm)
 	sg_desc = &sg_desc_base[q->head_idx];
 	info = IONIC_INFO_PTR(q, q->head_idx);
 
-	if ((ol_flags & PKT_TX_IP_CKSUM) &&
+	if ((ol_flags & RTE_MBUF_F_TX_IP_CKSUM) &&
 	    (txq->flags & IONIC_QCQ_F_CSUM_L3)) {
 		opcode = IONIC_TXQ_DESC_OPCODE_CSUM_HW;
 		flags |= IONIC_TXQ_DESC_FLAG_CSUM_L3;
 	}
 
-	if (((ol_flags & PKT_TX_TCP_CKSUM) &&
+	if (((ol_flags & RTE_MBUF_F_TX_TCP_CKSUM) &&
 	     (txq->flags & IONIC_QCQ_F_CSUM_TCP)) ||
-	    ((ol_flags & PKT_TX_UDP_CKSUM) &&
+	    ((ol_flags & RTE_MBUF_F_TX_UDP_CKSUM) &&
 	     (txq->flags & IONIC_QCQ_F_CSUM_UDP))) {
 		opcode = IONIC_TXQ_DESC_OPCODE_CSUM_HW;
 		flags |= IONIC_TXQ_DESC_FLAG_CSUM_L4;
@@ -142,14 +142,14 @@ ionic_tx_sg(struct ionic_tx_qcq *txq, struct rte_mbuf *txm)
 	if (opcode == IONIC_TXQ_DESC_OPCODE_CSUM_NONE)
 		stats->no_csum++;
 
-	if (((ol_flags & PKT_TX_OUTER_IP_CKSUM) ||
-	     (ol_flags & PKT_TX_OUTER_UDP_CKSUM)) &&
-	    ((ol_flags & PKT_TX_OUTER_IPV4) ||
-	     (ol_flags & PKT_TX_OUTER_IPV6))) {
+	if (((ol_flags & RTE_MBUF_F_TX_OUTER_IP_CKSUM) ||
+	     (ol_flags & RTE_MBUF_F_TX_OUTER_UDP_CKSUM)) &&
+	    ((ol_flags & RTE_MBUF_F_TX_OUTER_IPV4) ||
+	     (ol_flags & RTE_MBUF_F_TX_OUTER_IPV6))) {
 		flags |= IONIC_TXQ_DESC_FLAG_ENCAP;
 	}
 
-	if (ol_flags & PKT_TX_VLAN_PKT) {
+	if (ol_flags & RTE_MBUF_F_TX_VLAN) {
 		flags |= IONIC_TXQ_DESC_FLAG_VLAN;
 		desc->vlan_tci = rte_cpu_to_le_16(txm->vlan_tci);
 	}
@@ -246,7 +246,7 @@ ionic_xmit_pkts_sg(void *tx_queue, struct rte_mbuf **tx_pkts,
 
 		mbuf = tx_pkts[nb_tx];
 
-		if (mbuf->ol_flags & PKT_TX_TCP_SEG)
+		if (mbuf->ol_flags & RTE_MBUF_F_TX_TCP_SEG)
 			err = ionic_tx_tso(txq, mbuf);
 		else
 			err = ionic_tx_sg(txq, mbuf);
@@ -355,12 +355,12 @@ ionic_rx_clean_one_sg(struct ionic_rx_qcq *rxq,
 	prev_rxm->next = NULL;
 
 	/* RSS */
-	pkt_flags |= PKT_RX_RSS_HASH;
+	pkt_flags |= RTE_MBUF_F_RX_RSS_HASH;
 	rxm->hash.rss = rte_le_to_cpu_32(cq_desc->rss_hash);
 
 	/* Vlan Strip */
 	if (cq_desc->csum_flags & IONIC_RXQ_COMP_CSUM_F_VLAN) {
-		pkt_flags |= PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED;
+		pkt_flags |= RTE_MBUF_F_RX_VLAN | RTE_MBUF_F_RX_VLAN_STRIPPED;
 		rxm->vlan_tci = rte_le_to_cpu_16(cq_desc->vlan_tci);
 	}
 
@@ -386,7 +386,7 @@ ionic_rx_clean_one_sg(struct ionic_rx_qcq *rxq,
 		else if (ether_type == rte_cpu_to_be_16(RTE_ETHER_TYPE_1588))
 			pkt_type = RTE_PTYPE_L2_ETHER_TIMESYNC;
 		stats->mtods++;
-	} else if (pkt_flags & PKT_RX_VLAN) {
+	} else if (pkt_flags & RTE_MBUF_F_RX_VLAN) {
 		pkt_type |= RTE_PTYPE_L2_ETHER_VLAN;
 	} else {
 		pkt_type |= RTE_PTYPE_L2_ETHER;

@@ -1,0 +1,10 @@
+INTERNAL {
+	global:
+
+	ionic_uio_scan_mnet_devices;
+	ionic_uio_scan_mcrypt_devices;
+	ionic_uio_get_rsrc;
+	ionic_uio_rel_rsrc;
+
+	local: *;
+};

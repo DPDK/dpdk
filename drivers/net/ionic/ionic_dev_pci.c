@@ -112,7 +112,7 @@ ionic_pci_configure_intr(struct ionic_adapter *adapter)
 {
 	struct rte_pci_device *pci_dev =
 		(struct rte_pci_device *)(adapter->bus_dev);
-	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
+	struct rte_intr_handle *intr_handle = pci_dev->intr_handle;
 	int err;
 
 	IONIC_PRINT(ERR, "Configuring %u intrs", adapter->nintrs);
@@ -122,10 +122,18 @@ ionic_pci_configure_intr(struct ionic_adapter *adapter)
 		return -1;
 	}
 
-	if (rte_intr_dp_is_en(intr_handle))
+	if (rte_intr_dp_is_en(intr_handle)) {
 		IONIC_PRINT(NOTICE,
 			"Packet I/O interrupt on datapath is enabled");
+		if (rte_intr_vec_list_alloc(intr_handle, "intr_vec",
+						adapter->nintrs)) {
+			IONIC_PRINT(ERR, "Failed to allocate %u vectors",
+						adapter->nintrs);
+			return -ENOMEM;
+		}
+	}
 
+#if 0
 	if (!intr_handle->intr_vec) {
 		intr_handle->intr_vec = rte_calloc("intr_vec",
 						adapter->nintrs, sizeof(int),
@@ -136,6 +144,7 @@ ionic_pci_configure_intr(struct ionic_adapter *adapter)
 			return -ENOMEM;
 		}
 	}
+#endif
 
 	err = rte_intr_callback_register(intr_handle,
 		ionic_dev_interrupt_handler,
@@ -161,7 +170,7 @@ ionic_pci_unconfigure_intr(struct ionic_adapter *adapter)
 {
 	struct rte_pci_device *pci_dev =
 		(struct rte_pci_device *)(adapter->bus_dev);
-	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
+	struct rte_intr_handle *intr_handle = pci_dev->intr_handle;
 
 	rte_intr_disable(intr_handle);
 
