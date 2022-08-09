@@ -77,25 +77,6 @@ cpt_sec_inst_fill(struct cnxk_cpt_qp *qp, struct rte_crypto_op *op,
 	return ret;
 }
 
-static __rte_always_inline int __rte_hot
-cpt_sym_inst_fill(struct cnxk_cpt_qp *qp, struct rte_crypto_op *op,
-		  struct cnxk_se_sess *sess, struct cpt_inflight_req *infl_req,
-		  struct cpt_inst_s *inst)
-{
-	uint64_t cpt_op;
-	int ret;
-
-	cpt_op = sess->cpt_op;
-
-	if (cpt_op & ROC_SE_OP_CIPHER_MASK)
-		ret = fill_fc_params(op, sess, &qp->meta_info, infl_req, inst);
-	else
-		ret = fill_digest_params(op, sess, &qp->meta_info, infl_req,
-					 inst);
-
-	return ret;
-}
-
 static inline int
 cn10k_cpt_fill_inst(struct cnxk_cpt_qp *qp, struct rte_crypto_op *ops[],
 		    struct cpt_inst_s inst[], struct cpt_inflight_req *infl_req)

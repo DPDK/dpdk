@@ -18,27 +18,6 @@
 #include "cnxk_se.h"
 
 static __rte_always_inline int __rte_hot
-cn9k_cpt_sym_inst_fill(struct cnxk_cpt_qp *qp, struct rte_crypto_op *op,
-		       struct cnxk_se_sess *sess,
-		       struct cpt_inflight_req *infl_req,
-		       struct cpt_inst_s *inst)
-{
-	uint64_t cpt_op;
-	int ret;
-
-	cpt_op = sess->cpt_op;
-
-	if (sess->roc_se_ctx.fc_type == ROC_SE_PDCP_CHAIN)
-		ret = fill_pdcp_chain_params(op, sess, &qp->meta_info, infl_req, inst);
-	else if (cpt_op & ROC_SE_OP_CIPHER_MASK)
-		ret = fill_fc_params(op, sess, &qp->meta_info, infl_req, inst);
-	else
-		ret = fill_digest_params(op, sess, &qp->meta_info, infl_req, inst);
-
-	return ret;
-}
-
-static __rte_always_inline int __rte_hot
 cn9k_cpt_sec_inst_fill(struct rte_crypto_op *op,
 		       struct cpt_inflight_req *infl_req,
 		       struct cpt_inst_s *inst)
@@ -118,8 +97,7 @@ cn9k_cpt_inst_prep(struct cnxk_cpt_qp *qp, struct rte_crypto_op *op,
 			sym_op = op->sym;
 			sess = get_sym_session_private_data(
 				sym_op->session, cn9k_cryptodev_driver_id);
-			ret = cn9k_cpt_sym_inst_fill(qp, op, sess, infl_req,
-						     inst);
+			ret = cpt_sym_inst_fill(qp, op, sess, infl_req, inst);
 			inst->w7.u64 = sess->cpt_inst_w7;
 		} else if (op->sess_type == RTE_CRYPTO_OP_SECURITY_SESSION)
 			ret = cn9k_cpt_sec_inst_fill(op, infl_req, inst);
@@ -130,8 +108,7 @@ cn9k_cpt_inst_prep(struct cnxk_cpt_qp *qp, struct rte_crypto_op *op,
 				return -1;
 			}
 
-			ret = cn9k_cpt_sym_inst_fill(qp, op, sess, infl_req,
-						     inst);
+			ret = cpt_sym_inst_fill(qp, op, sess, infl_req, inst);
 			if (unlikely(ret)) {
 				sym_session_clear(cn9k_cryptodev_driver_id,
 						  op->sym->session);
