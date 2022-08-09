@@ -10,12 +10,13 @@
 
 #include "cnxk_ae.h"
 #include "cnxk_cryptodev.h"
-#include "cnxk_cryptodev_ops.h"
 #include "cnxk_cryptodev_capabilities.h"
+#include "cnxk_cryptodev_ops.h"
 #include "cnxk_se.h"
 
-#define CNXK_CPT_MAX_ASYM_OP_NUM_PARAMS 5
-#define CNXK_CPT_MAX_ASYM_OP_MOD_LEN	1024
+#define CNXK_CPT_MAX_ASYM_OP_NUM_PARAMS	 5
+#define CNXK_CPT_MAX_ASYM_OP_MOD_LEN	 1024
+#define CNXK_CPT_META_BUF_MAX_CACHE_SIZE 128
 
 static int
 cnxk_cpt_get_mlen(void)
@@ -200,7 +201,7 @@ cnxk_cpt_metabuf_mempool_create(const struct rte_cryptodev *dev,
 	}
 
 	mb_pool_sz = nb_elements;
-	cache_sz = RTE_MIN(RTE_MEMPOOL_CACHE_MAX_SIZE, nb_elements / 1.5);
+	cache_sz = RTE_MIN(CNXK_CPT_META_BUF_MAX_CACHE_SIZE, nb_elements / 1.5);
 
 	/* For poll mode, core that enqueues and core that dequeues can be
 	 * different. For event mode, all cores are allowed to use same crypto
