@@ -16,6 +16,15 @@
 	(sizeof(struct roc_se_iov_ptr) +                                       \
 	 (sizeof(struct roc_se_buf_ptr) * ROC_SE_MAX_SG_CNT))
 
+enum cpt_dp_thread_type {
+	CPT_DP_THREAD_TYPE_FC_CHAIN = 0x1,
+	CPT_DP_THREAD_TYPE_FC_AEAD,
+	CPT_DP_THREAD_TYPE_PDCP,
+	CPT_DP_THREAD_TYPE_PDCP_CHAIN,
+	CPT_DP_THREAD_TYPE_KASUMI,
+	CPT_DP_THREAD_AUTH_ONLY,
+};
+
 struct cnxk_se_sess {
 	uint16_t cpt_op : 4;
 	uint16_t zsk_flag : 4;
@@ -29,7 +38,7 @@ struct cnxk_se_sess {
 	uint16_t aes_ctr_eea2 : 1;
 	uint16_t zs_cipher : 4;
 	uint16_t zs_auth : 4;
-	uint16_t rsvd2 : 8;
+	uint16_t dp_thr_type : 8;
 	uint16_t aad_length;
 	uint8_t mac_len;
 	uint8_t iv_length;
@@ -2370,7 +2379,7 @@ prepare_iov_from_pkt_inplace(struct rte_mbuf *pkt,
 static __rte_always_inline int
 fill_fc_params(struct rte_crypto_op *cop, struct cnxk_se_sess *sess,
 	       struct cpt_qp_meta_info *m_info, struct cpt_inflight_req *infl_req,
-	       struct cpt_inst_s *inst, const bool is_kasumi)
+	       struct cpt_inst_s *inst, const bool is_kasumi, const bool is_aead)
 {
 	struct rte_crypto_sym_op *sym_op = cop->sym;
 	void *mdata = NULL;
@@ -2418,7 +2427,7 @@ fill_fc_params(struct rte_crypto_op *cop, struct cnxk_se_sess *sess,
 	m_src = sym_op->m_src;
 	m_dst = sym_op->m_dst;
 
-	if (sess->aes_gcm || sess->chacha_poly) {
+	if (is_aead) {
 		struct rte_mbuf *m;
 		uint8_t *salt;
 		uint8_t *aad_data;
@@ -2567,6 +2576,7 @@ fill_fc_params(struct rte_crypto_op *cop, struct cnxk_se_sess *sess,
 		}
 	}
 
+	fc_params.meta_buf.vaddr = NULL;
 	if (unlikely(is_kasumi || !((flags & ROC_SE_SINGLE_BUF_INPLACE) &&
 				    (flags & ROC_SE_SINGLE_BUF_HEADROOM)))) {
 		mdata = alloc_op_meta(&fc_params.meta_buf, m_info->mlen, m_info->pool, infl_req);
@@ -3057,26 +3067,29 @@ static __rte_always_inline int __rte_hot
 cpt_sym_inst_fill(struct cnxk_cpt_qp *qp, struct rte_crypto_op *op, struct cnxk_se_sess *sess,
 		  struct cpt_inflight_req *infl_req, struct cpt_inst_s *inst)
 {
-	uint64_t cpt_op = sess->cpt_op;
 	int ret;
 
-	if (cpt_op & ROC_SE_OP_CIPHER_MASK) {
-		switch (sess->roc_se_ctx.fc_type) {
-		case ROC_SE_PDCP_CHAIN:
-			ret = fill_pdcp_chain_params(op, sess, &qp->meta_info, infl_req, inst);
-			break;
-		case ROC_SE_PDCP:
-			ret = fill_pdcp_params(op, sess, &qp->meta_info, infl_req, inst);
-			break;
-		case ROC_SE_KASUMI:
-			ret = fill_fc_params(op, sess, &qp->meta_info, infl_req, inst, true);
-			break;
-		default:
-			ret = fill_fc_params(op, sess, &qp->meta_info, infl_req, inst, false);
-			break;
-		}
-	} else {
+	switch (sess->dp_thr_type) {
+	case CPT_DP_THREAD_TYPE_PDCP:
+		ret = fill_pdcp_params(op, sess, &qp->meta_info, infl_req, inst);
+		break;
+	case CPT_DP_THREAD_TYPE_FC_CHAIN:
+		ret = fill_fc_params(op, sess, &qp->meta_info, infl_req, inst, false, false);
+		break;
+	case CPT_DP_THREAD_TYPE_FC_AEAD:
+		ret = fill_fc_params(op, sess, &qp->meta_info, infl_req, inst, false, true);
+		break;
+	case CPT_DP_THREAD_TYPE_PDCP_CHAIN:
+		ret = fill_pdcp_chain_params(op, sess, &qp->meta_info, infl_req, inst);
+		break;
+	case CPT_DP_THREAD_TYPE_KASUMI:
+		ret = fill_fc_params(op, sess, &qp->meta_info, infl_req, inst, true, false);
+		break;
+	case CPT_DP_THREAD_AUTH_ONLY:
 		ret = fill_digest_params(op, sess, &qp->meta_info, infl_req, inst);
+		break;
+	default:
+		ret = -EINVAL;
 	}
 
 	return ret;
