@@ -2372,8 +2372,6 @@ fill_fc_params(struct rte_crypto_op *cop, struct cnxk_se_sess *sess,
 	       struct cpt_qp_meta_info *m_info, struct cpt_inflight_req *infl_req,
 	       struct cpt_inst_s *inst, const bool is_kasumi)
 {
-	struct roc_se_ctx *ctx = &sess->roc_se_ctx;
-	uint8_t op_minor = ctx->template_w4.s.opcode_minor;
 	struct rte_crypto_sym_op *sym_op = cop->sym;
 	void *mdata = NULL;
 	uint32_t mc_hash_off;
@@ -2474,6 +2472,9 @@ fill_fc_params(struct rte_crypto_op *cop, struct cnxk_se_sess *sess,
 		uint32_t ci_data_offset = sym_op->cipher.data.offset;
 		uint32_t a_data_length = sym_op->auth.data.length;
 		uint32_t a_data_offset = sym_op->auth.data.offset;
+		struct roc_se_ctx *ctx = &sess->roc_se_ctx;
+
+		const uint8_t op_minor = ctx->template_w4.s.opcode_minor;
 
 		d_offs = ci_data_offset;
 		d_offs = (d_offs << 16) | a_data_offset;
