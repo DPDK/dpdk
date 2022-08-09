@@ -70,6 +70,7 @@ New Features
 * **Updated Marvell cnxk crypto driver.**
 
   * Added AES-CCM support in lookaside protocol (IPsec) for CN9K & CN10K.
+  * Added AES & DES DOCSIS algorithm support in lookaside crypto for CN9K.
 
 * **Added eventdev adapter instance get API.**
 

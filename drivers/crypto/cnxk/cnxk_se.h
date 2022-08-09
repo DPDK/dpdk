@@ -2032,6 +2032,18 @@ fill_sess_cipher(struct rte_crypto_sym_xform *xform, struct cnxk_se_sess *sess)
 		enc_type = ROC_SE_AES_ECB;
 		cipher_key_len = 16;
 		break;
+	case RTE_CRYPTO_CIPHER_AES_DOCSISBPI:
+		/* Set DOCSIS flag */
+		sess->roc_se_ctx.template_w4.s.opcode_minor |= ROC_SE_FC_MINOR_OP_DOCSIS;
+		enc_type = ROC_SE_AES_DOCSISBPI;
+		cipher_key_len = 16;
+		break;
+	case RTE_CRYPTO_CIPHER_DES_DOCSISBPI:
+		/* Set DOCSIS flag */
+		sess->roc_se_ctx.template_w4.s.opcode_minor |= ROC_SE_FC_MINOR_OP_DOCSIS;
+		enc_type = ROC_SE_DES_DOCSISBPI;
+		cipher_key_len = 8;
+		break;
 	case RTE_CRYPTO_CIPHER_3DES_CTR:
 	case RTE_CRYPTO_CIPHER_AES_F8:
 	case RTE_CRYPTO_CIPHER_ARC4:

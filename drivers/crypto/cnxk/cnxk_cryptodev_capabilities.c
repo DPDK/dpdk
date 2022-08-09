@@ -697,6 +697,49 @@ static const struct rte_cryptodev_capabilities caps_des[] = {
 	},
 };
 
+static const struct rte_cryptodev_capabilities caps_docsis[] = {
+	{	/* AES DOCSIS BPI */
+		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
+		{.sym = {
+			.xform_type = RTE_CRYPTO_SYM_XFORM_CIPHER,
+			{.cipher = {
+				.algo = RTE_CRYPTO_CIPHER_AES_DOCSISBPI,
+				.block_size = 16,
+				.key_size = {
+					.min = 16,
+					.max = 32,
+					.increment = 16
+				},
+				.iv_size = {
+					.min = 16,
+					.max = 16,
+					.increment = 0
+				}
+			}, }
+		}, }
+	},
+	{	/* DES DOCSIS BPI */
+		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
+		{.sym = {
+			.xform_type = RTE_CRYPTO_SYM_XFORM_CIPHER,
+			{.cipher = {
+				.algo = RTE_CRYPTO_CIPHER_DES_DOCSISBPI,
+				.block_size = 8,
+				.key_size = {
+					.min = 8,
+					.max = 8,
+					.increment = 0
+				},
+				.iv_size = {
+					.min = 8,
+					.max = 8,
+					.increment = 0
+				}
+			}, }
+		}, }
+	},
+};
+
 static const struct rte_cryptodev_capabilities caps_null[] = {
 	{	/* NULL (AUTH) */
 		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
@@ -1159,6 +1202,12 @@ cn10k_crypto_caps_update(struct rte_cryptodev_capabilities cnxk_caps[])
 }
 
 static void
+cn9k_crypto_caps_add(struct rte_cryptodev_capabilities cnxk_caps[], int *cur_pos)
+{
+	    cpt_caps_add(cnxk_caps, cur_pos, caps_docsis, RTE_DIM(caps_docsis));
+}
+
+static void
 crypto_caps_populate(struct rte_cryptodev_capabilities cnxk_caps[],
 		     union cpt_eng_caps *hw_caps)
 {
@@ -1171,6 +1220,9 @@ crypto_caps_populate(struct rte_cryptodev_capabilities cnxk_caps[],
 	CPT_CAPS_ADD(cnxk_caps, &cur_pos, hw_caps, aes);
 	CPT_CAPS_ADD(cnxk_caps, &cur_pos, hw_caps, kasumi);
 	CPT_CAPS_ADD(cnxk_caps, &cur_pos, hw_caps, des);
+
+	if (!roc_model_is_cn10k())
+		cn9k_crypto_caps_add(cnxk_caps, &cur_pos);
 
 	cpt_caps_add(cnxk_caps, &cur_pos, caps_null, RTE_DIM(caps_null));
 	cpt_caps_add(cnxk_caps, &cur_pos, caps_end, RTE_DIM(caps_end));

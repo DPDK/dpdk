@@ -63,6 +63,7 @@ cpt_ciph_type_set(roc_se_cipher_type type, struct roc_se_ctx *ctx,
 		break;
 	case ROC_SE_DES3_CBC:
 	case ROC_SE_DES3_ECB:
+	case ROC_SE_DES_DOCSISBPI:
 		fc_type = ROC_SE_FC_GEN;
 		break;
 	case ROC_SE_AES_CBC:
@@ -70,6 +71,7 @@ cpt_ciph_type_set(roc_se_cipher_type type, struct roc_se_ctx *ctx,
 	case ROC_SE_AES_CFB:
 	case ROC_SE_AES_CTR:
 	case ROC_SE_AES_GCM:
+	case ROC_SE_AES_DOCSISBPI:
 		if (unlikely(cpt_ciph_aes_key_validate(key_len) != 0))
 			return -1;
 		fc_type = ROC_SE_FC_GEN;
@@ -451,7 +453,7 @@ roc_se_ciph_key_set(struct roc_se_ctx *se_ctx, roc_se_cipher_type type,
 	uint8_t *zuc_const;
 	uint32_t keyx[4];
 	uint8_t *ci_key;
-	int ret;
+	int i, ret;
 
 	zs_ch_ctx = &se_ctx->se_ctx.zs_ch_ctx;
 
@@ -531,6 +533,27 @@ roc_se_ciph_key_set(struct roc_se_ctx *se_ctx, roc_se_cipher_type type,
 		memset(fctx->hmac.ipad, 0, sizeof(fctx->hmac.ipad));
 		memcpy(fctx->hmac.ipad, &key[key_len], key_len);
 		break;
+	case ROC_SE_AES_DOCSISBPI:
+		/*
+		 * DOCSIS uses the combination of AES-CBC and residual termination blocks that are
+		 * less than 128. Pass it as regular AES-CBC cipher to CPT, but keep type in
+		 * se_ctx as AES_DOCSISBPI to skip block size checks in instruction preparation.
+		 */
+		cpt_ciph_aes_key_type_set(fctx, key_len);
+		fctx->enc.enc_cipher = ROC_SE_AES_CBC;
+		memcpy(fctx->enc.encr_key, key, key_len);
+		goto success;
+	case ROC_SE_DES_DOCSISBPI:
+		/* See case ROC_SE_DES3_CBC: for explanation */
+		for (i = 0; i < 3; i++)
+			memcpy(fctx->enc.encr_key + key_len * i, key, key_len);
+		/*
+		 * DOCSIS uses DES-CBC mode with special handling of residual termination blocks
+		 * that are less than 64 bits. Pass it as regular DES-CBC, but keep type in
+		 * se_ctx as DES_DOCSISBPI to skip block size checks in instruction preparation.
+		 */
+		fctx->enc.enc_cipher = ROC_SE_DES3_CBC;
+		goto success;
 	case ROC_SE_SNOW3G_UEA2:
 		if (chained_op == true) {
 			struct roc_se_onk_zuc_chain_ctx *ctx =
