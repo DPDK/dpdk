@@ -487,22 +487,19 @@ cn9k_cpt_crypto_adapter_enqueue(uintptr_t base, struct rte_crypto_op *op)
 }
 
 static inline int
-ipsec_antireplay_check(struct cn9k_ipsec_sa *sa, uint32_t win_sz,
-		       struct roc_ie_on_inb_hdr *data)
+ipsec_antireplay_check(struct cn9k_ipsec_sa *sa, uint32_t win_sz, struct roc_ie_on_inb_hdr *data)
 {
+	uint32_t esn_low, esn_hi, seql, seqh = 0;
 	struct roc_ie_on_common_sa *common_sa;
 	struct roc_ie_on_inb_sa *in_sa;
-	struct roc_ie_on_sa_ctl *ctl;
-	uint32_t seql, seqh = 0;
-	uint64_t seq;
+	uint64_t seq, seq_in_sa;
 	uint8_t esn;
 	int ret;
 
 	in_sa = &sa->in_sa;
 	common_sa = &in_sa->common_sa;
-	ctl = &common_sa->ctl;
 
-	esn = ctl->esn_en;
+	esn = common_sa->ctl.esn_en;
 	seql = rte_be_to_cpu_32(data->seql);
 
 	if (!esn) {
@@ -517,9 +514,13 @@ ipsec_antireplay_check(struct cn9k_ipsec_sa *sa, uint32_t win_sz,
 
 	ret = cnxk_on_anti_replay_check(seq, &sa->ar, win_sz);
 	if (esn && !ret) {
-		common_sa = &sa->in_sa.common_sa;
-		if (seq > common_sa->seq_t.u64)
-			common_sa->seq_t.u64 = seq;
+		esn_low = rte_be_to_cpu_32(common_sa->seq_t.tl);
+		esn_hi = rte_be_to_cpu_32(common_sa->seq_t.th);
+		seq_in_sa = ((uint64_t)esn_hi << 32) | esn_low;
+		if (seq > seq_in_sa) {
+			common_sa->seq_t.tl = rte_cpu_to_be_32(seql);
+			common_sa->seq_t.th = rte_cpu_to_be_32(seqh);
+		}
 	}
 
 	return ret;
