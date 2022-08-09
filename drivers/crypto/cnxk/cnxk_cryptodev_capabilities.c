@@ -1294,6 +1294,7 @@ cn10k_sec_caps_update(struct rte_security_capability *sec_cap)
 	sec_cap->ipsec.options.l4_csum_enable = 1;
 	sec_cap->ipsec.options.stats = 1;
 	sec_cap->ipsec.options.esn = 1;
+	sec_cap->ipsec.options.copy_flabel = 1;
 	sec_cap->ipsec.replay_win_sz_max = ROC_AR_WIN_SIZE_MAX;
 }
 
