@@ -680,11 +680,9 @@ cpt_enc_hmac_prep(uint32_t flags, uint64_t d_offs, uint64_t d_lens,
 					return -1;
 				}
 			}
-			/* mac_data */
-			if (mac_len) {
-				i = fill_sg_comp_from_buf(scatter_comp, i,
-							  &fc_params->mac_buf);
-			}
+
+			/* Digest buffer */
+			i = fill_sg_comp_from_buf(scatter_comp, i, &fc_params->mac_buf);
 		} else {
 			/* Output including mac */
 			size = outputlen - iv_len;
