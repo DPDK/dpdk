@@ -272,6 +272,8 @@ extern int cnxk_logtype_ree;
 	RTE_LOG_DP(ERR, PMD, "%s():%u " fmt "\n", __func__, __LINE__, ##args)
 #define plt_dp_info(fmt, args...)                                              \
 	RTE_LOG_DP(INFO, PMD, "%s():%u " fmt "\n", __func__, __LINE__, ##args)
+#define plt_dp_dbg(fmt, args...)                                              \
+	RTE_LOG_DP(DEBUG, PMD, "%s():%u " fmt "\n", __func__, __LINE__, ##args)
 
 #ifdef __cplusplus
 #define CNXK_PCI_ID(subsystem_dev, dev)                                        \

@@ -412,7 +412,7 @@ ca_lmtst_burst_submit(struct cn10k_sso_hws *ws, uint64_t w2[], struct cnxk_cpt_q
 
 		ret = cn10k_cpt_fill_inst(qp, &op[i], inst, infl_req);
 		if (unlikely(ret != 1)) {
-			plt_dp_err("Could not process op: %p", op[i]);
+			plt_dp_dbg("Could not process op: %p", op[i]);
 			if (i != 0)
 				goto submit;
 			else
