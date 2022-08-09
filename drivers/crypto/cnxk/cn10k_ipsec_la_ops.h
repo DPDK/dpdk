@@ -66,6 +66,7 @@ process_outb_sa(struct roc_cpt_lf *lf, struct rte_crypto_op *cop,
 #ifdef LA_IPSEC_DEBUG
 	if (sess->out_sa.w2.s.iv_src == ROC_IE_OT_SA_IV_SRC_FROM_SA) {
 		if (sess->out_sa.w2.s.enc_type == ROC_IE_OT_SA_ENC_AES_GCM ||
+		    sess->out_sa.w2.s.enc_type == ROC_IE_OT_SA_ENC_AES_CCM ||
 		    sess->out_sa.w2.s.auth_type == ROC_IE_OT_SA_AUTH_AES_GMAC)
 			ipsec_po_sa_aes_gcm_iv_set(sess, cop);
 		else

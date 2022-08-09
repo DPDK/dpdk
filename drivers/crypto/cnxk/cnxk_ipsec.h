@@ -87,7 +87,8 @@ ipsec_xform_aead_verify(struct rte_security_ipsec_xform *ipsec_xform,
 	    crypto_xform->aead.op != RTE_CRYPTO_AEAD_OP_DECRYPT)
 		return -EINVAL;
 
-	if (crypto_xform->aead.algo == RTE_CRYPTO_AEAD_AES_GCM) {
+	if (crypto_xform->aead.algo == RTE_CRYPTO_AEAD_AES_GCM ||
+	    crypto_xform->aead.algo == RTE_CRYPTO_AEAD_AES_CCM) {
 		switch (crypto_xform->aead.key.length) {
 		case 16:
 		case 24:

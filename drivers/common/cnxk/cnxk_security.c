@@ -58,6 +58,7 @@ ot_ipsec_sa_common_param_fill(union roc_ot_ipsec_sa_word2 *w2,
 {
 	struct rte_crypto_sym_xform *auth_xfrm, *cipher_xfrm;
 	const uint8_t *key = NULL;
+	uint8_t ccm_flag = 0;
 	uint32_t *tmp_salt;
 	uint64_t *tmp_key;
 	int i, length = 0;
@@ -110,6 +111,15 @@ ot_ipsec_sa_common_param_fill(union roc_ot_ipsec_sa_word2 *w2,
 			w2->s.enc_type = ROC_IE_OT_SA_ENC_AES_GCM;
 			w2->s.auth_type = ROC_IE_OT_SA_AUTH_NULL;
 			memcpy(salt_key, &ipsec_xfrm->salt, 4);
+			tmp_salt = (uint32_t *)salt_key;
+			*tmp_salt = rte_be_to_cpu_32(*tmp_salt);
+			break;
+		case RTE_CRYPTO_AEAD_AES_CCM:
+			w2->s.enc_type = ROC_IE_OT_SA_ENC_AES_CCM;
+			w2->s.auth_type = ROC_IE_OT_SA_AUTH_NULL;
+			ccm_flag = 0x07 & ~ROC_CPT_AES_CCM_CTR_LEN;
+			*salt_key = ccm_flag;
+			memcpy(PLT_PTR_ADD(salt_key, 1), &ipsec_xfrm->salt, 3);
 			tmp_salt = (uint32_t *)salt_key;
 			*tmp_salt = rte_be_to_cpu_32(*tmp_salt);
 			break;
@@ -204,6 +214,7 @@ ot_ipsec_sa_common_param_fill(union roc_ot_ipsec_sa_word2 *w2,
 	    w2->s.enc_type == ROC_IE_OT_SA_ENC_AES_CCM ||
 	    w2->s.enc_type == ROC_IE_OT_SA_ENC_AES_CTR ||
 	    w2->s.enc_type == ROC_IE_OT_SA_ENC_AES_GCM ||
+	    w2->s.enc_type == ROC_IE_OT_SA_ENC_AES_CCM ||
 	    w2->s.auth_type == ROC_IE_OT_SA_AUTH_AES_GMAC) {
 		switch (length) {
 		case ROC_CPT_AES128_KEY_LEN:
@@ -612,6 +623,7 @@ onf_ipsec_sa_common_param_fill(struct roc_ie_onf_sa_ctl *ctl, uint8_t *salt,
 	struct rte_crypto_sym_xform *auth_xfrm, *cipher_xfrm;
 	int rc, length, auth_key_len;
 	const uint8_t *key = NULL;
+	uint8_t ccm_flag = 0;
 
 	/* Set direction */
 	switch (ipsec_xfrm->direction) {
@@ -661,6 +673,14 @@ onf_ipsec_sa_common_param_fill(struct roc_ie_onf_sa_ctl *ctl, uint8_t *salt,
 			ctl->enc_type = ROC_IE_ON_SA_ENC_AES_GCM;
 			ctl->auth_type = ROC_IE_ON_SA_AUTH_NULL;
 			memcpy(salt, &ipsec_xfrm->salt, 4);
+			key = crypto_xfrm->aead.key.data;
+			break;
+		case RTE_CRYPTO_AEAD_AES_CCM:
+			ctl->enc_type = ROC_IE_ON_SA_ENC_AES_CCM;
+			ctl->auth_type = ROC_IE_ON_SA_AUTH_NULL;
+			ccm_flag = 0x07 & ~ROC_CPT_AES_CCM_CTR_LEN;
+			*salt = ccm_flag;
+			memcpy(PLT_PTR_ADD(salt, 1), &ipsec_xfrm->salt, 3);
 			key = crypto_xfrm->aead.key.data;
 			break;
 		default:
@@ -810,7 +830,7 @@ cnxk_ipsec_ivlen_get(enum rte_crypto_cipher_algorithm c_algo,
 {
 	uint8_t ivlen = 0;
 
-	if (aead_algo == RTE_CRYPTO_AEAD_AES_GCM)
+	if ((aead_algo == RTE_CRYPTO_AEAD_AES_GCM) || (aead_algo == RTE_CRYPTO_AEAD_AES_CCM))
 		ivlen = 8;
 
 	switch (c_algo) {
@@ -875,6 +895,7 @@ cnxk_ipsec_icvlen_get(enum rte_crypto_cipher_algorithm c_algo,
 
 	switch (aead_algo) {
 	case RTE_CRYPTO_AEAD_AES_GCM:
+	case RTE_CRYPTO_AEAD_AES_CCM:
 		icv = 16;
 		break;
 	default:
@@ -890,7 +911,7 @@ cnxk_ipsec_outb_roundup_byte(enum rte_crypto_cipher_algorithm c_algo,
 {
 	uint8_t roundup_byte = 4;
 
-	if (aead_algo == RTE_CRYPTO_AEAD_AES_GCM)
+	if ((aead_algo == RTE_CRYPTO_AEAD_AES_GCM) || (aead_algo == RTE_CRYPTO_AEAD_AES_CCM))
 		return roundup_byte;
 
 	switch (c_algo) {
@@ -1026,6 +1047,10 @@ on_ipsec_sa_ctl_set(struct rte_security_ipsec_xform *ipsec,
 			ctl->enc_type = ROC_IE_ON_SA_ENC_AES_GCM;
 			aes_key_len = crypto_xform->aead.key.length;
 			break;
+		case RTE_CRYPTO_AEAD_AES_CCM:
+			ctl->enc_type = ROC_IE_ON_SA_ENC_AES_CCM;
+			aes_key_len = crypto_xform->aead.key.length;
+			break;
 		default:
 			plt_err("Unsupported AEAD algorithm");
 			return -ENOTSUP;
@@ -1096,6 +1121,7 @@ on_ipsec_sa_ctl_set(struct rte_security_ipsec_xform *ipsec,
 	    ctl->enc_type == ROC_IE_ON_SA_ENC_AES_CCM ||
 	    ctl->enc_type == ROC_IE_ON_SA_ENC_AES_CTR ||
 	    ctl->enc_type == ROC_IE_ON_SA_ENC_AES_GCM ||
+	    ctl->enc_type == ROC_IE_ON_SA_ENC_AES_CCM ||
 	    ctl->auth_type == ROC_IE_ON_SA_AUTH_AES_GMAC) {
 		switch (aes_key_len) {
 		case 16:
@@ -1138,6 +1164,7 @@ on_fill_ipsec_common_sa(struct rte_security_ipsec_xform *ipsec,
 	struct rte_crypto_sym_xform *cipher_xform, *auth_xform;
 	const uint8_t *cipher_key;
 	int cipher_key_len = 0;
+	uint8_t ccm_flag = 0;
 	int ret;
 
 	ret = on_ipsec_sa_ctl_set(ipsec, crypto_xform, &common_sa->ctl);
@@ -1155,6 +1182,11 @@ on_fill_ipsec_common_sa(struct rte_security_ipsec_xform *ipsec,
 	if (crypto_xform->type == RTE_CRYPTO_SYM_XFORM_AEAD) {
 		if (crypto_xform->aead.algo == RTE_CRYPTO_AEAD_AES_GCM)
 			memcpy(common_sa->iv.gcm.nonce, &ipsec->salt, 4);
+		else if (crypto_xform->aead.algo == RTE_CRYPTO_AEAD_AES_CCM) {
+			ccm_flag = 0x07 & ~ROC_CPT_AES_CCM_CTR_LEN;
+			*common_sa->iv.gcm.nonce = ccm_flag;
+			memcpy(PLT_PTR_ADD(common_sa->iv.gcm.nonce, 1), &ipsec->salt, 3);
+		}
 		cipher_key = crypto_xform->aead.key.data;
 		cipher_key_len = crypto_xform->aead.key.length;
 	} else {
@@ -1203,7 +1235,7 @@ cnxk_on_ipsec_outb_sa_create(struct rte_security_ipsec_xform *ipsec,
 		return ret;
 
 	if (ctl->enc_type == ROC_IE_ON_SA_ENC_AES_GCM ||
-	    ctl->auth_type == ROC_IE_ON_SA_AUTH_NULL ||
+	    ctl->enc_type == ROC_IE_ON_SA_ENC_AES_CCM || ctl->auth_type == ROC_IE_ON_SA_AUTH_NULL ||
 	    ctl->auth_type == ROC_IE_ON_SA_AUTH_AES_GMAC) {
 		template = &out_sa->aes_gcm.template;
 		ctx_len = offsetof(struct roc_ie_on_outb_sa, aes_gcm.template);

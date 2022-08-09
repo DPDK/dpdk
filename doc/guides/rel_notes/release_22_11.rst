@@ -67,6 +67,10 @@ New Features
 
   * Added support to set device link down/up.
 
+* **Updated Marvell cnxk crypto driver.**
+
+  * Added AES-CCM support in lookaside protocol (IPsec) for CN9K & CN10K.
+
 * **Added eventdev adapter instance get API.**
 
   * Added ``rte_event_eth_rx_adapter_instance_get`` to get Rx adapter
