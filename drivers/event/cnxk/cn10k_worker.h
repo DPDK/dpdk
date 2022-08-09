@@ -371,8 +371,6 @@ uint16_t __rte_hot cn10k_sso_hws_enq_new_burst(void *port,
 uint16_t __rte_hot cn10k_sso_hws_enq_fwd_burst(void *port,
 					       const struct rte_event ev[],
 					       uint16_t nb_events);
-uint16_t __rte_hot cn10k_sso_hws_ca_enq(void *port, struct rte_event ev[],
-					uint16_t nb_events);
 
 #define R(name, flags)                                                         \
 	uint16_t __rte_hot cn10k_sso_hws_deq_##name(                           \

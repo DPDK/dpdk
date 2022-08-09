@@ -9,11 +9,12 @@
 
 #include "cn10k_cryptodev.h"
 #include "cn10k_cryptodev_ops.h"
-#include "cn10k_ipsec_la_ops.h"
 #include "cn10k_ipsec.h"
+#include "cn10k_ipsec_la_ops.h"
 #include "cnxk_ae.h"
 #include "cnxk_cryptodev.h"
 #include "cnxk_cryptodev_ops.h"
+#include "cnxk_eventdev.h"
 #include "cnxk_se.h"
 
 #include "roc_api.h"
@@ -391,79 +392,135 @@ cn10k_ca_meta_info_extract(struct rte_crypto_op *op,
 	return 0;
 }
 
-uint16_t
-cn10k_cpt_crypto_adapter_enqueue(uintptr_t base, struct rte_crypto_op *op)
+static inline uint16_t
+ca_lmtst_burst_submit(struct cn10k_sso_hws *ws, uint64_t w2[], struct cnxk_cpt_qp *qp,
+		      struct rte_crypto_op *op[], uint16_t nb_ops)
 {
+	struct cpt_inflight_req *infl_reqs[PKTS_PER_LOOP];
+	uint64_t lmt_base, lmt_arg, io_addr;
+	struct cpt_inst_s *inst, *inst_base;
 	struct cpt_inflight_req *infl_req;
-	uint64_t lmt_base, lmt_arg, w2;
-	struct cpt_inst_s *inst;
 	union cpt_fc_write_s fc;
-	struct cnxk_cpt_qp *qp;
 	uint64_t *fc_addr;
 	uint16_t lmt_id;
-	int ret;
+	int ret, i;
 
-	ret = cn10k_ca_meta_info_extract(op, &qp, &w2);
-	if (unlikely(ret)) {
-		rte_errno = EINVAL;
-		return 0;
-	}
+	lmt_base = qp->lmtline.lmt_base;
+	io_addr = qp->lmtline.io_addr;
+	fc_addr = qp->lmtline.fc_addr;
+
+	const uint32_t fc_thresh = qp->lmtline.fc_thresh;
+
+	ROC_LMT_BASE_ID_GET(lmt_base, lmt_id);
+	inst_base = (struct cpt_inst_s *)lmt_base;
 
 	if (unlikely(!qp->ca.enabled)) {
 		rte_errno = EINVAL;
 		return 0;
 	}
 
-	if (unlikely(rte_mempool_get(qp->ca.req_mp, (void **)&infl_req))) {
+	if (unlikely(rte_mempool_get_bulk(qp->ca.req_mp, (void **)infl_reqs, nb_ops))) {
 		rte_errno = ENOMEM;
 		return 0;
 	}
-	infl_req->op_flags = 0;
 
-	lmt_base = qp->lmtline.lmt_base;
-	fc_addr = qp->lmtline.fc_addr;
+	for (i = 0; i < nb_ops; i++) {
+		inst = &inst_base[2 * i];
+		infl_req = infl_reqs[i];
+		infl_req->op_flags = 0;
 
-	const uint32_t fc_thresh = qp->lmtline.fc_thresh;
+		ret = cn10k_cpt_fill_inst(qp, &op[i], inst, infl_req);
+		if (unlikely(ret != 1)) {
+			plt_dp_err("Could not process op: %p", op[i]);
+			if (i != 0)
+				goto submit;
+			else
+				goto put;
+		}
 
-	ROC_LMT_BASE_ID_GET(lmt_base, lmt_id);
-	inst = (struct cpt_inst_s *)lmt_base;
-
-	ret = cn10k_cpt_fill_inst(qp, &op, inst, infl_req);
-	if (unlikely(ret != 1)) {
-		plt_dp_err("Could not process op: %p", op);
-		rte_mempool_put(qp->ca.req_mp, infl_req);
-		return 0;
+		infl_req->res.cn10k.compcode = CPT_COMP_NOT_DONE;
+		infl_req->qp = qp;
+		inst->w0.u64 = 0;
+		inst->res_addr = (uint64_t)&infl_req->res;
+		inst->w2.u64 = w2[i];
+		inst->w3.u64 = CNXK_CPT_INST_W3(1, infl_req);
 	}
-
-	infl_req->cop = op;
-	infl_req->res.cn10k.compcode = CPT_COMP_NOT_DONE;
-	infl_req->qp = qp;
-	inst->w0.u64 = 0;
-	inst->res_addr = (uint64_t)&infl_req->res;
-	inst->w2.u64 = w2;
-	inst->w3.u64 = CNXK_CPT_INST_W3(1, infl_req);
 
 	fc.u64[0] = __atomic_load_n(fc_addr, __ATOMIC_RELAXED);
 	if (unlikely(fc.s.qsize > fc_thresh)) {
-		rte_mempool_put(qp->ca.req_mp, infl_req);
 		rte_errno = EAGAIN;
-		return 0;
+		i = 0;
+		goto put;
 	}
 
-	if (inst->w2.s.tt == RTE_SCHED_TYPE_ORDERED)
-		roc_sso_hws_head_wait(base);
+submit:
+	if (CNXK_TT_FROM_TAG(ws->gw_rdata) == SSO_TT_ORDERED)
+		roc_sso_hws_head_wait(ws->base);
 
-	lmt_arg = ROC_CN10K_CPT_LMT_ARG | (uint64_t)lmt_id;
-	roc_lmt_submit_steorl(lmt_arg, qp->lmtline.io_addr);
+	if (i > PKTS_PER_STEORL) {
+		lmt_arg = ROC_CN10K_CPT_LMT_ARG | (PKTS_PER_STEORL - 1) << 12 | (uint64_t)lmt_id;
+		roc_lmt_submit_steorl(lmt_arg, io_addr);
+		lmt_arg = ROC_CN10K_CPT_LMT_ARG | (i - PKTS_PER_STEORL - 1) << 12 |
+			  (uint64_t)(lmt_id + PKTS_PER_STEORL);
+		roc_lmt_submit_steorl(lmt_arg, io_addr);
+	} else {
+		lmt_arg = ROC_CN10K_CPT_LMT_ARG | (i - 1) << 12 | (uint64_t)lmt_id;
+		roc_lmt_submit_steorl(lmt_arg, io_addr);
+	}
 
 	rte_io_wmb();
 
-	return 1;
+put:
+	if (unlikely(i != nb_ops))
+		rte_mempool_put_bulk(qp->ca.req_mp, (void *)&infl_reqs[i], nb_ops - i);
+
+	return i;
+}
+
+uint16_t __rte_hot
+cn10k_cpt_crypto_adapter_enqueue(void *ws, struct rte_event ev[], uint16_t nb_events)
+{
+	struct rte_crypto_op *ops[PKTS_PER_LOOP], *op;
+	struct cnxk_cpt_qp *qp, *curr_qp = NULL;
+	uint64_t w2s[PKTS_PER_LOOP], w2;
+	uint16_t submitted, count = 0;
+	int ret, i, ops_len = 0;
+
+	for (i = 0; i < nb_events; i++) {
+		op = ev[i].event_ptr;
+		ret = cn10k_ca_meta_info_extract(op, &qp, &w2);
+		if (unlikely(ret)) {
+			rte_errno = EINVAL;
+			return count;
+		}
+
+		if (qp != curr_qp) {
+			if (ops_len) {
+				submitted = ca_lmtst_burst_submit(ws, w2s, curr_qp, ops, ops_len);
+				count += submitted;
+				if (unlikely(submitted != ops_len))
+					return count;
+				ops_len = 0;
+			}
+			curr_qp = qp;
+		}
+		w2s[ops_len] = w2;
+		ops[ops_len] = op;
+		if (++ops_len == PKTS_PER_LOOP) {
+			submitted = ca_lmtst_burst_submit(ws, w2s, curr_qp, ops, ops_len);
+			count += submitted;
+			if (unlikely(submitted != ops_len))
+				return count;
+			ops_len = 0;
+		}
+	}
+	if (ops_len)
+		count += ca_lmtst_burst_submit(ws, w2s, curr_qp, ops, ops_len);
+	return count;
 }
 
 static inline void
-cn10k_cpt_sec_post_process(struct rte_crypto_op *cop,
-			   struct cpt_cn10k_res_s *res)
+cn10k_cpt_sec_post_process(struct rte_crypto_op *cop, struct cpt_cn10k_res_s *res)
 {
 	struct rte_mbuf *mbuf = cop->sym->m_src;
 	const uint16_t m_len = res->rlen;

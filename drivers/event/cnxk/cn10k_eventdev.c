@@ -594,7 +594,7 @@ cn10k_sso_fp_fns_set(struct rte_eventdev *event_dev)
 			}
 		}
 	}
-	event_dev->ca_enqueue = cn10k_sso_hws_ca_enq;
+	event_dev->ca_enqueue = cn10k_cpt_crypto_adapter_enqueue;
 
 	if (dev->tx_offloads & NIX_TX_MULTI_SEG_F)
 		CN10K_SET_EVDEV_ENQ_OP(dev, event_dev->txa_enqueue,

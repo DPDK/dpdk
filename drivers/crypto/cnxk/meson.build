@@ -24,7 +24,7 @@ sources = files(
 
 deps += ['bus_pci', 'common_cnxk', 'security', 'eventdev']
 
-includes += include_directories('../../../lib/net')
+includes += include_directories('../../../lib/net', '../../event/cnxk')
 
 if get_option('buildtype').contains('debug')
     cflags += [ '-DLA_IPSEC_DEBUG' ]

@@ -5,16 +5,17 @@
 #ifndef _CN10K_CRYPTODEV_OPS_H_
 #define _CN10K_CRYPTODEV_OPS_H_
 
-#include <rte_cryptodev.h>
 #include <cryptodev_pmd.h>
+#include <rte_cryptodev.h>
+#include <rte_eventdev.h>
 
 extern struct rte_cryptodev_ops cn10k_cpt_ops;
 
 void cn10k_cpt_set_enqdeq_fns(struct rte_cryptodev *dev);
 
 __rte_internal
-uint16_t cn10k_cpt_crypto_adapter_enqueue(uintptr_t base,
-					  struct rte_crypto_op *op);
+uint16_t __rte_hot cn10k_cpt_crypto_adapter_enqueue(void *ws, struct rte_event ev[],
+		uint16_t nb_events);
 __rte_internal
 uintptr_t cn10k_cpt_crypto_adapter_dequeue(uintptr_t get_work1);
 
