@@ -94,6 +94,47 @@ pdcp_iv_copy(uint8_t *iv_d, uint8_t *iv_s, const uint8_t pdcp_alg_type,
 	}
 }
 
+/*
+ * Digest immediately at the end of the data is the best case. Switch to SG if
+ * that cannot be ensured.
+ */
+static inline void
+cpt_digest_buf_lb_check(const struct cnxk_se_sess *sess, struct rte_mbuf *m,
+			struct roc_se_fc_params *fc_params, uint32_t *flags,
+			struct rte_crypto_sym_op *sym_op, bool *inplace, uint32_t a_data_off,
+			uint32_t a_data_len, uint32_t c_data_off, uint32_t c_data_len,
+			const bool is_pdcp_chain)
+{
+	const uint32_t auth_end = a_data_off + a_data_len;
+	uint32_t mc_hash_off;
+
+	/* PDCP_CHAIN only supports auth_first */
+
+	if (is_pdcp_chain || sess->auth_first)
+		mc_hash_off = auth_end;
+	else
+		mc_hash_off = RTE_MAX(c_data_off + c_data_len, auth_end);
+
+	/* Digest immediately following data is best case */
+
+	if (unlikely(rte_pktmbuf_mtod_offset(m, uint8_t *, mc_hash_off) !=
+		     sym_op->auth.digest.data)) {
+		*flags |= ROC_SE_VALID_MAC_BUF;
+		fc_params->mac_buf.size = sess->mac_len;
+		fc_params->mac_buf.vaddr = sym_op->auth.digest.data;
+		*inplace = false;
+	}
+}
+
+static inline struct rte_mbuf *
+cpt_m_dst_get(uint8_t cpt_op, struct rte_mbuf *m_src, struct rte_mbuf *m_dst)
+{
+	if (m_dst != NULL && (cpt_op & ROC_SE_OP_ENCODE))
+		return m_dst;
+	else
+		return m_src;
+}
+
 static __rte_always_inline int
 cpt_mac_len_verify(struct rte_crypto_auth_xform *auth)
 {
@@ -1828,9 +1869,6 @@ cpt_fc_dec_hmac_prep(uint32_t flags, uint64_t d_offs, uint64_t d_lens,
 		ret = cpt_pdcp_alg_prep(flags, d_offs, d_lens, fc_params, inst);
 	} else if (fc_type == ROC_SE_KASUMI) {
 		ret = cpt_kasumi_dec_prep(d_offs, d_lens, fc_params, inst);
-	} else if (fc_type == ROC_SE_PDCP_CHAIN) {
-		ret = cpt_pdcp_chain_alg_prep(flags, d_offs, d_lens, fc_params,
-					      inst);
 	}
 
 	/*
@@ -1858,13 +1896,9 @@ cpt_fc_enc_hmac_prep(uint32_t flags, uint64_t d_offs, uint64_t d_lens,
 	} else if (fc_type == ROC_SE_PDCP) {
 		ret = cpt_pdcp_alg_prep(flags, d_offs, d_lens, fc_params, inst);
 	} else if (fc_type == ROC_SE_KASUMI) {
-		ret = cpt_kasumi_enc_prep(flags, d_offs, d_lens, fc_params,
-					  inst);
+		ret = cpt_kasumi_enc_prep(flags, d_offs, d_lens, fc_params, inst);
 	} else if (fc_type == ROC_SE_HASH_HMAC) {
 		ret = cpt_digest_gen_prep(flags, d_lens, fc_params, inst);
-	} else if (fc_type == ROC_SE_PDCP_CHAIN) {
-		ret = cpt_pdcp_chain_alg_prep(flags, d_offs, d_lens, fc_params,
-					      inst);
 	}
 
 	return ret;
@@ -2384,14 +2418,10 @@ fill_fc_params(struct rte_crypto_op *cop, struct cnxk_se_sess *sess,
 	uint8_t inplace = 1;
 #endif
 	struct roc_se_fc_params fc_params;
-	bool chain = sess->chained_op;
 	char src[SRC_IOV_SIZE];
 	char dst[SRC_IOV_SIZE];
 	uint32_t iv_buf[4];
-	bool pdcp_chain;
 	int ret;
-
-	pdcp_chain = chain && (sess->zs_auth || sess->zs_cipher);
 
 	fc_params.cipher_iv_len = sess->iv_length;
 	fc_params.auth_iv_len = sess->auth_iv_length;
@@ -2410,11 +2440,11 @@ fill_fc_params(struct rte_crypto_op *cop, struct cnxk_se_sess *sess,
 		}
 	}
 
-	if (sess->zsk_flag || sess->zs_auth) {
+	if (sess->zsk_flag) {
 		if (sess->auth_iv_length)
-			fc_params.auth_iv_buf = rte_crypto_op_ctod_offset(
-				cop, uint8_t *, sess->auth_iv_offset);
-		if ((!chain) && (sess->zsk_flag != ROC_SE_ZS_EA))
+			fc_params.auth_iv_buf =
+				rte_crypto_op_ctod_offset(cop, uint8_t *, sess->auth_iv_offset);
+		if (sess->zsk_flag != ROC_SE_ZS_EA)
 			inplace = 0;
 	}
 	m_src = sym_op->m_src;
@@ -2453,11 +2483,7 @@ fill_fc_params(struct rte_crypto_op *cop, struct cnxk_se_sess *sess,
 		}
 		fc_params.iv_buf = salt + 4;
 		if (likely(sess->mac_len)) {
-			struct rte_mbuf *m =
-				(cpt_op & ROC_SE_OP_ENCODE) ? m_dst : m_src;
-
-			if (!m)
-				m = m_src;
+			struct rte_mbuf *m = cpt_m_dst_get(cpt_op, m_src, m_dst);
 
 			/* hmac immediately following data is best case */
 			if (unlikely(rte_pktmbuf_mtod(m, uint8_t *) +
@@ -2475,17 +2501,6 @@ fill_fc_params(struct rte_crypto_op *cop, struct cnxk_se_sess *sess,
 		uint32_t ci_data_offset = sym_op->cipher.data.offset;
 		uint32_t a_data_length = sym_op->auth.data.length;
 		uint32_t a_data_offset = sym_op->auth.data.offset;
-
-		if (pdcp_chain) {
-			if (sess->zs_cipher) {
-				ci_data_length /= 8;
-				ci_data_offset /= 8;
-			}
-			if (sess->zs_auth) {
-				a_data_length /= 8;
-				a_data_offset /= 8;
-			}
-		}
 
 		d_offs = ci_data_offset;
 		d_offs = (d_offs << 16) | a_data_offset;
@@ -2512,11 +2527,7 @@ fill_fc_params(struct rte_crypto_op *cop, struct cnxk_se_sess *sess,
 			fc_params.iv_buf = salt + 4;
 		}
 		if (likely(sess->mac_len)) {
-			struct rte_mbuf *m;
-
-			m = (cpt_op & ROC_SE_OP_ENCODE) ? m_dst : m_src;
-			if (!m)
-				m = m_src;
+			struct rte_mbuf *m = cpt_m_dst_get(cpt_op, m_src, m_dst);
 
 			/* hmac immediately following data is best case */
 			if (!(op_minor & ROC_SE_FC_MINOR_OP_HMAC_FIRST) &&
@@ -2533,8 +2544,7 @@ fill_fc_params(struct rte_crypto_op *cop, struct cnxk_se_sess *sess,
 	}
 	fc_params.ctx_buf.vaddr = &sess->roc_se_ctx;
 
-	if (!(sess->auth_first) && (!pdcp_chain) &&
-	    unlikely(sess->is_null || sess->cpt_op == ROC_SE_OP_DECODE))
+	if (!(sess->auth_first) && unlikely(sess->is_null || sess->cpt_op == ROC_SE_OP_DECODE))
 		inplace = 0;
 
 	if (likely(!m_dst && inplace)) {
@@ -2610,6 +2620,147 @@ fill_fc_params(struct rte_crypto_op *cop, struct cnxk_se_sess *sess,
 
 	if (unlikely(ret)) {
 		plt_dp_err("Preparing request failed due to bad input arg");
+		goto free_mdata_and_exit;
+	}
+
+	return 0;
+
+free_mdata_and_exit:
+	if (infl_req->op_flags & CPT_OP_FLAGS_METABUF)
+		rte_mempool_put(m_info->pool, infl_req->mdata);
+err_exit:
+	return ret;
+}
+
+static __rte_always_inline int
+fill_pdcp_chain_params(struct rte_crypto_op *cop, struct cnxk_se_sess *sess,
+		       struct cpt_qp_meta_info *m_info, struct cpt_inflight_req *infl_req,
+		       struct cpt_inst_s *inst)
+{
+	uint32_t ci_data_length, ci_data_offset, a_data_length, a_data_offset;
+	struct rte_crypto_sym_op *sym_op = cop->sym;
+	struct roc_se_fc_params fc_params;
+	struct rte_mbuf *m_src, *m_dst;
+	uint8_t cpt_op = sess->cpt_op;
+	uint64_t d_offs, d_lens;
+	char src[SRC_IOV_SIZE];
+	char dst[SRC_IOV_SIZE];
+	bool inplace = true;
+	uint32_t flags = 0;
+	void *mdata;
+	int ret;
+
+	fc_params.cipher_iv_len = sess->iv_length;
+	fc_params.auth_iv_len = sess->auth_iv_length;
+	fc_params.iv_buf = NULL;
+	fc_params.auth_iv_buf = NULL;
+
+	m_src = sym_op->m_src;
+	m_dst = sym_op->m_dst;
+
+	if (likely(sess->iv_length))
+		fc_params.iv_buf = rte_crypto_op_ctod_offset(cop, uint8_t *, sess->iv_offset);
+
+	ci_data_length = sym_op->cipher.data.length;
+	ci_data_offset = sym_op->cipher.data.offset;
+	a_data_length = sym_op->auth.data.length;
+	a_data_offset = sym_op->auth.data.offset;
+
+	/*
+	 * For ZUC & SNOW, length & offset is provided in bits. Convert to
+	 * bytes.
+	 */
+
+	if (sess->zs_cipher) {
+		ci_data_length /= 8;
+		ci_data_offset /= 8;
+	}
+
+	if (sess->zs_auth) {
+		a_data_length /= 8;
+		a_data_offset /= 8;
+		/*
+		 * ZUC & SNOW would have valid iv_buf. AES-CMAC doesn't require
+		 * IV from application.
+		 */
+		fc_params.auth_iv_buf =
+			rte_crypto_op_ctod_offset(cop, uint8_t *, sess->auth_iv_offset);
+#ifdef CNXK_CRYPTODEV_DEBUG
+		if (sess->auth_iv_length == 0)
+			plt_err("Invalid auth IV length");
+#endif
+	}
+
+	d_offs = ci_data_offset;
+	d_offs = (d_offs << 16) | a_data_offset;
+	d_lens = ci_data_length;
+	d_lens = (d_lens << 32) | a_data_length;
+
+	if (likely(sess->mac_len)) {
+		struct rte_mbuf *m = cpt_m_dst_get(cpt_op, m_src, m_dst);
+
+		cpt_digest_buf_lb_check(sess, m, &fc_params, &flags, sym_op, &inplace,
+					a_data_offset, a_data_length, ci_data_offset,
+					ci_data_length, true);
+	}
+
+	fc_params.ctx_buf.vaddr = &sess->roc_se_ctx;
+
+	if (likely((m_dst == NULL || m_dst == m_src)) && inplace) {
+		fc_params.dst_iov = fc_params.src_iov = (void *)src;
+		prepare_iov_from_pkt_inplace(m_src, &fc_params, &flags);
+	} else {
+		/* Out of place processing */
+		fc_params.src_iov = (void *)src;
+		fc_params.dst_iov = (void *)dst;
+
+		/* Store SG I/O in the api for reuse */
+		if (unlikely(prepare_iov_from_pkt(m_src, fc_params.src_iov, 0))) {
+			plt_dp_err("Could not prepare src iov");
+			ret = -EINVAL;
+			goto err_exit;
+		}
+
+		if (unlikely(m_dst != NULL)) {
+			uint32_t pkt_len;
+
+			/* Try to make room as much as src has */
+			pkt_len = rte_pktmbuf_pkt_len(m_dst);
+
+			if (unlikely(pkt_len < rte_pktmbuf_pkt_len(m_src))) {
+				pkt_len = rte_pktmbuf_pkt_len(m_src) - pkt_len;
+				if (!rte_pktmbuf_append(m_dst, pkt_len)) {
+					plt_dp_err("Not enough space in m_dst "
+						   "%p, need %u more",
+						   m_dst, pkt_len);
+					ret = -EINVAL;
+					goto err_exit;
+				}
+			}
+
+			if (unlikely(prepare_iov_from_pkt(m_dst, fc_params.dst_iov, 0))) {
+				plt_dp_err("Could not prepare m_dst iov %p", m_dst);
+				ret = -EINVAL;
+				goto err_exit;
+			}
+		} else {
+			fc_params.dst_iov = (void *)src;
+		}
+	}
+
+	if (unlikely(!((flags & ROC_SE_SINGLE_BUF_INPLACE) &&
+		       (flags & ROC_SE_SINGLE_BUF_HEADROOM)))) {
+		mdata = alloc_op_meta(&fc_params.meta_buf, m_info->mlen, m_info->pool, infl_req);
+		if (unlikely(mdata == NULL)) {
+			plt_dp_err("Could not allocate meta buffer for request");
+			return -ENOMEM;
+		}
+	}
+
+	/* Finally prepare the instruction */
+	ret = cpt_pdcp_chain_alg_prep(flags, d_offs, d_lens, &fc_params, inst);
+	if (unlikely(ret)) {
+		plt_dp_err("Could not prepare instruction");
 		goto free_mdata_and_exit;
 	}
 

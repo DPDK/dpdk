@@ -28,11 +28,12 @@ cn9k_cpt_sym_inst_fill(struct cnxk_cpt_qp *qp, struct rte_crypto_op *op,
 
 	cpt_op = sess->cpt_op;
 
-	if (cpt_op & ROC_SE_OP_CIPHER_MASK)
+	if (sess->roc_se_ctx.fc_type == ROC_SE_PDCP_CHAIN)
+		ret = fill_pdcp_chain_params(op, sess, &qp->meta_info, infl_req, inst);
+	else if (cpt_op & ROC_SE_OP_CIPHER_MASK)
 		ret = fill_fc_params(op, sess, &qp->meta_info, infl_req, inst);
 	else
-		ret = fill_digest_params(op, sess, &qp->meta_info, infl_req,
-					 inst);
+		ret = fill_digest_params(op, sess, &qp->meta_info, infl_req, inst);
 
 	return ret;
 }
