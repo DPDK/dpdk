@@ -571,6 +571,14 @@ iavf_fdir_parse_pattern(__rte_unused struct iavf_adapter *ad,
 					return -rte_errno;
 				}
 
+				/* Mask for IPv4 src/dst addrs not supported */
+				if (ipv4_mask->hdr.src_addr &&
+					ipv4_mask->hdr.src_addr != UINT32_MAX)
+					return -rte_errno;
+				if (ipv4_mask->hdr.dst_addr &&
+					ipv4_mask->hdr.dst_addr != UINT32_MAX)
+					return -rte_errno;
+
 				if (ipv4_mask->hdr.type_of_service ==
 								UINT8_MAX) {
 					input_set |= IAVF_INSET_IPV4_TOS;
@@ -670,6 +678,14 @@ iavf_fdir_parse_pattern(__rte_unused struct iavf_adapter *ad,
 					return -rte_errno;
 				}
 
+				/* Mask for UDP src/dst ports not supported */
+				if (udp_mask->hdr.src_port &&
+					udp_mask->hdr.src_port != UINT16_MAX)
+					return -rte_errno;
+				if (udp_mask->hdr.dst_port &&
+					udp_mask->hdr.dst_port != UINT16_MAX)
+					return -rte_errno;
+
 				if (udp_mask->hdr.src_port == UINT16_MAX) {
 					input_set |= IAVF_INSET_UDP_SRC_PORT;
 					VIRTCHNL_ADD_PROTO_HDR_FIELD_BIT(hdr, UDP, SRC_PORT);
@@ -714,6 +730,14 @@ iavf_fdir_parse_pattern(__rte_unused struct iavf_adapter *ad,
 					return -rte_errno;
 				}
 
+				/* Mask for TCP src/dst ports not supported */
+				if (tcp_mask->hdr.src_port &&
+					tcp_mask->hdr.src_port != UINT16_MAX)
+					return -rte_errno;
+				if (tcp_mask->hdr.dst_port &&
+					tcp_mask->hdr.dst_port != UINT16_MAX)
+					return -rte_errno;
+
 				if (tcp_mask->hdr.src_port == UINT16_MAX) {
 					input_set |= IAVF_INSET_TCP_SRC_PORT;
 					VIRTCHNL_ADD_PROTO_HDR_FIELD_BIT(hdr, TCP, SRC_PORT);
@@ -751,6 +775,14 @@ iavf_fdir_parse_pattern(__rte_unused struct iavf_adapter *ad,
 						"Invalid UDP mask");
 					return -rte_errno;
 				}
+
+				/* Mask for SCTP src/dst ports not supported */
+				if (sctp_mask->hdr.src_port &&
+					sctp_mask->hdr.src_port != UINT16_MAX)
+					return -rte_errno;
+				if (sctp_mask->hdr.dst_port &&
+					sctp_mask->hdr.dst_port != UINT16_MAX)
+					return -rte_errno;
 
 				if (sctp_mask->hdr.src_port == UINT16_MAX) {
 					input_set |= IAVF_INSET_SCTP_SRC_PORT;
