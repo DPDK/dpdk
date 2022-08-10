@@ -200,6 +200,8 @@ cnxk_sso_queue_def_conf(struct rte_eventdev *event_dev, uint8_t queue_id,
 	queue_conf->nb_atomic_order_sequences = (1ULL << 20);
 	queue_conf->event_queue_cfg = RTE_EVENT_QUEUE_CFG_ALL_TYPES;
 	queue_conf->priority = RTE_EVENT_DEV_PRIORITY_NORMAL;
+	queue_conf->weight = RTE_EVENT_QUEUE_WEIGHT_LOWEST;
+	queue_conf->affinity = RTE_EVENT_QUEUE_AFFINITY_HIGHEST;
 }
 
 int
@@ -209,18 +211,12 @@ cnxk_sso_queue_setup(struct rte_eventdev *event_dev, uint8_t queue_id,
 	struct cnxk_sso_evdev *dev = cnxk_sso_pmd_priv(event_dev);
 	uint8_t priority, weight, affinity;
 
-	/* Default weight and affinity */
-	dev->mlt_prio[queue_id].weight = RTE_EVENT_QUEUE_WEIGHT_LOWEST;
-	dev->mlt_prio[queue_id].affinity = RTE_EVENT_QUEUE_AFFINITY_HIGHEST;
-
 	priority = CNXK_QOS_NORMALIZE(queue_conf->priority, 0,
 				      RTE_EVENT_DEV_PRIORITY_LOWEST,
 				      CNXK_SSO_PRIORITY_CNT);
-	weight = CNXK_QOS_NORMALIZE(
-		dev->mlt_prio[queue_id].weight, CNXK_SSO_WEIGHT_MIN,
-		RTE_EVENT_QUEUE_WEIGHT_HIGHEST, CNXK_SSO_WEIGHT_CNT);
-	affinity = CNXK_QOS_NORMALIZE(dev->mlt_prio[queue_id].affinity, 0,
-				      RTE_EVENT_QUEUE_AFFINITY_HIGHEST,
+	weight = CNXK_QOS_NORMALIZE(queue_conf->weight, CNXK_SSO_WEIGHT_MIN,
+				    RTE_EVENT_QUEUE_WEIGHT_HIGHEST, CNXK_SSO_WEIGHT_CNT);
+	affinity = CNXK_QOS_NORMALIZE(queue_conf->affinity, 0, RTE_EVENT_QUEUE_AFFINITY_HIGHEST,
 				      CNXK_SSO_AFFINITY_CNT);
 
 	plt_sso_dbg("Queue=%u prio=%u weight=%u affinity=%u", queue_id,
@@ -238,22 +234,6 @@ cnxk_sso_queue_release(struct rte_eventdev *event_dev, uint8_t queue_id)
 }
 
 int
-cnxk_sso_queue_attribute_get(struct rte_eventdev *event_dev, uint8_t queue_id,
-			     uint32_t attr_id, uint32_t *attr_value)
-{
-	struct cnxk_sso_evdev *dev = cnxk_sso_pmd_priv(event_dev);
-
-	if (attr_id == RTE_EVENT_QUEUE_ATTR_WEIGHT)
-		*attr_value = dev->mlt_prio[queue_id].weight;
-	else if (attr_id == RTE_EVENT_QUEUE_ATTR_AFFINITY)
-		*attr_value = dev->mlt_prio[queue_id].affinity;
-	else
-		return -EINVAL;
-
-	return 0;
-}
-
-int
 cnxk_sso_queue_attribute_set(struct rte_eventdev *event_dev, uint8_t queue_id,
 			     uint32_t attr_id, uint64_t attr_value)
 {
@@ -268,10 +248,10 @@ cnxk_sso_queue_attribute_set(struct rte_eventdev *event_dev, uint8_t queue_id,
 		conf->priority = attr_value;
 		break;
 	case RTE_EVENT_QUEUE_ATTR_WEIGHT:
-		dev->mlt_prio[queue_id].weight = attr_value;
+		conf->weight = attr_value;
 		break;
 	case RTE_EVENT_QUEUE_ATTR_AFFINITY:
-		dev->mlt_prio[queue_id].affinity = attr_value;
+		conf->affinity = attr_value;
 		break;
 	case RTE_EVENT_QUEUE_ATTR_NB_ATOMIC_FLOWS:
 	case RTE_EVENT_QUEUE_ATTR_NB_ATOMIC_ORDER_SEQUENCES:
@@ -288,11 +268,9 @@ cnxk_sso_queue_attribute_set(struct rte_eventdev *event_dev, uint8_t queue_id,
 	priority = CNXK_QOS_NORMALIZE(conf->priority, 0,
 				      RTE_EVENT_DEV_PRIORITY_LOWEST,
 				      CNXK_SSO_PRIORITY_CNT);
-	weight = CNXK_QOS_NORMALIZE(
-		dev->mlt_prio[queue_id].weight, CNXK_SSO_WEIGHT_MIN,
-		RTE_EVENT_QUEUE_WEIGHT_HIGHEST, CNXK_SSO_WEIGHT_CNT);
-	affinity = CNXK_QOS_NORMALIZE(dev->mlt_prio[queue_id].affinity, 0,
-				      RTE_EVENT_QUEUE_AFFINITY_HIGHEST,
+	weight = CNXK_QOS_NORMALIZE(conf->weight, CNXK_SSO_WEIGHT_MIN,
+				    RTE_EVENT_QUEUE_WEIGHT_HIGHEST, CNXK_SSO_WEIGHT_CNT);
+	affinity = CNXK_QOS_NORMALIZE(conf->affinity, 0, RTE_EVENT_QUEUE_AFFINITY_HIGHEST,
 				      CNXK_SSO_AFFINITY_CNT);
 
 	return roc_sso_hwgrp_set_priority(&dev->sso, queue_id, weight, affinity,

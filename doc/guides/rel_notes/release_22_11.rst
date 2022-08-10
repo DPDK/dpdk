@@ -237,6 +237,9 @@ ABI Changes
 * eventdev: Added ``evtim_drop_count`` field
   to ``rte_event_timer_adapter_stats`` structure.
 
+* eventdev: Added ``weight`` and ``affinity`` fields
+  to ``rte_event_queue_conf`` structure.
+
 
 Known Issues
 ------------

@@ -89,11 +89,6 @@ struct cnxk_sso_qos {
 	uint16_t iaq_prcnt;
 };
 
-struct cnxk_sso_mlt_prio {
-	uint8_t weight;
-	uint8_t affinity;
-};
-
 struct cnxk_sso_evdev {
 	struct roc_sso sso;
 	uint8_t max_event_queues;
@@ -125,7 +120,6 @@ struct cnxk_sso_evdev {
 	uint16_t vec_pool_cnt;
 	uint64_t *vec_pools;
 	struct cnxk_timesync_info *tstamp[RTE_MAX_ETHPORTS];
-	struct cnxk_sso_mlt_prio mlt_prio[RTE_EVENT_MAX_QUEUES_PER_DEV];
 	/* Dev args */
 	uint32_t xae_cnt;
 	uint8_t qos_queue_cnt;
@@ -253,9 +247,6 @@ void cnxk_sso_queue_def_conf(struct rte_eventdev *event_dev, uint8_t queue_id,
 int cnxk_sso_queue_setup(struct rte_eventdev *event_dev, uint8_t queue_id,
 			 const struct rte_event_queue_conf *queue_conf);
 void cnxk_sso_queue_release(struct rte_eventdev *event_dev, uint8_t queue_id);
-int cnxk_sso_queue_attribute_get(struct rte_eventdev *event_dev,
-				 uint8_t queue_id, uint32_t attr_id,
-				 uint32_t *attr_value);
 int cnxk_sso_queue_attribute_set(struct rte_eventdev *event_dev,
 				 uint8_t queue_id, uint32_t attr_id,
 				 uint64_t attr_value);

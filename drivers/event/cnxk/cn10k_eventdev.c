@@ -1064,7 +1064,6 @@ static struct eventdev_ops cn10k_sso_dev_ops = {
 	.queue_def_conf = cnxk_sso_queue_def_conf,
 	.queue_setup = cnxk_sso_queue_setup,
 	.queue_release = cnxk_sso_queue_release,
-	.queue_attr_get = cnxk_sso_queue_attribute_get,
 	.queue_attr_set = cnxk_sso_queue_attribute_set,
 
 	.port_def_conf = cnxk_sso_port_def_conf,

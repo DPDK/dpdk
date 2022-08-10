@@ -640,6 +640,22 @@ struct rte_event_queue_conf {
 	 * event device supported priority value.
 	 * Valid when the device has RTE_EVENT_DEV_CAP_QUEUE_QOS capability
 	 */
+	uint8_t weight;
+	/**< Weight of the event queue relative to other event queues.
+	 * The requested weight should be in the range of
+	 * [RTE_EVENT_DEV_WEIGHT_HIGHEST, RTE_EVENT_DEV_WEIGHT_LOWEST].
+	 * The implementation shall normalize the requested weight to event
+	 * device supported weight value.
+	 * Valid when the device has RTE_EVENT_DEV_CAP_QUEUE_QOS capability.
+	 */
+	uint8_t affinity;
+	/**< Affinity of the event queue relative to other event queues.
+	 * The requested affinity should be in the range of
+	 * [RTE_EVENT_DEV_AFFINITY_HIGHEST, RTE_EVENT_DEV_AFFINITY_LOWEST].
+	 * The implementation shall normalize the requested affinity to event
+	 * device supported affinity value.
+	 * Valid when the device has RTE_EVENT_DEV_CAP_QUEUE_QOS capability.
+	 */
 };
 
 /**
