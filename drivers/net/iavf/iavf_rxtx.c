@@ -2538,9 +2538,11 @@ iavf_build_data_desc_cmd_offset_fields(volatile uint64_t *qw1,
 	offset |= (m->l2_len >> 1) << IAVF_TX_DESC_LENGTH_MACLEN_SHIFT;
 
 	/* Enable L3 checksum offloading inner */
-	if (m->ol_flags & (RTE_MBUF_F_TX_IP_CKSUM | RTE_MBUF_F_TX_IPV4)) {
-		command |= IAVF_TX_DESC_CMD_IIPT_IPV4_CSUM;
-		offset |= (m->l3_len >> 2) << IAVF_TX_DESC_LENGTH_IPLEN_SHIFT;
+	if (m->ol_flags & RTE_MBUF_F_TX_IP_CKSUM) {
+		if (m->ol_flags & RTE_MBUF_F_TX_IPV4) {
+			command |= IAVF_TX_DESC_CMD_IIPT_IPV4_CSUM;
+			offset |= (m->l3_len >> 2) << IAVF_TX_DESC_LENGTH_IPLEN_SHIFT;
+		}
 	} else if (m->ol_flags & RTE_MBUF_F_TX_IPV4) {
 		command |= IAVF_TX_DESC_CMD_IIPT_IPV4;
 		offset |= (m->l3_len >> 2) << IAVF_TX_DESC_LENGTH_IPLEN_SHIFT;
