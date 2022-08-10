@@ -1619,7 +1619,6 @@ ice_switch_parse_dcf_action(struct ice_dcf_adapter *ad,
 			    struct ice_adv_rule_info *rule_info)
 {
 	const struct rte_flow_action_ethdev *act_ethdev;
-	const struct rte_flow_action_vf *act_vf;
 	const struct rte_flow_action *action;
 	const struct rte_eth_dev *repr_dev;
 	enum rte_flow_action_type action_type;
@@ -1629,26 +1628,6 @@ ice_switch_parse_dcf_action(struct ice_dcf_adapter *ad,
 				RTE_FLOW_ACTION_TYPE_END; action++) {
 		action_type = action->type;
 		switch (action_type) {
-		case RTE_FLOW_ACTION_TYPE_VF:
-			rule_info->sw_act.fltr_act = ICE_FWD_TO_VSI;
-			act_vf = action->conf;
-
-			if (act_vf->id >= ad->real_hw.num_vfs &&
-				!act_vf->original) {
-				rte_flow_error_set(error,
-					EINVAL, RTE_FLOW_ERROR_TYPE_ACTION,
-					actions,
-					"Invalid vf id");
-				return -rte_errno;
-			}
-
-			if (act_vf->original)
-				rule_info->sw_act.vsi_handle =
-					ad->real_hw.avf.bus.func;
-			else
-				rule_info->sw_act.vsi_handle = act_vf->id;
-			break;
-
 		case RTE_FLOW_ACTION_TYPE_REPRESENTED_PORT:
 			rule_info->sw_act.fltr_act = ICE_FWD_TO_VSI;
 			act_ethdev = action->conf;
@@ -1816,7 +1795,6 @@ ice_switch_check_action(const struct rte_flow_action *actions,
 				RTE_FLOW_ACTION_TYPE_END; action++) {
 		action_type = action->type;
 		switch (action_type) {
-		case RTE_FLOW_ACTION_TYPE_VF:
 		case RTE_FLOW_ACTION_TYPE_RSS:
 		case RTE_FLOW_ACTION_TYPE_QUEUE:
 		case RTE_FLOW_ACTION_TYPE_DROP:
