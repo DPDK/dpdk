@@ -16,7 +16,7 @@ developer_mode = false
 if get_option('developer_mode').auto()
     if meson.version().version_compare('>=0.53') # fs module available
         fs = import('fs')
-        developer_mode = fs.is_dir('.git')
+        developer_mode = fs.exists('.git')
     endif
 else
     developer_mode = get_option('developer_mode').enabled()
