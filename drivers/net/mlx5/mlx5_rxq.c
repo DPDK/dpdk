@@ -754,6 +754,7 @@ mlx5_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 				(struct rte_eth_rxseg_split *)conf->rx_seg;
 	struct rte_eth_rxseg_split rx_single = {.mp = mp};
 	uint16_t n_seg = conf->rx_nseg;
+	bool is_extmem = false;
 	uint64_t offloads = conf->offloads |
 			    dev->data->dev_conf.rxmode.offloads;
 	int res;
@@ -774,6 +775,8 @@ mlx5_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 		 */
 		rx_seg = &rx_single;
 		n_seg = 1;
+		is_extmem = rte_pktmbuf_priv_flags(mp) &
+				RTE_PKTMBUF_POOL_F_PINNED_EXT_BUF;
 	}
 	if (n_seg > 1) {
 		/* The offloads should be checked on rte_eth_dev layer. */
@@ -790,7 +793,8 @@ mlx5_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 	res = mlx5_rx_queue_pre_setup(dev, idx, &desc);
 	if (res)
 		return res;
-	rxq_ctrl = mlx5_rxq_new(dev, idx, desc, socket, conf, rx_seg, n_seg);
+	rxq_ctrl = mlx5_rxq_new(dev, idx, desc, socket,
+				conf, rx_seg, n_seg, is_extmem);
 	if (!rxq_ctrl) {
 		DRV_LOG(ERR, "port %u unable to allocate queue index %u",
 			dev->data->port_id, idx);
@@ -1404,6 +1408,8 @@ mlx5_max_lro_msg_size_adjust(struct rte_eth_dev *dev, uint16_t idx,
  *   Log number of strides to configure for this queue.
  * @param actual_log_stride_size
  *   Log stride size to configure for this queue.
+ * @param is_extmem
+ *   Is external pinned memory pool used.
  *
  * @return
  *   0 if Multi-Packet RQ is supported, otherwise -1.
@@ -1412,7 +1418,8 @@ static int
 mlx5_mprq_prepare(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 		  bool rx_seg_en, uint32_t min_mbuf_size,
 		  uint32_t *actual_log_stride_num,
-		  uint32_t *actual_log_stride_size)
+		  uint32_t *actual_log_stride_size,
+		  bool is_extmem)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_dev_config *config = &priv->config;
@@ -1430,7 +1437,7 @@ mlx5_mprq_prepare(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 				log_max_stride_size);
 	uint32_t log_stride_wqe_size;
 
-	if (mlx5_check_mprq_support(dev) != 1 || rx_seg_en)
+	if (mlx5_check_mprq_support(dev) != 1 || rx_seg_en || is_extmem)
 		goto unsupport;
 	/* Checks if chosen number of strides is in supported range. */
 	if (config->mprq.log_stride_num > log_max_stride_num ||
@@ -1496,7 +1503,7 @@ unsupport:
 			" rxq_num = %u, stride_sz = %u, stride_num = %u\n"
 			"  supported: min_rxqs_num = %u, min_buf_wqe_sz = %u"
 			" min_stride_sz = %u, max_stride_sz = %u).\n"
-			"Rx segment is %senable.",
+			"Rx segment is %senabled. External mempool is %sused.",
 			dev->data->port_id, min_mbuf_size, desc, priv->rxqs_n,
 			RTE_BIT32(config->mprq.log_stride_size),
 			RTE_BIT32(config->mprq.log_stride_num),
@@ -1504,7 +1511,7 @@ unsupport:
 			RTE_BIT32(config->mprq.log_min_stride_wqe_size),
 			RTE_BIT32(config->mprq.log_min_stride_size),
 			RTE_BIT32(config->mprq.log_max_stride_size),
-			rx_seg_en ? "" : "not ");
+			rx_seg_en ? "" : "not ", is_extmem ? "" : "not ");
 	return -1;
 }
 
@@ -1526,7 +1533,8 @@ unsupport:
 struct mlx5_rxq_ctrl *
 mlx5_rxq_new(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 	     unsigned int socket, const struct rte_eth_rxconf *conf,
-	     const struct rte_eth_rxseg_split *rx_seg, uint16_t n_seg)
+	     const struct rte_eth_rxseg_split *rx_seg, uint16_t n_seg,
+	     bool is_extmem)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_rxq_ctrl *tmpl;
@@ -1548,7 +1556,8 @@ mlx5_rxq_new(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 	const int mprq_en = !mlx5_mprq_prepare(dev, idx, desc, rx_seg_en,
 					       non_scatter_min_mbuf_size,
 					       &mprq_log_actual_stride_num,
-					       &mprq_log_actual_stride_size);
+					       &mprq_log_actual_stride_size,
+					       is_extmem);
 	/*
 	 * Always allocate extra slots, even if eventually
 	 * the vector Rx will not be used.
