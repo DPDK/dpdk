@@ -151,6 +151,7 @@ struct mbox_msghdr {
 	M(CPT_RXC_TIME_CFG, 0xA06, cpt_rxc_time_cfg, cpt_rxc_time_cfg_req,     \
 	  msg_rsp)                                                             \
 	M(CPT_CTX_CACHE_SYNC, 0xA07, cpt_ctx_cache_sync, msg_req, msg_rsp)     \
+	M(CPT_LF_RESET, 0xA08, cpt_lf_reset, cpt_lf_rst_req, msg_rsp)          \
 	M(CPT_RX_INLINE_LF_CFG, 0xBFE, cpt_rx_inline_lf_cfg,                   \
 	  cpt_rx_inline_lf_cfg_msg, msg_rsp)                                   \
 	M(CPT_GET_CAPS, 0xBFD, cpt_caps_get, msg_req, cpt_caps_rsp_msg)        \
@@ -1542,6 +1543,11 @@ struct cpt_eng_grp_rsp {
 	struct mbox_msghdr hdr;
 	uint8_t __io eng_type;
 	uint8_t __io eng_grp_num;
+};
+
+struct cpt_lf_rst_req {
+	struct mbox_msghdr hdr;
+	uint32_t __io slot;
 };
 
 /* REE mailbox error codes
