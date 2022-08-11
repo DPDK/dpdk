@@ -408,6 +408,11 @@ mlx5_rxq_initialize(struct mlx5_rxq_data *rxq)
 	*rxq->rq_db = rte_cpu_to_be_32(rxq->rq_ci);
 }
 
+/* Must be negative. */
+#define MLX5_ERROR_CQE_RET (-1)
+/* Must not be negative. */
+#define MLX5_RECOVERY_ERROR_RET 0
+
 /**
  * Handle a Rx error.
  * The function inserts the RQ state to reset when the first error CQE is
@@ -422,7 +427,7 @@ mlx5_rxq_initialize(struct mlx5_rxq_data *rxq)
  *   0 when called from non-vectorized Rx burst.
  *
  * @return
- *   -1 in case of recovery error, otherwise the CQE status.
+ *   MLX5_RECOVERY_ERROR_RET in case of recovery error, otherwise the CQE status.
  */
 int
 mlx5_rx_err_handle(struct mlx5_rxq_data *rxq, uint8_t vec)
@@ -451,7 +456,7 @@ mlx5_rx_err_handle(struct mlx5_rxq_data *rxq, uint8_t vec)
 		sm.queue_id = rxq->idx;
 		sm.state = IBV_WQS_RESET;
 		if (mlx5_queue_state_modify(RXQ_DEV(rxq_ctrl), &sm))
-			return -1;
+			return MLX5_RECOVERY_ERROR_RET;
 		if (rxq_ctrl->dump_file_n <
 		    RXQ_PORT(rxq_ctrl)->config.max_dump_files_num) {
 			MKSTR(err_str, "Unexpected CQE error syndrome "
@@ -491,7 +496,7 @@ mlx5_rx_err_handle(struct mlx5_rxq_data *rxq, uint8_t vec)
 			sm.queue_id = rxq->idx;
 			sm.state = IBV_WQS_RDY;
 			if (mlx5_queue_state_modify(RXQ_DEV(rxq_ctrl), &sm))
-				return -1;
+				return MLX5_RECOVERY_ERROR_RET;
 			if (vec) {
 				const uint32_t elts_n =
 					mlx5_rxq_mprq_enabled(rxq) ?
@@ -519,7 +524,7 @@ mlx5_rx_err_handle(struct mlx5_rxq_data *rxq, uint8_t vec)
 							rte_pktmbuf_free_seg
 								(*elt);
 						}
-						return -1;
+						return MLX5_RECOVERY_ERROR_RET;
 					}
 				}
 				for (i = 0; i < (int)elts_n; ++i) {
@@ -538,7 +543,7 @@ mlx5_rx_err_handle(struct mlx5_rxq_data *rxq, uint8_t vec)
 		}
 		return ret;
 	default:
-		return -1;
+		return MLX5_RECOVERY_ERROR_RET;
 	}
 }
 
@@ -556,7 +561,9 @@ mlx5_rx_err_handle(struct mlx5_rxq_data *rxq, uint8_t vec)
  *   written.
  *
  * @return
- *   0 in case of empty CQE, otherwise the packet size in bytes.
+ *   0 in case of empty CQE, MLX5_ERROR_CQE_RET in case of error CQE,
+ *   otherwise the packet size in regular RxQ, and striding byte
+ *   count format in mprq case.
  */
 static inline int
 mlx5_rx_poll_len(struct mlx5_rxq_data *rxq, volatile struct mlx5_cqe *cqe,
@@ -623,8 +630,8 @@ mlx5_rx_poll_len(struct mlx5_rxq_data *rxq, volatile struct mlx5_cqe *cqe,
 					     rxq->err_state)) {
 					ret = mlx5_rx_err_handle(rxq, 0);
 					if (ret == MLX5_CQE_STATUS_HW_OWN ||
-					    ret == -1)
-						return 0;
+					    ret == MLX5_RECOVERY_ERROR_RET)
+						return MLX5_ERROR_CQE_RET;
 				} else {
 					return 0;
 				}
@@ -869,8 +876,10 @@ mlx5_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		if (!pkt) {
 			cqe = &(*rxq->cqes)[rxq->cq_ci & cqe_cnt];
 			len = mlx5_rx_poll_len(rxq, cqe, cqe_cnt, &mcqe);
-			if (!len) {
+			if (len <= 0) {
 				rte_mbuf_raw_free(rep);
+				if (unlikely(len == MLX5_ERROR_CQE_RET))
+					rq_ci = rxq->rq_ci << sges_n;
 				break;
 			}
 			pkt = seg;
@@ -1093,8 +1102,13 @@ mlx5_rx_burst_mprq(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		}
 		cqe = &(*rxq->cqes)[rxq->cq_ci & cq_mask];
 		ret = mlx5_rx_poll_len(rxq, cqe, cq_mask, &mcqe);
-		if (!ret)
+		if (ret == 0)
 			break;
+		if (unlikely(ret == MLX5_ERROR_CQE_RET)) {
+			rq_ci = rxq->rq_ci;
+			consumed_strd = rxq->consumed_strd;
+			break;
+		}
 		byte_cnt = ret;
 		len = (byte_cnt & MLX5_MPRQ_LEN_MASK) >> MLX5_MPRQ_LEN_SHIFT;
 		MLX5_ASSERT((int)len >= (rxq->crc_present << 2));
