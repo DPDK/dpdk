@@ -1553,9 +1553,12 @@ fips_mct_aes_test(void)
 	if (info.interim_info.aes_data.cipher_algo == RTE_CRYPTO_CIPHER_AES_ECB)
 		return fips_mct_aes_ecb_test();
 
-	memset(&pt, 0, sizeof(struct fips_val));
-	memset(&ct, 0, sizeof(struct fips_val));
-	memset(&iv, 0, sizeof(struct fips_val));
+	pt.len = vec.pt.len;
+	pt.val = calloc(1, pt.len);
+	ct.len = vec.ct.len;
+	ct.val = calloc(1, ct.len);
+	iv.len = vec.iv.len;
+	iv.val = calloc(1, iv.len);
 	for (i = 0; i < AES_EXTERN_ITER; i++) {
 		if (info.file_type != FIPS_TYPE_JSON) {
 			if (i != 0)
@@ -1587,16 +1590,8 @@ fips_mct_aes_test(void)
 
 			if (j == 0) {
 				memcpy(prev_out, val[0].val, AES_BLOCK_SIZE);
-				pt.len = vec.pt.len;
-				pt.val = calloc(1, pt.len);
 				memcpy(pt.val, vec.pt.val, pt.len);
-
-				ct.len = vec.ct.len;
-				ct.val = calloc(1, ct.len);
 				memcpy(ct.val, vec.ct.val, ct.len);
-
-				iv.len = vec.iv.len;
-				iv.val = calloc(1, iv.len);
 				memcpy(iv.val, vec.iv.val, iv.len);
 
 				if (info.op == FIPS_TEST_ENC_AUTH_GEN) {
@@ -1635,12 +1630,8 @@ fips_mct_aes_test(void)
 		if (info.file_type != FIPS_TYPE_JSON)
 			fprintf(info.fp_wr, "\n");
 
-		if (i == AES_EXTERN_ITER - 1) {
-			free(pt.val);
-			free(ct.val);
-			free(iv.val);
+		if (i == AES_EXTERN_ITER - 1)
 			continue;
-		}
 
 		/** update key */
 		memcpy(&val_key, &vec.cipher_auth.key, sizeof(val_key));
@@ -1671,6 +1662,9 @@ fips_mct_aes_test(void)
 	}
 
 	free(val[0].val);
+	free(pt.val);
+	free(ct.val);
+	free(iv.val);
 
 	return 0;
 }
