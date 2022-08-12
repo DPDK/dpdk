@@ -126,8 +126,7 @@ bnxt_filter_type_check(const struct rte_flow_item pattern[],
 }
 
 static int
-bnxt_validate_and_parse_flow_type(struct bnxt *bp,
-				  const struct rte_flow_attr *attr,
+bnxt_validate_and_parse_flow_type(const struct rte_flow_attr *attr,
 				  const struct rte_flow_item pattern[],
 				  struct rte_flow_error *error,
 				  struct bnxt_filter_info *filter)
@@ -148,16 +147,13 @@ bnxt_validate_and_parse_flow_type(struct bnxt *bp,
 	const struct rte_flow_item_vxlan *vxlan_mask;
 	uint8_t vni_mask[] = {0xFF, 0xFF, 0xFF};
 	uint8_t tni_mask[] = {0xFF, 0xFF, 0xFF};
-	const struct rte_flow_item_vf *vf_spec;
 	uint32_t tenant_id_be = 0, valid_flags = 0;
 	bool vni_masked = 0;
 	bool tni_masked = 0;
 	uint32_t en_ethertype;
 	uint8_t inner = 0;
-	uint32_t vf = 0;
 	uint32_t en = 0;
 	int use_ntuple;
-	int dflt_vnic;
 
 	use_ntuple = bnxt_filter_type_check(pattern, error);
 	if (use_ntuple < 0)
@@ -680,56 +676,6 @@ bnxt_validate_and_parse_flow_type(struct bnxt *bp,
 			}
 			break;
 
-		case RTE_FLOW_ITEM_TYPE_VF:
-			vf_spec = item->spec;
-			vf = vf_spec->id;
-			if (!BNXT_PF(bp)) {
-				rte_flow_error_set(error,
-						   EINVAL,
-						   RTE_FLOW_ERROR_TYPE_ITEM,
-						   item,
-						   "Configuring on a VF!");
-				return -rte_errno;
-			}
-
-			if (vf >= bp->pdev->max_vfs) {
-				rte_flow_error_set(error,
-						   EINVAL,
-						   RTE_FLOW_ERROR_TYPE_ITEM,
-						   item,
-						   "Incorrect VF id!");
-				return -rte_errno;
-			}
-
-			if (!attr->transfer) {
-				rte_flow_error_set(error,
-						   ENOTSUP,
-						   RTE_FLOW_ERROR_TYPE_ITEM,
-						   item,
-						   "Matching VF traffic without"
-						   " affecting it (transfer attribute)"
-						   " is unsupported");
-				return -rte_errno;
-			}
-
-			filter->mirror_vnic_id =
-			dflt_vnic = bnxt_hwrm_func_qcfg_vf_dflt_vnic_id(bp, vf);
-			if (dflt_vnic < 0) {
-				/* This simply indicates there's no driver
-				 * loaded. This is not an error.
-				 */
-				rte_flow_error_set
-					(error,
-					 EINVAL,
-					 RTE_FLOW_ERROR_TYPE_ITEM,
-					 item,
-					 "Unable to get default VNIC for VF");
-				return -rte_errno;
-			}
-
-			filter->mirror_vnic_id = dflt_vnic;
-			en |= NTUPLE_FLTR_ALLOC_INPUT_EN_MIRROR_VNIC_ID;
-			break;
 		default:
 			break;
 		}
@@ -1298,7 +1244,7 @@ bnxt_validate_and_parse_flow(struct rte_eth_dev *dev,
 	int rc, use_ntuple;
 
 	rc =
-	bnxt_validate_and_parse_flow_type(bp, attr, pattern, error, filter);
+	bnxt_validate_and_parse_flow_type(attr, pattern, error, filter);
 	if (rc != 0)
 		goto ret;
 

@@ -507,40 +507,6 @@ ulp_rte_parser_implicit_act_port_process(struct ulp_rte_parser_params *params)
 	return BNXT_TF_RC_SUCCESS;
 }
 
-/* Function to handle the parsing of RTE Flow item VF Header. */
-int32_t
-ulp_rte_vf_hdr_handler(const struct rte_flow_item *item,
-		       struct ulp_rte_parser_params *params)
-{
-	const struct rte_flow_item_vf *vf_spec = item->spec;
-	const struct rte_flow_item_vf *vf_mask = item->mask;
-	uint16_t mask = 0;
-	uint32_t ifindex;
-	int32_t rc = BNXT_TF_RC_PARSE_ERR;
-
-	/* Get VF rte_flow_item for Port details */
-	if (!vf_spec) {
-		BNXT_TF_DBG(ERR, "ParseErr:VF id is not valid\n");
-		return rc;
-	}
-	if (!vf_mask) {
-		BNXT_TF_DBG(ERR, "ParseErr:VF mask is not valid\n");
-		return rc;
-	}
-	mask = vf_mask->id;
-
-	/* perform the conversion from VF Func id to bnxt ifindex */
-	if (ulp_port_db_dev_func_id_to_ulp_index(params->ulp_ctx,
-						 vf_spec->id,
-						 &ifindex)) {
-		BNXT_TF_DBG(ERR, "ParseErr:Portid is not valid\n");
-		return rc;
-	}
-	/* Update the SVIF details */
-	return ulp_rte_parser_svif_set(params, ifindex, mask,
-				       BNXT_ULP_DIR_INVALID);
-}
-
 /* Parse items PORT_ID, PORT_REPRESENTOR and REPRESENTED_PORT. */
 int32_t
 ulp_rte_port_hdr_handler(const struct rte_flow_item *item,

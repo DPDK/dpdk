@@ -535,40 +535,6 @@ Usage example, matching non-TCPv4 packets only:
    | 4     | END      |
    +-------+----------+
 
-Item: ``VF``
-^^^^^^^^^^^^
-
-This item is deprecated. Consider:
- - `Item: PORT_REPRESENTOR`_
- - `Item: REPRESENTED_PORT`_
-
-Matches traffic originating from (ingress) or going to (egress) a given
-virtual function of the current device.
-
-If supported, should work even if the virtual function is not managed by the
-application and thus not associated with a DPDK port ID.
-
-Note this pattern item does not match VF representors traffic which, as
-separate entities, should be addressed through their own DPDK port IDs.
-
-- Can be specified multiple times to match traffic addressed to several VF
-  IDs.
-- Default ``mask`` matches any VF ID.
-
-.. _table_rte_flow_item_vf:
-
-.. table:: VF
-
-   +----------+----------+---------------------------+
-   | Field    | Subfield | Value                     |
-   +==========+==========+===========================+
-   | ``spec`` | ``id``   | destination VF ID         |
-   +----------+----------+---------------------------+
-   | ``last`` | ``id``   | upper range value         |
-   +----------+----------+---------------------------+
-   | ``mask`` | ``id``   | zeroed to match any VF ID |
-   +----------+----------+---------------------------+
-
 Item: ``PHY_PORT``
 ^^^^^^^^^^^^^^^^^^
 
@@ -2063,12 +2029,10 @@ This action is deprecated. Consider:
 
 Directs matching traffic to a given virtual function of the current device.
 
-Packets matched by a VF pattern item can be redirected to their original VF
-ID instead of the specified one. This parameter may not be available and is
+Packets can be redirected to the VF they originate from,
+instead of the specified one. This parameter may not be available and is
 not guaranteed to work properly if the VF part is matched by a prior flow
 rule or if packets are not addressed to a VF in the first place.
-
-See `Item: VF`_.
 
 .. _table_rte_flow_action_vf:
 

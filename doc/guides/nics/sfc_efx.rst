@@ -200,8 +200,6 @@ Supported pattern items (***transfer*** rules):
 
 - PHY_PORT (cannot repeat; conflicts with other traffic source items)
 
-- VF (cannot repeat; conflicts with other traffic source items)
-
 - ETH
 
 - VLAN (double-tagging is supported)

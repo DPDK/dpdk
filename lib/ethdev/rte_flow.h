@@ -196,20 +196,6 @@ enum rte_flow_item_type {
 	 * [META]
 	 *
 	 * Matches traffic originating from (ingress) or going to (egress) a
-	 * given virtual function of the current device.
-	 *
-	 * See struct rte_flow_item_vf.
-	 */
-	RTE_FLOW_ITEM_TYPE_VF,
-
-	/**
-	 * @deprecated
-	 * @see RTE_FLOW_ITEM_TYPE_PORT_REPRESENTOR
-	 * @see RTE_FLOW_ITEM_TYPE_REPRESENTED_PORT
-	 *
-	 * [META]
-	 *
-	 * Matches traffic originating from (ingress) or going to (egress) a
 	 * physical port of the underlying device.
 	 *
 	 * See struct rte_flow_item_phy_port.
@@ -697,38 +683,6 @@ struct rte_flow_item_any {
 #ifndef __cplusplus
 static const struct rte_flow_item_any rte_flow_item_any_mask = {
 	.num = 0x00000000,
-};
-#endif
-
-/**
- * @deprecated
- * @see RTE_FLOW_ITEM_TYPE_PORT_REPRESENTOR
- * @see RTE_FLOW_ITEM_TYPE_REPRESENTED_PORT
- *
- * RTE_FLOW_ITEM_TYPE_VF
- *
- * Matches traffic originating from (ingress) or going to (egress) a given
- * virtual function of the current device.
- *
- * If supported, should work even if the virtual function is not managed by
- * the application and thus not associated with a DPDK port ID.
- *
- * Note this pattern item does not match VF representors traffic which, as
- * separate entities, should be addressed through their own DPDK port IDs.
- *
- * - Can be specified multiple times to match traffic addressed to several
- *   VF IDs.
- *
- * A zeroed mask can be used to match any VF ID.
- */
-struct rte_flow_item_vf {
-	uint32_t id; /**< VF ID. */
-};
-
-/** Default mask for RTE_FLOW_ITEM_TYPE_VF. */
-#ifndef __cplusplus
-static const struct rte_flow_item_vf rte_flow_item_vf_mask = {
-	.id = 0x00000000,
 };
 #endif
 

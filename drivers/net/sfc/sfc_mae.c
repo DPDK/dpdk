@@ -1685,71 +1685,6 @@ sfc_mae_rule_parse_item_phy_port(const struct rte_flow_item *item,
 	return 0;
 }
 
-static int
-sfc_mae_rule_parse_item_vf(const struct rte_flow_item *item,
-			   struct sfc_flow_parse_ctx *ctx,
-			   struct rte_flow_error *error)
-{
-	struct sfc_mae_parse_ctx *ctx_mae = ctx->mae;
-	const efx_nic_cfg_t *encp = efx_nic_cfg_get(ctx_mae->sa->nic);
-	const struct rte_flow_item_vf supp_mask = {
-		.id = 0xffffffff,
-	};
-	const void *def_mask = &rte_flow_item_vf_mask;
-	const struct rte_flow_item_vf *spec = NULL;
-	const struct rte_flow_item_vf *mask = NULL;
-	efx_mport_sel_t mport_v;
-	int rc;
-
-	if (ctx_mae->match_mport_set) {
-		return rte_flow_error_set(error, ENOTSUP,
-				RTE_FLOW_ERROR_TYPE_ITEM, item,
-				"Can't handle multiple traffic source items");
-	}
-
-	rc = sfc_flow_parse_init(item,
-				 (const void **)&spec, (const void **)&mask,
-				 (const void *)&supp_mask, def_mask,
-				 sizeof(struct rte_flow_item_vf), error);
-	if (rc != 0)
-		return rc;
-
-	if (mask->id != supp_mask.id) {
-		return rte_flow_error_set(error, EINVAL,
-				RTE_FLOW_ERROR_TYPE_ITEM, item,
-				"Bad mask in the VF pattern item");
-	}
-
-	/*
-	 * If "spec" is not set, the item requests any VF related to the
-	 * PF of the current DPDK port (but not the PF itself).
-	 * Reject this match criterion as unsupported.
-	 */
-	if (spec == NULL) {
-		return rte_flow_error_set(error, EINVAL,
-				RTE_FLOW_ERROR_TYPE_ITEM, item,
-				"Bad spec in the VF pattern item");
-	}
-
-	rc = efx_mae_mport_by_pcie_function(encp->enc_pf, spec->id, &mport_v);
-	if (rc != 0) {
-		return rte_flow_error_set(error, rc,
-				RTE_FLOW_ERROR_TYPE_ITEM, item,
-				"Failed to convert the PF + VF IDs");
-	}
-
-	rc = efx_mae_match_spec_mport_set(ctx_mae->match_spec, &mport_v, NULL);
-	if (rc != 0) {
-		return rte_flow_error_set(error, rc,
-				RTE_FLOW_ERROR_TYPE_ITEM, item,
-				"Failed to set MPORT for the PF + VF");
-	}
-
-	ctx_mae->match_mport_set = B_TRUE;
-
-	return 0;
-}
-
 /*
  * Having this field ID in a field locator means that this
  * locator cannot be used to actually set the field at the
@@ -2554,18 +2489,6 @@ static const struct sfc_flow_item sfc_flow_items[] = {
 		.layer = SFC_FLOW_ITEM_ANY_LAYER,
 		.ctx_type = SFC_FLOW_PARSE_CTX_MAE,
 		.parse = sfc_mae_rule_parse_item_phy_port,
-	},
-	{
-		.type = RTE_FLOW_ITEM_TYPE_VF,
-		.name = "VF",
-		/*
-		 * In terms of RTE flow, this item is a META one,
-		 * and its position in the pattern is don't care.
-		 */
-		.prev_layer = SFC_FLOW_ITEM_ANY_LAYER,
-		.layer = SFC_FLOW_ITEM_ANY_LAYER,
-		.ctx_type = SFC_FLOW_PARSE_CTX_MAE,
-		.parse = sfc_mae_rule_parse_item_vf,
 	},
 	{
 		.type = RTE_FLOW_ITEM_TYPE_ETH,

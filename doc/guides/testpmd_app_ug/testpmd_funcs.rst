@@ -3458,10 +3458,6 @@ This section lists supported pattern items and their attributes, if any.
 
   - ``num {unsigned}``: number of layers covered.
 
-- ``vf``: match traffic from/to a virtual function ID.
-
-  - ``id {unsigned}``: VF ID.
-
 - ``phy_port``: match traffic from/to a specific physical port.
 
   - ``index {unsigned}``: physical port index.

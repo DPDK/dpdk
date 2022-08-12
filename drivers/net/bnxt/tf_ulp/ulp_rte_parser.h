@@ -80,11 +80,6 @@ bnxt_ulp_rte_parser_act_parse(const struct rte_flow_action actions[],
 void
 bnxt_ulp_rte_parser_post_process(struct ulp_rte_parser_params *params);
 
-/* Function to handle the parsing of RTE Flow item VF Header. */
-int32_t
-ulp_rte_vf_hdr_handler(const struct rte_flow_item *item,
-		       struct ulp_rte_parser_params *params);
-
 /* Parse items PORT_ID, PORT_REPRESENTOR and REPRESENTED_PORT. */
 int32_t
 ulp_rte_port_hdr_handler(const struct rte_flow_item *item,

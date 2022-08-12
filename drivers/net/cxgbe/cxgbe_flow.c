@@ -289,35 +289,6 @@ ch_rte_parsetype_vlan(const void *dmask, const struct rte_flow_item *item,
 }
 
 static int
-ch_rte_parsetype_vf(const void *dmask, const struct rte_flow_item *item,
-		    struct ch_filter_specification *fs,
-		    struct rte_flow_error *e)
-{
-	const struct rte_flow_item_vf *umask = item->mask;
-	const struct rte_flow_item_vf *val = item->spec;
-	const struct rte_flow_item_vf *mask;
-
-	/* If user has not given any mask, then use chelsio supported mask. */
-	mask = umask ? umask : (const struct rte_flow_item_vf *)dmask;
-
-	CXGBE_FILL_FS(1, 1, pfvf_vld);
-
-	if (!val)
-		return 0; /* Wildcard, match all Vf */
-
-	if (val->id > UCHAR_MAX)
-		return rte_flow_error_set(e, EINVAL,
-					  RTE_FLOW_ERROR_TYPE_ITEM,
-					  item,
-					  "VF ID > MAX(255)");
-
-	if (val->id || (umask && umask->id))
-		CXGBE_FILL_FS(val->id, mask->id, vf);
-
-	return 0;
-}
-
-static int
 ch_rte_parsetype_udp(const void *dmask, const struct rte_flow_item *item,
 		     struct ch_filter_specification *fs,
 		     struct rte_flow_error *e)
@@ -1004,13 +975,6 @@ static struct chrte_fparse parseitem[] = {
 	[RTE_FLOW_ITEM_TYPE_TCP] = {
 		.fptr  = ch_rte_parsetype_tcp,
 		.dmask = &rte_flow_item_tcp_mask,
-	},
-
-	[RTE_FLOW_ITEM_TYPE_VF] = {
-		.fptr = ch_rte_parsetype_vf,
-		.dmask = &(const struct rte_flow_item_vf){
-			.id = 0xffffffff,
-		}
 	},
 };
 
