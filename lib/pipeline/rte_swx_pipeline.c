@@ -7576,6 +7576,65 @@ action_arg_src_mov_count(struct action *a,
 	return n_users;
 }
 
+static int
+char_to_hex(char c, uint8_t *val)
+{
+	if (c >= '0' && c <= '9') {
+		*val = c - '0';
+		return 0;
+	}
+
+	if (c >= 'A' && c <= 'F') {
+		*val = c - 'A' + 10;
+		return 0;
+	}
+
+	if (c >= 'a' && c <= 'f') {
+		*val = c - 'a' + 10;
+		return 0;
+	}
+
+	return -EINVAL;
+}
+
+static int
+hex_string_parse(char *src, uint8_t *dst, uint32_t n_dst_bytes)
+{
+	uint32_t i;
+
+	/* Check input arguments. */
+	if (!src || !src[0] || !dst || !n_dst_bytes)
+		return -EINVAL;
+
+	/* Skip any leading "0x" or "0X" in the src string. */
+	if ((src[0] == '0') && (src[1] == 'x' || src[1] == 'X'))
+		src += 2;
+
+	/* Convert each group of two hex characters in the src string to one byte in dst array. */
+	for (i = 0; i < n_dst_bytes; i++) {
+		uint8_t a, b;
+		int status;
+
+		status = char_to_hex(*src, &a);
+		if (status)
+			return status;
+		src++;
+
+		status = char_to_hex(*src, &b);
+		if (status)
+			return status;
+		src++;
+
+		dst[i] = a * 16 + b;
+	}
+
+	/* Check for the end of the src string. */
+	if (*src)
+		return -EINVAL;
+
+	return 0;
+}
+
 #if RTE_BYTE_ORDER == RTE_LITTLE_ENDIAN
 #define field_ntoh(val, n_bits) (ntoh64((val) << (64 - n_bits)))
 #define field_hton(val, n_bits) (hton64((val) << (64 - n_bits)))
@@ -7634,25 +7693,33 @@ action_args_parse(struct action *a, const char *args, uint8_t *data)
 		struct field *f = &a->st->fields[i];
 		char *arg_name = tokens[i * 2];
 		char *arg_val = tokens[i * 2 + 1];
-		uint64_t val;
 
 		if (strcmp(arg_name, f->name)) {
 			status = -EINVAL;
 			goto error;
 		}
 
-		val = strtoull(arg_val, &arg_val, 0);
-		if (arg_val[0]) {
-			status = -EINVAL;
-			goto error;
+		if (f->n_bits <= 64) {
+			uint64_t val;
+
+			val = strtoull(arg_val, &arg_val, 0);
+			if (arg_val[0]) {
+				status = -EINVAL;
+				goto error;
+			}
+
+			/* Endianness conversion. */
+			if (a->args_endianness[i])
+				val = field_hton(val, f->n_bits);
+
+			/* Copy to entry. */
+			memcpy(&data[offset], (uint8_t *)&val, f->n_bits / 8);
+		} else {
+			status = hex_string_parse(arg_val, &data[offset], f->n_bits / 8);
+			if (status)
+				goto error;
 		}
 
-		/* Endianness conversion. */
-		if (a->args_endianness[i])
-			val = field_hton(val, f->n_bits);
-
-		/* Copy to entry. */
-		memcpy(&data[offset], (uint8_t *)&val, f->n_bits / 8);
 		offset += f->n_bits / 8;
 	}
 
