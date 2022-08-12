@@ -259,7 +259,7 @@ parse_test_sha_json_test_type(void)
 
 	for (i = 0; i < RTE_DIM(sha_test_types); i++)
 		if (strstr(type_str, sha_test_types[i].desc)) {
-			info.interim_info.aes_data.test_type =
+			info.interim_info.sha_data.test_type =
 				sha_test_types[i].type;
 			break;
 		}
