@@ -2696,6 +2696,270 @@ mask_to_prefix(uint64_t mask, uint32_t mask_length, uint32_t *prefix_length)
 }
 
 static int
+large_mask_to_prefix(uint8_t *mask, uint32_t n_mask_bytes, uint32_t *prefix_length)
+{
+	uint32_t pl, i;
+
+	/* Check input arguments. */
+	if (!mask || !n_mask_bytes || !prefix_length)
+		return -EINVAL;
+
+	/* Count leading bits of one. */
+	for (i = 0; i < n_mask_bytes * 8; i++) {
+		uint32_t byte_id = i / 8;
+		uint32_t bit_id = i & 7;
+
+		uint32_t byte = mask[byte_id];
+		uint32_t bit = byte & (1 << (7 - bit_id));
+
+		if (!bit)
+			break;
+	}
+
+	/* Save the potential prefix length. */
+	pl = i;
+
+	/* Check that all remaining bits are zeros. */
+	for ( ; i < n_mask_bytes * 8; i++) {
+		uint32_t byte_id = i / 8;
+		uint32_t bit_id = i & 7;
+
+		uint32_t byte = mask[byte_id];
+		uint32_t bit = byte & (1 << (7 - bit_id));
+
+		if (bit)
+			break;
+	}
+
+	if (i < n_mask_bytes * 8)
+		return -EINVAL;
+
+	*prefix_length = pl;
+	return 0;
+}
+
+static int
+char_to_hex(char c, uint8_t *val)
+{
+	if (c >= '0' && c <= '9') {
+		*val = c - '0';
+		return 0;
+	}
+
+	if (c >= 'A' && c <= 'F') {
+		*val = c - 'A' + 10;
+		return 0;
+	}
+
+	if (c >= 'a' && c <= 'f') {
+		*val = c - 'a' + 10;
+		return 0;
+	}
+
+	return -EINVAL;
+}
+
+static int
+hex_string_parse(char *src, uint8_t *dst, uint32_t n_dst_bytes)
+{
+	uint32_t i;
+
+	/* Check input arguments. */
+	if (!src || !src[0] || !dst || !n_dst_bytes)
+		return -EINVAL;
+
+	/* Skip any leading "0x" or "0X" in the src string. */
+	if ((src[0] == '0') && (src[1] == 'x' || src[1] == 'X'))
+		src += 2;
+
+	/* Convert each group of two hex characters in the src string to one byte in dst array. */
+	for (i = 0; i < n_dst_bytes; i++) {
+		uint8_t a, b;
+		int status;
+
+		status = char_to_hex(*src, &a);
+		if (status)
+			return status;
+		src++;
+
+		status = char_to_hex(*src, &b);
+		if (status)
+			return status;
+		src++;
+
+		dst[i] = a * 16 + b;
+	}
+
+	/* Check for the end of the src string. */
+	if (*src)
+		return -EINVAL;
+
+	return 0;
+}
+
+static int
+table_entry_match_field_read(struct table *table,
+			     struct rte_swx_table_entry *entry,
+			     uint32_t mf_id,
+			     char *mf_val,
+			     char *mf_mask,
+			     int *lpm,
+			     uint32_t *lpm_prefix_length_max,
+			     uint32_t *lpm_prefix_length)
+{
+	struct rte_swx_ctl_table_match_field_info *mf = &table->mf[mf_id];
+	uint64_t val, mask = UINT64_MAX;
+	uint32_t offset = (mf->offset - table->mf_first->offset) / 8;
+
+	/*
+	 * Mask.
+	 */
+	if (mf_mask) {
+		/* Parse. */
+		mask = strtoull(mf_mask, &mf_mask, 0);
+		if (mf_mask[0])
+			return -EINVAL;
+
+		/* LPM. */
+		if (mf->match_type == RTE_SWX_TABLE_MATCH_LPM) {
+			int status;
+
+			*lpm = 1;
+
+			*lpm_prefix_length_max = mf->n_bits;
+
+			status = mask_to_prefix(mask, mf->n_bits, lpm_prefix_length);
+			if (status)
+				return status;
+		}
+
+		/* Endianness conversion. */
+		if (mf->is_header)
+			mask = field_hton(mask, mf->n_bits);
+	}
+
+	/* Copy to entry. */
+	if (entry->key_mask)
+		memcpy(&entry->key_mask[offset], (uint8_t *)&mask, mf->n_bits / 8);
+
+	/*
+	 * Value.
+	 */
+	/* Parse. */
+	val = strtoull(mf_val, &mf_val, 0);
+	if (mf_val[0])
+		return -EINVAL;
+
+	/* Endianness conversion. */
+	if (mf->is_header)
+		val = field_hton(val, mf->n_bits);
+
+	/* Copy to entry. */
+	memcpy(&entry->key[offset], (uint8_t *)&val, mf->n_bits / 8);
+
+	return 0;
+}
+
+static int
+table_entry_action_argument_read(struct action *action,
+				 struct rte_swx_table_entry *entry,
+				 uint32_t arg_id,
+				 uint32_t arg_offset,
+				 char *arg_val)
+{
+	struct rte_swx_ctl_action_arg_info *arg = &action->args[arg_id];
+	uint64_t val;
+
+	val = strtoull(arg_val, &arg_val, 0);
+	if (arg_val[0])
+		return -EINVAL;
+
+	/* Endianness conversion. */
+	if (arg->is_network_byte_order)
+		val = field_hton(val, arg->n_bits);
+
+	/* Copy to entry. */
+	memcpy(&entry->action_data[arg_offset],
+	       (uint8_t *)&val,
+	       arg->n_bits / 8);
+
+	return 0;
+}
+
+static int
+table_entry_large_match_field_read(struct table *table,
+				   struct rte_swx_table_entry *entry,
+				   uint32_t mf_id,
+				   char *mf_val,
+				   char *mf_mask,
+				   int *lpm,
+				   uint32_t *lpm_prefix_length_max,
+				   uint32_t *lpm_prefix_length)
+{
+	struct rte_swx_ctl_table_match_field_info *mf = &table->mf[mf_id];
+	uint32_t offset = (mf->offset - table->mf_first->offset) / 8;
+	int status;
+
+	/*
+	 * Mask.
+	 */
+	if (!entry->key_mask)
+		goto value;
+
+	if (!mf_mask) {
+		/* Set mask to all-ones. */
+		memset(&entry->key_mask[offset], 0xFF, mf->n_bits / 8);
+		goto value;
+	}
+
+	/* Parse. */
+	status = hex_string_parse(mf_mask, &entry->key_mask[offset], mf->n_bits / 8);
+	if (status)
+		return -EINVAL;
+
+	/* LPM. */
+	if (mf->match_type == RTE_SWX_TABLE_MATCH_LPM) {
+		*lpm = 1;
+
+		*lpm_prefix_length_max = mf->n_bits;
+
+		status = large_mask_to_prefix(&entry->key_mask[offset],
+					      mf->n_bits / 8,
+					      lpm_prefix_length);
+		if (status)
+			return status;
+	}
+
+	/*
+	 * Value.
+	 */
+value:
+	/* Parse. */
+	status = hex_string_parse(mf_val, &entry->key[offset], mf->n_bits / 8);
+	if (status)
+		return -EINVAL;
+
+	return 0;
+}
+
+static int
+table_entry_large_action_argument_read(struct action *action,
+				       struct rte_swx_table_entry *entry,
+				       uint32_t arg_id,
+				       uint32_t arg_offset,
+				       char *arg_val)
+{
+	struct rte_swx_ctl_action_arg_info *arg = &action->args[arg_id];
+	int status;
+
+	status = hex_string_parse(arg_val, &entry->action_data[arg_offset], arg->n_bits / 8);
+	if (status)
+		return -EINVAL;
+
+	return 0;
+}
+
+static int
 token_is_comment(const char *token)
 {
 	if ((token[0] == '#') ||
@@ -2779,62 +3043,35 @@ rte_swx_ctl_pipeline_table_entry_read(struct rte_swx_ctl_pipeline *ctl,
 	for (i = 0; i < table->info.n_match_fields; i++) {
 		struct rte_swx_ctl_table_match_field_info *mf = &table->mf[i];
 		char *mf_val = tokens[1 + i], *mf_mask = NULL;
-		uint64_t val, mask = UINT64_MAX;
-		uint32_t offset = (mf->offset - table->mf_first->offset) / 8;
+		int status;
 
-		/*
-		 * Mask.
-		 */
 		mf_mask = strchr(mf_val, '/');
 		if (mf_mask) {
 			*mf_mask = 0;
 			mf_mask++;
-
-			/* Parse. */
-			mask = strtoull(mf_mask, &mf_mask, 0);
-			if (mf_mask[0])
-				goto error;
-
-			/* LPM. */
-			if (mf->match_type == RTE_SWX_TABLE_MATCH_LPM) {
-				int status;
-
-				lpm = 1;
-
-				lpm_prefix_length_max = mf->n_bits;
-
-				status = mask_to_prefix(mask, mf->n_bits, &lpm_prefix_length);
-				if (status)
-					goto error;
-			}
-
-			/* Endianness conversion. */
-			if (mf->is_header)
-				mask = field_hton(mask, mf->n_bits);
 		}
 
-		/* Copy to entry. */
-		if (entry->key_mask)
-			memcpy(&entry->key_mask[offset],
-			       (uint8_t *)&mask,
-			       mf->n_bits / 8);
-
-		/*
-		 * Value.
-		 */
-		/* Parse. */
-		val = strtoull(mf_val, &mf_val, 0);
-		if (mf_val[0])
+		if (mf->n_bits <= 64)
+			status = table_entry_match_field_read(table,
+							      entry,
+							      i,
+							      mf_val,
+							      mf_mask,
+							      &lpm,
+							      &lpm_prefix_length_max,
+							      &lpm_prefix_length);
+		else
+			status = table_entry_large_match_field_read(table,
+								    entry,
+								    i,
+								    mf_val,
+								    mf_mask,
+								    &lpm,
+								    &lpm_prefix_length_max,
+								    &lpm_prefix_length);
+		if (status)
 			goto error;
 
-		/* Endianness conversion. */
-		if (mf->is_header)
-			val = field_hton(val, mf->n_bits);
-
-		/* Copy to entry. */
-		memcpy(&entry->key[offset],
-		       (uint8_t *)&val,
-		       mf->n_bits / 8);
 	}
 
 	tokens += 1 + table->info.n_match_fields;
@@ -2890,7 +3127,7 @@ action:
 	for (i = 0; i < action->info.n_args; i++) {
 		struct rte_swx_ctl_action_arg_info *arg = &action->args[i];
 		char *arg_name, *arg_val;
-		uint64_t val;
+		int status;
 
 		arg_name = tokens[2 + i * 2];
 		arg_val = tokens[2 + i * 2 + 1];
@@ -2898,18 +3135,20 @@ action:
 		if (strcmp(arg_name, arg->name))
 			goto error;
 
-		val = strtoull(arg_val, &arg_val, 0);
-		if (arg_val[0])
+		if (arg->n_bits <= 64)
+			status = table_entry_action_argument_read(action,
+								  entry,
+								  i,
+								  arg_offset,
+								  arg_val);
+		else
+			status = table_entry_large_action_argument_read(action,
+									entry,
+									i,
+									arg_offset,
+									arg_val);
+		if (status)
 			goto error;
-
-		/* Endianness conversion. */
-		if (arg->is_network_byte_order)
-			val = field_hton(val, arg->n_bits);
-
-		/* Copy to entry. */
-		memcpy(&entry->action_data[arg_offset],
-		       (uint8_t *)&val,
-		       arg->n_bits / 8);
 
 		arg_offset += arg->n_bits / 8;
 	}
