@@ -307,11 +307,13 @@ enum instruction_type {
 	 * dst = src
 	 * dst = HMEF, src = HMEFTI
 	 */
-	INSTR_MOV,    /* dst = MEF, src = MEFT */
-	INSTR_MOV_MH, /* dst = MEF, src = H */
-	INSTR_MOV_HM, /* dst = H, src = MEFT */
-	INSTR_MOV_HH, /* dst = H, src = H */
-	INSTR_MOV_I,  /* dst = HMEF, src = I */
+	INSTR_MOV,     /* dst = MEF, src = MEFT; size(dst) <= 64 bits, size(src) <= 64 bits. */
+	INSTR_MOV_MH,  /* dst = MEF, src = H; size(dst) <= 64 bits, size(src) <= 64 bits. */
+	INSTR_MOV_HM,  /* dst = H, src = MEFT; size(dst) <= 64 bits, size(src) <= 64 bits. */
+	INSTR_MOV_HH,  /* dst = H, src = H; size(dst) <= 64 bits, size(src) <= 64 bits. */
+	INSTR_MOV_DMA, /* dst = HMEF, src = HMEF; size(dst) = size(src) > 64 bits, NBO format. */
+	INSTR_MOV_128, /* dst = HMEF, src = HMEF; size(dst) = size(src) = 128 bits, NBO format. */
+	INSTR_MOV_I,   /* dst = HMEF, src = I; size(dst) <= 64 bits. */
 
 	/* dma h.header t.field
 	 * memcpy(h.header, t.field, sizeof(h.header))
@@ -2483,6 +2485,72 @@ __instr_mov_hh_exec(struct rte_swx_pipeline *p __rte_unused,
 	TRACE("[Thread %2u] mov (hh)\n", p->thread_id);
 
 	MOV_HH(t, ip);
+}
+
+static inline void
+__instr_mov_dma_exec(struct rte_swx_pipeline *p __rte_unused,
+		     struct thread *t,
+		     const struct instruction *ip)
+{
+	uint8_t *dst_struct = t->structs[ip->mov.dst.struct_id];
+	uint64_t *dst64_ptr = (uint64_t *)&dst_struct[ip->mov.dst.offset];
+	uint32_t *dst32_ptr;
+	uint16_t *dst16_ptr;
+	uint8_t *dst8_ptr;
+
+	uint8_t *src_struct = t->structs[ip->mov.src.struct_id];
+	uint64_t *src64_ptr = (uint64_t *)&src_struct[ip->mov.src.offset];
+	uint32_t *src32_ptr;
+	uint16_t *src16_ptr;
+	uint8_t *src8_ptr;
+
+	uint32_t n = ip->mov.dst.n_bits >> 3, i;
+
+	TRACE("[Thread %2u] mov (dma) %u bytes\n", p->thread_id, n);
+
+	/* 8-byte transfers. */
+	for (i = 0; i < n >> 3; i++)
+		*dst64_ptr++ = *src64_ptr++;
+
+	/* 4-byte transfers. */
+	n &= 7;
+	dst32_ptr = (uint32_t *)dst64_ptr;
+	src32_ptr = (uint32_t *)src64_ptr;
+
+	for (i = 0; i < n >> 2; i++)
+		*dst32_ptr++ = *src32_ptr++;
+
+	/* 2-byte transfers. */
+	n &= 3;
+	dst16_ptr = (uint16_t *)dst32_ptr;
+	src16_ptr = (uint16_t *)src32_ptr;
+
+	for (i = 0; i < n >> 1; i++)
+		*dst16_ptr++ = *src16_ptr++;
+
+	/* 1-byte transfer. */
+	n &= 1;
+	dst8_ptr = (uint8_t *)dst16_ptr;
+	src8_ptr = (uint8_t *)src16_ptr;
+	if (n)
+		*dst8_ptr = *src8_ptr;
+}
+
+static inline void
+__instr_mov_128_exec(struct rte_swx_pipeline *p __rte_unused,
+		     struct thread *t,
+		     const struct instruction *ip)
+{
+	uint8_t *dst_struct = t->structs[ip->mov.dst.struct_id];
+	uint64_t *dst64_ptr = (uint64_t *)&dst_struct[ip->mov.dst.offset];
+
+	uint8_t *src_struct = t->structs[ip->mov.src.struct_id];
+	uint64_t *src64_ptr = (uint64_t *)&src_struct[ip->mov.src.offset];
+
+	TRACE("[Thread %2u] mov (128)\n", p->thread_id);
+
+	dst64_ptr[0] = src64_ptr[0];
+	dst64_ptr[1] = src64_ptr[1];
 }
 
 static inline void

@@ -2969,20 +2969,28 @@ instr_mov_translate(struct rte_swx_pipeline *p,
 
 	fdst = struct_field_parse(p, NULL, dst, &dst_struct_id);
 	CHECK(fdst, EINVAL);
-	CHECK(!fdst->var_size && (fdst->n_bits <= 64), EINVAL);
+	CHECK(!fdst->var_size, EINVAL);
 
-	/* MOV, MOV_MH, MOV_HM or MOV_HH. */
+	/* MOV, MOV_MH, MOV_HM, MOV_HH, MOV16, MOVDMA. */
 	fsrc = struct_field_parse(p, action, src, &src_struct_id);
 	if (fsrc) {
-		CHECK(!fsrc->var_size && (fsrc->n_bits <= 64), EINVAL);
+		CHECK(!fsrc->var_size, EINVAL);
 
-		instr->type = INSTR_MOV;
-		if (dst[0] != 'h' && src[0] == 'h')
-			instr->type = INSTR_MOV_MH;
-		if (dst[0] == 'h' && src[0] != 'h')
-			instr->type = INSTR_MOV_HM;
-		if (dst[0] == 'h' && src[0] == 'h')
-			instr->type = INSTR_MOV_HH;
+		if (fdst->n_bits <= 64 && fsrc->n_bits <= 64) {
+			instr->type = INSTR_MOV;
+			if (dst[0] != 'h' && src[0] == 'h')
+				instr->type = INSTR_MOV_MH;
+			if (dst[0] == 'h' && src[0] != 'h')
+				instr->type = INSTR_MOV_HM;
+			if (dst[0] == 'h' && src[0] == 'h')
+				instr->type = INSTR_MOV_HH;
+		} else {
+			CHECK(fdst->n_bits == fsrc->n_bits, EINVAL);
+
+			instr->type = INSTR_MOV_DMA;
+			if (fdst->n_bits == 128)
+				instr->type = INSTR_MOV_128;
+		}
 
 		instr->mov.dst.struct_id = (uint8_t)dst_struct_id;
 		instr->mov.dst.n_bits = fdst->n_bits;
@@ -2994,6 +3002,7 @@ instr_mov_translate(struct rte_swx_pipeline *p,
 	}
 
 	/* MOV_I. */
+	CHECK(fdst->n_bits <= 64, EINVAL);
 	src_val = strtoull(src, &src, 0);
 	CHECK(!src[0], EINVAL);
 
@@ -3051,6 +3060,30 @@ instr_mov_hh_exec(struct rte_swx_pipeline *p)
 	struct instruction *ip = t->ip;
 
 	__instr_mov_hh_exec(p, t, ip);
+
+	/* Thread. */
+	thread_ip_inc(p);
+}
+
+static inline void
+instr_mov_dma_exec(struct rte_swx_pipeline *p)
+{
+	struct thread *t = &p->threads[p->thread_id];
+	struct instruction *ip = t->ip;
+
+	__instr_mov_dma_exec(p, t, ip);
+
+	/* Thread. */
+	thread_ip_inc(p);
+}
+
+static inline void
+instr_mov_128_exec(struct rte_swx_pipeline *p)
+{
+	struct thread *t = &p->threads[p->thread_id];
+	struct instruction *ip = t->ip;
+
+	__instr_mov_128_exec(p, t, ip);
 
 	/* Thread. */
 	thread_ip_inc(p);
@@ -6781,12 +6814,14 @@ instr_pattern_validate_mov_all_search(struct rte_swx_pipeline *p,
 	if (!a || !a->st)
 		return 0;
 
-	/* First instruction: HDR_VALIDATE. Second instruction: MOV_HM. */
+	/* First instruction: HDR_VALIDATE. Second instruction: MOV_HM, MOV_DMA or MOV_128. */
 	if (data[0].invalid ||
 	    (instr[0].type != INSTR_HDR_VALIDATE) ||
 	    (n_instr < 2) ||
 	    data[1].invalid ||
-	    (instr[1].type != INSTR_MOV_HM) ||
+	    (instr[1].type != INSTR_MOV_HM &&
+	     instr[1].type != INSTR_MOV_DMA &&
+	     instr[1].type != INSTR_MOV_128) ||
 	    instr[1].mov.src.struct_id)
 		return 0;
 
@@ -6807,7 +6842,9 @@ instr_pattern_validate_mov_all_search(struct rte_swx_pipeline *p,
 	for (i = 0; i < h->st->n_fields; i++)
 		if (data[1 + i].invalid ||
 		    data[1 + i].n_users ||
-		    (instr[1 + i].type != INSTR_MOV_HM) ||
+		    (instr[1 + i].type != INSTR_MOV_HM &&
+		     instr[1 + i].type != INSTR_MOV_DMA &&
+		     instr[1 + i].type != INSTR_MOV_128) ||
 		    (instr[1 + i].mov.dst.struct_id != h->struct_id) ||
 		    (instr[1 + i].mov.dst.offset != h->st->fields[i].offset / 8) ||
 		    (instr[1 + i].mov.dst.n_bits != h->st->fields[i].n_bits) ||
@@ -7147,6 +7184,8 @@ static instr_exec_t instruction_table[] = {
 	[INSTR_MOV_MH] = instr_mov_mh_exec,
 	[INSTR_MOV_HM] = instr_mov_hm_exec,
 	[INSTR_MOV_HH] = instr_mov_hh_exec,
+	[INSTR_MOV_DMA] = instr_mov_dma_exec,
+	[INSTR_MOV_128] = instr_mov_128_exec,
 	[INSTR_MOV_I] = instr_mov_i_exec,
 
 	[INSTR_DMA_HT] = instr_dma_ht_exec,
@@ -10950,6 +10989,8 @@ instr_type_to_name(struct instruction *instr)
 	case INSTR_MOV_MH: return "INSTR_MOV_MH";
 	case INSTR_MOV_HM: return "INSTR_MOV_HM";
 	case INSTR_MOV_HH: return "INSTR_MOV_HH";
+	case INSTR_MOV_DMA: return "INSTR_MOV_DMA";
+	case INSTR_MOV_128: return "INSTR_MOV_128";
 	case INSTR_MOV_I: return "INSTR_MOV_I";
 
 	case INSTR_DMA_HT: return "INSTR_DMA_HT";
@@ -11938,6 +11979,8 @@ static instruction_export_t export_table[] = {
 	[INSTR_MOV_MH] = instr_mov_export,
 	[INSTR_MOV_HM] = instr_mov_export,
 	[INSTR_MOV_HH] = instr_mov_export,
+	[INSTR_MOV_DMA] = instr_mov_export,
+	[INSTR_MOV_128] = instr_mov_export,
 	[INSTR_MOV_I] = instr_mov_export,
 
 	[INSTR_DMA_HT]  = instr_dma_ht_export,
@@ -12162,6 +12205,8 @@ instr_type_to_func(struct instruction *instr)
 	case INSTR_MOV_MH: return "__instr_mov_mh_exec";
 	case INSTR_MOV_HM: return "__instr_mov_hm_exec";
 	case INSTR_MOV_HH: return "__instr_mov_hh_exec";
+	case INSTR_MOV_DMA: return "__instr_mov_dma_exec";
+	case INSTR_MOV_128: return "__instr_mov_128_exec";
 	case INSTR_MOV_I: return "__instr_mov_i_exec";
 
 	case INSTR_DMA_HT: return "__instr_dma_ht_exec";
