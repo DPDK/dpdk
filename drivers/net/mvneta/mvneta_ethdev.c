@@ -121,11 +121,6 @@ mvneta_dev_configure(struct rte_eth_dev *dev)
 			return -EINVAL;
 	}
 
-	if (dev->data->dev_conf.rxmode.split_hdr_size) {
-		MVNETA_LOG(INFO, "Split headers not supported");
-		return -EINVAL;
-	}
-
 	if (dev->data->dev_conf.txmode.offloads & RTE_ETH_TX_OFFLOAD_MULTI_SEGS)
 		priv->multiseg = 1;
 

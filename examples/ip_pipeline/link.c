@@ -47,7 +47,6 @@ static struct rte_eth_conf port_conf_default = {
 	.rxmode = {
 		.mq_mode = RTE_ETH_MQ_RX_NONE,
 		.mtu = 9000 - (RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN), /* Jumbo frame MTU */
-		.split_hdr_size = 0, /* Header split buffer size */
 	},
 	.rx_adv_conf = {
 		.rss_conf = {

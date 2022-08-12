@@ -69,7 +69,6 @@ static uint8_t rss_enable;
 static const struct rte_eth_conf vmdq_dcb_conf_default = {
 	.rxmode = {
 		.mq_mode        = RTE_ETH_MQ_RX_VMDQ_DCB,
-		.split_hdr_size = 0,
 	},
 	.txmode = {
 		.mq_mode = RTE_ETH_MQ_TX_VMDQ_DCB,

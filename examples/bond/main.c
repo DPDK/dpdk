@@ -115,7 +115,6 @@ static struct rte_mempool *mbuf_pool;
 static struct rte_eth_conf port_conf = {
 	.rxmode = {
 		.mq_mode = RTE_ETH_MQ_RX_NONE,
-		.split_hdr_size = 0,
 	},
 	.rx_adv_conf = {
 		.rss_conf = {

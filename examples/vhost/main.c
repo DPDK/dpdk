@@ -127,7 +127,6 @@ static struct vhost_queue_ops vdev_queue_ops[RTE_MAX_VHOST_DEVICE];
 static struct rte_eth_conf vmdq_conf_default = {
 	.rxmode = {
 		.mq_mode        = RTE_ETH_MQ_RX_VMDQ_ONLY,
-		.split_hdr_size = 0,
 		/*
 		 * VLAN strip is necessary for 1G NIC such as I350,
 		 * this fixes bug of ipv4 forwarding in guest can't

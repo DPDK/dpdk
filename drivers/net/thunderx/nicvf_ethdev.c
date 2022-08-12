@@ -2003,11 +2003,6 @@ nicvf_dev_configure(struct rte_eth_dev *dev)
 		return -EINVAL;
 	}
 
-	if (rxmode->split_hdr_size) {
-		PMD_INIT_LOG(INFO, "Rxmode does not support split header");
-		return -EINVAL;
-	}
-
 	if (conf->dcb_capability_en) {
 		PMD_INIT_LOG(INFO, "DCB enable not supported");
 		return -EINVAL;

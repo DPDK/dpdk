@@ -217,7 +217,6 @@ struct lcore_queue_conf lcore_queue_conf[RTE_MAX_LCORE];
 static struct rte_eth_conf port_conf = {
 	.rxmode = {
 		.mq_mode = RTE_ETH_MQ_RX_NONE,
-		.split_hdr_size = 0,
 	},
 	.txmode = {
 		.mq_mode = RTE_ETH_MQ_TX_NONE,

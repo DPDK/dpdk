@@ -147,7 +147,6 @@ static struct rte_eth_conf port_conf = {
 	.rxmode = {
 		.mtu = JUMBO_FRAME_MAX_SIZE - RTE_ETHER_HDR_LEN -
 			RTE_ETHER_CRC_LEN,
-		.split_hdr_size = 0,
 		.offloads = (RTE_ETH_RX_OFFLOAD_CHECKSUM |
 			     RTE_ETH_RX_OFFLOAD_SCATTER),
 	},

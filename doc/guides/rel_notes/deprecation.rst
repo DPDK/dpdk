@@ -68,12 +68,6 @@ Deprecation Notices
   The ``rate`` parameter will be modified to ``uint32_t`` in DPDK 22.11
   so that it can work for more than 64 Gbps.
 
-* ethdev: Since no single PMD supports ``RTE_ETH_RX_OFFLOAD_HEADER_SPLIT``
-  offload and the ``split_hdr_size`` field in structure ``rte_eth_rxmode``
-  to enable per-port header split, they will be removed in DPDK 22.11.
-  The per-queue Rx packet split offload ``RTE_ETH_RX_OFFLOAD_BUFFER_SPLIT``
-  can still be used, and it is configured by ``rte_eth_rxseg_split``.
-
 * ethdev: Announce moving from dedicated modify function for each field,
   to using the general ``rte_flow_modify_field`` action.
 

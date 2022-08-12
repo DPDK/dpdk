@@ -72,7 +72,6 @@ static struct rte_ether_addr ports_eth_addr[RTE_MAX_ETHPORTS];
 static struct rte_eth_conf port_conf = {
 	.rxmode = {
 		.mq_mode = RTE_ETH_MQ_RX_NONE,
-		.split_hdr_size = 0,
 		.offloads = RTE_ETH_RX_OFFLOAD_CHECKSUM |
 			    RTE_ETH_RX_OFFLOAD_SECURITY,
 	},

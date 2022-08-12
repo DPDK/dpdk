@@ -133,9 +133,6 @@ init_port(void)
 	uint16_t i;
 	/* Ethernet port configured with default settings. 8< */
 	struct rte_eth_conf port_conf = {
-		.rxmode = {
-			.split_hdr_size = 0,
-		},
 		.txmode = {
 			.offloads =
 				RTE_ETH_TX_OFFLOAD_VLAN_INSERT |

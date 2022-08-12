@@ -412,7 +412,6 @@ struct rte_eth_rxmode {
 	uint32_t mtu;  /**< Requested MTU. */
 	/** Maximum allowed size of LRO aggregated packet. */
 	uint32_t max_lro_pkt_size;
-	uint16_t split_hdr_size;  /**< hdr buf size (header_split enabled).*/
 	/**
 	 * Per-port Rx offloads to be set using RTE_ETH_RX_OFFLOAD_* flags.
 	 * Only offloads set on rx_offload_capa field on rte_eth_dev_info
@@ -1379,7 +1378,6 @@ struct rte_eth_conf {
 #define RTE_ETH_RX_OFFLOAD_QINQ_STRIP       RTE_BIT64(5)
 #define RTE_ETH_RX_OFFLOAD_OUTER_IPV4_CKSUM RTE_BIT64(6)
 #define RTE_ETH_RX_OFFLOAD_MACSEC_STRIP     RTE_BIT64(7)
-#define RTE_ETH_RX_OFFLOAD_HEADER_SPLIT     RTE_BIT64(8)
 #define RTE_ETH_RX_OFFLOAD_VLAN_FILTER      RTE_BIT64(9)
 #define RTE_ETH_RX_OFFLOAD_VLAN_EXTEND      RTE_BIT64(10)
 #define RTE_ETH_RX_OFFLOAD_SCATTER          RTE_BIT64(13)

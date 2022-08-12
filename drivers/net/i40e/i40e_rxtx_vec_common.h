@@ -215,10 +215,6 @@ i40e_rx_vec_dev_conf_condition_check_default(struct rte_eth_dev *dev)
 	uint16_t desc, i;
 	bool first_queue;
 
-	 /* no header split support */
-	if (rxmode->offloads & RTE_ETH_RX_OFFLOAD_HEADER_SPLIT)
-		return -1;
-
 	/* no QinQ support */
 	if (rxmode->offloads & RTE_ETH_RX_OFFLOAD_VLAN_EXTEND)
 		return -1;

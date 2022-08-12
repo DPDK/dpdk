@@ -490,11 +490,6 @@ mrvl_dev_configure(struct rte_eth_dev *dev)
 		return -EINVAL;
 	}
 
-	if (dev->data->dev_conf.rxmode.split_hdr_size) {
-		MRVL_LOG(INFO, "Split headers not supported");
-		return -EINVAL;
-	}
-
 	if (dev->data->dev_conf.rxmode.mtu > priv->max_mtu) {
 		MRVL_LOG(ERR, "MTU %u is larger than max_mtu %u\n",
 			 dev->data->dev_conf.rxmode.mtu,

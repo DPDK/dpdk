@@ -10,9 +10,6 @@ l2fwd_event_init_ports(struct l2fwd_resources *rsrc)
 	uint16_t nb_rxd = RX_DESC_DEFAULT;
 	uint16_t nb_txd = TX_DESC_DEFAULT;
 	struct rte_eth_conf port_conf = {
-		.rxmode = {
-			.split_hdr_size = 0,
-		},
 		.txmode = {
 			.mq_mode = RTE_ETH_MQ_TX_NONE,
 		},

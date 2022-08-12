@@ -176,7 +176,6 @@ smp_port_init(uint16_t port, struct rte_mempool *mbuf_pool,
 	struct rte_eth_conf port_conf = {
 			.rxmode = {
 				.mq_mode	= RTE_ETH_MQ_RX_RSS,
-				.split_hdr_size = 0,
 				.offloads = RTE_ETH_RX_OFFLOAD_CHECKSUM,
 			},
 			.rx_adv_conf = {

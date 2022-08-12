@@ -77,8 +77,6 @@ They are:
 
 *   FDIR
 
-*   Header split
-
 *   RX checksum off load
 
 Other features are supported using optional MACRO configuration. They include:
@@ -94,8 +92,6 @@ To guarantee the constraint, capabilities in dev_conf.rxmode.offloads will be ch
 *   RTE_ETH_RX_OFFLOAD_VLAN_EXTEND
 
 *   RTE_ETH_RX_OFFLOAD_CHECKSUM
-
-*   RTE_ETH_RX_OFFLOAD_HEADER_SPLIT
 
 *   dev_conf
 

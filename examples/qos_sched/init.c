@@ -57,9 +57,6 @@ int mp_size = NB_MBUF;
 struct flow_conf qos_conf[MAX_DATA_STREAMS];
 
 static struct rte_eth_conf port_conf = {
-	.rxmode = {
-		.split_hdr_size = 0,
-	},
 	.txmode = {
 		.mq_mode = RTE_ETH_MQ_TX_NONE,
 	},

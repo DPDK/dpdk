@@ -53,7 +53,6 @@ static struct rte_mempool *pool = NULL;
 static struct rte_eth_conf port_conf = {
 	.rxmode = {
 		.mq_mode	= RTE_ETH_MQ_RX_RSS,
-		.split_hdr_size = 0,
 		.offloads = RTE_ETH_RX_OFFLOAD_CHECKSUM,
 	},
 	.rx_adv_conf = {

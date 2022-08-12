@@ -63,8 +63,6 @@ vPMD. They are:
 
 *   Flow director
 
-*   Header split
-
 *   RX checksum offload
 
 Other features are supported using optional MACRO configuration. They include:
@@ -81,8 +79,6 @@ will be checked:
 *   ``RTE_ETH_RX_OFFLOAD_VLAN_EXTEND``
 
 *   ``RTE_ETH_RX_OFFLOAD_CHECKSUM``
-
-*   ``RTE_ETH_RX_OFFLOAD_HEADER_SPLIT``
 
 
 RX Burst Size

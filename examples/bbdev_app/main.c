@@ -71,7 +71,6 @@ mbuf_input(struct rte_mbuf *mbuf)
 static const struct rte_eth_conf port_conf = {
 	.rxmode = {
 		.mq_mode = RTE_ETH_MQ_RX_NONE,
-		.split_hdr_size = 0,
 	},
 	.txmode = {
 		.mq_mode = RTE_ETH_MQ_TX_NONE,

@@ -274,6 +274,13 @@ API Changes
   configuration (``dev_conf.fdir_conf``). Moved corresponding structures
   to internal API since some drivers still use it internally.
 
+* ethdev: Removed the Rx offload flag ``RTE_ETH_RX_OFFLOAD_HEADER_SPLIT``
+  and field ``split_hdr_size`` from the structure ``rte_eth_rxmode``
+  used to configure header split.
+  Instead, user can still use ``RTE_ETH_RX_OFFLOAD_BUFFER_SPLIT``
+  for per-queue packet split offload,
+  which is configured by ``rte_eth_rxseg_split``.
+
 * ethdev: Promoted ``rte_eth_rx_metadata_negotiate()``
   from experimental to stable.
 

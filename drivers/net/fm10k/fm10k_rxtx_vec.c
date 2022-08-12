@@ -216,10 +216,6 @@ fm10k_rx_vec_condition_check(struct rte_eth_dev *dev)
 		return -1;
 #endif
 
-	/* no header split support */
-	if (rxmode->offloads & RTE_ETH_RX_OFFLOAD_HEADER_SPLIT)
-		return -1;
-
 	return 0;
 #else
 	RTE_SET_USED(dev);

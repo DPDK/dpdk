@@ -78,9 +78,6 @@ struct rte_eth_dev_tx_buffer *tx_buffer[RTE_MAX_ETHPORTS];
 
 /* Global configuration stored in a static structure. 8< */
 static struct rte_eth_conf port_conf = {
-	.rxmode = {
-		.split_hdr_size = 0,
-	},
 	.txmode = {
 		.mq_mode = RTE_ETH_MQ_TX_NONE,
 	},

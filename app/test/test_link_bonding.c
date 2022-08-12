@@ -135,7 +135,6 @@ static uint16_t vlan_id = 0x100;
 static struct rte_eth_conf default_pmd_conf = {
 	.rxmode = {
 		.mq_mode = RTE_ETH_MQ_RX_NONE,
-		.split_hdr_size = 0,
 	},
 	.txmode = {
 		.mq_mode = RTE_ETH_MQ_TX_NONE,
