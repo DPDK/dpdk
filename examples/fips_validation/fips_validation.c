@@ -501,11 +501,8 @@ fips_test_parse_one_json_group(void)
 				return -EINVAL;
 			}
 
-			/* First argument is blank because the key
-			 * is not included in the string being parsed.
-			 */
 			ret = info.interim_callbacks[i].cb(
-				"", json_value,
+				info.interim_callbacks[i].key, json_value,
 				info.interim_callbacks[i].val
 			);
 			if (ret < 0)
@@ -527,11 +524,8 @@ fips_test_parse_one_json_case(void)
 		param = json_object_get(json_info.json_test_case, info.callbacks[i].key);
 		if (param) {
 			strcpy(info.one_line_text, json_string_value(param));
-			/* First argument is blank because the key
-			 * is not included in the string being parsed.
-			 */
 			ret = info.callbacks[i].cb(
-				"", info.one_line_text,
+				info.callbacks[i].key, info.one_line_text,
 				info.callbacks[i].val
 			);
 			if (ret < 0)
@@ -627,7 +621,14 @@ parse_uint8_hex_str(const char *key, char *src, struct fips_val *val)
 {
 	uint32_t len, j;
 
+#ifdef USE_JANSSON
+	/*
+	 * Offset not applicable in case of JSON test vectors.
+	 */
+	RTE_SET_USED(key);
+#else
 	src += strlen(key);
+#endif
 
 	len = strlen(src) / 2;
 
@@ -655,6 +656,15 @@ parse_uint8_hex_str(const char *key, char *src, struct fips_val *val)
 	return 0;
 }
 
+#ifdef USE_JANSSON
+int
+parser_read_uint32_val(const char *key, char *src, struct fips_val *val)
+{
+	RTE_SET_USED(key);
+
+	return parser_read_uint32(&val->len, src);
+}
+#else
 int
 parser_read_uint32_val(const char *key, char *src, struct fips_val *val)
 {
@@ -678,6 +688,7 @@ parser_read_uint32_val(const char *key, char *src, struct fips_val *val)
 
 	return ret;
 }
+#endif
 
 int
 parser_read_uint32_bit_val(const char *key, char *src, struct fips_val *val)
