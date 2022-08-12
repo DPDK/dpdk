@@ -4891,49 +4891,23 @@ and 50% packets are duplicated and marked with 0x1234 and sent to queue 0.
  testpmd> flow create 0 ingress group 1 pattern eth / end actions
         sample ratio 2 index 0 / queue index 1 / end
 
-Mirroring rule with port representors (with "transfer" attribute), the matched
-ingress packets with encapsulation header are sent to port id 0, and also
-mirrored the packets and sent to port id 2.
+Match packets coming from a VM which is referred to by means of
+its representor ethdev (port 1), mirror 50% of them to the
+said representor (for bookkeeping) as well as encapsulate
+all the packets and steer them to the physical port:
 
 ::
 
- testpmd> set sample_actions 0 port_id id 2 / end
- testpmd> flow create 1 ingress transfer pattern eth / end actions
-        sample ratio 1 index 0  / raw_encap / port_id id 0 / end
+   testpmd> set sample_actions 0 port_representor ethdev_port_id 1 / end
 
-Mirroring rule with port representors (with "transfer" attribute), the matched
-ingress packets are sent to port id 2, and also mirrored the packets with
-encapsulation header and sent to port id 0.
+   testpmd> set vxlan ip-version ipv4 vni 4 udp-src 32 udp-dst 4789 ip-src 127.0.0.1
+      ip-dst 127.0.0.2 eth-src 11:11:11:11:11:11 eth-dst 22:22:22:22:22:22
 
-::
+   testpmd> flow create 0 transfer pattern represented_port ethdev_port_id is 1 / end
+      actions sample ratio 2 index 0 / vxlan_encap /
+      represented_port ethdev_port_id 0 / end
 
- testpmd> set sample_actions 0 raw_encap / port_id id 0 / end
- testpmd> flow create 0 ingress transfer pattern eth / end actions
-        sample ratio 1 index 0  / port_id id 2 / end
-
-Mirroring rule with port representors (with "transfer" attribute), the matched
-ingress packets are sent to port id 2, and also mirrored the packets with
-VXLAN encapsulation header and sent to port id 0.
-
-::
-
- testpmd> set vxlan ip-version ipv4 vni 4 udp-src 4 udp-dst 4 ip-src 127.0.0.1
-        ip-dst 128.0.0.1 eth-src 11:11:11:11:11:11 eth-dst 22:22:22:22:22:22
- testpmd> set sample_actions 0 vxlan_encap / port_id id 0 / end
- testpmd> flow create 0 ingress transfer pattern eth / end actions
-        sample ratio 1 index 0  / port_id id 2 / end
-
-Mirroring rule with port representors (with "transfer" attribute), the matched
-ingress packets are sent to port id 2, and also mirrored the packets with
-NVGRE encapsulation header and sent to port id 0.
-
-::
-
- testpmd> set nvgre ip-version ipv4 tni 4 ip-src 127.0.0.1 ip-dst 128.0.0.1
-        eth-src 11:11:11:11:11:11 eth-dst 22:22:22:22:22:22
- testpmd> set sample_actions 0 nvgre_encap / port_id id 0 / end
- testpmd> flow create 0 ingress transfer pattern eth / end actions
-        sample ratio 1 index 0  / port_id id 2 / end
+The rule is inserted via port 0 (assumed to have "transfer" privilege).
 
 Sample integrity rules
 ~~~~~~~~~~~~~~~~~~~~~~
