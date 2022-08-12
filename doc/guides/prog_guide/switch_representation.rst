@@ -538,8 +538,8 @@ exist between them and their represented resources. These may be immutable.
 In this case, traffic is received by default through the representor and
 neither the "transfer" attribute nor traffic origin in flow rule patterns
 are necessary. They simply have to be created on the representor port
-directly and may target a different representor as described in `PORT_ID
-action`_.
+directly and may target a different representor as described
+in `PORT_REPRESENTOR Action`_.
 
 Implicit traffic flow with port representor
 
@@ -574,6 +574,36 @@ Implicit traffic flow with port representor
 
 Pattern Items And Actions
 ~~~~~~~~~~~~~~~~~~~~~~~~~
+
+PORT_REPRESENTOR Pattern Item
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Matches traffic entering the embedded switch from the given ethdev.
+
+- Matches **A**, **B** or **C** in `traffic steering`_.
+
+PORT_REPRESENTOR Action
+^^^^^^^^^^^^^^^^^^^^^^^
+
+At embedded switch level, sends matching traffic to the given ethdev.
+
+- Targets **A**, **B** or **C** in `traffic steering`_.
+
+REPRESENTED_PORT Pattern Item
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Matches traffic entering the embedded switch from
+the entity represented by the given ethdev.
+
+- Matches **D**, **E** or **F** in `traffic steering`_.
+
+REPRESENTED_PORT Action
+^^^^^^^^^^^^^^^^^^^^^^^
+
+At embedded switch level, send matching traffic to
+the entity represented by the given ethdev.
+
+- Targets **D**, **E** or **F** in `traffic steering`_.
 
 PORT Pattern Item
 ^^^^^^^^^^^^^^^^^
@@ -672,7 +702,7 @@ with (e.g. ``VXLAN_ENCAP``) and using specific parameters (e.g. VNI for
 VXLAN).
 
 While they modify traffic and can be used multiple times (order matters),
-unlike `PORT_ID action`_ and friends, they have no impact on steering.
+unlike `PORT_REPRESENTOR Action`_ and friends, they don't impact on steering.
 
 As described in `actions order and repetition`_ this means they are useless
 if used alone in an action list, the resulting traffic gets dropped unless
@@ -771,22 +801,15 @@ their representors
 
 ::
 
-   flow create 3 ingress pattern / end actions port_id id 4 / end
-   flow create 4 ingress pattern / end actions port_id id 3 / end
-
-More practical example with MAC address restrictions
-
-::
-
-   flow create 3 ingress
-       pattern eth dst is {VF 1 MAC} / end
-       actions port_id id 4 / end
+   flow create 3 transfer
+      pattern represented_port ethdev_port_id is 3 / end
+      actions represented_port ethdev_port_id 4 / end
 
 ::
 
-   flow create 4 ingress
-       pattern eth src is {VF 1 MAC} / end
-       actions port_id id 3 / end
+   flow create 3 transfer
+      pattern represented_port ethdev_port_id is 4 / end
+      actions represented_port ethdev_port_id 3 / end
 
 
 Sharing Broadcasts
@@ -796,32 +819,58 @@ From outside to PF and VFs
 
 ::
 
-   flow create 3 ingress
-      pattern eth dst is ff:ff:ff:ff:ff:ff / end
-      actions port_id id 3 / port_id id 4 / port_id id 5 / end
+   flow create 3 transfer
+      pattern
+         represented_port ethdev_port_id is 3 /
+         eth dst is ff:ff:ff:ff:ff:ff /
+         end
+      actions
+         port_representor ethdev_port_id 3 /
+         represented_port ethdev_port_id 4 /
+         represented_port ethdev_port_id 5 /
+         end
 
-Note ``port_id id 3`` is necessary otherwise only VFs would receive matching
+Note ``port_representor ethdev_port_id 3`` is necessary otherwise only VFs would receive matching
 traffic.
 
 From PF to outside and VFs
 
 ::
 
-   flow create 3 egress
-      pattern eth dst is ff:ff:ff:ff:ff:ff / end
-      actions port / port_id id 4 / port_id id 5 / end
+   flow create 3 transfer
+      pattern
+         port_representor ethdev_port_id is 3 /
+         eth dst is ff:ff:ff:ff:ff:ff /
+         end
+      actions
+         represented_port ethdev_port_id 3 /
+         represented_port ethdev_port_id 4 /
+         represented_port ethdev_port_id 5 /
+         end
 
 From VFs to outside and PF
 
 ::
 
-   flow create 4 ingress
-      pattern eth dst is ff:ff:ff:ff:ff:ff src is {VF 1 MAC} / end
-      actions port_id id 3 / port_id id 5 / end
+   flow create 3 transfer
+      pattern
+         represented_port ethdev_port_id is 4 /
+         eth dst is ff:ff:ff:ff:ff:ff /
+         end
+      actions
+         represented_port ethdev_port_id 3 /
+         port_representor ethdev_port_id 3 /
+         end
 
-   flow create 5 ingress
-      pattern eth dst is ff:ff:ff:ff:ff:ff src is {VF 2 MAC} / end
-      actions port_id id 4 / port_id id 4 / end
+   flow create 3 transfer
+      pattern
+         represented_port ethdev_port_id is 5 /
+         eth dst is ff:ff:ff:ff:ff:ff /
+         end
+      actions
+         represented_port ethdev_port_id 3 /
+         port_representor ethdev_port_id 3 /
+         end
 
 Similar ``33:33:*`` rules based on known MAC addresses should be added for
 IPv6 traffic.
@@ -852,10 +901,13 @@ endpoint might not be supported and action list must provide one
 
 ::
 
-   flow create 5 ingress
-      pattern eth src is {VF 2 MAC} / end
-      actions vxlan_encap vni 42 / port_id id 3 / end
+   flow create 3 transfer
+      pattern represented_port ethdev_port_id is 5 / end
+      actions vxlan_encap vni 42 / represented_port ethdev_port_id 3 / end
 
-   flow create 3 ingress
-      pattern vxlan vni is 42 / end
-      actions vxlan_decap / port_id id 5 / end
+   flow create 3 transfer
+      pattern
+         represented_port ethdev_port_id is 3 /
+         vxlan vni is 42 /
+         end
+      actions vxlan_decap / represented_port ethdev_port_id 5 / end
