@@ -782,6 +782,8 @@ struct action_vxlan_encap_data sample_vxlan_encap[RAW_SAMPLE_CONFS_MAX_NUM];
 struct action_nvgre_encap_data sample_nvgre_encap[RAW_SAMPLE_CONFS_MAX_NUM];
 struct action_rss_data sample_rss_data[RAW_SAMPLE_CONFS_MAX_NUM];
 struct rte_flow_action_vf sample_vf[RAW_SAMPLE_CONFS_MAX_NUM];
+struct rte_flow_action_ethdev sample_port_representor[RAW_SAMPLE_CONFS_MAX_NUM];
+struct rte_flow_action_ethdev sample_represented_port[RAW_SAMPLE_CONFS_MAX_NUM];
 
 static const char *const modify_field_ops[] = {
 	"set", "add", "sub", NULL
@@ -10872,6 +10874,18 @@ cmd_set_raw_parsed_sample(const struct buffer *in)
 			size = sizeof(struct rte_flow_action_nvgre_encap);
 			parse_setup_nvgre_encap_data(&sample_nvgre_encap[idx]);
 			action->conf = &sample_nvgre_encap[idx];
+			break;
+		case RTE_FLOW_ACTION_TYPE_PORT_REPRESENTOR:
+			size = sizeof(struct rte_flow_action_ethdev);
+			rte_memcpy(&sample_port_representor[idx],
+					(const void *)action->conf, size);
+			action->conf = &sample_port_representor[idx];
+			break;
+		case RTE_FLOW_ACTION_TYPE_REPRESENTED_PORT:
+			size = sizeof(struct rte_flow_action_ethdev);
+			rte_memcpy(&sample_represented_port[idx],
+					(const void *)action->conf, size);
+			action->conf = &sample_represented_port[idx];
 			break;
 		default:
 			fprintf(stderr, "Error - Not supported action\n");
