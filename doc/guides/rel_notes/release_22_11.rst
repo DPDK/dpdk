@@ -55,6 +55,10 @@ New Features
      Also, make sure to start the actual text at the margin.
      =======================================================
 
+* **Updated NXP dpaa2 driver.**
+
+  * Added support for flow action REPRESENTED_PORT.
+
 * **Updated Wangxun ngbe driver.**
 
   * Added support to set device link down/up.
