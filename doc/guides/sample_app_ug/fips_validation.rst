@@ -64,6 +64,8 @@ ACVP
     * AES-XTS (128,256) - AFT
     * HMAC (SHA1, SHA224, SHA256, SHA384, SHA512)
     * SHA (1, 256, 384, 512) - AFT, MCT
+    * TDES-CBC - AFT, MCT
+    * TDES-ECB - AFT, MCT
 
 
 Application Information

@@ -1291,7 +1291,7 @@ fips_mct_tdes_test(void)
 #define TDES_BLOCK_SIZE		8
 #define TDES_EXTERN_ITER	400
 #define TDES_INTERN_ITER	10000
-	struct fips_val val = {NULL, 0}, val_key;
+	struct fips_val val[3] = {{NULL, 0},}, val_key, pt, ct, iv;
 	uint8_t prev_out[TDES_BLOCK_SIZE] = {0};
 	uint8_t prev_prev_out[TDES_BLOCK_SIZE] = {0};
 	uint8_t prev_in[TDES_BLOCK_SIZE] = {0};
@@ -1299,16 +1299,25 @@ fips_mct_tdes_test(void)
 	int ret;
 	int test_mode = info.interim_info.tdes_data.test_mode;
 
+	pt.len = vec.pt.len;
+	pt.val = calloc(1, pt.len);
+	ct.len = vec.ct.len;
+	ct.val = calloc(1, ct.len);
+	iv.len = vec.iv.len;
+	iv.val = calloc(1, iv.len);
+
 	for (i = 0; i < TDES_EXTERN_ITER; i++) {
-		if ((i == 0) && (info.version == 21.4f)) {
-			if (!(strstr(info.vec[0], "COUNT")))
-				fprintf(info.fp_wr, "%s%u\n", "COUNT = ", 0);
+		if (info.file_type != FIPS_TYPE_JSON) {
+			if ((i == 0) && (info.version == 21.4f)) {
+				if (!(strstr(info.vec[0], "COUNT")))
+					fprintf(info.fp_wr, "%s%u\n", "COUNT = ", 0);
+			}
+
+			if (i != 0)
+				update_info_vec(i);
+
+			fips_test_write_one_case();
 		}
-
-		if (i != 0)
-			update_info_vec(i);
-
-		fips_test_write_one_case();
 
 		for (j = 0; j < TDES_INTERN_ITER; j++) {
 			ret = fips_run_test();
@@ -1323,7 +1332,7 @@ fips_mct_tdes_test(void)
 				return ret;
 			}
 
-			ret = get_writeback_data(&val);
+			ret = get_writeback_data(&val[0]);
 			if (ret < 0)
 				return ret;
 
@@ -1331,51 +1340,61 @@ fips_mct_tdes_test(void)
 				memcpy(prev_in, vec.ct.val, TDES_BLOCK_SIZE);
 
 			if (j == 0) {
-				memcpy(prev_out, val.val, TDES_BLOCK_SIZE);
+				memcpy(prev_out, val[0].val, TDES_BLOCK_SIZE);
+				memcpy(pt.val, vec.pt.val, pt.len);
+				memcpy(ct.val, vec.ct.val, ct.len);
+				memcpy(iv.val, vec.iv.val, iv.len);
 
 				if (info.op == FIPS_TEST_ENC_AUTH_GEN) {
 					if (test_mode == TDES_MODE_ECB) {
-						memcpy(vec.pt.val, val.val,
+						memcpy(vec.pt.val, val[0].val,
 							   TDES_BLOCK_SIZE);
 					} else {
 						memcpy(vec.pt.val, vec.iv.val,
 							   TDES_BLOCK_SIZE);
-						memcpy(vec.iv.val, val.val,
+						memcpy(vec.iv.val, val[0].val,
 							   TDES_BLOCK_SIZE);
 					}
-
+					val[1].val = pt.val;
+					val[1].len = pt.len;
+					val[2].val = iv.val;
+					val[2].len = iv.len;
 				} else {
 					if (test_mode == TDES_MODE_ECB) {
-						memcpy(vec.ct.val, val.val,
+						memcpy(vec.ct.val, val[0].val,
 							   TDES_BLOCK_SIZE);
 					} else {
 						memcpy(vec.iv.val, vec.ct.val,
 							   TDES_BLOCK_SIZE);
-						memcpy(vec.ct.val, val.val,
+						memcpy(vec.ct.val, val[0].val,
 							   TDES_BLOCK_SIZE);
 					}
+					val[1].val = ct.val;
+					val[1].len = ct.len;
+					val[2].val = iv.val;
+					val[2].len = iv.len;
 				}
 				continue;
 			}
 
 			if (info.op == FIPS_TEST_ENC_AUTH_GEN) {
 				if (test_mode == TDES_MODE_ECB) {
-					memcpy(vec.pt.val, val.val,
+					memcpy(vec.pt.val, val[0].val,
 						   TDES_BLOCK_SIZE);
 				} else {
-					memcpy(vec.iv.val, val.val,
+					memcpy(vec.iv.val, val[0].val,
 						   TDES_BLOCK_SIZE);
 					memcpy(vec.pt.val, prev_out,
 						   TDES_BLOCK_SIZE);
 				}
 			} else {
 				if (test_mode == TDES_MODE_ECB) {
-					memcpy(vec.ct.val, val.val,
+					memcpy(vec.ct.val, val[0].val,
 						   TDES_BLOCK_SIZE);
 				} else {
 					memcpy(vec.iv.val, vec.ct.val,
 						   TDES_BLOCK_SIZE);
-					memcpy(vec.ct.val, val.val,
+					memcpy(vec.ct.val, val[0].val,
 						   TDES_BLOCK_SIZE);
 				}
 			}
@@ -1383,14 +1402,15 @@ fips_mct_tdes_test(void)
 			if (j == TDES_INTERN_ITER - 1)
 				continue;
 
-			memcpy(prev_out, val.val, TDES_BLOCK_SIZE);
+			memcpy(prev_out, val[0].val, TDES_BLOCK_SIZE);
 
 			if (j == TDES_INTERN_ITER - 3)
-				memcpy(prev_prev_out, val.val, TDES_BLOCK_SIZE);
+				memcpy(prev_prev_out, val[0].val, TDES_BLOCK_SIZE);
 		}
 
-		info.parse_writeback(&val);
-		fprintf(info.fp_wr, "\n");
+		info.parse_writeback(val);
+		if (info.file_type != FIPS_TYPE_JSON)
+			fprintf(info.fp_wr, "\n");
 
 		if (i == TDES_EXTERN_ITER - 1)
 			continue;
@@ -1412,19 +1432,19 @@ fips_mct_tdes_test(void)
 
 			switch (info.interim_info.tdes_data.nb_keys) {
 			case 3:
-				val_key.val[k] ^= val.val[k];
+				val_key.val[k] ^= val[0].val[k];
 				val_key.val[k + 8] ^= prev_out[k];
 				val_key.val[k + 16] ^= prev_prev_out[k];
 				break;
 			case 2:
-				val_key.val[k] ^= val.val[k];
+				val_key.val[k] ^= val[0].val[k];
 				val_key.val[k + 8] ^= prev_out[k];
-				val_key.val[k + 16] ^= val.val[k];
+				val_key.val[k + 16] ^= val[0].val[k];
 				break;
 			default: /* case 1 */
-				val_key.val[k] ^= val.val[k];
-				val_key.val[k + 8] ^= val.val[k];
-				val_key.val[k + 16] ^= val.val[k];
+				val_key.val[k] ^= val[0].val[k];
+				val_key.val[k + 8] ^= val[0].val[k];
+				val_key.val[k + 16] ^= val[0].val[k];
 				break;
 			}
 
@@ -1437,22 +1457,25 @@ fips_mct_tdes_test(void)
 
 		if (info.op == FIPS_TEST_ENC_AUTH_GEN) {
 			if (test_mode == TDES_MODE_ECB) {
-				memcpy(vec.pt.val, val.val, TDES_BLOCK_SIZE);
+				memcpy(vec.pt.val, val[0].val, TDES_BLOCK_SIZE);
 			} else {
-				memcpy(vec.iv.val, val.val, TDES_BLOCK_SIZE);
+				memcpy(vec.iv.val, val[0].val, TDES_BLOCK_SIZE);
 				memcpy(vec.pt.val, prev_out, TDES_BLOCK_SIZE);
 			}
 		} else {
 			if (test_mode == TDES_MODE_ECB) {
-				memcpy(vec.ct.val, val.val, TDES_BLOCK_SIZE);
+				memcpy(vec.ct.val, val[0].val, TDES_BLOCK_SIZE);
 			} else {
 				memcpy(vec.iv.val, prev_out, TDES_BLOCK_SIZE);
-				memcpy(vec.ct.val, val.val, TDES_BLOCK_SIZE);
+				memcpy(vec.ct.val, val[0].val, TDES_BLOCK_SIZE);
 			}
 		}
 	}
 
-	free(val.val);
+	free(val[0].val);
+	free(pt.val);
+	free(ct.val);
+	free(iv.val);
 
 	return 0;
 }
@@ -1994,6 +2017,9 @@ fips_test_one_test_group(void)
 		break;
 	case FIPS_TEST_ALGO_SHA:
 		ret = parse_test_sha_json_init();
+		break;
+	case FIPS_TEST_ALGO_TDES:
+		ret = parse_test_tdes_json_init();
 		break;
 	default:
 		return -EINVAL;

@@ -114,6 +114,7 @@ enum fips_tdes_test_types {
 	TDES_VARIABLE_KEY,
 	TDES_VARIABLE_TEXT,
 	TDES_KAT,
+	TDES_AFT, /* Functional Test */
 	TDES_MCT, /* Monte Carlo (Modes) Test */
 	TDES_MMT /* Multi block Message Test */
 };
@@ -290,6 +291,9 @@ parse_test_sha_json_algorithm(void);
 
 int
 parse_test_sha_json_test_type(void);
+
+int
+parse_test_tdes_json_init(void);
 #endif /* USE_JANSSON */
 
 int

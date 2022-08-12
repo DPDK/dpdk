@@ -470,6 +470,9 @@ fips_test_parse_one_json_vector_set(void)
 		info.algo = FIPS_TEST_ALGO_AES_XTS;
 	else if (strstr(algo_str, "SHA"))
 		info.algo = FIPS_TEST_ALGO_SHA;
+	else if (strstr(algo_str, "TDES-CBC") ||
+		strstr(algo_str, "TDES-ECB"))
+		info.algo = FIPS_TEST_ALGO_TDES;
 	else
 		return -EINVAL;
 
