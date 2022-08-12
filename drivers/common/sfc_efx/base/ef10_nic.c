@@ -2117,7 +2117,7 @@ ef10_nic_board_cfg(
 	/* Alignment for WPTR updates */
 	encp->enc_rx_push_align = EF10_RX_WPTR_ALIGN;
 
-	encp->enc_tx_dma_desc_size_max = EFX_MASK32(ESF_DZ_RX_KER_BYTE_CNT);
+	encp->enc_tx_dma_desc_size_max = EFX_MASK32(ESF_DZ_TX_KER_BYTE_CNT);
 	/* No boundary crossing limits */
 	encp->enc_tx_dma_desc_boundary = 0;
 
