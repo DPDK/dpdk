@@ -115,6 +115,7 @@ cnxk_map_actions(struct rte_eth_dev *eth_dev, const struct rte_flow_attr *attr,
 		 struct roc_npc_action in_actions[], uint32_t *flowkey_cfg)
 {
 	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+	const struct rte_flow_action_ethdev *act_ethdev;
 	const struct rte_flow_action_port_id *port_act;
 	const struct rte_flow_action_queue *act_q;
 	struct roc_npc *roc_npc_src = &dev->npc;
@@ -157,13 +158,17 @@ cnxk_map_actions(struct rte_eth_dev *eth_dev, const struct rte_flow_attr *attr,
 			in_actions[i].conf = actions->conf;
 			break;
 
+		case RTE_FLOW_ACTION_TYPE_REPRESENTED_PORT:
 		case RTE_FLOW_ACTION_TYPE_PORT_ID:
 			in_actions[i].type = ROC_NPC_ACTION_TYPE_PORT_ID;
 			in_actions[i].conf = actions->conf;
+			act_ethdev = (const struct rte_flow_action_ethdev *)
+					   actions->conf;
 			port_act = (const struct rte_flow_action_port_id *)
 					   actions->conf;
-			if (rte_eth_dev_get_name_by_port(port_act->id,
-							 if_name)) {
+			if (rte_eth_dev_get_name_by_port(
+			    actions->type != RTE_FLOW_ACTION_TYPE_PORT_ID ?
+			    act_ethdev->port_id : port_act->id, if_name)) {
 				plt_err("Name not found for output port id");
 				goto err_exit;
 			}

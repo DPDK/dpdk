@@ -398,6 +398,11 @@ RTE flow GRE support
 - ``RTE_FLOW_ITEM_TYPE_GRE_KEY`` works only when checksum and routing
   bits in the GRE header are equal to 0.
 
+RTE flow action represented_port support
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+- ``RTE_FLOW_ACTION_TYPE_REPRESENTED_PORT`` only works between a PF and its VFs.
+
 RTE flow action port_id support
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
