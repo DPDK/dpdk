@@ -2003,28 +2003,6 @@ rule or if packets are not addressed to a VF in the first place.
    | ``id``       | VF ID                          |
    +--------------+--------------------------------+
 
-Action: ``PHY_PORT``
-^^^^^^^^^^^^^^^^^^^^
-
-This action is deprecated. Consider:
- - `Action: PORT_REPRESENTOR`_
- - `Action: REPRESENTED_PORT`_
-
-Directs matching traffic to a given physical port index of the underlying
-device.
-
-.. _table_rte_flow_action_phy_port:
-
-.. table:: PHY_PORT
-
-   +--------------+-------------------------------------+
-   | Field        | Value                               |
-   +==============+=====================================+
-   | ``original`` | use original port index if possible |
-   +--------------+-------------------------------------+
-   | ``index``    | physical port index                 |
-   +--------------+-------------------------------------+
-
 Action: ``PORT_ID``
 ^^^^^^^^^^^^^^^^^^^
 This action is deprecated. Consider:

@@ -61,10 +61,6 @@ struct bnxt_ulp_rte_act_info ulp_act_info[] = {
 	.act_type                = BNXT_ULP_ACT_TYPE_SUPPORTED,
 	.proto_act_func          = ulp_rte_vf_act_handler
 	},
-	[RTE_FLOW_ACTION_TYPE_PHY_PORT] = {
-	.act_type                = BNXT_ULP_ACT_TYPE_SUPPORTED,
-	.proto_act_func          = ulp_rte_phy_port_act_handler
-	},
 	[RTE_FLOW_ACTION_TYPE_PORT_ID] = {
 	.act_type                = BNXT_ULP_ACT_TYPE_SUPPORTED,
 	.proto_act_func          = ulp_rte_port_act_handler

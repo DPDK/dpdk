@@ -244,8 +244,6 @@ Supported actions (***transfer*** rules):
 
 - MARK
 
-- PHY_PORT
-
 - PF
 
 - VF

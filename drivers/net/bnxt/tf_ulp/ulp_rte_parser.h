@@ -194,11 +194,6 @@ int32_t
 ulp_rte_port_act_handler(const struct rte_flow_action *act_item,
 			 struct ulp_rte_parser_params *params);
 
-/* Function to handle the parsing of RTE Flow action phy_port. */
-int32_t
-ulp_rte_phy_port_act_handler(const struct rte_flow_action *action_item,
-			     struct ulp_rte_parser_params *params);
-
 /* Function to handle the parsing of RTE Flow action pop vlan. */
 int32_t
 ulp_rte_of_pop_vlan_act_handler(const struct rte_flow_action *action_item,

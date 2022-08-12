@@ -488,9 +488,6 @@ enum index {
 	ACTION_VF,
 	ACTION_VF_ORIGINAL,
 	ACTION_VF_ID,
-	ACTION_PHY_PORT,
-	ACTION_PHY_PORT_ORIGINAL,
-	ACTION_PHY_PORT_INDEX,
 	ACTION_PORT_ID,
 	ACTION_PORT_ID_ORIGINAL,
 	ACTION_PORT_ID_ID,
@@ -1800,7 +1797,6 @@ static const enum index next_action[] = {
 	ACTION_RSS,
 	ACTION_PF,
 	ACTION_VF,
-	ACTION_PHY_PORT,
 	ACTION_PORT_ID,
 	ACTION_METER,
 	ACTION_METER_COLOR,
@@ -1890,13 +1886,6 @@ static const enum index action_rss[] = {
 static const enum index action_vf[] = {
 	ACTION_VF_ORIGINAL,
 	ACTION_VF_ID,
-	ACTION_NEXT,
-	ZERO,
-};
-
-static const enum index action_phy_port[] = {
-	ACTION_PHY_PORT_ORIGINAL,
-	ACTION_PHY_PORT_INDEX,
 	ACTION_NEXT,
 	ZERO,
 };
@@ -5239,30 +5228,6 @@ static const struct token token_list[] = {
 		.help = "VF ID",
 		.next = NEXT(action_vf, NEXT_ENTRY(COMMON_UNSIGNED)),
 		.args = ARGS(ARGS_ENTRY(struct rte_flow_action_vf, id)),
-		.call = parse_vc_conf,
-	},
-	[ACTION_PHY_PORT] = {
-		.name = "phy_port",
-		.help = "direct packets to physical port index",
-		.priv = PRIV_ACTION(PHY_PORT,
-				    sizeof(struct rte_flow_action_phy_port)),
-		.next = NEXT(action_phy_port),
-		.call = parse_vc,
-	},
-	[ACTION_PHY_PORT_ORIGINAL] = {
-		.name = "original",
-		.help = "use original port index if possible",
-		.next = NEXT(action_phy_port, NEXT_ENTRY(COMMON_BOOLEAN)),
-		.args = ARGS(ARGS_ENTRY_BF(struct rte_flow_action_phy_port,
-					   original, 1)),
-		.call = parse_vc_conf,
-	},
-	[ACTION_PHY_PORT_INDEX] = {
-		.name = "index",
-		.help = "physical port index",
-		.next = NEXT(action_phy_port, NEXT_ENTRY(COMMON_UNSIGNED)),
-		.args = ARGS(ARGS_ENTRY(struct rte_flow_action_phy_port,
-					index)),
 		.call = parse_vc_conf,
 	},
 	[ACTION_PORT_ID] = {

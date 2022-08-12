@@ -83,7 +83,6 @@ static const
 enum rte_flow_action_type dpaa2_supported_action_type[] = {
 	RTE_FLOW_ACTION_TYPE_END,
 	RTE_FLOW_ACTION_TYPE_QUEUE,
-	RTE_FLOW_ACTION_TYPE_PHY_PORT,
 	RTE_FLOW_ACTION_TYPE_PORT_ID,
 	RTE_FLOW_ACTION_TYPE_REPRESENTED_PORT,
 	RTE_FLOW_ACTION_TYPE_RSS
@@ -92,7 +91,6 @@ enum rte_flow_action_type dpaa2_supported_action_type[] = {
 static const
 enum rte_flow_action_type dpaa2_supported_fs_action_type[] = {
 	RTE_FLOW_ACTION_TYPE_QUEUE,
-	RTE_FLOW_ACTION_TYPE_PHY_PORT,
 	RTE_FLOW_ACTION_TYPE_PORT_ID,
 	RTE_FLOW_ACTION_TYPE_REPRESENTED_PORT,
 };
@@ -3281,17 +3279,11 @@ static inline struct rte_eth_dev *
 dpaa2_flow_redirect_dev(struct dpaa2_dev_priv *priv,
 	const struct rte_flow_action *action)
 {
-	const struct rte_flow_action_phy_port *phy_port;
 	const struct rte_flow_action_port_id *port_id;
 	int idx = -1;
 	struct rte_eth_dev *dest_dev;
 
-	if (action->type == RTE_FLOW_ACTION_TYPE_PHY_PORT) {
-		phy_port = (const struct rte_flow_action_phy_port *)
-					action->conf;
-		if (!phy_port->original)
-			idx = phy_port->index;
-	} else if (action->type == RTE_FLOW_ACTION_TYPE_PORT_ID) {
+	if (action->type == RTE_FLOW_ACTION_TYPE_PORT_ID) {
 		port_id = (const struct rte_flow_action_port_id *)
 					action->conf;
 		if (!port_id->original)
@@ -3345,7 +3337,6 @@ dpaa2_flow_verify_action(
 			}
 			break;
 		case RTE_FLOW_ACTION_TYPE_REPRESENTED_PORT:
-		case RTE_FLOW_ACTION_TYPE_PHY_PORT:
 		case RTE_FLOW_ACTION_TYPE_PORT_ID:
 			if (!dpaa2_flow_redirect_dev(priv, &actions[j])) {
 				DPAA2_PMD_ERR("Invalid port id of action");
@@ -3523,7 +3514,6 @@ dpaa2_generic_flow_set(struct rte_flow *flow,
 		switch (actions[j].type) {
 		case RTE_FLOW_ACTION_TYPE_QUEUE:
 		case RTE_FLOW_ACTION_TYPE_REPRESENTED_PORT:
-		case RTE_FLOW_ACTION_TYPE_PHY_PORT:
 		case RTE_FLOW_ACTION_TYPE_PORT_ID:
 			memset(&action, 0, sizeof(struct dpni_fs_action_cfg));
 			flow->action = actions[j].type;
@@ -4098,7 +4088,6 @@ int dpaa2_flow_destroy(struct rte_eth_dev *dev,
 	switch (flow->action) {
 	case RTE_FLOW_ACTION_TYPE_QUEUE:
 	case RTE_FLOW_ACTION_TYPE_REPRESENTED_PORT:
-	case RTE_FLOW_ACTION_TYPE_PHY_PORT:
 	case RTE_FLOW_ACTION_TYPE_PORT_ID:
 		if (priv->num_rx_tc > 1) {
 			/* Remove entry from QoS table first */

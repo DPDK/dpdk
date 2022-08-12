@@ -598,7 +598,6 @@ ch_rte_parse_atype_switch(const struct rte_flow_action *a,
 	const struct rte_flow_action_set_ipv4 *ipv4;
 	const struct rte_flow_action_set_ipv6 *ipv6;
 	const struct rte_flow_action_set_tp *tp_port;
-	const struct rte_flow_action_phy_port *port;
 	const struct rte_flow_action_set_mac *mac;
 	int item_index;
 	u16 tmp_vlan;
@@ -644,10 +643,6 @@ ch_rte_parse_atype_switch(const struct rte_flow_action *a,
 		break;
 	case RTE_FLOW_ACTION_TYPE_OF_POP_VLAN:
 		fs->newvlan = VLAN_REMOVE;
-		break;
-	case RTE_FLOW_ACTION_TYPE_PHY_PORT:
-		port = (const struct rte_flow_action_phy_port *)a->conf;
-		fs->eport = port->index;
 		break;
 	case RTE_FLOW_ACTION_TYPE_SET_IPV4_SRC:
 		item_index = cxgbe_get_flow_item_index(items,
@@ -836,7 +831,6 @@ cxgbe_rtef_parse_actions(struct rte_flow *flow,
 			goto action_switch;
 		case RTE_FLOW_ACTION_TYPE_OF_PUSH_VLAN:
 		case RTE_FLOW_ACTION_TYPE_OF_POP_VLAN:
-		case RTE_FLOW_ACTION_TYPE_PHY_PORT:
 		case RTE_FLOW_ACTION_TYPE_MAC_SWAP:
 		case RTE_FLOW_ACTION_TYPE_SET_IPV4_SRC:
 		case RTE_FLOW_ACTION_TYPE_SET_IPV4_DST:
