@@ -507,31 +507,6 @@ ulp_rte_parser_implicit_act_port_process(struct ulp_rte_parser_params *params)
 	return BNXT_TF_RC_SUCCESS;
 }
 
-/* Function to handle the parsing of RTE Flow item PF Header. */
-int32_t
-ulp_rte_pf_hdr_handler(const struct rte_flow_item *item __rte_unused,
-		       struct ulp_rte_parser_params *params)
-{
-	uint16_t port_id = 0;
-	uint16_t svif_mask = 0xFFFF;
-	uint32_t ifindex;
-
-	/* Get the implicit port id */
-	port_id = ULP_COMP_FLD_IDX_RD(params, BNXT_ULP_CF_IDX_INCOMING_IF);
-
-	/* perform the conversion from dpdk port to bnxt ifindex */
-	if (ulp_port_db_dev_port_to_ulp_index(params->ulp_ctx,
-					      port_id,
-					      &ifindex)) {
-		BNXT_TF_DBG(ERR, "ParseErr:Portid is not valid\n");
-		return BNXT_TF_RC_ERROR;
-	}
-
-	/* Update the SVIF details */
-	return ulp_rte_parser_svif_set(params, ifindex, svif_mask,
-				       BNXT_ULP_DIR_INVALID);
-}
-
 /* Function to handle the parsing of RTE Flow item VF Header. */
 int32_t
 ulp_rte_vf_hdr_handler(const struct rte_flow_item *item,

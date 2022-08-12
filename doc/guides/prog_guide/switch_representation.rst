@@ -624,24 +624,10 @@ Same restrictions as `PORT_ID pattern item`_.
 
 - Targets **A**, **B** or **C** in `traffic steering`_.
 
-PF Pattern Item
-^^^^^^^^^^^^^^^
-
-Matches traffic originating from (ingress) or going to (egress) the physical
-function of the current device.
-
-If supported, should work even if the physical function is not managed by
-the application and thus not associated with a DPDK port ID. Its behavior is
-otherwise similar to `PORT_ID pattern item`_ using PF port ID.
-
-- Matches **A** in `traffic steering`_.
-
 PF Action
 ^^^^^^^^^
 
 Directs matching traffic to the physical function of the current device.
-
-Same restrictions as `PF pattern item`_.
 
 - Targets **A** in `traffic steering`_.
 

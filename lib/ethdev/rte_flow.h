@@ -195,20 +195,6 @@ enum rte_flow_item_type {
 	 *
 	 * [META]
 	 *
-	 * Matches traffic originating from (ingress) or going to (egress)
-	 * the physical function of the current device.
-	 *
-	 * No associated specification structure.
-	 */
-	RTE_FLOW_ITEM_TYPE_PF,
-
-	/**
-	 * @deprecated
-	 * @see RTE_FLOW_ITEM_TYPE_PORT_REPRESENTOR
-	 * @see RTE_FLOW_ITEM_TYPE_REPRESENTED_PORT
-	 *
-	 * [META]
-	 *
 	 * Matches traffic originating from (ingress) or going to (egress) a
 	 * given virtual function of the current device.
 	 *
@@ -732,7 +718,6 @@ static const struct rte_flow_item_any rte_flow_item_any_mask = {
  *
  * - Can be specified multiple times to match traffic addressed to several
  *   VF IDs.
- * - Can be combined with a PF item to match both PF and VF traffic.
  *
  * A zeroed mask can be used to match any VF ID.
  */

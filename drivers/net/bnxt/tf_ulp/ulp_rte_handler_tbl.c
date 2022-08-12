@@ -260,10 +260,6 @@ struct bnxt_ulp_rte_hdr_info ulp_hdr_info[] = {
 	.hdr_type                = BNXT_ULP_HDR_TYPE_SUPPORTED,
 	.proto_hdr_func          = ulp_rte_item_any_handler
 	},
-	[RTE_FLOW_ITEM_TYPE_PF] = {
-	.hdr_type                = BNXT_ULP_HDR_TYPE_SUPPORTED,
-	.proto_hdr_func          = ulp_rte_pf_hdr_handler
-	},
 	[RTE_FLOW_ITEM_TYPE_VF] = {
 	.hdr_type                = BNXT_ULP_HDR_TYPE_SUPPORTED,
 	.proto_hdr_func          = ulp_rte_vf_hdr_handler

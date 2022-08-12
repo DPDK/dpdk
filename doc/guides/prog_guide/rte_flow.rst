@@ -535,37 +535,6 @@ Usage example, matching non-TCPv4 packets only:
    | 4     | END      |
    +-------+----------+
 
-Item: ``PF``
-^^^^^^^^^^^^
-
-This item is deprecated. Consider:
- - `Item: PORT_REPRESENTOR`_
- - `Item: REPRESENTED_PORT`_
-
-Matches traffic originating from (ingress) or going to (egress) the physical
-function of the current device.
-
-If supported, should work even if the physical function is not managed by
-the application and thus not associated with a DPDK port ID.
-
-- Can be combined with any number of `Item: VF`_ to match both PF and VF
-  traffic.
-- ``spec``, ``last`` and ``mask`` must not be set.
-
-.. _table_rte_flow_item_pf:
-
-.. table:: PF
-
-   +----------+-------+
-   | Field    | Value |
-   +==========+=======+
-   | ``spec`` | unset |
-   +----------+-------+
-   | ``last`` | unset |
-   +----------+-------+
-   | ``mask`` | unset |
-   +----------+-------+
-
 Item: ``VF``
 ^^^^^^^^^^^^
 
@@ -584,7 +553,6 @@ separate entities, should be addressed through their own DPDK port IDs.
 
 - Can be specified multiple times to match traffic addressed to several VF
   IDs.
-- Can be combined with a PF item to match both PF and VF traffic.
 - Default ``mask`` matches any VF ID.
 
 .. _table_rte_flow_item_vf:
@@ -2073,8 +2041,6 @@ This action is deprecated. Consider:
 
 Directs matching traffic to the physical function (PF) of the current
 device.
-
-See `Item: PF`_.
 
 - No configurable properties.
 

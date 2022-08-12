@@ -1686,42 +1686,6 @@ sfc_mae_rule_parse_item_phy_port(const struct rte_flow_item *item,
 }
 
 static int
-sfc_mae_rule_parse_item_pf(const struct rte_flow_item *item,
-			   struct sfc_flow_parse_ctx *ctx,
-			   struct rte_flow_error *error)
-{
-	struct sfc_mae_parse_ctx *ctx_mae = ctx->mae;
-	const efx_nic_cfg_t *encp = efx_nic_cfg_get(ctx_mae->sa->nic);
-	efx_mport_sel_t mport_v;
-	int rc;
-
-	if (ctx_mae->match_mport_set) {
-		return rte_flow_error_set(error, ENOTSUP,
-				RTE_FLOW_ERROR_TYPE_ITEM, item,
-				"Can't handle multiple traffic source items");
-	}
-
-	rc = efx_mae_mport_by_pcie_function(encp->enc_pf, EFX_PCI_VF_INVALID,
-					    &mport_v);
-	if (rc != 0) {
-		return rte_flow_error_set(error, rc,
-				RTE_FLOW_ERROR_TYPE_ITEM, item,
-				"Failed to convert the PF ID");
-	}
-
-	rc = efx_mae_match_spec_mport_set(ctx_mae->match_spec, &mport_v, NULL);
-	if (rc != 0) {
-		return rte_flow_error_set(error, rc,
-				RTE_FLOW_ERROR_TYPE_ITEM, item,
-				"Failed to set MPORT for the PF");
-	}
-
-	ctx_mae->match_mport_set = B_TRUE;
-
-	return 0;
-}
-
-static int
 sfc_mae_rule_parse_item_vf(const struct rte_flow_item *item,
 			   struct sfc_flow_parse_ctx *ctx,
 			   struct rte_flow_error *error)
@@ -2590,18 +2554,6 @@ static const struct sfc_flow_item sfc_flow_items[] = {
 		.layer = SFC_FLOW_ITEM_ANY_LAYER,
 		.ctx_type = SFC_FLOW_PARSE_CTX_MAE,
 		.parse = sfc_mae_rule_parse_item_phy_port,
-	},
-	{
-		.type = RTE_FLOW_ITEM_TYPE_PF,
-		.name = "PF",
-		/*
-		 * In terms of RTE flow, this item is a META one,
-		 * and its position in the pattern is don't care.
-		 */
-		.prev_layer = SFC_FLOW_ITEM_ANY_LAYER,
-		.layer = SFC_FLOW_ITEM_ANY_LAYER,
-		.ctx_type = SFC_FLOW_PARSE_CTX_MAE,
-		.parse = sfc_mae_rule_parse_item_pf,
 	},
 	{
 		.type = RTE_FLOW_ITEM_TYPE_VF,

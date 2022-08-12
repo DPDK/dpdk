@@ -289,22 +289,6 @@ ch_rte_parsetype_vlan(const void *dmask, const struct rte_flow_item *item,
 }
 
 static int
-ch_rte_parsetype_pf(const void *dmask __rte_unused,
-		    const struct rte_flow_item *item __rte_unused,
-		    struct ch_filter_specification *fs,
-		    struct rte_flow_error *e __rte_unused)
-{
-	struct rte_flow *flow = (struct rte_flow *)fs->private;
-	struct rte_eth_dev *dev = flow->dev;
-	struct adapter *adap = ethdev2adap(dev);
-
-	CXGBE_FILL_FS(1, 1, pfvf_vld);
-
-	CXGBE_FILL_FS(adap->pf, 0x7, pf);
-	return 0;
-}
-
-static int
 ch_rte_parsetype_vf(const void *dmask, const struct rte_flow_item *item,
 		    struct ch_filter_specification *fs,
 		    struct rte_flow_error *e)
@@ -1020,11 +1004,6 @@ static struct chrte_fparse parseitem[] = {
 	[RTE_FLOW_ITEM_TYPE_TCP] = {
 		.fptr  = ch_rte_parsetype_tcp,
 		.dmask = &rte_flow_item_tcp_mask,
-	},
-
-	[RTE_FLOW_ITEM_TYPE_PF] = {
-		.fptr = ch_rte_parsetype_pf,
-		.dmask = NULL,
 	},
 
 	[RTE_FLOW_ITEM_TYPE_VF] = {
