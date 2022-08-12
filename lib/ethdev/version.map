@@ -98,6 +98,7 @@ DPDK_23 {
 	rte_eth_remove_rx_callback;
 	rte_eth_remove_tx_callback;
 	rte_eth_rx_burst_mode_get;
+	rte_eth_rx_metadata_negotiate;
 	rte_eth_rx_queue_info_get;
 	rte_eth_rx_queue_setup;
 	rte_eth_set_queue_rate_limit;
@@ -250,7 +251,6 @@ EXPERIMENTAL {
 	rte_eth_dev_capability_name;
 	rte_eth_dev_conf_get;
 	rte_eth_macaddrs_get;
-	rte_eth_rx_metadata_negotiate;
 	rte_flow_flex_item_create;
 	rte_flow_flex_item_release;
 	rte_flow_pick_transfer_proxy;

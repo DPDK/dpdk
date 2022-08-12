@@ -5030,9 +5030,6 @@ int rte_eth_representor_info_get(uint16_t port_id,
 #define RTE_ETH_RX_METADATA_TUNNEL_ID RTE_BIT64(2)
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Negotiate the NIC's ability to deliver specific kinds of metadata to the PMD.
  *
  * Invoke this API before the first rte_eth_dev_configure() invocation
@@ -5071,7 +5068,6 @@ int rte_eth_representor_info_get(uint16_t port_id,
  *   - (-EIO) if the device is removed;
  *   - (0) on success
  */
-__rte_experimental
 int rte_eth_rx_metadata_negotiate(uint16_t port_id, uint64_t *features);
 
 /** Flag to offload IP reassembly for IPv4 packets. */

@@ -162,6 +162,9 @@ API Changes
   configuration (``dev_conf.fdir_conf``). Moved corresponding structures
   to internal API since some drivers still use it internally.
 
+* ethdev: Promoted ``rte_eth_rx_metadata_negotiate()``
+  from experimental to stable.
+
 * telemetry: The allowed characters in names for dictionary values
   are now limited to alphanumeric characters and a small subset of additional
   printable characters.
