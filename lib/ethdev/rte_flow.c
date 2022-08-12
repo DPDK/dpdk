@@ -97,7 +97,6 @@ static const struct rte_flow_desc_data rte_flow_desc_item[] = {
 	MK_FLOW_ITEM(VOID, 0),
 	MK_FLOW_ITEM(INVERT, 0),
 	MK_FLOW_ITEM(ANY, sizeof(struct rte_flow_item_any)),
-	MK_FLOW_ITEM(PHY_PORT, sizeof(struct rte_flow_item_phy_port)),
 	MK_FLOW_ITEM(PORT_ID, sizeof(struct rte_flow_item_port_id)),
 	MK_FLOW_ITEM(RAW, sizeof(struct rte_flow_item_raw)),
 	MK_FLOW_ITEM(ETH, sizeof(struct rte_flow_item_eth)),

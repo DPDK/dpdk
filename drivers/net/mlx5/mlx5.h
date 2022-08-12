@@ -850,7 +850,7 @@ struct mlx5_flow_meter_info {
 	 * applications) at the device level.
 	 *
 	 * It complements the behavior of some pattern items such as
-	 * RTE_FLOW_ITEM_TYPE_PHY_PORT and is meaningless without them.
+	 * RTE_FLOW_ITEM_TYPE_REPRESENTED_PORT and is meaningless without them.
 	 *
 	 * When transferring flow rules, ingress and egress attributes keep
 	 * their original meaning, as if processing traffic emitted or

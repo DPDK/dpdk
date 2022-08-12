@@ -250,8 +250,6 @@ enum index {
 	ITEM_INVERT,
 	ITEM_ANY,
 	ITEM_ANY_NUM,
-	ITEM_PHY_PORT,
-	ITEM_PHY_PORT_INDEX,
 	ITEM_PORT_ID,
 	ITEM_PORT_ID_ID,
 	ITEM_MARK,
@@ -1276,7 +1274,6 @@ static const enum index next_item[] = {
 	ITEM_VOID,
 	ITEM_INVERT,
 	ITEM_ANY,
-	ITEM_PHY_PORT,
 	ITEM_PORT_ID,
 	ITEM_MARK,
 	ITEM_RAW,
@@ -1342,12 +1339,6 @@ static const enum index item_fuzzy[] = {
 
 static const enum index item_any[] = {
 	ITEM_ANY_NUM,
-	ITEM_NEXT,
-	ZERO,
-};
-
-static const enum index item_phy_port[] = {
-	ITEM_PHY_PORT_INDEX,
 	ITEM_NEXT,
 	ZERO,
 };
@@ -3450,21 +3441,6 @@ static const struct token token_list[] = {
 		.help = "number of layers covered",
 		.next = NEXT(item_any, NEXT_ENTRY(COMMON_UNSIGNED), item_param),
 		.args = ARGS(ARGS_ENTRY(struct rte_flow_item_any, num)),
-	},
-	[ITEM_PHY_PORT] = {
-		.name = "phy_port",
-		.help = "match traffic from/to a specific physical port",
-		.priv = PRIV_ITEM(PHY_PORT,
-				  sizeof(struct rte_flow_item_phy_port)),
-		.next = NEXT(item_phy_port),
-		.call = parse_vc,
-	},
-	[ITEM_PHY_PORT_INDEX] = {
-		.name = "index",
-		.help = "physical port index",
-		.next = NEXT(item_phy_port, NEXT_ENTRY(COMMON_UNSIGNED),
-			     item_param),
-		.args = ARGS(ARGS_ENTRY(struct rte_flow_item_phy_port, index)),
 	},
 	[ITEM_PORT_ID] = {
 		.name = "port_id",

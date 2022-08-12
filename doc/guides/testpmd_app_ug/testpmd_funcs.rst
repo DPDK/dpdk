@@ -3458,10 +3458,6 @@ This section lists supported pattern items and their attributes, if any.
 
   - ``num {unsigned}``: number of layers covered.
 
-- ``phy_port``: match traffic from/to a specific physical port.
-
-  - ``index {unsigned}``: physical port index.
-
 - ``port_id``: match traffic from/to a given DPDK port ID.
 
   - ``id {unsigned}``: DPDK port ID.

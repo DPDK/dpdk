@@ -1628,63 +1628,6 @@ sfc_mae_rule_parse_item_ethdev_based(const struct rte_flow_item *item,
 	return 0;
 }
 
-static int
-sfc_mae_rule_parse_item_phy_port(const struct rte_flow_item *item,
-				 struct sfc_flow_parse_ctx *ctx,
-				 struct rte_flow_error *error)
-{
-	struct sfc_mae_parse_ctx *ctx_mae = ctx->mae;
-	const struct rte_flow_item_phy_port supp_mask = {
-		.index = 0xffffffff,
-	};
-	const void *def_mask = &rte_flow_item_phy_port_mask;
-	const struct rte_flow_item_phy_port *spec = NULL;
-	const struct rte_flow_item_phy_port *mask = NULL;
-	efx_mport_sel_t mport_v;
-	int rc;
-
-	if (ctx_mae->match_mport_set) {
-		return rte_flow_error_set(error, ENOTSUP,
-				RTE_FLOW_ERROR_TYPE_ITEM, item,
-				"Can't handle multiple traffic source items");
-	}
-
-	rc = sfc_flow_parse_init(item,
-				 (const void **)&spec, (const void **)&mask,
-				 (const void *)&supp_mask, def_mask,
-				 sizeof(struct rte_flow_item_phy_port), error);
-	if (rc != 0)
-		return rc;
-
-	if (mask->index != supp_mask.index) {
-		return rte_flow_error_set(error, EINVAL,
-				RTE_FLOW_ERROR_TYPE_ITEM, item,
-				"Bad mask in the PHY_PORT pattern item");
-	}
-
-	/* If "spec" is not set, could be any physical port */
-	if (spec == NULL)
-		return 0;
-
-	rc = efx_mae_mport_by_phy_port(spec->index, &mport_v);
-	if (rc != 0) {
-		return rte_flow_error_set(error, rc,
-				RTE_FLOW_ERROR_TYPE_ITEM, item,
-				"Failed to convert the PHY_PORT index");
-	}
-
-	rc = efx_mae_match_spec_mport_set(ctx_mae->match_spec, &mport_v, NULL);
-	if (rc != 0) {
-		return rte_flow_error_set(error, rc,
-				RTE_FLOW_ERROR_TYPE_ITEM, item,
-				"Failed to set MPORT for the PHY_PORT");
-	}
-
-	ctx_mae->match_mport_set = B_TRUE;
-
-	return 0;
-}
-
 /*
  * Having this field ID in a field locator means that this
  * locator cannot be used to actually set the field at the
@@ -2477,18 +2420,6 @@ static const struct sfc_flow_item sfc_flow_items[] = {
 		.layer = SFC_FLOW_ITEM_ANY_LAYER,
 		.ctx_type = SFC_FLOW_PARSE_CTX_MAE,
 		.parse = sfc_mae_rule_parse_item_ethdev_based,
-	},
-	{
-		.type = RTE_FLOW_ITEM_TYPE_PHY_PORT,
-		.name = "PHY_PORT",
-		/*
-		 * In terms of RTE flow, this item is a META one,
-		 * and its position in the pattern is don't care.
-		 */
-		.prev_layer = SFC_FLOW_ITEM_ANY_LAYER,
-		.layer = SFC_FLOW_ITEM_ANY_LAYER,
-		.ctx_type = SFC_FLOW_PARSE_CTX_MAE,
-		.parse = sfc_mae_rule_parse_item_phy_port,
 	},
 	{
 		.type = RTE_FLOW_ITEM_TYPE_ETH,

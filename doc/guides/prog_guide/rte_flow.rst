@@ -535,44 +535,6 @@ Usage example, matching non-TCPv4 packets only:
    | 4     | END      |
    +-------+----------+
 
-Item: ``PHY_PORT``
-^^^^^^^^^^^^^^^^^^
-
-This item is deprecated. Consider:
- - `Item: PORT_REPRESENTOR`_
- - `Item: REPRESENTED_PORT`_
-
-Matches traffic originating from (ingress) or going to (egress) a physical
-port of the underlying device.
-
-The first PHY_PORT item overrides the physical port normally associated with
-the specified DPDK input port (port_id). This item can be provided several
-times to match additional physical ports.
-
-Note that physical ports are not necessarily tied to DPDK input ports
-(port_id) when those are not under DPDK control. Possible values are
-specific to each device, they are not necessarily indexed from zero and may
-not be contiguous.
-
-As a device property, the list of allowed values as well as the value
-associated with a port_id should be retrieved by other means.
-
-- Default ``mask`` matches any port index.
-
-.. _table_rte_flow_item_phy_port:
-
-.. table:: PHY_PORT
-
-   +----------+-----------+--------------------------------+
-   | Field    | Subfield  | Value                          |
-   +==========+===========+================================+
-   | ``spec`` | ``index`` | physical port index            |
-   +----------+-----------+--------------------------------+
-   | ``last`` | ``index`` | upper range value              |
-   +----------+-----------+--------------------------------+
-   | ``mask`` | ``index`` | zeroed to match any port index |
-   +----------+-----------+--------------------------------+
-
 Item: ``PORT_ID``
 ^^^^^^^^^^^^^^^^^
 
@@ -585,11 +547,6 @@ port ID.
 
 Normally only supported if the port ID in question is known by the
 underlying PMD and related to the device the flow rule is created against.
-
-This must not be confused with `Item: PHY_PORT`_ which refers to the
-physical port of a device, whereas `Item: PORT_ID`_ refers to a ``struct
-rte_eth_dev`` object on the application side (also known as "port
-representor" depending on the kind of underlying device).
 
 - Default ``mask`` matches the specified DPDK port ID.
 
@@ -2055,8 +2012,6 @@ This action is deprecated. Consider:
 
 Directs matching traffic to a given physical port index of the underlying
 device.
-
-See `Item: PHY_PORT`_.
 
 .. _table_rte_flow_action_phy_port:
 

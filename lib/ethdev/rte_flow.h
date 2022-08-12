@@ -196,20 +196,6 @@ enum rte_flow_item_type {
 	 * [META]
 	 *
 	 * Matches traffic originating from (ingress) or going to (egress) a
-	 * physical port of the underlying device.
-	 *
-	 * See struct rte_flow_item_phy_port.
-	 */
-	RTE_FLOW_ITEM_TYPE_PHY_PORT,
-
-	/**
-	 * @deprecated
-	 * @see RTE_FLOW_ITEM_TYPE_PORT_REPRESENTOR
-	 * @see RTE_FLOW_ITEM_TYPE_REPRESENTED_PORT
-	 *
-	 * [META]
-	 *
-	 * Matches traffic originating from (ingress) or going to (egress) a
 	 * given DPDK port ID.
 	 *
 	 * See struct rte_flow_item_port_id.
@@ -691,41 +677,6 @@ static const struct rte_flow_item_any rte_flow_item_any_mask = {
  * @see RTE_FLOW_ITEM_TYPE_PORT_REPRESENTOR
  * @see RTE_FLOW_ITEM_TYPE_REPRESENTED_PORT
  *
- * RTE_FLOW_ITEM_TYPE_PHY_PORT
- *
- * Matches traffic originating from (ingress) or going to (egress) a
- * physical port of the underlying device.
- *
- * The first PHY_PORT item overrides the physical port normally associated
- * with the specified DPDK input port (port_id). This item can be provided
- * several times to match additional physical ports.
- *
- * Note that physical ports are not necessarily tied to DPDK input ports
- * (port_id) when those are not under DPDK control. Possible values are
- * specific to each device, they are not necessarily indexed from zero and
- * may not be contiguous.
- *
- * As a device property, the list of allowed values as well as the value
- * associated with a port_id should be retrieved by other means.
- *
- * A zeroed mask can be used to match any port index.
- */
-struct rte_flow_item_phy_port {
-	uint32_t index; /**< Physical port index. */
-};
-
-/** Default mask for RTE_FLOW_ITEM_TYPE_PHY_PORT. */
-#ifndef __cplusplus
-static const struct rte_flow_item_phy_port rte_flow_item_phy_port_mask = {
-	.index = 0x00000000,
-};
-#endif
-
-/**
- * @deprecated
- * @see RTE_FLOW_ITEM_TYPE_PORT_REPRESENTOR
- * @see RTE_FLOW_ITEM_TYPE_REPRESENTED_PORT
- *
  * RTE_FLOW_ITEM_TYPE_PORT_ID
  *
  * Matches traffic originating from (ingress) or going to (egress) a given
@@ -734,11 +685,6 @@ static const struct rte_flow_item_phy_port rte_flow_item_phy_port_mask = {
  * Normally only supported if the port ID in question is known by the
  * underlying PMD and related to the device the flow rule is created
  * against.
- *
- * This must not be confused with @p PHY_PORT which refers to the physical
- * port of a device, whereas @p PORT_ID refers to a struct rte_eth_dev
- * object on the application side (also known as "port representor"
- * depending on the kind of underlying device).
  */
 struct rte_flow_item_port_id {
 	uint32_t id; /**< DPDK port ID. */
@@ -3023,8 +2969,6 @@ struct rte_flow_action_vf {
  *
  * Directs packets to a given physical port index of the underlying
  * device.
- *
- * @see RTE_FLOW_ITEM_TYPE_PHY_PORT
  */
 struct rte_flow_action_phy_port {
 	uint32_t original:1; /**< Use original port index if possible. */

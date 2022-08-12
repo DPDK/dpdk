@@ -198,8 +198,6 @@ Supported pattern items (***transfer*** rules):
 
 - PORT_ID (cannot repeat; conflicts with other traffic source items)
 
-- PHY_PORT (cannot repeat; conflicts with other traffic source items)
-
 - ETH
 
 - VLAN (double-tagging is supported)

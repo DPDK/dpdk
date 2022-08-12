@@ -209,31 +209,6 @@ ch_rte_parsetype_eth(const void *dmask, const struct rte_flow_item *item,
 }
 
 static int
-ch_rte_parsetype_port(const void *dmask, const struct rte_flow_item *item,
-		      struct ch_filter_specification *fs,
-		      struct rte_flow_error *e)
-{
-	const struct rte_flow_item_phy_port *val = item->spec;
-	const struct rte_flow_item_phy_port *umask = item->mask;
-	const struct rte_flow_item_phy_port *mask;
-
-	mask = umask ? umask : (const struct rte_flow_item_phy_port *)dmask;
-
-	if (!val)
-		return 0; /* Wildcard, match all physical ports */
-
-	if (val->index > 0x7)
-		return rte_flow_error_set(e, EINVAL, RTE_FLOW_ERROR_TYPE_ITEM,
-					  item,
-					  "port index up to 0x7 is supported");
-
-	if (val->index || (umask && umask->index))
-		CXGBE_FILL_FS(val->index, mask->index, iport);
-
-	return 0;
-}
-
-static int
 ch_rte_parsetype_vlan(const void *dmask, const struct rte_flow_item *item,
 		      struct ch_filter_specification *fs,
 		      struct rte_flow_error *e)
@@ -923,13 +898,6 @@ static struct chrte_fparse parseitem[] = {
 			.dst.addr_bytes = "\xff\xff\xff\xff\xff\xff",
 			.src.addr_bytes = "\x00\x00\x00\x00\x00\x00",
 			.type = 0xffff,
-		}
-	},
-
-	[RTE_FLOW_ITEM_TYPE_PHY_PORT] = {
-		.fptr = ch_rte_parsetype_port,
-		.dmask = &(const struct rte_flow_item_phy_port){
-			.index = 0x7,
 		}
 	},
 
