@@ -138,12 +138,10 @@ rte_swx_pipeline_struct_type_register(struct rte_swx_pipeline *p,
 
 	for (i = 0; i < n_fields; i++) {
 		struct rte_swx_field_params *f = &fields[i];
-		int var_size = ((i == n_fields - 1) && last_field_has_variable_size) ? 1 : 0;
 		uint32_t j;
 
 		CHECK_NAME(f->name, EINVAL);
 		CHECK(f->n_bits, EINVAL);
-		CHECK((f->n_bits <= 64) || var_size, EINVAL);
 		CHECK((f->n_bits & 7) == 0, EINVAL);
 
 		for (j = 0; j < i; j++) {
@@ -1728,6 +1726,7 @@ instr_rx_translate(struct rte_swx_pipeline *p,
 
 	f = metadata_field_parse(p, tokens[1]);
 	CHECK(f, EINVAL);
+	CHECK(f->n_bits <= 64, EINVAL);
 
 	instr->type = INSTR_RX;
 	instr->io.io.offset = f->offset / 8;
@@ -1754,6 +1753,7 @@ instr_tx_translate(struct rte_swx_pipeline *p,
 
 	f = metadata_field_parse(p, port);
 	if (f) {
+		CHECK(f->n_bits <= 64, EINVAL);
 		instr->type = INSTR_TX;
 		instr->io.io.offset = f->offset / 8;
 		instr->io.io.n_bits = f->n_bits;
@@ -1843,12 +1843,12 @@ instr_mirror_translate(struct rte_swx_pipeline *p,
 	fdst = struct_field_parse(p, action, dst, &dst_struct_id);
 	CHECK(fdst, EINVAL);
 	CHECK(dst[0] != 'h', EINVAL);
-	CHECK(!fdst->var_size, EINVAL);
+	CHECK(!fdst->var_size && (fdst->n_bits <= 64), EINVAL);
 
 	fsrc = struct_field_parse(p, action, src, &src_struct_id);
 	CHECK(fsrc, EINVAL);
 	CHECK(src[0] != 'h', EINVAL);
-	CHECK(!fsrc->var_size, EINVAL);
+	CHECK(!fsrc->var_size && (fsrc->n_bits <= 64), EINVAL);
 
 	instr->type = INSTR_MIRROR;
 	instr->mirror.dst.struct_id = (uint8_t)dst_struct_id;
@@ -1904,6 +1904,7 @@ instr_recircid_translate(struct rte_swx_pipeline *p,
 
 	f = metadata_field_parse(p, tokens[1]);
 	CHECK(f, EINVAL);
+	CHECK(f->n_bits <= 64, EINVAL);
 
 	instr->type = INSTR_RECIRCID;
 	instr->io.io.offset = f->offset / 8;
@@ -1968,7 +1969,7 @@ instr_hdr_extract_translate(struct rte_swx_pipeline *p,
 
 		mf = metadata_field_parse(p, tokens[2]);
 		CHECK(mf, EINVAL);
-		CHECK(!mf->var_size, EINVAL);
+		CHECK(mf->n_bits <= 64, EINVAL);
 
 		instr->type = INSTR_HDR_EXTRACT_M;
 		instr->io.io.offset = mf->offset / 8;
@@ -2693,6 +2694,7 @@ instr_learn_translate(struct rte_swx_pipeline *p,
 	if (mf_first_arg_name) {
 		mf_first_arg = metadata_field_parse(p, mf_first_arg_name);
 		CHECK(mf_first_arg, EINVAL);
+		CHECK(mf_first_arg->n_bits <= 64, EINVAL);
 	}
 
 	/* Timeout ID. */
@@ -2700,6 +2702,7 @@ instr_learn_translate(struct rte_swx_pipeline *p,
 	CHECK_NAME(mf_timeout_id_name, EINVAL);
 	mf_timeout_id = metadata_field_parse(p, mf_timeout_id_name);
 	CHECK(mf_timeout_id, EINVAL);
+	CHECK(mf_timeout_id->n_bits <= 64, EINVAL);
 
 	/* Instruction. */
 	instr->type = INSTR_LEARNER_LEARN;
@@ -2751,6 +2754,7 @@ instr_rearm_translate(struct rte_swx_pipeline *p,
 	CHECK_NAME(mf_timeout_id_name, EINVAL);
 	mf_timeout_id = metadata_field_parse(p, mf_timeout_id_name);
 	CHECK(mf_timeout_id, EINVAL);
+	CHECK(mf_timeout_id->n_bits <= 64, EINVAL);
 
 	instr->type = INSTR_LEARNER_REARM_NEW;
 	instr->learn.mf_timeout_id_offset = mf_timeout_id->offset / 8;
@@ -2910,12 +2914,14 @@ instr_hash_translate(struct rte_swx_pipeline *p,
 
 	dst = metadata_field_parse(p, tokens[2]);
 	CHECK(dst, EINVAL);
+	CHECK(dst->n_bits <= 64, EINVAL);
 
 	src_first = struct_field_parse(p, action, tokens[3], &src_struct_id_first);
 	CHECK(src_first, EINVAL);
 
 	src_last = struct_field_parse(p, action, tokens[4], &src_struct_id_last);
 	CHECK(src_last, EINVAL);
+	CHECK(!src_last->var_size, EINVAL);
 	CHECK(src_struct_id_first == src_struct_id_last, EINVAL);
 
 	instr->type = INSTR_HASH_FUNC;
@@ -2963,12 +2969,12 @@ instr_mov_translate(struct rte_swx_pipeline *p,
 
 	fdst = struct_field_parse(p, NULL, dst, &dst_struct_id);
 	CHECK(fdst, EINVAL);
-	CHECK(!fdst->var_size, EINVAL);
+	CHECK(!fdst->var_size && (fdst->n_bits <= 64), EINVAL);
 
 	/* MOV, MOV_MH, MOV_HM or MOV_HH. */
 	fsrc = struct_field_parse(p, action, src, &src_struct_id);
 	if (fsrc) {
-		CHECK(!fsrc->var_size, EINVAL);
+		CHECK(!fsrc->var_size && (fsrc->n_bits <= 64), EINVAL);
 
 		instr->type = INSTR_MOV;
 		if (dst[0] != 'h' && src[0] == 'h')
@@ -3181,12 +3187,12 @@ instr_alu_add_translate(struct rte_swx_pipeline *p,
 
 	fdst = struct_field_parse(p, NULL, dst, &dst_struct_id);
 	CHECK(fdst, EINVAL);
-	CHECK(!fdst->var_size, EINVAL);
+	CHECK(!fdst->var_size && (fdst->n_bits <= 64), EINVAL);
 
 	/* ADD, ADD_HM, ADD_MH, ADD_HH. */
 	fsrc = struct_field_parse(p, action, src, &src_struct_id);
 	if (fsrc) {
-		CHECK(!fsrc->var_size, EINVAL);
+		CHECK(!fsrc->var_size && (fsrc->n_bits <= 64), EINVAL);
 
 		instr->type = INSTR_ALU_ADD;
 		if (dst[0] == 'h' && src[0] != 'h')
@@ -3237,12 +3243,12 @@ instr_alu_sub_translate(struct rte_swx_pipeline *p,
 
 	fdst = struct_field_parse(p, NULL, dst, &dst_struct_id);
 	CHECK(fdst, EINVAL);
-	CHECK(!fdst->var_size, EINVAL);
+	CHECK(!fdst->var_size && (fdst->n_bits <= 64), EINVAL);
 
 	/* SUB, SUB_HM, SUB_MH, SUB_HH. */
 	fsrc = struct_field_parse(p, action, src, &src_struct_id);
 	if (fsrc) {
-		CHECK(!fsrc->var_size, EINVAL);
+		CHECK(!fsrc->var_size && (fsrc->n_bits <= 64), EINVAL);
 
 		instr->type = INSTR_ALU_SUB;
 		if (dst[0] == 'h' && src[0] != 'h')
@@ -3297,7 +3303,7 @@ instr_alu_ckadd_translate(struct rte_swx_pipeline *p,
 	/* CKADD_FIELD. */
 	fsrc = header_field_parse(p, src, &hsrc);
 	if (fsrc) {
-		CHECK(!fsrc->var_size, EINVAL);
+		CHECK(!fsrc->var_size && (fsrc->n_bits <= 64), EINVAL);
 
 		instr->type = INSTR_ALU_CKADD_FIELD;
 		instr->alu.dst.struct_id = (uint8_t)hdst->struct_id;
@@ -3346,7 +3352,7 @@ instr_alu_cksub_translate(struct rte_swx_pipeline *p,
 
 	fsrc = header_field_parse(p, src, &hsrc);
 	CHECK(fsrc, EINVAL);
-	CHECK(!fsrc->var_size, EINVAL);
+	CHECK(!fsrc->var_size && (fsrc->n_bits <= 64), EINVAL);
 
 	instr->type = INSTR_ALU_CKSUB_FIELD;
 	instr->alu.dst.struct_id = (uint8_t)hdst->struct_id;
@@ -3375,12 +3381,12 @@ instr_alu_shl_translate(struct rte_swx_pipeline *p,
 
 	fdst = struct_field_parse(p, NULL, dst, &dst_struct_id);
 	CHECK(fdst, EINVAL);
-	CHECK(!fdst->var_size, EINVAL);
+	CHECK(!fdst->var_size && (fdst->n_bits <= 64), EINVAL);
 
 	/* SHL, SHL_HM, SHL_MH, SHL_HH. */
 	fsrc = struct_field_parse(p, action, src, &src_struct_id);
 	if (fsrc) {
-		CHECK(!fsrc->var_size, EINVAL);
+		CHECK(!fsrc->var_size && (fsrc->n_bits <= 64), EINVAL);
 
 		instr->type = INSTR_ALU_SHL;
 		if (dst[0] == 'h' && src[0] != 'h')
@@ -3431,12 +3437,12 @@ instr_alu_shr_translate(struct rte_swx_pipeline *p,
 
 	fdst = struct_field_parse(p, NULL, dst, &dst_struct_id);
 	CHECK(fdst, EINVAL);
-	CHECK(!fdst->var_size, EINVAL);
+	CHECK(!fdst->var_size && (fdst->n_bits <= 64), EINVAL);
 
 	/* SHR, SHR_HM, SHR_MH, SHR_HH. */
 	fsrc = struct_field_parse(p, action, src, &src_struct_id);
 	if (fsrc) {
-		CHECK(!fsrc->var_size, EINVAL);
+		CHECK(!fsrc->var_size && (fsrc->n_bits <= 64), EINVAL);
 
 		instr->type = INSTR_ALU_SHR;
 		if (dst[0] == 'h' && src[0] != 'h')
@@ -3487,12 +3493,12 @@ instr_alu_and_translate(struct rte_swx_pipeline *p,
 
 	fdst = struct_field_parse(p, NULL, dst, &dst_struct_id);
 	CHECK(fdst, EINVAL);
-	CHECK(!fdst->var_size, EINVAL);
+	CHECK(!fdst->var_size && (fdst->n_bits <= 64), EINVAL);
 
 	/* AND, AND_MH, AND_HM, AND_HH. */
 	fsrc = struct_field_parse(p, action, src, &src_struct_id);
 	if (fsrc) {
-		CHECK(!fsrc->var_size, EINVAL);
+		CHECK(!fsrc->var_size && (fsrc->n_bits <= 64), EINVAL);
 
 		instr->type = INSTR_ALU_AND;
 		if (dst[0] != 'h' && src[0] == 'h')
@@ -3543,12 +3549,12 @@ instr_alu_or_translate(struct rte_swx_pipeline *p,
 
 	fdst = struct_field_parse(p, NULL, dst, &dst_struct_id);
 	CHECK(fdst, EINVAL);
-	CHECK(!fdst->var_size, EINVAL);
+	CHECK(!fdst->var_size && (fdst->n_bits <= 64), EINVAL);
 
 	/* OR, OR_MH, OR_HM, OR_HH. */
 	fsrc = struct_field_parse(p, action, src, &src_struct_id);
 	if (fsrc) {
-		CHECK(!fsrc->var_size, EINVAL);
+		CHECK(!fsrc->var_size && (fsrc->n_bits <= 64), EINVAL);
 
 		instr->type = INSTR_ALU_OR;
 		if (dst[0] != 'h' && src[0] == 'h')
@@ -3599,12 +3605,12 @@ instr_alu_xor_translate(struct rte_swx_pipeline *p,
 
 	fdst = struct_field_parse(p, NULL, dst, &dst_struct_id);
 	CHECK(fdst, EINVAL);
-	CHECK(!fdst->var_size, EINVAL);
+	CHECK(!fdst->var_size && (fdst->n_bits <= 64), EINVAL);
 
 	/* XOR, XOR_MH, XOR_HM, XOR_HH. */
 	fsrc = struct_field_parse(p, action, src, &src_struct_id);
 	if (fsrc) {
-		CHECK(!fsrc->var_size, EINVAL);
+		CHECK(!fsrc->var_size && (fsrc->n_bits <= 64), EINVAL);
 
 		instr->type = INSTR_ALU_XOR;
 		if (dst[0] != 'h' && src[0] == 'h')
@@ -4224,7 +4230,7 @@ instr_regprefetch_translate(struct rte_swx_pipeline *p,
 	/* REGPREFETCH_RH, REGPREFETCH_RM. */
 	fidx = struct_field_parse(p, action, idx, &idx_struct_id);
 	if (fidx) {
-		CHECK(!fidx->var_size, EINVAL);
+		CHECK(!fidx->var_size && (fidx->n_bits <= 64), EINVAL);
 
 		instr->type = INSTR_REGPREFETCH_RM;
 		if (idx[0] == 'h')
@@ -4269,12 +4275,12 @@ instr_regrd_translate(struct rte_swx_pipeline *p,
 
 	fdst = struct_field_parse(p, NULL, dst, &dst_struct_id);
 	CHECK(fdst, EINVAL);
-	CHECK(!fdst->var_size, EINVAL);
+	CHECK(!fdst->var_size && (fdst->n_bits <= 64), EINVAL);
 
 	/* REGRD_HRH, REGRD_HRM, REGRD_MRH, REGRD_MRM. */
 	fidx = struct_field_parse(p, action, idx, &idx_struct_id);
 	if (fidx) {
-		CHECK(!fidx->var_size, EINVAL);
+		CHECK(!fidx->var_size && (fidx->n_bits <= 64), EINVAL);
 
 		instr->type = INSTR_REGRD_MRM;
 		if (dst[0] == 'h' && idx[0] != 'h')
@@ -4333,8 +4339,8 @@ instr_regwr_translate(struct rte_swx_pipeline *p,
 	fidx = struct_field_parse(p, action, idx, &idx_struct_id);
 	fsrc = struct_field_parse(p, action, src, &src_struct_id);
 	if (fidx && fsrc) {
-		CHECK(!fidx->var_size, EINVAL);
-		CHECK(!fsrc->var_size, EINVAL);
+		CHECK(!fidx->var_size && (fidx->n_bits <= 64), EINVAL);
+		CHECK(!fsrc->var_size && (fsrc->n_bits <= 64), EINVAL);
 
 		instr->type = INSTR_REGWR_RMM;
 		if (idx[0] == 'h' && src[0] != 'h')
@@ -4356,7 +4362,7 @@ instr_regwr_translate(struct rte_swx_pipeline *p,
 
 	/* REGWR_RHI, REGWR_RMI. */
 	if (fidx && !fsrc) {
-		CHECK(!fidx->var_size, EINVAL);
+		CHECK(!fidx->var_size && (fidx->n_bits <= 64), EINVAL);
 
 		src_val = strtoull(src, &src, 0);
 		CHECK(!src[0], EINVAL);
@@ -4378,7 +4384,7 @@ instr_regwr_translate(struct rte_swx_pipeline *p,
 		idx_val = strtoul(idx, &idx, 0);
 		CHECK(!idx[0], EINVAL);
 
-		CHECK(!fsrc->var_size, EINVAL);
+		CHECK(!fsrc->var_size && (fsrc->n_bits <= 64), EINVAL);
 
 		instr->type = INSTR_REGWR_RIM;
 		if (src[0] == 'h')
@@ -4429,8 +4435,8 @@ instr_regadd_translate(struct rte_swx_pipeline *p,
 	fidx = struct_field_parse(p, action, idx, &idx_struct_id);
 	fsrc = struct_field_parse(p, action, src, &src_struct_id);
 	if (fidx && fsrc) {
-		CHECK(!fidx->var_size, EINVAL);
-		CHECK(!fsrc->var_size, EINVAL);
+		CHECK(!fidx->var_size && (fidx->n_bits <= 64), EINVAL);
+		CHECK(!fsrc->var_size && (fsrc->n_bits <= 64), EINVAL);
 
 		instr->type = INSTR_REGADD_RMM;
 		if (idx[0] == 'h' && src[0] != 'h')
@@ -4452,7 +4458,7 @@ instr_regadd_translate(struct rte_swx_pipeline *p,
 
 	/* REGADD_RHI, REGADD_RMI. */
 	if (fidx && !fsrc) {
-		CHECK(!fidx->var_size, EINVAL);
+		CHECK(!fidx->var_size && (fidx->n_bits <= 64), EINVAL);
 
 		src_val = strtoull(src, &src, 0);
 		CHECK(!src[0], EINVAL);
@@ -4474,7 +4480,7 @@ instr_regadd_translate(struct rte_swx_pipeline *p,
 		idx_val = strtoul(idx, &idx, 0);
 		CHECK(!idx[0], EINVAL);
 
-		CHECK(!fsrc->var_size, EINVAL);
+		CHECK(!fsrc->var_size && (fsrc->n_bits <= 64), EINVAL);
 
 		instr->type = INSTR_REGADD_RIM;
 		if (src[0] == 'h')
@@ -4879,7 +4885,7 @@ instr_metprefetch_translate(struct rte_swx_pipeline *p,
 	/* METPREFETCH_H, METPREFETCH_M. */
 	fidx = struct_field_parse(p, action, idx, &idx_struct_id);
 	if (fidx) {
-		CHECK(!fidx->var_size, EINVAL);
+		CHECK(!fidx->var_size && (fidx->n_bits <= 64), EINVAL);
 
 		instr->type = INSTR_METPREFETCH_M;
 		if (idx[0] == 'h')
@@ -4926,18 +4932,18 @@ instr_meter_translate(struct rte_swx_pipeline *p,
 
 	flength = struct_field_parse(p, action, length, &length_struct_id);
 	CHECK(flength, EINVAL);
-	CHECK(!flength->var_size, EINVAL);
+	CHECK(!flength->var_size && (flength->n_bits <= 64), EINVAL);
 
 	fcin = struct_field_parse(p, action, color_in, &color_in_struct_id);
 
 	fcout = struct_field_parse(p, NULL, color_out, &color_out_struct_id);
 	CHECK(fcout, EINVAL);
-	CHECK(!fcout->var_size, EINVAL);
+	CHECK(!fcout->var_size  && (fcout->n_bits <= 64), EINVAL);
 
 	/* index = HMEFT, length = HMEFT, color_in = MEFT, color_out = MEF. */
 	if (fidx && fcin) {
-		CHECK(!fidx->var_size, EINVAL);
-		CHECK(!fcin->var_size, EINVAL);
+		CHECK(!fidx->var_size && (fidx->n_bits <= 64), EINVAL);
+		CHECK(!fcin->var_size && (fcin->n_bits <= 64), EINVAL);
 
 		instr->type = INSTR_METER_MMM;
 		if (idx[0] == 'h' && length[0] == 'h')
@@ -4970,7 +4976,7 @@ instr_meter_translate(struct rte_swx_pipeline *p,
 	if (fidx && !fcin) {
 		uint32_t color_in_val;
 
-		CHECK(!fidx->var_size, EINVAL);
+		CHECK(!fidx->var_size && (fidx->n_bits <= 64), EINVAL);
 
 		color_in_val = strtoul(color_in, &color_in, 0);
 		CHECK(!color_in[0], EINVAL);
@@ -5007,7 +5013,7 @@ instr_meter_translate(struct rte_swx_pipeline *p,
 		idx_val = strtoul(idx, &idx, 0);
 		CHECK(!idx[0], EINVAL);
 
-		CHECK(!fcin->var_size, EINVAL);
+		CHECK(!fcin->var_size && (fcin->n_bits <= 64), EINVAL);
 
 		instr->type = INSTR_METER_IMM;
 		if (length[0] == 'h')
@@ -5426,12 +5432,12 @@ instr_jmp_eq_translate(struct rte_swx_pipeline *p,
 
 	fa = struct_field_parse(p, action, a, &a_struct_id);
 	CHECK(fa, EINVAL);
-	CHECK(!fa->var_size, EINVAL);
+	CHECK(!fa->var_size && (fa->n_bits <= 64), EINVAL);
 
 	/* JMP_EQ, JMP_EQ_MH, JMP_EQ_HM, JMP_EQ_HH. */
 	fb = struct_field_parse(p, action, b, &b_struct_id);
 	if (fb) {
-		CHECK(!fb->var_size, EINVAL);
+		CHECK(!fb->var_size && (fb->n_bits <= 64), EINVAL);
 
 		instr->type = INSTR_JMP_EQ;
 		if (a[0] != 'h' && b[0] == 'h')
@@ -5486,12 +5492,12 @@ instr_jmp_neq_translate(struct rte_swx_pipeline *p,
 
 	fa = struct_field_parse(p, action, a, &a_struct_id);
 	CHECK(fa, EINVAL);
-	CHECK(!fa->var_size, EINVAL);
+	CHECK(!fa->var_size && (fa->n_bits <= 64), EINVAL);
 
 	/* JMP_NEQ, JMP_NEQ_MH, JMP_NEQ_HM, JMP_NEQ_HH. */
 	fb = struct_field_parse(p, action, b, &b_struct_id);
 	if (fb) {
-		CHECK(!fb->var_size, EINVAL);
+		CHECK(!fb->var_size && (fb->n_bits <= 64), EINVAL);
 
 		instr->type = INSTR_JMP_NEQ;
 		if (a[0] != 'h' && b[0] == 'h')
@@ -5546,12 +5552,12 @@ instr_jmp_lt_translate(struct rte_swx_pipeline *p,
 
 	fa = struct_field_parse(p, action, a, &a_struct_id);
 	CHECK(fa, EINVAL);
-	CHECK(!fa->var_size, EINVAL);
+	CHECK(!fa->var_size && (fa->n_bits <= 64), EINVAL);
 
 	/* JMP_LT, JMP_LT_MH, JMP_LT_HM, JMP_LT_HH. */
 	fb = struct_field_parse(p, action, b, &b_struct_id);
 	if (fb) {
-		CHECK(!fb->var_size, EINVAL);
+		CHECK(!fb->var_size && (fb->n_bits <= 64), EINVAL);
 
 		instr->type = INSTR_JMP_LT;
 		if (a[0] == 'h' && b[0] != 'h')
@@ -5606,12 +5612,12 @@ instr_jmp_gt_translate(struct rte_swx_pipeline *p,
 
 	fa = struct_field_parse(p, action, a, &a_struct_id);
 	CHECK(fa, EINVAL);
-	CHECK(!fa->var_size, EINVAL);
+	CHECK(!fa->var_size && (fa->n_bits <= 64), EINVAL);
 
 	/* JMP_GT, JMP_GT_MH, JMP_GT_HM, JMP_GT_HH. */
 	fb = struct_field_parse(p, action, b, &b_struct_id);
 	if (fb) {
-		CHECK(!fb->var_size, EINVAL);
+		CHECK(!fb->var_size && (fb->n_bits <= 64), EINVAL);
 
 		instr->type = INSTR_JMP_GT;
 		if (a[0] == 'h' && b[0] != 'h')

@@ -228,8 +228,7 @@ struct_block_parse(struct struct_spec *s,
 	n_bits = strtoul(p, &p, 0);
 	if ((p[0]) ||
 	    !n_bits ||
-	    (n_bits % 8) ||
-	    ((n_bits > 64) && !varbit)) {
+	    (n_bits % 8)) {
 		error = -EINVAL;
 		error_size_invalid = 1;
 		goto error;
