@@ -165,6 +165,14 @@ API Changes
 * ethdev: Promoted ``rte_eth_rx_metadata_negotiate()``
   from experimental to stable.
 
+* ethdev: Promoted the following flow primitives
+  from experimental to stable:
+
+  - ``RTE_FLOW_ACTION_TYPE_PORT_REPRESENTOR``
+  - ``RTE_FLOW_ACTION_TYPE_REPRESENTED_PORT``
+  - ``RTE_FLOW_ITEM_TYPE_PORT_REPRESENTOR``
+  - ``RTE_FLOW_ITEM_TYPE_REPRESENTED_PORT``
+
 * telemetry: The allowed characters in names for dictionary values
   are now limited to alphanumeric characters and a small subset of additional
   printable characters.
