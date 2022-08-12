@@ -1081,7 +1081,11 @@ sfc_rx_mb_pool_buf_size(struct sfc_adapter *sa, struct rte_mempool *mb_pool)
 		buf_size = EFX_P2ALIGN(uint32_t, buf_size, nic_align_end);
 	}
 
-	return buf_size;
+	/*
+	 * Buffer length field of a Rx descriptor may not be wide
+	 * enough to store a 16-bit data count taken from an mbuf.
+	 */
+	return MIN(buf_size, encp->enc_rx_dma_desc_size_max);
 }
 
 int
