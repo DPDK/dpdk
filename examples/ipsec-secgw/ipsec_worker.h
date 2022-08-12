@@ -212,11 +212,7 @@ prepare_one_packet(struct rte_security_ctx *ctx, struct rte_mbuf *pkt,
 		struct ipsec_sa *sa;
 		struct ipsec_mbuf_metadata *priv;
 
-		/* Retrieve the userdata registered. Here, the userdata
-		 * registered is the SA pointer.
-		 */
-		sa = (struct ipsec_sa *)rte_security_get_userdata(ctx,
-				*rte_security_dynfield(pkt));
+		sa = *(struct ipsec_sa **)rte_security_dynfield(pkt);
 		if (sa == NULL) {
 			/* userdata could not be retrieved */
 			return;

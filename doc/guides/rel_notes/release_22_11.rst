@@ -247,6 +247,11 @@ API Changes
   and security capability structure ``rte_security_capability``
   to accommodate MACsec capabilities.
 
+* security: The experimental API ``rte_security_get_userdata`` was being unused
+  by most of the drivers and it was retrieving userdata from mbuf dynamic field.
+  The API is now removed and the application can directly get the userdata from
+  mbuf dynamic field.
+
 * metrics: Updated ``rte_metrics_init`` so it returns an error code instead
   of calling ``rte_exit``.
 

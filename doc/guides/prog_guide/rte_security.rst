@@ -655,11 +655,6 @@ For Inline Crypto and Inline protocol offload, device specific defined metadata 
 updated in the mbuf using ``rte_security_set_pkt_metadata()`` if
 ``RTE_ETH_TX_OFFLOAD_SEC_NEED_MDATA`` is set.
 
-For inline protocol offloaded ingress traffic, the application can register a
-pointer, ``userdata`` , in the security session. When the packet is received,
-``rte_security_get_userdata()`` would return the userdata registered for the
-security session which processed the packet.
-
 .. note::
 
     In case of inline processed packets, ``RTE_SECURITY_DYNFIELD_NAME`` field

@@ -2182,39 +2182,15 @@ pool_init(struct socket_ctx *ctx, int32_t socket_id, int portid,
 		printf("Allocated mbuf pool on socket %d\n", socket_id);
 }
 
-static inline int
-inline_ipsec_event_esn_overflow(struct rte_security_ctx *ctx, uint64_t md)
-{
-	struct ipsec_sa *sa;
-
-	/* For inline protocol processing, the metadata in the event will
-	 * uniquely identify the security session which raised the event.
-	 * Application would then need the userdata it had registered with the
-	 * security session to process the event.
-	 */
-
-	sa = (struct ipsec_sa *)rte_security_get_userdata(ctx, md);
-
-	if (sa == NULL) {
-		/* userdata could not be retrieved */
-		return -1;
-	}
-
-	/* Sequence number over flow. SA need to be re-established */
-	RTE_SET_USED(sa);
-	return 0;
-}
-
 static int
 inline_ipsec_event_callback(uint16_t port_id, enum rte_eth_event_type type,
 		 void *param, void *ret_param)
 {
 	uint64_t md;
 	struct rte_eth_event_ipsec_desc *event_desc = NULL;
-	struct rte_security_ctx *ctx = (struct rte_security_ctx *)
-					rte_eth_dev_get_sec_ctx(port_id);
 
 	RTE_SET_USED(param);
+	RTE_SET_USED(port_id);
 
 	if (type != RTE_ETH_EVENT_IPSEC)
 		return -1;
@@ -2227,8 +2203,10 @@ inline_ipsec_event_callback(uint16_t port_id, enum rte_eth_event_type type,
 
 	md = event_desc->metadata;
 
-	if (event_desc->subtype == RTE_ETH_EVENT_IPSEC_ESN_OVERFLOW)
-		return inline_ipsec_event_esn_overflow(ctx, md);
+	if (event_desc->subtype == RTE_ETH_EVENT_IPSEC_ESN_OVERFLOW) {
+		if (md == 0)
+			return -1;
+	}
 	else if (event_desc->subtype >= RTE_ETH_EVENT_IPSEC_MAX) {
 		printf("Invalid IPsec event reported\n");
 		return -1;

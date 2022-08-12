@@ -13,7 +13,6 @@ DPDK_23 {
 EXPERIMENTAL {
 	global:
 
-	__rte_security_get_userdata;
 	__rte_security_set_pkt_metadata;
 	rte_security_dynfield_offset;
 	rte_security_macsec_sa_create;
