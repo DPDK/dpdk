@@ -1587,6 +1587,7 @@ typedef struct efx_nic_cfg_s {
 	/* Number of rx descriptors the hardware requires for a push. */
 	uint32_t		enc_rx_push_align;
 	/* Maximum amount of data in DMA descriptor */
+	uint32_t		enc_rx_dma_desc_size_max;
 	uint32_t		enc_tx_dma_desc_size_max;
 	/*
 	 * Boundary which DMA descriptor data must not cross or 0 if no

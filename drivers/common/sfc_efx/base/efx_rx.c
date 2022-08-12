@@ -978,7 +978,14 @@ efx_rx_qcreate(
 	__in		efx_evq_t *eep,
 	__deref_out	efx_rxq_t **erpp)
 {
+	const efx_nic_cfg_t *encp = efx_nic_cfg_get(enp);
 	efx_rxq_type_data_t type_data;
+	efx_rc_t rc;
+
+	if (buf_size > encp->enc_rx_dma_desc_size_max) {
+		rc = EINVAL;
+		goto fail1;
+	}
 
 	memset(&type_data, 0, sizeof (type_data));
 
@@ -986,6 +993,11 @@ efx_rx_qcreate(
 
 	return efx_rx_qcreate_internal(enp, index, label, type, &type_data,
 	    esmp, ndescs, id, flags, eep, erpp);
+
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+
+	return (rc);
 }
 
 #if EFSYS_OPT_RX_PACKED_STREAM

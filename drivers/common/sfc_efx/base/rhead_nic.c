@@ -40,6 +40,10 @@ rhead_board_cfg(
 
 	encp->enc_clk_mult = 1; /* not used for Riverhead */
 
+	EFX_STATIC_ASSERT(MC_CMD_INIT_RXQ_V4_IN_BUFFER_SIZE_BYTES_LEN == 4);
+	/* Agrees with MC_CMD_INIT_RXQ_V4_IN_BUFFER_SIZE_BYTES_LEN */
+	encp->enc_rx_dma_desc_size_max = UINT32_MAX;
+
 	/*
 	 * FIXME There are TxSend and TxSeg descriptors on Riverhead.
 	 * TxSeg is bigger than TxSend.
