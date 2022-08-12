@@ -132,6 +132,7 @@ DPDK_23 {
 	rte_flow_error_set;
 	rte_flow_flush;
 	rte_flow_isolate;
+	rte_flow_pick_transfer_proxy;
 	rte_flow_query;
 	rte_flow_validate;
 
@@ -253,7 +254,6 @@ EXPERIMENTAL {
 	rte_eth_macaddrs_get;
 	rte_flow_flex_item_create;
 	rte_flow_flex_item_release;
-	rte_flow_pick_transfer_proxy;
 
 	# added in 22.03
 	rte_eth_dev_priority_flow_ctrl_queue_configure;
