@@ -3445,7 +3445,7 @@ ice_rem_vsig(struct ice_hw *hw, enum ice_block blk, u16 vsig,
 			p->type = ICE_VSIG_REM;
 			p->orig_vsig = vsig;
 			p->vsig = ICE_DEFAULT_VSIG;
-			p->vsi = vsi_cur - hw->blk[blk].xlt2.vsis;
+			p->vsi = (u16)(vsi_cur - hw->blk[blk].xlt2.vsis);
 
 			LIST_ADD(&p->list_entry, chg);
 

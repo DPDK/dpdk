@@ -2802,8 +2802,8 @@ struct ice_aqc_get_pkg_info_resp {
 struct ice_aqc_driver_shared_params {
 	u8 set_or_get_op;
 #define ICE_AQC_DRIVER_PARAM_OP_MASK		BIT(0)
-#define ICE_AQC_DRIVER_PARAM_SET		0
-#define ICE_AQC_DRIVER_PARAM_GET		1
+#define ICE_AQC_DRIVER_PARAM_SET		((u8)0)
+#define ICE_AQC_DRIVER_PARAM_GET		((u8)1)
 	u8 param_indx;
 #define ICE_AQC_DRIVER_PARAM_MAX_IDX		15
 	u8 rsvd[2];

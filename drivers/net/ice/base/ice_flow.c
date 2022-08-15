@@ -1325,7 +1325,7 @@ ice_flow_xtract_pkt_flags(struct ice_hw *hw,
 			  struct ice_flow_prof_params *params,
 			  enum ice_flex_mdid_pkt_flags flags)
 {
-	u8 fv_words = hw->blk[params->blk].es.fvw;
+	u8 fv_words = (u8)hw->blk[params->blk].es.fvw;
 	u8 idx;
 
 	/* Make sure the number of extraction sequence entries required does not
@@ -1341,7 +1341,7 @@ ice_flow_xtract_pkt_flags(struct ice_hw *hw,
 		idx = params->es_cnt;
 
 	params->es[idx].prot_id = ICE_PROT_META_ID;
-	params->es[idx].off = flags;
+	params->es[idx].off = (u16)flags;
 	params->es_cnt++;
 
 	return ICE_SUCCESS;
@@ -1364,8 +1364,8 @@ ice_flow_xtract_fld(struct ice_hw *hw, struct ice_flow_prof_params *params,
 		    u8 seg, enum ice_flow_field fld, u64 match)
 {
 	enum ice_flow_field sib = ICE_FLOW_FIELD_IDX_MAX;
+	u8 fv_words = (u8)hw->blk[params->blk].es.fvw;
 	enum ice_prot_id prot_id = ICE_PROT_ID_INVAL;
-	u8 fv_words = hw->blk[params->blk].es.fvw;
 	struct ice_flow_fld_info *flds;
 	u16 cnt, ese_bits, i;
 	u16 sib_mask = 0;
@@ -1548,7 +1548,7 @@ ice_flow_xtract_fld(struct ice_hw *hw, struct ice_flow_prof_params *params,
 	 */
 	ese_bits = ICE_FLOW_FV_EXTRACT_SZ * BITS_PER_BYTE;
 
-	flds[fld].xtrct.prot_id = prot_id;
+	flds[fld].xtrct.prot_id = (u8)prot_id;
 	flds[fld].xtrct.off = (ice_flds_info[fld].off / ese_bits) *
 		ICE_FLOW_FV_EXTRACT_SZ;
 	flds[fld].xtrct.disp = (u8)(ice_flds_info[fld].off % ese_bits);
@@ -1590,7 +1590,7 @@ ice_flow_xtract_fld(struct ice_hw *hw, struct ice_flow_prof_params *params,
 			else
 				idx = params->es_cnt;
 
-			params->es[idx].prot_id = prot_id;
+			params->es[idx].prot_id = (u8)prot_id;
 			params->es[idx].off = off;
 			params->mask[idx] = mask | sib_mask;
 			params->es_cnt++;
@@ -1769,10 +1769,10 @@ ice_flow_acl_def_entry_frmt(struct ice_flow_prof_params *params)
 
 	for (i = 0; i < params->prof->segs_cnt; i++) {
 		struct ice_flow_seg_info *seg = &params->prof->segs[i];
-		u8 j;
+		u16 j;
 
 		ice_for_each_set_bit(j, (ice_bitmap_t *)&seg->match,
-				     ICE_FLOW_FIELD_IDX_MAX) {
+				     (u16)ICE_FLOW_FIELD_IDX_MAX) {
 			struct ice_flow_fld_info *fld = &seg->fields[j];
 
 			fld->entry.mask = ICE_FLOW_FLD_OFF_INVAL;
@@ -2765,7 +2765,7 @@ ice_flow_acl_check_actions(struct ice_hw *hw, struct ice_flow_action *acts,
 		/* If the caller want to add two actions of the same type, then
 		 * it is considered invalid configuration.
 		 */
-		if (ice_test_and_set_bit(acts[i].type, dup_check))
+		if (ice_test_and_set_bit((u16)acts[i].type, dup_check))
 			return ICE_ERR_PARAM;
 	}
 
@@ -2826,7 +2826,7 @@ ice_flow_acl_frmt_entry_range(u16 fld, struct ice_flow_fld_info *info,
 			(*(u16 *)(data + info->src.last)) << info->xtrct.disp;
 		u16 new_low =
 			(*(u16 *)(data + info->src.val)) << info->xtrct.disp;
-		u8 range_idx = info->entry.val;
+		u8 range_idx = (u8)info->entry.val;
 
 		range_buf->checker_cfg[range_idx].low_boundary =
 			CPU_TO_BE16(new_low);
@@ -2983,10 +2983,10 @@ ice_flow_acl_frmt_entry(struct ice_hw *hw, struct ice_flow_prof *prof,
 
 	for (i = 0; i < prof->segs_cnt; i++) {
 		struct ice_flow_seg_info *seg = &prof->segs[i];
-		u8 j;
+		u16 j;
 
 		ice_for_each_set_bit(j, (ice_bitmap_t *)&seg->match,
-				     ICE_FLOW_FIELD_IDX_MAX) {
+				     (u16)ICE_FLOW_FIELD_IDX_MAX) {
 			struct ice_flow_fld_info *info = &seg->fields[j];
 
 			if (info->type == ICE_FLOW_FLD_TYPE_RANGE)
@@ -3753,13 +3753,13 @@ ice_flow_set_rss_seg_info(struct ice_flow_seg_info *segs, u8 seg_cnt,
 {
 	struct ice_flow_seg_info *seg;
 	u64 val;
-	u8 i;
+	u16 i;
 
 	/* set inner most segment */
 	seg = &segs[seg_cnt - 1];
 
 	ice_for_each_set_bit(i, (const ice_bitmap_t *)&cfg->hash_flds,
-			     ICE_FLOW_FIELD_IDX_MAX)
+			     (u16)ICE_FLOW_FIELD_IDX_MAX)
 		ice_flow_set_fld(seg, (enum ice_flow_field)i,
 				 ICE_FLOW_FLD_OFF_INVAL, ICE_FLOW_FLD_OFF_INVAL,
 				 ICE_FLOW_FLD_OFF_INVAL, false);

@@ -691,9 +691,9 @@ ice_aq_start_stop_dcbx(struct ice_hw *hw, bool start_dcbx_agent,
 		       bool *dcbx_agent_status, struct ice_sq_cd *cd)
 {
 	struct ice_aqc_lldp_stop_start_specific_agent *cmd;
-	enum ice_status status;
+	enum ice_adminq_opc opcode;
 	struct ice_aq_desc desc;
-	u16 opcode;
+	enum ice_status status;
 
 	cmd = &desc.params.lldp_agent_ctrl;
 
@@ -885,8 +885,8 @@ ice_cee_to_dcb_cfg(struct ice_aqc_get_cee_dcb_cfg_resp *cee_cfg,
 		 */
 		if (!err && sync && oper) {
 			dcbcfg->app[app_index].priority =
-				(app_prio & ice_aqc_cee_app_mask) >>
-				ice_aqc_cee_app_shift;
+				(u8)((app_prio & ice_aqc_cee_app_mask) >>
+				     ice_aqc_cee_app_shift);
 			dcbcfg->app[app_index].selector = ice_app_sel_type;
 			dcbcfg->app[app_index].prot_id = ice_app_prot_id_type;
 			app_index++;

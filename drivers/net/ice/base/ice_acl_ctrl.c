@@ -6,10 +6,10 @@
 #include "ice_flow.h"
 
 /* Determine the TCAM index of entry 'e' within the ACL table */
-#define ICE_ACL_TBL_TCAM_IDX(e) ((e) / ICE_AQC_ACL_TCAM_DEPTH)
+#define ICE_ACL_TBL_TCAM_IDX(e) ((u8)((e) / ICE_AQC_ACL_TCAM_DEPTH))
 
 /* Determine the entry index within the TCAM */
-#define ICE_ACL_TBL_TCAM_ENTRY_IDX(e) ((e) % ICE_AQC_ACL_TCAM_DEPTH)
+#define ICE_ACL_TBL_TCAM_ENTRY_IDX(e) ((u16)((e) % ICE_AQC_ACL_TCAM_DEPTH))
 
 #define ICE_ACL_SCEN_ENTRY_INVAL 0xFFFF
 
@@ -251,10 +251,8 @@ ice_acl_assign_act_mems_to_tcam(struct ice_acl_tbl *tbl, u8 cur_tcam,
  */
 static void ice_acl_divide_act_mems_to_tcams(struct ice_acl_tbl *tbl)
 {
-	u16 num_cscd, stack_level, stack_idx, min_act_mem;
-	u8 tcam_idx = tbl->first_tcam;
-	u16 max_idx_to_get_extra;
-	u8 mem_idx = 0;
+	u16 num_cscd, stack_level, stack_idx, max_idx_to_get_extra;
+	u8 min_act_mem, tcam_idx = tbl->first_tcam, mem_idx = 0;
 
 	/* Determine number of stacked TCAMs */
 	stack_level = DIVIDE_AND_ROUND_UP(tbl->info.depth,
@@ -326,7 +324,8 @@ ice_acl_create_tbl(struct ice_hw *hw, struct ice_acl_tbl_params *params)
 	depth = ICE_ALIGN(params->depth, ICE_ACL_ENTRY_ALLOC_UNIT);
 
 	if (params->entry_act_pairs < width / ICE_AQC_ACL_KEY_WIDTH_BYTES) {
-		params->entry_act_pairs = width / ICE_AQC_ACL_KEY_WIDTH_BYTES;
+		params->entry_act_pairs =
+			(u8)(width / ICE_AQC_ACL_KEY_WIDTH_BYTES);
 
 		if (params->entry_act_pairs > ICE_AQC_TBL_MAX_ACTION_PAIRS)
 			params->entry_act_pairs = ICE_AQC_TBL_MAX_ACTION_PAIRS;
@@ -587,7 +586,7 @@ ice_acl_fill_tcam_select(struct ice_aqc_acl_scen *scen_buf,
 	 */
 	for (j = 0; j < ICE_AQC_ACL_KEY_WIDTH_BYTES; j++) {
 		/* PKT DIR uses the 1st location of Byte Selection Base: + 1 */
-		u8 val = ICE_AQC_ACL_BYTE_SEL_BASE + 1 + idx;
+		u8 val = (u8)(ICE_AQC_ACL_BYTE_SEL_BASE + 1 + idx);
 
 		if (tcam_idx_in_cascade == cascade_cnt - 1) {
 			if (j == ICE_ACL_SCEN_RNG_CHK_IDX_IN_TCAM)
@@ -793,7 +792,7 @@ ice_acl_create_scen(struct ice_hw *hw, u16 match_width, u16 num_entries,
 	/* set the START_SET bit at the beginning of the stack */
 	scen_buf.tcam_cfg[k].start_cmp_set |= ICE_AQC_ACL_ALLOC_SCE_START_SET;
 	while (k <= last_tcam) {
-		u8 last_tcam_idx_cascade = cascade_cnt + k - 1;
+		u16 last_tcam_idx_cascade = cascade_cnt + k - 1;
 
 		/* set start_cmp for the first cascaded TCAM */
 		scen_buf.tcam_cfg[k].start_cmp_set |=
@@ -972,10 +971,10 @@ ice_acl_add_entry(struct ice_hw *hw, struct ice_acl_scen *scen,
 		  enum ice_acl_entry_prio prio, u8 *keys, u8 *inverts,
 		  struct ice_acl_act_entry *acts, u8 acts_cnt, u16 *entry_idx)
 {
-	u8 i, entry_tcam, num_cscd, offset;
 	struct ice_aqc_acl_data buf;
+	u8 entry_tcam, offset;
+	u16 i, num_cscd, idx;
 	enum ice_status status = ICE_SUCCESS;
-	u16 idx;
 
 	if (!scen)
 		return ICE_ERR_DOES_NOT_EXIST;
@@ -1005,7 +1004,7 @@ ice_acl_add_entry(struct ice_hw *hw, struct ice_acl_scen *scen,
 		 * be programmed first; the TCAM entry of the leftmost TCAM
 		 * should be programmed last.
 		 */
-		offset = num_cscd - i - 1;
+		offset = (u8)(num_cscd - i - 1);
 		ice_memcpy(&buf.entry_key.val,
 			   &keys[offset * sizeof(buf.entry_key.val)],
 			   sizeof(buf.entry_key.val), ICE_NONDMA_TO_NONDMA);
@@ -1049,10 +1048,9 @@ ice_acl_prog_act(struct ice_hw *hw, struct ice_acl_scen *scen,
 		 struct ice_acl_act_entry *acts, u8 acts_cnt,
 		 u16 entry_idx)
 {
-	u8 entry_tcam, num_cscd, i, actx_idx = 0;
+	u16 idx, entry_tcam, num_cscd, i, actx_idx = 0;
 	struct ice_aqc_actpair act_buf;
 	enum ice_status status = ICE_SUCCESS;
-	u16 idx;
 
 	if (entry_idx >= scen->num_entry)
 		return ICE_ERR_MAX_LIMIT;
@@ -1112,9 +1110,9 @@ ice_acl_rem_entry(struct ice_hw *hw, struct ice_acl_scen *scen, u16 entry_idx)
 {
 	struct ice_aqc_actpair act_buf;
 	struct ice_aqc_acl_data buf;
-	u8 entry_tcam, num_cscd, i;
 	enum ice_status status = ICE_SUCCESS;
-	u16 idx;
+	u16 num_cscd, idx, i;
+	u8 entry_tcam;
 
 	if (!scen)
 		return ICE_ERR_DOES_NOT_EXIST;
@@ -1135,8 +1133,8 @@ ice_acl_rem_entry(struct ice_hw *hw, struct ice_acl_scen *scen, u16 entry_idx)
 	/* invalidate the flow entry */
 	ice_memset(&buf, 0, sizeof(buf), ICE_NONDMA_MEM);
 	for (i = 0; i < num_cscd; i++) {
-		status = ice_aq_program_acl_entry(hw, entry_tcam + i, idx, &buf,
-						  NULL);
+		status = ice_aq_program_acl_entry(hw, (u8)(entry_tcam + i),
+						  idx, &buf, NULL);
 		if (status)
 			ice_debug(hw, ICE_DBG_ACL, "AQ program ACL entry failed status: %d\n",
 				  status);

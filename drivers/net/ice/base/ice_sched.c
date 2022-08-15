@@ -1369,9 +1369,10 @@ enum ice_status ice_sched_query_res_alloc(struct ice_hw *hw)
 	if (status)
 		goto sched_query_out;
 
-	hw->num_tx_sched_layers = LE16_TO_CPU(buf->sched_props.logical_levels);
+	hw->num_tx_sched_layers =
+		(u8)LE16_TO_CPU(buf->sched_props.logical_levels);
 	hw->num_tx_sched_phys_layers =
-		LE16_TO_CPU(buf->sched_props.phys_levels);
+		(u8)LE16_TO_CPU(buf->sched_props.phys_levels);
 	hw->flattened_layers = buf->sched_props.flattening_bitmap;
 	hw->max_cgds = buf->sched_props.max_pf_cgds;
 

@@ -171,7 +171,7 @@ ice_read_sr_buf_aq(struct ice_hw *hw, u16 offset, u16 *words, u16 *data)
 	status = ice_read_flat_nvm(hw, offset * 2, &bytes, (u8 *)data, true);
 
 	/* Report the number of words successfully read */
-	*words = bytes / 2;
+	*words = (u16)(bytes / 2);
 
 	/* Byte swap the words up to the amount we actually read */
 	for (i = 0; i < *words; i++)

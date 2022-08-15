@@ -2272,8 +2272,8 @@ ice_get_recp_frm_fw(struct ice_hw *hw, struct ice_sw_recipe *recps, u8 rid,
 				    ~ICE_AQ_RECIPE_RESULT_EN, result_bm);
 
 		/* get the first profile that is associated with rid */
-		prof = ice_find_first_bit(recipe_to_profile[idx],
-					  ICE_MAX_NUM_PROFILES);
+		prof = (u8)ice_find_first_bit(recipe_to_profile[idx],
+					      ICE_MAX_NUM_PROFILES);
 		for (i = 0; i < ICE_NUM_WORDS_RECIPE; i++) {
 			u8 lkup_indx = root_bufs.content.lkup_indx[i + 1];
 
@@ -4023,7 +4023,7 @@ ice_add_counter_act(struct ice_hw *hw, struct ice_fltr_mgmt_list_entry *m_ent,
 				 ice_aqc_opc_update_sw_rules, NULL);
 	if (!status) {
 		m_ent->lg_act_idx = l_id;
-		m_ent->counter_index = counter_id;
+		m_ent->counter_index = (u8)counter_id;
 	}
 
 	ice_free(hw, lg_act);
@@ -6341,7 +6341,7 @@ ice_remove_vsi_lkup_fltr(struct ice_hw *hw, u16 vsi_handle,
 		break;
 	case ICE_SW_LKUP_PROMISC:
 	case ICE_SW_LKUP_PROMISC_VLAN:
-		ice_remove_promisc(hw, lkup, &remove_list_head);
+		ice_remove_promisc(hw, (u8)lkup, &remove_list_head);
 		break;
 	case ICE_SW_LKUP_MAC_VLAN:
 		ice_remove_mac_vlan(hw, &remove_list_head);
@@ -7183,7 +7183,7 @@ ice_add_sw_recipe(struct ice_hw *hw, struct ice_sw_recipe *rm,
 	/* Allocate the recipe resources, and configure them according to the
 	 * match fields from protocol headers and extracted field vectors.
 	 */
-	chain_idx = ice_find_first_bit(result_idx_bm, ICE_MAX_FV_WORDS);
+	chain_idx = (u8)ice_find_first_bit(result_idx_bm, ICE_MAX_FV_WORDS);
 	LIST_FOR_EACH_ENTRY(entry, &rm->rg_list, ice_recp_grp_entry, l_entry) {
 		u8 i;
 
@@ -7376,7 +7376,7 @@ ice_add_sw_recipe(struct ice_hw *hw, struct ice_sw_recipe *rm,
 		is_root = (rm->root_rid == entry->rid);
 		recp->is_root = is_root;
 
-		recp->root_rid = entry->rid;
+		recp->root_rid = (u8)entry->rid;
 		recp->big_recp = (is_root && rm->n_grp_count > 1);
 
 		ice_memcpy(&recp->ext_words, entry->r_group.pairs,

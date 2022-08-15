@@ -2420,7 +2420,7 @@ ice_parse_common_caps(struct ice_hw *hw, struct ice_hw_common_caps *caps,
 	case ICE_AQC_CAPS_EXT_TOPO_DEV_IMG2:
 	case ICE_AQC_CAPS_EXT_TOPO_DEV_IMG3:
 	{
-		u8 index = cap - ICE_AQC_CAPS_EXT_TOPO_DEV_IMG0;
+		u8 index = (u8)(cap - ICE_AQC_CAPS_EXT_TOPO_DEV_IMG0);
 
 		caps->ext_topo_dev_img_ver_high[index] = number;
 		caps->ext_topo_dev_img_ver_low[index] = logical_id;
@@ -2534,11 +2534,10 @@ ice_parse_1588_func_caps(struct ice_hw *hw, struct ice_hw_func_caps *func_p,
 	info->tmr_index_owned = ((number & ICE_TS_TMR_IDX_OWND_M) != 0);
 	info->tmr_index_assoc = ((number & ICE_TS_TMR_IDX_ASSOC_M) != 0);
 
-	info->clk_freq = (number & ICE_TS_CLK_FREQ_M) >> ICE_TS_CLK_FREQ_S;
 	info->clk_src = ((number & ICE_TS_CLK_SRC_M) != 0);
-
-	if (info->clk_freq < NUM_ICE_TIME_REF_FREQ) {
-		info->time_ref = (enum ice_time_ref_freq)info->clk_freq;
+	clk_freq = (number & ICE_TS_CLK_FREQ_M) >> ICE_TS_CLK_FREQ_S;
+	if (clk_freq < NUM_ICE_TIME_REF_FREQ) {
+		info->time_ref = (enum ice_time_ref_freq)clk_freq;
 	} else {
 		/* Unknown clock frequency, so assume a (probably incorrect)
 		 * default to avoid out-of-bounds look ups of frequency
@@ -5621,7 +5620,7 @@ ice_aq_set_driver_param(struct ice_hw *hw, enum ice_aqc_driver_params idx,
 	ice_fill_dflt_direct_cmd_desc(&desc, ice_aqc_opc_driver_shared_params);
 
 	cmd->set_or_get_op = ICE_AQC_DRIVER_PARAM_SET;
-	cmd->param_indx = idx;
+	cmd->param_indx = (u8)idx;
 	cmd->param_val = CPU_TO_LE32(value);
 
 	return ice_aq_send_cmd(hw, &desc, NULL, 0, cd);
@@ -5655,7 +5654,7 @@ ice_aq_get_driver_param(struct ice_hw *hw, enum ice_aqc_driver_params idx,
 	ice_fill_dflt_direct_cmd_desc(&desc, ice_aqc_opc_driver_shared_params);
 
 	cmd->set_or_get_op = ICE_AQC_DRIVER_PARAM_GET;
-	cmd->param_indx = idx;
+	cmd->param_indx = (u8)idx;
 
 	status = ice_aq_send_cmd(hw, &desc, NULL, 0, cd);
 	if (status)
