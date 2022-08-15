@@ -38,6 +38,8 @@
 #define ICE_FLOW_FLD_SZ_NAT_T_ESP_SPI	4
 #define ICE_FLOW_FLD_SZ_VXLAN_VNI	4
 #define ICE_FLOW_FLD_SZ_ECPRI_TP0_PC_ID	2
+#define ICE_FLOW_FLD_SZ_L2TPV2_SESS_ID	2
+#define ICE_FLOW_FLD_SZ_L2TPV2_LEN_SESS_ID	2
 
 /* Describe properties of a protocol header field */
 struct ice_flow_field_info {
@@ -229,6 +231,14 @@ struct ice_flow_field_info ice_flds_info[ICE_FLOW_FIELD_IDX_MAX] = {
 	/* ICE_FLOW_FIELD_IDX_UDP_ECPRI_TP0_PC_ID */
 	ICE_FLOW_FLD_INFO(ICE_FLOW_SEG_HDR_UDP_ECPRI_TP0, 12,
 			  ICE_FLOW_FLD_SZ_ECPRI_TP0_PC_ID),
+	/* L2TPV2 */
+	/* ICE_FLOW_FIELD_IDX_L2TPV2_SESS_ID */
+	ICE_FLOW_FLD_INFO(ICE_FLOW_SEG_HDR_L2TPV2, 12,
+			  ICE_FLOW_FLD_SZ_L2TPV2_SESS_ID),
+	/* L2TPV2_LEN */
+	/* ICE_FLOW_FIELD_IDX_L2TPV2_LEN_SESS_ID */
+	ICE_FLOW_FLD_INFO(ICE_FLOW_SEG_HDR_L2TPV2, 14,
+			  ICE_FLOW_FLD_SZ_L2TPV2_LEN_SESS_ID),
 };
 
 /* Bitmaps indicating relevant packet types for a particular protocol header
@@ -1492,6 +1502,8 @@ ice_flow_xtract_fld(struct ice_hw *hw, struct ice_flow_prof_params *params,
 	case ICE_FLOW_FIELD_IDX_GTPU_EH_QFI:
 	case ICE_FLOW_FIELD_IDX_GTPU_UP_QFI:
 	case ICE_FLOW_FIELD_IDX_GTPU_DWN_QFI:
+	case ICE_FLOW_FIELD_IDX_L2TPV2_SESS_ID:
+	case ICE_FLOW_FIELD_IDX_L2TPV2_LEN_SESS_ID:
 		/* GTP is accessed through UDP OF protocol */
 		prot_id = ICE_PROT_UDP_OF;
 		break;
