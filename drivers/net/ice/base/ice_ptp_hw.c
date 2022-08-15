@@ -4142,6 +4142,87 @@ ice_write_phy_reg_e810(struct ice_hw *hw, u32 addr, u32 val)
 }
 
 /**
+ * ice_read_phy_tstamp_ll_e810 - Read a PHY timestamp registers through the FW
+ * @hw: pointer to the HW struct
+ * @idx: the timestamp index to read
+ * @hi: 8 bit timestamp high value
+ * @lo: 32 bit timestamp low value
+ *
+ * Read a 8bit timestamp high value and 32 bit timestamp low value out of the
+ * timestamp block of the external PHY on the E810 device using the low latency
+ * timestamp read.
+ */
+static enum ice_status
+ice_read_phy_tstamp_ll_e810(struct ice_hw *hw, u8 idx, u8 *hi, u32 *lo)
+{
+	u8 i;
+
+	/* Write TS index to read to the PF register so the FW can read it */
+	wr32(hw, PF_SB_ATQBAL, TS_LL_READ_TS_IDX(idx));
+
+	/* Read the register repeatedly until the FW provides us the TS */
+	for (i = TS_LL_READ_RETRIES; i > 0; i--) {
+		u32 val = rd32(hw, PF_SB_ATQBAL);
+
+		/* When the bit is cleared, the TS is ready in the register */
+		if (!(val & TS_LL_READ_TS)) {
+			/* High 8 bit value of the TS is on the bits 16:23 */
+			*hi = (u8)(val >> TS_LL_READ_TS_HIGH_S);
+
+			/* Read the low 32 bit value and set the TS valid bit */
+			*lo = rd32(hw, PF_SB_ATQBAH) | TS_VALID;
+			return ICE_SUCCESS;
+		}
+
+		ice_usec_delay(10, false);
+	}
+
+	/* FW failed to provide the TS in time */
+	ice_debug(hw, ICE_DBG_PTP, "Failed to read PTP timestamp using low latency read\n");
+	return ICE_ERR_NOT_READY;
+}
+
+/**
+ * ice_read_phy_tstamp_sbq_e810 - Read a PHY timestamp registers through the sbq
+ * @hw: pointer to the HW struct
+ * @lport: the lport to read from
+ * @idx: the timestamp index to read
+ * @hi: 8 bit timestamp high value
+ * @lo: 32 bit timestamp low value
+ *
+ * Read a 8bit timestamp high value and 32 bit timestamp low value out of the
+ * timestamp block of the external PHY on the E810 device using sideband queue.
+ */
+static enum ice_status
+ice_read_phy_tstamp_sbq_e810(struct ice_hw *hw, u8 lport, u8 idx, u8 *hi,
+			     u32 *lo)
+{
+	u32 hi_addr = TS_EXT(HIGH_TX_MEMORY_BANK_START, lport, idx);
+	u32 lo_addr = TS_EXT(LOW_TX_MEMORY_BANK_START, lport, idx);
+	enum ice_status status;
+	u32 lo_val, hi_val;
+
+	status = ice_read_phy_reg_e810(hw, lo_addr, &lo_val);
+	if (status) {
+		ice_debug(hw, ICE_DBG_PTP, "Failed to read low PTP timestamp register, status %d\n",
+			  status);
+		return status;
+	}
+
+	status = ice_read_phy_reg_e810(hw, hi_addr, &hi_val);
+	if (status) {
+		ice_debug(hw, ICE_DBG_PTP, "Failed to read high PTP timestamp register, status %d\n",
+			  status);
+		return status;
+	}
+
+	*lo = lo_val;
+	*hi = (u8)hi_val;
+
+	return ICE_SUCCESS;
+}
+
+/**
  * ice_read_phy_tstamp_e810 - Read a PHY timestamp out of the external PHY
  * @hw: pointer to the HW struct
  * @lport: the lport to read from
@@ -4155,24 +4236,16 @@ static enum ice_status
 ice_read_phy_tstamp_e810(struct ice_hw *hw, u8 lport, u8 idx, u64 *tstamp)
 {
 	enum ice_status status;
-	u32 lo_addr, hi_addr, lo, hi;
+	u32 lo = 0;
+	u8 hi = 0;
 
-	lo_addr = TS_EXT(LOW_TX_MEMORY_BANK_START, lport, idx);
-	hi_addr = TS_EXT(HIGH_TX_MEMORY_BANK_START, lport, idx);
+	if (hw->dev_caps.ts_dev_info.ts_ll_read)
+		status = ice_read_phy_tstamp_ll_e810(hw, idx, &hi, &lo);
+	else
+		status = ice_read_phy_tstamp_sbq_e810(hw, lport, idx, &hi, &lo);
 
-	status = ice_read_phy_reg_e810(hw, lo_addr, &lo);
-	if (status) {
-		ice_debug(hw, ICE_DBG_PTP, "Failed to read low PTP timestamp register, status %d\n",
-			  status);
+	if (status)
 		return status;
-	}
-
-	status = ice_read_phy_reg_e810(hw, hi_addr, &hi);
-	if (status) {
-		ice_debug(hw, ICE_DBG_PTP, "Failed to read high PTP timestamp register, status %d\n",
-			  status);
-		return status;
-	}
 
 	/* For E810 devices, the timestamp is reported with the lower 32 bits
 	 * in the low register, and the upper 8 bits in the high register.
