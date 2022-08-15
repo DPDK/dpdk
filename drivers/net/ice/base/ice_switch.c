@@ -9002,9 +9002,13 @@ ice_add_adv_rule(struct ice_hw *hw, struct ice_adv_lkup_elem *lkups,
 		goto err_ice_add_adv_rule;
 	}
 
-	adv_fltr->lkups = (struct ice_adv_lkup_elem *)
-		ice_memdup(hw, lkups, lkups_cnt * sizeof(*lkups),
-			   ICE_NONDMA_TO_NONDMA);
+	if (lkups_cnt) {
+		adv_fltr->lkups = (struct ice_adv_lkup_elem *)
+			ice_memdup(hw, lkups, lkups_cnt * sizeof(*lkups),
+				   ICE_NONDMA_TO_NONDMA);
+	} else {
+		adv_fltr->lkups = NULL;
+	}
 	if (!adv_fltr->lkups && !prof_rule) {
 		status = ICE_ERR_NO_MEMORY;
 		goto err_ice_add_adv_rule;
