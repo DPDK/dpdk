@@ -2,6 +2,7 @@
  * Copyright(c) 2001-2021 Intel Corporation
  */
 
+#include "ice_common.h"
 #include "ice_switch.h"
 #include "ice_flex_type.h"
 #include "ice_flow.h"

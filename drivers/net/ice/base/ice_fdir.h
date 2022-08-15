@@ -5,7 +5,7 @@
 #ifndef _ICE_FDIR_H_
 #define _ICE_FDIR_H_
 
-#include "ice_common.h"
+#include "ice_type.h"
 
 #define ICE_FDIR_IP_PROTOCOLS
 #define ICE_IP_PROTO_TCP		6
