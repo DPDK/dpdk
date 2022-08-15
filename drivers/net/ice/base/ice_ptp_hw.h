@@ -482,5 +482,80 @@ bool ice_is_pca9575_present(struct ice_hw *hw);
 #define ICE_E810T_SMA_MIN_BIT	3
 #define ICE_E810T_SMA_MAX_BIT	7
 #define ICE_E810T_P1_OFFSET	8
+/* 56G PHY quad register base addresses */
+#define ICE_PHY0_BASE			0x092000
+#define ICE_PHY1_BASE			0x126000
+#define ICE_PHY2_BASE			0x1BA000
+#define ICE_PHY3_BASE			0x24E000
+#define ICE_PHY4_BASE			0x2E2000
+
+/* Timestamp memory */
+#define PHY_PTP_LANE_ADDR_STEP		0x98
+
+#define PHY_PTP_MEM_START		0x1000
+#define PHY_PTP_MEM_LANE_STEP		0x04A0
+#define PHY_PTP_MEM_LOCATIONS		0x40
+
+/* Number of PHY ports */
+#define ICE_NUM_PHY_PORTS		5
+/* Timestamp PHY incval registers */
+#define PHY_REG_TIMETUS_L		0x8
+#define PHY_REG_TIMETUS_U		0xC
+
+/* Timestamp init registers */
+#define PHY_REG_RX_TIMER_INC_PRE_L	0x64
+#define PHY_REG_RX_TIMER_INC_PRE_U	0x68
+
+#define PHY_REG_TX_TIMER_INC_PRE_L	0x44
+#define PHY_REG_TX_TIMER_INC_PRE_U	0x48
+
+/* Timestamp match and adjust target registers */
+#define PHY_REG_RX_TIMER_CNT_ADJ_L	0x6C
+#define PHY_REG_RX_TIMER_CNT_ADJ_U	0x70
+
+#define PHY_REG_TX_TIMER_CNT_ADJ_L	0x4C
+#define PHY_REG_TX_TIMER_CNT_ADJ_U	0x50
+
+/* Timestamp command registers */
+#define PHY_REG_TX_TMR_CMD		0x40
+#define PHY_REG_RX_TMR_CMD		0x60
+
+/* Phy offset ready registers */
+#define PHY_REG_TX_OFFSET_READY		0x54
+#define PHY_REG_RX_OFFSET_READY		0x74
+/* Phy total offset registers */
+#define PHY_REG_TOTAL_TX_OFFSET_L	0x38
+#define PHY_REG_TOTAL_TX_OFFSET_U	0x3C
+
+#define PHY_REG_TOTAL_RX_OFFSET_L	0x58
+#define PHY_REG_TOTAL_RX_OFFSET_U	0x5C
+
+/* Timestamp capture registers */
+#define PHY_REG_TX_CAPTURE_L		0x78
+#define PHY_REG_TX_CAPTURE_U		0x7C
+
+#define PHY_REG_RX_CAPTURE_L		0x8C
+#define PHY_REG_RX_CAPTURE_U		0x90
+
+/* Memory status registers */
+#define PHY_REG_TX_MEMORY_STATUS_L	0x80
+#define PHY_REG_TX_MEMORY_STATUS_U	0x84
+
+/* Interrupt config register */
+#define PHY_REG_TS_INT_CONFIG		0x88
+
+#define PHY_PTP_INT_STATUS		0x7FD140
+
+#define PHY_TS_INT_CONFIG_THRESHOLD_S	0
+#define PHY_TS_INT_CONFIG_THRESHOLD_M	MAKEMASK(0x3F, 0)
+#define PHY_TS_INT_CONFIG_ENA_S		6
+#define PHY_TS_INT_CONFIG_ENA_M		BIT(6)
+
+/* Macros to derive offsets for TimeStampLow and TimeStampHigh */
+#define PHY_TSTAMP_L(x) (((x) * 8) + 0)
+#define PHY_TSTAMP_U(x) (((x) * 8) + 4)
+
+#define PHY_REG_REVISION		0x85000
+#define PHY_REVISION_ETH56G		0x10200
 
 #endif /* _ICE_PTP_HW_H_ */
