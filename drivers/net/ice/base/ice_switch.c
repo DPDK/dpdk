@@ -5825,22 +5825,25 @@ static u8 ice_determine_promisc_mask(struct ice_fltr_info *fi)
  * @promisc_mask: pointer to mask to be filled in
  * @vid: VLAN ID of promisc VLAN VSI
  * @sw: pointer to switch info struct for which function add rule
+ * @lkup: switch rule filter lookup type
  */
 static enum ice_status
 _ice_get_vsi_promisc(struct ice_hw *hw, u16 vsi_handle, u8 *promisc_mask,
-		     u16 *vid, struct ice_switch_info *sw)
+		     u16 *vid, struct ice_switch_info *sw,
+		     enum ice_sw_lkup_type lkup)
 {
 	struct ice_fltr_mgmt_list_entry *itr;
 	struct LIST_HEAD_TYPE *rule_head;
 	struct ice_lock *rule_lock;	/* Lock to protect filter rule list */
 
-	if (!ice_is_vsi_valid(hw, vsi_handle))
+	if (!ice_is_vsi_valid(hw, vsi_handle) ||
+	    (lkup != ICE_SW_LKUP_PROMISC && lkup != ICE_SW_LKUP_PROMISC_VLAN))
 		return ICE_ERR_PARAM;
 
 	*vid = 0;
 	*promisc_mask = 0;
-	rule_head = &sw->recp_list[ICE_SW_LKUP_PROMISC].filt_rules;
-	rule_lock = &sw->recp_list[ICE_SW_LKUP_PROMISC].filt_rule_lock;
+	rule_head = &sw->recp_list[lkup].filt_rules;
+	rule_lock = &sw->recp_list[lkup].filt_rule_lock;
 
 	ice_acquire_lock(rule_lock);
 	LIST_FOR_EACH_ENTRY(itr, rule_head,
@@ -5870,47 +5873,7 @@ ice_get_vsi_promisc(struct ice_hw *hw, u16 vsi_handle, u8 *promisc_mask,
 		    u16 *vid)
 {
 	return _ice_get_vsi_promisc(hw, vsi_handle, promisc_mask,
-				    vid, hw->switch_info);
-}
-
-/**
- * _ice_get_vsi_vlan_promisc - get VLAN promiscuous mode of given VSI
- * @hw: pointer to the hardware structure
- * @vsi_handle: VSI handle to retrieve info from
- * @promisc_mask: pointer to mask to be filled in
- * @vid: VLAN ID of promisc VLAN VSI
- * @sw: pointer to switch info struct for which function add rule
- */
-static enum ice_status
-_ice_get_vsi_vlan_promisc(struct ice_hw *hw, u16 vsi_handle, u8 *promisc_mask,
-			  u16 *vid, struct ice_switch_info *sw)
-{
-	struct ice_fltr_mgmt_list_entry *itr;
-	struct LIST_HEAD_TYPE *rule_head;
-	struct ice_lock *rule_lock;	/* Lock to protect filter rule list */
-
-	if (!ice_is_vsi_valid(hw, vsi_handle))
-		return ICE_ERR_PARAM;
-
-	*vid = 0;
-	*promisc_mask = 0;
-	rule_head = &sw->recp_list[ICE_SW_LKUP_PROMISC_VLAN].filt_rules;
-	rule_lock = &sw->recp_list[ICE_SW_LKUP_PROMISC_VLAN].filt_rule_lock;
-
-	ice_acquire_lock(rule_lock);
-	LIST_FOR_EACH_ENTRY(itr, rule_head, ice_fltr_mgmt_list_entry,
-			    list_entry) {
-		/* Continue if this filter doesn't apply to this VSI or the
-		 * VSI ID is not in the VSI map for this filter
-		 */
-		if (!ice_vsi_uses_fltr(itr, vsi_handle))
-			continue;
-
-		*promisc_mask |= ice_determine_promisc_mask(&itr->fltr_info);
-	}
-	ice_release_lock(rule_lock);
-
-	return ICE_SUCCESS;
+				    vid, hw->switch_info, ICE_SW_LKUP_PROMISC);
 }
 
 /**
@@ -5924,8 +5887,9 @@ enum ice_status
 ice_get_vsi_vlan_promisc(struct ice_hw *hw, u16 vsi_handle, u8 *promisc_mask,
 			 u16 *vid)
 {
-	return _ice_get_vsi_vlan_promisc(hw, vsi_handle, promisc_mask,
-					 vid, hw->switch_info);
+	return _ice_get_vsi_promisc(hw, vsi_handle, promisc_mask,
+				    vid, hw->switch_info,
+				    ICE_SW_LKUP_PROMISC_VLAN);
 }
 
 /**
