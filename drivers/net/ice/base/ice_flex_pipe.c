@@ -2145,6 +2145,129 @@ void ice_init_flow_profs(struct ice_hw *hw, u8 blk_idx)
 }
 
 /**
+ * ice_init_hw_tbls - init hardware table memory
+ * @hw: pointer to the hardware structure
+ */
+enum ice_status ice_init_hw_tbls(struct ice_hw *hw)
+{
+	u8 i;
+
+	ice_init_lock(&hw->rss_locks);
+	INIT_LIST_HEAD(&hw->rss_list_head);
+	if (!hw->dcf_enabled)
+		ice_init_all_prof_masks(hw);
+	for (i = 0; i < ICE_BLK_COUNT; i++) {
+		struct ice_prof_redir *prof_redir = &hw->blk[i].prof_redir;
+		struct ice_prof_tcam *prof = &hw->blk[i].prof;
+		struct ice_xlt1 *xlt1 = &hw->blk[i].xlt1;
+		struct ice_xlt2 *xlt2 = &hw->blk[i].xlt2;
+		struct ice_es *es = &hw->blk[i].es;
+		u16 j;
+
+		if (hw->blk[i].is_list_init)
+			continue;
+
+		ice_init_flow_profs(hw, i);
+		ice_init_lock(&es->prof_map_lock);
+		INIT_LIST_HEAD(&es->prof_map);
+		hw->blk[i].is_list_init = true;
+
+		hw->blk[i].overwrite = blk_sizes[i].overwrite;
+		es->reverse = blk_sizes[i].reverse;
+
+		xlt1->sid = ice_blk_sids[i][ICE_SID_XLT1_OFF];
+		xlt1->count = blk_sizes[i].xlt1;
+
+		xlt1->ptypes = (struct ice_ptg_ptype *)
+			ice_calloc(hw, xlt1->count, sizeof(*xlt1->ptypes));
+
+		if (!xlt1->ptypes)
+			goto err;
+
+		xlt1->ptg_tbl = (struct ice_ptg_entry *)
+			ice_calloc(hw, ICE_MAX_PTGS, sizeof(*xlt1->ptg_tbl));
+
+		if (!xlt1->ptg_tbl)
+			goto err;
+
+		xlt1->t = (u8 *)ice_calloc(hw, xlt1->count, sizeof(*xlt1->t));
+		if (!xlt1->t)
+			goto err;
+
+		xlt2->sid = ice_blk_sids[i][ICE_SID_XLT2_OFF];
+		xlt2->count = blk_sizes[i].xlt2;
+
+		xlt2->vsis = (struct ice_vsig_vsi *)
+			ice_calloc(hw, xlt2->count, sizeof(*xlt2->vsis));
+
+		if (!xlt2->vsis)
+			goto err;
+
+		xlt2->vsig_tbl = (struct ice_vsig_entry *)
+			ice_calloc(hw, xlt2->count, sizeof(*xlt2->vsig_tbl));
+		if (!xlt2->vsig_tbl)
+			goto err;
+
+		for (j = 0; j < xlt2->count; j++)
+			INIT_LIST_HEAD(&xlt2->vsig_tbl[j].prop_lst);
+
+		xlt2->t = (u16 *)ice_calloc(hw, xlt2->count, sizeof(*xlt2->t));
+		if (!xlt2->t)
+			goto err;
+
+		prof->sid = ice_blk_sids[i][ICE_SID_PR_OFF];
+		prof->count = blk_sizes[i].prof_tcam;
+		prof->max_prof_id = blk_sizes[i].prof_id;
+		prof->cdid_bits = blk_sizes[i].prof_cdid_bits;
+		prof->t = (struct ice_prof_tcam_entry *)
+			ice_calloc(hw, prof->count, sizeof(*prof->t));
+
+		if (!prof->t)
+			goto err;
+
+		prof_redir->sid = ice_blk_sids[i][ICE_SID_PR_REDIR_OFF];
+		prof_redir->count = blk_sizes[i].prof_redir;
+		prof_redir->t = (u8 *)ice_calloc(hw, prof_redir->count,
+						 sizeof(*prof_redir->t));
+
+		if (!prof_redir->t)
+			goto err;
+
+		es->sid = ice_blk_sids[i][ICE_SID_ES_OFF];
+		es->count = blk_sizes[i].es;
+		es->fvw = blk_sizes[i].fvw;
+		es->t = (struct ice_fv_word *)
+			ice_calloc(hw, (u32)(es->count * es->fvw),
+				   sizeof(*es->t));
+		if (!es->t)
+			goto err;
+
+		es->ref_count = (u16 *)
+			ice_calloc(hw, es->count, sizeof(*es->ref_count));
+
+		if (!es->ref_count)
+			goto err;
+
+		es->written = (u8 *)
+			ice_calloc(hw, es->count, sizeof(*es->written));
+
+		if (!es->written)
+			goto err;
+
+		es->mask_ena = (u32 *)
+			ice_calloc(hw, es->count, sizeof(*es->mask_ena));
+
+		if (!es->mask_ena)
+			goto err;
+	}
+	return ICE_SUCCESS;
+
+err:
+	ice_free_hw_tbls(hw);
+	return ICE_ERR_NO_MEMORY;
+}
+
+/**
  * ice_fill_blk_tbls - Read package context for tables
  * @hw: pointer to the hardware structure
  *
@@ -2308,160 +2431,63 @@ void ice_clear_hw_tbls(struct ice_hw *hw)
 
 		ice_free_vsig_tbl(hw, (enum ice_block)i);
 
-		ice_memset(xlt1->ptypes, 0, xlt1->count * sizeof(*xlt1->ptypes),
-			   ICE_NONDMA_MEM);
-		ice_memset(xlt1->ptg_tbl, 0,
-			   ICE_MAX_PTGS * sizeof(*xlt1->ptg_tbl),
-			   ICE_NONDMA_MEM);
-		ice_memset(xlt1->t, 0, xlt1->count * sizeof(*xlt1->t),
-			   ICE_NONDMA_MEM);
+		if (xlt1->ptypes)
+			ice_memset(xlt1->ptypes, 0,
+				   xlt1->count * sizeof(*xlt1->ptypes),
+				   ICE_NONDMA_MEM);
 
-		ice_memset(xlt2->vsis, 0, xlt2->count * sizeof(*xlt2->vsis),
-			   ICE_NONDMA_MEM);
-		ice_memset(xlt2->vsig_tbl, 0,
-			   xlt2->count * sizeof(*xlt2->vsig_tbl),
-			   ICE_NONDMA_MEM);
-		ice_memset(xlt2->t, 0, xlt2->count * sizeof(*xlt2->t),
-			   ICE_NONDMA_MEM);
+		if (xlt1->ptg_tbl)
+			ice_memset(xlt1->ptg_tbl, 0,
+				   ICE_MAX_PTGS * sizeof(*xlt1->ptg_tbl),
+				   ICE_NONDMA_MEM);
 
-		ice_memset(prof->t, 0, prof->count * sizeof(*prof->t),
-			   ICE_NONDMA_MEM);
-		ice_memset(prof_redir->t, 0,
-			   prof_redir->count * sizeof(*prof_redir->t),
-			   ICE_NONDMA_MEM);
+		if (xlt1->t)
+			ice_memset(xlt1->t, 0, xlt1->count * sizeof(*xlt1->t),
+				   ICE_NONDMA_MEM);
 
-		ice_memset(es->t, 0, es->count * sizeof(*es->t) * es->fvw,
-			   ICE_NONDMA_MEM);
-		ice_memset(es->ref_count, 0, es->count * sizeof(*es->ref_count),
-			   ICE_NONDMA_MEM);
-		ice_memset(es->written, 0, es->count * sizeof(*es->written),
-			   ICE_NONDMA_MEM);
-		ice_memset(es->mask_ena, 0, es->count * sizeof(*es->mask_ena),
-			   ICE_NONDMA_MEM);
+		if (xlt2->vsis)
+			ice_memset(xlt2->vsis, 0,
+				   xlt2->count * sizeof(*xlt2->vsis),
+				   ICE_NONDMA_MEM);
+
+		if (xlt2->vsig_tbl)
+			ice_memset(xlt2->vsig_tbl, 0,
+				   xlt2->count * sizeof(*xlt2->vsig_tbl),
+				   ICE_NONDMA_MEM);
+
+		if (xlt2->t)
+			ice_memset(xlt2->t, 0, xlt2->count * sizeof(*xlt2->t),
+				   ICE_NONDMA_MEM);
+
+		if (prof->t)
+			ice_memset(prof->t, 0, prof->count * sizeof(*prof->t),
+				   ICE_NONDMA_MEM);
+
+		if (prof_redir->t)
+			ice_memset(prof_redir->t, 0,
+				   prof_redir->count * sizeof(*prof_redir->t),
+				   ICE_NONDMA_MEM);
+
+		if (es->t)
+			ice_memset(es->t, 0,
+				   es->count * sizeof(*es->t) * es->fvw,
+				   ICE_NONDMA_MEM);
+
+		if (es->ref_count)
+			ice_memset(es->ref_count, 0,
+				   es->count * sizeof(*es->ref_count),
+				   ICE_NONDMA_MEM);
+
+		if (es->written)
+			ice_memset(es->written, 0,
+				   es->count * sizeof(*es->written),
+				   ICE_NONDMA_MEM);
+
+		if (es->mask_ena)
+			ice_memset(es->mask_ena, 0,
+				   es->count * sizeof(*es->mask_ena),
+				   ICE_NONDMA_MEM);
 	}
-}
-
-/**
- * ice_init_hw_tbls - init hardware table memory
- * @hw: pointer to the hardware structure
- */
-enum ice_status ice_init_hw_tbls(struct ice_hw *hw)
-{
-	u8 i;
-
-	ice_init_lock(&hw->rss_locks);
-	INIT_LIST_HEAD(&hw->rss_list_head);
-	if (!hw->dcf_enabled)
-		ice_init_all_prof_masks(hw);
-	for (i = 0; i < ICE_BLK_COUNT; i++) {
-		struct ice_prof_redir *prof_redir = &hw->blk[i].prof_redir;
-		struct ice_prof_tcam *prof = &hw->blk[i].prof;
-		struct ice_xlt1 *xlt1 = &hw->blk[i].xlt1;
-		struct ice_xlt2 *xlt2 = &hw->blk[i].xlt2;
-		struct ice_es *es = &hw->blk[i].es;
-		u16 j;
-
-		if (hw->blk[i].is_list_init)
-			continue;
-
-		ice_init_flow_profs(hw, i);
-		ice_init_lock(&es->prof_map_lock);
-		INIT_LIST_HEAD(&es->prof_map);
-		hw->blk[i].is_list_init = true;
-
-		hw->blk[i].overwrite = blk_sizes[i].overwrite;
-		es->reverse = blk_sizes[i].reverse;
-
-		xlt1->sid = ice_blk_sids[i][ICE_SID_XLT1_OFF];
-		xlt1->count = blk_sizes[i].xlt1;
-
-		xlt1->ptypes = (struct ice_ptg_ptype *)
-			ice_calloc(hw, xlt1->count, sizeof(*xlt1->ptypes));
-
-		if (!xlt1->ptypes)
-			goto err;
-
-		xlt1->ptg_tbl = (struct ice_ptg_entry *)
-			ice_calloc(hw, ICE_MAX_PTGS, sizeof(*xlt1->ptg_tbl));
-
-		if (!xlt1->ptg_tbl)
-			goto err;
-
-		xlt1->t = (u8 *)ice_calloc(hw, xlt1->count, sizeof(*xlt1->t));
-		if (!xlt1->t)
-			goto err;
-
-		xlt2->sid = ice_blk_sids[i][ICE_SID_XLT2_OFF];
-		xlt2->count = blk_sizes[i].xlt2;
-
-		xlt2->vsis = (struct ice_vsig_vsi *)
-			ice_calloc(hw, xlt2->count, sizeof(*xlt2->vsis));
-
-		if (!xlt2->vsis)
-			goto err;
-
-		xlt2->vsig_tbl = (struct ice_vsig_entry *)
-			ice_calloc(hw, xlt2->count, sizeof(*xlt2->vsig_tbl));
-		if (!xlt2->vsig_tbl)
-			goto err;
-
-		for (j = 0; j < xlt2->count; j++)
-			INIT_LIST_HEAD(&xlt2->vsig_tbl[j].prop_lst);
-
-		xlt2->t = (u16 *)ice_calloc(hw, xlt2->count, sizeof(*xlt2->t));
-		if (!xlt2->t)
-			goto err;
-
-		prof->sid = ice_blk_sids[i][ICE_SID_PR_OFF];
-		prof->count = blk_sizes[i].prof_tcam;
-		prof->max_prof_id = blk_sizes[i].prof_id;
-		prof->cdid_bits = blk_sizes[i].prof_cdid_bits;
-		prof->t = (struct ice_prof_tcam_entry *)
-			ice_calloc(hw, prof->count, sizeof(*prof->t));
-
-		if (!prof->t)
-			goto err;
-
-		prof_redir->sid = ice_blk_sids[i][ICE_SID_PR_REDIR_OFF];
-		prof_redir->count = blk_sizes[i].prof_redir;
-		prof_redir->t = (u8 *)ice_calloc(hw, prof_redir->count,
-						 sizeof(*prof_redir->t));
-
-		if (!prof_redir->t)
-			goto err;
-
-		es->sid = ice_blk_sids[i][ICE_SID_ES_OFF];
-		es->count = blk_sizes[i].es;
-		es->fvw = blk_sizes[i].fvw;
-		es->t = (struct ice_fv_word *)
-			ice_calloc(hw, (u32)(es->count * es->fvw),
-				   sizeof(*es->t));
-		if (!es->t)
-			goto err;
-
-		es->ref_count = (u16 *)
-			ice_calloc(hw, es->count, sizeof(*es->ref_count));
-
-		if (!es->ref_count)
-			goto err;
-
-		es->written = (u8 *)
-			ice_calloc(hw, es->count, sizeof(*es->written));
-
-		if (!es->written)
-			goto err;
-
-		es->mask_ena = (u32 *)
-			ice_calloc(hw, es->count, sizeof(*es->mask_ena));
-
-		if (!es->mask_ena)
-			goto err;
-	}
-	return ICE_SUCCESS;
-
-err:
-	ice_free_hw_tbls(hw);
-	return ICE_ERR_NO_MEMORY;
 }
 
 /**
