@@ -1268,7 +1268,7 @@ exit_err:
 }
 
 /**
- * ice_ptp_read_port_capture - Read a port's local time capture
+ * ice_ptp_read_port_capture_e822 - Read a port's local time capture
  * @hw: pointer to HW struct
  * @port: Port number to read
  * @tx_ts: on return, the Tx port time capture
@@ -1279,7 +1279,8 @@ exit_err:
  * Note this has no equivalent for the E810 devices.
  */
 enum ice_status
-ice_ptp_read_port_capture(struct ice_hw *hw, u8 port, u64 *tx_ts, u64 *rx_ts)
+ice_ptp_read_port_capture_e822(struct ice_hw *hw, u8 port, u64 *tx_ts,
+			       u64 *rx_ts)
 {
 	enum ice_status status;
 
@@ -1309,7 +1310,7 @@ ice_ptp_read_port_capture(struct ice_hw *hw, u8 port, u64 *tx_ts, u64 *rx_ts)
 }
 
 /**
- * ice_ptp_one_port_cmd - Prepare a single PHY port for a timer command
+ * ice_ptp_one_port_cmd_e822 - Prepare a single PHY port for a timer command
  * @hw: pointer to HW struct
  * @port: Port to which cmd has to be sent
  * @cmd: Command to be sent to the port
@@ -1321,8 +1322,8 @@ ice_ptp_read_port_capture(struct ice_hw *hw, u8 port, u64 *tx_ts, u64 *rx_ts)
  * always handles all external PHYs internally.
  */
 enum ice_status
-ice_ptp_one_port_cmd(struct ice_hw *hw, u8 port, enum ice_ptp_tmr_cmd cmd,
-		     bool lock_sbq)
+ice_ptp_one_port_cmd_e822(struct ice_hw *hw, u8 port, enum ice_ptp_tmr_cmd cmd,
+			  bool lock_sbq)
 {
 	enum ice_status status;
 	u32 cmd_val, val;
@@ -1416,7 +1417,7 @@ ice_ptp_port_cmd_e822(struct ice_hw *hw, enum ice_ptp_tmr_cmd cmd,
 	for (port = 0; port < ICE_NUM_EXTERNAL_PORTS; port++) {
 		enum ice_status status;
 
-		status = ice_ptp_one_port_cmd(hw, port, cmd, lock_sbq);
+		status = ice_ptp_one_port_cmd_e822(hw, port, cmd, lock_sbq);
 		if (status)
 			return status;
 	}
@@ -2318,7 +2319,7 @@ ice_read_phy_and_phc_time_e822(struct ice_hw *hw, u8 port, u64 *phy_time,
 	ice_ptp_src_cmd(hw, READ_TIME);
 
 	/* Prepare the PHY timer for a READ_TIME capture command */
-	status = ice_ptp_one_port_cmd(hw, port, READ_TIME, true);
+	status = ice_ptp_one_port_cmd_e822(hw, port, READ_TIME, true);
 	if (status)
 		return status;
 
@@ -2331,7 +2332,7 @@ ice_read_phy_and_phc_time_e822(struct ice_hw *hw, u8 port, u64 *phy_time,
 	*phc_time = (u64)lo << 32 | zo;
 
 	/* Read the captured PHY time from the PHY shadow registers */
-	status = ice_ptp_read_port_capture(hw, port, &tx_time, &rx_time);
+	status = ice_ptp_read_port_capture_e822(hw, port, &tx_time, &rx_time);
 	if (status)
 		return status;
 
@@ -2388,7 +2389,7 @@ static enum ice_status ice_sync_phy_timer_e822(struct ice_hw *hw, u8 port)
 	if (status)
 		goto err_unlock;
 
-	status = ice_ptp_one_port_cmd(hw, port, ADJ_TIME, true);
+	status = ice_ptp_one_port_cmd_e822(hw, port, ADJ_TIME, true);
 	if (status)
 		goto err_unlock;
 
@@ -2513,7 +2514,7 @@ ice_start_phy_timer_e822(struct ice_hw *hw, u8 port, bool bypass)
 	if (status)
 		return status;
 
-	status = ice_ptp_one_port_cmd(hw, port, INIT_INCVAL, true);
+	status = ice_ptp_one_port_cmd_e822(hw, port, INIT_INCVAL, true);
 	if (status)
 		return status;
 
@@ -2538,7 +2539,7 @@ ice_start_phy_timer_e822(struct ice_hw *hw, u8 port, bool bypass)
 	if (status)
 		return status;
 
-	status = ice_ptp_one_port_cmd(hw, port, INIT_INCVAL, true);
+	status = ice_ptp_one_port_cmd_e822(hw, port, INIT_INCVAL, true);
 	if (status)
 		return status;
 

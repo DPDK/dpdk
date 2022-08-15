@@ -157,10 +157,11 @@ ice_ptp_prep_port_adj_e822(struct ice_hw *hw, u8 port, s64 time,
 enum ice_status
 ice_ptp_read_phy_incval_e822(struct ice_hw *hw, u8 port, u64 *incval);
 enum ice_status
-ice_ptp_read_port_capture(struct ice_hw *hw, u8 port, u64 *tx_ts, u64 *rx_ts);
+ice_ptp_read_port_capture_e822(struct ice_hw *hw, u8 port,
+			       u64 *tx_ts, u64 *rx_ts);
 enum ice_status
-ice_ptp_one_port_cmd(struct ice_hw *hw, u8 port, enum ice_ptp_tmr_cmd cmd,
-		     bool lock_sbq);
+ice_ptp_one_port_cmd_e822(struct ice_hw *hw, u8 port,
+			  enum ice_ptp_tmr_cmd cmd, bool lock_sbq);
 enum ice_status
 ice_cfg_cgu_pll_e822(struct ice_hw *hw, enum ice_time_ref_freq clk_freq,
 		     enum ice_clk_src clk_src);
