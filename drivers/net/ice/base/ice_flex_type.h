@@ -441,6 +441,7 @@ struct ice_prof_redir_section {
 enum ice_tunnel_type {
 	TNL_VXLAN = 0,
 	TNL_GENEVE,
+	TNL_GRETAP,
 	TNL_ECPRI,
 	TNL_GTP,
 	TNL_LAST = 0xFF,
