@@ -3751,6 +3751,7 @@ ice_read_phy_and_phc_time_e822(struct ice_hw *hw, u8 port, u64 *phy_time,
 
 	/* Issue the sync to start the ICE_PTP_READ_TIME capture */
 	ice_ptp_exec_tmr_cmd(hw);
+	ice_ptp_clean_cmd(hw);
 
 	/* Read the captured PHC time from the shadow time registers */
 	zo = rd32(hw, GLTSYN_SHTIME_0(tmr_idx));
@@ -3825,6 +3826,7 @@ static enum ice_status ice_sync_phy_timer_e822(struct ice_hw *hw, u8 port)
 
 	/* Issue the sync to activate the time adjustment */
 	ice_ptp_exec_tmr_cmd(hw);
+	ice_ptp_clean_cmd(hw);
 
 	/* Re-capture the timer values to flush the command registers and
 	 * verify that the time was properly adjusted.
@@ -3920,6 +3922,7 @@ ice_start_phy_timer_e822(struct ice_hw *hw, u8 port, bool bypass)
 	u64 incval;
 	u8 tmr_idx;
 
+	ice_ptp_clean_cmd(hw);
 	tmr_idx = ice_get_ptp_src_clock_index(hw);
 
 	status = ice_stop_phy_timer_e822(hw, port, false);
@@ -4913,6 +4916,7 @@ ice_ptp_tmr_cmd(struct ice_hw *hw, enum ice_ptp_tmr_cmd cmd, bool lock_sbq)
 	 * commands synchronously
 	 */
 	ice_ptp_exec_tmr_cmd(hw);
+	ice_ptp_clean_cmd(hw);
 
 	return ICE_SUCCESS;
 }
