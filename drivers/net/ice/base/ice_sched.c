@@ -3916,8 +3916,8 @@ static u16 ice_sched_calc_wakeup(struct ice_hw *hw, s32 bw)
 	u16 wakeup = 0;
 
 	/* Get the wakeup integer value */
-	bytes_per_sec = DIV_64BIT(((s64)bw * 1000), BITS_PER_BYTE);
-	wakeup_int = DIV_64BIT(hw->psm_clk_freq, bytes_per_sec);
+	bytes_per_sec = DIV_S64((s64)bw * 1000, BITS_PER_BYTE);
+	wakeup_int = DIV_S64(hw->psm_clk_freq, bytes_per_sec);
 	if (wakeup_int > 63) {
 		wakeup = (u16)((1 << 15) | wakeup_int);
 	} else {
@@ -3925,18 +3925,18 @@ static u16 ice_sched_calc_wakeup(struct ice_hw *hw, s32 bw)
 		 * Convert Integer value to a constant multiplier
 		 */
 		wakeup_b = (s64)ICE_RL_PROF_MULTIPLIER * wakeup_int;
-		wakeup_a = DIV_64BIT((s64)ICE_RL_PROF_MULTIPLIER *
-				     hw->psm_clk_freq, bytes_per_sec);
+		wakeup_a = DIV_S64((s64)ICE_RL_PROF_MULTIPLIER *
+				   hw->psm_clk_freq, bytes_per_sec);
 
 		/* Get Fraction value */
 		wakeup_f = wakeup_a - wakeup_b;
 
 		/* Round up the Fractional value via Ceil(Fractional value) */
-		if (wakeup_f > DIV_64BIT(ICE_RL_PROF_MULTIPLIER, 2))
+		if (wakeup_f > DIV_S64(ICE_RL_PROF_MULTIPLIER, 2))
 			wakeup_f += 1;
 
-		wakeup_f_int = (s32)DIV_64BIT(wakeup_f * ICE_RL_PROF_FRACTION,
-					      ICE_RL_PROF_MULTIPLIER);
+		wakeup_f_int = (s32)DIV_S64(wakeup_f * ICE_RL_PROF_FRACTION,
+					    ICE_RL_PROF_MULTIPLIER);
 		wakeup |= (u16)(wakeup_int << 9);
 		wakeup |= (u16)(0x1ff & wakeup_f_int);
 	}
@@ -3968,20 +3968,20 @@ ice_sched_bw_to_rl_profile(struct ice_hw *hw, u32 bw,
 		return status;
 
 	/* Bytes per second from Kbps */
-	bytes_per_sec = DIV_64BIT(((s64)bw * 1000), BITS_PER_BYTE);
+	bytes_per_sec = DIV_S64((s64)bw * 1000, BITS_PER_BYTE);
 
 	/* encode is 6 bits but really useful are 5 bits */
 	for (i = 0; i < 64; i++) {
 		u64 pow_result = BIT_ULL(i);
 
-		ts_rate = DIV_64BIT((s64)hw->psm_clk_freq,
-				    pow_result * ICE_RL_PROF_TS_MULTIPLIER);
+		ts_rate = DIV_S64((s64)hw->psm_clk_freq,
+				  pow_result * ICE_RL_PROF_TS_MULTIPLIER);
 		if (ts_rate <= 0)
 			continue;
 
 		/* Multiplier value */
-		mv_tmp = DIV_64BIT(bytes_per_sec * ICE_RL_PROF_MULTIPLIER,
-				   ts_rate);
+		mv_tmp = DIV_S64(bytes_per_sec * ICE_RL_PROF_MULTIPLIER,
+				 ts_rate);
 
 		/* Round to the nearest ICE_RL_PROF_MULTIPLIER */
 		mv = round_up_64bit(mv_tmp, ICE_RL_PROF_MULTIPLIER);

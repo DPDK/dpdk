@@ -87,11 +87,37 @@ static inline bool ice_is_tc_ena(ice_bitmap_t bitmap, u8 tc)
 	return ice_is_bit_set(&bitmap, tc);
 }
 
-#define DIV_64BIT(n, d) ((n) / (d))
+/**
+ * DIV_S64 - Divide signed 64-bit value with signed 64-bit divisor
+ * @dividend: value to divide
+ * @divisor: value to divide by
+ *
+ * Use DIV_S64 for any 64-bit divide which operates on signed 64-bit dividends.
+ * Do not use this for unsigned 64-bit dividends as it will not produce
+ * correct results if the dividend is larger than S64_MAX.
+ */
+static inline s64 DIV_S64(s64 dividend, s64 divisor)
+{
+	return dividend / divisor;
+}
+
+/**
+ * DIV_U64 - Divide unsigned 64-bit value by unsigned 64-bit divisor
+ * @dividend: value to divide
+ * @divisor: value to divide by
+ *
+ * Use DIV_U64 for any 64-bit divide which operates on unsigned 64-bit
+ * dividends. Do not use this for signed 64-bit dividends as it will not
+ * handle negative values correctly.
+ */
+static inline u64 DIV_U64(u64 dividend, u64 divisor)
+{
+	return dividend / divisor;
+}
 
 static inline u64 round_up_64bit(u64 a, u32 b)
 {
-	return DIV_64BIT(((a) + (b) / 2), (b));
+	return DIV_U64(((a) + (b) / 2), (b));
 }
 
 static inline u32 ice_round_to_num(u32 N, u32 R)

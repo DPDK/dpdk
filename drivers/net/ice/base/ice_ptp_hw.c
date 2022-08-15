@@ -1634,7 +1634,7 @@ static enum ice_status ice_phy_cfg_uix_e822(struct ice_hw *hw, u8 port)
 #define LINE_UI_25G_100G 256 /* 6600 UIs is 256 nanoseconds at 25Gb/100Gb */
 
 	/* Program the 10Gb/40Gb conversion ratio */
-	uix = DIV_64BIT(tu_per_sec * LINE_UI_10G_40G, 390625000);
+	uix = DIV_U64(tu_per_sec * LINE_UI_10G_40G, 390625000);
 
 	status = ice_write_64b_phy_reg_e822(hw, port, P_REG_UIX66_10G_40G_L,
 					    uix);
@@ -1645,7 +1645,7 @@ static enum ice_status ice_phy_cfg_uix_e822(struct ice_hw *hw, u8 port)
 	}
 
 	/* Program the 25Gb/100Gb conversion ratio */
-	uix = DIV_64BIT(tu_per_sec * LINE_UI_25G_100G, 390625000);
+	uix = DIV_U64(tu_per_sec * LINE_UI_25G_100G, 390625000);
 
 	status = ice_write_64b_phy_reg_e822(hw, port, P_REG_UIX66_25G_100G_L,
 					    uix);
@@ -1727,8 +1727,8 @@ static enum ice_status ice_phy_cfg_parpcs_e822(struct ice_hw *hw, u8 port)
 
 	/* P_REG_PAR_TX_TUS */
 	if (e822_vernier[link_spd].tx_par_clk)
-		phy_tus = DIV_64BIT(tu_per_sec,
-				    e822_vernier[link_spd].tx_par_clk);
+		phy_tus = DIV_U64(tu_per_sec,
+				  e822_vernier[link_spd].tx_par_clk);
 	else
 		phy_tus = 0;
 
@@ -1739,8 +1739,8 @@ static enum ice_status ice_phy_cfg_parpcs_e822(struct ice_hw *hw, u8 port)
 
 	/* P_REG_PAR_RX_TUS */
 	if (e822_vernier[link_spd].rx_par_clk)
-		phy_tus = DIV_64BIT(tu_per_sec,
-				    e822_vernier[link_spd].rx_par_clk);
+		phy_tus = DIV_U64(tu_per_sec,
+				  e822_vernier[link_spd].rx_par_clk);
 	else
 		phy_tus = 0;
 
@@ -1751,8 +1751,8 @@ static enum ice_status ice_phy_cfg_parpcs_e822(struct ice_hw *hw, u8 port)
 
 	/* P_REG_PCS_TX_TUS */
 	if (e822_vernier[link_spd].tx_pcs_clk)
-		phy_tus = DIV_64BIT(tu_per_sec,
-				    e822_vernier[link_spd].tx_pcs_clk);
+		phy_tus = DIV_U64(tu_per_sec,
+				  e822_vernier[link_spd].tx_pcs_clk);
 	else
 		phy_tus = 0;
 
@@ -1763,8 +1763,8 @@ static enum ice_status ice_phy_cfg_parpcs_e822(struct ice_hw *hw, u8 port)
 
 	/* P_REG_PCS_RX_TUS */
 	if (e822_vernier[link_spd].rx_pcs_clk)
-		phy_tus = DIV_64BIT(tu_per_sec,
-				    e822_vernier[link_spd].rx_pcs_clk);
+		phy_tus = DIV_U64(tu_per_sec,
+				  e822_vernier[link_spd].rx_pcs_clk);
 	else
 		phy_tus = 0;
 
@@ -1775,8 +1775,8 @@ static enum ice_status ice_phy_cfg_parpcs_e822(struct ice_hw *hw, u8 port)
 
 	/* P_REG_DESK_PAR_TX_TUS */
 	if (e822_vernier[link_spd].tx_desk_rsgb_par)
-		phy_tus = DIV_64BIT(tu_per_sec,
-				    e822_vernier[link_spd].tx_desk_rsgb_par);
+		phy_tus = DIV_U64(tu_per_sec,
+				  e822_vernier[link_spd].tx_desk_rsgb_par);
 	else
 		phy_tus = 0;
 
@@ -1787,8 +1787,8 @@ static enum ice_status ice_phy_cfg_parpcs_e822(struct ice_hw *hw, u8 port)
 
 	/* P_REG_DESK_PAR_RX_TUS */
 	if (e822_vernier[link_spd].rx_desk_rsgb_par)
-		phy_tus = DIV_64BIT(tu_per_sec,
-				    e822_vernier[link_spd].rx_desk_rsgb_par);
+		phy_tus = DIV_U64(tu_per_sec,
+				  e822_vernier[link_spd].rx_desk_rsgb_par);
 	else
 		phy_tus = 0;
 
@@ -1799,8 +1799,8 @@ static enum ice_status ice_phy_cfg_parpcs_e822(struct ice_hw *hw, u8 port)
 
 	/* P_REG_DESK_PCS_TX_TUS */
 	if (e822_vernier[link_spd].tx_desk_rsgb_pcs)
-		phy_tus = DIV_64BIT(tu_per_sec,
-				    e822_vernier[link_spd].tx_desk_rsgb_pcs);
+		phy_tus = DIV_U64(tu_per_sec,
+				  e822_vernier[link_spd].tx_desk_rsgb_pcs);
 	else
 		phy_tus = 0;
 
@@ -1811,8 +1811,8 @@ static enum ice_status ice_phy_cfg_parpcs_e822(struct ice_hw *hw, u8 port)
 
 	/* P_REG_DESK_PCS_RX_TUS */
 	if (e822_vernier[link_spd].rx_desk_rsgb_pcs)
-		phy_tus = DIV_64BIT(tu_per_sec,
-				    e822_vernier[link_spd].rx_desk_rsgb_pcs);
+		phy_tus = DIV_U64(tu_per_sec,
+				  e822_vernier[link_spd].rx_desk_rsgb_pcs);
 	else
 		phy_tus = 0;
 
@@ -1844,9 +1844,9 @@ ice_calc_fixed_tx_offset_e822(struct ice_hw *hw, enum ice_ptp_link_spd link_spd)
 	 * overflows 64 bit integer arithmetic, so break it up into two
 	 * divisions by 1e4 first then by 1e7.
 	 */
-	fixed_offset = DIV_64BIT(tu_per_sec, 10000);
+	fixed_offset = DIV_U64(tu_per_sec, 10000);
 	fixed_offset *= e822_vernier[link_spd].tx_fixed_delay;
-	fixed_offset = DIV_64BIT(fixed_offset, 10000000);
+	fixed_offset = DIV_U64(fixed_offset, 10000000);
 
 	return fixed_offset;
 }
@@ -2074,9 +2074,9 @@ ice_phy_calc_pmd_adj_e822(struct ice_hw *hw, u8 port,
 	 * divide by 125, and then handle remaining divisor based on the link
 	 * speed pmd_adj_divisor value.
 	 */
-	adj = DIV_64BIT(tu_per_sec, 125);
+	adj = DIV_U64(tu_per_sec, 125);
 	adj *= mult;
-	adj = DIV_64BIT(adj, pmd_adj_divisor);
+	adj = DIV_U64(adj, pmd_adj_divisor);
 
 	/* Finally, for 25G-RS and 50G-RS, a further adjustment for the Rx
 	 * cycle count is necessary.
@@ -2097,9 +2097,9 @@ ice_phy_calc_pmd_adj_e822(struct ice_hw *hw, u8 port,
 		if (rx_cycle) {
 			mult = (4 - rx_cycle) * 40;
 
-			cycle_adj = DIV_64BIT(tu_per_sec, 125);
+			cycle_adj = DIV_U64(tu_per_sec, 125);
 			cycle_adj *= mult;
-			cycle_adj = DIV_64BIT(cycle_adj, pmd_adj_divisor);
+			cycle_adj = DIV_U64(cycle_adj, pmd_adj_divisor);
 
 			adj += cycle_adj;
 		}
@@ -2119,9 +2119,9 @@ ice_phy_calc_pmd_adj_e822(struct ice_hw *hw, u8 port,
 		if (rx_cycle) {
 			mult = rx_cycle * 40;
 
-			cycle_adj = DIV_64BIT(tu_per_sec, 125);
+			cycle_adj = DIV_U64(tu_per_sec, 125);
 			cycle_adj *= mult;
-			cycle_adj = DIV_64BIT(cycle_adj, pmd_adj_divisor);
+			cycle_adj = DIV_U64(cycle_adj, pmd_adj_divisor);
 
 			adj += cycle_adj;
 		}
@@ -2157,9 +2157,9 @@ ice_calc_fixed_rx_offset_e822(struct ice_hw *hw, enum ice_ptp_link_spd link_spd)
 	 * overflows 64 bit integer arithmetic, so break it up into two
 	 * divisions by 1e4 first then by 1e7.
 	 */
-	fixed_offset = DIV_64BIT(tu_per_sec, 10000);
+	fixed_offset = DIV_U64(tu_per_sec, 10000);
 	fixed_offset *= e822_vernier[link_spd].rx_fixed_delay;
-	fixed_offset = DIV_64BIT(fixed_offset, 10000000);
+	fixed_offset = DIV_U64(fixed_offset, 10000000);
 
 	return fixed_offset;
 }
