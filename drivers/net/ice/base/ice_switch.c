@@ -4180,7 +4180,8 @@ ice_add_mac_rule(struct ice_hw *hw, struct LIST_HEAD_TYPE *m_list,
 		if (!ice_is_vsi_valid(hw, vsi_handle))
 			return ICE_ERR_PARAM;
 		hw_vsi_id = ice_get_hw_vsi_num(hw, vsi_handle);
-		m_list_itr->fltr_info.fwd_id.hw_vsi_id = hw_vsi_id;
+		if (m_list_itr->fltr_info.fltr_act == ICE_FWD_TO_VSI)
+			m_list_itr->fltr_info.fwd_id.hw_vsi_id = hw_vsi_id;
 		/* update the src in case it is VSI num */
 		if (m_list_itr->fltr_info.src_id != ICE_SRC_ID_VSI)
 			return ICE_ERR_PARAM;
