@@ -1363,6 +1363,35 @@ ice_ptp_read_tx_hwtstamp_status_eth56g(struct ice_hw *hw, u32 *ts_status)
 	return ICE_SUCCESS;
 }
 
+/**
+ * ice_ptp_init_phy_cfg - Get the current TX timestamp status
+ * mask. Returns the mask of ports where TX timestamps are available
+ * @hw: pointer to the HW struct
+ */
+enum ice_status
+ice_ptp_init_phy_cfg(struct ice_hw *hw)
+{
+	enum ice_status status;
+	u32 phy_rev;
+
+	status = ice_read_phy_eth56g_raw_lp(hw, PHY_REG_REVISION, &phy_rev,
+					    true);
+	if (status)
+		return status;
+
+	if (phy_rev == PHY_REVISION_ETH56G) {
+		hw->phy_cfg = ICE_PHY_ETH56G;
+		return ICE_SUCCESS;
+	}
+
+	if (ice_is_e810(hw))
+		hw->phy_cfg = ICE_PHY_E810;
+	else
+		hw->phy_cfg = ICE_PHY_E822;
+
+	return ICE_SUCCESS;
+}
+
 /* ----------------------------------------------------------------------------
  * E822 family functions
  *

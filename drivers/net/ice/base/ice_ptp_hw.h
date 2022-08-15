@@ -266,6 +266,8 @@ ice_start_phy_timer_eth56g(struct ice_hw *hw, u8 port, bool bypass);
 enum ice_status ice_phy_cfg_tx_offset_eth56g(struct ice_hw *hw, u8 port);
 enum ice_status ice_phy_cfg_rx_offset_eth56g(struct ice_hw *hw, u8 port);
 
+enum ice_status ice_ptp_init_phy_cfg(struct ice_hw *hw);
+
 #define PFTSYN_SEM_BYTES	4
 
 #define ICE_PTP_CLOCK_INDEX_0	0x00
