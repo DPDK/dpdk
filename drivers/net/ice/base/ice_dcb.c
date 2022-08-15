@@ -74,6 +74,9 @@ ice_aq_cfg_lldp_mib_change(struct ice_hw *hw, bool ena_update,
 
 	if (!ena_update)
 		cmd->command |= ICE_AQ_LLDP_MIB_UPDATE_DIS;
+	else
+		cmd->command |= ICE_AQ_LLDP_MIB_PENDING_ENABLE <<
+				ICE_AQ_LLDP_MIB_PENDING_S;
 
 	return ice_aq_send_cmd(hw, &desc, NULL, 0, cd);
 }
