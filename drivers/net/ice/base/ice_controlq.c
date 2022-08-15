@@ -495,12 +495,18 @@ static bool ice_aq_ver_check(struct ice_hw *hw)
 		return false;
 	} else if (hw->api_maj_ver == EXP_FW_API_VER_MAJOR) {
 		if (hw->api_min_ver > (EXP_FW_API_VER_MINOR + 2))
-			ice_info(hw, "The driver for the device detected a newer version of the NVM image than expected. Please install the most recent version of the network driver.\n");
+			ice_info(hw, "The driver for the device detected a newer version (%u.%u) of the NVM image than expected (%u.%u). Please install the most recent version of the network driver.\n",
+				 hw->api_maj_ver, hw->api_min_ver,
+				 EXP_FW_API_VER_MAJOR, EXP_FW_API_VER_MINOR);
 		else if ((hw->api_min_ver + 2) < EXP_FW_API_VER_MINOR)
-			ice_info(hw, "The driver for the device detected an older version of the NVM image than expected. Please update the NVM image.\n");
+			ice_info(hw, "The driver for the device detected an older version (%u.%u) of the NVM image than expected (%u.%u). Please update the NVM image.\n",
+				 hw->api_maj_ver, hw->api_min_ver,
+				 EXP_FW_API_VER_MAJOR, EXP_FW_API_VER_MINOR);
 	} else {
 		/* Major API version is older than expected, log a warning */
-		ice_info(hw, "The driver for the device detected an older version of the NVM image than expected. Please update the NVM image.\n");
+		ice_info(hw, "The driver for the device detected an older version (%u.%u) of the NVM image than expected (%u.%u). Please update the NVM image.\n",
+			 hw->api_maj_ver, hw->api_min_ver,
+			 EXP_FW_API_VER_MAJOR, EXP_FW_API_VER_MINOR);
 	}
 	return true;
 }
