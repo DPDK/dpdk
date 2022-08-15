@@ -2841,17 +2841,19 @@ struct ice_aqc_event_lan_overflow {
 /* Debug Dump Internal Data (indirect 0xFF08) */
 struct ice_aqc_debug_dump_internals {
 	u8 cluster_id;
-#define ICE_AQC_DBG_DUMP_CLUSTER_ID_SW		0
-#define ICE_AQC_DBG_DUMP_CLUSTER_ID_ACL		1
-#define ICE_AQC_DBG_DUMP_CLUSTER_ID_TXSCHED	2
-#define ICE_AQC_DBG_DUMP_CLUSTER_ID_PROFILES	3
+#define ICE_AQC_DBG_DUMP_CLUSTER_ID_SW			0
+#define ICE_AQC_DBG_DUMP_CLUSTER_ID_ACL			1
+#define ICE_AQC_DBG_DUMP_CLUSTER_ID_TXSCHED		2
+#define ICE_AQC_DBG_DUMP_CLUSTER_ID_PROFILES		3
 /* EMP_DRAM only dumpable in device debug mode */
-#define ICE_AQC_DBG_DUMP_CLUSTER_ID_EMP_DRAM	4
-#define ICE_AQC_DBG_DUMP_CLUSTER_ID_LINK	5
+#define ICE_AQC_DBG_DUMP_CLUSTER_ID_EMP_DRAM		4
+#define ICE_AQC_DBG_DUMP_CLUSTER_ID_LINK		5
 /* AUX_REGS only dumpable in device debug mode */
-#define ICE_AQC_DBG_DUMP_CLUSTER_ID_AUX_REGS	6
-#define ICE_AQC_DBG_DUMP_CLUSTER_ID_DCB	7
-#define ICE_AQC_DBG_DUMP_CLUSTER_ID_L2P	8
+#define ICE_AQC_DBG_DUMP_CLUSTER_ID_AUX_REGS		6
+#define ICE_AQC_DBG_DUMP_CLUSTER_ID_DCB			7
+#define ICE_AQC_DBG_DUMP_CLUSTER_ID_L2P			8
+#define ICE_AQC_DBG_DUMP_CLUSTER_ID_QUEUE_MNG		9
+#define ICE_AQC_DBG_DUMP_CLUSTER_ID_FULL_CSR_SPACE	21
 	u8 reserved;
 	__le16 table_id; /* Used only for non-memory clusters */
 	__le32 idx; /* In table entries for tables, in bytes for memory */
