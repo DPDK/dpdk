@@ -294,6 +294,11 @@ struct ice_fdir_base_pkt {
 	const u8 *tun_pkt;
 };
 
+bool
+ice_fdir_comp_rules_basic(struct ice_fdir_fltr *a,  struct ice_fdir_fltr *b);
+bool
+ice_fdir_comp_rules_extended(struct ice_fdir_fltr *a,  struct ice_fdir_fltr *b);
+
 enum ice_status ice_alloc_fd_res_cntr(struct ice_hw *hw, u16 *cntr_id);
 enum ice_status ice_free_fd_res_cntr(struct ice_hw *hw, u16 cntr_id);
 enum ice_status

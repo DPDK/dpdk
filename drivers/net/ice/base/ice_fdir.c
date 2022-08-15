@@ -4204,70 +4204,56 @@ ice_fdir_update_cntrs(struct ice_hw *hw, enum ice_fltr_ptype flow,
 }
 
 /**
- * ice_cmp_ipv6_addr - compare 2 IP v6 addresses
- * @a: IP v6 address
- * @b: IP v6 address
- *
- * Returns 0 on equal, returns non-0 if different
- */
-static int ice_cmp_ipv6_addr(__be32 *a, __be32 *b)
-{
-	return memcmp(a, b, 4 * sizeof(__be32));
-}
-
-/**
- * ice_fdir_comp_rules - compare 2 filters
+ * ice_fdir_comp_rules_basic - compare 2 filters
  * @a: a Flow Director filter data structure
  * @b: a Flow Director filter data structure
- * @v6: bool true if v6 filter
  *
  * Returns true if the filters match
  */
-static bool
-ice_fdir_comp_rules(struct ice_fdir_fltr *a,  struct ice_fdir_fltr *b, bool v6)
+bool
+ice_fdir_comp_rules_basic(struct ice_fdir_fltr *a,  struct ice_fdir_fltr *b)
 {
-	enum ice_fltr_ptype flow_type = a->flow_type;
+	if (a->flow_type != b->flow_type)
+		return false;
+	if (memcmp(&a->ip, &b->ip, sizeof(a->ip)))
+		return false;
+	if (memcmp(&a->mask, &b->mask, sizeof(a->mask)))
+		return false;
 
-	/* The calling function already checks that the two filters have the
-	 * same flow_type.
-	 */
-	if (!v6) {
-		if (flow_type == ICE_FLTR_PTYPE_NONF_IPV4_TCP ||
-		    flow_type == ICE_FLTR_PTYPE_NONF_IPV4_UDP ||
-		    flow_type == ICE_FLTR_PTYPE_NONF_IPV4_SCTP) {
-			if (a->ip.v4.dst_ip == b->ip.v4.dst_ip &&
-			    a->ip.v4.src_ip == b->ip.v4.src_ip &&
-			    a->ip.v4.dst_port == b->ip.v4.dst_port &&
-			    a->ip.v4.src_port == b->ip.v4.src_port)
-				return true;
-		} else if (flow_type == ICE_FLTR_PTYPE_NONF_IPV4_OTHER) {
-			if (a->ip.v4.dst_ip == b->ip.v4.dst_ip &&
-			    a->ip.v4.src_ip == b->ip.v4.src_ip &&
-			    a->ip.v4.l4_header == b->ip.v4.l4_header &&
-			    a->ip.v4.proto == b->ip.v4.proto &&
-			    a->ip.v4.ip_ver == b->ip.v4.ip_ver &&
-			    a->ip.v4.tos == b->ip.v4.tos)
-				return true;
-		}
-	} else {
-		if (flow_type == ICE_FLTR_PTYPE_NONF_IPV6_UDP ||
-		    flow_type == ICE_FLTR_PTYPE_NONF_IPV6_TCP ||
-		    flow_type == ICE_FLTR_PTYPE_NONF_IPV6_SCTP) {
-			if (a->ip.v6.dst_port == b->ip.v6.dst_port &&
-			    a->ip.v6.src_port == b->ip.v6.src_port &&
-			    !ice_cmp_ipv6_addr(a->ip.v6.dst_ip,
-					       b->ip.v6.dst_ip) &&
-			    !ice_cmp_ipv6_addr(a->ip.v6.src_ip,
-					       b->ip.v6.src_ip))
-				return true;
-		} else if (flow_type == ICE_FLTR_PTYPE_NONF_IPV6_OTHER) {
-			if (a->ip.v6.dst_port == b->ip.v6.dst_port &&
-			    a->ip.v6.src_port == b->ip.v6.src_port)
-				return true;
-		}
-	}
+	return true;
+}
 
-	return false;
+/**
+ * ice_fdir_comp_rules_extended - compare 2 filters
+ * @a: a Flow Director filter data structure
+ * @b: a Flow Director filter data structure
+ *
+ * Returns true if the filters match
+ */
+bool
+ice_fdir_comp_rules_extended(struct ice_fdir_fltr *a,  struct ice_fdir_fltr *b)
+{
+	if (!ice_fdir_comp_rules_basic(a, b))
+		return false;
+
+	if (memcmp(&a->gtpu_data, &b->gtpu_data, sizeof(a->gtpu_data)))
+		return false;
+	if (memcmp(&a->gtpu_mask, &b->gtpu_mask, sizeof(a->gtpu_mask)))
+		return false;
+	if (memcmp(&a->l2tpv3_data, &b->l2tpv3_data, sizeof(a->l2tpv3_data)))
+		return false;
+	if (memcmp(&a->l2tpv3_mask, &b->l2tpv3_mask, sizeof(a->l2tpv3_mask)))
+		return false;
+	if (memcmp(&a->ext_data, &b->ext_data, sizeof(a->ext_data)))
+		return false;
+	if (memcmp(&a->ext_mask, &b->ext_mask, sizeof(a->ext_mask)))
+		return false;
+	if (memcmp(&a->ecpri_data, &b->ecpri_data, sizeof(a->ecpri_data)))
+		return false;
+	if (memcmp(&a->ecpri_mask, &b->ecpri_mask, sizeof(a->ecpri_mask)))
+		return false;
+
+	return true;
 }
 
 /**
@@ -4284,19 +4270,8 @@ bool ice_fdir_is_dup_fltr(struct ice_hw *hw, struct ice_fdir_fltr *input)
 
 	LIST_FOR_EACH_ENTRY(rule, &hw->fdir_list_head, ice_fdir_fltr,
 			    fltr_node) {
-		enum ice_fltr_ptype flow_type;
+		ret = ice_fdir_comp_rules_basic(rule, input);
 
-		if (rule->flow_type != input->flow_type)
-			continue;
-
-		flow_type = input->flow_type;
-		if (flow_type == ICE_FLTR_PTYPE_NONF_IPV4_TCP ||
-		    flow_type == ICE_FLTR_PTYPE_NONF_IPV4_UDP ||
-		    flow_type == ICE_FLTR_PTYPE_NONF_IPV4_SCTP ||
-		    flow_type == ICE_FLTR_PTYPE_NONF_IPV4_OTHER)
-			ret = ice_fdir_comp_rules(rule, input, false);
-		else
-			ret = ice_fdir_comp_rules(rule, input, true);
 		if (ret) {
 			if (rule->fltr_id == input->fltr_id &&
 			    rule->q_index != input->q_index)
