@@ -25,7 +25,7 @@ static void _xlt_kb_entry_dump(struct ice_hw *hw,
 
 /**
  * ice_imem_dump - dump a xlt key build info
- * @ice_hw: pointer to the hardware structure
+ * @hw: pointer to the hardware structure
  * @kb: key build to dump
  */
 void ice_xlt_kb_dump(struct ice_hw *hw, struct ice_xlt_kb *kb)
@@ -154,7 +154,7 @@ static struct ice_xlt_kb *_xlt_kb_get(struct ice_hw *hw, u32 sect_type)
 
 /**
  * ice_xlt_kb_get_sw - create switch xlt key build
- * @ice_hw: pointer to the hardware structure
+ * @hw: pointer to the hardware structure
  */
 struct ice_xlt_kb *ice_xlt_kb_get_sw(struct ice_hw *hw)
 {
@@ -163,7 +163,7 @@ struct ice_xlt_kb *ice_xlt_kb_get_sw(struct ice_hw *hw)
 
 /**
  * ice_xlt_kb_get_acl - create acl xlt key build
- * @ice_hw: pointer to the hardware structure
+ * @hw: pointer to the hardware structure
  */
 struct ice_xlt_kb *ice_xlt_kb_get_acl(struct ice_hw *hw)
 {
@@ -172,7 +172,7 @@ struct ice_xlt_kb *ice_xlt_kb_get_acl(struct ice_hw *hw)
 
 /**
  * ice_xlt_kb_get_fd - create fdir xlt key build
- * @ice_hw: pointer to the hardware structure
+ * @hw: pointer to the hardware structure
  */
 struct ice_xlt_kb *ice_xlt_kb_get_fd(struct ice_hw *hw)
 {
@@ -181,7 +181,7 @@ struct ice_xlt_kb *ice_xlt_kb_get_fd(struct ice_hw *hw)
 
 /**
  * ice_xlt_kb_get_fd - create rss xlt key build
- * @ice_hw: pointer to the hardware structure
+ * @hw: pointer to the hardware structure
  */
 struct ice_xlt_kb *ice_xlt_kb_get_rss(struct ice_hw *hw)
 {

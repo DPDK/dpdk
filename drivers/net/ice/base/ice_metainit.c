@@ -9,7 +9,7 @@
 
 /**
  * ice_metainit_dump - dump an metainit item info
- * @ice_hw: pointer to the hardware structure
+ * @hw: pointer to the hardware structure
  * @item: metainit item to dump
  */
 void ice_metainit_dump(struct ice_hw *hw, struct ice_metainit_item *item)
@@ -130,7 +130,7 @@ static void _metainit_parse_item(struct ice_hw *hw, u16 idx, void *item,
 
 /**
  * ice_metainit_table_get - create a metainit table
- * @ice_hw: pointer to the hardware structure
+ * @hw: pointer to the hardware structure
  */
 struct ice_metainit_item *ice_metainit_table_get(struct ice_hw *hw)
 {

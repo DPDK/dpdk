@@ -9,7 +9,7 @@
 
 /**
  * ice_flg_rd_dump - dump a flag redirect item info
- * @ice_hw: pointer to the hardware structure
+ * @hw: pointer to the hardware structure
  * @item: flag redirect item to dump
  */
 void ice_flg_rd_dump(struct ice_hw *hw, struct ice_flg_rd_item *item)
@@ -40,7 +40,7 @@ static void _flg_rd_parse_item(struct ice_hw *hw, u16 idx, void *item,
 
 /**
  * ice_flg_rd_table_get - create a flag redirect table
- * @ice_hw: pointer to the hardware structure
+ * @hw: pointer to the hardware structure
  */
 struct ice_flg_rd_item *ice_flg_rd_table_get(struct ice_hw *hw)
 {
