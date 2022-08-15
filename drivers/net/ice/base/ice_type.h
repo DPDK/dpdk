@@ -1259,7 +1259,7 @@ struct ice_hw {
 	struct LIST_HEAD_TYPE rss_list_head;
 	ice_declare_bitmap(hw_ptype, ICE_FLOW_PTYPE_MAX);
 	u8 dvm_ena;
-	__le16 io_expander_handle;
+	u16 io_expander_handle;
 };
 
 /* Statistics collected by each port, VSI, VEB, and S-channel */

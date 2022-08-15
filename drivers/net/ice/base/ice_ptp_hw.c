@@ -4483,7 +4483,7 @@ ice_ptp_port_cmd_e810(struct ice_hw *hw, enum ice_ptp_tmr_cmd cmd,
  * will return cached value
  */
 static enum ice_status
-ice_get_pca9575_handle(struct ice_hw *hw, __le16 *pca9575_handle)
+ice_get_pca9575_handle(struct ice_hw *hw, u16 *pca9575_handle)
 {
 	struct ice_aqc_get_link_topo cmd;
 	u8 node_part_number, idx;
@@ -4564,13 +4564,15 @@ ice_read_pca9575_reg_e810t(struct ice_hw *hw, u8 offset, u8 *data)
 	struct ice_aqc_link_topo_addr link_topo;
 	enum ice_status status;
 	__le16 addr;
+	u16 handle;
 
 	memset(&link_topo, 0, sizeof(link_topo));
 
-	status = ice_get_pca9575_handle(hw, &link_topo.handle);
+	status = ice_get_pca9575_handle(hw, &handle);
 	if (status)
 		return status;
 
+	link_topo.handle = CPU_TO_LE16(handle);
 	link_topo.topo_params.node_type_ctx =
 		(ICE_AQC_LINK_TOPO_NODE_CTX_PROVIDED <<
 		 ICE_AQC_LINK_TOPO_NODE_CTX_S);
@@ -4594,13 +4596,15 @@ ice_write_pca9575_reg_e810t(struct ice_hw *hw, u8 offset, u8 data)
 	struct ice_aqc_link_topo_addr link_topo;
 	enum ice_status status;
 	__le16 addr;
+	u16 handle;
 
 	memset(&link_topo, 0, sizeof(link_topo));
 
-	status = ice_get_pca9575_handle(hw, &link_topo.handle);
+	status = ice_get_pca9575_handle(hw, &handle);
 	if (status)
 		return status;
 
+	link_topo.handle = CPU_TO_LE16(handle);
 	link_topo.topo_params.node_type_ctx =
 		(ICE_AQC_LINK_TOPO_NODE_CTX_PROVIDED <<
 		 ICE_AQC_LINK_TOPO_NODE_CTX_S);
