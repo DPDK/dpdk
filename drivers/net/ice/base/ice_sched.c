@@ -840,6 +840,33 @@ void ice_sched_cleanup_all(struct ice_hw *hw)
 }
 
 /**
+ * ice_aq_cfg_node_attr - configure nodes' per-cone flattening attributes
+ * @hw: pointer to the HW struct
+ * @num_nodes: the number of nodes whose attributes to configure
+ * @buf: pointer to buffer
+ * @buf_size: buffer size in bytes
+ * @cd: pointer to command details structure or NULL
+ *
+ * Configure Node Attributes (0x0417)
+ */
+enum ice_status
+ice_aq_cfg_node_attr(struct ice_hw *hw, u16 num_nodes,
+		     struct ice_aqc_node_attr_elem *buf, u16 buf_size,
+		     struct ice_sq_cd *cd)
+{
+	struct ice_aqc_node_attr *cmd;
+	struct ice_aq_desc desc;
+
+	cmd = &desc.params.node_attr;
+	ice_fill_dflt_direct_cmd_desc(&desc,
+				      ice_aqc_opc_cfg_node_attr);
+	desc.flags |= CPU_TO_LE16(ICE_AQ_FLAG_RD);
+
+	cmd->num_entries = CPU_TO_LE16(num_nodes);
+	return ice_aq_send_cmd(hw, &desc, buf, buf_size, cd);
+}
+
+/**
  * ice_aq_cfg_l2_node_cgd - configures L2 node to CGD mapping
  * @hw: pointer to the HW struct
  * @num_l2_nodes: the number of L2 nodes whose CGDs to configure

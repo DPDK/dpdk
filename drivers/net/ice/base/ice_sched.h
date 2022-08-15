@@ -78,6 +78,10 @@ ice_aq_query_rl_profile(struct ice_hw *hw, u16 num_profiles,
 			struct ice_aqc_rl_profile_elem *buf, u16 buf_size,
 			struct ice_sq_cd *cd);
 enum ice_status
+ice_aq_cfg_node_attr(struct ice_hw *hw, u16 num_nodes,
+		     struct ice_aqc_node_attr_elem *buf, u16 buf_size,
+		     struct ice_sq_cd *cd);
+enum ice_status
 ice_aq_cfg_l2_node_cgd(struct ice_hw *hw, u16 num_nodes,
 		       struct ice_aqc_cfg_l2_node_cgd_elem *buf, u16 buf_size,
 		       struct ice_sq_cd *cd);

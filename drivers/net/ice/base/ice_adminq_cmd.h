@@ -1215,6 +1215,22 @@ struct ice_aqc_rl_profile_elem {
 	__le16 rl_encode;
 };
 
+/* Config Node Attributes (indirect 0x0419)
+ * Query Node Attributes (indirect 0x041A)
+ */
+struct ice_aqc_node_attr {
+	__le16 num_entries; /* Number of attributes structures in the buffer */
+	u8 reserved[6];
+	__le32 addr_high;
+	__le32 addr_low;
+};
+
+struct ice_aqc_node_attr_elem {
+	__le32 node_teid;
+	__le16 max_children;
+	__le16 children_level;
+};
+
 /* Configure L2 Node CGD (indirect 0x0414)
  * This indirect command allows configuring a congestion domain for given L2
  * node TEIDs in the scheduler topology.
@@ -2976,6 +2992,7 @@ struct ice_aq_desc {
 		struct ice_aqc_cfg_l2_node_cgd cfg_l2_node_cgd;
 		struct ice_aqc_query_port_ets port_ets;
 		struct ice_aqc_rl_profile rl_profile;
+		struct ice_aqc_node_attr node_attr;
 		struct ice_aqc_nvm nvm;
 		struct ice_aqc_nvm_cfg nvm_cfg;
 		struct ice_aqc_nvm_checksum nvm_checksum;
