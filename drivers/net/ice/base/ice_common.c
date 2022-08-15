@@ -788,12 +788,14 @@ ice_fill_tx_timer_and_fc_thresh(struct ice_hw *hw,
  * ice_aq_set_mac_cfg
  * @hw: pointer to the HW struct
  * @max_frame_size: Maximum Frame Size to be supported
+ * @auto_drop: Tell HW to drop packets if TC queue is blocked
  * @cd: pointer to command details structure or NULL
  *
  * Set MAC configuration (0x0603)
  */
 enum ice_status
-ice_aq_set_mac_cfg(struct ice_hw *hw, u16 max_frame_size, struct ice_sq_cd *cd)
+ice_aq_set_mac_cfg(struct ice_hw *hw, u16 max_frame_size, bool auto_drop,
+		   struct ice_sq_cd *cd)
 {
 	struct ice_aqc_set_mac_cfg *cmd;
 	struct ice_aq_desc desc;
@@ -807,6 +809,8 @@ ice_aq_set_mac_cfg(struct ice_hw *hw, u16 max_frame_size, struct ice_sq_cd *cd)
 
 	cmd->max_frame_size = CPU_TO_LE16(max_frame_size);
 
+	if (ice_is_fw_auto_drop_supported(hw) && auto_drop)
+		cmd->drop_opts |= ICE_AQ_SET_MAC_AUTO_DROP_BLOCKING_PKTS;
 	ice_fill_tx_timer_and_fc_thresh(hw, cmd);
 
 	return ice_aq_send_cmd(hw, &desc, NULL, 0, cd);
@@ -1106,7 +1110,8 @@ enum ice_status ice_init_hw(struct ice_hw *hw)
 		goto err_unroll_fltr_mgmt_struct;
 
 	/* enable jumbo frame support at MAC level */
-	status = ice_aq_set_mac_cfg(hw, ICE_AQ_SET_MAC_FRAME_SIZE_MAX, NULL);
+	status = ice_aq_set_mac_cfg(hw, ICE_AQ_SET_MAC_FRAME_SIZE_MAX, false,
+				    NULL);
 	if (status)
 		goto err_unroll_fltr_mgmt_struct;
 
@@ -5919,5 +5924,18 @@ bool ice_fw_supports_report_dflt_cfg(struct ice_hw *hw)
 	} else if (hw->api_maj_ver > ICE_FW_API_REPORT_DFLT_CFG_MAJ) {
 		return true;
 	}
+	return false;
+}
+/**
+ * ice_is_fw_auto_drop_supported
+ * @hw: pointer to the hardware structure
+ *
+ * Checks if the firmware supports auto drop feature
+ */
+bool ice_is_fw_auto_drop_supported(struct ice_hw *hw)
+{
+	if (hw->api_maj_ver >= ICE_FW_API_AUTO_DROP_MAJ &&
+	    hw->api_min_ver >= ICE_FW_API_AUTO_DROP_MIN)
+		return true;
 	return false;
 }

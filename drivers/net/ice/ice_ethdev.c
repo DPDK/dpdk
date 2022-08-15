@@ -3710,7 +3710,7 @@ ice_dev_start(struct rte_eth_dev *dev)
 		ICE_FRAME_SIZE_MAX;
 
 	/* Set the max frame size to HW*/
-	ice_aq_set_mac_cfg(hw, max_frame_size, NULL);
+	ice_aq_set_mac_cfg(hw, max_frame_size, false, NULL);
 
 	if (ad->devargs.pps_out_ena) {
 		ret = ice_pps_out_cfg(hw, pin_idx, timer);
