@@ -662,12 +662,12 @@ struct ice_ts_func_info {
 	/* Function specific info */
 	enum ice_time_ref_freq time_ref;
 	u8 clk_freq;
-	u8 clk_src;
-	u8 tmr_index_assoc;
-	u8 ena;
-	u8 tmr_index_owned;
-	u8 src_tmr_owned;
-	u8 tmr_ena;
+	u8 clk_src : 1;
+	u8 tmr_index_assoc : 1;
+	u8 ena : 1;
+	u8 tmr_index_owned : 1;
+	u8 src_tmr_owned : 1;
+	u8 tmr_ena : 1;
 };
 
 /* Device specific definitions */
@@ -685,14 +685,14 @@ struct ice_ts_dev_info {
 	/* Device specific info */
 	u32 ena_ports;
 	u32 tmr_own_map;
-	u32 tmr0_owner;
-	u32 tmr1_owner;
-	u8 tmr0_owned;
-	u8 tmr1_owned;
-	u8 ena;
-	u8 tmr0_ena;
-	u8 tmr1_ena;
-	u8 ts_ll_read;
+	u8 tmr0_owner;
+	u8 tmr1_owner;
+	u8 tmr0_owned : 1;
+	u8 tmr1_owned : 1;
+	u8 ena : 1;
+	u8 tmr0_ena : 1;
+	u8 tmr1_ena : 1;
+	u8 ts_ll_read : 1;
 };
 
 /* Function specific capabilities */
