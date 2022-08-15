@@ -1708,7 +1708,6 @@ ice_sched_add_vsi_child_nodes(struct ice_port_info *pi, u16 vsi_handle,
 {
 	struct ice_sched_node *parent, *node;
 	struct ice_hw *hw = pi->hw;
-	enum ice_status status;
 	u32 first_node_teid;
 	u16 num_added = 0;
 	u8 i, qgl, vsil;
@@ -1717,6 +1716,8 @@ ice_sched_add_vsi_child_nodes(struct ice_port_info *pi, u16 vsi_handle,
 	vsil = ice_sched_get_vsi_layer(hw);
 	parent = ice_sched_get_vsi_node(pi, tc_node, vsi_handle);
 	for (i = vsil + 1; i <= qgl; i++) {
+		enum ice_status status;
+
 		if (!parent)
 			return ICE_ERR_CFG;
 
@@ -1810,7 +1811,6 @@ ice_sched_add_vsi_support_nodes(struct ice_port_info *pi, u16 vsi_handle,
 				struct ice_sched_node *tc_node, u16 *num_nodes)
 {
 	struct ice_sched_node *parent = tc_node;
-	enum ice_status status;
 	u32 first_node_teid;
 	u16 num_added = 0;
 	u8 i, vsil;
@@ -1820,6 +1820,8 @@ ice_sched_add_vsi_support_nodes(struct ice_port_info *pi, u16 vsi_handle,
 
 	vsil = ice_sched_get_vsi_layer(pi->hw);
 	for (i = pi->hw->sw_entry_point_layer; i <= vsil; i++) {
+		enum ice_status status;
+
 		status = ice_sched_add_nodes_to_layer(pi, tc_node, parent,
 						      i, num_nodes[i],
 						      &first_node_teid,
@@ -4860,7 +4862,6 @@ ice_sched_get_node_by_id_type(struct ice_port_info *pi, u32 id,
 			      enum ice_agg_type agg_type, u8 tc)
 {
 	struct ice_sched_node *node = NULL;
-	struct ice_sched_node *child_node;
 
 	switch (agg_type) {
 	case ICE_AGG_TYPE_VSI: {
@@ -4891,13 +4892,16 @@ ice_sched_get_node_by_id_type(struct ice_port_info *pi, u32 id,
 		node = ice_sched_find_node_by_teid(pi->root, id);
 		break;
 
-	case ICE_AGG_TYPE_QG:
+	case ICE_AGG_TYPE_QG: {
+		struct ice_sched_node *child_node;
+
 		/* The current implementation allows single qg to modify */
 		child_node = ice_sched_find_node_by_teid(pi->root, id);
 		if (!child_node)
 			break;
 		node = child_node->parent;
 		break;
+	}
 
 	default:
 		break;

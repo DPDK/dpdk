@@ -725,7 +725,6 @@ ice_get_orom_civd_data(struct ice_hw *hw, enum ice_bank_select bank,
 		       struct ice_orom_civd_info *civd)
 {
 	struct ice_orom_civd_info tmp;
-	enum ice_status status;
 	u32 offset;
 
 	/* The CIVD section is located in the Option ROM aligned to 512 bytes.
@@ -734,6 +733,7 @@ ice_get_orom_civd_data(struct ice_hw *hw, enum ice_bank_select bank,
 	 * equal 0.
 	 */
 	for (offset = 0; (offset + 512) <= hw->flash.banks.orom_size; offset += 512) {
+		enum ice_status status;
 		u8 sum = 0, i;
 
 		status = ice_read_flash_module(hw, bank, ICE_SR_1ST_OROM_BANK_PTR,

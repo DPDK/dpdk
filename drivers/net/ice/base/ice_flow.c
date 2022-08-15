@@ -2583,7 +2583,6 @@ ice_flow_set_hw_prof(struct ice_hw *hw, u16 dest_vsi_handle,
 	struct ice_flow_prof_params *params;
 	u8 fv_words = hw->blk[blk].es.fvw;
 	enum ice_status status;
-	u16 vsi_num;
 	int i, idx;
 
 	params = (struct ice_flow_prof_params *)ice_malloc(hw, sizeof(*params));

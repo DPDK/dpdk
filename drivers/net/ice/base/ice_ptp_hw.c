@@ -4805,10 +4805,7 @@ enum ice_status ice_write_sma_ctrl_e810t(struct ice_hw *hw, u8 data)
 bool ice_is_pca9575_present(struct ice_hw *hw)
 {
 	enum ice_status status;
-	__le16 handle = 0;
-
-	if (!ice_is_e810t(hw))
-		return false;
+	u16 handle = 0;
 
 	status = ice_get_pca9575_handle(hw, &handle);
 	if (!status && handle)
@@ -4819,8 +4816,8 @@ bool ice_is_pca9575_present(struct ice_hw *hw)
 
 /* Device agnostic functions
  *
- * The following functions implement shared behavior common to both E822 and
- * E810 devices, possibly calling a device specific implementation where
+ * The following functions implement shared behavior common to both E822/E823
+ * and E810 devices, possibly calling a device specific implementation where
  * necessary.
  */
 
@@ -5164,9 +5161,9 @@ ice_ptp_adj_clock_at_time(struct ice_hw *hw, u64 at_time, s32 adj)
 }
 
 /**
- * ice_read_phy_tstamp - Read a PHY timestamp from the timestamo block
+ * ice_read_phy_tstamp - Read a PHY timestamp from the timestamp block
  * @hw: pointer to the HW struct
- * @block: the block to read from
+ * @block: the block/port to read from
  * @idx: the timestamp index to read
  * @tstamp: on return, the 40bit timestamp value
  *

@@ -8,17 +8,6 @@
 #include "ice_protocol_type.h"
 #include "ice_flow.h"
 
-/* For supporting double VLAN mode, it is necessary to enable or disable certain
- * boost tcam entries. The metadata labels names that match the following
- * prefixes will be saved to allow enabling double VLAN mode.
- */
-#define ICE_DVM_PRE	"BOOST_MAC_VLAN_DVM"	/* enable these entries */
-#define ICE_SVM_PRE	"BOOST_MAC_VLAN_SVM"	/* disable these entries */
-
-/* To support tunneling entries by PF, the package will append the PF number to
- * the label; for example TNL_VXLAN_PF0, TNL_VXLAN_PF1, TNL_VXLAN_PF2, etc.
- */
-#define ICE_TNL_PRE	"TNL_"
 static const struct ice_tunnel_type_scan tnls[] = {
 	{ TNL_VXLAN,		"TNL_VXLAN_PF" },
 	{ TNL_GENEVE,		"TNL_GENEVE_PF" },
@@ -526,10 +515,11 @@ ice_upd_dvm_boost_entry_err:
  */
 enum ice_status ice_set_dvm_boost_entries(struct ice_hw *hw)
 {
-	enum ice_status status;
 	u16 i;
 
 	for (i = 0; i < hw->dvm_upd.count; i++) {
+		enum ice_status status;
+
 		status = ice_upd_dvm_boost_entry(hw, &hw->dvm_upd.tbl[i]);
 		if (status)
 			return status;
@@ -3414,12 +3404,13 @@ ice_rem_vsig(struct ice_hw *hw, enum ice_block blk, u16 vsig,
 	u16 idx = vsig & ICE_VSIG_IDX_M;
 	struct ice_vsig_vsi *vsi_cur;
 	struct ice_vsig_prof *d, *t;
-	enum ice_status status;
 
 	/* remove TCAM entries */
 	LIST_FOR_EACH_ENTRY_SAFE(d, t,
 				 &hw->blk[blk].xlt2.vsig_tbl[idx].prop_lst,
 				 ice_vsig_prof, list) {
+		enum ice_status status;
+
 		status = ice_rem_prof_id(hw, blk, d);
 		if (status)
 			return status;
@@ -3469,12 +3460,13 @@ ice_rem_prof_id_vsig(struct ice_hw *hw, enum ice_block blk, u16 vsig, u64 hdl,
 {
 	u16 idx = vsig & ICE_VSIG_IDX_M;
 	struct ice_vsig_prof *p, *t;
-	enum ice_status status;
 
 	LIST_FOR_EACH_ENTRY_SAFE(p, t,
 				 &hw->blk[blk].xlt2.vsig_tbl[idx].prop_lst,
 				 ice_vsig_prof, list)
 		if (p->profile_cookie == hdl) {
+			enum ice_status status;
+
 			if (ice_vsig_prof_id_count(hw, blk, vsig) == 1)
 				/* this is the last profile, remove the VSIG */
 				return ice_rem_vsig(hw, blk, vsig, chg);
