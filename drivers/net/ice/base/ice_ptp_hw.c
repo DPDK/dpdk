@@ -3161,7 +3161,7 @@ bool ice_is_gps_present_e810t(struct ice_hw *hw)
 }
 
 /**
- * ice_read_e810t_pca9575_reg
+ * ice_read_pca9575_reg_e810t
  * @hw: pointer to the hw struct
  * @offset: GPIO controller register offset
  * @data: pointer to data to be read from the GPIO controller
@@ -3169,7 +3169,7 @@ bool ice_is_gps_present_e810t(struct ice_hw *hw)
  * Read the register from the GPIO controller
  */
 enum ice_status
-ice_read_e810t_pca9575_reg(struct ice_hw *hw, u8 offset, u8 *data)
+ice_read_pca9575_reg_e810t(struct ice_hw *hw, u8 offset, u8 *data)
 {
 	struct ice_aqc_link_topo_addr link_topo;
 	enum ice_status status;
@@ -3191,7 +3191,7 @@ ice_read_e810t_pca9575_reg(struct ice_hw *hw, u8 offset, u8 *data)
 }
 
 /**
- * ice_write_e810t_pca9575_reg
+ * ice_write_pca9575_reg_e810t
  * @hw: pointer to the hw struct
  * @offset: GPIO controller register offset
  * @data: data to be written to the GPIO controller
@@ -3199,7 +3199,7 @@ ice_read_e810t_pca9575_reg(struct ice_hw *hw, u8 offset, u8 *data)
  * Write the data to the GPIO controller register
  */
 enum ice_status
-ice_write_e810t_pca9575_reg(struct ice_hw *hw, u8 offset, u8 data)
+ice_write_pca9575_reg_e810t(struct ice_hw *hw, u8 offset, u8 data)
 {
 	struct ice_aqc_link_topo_addr link_topo;
 	enum ice_status status;
@@ -3283,12 +3283,12 @@ enum ice_status ice_write_sma_ctrl_e810t(struct ice_hw *hw, u8 data)
 }
 
 /**
- * ice_e810t_is_pca9575_present
+ * ice_is_pca9575_present
  * @hw: pointer to the hw struct
  *
  * Check if the SW IO expander is present in the netlist
  */
-bool ice_e810t_is_pca9575_present(struct ice_hw *hw)
+bool ice_is_pca9575_present(struct ice_hw *hw)
 {
 	enum ice_status status;
 	__le16 handle = 0;

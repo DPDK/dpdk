@@ -224,12 +224,12 @@ enum ice_status ice_phy_exit_bypass_e822(struct ice_hw *hw, u8 port);
 bool ice_is_gps_present_e810t(struct ice_hw *hw);
 enum ice_status ice_ptp_init_phy_e810(struct ice_hw *hw);
 enum ice_status
-ice_read_e810t_pca9575_reg(struct ice_hw *hw, u8 offset, u8 *data);
+ice_read_pca9575_reg_e810t(struct ice_hw *hw, u8 offset, u8 *data);
 enum ice_status
-ice_write_e810t_pca9575_reg(struct ice_hw *hw, u8 offset, u8 data);
+ice_write_pca9575_reg_e810t(struct ice_hw *hw, u8 offset, u8 data);
 enum ice_status ice_read_sma_ctrl_e810t(struct ice_hw *hw, u8 *data);
 enum ice_status ice_write_sma_ctrl_e810t(struct ice_hw *hw, u8 data);
-bool ice_e810t_is_pca9575_present(struct ice_hw *hw);
+bool ice_is_pca9575_present(struct ice_hw *hw);
 
 #define PFTSYN_SEM_BYTES	4
 
