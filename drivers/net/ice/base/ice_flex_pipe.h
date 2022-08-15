@@ -40,9 +40,9 @@ enum ice_status
 ice_vsig_find_vsi(struct ice_hw *hw, enum ice_block blk, u16 vsi, u16 *vsig);
 void ice_disable_fd_swap(struct ice_hw *hw, u16 prof_id);
 enum ice_status
-ice_add_prof(struct ice_hw *hw, enum ice_block blk, u64 id, u8 ptypes[],
-	     const struct ice_ptype_attributes *attr, u16 attr_cnt,
-	     struct ice_fv_word *es, u16 *masks, bool fd_swap);
+ice_add_prof(struct ice_hw *hw, enum ice_block blk, u64 id,
+	     ice_bitmap_t *ptypes, const struct ice_ptype_attributes *attr,
+	     u16 attr_cnt, struct ice_fv_word *es, u16 *masks, bool fd_swap);
 void ice_init_all_prof_masks(struct ice_hw *hw);
 void ice_shutdown_all_prof_masks(struct ice_hw *hw);
 struct ice_prof_map *
