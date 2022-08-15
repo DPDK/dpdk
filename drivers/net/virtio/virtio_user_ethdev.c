@@ -252,15 +252,9 @@ virtio_user_read_dev_config(struct virtio_hw *hw, size_t offset,
 
 		if (dev->vhostfd >= 0) {
 			int r;
-			int flags;
 
-			flags = fcntl(dev->vhostfd, F_GETFL);
-			if (fcntl(dev->vhostfd, F_SETFL,
-					flags | O_NONBLOCK) == -1) {
-				PMD_DRV_LOG(ERR, "error setting O_NONBLOCK flag");
-				return;
-			}
-			r = recv(dev->vhostfd, buf, 128, MSG_PEEK);
+			r = recv(dev->vhostfd, buf, 128,
+				       MSG_PEEK | MSG_DONTWAIT);
 			if (r == 0 || (r < 0 && errno != EAGAIN)) {
 				dev->net_status &= (~VIRTIO_NET_S_LINK_UP);
 				PMD_DRV_LOG(ERR, "virtio-user port %u is down",
@@ -275,11 +269,6 @@ virtio_user_read_dev_config(struct virtio_hw *hw, size_t offset,
 					(void *)hw);
 			} else {
 				dev->net_status |= VIRTIO_NET_S_LINK_UP;
-			}
-			if (fcntl(dev->vhostfd, F_SETFL,
-					flags & ~O_NONBLOCK) == -1) {
-				PMD_DRV_LOG(ERR, "error clearing O_NONBLOCK flag");
-				return;
 			}
 		} else if (dev->is_server) {
 			dev->net_status &= (~VIRTIO_NET_S_LINK_UP);
