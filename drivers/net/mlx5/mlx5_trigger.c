@@ -156,12 +156,29 @@ mlx5_rxq_start(struct rte_eth_dev *dev)
 				mlx5_mr_update_mp(dev, &rxq_ctrl->rxq.mr_ctrl,
 						  rxq_ctrl->rxq.mprq_mp);
 			} else {
+				struct rte_mempool *mp;
+				uint32_t flags;
 				uint32_t s;
 
-				for (s = 0; s < rxq_ctrl->rxq.rxseg_n; s++)
+				/*
+				 * The pinned external buffer should be
+				 * registered for DMA operations by application.
+				 * The mem_list of the pool contains
+				 * the list of chunks with mbuf structures
+				 * w/o built-in data buffers
+				 * and DMA actually does not happen there,
+				 * no need to create MR for these chunks.
+				 */
+				for (s = 0; s < rxq_ctrl->rxq.rxseg_n; s++) {
+					mp = rxq_ctrl->rxq.rxseg[s].mp;
+					flags = rte_pktmbuf_priv_flags(mp);
+					if (flags &
+					    RTE_PKTMBUF_POOL_F_PINNED_EXT_BUF)
+						continue;
 					mlx5_mr_update_mp
 						(dev, &rxq_ctrl->rxq.mr_ctrl,
-						rxq_ctrl->rxq.rxseg[s].mp);
+						 mp);
+				}
 			}
 			ret = rxq_alloc_elts(rxq_ctrl);
 			if (ret)
