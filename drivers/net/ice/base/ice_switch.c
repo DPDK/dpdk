@@ -8556,10 +8556,6 @@ ice_fill_adv_dummy_packet(struct ice_adv_lkup_elem *lkups, u16 lkups_cnt,
 			len = sizeof(struct ice_udp_tnl_hdr);
 			break;
 
-		case ICE_GTP:
-		case ICE_GTP_NO_PAY:
-			len = sizeof(struct ice_udp_gtp_hdr);
-			break;
 		case ICE_PPPOE:
 			len = sizeof(struct ice_pppoe_hdr);
 			break;
@@ -8574,6 +8570,10 @@ ice_fill_adv_dummy_packet(struct ice_adv_lkup_elem *lkups, u16 lkups_cnt,
 			break;
 		case ICE_L2TPV3:
 			len = sizeof(struct ice_l2tpv3_sess_hdr);
+			break;
+		case ICE_GTP:
+		case ICE_GTP_NO_PAY:
+			len = sizeof(struct ice_udp_gtp_hdr);
 			break;
 		default:
 			return ICE_ERR_PARAM;
