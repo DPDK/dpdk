@@ -2561,7 +2561,7 @@ ice_flow_set_hw_prof(struct ice_hw *hw, u16 dest_vsi_handle,
 		     u16 fdir_vsi_handle, struct ice_parser_profile *prof,
 		     enum ice_block blk)
 {
-	int id = ice_find_first_bit(prof->ptypes, UINT16_MAX);
+	int id = ice_find_first_bit(prof->ptypes, ICE_FLOW_PTYPE_MAX);
 	struct ice_flow_prof_params *params;
 	u8 fv_words = hw->blk[blk].es.fvw;
 	enum ice_status status;
