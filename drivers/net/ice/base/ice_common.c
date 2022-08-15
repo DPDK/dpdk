@@ -2579,7 +2579,7 @@ ice_parse_1588_func_caps(struct ice_hw *hw, struct ice_hw_func_caps *func_p,
 		 * related information.
 		 */
 		ice_debug(hw, ICE_DBG_INIT, "1588 func caps: unknown clock frequency %u\n",
-			  info->clk_freq);
+			  clk_freq);
 		info->time_ref = ICE_TIME_REF_FREQ_25_000;
 	}
 
@@ -2594,7 +2594,7 @@ ice_parse_1588_func_caps(struct ice_hw *hw, struct ice_hw_func_caps *func_p,
 	ice_debug(hw, ICE_DBG_INIT, "func caps: tmr_index_assoc = %u\n",
 		  info->tmr_index_assoc);
 	ice_debug(hw, ICE_DBG_INIT, "func caps: clk_freq = %u\n",
-		  info->clk_freq);
+		  clk_freq);
 	ice_debug(hw, ICE_DBG_INIT, "func caps: clk_src = %u\n",
 		  info->clk_src);
 }
@@ -2752,7 +2752,6 @@ ice_parse_1588_dev_caps(struct ice_hw *hw, struct ice_hw_dev_caps *dev_p,
 			struct ice_aqc_list_caps_elem *cap)
 {
 	struct ice_ts_dev_info *info = &dev_p->ts_dev_info;
-	u32 logical_id = LE32_TO_CPU(cap->logical_id);
 	u32 phys_id = LE32_TO_CPU(cap->phys_id);
 	u32 number = LE32_TO_CPU(cap->number);
 

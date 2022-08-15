@@ -661,7 +661,6 @@ enum ice_clk_src {
 struct ice_ts_func_info {
 	/* Function specific info */
 	enum ice_time_ref_freq time_ref;
-	u8 clk_freq;
 	u8 clk_src : 1;
 	u8 tmr_index_assoc : 1;
 	u8 ena : 1;
@@ -683,7 +682,6 @@ struct ice_ts_func_info {
 
 struct ice_ts_dev_info {
 	/* Device specific info */
-	u32 ena_ports;
 	u32 tmr_own_map;
 	u8 tmr0_owner;
 	u8 tmr1_owner;
@@ -1098,10 +1096,6 @@ struct ice_port_info {
 #define ICE_SCHED_PORT_STATE_READY	0x1
 	u8 lport;
 #define ICE_LPORT_MASK			0xff
-	u16 dflt_tx_vsi_rule_id;
-	u16 dflt_tx_vsi_num;
-	u16 dflt_rx_vsi_rule_id;
-	u16 dflt_rx_vsi_num;
 	struct ice_fc_info fc;
 	struct ice_mac_info mac;
 	struct ice_phy_info phy;
