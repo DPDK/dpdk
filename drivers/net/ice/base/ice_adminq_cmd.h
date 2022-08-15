@@ -1936,6 +1936,15 @@ struct ice_aqc_nvm {
 #define ICE_AQC_NVM_LLDP_STATUS_M_LEN		4 /* In Bits */
 #define ICE_AQC_NVM_LLDP_STATUS_RD_LEN		4 /* In Bytes */
 
+#define ICE_AQC_NVM_TX_TOPO_MOD_ID		0x14B
+
+struct ice_aqc_nvm_tx_topo_user_sel {
+	__le16 length;
+	u8 data;
+#define ICE_AQC_NVM_TX_TOPO_USER_SEL		BIT(4)
+	u8 reserved;
+};
+
 /* Used for 0x0704 as well as for 0x0705 commands */
 struct ice_aqc_nvm_cfg {
 	u8	cmd_flags;
