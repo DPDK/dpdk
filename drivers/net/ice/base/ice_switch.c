@@ -7315,7 +7315,6 @@ ice_add_sw_recipe(struct ice_hw *hw, struct ice_sw_recipe *rm,
 		last_chain_entry->chain_idx = ICE_INVAL_CHAIN_IND;
 		LIST_FOR_EACH_ENTRY(entry, &rm->rg_list, ice_recp_grp_entry,
 				    l_entry) {
-			last_chain_entry->fv_idx[i] = entry->chain_idx;
 			buf[recps].content.lkup_indx[i] = entry->chain_idx;
 			buf[recps].content.mask[i++] = CPU_TO_LE16(0xFFFF);
 			ice_set_bit(entry->rid, rm->r_bitmap);
