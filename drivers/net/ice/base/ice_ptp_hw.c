@@ -1794,9 +1794,9 @@ ice_fill_phy_msg_e822(struct ice_sbq_msg_input *msg, u8 port, u16 offset)
 {
 	int phy_port, phy, quadtype;
 
-	phy_port = port % ICE_PORTS_PER_PHY;
-	phy = port / ICE_PORTS_PER_PHY;
-	quadtype = (port / ICE_PORTS_PER_QUAD) % ICE_NUM_QUAD_TYPE;
+	phy_port = port % ICE_PORTS_PER_PHY_E822;
+	phy = port / ICE_PORTS_PER_PHY_E822;
+	quadtype = (port / ICE_PORTS_PER_QUAD) % ICE_QUADS_PER_PHY_E822;
 
 	if (quadtype == 0) {
 		msg->msg_addr_low = P_Q0_L(P_0_BASE + offset, phy_port);
@@ -2184,20 +2184,25 @@ ice_write_64b_phy_reg_e822(struct ice_hw *hw, u8 port, u16 low_addr, u64 val)
  * Fill a message buffer for accessing a register in a quad shared between
  * multiple PHYs.
  */
-static void
+static enum ice_status
 ice_fill_quad_msg_e822(struct ice_sbq_msg_input *msg, u8 quad, u16 offset)
 {
 	u32 addr;
 
+	if (quad >= ICE_MAX_QUAD)
+		return ICE_ERR_PARAM;
+
 	msg->dest_dev = rmn_0;
 
-	if ((quad % ICE_NUM_QUAD_TYPE) == 0)
+	if ((quad % ICE_QUADS_PER_PHY_E822) == 0)
 		addr = Q_0_BASE + offset;
 	else
 		addr = Q_1_BASE + offset;
 
 	msg->msg_addr_low = ICE_LO_WORD(addr);
 	msg->msg_addr_high = ICE_HI_WORD(addr);
+
+	return ICE_SUCCESS;
 }
 
 /**
@@ -2218,22 +2223,21 @@ ice_read_quad_reg_e822_lp(struct ice_hw *hw, u8 quad, u16 offset, u32 *val,
 	struct ice_sbq_msg_input msg = {0};
 	enum ice_status status;
 
-	if (quad >= ICE_MAX_QUAD)
-		return ICE_ERR_PARAM;
+	status = ice_fill_quad_msg_e822(&msg, quad, offset);
+	if (status)
+		goto exit_err;
 
-	ice_fill_quad_msg_e822(&msg, quad, offset);
 	msg.opcode = ice_sbq_msg_rd;
 
 	status = ice_sbq_rw_reg_lp(hw, &msg, lock_sbq);
-	if (status) {
+exit_err:
+	if (status)
 		ice_debug(hw, ICE_DBG_PTP, "Failed to send message to phy, status %d\n",
 			  status);
-		return status;
-	}
+	else
+		*val = msg.data;
 
-	*val = msg.data;
-
-	return ICE_SUCCESS;
+	return status;
 }
 
 enum ice_status
@@ -2260,21 +2264,20 @@ ice_write_quad_reg_e822_lp(struct ice_hw *hw, u8 quad, u16 offset, u32 val,
 	struct ice_sbq_msg_input msg = {0};
 	enum ice_status status;
 
-	if (quad >= ICE_MAX_QUAD)
-		return ICE_ERR_PARAM;
+	status = ice_fill_quad_msg_e822(&msg, quad, offset);
+	if (status)
+		goto exit_err;
 
-	ice_fill_quad_msg_e822(&msg, quad, offset);
 	msg.opcode = ice_sbq_msg_wr;
 	msg.data = val;
 
 	status = ice_sbq_rw_reg_lp(hw, &msg, lock_sbq);
-	if (status) {
+exit_err:
+	if (status)
 		ice_debug(hw, ICE_DBG_PTP, "Failed to send message to phy, status %d\n",
 			  status);
-		return status;
-	}
 
-	return ICE_SUCCESS;
+	return status;
 }
 
 enum ice_status
