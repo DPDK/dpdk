@@ -382,6 +382,47 @@ static enum ice_status ice_init_cgu_e822(struct ice_hw *hw)
 }
 
 /**
+ * ice_ptp_src_cmd - Prepare source timer for a timer command
+ * @hw: pointer to HW structure
+ * @cmd: Timer command
+ *
+ * Prepare the source timer for an upcoming timer sync command.
+ */
+void ice_ptp_src_cmd(struct ice_hw *hw, enum ice_ptp_tmr_cmd cmd)
+{
+	u32 cmd_val;
+	u8 tmr_idx;
+
+	tmr_idx = ice_get_ptp_src_clock_index(hw);
+	cmd_val = tmr_idx << SEL_CPK_SRC;
+
+	switch (cmd) {
+	case ICE_PTP_INIT_TIME:
+		cmd_val |= GLTSYN_CMD_INIT_TIME;
+		break;
+	case ICE_PTP_INIT_INCVAL:
+		cmd_val |= GLTSYN_CMD_INIT_INCVAL;
+		break;
+	case ICE_PTP_ADJ_TIME:
+		cmd_val |= GLTSYN_CMD_ADJ_TIME;
+		break;
+	case ICE_PTP_ADJ_TIME_AT_TIME:
+		cmd_val |= GLTSYN_CMD_ADJ_INIT_TIME;
+		break;
+	case ICE_PTP_READ_TIME:
+		cmd_val |= GLTSYN_CMD_READ_TIME;
+		break;
+	case ICE_PTP_NOP:
+		break;
+	default:
+		ice_warn(hw, "Unknown timer command %u\n", cmd);
+		return;
+	}
+
+	wr32(hw, GLTSYN_CMD, cmd_val);
+}
+
+/**
  * ice_ptp_exec_tmr_cmd - Execute all prepared timer commands
  * @hw: pointer to HW struct
  *
@@ -2366,6 +2407,31 @@ ice_clear_phy_tstamp_e822(struct ice_hw *hw, u8 quad, u8 idx)
 }
 
 /**
+ * ice_ptp_set_vernier_wl - Set the window length for vernier calibration
+ * @hw: pointer to the HW struct
+ *
+ * Set the window length used for the vernier port calibration process.
+ */
+enum ice_status ice_ptp_set_vernier_wl(struct ice_hw *hw)
+{
+	u8 port;
+
+	for (port = 0; port < ICE_NUM_EXTERNAL_PORTS; port++) {
+		enum ice_status status;
+
+		status = ice_write_phy_reg_e822_lp(hw, port, P_REG_WL,
+						   PTP_VERNIER_WL, true);
+		if (status) {
+			ice_debug(hw, ICE_DBG_PTP, "Failed to set vernier window length for port %u, status %d\n",
+				  port, status);
+			return status;
+		}
+	}
+
+	return ICE_SUCCESS;
+}
+
+/**
  * ice_ptp_init_phc_e822 - Perform E822 specific PHC initialization
  * @hw: pointer to HW struct
  *
@@ -2816,31 +2882,6 @@ ice_ptp_port_cmd_e822(struct ice_hw *hw, enum ice_ptp_tmr_cmd cmd,
  * a port. This calibration increases the precision of the timestamps on the
  * port.
  */
-
-/**
- * ice_ptp_set_vernier_wl - Set the window length for vernier calibration
- * @hw: pointer to the HW struct
- *
- * Set the window length used for the vernier port calibration process.
- */
-enum ice_status ice_ptp_set_vernier_wl(struct ice_hw *hw)
-{
-	u8 port;
-
-	for (port = 0; port < ICE_NUM_EXTERNAL_PORTS; port++) {
-		enum ice_status status;
-
-		status = ice_write_phy_reg_e822_lp(hw, port, P_REG_WL,
-						   PTP_VERNIER_WL, true);
-		if (status) {
-			ice_debug(hw, ICE_DBG_PTP, "Failed to set vernier window length for port %u, status %d\n",
-				  port, status);
-			return status;
-		}
-	}
-
-	return ICE_SUCCESS;
-}
 
 /**
  * ice_phy_get_speed_and_fec_e822 - Get link speed and FEC based on serdes mode
@@ -4827,45 +4868,6 @@ bool ice_ptp_lock(struct ice_hw *hw)
 void ice_ptp_unlock(struct ice_hw *hw)
 {
 	wr32(hw, PFTSYN_SEM + (PFTSYN_SEM_BYTES * hw->pf_id), 0);
-}
-
-/**
- * ice_ptp_src_cmd - Prepare source timer for a timer command
- * @hw: pointer to HW structure
- * @cmd: Timer command
- *
- * Prepare the source timer for an upcoming timer sync command.
- */
-void ice_ptp_src_cmd(struct ice_hw *hw, enum ice_ptp_tmr_cmd cmd)
-{
-	u32 cmd_val;
-	u8 tmr_idx;
-
-	tmr_idx = ice_get_ptp_src_clock_index(hw);
-	cmd_val = tmr_idx << SEL_CPK_SRC;
-
-	switch (cmd) {
-	case ICE_PTP_INIT_TIME:
-		cmd_val |= GLTSYN_CMD_INIT_TIME;
-		break;
-	case ICE_PTP_INIT_INCVAL:
-		cmd_val |= GLTSYN_CMD_INIT_INCVAL;
-		break;
-	case ICE_PTP_ADJ_TIME:
-		cmd_val |= GLTSYN_CMD_ADJ_TIME;
-		break;
-	case ICE_PTP_ADJ_TIME_AT_TIME:
-		cmd_val |= GLTSYN_CMD_ADJ_INIT_TIME;
-		break;
-	case ICE_PTP_READ_TIME:
-		cmd_val |= GLTSYN_CMD_READ_TIME;
-		break;
-	default:
-		ice_warn(hw, "Unknown timer command %u\n", cmd);
-		return;
-	}
-
-	wr32(hw, GLTSYN_CMD, cmd_val);
 }
 
 /**
