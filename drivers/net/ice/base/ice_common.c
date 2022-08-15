@@ -3932,7 +3932,7 @@ ice_aq_read_topo_dev_nvm(struct ice_hw *hw,
 
 	ice_fill_dflt_direct_cmd_desc(&desc, ice_aqc_opc_read_topo_dev_nvm);
 
-	desc.datalen = data_size;
+	desc.datalen = CPU_TO_LE16(data_size);
 	ice_memcpy(&cmd->topo_params, topo_params, sizeof(*topo_params),
 		   ICE_NONDMA_TO_NONDMA);
 	cmd->start_address = CPU_TO_LE32(start_address);
@@ -5586,7 +5586,7 @@ ice_aq_set_gpio(struct ice_hw *hw, u16 gpio_ctrl_handle, u8 pin_idx, bool value,
 
 	ice_fill_dflt_direct_cmd_desc(&desc, ice_aqc_opc_set_gpio);
 	cmd = &desc.params.read_write_gpio;
-	cmd->gpio_ctrl_handle = gpio_ctrl_handle;
+	cmd->gpio_ctrl_handle = CPU_TO_LE16(gpio_ctrl_handle);
 	cmd->gpio_num = pin_idx;
 	cmd->gpio_val = value ? 1 : 0;
 
@@ -5614,7 +5614,7 @@ ice_aq_get_gpio(struct ice_hw *hw, u16 gpio_ctrl_handle, u8 pin_idx,
 
 	ice_fill_dflt_direct_cmd_desc(&desc, ice_aqc_opc_get_gpio);
 	cmd = &desc.params.read_write_gpio;
-	cmd->gpio_ctrl_handle = gpio_ctrl_handle;
+	cmd->gpio_ctrl_handle = CPU_TO_LE16(gpio_ctrl_handle);
 	cmd->gpio_num = pin_idx;
 
 	status = ice_aq_send_cmd(hw, &desc, NULL, 0, cd);
