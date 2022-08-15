@@ -89,6 +89,10 @@ ice_aq_cfg_l2_node_cgd(struct ice_hw *hw, u16 num_nodes,
 		       struct ice_aqc_cfg_l2_node_cgd_elem *buf, u16 buf_size,
 		       struct ice_sq_cd *cd);
 enum ice_status
+ice_aq_move_sched_elems(struct ice_hw *hw, u16 grps_req,
+			struct ice_aqc_move_elem *buf, u16 buf_size,
+			u16 *grps_movd, struct ice_sq_cd *cd);
+enum ice_status
 ice_aq_query_sched_elems(struct ice_hw *hw, u16 elems_req,
 			 struct ice_aqc_txsched_elem_data *buf, u16 buf_size,
 			 u16 *elems_ret, struct ice_sq_cd *cd);
@@ -176,11 +180,11 @@ enum ice_status
 ice_cfg_agg_bw_no_shared_lmt_per_tc(struct ice_port_info *pi, u32 agg_id,
 				    u8 tc);
 enum ice_status
-ice_sched_cfg_sibl_node_prio_lock(struct ice_port_info *pi,
-				  struct ice_sched_node *node, u8 priority);
-enum ice_status
 ice_cfg_vsi_q_priority(struct ice_port_info *pi, u16 num_qs, u32 *q_ids,
 		       u8 *q_prio);
+enum ice_status
+ice_sched_cfg_sibl_node_prio_lock(struct ice_port_info *pi,
+				  struct ice_sched_node *node, u8 priority);
 enum ice_status
 ice_cfg_q_bw_alloc(struct ice_port_info *pi, u16 vsi_handle, u8 tc,
 		   u16 q_handle, enum ice_rl_type rl_type, u32 bw_alloc);
