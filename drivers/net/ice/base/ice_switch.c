@@ -6280,7 +6280,7 @@ _ice_set_vlan_vsi_promisc(struct ice_hw *hw, u16 vsi_handle, u8 promisc_mask,
 			status =  _ice_set_vsi_promisc(hw, vsi_handle,
 						       promisc_mask, vlan_id,
 						       lport, sw);
-		if (status)
+		if (status && status != ICE_ERR_ALREADY_EXISTS)
 			break;
 	}
 
