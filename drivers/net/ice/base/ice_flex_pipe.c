@@ -3133,7 +3133,7 @@ ice_add_prof_attrib(struct ice_prof_map *prof, u8 ptg, u16 ptype,
  * @hw: pointer to the HW struct
  * @prof_id: profile ID
  */
-void ice_disable_fd_swap(struct ice_hw *hw, u16 prof_id)
+static void ice_disable_fd_swap(struct ice_hw *hw, u16 prof_id)
 {
 	u8 swap_val = ICE_SWAP_VALID;
 	u8 i;

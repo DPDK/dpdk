@@ -38,7 +38,6 @@ bool ice_hw_ptype_ena(struct ice_hw *hw, u16 ptype);
 /* XLT2/VSI group functions */
 enum ice_status
 ice_vsig_find_vsi(struct ice_hw *hw, enum ice_block blk, u16 vsi, u16 *vsig);
-void ice_disable_fd_swap(struct ice_hw *hw, u16 prof_id);
 enum ice_status
 ice_add_prof(struct ice_hw *hw, enum ice_block blk, u64 id,
 	     ice_bitmap_t *ptypes, const struct ice_ptype_attributes *attr,
