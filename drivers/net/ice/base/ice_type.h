@@ -1135,6 +1135,13 @@ struct ice_switch_info {
 	ice_declare_bitmap(prof_res_bm[ICE_MAX_NUM_PROFILES], ICE_MAX_FV_WORDS);
 };
 
+/* PHY configuration */
+enum ice_phy_cfg {
+	ICE_PHY_E810 = 1,
+	ICE_PHY_E822,
+	ICE_PHY_ETH56G,
+};
+
 /* Port hardware description */
 struct ice_hw {
 	u8 *hw_addr;
@@ -1159,6 +1166,7 @@ struct ice_hw {
 	u8 revision_id;
 
 	u8 pf_id;		/* device profile info */
+	enum ice_phy_cfg phy_cfg;
 	u8 logical_pf_id;
 
 	u16 max_burst_size;	/* driver sets this value */
@@ -1232,6 +1240,9 @@ struct ice_hw {
 #define ICE_PHY_0_LAST_QUAD	1
 #define ICE_PORTS_PER_PHY	8
 #define ICE_NUM_EXTERNAL_PORTS		ICE_PORTS_PER_PHY
+
+	/* bitmap of enabled logical ports */
+	u32 ena_lports;
 
 	/* Active package version (currently active) */
 	struct ice_pkg_ver active_pkg_ver;

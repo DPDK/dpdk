@@ -6,11 +6,12 @@
 #define _ICE_PTP_HW_H_
 
 enum ice_ptp_tmr_cmd {
-	INIT_TIME,
-	INIT_INCVAL,
-	ADJ_TIME,
-	ADJ_TIME_AT_TIME,
-	READ_TIME
+	ICE_PTP_INIT_TIME,
+	ICE_PTP_INIT_INCVAL,
+	ICE_PTP_ADJ_TIME,
+	ICE_PTP_ADJ_TIME_AT_TIME,
+	ICE_PTP_READ_TIME,
+	ICE_PTP_NOP,
 };
 
 enum ice_ptp_serdes {
@@ -231,6 +232,39 @@ ice_write_pca9575_reg_e810t(struct ice_hw *hw, u8 offset, u8 data);
 enum ice_status ice_read_sma_ctrl_e810t(struct ice_hw *hw, u8 *data);
 enum ice_status ice_write_sma_ctrl_e810t(struct ice_hw *hw, u8 data);
 bool ice_is_pca9575_present(struct ice_hw *hw);
+
+void
+ice_ptp_process_cgu_err(struct ice_hw *hw, struct ice_rq_event_info *event);
+/* ETH56G family functions */
+enum ice_status
+ice_read_phy_reg_eth56g(struct ice_hw *hw, u8 port, u16 offset, u32 *val);
+enum ice_status
+ice_write_phy_reg_eth56g(struct ice_hw *hw, u8 port, u16 offset, u32 val);
+enum ice_status
+ice_read_phy_mem_eth56g(struct ice_hw *hw, u8 port, u16 offset, u32 *val);
+enum ice_status
+ice_write_phy_mem_eth56g(struct ice_hw *hw, u8 port, u16 offset, u32 val);
+
+enum ice_status
+ice_ptp_prep_port_adj_eth56g(struct ice_hw *hw, u8 port, s64 time,
+			     bool lock_sbq);
+
+enum ice_status
+ice_ptp_read_phy_incval_eth56g(struct ice_hw *hw, u8 port, u64 *incval);
+enum ice_status
+ice_ptp_read_port_capture_eth56g(struct ice_hw *hw, u8 port,
+				 u64 *tx_ts, u64 *rx_ts);
+enum ice_status
+ice_ptp_one_port_cmd_eth56g(struct ice_hw *hw, u8 port,
+			    enum ice_ptp_tmr_cmd cmd, bool lock_sbq);
+enum ice_status
+ice_ptp_read_tx_hwtstamp_status_eth56g(struct ice_hw *hw, u32 *ts_status);
+enum ice_status
+ice_stop_phy_timer_eth56g(struct ice_hw *hw, u8 port, bool soft_reset);
+enum ice_status
+ice_start_phy_timer_eth56g(struct ice_hw *hw, u8 port, bool bypass);
+enum ice_status ice_phy_cfg_tx_offset_eth56g(struct ice_hw *hw, u8 port);
+enum ice_status ice_phy_cfg_rx_offset_eth56g(struct ice_hw *hw, u8 port);
 
 #define PFTSYN_SEM_BYTES	4
 
