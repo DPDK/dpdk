@@ -221,6 +221,7 @@ enum ice_status ice_phy_cfg_rx_offset_e822(struct ice_hw *hw, u8 port);
 enum ice_status ice_phy_exit_bypass_e822(struct ice_hw *hw, u8 port);
 
 /* E810 family functions */
+bool ice_is_gps_present_e810t(struct ice_hw *hw);
 enum ice_status ice_ptp_init_phy_e810(struct ice_hw *hw);
 enum ice_status
 ice_read_e810t_pca9575_reg(struct ice_hw *hw, u8 offset, u8 *data);

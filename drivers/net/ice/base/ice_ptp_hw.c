@@ -3095,10 +3095,10 @@ ice_ptp_port_cmd_e810(struct ice_hw *hw, enum ice_ptp_tmr_cmd cmd,
 static enum ice_status
 ice_get_pca9575_handle(struct ice_hw *hw, __le16 *pca9575_handle)
 {
-	struct ice_aqc_get_link_topo *cmd;
-	struct ice_aq_desc desc;
+	struct ice_aqc_get_link_topo cmd;
+	u8 node_part_number, idx;
 	enum ice_status status;
-	u8 idx;
+	u16 node_handle;
 
 	if (!hw || !pca9575_handle)
 		return ICE_ERR_PARAM;
@@ -3109,12 +3109,10 @@ ice_get_pca9575_handle(struct ice_hw *hw, __le16 *pca9575_handle)
 		return ICE_SUCCESS;
 	}
 
-	/* If handle was not detected read it from the netlist */
-	cmd = &desc.params.get_link_topo;
-	ice_fill_dflt_direct_cmd_desc(&desc, ice_aqc_opc_get_link_topo);
+	memset(&cmd, 0, sizeof(cmd));
 
 	/* Set node type to GPIO controller */
-	cmd->addr.topo_params.node_type_ctx =
+	cmd.addr.topo_params.node_type_ctx =
 		(ICE_AQC_LINK_TOPO_NODE_TYPE_M &
 		 ICE_AQC_LINK_TOPO_NODE_TYPE_GPIO_CTRL);
 
@@ -3129,22 +3127,37 @@ ice_get_pca9575_handle(struct ice_hw *hw, __le16 *pca9575_handle)
 	else
 		return ICE_ERR_NOT_SUPPORTED;
 
-	cmd->addr.topo_params.index = idx;
+	cmd.addr.topo_params.index = idx;
 
-	status = ice_aq_send_cmd(hw, &desc, NULL, 0, NULL);
+	status = ice_aq_get_netlist_node(hw, &cmd, &node_part_number,
+					 &node_handle);
 	if (status)
 		return ICE_ERR_NOT_SUPPORTED;
 
 	/* Verify if we found the right IO expander type */
-	if (desc.params.get_link_topo.node_part_num !=
-		ICE_ACQ_GET_LINK_TOPO_NODE_NR_PCA9575)
+	if (node_part_number != ICE_ACQ_GET_LINK_TOPO_NODE_NR_PCA9575)
 		return ICE_ERR_NOT_SUPPORTED;
 
 	/* If present save the handle and return it */
-	hw->io_expander_handle = desc.params.get_link_topo.addr.handle;
+	hw->io_expander_handle = node_handle;
 	*pca9575_handle = hw->io_expander_handle;
 
 	return ICE_SUCCESS;
+}
+
+/**
+ * ice_is_gps_present_e810t
+ * @hw: pointer to the hw struct
+ *
+ * Check if the GPS generic device is present in the netlist
+ */
+bool ice_is_gps_present_e810t(struct ice_hw *hw)
+{
+	if (ice_find_netlist_node(hw, ICE_AQC_LINK_TOPO_NODE_TYPE_GPS,
+				  ICE_ACQ_GET_LINK_TOPO_NODE_NR_GEN_GPS, NULL))
+		return false;
+
+	return true;
 }
 
 /**

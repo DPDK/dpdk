@@ -1635,6 +1635,7 @@ struct ice_aqc_link_topo_params {
 #define ICE_AQC_LINK_TOPO_NODE_TYPE_CAGE	6
 #define ICE_AQC_LINK_TOPO_NODE_TYPE_MEZZ	7
 #define ICE_AQC_LINK_TOPO_NODE_TYPE_ID_EEPROM	8
+#define ICE_AQC_LINK_TOPO_NODE_TYPE_GPS		11
 #define ICE_AQC_LINK_TOPO_NODE_CTX_S		4
 #define ICE_AQC_LINK_TOPO_NODE_CTX_M		\
 				(0xF << ICE_AQC_LINK_TOPO_NODE_CTX_S)
@@ -1672,7 +1673,59 @@ struct ice_aqc_get_link_topo {
 	struct ice_aqc_link_topo_addr addr;
 	u8 node_part_num;
 #define ICE_ACQ_GET_LINK_TOPO_NODE_NR_PCA9575	0x21
+#define ICE_ACQ_GET_LINK_TOPO_NODE_NR_GEN_GPS	0x48
 	u8 rsvd[9];
+};
+
+/* Get Link Topology Pin (direct, 0x06E1) */
+struct ice_aqc_get_link_topo_pin {
+	struct ice_aqc_link_topo_addr addr;
+	u8 input_io_params;
+#define ICE_AQC_LINK_TOPO_INPUT_IO_FUNC_S	0
+#define ICE_AQC_LINK_TOPO_INPUT_IO_FUNC_M	\
+				(0x1F << ICE_AQC_LINK_TOPO_INPUT_IO_FUNC_S)
+#define ICE_AQC_LINK_TOPO_IO_FUNC_GPIO		0
+#define ICE_AQC_LINK_TOPO_IO_FUNC_RESET_N	1
+#define ICE_AQC_LINK_TOPO_IO_FUNC_INT_N		2
+#define ICE_AQC_LINK_TOPO_IO_FUNC_PRESENT_N	3
+#define ICE_AQC_LINK_TOPO_IO_FUNC_TX_DIS	4
+#define ICE_AQC_LINK_TOPO_IO_FUNC_MODSEL_N	5
+#define ICE_AQC_LINK_TOPO_IO_FUNC_LPMODE	6
+#define ICE_AQC_LINK_TOPO_IO_FUNC_TX_FAULT	7
+#define ICE_AQC_LINK_TOPO_IO_FUNC_RX_LOSS	8
+#define ICE_AQC_LINK_TOPO_IO_FUNC_RS0		9
+#define ICE_AQC_LINK_TOPO_IO_FUNC_RS1		10
+#define ICE_AQC_LINK_TOPO_IO_FUNC_EEPROM_WP	11
+/* 12 repeats intentionally due to two different uses depending on context */
+#define ICE_AQC_LINK_TOPO_IO_FUNC_LED		12
+#define ICE_AQC_LINK_TOPO_IO_FUNC_RED_LED	12
+#define ICE_AQC_LINK_TOPO_IO_FUNC_GREEN_LED	13
+#define ICE_AQC_LINK_TOPO_IO_FUNC_BLUE_LED	14
+#define ICE_AQC_LINK_TOPO_INPUT_IO_TYPE_S	5
+#define ICE_AQC_LINK_TOPO_INPUT_IO_TYPE_M	\
+			(0x7 << ICE_AQC_LINK_TOPO_INPUT_IO_TYPE_S)
+#define ICE_AQC_LINK_TOPO_INPUT_IO_TYPE_GPIO	3
+/* Use ICE_AQC_LINK_TOPO_NODE_TYPE_* for the type values */
+	u8 output_io_params;
+#define ICE_AQC_LINK_TOPO_OUTPUT_IO_FUNC_S	0
+#define ICE_AQC_LINK_TOPO_OUTPUT_IO_FUNC_M	\
+			(0x1F << \ ICE_AQC_LINK_TOPO_INPUT_IO_FUNC_NUM_S)
+/* Use ICE_AQC_LINK_TOPO_IO_FUNC_* for the non-numerical options */
+#define ICE_AQC_LINK_TOPO_OUTPUT_IO_TYPE_S	5
+#define ICE_AQC_LINK_TOPO_OUTPUT_IO_TYPE_M	\
+			(0x7 << ICE_AQC_LINK_TOPO_INPUT_IO_TYPE_S)
+/* Use ICE_AQC_LINK_TOPO_NODE_TYPE_* for the type values */
+	u8 output_io_flags;
+#define ICE_AQC_LINK_TOPO_OUTPUT_SPEED_S	0
+#define ICE_AQC_LINK_TOPO_OUTPUT_SPEED_M	\
+			(0x7 << ICE_AQC_LINK_TOPO_OUTPUT_SPEED_S)
+#define ICE_AQC_LINK_TOPO_OUTPUT_INT_S		3
+#define ICE_AQC_LINK_TOPO_OUTPUT_INT_M		\
+			(0x3 << ICE_AQC_LINK_TOPO_OUTPUT_INT_S)
+#define ICE_AQC_LINK_TOPO_OUTPUT_POLARITY	BIT(5)
+#define ICE_AQC_LINK_TOPO_OUTPUT_VALUE		BIT(6)
+#define ICE_AQC_LINK_TOPO_OUTPUT_DRIVEN		BIT(7)
+	u8 rsvd[7];
 };
 
 /* Read/Write I2C (direct, 0x06E2/0x06E3) */
@@ -2936,6 +2989,7 @@ struct ice_aq_desc {
 		struct ice_aqc_get_link_status get_link_status;
 		struct ice_aqc_event_lan_overflow lan_overflow;
 		struct ice_aqc_get_link_topo get_link_topo;
+		struct ice_aqc_get_link_topo_pin get_link_topo_pin;
 		struct ice_aqc_set_health_status_config
 			set_health_status_config;
 		struct ice_aqc_get_supported_health_status_codes

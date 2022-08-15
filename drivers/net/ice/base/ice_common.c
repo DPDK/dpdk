@@ -396,20 +396,113 @@ ice_aq_get_phy_caps(struct ice_port_info *pi, bool qual_mods, u8 report_mode,
 }
 
 /**
- * ice_aq_get_link_topo_handle - get link topology node return status
- * @pi: port information structure
- * @node_type: requested node type
- * @cd: pointer to command details structure or NULL
- *
- * Get link topology node return status for specified node type (0x06E0)
- *
- * Node type cage can be used to determine if cage is present. If AQC
- * returns error (ENOENT), then no cage present. If no cage present, then
- * connection type is backplane or BASE-T.
+ * ice_aq_get_netlist_node_pin
+ * @hw: pointer to the hw struct
+ * @cmd: get_link_topo_pin AQ structure
+ * @node_handle: output node handle parameter if node found
  */
-static enum ice_status
-ice_aq_get_link_topo_handle(struct ice_port_info *pi, u8 node_type,
-			    struct ice_sq_cd *cd)
+enum ice_status
+ice_aq_get_netlist_node_pin(struct ice_hw *hw,
+			    struct ice_aqc_get_link_topo_pin *cmd,
+			    u16 *node_handle)
+{
+	struct ice_aq_desc desc;
+
+	ice_fill_dflt_direct_cmd_desc(&desc, ice_aqc_opc_get_link_topo_pin);
+	desc.params.get_link_topo_pin = *cmd;
+
+	if (ice_aq_send_cmd(hw, &desc, NULL, 0, NULL))
+		return ICE_ERR_NOT_SUPPORTED;
+
+	if (node_handle)
+		*node_handle =
+			LE16_TO_CPU(desc.params.get_link_topo_pin.addr.handle);
+
+	return ICE_SUCCESS;
+}
+
+/**
+ * ice_aq_get_netlist_node
+ * @hw: pointer to the hw struct
+ * @cmd: get_link_topo AQ structure
+ * @node_part_number: output node part number if node found
+ * @node_handle: output node handle parameter if node found
+ */
+enum ice_status
+ice_aq_get_netlist_node(struct ice_hw *hw, struct ice_aqc_get_link_topo *cmd,
+			u8 *node_part_number, u16 *node_handle)
+{
+	struct ice_aq_desc desc;
+
+	ice_fill_dflt_direct_cmd_desc(&desc, ice_aqc_opc_get_link_topo);
+	desc.params.get_link_topo = *cmd;
+
+	if (ice_aq_send_cmd(hw, &desc, NULL, 0, NULL))
+		return ICE_ERR_NOT_SUPPORTED;
+
+	if (node_handle)
+		*node_handle =
+			LE16_TO_CPU(desc.params.get_link_topo.addr.handle);
+	if (node_part_number)
+		*node_part_number = desc.params.get_link_topo.node_part_num;
+
+	return ICE_SUCCESS;
+}
+
+#define MAX_NETLIST_SIZE 10
+/**
+ * ice_find_netlist_node
+ * @hw: pointer to the hw struct
+ * @node_type_ctx: type of netlist node to look for
+ * @node_part_number: node part number to look for
+ * @node_handle: output parameter if node found - optional
+ *
+ * Find and return the node handle for a given node type and part number in the
+ * netlist. When found ICE_SUCCESS is returned, ICE_ERR_DOES_NOT_EXIST
+ * otherwise. If node_handle provided, it would be set to found node handle.
+ */
+enum ice_status
+ice_find_netlist_node(struct ice_hw *hw, u8 node_type_ctx, u8 node_part_number,
+		      u16 *node_handle)
+{
+	struct ice_aqc_get_link_topo cmd;
+	u8 rec_node_part_number;
+	u16 rec_node_handle;
+	u8 idx;
+
+	for (idx = 0; idx < MAX_NETLIST_SIZE; idx++) {
+		enum ice_status status;
+
+		memset(&cmd, 0, sizeof(cmd));
+
+		cmd.addr.topo_params.node_type_ctx =
+			(node_type_ctx << ICE_AQC_LINK_TOPO_NODE_TYPE_S);
+		cmd.addr.topo_params.index = idx;
+
+		status = ice_aq_get_netlist_node(hw, &cmd,
+						 &rec_node_part_number,
+						 &rec_node_handle);
+		if (status)
+			return status;
+
+		if (rec_node_part_number == node_part_number) {
+			if (node_handle)
+				*node_handle = rec_node_handle;
+			return ICE_SUCCESS;
+		}
+	}
+
+	return ICE_ERR_DOES_NOT_EXIST;
+}
+
+/**
+ * ice_is_media_cage_present
+ * @pi: port information structure
+ *
+ * Returns true if media cage is present, else false. If no cage, then
+ * media type is backplane or BASE-T.
+ */
+static bool ice_is_media_cage_present(struct ice_port_info *pi)
 {
 	struct ice_aqc_get_link_topo *cmd;
 	struct ice_aq_desc desc;
@@ -424,27 +517,14 @@ ice_aq_get_link_topo_handle(struct ice_port_info *pi, u8 node_type,
 
 	/* set node type */
 	cmd->addr.topo_params.node_type_ctx |=
-		(ICE_AQC_LINK_TOPO_NODE_TYPE_M & node_type);
+		(ICE_AQC_LINK_TOPO_NODE_TYPE_M &
+		 ICE_AQC_LINK_TOPO_NODE_TYPE_CAGE);
 
-	return ice_aq_send_cmd(pi->hw, &desc, NULL, 0, cd);
-}
-
-/**
- * ice_is_media_cage_present
- * @pi: port information structure
- *
- * Returns true if media cage is present, else false. If no cage, then
- * media type is backplane or BASE-T.
- */
-static bool ice_is_media_cage_present(struct ice_port_info *pi)
-{
 	/* Node type cage can be used to determine if cage is present. If AQC
 	 * returns error (ENOENT), then no cage present. If no cage present then
 	 * connection type is backplane or BASE-T.
 	 */
-	return !ice_aq_get_link_topo_handle(pi,
-					    ICE_AQC_LINK_TOPO_NODE_TYPE_CAGE,
-					    NULL);
+	return ice_aq_get_netlist_node(pi->hw, cmd, NULL, NULL);
 }
 
 /**
