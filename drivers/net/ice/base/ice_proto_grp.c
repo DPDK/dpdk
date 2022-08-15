@@ -18,7 +18,7 @@ static void _proto_off_dump(struct ice_hw *hw, struct ice_proto_off *po,
 
 /**
  * ice_proto_grp_dump - dump a proto group item info
- * @ice_hw: pointer to the hardware structure
+ * @hw: pointer to the hardware structure
  * @item: proto group item to dump
  */
 void ice_proto_grp_dump(struct ice_hw *hw, struct ice_proto_grp_item *item)
@@ -95,7 +95,7 @@ static void _proto_grp_parse_item(struct ice_hw *hw, u16 idx, void *item,
 
 /**
  * ice_proto_grp_table_get - create a proto group table
- * @ice_hw: pointer to the hardware structure
+ * @hw: pointer to the hardware structure
  */
 struct ice_proto_grp_item *ice_proto_grp_table_get(struct ice_hw *hw)
 {

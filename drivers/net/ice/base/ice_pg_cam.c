@@ -50,7 +50,7 @@ static void _pg_cam_action_dump(struct ice_hw *hw,
 
 /**
  * ice_pg_cam_dump - dump an parse graph cam info
- * @ice_hw: pointer to the hardware structure
+ * @hw: pointer to the hardware structure
  * @item: parse graph cam to dump
  */
 void ice_pg_cam_dump(struct ice_hw *hw, struct ice_pg_cam_item *item)
@@ -62,7 +62,7 @@ void ice_pg_cam_dump(struct ice_hw *hw, struct ice_pg_cam_item *item)
 
 /**
  * ice_pg_nm_cam_dump - dump an parse graph no match cam info
- * @ice_hw: pointer to the hardware structure
+ * @hw: pointer to the hardware structure
  * @item: parse graph no match cam to dump
  */
 void ice_pg_nm_cam_dump(struct ice_hw *hw, struct ice_pg_nm_cam_item *item)
@@ -243,7 +243,7 @@ static void _pg_nm_sp_cam_parse_item(struct ice_hw *hw, u16 idx, void *item,
 
 /**
  * ice_pg_cam_table_get - create a parse graph cam table
- * @ice_hw: pointer to the hardware structure
+ * @hw: pointer to the hardware structure
  */
 struct ice_pg_cam_item *ice_pg_cam_table_get(struct ice_hw *hw)
 {
@@ -257,7 +257,7 @@ struct ice_pg_cam_item *ice_pg_cam_table_get(struct ice_hw *hw)
 
 /**
  * ice_pg_sp_cam_table_get - create a parse graph spill cam table
- * @ice_hw: pointer to the hardware structure
+ * @hw: pointer to the hardware structure
  */
 struct ice_pg_cam_item *ice_pg_sp_cam_table_get(struct ice_hw *hw)
 {
@@ -271,7 +271,7 @@ struct ice_pg_cam_item *ice_pg_sp_cam_table_get(struct ice_hw *hw)
 
 /**
  * ice_pg_nm_cam_table_get - create a parse graph no match cam table
- * @ice_hw: pointer to the hardware structure
+ * @hw: pointer to the hardware structure
  */
 struct ice_pg_nm_cam_item *ice_pg_nm_cam_table_get(struct ice_hw *hw)
 {
@@ -285,7 +285,7 @@ struct ice_pg_nm_cam_item *ice_pg_nm_cam_table_get(struct ice_hw *hw)
 
 /**
  * ice_pg_nm_sp_cam_table_get - create a parse graph no match spill cam table
- * @ice_hw: pointer to the hardware structure
+ * @hw: pointer to the hardware structure
  */
 struct ice_pg_nm_cam_item *ice_pg_nm_sp_cam_table_get(struct ice_hw *hw)
 {

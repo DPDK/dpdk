@@ -9,7 +9,7 @@
 
 /**
  * ice_ptype_mk_tcam_dump - dump an ptype marker tcam info_
- * @ice_hw: pointer to the hardware structure
+ * @hw: pointer to the hardware structure
  * @item: ptype marker tcam to dump
  */
 void ice_ptype_mk_tcam_dump(struct ice_hw *hw,
@@ -41,7 +41,7 @@ static void _parse_ptype_mk_tcam_item(struct ice_hw *hw, u16 idx, void *item,
 
 /**
  * ice_ptype_mk_tcam_table_get - create a ptype marker tcam table
- * @ice_hw: pointer to the hardware structure
+ * @hw: pointer to the hardware structure
  */
 struct ice_ptype_mk_tcam_item *ice_ptype_mk_tcam_table_get(struct ice_hw *hw)
 {
