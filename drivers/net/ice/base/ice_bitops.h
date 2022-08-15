@@ -5,6 +5,9 @@
 #ifndef _ICE_BITOPS_H_
 #define _ICE_BITOPS_H_
 
+#include "ice_defs.h"
+#include "ice_osdep.h"
+
 /* Define the size of the bitmap chunk */
 typedef u32 ice_bitmap_t;
 
@@ -13,7 +16,7 @@ typedef u32 ice_bitmap_t;
 /* Determine which chunk a bit belongs in */
 #define BIT_CHUNK(nr)		((nr) / BITS_PER_CHUNK)
 /* How many chunks are required to store this many bits */
-#define BITS_TO_CHUNKS(sz)	DIVIDE_AND_ROUND_UP((sz), BITS_PER_CHUNK)
+#define BITS_TO_CHUNKS(sz)	(((sz) + BITS_PER_CHUNK - 1) / BITS_PER_CHUNK)
 /* Which bit inside a chunk this bit corresponds to */
 #define BIT_IN_CHUNK(nr)	((nr) % BITS_PER_CHUNK)
 /* How many bits are valid in the last chunk, assumes nr > 0 */

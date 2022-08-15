@@ -9,9 +9,18 @@
  * descriptor format. It is shared between Firmware and Software.
  */
 
+#include "ice_osdep.h"
+#include "ice_defs.h"
+#include "ice_bitops.h"
+
 #define ICE_MAX_VSI			768
 #define ICE_AQC_TOPO_MAX_LEVEL_NUM	0x9
 #define ICE_AQ_SET_MAC_FRAME_SIZE_MAX	9728
+
+enum ice_aq_res_access_type {
+	ICE_RES_READ = 1,
+	ICE_RES_WRITE
+};
 
 struct ice_aqc_generic {
 	__le32 param0;
@@ -1029,6 +1038,24 @@ struct ice_aqc_set_dcb_params {
 struct ice_aqc_get_topo {
 	u8 port_num;
 	u8 num_branches;
+	__le16 reserved1;
+	__le32 reserved2;
+	__le32 addr_high;
+	__le32 addr_low;
+};
+
+/* Get/Set Tx Topology (indirect 0x0418/0x0417) */
+struct ice_aqc_get_set_tx_topo {
+	u8 set_flags;
+#define ICE_AQC_TX_TOPO_FLAGS_CORRER		BIT(0)
+#define ICE_AQC_TX_TOPO_FLAGS_SRC_RAM		BIT(1)
+#define ICE_AQC_TX_TOPO_FLAGS_SET_PSM		BIT(2)
+#define ICE_AQC_TX_TOPO_FLAGS_LOAD_NEW		BIT(4)
+#define ICE_AQC_TX_TOPO_FLAGS_ISSUED		BIT(5)
+	u8 get_flags;
+#define ICE_AQC_TX_TOPO_GET_NO_UPDATE		0
+#define ICE_AQC_TX_TOPO_GET_PSM			1
+#define ICE_AQC_TX_TOPO_GET_RAM			2
 	__le16 reserved1;
 	__le32 reserved2;
 	__le32 addr_high;
@@ -3008,6 +3035,7 @@ struct ice_aq_desc {
 		struct ice_aqc_clear_health_status clear_health_status;
 		struct ice_aqc_prog_topo_dev_nvm prog_topo_dev_nvm;
 		struct ice_aqc_read_topo_dev_nvm read_topo_dev_nvm;
+		struct ice_aqc_get_set_tx_topo get_set_tx_topo;
 	} params;
 };
 
@@ -3164,6 +3192,10 @@ enum ice_adminq_opc {
 	ice_aqc_opc_query_node_to_root			= 0x0413,
 	ice_aqc_opc_cfg_l2_node_cgd			= 0x0414,
 	ice_aqc_opc_remove_rl_profiles			= 0x0415,
+	ice_aqc_opc_set_tx_topo				= 0x0417,
+	ice_aqc_opc_get_tx_topo				= 0x0418,
+	ice_aqc_opc_cfg_node_attr			= 0x0419,
+	ice_aqc_opc_query_node_attr			= 0x041A,
 
 	/* PHY commands */
 	ice_aqc_opc_get_phy_caps			= 0x0600,

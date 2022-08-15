@@ -5,54 +5,15 @@
 #ifndef _ICE_TYPE_H_
 #define _ICE_TYPE_H_
 
-#define ETH_ALEN	6
-
-#define ETH_HEADER_LEN	14
-
-#define BIT(a) (1UL << (a))
-#define BIT_ULL(a) (1ULL << (a))
-
-#define BITS_PER_BYTE	8
-
-#define _FORCE_
-
-#define ICE_BYTES_PER_WORD	2
-#define ICE_BYTES_PER_DWORD	4
-#define ICE_MAX_TRAFFIC_CLASS	8
-
-/**
- * ROUND_UP - round up to next arbitrary multiple (not a power of 2)
- * @a: value to round up
- * @b: arbitrary multiple
- *
- * Round up to the next multiple of the arbitrary b.
- * Note, when b is a power of 2 use ICE_ALIGN() instead.
- */
-#define ROUND_UP(a, b)	((b) * DIVIDE_AND_ROUND_UP((a), (b)))
-
-#define MIN_T(_t, _a, _b)	min((_t)(_a), (_t)(_b))
-
-#define IS_ASCII(_ch)	((_ch) < 0x80)
-
-#define STRUCT_HACK_VAR_LEN
-/**
- * ice_struct_size - size of struct with C99 flexible array member
- * @ptr: pointer to structure
- * @field: flexible array member (last member of the structure)
- * @num: number of elements of that flexible array member
- */
-#define ice_struct_size(ptr, field, num) \
-	(sizeof(*(ptr)) + sizeof(*(ptr)->field) * (num))
-
-#define FLEX_ARRAY_SIZE(_ptr, _mem, cnt) ((cnt) * sizeof(_ptr->_mem[0]))
-
+#include "ice_defs.h"
 #include "ice_status.h"
 #include "ice_hw_autogen.h"
 #include "ice_devids.h"
 #include "ice_osdep.h"
 #include "ice_bitops.h" /* Must come before ice_controlq.h */
-#include "ice_controlq.h"
 #include "ice_lan_tx_rx.h"
+#include "ice_ddp.h"
+#include "ice_controlq.h"
 #include "ice_flex_type.h"
 #include "ice_protocol_type.h"
 #include "ice_sbq_cmd.h"
@@ -191,11 +152,6 @@ enum ice_aq_res_ids {
 #define ICE_CHANGE_LOCK_TIMEOUT		1000
 #define ICE_GLOBAL_CFG_LOCK_TIMEOUT	3000
 
-enum ice_aq_res_access_type {
-	ICE_RES_READ = 1,
-	ICE_RES_WRITE
-};
-
 struct ice_driver_ver {
 	u8 major_ver;
 	u8 minor_ver;
@@ -248,6 +204,7 @@ enum ice_mac_type {
 	ICE_MAC_UNKNOWN = 0,
 	ICE_MAC_E810,
 	ICE_MAC_GENERIC,
+	ICE_MAC_GENERIC_3K,
 };
 
 /* Media Types */
@@ -636,6 +593,7 @@ struct ice_hw_common_caps {
 #define ICE_EXT_TOPO_DEV_IMG_LOAD_EN	BIT(0)
 	bool ext_topo_dev_img_prog_en[ICE_EXT_TOPO_DEV_IMG_COUNT];
 #define ICE_EXT_TOPO_DEV_IMG_PROG_EN	BIT(1)
+	bool tx_sched_topo_comp_mode_en;
 };
 
 /* IEEE 1588 TIME_SYNC specific info */
@@ -1247,7 +1205,9 @@ struct ice_hw {
 	/* Active package version (currently active) */
 	struct ice_pkg_ver active_pkg_ver;
 	u32 pkg_seg_id;
+	u32 pkg_sign_type;
 	u32 active_track_id;
+	u8 pkg_has_signing_seg:1;
 	u8 active_pkg_name[ICE_PKG_NAME_SIZE];
 	u8 active_pkg_in_nvm;
 

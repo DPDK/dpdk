@@ -7417,37 +7417,18 @@ ice_create_recipe_group(struct ice_hw *hw, struct ice_sw_recipe *rm,
  * @hw: pointer to hardware structure
  * @lkups: lookup elements or match criteria for the advanced recipe, one
  *	   structure per protocol header
- * @lkups_cnt: number of protocols
  * @bm: bitmap of field vectors to consider
  * @fv_list: pointer to a list that holds the returned field vectors
  */
 static enum ice_status
-ice_get_fv(struct ice_hw *hw, struct ice_adv_lkup_elem *lkups, u16 lkups_cnt,
+ice_get_fv(struct ice_hw *hw, struct ice_prot_lkup_ext *lkups,
 	   ice_bitmap_t *bm, struct LIST_HEAD_TYPE *fv_list)
 {
-	enum ice_status status;
-	u8 *prot_ids;
-	u16 i;
-
-	if (!lkups_cnt)
+	if (!lkups->n_val_words)
 		return ICE_SUCCESS;
 
-	prot_ids = (u8 *)ice_calloc(hw, lkups_cnt, sizeof(*prot_ids));
-	if (!prot_ids)
-		return ICE_ERR_NO_MEMORY;
-
-	for (i = 0; i < lkups_cnt; i++)
-		if (!ice_prot_type_to_id(lkups[i].type, &prot_ids[i])) {
-			status = ICE_ERR_CFG;
-			goto free_mem;
-		}
-
 	/* Find field vectors that include all specified protocol types */
-	status = ice_get_sw_fv_list(hw, prot_ids, lkups_cnt, bm, fv_list);
-
-free_mem:
-	ice_free(hw, prot_ids);
-	return status;
+	return ice_get_sw_fv_list(hw, lkups, bm, fv_list);
 }
 
 /**
@@ -7840,16 +7821,7 @@ ice_add_adv_recipe(struct ice_hw *hw, struct ice_adv_lkup_elem *lkups,
 	 */
 	ice_get_compat_fv_bitmap(hw, rinfo, fv_bitmap);
 
-	/* If it is a packet to match any, add a lookup element to match direction
-	 * flag of source interface.
-	 */
-	if (rinfo->tun_type == ICE_SW_TUN_AND_NON_TUN &&
-	    lkups_cnt < ICE_MAX_CHAIN_WORDS) {
-		lkups[lkups_cnt].type = ICE_FLG_DIR;
-		lkups_cnt++;
-	}
-
-	status = ice_get_fv(hw, lkups, lkups_cnt, fv_bitmap, &rm->fv_list);
+	status = ice_get_fv(hw, lkup_exts, fv_bitmap, &rm->fv_list);
 	if (status)
 		goto err_unroll;
 

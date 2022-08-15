@@ -4,6 +4,7 @@
 
 #include "ice_common.h"
 
+#include "ice_ddp.h"
 /**
  * ice_pkg_get_supported_vlan_mode - chk if DDP supports Double VLAN mode (DVM)
  * @hw: pointer to the HW struct

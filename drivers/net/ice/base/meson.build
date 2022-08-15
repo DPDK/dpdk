@@ -26,6 +26,7 @@ sources = [
         'ice_flg_rd.c',
         'ice_xlt_kb.c',
         'ice_parser_rt.c',
+        'ice_ddp.c',
 ]
 
 error_cflags = [
