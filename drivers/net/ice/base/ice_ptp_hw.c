@@ -503,6 +503,29 @@ ice_phy_port_reg_address_eth56g(u8 port, u16 offset, u32 *address)
 }
 
 /**
+ * ice_phy_port_mem_address_eth56g - Calculate a PHY port memory address
+ * @port: Port number to be written
+ * @offset: Offset from PHY port register base
+ * @address: The result address
+ */
+static enum ice_status
+ice_phy_port_mem_address_eth56g(u8 port, u16 offset, u32 *address)
+{
+	u8 phy, lane;
+
+	if (port >= ICE_NUM_EXTERNAL_PORTS)
+		return ICE_ERR_OUT_OF_RANGE;
+
+	phy = port / ICE_PORTS_PER_QUAD;
+	lane = port % ICE_PORTS_PER_QUAD;
+
+	*address = offset + eth56g_port_base[phy] +
+		   PHY_PTP_MEM_START + PHY_PTP_MEM_LANE_STEP * lane;
+
+	return ICE_SUCCESS;
+}
+
+/**
  * ice_write_phy_reg_eth56g_lp - Write a PHY port register with lock parameter
  * @hw: pointer to the HW struct
  * @port: Port number to be written
@@ -571,6 +594,80 @@ enum ice_status
 ice_read_phy_reg_eth56g(struct ice_hw *hw, u8 port, u16 offset, u32 *val)
 {
 	return ice_read_phy_reg_eth56g_lp(hw, port, offset, val, true);
+}
+
+/**
+ * ice_phy_port_mem_read_eth56g_lp - Read a PHY port memory location
+ * with lock parameter
+ * @hw: pointer to the HW struct
+ * @port: Port number to be read
+ * @offset: Offset from PHY port register base
+ * @val: Pointer to the value to read (out param)
+ * @lock_sbq: true to lock the sideband queue
+ */
+static enum ice_status
+ice_phy_port_mem_read_eth56g_lp(struct ice_hw *hw, u8 port, u16 offset,
+				u32 *val, bool lock_sbq)
+{
+	enum ice_status status;
+	u32 mem_addr;
+
+	status = ice_phy_port_mem_address_eth56g(port, offset, &mem_addr);
+	if (status)
+		return status;
+
+	return ice_read_phy_eth56g_raw_lp(hw, mem_addr, val, lock_sbq);
+}
+
+/**
+ * ice_phy_port_mem_read_eth56g - Read a PHY port memory location with
+ * sbq locked
+ * @hw: pointer to the HW struct
+ * @port: Port number to be read
+ * @offset: Offset from PHY port register base
+ * @val: Pointer to the value to read (out param)
+ */
+static enum ice_status
+ice_phy_port_mem_read_eth56g(struct ice_hw *hw, u8 port, u16 offset, u32 *val)
+{
+	return ice_phy_port_mem_read_eth56g_lp(hw, port, offset, val, true);
+}
+
+/**
+ * ice_phy_port_mem_write_eth56g_lp - Write a PHY port memory location with
+ * lock parameter
+ * @hw: pointer to the HW struct
+ * @port: Port number to be read
+ * @offset: Offset from PHY port register base
+ * @val: Pointer to the value to read (out param)
+ * @lock_sbq: true to lock the sideband queue
+ */
+static enum ice_status
+ice_phy_port_mem_write_eth56g_lp(struct ice_hw *hw, u8 port, u16 offset,
+				 u32 val, bool lock_sbq)
+{
+	enum ice_status status;
+	u32 mem_addr;
+
+	status = ice_phy_port_mem_address_eth56g(port, offset, &mem_addr);
+	if (status)
+		return status;
+
+	return ice_write_phy_eth56g_raw_lp(hw, mem_addr, val, lock_sbq);
+}
+
+/**
+ * ice_phy_port_mem_write_eth56g - Write a PHY port memory location with
+ * sbq locked
+ * @hw: pointer to the HW struct
+ * @port: Port number to be read
+ * @offset: Offset from PHY port register base
+ * @val: Pointer to the value to read (out param)
+ */
+static enum ice_status
+ice_phy_port_mem_write_eth56g(struct ice_hw *hw, u8 port, u16 offset, u32 val)
+{
+	return ice_phy_port_mem_write_eth56g_lp(hw, port, offset, val, true);
 }
 
 /**
@@ -779,6 +876,140 @@ ice_write_64b_phy_reg_eth56g(struct ice_hw *hw, u8 port, u16 low_addr, u64 val)
 }
 
 /**
+ * ice_read_phy_tstamp_eth56g - Read a PHY timestamp out of the port memory
+ * @hw: pointer to the HW struct
+ * @port: the port to read from
+ * @idx: the timestamp index to read
+ * @tstamp: on return, the 40bit timestamp value
+ *
+ * Read a 40bit timestamp value out of the two associated entries in the
+ * port memory block of the internal PHYs of the 56G devices.
+ */
+static enum ice_status
+ice_read_phy_tstamp_eth56g(struct ice_hw *hw, u8 port, u8 idx, u64 *tstamp)
+{
+	enum ice_status status;
+	u16 lo_addr, hi_addr;
+	u32 lo, hi;
+
+	lo_addr = (u16)PHY_TSTAMP_L(idx);
+	hi_addr = (u16)PHY_TSTAMP_U(idx);
+
+	status = ice_phy_port_mem_read_eth56g(hw, port, lo_addr, &lo);
+	if (status) {
+		ice_debug(hw, ICE_DBG_PTP, "Failed to read low PTP timestamp register, status %d\n",
+			  status);
+		return status;
+	}
+
+	status = ice_phy_port_mem_read_eth56g(hw, port, hi_addr, &hi);
+	if (status) {
+		ice_debug(hw, ICE_DBG_PTP, "Failed to read high PTP timestamp register, status %d\n",
+			  status);
+		return status;
+	}
+
+	/* For 56G based internal PHYs, the timestamp is reported with the
+	 * lower 8 bits in the low register, and the upper 32 bits in the high
+	 * register.
+	 */
+	*tstamp = ((u64)hi) << TS_PHY_HIGH_S | ((u64)lo & TS_PHY_LOW_M);
+
+	return ICE_SUCCESS;
+}
+
+/**
+ * ice_clear_phy_tstamp_eth56g - Clear a timestamp from the quad block
+ * @hw: pointer to the HW struct
+ * @port: the quad to read from
+ * @idx: the timestamp index to reset
+ *
+ * Clear a timestamp, resetting its valid bit, in the PHY port memory of
+ * internal PHYs of the 56G devices.
+ */
+static enum ice_status
+ice_clear_phy_tstamp_eth56g(struct ice_hw *hw, u8 port, u8 idx)
+{
+	enum ice_status status;
+	u16 lo_addr;
+
+	lo_addr = (u16)PHY_TSTAMP_L(idx);
+
+	status = ice_phy_port_mem_write_eth56g(hw, port, lo_addr, 0);
+	if (status) {
+		ice_debug(hw, ICE_DBG_PTP, "Failed to clear low PTP timestamp register, status %d\n",
+			  status);
+		return status;
+	}
+
+	return ICE_SUCCESS;
+}
+
+/**
+ * ice_ptp_prep_port_phy_time_eth56g - Prepare one PHY port with initial time
+ * @hw: pointer to the HW struct
+ * @port: port number
+ * @phy_time: time to initialize the PHY port clocks to
+ *
+ * Write a new initial time value into registers of a specific PHY port.
+ */
+static enum ice_status
+ice_ptp_prep_port_phy_time_eth56g(struct ice_hw *hw, u8 port, u64 phy_time)
+{
+	enum ice_status status;
+
+	/* Tx case */
+	status = ice_write_64b_phy_reg_eth56g(hw, port,
+					      PHY_REG_TX_TIMER_INC_PRE_L,
+					      phy_time);
+	if (status)
+		return status;
+
+	/* Rx case */
+	return ice_write_64b_phy_reg_eth56g(hw, port,
+					    PHY_REG_RX_TIMER_INC_PRE_L,
+					    phy_time);
+}
+
+/**
+ * ice_ptp_prep_phy_time_eth56g - Prepare PHY port with initial time
+ * @hw: pointer to the HW struct
+ * @time: Time to initialize the PHY port clocks to
+ *
+ * Program the PHY port registers with a new initial time value. The port
+ * clock will be initialized once the driver issues an ICE_PTP_INIT_TIME sync
+ * command. The time value is the upper 32 bits of the PHY timer, usually in
+ * units of nominal nanoseconds.
+ */
+static enum ice_status
+ice_ptp_prep_phy_time_eth56g(struct ice_hw *hw, u32 time)
+{
+	enum ice_status status;
+	u64 phy_time;
+	u8 port;
+
+	/* The time represents the upper 32 bits of the PHY timer, so we need
+	 * to shift to account for this when programming.
+	 */
+	phy_time = (u64)time << 32;
+
+	for (port = 0; port < ICE_NUM_EXTERNAL_PORTS; port++) {
+		if (!(hw->ena_lports & BIT(port)))
+			continue;
+		status = ice_ptp_prep_port_phy_time_eth56g(hw, port,
+							   phy_time);
+
+		if (status) {
+			ice_debug(hw, ICE_DBG_PTP, "Failed to write init time for port %u, status %d\n",
+				  port, status);
+			return status;
+		}
+	}
+
+	return ICE_SUCCESS;
+}
+
+/**
  * ice_ptp_prep_port_adj_eth56g - Prepare a single port for time adjust
  * @hw: pointer to HW struct
  * @port: Port number to be programmed
@@ -840,6 +1071,74 @@ exit_err:
 }
 
 /**
+ * ice_ptp_prep_phy_adj_eth56g - Prep PHY ports for a time adjustment
+ * @hw: pointer to HW struct
+ * @adj: adjustment in nanoseconds
+ * @lock_sbq: true to lock the sbq sq_lock (the usual case); false if the
+ *            sq_lock has already been locked at a higher level
+ *
+ * Prepare the PHY ports for an atomic time adjustment by programming the PHY
+ * Tx and Rx port registers. The actual adjustment is completed by issuing an
+ * ICE_PTP_ADJ_TIME or ICE_PTP_ADJ_TIME_AT_TIME sync command.
+ */
+static enum ice_status
+ice_ptp_prep_phy_adj_eth56g(struct ice_hw *hw, s32 adj, bool lock_sbq)
+{
+	enum ice_status status = ICE_SUCCESS;
+	s64 cycles;
+	u8 port;
+
+	/* The port clock supports adjustment of the sub-nanosecond portion of
+	 * the clock. We shift the provided adjustment in nanoseconds to
+	 * calculate the appropriate adjustment to program into the PHY ports.
+	 */
+	cycles = (s64)adj << 32;
+
+	for (port = 0; port < ICE_NUM_EXTERNAL_PORTS; port++) {
+		if (!(hw->ena_lports & BIT(port)))
+			continue;
+
+		status = ice_ptp_prep_port_adj_eth56g(hw, port, cycles,
+						      lock_sbq);
+		if (status)
+			break;
+	}
+
+	return status;
+}
+
+/**
+ * ice_ptp_prep_phy_incval_eth56g - Prepare PHY ports for time adjustment
+ * @hw: pointer to HW struct
+ * @incval: new increment value to prepare
+ *
+ * Prepare each of the PHY ports for a new increment value by programming the
+ * port's TIMETUS registers. The new increment value will be updated after
+ * issuing an ICE_PTP_INIT_INCVAL command.
+ */
+static enum ice_status
+ice_ptp_prep_phy_incval_eth56g(struct ice_hw *hw, u64 incval)
+{
+	enum ice_status status;
+	u8 port;
+
+	for (port = 0; port < ICE_NUM_EXTERNAL_PORTS; port++) {
+		if (!(hw->ena_lports & BIT(port)))
+			continue;
+		status = ice_write_40b_phy_reg_eth56g(hw, port,
+						      PHY_REG_TIMETUS_L,
+						      incval);
+		if (status) {
+			ice_debug(hw, ICE_DBG_PTP, "Failed to write incval for port %u, status %d\n",
+				  port, status);
+			return status;
+		}
+	}
+
+	return ICE_SUCCESS;
+}
+
+/**
  * ice_ptp_read_phy_incval_eth56g - Read a PHY port's current incval
  * @hw: pointer to the HW struct
  * @port: the port to read
@@ -864,6 +1163,67 @@ ice_ptp_read_phy_incval_eth56g(struct ice_hw *hw, u8 port, u64 *incval)
 		  (unsigned long long)*incval);
 
 	return ICE_SUCCESS;
+}
+
+/**
+ * ice_ptp_prep_phy_adj_target_eth56g - Prepare PHY for adjust at target time
+ * @hw: pointer to HW struct
+ * @target_time: target time to program
+ *
+ * Program the PHY port Tx and Rx TIMER_CNT_ADJ registers used for the
+ * ICE_PTP_ADJ_TIME_AT_TIME command. This should be used in conjunction with
+ * ice_ptp_prep_phy_adj_eth56g to program an atomic adjustment that is
+ * delayed until a specified target time.
+ *
+ * Note that a target time adjustment is not currently supported on E810
+ * devices.
+ */
+static enum ice_status
+ice_ptp_prep_phy_adj_target_eth56g(struct ice_hw *hw, u32 target_time)
+{
+	enum ice_status status;
+	u8 port;
+
+	for (port = 0; port < ICE_NUM_EXTERNAL_PORTS; port++) {
+		if (!(hw->ena_lports & BIT(port)))
+			continue;
+
+		/* Tx case */
+		/* No sub-nanoseconds data */
+		status = ice_write_phy_reg_eth56g_lp(hw, port,
+						     PHY_REG_TX_TIMER_CNT_ADJ_L,
+						     0, true);
+		if (status)
+			goto exit_err;
+
+		status = ice_write_phy_reg_eth56g_lp(hw, port,
+						     PHY_REG_TX_TIMER_CNT_ADJ_U,
+						     target_time, true);
+		if (status)
+			goto exit_err;
+
+		/* Rx case */
+		/* No sub-nanoseconds data */
+		status = ice_write_phy_reg_eth56g_lp(hw, port,
+						     PHY_REG_RX_TIMER_CNT_ADJ_L,
+						     0, true);
+		if (status)
+			goto exit_err;
+
+		status = ice_write_phy_reg_eth56g_lp(hw, port,
+						     PHY_REG_RX_TIMER_CNT_ADJ_U,
+						     target_time, true);
+		if (status)
+			goto exit_err;
+	}
+
+	return ICE_SUCCESS;
+
+exit_err:
+	ice_debug(hw, ICE_DBG_PTP, "Failed to write target time for port %u, status %d\n",
+		  port, status);
+
+	return status;
 }
 
 /**
@@ -1340,6 +1700,31 @@ ice_start_phy_timer_eth56g(struct ice_hw *hw, u8 port, bool bypass)
 	ice_debug(hw, ICE_DBG_PTP, "Enabled clock on PHY port %u\n", port);
 
 	return ICE_SUCCESS;
+}
+
+/**
+ * ice_ptp_init_phc_eth56g - Perform E822 specific PHC initialization
+ * @hw: pointer to HW struct
+ *
+ * Perform PHC initialization steps specific to E822 devices.
+ */
+static enum ice_status ice_ptp_init_phc_eth56g(struct ice_hw *hw)
+{
+	enum ice_status status = ICE_SUCCESS;
+	u32 regval;
+
+	/* Enable reading switch and PHY registers over the sideband queue */
+#define PF_SB_REM_DEV_CTL_SWITCH_READ BIT(1)
+#define PF_SB_REM_DEV_CTL_PHY0 BIT(2)
+	regval = rd32(hw, PF_SB_REM_DEV_CTL);
+	regval |= (PF_SB_REM_DEV_CTL_SWITCH_READ |
+		   PF_SB_REM_DEV_CTL_PHY0);
+	wr32(hw, PF_SB_REM_DEV_CTL, regval);
+
+	/* Initialize the Clock Generation Unit */
+	status = ice_init_cgu_e822(hw);
+
+	return status;
 }
 
 /**
@@ -4477,10 +4862,20 @@ enum ice_status ice_ptp_init_time(struct ice_hw *hw, u64 time)
 
 	/* PHY Clks */
 	/* Fill Rx and Tx ports and send msg to PHY */
-	if (ice_is_e810(hw))
+	switch (hw->phy_cfg) {
+	case ICE_PHY_ETH56G:
+		status = ice_ptp_prep_phy_time_eth56g(hw, time & 0xFFFFFFFF);
+		break;
+	case ICE_PHY_E810:
 		status = ice_ptp_prep_phy_time_e810(hw, time & 0xFFFFFFFF);
-	else
+		break;
+	case ICE_PHY_E822:
 		status = ice_ptp_prep_phy_time_e822(hw, time & 0xFFFFFFFF);
+		break;
+	default:
+		status = ICE_ERR_NOT_SUPPORTED;
+	}
+
 	if (status)
 		return status;
 
@@ -4512,10 +4907,20 @@ enum ice_status ice_ptp_write_incval(struct ice_hw *hw, u64 incval)
 	wr32(hw, GLTSYN_SHADJ_L(tmr_idx), ICE_LO_DWORD(incval));
 	wr32(hw, GLTSYN_SHADJ_H(tmr_idx), ICE_HI_DWORD(incval));
 
-	if (ice_is_e810(hw))
+	switch (hw->phy_cfg) {
+	case ICE_PHY_ETH56G:
+		status = ice_ptp_prep_phy_incval_eth56g(hw, incval);
+		break;
+	case ICE_PHY_E810:
 		status = ice_ptp_prep_phy_incval_e810(hw, incval);
-	else
+		break;
+	case ICE_PHY_E822:
 		status = ice_ptp_prep_phy_incval_e822(hw, incval);
+		break;
+	default:
+		status = ICE_ERR_NOT_SUPPORTED;
+	}
+
 	if (status)
 		return status;
 
@@ -4566,17 +4971,27 @@ enum ice_status ice_ptp_adj_clock(struct ice_hw *hw, s32 adj, bool lock_sbq)
 	tmr_idx = hw->func_caps.ts_func_info.tmr_index_owned;
 
 	/* Write the desired clock adjustment into the GLTSYN_SHADJ register.
-	 * For an ADJ_TIME command, this set of registers represents the value
-	 * to add to the clock time. It supports subtraction by interpreting
-	 * the value as a 2's complement integer.
+	 * For an ICE_PTP_ADJ_TIME command, this set of registers represents
+	 * the value to add to the clock time. It supports subtraction by
+	 * interpreting the value as a 2's complement integer.
 	 */
 	wr32(hw, GLTSYN_SHADJ_L(tmr_idx), 0);
 	wr32(hw, GLTSYN_SHADJ_H(tmr_idx), adj);
 
-	if (ice_is_e810(hw))
+	switch (hw->phy_cfg) {
+	case ICE_PHY_ETH56G:
+		status = ice_ptp_prep_phy_adj_eth56g(hw, adj, lock_sbq);
+		break;
+	case ICE_PHY_E810:
 		status = ice_ptp_prep_phy_adj_e810(hw, adj, lock_sbq);
-	else
+		break;
+	case ICE_PHY_E822:
 		status = ice_ptp_prep_phy_adj_e822(hw, adj, lock_sbq);
+		break;
+	default:
+		status = ICE_ERR_NOT_SUPPORTED;
+	}
+
 	if (status)
 		return status;
 
@@ -4624,18 +5039,38 @@ ice_ptp_adj_clock_at_time(struct ice_hw *hw, u64 at_time, s32 adj)
 	wr32(hw, GLTSYN_SHTIME_H(tmr_idx), time_hi);
 
 	/* Prepare PHY port adjustments */
-	if (ice_is_e810(hw))
+	switch (hw->phy_cfg) {
+	case ICE_PHY_ETH56G:
+		status = ice_ptp_prep_phy_adj_eth56g(hw, adj, true);
+		break;
+	case ICE_PHY_E810:
 		status = ice_ptp_prep_phy_adj_e810(hw, adj, true);
-	else
+		break;
+	case ICE_PHY_E822:
 		status = ice_ptp_prep_phy_adj_e822(hw, adj, true);
+		break;
+	default:
+		status = ICE_ERR_NOT_SUPPORTED;
+	}
+
 	if (status)
 		return status;
 
 	/* Set target time for each PHY port */
-	if (ice_is_e810(hw))
+	switch (hw->phy_cfg) {
+	case ICE_PHY_ETH56G:
+		status = ice_ptp_prep_phy_adj_target_eth56g(hw, time_lo);
+		break;
+	case ICE_PHY_E810:
 		status = ice_ptp_prep_phy_adj_target_e810(hw, time_lo);
-	else
+		break;
+	case ICE_PHY_E822:
 		status = ice_ptp_prep_phy_adj_target_e822(hw, time_lo);
+		break;
+	default:
+		status = ICE_ERR_NOT_SUPPORTED;
+	}
+
 	if (status)
 		return status;
 
@@ -4656,10 +5091,23 @@ ice_ptp_adj_clock_at_time(struct ice_hw *hw, u64 at_time, s32 adj)
 enum ice_status
 ice_read_phy_tstamp(struct ice_hw *hw, u8 block, u8 idx, u64 *tstamp)
 {
-	if (ice_is_e810(hw))
-		return ice_read_phy_tstamp_e810(hw, block, idx, tstamp);
-	else
-		return ice_read_phy_tstamp_e822(hw, block, idx, tstamp);
+	enum ice_status status;
+
+	switch (hw->phy_cfg) {
+	case ICE_PHY_ETH56G:
+		status = ice_read_phy_tstamp_eth56g(hw, block, idx, tstamp);
+		break;
+	case ICE_PHY_E810:
+		status = ice_read_phy_tstamp_e810(hw, block, idx, tstamp);
+		break;
+	case ICE_PHY_E822:
+		status = ice_read_phy_tstamp_e822(hw, block, idx, tstamp);
+		break;
+	default:
+		status = ICE_ERR_NOT_SUPPORTED;
+	}
+
+	return status;
 }
 
 /**
@@ -4675,10 +5123,23 @@ ice_read_phy_tstamp(struct ice_hw *hw, u8 block, u8 idx, u64 *tstamp)
 enum ice_status
 ice_clear_phy_tstamp(struct ice_hw *hw, u8 block, u8 idx)
 {
-	if (ice_is_e810(hw))
-		return ice_clear_phy_tstamp_e810(hw, block, idx);
-	else
-		return ice_clear_phy_tstamp_e822(hw, block, idx);
+	enum ice_status status;
+
+	switch (hw->phy_cfg) {
+	case ICE_PHY_ETH56G:
+		status = ice_clear_phy_tstamp_eth56g(hw, block, idx);
+		break;
+	case ICE_PHY_E810:
+		status = ice_clear_phy_tstamp_e810(hw, block, idx);
+		break;
+	case ICE_PHY_E822:
+		status = ice_clear_phy_tstamp_e822(hw, block, idx);
+		break;
+	default:
+		status = ICE_ERR_NOT_SUPPORTED;
+	}
+
+	return status;
 }
 
 /**
@@ -4689,6 +5150,7 @@ ice_clear_phy_tstamp(struct ice_hw *hw, u8 block, u8 idx)
  */
 enum ice_status ice_ptp_init_phc(struct ice_hw *hw)
 {
+	enum ice_status status;
 	u8 src_idx = hw->func_caps.ts_func_info.tmr_index_owned;
 
 	/* Enable source clocks */
@@ -4697,8 +5159,19 @@ enum ice_status ice_ptp_init_phc(struct ice_hw *hw)
 	/* Clear event status indications for auxiliary pins */
 	(void)rd32(hw, GLTSYN_STAT(src_idx));
 
-	if (ice_is_e810(hw))
-		return ice_ptp_init_phc_e810(hw);
-	else
-		return ice_ptp_init_phc_e822(hw);
+	switch (hw->phy_cfg) {
+	case ICE_PHY_ETH56G:
+		status = ice_ptp_init_phc_eth56g(hw);
+		break;
+	case ICE_PHY_E810:
+		status = ice_ptp_init_phc_e810(hw);
+		break;
+	case ICE_PHY_E822:
+		status = ice_ptp_init_phc_e822(hw);
+		break;
+	default:
+		status = ICE_ERR_NOT_SUPPORTED;
+	}
+
+	return status;
 }
