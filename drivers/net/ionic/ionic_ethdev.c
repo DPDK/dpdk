@@ -357,19 +357,16 @@ ionic_dev_mtu_set(struct rte_eth_dev *eth_dev, uint16_t mtu)
 
 	/* Update the frame size used by the Rx path */
 	lif->frame_size = mtu + IONIC_ETH_OVERHEAD;
-#if 0
+
 	/* Update the JUMBO_FRAME flag to match the provided MTU */
 	if (mtu > RTE_ETHER_MTU) {
 		IONIC_PRINT(DEBUG, "Set device mtu %u frame %u JUMBO",
 			mtu, lif->frame_size);
 		rxmode->max_rx_pkt_len = lif->frame_size;
-		rxmode->offloads |= DEV_RX_OFFLOAD_JUMBO_FRAME;
 	} else {
 		IONIC_PRINT(DEBUG, "Set device mtu %u frame %u",
 			mtu, lif->frame_size);
-		rxmode->offloads &= ~DEV_RX_OFFLOAD_JUMBO_FRAME;
 	}
-#endif    
 
 	return 0;
 }
@@ -912,15 +909,14 @@ ionic_dev_start(struct rte_eth_dev *eth_dev)
 		return err;
 	}
 
-#if 0   
-	if (dev_conf->rxmode.offloads & DEV_RX_OFFLOAD_JUMBO_FRAME) {
+    if (dev_conf->rxmode.max_rx_pkt_len > RTE_ETHER_MTU) {
 		lif->frame_size = dev_conf->rxmode.max_rx_pkt_len;
 		mtu = lif->frame_size - IONIC_ETH_OVERHEAD;
-	} else {
+    } else {
 		mtu = RTE_MIN(eth_dev->data->mtu, RTE_ETHER_MTU);
 		lif->frame_size = mtu + IONIC_ETH_OVERHEAD;
 	}
-#endif
+
 	err = ionic_lif_set_mtu(lif, mtu);
 	if (err) {
 		IONIC_PRINT(ERR, "Cannot set LIF frame size %u: %d",
@@ -1302,10 +1298,10 @@ eth_ionic_dev_probe(void *bus_dev, struct rte_device *rte_dev,
 
 	if (adapter->intf->configure_intr)
 		err = (*adapter->intf->configure_intr)(adapter);
-	if (err) {
-		IONIC_PRINT(ERR, "Failed to configure interrupts");
-		goto err_free_adapter;
-	}
+		if (err) {
+			IONIC_PRINT(ERR, "Failed to configure interrupts");
+			goto err_free_adapter;
+		}
 
 	return 0;
 

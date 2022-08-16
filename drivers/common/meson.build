@@ -8,7 +8,4 @@ drivers = [
         'iavf',
         'mvep',
         'octeontx',
-        'ionic',
 ]
-config_flag_fmt = 'RTE_LIBRTE_@0@_COMMON'
-driver_name_fmt = 'rte_common_@0@'

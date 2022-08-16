@@ -133,19 +133,6 @@ ionic_pci_configure_intr(struct ionic_adapter *adapter)
 		}
 	}
 
-#if 0
-	if (!intr_handle->intr_vec) {
-		intr_handle->intr_vec = rte_calloc("intr_vec",
-						adapter->nintrs, sizeof(int),
-						RTE_CACHE_LINE_SIZE);
-		if (!intr_handle->intr_vec) {
-			IONIC_PRINT(ERR, "Failed to allocate %u vectors",
-				adapter->nintrs);
-			return -ENOMEM;
-		}
-	}
-#endif
-
 	err = rte_intr_callback_register(intr_handle,
 		ionic_dev_interrupt_handler,
 		adapter);
