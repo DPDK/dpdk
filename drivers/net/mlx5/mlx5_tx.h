@@ -3322,7 +3322,9 @@ single_no_inline:
 			 * if no inlining is configured, this is done
 			 * by calling routine in a batch copy.
 			 */
-			MLX5_ASSERT(!MLX5_TXOFF_CONFIG(INLINE));
+			if (MLX5_TXOFF_CONFIG(INLINE))
+				txq->elts[txq->elts_head++ & txq->elts_m] =
+							loc->mbuf;
 			--loc->elts_free;
 #ifdef MLX5_PMD_SOFT_COUNTERS
 			/* Update sent data bytes counter. */
