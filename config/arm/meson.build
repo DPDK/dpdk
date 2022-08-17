@@ -302,18 +302,6 @@ soc_cn10k = {
     'sve_acle': false
 }
 
-soc_capri = {
-	'description': 'Pensando Capri',
-	'implementer': '0x41',
-	'part_number': '0xd08',
-	'flags': [
-		['RTE_MAX_LCORE', 4],
-		['RTE_MAX_NUMA_NODES', 1],
-		['RTE_LIBRTE_IONIC_PMD_EMBEDDED', true]
-	],
-	'numa': false
-}
-
 soc_dpaa = {
     'description': 'NXP DPAA',
     'implementer': '0x41',
@@ -325,18 +313,6 @@ soc_dpaa = {
         ['RTE_MAX_NUMA_NODES', 1]
     ],
     'numa': false
-}
-
-soc_elba = {
-	'description': 'Pensando Elba',
-	'implementer': '0x41',
-	'part_number': '0xd08',
-	'flags': [
-		['RTE_MAX_LCORE', 16],
-		['RTE_MAX_NUMA_NODES', 1],
-		['RTE_LIBRTE_IONIC_PMD_EMBEDDED', true]
-	],
-	'numa': false
 }
 
 soc_emag = {
@@ -452,19 +428,25 @@ End of SoCs list
 # The string above is included in the documentation, keep it in sync with the
 # SoCs list below.
 socs = {
-	'generic': soc_generic,
-	'armada': soc_armada,
-	'bluefield': soc_bluefield,
-	'capri': soc_capri,
-	'dpaa': soc_dpaa,
-	'elba': soc_elba,
-	'emag': soc_emag,
-	'graviton2': soc_graviton2,
-	'n1sdp': soc_n1sdp,
-	'octeontx2': soc_octeontx2,
-	'stingray': soc_stingray,
-	'thunderx2': soc_thunderx2,
-	'thunderxt88': soc_thunderxt88
+    'generic': soc_generic,
+    'generic_aarch32': soc_generic_aarch32,
+    'armada': soc_armada,
+    'bluefield': soc_bluefield,
+    'centriq2400': soc_centriq2400,
+    'cn9k': soc_cn9k,
+    'cn10k' : soc_cn10k,
+    'dpaa': soc_dpaa,
+    'emag': soc_emag,
+    'ft2000plus': soc_ft2000plus,
+    'graviton2': soc_graviton2,
+    'kunpeng920': soc_kunpeng920,
+    'kunpeng930': soc_kunpeng930,
+    'n1sdp': soc_n1sdp,
+    'n2': soc_n2,
+    'stingray': soc_stingray,
+    'thunderx2': soc_thunderx2,
+    'thunderxt88': soc_thunderxt88,
+    'thunderxt83': soc_thunderxt83,
 }
 
 dpdk_conf.set('RTE_ARCH_ARM', 1)
