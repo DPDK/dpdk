@@ -1783,7 +1783,7 @@ mlx5_tx_packet_multi_tso(struct mlx5_txq_data *__rte_restrict txq,
 	if (unlikely(loc->wqe_free < ((ds + 3) / 4)))
 		return MLX5_TXCMP_CODE_EXIT;
 	/* Check for maximal WQE size. */
-	if (unlikely((MLX5_WQE_SIZE_MAX / MLX5_WSEG_SIZE) < ((ds + 3) / 4)))
+	if (unlikely((MLX5_WQE_SIZE_MAX / MLX5_WSEG_SIZE) < ds))
 		return MLX5_TXCMP_CODE_ERROR;
 #ifdef MLX5_PMD_SOFT_COUNTERS
 	/* Update sent data bytes/packets counters. */
@@ -1858,7 +1858,7 @@ mlx5_tx_packet_multi_send(struct mlx5_txq_data *__rte_restrict txq,
 	if (unlikely(loc->wqe_free < ((ds + 3) / 4)))
 		return MLX5_TXCMP_CODE_EXIT;
 	/* Check for maximal WQE size. */
-	if (unlikely((MLX5_WQE_SIZE_MAX / MLX5_WSEG_SIZE) < ((ds + 3) / 4)))
+	if (unlikely((MLX5_WQE_SIZE_MAX / MLX5_WSEG_SIZE) < ds))
 		return MLX5_TXCMP_CODE_ERROR;
 	/*
 	 * Some Tx offloads may cause an error if packet is not long enough,
