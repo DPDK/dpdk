@@ -28,6 +28,8 @@
 /*Pipeline mode, fdir used at distributor stage*/
 #define ICE_FLOW_CLASSIFY_STAGE_DISTRIBUTOR 2
 
+#define ICE_FLOW_ENGINE_DISABLED(mask, type) ((mask) & BIT(type))
+
 static struct ice_engine_list engine_list =
 		TAILQ_HEAD_INITIALIZER(engine_list);
 
@@ -1841,6 +1843,11 @@ ice_flow_init(struct ice_adapter *ad)
 			return -ENOTSUP;
 		}
 
+		if (ICE_FLOW_ENGINE_DISABLED(ad->disabled_engine_mask, engine->type)) {
+			PMD_INIT_LOG(INFO, "Engine %d disabled", engine->type);
+			continue;
+		}
+
 		ret = engine->init(ad);
 		if (ret) {
 			PMD_INIT_LOG(ERR, "Failed to initialize engine %d",
@@ -1861,6 +1868,11 @@ ice_flow_uninit(struct ice_adapter *ad)
 	void *temp;
 
 	RTE_TAILQ_FOREACH_SAFE(engine, &engine_list, node, temp) {
+		if (ICE_FLOW_ENGINE_DISABLED(ad->disabled_engine_mask, engine->type)) {
+			PMD_DRV_LOG(DEBUG, "Engine %d disabled skip it", engine->type);
+			continue;
+		}
+
 		if (engine->uninit)
 			engine->uninit(ad);
 	}

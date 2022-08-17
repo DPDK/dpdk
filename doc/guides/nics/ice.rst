@@ -296,6 +296,17 @@ The DCF PMD needs to advertise and acquire DCF capability which allows DCF to
 send AdminQ commands that it would like to execute over to the PF and receive
 responses for the same from PF.
 
+Additional Options
+++++++++++++++++++
+
+- ``Disable ACL Engine`` (default ``enabled``)
+
+  By default, all flow engines are enabled. But if user does not need the
+  ACL engine related functions, user can set ``devargs`` parameter
+  ``acl=off`` to disable the ACL engine and shorten the startup time.
+
+    -a 18:01.0,cap=dcf,acl=off
+
 .. _figure_ice_dcf:
 
 .. figure:: img/ice_dcf.*

@@ -45,6 +45,26 @@ ice_dcf_dev_init(struct rte_eth_dev *eth_dev);
 static int
 ice_dcf_dev_uninit(struct rte_eth_dev *eth_dev);
 
+static int
+ice_dcf_cap_check_handler(__rte_unused const char *key,
+			  const char *value, __rte_unused void *opaque);
+
+static int
+ice_dcf_engine_disabled_handler(__rte_unused const char *key,
+			  const char *value, __rte_unused void *opaque);
+
+struct ice_devarg {
+	enum ice_dcf_devrarg type;
+	const char *key;
+	int (*handler)(__rte_unused const char *key,
+			  const char *value, __rte_unused void *opaque);
+};
+
+static const struct ice_devarg ice_devargs_table[] = {
+	{ICE_DCF_DEVARG_CAP, "cap", ice_dcf_cap_check_handler},
+	{ICE_DCF_DEVARG_ACL, "acl", ice_dcf_engine_disabled_handler},
+};
+
 struct rte_ice_dcf_xstats_name_off {
 	char name[RTE_ETH_XSTATS_NAME_SIZE];
 	unsigned int offset;
@@ -1910,6 +1930,16 @@ ice_dcf_dev_uninit(struct rte_eth_dev *eth_dev)
 }
 
 static int
+ice_dcf_engine_disabled_handler(__rte_unused const char *key,
+			  const char *value, __rte_unused void *opaque)
+{
+	if (strcmp(value, "off"))
+		return -1;
+
+	return 0;
+}
+
+static int
 ice_dcf_cap_check_handler(__rte_unused const char *key,
 			  const char *value, __rte_unused void *opaque)
 {
@@ -1919,11 +1949,11 @@ ice_dcf_cap_check_handler(__rte_unused const char *key,
 	return 0;
 }
 
-static int
-ice_dcf_cap_selected(struct rte_devargs *devargs)
+int
+ice_devargs_check(struct rte_devargs *devargs, enum ice_dcf_devrarg devarg_type)
 {
 	struct rte_kvargs *kvlist;
-	const char *key = "cap";
+	unsigned int i = 0;
 	int ret = 0;
 
 	if (devargs == NULL)
@@ -1933,16 +1963,18 @@ ice_dcf_cap_selected(struct rte_devargs *devargs)
 	if (kvlist == NULL)
 		return 0;
 
-	if (!rte_kvargs_count(kvlist, key))
-		goto exit;
+	for (i = 0; i < ARRAY_SIZE(ice_devargs_table); i++)	{
+		if (devarg_type == ice_devargs_table[i].type) {
+			if (!rte_kvargs_count(kvlist, ice_devargs_table[i].key))
+				goto exit;
 
-	/* dcf capability selected when there's a key-value pair: cap=dcf */
-	if (rte_kvargs_process(kvlist, key,
-			       ice_dcf_cap_check_handler, NULL) < 0)
-		goto exit;
-
-	ret = 1;
-
+			if (rte_kvargs_process(kvlist, ice_devargs_table[i].key,
+					ice_devargs_table[i].handler, NULL) < 0)
+				goto exit;
+			ret = 1;
+			break;
+		}
+	}
 exit:
 	rte_kvargs_free(kvlist);
 	return ret;
@@ -1960,7 +1992,7 @@ eth_ice_dcf_pci_probe(__rte_unused struct rte_pci_driver *pci_drv,
 	uint16_t dcf_vsi_id;
 	int i, ret;
 
-	if (!ice_dcf_cap_selected(pci_dev->device.devargs))
+	if (!ice_devargs_check(pci_dev->device.devargs, ICE_DCF_DEVARG_CAP))
 		return 1;
 
 	ret = rte_eth_devargs_parse(pci_dev->device.devargs->args, &eth_da);
