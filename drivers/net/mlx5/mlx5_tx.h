@@ -2078,8 +2078,24 @@ do_build:
 	if (unlikely(loc->wqe_free < ((ds + 3) / 4)))
 		return MLX5_TXCMP_CODE_EXIT;
 	/* Check for maximal WQE size. */
-	if (unlikely((MLX5_WQE_SIZE_MAX / MLX5_WSEG_SIZE) < ds))
-		return MLX5_TXCMP_CODE_ERROR;
+	if (unlikely((MLX5_WQE_SIZE_MAX / MLX5_WSEG_SIZE) < ds)) {
+		/*  Check if we can adjust the inline length. */
+		if (unlikely(txq->inlen_mode)) {
+			ds = NB_SEGS(loc->mbuf) + 2 +
+				(txq->inlen_mode -
+				MLX5_ESEG_MIN_INLINE_SIZE +
+				MLX5_WSEG_SIZE +
+				MLX5_WSEG_SIZE - 1) / MLX5_WSEG_SIZE;
+			if (unlikely((MLX5_WQE_SIZE_MAX / MLX5_WSEG_SIZE) < ds))
+				return MLX5_TXCMP_CODE_ERROR;
+		}
+		/* We have lucky opportunity to adjust. */
+		inlen = RTE_MIN(inlen, MLX5_WQE_SIZE_MAX -
+				       MLX5_WSEG_SIZE * 2 -
+				       MLX5_WSEG_SIZE * NB_SEGS(loc->mbuf) -
+				       MLX5_WSEG_SIZE +
+				       MLX5_ESEG_MIN_INLINE_SIZE);
+	}
 #ifdef MLX5_PMD_SOFT_COUNTERS
 	/* Update sent data bytes/packets counters. */
 	txq->stats.obytes += dlen + vlan;
