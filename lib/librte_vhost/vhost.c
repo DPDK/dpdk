@@ -1625,6 +1625,11 @@ int rte_vhost_async_channel_register(int vid, uint16_t queue_id,
 		ops->transfer_data == NULL))
 		return -1;
 
+	VHOST_LOG_CONFIG(ERR, "async vhost is not supported by 20.11 LTS, "
+			"as deadlock may occur if this function is called "
+			"inside vhost callback functions.");
+	return -1;
+
 	rte_spinlock_lock(&vq->access_lock);
 
 	if (unlikely(vq->async_registered)) {
