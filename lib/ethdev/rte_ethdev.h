@@ -5489,6 +5489,10 @@ rte_eth_rx_burst(uint16_t port_id, uint16_t queue_id,
 /**
  * Get the number of used descriptors of a Rx queue
  *
+ * Since it's a dataplane function, no check is performed on port_id and
+ * queue_id. The caller must therefore ensure that the port is enabled
+ * and the queue is configured and running.
+ *
  * @param port_id
  *  The port identifier of the Ethernet device.
  * @param queue_id
@@ -5496,8 +5500,8 @@ rte_eth_rx_burst(uint16_t port_id, uint16_t queue_id,
  * @return
  *  The number of used descriptors in the specific queue, or:
  *   - (-ENODEV) if *port_id* is invalid.
- *     (-EINVAL) if *queue_id* is invalid
- *     (-ENOTSUP) if the device does not support this function
+ *   - (-EINVAL) if *queue_id* is invalid
+ *   - (-ENOTSUP) if the device does not support this function
  */
 static inline int
 rte_eth_rx_queue_count(uint16_t port_id, uint16_t queue_id)
@@ -5505,6 +5509,7 @@ rte_eth_rx_queue_count(uint16_t port_id, uint16_t queue_id)
 	struct rte_eth_fp_ops *p;
 	void *qd;
 
+#ifdef RTE_ETHDEV_DEBUG_RX
 	if (port_id >= RTE_MAX_ETHPORTS ||
 			queue_id >= RTE_MAX_QUEUES_PER_PORT) {
 		RTE_ETHDEV_LOG(ERR,
@@ -5512,17 +5517,20 @@ rte_eth_rx_queue_count(uint16_t port_id, uint16_t queue_id)
 			port_id, queue_id);
 		return -EINVAL;
 	}
+#endif
 
 	/* fetch pointer to queue data */
 	p = &rte_eth_fp_ops[port_id];
 	qd = p->rxq.data[queue_id];
 
+#ifdef RTE_ETHDEV_DEBUG_RX
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
-	if (*p->rx_queue_count == NULL)
-		return -ENOTSUP;
 	if (qd == NULL)
 		return -EINVAL;
+#endif
 
+	if (*p->rx_queue_count == NULL)
+		return -ENOTSUP;
 	return (int)(*p->rx_queue_count)(qd);
 }
 
