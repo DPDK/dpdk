@@ -12,6 +12,7 @@
 #include "virtio_api.h"
 #include "virtio_lm.h"
 #include "virtio_vdpa.h"
+#include <rte_vhost.h>
 
 extern int virtio_vdpa_logtype;
 #define RPC_LOG(level, fmt, args...) \
@@ -148,6 +149,7 @@ rte_vdpa_vf_dev_debug(const char *vf_name,
 	uint64_t range_length;
 	struct virtio_sge sge;
 	uint32_t unit = 1;
+	uint16_t num_vr;
 	int ret, i;
 
 	if (!vf_name || !vf_debug_info)
@@ -214,7 +216,9 @@ rte_vdpa_vf_dev_debug(const char *vf_name,
 				RPC_LOG(ERR, "<<<<Dity map get fail, should start log first>>>>");
 				return -EINVAL;
 			}
-			for (i = 0; i < vf_priv->nr_virtqs; i++) {
+
+			num_vr = rte_vhost_get_vring_num(vf_priv->vid);
+			for (i = 0; i < num_vr; i++) {
 				uint64_t dirty_addr;
 				uint32_t dirty_len;
 				ret = 0;

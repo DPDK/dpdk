@@ -429,12 +429,25 @@ virtio_vdpa_virtq_enable(struct virtio_vdpa_priv *priv, int vq_idx)
 	if (ret)
 		return ret;
 
-	ret = priv->configured ? virtio_pci_dev_interrupt_enable(priv->vpdev, vq.callfd, vq_idx + 1) :
-		virtio_pci_dev_state_interrupt_enable(priv->vpdev, vq.callfd, vq_idx + 1, priv->state_mz->addr);
-	if (ret) {
-		DRV_LOG(ERR, "%s virtq interrupt enable failed ret:%d",
-						priv->vdev->device->name, ret);
-		return ret;
+	DRV_LOG(DEBUG, "vid:%d vq_idx:%d avl idx:%d use idx:%d", vid, vq_idx, vq.avail->idx, vq.used->idx);
+
+	if (vq.callfd != -1) {
+		if (priv->nvec < (vq_idx + 1)) {
+			DRV_LOG(ERR, "%s Error: dev interrupts %d less than queue: %d",
+						priv->vdev->device->name, priv->nvec, vq_idx + 1);
+			return -EINVAL;
+		}
+
+		ret = priv->configured ? virtio_pci_dev_interrupt_enable(priv->vpdev, vq.callfd, vq_idx + 1) :
+			virtio_pci_dev_state_interrupt_enable(priv->vpdev, vq.callfd, vq_idx + 1, priv->state_mz->addr);
+		if (ret) {
+			DRV_LOG(ERR, "%s virtq interrupt enable failed ret:%d",
+							priv->vdev->device->name, ret);
+			return ret;
+		}
+	} else {
+		DRV_LOG(DEBUG, "%s virtq %d call fd is -1, interrupt is disabled",
+						priv->vdev->device->name, vq_idx);
 	}
 
 	gpa = virtio_vdpa_hva_to_gpa(vid, (uint64_t)(uintptr_t)vq.desc);
@@ -973,7 +986,7 @@ virtio_vdpa_dev_close(int vid)
 
 
 	/* Disable all queues */
-	for (i = 0; i < priv->nr_virtqs; i++) {
+	for (i = 0; i < num_vr; i++) {
 		if (priv->vrings[i]->enable)
 			virtio_vdpa_vring_state_set(vid, i, 0);
 	}
@@ -1006,7 +1019,7 @@ virtio_vdpa_dev_config(int vid)
 	struct rte_vdpa_device *vdev = rte_vhost_get_vdpa_device(vid);
 	struct virtio_vdpa_priv *priv =
 		virtio_vdpa_find_priv_resource_by_vdev(vdev);
-	uint16_t last_avail_idx, last_used_idx;
+	uint16_t last_avail_idx, last_used_idx, nr_virtqs;
 	int ret, fd, i;
 
 	if (priv == NULL) {
@@ -1031,11 +1044,10 @@ virtio_vdpa_dev_config(int vid)
 
 	priv->dev_work_flag = VIRTIO_VDPA_DEV_CLOSE_WORK_CLEAN;
 
-	priv->nr_virtqs = rte_vhost_get_vring_num(vid);
-	if (priv->nvec < (priv->nr_virtqs + 1)) {
-		DRV_LOG(ERR, "%s error dev interrupts %d less than queue: %d",
-					vdev->device->name, priv->nvec, priv->nr_virtqs + 1);
-		return -EINVAL;
+	nr_virtqs = rte_vhost_get_vring_num(vid);
+	if (priv->nvec < (nr_virtqs + 1)) {
+		DRV_LOG(ERR, "%s warning: dev interrupts %d less than queue: %d",
+					vdev->device->name, priv->nvec, nr_virtqs + 1);
 	}
 
 	priv->vid = vid;
@@ -1049,7 +1061,7 @@ virtio_vdpa_dev_config(int vid)
 		return -rte_errno;
 	}
 
-	for (i = 0; i < priv->nr_virtqs; i++) {
+	for (i = 0; i < nr_virtqs; i++) {
 		ret = rte_vhost_get_vring_base(vid, i, &last_avail_idx, &last_used_idx);
 		if (ret) {
 			DRV_LOG(ERR, "%s error get vring base ret:%d", vdev->device->name, ret);

@@ -53,7 +53,6 @@ struct virtio_vdpa_priv {
 	int dev_work_flag;
 	uint64_t guest_features;
 	struct virtio_vdpa_vring_info **vrings;
-	uint16_t nr_virtqs;   /* Number of vq vhost enabled */
 	uint16_t hw_nr_virtqs; /* Number of vq device supported */
 	bool configured;
 };
