@@ -50,6 +50,8 @@ extern "C" {
 
 #include <rte_compat.h>
 
+#include "rte_swx_hash_func.h"
+
 /** Maximum number of key timeout values per learner table. */
 #ifndef RTE_SWX_TABLE_LEARNER_N_KEY_TIMEOUTS_MAX
 #define RTE_SWX_TABLE_LEARNER_N_KEY_TIMEOUTS_MAX 16
@@ -76,6 +78,10 @@ struct rte_swx_table_learner_params {
 	 * is equal to *action_data_size* plus 8 bytes, which are used to store the action ID.
 	 */
 	uint32_t action_data_size;
+
+	/** Hash function. When NULL, the default hash function will be used.
+	 */
+	rte_swx_hash_func_t hash_func;
 
 	/** Maximum number of keys to be stored in the table together with their associated data. */
 	uint32_t n_keys_max;

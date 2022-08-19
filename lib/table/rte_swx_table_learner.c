@@ -8,7 +8,10 @@
 #include <rte_common.h>
 #include <rte_cycles.h>
 #include <rte_prefetch.h>
+#include <rte_jhash.h>
+#include <rte_hash_crc.h>
 
+#include "rte_swx_keycmp.h"
 #include "rte_swx_table_learner.h"
 
 #ifndef RTE_SWX_TABLE_LEARNER_USE_HUGE_PAGES
@@ -62,181 +65,10 @@ env_free(void *start, size_t size)
 
 #endif
 
-#if defined(RTE_ARCH_X86_64)
-
-#include <x86intrin.h>
-
-#define crc32_u64(crc, v) _mm_crc32_u64(crc, v)
-
-#else
-
-static inline uint64_t
-crc32_u64_generic(uint64_t crc, uint64_t value)
-{
-	int i;
-
-	crc = (crc & 0xFFFFFFFFLLU) ^ value;
-	for (i = 63; i >= 0; i--) {
-		uint64_t mask;
-
-		mask = -(crc & 1LLU);
-		crc = (crc >> 1LLU) ^ (0x82F63B78LLU & mask);
-	}
-
-	return crc;
-}
-
-#define crc32_u64(crc, v) crc32_u64_generic(crc, v)
-
-#endif
-
-/* Key size needs to be one of: 8, 16, 32 or 64. */
-static inline uint32_t
-hash(void *key, void *key_mask, uint32_t key_size, uint32_t seed)
-{
-	uint64_t *k = key;
-	uint64_t *m = key_mask;
-	uint64_t k0, k2, k5, crc0, crc1, crc2, crc3, crc4, crc5;
-
-	switch (key_size) {
-	case 8:
-		crc0 = crc32_u64(seed, k[0] & m[0]);
-		return crc0;
-
-	case 16:
-		k0 = k[0] & m[0];
-
-		crc0 = crc32_u64(k0, seed);
-		crc1 = crc32_u64(k0 >> 32, k[1] & m[1]);
-
-		crc0 ^= crc1;
-
-		return crc0;
-
-	case 32:
-		k0 = k[0] & m[0];
-		k2 = k[2] & m[2];
-
-		crc0 = crc32_u64(k0, seed);
-		crc1 = crc32_u64(k0 >> 32, k[1] & m[1]);
-
-		crc2 = crc32_u64(k2, k[3] & m[3]);
-		crc3 = k2 >> 32;
-
-		crc0 = crc32_u64(crc0, crc1);
-		crc1 = crc32_u64(crc2, crc3);
-
-		crc0 ^= crc1;
-
-		return crc0;
-
-	case 64:
-		k0 = k[0] & m[0];
-		k2 = k[2] & m[2];
-		k5 = k[5] & m[5];
-
-		crc0 = crc32_u64(k0, seed);
-		crc1 = crc32_u64(k0 >> 32, k[1] & m[1]);
-
-		crc2 = crc32_u64(k2, k[3] & m[3]);
-		crc3 = crc32_u64(k2 >> 32, k[4] & m[4]);
-
-		crc4 = crc32_u64(k5, k[6] & m[6]);
-		crc5 = crc32_u64(k5 >> 32, k[7] & m[7]);
-
-		crc0 = crc32_u64(crc0, (crc1 << 32) ^ crc2);
-		crc1 = crc32_u64(crc3, (crc4 << 32) ^ crc5);
-
-		crc0 ^= crc1;
-
-		return crc0;
-
-	default:
-		crc0 = 0;
-		return crc0;
-	}
-}
-
-/* n_bytes needs to be a multiple of 8 bytes. */
 static void
-table_keycpy(void *dst, void *src, void *src_mask, uint32_t n_bytes)
+table_keycpy(void *dst, void *src, uint32_t n_bytes)
 {
-	uint64_t *dst64 = dst, *src64 = src, *src_mask64 = src_mask;
-	uint32_t i;
-
-	for (i = 0; i < n_bytes / sizeof(uint64_t); i++)
-		dst64[i] = src64[i] & src_mask64[i];
-}
-
-/*
- * Return: 0 = Keys are NOT equal; 1 = Keys are equal.
- */
-static inline uint32_t
-table_keycmp(void *a, void *b, void *b_mask, uint32_t n_bytes)
-{
-	uint64_t *a64 = a, *b64 = b, *b_mask64 = b_mask;
-
-	switch (n_bytes) {
-	case 8: {
-		uint64_t xor0 = a64[0] ^ (b64[0] & b_mask64[0]);
-		uint32_t result = 1;
-
-		if (xor0)
-			result = 0;
-		return result;
-	}
-
-	case 16: {
-		uint64_t xor0 = a64[0] ^ (b64[0] & b_mask64[0]);
-		uint64_t xor1 = a64[1] ^ (b64[1] & b_mask64[1]);
-		uint64_t or = xor0 | xor1;
-		uint32_t result = 1;
-
-		if (or)
-			result = 0;
-		return result;
-	}
-
-	case 32: {
-		uint64_t xor0 = a64[0] ^ (b64[0] & b_mask64[0]);
-		uint64_t xor1 = a64[1] ^ (b64[1] & b_mask64[1]);
-		uint64_t xor2 = a64[2] ^ (b64[2] & b_mask64[2]);
-		uint64_t xor3 = a64[3] ^ (b64[3] & b_mask64[3]);
-		uint64_t or = (xor0 | xor1) | (xor2 | xor3);
-		uint32_t result = 1;
-
-		if (or)
-			result = 0;
-		return result;
-	}
-
-	case 64: {
-		uint64_t xor0 = a64[0] ^ (b64[0] & b_mask64[0]);
-		uint64_t xor1 = a64[1] ^ (b64[1] & b_mask64[1]);
-		uint64_t xor2 = a64[2] ^ (b64[2] & b_mask64[2]);
-		uint64_t xor3 = a64[3] ^ (b64[3] & b_mask64[3]);
-		uint64_t xor4 = a64[4] ^ (b64[4] & b_mask64[4]);
-		uint64_t xor5 = a64[5] ^ (b64[5] & b_mask64[5]);
-		uint64_t xor6 = a64[6] ^ (b64[6] & b_mask64[6]);
-		uint64_t xor7 = a64[7] ^ (b64[7] & b_mask64[7]);
-		uint64_t or = ((xor0 | xor1) | (xor2 | xor3)) |
-			      ((xor4 | xor5) | (xor6 | xor7));
-		uint32_t result = 1;
-
-		if (or)
-			result = 0;
-		return result;
-	}
-
-	default: {
-		uint32_t i;
-
-		for (i = 0; i < n_bytes / sizeof(uint64_t); i++)
-			if (a64[i] != (b64[i] & b_mask64[i]))
-				return 0;
-		return 1;
-	}
-	}
+	memcpy(dst, src, n_bytes);
 }
 
 #define TABLE_KEYS_PER_BUCKET 4
@@ -259,10 +91,7 @@ struct table_params {
 	/* The real key size. Must be non-zero. */
 	size_t key_size;
 
-	/* They key size upgrated to the next power of 2. This used for hash generation (in
-	 * increments of 8 bytes, from 8 to 64 bytes) and for run-time key comparison. This is why
-	 * key sizes bigger than 64 bytes are not allowed.
-	 */
+	/* The key size upgrated to the next power of 2. */
 	size_t key_size_pow2;
 
 	/* log2(key_size_pow2). Purpose: avoid multiplication with non-power-of-2 numbers. */
@@ -299,6 +128,12 @@ struct table_params {
 	/* log2(bucket_size). Purpose: avoid multiplication with non-power of 2 numbers. */
 	size_t bucket_size_log2;
 
+	/* Hash function. */
+	rte_swx_hash_func_t hash_func;
+
+	/* Key comparison function. */
+	rte_swx_keycmp_func_t keycmp_func;
+
 	/* Set of all possible key timeout values measured in CPU clock cycles. */
 	uint64_t key_timeout[RTE_SWX_TABLE_LEARNER_N_KEY_TIMEOUTS_MAX];
 
@@ -312,9 +147,6 @@ struct table_params {
 struct table {
 	/* Table parameters. */
 	struct table_params params;
-
-	/* Key mask. Array of *key_size* bytes. */
-	uint8_t key_mask0[RTE_CACHE_LINE_SIZE];
 
 	/* Table buckets. */
 	uint8_t buckets[];
@@ -344,13 +176,21 @@ table_params_get(struct table_params *p, struct rte_swx_table_learner_params *pa
 	/* Check input parameters. */
 	if (!params ||
 	    !params->key_size ||
-	    (params->key_size > 64) ||
 	    !params->n_keys_max ||
 	    (params->n_keys_max > 1U << 31) ||
 	    !params->key_timeout ||
 	    !params->n_key_timeouts ||
 	    (params->n_key_timeouts > RTE_SWX_TABLE_LEARNER_N_KEY_TIMEOUTS_MAX))
 		return -EINVAL;
+
+	if (params->key_mask0) {
+		for (i = 0; i < params->key_size; i++)
+			if (params->key_mask0[i] != 0xFF)
+				break;
+
+		if (i < params->key_size)
+			return -EINVAL;
+	}
 
 	for (i = 0; i < params->n_key_timeouts; i++)
 		if (!params->key_timeout[i])
@@ -360,8 +200,6 @@ table_params_get(struct table_params *p, struct rte_swx_table_learner_params *pa
 	p->key_size = params->key_size;
 
 	p->key_size_pow2 = rte_align64pow2(p->key_size);
-	if (p->key_size_pow2 < 8)
-		p->key_size_pow2 = 8;
 
 	p->key_size_log2 = __builtin_ctzll(p->key_size_pow2);
 
@@ -386,6 +224,10 @@ table_params_get(struct table_params *p, struct rte_swx_table_learner_params *pa
 					 TABLE_KEYS_PER_BUCKET * p->data_size_pow2);
 
 	p->bucket_size_log2 = __builtin_ctzll(p->bucket_size);
+
+	p->hash_func = params->hash_func ? params->hash_func : rte_hash_crc;
+
+	p->keycmp_func = rte_swx_keycmp_func_get(params->key_size);
 
 	/* Timeout. */
 	for (i = 0; i < params->n_key_timeouts; i++)
@@ -451,11 +293,6 @@ rte_swx_table_learner_create(struct rte_swx_table_learner_params *params, int nu
 
 	/* Memory initialization. */
 	memcpy(&t->params, &p, sizeof(struct table_params));
-
-	if (params->key_mask0)
-		memcpy(t->key_mask0, params->key_mask0, params->key_size);
-	else
-		memset(t->key_mask0, 0xFF, params->key_size);
 
 	return t;
 }
@@ -534,7 +371,7 @@ rte_swx_table_learner_lookup(void *table,
 		uint32_t input_sig;
 
 		input_key = &(*key)[t->params.key_offset];
-		input_sig = hash(input_key, t->key_mask0, t->params.key_size_pow2, 0);
+		input_sig = t->params.hash_func(input_key, t->params.key_size, 0);
 		bucket_id = input_sig & t->params.bucket_mask;
 		b = table_bucket_get(t, bucket_id);
 
@@ -558,13 +395,12 @@ rte_swx_table_learner_lookup(void *table,
 			uint64_t time = b->time[i];
 			uint32_t sig = b->sig[i];
 			uint8_t *key = table_bucket_key_get(t, b, i);
-			uint32_t key_size_pow2 = t->params.key_size_pow2;
 
 			time <<= 32;
 
 			if ((time > input_time) &&
 			    (sig == m->input_sig) &&
-			    table_keycmp(key, m->input_key, t->key_mask0, key_size_pow2)) {
+			    t->params.keycmp_func(key, m->input_key, t->params.key_size)) {
 				uint64_t *data = table_bucket_data_get(t, b, i);
 
 				/* Hit. */
@@ -703,7 +539,7 @@ rte_swx_table_learner_add(void *table,
 			b->time[i] = (input_time + key_timeout) >> 32;
 			b->sig[i] = m->input_sig;
 			b->key_timeout_id[i] = (uint8_t)key_timeout_id;
-			table_keycpy(key, m->input_key, t->key_mask0, t->params.key_size_pow2);
+			table_keycpy(key, m->input_key, t->params.key_size);
 
 			/* Install the key data. */
 			data[0] = action_id;
