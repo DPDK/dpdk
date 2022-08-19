@@ -26,6 +26,7 @@ sources = files(
 )
 headers = files(
         'rte_lru.h',
+        'rte_swx_hash_func.h',
         'rte_swx_table.h',
         'rte_swx_table_em.h',
         'rte_swx_table_learner.h',
