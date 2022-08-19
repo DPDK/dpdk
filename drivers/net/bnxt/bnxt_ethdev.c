@@ -2948,7 +2948,17 @@ bnxt_dev_set_mc_addr_list_op(struct rte_eth_dev *eth_dev,
 		vnic->flags &= ~BNXT_VNIC_INFO_MCAST;
 
 allmulti:
-	return bnxt_hwrm_cfa_l2_set_rx_mask(bp, vnic, 0, NULL);
+	rc = bnxt_hwrm_cfa_l2_set_rx_mask(bp, vnic, 0, NULL);
+	if (rc == -ENOSPC && (vnic->flags & BNXT_VNIC_INFO_MCAST)) {
+		/* If MCAST addition failed because FW ran out of
+		 * multicast filters, enable all multicast mode.
+		 */
+		vnic->flags &= ~BNXT_VNIC_INFO_MCAST;
+		vnic->flags |= BNXT_VNIC_INFO_ALLMULTI;
+		goto allmulti;
+	}
+
+	return rc;
 }
 
 static int
