@@ -70,8 +70,95 @@ virtio_vdpa_blk_dirty_desc_get(int vid, int qix, uint64_t *desc_addr, uint32_t *
 	return 0;
 }
 
+static void
+virtio_vdpa_blk_dev_intr_handler(void *cb_arg)
+{
+	struct virtio_blk_config vb_cfg;
+	struct virtio_vdpa_priv *priv;
+	uint8_t isr;
+	int ret;
+
+	priv = cb_arg;
+
+	/* Read interrupt status which clears interrupt */
+	isr = virtio_pci_dev_isr_get(priv->vpdev);
+	BLK_LOG(INFO, "%s interrupt status = 0x%x", priv->pdev->device.name, isr);
+
+	ret = rte_intr_ack(priv->pdev->intr_handle);
+	if (ret < 0)
+		BLK_LOG(ERR, "%s interrupt ack failed ret %d", priv->pdev->device.name, ret);
+
+	if (isr & VIRTIO_ISR_CONFIG) {
+		virtio_pci_dev_config_read(priv->vpdev, 0, &vb_cfg, sizeof(struct virtio_blk_config));
+		virtio_pci_dev_state_config_write(priv->vpdev, &vb_cfg,
+										sizeof(struct virtio_blk_config),
+										priv->state_mz->addr);
+		BLK_LOG(INFO, "%s config change capacity=0x%" PRIx64, priv->pdev->device.name, vb_cfg.capacity);
+	}
+
+	if (priv->dev_conf_read) {
+		BLK_LOG(INFO, "%s send vhost config change msg", priv->pdev->device.name);
+		ret = rte_vhost_slave_config_change(priv->vid, false);
+		if (ret)
+			BLK_LOG(ERR, "%s failed to send vhost config change ret:%d",
+						priv->pdev->device.name, ret);
+	}
+}
+
+static int
+virtio_vdpa_blk_unreg_dev_interrupt(struct virtio_vdpa_priv *priv)
+{
+	int ret = -EAGAIN;
+	struct rte_intr_handle *intr_handle;
+	int retries = VIRTIO_VDPA_INTR_RETRIES;
+
+	intr_handle = priv->pdev->intr_handle;
+	if (rte_intr_fd_get(intr_handle) != -1) {
+		while (retries-- && ret == -EAGAIN) {
+			ret = rte_intr_callback_unregister(intr_handle,
+							virtio_vdpa_blk_dev_intr_handler,
+							priv);
+			if (ret == -EAGAIN) {
+				BLK_LOG(DEBUG, "%s try again to unregister fd %d "
+				"for dev interrupt, retries = %d",
+				priv->pdev->device.name,
+				rte_intr_fd_get(intr_handle),
+				retries);
+				usleep(VIRTIO_VDPA_INTR_RETRIES_USEC);
+			}
+		}
+	}
+
+	return 0;
+}
+
+static int
+virtio_vdpa_blk_reg_dev_interrupt(struct virtio_vdpa_priv *priv)
+{
+	int ret;
+	struct rte_intr_handle *intr_handle;
+
+	intr_handle = priv->pdev->intr_handle;
+
+	ret = rte_intr_callback_register(intr_handle,
+					   virtio_vdpa_blk_dev_intr_handler,
+					   priv);
+	if (ret) {
+		BLK_LOG(ERR, "%s failed to register dev interrupt ret:%d",
+					priv->pdev->device.name, ret);
+		return -EINVAL;
+	}
+	BLK_LOG(DEBUG, "%s register fd %d for dev interrupt",
+		priv->pdev->device.name,
+		rte_intr_fd_get(intr_handle));
+
+	return 0;
+}
+
 struct virtio_vdpa_device_callback virtio_vdpa_blk_callback = {
 	.vhost_feature_get = virtio_vdpa_blk_vhost_feature_get,
 	.dirty_desc_get = virtio_vdpa_blk_dirty_desc_get,
+	.reg_dev_intr = virtio_vdpa_blk_reg_dev_interrupt,
+	.unreg_dev_intr = virtio_vdpa_blk_unreg_dev_interrupt,
 };
 

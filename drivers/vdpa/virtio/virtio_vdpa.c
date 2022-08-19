@@ -26,8 +26,6 @@ int virtio_vdpa_lcore_id = 0;
 #define VIRTIO_VDPA_DEV_CLOSE_WORK_DONE 2
 #define VIRTIO_VDPA_DEV_CLOSE_WORK_ERR 3
 
-#define VIRTIO_VDPA_INTR_RETRIES_USEC 1000
-#define VIRTIO_VDPA_INTR_RETRIES 256
 #define VIRTIO_VDPA_STATE_ALIGN 4096
 
 extern struct virtio_vdpa_device_callback virtio_vdpa_blk_callback;
@@ -579,6 +577,8 @@ virtio_vdpa_dev_cleanup(int vid)
 		return -ENODEV;
 	}
 
+	priv->dev_conf_read = false;
+
 	mem = priv->mem;
 	if (mem == NULL) {
 		DRV_LOG(INFO, "No mem is registered: %s", vdev->device->name);
@@ -974,16 +974,7 @@ virtio_vdpa_dev_close(int vid)
 
 	rte_free(tmp_hw_idx);
 
-	priv->configured = 0;
-
-	ret = virtio_pci_dev_state_interrupt_disable(priv->vpdev, 0, priv->state_mz->addr);
-	if (ret) {
-		DRV_LOG(ERR, "%s error disabling virtio dev interrupts: %d (%s)",
-				priv->vdev->device->name,
-				ret, strerror(errno));
-		return ret;
-	}
-
+	priv->configured = false;
 
 	/* Disable all queues */
 	for (i = 0; i < num_vr; i++) {
@@ -1020,7 +1011,7 @@ virtio_vdpa_dev_config(int vid)
 	struct virtio_vdpa_priv *priv =
 		virtio_vdpa_find_priv_resource_by_vdev(vdev);
 	uint16_t last_avail_idx, last_used_idx, nr_virtqs;
-	int ret, fd, i;
+	int ret, i;
 
 	if (priv == NULL) {
 		DRV_LOG(ERR, "Invalid vDPA device: %s", vdev->device->name);
@@ -1051,15 +1042,6 @@ virtio_vdpa_dev_config(int vid)
 	}
 
 	priv->vid = vid;
-
-	fd = rte_intr_fd_get(priv->pdev->intr_handle);
-	ret = virtio_pci_dev_state_interrupt_enable(priv->vpdev, fd, 0, priv->state_mz->addr);
-	if (ret) {
-		DRV_LOG(ERR, "%s error enabling virtio dev interrupts: %d(%s)",
-				vdev->device->name, ret, strerror(errno));
-		rte_errno = rte_errno ? rte_errno : EINVAL;
-		return -rte_errno;
-	}
 
 	for (i = 0; i < nr_virtqs; i++) {
 		ret = rte_vhost_get_vring_base(vid, i, &last_avail_idx, &last_used_idx);
@@ -1182,8 +1164,11 @@ virtio_vdpa_dev_config_get(int vid, uint8_t *payload, uint32_t len)
 		DRV_LOG(ERR, "Invalid vDPA device: %s.", vdev->device->name);
 		return -EINVAL;
 	}
-	priv->configured ? virtio_pci_dev_config_read(priv->vpdev, 0, payload, len) :
-					virtio_pci_dev_state_config_read(priv->vpdev, payload, len, priv->state_mz->addr);
+
+	priv->vid = vid;
+	priv->dev_conf_read = true;
+
+	virtio_pci_dev_config_read(priv->vpdev, 0, payload, len);
 	DRV_LOG(INFO, "vDPA device %d get config len %d", vid, len);
 
 	return 0;
@@ -1387,6 +1372,20 @@ virtio_vdpa_dev_remove(struct rte_pci_device *pci_dev)
 			DRV_LOG(ERR, "%s is dev close work had err", pci_dev->name);
 		}
 
+		if (priv->dev_ops->unreg_dev_intr) {
+			ret = virtio_pci_dev_interrupt_disable(priv->vpdev, 0);
+			if (ret) {
+				DRV_LOG(ERR, "%s error disabling virtio dev interrupts: %d (%s)",
+						priv->vdev->device->name,
+						ret, strerror(errno));
+			}
+
+			ret = priv->dev_ops->unreg_dev_intr(priv);
+			if (ret) {
+				DRV_LOG(ERR, "%s unregister dev interrupt fail ret:%d", pci_dev->name, ret);
+			}
+		}
+
 		if (priv->lm_status == VIRTIO_S_FREEZED) {
 			ret = virtio_vdpa_cmd_set_status(priv->pf_priv, priv->vf_id, VIRTIO_S_QUIESCED);
 			if (ret) {
@@ -1438,7 +1437,7 @@ virtio_vdpa_dev_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		struct rte_pci_device *pci_dev)
 {
 	int vdpa = 0;
-	int ret, vf_id = 0, state_len;
+	int ret, fd, vf_id = 0, state_len;
 	struct virtio_vdpa_priv *priv;
 	char devname[RTE_DEV_NAME_MAX_LEN] = {0};
 	char pfname[RTE_DEV_NAME_MAX_LEN] = {0};
@@ -1585,6 +1584,23 @@ virtio_vdpa_dev_probe(struct rte_pci_driver *pci_drv __rte_unused,
 
 	mz_len = priv->state_mz->len;
 	memset(priv->state_mz->addr, 0, mz_len);
+
+	if (priv->dev_ops->reg_dev_intr) {
+		ret = priv->dev_ops->reg_dev_intr(priv);
+		if (ret) {
+			DRV_LOG(ERR, "%s register dev interrupt fail ret:%d", devname, ret);
+			goto error;
+		}
+
+		fd = rte_intr_fd_get(priv->pdev->intr_handle);
+		ret = virtio_pci_dev_interrupt_enable(priv->vpdev, fd, 0);
+		if (ret) {
+			DRV_LOG(ERR, "%s error enabling virtio dev interrupts: %d(%s)",
+					devname, ret, strerror(errno));
+			rte_errno = rte_errno ? rte_errno : EINVAL;
+			goto error;
+		}
+	}
 
 	ret = virtio_pci_dev_state_bar_copy(priv->vpdev, priv->state_mz->addr, state_len);
 	if (ret) {

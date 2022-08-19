@@ -108,10 +108,15 @@ void virtio_pci_dev_config_write(struct virtio_pci_dev *vpdev, size_t offset, co
 __rte_internal
 void virtio_pci_dev_state_config_read(struct virtio_pci_dev *vpdev, void *dst, int length, void *state);
 __rte_internal
+void virtio_pci_dev_state_config_write(struct virtio_pci_dev *vpdev, void *src, int length, void *state);
+__rte_internal
 int virtio_pci_dev_state_bar_copy(struct virtio_pci_dev *vpdev, void *state, int state_len);
 __rte_internal
 int virtio_pci_dev_state_size_get(struct virtio_pci_dev *vpdev);
 __rte_internal
 void virtio_pci_dev_state_num_queue_set(struct virtio_pci_dev *vpdev);
+__rte_internal
+uint8_t virtio_pci_dev_isr_get(struct virtio_pci_dev *vpdev);
+
 
 #endif /* _VIRTIO_API_H_ */

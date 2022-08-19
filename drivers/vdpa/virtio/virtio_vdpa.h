@@ -25,11 +25,6 @@ struct virtio_vdpa_vring_info {
 
 #define VIRTIO_VDPA_DRIVER_NAME vdpa_virtio
 
-struct virtio_vdpa_device_callback {
-	void (*vhost_feature_get)(uint64_t *features);
-	int (*dirty_desc_get)(int vid, int qix, uint64_t *desc_addr, uint32_t *write_len);
-};
-
 struct virtio_vdpa_priv {
 	TAILQ_ENTRY(virtio_vdpa_priv) next;
 	const struct rte_memzone *vdpa_dp_map;
@@ -55,9 +50,19 @@ struct virtio_vdpa_priv {
 	struct virtio_vdpa_vring_info **vrings;
 	uint16_t hw_nr_virtqs; /* Number of vq device supported */
 	bool configured;
+	bool dev_conf_read;
 };
 
 #define VIRTIO_VDPA_REMOTE_STATE_DEFAULT_SIZE 8192
+#define VIRTIO_VDPA_INTR_RETRIES_USEC 1000
+#define VIRTIO_VDPA_INTR_RETRIES 256
+
+struct virtio_vdpa_device_callback {
+	void (*vhost_feature_get)(uint64_t *features);
+	int (*dirty_desc_get)(int vid, int qix, uint64_t *desc_addr, uint32_t *write_len);
+	int (*reg_dev_intr)(struct virtio_vdpa_priv* priv);
+	int (*unreg_dev_intr)(struct virtio_vdpa_priv* priv);
+};
 
 int virtio_vdpa_dev_pf_filter_dump(struct vdpa_vf_params *vf_info, int max_vf_num, struct virtio_vdpa_pf_priv *pf_priv);
 int virtio_vdpa_dev_vf_filter_dump(const char *vf_name, struct vdpa_vf_params *vf_info);

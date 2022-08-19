@@ -191,5 +191,4 @@ virtio_with_packed_queue(struct virtio_hw *hw)
 	return virtio_with_feature(hw, VIRTIO_F_RING_PACKED);
 }
 
-uint8_t virtio_pci_dev_isr_get(struct virtio_hw *hw);
 #endif /* _VIRTIO_H_ */

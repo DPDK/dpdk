@@ -772,6 +772,23 @@ virtio_pci_dev_state_config_read(struct virtio_pci_dev *vpdev, void *dst, int le
 }
 
 void
+virtio_pci_dev_state_config_write(struct virtio_pci_dev *vpdev, void *src, int length, void *state)
+{
+	struct virtio_hw *hw = &vpdev->hw;
+	struct virtio_dev_common_state *state_info = state;
+	uint16_t dev_cfg_len;
+
+	dev_cfg_len = hw->virtio_dev_sp_ops->get_dev_cfg_size();
+
+	if (length != dev_cfg_len) {
+		PMD_INIT_LOG(INFO, "vpdev %s write len %d != cfg len %d use min", VP_DEV_NAME(vpdev), length, dev_cfg_len);
+	}
+	rte_memcpy(state_info + 1, src, RTE_MIN(length, dev_cfg_len));
+
+	PMD_INIT_LOG(INFO, "vpdev %s dev cfg copy len: %d", VP_DEV_NAME(vpdev), RTE_MIN(length, dev_cfg_len));
+}
+
+void
 virtio_pci_dev_config_read(struct virtio_pci_dev *vpdev, size_t offset,
 		      void *dst, int length)
 {
@@ -790,8 +807,10 @@ virtio_pci_dev_config_write(struct virtio_pci_dev *vpdev, size_t offset,
 }
 
 uint8_t
-virtio_pci_dev_isr_get(struct virtio_hw *hw)
+virtio_pci_dev_isr_get(struct virtio_pci_dev *vpdev)
 {
+	struct virtio_hw *hw = &vpdev->hw;
+
 	return VIRTIO_OPS(hw)->get_isr(hw);
 }
 

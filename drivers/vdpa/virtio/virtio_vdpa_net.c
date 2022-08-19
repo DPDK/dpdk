@@ -50,5 +50,7 @@ virtio_vdpa_net_dirty_desc_get(int vid, int qix, uint64_t *desc_addr, uint32_t *
 struct virtio_vdpa_device_callback virtio_vdpa_net_callback = {
 	.vhost_feature_get = virtio_vdpa_net_vhost_feature_get,
 	.dirty_desc_get = virtio_vdpa_net_dirty_desc_get,
+	.reg_dev_intr = NULL,
+	.unreg_dev_intr = NULL,
 };
 
