@@ -1350,7 +1350,7 @@ selector_block_parse(struct selector_spec *s,
 static void
 learner_spec_free(struct learner_spec *s)
 {
-	uintptr_t default_action_name, default_action_args;
+	uintptr_t default_action_name, default_action_args, hash_func_name;
 	uint32_t i;
 
 	if (!s)
@@ -1396,6 +1396,10 @@ learner_spec_free(struct learner_spec *s)
 	s->params.action_is_for_default_entry = NULL;
 
 	s->params.default_action_is_const = 0;
+
+	hash_func_name = (uintptr_t)s->params.hash_func_name;
+	free((void *)hash_func_name);
+	s->params.hash_func_name = NULL;
 
 	s->size = 0;
 
@@ -1852,6 +1856,35 @@ learner_block_parse(struct learner_spec *s,
 							      n_lines,
 							      err_line,
 							      err_msg);
+
+	if (!strcmp(tokens[0], "hash")) {
+		if (n_tokens != 2) {
+			if (err_line)
+				*err_line = n_lines;
+			if (err_msg)
+				*err_msg = "Invalid hash statement.";
+			return -EINVAL;
+		}
+
+		if (s->params.hash_func_name) {
+			if (err_line)
+				*err_line = n_lines;
+			if (err_msg)
+				*err_msg = "Duplicate hash statement.";
+			return -EINVAL;
+		}
+
+		s->params.hash_func_name = strdup(tokens[1]);
+		if (!s->params.hash_func_name) {
+			if (err_line)
+				*err_line = n_lines;
+			if (err_msg)
+				*err_msg = "Memory allocation failed.";
+			return -ENOMEM;
+		}
+
+		return 0;
+	}
 
 	if (!strcmp(tokens[0], "size")) {
 		char *p = tokens[1];
@@ -2691,6 +2724,12 @@ pipeline_spec_codegen(FILE *f,
 
 		fprintf(f, "\t\t\t.default_action_is_const = %d,\n",
 			learner_spec->params.default_action_is_const);
+
+		if (learner_spec->params.hash_func_name)
+			fprintf(f, "\t\t\t.hash_func_name = \"%s\",\n",
+				learner_spec->params.hash_func_name);
+		else
+			fprintf(f, "\t\t\t.hash_func_name = NULL,\n");
 
 		fprintf(f, "\t\t},\n");
 

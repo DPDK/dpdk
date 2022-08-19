@@ -829,6 +829,12 @@ struct rte_swx_pipeline_learner_params {
 	 * list.
 	 */
 	int default_action_is_const;
+
+	/** Hash function name. When not set to NULL, it must point to one of
+	 * the hash functions that were registered for the current pipeline.
+	 * When NULL, the default hash function will be used.
+	 */
+	const char *hash_func_name;
 };
 
 /**

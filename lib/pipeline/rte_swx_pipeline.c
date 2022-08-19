@@ -8789,31 +8789,55 @@ learner_match_fields_check(struct rte_swx_pipeline *p,
 {
 	struct header *h0 = NULL;
 	struct field *hf, *mf;
-	uint32_t i;
+	uint32_t *offset = NULL, *n_bits = NULL, n_fields_with_valid_next = 0, i;
+	int status = 0;
 
 	/* Return if no match fields. */
 	if (!params->n_fields || !params->field_names)
 		return -EINVAL;
+
+	/* Memory allocation. */
+	offset = calloc(params->n_fields, sizeof(uint32_t));
+	n_bits = calloc(params->n_fields, sizeof(uint32_t));
+	if (!offset || !n_bits) {
+		status = -ENOMEM;
+		goto end;
+	}
 
 	/* Check that all the match fields either belong to the same header
 	 * or are all meta-data fields.
 	 */
 	hf = header_field_parse(p, params->field_names[0], &h0);
 	mf = metadata_field_parse(p, params->field_names[0]);
-	if (!hf && !mf)
-		return -EINVAL;
+	if ((!hf && !mf) || (hf && hf->var_size)) {
+		status = -EINVAL;
+		goto end;
+	}
+
+	offset[0] = h0 ? hf->offset : mf->offset;
+	n_bits[0] = h0 ? hf->n_bits : mf->n_bits;
 
 	for (i = 1; i < params->n_fields; i++)
 		if (h0) {
 			struct header *h;
 
 			hf = header_field_parse(p, params->field_names[i], &h);
-			if (!hf || (h->id != h0->id))
-				return -EINVAL;
+			if (!hf || (h->id != h0->id) || hf->var_size) {
+				status = -EINVAL;
+				goto end;
+			}
+
+			offset[i] = hf->offset;
+			n_bits[i] = hf->n_bits;
 		} else {
 			mf = metadata_field_parse(p, params->field_names[i]);
-			if (!mf)
-				return -EINVAL;
+			if (!mf) {
+				status = -EINVAL;
+				goto end;
+			}
+
+			offset[i] = mf->offset;
+			n_bits[i] = mf->n_bits;
 		}
 
 	/* Check that there are no duplicated match fields. */
@@ -8822,15 +8846,37 @@ learner_match_fields_check(struct rte_swx_pipeline *p,
 		uint32_t j;
 
 		for (j = i + 1; j < params->n_fields; j++)
-			if (!strcmp(params->field_names[j], field_name))
-				return -EINVAL;
+			if (!strcmp(params->field_names[j], field_name)) {
+				status = -EINVAL;
+				goto end;
+			}
+	}
+
+	/* Check that the match fields are contiguous. */
+	for (i = 0; i < params->n_fields; i++) {
+		uint32_t offset_next = offset[i] + n_bits[i];
+		uint32_t j;
+
+		for (j = 0; j < params->n_fields; j++)
+			if (offset[j] == offset_next) {
+				n_fields_with_valid_next++;
+				break;
+			}
+	}
+
+	if (n_fields_with_valid_next != params->n_fields - 1) {
+		status = -EINVAL;
+		goto end;
 	}
 
 	/* Return. */
 	if (header)
 		*header = h0;
 
-	return 0;
+end:
+	free(offset);
+	free(n_bits);
+	return status;
 }
 
 static int
@@ -8919,6 +8965,7 @@ rte_swx_pipeline_learner_config(struct rte_swx_pipeline *p,
 	struct learner *l = NULL;
 	struct action *default_action;
 	struct header *header = NULL;
+	struct hash_func *hf = NULL;
 	uint32_t action_data_size_max = 0, i;
 	int status = 0;
 
@@ -8980,6 +9027,12 @@ rte_swx_pipeline_learner_config(struct rte_swx_pipeline *p,
 	default_action = action_find(p, params->default_action_name);
 	CHECK((default_action->st && params->default_action_args) || !params->default_action_args,
 	      EINVAL);
+
+	/* Hash function checks. */
+	if (params->hash_func_name) {
+		hf = hash_func_find(p, params->hash_func_name);
+		CHECK(hf, EINVAL);
+	}
 
 	/* Any other checks. */
 	CHECK(size, EINVAL);
@@ -9069,6 +9122,8 @@ rte_swx_pipeline_learner_config(struct rte_swx_pipeline *p,
 
 	l->action_data_size_max = action_data_size_max;
 
+	l->hf = hf;
+
 	l->size = size;
 
 	for (i = 0; i < n_timeouts; i++)
@@ -9157,6 +9212,9 @@ learner_params_get(struct learner *l)
 
 	/* Action data size. */
 	params->action_data_size = l->action_data_size_max;
+
+	/* Hash function. */
+	params->hash_func = l->hf ? l->hf->func : NULL;
 
 	/* Maximum number of keys. */
 	params->n_keys_max = l->size;

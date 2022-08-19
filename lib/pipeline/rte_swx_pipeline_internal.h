@@ -900,6 +900,7 @@ struct learner {
 	int *action_is_for_table_entries;
 	int *action_is_for_default_entry;
 
+	struct hash_func *hf;
 	uint32_t size;
 	uint32_t timeout[RTE_SWX_TABLE_LEARNER_N_KEY_TIMEOUTS_MAX];
 	uint32_t n_timeouts;
