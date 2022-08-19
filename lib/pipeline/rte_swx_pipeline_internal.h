@@ -828,6 +828,7 @@ struct table {
 	int *action_is_for_table_entries;
 	int *action_is_for_default_entry;
 
+	struct hash_func *hf;
 	uint32_t size;
 	uint32_t id;
 };

@@ -7866,6 +7866,7 @@ rte_swx_pipeline_table_type_register(struct rte_swx_pipeline *p,
 static int
 table_match_type_resolve(struct rte_swx_match_field_params *fields,
 			 uint32_t n_fields,
+			 int contiguous_fields,
 			 enum rte_swx_table_match_type *match_type)
 {
 	uint32_t n_fields_em = 0, n_fields_lpm = 0, i;
@@ -7884,7 +7885,7 @@ table_match_type_resolve(struct rte_swx_match_field_params *fields,
 	    (n_fields_lpm && (n_fields_em != n_fields - 1)))
 		return -EINVAL;
 
-	*match_type = (n_fields_em == n_fields) ?
+	*match_type = ((n_fields_em == n_fields) && contiguous_fields) ?
 		       RTE_SWX_TABLE_MATCH_EXACT :
 		       RTE_SWX_TABLE_MATCH_WILDCARD;
 
@@ -7894,11 +7895,12 @@ table_match_type_resolve(struct rte_swx_match_field_params *fields,
 static int
 table_match_fields_check(struct rte_swx_pipeline *p,
 			 struct rte_swx_pipeline_table_params *params,
-			 struct header **header)
+			 struct header **header,
+			 int *contiguous_fields)
 {
 	struct header *h0 = NULL;
 	struct field *hf, *mf;
-	uint32_t *offset = NULL, i;
+	uint32_t *offset = NULL, *n_bits = NULL, n_fields_with_valid_next = 0, i;
 	int status = 0;
 
 	/* Return if no match fields. */
@@ -7911,12 +7913,16 @@ table_match_fields_check(struct rte_swx_pipeline *p,
 		if (header)
 			*header = NULL;
 
+		if (contiguous_fields)
+			*contiguous_fields = 0;
+
 		return 0;
 	}
 
 	/* Memory allocation. */
 	offset = calloc(params->n_fields, sizeof(uint32_t));
-	if (!offset) {
+	n_bits = calloc(params->n_fields, sizeof(uint32_t));
+	if (!offset || !n_bits) {
 		status = -ENOMEM;
 		goto end;
 	}
@@ -7932,6 +7938,7 @@ table_match_fields_check(struct rte_swx_pipeline *p,
 	}
 
 	offset[0] = h0 ? hf->offset : mf->offset;
+	n_bits[0] = h0 ? hf->n_bits : mf->n_bits;
 
 	for (i = 1; i < params->n_fields; i++)
 		if (h0) {
@@ -7944,6 +7951,7 @@ table_match_fields_check(struct rte_swx_pipeline *p,
 			}
 
 			offset[i] = hf->offset;
+			n_bits[i] = hf->n_bits;
 		} else {
 			mf = metadata_field_parse(p, params->fields[i].name);
 			if (!mf) {
@@ -7952,6 +7960,7 @@ table_match_fields_check(struct rte_swx_pipeline *p,
 			}
 
 			offset[i] = mf->offset;
+			n_bits[i] = mf->n_bits;
 		}
 
 	/* Check that there are no duplicated match fields. */
@@ -7965,12 +7974,28 @@ table_match_fields_check(struct rte_swx_pipeline *p,
 			}
 	}
 
+	/* Detect if the match fields are contiguous or not. */
+	for (i = 0; i < params->n_fields; i++) {
+		uint32_t offset_next = offset[i] + n_bits[i];
+		uint32_t j;
+
+		for (j = 0; j < params->n_fields; j++)
+			if (offset[j] == offset_next) {
+				n_fields_with_valid_next++;
+				break;
+			}
+	}
+
 	/* Return. */
 	if (header)
 		*header = h0;
 
+	if (contiguous_fields)
+		*contiguous_fields = (n_fields_with_valid_next == params->n_fields - 1) ? 1 : 0;
+
 end:
 	free(offset);
+	free(n_bits);
 	return status;
 }
 
@@ -7982,12 +8007,13 @@ rte_swx_pipeline_table_config(struct rte_swx_pipeline *p,
 			      const char *args,
 			      uint32_t size)
 {
-	struct table_type *type;
+	struct table_type *type = NULL;
 	struct table *t = NULL;
 	struct action *default_action;
 	struct header *header = NULL;
+	struct hash_func *hf = NULL;
 	uint32_t action_data_size_max = 0, i;
-	int status = 0;
+	int contiguous_fields = 0, status = 0;
 
 	CHECK(p, EINVAL);
 
@@ -7999,7 +8025,7 @@ rte_swx_pipeline_table_config(struct rte_swx_pipeline *p,
 	CHECK(params, EINVAL);
 
 	/* Match checks. */
-	status = table_match_fields_check(p, params, &header);
+	status = table_match_fields_check(p, params, &header, &contiguous_fields);
 	if (status)
 		return status;
 
@@ -8042,6 +8068,12 @@ rte_swx_pipeline_table_config(struct rte_swx_pipeline *p,
 	CHECK((default_action->st && params->default_action_args) || !params->default_action_args,
 	      EINVAL);
 
+	/* Hash function checks. */
+	if (params->hash_func_name) {
+		hf = hash_func_find(p, params->hash_func_name);
+		CHECK(hf, EINVAL);
+	}
+
 	/* Table type checks. */
 	if (recommended_table_type_name)
 		CHECK_NAME(recommended_table_type_name, EINVAL);
@@ -8049,14 +8081,15 @@ rte_swx_pipeline_table_config(struct rte_swx_pipeline *p,
 	if (params->n_fields) {
 		enum rte_swx_table_match_type match_type;
 
-		status = table_match_type_resolve(params->fields, params->n_fields, &match_type);
+		status = table_match_type_resolve(params->fields,
+						  params->n_fields,
+						  contiguous_fields,
+						  &match_type);
 		if (status)
 			return status;
 
 		type = table_type_resolve(p, recommended_table_type_name, match_type);
 		CHECK(type, EINVAL);
-	} else {
-		type = NULL;
 	}
 
 	/* Memory allocation. */
@@ -8141,6 +8174,7 @@ rte_swx_pipeline_table_config(struct rte_swx_pipeline *p,
 	t->default_action_is_const = params->default_action_is_const;
 	t->action_data_size_max = action_data_size_max;
 
+	t->hf = hf;
 	t->size = size;
 	t->id = p->n_tables;
 
@@ -8227,6 +8261,7 @@ table_params_get(struct table *table)
 	params->key_offset = key_offset;
 	params->key_mask0 = key_mask;
 	params->action_data_size = action_data_size;
+	params->hash_func = table->hf ? table->hf->func : NULL;
 	params->n_keys_max = table->size;
 
 	return params;
@@ -10265,6 +10300,7 @@ rte_swx_ctl_table_info_get(struct rte_swx_pipeline *p,
 	table->n_match_fields = t->n_fields;
 	table->n_actions = t->n_actions;
 	table->default_action_is_const = t->default_action_is_const;
+	table->hash_func = t->hf ? t->hf->func : NULL;
 	table->size = t->size;
 	return 0;
 }

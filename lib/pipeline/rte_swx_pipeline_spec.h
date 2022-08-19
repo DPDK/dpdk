@@ -88,6 +88,7 @@ struct action_spec {
  *		...
  *	}
  *	default_action ACTION_NAME args none | ARG0_NAME ARG0_VALUE ... [ const ]
+ *	hash HASH_FUNCTION_NAME
  *	instanceof TABLE_TYPE_NAME
  *	pragma ARGS
  *	size SIZE

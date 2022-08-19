@@ -332,23 +332,6 @@ rte_swx_pipeline_extern_func_register(struct rte_swx_pipeline *p,
  */
 
 /**
- * Hash function prototype
- *
- * @param[in] key
- *   Key to hash. Must be non-NULL.
- * @param[in] length
- *   Key length in bytes.
- * @param[in] seed
- *   Hash seed.
- * @return
- *   Hash value.
- */
-typedef uint32_t
-(*rte_swx_hash_func_t)(const void *key,
-		       uint32_t length,
-		       uint32_t seed);
-
-/**
  * Pipeline hash function register
  *
  * @param[in] p
@@ -699,6 +682,13 @@ struct rte_swx_pipeline_table_params {
 	 * list.
 	 */
 	int default_action_is_const;
+
+	/** Hash function name. When not set to NULL, it must point to one of
+	 * the hash functions that were registered for the current pipeline.
+	 * Ignored by the table implementation when not needed. When needed but
+	 * NULL, the table implementation will select the hash function to use.
+	 */
+	const char *hash_func_name;
 };
 
 /**

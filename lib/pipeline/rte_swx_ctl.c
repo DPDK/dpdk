@@ -273,6 +273,7 @@ table_params_get(struct rte_swx_ctl_pipeline *ctl, uint32_t table_id)
 	table->params.key_offset = key_offset;
 	table->params.key_mask0 = key_mask;
 	table->params.action_data_size = action_data_size;
+	table->params.hash_func = table->info.hash_func;
 	table->params.n_keys_max = table->info.size;
 
 	table->mf_first = first;

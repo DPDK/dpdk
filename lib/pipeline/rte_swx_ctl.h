@@ -236,6 +236,9 @@ struct rte_swx_ctl_table_info {
 	 */
 	int default_action_is_const;
 
+	/**  Hash function. */
+	rte_swx_hash_func_t hash_func;
+
 	/** Table size parameter. */
 	uint32_t size;
 };
