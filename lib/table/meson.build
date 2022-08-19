@@ -8,6 +8,7 @@ if is_windows
 endif
 
 sources = files(
+        'rte_swx_keycmp.c',
         'rte_swx_table_em.c',
         'rte_swx_table_learner.c',
         'rte_swx_table_selector.c',
