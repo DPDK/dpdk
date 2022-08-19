@@ -19,6 +19,8 @@ extern "C" {
 
 #include <rte_os.h>
 
+#include "rte_swx_hash_func.h"
+
 /** Match type. */
 enum rte_swx_table_match_type {
 	/** Wildcard Match (WM). */
@@ -57,6 +59,12 @@ struct rte_swx_table_params {
 	 * which are used to store the action ID.
 	 */
 	uint32_t action_data_size;
+
+	/** Hash function. Ignored when not needed by the table implementation.
+	 * When needed but set to NULL, the table implementation will select the
+	 * hash function to use.
+	 */
+	rte_swx_hash_func_t hash_func;
 
 	/** Maximum number of keys to be stored in the table together with their
 	 * associated data.
