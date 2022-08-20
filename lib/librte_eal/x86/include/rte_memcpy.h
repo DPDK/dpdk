@@ -372,6 +372,23 @@ rte_mov128(uint8_t *dst, const uint8_t *src)
 }
 
 /**
+ * Copy 256 bytes from one location to another,
+ * locations should not overlap.
+ */
+static __rte_always_inline void
+rte_mov256(uint8_t *dst, const uint8_t *src)
+{
+	rte_mov32((uint8_t *)dst + 0 * 32, (const uint8_t *)src + 0 * 32);
+	rte_mov32((uint8_t *)dst + 1 * 32, (const uint8_t *)src + 1 * 32);
+	rte_mov32((uint8_t *)dst + 2 * 32, (const uint8_t *)src + 2 * 32);
+	rte_mov32((uint8_t *)dst + 3 * 32, (const uint8_t *)src + 3 * 32);
+	rte_mov32((uint8_t *)dst + 4 * 32, (const uint8_t *)src + 4 * 32);
+	rte_mov32((uint8_t *)dst + 5 * 32, (const uint8_t *)src + 5 * 32);
+	rte_mov32((uint8_t *)dst + 6 * 32, (const uint8_t *)src + 6 * 32);
+	rte_mov32((uint8_t *)dst + 7 * 32, (const uint8_t *)src + 7 * 32);
+}
+
+/**
  * Copy 128-byte blocks from one location to another,
  * locations should not overlap.
  */
