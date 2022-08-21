@@ -983,6 +983,25 @@ uint32_t bnxt_get_speed_capabilities(struct bnxt *bp)
 	return speed_capa;
 }
 
+uint64_t bnxt_eth_rss_support(struct bnxt *bp)
+{
+	uint64_t support;
+
+	support = RTE_ETH_RSS_IPV4 |
+		  RTE_ETH_RSS_NONFRAG_IPV4_TCP |
+		  RTE_ETH_RSS_NONFRAG_IPV4_UDP |
+		  RTE_ETH_RSS_IPV6 |
+		  RTE_ETH_RSS_NONFRAG_IPV6_TCP |
+		  RTE_ETH_RSS_NONFRAG_IPV6_UDP |
+		  RTE_ETH_RSS_LEVEL_MASK;
+
+	if (bp->vnic_cap_flags & BNXT_VNIC_CAP_CHKSM_MODE)
+		support |= (RTE_ETH_RSS_IPV4_CHKSUM |
+			    RTE_ETH_RSS_L4_CHKSUM);
+
+	return support;
+}
+
 static int bnxt_dev_info_get_op(struct rte_eth_dev *eth_dev,
 				struct rte_eth_dev_info *dev_info)
 {
@@ -1024,7 +1043,7 @@ static int bnxt_dev_info_get_op(struct rte_eth_dev *eth_dev,
 	dev_info->tx_queue_offload_capa = RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE;
 	dev_info->tx_offload_capa = bnxt_get_tx_port_offloads(bp) |
 				    dev_info->tx_queue_offload_capa;
-	dev_info->flow_type_rss_offloads = BNXT_ETH_RSS_SUPPORT;
+	dev_info->flow_type_rss_offloads = bnxt_eth_rss_support(bp);
 
 	dev_info->speed_capa = bnxt_get_speed_capabilities(bp);
 	dev_info->dev_capa = RTE_ETH_DEV_CAPA_RUNTIME_RX_QUEUE_SETUP |
@@ -2176,7 +2195,7 @@ static int bnxt_rss_hash_update_op(struct rte_eth_dev *eth_dev,
 		if (!rss_conf->rss_hf)
 			PMD_DRV_LOG(ERR, "Hash type NONE\n");
 	} else {
-		if (rss_conf->rss_hf & BNXT_ETH_RSS_SUPPORT)
+		if (rss_conf->rss_hf & bnxt_eth_rss_support(bp))
 			return -EINVAL;
 	}
 
@@ -2186,6 +2205,12 @@ static int bnxt_rss_hash_update_op(struct rte_eth_dev *eth_dev,
 	vnic->hash_mode =
 		bnxt_rte_to_hwrm_hash_level(bp, rss_conf->rss_hf,
 					    RTE_ETH_RSS_LEVEL(rss_conf->rss_hf));
+	rc = bnxt_rte_eth_to_hwrm_ring_select_mode(bp, rss_conf->rss_hf, vnic);
+	if (rc != 0)
+		return rc;
+
+	/* Cache the hash function */
+	bp->rss_conf.rss_hf = rss_conf->rss_hf;
 
 	/* Cache the hash function */
 	bp->rss_conf.rss_hf = rss_conf->rss_hf;
@@ -2219,60 +2244,21 @@ static int bnxt_rss_hash_conf_get_op(struct rte_eth_dev *eth_dev,
 	struct bnxt *bp = eth_dev->data->dev_private;
 	struct bnxt_vnic_info *vnic = bnxt_get_default_vnic(bp);
 	int len, rc;
-	uint32_t hash_types;
 
 	rc = is_bnxt_in_error(bp);
 	if (rc)
 		return rc;
 
-	/* RSS configuration is the same for all VNICs */
+	/* Return the RSS configuration of the default VNIC. */
 	if (vnic && vnic->rss_hash_key) {
 		if (rss_conf->rss_key) {
 			len = rss_conf->rss_key_len <= HW_HASH_KEY_SIZE ?
 			      rss_conf->rss_key_len : HW_HASH_KEY_SIZE;
 			memcpy(rss_conf->rss_key, vnic->rss_hash_key, len);
 		}
-
-		hash_types = vnic->hash_type;
-		rss_conf->rss_hf = 0;
-		if (hash_types & HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_IPV4) {
-			rss_conf->rss_hf |= RTE_ETH_RSS_IPV4;
-			hash_types &= ~HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_IPV4;
-		}
-		if (hash_types & HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_TCP_IPV4) {
-			rss_conf->rss_hf |= RTE_ETH_RSS_NONFRAG_IPV4_TCP;
-			hash_types &=
-				~HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_TCP_IPV4;
-		}
-		if (hash_types & HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_UDP_IPV4) {
-			rss_conf->rss_hf |= RTE_ETH_RSS_NONFRAG_IPV4_UDP;
-			hash_types &=
-				~HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_UDP_IPV4;
-		}
-		if (hash_types & HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_IPV6) {
-			rss_conf->rss_hf |= RTE_ETH_RSS_IPV6;
-			hash_types &= ~HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_IPV6;
-		}
-		if (hash_types & HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_TCP_IPV6) {
-			rss_conf->rss_hf |= RTE_ETH_RSS_NONFRAG_IPV6_TCP;
-			hash_types &=
-				~HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_TCP_IPV6;
-		}
-		if (hash_types & HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_UDP_IPV6) {
-			rss_conf->rss_hf |= RTE_ETH_RSS_NONFRAG_IPV6_UDP;
-			hash_types &=
-				~HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_UDP_IPV6;
-		}
-
+		bnxt_hwrm_rss_to_rte_hash_conf(vnic, &rss_conf->rss_hf);
 		rss_conf->rss_hf |=
 			bnxt_hwrm_to_rte_rss_level(bp, vnic->hash_mode);
-
-		if (hash_types) {
-			PMD_DRV_LOG(ERR,
-				"Unknown RSS config from firmware (%08x), RSS disabled",
-				vnic->hash_type);
-			return -ENOTSUP;
-		}
 	} else {
 		rss_conf->rss_hf = 0;
 	}

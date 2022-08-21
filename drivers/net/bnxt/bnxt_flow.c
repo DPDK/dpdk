@@ -881,6 +881,7 @@ static void bnxt_vnic_cleanup(struct bnxt *bp, struct bnxt_vnic_info *vnic)
 	vnic->fw_grp_ids = NULL;
 
 	vnic->rx_queue_cnt = 0;
+	vnic->hash_type = 0;
 }
 
 static int bnxt_vnic_prep(struct bnxt *bp, struct bnxt_vnic_info *vnic,
@@ -1067,7 +1068,7 @@ bnxt_vnic_rss_cfg_update(struct bnxt *bp,
 {
 	const struct rte_flow_action_rss *rss;
 	unsigned int rss_idx, i, j, fw_idx;
-	uint16_t hash_type;
+	uint32_t hash_type;
 	uint64_t types;
 	int rc;
 
@@ -1115,9 +1116,9 @@ bnxt_vnic_rss_cfg_update(struct bnxt *bp,
 		}
 	}
 
-	/* Currently only Toeplitz hash is supported. */
-	if (rss->func != RTE_ETH_HASH_FUNCTION_DEFAULT &&
-	    rss->func != RTE_ETH_HASH_FUNCTION_TOEPLITZ) {
+	if (BNXT_IS_HASH_FUNC_DEFAULT(rss->func) &&
+	    BNXT_IS_HASH_FUNC_TOEPLITZ(rss->func) &&
+	    BNXT_IS_HASH_FUNC_SIMPLE_XOR(bp, rss->func)) {
 		rte_flow_error_set(error,
 				   ENOTSUP,
 				   RTE_FLOW_ERROR_TYPE_ACTION,
@@ -1174,6 +1175,34 @@ bnxt_vnic_rss_cfg_update(struct bnxt *bp,
 
 	vnic->hash_mode =
 		bnxt_rte_to_hwrm_hash_level(bp, rss->types, rss->level);
+
+	/* For P7 chips update the hash_type if hash_type not explicitly passed.
+	 * TODO: For P5 chips.
+	 */
+	if (BNXT_CHIP_P7(bp) &&
+	    vnic->hash_mode == BNXT_HASH_MODE_DEFAULT && !hash_type)
+		vnic->hash_type = HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_IPV4 |
+			HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_IPV6;
+
+	/* TODO:
+	 * hash will be performed on the L3 and L4 packet headers.
+	 * specific RSS hash types like IPv4-TCP etc... or L4-chksum or IPV4-chksum
+	 * will NOT have any bearing and will not be honored.
+	 * Check and reject flow create accordingly. TODO.
+	 */
+
+	rc = bnxt_rte_flow_to_hwrm_ring_select_mode(rss->func,
+						    rss->types,
+						    bp, vnic);
+	if (rc) {
+		rte_flow_error_set(error,
+				   ENOTSUP,
+				   RTE_FLOW_ERROR_TYPE_ACTION,
+				   act,
+				   "Unsupported RSS hash parameters");
+		rc = -rte_errno;
+		goto ret;
+	}
 
 	/* Update RSS key only if key_len != 0 */
 	if (rss->key_len != 0)

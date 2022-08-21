@@ -1025,6 +1025,12 @@ int bnxt_hwrm_vnic_qcaps(struct bnxt *bp)
 		PMD_DRV_LOG(DEBUG, "Rx VLAN strip capability enabled\n");
 	}
 
+	if (flags & HWRM_VNIC_QCAPS_OUTPUT_FLAGS_RING_SELECT_MODE_XOR_CAP)
+		bp->vnic_cap_flags |= BNXT_VNIC_CAP_XOR_MODE;
+
+	if (flags & HWRM_VNIC_QCAPS_OUTPUT_FLAGS_RING_SELECT_MODE_TOEPLITZ_CHKSM_CAP)
+		bp->vnic_cap_flags |= BNXT_VNIC_CAP_CHKSM_MODE;
+
 	bp->max_tpa_v2 = rte_le_to_cpu_16(resp->max_aggs_supported);
 
 	HWRM_UNLOCK();

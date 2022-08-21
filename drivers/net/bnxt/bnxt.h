@@ -638,15 +638,6 @@ struct bnxt_rep_info {
 #define BNXT_FW_STATUS_HEALTHY		0x8000
 #define BNXT_FW_STATUS_SHUTDOWN		0x100000
 
-#define BNXT_ETH_RSS_SUPPORT (	\
-	RTE_ETH_RSS_IPV4 |		\
-	RTE_ETH_RSS_NONFRAG_IPV4_TCP |	\
-	RTE_ETH_RSS_NONFRAG_IPV4_UDP |	\
-	RTE_ETH_RSS_IPV6 |		\
-	RTE_ETH_RSS_NONFRAG_IPV6_TCP |	\
-	RTE_ETH_RSS_NONFRAG_IPV6_UDP |	\
-	RTE_ETH_RSS_LEVEL_MASK)
-
 #define BNXT_HWRM_SHORT_REQ_LEN		sizeof(struct hwrm_short_input)
 
 struct bnxt_flow_stat_info {
@@ -815,7 +806,10 @@ struct bnxt {
 #define BNXT_VNIC_CAP_VLAN_RX_STRIP	BIT(3)
 #define BNXT_RX_VLAN_STRIP_EN(bp)	((bp)->vnic_cap_flags & BNXT_VNIC_CAP_VLAN_RX_STRIP)
 #define BNXT_VNIC_CAP_OUTER_RSS_TRUSTED_VF	BIT(4)
-#define BNXT_VNIC_CAP_L2_CQE_MODE		BIT(8)
+#define BNXT_VNIC_CAP_XOR_MODE		BIT(5)
+#define BNXT_VNIC_CAP_CHKSM_MODE	BIT(6)
+#define BNXT_VNIC_CAP_L2_CQE_MODE	BIT(8)
+
 	unsigned int		rx_nr_rings;
 	unsigned int		rx_cp_nr_rings;
 	unsigned int		rx_num_qs_per_vnic;
@@ -1177,4 +1171,5 @@ void bnxt_handle_vf_cfg_change(void *arg);
 int bnxt_flow_meter_ops_get(struct rte_eth_dev *eth_dev, void *arg);
 struct bnxt_vnic_info *bnxt_get_default_vnic(struct bnxt *bp);
 struct tf *bnxt_get_tfp_session(struct bnxt *bp, enum bnxt_session_type type);
+uint64_t bnxt_eth_rss_support(struct bnxt *bp);
 #endif

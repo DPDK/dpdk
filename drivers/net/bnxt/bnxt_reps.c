@@ -569,7 +569,7 @@ int bnxt_rep_dev_info_get_op(struct rte_eth_dev *eth_dev,
 
 	dev_info->rx_offload_capa = bnxt_get_rx_port_offloads(parent_bp);
 	dev_info->tx_offload_capa = bnxt_get_tx_port_offloads(parent_bp);
-	dev_info->flow_type_rss_offloads = BNXT_ETH_RSS_SUPPORT;
+	dev_info->flow_type_rss_offloads = bnxt_eth_rss_support(parent_bp);
 
 	dev_info->switch_info.name = eth_dev->device->name;
 	dev_info->switch_info.domain_id = rep_bp->switch_domain_id;

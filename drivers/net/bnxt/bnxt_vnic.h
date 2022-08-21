@@ -31,6 +31,11 @@
 	 (BNXT_VF(bp) && BNXT_VF_IS_TRUSTED(bp) &&				\
 	  !((bp)->vnic_cap_flags & BNXT_VNIC_CAP_OUTER_RSS_TRUSTED_VF)) ||	\
 	 (BNXT_VF(bp) && !BNXT_VF_IS_TRUSTED(bp)))
+#define BNXT_IS_HASH_FUNC_DEFAULT(f)	((f) != RTE_ETH_HASH_FUNCTION_DEFAULT)
+#define BNXT_IS_HASH_FUNC_TOEPLITZ(f)	((f) != RTE_ETH_HASH_FUNCTION_TOEPLITZ)
+#define BNXT_IS_HASH_FUNC_SIMPLE_XOR(b, f)	\
+	((b)->vnic_cap_flags & BNXT_VNIC_CAP_XOR_MODE && \
+	 ((f) != RTE_ETH_HASH_FUNCTION_SIMPLE_XOR))
 
 struct bnxt_vnic_info {
 	STAILQ_ENTRY(bnxt_vnic_info)	next;
@@ -73,6 +78,7 @@ struct bnxt_vnic_info {
 
 	STAILQ_HEAD(, bnxt_filter_info)	filter;
 	STAILQ_HEAD(, rte_flow)	flow_list;
+	uint8_t		ring_select_mode;
 };
 
 struct bnxt_vnic_queue_db {
@@ -83,6 +89,7 @@ struct bnxt_vnic_queue_db {
 
 /* RSS structure to pass values as an structure argument*/
 struct bnxt_vnic_rss_info {
+	uint32_t rss_func;
 	uint32_t rss_level;
 	uint64_t rss_types;
 	uint32_t key_len; /**< Hash key length in bytes. */
@@ -102,7 +109,7 @@ void bnxt_free_vnic_mem(struct bnxt *bp);
 int bnxt_alloc_vnic_mem(struct bnxt *bp);
 int bnxt_vnic_grp_alloc(struct bnxt *bp, struct bnxt_vnic_info *vnic);
 void bnxt_prandom_bytes(void *dest_ptr, size_t len);
-uint16_t bnxt_rte_to_hwrm_hash_types(uint64_t rte_type);
+uint32_t bnxt_rte_to_hwrm_hash_types(uint64_t rte_type);
 int bnxt_rte_to_hwrm_hash_level(struct bnxt *bp, uint64_t hash_f, uint32_t lvl);
 uint64_t bnxt_hwrm_to_rte_rss_level(struct bnxt *bp, uint32_t mode);
 
@@ -139,5 +146,12 @@ struct bnxt_vnic_info *
 bnxt_vnic_queue_id_get_next(struct bnxt *bp, uint16_t queue_id,
 			    uint16_t *vnic_idx);
 void bnxt_vnic_tpa_cfg(struct bnxt *bp, uint16_t queue_id, bool flag);
-
+uint8_t _bnxt_rte_to_hwrm_ring_select_mode(enum rte_eth_hash_function hash_f);
+int bnxt_rte_flow_to_hwrm_ring_select_mode(enum rte_eth_hash_function hash_f,
+					   uint64_t types, struct bnxt *bp,
+					   struct bnxt_vnic_info *vnic);
+int bnxt_rte_eth_to_hwrm_ring_select_mode(struct bnxt *bp, uint64_t types,
+					  struct bnxt_vnic_info *vnic);
+void bnxt_hwrm_rss_to_rte_hash_conf(struct bnxt_vnic_info *vnic,
+				    uint64_t *rss_conf);
 #endif

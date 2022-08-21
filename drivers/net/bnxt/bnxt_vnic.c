@@ -256,10 +256,15 @@ int bnxt_vnic_grp_alloc(struct bnxt *bp, struct bnxt_vnic_info *vnic)
 	return 0;
 }
 
-uint16_t bnxt_rte_to_hwrm_hash_types(uint64_t rte_type)
+uint32_t bnxt_rte_to_hwrm_hash_types(uint64_t rte_type)
 {
-	uint16_t hwrm_type = 0;
+	uint32_t hwrm_type = 0;
 
+	if (rte_type & RTE_ETH_RSS_IPV4_CHKSUM)
+		hwrm_type |= HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_IPV4;
+	if (rte_type & RTE_ETH_RSS_L4_CHKSUM)
+		hwrm_type |= HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_IPV4 |
+			     HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_IPV6;
 	if ((rte_type & RTE_ETH_RSS_IPV4) ||
 	    (rte_type & RTE_ETH_RSS_ECPRI))
 		hwrm_type |= HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_IPV4;
@@ -273,6 +278,9 @@ uint16_t bnxt_rte_to_hwrm_hash_types(uint64_t rte_type)
 		hwrm_type |= HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_TCP_IPV6;
 	if (rte_type & RTE_ETH_RSS_NONFRAG_IPV6_UDP)
 		hwrm_type |= HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_UDP_IPV6;
+	if (rte_type & RTE_ETH_RSS_IPV4_CHKSUM)
+		hwrm_type |=
+			HWRM_VNIC_RSS_CFG_INPUT_RING_SELECT_MODE_TOEPLITZ_CHECKSUM;
 
 	return hwrm_type;
 }
@@ -287,6 +295,8 @@ int bnxt_rte_to_hwrm_hash_level(struct bnxt *bp, uint64_t hash_f, uint32_t lvl)
 			     RTE_ETH_RSS_NONFRAG_IPV6_TCP));
 	bool l3_only = l3 && !l4;
 	bool l3_and_l4 = l3 && l4;
+	bool cksum = !!(hash_f &
+			(RTE_ETH_RSS_IPV4_CHKSUM | RTE_ETH_RSS_L4_CHKSUM));
 
 	/* If FW has not advertised capability to configure outer/inner
 	 * RSS hashing , just log a message. HW will work in default RSS mode.
@@ -302,12 +312,12 @@ int bnxt_rte_to_hwrm_hash_level(struct bnxt *bp, uint64_t hash_f, uint32_t lvl)
 	switch (lvl) {
 	case BNXT_RSS_LEVEL_INNERMOST:
 		/* Irrespective of what RTE says, FW always does 4 tuple */
-		if (l3_and_l4 || l4 || l3_only)
+		if (l3_and_l4 || l4 || l3_only || cksum)
 			mode = BNXT_HASH_MODE_INNERMOST;
 		break;
 	case BNXT_RSS_LEVEL_OUTERMOST:
 		/* Irrespective of what RTE says, FW always does 4 tuple */
-		if (l3_and_l4 || l4 || l3_only)
+		if (l3_and_l4 || l4 || l3_only || cksum)
 			mode = BNXT_HASH_MODE_OUTERMOST;
 		break;
 	default:
@@ -733,6 +743,16 @@ bnxt_vnic_rss_create(struct bnxt *bp,
 		goto fail_cleanup;
 	}
 
+	/* Remove unsupported types */
+	rss_info->rss_types &= bnxt_eth_rss_support(bp);
+
+	/* If only unsupported type(s) are specified then quit */
+	if (rss_info->rss_types == 0) {
+		PMD_DRV_LOG(ERR,
+			    "Unsupported RSS hash type(s)\n");
+		goto fail_cleanup;
+	}
+
 	/* hwrm_type conversion */
 	vnic->hash_type = bnxt_rte_to_hwrm_hash_types(rss_info->rss_types);
 	vnic->hash_mode = bnxt_rte_to_hwrm_hash_level(bp, rss_info->rss_types,
@@ -803,9 +823,11 @@ bnxt_vnic_rss_hash_algo_update(struct bnxt *bp,
 			       struct bnxt_vnic_rss_info *rss_info)
 {
 	uint8_t old_rss_hash_key[HW_HASH_KEY_SIZE] = { 0 };
-	uint16_t	hash_type;
-	uint8_t		hash_mode;
+	uint32_t hash_type;
+	uint8_t hash_mode;
+	uint8_t ring_mode;
 	uint32_t apply = 0;
+	int rc;
 
 	/* validate key length */
 	if (rss_info->key_len != 0 && rss_info->key_len != HW_HASH_KEY_SIZE) {
@@ -815,12 +837,40 @@ bnxt_vnic_rss_hash_algo_update(struct bnxt *bp,
 		return -EINVAL;
 	}
 
+	/* Remove unsupported types */
+	rss_info->rss_types &= bnxt_eth_rss_support(bp);
+
+	/* If only unsupported type(s) are specified then quit */
+	if (!rss_info->rss_types) {
+		PMD_DRV_LOG(ERR,
+			    "Unsupported RSS hash type\n");
+		return -EINVAL;
+	}
+
 	/* hwrm_type conversion */
 	hash_type = bnxt_rte_to_hwrm_hash_types(rss_info->rss_types);
 	hash_mode = bnxt_rte_to_hwrm_hash_level(bp, rss_info->rss_types,
 						rss_info->rss_level);
+	ring_mode = vnic->ring_select_mode;
+
+	/* For P7 chips update the hash_type if hash_type not explicitly passed.
+	 * TODO: For P5 chips.
+	 */
+	if (BNXT_CHIP_P7(bp) &&
+	    hash_mode == BNXT_HASH_MODE_DEFAULT && !hash_type)
+		vnic->hash_type = HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_IPV4 |
+			HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_IPV6;
+
+	rc = bnxt_rte_flow_to_hwrm_ring_select_mode(rss_info->rss_func,
+						    rss_info->rss_types,
+						    bp,
+						    vnic);
+	if (rc)
+		return -EINVAL;
+
 	if (vnic->hash_mode != hash_mode ||
-	    vnic->hash_type != hash_type) {
+	    vnic->hash_type != hash_type ||
+	    vnic->ring_select_mode != ring_mode) {
 		apply = 1;
 		vnic->hash_mode = hash_mode;
 		vnic->hash_type = hash_type;
@@ -839,10 +889,10 @@ bnxt_vnic_rss_hash_algo_update(struct bnxt *bp,
 	if (apply) {
 		if (bnxt_hwrm_vnic_rss_cfg(bp, vnic)) {
 			memcpy(vnic->rss_hash_key, old_rss_hash_key, HW_HASH_KEY_SIZE);
-			BNXT_TF_DBG(ERR, "Error configuring vnic RSS config\n");
+			PMD_DRV_LOG(ERR, "Error configuring vnic RSS config\n");
 			return -EINVAL;
 		}
-		BNXT_TF_DBG(INFO, "Rss config successfully applied\n");
+		PMD_DRV_LOG(INFO, "Rss config successfully applied\n");
 	}
 	return 0;
 }
@@ -1244,4 +1294,97 @@ inline struct bnxt_vnic_info *
 bnxt_get_default_vnic(struct bnxt *bp)
 {
 	return &bp->vnic_info[bp->vnic_queue_db.dflt_vnic_id];
+}
+
+uint8_t _bnxt_rte_to_hwrm_ring_select_mode(enum rte_eth_hash_function hash_f)
+{
+	/* If RTE_ETH_HASH_FUNCTION_DEFAULT || RTE_ETH_HASH_FUNCTION_TOEPLITZ */
+	uint8_t mode = HWRM_VNIC_RSS_CFG_INPUT_RING_SELECT_MODE_TOEPLITZ;
+
+	if (hash_f == RTE_ETH_HASH_FUNCTION_SIMPLE_XOR)
+		mode = HWRM_VNIC_RSS_CFG_INPUT_RING_SELECT_MODE_XOR;
+
+	return mode;
+}
+
+int bnxt_rte_flow_to_hwrm_ring_select_mode(enum rte_eth_hash_function hash_f,
+					   uint64_t types, struct bnxt *bp,
+					   struct bnxt_vnic_info *vnic)
+{
+	if (hash_f != RTE_ETH_HASH_FUNCTION_TOEPLITZ &&
+	    hash_f != RTE_ETH_HASH_FUNCTION_DEFAULT) {
+		if (hash_f == RTE_ETH_HASH_FUNCTION_SYMMETRIC_TOEPLITZ ||
+		    (!BNXT_CHIP_P7(bp) && hash_f == RTE_ETH_HASH_FUNCTION_SIMPLE_XOR)) {
+			PMD_DRV_LOG(ERR, "Unsupported hash function\n");
+			return -ENOTSUP;
+		}
+	}
+
+	if (types & RTE_ETH_RSS_IPV4_CHKSUM || types & RTE_ETH_RSS_L4_CHKSUM) {
+		if ((bp->vnic_cap_flags & BNXT_VNIC_CAP_CHKSM_MODE) &&
+			(hash_f == RTE_ETH_HASH_FUNCTION_DEFAULT ||
+			 hash_f == RTE_ETH_HASH_FUNCTION_TOEPLITZ)) {
+			/* Checksum mode cannot with hash func makes no sense */
+			vnic->ring_select_mode =
+				HWRM_VNIC_RSS_CFG_INPUT_RING_SELECT_MODE_TOEPLITZ_CHECKSUM;
+			/* shadow copy types as !hash_f is always true with default func */
+			return 0;
+		}
+		PMD_DRV_LOG(ERR, "Hash function not supported with checksun type\n");
+		return -ENOTSUP;
+	}
+
+	vnic->ring_select_mode = _bnxt_rte_to_hwrm_ring_select_mode(hash_f);
+	return 0;
+}
+
+int bnxt_rte_eth_to_hwrm_ring_select_mode(struct bnxt *bp, uint64_t types,
+					  struct bnxt_vnic_info *vnic)
+{
+	/* If the config update comes via ethdev, there is no way to
+	 * specify anything for hash function.
+	 * So its either TOEPLITZ or the Checksum mode.
+	 * Note that checksum mode is not supported on older devices.
+	 */
+	if (types == RTE_ETH_RSS_IPV4_CHKSUM) {
+		if (bp->vnic_cap_flags & BNXT_VNIC_CAP_CHKSM_MODE)
+			vnic->ring_select_mode =
+			HWRM_VNIC_RSS_CFG_INPUT_RING_SELECT_MODE_TOEPLITZ_CHECKSUM;
+		else
+			return -ENOTSUP;
+	}
+
+	/* Older devices can support TOEPLITZ only.
+	 * Thor2 supports other hash functions, but can't change using this path.
+	 */
+	vnic->ring_select_mode =
+		HWRM_VNIC_RSS_CFG_INPUT_RING_SELECT_MODE_TOEPLITZ;
+	return 0;
+}
+
+void bnxt_hwrm_rss_to_rte_hash_conf(struct bnxt_vnic_info *vnic,
+				    uint64_t *rss_conf)
+{
+	uint32_t hash_types;
+
+	hash_types = vnic->hash_type;
+	*rss_conf = 0;
+	if (hash_types & HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_IPV4)
+		*rss_conf |= RTE_ETH_RSS_IPV4;
+	if (hash_types & HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_TCP_IPV4)
+		*rss_conf |= RTE_ETH_RSS_NONFRAG_IPV4_TCP;
+	if (hash_types & HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_UDP_IPV4)
+		*rss_conf |= RTE_ETH_RSS_NONFRAG_IPV4_UDP;
+	if (hash_types & HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_IPV6)
+		*rss_conf |= RTE_ETH_RSS_IPV6;
+	if (hash_types & HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_TCP_IPV6)
+		*rss_conf |= RTE_ETH_RSS_NONFRAG_IPV6_TCP;
+	if (hash_types & HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_UDP_IPV6)
+		*rss_conf |= RTE_ETH_RSS_NONFRAG_IPV6_UDP;
+	if (hash_types & HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_AH_SPI_IPV6 ||
+	    hash_types & HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_AH_SPI_IPV4)
+		*rss_conf |= RTE_ETH_RSS_AH;
+	if (hash_types & HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_ESP_SPI_IPV6 ||
+	    hash_types & HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_ESP_SPI_IPV4)
+		*rss_conf |= RTE_ETH_RSS_ESP;
 }
