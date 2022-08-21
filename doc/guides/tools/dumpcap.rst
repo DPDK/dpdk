@@ -43,7 +43,7 @@ To list interfaces available for capture, use ``--list-interfaces``.
 
 To filter packets in style of *tshark*, use the ``-f`` flag.
 
-To capture on multiple interfaces at once, use multiple ``-I`` flags.
+To capture on multiple interfaces at once, use multiple ``-i`` flags.
 
 
 Example
@@ -55,7 +55,7 @@ Example
    0. 000:00:03.0
    1. 000:00:03.1
 
-   # <build_dir>/app/dpdk-dumpcap -I 0000:00:03.0 -c 6 -w /tmp/sample.pcapng
+   # <build_dir>/app/dpdk-dumpcap -i 0000:00:03.0 -c 6 -w /tmp/sample.pcapng
    Packets captured: 6
    Packets received/dropped on interface '0000:00:03.0' 6/0
 
