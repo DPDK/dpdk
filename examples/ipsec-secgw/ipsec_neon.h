@@ -17,12 +17,13 @@ extern xmm_t val_eth[RTE_MAX_ETHPORTS];
  */
 static inline void
 processx4_step3(struct rte_mbuf *pkts[FWDSTEP], uint16_t dst_port[FWDSTEP],
-		uint64_t tx_offloads, bool ip_cksum, uint8_t *l_pkt)
+		uint64_t tx_offloads, bool ip_cksum, bool is_ipv4, uint8_t *l_pkt)
 {
 	uint32x4_t te[FWDSTEP];
 	uint32x4_t ve[FWDSTEP];
 	uint32_t *p[FWDSTEP];
 	struct rte_mbuf *pkt;
+	uint32_t val;
 	uint8_t i;
 
 	for (i = 0; i < FWDSTEP; i++) {
@@ -37,7 +38,15 @@ processx4_step3(struct rte_mbuf *pkts[FWDSTEP], uint16_t dst_port[FWDSTEP],
 		te[i] = vld1q_u32(p[i]);
 
 		/* Update last 4 bytes */
-		ve[i] = vsetq_lane_u32(vgetq_lane_u32(te[i], 3), ve[i], 3);
+		val = vgetq_lane_u32(te[i], 3);
+#if RTE_BYTE_ORDER == RTE_LITTLE_ENDIAN
+		val &= 0xFFFFUL << 16;
+		val |= rte_cpu_to_be_16(is_ipv4 ? RTE_ETHER_TYPE_IPV4 : RTE_ETHER_TYPE_IPV6);
+#else
+		val &= 0xFFFFUL;
+		val |= rte_cpu_to_be_16(is_ipv4 ? RTE_ETHER_TYPE_IPV4 : RTE_ETHER_TYPE_IPV6) << 16;
+#endif
+		ve[i] = vsetq_lane_u32(val, ve[i], 3);
 		vst1q_u32(p[i], ve[i]);
 
 		if (ip_cksum) {
@@ -63,10 +72,11 @@ processx4_step3(struct rte_mbuf *pkts[FWDSTEP], uint16_t dst_port[FWDSTEP],
  */
 static inline void
 process_packet(struct rte_mbuf *pkt, uint16_t *dst_port, uint64_t tx_offloads,
-	       bool ip_cksum, uint8_t *l_pkt)
+	       bool ip_cksum, bool is_ipv4, uint8_t *l_pkt)
 {
 	struct rte_ether_hdr *eth_hdr;
 	uint32x4_t te, ve;
+	uint32_t val;
 
 	/* Check if it is a large packet */
 	if (pkt->pkt_len - RTE_ETHER_HDR_LEN > mtu_size)
@@ -77,7 +87,15 @@ process_packet(struct rte_mbuf *pkt, uint16_t *dst_port, uint64_t tx_offloads,
 	te = vld1q_u32((uint32_t *)eth_hdr);
 	ve = vreinterpretq_u32_s32(val_eth[dst_port[0]]);
 
-	ve = vcopyq_laneq_u32(ve, 3, te, 3);
+	val = vgetq_lane_u32(te, 3);
+#if RTE_BYTE_ORDER == RTE_LITTLE_ENDIAN
+	val &= 0xFFFFUL << 16;
+	val |= rte_cpu_to_be_16(is_ipv4 ? RTE_ETHER_TYPE_IPV4 : RTE_ETHER_TYPE_IPV6);
+#else
+	val &= 0xFFFFUL;
+	val |= rte_cpu_to_be_16(is_ipv4 ? RTE_ETHER_TYPE_IPV4 : RTE_ETHER_TYPE_IPV6) << 16;
+#endif
+	ve = vsetq_lane_u32(val, ve, 3);
 	vst1q_u32((uint32_t *)eth_hdr, ve);
 
 	if (ip_cksum) {
@@ -222,14 +240,14 @@ send_multi_pkts(struct rte_mbuf **pkts, uint16_t dst_port[MAX_PKT_BURST],
 		lp = pnum;
 		lp[0] = 1;
 
-		processx4_step3(pkts, dst_port, tx_offloads, ip_cksum, &l_pkt);
+		processx4_step3(pkts, dst_port, tx_offloads, ip_cksum, is_ipv4, &l_pkt);
 
 		/* dp1: <d[0], d[1], d[2], d[3], ... > */
 		dp1 = vld1q_u16(dst_port);
 
 		for (i = FWDSTEP; i != k; i += FWDSTEP) {
-			processx4_step3(&pkts[i], &dst_port[i], tx_offloads,
-					ip_cksum, &l_pkt);
+			processx4_step3(&pkts[i], &dst_port[i], tx_offloads, ip_cksum, is_ipv4,
+					&l_pkt);
 
 			/*
 			 * dp2:
@@ -267,20 +285,17 @@ send_multi_pkts(struct rte_mbuf **pkts, uint16_t dst_port[MAX_PKT_BURST],
 	/* Process up to last 3 packets one by one. */
 	switch (nb_rx % FWDSTEP) {
 	case 3:
-		process_packet(pkts[i], dst_port + i, tx_offloads, ip_cksum,
-			       &l_pkt);
+		process_packet(pkts[i], dst_port + i, tx_offloads, ip_cksum, is_ipv4, &l_pkt);
 		GROUP_PORT_STEP(dlp, dst_port, lp, pnum, i);
 		i++;
 		/* fallthrough */
 	case 2:
-		process_packet(pkts[i], dst_port + i, tx_offloads, ip_cksum,
-			       &l_pkt);
+		process_packet(pkts[i], dst_port + i, tx_offloads, ip_cksum, is_ipv4, &l_pkt);
 		GROUP_PORT_STEP(dlp, dst_port, lp, pnum, i);
 		i++;
 		/* fallthrough */
 	case 1:
-		process_packet(pkts[i], dst_port + i, tx_offloads, ip_cksum,
-			       &l_pkt);
+		process_packet(pkts[i], dst_port + i, tx_offloads, ip_cksum, is_ipv4, &l_pkt);
 		GROUP_PORT_STEP(dlp, dst_port, lp, pnum, i);
 	}
 
