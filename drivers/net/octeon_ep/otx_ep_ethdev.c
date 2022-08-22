@@ -337,6 +337,56 @@ otx_ep_tx_queue_release(struct rte_eth_dev *dev, uint16_t q_no)
 	otx_ep_delete_iqs(tq->otx_ep_dev, tq->q_no);
 }
 
+static int
+otx_ep_dev_stats_reset(struct rte_eth_dev *dev)
+{
+	struct otx_ep_device *otx_epvf = OTX_EP_DEV(dev);
+	uint32_t i;
+
+	for (i = 0; i < otx_epvf->nb_tx_queues; i++)
+		memset(&otx_epvf->instr_queue[i]->stats, 0,
+		       sizeof(struct otx_ep_iq_stats));
+
+	for (i = 0; i < otx_epvf->nb_rx_queues; i++)
+		memset(&otx_epvf->droq[i]->stats, 0,
+		       sizeof(struct otx_ep_droq_stats));
+
+	return 0;
+}
+
+static int
+otx_ep_dev_stats_get(struct rte_eth_dev *eth_dev,
+				struct rte_eth_stats *stats)
+{
+	struct otx_ep_device *otx_epvf = OTX_EP_DEV(eth_dev);
+	struct otx_ep_iq_stats *ostats;
+	struct otx_ep_droq_stats *istats;
+	uint32_t i;
+
+	memset(stats, 0, sizeof(struct rte_eth_stats));
+
+	for (i = 0; i < otx_epvf->nb_tx_queues; i++) {
+		ostats = &otx_epvf->instr_queue[i]->stats;
+		stats->q_opackets[i] = ostats->tx_pkts;
+		stats->q_obytes[i] = ostats->tx_bytes;
+		stats->opackets += ostats->tx_pkts;
+		stats->obytes += ostats->tx_bytes;
+		stats->oerrors += ostats->instr_dropped;
+	}
+	for (i = 0; i < otx_epvf->nb_rx_queues; i++) {
+		istats = &otx_epvf->droq[i]->stats;
+		stats->q_ipackets[i] = istats->pkts_received;
+		stats->q_ibytes[i] = istats->bytes_received;
+		stats->q_errors[i] = istats->rx_err;
+		stats->ipackets += istats->pkts_received;
+		stats->ibytes += istats->bytes_received;
+		stats->imissed += istats->rx_alloc_failure;
+		stats->ierrors += istats->rx_err;
+		stats->rx_nombuf += istats->rx_alloc_failure;
+	}
+	return 0;
+}
+
 /* Define our ethernet definitions */
 static const struct eth_dev_ops otx_ep_eth_dev_ops = {
 	.dev_configure		= otx_ep_dev_configure,
@@ -347,6 +397,8 @@ static const struct eth_dev_ops otx_ep_eth_dev_ops = {
 	.tx_queue_setup	        = otx_ep_tx_queue_setup,
 	.tx_queue_release	= otx_ep_tx_queue_release,
 	.dev_infos_get		= otx_ep_dev_info_get,
+	.stats_get		= otx_ep_dev_stats_get,
+	.stats_reset		= otx_ep_dev_stats_reset,
 };
 
 static int
