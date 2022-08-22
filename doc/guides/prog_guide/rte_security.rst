@@ -146,7 +146,9 @@ adding the relevant protocol headers and encrypting the data before sending
 the packet out. The software should make sure that the buffer
 has required head room and tail room for any protocol header addition. The
 software may also do early fragmentation if the resultant packet is expected
-to cross the MTU size.
+to cross the MTU size. The software should also make sure that L2 header contents
+are updated with the final L2 header which is expected post IPsec processing as
+the IPsec offload will only update L3 and above in egress path.
 
 
 .. note::
