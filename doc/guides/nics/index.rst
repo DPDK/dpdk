@@ -52,7 +52,7 @@ Network Interface Controller Drivers
     ngbe
     null
     octeontx
-    octeontx_ep
+    octeon_ep
     pfe
     qede
     sfc_efx
