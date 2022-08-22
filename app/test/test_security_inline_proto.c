@@ -418,15 +418,29 @@ copy_buf_to_pkt_segs(const uint8_t *buf, unsigned int len,
 	rte_memcpy(seg_buf, buf + copied, (size_t) len);
 }
 
+static bool
+is_outer_ipv4(struct ipsec_test_data *td)
+{
+	bool outer_ipv4;
+
+	if (td->ipsec_xform.direction == RTE_SECURITY_IPSEC_SA_DIR_INGRESS ||
+	    td->ipsec_xform.mode == RTE_SECURITY_IPSEC_SA_MODE_TRANSPORT)
+		outer_ipv4 = (((td->input_text.data[0] & 0xF0) >> 4) == IPVERSION);
+	else
+		outer_ipv4 = (td->ipsec_xform.tunnel.type == RTE_SECURITY_IPSEC_TUNNEL_IPV4);
+	return outer_ipv4;
+}
+
 static inline struct rte_mbuf *
-init_packet(struct rte_mempool *mp, const uint8_t *data, unsigned int len)
+init_packet(struct rte_mempool *mp, const uint8_t *data, unsigned int len, bool outer_ipv4)
 {
 	struct rte_mbuf *pkt;
 
 	pkt = rte_pktmbuf_alloc(mp);
 	if (pkt == NULL)
 		return NULL;
-	if (((data[0] & 0xF0) >> 4) == IPVERSION) {
+
+	if (outer_ipv4) {
 		rte_memcpy(rte_pktmbuf_append(pkt, RTE_ETHER_HDR_LEN),
 				&dummy_ipv4_eth_hdr, RTE_ETHER_HDR_LEN);
 		pkt->l3_len = sizeof(struct rte_ipv4_hdr);
@@ -711,6 +725,7 @@ test_ipsec_with_reassembly(struct reassembly_vector *vector,
 	struct rte_security_ctx *ctx;
 	unsigned int i, nb_rx = 0, j;
 	uint32_t ol_flags;
+	bool outer_ipv4;
 	int ret = 0;
 
 	burst_sz = vector->burst ? ENCAP_DECAP_BURST_SZ : 1;
@@ -740,11 +755,15 @@ test_ipsec_with_reassembly(struct reassembly_vector *vector,
 	memset(tx_pkts_burst, 0, sizeof(tx_pkts_burst[0]) * nb_tx);
 	memset(rx_pkts_burst, 0, sizeof(rx_pkts_burst[0]) * nb_tx);
 
+	memcpy(&sa_data, vector->sa_data, sizeof(struct ipsec_test_data));
+	sa_data.ipsec_xform.direction =	RTE_SECURITY_IPSEC_SA_DIR_EGRESS;
+	outer_ipv4 = is_outer_ipv4(&sa_data);
+
 	for (i = 0; i < nb_tx; i += vector->nb_frags) {
 		for (j = 0; j < vector->nb_frags; j++) {
 			tx_pkts_burst[i+j] = init_packet(mbufpool,
 						vector->frags[j]->data,
-						vector->frags[j]->len);
+						vector->frags[j]->len, outer_ipv4);
 			if (tx_pkts_burst[i+j] == NULL) {
 				ret = -1;
 				printf("\n packed init failed\n");
@@ -963,6 +982,7 @@ test_ipsec_inline_proto_process(struct ipsec_test_data *td,
 	int nb_rx = 0, nb_sent;
 	uint32_t ol_flags;
 	int i, j = 0, ret;
+	bool outer_ipv4;
 
 	memset(rx_pkts_burst, 0, sizeof(rx_pkts_burst[0]) * nb_pkts);
 
@@ -994,9 +1014,11 @@ test_ipsec_inline_proto_process(struct ipsec_test_data *td,
 		if (ret)
 			goto out;
 	}
+	outer_ipv4 = is_outer_ipv4(td);
+
 	for (i = 0; i < nb_pkts; i++) {
 		tx_pkts_burst[i] = init_packet(mbufpool, td->input_text.data,
-						td->input_text.len);
+						td->input_text.len, outer_ipv4);
 		if (tx_pkts_burst[i] == NULL) {
 			while (i--)
 				rte_pktmbuf_free(tx_pkts_burst[i]);
@@ -1194,6 +1216,7 @@ test_ipsec_inline_proto_process_with_esn(struct ipsec_test_data td[],
 	struct rte_security_session *ses;
 	struct rte_security_ctx *ctx;
 	uint32_t ol_flags;
+	bool outer_ipv4;
 	int i, ret;
 
 	if (td[0].aead) {
@@ -1224,10 +1247,11 @@ test_ipsec_inline_proto_process_with_esn(struct ipsec_test_data td[],
 		if (ret)
 			goto out;
 	}
+	outer_ipv4 = is_outer_ipv4(td);
 
 	for (i = 0; i < nb_pkts; i++) {
 		tx_pkt = init_packet(mbufpool, td[i].input_text.data,
-					td[i].input_text.len);
+					td[i].input_text.len, outer_ipv4);
 		if (tx_pkt == NULL) {
 			ret = TEST_FAILED;
 			goto out;
