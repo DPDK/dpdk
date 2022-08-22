@@ -36,12 +36,24 @@ rte_vdpa_vf_dev_add(const char *vf_name, struct vdpa_vf_params *vf_params __rte_
 	char args[RTE_DEV_NAME_MAX_LEN];
 	snprintf(args, RTE_DEV_NAME_MAX_LEN, "%s=%s", VIRTIO_ARG_VDPA, VIRTIO_ARG_VDPA_VALUE_VF);
 
+	if (!vf_name)
+		return -EINVAL;
+
+	if(virtio_vdpa_find_priv_resource_by_name(vf_name))
+		return -EEXIST;
+
 	return rte_eal_hotplug_add("pci", vf_name, args);
 }
 
 int
 rte_vdpa_vf_dev_remove(const char *vf_name)
 {
+	if (!vf_name)
+		return -EINVAL;
+
+	if(!virtio_vdpa_find_priv_resource_by_name(vf_name))
+		return -ENODEV;
+
 	return rte_eal_hotplug_remove("pci", vf_name);
 }
 
