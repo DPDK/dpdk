@@ -424,15 +424,6 @@ cn10k_nix_prep_sec_vec(struct rte_mbuf *m, uint64x2_t *cmd0, uint64x2_t *cmd1,
 
 	dptr += l2_len;
 
-	if (sess_priv.mode == ROC_IE_SA_MODE_TUNNEL) {
-		if (sess_priv.outer_ip_ver == ROC_IE_SA_IP_VERSION_4)
-			*((uint16_t *)(dptr - 2)) =
-				rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV4);
-		else
-			*((uint16_t *)(dptr - 2)) =
-				rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV6);
-	}
-
 	/* Move to our line */
 	laddr = LMT_OFF(lbase, *lnum, *loff ? 64 : 0);
 
@@ -574,15 +565,6 @@ cn10k_nix_prep_sec(struct rte_mbuf *m, uint64_t *cmd, uintptr_t *nixtx_addr,
 	cmd23 = vsetq_lane_u64((uintptr_t)m | 1, cmd23, 1);
 
 	dptr += l2_len;
-
-	if (sess_priv.mode == ROC_IE_SA_MODE_TUNNEL) {
-		if (sess_priv.outer_ip_ver == ROC_IE_SA_IP_VERSION_4)
-			*((uint16_t *)(dptr - 2)) =
-				rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV4);
-		else
-			*((uint16_t *)(dptr - 2)) =
-				rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV6);
-	}
 
 	/* Move to our line */
 	laddr = LMT_OFF(lbase, *lnum, *loff ? 64 : 0);
