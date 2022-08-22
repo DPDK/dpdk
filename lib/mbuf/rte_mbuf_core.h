@@ -207,7 +207,8 @@ extern "C" {
 /**
  * Request security offload processing on the TX packet.
  * To use Tx security offload, the user needs to fill l2_len in mbuf
- * indicating L2 header size and where L3 header starts.
+ * indicating L2 header size and where L3 header starts. Similarly,
+ * l3_len should also be filled along with ol_flags reflecting current L3 type.
  */
 #define RTE_MBUF_F_TX_SEC_OFFLOAD	(1ULL << 43)
 

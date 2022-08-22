@@ -431,7 +431,7 @@ protocol operations. See security library and PMD documentation for more details
 
 * **[uses]       rte_eth_rxconf,rte_eth_rxmode**: ``offloads:RTE_ETH_RX_OFFLOAD_SECURITY``,
 * **[uses]       rte_eth_txconf,rte_eth_txmode**: ``offloads:RTE_ETH_TX_OFFLOAD_SECURITY``.
-* **[uses]       mbuf**: ``mbuf.l2_len``.
+* **[uses]       mbuf**: ``mbuf.l2_len``, ``mbuf.l3_len``, ``mbuf.ol_flags``.
 * **[implements] rte_security_ops**: ``session_create``, ``session_update``,
   ``session_stats_get``, ``session_destroy``, ``set_pkt_metadata``, ``get_userdata``,
   ``capabilities_get``.
