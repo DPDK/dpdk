@@ -387,6 +387,22 @@ otx_ep_dev_stats_get(struct rte_eth_dev *eth_dev,
 	return 0;
 }
 
+static int
+otx_ep_dev_link_update(struct rte_eth_dev *eth_dev, int wait_to_complete)
+{
+	RTE_SET_USED(wait_to_complete);
+
+	if (!eth_dev->data->dev_started)
+		return 0;
+	struct rte_eth_link link;
+
+	memset(&link, 0, sizeof(link));
+	link.link_status = RTE_ETH_LINK_UP;
+	link.link_speed  = RTE_ETH_SPEED_NUM_10G;
+	link.link_duplex = RTE_ETH_LINK_FULL_DUPLEX;
+	return rte_eth_linkstatus_set(eth_dev, &link);
+}
+
 /* Define our ethernet definitions */
 static const struct eth_dev_ops otx_ep_eth_dev_ops = {
 	.dev_configure		= otx_ep_dev_configure,
@@ -399,6 +415,7 @@ static const struct eth_dev_ops otx_ep_eth_dev_ops = {
 	.dev_infos_get		= otx_ep_dev_info_get,
 	.stats_get		= otx_ep_dev_stats_get,
 	.stats_reset		= otx_ep_dev_stats_reset,
+	.link_update		= otx_ep_dev_link_update,
 };
 
 static int
