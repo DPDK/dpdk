@@ -713,7 +713,8 @@ ifpga_rawdev_configure(const struct rte_rawdev *dev,
 {
 	IFPGA_RAWDEV_PMD_FUNC_TRACE();
 
-	RTE_FUNC_PTR_OR_ERR_RET(dev, -EINVAL);
+	if (dev == NULL)
+		return -EINVAL;
 
 	return config ? 0 : 1;
 }
@@ -726,7 +727,8 @@ ifpga_rawdev_start(struct rte_rawdev *dev)
 
 	IFPGA_RAWDEV_PMD_FUNC_TRACE();
 
-	RTE_FUNC_PTR_OR_ERR_RET(dev, -EINVAL);
+	if (dev == NULL)
+		return -EINVAL;
 
 	adapter = ifpga_rawdev_get_priv(dev);
 	if (!adapter)

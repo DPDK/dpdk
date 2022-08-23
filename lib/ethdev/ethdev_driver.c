@@ -266,7 +266,8 @@ rte_eth_dev_create(struct rte_device *device, const char *name,
 	struct rte_eth_dev *ethdev;
 	int retval;
 
-	RTE_FUNC_PTR_OR_ERR_RET(*ethdev_init, -EINVAL);
+	if (*ethdev_init == NULL)
+		return -EINVAL;
 
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
 		ethdev = rte_eth_dev_allocate(name);
@@ -330,7 +331,8 @@ rte_eth_dev_destroy(struct rte_eth_dev *ethdev,
 	if (!ethdev)
 		return -ENODEV;
 
-	RTE_FUNC_PTR_OR_ERR_RET(*ethdev_uninit, -EINVAL);
+	if (*ethdev_uninit == NULL)
+		return -EINVAL;
 
 	ret = ethdev_uninit(ethdev);
 	if (ret)
@@ -560,8 +562,8 @@ rte_eth_hairpin_queue_peer_bind(uint16_t cur_port, uint16_t cur_queue,
 
 	/* No need to check the validity again. */
 	dev = &rte_eth_devices[cur_port];
-	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->hairpin_queue_peer_bind,
-				-ENOTSUP);
+	if (*dev->dev_ops->hairpin_queue_peer_bind == NULL)
+		return -ENOTSUP;
 
 	return (*dev->dev_ops->hairpin_queue_peer_bind)(dev, cur_queue,
 							peer_info, direction);
@@ -575,8 +577,8 @@ rte_eth_hairpin_queue_peer_unbind(uint16_t cur_port, uint16_t cur_queue,
 
 	/* No need to check the validity again. */
 	dev = &rte_eth_devices[cur_port];
-	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->hairpin_queue_peer_unbind,
-				-ENOTSUP);
+	if (*dev->dev_ops->hairpin_queue_peer_unbind == NULL)
+		return -ENOTSUP;
 
 	return (*dev->dev_ops->hairpin_queue_peer_unbind)(dev, cur_queue,
 							  direction);
@@ -596,8 +598,8 @@ rte_eth_hairpin_queue_peer_update(uint16_t peer_port, uint16_t peer_queue,
 
 	/* No need to check the validity again. */
 	dev = &rte_eth_devices[peer_port];
-	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->hairpin_queue_peer_update,
-				-ENOTSUP);
+	if (*dev->dev_ops->hairpin_queue_peer_update == NULL)
+		return -ENOTSUP;
 
 	return (*dev->dev_ops->hairpin_queue_peer_update)(dev, peer_queue,
 					cur_info, peer_info, direction);

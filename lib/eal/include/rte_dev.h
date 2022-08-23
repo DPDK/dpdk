@@ -20,6 +20,7 @@ extern "C" {
 #include <stdio.h>
 
 #include <rte_config.h>
+#include <rte_common.h>
 #include <rte_compat.h>
 #include <rte_log.h>
 
@@ -37,12 +38,14 @@ typedef void (*rte_dev_event_cb_fn)(const char *device_name,
 					void *cb_arg);
 
 /* Macros to check for invalid function pointers */
-#define RTE_FUNC_PTR_OR_ERR_RET(func, retval) do { \
+#define RTE_FUNC_PTR_OR_ERR_RET(func, retval) RTE_DEPRECATED(RTE_FUNC_PTR_OR_ERR_RET) \
+do { \
 	if ((func) == NULL) \
 		return retval; \
 } while (0)
 
-#define RTE_FUNC_PTR_OR_RET(func) do { \
+#define RTE_FUNC_PTR_OR_RET(func) RTE_DEPRECATED(RTE_FUNC_PTR_OR_RET) \
+do { \
 	if ((func) == NULL) \
 		return; \
 } while (0)

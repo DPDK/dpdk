@@ -3366,8 +3366,10 @@ int rte_vhost_host_notifier_ctrl(int vid, uint16_t qid, bool enable)
 		q_last = qid;
 	}
 
-	RTE_FUNC_PTR_OR_ERR_RET(vdpa_dev->ops->get_vfio_device_fd, -ENOTSUP);
-	RTE_FUNC_PTR_OR_ERR_RET(vdpa_dev->ops->get_notify_area, -ENOTSUP);
+	if (vdpa_dev->ops->get_vfio_device_fd == NULL)
+		return -ENOTSUP;
+	if (vdpa_dev->ops->get_notify_area == NULL)
+		return -ENOTSUP;
 
 	vfio_device_fd = vdpa_dev->ops->get_vfio_device_fd(vid);
 	if (vfio_device_fd < 0)

@@ -189,7 +189,8 @@ regexdev_info_get(uint8_t dev_id, struct rte_regexdev_info *dev_info)
 	if (dev_info == NULL)
 		return -EINVAL;
 	dev = &rte_regex_devices[dev_id];
-	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->dev_info_get, -ENOTSUP);
+	if (*dev->dev_ops->dev_info_get == NULL)
+		return -ENOTSUP;
 	return (*dev->dev_ops->dev_info_get)(dev, dev_info);
 
 }
@@ -211,7 +212,8 @@ rte_regexdev_configure(uint8_t dev_id, const struct rte_regexdev_config *cfg)
 	if (cfg == NULL)
 		return -EINVAL;
 	dev = &rte_regex_devices[dev_id];
-	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->dev_configure, -ENOTSUP);
+	if (*dev->dev_ops->dev_configure == NULL)
+		return -ENOTSUP;
 	if (dev->data->dev_started) {
 		RTE_REGEXDEV_LOG
 			(ERR, "Dev %u must be stopped to allow configuration\n",
@@ -301,7 +303,8 @@ rte_regexdev_queue_pair_setup(uint8_t dev_id, uint16_t queue_pair_id,
 
 	RTE_REGEXDEV_VALID_DEV_ID_OR_ERR_RET(dev_id, -EINVAL);
 	dev = &rte_regex_devices[dev_id];
-	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->dev_qp_setup, -ENOTSUP);
+	if (*dev->dev_ops->dev_qp_setup == NULL)
+		return -ENOTSUP;
 	if (dev->data->dev_started) {
 		RTE_REGEXDEV_LOG
 			(ERR, "Dev %u must be stopped to allow configuration\n",
@@ -332,7 +335,8 @@ rte_regexdev_start(uint8_t dev_id)
 
 	RTE_REGEXDEV_VALID_DEV_ID_OR_ERR_RET(dev_id, -EINVAL);
 	dev = &rte_regex_devices[dev_id];
-	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->dev_start, -ENOTSUP);
+	if (*dev->dev_ops->dev_start == NULL)
+		return -ENOTSUP;
 	ret = (*dev->dev_ops->dev_start)(dev);
 	if (ret == 0)
 		dev->data->dev_started = 1;
@@ -346,7 +350,8 @@ rte_regexdev_stop(uint8_t dev_id)
 
 	RTE_REGEXDEV_VALID_DEV_ID_OR_ERR_RET(dev_id, -EINVAL);
 	dev = &rte_regex_devices[dev_id];
-	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->dev_stop, -ENOTSUP);
+	if (*dev->dev_ops->dev_stop == NULL)
+		return -ENOTSUP;
 	(*dev->dev_ops->dev_stop)(dev);
 	dev->data->dev_started = 0;
 	return 0;
@@ -359,7 +364,8 @@ rte_regexdev_close(uint8_t dev_id)
 
 	RTE_REGEXDEV_VALID_DEV_ID_OR_ERR_RET(dev_id, -EINVAL);
 	dev = &rte_regex_devices[dev_id];
-	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->dev_close, -ENOTSUP);
+	if (*dev->dev_ops->dev_close == NULL)
+		return -ENOTSUP;
 	(*dev->dev_ops->dev_close)(dev);
 	dev->data->dev_started = 0;
 	dev->state = RTE_REGEXDEV_UNUSED;
@@ -374,7 +380,8 @@ rte_regexdev_attr_get(uint8_t dev_id, enum rte_regexdev_attr_id attr_id,
 
 	RTE_REGEXDEV_VALID_DEV_ID_OR_ERR_RET(dev_id, -EINVAL);
 	dev = &rte_regex_devices[dev_id];
-	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->dev_attr_get, -ENOTSUP);
+	if (*dev->dev_ops->dev_attr_get == NULL)
+		return -ENOTSUP;
 	if (attr_value == NULL) {
 		RTE_REGEXDEV_LOG(ERR, "Dev %d attribute value can't be NULL\n",
 				 dev_id);
@@ -391,7 +398,8 @@ rte_regexdev_attr_set(uint8_t dev_id, enum rte_regexdev_attr_id attr_id,
 
 	RTE_REGEXDEV_VALID_DEV_ID_OR_ERR_RET(dev_id, -EINVAL);
 	dev = &rte_regex_devices[dev_id];
-	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->dev_attr_set, -ENOTSUP);
+	if (*dev->dev_ops->dev_attr_set == NULL)
+		return -ENOTSUP;
 	if (attr_value == NULL) {
 		RTE_REGEXDEV_LOG(ERR, "Dev %d attribute value can't be NULL\n",
 				 dev_id);
@@ -409,7 +417,8 @@ rte_regexdev_rule_db_update(uint8_t dev_id,
 
 	RTE_REGEXDEV_VALID_DEV_ID_OR_ERR_RET(dev_id, -EINVAL);
 	dev = &rte_regex_devices[dev_id];
-	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->dev_rule_db_update, -ENOTSUP);
+	if (*dev->dev_ops->dev_rule_db_update == NULL)
+		return -ENOTSUP;
 	if (rules == NULL) {
 		RTE_REGEXDEV_LOG(ERR, "Dev %d rules can't be NULL\n",
 				 dev_id);
@@ -425,8 +434,8 @@ rte_regexdev_rule_db_compile_activate(uint8_t dev_id)
 
 	RTE_REGEXDEV_VALID_DEV_ID_OR_ERR_RET(dev_id, -EINVAL);
 	dev = &rte_regex_devices[dev_id];
-	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->dev_rule_db_compile_activate,
-				-ENOTSUP);
+	if (*dev->dev_ops->dev_rule_db_compile_activate == NULL)
+		return -ENOTSUP;
 	return (*dev->dev_ops->dev_rule_db_compile_activate)(dev);
 }
 
@@ -438,8 +447,8 @@ rte_regexdev_rule_db_import(uint8_t dev_id, const char *rule_db,
 
 	RTE_REGEXDEV_VALID_DEV_ID_OR_ERR_RET(dev_id, -EINVAL);
 	dev = &rte_regex_devices[dev_id];
-	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->dev_db_import,
-				-ENOTSUP);
+	if (*dev->dev_ops->dev_db_import == NULL)
+		return -ENOTSUP;
 	if (rule_db == NULL) {
 		RTE_REGEXDEV_LOG(ERR, "Dev %d rules can't be NULL\n",
 				 dev_id);
@@ -455,8 +464,8 @@ rte_regexdev_rule_db_export(uint8_t dev_id, char *rule_db)
 
 	RTE_REGEXDEV_VALID_DEV_ID_OR_ERR_RET(dev_id, -EINVAL);
 	dev = &rte_regex_devices[dev_id];
-	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->dev_db_export,
-				-ENOTSUP);
+	if (*dev->dev_ops->dev_db_export == NULL)
+		return -ENOTSUP;
 	return (*dev->dev_ops->dev_db_export)(dev, rule_db);
 }
 
@@ -468,8 +477,8 @@ rte_regexdev_xstats_names_get(uint8_t dev_id,
 
 	RTE_REGEXDEV_VALID_DEV_ID_OR_ERR_RET(dev_id, -EINVAL);
 	dev = &rte_regex_devices[dev_id];
-	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->dev_xstats_names_get,
-				-ENOTSUP);
+	if (*dev->dev_ops->dev_xstats_names_get == NULL)
+		return -ENOTSUP;
 	if (xstats_map == NULL) {
 		RTE_REGEXDEV_LOG(ERR, "Dev %d xstats map can't be NULL\n",
 				 dev_id);
@@ -486,7 +495,8 @@ rte_regexdev_xstats_get(uint8_t dev_id, const uint16_t *ids,
 
 	RTE_REGEXDEV_VALID_DEV_ID_OR_ERR_RET(dev_id, -EINVAL);
 	dev = &rte_regex_devices[dev_id];
-	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->dev_xstats_get, -ENOTSUP);
+	if (*dev->dev_ops->dev_xstats_get == NULL)
+		return -ENOTSUP;
 	if (ids == NULL) {
 		RTE_REGEXDEV_LOG(ERR, "Dev %d ids can't be NULL\n", dev_id);
 		return -EINVAL;
@@ -506,8 +516,8 @@ rte_regexdev_xstats_by_name_get(uint8_t dev_id, const char *name,
 
 	RTE_REGEXDEV_VALID_DEV_ID_OR_ERR_RET(dev_id, -EINVAL);
 	dev = &rte_regex_devices[dev_id];
-	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->dev_xstats_by_name_get,
-				-ENOTSUP);
+	if (*dev->dev_ops->dev_xstats_by_name_get == NULL)
+		return -ENOTSUP;
 	if (name == NULL) {
 		RTE_REGEXDEV_LOG(ERR, "Dev %d name can't be NULL\n", dev_id);
 		return -EINVAL;
@@ -531,7 +541,8 @@ rte_regexdev_xstats_reset(uint8_t dev_id, const uint16_t *ids,
 
 	RTE_REGEXDEV_VALID_DEV_ID_OR_ERR_RET(dev_id, -EINVAL);
 	dev = &rte_regex_devices[dev_id];
-	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->dev_xstats_reset, -ENOTSUP);
+	if (*dev->dev_ops->dev_xstats_reset == NULL)
+		return -ENOTSUP;
 	if (ids == NULL) {
 		RTE_REGEXDEV_LOG(ERR, "Dev %d ids can't be NULL\n", dev_id);
 		return -EINVAL;
@@ -546,7 +557,8 @@ rte_regexdev_selftest(uint8_t dev_id)
 
 	RTE_REGEXDEV_VALID_DEV_ID_OR_ERR_RET(dev_id, -EINVAL);
 	dev = &rte_regex_devices[dev_id];
-	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->dev_selftest, -ENOTSUP);
+	if (*dev->dev_ops->dev_selftest == NULL)
+		return -ENOTSUP;
 	return (*dev->dev_ops->dev_selftest)(dev);
 }
 
@@ -557,7 +569,8 @@ rte_regexdev_dump(uint8_t dev_id, FILE *f)
 
 	RTE_REGEXDEV_VALID_DEV_ID_OR_ERR_RET(dev_id, -EINVAL);
 	dev = &rte_regex_devices[dev_id];
-	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->dev_dump, -ENOTSUP);
+	if (*dev->dev_ops->dev_dump == NULL)
+		return -ENOTSUP;
 	if (f == NULL) {
 		RTE_REGEXDEV_LOG(ERR, "Dev %d file can't be NULL\n", dev_id);
 		return -EINVAL;

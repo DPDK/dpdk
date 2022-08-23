@@ -5710,7 +5710,8 @@ rte_eth_rx_queue_count(uint16_t port_id, uint16_t queue_id)
 	qd = p->rxq.data[queue_id];
 
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
-	RTE_FUNC_PTR_OR_ERR_RET(*p->rx_queue_count, -ENOTSUP);
+	if (*p->rx_queue_count == NULL)
+		return -ENOTSUP;
 	if (qd == NULL)
 		return -EINVAL;
 
@@ -5784,7 +5785,8 @@ rte_eth_rx_descriptor_status(uint16_t port_id, uint16_t queue_id,
 	if (qd == NULL)
 		return -ENODEV;
 #endif
-	RTE_FUNC_PTR_OR_ERR_RET(*p->rx_descriptor_status, -ENOTSUP);
+	if (*p->rx_descriptor_status == NULL)
+		return -ENOTSUP;
 	return (*p->rx_descriptor_status)(qd, offset);
 }
 
@@ -5854,7 +5856,8 @@ static inline int rte_eth_tx_descriptor_status(uint16_t port_id,
 	if (qd == NULL)
 		return -ENODEV;
 #endif
-	RTE_FUNC_PTR_OR_ERR_RET(*p->tx_descriptor_status, -ENOTSUP);
+	if (*p->tx_descriptor_status == NULL)
+		return -ENOTSUP;
 	return (*p->tx_descriptor_status)(qd, offset);
 }
 

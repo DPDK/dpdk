@@ -84,6 +84,10 @@ API Changes
    Also, make sure to start the actual text at the margin.
    =======================================================
 
+* eal: RTE_FUNC_PTR_OR_* macros have been marked deprecated and will be removed
+  in the future. Applications can use ``devtools/cocci/func_or_ret.cocci``
+  to update their code.
+
 * raw/ifgpa: The function ``rte_pmd_ifpga_get_pci_bus`` has been removed.
 
 

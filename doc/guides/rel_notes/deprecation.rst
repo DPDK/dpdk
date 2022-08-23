@@ -14,6 +14,10 @@ Deprecation Notices
 * kvargs: The function ``rte_kvargs_process`` will get a new parameter
   for returning key match count. It will ease handling of no-match case.
 
+* eal: RTE_FUNC_PTR_OR_* macros have been marked deprecated and will be removed
+  in the future. Applications can use ``devtools/cocci/func_or_ret.cocci``
+  to update their code.
+
 * eal: The function ``rte_eal_remote_launch`` will return new error codes
   after read or write error on the pipe, instead of calling ``rte_panic``.
 

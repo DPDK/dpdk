@@ -160,7 +160,8 @@ scheduler_pmd_start(struct rte_cryptodev *dev)
 		return -1;
 	}
 
-	RTE_FUNC_PTR_OR_ERR_RET(*sched_ctx->ops.worker_attach, -ENOTSUP);
+	if (*sched_ctx->ops.worker_attach == NULL)
+		return -ENOTSUP;
 
 	for (i = 0; i < sched_ctx->nb_workers; i++) {
 		uint8_t worker_dev_id = sched_ctx->workers[i].dev_id;
@@ -171,7 +172,8 @@ scheduler_pmd_start(struct rte_cryptodev *dev)
 		}
 	}
 
-	RTE_FUNC_PTR_OR_ERR_RET(*sched_ctx->ops.scheduler_start, -ENOTSUP);
+	if (*sched_ctx->ops.scheduler_start == NULL)
+		return -ENOTSUP;
 
 	if ((*sched_ctx->ops.scheduler_start)(dev) < 0) {
 		CR_SCHED_LOG(ERR, "Scheduler start failed");
