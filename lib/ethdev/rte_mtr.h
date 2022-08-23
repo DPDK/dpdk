@@ -953,6 +953,8 @@ rte_mtr_meter_policy_update(uint16_t port_id,
  *   The port identifier of the Ethernet device.
  * @param[in] mtr_id
  *   MTR object ID. Needs to be valid.
+ * @param[in] proto
+ *   Input color protocol.
  * @param[in] dscp_table
  *   When non-NULL: it points to a pre-allocated and pre-populated table with
  *   exactly 64 elements providing the input color for each value of the
@@ -967,7 +969,7 @@ rte_mtr_meter_policy_update(uint16_t port_id,
 __rte_experimental
 int
 rte_mtr_meter_dscp_table_update(uint16_t port_id,
-	uint32_t mtr_id,
+	uint32_t mtr_id, enum rte_mtr_color_in_protocol proto,
 	enum rte_color *dscp_table,
 	struct rte_mtr_error *error);
 
@@ -978,6 +980,8 @@ rte_mtr_meter_dscp_table_update(uint16_t port_id,
  *   The port identifier of the Ethernet device.
  * @param[in] mtr_id
  *   MTR object ID. Needs to be valid.
+ * @param[in] proto
+ *   Input color protocol.
  * @param[in] vlan_table
  *   When non-NULL: it points to a pre-allocated and pre-populated table with
  *   exactly 16 elements providing the input color for each value of the
@@ -992,6 +996,7 @@ rte_mtr_meter_dscp_table_update(uint16_t port_id,
 __rte_experimental
 int
 rte_mtr_meter_vlan_table_update(uint16_t port_id, uint32_t mtr_id,
+				enum rte_mtr_color_in_protocol proto,
 				enum rte_color *vlan_table,
 				struct rte_mtr_error *error);
 

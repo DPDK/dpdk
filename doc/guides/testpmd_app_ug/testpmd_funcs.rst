@@ -2428,15 +2428,15 @@ set port meter dscp table
 
 Set meter dscp table for the ethernet device::
 
-   testpmd> set port meter dscp table (port_id) (mtr_id) [(dscp_tbl_entry0) \
-   (dscp_tbl_entry1)...(dscp_tbl_entry63)]
+   testpmd> set port meter dscp table (port_id) (mtr_id) (proto) \
+   [(dscp_tbl_entry0) (dscp_tbl_entry1)...(dscp_tbl_entry63)]
 
 set port meter vlan table
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 Set meter VLAN table for the Ethernet device::
 
-   testpmd> set port meter vlan table (port_id) (mtr_id) [(vlan_tbl_entry0) \
-   (vlan_tbl_entry1)...(vlan_tbl_entry15)]
+   testpmd> set port meter vlan table (port_id) (mtr_id) (proto) \
+   [(vlan_tbl_entry0) (vlan_tbl_entry1)...(vlan_tbl_entry15)]
 
 set port meter protocol
 ~~~~~~~~~~~~~~~~~~~~~~~

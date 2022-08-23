@@ -238,25 +238,25 @@ rte_mtr_meter_policy_update(uint16_t port_id,
 /** MTR object meter DSCP table update */
 int
 rte_mtr_meter_dscp_table_update(uint16_t port_id,
-	uint32_t mtr_id,
+	uint32_t mtr_id, enum rte_mtr_color_in_protocol proto,
 	enum rte_color *dscp_table,
 	struct rte_mtr_error *error)
 {
 	struct rte_eth_dev *dev = &rte_eth_devices[port_id];
 	return RTE_MTR_FUNC(port_id, meter_dscp_table_update)(dev,
-		mtr_id, dscp_table, error);
+		mtr_id, proto, dscp_table, error);
 }
 
 /** MTR object meter VLAN table update */
 int
 rte_mtr_meter_vlan_table_update(uint16_t port_id,
-	uint32_t mtr_id,
+	uint32_t mtr_id, enum rte_mtr_color_in_protocol proto,
 	enum rte_color *vlan_table,
 	struct rte_mtr_error *error)
 {
 	struct rte_eth_dev *dev = &rte_eth_devices[port_id];
 	return RTE_MTR_FUNC(port_id, meter_vlan_table_update)(dev,
-		mtr_id, vlan_table, error);
+		mtr_id, proto, vlan_table, error);
 }
 
 /** Set the input color protocol on MTR object */

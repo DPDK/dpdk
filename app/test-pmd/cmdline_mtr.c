@@ -299,8 +299,8 @@ parse_meter_color_str(char *c_str, uint32_t *use_prev_meter_color,
 }
 
 static int
-parse_multi_token_string(char *t_str, uint16_t *port_id,
-	uint32_t *mtr_id, enum rte_color **dscp_table)
+parse_multi_token_string(char *t_str, uint16_t *port_id, uint32_t *mtr_id,
+	enum rte_mtr_color_in_protocol *proto, enum rte_color **dscp_table)
 {
 	char *token;
 	uint64_t val;
@@ -327,6 +327,16 @@ parse_multi_token_string(char *t_str, uint16_t *port_id,
 		return -1;
 
 	*mtr_id = val;
+
+	/* Third token: protocol  */
+	token = strtok_r(t_str, PARSE_DELIMITER, &t_str);
+	if (token == NULL)
+		return 0;
+
+	if (strcmp(token, "outer_ip") == 0)
+		*proto = RTE_MTR_COLOR_IN_PROTO_OUTER_IP;
+	else if (strcmp(token, "inner_ip") == 0)
+		*proto = RTE_MTR_COLOR_IN_PROTO_INNER_IP;
 
 	ret = parse_dscp_table_entries(t_str, dscp_table);
 	if (ret != 0)
@@ -337,7 +347,7 @@ parse_multi_token_string(char *t_str, uint16_t *port_id,
 
 static int
 parse_multi_token_vlan_str(char *t_str, uint16_t *port_id, uint32_t *mtr_id,
-	enum rte_color **vlan_table)
+	enum rte_mtr_color_in_protocol *proto, enum rte_color **vlan_table)
 {
 	uint64_t val;
 	char *token;
@@ -364,6 +374,16 @@ parse_multi_token_vlan_str(char *t_str, uint16_t *port_id, uint32_t *mtr_id,
 		return -1;
 
 	*mtr_id = val;
+
+	/* Third token: protocol  */
+	token = strtok_r(t_str, PARSE_DELIMITER, &t_str);
+	if (token == NULL)
+		return 0;
+
+	if (strcmp(token, "outer_vlan") == 0)
+		*proto = RTE_MTR_COLOR_IN_PROTO_OUTER_VLAN;
+	else if (strcmp(token, "inner_vlan") == 0)
+		*proto = RTE_MTR_COLOR_IN_PROTO_INNER_VLAN;
 
 	ret = parse_vlan_table_entries(t_str, vlan_table);
 	if (ret != 0)
@@ -1390,6 +1410,7 @@ static void cmd_set_port_meter_dscp_table_parsed(void *parsed_result,
 	__rte_unused void *data)
 {
 	struct cmd_set_port_meter_dscp_table_result *res = parsed_result;
+	enum rte_mtr_color_in_protocol proto = 0;
 	struct rte_mtr_error error;
 	enum rte_color *dscp_table = NULL;
 	char *t_str = res->token_string;
@@ -1398,7 +1419,8 @@ static void cmd_set_port_meter_dscp_table_parsed(void *parsed_result,
 	int ret;
 
 	/* Parse string */
-	ret = parse_multi_token_string(t_str, &port_id, &mtr_id, &dscp_table);
+	ret = parse_multi_token_string(t_str, &port_id, &mtr_id, &proto,
+				       &dscp_table);
 	if (ret) {
 		fprintf(stderr, " Multi token string parse error\n");
 		return;
@@ -1408,7 +1430,7 @@ static void cmd_set_port_meter_dscp_table_parsed(void *parsed_result,
 		goto free_table;
 
 	/* Update Meter DSCP Table*/
-	ret = rte_mtr_meter_dscp_table_update(port_id, mtr_id,
+	ret = rte_mtr_meter_dscp_table_update(port_id, mtr_id, proto,
 		dscp_table, &error);
 	if (ret != 0)
 		print_err_msg(&error);
@@ -1420,7 +1442,7 @@ free_table:
 cmdline_parse_inst_t cmd_set_port_meter_dscp_table = {
 	.f = cmd_set_port_meter_dscp_table_parsed,
 	.data = NULL,
-	.help_str = "set port meter dscp table <port_id> <mtr_id> "
+	.help_str = "set port meter dscp table <port_id> <mtr_id> <proto> "
 		"[<dscp_tbl_entry0> <dscp_tbl_entry1> ... <dscp_tbl_entry63>]",
 	.tokens = {
 		(void *)&cmd_set_port_meter_dscp_table_set,
@@ -1463,6 +1485,7 @@ static void cmd_set_port_meter_vlan_table_parsed(void *parsed_result,
 	__rte_unused void *data)
 {
 	struct cmd_set_port_meter_vlan_table_result *res = parsed_result;
+	enum rte_mtr_color_in_protocol proto = 0;
 	struct rte_mtr_error error;
 	enum rte_color *vlan_table = NULL;
 	char *t_str = res->token_string;
@@ -1471,7 +1494,8 @@ static void cmd_set_port_meter_vlan_table_parsed(void *parsed_result,
 	int ret;
 
 	/* Parse string */
-	ret = parse_multi_token_vlan_str(t_str, &port_id, &mtr_id, &vlan_table);
+	ret = parse_multi_token_vlan_str(t_str, &port_id, &mtr_id, &proto,
+					 &vlan_table);
 	if (ret) {
 		fprintf(stderr, " Multi token string parse error\n");
 		return;
@@ -1481,7 +1505,7 @@ static void cmd_set_port_meter_vlan_table_parsed(void *parsed_result,
 		goto free_table;
 
 	/* Update Meter VLAN Table*/
-	ret = rte_mtr_meter_vlan_table_update(port_id, mtr_id,
+	ret = rte_mtr_meter_vlan_table_update(port_id, mtr_id, proto,
 		vlan_table, &error);
 	if (ret != 0)
 		print_err_msg(&error);
@@ -1493,7 +1517,7 @@ free_table:
 cmdline_parse_inst_t cmd_set_port_meter_vlan_table = {
 	.f = cmd_set_port_meter_vlan_table_parsed,
 	.data = NULL,
-	.help_str = "set port meter vlan table <port_id> <mtr_id> "
+	.help_str = "set port meter vlan table <port_id> <mtr_id> <proto> "
 		"[<vlan_tbl_entry0> <vlan_tbl_entry1> ... <vlan_tbl_entry15>]",
 	.tokens = {
 		(void *)&cmd_set_port_meter_vlan_table_set,

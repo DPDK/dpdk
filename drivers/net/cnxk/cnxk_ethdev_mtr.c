@@ -720,6 +720,7 @@ cnxk_nix_mtr_disable(struct rte_eth_dev *eth_dev, uint32_t mtr_id,
 
 static int
 cnxk_nix_mtr_dscp_table_update(struct rte_eth_dev *eth_dev, uint32_t mtr_id,
+			       enum rte_mtr_color_in_protocol proto,
 			       enum rte_color *dscp_table,
 			       struct rte_mtr_error *error)
 {
@@ -750,7 +751,7 @@ cnxk_nix_mtr_dscp_table_update(struct rte_eth_dev *eth_dev, uint32_t mtr_id,
 
 	table.count = ROC_NIX_BPF_PRECOLOR_TBL_SIZE_DSCP;
 
-	switch (dev->proto) {
+	switch (proto) {
 	case RTE_MTR_COLOR_IN_PROTO_OUTER_IP:
 		table.mode = ROC_NIX_BPF_PC_MODE_DSCP_OUTER;
 		break;
@@ -761,6 +762,13 @@ cnxk_nix_mtr_dscp_table_update(struct rte_eth_dev *eth_dev, uint32_t mtr_id,
 		rc = -rte_mtr_error_set(error, EINVAL,
 			RTE_MTR_ERROR_TYPE_UNSPECIFIED, NULL,
 			"Invalid input color protocol");
+		goto exit;
+	}
+
+	if (dev->proto != proto) {
+		rc = -rte_mtr_error_set(error, EINVAL,
+			RTE_MTR_ERROR_TYPE_UNSPECIFIED, NULL,
+			"input color protocol is not configured");
 		goto exit;
 	}
 
@@ -784,6 +792,7 @@ exit:
 
 static int
 cnxk_nix_mtr_vlan_table_update(struct rte_eth_dev *eth_dev, uint32_t mtr_id,
+			       enum rte_mtr_color_in_protocol proto,
 			       enum rte_color *vlan_table,
 			       struct rte_mtr_error *error)
 {
@@ -814,7 +823,7 @@ cnxk_nix_mtr_vlan_table_update(struct rte_eth_dev *eth_dev, uint32_t mtr_id,
 
 	table.count = ROC_NIX_BPF_PRECOLOR_TBL_SIZE_VLAN;
 
-	switch (dev->proto) {
+	switch (proto) {
 	case RTE_MTR_COLOR_IN_PROTO_OUTER_VLAN:
 		table.mode = ROC_NIX_BPF_PC_MODE_VLAN_OUTER;
 		break;
@@ -825,6 +834,13 @@ cnxk_nix_mtr_vlan_table_update(struct rte_eth_dev *eth_dev, uint32_t mtr_id,
 		rc = -rte_mtr_error_set(error, EINVAL,
 			RTE_MTR_ERROR_TYPE_UNSPECIFIED, NULL,
 			"Invalid input color protocol");
+		goto exit;
+	}
+
+	if (dev->proto != proto) {
+		rc = -rte_mtr_error_set(error, EINVAL,
+			RTE_MTR_ERROR_TYPE_UNSPECIFIED, NULL,
+			"input color protocol is not configured");
 		goto exit;
 	}
 

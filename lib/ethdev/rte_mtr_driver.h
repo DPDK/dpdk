@@ -106,13 +106,13 @@ typedef int (*rte_mtr_meter_policy_update_t)(struct rte_eth_dev *dev,
 
 /** @internal MTR object meter DSCP table update. */
 typedef int (*rte_mtr_meter_dscp_table_update_t)(struct rte_eth_dev *dev,
-	uint32_t mtr_id,
+	uint32_t mtr_id, enum rte_mtr_color_in_protocol proto,
 	enum rte_color *dscp_table,
 	struct rte_mtr_error *error);
 
 /** @internal mtr object meter vlan table update. */
 typedef int (*rte_mtr_meter_vlan_table_update_t)(struct rte_eth_dev *dev,
-	uint32_t mtr_id,
+	uint32_t mtr_id, enum rte_mtr_color_in_protocol proto,
 	enum rte_color *vlan_table,
 	struct rte_mtr_error *error);
 
