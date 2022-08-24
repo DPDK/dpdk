@@ -20,6 +20,7 @@
 #include <virtio_api.h>
 #include <virtio_lm.h>
 #include <rte_vf_rpc.h>
+#include <rte_vfio.h>
 
 #include <cmdline_parse.h>
 #include <cmdline_socket.h>
@@ -341,15 +342,61 @@ vdpa_sample_quit(void)
 			close_vdpa(&vports[i]);
 	}
 }
+#define RTE_DEV_FOREACH_SAFE(dev, devstr, it, tdev) \
+    for (rte_dev_iterator_init(it, devstr), \
+        (dev) = rte_dev_iterator_next(it); \
+        (dev) && ((tdev) = rte_dev_iterator_next(it), 1); \
+        (dev) = (tdev))
+bool rpc_start=false;
+bool eal_start=false;
 
 static void
 signal_handler(int signum)
 {
+	struct rte_device *dev;
+	struct rte_dev_iterator dev_iter;
+	struct rte_device *tdev = NULL;
+
 	if (signum == SIGINT || signum == SIGTERM) {
 		printf("\nSignal %d received, preparing to exit...\n", signum);
-		vdpa_sample_quit();
+		if (rpc_start)
+			vdpa_rpc_stop(&vdpa_rpc_ctx);
+
+		if (eal_start) {
+			vdpa_sample_quit();
+
+			RTE_DEV_FOREACH_SAFE(dev, "class=vdpa", &dev_iter, tdev) {
+				rte_dev_remove(dev);
+			}
+
+			RTE_DEV_FOREACH_SAFE(dev, "bus=pci", &dev_iter, tdev) {
+				rte_dev_remove(dev);
+			}
+
+			printf("\n Remove default container fd \r\n");
+			if (rte_vfio_container_destroy(RTE_VFIO_DEFAULT_CONTAINER_FD) != 0) {
+				printf("\n Default container fd remove fail \r\n");
+			}
+			/* clean up the EAL */
+			rte_eal_cleanup();
+		}
 		exit(0);
 	}
+}
+static void *
+sig_thread(void*arg)
+{
+	sigset_t *set=(sigset_t*) arg;
+	int s, sig;
+
+	for (;;){
+		s = sigwait(set,&sig);
+		if (s != 0)
+			printf("\n signal wait error:%d \r\n", s);
+		signal_handler(sig);
+	}
+
+	return NULL;
 }
 
 /* interactive cmds */
@@ -639,15 +686,27 @@ main(int argc, char *argv[])
 	struct rte_device *dev;
 	struct rte_dev_iterator dev_iter;
 	rte_uuid_t vf_token;
+	struct rte_device *tdev = NULL;
+	sigset_t set;
+	pthread_t thread_s;
+
+	sigemptyset(&set);
+	sigaddset(&set, SIGINT);
+	sigaddset(&set, SIGTERM);
+	ret = pthread_sigmask(SIG_BLOCK, &set, NULL);
+	if (ret != 0)
+		printf("Set sig mask fail");
+
+	ret = pthread_create(&thread_s,NULL,&sig_thread,(void*)&set);
+	if (ret!= 0)
+		rte_exit(EXIT_FAILURE, "sig thread create failed\n");
 
 	ret = rte_eal_init(argc, argv);
 	if (ret < 0)
 		rte_exit(EXIT_FAILURE, "eal init failed\n");
 	argc -= ret;
 	argv += ret;
-
-	signal(SIGINT, signal_handler);
-	signal(SIGTERM, signal_handler);
+	eal_start = true;
 
 	rte_eal_vfio_get_vf_token(vf_token);
 	/* Generate VF token firstly, if the user-configured NULL*/
@@ -658,6 +717,8 @@ main(int argc, char *argv[])
 	ret = vdpa_rpc_start(&vdpa_rpc_ctx);
 	if (ret < 0)
 		rte_exit(EXIT_FAILURE, "rpc init failed\n");
+	rpc_start = true;
+
 	ret = parse_args(argc, argv);
 	if (ret < 0)
 		rte_exit(EXIT_FAILURE, "invalid argument\n");
@@ -693,9 +754,23 @@ main(int argc, char *argv[])
 			}
 			printf("enter \'q\' to quit\n");
 		}
-		vdpa_sample_quit();
 	}
 	vdpa_rpc_stop(&vdpa_rpc_ctx);
+	vdpa_sample_quit();
+
+	RTE_DEV_FOREACH_SAFE(dev, "class=vdpa", &dev_iter, tdev) {
+		rte_dev_remove(dev);
+	}
+
+	RTE_DEV_FOREACH_SAFE(dev, "bus=pci", &dev_iter, tdev) {
+		rte_dev_remove(dev);
+	}
+
+	printf("\n Remove default container fd \r\n");
+	if (rte_vfio_container_destroy(RTE_VFIO_DEFAULT_CONTAINER_FD) != 0) {
+		printf("\n Default container fd remove fail \r\n");
+	}
+
 	/* clean up the EAL */
 	rte_eal_cleanup();
 

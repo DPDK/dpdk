@@ -1419,6 +1419,10 @@ virtio_vdpa_dev_remove(struct rte_pci_device *pci_dev)
 			virtio_pci_dev_reset(priv->vpdev);
 			virtio_pci_dev_free(priv->vpdev);
 		}
+
+		if (priv->vfio_container_fd  >= 0)
+			rte_vfio_container_destroy(priv->vfio_container_fd);
+
 		if (priv->state_mz)
 			rte_memzone_free(priv->state_mz);
 

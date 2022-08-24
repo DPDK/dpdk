@@ -2093,6 +2093,9 @@ rte_vfio_container_destroy(int container_fd)
 		return -1;
 	}
 
+	if (container_fd == RTE_VFIO_DEFAULT_CONTAINER_FD)
+		container_fd = vfio_cfg->vfio_container_fd;
+
 	for (i = 0; i < VFIO_MAX_GROUPS; i++)
 		if (vfio_cfg->vfio_groups[i].group_num != -1)
 			rte_vfio_container_group_unbind(container_fd,
