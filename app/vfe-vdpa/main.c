@@ -640,9 +640,6 @@ main(int argc, char *argv[])
 	struct rte_dev_iterator dev_iter;
 	rte_uuid_t vf_token;
 
-	ret = vdpa_rpc_start(&vdpa_rpc_ctx);
-	if (ret < 0)
-		rte_exit(EXIT_FAILURE, "rpc init failed\n");
 	ret = rte_eal_init(argc, argv);
 	if (ret < 0)
 		rte_exit(EXIT_FAILURE, "eal init failed\n");
@@ -658,6 +655,9 @@ main(int argc, char *argv[])
 		uuid_generate(vf_token);
 		rte_eal_vfio_set_vf_token(vf_token);
 	}
+	ret = vdpa_rpc_start(&vdpa_rpc_ctx);
+	if (ret < 0)
+		rte_exit(EXIT_FAILURE, "rpc init failed\n");
 	ret = parse_args(argc, argv);
 	if (ret < 0)
 		rte_exit(EXIT_FAILURE, "invalid argument\n");
