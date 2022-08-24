@@ -586,6 +586,11 @@ pthread_t pthread_self(void)
 	return _sys_pthread_funcs.f_pthread_self();
 }
 
+#if defined(RTE_TOOLCHAIN_GCC) && (GCC_VERSION >= 120000)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+#endif
+
 int pthread_setspecific(pthread_key_t key, const void *data)
 {
 	if (override) {
@@ -594,6 +599,10 @@ int pthread_setspecific(pthread_key_t key, const void *data)
 	}
 	return _sys_pthread_funcs.f_pthread_setspecific(key, data);
 }
+
+#if defined(RTE_TOOLCHAIN_GCC) && (GCC_VERSION >= 120000)
+#pragma GCC diagnostic pop
+#endif
 
 int pthread_spin_init(pthread_spinlock_t *a, int b)
 {
