@@ -43,6 +43,8 @@
 	(((t) & RTE_IPSEC_SATP_IPV_MASK) == RTE_IPSEC_SATP_IPV4)) || \
 	((t) & RTE_IPSEC_SATP_MODE_MASK) == RTE_IPSEC_SATP_MODE_TUNLV4)
 
+#define BAD_PORT	((uint16_t)-1)
+
 struct rte_crypto_xform;
 struct ipsec_xform;
 struct rte_mbuf;

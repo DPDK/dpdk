@@ -441,7 +441,7 @@ inbound_sp_sa(struct sp_ctx *sp, struct sa_ctx *sa, struct traffic_type *ip,
 	ip->num = j;
 }
 
-static __rte_always_inline int32_t
+static __rte_always_inline uint32_t
 get_hop_for_offload_pkt(struct rte_mbuf *pkt, int is_ipv6)
 {
 	struct ipsec_mbuf_metadata *priv;
@@ -463,7 +463,7 @@ get_hop_for_offload_pkt(struct rte_mbuf *pkt, int is_ipv6)
 
 fail:
 	if (is_ipv6)
-		return -1;
+		return BAD_PORT;
 
 	/* else */
 	return 0;
@@ -476,7 +476,7 @@ route4_pkts(struct rt_ctx *rt_ctx, struct rte_mbuf *pkts[],
 	uint32_t hop[MAX_PKT_BURST * 2];
 	uint32_t dst_ip[MAX_PKT_BURST * 2];
 	struct rte_ether_hdr *ethhdr;
-	int32_t pkt_hop = 0;
+	uint32_t pkt_hop = 0;
 	uint16_t i, offset;
 	uint16_t lpm_pkts = 0;
 	unsigned int lcoreid = rte_lcore_id();
@@ -565,7 +565,7 @@ route6_pkts(struct rt_ctx *rt_ctx, struct rte_mbuf *pkts[], uint8_t nb_pkts)
 	uint8_t dst_ip[MAX_PKT_BURST * 2][16];
 	struct rte_ether_hdr *ethhdr;
 	uint8_t *ip6_dst;
-	int32_t pkt_hop = 0;
+	uint32_t pkt_hop = 0;
 	uint16_t i, offset;
 	uint16_t lpm_pkts = 0;
 	unsigned int lcoreid = rte_lcore_id();
@@ -605,10 +605,10 @@ route6_pkts(struct rt_ctx *rt_ctx, struct rte_mbuf *pkts[], uint8_t nb_pkts)
 			pkt_hop = get_hop_for_offload_pkt(pkt, 1);
 		} else {
 			/* Need to use hop returned by lookup */
-			pkt_hop = hop[lpm_pkts++];
+			pkt_hop = (uint16_t)hop[lpm_pkts++];
 		}
 
-		if (pkt_hop == -1) {
+		if (pkt_hop == BAD_PORT) {
 			core_statistics[lcoreid].lpm6.miss++;
 			free_pkts(&pkt, 1);
 			continue;

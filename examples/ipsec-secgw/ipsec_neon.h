@@ -9,7 +9,6 @@
 #include "neon/port_group.h"
 
 #define MAX_TX_BURST	(MAX_PKT_BURST / 2)
-#define BAD_PORT	((uint16_t)-1)
 
 extern xmm_t val_eth[RTE_MAX_ETHPORTS];
 

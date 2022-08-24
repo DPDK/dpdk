@@ -115,7 +115,7 @@ static inline void
 route6_pkts_neon(struct rt_ctx *rt_ctx, struct rte_mbuf **pkts, int nb_rx)
 {
 	uint8_t dst_ip6[MAX_PKT_BURST][16];
-	int32_t dst_port[MAX_PKT_BURST];
+	uint16_t dst_port[MAX_PKT_BURST];
 	struct rte_ether_hdr *eth_hdr;
 	struct rte_ipv6_hdr *ipv6_hdr;
 	int32_t hop[MAX_PKT_BURST];
@@ -160,14 +160,12 @@ route6_pkts_neon(struct rt_ctx *rt_ctx, struct rte_mbuf **pkts, int nb_rx)
 			dst_port[i] = get_hop_for_offload_pkt(pkt, 1);
 		} else {
 			/* Need to use hop returned by lookup */
-			dst_port[i] = hop[lpm_pkts++];
+			dst_port[i] = (uint16_t)hop[lpm_pkts++];
 		}
-		if (dst_port[i] == -1)
-			dst_port[i] = BAD_PORT;
 	}
 
 	/* Send packets */
-	send_multi_pkts(pkts, (uint16_t *)dst_port, nb_rx, 0, 0, false);
+	send_multi_pkts(pkts, dst_port, nb_rx, 0, 0, false);
 }
 
 /*
