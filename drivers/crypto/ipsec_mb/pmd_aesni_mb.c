@@ -192,20 +192,28 @@ aesni_mb_set_session_auth_parameters(const IMB_MGR *mb_mgr,
 	if (xform->auth.algo == RTE_CRYPTO_AUTH_ZUC_EIA3) {
 		if (xform->auth.key.length == 16) {
 			sess->auth.algo = IMB_AUTH_ZUC_EIA3_BITLEN;
+
+			if (sess->auth.req_digest_len != 4) {
+				IPSEC_MB_LOG(ERR, "Invalid digest size\n");
+				return -EINVAL;
+			}
 		} else if (xform->auth.key.length == 32) {
 			sess->auth.algo = IMB_AUTH_ZUC256_EIA3_BITLEN;
+#if IMB_VERSION(1, 2, 0) > IMB_VERSION_NUM
+			if (sess->auth.req_digest_len != 4 &&
+					sess->auth.req_digest_len != 8 &&
+					sess->auth.req_digest_len != 16) {
+#else
+			if (sess->auth.req_digest_len != 4) {
+#endif
+				IPSEC_MB_LOG(ERR, "Invalid digest size\n");
+				return -EINVAL;
+			}
 		} else {
 			IPSEC_MB_LOG(ERR, "Invalid authentication key length\n");
 			return -EINVAL;
 		}
 
-		uint16_t zuc_eia3_digest_len =
-			get_truncated_digest_byte_length(
-						IMB_AUTH_ZUC_EIA3_BITLEN);
-		if (sess->auth.req_digest_len != zuc_eia3_digest_len) {
-			IPSEC_MB_LOG(ERR, "Invalid digest size\n");
-			return -EINVAL;
-		}
 		sess->auth.gen_digest_len = sess->auth.req_digest_len;
 
 		memcpy(sess->auth.zuc_auth_key, xform->auth.key.data,

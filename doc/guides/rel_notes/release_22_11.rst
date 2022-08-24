@@ -168,6 +168,10 @@ New Features
   * Added AES-CCM support in lookaside protocol (IPsec) for CN9K & CN10K.
   * Added AES & DES DOCSIS algorithm support in lookaside crypto for CN9K.
 
+* **Updated aesni_mb crypto driver.**
+
+  * Added support for 8-byte and 16-byte tags for ZUC-EIA3-256.
+
 * **Added bbdev operation for FFT processing.**
 
   Added a new operation type in bbdev for FFT processing with new functions
