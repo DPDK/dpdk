@@ -384,8 +384,10 @@ i40e_hash_get_pattern_type(const struct rte_flow_item pattern[],
 		}
 
 		prev_item_type = last_item_type;
-		assert(last_item_type < (enum rte_flow_item_type)
-				RTE_DIM(pattern_item_header));
+		if (last_item_type >= (enum rte_flow_item_type)
+				RTE_DIM(pattern_item_header))
+			goto not_sup;
+
 		item_hdr = pattern_item_header[last_item_type];
 		assert(item_hdr);
 
