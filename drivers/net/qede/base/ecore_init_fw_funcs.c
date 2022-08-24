@@ -1416,7 +1416,7 @@ void ecore_init_brb_ram(struct ecore_hwfn *p_hwfn,
 		u32 i;						\
 		for (i = 0; i < (arr_size); i++)		\
 			ecore_wr(dev, ptt, ((addr) + (4 * i)),	\
-				 ((u32 *)&(arr))[i]);		\
+				 ((u32 *)(arr))[i]);		\
 	} while (0)
 
 #ifndef DWORDS_TO_BYTES
