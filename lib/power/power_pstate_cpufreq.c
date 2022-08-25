@@ -3,6 +3,7 @@
  */
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <fcntl.h>
 #include <string.h>
 #include <unistd.h>
@@ -35,15 +36,9 @@
 		"/sys/devices/system/cpu/cpu%u/cpufreq/cpuinfo_min_freq"
 #define POWER_SYSFILE_BASE_FREQ  \
 		"/sys/devices/system/cpu/cpu%u/cpufreq/base_frequency"
+#define POWER_SYSFILE_TURBO_PCT  \
+		"/sys/devices/system/cpu/intel_pstate/turbo_pct"
 #define POWER_PSTATE_DRIVER "intel_pstate"
-#define POWER_MSR_PATH  "/dev/cpu/%u/msr"
-
-/*
- * MSR related
- */
-#define PLATFORM_INFO     0x0CE
-#define NON_TURBO_MASK    0xFF00
-#define NON_TURBO_OFFSET  0x8
 
 
 enum power_state {
@@ -74,37 +69,41 @@ struct pstate_power_info {
 static struct pstate_power_info lcore_power_info[RTE_MAX_LCORE];
 
 /**
- * It is to read the specific MSR.
+ * It is to read the turbo mode percentage from sysfs
  */
-
 static int32_t
-power_rdmsr(int msr, uint64_t *val, unsigned int lcore_id)
+power_read_turbo_pct(uint64_t *outVal)
 {
 	int fd, ret;
-	char fullpath[PATH_MAX];
+	char val[4] = {0};
+	char *endptr;
 
-	snprintf(fullpath, sizeof(fullpath), POWER_MSR_PATH, lcore_id);
-
-	fd = open(fullpath, O_RDONLY);
+	fd = open(POWER_SYSFILE_TURBO_PCT, O_RDONLY);
 
 	if (fd < 0) {
-		RTE_LOG(ERR, POWER, "Error opening '%s': %s\n", fullpath,
+		RTE_LOG(ERR, POWER, "Error opening '%s': %s\n", POWER_SYSFILE_TURBO_PCT,
 				 strerror(errno));
 		return fd;
 	}
 
-	ret = pread(fd, val, sizeof(uint64_t), msr);
+	ret = read(fd, val, sizeof(val));
 
 	if (ret < 0) {
-		RTE_LOG(ERR, POWER, "Error reading '%s': %s\n", fullpath,
+		RTE_LOG(ERR, POWER, "Error reading '%s': %s\n", POWER_SYSFILE_TURBO_PCT,
 				 strerror(errno));
 		goto out;
 	}
 
-	POWER_DEBUG_TRACE("MSR Path %s, offset 0x%X for lcore %u\n",
-			fullpath, msr, lcore_id);
+	errno = 0;
+	*outVal = (uint64_t) strtol(val, &endptr, 10);
+	if (*endptr != 0 || errno != 0) {
+		RTE_LOG(ERR, POWER, "Error converting str to digits, read from %s: %s\n",
+				 POWER_SYSFILE_TURBO_PCT, strerror(errno));
+		ret = -1;
+		goto out;
+	}
 
-	POWER_DEBUG_TRACE("Ret value %d, content is 0x%"PRIx64"\n", ret, *val);
+	POWER_DEBUG_TRACE("power turbo pct: %"PRIu64"\n", *outVal);
 
 out:	close(fd);
 	return ret;
@@ -116,8 +115,9 @@ out:	close(fd);
 static int
 power_init_for_setting_freq(struct pstate_power_info *pi)
 {
-	FILE *f_base = NULL, *f_base_max = NULL, *f_min = NULL, *f_max = NULL;
-	uint32_t base_ratio, base_max_ratio;
+	FILE *f_base = NULL, *f_base_min = NULL, *f_base_max = NULL,
+	     *f_min = NULL, *f_max = NULL;
+	uint32_t base_ratio, base_min_ratio, base_max_ratio;
 	uint64_t max_non_turbo;
 	int ret;
 
@@ -127,6 +127,14 @@ power_init_for_setting_freq(struct pstate_power_info *pi)
 	if (f_base_max == NULL) {
 		RTE_LOG(ERR, POWER, "failed to open %s\n",
 				POWER_SYSFILE_BASE_MAX_FREQ);
+		goto err;
+	}
+
+	open_core_sysfs_file(&f_base_min, "r", POWER_SYSFILE_BASE_MIN_FREQ,
+			pi->lcore_id);
+	if (f_base_min == NULL) {
+		RTE_LOG(ERR, POWER, "failed to open %s\n",
+				POWER_SYSFILE_BASE_MIN_FREQ);
 		goto err;
 	}
 
@@ -158,6 +166,14 @@ power_init_for_setting_freq(struct pstate_power_info *pi)
 		goto err;
 	}
 
+	/* read base min ratio */
+	ret = read_core_sysfs_u32(f_base_min, &base_min_ratio);
+	if (ret < 0) {
+		RTE_LOG(ERR, POWER, "Failed to read %s\n",
+				POWER_SYSFILE_BASE_MIN_FREQ);
+		goto err;
+	}
+
 	/* base ratio may not exist */
 	if (f_base != NULL) {
 		ret = read_core_sysfs_u32(f_base, &base_ratio);
@@ -170,20 +186,22 @@ power_init_for_setting_freq(struct pstate_power_info *pi)
 		base_ratio = 0;
 	}
 
-	/* Add MSR read to detect turbo status */
-	if (power_rdmsr(PLATFORM_INFO, &max_non_turbo, pi->lcore_id) < 0)
-		goto err;
-	/* no errors after this point */
-
 	/* convert ratios to bins */
 	base_max_ratio /= BUS_FREQ;
+	base_min_ratio /= BUS_FREQ;
 	base_ratio /= BUS_FREQ;
 
 	/* assign file handles */
 	pi->f_cur_min = f_min;
 	pi->f_cur_max = f_max;
 
-	max_non_turbo = (max_non_turbo&NON_TURBO_MASK)>>NON_TURBO_OFFSET;
+	/* try to get turbo from global sysfs entry for less privileges than from MSR */
+	if (power_read_turbo_pct(&max_non_turbo) < 0)
+		goto err;
+	/* no errors after this point */
+
+	max_non_turbo = base_min_ratio
+		      + (100 - max_non_turbo) * (base_max_ratio - base_min_ratio) / 100;
 
 	POWER_DEBUG_TRACE("no turbo perf %"PRIu64"\n", max_non_turbo);
 
@@ -214,12 +232,15 @@ out:
 	if (f_base != NULL)
 		fclose(f_base);
 	fclose(f_base_max);
+	fclose(f_base_min);
 	/* f_min and f_max are stored, no need to close */
 	return 0;
 
 err:
 	if (f_base != NULL)
 		fclose(f_base);
+	if (f_base_min != NULL)
+		fclose(f_base_min);
 	if (f_base_max != NULL)
 		fclose(f_base_max);
 	if (f_min != NULL)
