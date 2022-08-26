@@ -108,7 +108,7 @@ nfp_hwinfo_try_fetch(struct nfp_cpp *cpp, size_t *cpp_size)
 		goto exit_free;
 
 	header = (void *)db;
-	printf("NFP HWINFO header: %08x\n", *(uint32_t *)header);
+	printf("NFP HWINFO header: %#08x\n", *(uint32_t *)header);
 	if (nfp_hwinfo_is_updating(header))
 		goto exit_free;
 
