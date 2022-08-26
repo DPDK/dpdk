@@ -30,7 +30,10 @@ extern int nfp_logtype_init;
 #define ASSERT(x) do { } while (0)
 #endif
 
-#define PMD_CPP_LOG(level, fmt, args...) do { } while (0)
+extern int nfp_logtype_cpp;
+#define PMD_CPP_LOG(level, fmt, args...) \
+	rte_log(RTE_LOG_ ## level, nfp_logtype_cpp, \
+		"%s(): " fmt "\n", __func__, ## args)
 
 extern int nfp_logtype_driver;
 #define PMD_DRV_LOG(level, fmt, args...) \
