@@ -295,7 +295,7 @@ static void __attribute__((destructor(RTE_PRIO(prio)), used)) func(void)
 /**
  * subtract a byte-value offset from a pointer
  */
-#define RTE_PTR_SUB(ptr, x) ((void*)((uintptr_t)ptr - (x)))
+#define RTE_PTR_SUB(ptr, x) ((void *)((uintptr_t)(ptr) - (x)))
 
 /**
  * get the difference between two pointer values, i.e. how far apart
@@ -320,7 +320,7 @@ static void __attribute__((destructor(RTE_PRIO(prio)), used)) func(void)
  * must be a power-of-two value.
  */
 #define RTE_PTR_ALIGN_FLOOR(ptr, align) \
-	((typeof(ptr))RTE_ALIGN_FLOOR((uintptr_t)ptr, align))
+	((typeof(ptr))RTE_ALIGN_FLOOR((uintptr_t)(ptr), align))
 
 /**
  * Macro to align a value to a given power-of-two. The resultant value
