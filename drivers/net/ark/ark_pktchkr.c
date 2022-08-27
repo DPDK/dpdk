@@ -2,6 +2,7 @@
  * Copyright (c) 2015-2018 Atomic Rules LLC
  */
 
+#include <stdlib.h>
 #include <unistd.h>
 
 #include <rte_string_fns.h>

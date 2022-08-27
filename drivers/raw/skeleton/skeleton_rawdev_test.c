@@ -2,6 +2,8 @@
  * Copyright 2017 NXP
  */
 
+#include <stdlib.h>
+
 #include <rte_common.h>
 #include <rte_mbuf.h>
 #include <rte_malloc.h>

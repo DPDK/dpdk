@@ -2,6 +2,8 @@
  * Copyright(c) 2022 Intel Corporation
  */
 
+#include <stdlib.h>
+
 #include <rte_kvargs.h>
 #include <rte_malloc.h>
 

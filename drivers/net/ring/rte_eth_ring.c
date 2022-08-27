@@ -2,6 +2,8 @@
  * Copyright(c) 2010-2015 Intel Corporation
  */
 
+#include <stdlib.h>
+
 #include "rte_eth_ring.h"
 #include <rte_mbuf.h>
 #include <ethdev_driver.h>

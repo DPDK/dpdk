@@ -2,6 +2,7 @@
  * Copyright(c) 2010-2017 Intel Corporation
  */
 
+#include <ctype.h>
 #include <stdio.h>
 #include <errno.h>
 #include <stdint.h>

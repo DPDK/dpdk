@@ -2,6 +2,7 @@
  * Copyright(c) 2017 Intel Corporation
  */
 
+#include <stdlib.h>
 #include <sys/queue.h>
 #include <rte_errno.h>
 #include <rte_string_fns.h>

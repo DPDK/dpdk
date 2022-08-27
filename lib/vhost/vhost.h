@@ -7,6 +7,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdbool.h>
+#include <stdlib.h>
 #include <sys/queue.h>
 #include <unistd.h>
 #include <linux/virtio_net.h>

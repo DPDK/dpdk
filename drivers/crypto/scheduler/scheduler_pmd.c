@@ -1,6 +1,9 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  * Copyright(c) 2017 Intel Corporation
  */
+#include <ctype.h>
+#include <stdlib.h>
+
 #include <rte_common.h>
 #include <rte_hexdump.h>
 #include <rte_cryptodev.h>

@@ -5,6 +5,7 @@
 
 #include <dirent.h>
 #include <stdbool.h>
+#include <stdlib.h>
 #include <sys/queue.h>
 
 #include <rte_malloc.h>

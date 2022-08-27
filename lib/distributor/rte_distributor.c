@@ -3,6 +3,7 @@
  */
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <sys/queue.h>
 #include <string.h>
 #include <rte_mbuf.h>

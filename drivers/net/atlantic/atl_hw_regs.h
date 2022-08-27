@@ -8,6 +8,7 @@
 #ifndef AQ_HW_UTILS_H
 #define AQ_HW_UTILS_H
 
+#include <errno.h>
 #include <rte_common.h>
 #include <rte_io.h>
 #include <rte_byteorder.h>

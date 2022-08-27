@@ -3,6 +3,8 @@
  *  All rights reserved.
  */
 
+#include <stdlib.h>
+
 #include <rte_mbuf.h>
 #include <ethdev_driver.h>
 #include <ethdev_vdev.h>

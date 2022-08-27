@@ -2,6 +2,8 @@
  * Copyright(c) 2021 Intel Corporation
  */
 
+#include <errno.h>
+
 #include "rte_power_intrinsics.h"
 
 /**

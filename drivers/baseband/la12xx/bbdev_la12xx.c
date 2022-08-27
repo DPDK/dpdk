@@ -2,6 +2,7 @@
  * Copyright 2020-2021 NXP
  */
 
+#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 #include <fcntl.h>

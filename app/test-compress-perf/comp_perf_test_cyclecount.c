@@ -2,6 +2,8 @@
  * Copyright(c) 2019 Intel Corporation
  */
 
+#include <stdlib.h>
+
 #include <rte_malloc.h>
 #include <rte_eal.h>
 #include <rte_log.h>

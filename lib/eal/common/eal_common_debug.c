@@ -3,6 +3,8 @@
  */
 
 #include <stdarg.h>
+#include <stdlib.h>
+
 #include <rte_eal.h>
 #include <rte_log.h>
 #include <rte_debug.h>

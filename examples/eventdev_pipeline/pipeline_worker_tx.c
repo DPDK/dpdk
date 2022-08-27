@@ -4,6 +4,8 @@
  * Copyright 2017 Cavium, Inc.
  */
 
+#include <stdlib.h>
+
 #include "pipeline_common.h"
 
 static __rte_always_inline void

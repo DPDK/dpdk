@@ -2,6 +2,8 @@
  * Copyright(C) 2021 Marvell.
  */
 
+#include <errno.h>
+
 #include <rte_common.h>
 #include <rte_cycles.h>
 #include "otx_ep_common.h"

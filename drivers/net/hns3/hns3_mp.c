@@ -2,6 +2,8 @@
  * Copyright(c) 2018-2021 HiSilicon Limited.
  */
 
+#include <stdlib.h>
+
 #include <rte_eal.h>
 #include <ethdev_driver.h>
 #include <rte_string_fns.h>

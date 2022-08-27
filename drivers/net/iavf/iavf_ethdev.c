@@ -2,6 +2,7 @@
  * Copyright(c) 2017 Intel Corporation
  */
 
+#include <ctype.h>
 #include <sys/queue.h>
 #include <stdio.h>
 #include <errno.h>

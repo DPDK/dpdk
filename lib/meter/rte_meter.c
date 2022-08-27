@@ -2,6 +2,7 @@
  * Copyright(c) 2010-2014 Intel Corporation
  */
 
+#include <errno.h>
 #include <stdio.h>
 #include <math.h>
 

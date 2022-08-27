@@ -2,6 +2,8 @@
  * Copyright(c) 2010-2014 Intel Corporation
  */
 
+#include <errno.h>
+
 #include <rte_errno.h>
 #include <rte_spinlock.h>
 

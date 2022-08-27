@@ -4,6 +4,7 @@
  * All rights reserved.
  */
 
+#include <stdlib.h>
 #include <time.h>
 
 #include <pcap.h>

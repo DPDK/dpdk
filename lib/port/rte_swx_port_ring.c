@@ -3,6 +3,7 @@
  */
 #include <string.h>
 #include <stdint.h>
+#include <stdlib.h>
 
 #include <rte_mbuf.h>
 #include <rte_ring.h>

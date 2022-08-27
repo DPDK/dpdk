@@ -4,6 +4,9 @@
  * Copyright (c) 2020 Samsung Electronics Co., Ltd All Rights Reserved
  */
 
+#include <ctype.h>
+#include <stdlib.h>
+
 #include <rte_cryptodev.h>
 #include <rte_dev.h>
 #include <rte_telemetry.h>

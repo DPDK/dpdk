@@ -30,6 +30,7 @@
 #include <signal.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include <stdlib.h>
 #include <sys/uio.h>
 #include <unistd.h>
 #include <arpa/inet.h>

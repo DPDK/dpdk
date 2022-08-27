@@ -21,6 +21,8 @@
 extern "C" {
 #endif
 
+#include <errno.h>
+
 #include <rte_common.h>
 #include <rte_atomic.h>
 #include <rte_pause.h>

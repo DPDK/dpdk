@@ -2,6 +2,8 @@
  * Copyright(c) 2017-2018 Intel Corporation
  */
 
+#include <stdlib.h>
+
 #include <rte_string_fns.h>
 #include <rte_malloc.h>
 #include <rte_kvargs.h>

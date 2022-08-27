@@ -3,6 +3,7 @@
  */
 
 #include <stdint.h>
+#include <stdlib.h>
 #include <getopt.h>
 #include <signal.h>
 #include <stdbool.h>

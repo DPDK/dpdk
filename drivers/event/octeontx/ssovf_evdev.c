@@ -3,6 +3,7 @@
  */
 
 #include <inttypes.h>
+#include <stdlib.h>
 
 #include <rte_common.h>
 #include <cryptodev_pmd.h>

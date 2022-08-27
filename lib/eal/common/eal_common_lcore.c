@@ -2,6 +2,7 @@
  * Copyright(c) 2010-2014 Intel Corporation
  */
 
+#include <stdlib.h>
 #include <string.h>
 
 #include <rte_common.h>

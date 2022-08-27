@@ -2,7 +2,9 @@
  * Copyright(c) 2022 Intel Corporation
  */
 
+#include <ctype.h>
 #include <errno.h>
+#include <stdlib.h>
 
 #include "rte_ethdev.h"
 #include <rte_common.h>

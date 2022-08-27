@@ -3,6 +3,7 @@
  */
 
 #include <inttypes.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include <rte_bus_vdev.h>

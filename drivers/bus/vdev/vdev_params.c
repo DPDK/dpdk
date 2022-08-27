@@ -2,6 +2,7 @@
  * Copyright 2018 Gaëtan Rivet
  */
 
+#include <errno.h>
 #include <string.h>
 
 #include <rte_dev.h>

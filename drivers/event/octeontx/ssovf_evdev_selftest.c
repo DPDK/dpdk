@@ -2,6 +2,8 @@
  * Copyright(c) 2017 Cavium, Inc
  */
 
+#include <stdlib.h>
+
 #include <rte_atomic.h>
 #include <rte_common.h>
 #include <rte_cycles.h>

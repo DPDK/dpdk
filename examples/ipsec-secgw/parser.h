@@ -5,6 +5,7 @@
 #ifndef __PARSER_H
 #define __PARSER_H
 
+#include <ctype.h>
 #include <sys/types.h>
 #include <netinet/in.h>
 #include <netinet/ip.h>

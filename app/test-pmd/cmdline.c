@@ -3,6 +3,7 @@
  * Copyright(c) 2014 6WIND S.A.
  */
 
+#include <ctype.h>
 #include <stdarg.h>
 #include <errno.h>
 #include <stdio.h>

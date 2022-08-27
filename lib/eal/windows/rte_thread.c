@@ -3,6 +3,8 @@
  * Copyright (C) 2022 Microsoft Corporation
  */
 
+#include <errno.h>
+
 #include <rte_common.h>
 #include <rte_errno.h>
 #include <rte_thread.h>
