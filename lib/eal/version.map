@@ -261,6 +261,7 @@ DPDK_23 {
 	rte_socket_id;
 	rte_socket_id_by_idx;
 	rte_srand;
+	rte_str_to_size;
 	rte_strerror;
 	rte_strscpy;
 	rte_strsplit;
