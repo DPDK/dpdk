@@ -425,9 +425,7 @@ rte_is_aligned(void *ptr, unsigned align)
 #define RTE_CACHE_LINE_MASK (RTE_CACHE_LINE_SIZE-1)
 
 /** Return the first cache-aligned value greater or equal to size. */
-#define RTE_CACHE_LINE_ROUNDUP(size) \
-	(RTE_CACHE_LINE_SIZE * ((size + RTE_CACHE_LINE_SIZE - 1) / \
-	RTE_CACHE_LINE_SIZE))
+#define RTE_CACHE_LINE_ROUNDUP(size) RTE_ALIGN_CEIL(size, RTE_CACHE_LINE_SIZE)
 
 /** Cache line size in terms of log2 */
 #if RTE_CACHE_LINE_SIZE == 64
