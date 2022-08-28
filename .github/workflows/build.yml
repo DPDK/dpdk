@@ -4,6 +4,9 @@ on:
   push:
   schedule:
     - cron: '0 0 * * 1'
+    
+permissions:
+  contents: read # actions/upload-artifact doesn't need contents: write
 
 defaults:
   run:
