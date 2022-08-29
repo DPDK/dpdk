@@ -590,12 +590,19 @@ roc_npc_flow_mcam_dump(FILE *file, struct roc_npc *roc_npc,
 	struct npc *npc = roc_npc_to_npc_priv(roc_npc);
 	struct npc_mcam_read_entry_req *mcam_read_req;
 	struct npc_mcam_read_entry_rsp *mcam_read_rsp;
+	uint64_t count = 0;
 	bool is_rx = 0;
 	int i, rc = 0;
 
 	fprintf(file, "MCAM Index:%d\n", flow->mcam_id);
-	fprintf(file, "Interface :%s (%d)\n", intf_str[flow->nix_intf],
-		flow->nix_intf);
+	if (flow->ctr_id != NPC_COUNTER_NONE && flow->use_ctr) {
+		rc = roc_npc_mcam_read_counter(roc_npc, flow->ctr_id, &count);
+		if (rc)
+			return;
+		fprintf(file, "Hit count: %" PRIu64 "\n", count);
+	}
+
+	fprintf(file, "Interface :%s (%d)\n", intf_str[flow->nix_intf], flow->nix_intf);
 	fprintf(file, "Priority  :%d\n", flow->priority);
 
 	if (flow->nix_intf == NIX_INTF_RX)
