@@ -389,69 +389,209 @@ cn10k_sso_fp_fns_set(struct rte_eventdev *event_dev)
 #undef R
 	};
 
-	/* Tx modes */
-	const event_tx_adapter_enqueue_t
-		sso_hws_tx_adptr_enq[NIX_TX_OFFLOAD_MAX] = {
-#define T(name, sz, flags)[flags] = cn10k_sso_hws_tx_adptr_enq_##name,
-			NIX_TX_FASTPATH_MODES
-#undef T
-		};
+	const event_dequeue_t sso_hws_reas_deq[NIX_RX_OFFLOAD_MAX] = {
+#define R(name, flags)[flags] = cn10k_sso_hws_reas_deq_##name,
+		NIX_RX_FASTPATH_MODES
+#undef R
+	};
 
-	const event_tx_adapter_enqueue_t
-		sso_hws_tx_adptr_enq_seg[NIX_TX_OFFLOAD_MAX] = {
-#define T(name, sz, flags)[flags] = cn10k_sso_hws_tx_adptr_enq_seg_##name,
-			NIX_TX_FASTPATH_MODES
+	const event_dequeue_burst_t sso_hws_reas_deq_burst[NIX_RX_OFFLOAD_MAX] = {
+#define R(name, flags)[flags] = cn10k_sso_hws_reas_deq_burst_##name,
+		NIX_RX_FASTPATH_MODES
+#undef R
+	};
+
+	const event_dequeue_t sso_hws_reas_deq_tmo[NIX_RX_OFFLOAD_MAX] = {
+#define R(name, flags)[flags] = cn10k_sso_hws_reas_deq_tmo_##name,
+		NIX_RX_FASTPATH_MODES
+#undef R
+	};
+
+	const event_dequeue_burst_t sso_hws_reas_deq_tmo_burst[NIX_RX_OFFLOAD_MAX] = {
+#define R(name, flags)[flags] = cn10k_sso_hws_reas_deq_tmo_burst_##name,
+		NIX_RX_FASTPATH_MODES
+#undef R
+	};
+
+	const event_dequeue_t sso_hws_reas_deq_ca[NIX_RX_OFFLOAD_MAX] = {
+#define R(name, flags)[flags] = cn10k_sso_hws_reas_deq_ca_##name,
+		NIX_RX_FASTPATH_MODES
+#undef R
+	};
+
+	const event_dequeue_burst_t sso_hws_reas_deq_ca_burst[NIX_RX_OFFLOAD_MAX] = {
+#define R(name, flags)[flags] = cn10k_sso_hws_reas_deq_ca_burst_##name,
+		NIX_RX_FASTPATH_MODES
+#undef R
+	};
+
+	const event_dequeue_t sso_hws_reas_deq_tmo_ca[NIX_RX_OFFLOAD_MAX] = {
+#define R(name, flags)[flags] = cn10k_sso_hws_reas_deq_tmo_ca_##name,
+		NIX_RX_FASTPATH_MODES
+#undef R
+	};
+
+	const event_dequeue_burst_t sso_hws_reas_deq_tmo_ca_burst[NIX_RX_OFFLOAD_MAX] = {
+#define R(name, flags)[flags] = cn10k_sso_hws_reas_deq_tmo_ca_burst_##name,
+		NIX_RX_FASTPATH_MODES
+#undef R
+	};
+
+	const event_dequeue_t sso_hws_reas_deq_seg[NIX_RX_OFFLOAD_MAX] = {
+#define R(name, flags)[flags] = cn10k_sso_hws_reas_deq_seg_##name,
+
+		NIX_RX_FASTPATH_MODES
+#undef R
+	};
+
+	const event_dequeue_burst_t sso_hws_reas_deq_seg_burst[NIX_RX_OFFLOAD_MAX] = {
+#define R(name, flags)[flags] = cn10k_sso_hws_reas_deq_seg_burst_##name,
+		NIX_RX_FASTPATH_MODES
+#undef R
+	};
+
+	const event_dequeue_t sso_hws_reas_deq_tmo_seg[NIX_RX_OFFLOAD_MAX] = {
+#define R(name, flags)[flags] = cn10k_sso_hws_reas_deq_tmo_seg_##name,
+		NIX_RX_FASTPATH_MODES
+#undef R
+	};
+
+	const event_dequeue_burst_t sso_hws_reas_deq_tmo_seg_burst[NIX_RX_OFFLOAD_MAX] = {
+#define R(name, flags)[flags] = cn10k_sso_hws_reas_deq_tmo_seg_burst_##name,
+		NIX_RX_FASTPATH_MODES
+#undef R
+	};
+
+	const event_dequeue_t sso_hws_reas_deq_ca_seg[NIX_RX_OFFLOAD_MAX] = {
+#define R(name, flags)[flags] = cn10k_sso_hws_reas_deq_ca_seg_##name,
+		NIX_RX_FASTPATH_MODES
+#undef R
+	};
+
+	const event_dequeue_burst_t sso_hws_reas_deq_ca_seg_burst[NIX_RX_OFFLOAD_MAX] = {
+#define R(name, flags)[flags] = cn10k_sso_hws_reas_deq_ca_seg_burst_##name,
+		NIX_RX_FASTPATH_MODES
+#undef R
+	};
+
+	const event_dequeue_t sso_hws_reas_deq_tmo_ca_seg[NIX_RX_OFFLOAD_MAX] = {
+#define R(name, flags)[flags] = cn10k_sso_hws_reas_deq_tmo_ca_seg_##name,
+		NIX_RX_FASTPATH_MODES
+#undef R
+	};
+
+	const event_dequeue_burst_t sso_hws_reas_deq_tmo_ca_seg_burst[NIX_RX_OFFLOAD_MAX] = {
+#define R(name, flags)[flags] = cn10k_sso_hws_reas_deq_tmo_ca_seg_burst_##name,
+		NIX_RX_FASTPATH_MODES
+#undef R
+	};
+
+	/* Tx modes */
+	const event_tx_adapter_enqueue_t sso_hws_tx_adptr_enq[NIX_TX_OFFLOAD_MAX] = {
+#define T(name, sz, flags)[flags] = cn10k_sso_hws_tx_adptr_enq_##name,
+		NIX_TX_FASTPATH_MODES
 #undef T
-		};
+	};
+
+	const event_tx_adapter_enqueue_t sso_hws_tx_adptr_enq_seg[NIX_TX_OFFLOAD_MAX] = {
+#define T(name, sz, flags)[flags] = cn10k_sso_hws_tx_adptr_enq_seg_##name,
+		NIX_TX_FASTPATH_MODES
+#undef T
+	};
 
 	event_dev->enqueue = cn10k_sso_hws_enq;
 	event_dev->enqueue_burst = cn10k_sso_hws_enq_burst;
 	event_dev->enqueue_new_burst = cn10k_sso_hws_enq_new_burst;
 	event_dev->enqueue_forward_burst = cn10k_sso_hws_enq_fwd_burst;
 	if (dev->rx_offloads & NIX_RX_MULTI_SEG_F) {
-		CN10K_SET_EVDEV_DEQ_OP(dev, event_dev->dequeue,
-				       sso_hws_deq_seg);
-		CN10K_SET_EVDEV_DEQ_OP(dev, event_dev->dequeue_burst,
-				       sso_hws_deq_seg_burst);
-		if (dev->is_timeout_deq) {
-			CN10K_SET_EVDEV_DEQ_OP(dev, event_dev->dequeue,
-					       sso_hws_deq_tmo_seg);
+		if (dev->rx_offloads & NIX_RX_REAS_F) {
+			CN10K_SET_EVDEV_DEQ_OP(dev, event_dev->dequeue, sso_hws_reas_deq_seg);
 			CN10K_SET_EVDEV_DEQ_OP(dev, event_dev->dequeue_burst,
-					       sso_hws_deq_tmo_seg_burst);
-		}
-		if (dev->is_ca_internal_port) {
-			CN10K_SET_EVDEV_DEQ_OP(dev, event_dev->dequeue,
-					       sso_hws_deq_ca_seg);
+					       sso_hws_reas_deq_seg_burst);
+			if (dev->is_timeout_deq) {
+				CN10K_SET_EVDEV_DEQ_OP(dev, event_dev->dequeue,
+						       sso_hws_reas_deq_tmo_seg);
+				CN10K_SET_EVDEV_DEQ_OP(dev, event_dev->dequeue_burst,
+						       sso_hws_reas_deq_tmo_seg_burst);
+			}
+			if (dev->is_ca_internal_port) {
+				CN10K_SET_EVDEV_DEQ_OP(dev, event_dev->dequeue,
+						       sso_hws_reas_deq_ca_seg);
+				CN10K_SET_EVDEV_DEQ_OP(dev, event_dev->dequeue_burst,
+						       sso_hws_reas_deq_ca_seg_burst);
+			}
+			if (dev->is_timeout_deq && dev->is_ca_internal_port) {
+				CN10K_SET_EVDEV_DEQ_OP(dev, event_dev->dequeue,
+						       sso_hws_reas_deq_tmo_ca_seg);
+				CN10K_SET_EVDEV_DEQ_OP(dev, event_dev->dequeue_burst,
+						       sso_hws_reas_deq_tmo_ca_seg_burst);
+			}
+		} else {
+			CN10K_SET_EVDEV_DEQ_OP(dev, event_dev->dequeue, sso_hws_deq_seg);
 			CN10K_SET_EVDEV_DEQ_OP(dev, event_dev->dequeue_burst,
-					       sso_hws_deq_ca_seg_burst);
-		}
-		if (dev->is_timeout_deq && dev->is_ca_internal_port) {
-			CN10K_SET_EVDEV_DEQ_OP(dev, event_dev->dequeue,
-					       sso_hws_deq_tmo_ca_seg);
-			CN10K_SET_EVDEV_DEQ_OP(dev, event_dev->dequeue_burst,
-					       sso_hws_deq_tmo_ca_seg_burst);
+					       sso_hws_deq_seg_burst);
+
+			if (dev->is_timeout_deq) {
+				CN10K_SET_EVDEV_DEQ_OP(dev, event_dev->dequeue,
+						       sso_hws_deq_tmo_seg);
+				CN10K_SET_EVDEV_DEQ_OP(dev, event_dev->dequeue_burst,
+						       sso_hws_deq_tmo_seg_burst);
+			}
+			if (dev->is_ca_internal_port) {
+				CN10K_SET_EVDEV_DEQ_OP(dev, event_dev->dequeue, sso_hws_deq_ca_seg);
+				CN10K_SET_EVDEV_DEQ_OP(dev, event_dev->dequeue_burst,
+						       sso_hws_deq_ca_seg_burst);
+			}
+			if (dev->is_timeout_deq && dev->is_ca_internal_port) {
+				CN10K_SET_EVDEV_DEQ_OP(dev, event_dev->dequeue,
+						       sso_hws_deq_tmo_ca_seg);
+				CN10K_SET_EVDEV_DEQ_OP(dev, event_dev->dequeue_burst,
+						       sso_hws_deq_tmo_ca_seg_burst);
+			}
 		}
 	} else {
-		CN10K_SET_EVDEV_DEQ_OP(dev, event_dev->dequeue, sso_hws_deq);
-		CN10K_SET_EVDEV_DEQ_OP(dev, event_dev->dequeue_burst,
-				       sso_hws_deq_burst);
-		if (dev->is_timeout_deq) {
-			CN10K_SET_EVDEV_DEQ_OP(dev, event_dev->dequeue,
-					       sso_hws_deq_tmo);
+		if (dev->rx_offloads & NIX_RX_REAS_F) {
+			CN10K_SET_EVDEV_DEQ_OP(dev, event_dev->dequeue, sso_hws_reas_deq);
 			CN10K_SET_EVDEV_DEQ_OP(dev, event_dev->dequeue_burst,
-					       sso_hws_deq_tmo_burst);
-		}
-		if (dev->is_ca_internal_port) {
-			CN10K_SET_EVDEV_DEQ_OP(dev, event_dev->dequeue,
-					       sso_hws_deq_ca);
-			CN10K_SET_EVDEV_DEQ_OP(dev, event_dev->dequeue_burst,
-					       sso_hws_deq_ca_burst);
-		}
-		if (dev->is_timeout_deq && dev->is_ca_internal_port) {
-			CN10K_SET_EVDEV_DEQ_OP(dev, event_dev->dequeue,
-					       sso_hws_deq_tmo_ca);
-			CN10K_SET_EVDEV_DEQ_OP(dev, event_dev->dequeue_burst,
-					       sso_hws_deq_tmo_ca_burst);
+					       sso_hws_reas_deq_burst);
+
+			if (dev->is_timeout_deq) {
+				CN10K_SET_EVDEV_DEQ_OP(dev, event_dev->dequeue,
+						       sso_hws_reas_deq_tmo);
+				CN10K_SET_EVDEV_DEQ_OP(dev, event_dev->dequeue_burst,
+						       sso_hws_reas_deq_tmo_burst);
+			}
+			if (dev->is_ca_internal_port) {
+				CN10K_SET_EVDEV_DEQ_OP(dev, event_dev->dequeue,
+						       sso_hws_reas_deq_ca);
+				CN10K_SET_EVDEV_DEQ_OP(dev, event_dev->dequeue_burst,
+						       sso_hws_reas_deq_ca_burst);
+			}
+			if (dev->is_timeout_deq && dev->is_ca_internal_port) {
+				CN10K_SET_EVDEV_DEQ_OP(dev, event_dev->dequeue,
+						       sso_hws_reas_deq_tmo_ca);
+				CN10K_SET_EVDEV_DEQ_OP(dev, event_dev->dequeue_burst,
+						       sso_hws_reas_deq_tmo_ca_burst);
+			}
+		} else {
+			CN10K_SET_EVDEV_DEQ_OP(dev, event_dev->dequeue, sso_hws_deq);
+			CN10K_SET_EVDEV_DEQ_OP(dev, event_dev->dequeue_burst, sso_hws_deq_burst);
+
+			if (dev->is_timeout_deq) {
+				CN10K_SET_EVDEV_DEQ_OP(dev, event_dev->dequeue, sso_hws_deq_tmo);
+				CN10K_SET_EVDEV_DEQ_OP(dev, event_dev->dequeue_burst,
+						       sso_hws_deq_tmo_burst);
+			}
+			if (dev->is_ca_internal_port) {
+				CN10K_SET_EVDEV_DEQ_OP(dev, event_dev->dequeue, sso_hws_deq_ca);
+				CN10K_SET_EVDEV_DEQ_OP(dev, event_dev->dequeue_burst,
+						       sso_hws_deq_ca_burst);
+			}
+			if (dev->is_timeout_deq && dev->is_ca_internal_port) {
+				CN10K_SET_EVDEV_DEQ_OP(dev, event_dev->dequeue, sso_hws_deq_tmo_ca);
+				CN10K_SET_EVDEV_DEQ_OP(dev, event_dev->dequeue_burst,
+						       sso_hws_deq_tmo_ca_burst);
+			}
 		}
 	}
 	event_dev->ca_enqueue = cn10k_sso_hws_ca_enq;
