@@ -893,11 +893,12 @@ iavf_ipsec_crypto_session_update(void *device,
 		 * iavf_security_session for outbound SA for use
 		 * in *iavf_ipsec_crypto_pkt_metadata_set* function.
 		 */
+		iavf_sess->esn.hi = conf->ipsec.esn.hi;
+		iavf_sess->esn.low = conf->ipsec.esn.low;
 		if (iavf_sess->direction == RTE_SECURITY_IPSEC_SA_DIR_INGRESS)
 			rc = iavf_ipsec_crypto_sa_update_esn(adapter,
 					iavf_sess);
-		else
-			iavf_sess->esn.hi = conf->ipsec.esn.hi;
+
 	}
 
 	return rc;
