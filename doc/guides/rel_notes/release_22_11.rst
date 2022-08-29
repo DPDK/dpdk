@@ -72,6 +72,9 @@ New Features
   * Added ``rte_event_eth_rx_adapter_instance_get`` to get Rx adapter
     instance ID for specified ethernet device ID and Rx queue index.
 
+  * Added ``rte_event_eth_tx_adapter_instance_get`` to get Tx adapter
+    instance ID for specified ethernet device ID and Tx queue index.
+
 
 Removed Items
 -------------

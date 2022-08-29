@@ -1274,6 +1274,27 @@ typedef int (*eventdev_eth_tx_adapter_stats_get_t)(
 typedef int (*eventdev_eth_tx_adapter_stats_reset_t)(uint8_t id,
 					const struct rte_eventdev *dev);
 
+/**
+ * Get TX adapter instance ID for Tx queue
+ *
+ * @param eth_dev_id
+ *  Port identifier of Ethernet device
+ *
+ * @param tx_queue_id
+ *  Ethernet device Tx queue index
+ *
+ * @param[out] txa_inst_id
+ *  Pointer to Tx adapter instance identifier
+ *  Contains valid Tx adapter instance ID when return value is 0
+ *
+ * @return
+ *  -  0: Success
+ *  - <0: Error code on failure
+ */
+typedef int (*eventdev_eth_tx_adapter_instance_get_t)
+	(uint16_t eth_dev_id, uint16_t tx_queue_id, uint8_t *txa_inst_id);
+
+
 /** Event device operations function pointer table */
 struct eventdev_ops {
 	eventdev_info_get_t dev_infos_get;	/**< Get device info. */
@@ -1386,6 +1407,8 @@ struct eventdev_ops {
 	/**< Get eth Tx adapter statistics */
 	eventdev_eth_tx_adapter_stats_reset_t eth_tx_adapter_stats_reset;
 	/**< Reset eth Tx adapter statistics */
+	eventdev_eth_tx_adapter_instance_get_t eth_tx_adapter_instance_get;
+	/**< Get Tx adapter instance ID for Tx queue */
 
 	eventdev_selftest dev_selftest;
 	/**< Start eventdev Selftest */

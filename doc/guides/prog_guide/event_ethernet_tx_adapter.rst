@@ -165,6 +165,12 @@ in struct ``rte_event_eth_tx_adapter_stats``. The counter values are the sum of
 the counts from the eventdev PMD callback if the callback is supported, and
 the counts maintained by the service function, if one exists.
 
+Getting Adapter Instance ID
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The ``rte_event_eth_tx_adapter_instance_get()`` function reports
+Tx adapter instance ID for a specified ethernet device ID and Tx queue index.
+
 Tx event vectorization
 ~~~~~~~~~~~~~~~~~~~~~~
 

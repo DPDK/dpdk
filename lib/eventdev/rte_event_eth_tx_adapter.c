@@ -18,6 +18,9 @@
 #define TXA_INVALID_DEV_ID	INT32_C(-1)
 #define TXA_INVALID_SERVICE_ID	INT64_C(-1)
 
+#define TXA_ADAPTER_ARRAY "txa_adapter_array"
+#define TXA_SERVICE_DATA_ARRAY "txa_service_data_array"
+
 #define txa_evdev(id) (&rte_eventdevs[txa_dev_id_array[(id)]])
 
 #define txa_dev_caps_get(id) txa_evdev((id))->dev_ops->eth_tx_adapter_caps_get
@@ -40,6 +43,9 @@
 #define txa_dev_stats_reset(t) txa_evdev(t)->dev_ops->eth_tx_adapter_stats_reset
 
 #define txa_dev_stats_get(t) txa_evdev(t)->dev_ops->eth_tx_adapter_stats_get
+
+#define txa_dev_instance_get(id) \
+			txa_evdev(id)->dev_ops->eth_tx_adapter_instance_get
 
 #define RTE_EVENT_ETH_TX_ADAPTER_ID_VALID_OR_ERR_RET(id, retval) \
 do { \
@@ -194,12 +200,34 @@ txa_memzone_array_get(const char *name, unsigned int elt_size, int nb_elems)
 }
 
 static int
+txa_lookup(void)
+{
+	const struct rte_memzone *mz;
+
+	if (txa_dev_id_array == NULL) {
+		mz = rte_memzone_lookup(TXA_ADAPTER_ARRAY);
+		if (mz == NULL)
+			return -ENOMEM;
+		txa_dev_id_array = mz->addr;
+	}
+
+	if (txa_service_data_array == NULL) {
+		mz = rte_memzone_lookup(TXA_SERVICE_DATA_ARRAY);
+		if (mz == NULL)
+			return -ENOMEM;
+		txa_service_data_array = mz->addr;
+	}
+
+	return 0;
+}
+
+static int
 txa_dev_id_array_init(void)
 {
 	if (txa_dev_id_array == NULL) {
 		int i;
 
-		txa_dev_id_array = txa_memzone_array_get("txa_adapter_array",
+		txa_dev_id_array = txa_memzone_array_get(TXA_ADAPTER_ARRAY,
 					sizeof(int),
 					RTE_EVENT_ETH_TX_ADAPTER_MAX_INSTANCE);
 		if (txa_dev_id_array == NULL)
@@ -222,12 +250,18 @@ static int
 txa_service_data_init(void)
 {
 	if (txa_service_data_array == NULL) {
+		int i;
+
 		txa_service_data_array =
-				txa_memzone_array_get("txa_service_data_array",
+				txa_memzone_array_get(TXA_SERVICE_DATA_ARRAY,
 					sizeof(*txa_service_data_array),
 					RTE_EVENT_ETH_TX_ADAPTER_MAX_INSTANCE);
 		if (txa_service_data_array == NULL)
 			return -ENOMEM;
+
+		/* Reset the txa service pointers */
+		for (i = 0; i < RTE_EVENT_ETH_TX_ADAPTER_MAX_INSTANCE; i++)
+			txa_service_data_array[i] = NULL;
 	}
 
 	return 0;
@@ -1221,4 +1255,68 @@ rte_event_eth_tx_adapter_stop(uint8_t id)
 		ret = txa_service_stop(id);
 	rte_eventdev_trace_eth_tx_adapter_stop(id, ret);
 	return ret;
+}
+
+int
+rte_event_eth_tx_adapter_instance_get(uint16_t eth_dev_id,
+				      uint16_t tx_queue_id,
+				      uint8_t *txa_inst_id)
+{
+	uint8_t id;
+	int ret = -EINVAL;
+	uint32_t caps;
+	struct txa_service_data *txa;
+
+	if (txa_lookup())
+		return -ENOMEM;
+
+	if (eth_dev_id >= rte_eth_dev_count_avail()) {
+		RTE_EDEV_LOG_ERR("Invalid ethernet port id %u", eth_dev_id);
+		return -EINVAL;
+	}
+
+	if (tx_queue_id >= rte_eth_devices[eth_dev_id].data->nb_tx_queues) {
+		RTE_EDEV_LOG_ERR("Invalid tx queue id %u", tx_queue_id);
+		return -EINVAL;
+	}
+
+	if (txa_inst_id == NULL) {
+		RTE_EDEV_LOG_ERR("txa_instance_id cannot be NULL");
+		return -EINVAL;
+	}
+
+	/* Iterate through all Tx adapter instances */
+	for (id = 0; id < RTE_EVENT_ETH_TX_ADAPTER_MAX_INSTANCE; id++) {
+		txa = txa_service_id_to_data(id);
+		if (!txa)
+			continue;
+
+		caps = 0;
+		if (rte_event_eth_tx_adapter_caps_get(txa->eventdev_id,
+						      eth_dev_id,
+						      &caps))
+			continue;
+
+		if (caps & RTE_EVENT_ETH_TX_ADAPTER_CAP_INTERNAL_PORT) {
+			ret = txa_dev_instance_get(id) ?
+					txa_dev_instance_get(id)(eth_dev_id,
+								 tx_queue_id,
+								 txa_inst_id)
+							: -EINVAL;
+			if (ret == 0)
+				return ret;
+		} else {
+			struct rte_eth_dev *eth_dev;
+
+			eth_dev = &rte_eth_devices[eth_dev_id];
+
+			if (txa_service_is_queue_added(txa, eth_dev,
+						       tx_queue_id)) {
+				*txa_inst_id = txa->id;
+				return 0;
+			}
+		}
+	}
+
+	return -EINVAL;
 }

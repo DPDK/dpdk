@@ -34,6 +34,7 @@
  *  - rte_event_eth_tx_adapter_enqueue()
  *  - rte_event_eth_tx_adapter_event_port_get()
  *  - rte_event_eth_tx_adapter_service_id_get()
+ *  - rte_event_eth_tx_adapter_instance_get()
  *
  * The application creates the adapter using
  * rte_event_eth_tx_adapter_create() or rte_event_eth_tx_adapter_create_ext().
@@ -422,6 +423,29 @@ rte_event_eth_tx_adapter_stats_reset(uint8_t id);
  */
 int
 rte_event_eth_tx_adapter_service_id_get(uint8_t id, uint32_t *service_id);
+
+/**
+ * Get TX adapter instance id for TX queue
+ *
+ * @param eth_dev_id
+ *  Port identifier of Ethernet device
+ *
+ * @param tx_queue_id
+ *  Etherdev device TX queue index
+ *
+ * @param[out] txa_inst_id
+ *  Pointer to TX adapter instance identifier
+ *  Contains valid Tx adapter instance id when return value is 0
+ *
+ * @return
+ *  -  0: Success
+ *  - <0: Error code on failure
+ */
+__rte_experimental
+int
+rte_event_eth_tx_adapter_instance_get(uint16_t eth_dev_id,
+				      uint16_t tx_queue_id,
+				      uint8_t *txa_inst_id);
 
 #ifdef __cplusplus
 }
