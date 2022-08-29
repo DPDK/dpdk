@@ -310,8 +310,10 @@ npc_flow_print_item(FILE *file, struct npc *npc, struct npc_xtract_info *xinfo,
 		for (i = 0; i < NPC_MAX_LFL; i++) {
 			lflags_info = npc->prx_fxcfg[intf][ld][i].xtract;
 
-			npc_flow_print_xtractinfo(file, lflags_info, flow, lid,
-						  lt);
+			if (!lflags_info->enable)
+				continue;
+
+			npc_flow_print_xtractinfo(file, lflags_info, flow, lid, lt);
 		}
 	}
 }
@@ -620,7 +622,7 @@ roc_npc_flow_mcam_dump(FILE *file, struct roc_npc *roc_npc,
 	mcam_read_req->entry = flow->mcam_id;
 	rc = mbox_process_msg(npc->mbox, (void *)&mcam_read_rsp);
 	if (rc) {
-		plt_err("Failed to fetch MCAM entry");
+		plt_err("Failed to fetch MCAM entry:%d", flow->mcam_id);
 		return;
 	}
 
