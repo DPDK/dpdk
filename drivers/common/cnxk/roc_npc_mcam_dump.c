@@ -308,8 +308,10 @@ npc_flow_print_item(FILE *file, struct npc *npc, struct npc_xtract_info *xinfo,
 		for (i = 0; i < NPC_MAX_LFL; i++) {
 			lflags_info = npc->prx_fxcfg[intf][ld][i].xtract;
 
-			npc_flow_print_xtractinfo(file, lflags_info, flow, lid,
-						  lt);
+			if (!lflags_info->enable)
+				continue;
+
+			npc_flow_print_xtractinfo(file, lflags_info, flow, lid, lt);
 		}
 	}
 }
