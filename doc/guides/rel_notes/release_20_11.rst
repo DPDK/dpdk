@@ -3266,3 +3266,287 @@ Tested Platforms
 * vhost/virtio
 
    * build failure with gcc 12: https://bugs.dpdk.org/show_bug.cgi?id=925
+
+20.11.6 Release Notes
+---------------------
+
+
+20.11.6 Fixes
+~~~~~~~~~~~~~
+
+* acl: fix rules with 8-byte field size
+* app/flow-perf: fix build with GCC 12
+* app/procinfo: show all non-owned ports
+* app/testpmd: check statistics query before printing
+* app/testpmd: do not poll stopped queues
+* app/testpmd: fix bonding slave devices not released
+* app/testpmd: fix metering and policing command for RFC4115
+* app/testpmd: fix multicast address pool leak
+* app/testpmd: fix packet segment allocation
+* app/testpmd: fix port status of bonding slave device
+* app/testpmd: fix supported RSS offload display
+* app/testpmd: perform SW IP checksum for GRO/GSO packets
+* app/testpmd: remove useless pointer checks
+* app/testpmd: replace hardcoded min mbuf number with macro
+* app/testpmd: revert MAC update in checksum forwarding
+* baseband/acc100: add protection for some negative scenario
+* baseband/acc100: remove prefix of internal file
+* baseband/acc100: remove RTE prefix for internal macros
+* baseband/acc100: update companion PF configure function
+* bus/fslmc: fix VFIO setup
+* ci: enable C++ check for Arm and PPC
+* common/cpt: fix build with GCC 12
+* common/dpaax: fix short MAC-I IV calculation for ZUC
+* config: fix C++ cross compiler for Arm and PPC
+* crypto/dpaa2_sec: fix buffer pool ID check
+* crypto/dpaa2_sec: fix crypto operation pointer
+* crypto/dpaa2_sec: fix fle buffer leak
+* crypto/dpaa2_sec: fix operation status for simple FD
+* crypto/dpaa_sec: fix digest size
+* crypto/dpaa_sec: fix secondary process probing
+* crypto/ipsec_mb: fix GMAC parameters setting
+* crypto/ipsec_mb: fix length and offset settings
+* crypto/qat: fix DOCSIS crash
+* crypto/scheduler: fix queue pair in scheduler failover
+* devtools: fix null test for NUMA systems
+* doc: add missing auth algo for IPsec example
+* doc: add more instructions for running as non-root
+* doc: fix API index Markdown syntax
+* doc: fix formatting and link in BPF library guide
+* doc: fix grammar and formatting in compressdev guide
+* doc: fix grammar and parameters in l2fwd-crypto guide
+* doc: fix readability in vhost guide
+* doc: fix vhost multi-queue reconnection
+* doc: update matching versions in i40e guide
+* doc: update matching versions in ice guide
+* drivers/crypto: fix warnings for OpenSSL version
+* eal: fix C++ include for device event and DMA
+* eal/freebsd: fix use of newer cpuset macros
+* eal/windows: add missing C++ include guards
+* eal/windows: fix data race when creating threads
+* eal/x86: drop export of internal alignment macro
+* eal/x86: fix unaligned access for small memcpy
+* ethdev: clarify null location case in xstats get
+* ethdev: fix memory leak in xstats telemetry
+* ethdev: fix port close in secondary process
+* ethdev: fix port state when stop
+* ethdev: fix possible null pointer access
+* ethdev: fix RSS update when RSS is disabled
+* ethdev: prohibit polling stopped queue
+* eventdev/eth_tx: fix adapter creation
+* eventdev/eth_tx: fix queue delete
+* examples/bond: fix invalid use of trylock
+* examples/distributor: fix distributor on Rx core
+* examples/dma: fix Tx drop statistics
+* examples/fips_validation: handle empty payload
+* examples/ipsec-secgw: fix promiscuous mode option
+* examples/ipsec-secgw: fix uninitialized memory access
+* examples/l2fwd-crypto: fix stats refresh rate
+* examples/l3fwd: fix scalar LPM
+* examples/link_status_interrupt: fix stats refresh rate
+* examples/vhost: fix crash when no VMDq
+* gro: fix identifying fragmented packets
+* kni: fix build
+* kni: fix build with Linux 5.18
+* kni: use dedicated function to set MAC address
+* kni: use dedicated function to set random MAC address
+* malloc: fix allocation of almost hugepage size
+* mbuf: dump outer VLAN
+* mem: skip attaching external memory in secondary process
+* net/axgbe: fix xstats get return if xstats is null
+* net/bnxt: allow Tx only or Rx only
+* net/bnxt: avoid unnecessary endianness conversion
+* net/bnxt: fix compatibility with some old firmwares
+* net/bnxt: fix device capability reporting
+* net/bnxt: fix freeing VNIC filters
+* net/bnxt: fix link status when port is stopped
+* net/bnxt: fix reordering in NEON Rx
+* net/bnxt: fix ring group on Rx restart
+* net/bnxt: fix Rx configuration
+* net/bnxt: fix setting forced speed
+* net/bnxt: fix speed autonegotiation
+* net/bnxt: fix switch domain allocation
+* net/bnxt: fix tunnel stateless offloads
+* net/bnxt: force PHY update on certain configurations
+* net/bnxt: recheck FW readiness if in reset process
+* net/bnxt: remove unused macro
+* net/bonding: fix mbuf fast free usage
+* net/bonding: fix RSS inconsistency between ports
+* net/bonding: fix RSS key config with extended key length
+* net/bonding: fix slave stop and remove on port close
+* net/bonding: fix stopping non-active slaves
+* net/cxgbe: fix port ID in Rx mbuf
+* net/cxgbe: fix Tx queue stuck with mbuf chain coalescing
+* net/dpaa: fix event queue detach
+* net/hns3: fix an unreasonable memset
+* net/hns3: fix descriptors check with SVE
+* net/hns3: fix return value for unsupported tuple
+* net/hns3: fix rollback on RSS hash update
+* net/hns3: fix RSS disable
+* net/hns3: fix xstats get return if xstats is null
+* net/hns3: remove duplicate definition
+* net/hns3: remove redundant RSS tuple field
+* net/hns3: remove unnecessary RSS switch
+* net/hns3: support backplane media type
+* net/i40e: fix max frame size config at port level
+* net/i40e: populate error in flow director parser
+* net/iavf: fix data path selection
+* net/iavf: fix HW ring scan method selection
+* net/iavf: fix mbuf release in multi-process
+* net/iavf: fix queue start exception handling
+* net/iavf: fix Rx queue interrupt setting
+* net/iavf: increase reset complete wait count
+* net/ice/base: fix build with GCC 12
+* net/ice/base: fix getting sched node from ID type
+* net/ice: fix build with GCC 12
+* net/ice: fix MTU info for DCF
+* net/ice: fix outer L4 checksum in scalar Rx
+* net/igc: support multi-process
+* net/ipn3ke: fix xstats get return if xstats is null
+* net/ixgbe: add option for link up check on pin SDP3
+* net/memif: fix overwriting of head segment
+* net/mlx5: destroy indirect actions on port stop
+* net/mlx5: fix build with clang 14
+* net/mlx5: fix GTP handling in header modify action
+* net/mlx5: fix LRO validation in Rx setup
+* net/mlx5: fix MPRQ pool registration
+* net/mlx5: fix RSS expansion for patterns with ICMP item
+* net/mlx5: fix RSS hash types adjustment
+* net/mlx5: fix Rx queue recovery mechanism
+* net/mlx5: fix Rx/Tx stats concurrency
+* net/mlx5: fix stack buffer overflow in drop action
+* net/mlx5: fix Tx recovery
+* net/mlx5: fix Tx when inlining is impossible
+* net/mlx5: handle MPRQ incompatibility with external buffers
+* net/mlx5/linux: fix missed Rx packet stats
+* net/mvpp2: fix xstats get return if xstats is null
+* net/netvsc: fix calculation of checksums based on mbuf flag
+* net/netvsc: fix vmbus device reference in multi-process
+* net/nfp: fix disabling VLAN stripping
+* net/nfp: remove unneeded header inclusion
+* net/octeontx: fix port close
+* net/qede: fix build with GCC 12
+* net/qede: fix build with GCC 13
+* net/txgbe: fix max number of queues for SR-IOV
+* net/txgbe: fix register polling
+* net/vhost: fix access to freed memory
+* net/vhost: fix deadlock on vring state change
+* net/vhost: fix TSO feature default disablement
+* net/virtio: restore some optimisations with AVX512
+* net/virtio-user: fix socket non-blocking mode
+* raw/ifpga: remove virtual devices on close
+* raw/ifpga: unregister interrupt on close
+* raw/ioat: fix build when ioat dmadev enabled
+* rib: fix references for IPv6 implementation
+* rib: fix traversal with /32 route
+* service: fix lingering active status
+* test: avoid hang if queues are full and Tx fails
+* test/bonding: fix RSS test when disable RSS
+* test: check memory allocation for CRC
+* test/crypto: fix authentication IV for ZUC SGL
+* test/crypto: fix cipher offset for ZUC
+* test/crypto: fix null check for ZUC authentication
+* test/crypto: fix SNOW3G vector IV format
+* test/crypto: fix ZUC vector IV format
+* test/hash: fix out of bound access
+* test/hash: report non HTM numbers for single thread
+* test/ipsec: fix build with GCC 12
+* test/ipsec: fix performance test
+* test/ring: remove excessive inlining
+* test/table: fix buffer overflow on lpm entry
+* trace: fix init with long file prefix
+* vdpa/ifc: fix build with GCC 12
+* vdpa/mlx5: fix dead loop when process interrupted
+* vdpa/mlx5: fix interrupt trash that leads to crash
+* vdpa/mlx5: fix maximum number of virtqs
+* vdpa/mlx5: workaround var offset within page
+* version: 20.11.6-rc1
+* vhost: add some trailing newline in log messages
+* vhost/crypto: fix build with GCC 12
+* vhost/crypto: fix descriptor processing
+* vhost: discard too small descriptor chains
+* vhost: fix async access
+* vhost: fix deadlock when message handling failed
+* vhost: fix header spanned across more than two descriptors
+* vhost: fix missing enqueue pseudo-header calculation
+* vhost: fix missing virtqueue lock protection
+* vhost: prevent async register
+
+20.11.6 Validation
+~~~~~~~~~~~~~~~~~~
+
+* Intel(R) Testing
+
+   * Basic Intel(R) NIC testing
+
+      * PF(i40e, ixgbe, ice)
+      * VF(i40e, ixgbe, ice)
+      * Compile testing
+      * Intel NIC single core/NIC performance
+      * IPsec
+
+   * Basic cryptodev and virtio testing
+
+      * Virtio function and performance
+      * Cryptodev function and performance
+
+* RedHat Testing
+
+   # Functionality
+
+      * Guest(PF, VF)
+      * Host
+      * Vswitch (throughput, live migration)
+      * Vhost-user(server, client)
+      * OVS-DPDK live migration
+
+   # Platform
+
+      * RHEL8, kernel 4.18, qemu 6.2
+      * X540-AT2 NIC(ixgbe, 10G)
+
+* Nvidia(R) Testing
+
+   * Basic functionality with testpmd
+
+      * Tx/Rx
+      * xstats
+      * Timestamps
+      * Link status
+      * RTE flow and flow_director
+      * RSS
+      * VLAN filtering, stripping and insertion
+      * Checksum/TSO
+      * ptype
+      * link_status_interrupt
+      * l3fwd-power example application
+      * Multi-process example applications
+      * Hardware LRO
+
+   * Build tests
+
+      * Ubuntu 20.04.4 with MLNX_OFED_LINUX-5.7-1.0.2.0.
+      * Ubuntu 20.04.4 with rdma-core master (23a0021).
+      * Ubuntu 20.04.4 with rdma-core v28.0.
+      * Ubuntu 18.04.6 with rdma-core v17.1.
+      * Ubuntu 18.04.6 with rdma-core master (23a0021) (i386).
+      * Ubuntu 16.04.7 with rdma-core v22.7.
+      * Fedora 35 with rdma-core v39.0.
+      * Fedora 37 (Rawhide) with rdma-core v39.0 (with clang only).
+      * CentOS 7 7.9.2009 with rdma-core master (23a0021).
+      * CentOS 7 7.9.2009 with MLNX_OFED_LINUX-5.7-1.0.2.0.
+      * CentOS 8 8.4.2105 with rdma-core master (23a0021).
+      * OpenSUSE Leap 15.4 with rdma-core v38.1.
+      * Windows Server 2019 with Clang 11.0.0.
+
+   * Test platform
+
+      * NIC: ConnectX-4 Lx / OS: Ubuntu 20.04 LTS / Driver: MLNX_OFED_LINUX-5.7-1.0.2.0 / Firmware: 14.32.1010
+      * NIC: ConnectX-5 / OS: Ubuntu 20.04 LTS / Driver: MLNX_OFED_LINUX-5.7-1.0.2.0 / Firmware: 16.34.1002
+      * NIC: ConnectX-6 Dx / OS: Ubuntu 20.04 LTS / Driver: MLNX_OFED_LINUX-5.7-1.0.2.0 / Firmware: 22.34.1002
+      * DPU: BlueField-2 / DOCA SW version: 1.4.0
+
+20.11.6 Known Issues
+~~~~~~~~~~~~~~~~~~~~
+
+
