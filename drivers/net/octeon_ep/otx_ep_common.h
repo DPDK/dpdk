@@ -57,6 +57,10 @@
 		"%s():%u " fmt "\n",				\
 		__func__, __LINE__, ##args)
 
+/* IO Access */
+#define oct_ep_read64(addr) rte_read64_relaxed((void *)(addr))
+#define oct_ep_write64(val, addr) rte_write64_relaxed((val), (void *)(addr))
+
 /* Input Request Header format */
 union otx_ep_instr_irh {
 	uint64_t u64;
