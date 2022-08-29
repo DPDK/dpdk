@@ -1417,15 +1417,13 @@ rxa_service_func(void *args)
 	return 0;
 }
 
-static int
-rte_event_eth_rx_adapter_init(void)
+static void *
+rxa_memzone_array_get(const char *name, unsigned int elt_size, int nb_elems)
 {
-	const char *name = RXA_ADAPTER_ARRAY;
 	const struct rte_memzone *mz;
 	unsigned int sz;
 
-	sz = sizeof(*event_eth_rx_adapter) *
-	    RTE_EVENT_ETH_RX_ADAPTER_MAX_INSTANCE;
+	sz = elt_size * nb_elems;
 	sz = RTE_ALIGN(sz, RTE_CACHE_LINE_SIZE);
 
 	mz = rte_memzone_lookup(name);
@@ -1433,13 +1431,34 @@ rte_event_eth_rx_adapter_init(void)
 		mz = rte_memzone_reserve_aligned(name, sz, rte_socket_id(), 0,
 						 RTE_CACHE_LINE_SIZE);
 		if (mz == NULL) {
-			RTE_EDEV_LOG_ERR("failed to reserve memzone err = %"
-					PRId32, rte_errno);
-			return -rte_errno;
+			RTE_EDEV_LOG_ERR("failed to reserve memzone"
+					 " name = %s, err = %"
+					 PRId32, name, rte_errno);
+			return NULL;
 		}
 	}
 
-	event_eth_rx_adapter = mz->addr;
+	return mz->addr;
+}
+
+static int
+rte_event_eth_rx_adapter_init(void)
+{
+	uint8_t i;
+
+	if (event_eth_rx_adapter == NULL) {
+		event_eth_rx_adapter =
+			rxa_memzone_array_get(RXA_ADAPTER_ARRAY,
+					sizeof(*event_eth_rx_adapter),
+					RTE_EVENT_ETH_RX_ADAPTER_MAX_INSTANCE);
+		if (event_eth_rx_adapter == NULL)
+			return -ENOMEM;
+
+		for (i = 0; i < RTE_EVENT_ETH_RX_ADAPTER_MAX_INSTANCE; i++)
+			event_eth_rx_adapter[i] = NULL;
+
+	}
+
 	return 0;
 }
 
@@ -1452,6 +1471,7 @@ rxa_memzone_lookup(void)
 		mz = rte_memzone_lookup(RXA_ADAPTER_ARRAY);
 		if (mz == NULL)
 			return -ENOMEM;
+
 		event_eth_rx_adapter = mz->addr;
 	}
 
@@ -1952,7 +1972,6 @@ rxa_sw_del(struct event_eth_rx_adapter *rx_adapter,
 	int pollq;
 	int intrq;
 	int sintrq;
-
 
 	if (rx_adapter->nb_queues == 0)
 		return;
@@ -2526,6 +2545,9 @@ rte_event_eth_rx_adapter_free(uint8_t id)
 {
 	struct event_eth_rx_adapter *rx_adapter;
 
+	if (rxa_memzone_lookup())
+		return -ENOMEM;
+
 	RTE_EVENT_ETH_RX_ADAPTER_ID_VALID_OR_ERR_RET(id, -EINVAL);
 
 	rx_adapter = rxa_id_to_adapter(id);
@@ -2562,6 +2584,9 @@ rte_event_eth_rx_adapter_queue_add(uint8_t id,
 	struct rte_eventdev *dev;
 	struct eth_device_info *dev_info;
 	struct rte_event_eth_rx_adapter_vector_limits limits;
+
+	if (rxa_memzone_lookup())
+		return -ENOMEM;
 
 	RTE_EVENT_ETH_RX_ADAPTER_ID_VALID_OR_ERR_RET(id, -EINVAL);
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(eth_dev_id, -EINVAL);
@@ -2728,6 +2753,9 @@ rte_event_eth_rx_adapter_queue_del(uint8_t id, uint16_t eth_dev_id,
 	uint32_t *rx_wrr = NULL;
 	int num_intr_vec;
 
+	if (rxa_memzone_lookup())
+		return -ENOMEM;
+
 	RTE_EVENT_ETH_RX_ADAPTER_ID_VALID_OR_ERR_RET(id, -EINVAL);
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(eth_dev_id, -EINVAL);
 
@@ -2834,6 +2862,7 @@ unlock_ret:
 
 	rte_eventdev_trace_eth_rx_adapter_queue_del(id, eth_dev_id,
 		rx_queue_id, ret);
+
 	return ret;
 }
 
@@ -3287,6 +3316,97 @@ rte_event_eth_rx_adapter_queue_conf_get(uint8_t id,
 	return 0;
 }
 
+static int
+rxa_is_queue_added(struct event_eth_rx_adapter *rx_adapter,
+		   uint16_t eth_dev_id,
+		   uint16_t rx_queue_id)
+{
+	struct eth_device_info *dev_info;
+	struct eth_rx_queue_info *queue_info;
+
+	if (!rx_adapter->eth_devices)
+		return 0;
+
+	dev_info = &rx_adapter->eth_devices[eth_dev_id];
+	if (!dev_info || !dev_info->rx_queue)
+		return 0;
+
+	queue_info = &dev_info->rx_queue[rx_queue_id];
+
+	return queue_info && queue_info->queue_enabled;
+}
+
+#define rxa_evdev(rx_adapter) (&rte_eventdevs[(rx_adapter)->eventdev_id])
+
+#define rxa_dev_instance_get(rx_adapter) \
+		rxa_evdev((rx_adapter))->dev_ops->eth_rx_adapter_instance_get
+
+int
+rte_event_eth_rx_adapter_instance_get(uint16_t eth_dev_id,
+				      uint16_t rx_queue_id,
+				      uint8_t *rxa_inst_id)
+{
+	uint8_t id;
+	int ret = -EINVAL;
+	uint32_t caps;
+	struct event_eth_rx_adapter *rx_adapter;
+
+	if (rxa_memzone_lookup())
+		return -ENOMEM;
+
+	if (eth_dev_id >= rte_eth_dev_count_avail()) {
+		RTE_EDEV_LOG_ERR("Invalid ethernet port id %u", eth_dev_id);
+		return -EINVAL;
+	}
+
+	if (rx_queue_id >= rte_eth_devices[eth_dev_id].data->nb_rx_queues) {
+		RTE_EDEV_LOG_ERR("Invalid Rx queue %u", rx_queue_id);
+		return -EINVAL;
+	}
+
+	if (rxa_inst_id == NULL) {
+		RTE_EDEV_LOG_ERR("rxa_inst_id cannot be NULL");
+		return -EINVAL;
+	}
+
+	/* Iterate through all adapter instances */
+	for (id = 0; id < RTE_EVENT_ETH_RX_ADAPTER_MAX_INSTANCE; id++) {
+		rx_adapter = rxa_id_to_adapter(id);
+		if (!rx_adapter)
+			continue;
+
+		if (rxa_is_queue_added(rx_adapter, eth_dev_id, rx_queue_id)) {
+			*rxa_inst_id = rx_adapter->id;
+			ret = 0;
+		}
+
+		/* Rx adapter internally mainatains queue information
+		 * for both internal port and DPDK service port.
+		 * Eventdev PMD callback is called for future proof only and
+		 * overrides the above return value if defined.
+		 */
+		caps = 0;
+		if (!rte_event_eth_rx_adapter_caps_get(rx_adapter->eventdev_id,
+						      eth_dev_id,
+						      &caps)) {
+			if (caps & RTE_EVENT_ETH_RX_ADAPTER_CAP_INTERNAL_PORT) {
+				ret = rxa_dev_instance_get(rx_adapter) ?
+						rxa_dev_instance_get(rx_adapter)
+								(eth_dev_id,
+								 rx_queue_id,
+								 rxa_inst_id)
+							: -EINVAL;
+			}
+		}
+
+		/* return if entry found */
+		if (ret == 0)
+			return ret;
+	}
+
+	return -EINVAL;
+}
+
 #define RXA_ADD_DICT(stats, s) rte_tel_data_add_dict_u64(d, #s, stats.s)
 
 static int
@@ -3555,6 +3675,68 @@ error:
 	return ret;
 }
 
+static int
+handle_rxa_instance_get(const char *cmd __rte_unused,
+			const char *params,
+			struct rte_tel_data *d)
+{
+	uint8_t instance_id;
+	uint16_t rx_queue_id;
+	int eth_dev_id, ret = -1;
+	char *token, *l_params;
+
+	if (params == NULL || strlen(params) == 0 || !isdigit(*params))
+		return -1;
+
+	l_params = strdup(params);
+	if (l_params == NULL)
+		return -ENOMEM;
+	token = strtok(l_params, ",");
+	RTE_EVENT_ETH_RX_ADAPTER_TOKEN_VALID_OR_GOTO_ERR_RET(token, -1);
+
+	/* Get device ID from parameter string */
+	eth_dev_id = strtoul(token, NULL, 10);
+	RTE_ETH_VALID_PORTID_OR_GOTO_ERR_RET(eth_dev_id, -EINVAL);
+
+	token = strtok(NULL, ",");
+	RTE_EVENT_ETH_RX_ADAPTER_TOKEN_VALID_OR_GOTO_ERR_RET(token, -1);
+
+	/* Get Rx queue ID from parameter string */
+	rx_queue_id = strtoul(token, NULL, 10);
+	if (rx_queue_id >= rte_eth_devices[eth_dev_id].data->nb_rx_queues) {
+		RTE_EDEV_LOG_ERR("Invalid rx queue_id %u", rx_queue_id);
+		ret = -EINVAL;
+		goto error;
+	}
+
+	token = strtok(NULL, "\0");
+	if (token != NULL)
+		RTE_EDEV_LOG_ERR("Extra parameters passed to eventdev"
+				 " telemetry command, ignoring");
+
+	/* Parsing parameter finished */
+	free(l_params);
+
+	if (rte_event_eth_rx_adapter_instance_get(eth_dev_id,
+						  rx_queue_id,
+						  &instance_id)) {
+		RTE_EDEV_LOG_ERR("Failed to get RX adapter instance ID "
+				 " for rx_queue_id = %d", rx_queue_id);
+		return -1;
+	}
+
+	rte_tel_data_start_dict(d);
+	rte_tel_data_add_dict_u64(d, "eth_dev_id", eth_dev_id);
+	rte_tel_data_add_dict_u64(d, "rx_queue_id", rx_queue_id);
+	rte_tel_data_add_dict_u64(d, "rxa_instance_id", instance_id);
+
+	return 0;
+
+error:
+	free(l_params);
+	return ret;
+}
+
 RTE_INIT(rxa_init_telemetry)
 {
 	rte_telemetry_register_cmd("/eventdev/rxa_stats",
@@ -3576,4 +3758,8 @@ RTE_INIT(rxa_init_telemetry)
 	rte_telemetry_register_cmd("/eventdev/rxa_queue_stats_reset",
 		handle_rxa_queue_stats_reset,
 		"Reset Rx queue stats. Parameter: rxa_id, dev_id, queue_id");
+
+	rte_telemetry_register_cmd("/eventdev/rxa_rxq_instance_get",
+		handle_rxa_instance_get,
+		"Returns Rx adapter instance id. Parameter: dev_id, queue_id");
 }

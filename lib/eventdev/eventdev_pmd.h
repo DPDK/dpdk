@@ -888,6 +888,26 @@ typedef int (*eventdev_eth_rx_adapter_vector_limits_get_t)(
 	const struct rte_eventdev *dev, const struct rte_eth_dev *eth_dev,
 	struct rte_event_eth_rx_adapter_vector_limits *limits);
 
+/**
+ * Get Rx adapter instance ID for Rx queue
+ *
+ * @param eth_dev_id
+ *  Port identifier of ethernet device
+ *
+ * @param rx_queue_id
+ *  Ethernet device Rx queue index
+ *
+ * @param[out] rxa_inst_id
+ *  Pointer to Rx adapter instance identifier.
+ *  Contains valid Rx adapter instance ID when return value is 0
+ *
+ * @return
+ *   -  0: Success
+ *   - <0: Error code on failure
+ */
+typedef int (*eventdev_eth_rx_adapter_instance_get_t)
+	(uint16_t eth_dev_id, uint16_t rx_queue_id, uint8_t *rxa_inst_id);
+
 typedef uint32_t rte_event_pmd_selftest_seqn_t;
 extern int rte_event_pmd_selftest_seqn_dynfield_offset;
 
@@ -1321,6 +1341,8 @@ struct eventdev_ops {
 	eventdev_eth_rx_adapter_vector_limits_get_t
 		eth_rx_adapter_vector_limits_get;
 	/**< Get event vector limits for the Rx adapter */
+	eventdev_eth_rx_adapter_instance_get_t eth_rx_adapter_instance_get;
+	/**< Get Rx adapter instance ID for Rx queue */
 
 	eventdev_timer_adapter_caps_get_t timer_adapter_caps_get;
 	/**< Get timer adapter capabilities */

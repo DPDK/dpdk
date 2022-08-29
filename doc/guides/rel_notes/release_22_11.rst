@@ -67,6 +67,11 @@ New Features
 
   * Added support to set device link down/up.
 
+* **Added eventdev adapter instance get API.**
+
+  * Added ``rte_event_eth_rx_adapter_instance_get`` to get Rx adapter
+    instance ID for specified ethernet device ID and Rx queue index.
+
 
 Removed Items
 -------------

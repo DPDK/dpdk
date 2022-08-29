@@ -112,6 +112,9 @@ EXPERIMENTAL {
 	# added in 22.07
 	rte_event_port_quiesce;
 	rte_event_queue_attr_set;
+
+	# added in 22.11
+	rte_event_eth_rx_adapter_instance_get;
 };
 
 INTERNAL {

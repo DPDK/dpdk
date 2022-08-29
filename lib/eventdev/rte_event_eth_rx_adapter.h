@@ -38,6 +38,7 @@
  *  - rte_event_eth_rx_adapter_queue_stats_get()
  *  - rte_event_eth_rx_adapter_queue_stats_reset()
  *  - rte_event_eth_rx_adapter_event_port_get()
+ *  - rte_event_eth_rx_adapter_instance_get()
  *
  * The application creates an ethernet to event adapter using
  * rte_event_eth_rx_adapter_create_ext() or rte_event_eth_rx_adapter_create()
@@ -703,6 +704,29 @@ rte_event_eth_rx_adapter_queue_stats_reset(uint8_t id,
 __rte_experimental
 int
 rte_event_eth_rx_adapter_event_port_get(uint8_t id, uint8_t *event_port_id);
+
+/**
+ * Get RX adapter instance ID for a RX queue
+ *
+ * @param eth_dev_id
+ *  Port identifier of Ethernet device.
+ *
+ * @param rx_queue_id
+ *  Ethernet device receive queue index.
+ *
+ * @param[out] rxa_inst_id
+ *  Pointer to store RX adapter instance identifier.
+ *  Contains valid Rx adapter instance id when return value is 0
+ *
+ * @return
+ *  -  0: Success
+ *  - <0: Error code on failure
+ */
+__rte_experimental
+int
+rte_event_eth_rx_adapter_instance_get(uint16_t eth_dev_id,
+				      uint16_t rx_queue_id,
+				      uint8_t *rxa_inst_id);
 
 #ifdef __cplusplus
 }
