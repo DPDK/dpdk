@@ -21,7 +21,6 @@
 #include "base/ice_common.h"
 #include "base/ice_ptp_hw.h"
 
-#include "rte_pmd_ice.h"
 #include "ice_ethdev.h"
 #include "ice_rxtx.h"
 #include "ice_generic_flow.h"
@@ -30,6 +29,8 @@
 #define ICE_SAFE_MODE_SUPPORT_ARG "safe-mode-support"
 #define ICE_PIPELINE_MODE_SUPPORT_ARG  "pipeline-mode-support"
 #define ICE_PROTO_XTR_ARG         "proto_xtr"
+#define ICE_FIELD_OFFS_ARG		  "field_offs"
+#define ICE_FIELD_NAME_ARG		  "field_name"
 #define ICE_HW_DEBUG_MASK_ARG     "hw_debug_mask"
 #define ICE_ONE_PPS_OUT_ARG       "pps_out"
 #define ICE_RX_LOW_LATENCY_ARG    "rx_low_latency"
@@ -43,6 +44,8 @@ static const char * const ice_valid_args[] = {
 	ICE_SAFE_MODE_SUPPORT_ARG,
 	ICE_PIPELINE_MODE_SUPPORT_ARG,
 	ICE_PROTO_XTR_ARG,
+	ICE_FIELD_OFFS_ARG,
+	ICE_FIELD_NAME_ARG,
 	ICE_HW_DEBUG_MASK_ARG,
 	ICE_ONE_PPS_OUT_ARG,
 	ICE_RX_LOW_LATENCY_ARG,
@@ -51,16 +54,8 @@ static const char * const ice_valid_args[] = {
 
 #define PPS_OUT_DELAY_NS  1
 
-static const struct rte_mbuf_dynfield ice_proto_xtr_metadata_param = {
-	.name = "intel_pmd_dynfield_proto_xtr_metadata",
-	.size = sizeof(uint32_t),
-	.align = __alignof__(uint32_t),
-	.flags = 0,
-};
-
 struct proto_xtr_ol_flag {
 	const struct rte_mbuf_dynflag param;
-	uint64_t *ol_flag;
 	bool required;
 };
 
@@ -68,23 +63,17 @@ static bool ice_proto_xtr_hw_support[PROTO_XTR_MAX];
 
 static struct proto_xtr_ol_flag ice_proto_xtr_ol_flag_params[] = {
 	[PROTO_XTR_VLAN] = {
-		.param = { .name = "intel_pmd_dynflag_proto_xtr_vlan" },
-		.ol_flag = &rte_net_ice_dynflag_proto_xtr_vlan_mask },
+		.param = { .name = "intel_pmd_dynflag_proto_xtr_vlan" }},
 	[PROTO_XTR_IPV4] = {
-		.param = { .name = "intel_pmd_dynflag_proto_xtr_ipv4" },
-		.ol_flag = &rte_net_ice_dynflag_proto_xtr_ipv4_mask },
+		.param = { .name = "intel_pmd_dynflag_proto_xtr_ipv4" }},
 	[PROTO_XTR_IPV6] = {
-		.param = { .name = "intel_pmd_dynflag_proto_xtr_ipv6" },
-		.ol_flag = &rte_net_ice_dynflag_proto_xtr_ipv6_mask },
+		.param = { .name = "intel_pmd_dynflag_proto_xtr_ipv6" }},
 	[PROTO_XTR_IPV6_FLOW] = {
-		.param = { .name = "intel_pmd_dynflag_proto_xtr_ipv6_flow" },
-		.ol_flag = &rte_net_ice_dynflag_proto_xtr_ipv6_flow_mask },
+		.param = { .name = "intel_pmd_dynflag_proto_xtr_ipv6_flow" }},
 	[PROTO_XTR_TCP] = {
-		.param = { .name = "intel_pmd_dynflag_proto_xtr_tcp" },
-		.ol_flag = &rte_net_ice_dynflag_proto_xtr_tcp_mask },
+		.param = { .name = "intel_pmd_dynflag_proto_xtr_tcp" }},
 	[PROTO_XTR_IP_OFFSET] = {
-		.param = { .name = "intel_pmd_dynflag_proto_xtr_ip_offset" },
-		.ol_flag = &rte_net_ice_dynflag_proto_xtr_ip_offset_mask },
+		.param = { .name = "intel_pmd_dynflag_proto_xtr_ip_offset" }}
 };
 
 #define ICE_OS_DEFAULT_PKG_NAME		"ICE OS Default Package"
@@ -610,6 +599,45 @@ handle_proto_xtr_arg(__rte_unused const char *key, const char *value,
 		return -1;
 	}
 
+	return 0;
+}
+
+static int
+handle_field_offs_arg(__rte_unused const char *key, const char *value,
+				void *offs_args)
+{
+	uint8_t *offset = offs_args;
+
+	if (value == NULL || offs_args == NULL)
+		return -EINVAL;
+
+	if (!isdigit(*value))
+		return -1;
+
+	*offset = atoi(value);
+
+	return 0;
+}
+
+static int
+handle_field_name_arg(__rte_unused const char *key, const char *value,
+				void *name_args)
+{
+	char *name = name_args;
+	int ret;
+
+	if (name == NULL || name_args == NULL)
+		return -EINVAL;
+	if (isdigit(*value))
+		return -1;
+
+	ret = strlcpy(name, value, RTE_MBUF_DYN_NAMESIZE);
+	if (ret < 0 || ret >= RTE_MBUF_DYN_NAMESIZE) {
+		PMD_DRV_LOG(ERR,
+			    "The protocol extraction field name too long : '%s'",
+			    name);
+		return -1;
+	}
 	return 0;
 }
 
@@ -1401,7 +1429,7 @@ ice_init_proto_xtr(struct rte_eth_dev *dev)
 	struct ice_hw *hw = ICE_PF_TO_HW(pf);
 	const struct proto_xtr_ol_flag *ol_flag;
 	bool proto_xtr_enable = false;
-	int offset;
+	int offset, field_offs;
 	uint16_t i;
 
 	pf->proto_xtr = rte_zmalloc(NULL, pf->lan_nb_qps, 0);
@@ -1423,26 +1451,34 @@ ice_init_proto_xtr(struct rte_eth_dev *dev)
 		}
 	}
 
-	if (likely(!proto_xtr_enable))
+	if (likely(!proto_xtr_enable)) {
+		ad->devargs.xtr_field_offs = -1;
 		return;
+	}
 
 	ice_check_proto_xtr_support(hw);
 
-	offset = rte_mbuf_dynfield_register(&ice_proto_xtr_metadata_param);
-	if (unlikely(offset == -1)) {
-		PMD_DRV_LOG(ERR,
-			    "Protocol extraction metadata is disabled in mbuf with error %d",
-			    -rte_errno);
+	/*check mbuf dynfield*/
+	field_offs = rte_mbuf_dynfield_lookup(ad->devargs.xtr_field_name, NULL);
+	if (ad->devargs.xtr_field_offs == field_offs) {
+		PMD_DRV_LOG(DEBUG,
+			"Protocol extraction metadata offset in mbuf is : %d",
+			ad->devargs.xtr_field_offs);
+	} else {
+		PMD_DRV_LOG(ERR, "Invalid field offset or name, no match dynfield, [%d],[%s]",
+			ad->devargs.xtr_field_offs, ad->devargs.xtr_field_name);
+		ad->devargs.xtr_field_offs = -1;
 		return;
 	}
 
 	PMD_DRV_LOG(DEBUG,
 		    "Protocol extraction metadata offset in mbuf is : %d",
-		    offset);
-	rte_net_ice_dynfield_proto_xtr_metadata_offs = offset;
+		    ad->devargs.xtr_field_offs);
 
 	for (i = 0; i < RTE_DIM(ice_proto_xtr_ol_flag_params); i++) {
 		ol_flag = &ice_proto_xtr_ol_flag_params[i];
+
+		ad->devargs.xtr_flag_offs[i] = 0xff;
 
 		if (!ol_flag->required)
 			continue;
@@ -1451,7 +1487,7 @@ ice_init_proto_xtr(struct rte_eth_dev *dev)
 			PMD_DRV_LOG(ERR,
 				    "Protocol extraction type %u is not supported in hardware",
 				    i);
-			rte_net_ice_dynfield_proto_xtr_metadata_offs = -1;
+			ad->devargs.xtr_field_offs = -1;
 			break;
 		}
 
@@ -1461,14 +1497,15 @@ ice_init_proto_xtr(struct rte_eth_dev *dev)
 				    "Protocol extraction offload '%s' failed to register with error %d",
 				    ol_flag->param.name, -rte_errno);
 
-			rte_net_ice_dynfield_proto_xtr_metadata_offs = -1;
+			ad->devargs.xtr_field_offs = -1;
 			break;
 		}
 
 		PMD_DRV_LOG(DEBUG,
 			    "Protocol extraction offload '%s' offset in mbuf is : %d",
 			    ol_flag->param.name, offset);
-		*ol_flag->ol_flag = 1ULL << offset;
+
+		ad->devargs.xtr_flag_offs[i] = offset;
 	}
 }
 
@@ -2008,6 +2045,16 @@ static int ice_parse_devargs(struct rte_eth_dev *dev)
 
 	ret = rte_kvargs_process(kvlist, ICE_PROTO_XTR_ARG,
 				 &handle_proto_xtr_arg, &ad->devargs);
+	if (ret)
+		goto bail;
+
+	ret = rte_kvargs_process(kvlist, ICE_FIELD_OFFS_ARG,
+				 &handle_field_offs_arg, &ad->devargs.xtr_field_offs);
+	if (ret)
+		goto bail;
+
+	ret = rte_kvargs_process(kvlist, ICE_FIELD_NAME_ARG,
+				 &handle_field_name_arg, &ad->devargs.xtr_field_name);
 	if (ret)
 		goto bail;
 

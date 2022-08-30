@@ -110,29 +110,44 @@ Runtime Config Options
 
   The argument format is::
 
-      -a 18:00.0,proto_xtr=<queues:protocol>[<queues:protocol>...]
-      -a 18:00.0,proto_xtr=<protocol>
+      18:00.0,proto_xtr=<queues:protocol>[<queues:protocol>...],field_offs=<offset>, \
+      field_name=<name>
+      18:00.0,proto_xtr=<protocol>,field_offs=<offset>,field_name=<name>
 
   Queues are grouped by ``(`` and ``)`` within the group. The ``-`` character
   is used as a range separator and ``,`` is used as a single number separator.
   The grouping ``()`` can be omitted for single element group. If no queues are
   specified, PMD will use this protocol extraction type for all queues.
+  ``field_offs`` is the offset of mbuf dynamic field for protocol extraction data.
+  ``field_name`` is the name of mbuf dynamic field for protocol extraction data.
+  ``field_offs`` and ``field_name`` will be checked whether it is valid. If invalid,
+  an error print will be returned: ``Invalid field offset or name, no match dynfield``,
+  and the proto_ext function will not be enabled.
 
   Protocol is : ``vlan, ipv4, ipv6, ipv6_flow, tcp, ip_offset``.
 
   .. code-block:: console
 
-    dpdk-testpmd -a 18:00.0,proto_xtr='[(1,2-3,8-9):tcp,10-13:vlan]'
+    dpdk-testpmd -c 0xff -- -i
+    port stop 0
+    port detach 0
+    port attach 18:00.0,proto_xtr='[(1,2-3,8-9):tcp,10-13:vlan]',field_offs=92,field_name=pmd_dyn
 
   This setting means queues 1, 2-3, 8-9 are TCP extraction, queues 10-13 are
-  VLAN extraction, other queues run with no protocol extraction.
+  VLAN extraction, other queues run with no protocol extraction. The offset of mbuf
+  dynamic field is 92 for all queues with protocol extraction.
 
   .. code-block:: console
 
-    dpdk-testpmd -a 18:00.0,proto_xtr=vlan,proto_xtr='[(1,2-3,8-9):tcp,10-23:ipv6]'
+    dpdk-testpmd -c 0xff -- -i
+    port stop 0
+    port detach 0
+    port attach 18:00.0,proto_xtr=vlan,proto_xtr='[(1,2-3,8-9):tcp,10-23:ipv6]', \
+    field_offs=92,field_name=pmd_dyn
 
   This setting means queues 1, 2-3, 8-9 are TCP extraction, queues 10-23 are
-  IPv6 extraction, other queues use the default VLAN extraction.
+  IPv6 extraction, other queues use the default VLAN extraction. The offset of mbuf
+  dynamic field is 92 for all queues with protocol extraction.
 
   The extraction metadata is copied into the registered dynamic mbuf field, and
   the related dynamic mbuf flags is set.
@@ -210,13 +225,6 @@ Runtime Config Options
   IPHDR1 - Outer/Single IPv4 Header offset.
 
   IPHDR2 - Outer/Single IPv6 Header offset.
-
-  Use ``rte_net_ice_dynf_proto_xtr_metadata_get`` to access the protocol
-  extraction metadata, and use ``RTE_PKT_RX_DYNF_PROTO_XTR_*`` to get the
-  metadata type of ``struct rte_mbuf::ol_flags``.
-
-  The ``rte_net_ice_dump_proto_xtr_metadata`` routine shows how to
-  access the protocol extraction result in ``struct rte_mbuf``.
 
 - ``Hardware debug mask log support`` (default ``0``)
 

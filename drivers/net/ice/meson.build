@@ -78,5 +78,3 @@ sources += files(
         'ice_dcf_parent.c',
         'ice_dcf_sched.c',
 )
-
-headers = files('rte_pmd_ice.h')

@@ -44,7 +44,6 @@ The public API headers are grouped by topics:
   [KNI](@ref rte_kni.h),
   [ixgbe](@ref rte_pmd_ixgbe.h),
   [i40e](@ref rte_pmd_i40e.h),
-  [ice](@ref rte_pmd_ice.h),
   [iavf](@ref rte_pmd_iavf.h),
   [bnxt](@ref rte_pmd_bnxt.h),
   [cnxk](@ref rte_pmd_cnxk.h),

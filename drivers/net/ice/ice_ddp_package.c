@@ -9,7 +9,6 @@
 #include <rte_tailq.h>
 
 #include "ice_ethdev.h"
-#include "rte_pmd_ice.h"
 
 #define ICE_BUFF_SEG_HEADER_FLAG   0x1
 #define ICE_PKG_HDR_HEADR_PART1    1

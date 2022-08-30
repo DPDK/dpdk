@@ -565,6 +565,10 @@ struct ice_devargs {
 	uint8_t proto_xtr[ICE_MAX_QUEUE_NUM];
 	uint8_t pin_idx;
 	uint8_t pps_out_ena;
+	int xtr_field_offs;
+	uint8_t xtr_flag_offs[PROTO_XTR_MAX];
+	/* Name of the field. */
+	char xtr_field_name[RTE_MBUF_DYN_NAMESIZE];
 };
 
 /**
@@ -726,5 +730,8 @@ ice_align_floor(int n)
 	((phy_type) & ICE_PHY_TYPE_HIGH_100G_CAUI2) || \
 	((phy_type) & ICE_PHY_TYPE_HIGH_100G_AUI2_AOC_ACC) || \
 	((phy_type) & ICE_PHY_TYPE_HIGH_100G_AUI2))
+
+__rte_experimental
+int rte_pmd_ice_dump_package(uint16_t port, uint8_t **buff, uint32_t *size);
 
 #endif /* _ICE_ETHDEV_H_ */

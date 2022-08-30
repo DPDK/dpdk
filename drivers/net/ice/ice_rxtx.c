@@ -6,7 +6,6 @@
 #include <rte_net.h>
 #include <rte_vect.h>
 
-#include "rte_pmd_ice.h"
 #include "ice_rxtx.h"
 #include "ice_rxtx_vec_common.h"
 
@@ -15,16 +14,11 @@
 		RTE_MBUF_F_TX_TCP_SEG |		 \
 		RTE_MBUF_F_TX_OUTER_IP_CKSUM)
 
-/* Offset of mbuf dynamic field for protocol extraction data */
-int rte_net_ice_dynfield_proto_xtr_metadata_offs = -1;
-
-/* Mask of mbuf dynamic flags for protocol extraction type */
-uint64_t rte_net_ice_dynflag_proto_xtr_vlan_mask;
-uint64_t rte_net_ice_dynflag_proto_xtr_ipv4_mask;
-uint64_t rte_net_ice_dynflag_proto_xtr_ipv6_mask;
-uint64_t rte_net_ice_dynflag_proto_xtr_ipv6_flow_mask;
-uint64_t rte_net_ice_dynflag_proto_xtr_tcp_mask;
-uint64_t rte_net_ice_dynflag_proto_xtr_ip_offset_mask;
+/**
+ * The mbuf dynamic field pointer for protocol extraction metadata.
+ */
+#define ICE_DYNF_PROTO_XTR_METADATA(m, n) \
+	RTE_MBUF_DYNFIELD((m), (n), uint32_t *)
 
 static int
 ice_monitor_callback(const uint64_t value,
@@ -160,7 +154,7 @@ ice_rxd_to_pkt_fields_by_comms_aux_v1(struct ice_rx_queue *rxq,
 		if (metadata) {
 			mb->ol_flags |= rxq->xtr_ol_flag;
 
-			*RTE_NET_ICE_DYNF_PROTO_XTR_METADATA(mb) = metadata;
+			*ICE_DYNF_PROTO_XTR_METADATA(mb, rxq->xtr_field_offs) = metadata;
 		}
 	}
 #else
@@ -200,7 +194,7 @@ ice_rxd_to_pkt_fields_by_comms_aux_v2(struct ice_rx_queue *rxq,
 		if (metadata) {
 			mb->ol_flags |= rxq->xtr_ol_flag;
 
-			*RTE_NET_ICE_DYNF_PROTO_XTR_METADATA(mb) = metadata;
+			*ICE_DYNF_PROTO_XTR_METADATA(mb, rxq->xtr_field_offs) = metadata;
 		}
 	}
 #else
@@ -226,29 +220,12 @@ ice_select_rxd_to_pkt_fields_handler(struct ice_rx_queue *rxq, uint32_t rxdid)
 
 	switch (rxdid) {
 	case ICE_RXDID_COMMS_AUX_VLAN:
-		rxq->xtr_ol_flag = rte_net_ice_dynflag_proto_xtr_vlan_mask;
-		break;
-
 	case ICE_RXDID_COMMS_AUX_IPV4:
-		rxq->xtr_ol_flag = rte_net_ice_dynflag_proto_xtr_ipv4_mask;
-		break;
-
 	case ICE_RXDID_COMMS_AUX_IPV6:
-		rxq->xtr_ol_flag = rte_net_ice_dynflag_proto_xtr_ipv6_mask;
-		break;
-
 	case ICE_RXDID_COMMS_AUX_IPV6_FLOW:
-		rxq->xtr_ol_flag = rte_net_ice_dynflag_proto_xtr_ipv6_flow_mask;
-		break;
-
 	case ICE_RXDID_COMMS_AUX_TCP:
-		rxq->xtr_ol_flag = rte_net_ice_dynflag_proto_xtr_tcp_mask;
-		break;
-
 	case ICE_RXDID_COMMS_AUX_IP_OFFSET:
-		rxq->xtr_ol_flag = rte_net_ice_dynflag_proto_xtr_ip_offset_mask;
 		break;
-
 	case ICE_RXDID_COMMS_GENERIC:
 		/* fallthrough */
 	case ICE_RXDID_COMMS_OVS:
@@ -260,7 +237,7 @@ ice_select_rxd_to_pkt_fields_handler(struct ice_rx_queue *rxq, uint32_t rxdid)
 		break;
 	}
 
-	if (!rte_net_ice_dynf_proto_xtr_metadata_avail())
+	if (rxq->xtr_field_offs == -1)
 		rxq->xtr_ol_flag = 0;
 }
 
@@ -346,7 +323,7 @@ ice_program_hw_rx_queue(struct ice_rx_queue *rxq)
 		return -EINVAL;
 	}
 
-	ice_select_rxd_to_pkt_fields_handler(rxq, rxdid);
+	rxq->rxdid = rxdid;
 
 	/* Enable Flexible Descriptors in the queue context which
 	 * allows this driver to select a specific receive descriptor format
@@ -1121,6 +1098,10 @@ ice_rx_queue_setup(struct rte_eth_dev *dev,
 	rxq->rx_deferred_start = rx_conf->rx_deferred_start;
 	rxq->proto_xtr = pf->proto_xtr != NULL ?
 			 pf->proto_xtr[queue_idx] : PROTO_XTR_NONE;
+	if (rxq->proto_xtr != PROTO_XTR_NONE &&
+			ad->devargs.xtr_flag_offs[rxq->proto_xtr] != 0xff)
+		rxq->xtr_ol_flag = 1ULL << ad->devargs.xtr_flag_offs[rxq->proto_xtr];
+	rxq->xtr_field_offs = ad->devargs.xtr_field_offs;
 
 	/* Allocate the maximum number of RX ring hardware descriptor. */
 	len = ICE_MAX_RING_DESC;
