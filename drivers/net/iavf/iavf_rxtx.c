@@ -3186,14 +3186,14 @@ iavf_tx_done_cleanup_full(struct iavf_tx_queue *txq,
 			uint32_t free_cnt)
 {
 	struct iavf_tx_entry *swr_ring = txq->sw_ring;
-	uint16_t i, tx_last, tx_id;
+	uint16_t tx_last, tx_id;
 	uint16_t nb_tx_free_last;
 	uint16_t nb_tx_to_clean;
-	uint32_t pkt_cnt;
+	uint32_t pkt_cnt = 0;
 
-	/* Start free mbuf from the next of tx_tail */
-	tx_last = txq->tx_tail;
-	tx_id  = swr_ring[tx_last].next_id;
+	/* Start free mbuf from tx_tail */
+	tx_id = txq->tx_tail;
+	tx_last = tx_id;
 
 	if (txq->nb_free == 0 && iavf_xmit_cleanup(txq))
 		return 0;
@@ -3206,10 +3206,8 @@ iavf_tx_done_cleanup_full(struct iavf_tx_queue *txq,
 	/* Loop through swr_ring to count the amount of
 	 * freeable mubfs and packets.
 	 */
-	for (pkt_cnt = 0; pkt_cnt < free_cnt; ) {
-		for (i = 0; i < nb_tx_to_clean &&
-			pkt_cnt < free_cnt &&
-			tx_id != tx_last; i++) {
+	while (pkt_cnt < free_cnt) {
+		do {
 			if (swr_ring[tx_id].mbuf != NULL) {
 				rte_pktmbuf_free_seg(swr_ring[tx_id].mbuf);
 				swr_ring[tx_id].mbuf = NULL;
@@ -3222,7 +3220,7 @@ iavf_tx_done_cleanup_full(struct iavf_tx_queue *txq,
 			}
 
 			tx_id = swr_ring[tx_id].next_id;
-		}
+		} while (--nb_tx_to_clean && pkt_cnt < free_cnt && tx_id != tx_last);
 
 		if (txq->rs_thresh > txq->nb_tx_desc -
 			txq->nb_free || tx_id == tx_last)
