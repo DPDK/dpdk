@@ -35,7 +35,7 @@ pipeline PIPELINE0 build lib /tmp/meter.so io ./examples/pipeline/examples/ethde
 ; The table entries can later be updated at run-time through the CLI commands.
 ;
 pipeline PIPELINE0 meter profile platinum add cir 46000000 pir 138000000 cbs 1000000 pbs 1000000
-pipeline PIPELINE0 meter meters from 0 to 15 set profile platinum
+pipeline PIPELINE0 meter meters set profile platinum index from 0 to 15
 
 ;
 ; Pipelines-to-threads mapping.
