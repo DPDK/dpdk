@@ -8261,6 +8261,24 @@ error:
 	return status;
 }
 
+static uint32_t
+table_params_offset_get(struct table *table)
+{
+	struct field *first;
+	uint32_t i;
+
+	first = table->fields[0].field;
+
+	for (i = 1; i < table->n_fields; i++) {
+		struct field *f = table->fields[i].field;
+
+		if (f->offset < first->offset)
+			first = f;
+	}
+
+	return first->offset / 8;
+}
+
 static struct rte_swx_table_params *
 table_params_get(struct table *table)
 {
@@ -9215,6 +9233,24 @@ error:
 	free(l);
 
 	return status;
+}
+
+static uint32_t
+learner_params_offset_get(struct learner *l)
+{
+	struct field *first;
+	uint32_t i;
+
+	first = l->fields[0];
+
+	for (i = 1; i < l->n_fields; i++) {
+		struct field *f = l->fields[i];
+
+		if (f->offset < first->offset)
+			first = f;
+	}
+
+	return first->offset / 8;
 }
 
 static void
@@ -11099,6 +11135,225 @@ rte_swx_ctl_pipeline_mirroring_session_set(struct rte_swx_pipeline *p,
 	s->truncation_length = params->truncation_length ? params->truncation_length : UINT32_MAX;
 
 	return 0;
+}
+
+static int
+rte_swx_ctl_pipeline_table_lookup(struct rte_swx_pipeline *p,
+				  const char *table_name,
+				  uint8_t *key,
+				  uint64_t *action_id,
+				  uint8_t **action_data,
+				  size_t *entry_id,
+				  int *hit)
+{
+	struct table *t;
+	void *mailbox = NULL;
+
+	/* Check input arguments. */
+	if (!p ||
+	    !p->build_done ||
+	    !table_name ||
+	    !table_name[0] ||
+	    !key ||
+	    !entry_id ||
+	    !hit)
+		return -EINVAL;
+
+	/* Find the table. */
+	t = table_find(p, table_name);
+	if (!t)
+		return -EINVAL;
+
+	if (!t->type) {
+		*hit = 0;
+		return 0;
+	}
+
+	/* Setup mailbox.  */
+	if (t->type->ops.mailbox_size_get) {
+		uint64_t mailbox_size;
+
+		mailbox_size = t->type->ops.mailbox_size_get();
+		if (mailbox_size) {
+			mailbox = calloc(1, mailbox_size);
+			if (!mailbox)
+				return -ENOMEM;
+		}
+	}
+
+	/* Table lookup operation. */
+	key -= table_params_offset_get(t);
+
+	for ( ; ; ) {
+		struct rte_swx_table_state *ts = &p->table_state[t->id];
+		int done;
+
+		done = t->type->ops.lkp(ts->obj,
+					mailbox,
+					&key,
+					action_id,
+					action_data,
+					entry_id,
+					hit);
+		if (done)
+			break;
+	}
+
+	/* Free mailbox. */
+	free(mailbox);
+
+	return 0;
+}
+
+static int
+rte_swx_ctl_pipeline_learner_lookup(struct rte_swx_pipeline *p,
+				    const char *learner_name,
+				    uint8_t *key,
+				    uint64_t *action_id,
+				    uint8_t **action_data,
+				    size_t *entry_id,
+				    int *hit)
+{
+	struct learner *l;
+	void *mailbox = NULL;
+	uint64_t mailbox_size, time;
+
+	/* Check input arguments. */
+	if (!p ||
+	    !p->build_done ||
+	    !learner_name ||
+	    !learner_name[0] ||
+	    !key ||
+	    !entry_id ||
+	    !hit)
+		return -EINVAL;
+
+	/* Find the learner table. */
+	l = learner_find(p, learner_name);
+	if (!l)
+		return -EINVAL;
+
+	/* Setup mailbox.  */
+	mailbox_size = rte_swx_table_learner_mailbox_size_get();
+	if (mailbox_size) {
+		mailbox = calloc(1, mailbox_size);
+		if (!mailbox)
+			return -ENOMEM;
+	}
+
+	/* Learner table lookup operation. */
+	key -= learner_params_offset_get(l);
+
+	time = rte_get_tsc_cycles();
+
+	for ( ; ; ) {
+		uint32_t pos = p->n_tables + p->n_selectors + l->id;
+		struct rte_swx_table_state *ts = &p->table_state[pos];
+		int done;
+
+		done = rte_swx_table_learner_lookup(ts->obj,
+						    mailbox,
+						    time,
+						    &key,
+						    action_id,
+						    action_data,
+						    entry_id,
+						    hit);
+		if (done)
+			break;
+	}
+
+	/* Free mailbox. */
+	free(mailbox);
+
+	return 0;
+}
+
+static int
+rte_swx_ctl_pipeline_table_entry_id_get(struct rte_swx_pipeline *p,
+					const char *table_name,
+					uint8_t *table_key,
+					size_t *table_entry_id)
+{
+	struct table *t;
+	struct learner *l;
+	uint64_t action_id;
+	uint8_t *action_data;
+	size_t entry_id = 0;
+	int hit = 0, status;
+
+	/* Check input arguments. */
+	if (!p ||
+	    !p->build_done ||
+	    !table_name ||
+	    !table_name[0] ||
+	    !table_key ||
+	    !table_entry_id)
+		return -EINVAL;
+
+	t = table_find(p, table_name);
+	l = learner_find(p, table_name);
+	if (!t && !l)
+		return -EINVAL;
+
+	/* Table lookup operation. */
+	if (t)
+		status = rte_swx_ctl_pipeline_table_lookup(p,
+							   table_name,
+							   table_key,
+							   &action_id,
+							   &action_data,
+							   &entry_id,
+							   &hit);
+	else
+		status = rte_swx_ctl_pipeline_learner_lookup(p,
+							     table_name,
+							     table_key,
+							     &action_id,
+							     &action_data,
+							     &entry_id,
+							     &hit);
+	if (status)
+		return status;
+
+	/* Reserve entry ID 0 for the table default entry. */
+	*table_entry_id = hit ? (1 + entry_id) : 0;
+
+	return 0;
+}
+
+int
+rte_swx_ctl_pipeline_regarray_read_with_key(struct rte_swx_pipeline *p,
+					    const char *regarray_name,
+					    const char *table_name,
+					    uint8_t *table_key,
+					    uint64_t *value)
+{
+	size_t entry_id = 0;
+	int status;
+
+	status = rte_swx_ctl_pipeline_table_entry_id_get(p, table_name, table_key, &entry_id);
+	if (status)
+		return status;
+
+	return rte_swx_ctl_pipeline_regarray_read(p, regarray_name, entry_id, value);
+}
+
+int
+rte_swx_ctl_pipeline_regarray_write_with_key(struct rte_swx_pipeline *p,
+					     const char *regarray_name,
+					     const char *table_name,
+					     uint8_t *table_key,
+					     uint64_t value)
+{
+	size_t entry_id = 0;
+	int status;
+
+	status = rte_swx_ctl_pipeline_table_entry_id_get(p, table_name, table_key, &entry_id);
+	if (status)
+		return status;
+
+	return rte_swx_ctl_pipeline_regarray_write(p, regarray_name, entry_id, value);
 }
 
 /*

@@ -1237,6 +1237,58 @@ rte_swx_ctl_pipeline_regarray_write(struct rte_swx_pipeline *p,
 				   uint32_t regarray_index,
 				   uint64_t value);
 
+/**
+ * Register read with table key lookup
+ *
+ * @param[in] p
+ *   Pipeline handle.
+ * @param[in] regarray_name
+ *   Register array name.
+ * @param[in] table_name
+ *   Regular or learner table name.
+ * @param[in] table_key
+ *   Table key.
+ * @param[out] value
+ *   Current register value.
+ * @return
+ *   0 on success or the following error codes otherwise:
+ *   -EINVAL: Invalid argument;
+ *   -ENOMEM: Not enough memory.
+ */
+__rte_experimental
+int
+rte_swx_ctl_pipeline_regarray_read_with_key(struct rte_swx_pipeline *p,
+					    const char *regarray_name,
+					    const char *table_name,
+					    uint8_t *table_key,
+					    uint64_t *value);
+
+/**
+ * Register write with table key lookup
+ *
+ * @param[in] p
+ *   Pipeline handle.
+ * @param[in] regarray_name
+ *   Register array name.
+ * @param[in] table_name
+ *   Regular or learner table name.
+ * @param[in] table_key
+ *   Table key.
+ * @param[in] value
+ *   Value to be written to the register.
+ * @return
+ *   0 on success or the following error codes otherwise:
+ *   -EINVAL: Invalid argument;
+ *   -ENOMEM: Not enough memory.
+ */
+__rte_experimental
+int
+rte_swx_ctl_pipeline_regarray_write_with_key(struct rte_swx_pipeline *p,
+					     const char *regarray_name,
+					     const char *table_name,
+					     uint8_t *table_key,
+					     uint64_t value);
+
 /*
  * Meter Array Query and Configuration API.
  */
