@@ -2835,6 +2835,43 @@ instr_forget_exec(struct rte_swx_pipeline *p)
 }
 
 /*
+ * entryid.
+ */
+static int
+instr_entryid_translate(struct rte_swx_pipeline *p,
+			struct action *action __rte_unused,
+			char **tokens,
+			int n_tokens,
+			struct instruction *instr,
+			struct instruction_data *data __rte_unused)
+{
+	struct field *f;
+
+	CHECK(n_tokens == 2, EINVAL);
+
+	f = metadata_field_parse(p, tokens[1]);
+	CHECK(f, EINVAL);
+	CHECK(f->n_bits <= 64, EINVAL);
+
+	instr->type = INSTR_ENTRYID;
+	instr->mov.dst.n_bits = f->n_bits;
+	instr->mov.dst.offset = f->offset / 8;
+	return 0;
+}
+
+static inline void
+instr_entryid_exec(struct rte_swx_pipeline *p)
+{
+	struct thread *t = &p->threads[p->thread_id];
+	struct instruction *ip = t->ip;
+
+	__instr_entryid_exec(p, t, ip);
+
+	/* Thread. */
+	thread_ip_inc(p);
+}
+
+/*
  * extern.
  */
 static int
@@ -6336,6 +6373,14 @@ instr_translate(struct rte_swx_pipeline *p,
 					      instr,
 					      data);
 
+	if (!strcmp(tokens[tpos], "entryid"))
+		return instr_entryid_translate(p,
+					       action,
+					       &tokens[tpos],
+					       n_tokens - tpos,
+					       instr,
+					       data);
+
 	if (!strcmp(tokens[tpos], "extern"))
 		return instr_extern_translate(p,
 					      action,
@@ -7321,6 +7366,8 @@ static instr_exec_t instruction_table[] = {
 	[INSTR_LEARNER_REARM] = instr_rearm_exec,
 	[INSTR_LEARNER_REARM_NEW] = instr_rearm_new_exec,
 	[INSTR_LEARNER_FORGET] = instr_forget_exec,
+	[INSTR_ENTRYID] = instr_entryid_exec,
+
 	[INSTR_EXTERN_OBJ] = instr_extern_obj_exec,
 	[INSTR_EXTERN_FUNC] = instr_extern_func_exec,
 	[INSTR_HASH_FUNC] = instr_hash_func_exec,
@@ -11222,6 +11269,7 @@ instr_type_to_name(struct instruction *instr)
 	case INSTR_LEARNER_REARM: return "INSTR_LEARNER_REARM";
 	case INSTR_LEARNER_REARM_NEW: return "INSTR_LEARNER_REARM_NEW";
 	case INSTR_LEARNER_FORGET: return "INSTR_LEARNER_FORGET";
+	case INSTR_ENTRYID: return "INSTR_ENTRYID";
 
 	case INSTR_EXTERN_OBJ: return "INSTR_EXTERN_OBJ";
 	case INSTR_EXTERN_FUNC: return "INSTR_EXTERN_FUNC";
@@ -11923,6 +11971,24 @@ instr_forget_export(struct instruction *instr, FILE *f)
 }
 
 static void
+instr_entryid_export(struct instruction *instr, FILE *f)
+{
+	fprintf(f,
+		"\t{\n"
+		"\t\t.type = %s,\n"
+		"\t\t.mov = {\n"
+		"\t\t\t.dst = {\n"
+		"\t\t\t\t.n_bits = %u,\n"
+		"\t\t\t\t.offset = %u,\n"
+		"\t\t\t},\n"
+		"\t\t},\n"
+		"\t},\n",
+		instr_type_to_name(instr),
+		instr->mov.dst.n_bits,
+		instr->mov.dst.offset);
+}
+
+static void
 instr_extern_export(struct instruction *instr, FILE *f)
 {
 	if (instr->type == INSTR_EXTERN_OBJ)
@@ -12212,6 +12278,7 @@ static instruction_export_t export_table[] = {
 	[INSTR_LEARNER_REARM] = instr_rearm_export,
 	[INSTR_LEARNER_REARM_NEW] = instr_rearm_export,
 	[INSTR_LEARNER_FORGET] = instr_forget_export,
+	[INSTR_ENTRYID] = instr_entryid_export,
 
 	[INSTR_EXTERN_OBJ] = instr_extern_export,
 	[INSTR_EXTERN_FUNC] = instr_extern_export,
@@ -12438,6 +12505,7 @@ instr_type_to_func(struct instruction *instr)
 	case INSTR_LEARNER_REARM: return "__instr_rearm_exec";
 	case INSTR_LEARNER_REARM_NEW: return "__instr_rearm_new_exec";
 	case INSTR_LEARNER_FORGET: return "__instr_forget_exec";
+	case INSTR_ENTRYID: return "__instr_entryid_exec";
 
 	case INSTR_EXTERN_OBJ: return NULL;
 	case INSTR_EXTERN_FUNC: return NULL;

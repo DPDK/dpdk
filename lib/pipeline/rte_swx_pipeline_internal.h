@@ -504,6 +504,11 @@ enum instruction_type {
 	/* forget */
 	INSTR_LEARNER_FORGET,
 
+	/* entryid m.table_entry_id
+	 * Read the internal table entry ID into the specified meta-data field.
+	 */
+	INSTR_ENTRYID,
+
 	/* extern e.obj.func */
 	INSTR_EXTERN_OBJ,
 
@@ -2375,6 +2380,21 @@ __instr_forget_exec(struct rte_swx_pipeline *p,
 	      learner_id);
 
 	stats->n_pkts_forget += 1;
+}
+
+/*
+ * entryid.
+ */
+static inline void
+__instr_entryid_exec(struct rte_swx_pipeline *p __rte_unused,
+		       struct thread *t,
+		       const struct instruction *ip)
+{
+	TRACE("[Thread %2u]: entryid\n",
+	      p->thread_id);
+
+	/* Meta-data. */
+	METADATA_WRITE(t, ip->mov.dst.offset, ip->mov.dst.n_bits, t->entry_id);
 }
 
 /*
