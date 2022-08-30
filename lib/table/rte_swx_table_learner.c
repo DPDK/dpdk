@@ -72,6 +72,7 @@ table_keycpy(void *dst, void *src, uint32_t n_bytes)
 }
 
 #define TABLE_KEYS_PER_BUCKET 4
+#define TABLE_KEYS_PER_BUCKET_LOG2 2
 
 #define TABLE_BUCKET_USEFUL_SIZE \
 	(TABLE_KEYS_PER_BUCKET * (sizeof(uint32_t) + sizeof(uint32_t) + sizeof(uint8_t)))
@@ -263,6 +264,14 @@ table_bucket_data_get(struct table *t, struct table_bucket *b, size_t bucket_key
 				   (bucket_key_pos << t->params.data_size_log2)];
 }
 
+static inline size_t
+table_entry_id_get(struct table *t, struct table_bucket *b, size_t bucket_key_pos)
+{
+	size_t bucket_id = ((uint8_t *)b - t->buckets) >> t->params.bucket_size_log2;
+
+	return (bucket_id << TABLE_KEYS_PER_BUCKET_LOG2) + bucket_key_pos;
+}
+
 uint64_t
 rte_swx_table_learner_footprint_get(struct rte_swx_table_learner_params *params)
 {
@@ -332,7 +341,7 @@ struct mailbox {
 	/* Writer: lookup state 0. Reader(s): lookup state 1, add(). */
 	uint32_t input_sig;
 
-	/* Writer: lookup state 1. Reader(s): add(). */
+	/* Writer: lookup state 0. Reader(s): lookup state 1, add(). */
 	uint8_t *input_key;
 
 	/* Writer: lookup state 1. Reader(s): add(). Values: 0 = miss; 1 = hit. */
@@ -358,6 +367,7 @@ rte_swx_table_learner_lookup(void *table,
 			     uint8_t **key,
 			     uint64_t *action_id,
 			     uint8_t **action_data,
+			     size_t *entry_id,
 			     int *hit)
 {
 	struct table *t = table;
@@ -412,6 +422,7 @@ rte_swx_table_learner_lookup(void *table,
 
 				*action_id = data[0];
 				*action_data = (uint8_t *)&data[1];
+				*entry_id = table_entry_id_get(t, b, i);
 				*hit = 1;
 				return 1;
 			}

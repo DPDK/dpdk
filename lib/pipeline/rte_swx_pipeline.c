@@ -2556,6 +2556,7 @@ instr_learner_exec(struct rte_swx_pipeline *p)
 	struct learner_statistics *stats = &p->learner_stats[learner_id];
 	uint64_t action_id, n_pkts_hit, n_pkts_action, time;
 	uint8_t *action_data;
+	size_t entry_id;
 	int done, hit;
 
 	/* Table. */
@@ -2567,6 +2568,7 @@ instr_learner_exec(struct rte_swx_pipeline *p)
 					    l->key,
 					    &action_id,
 					    &action_data,
+					    &entry_id,
 					    &hit);
 	if (!done) {
 		/* Thread. */
@@ -2580,6 +2582,7 @@ instr_learner_exec(struct rte_swx_pipeline *p)
 
 	action_id = hit ? action_id : ts->default_action_id;
 	action_data = hit ? action_data : ts->default_action_data;
+	entry_id = hit ? (1 + entry_id) : 0;
 	n_pkts_hit = stats->n_pkts_hit[hit];
 	n_pkts_action = stats->n_pkts_action[action_id];
 
@@ -2591,6 +2594,7 @@ instr_learner_exec(struct rte_swx_pipeline *p)
 
 	t->action_id = action_id;
 	t->structs[0] = action_data;
+	t->entry_id = entry_id;
 	t->hit = hit;
 	t->learner_id = learner_id;
 	t->time = time;
@@ -2613,6 +2617,7 @@ instr_learner_af_exec(struct rte_swx_pipeline *p)
 	struct learner_statistics *stats = &p->learner_stats[learner_id];
 	uint64_t action_id, n_pkts_hit, n_pkts_action, time;
 	uint8_t *action_data;
+	size_t entry_id;
 	action_func_t action_func;
 	int done, hit;
 
@@ -2625,6 +2630,7 @@ instr_learner_af_exec(struct rte_swx_pipeline *p)
 					    l->key,
 					    &action_id,
 					    &action_data,
+					    &entry_id,
 					    &hit);
 	if (!done) {
 		/* Thread. */
@@ -2638,6 +2644,7 @@ instr_learner_af_exec(struct rte_swx_pipeline *p)
 
 	action_id = hit ? action_id : ts->default_action_id;
 	action_data = hit ? action_data : ts->default_action_data;
+	entry_id = hit ? (1 + entry_id) : 0;
 	action_func = p->action_funcs[action_id];
 	n_pkts_hit = stats->n_pkts_hit[hit];
 	n_pkts_action = stats->n_pkts_action[action_id];
@@ -2650,6 +2657,7 @@ instr_learner_af_exec(struct rte_swx_pipeline *p)
 
 	t->action_id = action_id;
 	t->structs[0] = action_data;
+	t->entry_id = entry_id;
 	t->hit = hit;
 	t->learner_id = learner_id;
 	t->time = time;
