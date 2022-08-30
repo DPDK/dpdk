@@ -143,6 +143,54 @@ is_comment(char *in)
 	return 0;
 }
 
+static void
+table_entry_free(struct rte_swx_table_entry *entry)
+{
+	if (!entry)
+		return;
+
+	free(entry->key);
+	free(entry->key_mask);
+	free(entry->action_data);
+	free(entry);
+}
+
+static struct rte_swx_table_entry *
+parse_table_entry(struct rte_swx_ctl_pipeline *p,
+		  char *table_name,
+		  char **tokens,
+		  uint32_t n_tokens)
+{
+	struct rte_swx_table_entry *entry;
+	char *line;
+	uint32_t i;
+
+	/* Buffer allocation. */
+	line = malloc(MAX_LINE_SIZE);
+	if (!line)
+		return NULL;
+
+	/* Copy tokens to buffer. Since the tokens were initially part of a buffer of size
+	 * MAX_LINE_LENGTH, it is guaranteed that putting back some of them into a buffer of the
+	 * same size separated by a single space will not result in buffer overrun.
+	 */
+	line[0] = 0;
+	for (i = 0; i < n_tokens; i++) {
+		if (i)
+			strcat(line, " ");
+
+		strcat(line, tokens[i]);
+	}
+
+	/* Read the table entry from the input buffer. */
+	entry = rte_swx_ctl_pipeline_table_entry_read(p, table_name, line, NULL);
+
+	/* Buffer free. */
+	free(line);
+
+	return entry;
+}
+
 static const char cmd_mempool_help[] =
 "mempool <mempool_name>\n"
 "   buffer <buffer_size>\n"
@@ -731,18 +779,6 @@ free:
 
 	if (iospec_file)
 		fclose(iospec_file);
-}
-
-static void
-table_entry_free(struct rte_swx_table_entry *entry)
-{
-	if (!entry)
-		return;
-
-	free(entry->key);
-	free(entry->key_mask);
-	free(entry->action_data);
-	free(entry);
 }
 
 static int
@@ -1711,7 +1747,9 @@ cmd_pipeline_abort(char **tokens,
 }
 
 static const char cmd_pipeline_regrd_help[] =
-"pipeline <pipeline_name> regrd <register_array_name> <index>\n";
+"pipeline <pipeline_name> regrd <register_array_name>\n"
+	"index <index>\n"
+	" | table <table_name> match <field0> ...\n";
 
 static void
 cmd_pipeline_regrd(char **tokens,
@@ -1721,18 +1759,20 @@ cmd_pipeline_regrd(char **tokens,
 	void *obj __rte_unused)
 {
 	struct rte_swx_pipeline *p;
-	const char *name;
+	struct rte_swx_ctl_pipeline *ctl;
+	const char *pipeline_name, *name;
 	uint64_t value;
-	uint32_t idx;
 	int status;
 
-	if (n_tokens != 5) {
+	if (n_tokens < 5) {
 		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
 		return;
 	}
 
-	p = rte_swx_pipeline_find(tokens[1]);
-	if (!p) {
+	pipeline_name = tokens[1];
+	p = rte_swx_pipeline_find(pipeline_name);
+	ctl = rte_swx_ctl_pipeline_find(pipeline_name);
+	if (!p || !ctl) {
 		snprintf(out, out_size, MSG_ARG_INVALID, "pipeline_name");
 		return;
 	}
@@ -1744,22 +1784,77 @@ cmd_pipeline_regrd(char **tokens,
 
 	name = tokens[3];
 
-	if (parser_read_uint32(&idx, tokens[4])) {
-		snprintf(out, out_size, MSG_ARG_INVALID, "index");
+	/* index. */
+	if (!strcmp(tokens[4], "index")) {
+		uint32_t idx;
+
+		if (n_tokens != 6) {
+			snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
+			return;
+		}
+
+		if (parser_read_uint32(&idx, tokens[5])) {
+			snprintf(out, out_size, MSG_ARG_INVALID, "index");
+			return;
+		}
+
+		status = rte_swx_ctl_pipeline_regarray_read(p, name, idx, &value);
+		if (status) {
+			snprintf(out, out_size, "Command failed.\n");
+			return;
+		}
+
+		snprintf(out, out_size, "0x%" PRIx64 "\n", value);
 		return;
 	}
 
-	status = rte_swx_ctl_pipeline_regarray_read(p, name, idx, &value);
-	if (status) {
-		snprintf(out, out_size, "Command failed.\n");
+	/* table. */
+	if (!strcmp(tokens[4], "table")) {
+		struct rte_swx_table_entry *entry;
+		char *table_name;
+
+		if (n_tokens < 8) {
+			snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
+			return;
+		}
+
+		table_name = tokens[5];
+
+		if (strcmp(tokens[6], "match")) {
+			snprintf(out, out_size, MSG_ARG_NOT_FOUND, "match");
+			return;
+		}
+
+		entry = parse_table_entry(ctl, table_name, &tokens[6], n_tokens - 6);
+		if (!entry) {
+			snprintf(out, out_size, "Invalid match tokens.\n");
+			return;
+		}
+
+		status = rte_swx_ctl_pipeline_regarray_read_with_key(p,
+								     name,
+								     table_name,
+								     entry->key,
+								     &value);
+		table_entry_free(entry);
+		if (status) {
+			snprintf(out, out_size, "Command failed.\n");
+			return;
+		}
+
+		snprintf(out, out_size, "0x%" PRIx64 "\n", value);
 		return;
 	}
 
-	snprintf(out, out_size, "0x%" PRIx64 "\n", value);
+	/* anything else. */
+	snprintf(out, out_size, "Invalid token %s\n.", tokens[4]);
+	return;
 }
 
 static const char cmd_pipeline_regwr_help[] =
-"pipeline <pipeline_name> regwr <register_array_name> <index> <value>\n";
+"pipeline <pipeline_name> regwr <register_array_name> value <value>\n"
+	"index <index>\n"
+	" | table <table_name> match <field0> ...\n";
 
 static void
 cmd_pipeline_regwr(char **tokens,
@@ -1769,18 +1864,20 @@ cmd_pipeline_regwr(char **tokens,
 	void *obj __rte_unused)
 {
 	struct rte_swx_pipeline *p;
-	const char *name;
-	uint64_t value;
-	uint32_t idx;
+	struct rte_swx_ctl_pipeline *ctl;
+	const char *pipeline_name, *name;
+	uint64_t value = 0;
 	int status;
 
-	if (n_tokens != 6) {
+	if (n_tokens < 7) {
 		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
 		return;
 	}
 
-	p = rte_swx_pipeline_find(tokens[1]);
-	if (!p) {
+	pipeline_name = tokens[1];
+	p = rte_swx_pipeline_find(pipeline_name);
+	ctl = rte_swx_ctl_pipeline_find(pipeline_name);
+	if (!p || !ctl) {
 		snprintf(out, out_size, MSG_ARG_INVALID, "pipeline_name");
 		return;
 	}
@@ -1792,8 +1889,8 @@ cmd_pipeline_regwr(char **tokens,
 
 	name = tokens[3];
 
-	if (parser_read_uint32(&idx, tokens[4])) {
-		snprintf(out, out_size, MSG_ARG_INVALID, "index");
+	if (strcmp(tokens[4], "value")) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "value");
 		return;
 	}
 
@@ -1802,11 +1899,70 @@ cmd_pipeline_regwr(char **tokens,
 		return;
 	}
 
-	status = rte_swx_ctl_pipeline_regarray_write(p, name, idx, value);
-	if (status) {
-		snprintf(out, out_size, "Command failed.\n");
+	/* index. */
+	if (!strcmp(tokens[6], "index")) {
+		uint32_t idx;
+
+		if (n_tokens != 8) {
+			snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
+			return;
+		}
+
+		if (parser_read_uint32(&idx, tokens[7])) {
+			snprintf(out, out_size, MSG_ARG_INVALID, "index");
+			return;
+		}
+
+		status = rte_swx_ctl_pipeline_regarray_write(p, name, idx, value);
+		if (status) {
+			snprintf(out, out_size, "Command failed.\n");
+			return;
+		}
+
+		snprintf(out, out_size, "0x%" PRIx64 "\n", value);
 		return;
 	}
+
+	/* table. */
+	if (!strcmp(tokens[6], "table")) {
+		struct rte_swx_table_entry *entry;
+		char *table_name;
+
+		if (n_tokens < 10) {
+			snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
+			return;
+		}
+
+		table_name = tokens[7];
+
+		if (strcmp(tokens[8], "match")) {
+			snprintf(out, out_size, MSG_ARG_NOT_FOUND, "match");
+			return;
+		}
+
+		entry = parse_table_entry(ctl, table_name, &tokens[8], n_tokens - 8);
+		if (!entry) {
+			snprintf(out, out_size, "Invalid match tokens.\n");
+			return;
+		}
+
+		status = rte_swx_ctl_pipeline_regarray_write_with_key(p,
+								      name,
+								      table_name,
+								      entry->key,
+								      value);
+		table_entry_free(entry);
+		if (status) {
+			snprintf(out, out_size, "Command failed.\n");
+			return;
+		}
+
+		return;
+	}
+
+	/* anything else. */
+	snprintf(out, out_size, "Invalid token %s\n.", tokens[6]);
+	return;
 }
 
 static const char cmd_pipeline_meter_profile_add_help[] =
