@@ -436,6 +436,7 @@ table_lookup(void *table,
 	     const uint8_t **key,
 	     uint64_t *action_id,
 	     uint8_t **action_data,
+	     size_t *entry_id,
 	     int *hit)
 {
 	struct table *t = table;
@@ -451,6 +452,7 @@ table_lookup(void *table,
 	data = &t->data[(user_data - 1) * t->entry_data_size];
 	*action_id = ((uint64_t *)data)[0];
 	*action_data = &data[8];
+	*entry_id = user_data - 1;
 	*hit = 1;
 	return 1;
 }

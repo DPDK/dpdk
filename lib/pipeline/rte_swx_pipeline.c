@@ -2401,6 +2401,7 @@ instr_table_exec(struct rte_swx_pipeline *p)
 	struct table_statistics *stats = &p->table_stats[table_id];
 	uint64_t action_id, n_pkts_hit, n_pkts_action;
 	uint8_t *action_data;
+	size_t entry_id;
 	int done, hit;
 
 	/* Table. */
@@ -2409,6 +2410,7 @@ instr_table_exec(struct rte_swx_pipeline *p)
 			   table->key,
 			   &action_id,
 			   &action_data,
+			   &entry_id,
 			   &hit);
 	if (!done) {
 		/* Thread. */
@@ -2422,6 +2424,7 @@ instr_table_exec(struct rte_swx_pipeline *p)
 
 	action_id = hit ? action_id : ts->default_action_id;
 	action_data = hit ? action_data : ts->default_action_data;
+	entry_id = hit ? (1 + entry_id) : 0;
 	n_pkts_hit = stats->n_pkts_hit[hit];
 	n_pkts_action = stats->n_pkts_action[action_id];
 
@@ -2433,6 +2436,7 @@ instr_table_exec(struct rte_swx_pipeline *p)
 
 	t->action_id = action_id;
 	t->structs[0] = action_data;
+	t->entry_id = entry_id;
 	t->hit = hit;
 	stats->n_pkts_hit[hit] = n_pkts_hit + 1;
 	stats->n_pkts_action[action_id] = n_pkts_action + 1;
@@ -2452,6 +2456,7 @@ instr_table_af_exec(struct rte_swx_pipeline *p)
 	struct table_statistics *stats = &p->table_stats[table_id];
 	uint64_t action_id, n_pkts_hit, n_pkts_action;
 	uint8_t *action_data;
+	size_t entry_id;
 	action_func_t action_func;
 	int done, hit;
 
@@ -2461,6 +2466,7 @@ instr_table_af_exec(struct rte_swx_pipeline *p)
 			   table->key,
 			   &action_id,
 			   &action_data,
+			   &entry_id,
 			   &hit);
 	if (!done) {
 		/* Thread. */
@@ -2474,6 +2480,7 @@ instr_table_af_exec(struct rte_swx_pipeline *p)
 
 	action_id = hit ? action_id : ts->default_action_id;
 	action_data = hit ? action_data : ts->default_action_data;
+	entry_id = hit ? (1 + entry_id) : 0;
 	action_func = p->action_funcs[action_id];
 	n_pkts_hit = stats->n_pkts_hit[hit];
 	n_pkts_action = stats->n_pkts_action[action_id];
@@ -2486,6 +2493,7 @@ instr_table_af_exec(struct rte_swx_pipeline *p)
 
 	t->action_id = action_id;
 	t->structs[0] = action_data;
+	t->entry_id = entry_id;
 	t->hit = hit;
 	stats->n_pkts_hit[hit] = n_pkts_hit + 1;
 	stats->n_pkts_action[action_id] = n_pkts_action + 1;
@@ -8283,6 +8291,7 @@ table_stub_lkp(void *table __rte_unused,
 	       uint8_t **key __rte_unused,
 	       uint64_t *action_id __rte_unused,
 	       uint8_t **action_data __rte_unused,
+	       size_t *entry_id __rte_unused,
 	       int *hit)
 {
 	*hit = 0;

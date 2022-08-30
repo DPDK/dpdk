@@ -403,6 +403,7 @@ table_lookup_unoptimized(void *table,
 			 uint8_t **key,
 			 uint64_t *action_id,
 			 uint8_t **action_data,
+			 size_t *entry_id,
 			 int *hit)
 {
 	struct table *t = table;
@@ -431,6 +432,7 @@ table_lookup_unoptimized(void *table,
 				bkt_data = table_key_data(t, bkt_key_id);
 				*action_id = bkt_data[0];
 				*action_data = (uint8_t *)&bkt_data[1];
+				*entry_id = bkt_key_id;
 				*hit = 1;
 				return 1;
 			}
@@ -500,6 +502,7 @@ table_lookup(void *table,
 	     uint8_t **key,
 	     uint64_t *action_id,
 	     uint8_t **action_data,
+	     size_t *entry_id,
 	     int *hit)
 {
 	struct table *t = table;
@@ -576,6 +579,7 @@ table_lookup(void *table,
 		lkp_hit &= m->sig_match;
 		*action_id = bkt_data[0];
 		*action_data = (uint8_t *)&bkt_data[1];
+		*entry_id = bkt_key_id;
 		*hit = lkp_hit;
 
 		m->state = 0;
@@ -586,6 +590,7 @@ table_lookup(void *table,
 							key,
 							action_id,
 							action_data,
+							entry_id,
 							hit);
 
 		return 1;

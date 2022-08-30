@@ -1009,6 +1009,7 @@ struct thread {
 	struct learner_runtime *learners;
 	struct rte_swx_table_state *table_state;
 	uint64_t action_id;
+	size_t entry_id;
 	int hit; /* 0 = Miss, 1 = Hit. */
 	uint32_t learner_id;
 	uint64_t time;
