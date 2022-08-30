@@ -317,7 +317,7 @@ cn10k_nix_prep_sec_vec(struct rte_mbuf *m, uint64x2_t *cmd0, uint64x2_t *cmd1,
 	uint8_t l2_len, l3_len;
 	uintptr_t dptr, nixtx;
 	uint64_t ucode_cmd[4];
-	uint64_t *laddr;
+	uint64_t *laddr, w0;
 	uint16_t tag;
 	uint64_t sa;
 
@@ -364,30 +364,57 @@ cn10k_nix_prep_sec_vec(struct rte_mbuf *m, uint64x2_t *cmd0, uint64x2_t *cmd1,
 
 	/* Update send descriptors. Security is single segment only */
 	*cmd0 = vsetq_lane_u16(pkt_len + dlen_adj, *cmd0, 0);
-	*cmd1 = vsetq_lane_u16(pkt_len + dlen_adj, *cmd1, 0);
 
-	/* Get area where NIX descriptor needs to be stored */
-	nixtx = dptr + pkt_len + dlen_adj;
-	nixtx += BIT_ULL(7);
-	nixtx = (nixtx - 1) & ~(BIT_ULL(7) - 1);
+	/* CPT word 5 and word 6 */
+	w0 = 0;
+	ucode_cmd[2] = 0;
+	if (flags & NIX_TX_MULTI_SEG_F && m->nb_segs > 1) {
+		struct rte_mbuf *last = rte_pktmbuf_lastseg(m);
+
+		/* Get area where NIX descriptor needs to be stored */
+		nixtx = rte_pktmbuf_mtod_offset(last, uintptr_t, last->data_len + dlen_adj);
+		nixtx += BIT_ULL(7);
+		nixtx = (nixtx - 1) & ~(BIT_ULL(7) - 1);
+		nixtx += 16;
+
+		dptr = nixtx + ((flags & NIX_TX_NEED_EXT_HDR) ? 32 : 16);
+
+		/* Set l2 length as data offset */
+		w0 = (uint64_t)l2_len << 16;
+		w0 |= cn10k_nix_tx_ext_subs(flags) + NIX_NB_SEGS_TO_SEGDW(m->nb_segs);
+		ucode_cmd[1] = dptr | ((uint64_t)m->nb_segs << 60);
+	} else {
+		/* Get area where NIX descriptor needs to be stored */
+		nixtx = dptr + pkt_len + dlen_adj;
+		nixtx += BIT_ULL(7);
+		nixtx = (nixtx - 1) & ~(BIT_ULL(7) - 1);
+		nixtx += 16;
+
+		w0 |= cn10k_nix_tx_ext_subs(flags) + 1;
+		dptr += l2_len;
+		ucode_cmd[1] = dptr;
+		*cmd1 = vsetq_lane_u16(pkt_len + dlen_adj, *cmd1, 0);
+		/* DLEN passed is excluding L2 HDR */
+		pkt_len -= l2_len;
+	}
+	w0 |= nixtx;
+	/* CPT word 0 and 1 */
+	cmd01 = vdupq_n_u64(0);
+	cmd01 = vsetq_lane_u64(w0, cmd01, 0);
+	/* CPT_RES_S is 16B above NIXTX */
+	cmd01 = vsetq_lane_u64(nixtx - 16, cmd01, 1);
 
 	/* Return nixtx addr */
-	*nixtx_addr = (nixtx + 16);
+	*nixtx_addr = nixtx;
 
-	/* DLEN passed is excluding L2HDR */
-	pkt_len -= l2_len;
+	/* CPT Word 4 and Word 7 */
 	tag = sa_base & 0xFFFFUL;
 	sa_base &= ~0xFFFFUL;
 	sa = (uintptr_t)roc_nix_inl_ot_ipsec_outb_sa(sa_base, sess_priv.sa_idx);
 	ucode_cmd[3] = (ROC_CPT_DFLT_ENG_GRP_SE_IE << 61 | 1UL << 60 | sa);
-	ucode_cmd[0] = (ROC_IE_OT_MAJOR_OP_PROCESS_OUTBOUND_IPSEC << 48 |
-			((uint64_t)sess_priv.chksum) << 32 |
-			((uint64_t)sess_priv.dec_ttl) << 34 | pkt_len);
-
-	/* CPT Word 0 and Word 1 */
-	cmd01 = vdupq_n_u64((nixtx + 16) | (cn10k_nix_tx_ext_subs(flags) + 1));
-	/* CPT_RES_S is 16B above NIXTX */
-	cmd01 = vsetq_lane_u8(nixtx & BIT_ULL(7), cmd01, 8);
+	ucode_cmd[0] = (ROC_IE_OT_MAJOR_OP_PROCESS_OUTBOUND_IPSEC << 48 | 1UL << 54 |
+			((uint64_t)sess_priv.chksum) << 32 | ((uint64_t)sess_priv.dec_ttl) << 34 |
+			pkt_len);
 
 	/* CPT word 2 and 3 */
 	cmd23 = vdupq_n_u64(0);
@@ -405,9 +432,6 @@ cn10k_nix_prep_sec_vec(struct rte_mbuf *m, uint64x2_t *cmd0, uint64x2_t *cmd1,
 			*((uint16_t *)(dptr - 2)) =
 				rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV6);
 	}
-
-	ucode_cmd[1] = dptr;
-	ucode_cmd[2] = dptr;
 
 	/* Move to our line */
 	laddr = LMT_OFF(lbase, *lnum, *loff ? 64 : 0);
@@ -439,7 +463,7 @@ cn10k_nix_prep_sec(struct rte_mbuf *m, uint64_t *cmd, uintptr_t *nixtx_addr,
 	uint8_t l2_len, l3_len;
 	uintptr_t dptr, nixtx;
 	uint64_t ucode_cmd[4];
-	uint64_t *laddr;
+	uint64_t *laddr, w0;
 	uint16_t tag;
 	uint64_t sa;
 
@@ -492,30 +516,56 @@ cn10k_nix_prep_sec(struct rte_mbuf *m, uint64_t *cmd, uintptr_t *nixtx_addr,
 
 	/* Update send descriptors. Security is single segment only */
 	send_hdr->w0.total = pkt_len + dlen_adj;
-	sg->seg1_size = pkt_len + dlen_adj;
 
-	/* Get area where NIX descriptor needs to be stored */
-	nixtx = dptr + pkt_len + dlen_adj;
-	nixtx += BIT_ULL(7);
-	nixtx = (nixtx - 1) & ~(BIT_ULL(7) - 1);
+	/* CPT word 5 and word 6 */
+	w0 = 0;
+	ucode_cmd[2] = 0;
+	if (flags & NIX_TX_MULTI_SEG_F && m->nb_segs > 1) {
+		struct rte_mbuf *last = rte_pktmbuf_lastseg(m);
+
+		/* Get area where NIX descriptor needs to be stored */
+		nixtx = rte_pktmbuf_mtod_offset(last, uintptr_t, last->data_len + dlen_adj);
+		nixtx += BIT_ULL(7);
+		nixtx = (nixtx - 1) & ~(BIT_ULL(7) - 1);
+		nixtx += 16;
+
+		dptr = nixtx + ((flags & NIX_TX_NEED_EXT_HDR) ? 32 : 16);
+
+		/* Set l2 length as data offset */
+		w0 = (uint64_t)l2_len << 16;
+		w0 |= cn10k_nix_tx_ext_subs(flags) + NIX_NB_SEGS_TO_SEGDW(m->nb_segs);
+		ucode_cmd[1] = dptr | ((uint64_t)m->nb_segs << 60);
+	} else {
+		/* Get area where NIX descriptor needs to be stored */
+		nixtx = dptr + pkt_len + dlen_adj;
+		nixtx += BIT_ULL(7);
+		nixtx = (nixtx - 1) & ~(BIT_ULL(7) - 1);
+		nixtx += 16;
+
+		w0 |= cn10k_nix_tx_ext_subs(flags) + 1;
+		dptr += l2_len;
+		ucode_cmd[1] = dptr;
+		sg->seg1_size = pkt_len + dlen_adj;
+		pkt_len -= l2_len;
+	}
+	w0 |= nixtx;
+	/* CPT word 0 and 1 */
+	cmd01 = vdupq_n_u64(0);
+	cmd01 = vsetq_lane_u64(w0, cmd01, 0);
+	/* CPT_RES_S is 16B above NIXTX */
+	cmd01 = vsetq_lane_u64(nixtx - 16, cmd01, 1);
 
 	/* Return nixtx addr */
-	*nixtx_addr = (nixtx + 16);
+	*nixtx_addr = nixtx;
 
-	/* DLEN passed is excluding L2HDR */
-	pkt_len -= l2_len;
+	/* CPT Word 4 and Word 7 */
 	tag = sa_base & 0xFFFFUL;
 	sa_base &= ~0xFFFFUL;
 	sa = (uintptr_t)roc_nix_inl_ot_ipsec_outb_sa(sa_base, sess_priv.sa_idx);
 	ucode_cmd[3] = (ROC_CPT_DFLT_ENG_GRP_SE_IE << 61 | 1UL << 60 | sa);
-	ucode_cmd[0] = (ROC_IE_OT_MAJOR_OP_PROCESS_OUTBOUND_IPSEC << 48 |
-			((uint64_t)sess_priv.chksum) << 32 |
-			((uint64_t)sess_priv.dec_ttl) << 34 | pkt_len);
-
-	/* CPT Word 0 and Word 1. Assume no multi-seg support */
-	cmd01 = vdupq_n_u64((nixtx + 16) | (cn10k_nix_tx_ext_subs(flags) + 1));
-	/* CPT_RES_S is 16B above NIXTX */
-	cmd01 = vsetq_lane_u8(nixtx & BIT_ULL(7), cmd01, 8);
+	ucode_cmd[0] = (ROC_IE_OT_MAJOR_OP_PROCESS_OUTBOUND_IPSEC << 48 | 1UL << 54 |
+			((uint64_t)sess_priv.chksum) << 32 | ((uint64_t)sess_priv.dec_ttl) << 34 |
+			pkt_len);
 
 	/* CPT word 2 and 3 */
 	cmd23 = vdupq_n_u64(0);
@@ -533,8 +583,6 @@ cn10k_nix_prep_sec(struct rte_mbuf *m, uint64_t *cmd, uintptr_t *nixtx_addr,
 			*((uint16_t *)(dptr - 2)) =
 				rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV6);
 	}
-	ucode_cmd[1] = dptr;
-	ucode_cmd[2] = dptr;
 
 	/* Move to our line */
 	laddr = LMT_OFF(lbase, *lnum, *loff ? 64 : 0);
@@ -893,6 +941,8 @@ cn10k_nix_prepare_mseg(struct rte_mbuf *m, uint64_t *cmd, const uint16_t flags)
 	union nix_send_sg_s *sg;
 	struct rte_mbuf *m_next;
 	uint64_t *slist, sg_u;
+	uint64_t len, dlen;
+	uint64_t ol_flags;
 	uint64_t nb_segs;
 	uint64_t segdw;
 	uint8_t off, i;
@@ -905,10 +955,14 @@ cn10k_nix_prepare_mseg(struct rte_mbuf *m, uint64_t *cmd, const uint16_t flags)
 		off = 0;
 
 	sg = (union nix_send_sg_s *)&cmd[2 + off];
+	len = send_hdr->w0.total;
+	if (flags & NIX_TX_OFFLOAD_SECURITY_F)
+		ol_flags = m->ol_flags;
 
 	/* Start from second segment, first segment is already there */
 	i = 1;
 	sg_u = sg->u;
+	len -= sg_u & 0xFFFF;
 	nb_segs = m->nb_segs - 1;
 	m_next = m->next;
 	slist = &cmd[3 + off + 1];
@@ -923,6 +977,7 @@ cn10k_nix_prepare_mseg(struct rte_mbuf *m, uint64_t *cmd, const uint16_t flags)
 		RTE_MEMPOOL_CHECK_COOKIES(m->pool, (void **)&m, 1, 0);
 	rte_io_wmb();
 #endif
+	m->next = NULL;
 	m = m_next;
 	if (!m)
 		goto done;
@@ -930,7 +985,9 @@ cn10k_nix_prepare_mseg(struct rte_mbuf *m, uint64_t *cmd, const uint16_t flags)
 	/* Fill mbuf segments */
 	do {
 		m_next = m->next;
-		sg_u = sg_u | ((uint64_t)m->data_len << (i << 4));
+		dlen = m->data_len;
+		len -= dlen;
+		sg_u = sg_u | ((uint64_t)dlen << (i << 4));
 		*slist = rte_mbuf_data_iova(m);
 		/* Set invert df if buffer is not to be freed by H/W */
 		if (flags & NIX_TX_OFFLOAD_MBUF_NOFF_F)
@@ -954,10 +1011,20 @@ cn10k_nix_prepare_mseg(struct rte_mbuf *m, uint64_t *cmd, const uint16_t flags)
 			sg_u = sg->u;
 			slist++;
 		}
+		m->next = NULL;
 		m = m_next;
 	} while (nb_segs);
 
 done:
+	/* Add remaining bytes of security data to last seg */
+	if (flags & NIX_TX_OFFLOAD_SECURITY_F && ol_flags & RTE_MBUF_F_TX_SEC_OFFLOAD && len) {
+		uint8_t shft = ((i - 1) << 4);
+
+		dlen = ((sg_u >> shft) & 0xFFFFULL) + len;
+		sg_u = sg_u & ~(0xFFFFULL << shft);
+		sg_u |= dlen << shft;
+	}
+
 	sg->u = sg_u;
 	sg->segs = i;
 	segdw = (uint64_t *)slist - (uint64_t *)&cmd[2 + off];
@@ -1321,17 +1388,26 @@ cn10k_nix_prepare_mseg_vec_list(struct rte_mbuf *m, uint64_t *cmd,
 				union nix_send_sg_s *sg, const uint32_t flags)
 {
 	struct rte_mbuf *m_next;
+	uint64_t ol_flags, len;
 	uint64_t *slist, sg_u;
 	uint16_t nb_segs;
+	uint64_t dlen;
 	int i = 1;
 
-	sh->total = m->pkt_len;
+	len = m->pkt_len;
+	ol_flags = m->ol_flags;
+	/* For security we would have already populated the right length */
+	if (flags & NIX_TX_OFFLOAD_SECURITY_F && ol_flags & RTE_MBUF_F_TX_SEC_OFFLOAD)
+		len = sh->total;
+	sh->total = len;
 	/* Clear sg->u header before use */
 	sg->u &= 0xFC00000000000000;
 	sg_u = sg->u;
 	slist = &cmd[0];
 
-	sg_u = sg_u | ((uint64_t)m->data_len);
+	dlen = m->data_len;
+	len -= dlen;
+	sg_u = sg_u | ((uint64_t)dlen);
 
 	nb_segs = m->nb_segs - 1;
 	m_next = m->next;
@@ -1346,11 +1422,14 @@ cn10k_nix_prepare_mseg_vec_list(struct rte_mbuf *m, uint64_t *cmd,
 	rte_io_wmb();
 #endif
 
+	m->next = NULL;
 	m = m_next;
 	/* Fill mbuf segments */
 	do {
 		m_next = m->next;
-		sg_u = sg_u | ((uint64_t)m->data_len << (i << 4));
+		dlen = m->data_len;
+		len -= dlen;
+		sg_u = sg_u | ((uint64_t)dlen << (i << 4));
 		*slist = rte_mbuf_data_iova(m);
 		/* Set invert df if buffer is not to be freed by H/W */
 		if (flags & NIX_TX_OFFLOAD_MBUF_NOFF_F)
@@ -1375,9 +1454,18 @@ cn10k_nix_prepare_mseg_vec_list(struct rte_mbuf *m, uint64_t *cmd,
 			sg_u = sg->u;
 			slist++;
 		}
+		m->next = NULL;
 		m = m_next;
 	} while (nb_segs);
 
+	/* Add remaining bytes of security data to last seg */
+	if (flags & NIX_TX_OFFLOAD_SECURITY_F && ol_flags & RTE_MBUF_F_TX_SEC_OFFLOAD && len) {
+		uint8_t shft = ((i - 1) << 4);
+
+		dlen = ((sg_u >> shft) & 0xFFFF) + len;
+		sg_u = sg_u & ~(0xFFFFULL << shft);
+		sg_u |= dlen << shft;
+	}
 	sg->u = sg_u;
 	sg->segs = i;
 }
@@ -2742,13 +2830,6 @@ again:
 			vst1q_u64(LMT_OFF(laddr, lnum, 96), cmd0[3]);
 			vst1q_u64(LMT_OFF(laddr, lnum, 112), cmd1[3]);
 			lnum += 1;
-		}
-
-		if (flags & NIX_TX_MULTI_SEG_F) {
-			tx_pkts[0]->next = NULL;
-			tx_pkts[1]->next = NULL;
-			tx_pkts[2]->next = NULL;
-			tx_pkts[3]->next = NULL;
 		}
 
 		tx_pkts = tx_pkts + NIX_DESCS_PER_LOOP;

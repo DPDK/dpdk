@@ -171,7 +171,7 @@ nix_sec_attach_frags(const struct cpt_parse_hdr_s *hdr,
 
 	/* offset of 0 implies 256B, otherwise it implies offset*8B */
 	offset = (((offset - 1) & 0x1f) + 1) * 8;
-	finfo = RTE_PTR_ADD(hdr, offset + hdr->w2.fi_pad);
+	finfo = RTE_PTR_ADD(hdr, offset);
 
 	/* Frag-0: */
 	wqe = (uint64_t *)(rte_be_to_cpu_64(hdr->wqe_ptr));
@@ -300,7 +300,7 @@ nix_sec_reassemble_frags(const struct cpt_parse_hdr_s *hdr, uint64_t cq_w1,
 
 	/* offset of 0 implies 256B, otherwise it implies offset*8B */
 	offset = (((offset - 1) & 0x1f) + 1) * 8;
-	finfo = RTE_PTR_ADD(hdr, offset + hdr->w2.fi_pad);
+	finfo = RTE_PTR_ADD(hdr, offset);
 
 	/* Frag-0: */
 	wqe = (uint64_t *)rte_be_to_cpu_64(hdr->wqe_ptr);
@@ -685,20 +685,32 @@ nix_cqe_xtract_mseg(const union nix_rx_parse_u *rx, struct rte_mbuf *mbuf,
 	struct rte_mbuf *head;
 	const rte_iova_t *eol;
 	uint8_t nb_segs;
+	uint64_t cq_w1;
+	int64_t len;
 	uint64_t sg;
+
+	cq_w1 = *(const uint64_t *)rx;
+	/* Use inner rx parse for meta pkts sg list */
+	if (cq_w1 & BIT(11) && flags & NIX_RX_OFFLOAD_SECURITY_F) {
+		const uint64_t *wqe = (const uint64_t *)(mbuf + 1);
+		rx = (const union nix_rx_parse_u *)(wqe + 1);
+	}
 
 	sg = *(const uint64_t *)(rx + 1);
 	nb_segs = (sg >> 48) & 0x3;
 
-	if (nb_segs == 1 && !(flags & NIX_RX_SEC_REASSEMBLY_F)) {
-		mbuf->next = NULL;
+	if (nb_segs == 1)
 		return;
-	}
 
-	mbuf->pkt_len = (rx->pkt_lenm1 + 1) - (flags & NIX_RX_OFFLOAD_TSTAMP_F ?
-					       CNXK_NIX_TIMESYNC_RX_OFFSET : 0);
-	mbuf->data_len = (sg & 0xFFFF) - (flags & NIX_RX_OFFLOAD_TSTAMP_F ?
-					  CNXK_NIX_TIMESYNC_RX_OFFSET : 0);
+	/* For security we have already updated right pkt_len */
+	if (cq_w1 & BIT(11) && flags & NIX_RX_OFFLOAD_SECURITY_F)
+		len = mbuf->pkt_len;
+	else
+		len = rx->pkt_lenm1 + 1;
+	mbuf->pkt_len = len - (flags & NIX_RX_OFFLOAD_TSTAMP_F ? CNXK_NIX_TIMESYNC_RX_OFFSET : 0);
+	mbuf->data_len =
+		(sg & 0xFFFF) - (flags & NIX_RX_OFFLOAD_TSTAMP_F ? CNXK_NIX_TIMESYNC_RX_OFFSET : 0);
+	len -= mbuf->data_len;
 	mbuf->nb_segs = nb_segs;
 	sg = sg >> 16;
 
@@ -717,6 +729,7 @@ nix_cqe_xtract_mseg(const union nix_rx_parse_u *rx, struct rte_mbuf *mbuf,
 		RTE_MEMPOOL_CHECK_COOKIES(mbuf->pool, (void **)&mbuf, 1, 1);
 
 		mbuf->data_len = sg & 0xFFFF;
+		len -= sg & 0XFFFF;
 		sg = sg >> 16;
 		*(uint64_t *)(&mbuf->rearm_data) = rearm;
 		nb_segs--;
@@ -729,7 +742,10 @@ nix_cqe_xtract_mseg(const union nix_rx_parse_u *rx, struct rte_mbuf *mbuf,
 			iova_list = (const rte_iova_t *)(iova_list + 1);
 		}
 	}
-	mbuf->next = NULL;
+
+	/* Adjust last mbuf data length with negative offset for security pkts if needed */
+	if (cq_w1 & BIT(11) && flags & NIX_RX_OFFLOAD_SECURITY_F && len < 0)
+		mbuf->data_len += len;
 }
 
 static __rte_always_inline void
@@ -787,9 +803,9 @@ cn10k_nix_cqe_to_mbuf(const struct nix_cqe_hdr_s *cq, const uint32_t tag,
 		 * For multi segment packets, mbuf length correction according
 		 * to Rx timestamp length will be handled later during
 		 * timestamp data process.
-		 * Hence, flag argument is not required.
+		 * Hence, timestamp flag argument is not required.
 		 */
-		nix_cqe_xtract_mseg(rx, mbuf, val, 0);
+		nix_cqe_xtract_mseg(rx, mbuf, val, flag & ~NIX_RX_OFFLOAD_TSTAMP_F);
 }
 
 static inline uint16_t
