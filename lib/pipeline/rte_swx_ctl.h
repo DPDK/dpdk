@@ -1441,6 +1441,87 @@ rte_swx_ctl_meter_stats_read(struct rte_swx_pipeline *p,
 			     struct rte_swx_ctl_meter_stats *stats);
 
 /**
+ * Meter reset with table key lookup
+ *
+ * Reset a meter within a given meter array to use the default profile that
+ * causes all the input packets to be colored as green. It is the responsibility
+ * of the control plane to make sure this meter is not used by the data plane
+ * pipeline before calling this function.
+ *
+ * @param[in] p
+ *   Pipeline handle.
+ * @param[in] metarray_name
+ *   Meter array name.
+ * @param[in] table_name
+ *   Regular or learner table name.
+ * @param[in] table_key
+ *   Table key.
+ * @return
+ *   0 on success or the following error codes otherwise:
+ *   -EINVAL: Invalid argument.
+ */
+__rte_experimental
+int
+rte_swx_ctl_meter_reset_with_key(struct rte_swx_pipeline *p,
+				 const char *metarray_name,
+				 const char *table_name,
+				 uint8_t *table_key);
+
+/**
+ * Meter set with table key lookup
+ *
+ * Set a meter within a given meter array to use a specific profile. It is the
+ * responsibility of the control plane to make sure this meter is not used by
+ * the data plane pipeline before calling this function.
+ *
+ * @param[in] p
+ *   Pipeline handle.
+ * @param[in] metarray_name
+ *   Meter array name.
+ * @param[in] table_name
+ *   Regular or learner table name.
+ * @param[in] table_key
+ *   Table key.
+ * @param[in] profile_name
+ *   Existing meter profile name.
+ * @return
+ *   0 on success or the following error codes otherwise:
+ *   -EINVAL: Invalid argument.
+ */
+__rte_experimental
+int
+rte_swx_ctl_meter_set_with_key(struct rte_swx_pipeline *p,
+			       const char *metarray_name,
+			       const char *table_name,
+			       uint8_t *table_key,
+			       const char *profile_name);
+
+/**
+ * Meter statistics counters read with table key lookup
+ *
+ * @param[in] p
+ *   Pipeline handle.
+ * @param[in] metarray_name
+ *   Meter array name.
+ * @param[in] table_name
+ *   Regular or learner table name.
+ * @param[in] table_key
+ *   Table key.
+ * @param[out] stats
+ *   Meter statistics counters.
+ * @return
+ *   0 on success or the following error codes otherwise:
+ *   -EINVAL: Invalid argument.
+ */
+__rte_experimental
+int
+rte_swx_ctl_meter_stats_read_with_key(struct rte_swx_pipeline *p,
+				      const char *metarray_name,
+				      const char *table_name,
+				      uint8_t *table_key,
+				      struct rte_swx_ctl_meter_stats *stats);
+
+/**
  * Pipeline control free
  *
  * @param[in] ctl

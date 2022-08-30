@@ -11356,6 +11356,56 @@ rte_swx_ctl_pipeline_regarray_write_with_key(struct rte_swx_pipeline *p,
 	return rte_swx_ctl_pipeline_regarray_write(p, regarray_name, entry_id, value);
 }
 
+int
+rte_swx_ctl_meter_reset_with_key(struct rte_swx_pipeline *p,
+				 const char *metarray_name,
+				 const char *table_name,
+				 uint8_t *table_key)
+{
+	size_t entry_id = 0;
+	int status;
+
+	status = rte_swx_ctl_pipeline_table_entry_id_get(p, table_name, table_key, &entry_id);
+	if (status)
+		return status;
+
+	return rte_swx_ctl_meter_reset(p, metarray_name, entry_id);
+}
+
+int
+rte_swx_ctl_meter_set_with_key(struct rte_swx_pipeline *p,
+			       const char *metarray_name,
+			       const char *table_name,
+			       uint8_t *table_key,
+			       const char *profile_name)
+{
+	size_t entry_id = 0;
+	int status;
+
+	status = rte_swx_ctl_pipeline_table_entry_id_get(p, table_name, table_key, &entry_id);
+	if (status)
+		return status;
+
+	return rte_swx_ctl_meter_set(p, metarray_name, entry_id, profile_name);
+}
+
+int
+rte_swx_ctl_meter_stats_read_with_key(struct rte_swx_pipeline *p,
+				      const char *metarray_name,
+				      const char *table_name,
+				      uint8_t *table_key,
+				      struct rte_swx_ctl_meter_stats *stats)
+{
+	size_t entry_id = 0;
+	int status;
+
+	status = rte_swx_ctl_pipeline_table_entry_id_get(p, table_name, table_key, &entry_id);
+	if (status)
+		return status;
+
+	return rte_swx_ctl_meter_stats_read(p, metarray_name, entry_id, stats);
+}
+
 /*
  * Pipeline compilation.
  */
