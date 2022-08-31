@@ -385,6 +385,37 @@ set_pdump_rxtx_cbs(const struct pdump_request *p)
 	return ret;
 }
 
+static int 
+broadcast_secondary_replay(__rte_unused const struct rte_mp_msg *request,
+		                       __rte_unused const struct rte_mp_reply *reply)
+{
+  struct rte_mp_msg *mp_rep;
+  struct pdump_response *resp;
+  
+  // ignore error...
+  for(int i = 0; i < reply->nb_received; ++i){
+	  mp_rep = &reply->msgs[i];
+    resp = (struct pdump_response *)mp_rep->param;
+	  //rte_errno = resp->err_value;
+		if (resp->err_value)
+			PDUMP_LOG(ERR, "failed to recv from client when call brodcast_secondary_replay(ignore error), err:%d,%s\n", 
+			          resp->err_value, rte_strerror(-resp->err_value));
+  }
+
+  return 0;
+}
+
+static void 
+broadcast_secondary(const struct rte_mp_msg *mp_msg)
+{
+  struct rte_mp_msg mp_req;
+  struct timespec ts = {.tv_sec = 5, .tv_nsec = 0};
+  memcpy(&mp_req, mp_msg, sizeof(mp_req));
+
+  // ignore error
+  rte_mp_request_async(&mp_req, &ts, broadcast_secondary_replay);
+}
+
 static int
 pdump_server(const struct rte_mp_msg *mp_msg, const void *peer)
 {
@@ -401,6 +432,11 @@ pdump_server(const struct rte_mp_msg *mp_msg, const void *peer)
 		resp->ver = cli_req->ver;
 		resp->res_op = cli_req->op;
 		resp->err_value = set_pdump_rxtx_cbs(cli_req);
+
+		if (rte_eal_process_type() == RTE_PROC_PRIMARY){
+			// broadcast every secondary process
+			broadcast_secondary(mp_msg);
+		}
 	}
 
 	rte_strscpy(mp_resp.name, PDUMP_MP, RTE_MP_MAX_NAME_LEN);
@@ -424,9 +460,12 @@ rte_pdump_init(void)
 	mz = rte_memzone_reserve(MZ_RTE_PDUMP_STATS, sizeof(*pdump_stats),
 				 rte_socket_id(), 0);
 	if (mz == NULL) {
-		PDUMP_LOG(ERR, "cannot allocate pdump statistics\n");
-		rte_errno = ENOMEM;
-		return -1;
+		mz = rte_memzone_lookup(MZ_RTE_PDUMP_STATS);
+		if (mz == NULL){
+			PDUMP_LOG(ERR, "cannot allocate pdump statistics\n");
+			rte_errno = ENOMEM;
+			return -1;
+		}
 	}
 	pdump_stats = mz->addr;
 	pdump_stats->mz = mz;

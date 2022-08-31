@@ -57,7 +57,9 @@ static bool group_read;
 static bool quiet;
 static bool promiscuous_mode = true;
 static bool use_pcapng = true;
+
 static char *output_name;
+static const char *file_prefix = NULL;
 static const char *filter_str;
 static unsigned int ring_size = 2048;
 static const char *capture_comment;
@@ -78,6 +80,8 @@ static size_t file_size;
 struct interface {
 	TAILQ_ENTRY(interface) next;
 	uint16_t port;
+	int old_promiscuous_mode; /* 保留设备原本状态 */
+
 	char name[RTE_ETH_NAME_MAX_LEN];
 
 	struct rte_rxtx_callback *rx_cb[RTE_MAX_QUEUES_PER_PORT];
@@ -96,6 +100,9 @@ typedef union {
 static void usage(void)
 {
 	printf("Usage: %s [options] ...\n\n", progname);
+	printf("DPDK args:\n"
+	       "  -x <file-prefix>, --file-prefix <file-prefix>\n"
+	       "                           Prefix for hugepage filenames\n");
 	printf("Capture Interface:\n"
 	       "  -i <interface>           name or port index of interface\n"
 	       "  -f <capture filter>      packet filter in libpcap filter syntax\n");
@@ -318,12 +325,13 @@ static void parse_opts(int argc, char **argv)
 		{ "ring-buffer",     required_argument, NULL, 'b' },
 		{ "snapshot-length", required_argument, NULL, 's' },
 		{ "version",         no_argument,       NULL, 'v' },
+		{ "file-prefix",     required_argument, NULL, 'x' },
 		{ NULL },
 	};
 	int option_index, c;
 
 	for (;;) {
-		c = getopt_long(argc, argv, "a:b:c:dDf:ghi:nN:pPqs:vw:",
+		c = getopt_long(argc, argv, "a:b:c:dDf:ghi:nN:pPqs:vw:x:",
 				long_options, &option_index);
 		if (c == -1)
 			break;
@@ -389,6 +397,9 @@ static void parse_opts(int argc, char **argv)
 		case 'w':
 			output_name = optarg;
 			break;
+		case 'x':
+		  file_prefix = optarg;
+		  break;
 		case 'v':
 			printf("%s\n", version());
 			exit(0);
@@ -424,7 +435,7 @@ cleanup_pdump_resources(void)
 	TAILQ_FOREACH(intf, &interfaces, next) {
 		rte_pdump_disable(intf->port,
 				  RTE_PDUMP_ALL_QUEUES, RTE_PDUMP_FLAG_RXTX);
-		if (promiscuous_mode)
+		if (promiscuous_mode && !intf->old_promiscuous_mode)
 			rte_eth_promiscuous_disable(intf->port);
 	}
 }
@@ -514,9 +525,13 @@ static void dpdk_init(void)
 		"--log-level", "notice"
 
 	};
-	const int eal_argc = RTE_DIM(args);
+	int eal_argc = RTE_DIM(args);
 	char **eal_argv;
 	unsigned int i;
+
+	if(file_prefix != NULL){
+		eal_argc += 2;
+	}
 
 	/* DPDK API requires mutable versions of command line arguments. */
 	eal_argv = calloc(eal_argc + 1, sizeof(char *));
@@ -526,6 +541,16 @@ static void dpdk_init(void)
 	eal_argv[0] = strdup(progname);
 	for (i = 1; i < RTE_DIM(args); i++)
 		eal_argv[i] = strdup(args[i]);
+
+	if(file_prefix != NULL){
+		eal_argv[i] = strdup("--file-prefix");
+		eal_argv[i + 1] = strdup(file_prefix);
+	}
+
+	for(i = 0; i < eal_argc; ++i){
+		printf("%s ", eal_argv[i]);
+	}
+	printf("\n");
 
 	if (rte_eal_init(eal_argc, eal_argv) < 0)
 		rte_exit(EXIT_FAILURE, "EAL init failed: is primary process running?\n");
@@ -680,6 +705,7 @@ static void enable_pdump(struct rte_ring *r, struct rte_mempool *mp)
 
 	TAILQ_FOREACH(intf, &interfaces, next) {
 		if (promiscuous_mode) {
+			intf->old_promiscuous_mode = rte_eth_promiscuous_get(intf->port);
 			ret = rte_eth_promiscuous_enable(intf->port);
 			if (ret != 0)
 				fprintf(stderr,
@@ -740,13 +766,14 @@ pcap_write_packets(pcap_dumper_t *dumper,
 }
 
 /* Process all packets in ring and dump to capture file */
-static int process_ring(dumpcap_out_t out, struct rte_ring *r)
+static int process_ring(dumpcap_out_t out, struct rte_ring *r, int all)
 {
 	struct rte_mbuf *pkts[BURST_SIZE];
 	unsigned int avail, n;
 	static unsigned int empty_count;
 	ssize_t written;
 
+again:
 	n = rte_ring_sc_dequeue_burst(r, (void **) pkts, BURST_SIZE,
 				      &avail);
 	if (n == 0) {
@@ -772,6 +799,11 @@ static int process_ring(dumpcap_out_t out, struct rte_ring *r)
 
 	file_size += written;
 	packets_received += n;
+
+	if(all){
+		if(avail != 0) goto again;
+	}
+	
 	if (!quiet)
 		show_count(packets_received);
 
@@ -813,7 +845,7 @@ int main(int argc, char **argv)
 	}
 
 	while (!__atomic_load_n(&quit_signal, __ATOMIC_RELAXED)) {
-		if (process_ring(out, r) < 0) {
+		if (process_ring(out, r, 0) < 0) {
 			fprintf(stderr, "pcapng file write failed; %s\n",
 				strerror(errno));
 			break;
@@ -830,6 +862,10 @@ int main(int argc, char **argv)
 			break;
 	}
 
+	cleanup_pdump_resources();
+
+	process_ring(out, r, 1);
+
 	end_time = create_timestamp();
 	disable_primary_monitor();
 
@@ -841,7 +877,6 @@ int main(int argc, char **argv)
 	else
 		pcap_dump_close(out.dumper);
 
-	cleanup_pdump_resources();
 	rte_free(bpf_filter);
 	rte_ring_free(r);
 	rte_mempool_free(mp);
