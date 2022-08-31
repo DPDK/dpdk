@@ -1447,7 +1447,7 @@ process_openssl_auth_mac(struct rte_mbuf *mbuf_src, uint8_t *dst, int offset,
 	}
 
 process_auth_final:
-	if (EVP_MAC_final(ctx, dst, &dstlen, sizeof(dst)) != 1)
+	if (EVP_MAC_final(ctx, dst, &dstlen, DIGEST_LENGTH_MAX) != 1)
 		goto process_auth_err;
 
 	EVP_MAC_CTX_free(ctx);
