@@ -17,7 +17,7 @@
 # <proto>'/'<mask>
 # trace record format:
 # <src_ip_addr><space><dst_ip_addr><space> \
-# <src_port><space<dst_port><space><proto>...<rule_id>
+# <src_port><space><dst_port><space><proto>...<rule_id>
 #
 # As an example:
 # /bin/bash app/test-acl/test-acl.sh build/app/dpdk-test-acl \

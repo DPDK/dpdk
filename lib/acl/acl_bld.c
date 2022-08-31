@@ -946,7 +946,7 @@ build_trie(struct acl_build_context *context, struct rte_acl_build_rule *head,
 	struct rte_acl_build_rule **last, uint32_t *count)
 {
 	uint32_t n, m;
-	int field_index, node_count;
+	int field_index;
 	struct rte_acl_node *trie;
 	struct rte_acl_build_rule *prev, *rule;
 	struct rte_acl_node *end, *merge, *root, *end_prev;
@@ -1048,15 +1048,13 @@ build_trie(struct acl_build_context *context, struct rte_acl_build_rule *head,
 			}
 		}
 
-		node_count = context->num_nodes;
 		(*count)++;
 
 		/* merge this rule into the trie */
 		if (acl_merge_trie(context, trie, root, 0, NULL))
 			return NULL;
 
-		node_count = context->num_nodes - node_count;
-		if (node_count > context->cur_node_max) {
+		if (context->num_nodes > (context->cur_node_max * context->num_tries)) {
 			*last = prev;
 			return trie;
 		}
@@ -1368,6 +1366,7 @@ acl_build_tries(struct acl_build_context *context,
 	for (n = 0;; n = num_tries) {
 
 		num_tries = n + 1;
+		context->num_tries = num_tries;
 
 		last = build_one_trie(context, rule_sets, n, context->node_max);
 		if (context->bld_tries[n].trie == NULL) {
@@ -1411,8 +1410,6 @@ acl_build_tries(struct acl_build_context *context,
 		}
 
 	}
-
-	context->num_tries = num_tries;
 	return 0;
 }
 
