@@ -20,6 +20,9 @@
 #include <limits.h>
 #include <sys/time.h>
 #include <getopt.h>
+#include <signal.h>
+
+static volatile bool force_quit;
 
 #define RX_RING_SIZE 1024
 #define TX_RING_SIZE 1024
@@ -610,7 +613,7 @@ parse_ptp_frames(uint16_t portid, struct rte_mbuf *m) {
  * The lcore main. This is the main thread that does the work, reading from an
  * input port and writing to an output port.
  */
-static __rte_noreturn void
+static void
 lcore_main(void)
 {
 	uint16_t portid;
@@ -622,7 +625,7 @@ lcore_main(void)
 
 	/* Run until the application is quit or killed. */
 
-	while (1) {
+	while (!force_quit) {
 		/* Read packet from RX queues. 8< */
 		for (portid = 0; portid < ptp_enabled_port_nb; portid++) {
 
@@ -735,6 +738,13 @@ ptp_parse_args(int argc, char **argv)
 	return 0;
 }
 
+static void
+signal_handler(int signum)
+{
+	if (signum == SIGINT || signum == SIGTERM)
+		force_quit = true;
+}
+
 /*
  * The main function, which does initialization and calls the per-lcore
  * functions.
@@ -758,6 +768,10 @@ main(int argc, char *argv[])
 	/* Parse specific arguments. 8< */
 	argc -= ret;
 	argv += ret;
+
+	force_quit = false;
+	signal(SIGINT, signal_handler);
+	signal(SIGTERM, signal_handler);
 
 	ret = ptp_parse_args(argc, argv);
 	if (ret < 0)
@@ -802,6 +816,20 @@ main(int argc, char *argv[])
 
 	/* Call lcore_main on the main core only. */
 	lcore_main();
+
+	RTE_ETH_FOREACH_DEV(portid) {
+		if ((ptp_enabled_port_mask & (1 << portid)) == 0)
+			continue;
+
+		/* Disable timesync timestamping for the Ethernet device */
+		rte_eth_timesync_disable(portid);
+
+		ret = rte_eth_dev_stop(portid);
+		if (ret != 0)
+			printf("rte_eth_dev_stop: err=%d, port=%d\n", ret, portid);
+
+		rte_eth_dev_close(portid);
+	}
 
 	/* clean up the EAL */
 	rte_eal_cleanup();
