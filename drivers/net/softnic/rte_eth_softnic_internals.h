@@ -90,17 +90,6 @@ struct softnic_link {
 TAILQ_HEAD(softnic_link_list, softnic_link);
 
 /**
- * TAP
- */
-struct softnic_tap {
-	TAILQ_ENTRY(softnic_tap) node;
-	char name[NAME_SIZE];
-	int fd;
-};
-
-TAILQ_HEAD(softnic_tap_list, softnic_tap);
-
-/**
  * Input port action
  */
 struct softnic_port_in_action_profile_params {
@@ -163,7 +152,6 @@ struct pipeline_params {
 enum softnic_port_in_type {
 	PORT_IN_RXQ,
 	PORT_IN_SWQ,
-	PORT_IN_TAP,
 	PORT_IN_SOURCE,
 };
 
@@ -175,11 +163,6 @@ struct softnic_port_in_params {
 		struct {
 			uint16_t queue_id;
 		} rxq;
-
-		struct {
-			const char *mempool_name;
-			uint32_t mtu;
-		} tap;
 
 		struct {
 			const char *mempool_name;
@@ -196,7 +179,6 @@ struct softnic_port_in_params {
 enum softnic_port_out_type {
 	PORT_OUT_TXQ,
 	PORT_OUT_SWQ,
-	PORT_OUT_TAP,
 	PORT_OUT_SINK,
 };
 
@@ -385,7 +367,6 @@ struct pmd_internals {
 	struct softnic_mempool_list mempool_list;
 	struct softnic_swq_list swq_list;
 	struct softnic_link_list link_list;
-	struct softnic_tap_list tap_list;
 	struct softnic_port_in_action_profile_list port_in_action_profile_list;
 	struct softnic_table_action_profile_list table_action_profile_list;
 	struct pipeline_list pipeline_list;
@@ -465,23 +446,6 @@ struct softnic_link *
 softnic_link_create(struct pmd_internals *p,
 	const char *name,
 	struct softnic_link_params *params);
-
-/**
- * TAP
- */
-int
-softnic_tap_init(struct pmd_internals *p);
-
-void
-softnic_tap_free(struct pmd_internals *p);
-
-struct softnic_tap *
-softnic_tap_find(struct pmd_internals *p,
-	const char *name);
-
-struct softnic_tap *
-softnic_tap_create(struct pmd_internals *p,
-	const char *name);
 
 /**
  * Input port action

@@ -187,33 +187,6 @@ cmd_swq(struct pmd_internals *softnic,
 }
 
 /**
- * tap <tap_name>
- */
-static void
-cmd_tap(struct pmd_internals *softnic,
-	char **tokens,
-	uint32_t n_tokens,
-	char *out,
-	size_t out_size)
-{
-	char *name;
-	struct softnic_tap *tap;
-
-	if (n_tokens != 2) {
-		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
-		return;
-	}
-
-	name = tokens[1];
-
-	tap = softnic_tap_create(softnic, name);
-	if (tap == NULL) {
-		snprintf(out, out_size, MSG_CMD_FAIL, tokens[0]);
-		return;
-	}
-}
-
-/**
  * port in action profile <profile_name>
  *  [filter match | mismatch offset <key_offset> mask <key_mask> key <key_value> port <port_id>]
  *  [balance offset <key_offset> mask <key_mask> port <port_id0> ... <port_id15>]
@@ -874,7 +847,6 @@ cmd_pipeline(struct pmd_internals *softnic,
  *  bsz <burst_size>
  *  link <link_name> rxq <queue_id>
  *  | swq <swq_name>
- *  | tap <tap_name> mempool <mempool_name> mtu <mtu>
  *  | source mempool <mempool_name> file <file_name> bpp <n_bytes_per_pkt>
  *  [action <port_in_action_profile_name>]
  *  [disabled]
@@ -957,38 +929,6 @@ cmd_pipeline_port_in(struct pmd_internals *softnic,
 		strlcpy(p.dev_name, tokens[t0 + 1], sizeof(p.dev_name));
 
 		t0 += 2;
-	} else if (strcmp(tokens[t0], "tap") == 0) {
-		if (n_tokens < t0 + 6) {
-			snprintf(out, out_size, MSG_ARG_MISMATCH,
-				"pipeline port in tap");
-			return;
-		}
-
-		p.type = PORT_IN_TAP;
-
-		strlcpy(p.dev_name, tokens[t0 + 1], sizeof(p.dev_name));
-
-		if (strcmp(tokens[t0 + 2], "mempool") != 0) {
-			snprintf(out, out_size, MSG_ARG_NOT_FOUND,
-				"mempool");
-			return;
-		}
-
-		p.tap.mempool_name = tokens[t0 + 3];
-
-		if (strcmp(tokens[t0 + 4], "mtu") != 0) {
-			snprintf(out, out_size, MSG_ARG_NOT_FOUND,
-				"mtu");
-			return;
-		}
-
-		if (softnic_parser_read_uint32(&p.tap.mtu,
-			tokens[t0 + 5]) != 0) {
-			snprintf(out, out_size, MSG_ARG_INVALID, "mtu");
-			return;
-		}
-
-		t0 += 6;
 	} else if (strcmp(tokens[t0], "source") == 0) {
 		if (n_tokens < t0 + 6) {
 			snprintf(out, out_size, MSG_ARG_MISMATCH,
@@ -1074,7 +1014,6 @@ cmd_pipeline_port_in(struct pmd_internals *softnic,
  *  bsz <burst_size>
  *  link <link_name> txq <txq_id>
  *  | swq <swq_name>
- *  | tap <tap_name>
  *  | sink [file <file_name> pkts <max_n_pkts>]
  */
 static void
@@ -1146,16 +1085,6 @@ cmd_pipeline_port_out(struct pmd_internals *softnic,
 		}
 
 		p.type = PORT_OUT_SWQ;
-
-		strlcpy(p.dev_name, tokens[7], sizeof(p.dev_name));
-	} else if (strcmp(tokens[6], "tap") == 0) {
-		if (n_tokens != 8) {
-			snprintf(out, out_size, MSG_ARG_MISMATCH,
-				"pipeline port out tap");
-			return;
-		}
-
-		p.type = PORT_OUT_TAP;
 
 		strlcpy(p.dev_name, tokens[7], sizeof(p.dev_name));
 	} else if (strcmp(tokens[6], "sink") == 0) {
@@ -4597,11 +4526,6 @@ softnic_cli_process(char *in, char *out, size_t out_size, void *arg)
 
 	if (strcmp(tokens[0], "swq") == 0) {
 		cmd_swq(softnic, tokens, n_tokens, out, out_size);
-		return;
-	}
-
-	if (strcmp(tokens[0], "tap") == 0) {
-		cmd_tap(softnic, tokens, n_tokens, out, out_size);
 		return;
 	}
 

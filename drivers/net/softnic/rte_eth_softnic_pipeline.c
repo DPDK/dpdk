@@ -293,25 +293,6 @@ softnic_pipeline_port_in_create(struct pmd_internals *softnic,
 		break;
 	}
 
-	case PORT_IN_TAP:
-	{
-		struct softnic_tap *tap;
-		struct softnic_mempool *mempool;
-
-		tap = softnic_tap_find(softnic, params->dev_name);
-		mempool = softnic_mempool_find(softnic, params->tap.mempool_name);
-		if (tap == NULL || mempool == NULL)
-			return -1;
-
-		pp.fd.fd = tap->fd;
-		pp.fd.mempool = mempool->m;
-		pp.fd.mtu = params->tap.mtu;
-
-		p.ops = &rte_port_fd_reader_ops;
-		p.arg_create = &pp.fd;
-		break;
-	}
-
 	case PORT_IN_SOURCE:
 	{
 		struct softnic_mempool *mempool;
@@ -495,31 +476,6 @@ softnic_pipeline_port_out_create(struct pmd_internals *softnic,
 		} else {
 			p.ops = &rte_port_ring_writer_nodrop_ops;
 			p.arg_create = &pp_nodrop.ring;
-		}
-		break;
-	}
-
-	case PORT_OUT_TAP:
-	{
-		struct softnic_tap *tap;
-
-		tap = softnic_tap_find(softnic, params->dev_name);
-		if (tap == NULL)
-			return -1;
-
-		pp.fd.fd = tap->fd;
-		pp.fd.tx_burst_sz = params->burst_size;
-
-		pp_nodrop.fd.fd = tap->fd;
-		pp_nodrop.fd.tx_burst_sz = params->burst_size;
-		pp_nodrop.fd.n_retries = params->n_retries;
-
-		if (params->retry == 0) {
-			p.ops = &rte_port_fd_writer_ops;
-			p.arg_create = &pp.fd;
-		} else {
-			p.ops = &rte_port_fd_writer_nodrop_ops;
-			p.arg_create = &pp_nodrop.fd;
 		}
 		break;
 	}
